@@ -1,4 +1,4 @@
-# Release Readiness — Ollama Full
+# Release Readiness — Ollama Classe A+
 
 Este documento define a política de **um único SHA candidato passar por todo o
 gate** antes de virar release. Ele não inventa checks: lista os workflows reais
@@ -21,7 +21,7 @@ SHA devem estar verdes.
 | `dz23-agentic-quality.yaml` | **Web and mobile quality** | web typecheck/lint/tests/prod-audit + mobile typecheck/audit/policy |
 | `release.yaml` | **Agentic release quality gate** | gate de qualidade agregado da release |
 | `test.yaml` | test matrix (Linux/macOS/Windows) + race | testes Go multiplataforma |
-| `test-install.yaml` | `test` | instala o fork de fonte e **verifica que o binário é o Ollama Full** |
+| `test-install.yaml` | `test` | instala o fork de fonte e **verifica que o binário é o Classe A+** |
 | `dz23-windows-installer.yaml` | `installer` | build CPU + Desktop + **instalador Windows (não assinado)** |
 | `dz23-multi-provider.yaml` / `dz23-provider-smoke.yaml` | provider gates/smoke | roteamento multi-provider |
 
@@ -39,7 +39,7 @@ check obrigatório só conta com conclusão **`success`** — `skipped`, `cancel
 
 Conjunto obrigatório verificado — apenas os contexts que **realmente rodam num
 commit de `main`/tag** e constituem a prova de release **deste fork** (camada
-agentic Ollama Full): `Preserve Class A+ surfaces`, `Go agentic and server gates`,
+agentic Classe A+): `Preserve Class A+ surfaces`, `Go agentic and server gates`,
 `PostgreSQL RLS, Redis DLQ and OTLP integration`, `Web and mobile quality`,
 `Generate SBOM`.
 
