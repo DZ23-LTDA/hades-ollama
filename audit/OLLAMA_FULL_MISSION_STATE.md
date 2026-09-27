@@ -909,3 +909,12 @@ Captura real da interface atual foi salva em `docs/images/screens/ollama-full-cu
 A árvore congelada passou: `go test -p=2 ./... -count=1`, `go vet -p=2 ./...`, `go test -race -p=2 ./internal/agent ./server -count=1`, `CGO_ENABLED=1 go build -p=2 ./...`, cross-compile Windows de `internal/agent`, guard de integridade, gofmt, diff check e gitleaks redacted (somente fixtures sintéticas nos arquivos de teste). O commit foi publicado sem force-push numa branch nova; verificação pela CLI e pela API GitHub confirmou seu hash e confirmou `main` intacta. PostgreSQL RLS caller-settable continua bloqueador de produção; não declarar release production-ready nem paridade Manus total.
 
 STATUS: BACKUP REMOTO PRONTO — branch `recovery/ollama-full-snapshot`; `main` permanece intacta.
+
+
+### Handoff de retomada — 2026-09-27 07:25 -03
+
+Foi criado `audit/OLLAMA_FULL_HANDOFF_20260927.md` para continuidade após encerramento/formatação do PC. Ele reúne branch/remoto/commits, comandos de restauração, documentos-fonte, evidências de gates, remediações integradas, limites de paridade, findings remediados ainda aguardando validação independente, PostgreSQL fail-closed, próximos passos priorizados e regras de Git/publicação. Ao retomar, ler primeiro o handoff e depois comparar `git status`, `HEAD` e `origin` no GitHub; não confiar em hashes do texto sem revalidar, porque novos commits podem avançar a branch.
+
+Estado verificado antes deste commit documental: `main`=`8635e30dc9e95a1f5b29700169783abc24093ceb`, recovery=`2ac42cc24f64546c87d7296f919b1519de0c67b5`, worktree limpo. O usuário pediu manter as informações necessárias para continuar e preservar tudo na branch pública `recovery/ollama-full-snapshot`; o conteúdo atual deste handoff e do checkpoint será enviado nessa mesma branch após `git diff --check`. Sem alteração/force-push de `main`.
+
+STATUS: CONTINUE — retomar do handoff; P0 arquitetura PostgreSQL RLS; P1 reauditoria/gates pós-fix; seguir matriz para paridade funcional.
