@@ -918,3 +918,12 @@ Foi criado `audit/OLLAMA_FULL_HANDOFF_20260927.md` para continuidade após encer
 Estado verificado antes deste commit documental: `main`=`8635e30dc9e95a1f5b29700169783abc24093ceb`, recovery=`2ac42cc24f64546c87d7296f919b1519de0c67b5`, worktree limpo. O usuário pediu manter as informações necessárias para continuar e preservar tudo na branch pública `recovery/ollama-full-snapshot`; o conteúdo atual deste handoff e do checkpoint será enviado nessa mesma branch após `git diff --check`. Sem alteração/force-push de `main`.
 
 STATUS: CONTINUE — retomar do handoff; P0 arquitetura PostgreSQL RLS; P1 reauditoria/gates pós-fix; seguir matriz para paridade funcional.
+
+
+### Passagem de bastão Claude Code / Codex — 2026-09-27 07:29 -03
+
+A pedido do usuário, criado `audit/CLAUDE_CODEX_RESUME_PROMPT_20260927.md`: prompt copiável que instrui agente novo a recuperar estado Git real, ler documentação de continuidade e instruções do repo, reauditar os blockers por prioridade, manter PostgreSQL fail-closed, executar regressões/gates, preservar alterações e limitar push à branch de recuperação. `AGENTS.md` (compartilhado com Codex) e `CLAUDE.md` agora apontam para esse prompt e para o handoff. `audit/OLLAMA_FULL_HANDOFF_20260927.md` lista o novo prompt e foi corrigido para distinguir o commit fixo do snapshot da ponta móvel da branch.
+
+Estado antes desta publicação documental: branch `recovery/ollama-full-snapshot`, HEAD e remote `ed0c7ccf858379c18b9b4d02913ff52e7d6c6fb7`; `main` verificada em `8635e30dc9e95a1f5b29700169783abc24093ceb`; worktree estava limpo antes das alterações atuais. Esta rodada alterou somente Markdown/instruções de agente; nenhum código Go foi mudado, portanto os gates de código anteriores permanecem associados ao snapshot de código, sem alegar que foram executados novamente nesta rodada. Rodar `git diff --check` e integrity guard antes de commit/push; publicar somente na branch já autorizada.
+
+STATUS: CONTINUE — ler prompt de retomada, validar branch/remoto e continuar P0 PostgreSQL RLS; P1 reauditoria pós-fix; depois paridade baseada na matriz.

@@ -1,6 +1,6 @@
 # Handoff de continuidade — Ollama Full
 
-**Atualizado:** 2026-09-27 07:24 (-03)
+**Atualizado:** 2026-09-27 07:29 (-03)
 
 **Propósito:** permitir retomar o trabalho depois de encerrar/formatar este PC ou trocar de sessão, sem depender do histórico da conversa.
 
@@ -8,12 +8,14 @@
 
 - **Projeto:** [DZ23-LTDA/ollama-classe-a-plus](https://github.com/DZ23-LTDA/ollama-classe-a-plus)
 - **Branch de continuidade:** [`recovery/ollama-full-snapshot`](https://github.com/DZ23-LTDA/ollama-classe-a-plus/tree/recovery/ollama-full-snapshot)
-- **Ponta verificada no GitHub:** `2ac42cc24f64546c87d7296f919b1519de0c67b5`
-- **Commits mais recentes:**
-  - `8c2e3604a086abeab401e2c80e96fe6ad4473566` — `security: harden tenant isolation and workspace boundaries` (snapshot de 134 arquivos; 22.536 inserções, 1.582 remoções)
-  - `2ac42cc24f64546c87d7296f919b1519de0c67b5` — `docs: record verified GitHub backup`
-- **`main`:** continua em `8635e30dc9e95a1f5b29700169783abc24093ceb`; não foi alterada. Não houve force-push nem PR.
-- O checkout local estava limpo após o push. A branch de recuperação acompanha `origin/recovery/ollama-full-snapshot`.
+- **Commit fixo do snapshot de código:** `8c2e3604a086abeab401e2c80e96fe6ad4473566` — `security: harden tenant isolation and workspace boundaries` (134 arquivos; 22.536 inserções, 1.582 remoções).
+- A branch contém commits documentais posteriores. **Sua ponta é móvel:** consulte-a no checkout/remote antes de retomar, em vez de tratar um hash escrito aqui como atual:
+  ```bash
+  git ls-remote --heads origin refs/heads/recovery/ollama-full-snapshot
+  git ls-remote --heads origin refs/heads/main
+  ```
+- **`main` verificada antes desta atualização documental:** `8635e30dc9e95a1f5b29700169783abc24093ceb`; não foi alterada. Não houve force-push nem PR.
+- O checkout estava limpo após cada publicação; confirme novamente que a branch local acompanha `origin/recovery/ollama-full-snapshot`.
 
 ### Restaurar em outro PC
 
@@ -33,12 +35,13 @@ git status --short --branch
 
 ## Documentos que devem ser lidos primeiro
 
-1. `audit/OLLAMA_FULL_HANDOFF_20260927.md` — este handoff.
-2. `audit/OLLAMA_FULL_MISSION_STATE.md` — histórico durável detalhado e evidências por rodada.
-3. `audit/FINAL_SECURITY_REAUDIT_POSTFIX_20260927.md` — achados da auditoria independente, distinção entre findings remediados e o bloqueador remanescente.
-4. `docs/agentic/PARITY_MATRIX.md` — paridade por domínio, com estados e gates faltantes; não tratar adapters como recursos completos.
-5. `docs/OLLAMA_FULL_PRODUCT_VISION.md` e `audit/COMPARACAO_ARVORES_MANUS_OLLAMA_FULL.md` — visão de produto e comparação de escopo.
-6. `SECURITY.md` e `docs/RELEASE_READINESS.md` — regras de segurança e critérios de liberação.
+1. `audit/CLAUDE_CODEX_RESUME_PROMPT_20260927.md` — prompt copiável e sequência inicial para Claude Code/Codex.
+2. `audit/OLLAMA_FULL_HANDOFF_20260927.md` — este handoff com recuperação, branch e próximos passos.
+3. `audit/OLLAMA_FULL_MISSION_STATE.md` — histórico durável detalhado e evidências por rodada.
+4. `audit/FINAL_SECURITY_REAUDIT_POSTFIX_20260927.md` — achados independentes e status das remediações.
+5. `docs/agentic/PARITY_MATRIX.md` — paridade por domínio, estados e gates faltantes; não tratar adapters como recursos completos.
+6. `docs/OLLAMA_FULL_PRODUCT_VISION.md` e `audit/COMPARACAO_ARVORES_MANUS_OLLAMA_FULL.md` — visão de produto e comparação de escopo.
+7. `SECURITY.md` e `docs/RELEASE_READINESS.md` — regras de segurança e critérios de liberação.
 
 A captura do estado atual da UI está em `docs/images/screens/ollama-full-current-ui-2026-09-27.png` (1440 × 900). A captura foi feita contra localhost; na captura final o backend estava com `OLLAMA_NO_CLOUD=1` e o navegador bloqueou tráfego não local. Os serviços temporários foram desligados.
 
@@ -90,7 +93,7 @@ Revisar o relatório e a matriz quanto a falhas de crash/failover, semântica at
 
 ## Gates comprovados neste snapshot
 
-Executados sobre a árvore congelada anterior ao commit documental `2ac42cc` (que só alterou texto do checkpoint):
+Executados sobre a árvore de código congelada do snapshot `8c2e3604`. Os commits posteriores `2ac42cc` e `ed0c7ccf` foram documentais; as alterações desta atualização também são apenas documentação/instruções de agente. Portanto, os gates abaixo evidenciam o snapshot de código, não uma nova execução dos gates após cada arquivo Markdown:
 
 - `gofmt` check dos Go alterados/novos — PASS;
 - `go test -p=2 ./... -count=1` — PASS;
@@ -133,4 +136,4 @@ bash scripts/check-class-a-plus-integrity.sh
 git diff --check
 ```
 
-**Estado na criação deste handoff:** remoto verificado em `2ac42cc24f64546c87d7296f919b1519de0c67b5`; `main` em `8635e30dc9e95a1f5b29700169783abc24093ceb`; nenhum serviço local de screenshot ativo.
+**Estado registrado nesta revisão:** branch local `recovery/ollama-full-snapshot`; antes destas alterações, `HEAD` e ponta remota eram `ed0c7ccf858379c18b9b4d02913ff52e7d6c6fb7`; `main` foi verificada em `8635e30dc9e95a1f5b29700169783abc24093ceb`. Os serviços temporários da captura estão desligados. Revalide as refs remotas depois de qualquer novo commit.
