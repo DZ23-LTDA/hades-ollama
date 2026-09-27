@@ -1,4 +1,4 @@
-# Proteção da branch `main` — Ollama Classe A+
+# Proteção da branch `main` — Ollama Full
 
 > **Status: APLICADO (2026-09-24)** com a conta admin `DZ23-LTDA`.
 >

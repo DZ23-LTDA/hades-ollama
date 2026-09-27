@@ -1,10 +1,10 @@
-# Árvore de produto — Manus Desktop observável e Ollama Classe A+
+# Árvore de produto — Manus Desktop observável e Ollama Full
 
 ## 1. Como interpretar esta árvore
 
-O objetivo do Ollama Classe A+ é oferecer as mesmas **jornadas observáveis** de um assistente desktop agentic completo e combinar essas jornadas com padrões úteis de Claude Code, Codex, OmniRoute e outros harnesses. A meta não é copiar código, interface proprietária ou internals de qualquer produto. A implementação deve permanecer compatível com as licenças usadas, manter as atribuições upstream e provar cada capacidade por testes e execução real.
+O objetivo do Ollama Full é oferecer as mesmas **jornadas observáveis** de um assistente desktop agentic completo e combinar essas jornadas com padrões úteis de Claude Code, Codex, OmniRoute e outros harnesses. A meta não é copiar código, interface proprietária ou internals de qualquer produto. A implementação deve permanecer compatível com as licenças usadas, manter as atribuições upstream e provar cada capacidade por testes e execução real.
 
-A imagem fornecida mostra uma superfície desktop do Manus com navegação lateral, criação de tarefa, agente, habilidades, plugins, agendamento, biblioteca, projetos, tarefas, conta, créditos e configurações. A árvore abaixo descreve essa superfície observável e amplia o produto somente com recursos que fazem parte do escopo declarado para o Classe A+ ou que podem ser implementados por contratos públicos.
+A imagem fornecida mostra uma superfície desktop do Manus com navegação lateral, criação de tarefa, agente, habilidades, plugins, agendamento, biblioteca, projetos, tarefas, conta, créditos e configurações. A árvore abaixo descreve essa superfície observável e amplia o produto somente com recursos que fazem parte do escopo declarado para o Ollama Full ou que podem ser implementados por contratos públicos.
 
 Os marcadores têm este significado:
 
@@ -142,12 +142,12 @@ Manus Desktop
     └── Feedback e auditoria
 ```
 
-## 3. Árvore atual do Ollama Classe A+
+## 3. Árvore atual do Ollama Full
 
 A árvore abaixo representa o que já existe ou está documentado no fork público. Ela não deve ser confundida com a árvore-alvo.
 
 ```text
-Ollama Classe A+
+Ollama Full
 ├── Runtime Ollama upstream [ATUAL]
 │   ├── Inferência local
 │   ├── Modelos e catálogo
@@ -229,7 +229,7 @@ Ollama Classe A+
 │   ├── Docker Compose de desenvolvimento
 │   └── CI/SBOM
 └── Documentação pública [ATUAL]
-    ├── Manual Classe A+
+    ├── Manual Ollama Full
     ├── Architecture/API/Integrations
     ├── Roadmap e fases de entrega
     ├── Matriz de paridade
@@ -239,12 +239,12 @@ Ollama Classe A+
     └── Changelog e release preview
 ```
 
-## 4. Árvore-alvo: Ollama Classe A+ unificado
+## 4. Árvore-alvo: Ollama Full unificado
 
 Esta é a árvore que deve orientar a implementação. Ela combina a navegação observável do Manus com recursos de coding agents, roteamento de providers, builders, pesquisa, operação local e segurança empresarial.
 
 ```text
-Ollama Classe A+ — Unified Agentic Desktop
+Ollama Full — Unified Agentic Desktop
 ├── 0. Workspace, identidade e controle
 │   ├── Workspace switcher
 │   ├── Organizações, equipes e projetos
@@ -516,7 +516,7 @@ Ollama Classe A+ — Unified Agentic Desktop
 
 ## 5. O melhor padrão de cada família de harness
 
-| Família | Padrão absorvido no Classe A+ | Limite de integração |
+| Família | Padrão absorvido no Ollama Full | Limite de integração |
 |---|---|---|
 | Manus | Missões de alto nível, projetos, skills, plugins, tarefas agendadas, biblioteca, artifacts, builders e superfície desktop | A paridade é observável; internals, UI proprietária e serviços fechados não são copiados |
 | Claude Code | Coding agent orientado a ferramentas, contexto de repositório, terminal, edição e workflow iterativo | Requer adapter/credencial ou modelo local compatível |
@@ -635,7 +635,7 @@ A cada rodada, atualizar esta árvore, a matriz de paridade, o roadmap, o change
 ## Atualização técnica desta rodada
 
 ```text
-Classe A+ Runtime
+Ollama Full Runtime
 ├── Provider Intelligence
 │   ├── Provider Router: capabilities, health, latency, cost, privacy, quality
 │   ├── Grok Live: Responses, streaming, retry, circuit, sources vs memory

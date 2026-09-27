@@ -5,6 +5,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -22,9 +23,12 @@ func TestAgentCatalogRoutesFilterPrivateResourcesByOrganization(t *testing.T) {
 		ID:             "private-connector",
 		OrganizationID: "org_b",
 		Provider:       "private",
-		BaseURL:        "https://example.test",
+		BaseURL:        "https://example.test/private-path",
 		Operations:     []agent.ConnectorOperation{{Name: "read", Methods: []string{"GET"}, PathPrefixes: []string{"/"}}},
 	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := connectors.Register(agent.ConnectorConfig{ID: "global-connector", Provider: "global", BaseURL: "https://global.example.test/api", Operations: []agent.ConnectorOperation{{Name: "read", Methods: []string{"GET"}, PathPrefixes: []string{"/"}}}}); err != nil {
 		t.Fatal(err)
 	}
 	mcp := agent.NewMCPManager()
@@ -36,7 +40,10 @@ func TestAgentCatalogRoutesFilterPrivateResourcesByOrganization(t *testing.T) {
 		t.Fatal(err)
 	}
 	remote := agent.NewRemoteMCPManager()
-	if err := remote.Register(agent.RemoteMCPServerConfig{ID: "private-remote", OrganizationID: "org_b", URL: "https://example.test/mcp", AllowedMethods: []string{"tools/list"}}); err != nil {
+	if err := remote.Register(agent.RemoteMCPServerConfig{ID: "private-remote", OrganizationID: "org_b", URL: "https://example.test/mcp/path-secret", TokenEnv: "MCP_TOKEN_ENV_SECRET", HeadersEnv: map[string]string{"Authorization": "MCP_HEADER_ENV_SECRET"}, AllowedMethods: []string{"tools/list"}}); err != nil {
+		t.Fatal(err)
+	}
+	if err := remote.Register(agent.RemoteMCPServerConfig{ID: "global-remote", URL: "https://global.example.test/mcp", AllowedMethods: []string{"tools/list"}}); err != nil {
 		t.Fatal(err)
 	}
 	workspace := t.TempDir()
@@ -68,6 +75,17 @@ func TestAgentCatalogRoutesFilterPrivateResourcesByOrganization(t *testing.T) {
 		if (len(connectorPayload.Connectors) == 1) != wantPrivate {
 			t.Fatalf("connectors for %s = %+v", organizationID, connectorPayload.Connectors)
 		}
+		if wantPrivate {
+			connector := connectorPayload.Connectors[0]
+			if connector.BaseURL != "https://example.test" || connector.TokenEnv != "" {
+				t.Fatalf("tenant catalog exposed private connector config: %+v", connector)
+			}
+			for _, secret := range []string{"private-path"} {
+				if strings.Contains(recorder.Body.String(), secret) {
+					t.Fatalf("connector catalog exposed %q: %s", secret, recorder.Body.String())
+				}
+			}
+		}
 
 		recorder = httptest.NewRecorder()
 		ctx, _ = gin.CreateTestContext(recorder)
@@ -82,6 +100,17 @@ func TestAgentCatalogRoutesFilterPrivateResourcesByOrganization(t *testing.T) {
 		}
 		if (len(mcpPayload.Servers) == 1) != wantPrivate || (len(mcpPayload.RemoteServers) == 1) != wantPrivate {
 			t.Fatalf("MCP catalog for %s = %+v", organizationID, mcpPayload)
+		}
+		if wantPrivate {
+			remoteServer := mcpPayload.RemoteServers[0]
+			if remoteServer.URL != "https://example.test" || remoteServer.TokenEnv != "" || len(remoteServer.HeadersEnv) != 0 {
+				t.Fatalf("tenant catalog exposed private remote config: %+v", remoteServer)
+			}
+			for _, secret := range []string{"path-secret", "MCP_TOKEN_ENV_SECRET", "MCP_HEADER_ENV_SECRET"} {
+				if strings.Contains(recorder.Body.String(), secret) {
+					t.Fatalf("tenant catalog exposed %q: %s", secret, recorder.Body.String())
+				}
+			}
 		}
 
 		recorder = httptest.NewRecorder()

@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-    Build and install Ollama Classe A+ from a checked-out source tree.
+    Build and install Ollama Full from a checked-out source tree.
 
 .DESCRIPTION
     This script deliberately does not download Ollama upstream installers,
@@ -14,25 +14,25 @@
 
     Optional variables:
 
-        $env:OLLAMA_INSTALL_DIR = "$env:LOCALAPPDATA\Programs\OllamaClasseAPlus"
-        $env:OLLAMA_BINARY_NAME = "ollama-classe-a-plus.exe"
+        $env:OLLAMA_INSTALL_DIR = "$env:LOCALAPPDATA\Programs\OllamaFull"
+        $env:OLLAMA_BINARY_NAME = "ollama-full.exe"
 #>
 
 $ErrorActionPreference = "Stop"
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
-$installDir = if ($env:OLLAMA_INSTALL_DIR) { $env:OLLAMA_INSTALL_DIR } else { Join-Path $env:LOCALAPPDATA "Programs\OllamaClasseAPlus" }
-$binaryName = if ($env:OLLAMA_BINARY_NAME) { $env:OLLAMA_BINARY_NAME } else { "ollama-classe-a-plus.exe" }
+$installDir = if ($env:OLLAMA_INSTALL_DIR) { $env:OLLAMA_INSTALL_DIR } else { Join-Path $env:LOCALAPPDATA "Programs\OllamaFull" }
+$binaryName = if ($env:OLLAMA_BINARY_NAME) { $env:OLLAMA_BINARY_NAME } else { "ollama-full.exe" }
 $output = Join-Path $installDir $binaryName
 
 if (-not (Get-Command go -ErrorAction SilentlyContinue)) {
-    throw "Go is required to build Ollama Classe A+ from source."
+    throw "Go is required to build Ollama Full from source."
 }
 if (-not (Test-Path (Join-Path $repoRoot "go.mod"))) {
-    throw "Run this script from a checked-out Ollama Classe A+ repository."
+    throw "Run this script from a checked-out Ollama Full repository."
 }
 
 New-Item -ItemType Directory -Force -Path $installDir | Out-Null
-Write-Host "Building Ollama Classe A+ from $repoRoot"
+Write-Host "Building Ollama Full from $repoRoot"
 Push-Location $repoRoot
 try {
     & go build -trimpath -o $output .

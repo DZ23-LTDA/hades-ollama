@@ -11,6 +11,7 @@ require (
 	github.com/ledongthuc/pdf v0.0.0-20250511090121-5959a4027728
 	github.com/mattn/go-sqlite3 v1.14.24
 	github.com/olekukonko/tablewriter v0.0.5
+	github.com/pmezard/go-difflib v1.0.0
 	github.com/spf13/cobra v1.7.0
 	github.com/stretchr/testify v1.11.1
 	golang.org/x/sync v0.22.0
@@ -75,7 +76,6 @@ require (
 	github.com/muesli/cancelreader v0.2.2 // indirect
 	github.com/muesli/termenv v0.16.0 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
-	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/russellhaering/goxmldsig v1.6.0 // indirect
 	github.com/tkrajina/go-reflector v0.5.5 // indirect

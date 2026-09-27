@@ -18,11 +18,13 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 )
 
 type DeployConfig struct {
 	ID             string `json:"id"`
+	OrganizationID string `json:"organization_id,omitempty"`
 	Provider       string `json:"provider"`
 	BaseURL        string `json:"base_url"`
 	TokenEnv       string `json:"token_env,omitempty"`
@@ -82,9 +84,12 @@ func (e *DeploymentError) Unwrap() error {
 }
 
 type DeploymentManager struct {
+	mu      sync.RWMutex
 	configs map[string]DeployConfig
 	client  *http.Client
 }
+
+var ErrDeploymentProviderNotFound = errors.New("deployment provider is not configured")
 
 type deploymentLoopbackContextKey struct{}
 
@@ -113,9 +118,6 @@ func deploymentDialContext(ctx context.Context, network, address string) (net.Co
 
 func deploymentDialContextWithResolver(ctx context.Context, network, address string, lookup func(context.Context, string) ([]net.IPAddr, error)) (net.Conn, error) {
 	dialer := &net.Dialer{Timeout: 15 * time.Second}
-	if loopback, _ := ctx.Value(deploymentLoopbackContextKey{}).(bool); loopback {
-		return dialer.DialContext(ctx, network, address)
-	}
 	host, port, err := net.SplitHostPort(address)
 	if err != nil || host == "" || port == "" {
 		return nil, errors.New("deployment destination address is invalid")
@@ -135,8 +137,12 @@ func deploymentDialContextWithResolver(ctx context.Context, network, address str
 	if len(addresses) == 0 {
 		return nil, errors.New("deployment destination has no addresses")
 	}
+	allowLoopback, _ := ctx.Value(deploymentLoopbackContextKey{}).(bool)
 	for _, address := range addresses {
-		if deploymentPrivateIP(address.IP) {
+		if address.IP == nil || (allowLoopback && !address.IP.IsLoopback()) {
+			return nil, errors.New("deployment loopback destination resolves outside loopback")
+		}
+		if !allowLoopback && unsafeEgressIP(address.IP) {
 			return nil, errors.New("deployment destination resolves to a private address")
 		}
 	}
@@ -153,10 +159,18 @@ func deploymentDialContextWithResolver(ctx context.Context, network, address str
 			target = net.JoinHostPort(address.IP.String()+"%"+address.Zone, port)
 		}
 		conn, dialErr := dialer.DialContext(ctx, network, target)
-		if dialErr == nil {
-			return conn, nil
+		if dialErr != nil {
+			lastErr = dialErr
+			continue
 		}
-		lastErr = dialErr
+		remoteHost, _, splitErr := net.SplitHostPort(conn.RemoteAddr().String())
+		remoteIP := net.ParseIP(strings.Trim(remoteHost, "[]"))
+		if splitErr != nil || remoteIP == nil || !remoteIP.Equal(address.IP) || (allowLoopback && !remoteIP.IsLoopback()) || (!allowLoopback && unsafeEgressIP(remoteIP)) {
+			_ = conn.Close()
+			lastErr = errors.New("deployment connected address was not approved")
+			continue
+		}
+		return conn, nil
 	}
 	if lastErr != nil {
 		return nil, lastErr
@@ -165,11 +179,15 @@ func deploymentDialContextWithResolver(ctx context.Context, network, address str
 }
 
 func deploymentPrivateIP(ip net.IP) bool {
-	return ip.IsLoopback() || ip.IsUnspecified() || ip.IsPrivate() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() || ip.IsMulticast()
+	return unsafeEgressIP(ip)
 }
 
 func (m *DeploymentManager) Register(config DeployConfig) error {
+	if m == nil {
+		return errors.New("deployment manager is unavailable")
+	}
 	config.ID = strings.TrimSpace(config.ID)
+	config.OrganizationID = strings.TrimSpace(config.OrganizationID)
 	config.Provider = strings.ToLower(strings.TrimSpace(config.Provider))
 	if config.ID == "" || config.Provider == "" {
 		return errors.New("deployment id and provider are required")
@@ -181,6 +199,9 @@ func (m *DeploymentManager) Register(config DeployConfig) error {
 	if err != nil || base == nil || base.Host == "" || base.User != nil {
 		return errors.New("deployment base_url must be HTTPS or loopback HTTP without userinfo")
 	}
+	if err := validateConfiguredEndpointURL(config.BaseURL); err != nil {
+		return fmt.Errorf("deployment base_url is not safe to persist: %w", err)
+	}
 	loopbackHTTP := base.Scheme == "http" && isLoopbackHost(base.Hostname())
 	if base.Scheme != "https" && !loopbackHTTP {
 		return errors.New("deployment base_url must be HTTPS or loopback HTTP without userinfo")
@@ -191,13 +212,41 @@ func (m *DeploymentManager) Register(config DeployConfig) error {
 	if config.TimeoutSeconds <= 0 || config.TimeoutSeconds > 600 {
 		config.TimeoutSeconds = 120
 	}
+	m.mu.Lock()
 	m.configs[config.ID] = config
+	m.mu.Unlock()
 	return nil
 }
 
 func (m *DeploymentManager) List() []DeployConfig {
+	if m == nil {
+		return nil
+	}
+	m.mu.RLock()
+	defer m.mu.RUnlock()
 	result := make([]DeployConfig, 0, len(m.configs))
 	for _, config := range m.configs {
+		config.BaseURL = providerCatalogOrigin(config.BaseURL)
+		config.TokenEnv = ""
+		result = append(result, config)
+	}
+	sort.Slice(result, func(i, j int) bool { return result[i].ID < result[j].ID })
+	return result
+}
+
+func (m *DeploymentManager) ListForOrganization(organizationID string) []DeployConfig {
+	organizationID = strings.TrimSpace(organizationID)
+	result := make([]DeployConfig, 0)
+	if m == nil || organizationID == "" {
+		return result
+	}
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	for _, config := range m.configs {
+		if strings.TrimSpace(config.OrganizationID) != organizationID {
+			continue
+		}
+		config.BaseURL = providerCatalogOrigin(config.BaseURL)
 		config.TokenEnv = ""
 		result = append(result, config)
 	}
@@ -206,12 +255,26 @@ func (m *DeploymentManager) List() []DeployConfig {
 }
 
 func (m *DeploymentManager) Deploy(ctx context.Context, providerID string, request DeploymentRequest) (DeploymentResult, error) {
+	return m.deploy(ctx, "", providerID, request, true)
+}
+
+func (m *DeploymentManager) DeployForOrganization(ctx context.Context, organizationID, providerID string, request DeploymentRequest) (DeploymentResult, error) {
+	organizationID = strings.TrimSpace(organizationID)
+	if organizationID == "" {
+		return DeploymentResult{}, ErrDeploymentProviderNotFound
+	}
+	return m.deploy(ctx, organizationID, providerID, request, true)
+}
+
+func (m *DeploymentManager) deploy(ctx context.Context, organizationID, providerID string, request DeploymentRequest, scoped bool) (DeploymentResult, error) {
 	if m == nil {
 		return DeploymentResult{}, errors.New("deployment manager is unavailable")
 	}
+	m.mu.RLock()
 	config, ok := m.configs[strings.TrimSpace(providerID)]
-	if !ok {
-		return DeploymentResult{}, fmt.Errorf("deployment provider %q is not registered", providerID)
+	m.mu.RUnlock()
+	if !ok || scoped && strings.TrimSpace(config.OrganizationID) != organizationID {
+		return DeploymentResult{}, ErrDeploymentProviderNotFound
 	}
 	files, manifest, err := collectDeploySnapshot(request.Root)
 	if err != nil {
@@ -223,6 +286,14 @@ func (m *DeploymentManager) Deploy(ctx context.Context, providerID string, reque
 	if expected := strings.TrimSpace(request.ManifestSHA256); expected != "" && !strings.EqualFold(expected, manifest.SHA256) {
 		return DeploymentResult{}, errors.New("deployment workspace changed after approval")
 	}
+	if err := validateOutboundPayload(map[string]any{"name": request.Name, "target": request.Target}); err != nil {
+		return DeploymentResult{}, err
+	}
+	for _, file := range files {
+		if err := validateOutboundPayloadWithLimit(string(file.Data), 50<<20); err != nil {
+			return DeploymentResult{}, fmt.Errorf("deployment file content blocked by DLP policy")
+		}
+	}
 	var result DeploymentResult
 	switch config.Provider {
 	case "vercel":
@@ -232,6 +303,7 @@ func (m *DeploymentManager) Deploy(ctx context.Context, providerID string, reque
 	default:
 		result, err = m.deployGeneric(ctx, config, request, files)
 	}
+	result = sanitizeDeploymentResult(result)
 	if err != nil {
 		result.Provider = config.Provider
 		if result.Status == "" {
@@ -373,6 +445,14 @@ func deploymentPathExclusionReason(relative string) string {
 }
 
 func (m *DeploymentManager) request(ctx context.Context, config DeployConfig, method, endpoint string, body []byte, contentType string) (map[string]any, error) {
+	token := ""
+	if config.TokenEnv != "" {
+		value, ok := os.LookupEnv(config.TokenEnv)
+		if !ok || strings.TrimSpace(value) == "" {
+			return nil, errors.New("deployment provider credential is unavailable")
+		}
+		token = strings.TrimSpace(value)
+	}
 	base, err := url.Parse(config.BaseURL)
 	if err != nil {
 		return nil, err
@@ -395,28 +475,36 @@ func (m *DeploymentManager) request(ctx context.Context, config DeployConfig, me
 	if contentType != "" {
 		req.Header.Set("Content-Type", contentType)
 	}
-	if config.TokenEnv != "" {
-		if token := os.Getenv(config.TokenEnv); token != "" {
-			req.Header.Set("Authorization", "Bearer "+token)
-		}
+	if token != "" {
+		req.Header.Set("Authorization", "Bearer "+token)
 	}
 	client := *m.client
 	client.Timeout = time.Duration(config.TimeoutSeconds) * time.Second
 	resp, err := client.Do(req)
 	if err != nil {
-		return nil, err
+		return nil, errors.New("deployment provider request failed")
 	}
 	defer resp.Body.Close()
-	data, err := io.ReadAll(io.LimitReader(resp.Body, 4<<20))
+	const maxDeploymentResponseBytes = 4 << 20
+	data, err := io.ReadAll(io.LimitReader(resp.Body, maxDeploymentResponseBytes+1))
 	if err != nil {
-		return nil, err
+		return nil, errors.New("deployment provider response could not be read")
+	}
+	if len(data) > maxDeploymentResponseBytes {
+		return nil, errors.New("deployment provider response exceeded the size limit")
 	}
 	if resp.StatusCode/100 != 2 {
-		return nil, fmt.Errorf("deployment provider returned status %d: %s", resp.StatusCode, limitError(string(data), 800))
+		return nil, fmt.Errorf("deployment provider returned HTTP status %d", resp.StatusCode)
+	}
+	if len(bytes.TrimSpace(data)) == 0 {
+		return map[string]any{}, nil
 	}
 	var payload map[string]any
 	if err := json.Unmarshal(data, &payload); err != nil {
-		return map[string]any{"raw": string(data)}, nil
+		return nil, errors.New("deployment provider returned malformed JSON")
+	}
+	if payload == nil {
+		return nil, errors.New("deployment provider response must be a JSON object")
 	}
 	return payload, nil
 }
@@ -428,7 +516,11 @@ func (m *DeploymentManager) deployGeneric(ctx context.Context, config DeployConf
 	if err != nil {
 		return DeploymentResult{}, err
 	}
-	return resultFromPayload(response), nil
+	result := resultFromPayload(response)
+	if result.DeploymentID == "" && result.URL == "" {
+		return DeploymentResult{}, errors.New("deployment provider response omitted deployment identity")
+	}
+	return result, nil
 }
 
 func (m *DeploymentManager) deployVercel(ctx context.Context, config DeployConfig, request DeploymentRequest, files []deployFile) (DeploymentResult, error) {
@@ -445,7 +537,11 @@ func (m *DeploymentManager) deployVercel(ctx context.Context, config DeployConfi
 	if err != nil {
 		return DeploymentResult{}, err
 	}
-	return resultFromPayload(response), nil
+	result := resultFromPayload(response)
+	if result.DeploymentID == "" && result.URL == "" {
+		return DeploymentResult{}, errors.New("vercel response omitted deployment identity")
+	}
+	return result, nil
 }
 
 func (m *DeploymentManager) deployNetlify(ctx context.Context, config DeployConfig, request DeploymentRequest, files []deployFile) (DeploymentResult, error) {
@@ -504,6 +600,31 @@ func encodeFiles(files []deployFile) []map[string]string {
 
 func resultFromPayload(payload map[string]any) DeploymentResult {
 	return DeploymentResult{DeploymentID: firstString(payload, "id", "deployment_id", "deploy_id"), URL: firstString(payload, "url", "deploy_url", "ssl_url"), Status: firstString(payload, "status", "state")}
+}
+
+func sanitizeDeploymentResult(result DeploymentResult) DeploymentResult {
+	result.DeploymentID = RedactDLP(result.DeploymentID)
+	result.Status = RedactDLP(result.Status)
+	result.URL = sanitizeProviderURL(result.URL)
+	return result
+}
+
+func sanitizeProviderURL(raw string) string {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return ""
+	}
+	parsed, err := url.Parse(raw)
+	if err != nil || parsed.User != nil {
+		return "[REDACTED]"
+	}
+	for key := range parsed.Query() {
+		key = strings.ToLower(strings.ReplaceAll(strings.ReplaceAll(key, "-", ""), "_", ""))
+		if strings.Contains(key, "token") || strings.Contains(key, "secret") || strings.Contains(key, "credential") || strings.Contains(key, "apikey") || strings.Contains(key, "accesskey") || strings.Contains(key, "signature") || key == "sig" {
+			return "[REDACTED]"
+		}
+	}
+	return RedactDLP(raw)
 }
 
 func firstString(payload map[string]any, keys ...string) string {

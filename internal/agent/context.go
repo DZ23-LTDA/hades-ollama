@@ -34,6 +34,20 @@ type Embedder interface {
 	Embed(ctx context.Context, text string) ([]float32, error)
 }
 
+// LocalOrganizationID is reserved for the unauthenticated single-user API.
+// Ownerless records are accepted for backwards compatibility with local data,
+// but tenant-owned records must never be visible through the local scope.
+const LocalOrganizationID = "local"
+
+func scheduleOwnedByOrganization(owner, organizationID string) bool {
+	owner = strings.TrimSpace(owner)
+	organizationID = strings.TrimSpace(organizationID)
+	if organizationID == "" || organizationID == LocalOrganizationID {
+		return owner == "" || owner == LocalOrganizationID
+	}
+	return owner == organizationID
+}
+
 func NewContextStore(root string) (*ContextStore, error) {
 	if strings.TrimSpace(root) == "" {
 		return &ContextStore{projects: map[string]Project{}, memories: map[string][]Memory{}, skills: map[string]SkillManifest{}, skillPaths: map[string]string{}, schedules: map[string]Schedule{}}, nil
@@ -660,7 +674,7 @@ func (s *ContextStore) GetSchedule(id string) (Schedule, error) {
 }
 
 func (s *ContextStore) ListSchedules() []Schedule {
-	return s.ListSchedulesForOrganization("")
+	return s.ListSchedulesForOrganization(LocalOrganizationID)
 }
 
 func (s *ContextStore) ListSchedulesForOrganization(organizationID string) []Schedule {
@@ -668,7 +682,7 @@ func (s *ContextStore) ListSchedulesForOrganization(organizationID string) []Sch
 	defer s.mu.RUnlock()
 	result := make([]Schedule, 0, len(s.schedules))
 	for _, schedule := range s.schedules {
-		if organizationID != "" && schedule.OrganizationID != organizationID {
+		if !scheduleOwnedByOrganization(schedule.OrganizationID, organizationID) {
 			continue
 		}
 		result = append(result, schedule)
@@ -678,6 +692,17 @@ func (s *ContextStore) ListSchedulesForOrganization(organizationID string) []Sch
 }
 
 func (s *ContextStore) UpdateSchedule(id string, schedule Schedule) (Schedule, error) {
+	return s.updateScheduleForOrganization("", id, schedule, false)
+}
+
+// UpdateScheduleForOrganization validates ownership while holding the store
+// lock, so a claimed schedule cannot be updated through a different tenant
+// scope between the claim and the retry/finalization update.
+func (s *ContextStore) UpdateScheduleForOrganization(organizationID, id string, schedule Schedule) (Schedule, error) {
+	return s.updateScheduleForOrganization(organizationID, id, schedule, true)
+}
+
+func (s *ContextStore) updateScheduleForOrganization(organizationID, id string, schedule Schedule, enforceOwnership bool) (Schedule, error) {
 	id = strings.TrimSpace(id)
 	if id == "" {
 		return Schedule{}, errors.New("schedule id is required")
@@ -693,6 +718,9 @@ func (s *ContextStore) UpdateSchedule(id string, schedule Schedule) (Schedule, e
 	current, ok := s.schedules[id]
 	if !ok {
 		return Schedule{}, os.ErrNotExist
+	}
+	if enforceOwnership && !scheduleOwnedByOrganization(current.OrganizationID, organizationID) {
+		return Schedule{}, ErrPluginOrganizationScope
 	}
 	previous := current
 	schedule.ID = id
@@ -734,11 +762,18 @@ func (s *ContextStore) DeleteSchedule(id string) error {
 }
 
 func (s *ContextStore) ClaimDueSchedules(now time.Time) []Schedule {
+	return s.ClaimDueSchedulesForOrganization(LocalOrganizationID, now)
+}
+
+// ClaimDueSchedulesForOrganization atomically advances only schedules visible
+// to the requested scope. An empty/local scope includes ownerless legacy local
+// records and the reserved local namespace, never tenant-owned schedules.
+func (s *ContextStore) ClaimDueSchedulesForOrganization(organizationID string, now time.Time) []Schedule {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	var due []Schedule
 	for id, schedule := range s.schedules {
-		if !schedule.Enabled || schedule.NextRunAt.After(now) {
+		if !scheduleOwnedByOrganization(schedule.OrganizationID, organizationID) || !schedule.Enabled || schedule.NextRunAt.After(now) {
 			continue
 		}
 		previous := schedule

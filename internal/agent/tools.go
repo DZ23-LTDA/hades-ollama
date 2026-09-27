@@ -5,14 +5,19 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
+	"log/slog"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
 	"runtime"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 type Registry struct {
@@ -30,7 +35,9 @@ func NewRegistry() *Registry {
 	registry.Register(workspaceListTool{})
 	registry.Register(workspaceReadTool{})
 	registry.Register(workspaceWriteTool{})
-	registry.Register(terminalExecTool{allowed: map[string]bool{"pwd": true, "ls": true, "git": true}})
+	registry.Register(workspacePatchTool{})
+	registry.Register(gitRepoInspectTool{})
+	registry.Register(terminalExecTool{allowed: map[string]bool{"pwd": true, "ls": true}})
 	registry.Register(sandboxExecTool{})
 	registry.Register(browserOperatorTool{})
 	registry.Register(desktopCompanionTool{})
@@ -73,7 +80,15 @@ func (workspaceListTool) Descriptor() ToolDescriptor {
 }
 
 func (workspaceListTool) Execute(_ context.Context, toolContext ToolContext, input map[string]any) (ToolResult, error) {
-	path, err := safeWorkspacePath(toolContext.Workspace, stringInput(input, "path", "."))
+	rawPath := stringInput(input, "path", ".")
+	var path, relative string
+	var err error
+	if toolContext.WorkspaceRoot != nil {
+		relative, err = safeAnchoredWorkspaceRelative(toolContext.WorkspaceRoot, rawPath, true)
+		path = relative
+	} else {
+		path, err = safeWorkspacePath(toolContext.Workspace, rawPath)
+	}
 	if err != nil {
 		return ToolResult{}, err
 	}
@@ -84,79 +99,135 @@ func (workspaceListTool) Execute(_ context.Context, toolContext ToolContext, inp
 	if maxEntries > 500 {
 		maxEntries = 500
 	}
-	if err := rejectSymlinkComponents(toolContext.Workspace, path); err != nil {
-		return ToolResult{}, err
+	root := toolContext.WorkspaceRoot
+	if root == nil {
+		if err := rejectSymlinkComponents(toolContext.Workspace, path); err != nil {
+			return ToolResult{}, err
+		}
+		rootPath, absErr := filepath.Abs(toolContext.Workspace)
+		if absErr != nil {
+			return ToolResult{}, absErr
+		}
+		root, err = os.OpenRoot(rootPath)
+		if err != nil {
+			return ToolResult{}, err
+		}
+		defer root.Close()
+		if relative, err = filepath.Rel(rootPath, path); err != nil || filepath.IsAbs(relative) || relative == ".." || strings.HasPrefix(relative, ".."+string(filepath.Separator)) {
+			return ToolResult{}, errors.New("tool path escapes workspace")
+		}
 	}
-	entries, err := os.ReadDir(path)
+	info, err := root.Lstat(filepath.ToSlash(relative))
 	if err != nil {
 		return ToolResult{}, err
 	}
-	result := make([]map[string]any, 0, minInt(len(entries), maxEntries))
-	for i, entry := range entries {
-		if i >= maxEntries {
-			break
-		}
+	if !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
+		return ToolResult{}, errors.New("workspace.list target must be a real directory")
+	}
+	directory, err := root.Open(filepath.ToSlash(relative))
+	if err != nil {
+		return ToolResult{}, err
+	}
+	defer directory.Close()
+	entries, err := directory.ReadDir(maxEntries + 1)
+	if err != nil && !errors.Is(err, io.EOF) {
+		return ToolResult{}, err
+	}
+	truncated := len(entries) > maxEntries
+	if truncated {
+		entries = entries[:maxEntries]
+	}
+	sort.Slice(entries, func(i, j int) bool { return entries[i].Name() < entries[j].Name() })
+	result := make([]map[string]any, 0, len(entries))
+	for _, entry := range entries {
 		result = append(result, map[string]any{"name": entry.Name(), "directory": entry.IsDir()})
 	}
-	return ToolResult{Value: map[string]any{"path": path, "entries": result, "truncated": len(entries) > maxEntries}}, nil
+	return ToolResult{Value: map[string]any{"path": path, "entries": result, "truncated": truncated}}, nil
 }
 
 type workspaceReadTool struct{}
+
+func safeAnchoredWorkspaceRelative(root *os.Root, raw string, allowRoot bool) (string, error) {
+	if root == nil || strings.TrimSpace(raw) == "" {
+		return "", errors.New("anchored workspace path is required")
+	}
+	raw = strings.TrimSpace(strings.ReplaceAll(raw, "\\", "/"))
+	if strings.HasPrefix(raw, "/") || filepath.IsAbs(raw) || filepath.VolumeName(raw) != "" || strings.ContainsRune(raw, '\x00') {
+		return "", errors.New("tool path must be relative to workspace")
+	}
+	clean := filepath.Clean(filepath.FromSlash(raw))
+	if clean == "." {
+		if allowRoot {
+			return ".", nil
+		}
+		return "", errors.New("tool path must identify a workspace file")
+	}
+	if !filepath.IsLocal(clean) {
+		return "", errors.New("tool path escapes workspace")
+	}
+	current := ""
+	for _, component := range strings.Split(clean, string(filepath.Separator)) {
+		current = filepath.Join(current, component)
+		info, err := root.Lstat(current)
+		if errors.Is(err, os.ErrNotExist) {
+			break
+		}
+		if err != nil {
+			return "", err
+		}
+		if info.Mode()&os.ModeSymlink != 0 {
+			return "", errors.New("tool path contains a symlink")
+		}
+	}
+	return filepath.ToSlash(clean), nil
+}
 
 func (workspaceReadTool) Descriptor() ToolDescriptor {
 	return ToolDescriptor{Name: "workspace.read", Version: "1", Description: "Ler um arquivo do workspace autorizado", Risk: RiskRead, Scopes: []string{"workspace:read"}}
 }
 
 func (workspaceReadTool) Execute(_ context.Context, toolContext ToolContext, input map[string]any) (ToolResult, error) {
-	path, err := safeWorkspacePath(toolContext.Workspace, stringInput(input, "path", ""))
+	var path string
+	var data []byte
+	var err error
+	if toolContext.WorkspaceRoot != nil {
+		path, err = safeAnchoredWorkspaceRelative(toolContext.WorkspaceRoot, stringInput(input, "path", ""), false)
+		if err == nil {
+			data, err = readWorkspaceFileLimited(toolContext.WorkspaceRoot, path, 1<<20, "workspace.read limit exceeded")
+		}
+	} else {
+		path, err = safeWorkspacePath(toolContext.Workspace, stringInput(input, "path", ""))
+		if err == nil {
+			err = rejectSymlinkComponents(toolContext.Workspace, path)
+		}
+		if err == nil {
+			data, err = readWorkspacePathLimited(toolContext.Workspace, path, 1<<20, "workspace.read limit exceeded")
+		}
+	}
 	if err != nil {
 		return ToolResult{}, err
 	}
-	if err := rejectSymlinkComponents(toolContext.Workspace, path); err != nil {
-		return ToolResult{}, err
-	}
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return ToolResult{}, err
-	}
-	if len(data) > 1<<20 {
-		return ToolResult{}, errors.New("workspace.read limit exceeded")
-	}
-	return ToolResult{Value: map[string]any{"path": path, "content": string(data), "bytes": len(data)}}, nil
+	return ToolResult{Value: map[string]any{"path": path, "content": string(data), "bytes": len(data), "sha256": workspaceContentSHA256(data)}}, nil
 }
 
 type workspaceWriteTool struct{}
 
 func (workspaceWriteTool) Descriptor() ToolDescriptor {
-	return ToolDescriptor{Name: "workspace.write", Version: "1", Description: "Escrever arquivo no workspace após aprovação", Risk: RiskWrite, RequiresApproval: true, Scopes: []string{"workspace:write"}}
+	return ToolDescriptor{Name: "workspace.write", Version: "2", Description: "Criar ou atualizar atomicamente arquivo do workspace após approval; overwrite exige SHA-256 observado e produz backup", Risk: RiskWrite, RequiresApproval: true, Scopes: []string{"workspace:write"}}
 }
 
 func (workspaceWriteTool) Execute(_ context.Context, toolContext ToolContext, input map[string]any) (ToolResult, error) {
-	path, err := safeWorkspacePath(toolContext.Workspace, stringInput(input, "path", ""))
-	if err != nil {
-		return ToolResult{}, err
-	}
-	content := stringInput(input, "content", "")
-	if len(content) > 1<<20 {
-		return ToolResult{}, errors.New("workspace.write limit exceeded")
-	}
-	if err := rejectSymlinkComponents(toolContext.Workspace, filepath.Dir(path)); err != nil {
-		return ToolResult{}, err
-	}
-	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
-		return ToolResult{}, err
-	}
-	if err := rejectSymlinkComponents(toolContext.Workspace, path); err != nil {
-		return ToolResult{}, err
-	}
-	if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
-		return ToolResult{}, err
-	}
-	manifest, err := BuildArtifactManifest(toolContext.Workspace, toolContext.MissionID, toolContext.StepID, filepath.Base(path), stringInput(input, "path", ""))
-	if err != nil {
-		return ToolResult{}, err
-	}
-	return ToolResult{Value: map[string]any{"path": manifest.Path, "bytes": manifest.Size}, Artifacts: []ArtifactManifest{manifest}}, nil
+	return writeWorkspaceFile(toolContext, input)
+}
+
+type workspacePatchTool struct{}
+
+func (workspacePatchTool) Descriptor() ToolDescriptor {
+	return ToolDescriptor{Name: "workspace.patch", Version: "1", Description: "Aplicar patch limitado de múltiplos arquivos após approval; cada arquivo exibe diff e usa SHA-256/CAS, com compensação em falha observada", Risk: RiskWrite, RequiresApproval: true, Scopes: []string{"workspace:write"}}
+}
+
+func (workspacePatchTool) Execute(_ context.Context, toolContext ToolContext, input map[string]any) (ToolResult, error) {
+	return writeWorkspacePatch(toolContext, input)
 }
 
 type terminalExecTool struct {
@@ -172,6 +243,12 @@ func (t terminalExecTool) Execute(ctx context.Context, toolContext ToolContext, 
 	if executable == "" || !t.allowed[executable] {
 		return ToolResult{}, fmt.Errorf("terminal executable %q is not allowlisted", executable)
 	}
+	if executable == "git" {
+		return ToolResult{}, errors.New("Git is available only through the hardened git.repo.inspect tool")
+	}
+	if runtime.GOOS != "linux" || toolContext.WorkspaceRoot == nil {
+		return ToolResult{}, errors.New("terminal execution requires a pinned Linux workspace directory")
+	}
 	args := stringSliceInput(input, "args")
 	for _, arg := range args {
 		if strings.ContainsAny(arg, "\x00\r\n") {
@@ -181,11 +258,23 @@ func (t terminalExecTool) Execute(ctx context.Context, toolContext ToolContext, 
 	if err := validateTerminalArguments(executable, args, toolContext.Workspace); err != nil {
 		return ToolResult{}, err
 	}
+	if executable == "ls" {
+		return executeRootedTerminalLS(toolContext.WorkspaceRoot)
+	}
+	resolvedExecutable, err := trustedToolExecutable(executable)
+	if err != nil {
+		return ToolResult{}, err
+	}
 	deadline, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
-	command := exec.Command(executable, args...)
-	command.Dir = toolContext.Workspace
-	command.Env = []string{"PATH=/usr/bin:/bin", "HOME=" + toolContext.Workspace, "PWD=" + toolContext.Workspace}
+	cwdFile, err := toolContext.WorkspaceRoot.Open(".")
+	if err != nil {
+		return ToolResult{}, fmt.Errorf("open pinned terminal workspace: %w", err)
+	}
+	defer cwdFile.Close()
+	command := exec.Command(resolvedExecutable, args...)
+	command.Dir = fmt.Sprintf("/proc/%d/fd/%d", os.Getpid(), cwdFile.Fd())
+	command.Env = []string{"PATH=/usr/bin:/bin", "HOME=/", "PWD=" + command.Dir}
 	configureToolProcess(command)
 	var stdout, stderr bytes.Buffer
 	command.Stdout = &limitedBuffer{Buffer: &stdout, Limit: 64 << 10}
@@ -203,9 +292,7 @@ func validateTerminalArguments(executable string, args []string, workspace strin
 			return errors.New("pwd does not accept arguments in the default terminal policy")
 		}
 	case "git":
-		if len(args) != 1 || args[0] != "status" {
-			return errors.New("only git status is allowlisted in the default terminal policy")
-		}
+		return errors.New("Git commands are available only through git.repo.inspect")
 	case "ls":
 		allowedFlags := map[string]bool{"-a": true, "-A": true, "-l": true, "-la": true, "-al": true, "--all": true, "--almost-all": true, "--format=long": true}
 		for _, arg := range args {
@@ -215,12 +302,40 @@ func validateTerminalArguments(executable string, args []string, workspace strin
 				}
 				continue
 			}
-			if _, err := safeWorkspacePath(workspace, arg); err != nil {
-				return fmt.Errorf("ls path is not inside the workspace: %w", err)
+			if filepath.Clean(filepath.FromSlash(strings.ReplaceAll(arg, "\\", "/"))) != "." {
+				return errors.New("ls accepts only the pinned workspace root")
 			}
 		}
 	}
 	return nil
+}
+
+func executeRootedTerminalLS(root *os.Root) (ToolResult, error) {
+	if root == nil {
+		return ToolResult{}, errors.New("ls requires a pinned workspace directory")
+	}
+	directory, err := root.Open(".")
+	if err != nil {
+		return ToolResult{}, fmt.Errorf("open pinned ls workspace: %w", err)
+	}
+	defer directory.Close()
+	entries, err := directory.ReadDir(-1)
+	if err != nil {
+		return ToolResult{}, err
+	}
+	sort.Slice(entries, func(i, j int) bool { return entries[i].Name() < entries[j].Name() })
+	var stdout strings.Builder
+	for _, entry := range entries {
+		stdout.WriteString(entry.Name())
+		stdout.WriteByte('\n')
+	}
+	return ToolResult{Value: map[string]any{
+		"stdout":              RedactDLP(stdout.String()),
+		"stderr":              "",
+		"exit_code":           0,
+		"execution_isolation": "descriptor-rooted-read",
+		"resource_limits":     "bounded-directory-read",
+	}}, nil
 }
 
 type limitedBuffer struct {
@@ -374,55 +489,140 @@ func minInt(a, b int) int {
 type sandboxExecTool struct{}
 
 func (sandboxExecTool) Descriptor() ToolDescriptor {
-	return ToolDescriptor{Name: "sandbox.exec", Version: "3", Description: "Executar Python ou Node; strict Linux exige namespaces, seccomp e cgroup v2 delegado; outras plataformas reportam best-effort sem isolamento de rede", Risk: RiskWrite, RequiresApproval: true, Scopes: []string{"sandbox:execute"}}
+	return ToolDescriptor{Name: "sandbox.exec", Version: "4", Description: "Executar Python ou Node no sandbox Linux, com filesystem mínimo e modo vinculado ao approval", Risk: RiskWrite, RequiresApproval: true, Scopes: []string{"sandbox:execute"}}
 }
 
 func resolveSandboxInterpreter(language string) (string, error) {
-	var candidates []string
+	if runtime.GOOS != "linux" {
+		return "", errors.New("sandbox interpreter resolution is supported only on Linux trusted system paths")
+	}
+	name := ""
 	switch language {
 	case "python", "python3":
-		if runtime.GOOS == "linux" {
-			candidates = []string{"/usr/bin/python3"}
-		} else {
-			candidates = []string{"python3", "python"}
-		}
+		name = "python3"
 	case "node":
-		if runtime.GOOS == "linux" {
-			candidates = []string{"/usr/bin/node"}
-		} else {
-			candidates = []string{"node"}
-		}
+		name = "node"
 	default:
 		return "", errors.New("sandbox language must be python or node")
 	}
-	for _, candidate := range candidates {
-		resolved, err := exec.LookPath(candidate)
-		if err != nil {
-			continue
-		}
-		info, err := os.Stat(resolved)
-		if err == nil && info.Mode().IsRegular() {
-			return resolved, nil
-		}
+	resolved, err := trustedToolExecutable(name)
+	if err != nil {
+		return "", fmt.Errorf("sandbox interpreter unavailable for %s", language)
 	}
-	return "", fmt.Errorf("sandbox interpreter unavailable for %s", language)
+	resolved, err = filepath.EvalSymlinks(resolved)
+	if err != nil {
+		return "", fmt.Errorf("resolve sandbox interpreter for %s: %w", language, err)
+	}
+	if !isWithin("/usr", resolved) && !isWithin("/usr/local", resolved) {
+		return "", errors.New("sandbox interpreter resolves outside trusted system directories")
+	}
+	info, err := os.Stat(resolved)
+	if err != nil || !info.Mode().IsRegular() || info.Mode()&0o111 == 0 {
+		return "", errors.New("sandbox interpreter is not a trusted executable file")
+	}
+	return resolved, nil
+}
+
+func sandboxPythonStdlibPath(ctx context.Context, interpreter string) (string, error) {
+	probeCtx, cancel := context.WithTimeout(ctx, 3*time.Second)
+	defer cancel()
+	command := exec.CommandContext(probeCtx, interpreter, "-I", "-S", "-c", "import sysconfig; print(sysconfig.get_path('stdlib'))")
+	command.Env = []string{"PATH=/usr/bin:/bin", "HOME=/tmp", "PYTHONDONTWRITEBYTECODE=1"}
+	output := &boundedGitBuffer{limit: 512}
+	command.Stdout = output
+	command.Stderr = io.Discard
+	if err := command.Run(); err != nil || output.truncated {
+		return "", errors.New("could not securely resolve the Python standard library")
+	}
+	path, err := filepath.Abs(strings.TrimSpace(output.String()))
+	if err != nil {
+		return "", err
+	}
+	path, err = filepath.EvalSymlinks(path)
+	if err != nil {
+		return "", err
+	}
+	if !isWithin("/usr/lib", path) && !isWithin("/usr/local/lib", path) {
+		return "", errors.New("Python standard library resolves outside trusted system directories")
+	}
+	info, err := os.Stat(path)
+	if err != nil || !info.IsDir() {
+		return "", errors.New("Python standard library is not a trusted directory")
+	}
+	return path, nil
+}
+
+func sandboxSharedLibraryPath() (string, error) {
+	triplet := ""
+	switch runtime.GOARCH {
+	case "amd64":
+		triplet = "x86_64-linux-gnu"
+	case "arm64":
+		triplet = "aarch64-linux-gnu"
+	default:
+		return "", errors.New("sandbox shared-library layout is unsupported on this architecture")
+	}
+	path := filepath.Join("/usr/lib", triplet)
+	resolved, err := filepath.EvalSymlinks(path)
+	if err != nil {
+		return "", err
+	}
+	if !isWithin("/usr/lib", resolved) {
+		return "", errors.New("sandbox shared-library directory resolves outside trusted system directories")
+	}
+	info, err := os.Stat(resolved)
+	if err != nil || !info.IsDir() {
+		return "", errors.New("sandbox shared-library path is not a trusted directory")
+	}
+	return resolved, nil
+}
+
+func configuredSandboxMode() (string, error) {
+	mode := strings.ToLower(strings.TrimSpace(os.Getenv("OLLAMA_AGENT_SANDBOX_MODE")))
+	if mode == "" {
+		mode = "best-effort"
+	}
+	if mode != "best-effort" && mode != "strict" {
+		return "", errors.New("OLLAMA_AGENT_SANDBOX_MODE must be best-effort or strict")
+	}
+	return mode, nil
 }
 
 func (sandboxExecTool) Execute(ctx context.Context, toolContext ToolContext, input map[string]any) (ToolResult, error) {
 	if err := validateStepID(toolContext.StepID); err != nil {
 		return ToolResult{}, err
 	}
+	if runtime.GOOS != "linux" {
+		return ToolResult{}, errors.New("sandbox.exec requires the Linux namespace executor; host-process fallback is disabled")
+	}
+	mode, err := configuredSandboxMode()
+	if err != nil {
+		return ToolResult{}, err
+	}
+	approvedMode := strings.ToLower(strings.TrimSpace(stringInput(input, "sandbox_mode", "")))
+	if approvedMode == "" || approvedMode != mode {
+		return ToolResult{}, fmt.Errorf("%w: sandbox isolation mode changed or is not bound to approval", ErrApprovalPayloadChanged)
+	}
 	language := strings.ToLower(strings.TrimSpace(stringInput(input, "language", "")))
 	interpreter, err := resolveSandboxInterpreter(language)
 	if err != nil {
 		return ToolResult{}, err
 	}
-	mode := strings.ToLower(strings.TrimSpace(os.Getenv("OLLAMA_AGENT_SANDBOX_MODE")))
-	if mode == "" {
-		mode = "best-effort"
+	pythonInterpreter, err := resolveSandboxInterpreter("python")
+	if err != nil {
+		return ToolResult{}, fmt.Errorf("sandbox Python launcher unavailable: %w", err)
 	}
-	if mode != "best-effort" && mode != "strict" {
-		return ToolResult{}, errors.New("OLLAMA_AGENT_SANDBOX_MODE must be best-effort or strict")
+	pythonStdlibPath, err := sandboxPythonStdlibPath(ctx, pythonInterpreter)
+	if err != nil {
+		return ToolResult{}, err
+	}
+	sharedLibraryPath, err := sandboxSharedLibraryPath()
+	if err != nil {
+		return ToolResult{}, err
+	}
+	dashPath, err := trustedSandboxExecutable("dash")
+	if err != nil {
+		return ToolResult{}, fmt.Errorf("sandbox shell unavailable: %w", err)
 	}
 	code := stringInput(input, "code", "")
 	if strings.TrimSpace(code) == "" {
@@ -432,53 +632,70 @@ func (sandboxExecTool) Execute(ctx context.Context, toolContext ToolContext, inp
 		return ToolResult{}, errors.New("sandbox code limit exceeded")
 	}
 	strict := mode == "strict"
+	runID := "run_" + uuid.NewString()
 	var control *sandboxControl
 	if strict {
 		var err error
-		control, err = newSandboxControl(toolContext.StepID)
+		control, err = newSandboxControl(runID)
 		if err != nil {
 			return ToolResult{}, fmt.Errorf("strict sandbox unavailable: %w", err)
 		}
 		defer closeSandboxControl(control)
 	}
-	sandboxDir := filepath.Join(toolContext.Workspace, ".agent-sandbox")
-	if err := rejectSymlinkComponents(toolContext.Workspace, sandboxDir); err != nil {
-		return ToolResult{}, err
+	workspaceRoot := toolContext.WorkspaceRoot
+	ownsWorkspaceRoot := false
+	if workspaceRoot == nil {
+		workspaceRoot, err = os.OpenRoot(toolContext.Workspace)
+		if err != nil {
+			return ToolResult{}, err
+		}
+		ownsWorkspaceRoot = true
 	}
-	if err := os.MkdirAll(sandboxDir, 0o700); err != nil {
+	if ownsWorkspaceRoot {
+		defer workspaceRoot.Close()
+	}
+	executionDirName := ".agent-sandbox-run-" + uuid.NewString()
+	if err := workspaceRoot.Mkdir(executionDirName, 0o700); err != nil {
 		return ToolResult{}, err
 	}
 	extension := ".py"
 	if language == "node" {
 		extension = ".js"
 	}
-	codePath := filepath.Join(sandboxDir, toolContext.StepID+extension)
-	if err := os.WriteFile(codePath, []byte(code), 0o600); err != nil {
+	codeRelative := filepath.Join(executionDirName, "main"+extension)
+	launcherRelative := ""
+	defer func() {
+		if err := workspaceRoot.RemoveAll(executionDirName); err != nil && !errors.Is(err, os.ErrNotExist) {
+			slog.Error("agent sandbox cleanup failed", "run_id", runID, "error", err)
+		}
+	}()
+	if err := writeContainedSandboxFile(workspaceRoot, codeRelative, []byte(code)); err != nil {
 		return ToolResult{}, err
 	}
-	defer os.Remove(codePath)
-	launcherPath := ""
 	if strict {
-		launcherPath = filepath.Join(sandboxDir, toolContext.StepID+"-strict-launcher.py")
-		if err := os.WriteFile(launcherPath, []byte(strictSandboxLauncher), 0o600); err != nil {
+		launcherRelative = filepath.Join(executionDirName, "launcher.py")
+		if err := writeContainedSandboxFile(workspaceRoot, launcherRelative, []byte(strictSandboxLauncher)); err != nil {
 			return ToolResult{}, err
 		}
-		defer os.Remove(launcherPath)
 	}
 	deadline, cancel := context.WithTimeout(ctx, 60*time.Second)
 	defer cancel()
-	if runtime.GOOS != "linux" {
-		command := exec.Command(interpreter, codePath)
-		command.Dir = toolContext.Workspace
-		command.Env = []string{"PATH=" + os.Getenv("PATH"), "HOME=" + toolContext.Workspace, "PWD=" + toolContext.Workspace}
-		configureToolProcess(command)
-		var stdout, stderr bytes.Buffer
-		command.Stdout = &limitedBuffer{Buffer: &stdout, Limit: 128 << 10}
-		command.Stderr = &limitedBuffer{Buffer: &stderr, Limit: 128 << 10}
-		if err := runToolCommand(deadline, command); err != nil {
-			return ToolResult{Value: map[string]any{"stdout": RedactDLP(stdout.String()), "stderr": RedactDLP(stderr.String()), "execution_isolation": "best-effort-platform-process", "resource_limits": "context-timeout-output-bounded", "network_isolation": "not-enforced"}}, err
-		}
-		return ToolResult{Value: map[string]any{"stdout": RedactDLP(stdout.String()), "stderr": RedactDLP(stderr.String()), "exit_code": 0, "execution_isolation": "best-effort-platform-process", "resource_limits": "context-timeout-output-bounded", "network_isolation": "not-enforced"}}, nil
+	codeInSandbox := "/workspace/" + filepath.ToSlash(codeRelative)
+	launcherInSandbox := ""
+	if strict {
+		launcherInSandbox = "/workspace/" + filepath.ToSlash(launcherRelative)
+	}
+	unsharePath, err := trustedSandboxExecutable("unshare")
+	if err != nil {
+		return ToolResult{}, err
+	}
+	setprivPath, err := trustedSandboxExecutable("setpriv")
+	if err != nil {
+		return ToolResult{}, err
+	}
+	chrootPath, err := trustedSandboxExecutable("chroot")
+	if err != nil {
+		return ToolResult{}, err
 	}
 	mountScript := `set -eu
 ulimit -t 55 || true
@@ -487,18 +704,55 @@ ulimit -u 64 || true
 ulimit -n 256 || true
 ulimit -f 1048576 || true
 mount --make-rprivate /
-mount -t tmpfs tmpfs /home
-mkdir -p /home/workspace /tmp
-mount --bind "$1" /home/workspace
-mount -t tmpfs tmpfs /tmp
-cd /home/workspace
-	if [ "$4" = "strict" ]; then
-		exec /usr/bin/setpriv --no-new-privs /usr/bin/python3 /home/workspace/.agent-sandbox/` + filepath.Base(launcherPath) + ` "$2" "$3"
-	fi
-	exec "$2" "$3"`
-	args := []string{"--user", "--map-root-user", "--mount", "--pid", "--fork", "--mount-proc", "--net", "--kill-child", "--propagation", "private", "/bin/sh", "-c", mountScript, "sandbox", toolContext.Workspace, interpreter, "/home/workspace/.agent-sandbox/" + filepath.Base(codePath), mode}
-	command := exec.Command("unshare", args...)
-	command.Dir = toolContext.Workspace
+mount -t tmpfs -o size=256m,nosuid,nodev tmpfs /home
+ROOT=/home/sandbox-root
+INTERPRETER_ROOT=/usr/bin/python3
+if [ "$8" = "node" ]; then INTERPRETER_ROOT=/usr/bin/node; fi
+mkdir -p "$ROOT"/workspace "$ROOT"/tmp "$ROOT"/usr/bin "$ROOT"/usr/lib "$ROOT"/bin "$ROOT"/dev
+mkdir -p "$ROOT$9" "${ROOT}${10}"
+mount --bind "$9" "$ROOT$9"
+mount -o remount,bind,ro "$ROOT$9"
+mount --bind "${10}" "${ROOT}${10}"
+mount -o remount,bind,ro "${ROOT}${10}"
+: > "$ROOT/usr/bin/python3"
+mount --bind "${11}" "$ROOT/usr/bin/python3"
+mount -o remount,bind,ro "$ROOT/usr/bin/python3"
+if [ "$8" = "node" ]; then
+  : > "$ROOT/usr/bin/node"
+  mount --bind "$2" "$ROOT/usr/bin/node"
+  mount -o remount,bind,ro "$ROOT/usr/bin/node"
+fi
+: > "$ROOT/bin/sh"
+mount --bind "${12}" "$ROOT/bin/sh"
+mount -o remount,bind,ro "$ROOT/bin/sh"
+ln -s "${10}" "$ROOT/lib"
+ln -s "${10}" "$ROOT/lib64"
+mount --bind "$1" "$ROOT"/workspace
+if [ "$4" = "strict" ]; then mount -o remount,bind,ro "$ROOT"/workspace; fi
+mount -t tmpfs -o size=64m,nosuid,nodev tmpfs "$ROOT"/tmp
+mount -t tmpfs -o size=1m,nosuid,noexec tmpfs "$ROOT"/dev
+for device in null zero urandom; do : > "$ROOT/dev/$device"; mount --bind "/dev/$device" "$ROOT/dev/$device"; done
+exec 3<&-
+
+if [ "$4" = "strict" ]; then
+  if [ "$8" = "node" ]; then
+    exec "$6" --no-new-privs "$7" "$ROOT" /bin/sh -c 'cd /workspace && exec /usr/bin/python3 -I -S "$@"' sandbox "$5" "$INTERPRETER_ROOT" "$3"
+  fi
+  exec "$6" --no-new-privs "$7" "$ROOT" /bin/sh -c 'cd /workspace && exec /usr/bin/python3 -I -S "$@"' sandbox "$5" "$INTERPRETER_ROOT" -I -S "$3"
+fi
+if [ "$8" != "node" ]; then
+  exec "$7" "$ROOT" /bin/sh -c 'cd /workspace && exec /usr/bin/python3 -I -S "$@"' sandbox "$3"
+fi
+exec "$7" "$ROOT" /bin/sh -c 'cd /workspace && exec /usr/bin/node "$@"' sandbox "$3"`
+	workspaceDirectory, err := workspaceRoot.Open(".")
+	if err != nil {
+		return ToolResult{}, fmt.Errorf("open anchored workspace directory: %w", err)
+	}
+	defer workspaceDirectory.Close()
+	args := []string{"--user", "--map-root-user", "--mount", "--pid", "--fork", "--mount-proc", "--net", "--kill-child", "--propagation", "private", "/bin/sh", "-c", mountScript, "sandbox", "/proc/self/fd/3", interpreter, codeInSandbox, mode, launcherInSandbox, setprivPath, chrootPath, language, pythonStdlibPath, sharedLibraryPath, pythonInterpreter, dashPath}
+	command := exec.Command(unsharePath, args...)
+	command.ExtraFiles = []*os.File{workspaceDirectory}
+	command.Dir = "/"
 	command.Env = []string{"PATH=/usr/bin:/bin", "HOME=/home/workspace", "PWD=/home/workspace"}
 	configureToolProcess(command)
 	if err := configureSandboxCommand(command, control); err != nil {
@@ -523,6 +777,22 @@ cd /home/workspace
 		limits = "cgroup-v2-cpu-memory-pids-swap-timeout-output-bounded"
 	}
 	return ToolResult{Value: map[string]any{"stdout": RedactDLP(stdout.String()), "stderr": RedactDLP(stderr.String()), "exit_code": 0, "execution_isolation": isolation, "resource_limits": limits}}, nil
+}
+
+func writeContainedSandboxFile(root *os.Root, relative string, data []byte) error {
+	file, err := root.OpenFile(relative, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600)
+	if err != nil {
+		return err
+	}
+	written, writeErr := file.Write(data)
+	closeErr := file.Close()
+	if writeErr != nil {
+		return writeErr
+	}
+	if written != len(data) {
+		return io.ErrShortWrite
+	}
+	return closeErr
 }
 
 func runToolCommand(ctx context.Context, command *exec.Cmd, controls ...*sandboxControl) error {

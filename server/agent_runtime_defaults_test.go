@@ -1,10 +1,13 @@
 package server
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/ollama/ollama/internal/agent"
 )
 
 func TestNewDefaultAgentRuntimeUsesDurableDefaults(t *testing.T) {
@@ -49,5 +52,20 @@ func TestNewDefaultAgentRuntimeUsesDurableDefaults(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(runtime.DataRoot(), "auth")); err != nil {
 		t.Fatalf("durable auth store was not created: %v", err)
+	}
+}
+
+func TestNewDefaultAgentRuntimeFailsClosedForPostgres(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("OLLAMA_AGENT_DATABASE_URL", "postgres://invalid.invalid/unused")
+	if _, err := newDefaultAgentRuntime(); !errors.Is(err, agent.ErrPostgresTenantIsolationUnavailable) {
+		t.Fatalf("PostgreSQL startup error=%v, want tenant-isolation fail-closed error", err)
+	}
+}
+
+func TestPostgresRuntimeFailsClosedEvenWhenAuthIsEnabled(t *testing.T) {
+	t.Setenv("OLLAMA_AGENT_AUTH_REQUIRED", "true")
+	if _, err := agent.NewRuntime(agent.RuntimeConfig{Store: &agent.PostgresStore{}, WorkspaceRoot: t.TempDir(), DataRoot: t.TempDir()}); !errors.Is(err, agent.ErrPostgresTenantIsolationUnavailable) {
+		t.Fatalf("PostgreSQL runtime construction error=%v, want tenant-isolation fail-closed error", err)
 	}
 }

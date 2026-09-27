@@ -78,8 +78,8 @@ func (p OllamaPlanner) Plan(ctx context.Context, mission Mission) ([]Step, error
 		Stream: &stream,
 		Format: format,
 		Messages: []api.Message{
-			{Role: "system", Content: "You are a mission planner. Return only JSON with a top-level steps array. Each step must have kind, title, risk, requires_approval, and input. Allowed kinds are workspace.list, workspace.read, workspace.write, terminal.exec, sandbox.exec, browser.operator, desktop.companion, mcp.call, mcp.remote.call, connector.http. Never invent completed results. Use read risk for inspection, write risk for filesystem changes, external_side_effect for browser, desktop, MCP, and connector actions, and require approval for write, terminal, sandbox, browser, desktop, MCP, or connector steps."},
-			{Role: "user", Content: fmt.Sprintf("Objective: %s\nWorkspace: %s\nProject: %s", mission.Objective, mission.Workspace, mission.ProjectID)},
+			{Role: "system", Content: "You are a mission planner. Return only JSON with a top-level steps array. Each step must have kind, title, risk, requires_approval, and input. Allowed kinds are workspace.list, workspace.read, git.repo.inspect, workspace.write, terminal.exec, sandbox.exec, browser.operator, desktop.companion, mcp.call, mcp.remote.call, connector.http, and media.process only when a media provider is configured. Never invent completed results. Use read risk for inspection, write risk for filesystem changes, external_side_effect for browser, desktop, MCP, connectors, and media provider actions, and require approval for write, terminal, sandbox, browser, desktop, MCP, connector, and media steps."},
+			{Role: "user", Content: fmt.Sprintf("Objective: %s", mission.Objective)},
 		},
 	}
 	var response string
@@ -122,6 +122,7 @@ func normalizeSteps(steps []Step) ([]Step, error) {
 	allowed := map[string]RiskClass{
 		"workspace.list":    RiskRead,
 		"workspace.read":    RiskRead,
+		"git.repo.inspect":  RiskRead,
 		"workspace.write":   RiskWrite,
 		"terminal.exec":     RiskWrite,
 		"sandbox.exec":      RiskWrite,
@@ -130,6 +131,7 @@ func normalizeSteps(steps []Step) ([]Step, error) {
 		"mcp.call":          RiskExternalSideEffect,
 		"mcp.remote.call":   RiskExternalSideEffect,
 		"connector.http":    RiskExternalSideEffect,
+		"media.process":     RiskExternalSideEffect,
 	}
 	for i := range steps {
 		if _, ok := allowed[steps[i].Kind]; !ok {

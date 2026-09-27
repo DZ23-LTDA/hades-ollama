@@ -88,11 +88,11 @@ export function AppNavigation({ current }: { current: AppSection }) {
     <div className="flex flex-col gap-0.5">
       <div className="mb-3 flex items-center gap-2 px-2.5 pt-1">
         <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-neutral-900 text-xs font-semibold text-white dark:bg-white dark:text-neutral-900">
-          A+
+          OF
         </div>
         <div className="min-w-0">
           <div className="truncate text-[12px] font-semibold text-neutral-900 dark:text-white">
-            Ollama Classe A+
+            Ollama Full
           </div>
           <div className="truncate text-[10px] text-neutral-400">Local-first workspace</div>
         </div>

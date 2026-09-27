@@ -18,6 +18,24 @@ type sandboxControl struct {
 	file *os.File
 }
 
+// trustedSandboxExecutable deliberately does not consult the inherited PATH.
+// The absolute result must also be passed to exec.Command: Command resolves
+// bare names before command.Env is applied.
+func trustedSandboxExecutable(name string) (string, error) {
+	if name == "" || filepath.Base(name) != name || strings.ContainsAny(name, `/\\`) {
+		return "", errors.New("sandbox helper name is invalid")
+	}
+	for _, directory := range []string{"/usr/bin", "/usr/sbin", "/bin"} {
+		candidate := filepath.Join(directory, name)
+		info, err := os.Lstat(candidate)
+		if err != nil || info.Mode()&os.ModeSymlink != 0 || !info.Mode().IsRegular() || info.Mode()&0o111 == 0 {
+			continue
+		}
+		return candidate, nil
+	}
+	return "", fmt.Errorf("sandbox helper %q was not found in trusted system directories", name)
+}
+
 func newSandboxControl(stepID string) (*sandboxControl, error) {
 	if runtime.GOARCH != "amd64" && runtime.GOARCH != "arm64" {
 		return nil, errors.New("strict sandbox seccomp policy is unavailable for this architecture")
@@ -51,10 +69,10 @@ func newSandboxControl(stepID string) (*sandboxControl, error) {
 			return nil, fmt.Errorf("sandbox cgroup file %s is unavailable: %w", name, err)
 		}
 	}
-	if _, err := exec.LookPath("unshare"); err != nil {
+	if _, err := trustedSandboxExecutable("unshare"); err != nil {
 		return nil, fmt.Errorf("strict sandbox requires unshare: %w", err)
 	}
-	if _, err := exec.LookPath("setpriv"); err != nil {
+	if _, err := trustedSandboxExecutable("setpriv"); err != nil {
 		return nil, fmt.Errorf("strict sandbox requires setpriv: %w", err)
 	}
 	prefix := "ollama-" + sanitizeMCPID(stepID) + "-"

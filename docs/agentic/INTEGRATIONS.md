@@ -17,6 +17,8 @@ O exemplo [agent-connectors.json](../../examples/agent-connectors.json) cobre Gi
 
 O fluxo de autenticação OAuth usa PKCE, state one-time, armazenamento AES-GCM, refresh server-side com rotação/CAS e revogação local com endpoint remoto opcional. Configure os endpoints do provider, incluindo `OLLAMA_AGENT_OAUTH_<PROVIDER>_REVOCATION_URL` quando suportado, e `OLLAMA_AGENT_CREDENTIAL_KEY` fora do repositório. Tokens pessoais por `token_env` continuam disponíveis apenas para desenvolvimento ou conectores explicitamente não multiusuário. A implementação possui testes com provider TLS fixture; a homologação contra cada IdP, revocation semantics, quotas e rotação real continua dependente de conta de teste do operador.
 
+O mesmo `OLLAMA_AGENT_CREDENTIAL_KEY` cifra tokens de push quando subscriptions são persistidas. Configure e mantenha essa chave estável antes de iniciar o serviço com registros existentes; arquivos legados de subscriptions com token em texto claro são regravados em formato cifrado no startup. Se a chave estiver ausente ou não puder decifrar um registro existente, a inicialização falha fechado — não remova a chave nem apague o arquivo para contornar a falha.
+
 O endpoint `GET /api/agent/v1/connectors` também expõe um catálogo de integrações com categoria, capabilities, estado de habilitação e `credential_configured`. Esse último campo é somente booleano e não revela token, nome de variável ou ciphertext. O catálogo inclui contratos para GitHub, Google Workspace, Slack, Discord, WhatsApp, Composio, deploy, social commerce, Woovi/OpenPix e fiscal/NF-e; ele não declara qualquer conta externa como conectada. Uma conexão real exige credencial provisionada pelo operador, escopos mínimos, approval e smoke reversível com auditoria.
 
 ## SAML enterprise
@@ -54,14 +56,14 @@ O catálogo `GET /api/agent/v1/mcp` retorna servidores stdio e remotos sem o val
 
 ## HarnessRouter e harnesses de coding
 
-O [HarnessRouter Community Edition](https://github.com/HarnessRouter/harnessrouter) pode ser configurado como provider `openai-compatible` em [`examples/dz23-harnessrouter.json`](../../examples/dz23-harnessrouter.json). Cada `ModelConfig` pode declarar `harness_id`; o proxy Classe A+ preserva metadata existente e sobrescreve `metadata.harness_id` no servidor, permitindo selecionar `harnessrouter/codex` ou `harnessrouter/claude-code` sem aceitar esse controle do browser.
+O [HarnessRouter Community Edition](https://github.com/HarnessRouter/harnessrouter) pode ser configurado como provider `openai-compatible` em [`examples/dz23-harnessrouter.json`](../../examples/dz23-harnessrouter.json). Cada `ModelConfig` pode declarar `harness_id`; o proxy Ollama Full preserva metadata existente e sobrescreve `metadata.harness_id` no servidor, permitindo selecionar `harnessrouter/codex` ou `harnessrouter/claude-code` sem aceitar esse controle do browser.
 
-A integração é opt-in, usa `HARNESSROUTER_API_KEY` somente no processo do servidor e mantém uma chave de entrada do gateway Classe A+ separada. O endpoint local HTTP é permitido apenas com allowlist de loopback; hosts externos exigem HTTPS. O adapter não prova instalação, autenticação, licença ou disponibilidade de um CLI: streaming, sessões de follow-up, cancelamento, artifacts e recovery precisam ser testados contra uma instância real antes de classificar o provider como validado.
+A integração é opt-in, usa `HARNESSROUTER_API_KEY` somente no processo do servidor e mantém uma chave de entrada do gateway Ollama Full separada. O endpoint local HTTP é permitido apenas com allowlist de loopback; hosts externos exigem HTTPS. O adapter não prova instalação, autenticação, licença ou disponibilidade de um CLI: streaming, sessões de follow-up, cancelamento, artifacts e recovery precisam ser testados contra uma instância real antes de classificar o provider como validado.
 
 
 ## Infraestrutura distribuída
 
-O runtime permanece local-first por padrão. Para persistência compartilhada, defina `OLLAMA_AGENT_DATABASE_URL` com uma URL PostgreSQL; o servidor executa migrações idempotentes para `agent_missions` e `agent_events`, preservando o JSON store como fallback quando a variável não existe. Para workers compartilhados, defina `OLLAMA_AGENT_REDIS_URL` e opcionalmente `OLLAMA_AGENT_REDIS_PREFIX`; a fila Redis implementa enqueue, claim, retry com backoff, dead-letter e replay. Não configure uma URL de produção com credenciais embutidas em arquivos versionados.
+O runtime permanece local-first por padrão. O adapter de PostgreSQL existe e possui testes, mas o servidor público **recusa** `OLLAMA_AGENT_DATABASE_URL` e qualquer `PostgresStore` até corrigir a autoridade de migração e substituir os GUCs caller-settable por contexto tenant não-forjável; consulte [`SECURITY.md`](../../SECURITY.md). Use a URL PostgreSQL somente em testes/uso controlado, nunca como modo compartilhado de produção nesta versão. Para workers compartilhados, defina `OLLAMA_AGENT_REDIS_URL` e opcionalmente `OLLAMA_AGENT_REDIS_PREFIX`; a fila Redis implementa enqueue, claim, retry com backoff, dead-letter e replay com owner derivado da missão e validado pelo worker. Não configure URL de produção com credenciais embutidas em arquivos versionados.
 
 Para traces distribuídos, defina `OLLAMA_AGENT_OTLP_ENDPOINT` com uma URL HTTPS de OTLP HTTP. O provider exige HTTPS por padrão; `OLLAMA_AGENT_OTLP_ALLOW_INSECURE=1` é reservado para desenvolvimento local. A stack de desenvolvimento em `deploy/docker-compose.agentic.yml` fornece PostgreSQL, Redis e OpenTelemetry Collector.
 
@@ -75,17 +77,19 @@ O protocolo inicial é `dz23-companion.v1` e suporta `hello`, `heartbeat`, `ping
 
 Configure `OLLAMA_AGENT_DEPLOYMENTS` apontando para um JSON como [`examples/agent-deployments.json`](../../examples/agent-deployments.json). Os adapters `vercel` e `netlify` usam as APIs oficiais; `generic` envia um payload de arquivos base64 para `/deploy`, permitindo integrar AWS, Cloudflare, um pipeline interno ou outro hosting sem colocar SDKs e credenciais no binário. Os tokens são lidos de `token_env`, e uma publicação exige approval no endpoint. O código cria a requisição de publicação e valida o workspace, mas credenciais de conta, domínio, projeto, DNS, billing e permissões de hosting continuam responsabilidade do operador.
 
+Em modo autenticado multi-organização, cada provider precisa declarar `organization_id` igual ao ID da organização proprietária. `GET /api/agent/v1/deployments`, a solicitação de approval e a execução mostram/aceitam somente providers dessa organização; providers antigos sem proprietário continuam disponíveis apenas no modo local não autenticado. Não há cadastro HTTP global de provider. Um exemplo de entrada é `{"id":"vercel-org-a","organization_id":"org-a","provider":"vercel","base_url":"https://api.vercel.com","token_env":"ORG_A_VERCEL_TOKEN"}`. Erros HTTP não-2xx dos providers são convertidos em mensagens genéricas com status e não devolvem o corpo arbitrário upstream.
+
 
 ## Composio Connect e plugin Composio
 
-O Classe A+ pode registrar o [Composio Connect](https://docs.composio.dev/docs/composio-connect) como Remote MCP através de [`examples/dz23-composio-connect.json`](../../examples/dz23-composio-connect.json). O preset usa `https://connect.composio.dev/mcp`, permite somente os métodos JSON-RPC necessários (`initialize`, `notifications/initialized`, `tools/list` e `tools/call`) e injeta `x-consumer-api-key` apenas no servidor por meio de `COMPOSIO_CONSUMER_API_KEY`. O valor nunca é retornado pela API de capabilities, browser ou logs.
+O Ollama Full pode registrar o [Composio Connect](https://docs.composio.dev/docs/composio-connect) como Remote MCP através de [`examples/dz23-composio-connect.json`](../../examples/dz23-composio-connect.json). O preset usa `https://connect.composio.dev/mcp`, permite somente os métodos JSON-RPC necessários (`initialize`, `notifications/initialized`, `tools/list` e `tools/call`) e injeta `x-consumer-api-key` apenas no servidor por meio de `COMPOSIO_CONSUMER_API_KEY`. O valor nunca é retornado pela API de capabilities, browser ou logs.
 
 ```bash
 export OLLAMA_AGENT_REMOTE_MCP="$PWD/examples/dz23-composio-connect.json"
 export COMPOSIO_CONSUMER_API_KEY='valor-fora-do-repositorio'
 ```
 
-O Composio Connect expõe meta-tools para descobrir tools, obter schemas, iniciar conexões OAuth e executar tools. Por isso, “ter o plugin” significa ter o adapter MCP e o fluxo de aprovação no Classe A+; ainda é necessário autorizar cada conta upstream no navegador do operador. A integração não cria uma conta Composio, não completa OAuth automaticamente e não declara que Instagram, TikTok Shop, Shopify ou qualquer outro toolkit está conectado. Para multiusuário, a próxima evolução deve usar uma sessão Composio por `organization_id`/usuário, persistir somente referências cifradas e aplicar scopes mínimos por departamento.
+O Composio Connect expõe meta-tools para descobrir tools, obter schemas, iniciar conexões OAuth e executar tools. Por isso, “ter o plugin” significa ter o adapter MCP e o fluxo de aprovação no Ollama Full; ainda é necessário autorizar cada conta upstream no navegador do operador. A integração não cria uma conta Composio, não completa OAuth automaticamente e não declara que Instagram, TikTok Shop, Shopify ou qualquer outro toolkit está conectado. Para multiusuário, a próxima evolução deve usar uma sessão Composio por `organization_id`/usuário, persistir somente referências cifradas e aplicar scopes mínimos por departamento.
 
 ## xAI / Grok por API
 
@@ -97,7 +101,7 @@ export OLLAMA_DZ23_GATEWAY_KEY='chave-do-cliente-fora-do-repositorio'
 export XAI_API_KEY='chave-xai-fora-do-repositorio'
 ```
 
-No cliente compatível com Responses API, use o modelo `xai/grok-4.7` e envie `input`, `tools` e as opções suportadas pela versão da API. O proxy Classe A+ preserva o corpo Responses, reescreve apenas o identificador lógico para o modelo upstream e aplica autenticação server-side. Isso integra a **API xAI**, não o produto hospedado Grok Bot. Browser, computador cloud persistente, bots coordenados, skills e rotinas continuam sendo implementados pelo runtime próprio do Classe A+ ou pelos adapters aprovados, sem copiar internals proprietários.
+No cliente compatível com Responses API, use o modelo `xai/grok-4.7` e envie `input`, `tools` e as opções suportadas pela versão da API. O proxy Ollama Full preserva o corpo Responses, reescreve apenas o identificador lógico para o modelo upstream e aplica autenticação server-side. Isso integra a **API xAI**, não o produto hospedado Grok Bot. Browser, computador cloud persistente, bots coordenados, skills e rotinas continuam sendo implementados pelo runtime próprio do Ollama Full ou pelos adapters aprovados, sem copiar internals proprietários.
 
 ## Redes sociais, afiliados e marketplaces
 
@@ -105,7 +109,7 @@ A base atual tem Growth OS sandbox, conectores HTTP allowlisted, OAuth tenant-aw
 
 | Canal | Estado atual | Próximo adapter operacional |
 |---|---|---|
-| Instagram/Meta | Adapter genérico e catálogo Composio possível; publicação não validada no Classe A+ | Meta Login/OAuth, `instagram_business_content_publish`, mídia pública, webhooks, rate limit, approval e teste em conta profissional |
+| Instagram/Meta | Adapter genérico e catálogo Composio possível; publicação não validada no Ollama Full | Meta Login/OAuth, `instagram_business_content_publish`, mídia pública, webhooks, rate limit, approval e teste em conta profissional |
 | X/Twitter | Toolkit Composio listado; não há conexão validada no projeto | OAuth, publicação/leitura permitida, rate limits, políticas de automação e approval |
 | YouTube | Toolkit/API pública disponível; não há upload validado no projeto | OAuth Google, upload/resumable, metadata, quota, copyright e approval |
 | WhatsApp | Connector HTTP/MCP possível; não há fluxo Cloud API validado | Meta Business, templates, opt-in, webhooks, proteção contra spam e approval |
@@ -122,7 +126,7 @@ Nenhum connector deve publicar posts, iniciar anúncios, enviar mensagens, criar
 
 Connectors, MCP stdio, Remote MCP e skills possuem lifecycle explícito no runtime. A UI pode solicitar habilitar, desabilitar ou remover um recurso, mas a decisão é server-side e revalida tenant, allowlist, estado e capabilities antes de alterar o registro. Desabilitar bloqueia a execução sem apagar credenciais; remover exige uma ação explícita e não remove secrets externos.
 
-O Composio, xAI/Grok, Desktop Commander e canais de Social Commerce permanecem adapters opt-in. O Classe A+ fornece contratos, presets sem segredos, headers server-side, approvals e testes locais. Connected accounts, OAuth, quotas, app review, webhooks, device pairing e publicação real só podem ser promovidos após smoke autorizado e reversível.
+O Composio, xAI/Grok, Desktop Commander e canais de Social Commerce permanecem adapters opt-in. O Ollama Full fornece contratos, presets sem segredos, headers server-side, approvals e testes locais. Connected accounts, OAuth, quotas, app review, webhooks, device pairing e publicação real só podem ser promovidos após smoke autorizado e reversível.
 
 
 ## Cadastro durável e estados de conexão
@@ -178,3 +182,10 @@ A captura de dez rotas usa o backend Ollama local e um bridge local para o bundl
 O estado publicado em `45393d8c` cobre `tel-agent.text` dentro do Company OS. O canal aceita operações locais allowlisted, persiste histórico redigido por tenant e exige role operacional para mutações autenticadas. `report.read` retorna o estado da empresa; `backlog.create` cria uma tarefa local; `campaign.draft` cria um rascunho sandbox com approval pendente.
 
 Isso não equivale a telefonia ou mensageria externa. SIP, PSTN, SMS, WhatsApp, gravação de voz e discagem permanecem `telephony: not_configured` e `BLOCKED_BY_EXTERNAL_DEPENDENCY` até contas, credenciais, consentimento, destino de teste e homologação autorizada. Nenhum catálogo ou tela de configuração deve ser interpretado como conta conectada.
+
+
+### Projeções seguras dos catálogos e limites operacionais
+
+Os catálogos tenant-facing de Remote MCP, Connector e Deployment omitem recursos ownerless/globais e mostram apenas a origem da URL configurada; paths, query strings, fragments e mapeamentos de env/headers que indicam credenciais não devem ser usados como configuração executável pelo cliente. O manager mantém a configuração completa somente no servidor. `terminal.exec` resolve binários allowlisted em caminhos absolutos confiáveis, sem confiar no PATH herdado.
+
+O push outbox aceita até 256 registros globais (64 por organização), até 64 KiB por registro e 20 MiB de snapshot; cada flush processa no máximo 32 notificações durante até 30 segundos e respeita cancelamento. Há no máximo oito tentativas, com compactação de itens terminais após sete dias. Respostas de deployment são limitadas a 4 MiB e JSON 2xx inválido/sem identidade não é tratado como sucesso. Quotas excedidas e respostas inválidas exigem investigação operacional do backlog/provider; não copie corpos upstream para logs ou tickets.

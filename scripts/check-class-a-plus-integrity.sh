@@ -75,7 +75,7 @@ required_files=(
 )
 
 for file in "${required_files[@]}"; do
-  test -s "$file" || { echo "missing required Class A+ surface: $file" >&2; exit 1; }
+  test -s "$file" || { echo "missing required Ollama Full surface: $file" >&2; exit 1; }
 done
 
 grep -q '^policy=manual-review-only$' UPSTREAM_BASE_COMMIT
@@ -112,7 +112,7 @@ grep -q 'CompanyApprovalQueue' app/ui/app/src/components/CompanyApprovalQueue.ts
 grep -q 'func RedactValue' internal/agent/secrets.go
 grep -q 'TestRuntimeRedactsStepResultsEventsTracesAndPersistence' internal/agent/runtime_test.go
 grep -q 'redactMissionForPersistence' internal/agent/store.go
-grep -q 'remote MCP destination connected to a private address' internal/agent/mcp_remote.go
+grep -q 'remote MCP destination resolves to a private address' internal/agent/mcp_remote.go
 grep -q 'TestRemoteMCPDialRejectsPrivateActualAddress' internal/agent/mcp_remote_test.go
 grep -q 'MCP command must be an absolute executable path' internal/agent/mcp.go
 	grep -q 'TestMCPPayloadLimitAndCancellationRestart' internal/agent/mcp_test.go
@@ -170,7 +170,7 @@ if sed -n '56,110p' .github/workflows/dz23-agentic-quality.yaml | grep -q 'GITHU
   exit 1
 fi
 if grep -Rqi 'change-me-local-only' deploy; then echo 'fixed development credential found'; exit 1; fi
-grep -q 'Provider       string' internal/agent/types.go
+grep -Eq 'Provider[[:space:]]+string' internal/agent/types.go
 grep -q 'provider != "ollama-local"' internal/agent/runtime.go
 	grep -q 'const providerChoices = useMemo' app/ui/app/src/components/AgenticConsole.tsx
 	grep -q 'getModels("")' app/ui/app/src/components/AgenticConsole.tsx
@@ -191,7 +191,7 @@ grep -q 'TestRuntimeRejectsUnconfiguredMissionProvider' internal/agent/runtime_t
 		echo "latest Docker publication must not be release-triggered in the fork" >&2
 		exit 1
 	fi
-	grep -q 'local/ollama-classe-a-plus' scripts/env.sh
+	grep -q 'local/ollama-full' scripts/env.sh
 	grep -q 'refusing to publish an upstream or local placeholder image' scripts/tag_latest.sh
 	grep -q 'operator-owned registry' scripts/build_docker.sh
 		grep -q 'strictSandboxLauncher' internal/agent/sandbox_seccomp_linux.go
@@ -232,4 +232,4 @@ if git ls-files | grep -E '(^|/)(\.env|.*\.key|.*\.pem|node_modules/)' >/dev/nul
 fi
 
 git diff --check
-printf '%s\n' "Class A+ integrity guard: PASS"
+printf '%s\n' "Ollama Full integrity guard: PASS"

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Packaging Linux (CPU) do Ollama Classe A+.
+# Packaging Linux (CPU) do Ollama Full.
 # Produz um tarball reproduzivel com o binario, VERSION, metadata, install/
 # uninstall e checksum. NAO cobre GPU (CUDA/ROCm/Vulkan) — esses ficam no
 # pipeline de release com runner apropriado.
@@ -25,7 +25,7 @@ if [ -z "${VERSION:-}" ]; then
 fi
 COMMIT="$(git rev-parse --short=12 HEAD 2>/dev/null || echo unknown)"
 
-PKG="ollama-classe-a-plus-${VERSION}-linux-${ARCH}"
+PKG="ollama-full-${VERSION}-linux-${ARCH}"
 STAGE="${OUTDIR}/${PKG}"
 mkdir -p "${STAGE}/bin"
 
@@ -36,7 +36,7 @@ CGO_ENABLED=1 GOARCH="${GOARCH}" go build -trimpath \
 
 # Metadata versionada dentro do pacote.
 cat > "${STAGE}/VERSION" <<META
-product=Ollama Classe A+
+product=Ollama Full
 version=${VERSION}
 commit=${COMMIT}
 arch=${ARCH}
@@ -51,8 +51,8 @@ set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PREFIX="${PREFIX:-$HOME/.local}"
 install -Dm755 "${HERE}/bin/ollama" "${PREFIX}/bin/ollama"
-install -Dm644 "${HERE}/VERSION" "${PREFIX}/share/ollama-classe-a-plus/VERSION"
-echo "Ollama Classe A+ instalado em ${PREFIX}/bin/ollama"
+install -Dm644 "${HERE}/VERSION" "${PREFIX}/share/ollama-full/VERSION"
+echo "Ollama Full instalado em ${PREFIX}/bin/ollama"
 echo "Garanta que ${PREFIX}/bin esta no PATH. Rode: ollama --version"
 INSTALL
 chmod +x "${STAGE}/install.sh"
@@ -62,8 +62,8 @@ cat > "${STAGE}/uninstall.sh" <<'UNINSTALL'
 set -euo pipefail
 PREFIX="${PREFIX:-$HOME/.local}"
 rm -f "${PREFIX}/bin/ollama"
-rm -rf "${PREFIX}/share/ollama-classe-a-plus"
-echo "Ollama Classe A+ removido de ${PREFIX}. Dados do usuario em ~/.ollama nao foram tocados."
+rm -rf "${PREFIX}/share/ollama-full"
+echo "Ollama Full removido de ${PREFIX}. Dados do usuario em ~/.ollama nao foram tocados."
 UNINSTALL
 chmod +x "${STAGE}/uninstall.sh"
 

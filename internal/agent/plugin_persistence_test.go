@@ -93,12 +93,18 @@ func TestPersistentRemoteMCPManagerRoundTripAndTenantCollision(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	reloaded.mu.RLock()
+	persisted := reloaded.servers["remote-tools"]
+	reloaded.mu.RUnlock()
+	if persisted.TokenEnv != "REMOTE_MCP_TOKEN" || persisted.HeadersEnv["X-Org"] != "REMOTE_MCP_ORG" || persisted.URL != "https://example.com/mcp" {
+		t.Fatalf("private persisted configuration did not round-trip: %#v", persisted)
+	}
 	loaded := reloaded.ListForOrganization("org-a")
-	if len(loaded) != 1 || !loaded[0].Disabled || loaded[0].TokenEnv != "REMOTE_MCP_TOKEN" {
+	if len(loaded) != 1 || !loaded[0].Disabled || loaded[0].TokenEnv != "" || loaded[0].URL != "https://example.com" {
 		t.Fatalf("unexpected reloaded Remote MCP config: %#v", loaded)
 	}
-	if loaded[0].HeadersEnv["X-Org"] != "REMOTE_MCP_ORG" {
-		t.Fatalf("unexpected header env map: %#v", loaded[0].HeadersEnv)
+	if len(loaded[0].HeadersEnv) != 0 {
+		t.Fatalf("tenant-facing config exposed header env mappings: %#v", loaded[0].HeadersEnv)
 	}
 }
 

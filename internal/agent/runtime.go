@@ -23,6 +23,7 @@ type Runtime struct {
 	capabilityPolicy    CapabilityPolicy
 	workspaceRoot       string
 	dataRoot            string
+	organizationScope   string
 	context             *ContextStore
 	company             *CompanyStore
 	remoteMCP           *RemoteMCPManager
@@ -83,12 +84,18 @@ var (
 	ErrApprovalNonceMismatch   = errors.New("approval nonce mismatch")
 	ErrApprovalReasonTooLong   = errors.New("approval reason exceeds 2048 bytes")
 	ErrQueueJobForbidden       = errors.New("job is outside the active organization")
+	ErrQueueNonRetryable       = errors.New("queue job must not be retried automatically")
+	ErrMissionTerminal         = errors.New("mission is terminal and cannot be resumed automatically")
+	ErrMissionNotRunnable      = errors.New("mission is not in a runnable state")
 )
 
 func NewRuntime(config RuntimeConfig) (*Runtime, error) {
 	store := config.Store
 	if store == nil {
 		store = NewMemoryStore()
+	}
+	if usesPostgresStore(store) {
+		return nil, ErrPostgresTenantIsolationUnavailable
 	}
 	planner := config.Planner
 	if planner == nil {
@@ -107,6 +114,9 @@ func NewRuntime(config RuntimeConfig) (*Runtime, error) {
 	}
 	if config.RemoteMCP != nil {
 		tools.Register(remoteMCPCallTool{manager: config.RemoteMCP})
+	}
+	if config.Media != nil {
+		tools.Register(mediaProcessTool{manager: config.Media})
 	}
 	for _, descriptor := range tools.Descriptors() {
 		if err := capabilityPolicy.ValidateToolDescriptor(descriptor); err != nil {
@@ -228,15 +238,22 @@ func NewRuntime(config RuntimeConfig) (*Runtime, error) {
 	return runtime, nil
 }
 
-// WithOrganization returns a request-scoped runtime view. Shared in-memory stores
-// remain compatible, while PostgresStore receives a transaction-local RLS scope.
+// WithOrganization returns a request-scoped runtime view. Every Store receives
+// application-level object scoping; PostgreSQL also receives transaction-local RLS.
 func (r *Runtime) WithOrganization(organizationID string) *Runtime {
 	if r == nil {
 		return nil
 	}
 	view := *r
+	view.organizationScope = strings.TrimSpace(organizationID)
 	if postgres, ok := r.store.(*PostgresStore); ok {
-		view.store = postgres.WithOrganization(organizationID)
+		view.store = postgres.WithOrganization(view.organizationScope)
+	}
+	// Local mode is a reserved single-user scope. Keep the underlying store
+	// unwrapped so ownerless legacy local records remain readable; all runtime
+	// access checks still apply organizationOwnsRecord below.
+	if view.organizationScope != "" && view.organizationScope != LocalOrganizationID && view.store != nil {
+		view.store = organizationScopedStore{store: view.store, organizationID: view.organizationScope}
 	}
 	return &view
 }
@@ -256,6 +273,49 @@ func (r *Runtime) WorkspaceRoot() string {
 		return ""
 	}
 	return r.workspaceRoot
+}
+
+// OpenMissionWorkspaceRoot returns the descriptor-anchored workspace belonging
+// to a persisted mission. Callers must close the returned root. The mission is
+// loaded through the Runtime's organization-scoped store before its workspace
+// identity/snapshot is validated.
+func (r *Runtime) OpenMissionWorkspaceRoot(missionID string) (Mission, *os.Root, error) {
+	if r == nil {
+		return Mission{}, nil, errors.New("mission runtime is unavailable")
+	}
+	mission, err := r.getMission(strings.TrimSpace(missionID))
+	if err != nil {
+		return Mission{}, nil, err
+	}
+	root, err := openMissionWorkspaceSnapshot(r.dataRoot, mission)
+	if err != nil {
+		return Mission{}, nil, fmt.Errorf("validate mission workspace: %w", err)
+	}
+	if root == nil {
+		return Mission{}, nil, errors.New("pinned mission workspace is unavailable")
+	}
+	return mission, root, nil
+}
+
+// RequiresOrganizationAuthentication reports whether the durable store can
+// contain multiple organizations and therefore cannot use the unauthenticated
+// single-user API mode.
+func (r *Runtime) RequiresOrganizationAuthentication() bool {
+	if r == nil {
+		return false
+	}
+	return usesPostgresStore(r.store)
+}
+
+func usesPostgresStore(store Store) bool {
+	switch typed := store.(type) {
+	case *PostgresStore:
+		return true
+	case organizationScopedStore:
+		return usesPostgresStore(typed.store)
+	default:
+		return false
+	}
 }
 
 func (r *Runtime) DataRoot() string {
@@ -455,6 +515,15 @@ func (r *Runtime) CreateMission(ctx context.Context, request CreateMissionReques
 	}
 	projectID := strings.TrimSpace(request.ProjectID)
 	organizationID := strings.TrimSpace(request.OrganizationID)
+	if r.organizationScope != "" {
+		if organizationID != "" && organizationID != r.organizationScope {
+			return Mission{}, errors.New("mission is outside the active organization")
+		}
+		organizationID = r.organizationScope
+		if projectID == "" && r.organizationScope != LocalOrganizationID {
+			return Mission{}, errors.New("organization-scoped missions require a project owned by the active organization")
+		}
+	}
 	var project Project
 	var err error
 	if projectID != "" {
@@ -464,6 +533,12 @@ func (r *Runtime) CreateMission(ctx context.Context, request CreateMissionReques
 		project, err = r.context.GetProject(projectID)
 		if err != nil {
 			return Mission{}, err
+		}
+		if r.organizationScope != "" && !organizationOwnsRecord(project.OrganizationID, r.organizationScope) {
+			return Mission{}, errors.New("project is not owned by the active organization")
+		}
+		if request.IsolateWorkspace && (strings.TrimSpace(project.OrganizationID) == "" || (organizationID != "" && project.OrganizationID != organizationID)) {
+			return Mission{}, errors.New("isolated workspace requires a project owned by the active organization")
 		}
 		if organizationID != "" && project.OrganizationID != "" && project.OrganizationID != organizationID {
 			return Mission{}, errors.New("project is outside the active organization")
@@ -479,6 +554,19 @@ func (r *Runtime) CreateMission(ctx context.Context, request CreateMissionReques
 	workspace, err := r.resolveWorkspace(requestedWorkspace)
 	if err != nil {
 		return Mission{}, err
+	}
+	workspaceIdentity := ""
+	if !request.IsolateWorkspace {
+		workspaceIdentity, err = workspaceDirectoryIdentity(workspace)
+		if err != nil {
+			return Mission{}, fmt.Errorf("bind mission workspace identity: %w", err)
+		}
+	}
+	if provider != "ollama-local" {
+		outbound := map[string]any{"objective": objective}
+		if err := validateOutboundPayload(outbound); err != nil {
+			return Mission{}, errors.New("planner payload rejected by data-egress policy")
+		}
 	}
 	if projectID != "" {
 		projectRoot, rootErr := filepath.Abs(strings.TrimSpace(project.Root))
@@ -500,13 +588,90 @@ func (r *Runtime) CreateMission(ctx context.Context, request CreateMissionReques
 	if err != nil {
 		return Mission{}, err
 	}
+	missionID := strings.TrimSpace(request.MissionID)
+	if missionID == "" {
+		missionID = "mis_" + uuid.NewString()
+	} else if !validSnapshotID(missionID) {
+		return Mission{}, errors.New("internal mission id is invalid")
+	}
+	workspaceSnapshotID := ""
+	workspaceSnapshotSHA256 := ""
+	var snapshotHandles *workspaceSnapshotHandles
+	snapshotPersisted := false
+	defer func() {
+		if snapshotHandles != nil {
+			if !snapshotPersisted {
+				_ = snapshotHandles.Remove()
+			}
+			_ = snapshotHandles.Close()
+		}
+	}()
+	if request.IsolateWorkspace {
+		if projectID == "" || organizationID == "" {
+			return Mission{}, errors.New("isolated workspace requires a project and organization")
+		}
+		projectRoot, rootErr := canonicalExistingDirectory(project.Root)
+		if rootErr != nil {
+			return Mission{}, fmt.Errorf("resolve isolated project root: %w", rootErr)
+		}
+		projectRootInfo, rootErr := os.Lstat(projectRoot)
+		if rootErr != nil || projectRootInfo.Mode()&os.ModeSymlink != 0 || !projectRootInfo.IsDir() {
+			if rootErr != nil {
+				return Mission{}, fmt.Errorf("inspect isolated project root: %w", rootErr)
+			}
+			return Mission{}, errors.New("isolated project root must be a real directory")
+		}
+		snapshotSourceRoot, rootErr := resolveWorkspaceSnapshotRepositoryRoot(ctx, projectRoot)
+		if rootErr != nil {
+			return Mission{}, fmt.Errorf("resolve isolated project Git repository: %w", rootErr)
+		}
+		if !isWithin(r.workspaceRoot, snapshotSourceRoot) {
+			return Mission{}, errors.New("isolated Git repository is outside the configured workspace root")
+		}
+		relativeWorkspace, relErr := filepath.Rel(snapshotSourceRoot, workspace)
+		if relErr != nil || !filepath.IsLocal(relativeWorkspace) {
+			return Mission{}, errors.New("isolated workspace must be inside the selected project")
+		}
+		manifest, handles, snapshotErr := createWorkspaceSnapshotWithHandles(ctx, WorkspaceSnapshotRequest{
+			SourceRoot:              snapshotSourceRoot,
+			ExpectedProjectRoot:     projectRoot,
+			ExpectedProjectRootInfo: projectRootInfo,
+			DataRoot:                filepath.Join(r.dataRoot, ".agent-workspace-snapshots"),
+			MissionID:               missionID,
+			OrganizationID:          organizationID,
+			ProjectID:               projectID,
+		})
+		if snapshotErr != nil {
+			return Mission{}, fmt.Errorf("create isolated workspace snapshot: %w", snapshotErr)
+		}
+		snapshotHandles = handles
+		workspace, workspaceSnapshotSHA256, err = prepareWorkspaceSnapshotHandoff(manifest, handles, relativeWorkspace)
+		if err != nil {
+			return Mission{}, err
+		}
+		workspaceSnapshotID = manifest.SnapshotID
+	}
 	now := time.Now().UTC()
-	mission := Mission{ID: "mis_" + uuid.NewString(), Version: 1, Objective: objective, Provider: provider, Model: strings.TrimSpace(request.Model), Workspace: workspace, ProjectID: projectID, OrganizationID: organizationID, Capabilities: capabilities, AutoRun: request.AutoRun, State: MissionPlanning, CreatedAt: now, UpdatedAt: now}
-	if err := r.store.PutMission(mission); err != nil {
+	mission := Mission{ID: missionID, Version: 1, Objective: objective, Provider: provider, Model: strings.TrimSpace(request.Model), Workspace: workspace, WorkspaceIdentity: workspaceIdentity, WorkspaceIsolated: request.IsolateWorkspace, WorkspaceSnapshotID: workspaceSnapshotID, WorkspaceSnapshotSHA256: workspaceSnapshotSHA256, ProjectID: projectID, OrganizationID: organizationID, Capabilities: capabilities, AutoRun: request.AutoRun, State: MissionPlanning, CreatedAt: now, UpdatedAt: now}
+	if err := r.store.CreateMission(mission); err != nil {
+		// The store may have committed before a connection/timeout error reached
+		// this caller. Preserve the snapshot; an orphan sweep can reclaim it only
+		// after checking durable mission references.
+		if snapshotHandles != nil {
+			snapshotPersisted = true
+		}
 		return Mission{}, err
 	}
+	snapshotPersisted = true
 	r.metrics.missionsCreated.Add(1)
-	r.observeEvent(mission, "mission.created", "", map[string]any{"objective": objective})
+	createdPayload := map[string]any{"objective": objective}
+	if mission.WorkspaceIsolated {
+		createdPayload["workspace_snapshot_id"] = mission.WorkspaceSnapshotID
+		createdPayload["workspace_snapshot_sha256"] = mission.WorkspaceSnapshotSHA256
+	}
+	if err := r.observeEvent(mission, "mission.created", "", createdPayload); err != nil {
+		return Mission{}, err
+	}
 	planner := r.planner
 	if provider == "ollama-local" && mission.Model != "" && r.plannerResolver != nil {
 		planner, err = r.plannerResolver.ResolvePlanner(provider, mission.Model)
@@ -548,9 +713,62 @@ func (r *Runtime) CreateMission(ctx context.Context, request CreateMissionReques
 		if err := r.capabilityPolicy.ValidateToolDescriptor(descriptor); err != nil {
 			return r.failMission(mission, err)
 		}
+		plan[index].ToolDescriptorSHA256, err = toolDescriptorSHA256(descriptor)
+		if err != nil {
+			return r.failMission(mission, fmt.Errorf("fingerprint tool descriptor: %w", err))
+		}
+		if plan[index].Kind == "connector.http" {
+			if strings.TrimSpace(mission.OrganizationID) == "" {
+				plan[index].ToolConfigSHA256, err = r.connectors.ApprovalConfigSHA256Global(plan[index].Input)
+			} else {
+				plan[index].ToolConfigSHA256, err = r.connectors.ApprovalConfigSHA256(mission.OrganizationID, plan[index].Input)
+			}
+			if err != nil {
+				return r.failMission(mission, fmt.Errorf("fingerprint connector configuration: %w", err))
+			}
+		}
+		if plan[index].Kind == "sandbox.exec" {
+			mode, modeErr := configuredSandboxMode()
+			if modeErr != nil {
+				return r.failMission(mission, modeErr)
+			}
+			if plan[index].Input == nil {
+				plan[index].Input = make(map[string]any)
+			}
+			// Planner-provided values are untrusted. Store the authoritative
+			// runtime mode in the approved payload and execute only that mode.
+			plan[index].Input["sandbox_mode"] = mode
+		}
 		plan[index].RequiresApproval = plan[index].RequiresApproval || descriptor.RequiresApproval
 		if riskRank(descriptor.Risk) > riskRank(plan[index].Risk) {
 			plan[index].Risk = descriptor.Risk
+		}
+		if plan[index].Kind == "workspace.write" {
+			if !r.capabilityPolicy.Allows(descriptor, mission.Capabilities) {
+				return r.failMission(mission, fmt.Errorf("%w: %s", ErrCapabilityDenied, plan[index].Kind))
+			}
+			plan[index].Input, err = prepareWorkspaceWriteApproval(workspace, plan[index].Input)
+			if err != nil {
+				return r.failMission(mission, fmt.Errorf("prepare workspace write approval: %w", err))
+			}
+		}
+		if plan[index].Kind == "workspace.patch" {
+			if !r.capabilityPolicy.Allows(descriptor, mission.Capabilities) {
+				return r.failMission(mission, fmt.Errorf("%w: %s", ErrCapabilityDenied, plan[index].Kind))
+			}
+			plan[index].Input, err = prepareWorkspacePatchApproval(workspace, plan[index].Input)
+			if err != nil {
+				return r.failMission(mission, fmt.Errorf("prepare workspace patch approval: %w", err))
+			}
+		}
+		if plan[index].Kind == "media.process" {
+			if !r.capabilityPolicy.Allows(descriptor, mission.Capabilities) {
+				return r.failMission(mission, fmt.Errorf("%w: %s", ErrCapabilityDenied, plan[index].Kind))
+			}
+			plan[index].Input, err = prepareMediaProcessApproval(workspace, plan[index].Input)
+			if err != nil {
+				return r.failMission(mission, fmt.Errorf("prepare media approval: %w", err))
+			}
 		}
 	}
 	mission.Plan = plan
@@ -559,36 +777,44 @@ func (r *Runtime) CreateMission(ctx context.Context, request CreateMissionReques
 	for _, step := range plan {
 		if step.RequiresApproval {
 			descriptor, _ := r.tools.Get(step.Kind)
-			mission.Approvals = append(mission.Approvals, Approval{ID: "apr_" + uuid.NewString(), MissionID: mission.ID, StepID: step.ID, OrganizationID: mission.OrganizationID, Policy: toolApprovalPolicy(descriptor.Descriptor(), step.Risk), Nonce: uuid.NewString(), Status: ApprovalPending, ExpiresAt: &approvalExpiresAt, CreatedAt: now, UpdatedAt: now})
+			payloadHash, hashErr := approvalPayloadSHA256(step)
+			if hashErr != nil {
+				return r.failMission(mission, fmt.Errorf("hash approval payload: %w", hashErr))
+			}
+			mission.Approvals = append(mission.Approvals, Approval{ID: "apr_" + uuid.NewString(), MissionID: mission.ID, StepID: step.ID, OrganizationID: mission.OrganizationID, Policy: toolApprovalPolicy(descriptor.Descriptor(), step.Risk), PayloadSHA256: payloadHash, Nonce: uuid.NewString(), Status: ApprovalPending, ExpiresAt: &approvalExpiresAt, CreatedAt: now, UpdatedAt: now})
 		}
 	}
 	if len(mission.Approvals) > 0 {
 		mission.State = MissionAwaitingApproval
 	}
+	expectedVersion := mission.Version
 	mission.Version++
 	mission.UpdatedAt = time.Now().UTC()
-	if err := r.store.PutMission(mission); err != nil {
+	if err := r.store.PutMissionIfVersion(mission, expectedVersion); err != nil {
 		return Mission{}, err
 	}
-	r.observeEvent(mission, "mission.planned", "", map[string]any{"steps": len(plan), "approvals": len(mission.Approvals)})
+	if err := r.observeEvent(mission, "mission.planned", "", map[string]any{"steps": len(plan), "approvals": len(mission.Approvals)}); err != nil {
+		return Mission{}, err
+	}
 	if request.AutoRun && mission.State == MissionReady {
 		if _, enqueueErr := r.EnqueueMission(mission.ID); enqueueErr != nil {
 			queueErr := fmt.Errorf("auto-run enqueue failed: %w", enqueueErr)
+			expectedVersion := mission.Version
 			mission.State = MissionFailed
 			mission.LastError = RedactDLP(queueErr.Error())
 			mission.Version++
 			mission.UpdatedAt = time.Now().UTC()
 			r.metrics.missionsFailed.Add(1)
-			if saveErr := r.store.PutMission(mission); saveErr != nil {
+			if saveErr := r.store.PutMissionIfVersion(mission, expectedVersion); saveErr != nil {
 				return Mission{}, errors.Join(queueErr, saveErr)
 			}
 			if eventErr := r.event(mission, "mission.queue_failed", "", map[string]any{"error": mission.LastError}); eventErr != nil {
-				return mission, errors.Join(queueErr, eventErr)
+				return redactMissionForPersistence(mission), errors.Join(queueErr, eventErr)
 			}
-			return mission, queueErr
+			return redactMissionForPersistence(mission), queueErr
 		}
 	}
-	return mission, nil
+	return redactMissionForPersistence(mission), nil
 }
 
 func normalizeMissionCapabilities(capabilities []string) []string {
@@ -610,21 +836,70 @@ func normalizeMissionCapabilities(capabilities []string) []string {
 }
 
 func (r *Runtime) GetMission(id string) (Mission, error) {
-	return r.store.GetMission(strings.TrimSpace(id))
+	return r.getMission(strings.TrimSpace(id))
 }
 
 func (r *Runtime) ListMissions() ([]Mission, error) {
-	return r.store.ListMissions()
+	missions, err := r.store.ListMissions()
+	if err != nil || r.organizationScope == "" {
+		return missions, err
+	}
+	filtered := make([]Mission, 0, len(missions))
+	for _, mission := range missions {
+		if organizationOwnsRecord(mission.OrganizationID, r.organizationScope) {
+			filtered = append(filtered, mission)
+		}
+	}
+	return filtered, nil
+}
+
+func (r *Runtime) getMission(id string) (Mission, error) {
+	mission, err := r.store.GetMission(strings.TrimSpace(id))
+	if err != nil {
+		return Mission{}, err
+	}
+	if r.organizationScope != "" && !organizationOwnsRecord(mission.OrganizationID, r.organizationScope) {
+		return Mission{}, os.ErrNotExist
+	}
+	return mission, nil
+}
+
+func (r *Runtime) runQueueJob(jobContext context.Context, job QueueJob) error {
+	organizationID := strings.TrimSpace(job.OrganizationID)
+	if r.organizationScope != "" {
+		if !organizationOwnsRecord(organizationID, r.organizationScope) {
+			return ErrQueueJobForbidden
+		}
+	}
+	workerRuntime := r
+	if organizationID != "" {
+		workerRuntime = r.WithOrganization(organizationID)
+	}
+	before, loadErr := workerRuntime.GetMission(job.MissionID)
+	if loadErr != nil || before.OrganizationID != organizationID {
+		return ErrQueueJobForbidden
+	}
+	runErr := workerRuntime.Run(jobContext, job.MissionID)
+	if runErr == nil {
+		return nil
+	}
+	if before.State == MissionFailed || missionHasNonReadStep(before, workerRuntime.tools) {
+		return fmt.Errorf("%w: %w", ErrQueueNonRetryable, runErr)
+	}
+	mission, loadErr := workerRuntime.GetMission(job.MissionID)
+	if loadErr == nil && (mission.State == MissionFailed || missionHasNonReadStep(mission, workerRuntime.tools)) {
+		return fmt.Errorf("%w: %w", ErrQueueNonRetryable, runErr)
+	}
+	return runErr
 }
 
 func (r *Runtime) Start(ctx context.Context) {
-	worker := func(jobContext context.Context, job QueueJob) error {
-		return r.Run(jobContext, job.MissionID)
-	}
+	worker := r.runQueueJob
+	workerID := "agent-runtime-" + uuid.NewString()
 	if r.redisQueue != nil {
-		r.redisQueue.Start(ctx, "agent-runtime", worker)
+		r.redisQueue.Start(ctx, workerID, worker)
 	} else {
-		r.queue.Start(ctx, "agent-runtime", worker)
+		r.queue.Start(ctx, workerID, worker)
 	}
 	if r.push != nil && r.pushOutbox != nil {
 		go func() {
@@ -664,7 +939,16 @@ func (r *Runtime) flushPushOutbox(ctx context.Context) {
 	if r == nil || r.push == nil || r.pushOutbox == nil {
 		return
 	}
-	for {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	ctx, cancel := context.WithTimeout(ctx, maxPushOutboxFlushDuration)
+	defer cancel()
+	startedAt := time.Now()
+	for processed := 0; processed < maxPushOutboxBatch; processed++ {
+		if ctx.Err() != nil || time.Since(startedAt) >= maxPushOutboxFlushDuration {
+			return
+		}
 		item, ok, err := r.pushOutbox.ClaimDue(time.Now().UTC())
 		if err != nil {
 			r.metrics.pushOutboxFailures.Add(1)
@@ -673,15 +957,28 @@ func (r *Runtime) flushPushOutbox(ctx context.Context) {
 		if !ok {
 			return
 		}
-		err = r.push.NotifyOrganization(ctx, item.OrganizationID, item.Title, item.Body, item.Data)
-		if err != nil {
+		if err := validateOutboundPayloadWithLimit(map[string]any{"title": item.Title, "body": item.Body, "data": item.Data}, maxOutboundDLPScanBytes); err != nil {
 			r.metrics.pushDeliveryFailures.Add(1)
-			if failErr := r.pushOutbox.Fail(item.ID, err, time.Now().UTC()); failErr != nil {
+			if failErr := r.pushOutbox.Fail(item.ID, item.LeaseToken, errOutboundPayloadBlocked); failErr != nil {
 				r.metrics.pushOutboxFailures.Add(1)
 			}
 			continue
 		}
-		if err := r.pushOutbox.Complete(item.ID); err != nil {
+		if ctx.Err() != nil {
+			if failErr := r.pushOutbox.Fail(item.ID, item.LeaseToken, ctx.Err()); failErr != nil {
+				r.metrics.pushOutboxFailures.Add(1)
+			}
+			return
+		}
+		err = r.push.NotifyOrganization(ctx, item.OrganizationID, item.Title, item.Body, item.Data)
+		if err != nil {
+			r.metrics.pushDeliveryFailures.Add(1)
+			if failErr := r.pushOutbox.Fail(item.ID, item.LeaseToken, err); failErr != nil {
+				r.metrics.pushOutboxFailures.Add(1)
+			}
+			continue
+		}
+		if err := r.pushOutbox.Complete(item.ID, item.LeaseToken); err != nil {
 			r.metrics.pushOutboxFailures.Add(1)
 		}
 	}
@@ -689,7 +986,8 @@ func (r *Runtime) flushPushOutbox(ctx context.Context) {
 
 func (r *Runtime) resumePending(ctx context.Context) error {
 	var recoveryErrors []error
-	for _, schedule := range r.context.ClaimDueSchedules(time.Now().UTC()) {
+	organizationScope := strings.TrimSpace(r.organizationScope)
+	for _, schedule := range r.context.ClaimDueSchedulesForOrganization(organizationScope, time.Now().UTC()) {
 		if companyID := companyIDFromWorkspace(schedule.Workspace); companyID != "" && r.company != nil {
 			company, err := r.company.Get(companyID)
 			if err == nil && (company.Status == CompanyPaused || company.Risk.Paused) {
@@ -706,11 +1004,29 @@ func (r *Runtime) resumePending(ctx context.Context) error {
 			recoveryErrors = append(recoveryErrors, fmt.Errorf("record schedule %s success: %w", schedule.ID, err))
 		}
 	}
-	missions, err := r.store.ListMissions()
+	missions, err := r.ListMissions()
 	if err != nil {
 		return err
 	}
+	organizationScope = strings.TrimSpace(r.organizationScope)
+	if postgres, ok := r.store.(*PostgresStore); ok && !postgres.systemAccess {
+		if organizationScope == "" {
+			organizationScope = postgres.organizationID
+		}
+	}
+	if err := sweepOrphanedWorkspaceSnapshots(r.dataRoot, organizationScope, missions, time.Now().UTC()); err != nil {
+		recoveryErrors = append(recoveryErrors, fmt.Errorf("sweep orphaned workspace snapshots: %w", err))
+	}
 	for _, mission := range missions {
+		if mission.State != MissionCompleted && mission.State != MissionCancelled && mission.State != MissionFailed {
+			if err := r.validateMissionApprovalBindings(mission); err != nil {
+				_, failErr := r.failMission(mission, ErrApprovalPayloadChanged)
+				if failErr != nil && !errors.Is(failErr, ErrApprovalPayloadChanged) {
+					recoveryErrors = append(recoveryErrors, fmt.Errorf("fail mission %s with invalid approval binding: %w", mission.ID, failErr))
+				}
+				continue
+			}
+		}
 		resume := mission.State == MissionRunning || mission.State == MissionRecovering || (mission.State == MissionReady && mission.AutoRun)
 		if !resume || !r.approvalsReady(mission) {
 			continue
@@ -739,7 +1055,7 @@ func (r *Runtime) recordScheduleFailure(schedule Schedule) (Schedule, error) {
 		}
 		schedule.NextRunAt = time.Now().UTC().Add(retryDelay)
 	}
-	return r.context.UpdateSchedule(schedule.ID, schedule)
+	return r.context.UpdateScheduleForOrganization(r.organizationScope, schedule.ID, schedule)
 }
 
 func (r *Runtime) recordScheduleSuccess(schedule Schedule) (Schedule, error) {
@@ -748,7 +1064,7 @@ func (r *Runtime) recordScheduleSuccess(schedule Schedule) (Schedule, error) {
 	}
 	schedule.FailureCount = 0
 	schedule.LastFailureCode = ""
-	return r.context.UpdateSchedule(schedule.ID, schedule)
+	return r.context.UpdateScheduleForOrganization(r.organizationScope, schedule.ID, schedule)
 }
 
 func companyIDFromWorkspace(workspace string) string {
@@ -760,42 +1076,102 @@ func companyIDFromWorkspace(workspace string) string {
 }
 
 func (r *Runtime) EnqueueMission(missionID string) (QueueJob, error) {
-	if _, err := r.store.GetMission(strings.TrimSpace(missionID)); err != nil {
+	mission, err := r.getMission(strings.TrimSpace(missionID))
+	if err != nil {
 		return QueueJob{}, err
 	}
-	if r.redisQueue != nil {
-		return r.redisQueue.Enqueue(missionID, 3)
+	workspaceRoot, err := openMissionWorkspaceSnapshot(r.dataRoot, mission)
+	if err != nil {
+		return QueueJob{}, fmt.Errorf("validate mission workspace snapshot: %w", err)
 	}
-	return r.queue.Enqueue(missionID, 3)
+	if workspaceRoot != nil {
+		_ = workspaceRoot.Close()
+	}
+	if mission.State != MissionReady && mission.State != MissionRecovering {
+		return QueueJob{}, ErrMissionNotRunnable
+	}
+	if step := interruptedNonReadStep(mission, r.tools); step != nil {
+		return QueueJob{}, fmt.Errorf("%w: interrupted non-read step %s requires inspection", ErrMissionTerminal, step.ID)
+	}
+	if r.redisQueue != nil {
+		return r.redisQueue.EnqueueForOrganization(mission.OrganizationID, mission.ID, 3)
+	}
+	return r.queue.EnqueueForOrganization(mission.OrganizationID, mission.ID, 3)
 }
 
 func (r *Runtime) QueueJobs(status QueueStatus) []QueueJob {
-	if r.redisQueue != nil {
-		return r.redisQueue.List(status)
+	jobs := r.queueJobsRaw(status)
+	if r.organizationScope == "" {
+		return jobs
 	}
-	return r.queue.List(status)
+	filtered := make([]QueueJob, 0, len(jobs))
+	for _, job := range jobs {
+		if mission, err := r.getMission(job.MissionID); err == nil && mission.OrganizationID == r.organizationScope && job.OrganizationID == mission.OrganizationID {
+			filtered = append(filtered, job)
+		}
+	}
+	return filtered
+}
+
+func (r *Runtime) queueJobsRaw(status QueueStatus) []QueueJob {
+	var jobs []QueueJob
+	if r.redisQueue != nil {
+		jobs = r.redisQueue.List(status)
+	} else {
+		jobs = r.queue.List(status)
+	}
+	return jobs
 }
 
 func (r *Runtime) ReplayJob(jobID string) (QueueJob, error) {
-	if r.redisQueue != nil {
-		return r.redisQueue.Replay(jobID)
+	jobID = strings.TrimSpace(jobID)
+	for _, job := range r.queueJobsRaw(QueueDeadLetter) {
+		if job.ID != jobID {
+			continue
+		}
+		mission, err := r.getMission(job.MissionID)
+		if err != nil {
+			if r.organizationScope != "" {
+				return QueueJob{}, ErrQueueJobForbidden
+			}
+			return QueueJob{}, err
+		}
+		if mission.State != MissionReady && mission.State != MissionRecovering {
+			return QueueJob{}, ErrMissionTerminal
+		}
+		if step := interruptedNonReadStep(mission, r.tools); step != nil {
+			return QueueJob{}, fmt.Errorf("%w: interrupted non-read step %s requires inspection", ErrMissionTerminal, step.ID)
+		}
+		if r.redisQueue != nil {
+			return r.redisQueue.ReplayForOrganization(mission.OrganizationID, jobID)
+		}
+		return r.queue.ReplayForOrganization(mission.OrganizationID, jobID)
 	}
-	return r.queue.Replay(jobID)
+	return QueueJob{}, os.ErrNotExist
 }
 
 func (r *Runtime) QueueJobsForOrganization(organizationID string, status QueueStatus) ([]QueueJob, error) {
 	jobs := r.QueueJobs(status)
 	organizationID = strings.TrimSpace(organizationID)
 	if organizationID == "" {
+		for _, job := range jobs {
+			mission, err := r.getMission(job.MissionID)
+			if err != nil {
+				return nil, err
+			}
+			if mission.OrganizationID != "" || job.OrganizationID != mission.OrganizationID {
+				return nil, ErrQueueJobForbidden
+			}
+		}
 		return jobs, nil
 	}
 	filtered := make([]QueueJob, 0, len(jobs))
 	for _, job := range jobs {
-		mission, err := r.store.GetMission(job.MissionID)
+		mission, err := r.getMission(job.MissionID)
 		if err != nil {
 			continue
 		}
-		if mission.OrganizationID == organizationID {
+		if mission.OrganizationID == organizationID && job.OrganizationID == mission.OrganizationID {
 			filtered = append(filtered, job)
 		}
 	}
@@ -804,15 +1180,34 @@ func (r *Runtime) QueueJobsForOrganization(organizationID string, status QueueSt
 
 func (r *Runtime) ReplayJobForOrganization(jobID, organizationID string) (QueueJob, error) {
 	organizationID = strings.TrimSpace(organizationID)
-	if organizationID == "" {
-		return r.ReplayJob(jobID)
+	if r.organizationScope != "" && organizationID != r.organizationScope {
+		return QueueJob{}, ErrQueueJobForbidden
 	}
-	for _, job := range r.QueueJobs("") {
+	if organizationID == "" {
+		for _, job := range r.queueJobsRaw("") {
+			if job.ID != strings.TrimSpace(jobID) {
+				continue
+			}
+			mission, err := r.getMission(job.MissionID)
+			if err != nil {
+				return QueueJob{}, err
+			}
+			if mission.OrganizationID != "" {
+				return QueueJob{}, ErrQueueJobForbidden
+			}
+			return r.ReplayJob(jobID)
+		}
+		return QueueJob{}, os.ErrNotExist
+	}
+	for _, job := range r.queueJobsRaw("") {
 		if job.ID != strings.TrimSpace(jobID) {
 			continue
 		}
-		mission, err := r.store.GetMission(job.MissionID)
+		mission, err := r.getMission(job.MissionID)
 		if err != nil {
+			if r.organizationScope != "" {
+				return QueueJob{}, ErrQueueJobForbidden
+			}
 			return QueueJob{}, err
 		}
 		if mission.OrganizationID != organizationID {
@@ -852,30 +1247,75 @@ func (r *Runtime) Run(ctx context.Context, id string) (runErr error) {
 		r.mu.Unlock()
 	}()
 
-	mission, err := r.store.GetMission(id)
+	mission, err := r.getMission(id)
 	if err != nil {
 		return err
+	}
+	workspaceRoot, err := openMissionWorkspaceSnapshot(r.dataRoot, mission)
+	if err != nil {
+		return fmt.Errorf("validate mission workspace snapshot: %w", err)
+	}
+	if workspaceRoot != nil {
+		defer workspaceRoot.Close()
+	}
+	var snapshotManifest *WorkspaceSnapshotManifest
+	snapshotPrefix := ""
+	if mission.WorkspaceIsolated {
+		for _, step := range mission.Plan {
+			if step.Kind != "git.repo.inspect" {
+				continue
+			}
+			manifest, prefix, manifestErr := readMissionWorkspaceSnapshotManifest(r.dataRoot, mission)
+			if manifestErr != nil {
+				_, failErr := r.failMission(mission, fmt.Errorf("read isolated Git baseline: %w", manifestErr))
+				return failErr
+			}
+			snapshotManifest = &manifest
+			snapshotPrefix = prefix
+			break
+		}
+	}
+	if mission.State == MissionFailed {
+		return ErrMissionTerminal
+	}
+	if step := interruptedNonReadStep(mission, r.tools); step != nil {
+		return r.failStep(mission, step, fmt.Errorf("%w: step %s may have partially executed; inspect workspace/provider state before creating a new mission", ErrMissionTerminal, step.ID))
 	}
 	missionSpan := r.traces.StartForOrganization(mission.OrganizationID, "tr_"+id, "", "mission.run", map[string]any{"mission_id": id})
 	defer func() { missionSpan.End("ok", runErr) }()
 	if mission.State == MissionCompleted || mission.State == MissionCancelled {
 		return nil
 	}
+	if err := r.validateMissionApprovalBindings(mission); err != nil {
+		_, failErr := r.failMission(mission, ErrApprovalPayloadChanged)
+		return failErr
+	}
+	if mission.State == MissionAwaitingApproval && !r.approvalsReady(mission) {
+		return nil
+	}
+	if mission.State != MissionReady && mission.State != MissionRecovering && mission.State != MissionRunning && mission.State != MissionObserving && mission.State != MissionAwaitingApproval {
+		return ErrMissionNotRunnable
+	}
 	if !r.approvalsReady(mission) {
+		expectedVersion := mission.Version
 		mission.State = MissionAwaitingApproval
+		mission.Version++
 		mission.UpdatedAt = time.Now().UTC()
-		if err := r.store.PutMission(mission); err != nil {
+		if err := r.store.PutMissionIfVersion(mission, expectedVersion); err != nil {
 			return err
 		}
 		return nil
 	}
+	expectedVersion := mission.Version
 	mission.State = MissionRunning
 	mission.Version++
 	mission.UpdatedAt = time.Now().UTC()
-	if err := r.store.PutMission(mission); err != nil {
+	if err := r.store.PutMissionIfVersion(mission, expectedVersion); err != nil {
 		return err
 	}
-	r.observeEvent(mission, "mission.running", "", nil)
+	if err := r.observeEvent(mission, "mission.running", "", nil); err != nil {
+		return err
+	}
 
 	for index := 0; index < len(mission.Plan); index++ {
 		if r.missionCancelled(id) {
@@ -889,23 +1329,55 @@ func (r *Runtime) Run(ctx context.Context, id string) (runErr error) {
 		if !ok {
 			return r.failStep(mission, step, fmt.Errorf("tool %q is not registered", step.Kind))
 		}
+		if mission.WorkspaceIsolated {
+			switch step.Kind {
+			case "terminal.exec", "sandbox.exec", "media.process":
+				return r.failStep(mission, step, fmt.Errorf("tool %q uses pathname-based workspace access and is disabled for isolated snapshots", step.Kind))
+			}
+		}
 		if err := r.capabilityPolicy.ValidateToolDescriptor(tool.Descriptor()); err != nil {
 			return r.failStep(mission, step, err)
+		}
+		descriptorHash, descriptorErr := toolDescriptorSHA256(tool.Descriptor())
+		if descriptorErr != nil || step.ToolDescriptorSHA256 == "" || descriptorHash != step.ToolDescriptorSHA256 || tool.Descriptor().RequiresApproval && !step.RequiresApproval {
+			return r.failStep(mission, step, ErrApprovalPayloadChanged)
+		}
+		if step.RequiresApproval && step.Kind == "connector.http" {
+			var configHash string
+			var configErr error
+			if strings.TrimSpace(mission.OrganizationID) == "" {
+				configHash, configErr = r.connectors.ApprovalConfigSHA256Global(step.Input)
+			} else {
+				configHash, configErr = r.connectors.ApprovalConfigSHA256(mission.OrganizationID, step.Input)
+			}
+			if configErr != nil || configHash != step.ToolConfigSHA256 {
+				return r.failStep(mission, step, ErrApprovalPayloadChanged)
+			}
 		}
 		if !r.capabilityPolicy.Allows(tool.Descriptor(), mission.Capabilities) {
 			return r.failStep(mission, step, fmt.Errorf("%w: %s", ErrCapabilityDenied, step.Kind))
 		}
 		if step.RequiresApproval && !r.stepApproved(mission, step.ID) {
+			expectedVersion = mission.Version
 			step.State = StepBlocked
 			mission.State = MissionAwaitingApproval
 			mission.Version++
 			mission.UpdatedAt = time.Now().UTC()
-			if err := r.store.PutMission(mission); err != nil {
+			if err := r.store.PutMissionIfVersion(mission, expectedVersion); err != nil {
 				return err
 			}
-			r.observeEvent(mission, "step.awaiting_approval", step.ID, nil)
+			if err := r.observeEvent(mission, "step.awaiting_approval", step.ID, nil); err != nil {
+				return err
+			}
 			return nil
 		}
+		if approval, ok := approvalForStep(mission, step.ID); ok && approval.Status == ApprovalApproved && approval.PayloadSHA256 != "" {
+			payloadHash, hashErr := approvalPayloadSHA256(*step)
+			if hashErr != nil || payloadHash != approval.PayloadSHA256 {
+				return r.failStep(mission, step, ErrApprovalPayloadChanged)
+			}
+		}
+		expectedVersion = mission.Version
 		step.State = StepRunning
 		step.Attempts++
 		r.metrics.stepsStarted.Add(1)
@@ -913,64 +1385,82 @@ func (r *Runtime) Run(ctx context.Context, id string) (runErr error) {
 		mission.State = MissionObserving
 		mission.Version++
 		mission.UpdatedAt = time.Now().UTC()
-		if err := r.store.PutMission(mission); err != nil {
+		if err := r.store.PutMissionIfVersion(mission, expectedVersion); err != nil {
 			return err
 		}
-		r.observeEvent(mission, "step.started", step.ID, map[string]any{"tool": step.Kind, "attempt": step.Attempts})
+		if err := r.observeEvent(mission, "step.started", step.ID, map[string]any{"tool": step.Kind, "attempt": step.Attempts}); err != nil {
+			return err
+		}
 		toolSpan := r.traces.StartForOrganization(mission.OrganizationID, "tr_"+mission.ID, missionSpan.ID(), "tool."+step.Kind, map[string]any{"mission_id": mission.ID, "step_id": step.ID, "tool": step.Kind})
-		result, executeErr := tool.Execute(runCtx, ToolContext{MissionID: mission.ID, StepID: step.ID, Workspace: mission.Workspace, OrganizationID: mission.OrganizationID}, step.Input)
+		toolContext := ToolContext{MissionID: mission.ID, StepID: step.ID, Workspace: mission.Workspace, WorkspaceRoot: workspaceRoot, OrganizationID: mission.OrganizationID, ToolConfigSHA256: step.ToolConfigSHA256}
+		if step.Kind == "git.repo.inspect" && mission.WorkspaceIsolated {
+			toolContext.WorkspaceSnapshotManifest = snapshotManifest
+			toolContext.WorkspaceSnapshotPrefix = snapshotPrefix
+			toolContext.MissionArtifacts = append([]ArtifactManifest(nil), mission.Artifacts...)
+		}
+		result, executeErr := tool.Execute(runCtx, toolContext, step.Input)
 		toolSpan.End("ok", executeErr)
 		if r.missionCancelled(id) {
 			return nil
 		}
 		if executeErr != nil {
-			if step.Attempts < 2 {
+			mission.Artifacts = appendUniqueArtifacts(mission.Artifacts, result.Artifacts)
+			if shouldRetryStep(*step, r.tools) {
+				expectedVersion = mission.Version
 				r.metrics.retries.Add(1)
 				step.State = StepPending
 				mission.State = MissionRecovering
 				mission.Version++
 				mission.UpdatedAt = time.Now().UTC()
-				if err := r.store.PutMission(mission); err != nil {
+				if err := r.store.PutMissionIfVersion(mission, expectedVersion); err != nil {
 					return err
 				}
-				r.observeEvent(mission, "step.retry_scheduled", step.ID, map[string]any{"error": RedactDLP(executeErr.Error())})
+				if err := r.observeEvent(mission, "step.retry_scheduled", step.ID, map[string]any{"error": RedactDLP(executeErr.Error())}); err != nil {
+					return err
+				}
 				index--
 				continue
 			}
 			return r.failStep(mission, step, executeErr)
 		}
+		expectedVersion = mission.Version
 		step.State = StepSucceeded
 		r.metrics.stepsSucceeded.Add(1)
 		step.Result = RedactValue(result.Value)
 		step.Error = ""
-		mission.Artifacts = append(mission.Artifacts, result.Artifacts...)
+		mission.Artifacts = appendUniqueArtifacts(mission.Artifacts, result.Artifacts)
 		mission.State = MissionRunning
 		mission.Version++
 		mission.UpdatedAt = time.Now().UTC()
-		if err := r.store.PutMission(mission); err != nil {
+		if err := r.store.PutMissionIfVersion(mission, expectedVersion); err != nil {
 			return err
 		}
-		r.observeEvent(mission, "step.succeeded", step.ID, map[string]any{"artifacts": len(result.Artifacts)})
+		if err := r.observeEvent(mission, "step.succeeded", step.ID, map[string]any{"artifacts": len(result.Artifacts)}); err != nil {
+			return err
+		}
 	}
 	if r.missionCancelled(id) {
 		return nil
 	}
 	completed := time.Now().UTC()
+	expectedVersion = mission.Version
 	mission.State = MissionCompleted
 	r.metrics.missionsCompleted.Add(1)
 	mission.CompletedAt = &completed
 	mission.Version++
 	mission.UpdatedAt = completed
-	if err := r.store.PutMission(mission); err != nil {
+	if err := r.store.PutMissionIfVersion(mission, expectedVersion); err != nil {
 		return err
 	}
-	r.observeEvent(mission, "mission.completed", "", map[string]any{"artifacts": len(mission.Artifacts)})
+	if err := r.observeEvent(mission, "mission.completed", "", map[string]any{"artifacts": len(mission.Artifacts)}); err != nil {
+		return err
+	}
 	return nil
 }
 
 func (r *Runtime) Cancel(id string) (Mission, error) {
 	id = strings.TrimSpace(id)
-	mission, err := r.store.GetMission(id)
+	mission, err := r.getMission(id)
 	if err != nil {
 		return Mission{}, err
 	}
@@ -986,6 +1476,7 @@ func (r *Runtime) Cancel(id string) (Mission, error) {
 		}
 		return mission, nil
 	}
+	expectedVersion := mission.Version
 	for index := range mission.Plan {
 		if mission.Plan[index].State == StepPending || mission.Plan[index].State == StepRunning || mission.Plan[index].State == StepBlocked {
 			mission.Plan[index].State = StepBlocked
@@ -995,18 +1486,20 @@ func (r *Runtime) Cancel(id string) (Mission, error) {
 	mission.State = MissionCancelled
 	mission.Version++
 	mission.UpdatedAt = time.Now().UTC()
-	if err := r.store.PutMission(mission); err != nil {
+	if err := r.store.PutMissionIfVersion(mission, expectedVersion); err != nil {
 		return Mission{}, err
 	}
 	if cancel != nil {
 		cancel()
 	}
-	r.observeEvent(mission, "mission.cancelled", "", nil)
+	if err := r.observeEvent(mission, "mission.cancelled", "", nil); err != nil {
+		return mission, err
+	}
 	return mission, nil
 }
 
 func (r *Runtime) DecideApproval(missionID, approvalID string, approved bool, reason string) (Mission, error) {
-	mission, err := r.store.GetMission(strings.TrimSpace(missionID))
+	mission, err := r.getMission(strings.TrimSpace(missionID))
 	if err != nil {
 		return Mission{}, err
 	}
@@ -1022,13 +1515,17 @@ func (r *Runtime) DecideApprovalForActorCAS(missionID, approvalID string, approv
 }
 
 func (r *Runtime) decideApprovalForActor(missionID, approvalID string, approved bool, reason, actorID, organizationID string, expectedVersion int64, nonce string, requireNonce bool) (Mission, error) {
-	mission, err := r.store.GetMission(strings.TrimSpace(missionID))
+	mission, err := r.getMission(strings.TrimSpace(missionID))
 	if err != nil {
 		return Mission{}, err
+	}
+	if err := r.validateMissionApprovalBindings(mission); err != nil {
+		return Mission{}, ErrApprovalPayloadChanged
 	}
 	if expectedVersion > 0 && mission.Version != expectedVersion {
 		return Mission{}, ErrApprovalVersionConflict
 	}
+	expectedVersion = mission.Version
 	for index := range mission.Approvals {
 		if mission.Approvals[index].ID != approvalID {
 			continue
@@ -1052,8 +1549,19 @@ func (r *Runtime) decideApprovalForActor(missionID, approvalID string, approved 
 		if len([]byte(reason)) > 2048 {
 			return Mission{}, ErrApprovalReasonTooLong
 		}
+		reason = RedactDLP(reason)
 		if requireNonce && (strings.TrimSpace(nonce) == "" || nonce != mission.Approvals[index].Nonce) {
 			return Mission{}, ErrApprovalNonceMismatch
+		}
+		if approved && mission.Approvals[index].PayloadSHA256 != "" {
+			step, ok := missionStep(mission, mission.Approvals[index].StepID)
+			if !ok {
+				return Mission{}, ErrApprovalPayloadChanged
+			}
+			payloadHash, hashErr := approvalPayloadSHA256(step)
+			if hashErr != nil || payloadHash != mission.Approvals[index].PayloadSHA256 {
+				return Mission{}, ErrApprovalPayloadChanged
+			}
 		}
 		mission.Approvals[index].ActorID = strings.TrimSpace(actorID)
 		mission.Approvals[index].OrganizationID = mission.OrganizationID
@@ -1072,36 +1580,36 @@ func (r *Runtime) decideApprovalForActor(missionID, approvalID string, approved 
 		}
 		mission.Version++
 		mission.UpdatedAt = time.Now().UTC()
-		var saveErr error
-		if requireNonce {
-			saveErr = r.store.PutMissionIfVersion(mission, expectedVersion)
-			if errors.Is(saveErr, ErrMissionVersionConflict) {
-				saveErr = ErrApprovalVersionConflict
-			}
-		} else {
-			saveErr = r.store.PutMission(mission)
+		saveErr := r.store.PutMissionIfVersion(mission, expectedVersion)
+		if errors.Is(saveErr, ErrMissionVersionConflict) {
+			saveErr = ErrApprovalVersionConflict
 		}
 		if saveErr != nil {
 			return Mission{}, saveErr
 		}
 		r.metrics.approvals.Add(1)
-		r.observeEvent(mission, "approval.decided", mission.Approvals[index].StepID, map[string]any{"approved": approved, "reason": reason})
-		return mission, nil
+		if err := r.observeEvent(mission, "approval.decided", mission.Approvals[index].StepID, map[string]any{"approved": approved, "reason": reason}); err != nil {
+			return redactMissionForPersistence(mission), err
+		}
+		return redactMissionForPersistence(mission), nil
 	}
 	return Mission{}, errors.New("approval not found or already decided")
 }
 
 func (r *Runtime) missionCancelled(id string) bool {
-	mission, err := r.store.GetMission(strings.TrimSpace(id))
+	mission, err := r.getMission(strings.TrimSpace(id))
 	return err == nil && mission.State == MissionCancelled
 }
 
 func (r *Runtime) Events(id string) ([]Event, error) {
+	if _, err := r.getMission(strings.TrimSpace(id)); err != nil {
+		return nil, err
+	}
 	return r.store.ListEvents(strings.TrimSpace(id))
 }
 
 func (r *Runtime) Artifact(missionID, artifactID string) (ArtifactManifest, string, error) {
-	mission, err := r.store.GetMission(strings.TrimSpace(missionID))
+	mission, err := r.getMission(strings.TrimSpace(missionID))
 	if err != nil {
 		return ArtifactManifest{}, "", err
 	}
@@ -1109,16 +1617,34 @@ func (r *Runtime) Artifact(missionID, artifactID string) (ArtifactManifest, stri
 		if artifact.ID != artifactID {
 			continue
 		}
-		path, err := safeWorkspacePath(mission.Workspace, artifact.Path)
+		if _, err := safeWorkspacePath(mission.Workspace, artifact.Path); err != nil {
+			return ArtifactManifest{}, "", err
+		}
+		workspaceRoot, err := openMissionWorkspaceSnapshot(r.dataRoot, mission)
+		if err != nil {
+			return ArtifactManifest{}, "", fmt.Errorf("validate mission workspace snapshot: %w", err)
+		}
+		if workspaceRoot != nil {
+			defer workspaceRoot.Close()
+		}
+		var snapshotPath string
+		if workspaceRoot != nil {
+			snapshotPath, err = createVerifiedArtifactSnapshotFromRoot(workspaceRoot, artifact.Path, artifact)
+		} else {
+			snapshotPath, err = createVerifiedArtifactSnapshot(mission.Workspace, artifact.Path, artifact)
+		}
 		if err != nil {
 			return ArtifactManifest{}, "", err
 		}
-		return artifact, path, nil
+		return artifact, snapshotPath, nil
 	}
 	return ArtifactManifest{}, "", os.ErrNotExist
 }
 
 func (r *Runtime) approvalsReady(mission Mission) bool {
+	if r.validateMissionApprovalBindings(mission) != nil {
+		return false
+	}
 	for _, approval := range mission.Approvals {
 		if approval.Status != ApprovalApproved {
 			return false
@@ -1128,28 +1654,106 @@ func (r *Runtime) approvalsReady(mission Mission) bool {
 }
 
 func (r *Runtime) stepApproved(mission Mission, stepID string) bool {
+	if r.validateMissionApprovalBindings(mission) != nil {
+		return false
+	}
+	approval, ok := approvalForStep(mission, stepID)
+	return ok && approval.Status == ApprovalApproved && approval.PayloadSHA256 != ""
+}
+
+func (r *Runtime) validateMissionApprovalBindings(mission Mission) error {
+	if r == nil || r.tools == nil {
+		return errors.New("approval tool registry is unavailable")
+	}
+	steps := make(map[string]Step, len(mission.Plan))
+	for _, step := range mission.Plan {
+		if step.ID == "" {
+			return errors.New("approval step id is missing")
+		}
+		if _, exists := steps[step.ID]; exists {
+			return errors.New("approval step id is ambiguous")
+		}
+		steps[step.ID] = step
+	}
+	approvals := make(map[string]Approval, len(mission.Approvals))
+	approvalIDs := make(map[string]struct{}, len(mission.Approvals))
 	for _, approval := range mission.Approvals {
-		if approval.StepID == stepID {
-			return approval.Status == ApprovalApproved
+		step, exists := steps[approval.StepID]
+		if !exists || !step.RequiresApproval || approval.ID == "" || approval.MissionID != mission.ID || approval.OrganizationID != mission.OrganizationID || approval.PayloadSHA256 == "" || approval.Nonce == "" || approval.ExpiresAt == nil {
+			return errors.New("approval record is missing or not bound to its mission")
+		}
+		if _, duplicate := approvals[approval.StepID]; duplicate {
+			return errors.New("approval step has duplicate approval records")
+		}
+		if _, duplicate := approvalIDs[approval.ID]; duplicate {
+			return errors.New("approval id is ambiguous")
+		}
+		approvalIDs[approval.ID] = struct{}{}
+		if approval.Status != ApprovalPending && approval.Status != ApprovalApproved && approval.Status != ApprovalRejected {
+			return errors.New("approval status is invalid")
+		}
+		if time.Now().UTC().After(*approval.ExpiresAt) {
+			return errors.New("approval has expired")
+		}
+		if approval.Status != ApprovalPending && (strings.TrimSpace(approval.ActorID) == "" || strings.TrimSpace(approval.Reason) == "") {
+			return errors.New("decided approval is missing actor or reason")
+		}
+		tool, ok := r.tools.Get(step.Kind)
+		if !ok || approval.Policy == "" || approval.Policy != toolApprovalPolicy(tool.Descriptor(), step.Risk) {
+			return errors.New("approval policy does not match the current tool descriptor")
+		}
+		payloadHash, err := approvalPayloadSHA256(step)
+		if err != nil || payloadHash != approval.PayloadSHA256 {
+			return ErrApprovalPayloadChanged
+		}
+		approvals[approval.StepID] = approval
+	}
+	for _, step := range steps {
+		if step.RequiresApproval {
+			if _, exists := approvals[step.ID]; !exists {
+				return errors.New("approval-required step has no approval record")
+			}
 		}
 	}
-	return true
+	return nil
+}
+
+func approvalForStep(mission Mission, stepID string) (Approval, bool) {
+	for _, approval := range mission.Approvals {
+		if approval.StepID == stepID {
+			return approval, true
+		}
+	}
+	return Approval{}, false
+}
+
+func missionStep(mission Mission, stepID string) (Step, bool) {
+	for _, step := range mission.Plan {
+		if step.ID == stepID {
+			return step, true
+		}
+	}
+	return Step{}, false
 }
 
 func (r *Runtime) failMission(mission Mission, err error) (Mission, error) {
+	expectedVersion := mission.Version
 	mission.State = MissionFailed
 	r.metrics.missionsFailed.Add(1)
 	mission.LastError = RedactDLP(err.Error())
 	mission.Version++
 	mission.UpdatedAt = time.Now().UTC()
-	if saveErr := r.store.PutMission(mission); saveErr != nil {
+	if saveErr := r.store.PutMissionIfVersion(mission, expectedVersion); saveErr != nil {
 		return Mission{}, saveErr
 	}
-	r.observeEvent(mission, "mission.failed", "", map[string]any{"error": err.Error()})
-	return mission, err
+	if eventErr := r.observeEvent(mission, "mission.failed", "", map[string]any{"error": err.Error()}); eventErr != nil {
+		return redactMissionForPersistence(mission), errors.Join(err, eventErr)
+	}
+	return redactMissionForPersistence(mission), err
 }
 
 func (r *Runtime) failStep(mission Mission, step *Step, err error) error {
+	expectedVersion := mission.Version
 	step.State = StepFailed
 	r.metrics.stepsFailed.Add(1)
 	step.Error = RedactDLP(err.Error())
@@ -1157,17 +1761,90 @@ func (r *Runtime) failStep(mission Mission, step *Step, err error) error {
 	mission.LastError = RedactDLP(err.Error())
 	mission.Version++
 	mission.UpdatedAt = time.Now().UTC()
-	if saveErr := r.store.PutMission(mission); saveErr != nil {
+	if saveErr := r.store.PutMissionIfVersion(mission, expectedVersion); saveErr != nil {
 		return saveErr
 	}
-	r.observeEvent(mission, "step.failed", step.ID, map[string]any{"error": RedactDLP(err.Error()), "attempts": step.Attempts})
+	if eventErr := r.observeEvent(mission, "step.failed", step.ID, map[string]any{"error": RedactDLP(err.Error()), "attempts": step.Attempts}); eventErr != nil {
+		return errors.Join(err, eventErr)
+	}
 	return err
 }
 
-func (r *Runtime) observeEvent(mission Mission, eventType, stepID string, payload any) {
+func appendUniqueArtifacts(existing, incoming []ArtifactManifest) []ArtifactManifest {
+	if len(incoming) == 0 {
+		return existing
+	}
+	seen := make(map[string]struct{}, len(existing)+len(incoming))
+	key := func(artifact ArtifactManifest) string {
+		if artifact.ID != "" {
+			return artifact.ID
+		}
+		return artifact.MissionID + "\x00" + artifact.StepID + "\x00" + artifact.Path + "\x00" + artifact.SHA256
+	}
+	for _, artifact := range existing {
+		seen[key(artifact)] = struct{}{}
+	}
+	for _, artifact := range incoming {
+		artifactKey := key(artifact)
+		if _, exists := seen[artifactKey]; exists {
+			continue
+		}
+		seen[artifactKey] = struct{}{}
+		existing = append(existing, artifact)
+	}
+	return existing
+}
+
+func shouldRetryStep(step Step, tools *Registry) bool {
+	return step.Attempts < 2 && effectiveStepRisk(step, tools) == RiskRead
+}
+
+func missionHasNonReadStep(mission Mission, tools *Registry) bool {
+	for _, step := range mission.Plan {
+		if effectiveStepRisk(step, tools) != RiskRead {
+			return true
+		}
+	}
+	return false
+}
+
+func interruptedNonReadStep(mission Mission, tools *Registry) *Step {
+	for index := range mission.Plan {
+		step := &mission.Plan[index]
+		if step.State == StepRunning && effectiveStepRisk(*step, tools) != RiskRead {
+			return step
+		}
+	}
+	return nil
+}
+
+func effectiveStepRisk(step Step, tools *Registry) RiskClass {
+	if strings.TrimSpace(string(step.Risk)) == "" {
+		if tools != nil {
+			if tool, ok := tools.Get(step.Kind); ok {
+				return effectiveRisk(tool.Descriptor().Risk)
+			}
+		}
+		return RiskDestructive
+	}
+	risk := effectiveRisk(step.Risk)
+	if tools != nil {
+		if tool, ok := tools.Get(step.Kind); ok {
+			toolRisk := effectiveRisk(tool.Descriptor().Risk)
+			if riskRank(toolRisk) > riskRank(risk) {
+				return toolRisk
+			}
+		}
+	}
+	return risk
+}
+
+func (r *Runtime) observeEvent(mission Mission, eventType, stepID string, payload any) error {
 	if err := r.event(mission, eventType, stepID, payload); err != nil {
 		slog.Error("agent event persistence failed", "mission_id", mission.ID, "event_type", eventType, "step_id", stepID, "error", err)
+		return err
 	}
+	return nil
 }
 
 func (r *Runtime) event(mission Mission, eventType, stepID string, payload any) error {
@@ -1183,15 +1860,17 @@ func (r *Runtime) event(mission Mission, eventType, stepID string, payload any) 
 		}
 		if r.pushOutbox == nil {
 			r.metrics.pushOutboxFailures.Add(1)
+			slog.Error("push notification outbox is unavailable", "mission_id", mission.ID, "event_type", eventType)
 		} else if _, enqueueErr := r.pushOutbox.Enqueue(mission.OrganizationID, title, body, map[string]any{"mission_id": mission.ID, "event": eventType}); enqueueErr != nil {
 			r.metrics.pushOutboxFailures.Add(1)
+			slog.Error("push notification enqueue failed", "mission_id", mission.ID, "event_type", eventType, "error", enqueueErr)
 		}
 	}
 	return err
 }
 
 func riskRank(risk RiskClass) int {
-	switch risk {
+	switch effectiveRisk(risk) {
 	case RiskRead:
 		return 0
 	case RiskWrite:
@@ -1201,7 +1880,18 @@ func riskRank(risk RiskClass) int {
 	case RiskDestructive:
 		return 3
 	default:
-		return 2
+		return 3
+	}
+}
+
+func effectiveRisk(risk RiskClass) RiskClass {
+	switch risk {
+	case "":
+		return RiskDestructive
+	case RiskRead, RiskWrite, RiskExternalSideEffect, RiskDestructive:
+		return risk
+	default:
+		return RiskDestructive
 	}
 }
 

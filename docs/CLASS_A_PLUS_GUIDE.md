@@ -1,8 +1,8 @@
-# Ollama Classe A+
+# Ollama Full
 
 ## Manual público do projeto
 
-O **Ollama Classe A+** é a distribuição experimental do Ollama DZ23 que combina execução local de modelos, roteamento multi-provider e um runtime agentic com missões persistentes, ferramentas com aprovação, sandbox, memória, pesquisa, Browser Operator, companions, conectores, builders, observabilidade e publicação controlada. O projeto preserva a compatibilidade da base Ollama sempre que possível e evolui as superfícies agentic em camadas verificáveis.
+O **Ollama Full** é a distribuição experimental do Ollama DZ23 que combina execução local de modelos, roteamento multi-provider e um runtime agentic com missões persistentes, ferramentas com aprovação, sandbox, memória, pesquisa, Browser Operator, companions, conectores, builders, observabilidade e publicação controlada. O projeto preserva a compatibilidade da base Ollama sempre que possível e evolui as superfícies agentic em camadas verificáveis.
 
 > **Estado real:** o projeto possui uma base extensa implementada e endurecida com testes locais. Os gates de backend, vet, UI e mobile desta revisão passaram. Isso ainda não equivale a paridade total com todos os produtos do mercado: recursos dependentes de contas externas, hardware, certificados, lojas, modelos multimodais e ambientes distribuídos precisam de validação adicional.
 
@@ -20,7 +20,7 @@ A arquitetura é local-first. Um operador pode começar apenas com o binário e 
 | Multi-provider DZ23 | Implementado | Provedores explicitamente configurados e endpoints compatíveis. |
 | xAI/Grok API | Adapter implementado | Preset Responses/chat com bearer server-side; a validação externa depende de chave, quota e modelo xAI. Não é o Grok Bot hospedado. |
 | Composio Connect | Adapter implementado | Remote MCP com headers server-side, allowlist e approval; connected accounts e OAuth por app/tenant dependem do operador. |
-| OmniRoute | Adapter OpenAI-compatible com preset local | Exige instância OmniRoute, chave e smoke test do operador; auto-routing externo não é inventado pelo Classe A+. |
+| OmniRoute | Adapter OpenAI-compatible com preset local | Exige instância OmniRoute, chave e smoke test do operador; auto-routing externo não é inventado pelo Ollama Full. |
 | Missões agentic | Implementado | Plano validado, execução, eventos, recovery e artefatos. |
 | Approvals e sandbox | Implementado | Tools classificadas e execução protegida por políticas do servidor. |
 | Multiagente e pesquisa | Implementado localmente | Papéis, orçamento, síntese, citações, cache, robots e SSRF guard. |
@@ -32,7 +32,7 @@ A arquitetura é local-first. Um operador pode começar apenas com o binário e 
 | SSO | Implementado em adapters | OAuth/OIDC e SAML exigem IdP, certificados e testes de produção. |
 | Mobile | Base Expo implementada | Push, conflitos avançados, assinatura e lojas ainda dependem de ambiente real. |
 | Modelos locais de mídia | Adapter configurável | Não confundir adapter multimodal com modelos locais completos já distribuídos. |
-| Shell desktop Classe A+ | Parcialmente implementado | Home com composer e recomendações, menu persistente, CRUD real de Projetos e Agendado, catálogos reais de Tasks/Skills/Plugins/Biblioteca, lifecycle de plugins e Control Center sanitizado; builder rico e superfícies de produção ainda evoluem. |
+| Shell desktop Ollama Full | Parcialmente implementado | Home com composer e recomendações, menu persistente, CRUD real de Projetos e Agendado, catálogos reais de Tasks/Skills/Plugins/Biblioteca, lifecycle de plugins e Control Center sanitizado; builder rico e superfícies de produção ainda evoluem. |
 | HarnessRouter | Adapter implementado | Provider OpenAI Responses-compatible com `harness_id` server-side para Codex/Claude Code; exige instância, chave e harness instalados para validação ponta a ponta. |
 | Company OS | Implementado localmente nesta rodada | Empresa/tenant, identidade, 7 departamentos, roadmap, KPIs, backlog, ciclos, relatório, budget, approvals, pausa por limite/anomalia e Growth OS sandbox para campanhas, afiliados, catálogo e pedidos; CRM, social, marketplaces, fulfillment e ads reais ainda dependem de connectors e ambientes externos. |
 | Desktop Commander Remote MCP | Adapter implementado | Stdio local e Streamable HTTP remoto com allowlist, HTTPS, bearer opcional e approval; OAuth PKCE, conta, device pairing e testes físicos dependem do operador. |
@@ -44,7 +44,7 @@ O relatório [`READINESS_2026-09-22.md`](agentic/READINESS_2026-09-22.md) regist
 
 ## Build e execução rápidos
 
-O fork público distribui o código-fonte, não um instalador assinado, binário de release, imagem Docker pública ou pacote de loja Classe A+. Não use `ollama.com/install.sh`, `OllamaSetup.exe`, `Ollama.dmg` ou `ollama/ollama` para instalar este fork: esses artefatos pertencem ao upstream. Compile a revisão do repositório para desenvolvimento e validação local:
+O fork público distribui o código-fonte, não um instalador assinado, binário de release, imagem Docker pública ou pacote de loja Ollama Full. Não use `ollama.com/install.sh`, `OllamaSetup.exe`, `Ollama.dmg` ou `ollama/ollama` para instalar este fork: esses artefatos pertencem ao upstream. Compile a revisão do repositório para desenvolvimento e validação local:
 
 ```bash
 git clone https://github.com/DZ23-LTDA/ollama-classe-a-plus.git
@@ -80,13 +80,12 @@ A composição de desenvolvimento está em `deploy/docker-compose.agentic.yml`. 
 export OLLAMA_AGENT_POSTGRES_PASSWORD="$(openssl rand -hex 24)"
 export OLLAMA_AGENT_REDIS_PASSWORD="$(openssl rand -hex 24)"
 docker compose -f deploy/docker-compose.agentic.yml up -d --wait
-export OLLAMA_AGENT_DATABASE_URL="postgres://ollama_agent:${OLLAMA_AGENT_POSTGRES_PASSWORD}@127.0.0.1:5432/ollama_agent?sslmode=disable"
 export OLLAMA_AGENT_REDIS_URL="redis://:${OLLAMA_AGENT_REDIS_PASSWORD}@127.0.0.1:6379/0"
 export OLLAMA_AGENT_OTLP_ENDPOINT='http://127.0.0.1:4318'
 OLLAMA_HOST=127.0.0.1:11434 ./bin/ollama-classe-a-plus serve
 ```
 
-Em produção, use PostgreSQL gerenciado ou uma instância com backups e RLS revisado, Redis com autenticação e rede privada, e um collector OTLP com autenticação e retenção definida.
+PostgreSQL no compose fica disponível para integração/testes controlados, mas não passe sua URL ao servidor: o runtime público falha fechado para `OLLAMA_AGENT_DATABASE_URL` até existir tenant context não-forjável e papéis runtime/migrator separados. Em produção multi-tenant, não habilite PostgreSQL para a API; mantenha o store local ou aguarde a resolução documentada em `SECURITY.md`. Redis exige autenticação/rede privada e collector OTLP deve ter autenticação e retenção definidas.
 
 ## Configuração essencial
 
@@ -115,7 +114,7 @@ OLLAMA_HOST=127.0.0.1:11434 ./bin/ollama-classe-a-plus serve
 | `OLLAMA_AGENT_AUTH_DEV` | Modo de desenvolvimento; não habilitar em produção. |
 | `OLLAMA_AGENT_AUTH_SSO_PUBLIC` | Permite início de SSO sem sessão prévia quando explicitamente habilitado. |
 | `OLLAMA_AGENT_CREDENTIAL_KEY` | Chave externa usada para cifrar credenciais OAuth e MFA. |
-| `OLLAMA_AGENT_DATABASE_URL` | Habilita store PostgreSQL com isolamento por organização. |
+| `OLLAMA_AGENT_DATABASE_URL` | **Bloqueada para o servidor público** até a correção da arquitetura RLS/tenant; configuração presente retorna erro fail-closed. PostgreSQL permanece apenas para integração/uso controlado. |
 | `OLLAMA_AGENT_REDIS_URL` | Habilita fila Redis e workers compartilhados. |
 | `OLLAMA_AGENT_REDIS_PREFIX` | Prefixo lógico das chaves Redis. |
 | `OLLAMA_AGENT_OTLP_ENDPOINT` | Endpoint OTLP HTTP para traces distribuídos. |
@@ -253,7 +252,7 @@ Para testes distribuídos que exigem serviços reais, use a tag e variáveis doc
 
 Também revise `git diff --check`, rode scanners de segredos, verifique permissões dos arquivos, confirme que não há tokens em logs e valide autorização negativa por organização. Toda operação com efeito externo deve ter approval, timeout, limite e registro auditável.
 
-Para proteger as superfícies Classe A+ durante atualizações do motor, execute também `scripts/check-class-a-plus-integrity.sh` e `node app/ui/app/scripts/smoke-shell.mjs`. A política completa de atualização manual, o commit upstream aceito e o procedimento de rollback estão em [`UPSTREAM_POLICY.md`](../UPSTREAM_POLICY.md). O remote `upstream` nunca é mesclado automaticamente.
+Para proteger as superfícies Ollama Full durante atualizações do motor, execute também `scripts/check-class-a-plus-integrity.sh` e `node app/ui/app/scripts/smoke-shell.mjs`. A política completa de atualização manual, o commit upstream aceito e o procedimento de rollback estão em [`UPSTREAM_POLICY.md`](../UPSTREAM_POLICY.md). O remote `upstream` nunca é mesclado automaticamente.
 
 ## Como contribuir
 

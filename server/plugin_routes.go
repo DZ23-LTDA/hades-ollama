@@ -26,16 +26,13 @@ func pluginCatalog(c *gin.Context, a *agentAPI) {
 	if a.authRequired {
 		organizationID = agentOrganizationID(c)
 	}
-	connectors := a.runtime.Connectors()
-	mcp := a.runtime.MCPServers()
-	remoteMCP := a.runtime.RemoteMCPServers()
-	skills := a.context.Skills()
-	if a.authRequired {
-		connectors = a.runtime.ConnectorsForOrganization(organizationID)
-		mcp = a.runtime.MCPServersForOrganization(organizationID)
-		remoteMCP = a.runtime.RemoteMCPServersForOrganization(organizationID)
-		skills = a.runtime.SkillsForOrganization(organizationID)
+	if !a.authRequired {
+		organizationID = agent.LocalOrganizationID
 	}
+	connectors := a.runtime.ConnectorsForOrganization(organizationID)
+	mcp := a.runtime.MCPServersForOrganization(organizationID)
+	remoteMCP := a.runtime.RemoteMCPServersForOrganization(organizationID)
+	skills := a.runtime.SkillsForOrganization(organizationID)
 	c.JSON(http.StatusOK, gin.H{
 		"connectors": connectors,
 		"mcp":        mcp,
@@ -49,11 +46,11 @@ func connectorCatalog(c *gin.Context) {
 }
 
 func writePluginLifecycleError(c *gin.Context, err error) {
-	status := http.StatusNotFound
-	if errors.Is(err, agent.ErrPluginOrganizationScope) {
-		status = http.StatusForbidden
+	if errors.Is(err, agent.ErrPluginOrganizationScope) || errors.Is(err, agent.ErrPluginNotFound) {
+		writeAgentError(c, http.StatusNotFound, agent.ErrPluginNotFound)
+		return
 	}
-	writeAgentError(c, status, err)
+	writeAgentError(c, http.StatusBadRequest, err)
 }
 
 func writePluginRegistrationError(c *gin.Context, err error) {
@@ -94,7 +91,7 @@ func (a *agentAPI) registerConnector(c *gin.Context) {
 		err = a.runtime.RegisterConnector(input)
 	}
 	if err != nil {
-		writePluginLifecycleError(c, err)
+		writePluginRegistrationError(c, err)
 		return
 	}
 	pluginCatalog(c, a)

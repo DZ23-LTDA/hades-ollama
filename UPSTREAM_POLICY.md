@@ -1,8 +1,8 @@
-# Política de atualização upstream — Ollama Classe A+
+# Política de atualização upstream — Ollama Full
 
 ## Regra principal
 
-O Ollama Classe A+ é um fork com uma superfície agentic própria. **Nenhuma atualização do repositório upstream altera este projeto automaticamente.** O remote `upstream` é usado somente para consulta e comparação. A integração de mudanças upstream exige uma branch manual, revisão de diff, execução dos guardrails e aprovação por Pull Request.
+O Ollama Full é um fork com uma superfície agentic própria. **Nenhuma atualização do repositório upstream altera este projeto automaticamente.** O remote `upstream` é usado somente para consulta e comparação. A integração de mudanças upstream exige uma branch manual, revisão de diff, execução dos guardrails e aprovação por Pull Request.
 
 A base upstream aceita nesta revisão está registrada em [`UPSTREAM_BASE_COMMIT`](UPSTREAM_BASE_COMMIT). Esse marcador não é uma promessa de compatibilidade total entre versões; ele é um ponto de auditoria para saber qual motor foi analisado.
 
@@ -24,7 +24,7 @@ A existência do arquivo não basta. Os testes Go, build da UI, smoke Chromium e
 1. Faça `git fetch --no-tags upstream main` sem modificar `main`, a branch de publicação ou a branch agentic ativa.
 2. Crie uma branch `chore/upstream-YYYYMMDD` a partir de `class-a-plus/main`.
 3. Compare o novo commit com [`UPSTREAM_BASE_COMMIT`](UPSTREAM_BASE_COMMIT). Nunca faça force-push nem substitua o histórico público.
-4. Reaplique ou resolva conflitos preservando `internal/agent`, `internal/multillm`, `server/agent_routes.go`, UI, mobile, políticas e documentação Classe A+.
+4. Reaplique ou resolva conflitos preservando `internal/agent`, `internal/multillm`, `server/agent_routes.go`, UI, mobile, políticas e documentação Ollama Full.
 5. Atualize `UPSTREAM_BASE_COMMIT` somente depois de revisar o diff e os riscos.
 6. Execute, no mínimo:
 

@@ -46,7 +46,7 @@ func (p MediaProvider) Validate() error {
 		return errors.New("media provider base URL is required")
 	}
 	u, err := url.Parse(p.BaseURL)
-	if err != nil || u.Host == "" || (u.Scheme != "https" && !(u.Scheme == "http" && isLoopbackHost(u.Hostname()))) {
+	if err != nil || u.Host == "" || u.User != nil || (u.Scheme != "https" && !(u.Scheme == "http" && isLoopbackHost(u.Hostname()))) {
 		return errors.New("media provider must use HTTPS or a loopback HTTP endpoint")
 	}
 	if u.Scheme == "https" && strings.TrimSpace(p.APIKey) == "" {
@@ -159,7 +159,10 @@ func openSafeMediaInput(workspace, inputPath string) (*os.Root, *os.File, string
 	return rootHandle, file, relative, openedInfo, nil
 }
 
-func writeMediaFile(workspace, relativePath string, data []byte, limit int64) (string, error) {
+func writeMediaFile(workspace, relativePath string, data []byte, limit int64, pinnedRoots ...*os.Root) (string, error) {
+	if len(pinnedRoots) > 0 {
+		return writeMediaFileFromRoot(workspace, pinnedRoots[0], relativePath, data, limit)
+	}
 	if int64(len(data)) > limit {
 		return "", errors.New("media payload exceeds limit")
 	}
@@ -215,7 +218,10 @@ func rejectMediaOutputSymlinks(root *os.Root, relativePath string) error {
 	return nil
 }
 
-func validateMediaOutputDirectory(workspace, relativePath string) error {
+func validateMediaOutputDirectory(workspace, relativePath string, pinnedRoots ...*os.Root) error {
+	if len(pinnedRoots) > 0 {
+		return validateMediaOutputDirectoryFromRoot(pinnedRoots[0], relativePath)
+	}
 	root, _, err := openMediaWorkspaceRoot(workspace)
 	if err != nil {
 		return err
@@ -282,6 +288,8 @@ func NewMediaManager(provider MediaProvider) (*MediaManager, error) {
 
 type mediaLoopbackContextKey struct{}
 
+var errMediaRedirectDisabled = errors.New("media redirects are disabled")
+
 func newMediaHTTPClient(timeout time.Duration) *http.Client {
 	transport := http.DefaultTransport.(*http.Transport).Clone()
 	transport.Proxy = nil
@@ -290,7 +298,7 @@ func newMediaHTTPClient(timeout time.Duration) *http.Client {
 }
 
 func rejectMediaRedirect(_ *http.Request, _ []*http.Request) error {
-	return errors.New("media redirects are disabled")
+	return errMediaRedirectDisabled
 }
 
 func mediaDialContext(ctx context.Context, network, address string) (net.Conn, error) {
@@ -318,11 +326,13 @@ func mediaDialContextWithResolver(ctx context.Context, network, address string, 
 	if len(addresses) == 0 {
 		return nil, errors.New("media destination has no addresses")
 	}
-	if !mediaLoopbackContext(ctx) {
-		for _, resolved := range addresses {
-			if mediaPrivateIP(resolved.IP) {
-				return nil, errors.New("media destination resolves to a private address")
-			}
+	allowLoopback := mediaLoopbackContext(ctx)
+	for _, resolved := range addresses {
+		if resolved.IP == nil || (allowLoopback && !resolved.IP.IsLoopback()) {
+			return nil, errors.New("media loopback destination resolves outside loopback")
+		}
+		if !allowLoopback && mediaPrivateIP(resolved.IP) {
+			return nil, errors.New("media destination resolves to a private address")
 		}
 	}
 	var lastErr error
@@ -338,10 +348,18 @@ func mediaDialContextWithResolver(ctx context.Context, network, address string, 
 			target = net.JoinHostPort(resolved.IP.String()+"%"+resolved.Zone, port)
 		}
 		conn, dialErr := dialer.DialContext(ctx, network, target)
-		if dialErr == nil {
-			return conn, nil
+		if dialErr != nil {
+			lastErr = dialErr
+			continue
 		}
-		lastErr = dialErr
+		remoteHost, _, splitErr := net.SplitHostPort(conn.RemoteAddr().String())
+		remoteIP := net.ParseIP(strings.Trim(remoteHost, "[]"))
+		if splitErr != nil || remoteIP == nil || !remoteIP.Equal(resolved.IP) || (allowLoopback && !remoteIP.IsLoopback()) || (!allowLoopback && mediaPrivateIP(remoteIP)) {
+			_ = conn.Close()
+			lastErr = errors.New("media connected address was not approved")
+			continue
+		}
+		return conn, nil
 	}
 	if lastErr != nil {
 		return nil, lastErr
@@ -358,6 +376,13 @@ func mediaLoopbackContext(ctx context.Context) bool {
 	return value
 }
 
+func rejectSensitiveMediaText(field, value string) error {
+	if findings := ScanDLP(value); len(findings) > 0 {
+		return fmt.Errorf("media %s contains sensitive data (%s)", field, findings[0].Kind)
+	}
+	return nil
+}
+
 func mediaRequestContext(ctx context.Context, rawURL string) (context.Context, error) {
 	parsed, err := url.Parse(rawURL)
 	if err != nil || parsed.Hostname() == "" {
@@ -366,14 +391,17 @@ func mediaRequestContext(ctx context.Context, rawURL string) (context.Context, e
 	return context.WithValue(ctx, mediaLoopbackContextKey{}, isLoopbackHost(parsed.Hostname())), nil
 }
 
-func (m *MediaManager) GenerateImage(ctx context.Context, workspace, prompt, model string) (MediaResult, error) {
+func (m *MediaManager) GenerateImage(ctx context.Context, workspace, prompt, model string, pinnedRoots ...*os.Root) (MediaResult, error) {
 	if strings.TrimSpace(prompt) == "" {
 		return MediaResult{}, errors.New("image prompt is required")
+	}
+	if err := rejectSensitiveMediaText("prompt", prompt); err != nil {
+		return MediaResult{}, err
 	}
 	if model == "" {
 		model = m.Provider.ImageModel
 	}
-	if err := validateMediaOutputDirectory(workspace, ".agent-media"); err != nil {
+	if err := validateMediaOutputDirectory(workspace, ".agent-media", pinnedRoots...); err != nil {
 		return MediaResult{}, err
 	}
 	payload, err := m.postJSON(ctx, "/images/generations", map[string]any{"model": model, "prompt": prompt, "n": 1, "response_format": "b64_json"})
@@ -384,25 +412,28 @@ func (m *MediaManager) GenerateImage(ctx context.Context, workspace, prompt, mod
 	if err != nil {
 		return MediaResult{}, err
 	}
-	path, mediaType, err := m.materializeEntry(ctx, workspace, "generated-image", ".png", entry)
+	path, mediaType, err := m.materializeEntry(ctx, workspace, "generated-image", ".png", entry, pinnedRoots...)
 	if err != nil {
 		return MediaResult{}, err
 	}
-	artifact, err := BuildArtifactManifest(workspace, "", "", filepath.Base(path), filepath.ToSlash(filepath.Join(".agent-media", filepath.Base(path))))
+	artifact, err := buildMediaArtifact(workspace, filepath.ToSlash(filepath.Join(".agent-media", filepath.Base(path))), pinnedRoots...)
 	if err != nil {
 		return MediaResult{}, err
 	}
 	return MediaResult{Path: path, MediaType: mediaType, Artifact: artifact}, nil
 }
 
-func (m *MediaManager) GenerateVideo(ctx context.Context, workspace, prompt, model string) (MediaResult, error) {
+func (m *MediaManager) GenerateVideo(ctx context.Context, workspace, prompt, model string, pinnedRoots ...*os.Root) (MediaResult, error) {
 	if strings.TrimSpace(prompt) == "" {
 		return MediaResult{}, errors.New("video prompt is required")
+	}
+	if err := rejectSensitiveMediaText("prompt", prompt); err != nil {
+		return MediaResult{}, err
 	}
 	if model == "" {
 		model = m.Provider.VideoModel
 	}
-	if err := validateMediaOutputDirectory(workspace, ".agent-media"); err != nil {
+	if err := validateMediaOutputDirectory(workspace, ".agent-media", pinnedRoots...); err != nil {
 		return MediaResult{}, err
 	}
 	payload, err := m.postJSON(ctx, "/videos/generations", map[string]any{"model": model, "prompt": prompt})
@@ -413,25 +444,28 @@ func (m *MediaManager) GenerateVideo(ctx context.Context, workspace, prompt, mod
 	if err != nil {
 		return MediaResult{}, err
 	}
-	path, mediaType, err := m.materializeEntry(ctx, workspace, "generated-video", ".mp4", entry)
+	path, mediaType, err := m.materializeEntry(ctx, workspace, "generated-video", ".mp4", entry, pinnedRoots...)
 	if err != nil {
 		return MediaResult{}, err
 	}
-	artifact, err := BuildArtifactManifest(workspace, "", "", filepath.Base(path), filepath.ToSlash(filepath.Join(".agent-media", filepath.Base(path))))
+	artifact, err := buildMediaArtifact(workspace, filepath.ToSlash(filepath.Join(".agent-media", filepath.Base(path))), pinnedRoots...)
 	if err != nil {
 		return MediaResult{}, err
 	}
 	return MediaResult{Path: path, MediaType: mediaType, Artifact: artifact}, nil
 }
 
-func (m *MediaManager) GenerateSpeech(ctx context.Context, workspace, text, voice, model string) (MediaResult, error) {
+func (m *MediaManager) GenerateSpeech(ctx context.Context, workspace, text, voice, model string, pinnedRoots ...*os.Root) (MediaResult, error) {
 	if strings.TrimSpace(text) == "" {
 		return MediaResult{}, errors.New("speech text is required")
+	}
+	if err := rejectSensitiveMediaText("speech text", text); err != nil {
+		return MediaResult{}, err
 	}
 	if model == "" {
 		model = m.Provider.SpeechModel
 	}
-	if err := validateMediaOutputDirectory(workspace, ".agent-media"); err != nil {
+	if err := validateMediaOutputDirectory(workspace, ".agent-media", pinnedRoots...); err != nil {
 		return MediaResult{}, err
 	}
 	body, err := m.postBytes(ctx, "/audio/speech", map[string]any{"model": model, "input": text, "voice": voice, "response_format": "wav"})
@@ -439,36 +473,37 @@ func (m *MediaManager) GenerateSpeech(ctx context.Context, workspace, text, voic
 		return MediaResult{}, err
 	}
 	relativePath := filepath.ToSlash(filepath.Join(".agent-media", "speech-"+strconv.FormatInt(time.Now().UnixNano(), 10)+".wav"))
-	path, err := writeMediaFile(workspace, relativePath, body, 100<<20)
+	path, err := writeMediaFile(workspace, relativePath, body, 100<<20, pinnedRoots...)
 	if err != nil {
 		return MediaResult{}, err
 	}
-	artifact, err := BuildArtifactManifest(workspace, "", "", filepath.Base(path), filepath.ToSlash(filepath.Join(".agent-media", filepath.Base(path))))
+	artifact, err := buildMediaArtifact(workspace, filepath.ToSlash(filepath.Join(".agent-media", filepath.Base(path))), pinnedRoots...)
 	if err != nil {
 		return MediaResult{}, err
 	}
 	return MediaResult{Path: path, MediaType: "audio/wav", Artifact: artifact}, nil
 }
 
-func (m *MediaManager) Transcribe(ctx context.Context, workspace, inputPath, model string) (MediaResult, error) {
+func (m *MediaManager) Transcribe(ctx context.Context, workspace, inputPath, model string, pinnedRoots ...*os.Root) (MediaResult, error) {
 	if strings.TrimSpace(inputPath) == "" {
 		return MediaResult{}, errors.New("audio input is required")
 	}
-	rootHandle, file, relativeInput, info, err := openSafeMediaInput(workspace, inputPath)
+	relativeInput, audio, err := readMediaInputBounded(ctx, workspace, inputPath, 100<<20, pinnedRoots...)
 	if err != nil {
 		return MediaResult{}, err
 	}
-	defer rootHandle.Close()
-	defer file.Close()
-	if info.Size() > 100<<20 {
+	return m.transcribeBytes(ctx, workspace, relativeInput, audio, model, pinnedRoots...)
+}
+
+func (m *MediaManager) transcribeBytes(ctx context.Context, workspace, relativeInput string, audio []byte, model string, pinnedRoots ...*os.Root) (MediaResult, error) {
+	if int64(len(audio)) > 100<<20 {
 		return MediaResult{}, errors.New("audio input exceeds 100 MiB")
 	}
-	transcriptRelative := filepath.ToSlash(filepath.Join(".agent-media", "transcript-"+strconv.FormatInt(time.Now().UnixNano(), 10)+".txt"))
-	if err := validateMediaOutputDirectory(workspace, ".agent-media"); err != nil {
-		return MediaResult{}, err
+	if findings := ScanDLP(string(audio)); len(findings) > 0 {
+		return MediaResult{}, fmt.Errorf("audio input contains sensitive data (%s)", findings[0].Kind)
 	}
-	audio, err := readMediaFile(ctx, file, 100<<20)
-	if err != nil {
+	transcriptRelative := filepath.ToSlash(filepath.Join(".agent-media", "transcript-"+strconv.FormatInt(time.Now().UnixNano(), 10)+".txt"))
+	if err := validateMediaOutputDirectory(workspace, ".agent-media", pinnedRoots...); err != nil {
 		return MediaResult{}, err
 	}
 	var body bytes.Buffer
@@ -503,11 +538,12 @@ func (m *MediaManager) Transcribe(ctx context.Context, workspace, inputPath, mod
 		return MediaResult{}, err
 	}
 	text, _ := payload["text"].(string)
-	transcriptPath, err := writeMediaFile(workspace, transcriptRelative, []byte(text+"\n"), 4<<20)
+	text = sanitizeMediaOutputText(text)
+	transcriptPath, err := writeMediaFile(workspace, transcriptRelative, []byte(text+"\n"), 4<<20, pinnedRoots...)
 	if err != nil {
 		return MediaResult{}, err
 	}
-	artifact, err := BuildArtifactManifest(workspace, "", "", filepath.Base(transcriptPath), filepath.ToSlash(filepath.Join(".agent-media", filepath.Base(transcriptPath))))
+	artifact, err := buildMediaArtifact(workspace, filepath.ToSlash(filepath.Join(".agent-media", filepath.Base(transcriptPath))), pinnedRoots...)
 	if err != nil {
 		return MediaResult{}, err
 	}
@@ -516,25 +552,32 @@ func (m *MediaManager) Transcribe(ctx context.Context, workspace, inputPath, mod
 
 // AnalyzeImage sends an image to a vision-capable chat model. It supports both
 // hosted OpenAI-compatible providers and a loopback Ollama /v1 endpoint.
-func (m *MediaManager) AnalyzeImage(ctx context.Context, workspace, inputPath, prompt, model string) (MediaResult, error) {
+func (m *MediaManager) AnalyzeImage(ctx context.Context, workspace, inputPath, prompt, model string, pinnedRoots ...*os.Root) (MediaResult, error) {
 	if strings.TrimSpace(inputPath) == "" || strings.TrimSpace(prompt) == "" {
 		return MediaResult{}, errors.New("image input and vision prompt are required")
 	}
-	rootHandle, file, _, info, err := openSafeMediaInput(workspace, inputPath)
+	_, data, err := readMediaInputBounded(ctx, workspace, inputPath, 25<<20, pinnedRoots...)
 	if err != nil {
 		return MediaResult{}, err
 	}
-	defer rootHandle.Close()
-	defer file.Close()
-	if info.Size() > 25<<20 {
+	return m.analyzeImageBytes(ctx, workspace, data, prompt, model, pinnedRoots...)
+}
+
+func (m *MediaManager) analyzeImageBytes(ctx context.Context, workspace string, data []byte, prompt, model string, pinnedRoots ...*os.Root) (MediaResult, error) {
+	if strings.TrimSpace(prompt) == "" {
+		return MediaResult{}, errors.New("vision prompt is required")
+	}
+	if int64(len(data)) > 25<<20 {
 		return MediaResult{}, errors.New("image input exceeds 25 MiB")
 	}
-	visionRelative := filepath.ToSlash(filepath.Join(".agent-media", "vision-"+strconv.FormatInt(time.Now().UnixNano(), 10)+".txt"))
-	if err := validateMediaOutputDirectory(workspace, ".agent-media"); err != nil {
+	if err := rejectSensitiveMediaText("prompt", prompt); err != nil {
 		return MediaResult{}, err
 	}
-	data, err := readMediaFile(ctx, file, 25<<20)
-	if err != nil {
+	if findings := ScanDLP(string(data)); len(findings) > 0 {
+		return MediaResult{}, fmt.Errorf("image input contains sensitive data (%s)", findings[0].Kind)
+	}
+	visionRelative := filepath.ToSlash(filepath.Join(".agent-media", "vision-"+strconv.FormatInt(time.Now().UnixNano(), 10)+".txt"))
+	if err := validateMediaOutputDirectory(workspace, ".agent-media", pinnedRoots...); err != nil {
 		return MediaResult{}, err
 	}
 	if model == "" {
@@ -562,18 +605,23 @@ func (m *MediaManager) AnalyzeImage(ctx context.Context, workspace, inputPath, p
 	if strings.TrimSpace(text) == "" {
 		return MediaResult{}, errors.New("vision provider returned no text")
 	}
-	output, err := writeMediaFile(workspace, visionRelative, []byte(text+"\n"), 4<<20)
+	text = sanitizeMediaOutputText(text)
+	output, err := writeMediaFile(workspace, visionRelative, []byte(text+"\n"), 4<<20, pinnedRoots...)
 	if err != nil {
 		return MediaResult{}, err
 	}
-	artifact, err := BuildArtifactManifest(workspace, "", "", filepath.Base(output), filepath.ToSlash(filepath.Join(".agent-media", filepath.Base(output))))
+	artifact, err := buildMediaArtifact(workspace, filepath.ToSlash(filepath.Join(".agent-media", filepath.Base(output))), pinnedRoots...)
 	if err != nil {
 		return MediaResult{}, err
 	}
 	return MediaResult{Path: output, MediaType: "text/plain", Text: text, Artifact: artifact}, nil
 }
 
-func GenerateTone(workspace string, frequency float64, duration time.Duration) (MediaResult, error) {
+func sanitizeMediaOutputText(value string) string {
+	return RedactDLP(value)
+}
+
+func GenerateTone(workspace string, frequency float64, duration time.Duration, pinnedRoots ...*os.Root) (MediaResult, error) {
 	if frequency <= 0 || frequency > 20000 {
 		frequency = 440
 	}
@@ -593,11 +641,11 @@ func GenerateTone(workspace string, frequency float64, duration time.Duration) (
 		return MediaResult{}, err
 	}
 	_, _ = wav.Write(data)
-	path, err := writeMediaFile(workspace, filepath.ToSlash(filepath.Join(".agent-media", "tone-"+strconv.FormatInt(time.Now().UnixNano(), 10)+".wav")), wav.Bytes(), 100<<20)
+	path, err := writeMediaFile(workspace, filepath.ToSlash(filepath.Join(".agent-media", "tone-"+strconv.FormatInt(time.Now().UnixNano(), 10)+".wav")), wav.Bytes(), 100<<20, pinnedRoots...)
 	if err != nil {
 		return MediaResult{}, err
 	}
-	artifact, err := BuildArtifactManifest(workspace, "", "", filepath.Base(path), filepath.ToSlash(filepath.Join(".agent-media", filepath.Base(path))))
+	artifact, err := buildMediaArtifact(workspace, filepath.ToSlash(filepath.Join(".agent-media", filepath.Base(path))), pinnedRoots...)
 	if err != nil {
 		return MediaResult{}, err
 	}
@@ -617,7 +665,7 @@ func (m *MediaManager) postJSON(ctx context.Context, path string, value any) (ma
 	request.Header.Set("Content-Type", "application/json")
 	response, err := m.client().Do(request)
 	if err != nil {
-		return nil, err
+		return nil, errors.New("media provider request failed")
 	}
 	defer response.Body.Close()
 	return decodeResponse(response)
@@ -636,12 +684,11 @@ func (m *MediaManager) postBytes(ctx context.Context, path string, value any) ([
 	request.Header.Set("Content-Type", "application/json")
 	response, err := m.client().Do(request)
 	if err != nil {
-		return nil, err
+		return nil, errors.New("media provider request failed")
 	}
 	defer response.Body.Close()
 	if response.StatusCode/100 != 2 {
-		payload, _ := io.ReadAll(io.LimitReader(response.Body, 1<<20))
-		return nil, fmt.Errorf("media request failed with status %d: %s", response.StatusCode, limitError(string(payload), 1000))
+		return nil, fmt.Errorf("media provider returned HTTP status %d", response.StatusCode)
 	}
 	data, err = readLimitedMediaBody(response.Body, 100<<20)
 	if err != nil {
@@ -656,10 +703,15 @@ func (m *MediaManager) postBytes(ctx context.Context, path string, value any) ([
 	return data, nil
 }
 
-func (m *MediaManager) materializeEntry(ctx context.Context, workspace, prefix, extension string, entry map[string]any) (string, string, error) {
-	workspace, err := safeMediaWorkspaceRoot(workspace)
-	if err != nil {
-		return "", "", err
+func (m *MediaManager) materializeEntry(ctx context.Context, workspace, prefix, extension string, entry map[string]any, pinnedRoots ...*os.Root) (string, string, error) {
+	var err error
+	if len(pinnedRoots) == 0 {
+		workspace, err = safeMediaWorkspaceRoot(workspace)
+		if err != nil {
+			return "", "", err
+		}
+	} else if pinnedRoots[0] == nil {
+		return "", "", errors.New("pinned media workspace is required")
 	}
 	var data []byte
 	mediaType := "application/octet-stream"
@@ -684,7 +736,10 @@ func (m *MediaManager) materializeEntry(ctx context.Context, workspace, prefix, 
 		}
 		response, err := m.client().Do(request)
 		if err != nil {
-			return "", "", err
+			if errors.Is(err, errMediaRedirectDisabled) {
+				return "", "", errMediaRedirectDisabled
+			}
+			return "", "", errors.New("media download failed")
 		}
 		defer response.Body.Close()
 		if response.StatusCode/100 != 2 {
@@ -709,7 +764,7 @@ func (m *MediaManager) materializeEntry(ctx context.Context, workspace, prefix, 
 		mediaType = mediaTypeForExtension(extension)
 	}
 	relativePath := filepath.ToSlash(filepath.Join(".agent-media", prefix+"-"+strconv.FormatInt(time.Now().UnixNano(), 10)+extension))
-	path, err := writeMediaFile(workspace, relativePath, data, 100<<20)
+	path, err := writeMediaFile(workspace, relativePath, data, 100<<20, pinnedRoots...)
 	if err != nil {
 		return "", "", err
 	}
@@ -774,14 +829,14 @@ func firstData(payload map[string]any) (map[string]any, error) {
 func decodeResponse(response *http.Response) (map[string]any, error) {
 	body, err := readLimitedMediaBody(response.Body, 8<<20)
 	if err != nil {
-		return nil, err
+		return nil, errors.New("media provider response could not be read")
+	}
+	if response.StatusCode/100 != 2 {
+		return nil, fmt.Errorf("media provider returned HTTP status %d", response.StatusCode)
 	}
 	var payload map[string]any
 	if err := json.Unmarshal(body, &payload); err != nil {
-		return nil, err
-	}
-	if response.StatusCode/100 != 2 {
-		return nil, fmt.Errorf("media request failed with status %d: %s", response.StatusCode, limitError(string(body), 1000))
+		return nil, errors.New("media provider returned an invalid response")
 	}
 	return payload, nil
 }
@@ -856,6 +911,134 @@ func validateMediaMagic(extension string, data []byte) error {
 		}
 	}
 	return nil
+}
+
+// OpenMediaWorkspaceRoot authorizes a media workspace once and returns the
+// descriptor used by root-aware media operations.
+func OpenMediaWorkspaceRoot(workspace string) (*os.Root, string, error) {
+	return openMediaWorkspaceRoot(workspace)
+}
+
+func mediaRelativePathFromRoot(workspace string, root *os.Root, inputPath string) (string, error) {
+	if root == nil || strings.TrimSpace(workspace) == "" || strings.TrimSpace(inputPath) == "" {
+		return "", errors.New("pinned media workspace is required")
+	}
+	if filepath.IsAbs(inputPath) {
+		workspaceAbs, err := filepath.Abs(workspace)
+		if err != nil {
+			return "", err
+		}
+		inputAbs, err := filepath.Abs(inputPath)
+		if err != nil {
+			return "", err
+		}
+		inputPath, err = filepath.Rel(workspaceAbs, inputAbs)
+		if err != nil {
+			return "", err
+		}
+	}
+	return safeAnchoredWorkspaceRelative(root, inputPath, false)
+}
+
+func readMediaInputBoundedFromRoot(ctx context.Context, workspace string, root *os.Root, inputPath string, limit int64) (string, []byte, error) {
+	relative, err := mediaRelativePathFromRoot(workspace, root, inputPath)
+	if err != nil {
+		return "", nil, err
+	}
+	file, err := root.Open(filepath.FromSlash(relative))
+	if err != nil {
+		return "", nil, err
+	}
+	defer file.Close()
+	initial, err := file.Stat()
+	if err != nil || !initial.Mode().IsRegular() {
+		if err != nil {
+			return "", nil, err
+		}
+		return "", nil, errors.New("media input must be a regular file")
+	}
+	if initial.Size() < 0 || initial.Size() > limit {
+		if limit == 100<<20 {
+			return "", nil, errors.New("audio input exceeds 100 MiB")
+		}
+		if limit == 25<<20 {
+			return "", nil, errors.New("image input exceeds 25 MiB")
+		}
+		return "", nil, fmt.Errorf("media input exceeds %d byte limit", limit)
+	}
+	data, err := readMediaFile(ctx, file, limit)
+	if err != nil {
+		return "", nil, err
+	}
+	after, err := file.Stat()
+	if err != nil || !os.SameFile(initial, after) || initial.Size() != after.Size() || !initial.ModTime().Equal(after.ModTime()) || int64(len(data)) != initial.Size() {
+		return "", nil, ErrMediaInputChanged
+	}
+	return relative, data, nil
+}
+
+func writeMediaFileFromRoot(workspace string, root *os.Root, relativePath string, data []byte, limit int64) (string, error) {
+	if root == nil || strings.TrimSpace(workspace) == "" {
+		return "", errors.New("pinned media workspace is required")
+	}
+	if int64(len(data)) > limit {
+		return "", errors.New("media payload exceeds limit")
+	}
+	relativePath = filepath.ToSlash(filepath.Clean(filepath.FromSlash(relativePath)))
+	if !filepath.IsLocal(filepath.FromSlash(relativePath)) || relativePath == "." || strings.HasPrefix(relativePath, "../") {
+		return "", errors.New("media output path escapes workspace")
+	}
+	if err := rejectMediaOutputSymlinks(root, relativePath); err != nil {
+		return "", err
+	}
+	if err := root.MkdirAll(filepath.ToSlash(filepath.Dir(relativePath)), 0o700); err != nil {
+		return "", err
+	}
+	file, err := root.OpenFile(relativePath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o600)
+	if err != nil {
+		return "", err
+	}
+	if _, err := file.Write(data); err != nil {
+		_ = file.Close()
+		return "", err
+	}
+	if err := file.Close(); err != nil {
+		return "", err
+	}
+	// A descriptor-relative path remains meaningful even if workspace's pathname
+	// is renamed or replaced while this operation is in flight.
+	return filepath.ToSlash(relativePath), nil
+}
+
+func validateMediaOutputDirectoryFromRoot(root *os.Root, relativePath string) error {
+	if root == nil {
+		return errors.New("pinned media workspace is required")
+	}
+	if err := rejectMediaOutputSymlinks(root, relativePath); err != nil {
+		return err
+	}
+	info, err := root.Lstat(filepath.ToSlash(filepath.Clean(filepath.FromSlash(relativePath))))
+	if errors.Is(err, os.ErrNotExist) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	if !info.IsDir() {
+		return fmt.Errorf("media output path is not a directory: %s", relativePath)
+	}
+	return nil
+}
+
+func buildMediaArtifact(workspace, relativePath string, pinnedRoots ...*os.Root) (ArtifactManifest, error) {
+	if len(pinnedRoots) > 0 {
+		return buildArtifactManifestFromRoot(pinnedRoots[0], relativePath, "", "", filepath.Base(filepath.FromSlash(relativePath)))
+	}
+	return BuildArtifactManifest(workspace, "", "", filepath.Base(filepath.FromSlash(relativePath)), relativePath)
+}
+
+func buildMediaArtifactFromRoot(root *os.Root, relativePath string) (ArtifactManifest, error) {
+	return buildMediaArtifact("", relativePath, root)
 }
 
 func sin(value float64) float64 {

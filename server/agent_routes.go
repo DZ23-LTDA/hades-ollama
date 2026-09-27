@@ -40,6 +40,9 @@ type agentAPI struct {
 var errAgentForbidden = errors.New("object is outside the active organization")
 
 func newAgentAPI(runtime *agent.Runtime) (*agentAPI, error) {
+	if runtime != nil && runtime.RequiresOrganizationAuthentication() {
+		return nil, agent.ErrPostgresTenantIsolationUnavailable
+	}
 	storeRoot := strings.TrimSpace(os.Getenv("OLLAMA_AGENT_AUTH_STORE"))
 	if storeRoot == "" && runtime != nil {
 		storeRoot = filepath.Join(runtime.DataRoot(), "auth")
@@ -126,11 +129,7 @@ func newDefaultAgentRuntime() (*agent.Runtime, error) {
 	}
 	var store agent.Store
 	if databaseURL := strings.TrimSpace(os.Getenv("OLLAMA_AGENT_DATABASE_URL")); databaseURL != "" {
-		postgres, err := agent.OpenPostgresStore(context.Background(), databaseURL)
-		if err != nil {
-			return nil, fmt.Errorf("open agent PostgreSQL store: %w", err)
-		}
-		store = postgres
+		return nil, agent.ErrPostgresTenantIsolationUnavailable
 	} else {
 		local, err := agent.NewJSONStore(storeRoot)
 		if err != nil {
@@ -336,7 +335,6 @@ func (a *agentAPI) register(r *gin.Engine) {
 	group.Use(a.authMiddleware)
 	group.GET("/health", a.health)
 	group.GET("/grok/status", a.grokStatus)
-	group.POST("/grok/responses", a.grokResponses)
 	group.GET("/config/safe", a.safeConfig)
 	group.GET("/auth/session", a.authSession)
 	group.POST("/auth/logout", a.authLogout)
@@ -353,16 +351,11 @@ func (a *agentAPI) register(r *gin.Engine) {
 	group.POST("/auth/saml/:provider/acs", a.samlACS)
 	group.POST("/notifications/register", a.registerPush)
 	group.GET("/traces", a.allTraces)
-	group.POST("/media/image", a.mediaImage)
 	group.POST("/uploads", a.startUpload)
 	group.GET("/uploads/:id", a.getUpload)
 	group.PUT("/uploads/:id/chunk", a.uploadChunk)
 	group.POST("/uploads/:id/finalize", a.finalizeUpload)
 	group.DELETE("/uploads/:id", a.cancelUpload)
-	group.POST("/media/video", a.mediaVideo)
-	group.POST("/media/speech", a.mediaSpeech)
-	group.POST("/media/transcribe", a.mediaTranscribe)
-	group.POST("/media/vision", a.mediaVision)
 	group.POST("/media/ocr", a.mediaOCR)
 	group.POST("/media/tone", a.mediaTone)
 	group.POST("/orchestration/jobs", a.createOrchestration)
@@ -554,7 +547,7 @@ func (a *agentAPI) authMiddleware(c *gin.Context) {
 		action = "execute"
 	}
 	if _, err := a.auth.Authorize(user.ID, organization.ID, action); err != nil {
-		c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": err.Error()})
+		c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": agent.RedactDLP(err.Error())})
 		return
 	}
 	c.Set("agent.user", user)
@@ -641,7 +634,20 @@ func (a *agentAPI) scopedRuntime(c *gin.Context) *agent.Runtime {
 			return a.runtime.WithOrganization(organization.ID)
 		}
 	}
+	if a != nil && !a.authRequired && a.runtime != nil {
+		return a.runtime.WithOrganization(agent.LocalOrganizationID)
+	}
 	return a.runtime
+}
+
+func (a *agentAPI) organizationID(c *gin.Context) string {
+	if organizationID := strings.TrimSpace(agentOrganizationID(c)); organizationID != "" {
+		return organizationID
+	}
+	if a != nil && !a.authRequired {
+		return agent.LocalOrganizationID
+	}
+	return ""
 }
 
 func agentOrganizationID(c *gin.Context) string {
@@ -670,7 +676,7 @@ func (a *agentAPI) missionForRequest(c *gin.Context) (agent.Mission, error) {
 }
 
 func (a *agentAPI) missionByID(c *gin.Context, id string) (agent.Mission, error) {
-	mission, err := a.runtime.GetMission(strings.TrimSpace(id))
+	mission, err := a.scopedRuntime(c).GetMission(strings.TrimSpace(id))
 	if err != nil {
 		return agent.Mission{}, err
 	}
@@ -680,7 +686,7 @@ func (a *agentAPI) missionByID(c *gin.Context, id string) (agent.Mission, error)
 	value, _ := c.Get("agent.organization")
 	organization, organizationOK := value.(agent.Organization)
 	if !organizationOK || organization.ID == "" || mission.OrganizationID == "" || mission.OrganizationID != organization.ID {
-		return agent.Mission{}, errors.New("mission is outside the active organization")
+		return agent.Mission{}, os.ErrNotExist
 	}
 	return mission, nil
 }
@@ -725,6 +731,9 @@ func (a *agentAPI) safeConfig(c *gin.Context) {
 		mcpConfigured = mcpConfigured || len(a.runtime.MCPServers()) > 0 || len(a.runtime.RemoteMCPServers()) > 0
 		mediaConfigured = mediaConfigured || a.runtime.Media() != nil
 		deploymentsConfigured = deploymentsConfigured || (a.runtime.Deployments() != nil && len(a.runtime.Deployments().List()) > 0)
+	}
+	if a.authRequired {
+		deploymentsConfigured = a.runtime != nil && a.runtime.Deployments() != nil && len(a.runtime.Deployments().ListForOrganization(companyOrganizationID(c))) > 0
 	}
 	c.JSON(http.StatusOK, gin.H{
 		"runtime":                          "agent-v1",
@@ -1193,10 +1202,17 @@ func (a *agentAPI) samlACS(c *gin.Context) {
 }
 
 func (a *agentAPI) metrics(c *gin.Context) {
+	if a.authRequired {
+		c.AbortWithStatus(http.StatusNotFound)
+		return
+	}
 	c.JSON(http.StatusOK, a.runtime.Metrics())
 }
-
 func (a *agentAPI) prometheus(c *gin.Context) {
+	if a.authRequired {
+		c.AbortWithStatus(http.StatusNotFound)
+		return
+	}
 	c.Data(http.StatusOK, "text/plain; version=0.0.4", []byte(a.runtime.Metrics().Prometheus()))
 }
 
@@ -1337,26 +1353,75 @@ func (a *agentAPI) webhook(c *gin.Context) {
 		return
 	}
 	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 64<<10)
-	payload, err := io.ReadAll(c.Request.Body)
+	decoder := json.NewDecoder(c.Request.Body)
+	decoder.UseNumber()
+	var payload any
+	err = decoder.Decode(&payload)
 	if err != nil {
 		writeAgentError(c, http.StatusBadRequest, err)
 		return
 	}
-	if replay := a.runtime.WebhookReplay(); replay == nil {
+	var trailing any
+	if err := decoder.Decode(&trailing); !errors.Is(err, io.EOF) {
+		writeAgentError(c, http.StatusBadRequest, errors.New("webhook body must contain exactly one JSON value"))
+		return
+	}
+	if err := agent.ValidateOutboundPayload(map[string]any{"objective": schedule.Objective, "payload": payload}); err != nil {
+		writeAgentError(c, http.StatusUnprocessableEntity, errors.New("webhook payload rejected by data-egress policy"))
+		return
+	}
+	replay := a.runtime.WebhookReplay()
+	if replay == nil {
 		writeAgentError(c, http.StatusServiceUnavailable, errors.New("webhook replay store is unavailable"))
 		return
-	} else if err := replay.Claim(schedule.ID, idempotencyKey); err != nil {
-		if errors.Is(err, agent.ErrWebhookReplay) {
-			writeAgentError(c, http.StatusConflict, err)
+	}
+	missionID, err := replay.MissionID(schedule.ID, idempotencyKey)
+	if err != nil {
+		writeAgentError(c, http.StatusBadRequest, err)
+		return
+	}
+	runtime := a.scopedRuntime(c)
+	if err := replay.Begin(schedule.ID, idempotencyKey); err != nil {
+		if errors.Is(err, agent.ErrWebhookReplay) || errors.Is(err, agent.ErrWebhookReplayInProgress) {
+			if existing, getErr := runtime.GetMission(missionID); getErr == nil {
+				c.JSON(http.StatusAccepted, existing)
+				return
+			}
+			if errors.Is(err, agent.ErrWebhookReplayInProgress) {
+				writeAgentError(c, http.StatusConflict, err)
+			} else {
+				writeAgentError(c, http.StatusConflict, agent.ErrWebhookReplay)
+			}
 		} else {
-			writeAgentError(c, http.StatusServiceUnavailable, err)
+			writeAgentError(c, http.StatusServiceUnavailable, errors.New("webhook replay store is unavailable"))
 		}
 		return
 	}
-	objective := schedule.Objective + "\nWebhook payload:\n" + string(payload)
-	mission, err := a.scopedRuntime(c).CreateMission(c.Request.Context(), agent.CreateMissionRequest{Objective: objective, Model: schedule.Model, Workspace: schedule.Workspace, ProjectID: schedule.ProjectID, OrganizationID: schedule.OrganizationID, AutoRun: true})
+	objective, err := json.Marshal(payload)
 	if err != nil {
+		_ = replay.Release(schedule.ID, idempotencyKey)
+		writeAgentError(c, http.StatusBadRequest, errors.New("webhook JSON payload is invalid"))
+		return
+	}
+	mission, err := runtime.CreateMission(c.Request.Context(), agent.CreateMissionRequest{MissionID: missionID, Objective: schedule.Objective + "\nWebhook payload:\n" + string(objective), Model: schedule.Model, Workspace: schedule.Workspace, ProjectID: schedule.ProjectID, OrganizationID: schedule.OrganizationID, AutoRun: true})
+	if err != nil {
+		if existing, getErr := runtime.GetMission(missionID); getErr == nil {
+			if completeErr := replay.Complete(schedule.ID, idempotencyKey); completeErr != nil {
+				writeAgentError(c, http.StatusServiceUnavailable, errors.New("webhook mission was accepted but replay state could not be finalized"))
+				return
+			}
+			c.JSON(http.StatusAccepted, existing)
+			return
+		}
+		if releaseErr := replay.Release(schedule.ID, idempotencyKey); releaseErr != nil {
+			writeAgentError(c, http.StatusServiceUnavailable, errors.New("webhook mission creation failed and replay claim could not be released"))
+			return
+		}
 		writeAgentError(c, http.StatusBadRequest, err)
+		return
+	}
+	if err := replay.Complete(schedule.ID, idempotencyKey); err != nil {
+		writeAgentError(c, http.StatusServiceUnavailable, errors.New("webhook mission was accepted but replay state could not be finalized"))
 		return
 	}
 	c.JSON(http.StatusAccepted, mission)
@@ -1608,6 +1673,12 @@ func (a *agentAPI) createMission(c *gin.Context) {
 		if organization, ok := value.(agent.Organization); ok {
 			request.OrganizationID = organization.ID
 		}
+	} else if !a.authRequired {
+		if supplied := strings.TrimSpace(request.OrganizationID); supplied != "" && supplied != agent.LocalOrganizationID {
+			writeAgentError(c, http.StatusBadRequest, errors.New("organization_id is not accepted without authenticated organization scope"))
+			return
+		}
+		request.OrganizationID = agent.LocalOrganizationID
 	}
 	if strings.TrimSpace(request.ProjectID) != "" {
 		project, err := a.projectForRequestID(c, request.ProjectID)
@@ -1869,15 +1940,20 @@ func (a *agentAPI) ingestProject(c *gin.Context) {
 	c.JSON(http.StatusCreated, gin.H{"project_id": request.ProjectID, "memories": memories, "count": len(memories)})
 }
 
-func (a *agentAPI) mediaWorkspace(c *gin.Context, missionID string) (agent.Mission, string, error) {
+func (a *agentAPI) mediaWorkspace(c *gin.Context, missionID string) (agent.Mission, string, *os.Root, error) {
 	mission, err := a.missionByID(c, missionID)
 	if err != nil {
-		return agent.Mission{}, "", err
+		return agent.Mission{}, "", nil, err
+	}
+	mission, root, err := a.runtime.OpenMissionWorkspaceRoot(mission.ID)
+	if err != nil {
+		return agent.Mission{}, "", nil, err
 	}
 	if strings.TrimSpace(mission.Workspace) == "" {
-		return agent.Mission{}, "", errors.New("mission workspace is required")
+		_ = root.Close()
+		return agent.Mission{}, "", nil, errors.New("mission workspace is required")
 	}
-	return mission, mission.Workspace, nil
+	return mission, mission.Workspace, root, nil
 }
 
 func (a *agentAPI) mediaImage(c *gin.Context) {
@@ -1894,12 +1970,13 @@ func (a *agentAPI) mediaImage(c *gin.Context) {
 		c.JSON(http.StatusNotImplemented, gin.H{"error": "media provider is not configured"})
 		return
 	}
-	mission, workspace, err := a.mediaWorkspace(c, request.MissionID)
+	mission, workspace, workspaceRoot, err := a.mediaWorkspace(c, request.MissionID)
 	if err != nil {
 		writeAgentError(c, statusForAgentError(err), err)
 		return
 	}
-	result, err := a.runtime.Media().GenerateImage(c.Request.Context(), workspace, request.Prompt, request.Model)
+	defer workspaceRoot.Close()
+	result, err := a.runtime.Media().GenerateImage(c.Request.Context(), workspace, request.Prompt, request.Model, workspaceRoot)
 	if err != nil {
 		writeAgentError(c, http.StatusBadGateway, err)
 		return
@@ -1922,12 +1999,13 @@ func (a *agentAPI) mediaVideo(c *gin.Context) {
 		c.JSON(http.StatusNotImplemented, gin.H{"error": "media provider is not configured"})
 		return
 	}
-	mission, workspace, err := a.mediaWorkspace(c, request.MissionID)
+	mission, workspace, workspaceRoot, err := a.mediaWorkspace(c, request.MissionID)
 	if err != nil {
 		writeAgentError(c, statusForAgentError(err), err)
 		return
 	}
-	result, err := a.runtime.Media().GenerateVideo(c.Request.Context(), workspace, request.Prompt, request.Model)
+	defer workspaceRoot.Close()
+	result, err := a.runtime.Media().GenerateVideo(c.Request.Context(), workspace, request.Prompt, request.Model, workspaceRoot)
 	if err != nil {
 		writeAgentError(c, http.StatusBadGateway, err)
 		return
@@ -1951,12 +2029,13 @@ func (a *agentAPI) mediaSpeech(c *gin.Context) {
 		c.JSON(http.StatusNotImplemented, gin.H{"error": "media provider is not configured"})
 		return
 	}
-	mission, workspace, err := a.mediaWorkspace(c, request.MissionID)
+	mission, workspace, workspaceRoot, err := a.mediaWorkspace(c, request.MissionID)
 	if err != nil {
 		writeAgentError(c, statusForAgentError(err), err)
 		return
 	}
-	result, err := a.runtime.Media().GenerateSpeech(c.Request.Context(), workspace, request.Text, request.Voice, request.Model)
+	defer workspaceRoot.Close()
+	result, err := a.runtime.Media().GenerateSpeech(c.Request.Context(), workspace, request.Text, request.Voice, request.Model, workspaceRoot)
 	if err != nil {
 		writeAgentError(c, http.StatusBadGateway, err)
 		return
@@ -1979,17 +2058,18 @@ func (a *agentAPI) mediaTranscribe(c *gin.Context) {
 		c.JSON(http.StatusNotImplemented, gin.H{"error": "media provider is not configured"})
 		return
 	}
-	mission, workspace, err := a.mediaWorkspace(c, request.MissionID)
+	mission, workspace, workspaceRoot, err := a.mediaWorkspace(c, request.MissionID)
 	if err != nil {
 		writeAgentError(c, statusForAgentError(err), err)
 		return
 	}
+	defer workspaceRoot.Close()
 	inputPath, err := containedPath(workspace, request.InputPath)
 	if err != nil {
 		writeAgentError(c, http.StatusBadRequest, err)
 		return
 	}
-	result, err := a.runtime.Media().Transcribe(c.Request.Context(), workspace, inputPath, request.Model)
+	result, err := a.runtime.Media().Transcribe(c.Request.Context(), workspace, inputPath, request.Model, workspaceRoot)
 	if err != nil {
 		writeAgentError(c, http.StatusBadGateway, err)
 		return
@@ -2013,17 +2093,18 @@ func (a *agentAPI) mediaVision(c *gin.Context) {
 		c.JSON(http.StatusNotImplemented, gin.H{"error": "media provider is not configured"})
 		return
 	}
-	mission, workspace, err := a.mediaWorkspace(c, request.MissionID)
+	mission, workspace, workspaceRoot, err := a.mediaWorkspace(c, request.MissionID)
 	if err != nil {
 		writeAgentError(c, statusForAgentError(err), err)
 		return
 	}
+	defer workspaceRoot.Close()
 	inputPath, err := containedPath(workspace, request.InputPath)
 	if err != nil {
 		writeAgentError(c, http.StatusBadRequest, err)
 		return
 	}
-	result, err := a.runtime.Media().AnalyzeImage(c.Request.Context(), workspace, inputPath, request.Prompt, request.Model)
+	result, err := a.runtime.Media().AnalyzeImage(c.Request.Context(), workspace, inputPath, request.Prompt, request.Model, workspaceRoot)
 	if err != nil {
 		writeAgentError(c, http.StatusBadGateway, err)
 		return
@@ -2042,17 +2123,18 @@ func (a *agentAPI) mediaOCR(c *gin.Context) {
 		writeAgentError(c, http.StatusBadRequest, err)
 		return
 	}
-	mission, workspace, err := a.mediaWorkspace(c, request.MissionID)
+	mission, workspace, workspaceRoot, err := a.mediaWorkspace(c, request.MissionID)
 	if err != nil {
 		writeAgentError(c, statusForAgentError(err), err)
 		return
 	}
+	defer workspaceRoot.Close()
 	inputPath, err := containedPath(workspace, request.InputPath)
 	if err != nil {
 		writeAgentError(c, http.StatusBadRequest, err)
 		return
 	}
-	result, err := agent.OCRLocal(c.Request.Context(), workspace, inputPath, request.Language)
+	result, err := agent.OCRLocal(c.Request.Context(), workspace, inputPath, request.Language, workspaceRoot)
 	if err != nil {
 		writeAgentError(c, http.StatusBadGateway, err)
 		return
@@ -2071,12 +2153,13 @@ func (a *agentAPI) mediaTone(c *gin.Context) {
 		writeAgentError(c, http.StatusBadRequest, err)
 		return
 	}
-	mission, workspace, err := a.mediaWorkspace(c, request.MissionID)
+	mission, workspace, workspaceRoot, err := a.mediaWorkspace(c, request.MissionID)
 	if err != nil {
 		writeAgentError(c, statusForAgentError(err), err)
 		return
 	}
-	result, err := agent.GenerateTone(workspace, request.Frequency, time.Duration(request.DurationMS)*time.Millisecond)
+	defer workspaceRoot.Close()
+	result, err := agent.GenerateTone(workspace, request.Frequency, time.Duration(request.DurationMS)*time.Millisecond, workspaceRoot)
 	if err != nil {
 		writeAgentError(c, http.StatusBadRequest, err)
 		return
@@ -2208,7 +2291,11 @@ func (a *agentAPI) deployments(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"providers": []agent.DeployConfig{}})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"providers": manager.List()})
+	providers := manager.List()
+	if a.authRequired {
+		providers = manager.ListForOrganization(companyOrganizationID(c))
+	}
+	c.JSON(http.StatusOK, gin.H{"providers": providers})
 }
 
 func (a *agentAPI) deployBuilder(c *gin.Context) {
@@ -2241,12 +2328,18 @@ func (a *agentAPI) deployBuilder(c *gin.Context) {
 		writeAgentError(c, statusForAgentError(err), err)
 		return
 	}
-	result, err := manager.Deploy(c.Request.Context(), c.Param("provider"), agent.DeploymentRequest{Name: project.Name, Root: project.Root, Target: request.Target, ManifestSHA256: manifest.SHA256})
+	deploymentRequest := agent.DeploymentRequest{Name: project.Name, Root: project.Root, Target: request.Target, ManifestSHA256: manifest.SHA256}
+	var result agent.DeploymentResult
+	if a.authRequired {
+		result, err = manager.DeployForOrganization(c.Request.Context(), companyOrganizationID(c), c.Param("provider"), deploymentRequest)
+	} else {
+		result, err = manager.Deploy(c.Request.Context(), c.Param("provider"), deploymentRequest)
+	}
 	if err != nil {
 		var deploymentErr *agent.DeploymentError
 		if errors.As(err, &deploymentErr) && (result.Status == "partial" || result.Status == "unknown") {
 			c.JSON(http.StatusBadGateway, gin.H{
-				"error":      err.Error(),
+				"error":      agent.RedactDLP(err.Error()),
 				"project":    project,
 				"approval":   approval,
 				"deployment": result,
@@ -2272,7 +2365,11 @@ func (a *agentAPI) requestDeploymentApproval(c *gin.Context) {
 	}
 	provider := strings.ToLower(strings.TrimSpace(c.Param("provider")))
 	configured := false
-	for _, config := range manager.List() {
+	providers := manager.List()
+	if a.authRequired {
+		providers = manager.ListForOrganization(companyOrganizationID(c))
+	}
+	for _, config := range providers {
 		if config.ID == provider {
 			configured = true
 			break
@@ -2400,6 +2497,7 @@ func (a *agentAPI) artifact(c *gin.Context) {
 		writeAgentError(c, statusForAgentError(err), err)
 		return
 	}
+	defer os.Remove(path)
 	c.Header("X-Artifact-SHA256", manifest.SHA256)
 	c.FileAttachment(path, manifest.Name)
 }
@@ -2503,20 +2601,27 @@ func decodeJSON(c *gin.Context, value any) error {
 }
 
 func writeAgentError(c *gin.Context, status int, err error) {
-	c.JSON(status, gin.H{"error": strings.TrimSpace(err.Error())})
+	if errors.Is(err, agent.ErrDeploymentApprovalOrganization) {
+		err = agent.ErrDeploymentApprovalNotFound
+	}
+	message := strings.TrimSpace(err.Error())
+	if message == "" {
+		message = "request failed"
+	}
+	c.JSON(status, gin.H{"error": agent.RedactDLP(message)})
 }
 
 func statusForAgentError(err error) int {
 	if status := companyErrorStatus(err); status != 0 {
 		return status
 	}
-	if errors.Is(err, errAgentForbidden) || errors.Is(err, agent.ErrBuilderForbidden) || errors.Is(err, agent.ErrOrchestrationForbidden) || errors.Is(err, agent.ErrDeviceForbidden) || errors.Is(err, agent.ErrQueueJobForbidden) || errors.Is(err, agent.ErrDeploymentApprovalOrganization) {
+	if errors.Is(err, errAgentForbidden) || errors.Is(err, agent.ErrBuilderForbidden) || errors.Is(err, agent.ErrOrchestrationForbidden) || errors.Is(err, agent.ErrDeviceForbidden) || errors.Is(err, agent.ErrQueueJobForbidden) {
 		return http.StatusForbidden
 	}
 	if errors.Is(err, agent.ErrApprovalVersionConflict) || errors.Is(err, agent.ErrDeploymentApprovalNonce) || errors.Is(err, agent.ErrDeploymentApprovalConflict) || errors.Is(err, agent.ErrDeploymentApprovalExpired) {
 		return http.StatusConflict
 	}
-	if errors.Is(err, agent.ErrDeploymentApprovalNotFound) {
+	if errors.Is(err, agent.ErrDeploymentApprovalNotFound) || errors.Is(err, agent.ErrDeploymentApprovalOrganization) || errors.Is(err, agent.ErrDeploymentProviderNotFound) {
 		return http.StatusNotFound
 	}
 	if errors.Is(err, os.ErrNotExist) {

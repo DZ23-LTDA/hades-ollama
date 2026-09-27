@@ -3,6 +3,8 @@ package agent
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -47,9 +49,13 @@ type ConnectorManager struct {
 	persistPath string
 }
 
+var errConnectorRedirectDisabled = errors.New("connector redirects are disabled")
+var errConnectorResponseTooLarge = errors.New("connector response payload exceeds limit")
+
 var (
 	ErrConnectorDisabled              = errors.New("connector is disabled")
 	ErrConnectorCredentialUnavailable = errors.New("connector credential is unavailable")
+	ErrPluginNotFound                 = errors.New("plugin not found")
 )
 
 type connectorLoopbackContextKey struct{}
@@ -58,7 +64,7 @@ func NewConnectorManager() *ConnectorManager {
 	transport := http.DefaultTransport.(*http.Transport).Clone()
 	transport.Proxy = nil
 	transport.DialContext = connectorDialContext
-	return &ConnectorManager{connectors: make(map[string]ConnectorConfig), client: &http.Client{Transport: transport, CheckRedirect: func(_ *http.Request, _ []*http.Request) error { return errors.New("connector redirects are disabled") }}}
+	return &ConnectorManager{connectors: make(map[string]ConnectorConfig), client: &http.Client{Transport: transport, CheckRedirect: func(_ *http.Request, _ []*http.Request) error { return errConnectorRedirectDisabled }}}
 }
 
 // NewPersistentConnectorManager loads a connector manifest that contains only
@@ -166,9 +172,14 @@ func validateConnectorConfig(config *ConnectorConfig) error {
 	if config.ID == "" || config.Provider == "" {
 		return errors.New("connector id and provider are required")
 	}
-	base, err := url.Parse(config.BaseURL)
-	if err != nil || base.Scheme != "https" || base.Host == "" || base.User != nil {
-		return errors.New("connector base_url must be an https URL without userinfo")
+	if err := validateConnectorURL(config.BaseURL, false); err != nil {
+		return fmt.Errorf("connector base_url %w", err)
+	}
+	for i := range config.AllowedOrigins {
+		config.AllowedOrigins[i] = strings.TrimSpace(config.AllowedOrigins[i])
+		if err := validateConnectorURL(config.AllowedOrigins[i], true); err != nil {
+			return fmt.Errorf("connector allowed_origins[%d] %w", i, err)
+		}
 	}
 	if config.TimeoutSeconds <= 0 || config.TimeoutSeconds > 120 {
 		config.TimeoutSeconds = 30
@@ -194,6 +205,31 @@ func validateConnectorConfig(config *ConnectorConfig) error {
 				return fmt.Errorf("invalid connector path prefix %q", operation.PathPrefixes[j])
 			}
 		}
+	}
+	return nil
+}
+
+func validateConnectorURL(raw string, originOnly bool) error {
+	raw = strings.TrimSpace(raw)
+	if raw == "" || strings.ContainsAny(raw, "\x00\r\n") {
+		return errors.New("must be a valid HTTPS URL")
+	}
+	parsed, err := url.Parse(raw)
+	if err != nil || parsed.Scheme != "https" || parsed.Host == "" || parsed.User != nil || parsed.RawQuery != "" || parsed.Fragment != "" {
+		return errors.New("must be an HTTPS URL without credentials, query, or fragment")
+	}
+	if originOnly && parsed.Path != "" && parsed.Path != "/" {
+		return errors.New("must be an origin without a path")
+	}
+	for decoded := raw; ; {
+		if len(ScanDLP(decoded)) > 0 || strings.Contains(strings.ToLower(decoded), "signature=") || strings.Contains(strings.ToLower(decoded), "x-amz-signature") || strings.Contains(strings.ToLower(decoded), "sig=") {
+			return errors.New("must not contain credential-shaped URL data")
+		}
+		next, decodeErr := url.PathUnescape(decoded)
+		if decodeErr != nil || next == decoded {
+			break
+		}
+		decoded = next
 	}
 	return nil
 }
@@ -260,6 +296,7 @@ func (m *ConnectorManager) List() []ConnectorConfig {
 	result := make([]ConnectorConfig, 0, len(m.connectors))
 	for _, connector := range m.connectors {
 		copy := cloneConnectorConfig(connector)
+		copy.BaseURL = providerCatalogOrigin(copy.BaseURL)
 		copy.TokenEnv = ""
 		copy.CredentialConfigured = m.credentialConfigured(connector, "")
 		result = append(result, copy)
@@ -273,10 +310,11 @@ func (m *ConnectorManager) ListForOrganization(organizationID string) []Connecto
 	defer m.mu.RUnlock()
 	result := make([]ConnectorConfig, 0)
 	for _, connector := range m.connectors {
-		if connector.OrganizationID != "" && !pluginOwnedByOrganization(connector.OrganizationID, organizationID) {
+		if !pluginAccessibleByOrganization(connector.OrganizationID, organizationID) {
 			continue
 		}
 		copy := cloneConnectorConfig(connector)
+		copy.BaseURL = providerCatalogOrigin(copy.BaseURL)
 		copy.TokenEnv = ""
 		copy.CredentialConfigured = m.credentialConfigured(connector, organizationID)
 		result = append(result, copy)
@@ -299,6 +337,9 @@ func (m *ConnectorManager) SetEnabled(id string, enabled bool) error {
 	if !ok {
 		return fmt.Errorf("connector %q is not registered", id)
 	}
+	if !pluginGlobal(connector.OrganizationID) {
+		return ErrPluginOrganizationScope
+	}
 	connector.Disabled = !enabled
 	m.connectors[id] = connector
 	if err := m.persistLocked(); err != nil {
@@ -314,7 +355,7 @@ func (m *ConnectorManager) SetEnabledForOrganization(organizationID, id string, 
 	defer m.mu.Unlock()
 	connector, ok := m.connectors[strings.TrimSpace(id)]
 	if !ok {
-		return fmt.Errorf("connector %q is not registered", id)
+		return ErrPluginNotFound
 	}
 	if !pluginOwnedByOrganization(connector.OrganizationID, strings.TrimSpace(organizationID)) {
 		return ErrPluginOrganizationScope
@@ -337,6 +378,9 @@ func (m *ConnectorManager) Remove(id string) error {
 	if !ok {
 		return fmt.Errorf("connector %q is not registered", id)
 	}
+	if !pluginGlobal(connector.OrganizationID) {
+		return ErrPluginOrganizationScope
+	}
 	delete(m.connectors, id)
 	if err := m.persistLocked(); err != nil {
 		m.connectors[id] = connector
@@ -351,7 +395,7 @@ func (m *ConnectorManager) RemoveForOrganization(organizationID, id string) erro
 	id = strings.TrimSpace(id)
 	connector, ok := m.connectors[id]
 	if !ok {
-		return fmt.Errorf("connector %q is not registered", id)
+		return ErrPluginNotFound
 	}
 	if !pluginOwnedByOrganization(connector.OrganizationID, strings.TrimSpace(organizationID)) {
 		return ErrPluginOrganizationScope
@@ -365,11 +409,33 @@ func (m *ConnectorManager) RemoveForOrganization(organizationID, id string) erro
 }
 
 func (m *ConnectorManager) Call(ctx context.Context, connectorID, operationName, method, requestPath string, body []byte) (int, string, error) {
-	return 0, "", errors.New("connector organization scope is required; use CallForOrganization")
+	return 0, "", ErrPluginOrganizationScope
+}
+
+// CallGlobal is reserved for explicitly configured ownerless connectors used
+// by the trusted single-user/local runtime. Tenant requests must use
+// CallForOrganization and can access only connectors owned by that tenant.
+func (m *ConnectorManager) CallGlobal(ctx context.Context, connectorID, operationName, method, requestPath string, body []byte) (int, string, error) {
+	m.mu.RLock()
+	config, ok := m.connectors[strings.TrimSpace(connectorID)]
+	auth := m.auth
+	m.mu.RUnlock()
+	if !ok {
+		return 0, "", fmt.Errorf("connector %q is not registered", connectorID)
+	}
+	if !pluginGlobal(config.OrganizationID) {
+		return 0, "", ErrPluginOrganizationScope
+	}
+	if config.Disabled {
+		return 0, "", ErrConnectorDisabled
+	}
+	config = cloneConnectorConfig(config)
+	return m.call(ctx, "", config, connectorID, operationName, method, requestPath, body, auth, true)
 }
 
 func (m *ConnectorManager) CallForOrganization(ctx context.Context, organizationID, connectorID, operationName, method, requestPath string, body []byte) (int, string, error) {
-	if strings.TrimSpace(organizationID) == "" {
+	organizationID = strings.TrimSpace(organizationID)
+	if organizationID == "" {
 		return 0, "", errors.New("connector organization scope is required")
 	}
 	m.mu.RLock()
@@ -379,35 +445,80 @@ func (m *ConnectorManager) CallForOrganization(ctx context.Context, organization
 	if !ok {
 		return 0, "", fmt.Errorf("connector %q is not registered", connectorID)
 	}
-	token := ""
-	if auth != nil && strings.TrimSpace(config.OAuthProvider) != "" {
-		var err error
-		token, _, err = auth.OAuthAccessTokenForOrganization(organizationID, config.OAuthProvider)
-		if err != nil {
-			return 0, "", fmt.Errorf("resolve OAuth credential for connector %q: %w", connectorID, err)
-		}
-	}
-	return m.call(ctx, connectorID, operationName, method, requestPath, body, token)
-}
-
-func (m *ConnectorManager) call(ctx context.Context, connectorID, operationName, method, requestPath string, body []byte, tokenOverride string) (int, string, error) {
-	m.mu.RLock()
-	config, ok := m.connectors[strings.TrimSpace(connectorID)]
-	m.mu.RUnlock()
-	if !ok {
-		return 0, "", fmt.Errorf("connector %q is not registered", connectorID)
+	if !pluginAccessibleByOrganization(config.OrganizationID, organizationID) {
+		return 0, "", ErrPluginOrganizationScope
 	}
 	if config.Disabled {
 		return 0, "", ErrConnectorDisabled
+	}
+	config = cloneConnectorConfig(config)
+	return m.call(ctx, organizationID, config, connectorID, operationName, method, requestPath, body, auth, false)
+}
+
+func (m *ConnectorManager) CallForOrganizationWithApproval(ctx context.Context, organizationID string, input map[string]any, body []byte, expectedSHA256 string) (int, string, error) {
+	return m.callWithApproval(ctx, strings.TrimSpace(organizationID), input, body, expectedSHA256, false)
+}
+
+// CallGlobalWithApproval is the approval-bound global counterpart reserved for
+// trusted local-mode execution.
+func (m *ConnectorManager) CallGlobalWithApproval(ctx context.Context, input map[string]any, body []byte, expectedSHA256 string) (int, string, error) {
+	return m.callWithApproval(ctx, "", input, body, expectedSHA256, true)
+}
+
+func (m *ConnectorManager) callWithApproval(ctx context.Context, organizationID string, input map[string]any, body []byte, expectedSHA256 string, global bool) (int, string, error) {
+	connectorID := strings.TrimSpace(stringInput(input, "connector_id", ""))
+	operationName := strings.TrimSpace(stringInput(input, "operation", ""))
+	method := strings.ToUpper(strings.TrimSpace(stringInput(input, "method", "GET")))
+	requestPath := strings.TrimSpace(stringInput(input, "path", "/"))
+	if (!global && organizationID == "") || connectorID == "" || strings.TrimSpace(expectedSHA256) == "" {
+		return 0, "", errors.New("connector approval binding is required")
+	}
+	m.mu.RLock()
+	config, ok := m.connectors[connectorID]
+	auth := m.auth
+	if ok {
+		config = cloneConnectorConfig(config)
+	}
+	configured := ok && m.credentialConfigured(config, organizationID)
+	m.mu.RUnlock()
+	if !ok || (global && !pluginGlobal(config.OrganizationID)) || (!global && !pluginOwnedByOrganization(config.OrganizationID, organizationID)) {
+		return 0, "", ErrPluginOrganizationScope
+	}
+	if config.Disabled {
+		return 0, "", ErrConnectorDisabled
+	}
+	if _, err := validateConnectorRequestPath(requestPath); err != nil {
+		return 0, "", err
+	}
+	operation, allowed := findConnectorOperation(config.Operations, operationName, method, requestPath)
+	if !allowed {
+		return 0, "", fmt.Errorf("connector operation %q is not allowlisted", operationName)
+	}
+	digest, err := connectorApprovalConfigHash(config, operation, configured)
+	if err != nil {
+		return 0, "", err
+	}
+	if digest != expectedSHA256 {
+		return 0, "", ErrApprovalPayloadChanged
+	}
+	return m.call(ctx, organizationID, config, connectorID, operationName, method, requestPath, body, auth, global)
+}
+
+func (m *ConnectorManager) call(ctx context.Context, organizationID string, config ConnectorConfig, connectorID, operationName, method, requestPath string, body []byte, auth *AuthStore, global bool) (int, string, error) {
+	if (global && !pluginGlobal(config.OrganizationID)) || (!global && !pluginOwnedByOrganization(config.OrganizationID, organizationID)) {
+		return 0, "", ErrPluginOrganizationScope
+	}
+	if config.Disabled {
+		return 0, "", ErrConnectorDisabled
+	}
+	if _, err := validateConnectorRequestPath(requestPath); err != nil {
+		return 0, "", err
 	}
 	operation, allowed := findConnectorOperation(config.Operations, operationName, method, requestPath)
 	if !allowed {
 		return 0, "", fmt.Errorf("connector operation %q is not allowlisted", operationName)
 	}
 	_ = operation
-	if len(body) > 1<<20 {
-		return 0, "", errors.New("connector request payload exceeds limit")
-	}
 	base, _ := url.Parse(config.BaseURL)
 	if len(config.AllowedOrigins) > 0 {
 		origin := base.Scheme + "://" + base.Host
@@ -422,9 +533,15 @@ func (m *ConnectorManager) call(ctx context.Context, connectorID, operationName,
 			return 0, "", fmt.Errorf("connector origin %q is not in allowed_origins", origin)
 		}
 	}
-	relative, err := url.Parse(requestPath)
-	if err != nil || relative.IsAbs() || !validConnectorPath(relative.Path) {
-		return 0, "", errors.New("invalid connector request path")
+	relative, err := validateConnectorRequestPath(requestPath)
+	if err != nil {
+		return 0, "", err
+	}
+	if len(body) > 1<<20 {
+		return 0, "", errors.New("connector request payload exceeds limit")
+	}
+	if err := validateOutboundPayloadWithLimit(map[string]any{"connector_id": connectorID, "operation": operationName, "method": method, "path": requestPath, "body": string(body)}, 1<<20); err != nil {
+		return 0, "", err
 	}
 	base.Path = path.Join(strings.TrimSuffix(base.Path, "/"), relative.Path)
 	base.RawQuery = relative.RawQuery
@@ -437,7 +554,14 @@ func (m *ConnectorManager) call(ctx context.Context, connectorID, operationName,
 	if len(body) > 0 {
 		request.Header.Set("Content-Type", "application/json")
 	}
-	token := tokenOverride
+	token := ""
+	if auth != nil && strings.TrimSpace(config.OAuthProvider) != "" {
+		var err error
+		token, _, err = auth.OAuthAccessTokenForOrganization(organizationID, config.OAuthProvider)
+		if err != nil {
+			return 0, "", fmt.Errorf("resolve OAuth credential for connector %q: %w", connectorID, err)
+		}
+	}
 	if token == "" && config.TokenEnv != "" {
 		token = os.Getenv(config.TokenEnv)
 	}
@@ -450,14 +574,30 @@ func (m *ConnectorManager) call(ctx context.Context, connectorID, operationName,
 	client := connectorClientForRequest(m.client, time.Duration(config.TimeoutSeconds)*time.Second)
 	response, err := client.Do(request)
 	if err != nil {
-		return 0, "", err
+		if errors.Is(err, errConnectorRedirectDisabled) {
+			return 0, "", errConnectorRedirectDisabled
+		}
+		return 0, "", errors.New("connector provider request failed")
 	}
 	defer response.Body.Close()
 	data, err := readLimitedConnectorBody(response.Body, 2<<20)
 	if err != nil {
-		return response.StatusCode, "", err
+		if errors.Is(err, errConnectorResponseTooLarge) {
+			return response.StatusCode, "", errConnectorResponseTooLarge
+		}
+		return response.StatusCode, "", errors.New("connector provider response could not be read")
 	}
-	return response.StatusCode, string(data), nil
+	if response.StatusCode < 200 || response.StatusCode >= 300 {
+		return response.StatusCode, "", fmt.Errorf("connector provider returned HTTP status %d", response.StatusCode)
+	}
+	if len(bytes.TrimSpace(data)) == 0 {
+		return response.StatusCode, "", nil
+	}
+	clean, err := sanitizeProviderJSON(json.RawMessage(data))
+	if err != nil {
+		return response.StatusCode, "", errors.New("connector provider returned an invalid successful JSON response")
+	}
+	return response.StatusCode, string(clean), nil
 }
 
 func connectorClientForRequest(base *http.Client, timeout time.Duration) *http.Client {
@@ -468,7 +608,7 @@ func connectorClientForRequest(base *http.Client, timeout time.Duration) *http.C
 	}
 	client := *base
 	client.Timeout = timeout
-	client.CheckRedirect = func(_ *http.Request, _ []*http.Request) error { return errors.New("connector redirects are disabled") }
+	client.CheckRedirect = func(_ *http.Request, _ []*http.Request) error { return errConnectorRedirectDisabled }
 	switch transport := base.Transport.(type) {
 	case nil:
 		safe := http.DefaultTransport.(*http.Transport).Clone()
@@ -495,13 +635,17 @@ func readLimitedConnectorBody(reader io.Reader, limit int64) ([]byte, error) {
 		return nil, err
 	}
 	if int64(len(data)) > limit {
-		return nil, errors.New("connector response payload exceeds limit")
+		return nil, errConnectorResponseTooLarge
 	}
 	return data, nil
 }
 
 func findConnectorOperation(operations []ConnectorOperation, name, method, requestPath string) (ConnectorOperation, bool) {
 	method = strings.ToUpper(strings.TrimSpace(method))
+	matchPath := requestPath
+	if parsed, err := validateConnectorRequestPath(requestPath); err == nil {
+		matchPath = parsed.Path
+	}
 	for _, operation := range operations {
 		if operation.Name != name {
 			continue
@@ -517,7 +661,7 @@ func findConnectorOperation(operations []ConnectorOperation, name, method, reque
 			return operation, false
 		}
 		for _, prefix := range operation.PathPrefixes {
-			if connectorPathMatches(requestPath, prefix) {
+			if connectorPathMatches(matchPath, prefix) {
 				return operation, true
 			}
 		}
@@ -544,32 +688,114 @@ func connectorHostIsLoopback(host string) bool {
 }
 
 func connectorPrivateIP(ip net.IP) bool {
-	return ip.IsLoopback() || ip.IsUnspecified() || ip.IsPrivate() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() || ip.IsMulticast()
+	return unsafeEgressIP(ip)
 }
-
 func connectorDialContext(ctx context.Context, network, address string) (net.Conn, error) {
+	return connectorDialContextWithResolver(ctx, network, address, func(ctx context.Context, host string) ([]net.IP, error) {
+		return net.DefaultResolver.LookupIP(ctx, "ip", host)
+	})
+}
+func connectorDialContextWithResolver(ctx context.Context, network, address string, lookup func(context.Context, string) ([]net.IP, error)) (net.Conn, error) {
 	dialer := &net.Dialer{Timeout: 10 * time.Second}
-	conn, err := dialer.DialContext(ctx, network, address)
-	if err != nil {
-		return nil, err
-	}
-	remote, _, splitErr := net.SplitHostPort(conn.RemoteAddr().String())
-	if splitErr != nil {
-		_ = conn.Close()
+	host, port, err := net.SplitHostPort(address)
+	if err != nil || host == "" || port == "" {
 		return nil, errors.New("connector destination is invalid")
 	}
-	if ip := net.ParseIP(remote); ip != nil && connectorPrivateIP(ip) {
-		allowedLoopback, _ := ctx.Value(connectorLoopbackContextKey{}).(bool)
-		if !(allowedLoopback && ip.IsLoopback()) {
-			_ = conn.Close()
+	allowedLoopback, _ := ctx.Value(connectorLoopbackContextKey{}).(bool)
+	host = strings.Trim(host, "[]")
+	addresses := make([]net.IP, 0, 1)
+	if ip := net.ParseIP(host); ip != nil {
+		addresses = append(addresses, ip)
+	} else {
+		if lookup == nil {
+			return nil, errors.New("connector destination resolver is unavailable")
+		}
+		addresses, err = lookup(ctx, host)
+		if err != nil {
+			return nil, fmt.Errorf("connector destination lookup failed: %w", err)
+		}
+	}
+	if len(addresses) == 0 {
+		return nil, errors.New("connector destination has no addresses")
+	}
+	for _, ip := range addresses {
+		if ip == nil || (allowedLoopback && !ip.IsLoopback()) {
+			return nil, errors.New("connector loopback destination resolves outside loopback")
+		}
+		if !allowedLoopback && connectorPrivateIP(ip) {
 			return nil, errors.New("connector destination resolves to a private address")
 		}
 	}
-	return conn, nil
+	var lastErr error
+	for _, ip := range addresses {
+		if network == "tcp4" && ip.To4() == nil {
+			continue
+		}
+		if network == "tcp6" && ip.To4() != nil {
+			continue
+		}
+		conn, dialErr := dialer.DialContext(ctx, network, net.JoinHostPort(ip.String(), port))
+		if dialErr != nil {
+			lastErr = dialErr
+			continue
+		}
+		remote, _, splitErr := net.SplitHostPort(conn.RemoteAddr().String())
+		connected := net.ParseIP(strings.Trim(remote, "[]"))
+		if splitErr != nil || connected == nil || !connected.Equal(ip) {
+			_ = conn.Close()
+			lastErr = errors.New("connector connected address was not approved")
+			continue
+		}
+		if (allowedLoopback && !connected.IsLoopback()) || (!allowedLoopback && connectorPrivateIP(connected)) {
+			_ = conn.Close()
+			lastErr = errors.New("connector destination connected to a private address")
+			continue
+		}
+		return conn, nil
+	}
+	if lastErr != nil {
+		return nil, lastErr
+	}
+	return nil, errors.New("connector destination has no address for requested network")
 }
 
 func validConnectorPath(value string) bool {
-	return strings.HasPrefix(value, "/") && !strings.Contains(value, "..") && !strings.ContainsAny(value, "\x00\r\n")
+	return strings.HasPrefix(value, "/") && !strings.Contains(value, "..") && !strings.ContainsAny(value, "?#\x00\r\n")
+}
+
+func validateConnectorRequestPath(raw string) (*url.URL, error) {
+	parsed, err := url.Parse(strings.TrimSpace(raw))
+	if err != nil || parsed.IsAbs() || parsed.Host != "" || parsed.User != nil || parsed.Fragment != "" || !validConnectorPath(parsed.Path) {
+		return nil, errors.New("invalid connector request path")
+	}
+	if parsed.RawQuery == "" {
+		return parsed, nil
+	}
+	decodedQuery := decodeURLComponentFully(parsed.RawQuery)
+	// A semicolon is not a portable query separator: some clients reject it,
+	// while others treat it as an additional parameter delimiter. Reject it
+	// after bounded decoding so an encoded or nested form cannot hide a
+	// credential alias from the provider-request guard.
+	if strings.Contains(decodedQuery, ";") {
+		return nil, errors.New("connector request query contains credentials")
+	}
+	values, err := url.ParseQuery(parsed.RawQuery)
+	if err != nil {
+		return nil, errors.New("invalid connector request query")
+	}
+	for key, items := range values {
+		decodedKey := decodeURLComponentFully(key)
+		if sensitiveDLPKey(decodedKey) || len(ScanDLP(decodedKey)) > 0 {
+			return nil, errors.New("connector request query contains credentials")
+		}
+		for _, item := range items {
+			decoded := decodeURLComponentFully(item)
+			if sensitiveDLPKey(decodedKey) || len(ScanDLP(decoded)) > 0 || endpointURLHasSensitiveMaterial(decoded) {
+				return nil, errors.New("connector request query contains credentials")
+			}
+		}
+	}
+	return parsed, nil
 }
 
 func validEnvName(value string) bool {
@@ -598,7 +824,14 @@ func (t connectorTool) Execute(ctx context.Context, toolContext ToolContext, inp
 	if len(body) > 1<<20 {
 		return ToolResult{}, errors.New("connector body limit exceeded")
 	}
-	status, response, err := t.manager.CallForOrganization(ctx, toolContext.OrganizationID, stringInput(input, "connector_id", ""), stringInput(input, "operation", ""), stringInput(input, "method", "GET"), stringInput(input, "path", "/"), body)
+	var status int
+	var response string
+	var err error
+	if strings.TrimSpace(toolContext.OrganizationID) == "" {
+		status, response, err = t.manager.CallGlobalWithApproval(ctx, input, body, toolContext.ToolConfigSHA256)
+	} else {
+		status, response, err = t.manager.CallForOrganizationWithApproval(ctx, toolContext.OrganizationID, input, body, toolContext.ToolConfigSHA256)
+	}
 	if err != nil {
 		return ToolResult{}, err
 	}
@@ -607,4 +840,68 @@ func (t connectorTool) Execute(ctx context.Context, toolContext ToolContext, inp
 		value = response
 	}
 	return ToolResult{Value: map[string]any{"status": status, "response": value}}, nil
+}
+
+// ApprovalConfigSHA256 fingerprints the effective non-secret connector policy
+// and destination used by one approved operation. Runtime rechecks this value
+// immediately before executing a connector step.
+func connectorApprovalConfigHash(config ConnectorConfig, operation ConnectorOperation, configured bool) (string, error) {
+	origins := append([]string(nil), config.AllowedOrigins...)
+	sort.Strings(origins)
+	methods := append([]string(nil), operation.Methods...)
+	sort.Strings(methods)
+	prefixes := append([]string(nil), operation.PathPrefixes...)
+	sort.Strings(prefixes)
+	material := struct {
+		ID, OrganizationID, Provider, BaseURL, OAuthProvider, TokenEnv string
+		AllowedOrigins, Methods, PathPrefixes                          []string
+		TimeoutSeconds                                                 int
+		CredentialConfigured                                           bool
+	}{config.ID, config.OrganizationID, config.Provider, config.BaseURL, config.OAuthProvider, config.TokenEnv, origins, methods, prefixes, config.TimeoutSeconds, configured}
+	encoded, err := json.Marshal(material)
+	if err != nil {
+		return "", err
+	}
+	digest := sha256.Sum256(encoded)
+	return hex.EncodeToString(digest[:]), nil
+}
+
+func (m *ConnectorManager) ApprovalConfigSHA256(organizationID string, input map[string]any) (string, error) {
+	return m.approvalConfigSHA256(strings.TrimSpace(organizationID), input, false)
+}
+
+// ApprovalConfigSHA256Global is reserved for trusted local-mode execution.
+func (m *ConnectorManager) ApprovalConfigSHA256Global(input map[string]any) (string, error) {
+	return m.approvalConfigSHA256("", input, true)
+}
+
+func (m *ConnectorManager) approvalConfigSHA256(organizationID string, input map[string]any, global bool) (string, error) {
+	if m == nil {
+		return "", errors.New("connector manager is unavailable")
+	}
+	connectorID := strings.TrimSpace(stringInput(input, "connector_id", ""))
+	operationName := strings.TrimSpace(stringInput(input, "operation", ""))
+	method := strings.ToUpper(strings.TrimSpace(stringInput(input, "method", "GET")))
+	requestPath := strings.TrimSpace(stringInput(input, "path", "/"))
+	if (!global && organizationID == "") || connectorID == "" {
+		return "", errors.New("connector organization and ID are required")
+	}
+	m.mu.RLock()
+	config, ok := m.connectors[connectorID]
+	configured := ok && m.credentialConfigured(config, organizationID)
+	m.mu.RUnlock()
+	if !ok || (global && !pluginGlobal(config.OrganizationID)) || (!global && !pluginOwnedByOrganization(config.OrganizationID, organizationID)) {
+		return "", ErrPluginOrganizationScope
+	}
+	if config.Disabled {
+		return "", ErrConnectorDisabled
+	}
+	if _, err := validateConnectorRequestPath(requestPath); err != nil {
+		return "", err
+	}
+	operation, allowed := findConnectorOperation(config.Operations, operationName, method, requestPath)
+	if !allowed {
+		return "", fmt.Errorf("connector operation %q is not allowlisted", operationName)
+	}
+	return connectorApprovalConfigHash(config, operation, configured)
 }

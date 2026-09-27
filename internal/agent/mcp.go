@@ -24,9 +24,10 @@ type MCPServerConfig struct {
 	Args             []string `json:"args,omitempty"`
 	WorkingDirectory string   `json:"working_directory,omitempty"`
 	AllowedMethods   []string `json:"allowed_methods,omitempty"`
-	EnvironmentVars  []string `json:"environment_vars,omitempty"`
-	TimeoutSeconds   int      `json:"timeout_seconds,omitempty"`
-	Disabled         bool     `json:"disabled,omitempty"`
+	// EnvironmentVars is an explicit allowlist; listed values are intentionally shared with this configured process.
+	EnvironmentVars []string `json:"environment_vars,omitempty"`
+	TimeoutSeconds  int      `json:"timeout_seconds,omitempty"`
+	Disabled        bool     `json:"disabled,omitempty"`
 }
 
 type MCPManager struct {
@@ -108,9 +109,12 @@ func (m *MCPManager) register(config MCPServerConfig, organizationID string) err
 	if len(config.Args) > 64 {
 		return errors.New("MCP args limit exceeded")
 	}
-	for _, arg := range config.Args {
+	for index, arg := range config.Args {
 		if strings.IndexByte(arg, 0) >= 0 || len(arg) > 4096 {
 			return errors.New("MCP argument is invalid or too long")
+		}
+		if mcpArgumentContainsCredential(arg) || strings.HasPrefix(strings.TrimSpace(arg), "-") && index+1 < len(config.Args) && mcpArgumentKeyIsCredential(arg) {
+			return errors.New("MCP arguments must not contain literal credentials; configure an environment variable instead")
 		}
 	}
 	config.Args = append([]string(nil), config.Args...)
@@ -126,6 +130,9 @@ func (m *MCPManager) register(config MCPServerConfig, organizationID string) err
 		allowed[method] = true
 	}
 	normalizedEnvironmentVars := make([]string, 0, len(config.EnvironmentVars))
+	if len(config.EnvironmentVars) > 32 {
+		return errors.New("MCP environment variable allowlist limit exceeded")
+	}
 	for _, name := range config.EnvironmentVars {
 		name = strings.TrimSpace(name)
 		if !validEnvName(name) {
@@ -208,12 +215,12 @@ func (m *MCPManager) ListForOrganization(organizationID string) []MCPServerConfi
 	defer m.mu.RUnlock()
 	result := make([]MCPServerConfig, 0)
 	for _, server := range m.servers {
-		if server.config.OrganizationID != "" && !pluginOwnedByOrganization(server.config.OrganizationID, organizationID) {
+		if !pluginAccessibleByOrganization(server.config.OrganizationID, organizationID) {
 			continue
 		}
 		config := server.config
-		config.Args = append([]string(nil), config.Args...)
-		config.EnvironmentVars = append([]string(nil), config.EnvironmentVars...)
+		config.Args = nil
+		config.EnvironmentVars = nil
 		result = append(result, config)
 	}
 	return result
@@ -225,6 +232,9 @@ func (m *MCPManager) SetEnabled(id string, enabled bool) error {
 	server, ok := m.servers[strings.TrimSpace(id)]
 	if !ok {
 		return fmt.Errorf("MCP server %q is not registered", id)
+	}
+	if !pluginGlobal(server.config.OrganizationID) {
+		return ErrPluginOrganizationScope
 	}
 	server.config.Disabled = !enabled
 	if !enabled {
@@ -242,7 +252,7 @@ func (m *MCPManager) SetEnabledForOrganization(organizationID, id string, enable
 	defer m.mu.Unlock()
 	server, ok := m.servers[strings.TrimSpace(id)]
 	if !ok {
-		return fmt.Errorf("MCP server %q is not registered", id)
+		return ErrPluginNotFound
 	}
 	if !pluginOwnedByOrganization(server.config.OrganizationID, strings.TrimSpace(organizationID)) {
 		return ErrPluginOrganizationScope
@@ -266,6 +276,9 @@ func (m *MCPManager) Remove(id string) error {
 	if !ok {
 		return fmt.Errorf("MCP server %q is not registered", id)
 	}
+	if !pluginGlobal(server.config.OrganizationID) {
+		return ErrPluginOrganizationScope
+	}
 	_ = server.Stop()
 	delete(m.servers, id)
 	if err := m.persistLocked(); err != nil {
@@ -281,7 +294,7 @@ func (m *MCPManager) RemoveForOrganization(organizationID, id string) error {
 	id = strings.TrimSpace(id)
 	server, ok := m.servers[id]
 	if !ok {
-		return fmt.Errorf("MCP server %q is not registered", id)
+		return ErrPluginNotFound
 	}
 	if !pluginOwnedByOrganization(server.config.OrganizationID, strings.TrimSpace(organizationID)) {
 		return ErrPluginOrganizationScope
@@ -296,10 +309,24 @@ func (m *MCPManager) RemoveForOrganization(organizationID, id string) error {
 }
 
 func (m *MCPManager) Call(ctx context.Context, serverID, method string, params any) (json.RawMessage, error) {
-	return m.CallForOrganization(ctx, "", serverID, method, params)
+	return nil, ErrPluginOrganizationScope
 }
 
 func (m *MCPManager) CallForOrganization(ctx context.Context, organizationID, serverID, method string, params any) (json.RawMessage, error) {
+	organizationID = strings.TrimSpace(organizationID)
+	if organizationID == "" {
+		return nil, ErrPluginOrganizationScope
+	}
+	return m.callWithScope(ctx, organizationID, serverID, method, params, false)
+}
+
+// CallGlobal is reserved for explicitly trusted single-user/local execution.
+// Tenant requests must supply their organization through CallForOrganization.
+func (m *MCPManager) CallGlobal(ctx context.Context, serverID, method string, params any) (json.RawMessage, error) {
+	return m.callWithScope(ctx, "", serverID, method, params, true)
+}
+
+func (m *MCPManager) callWithScope(ctx context.Context, organizationID, serverID, method string, params any, global bool) (json.RawMessage, error) {
 	m.mu.RLock()
 	server := m.servers[serverID]
 	m.mu.RUnlock()
@@ -310,7 +337,7 @@ func (m *MCPManager) CallForOrganization(ctx context.Context, organizationID, se
 	disabled := server.config.Disabled
 	serverOrganizationID := server.config.OrganizationID
 	server.mu.Unlock()
-	if !pluginAccessibleByOrganization(serverOrganizationID, strings.TrimSpace(organizationID)) {
+	if global && !pluginGlobal(serverOrganizationID) || !global && !pluginOwnedByOrganization(serverOrganizationID, organizationID) {
 		return nil, ErrPluginOrganizationScope
 	}
 	if disabled {
@@ -408,6 +435,10 @@ func (s *MCPServer) startLocked() error {
 			return fmt.Errorf("invalid MCP environment variable %q", name)
 		}
 		if value, ok := os.LookupEnv(name); ok {
+			if len(value) > 32<<10 {
+				cancel()
+				return errors.New("MCP environment variable value exceeds limit")
+			}
 			cmd.Env = append(cmd.Env, name+"="+value)
 		}
 	}
@@ -479,6 +510,9 @@ func (s *MCPServer) Call(ctx context.Context, method string, params any) (json.R
 	if len(s.allowedMethods) == 0 || !s.allowedMethods[method] {
 		return nil, fmt.Errorf("MCP method %q is not allowlisted", method)
 	}
+	if err := validateOutboundPayloadWithLimit(params, mcpMaxMessageBytes); err != nil {
+		return nil, err
+	}
 	s.nextID++
 	requestID := s.nextID
 	request := map[string]any{"jsonrpc": "2.0", "id": requestID, "method": method, "params": params}
@@ -539,9 +573,16 @@ func (s *MCPServer) Call(ctx context.Context, method string, params any) (json.R
 			return nil, errors.New("MCP response id does not match request")
 		}
 		if response.Error != nil {
-			return nil, fmt.Errorf("MCP error: %s", response.Error.Message)
+			return nil, errors.New("MCP server returned an error")
 		}
-		return response.Result, nil
+		if len(bytes.TrimSpace(response.Result)) == 0 {
+			return nil, errors.New("MCP response omitted result")
+		}
+		result, err := sanitizeProviderJSON(response.Result)
+		if err != nil {
+			return nil, errors.New("MCP server returned an invalid result")
+		}
+		return result, nil
 	}
 }
 
@@ -585,7 +626,13 @@ func (t mcpCallTool) Execute(ctx context.Context, toolContext ToolContext, input
 	if t.manager == nil {
 		return ToolResult{}, errors.New("MCP manager is unavailable")
 	}
-	result, err := t.manager.CallForOrganization(ctx, toolContext.OrganizationID, stringInput(input, "server_id", ""), stringInput(input, "method", ""), input["params"])
+	var result json.RawMessage
+	var err error
+	if strings.TrimSpace(toolContext.OrganizationID) == "" {
+		result, err = t.manager.CallGlobal(ctx, stringInput(input, "server_id", ""), stringInput(input, "method", ""), input["params"])
+	} else {
+		result, err = t.manager.CallForOrganization(ctx, toolContext.OrganizationID, stringInput(input, "server_id", ""), stringInput(input, "method", ""), input["params"])
+	}
 	if err != nil {
 		return ToolResult{}, err
 	}
@@ -594,4 +641,19 @@ func (t mcpCallTool) Execute(ctx context.Context, toolContext ToolContext, input
 		return ToolResult{Value: string(result)}, nil //nolint:nilerr // raw MCP payloads may be valid string results.
 	}
 	return ToolResult{Value: value}, nil
+}
+
+func mcpArgumentContainsCredential(arg string) bool {
+	if len(ScanDLP(arg)) != 0 {
+		return true
+	}
+	if separator := strings.IndexByte(arg, '='); separator >= 0 && mcpArgumentKeyIsCredential(arg[:separator]) {
+		return true
+	}
+	return false
+}
+
+func mcpArgumentKeyIsCredential(key string) bool {
+	key = strings.TrimLeft(strings.TrimSpace(key), "-")
+	return sensitiveDLPKey(key)
 }

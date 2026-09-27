@@ -2445,3 +2445,85 @@ O commit `b1aaebfdb4ad7ad753591402ad47a220fcd67fdd` fecha o caso restante de `mo
 ## Correção de screenshot Settings e captura fail-closed — 2026-09-23
 
 A auditoria visual encontrou que `docs/images/screens/settings.png` era um arquivo histórico quase vazio de 8.2 KB, embora a implementação de Settings e a captura atual `class-a-plus-settings.png` estivessem funcionais. O alias foi substituído pela captura funcional, com checksum `89420370b9d3c7317a2c5d7c51bb9f8d4eba914a6d7b7bf829c855c909902e72`. O capturador agora exige conteúdo mínimo em `body`/`main` e rejeita PNG menor que 16 KiB, evitando publicar uma tela branca silenciosamente. Testes de `Settings`, build UI, Node syntax, integrity e YAML passaram. Commit publicado: `0b0710cfe9d646c859aed8c624fb19fe1ac3cd43`; CI remota iniciou com checks pendentes.
+
+
+## Retomada autônoma — completar Ollama Full sem sobrescrever trabalho herdado — 2026-09-26 21:56 -03
+
+```yaml
+mission_id: viqyzCzZsu3R88Zh33feNk-ollama-full-completion
+objective: Evoluir o fork em direção às jornadas verificáveis do Ollama Full e fechar o maior próximo gap local sem alegar paridade/produção sem evidência.
+state: RECOVERING
+rigor: L3 (plataforma com autenticação, isolamento multi-tenant, filesystem, shell e integrações externas)
+repository:
+  path: /home/ubuntu/ollama-full-recovery
+  branch: recovery/ollama-full-snapshot
+  head: 8635e30d (origin/main; commit Windows checksum)
+  remote: origin -> https://github.com/DZ23-LTDA/ollama-classe-a-plus.git
+  uncommitted_changes: true
+  observed_modified_and_untracked_paths: dozens; backend, server, web, docs, packaging and untracked security/snapshot modules
+scope_in:
+  - preservar integralmente as alterações herdadas e reconciliar os checkpoints com o estado de disco;
+  - priorizar jornadas locais de alto valor da árvore de produto, com implementação + teste + execução real;
+  - executar gates oficiais/aplicáveis e corrigir falhas pela causa raiz;
+  - documentar limitações, dependências externas e prova observada.
+scope_out:
+  - declarar paridade total com Manus/60+ ferramentas sem matriz e benchmarks observáveis;
+  - usar/adivinhar ativo Swole que não esteja presente no checkout;
+  - conectar contas/credenciais externas, publicar/deploy produção, assinar artefatos ou testar dispositivos sem dependências/autoridade apropriadas;
+  - force-push, reescrever história, limpar/resetar worktree ou mesclar main.
+acceptance_criteria:
+  - checkpoint corresponde ao branch/HEAD/worktree e distingue histórico de estado atual;
+  - pelo menos uma próxima jornada crítica selecionada do roadmap tem fluxo/API, testes e execução real no ambiente local;
+  - gates aplicáveis passam no mesmo estado de fonte, com failures e N/A justificados;
+  - alterações herdadas não são descartadas nem commitadas sem revisão/secret scan/gates;
+  - matriz/readiness não afirma capabilities externas como homologadas;
+  - blockers finais listam logo original, serviços/credenciais, CI/assinatura/dispositivos quando ainda faltarem.
+gates:
+  required: [integrity, gofmt, go_test_all, go_vet, go_build, postgres_redis_integration_if_available, web_typecheck_lint_unit_build, mobile_typecheck_policy, e2e_smoke, secret_scan, final_security_review]
+  not_applicable: [external_provider_smoke_without_operator_credentials, signed_release_without_signing_keys, native_physical_device_test_without_devices]
+delivery_destination: branch recovery/ollama-full-snapshot; push permitido pelo pedido anterior somente após gates e auditoria; nunca main/merge/release sem novo escopo explícito.
+approvals_required: [production deploy/publish, external accounts or paid services, signing credentials, publication beyond authorized feature branch]
+rollback_plan: preservar HEAD 8635e30d e nunca executar reset/clean; reverter somente hunks introduzidos neste ciclo com patch revisado; manter logs/teste temporários fora do repo.
+current_task: Reconciliar alterações herdadas e executar a primeira auditoria de gates desta retomada.
+current_failure: Checkpoint autônomo histórico está em 2026-09-23 e não representa o checkout observado de 2026-09-26; não há processos de teste ativos.
+current_strategy: Preservar worktree; evidência mais nova primeiro; escolher fatia repo-first do produto, sem paralelismo sobre os mesmos arquivos.
+plan:
+  - id: recover-and-freeze
+    status: in_progress
+    action: inventory full diff and checkpoint current state; no destructive git operations
+  - id: verify-inherited-backend
+    status: pending
+    action: integrity, gofmt, focused tests, then full Go tests/vet/build
+  - id: verify-product-surfaces
+    status: pending
+    action: web/mobile E2E and accessibility/security-relevant gates after backend fixes
+  - id: advance-repo-first
+    status: pending
+    action: implement the smallest missing project-test-runner/worktree flow with safe isolation and regression proof
+  - id: final-review-and-release
+    status: pending
+    action: independent review, secret scan, same-tree gates, then branch-only publication if still authorized and safe
+blockers:
+  - item: original Swole brand asset
+    status: BLOCKED_BY_EXTERNAL_DEPENDENCY
+    evidence: no Swole-specific logo file found in checkout's bounded asset search
+    needed: exact source image/vector from maintainer
+    impact: brand/logo replacement cannot be truthfully marked complete
+  - item: external service and device validation
+    status: BLOCKED_BY_EXTERNAL_DEPENDENCY
+    evidence: provider accounts, credentials, signing keys and physical devices are not present in the project context
+    needed: operator-configured authorized test accounts/devices/signing materials
+    impact: no claim of upstream OAuth/provider/deploy/store/physical smoke
+hypotheses:
+  - The highest-value local gap remains repo-first coding completion: isolated branch/worktree, project test runner, repair loop and E2E.
+decisions:
+  - decision: rigor L3, but explicitly not regulated-finance L4
+    reason: multi-tenant agent platform executes filesystem/shell actions and holds integrations; high security/privacy bar is warranted without claiming a regulated deployment.
+  - decision: preserve all pre-existing and untracked work; do not rebase, reset, clean, or squash it
+    reason: checkout contains dozens of user-requested changes from the earlier task, and ownership/status of each file cannot be safely inferred by destructive cleanup.
+  - decision: do not push until a single frozen tree passes release gates and secret review
+    reason: branch-only publication is previously authorized, but current tree is broad/uncommitted and not yet verified end-to-end.
+last_progress_at: 2026-09-26 21:56 -03
+next_action: Run integrity and focused Go regressions on the current checkout; reconcile any failure before full gates.
+resume_instructions: Read this section and the latest security checkpoint; verify HEAD/worktree again; preserve every inherited edit; continue from first pending plan item and update this file after significant progress.
+```

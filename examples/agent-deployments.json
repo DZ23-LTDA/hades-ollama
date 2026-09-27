@@ -1,6 +1,7 @@
 [
   {
     "id": "vercel-production",
+    "organization_id": "replace-with-owning-organization-id",
     "provider": "vercel",
     "base_url": "https://api.vercel.com",
     "token_env": "DZ23_VERCEL_TOKEN",
@@ -10,6 +11,7 @@
   },
   {
     "id": "netlify-production",
+    "organization_id": "replace-with-owning-organization-id",
     "provider": "netlify",
     "base_url": "https://api.netlify.com",
     "token_env": "DZ23_NETLIFY_TOKEN",
@@ -17,6 +19,7 @@
   },
   {
     "id": "self-hosted-deployer",
+    "organization_id": "replace-with-owning-organization-id",
     "provider": "generic",
     "base_url": "https://deploy.example.com",
     "token_env": "DZ23_DEPLOY_TOKEN",

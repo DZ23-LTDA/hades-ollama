@@ -27,7 +27,10 @@ func TestResumePendingRecordsBoundedScheduleFailures(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	runtime.resumePending(context.Background())
+	orgRuntime := runtime.WithOrganization("org-a")
+	if err := orgRuntime.resumePending(context.Background()); err != nil {
+		t.Fatal(err)
+	}
 	failed, err := store.GetSchedule(schedule.ID)
 	if err != nil {
 		t.Fatal(err)
@@ -36,7 +39,7 @@ func TestResumePendingRecordsBoundedScheduleFailures(t *testing.T) {
 		t.Fatalf("first failure state = %+v", failed)
 	}
 	for failed.FailureCount < maxScheduleFailures {
-		failed, err = runtime.recordScheduleFailure(failed)
+		failed, err = orgRuntime.recordScheduleFailure(failed)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -45,7 +48,7 @@ func TestResumePendingRecordsBoundedScheduleFailures(t *testing.T) {
 		t.Fatalf("schedule was not disabled after bounded failures: %+v", failed)
 	}
 	failed.Enabled = true
-	failed, err = runtime.recordScheduleSuccess(failed)
+	failed, err = orgRuntime.recordScheduleSuccess(failed)
 	if err != nil {
 		t.Fatal(err)
 	}

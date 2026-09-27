@@ -44,7 +44,7 @@ func TestLoadAgentRemoteMCPBootstrapsStrictManifest(t *testing.T) {
 		t.Fatal("expected Remote MCP manager")
 	}
 	servers := manager.List()
-	if len(servers) != 1 || servers[0].ID != "remote" || servers[0].URL != "https://mcp.example.test/rpc" {
+	if len(servers) != 1 || servers[0].ID != "remote" || servers[0].URL != "https://mcp.example.test" {
 		t.Fatalf("unexpected Remote MCP bootstrap: %+v", servers)
 	}
 }

@@ -1,6 +1,9 @@
 package agent
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"sort"
@@ -35,6 +38,8 @@ func DefaultCapabilityPolicy() CapabilityPolicy {
 		"mcp:call",
 		"mcp:remote:call",
 		"connector:external",
+		"media:execute",
+		"repo:read",
 	})
 }
 
@@ -115,6 +120,17 @@ func toolApprovalPolicy(descriptor ToolDescriptor, risk RiskClass) string {
 	scopes := append([]string(nil), descriptor.Scopes...)
 	sort.Strings(scopes)
 	return "capabilities:" + strings.Join(scopes, ",") + ";risk:" + string(risk)
+}
+
+func toolDescriptorSHA256(descriptor ToolDescriptor) (string, error) {
+	descriptor.Scopes = append([]string(nil), descriptor.Scopes...)
+	sort.Strings(descriptor.Scopes)
+	encoded, err := json.Marshal(descriptor)
+	if err != nil {
+		return "", err
+	}
+	digest := sha256.Sum256(encoded)
+	return hex.EncodeToString(digest[:]), nil
 }
 
 type capabilityPolicyValidator interface {

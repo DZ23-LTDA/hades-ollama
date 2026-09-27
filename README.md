@@ -1,4 +1,4 @@
-# Ollama Classe A+
+# Ollama Full
 
 > **Uma distribuição agentic local-first para modelos, automações, pesquisa, builders e operação segura.**
 
@@ -6,7 +6,7 @@ Este é o fork público mantido por [DZ23-LTDA](https://github.com/DZ23-LTDA), b
 
 ### Visão rápida — capturas reais atualizadas em 2026-09-22
 
-![Home atual do shell Classe A+](docs/images/screens/class-a-plus-home.png?v=2)
+![Home atual do shell Ollama Full](docs/images/screens/class-a-plus-home.png?v=2)
 
 ![Agentic Console atual](docs/images/screens/class-a-plus-agentic.png)
 
@@ -30,7 +30,7 @@ As imagens acima foram recapturadas com Chromium contra o Vite dev e o servidor 
 | Smoke operacional de Growth OS e Builder | [`smoke-company-growth.sh`](scripts/smoke-company-growth.sh) + [`smoke-builder.sh`](scripts/smoke-builder.sh) |
 | Desktop Commander local e Remote MCP | [`agentic/DESKTOP_COMMANDER_REMOTE.md`](docs/agentic/DESKTOP_COMMANDER_REMOTE.md) + [`dz23-desktop-commander-remote.json`](examples/dz23-desktop-commander-remote.json) |
 | Roadmap e status por fase | [`agentic/ROADMAP.md`](docs/agentic/ROADMAP.md) |
-| Árvore Manus observável + Classe A+ unificado | [`agentic/PRODUCT_TREE.md`](docs/agentic/PRODUCT_TREE.md) |
+| Árvore Manus observável + Ollama Full | [`agentic/PRODUCT_TREE.md`](docs/agentic/PRODUCT_TREE.md) |
 | Matriz de paridade e evidências | [`agentic/PARITY_MATRIX.md`](docs/agentic/PARITY_MATRIX.md) |
 | Referências de harnesses, capacidades e decisões de integração | [`HARNESS_CAPABILITY_MATRIX.md`](audit/HARNESS_CAPABILITY_MATRIX.md) |
 | Proteção contra regressões upstream | [`UPSTREAM_POLICY.md`](UPSTREAM_POLICY.md) + [`check-class-a-plus-integrity.sh`](scripts/check-class-a-plus-integrity.sh) |
@@ -41,15 +41,15 @@ Start building with open models.
 
 ## Build and run this fork
 
-The public repository currently distributes source code, not a signed Classe A+ installer, release binary, Docker image, or app-store package. Build the revision you have checked out so the executable and agentic runtime come from this fork:
+The public repository currently distributes source code, not a signed Ollama Full installer, release binary, Docker image, or app-store package. Build the revision you have checked out so the executable and agentic runtime come from this fork:
 
 ```shell
 git clone https://github.com/DZ23-LTDA/ollama-classe-a-plus.git
 cd ollama-classe-a-plus
 go version  # Go version required by go.mod
 mkdir -p bin
-go build -trimpath -o bin/ollama-classe-a-plus .
-OLLAMA_HOST=127.0.0.1:11434 ./bin/ollama-classe-a-plus serve
+go build -trimpath -o bin/ollama-full .
+OLLAMA_HOST=127.0.0.1:11434 ./bin/ollama-full serve
 ```
 
 The equivalent helpers are `scripts/install.sh` on Unix-like systems and `scripts/install.ps1` on Windows. They build the checked-out source locally and never download `ollama.com` installers or official upstream binaries. They require Go and do not install models or configure external providers.
@@ -66,12 +66,12 @@ The local web development configuration uses the agentic API at `http://127.0.0.
 
 ### Upstream compatibility references
 
-The inherited Ollama CLI/API and integration pages remain available for compatibility and attribution. Links to `ollama.com`, `docs.ollama.com`, upstream libraries, Docker Hub, or upstream communities describe the upstream project; they do **not** install or publish this fork. Use the source-build instructions above for Classe A+.
+The inherited Ollama CLI/API and integration pages remain available for compatibility and attribution. Links to `ollama.com`, `docs.ollama.com`, upstream libraries, Docker Hub, or upstream communities describe the upstream project; they do **not** install or publish this fork. Use the source-build instructions above for Ollama Full.
 
 ## Get started
 
 ```
-./bin/ollama-classe-a-plus
+./bin/ollama-full
 ```
 
 You'll be prompted to run a model or connect Ollama to your existing agents or applications such as `Claude Code`, `OpenClaw`, `OpenCode` , `Codex`, `Copilot`,  and more.
@@ -81,7 +81,7 @@ You'll be prompted to run a model or connect Ollama to your existing agents or a
 To launch a specific integration:
 
 ```
-./bin/ollama-classe-a-plus launch claude
+./bin/ollama-full launch claude
 ```
 
 Supported integrations include [Claude Code](https://docs.ollama.com/integrations/claude-code), [Codex](https://docs.ollama.com/integrations/codex), [Copilot CLI](https://docs.ollama.com/integrations/copilot-cli), [DeepSeek Harness](https://docs.ollama.com/integrations/deepseek-harness), [Droid](https://docs.ollama.com/integrations/droid), and [OpenCode](https://docs.ollama.com/integrations/opencode).
@@ -91,7 +91,7 @@ Supported integrations include [Claude Code](https://docs.ollama.com/integration
 Use [OpenClaw](https://docs.ollama.com/integrations/openclaw) to turn Ollama into a personal AI assistant across WhatsApp, Telegram, Slack, Discord, and more:
 
 ```
-./bin/ollama-classe-a-plus launch openclaw
+./bin/ollama-full launch openclaw
 ```
 
 ### Chat with a model
@@ -99,10 +99,10 @@ Use [OpenClaw](https://docs.ollama.com/integrations/openclaw) to turn Ollama int
 Run and chat with a model already available in your local Ollama-compatible model store:
 
 ```
-./bin/ollama-classe-a-plus run <modelo-local>
+./bin/ollama-full run <modelo-local>
 ```
 
-See the [upstream model library](https://ollama.com/library) only as a compatibility reference; model availability, licensing and downloads are operator responsibilities. The [Classe A+ guide](docs/CLASS_A_PLUS_GUIDE.md) is the canonical source-build documentation.
+See the [upstream model library](https://ollama.com/library) only as a compatibility reference; model availability, licensing and downloads are operator responsibilities. The [Ollama Full guide](docs/CLASS_A_PLUS_GUIDE.md) is the canonical source-build documentation.
 
 ## REST API
 

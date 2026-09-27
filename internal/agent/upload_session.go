@@ -4,9 +4,11 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -38,7 +40,7 @@ type UploadSession struct {
 	CreatedAt      time.Time   `json:"created_at"`
 	UpdatedAt      time.Time   `json:"updated_at"`
 	ExpiresAt      time.Time   `json:"expires_at"`
-	FinalPath      string      `json:"final_path,omitempty"`
+	FinalPath      string      `json:"-"`
 	tempPath       string
 }
 
@@ -64,10 +66,16 @@ type UploadManager struct {
 	sessions map[string]*UploadSession
 }
 
+var uploadOwnedFilenamePattern = regexp.MustCompile(`^upl_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(?:\.part|-.+)$`)
+
 // NewUploadManager cria o gerenciador. quotaBytes limita o total por organizacao.
 func NewUploadManager(root string, quotaBytes, maxFileBytes int64) (*UploadManager, error) {
 	if strings.TrimSpace(root) == "" {
 		return nil, errors.New("upload root is required")
+	}
+	root, err := filepath.Abs(root)
+	if err != nil {
+		return nil, err
 	}
 	if err := os.MkdirAll(root, 0o700); err != nil {
 		return nil, err
@@ -78,13 +86,17 @@ func NewUploadManager(root string, quotaBytes, maxFileBytes int64) (*UploadManag
 	if maxFileBytes <= 0 {
 		maxFileBytes = 1 << 30 // 1 GiB
 	}
-	return &UploadManager{
+	manager := &UploadManager{
 		root:     root,
 		quota:    quotaBytes,
 		maxSize:  maxFileBytes,
 		ttl:      24 * time.Hour,
 		sessions: map[string]*UploadSession{},
-	}, nil
+	}
+	if err := manager.cleanupExpiredFiles(time.Now().UTC()); err != nil {
+		return nil, err
+	}
+	return manager, nil
 }
 
 func sanitizeUploadFilename(name string) (string, error) {
@@ -112,6 +124,63 @@ func (m *UploadManager) usedBytesLocked(organizationID string) int64 {
 	return used
 }
 
+func (m *UploadManager) removeSessionFilesLocked(session *UploadSession) error {
+	for _, path := range []string{session.tempPath, session.FinalPath} {
+		if path == "" {
+			continue
+		}
+		path = filepath.Clean(path)
+		if filepath.Dir(path) != m.root {
+			return errors.New("upload path escaped its storage root")
+		}
+		if err := os.Remove(path); err != nil && !errors.Is(err, os.ErrNotExist) {
+			return err
+		}
+	}
+	return nil
+}
+
+func (m *UploadManager) sweepExpiredLocked(now time.Time) error {
+	for id, session := range m.sessions {
+		if session.ExpiresAt.IsZero() || now.Before(session.ExpiresAt) {
+			continue
+		}
+		if err := m.removeSessionFilesLocked(session); err != nil {
+			return fmt.Errorf("remove expired upload %s: %w", id, err)
+		}
+		delete(m.sessions, id)
+	}
+	return nil
+}
+
+// cleanupExpiredFiles removes only upload-owned regular files older than the
+// session TTL. Session metadata is in memory, so they cannot resume after a
+// restart; recent files are left untouched for another live process.
+func (m *UploadManager) cleanupExpiredFiles(now time.Time) error {
+	entries, err := os.ReadDir(m.root)
+	if err != nil {
+		return err
+	}
+	cutoff := now.Add(-m.ttl)
+	for _, entry := range entries {
+		name := entry.Name()
+		if !uploadOwnedFilenamePattern.MatchString(name) {
+			continue
+		}
+		info, err := entry.Info()
+		if err != nil {
+			return err
+		}
+		if !info.Mode().IsRegular() || info.ModTime().After(cutoff) {
+			continue
+		}
+		if err := os.Remove(filepath.Join(m.root, name)); err != nil && !errors.Is(err, os.ErrNotExist) {
+			return err
+		}
+	}
+	return nil
+}
+
 // StartUpload cria uma sessao (receiving) validando tamanho, quota e filename.
 func (m *UploadManager) StartUpload(organizationID, projectID, filename string, totalSize, chunkSize int64, expectedSHA256 string) (UploadSession, error) {
 	organizationID = strings.TrimSpace(organizationID)
@@ -127,6 +196,9 @@ func (m *UploadManager) StartUpload(organizationID, projectID, filename string, 
 	}
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	if err := m.sweepExpiredLocked(time.Now().UTC()); err != nil {
+		return UploadSession{}, err
+	}
 	if m.usedBytesLocked(organizationID)+totalSize > m.quota {
 		return UploadSession{}, ErrUploadQuotaExceeded
 	}
@@ -163,6 +235,13 @@ func (m *UploadManager) getLocked(organizationID, uploadID string) (*UploadSessi
 	}
 	if s.OrganizationID != strings.TrimSpace(organizationID) {
 		return nil, ErrUploadForbidden
+	}
+	if !s.ExpiresAt.IsZero() && !time.Now().UTC().Before(s.ExpiresAt) {
+		if err := m.removeSessionFilesLocked(s); err != nil {
+			return nil, err
+		}
+		delete(m.sessions, strings.TrimSpace(uploadID))
+		return nil, ErrUploadNotFound
 	}
 	return s, nil
 }

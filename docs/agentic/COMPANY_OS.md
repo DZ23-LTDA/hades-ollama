@@ -1,6 +1,6 @@
-# Company OS — empresas agentic no Ollama Classe A+
+# Company OS — empresas agentic no Ollama Full
 
-O **Company OS** transforma uma organização/tenant em uma unidade empresarial operável pelo runtime agentic. Ele guarda identidade, missão, posicionamento, modelo de negócio, oferta, público-alvo, departamentos virtuais, roadmap, metas, backlog, ciclos de execução, orçamento, riscos e relatórios. A referência de categoria é a proposta pública da Polsia de uma IA que planeja, constrói e opera uma empresa [1]; o Classe A+ implementa uma arquitetura local-first, com providers substituíveis, approvals server-side e isolamento por organização.
+O **Company OS** transforma uma organização/tenant em uma unidade empresarial operável pelo runtime agentic. Ele guarda identidade, missão, posicionamento, modelo de negócio, oferta, público-alvo, departamentos virtuais, roadmap, metas, backlog, ciclos de execução, orçamento, riscos e relatórios. A referência de categoria é a proposta pública da Polsia de uma IA que planeja, constrói e opera uma empresa [1]; o Ollama Full implementa uma arquitetura local-first, com providers substituíveis, approvals server-side e isolamento por organização.
 
 ## Fluxo implementado
 

@@ -91,3 +91,25 @@ func TestRegisterConnectorDoesNotExposeTokenEnvironmentInResponse(t *testing.T) 
 		t.Fatalf("response leaked token environment name: %s", encoded)
 	}
 }
+
+func TestConnectorLifecycleHidesForeignIDsAsNotFound(t *testing.T) {
+	api, _, _ := connectorRegistrationContext(t, "", "org-a", agent.RoleOwner)
+	if err := api.runtime.RegisterConnectorForOrganization("org-a", agent.ConnectorConfig{ID: "tenant-a", Provider: "test", BaseURL: "https://api.example.test", Operations: []agent.ConnectorOperation{{Name: "read", Methods: []string{"GET"}, PathPrefixes: []string{"/"}}}}); err != nil {
+		t.Fatal(err)
+	}
+	invoke := func(id string) *httptest.ResponseRecorder {
+		recorder := httptest.NewRecorder()
+		ctx, _ := gin.CreateTestContext(recorder)
+		ctx.Request = httptest.NewRequest(http.MethodDelete, "/api/agent/v1/plugins/connectors/"+id, nil)
+		ctx.Params = gin.Params{{Key: "id", Value: id}}
+		ctx.Set("agent.organization", agent.Organization{ID: "org-b"})
+		ctx.Set("agent.membership", agent.Membership{OrganizationID: "org-b", Role: agent.RoleOwner})
+		api.removeConnector(ctx)
+		return recorder
+	}
+	foreign := invoke("tenant-a")
+	unknown := invoke("does-not-exist")
+	if foreign.Code != http.StatusNotFound || unknown.Code != http.StatusNotFound || foreign.Body.String() != unknown.Body.String() {
+		t.Fatalf("foreign/unknown connector oracle: foreign=%d %s unknown=%d %s", foreign.Code, foreign.Body.String(), unknown.Code, unknown.Body.String())
+	}
+}
