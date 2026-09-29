@@ -215,3 +215,18 @@ Regressões implementadas: objeto tabela com dado sentinela e `GRANT SELECT TO P
 **Remote CI:** API de check-runs e `gh run list` não retornaram checks para `6cedbb1`. O workflow está configurado para pull_request e push apenas a main, não para push desta branch; não afirmar GitHub CI verde, e nenhum PR foi criado. A branch recovery está limpa e remota alinhada.
 
 **Próxima ação concreta:** manter PostgreSQL/RLS como candidato. Para solicitar produção, preparar staging separado autorizado, TLS/CA, janela de manutenção e backup; executar restore/rollback, failover/crash e smoke multi-instância com evidência independente. Só promover após esses gates reais, CI GitHub associado ao PR autorizado e revisão do SHA final. A paridade Ollama Full/Manus também continua incompleta; esta rodada concluiu somente o hardening ACL/HMAC solicitado.
+
+
+## Continuidade — restore verify-full em clusters PG16 distintos — 2026-09-29 12:31 -03
+
+**Commit funcional enviado:** `1bf058b769395861e308fa986f7baf040e45bc46` (`docs(postgres): require verified TLS in restore rehearsal`), `origin/recovery/ollama-full-snapshot`; local/remoto confirmadas. Branch recovery apenas; nenhum push em `main` ou force-push.
+
+O runbook source/staging agora usa `sslmode=verify-full` e CA distinta/explicitada em ambos DSNs e no `pg_restore`; deixa os DSNs do admin de origem separados do staging maintenance/restore, exige source/staging cluster IDs diferentes e informa pré-requisitos `CREATEDB` + `pg_monitor`. `scripts/check-class-a-plus-integrity.sh` impede regressão desses requisitos; removidos três comandos duplicados no fixture CI.
+
+**Evidência local:** ensaio efêmero de PostgreSQL 16 com dois clusters independentes, dois certs TLS SAN IP/DNS, `psql`/`pg_dump`/`pg_restore` em verify-full; system identifiers diferentes; dump custom restaurado; contagens finais `1 mission / 1 event`. Segundo ensaio injetou falha logo após criar a database de staging: trap removeu database temporária, clusters, diretório CA e dump. Nenhum dado persistente afetado.
+
+**Gates PASS:** `go test ./... -count=1`, `go vet ./...`, integrity guard, YAML parser Go yaml.v3, Bash syntax do bloco de integração CI e do snippet de restore, `git diff --check`. A evidência adversarial de cutover/ACL em PostgreSQL 16 e review sem blockers permanece no estado anterior. GitHub Actions não executou checks para branch recovery; workflow está limitado a pull_request/push main; nenhum PR foi aberto.
+
+**Ainda não production-ready:** o rehearsal é local/descartável. Falta ambiente real staging, TLS/CA do operador, HA/replicação, failover/crash, backup/retention/RPO-RTO e restore/rollback operacional independente, rollout coordenado e alertas. A execução dessas fases externas depende de staging/DSNs, CA e agenda operacional autorizados. Enquanto faltarem, status do PostgreSQL é candidato e gate de produção continua fechado.
+
+**Próximo passo:** preparar e executar staging HA com os valores reais, exercitar replicação/failover/restore/rollback e obter revisão independente. Em paralelo, manter branch recovery sincronizada e executar os checks GitHub por rota autorizada; não alegar CI remoto verde sem run/check ligado ao SHA.

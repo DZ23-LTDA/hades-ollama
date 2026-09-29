@@ -1079,3 +1079,16 @@ STATUS: P0_RLS_CANDIDATE — contenção ACL publicada e integração local real
 - **PRÓXIMO PASSO CONCRETO:** preparar ensaio em staging separado e autorizado (cluster/DSNs, TLS/CA, backup e janela de manutenção), executar restore/rollback e failover com verificação independente; até essa evidência, manter a arquitetura bloqueada para produção. Para executar CI remoto, criar/usar PR somente conforme autorização do usuário; branch recovery já está sincronizada.
 
 STATUS: RLS_ACL_REVIEW_NO_BLOCKERS — correção, recomendação menor de teste e gates locais concluídos; staging/release global permanecem pendentes.
+
+
+## Estado atual autoritativo — backup/restore TLS ensaiado — 2026-09-29 12:31 -03
+
+- **Último commit funcional enviado:** `1bf058b769395861e308fa986f7baf040e45bc46` (`docs(postgres): require verified TLS in restore rehearsal`) em `origin/recovery/ollama-full-snapshot`; SHA local/remota idênticas. Sem alterar `main`, sem force-push/rebase.
+- **Runbook corrigido:** restore rehearsal agora exige DSNs source e staging com CA explícita e `sslmode=verify-full`, define `PGSSLROOTCERT` também para `pg_restore`, separa os admin DSNs de origem do maintenance DSN de staging, recusa system identifiers iguais e documenta `CREATEDB` + `pg_monitor` para o staging_restore_admin. Integrity guard testa esses invariantes e a CI duplicada de ownership foi limpa.
+- **Evidência operacional local real:** two clusters PostgreSQL 16 efêmeros distintos, certificados self-signed com SAN IP/DNS, clientes `psql`, `pg_dump` e `pg_restore` usando verify-full. IDs observados foram distintos; restore custom format finalizou e preservou 1 mission + 1 event (`RESTORED_COUNTS=1|1`). Depois, fault injection imediatamente após CREATE DATABASE acionou o trap; os dois clusters, DB temporário, CA e dump foram removidos. Não se tocou em dados persistentes.
+- **Gates finais desta rodada:** `go test ./... -count=1`, `go vet ./...`, `scripts/check-class-a-plus-integrity.sh`, YAML parse `gopkg.in/yaml.v3`, `bash -n` dos trechos CI e do runbook, `git diff --check` passaram. Como só runbook/CI guard mudaram após a rodada ACL, os testes reais PG16 de cutover/ACL permanecem evidência registrada no bloco anterior.
+- **CI remoto:** check-runs seguem vazios para a branch recovery, pois Actions corre em `pull_request` ou push a `main`; nenhum PR foi criado nem se afirma CI remoto verde.
+- **Pendência importante:** isto é um rehearsal local descartável e não substitui staging externo/operacional. Permanecem TLS/CA emitidos pelo operador, HA/replicação, crash/failover, coordenação real de maintenance, backup automatizado com retenção, RPO/RTO, restore de backup completo do ambiente com roles/extension, rollback operacional independente e observabilidade/alertas. Não declarar production-ready.
+- **PRÓXIMO PASSO CONCRETO:** criar plano/runbook de staging e HA baseado nos DSNs/CA reais, coletar evidência de replicação/failover/rollback com revisão independente, e executar CI via mecanismo autorizado (PR se aprovado). Sem credenciais/ambiente staging disponibilizados, implementar somente harness local e manter status BLOCKED para validação operacional externa.
+
+STATUS: POSTGRES_LOCAL_RESTORE_TLS_PASS — restore real + fault-cleanup demonstrados em clusters locais distintos; produção segue bloqueada por staging HA/failover/restore operacional.
