@@ -25,13 +25,13 @@ BEGIN
   IF current_database() <> 'ollama_agent' THEN
     RAISE EXCEPTION 'connect to the existing ollama_agent database before running this legacy-only upgrade';
   END IF;
-  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname=current_user AND rolsuper) THEN
+  IF NOT EXISTS (SELECT 1 FROM pg_catalog.pg_roles WHERE rolname=current_user AND rolsuper) THEN
     RAISE EXCEPTION 'legacy role upgrade requires a trusted superuser connection';
   END IF;
-  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='ollama_agent' AND rolsuper AND rolcanlogin) THEN
+  IF NOT EXISTS (SELECT 1 FROM pg_catalog.pg_roles WHERE rolname='ollama_agent' AND rolsuper AND rolcanlogin) THEN
     RAISE EXCEPTION 'expected the legacy login ollama_agent to exist and be a superuser';
   END IF;
-  IF EXISTS (SELECT 1 FROM pg_stat_activity WHERE datname=current_database() AND usename='ollama_agent' AND pid<>pg_backend_pid()) THEN
+  IF EXISTS (SELECT 1 FROM pg_catalog.pg_stat_activity WHERE usename='ollama_agent' AND pid<>pg_catalog.pg_backend_pid()) THEN
     RAISE EXCEPTION 'active ollama_agent sessions detected; stop the legacy Ollama service and retry the maintenance cutover';
   END IF;
   IF to_regclass('public.agent_missions') IS NULL OR to_regclass('public.agent_events') IS NULL THEN
@@ -46,7 +46,7 @@ SELECT format(
   'CREATE ROLE ollama_agent_admin LOGIN SUPERUSER PASSWORD %L',
   :'admin_password'
 )
-WHERE NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'ollama_agent_admin')
+WHERE NOT EXISTS (SELECT 1 FROM pg_catalog.pg_roles WHERE rolname = 'ollama_agent_admin')
 \gexec
 SELECT format(
   'ALTER ROLE ollama_agent_admin LOGIN SUPERUSER PASSWORD %L',
@@ -58,7 +58,7 @@ SELECT format(
   'CREATE ROLE ollama_agent_migrator LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS NOREPLICATION PASSWORD %L',
   :'migrator_password'
 )
-WHERE NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'ollama_agent_migrator')
+WHERE NOT EXISTS (SELECT 1 FROM pg_catalog.pg_roles WHERE rolname = 'ollama_agent_migrator')
 \gexec
 SELECT format(
   'ALTER ROLE ollama_agent_migrator LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS NOREPLICATION PASSWORD %L',
@@ -70,7 +70,7 @@ SELECT format(
   'CREATE ROLE ollama_agent_runtime LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS NOREPLICATION PASSWORD %L',
   :'runtime_password'
 )
-WHERE NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'ollama_agent_runtime')
+WHERE NOT EXISTS (SELECT 1 FROM pg_catalog.pg_roles WHERE rolname = 'ollama_agent_runtime')
 \gexec
 SELECT format(
   'ALTER ROLE ollama_agent_runtime LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS NOREPLICATION PASSWORD %L',
@@ -81,14 +81,17 @@ SELECT format(
 -- The dedicated identities must have no role membership, including SET ROLE
 -- paths left by hand-configured legacy deployments.
 SELECT format('REVOKE %I FROM %I', granted.rolname, member.rolname)
-FROM pg_auth_members memberships
-JOIN pg_roles granted ON granted.oid = memberships.roleid
-JOIN pg_roles member ON member.oid = memberships.member
+FROM pg_catalog.pg_auth_members memberships
+JOIN pg_catalog.pg_roles granted ON granted.oid = memberships.roleid
+JOIN pg_catalog.pg_roles member ON member.oid = memberships.member
 WHERE member.rolname IN ('ollama_agent_runtime', 'ollama_agent_migrator')
+   OR granted.rolname IN ('ollama_agent_runtime', 'ollama_agent_migrator')
 \gexec
 
 ALTER DATABASE ollama_agent OWNER TO ollama_agent_migrator;
 GRANT CONNECT ON DATABASE ollama_agent TO ollama_agent_migrator, ollama_agent_runtime;
+REVOKE CREATE, TEMPORARY ON DATABASE ollama_agent FROM PUBLIC;
+REVOKE CREATE, TEMPORARY ON DATABASE ollama_agent FROM ollama_agent_runtime;
 ALTER SCHEMA public OWNER TO ollama_agent_migrator;
 REVOKE CREATE ON SCHEMA public FROM PUBLIC;
 GRANT USAGE ON SCHEMA public TO ollama_agent_runtime;

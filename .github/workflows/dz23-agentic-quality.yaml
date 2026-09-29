@@ -88,7 +88,7 @@ jobs:
             trap - ERR
             log_file="$RUNNER_TEMP/distributed-dependency-logs.txt"
             docker compose -f deploy/docker-compose.agentic.yml logs --no-color >"$log_file" 2>&1 || true
-            for secret in "$postgres_admin_password" "$postgres_runtime_password" "$postgres_migrator_password" "$redis_password" "$tenant_key" "$legacy_password" "${OLLAMA_AGENT_TEST_POSTGRES_RUNTIME_URL:-}" "${OLLAMA_AGENT_TEST_POSTGRES_MIGRATOR_URL:-}" "${OLLAMA_AGENT_TEST_REDIS_URL:-}"; do
+            for secret in "$postgres_admin_password" "$postgres_runtime_password" "$postgres_migrator_password" "$redis_password" "$tenant_key" "$legacy_password" "${OLLAMA_AGENT_TEST_POSTGRES_ADMIN_URL:-}" "${OLLAMA_AGENT_TEST_POSTGRES_RUNTIME_URL:-}" "${OLLAMA_AGENT_TEST_POSTGRES_MIGRATOR_URL:-}" "${OLLAMA_AGENT_TEST_POSTGRES_LEGACY_URL:-}" "${OLLAMA_AGENT_TEST_REDIS_URL:-}"; do
               if [ -n "$secret" ] && grep -Fq -- "$secret" "$log_file"; then
                 echo 'Dependency logs suppressed because buffered diagnostics contain a credential value.' >&2
                 exit "$status"
@@ -177,7 +177,7 @@ jobs:
           export OLLAMA_AGENT_TEST_POSTGRES_RUNTIME_URL="postgres://ollama_agent_runtime:${postgres_runtime_password}@127.0.0.1:5432/ollama_agent?sslmode=disable"
           export OLLAMA_AGENT_TEST_POSTGRES_MIGRATOR_URL="postgres://ollama_agent_migrator:${postgres_migrator_password}@127.0.0.1:5432/ollama_agent?sslmode=disable"
           export OLLAMA_AGENT_TEST_POSTGRES_ADMIN_URL="postgres://ollama_agent_admin:${postgres_admin_password}@127.0.0.1:5432/ollama_agent?sslmode=disable"
-          export OLLAMA_AGENT_TEST_POSTGRES_LEGACY_URL="postgres://ollama_agent:${legacy_password}@127.0.0.1:5432/ollama_agent?sslmode=disable"
+          export OLLAMA_AGENT_TEST_POSTGRES_LEGACY_URL="postgres://ollama_agent:${legacy_password}@127.0.0.1:5432/postgres?sslmode=disable"
           export OLLAMA_AGENT_TEST_POSTGRES_TENANT_KEY="$tenant_key"
           export OLLAMA_AGENT_TEST_REDIS_URL="redis://:${redis_password}@127.0.0.1:6379/0"
           for secret in "$OLLAMA_AGENT_TEST_POSTGRES_RUNTIME_URL" "$OLLAMA_AGENT_TEST_POSTGRES_MIGRATOR_URL" "$OLLAMA_AGENT_TEST_POSTGRES_ADMIN_URL" "$OLLAMA_AGENT_TEST_POSTGRES_LEGACY_URL" "$OLLAMA_AGENT_TEST_REDIS_URL"; do
@@ -193,11 +193,59 @@ jobs:
           unset OLLAMA_AGENT_TEST_EXPECT_LEGACY_ROLE_ACTIVE
           CGO_ENABLED=0 go test -tags integration ./internal/agent -run '^TestDistributedPostgresRuntimeReadinessForStaleLegacySession$' -count=1 -v
 
+          # Prove a live legacy session exists in another database in this
+          # cluster before the drain; runtime readiness and retirement are
+          # intentionally cluster-wide, not scoped to ollama_agent only.
+          PGPASSWORD="$legacy_password" psql -h 127.0.0.1 -U ollama_agent -d postgres -Atc 'SELECT 1' | grep -q '^1$'
+          PGPASSWORD="$legacy_password" psql -h 127.0.0.1 -U ollama_agent -d postgres \
+            -v ON_ERROR_STOP=1 -c 'SELECT pg_sleep(60)' >"$RUNNER_TEMP/legacy-other-db-session.log" 2>&1 &
+          legacy_other_db_pid=$!
+          for attempt in $(seq 1 30); do
+            other_db_sessions="$(PGPASSWORD="$postgres_admin_password" psql -h 127.0.0.1 -U ollama_agent_admin -d ollama_agent -Atc \
+              "SELECT count(*) FROM pg_catalog.pg_stat_activity WHERE usename='ollama_agent' AND datname='postgres' AND pid<>pg_catalog.pg_backend_pid()")"
+            [ "$other_db_sessions" -gt 0 ] && break
+            sleep 0.1
+          done
+          test "$other_db_sessions" -gt 0
+
+          # Require successes before cutover and failures after NOLOGIN. Do not
+          # suppress outcomes: both sides of the reconnect barrier are asserted.
+          reconnect_counts="$RUNNER_TEMP/legacy-reconnect-counts.txt"
+          (
+            successes=0
+            failures=0
+            for attempt in $(seq 1 80); do
+              if PGPASSWORD="$legacy_password" psql -h 127.0.0.1 -U ollama_agent -d postgres \
+                -v ON_ERROR_STOP=1 -c 'SELECT 1' >/dev/null 2>&1; then
+                successes=$((successes+1))
+              else
+                failures=$((failures+1))
+              fi
+              printf '%s/%s\n' "$successes" "$failures" > "$reconnect_counts.tmp"
+              mv "$reconnect_counts.tmp" "$reconnect_counts"
+              sleep 0.05
+            done
+          ) &
+          legacy_reconnect_pid=$!
+          for attempt in $(seq 1 30); do
+            [ -s "$reconnect_counts" ] && [ "${reconnect_counts%%/*}" -gt 0 ] && break
+            sleep 0.05
+          done
+          reconnect_before="$(cat "$reconnect_counts")"
+          test "${reconnect_before%%/*}" -gt 0
+          test "$(PGPASSWORD="$postgres_admin_password" psql -h 127.0.0.1 -U ollama_agent_admin -d ollama_agent -Atc \
+            "SELECT count(*) FROM pg_catalog.pg_stat_activity WHERE usename='ollama_agent' AND datname='postgres' AND pid<>pg_catalog.pg_backend_pid()")" -gt 0
           PGPASSWORD="$postgres_admin_password" psql -h 127.0.0.1 -U ollama_agent_admin -d ollama_agent \
             -v ON_ERROR_STOP=1 -f deploy/postgres/retire-legacy-role.sql
+          wait "$legacy_reconnect_pid"
+          reconnect_successes="${reconnect_counts%/*}"
+          reconnect_failures="${reconnect_counts#*/}"
+          test "$reconnect_successes" -gt 0
+          test "$reconnect_failures" -gt 0
           legacy_state="$(PGPASSWORD="$postgres_admin_password" psql -h 127.0.0.1 -U ollama_agent_admin -d ollama_agent -Atc \
-            "SELECT format('%s/%s/%s/%s', (SELECT count(*) FROM agent_missions WHERE id='mis_legacy_fixture'), (SELECT count(*) FROM agent_events WHERE id='evt_legacy_fixture'), (SELECT count(*) FROM pg_roles WHERE rolname='ollama_agent' AND NOT rolcanlogin AND NOT rolsuper), (SELECT count(*) FROM pg_tables WHERE tablename IN ('agent_missions','agent_events') AND tableowner='ollama_agent_migrator'))")"
-          test "$legacy_state" = "1/1/1/2"
+            "SELECT format('%s/%s/%s/%s/%s', (SELECT count(*) FROM agent_missions WHERE id='mis_legacy_fixture'), (SELECT count(*) FROM agent_events WHERE id='evt_legacy_fixture'), (SELECT count(*) FROM pg_catalog.pg_roles r WHERE r.rolname='ollama_agent' AND NOT r.rolcanlogin AND NOT r.rolsuper AND NOT r.rolbypassrls AND NOT r.rolcreatedb AND NOT r.rolcreaterole AND NOT r.rolreplication AND NOT r.rolinherit AND NOT EXISTS (SELECT 1 FROM pg_catalog.pg_auth_members m WHERE m.member=r.oid OR m.roleid=r.oid)), (SELECT count(*) FROM pg_catalog.pg_tables WHERE tablename IN ('agent_missions','agent_events') AND tableowner='ollama_agent_migrator'), (SELECT count(*) FROM pg_catalog.pg_stat_activity WHERE usename='ollama_agent' AND pid<>pg_catalog.pg_backend_pid()))")"
+          test "$legacy_state" = "1/1/1/2/0"
+          wait "$legacy_other_db_pid" 2>/dev/null || true
           PGPASSWORD="$postgres_admin_password" psql -h 127.0.0.1 -U ollama_agent_admin -d postgres \
             -v ON_ERROR_STOP=1 -c 'CREATE DATABASE ollama_agent_restore_check OWNER ollama_agent_admin'
           PGPASSWORD="$postgres_admin_password" pg_restore --no-owner --no-acl -h 127.0.0.1 -U ollama_agent_admin \

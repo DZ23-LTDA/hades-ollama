@@ -10,6 +10,8 @@ CREATE ROLE ollama_agent_runtime LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINH
 ALTER DATABASE ollama_agent OWNER TO ollama_agent_migrator;
 GRANT CONNECT ON DATABASE ollama_agent TO ollama_agent_runtime;
 GRANT CONNECT ON DATABASE ollama_agent TO ollama_agent_migrator;
+REVOKE CREATE, TEMPORARY ON DATABASE ollama_agent FROM PUBLIC;
+REVOKE CREATE, TEMPORARY ON DATABASE ollama_agent FROM ollama_agent_runtime;
 
 \connect ollama_agent
 ALTER SCHEMA public OWNER TO ollama_agent_migrator;

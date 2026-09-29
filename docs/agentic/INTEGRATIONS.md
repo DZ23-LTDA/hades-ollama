@@ -65,34 +65,69 @@ A integração é opt-in, usa `HARNESSROUTER_API_KEY` somente no processo do ser
 
 O runtime permanece local-first por padrão. O adapter PostgreSQL agora separa um papel migrator de um papel runtime sem ownership, `CREATE`, `BYPASSRLS` ou superuser; migrations não executam no startup. As policies usam somente `app.tenant_context`, um HMAC com segredo não legível pela role runtime, expiração curta e validação SQL na própria policy; os GUCs antigos não concedem acesso. A integração local adversarial com PostgreSQL 16 e Redis 7 passou com runtime/migrator separados, inclusive evento→missão cross-tenant, adulteração GUC/HMAC, leitura do segredo, `SET ROLE`, DDL, `row_security=off`, ownerless backfill, role-upgrade de volume legado e recuperação por tenant. Essa arquitetura **ainda é candidata, não uma declaração de isolamento enterprise validado**: staging com TLS/backup-restore, suporte validado a rotação da chave, escala e auditoria final seguem necessários antes de produção. A rotação da chave HMAC não é suportada hoje: não altere `OLLAMA_AGENT_TENANT_CONTEXT_KEY` isoladamente nem use uma chave nova no migrator; isso não atualiza o segredo armazenado e pode interromper o acesso. Mantenha a chave imutável até existir um procedimento transacional, com quiescência, verificação e rollback, coberto por integração. A migration falha fechada se encontrar owner inválido, missão sem organização válida, evento órfão ou evento divergente do tenant da missão; não faz backfill automático de ownership.
 
-Para desenvolvimento com `deploy/docker-compose.agentic.yml`, defina senhas distintas `OLLAMA_AGENT_POSTGRES_ADMIN_PASSWORD`, `OLLAMA_AGENT_MIGRATOR_PASSWORD` e `OLLAMA_AGENT_RUNTIME_PASSWORD`, além de `OLLAMA_AGENT_REDIS_PASSWORD`. Gere uma chave HMAC secreta e persistente com `openssl rand -hex 32`; passe a mesma chave como `OLLAMA_AGENT_TENANT_CONTEXT_KEY` tanto ao comando de migração quanto ao servidor, sem gravá-la no repositório. A chave atual não pode ser rotacionada com segurança pelo produto; não a substitua sem um procedimento de manutenção validado. Use DSNs separados: `OLLAMA_AGENT_MIGRATOR_DATABASE_URL` com o usuário `ollama_agent_migrator` somente no job administrativo e `OLLAMA_AGENT_DATABASE_URL` com `ollama_agent_runtime` no servidor. Execute `ollama agent migrate-postgres` explicitamente antes do deploy; em seguida, inicie o servidor com `OLLAMA_AGENT_AUTH_REQUIRED=true`, `OLLAMA_AGENT_REDIS_URL` e a DSN runtime. Não disponibilize a DSN migrator, a senha bootstrap, a chave HMAC ou backups do segredo ao processo runtime. Em stacks existentes, o SQL do diretório `docker-entrypoint-initdb.d` roda só com volume novo. Para migrar o volume legado da versão que usava `ollama_agent` como superuser, programe manutenção, pare o Ollama, faça e valide backup, exporte as três senhas novas e rode `psql "$DSN_ADMIN_LEGADO" -f deploy/postgres/migrate-existing-roles.sql` conectado como o antigo superuser. Essa etapa é transacional e prepara/transfer ownership sem remover o login legado. Atualize então a configuração do serviço PostgreSQL para `POSTGRES_USER=ollama_agent_admin` e a senha nova, valide conexões dos DSNs admin, migrator e runtime, e confirme que os três papéis têm credenciais independentes. Só depois rode `psql "$DSN_ADMIN_NOVO" -f deploy/postgres/retire-legacy-role.sql`; essa segunda transação termina as sessões restantes e desativa `ollama_agent`. Em seguida rode `ollama agent migrate-postgres` como migrator e só então inicie o servidor runtime. Se qualquer validação falhar, mantenha o serviço parado e corrija/reverta pelo backup validado antes de reabrir tráfego. A role antiga `ollama_agent` só é marcada `NOLOGIN` pela segunda etapa. Dados legados sem `organization_id` válido exigem atribuição e verificação manual de owner antes da migration. Missões legadas em estado executável sem `workspace_identity` persistida também são recusadas; reautorize/recrie-as de forma controlada antes do cutover. Não há backfill inferido de tenant/workspace nem motivo para apagar o volume.
+Para desenvolvimento com `deploy/docker-compose.agentic.yml`, defina senhas distintas `OLLAMA_AGENT_POSTGRES_ADMIN_PASSWORD`, `OLLAMA_AGENT_MIGRATOR_PASSWORD`, `OLLAMA_AGENT_RUNTIME_PASSWORD` e `OLLAMA_AGENT_REDIS_PASSWORD`. Gere uma chave HMAC persistente com `openssl rand -hex 32`, armazene-a em um secret manager e forneça-a como `OLLAMA_AGENT_TENANT_CONTEXT_KEY` ao migrator e ao servidor. Use `OLLAMA_AGENT_MIGRATOR_DATABASE_URL` apenas no job administrativo e `OLLAMA_AGENT_DATABASE_URL` apenas no runtime; essas DSNs não devem aparecer em argumentos/logs nem conter senhas em arquivos versionados. Para banco novo, inicialize roles, rode `ollama agent migrate-postgres` explicitamente e só então suba o servidor com `OLLAMA_AGENT_AUTH_REQUIRED=true` e a fila Redis owner-bound. A migration revoga `CREATE` e `TEMP` de `PUBLIC` e do runtime no database dedicado. A chave HMAC não tem rotação suportada hoje: não a substitua isoladamente nem use outra chave no migrator.
 
-Para traces distribuídos, defina `OLLAMA_AGENT_OTLP_ENDPOINT` com uma URL HTTPS de OTLP HTTP. O provider exige HTTPS por padrão; `OLLAMA_AGENT_OTLP_ALLOW_INSECURE=1` é reservado para desenvolvimento local. A stack de desenvolvimento em `deploy/docker-compose.agentic.yml` fornece PostgreSQL, Redis e OpenTelemetry Collector.
+### Cutover de volume legado PostgreSQL
 
-**Runbook de cutover de volume legado (ainda requer ensaio em staging):** trate preparação de roles, migration do schema e aposentadoria da role antiga como fases distintas; não descreva o conjunto como uma única transação. Mantenha o Ollama parado desde antes do backup até passar o smoke do novo runtime. Antes de mudar ownership, faça e valide um dump protegido; use credencial via ambiente, não na linha de comando:
+**Use exatamente esta ordem; mantenha o serviço Ollama parado e o tráfego fechado até o smoke final.** O fluxo em várias fases não é uma transação única nem tem rollback automático:
 
-```bash
-umask 077
-install -d -m 700 "$HOME/.local/share/ollama-agent-backups"
-export OLLAMA_AGENT_BACKUP_FILE="$HOME/.local/share/ollama-agent-backups/ollama-agent-pre-upgrade-$(date +%Y%m%d%H%M%S).dump"
-export PGPASSWORD="$OLLAMA_AGENT_LEGACY_ADMIN_PASSWORD"
-export PGHOST=127.0.0.1 PGDATABASE=ollama_agent
-pg_dump -U ollama_agent -Fc -f "$OLLAMA_AGENT_BACKUP_FILE"
-pg_restore --list "$OLLAMA_AGENT_BACKUP_FILE" >/dev/null
-```
+1. **Backup e ensaio:** ajuste host/porta conforme o cluster. O dump fica fora do repositório, com diretório privado; valide o catálogo e restaure uma cópia em database isolado de staging antes do cutover. Não use o teste de drift adversarial contra produção; ele altera policies/RLS deliberadamente.
 
-Após completar a preparação e validar os DSNs novos, faça um ensaio de restauração em banco isolado antes de permitir tráfego:
+   ```bash
+   umask 077
+   install -d -m 700 "$HOME/ollama-full-backups"
+   export BACKUP_FILE="$HOME/ollama-full-backups/ollama_agent-$(date -u +%Y%m%dT%H%M%SZ).dump"
+   export DSN_ADMIN_LEGADO='host=127.0.0.1 port=5432 dbname=ollama_agent user=ollama_agent'
+   export DSN_ADMIN_NOVO='host=127.0.0.1 port=5432 dbname=ollama_agent user=ollama_agent_admin'
+   export DSN_ADMIN_MAINTENANCE='host=127.0.0.1 port=5432 dbname=postgres user=ollama_agent'
+   export DSN_RESTORE='host=127.0.0.1 port=5432 dbname=ollama_agent_restore_rehearsal user=ollama_agent'
+   read -rsp 'Senha do administrador legado: ' PGPASSWORD; echo; export PGPASSWORD
+   psql "$DSN_ADMIN_LEGADO" -v ON_ERROR_STOP=1 -Atc 'SELECT current_user, current_database()'
+   pg_dump --format=custom --no-owner --no-acl --file="$BACKUP_FILE" "$DSN_ADMIN_LEGADO"
+   pg_restore --list "$BACKUP_FILE" >/dev/null
+   psql "$DSN_ADMIN_MAINTENANCE" -v ON_ERROR_STOP=1 -c 'CREATE DATABASE ollama_agent_restore_rehearsal'
+   pg_restore --no-owner --no-acl --dbname="$DSN_RESTORE" "$BACKUP_FILE"
+   psql "$DSN_RESTORE" -v ON_ERROR_STOP=1 -Atc 'SELECT (SELECT count(*) FROM agent_missions), (SELECT count(*) FROM agent_events)'
+   psql "$DSN_ADMIN_MAINTENANCE" -v ON_ERROR_STOP=1 -c 'DROP DATABASE ollama_agent_restore_rehearsal'
+   ```
 
-```bash
-export PGPASSWORD="$OLLAMA_AGENT_POSTGRES_ADMIN_PASSWORD"
-createdb -h 127.0.0.1 -U ollama_agent_admin ollama_agent_restore_check
-pg_restore --no-owner --no-acl -h 127.0.0.1 -U ollama_agent_admin \
-  -d ollama_agent_restore_check "$OLLAMA_AGENT_BACKUP_FILE"
-psql -h 127.0.0.1 -U ollama_agent_admin -d ollama_agent_restore_check \
-  -v ON_ERROR_STOP=1 -c 'SELECT count(*) FROM agent_missions'
-```
+2. **Prepare roles e ownership:** com o serviço parado e conectado como o antigo `ollama_agent` superuser, forneça interativamente ou pelo secret manager os três valores distintos exigidos pelo script. Eles precisam estar exportados com estes nomes exatos; o `psql \getenv` não lê aliases:
 
-Gate obrigatório antes do novo serviço: validar conexão admin/migrator/runtime; executar `ollama agent migrate-postgres`; confirmar preservação dos dados e ownership; executar a integração adversarial; só então executar `retire-legacy-role.sql` e verificar que `ollama_agent` ficou `NOLOGIN`, `NOSUPERUSER` e sem sessões; iniciar o novo runtime e fazer smoke de saúde antes de reabrir tráfego. Se qualquer fase falhar, mantenha o serviço parado e siga um plano de restore/cutover revisado para staging; não presuma que `ROLLBACK` reverte fases já commitadas, não habilite a role antiga por improviso e não promova a produção usando apenas este runbook. A restauração em banco isolado é ensaio, não prova de um rollback in-place.
+   ```bash
+   read -rsp 'Nova senha admin: ' OLLAMA_AGENT_POSTGRES_ADMIN_PASSWORD; echo
+   read -rsp 'Nova senha migrator: ' OLLAMA_AGENT_MIGRATOR_PASSWORD; echo
+   read -rsp 'Nova senha runtime: ' OLLAMA_AGENT_RUNTIME_PASSWORD; echo
+   export OLLAMA_AGENT_POSTGRES_ADMIN_PASSWORD OLLAMA_AGENT_MIGRATOR_PASSWORD OLLAMA_AGENT_RUNTIME_PASSWORD
+   psql "$DSN_ADMIN_LEGADO" -v ON_ERROR_STOP=1 -f deploy/postgres/migrate-existing-roles.sql
+   ```
+
+   A preparação falha se detectar qualquer sessão legada no cluster; encerre os clientes Ollama/legacy e tente novamente. Ela cria as credenciais novas, transfere database/schema/tabelas para o migrator, revoga `CREATE`/`TEMP` do runtime e não desativa o login antigo.
+
+3. **Verifique as novas identidades e migre o schema antes de aposentar o login legado:**
+
+   ```bash
+   read -rsp 'Senha do novo admin: ' PGPASSWORD; echo; export PGPASSWORD
+   psql "$DSN_ADMIN_NOVO" -v ON_ERROR_STOP=1 -Atc 'SELECT current_user, current_database()'
+   PGPASSWORD="$OLLAMA_AGENT_MIGRATOR_PASSWORD" psql 'host=127.0.0.1 port=5432 dbname=ollama_agent user=ollama_agent_migrator' -v ON_ERROR_STOP=1 -Atc 'SELECT current_user'
+   PGPASSWORD="$OLLAMA_AGENT_RUNTIME_PASSWORD" psql 'host=127.0.0.1 port=5432 dbname=ollama_agent user=ollama_agent_runtime' -v ON_ERROR_STOP=1 -Atc 'SELECT current_user'
+   export OLLAMA_AGENT_MIGRATOR_DATABASE_URL='postgres://ollama_agent_migrator@127.0.0.1:5432/ollama_agent?sslmode=verify-full'
+   read -rsp 'Chave HMAC persistente (hex, 64 caracteres): ' OLLAMA_AGENT_TENANT_CONTEXT_KEY; echo; export OLLAMA_AGENT_TENANT_CONTEXT_KEY
+   PGPASSWORD="$OLLAMA_AGENT_MIGRATOR_PASSWORD" ollama agent migrate-postgres
+   ```
+
+   Configure TLS/CA e DSNs de acordo com o cluster; `sslmode=verify-full` pressupõe certificado/hostname válidos. Execute a suíte adversarial e o smoke do runtime em **staging isolado**, usando as roles e a mesma chave persistente, e confira ownership/preservação dos dados antes de continuar.
+
+4. **Aposente e drene a role antiga:** conecte pelo novo admin verificado, com sua senha fornecida por secret manager/prompt, e rode a segunda etapa. Ela confirma as flags/memberships das roles substitutas, bloqueia novos logins, revoga privilégios e termina/aguarda todas as sessões `ollama_agent` em qualquer database do cluster:
+
+   ```bash
+   psql "$DSN_ADMIN_NOVO" -v ON_ERROR_STOP=1 -f deploy/postgres/retire-legacy-role.sql
+   ```
+
+5. **Suba o runtime e reabra tráfego só após o smoke:** configure `OLLAMA_AGENT_DATABASE_URL` com `ollama_agent_runtime`, `OLLAMA_AGENT_TENANT_CONTEXT_KEY` com a chave imutável e `OLLAMA_AGENT_REDIS_URL`; inicie o serviço, confirme readiness e faça leitura/escrita de um tenant autorizado. Runtime recusa o início se a role antiga ou qualquer sessão legada ainda tiver privilégios ativos.
+
+Se qualquer etapa falhar, mantenha o serviço parado e siga o plano de restauração de staging/backup previamente ensaiado; não reative a role antiga por improviso, não presuma que `ROLLBACK` desfaz etapas já commitadas e não execute o teste de drift em produção. A role antiga é desativada somente na fase 4. Dados sem `organization_id` válido e missões executáveis sem `workspace_identity` persistida exigem correção/reautorização manual antes da migration. A rotação da chave HMAC, TLS/HA/failover, scale test e avaliação operacional em staging continuam pendentes; esta implementação permanece candidata e não está liberada para produção.
+
+Para traces distribuídos, defina `OLLAMA_AGENT_OTLP_ENDPOINT` com URL OTLP HTTP `https://`; `OLLAMA_AGENT_OTLP_ALLOW_INSECURE=1` é reservado para desenvolvimento local. A stack em `deploy/docker-compose.agentic.yml` fornece PostgreSQL, Redis e OpenTelemetry Collector.
 
 ## Companion WebSocket e mTLS
 

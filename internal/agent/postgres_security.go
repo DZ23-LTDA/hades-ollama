@@ -15,12 +15,144 @@ import (
 )
 
 const (
-	postgresTenantContextGUC = "app.tenant_context"
-	postgresTenantContextTTL = 5 * time.Minute
-	postgresRuntimeRole      = "ollama_agent_runtime"
+	postgresTenantContextGUC                  = "app.tenant_context"
+	postgresTenantContextTTL                  = 5 * time.Minute
+	postgresRuntimeRole                       = "ollama_agent_runtime"
+	postgresTenantSecurityMigrationLock int64 = 0x4f4c4c414d414655
 )
 
-var postgresOrganizationIDPattern = regexp.MustCompile(`^[A-Za-z0-9_.-]{1,128}$`)
+var (
+	postgresOrganizationIDPattern  = regexp.MustCompile(`^[A-Za-z0-9_.-]{1,128}$`)
+	ErrPostgresTenantSecurityShape = errors.New("PostgreSQL tenant security shape is invalid")
+	ErrPostgresLegacyRoleActive    = errors.New("active legacy ollama_agent login or session detected")
+)
+
+const postgresTenantContextFunctionSource = `DECLARE
+  context_value TEXT;
+  context_parts TEXT[];
+  context_org TEXT;
+  context_expiry TEXT;
+  context_signature TEXT;
+  context_secret BYTEA;
+  expiry_epoch BIGINT;
+  expected_signature TEXT;
+BEGIN
+  context_value := current_setting('app.tenant_context', TRUE);
+  IF context_value IS NULL OR length(context_value) > 512 THEN RETURN FALSE; END IF;
+  context_parts := string_to_array(context_value, '|');
+  IF array_length(context_parts, 1) IS DISTINCT FROM 3 THEN RETURN FALSE; END IF;
+  context_org := context_parts[1];
+  context_expiry := context_parts[2];
+  context_signature := context_parts[3];
+  IF context_org IS NULL OR context_expiry IS NULL OR context_signature IS NULL THEN RETURN FALSE; END IF;
+  IF requested_org IS NULL OR requested_org = '' OR context_org <> requested_org OR context_org !~ '^[A-Za-z0-9_.-]{1,128}$' THEN RETURN FALSE; END IF;
+  IF context_expiry !~ '^[0-9]{1,12}$' OR context_signature !~ '^[0-9a-f]{64}$' THEN RETURN FALSE; END IF;
+  expiry_epoch := context_expiry::BIGINT;
+  IF expiry_epoch < floor(extract(epoch FROM statement_timestamp()))::BIGINT OR expiry_epoch > floor(extract(epoch FROM statement_timestamp()))::BIGINT + 300 THEN RETURN FALSE; END IF;
+  SELECT secret INTO context_secret FROM public.agent_tenant_context_key WHERE key_id = TRUE;
+  IF context_secret IS NULL THEN RETURN FALSE; END IF;
+  expected_signature := encode(public.hmac(convert_to(context_org || E'\n' || context_expiry, 'UTF8'), context_secret, 'sha256'), 'hex');
+  RETURN expected_signature = context_signature;
+EXCEPTION WHEN OTHERS THEN
+  RETURN FALSE;
+END;`
+
+var postgresExpectedTenantPolicies = map[string][4]string{
+	"agent_missions": {
+		"agent_missions_tenant_policy", "ALL",
+		"((organization_id<>''::text)ANDagent_tenant_context_matches(organization_id))",
+		"((organization_id<>''::text)ANDagent_tenant_context_matches(organization_id))",
+	},
+	"agent_events": {
+		"agent_events_tenant_policy", "ALL",
+		"((organization_id<>''::text)ANDagent_tenant_context_matches(organization_id)AND(EXISTS(SELECT1FROMagent_missionsmWHERE((m.id=agent_events.mission_id)AND(m.organization_id=agent_events.organization_id)))))",
+		"((organization_id<>''::text)ANDagent_tenant_context_matches(organization_id)AND(EXISTS(SELECT1FROMagent_missionsmWHERE((m.id=agent_events.mission_id)AND(m.organization_id=agent_events.organization_id)))))",
+	},
+}
+
+func verifyPostgresTenantSecurityShape(ctx context.Context, tx *sql.Tx) error {
+	// Supported migrations take this lock exclusively. Hold its shared form for
+	// the entire tenant transaction so function/policy DDL cannot race attestation.
+	if _, err := tx.ExecContext(ctx, `SELECT pg_catalog.pg_advisory_xact_lock_shared($1)`, postgresTenantSecurityMigrationLock); err != nil {
+		return fmt.Errorf("lock PostgreSQL tenant security definition: %w", err)
+	}
+	if _, err := tx.ExecContext(ctx, `LOCK TABLE public.agent_missions, public.agent_events IN ACCESS SHARE MODE`); err != nil {
+		return fmt.Errorf("lock PostgreSQL tenant tables for security-shape verification: %w", err)
+	}
+	var tableCount int
+	var tablesSecure, ownersSecure bool
+	if err := tx.QueryRowContext(ctx, `
+SELECT count(*), bool_and(c.relrowsecurity AND c.relforcerowsecurity),
+       bool_and(owner.rolname = 'ollama_agent_migrator')
+	  FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace
+	  JOIN pg_catalog.pg_roles owner ON owner.oid=c.relowner
+ WHERE n.nspname='public' AND c.relname IN ('agent_missions','agent_events') AND c.relkind IN ('r','p')`).Scan(&tableCount, &tablesSecure, &ownersSecure); err != nil {
+		return fmt.Errorf("verify PostgreSQL tenant table security flags: %w", err)
+	}
+	if tableCount != 2 || !tablesSecure || !ownersSecure {
+		return errors.New("PostgreSQL tenant tables must exist, be owned by ollama_agent_migrator, and have ENABLE plus FORCE ROW LEVEL SECURITY")
+	}
+	for table, expected := range postgresExpectedTenantPolicies {
+		var policyCount, exactCount int
+		err := tx.QueryRowContext(ctx, `
+SELECT count(*), count(*) FILTER (WHERE policyname=$2 AND cmd=$3 AND permissive='PERMISSIVE'
+ AND roles=ARRAY['public']::name[]
+ AND regexp_replace(coalesce(qual,''), '[[:space:]]+', '', 'g')=$4
+ AND regexp_replace(coalesce(with_check,''), '[[:space:]]+', '', 'g')=$5)
+	  FROM pg_catalog.pg_policies WHERE schemaname='public' AND tablename=$1`, table, expected[0], expected[1], expected[2], expected[3]).Scan(&policyCount, &exactCount)
+		if err != nil {
+			return fmt.Errorf("verify PostgreSQL %s row-level security policy: %w", table, err)
+		}
+		if policyCount != 1 || exactCount != 1 {
+			return fmt.Errorf("PostgreSQL %s tenant RLS policy is absent or differs from the required fail-closed definition", table)
+		}
+	}
+	var functionSecure bool
+	err := tx.QueryRowContext(ctx, `
+SELECT p.prosecdef AND p.provolatile='s' AND p.prorettype='boolean'::pg_catalog.regtype AND p.pronargs=1
+   AND owner.rolname='ollama_agent_migrator'
+   AND p.proconfig=ARRAY['search_path=pg_catalog, public']::text[]
+   AND regexp_replace(p.prosrc, '[[:space:]]+', '', 'g')=regexp_replace($1, '[[:space:]]+', '', 'g')
+	  FROM pg_catalog.pg_proc p JOIN pg_catalog.pg_roles owner ON owner.oid=p.proowner
+ WHERE p.oid='public.agent_tenant_context_matches(text)'::pg_catalog.regprocedure`, postgresTenantContextFunctionSource).Scan(&functionSecure)
+	if err != nil {
+		return fmt.Errorf("verify PostgreSQL signed-tenant verifier definition: %w", err)
+	}
+	if !functionSecure {
+		return errors.New("PostgreSQL signed-tenant verifier must be the migrator-owned SECURITY DEFINER function with pinned search_path and the approved HMAC implementation")
+	}
+	var runtimePrivilegesSecure bool
+	if err := tx.QueryRowContext(ctx, `
+SELECT r.rolcanlogin AND NOT r.rolsuper AND NOT r.rolbypassrls AND NOT r.rolcreatedb
+       AND NOT r.rolcreaterole AND NOT r.rolreplication AND NOT r.rolinherit
+       AND NOT pg_catalog.has_schema_privilege(r.rolname,'public','CREATE')
+       AND NOT pg_catalog.has_database_privilege(r.rolname,pg_catalog.current_database(),'CREATE')
+       AND NOT pg_catalog.has_database_privilege(r.rolname,pg_catalog.current_database(),'TEMP')
+       AND NOT pg_catalog.has_table_privilege(r.rolname,'public.agent_tenant_context_key','SELECT')
+       AND pg_catalog.has_table_privilege(r.rolname,'public.agent_missions','SELECT')
+       AND pg_catalog.has_table_privilege(r.rolname,'public.agent_missions','INSERT')
+       AND pg_catalog.has_table_privilege(r.rolname,'public.agent_missions','UPDATE')
+       AND pg_catalog.has_table_privilege(r.rolname,'public.agent_missions','DELETE')
+       AND pg_catalog.has_table_privilege(r.rolname,'public.agent_events','SELECT')
+       AND pg_catalog.has_table_privilege(r.rolname,'public.agent_events','INSERT')
+       AND pg_catalog.has_table_privilege(r.rolname,'public.agent_events','UPDATE')
+       AND pg_catalog.has_table_privilege(r.rolname,'public.agent_events','DELETE')
+       AND NOT pg_catalog.has_table_privilege(r.rolname,'public.agent_missions','TRUNCATE')
+       AND NOT pg_catalog.has_table_privilege(r.rolname,'public.agent_missions','REFERENCES')
+       AND NOT pg_catalog.has_table_privilege(r.rolname,'public.agent_missions','TRIGGER')
+       AND NOT pg_catalog.has_table_privilege(r.rolname,'public.agent_events','TRUNCATE')
+       AND NOT pg_catalog.has_table_privilege(r.rolname,'public.agent_events','REFERENCES')
+       AND NOT pg_catalog.has_table_privilege(r.rolname,'public.agent_events','TRIGGER')
+       AND pg_catalog.has_function_privilege(r.rolname,'public.agent_tenant_context_matches(text)','EXECUTE')
+       AND NOT EXISTS (SELECT 1 FROM pg_catalog.pg_auth_members m WHERE m.member=r.oid OR m.roleid=r.oid)
+  FROM pg_catalog.pg_roles r WHERE r.rolname='ollama_agent_runtime'`).Scan(&runtimePrivilegesSecure); err != nil {
+		return fmt.Errorf("verify PostgreSQL runtime privilege set: %w", err)
+	}
+	if !runtimePrivilegesSecure {
+		return errors.New("PostgreSQL runtime role privileges differ from the required least-privilege tenant DML set")
+	}
+	return nil
+}
 
 // OpenPostgresRuntimeStore opens a tenant-only store. Its role must be a
 // non-owner, NOSUPERUSER/NOBYPASSRLS role with DML privileges only. The key
@@ -91,33 +223,45 @@ func postgresTenantRuntimeReady(store Store) bool {
 }
 
 func (s *PostgresStore) verifyRuntimeRoleAndContext(ctx context.Context) error {
-	var privileged, isRuntimeRole, ownerOrMember, canCreateSchema, canReadKey, hasDML, isMigratorMember, legacyRoleActive bool
+	var privileged, isRuntimeRole, ownerOrMember, canCreateSchema, canCreateDatabase, canUseTemp, canReadKey, hasDML, canExecuteVerifier, isMigratorMember, legacyRoleActive bool
 	err := s.db.QueryRowContext(ctx, `
-SELECT r.rolsuper OR r.rolbypassrls OR r.rolcreaterole OR r.rolcreatedb OR r.rolreplication
-         OR EXISTS (SELECT 1 FROM pg_roles elevated WHERE (elevated.rolsuper OR elevated.rolbypassrls OR elevated.rolcreaterole OR elevated.rolcreatedb OR elevated.rolreplication) AND pg_has_role(current_user, elevated.oid, 'MEMBER')),
+SELECT NOT r.rolcanlogin OR r.rolinherit OR r.rolsuper OR r.rolbypassrls OR r.rolcreaterole OR r.rolcreatedb OR r.rolreplication
+         OR EXISTS (SELECT 1 FROM pg_catalog.pg_roles elevated WHERE (elevated.rolsuper OR elevated.rolbypassrls OR elevated.rolcreaterole OR elevated.rolcreatedb OR elevated.rolreplication) AND pg_catalog.pg_has_role(current_user, elevated.oid, 'MEMBER')),
        current_user = 'ollama_agent_runtime',
-       pg_has_role(current_user, m.relowner, 'MEMBER') OR m.relowner = r.oid,
-       has_schema_privilege(current_user, 'public', 'CREATE'),
-       has_table_privilege(current_user, 'public.agent_tenant_context_key', 'SELECT'),
-	       has_table_privilege(current_user, 'public.agent_missions', 'SELECT,INSERT,UPDATE,DELETE')
-	         AND has_table_privilege(current_user, 'public.agent_events', 'SELECT,INSERT,UPDATE,DELETE'),
-	       pg_has_role(current_user, 'ollama_agent_migrator', 'MEMBER'),
-	       EXISTS (SELECT 1 FROM pg_roles legacy WHERE legacy.rolname='ollama_agent' AND (legacy.rolcanlogin OR legacy.rolsuper OR legacy.rolbypassrls))
-	         OR EXISTS (SELECT 1 FROM pg_stat_activity legacy_session WHERE legacy_session.usename='ollama_agent' AND legacy_session.pid<>pg_backend_pid())
-  FROM pg_roles AS r
-  JOIN pg_class AS m ON m.relname = 'agent_missions' AND m.relnamespace = 'public'::regnamespace
- WHERE r.rolname = current_user`).Scan(&privileged, &isRuntimeRole, &ownerOrMember, &canCreateSchema, &canReadKey, &hasDML, &isMigratorMember, &legacyRoleActive)
+       pg_catalog.pg_has_role(current_user, m.relowner, 'MEMBER') OR m.relowner = r.oid,
+       pg_catalog.has_schema_privilege(current_user, 'public', 'CREATE'),
+       pg_catalog.has_database_privilege(current_user, pg_catalog.current_database(), 'CREATE'),
+       pg_catalog.has_database_privilege(current_user, pg_catalog.current_database(), 'TEMP'),
+       pg_catalog.has_table_privilege(current_user, 'public.agent_tenant_context_key', 'SELECT'),
+	       pg_catalog.has_table_privilege(current_user, 'public.agent_missions', 'SELECT,INSERT,UPDATE,DELETE')
+	         AND pg_catalog.has_table_privilege(current_user, 'public.agent_events', 'SELECT,INSERT,UPDATE,DELETE'),
+	       pg_catalog.has_function_privilege(current_user, 'public.agent_tenant_context_matches(text)', 'EXECUTE'),
+	       pg_catalog.pg_has_role(current_user, 'ollama_agent_migrator', 'MEMBER'),
+	       EXISTS (SELECT 1 FROM pg_catalog.pg_roles legacy WHERE legacy.rolname='ollama_agent' AND (legacy.rolcanlogin OR legacy.rolsuper OR legacy.rolbypassrls))
+	         OR EXISTS (SELECT 1 FROM pg_catalog.pg_stat_activity legacy_session WHERE legacy_session.usename='ollama_agent' AND legacy_session.pid<>pg_catalog.pg_backend_pid())
+  FROM pg_catalog.pg_roles AS r
+	  JOIN pg_catalog.pg_class AS m ON m.relname = 'agent_missions' AND m.relnamespace = 'public'::pg_catalog.regnamespace
+ WHERE r.rolname = current_user`).Scan(&privileged, &isRuntimeRole, &ownerOrMember, &canCreateSchema, &canCreateDatabase, &canUseTemp, &canReadKey, &hasDML, &canExecuteVerifier, &isMigratorMember, &legacyRoleActive)
 	if err != nil {
 		return fmt.Errorf("verify PostgreSQL runtime role; run the explicit migration with the migrator DSN first: %w", err)
 	}
-	if privileged || !isRuntimeRole || ownerOrMember || canCreateSchema || canReadKey || !hasDML || isMigratorMember || legacyRoleActive {
-		return errors.New("PostgreSQL runtime must use ollama_agent_runtime: no superuser, BYPASSRLS, CREATEROLE, CREATEDB, owner/migrator membership, schema CREATE, tenant-secret SELECT, or active legacy ollama_agent login; DML on missions/events is required")
+	if legacyRoleActive {
+		return ErrPostgresLegacyRoleActive
+	}
+	if privileged || !isRuntimeRole || ownerOrMember || canCreateSchema || canCreateDatabase || canUseTemp || canReadKey || !hasDML || !canExecuteVerifier || isMigratorMember {
+		return fmt.Errorf("%w: runtime role must use ollama_agent_runtime with NOINHERIT, no elevated/schema/database/TEMP privileges, no secret read, no owner/migrator membership; only tenant DML and verifier EXECUTE are permitted", ErrPostgresTenantSecurityShape)
 	}
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback()
+	if _, err := tx.ExecContext(ctx, `SET LOCAL search_path = pg_catalog, public`); err != nil {
+		return fmt.Errorf("pin PostgreSQL runtime readiness search path: %w", err)
+	}
+	if err := verifyPostgresTenantSecurityShape(ctx, tx); err != nil {
+		return fmt.Errorf("%w: %v", ErrPostgresTenantSecurityShape, err)
+	}
 	const probeOrganization = "ollama_full_context_probe"
 	token, err := s.signedTenantContext(probeOrganization, time.Now())
 	if err != nil {
@@ -158,9 +302,10 @@ func MigratePostgresAgentSchema(ctx context.Context, dsn string, tenantContextKe
 	}
 	var unsafeRole bool
 	if err := db.QueryRowContext(ctx, `
-SELECT r.rolsuper OR r.rolbypassrls OR r.rolcreaterole OR r.rolcreatedb OR r.rolreplication
-         OR EXISTS (SELECT 1 FROM pg_roles elevated WHERE (elevated.rolsuper OR elevated.rolbypassrls OR elevated.rolcreaterole OR elevated.rolcreatedb OR elevated.rolreplication) AND pg_has_role(current_user, elevated.oid, 'MEMBER'))
-  FROM pg_roles r WHERE r.rolname = current_user`).Scan(&unsafeRole); err != nil {
+SELECT NOT r.rolcanlogin OR r.rolinherit OR r.rolsuper OR r.rolbypassrls OR r.rolcreaterole OR r.rolcreatedb OR r.rolreplication
+	         OR EXISTS (SELECT 1 FROM pg_catalog.pg_roles elevated WHERE (elevated.rolsuper OR elevated.rolbypassrls OR elevated.rolcreaterole OR elevated.rolcreatedb OR elevated.rolreplication) AND pg_catalog.pg_has_role(current_user, elevated.oid, 'MEMBER'))
+	         OR EXISTS (SELECT 1 FROM pg_catalog.pg_auth_members m WHERE m.member=r.oid OR m.roleid=r.oid)
+	  FROM pg_catalog.pg_roles r WHERE r.rolname = current_user`).Scan(&unsafeRole); err != nil {
 		return fmt.Errorf("verify PostgreSQL migrator role: %w", err)
 	}
 	if unsafeRole {
@@ -182,47 +327,59 @@ func migratePostgresAgentSchema(ctx context.Context, db *sql.DB, tenantContextKe
 		return err
 	}
 	defer tx.Rollback()
-	const migrationLock int64 = 0x4f4c4c414d414655
-	if _, err := tx.ExecContext(ctx, `SELECT pg_advisory_xact_lock($1)`, migrationLock); err != nil {
+	if _, err := tx.ExecContext(ctx, `SELECT pg_catalog.pg_advisory_xact_lock($1)`, postgresTenantSecurityMigrationLock); err != nil {
 		return err
+	}
+	// Only the dedicated migrator may create objects in public. Runtime paths
+	// pin pg_catalog first and fully qualify application tables.
+	if _, err := tx.ExecContext(ctx, `SET LOCAL search_path = pg_catalog, public`); err != nil {
+		return fmt.Errorf("pin PostgreSQL migration search path: %w", err)
+	}
+	if _, err := tx.ExecContext(ctx, `DO $privileges$ BEGIN
+  EXECUTE format('REVOKE TEMP ON DATABASE %I FROM PUBLIC', pg_catalog.current_database());
+  EXECUTE format('REVOKE TEMP ON DATABASE %I FROM ollama_agent_runtime', pg_catalog.current_database());
+  EXECUTE format('REVOKE CREATE ON DATABASE %I FROM PUBLIC', pg_catalog.current_database());
+  EXECUTE format('REVOKE CREATE ON DATABASE %I FROM ollama_agent_runtime', pg_catalog.current_database());
+END $privileges$`); err != nil {
+		return fmt.Errorf("revoke PostgreSQL runtime temporary/database-create privileges: %w", err)
 	}
 	statements := []string{
 		`CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA public`,
-		`CREATE TABLE IF NOT EXISTS agent_missions (id TEXT PRIMARY KEY, version BIGINT NOT NULL, objective TEXT NOT NULL, provider TEXT NOT NULL DEFAULT '', model TEXT NOT NULL DEFAULT '', workspace TEXT NOT NULL DEFAULT '', workspace_identity TEXT NOT NULL DEFAULT '', project_id TEXT NOT NULL DEFAULT '', organization_id TEXT NOT NULL DEFAULT '', capabilities JSONB NOT NULL DEFAULT '[]'::jsonb, auto_run BOOLEAN NOT NULL DEFAULT FALSE, state TEXT NOT NULL, plan JSONB NOT NULL, approvals JSONB NOT NULL, artifacts JSONB NOT NULL, last_error TEXT NOT NULL DEFAULT '', created_at TIMESTAMPTZ NOT NULL, updated_at TIMESTAMPTZ NOT NULL, completed_at TIMESTAMPTZ NULL)`,
-		`CREATE TABLE IF NOT EXISTS agent_events (id TEXT PRIMARY KEY, mission_id TEXT NOT NULL, organization_id TEXT NOT NULL DEFAULT '', type TEXT NOT NULL, step_id TEXT NOT NULL DEFAULT '', payload JSONB NULL, created_at TIMESTAMPTZ NOT NULL)`,
-		`CREATE TABLE IF NOT EXISTS agent_tenant_context_key (key_id BOOLEAN PRIMARY KEY DEFAULT TRUE CHECK (key_id), secret BYTEA NOT NULL CHECK (octet_length(secret) >= 32))`,
+		`CREATE TABLE IF NOT EXISTS public.agent_missions (id TEXT PRIMARY KEY, version BIGINT NOT NULL, objective TEXT NOT NULL, provider TEXT NOT NULL DEFAULT '', model TEXT NOT NULL DEFAULT '', workspace TEXT NOT NULL DEFAULT '', workspace_identity TEXT NOT NULL DEFAULT '', project_id TEXT NOT NULL DEFAULT '', organization_id TEXT NOT NULL DEFAULT '', capabilities JSONB NOT NULL DEFAULT '[]'::jsonb, auto_run BOOLEAN NOT NULL DEFAULT FALSE, state TEXT NOT NULL, plan JSONB NOT NULL, approvals JSONB NOT NULL, artifacts JSONB NOT NULL, last_error TEXT NOT NULL DEFAULT '', created_at TIMESTAMPTZ NOT NULL, updated_at TIMESTAMPTZ NOT NULL, completed_at TIMESTAMPTZ NULL)`,
+		`CREATE TABLE IF NOT EXISTS public.agent_events (id TEXT PRIMARY KEY, mission_id TEXT NOT NULL, organization_id TEXT NOT NULL DEFAULT '', type TEXT NOT NULL, step_id TEXT NOT NULL DEFAULT '', payload JSONB NULL, created_at TIMESTAMPTZ NOT NULL)`,
+		`CREATE TABLE IF NOT EXISTS public.agent_tenant_context_key (key_id BOOLEAN PRIMARY KEY DEFAULT TRUE CHECK (key_id), secret BYTEA NOT NULL CHECK (octet_length(secret) >= 32))`,
 		`DO $ownership$ DECLARE invalid_owners BIGINT; BEGIN
-SELECT count(*) INTO invalid_owners FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
+SELECT count(*) INTO invalid_owners FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace
 WHERE n.nspname='public' AND c.relname IN ('agent_missions','agent_events','agent_tenant_context_key')
-  AND c.relkind IN ('r','p') AND c.relowner <> (SELECT oid FROM pg_roles WHERE rolname='ollama_agent_migrator');
+  AND c.relkind IN ('r','p') AND c.relowner <> (SELECT oid FROM pg_catalog.pg_roles WHERE rolname='ollama_agent_migrator');
 IF invalid_owners <> 0 THEN RAISE EXCEPTION 'PostgreSQL agent tables must be owned by ollama_agent_migrator; run deploy/postgres/migrate-existing-roles.sql as administrator before migration'; END IF;
 END $ownership$`,
-		`ALTER TABLE agent_missions ADD COLUMN IF NOT EXISTS provider TEXT NOT NULL DEFAULT ''`,
-		`ALTER TABLE agent_missions ADD COLUMN IF NOT EXISTS workspace_identity TEXT NOT NULL DEFAULT ''`,
-		`ALTER TABLE agent_missions ADD COLUMN IF NOT EXISTS capabilities JSONB NOT NULL DEFAULT '[]'::jsonb`,
-		`ALTER TABLE agent_missions ADD COLUMN IF NOT EXISTS organization_id TEXT NOT NULL DEFAULT ''`,
-		`ALTER TABLE agent_missions ADD COLUMN IF NOT EXISTS workspace_isolated BOOLEAN NOT NULL DEFAULT FALSE`,
-		`ALTER TABLE agent_missions ADD COLUMN IF NOT EXISTS workspace_snapshot_id TEXT NOT NULL DEFAULT ''`,
-		`ALTER TABLE agent_missions ADD COLUMN IF NOT EXISTS workspace_snapshot_sha256 TEXT NOT NULL DEFAULT ''`,
-		`ALTER TABLE agent_events ADD COLUMN IF NOT EXISTS organization_id TEXT NOT NULL DEFAULT ''`,
-		`CREATE UNIQUE INDEX IF NOT EXISTS agent_missions_id_organization_uidx ON agent_missions (id, organization_id)`,
+		`ALTER TABLE public.agent_missions ADD COLUMN IF NOT EXISTS provider TEXT NOT NULL DEFAULT ''`,
+		`ALTER TABLE public.agent_missions ADD COLUMN IF NOT EXISTS workspace_identity TEXT NOT NULL DEFAULT ''`,
+		`ALTER TABLE public.agent_missions ADD COLUMN IF NOT EXISTS capabilities JSONB NOT NULL DEFAULT '[]'::jsonb`,
+		`ALTER TABLE public.agent_missions ADD COLUMN IF NOT EXISTS organization_id TEXT NOT NULL DEFAULT ''`,
+		`ALTER TABLE public.agent_missions ADD COLUMN IF NOT EXISTS workspace_isolated BOOLEAN NOT NULL DEFAULT FALSE`,
+		`ALTER TABLE public.agent_missions ADD COLUMN IF NOT EXISTS workspace_snapshot_id TEXT NOT NULL DEFAULT ''`,
+		`ALTER TABLE public.agent_missions ADD COLUMN IF NOT EXISTS workspace_snapshot_sha256 TEXT NOT NULL DEFAULT ''`,
+		`ALTER TABLE public.agent_events ADD COLUMN IF NOT EXISTS organization_id TEXT NOT NULL DEFAULT ''`,
+		`CREATE UNIQUE INDEX IF NOT EXISTS agent_missions_id_organization_uidx ON public.agent_missions (id, organization_id)`,
 		`DO $constraint$ BEGIN
-IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='agent_events_mission_org_fk' AND conrelid='public.agent_events'::regclass) THEN
+IF NOT EXISTS (SELECT 1 FROM pg_catalog.pg_constraint WHERE conname='agent_events_mission_org_fk' AND conrelid='public.agent_events'::regclass) THEN
   ALTER TABLE public.agent_events ADD CONSTRAINT agent_events_mission_org_fk
     FOREIGN KEY (mission_id, organization_id) REFERENCES public.agent_missions (id, organization_id)
     ON UPDATE RESTRICT ON DELETE CASCADE NOT VALID;
 END IF;
 		END $constraint$`,
-		`ALTER TABLE agent_events VALIDATE CONSTRAINT agent_events_mission_org_fk`,
-		`CREATE INDEX IF NOT EXISTS agent_events_mission_created_idx ON agent_events (mission_id, created_at, id)`,
-		`CREATE INDEX IF NOT EXISTS agent_missions_organization_updated_idx ON agent_missions (organization_id, updated_at, id)`,
-		`LOCK TABLE agent_missions, agent_events IN ACCESS EXCLUSIVE MODE`,
-		`ALTER TABLE agent_missions DISABLE ROW LEVEL SECURITY`,
-		`ALTER TABLE agent_events DISABLE ROW LEVEL SECURITY`,
+		`ALTER TABLE public.agent_events VALIDATE CONSTRAINT agent_events_mission_org_fk`,
+		`CREATE INDEX IF NOT EXISTS agent_events_mission_created_idx ON public.agent_events (mission_id, created_at, id)`,
+		`CREATE INDEX IF NOT EXISTS agent_missions_organization_updated_idx ON public.agent_missions (organization_id, updated_at, id)`,
+		`LOCK TABLE public.agent_missions, public.agent_events IN ACCESS EXCLUSIVE MODE`,
+		`ALTER TABLE public.agent_missions DISABLE ROW LEVEL SECURITY`,
+		`ALTER TABLE public.agent_events DISABLE ROW LEVEL SECURITY`,
 	}
 	for index, statement := range statements {
 		if _, err := tx.ExecContext(ctx, statement); err != nil {
-			return fmt.Errorf("apply PostgreSQL agent migration: %w", err)
+			return fmt.Errorf("apply PostgreSQL agent migration statement %d: %w", index+1, err)
 		}
 		if index == 3 {
 			if err := validatePostgresLegacySchemaShape(ctx, tx); err != nil {
@@ -231,16 +388,16 @@ END IF;
 		}
 	}
 	var invalidMissions, invalidEvents, mismatchedEvents, invalidWorkspaceBindings int64
-	if err := tx.QueryRowContext(ctx, `SELECT count(*) FROM agent_missions WHERE organization_id !~ '^[A-Za-z0-9_.-]{1,128}$'`).Scan(&invalidMissions); err != nil {
+	if err := tx.QueryRowContext(ctx, `SELECT count(*) FROM public.agent_missions WHERE organization_id !~ '^[A-Za-z0-9_.-]{1,128}$'`).Scan(&invalidMissions); err != nil {
 		return fmt.Errorf("validate existing mission tenant ownership: %w", err)
 	}
-	if err := tx.QueryRowContext(ctx, `SELECT count(*) FROM agent_events WHERE organization_id !~ '^[A-Za-z0-9_.-]{1,128}$'`).Scan(&invalidEvents); err != nil {
+	if err := tx.QueryRowContext(ctx, `SELECT count(*) FROM public.agent_events WHERE organization_id !~ '^[A-Za-z0-9_.-]{1,128}$'`).Scan(&invalidEvents); err != nil {
 		return fmt.Errorf("validate existing event tenant ownership: %w", err)
 	}
-	if err := tx.QueryRowContext(ctx, `SELECT count(*) FROM agent_events e LEFT JOIN agent_missions m ON m.id=e.mission_id WHERE m.id IS NULL OR e.organization_id <> m.organization_id`).Scan(&mismatchedEvents); err != nil {
+	if err := tx.QueryRowContext(ctx, `SELECT count(*) FROM public.agent_events e LEFT JOIN public.agent_missions m ON m.id=e.mission_id WHERE m.id IS NULL OR e.organization_id <> m.organization_id`).Scan(&mismatchedEvents); err != nil {
 		return fmt.Errorf("validate event-to-mission ownership: %w", err)
 	}
-	if err := tx.QueryRowContext(ctx, `SELECT count(*) FROM agent_missions WHERE state IN ('READY','RUNNING','RECOVERING') AND btrim(workspace_identity) = ''`).Scan(&invalidWorkspaceBindings); err != nil {
+	if err := tx.QueryRowContext(ctx, `SELECT count(*) FROM public.agent_missions WHERE state IN ('READY','RUNNING','RECOVERING') AND btrim(workspace_identity) = ''`).Scan(&invalidWorkspaceBindings); err != nil {
 		return fmt.Errorf("validate runnable mission workspace authorization: %w", err)
 	}
 	if invalidMissions != 0 || invalidEvents != 0 || mismatchedEvents != 0 {
@@ -249,11 +406,11 @@ END IF;
 	if invalidWorkspaceBindings != 0 {
 		return fmt.Errorf("PostgreSQL migration refused %d runnable legacy missions without a persisted workspace identity; reauthorize/recreate those missions before retrying", invalidWorkspaceBindings)
 	}
-	if _, err := tx.ExecContext(ctx, `INSERT INTO agent_tenant_context_key (key_id, secret) VALUES (TRUE, $1) ON CONFLICT (key_id) DO NOTHING`, tenantContextKey); err != nil {
+	if _, err := tx.ExecContext(ctx, `INSERT INTO public.agent_tenant_context_key (key_id, secret) VALUES (TRUE, $1) ON CONFLICT (key_id) DO NOTHING`, tenantContextKey); err != nil {
 		return fmt.Errorf("provision protected tenant context key: %w", err)
 	}
 	var storedTenantKey []byte
-	if err := tx.QueryRowContext(ctx, `SELECT secret FROM agent_tenant_context_key WHERE key_id = TRUE`).Scan(&storedTenantKey); err != nil {
+	if err := tx.QueryRowContext(ctx, `SELECT secret FROM public.agent_tenant_context_key WHERE key_id = TRUE`).Scan(&storedTenantKey); err != nil {
 		return fmt.Errorf("verify protected tenant context key: %w", err)
 	}
 	if len(storedTenantKey) != len(tenantContextKey) || subtle.ConstantTimeCompare(storedTenantKey, tenantContextKey) != 1 {
@@ -293,18 +450,19 @@ END;
 $function$`
 	finalStatements := []string{
 		functionSQL,
-		`DROP POLICY IF EXISTS agent_missions_tenant_policy ON agent_missions`,
-		`DROP POLICY IF EXISTS agent_events_tenant_policy ON agent_events`,
-		`ALTER TABLE agent_missions ENABLE ROW LEVEL SECURITY`,
-		`ALTER TABLE agent_missions FORCE ROW LEVEL SECURITY`,
-		`ALTER TABLE agent_events ENABLE ROW LEVEL SECURITY`,
-		`ALTER TABLE agent_events FORCE ROW LEVEL SECURITY`,
-		`CREATE POLICY agent_missions_tenant_policy ON agent_missions USING (organization_id <> '' AND public.agent_tenant_context_matches(organization_id)) WITH CHECK (organization_id <> '' AND public.agent_tenant_context_matches(organization_id))`,
-		`CREATE POLICY agent_events_tenant_policy ON agent_events USING (organization_id <> '' AND public.agent_tenant_context_matches(organization_id) AND EXISTS (SELECT 1 FROM public.agent_missions m WHERE m.id = agent_events.mission_id AND m.organization_id = agent_events.organization_id)) WITH CHECK (organization_id <> '' AND public.agent_tenant_context_matches(organization_id) AND EXISTS (SELECT 1 FROM public.agent_missions m WHERE m.id = agent_events.mission_id AND m.organization_id = agent_events.organization_id))`,
-		`REVOKE ALL ON TABLE agent_missions, agent_events, agent_tenant_context_key FROM PUBLIC`,
-		`REVOKE ALL ON TABLE agent_missions, agent_events, agent_tenant_context_key FROM ollama_agent_runtime`,
+		`DROP POLICY IF EXISTS agent_missions_tenant_policy ON public.agent_missions`,
+		`DROP POLICY IF EXISTS agent_events_tenant_policy ON public.agent_events`,
+		`ALTER TABLE public.agent_missions ENABLE ROW LEVEL SECURITY`,
+		`ALTER TABLE public.agent_missions FORCE ROW LEVEL SECURITY`,
+		`ALTER TABLE public.agent_events ENABLE ROW LEVEL SECURITY`,
+		`ALTER TABLE public.agent_events FORCE ROW LEVEL SECURITY`,
+		`CREATE POLICY agent_missions_tenant_policy ON public.agent_missions USING (organization_id <> '' AND public.agent_tenant_context_matches(organization_id)) WITH CHECK (organization_id <> '' AND public.agent_tenant_context_matches(organization_id))`,
+		`CREATE POLICY agent_events_tenant_policy ON public.agent_events USING (organization_id <> '' AND public.agent_tenant_context_matches(organization_id) AND EXISTS (SELECT 1 FROM public.agent_missions m WHERE m.id = agent_events.mission_id AND m.organization_id = agent_events.organization_id)) WITH CHECK (organization_id <> '' AND public.agent_tenant_context_matches(organization_id) AND EXISTS (SELECT 1 FROM public.agent_missions m WHERE m.id = agent_events.mission_id AND m.organization_id = agent_events.organization_id))`,
+		`REVOKE ALL ON TABLE public.agent_missions, public.agent_events, public.agent_tenant_context_key FROM PUBLIC`,
+		`REVOKE ALL ON TABLE public.agent_missions, public.agent_events, public.agent_tenant_context_key FROM ollama_agent_runtime`,
+		`REVOKE TRUNCATE, REFERENCES, TRIGGER ON TABLE public.agent_missions, public.agent_events FROM ollama_agent_runtime`,
 		`GRANT USAGE ON SCHEMA public TO ollama_agent_runtime`,
-		`GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE agent_missions, agent_events TO ollama_agent_runtime`,
+		`GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.agent_missions, public.agent_events TO ollama_agent_runtime`,
 		`REVOKE ALL ON FUNCTION public.agent_tenant_context_matches(TEXT) FROM PUBLIC`,
 		`GRANT EXECUTE ON FUNCTION public.agent_tenant_context_matches(TEXT) TO ollama_agent_runtime`,
 		`REVOKE CREATE ON SCHEMA public FROM PUBLIC`,
@@ -324,7 +482,7 @@ func validatePostgresLegacySchemaShape(ctx context.Context, tx *sql.Tx) error {
 		"agent_events":   {"id", "mission_id", "type", "step_id", "payload", "created_at"},
 	}
 	for table, requiredColumns := range required {
-		rows, err := tx.QueryContext(ctx, `SELECT attname FROM pg_attribute WHERE attrelid=to_regclass($1) AND attnum>0 AND NOT attisdropped`, "public."+table)
+		rows, err := tx.QueryContext(ctx, `SELECT attname FROM pg_catalog.pg_attribute WHERE attrelid=pg_catalog.to_regclass($1) AND attnum>0 AND NOT attisdropped`, "public."+table)
 		if err != nil {
 			return fmt.Errorf("inspect PostgreSQL agent schema shape: %w", err)
 		}

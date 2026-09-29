@@ -70,6 +70,16 @@ func (s *PostgresStore) begin(ctx context.Context) (*sql.Tx, context.Context, co
 		cancel()
 		return nil, nil, nil, err
 	}
+	if _, err := tx.ExecContext(operationCtx, `SET LOCAL search_path = pg_catalog, public`); err != nil {
+		_ = tx.Rollback()
+		cancel()
+		return nil, nil, nil, fmt.Errorf("pin PostgreSQL tenant transaction search path: %w", err)
+	}
+	if err := verifyPostgresTenantSecurityShape(operationCtx, tx); err != nil {
+		_ = tx.Rollback()
+		cancel()
+		return nil, nil, nil, fmt.Errorf("%w: %v", ErrPostgresTenantSecurityShape, err)
+	}
 	tenantContext, err := s.signedTenantContext(s.organizationID, time.Now())
 	if err == nil {
 		_, err = tx.ExecContext(operationCtx, `SELECT set_config('app.tenant_context', $1, true)`, tenantContext)
@@ -117,7 +127,7 @@ func (s *PostgresStore) getMissionTx(ctx context.Context, tx *sql.Tx, id string)
 	var mission Mission
 	var capabilities, plan, approvals, artifacts []byte
 	var completed sql.NullTime
-	err := tx.QueryRowContext(ctx, `SELECT id,version,objective,provider,model,workspace,workspace_identity,project_id,organization_id,capabilities,workspace_isolated,workspace_snapshot_id,workspace_snapshot_sha256,auto_run,state,plan,approvals,artifacts,last_error,created_at,updated_at,completed_at FROM agent_missions WHERE id=$1 AND ($2 = '' OR organization_id=$2)`, id, s.organizationID).Scan(&mission.ID, &mission.Version, &mission.Objective, &mission.Provider, &mission.Model, &mission.Workspace, &mission.WorkspaceIdentity, &mission.ProjectID, &mission.OrganizationID, &capabilities, &mission.WorkspaceIsolated, &mission.WorkspaceSnapshotID, &mission.WorkspaceSnapshotSHA256, &mission.AutoRun, &mission.State, &plan, &approvals, &artifacts, &mission.LastError, &mission.CreatedAt, &mission.UpdatedAt, &completed)
+	err := tx.QueryRowContext(ctx, `SELECT id,version,objective,provider,model,workspace,workspace_identity,project_id,organization_id,capabilities,workspace_isolated,workspace_snapshot_id,workspace_snapshot_sha256,auto_run,state,plan,approvals,artifacts,last_error,created_at,updated_at,completed_at FROM public.agent_missions WHERE id=$1 AND ($2 = '' OR organization_id=$2)`, id, s.organizationID).Scan(&mission.ID, &mission.Version, &mission.Objective, &mission.Provider, &mission.Model, &mission.Workspace, &mission.WorkspaceIdentity, &mission.ProjectID, &mission.OrganizationID, &capabilities, &mission.WorkspaceIsolated, &mission.WorkspaceSnapshotID, &mission.WorkspaceSnapshotSHA256, &mission.AutoRun, &mission.State, &plan, &approvals, &artifacts, &mission.LastError, &mission.CreatedAt, &mission.UpdatedAt, &completed)
 	if errors.Is(err, sql.ErrNoRows) {
 		return Mission{}, os.ErrNotExist
 	}
@@ -159,7 +169,7 @@ func scrubMissionDLPInTransaction(ctx context.Context, tx *sql.Tx, mission Missi
 	if err != nil {
 		return Mission{}, err
 	}
-	result, err := tx.ExecContext(ctx, `UPDATE agent_missions SET objective=$1,last_error=$2,plan=$3,approvals=$4,artifacts=$5 WHERE id=$6 AND version=$7 AND organization_id=$8`, safe.Objective, safe.LastError, plan, approvals, artifacts, mission.ID, mission.Version, mission.OrganizationID)
+	result, err := tx.ExecContext(ctx, `UPDATE public.agent_missions SET objective=$1,last_error=$2,plan=$3,approvals=$4,artifacts=$5 WHERE id=$6 AND version=$7 AND organization_id=$8`, safe.Objective, safe.LastError, plan, approvals, artifacts, mission.ID, mission.Version, mission.OrganizationID)
 	if err != nil {
 		return Mission{}, err
 	}
@@ -178,7 +188,7 @@ func (s *PostgresStore) ListMissions() ([]Mission, error) {
 	}
 	defer cancel()
 	defer tx.Rollback()
-	rows, err := tx.QueryContext(operationCtx, `SELECT id FROM agent_missions WHERE ($1 = '' OR organization_id = $1) ORDER BY updated_at ASC,id ASC`, s.organizationID)
+	rows, err := tx.QueryContext(operationCtx, `SELECT id FROM public.agent_missions WHERE ($1 = '' OR organization_id = $1) ORDER BY updated_at ASC,id ASC`, s.organizationID)
 	if err != nil {
 		return nil, err
 	}
@@ -250,9 +260,9 @@ func (s *PostgresStore) PutMission(mission Mission) error {
 	defer tx.Rollback()
 	var currentVersion int64
 	var currentOrganization string
-	err = tx.QueryRowContext(operationCtx, `SELECT version,organization_id FROM agent_missions WHERE id=$1 FOR UPDATE`, mission.ID).Scan(&currentVersion, &currentOrganization)
+	err = tx.QueryRowContext(operationCtx, `SELECT version,organization_id FROM public.agent_missions WHERE id=$1 FOR UPDATE`, mission.ID).Scan(&currentVersion, &currentOrganization)
 	if errors.Is(err, sql.ErrNoRows) {
-		result, insertErr := tx.ExecContext(operationCtx, `INSERT INTO agent_missions (id,version,objective,provider,model,workspace,workspace_identity,project_id,organization_id,capabilities,workspace_isolated,workspace_snapshot_id,workspace_snapshot_sha256,auto_run,state,plan,approvals,artifacts,last_error,created_at,updated_at,completed_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22) ON CONFLICT (id) DO NOTHING`, mission.ID, mission.Version, mission.Objective, mission.Provider, mission.Model, mission.Workspace, mission.WorkspaceIdentity, mission.ProjectID, mission.OrganizationID, capabilities, mission.WorkspaceIsolated, mission.WorkspaceSnapshotID, mission.WorkspaceSnapshotSHA256, mission.AutoRun, mission.State, plan, approvals, artifacts, mission.LastError, mission.CreatedAt, mission.UpdatedAt, mission.CompletedAt)
+		result, insertErr := tx.ExecContext(operationCtx, `INSERT INTO public.agent_missions (id,version,objective,provider,model,workspace,workspace_identity,project_id,organization_id,capabilities,workspace_isolated,workspace_snapshot_id,workspace_snapshot_sha256,auto_run,state,plan,approvals,artifacts,last_error,created_at,updated_at,completed_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22) ON CONFLICT (id) DO NOTHING`, mission.ID, mission.Version, mission.Objective, mission.Provider, mission.Model, mission.Workspace, mission.WorkspaceIdentity, mission.ProjectID, mission.OrganizationID, capabilities, mission.WorkspaceIsolated, mission.WorkspaceSnapshotID, mission.WorkspaceSnapshotSHA256, mission.AutoRun, mission.State, plan, approvals, artifacts, mission.LastError, mission.CreatedAt, mission.UpdatedAt, mission.CompletedAt)
 		if insertErr != nil {
 			return insertErr
 		}
@@ -281,7 +291,7 @@ func (s *PostgresStore) PutMission(mission Mission) error {
 			return ErrMissionVersionConflict
 		}
 	}
-	result, err := tx.ExecContext(operationCtx, `UPDATE agent_missions SET version=$1,objective=$2,provider=$3,model=$4,workspace=$5,workspace_identity=$6,project_id=$7,organization_id=$8,capabilities=$9,workspace_isolated=$10,workspace_snapshot_id=$11,workspace_snapshot_sha256=$12,auto_run=$13,state=$14,plan=$15,approvals=$16,artifacts=$17,last_error=$18,updated_at=$19,completed_at=$20 WHERE id=$21 AND version=$22 AND organization_id=$23`, mission.Version, mission.Objective, mission.Provider, mission.Model, mission.Workspace, mission.WorkspaceIdentity, mission.ProjectID, mission.OrganizationID, capabilities, mission.WorkspaceIsolated, mission.WorkspaceSnapshotID, mission.WorkspaceSnapshotSHA256, mission.AutoRun, mission.State, plan, approvals, artifacts, mission.LastError, mission.UpdatedAt, mission.CompletedAt, mission.ID, currentVersion, currentOrganization)
+	result, err := tx.ExecContext(operationCtx, `UPDATE public.agent_missions SET version=$1,objective=$2,provider=$3,model=$4,workspace=$5,workspace_identity=$6,project_id=$7,organization_id=$8,capabilities=$9,workspace_isolated=$10,workspace_snapshot_id=$11,workspace_snapshot_sha256=$12,auto_run=$13,state=$14,plan=$15,approvals=$16,artifacts=$17,last_error=$18,updated_at=$19,completed_at=$20 WHERE id=$21 AND version=$22 AND organization_id=$23`, mission.Version, mission.Objective, mission.Provider, mission.Model, mission.Workspace, mission.WorkspaceIdentity, mission.ProjectID, mission.OrganizationID, capabilities, mission.WorkspaceIsolated, mission.WorkspaceSnapshotID, mission.WorkspaceSnapshotSHA256, mission.AutoRun, mission.State, plan, approvals, artifacts, mission.LastError, mission.UpdatedAt, mission.CompletedAt, mission.ID, currentVersion, currentOrganization)
 	if err != nil {
 		return err
 	}
@@ -326,7 +336,7 @@ func (s *PostgresStore) CreateMission(mission Mission) error {
 	}
 	defer cancel()
 	defer tx.Rollback()
-	result, err := tx.ExecContext(operationCtx, `INSERT INTO agent_missions (id,version,objective,provider,model,workspace,workspace_identity,project_id,organization_id,capabilities,workspace_isolated,workspace_snapshot_id,workspace_snapshot_sha256,auto_run,state,plan,approvals,artifacts,last_error,created_at,updated_at,completed_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22) ON CONFLICT (id) DO NOTHING`, mission.ID, mission.Version, mission.Objective, mission.Provider, mission.Model, mission.Workspace, mission.WorkspaceIdentity, mission.ProjectID, mission.OrganizationID, capabilities, mission.WorkspaceIsolated, mission.WorkspaceSnapshotID, mission.WorkspaceSnapshotSHA256, mission.AutoRun, mission.State, plan, approvals, artifacts, mission.LastError, mission.CreatedAt, mission.UpdatedAt, mission.CompletedAt)
+	result, err := tx.ExecContext(operationCtx, `INSERT INTO public.agent_missions (id,version,objective,provider,model,workspace,workspace_identity,project_id,organization_id,capabilities,workspace_isolated,workspace_snapshot_id,workspace_snapshot_sha256,auto_run,state,plan,approvals,artifacts,last_error,created_at,updated_at,completed_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22) ON CONFLICT (id) DO NOTHING`, mission.ID, mission.Version, mission.Objective, mission.Provider, mission.Model, mission.Workspace, mission.WorkspaceIdentity, mission.ProjectID, mission.OrganizationID, capabilities, mission.WorkspaceIsolated, mission.WorkspaceSnapshotID, mission.WorkspaceSnapshotSHA256, mission.AutoRun, mission.State, plan, approvals, artifacts, mission.LastError, mission.CreatedAt, mission.UpdatedAt, mission.CompletedAt)
 	if err != nil {
 		return err
 	}
@@ -376,7 +386,7 @@ func (s *PostgresStore) PutMissionIfVersion(mission Mission, expectedVersion int
 	}
 	defer cancel()
 	defer tx.Rollback()
-	result, err := tx.ExecContext(operationCtx, `UPDATE agent_missions SET version=$1,objective=$2,provider=$3,model=$4,workspace=$5,workspace_identity=$6,project_id=$7,organization_id=$8,capabilities=$9,workspace_isolated=$10,workspace_snapshot_id=$11,workspace_snapshot_sha256=$12,auto_run=$13,state=$14,plan=$15,approvals=$16,artifacts=$17,last_error=$18,updated_at=$19,completed_at=$20 WHERE id=$21 AND version=$22 AND ($23 = '' OR organization_id=$23)`, mission.Version, mission.Objective, mission.Provider, mission.Model, mission.Workspace, mission.WorkspaceIdentity, mission.ProjectID, mission.OrganizationID, capabilities, mission.WorkspaceIsolated, mission.WorkspaceSnapshotID, mission.WorkspaceSnapshotSHA256, mission.AutoRun, mission.State, plan, approvals, artifacts, mission.LastError, mission.UpdatedAt, mission.CompletedAt, mission.ID, expectedVersion, s.organizationID)
+	result, err := tx.ExecContext(operationCtx, `UPDATE public.agent_missions SET version=$1,objective=$2,provider=$3,model=$4,workspace=$5,workspace_identity=$6,project_id=$7,organization_id=$8,capabilities=$9,workspace_isolated=$10,workspace_snapshot_id=$11,workspace_snapshot_sha256=$12,auto_run=$13,state=$14,plan=$15,approvals=$16,artifacts=$17,last_error=$18,updated_at=$19,completed_at=$20 WHERE id=$21 AND version=$22 AND ($23 = '' OR organization_id=$23)`, mission.Version, mission.Objective, mission.Provider, mission.Model, mission.Workspace, mission.WorkspaceIdentity, mission.ProjectID, mission.OrganizationID, capabilities, mission.WorkspaceIsolated, mission.WorkspaceSnapshotID, mission.WorkspaceSnapshotSHA256, mission.AutoRun, mission.State, plan, approvals, artifacts, mission.LastError, mission.UpdatedAt, mission.CompletedAt, mission.ID, expectedVersion, s.organizationID)
 	if err != nil {
 		return err
 	}
@@ -408,15 +418,15 @@ func (s *PostgresStore) AppendEvent(event Event) error {
 	}
 	defer cancel()
 	defer tx.Rollback()
-	result, err := tx.ExecContext(operationCtx, `INSERT INTO agent_events (id,mission_id,organization_id,type,step_id,payload,created_at)
-		SELECT $1,m.id,m.organization_id,$4,$5,$6,$7 FROM agent_missions AS m WHERE m.id=$2 AND m.organization_id=$3
-		ON CONFLICT (id) DO UPDATE SET id=agent_events.id
-		WHERE agent_events.mission_id=EXCLUDED.mission_id
-		  AND agent_events.organization_id=EXCLUDED.organization_id
-		  AND agent_events.type=EXCLUDED.type
-		  AND agent_events.step_id=EXCLUDED.step_id
-		  AND agent_events.payload IS NOT DISTINCT FROM EXCLUDED.payload
-		  AND agent_events.created_at=EXCLUDED.created_at`, event.ID, event.MissionID, event.OrganizationID, event.Type, event.StepID, payload, event.CreatedAt)
+	result, err := tx.ExecContext(operationCtx, `INSERT INTO public.agent_events (id,mission_id,organization_id,type,step_id,payload,created_at)
+		SELECT $1,m.id,m.organization_id,$4,$5,$6,$7 FROM public.agent_missions AS m WHERE m.id=$2 AND m.organization_id=$3
+		ON CONFLICT (id) DO UPDATE SET id=public.agent_events.id
+		WHERE public.agent_events.mission_id=EXCLUDED.mission_id
+		  AND public.agent_events.organization_id=EXCLUDED.organization_id
+		  AND public.agent_events.type=EXCLUDED.type
+		  AND public.agent_events.step_id=EXCLUDED.step_id
+		  AND public.agent_events.payload IS NOT DISTINCT FROM EXCLUDED.payload
+		  AND public.agent_events.created_at=EXCLUDED.created_at`, event.ID, event.MissionID, event.OrganizationID, event.Type, event.StepID, payload, event.CreatedAt)
 	if err != nil {
 		return err
 	}
@@ -426,7 +436,7 @@ func (s *PostgresStore) AppendEvent(event Event) error {
 	}
 	if rows != 1 {
 		var existingID string
-		existingErr := tx.QueryRowContext(operationCtx, `SELECT id FROM agent_events WHERE id=$1`, event.ID).Scan(&existingID)
+		existingErr := tx.QueryRowContext(operationCtx, `SELECT id FROM public.agent_events WHERE id=$1`, event.ID).Scan(&existingID)
 		if existingErr == nil {
 			return fmt.Errorf("event %s already exists with different content", event.ID)
 		}
@@ -448,7 +458,7 @@ func (s *PostgresStore) ListEvents(missionID string) ([]Event, error) {
 	}
 	defer cancel()
 	defer tx.Rollback()
-	rows, err := tx.QueryContext(operationCtx, `SELECT id,mission_id,organization_id,type,step_id,payload,created_at FROM agent_events WHERE mission_id=$1 AND ($2 = '' OR organization_id=$2) ORDER BY created_at ASC,id ASC`, missionID, s.organizationID)
+	rows, err := tx.QueryContext(operationCtx, `SELECT id,mission_id,organization_id,type,step_id,payload,created_at FROM public.agent_events WHERE mission_id=$1 AND ($2 = '' OR organization_id=$2) ORDER BY created_at ASC,id ASC`, missionID, s.organizationID)
 	if err != nil {
 		return nil, err
 	}
@@ -481,7 +491,7 @@ func (s *PostgresStore) ListEvents(missionID string) ([]Event, error) {
 			if err != nil {
 				return nil, err
 			}
-			result, err := tx.ExecContext(operationCtx, `UPDATE agent_events SET payload=$1 WHERE id=$2 AND mission_id=$3 AND organization_id=$4`, encoded, events[index].ID, events[index].MissionID, events[index].OrganizationID)
+			result, err := tx.ExecContext(operationCtx, `UPDATE public.agent_events SET payload=$1 WHERE id=$2 AND mission_id=$3 AND organization_id=$4`, encoded, events[index].ID, events[index].MissionID, events[index].OrganizationID)
 			if err != nil {
 				return nil, err
 			}

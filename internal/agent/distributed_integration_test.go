@@ -2128,3 +2128,122 @@ func TestDistributedRedisQueueOrganizationBindingAndReplay(t *testing.T) {
 		t.Fatalf("replayed=%+v err=%v", replayed, err)
 	}
 }
+
+func TestDistributedPostgresRuntimeRejectsRLSDrift(t *testing.T) {
+	runtimeDSN := os.Getenv("OLLAMA_AGENT_TEST_POSTGRES_RUNTIME_URL")
+	migratorDSN := os.Getenv("OLLAMA_AGENT_TEST_POSTGRES_MIGRATOR_URL")
+	key, keyErr := hex.DecodeString(os.Getenv("OLLAMA_AGENT_TEST_POSTGRES_TENANT_KEY"))
+	if runtimeDSN == "" || migratorDSN == "" || keyErr != nil || len(key) < 32 {
+		t.Skip("runtime/migrator PostgreSQL DSNs and a 64+ byte hex tenant key are required")
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
+	defer cancel()
+	if err := MigratePostgresAgentSchema(ctx, migratorDSN, key); err != nil {
+		t.Fatal(err)
+	}
+	migrator, err := sql.Open("pgx", migratorDSN)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer migrator.Close()
+	cases := []struct {
+		name   string
+		mutate string
+	}{
+		{name: "rls-disabled", mutate: `ALTER TABLE public.agent_missions DISABLE ROW LEVEL SECURITY`},
+		{name: "force-disabled", mutate: `ALTER TABLE public.agent_events NO FORCE ROW LEVEL SECURITY`},
+		{name: "policy-dropped", mutate: `DROP POLICY agent_missions_tenant_policy ON public.agent_missions`},
+		{name: "policy-weakened", mutate: `ALTER POLICY agent_missions_tenant_policy ON public.agent_missions USING (TRUE) WITH CHECK (TRUE)`},
+		{name: "verifier-replaced", mutate: `CREATE OR REPLACE FUNCTION public.agent_tenant_context_matches(requested_org TEXT) RETURNS BOOLEAN LANGUAGE SQL STABLE SECURITY DEFINER SET search_path=pg_catalog,public AS 'SELECT TRUE'`},
+		{name: "truncate-granted", mutate: `GRANT TRUNCATE ON public.agent_missions TO ollama_agent_runtime`},
+		{name: "references-granted", mutate: `GRANT REFERENCES ON public.agent_events TO ollama_agent_runtime`},
+		{name: "trigger-granted", mutate: `GRANT TRIGGER ON public.agent_missions TO ollama_agent_runtime`},
+		{name: "temporary-objects-granted", mutate: `GRANT TEMP ON DATABASE ollama_agent TO ollama_agent_runtime`},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			baseline, err := OpenPostgresRuntimeStore(ctx, runtimeDSN, key)
+			if err != nil {
+				t.Fatalf("open baseline runtime store: %v", err)
+			}
+			defer baseline.Close()
+			if _, err := migrator.ExecContext(ctx, tc.mutate); err != nil {
+				t.Fatalf("apply drift fixture: %v", err)
+			}
+			restored := false
+			t.Cleanup(func() {
+				if restored {
+					return
+				}
+				restoreCtx, restoreCancel := context.WithTimeout(context.Background(), 10*time.Second)
+				defer restoreCancel()
+				if restoreErr := MigratePostgresAgentSchema(restoreCtx, migratorDSN, key); restoreErr != nil {
+					t.Errorf("restore approved schema after failed assertion: %v", restoreErr)
+				}
+			})
+			if _, err := baseline.WithOrganization("org_drift_probe").ListMissions(); !errors.Is(err, ErrPostgresTenantSecurityShape) {
+				t.Fatalf("existing runtime pool error=%v, want ErrPostgresTenantSecurityShape", err)
+			}
+			store, err := OpenPostgresRuntimeStore(ctx, runtimeDSN, key)
+			if err == nil || !errors.Is(err, ErrPostgresTenantSecurityShape) {
+				_ = store.Close()
+				t.Fatalf("runtime-open error=%v, want ErrPostgresTenantSecurityShape", err)
+			}
+			if err := MigratePostgresAgentSchema(ctx, migratorDSN, key); err != nil {
+				t.Fatalf("restore approved schema via explicit migration: %v", err)
+			}
+			restored = true
+			store, err = OpenPostgresRuntimeStore(ctx, runtimeDSN, key)
+			if err != nil {
+				t.Fatalf("runtime did not recover after the approved migration restored security shape: %v", err)
+			}
+			if err := store.Close(); err != nil {
+				t.Fatal(err)
+			}
+		})
+	}
+	t.Run("runtime-cannot-shadow-catalogs-with-temp-tables", func(t *testing.T) {
+		store, err := OpenPostgresRuntimeStore(ctx, runtimeDSN, key)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer store.Close()
+		for _, catalog := range []string{"pg_class", "pg_namespace", "pg_roles", "pg_policies", "pg_proc"} {
+			_, err := store.db.ExecContext(ctx, `CREATE TEMP TABLE `+catalog+` (fake BOOLEAN)`)
+			if err == nil {
+				t.Fatalf("runtime role created temporary shadow for %s", catalog)
+			}
+		}
+	})
+	t.Run("migration-ddl-waits-for-live-runtime-transaction", func(t *testing.T) {
+		store, err := OpenPostgresRuntimeStore(ctx, runtimeDSN, key)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer store.Close()
+		operation := store.WithOrganization("org_advisory_lock_probe")
+		tx, _, cancelOperation, err := operation.begin(ctx)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer cancelOperation()
+		migrationDone := make(chan error, 1)
+		go func() { migrationDone <- MigratePostgresAgentSchema(ctx, migratorDSN, key) }()
+		select {
+		case err := <-migrationDone:
+			t.Fatalf("migration completed while runtime held the shared security lock: %v", err)
+		case <-time.After(150 * time.Millisecond):
+		}
+		if err := tx.Commit(); err != nil {
+			t.Fatal(err)
+		}
+		select {
+		case err := <-migrationDone:
+			if err != nil {
+				t.Fatalf("migration did not proceed after runtime transaction ended: %v", err)
+			}
+		case <-time.After(10 * time.Second):
+			t.Fatal("migration remained blocked after runtime transaction released its security lock")
+		}
+	})
+}

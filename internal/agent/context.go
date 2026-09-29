@@ -544,7 +544,7 @@ func (s *ContextStore) SkillsForOrganization(organizationID string) []SkillManif
 	defer s.mu.RUnlock()
 	result := make([]SkillManifest, 0)
 	for _, skill := range s.skills {
-		if skill.OrganizationID != "" && !pluginOwnedByOrganization(skill.OrganizationID, organizationID) {
+		if !pluginAccessibleByOrganization(skill.OrganizationID, organizationID) {
 			continue
 		}
 		result = append(result, skill)

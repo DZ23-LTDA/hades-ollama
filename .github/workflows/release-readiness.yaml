@@ -79,20 +79,23 @@ jobs:
           while :; do
             gh api --paginate \
               "repos/${GITHUB_REPOSITORY}/commits/${SHA}/check-runs" \
-              -q '.check_runs[] | [.name, .status, (.conclusion // "")] | @tsv' \
+              -q '.check_runs[] | [.name, .status, (.conclusion // ""), (.id | tostring)] | @tsv' \
               > checks.tsv || true
             echo "== check-runs no SHA ${SHA} =="
             cat checks.tsv || true
             pending=0; fail=0
             for name in "${REQUIRED[@]}"; do
-              line=$(awk -F'\t' -v n="$name" '$1==n {print $2"|"$3}' checks.tsv | tail -1)
-              st="${line%%|*}"; cc="${line##*|}"
+              line=$(awk -F'\t' -v n="$name" '$1==n {print $2"|"$3"|"$4}' checks.tsv | sort -t '|' -k3,3n | tail -1)
+              st="${line%%|*}"
+              rest="${line#*|}"
+              cc="${rest%%|*}"
+              run_id="${rest##*|}"
               if [ -z "$line" ] || [ "$st" != "completed" ]; then
-                echo "... aguardando: $name (status='${st:-ausente}')"; pending=1
+                echo "... aguardando: $name (status='${st:-ausente}', check_run_id='${run_id:-ausente}')"; pending=1
               elif [ "$cc" != "success" ]; then
-                echo "FAIL -> $name (conclusao='${cc:-none}'; obrigatorio exige success)"; fail=1
+                echo "FAIL -> $name (check_run_id='$run_id', conclusao='${cc:-none}'; obrigatorio exige success)"; fail=1
               else
-                echo "OK   -> $name (success)"
+                echo "OK   -> $name (check_run_id=$run_id, success)"
               fi
             done
             if [ "$fail" -ne 0 ]; then
