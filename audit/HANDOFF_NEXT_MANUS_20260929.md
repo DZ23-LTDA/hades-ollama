@@ -5,8 +5,31 @@
 - Repositório local: `/home/ubuntu/ollama-full-recovery`
 - Branch autorizada: **`recovery/ollama-full-snapshot`** (NUNCA `main`, NUNCA force-push)
 - Remoto: `https://github.com/DZ23-LTDA/ollama-classe-a-plus`
-- HEAD local == remoto: **`2aa59a20505a627d936856a350eb784eb81b63f4`**
+- SHA funcional (código + CI) desta rodada: **`2aa59a20505a627d936856a350eb784eb81b63f4`**
+- O commit imediatamente seguinte é **apenas documentação** (este guia + os dois checkpoints).
+  Confirme o topo real com `git log --oneline -3` e trate qualquer commit `docs(audit):`
+  como não-funcional. O SHA funcional continua sendo `2aa59a20`.
 - Worktree: limpo. `git pull` não é necessário; apenas `git fetch origin`.
+
+## 1.1 Veredito: você está no caminho certo?
+
+**Sim, com três ressalvas objetivas.** Evidência que sustenta o "sim":
+- A base de segurança (RLS/HBA/HMAC/cutover/isolamento por tenant) está implementada e foi
+  exercitada contra PostgreSQL 16 e Redis 7 reais, não apenas em mocks.
+- A consolidação do PR #38 já está dentro da recovery, sem duplicar o marketplace de conectores.
+- Todos os gates locais passam, e o workflow de integridade remoto (`class-a-plus-integrity`) está verde.
+
+**Ressalvas (por isso não se pode dizer "pronto"):**
+1. `dz23-agentic-quality` ainda falha em dois jobs remotos; sem eles verdes, a afirmação de
+   paridade/qualidade não tem evidência de CI.
+2. As duas falhas de Windows são lacunas reais de portabilidade do produto (Git confiável e
+   herança de DACL), não ruído de teste. Corrigi-las é requisito, não opcional.
+3. Staging/produção nunca foram exercitados; a auditoria final externa continua pendente.
+
+**Como saber, sem opinião, que você continua no caminho:** rode `git status --short --branch`
+(deve estar limpo e na recovery), rode os gates locais, confirme `class-a-plus-integrity` verde
+e reduza o número de jobs falhando em `dz23-agentic-quality` a cada rodada. Se esse número não
+cai, pare e reavalie a causa antes de escrever código novo.
 
 Branches que NÃO devem ser tocadas: `main`, `fix/audit-security-deps-2026-09-25` (PR #38),
 `feat/ui-shell-parity`, `feat/ui-additive-parity`.
