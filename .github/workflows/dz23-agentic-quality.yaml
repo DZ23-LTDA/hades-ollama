@@ -22,6 +22,10 @@ on:
   push:
     branches:
       - main
+      # Branch de recuperacao autorizada: os gates profundos (PostgreSQL 16/
+      # Redis, RLS, cutover legado, web) precisam rodar nos pushes de
+      # consolidacao desta linha, nao apenas em pull_request/main.
+      - recovery/ollama-full-snapshot
 
 permissions:
   contents: read

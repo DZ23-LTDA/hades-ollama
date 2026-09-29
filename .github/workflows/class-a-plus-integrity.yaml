@@ -9,6 +9,9 @@ on:
   push:
     branches:
       - main
+      # Linha de recuperacao autorizada: manter as superficies Class A+ e a
+      # consistencia do classificador de CI verificadas tambem nestes pushes.
+      - recovery/ollama-full-snapshot
 
 permissions:
   contents: read
