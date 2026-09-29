@@ -3,8 +3,10 @@
 package agent
 
 import (
+	"context"
 	"fmt"
 	"os"
+	"time"
 
 	"golang.org/x/sys/unix"
 )
@@ -12,6 +14,13 @@ import (
 // withFileLock serializes updates across processes. The lock file itself is
 // never removed: unlinking a live lock would allow a second inode to be locked.
 func withFileLock(path string, run func() error) error {
+	return withFileLockContext(context.Background(), path, run)
+}
+
+func withFileLockContext(ctx context.Context, path string, run func() error) error {
+	if ctx == nil {
+		return fmt.Errorf("file lock context is required")
+	}
 	if path == "" || run == nil {
 		return fmt.Errorf("file lock path and callback are required")
 	}
@@ -32,8 +41,24 @@ func withFileLock(path string, run func() error) error {
 	if !info.Mode().IsRegular() {
 		return fmt.Errorf("file lock is not a regular file")
 	}
-	if err := unix.Flock(fd, unix.LOCK_EX); err != nil {
-		return fmt.Errorf("acquire file lock: %w", err)
+	for {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		err := unix.Flock(fd, unix.LOCK_EX|unix.LOCK_NB)
+		if err == nil {
+			break
+		}
+		if err != unix.EWOULDBLOCK && err != unix.EAGAIN && err != unix.EINTR {
+			return fmt.Errorf("acquire file lock: %w", err)
+		}
+		timer := time.NewTimer(10 * time.Millisecond)
+		select {
+		case <-ctx.Done():
+			timer.Stop()
+			return ctx.Err()
+		case <-timer.C:
+		}
 	}
 	defer unix.Flock(fd, unix.LOCK_UN) //nolint:errcheck
 	return run()

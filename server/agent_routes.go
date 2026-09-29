@@ -1219,8 +1219,7 @@ func (a *agentAPI) prometheus(c *gin.Context) {
 func (a *agentAPI) connectors(c *gin.Context) {
 	organizationID := agentOrganizationID(c)
 	if !a.authRequired && organizationID == "" {
-		c.JSON(http.StatusOK, gin.H{"connectors": a.runtime.Connectors()})
-		return
+		organizationID = agent.LocalOrganizationID
 	}
 	c.JSON(http.StatusOK, gin.H{"connectors": a.runtime.ConnectorsForOrganization(organizationID)})
 }
@@ -1228,8 +1227,7 @@ func (a *agentAPI) connectors(c *gin.Context) {
 func (a *agentAPI) mcp(c *gin.Context) {
 	organizationID := agentOrganizationID(c)
 	if !a.authRequired && organizationID == "" {
-		c.JSON(http.StatusOK, gin.H{"servers": a.runtime.MCPServers(), "remote_servers": a.runtime.RemoteMCPServers()})
-		return
+		organizationID = agent.LocalOrganizationID
 	}
 	c.JSON(http.StatusOK, gin.H{"servers": a.runtime.MCPServersForOrganization(organizationID), "remote_servers": a.runtime.RemoteMCPServersForOrganization(organizationID)})
 }
@@ -2291,10 +2289,11 @@ func (a *agentAPI) deployments(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"providers": []agent.DeployConfig{}})
 		return
 	}
-	providers := manager.List()
+	organizationID := agent.LocalOrganizationID
 	if a.authRequired {
-		providers = manager.ListForOrganization(companyOrganizationID(c))
+		organizationID = companyOrganizationID(c)
 	}
+	providers := manager.ListForOrganization(organizationID)
 	c.JSON(http.StatusOK, gin.H{"providers": providers})
 }
 
@@ -2365,10 +2364,11 @@ func (a *agentAPI) requestDeploymentApproval(c *gin.Context) {
 	}
 	provider := strings.ToLower(strings.TrimSpace(c.Param("provider")))
 	configured := false
-	providers := manager.List()
+	organizationID := agent.LocalOrganizationID
 	if a.authRequired {
-		providers = manager.ListForOrganization(companyOrganizationID(c))
+		organizationID = companyOrganizationID(c)
 	}
+	providers := manager.ListForOrganization(organizationID)
 	for _, config := range providers {
 		if config.ID == provider {
 			configured = true
@@ -2391,7 +2391,7 @@ func (a *agentAPI) requestDeploymentApproval(c *gin.Context) {
 		writeAgentError(c, statusForAgentError(err), err)
 		return
 	}
-	approval, err := a.runtime.DeploymentApprovals().Request(companyOrganizationID(c), project.ID, provider, request.Target, manifest.SHA256, agentActorID(c))
+	approval, err := a.runtime.DeploymentApprovals().Request(organizationID, project.ID, provider, request.Target, manifest.SHA256, agentActorID(c))
 	if err != nil {
 		writeAgentError(c, statusForAgentError(err), err)
 		return

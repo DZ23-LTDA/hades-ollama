@@ -927,3 +927,47 @@ A pedido do usuário, criado `audit/CLAUDE_CODEX_RESUME_PROMPT_20260927.md`: pro
 Estado antes desta publicação documental: branch `recovery/ollama-full-snapshot`, HEAD e remote `ed0c7ccf858379c18b9b4d02913ff52e7d6c6fb7`; `main` verificada em `8635e30dc9e95a1f5b29700169783abc24093ceb`; worktree estava limpo antes das alterações atuais. Esta rodada alterou somente Markdown/instruções de agente; nenhum código Go foi mudado, portanto os gates de código anteriores permanecem associados ao snapshot de código, sem alegar que foram executados novamente nesta rodada. Rodar `git diff --check` e integrity guard antes de commit/push; publicar somente na branch já autorizada.
 
 STATUS: CONTINUE — ler prompt de retomada, validar branch/remoto e continuar P0 PostgreSQL RLS; P1 reauditoria pós-fix; depois paridade baseada na matriz.
+
+### Retomada de engenharia — 2026-09-29 00:33 -03
+
+**Estado verificado:** checkout `/home/ubuntu/ollama-full-recovery`, branch `recovery/ollama-full-snapshot`, HEAD e `origin/recovery/ollama-full-snapshot`=`d3a11965d57db28c5e11567d8d4a0a29f5aabd03`; worktree limpo no início da retomada. O PC reportado aparece como `DESKTOP-QNCP429` Windows online, mas sem workspace exposto/selecionável; não se presume acesso aos discos dele. No sandbox, PostgreSQL 16 está instalado; foi criado apenas um cluster temporário local em `/tmp/ollama-full-pg-test-20260929`, loopback porta 55432, com DB/role descartáveis `ollama_agent_test`; nenhum dado de produção foi usado.
+
+**Evidência inicial:** `OLLAMA_AGENT_TEST_POSTGRES_URL` do ambiente estava unset; a integração `go test -p=1 -tags integration ./internal/agent -run '^TestDistributedPostgresRLSAndEvents$' -count=1 -v` PASS com `ollama_agent_test` (`NOSUPERUSER NOBYPASSRLS`). Isto comprova compatibilidade básica do adapter, **não** isolamento contra GUC caller-settable: o desenho atual de policies ainda confia em `app.current_organization_id` e `app.system_access`, e `OpenPostgresStore` ainda mistura conexão e migração. `NewRuntime` e o startup público mantêm o bloqueio fail-closed.
+
+**Plano P0 (em execução; hipótese a testar):** separar DSN/runtime de DSN/migrator e tirar migração do caminho de startup; provisionar owner/migrator sem login operacional da aplicação e role runtime não-super/BYPASSRLS, sem ownership/DDL; substituir GUCs como autoridade por contexto HMAC assinado pela aplicação e validado por função `SECURITY DEFINER` de search_path fixo cujo segredo esteja inacessível à role runtime; políticas RLS derivam organização e acesso sistêmico somente do contexto validado. O runtime só será reabilitado após teste PostgreSQL real que, sob role runtime, tente forjar tanto outro tenant quanto system-access via SQL e falhe, junto de grants/role audit e revisão independente. Threat model deve declarar que isto protege contra uso arbitrário das credenciais SQL isoladas, não contra comprometimento total do processo app/migrator.
+
+**Reauditoria P1:** workflow `08c31477da9b` concluiu sete revisões somente leitura. Reabertos: executable trusted path/ancestry; catálogos locais usando listas globais; URL assinada de direct upload em erros/logs e sanitização parcial de deployment URL; JSON percentual com alias de assinatura na query Remote MCP; TOCTOU de leitura e lock sem contexto no outbox; URLs/IDs deployment sem formato estrito. Queue owner binding foi considerado sem achado explorável nos call sites atuais. Nenhum item reaberto está corrigido ainda; ver resultados workflow na tarefa para evidência completa.
+
+**Recursos:** serviço PostgreSQL descartável `job_QRkOW9v5` está ativo nesta sessão para testes e deve ser encerrado/limpo ao finalizar; diretório é temporário. `DESKTOP-QNCP429` não expõe workspace nesta sessão. Nenhum commit/push desta retomada ocorreu.
+
+STATUS: CONTINUE — completar P0 e findings P1; manter Postgres público fail-closed.
+
+
+### Continuação de segurança — 2026-09-29 00:58 -03
+
+**P1 remediados nesta fatia:**
+- Catálogos locais sem autenticação agora consultam projeções filtradas por `LocalOrganizationID`, em vez de serializar listas globais de conectores/MCP; teste confirma que recursos e segredos de tenants não vazam.
+- Validação de endpoint/Remote MCP rejeita query JSON com chave de assinatura/token após percent-decoding, além de query malformada/ambígua e URLs fora do limite.
+- Upload direto não propaga erros de transporte nem corpos de erro do CDN contendo URLs assinadas; deployment agora valida IDs e restringe/sanitiza URLs retornadas.
+- Busca de Git/interpreters só aceita diretórios/arquivos de sistema com ancestry root-owned e não gravável por grupo/outros; links executáveis são aceitos apenas se o target resolvido também estiver em árvore confiável. O primeiro teste completo revelou que Python é symlink no sandbox; regra foi corrigida e os três testes do sandbox passaram depois.
+- Leitura do snapshot do push outbox valida o mesmo inode antes/depois de abrir, rejeita symlink e limita a leitura pelo descritor; claim/fail/complete usam locks com contexto cancelável em Unix e Windows.
+
+**Validação executada após correções:** `go test -p=2 ./internal/agent ./server ./x/transfer -count=1` PASS; Windows amd64 test-binary cross-compile de `internal/agent` PASS. A execução anterior dos mesmos pacotes falhou nos três testes de resolução de Python por symlink; corrigido e repetido com sucesso. Houve ainda log esperado de outbox rejeitando um snapshot inválido em teste. Executar gates de repositório completo (tests, vet, race, build, cross-compile, integrity, secret scan e diff) sobre a árvore congelada antes de commit/publicação.
+
+**Atenção:** a tentativa incompleta de separar roles PostgreSQL foi revertida integralmente para o baseline fail-closed; nada em P0 foi implementado nesta rodada. O RLS continua confiando em GUCs caller-settable no adapter atual, então PostgreSQL deve continuar bloqueado para produção. O PostgreSQL temporário descartável para integração permanece apenas loopback em `/tmp/ollama-full-pg-test-20260929`, serviço `job_QRkOW9v5`, e deve ser parado/limpo ao concluir. Não declarar Ollama Full finalizado nem equivalente completo ao Manus: matriz de paridade continua sendo o plano para o trabalho funcional pendente.
+
+
+### Continuação final desta rodada — 2026-09-29 01:38 -03
+
+**Findings tardios da revisão independente corrigidos:**
+- `requestDeploymentApproval` agora consulta providers apenas pela organização autenticada ou por `LocalOrganizationID` em modo local sem autenticação; o mesmo `organizationID` é usado ao criar a aprovação. Novo teste prova que provider de outro tenant retorna 404 e não cria aprovação local.
+- `PushOutbox` agora adquire o lock cross-process antes do mutex em memória, para que um waiter de file lock não prenda o mutex necessário à limpeza. Falha e conclusão após entrega usam contexto de limpeza independente, limitado a 2 s. Regressões cobrem cancelamento, sucesso e a antiga ordem de deadlock.
+- HEAD/init/direct/commit/PATCH/CDN/manifest upload erros não retornam transport errors com URL/body; erros de contexto `Canceled`/`DeadlineExceeded` continuam identificáveis. Novos testes cobrem URLs de HEAD/init com userinfo e cancelamento.
+
+**Verificação congelada — PASS:** `gofmt`; `bash scripts/check-class-a-plus-integrity.sh`; `git diff --check`; `go test -p=2 ./... -count=1`; `go vet -p=2 ./...`; `go test -race -p=2 ./internal/agent ./server ./x/transfer -count=1`; `CGO_ENABLED=1 go build -p=2 ./...`; cross-compile do test binary Windows amd64 para `./internal/agent`. Log local: `/tmp/ollama-full-resumed-release-gates-final-r5-20260929.log`. Gitleaks redacted em fontes de produção alteradas: 0 findings; no conjunto incluindo testes houve uma detecção redacted no fixture sintético `internal/agent/deploy_test.go`, sem valor exibido.
+
+**Revisão independente focada — sem findings acionáveis** sobre os quatro pontos acima (upload, outbox locks/cleanup, conclusão cancelada e approval local). Isto não equivale a uma nova auditoria integral de todas as superfícies nem remove o blocker PostgreSQL.
+
+**Git:** checkout em `/home/ubuntu/ollama-full-recovery`, branch `recovery/ollama-full-snapshot`; antes desta rodada `HEAD`/remote branch eram `d3a11965d57db28c5e11567d8d4a0a29f5aabd03`; remote `main` verificada em `8635e30dc9e95a1f5b29700169783abc24093ceb`. Alterações desta rodada ainda precisam de commit incremental e push condicionado ao tip esperado; não alterar `main`.
+
+**Não finalizado:** P0 PostgreSQL RLS continua não implementado/forjável e public Postgres permanece fail-closed; falta ainda paridade funcional e validação E2E real conforme a matriz. Não afirmar produto 100% pronto ou equivalente integral ao Manus. Próximo passo: revisar o diff final, registrar este estado nos handoffs, secret-scan, commit e push somente para a branch de recuperação; depois retomar o projeto RLS com arquitetura migrator/runtime não-forjável e testes PostgreSQL adversariais.

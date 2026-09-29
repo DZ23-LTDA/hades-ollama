@@ -46,8 +46,17 @@ func TestAgentCatalogRoutesFilterPrivateResourcesByOrganization(t *testing.T) {
 	if err := remote.Register(agent.RemoteMCPServerConfig{ID: "global-remote", URL: "https://global.example.test/mcp", AllowedMethods: []string{"tools/list"}}); err != nil {
 		t.Fatal(err)
 	}
+	deployments := agent.NewDeploymentManager()
+	for _, config := range []agent.DeployConfig{
+		{ID: "private-deployment", OrganizationID: "org_b", Provider: "generic", BaseURL: "https://deploy.example.test/tenant", TokenEnv: "TENANT_DEPLOY_TOKEN", ProjectID: "tenant-project", AccountID: "tenant-account"},
+		{ID: "local-deployment", OrganizationID: agent.LocalOrganizationID, Provider: "generic", BaseURL: "https://deploy.example.test/local"},
+	} {
+		if err := deployments.Register(config); err != nil {
+			t.Fatal(err)
+		}
+	}
 	workspace := t.TempDir()
-	runtime, err := agent.NewRuntime(agent.RuntimeConfig{Context: contextStore, Connectors: connectors, MCP: mcp, RemoteMCP: remote, WorkspaceRoot: workspace})
+	runtime, err := agent.NewRuntime(agent.RuntimeConfig{Context: contextStore, Connectors: connectors, MCP: mcp, RemoteMCP: remote, Deployments: deployments, WorkspaceRoot: workspace})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -130,4 +139,39 @@ func TestAgentCatalogRoutesFilterPrivateResourcesByOrganization(t *testing.T) {
 
 	assertCatalog(t, "org_a", false)
 	assertCatalog(t, "org_b", true)
+
+	// The unauthenticated local API is not a global-tenant bypass. It may expose
+	// ownerless local plugins, but never organization-owned resources.
+	api.authRequired = false
+	for name, handler := range map[string]func(*gin.Context){"connectors": api.connectors, "mcp": api.mcp} {
+		t.Run("unauthenticated local "+name, func(t *testing.T) {
+			recorder := httptest.NewRecorder()
+			ctx, _ := gin.CreateTestContext(recorder)
+			handler(ctx)
+			for _, secret := range []string{"private-connector", "private-mcp", "private-remote", "MCP_TOKEN_ENV_SECRET", "MCP_HEADER_ENV_SECRET", "path-secret"} {
+				if strings.Contains(recorder.Body.String(), secret) {
+					t.Fatalf("local %s catalog exposed tenant resource %q: %s", name, secret, recorder.Body.String())
+				}
+			}
+		})
+	}
+	t.Run("unauthenticated local deployments", func(t *testing.T) {
+		recorder := httptest.NewRecorder()
+		ctx, _ := gin.CreateTestContext(recorder)
+		api.deployments(ctx)
+		var payload struct {
+			Providers []agent.DeployConfig `json:"providers"`
+		}
+		if err := json.Unmarshal(recorder.Body.Bytes(), &payload); err != nil {
+			t.Fatal(err)
+		}
+		if len(payload.Providers) != 1 || payload.Providers[0].ID != "local-deployment" {
+			t.Fatalf("unauthenticated deployment catalog = %+v", payload.Providers)
+		}
+		for _, secret := range []string{"private-deployment", "TENANT_DEPLOY_TOKEN", "tenant-project", "tenant-account"} {
+			if strings.Contains(recorder.Body.String(), secret) {
+				t.Fatalf("unauthenticated deployment catalog exposed %q: %s", secret, recorder.Body.String())
+			}
+		}
+	})
 }

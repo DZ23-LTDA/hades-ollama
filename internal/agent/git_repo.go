@@ -550,9 +550,13 @@ func trustedGitExecutable() (string, error) {
 		name += ".exe"
 	}
 	for _, directory := range strings.Split(safeToolPath(), string(os.PathListSeparator)) {
-		candidate := filepath.Join(directory, name)
+		trustedDirectory, ok := trustedSystemExecutableDirectory(directory)
+		if !ok {
+			continue
+		}
+		candidate := filepath.Join(trustedDirectory, name)
 		info, err := os.Stat(candidate)
-		if err != nil || !info.Mode().IsRegular() {
+		if err != nil || !info.Mode().IsRegular() || !trustedSystemExecutableFile(candidate, info) {
 			continue
 		}
 		if runtime.GOOS != "windows" && info.Mode()&0o111 == 0 {
@@ -574,9 +578,13 @@ func trustedToolExecutable(name string) (string, error) {
 		name += ".exe"
 	}
 	for _, directory := range strings.Split(safeToolPath(), string(os.PathListSeparator)) {
-		candidate := filepath.Join(directory, name)
+		trustedDirectory, ok := trustedSystemExecutableDirectory(directory)
+		if !ok {
+			continue
+		}
+		candidate := filepath.Join(trustedDirectory, name)
 		info, err := os.Stat(candidate)
-		if err != nil || !info.Mode().IsRegular() {
+		if err != nil || !info.Mode().IsRegular() || !trustedSystemExecutableFile(candidate, info) {
 			continue
 		}
 		if runtime.GOOS != "windows" && info.Mode()&0o111 == 0 {

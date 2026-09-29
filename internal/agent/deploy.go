@@ -189,8 +189,11 @@ func (m *DeploymentManager) Register(config DeployConfig) error {
 	config.ID = strings.TrimSpace(config.ID)
 	config.OrganizationID = strings.TrimSpace(config.OrganizationID)
 	config.Provider = strings.ToLower(strings.TrimSpace(config.Provider))
-	if config.ID == "" || config.Provider == "" {
+	if !validDeploymentIdentifier(config.ID) || config.Provider == "" {
 		return errors.New("deployment id and provider are required")
+	}
+	if (config.ProjectID != "" && !validDeploymentIdentifier(config.ProjectID)) || (config.AccountID != "" && !validDeploymentIdentifier(config.AccountID)) {
+		return errors.New("deployment project or account id is invalid")
 	}
 	if config.Provider != "vercel" && config.Provider != "netlify" && config.Provider != "generic" {
 		return fmt.Errorf("unsupported deployment provider %q", config.Provider)
@@ -559,6 +562,9 @@ func (m *DeploymentManager) deployNetlify(ctx context.Context, config DeployConf
 	if siteID == "" {
 		return DeploymentResult{}, errors.New("netlify response has no site id")
 	}
+	if !validDeploymentIdentifier(siteID) {
+		return DeploymentResult{}, errors.New("netlify response has an invalid site id")
+	}
 	digests := map[string]string{}
 	for _, file := range files {
 		digest := sha1.Sum(file.Data)
@@ -572,6 +578,9 @@ func (m *DeploymentManager) deployNetlify(ctx context.Context, config DeployConf
 	deployID := firstString(deploy, "id", "deploy_id")
 	if deployID == "" {
 		return DeploymentResult{DeploymentID: siteID, Status: "partial"}, errors.New("netlify response has no deployment id after site/deploy side effects")
+	}
+	if !validDeploymentIdentifier(deployID) {
+		return DeploymentResult{DeploymentID: siteID, Status: "partial"}, errors.New("netlify response has an invalid deployment id after site/deploy side effects")
 	}
 	result := resultFromPayload(deploy)
 	result.Status = "partial"
@@ -603,10 +612,31 @@ func resultFromPayload(payload map[string]any) DeploymentResult {
 }
 
 func sanitizeDeploymentResult(result DeploymentResult) DeploymentResult {
-	result.DeploymentID = RedactDLP(result.DeploymentID)
-	result.Status = RedactDLP(result.Status)
+	if result.DeploymentID != "" && !validDeploymentIdentifier(result.DeploymentID) {
+		result.DeploymentID = "[REDACTED]"
+	} else {
+		result.DeploymentID = RedactDLP(result.DeploymentID)
+	}
+	if len(result.Status) > 64 || strings.ContainsAny(result.Status, "\r\n\x00") {
+		result.Status = "[REDACTED]"
+	} else {
+		result.Status = RedactDLP(result.Status)
+	}
 	result.URL = sanitizeProviderURL(result.URL)
 	return result
+}
+
+func validDeploymentIdentifier(value string) bool {
+	if value == "" || len(value) > 128 || strings.Contains(value, "..") {
+		return false
+	}
+	for index, r := range value {
+		if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || (index > 0 && (r == '-' || r == '_' || r == '.')) {
+			continue
+		}
+		return false
+	}
+	return true
 }
 
 func sanitizeProviderURL(raw string) string {
@@ -615,7 +645,7 @@ func sanitizeProviderURL(raw string) string {
 		return ""
 	}
 	parsed, err := url.Parse(raw)
-	if err != nil || parsed.User != nil {
+	if err != nil || parsed.User != nil || parsed.Hostname() == "" || (parsed.Scheme != "https" && parsed.Scheme != "http") || parsed.Fragment != "" || endpointURLHasSensitiveMaterial(raw) {
 		return "[REDACTED]"
 	}
 	for key := range parsed.Query() {

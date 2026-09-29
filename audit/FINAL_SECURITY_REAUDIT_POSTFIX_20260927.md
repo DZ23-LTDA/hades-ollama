@@ -68,3 +68,16 @@ Respostas de deploy HTTP `200` acima de 4 MiB são truncadas; JSON inválido/tru
 Este documento preserva o relatório original e seus reproductions. Os itens 1–6 e a recomendação de deploy das seções anteriores foram remediados no checkout atual com testes de regressão: (1) `terminal.exec` resolve caminhos absolutos confiáveis e rejeita Git genérico; (2) catálogos tenant-facing ocultam recursos sem owner/foreign e omitem mappings de credenciais; (3) URLs são projetadas apenas como origem e DLP cobre aliases como `signature`, `sig`, `x.sig` e formas normalizadas; (4) PushOutbox aplica quotas, limites de tamanho/batch/tempo e preserva leases ativos; (5) listagem de jobs requer concordância de owner do job e da missão; (6) responses de deploy rejeitam JSON malformado/oversized e sucesso sem identidade, inclusive Vercel e generic. O MCP stdio local agora também DLP-redige JSON de sucesso, rejeita `result` ausente e não ecoa texto de erro do provider. Git/terminal e store local de queue receberam endurecimento adicional descrito em `SECURITY.md` e na matriz de paridade. Os nomes dos testes e evidências definitivas devem ser consultados no checkpoint atualizado e no log de gates mais recente.
 
 **Não equivale a liberação:** o item 7 continua um bloqueio real; PostgreSQL permanece recusado/fail-closed porque GUC RLS continua forjável e não há roles/contexto tenant não-forjáveis implementados. Uma terceira auditoria independente está em andamento para validar essas correções e procurar achados novos; não substituir o veredicto original por aprovação até que ela termine e os gates finais pós-alterações passem.
+
+
+## Reauditoria focada adicional — 2026-09-29
+
+Uma revisão independente read-only das correções tardias não encontrou findings acionáveis nos seguintes pontos:
+
+- Upload: HEAD/init/direct PUT/commit/PATCH/CDN/manifest não propagam URL assinada, userinfo, erro bruto do transporte ou corpo não confiável; `context.Canceled` e `context.DeadlineExceeded` continuam verificáveis.
+- PushOutbox: file lock cross-process precede o mutex local; falha/conclusão usam limpeza independente e limitada a 2 s; testes reproduzem waiter local enquanto o file lock está retido, limpeza após cancelamento e sucesso com contexto cancelado.
+- Deployment approval: descoberta do provider e criação da aprovação no modo não autenticado ficam restritas a `LocalOrganizationID`; teste verifica 404 e ausência de criação para provider de outro tenant.
+
+**Evidência final desta rodada:** `go test -p=2 ./... -count=1`, `go vet -p=2 ./...`, `go test -race -p=2 ./internal/agent ./server ./x/transfer -count=1`, `CGO_ENABLED=1 go build -p=2 ./...`, cross-compile Windows amd64 do test binary de `internal/agent`, gofmt, integrity guard e `git diff --check` passaram. Gitleaks redacted nas fontes de produção alteradas encontrou zero findings; a varredura com testes encontrou uma detecção redacted em fixture sintético de `internal/agent/deploy_test.go`. Revisão limitada aos fluxos acima — **não é auditoria integral do produto**.
+
+**Blocker não alterado:** PostgreSQL RLS continua potencialmente forjável via GUC pela role runtime e segue desabilitado/fail-closed. Não se autoriza afirmar prontidão enterprise, paridade total nem liberação de PostgreSQL.

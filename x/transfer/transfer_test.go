@@ -2824,6 +2824,58 @@ func TestV2DirectUpload(t *testing.T) {
 // TestV2FallbackToChunked verifies that when the server returns a standard
 // 202 without v2 extension headers, the client falls back to the chunked
 // PATCH path. This exercises the vanilla Docker Registry compatibility.
+func TestV2DirectUploadFailureDoesNotLeakSignedURL(t *testing.T) {
+	clientDir := t.TempDir()
+	blob, _ := createTestBlob(t, clientDir, 64)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = io.Copy(io.Discard, r.Body)
+		w.WriteHeader(http.StatusInternalServerError)
+		_, _ = io.WriteString(w, "upstream failed for "+r.URL.String())
+	}))
+	defer server.Close()
+
+	file, err := os.Open(filepath.Join(clientDir, digestToPath(blob.Digest)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer file.Close()
+	const signature = "synthetic-signed-query-secret"
+	uploader := &uploader{client: server.Client(), baseURL: server.URL, allowPrivate: true, progress: newProgressTracker(blob.Size, nil)}
+	_, err = uploader.streamPutBody(context.Background(), uploadEndpoint{directUploadURL: server.URL + "/upload?X-Amz-Signature=" + signature}, file, blob)
+	if err == nil || strings.Contains(err.Error(), signature) || strings.Contains(err.Error(), "X-Amz-Signature") || strings.Contains(err.Error(), "/upload?") {
+		t.Fatalf("direct upload error leaked signed URL: %v", err)
+	}
+}
+
+type uploadErrorRoundTripper func(*http.Request) (*http.Response, error)
+
+func (f uploadErrorRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
+	return f(req)
+}
+
+func TestUploadExistenceAndInitErrorsHideRequestURLs(t *testing.T) {
+	const userInfoSecret = "synthetic-userinfo-secret"
+	client := &http.Client{Transport: uploadErrorRoundTripper(func(req *http.Request) (*http.Response, error) {
+		return nil, fmt.Errorf("synthetic transport echo: %s", req.URL.String())
+	})}
+	uploader := &uploader{client: client, baseURL: "https://user:" + userInfoSecret + "@registry.example.test", repository: "library/test"}
+	blob := Blob{Digest: "sha256:" + strings.Repeat("a", 64), Size: 1}
+	_, err := uploader.exists(context.Background(), blob)
+	if err == nil || strings.Contains(err.Error(), userInfoSecret) || strings.Contains(err.Error(), "registry.example.test") {
+		t.Fatalf("blob existence error disclosed request URL: %v", err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 25*time.Millisecond)
+	defer cancel()
+	_, err = uploader.initUpload(ctx, blob)
+	if !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("init upload error = %v, want context deadline exceeded", err)
+	}
+	if strings.Contains(err.Error(), userInfoSecret) || strings.Contains(err.Error(), "registry.example.test") {
+		t.Fatalf("init upload error disclosed request URL: %v", err)
+	}
+}
+
 func TestV2FallbackToChunked(t *testing.T) {
 	clientDir := t.TempDir()
 	blob, data := createTestBlob(t, clientDir, 8192)

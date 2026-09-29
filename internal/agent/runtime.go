@@ -949,7 +949,7 @@ func (r *Runtime) flushPushOutbox(ctx context.Context) {
 		if ctx.Err() != nil || time.Since(startedAt) >= maxPushOutboxFlushDuration {
 			return
 		}
-		item, ok, err := r.pushOutbox.ClaimDue(time.Now().UTC())
+		item, ok, err := r.pushOutbox.ClaimDueContext(ctx, time.Now().UTC())
 		if err != nil {
 			r.metrics.pushOutboxFailures.Add(1)
 			return
@@ -959,13 +959,13 @@ func (r *Runtime) flushPushOutbox(ctx context.Context) {
 		}
 		if err := validateOutboundPayloadWithLimit(map[string]any{"title": item.Title, "body": item.Body, "data": item.Data}, maxOutboundDLPScanBytes); err != nil {
 			r.metrics.pushDeliveryFailures.Add(1)
-			if failErr := r.pushOutbox.Fail(item.ID, item.LeaseToken, errOutboundPayloadBlocked); failErr != nil {
+			if failErr := r.pushOutbox.FailContext(ctx, item.ID, item.LeaseToken, errOutboundPayloadBlocked); failErr != nil {
 				r.metrics.pushOutboxFailures.Add(1)
 			}
 			continue
 		}
 		if ctx.Err() != nil {
-			if failErr := r.pushOutbox.Fail(item.ID, item.LeaseToken, ctx.Err()); failErr != nil {
+			if failErr := r.pushOutbox.FailContext(ctx, item.ID, item.LeaseToken, ctx.Err()); failErr != nil {
 				r.metrics.pushOutboxFailures.Add(1)
 			}
 			return
@@ -973,12 +973,12 @@ func (r *Runtime) flushPushOutbox(ctx context.Context) {
 		err = r.push.NotifyOrganization(ctx, item.OrganizationID, item.Title, item.Body, item.Data)
 		if err != nil {
 			r.metrics.pushDeliveryFailures.Add(1)
-			if failErr := r.pushOutbox.Fail(item.ID, item.LeaseToken, err); failErr != nil {
+			if failErr := r.pushOutbox.FailContext(ctx, item.ID, item.LeaseToken, err); failErr != nil {
 				r.metrics.pushOutboxFailures.Add(1)
 			}
 			continue
 		}
-		if err := r.pushOutbox.Complete(item.ID, item.LeaseToken); err != nil {
+		if err := r.pushOutbox.CompleteContext(ctx, item.ID, item.LeaseToken); err != nil {
 			r.metrics.pushOutboxFailures.Add(1)
 		}
 	}

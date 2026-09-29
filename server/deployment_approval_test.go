@@ -224,3 +224,36 @@ func TestForeignAndUnknownDeploymentApprovalsHaveIdenticalNotFoundResponse(t *te
 		t.Fatalf("foreign/unknown approval oracle: foreign=%d %s unknown=%d %s", foreignResponse.Code, foreignResponse.Body.String(), unknownResponse.Code, unknownResponse.Body.String())
 	}
 }
+
+func TestUnauthenticatedDeploymentApprovalCannotProbeTenantProvider(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	builder, err := agent.NewBuilderService(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	project, err := builder.Create(context.Background(), agent.BuilderSpec{Name: "local-site", OrganizationID: agent.LocalOrganizationID, Kind: agent.BuilderWebsite})
+	if err != nil {
+		t.Fatal(err)
+	}
+	deployments := agent.NewDeploymentManager()
+	if err := deployments.Register(agent.DeployConfig{ID: "tenant-only", OrganizationID: "org-private", Provider: "generic", BaseURL: "https://deploy.example.test", ProjectID: "private-project", AccountID: "private-account"}); err != nil {
+		t.Fatal(err)
+	}
+	approvals, err := agent.NewDeploymentApprovalStore(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	runtime, err := agent.NewRuntime(agent.RuntimeConfig{WorkspaceRoot: t.TempDir(), Builder: builder, Deployments: deployments, DeploymentApprovals: approvals})
+	if err != nil {
+		t.Fatal(err)
+	}
+	api := &agentAPI{runtime: runtime, authRequired: false}
+	ctx, recorder := newDeploymentApprovalTestContext(t, http.MethodPost, "/api/agent/v1/builders/"+project.ID+"/deploy/tenant-only/approval", `{"target":"staging"}`, project.ID, "tenant-only")
+	api.requestDeploymentApproval(ctx)
+	if recorder.Code != http.StatusNotFound {
+		t.Fatalf("tenant provider probe status=%d body=%s", recorder.Code, recorder.Body.String())
+	}
+	if pending := approvals.ListForOrganization(agent.LocalOrganizationID); len(pending) != 0 {
+		t.Fatalf("tenant provider probe created a local approval: %+v", pending)
+	}
+}

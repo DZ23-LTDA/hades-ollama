@@ -32,19 +32,44 @@ func providerCatalogOrigin(raw string) string {
 // safe to persist because it may be interpreted differently by the client and
 // by an operator reviewing the manifest.
 func validateConfiguredEndpointURL(raw string) error {
+	if len(raw) > maxConfiguredEndpointURLBytes {
+		return errors.New("endpoint URL exceeds the size limit")
+	}
 	if endpointURLHasSensitiveMaterial(raw) {
 		return errors.New("endpoint URL contains credentials or an ambiguous query")
 	}
 	return nil
 }
 
+const maxConfiguredEndpointURLBytes = 16 << 10
+
 func endpointURLHasSensitiveMaterial(raw string) bool {
 	raw = strings.TrimSpace(raw)
-	if raw == "" {
+	if raw == "" || len(raw) > maxConfiguredEndpointURLBytes {
 		return true
 	}
 	if redacted := redactCredentialURLs(raw); redacted != raw {
 		return true
+	}
+	parsed, err := url.Parse(raw)
+	if err != nil {
+		return true
+	}
+	query, err := url.ParseQuery(parsed.RawQuery)
+	if err != nil {
+		return true
+	}
+	for key, values := range query {
+		decodedKey := normalizeDLPKey(decodeURLComponentFully(key))
+		if sensitiveDLPKey(decodedKey) || strings.Contains(decodedKey, "signature") || strings.Contains(decodedKey, "_sig") || strings.HasSuffix(decodedKey, "_sig") {
+			return true
+		}
+		for _, value := range values {
+			decodedValue := decodeURLComponentFully(value)
+			if hasSensitiveEmbeddedJSONKey(decodedValue) {
+				return true
+			}
+		}
 	}
 	for _, item := range dlpPatterns {
 		if item.pattern.FindString(raw) != "" {

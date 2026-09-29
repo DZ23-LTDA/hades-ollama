@@ -81,7 +81,7 @@ A documentação preserva evidência histórica de smoke PostgreSQL descartável
 
 ### P1 — Reauditoria dos findings remediados
 
-O relatório `FINAL_SECURITY_REAUDIT_POSTFIX_20260927.md` preserva findings originais e uma atualização pós-remediação: `terminal.exec`/PATH de Git, catálogo MCP ownerless, URLs de provider com query assinada, aliases de `signature` no DLP, quotas/trabalho do PushOutbox, owner divergente na listagem de jobs e respostas de deploy truncadas foram marcados como corrigidos no checkout, com testes. **As três revisões independentes ainda precisam validar o estado pós-fix em checkout limpo.** Faça uma reauditoria focada nesses fluxos; execute todos os testes afetados; atualize o relatório com evidências e qualquer finding novo antes de dizer que estão encerrados.
+O relatório `FINAL_SECURITY_REAUDIT_POSTFIX_20260927.md` preserva findings originais e as atualizações pós-remediação. Uma revisão independente focada concluída em 2026-09-29 não encontrou findings acionáveis nos pontos tardios de URL/cancelamento de upload, lock/limpeza do PushOutbox e escopo local de aprovação de deployment. Isso não substitui uma reauditoria integral de todas as superfícies. Faça novas revisões adversariais conforme as áreas forem alteradas; execute os testes afetados; registre evidências e qualquer finding novo antes de encerrar.
 
 ### P2 — Paridade funcional e plataforma
 
@@ -91,19 +91,19 @@ A matriz continua classificando vários domínios como `PARCIAL` ou `ADAPTER IMP
 
 Revisar o relatório e a matriz quanto a falhas de crash/failover, semântica at-least-once, Redis Cluster não suportado, fallbacks não-Linux que devem permanecer fail-closed, boundedness em todos os formatos/callsites, logs/metrics, e execução nativa Windows/macOS. Não transformar teste cross-compile em alegação de teste nativo.
 
-## Gates comprovados neste snapshot
+## Gates comprovados
 
-Executados sobre a árvore de código congelada do snapshot `8c2e3604`. Os commits posteriores `2ac42cc` e `ed0c7ccf` foram documentais; as alterações desta atualização também são apenas documentação/instruções de agente. Portanto, os gates abaixo evidenciam o snapshot de código, não uma nova execução dos gates após cada arquivo Markdown:
+O snapshot `8c2e3604` e commits documentais posteriores têm evidência histórica registrada. Mais recentemente, em 2026-09-29, após os fixes de upload/outbox/deployment, os gates foram repetidos sobre a árvore de código congelada desta rodada:
 
 - `gofmt` check dos Go alterados/novos — PASS;
 - `go test -p=2 ./... -count=1` — PASS;
 - `go vet -p=2 ./...` — PASS;
-- `go test -race -p=2 ./internal/agent ./server -count=1` — PASS;
+- `go test -race -p=2 ./internal/agent ./server ./x/transfer -count=1` — PASS;
 - `CGO_ENABLED=1 go build -p=2 ./...` — PASS;
-- `GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go test -c -p=2 -o /tmp/ollama-agent-windows.test.exe ./internal/agent` — PASS (cross-compile do pacote agent; não é execução nativa do Windows);
+- `GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go test -run '^$' -c -o /tmp/ollama-agent-final-windows.test.exe ./internal/agent` — PASS (cross-compile do pacote agent; não é execução nativa do Windows);
 - `bash scripts/check-class-a-plus-integrity.sh` — PASS;
 - `git diff --check` — PASS;
-- gitleaks redacted no conjunto de arquivos modificados/novos — 18 detecções em `_test.go` contendo fixtures sintéticas; zero detecções em arquivos não-test. Valores não foram impressos.
+- gitleaks redacted em fontes de produção alteradas — zero findings; no conjunto com testes houve uma detecção redacted em fixture sintético de `internal/agent/deploy_test.go`. Valores não foram impressos.
 
 Após qualquer alteração de código, repetir testes relevantes; antes de novo release/merge, repetir todos os gates em checkout limpo. O commit documental posterior só mudou três linhas do checkpoint, mas deve passar `git diff --check` quando houver nova mudança.
 
@@ -136,4 +136,4 @@ bash scripts/check-class-a-plus-integrity.sh
 git diff --check
 ```
 
-**Estado registrado nesta revisão:** branch local `recovery/ollama-full-snapshot`; antes destas alterações, `HEAD` e ponta remota eram `ed0c7ccf858379c18b9b4d02913ff52e7d6c6fb7`; `main` foi verificada em `8635e30dc9e95a1f5b29700169783abc24093ceb`. Os serviços temporários da captura estão desligados. Revalide as refs remotas depois de qualquer novo commit.
+**Estado registrado em 2026-09-29 01:38 -03:** branch local `recovery/ollama-full-snapshot`; antes desta rodada, `HEAD` e ponta remota eram `d3a11965d57db28c5e11567d8d4a0a29f5aabd03`; `main` foi verificada em `8635e30dc9e95a1f5b29700169783abc24093ceb`. As mudanças desta rodada ainda precisam de commit/push incremental à branch de recuperação. O serviço PostgreSQL temporário de testes deve ser encerrado ao finalizar. Revalide as refs remotas antes de publicar.

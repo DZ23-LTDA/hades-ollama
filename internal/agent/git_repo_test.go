@@ -10,6 +10,19 @@ import (
 	"testing"
 )
 
+func TestTrustedExecutablePathsRejectWritableDirectories(t *testing.T) {
+	writable := t.TempDir()
+	if err := os.Chmod(writable, 0o777); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := trustedSystemExecutableDirectory(writable); ok {
+		t.Fatal("group/world-writable directory accepted as trusted")
+	}
+	if _, err := trustedGitExecutable(); err != nil {
+		t.Fatalf("trusted system Git could not be resolved: %v", err)
+	}
+}
+
 func TestGitReadersIgnoreAmbientPATH(t *testing.T) {
 	if runtime.GOOS != "linux" {
 		t.Skip("ambient executable hijack regression uses a POSIX script")

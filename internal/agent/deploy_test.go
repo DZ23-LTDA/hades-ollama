@@ -254,6 +254,55 @@ func TestDeploymentPackageExcludesPrivateFiles(t *testing.T) {
 	}
 }
 
+func TestDeploymentResultSanitizesURLsAndIdentifiers(t *testing.T) {
+	for _, value := range []string{
+		"javascript:alert(1)",
+		"file:///etc/passwd",
+		"https://user:password@example.test/deploy",
+		"https://example.test/deploy?meta=%7B%22providerSignature%22%3A%22synthetic%22%7D",
+		"https://example.test/deploy#fragment",
+	} {
+		result := sanitizeDeploymentResult(DeploymentResult{URL: value})
+		if result.URL != "[REDACTED]" {
+			t.Errorf("unsafe URL %q sanitized to %q", value, result.URL)
+		}
+	}
+	result := sanitizeDeploymentResult(DeploymentResult{DeploymentID: "../other-tenant", URL: "https://example.test/deploy"})
+	if result.DeploymentID != "[REDACTED]" {
+		t.Fatalf("unsafe deployment id was not redacted: %+v", result)
+	}
+	for _, id := range []string{"../escape", "has/slash", "has\\backslash", "line\nbreak", strings.Repeat("a", 129)} {
+		if validDeploymentIdentifier(id) {
+			t.Errorf("unsafe deployment identifier accepted: %q", id)
+		}
+	}
+	for _, id := range []string{"site-123", "dep_abc.1", "550e8400-e29b-41d4-a716-446655440000"} {
+		if !validDeploymentIdentifier(id) {
+			t.Errorf("valid deployment identifier rejected: %q", id)
+		}
+	}
+}
+
+func TestDeploymentManagerRejectsUnsafeConfiguredIdentifiers(t *testing.T) {
+	manager := NewDeploymentManager()
+	for _, id := range []string{"../provider", "bad/provider", "bad\nprovider"} {
+		if err := manager.Register(DeployConfig{ID: id, Provider: "netlify", BaseURL: "https://example.test"}); err == nil {
+			t.Errorf("unsafe provider ID accepted: %q", id)
+		}
+	}
+	for _, field := range []string{"project", "account"} {
+		config := DeployConfig{ID: "safe", Provider: "vercel", BaseURL: "https://example.test"}
+		if field == "project" {
+			config.ProjectID = "../escape"
+		} else {
+			config.AccountID = "bad/id"
+		}
+		if err := manager.Register(config); err == nil {
+			t.Errorf("unsafe %s ID accepted", field)
+		}
+	}
+}
+
 func TestBuildDeploymentManifestReportsIncludedExcludedAndHash(t *testing.T) {
 	root := t.TempDir()
 	for name, content := range map[string]string{

@@ -5,6 +5,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"strings"
 	"sync/atomic"
@@ -75,6 +76,25 @@ func TestValidateOutboundPayloadRejectsSensitiveKeysAndValues(t *testing.T) {
 	}
 	if err := validateOutboundPayload(strings.Repeat("x", maxOutboundDLPScanBytes+1)); err == nil {
 		t.Fatal("oversized payload was not rejected")
+	}
+}
+
+func TestConfiguredEndpointURLRejectsEncodedSignatureJSON(t *testing.T) {
+	for _, key := range []string{"providerSignature", "x.sig", "auth_signature"} {
+		t.Run(key, func(t *testing.T) {
+			value := url.QueryEscape(`{"` + key + `":"opaque-signature-secret"}`)
+			raw := "https://mcp.example.test/mcp?meta=" + value
+			if err := validateConfiguredEndpointURL(raw); err == nil {
+				t.Fatal("encoded sensitive JSON query was accepted")
+			}
+			manager := NewRemoteMCPManager()
+			if err := manager.Register(RemoteMCPServerConfig{ID: "remote", URL: raw, AllowedMethods: []string{"tools/list"}}); err == nil {
+				t.Fatal("Remote MCP accepted encoded signature JSON in query")
+			}
+		})
+	}
+	if err := validateConfiguredEndpointURL("https://mcp.example.test/mcp?view=compact"); err != nil {
+		t.Fatalf("benign endpoint query rejected: %v", err)
 	}
 }
 

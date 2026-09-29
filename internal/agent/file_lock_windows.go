@@ -3,16 +3,23 @@
 package agent
 
 import (
+	"context"
 	"fmt"
+	"os"
+	"time"
 
 	"golang.org/x/sys/windows"
 )
 
-// withFileLock serializes updates across processes using a byte-range lock.
-// The lock file is persistent so contenders always coordinate on one file.
+// withFileLock serializes updates across processes. The lock file itself is
+// never removed: contenders always coordinate on the same persistent file.
 func withFileLock(path string, run func() error) error {
-	if path == "" || run == nil {
-		return fmt.Errorf("file lock path and callback are required")
+	return withFileLockContext(context.Background(), path, run)
+}
+
+func withFileLockContext(ctx context.Context, path string, run func() error) error {
+	if ctx == nil || path == "" || run == nil {
+		return fmt.Errorf("file lock context, path, and callback are required")
 	}
 	name, err := windows.UTF16PtrFromString(path)
 	if err != nil {
@@ -24,7 +31,12 @@ func withFileLock(path string, run func() error) error {
 	if err != nil {
 		return fmt.Errorf("open file lock: %w", err)
 	}
-	defer windows.CloseHandle(handle)
+	file := os.NewFile(uintptr(handle), path)
+	if file == nil {
+		_ = windows.CloseHandle(handle)
+		return fmt.Errorf("open file lock: invalid handle")
+	}
+	defer file.Close()
 	var info windows.ByHandleFileInformation
 	if err := windows.GetFileInformationByHandle(handle, &info); err != nil {
 		return fmt.Errorf("stat file lock: %w", err)
@@ -37,8 +49,24 @@ func withFileLock(path string, run func() error) error {
 		return fmt.Errorf("file lock is not a regular file")
 	}
 	overlapped := &windows.Overlapped{}
-	if err := windows.LockFileEx(handle, windows.LOCKFILE_EXCLUSIVE_LOCK, 0, 1, 0, overlapped); err != nil {
-		return fmt.Errorf("acquire file lock: %w", err)
+	for {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		err := windows.LockFileEx(handle, windows.LOCKFILE_EXCLUSIVE_LOCK|windows.LOCKFILE_FAIL_IMMEDIATELY, 0, 1, 0, overlapped)
+		if err == nil {
+			break
+		}
+		if err != windows.ERROR_LOCK_VIOLATION {
+			return fmt.Errorf("acquire file lock: %w", err)
+		}
+		timer := time.NewTimer(10 * time.Millisecond)
+		select {
+		case <-ctx.Done():
+			timer.Stop()
+			return ctx.Err()
+		case <-timer.C:
+		}
 	}
 	defer windows.UnlockFileEx(handle, 0, 1, 0, overlapped) //nolint:errcheck
 	return run()

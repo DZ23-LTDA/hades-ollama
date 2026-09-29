@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -523,5 +524,166 @@ func TestPushOutboxRejectsInvalidAttemptMetadata(t *testing.T) {
 	}
 	if _, err := NewPushOutbox(root); err == nil {
 		t.Fatal("invalid negative attempt metadata was accepted")
+	}
+}
+
+func TestReadPushOutboxRejectsSymlinkedSnapshot(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlink creation may require elevated privileges on Windows")
+	}
+	root := t.TempDir()
+	target := filepath.Join(t.TempDir(), "outside.json")
+	if err := os.WriteFile(target, []byte(`{}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(root, "outbox.json")
+	if err := os.Symlink(target, path); err != nil {
+		t.Skipf("symlink unavailable: %v", err)
+	}
+	var snapshot map[string]PushOutboxItem
+	if err := readPushOutboxJSON(path, &snapshot); err == nil {
+		t.Fatal("symlinked outbox snapshot was accepted")
+	}
+}
+
+func TestFileLockWaitHonorsContextCancellation(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "lock")
+	locked := make(chan struct{})
+	release := make(chan struct{})
+	finished := make(chan error, 1)
+	go func() {
+		finished <- withFileLock(path, func() error {
+			close(locked)
+			<-release
+			return nil
+		})
+	}()
+	<-locked
+	ctx, cancel := context.WithTimeout(context.Background(), 40*time.Millisecond)
+	defer cancel()
+	err := withFileLockContext(ctx, path, func() error {
+		return errors.New("lock callback unexpectedly ran")
+	})
+	if !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("waiting lock error = %v, want deadline exceeded", err)
+	}
+	close(release)
+	if err := <-finished; err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestPushOutboxFailureCleanupSurvivesCanceledDeliveryContext(t *testing.T) {
+	outbox, err := NewPushOutbox(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := outbox.Enqueue("org", "title", "body", nil); err != nil {
+		t.Fatal(err)
+	}
+	claimed, ok, err := outbox.ClaimDue(time.Now().UTC())
+	if err != nil || !ok {
+		t.Fatalf("ClaimDue() = (%v, %v, %v)", claimed.ID, ok, err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if err := outbox.FailContext(ctx, claimed.ID, claimed.LeaseToken, errors.New("delivery canceled")); err != nil {
+		t.Fatalf("FailContext() after delivery cancellation: %v", err)
+	}
+	items := outbox.List()
+	if len(items) != 1 || items[0].LeaseUntil != nil || items[0].LeaseToken != "" || items[0].Attempts != 1 || items[0].NextAttemptAt.Before(time.Now().UTC()) {
+		t.Fatalf("lease cleanup did not persist retry state: %+v", items)
+	}
+}
+
+func TestPushOutboxCompletionSurvivesCanceledDeliveryContext(t *testing.T) {
+	outbox, err := NewPushOutbox(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := outbox.Enqueue("org", "title", "body", nil); err != nil {
+		t.Fatal(err)
+	}
+	claimed, ok, err := outbox.ClaimDue(time.Now().UTC())
+	if err != nil || !ok {
+		t.Fatalf("ClaimDue() = (%v, %v, %v)", claimed.ID, ok, err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if err := outbox.CompleteContext(ctx, claimed.ID, claimed.LeaseToken); err != nil {
+		t.Fatalf("CompleteContext() after successful delivery cancellation: %v", err)
+	}
+	if items := outbox.List(); len(items) != 0 {
+		t.Fatalf("completed outbox item remains persisted: %+v", items)
+	}
+}
+
+func TestPushOutboxCanceledCleanupIsNotBlockedByLocalFileLockWaiter(t *testing.T) {
+	outbox, err := NewPushOutbox(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := outbox.Enqueue("org", "title", "body", nil); err != nil {
+		t.Fatal(err)
+	}
+	claimed, ok, err := outbox.ClaimDue(time.Now().UTC())
+	if err != nil || !ok {
+		t.Fatalf("ClaimDue() = (%v, %v, %v)", claimed.ID, ok, err)
+	}
+	locked := make(chan struct{})
+	release := make(chan struct{})
+	var releaseOnce sync.Once
+	defer releaseOnce.Do(func() { close(release) })
+	lockFinished := make(chan error, 1)
+	go func() {
+		lockFinished <- withFileLock(outbox.lockPath(), func() error {
+			close(locked)
+			<-release
+			return nil
+		})
+	}()
+	<-locked
+	localMutexHeld := make(chan struct{})
+	processLockFinished := make(chan error, 1)
+	go func() {
+		outbox.mu.Lock()
+		defer outbox.mu.Unlock()
+		close(localMutexHeld)
+		processLockFinished <- withFileLock(outbox.lockPath(), func() error { return nil })
+	}()
+	<-localMutexHeld
+	time.Sleep(20 * time.Millisecond)
+	cleanupFinished := make(chan error, 1)
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 75*time.Millisecond)
+		defer cancel()
+		cleanupFinished <- outbox.failAtContext(ctx, claimed.ID, claimed.LeaseToken, errors.New("delivery failed"), time.Now().UTC())
+	}()
+	select {
+	case err := <-cleanupFinished:
+		if !errors.Is(err, context.DeadlineExceeded) {
+			t.Fatalf("bounded cleanup while file lock is held returned %v, want deadline exceeded", err)
+		}
+	case <-time.After(500 * time.Millisecond):
+		t.Fatal("context-bounded cleanup was blocked behind a local file-lock waiter")
+	}
+	releaseOnce.Do(func() { close(release) })
+	if err := <-lockFinished; err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case err := <-processLockFinished:
+		if err != nil {
+			t.Fatalf("in-process file-lock waiter: %v", err)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("in-process file-lock waiter remained blocked after file-lock release")
+	}
+	if err := outbox.FailContext(context.Background(), claimed.ID, claimed.LeaseToken, errors.New("delivery failed")); err != nil {
+		t.Fatalf("FailContext() after file-lock release: %v", err)
+	}
+	items := outbox.List()
+	if len(items) != 1 || items[0].LeaseUntil != nil || items[0].LeaseToken != "" {
+		t.Fatalf("file-lock waiter stranded the lease: %+v", items)
 	}
 }

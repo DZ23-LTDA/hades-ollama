@@ -28,7 +28,7 @@ Fazer o Ollama Full aproximar-se da paridade funcional observável com Manus Des
 
 ### Gates e evidência existente
 
-O snapshot atual passou, sobre a árvore de código congelada: `go test -p=2 ./... -count=1`; `go vet -p=2 ./...`; `go test -race -p=2 ./internal/agent ./server -count=1`; `CGO_ENABLED=1 go build -p=2 ./...`; cross-compile Windows de `internal/agent`; `bash scripts/check-class-a-plus-integrity.sh`; gofmt e `git diff --check`. Gitleaks redacted encontrou 18 detecções apenas em fixtures sintéticas `*_test.go`, nenhuma em arquivos não-test. Confira `audit/OLLAMA_FULL_HANDOFF_20260927.md` e rode novamente os gates afetados após qualquer alteração; para merge/release, rode todos em árvore limpa.
+Em 2026-09-29, a árvore congelada com os fixes tardios de upload/outbox/deployment passou: `go test -p=2 ./... -count=1`; `go vet -p=2 ./...`; `go test -race -p=2 ./internal/agent ./server ./x/transfer -count=1`; `CGO_ENABLED=1 go build -p=2 ./...`; cross-compile Windows de `internal/agent`; `bash scripts/check-class-a-plus-integrity.sh`; gofmt e `git diff --check`. Gitleaks redacted em fontes de produção alteradas encontrou zero findings; a varredura incluindo testes reportou uma detecção redacted em fixture sintético de `internal/agent/deploy_test.go`. Uma revisão independente focada desses fixes não encontrou findings acionáveis, mas não foi uma auditoria integral. PostgreSQL RLS continua um blocker fail-closed e paridade total não foi validada. Confira `audit/OLLAMA_FULL_HANDOFF_20260927.md` e rode novamente os gates afetados após qualquer alteração; para merge/release, rode todos em árvore limpa.
 
 ### Regras de Git, autorização e segurança
 

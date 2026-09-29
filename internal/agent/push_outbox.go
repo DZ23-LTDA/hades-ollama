@@ -1,9 +1,11 @@
 package agent
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -79,10 +81,23 @@ func (o *PushOutbox) lockPath() string {
 
 // withFileStateLocked serializes persistent operations across processes and
 // reloads the complete snapshot before applying each read or mutation.
-// Callers hold o.mu while invoking this helper.
+// It acquires the process-local state mutex only after the file lock succeeds,
+// so context-aware waiters never block cleanup while holding o.mu.
 func (o *PushOutbox) withFileStateLocked(persist bool, run func() error) error {
-	previous := clonePushOutboxItems(o.items)
-	return withFileLock(o.lockPath(), func() error {
+	return o.withFileStateLockedContext(context.Background(), persist, run)
+}
+
+func (o *PushOutbox) withFileStateLockedContext(ctx context.Context, persist bool, run func() error) error {
+	if ctx == nil {
+		return errors.New("push outbox context is required")
+	}
+	return withFileLockContext(ctx, o.lockPath(), func() error {
+		// Acquire the process-local state mutex only after the cross-process
+		// lock. A blocked file-lock waiter can then never strand cancellation
+		// cleanup behind o.mu.
+		o.mu.Lock()
+		defer o.mu.Unlock()
+		previous := clonePushOutboxItems(o.items)
 		migrated, err := o.refreshLocked()
 		if err != nil {
 			// Do not retain potentially sensitive in-memory contents after a
@@ -138,8 +153,6 @@ func (o *PushOutbox) Enqueue(organizationID, title, body string, data map[string
 	if err := validatePushOutboxItemSize(item); err != nil {
 		return PushOutboxItem{}, err
 	}
-	o.mu.Lock()
-	defer o.mu.Unlock()
 	if err := o.withFileStateLocked(true, func() error {
 		prunePushOutboxTerminals(o.items, time.Now().UTC())
 		if len(o.items) >= maxPushOutboxItems {
@@ -163,17 +176,19 @@ func (o *PushOutbox) Enqueue(organizationID, title, body string, data map[string
 }
 
 func (o *PushOutbox) ClaimDue(now time.Time) (PushOutboxItem, bool, error) {
+	return o.ClaimDueContext(context.Background(), now)
+}
+
+func (o *PushOutbox) ClaimDueContext(ctx context.Context, now time.Time) (PushOutboxItem, bool, error) {
 	if o == nil {
 		return PushOutboxItem{}, false, errors.New("push outbox is unavailable")
 	}
 	if now.IsZero() {
 		now = time.Now().UTC()
 	}
-	o.mu.Lock()
-	defer o.mu.Unlock()
 	var claimed PushOutboxItem
 	found := false
-	err := o.withFileStateLocked(true, func() error {
+	err := o.withFileStateLockedContext(ctx, true, func() error {
 		prunePushOutboxTerminals(o.items, now)
 		for id, item := range o.items {
 			if item.NextAttemptAt.After(now) || (item.LeaseUntil != nil && item.LeaseUntil.After(now)) {
@@ -202,13 +217,17 @@ func (o *PushOutbox) ClaimDue(now time.Time) (PushOutboxItem, bool, error) {
 }
 
 func (o *PushOutbox) Complete(id, leaseToken string) error {
+	return o.CompleteContext(context.Background(), id, leaseToken)
+}
+
+func (o *PushOutbox) CompleteContext(ctx context.Context, id, leaseToken string) error {
 	if o == nil {
 		return errors.New("push outbox is unavailable")
 	}
 	id = strings.TrimSpace(id)
-	o.mu.Lock()
-	defer o.mu.Unlock()
-	return o.withFileStateLocked(true, func() error {
+	cleanupCtx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	return o.withFileStateLockedContext(cleanupCtx, true, func() error {
 		item, ok := o.items[id]
 		if !ok {
 			return errors.New("push outbox item not found")
@@ -222,12 +241,25 @@ func (o *PushOutbox) Complete(id, leaseToken string) error {
 }
 
 func (o *PushOutbox) Fail(id, leaseToken string, cause error) error {
-	return o.failAt(id, leaseToken, cause, time.Now().UTC())
+	return o.FailContext(context.Background(), id, leaseToken, cause)
+}
+
+func (o *PushOutbox) FailContext(ctx context.Context, id, leaseToken string, cause error) error {
+	// Lease cleanup must outlive the delivery context: after ClaimDue persists a
+	// lease, the caller may cancel that context before it can clear the lease.
+	// Keep cleanup bounded so shutdown cannot wait indefinitely on a lock.
+	cleanupCtx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	return o.failAtContext(cleanupCtx, id, leaseToken, cause, time.Now().UTC())
 }
 
 // failAt keeps deterministic clock control private to the package so external
 // callers cannot pass a stale timestamp to bypass lease expiry fencing.
 func (o *PushOutbox) failAt(id, leaseToken string, cause error, now time.Time) error {
+	return o.failAtContext(context.Background(), id, leaseToken, cause, now)
+}
+
+func (o *PushOutbox) failAtContext(ctx context.Context, id, leaseToken string, cause error, now time.Time) error {
 	if o == nil {
 		return errors.New("push outbox is unavailable")
 	}
@@ -235,9 +267,7 @@ func (o *PushOutbox) failAt(id, leaseToken string, cause error, now time.Time) e
 		now = time.Now().UTC()
 	}
 	id = strings.TrimSpace(id)
-	o.mu.Lock()
-	defer o.mu.Unlock()
-	return o.withFileStateLocked(true, func() error {
+	return o.withFileStateLockedContext(ctx, true, func() error {
 		item, ok := o.items[id]
 		if !ok {
 			return errors.New("push outbox item not found")
@@ -262,14 +292,15 @@ func (o *PushOutbox) List() []PushOutboxItem {
 	if o == nil {
 		return nil
 	}
-	o.mu.Lock()
-	defer o.mu.Unlock()
-	if err := o.withFileStateLocked(false, nil); err != nil {
+	var items []PushOutboxItem
+	if err := o.withFileStateLocked(false, func() error {
+		items = make([]PushOutboxItem, 0, len(o.items))
+		for _, item := range o.items {
+			items = append(items, clonePushOutboxItem(item))
+		}
 		return nil
-	}
-	items := make([]PushOutboxItem, 0, len(o.items))
-	for _, item := range o.items {
-		items = append(items, clonePushOutboxItem(item))
+	}); err != nil {
+		return nil
 	}
 	return items
 }
@@ -337,14 +368,37 @@ func (o *PushOutbox) refreshLocked() (bool, error) {
 }
 
 func readPushOutboxJSON(path string, target any) error {
-	info, err := os.Stat(path)
+	before, err := os.Lstat(path)
 	if err != nil {
 		return err
 	}
-	if info.Size() > maxPushOutboxFileBytes {
+	if !before.Mode().IsRegular() || before.Mode()&os.ModeSymlink != 0 {
+		return errors.New("push outbox snapshot is not a regular file")
+	}
+	file, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+	opened, err := file.Stat()
+	if err != nil {
+		return err
+	}
+	after, err := os.Lstat(path)
+	if err != nil || !after.Mode().IsRegular() || after.Mode()&os.ModeSymlink != 0 || !os.SameFile(before, opened) || !os.SameFile(opened, after) {
+		return errors.New("push outbox snapshot changed during open")
+	}
+	if opened.Size() > maxPushOutboxFileBytes {
 		return errPushOutboxQuota
 	}
-	return readJSON(path, target)
+	data, err := io.ReadAll(io.LimitReader(file, maxPushOutboxFileBytes+1))
+	if err != nil {
+		return err
+	}
+	if len(data) > maxPushOutboxFileBytes {
+		return errPushOutboxQuota
+	}
+	return json.Unmarshal(data, target)
 }
 
 func normalizePushOutboxItem(item PushOutboxItem) (PushOutboxItem, error) {
