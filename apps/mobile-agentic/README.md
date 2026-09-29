@@ -2,11 +2,16 @@
 
 Cliente Expo para acompanhar missões, visualizar timeline, aprovar/rejeitar passos protegidos, iniciar execução e consultar uma API agentic v1 autenticada.
 
+A inbox consulta `GET /api/agent/v1/missions`, abre detalhe e timeline ao tocar numa missão e permite atualizar a lista. Lista e último detalhe consultado são armazenados no AsyncStorage por servidor e organização; falha de rede lê o cache do mesmo escopo. Respostas HTTP de erro aparecem como erro, sem esconder uma falha do servidor com dados antigos. Na web, o token fica apenas em memória durante a sessão; no Android/iOS usa SecureStore.
+
 ## Desenvolvimento
 
 ```bash
 npm install
 npm run start
+npm run typecheck
+npm run test:inbox
+npm run test:policy
 ```
 
 No emulador ou dispositivo físico, informe em **Servidor** uma URL alcançável pelo celular, por exemplo `http://192.168.0.10:11434`. O cliente persiste a URL no AsyncStorage e o token Bearer no SecureStore nativo. Depois de carregar o token, consulta `/api/agent/v1/auth/session` e só habilita outbox/push autenticados após confirmar o `organization_id`. Cache de missão, fila offline e marca de push são namespaced por servidor e organização; uma sessão sem tenant confirmado não pode enfileirar uma mutação autenticada. O servidor continua sendo a autoridade de policy.

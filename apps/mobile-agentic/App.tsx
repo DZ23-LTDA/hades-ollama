@@ -5,6 +5,7 @@ import { StatusBar } from "expo-status-bar";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { shouldQueueOffline } from "./offlinePolicy";
+import { inboxKey, loadInbox, loadInboxDetail, type InboxMission } from "./inbox";
 
 Notifications.setNotificationHandler({ handleNotification: async () => ({ shouldShowAlert: true, shouldShowBanner: true, shouldShowList: true, shouldPlaySound: true, shouldSetBadge: false }) });
 
@@ -56,6 +57,12 @@ export default function App() {
   const [objective, setObjective] = useState("");
   const [mission, setMission] = useState<Mission | null>(null);
   const [events, setEvents] = useState<Event[]>([]);
+  const [inbox, setInbox] = useState<InboxMission[]>([]);
+  const [inboxLoading, setInboxLoading] = useState(true);
+  const [inboxError, setInboxError] = useState("");
+  const [inboxSource, setInboxSource] = useState<"network" | "cache" | "error">("network");
+  const [detailSource, setDetailSource] = useState<"network" | "cache" | "error">("network");
+  const [selectedID, setSelectedID] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 	  const [error, setError] = useState("");
 	  const [online, setOnline] = useState(true);
@@ -65,12 +72,31 @@ export default function App() {
 	  const [approvalReason, setApprovalReason] = useState("");
 
 	const expireSession = async () => {
-		await SecureStore.deleteItemAsync("dz23.agent.token");
+		if (Platform.OS !== "web") await SecureStore.deleteItemAsync("dz23.agent.token");
 		setToken("");
 		setDraftToken("");
 		setOrganizationID(null);
 		setPushRegistered(false);
 	};
+
+  const inboxRequest = <T,>(path: string) => request<T>(base, path, token);
+  const refreshInbox = async () => {
+    const key = inboxKey(base, organizationID, Boolean(token));
+    if (!key) { setInboxLoading(false); return; }
+    setInboxLoading(true); setInboxError("");
+    const result = await loadInbox(AsyncStorage, key, inboxRequest);
+    setInbox(result.missions); setInboxSource(result.source); setInboxError(result.error);
+    setOnline(result.source === "network"); setInboxLoading(false);
+  };
+  const openMission = async (id: string) => {
+    const key = missionStorageKey(base, organizationID, Boolean(token));
+    if (!key) return;
+    setSelectedID(id); setInboxError(""); setMission(null); setEvents([]);
+    const result = await loadInboxDetail(AsyncStorage, key, id, inboxRequest);
+    setMission(result.mission as Mission | null); setEvents(result.events);
+    setDetailSource(result.source); setOnline(result.source === "network");
+    if (result.error) setInboxError(result.error);
+  };
 
 	  const loadQueue = async () => {
 	    const queueKey = queueStorageKey(base, organizationID, Boolean(token));
@@ -185,7 +211,7 @@ export default function App() {
   };
 
 	  const registerPush = async (server = base, bearer = token) => {
-	    if (!bearer || !server || !organizationID || pushRegistered) return;
+	    if (Platform.OS === "web" || !bearer || !server || !organizationID || pushRegistered) return;
     try {
       const permission = await Notifications.getPermissionsAsync();
       const granted = permission.granted || (await Notifications.requestPermissionsAsync()).granted;
@@ -201,18 +227,18 @@ export default function App() {
 
 	  useEffect(() => {
 	    void AsyncStorage.getItem("dz23.agent.base").then((value) => { if (value) { setBase(value); setDraftBase(value); } });
-	    void SecureStore.getItemAsync("dz23.agent.token").then((value) => { if (value) { setToken(value); setDraftToken(value); } });
+	    if (Platform.OS !== "web") void SecureStore.getItemAsync("dz23.agent.token").then((value) => { if (value) { setToken(value); setDraftToken(value); } });
 	  }, []);
 	  useEffect(() => {
 	    if (token) void hydrateAuthScope(base, token);
 	    const pushKeyForScope = pushStorageKey(base, organizationID);
 	    if (pushKeyForScope) void AsyncStorage.getItem(pushKeyForScope).then((value) => setPushRegistered(value === "1"));
 	    void loadQueue();
-	    const cacheKey = missionStorageKey(base, organizationID, Boolean(token));
-	    if (cacheKey) void AsyncStorage.getItem(cacheKey).then((raw) => { if (raw) { const value = JSON.parse(raw) as { mission: Mission; events: Event[] }; setMission(value.mission); setEvents(value.events); } });
+	    setSelectedID(null); setMission(null); setEvents([]);
+	    void refreshInbox();
 	  }, [base, organizationID, token]);
   const pollInFlight = useRef(false);
-  useEffect(() => { const timer = setInterval(async () => { if (pollInFlight.current) return; pollInFlight.current = true; try { await refresh(); } finally { pollInFlight.current = false; } }, 3000); return () => clearInterval(timer); }, [mission?.id, base, token]);
+  useEffect(() => { if (!selectedID || !online) return; const timer = setInterval(async () => { if (pollInFlight.current) return; pollInFlight.current = true; try { await refresh(selectedID); } finally { pollInFlight.current = false; } }, 3000); return () => clearInterval(timer); }, [selectedID, base, token, online]);
 	  useEffect(() => { void registerPush(); }, [base, token, organizationID, pushRegistered]);
 
   const approvals = useMemo(() => mission?.approvals?.filter((approval) => approval.status === "PENDING") ?? [], [mission]);
@@ -233,13 +259,13 @@ export default function App() {
     if (!objective.trim()) return;
     setBusy(true); setError("");
     const payload = { objective, auto_run: false };
-    try { const created = await request<Mission>(base, "/api/agent/v1/missions", token, { method: "POST", body: JSON.stringify(payload) }); setMission(created); setOnline(true); await refresh(created.id); }
+    try { const created = await request<Mission>(base, "/api/agent/v1/missions", token, { method: "POST", body: JSON.stringify(payload) }); setSelectedID(created.id); setMission(created); setOnline(true); await refresh(created.id); await refreshInbox(); }
 				catch (cause) { if (cause instanceof ApiError && (cause.status === 401 || cause.status === 403)) { await expireSession(); setOnline(false); setError("Sessão expirada ou sem permissão; autentique novamente."); setBusy(false); return; } if (cause instanceof ApiError || !shouldQueueOffline(cause)) { setOnline(true); setError(`O servidor respondeu HTTP ${cause instanceof ApiError ? cause.status : "inesperado"}; a missão não foi enfileirada.`); setBusy(false); return; } const queuedOffline = await enqueue("/api/agent/v1/missions", "POST", payload); setOnline(false); setError(queuedOffline ? "Servidor indisponível. A missão foi salva e será sincronizada quando houver conexão." : "Servidor indisponível. A missão não foi salva porque a organização autenticada ainda não foi confirmada."); }
 	    setObjective(""); setBusy(false);
 	  };
 		const decide = async (approvalId: string, nonce: string | undefined, approved: boolean) => { const reason = approvalReason.trim(); if (!mission || busy) return; if (!reason) { setError("Informe o motivo antes de decidir este approval."); return; } setBusy(true); setError(""); const succeeded = await perform(`/api/agent/v1/missions/${mission.id}/approvals/${approvalId}`, "POST", { approved, nonce, reason }, "Falha ao decidir approval"); if (succeeded) setApprovalReason(""); await refresh(); setBusy(false); };
   const run = async () => { if (!mission) return; setBusy(true); setError(""); await perform(`/api/agent/v1/missions/${mission.id}/run`, "POST", {}, "Falha ao executar"); await refresh(); setBusy(false); };
-	  const saveSession = async () => { const nextBase = draftBase.trim(); const nextToken = draftToken.trim(); if (!nextBase) return; await AsyncStorage.setItem("dz23.agent.base", nextBase); if (nextToken) await SecureStore.setItemAsync("dz23.agent.token", nextToken); else await SecureStore.deleteItemAsync("dz23.agent.token"); setBase(nextBase); setToken(nextToken); setOrganizationID(null); setPushRegistered(false); };
+	  const saveSession = async () => { const nextBase = draftBase.trim(); const nextToken = draftToken.trim(); if (!nextBase) return; await AsyncStorage.setItem("dz23.agent.base", nextBase); if (Platform.OS !== "web") { if (nextToken) await SecureStore.setItemAsync("dz23.agent.token", nextToken); else await SecureStore.deleteItemAsync("dz23.agent.token"); } setBase(nextBase); setToken(nextToken); setOrganizationID(null); setPushRegistered(false); };
 	const clearSession = async () => {
 		const pending = await loadQueue();
 		if (pending.length > 0 || mission || events.length > 0) {
@@ -248,8 +274,8 @@ export default function App() {
 		}
 			await expireSession();
 			const storageKeys = [queueStorageKey(base, organizationID, Boolean(token)), missionStorageKey(base, organizationID, Boolean(token)), pushStorageKey(base, organizationID)].filter((key): key is string => Boolean(key));
-			await AsyncStorage.multiRemove(storageKeys);
-		setMission(null); setEvents([]); setQueued(0); setConflicts(0);
+			await AsyncStorage.multiRemove([...storageKeys, inboxKey(base, organizationID, Boolean(token))].filter((key): key is string => Boolean(key)));
+		setMission(null); setEvents([]); setInbox([]); setSelectedID(null); setQueued(0); setConflicts(0);
 	};
   const discardConflicts = async () => { const items = await loadQueue(); const queueKey = queueStorageKey(base, organizationID, Boolean(token)); if (queueKey) await AsyncStorage.setItem(queueKey, JSON.stringify(items.filter((item) => !item.conflict))); await loadQueue(); };
 
@@ -257,10 +283,16 @@ export default function App() {
     <Text style={styles.eyebrow}>DZ23 AGENTIC</Text><Text style={styles.title}>Mission mobile</Text><Text style={styles.subtitle}>Acompanhe, aprove e execute missões, com outbox offline, reconciliação de conflitos e notificações push.</Text>
     <View style={styles.sync}><View style={[styles.syncDot, { backgroundColor: online ? "#059669" : "#d97706" }]} /><Text style={styles.syncText}>{online ? "Online" : "Offline — cache local ativo"}{queued ? ` · ${queued} ação(ões) pendente(s)` : ""}{pushRegistered ? " · push ativo" : ""}</Text></View>
     {conflicts ? <View style={styles.conflict}><Text style={styles.errorText}>{conflicts} ação(ões) em conflito aguardam revisão.</Text><Pressable onPress={() => void discardConflicts()}><Text style={styles.link}>Descartar conflitos</Text></Pressable></View> : null}
-    <View style={styles.card}><Text style={styles.label}>Servidor</Text><TextInput value={draftBase} onChangeText={setDraftBase} autoCapitalize="none" autoCorrect={false} style={styles.input} /><Text style={styles.label}>Token Bearer (armazenado no SecureStore)</Text><TextInput value={draftToken} onChangeText={setDraftToken} autoCapitalize="none" autoCorrect={false} secureTextEntry style={styles.input} /><View style={styles.row}><Pressable onPress={() => void saveSession()} style={[styles.secondary, { flex: 1 }]}><Text style={styles.secondaryText}>Salvar sessão</Text></Pressable><Pressable onPress={() => void clearSession()} style={styles.secondary}><Text style={styles.secondaryText}>Sair</Text></Pressable></View></View>
+    <View style={styles.card}><Text style={styles.label}>Servidor</Text><TextInput value={draftBase} onChangeText={setDraftBase} autoCapitalize="none" autoCorrect={false} style={styles.input} /><Text style={styles.label}>{Platform.OS === "web" ? "Token Bearer (somente nesta sessão)" : "Token Bearer (armazenado no SecureStore)"}</Text><TextInput value={draftToken} onChangeText={setDraftToken} autoCapitalize="none" autoCorrect={false} secureTextEntry style={styles.input} /><View style={styles.row}><Pressable onPress={() => void saveSession()} style={[styles.secondary, { flex: 1 }]}><Text style={styles.secondaryText}>Salvar sessão</Text></Pressable><Pressable onPress={() => void clearSession()} style={styles.secondary}><Text style={styles.secondaryText}>Sair</Text></Pressable></View></View>
     <View style={styles.card}><Text style={styles.label}>Novo objetivo</Text><TextInput value={objective} onChangeText={setObjective} multiline placeholder="Ex.: verificar os testes do projeto" style={[styles.input, styles.multiline]} /><Pressable disabled={busy || !objective.trim()} onPress={() => void create()} style={[styles.primary, (!objective.trim() || busy) && styles.disabled]}>{busy ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryText}>Criar missão</Text>}</Pressable></View>
     {error ? <Text style={styles.error}>{error}</Text> : null}
-	    {mission ? <View style={styles.card}><View style={styles.row}><View style={{ flex: 1 }}><Text style={styles.muted}>{mission.id} · v{mission.version ?? "?"}</Text><Text style={styles.mission}>{mission.objective}</Text></View><Text style={styles.status}>{mission.state}</Text></View><Pressable onPress={() => void run()} disabled={busy || approvals.length > 0 || mission.state === "COMPLETED"} accessibilityRole="button" accessibilityLabel="Executar missão" style={[styles.secondary, (busy || approvals.length > 0) && styles.disabled]}><Text style={styles.secondaryText}>Executar missão</Text></Pressable>{approvals.map((approval) => <View key={approval.id} style={styles.approval}><Text style={styles.label}>Approval: {approval.step_id}</Text><TextInput value={approvalReason} onChangeText={setApprovalReason} placeholder="Por que aprovar ou rejeitar?" accessibilityLabel={`Motivo do approval ${approval.step_id}`} multiline style={[styles.input, styles.approvalReason]} /><View style={styles.row}><Pressable onPress={() => void decide(approval.id, approval.nonce, true)} disabled={busy || !approvalReason.trim()} accessibilityRole="button" accessibilityLabel={`Aprovar ${approval.step_id}`} style={[styles.approve, (busy || !approvalReason.trim()) && styles.disabled]}><Text style={styles.primaryText}>Aprovar</Text></Pressable><Pressable onPress={() => void decide(approval.id, approval.nonce, false)} disabled={busy || !approvalReason.trim()} accessibilityRole="button" accessibilityLabel={`Rejeitar ${approval.step_id}`} style={[styles.reject, (busy || !approvalReason.trim()) && styles.disabled]}><Text style={styles.primaryText}>Rejeitar</Text></Pressable></View></View>)}<Text style={styles.label}>Timeline</Text>{events.map((event) => <View key={event.id} style={styles.event}><View style={styles.dot} /><View><Text style={styles.eventType}>{event.type}</Text><Text style={styles.muted}>{event.step_id ?? "mission"} · {new Date(event.created_at).toLocaleString()}</Text></View></View>)}</View> : null}
+	    <View style={styles.card}><View style={styles.row}><Text style={[styles.mission, { flex: 1 }]}>Inbox de missões</Text><Pressable accessibilityRole="button" accessibilityLabel="Atualizar inbox" onPress={() => void refreshInbox()} style={styles.secondary}><Text style={styles.secondaryText}>Atualizar</Text></Pressable></View>
+      {inboxSource === "cache" ? <Text style={styles.muted}>Lista offline salva neste dispositivo</Text> : null}
+      {inboxLoading ? <ActivityIndicator accessibilityLabel="Carregando inbox" /> : inboxError ? <Text style={styles.error}>{inboxError}</Text> : inbox.length === 0 ? <Text style={styles.muted}>Nenhuma missão encontrada.</Text> : inbox.map((item) => <Pressable key={item.id} accessibilityRole="button" accessibilityLabel={`Abrir missão ${item.objective}`} onPress={() => void openMission(item.id)} style={{ flexDirection: "row", alignItems: "center", gap: 10, borderTopWidth: 1, borderTopColor: "#e5e5e5", paddingVertical: 12 }}><View style={{ flex: 1 }}><Text style={styles.mission}>{item.objective}</Text><Text style={styles.muted}>{item.id}</Text></View><Text style={styles.status}>{item.state}</Text></Pressable>)}
+    </View>
+    {selectedID ? <Pressable accessibilityRole="button" accessibilityLabel="Voltar à inbox" onPress={() => { setSelectedID(null); setMission(null); setEvents([]); setInboxError(""); }}><Text style={styles.link}>← Voltar à inbox</Text></Pressable> : null}
+    {selectedID && detailSource === "cache" ? <Text style={styles.muted}>Detalhe offline salvo neste dispositivo</Text> : null}
+	    {selectedID && mission ? <View style={styles.card}><View style={styles.row}><View style={{ flex: 1 }}><Text style={styles.muted}>{mission.id} · v{mission.version ?? "?"}</Text><Text style={styles.mission}>{mission.objective}</Text></View><Text style={styles.status}>{mission.state}</Text></View><Pressable onPress={() => void run()} disabled={busy || approvals.length > 0 || mission.state === "COMPLETED" || detailSource === "cache"} accessibilityRole="button" accessibilityLabel="Executar missão" style={[styles.secondary, (busy || approvals.length > 0) && styles.disabled]}><Text style={styles.secondaryText}>Executar missão</Text></Pressable>{approvals.map((approval) => <View key={approval.id} style={styles.approval}><Text style={styles.label}>Approval: {approval.step_id}</Text><TextInput value={approvalReason} onChangeText={setApprovalReason} placeholder="Por que aprovar ou rejeitar?" accessibilityLabel={`Motivo do approval ${approval.step_id}`} multiline style={[styles.input, styles.approvalReason]} /><View style={styles.row}><Pressable onPress={() => void decide(approval.id, approval.nonce, true)} disabled={busy || !approvalReason.trim() || detailSource === "cache"} accessibilityRole="button" accessibilityLabel={`Aprovar ${approval.step_id}`} style={[styles.approve, (busy || !approvalReason.trim()) && styles.disabled]}><Text style={styles.primaryText}>Aprovar</Text></Pressable><Pressable onPress={() => void decide(approval.id, approval.nonce, false)} disabled={busy || !approvalReason.trim() || detailSource === "cache"} accessibilityRole="button" accessibilityLabel={`Rejeitar ${approval.step_id}`} style={[styles.reject, (busy || !approvalReason.trim()) && styles.disabled]}><Text style={styles.primaryText}>Rejeitar</Text></Pressable></View></View>)}<Text style={styles.label}>Timeline</Text>{events.map((event) => <View key={event.id} style={styles.event}><View style={styles.dot} /><View><Text style={styles.eventType}>{event.type}</Text><Text style={styles.muted}>{event.step_id ?? "mission"} · {new Date(event.created_at).toLocaleString()}</Text></View></View>)}</View> : null}
 	  </ScrollView></KeyboardAvoidingView></SafeAreaView>;
 }
 
