@@ -26,6 +26,7 @@ import {
   Squares2X2Icon,
 } from "@heroicons/react/20/solid";
 import { AgenticControlCenter } from "@/components/AgenticControlCenter";
+import { ThemeSwitcher } from "@/components/ThemeSwitcher";
 import { Settings as SettingsType } from "@/gotypes";
 import { isWindowsPlatform } from "@/lib/platform";
 import { settingsMutationScope } from "@/lib/settingsMutationScope";
@@ -430,6 +431,20 @@ export default function Settings() {
           aria-busy={resettingToDefaults}
           className="mx-auto max-w-4xl space-y-4 border-0 p-0"
         >
+          <div className="overflow-hidden rounded-xl bg-white dark:bg-neutral-800">
+            <div className="p-4">
+              <h2 className="text-sm font-semibold text-neutral-900 dark:text-white">
+                Aparência
+              </h2>
+              <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
+                Escolha o tema da interface. &quot;Automático&quot; segue o tema do
+                seu sistema operacional.
+              </p>
+              <div className="mt-4 max-w-md">
+                <ThemeSwitcher variant="full" />
+              </div>
+            </div>
+          </div>
           <AgenticControlCenter />
           {/* Connect Ollama Account */}
           <div className="overflow-hidden rounded-xl bg-white dark:bg-neutral-800">
