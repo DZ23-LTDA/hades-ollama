@@ -136,6 +136,9 @@ jobs:
           ALTER TABLE public.agent_legacy_public_acl_probe OWNER TO ollama_agent;
           ALTER SEQUENCE public.agent_legacy_public_acl_sequence OWNER TO ollama_agent;
           ALTER FUNCTION public.agent_legacy_public_acl_secret() OWNER TO ollama_agent;
+          ALTER TABLE public.agent_legacy_public_acl_probe OWNER TO ollama_agent;
+          ALTER SEQUENCE public.agent_legacy_public_acl_sequence OWNER TO ollama_agent;
+          ALTER FUNCTION public.agent_legacy_public_acl_secret() OWNER TO ollama_agent;
           SELECT pg_catalog.lo_create(700001);
           ALTER TABLE public.agent_missions OWNER TO ollama_agent;
           ALTER TABLE public.agent_events OWNER TO ollama_agent;
@@ -283,6 +286,9 @@ jobs:
           legacy_acl_state="$(PGPASSWORD="$postgres_admin_password" psql -h 127.0.0.1 -U ollama_agent_admin -d ollama_agent -Atc \
             "SELECT format('%s/%s/%s', NOT has_table_privilege('ollama_agent_runtime','public.agent_legacy_public_acl_probe','SELECT'), NOT has_sequence_privilege('ollama_agent_runtime','public.agent_legacy_public_acl_sequence','USAGE'), NOT has_function_privilege('ollama_agent_runtime','public.agent_legacy_public_acl_secret()','EXECUTE'))")"
           test "$legacy_acl_state" = "true/true/true"
+          legacy_acl_owners="$(PGPASSWORD="$postgres_admin_password" psql -h 127.0.0.1 -U ollama_agent_admin -d ollama_agent -Atc \
+            "SELECT format('%s/%s/%s', (SELECT tableowner='ollama_agent_migrator' FROM pg_catalog.pg_tables WHERE schemaname='public' AND tablename='agent_legacy_public_acl_probe'), (SELECT pg_catalog.pg_get_userbyid(relowner)='ollama_agent_migrator' FROM pg_catalog.pg_class WHERE oid='public.agent_legacy_public_acl_sequence'::regclass), (SELECT pg_catalog.pg_get_userbyid(proowner)='ollama_agent_migrator' FROM pg_catalog.pg_proc WHERE oid='public.agent_legacy_public_acl_secret()'::regprocedure))")"
+          test "$legacy_acl_owners" = "true/true/true"
           PGPASSWORD="$postgres_admin_password" psql -h 127.0.0.1 -U ollama_agent_admin -d ollama_agent -v ON_ERROR_STOP=1 \
             -c 'DROP FUNCTION public.agent_legacy_public_acl_secret(); DROP SEQUENCE public.agent_legacy_public_acl_sequence; DROP TABLE public.agent_legacy_public_acl_probe' >/dev/null
           PGPASSWORD="$postgres_admin_password" psql -h 127.0.0.1 -U ollama_agent_admin -d ollama_agent -v ON_ERROR_STOP=1 \

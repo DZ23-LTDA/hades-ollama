@@ -2440,25 +2440,70 @@ func TestDistributedPostgresRuntimeRejectsRLSDrift(t *testing.T) {
 			t.Fatalf("existing runtime pool did not recover after ACL cleanup: %v", err)
 		}
 	})
-	t.Run("rejects-public-function-default-privilege", func(t *testing.T) {
-		if _, err := migrator.ExecContext(ctx, `ALTER DEFAULT PRIVILEGES FOR ROLE ollama_agent_migrator GRANT EXECUTE ON FUNCTIONS TO PUBLIC`); err != nil {
-			t.Fatal(err)
+	t.Run("rejects-and-repairs-unsafe-default-privileges", func(t *testing.T) {
+		unsafeDefaults := []string{
+			`ALTER DEFAULT PRIVILEGES FOR ROLE ollama_agent_migrator GRANT EXECUTE ON FUNCTIONS TO PUBLIC`,
+			`ALTER DEFAULT PRIVILEGES FOR ROLE ollama_agent_migrator GRANT EXECUTE ON FUNCTIONS TO ollama_agent_runtime`,
+			`ALTER DEFAULT PRIVILEGES FOR ROLE ollama_agent_migrator GRANT ALL ON TABLES TO PUBLIC`,
+			`ALTER DEFAULT PRIVILEGES FOR ROLE ollama_agent_migrator GRANT ALL ON TABLES TO ollama_agent_runtime`,
+			`ALTER DEFAULT PRIVILEGES FOR ROLE ollama_agent_migrator GRANT ALL ON SEQUENCES TO PUBLIC`,
+			`ALTER DEFAULT PRIVILEGES FOR ROLE ollama_agent_migrator GRANT ALL ON SEQUENCES TO ollama_agent_runtime`,
+			`ALTER DEFAULT PRIVILEGES FOR ROLE ollama_agent_migrator IN SCHEMA public GRANT EXECUTE ON FUNCTIONS TO PUBLIC`,
+			`ALTER DEFAULT PRIVILEGES FOR ROLE ollama_agent_migrator IN SCHEMA public GRANT EXECUTE ON FUNCTIONS TO ollama_agent_runtime`,
+			`ALTER DEFAULT PRIVILEGES FOR ROLE ollama_agent_migrator IN SCHEMA public GRANT ALL ON TABLES TO PUBLIC, ollama_agent_runtime`,
+			`ALTER DEFAULT PRIVILEGES FOR ROLE ollama_agent_migrator IN SCHEMA public GRANT ALL ON SEQUENCES TO PUBLIC, ollama_agent_runtime`,
+		}
+		for _, statement := range unsafeDefaults {
+			if _, err := migrator.ExecContext(ctx, statement); err != nil {
+				t.Fatalf("apply unsafe default ACL fixture %q: %v", statement, err)
+			}
 		}
 		t.Cleanup(func() {
 			cleanupCtx, cleanupCancel := context.WithTimeout(context.Background(), 10*time.Second)
 			defer cleanupCancel()
-			if _, cleanupErr := migrator.ExecContext(cleanupCtx, `ALTER DEFAULT PRIVILEGES FOR ROLE ollama_agent_migrator REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC`); cleanupErr != nil {
-				t.Errorf("revoke unsafe default function privilege: %v", cleanupErr)
+			cleanupStatements := []string{
+				`ALTER DEFAULT PRIVILEGES FOR ROLE ollama_agent_migrator REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC, ollama_agent_runtime`,
+				`ALTER DEFAULT PRIVILEGES FOR ROLE ollama_agent_migrator REVOKE ALL ON TABLES FROM PUBLIC, ollama_agent_runtime`,
+				`ALTER DEFAULT PRIVILEGES FOR ROLE ollama_agent_migrator REVOKE ALL ON SEQUENCES FROM PUBLIC, ollama_agent_runtime`,
+				`ALTER DEFAULT PRIVILEGES FOR ROLE ollama_agent_migrator IN SCHEMA public REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC, ollama_agent_runtime`,
+				`ALTER DEFAULT PRIVILEGES FOR ROLE ollama_agent_migrator IN SCHEMA public REVOKE ALL ON TABLES FROM PUBLIC, ollama_agent_runtime`,
+				`ALTER DEFAULT PRIVILEGES FOR ROLE ollama_agent_migrator IN SCHEMA public REVOKE ALL ON SEQUENCES FROM PUBLIC, ollama_agent_runtime`,
+			}
+			for _, statement := range cleanupStatements {
+				if _, cleanupErr := migrator.ExecContext(cleanupCtx, statement); cleanupErr != nil {
+					t.Errorf("revoke unsafe default ACL: %v", cleanupErr)
+				}
 			}
 			if cleanupErr := MigratePostgresAgentSchema(cleanupCtx, migratorDSN, key); cleanupErr != nil {
 				t.Errorf("restore approved default ACLs: %v", cleanupErr)
 			}
 		})
+		var unsafeDefaultACLs int
+		if err := migrator.QueryRowContext(ctx, `SELECT count(*) FROM pg_catalog.pg_default_acl d
+	CROSS JOIN LATERAL pg_catalog.aclexplode(d.defaclacl) a
+	WHERE d.defaclrole=(SELECT oid FROM pg_catalog.pg_roles WHERE rolname='ollama_agent_migrator')
+	  AND d.defaclnamespace IN (0,'public'::pg_catalog.regnamespace)
+	  AND a.grantee IN (0,(SELECT oid FROM pg_catalog.pg_roles WHERE rolname='ollama_agent_runtime'))
+	  AND ((d.defaclobjtype='f' AND a.privilege_type='EXECUTE')
+	    OR (d.defaclobjtype='r' AND a.privilege_type IN ('SELECT','INSERT','UPDATE','DELETE','TRUNCATE','REFERENCES','TRIGGER'))
+	    OR (d.defaclobjtype='S' AND a.privilege_type IN ('USAGE','SELECT','UPDATE')))`).Scan(&unsafeDefaultACLs); err != nil || unsafeDefaultACLs == 0 {
+			t.Fatalf("unsafe pg_default_acl fixture count=%d err=%v, want positive PUBLIC/runtime grants", unsafeDefaultACLs, err)
+		}
 		if _, err := OpenPostgresRuntimeStore(ctx, runtimeDSN, key); !errors.Is(err, ErrPostgresTenantSecurityShape) {
-			t.Fatalf("runtime-open error=%v, want unsafe PUBLIC default function ACL refusal", err)
+			t.Fatalf("runtime-open error=%v, want unsafe PUBLIC/runtime default ACL refusal", err)
 		}
 		if err := MigratePostgresAgentSchema(ctx, migratorDSN, key); err != nil {
-			t.Fatalf("migration did not repair unsafe function default ACL: %v", err)
+			t.Fatalf("migration did not repair unsafe table/sequence/function default ACLs: %v", err)
+		}
+		if err := migrator.QueryRowContext(ctx, `SELECT count(*) FROM pg_catalog.pg_default_acl d
+	CROSS JOIN LATERAL pg_catalog.aclexplode(d.defaclacl) a
+	WHERE d.defaclrole=(SELECT oid FROM pg_catalog.pg_roles WHERE rolname='ollama_agent_migrator')
+	  AND d.defaclnamespace IN (0,'public'::pg_catalog.regnamespace)
+	  AND a.grantee IN (0,(SELECT oid FROM pg_catalog.pg_roles WHERE rolname='ollama_agent_runtime'))
+	  AND ((d.defaclobjtype='f' AND a.privilege_type='EXECUTE')
+	    OR (d.defaclobjtype='r' AND a.privilege_type IN ('SELECT','INSERT','UPDATE','DELETE','TRUNCATE','REFERENCES','TRIGGER'))
+	    OR (d.defaclobjtype='S' AND a.privilege_type IN ('USAGE','SELECT','UPDATE')))`).Scan(&unsafeDefaultACLs); err != nil || unsafeDefaultACLs != 0 {
+			t.Fatalf("migration left unsafe pg_default_acl entries count=%d err=%v, want 0", unsafeDefaultACLs, err)
 		}
 		store, err := OpenPostgresRuntimeStore(ctx, runtimeDSN, key)
 		if err != nil {
