@@ -178,9 +178,52 @@ SELECT r.rolcanlogin AND NOT r.rolsuper AND NOT r.rolbypassrls AND NOT r.rolcrea
        AND NOT pg_catalog.has_table_privilege(r.rolname,'public.agent_missions','TRIGGER')
        AND NOT pg_catalog.has_table_privilege(r.rolname,'public.agent_events','TRUNCATE')
        AND NOT pg_catalog.has_table_privilege(r.rolname,'public.agent_events','REFERENCES')
-       AND NOT pg_catalog.has_table_privilege(r.rolname,'public.agent_events','TRIGGER')
-       AND pg_catalog.has_function_privilege(r.rolname,'public.agent_tenant_context_matches(text)','EXECUTE')
-       AND NOT EXISTS (SELECT 1 FROM pg_catalog.pg_auth_members m WHERE m.member=r.oid OR m.roleid=r.oid)
+	       AND NOT pg_catalog.has_table_privilege(r.rolname,'public.agent_events','TRIGGER')
+	       AND pg_catalog.has_function_privilege(r.rolname,'public.agent_tenant_context_matches(text)','EXECUTE')
+	       AND NOT EXISTS (SELECT 1 FROM pg_catalog.pg_class c
+	                       CROSS JOIN LATERAL pg_catalog.aclexplode(COALESCE(c.relacl,pg_catalog.acldefault('r',c.relowner))) a
+	                       WHERE c.oid IN ('public.agent_missions'::pg_catalog.regclass,'public.agent_events'::pg_catalog.regclass,'public.agent_tenant_context_keys'::pg_catalog.regclass)
+	                         AND a.grantee=0)
+	       AND NOT EXISTS (SELECT 1 FROM pg_catalog.pg_proc p
+	                       CROSS JOIN LATERAL pg_catalog.aclexplode(COALESCE(p.proacl,pg_catalog.acldefault('f',p.proowner))) a
+	                       WHERE p.oid='public.agent_tenant_context_matches(text)'::pg_catalog.regprocedure
+	                         AND a.grantee=0 AND a.privilege_type='EXECUTE')
+	       AND NOT EXISTS (SELECT 1 FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace
+	                       WHERE n.nspname='public' AND c.relkind IN ('r','p','v','m','f')
+	                         AND c.relname NOT IN ('agent_missions','agent_events','agent_tenant_context_keys')
+	                         AND (pg_catalog.has_table_privilege(r.rolname,c.oid,'SELECT')
+	                           OR pg_catalog.has_table_privilege(r.rolname,c.oid,'INSERT')
+	                           OR pg_catalog.has_table_privilege(r.rolname,c.oid,'UPDATE')
+	                           OR pg_catalog.has_table_privilege(r.rolname,c.oid,'DELETE')
+	                           OR pg_catalog.has_table_privilege(r.rolname,c.oid,'TRUNCATE')
+	                           OR pg_catalog.has_table_privilege(r.rolname,c.oid,'REFERENCES')
+	                           OR pg_catalog.has_table_privilege(r.rolname,c.oid,'TRIGGER')))
+	       AND NOT EXISTS (SELECT 1 FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace
+	                       WHERE n.nspname='public' AND c.relkind='S'
+	                         AND (pg_catalog.has_sequence_privilege(r.rolname,c.oid,'USAGE')
+	                           OR pg_catalog.has_sequence_privilege(r.rolname,c.oid,'SELECT')
+	                           OR pg_catalog.has_sequence_privilege(r.rolname,c.oid,'UPDATE')))
+	       AND NOT EXISTS (SELECT 1 FROM pg_catalog.pg_proc p JOIN pg_catalog.pg_namespace n ON n.oid=p.pronamespace
+	                       WHERE n.nspname='public' AND p.oid<>'public.agent_tenant_context_matches(text)'::pg_catalog.regprocedure
+	                         AND pg_catalog.has_function_privilege(r.rolname,p.oid,'EXECUTE'))
+	       AND NOT EXISTS (SELECT 1 FROM pg_catalog.pg_namespace n
+	                       WHERE n.nspname NOT IN ('pg_catalog','information_schema','public')
+	                         AND (pg_catalog.has_schema_privilege(r.rolname,n.oid,'USAGE')
+	                           OR pg_catalog.has_schema_privilege(r.rolname,n.oid,'CREATE')))
+	       AND NOT EXISTS (SELECT 1 FROM pg_catalog.pg_default_acl d
+	                       CROSS JOIN LATERAL pg_catalog.aclexplode(d.defaclacl) a
+	                       WHERE d.defaclrole=(SELECT oid FROM pg_catalog.pg_roles WHERE rolname='ollama_agent_migrator')
+	                         AND d.defaclnamespace IN (0,'public'::pg_catalog.regnamespace)
+	                         AND a.grantee IN (0,r.oid)
+	                         AND ((d.defaclobjtype='f' AND a.privilege_type='EXECUTE')
+	                           OR (d.defaclobjtype='r' AND a.privilege_type IN ('SELECT','INSERT','UPDATE','DELETE','TRUNCATE','REFERENCES','TRIGGER'))
+	                           OR (d.defaclobjtype='S' AND a.privilege_type IN ('USAGE','SELECT','UPDATE'))))
+	       AND EXISTS (SELECT 1 FROM pg_catalog.pg_default_acl d
+	                   WHERE d.defaclrole=(SELECT oid FROM pg_catalog.pg_roles WHERE rolname='ollama_agent_migrator')
+	                     AND d.defaclnamespace=0 AND d.defaclobjtype='f'
+	                     AND NOT EXISTS (SELECT 1 FROM pg_catalog.aclexplode(d.defaclacl) a
+	                                     WHERE a.grantee IN (0,r.oid) AND a.privilege_type='EXECUTE'))
+	       AND NOT EXISTS (SELECT 1 FROM pg_catalog.pg_auth_members m WHERE m.member=r.oid OR m.roleid=r.oid)
   FROM pg_catalog.pg_roles r WHERE r.rolname='ollama_agent_runtime'`).Scan(&runtimePrivilegesSecure); err != nil {
 		return fmt.Errorf("verify PostgreSQL runtime privilege set: %w", err)
 	}
@@ -548,6 +591,34 @@ EXCEPTION WHEN OTHERS THEN
 END;
 $function$`
 	finalStatements := []string{
+		`DO $runtime_acl$ DECLARE object_row RECORD; BEGIN
+	FOR object_row IN SELECT c.relname,c.relkind FROM pg_catalog.pg_class c
+	  WHERE c.relnamespace='public'::pg_catalog.regnamespace AND c.relowner=(SELECT oid FROM pg_catalog.pg_roles WHERE rolname=current_user)
+	    AND c.relkind IN ('r','p','v','m','f','S')
+	LOOP
+	  IF object_row.relkind='S' THEN
+	    EXECUTE pg_catalog.format('REVOKE ALL ON SEQUENCE public.%I FROM PUBLIC, ollama_agent_runtime',object_row.relname);
+	  ELSE
+	    EXECUTE pg_catalog.format('REVOKE ALL ON TABLE public.%I FROM PUBLIC, ollama_agent_runtime',object_row.relname);
+	  END IF;
+	END LOOP;
+	FOR object_row IN SELECT p.proname,p.prokind,pg_catalog.pg_get_function_identity_arguments(p.oid) AS identity_arguments
+	  FROM pg_catalog.pg_proc p WHERE p.pronamespace='public'::pg_catalog.regnamespace
+	    AND p.proowner=(SELECT oid FROM pg_catalog.pg_roles WHERE rolname=current_user)
+	LOOP
+	  EXECUTE pg_catalog.format('REVOKE ALL ON ROUTINE public.%I(%s) FROM PUBLIC, ollama_agent_runtime',object_row.proname,object_row.identity_arguments);
+	END LOOP;
+	END $runtime_acl$`,
+		`ALTER DEFAULT PRIVILEGES FOR ROLE ollama_agent_migrator REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC`,
+		`ALTER DEFAULT PRIVILEGES FOR ROLE ollama_agent_migrator REVOKE ALL ON TABLES FROM PUBLIC`,
+		`ALTER DEFAULT PRIVILEGES FOR ROLE ollama_agent_migrator REVOKE ALL ON SEQUENCES FROM PUBLIC`,
+		`ALTER DEFAULT PRIVILEGES FOR ROLE ollama_agent_migrator REVOKE EXECUTE ON FUNCTIONS FROM ollama_agent_runtime`,
+		`ALTER DEFAULT PRIVILEGES FOR ROLE ollama_agent_migrator REVOKE ALL ON TABLES FROM ollama_agent_runtime`,
+		`ALTER DEFAULT PRIVILEGES FOR ROLE ollama_agent_migrator REVOKE ALL ON SEQUENCES FROM ollama_agent_runtime`,
+		`ALTER DEFAULT PRIVILEGES FOR ROLE ollama_agent_migrator IN SCHEMA public REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC`,
+		`ALTER DEFAULT PRIVILEGES FOR ROLE ollama_agent_migrator IN SCHEMA public REVOKE EXECUTE ON FUNCTIONS FROM ollama_agent_runtime`,
+		`ALTER DEFAULT PRIVILEGES FOR ROLE ollama_agent_migrator IN SCHEMA public REVOKE ALL ON TABLES FROM PUBLIC, ollama_agent_runtime`,
+		`ALTER DEFAULT PRIVILEGES FOR ROLE ollama_agent_migrator IN SCHEMA public REVOKE ALL ON SEQUENCES FROM PUBLIC, ollama_agent_runtime`,
 		functionSQL,
 		`DROP POLICY IF EXISTS agent_missions_tenant_policy ON public.agent_missions`,
 		`DROP POLICY IF EXISTS agent_events_tenant_policy ON public.agent_events`,

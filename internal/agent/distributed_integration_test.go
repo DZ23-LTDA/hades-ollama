@@ -2373,6 +2373,101 @@ func TestDistributedPostgresRuntimeRejectsRLSDrift(t *testing.T) {
 			}
 		}
 	})
+	t.Run("rejects-and-removes-public-acls-on-legacy-objects", func(t *testing.T) {
+		baseline, err := OpenPostgresRuntimeStore(ctx, runtimeDSN, key)
+		if err != nil {
+			t.Fatalf("open baseline runtime store: %v", err)
+		}
+		defer baseline.Close()
+		for _, statement := range []string{
+			`CREATE TABLE public.agent_legacy_public_acl_probe (secret TEXT NOT NULL)`,
+			`INSERT INTO public.agent_legacy_public_acl_probe VALUES ('must-not-leak')`,
+			`GRANT SELECT ON public.agent_legacy_public_acl_probe TO PUBLIC`,
+			`CREATE SEQUENCE public.agent_legacy_public_acl_sequence`,
+			`GRANT USAGE, SELECT, UPDATE ON SEQUENCE public.agent_legacy_public_acl_sequence TO PUBLIC`,
+			`CREATE FUNCTION public.agent_legacy_public_acl_secret() RETURNS TEXT LANGUAGE SQL SECURITY DEFINER AS 'SELECT secret FROM public.agent_legacy_public_acl_probe LIMIT 1'`,
+			`GRANT EXECUTE ON FUNCTION public.agent_legacy_public_acl_secret() TO PUBLIC`,
+		} {
+			if _, err := migrator.ExecContext(ctx, statement); err != nil {
+				t.Fatalf("seed PUBLIC ACL fixture %q: %v", statement, err)
+			}
+		}
+		t.Cleanup(func() {
+			cleanupCtx, cleanupCancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cleanupCancel()
+			for _, statement := range []string{
+				`DROP FUNCTION IF EXISTS public.agent_legacy_public_acl_secret()`,
+				`DROP SEQUENCE IF EXISTS public.agent_legacy_public_acl_sequence`,
+				`DROP TABLE IF EXISTS public.agent_legacy_public_acl_probe`,
+			} {
+				if _, cleanupErr := migrator.ExecContext(cleanupCtx, statement); cleanupErr != nil {
+					t.Errorf("drop PUBLIC ACL fixture: %v", cleanupErr)
+				}
+			}
+			if cleanupErr := MigratePostgresAgentSchema(cleanupCtx, migratorDSN, key); cleanupErr != nil {
+				t.Errorf("restore approved PostgreSQL ACL baseline: %v", cleanupErr)
+			}
+		})
+		if _, err := baseline.WithOrganization("org_public_acl_probe").ListMissions(); !errors.Is(err, ErrPostgresTenantSecurityShape) {
+			t.Fatalf("existing runtime pool error=%v, want ErrPostgresTenantSecurityShape", err)
+		}
+		store, err := OpenPostgresRuntimeStore(ctx, runtimeDSN, key)
+		if store != nil {
+			_ = store.Close()
+		}
+		if !errors.Is(err, ErrPostgresTenantSecurityShape) {
+			t.Fatalf("runtime-open error=%v, want PUBLIC legacy ACL refusal", err)
+		}
+		if err := MigratePostgresAgentSchema(ctx, migratorDSN, key); err != nil {
+			t.Fatalf("migration did not remove legacy PUBLIC ACL leakage: %v", err)
+		}
+		var tableSelect, sequenceUsage, functionExecute bool
+		if err := migrator.QueryRowContext(ctx, `SELECT
+	pg_catalog.has_table_privilege('ollama_agent_runtime','public.agent_legacy_public_acl_probe','SELECT'),
+	pg_catalog.has_sequence_privilege('ollama_agent_runtime','public.agent_legacy_public_acl_sequence','USAGE'),
+	pg_catalog.has_function_privilege('ollama_agent_runtime','public.agent_legacy_public_acl_secret()','EXECUTE')`).Scan(&tableSelect, &sequenceUsage, &functionExecute); err != nil {
+			t.Fatal(err)
+		}
+		if tableSelect || sequenceUsage || functionExecute {
+			t.Fatalf("migration left inherited ACLs: table=%v sequence=%v function=%v", tableSelect, sequenceUsage, functionExecute)
+		}
+		if store, err := OpenPostgresRuntimeStore(ctx, runtimeDSN, key); err != nil {
+			t.Fatalf("runtime did not recover after ACL cleanup: %v", err)
+		} else if err := store.Close(); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := baseline.WithOrganization("org_public_acl_probe").ListMissions(); err != nil {
+			t.Fatalf("existing runtime pool did not recover after ACL cleanup: %v", err)
+		}
+	})
+	t.Run("rejects-public-function-default-privilege", func(t *testing.T) {
+		if _, err := migrator.ExecContext(ctx, `ALTER DEFAULT PRIVILEGES FOR ROLE ollama_agent_migrator GRANT EXECUTE ON FUNCTIONS TO PUBLIC`); err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() {
+			cleanupCtx, cleanupCancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cleanupCancel()
+			if _, cleanupErr := migrator.ExecContext(cleanupCtx, `ALTER DEFAULT PRIVILEGES FOR ROLE ollama_agent_migrator REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC`); cleanupErr != nil {
+				t.Errorf("revoke unsafe default function privilege: %v", cleanupErr)
+			}
+			if cleanupErr := MigratePostgresAgentSchema(cleanupCtx, migratorDSN, key); cleanupErr != nil {
+				t.Errorf("restore approved default ACLs: %v", cleanupErr)
+			}
+		})
+		if _, err := OpenPostgresRuntimeStore(ctx, runtimeDSN, key); !errors.Is(err, ErrPostgresTenantSecurityShape) {
+			t.Fatalf("runtime-open error=%v, want unsafe PUBLIC default function ACL refusal", err)
+		}
+		if err := MigratePostgresAgentSchema(ctx, migratorDSN, key); err != nil {
+			t.Fatalf("migration did not repair unsafe function default ACL: %v", err)
+		}
+		store, err := OpenPostgresRuntimeStore(ctx, runtimeDSN, key)
+		if err != nil {
+			t.Fatalf("runtime did not recover after default ACL repair: %v", err)
+		}
+		if err := store.Close(); err != nil {
+			t.Fatal(err)
+		}
+	})
 	t.Run("migration-ddl-waits-for-live-runtime-transaction", func(t *testing.T) {
 		store, err := OpenPostgresRuntimeStore(ctx, runtimeDSN, key)
 		if err != nil {

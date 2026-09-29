@@ -93,7 +93,7 @@ export OLLAMA_AGENT_AUTH_REQUIRED=true
 OLLAMA_HOST=127.0.0.1:11434 ./bin/ollama-classe-a-plus serve
 ```
 
-O store runtime usa somente `OLLAMA_AGENT_DATABASE_URL`; o comando administrativo `agent migrate-postgres` usa `OLLAMA_AGENT_MIGRATOR_DATABASE_URL`. A chave HMAC persistente é compartilhada por migração e servidor, nunca registrada no repositório nem exposta ao runtime de outro serviço. PostgreSQL/RLS permanece **candidato não aprovado para produção**: use só dados locais/disposable até validar TLS, backup/restore, suporte seguro à rotação de chave, HA/failover, escala e auditoria independente de staging. **A rotação da chave HMAC não é suportada hoje: não há comando nem procedimento validado; nunca troque a variável isoladamente.** A descoberta de tenants para recovery depende do AuthStore local; suporte multi-instância não está habilitado. A documentação de operadores e do upgrade de volume existente está em `docs/agentic/INTEGRATIONS.md`.
+O store runtime usa somente `OLLAMA_AGENT_DATABASE_URL`; `agent migrate-postgres` usa `OLLAMA_AGENT_MIGRATOR_DATABASE_URL`. A chave HMAC persistente é compartilhada por migração e servidor, nunca registrada no repositório nem exposta ao runtime de outro serviço. **PostgreSQL/RLS continua candidato não aprovado para produção** até validar TLS, backup/restore, execução da rotação versionada, HA/failover, escala e auditoria independente de staging. Não altere a chave isoladamente: use somente `ollama agent rotate-postgres-key` e siga [o protocolo de rotação](agentic/POSTGRES_HMAC_KEY_ROTATION.md), que exige fencing do runtime, versão monotônica e rollback usando uma versão superior. A descoberta de tenants para recovery depende do AuthStore local; suporte multi-instância não está habilitado. A documentação de operadores e do upgrade de volume existente está em `docs/agentic/INTEGRATIONS.md`.
 
 ## Configuração essencial
 
@@ -124,7 +124,8 @@ OLLAMA_HOST=127.0.0.1:11434 ./bin/ollama-classe-a-plus serve
 | `OLLAMA_AGENT_CREDENTIAL_KEY` | Chave externa usada para cifrar credenciais OAuth e MFA. |
 | `OLLAMA_AGENT_DATABASE_URL` | DSN da role `ollama_agent_runtime`; exige roles separadas, migrations explícitas e chave tenant HMAC. PostgreSQL/RLS ainda não foi aprovado para produção. |
 | `OLLAMA_AGENT_MIGRATOR_DATABASE_URL` | DSN administrativa da role dedicada `ollama_agent_migrator`; usada somente por `ollama agent migrate-postgres`, nunca pelo processo runtime. |
-| `OLLAMA_AGENT_TENANT_CONTEXT_KEY` | Chave HMAC persistente, em hexadecimal com ao menos 32 bytes, compartilhada pelo comando migrator e runtime. Rotação não é suportada hoje; não altere a chave isoladamente. |
+| `OLLAMA_AGENT_TENANT_CONTEXT_KEY` | Chave HMAC persistente, em hexadecimal com ao menos 32 bytes, compartilhada pelo comando migrator e runtime. Para rotação, siga o procedimento versionado; não altere a variável isoladamente. |
+| `OLLAMA_AGENT_TENANT_CONTEXT_KEY_VERSION` | Versão ativa da chave HMAC tenant; padrão `1`. Deve corresponder à versão ativa do keyring PostgreSQL. |
 | `OLLAMA_AGENT_POSTGRES_ADMIN_PASSWORD` | Credencial bootstrap/admin do Compose; manter em secret manager e fora do runtime/app. |
 | `OLLAMA_AGENT_RUNTIME_PASSWORD` / `OLLAMA_AGENT_MIGRATOR_PASSWORD` | Credenciais distintas para seus respectivos DSNs e serviços. |
 | `OLLAMA_AGENT_REDIS_URL` | Habilita fila Redis e workers compartilhados. |

@@ -4,6 +4,8 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"testing"
@@ -141,5 +143,23 @@ func TestAgentKeyRotationCommandFailsClosedOnInvalidConfiguration(t *testing.T) 
 	t.Setenv("OLLAMA_AGENT_POSTGRES_ADMIN_DATABASE_URL", "")
 	if err := runAgentKeyRotationCommand(); err == nil || !strings.Contains(err.Error(), "postgres admin and migrator DSNs are required") {
 		t.Fatalf("rotation command error=%v, want missing admin DSN refusal", err)
+	}
+}
+
+func TestPostgresKeyRotationGuideMatchesImplementedCommand(t *testing.T) {
+	guide, err := os.ReadFile(filepath.Join("..", "docs", "CLASS_A_PLUS_GUIDE.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	content := strings.ToLower(string(guide))
+	for _, required := range []string{"ollama agent rotate-postgres-key", "ollama_agent_tenant_context_key_version", "versão monotônica", "versão superior"} {
+		if !strings.Contains(content, required) {
+			t.Errorf("operator guide is missing required rotation guidance %q", required)
+		}
+	}
+	for _, stale := range []string{"rotação da chave hmac não é suportada", "rotação não é suportada hoje", "não há comando nem procedimento validado"} {
+		if strings.Contains(content, stale) {
+			t.Errorf("operator guide still contains obsolete rotation statement %q", stale)
+		}
 	}
 }

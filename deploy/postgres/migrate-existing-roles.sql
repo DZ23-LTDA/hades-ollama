@@ -210,4 +210,21 @@ $transfer_public_objects$;
 -- by the explicit supported public-schema inventory above.
 REASSIGN OWNED BY ollama_agent TO ollama_agent_migrator;
 
+-- Remove inherited PUBLIC and explicit runtime grants from every existing
+-- public object, including legacy SECURITY DEFINER routines. The sole direct
+-- helper grant is pgcrypto hmac for the migrator-owned SECURITY DEFINER verifier.
+REVOKE ALL ON ALL TABLES IN SCHEMA public FROM PUBLIC, ollama_agent_runtime;
+REVOKE ALL ON ALL SEQUENCES IN SCHEMA public FROM PUBLIC, ollama_agent_runtime;
+REVOKE ALL ON ALL ROUTINES IN SCHEMA public FROM PUBLIC, ollama_agent_runtime;
+GRANT EXECUTE ON FUNCTION public.hmac(bytea, bytea, text) TO ollama_agent_migrator;
+
+ALTER DEFAULT PRIVILEGES FOR ROLE ollama_agent_migrator REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC;
+ALTER DEFAULT PRIVILEGES FOR ROLE ollama_agent_migrator REVOKE EXECUTE ON FUNCTIONS FROM ollama_agent_runtime;
+ALTER DEFAULT PRIVILEGES FOR ROLE ollama_agent_migrator REVOKE ALL ON TABLES FROM PUBLIC, ollama_agent_runtime;
+ALTER DEFAULT PRIVILEGES FOR ROLE ollama_agent_migrator REVOKE ALL ON SEQUENCES FROM PUBLIC, ollama_agent_runtime;
+ALTER DEFAULT PRIVILEGES FOR ROLE ollama_agent_migrator IN SCHEMA public REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC;
+ALTER DEFAULT PRIVILEGES FOR ROLE ollama_agent_migrator IN SCHEMA public REVOKE EXECUTE ON FUNCTIONS FROM ollama_agent_runtime;
+ALTER DEFAULT PRIVILEGES FOR ROLE ollama_agent_migrator IN SCHEMA public REVOKE ALL ON TABLES FROM PUBLIC, ollama_agent_runtime;
+ALTER DEFAULT PRIVILEGES FOR ROLE ollama_agent_migrator IN SCHEMA public REVOKE ALL ON SEQUENCES FROM PUBLIC, ollama_agent_runtime;
+
 COMMIT;
