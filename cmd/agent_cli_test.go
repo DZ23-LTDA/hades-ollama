@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -100,4 +101,45 @@ func TestAgentMigrationCommandRejectsInvalidConfiguration(t *testing.T) {
 			t.Fatal("migration command unexpectedly accepted an invalid DSN")
 		}
 	})
+}
+
+func runAgentKeyRotationCommand() error {
+	command := agentCommand()
+	command.SilenceErrors = true
+	command.SilenceUsage = true
+	command.SetArgs([]string{"rotate-postgres-key"})
+	return command.Execute()
+}
+
+func TestAgentKeyRotationCommandIsRegistered(t *testing.T) {
+	command, _, err := agentCommand().Find([]string{"rotate-postgres-key"})
+	if err != nil || command == nil || command.Use != "rotate-postgres-key" {
+		t.Fatalf("rotate-postgres-key command lookup = %v, %v", command, err)
+	}
+}
+
+func TestAgentKeyRotationCommandFailsClosedOnInvalidConfiguration(t *testing.T) {
+	t.Setenv("OLLAMA_AGENT_MIGRATOR_DATABASE_URL", "")
+	t.Setenv("OLLAMA_AGENT_POSTGRES_ADMIN_DATABASE_URL", "")
+	t.Setenv("OLLAMA_AGENT_TENANT_CONTEXT_KEY", "")
+	t.Setenv("OLLAMA_AGENT_TENANT_CONTEXT_KEY_VERSION", "")
+	t.Setenv("OLLAMA_AGENT_TENANT_CONTEXT_KEY_NEXT", "")
+	t.Setenv("OLLAMA_AGENT_TENANT_CONTEXT_KEY_NEXT_VERSION", "")
+	if err := runAgentKeyRotationCommand(); err == nil || !strings.Contains(err.Error(), "OLLAMA_AGENT_TENANT_CONTEXT_KEY") {
+		t.Fatalf("rotation command error=%v, want missing current key refusal", err)
+	}
+	t.Setenv("OLLAMA_AGENT_TENANT_CONTEXT_KEY", strings.Repeat("ab", 32))
+	t.Setenv("OLLAMA_AGENT_TENANT_CONTEXT_KEY_VERSION", "1")
+	t.Setenv("OLLAMA_AGENT_TENANT_CONTEXT_KEY_NEXT", strings.Repeat("cd", 32))
+	t.Setenv("OLLAMA_AGENT_TENANT_CONTEXT_KEY_NEXT_VERSION", strconv.Itoa(1))
+	t.Setenv("OLLAMA_AGENT_POSTGRES_ADMIN_DATABASE_URL", "postgres://admin@127.0.0.1/ollama_agent")
+	t.Setenv("OLLAMA_AGENT_MIGRATOR_DATABASE_URL", "postgres://migrator@127.0.0.1/ollama_agent")
+	if err := runAgentKeyRotationCommand(); err == nil || !strings.Contains(err.Error(), "strictly greater") {
+		t.Fatalf("rotation command error=%v, want non-monotonic version refusal", err)
+	}
+	t.Setenv("OLLAMA_AGENT_TENANT_CONTEXT_KEY_NEXT_VERSION", "2")
+	t.Setenv("OLLAMA_AGENT_POSTGRES_ADMIN_DATABASE_URL", "")
+	if err := runAgentKeyRotationCommand(); err == nil || !strings.Contains(err.Error(), "postgres admin and migrator DSNs are required") {
+		t.Fatalf("rotation command error=%v, want missing admin DSN refusal", err)
+	}
 }

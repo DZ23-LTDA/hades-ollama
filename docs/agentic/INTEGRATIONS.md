@@ -63,9 +63,9 @@ A integração é opt-in, usa `HARNESSROUTER_API_KEY` somente no processo do ser
 
 ## Infraestrutura distribuída
 
-O runtime permanece local-first por padrão. O adapter PostgreSQL agora separa um papel migrator de um papel runtime sem ownership, `CREATE`, `BYPASSRLS` ou superuser; migrations não executam no startup. As policies usam somente `app.tenant_context`, um HMAC com segredo não legível pela role runtime, expiração curta e validação SQL na própria policy; os GUCs antigos não concedem acesso. A integração local adversarial com PostgreSQL 16 e Redis 7 passou com runtime/migrator separados, inclusive evento→missão cross-tenant, adulteração GUC/HMAC, leitura do segredo, `SET ROLE`, DDL, `row_security=off`, ownerless backfill, role-upgrade de volume legado e recuperação por tenant. Essa arquitetura **ainda é candidata, não uma declaração de isolamento enterprise validado**: staging com TLS/backup-restore, suporte validado a rotação da chave, escala e auditoria final seguem necessários antes de produção. A rotação da chave HMAC não é suportada hoje: não altere `OLLAMA_AGENT_TENANT_CONTEXT_KEY` isoladamente nem use uma chave nova no migrator; isso não atualiza o segredo armazenado e pode interromper o acesso. Mantenha a chave imutável até existir um procedimento transacional, com quiescência, verificação e rollback, coberto por integração. A migration falha fechada se encontrar owner inválido, missão sem organização válida, evento órfão ou evento divergente do tenant da missão; não faz backfill automático de ownership.
+O runtime permanece local-first por padrão. O adapter PostgreSQL separa um papel migrator de um papel runtime sem ownership, `CREATE`, `BYPASSRLS` ou superuser; migrations não executam no startup. As policies usam somente `app.tenant_context`, com contexto HMAC versionado, segredo inacessível à role runtime, expiração curta e validação SQL na própria policy; os GUCs antigos não concedem acesso. A integração adversarial local PostgreSQL 16/Redis 7 já cobre cross-tenant, drift, schema inválido, role cutover e keyring. **A arquitetura continua candidata, não está liberada nem declarada production-ready:** rotação versionada foi implementada recentemente, mas precisa de auditoria independente do protocolo, execução dos gates globais e ensaio TLS/backup-restore em staging antes de produção. Migrations normais recusam mudanças de versão/segredo; use somente o comando explícito `ollama agent rotate-postgres-key`, descrito no [protocolo de rotação](POSTGRES_HMAC_KEY_ROTATION.md). A migration falha fechada para ownership ou dados tenant inconsistentes; não faz backfill automático de ownership.
 
-Para desenvolvimento com `deploy/docker-compose.agentic.yml`, defina senhas distintas `OLLAMA_AGENT_POSTGRES_ADMIN_PASSWORD`, `OLLAMA_AGENT_MIGRATOR_PASSWORD`, `OLLAMA_AGENT_RUNTIME_PASSWORD` e `OLLAMA_AGENT_REDIS_PASSWORD`. Gere uma chave HMAC persistente com `openssl rand -hex 32`, armazene-a em um secret manager e forneça-a como `OLLAMA_AGENT_TENANT_CONTEXT_KEY` ao migrator e ao servidor. Use `OLLAMA_AGENT_MIGRATOR_DATABASE_URL` apenas no job administrativo e `OLLAMA_AGENT_DATABASE_URL` apenas no runtime; essas DSNs não devem aparecer em argumentos/logs nem conter senhas em arquivos versionados. Para banco novo, inicialize roles, rode `ollama agent migrate-postgres` explicitamente e só então suba o servidor com `OLLAMA_AGENT_AUTH_REQUIRED=true` e a fila Redis owner-bound. A migration revoga `CREATE` e `TEMP` de `PUBLIC` e do runtime no database dedicado. A chave HMAC não tem rotação suportada hoje: não a substitua isoladamente nem use outra chave no migrator.
+Para desenvolvimento com `deploy/docker-compose.agentic.yml`, defina senhas distintas `OLLAMA_AGENT_POSTGRES_ADMIN_PASSWORD`, `OLLAMA_AGENT_MIGRATOR_PASSWORD`, `OLLAMA_AGENT_RUNTIME_PASSWORD` e `OLLAMA_AGENT_REDIS_PASSWORD`. O script de init instala `pgcrypto` como o administrador de bootstrap; para PostgreSQL provisionado externamente, instale `pgcrypto` no schema `public` via administrador/superuser **antes** do migrator (a role migrator não recebe superuser). Gere uma chave HMAC com `openssl rand -hex 32`, persista-a em secret manager e configure `OLLAMA_AGENT_TENANT_CONTEXT_KEY`; `OLLAMA_AGENT_TENANT_CONTEXT_KEY_VERSION` é `1` por compatibilidade e deve acompanhar explicitamente todas as instâncias após cada rotação. Use `OLLAMA_AGENT_MIGRATOR_DATABASE_URL` apenas em jobs administrativos, `OLLAMA_AGENT_POSTGRES_ADMIN_DATABASE_URL` apenas no comando protegido de rotação e `OLLAMA_AGENT_DATABASE_URL` somente no runtime; não inclua DSNs/secrets em argumentos, logs ou arquivos versionados. Para banco novo, inicialize roles/extensão, rode `ollama agent migrate-postgres` explicitamente e depois suba servidor com `OLLAMA_AGENT_AUTH_REQUIRED=true` e Redis owner-bound. Migrations recusam substituir o segredo ativo.
 
 ### Cutover de volume legado PostgreSQL
 
@@ -136,8 +136,11 @@ Para desenvolvimento com `deploy/docker-compose.agentic.yml`, defina senhas dist
    psql "$DSN_ADMIN_NOVO" -v ON_ERROR_STOP=1 -Atc 'SELECT current_user, current_database()'
    PGPASSWORD="$OLLAMA_AGENT_MIGRATOR_PASSWORD" psql 'host=127.0.0.1 port=5432 dbname=ollama_agent user=ollama_agent_migrator' -v ON_ERROR_STOP=1 -Atc 'SELECT current_user'
    PGPASSWORD="$OLLAMA_AGENT_RUNTIME_PASSWORD" psql 'host=127.0.0.1 port=5432 dbname=ollama_agent user=ollama_agent_runtime' -v ON_ERROR_STOP=1 -Atc 'SELECT current_user'
+   # Instale a extensão privilegiada antes de executar o migrator.
+   PGPASSWORD="$OLLAMA_AGENT_POSTGRES_ADMIN_PASSWORD" psql "$DSN_ADMIN_NOVO" -v ON_ERROR_STOP=1 -c 'CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA public'
    export OLLAMA_AGENT_MIGRATOR_DATABASE_URL='postgres://ollama_agent_migrator@127.0.0.1:5432/ollama_agent?sslmode=verify-full'
    read -rsp 'Chave HMAC persistente (hex, 64 caracteres): ' OLLAMA_AGENT_TENANT_CONTEXT_KEY; echo; export OLLAMA_AGENT_TENANT_CONTEXT_KEY
+   export OLLAMA_AGENT_TENANT_CONTEXT_KEY_VERSION=1
    PGPASSWORD="$OLLAMA_AGENT_MIGRATOR_PASSWORD" ollama agent migrate-postgres
    ```
 
@@ -149,9 +152,29 @@ Para desenvolvimento com `deploy/docker-compose.agentic.yml`, defina senhas dist
    psql "$DSN_ADMIN_NOVO" -v ON_ERROR_STOP=1 -f deploy/postgres/retire-legacy-role.sql
    ```
 
-5. **Suba o runtime e reabra tráfego só após o smoke:** configure `OLLAMA_AGENT_DATABASE_URL` com `ollama_agent_runtime`, `OLLAMA_AGENT_TENANT_CONTEXT_KEY` com a chave imutável e `OLLAMA_AGENT_REDIS_URL`; inicie o serviço, confirme readiness e faça leitura/escrita de um tenant autorizado. Runtime recusa o início se a role antiga ou qualquer sessão legada ainda tiver privilégios ativos.
+5. **Suba o runtime e reabra tráfego só após o smoke:** configure `OLLAMA_AGENT_DATABASE_URL` com `ollama_agent_runtime`, a chave e `OLLAMA_AGENT_TENANT_CONTEXT_KEY_VERSION` ativos, e `OLLAMA_AGENT_REDIS_URL`; inicie o serviço, confirme readiness e faça leitura/escrita de tenant autorizado. Runtime recusa se chave/versão não correspondem à única ativa ou se legado ainda está ativo.
 
-Se qualquer etapa falhar, mantenha o serviço parado e siga o plano de restauração de staging/backup previamente ensaiado; não reative a role antiga por improviso, não presuma que `ROLLBACK` desfaz etapas já commitadas e não execute o teste de drift em produção. A role antiga é desativada somente na fase 4. Dados sem `organization_id` válido e missões executáveis sem `workspace_identity` persistida exigem correção/reautorização manual antes da migration. A rotação da chave HMAC, TLS/HA/failover, scale test e avaliação operacional em staging continuam pendentes; esta implementação permanece candidata e não está liberada para produção.
+Se qualquer etapa falhar, mantenha o serviço parado e siga o backup/restore de staging ensaiado; não reative a role antiga por improviso nem execute testes de drift em produção. Dados sem `organization_id` válido e missões executáveis sem `workspace_identity` exigem correção manual antes da migration.
+
+### Rotação versionada de chave HMAC PostgreSQL
+
+**A rotação exige quiescência operacional total; o advisory lock drena transações já abertas, mas não bloqueia conexões/requests novos após liberar. Não rode com qualquer runtime/worker ativo.** Preserve ambas as chaves no secret manager. O formato do token é `version|organization|expiry|HMAC-SHA256`, e o banco aceita apenas a versão única ativa. Veja o [protocolo detalhado, invariantes e evidência requerida](POSTGRES_HMAC_KEY_ROTATION.md).
+
+```bash
+# Parar todas as instâncias e workers, bloquear tráfego novo e aguardar drain.
+# Injectar (não passar como flags nem imprimir): migrator DSN, chave atual e próxima.
+export OLLAMA_AGENT_MIGRATOR_DATABASE_URL='postgres://ollama_agent_migrator@db/ollama_agent?sslmode=verify-full'
+export OLLAMA_AGENT_POSTGRES_ADMIN_DATABASE_URL='postgres://ollama_agent_admin@db/ollama_agent?sslmode=verify-full'
+export OLLAMA_AGENT_TENANT_CONTEXT_KEY_VERSION=1
+read -rsp 'Chave HMAC atual (hex): ' OLLAMA_AGENT_TENANT_CONTEXT_KEY; echo; export OLLAMA_AGENT_TENANT_CONTEXT_KEY
+export OLLAMA_AGENT_TENANT_CONTEXT_KEY_NEXT_VERSION=2
+read -rsp 'Próxima chave HMAC (hex): ' OLLAMA_AGENT_TENANT_CONTEXT_KEY_NEXT; echo; export OLLAMA_AGENT_TENANT_CONTEXT_KEY_NEXT
+ollama agent rotate-postgres-key
+# Somente após sucesso: configurar nova chave atual e versão 2 em todas instâncias,
+# rodar `ollama agent migrate-postgres`, subir runtime e executar smoke antes de liberar tráfego.
+```
+
+O comando aborta sem mudar estado se as credenciais/versionamento atuais não coincidirem, se a próxima versão existir ou se a transação falhar/expirar aguardando conexões. Após commit bem-sucedido, rollback é outra rotação: configure a antiga chave como `OLLAMA_AGENT_TENANT_CONTEXT_KEY_NEXT` com versão nova monotônica (por exemplo, 3), nunca rebaixe nem reutilize versão. Não remova versões históricas automaticamente. A rotação foi testada contra PostgreSQL 16 descartável; TLS/HA/failover, restore operacional e revisão independente final ainda pendem, portanto o sistema permanece candidato e não está aprovado para produção.
 
 Para traces distribuídos, defina `OLLAMA_AGENT_OTLP_ENDPOINT` com URL OTLP HTTP `https://`; `OLLAMA_AGENT_OTLP_ALLOW_INSECURE=1` é reservado para desenvolvimento local. A stack em `deploy/docker-compose.agentic.yml` fornece PostgreSQL, Redis e OpenTelemetry Collector.
 

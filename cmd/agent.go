@@ -5,11 +5,13 @@ import (
 	"context"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -74,13 +76,58 @@ func agentCommand() *cobra.Command {
 			if err != nil || len(key) < 32 {
 				return fmt.Errorf("OLLAMA_AGENT_TENANT_CONTEXT_KEY must be at least 64 hexadecimal characters")
 			}
+			version, err := postgresTenantKeyVersionFromEnv()
+			if err != nil {
+				return err
+			}
 			ctx, cancel := context.WithTimeout(cmd.Context(), 2*time.Minute)
 			defer cancel()
-			return agent.MigratePostgresAgentSchema(ctx, dsn, key)
+			return agent.MigratePostgresAgentSchemaVersioned(ctx, dsn, key, version)
 		},
 	}
-	command.AddCommand(create, get, run, cancel, events, approve, tools, migratePostgres)
+	rotatePostgresKey := &cobra.Command{
+		Use:   "rotate-postgres-key",
+		Short: "Fence runtime logins and atomically rotate the PostgreSQL tenant HMAC key",
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			adminDSN := strings.TrimSpace(os.Getenv("OLLAMA_AGENT_POSTGRES_ADMIN_DATABASE_URL"))
+			dsn := strings.TrimSpace(os.Getenv("OLLAMA_AGENT_MIGRATOR_DATABASE_URL"))
+			currentKey, err := hex.DecodeString(strings.TrimSpace(os.Getenv("OLLAMA_AGENT_TENANT_CONTEXT_KEY")))
+			if err != nil || len(currentKey) < 32 {
+				return errors.New("OLLAMA_AGENT_TENANT_CONTEXT_KEY must be at least 64 hexadecimal characters")
+			}
+			currentVersion, err := postgresTenantKeyVersionFromEnv()
+			if err != nil {
+				return err
+			}
+			nextVersionRaw := strings.TrimSpace(os.Getenv("OLLAMA_AGENT_TENANT_CONTEXT_KEY_NEXT_VERSION"))
+			nextVersion, err := strconv.Atoi(nextVersionRaw)
+			if err != nil || nextVersion < 1 || nextVersion > 999999999 {
+				return errors.New("OLLAMA_AGENT_TENANT_CONTEXT_KEY_NEXT_VERSION must be an integer between 1 and 999999999")
+			}
+			nextKey, err := hex.DecodeString(strings.TrimSpace(os.Getenv("OLLAMA_AGENT_TENANT_CONTEXT_KEY_NEXT")))
+			if err != nil || len(nextKey) < 32 {
+				return errors.New("OLLAMA_AGENT_TENANT_CONTEXT_KEY_NEXT must be at least 64 hexadecimal characters")
+			}
+			ctx, cancel := context.WithTimeout(cmd.Context(), 2*time.Minute)
+			defer cancel()
+			return agent.RotatePostgresAgentTenantKey(ctx, adminDSN, dsn, currentVersion, currentKey, nextVersion, nextKey)
+		},
+	}
+	command.AddCommand(create, get, run, cancel, events, approve, tools, migratePostgres, rotatePostgresKey)
 	return command
+}
+
+func postgresTenantKeyVersionFromEnv() (int, error) {
+	raw := strings.TrimSpace(os.Getenv("OLLAMA_AGENT_TENANT_CONTEXT_KEY_VERSION"))
+	if raw == "" {
+		return 1, nil
+	}
+	version, err := strconv.Atoi(raw)
+	if err != nil || version < 1 || version > 999999999 {
+		return 0, errors.New("OLLAMA_AGENT_TENANT_CONTEXT_KEY_VERSION must be an integer between 1 and 999999999")
+	}
+	return version, nil
 }
 
 func runAgentRequest(ctx context.Context, method, path string, payload any) error {

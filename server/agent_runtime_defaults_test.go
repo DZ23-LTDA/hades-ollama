@@ -62,6 +62,7 @@ func TestNewDefaultAgentRuntimeRequiresPostgresTenantKey(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	t.Setenv("OLLAMA_AGENT_DATABASE_URL", "postgres://invalid.invalid/unused")
 	t.Setenv("OLLAMA_AGENT_REDIS_URL", "redis://invalid.invalid/unused")
+	t.Setenv("OLLAMA_AGENT_TENANT_CONTEXT_KEY", "")
 	if _, err := newDefaultAgentRuntime(); err == nil || !strings.Contains(err.Error(), "OLLAMA_AGENT_TENANT_CONTEXT_KEY") {
 		t.Fatalf("PostgreSQL startup error=%v, want missing tenant-key error", err)
 	}

@@ -30,28 +30,33 @@ var (
 const postgresTenantContextFunctionSource = `DECLARE
   context_value TEXT;
   context_parts TEXT[];
+  context_version TEXT;
   context_org TEXT;
   context_expiry TEXT;
   context_signature TEXT;
   context_secret BYTEA;
+  active_version INTEGER;
   expiry_epoch BIGINT;
   expected_signature TEXT;
 BEGIN
   context_value := current_setting('app.tenant_context', TRUE);
   IF context_value IS NULL OR length(context_value) > 512 THEN RETURN FALSE; END IF;
   context_parts := string_to_array(context_value, '|');
-  IF array_length(context_parts, 1) IS DISTINCT FROM 3 THEN RETURN FALSE; END IF;
-  context_org := context_parts[1];
-  context_expiry := context_parts[2];
-  context_signature := context_parts[3];
-  IF context_org IS NULL OR context_expiry IS NULL OR context_signature IS NULL THEN RETURN FALSE; END IF;
+  IF array_length(context_parts, 1) IS DISTINCT FROM 4 THEN RETURN FALSE; END IF;
+  context_version := context_parts[1];
+  context_org := context_parts[2];
+  context_expiry := context_parts[3];
+  context_signature := context_parts[4];
+  IF context_version IS NULL OR context_org IS NULL OR context_expiry IS NULL OR context_signature IS NULL THEN RETURN FALSE; END IF;
+  IF context_version !~ '^[1-9][0-9]{0,8}$' THEN RETURN FALSE; END IF;
   IF requested_org IS NULL OR requested_org = '' OR context_org <> requested_org OR context_org !~ '^[A-Za-z0-9_.-]{1,128}$' THEN RETURN FALSE; END IF;
   IF context_expiry !~ '^[0-9]{1,12}$' OR context_signature !~ '^[0-9a-f]{64}$' THEN RETURN FALSE; END IF;
   expiry_epoch := context_expiry::BIGINT;
   IF expiry_epoch < floor(extract(epoch FROM statement_timestamp()))::BIGINT OR expiry_epoch > floor(extract(epoch FROM statement_timestamp()))::BIGINT + 300 THEN RETURN FALSE; END IF;
-  SELECT secret INTO context_secret FROM public.agent_tenant_context_key WHERE key_id = TRUE;
+  active_version := context_version::INTEGER;
+  SELECT secret INTO context_secret FROM public.agent_tenant_context_keys WHERE key_version = active_version AND is_active;
   IF context_secret IS NULL THEN RETURN FALSE; END IF;
-  expected_signature := encode(public.hmac(convert_to(context_org || E'\n' || context_expiry, 'UTF8'), context_secret, 'sha256'), 'hex');
+  expected_signature := encode(public.hmac(convert_to(context_version || E'\n' || context_org || E'\n' || context_expiry, 'UTF8'), context_secret, 'sha256'), 'hex');
   RETURN expected_signature = context_signature;
 EXCEPTION WHEN OTHERS THEN
   RETURN FALSE;
@@ -92,6 +97,37 @@ SELECT count(*), bool_and(c.relrowsecurity AND c.relforcerowsecurity),
 	if tableCount != 2 || !tablesSecure || !ownersSecure {
 		return errors.New("PostgreSQL tenant tables must exist, be owned by ollama_agent_migrator, and have ENABLE plus FORCE ROW LEVEL SECURITY")
 	}
+	var keyringSecure bool
+	if err := tx.QueryRowContext(ctx, `SELECT c.relkind='r' AND owner.rolname='ollama_agent_migrator'
+	FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace
+	JOIN pg_catalog.pg_roles owner ON owner.oid=c.relowner
+	WHERE n.nspname='public' AND c.relname='agent_tenant_context_keys'`).Scan(&keyringSecure); err != nil {
+		return fmt.Errorf("verify PostgreSQL tenant keyring ownership: %w", err)
+	}
+	if !keyringSecure {
+		return errors.New("PostgreSQL tenant keyring must be a migrator-owned table")
+	}
+	var keyringConstraintsSecure bool
+	if err := tx.QueryRowContext(ctx, `SELECT
+	EXISTS (SELECT 1 FROM pg_catalog.pg_index i
+		JOIN pg_catalog.pg_class idx ON idx.oid=i.indexrelid
+		WHERE i.indrelid='public.agent_tenant_context_keys'::pg_catalog.regclass
+		  AND idx.relname='agent_tenant_context_keys_one_active_uidx'
+		  AND i.indisunique AND i.indisvalid AND i.indisready AND i.indpred IS NOT NULL
+		  AND i.indnatts=1 AND i.indnkeyatts=1
+		  AND pg_catalog.pg_get_expr(i.indpred,i.indrelid)='is_active'
+		  AND EXISTS (SELECT 1 FROM pg_catalog.unnest(i.indkey) WITH ORDINALITY k(attnum,ord)
+		              JOIN pg_catalog.pg_attribute a ON a.attrelid=i.indrelid AND a.attnum=k.attnum
+		              WHERE k.ord=1 AND a.attname='is_active'))
+	AND EXISTS (SELECT 1 FROM pg_catalog.pg_constraint c
+		WHERE c.conrelid='public.agent_tenant_context_keys'::pg_catalog.regclass
+		  AND c.contype='p' AND c.convalidated
+		  AND pg_catalog.pg_get_constraintdef(c.oid)='PRIMARY KEY (key_version)')`).Scan(&keyringConstraintsSecure); err != nil {
+		return fmt.Errorf("verify PostgreSQL tenant keyring constraints: %w", err)
+	}
+	if !keyringConstraintsSecure {
+		return errors.New("PostgreSQL tenant keyring must enforce a primary key version and a partial unique single-active-key index")
+	}
 	for table, expected := range postgresExpectedTenantPolicies {
 		var policyCount, exactCount int
 		err := tx.QueryRowContext(ctx, `
@@ -128,7 +164,7 @@ SELECT r.rolcanlogin AND NOT r.rolsuper AND NOT r.rolbypassrls AND NOT r.rolcrea
        AND NOT pg_catalog.has_schema_privilege(r.rolname,'public','CREATE')
        AND NOT pg_catalog.has_database_privilege(r.rolname,pg_catalog.current_database(),'CREATE')
        AND NOT pg_catalog.has_database_privilege(r.rolname,pg_catalog.current_database(),'TEMP')
-       AND NOT pg_catalog.has_table_privilege(r.rolname,'public.agent_tenant_context_key','SELECT')
+		       AND NOT pg_catalog.has_table_privilege(r.rolname,'public.agent_tenant_context_keys','SELECT')
        AND pg_catalog.has_table_privilege(r.rolname,'public.agent_missions','SELECT')
        AND pg_catalog.has_table_privilege(r.rolname,'public.agent_missions','INSERT')
        AND pg_catalog.has_table_privilege(r.rolname,'public.agent_missions','UPDATE')
@@ -158,11 +194,17 @@ SELECT r.rolcanlogin AND NOT r.rolsuper AND NOT r.rolbypassrls AND NOT r.rolcrea
 // non-owner, NOSUPERUSER/NOBYPASSRLS role with DML privileges only. The key
 // must match the secret provisioned by MigratePostgresAgentSchema.
 func OpenPostgresRuntimeStore(ctx context.Context, dsn string, tenantContextKey []byte) (*PostgresStore, error) {
+	return OpenPostgresRuntimeStoreVersioned(ctx, dsn, tenantContextKey, 1)
+}
+
+// OpenPostgresRuntimeStoreVersioned opens a tenant-only runtime using the
+// explicitly configured active tenant-key version.
+func OpenPostgresRuntimeStoreVersioned(ctx context.Context, dsn string, tenantContextKey []byte, tenantKeyVersion int) (*PostgresStore, error) {
 	if strings.TrimSpace(dsn) == "" {
 		return nil, errors.New("postgres runtime DSN is required")
 	}
-	if len(tenantContextKey) < 32 {
-		return nil, errors.New("postgres tenant context key must be at least 32 bytes")
+	if len(tenantContextKey) < 32 || tenantKeyVersion < 1 || tenantKeyVersion > 999999999 {
+		return nil, errors.New("postgres tenant context key must be at least 32 bytes and key version must be between 1 and 999999999")
 	}
 	if ctx == nil {
 		return nil, errors.New("postgres runtime context is required")
@@ -171,7 +213,7 @@ func OpenPostgresRuntimeStore(ctx context.Context, dsn string, tenantContextKey 
 	if err != nil {
 		return nil, err
 	}
-	store := &PostgresStore{db: db, timeout: 10 * time.Second, tenantContextKey: append([]byte(nil), tenantContextKey...)}
+	store := &PostgresStore{db: db, timeout: 10 * time.Second, tenantContextKey: append([]byte(nil), tenantContextKey...), tenantKeyVersion: tenantKeyVersion}
 	pingCtx, cancel := context.WithTimeout(ctx, store.timeout)
 	defer cancel()
 	if err := db.PingContext(pingCtx); err != nil {
@@ -203,18 +245,19 @@ func (s *PostgresStore) signedTenantContext(organizationID string, now time.Time
 	if err := validatePostgresOrganizationID(organizationID); err != nil {
 		return "", err
 	}
-	if len(s.tenantContextKey) < 32 {
+	if len(s.tenantContextKey) < 32 || s.tenantKeyVersion < 1 || s.tenantKeyVersion > 999999999 {
 		return "", ErrPostgresTenantIsolationUnavailable
 	}
 	expires := now.UTC().Add(postgresTenantContextTTL).Unix()
-	message := organizationID + "\n" + fmt.Sprint(expires)
+	version := fmt.Sprint(s.tenantKeyVersion)
+	message := version + "\n" + organizationID + "\n" + fmt.Sprint(expires)
 	mac := hmac.New(sha256.New, s.tenantContextKey)
 	_, _ = mac.Write([]byte(message))
-	return organizationID + "|" + fmt.Sprint(expires) + "|" + hex.EncodeToString(mac.Sum(nil)), nil
+	return version + "|" + organizationID + "|" + fmt.Sprint(expires) + "|" + hex.EncodeToString(mac.Sum(nil)), nil
 }
 
 func (s *PostgresStore) tenantRuntimeReady() bool {
-	return s != nil && s.db != nil && len(s.tenantContextKey) >= 32
+	return s != nil && s.db != nil && len(s.tenantContextKey) >= 32 && s.tenantKeyVersion >= 1 && s.tenantKeyVersion <= 999999999
 }
 
 func postgresTenantRuntimeReady(store Store) bool {
@@ -232,7 +275,7 @@ SELECT NOT r.rolcanlogin OR r.rolinherit OR r.rolsuper OR r.rolbypassrls OR r.ro
        pg_catalog.has_schema_privilege(current_user, 'public', 'CREATE'),
        pg_catalog.has_database_privilege(current_user, pg_catalog.current_database(), 'CREATE'),
        pg_catalog.has_database_privilege(current_user, pg_catalog.current_database(), 'TEMP'),
-       pg_catalog.has_table_privilege(current_user, 'public.agent_tenant_context_key', 'SELECT'),
+	       pg_catalog.has_table_privilege(current_user, 'public.agent_tenant_context_keys', 'SELECT'),
 	       pg_catalog.has_table_privilege(current_user, 'public.agent_missions', 'SELECT,INSERT,UPDATE,DELETE')
 	         AND pg_catalog.has_table_privilege(current_user, 'public.agent_events', 'SELECT,INSERT,UPDATE,DELETE'),
 	       pg_catalog.has_function_privilege(current_user, 'public.agent_tenant_context_matches(text)', 'EXECUTE'),
@@ -283,11 +326,17 @@ SELECT NOT r.rolcanlogin OR r.rolinherit OR r.rolsuper OR r.rolbypassrls OR r.ro
 // MigratePostgresAgentSchema applies schema changes with a separately supplied
 // migration DSN. It never runs as part of normal server startup.
 func MigratePostgresAgentSchema(ctx context.Context, dsn string, tenantContextKey []byte) error {
+	return MigratePostgresAgentSchemaVersioned(ctx, dsn, tenantContextKey, 1)
+}
+
+// MigratePostgresAgentSchemaVersioned applies schema changes only when the
+// configured key and version match the already active database key.
+func MigratePostgresAgentSchemaVersioned(ctx context.Context, dsn string, tenantContextKey []byte, tenantKeyVersion int) error {
 	if strings.TrimSpace(dsn) == "" {
 		return errors.New("postgres migrator DSN is required")
 	}
-	if len(tenantContextKey) < 32 {
-		return errors.New("postgres tenant context key must be at least 32 bytes")
+	if len(tenantContextKey) < 32 || tenantKeyVersion < 1 || tenantKeyVersion > 999999999 {
+		return errors.New("postgres tenant context key must be at least 32 bytes and key version must be between 1 and 999999999")
 	}
 	if ctx == nil {
 		return errors.New("postgres migration context is required")
@@ -318,10 +367,10 @@ SELECT NOT r.rolcanlogin OR r.rolinherit OR r.rolsuper OR r.rolbypassrls OR r.ro
 	if !isMigrator {
 		return errors.New("PostgreSQL migrations require the dedicated ollama_agent_migrator role")
 	}
-	return migratePostgresAgentSchema(ctx, db, tenantContextKey)
+	return migratePostgresAgentSchema(ctx, db, tenantContextKey, tenantKeyVersion)
 }
 
-func migratePostgresAgentSchema(ctx context.Context, db *sql.DB, tenantContextKey []byte) error {
+func migratePostgresAgentSchema(ctx context.Context, db *sql.DB, tenantContextKey []byte, tenantKeyVersion int) error {
 	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
@@ -335,6 +384,10 @@ func migratePostgresAgentSchema(ctx context.Context, db *sql.DB, tenantContextKe
 	if _, err := tx.ExecContext(ctx, `SET LOCAL search_path = pg_catalog, public`); err != nil {
 		return fmt.Errorf("pin PostgreSQL migration search path: %w", err)
 	}
+	var versionedKeyringExisted, legacyKeyTableExisted bool
+	if err := tx.QueryRowContext(ctx, `SELECT pg_catalog.to_regclass('public.agent_tenant_context_keys') IS NOT NULL, pg_catalog.to_regclass('public.agent_tenant_context_key') IS NOT NULL`).Scan(&versionedKeyringExisted, &legacyKeyTableExisted); err != nil {
+		return fmt.Errorf("inspect PostgreSQL tenant key migration state: %w", err)
+	}
 	if _, err := tx.ExecContext(ctx, `DO $privileges$ BEGIN
   EXECUTE format('REVOKE TEMP ON DATABASE %I FROM PUBLIC', pg_catalog.current_database());
   EXECUTE format('REVOKE TEMP ON DATABASE %I FROM ollama_agent_runtime', pg_catalog.current_database());
@@ -347,10 +400,11 @@ END $privileges$`); err != nil {
 		`CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA public`,
 		`CREATE TABLE IF NOT EXISTS public.agent_missions (id TEXT PRIMARY KEY, version BIGINT NOT NULL, objective TEXT NOT NULL, provider TEXT NOT NULL DEFAULT '', model TEXT NOT NULL DEFAULT '', workspace TEXT NOT NULL DEFAULT '', workspace_identity TEXT NOT NULL DEFAULT '', project_id TEXT NOT NULL DEFAULT '', organization_id TEXT NOT NULL DEFAULT '', capabilities JSONB NOT NULL DEFAULT '[]'::jsonb, auto_run BOOLEAN NOT NULL DEFAULT FALSE, state TEXT NOT NULL, plan JSONB NOT NULL, approvals JSONB NOT NULL, artifacts JSONB NOT NULL, last_error TEXT NOT NULL DEFAULT '', created_at TIMESTAMPTZ NOT NULL, updated_at TIMESTAMPTZ NOT NULL, completed_at TIMESTAMPTZ NULL)`,
 		`CREATE TABLE IF NOT EXISTS public.agent_events (id TEXT PRIMARY KEY, mission_id TEXT NOT NULL, organization_id TEXT NOT NULL DEFAULT '', type TEXT NOT NULL, step_id TEXT NOT NULL DEFAULT '', payload JSONB NULL, created_at TIMESTAMPTZ NOT NULL)`,
-		`CREATE TABLE IF NOT EXISTS public.agent_tenant_context_key (key_id BOOLEAN PRIMARY KEY DEFAULT TRUE CHECK (key_id), secret BYTEA NOT NULL CHECK (octet_length(secret) >= 32))`,
+		`CREATE TABLE IF NOT EXISTS public.agent_tenant_context_keys (key_version INTEGER PRIMARY KEY CHECK (key_version BETWEEN 1 AND 999999999), secret BYTEA NOT NULL CHECK (octet_length(secret) >= 32), is_active BOOLEAN NOT NULL DEFAULT FALSE)`,
+		`CREATE UNIQUE INDEX IF NOT EXISTS agent_tenant_context_keys_one_active_uidx ON public.agent_tenant_context_keys (is_active) WHERE is_active`,
 		`DO $ownership$ DECLARE invalid_owners BIGINT; BEGIN
 SELECT count(*) INTO invalid_owners FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace
-WHERE n.nspname='public' AND c.relname IN ('agent_missions','agent_events','agent_tenant_context_key')
+WHERE n.nspname='public' AND c.relname IN ('agent_missions','agent_events','agent_tenant_context_keys')
   AND c.relkind IN ('r','p') AND c.relowner <> (SELECT oid FROM pg_catalog.pg_roles WHERE rolname='ollama_agent_migrator');
 IF invalid_owners <> 0 THEN RAISE EXCEPTION 'PostgreSQL agent tables must be owned by ollama_agent_migrator; run deploy/postgres/migrate-existing-roles.sql as administrator before migration'; END IF;
 END $ownership$`,
@@ -381,7 +435,7 @@ END IF;
 		if _, err := tx.ExecContext(ctx, statement); err != nil {
 			return fmt.Errorf("apply PostgreSQL agent migration statement %d: %w", index+1, err)
 		}
-		if index == 12 {
+		if index == 13 {
 			if err := validatePostgresLegacySchemaShape(ctx, tx, false); err != nil {
 				return err
 			}
@@ -409,43 +463,85 @@ END IF;
 	if invalidWorkspaceBindings != 0 {
 		return fmt.Errorf("PostgreSQL migration refused %d runnable legacy missions without a persisted workspace identity; reauthorize/recreate those missions before retrying", invalidWorkspaceBindings)
 	}
-	if _, err := tx.ExecContext(ctx, `INSERT INTO public.agent_tenant_context_key (key_id, secret) VALUES (TRUE, $1) ON CONFLICT (key_id) DO NOTHING`, tenantContextKey); err != nil {
-		return fmt.Errorf("provision protected tenant context key: %w", err)
+	if _, err := tx.ExecContext(ctx, `DO $legacy_key$ DECLARE old_key BYTEA; BEGIN
+IF pg_catalog.to_regclass('public.agent_tenant_context_key') IS NOT NULL THEN
+  SELECT secret INTO old_key FROM public.agent_tenant_context_key WHERE key_id=TRUE;
+  IF old_key IS NULL THEN RAISE EXCEPTION 'legacy tenant key table must contain exactly one provisioned key'; END IF;
+  IF EXISTS (SELECT 1 FROM public.agent_tenant_context_keys WHERE is_active) THEN
+    RAISE EXCEPTION 'both legacy and versioned tenant keys exist; resolve the interrupted key migration explicitly';
+  END IF;
+  INSERT INTO public.agent_tenant_context_keys (key_version,secret,is_active) VALUES (1,old_key,TRUE);
+  DROP TABLE public.agent_tenant_context_key;
+END IF;
+END $legacy_key$`); err != nil {
+		return fmt.Errorf("import legacy PostgreSQL tenant key: %w", err)
+	}
+	var activeKeyCount int
+	var storedTenantKeyVersion int
+	if err := tx.QueryRowContext(ctx, `SELECT count(*), COALESCE(max(key_version),0) FROM public.agent_tenant_context_keys WHERE is_active`).Scan(&activeKeyCount, &storedTenantKeyVersion); err != nil {
+		return fmt.Errorf("verify active versioned tenant context key: %w", err)
+	}
+	if activeKeyCount == 0 {
+		var historicalRows int
+		if err := tx.QueryRowContext(ctx, `SELECT count(*) FROM public.agent_tenant_context_keys`).Scan(&historicalRows); err != nil {
+			return fmt.Errorf("inspect empty PostgreSQL tenant keyring: %w", err)
+		}
+		if versionedKeyringExisted || legacyKeyTableExisted || historicalRows != 0 {
+			return errors.New("PostgreSQL tenant keyring exists without an active key; ordinary migrations cannot bootstrap a replacement key")
+		}
+		if tenantKeyVersion != 1 {
+			return errors.New("a new PostgreSQL tenant keyring must be initialized at version 1")
+		}
+		if _, err := tx.ExecContext(ctx, `INSERT INTO public.agent_tenant_context_keys (key_version,secret,is_active) VALUES ($1,$2,TRUE)`, tenantKeyVersion, tenantContextKey); err != nil {
+			return fmt.Errorf("provision initial versioned tenant context key: %w", err)
+		}
+		activeKeyCount, storedTenantKeyVersion = 1, tenantKeyVersion
+	} else if activeKeyCount != 1 || storedTenantKeyVersion != tenantKeyVersion {
+		return errors.New("tenant context key or version differs from the active database secret; ordinary migrations do not rotate keys")
 	}
 	var storedTenantKey []byte
-	if err := tx.QueryRowContext(ctx, `SELECT secret FROM public.agent_tenant_context_key WHERE key_id = TRUE`).Scan(&storedTenantKey); err != nil {
-		return fmt.Errorf("verify protected tenant context key: %w", err)
+	if err := tx.QueryRowContext(ctx, `SELECT secret FROM public.agent_tenant_context_keys WHERE key_version=$1 AND is_active`, tenantKeyVersion).Scan(&storedTenantKey); err != nil {
+		return fmt.Errorf("read active versioned tenant context key: %w", err)
 	}
-	if len(storedTenantKey) != len(tenantContextKey) || subtle.ConstantTimeCompare(storedTenantKey, tenantContextKey) != 1 {
-		return errors.New("tenant context key differs from the provisioned database secret; ordinary migrations do not rotate keys")
+	var highestRecordedVersion int
+	if err := tx.QueryRowContext(ctx, `SELECT COALESCE(max(key_version),0) FROM public.agent_tenant_context_keys`).Scan(&highestRecordedVersion); err != nil {
+		return fmt.Errorf("verify PostgreSQL tenant key version high-water mark: %w", err)
+	}
+	if activeKeyCount != 1 || storedTenantKeyVersion != tenantKeyVersion || highestRecordedVersion != storedTenantKeyVersion || len(storedTenantKey) != len(tenantContextKey) || subtle.ConstantTimeCompare(storedTenantKey, tenantContextKey) != 1 {
+		return errors.New("tenant context key or version differs from the active database secret; ordinary migrations do not rotate keys")
 	}
 	functionSQL := `CREATE OR REPLACE FUNCTION public.agent_tenant_context_matches(requested_org TEXT) RETURNS BOOLEAN
 LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = pg_catalog, public AS $function$
 DECLARE
   context_value TEXT;
   context_parts TEXT[];
+  context_version TEXT;
   context_org TEXT;
   context_expiry TEXT;
   context_signature TEXT;
   context_secret BYTEA;
+  active_version INTEGER;
   expiry_epoch BIGINT;
   expected_signature TEXT;
 BEGIN
   context_value := current_setting('app.tenant_context', TRUE);
   IF context_value IS NULL OR length(context_value) > 512 THEN RETURN FALSE; END IF;
   context_parts := string_to_array(context_value, '|');
-	IF array_length(context_parts, 1) IS DISTINCT FROM 3 THEN RETURN FALSE; END IF;
-  context_org := context_parts[1];
-  context_expiry := context_parts[2];
-  context_signature := context_parts[3];
-	IF context_org IS NULL OR context_expiry IS NULL OR context_signature IS NULL THEN RETURN FALSE; END IF;
+	IF array_length(context_parts, 1) IS DISTINCT FROM 4 THEN RETURN FALSE; END IF;
+	context_version := context_parts[1];
+	context_org := context_parts[2];
+	context_expiry := context_parts[3];
+	context_signature := context_parts[4];
+	IF context_version IS NULL OR context_org IS NULL OR context_expiry IS NULL OR context_signature IS NULL THEN RETURN FALSE; END IF;
+	IF context_version !~ '^[1-9][0-9]{0,8}$' THEN RETURN FALSE; END IF;
 	IF requested_org IS NULL OR requested_org = '' OR context_org <> requested_org OR context_org !~ '^[A-Za-z0-9_.-]{1,128}$' THEN RETURN FALSE; END IF;
   IF context_expiry !~ '^[0-9]{1,12}$' OR context_signature !~ '^[0-9a-f]{64}$' THEN RETURN FALSE; END IF;
   expiry_epoch := context_expiry::BIGINT;
   IF expiry_epoch < floor(extract(epoch FROM statement_timestamp()))::BIGINT OR expiry_epoch > floor(extract(epoch FROM statement_timestamp()))::BIGINT + 300 THEN RETURN FALSE; END IF;
-  SELECT secret INTO context_secret FROM public.agent_tenant_context_key WHERE key_id = TRUE;
+  active_version := context_version::INTEGER;
+  SELECT secret INTO context_secret FROM public.agent_tenant_context_keys WHERE key_version = active_version AND is_active;
   IF context_secret IS NULL THEN RETURN FALSE; END IF;
-  expected_signature := encode(public.hmac(convert_to(context_org || E'\n' || context_expiry, 'UTF8'), context_secret, 'sha256'), 'hex');
+  expected_signature := encode(public.hmac(convert_to(context_version || E'\n' || context_org || E'\n' || context_expiry, 'UTF8'), context_secret, 'sha256'), 'hex');
   RETURN expected_signature = context_signature;
 EXCEPTION WHEN OTHERS THEN
   RETURN FALSE;
@@ -461,8 +557,8 @@ $function$`
 		`ALTER TABLE public.agent_events FORCE ROW LEVEL SECURITY`,
 		`CREATE POLICY agent_missions_tenant_policy ON public.agent_missions USING (organization_id <> '' AND public.agent_tenant_context_matches(organization_id)) WITH CHECK (organization_id <> '' AND public.agent_tenant_context_matches(organization_id))`,
 		`CREATE POLICY agent_events_tenant_policy ON public.agent_events USING (organization_id <> '' AND public.agent_tenant_context_matches(organization_id) AND EXISTS (SELECT 1 FROM public.agent_missions m WHERE m.id = agent_events.mission_id AND m.organization_id = agent_events.organization_id)) WITH CHECK (organization_id <> '' AND public.agent_tenant_context_matches(organization_id) AND EXISTS (SELECT 1 FROM public.agent_missions m WHERE m.id = agent_events.mission_id AND m.organization_id = agent_events.organization_id))`,
-		`REVOKE ALL ON TABLE public.agent_missions, public.agent_events, public.agent_tenant_context_key FROM PUBLIC`,
-		`REVOKE ALL ON TABLE public.agent_missions, public.agent_events, public.agent_tenant_context_key FROM ollama_agent_runtime`,
+		`REVOKE ALL ON TABLE public.agent_missions, public.agent_events, public.agent_tenant_context_keys FROM PUBLIC`,
+		`REVOKE ALL ON TABLE public.agent_missions, public.agent_events, public.agent_tenant_context_keys FROM ollama_agent_runtime`,
 		`REVOKE TRUNCATE, REFERENCES, TRIGGER ON TABLE public.agent_missions, public.agent_events FROM ollama_agent_runtime`,
 		`GRANT USAGE ON SCHEMA public TO ollama_agent_runtime`,
 		`GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.agent_missions, public.agent_events TO ollama_agent_runtime`,

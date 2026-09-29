@@ -3,6 +3,7 @@
 package agent
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
 	"encoding/hex"
@@ -468,7 +469,7 @@ func TestDistributedPostgresRLSAndEvents(t *testing.T) {
 		name  string
 		query string
 	}{
-		{name: "read signing key", query: `SELECT secret FROM agent_tenant_context_key`},
+		{name: "read signing key", query: `SELECT secret FROM agent_tenant_context_keys`},
 		{name: "assume migrator role", query: `SET ROLE ollama_agent_migrator`},
 		{name: "create schema object", query: `CREATE TABLE agent_runtime_forbidden_ddl(id INT)`},
 	} {
@@ -2315,6 +2316,7 @@ func TestDistributedPostgresRuntimeRejectsRLSDrift(t *testing.T) {
 		{name: "references-granted", mutate: `GRANT REFERENCES ON public.agent_events TO ollama_agent_runtime`},
 		{name: "trigger-granted", mutate: `GRANT TRIGGER ON public.agent_missions TO ollama_agent_runtime`},
 		{name: "temporary-objects-granted", mutate: `GRANT TEMP ON DATABASE ollama_agent TO ollama_agent_runtime`},
+		{name: "active-key-uniqueness-index-dropped", mutate: `DROP INDEX public.agent_tenant_context_keys_one_active_uidx`},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -2402,4 +2404,230 @@ func TestDistributedPostgresRuntimeRejectsRLSDrift(t *testing.T) {
 			t.Fatal("migration remained blocked after runtime transaction released its security lock")
 		}
 	})
+}
+
+func TestDistributedPostgresTenantKeyRotation(t *testing.T) {
+	adminDSN := os.Getenv("OLLAMA_AGENT_TEST_POSTGRES_ADMIN_URL")
+	runtimeDSN := os.Getenv("OLLAMA_AGENT_TEST_POSTGRES_RUNTIME_URL")
+	migratorDSN := os.Getenv("OLLAMA_AGENT_TEST_POSTGRES_MIGRATOR_URL")
+	currentKey, keyErr := hex.DecodeString(os.Getenv("OLLAMA_AGENT_TEST_POSTGRES_TENANT_KEY"))
+	if adminDSN == "" || runtimeDSN == "" || migratorDSN == "" || keyErr != nil || len(currentKey) < 32 {
+		t.Skip("admin/runtime/migrator PostgreSQL DSNs and a 64+ byte hex tenant key are required")
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
+	defer cancel()
+	adminDB, err := sql.Open("pgx", adminDSN)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer adminDB.Close()
+	assertRuntimeLogin := func(want bool) {
+		t.Helper()
+		var canLogin bool
+		if err := adminDB.QueryRowContext(ctx, `SELECT rolcanlogin FROM pg_catalog.pg_roles WHERE rolname='ollama_agent_runtime'`).Scan(&canLogin); err != nil || canLogin != want {
+			t.Fatalf("runtime rolcanlogin=%v err=%v, want %v", canLogin, err, want)
+		}
+	}
+	migratorDB, err := sql.Open("pgx", migratorDSN)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := MigratePostgresAgentSchemaVersioned(ctx, migratorDSN, currentKey, 1); err != nil {
+		t.Fatalf("initialize a fresh/compatible version-1 keyring: %v", err)
+	}
+	t.Cleanup(func() {
+		defer migratorDB.Close()
+		cleanupCtx, cleanupCancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cleanupCancel()
+		cleanupTx, cleanupErr := migratorDB.BeginTx(cleanupCtx, nil)
+		if cleanupErr != nil {
+			t.Errorf("begin PostgreSQL keyring fixture cleanup: %v", cleanupErr)
+			return
+		}
+		cleanupStatements := []string{
+			`CREATE TABLE IF NOT EXISTS public.agent_tenant_context_keys (key_version INTEGER PRIMARY KEY CHECK (key_version BETWEEN 1 AND 999999999), secret BYTEA NOT NULL CHECK (octet_length(secret) >= 32), is_active BOOLEAN NOT NULL DEFAULT FALSE)`,
+			`CREATE UNIQUE INDEX IF NOT EXISTS agent_tenant_context_keys_one_active_uidx ON public.agent_tenant_context_keys (is_active) WHERE is_active`,
+			`DROP TABLE IF EXISTS public.agent_tenant_context_key`,
+			`UPDATE public.agent_tenant_context_keys SET is_active=FALSE WHERE is_active`,
+			`DELETE FROM public.agent_tenant_context_keys WHERE key_version<>1`,
+		}
+		for _, statement := range cleanupStatements {
+			if _, cleanupErr = cleanupTx.ExecContext(cleanupCtx, statement); cleanupErr != nil {
+				break
+			}
+		}
+		if cleanupErr == nil {
+			_, cleanupErr = cleanupTx.ExecContext(cleanupCtx, `INSERT INTO public.agent_tenant_context_keys (key_version,secret,is_active) VALUES (1,$1,TRUE) ON CONFLICT (key_version) DO UPDATE SET secret=EXCLUDED.secret,is_active=TRUE`, currentKey)
+		}
+		if cleanupErr != nil {
+			_ = cleanupTx.Rollback()
+			t.Errorf("restore PostgreSQL keyring test fixture: %v", cleanupErr)
+			return
+		}
+		if cleanupErr = cleanupTx.Commit(); cleanupErr != nil {
+			t.Errorf("commit PostgreSQL keyring fixture cleanup: %v", cleanupErr)
+		}
+	})
+	for _, statement := range []string{
+		`DROP TABLE public.agent_tenant_context_keys`,
+		`CREATE TABLE public.agent_tenant_context_key (key_id BOOLEAN PRIMARY KEY DEFAULT TRUE CHECK (key_id), secret BYTEA NOT NULL CHECK (octet_length(secret)>=32))`,
+	} {
+		if _, err := migratorDB.ExecContext(ctx, statement); err != nil {
+			t.Fatalf("prepare legacy singleton-key fixture: %v", err)
+		}
+	}
+	if _, err := migratorDB.ExecContext(ctx, `INSERT INTO public.agent_tenant_context_key (key_id,secret) VALUES (TRUE,$1)`, currentKey); err != nil {
+		t.Fatalf("seed legacy singleton-key fixture: %v", err)
+	}
+	if err := MigratePostgresAgentSchemaVersioned(ctx, migratorDSN, currentKey, 1); err != nil {
+		t.Fatalf("import legacy key and create version-1 keyring: %v", err)
+	}
+	var importedVersion int
+	var legacyKeyTableRemains bool
+	if err := migratorDB.QueryRowContext(ctx, `SELECT key_version FROM public.agent_tenant_context_keys WHERE is_active`).Scan(&importedVersion); err != nil || importedVersion != 1 {
+		t.Fatalf("legacy import active version=%d err=%v, want version 1", importedVersion, err)
+	}
+	if err := migratorDB.QueryRowContext(ctx, `SELECT pg_catalog.to_regclass('public.agent_tenant_context_key') IS NOT NULL`).Scan(&legacyKeyTableRemains); err != nil || legacyKeyTableRemains {
+		t.Fatalf("legacy singleton key table remains=%v err=%v, want table dropped", legacyKeyTableRemains, err)
+	}
+	if _, err := migratorDB.ExecContext(ctx, `UPDATE public.agent_tenant_context_keys SET is_active=FALSE WHERE key_version=1`); err != nil {
+		t.Fatalf("simulate zero-active keyring corruption: %v", err)
+	}
+	if err := MigratePostgresAgentSchemaVersioned(ctx, migratorDSN, currentKey, 1); err == nil || !strings.Contains(err.Error(), "cannot bootstrap a replacement key") {
+		t.Fatalf("ordinary migration with zero-active historical keyring error=%v, want fail-closed refusal", err)
+	}
+	var zeroActiveRows int
+	if err := migratorDB.QueryRowContext(ctx, `SELECT count(*) FROM public.agent_tenant_context_keys WHERE is_active`).Scan(&zeroActiveRows); err != nil || zeroActiveRows != 0 {
+		t.Fatalf("ordinary migration repaired zero-active keyring unexpectedly: active=%d err=%v", zeroActiveRows, err)
+	}
+	if _, err := migratorDB.ExecContext(ctx, `UPDATE public.agent_tenant_context_keys SET is_active=TRUE WHERE key_version=1`); err != nil {
+		t.Fatalf("restore version-1 fixture after zero-active test: %v", err)
+	}
+	runtimeV1, err := OpenPostgresRuntimeStoreVersioned(ctx, runtimeDSN, currentKey, 1)
+	if err != nil {
+		t.Fatalf("open version-1 runtime before rotation: %v", err)
+	}
+	defer runtimeV1.Close()
+	keyV2 := bytes.Repeat([]byte{0x72}, 32)
+	keyV3Rollback := append([]byte(nil), currentKey...)
+	if err := MigratePostgresAgentSchemaVersioned(ctx, migratorDSN, keyV2, 2); err == nil || !strings.Contains(err.Error(), "ordinary migrations do not rotate keys") {
+		t.Fatalf("ordinary migration with next key error=%v, want fail-closed refusal", err)
+	}
+	operation := runtimeV1.WithOrganization("org_rotation_lock_probe")
+	tx, _, cancelOperation, err := operation.begin(ctx)
+	if err != nil {
+		t.Fatalf("begin runtime transaction before rotation: %v", err)
+	}
+	defer cancelOperation()
+	shortCtx, shortCancel := context.WithTimeout(ctx, 150*time.Millisecond)
+	rotationErr := RotatePostgresAgentTenantKey(shortCtx, adminDSN, migratorDSN, 1, currentKey, 2, keyV2)
+	shortCancel()
+	if rotationErr == nil || !strings.Contains(rotationErr.Error(), "runtime is not quiescent") {
+		_ = tx.Rollback()
+		t.Fatalf("rotation while a runtime transaction is active error=%v, want enforced quiescence refusal", rotationErr)
+	}
+	assertRuntimeLogin(true)
+	var activeVersion int
+	if err := migratorDB.QueryRowContext(ctx, `SELECT key_version FROM public.agent_tenant_context_keys WHERE is_active`).Scan(&activeVersion); err != nil || activeVersion != 1 {
+		_ = tx.Rollback()
+		t.Fatalf("active version after timed-out rotation=%d err=%v, want unchanged version 1", activeVersion, err)
+	}
+	if err := tx.Commit(); err != nil {
+		t.Fatalf("release runtime security lock: %v", err)
+	}
+	if err := runtimeV1.Close(); err != nil {
+		t.Fatalf("close runtime pool before rotation: %v", err)
+	}
+	lockTx, err := migratorDB.BeginTx(ctx, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := lockTx.ExecContext(ctx, `SELECT pg_catalog.pg_advisory_xact_lock_shared($1)`, postgresTenantSecurityMigrationLock); err != nil {
+		_ = lockTx.Rollback()
+		t.Fatal(err)
+	}
+	shortCtx, shortCancel = context.WithTimeout(ctx, 150*time.Millisecond)
+	rotationErr = RotatePostgresAgentTenantKey(shortCtx, adminDSN, migratorDSN, 1, currentKey, 2, keyV2)
+	shortCancel()
+	if rotationErr == nil || !strings.Contains(rotationErr.Error(), "drain PostgreSQL tenant transactions") {
+		_ = lockTx.Rollback()
+		t.Fatalf("rotation while an advisory-locked migrator transaction remains error=%v, want bounded drain failure", rotationErr)
+	}
+	assertRuntimeLogin(true)
+	if err := lockTx.Rollback(); err != nil {
+		t.Fatalf("release migration advisory lock: %v", err)
+	}
+	if err := RotatePostgresAgentTenantKey(ctx, adminDSN, migratorDSN, 1, currentKey, 2, keyV2); err != nil {
+		t.Fatalf("rotate key version 1 to 2: %v", err)
+	}
+	assertRuntimeLogin(true)
+	if staleRuntime, err := OpenPostgresRuntimeStoreVersioned(ctx, runtimeDSN, currentKey, 1); err == nil {
+		_ = staleRuntime.Close()
+		t.Fatal("old runtime key version 1 reopened after the version-2 key committed")
+	}
+	if err := RotatePostgresAgentTenantKey(ctx, adminDSN, migratorDSN, 1, currentKey, 2, keyV2); err == nil || !strings.Contains(err.Error(), "does not match the active database key") {
+		t.Fatalf("stale concurrent/retried rotation error=%v, want current-key mismatch", err)
+	}
+	if staleRuntime, err := OpenPostgresRuntimeStoreVersioned(ctx, runtimeDSN, currentKey, 1); err == nil {
+		_ = staleRuntime.Close()
+		t.Fatal("old runtime key version 1 opened after active version changed to 2")
+	}
+	runtimeV2, err := OpenPostgresRuntimeStoreVersioned(ctx, runtimeDSN, keyV2, 2)
+	if err != nil {
+		t.Fatalf("new runtime key version 2 failed readiness: %v", err)
+	}
+	if err := runtimeV2.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := MigratePostgresAgentSchemaVersioned(ctx, migratorDSN, keyV2, 2); err != nil {
+		t.Fatalf("ordinary migration with active version-2 key: %v", err)
+	}
+	if err := RotatePostgresAgentTenantKey(ctx, adminDSN, migratorDSN, 2, keyV2, 3, keyV3Rollback); err != nil {
+		t.Fatalf("rollback to prior secret using monotonic version 3: %v", err)
+	}
+	runtimeV3, err := OpenPostgresRuntimeStoreVersioned(ctx, runtimeDSN, keyV3Rollback, 3)
+	if err != nil {
+		t.Fatalf("rollback runtime version 3 failed readiness: %v", err)
+	}
+	if err := runtimeV3.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := migratorDB.QueryRowContext(ctx, `SELECT key_version FROM public.agent_tenant_context_keys WHERE is_active`).Scan(&activeVersion); err != nil || activeVersion != 3 {
+		t.Fatalf("final active key version=%d err=%v, want monotonic rollback version 3", activeVersion, err)
+	}
+	if _, err := migratorDB.ExecContext(ctx, `INSERT INTO public.agent_tenant_context_keys (key_version,secret,is_active) VALUES (8,$1,FALSE)`, bytes.Repeat([]byte{0x88}, 32)); err != nil {
+		t.Fatalf("create inactive high-water fixture: %v", err)
+	}
+	if err := RotatePostgresAgentTenantKey(ctx, adminDSN, migratorDSN, 3, keyV3Rollback, 4, bytes.Repeat([]byte{0x44}, 32)); err == nil || !strings.Contains(err.Error(), "highest recorded version 8") {
+		_, _ = migratorDB.ExecContext(ctx, `DELETE FROM public.agent_tenant_context_keys WHERE key_version=8`)
+		t.Fatalf("rotation below keyring high-water mark error=%v, want version reuse refusal", err)
+	}
+	if _, err := migratorDB.ExecContext(ctx, `DELETE FROM public.agent_tenant_context_keys WHERE key_version=8`); err != nil {
+		t.Fatalf("remove inactive high-water fixture: %v", err)
+	}
+	concurrentResults := make(chan error, 2)
+	for _, candidate := range []struct {
+		version int
+		key     []byte
+	}{{4, bytes.Repeat([]byte{0x44}, 32)}, {5, bytes.Repeat([]byte{0x55}, 32)}} {
+		candidate := candidate
+		go func() {
+			concurrentResults <- RotatePostgresAgentTenantKey(ctx, adminDSN, migratorDSN, 3, keyV3Rollback, candidate.version, candidate.key)
+		}()
+	}
+	concurrentSuccesses := 0
+	for range 2 {
+		if err := <-concurrentResults; err == nil {
+			concurrentSuccesses++
+		}
+	}
+	if concurrentSuccesses != 1 {
+		t.Fatalf("concurrent rotations succeeded %d times; expected exactly one serialized commit", concurrentSuccesses)
+	}
+	if err := migratorDB.QueryRowContext(ctx, `SELECT key_version FROM public.agent_tenant_context_keys WHERE is_active`).Scan(&activeVersion); err != nil || (activeVersion != 4 && activeVersion != 5) {
+		t.Fatalf("active key after concurrent rotations=%d err=%v, want winner 4 or 5", activeVersion, err)
+	}
+	if _, err := migratorDB.ExecContext(ctx, `UPDATE public.agent_tenant_context_keys SET is_active=TRUE WHERE key_version=1`); err == nil {
+		t.Fatal("keyring partial unique index permitted two simultaneously active key versions")
+	}
 }

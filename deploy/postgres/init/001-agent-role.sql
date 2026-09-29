@@ -14,6 +14,10 @@ REVOKE CREATE, TEMPORARY ON DATABASE ollama_agent FROM PUBLIC;
 REVOKE CREATE, TEMPORARY ON DATABASE ollama_agent FROM ollama_agent_runtime;
 
 \connect ollama_agent
+-- pgcrypto is a trusted database prerequisite but extension creation remains
+-- privileged on supported PostgreSQL builds. Install it as the bootstrap
+-- administrator, never as the runtime or migrator role.
+CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA public;
 ALTER SCHEMA public OWNER TO ollama_agent_migrator;
 REVOKE CREATE ON SCHEMA public FROM PUBLIC;
 GRANT USAGE ON SCHEMA public TO ollama_agent_runtime;

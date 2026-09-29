@@ -20,6 +20,7 @@ type PostgresStore struct {
 	timeout          time.Duration
 	organizationID   string
 	tenantContextKey []byte
+	tenantKeyVersion int
 	requestContext   context.Context
 }
 
@@ -41,7 +42,7 @@ func (s *PostgresStore) WithOrganizationContext(ctx context.Context, organizatio
 	if ctx == nil {
 		ctx = context.Background()
 	}
-	return &PostgresStore{db: s.db, timeout: s.timeout, organizationID: strings.TrimSpace(organizationID), tenantContextKey: s.tenantContextKey, requestContext: ctx}
+	return &PostgresStore{db: s.db, timeout: s.timeout, organizationID: strings.TrimSpace(organizationID), tenantContextKey: s.tenantContextKey, tenantKeyVersion: s.tenantKeyVersion, requestContext: ctx}
 }
 
 func (s *PostgresStore) begin(ctx context.Context) (*sql.Tx, context.Context, context.CancelFunc, error) {

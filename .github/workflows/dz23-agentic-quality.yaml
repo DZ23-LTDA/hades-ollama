@@ -283,7 +283,7 @@ jobs:
             "SELECT format('%s/%s', (SELECT count(*) FROM agent_missions WHERE id='mis_legacy_fixture'), (SELECT count(*) FROM agent_events WHERE id='evt_legacy_fixture'))")"
           test "$restored_state" = "1/1"
 
-          unset OLLAMA_AGENT_TEST_POSTGRES_ADMIN_URL OLLAMA_AGENT_TEST_POSTGRES_LEGACY_URL
+          unset OLLAMA_AGENT_TEST_POSTGRES_LEGACY_URL
           CGO_ENABLED=0 go test -tags integration ./internal/agent -run TestDistributed -count=1 -v
       - name: Stop distributed dependencies
         if: always()

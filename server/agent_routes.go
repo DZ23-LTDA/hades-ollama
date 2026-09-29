@@ -145,7 +145,11 @@ func newDefaultAgentRuntime() (*agent.Runtime, error) {
 		if err != nil || len(key) < 32 {
 			return nil, errors.New("OLLAMA_AGENT_TENANT_CONTEXT_KEY must be at least 64 hexadecimal characters")
 		}
-		postgres, err := agent.OpenPostgresRuntimeStore(context.Background(), databaseURL, key)
+		version, err := agentTenantContextKeyVersionFromEnv()
+		if err != nil {
+			return nil, err
+		}
+		postgres, err := agent.OpenPostgresRuntimeStoreVersioned(context.Background(), databaseURL, key, version)
 		if err != nil {
 			return nil, err
 		}
@@ -2686,4 +2690,16 @@ func statusForAgentError(err error) int {
 		return http.StatusNotFound
 	}
 	return http.StatusBadRequest
+}
+
+func agentTenantContextKeyVersionFromEnv() (int, error) {
+	raw := strings.TrimSpace(os.Getenv("OLLAMA_AGENT_TENANT_CONTEXT_KEY_VERSION"))
+	if raw == "" {
+		return 1, nil
+	}
+	version, err := strconv.Atoi(raw)
+	if err != nil || version < 1 || version > 999999999 {
+		return 0, errors.New("OLLAMA_AGENT_TENANT_CONTEXT_KEY_VERSION must be an integer between 1 and 999999999")
+	}
+	return version, nil
 }

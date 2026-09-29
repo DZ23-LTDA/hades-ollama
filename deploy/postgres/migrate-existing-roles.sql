@@ -173,6 +173,7 @@ BEGIN
     WHERE p.pronamespace='public'::pg_catalog.regnamespace
       AND p.proowner=(SELECT oid FROM pg_catalog.pg_roles WHERE rolname='ollama_agent')
       AND p.prokind IN ('f','p')
+      AND NOT EXISTS (SELECT 1 FROM pg_catalog.pg_depend d WHERE d.classid='pg_catalog.pg_proc'::pg_catalog.regclass AND d.objid=p.oid AND d.deptype='e')
   LOOP
     command_text := pg_catalog.format('ALTER %s %I.%I(%s) OWNER TO ollama_agent_migrator',
       CASE object_row.prokind WHEN 'p' THEN 'PROCEDURE' ELSE 'FUNCTION' END,
@@ -201,7 +202,12 @@ BEGIN
       object_row.typname);
     EXECUTE command_text;
   END LOOP;
+
 END
 $transfer_public_objects$;
+
+-- Also transfer extension ownership and any catalog object kinds not handled
+-- by the explicit supported public-schema inventory above.
+REASSIGN OWNED BY ollama_agent TO ollama_agent_migrator;
 
 COMMIT;
