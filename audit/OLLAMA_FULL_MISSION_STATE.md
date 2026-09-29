@@ -1170,3 +1170,8 @@ Review detectou que o guia chamava o SHA inicial da rodada de segurança `65cb08
 ## Verificação do candidato de handoff — 2026-09-29 18:19 -03
 
 O candidato `ollama-full-handoff-20260929-v2.zip` foi criado e validado em CRC/manifest (1.871 entradas, 132.569.470 bytes); bundle de quatro refs validado e comparação byte a byte confirmou o ZIP visual copiado. SHA-256 do candidato `3ac44659eb923285ead1c04d3d4d0b8cf8fd9748f093fca33b40bbe539a46056`. Esse candidato foi gerado do source SHA `304f1224...`; antes da entrega, este próprio checkpoint será commitado/pushado e o pacote definitivo regenerado do novo SHA para conter a atualização também. Próximo passo: push normal desta nota e rebuild final, depois `unzip -t`, `sha256sum -c` e confirmar que source SHA, bundle recovery ref e origin head coincidem.
+
+
+## Pacote de passagem de bastão — pronto para rebuild final — 2026-09-29 18:21 -03
+
+O checkout recovery está em `0ba6b15f5dc55c0b8667a5561478a14bf81e3fd4`, limpo e alinhado com origin. O snapshot v3 foi exportado desse SHA, o Git bundle validou exatamente main/recovery/PR38/UI, o ZIP visual foi comparado byte a byte, o manifest SHA-256 passou e `zip -T`/`unzip -t` passaram; 1.871 entradas e ~132.6 MB. Antes da entrega, este checkpoint será publicado por commit normal; em seguida o pacote será recriado do SHA desse commit e só será entregue quando README SOURCE_SNAPSHOT_SHA, bundle recovery ref e origin coincidirem. Conteúdo aprovado conforme escopo confirmado: source tracked, históricos refs, checkpoints/guia, ZIP visual binário; sem backup P: velho, secrets, `.git` dir, cache ou DB dumps. Não foram mescladas outras branches. Próxima/última etapa: push deste checkpoint, rebuild final, validar checksums/CRC, entregar link e hash externo.

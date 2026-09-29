@@ -107,4 +107,4 @@ Base recovery `3203fa1f732a013c35bd46467a2c15debdd27466`. PR #38 (`07a4f0bca2cbe
 
 ## Estado final do empacotamento
 
-O primeiro candidato ZIP passou checksums/CRC, com SHA256 `3ac44659eb923285ead1c04d3d4d0b8cf8fd9748f093fca33b40bbe539a46056`, mas foi criado a partir de `304f1224...` antes da última atualização documental. Ele será substituído por arquivo final gerado do commit que contém esta nota. Para decidir qual baixar, use somente o artefato cujo `SOURCE_SNAPSHOT_SHA` no README bate com `recovery/ollama-full-snapshot` e cuja SHA/size forem entregues no chat.
+Os ZIPs intermediários anteriores são superseded. Entregar apenas o artefato final cujo `SOURCE_SNAPSHOT_SHA` no `README-START-HERE.md` corresponda ao head de recovery gravado no Git bundle e confirmado no origin. A auditoria final é commitada antes de gerar esse artefato; checksum/tamanho do ZIP são enviados no chat para evitar registrar num arquivo conteúdo auto-referente.

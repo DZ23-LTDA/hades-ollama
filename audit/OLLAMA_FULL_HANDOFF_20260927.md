@@ -321,3 +321,8 @@ Corrigido no guia novo o rótulo enganoso que podia indicar `65cb08...` como sna
 ## Evidência preliminar do pacote ZIP — 2026-09-29 18:19 -03
 
 Candidato v2 de 132.569.470 bytes (1.871 entradas) passou `zip -T`, `unzip -t`, SHA256SUMS dos membros e `git bundle verify` (4 refs); cópia do ZIP visual comparada byte a byte com o original. Checksum do candidato v2 `3ac44659eb923285ead1c04d3d4d0b8cf8fd9748f093fca33b40bbe539a46056`. Esse não é o arquivo final a ser anexado: foi gerado no source `304f1224...`; após publicar esta atualização de auditoria, regenerar pelo SHA final, confirmar `SOURCE_SNAPSHOT_SHA`=bundle recovery=origin, recalcular SHA do ZIP e entregar somente o final validado.
+
+
+## Validação final para o pacote portable — 2026-09-29 18:21 -03
+
+O candidato v3 foi gerado do source SHA `0ba6b15f5dc55c0b8667a5561478a14bf81e3fd4`, passou manifesto, `git bundle verify`, `zip -T` e `unzip -t`; continha 1.871 entradas. O source SHA e recovery ref do bundle eram iguais, e o ZIP visual foi comparado byte a byte. Antes da entrega, publicar este último checkpoint e regenerar o ZIP do novo source SHA; esse arquivo reconstruído será o único final. Nenhum merge ou modificação em `main`, PR #38 ou UI parity.
