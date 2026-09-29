@@ -3,8 +3,13 @@
 @import "katex/dist/katex.min.css";
 
 @custom-variant dark {
+  /* Escuro forçado pelo controle de tema (Aparência). */
+  &:where(.theme-dark, .theme-dark *) {
+    @slot;
+  }
+  /* Automático: segue o sistema, exceto quando o tema Claro foi forçado. */
   @media (prefers-color-scheme: dark) {
-    &:not(.light-only, .light-only *) {
+    &:not(.theme-light, .theme-light *, .light-only, .light-only *) {
       @slot;
     }
   }
