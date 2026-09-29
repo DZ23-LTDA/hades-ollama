@@ -24,17 +24,112 @@ export type AgentSchedule = {
 
 export type AgentArtifact = { id: string; name: string; sha256: string; size: number; media_type?: string };
 export type AgentMission = {
-  id: string; version: number; objective: string; provider?: string; model?: string; workspace?: string; project_id?: string; organization_id?: string; capabilities?: string[];
-  workspace_isolated?: boolean; workspace_snapshot_id?: string; workspace_snapshot_sha256?: string; state: string; plan?: Array<{ id: string; title: string; kind: string; state: string; requires_approval: boolean }>;
-  approvals?: Array<{ id: string; step_id: string; status: string; policy?: string; nonce?: string; reason?: string }>;
-  artifacts?: AgentArtifact[]; last_error?: string; created_at: string; updated_at: string;
+  id: string;
+  version: number;
+  objective: string;
+  provider?: string;
+  model?: string;
+  workspace?: string;
+  project_id?: string;
+  organization_id?: string;
+  capabilities?: string[];
+  workspace_isolated?: boolean;
+  workspace_snapshot_id?: string;
+  workspace_snapshot_sha256?: string;
+  state: string;
+  plan?: Array<{
+    id: string;
+    title: string;
+    kind: string;
+    state: string;
+    requires_approval: boolean;
+  }>;
+  approvals?: Array<{
+    id: string;
+    step_id: string;
+    status: string;
+    policy?: string;
+    nonce?: string;
+    reason?: string;
+  }>;
+  artifacts?: AgentArtifact[];
+  last_error?: string;
+  created_at: string;
+  updated_at: string;
 };
-export type AgentEvent = { id: string; type: string; step_id?: string; created_at: string; payload?: unknown };
-export type AgentConnector = { id: string; provider: string; base_url: string; token_env?: string; oauth_provider?: string; allowed_origins?: string[]; operations?: Array<{ name: string; methods: string[]; path_prefixes: string[] }>; disabled?: boolean; credential_configured?: boolean };
-export type AgentConnectorCatalogEntry = { id: string; name: string; category: string; kind: string; description: string; auth: string; source: string; status: string; scopes?: string[] };
-export type AgentMCPServer = { id: string; organization_id?: string; command?: string; url?: string; token_env?: string; headers_env?: Record<string, string>; transport?: string; args?: string[]; allowed_methods?: string[]; environment_vars?: string[]; timeout_seconds?: number; disabled?: boolean };
-export type AgentSkill = { id: string; organization_id?: string; version: string; description: string; scopes?: string[]; tools?: string[]; trusted: boolean; enabled: boolean };
-export type AgentCLIStatus = { id: string; name: string; section: string; visibility: string; mode: string; executables?: string[]; installed: boolean; executable?: string };
+export type AgentEvent = {
+  id: string;
+  type: string;
+  step_id?: string;
+  created_at: string;
+  payload?: unknown;
+};
+export type AgentConnector = {
+  organization_id?: string;
+  id: string;
+  provider: string;
+  base_url: string;
+  token_env?: string;
+  oauth_provider?: string;
+  allowed_origins?: string[];
+  operations?: Array<{
+    name: string;
+    methods: string[];
+    path_prefixes: string[];
+  }>;
+  disabled?: boolean;
+  credential_configured?: boolean;
+};
+export type AgentConnectorCatalogEntry = {
+  id: string;
+  name: string;
+  category: string;
+  kind: string;
+  description: string;
+  auth: string;
+  source: string;
+  status: string;
+  scopes?: string[];
+  api_base_url?: string;
+  api_auth_header?: string;
+  api_auth_scheme?: string;
+  api_self_hosted?: boolean;
+  quick_connect?: boolean;
+};
+export type AgentMCPServer = {
+  id: string;
+  organization_id?: string;
+  command?: string;
+  url?: string;
+  token_env?: string;
+  headers_env?: Record<string, string>;
+  transport?: string;
+  args?: string[];
+  allowed_methods?: string[];
+  environment_vars?: string[];
+  timeout_seconds?: number;
+  disabled?: boolean;
+};
+export type AgentSkill = {
+  id: string;
+  organization_id?: string;
+  version: string;
+  description: string;
+  scopes?: string[];
+  tools?: string[];
+  trusted: boolean;
+  enabled: boolean;
+};
+export type AgentCLIStatus = {
+  id: string;
+  name: string;
+  section: string;
+  visibility: string;
+  mode: string;
+  executables?: string[];
+  installed: boolean;
+  executable?: string;
+};
 
 export type CompanyDepartment = { id: string; name: string; mandate: string; autonomy: string; approval_required?: string[] };
 export type CompanyRoadmapItem = { id: string; title: string; description?: string; owner_department?: string; priority: number; status: string; due_at?: string };
@@ -100,11 +195,38 @@ function agentHeaders(): Record<string, string> {
   if (!agentSession) return {};
   return { Authorization: `Bearer ${agentSession.token}`, ...(agentSession.organization ? { "X-Ollama-Organization": agentSession.organization } : {}) };
 }
-export async function agentFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
-  const response = await fetch(`${API_BASE}${path}`, { ...init, headers: { "Content-Type": "application/json", ...agentHeaders(), ...(init.headers ?? {}) } });
+export function agentSessionHeaders(): Record<string, string> {
+  return agentHeaders();
+}
+export const AGENT_LOGIN_REQUIRED_MESSAGE =
+  'O Ollama está exposto na rede, então os recursos de agente exigem login. Entre em Configurações → Workspace ou desative "Expose Ollama to the network" em Configurações.';
+export async function agentFetch<T>(
+  path: string,
+  init: RequestInit = {},
+): Promise<T> {
+  const response = await fetch(`${API_BASE}${path}`, {
+    ...init,
+    headers: {
+      "Content-Type": "application/json",
+      ...agentHeaders(),
+      ...(init.headers ?? {}),
+    },
+  });
+  const contentType = response.headers.get("content-type") ?? "";
+  if (
+    response.ok &&
+    response.status !== 204 &&
+    contentType.includes("text/html")
+  ) {
+    // An API route falling through to the SPA must never be parsed as empty JSON.
+    throw new Error("Agent API indisponível: resposta inesperada do servidor");
+  }
   const body = await response.json().catch(() => ({}));
   if (!response.ok) {
     if (response.status === 401) clearAgentSession();
+    if (response.status === 401 && body?.error === "bearer token is required") {
+      throw new Error(AGENT_LOGIN_REQUIRED_MESSAGE);
+    }
     throw new Error(typeof body?.error === "string" ? body.error : response.statusText || "Agent API request failed");
   }
   return body as T;

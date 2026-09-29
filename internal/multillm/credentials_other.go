@@ -8,6 +8,8 @@ import (
 	"strings"
 )
 
+const credentialFileExtension = ".key"
+
 var errUnsupportedProtectedCredential = errors.New("protected credential format is unsupported on this platform")
 
 func credentialFilePermissionsSafe(info os.FileInfo) bool {

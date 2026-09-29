@@ -8,6 +8,7 @@ import { useRefetchModels } from "./useModels";
 import { useStreamingContext } from "@/contexts/useStreamingContext";
 import { getModelCapabilities } from "@/api";
 import { useCloudStatus } from "./useCloudStatus";
+import { markAnonymousChat, shouldSendTemporary } from "@/lib/anonymousChat";
 
 export const useChats = () => {
   return useQuery({
@@ -308,6 +309,7 @@ export const useSendMessage = (chatId: string) => {
         modified_at: selectedModel.modified_at,
       });
 
+      const temporary = shouldSendTemporary(chatId);
       const abortController = new AbortController();
       setAbortControllers((prev) => {
         const newMap = new Map(prev);
@@ -326,6 +328,7 @@ export const useSendMessage = (chatId: string) => {
         fileTools,
         forceUpdate,
         think,
+        temporary,
       );
       let currentChatId = chatId;
       let isCancelled = false;
@@ -669,6 +672,7 @@ export const useSendMessage = (chatId: string) => {
           case "chat_created": {
             if (!event.chatId) break;
             const newId = event.chatId;
+            if (temporary) markAnonymousChat(newId);
             updatableChatId = newId;
             setStreamingChatIds((prev: Set<string>) => {
               const newSet = new Set(prev);

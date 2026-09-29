@@ -524,6 +524,7 @@ export class ChatRequest {
     file_tools?: boolean;
     forceUpdate?: boolean;
     think?: any;
+    temporary?: boolean;
 
     constructor(source: any = {}) {
         if ('string' === typeof source) source = JSON.parse(source);
@@ -535,6 +536,7 @@ export class ChatRequest {
         this.file_tools = source["file_tools"];
         this.forceUpdate = source["forceUpdate"];
         this.think = source["think"];
+        this.temporary = source["temporary"];
     }
 
 	convertValues(a: any, classs: any, asMap: boolean = false): any {

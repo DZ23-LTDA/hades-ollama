@@ -42,7 +42,36 @@ var (
 	UserAgentOS       string
 
 	VerifyDownload func() error
+
+	// AllowedUpdateURLPrefixes lists where this distribution may download
+	// installers from. The update endpoint above is upstream Ollama's; without
+	// this allowlist the updater would stage the official OllamaSetup.exe and
+	// replace the Classe A+ build on the next restart.
+	AllowedUpdateURLPrefixes = []string{
+		"https://github.com/DZ23-LTDA/ollama-classe-a-plus/releases/download/",
+	}
 )
+
+// updateURLAllowed reports whether an advertised installer URL belongs to this
+// distribution. Loopback URLs served by the same host as the update check are
+// accepted so local test servers keep working.
+func updateURLAllowed(updateURL string) bool {
+	target, err := url.Parse(updateURL)
+	if err != nil || target.Host == "" {
+		return false
+	}
+	for _, prefix := range AllowedUpdateURLPrefixes {
+		if strings.HasPrefix(updateURL, prefix) {
+			return true
+		}
+	}
+	check, err := url.Parse(UpdateCheckURLBase)
+	if err != nil {
+		return false
+	}
+	host := check.Hostname()
+	return (host == "127.0.0.1" || host == "::1" || host == "localhost") && target.Host == check.Host
+}
 
 // TODO - maybe move up to the API package?
 type UpdateResponse struct {
@@ -126,6 +155,10 @@ func (u *Updater) checkForUpdate(ctx context.Context) (bool, UpdateResponse) {
 	if err != nil {
 		slog.Warn(fmt.Sprintf("malformed response checking for update: %s", err))
 		return false, updateResp
+	}
+	if !updateURLAllowed(updateResp.UpdateURL) {
+		slog.Info("ignoring update from outside this distribution", "url", updateResp.UpdateURL)
+		return false, UpdateResponse{}
 	}
 	// Extract the version string from the URL in the github release artifact path
 	updateResp.UpdateVersion = path.Base(path.Dir(updateResp.UpdateURL))

@@ -130,6 +130,9 @@ type ChatRequest struct {
 	FileTools   *bool        `json:"file_tools,omitempty"`
 	ForceUpdate bool         `json:"forceUpdate,omitempty"`
 	Think       any          `json:"think,omitempty"`
+	// Temporary starts an anonymous chat that is kept in memory only and
+	// never written to history. Only honored when the chat is created.
+	Temporary bool `json:"temporary,omitempty"`
 }
 
 type Error struct {

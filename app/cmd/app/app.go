@@ -248,6 +248,8 @@ func main() {
 	// making the webview a global variable is easier for now
 	wv.Store = st
 	done := make(chan error, 1)
+	// Publish saved provider keys before the Ollama server inherits the env.
+	ui.AdoptProviderCredentials()
 	osrv := server.New(st, devMode)
 	go func() {
 		slog.Info("starting ollama server")

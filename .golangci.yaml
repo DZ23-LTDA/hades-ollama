@@ -24,7 +24,22 @@ linters:
     paths:
       - node_modules/
       - app/ui/app/dist/
+    rules:
+      # User-facing Portuguese copy (connector catalog, prompts for attached files).
+      - path: (internal/agent/connector_catalog|app/ui/attachment_budget)\.go
+        linters:
+          - misspell
   settings:
+    misspell:
+      # Comments in the DZ23 packages are written in Portuguese; these are
+      # correct Portuguese words, not English misspellings.
+      ignore-rules:
+        - inferir
+        - persistente
+        - conversas
+        - componentes
+        # misspell splits words at accented letters ("conversão" -> "convers").
+        - convers
     depguard:
       rules:
         test-only-packages:

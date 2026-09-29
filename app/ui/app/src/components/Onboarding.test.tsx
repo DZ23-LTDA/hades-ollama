@@ -452,39 +452,53 @@ describe("Onboarding", () => {
   });
 
   it("offers ChatGPT when the catalog has no desktop metadata", () => {
-    const html = renderToStaticMarkup(
-      <ConnectAppsScreen initialIntegrations={appsIntegrations(true)} />,
-    );
-    expect(html).toContain('id="integration-chatgpt"');
+    // Desktop integrations are hidden on Windows; pin a non-Windows host so the
+    // result does not depend on the machine running the suite.
+    vi.stubGlobal("navigator", { platform: "MacIntel" });
+    try {
+      const html = renderToStaticMarkup(
+        <ConnectAppsScreen initialIntegrations={appsIntegrations(true)} />,
+      );
+      expect(html).toContain('id="integration-chatgpt"');
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 
   it("shows initial Claude recovery guidance without error styling", () => {
-    const html = renderToStaticMarkup(
-      <ConnectAppsScreen
-        completionError={null}
-        onRetryCompletion={vi.fn()}
-        initialClaudeStatus={{
-          supported: true,
-          used: true,
-          installed: true,
-          configured: true,
-          connected: false,
-          running: false,
-          startFailed: true,
-          portConflict: false,
-          error: "Cloud models are off. Select an installed model in Settings.",
-        }}
-        initialIntegrations={[
-          {
-            id: "claude-desktop",
-            name: "Claude",
-            description: "Use Ollama models in Claude Desktop",
+    vi.stubGlobal("navigator", { platform: "MacIntel" });
+    let html: string;
+    try {
+      html = renderToStaticMarkup(
+        <ConnectAppsScreen
+          completionError={null}
+          onRetryCompletion={vi.fn()}
+          initialClaudeStatus={{
+            supported: true,
+            used: true,
             installed: true,
-            action: "connect",
-          },
-        ]}
-      />,
-    );
+            configured: true,
+            connected: false,
+            running: false,
+            startFailed: true,
+            portConflict: false,
+            error:
+              "Cloud models are off. Select an installed model in Settings.",
+          }}
+          initialIntegrations={[
+            {
+              id: "claude-desktop",
+              name: "Claude",
+              description: "Use Ollama models in Claude Desktop",
+              installed: true,
+              action: "connect",
+            },
+          ]}
+        />,
+      );
+    } finally {
+      vi.unstubAllGlobals();
+    }
 
     expect(html).toContain(
       "Cloud models are off. Select an installed model in Settings.",

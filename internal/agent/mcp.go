@@ -103,7 +103,7 @@ func (m *MCPManager) register(config MCPServerConfig, organizationID string) err
 		return errors.New("MCP command must be an absolute executable path")
 	}
 	commandInfo, err := os.Lstat(config.Command)
-	if err != nil || commandInfo.Mode()&os.ModeSymlink != 0 || commandInfo.IsDir() || commandInfo.Mode()&0o111 == 0 {
+	if err != nil || commandInfo.Mode()&os.ModeSymlink != 0 || commandInfo.IsDir() || !isExecutableMode(config.Command, commandInfo) {
 		return errors.New("MCP command must be an executable regular file")
 	}
 	if len(config.Args) > 64 {
@@ -531,9 +531,13 @@ func (s *MCPServer) Call(ctx context.Context, method string, params any) (json.R
 		return nil, err
 	}
 	resultChannel := make(chan mcpResponse, 1)
+	// Capture the reader now: stopLocked (on timeout or cancellation) clears
+	// s.stdout, and reading the field from the goroutine raced with it and
+	// could dereference nil or read a restarted process's output.
+	stdout := s.stdout
 	go func() {
 		for {
-			line, err := readMCPMessage(s.stdout)
+			line, err := readMCPMessage(stdout)
 			if err != nil {
 				resultChannel <- mcpResponse{err: err}
 				return

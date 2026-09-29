@@ -297,6 +297,13 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle("POST /api/v1/cloud", handle(s.cloudSetting))
 	mux.Handle("GET /api/v1/models/cloud", handle(s.getCloudModels))
 	mux.Handle("GET /api/v1/integrations", handle(s.getIntegrationStatuses))
+	mux.Handle("GET /api/v1/providers", handle(s.listProviders))
+	mux.Handle("PUT /api/v1/providers/{name}/key", handle(s.setProviderKey))
+	mux.Handle("DELETE /api/v1/providers/{name}/key", handle(s.removeProviderKey))
+	mux.Handle("GET /api/v1/providers/{name}/models", handle(s.listProviderModels))
+	mux.Handle("PUT /api/v1/providers/{name}/models", handle(s.setProviderModels))
+	mux.Handle("PUT /api/v1/connectors/{id}/key", handle(s.connectConnector))
+	mux.Handle("DELETE /api/v1/connectors/{id}/key", handle(s.disconnectConnector))
 
 	// Ollama proxy endpoints
 	ollamaProxy := s.ollamaProxy()
@@ -308,6 +315,16 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle("POST /api/me", ollamaProxy)
 	mux.Handle("POST /api/signout", ollamaProxy)
 	mux.Handle("GET /api/experimental/model-recommendations", ollamaProxy)
+	mux.Handle("GET /api/dz23/cli-catalog", ollamaProxy)
+
+	// Agentic platform API (projects, missions, schedules, company, skills...)
+	// lives on the Ollama server. Without these routes the desktop UI server
+	// answered /api/agent/* with the SPA index.html and every agentic page
+	// crashed. Methods are listed explicitly so they do not conflict with the
+	// "OPTIONS /" preflight pattern.
+	for _, method := range []string{http.MethodGet, http.MethodHead, http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete} {
+		mux.Handle(method+" /api/agent/", ollamaProxy)
+	}
 
 	// React app - catch all non-API routes and serve the React app
 	mux.Handle("GET /", s.appHandler())
@@ -733,6 +750,13 @@ func (s *Server) chat(w http.ResponseWriter, r *http.Request) error {
 		return fmt.Errorf("empty message")
 	}
 
+	// Anonymous chats live only in memory: they are created with
+	// temporary=true and later turns are recognized by their id.
+	var chats chatPersistence = s.Store
+	if (createdChat && req.Temporary) || anonymousChats.has(cid) {
+		chats = anonymousChats
+	}
+
 	if createdChat {
 		// send message to the client that the chat has been created
 		json.NewEncoder(w).Encode(responses.ChatEvent{
@@ -749,7 +773,7 @@ func (s *Server) chat(w http.ResponseWriter, r *http.Request) error {
 	}
 
 	// Load chat with attachments since we need them for processing
-	chat, err := s.Store.ChatWithOptions(cid, true)
+	chat, err := chats.ChatWithOptions(cid, true)
 	if err != nil {
 		if !errors.Is(err, not.Found) {
 			return err
@@ -806,7 +830,7 @@ func (s *Server) chat(w http.ResponseWriter, r *http.Request) error {
 			chat.Messages = append(chat.Messages, userMsg)
 		}
 
-		if err := s.Store.SetChat(*chat); err != nil {
+		if err := chats.SetChat(*chat); err != nil {
 			return err
 		}
 	}
@@ -827,7 +851,7 @@ func (s *Server) chat(w http.ResponseWriter, r *http.Request) error {
 		// Create an empty assistant message to store the model information
 		// This will be overwritten when the model responds
 		chat.Messages = append(chat.Messages, store.NewMessage("assistant", "", &store.MessageOptions{Model: req.Model}))
-		if err := s.Store.SetChat(*chat); err != nil {
+		if err := chats.SetChat(*chat); err != nil {
 			cancelLoading()
 			return err
 		}
@@ -910,6 +934,22 @@ func (s *Server) chat(w http.ResponseWriter, r *http.Request) error {
 		thinkValue = think
 	}
 
+	// Attached projects larger than the context window are analyzed in
+	// batches first; the final answer receives the batch findings.
+	attachmentBudget := attachmentCharBudget(details)
+	var lastDigest *attachmentDigest
+	if n := len(chat.Messages); n > 0 && chat.Messages[n-1].Role == "user" && len(chat.Messages[n-1].Attachments) > 0 {
+		last := chat.Messages[n-1]
+		texts, _ := splitMessageAttachments(last.Attachments)
+		if _, _, overflow := splitAttachments(texts, attachmentBudget); len(overflow) > 0 {
+			digest := digestAttachments(ctx, c.Chat, req.Model, last.Content, overflow, attachmentBudget, func(status string) {
+				json.NewEncoder(w).Encode(responses.ChatEvent{EventName: "thinking", Thinking: &status})
+				flusher.Flush()
+			})
+			lastDigest = &digest
+		}
+	}
+
 	// Check if the last user message has attachments
 	// TODO (parthsareen): this logic will change with directory drag and drop
 	hasAttachments := false
@@ -986,7 +1026,7 @@ func (s *Server) chat(w http.ResponseWriter, r *http.Request) error {
 				reqChat = &temp
 			}
 		}
-		chatReq, err := s.buildChatRequest(reqChat, req.Model, thinkValue, availableTools)
+		chatReq, err := s.buildChatRequest(reqChat, req.Model, thinkValue, availableTools, attachmentBudget, lastDigest)
 		if err != nil {
 			return err
 		}
@@ -1038,7 +1078,7 @@ func (s *Server) chat(w http.ResponseWriter, r *http.Request) error {
 						lastMsg := &chat.Messages[len(chat.Messages)-1]
 						lastMsg.ThinkingTimeEnd = thinkingTimeEnd
 						lastMsg.UpdatedAt = time.Now()
-						s.Store.UpdateLastMessage(chat.ID, *lastMsg)
+						chats.UpdateLastMessage(chat.ID, *lastMsg)
 					}
 					thinkingTimeStart = nil
 					thinkingTimeEnd = nil
@@ -1061,7 +1101,7 @@ func (s *Server) chat(w http.ResponseWriter, r *http.Request) error {
 						}
 						lastMsg := &chat.Messages[len(chat.Messages)-1]
 						lastMsg.ToolCalls = toolCalls
-						if err := s.Store.UpdateLastMessage(chat.ID, *lastMsg); err != nil {
+						if err := chats.UpdateLastMessage(chat.ID, *lastMsg); err != nil {
 							return err
 						}
 					} else {
@@ -1087,7 +1127,7 @@ func (s *Server) chat(w http.ResponseWriter, r *http.Request) error {
 
 							synth := store.NewMessage("assistant", "", &store.MessageOptions{Model: req.Model, ToolCalls: toolCalls})
 							chat.Messages = append(chat.Messages, synth)
-							if err := s.Store.AppendMessage(chat.ID, synth); err != nil {
+							if err := chats.AppendMessage(chat.ID, synth); err != nil {
 								return err
 							}
 
@@ -1106,7 +1146,7 @@ func (s *Server) chat(w http.ResponseWriter, r *http.Request) error {
 						toolErrMsg := store.NewMessage("tool", errContent, nil)
 						toolErrMsg.ToolName = toolCall.Function.Name
 						chat.Messages = append(chat.Messages, toolErrMsg)
-						if err := s.Store.AppendMessage(chat.ID, toolErrMsg); err != nil {
+						if err := chats.AppendMessage(chat.ID, toolErrMsg); err != nil {
 							return err
 						}
 
@@ -1141,7 +1181,7 @@ func (s *Server) chat(w http.ResponseWriter, r *http.Request) error {
 						if err != nil {
 							return fmt.Errorf("failed to marshal browser state: %w", err)
 						}
-						if err := s.Store.UpdateChatBrowserState(chat.ID, json.RawMessage(stateBytes)); err != nil {
+						if err := chats.UpdateChatBrowserState(chat.ID, json.RawMessage(stateBytes)); err != nil {
 							return fmt.Errorf("failed to persist browser state to chat: %w", err)
 						}
 						// tool result is not added to the tool message for the browser tool
@@ -1169,7 +1209,7 @@ func (s *Server) chat(w http.ResponseWriter, r *http.Request) error {
 					toolMsg.ToolName = toolCall.Function.Name
 					chat.Messages = append(chat.Messages, toolMsg)
 
-					s.Store.AppendMessage(chat.ID, toolMsg)
+					chats.AppendMessage(chat.ID, toolMsg)
 
 					// Emit tool message event (matching agent pattern)
 					toolResult := true
@@ -1203,7 +1243,7 @@ func (s *Server) chat(w http.ResponseWriter, r *http.Request) error {
 					newMsg := store.NewMessage("assistant", "", &store.MessageOptions{Model: req.Model})
 					chat.Messages = append(chat.Messages, newMsg)
 					// Append new message to database
-					if err := s.Store.AppendMessage(chat.ID, newMsg); err != nil {
+					if err := chats.AppendMessage(chat.ID, newMsg); err != nil {
 						return err
 					}
 					// Attach any buffered tool_calls (request-only) now that assistant has started
@@ -1212,7 +1252,7 @@ func (s *Server) chat(w http.ResponseWriter, r *http.Request) error {
 						lastMsg.ToolCalls = pendingAssistantToolCalls
 
 						pendingAssistantToolCalls = nil
-						if err := s.Store.UpdateLastMessage(chat.ID, *lastMsg); err != nil {
+						if err := chats.UpdateLastMessage(chat.ID, *lastMsg); err != nil {
 							return err
 						}
 					}
@@ -1230,7 +1270,7 @@ func (s *Server) chat(w http.ResponseWriter, r *http.Request) error {
 					lastMsg.ThinkingTimeEnd = thinkingTimeEnd
 				}
 				// Use optimized update for streaming
-				if err := s.Store.UpdateLastMessage(chat.ID, *lastMsg); err != nil {
+				if err := chats.UpdateLastMessage(chat.ID, *lastMsg); err != nil {
 					return err
 				}
 			case EventThinking:
@@ -1242,7 +1282,7 @@ func (s *Server) chat(w http.ResponseWriter, r *http.Request) error {
 					})
 					chat.Messages = append(chat.Messages, newMsg)
 					// Append new message to database
-					if err := s.Store.AppendMessage(chat.ID, newMsg); err != nil {
+					if err := chats.AppendMessage(chat.ID, newMsg); err != nil {
 						return err
 					}
 					// Attach any buffered tool_calls now that assistant exists
@@ -1251,7 +1291,7 @@ func (s *Server) chat(w http.ResponseWriter, r *http.Request) error {
 						lastMsg.ToolCalls = pendingAssistantToolCalls
 
 						pendingAssistantToolCalls = nil
-						if err := s.Store.UpdateLastMessage(chat.ID, *lastMsg); err != nil {
+						if err := chats.UpdateLastMessage(chat.ID, *lastMsg); err != nil {
 							return err
 						}
 					}
@@ -1269,7 +1309,7 @@ func (s *Server) chat(w http.ResponseWriter, r *http.Request) error {
 					}
 
 					// Use optimized update for streaming
-					if err := s.Store.UpdateLastMessage(chat.ID, *lastMsg); err != nil {
+					if err := chats.UpdateLastMessage(chat.ID, *lastMsg); err != nil {
 						return err
 					}
 				}
@@ -1302,7 +1342,7 @@ func (s *Server) chat(w http.ResponseWriter, r *http.Request) error {
 			lastMsg := &chat.Messages[len(chat.Messages)-1]
 			lastMsg.ThinkingTimeEnd = thinkingTimeEnd
 			lastMsg.UpdatedAt = time.Now()
-			s.Store.UpdateLastMessage(chat.ID, *lastMsg)
+			chats.UpdateLastMessage(chat.ID, *lastMsg)
 		}
 	}
 
@@ -1312,7 +1352,7 @@ func (s *Server) chat(w http.ResponseWriter, r *http.Request) error {
 	if len(chat.Messages) > 0 {
 		chat.Messages[len(chat.Messages)-1].Stream = false
 	}
-	return s.Store.SetChat(*chat)
+	return chats.SetChat(*chat)
 }
 
 func (s *Server) getChat(w http.ResponseWriter, r *http.Request) error {
@@ -1322,7 +1362,13 @@ func (s *Server) getChat(w http.ResponseWriter, r *http.Request) error {
 		return fmt.Errorf("chat ID is required")
 	}
 
-	chat, err := s.Store.Chat(cid)
+	var chat *store.Chat
+	var err error
+	if anonymousChats.has(cid) {
+		chat, err = anonymousChats.ChatWithOptions(cid, true)
+	} else {
+		chat, err = s.Store.Chat(cid)
+	}
 	if err != nil {
 		// Return empty chat if not found
 		data := responses.ChatResponse{
@@ -1409,6 +1455,11 @@ func (s *Server) deleteChat(w http.ResponseWriter, r *http.Request) error {
 	cid := r.PathValue("id")
 	if cid == "" {
 		return fmt.Errorf("chat ID is required")
+	}
+
+	if anonymousChats.DeleteChat(cid) {
+		w.WriteHeader(http.StatusOK)
+		return nil
 	}
 
 	// Check if the chat exists (no need to load attachments)
@@ -1849,10 +1900,25 @@ func supportsBrowserTools(model string) bool {
 	return strings.HasPrefix(strings.ToLower(model), "gpt-oss")
 }
 
+// splitMessageAttachments separates images from text files and extracts the
+// text content of the latter.
+func splitMessageAttachments(files []store.File) ([]attachmentText, []api.ImageData) {
+	var texts []attachmentText
+	var images []api.ImageData
+	for _, a := range files {
+		if isImageAttachment(a.Filename) {
+			images = append(images, api.ImageData(a.Data))
+			continue
+		}
+		texts = append(texts, attachmentText{name: a.Filename, content: convertBytesToText(a.Data, a.Filename)})
+	}
+	return texts, images
+}
+
 // buildChatRequest converts store.Chat to api.ChatRequest
-func (s *Server) buildChatRequest(chat *store.Chat, model string, think any, availableTools []map[string]any) (*api.ChatRequest, error) {
+func (s *Server) buildChatRequest(chat *store.Chat, model string, think any, availableTools []map[string]any, attachmentBudget int, lastDigest *attachmentDigest) (*api.ChatRequest, error) {
 	var msgs []api.Message
-	for _, m := range chat.Messages {
+	for i, m := range chat.Messages {
 		// Skip empty messages if present
 		if m.Content == "" && m.Thinking == "" && len(m.ToolCalls) == 0 && len(m.Attachments) == 0 {
 			continue
@@ -1865,14 +1931,16 @@ func (s *Server) buildChatRequest(chat *store.Chat, model string, think any, ava
 
 		var images []api.ImageData
 		if m.Role == "user" && len(m.Attachments) > 0 {
-			for _, a := range m.Attachments {
-				if isImageAttachment(a.Filename) {
-					images = append(images, api.ImageData(a.Data))
-				} else {
-					content := convertBytesToText(a.Data, a.Filename)
-					sb.WriteString(fmt.Sprintf("\n--- File: %s ---\n%s\n--- End of %s ---",
-						a.Filename, content, a.Filename))
-				}
+			texts, imgs := splitMessageAttachments(m.Attachments)
+			images = append(images, imgs...)
+			// Keep attached files within the model's context window instead of
+			// failing the whole request with "prompt is too long".
+			kept, noisy, overflow := splitAttachments(texts, attachmentBudget)
+			writeFiles(&sb, kept)
+			if i == len(chat.Messages)-1 && lastDigest != nil {
+				sb.WriteString(attachmentNote(noisy, lastDigest.omitted, lastDigest.text))
+			} else {
+				sb.WriteString(attachmentNote(noisy, fileNames(overflow), ""))
 			}
 		}
 

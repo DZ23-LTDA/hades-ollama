@@ -104,7 +104,7 @@ func parsePlan(content string) ([]Step, error) {
 	content = strings.TrimSuffix(content, "```")
 	content = strings.TrimSpace(content)
 	var payload struct {
-		Steps []Step `json:"steps"`
+		Steps []map[string]any `json:"steps"`
 	}
 	if err := json.Unmarshal([]byte(content), &payload); err != nil {
 		return nil, err
@@ -112,7 +112,29 @@ func parsePlan(content string) ([]Step, error) {
 	if len(payload.Steps) == 0 {
 		return nil, errors.New("planner returned no steps")
 	}
-	return payload.Steps, nil
+	steps := make([]Step, 0, len(payload.Steps))
+	for i, raw := range payload.Steps {
+		// Smaller local models often return "input" as a plain string; keep
+		// it as text instead of rejecting the whole plan. Validation of kinds
+		// and risks still happens in normalizeSteps.
+		switch input := raw["input"].(type) {
+		case string:
+			raw["input"] = map[string]any{"text": input}
+		case nil, map[string]any:
+		default:
+			raw["input"] = map[string]any{"value": input}
+		}
+		data, err := json.Marshal(raw)
+		if err != nil {
+			return nil, err
+		}
+		var step Step
+		if err := json.Unmarshal(data, &step); err != nil {
+			return nil, fmt.Errorf("step %d: %w", i+1, err)
+		}
+		steps = append(steps, step)
+	}
+	return steps, nil
 }
 
 func normalizeSteps(steps []Step) ([]Step, error) {

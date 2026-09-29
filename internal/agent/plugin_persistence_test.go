@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 )
 
@@ -12,6 +13,10 @@ func TestPersistentMCPManagerRoundTripAndTenantCollision(t *testing.T) {
 	root := t.TempDir()
 	manifest := filepath.Join(root, "mcp.json")
 	command := filepath.Join(root, "mcp-server")
+	if runtime.GOOS == "windows" {
+		// Windows identifies executables by extension, not by mode bits.
+		command += ".exe"
+	}
 	if err := os.WriteFile(command, []byte("#!/bin/sh\n"), 0o700); err != nil {
 		t.Fatal(err)
 	}
@@ -44,7 +49,7 @@ func TestPersistentMCPManagerRoundTripAndTenantCollision(t *testing.T) {
 	if len(saved) != 1 || saved[0].WorkingDirectory != "" {
 		t.Fatalf("temporary workspace must not be persisted: %#v", saved)
 	}
-	if mode := fileMode(t, manifest); mode.Perm() != 0o600 {
+	if mode := fileMode(t, manifest); runtime.GOOS != "windows" && mode.Perm() != 0o600 {
 		t.Fatalf("manifest permissions = %o, want 600", mode.Perm())
 	}
 	if err := manager.SetEnabledForOrganization("org-a", "local-tools", false); err != nil {
@@ -126,7 +131,7 @@ func TestPersistentSkillManifestRoundTripIsNeverTrusted(t *testing.T) {
 		t.Fatal(err)
 	}
 	path := filepath.Join(root, "skills", "research-skill.json")
-	if mode := fileMode(t, path); mode.Perm() != 0o600 {
+	if mode := fileMode(t, path); runtime.GOOS != "windows" && mode.Perm() != 0o600 {
 		t.Fatalf("skill manifest permissions = %o, want 600", mode.Perm())
 	}
 	reloaded, err := NewContextStore(root)

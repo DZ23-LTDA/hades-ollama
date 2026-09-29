@@ -92,6 +92,12 @@ func Load(path string) (*Registry, error) {
 	if err != nil {
 		return nil, fmt.Errorf("read DZ23 provider config: %w", err)
 	}
+	return LoadBytes(b)
+}
+
+// LoadBytes builds a registry from provider config JSON, applying the same
+// validation as Load.
+func LoadBytes(b []byte) (*Registry, error) {
 	var cfg Config
 	dec := json.NewDecoder(strings.NewReader(string(b)))
 	dec.DisallowUnknownFields()

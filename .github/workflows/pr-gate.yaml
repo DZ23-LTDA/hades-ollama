@@ -54,6 +54,7 @@ jobs:
           set -euo pipefail
           REQUIRED=(
             "Go agentic and server gates"
+            "Go agentic Windows portability"
             "PostgreSQL RLS, Redis DLQ and OTLP integration"
             "Web and mobile quality"
           )

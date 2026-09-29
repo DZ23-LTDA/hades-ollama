@@ -37,7 +37,7 @@ func TestBuilderRejectsPathAndSizeAndCountAbuse(t *testing.T) {
 
 	// Contagem: mais de 200 arquivos deve ser rejeitado.
 	many := make(map[string]string, 250)
-	for i := 0; i < 250; i++ {
+	for i := range 250 {
 		many["file_"+strconv.Itoa(i)+".txt"] = "x"
 	}
 	if _, err := service.Create(ctx, BuilderSpec{Name: "too-many", Kind: BuilderWebsite, Files: many}); err == nil {

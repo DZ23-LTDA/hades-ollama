@@ -107,3 +107,22 @@ func TestOllamaPlannerCanSelectReadOnlyGitRepositoryInspection(t *testing.T) {
 		t.Fatalf("planner prompt does not advertise git.repo.inspect: %+v", stub.messages)
 	}
 }
+
+func TestParsePlanAcceptsStringInput(t *testing.T) {
+	steps, err := parsePlan("```json\n" + `{"steps":[{"kind":"workspace.list","title":"Listar","risk":"read","input":"."},{"kind":"workspace.read","title":"Ler","risk":"read","input":["a","b"]},{"kind":"workspace.read","title":"Ok","risk":"read","input":{"path":"x"}}]}` + "\n```")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if steps[0].Input["text"] != "." {
+		t.Fatalf("string input = %#v", steps[0].Input)
+	}
+	if _, ok := steps[1].Input["value"]; !ok {
+		t.Fatalf("array input = %#v", steps[1].Input)
+	}
+	if steps[2].Input["path"] != "x" {
+		t.Fatalf("object input = %#v", steps[2].Input)
+	}
+	if _, err := parsePlan(`{"steps":"nope"}`); err == nil {
+		t.Fatal("non-array steps must still be rejected")
+	}
+}

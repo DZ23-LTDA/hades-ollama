@@ -330,6 +330,7 @@ export async function* sendMessage(
   fileTools?: boolean,
   forceUpdate?: boolean,
   think?: boolean | string,
+  temporary?: boolean,
 ): AsyncGenerator<ChatEventUnion> {
   // Convert Uint8Array to base64 for JSON serialization
   const serializedAttachments = attachments?.map((att) => ({
@@ -360,6 +361,7 @@ export async function* sendMessage(
         file_tools: fileTools ?? false,
         ...(forceUpdate !== undefined ? { forceUpdate } : {}),
         ...(shouldSendThink ? { think } : {}),
+        ...(temporary ? { temporary: true } : {}),
       }),
     ),
     signal,

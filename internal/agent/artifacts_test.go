@@ -3,6 +3,7 @@ package agent
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 )
 
@@ -14,6 +15,9 @@ func TestBuildArtifactManifestRejectsSymlinkOutsideWorkspace(t *testing.T) {
 		t.Fatal(err)
 	}
 	if err := os.Symlink(outsideFile, filepath.Join(workspace, "escape.txt")); err != nil {
+		if runtime.GOOS == "windows" {
+			t.Skipf("creating symlinks requires Developer Mode or elevation on Windows: %v", err)
+		}
 		t.Fatal(err)
 	}
 	if _, err := BuildArtifactManifest(workspace, "mission", "step_1", "escape.txt", "escape.txt"); err == nil {

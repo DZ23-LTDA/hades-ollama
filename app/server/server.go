@@ -60,8 +60,17 @@ func resolvePath(name string) string {
 		} else {
 			dir = filepath.Join(filepath.Dir(exe), "..", "Resources")
 		}
-		if _, err := os.Stat(filepath.Join(dir, name)); err == nil {
-			return filepath.Join(dir, name)
+		candidates := []string{name}
+		if runtime.GOOS == "windows" && filepath.Ext(name) == "" {
+			// The bundled binary is ollama.exe; without the extension the
+			// lookup missed it and fell back to whatever "ollama" was first
+			// on PATH, e.g. an older install without llama-server.
+			candidates = []string{name + ".exe", name}
+		}
+		for _, candidate := range candidates {
+			if _, err := os.Stat(filepath.Join(dir, candidate)); err == nil {
+				return filepath.Join(dir, candidate)
+			}
 		}
 	}
 

@@ -138,11 +138,9 @@ describe("Onboarding completion", () => {
         onboarding.root.findByType(WelcomeScreen).props.onLocal();
       });
       expect(save).toHaveBeenCalledOnce();
-      expect(save).toHaveBeenCalledWith(
-        expect.objectContaining({
-          OnboardingVersion: CURRENT_ONBOARDING_VERSION,
-        }),
-      );
+      expect(save.mock.calls[0][0]).toMatchObject({
+        OnboardingVersion: CURRENT_ONBOARDING_VERSION,
+      });
       await onboarding.receiveCompletion();
       expect(mocks.navigate).not.toHaveBeenCalled();
     } finally {
@@ -172,11 +170,9 @@ describe("Onboarding completion", () => {
         }
         await flushQueryNotifications();
         expect(save).toHaveBeenCalledOnce();
-        expect(save).toHaveBeenCalledWith(
-          expect.objectContaining({
-            OnboardingVersion: CURRENT_ONBOARDING_VERSION,
-          }),
-        );
+        expect(save.mock.calls[0][0]).toMatchObject({
+          OnboardingVersion: CURRENT_ONBOARDING_VERSION,
+        });
         expect(mocks.navigate).not.toHaveBeenCalled();
         expect(onboarding.primaryAction.props.disabled).toBe(true);
         await act(async () => {

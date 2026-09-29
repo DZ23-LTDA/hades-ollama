@@ -147,6 +147,15 @@ func TestConnectorPathPrefixMatchesSegments(t *testing.T) {
 	if connectorPathMatches("/users-privileged", "/users") {
 		t.Fatal("must not match a different path segment")
 	}
+	operation := ConnectorOperation{Name: "read", Methods: []string{"GET"}, PathPrefixes: []string{"/domains"}}
+	for _, requestPath := range []string{"/domains/../admin", "/domains/%2e%2e/admin", "/domains/%252e%252e/admin", "/domains/%255c..%255cadmin"} {
+		if _, allowed := findConnectorOperation([]ConnectorOperation{operation}, "read", http.MethodGet, requestPath); allowed {
+			t.Errorf("encoded or literal traversal path %q passed the operation allowlist", requestPath)
+		}
+		if _, err := validateConnectorRequestPath(requestPath); err == nil {
+			t.Errorf("expected traversal path %q to be rejected", requestPath)
+		}
+	}
 }
 
 func TestConnectorEnforcesAllowedOrigins(t *testing.T) {

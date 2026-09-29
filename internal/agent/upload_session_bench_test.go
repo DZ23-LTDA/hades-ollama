@@ -67,7 +67,7 @@ func BenchmarkUploadThroughput(b *testing.B) {
 	}
 	size := mb << 20
 	b.SetBytes(size)
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		m, err := NewUploadManager(b.TempDir(), size*4, size)
 		if err != nil {
 			b.Fatal(err)
