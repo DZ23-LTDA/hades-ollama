@@ -167,6 +167,9 @@ jobs:
           CREATE ROLE ollama_agent LOGIN SUPERUSER PASSWORD :'legacy_password';
           CREATE ROLE ollama_agent_reverse_member LOGIN PASSWORD :'legacy_password';
           GRANT ollama_agent TO ollama_agent_reverse_member;
+          -- Fresh bootstrap revokes PUBLIC CONNECT, so this disposable member
+          -- login needs an explicit grant before its readiness probe runs.
+          GRANT CONNECT ON DATABASE ollama_agent TO ollama_agent_reverse_member;
           SQL
           reverse_member_login="$(PGPASSWORD="$legacy_password" psql -h 127.0.0.1 -U ollama_agent_reverse_member -d ollama_agent -Atc 'SELECT current_user')"
           test "$reverse_member_login" = ollama_agent_reverse_member
