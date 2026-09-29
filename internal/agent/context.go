@@ -42,7 +42,10 @@ const LocalOrganizationID = "local"
 func scheduleOwnedByOrganization(owner, organizationID string) bool {
 	owner = strings.TrimSpace(owner)
 	organizationID = strings.TrimSpace(organizationID)
-	if organizationID == "" || organizationID == LocalOrganizationID {
+	if organizationID == "" {
+		return owner == ""
+	}
+	if organizationID == LocalOrganizationID {
 		return owner == "" || owner == LocalOrganizationID
 	}
 	return owner == organizationID
@@ -641,6 +644,7 @@ func (s *ContextStore) CreateSchedule(schedule Schedule) (Schedule, error) {
 	if schedule.IntervalSeconds < 1 || schedule.IntervalSeconds > 31*24*60*60 {
 		return Schedule{}, errors.New("schedule interval must be between 1 second and 31 days")
 	}
+	schedule.ID = strings.TrimSpace(schedule.ID)
 	if schedule.ID == "" {
 		schedule.ID = "sch_" + uuid.NewString()
 	}
@@ -653,6 +657,9 @@ func (s *ContextStore) CreateSchedule(schedule Schedule) (Schedule, error) {
 	schedule.UpdatedAt = now
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if _, exists := s.schedules[schedule.ID]; exists {
+		return Schedule{}, errors.New("schedule ID already exists")
+	}
 	s.schedules[schedule.ID] = schedule
 	if s.root != "" {
 		if err := writeJSONAtomic(filepath.Join(s.root, "schedules", schedule.ID+".json"), schedule); err != nil {
@@ -675,6 +682,23 @@ func (s *ContextStore) GetSchedule(id string) (Schedule, error) {
 
 func (s *ContextStore) ListSchedules() []Schedule {
 	return s.ListSchedulesForOrganization(LocalOrganizationID)
+}
+
+func (s *ContextStore) GetScheduleForOrganization(id, organizationID string) (Schedule, error) {
+	if s == nil {
+		return Schedule{}, errors.New("context store is required")
+	}
+	id = strings.TrimSpace(id)
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	schedule, ok := s.schedules[id]
+	if !ok {
+		return Schedule{}, os.ErrNotExist
+	}
+	if !scheduleOwnedByOrganization(schedule.OrganizationID, organizationID) {
+		return Schedule{}, ErrPluginOrganizationScope
+	}
+	return schedule, nil
 }
 
 func (s *ContextStore) ListSchedulesForOrganization(organizationID string) []Schedule {
@@ -741,6 +765,14 @@ func (s *ContextStore) updateScheduleForOrganization(organizationID, id string, 
 }
 
 func (s *ContextStore) DeleteSchedule(id string) error {
+	return s.deleteScheduleForOrganization("", id, false)
+}
+
+func (s *ContextStore) DeleteScheduleForOrganization(organizationID, id string) error {
+	return s.deleteScheduleForOrganization(organizationID, id, true)
+}
+
+func (s *ContextStore) deleteScheduleForOrganization(organizationID, id string, enforceOwnership bool) error {
 	id = strings.TrimSpace(id)
 	if id == "" {
 		return errors.New("schedule id is required")
@@ -750,6 +782,9 @@ func (s *ContextStore) DeleteSchedule(id string) error {
 	schedule, ok := s.schedules[id]
 	if !ok {
 		return os.ErrNotExist
+	}
+	if enforceOwnership && !scheduleOwnedByOrganization(schedule.OrganizationID, organizationID) {
+		return ErrPluginOrganizationScope
 	}
 	delete(s.schedules, id)
 	if s.root != "" {

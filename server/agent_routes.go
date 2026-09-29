@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/hmac"
 	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -40,9 +41,6 @@ type agentAPI struct {
 var errAgentForbidden = errors.New("object is outside the active organization")
 
 func newAgentAPI(runtime *agent.Runtime) (*agentAPI, error) {
-	if runtime != nil && runtime.RequiresOrganizationAuthentication() {
-		return nil, agent.ErrPostgresTenantIsolationUnavailable
-	}
 	storeRoot := strings.TrimSpace(os.Getenv("OLLAMA_AGENT_AUTH_STORE"))
 	if storeRoot == "" && runtime != nil {
 		storeRoot = filepath.Join(runtime.DataRoot(), "auth")
@@ -59,6 +57,9 @@ func newAgentAPI(runtime *agent.Runtime) (*agentAPI, error) {
 	grokClient, err := newAgentGrokClient()
 	if err != nil {
 		return nil, err
+	}
+	if runtime != nil && runtime.RequiresOrganizationAuthentication() {
+		required = true
 	}
 	return &agentAPI{runtime: runtime, context: runtime.Context(), auth: auth, authRequired: required, push: runtime.Push(), grok: grokClient, samlServices: map[string]*agent.SAMLService{}}, nil
 }
@@ -128,8 +129,28 @@ func newDefaultAgentRuntime() (*agent.Runtime, error) {
 		}
 	}
 	var store agent.Store
+	var postgresPool *agent.PostgresStore
+	runtimeReady := false
+	defer func() {
+		if !runtimeReady && postgresPool != nil {
+			_ = postgresPool.Close()
+		}
+	}()
 	if databaseURL := strings.TrimSpace(os.Getenv("OLLAMA_AGENT_DATABASE_URL")); databaseURL != "" {
-		return nil, agent.ErrPostgresTenantIsolationUnavailable
+		if strings.TrimSpace(os.Getenv("OLLAMA_AGENT_REDIS_URL")) == "" {
+			return nil, errors.New("PostgreSQL multi-tenant runtime requires OLLAMA_AGENT_REDIS_URL for durable owner-bound work")
+		}
+		keyHex := strings.TrimSpace(os.Getenv("OLLAMA_AGENT_TENANT_CONTEXT_KEY"))
+		key, err := hex.DecodeString(keyHex)
+		if err != nil || len(key) < 32 {
+			return nil, errors.New("OLLAMA_AGENT_TENANT_CONTEXT_KEY must be at least 64 hexadecimal characters")
+		}
+		postgres, err := agent.OpenPostgresRuntimeStore(context.Background(), databaseURL, key)
+		if err != nil {
+			return nil, err
+		}
+		postgresPool = postgres
+		store = postgres
 	} else {
 		local, err := agent.NewJSONStore(storeRoot)
 		if err != nil {
@@ -190,7 +211,12 @@ func newDefaultAgentRuntime() (*agent.Runtime, error) {
 			Model:  model,
 		}
 	}
-	return agent.NewRuntime(agent.RuntimeConfig{Store: store, Context: contextStore, Company: companyStore, Planner: planner, WorkspaceRoot: workspaceRoot, DataRoot: storeRoot, Connectors: connectors, MCP: mcp, RemoteMCP: remoteMCP, Media: media, RedisQueue: redisQueue, Telemetry: telemetry, Push: push, Deployments: deployments})
+	runtime, err := agent.NewRuntime(agent.RuntimeConfig{Store: store, Context: contextStore, Company: companyStore, Planner: planner, WorkspaceRoot: workspaceRoot, DataRoot: storeRoot, Connectors: connectors, MCP: mcp, RemoteMCP: remoteMCP, Media: media, RedisQueue: redisQueue, Telemetry: telemetry, Push: push, Deployments: deployments})
+	if err != nil {
+		return nil, err
+	}
+	runtimeReady = true
+	return runtime, nil
 }
 
 func loadAgentConnectors(storeRoot string) (*agent.ConnectorManager, error) {
@@ -631,11 +657,11 @@ func isLoopbackRemoteAddr(remoteAddr string) bool {
 func (a *agentAPI) scopedRuntime(c *gin.Context) *agent.Runtime {
 	if value, ok := c.Get("agent.organization"); ok {
 		if organization, ok := value.(agent.Organization); ok {
-			return a.runtime.WithOrganization(organization.ID)
+			return a.runtime.WithOrganizationContext(c.Request.Context(), organization.ID)
 		}
 	}
 	if a != nil && !a.authRequired && a.runtime != nil {
-		return a.runtime.WithOrganization(agent.LocalOrganizationID)
+		return a.runtime.WithOrganizationContext(c.Request.Context(), agent.LocalOrganizationID)
 	}
 	return a.runtime
 }
@@ -657,6 +683,27 @@ func agentOrganizationID(c *gin.Context) string {
 		}
 	}
 	return ""
+}
+
+func contextRecordOwnedByOrganization(owner, organizationID string) bool {
+	owner = strings.TrimSpace(owner)
+	organizationID = strings.TrimSpace(organizationID)
+	if organizationID == "" {
+		return false
+	}
+	if organizationID == agent.LocalOrganizationID {
+		return owner == "" || owner == agent.LocalOrganizationID
+	}
+	return owner == organizationID
+}
+
+func (a *agentAPI) requireContextOrganization(c *gin.Context) (string, bool) {
+	organizationID := strings.TrimSpace(a.organizationID(c))
+	if organizationID == "" {
+		writeAgentError(c, http.StatusForbidden, errAgentForbidden)
+		return "", false
+	}
+	return organizationID, true
 }
 
 func agentActorID(c *gin.Context) string {
@@ -1233,7 +1280,7 @@ func (a *agentAPI) mcp(c *gin.Context) {
 }
 
 func (a *agentAPI) jobs(c *gin.Context) {
-	jobs, err := a.scopedRuntime(c).QueueJobsForOrganization(agentOrganizationID(c), agent.QueueStatus(c.Query("status")))
+	jobs, err := a.scopedRuntime(c).QueueJobsForOrganization(a.organizationID(c), agent.QueueStatus(c.Query("status")))
 	if err != nil {
 		writeAgentError(c, statusForAgentError(err), err)
 		return
@@ -1242,7 +1289,7 @@ func (a *agentAPI) jobs(c *gin.Context) {
 }
 
 func (a *agentAPI) replayJob(c *gin.Context) {
-	job, err := a.scopedRuntime(c).ReplayJobForOrganization(c.Param("id"), agentOrganizationID(c))
+	job, err := a.scopedRuntime(c).ReplayJobForOrganization(c.Param("id"), a.organizationID(c))
 	if err != nil {
 		writeAgentError(c, statusForAgentError(err), err)
 		return
@@ -1255,26 +1302,32 @@ func (a *agentAPI) tools(c *gin.Context) {
 }
 
 func (a *agentAPI) skills(c *gin.Context) {
-	organizationID := agentOrganizationID(c)
-	if !a.authRequired && organizationID == "" {
-		c.JSON(http.StatusOK, gin.H{"skills": a.context.Skills()})
+	organizationID, ok := a.requireContextOrganization(c)
+	if !ok {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"skills": a.context.SkillsForOrganization(organizationID)})
 }
 
 func (a *agentAPI) schedules(c *gin.Context) {
-	organizationID := agentOrganizationID(c)
+	organizationID, ok := a.requireContextOrganization(c)
+	if !ok {
+		return
+	}
 	c.JSON(http.StatusOK, gin.H{"schedules": a.context.ListSchedulesForOrganization(organizationID)})
 }
 
 func (a *agentAPI) createSchedule(c *gin.Context) {
+	organizationID, ok := a.requireContextOrganization(c)
+	if !ok {
+		return
+	}
 	var schedule agent.Schedule
 	if err := decodeJSON(c, &schedule); err != nil {
 		writeAgentError(c, http.StatusBadRequest, err)
 		return
 	}
-	schedule.OrganizationID = agentOrganizationID(c)
+	schedule.OrganizationID = organizationID
 	created, err := a.context.CreateSchedule(schedule)
 	if err != nil {
 		writeAgentError(c, http.StatusBadRequest, err)
@@ -1289,16 +1342,11 @@ func (a *agentAPI) updateSchedule(c *gin.Context) {
 		writeAgentError(c, http.StatusBadRequest, err)
 		return
 	}
-	current, err := a.context.GetSchedule(c.Param("id"))
-	if err != nil {
-		writeAgentError(c, statusForAgentError(err), err)
+	organizationID, ok := a.requireContextOrganization(c)
+	if !ok {
 		return
 	}
-	if organizationID := agentOrganizationID(c); organizationID != "" && current.OrganizationID != organizationID {
-		writeAgentError(c, http.StatusForbidden, errAgentForbidden)
-		return
-	}
-	updated, err := a.context.UpdateSchedule(c.Param("id"), schedule)
+	updated, err := a.context.UpdateScheduleForOrganization(organizationID, c.Param("id"), schedule)
 	if err != nil {
 		writeAgentError(c, statusForAgentError(err), err)
 		return
@@ -1307,16 +1355,11 @@ func (a *agentAPI) updateSchedule(c *gin.Context) {
 }
 
 func (a *agentAPI) deleteSchedule(c *gin.Context) {
-	current, err := a.context.GetSchedule(c.Param("id"))
-	if err != nil {
-		writeAgentError(c, statusForAgentError(err), err)
+	organizationID, ok := a.requireContextOrganization(c)
+	if !ok {
 		return
 	}
-	if organizationID := agentOrganizationID(c); organizationID != "" && current.OrganizationID != organizationID {
-		writeAgentError(c, http.StatusForbidden, errAgentForbidden)
-		return
-	}
-	if err := a.context.DeleteSchedule(c.Param("id")); err != nil {
+	if err := a.context.DeleteScheduleForOrganization(organizationID, c.Param("id")); err != nil {
 		writeAgentError(c, statusForAgentError(err), err)
 		return
 	}
@@ -1324,7 +1367,11 @@ func (a *agentAPI) deleteSchedule(c *gin.Context) {
 }
 
 func (a *agentAPI) webhook(c *gin.Context) {
-	schedule, err := a.context.GetSchedule(c.Param("schedule_id"))
+	organizationID, ok := a.requireContextOrganization(c)
+	if !ok {
+		return
+	}
+	schedule, err := a.context.GetScheduleForOrganization(c.Param("schedule_id"), organizationID)
 	if err != nil {
 		writeAgentError(c, statusForAgentError(err), err)
 		return
@@ -1435,12 +1482,15 @@ func verifyAgentWebhook(expected, provided string) bool {
 }
 
 func (a *agentAPI) projects(c *gin.Context) {
-	organizationID := agentOrganizationID(c)
+	organizationID, ok := a.requireContextOrganization(c)
+	if !ok {
+		return
+	}
 	projects := a.context.ListProjects()
 	if organizationID != "" {
 		filtered := projects[:0]
 		for _, project := range projects {
-			if project.OrganizationID == organizationID {
+			if contextRecordOwnedByOrganization(project.OrganizationID, organizationID) {
 				filtered = append(filtered, project)
 			}
 		}
@@ -1450,6 +1500,10 @@ func (a *agentAPI) projects(c *gin.Context) {
 }
 
 func (a *agentAPI) createProject(c *gin.Context) {
+	organizationID, ok := a.requireContextOrganization(c)
+	if !ok {
+		return
+	}
 	var request struct {
 		Name string `json:"name"`
 		Root string `json:"root,omitempty"`
@@ -1458,7 +1512,7 @@ func (a *agentAPI) createProject(c *gin.Context) {
 		writeAgentError(c, http.StatusBadRequest, err)
 		return
 	}
-	project, err := a.context.CreateProject(request.Name, request.Root, agentOrganizationID(c))
+	project, err := a.context.CreateProject(request.Name, request.Root, organizationID)
 	if err != nil {
 		writeAgentError(c, http.StatusBadRequest, err)
 		return
@@ -1514,11 +1568,15 @@ func (a *agentAPI) projectForRequest(c *gin.Context) (agent.Project, error) {
 }
 
 func (a *agentAPI) projectForRequestID(c *gin.Context, projectID string) (agent.Project, error) {
+	organizationID := a.organizationID(c)
+	if organizationID == "" {
+		return agent.Project{}, errAgentForbidden
+	}
 	project, err := a.context.GetProject(strings.TrimSpace(projectID))
 	if err != nil {
 		return agent.Project{}, err
 	}
-	if organizationID := agentOrganizationID(c); organizationID != "" && project.OrganizationID != organizationID {
+	if !contextRecordOwnedByOrganization(project.OrganizationID, organizationID) {
 		return agent.Project{}, errAgentForbidden
 	}
 	return project, nil
@@ -2615,7 +2673,7 @@ func statusForAgentError(err error) int {
 	if status := companyErrorStatus(err); status != 0 {
 		return status
 	}
-	if errors.Is(err, errAgentForbidden) || errors.Is(err, agent.ErrBuilderForbidden) || errors.Is(err, agent.ErrOrchestrationForbidden) || errors.Is(err, agent.ErrDeviceForbidden) || errors.Is(err, agent.ErrQueueJobForbidden) {
+	if errors.Is(err, errAgentForbidden) || errors.Is(err, agent.ErrPluginOrganizationScope) || errors.Is(err, agent.ErrBuilderForbidden) || errors.Is(err, agent.ErrOrchestrationForbidden) || errors.Is(err, agent.ErrDeviceForbidden) || errors.Is(err, agent.ErrQueueJobForbidden) {
 		return http.StatusForbidden
 	}
 	if errors.Is(err, agent.ErrApprovalVersionConflict) || errors.Is(err, agent.ErrDeploymentApprovalNonce) || errors.Is(err, agent.ErrDeploymentApprovalConflict) || errors.Is(err, agent.ErrDeploymentApprovalExpired) {

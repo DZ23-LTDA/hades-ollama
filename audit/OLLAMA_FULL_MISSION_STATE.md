@@ -971,3 +971,29 @@ STATUS: CONTINUE — completar P0 e findings P1; manter Postgres público fail-c
 **Git:** checkout em `/home/ubuntu/ollama-full-recovery`, branch `recovery/ollama-full-snapshot`; o commit funcional `fdd9abfa30d583be9b69d76f6b3a133c492ab07d` foi enviado e verificado pela API GitHub e `git ls-remote`. Esta atualização final altera apenas documentação de retomada. A ref remota `main` continua em `8635e30dc9e95a1f5b29700169783abc24093ceb`; não alterada.
 
 **Não finalizado:** P0 PostgreSQL RLS continua não implementado/forjável e public Postgres permanece fail-closed; falta ainda paridade funcional e validação E2E real conforme a matriz. Não afirmar produto 100% pronto ou equivalente integral ao Manus. O serviço PostgreSQL descartável usado no baseline foi encerrado e `/tmp/ollama-full-pg-test-20260929` removido. Próximo passo: retomar o projeto RLS com arquitetura migrator/runtime não-forjável e testes PostgreSQL adversariais, preservando os gates verdes desta rodada.
+
+
+### Redesenho candidato do PostgreSQL RLS — 2026-09-29 02:40 -03
+
+**Intenção:** remover o bloqueador P0 de RLS caller-settable no projeto Ollama Full, mantendo tenant isolation sob credenciais runtime, e preservar o produto fail-closed para quaisquer gaps de preparação/deploy.
+
+**Arquitetura implementada no checkout local:**
+- Contexto de tenant assinado com HMAC e validade curta (`app.tenant_context`); chave mantida em tabela sem SELECT pela role runtime, verificação no servidor em função `SECURITY DEFINER` com `search_path` fixo. GUCs antigos não são autoridade.
+- Roles/DSNs separados: `ollama_agent_migrator` para migration DDL explicitamente via CLI; `ollama_agent_runtime` sem superuser, `BYPASSRLS`, ownership, role membership ou `CREATE`. `OpenPostgresStore`/startup não migram schema implicitamente.
+- Bootstrap Compose cria as roles no volume novo. Para volumes antigos foi adicionado `deploy/postgres/migrate-existing-roles.sql`, com ownership transferido, senha/flags separados, grants legados revogados, sessões antigas terminadas e login antigo `ollama_agent` desativado. A documentação exige manutenção e backup validado.
+- Policies/FK validam que evento pertence à mesma organização da missão. Migration rejeita missão/evento sem tenant válido, evento órfão/divergente, missão executável sem workspace identity e owners de schema/tabela incorretos; nenhuma atribuição/backfill é inferida.
+- Recuperação Postgres percorre IDs de organização do AuthStore confiável e instancia runtime scoped sequencialmente; requer fila Redis owner-bound. `WorkspaceIdentity` agora é persistida em todas as rotas de insert/update/read do adapter.
+
+**Falhas reais descobertas e corrigidas durante verificação:** relação evento→missão precisava verificar o tenant pai; recuperação Postgres não devia ser silenciosamente ignorada; volumes legados precisavam transferência explícita/aposentadoria do superuser antigo; adapter não persistia `WorkspaceIdentity`, quebrando recovery. Testes adversariais foram ampliados para todos esses casos.
+
+**Evidência local (somente sandbox descartável, não produção):** PostgreSQL 16 e Redis 7 locais em loopback, credenciais runtime/migrator/admin sintéticas independentes. `go test -tags=integration ./internal/agent -run '^TestDistributed' -count=1` PASS; teste Postgres específico passou após upgrade de volume legado e após fixture fresh Compose. Cobertos cross-tenant read/write, evento→missão cruzado, GUC/HMAC inválidos, leitura da key, SET ROLE, DDL, `row_security=off`, key mismatch/imutabilidade, ownerless backfill, WorkspaceIdentity ausente, recovery por organização e role upgrade legado. Upgrade legado verificado: owners das tabelas = migrator, `ollama_agent` resultou NOLOGIN/não-superuser, zero sessões antigas ativas. Serviços PostgreSQL/Redis descartáveis foram parados após os testes.
+
+**Gates no código final mais recente:** `go test -p=2 ./... -count=1`; `go vet -p=2 ./...`; `go test -race -p=2 ./internal/agent ./server -count=1`; `CGO_ENABLED=1 go build -p=2 ./...`; cross-compile Windows amd64; `bash scripts/check-class-a-plus-integrity.sh`; gofmt; `git diff --check`; parse Compose/CI YAML; gitleaks redacted em fontes de produção/deploy modificadas com zero achados — todos PASS. O Gitleaks não substitui controle de secret scanning do GitHub.
+
+**Auditoria final:** três revisões read-only independentes estão ativas, com escopos separados (segurança, engenharia, operação/QA); seus vereditos ainda não foram recebidos. Não commitar nem publicar até reconciliar os achados e repetir os gates se houver qualquer patch.
+
+**Git antes da publicação:** `/home/ubuntu/ollama-full-recovery`, branch `recovery/ollama-full-snapshot`; `HEAD` e upstream em `cdd91ceb22a3ca4637cc4e170e054c9750caa2d9` no início desta rodada. `main`=`8635e30dc9e95a1f5b29700169783abc24093ceb`. Mudanças desta rodada permanecem locais/não commitadas; autorização do usuário para manter o projeto nesta branch existe, sem merge/PR/main/force-push.
+
+**Limites explícitos:** PostgreSQL continua candidato, não produção/isolamento enterprise validado, até staging TLS/HA, backup/restore comprovado, rotação coordenada de chave, crash/failover, avaliação de escala do sweep de recovery e auditorias concluídas. Paridade Manus Desktop e do conjunto de harnesses permanece incompleta conforme `docs/agentic/PARITY_MATRIX.md`; próximo objetivo depois desta liberação é fechar fluxos E2E prioritários, não declarar o produto 100% concluído.
+
+STATUS: FINAL_AUDIT — aguardar três revisões independentes; corrigir/retestar e publicar somente em `recovery/ollama-full-snapshot` após verificação.

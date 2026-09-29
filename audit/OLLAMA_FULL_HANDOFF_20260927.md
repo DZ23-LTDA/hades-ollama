@@ -1,6 +1,6 @@
 # Handoff de continuidade — Ollama Full
 
-**Atualizado:** 2026-09-27 07:29 (-03)
+**Atualizado:** 2026-09-29 02:38 (-03)
 
 **Propósito:** permitir retomar o trabalho depois de encerrar/formatar este PC ou trocar de sessão, sem depender do histórico da conversa.
 
@@ -70,14 +70,11 @@ As descrições acima indicam o trabalho contido no snapshot; para a fonte autor
 
 ### P0 — PostgreSQL RLS / produção
 
-As policies usam GUCs como `app.current_organization_id` e `app.system_access` que podem ser configuráveis pela role da aplicação. A API/runtime mantêm PostgreSQL **desabilitado e fail-closed** como contenção. Não habilitar Postgres, não dizer que o RLS está corrigido e não marcar isolamento enterprise até:
+A antiga arquitetura GUC-forjável foi substituída no checkout local por candidata HMAC tenant-context, role/DSN separados (migrator e runtime), migração explícita fora do startup, runtime `NOSUPERUSER`/`NOBYPASSRLS` sem ownership/DDL, key table ilegível pelo runtime, e políticas RLS que aceitam somente assinatura conferida no servidor PostgreSQL. Eventos têm ownership composto com a missão. O runtime exige Redis owner-bound e recupera trabalho enumerando organizações trusted no AuthStore; `WorkspaceIdentity` é persistida e missões executáveis legadas sem identidade são recusadas.
 
-1. projetar contexto/roles não forjáveis pela role runtime (separar role/DSN de migração e runtime; remover caminhos de bypass);
-2. implementar migração/backfill compatível e revisar grants/policies;
-3. obter PostgreSQL de teste com roles não-superuser/não-BYPASSRLS e provar por testes adversariais que SQL executado pela role runtime não consegue forjar tenant nem system access;
-4. executar integração real e rever independentemente a arquitetura.
+**Validação local real:** PostgreSQL 16 + Redis 7 disposable, com credenciais separadas, passou tentativas GUC/HMAC inválido, leitura da signing key, `SET ROLE`, DDL, `row_security=off`, cross-tenant read/write e ligação de evento a missão alheia; cobriu key mismatch/imutabilidade, refusal de ownerless rows e workspace identities ausentes, e recuperação por tenant. O procedimento `migrate-existing-roles.sql` também foi aplicado a um volume legado simulado, transferindo ownership, removendo privilégios e sessões residuais, e deixando a role antiga `NOLOGIN`/não-superuser; em seguida a integração adversarial passou.
 
-A documentação preserva evidência histórica de smoke PostgreSQL descartável em uma retomada anterior, mas a reauditoria mais recente não teve `OLLAMA_AGENT_TEST_POSTGRES_URL` nem `OLLAMA_AGENT_TEST_REDIS_URL` disponíveis. Nenhum desses smokes remove o problema de GUC forjável.
+**Ainda não é produção validada:** revisão independente final desta exata revisão está pendente; faltam staging real com TLS/HA, backup/restore, operação/rotação coordenada de chave, crash/failover e escala do sweep de recovery. Não declarar isolamento enterprise ou prontidão de produção até concluir esses gates.
 
 ### P1 — Reauditoria dos findings remediados
 
@@ -93,19 +90,20 @@ Revisar o relatório e a matriz quanto a falhas de crash/failover, semântica at
 
 ## Gates comprovados
 
-O snapshot `8c2e3604` e commits documentais posteriores têm evidência histórica registrada. Mais recentemente, em 2026-09-29, após os fixes de upload/outbox/deployment, os gates foram repetidos sobre a árvore de código congelada desta rodada:
+Nesta retomada de 2026-09-29, após a alteração mais recente de migração e teste:
 
-- `gofmt` check dos Go alterados/novos — PASS;
+- `go test -tags=integration ./internal/agent -run '^TestDistributed' -count=1` — PASS com PostgreSQL 16/Redis 7 reais;
 - `go test -p=2 ./... -count=1` — PASS;
 - `go vet -p=2 ./...` — PASS;
-- `go test -race -p=2 ./internal/agent ./server ./x/transfer -count=1` — PASS;
+- `go test -race -p=2 ./internal/agent ./server -count=1` — PASS;
 - `CGO_ENABLED=1 go build -p=2 ./...` — PASS;
-- `GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go test -run '^$' -c -o /tmp/ollama-agent-final-windows.test.exe ./internal/agent` — PASS (cross-compile do pacote agent; não é execução nativa do Windows);
-- `bash scripts/check-class-a-plus-integrity.sh` — PASS;
-- `git diff --check` — PASS;
-- gitleaks redacted em fontes de produção alteradas — zero findings; no conjunto com testes houve uma detecção redacted em fixture sintético de `internal/agent/deploy_test.go`. Valores não foram impressos.
+- `GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go test -run '^$' -c -p=2 -o /tmp/ollama-agent-latest-windows.test.exe ./internal/agent` — PASS (cross-compile, não execução nativa);
+- `bash scripts/check-class-a-plus-integrity.sh`, gofmt e `git diff --check` — PASS;
+- Compose e CI YAML parse — PASS;
+- gitleaks redacted nas fontes de produção/deploy alteradas — zero findings;
+- upgrade de volume PostgreSQL legado simulado — PASS; verificação observou owners migrator, zero sessão legada ativa e role antiga sem login/superuser.
 
-Após qualquer alteração de código, repetir testes relevantes; antes de novo release/merge, repetir todos os gates em checkout limpo. O commit documental posterior só mudou três linhas do checkpoint, mas deve passar `git diff --check` quando houver nova mudança.
+A auditoria independente final do delta está em andamento; não criar/publicar commit enquanto não registrar o veredito/fixes. Antes de merge/release, repetir os gates em checkout limpo e completar staging. O branch local continua `recovery/ollama-full-snapshot`; `HEAD` verificado no início desta rodada foi `cdd91ceb` e há alterações locais ainda não commitadas.
 
 ## Regras operacionais ao retomar
 

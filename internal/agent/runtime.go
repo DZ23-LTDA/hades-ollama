@@ -47,6 +47,7 @@ type Runtime struct {
 	deployments         *DeploymentManager
 	deploymentApprovals *DeploymentApprovalStore
 	webhookReplay       *WebhookReplayStore
+	authStore           *AuthStore
 	mu                  *sync.Mutex
 	running             map[string]bool
 	activeCancels       map[string]context.CancelFunc
@@ -94,8 +95,11 @@ func NewRuntime(config RuntimeConfig) (*Runtime, error) {
 	if store == nil {
 		store = NewMemoryStore()
 	}
-	if usesPostgresStore(store) {
+	if usesPostgresStore(store) && !postgresTenantRuntimeReady(store) {
 		return nil, ErrPostgresTenantIsolationUnavailable
+	}
+	if usesPostgresStore(store) && config.RedisQueue == nil {
+		return nil, errors.New("PostgreSQL multi-tenant runtime requires the owner-bound Redis queue")
 	}
 	planner := config.Planner
 	if planner == nil {
@@ -241,13 +245,22 @@ func NewRuntime(config RuntimeConfig) (*Runtime, error) {
 // WithOrganization returns a request-scoped runtime view. Every Store receives
 // application-level object scoping; PostgreSQL also receives transaction-local RLS.
 func (r *Runtime) WithOrganization(organizationID string) *Runtime {
+	return r.WithOrganizationContext(context.Background(), organizationID)
+}
+
+// WithOrganizationContext returns a tenant view whose Postgres operations are
+// canceled with the supplied request or worker context.
+func (r *Runtime) WithOrganizationContext(ctx context.Context, organizationID string) *Runtime {
 	if r == nil {
 		return nil
 	}
+	if ctx == nil {
+		ctx = context.Background()
+	}
 	view := *r
 	view.organizationScope = strings.TrimSpace(organizationID)
-	if postgres, ok := r.store.(*PostgresStore); ok {
-		view.store = postgres.WithOrganization(view.organizationScope)
+	if postgres := postgresStoreFromStore(r.store); postgres != nil {
+		view.store = postgres.WithOrganizationContext(ctx, view.organizationScope)
 	}
 	// Local mode is a reserved single-user scope. Keep the underlying store
 	// unwrapped so ownerless legacy local records remain readable; all runtime
@@ -318,6 +331,17 @@ func usesPostgresStore(store Store) bool {
 	}
 }
 
+func postgresStoreFromStore(store Store) *PostgresStore {
+	switch typed := store.(type) {
+	case *PostgresStore:
+		return typed
+	case organizationScopedStore:
+		return postgresStoreFromStore(typed.store)
+	default:
+		return nil
+	}
+}
+
 func (r *Runtime) DataRoot() string {
 	if r == nil {
 		return ""
@@ -341,7 +365,11 @@ func (r *Runtime) Connectors() []ConnectorConfig {
 }
 
 func (r *Runtime) SetAuthStore(store *AuthStore) {
-	if r != nil && r.connectors != nil {
+	if r == nil {
+		return
+	}
+	r.authStore = store
+	if r.connectors != nil {
 		r.connectors.SetOAuthStore(store)
 	}
 }
@@ -491,10 +519,19 @@ func (r *Runtime) Deployments() *DeploymentManager { return r.deployments }
 // OpenTelemetry batch span processor goroutine. Safe on a nil runtime and to
 // call more than once.
 func (r *Runtime) Close(ctx context.Context) error {
-	if r == nil || r.telemetry == nil {
+	if r == nil {
 		return nil
 	}
-	return r.telemetry.Shutdown(ctx)
+	var result error
+	if r.telemetry != nil {
+		result = r.telemetry.Shutdown(ctx)
+	}
+	if postgres, ok := r.store.(*PostgresStore); ok {
+		if err := postgres.Close(); err != nil {
+			result = errors.Join(result, err)
+		}
+	}
+	return result
 }
 
 func (r *Runtime) DeploymentApprovals() *DeploymentApprovalStore { return r.deploymentApprovals }
@@ -873,7 +910,7 @@ func (r *Runtime) runQueueJob(jobContext context.Context, job QueueJob) error {
 	}
 	workerRuntime := r
 	if organizationID != "" {
-		workerRuntime = r.WithOrganization(organizationID)
+		workerRuntime = r.WithOrganizationContext(jobContext, organizationID)
 	}
 	before, loadErr := workerRuntime.GetMission(job.MissionID)
 	if loadErr != nil || before.OrganizationID != organizationID {
@@ -894,10 +931,46 @@ func (r *Runtime) runQueueJob(jobContext context.Context, job QueueJob) error {
 }
 
 func (r *Runtime) Start(ctx context.Context) {
+	if r == nil {
+		return
+	}
+	if ctx == nil {
+		ctx = context.Background()
+	}
 	worker := r.runQueueJob
 	workerID := "agent-runtime-" + uuid.NewString()
 	if r.redisQueue != nil {
-		r.redisQueue.Start(ctx, workerID, worker)
+		if err := r.redisQueue.Start(ctx, workerID, worker); err != nil {
+			r.metrics.redisQueueFailures.Add(1)
+			slog.Error("agent Redis worker failed to start", "error", err)
+		} else {
+			queueErrors := r.redisQueue.Errors()
+			go func() {
+				var reportedDropped uint64
+				droppedTicker := time.NewTicker(time.Second)
+				defer droppedTicker.Stop()
+				for {
+					select {
+					case <-ctx.Done():
+						return
+					case <-droppedTicker.C:
+						dropped := r.redisQueue.DroppedErrors()
+						if dropped > reportedDropped {
+							delta := dropped - reportedDropped
+							r.metrics.redisQueueDroppedErrors.Add(int64(delta))
+							slog.Error("agent Redis queue error channel overflowed", "dropped_errors", delta, "total_dropped_errors", dropped)
+							reportedDropped = dropped
+						}
+					case err, ok := <-queueErrors:
+						if !ok {
+							return
+						}
+						r.metrics.redisQueueFailures.Add(1)
+						slog.Error("agent Redis queue operation failed", "error", err)
+					}
+				}
+			}()
+		}
 	} else {
 		r.queue.Start(ctx, workerID, worker)
 	}
@@ -917,10 +990,14 @@ func (r *Runtime) Start(ctx context.Context) {
 		}()
 	}
 	go func() {
+		recoveryInterval := 2 * time.Second
+		if usesPostgresStore(r.store) {
+			recoveryInterval = 15 * time.Second
+		}
 		if err := r.resumePending(ctx); err != nil {
 			slog.Error("agent pending work recovery failed", "error", err)
 		}
-		ticker := time.NewTicker(2 * time.Second)
+		ticker := time.NewTicker(recoveryInterval)
 		defer ticker.Stop()
 		for {
 			select {
@@ -985,8 +1062,35 @@ func (r *Runtime) flushPushOutbox(ctx context.Context) {
 }
 
 func (r *Runtime) resumePending(ctx context.Context) error {
+	if ctx == nil {
+		ctx = context.Background()
+	}
 	var recoveryErrors []error
 	organizationScope := strings.TrimSpace(r.organizationScope)
+	// The base PostgreSQL runtime cannot query globally. Use the trusted auth
+	// directory as the tenant index and recover each tenant through its scoped
+	// runtime; no SQL-level global-read capability is added.
+	if usesPostgresStore(r.store) && organizationScope == "" {
+		if r.authStore == nil {
+			return errors.New("PostgreSQL recovery requires the trusted AuthStore tenant directory")
+		}
+		organizations := r.authStore.Organizations()
+		if len(organizations) > maxPostgresRecoveryOrganizations {
+			return fmt.Errorf("PostgreSQL recovery tenant count %d exceeds limit %d", len(organizations), maxPostgresRecoveryOrganizations)
+		}
+		for _, organization := range organizations {
+			if err := ctx.Err(); err != nil {
+				return errors.Join(errors.Join(recoveryErrors...), err)
+			}
+			if strings.TrimSpace(organization.ID) == "" {
+				continue
+			}
+			if err := r.WithOrganizationContext(ctx, organization.ID).resumePending(ctx); err != nil {
+				recoveryErrors = append(recoveryErrors, fmt.Errorf("recover organization %s: %w", organization.ID, err))
+			}
+		}
+		return errors.Join(recoveryErrors...)
+	}
 	for _, schedule := range r.context.ClaimDueSchedulesForOrganization(organizationScope, time.Now().UTC()) {
 		if companyID := companyIDFromWorkspace(schedule.Workspace); companyID != "" && r.company != nil {
 			company, err := r.company.Get(companyID)
@@ -1009,11 +1113,6 @@ func (r *Runtime) resumePending(ctx context.Context) error {
 		return err
 	}
 	organizationScope = strings.TrimSpace(r.organizationScope)
-	if postgres, ok := r.store.(*PostgresStore); ok && !postgres.systemAccess {
-		if organizationScope == "" {
-			organizationScope = postgres.organizationID
-		}
-	}
 	if err := sweepOrphanedWorkspaceSnapshots(r.dataRoot, organizationScope, missions, time.Now().UTC()); err != nil {
 		recoveryErrors = append(recoveryErrors, fmt.Errorf("sweep orphaned workspace snapshots: %w", err))
 	}
@@ -1037,6 +1136,8 @@ func (r *Runtime) resumePending(ctx context.Context) error {
 	}
 	return errors.Join(recoveryErrors...)
 }
+
+const maxPostgresRecoveryOrganizations = 10000
 
 const maxScheduleFailures = 3
 

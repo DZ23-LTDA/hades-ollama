@@ -8,11 +8,13 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math/rand"
 	"net"
 	"net/url"
 	"sort"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/google/uuid"
@@ -26,6 +28,7 @@ type RedisQueue struct {
 	timeout           time.Duration
 	leaseDuration     time.Duration
 	errors            chan error
+	errorsDropped     atomic.Uint64
 }
 
 const redisLeaseDuration = 15 * time.Minute
@@ -964,6 +967,9 @@ func (q *RedisQueue) Start(ctx context.Context, workerID string, handler func(co
 	if q == nil {
 		return errors.New("Redis queue is unavailable")
 	}
+	if ctx == nil {
+		ctx = context.Background()
+	}
 	if strings.TrimSpace(workerID) == "" {
 		return errors.New("worker id is required")
 	}
@@ -971,13 +977,17 @@ func (q *RedisQueue) Start(ctx context.Context, workerID string, handler func(co
 		return errors.New("queue handler is required")
 	}
 	go func() {
+		claimFailures := 0
 		for {
 			if ctx.Err() != nil {
 				return
 			}
 			job, ok, err := q.Claim(workerID, time.Now().UTC())
 			if err != nil {
+				claimFailures++
 				q.reportError(fmt.Errorf("redis queue claim: %w", err))
+			} else {
+				claimFailures = 0
 			}
 			if err == nil && ok {
 				runErr := queueHandlerResult(ctx, q.runWithHeartbeat(ctx, job, handler))
@@ -992,14 +1002,33 @@ func (q *RedisQueue) Start(ctx context.Context, workerID string, handler func(co
 				}
 				continue
 			}
+			delay := 500 * time.Millisecond
+			if err != nil {
+				delay = redisQueueClaimRetryDelay(claimFailures)
+			}
+			timer := time.NewTimer(delay)
 			select {
 			case <-ctx.Done():
+				timer.Stop()
 				return
-			case <-time.After(500 * time.Millisecond):
+			case <-timer.C:
 			}
 		}
 	}()
 	return nil
+}
+
+func redisQueueClaimRetryDelay(failures int) time.Duration {
+	if failures < 1 {
+		failures = 1
+	}
+	shift := min(failures-1, 6)
+	backoff := 500 * time.Millisecond * time.Duration(1<<shift)
+	if backoff > 30*time.Second {
+		backoff = 30 * time.Second
+	}
+	half := backoff / 2
+	return half + time.Duration(rand.Int63n(int64(backoff-half)))
 }
 
 func (q *RedisQueue) Errors() <-chan error {
@@ -1009,13 +1038,25 @@ func (q *RedisQueue) Errors() <-chan error {
 	return q.errors
 }
 
+func (q *RedisQueue) DroppedErrors() uint64 {
+	if q == nil {
+		return 0
+	}
+	return q.errorsDropped.Load()
+}
+
 func (q *RedisQueue) reportError(err error) {
-	if q == nil || q.errors == nil || err == nil {
+	if q == nil || err == nil {
+		return
+	}
+	if q.errors == nil {
+		q.errorsDropped.Add(1)
 		return
 	}
 	select {
 	case q.errors <- err:
 	default:
+		q.errorsDropped.Add(1)
 	}
 }
 

@@ -77,15 +77,23 @@ Os helpers `scripts/install.sh` e `scripts/install.ps1` fazem o mesmo build loca
 A composição de desenvolvimento está em `deploy/docker-compose.agentic.yml`. Ela fornece os serviços auxiliares usados para testar PostgreSQL, Redis e OpenTelemetry Collector, prende as portas em loopback por padrão e exige senhas fornecidas pelo ambiente. Não trate o compose de desenvolvimento como configuração de produção: use secrets manager, TLS, backups e rede privada antes de qualquer exposição.
 
 ```bash
-export OLLAMA_AGENT_POSTGRES_PASSWORD="$(openssl rand -hex 24)"
+export OLLAMA_AGENT_POSTGRES_ADMIN_PASSWORD="$(openssl rand -hex 24)"
+export OLLAMA_AGENT_MIGRATOR_PASSWORD="$(openssl rand -hex 24)"
+export OLLAMA_AGENT_RUNTIME_PASSWORD="$(openssl rand -hex 24)"
 export OLLAMA_AGENT_REDIS_PASSWORD="$(openssl rand -hex 24)"
 docker compose -f deploy/docker-compose.agentic.yml up -d --wait
+export OLLAMA_AGENT_TENANT_CONTEXT_KEY="$(openssl rand -hex 32)"
+export OLLAMA_AGENT_MIGRATOR_DATABASE_URL="postgres://ollama_agent_migrator:${OLLAMA_AGENT_MIGRATOR_PASSWORD}@127.0.0.1:5432/ollama_agent?sslmode=disable"
+export OLLAMA_AGENT_DATABASE_URL="postgres://ollama_agent_runtime:${OLLAMA_AGENT_RUNTIME_PASSWORD}@127.0.0.1:5432/ollama_agent?sslmode=disable"
 export OLLAMA_AGENT_REDIS_URL="redis://:${OLLAMA_AGENT_REDIS_PASSWORD}@127.0.0.1:6379/0"
 export OLLAMA_AGENT_OTLP_ENDPOINT='http://127.0.0.1:4318'
+export OLLAMA_AGENT_OTLP_ALLOW_INSECURE=1 # apenas para desenvolvimento local; nunca em produção
+./bin/ollama-classe-a-plus agent migrate-postgres
+export OLLAMA_AGENT_AUTH_REQUIRED=true
 OLLAMA_HOST=127.0.0.1:11434 ./bin/ollama-classe-a-plus serve
 ```
 
-PostgreSQL no compose fica disponível para integração/testes controlados, mas não passe sua URL ao servidor: o runtime público falha fechado para `OLLAMA_AGENT_DATABASE_URL` até existir tenant context não-forjável e papéis runtime/migrator separados. Em produção multi-tenant, não habilite PostgreSQL para a API; mantenha o store local ou aguarde a resolução documentada em `SECURITY.md`. Redis exige autenticação/rede privada e collector OTLP deve ter autenticação e retenção definidas.
+O store runtime usa somente `OLLAMA_AGENT_DATABASE_URL`; o comando administrativo `agent migrate-postgres` usa `OLLAMA_AGENT_MIGRATOR_DATABASE_URL`. A chave HMAC persistente é compartilhada por migração e servidor, nunca registrada no repositório nem exposta ao runtime de outro serviço. PostgreSQL/RLS permanece **candidato não aprovado para produção**: use só dados locais/disposable até validar TLS, backup/restore, suporte seguro à rotação de chave, HA/failover, escala e auditoria independente de staging. **A rotação da chave HMAC não é suportada hoje: não há comando nem procedimento validado; nunca troque a variável isoladamente.** A descoberta de tenants para recovery depende do AuthStore local; suporte multi-instância não está habilitado. A documentação de operadores e do upgrade de volume existente está em `docs/agentic/INTEGRATIONS.md`.
 
 ## Configuração essencial
 
@@ -114,8 +122,13 @@ OLLAMA_HOST=127.0.0.1:11434 ./bin/ollama-classe-a-plus serve
 | `OLLAMA_AGENT_AUTH_DEV` | Modo de desenvolvimento; não habilitar em produção. |
 | `OLLAMA_AGENT_AUTH_SSO_PUBLIC` | Permite início de SSO sem sessão prévia quando explicitamente habilitado. |
 | `OLLAMA_AGENT_CREDENTIAL_KEY` | Chave externa usada para cifrar credenciais OAuth e MFA. |
-| `OLLAMA_AGENT_DATABASE_URL` | **Bloqueada para o servidor público** até a correção da arquitetura RLS/tenant; configuração presente retorna erro fail-closed. PostgreSQL permanece apenas para integração/uso controlado. |
+| `OLLAMA_AGENT_DATABASE_URL` | DSN da role `ollama_agent_runtime`; exige roles separadas, migrations explícitas e chave tenant HMAC. PostgreSQL/RLS ainda não foi aprovado para produção. |
+| `OLLAMA_AGENT_MIGRATOR_DATABASE_URL` | DSN administrativa da role dedicada `ollama_agent_migrator`; usada somente por `ollama agent migrate-postgres`, nunca pelo processo runtime. |
+| `OLLAMA_AGENT_TENANT_CONTEXT_KEY` | Chave HMAC persistente, em hexadecimal com ao menos 32 bytes, compartilhada pelo comando migrator e runtime. Rotação não é suportada hoje; não altere a chave isoladamente. |
+| `OLLAMA_AGENT_POSTGRES_ADMIN_PASSWORD` | Credencial bootstrap/admin do Compose; manter em secret manager e fora do runtime/app. |
+| `OLLAMA_AGENT_RUNTIME_PASSWORD` / `OLLAMA_AGENT_MIGRATOR_PASSWORD` | Credenciais distintas para seus respectivos DSNs e serviços. |
 | `OLLAMA_AGENT_REDIS_URL` | Habilita fila Redis e workers compartilhados. |
+| `OLLAMA_AGENT_TOKEN` | Token bearer para comandos HTTP do CLI `ollama agent`; forneça pelo ambiente/secret manager, nunca como argumento de linha de comando. |
 | `OLLAMA_AGENT_REDIS_PREFIX` | Prefixo lógico das chaves Redis. |
 | `OLLAMA_AGENT_OTLP_ENDPOINT` | Endpoint OTLP HTTP para traces distribuídos. |
 | `OLLAMA_AGENT_OTLP_ALLOW_INSECURE` | Permite OTLP HTTP sem TLS apenas em desenvolvimento controlado. |

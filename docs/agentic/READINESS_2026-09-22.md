@@ -1,4 +1,6 @@
-# Relatório de prontidão — Ollama Classe A+
+# Relatório de prontidão — Ollama Classe A+ (histórico de 2026-09-22)
+
+> **Registro histórico, não runbook atual.** Este documento descreve o estado e configuração observados em 2026-09-22 e não deve ser usado para provisionar PostgreSQL. Para o desenho candidato atual, siga `docs/agentic/INTEGRATIONS.md` e `SECURITY.md`; PostgreSQL/RLS continua sem aprovação de produção.
 
 **Data:** 2026-09-22
 **Repositório:** `DZ23-LTDA/ollama-classe-a-plus`

@@ -54,6 +54,9 @@ jobs:
       - run: CGO_ENABLED=1 go test ./... -count=1
       - run: CGO_ENABLED=1 go vet ./...
       - run: CGO_ENABLED=1 go build -o dist/ollama-agentic .
+      - name: Windows amd64 cross-compilation for agent package
+        run: |
+          GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go test -run '^$' -c -o "$RUNNER_TEMP/ollama-agent-windows.test.exe" ./internal/agent
       - uses: actions/upload-artifact@v4
         with:
           name: ollama-agentic-linux
@@ -71,45 +74,142 @@ jobs:
       - name: Start dependencies and run integration tests
         run: |
           set -euo pipefail
-          postgres_password="$(openssl rand -hex 24)"
+          postgres_admin_password="$(openssl rand -hex 24)"
+          postgres_runtime_password="$(openssl rand -hex 24)"
+          postgres_migrator_password="$(openssl rand -hex 24)"
           redis_password="$(openssl rand -hex 24)"
-          tenant_password="$(openssl rand -hex 24)"
-          export OLLAMA_AGENT_POSTGRES_PASSWORD="$postgres_password"
+          tenant_key="$(openssl rand -hex 32)"
+          legacy_password="$(openssl rand -hex 24)"
+          for secret in "$postgres_admin_password" "$postgres_runtime_password" "$postgres_migrator_password" "$redis_password" "$tenant_key" "$legacy_password"; do
+            echo "::add-mask::$secret"
+          done
+          on_failure() {
+            status=$?
+            trap - ERR
+            log_file="$RUNNER_TEMP/distributed-dependency-logs.txt"
+            docker compose -f deploy/docker-compose.agentic.yml logs --no-color >"$log_file" 2>&1 || true
+            for secret in "$postgres_admin_password" "$postgres_runtime_password" "$postgres_migrator_password" "$redis_password" "$tenant_key" "$legacy_password" "${OLLAMA_AGENT_TEST_POSTGRES_RUNTIME_URL:-}" "${OLLAMA_AGENT_TEST_POSTGRES_MIGRATOR_URL:-}" "${OLLAMA_AGENT_TEST_REDIS_URL:-}"; do
+              if [ -n "$secret" ] && grep -Fq -- "$secret" "$log_file"; then
+                echo 'Dependency logs suppressed because buffered diagnostics contain a credential value.' >&2
+                exit "$status"
+              fi
+            done
+            cat "$log_file"
+            exit "$status"
+          }
+          trap on_failure ERR
+          export OLLAMA_AGENT_POSTGRES_ADMIN_PASSWORD="$postgres_admin_password"
+          export OLLAMA_AGENT_RUNTIME_PASSWORD="$postgres_runtime_password"
+          export OLLAMA_AGENT_MIGRATOR_PASSWORD="$postgres_migrator_password"
           export OLLAMA_AGENT_REDIS_PASSWORD="$redis_password"
           docker compose -f deploy/docker-compose.agentic.yml up -d --wait
 
-          # The Compose bootstrap role owns the database and is a superuser by
-          # design. Use a separate role for tenant-scoped RLS operations.
-          role_exists="$(docker compose -f deploy/docker-compose.agentic.yml exec -T postgres \
-            psql -Atq -U ollama_agent -d ollama_agent \
-            -c "SELECT 1 FROM pg_roles WHERE rolname = 'ollama_agent_test'")"
-          if [ "$role_exists" = "1" ]; then
-            docker compose -f deploy/docker-compose.agentic.yml exec -T postgres \
-              psql -v ON_ERROR_STOP=1 -U ollama_agent -d ollama_agent \
-              -c "ALTER ROLE ollama_agent_test WITH LOGIN PASSWORD '$tenant_password'"
-          else
-            docker compose -f deploy/docker-compose.agentic.yml exec -T postgres \
-              psql -v ON_ERROR_STOP=1 -U ollama_agent -d ollama_agent \
-              -c "CREATE ROLE ollama_agent_test LOGIN PASSWORD '$tenant_password'"
-          fi
-          docker compose -f deploy/docker-compose.agentic.yml exec -T postgres \
-            psql -v ON_ERROR_STOP=1 -U ollama_agent -d ollama_agent <<'SQL'
-          GRANT CONNECT ON DATABASE ollama_agent TO ollama_agent_test;
-          GRANT USAGE, CREATE ON SCHEMA public TO ollama_agent_test;
+          # Build a disposable volume matching the old all-powerful runtime role.
+          PGPASSWORD="$postgres_admin_password" psql -h 127.0.0.1 -U ollama_agent_admin -d ollama_agent \
+            -v ON_ERROR_STOP=1 -v legacy_password="$legacy_password" <<'SQL'
+          CREATE ROLE ollama_agent LOGIN SUPERUSER PASSWORD :'legacy_password';
+          CREATE TABLE public.agent_missions (
+            id TEXT PRIMARY KEY, version BIGINT NOT NULL, objective TEXT NOT NULL,
+            model TEXT NOT NULL DEFAULT '', workspace TEXT NOT NULL DEFAULT '', project_id TEXT NOT NULL DEFAULT '',
+            organization_id TEXT NOT NULL DEFAULT '', auto_run BOOLEAN NOT NULL DEFAULT FALSE,
+            state TEXT NOT NULL, plan JSONB NOT NULL, approvals JSONB NOT NULL, artifacts JSONB NOT NULL,
+            last_error TEXT NOT NULL DEFAULT '', created_at TIMESTAMPTZ NOT NULL,
+            updated_at TIMESTAMPTZ NOT NULL, completed_at TIMESTAMPTZ NULL
+          );
+          CREATE TABLE public.agent_events (
+            id TEXT PRIMARY KEY, mission_id TEXT NOT NULL, organization_id TEXT NOT NULL DEFAULT '',
+            type TEXT NOT NULL, step_id TEXT NOT NULL DEFAULT '', payload JSONB NULL, created_at TIMESTAMPTZ NOT NULL
+          );
+          ALTER TABLE public.agent_missions OWNER TO ollama_agent;
+          ALTER TABLE public.agent_events OWNER TO ollama_agent;
+          ALTER SCHEMA public OWNER TO ollama_agent;
+          INSERT INTO public.agent_missions
+            (id,version,objective,model,organization_id,state,plan,approvals,artifacts,created_at,updated_at)
+            VALUES ('mis_legacy_fixture',1,'legacy row survives role cutover','fixture-model','org_legacy_fixture','COMPLETED','[]','[]','[]',NOW(),NOW());
+          INSERT INTO public.agent_events (id,mission_id,organization_id,type,payload,created_at)
+            VALUES ('evt_legacy_fixture','mis_legacy_fixture','org_legacy_fixture','legacy.fixture',NULL,NOW());
           SQL
 
-          export OLLAMA_AGENT_TEST_POSTGRES_URL="postgres://ollama_agent_test:${tenant_password}@127.0.0.1:5432/ollama_agent?sslmode=disable"
+          umask 077
+          legacy_backup="$RUNNER_TEMP/ollama-agent-pre-upgrade.dump"
+          PGPASSWORD="$legacy_password" pg_dump -h 127.0.0.1 -U ollama_agent -d ollama_agent -Fc -f "$legacy_backup"
+          pg_restore --list "$legacy_backup" >/dev/null
+
+          # Preparation must refuse to race a still-running legacy application session.
+          PGPASSWORD="$legacy_password" psql -h 127.0.0.1 -U ollama_agent -d ollama_agent \
+            -v ON_ERROR_STOP=1 -c 'SELECT pg_sleep(60)' >"$RUNNER_TEMP/legacy-session.log" 2>&1 &
+          legacy_session_pid=$!
+          sleep 1
+          set +e
+          PGPASSWORD="$legacy_password" psql -h 127.0.0.1 -U ollama_agent -d ollama_agent \
+            -v ON_ERROR_STOP=1 -f deploy/postgres/migrate-existing-roles.sql >"$RUNNER_TEMP/legacy-preflight.log" 2>&1
+          legacy_preflight_status=$?
+          set -e
+          kill "$legacy_session_pid" 2>/dev/null || true
+          wait "$legacy_session_pid" 2>/dev/null || true
+          if [ "$legacy_preflight_status" -eq 0 ] || ! grep -q 'active ollama_agent sessions detected' "$RUNNER_TEMP/legacy-preflight.log"; then
+            cat "$RUNNER_TEMP/legacy-preflight.log"
+            echo 'legacy role preparation did not fail closed on active application sessions' >&2
+            exit 1
+          fi
+          PGPASSWORD="$legacy_password" psql -h 127.0.0.1 -U ollama_agent -d ollama_agent -v ON_ERROR_STOP=1 \
+            -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname=current_database() AND usename='ollama_agent' AND pid<>pg_backend_pid()" >/dev/null
+          for attempt in $(seq 1 30); do
+            active_sessions="$(PGPASSWORD="$legacy_password" psql -h 127.0.0.1 -U ollama_agent -d ollama_agent -Atc \
+              "SELECT count(*) FROM pg_stat_activity WHERE datname=current_database() AND usename='ollama_agent' AND pid<>pg_backend_pid()")"
+            [ "$active_sessions" = 0 ] && break
+            sleep 1
+          done
+          test "$active_sessions" = 0
+
+          export OLLAMA_AGENT_POSTGRES_ADMIN_PASSWORD="$postgres_admin_password"
+          export OLLAMA_AGENT_MIGRATOR_PASSWORD="$postgres_migrator_password"
+          export OLLAMA_AGENT_RUNTIME_PASSWORD="$postgres_runtime_password"
+          PGPASSWORD="$legacy_password" psql -h 127.0.0.1 -U ollama_agent -d ollama_agent \
+            -v ON_ERROR_STOP=1 -f deploy/postgres/migrate-existing-roles.sql
+          PGPASSWORD="$postgres_admin_password" psql -h 127.0.0.1 -U ollama_agent_admin -d ollama_agent \
+            -v ON_ERROR_STOP=1 -c 'SELECT current_user' | grep -q ollama_agent_admin
+          PGPASSWORD="$postgres_migrator_password" psql -h 127.0.0.1 -U ollama_agent_migrator -d ollama_agent \
+            -v ON_ERROR_STOP=1 -c 'SELECT current_user' | grep -q ollama_agent_migrator
+          PGPASSWORD="$postgres_runtime_password" psql -h 127.0.0.1 -U ollama_agent_runtime -d ollama_agent \
+            -v ON_ERROR_STOP=1 -c 'SELECT current_user' | grep -q ollama_agent_runtime
+
+          export OLLAMA_AGENT_TEST_POSTGRES_RUNTIME_URL="postgres://ollama_agent_runtime:${postgres_runtime_password}@127.0.0.1:5432/ollama_agent?sslmode=disable"
+          export OLLAMA_AGENT_TEST_POSTGRES_MIGRATOR_URL="postgres://ollama_agent_migrator:${postgres_migrator_password}@127.0.0.1:5432/ollama_agent?sslmode=disable"
+          export OLLAMA_AGENT_TEST_POSTGRES_TENANT_KEY="$tenant_key"
           export OLLAMA_AGENT_TEST_REDIS_URL="redis://:${redis_password}@127.0.0.1:6379/0"
+          for secret in "$OLLAMA_AGENT_TEST_POSTGRES_RUNTIME_URL" "$OLLAMA_AGENT_TEST_POSTGRES_MIGRATOR_URL" "$OLLAMA_AGENT_TEST_REDIS_URL"; do
+            echo "::add-mask::$secret"
+          done
           export OLLAMA_AGENT_TEST_OTLP_ENDPOINT="http://127.0.0.1:4318/v1/traces"
           export OLLAMA_AGENT_OTLP_ALLOW_INSECURE=1
+          export OLLAMA_AGENT_MIGRATOR_DATABASE_URL="$OLLAMA_AGENT_TEST_POSTGRES_MIGRATOR_URL"
+          export OLLAMA_AGENT_TENANT_CONTEXT_KEY="$tenant_key"
+          CGO_ENABLED=1 go run . agent migrate-postgres
+          export OLLAMA_AGENT_TEST_EXPECT_LEGACY_ROLE_ACTIVE=true
+          CGO_ENABLED=0 go test -tags integration ./internal/agent -run '^TestDistributedPostgresRuntimeReadinessForLegacyRole$' -count=1 -v
+          unset OLLAMA_AGENT_TEST_EXPECT_LEGACY_ROLE_ACTIVE
+
+          PGPASSWORD="$postgres_admin_password" psql -h 127.0.0.1 -U ollama_agent_admin -d ollama_agent \
+            -v ON_ERROR_STOP=1 -f deploy/postgres/retire-legacy-role.sql
+          legacy_state="$(PGPASSWORD="$postgres_admin_password" psql -h 127.0.0.1 -U ollama_agent_admin -d ollama_agent -Atc \
+            "SELECT format('%s/%s/%s/%s', (SELECT count(*) FROM agent_missions WHERE id='mis_legacy_fixture'), (SELECT count(*) FROM agent_events WHERE id='evt_legacy_fixture'), (SELECT count(*) FROM pg_roles WHERE rolname='ollama_agent' AND NOT rolcanlogin AND NOT rolsuper), (SELECT count(*) FROM pg_tables WHERE tablename IN ('agent_missions','agent_events') AND tableowner='ollama_agent_migrator'))")"
+          test "$legacy_state" = "1/1/1/2"
+          PGPASSWORD="$postgres_admin_password" psql -h 127.0.0.1 -U ollama_agent_admin -d postgres \
+            -v ON_ERROR_STOP=1 -c 'CREATE DATABASE ollama_agent_restore_check OWNER ollama_agent_admin'
+          PGPASSWORD="$postgres_admin_password" pg_restore --no-owner --no-acl -h 127.0.0.1 -U ollama_agent_admin \
+            -d ollama_agent_restore_check "$legacy_backup"
+          restored_state="$(PGPASSWORD="$postgres_admin_password" psql -h 127.0.0.1 -U ollama_agent_admin -d ollama_agent_restore_check -Atc \
+            "SELECT format('%s/%s', (SELECT count(*) FROM agent_missions WHERE id='mis_legacy_fixture'), (SELECT count(*) FROM agent_events WHERE id='evt_legacy_fixture'))")"
+          test "$restored_state" = "1/1"
+
           CGO_ENABLED=0 go test -tags integration ./internal/agent -run TestDistributed -count=1 -v
-      - name: Dump dependency logs on failure
-        if: failure()
-        run: docker compose -f deploy/docker-compose.agentic.yml logs --no-color
       - name: Stop distributed dependencies
         if: always()
         run: |
-          export OLLAMA_AGENT_POSTGRES_PASSWORD=cleanup-placeholder
+          export OLLAMA_AGENT_POSTGRES_ADMIN_PASSWORD=cleanup-placeholder
+          export OLLAMA_AGENT_RUNTIME_PASSWORD=cleanup-placeholder
+          export OLLAMA_AGENT_MIGRATOR_PASSWORD=cleanup-placeholder
           export OLLAMA_AGENT_REDIS_PASSWORD=cleanup-placeholder
           docker compose -f deploy/docker-compose.agentic.yml down -v
 

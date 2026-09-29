@@ -5,8 +5,10 @@ package agent
 import (
 	"context"
 	"database/sql"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"reflect"
 	"strconv"
@@ -133,22 +135,120 @@ func assertRedisEnqueueStateUnchanged(t *testing.T, before, after map[string]any
 	}
 }
 
+func TestDistributedPostgresRuntimeReadinessForLegacyRole(t *testing.T) {
+	runtimeDSN := os.Getenv("OLLAMA_AGENT_TEST_POSTGRES_RUNTIME_URL")
+	key, keyErr := hex.DecodeString(os.Getenv("OLLAMA_AGENT_TEST_POSTGRES_TENANT_KEY"))
+	if runtimeDSN == "" || keyErr != nil || len(key) < 32 {
+		t.Skip("runtime test DSN and a 64+ byte hex tenant key are required")
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	store, err := OpenPostgresRuntimeStore(ctx, runtimeDSN, key)
+	wantLegacyActive := strings.EqualFold(strings.TrimSpace(os.Getenv("OLLAMA_AGENT_TEST_EXPECT_LEGACY_ROLE_ACTIVE")), "true")
+	if wantLegacyActive {
+		if err == nil {
+			_ = store.Close()
+			t.Fatal("PostgreSQL runtime opened while the legacy ollama_agent privileged login remains active")
+		}
+		if !strings.Contains(err.Error(), "active legacy ollama_agent login") {
+			t.Fatalf("runtime readiness error=%v, want active legacy role refusal", err)
+		}
+		return
+	}
+	if err != nil {
+		t.Fatalf("PostgreSQL runtime did not become ready after legacy-role retirement: %v", err)
+	}
+	if err := store.Close(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestDistributedPostgresRuntimeReadinessForStaleLegacySession(t *testing.T) {
+	runtimeDSN := os.Getenv("OLLAMA_AGENT_TEST_POSTGRES_RUNTIME_URL")
+	adminDSN := os.Getenv("OLLAMA_AGENT_TEST_POSTGRES_ADMIN_URL")
+	legacyDSN := os.Getenv("OLLAMA_AGENT_TEST_POSTGRES_LEGACY_URL")
+	key, keyErr := hex.DecodeString(os.Getenv("OLLAMA_AGENT_TEST_POSTGRES_TENANT_KEY"))
+	if runtimeDSN == "" || adminDSN == "" || legacyDSN == "" || keyErr != nil || len(key) < 32 {
+		t.Skip("runtime/admin/legacy PostgreSQL test DSNs and a 64+ byte hex tenant key are required")
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	legacyDB, err := sql.Open("pgx", legacyDSN)
+	if err != nil {
+		t.Fatal(err)
+	}
+	legacyDB.SetMaxIdleConns(0)
+	defer legacyDB.Close()
+	legacyConn, err := legacyDB.Conn(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer legacyConn.Close()
+	if _, err := legacyConn.ExecContext(ctx, `SELECT 1`); err != nil {
+		t.Fatal(err)
+	}
+	adminDB, err := sql.Open("pgx", adminDSN)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer adminDB.Close()
+	if _, err := adminDB.ExecContext(ctx, `ALTER ROLE ollama_agent NOLOGIN NOSUPERUSER NOBYPASSRLS`); err != nil {
+		t.Fatal(err)
+	}
+	store, err := OpenPostgresRuntimeStore(ctx, runtimeDSN, key)
+	if err == nil {
+		_ = store.Close()
+		t.Fatal("PostgreSQL runtime opened while a privileged legacy session remained connected")
+	}
+	if !strings.Contains(err.Error(), "active legacy ollama_agent login") {
+		t.Fatalf("runtime readiness error=%v, want stale legacy session refusal", err)
+	}
+	if err := legacyConn.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := legacyDB.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := adminDB.ExecContext(ctx, `ALTER ROLE ollama_agent LOGIN SUPERUSER`); err != nil {
+		t.Fatalf("restore legacy fixture role for retirement gate: %v", err)
+	}
+}
+
 func TestDistributedPostgresRLSAndEvents(t *testing.T) {
-	dsn := os.Getenv("OLLAMA_AGENT_TEST_POSTGRES_URL")
-	if dsn == "" {
-		t.Skip("OLLAMA_AGENT_TEST_POSTGRES_URL is not configured")
+	runtimeDSN := os.Getenv("OLLAMA_AGENT_TEST_POSTGRES_RUNTIME_URL")
+	migratorDSN := os.Getenv("OLLAMA_AGENT_TEST_POSTGRES_MIGRATOR_URL")
+	key, keyErr := hex.DecodeString(os.Getenv("OLLAMA_AGENT_TEST_POSTGRES_TENANT_KEY"))
+	if runtimeDSN == "" || migratorDSN == "" || keyErr != nil || len(key) < 32 {
+		t.Skip("OLLAMA_AGENT_TEST_POSTGRES_RUNTIME_URL, OLLAMA_AGENT_TEST_POSTGRES_MIGRATOR_URL, and a 64+ byte hex OLLAMA_AGENT_TEST_POSTGRES_TENANT_KEY are required")
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-	store, err := OpenPostgresStore(ctx, dsn)
+	if err := MigratePostgresAgentSchema(ctx, migratorDSN, key); err != nil {
+		t.Fatal(err)
+	}
+	store, err := OpenPostgresRuntimeStore(ctx, runtimeDSN, key)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer store.Close()
+	wrongKey := append([]byte(nil), key...)
+	wrongKey[0] ^= 0xff
+	if wrongKeyStore, err := OpenPostgresRuntimeStore(ctx, runtimeDSN, wrongKey); err == nil {
+		_ = wrongKeyStore.Close()
+		t.Fatal("PostgreSQL runtime opened with a signing key different from the migrated database")
+	}
+	if err := MigratePostgresAgentSchema(ctx, migratorDSN, wrongKey); err == nil || !strings.Contains(err.Error(), "ordinary migrations do not rotate keys") {
+		t.Fatalf("migration with a different key error=%v, want explicit rotation refusal", err)
+	}
 
 	orgA := "org_test_a_" + uuid.NewString()
 	orgB := "org_test_b_" + uuid.NewString()
-	mission := Mission{ID: "mis_" + uuid.NewString(), Version: 1, Objective: "tenant RLS", Provider: "ollama-local", Model: "qwen3-coder", Capabilities: []string{"workspace:read", "workspace:write"}, OrganizationID: orgA, ProjectID: "proj_test", WorkspaceIsolated: true, WorkspaceSnapshotID: "snp_" + uuid.NewString(), WorkspaceSnapshotSHA256: strings.Repeat("a", 64), State: MissionReady, Plan: []Step{}, Approvals: []Approval{}, Artifacts: []ArtifactManifest{}, CreatedAt: time.Now().UTC(), UpdatedAt: time.Now().UTC()}
+	missionWorkspace := t.TempDir()
+	missionWorkspaceIdentity, err := workspaceDirectoryIdentity(missionWorkspace)
+	if err != nil {
+		t.Fatal(err)
+	}
+	mission := Mission{ID: "mis_" + uuid.NewString(), Version: 1, Objective: "tenant RLS", Provider: "ollama-local", Model: "qwen3-coder", Capabilities: []string{"workspace:read", "workspace:write"}, OrganizationID: orgA, ProjectID: "proj_test", Workspace: missionWorkspace, WorkspaceIdentity: missionWorkspaceIdentity, WorkspaceIsolated: true, WorkspaceSnapshotID: "snp_" + uuid.NewString(), WorkspaceSnapshotSHA256: strings.Repeat("a", 64), State: MissionReady, Plan: []Step{}, Approvals: []Approval{}, Artifacts: []ArtifactManifest{}, CreatedAt: time.Now().UTC(), UpdatedAt: time.Now().UTC()}
 	if err := store.WithOrganization(orgA).PutMission(mission); err != nil {
 		t.Fatal(err)
 	}
@@ -160,8 +260,36 @@ func TestDistributedPostgresRLSAndEvents(t *testing.T) {
 	if got, err := store.WithOrganization(orgA).GetMission(mission.ID); err != nil || got.OrganizationID != orgA || got.Provider != mission.Provider || got.Model != mission.Model || strings.Join(got.Capabilities, ",") != strings.Join(mission.Capabilities, ",") || !got.WorkspaceIsolated || got.WorkspaceSnapshotID != mission.WorkspaceSnapshotID || got.WorkspaceSnapshotSHA256 != mission.WorkspaceSnapshotSHA256 {
 		t.Fatalf("same-tenant read failed: got=%+v err=%v", got, err)
 	}
-	foreignMission := Mission{ID: "mis_" + uuid.NewString(), Version: 1, Objective: "raw RLS foreign row", OrganizationID: orgB, State: MissionReady, Plan: []Step{}, Approvals: []Approval{}, Artifacts: []ArtifactManifest{}, CreatedAt: time.Now().UTC(), UpdatedAt: time.Now().UTC()}
-	if err := store.PutMission(foreignMission); err != nil {
+	blocker, err := store.db.BeginTx(ctx, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	blockerContext, err := store.signedTenantContext(orgA, time.Now())
+	if err != nil {
+		_ = blocker.Rollback()
+		t.Fatal(err)
+	}
+	if _, err := blocker.ExecContext(ctx, `SELECT set_config('app.tenant_context',$1,true)`, blockerContext); err != nil {
+		_ = blocker.Rollback()
+		t.Fatal(err)
+	}
+	var lockedMissionID string
+	if err := blocker.QueryRowContext(ctx, `SELECT id FROM agent_missions WHERE id=$1 FOR UPDATE`, mission.ID).Scan(&lockedMissionID); err != nil {
+		_ = blocker.Rollback()
+		t.Fatal(err)
+	}
+	requestCtx, cancelRequest := context.WithTimeout(ctx, 150*time.Millisecond)
+	blockedUpdate := mission
+	blockedUpdate.Version++
+	blockedUpdate.UpdatedAt = time.Now().UTC()
+	blockedErr := store.WithOrganizationContext(requestCtx, orgA).PutMission(blockedUpdate)
+	cancelRequest()
+	_ = blocker.Rollback()
+	if !errors.Is(blockedErr, context.DeadlineExceeded) {
+		t.Fatalf("canceled tenant store operation error=%v, want context deadline exceeded", blockedErr)
+	}
+	foreignMission := Mission{ID: "mis_" + uuid.NewString(), Version: 1, Objective: "raw RLS foreign row", OrganizationID: orgB, State: MissionCompleted, Plan: []Step{}, Approvals: []Approval{}, Artifacts: []ArtifactManifest{}, CreatedAt: time.Now().UTC(), UpdatedAt: time.Now().UTC()}
+	if err := store.WithOrganization(orgB).PutMission(foreignMission); err != nil {
 		t.Fatal(err)
 	}
 	var superuser, bypassRLS bool
@@ -175,7 +303,12 @@ func TestDistributedPostgresRLSAndEvents(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := rawTx.ExecContext(ctx, `SELECT set_config('app.current_organization_id',$1,true),set_config('app.system_access','0',true)`, orgA); err != nil {
+	validContextA, err := store.signedTenantContext(orgA, time.Now())
+	if err != nil {
+		_ = rawTx.Rollback()
+		t.Fatal(err)
+	}
+	if _, err := rawTx.ExecContext(ctx, `SELECT set_config('app.tenant_context',$1,true),set_config('app.current_organization_id',$2,true),set_config('app.system_access','1',true)`, validContextA, orgB); err != nil {
 		_ = rawTx.Rollback()
 		t.Fatal(err)
 	}
@@ -190,7 +323,33 @@ func TestDistributedPostgresRLSAndEvents(t *testing.T) {
 	}
 	if visibleA != 1 || visibleB != 0 {
 		_ = rawTx.Rollback()
-		t.Fatalf("raw RLS visibility mismatch: orgA=%d orgB=%d", visibleA, visibleB)
+		t.Fatalf("signed-context RLS visibility mismatch: orgA=%d orgB=%d", visibleA, visibleB)
+	}
+	if _, err := rawTx.ExecContext(ctx, `SAVEPOINT cross_tenant_event_attempt`); err != nil {
+		_ = rawTx.Rollback()
+		t.Fatal(err)
+	}
+	_, crossTenantEventErr := rawTx.ExecContext(ctx, `INSERT INTO agent_events (id,mission_id,organization_id,type,payload,created_at) VALUES ($1,$2,$3,'raw.cross_tenant',NULL,NOW())`, "evt_"+uuid.NewString(), foreignMission.ID, orgA)
+	if crossTenantEventErr == nil {
+		_ = rawTx.Rollback()
+		t.Fatal("runtime SQL attached an orgA event to an orgB mission")
+	}
+	if _, err := rawTx.ExecContext(ctx, `ROLLBACK TO SAVEPOINT cross_tenant_event_attempt`); err != nil {
+		_ = rawTx.Rollback()
+		t.Fatalf("restore transaction after expected cross-tenant event rejection: %v", err)
+	}
+	fakeContextB := orgB + "|" + strconv.FormatInt(time.Now().Add(time.Minute).Unix(), 10) + "|" + strings.Repeat("0", 64)
+	if _, err := rawTx.ExecContext(ctx, `SELECT set_config('app.tenant_context',$1,true)`, fakeContextB); err != nil {
+		_ = rawTx.Rollback()
+		t.Fatal(err)
+	}
+	if err := rawTx.QueryRowContext(ctx, `SELECT COUNT(*) FROM agent_missions WHERE id=$1`, foreignMission.ID).Scan(&visibleB); err != nil {
+		_ = rawTx.Rollback()
+		t.Fatal(err)
+	}
+	if visibleB != 0 {
+		_ = rawTx.Rollback()
+		t.Fatalf("forged tenant HMAC exposed foreign mission: count=%d", visibleB)
 	}
 	_, insertErr := rawTx.ExecContext(ctx, `INSERT INTO agent_missions (id,version,objective,organization_id,state,plan,approvals,artifacts,created_at,updated_at) VALUES ($1,1,'raw cross-tenant insert',$2,'READY','[]'::jsonb,'[]'::jsonb,'[]'::jsonb,NOW(),NOW())`, "mis_"+uuid.NewString(), orgB)
 	if insertErr == nil {
@@ -200,6 +359,40 @@ func TestDistributedPostgresRLSAndEvents(t *testing.T) {
 	if err := rawTx.Rollback(); err != nil && !errors.Is(err, sql.ErrTxDone) {
 		t.Fatal(err)
 	}
+	for _, attempt := range []struct {
+		name  string
+		query string
+	}{
+		{name: "read signing key", query: `SELECT secret FROM agent_tenant_context_key`},
+		{name: "assume migrator role", query: `SET ROLE ollama_agent_migrator`},
+		{name: "create schema object", query: `CREATE TABLE agent_runtime_forbidden_ddl(id INT)`},
+	} {
+		t.Run(attempt.name, func(t *testing.T) {
+			tx, err := store.db.BeginTx(ctx, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, err := tx.ExecContext(ctx, attempt.query); err == nil {
+				_ = tx.Rollback()
+				t.Fatalf("runtime unexpectedly succeeded at: %s", attempt.name)
+			}
+			_ = tx.Rollback()
+		})
+	}
+	t.Run("row security off does not bypass policies", func(t *testing.T) {
+		tx, err := store.db.BeginTx(ctx, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer tx.Rollback()
+		if _, err := tx.ExecContext(ctx, `SET row_security = off`); err != nil {
+			t.Fatal(err)
+		}
+		var count int
+		if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM agent_missions`).Scan(&count); err == nil {
+			t.Fatal("runtime bypassed RLS with row_security=off")
+		}
+	})
 	if _, err := store.WithOrganization(orgB).GetMission(mission.ID); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("cross-tenant read should be hidden, got err=%v", err)
 	}
@@ -270,7 +463,12 @@ func TestDistributedPostgresRLSAndEvents(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if _, err := tx.ExecContext(ctx, `SELECT set_config('app.current_organization_id',$1,true),set_config('app.system_access','0',true)`, orgA); err != nil {
+		tenantContext, contextErr := store.signedTenantContext(orgA, time.Now())
+		if contextErr != nil {
+			_ = tx.Rollback()
+			t.Fatal(contextErr)
+		}
+		if _, err := tx.ExecContext(ctx, `SELECT set_config('app.tenant_context',$1,true)`, tenantContext); err != nil {
 			_ = tx.Rollback()
 			t.Fatal(err)
 		}
@@ -312,6 +510,187 @@ func TestDistributedPostgresRLSAndEvents(t *testing.T) {
 	legacyEventsJSON, err := json.Marshal(legacyEvents)
 	if err != nil || strings.Contains(string(legacyEventsJSON), legacySecret) {
 		t.Fatalf("ListEvents exposed legacy credential: err=%v", err)
+	}
+
+	// The migrator must refuse ambiguous legacy ownership instead of guessing.
+	ownerlessID := "mis_" + uuid.NewString()
+	adminDB, err := sql.Open("pgx", migratorDSN)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer adminDB.Close()
+	seedTx, err := adminDB.BeginTx(ctx, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := seedTx.ExecContext(ctx, `ALTER TABLE agent_missions DISABLE ROW LEVEL SECURITY`); err != nil {
+		_ = seedTx.Rollback()
+		t.Fatal(err)
+	}
+	if _, err := seedTx.ExecContext(ctx, `INSERT INTO agent_missions (id,version,objective,state,plan,approvals,artifacts,created_at,updated_at) VALUES ($1,1,'ambiguous legacy row','READY','[]'::jsonb,'[]'::jsonb,'[]'::jsonb,NOW(),NOW())`, ownerlessID); err != nil {
+		_ = seedTx.Rollback()
+		t.Fatal(err)
+	}
+	if _, err := seedTx.ExecContext(ctx, `ALTER TABLE agent_missions ENABLE ROW LEVEL SECURITY`); err != nil {
+		_ = seedTx.Rollback()
+		t.Fatal(err)
+	}
+	if _, err := seedTx.ExecContext(ctx, `ALTER TABLE agent_missions FORCE ROW LEVEL SECURITY`); err != nil {
+		_ = seedTx.Rollback()
+		t.Fatal(err)
+	}
+	if err := seedTx.Commit(); err != nil {
+		t.Fatal(err)
+	}
+	if err := MigratePostgresAgentSchema(ctx, migratorDSN, key); err == nil || !strings.Contains(err.Error(), "valid owner=1") {
+		t.Fatalf("migration error=%v, want fail-closed ownerless-row refusal", err)
+	}
+	cleanupTx, err := adminDB.BeginTx(ctx, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := cleanupTx.ExecContext(ctx, `ALTER TABLE agent_missions DISABLE ROW LEVEL SECURITY`); err != nil {
+		_ = cleanupTx.Rollback()
+		t.Fatal(err)
+	}
+	if _, err := cleanupTx.ExecContext(ctx, `DELETE FROM agent_missions WHERE id=$1`, ownerlessID); err != nil {
+		_ = cleanupTx.Rollback()
+		t.Fatal(err)
+	}
+	if _, err := cleanupTx.ExecContext(ctx, `ALTER TABLE agent_missions ENABLE ROW LEVEL SECURITY`); err != nil {
+		_ = cleanupTx.Rollback()
+		t.Fatal(err)
+	}
+	if _, err := cleanupTx.ExecContext(ctx, `ALTER TABLE agent_missions FORCE ROW LEVEL SECURITY`); err != nil {
+		_ = cleanupTx.Rollback()
+		t.Fatal(err)
+	}
+	if err := cleanupTx.Commit(); err != nil {
+		t.Fatal(err)
+	}
+	workspaceIdentityMissingID := "mis_" + uuid.NewString()
+	seedWorkspaceTx, err := adminDB.BeginTx(ctx, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := seedWorkspaceTx.ExecContext(ctx, `ALTER TABLE agent_missions DISABLE ROW LEVEL SECURITY`); err != nil {
+		_ = seedWorkspaceTx.Rollback()
+		t.Fatal(err)
+	}
+	if _, err := seedWorkspaceTx.ExecContext(ctx, `INSERT INTO agent_missions (id,version,objective,organization_id,state,plan,approvals,artifacts,created_at,updated_at) VALUES ($1,1,'legacy runnable workspace',$2,'READY','[]'::jsonb,'[]'::jsonb,'[]'::jsonb,NOW(),NOW())`, workspaceIdentityMissingID, orgA); err != nil {
+		_ = seedWorkspaceTx.Rollback()
+		t.Fatal(err)
+	}
+	if _, err := seedWorkspaceTx.ExecContext(ctx, `ALTER TABLE agent_missions ENABLE ROW LEVEL SECURITY`); err != nil {
+		_ = seedWorkspaceTx.Rollback()
+		t.Fatal(err)
+	}
+	if _, err := seedWorkspaceTx.ExecContext(ctx, `ALTER TABLE agent_missions FORCE ROW LEVEL SECURITY`); err != nil {
+		_ = seedWorkspaceTx.Rollback()
+		t.Fatal(err)
+	}
+	if err := seedWorkspaceTx.Commit(); err != nil {
+		t.Fatal(err)
+	}
+	if err := MigratePostgresAgentSchema(ctx, migratorDSN, key); err == nil || !strings.Contains(err.Error(), "without a persisted workspace identity") {
+		t.Fatalf("migration error=%v, want fail-closed workspace-identity refusal", err)
+	}
+	cleanupWorkspaceTx, err := adminDB.BeginTx(ctx, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := cleanupWorkspaceTx.ExecContext(ctx, `ALTER TABLE agent_missions DISABLE ROW LEVEL SECURITY`); err != nil {
+		_ = cleanupWorkspaceTx.Rollback()
+		t.Fatal(err)
+	}
+	if _, err := cleanupWorkspaceTx.ExecContext(ctx, `DELETE FROM agent_missions WHERE id=$1`, workspaceIdentityMissingID); err != nil {
+		_ = cleanupWorkspaceTx.Rollback()
+		t.Fatal(err)
+	}
+	if _, err := cleanupWorkspaceTx.ExecContext(ctx, `ALTER TABLE agent_missions ENABLE ROW LEVEL SECURITY`); err != nil {
+		_ = cleanupWorkspaceTx.Rollback()
+		t.Fatal(err)
+	}
+	if _, err := cleanupWorkspaceTx.ExecContext(ctx, `ALTER TABLE agent_missions FORCE ROW LEVEL SECURITY`); err != nil {
+		_ = cleanupWorkspaceTx.Rollback()
+		t.Fatal(err)
+	}
+	if err := cleanupWorkspaceTx.Commit(); err != nil {
+		t.Fatal(err)
+	}
+	t.Run("postgres recovery uses trusted tenant enumeration", func(t *testing.T) {
+		redisURL := os.Getenv("OLLAMA_AGENT_TEST_REDIS_URL")
+		if redisURL == "" {
+			t.Skip("OLLAMA_AGENT_TEST_REDIS_URL is not configured")
+		}
+		queue, err := openRedisTestQueue(t, ctx, redisURL, "ollama:postgres-recovery")
+		if err != nil {
+			t.Fatal(err)
+		}
+		authStore, err := NewAuthStore(t.TempDir())
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, organization, _, err := authStore.ProvisionOAuthUser(map[string]any{"email": "pg-recovery@example.test", "name": "Recovery Test"}, "integration")
+		if err != nil {
+			t.Fatal(err)
+		}
+		recoveryStore, err := OpenPostgresRuntimeStore(ctx, runtimeDSN, key)
+		if err != nil {
+			t.Fatal(err)
+		}
+		runtime, err := NewRuntime(RuntimeConfig{Store: recoveryStore, RedisQueue: queue, Planner: RulePlanner{}, WorkspaceRoot: t.TempDir(), DataRoot: t.TempDir()})
+		if err != nil {
+			_ = recoveryStore.Close()
+			t.Fatal(err)
+		}
+		defer runtime.Close(context.Background())
+		runtime.SetAuthStore(authStore)
+		workspace := t.TempDir()
+		workspaceIdentity, err := workspaceDirectoryIdentity(workspace)
+		if err != nil {
+			t.Fatal(err)
+		}
+		pending := Mission{ID: "mis_" + uuid.NewString(), Version: 1, Objective: "recover tenant work", Workspace: workspace, WorkspaceIdentity: workspaceIdentity, OrganizationID: organization.ID, AutoRun: true, State: MissionReady, Plan: []Step{}, Approvals: []Approval{}, Artifacts: []ArtifactManifest{}, CreatedAt: time.Now().UTC(), UpdatedAt: time.Now().UTC()}
+		if err := recoveryStore.WithOrganization(organization.ID).PutMission(pending); err != nil {
+			t.Fatal(err)
+		}
+		if err := runtime.resumePending(ctx); err != nil {
+			t.Fatalf("tenant-aware recovery failed: %v", err)
+		}
+		found := false
+		for _, job := range queue.List(QueuePending) {
+			if job.MissionID == pending.ID && job.OrganizationID == organization.ID {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Fatalf("tenant-aware recovery did not enqueue mission %s for organization %s", pending.ID, organization.ID)
+		}
+	})
+	for _, missingColumn := range []struct{ table, column string }{
+		{"agent_missions", "id"}, {"agent_missions", "version"}, {"agent_missions", "objective"}, {"agent_missions", "model"},
+		{"agent_missions", "workspace"}, {"agent_missions", "project_id"}, {"agent_missions", "auto_run"}, {"agent_missions", "state"},
+		{"agent_missions", "plan"}, {"agent_missions", "approvals"}, {"agent_missions", "artifacts"}, {"agent_missions", "last_error"},
+		{"agent_missions", "created_at"}, {"agent_missions", "updated_at"}, {"agent_missions", "completed_at"},
+		{"agent_events", "id"}, {"agent_events", "mission_id"}, {"agent_events", "type"}, {"agent_events", "step_id"},
+		{"agent_events", "payload"}, {"agent_events", "created_at"},
+	} {
+		legacyColumn := "legacy_missing_" + missingColumn.column
+		if _, err := adminDB.ExecContext(ctx, fmt.Sprintf(`ALTER TABLE public.%s RENAME COLUMN %s TO %s`, missingColumn.table, missingColumn.column, legacyColumn)); err != nil {
+			t.Fatalf("rename %s.%s for schema preflight test: %v", missingColumn.table, missingColumn.column, err)
+		}
+		migrationErr := MigratePostgresAgentSchema(ctx, migratorDSN, key)
+		if migrationErr == nil || !strings.Contains(migrationErr.Error(), "older than the supported baseline") || !strings.Contains(migrationErr.Error(), missingColumn.table) || !strings.Contains(migrationErr.Error(), missingColumn.column) {
+			t.Fatalf("missing %s.%s migration error=%v, want explicit unsupported-baseline refusal", missingColumn.table, missingColumn.column, migrationErr)
+		}
+		if _, err := adminDB.ExecContext(ctx, fmt.Sprintf(`ALTER TABLE public.%s RENAME COLUMN %s TO %s`, missingColumn.table, legacyColumn, missingColumn.column)); err != nil {
+			t.Fatalf("restore %s.%s after schema preflight test: %v", missingColumn.table, missingColumn.column, err)
+		}
+		if err := MigratePostgresAgentSchema(ctx, migratorDSN, key); err != nil {
+			t.Fatalf("migration after restoring supported schema shape %s.%s failed: %v", missingColumn.table, missingColumn.column, err)
+		}
 	}
 }
 
@@ -1630,7 +2009,7 @@ func TestDistributedRedisEnqueueRejectsMismatchedPayloadMission(t *testing.T) {
 		t.Fatal(err)
 	}
 	before := captureRedisEnqueueState(t, ctx, queue, missionID, jobID)
-	if _, err := queue.do(ctx, "EVAL", redisEnqueueScript, "7", queue.missionKey(missionID), queue.key("job:"), queue.pendingKey(), queue.delayedKey(), queue.leaseKey(), queue.deadKey(), queue.key("sequence"), string(payload), missionID); err == nil || !strings.Contains(err.Error(), "invalid enqueue payload identity or initial state") {
+	if _, err := queue.do(ctx, "EVAL", redisEnqueueScript, "7", queue.missionKey(missionID), queue.key("job:"), queue.pendingKey(), queue.delayedKey(), queue.leaseKey(), queue.deadKey(), queue.key("sequence"), string(payload), missionID, ""); err == nil || !strings.Contains(err.Error(), "invalid enqueue payload identity or initial state") {
 		t.Fatalf("Enqueue script did not reject payload for the expected mission identity reason: %v", err)
 	}
 	assertRedisEnqueueStateUnchanged(t, before, captureRedisEnqueueState(t, ctx, queue, missionID, jobID))

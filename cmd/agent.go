@@ -3,6 +3,7 @@ package cmd
 import (
 	"bytes"
 	"context"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -10,10 +11,12 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
 
 	"github.com/ollama/ollama/envconfig"
+	"github.com/ollama/ollama/internal/agent"
 )
 
 func agentCommand() *cobra.Command {
@@ -61,7 +64,22 @@ func agentCommand() *cobra.Command {
 	approve.Flags().BoolVar(&approved, "approved", false, "Approve the step; omit to reject")
 	approve.Flags().StringVar(&reason, "reason", "", "Decision reason")
 
-	command.AddCommand(create, get, run, cancel, events, approve, tools)
+	migratePostgres := &cobra.Command{
+		Use:   "migrate-postgres",
+		Short: "Apply agent database schema using the separate migrator credentials",
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			dsn := strings.TrimSpace(os.Getenv("OLLAMA_AGENT_MIGRATOR_DATABASE_URL"))
+			key, err := hex.DecodeString(strings.TrimSpace(os.Getenv("OLLAMA_AGENT_TENANT_CONTEXT_KEY")))
+			if err != nil || len(key) < 32 {
+				return fmt.Errorf("OLLAMA_AGENT_TENANT_CONTEXT_KEY must be at least 64 hexadecimal characters")
+			}
+			ctx, cancel := context.WithTimeout(cmd.Context(), 2*time.Minute)
+			defer cancel()
+			return agent.MigratePostgresAgentSchema(ctx, dsn, key)
+		},
+	}
+	command.AddCommand(create, get, run, cancel, events, approve, tools, migratePostgres)
 	return command
 }
 
@@ -83,6 +101,9 @@ func runAgentRequest(ctx context.Context, method, path string, payload any) erro
 	}
 	if payload != nil {
 		req.Header.Set("Content-Type", "application/json")
+	}
+	if token := strings.TrimSpace(os.Getenv("OLLAMA_AGENT_TOKEN")); token != "" {
+		req.Header.Set("Authorization", "Bearer "+token)
 	}
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {

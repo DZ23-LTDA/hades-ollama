@@ -159,13 +159,20 @@ grep -q 'validateCatalogModel' internal/grok/client.go
 grep -q 'Grok streaming is not exposed' server/grok_routes.go
 grep -q 'TestGrokResponsesRejectsStreamBeforeUpstream' server/grok_routes_test.go
 grep -q '127.0.0.1:' deploy/docker-compose.agentic.yml
-grep -q 'OLLAMA_AGENT_POSTGRES_PASSWORD' deploy/docker-compose.agentic.yml
+grep -q 'OLLAMA_AGENT_POSTGRES_ADMIN_PASSWORD' deploy/docker-compose.agentic.yml
+grep -q 'OLLAMA_AGENT_RUNTIME_PASSWORD' deploy/docker-compose.agentic.yml
+grep -q 'OLLAMA_AGENT_MIGRATOR_PASSWORD' deploy/docker-compose.agentic.yml
 grep -q 'OLLAMA_AGENT_REDIS_PASSWORD' deploy/docker-compose.agentic.yml
-grep -q 'ollama_agent_test' .github/workflows/dz23-agentic-quality.yaml
-grep -q 'tenant_password' .github/workflows/dz23-agentic-quality.yaml
-grep -q 'SELECT 1 FROM pg_roles' .github/workflows/dz23-agentic-quality.yaml
+grep -q 'OLLAMA_AGENT_TEST_POSTGRES_RUNTIME_URL' .github/workflows/dz23-agentic-quality.yaml
+grep -q 'OLLAMA_AGENT_TEST_POSTGRES_MIGRATOR_URL' .github/workflows/dz23-agentic-quality.yaml
+grep -q 'OLLAMA_AGENT_TEST_POSTGRES_TENANT_KEY' .github/workflows/dz23-agentic-quality.yaml
+grep -q 'active legacy ollama_agent login' internal/agent/postgres_security.go
+grep -q 'TestDistributedPostgresRuntimeReadinessForLegacyRole' internal/agent/distributed_integration_test.go
+grep -q 'OLLAMA_AGENT_TEST_EXPECT_LEGACY_ROLE_ACTIVE' .github/workflows/dz23-agentic-quality.yaml
+grep -q 'pg_restore --list' docs/agentic/INTEGRATIONS.md
+grep -q 'restore_check' .github/workflows/dz23-agentic-quality.yaml
 grep -q 'cleanup-placeholder' .github/workflows/dz23-agentic-quality.yaml
-if sed -n '56,110p' .github/workflows/dz23-agentic-quality.yaml | grep -q 'GITHUB_ENV'; then
+if sed -n '65,210p' .github/workflows/dz23-agentic-quality.yaml | grep -q 'GITHUB_ENV'; then
   echo 'distributed integration secrets must remain step-local' >&2
   exit 1
 fi

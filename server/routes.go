@@ -1912,11 +1912,22 @@ func allowedHostsMiddleware(addr net.Addr) gin.HandlerFunc {
 }
 
 func (s *Server) GenerateRoutes() (http.Handler, error) {
+	routesReady := false
+	var createdRuntime *agent.Runtime
+	defer func() {
+		if !routesReady && createdRuntime != nil {
+			_ = createdRuntime.Close(context.Background())
+			if s.agentRuntime == createdRuntime {
+				s.agentRuntime = nil
+			}
+		}
+	}()
 	if s.agentRuntime == nil {
 		runtime, err := newDefaultAgentRuntime()
 		if err != nil {
 			return nil, err
 		}
+		createdRuntime = runtime
 		s.agentRuntime = runtime
 	}
 	codexDesktopProxy, err := newCodexDesktopProxy()
@@ -2033,6 +2044,7 @@ func (s *Server) GenerateRoutes() (http.Handler, error) {
 	// Inference (Anthropic compatibility)
 	r.POST("/v1/messages", s.withInferenceRequestLogging("/v1/messages", cloudPassthroughMiddleware(cloudErrRemoteInferenceUnavailable), middleware.AnthropicMessagesMiddleware(lookupThinking), s.ChatHandler)...)
 
+	routesReady = true
 	return r, nil
 }
 

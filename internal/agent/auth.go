@@ -852,6 +852,23 @@ func (s *AuthStore) Users() []User {
 	return result
 }
 
+// Organizations returns a stable snapshot of known organizations. Background
+// PostgreSQL recovery uses these trusted auth records to build one scoped
+// runtime per tenant rather than granting SQL-level global visibility.
+func (s *AuthStore) Organizations() []Organization {
+	if s == nil {
+		return nil
+	}
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	result := make([]Organization, 0, len(s.organizations))
+	for _, organization := range s.organizations {
+		result = append(result, organization)
+	}
+	sort.Slice(result, func(i, j int) bool { return result[i].ID < result[j].ID })
+	return result
+}
+
 func (s *AuthStore) FirstOrganization(userID string) (Organization, Membership, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
