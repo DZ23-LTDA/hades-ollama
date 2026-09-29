@@ -1105,3 +1105,12 @@ STATUS: POSTGRES_LOCAL_RESTORE_TLS_PASS — restore real + fault-cleanup demonst
 - **PRÓXIMO PASSO CONCRETO:** obter ambiente staging real e decisão operacional sobre modo de replicação, quorum/fencing e metas RPO/RTO; executar os casos de perda de primary/standby/rede particionada e restore/rollback com evidência assinada por operadores. Até haver credenciais/topologia autorizadas, manter gate de produção bloqueado e seguir próximos itens locais independentes sem simular aprovação.
 
 STATUS: LOCAL_PG16_TLS_RESTORE_AND_MANUAL_PROMOTION_PASS — produção bloqueada por HA/DR operacional externo.
+
+
+## Atualização de referência técnica — PostgreSQL 16 oficial — 2026-09-29 12:43 -03
+
+O guia HA foi conferido contra as páginas oficiais versionadas do PostgreSQL 16 sobre [failover/old primary e fencing](https://www.postgresql.org/docs/16/warm-standby-failover.html), [`pg_basebackup`/WAL streaming/slots](https://www.postgresql.org/docs/16/app-pgbasebackup.html), [TLS verify-full e CA](https://www.postgresql.org/docs/16/libpq-ssl.html) e [`pg_promote(wait, timeout)`](https://www.postgresql.org/docs/16/functions-admin.html). Os links/version pin estão no próprio runbook; a orientação de fencing corresponde ao alerta oficial de evitar ambos os primaries graváveis.
+
+**Último commit funcional agora:** `31ce00bc0f8ac3e534170cb84b08abd43815c64c` (`docs(postgres): cite pg16 failover guarantees`), remoto e local iguais. Integridade, parser YAML, Bash syntax, diff check e inspeção de ausência de cluster/porta descartável passaram após a edição de referências. As evidências anteriores de teste Go completo (`GO_TEST_EXIT=0`), vet, restore TLS e promoção permanecem aplicáveis, sem alteração de código Go nesta pequena atualização documental.
+
+Continua pendente e bloqueante para produção: HA/staging de operador real, quorum/fencing, rede/partições, backups/retention, recuperação do antigo primary, metas RPO/RTO, alertas e revisão independente operacional. Nenhuma autorização/credencial de staging fornecida; não fabricamos execução remota.

@@ -243,3 +243,12 @@ Gates: `go test -json ./... -count=1` status 0; `go vet ./...`; integrity; parse
 A evidência é apenas de mecânica manual em sandbox; não representa HA gerenciada, produção, RPO/RTO, topologia/quorum, comportamento sob partição, failover automatizado, recuperação segura do old-primary/`pg_rewind`, certificados reais ou retenção de backup. PostgreSQL permanece bloqueado para produção até staging autorizado e review operacional. GitHub Actions não executou neste SHA; não há PR nem check-run a relatar.
 
 **Próximo passo:** acordar e preparar staging real com CA, DSNs e topologia documentados; definir modo de replicação/fencing e metas RPO/RTO, então executar cenários de falha e restore/rollback com evidência independente. Não declarar produção aprovada só pelos ensaios descartáveis locais.
+
+
+## Atualização — referências oficiais PostgreSQL 16 — 2026-09-29 12:43 -03
+
+O guia `POSTGRES_HA_FAILOVER_REHEARSAL.md` agora cita as páginas oficiais PG16 para failover/fencing do old primary, `pg_basebackup` e replication slots, libpq TLS `verify-full`/CA e `pg_promote` com timeout. A orientação de prevenir split-brain está explicitamente alinhada ao manual do PostgreSQL, que exige impedir que o primary anterior retorne como escritor.
+
+Último commit funcional: `31ce00bc0f8ac3e534170cb84b08abd43815c64c` (`docs(postgres): cite pg16 failover guarantees`), confirmado igual em `origin/recovery/ollama-full-snapshot`. Guard de integridade, YAML, `bash -n`, diff e limpeza de listeners/temporários passaram; os testes Go e vet passaram na rodada anterior a esta alteração exclusivamente documental.
+
+Status mantém o gate de produção **BLOCKED**: sem HA operacional em staging autorizado, quorum/fencing, partição de rede, backup/restore operacional com RPO/RTO medidos, recuperação do antigo primary, alertas e review independente. Não afirmar aprovação de produção ou check GitHub remoto sem evidência associada ao SHA.
