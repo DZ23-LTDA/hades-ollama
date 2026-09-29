@@ -326,3 +326,20 @@ Candidato v2 de 132.569.470 bytes (1.871 entradas) passou `zip -T`, `unzip -t`, 
 ## Validação final para o pacote portable — 2026-09-29 18:21 -03
 
 O candidato v3 foi gerado do source SHA `0ba6b15f5dc55c0b8667a5561478a14bf81e3fd4`, passou manifesto, `git bundle verify`, `zip -T` e `unzip -t`; continha 1.871 entradas. O source SHA e recovery ref do bundle eram iguais, e o ZIP visual foi comparado byte a byte. Antes da entrega, publicar este último checkpoint e regenerar o ZIP do novo source SHA; esse arquivo reconstruído será o único final. Nenhum merge ou modificação em `main`, PR #38 ou UI parity.
+
+
+## Consolidação controlada para recovery — 2026-09-29 19:25 -03
+
+O usuário autorizou integrar o PR #38 **somente dentro de `recovery/ollama-full-snapshot`**. Execução concluída: merge `--no-ff`, commit `8be25f6c144acf1fd11c4d3f55c24f24a8d9c8e5`, pais recovery `5597da4e2e0f852b64805a23c8902fb7efa8c37b` e PR `07a4f0bca2cbe327d5234abd9ebec69ff52154e6`; push normal confirmado. Não houve force-push, merge em main, edição da branch do PR, nem operação na UI parity. PR #38 segue OPEN/MERGEABLE contra `main` (`8635e30dc9e95a1f5b29700169783abc24093ceb`); UI parity continua em `132e77155fed682c0b6244d256e6cdfe9b25c239` e divergente da recovery (UI +17/recovery +60; merge base `add5881a...`).
+
+A recovery agora contém Connectors/Providers/quick-connect, ícones e as áreas de upload/Windows/MCP do PR, preservando as linhas de PostgreSQL/RLS/HMAC/HBA/cutover. Marketplace duplicado de `feat/ui-shell-parity` não foi importado. Durante revisão foram fechados os blockers de quick-connect: auth/organização forwarding autenticados e same-origin, preflight antes de persistir, rollback de segredo e preservação segura de valor anterior, escopo GET-only com paths narrow por catálogo, rejeição de traversal inclusive nested encoding/backslash, testes de cópia defensiva. Revisão independente read-only encontrou zero blockers nesse escopo.
+
+Evidência local no SHA final: `go test ./...`, `go vet ./...`, `go test -race ./internal/agent`, `go build ./...`, cross-compiles Windows de agent/UI; Vitest 34/34 arquivos e 244 testes, `pnpm build`, ESLint focado; Actions YAML com 26 blocos Bash, Compose YAML, integrity guard, gofmt, diff check e Gitleaks em patch staged. Test harness descartável PG16/Redis passou fresh init, cutover fase 1/2, RLS/drift/rotação e isolamento cross-database. O bundle de referências de segurança permaneceu inalterado. Build frontend tem somente warning de chunk >500 kB. Após o push, `gh run list` não mostrou execução GitHub Actions para recovery; CI remoto ainda precisa ser consultado/comprovado.
+
+### Instrução de continuidade para o próximo Manus
+
+1. Confirmar `git status`, branch `recovery/ollama-full-snapshot` e HEAD `8be25f6c`; se o contexto/checkout diferir, buscar a branch sem tocar em outras refs.
+2. Consultar se Actions já rodou para esse SHA; se falhou, corrigir e testar **apenas recovery**, registrando commit/push/checkpoints.
+3. Não repetir o merge do PR #38 (já é segundo pai de `8be25f6c`), não fechar PR, não mudar main nem os heads `fix/audit-security-deps-2026-09-25`/`feat/ui-shell-parity`.
+4. Em seguida construir uma matriz de funcionalidades UI parity realmente aditivas (tema claro/escuro/automático, Home/dashboard, pills e rastreador), excluir conectores duplicados e seguir o foco de produto pedido: chat principal como executor de missão com tools, filesystem, terminal, browser/MCP, artifacts e approvals.
+5. Estado real: **consolidação de branches feita; produto ainda não declarado equivalente ao Manus nem pronto para produção**. Operações/staging HA, backup/restore, RPO/RTO, TLS/CA e aceite continuam pendentes.
