@@ -167,6 +167,54 @@ grep -q 'OLLAMA_AGENT_TEST_POSTGRES_RUNTIME_URL' .github/workflows/dz23-agentic-
 grep -q 'OLLAMA_AGENT_TEST_POSTGRES_MIGRATOR_URL' .github/workflows/dz23-agentic-quality.yaml
 grep -q 'OLLAMA_AGENT_TEST_POSTGRES_TENANT_KEY' .github/workflows/dz23-agentic-quality.yaml
 grep -q 'active legacy ollama_agent login' internal/agent/postgres_security.go
+grep -q 'unexpected columns' internal/agent/postgres_security.go
+grep -q 'legacy tenant key table has unsupported columns' internal/agent/postgres_security.go
+grep -q 'legacy_key_rows<>1' internal/agent/postgres_security.go
+grep -q 'dedicated PostgreSQL cluster' deploy/postgres/migrate-existing-roles.sql
+grep -q 'public schema contains unrelated non-extension objects' deploy/postgres/migrate-existing-roles.sql
+grep -q 'legacy role owns large objects outside the supported Ollama schema' deploy/postgres/migrate-existing-roles.sql
+grep -q 'agent_tenant_context_matches' deploy/postgres/migrate-existing-roles.sql
+grep -q 'ALTER ROLE ollama_agent NOLOGIN NOSUPERUSER' deploy/postgres/migrate-existing-roles.sql
+grep -q 'WITH RECURSIVE legacy_members(member_oid)' deploy/postgres/migrate-existing-roles.sql
+grep -q "SET LOCAL lock_timeout = '5s'" deploy/postgres/migrate-existing-roles.sql
+grep -q 'drain_post_transfer_legacy_sessions' deploy/postgres/migrate-existing-roles.sql
+grep -q 'WITH RECURSIVE legacy_members(member_oid)' deploy/postgres/retire-legacy-role.sql
+grep -q "SET LOCAL lock_timeout = '5s'" deploy/postgres/retire-legacy-role.sql
+grep -q 'ollama_cutover_unrelated_admin_probe' .github/workflows/dz23-agentic-quality.yaml
+grep -q 'pg_catalog.pg_proc p JOIN pg_catalog.pg_roles r ON r.oid=p.proowner' .github/workflows/dz23-agentic-quality.yaml
+grep -q 'TestDistributedPostgresRuntimeCannotConnectOutsideApplicationDatabase' internal/agent/distributed_integration_test.go
+grep -q 'OLLAMA_AGENT_TEST_POSTGRES_ADMIN_OTHER_DB_URL' internal/agent/distributed_integration_test.go
+grep -q "d.classid='pg_catalog.pg_database'::pg_catalog.regclass" deploy/postgres/migrate-existing-roles.sql
+grep -q 'hba_file=/etc/postgresql/pg_hba.conf' deploy/docker-compose.agentic.yml
+grep -q '\${OLLAMA_AGENT_POSTGRES_HBA_FILE:-./postgres/pg_hba-runtime.conf}:/etc/postgresql/pg_hba.conf:ro' deploy/docker-compose.agentic.yml
+grep -qE '^host[[:space:]]+all[[:space:]]+ollama_agent_runtime.*reject' deploy/postgres/pg_hba-runtime.conf
+grep -qE '^local[[:space:]]+all[[:space:]]+ollama_agent_runtime.*reject' deploy/postgres/pg_hba-runtime.conf
+grep -qE '^host[[:space:]]+ollama_agent[[:space:]]+ollama_agent_runtime.*scram-sha-256' deploy/postgres/pg_hba-runtime.conf
+if grep -qE '^host[[:space:]]+all[[:space:]]+ollama_agent_runtime.*scram-sha-256' deploy/postgres/pg_hba-runtime.conf; then
+  echo 'runtime HBA allow must not precede and shadow database-isolation rejects' >&2
+  exit 1
+fi
+grep -qE '^host[[:space:]]+ollama_agent[[:space:]]+ollama_agent_migrator.*scram-sha-256' deploy/postgres/pg_hba-runtime.conf
+if grep -qE '^host[[:space:]]+all[[:space:]]+ollama_agent_migrator.*scram-sha-256' deploy/postgres/pg_hba-runtime.conf; then
+  echo 'migrator HBA allow must not precede and shadow database-isolation rejects' >&2
+  exit 1
+fi
+test "$(grep -cE '^host[[:space:]]+ollama_agent[[:space:]]+ollama_agent_runtime[[:space:]]+(0\.0\.0\.0/0|::/0)[[:space:]]+scram-sha-256$' deploy/postgres/pg_hba-runtime.conf)" -eq 2
+test "$(grep -cE '^host[[:space:]]+ollama_agent[[:space:]]+ollama_agent_migrator[[:space:]]+(0\.0\.0\.0/0|::/0)[[:space:]]+scram-sha-256$' deploy/postgres/pg_hba-runtime.conf)" -eq 2
+runtime_allow_line="$(grep -nE '^host[[:space:]]+ollama_agent[[:space:]]+ollama_agent_runtime[[:space:]]+0\.0\.0\.0/0[[:space:]]+scram-sha-256$' deploy/postgres/pg_hba-runtime.conf | cut -d: -f1)"
+runtime_reject_line="$(grep -nE '^host[[:space:]]+all[[:space:]]+ollama_agent_runtime[[:space:]]+0\.0\.0\.0/0[[:space:]]+reject$' deploy/postgres/pg_hba-runtime.conf | cut -d: -f1)"
+migrator_allow_line="$(grep -nE '^host[[:space:]]+ollama_agent[[:space:]]+ollama_agent_migrator[[:space:]]+0\.0\.0\.0/0[[:space:]]+scram-sha-256$' deploy/postgres/pg_hba-runtime.conf | cut -d: -f1)"
+migrator_reject_line="$(grep -nE '^host[[:space:]]+all[[:space:]]+ollama_agent_migrator[[:space:]]+0\.0\.0\.0/0[[:space:]]+reject$' deploy/postgres/pg_hba-runtime.conf | cut -d: -f1)"
+test "$runtime_allow_line" -lt "$runtime_reject_line"
+test "$migrator_allow_line" -lt "$migrator_reject_line"
+grep -q 'ollama_agent_reverse_member.*scram-sha-256' .github/workflows/dz23-agentic-quality.yaml
+grep -q 'reverse_member_login' .github/workflows/dz23-agentic-quality.yaml
+grep -q 'REVOKE CONNECT ON DATABASE ollama_agent FROM PUBLIC' deploy/postgres/init/001-agent-role.sql
+grep -q 'REVOKE USAGE, CREATE ON SCHEMA public FROM PUBLIC' deploy/postgres/init/001-agent-role.sql
+grep -q 'aclexplode(col.attacl)' internal/agent/postgres_security.go
+grep -q 'public-database-create-temp-granted' internal/agent/distributed_integration_test.go
+grep -q 'keyring-secret-column-granted' internal/agent/distributed_integration_test.go
+grep -q 'GRANT SELECT (objective) ON TABLE public.agent_missions TO PUBLIC' .github/workflows/dz23-agentic-quality.yaml
 grep -q 'TestDistributedPostgresRuntimeReadinessForLegacyRole' internal/agent/distributed_integration_test.go
 grep -q 'OLLAMA_AGENT_TEST_EXPECT_LEGACY_ROLE_ACTIVE' .github/workflows/dz23-agentic-quality.yaml
 grep -q 'pg_restore --list' docs/agentic/INTEGRATIONS.md

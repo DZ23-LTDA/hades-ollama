@@ -45,7 +45,7 @@ BEGIN
   ) OR EXISTS (
     SELECT 1 FROM pg_catalog.pg_type t JOIN pg_catalog.pg_namespace n ON n.oid=t.typnamespace
     WHERE n.nspname NOT IN ('pg_catalog','information_schema')
-      AND t.typtype IN ('d','e')
+      AND t.typtype IN ('c','d','e')
       AND t.typowner=(SELECT oid FROM pg_catalog.pg_roles WHERE rolname='ollama_agent')
   ) OR EXISTS (
     SELECT 1 FROM pg_catalog.pg_shdepend d
@@ -70,16 +70,33 @@ BEGIN
 END
 $preflight$;
 
--- Block new legacy connections before cleaning up existing ones. If a later
--- step fails, this state is safe and the script can be retried by the new admin.
+-- Block new legacy connections before cleaning up existing ones. Snapshot all
+-- direct/transitive role members first: NOLOGIN does not terminate existing
+-- sessions that can SET ROLE into ollama_agent.
 BEGIN;
+SET LOCAL lock_timeout = '5s';
+LOCK TABLE pg_catalog.pg_auth_members IN ACCESS EXCLUSIVE MODE;
+CREATE TEMP TABLE ollama_legacy_session_principals (rolname NAME PRIMARY KEY) ON COMMIT PRESERVE ROWS;
+INSERT INTO pg_temp.ollama_legacy_session_principals (rolname)
+WITH RECURSIVE legacy_members(member_oid) AS (
+  SELECT memberships.member FROM pg_catalog.pg_auth_members memberships
+  WHERE memberships.roleid=(SELECT oid FROM pg_catalog.pg_roles WHERE rolname='ollama_agent')
+  UNION
+  SELECT memberships.member FROM pg_catalog.pg_auth_members memberships
+  JOIN legacy_members nested ON memberships.roleid=nested.member_oid
+)
+SELECT role_row.rolname FROM pg_catalog.pg_roles role_row
+WHERE role_row.oid=(SELECT oid FROM pg_catalog.pg_roles WHERE rolname='ollama_agent')
+   OR role_row.oid IN (SELECT member_oid FROM legacy_members);
 REVOKE CONNECT ON DATABASE ollama_agent FROM PUBLIC;
 REVOKE ALL ON DATABASE ollama_agent FROM ollama_agent;
 GRANT CONNECT ON DATABASE ollama_agent TO ollama_agent_admin, ollama_agent_migrator, ollama_agent_runtime;
 REVOKE ALL ON ALL TABLES IN SCHEMA public FROM ollama_agent;
 REVOKE ALL ON ALL SEQUENCES IN SCHEMA public FROM ollama_agent;
 REVOKE ALL ON ALL FUNCTIONS IN SCHEMA public FROM ollama_agent;
-REVOKE CREATE ON SCHEMA public FROM ollama_agent;
+REVOKE USAGE, CREATE ON SCHEMA public FROM PUBLIC;
+REVOKE USAGE, CREATE ON SCHEMA public FROM ollama_agent;
+GRANT USAGE ON SCHEMA public TO ollama_agent_runtime;
 
 -- Revoke both directions: roles previously granted to the legacy login, and
 -- members that were themselves granted the legacy role (including SET ROLE).
@@ -105,7 +122,8 @@ BEGIN
     PERFORM pg_catalog.pg_stat_clear_snapshot();
     SELECT count(*) INTO active_sessions
     FROM pg_catalog.pg_stat_activity
-    WHERE usename='ollama_agent' AND pid<>pg_catalog.pg_backend_pid();
+    WHERE usename IN (SELECT rolname FROM pg_temp.ollama_legacy_session_principals)
+      AND pid<>pg_catalog.pg_backend_pid();
 
     IF active_sessions=0 THEN
       zero_samples := zero_samples + 1;
@@ -114,7 +132,8 @@ BEGIN
       zero_samples := 0;
       PERFORM pg_catalog.pg_terminate_backend(pid)
       FROM pg_catalog.pg_stat_activity
-      WHERE usename='ollama_agent' AND pid<>pg_catalog.pg_backend_pid();
+      WHERE usename IN (SELECT rolname FROM pg_temp.ollama_legacy_session_principals)
+        AND pid<>pg_catalog.pg_backend_pid();
     END IF;
 
     IF attempt=300 THEN
@@ -124,8 +143,10 @@ BEGIN
   END LOOP;
 
   PERFORM pg_catalog.pg_stat_clear_snapshot();
-  IF EXISTS (SELECT 1 FROM pg_catalog.pg_stat_activity WHERE usename='ollama_agent' AND pid<>pg_catalog.pg_backend_pid()) THEN
-    RAISE EXCEPTION 'legacy ollama_agent session appeared after termination';
+  IF EXISTS (SELECT 1 FROM pg_catalog.pg_stat_activity
+             WHERE usename IN (SELECT rolname FROM pg_temp.ollama_legacy_session_principals)
+               AND pid<>pg_catalog.pg_backend_pid()) THEN
+    RAISE EXCEPTION 'legacy or SET ROLE member session appeared after termination';
   END IF;
   IF NOT EXISTS (SELECT 1 FROM pg_catalog.pg_roles r WHERE r.rolname='ollama_agent' AND NOT r.rolcanlogin AND NOT r.rolsuper AND NOT r.rolbypassrls AND NOT r.rolcreatedb AND NOT r.rolcreaterole AND NOT r.rolreplication AND NOT r.rolinherit AND NOT EXISTS (SELECT 1 FROM pg_catalog.pg_auth_members m WHERE m.member=r.oid OR m.roleid=r.oid)) THEN
     RAISE EXCEPTION 'legacy ollama_agent role did not reach the required disabled, least-privilege state';
@@ -143,7 +164,7 @@ BEGIN
     WHERE n.nspname NOT IN ('pg_catalog','information_schema') AND p.proowner=(SELECT oid FROM pg_catalog.pg_roles WHERE rolname='ollama_agent')
   ) OR EXISTS (
     SELECT 1 FROM pg_catalog.pg_type t JOIN pg_catalog.pg_namespace n ON n.oid=t.typnamespace
-    WHERE n.nspname NOT IN ('pg_catalog','information_schema') AND t.typtype IN ('d','e')
+    WHERE n.nspname NOT IN ('pg_catalog','information_schema') AND t.typtype IN ('c','d','e')
       AND t.typowner=(SELECT oid FROM pg_catalog.pg_roles WHERE rolname='ollama_agent')
   ) OR EXISTS (
     SELECT 1 FROM pg_catalog.pg_shdepend d
@@ -151,7 +172,7 @@ BEGIN
       AND d.refobjid=(SELECT oid FROM pg_catalog.pg_roles WHERE rolname='ollama_agent')
       AND d.deptype='o'
   ) THEN
-    RAISE EXCEPTION 'legacy ollama_agent still owns an application object after retirement';
+    RAISE EXCEPTION 'legacy ollama_agent still owns an application object, including a standalone composite type, after retirement';
   END IF;
 END
 $verify_retirement$;

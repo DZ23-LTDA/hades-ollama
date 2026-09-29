@@ -222,6 +222,23 @@ func TestDistributedPostgresRuntimeReadinessForStaleLegacySession(t *testing.T) 
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
+	adminDB, err := sql.Open("pgx", adminDSN)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := adminDB.ExecContext(ctx, `ALTER ROLE ollama_agent LOGIN SUPERUSER`); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		cleanupCtx, cleanupCancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cleanupCancel()
+		if _, cleanupErr := adminDB.ExecContext(cleanupCtx, `ALTER ROLE ollama_agent NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS NOREPLICATION`); cleanupErr != nil {
+			t.Errorf("restore fenced legacy role after stale-session fixture: %v", cleanupErr)
+		}
+		if cleanupErr := adminDB.Close(); cleanupErr != nil {
+			t.Errorf("close stale-session fixture admin DB: %v", cleanupErr)
+		}
+	})
 	legacyDB, err := sql.Open("pgx", legacyDSN)
 	if err != nil {
 		t.Fatal(err)
@@ -236,11 +253,6 @@ func TestDistributedPostgresRuntimeReadinessForStaleLegacySession(t *testing.T) 
 	if _, err := legacyConn.ExecContext(ctx, `SELECT 1`); err != nil {
 		t.Fatal(err)
 	}
-	adminDB, err := sql.Open("pgx", adminDSN)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer adminDB.Close()
 	if _, err := adminDB.ExecContext(ctx, `ALTER ROLE ollama_agent NOLOGIN NOSUPERUSER NOBYPASSRLS`); err != nil {
 		t.Fatal(err)
 	}
@@ -258,8 +270,72 @@ func TestDistributedPostgresRuntimeReadinessForStaleLegacySession(t *testing.T) 
 	if err := legacyDB.Close(); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := adminDB.ExecContext(ctx, `ALTER ROLE ollama_agent LOGIN SUPERUSER`); err != nil {
-		t.Fatalf("restore legacy fixture role for retirement gate: %v", err)
+}
+
+func TestDistributedPostgresRuntimeCannotConnectOutsideApplicationDatabase(t *testing.T) {
+	runtimeDSN := os.Getenv("OLLAMA_AGENT_TEST_POSTGRES_RUNTIME_URL")
+	otherDatabaseDSN := os.Getenv("OLLAMA_AGENT_TEST_POSTGRES_RUNTIME_OTHER_DB_URL")
+	migratorOtherDatabaseDSN := os.Getenv("OLLAMA_AGENT_TEST_POSTGRES_MIGRATOR_OTHER_DB_URL")
+	adminOtherDatabaseDSN := os.Getenv("OLLAMA_AGENT_TEST_POSTGRES_ADMIN_OTHER_DB_URL")
+	key, keyErr := hex.DecodeString(os.Getenv("OLLAMA_AGENT_TEST_POSTGRES_TENANT_KEY"))
+	if runtimeDSN == "" || otherDatabaseDSN == "" || migratorOtherDatabaseDSN == "" || adminOtherDatabaseDSN == "" || keyErr != nil || len(key) < 32 {
+		t.Skip("runtime, migrator, admin PostgreSQL DSNs and a 64+ byte hex tenant key are required")
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	runtimeStore, err := OpenPostgresRuntimeStore(ctx, runtimeDSN, key)
+	if err != nil {
+		t.Fatalf("runtime failed readiness before the temporary HBA probe: %v", err)
+	}
+	if err := runtimeStore.Close(); err != nil {
+		t.Fatal(err)
+	}
+	adminDB, err := sql.Open("pgx", adminOtherDatabaseDSN)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := adminDB.PingContext(ctx); err != nil {
+		t.Fatalf("admin could not reach the maintenance database used by this test: %v", err)
+	}
+	const probeDatabaseName = "ollama_hba_probe"
+	if _, err := adminDB.ExecContext(ctx, `CREATE DATABASE ollama_hba_probe TEMPLATE template1`); err != nil {
+		t.Fatalf("create fresh HBA probe database: %v", err)
+	}
+	t.Cleanup(func() {
+		cleanupCtx, cleanupCancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cleanupCancel()
+		if _, cleanupErr := adminDB.ExecContext(cleanupCtx, `DROP DATABASE ollama_hba_probe`); cleanupErr != nil {
+			t.Errorf("drop fresh HBA probe database: %v", cleanupErr)
+		}
+		if cleanupErr := adminDB.Close(); cleanupErr != nil {
+			t.Errorf("close admin HBA-probe connection pool: %v", cleanupErr)
+		}
+	})
+	if _, err := adminDB.ExecContext(ctx, `GRANT CONNECT ON DATABASE ollama_hba_probe TO PUBLIC`); err != nil {
+		t.Fatalf("grant PUBLIC CONNECT on fresh HBA probe database: %v", err)
+	}
+	var runtimeHasConnect, migratorHasConnect bool
+	if err := adminDB.QueryRowContext(ctx, `SELECT pg_catalog.has_database_privilege('ollama_agent_runtime',$1,'CONNECT'), pg_catalog.has_database_privilege('ollama_agent_migrator',$1,'CONNECT')`, probeDatabaseName).Scan(&runtimeHasConnect, &migratorHasConnect); err != nil {
+		t.Fatalf("inspect PUBLIC CONNECT in HBA probe database: %v", err)
+	}
+	if !runtimeHasConnect || !migratorHasConnect {
+		t.Fatalf("HBA probe must grant CONNECT through PUBLIC to both restricted roles, got runtime=%t migrator=%t", runtimeHasConnect, migratorHasConnect)
+	}
+	db, err := sql.Open("pgx", otherDatabaseDSN)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	if err := db.PingContext(ctx); err == nil {
+		t.Fatal("runtime role authenticated to a fresh PUBLIC-CONNECT database outside ollama_agent")
+	}
+	migratorDB, err := sql.Open("pgx", migratorOtherDatabaseDSN)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer migratorDB.Close()
+	if err := migratorDB.PingContext(ctx); err == nil {
+		t.Fatal("migrator role authenticated to a fresh PUBLIC-CONNECT database outside ollama_agent")
 	}
 }
 
@@ -847,6 +923,29 @@ func TestDistributedPostgresRLSAndEvents(t *testing.T) {
 		})
 		if err := MigratePostgresAgentSchema(ctx, migratorDSN, key); err == nil || !strings.Contains(err.Error(), "type/nullability") || !strings.Contains(err.Error(), "workspace_identity") {
 			t.Fatalf("altered default migration error=%v, want fail-closed default drift refusal", err)
+		}
+	})
+	t.Run("reject unexpected sensitive column", func(t *testing.T) {
+		if _, err := adminDB.ExecContext(ctx, `ALTER TABLE public.agent_missions ADD COLUMN credential_blob TEXT NOT NULL DEFAULT 'sentinel'`); err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() {
+			if _, cleanupErr := adminDB.ExecContext(context.Background(), `ALTER TABLE public.agent_missions DROP COLUMN credential_blob`); cleanupErr != nil {
+				t.Errorf("drop unexpected sensitive-column fixture: %v", cleanupErr)
+			}
+			if cleanupErr := MigratePostgresAgentSchema(context.Background(), migratorDSN, key); cleanupErr != nil {
+				t.Errorf("restore supported schema after unexpected-column fixture: %v", cleanupErr)
+			}
+		})
+		if err := MigratePostgresAgentSchema(ctx, migratorDSN, key); err == nil || !strings.Contains(err.Error(), "unexpected columns") || !strings.Contains(err.Error(), "credential_blob") {
+			t.Fatalf("migration with unexpected sensitive column error=%v, want explicit refusal", err)
+		}
+		store, err := OpenPostgresRuntimeStore(ctx, runtimeDSN, key)
+		if store != nil {
+			_ = store.Close()
+		}
+		if !errors.Is(err, ErrPostgresTenantSecurityShape) {
+			t.Fatalf("runtime-open error=%v, want schema allowlist refusal", err)
 		}
 	})
 }
@@ -2316,6 +2415,12 @@ func TestDistributedPostgresRuntimeRejectsRLSDrift(t *testing.T) {
 		{name: "references-granted", mutate: `GRANT REFERENCES ON public.agent_events TO ollama_agent_runtime`},
 		{name: "trigger-granted", mutate: `GRANT TRIGGER ON public.agent_missions TO ollama_agent_runtime`},
 		{name: "temporary-objects-granted", mutate: `GRANT TEMP ON DATABASE ollama_agent TO ollama_agent_runtime`},
+		{name: "keyring-secret-column-granted", mutate: `GRANT SELECT (secret) ON TABLE public.agent_tenant_context_keys TO ollama_agent_runtime`},
+		{name: "keyring-secret-column-granted-to-public", mutate: `GRANT SELECT (secret) ON TABLE public.agent_tenant_context_keys TO PUBLIC`},
+		{name: "public-connect-granted", mutate: `GRANT CONNECT ON DATABASE ollama_agent TO PUBLIC`},
+		{name: "public-database-create-temp-granted", mutate: `GRANT CREATE, TEMP ON DATABASE ollama_agent TO PUBLIC`},
+		{name: "public-schema-usage-granted", mutate: `GRANT USAGE ON SCHEMA public TO PUBLIC`},
+		{name: "public-schema-create-granted", mutate: `GRANT CREATE ON SCHEMA public TO PUBLIC`},
 		{name: "active-key-uniqueness-index-dropped", mutate: `DROP INDEX public.agent_tenant_context_keys_one_active_uidx`},
 	}
 	for _, tc := range cases {
@@ -2611,6 +2716,7 @@ func TestDistributedPostgresTenantKeyRotation(t *testing.T) {
 	for _, statement := range []string{
 		`DROP TABLE public.agent_tenant_context_keys`,
 		`CREATE TABLE public.agent_tenant_context_key (key_id BOOLEAN PRIMARY KEY DEFAULT TRUE CHECK (key_id), secret BYTEA NOT NULL CHECK (octet_length(secret)>=32))`,
+		`ALTER TABLE public.agent_tenant_context_key ADD COLUMN notes TEXT`,
 	} {
 		if _, err := migratorDB.ExecContext(ctx, statement); err != nil {
 			t.Fatalf("prepare legacy singleton-key fixture: %v", err)
@@ -2618,6 +2724,30 @@ func TestDistributedPostgresTenantKeyRotation(t *testing.T) {
 	}
 	if _, err := migratorDB.ExecContext(ctx, `INSERT INTO public.agent_tenant_context_key (key_id,secret) VALUES (TRUE,$1)`, currentKey); err != nil {
 		t.Fatalf("seed legacy singleton-key fixture: %v", err)
+	}
+	if err := MigratePostgresAgentSchemaVersioned(ctx, migratorDSN, currentKey, 1); err == nil || !strings.Contains(err.Error(), "unsupported columns") {
+		t.Fatalf("legacy key import with extra column error=%v, want fail-closed schema rejection", err)
+	}
+	if _, err := migratorDB.ExecContext(ctx, `ALTER TABLE public.agent_tenant_context_key DROP COLUMN notes; DELETE FROM public.agent_tenant_context_key`); err != nil {
+		t.Fatalf("prepare zero-row singleton key fixture: %v", err)
+	}
+	if err := MigratePostgresAgentSchemaVersioned(ctx, migratorDSN, currentKey, 1); err == nil || !strings.Contains(err.Error(), "exactly one valid provisioned key") {
+		t.Fatalf("legacy key import with zero rows error=%v, want exact-cardinality refusal", err)
+	}
+	if _, err := migratorDB.ExecContext(ctx, `INSERT INTO public.agent_tenant_context_key (key_id,secret) VALUES (TRUE,$1)`, currentKey); err != nil {
+		t.Fatalf("restore singleton key after zero-row test: %v", err)
+	}
+	if _, err := migratorDB.ExecContext(ctx, `ALTER TABLE public.agent_tenant_context_key DROP CONSTRAINT agent_tenant_context_key_key_id_check`); err != nil {
+		t.Fatalf("prepare multi-row singleton key fixture: %v", err)
+	}
+	if _, err := migratorDB.ExecContext(ctx, `INSERT INTO public.agent_tenant_context_key (key_id,secret) VALUES (FALSE,$1)`, currentKey); err != nil {
+		t.Fatalf("seed second singleton key row: %v", err)
+	}
+	if err := MigratePostgresAgentSchemaVersioned(ctx, migratorDSN, currentKey, 1); err == nil || !strings.Contains(err.Error(), "exactly one valid provisioned key") {
+		t.Fatalf("legacy key import with two rows error=%v, want exact-cardinality refusal", err)
+	}
+	if _, err := migratorDB.ExecContext(ctx, `DELETE FROM public.agent_tenant_context_key WHERE key_id=FALSE; ALTER TABLE public.agent_tenant_context_key ADD CONSTRAINT agent_tenant_context_key_key_id_check CHECK (key_id)`); err != nil {
+		t.Fatalf("restore singleton-key fixture after multi-row test: %v", err)
 	}
 	if err := MigratePostgresAgentSchemaVersioned(ctx, migratorDSN, currentKey, 1); err != nil {
 		t.Fatalf("import legacy key and create version-1 keyring: %v", err)

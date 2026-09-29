@@ -84,6 +84,9 @@ func verifyPostgresTenantSecurityShape(ctx context.Context, tx *sql.Tx) error {
 	if _, err := tx.ExecContext(ctx, `LOCK TABLE public.agent_missions, public.agent_events IN ACCESS SHARE MODE`); err != nil {
 		return fmt.Errorf("lock PostgreSQL tenant tables for security-shape verification: %w", err)
 	}
+	if err := validatePostgresLegacySchemaShape(ctx, tx, true); err != nil {
+		return fmt.Errorf("verify PostgreSQL tenant schema allowlist: %w", err)
+	}
 	var tableCount int
 	var tablesSecure, ownersSecure bool
 	if err := tx.QueryRowContext(ctx, `
@@ -159,11 +162,23 @@ SELECT p.prosecdef AND p.provolatile='s' AND p.prorettype='boolean'::pg_catalog.
 	}
 	var runtimePrivilegesSecure bool
 	if err := tx.QueryRowContext(ctx, `
-SELECT r.rolcanlogin AND NOT r.rolsuper AND NOT r.rolbypassrls AND NOT r.rolcreatedb
-       AND NOT r.rolcreaterole AND NOT r.rolreplication AND NOT r.rolinherit
-       AND NOT pg_catalog.has_schema_privilege(r.rolname,'public','CREATE')
-       AND NOT pg_catalog.has_database_privilege(r.rolname,pg_catalog.current_database(),'CREATE')
-       AND NOT pg_catalog.has_database_privilege(r.rolname,pg_catalog.current_database(),'TEMP')
+	SELECT r.rolcanlogin AND NOT r.rolsuper AND NOT r.rolbypassrls AND NOT r.rolcreatedb
+	       AND NOT r.rolcreaterole AND NOT r.rolreplication AND NOT r.rolinherit
+	       AND pg_catalog.has_database_privilege(r.rolname,pg_catalog.current_database(),'CONNECT')
+	       AND NOT EXISTS (SELECT 1 FROM pg_catalog.pg_database d
+	                       WHERE d.datname<>pg_catalog.current_database()
+	                         AND pg_catalog.has_database_privilege(r.rolname,d.oid,'CONNECT'))
+	       AND pg_catalog.has_schema_privilege(r.rolname,'public','USAGE')
+	       AND NOT pg_catalog.has_schema_privilege(r.rolname,'public','CREATE')
+	       AND NOT pg_catalog.has_database_privilege(r.rolname,pg_catalog.current_database(),'CREATE')
+	       AND NOT pg_catalog.has_database_privilege(r.rolname,pg_catalog.current_database(),'TEMP')
+	       AND NOT EXISTS (SELECT 1 FROM pg_catalog.pg_database d
+	                       CROSS JOIN LATERAL pg_catalog.aclexplode(COALESCE(d.datacl,pg_catalog.acldefault('d',d.datdba))) a
+	                       WHERE d.datname=pg_catalog.current_database() AND a.grantee=0
+	                         AND a.privilege_type IN ('CONNECT','CREATE','TEMPORARY'))
+	       AND NOT EXISTS (SELECT 1 FROM pg_catalog.pg_namespace n
+	                       CROSS JOIN LATERAL pg_catalog.aclexplode(COALESCE(n.nspacl,pg_catalog.acldefault('n',n.nspowner))) a
+	                       WHERE n.nspname='public' AND a.grantee=0 AND a.privilege_type IN ('USAGE','CREATE'))
 		       AND NOT pg_catalog.has_table_privilege(r.rolname,'public.agent_tenant_context_keys','SELECT')
        AND pg_catalog.has_table_privilege(r.rolname,'public.agent_missions','SELECT')
        AND pg_catalog.has_table_privilege(r.rolname,'public.agent_missions','INSERT')
@@ -184,6 +199,13 @@ SELECT r.rolcanlogin AND NOT r.rolsuper AND NOT r.rolbypassrls AND NOT r.rolcrea
 	                       CROSS JOIN LATERAL pg_catalog.aclexplode(COALESCE(c.relacl,pg_catalog.acldefault('r',c.relowner))) a
 	                       WHERE c.oid IN ('public.agent_missions'::pg_catalog.regclass,'public.agent_events'::pg_catalog.regclass,'public.agent_tenant_context_keys'::pg_catalog.regclass)
 	                         AND a.grantee=0)
+	       AND NOT EXISTS (SELECT 1 FROM pg_catalog.pg_class c
+	                       JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace
+	                       JOIN pg_catalog.pg_attribute col ON col.attrelid=c.oid
+	                       CROSS JOIN LATERAL pg_catalog.aclexplode(col.attacl) a
+	                       WHERE n.nspname='public' AND c.relkind IN ('r','p','v','m','f')
+	                         AND col.attnum>0 AND NOT col.attisdropped AND a.grantee IN (0,r.oid)
+	                         AND a.privilege_type IN ('SELECT','INSERT','UPDATE','REFERENCES'))
 	       AND NOT EXISTS (SELECT 1 FROM pg_catalog.pg_proc p
 	                       CROSS JOIN LATERAL pg_catalog.aclexplode(COALESCE(p.proacl,pg_catalog.acldefault('f',p.proowner))) a
 	                       WHERE p.oid='public.agent_tenant_context_matches(text)'::pg_catalog.regprocedure
@@ -434,6 +456,7 @@ func migratePostgresAgentSchema(ctx context.Context, db *sql.DB, tenantContextKe
 	if _, err := tx.ExecContext(ctx, `DO $privileges$ BEGIN
   EXECUTE format('REVOKE TEMP ON DATABASE %I FROM PUBLIC', pg_catalog.current_database());
   EXECUTE format('REVOKE TEMP ON DATABASE %I FROM ollama_agent_runtime', pg_catalog.current_database());
+  EXECUTE format('REVOKE CONNECT ON DATABASE %I FROM PUBLIC', pg_catalog.current_database());
   EXECUTE format('REVOKE CREATE ON DATABASE %I FROM PUBLIC', pg_catalog.current_database());
   EXECUTE format('REVOKE CREATE ON DATABASE %I FROM ollama_agent_runtime', pg_catalog.current_database());
 END $privileges$`); err != nil {
@@ -506,11 +529,26 @@ END IF;
 	if invalidWorkspaceBindings != 0 {
 		return fmt.Errorf("PostgreSQL migration refused %d runnable legacy missions without a persisted workspace identity; reauthorize/recreate those missions before retrying", invalidWorkspaceBindings)
 	}
-	if _, err := tx.ExecContext(ctx, `DO $legacy_key$ DECLARE old_key BYTEA; BEGIN
-IF pg_catalog.to_regclass('public.agent_tenant_context_key') IS NOT NULL THEN
-  SELECT secret INTO old_key FROM public.agent_tenant_context_key WHERE key_id=TRUE;
-  IF old_key IS NULL THEN RAISE EXCEPTION 'legacy tenant key table must contain exactly one provisioned key'; END IF;
-  IF EXISTS (SELECT 1 FROM public.agent_tenant_context_keys WHERE is_active) THEN
+	if _, err := tx.ExecContext(ctx, `DO $legacy_key$ DECLARE old_key BYTEA; legacy_key_rows BIGINT; legacy_key_columns BIGINT; legacy_key_shape_valid BOOLEAN; BEGIN
+	IF pg_catalog.to_regclass('public.agent_tenant_context_key') IS NOT NULL THEN
+	  EXECUTE 'LOCK TABLE public.agent_tenant_context_key IN ACCESS EXCLUSIVE MODE';
+	  SELECT count(*), COALESCE(bool_and(
+	      (a.attname='key_id' AND pg_catalog.format_type(a.atttypid,a.atttypmod)='boolean' AND a.attnotnull AND pg_catalog.pg_get_expr(d.adbin,d.adrelid)='true')
+	      OR (a.attname='secret' AND pg_catalog.format_type(a.atttypid,a.atttypmod)='bytea' AND a.attnotnull AND d.adbin IS NULL)),FALSE)
+	    INTO legacy_key_columns,legacy_key_shape_valid
+	    FROM pg_catalog.pg_attribute a LEFT JOIN pg_catalog.pg_attrdef d ON d.adrelid=a.attrelid AND d.adnum=a.attnum
+	   WHERE a.attrelid=pg_catalog.to_regclass('public.agent_tenant_context_key') AND a.attnum>0 AND NOT a.attisdropped;
+	  IF legacy_key_columns<>2 OR NOT legacy_key_shape_valid
+	     OR NOT EXISTS (SELECT 1 FROM pg_catalog.pg_constraint c WHERE c.conrelid=pg_catalog.to_regclass('public.agent_tenant_context_key') AND c.contype='p'
+	       AND c.conkey=ARRAY[(SELECT attnum FROM pg_catalog.pg_attribute WHERE attrelid=pg_catalog.to_regclass('public.agent_tenant_context_key') AND attname='key_id' AND NOT attisdropped)]::smallint[]) THEN
+	    RAISE EXCEPTION 'legacy tenant key table has unsupported columns, types, nullability, defaults, or primary key';
+	  END IF;
+	  SELECT count(*) INTO legacy_key_rows FROM public.agent_tenant_context_key;
+	  IF legacy_key_rows<>1 OR NOT EXISTS (SELECT 1 FROM public.agent_tenant_context_key WHERE key_id IS TRUE AND secret IS NOT NULL AND octet_length(secret)>=32) THEN
+	    RAISE EXCEPTION 'legacy tenant key table must contain exactly one valid provisioned key';
+	  END IF;
+	  SELECT secret INTO old_key FROM public.agent_tenant_context_key WHERE key_id IS TRUE;
+	  IF EXISTS (SELECT 1 FROM public.agent_tenant_context_keys WHERE is_active) THEN
     RAISE EXCEPTION 'both legacy and versioned tenant keys exist; resolve the interrupted key migration explicitly';
   END IF;
   INSERT INTO public.agent_tenant_context_keys (key_version,secret,is_active) VALUES (1,old_key,TRUE);
@@ -592,6 +630,15 @@ END;
 $function$`
 	finalStatements := []string{
 		`DO $runtime_acl$ DECLARE object_row RECORD; BEGIN
+	FOR object_row IN
+	  SELECT c.relname, pg_catalog.string_agg(pg_catalog.format('%I',a.attname),',' ORDER BY a.attnum) AS columns
+	  FROM pg_catalog.pg_class c JOIN pg_catalog.pg_attribute a ON a.attrelid=c.oid
+	  WHERE c.relnamespace='public'::pg_catalog.regnamespace AND c.relowner=(SELECT oid FROM pg_catalog.pg_roles WHERE rolname=current_user)
+	    AND c.relkind IN ('r','p','v','m','f') AND a.attnum>0 AND NOT a.attisdropped
+	  GROUP BY c.relname
+	LOOP
+	  EXECUTE pg_catalog.format('REVOKE ALL (%s) ON TABLE public.%I FROM PUBLIC, ollama_agent_runtime',object_row.columns,object_row.relname);
+	END LOOP;
 	FOR object_row IN SELECT c.relname,c.relkind FROM pg_catalog.pg_class c
 	  WHERE c.relnamespace='public'::pg_catalog.regnamespace AND c.relowner=(SELECT oid FROM pg_catalog.pg_roles WHERE rolname=current_user)
 	    AND c.relkind IN ('r','p','v','m','f','S')
@@ -631,6 +678,7 @@ $function$`
 		`REVOKE ALL ON TABLE public.agent_missions, public.agent_events, public.agent_tenant_context_keys FROM PUBLIC`,
 		`REVOKE ALL ON TABLE public.agent_missions, public.agent_events, public.agent_tenant_context_keys FROM ollama_agent_runtime`,
 		`REVOKE TRUNCATE, REFERENCES, TRIGGER ON TABLE public.agent_missions, public.agent_events FROM ollama_agent_runtime`,
+		`REVOKE USAGE, CREATE ON SCHEMA public FROM PUBLIC`,
 		`GRANT USAGE ON SCHEMA public TO ollama_agent_runtime`,
 		`GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.agent_missions, public.agent_events TO ollama_agent_runtime`,
 		`REVOKE ALL ON FUNCTION public.agent_tenant_context_matches(TEXT) FROM PUBLIC`,
@@ -670,19 +718,24 @@ func validatePostgresLegacySchemaShape(ctx context.Context, tx *sql.Tx, requireO
 		},
 	}
 	for table, requiredColumns := range required {
-		rows, err := tx.QueryContext(ctx, `SELECT a.attname, pg_catalog.format_type(a.atttypid,a.atttypmod), a.attnotnull, COALESCE(pg_catalog.pg_get_expr(d.adbin,d.adrelid),'') FROM pg_catalog.pg_attribute a LEFT JOIN pg_catalog.pg_attrdef d ON d.adrelid=a.attrelid AND d.adnum=a.attnum WHERE a.attrelid=pg_catalog.to_regclass($1) AND a.attnum>0 AND NOT a.attisdropped`, "public."+table)
+		rows, err := tx.QueryContext(ctx, `SELECT a.attname, pg_catalog.format_type(a.atttypid,a.atttypmod), a.attnotnull, COALESCE(pg_catalog.pg_get_expr(d.adbin,d.adrelid),''), a.attidentity::text, a.attgenerated::text FROM pg_catalog.pg_attribute a LEFT JOIN pg_catalog.pg_attrdef d ON d.adrelid=a.attrelid AND d.adnum=a.attnum WHERE a.attrelid=pg_catalog.to_regclass($1) AND a.attnum>0 AND NOT a.attisdropped`, "public."+table)
 		if err != nil {
 			return fmt.Errorf("inspect PostgreSQL agent schema shape: %w", err)
 		}
 		present := make(map[string]columnShape, len(requiredColumns))
+		var generatedOrIdentity []string
 		for rows.Next() {
 			var column string
+			var identity, generated string
 			var shape columnShape
-			if err := rows.Scan(&column, &shape.typ, &shape.notNull, &shape.defaultSQL); err != nil {
+			if err := rows.Scan(&column, &shape.typ, &shape.notNull, &shape.defaultSQL, &identity, &generated); err != nil {
 				_ = rows.Close()
 				return fmt.Errorf("inspect PostgreSQL agent schema shape: %w", err)
 			}
 			present[column] = shape
+			if identity != "" || generated != "" {
+				generatedOrIdentity = append(generatedOrIdentity, column)
+			}
 		}
 		if err := rows.Err(); err != nil {
 			_ = rows.Close()
@@ -691,7 +744,7 @@ func validatePostgresLegacySchemaShape(ctx context.Context, tx *sql.Tx, requireO
 		if err := rows.Close(); err != nil {
 			return fmt.Errorf("inspect PostgreSQL agent schema shape: %w", err)
 		}
-		var missing, incompatible []string
+		var missing, incompatible, unexpected []string
 		for column, expected := range requiredColumns {
 			actual, ok := present[column]
 			if !ok {
@@ -702,11 +755,22 @@ func validatePostgresLegacySchemaShape(ctx context.Context, tx *sql.Tx, requireO
 				incompatible = append(incompatible, fmt.Sprintf("%s (got type=%s not-null=%t default=%q, want type=%s not-null=%t default=%q)", column, actual.typ, actual.notNull, actual.defaultSQL, expected.typ, expected.notNull, expected.defaultSQL))
 			}
 		}
+		for column := range present {
+			if _, ok := requiredColumns[column]; !ok {
+				unexpected = append(unexpected, column)
+			}
+		}
 		if len(missing) != 0 {
 			return fmt.Errorf("PostgreSQL agent schema is older than the supported baseline: public.%s is missing required columns %s; create a verified backup and perform an explicit versioned schema upgrade before retrying", table, strings.Join(missing, ", "))
 		}
 		if len(incompatible) != 0 {
 			return fmt.Errorf("PostgreSQL agent schema has incompatible type/nullability for public.%s: %s; create a verified backup and perform an explicit versioned schema upgrade before retrying", table, strings.Join(incompatible, "; "))
+		}
+		if len(unexpected) != 0 {
+			return fmt.Errorf("PostgreSQL agent schema has unexpected columns for public.%s: %s; add fields only through a reviewed versioned schema migration", table, strings.Join(unexpected, ", "))
+		}
+		if len(generatedOrIdentity) != 0 {
+			return fmt.Errorf("PostgreSQL agent schema has unsupported generated/identity columns for public.%s: %s", table, strings.Join(generatedOrIdentity, ", "))
 		}
 	}
 	if !requireOwnershipConstraints {

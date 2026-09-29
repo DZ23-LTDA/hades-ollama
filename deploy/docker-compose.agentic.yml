@@ -2,6 +2,7 @@ services:
   postgres:
     image: postgres:16-alpine
     restart: unless-stopped
+    command: ["postgres", "-c", "hba_file=/etc/postgresql/pg_hba.conf"]
     environment:
       POSTGRES_DB: ollama_agent
       POSTGRES_USER: ollama_agent_admin
@@ -11,6 +12,7 @@ services:
     volumes:
       - agent-postgres:/var/lib/postgresql/data
       - ./postgres/init:/docker-entrypoint-initdb.d:ro
+      - "${OLLAMA_AGENT_POSTGRES_HBA_FILE:-./postgres/pg_hba-runtime.conf}:/etc/postgresql/pg_hba.conf:ro"
     ports:
       - "127.0.0.1:${OLLAMA_AGENT_POSTGRES_PORT:-5432}:5432"
     healthcheck:
