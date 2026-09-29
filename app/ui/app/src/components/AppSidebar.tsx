@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import { ThemeSwitcher } from "@/components/ThemeSwitcher";
 import {
   ArrowPathIcon,
   BookOpenIcon,
@@ -158,9 +159,14 @@ export function AppNavigation({ current }: { current: AppSection }) {
         <span className="min-w-0 flex-1 truncate">Ajuda e sobre</span>
       </a>
 
-      <div className="mt-auto border-t border-neutral-200/80 px-2.5 pt-3 text-[10px] leading-4 text-neutral-400 dark:border-neutral-800">
-        <div className="font-medium text-neutral-500 dark:text-neutral-500">Modo local-first</div>
-        <div>Approvals e secrets protegidos</div>
+      <div className="mt-auto border-t border-neutral-200/80 px-2.5 pt-3 dark:border-neutral-800">
+        <div className="flex items-center justify-between gap-2">
+          <div className="text-[10px] leading-4 text-neutral-400">
+            <div className="font-medium text-neutral-500 dark:text-neutral-500">Modo local-first</div>
+            <div>Approvals e secrets protegidos</div>
+          </div>
+          <ThemeSwitcher />
+        </div>
       </div>
     </div>
   );
