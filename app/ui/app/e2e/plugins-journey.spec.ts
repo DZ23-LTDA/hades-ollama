@@ -2,10 +2,11 @@ import { test, expect, type Page, type Route } from "@playwright/test";
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 
-// Tela "Plugins" (connectors + MCP). Consome quatro contratos em paralelo:
-// /connectors, /connector-catalog, /mcp e /api/dz23/cli-catalog. Todos sao
-// atendidos aqui por stores em memoria no nivel de rede. O catalogo real e
-// pesquisavel; conectores e MCP configurados tem estados vazios proprios.
+// Tela "Plugins" (marketplace de conectores + MCP). O catalogo interno rico
+// (connectorCatalog.ts) e sempre exibido, mesclado com o que o backend homologou.
+// Os contratos /connectors, /connector-catalog, /mcp e /api/dz23/cli-catalog sao
+// atendidos aqui por stores em memoria no nivel de rede. A superficie e resiliente:
+// mostra o catalogo mesmo com o backend indisponivel.
 
 const EVIDENCE_DIR = join(process.cwd(), "..", "..", "..", "docs", "evidencias");
 
@@ -14,142 +15,100 @@ async function captureEvidence(page: Page, name: string) {
   await page.screenshot({ path: join(EVIDENCE_DIR, `${name}.png`), fullPage: true });
 }
 
-type CatalogEntry = {
-  id: string;
-  name: string;
-  category: string;
-  kind: string;
-  description: string;
-  auth: string;
-  source: string;
-  status: string;
-};
-
-const catalogSeed: CatalogEntry[] = [
-  {
-    id: "github",
-    name: "GitHub",
-    category: "Desenvolvimento",
-    kind: "oauth",
-    description: "Repositórios, issues e pull requests.",
-    auth: "oauth",
-    source: "builtin",
-    status: "available",
-  },
-  {
-    id: "slack",
-    name: "Slack",
-    category: "Comunicação",
-    kind: "oauth",
-    description: "Mensagens e canais.",
-    auth: "oauth",
-    source: "builtin",
-    status: "available",
-  },
-];
-
-async function installPluginsContract(
+async function installBackend(
   page: Page,
-  options: { failCatalog?: boolean; catalog?: CatalogEntry[] } = {},
+  options: { failAll?: boolean } = {},
 ) {
-  const catalog = options.catalog ?? catalogSeed;
-  let catalogCalls = 0;
+  const fail = options.failAll ?? false;
+  const ok = (route: Route, json: unknown) =>
+    fail
+      ? route.fulfill({ status: 503, json: { error: "backend unavailable" } })
+      : route.fulfill({ json });
 
-  await page.route("**/api/agent/v1/connectors", async (route: Route) => {
-    if (route.request().method() === "GET") {
-      await route.fulfill({ json: { connectors: [] } });
-      return;
-    }
-    await route.fallback();
-  });
-  await page.route("**/api/agent/v1/connector-catalog", async (route: Route) => {
-    catalogCalls += 1;
-    if (options.failCatalog && catalogCalls === 1) {
-      await route.fulfill({
-        status: 503,
-        json: { error: "connector catalog unavailable" },
-      });
-      return;
-    }
-    await route.fulfill({ json: { connectors: catalog } });
-  });
-  await page.route("**/api/agent/v1/mcp", async (route: Route) => {
-    if (route.request().method() === "GET") {
-      await route.fulfill({ json: { servers: [], remote_servers: [] } });
-      return;
-    }
-    await route.fallback();
-  });
-  await page.route("**/api/dz23/cli-catalog", async (route: Route) => {
-    await route.fulfill({ json: { tools: [] } });
-  });
-
-  return { catalogCalls: () => catalogCalls };
+  await page.route("**/api/agent/v1/connectors", (route) =>
+    ok(route, { connectors: [] }),
+  );
+  await page.route("**/api/agent/v1/connector-catalog", (route) =>
+    ok(route, { connectors: [] }),
+  );
+  await page.route("**/api/agent/v1/mcp", (route) =>
+    ok(route, { servers: [], remote_servers: [] }),
+  );
+  await page.route("**/api/dz23/cli-catalog", (route) => ok(route, { tools: [] }));
 }
 
-test.describe("Tela Plugins (connectors + MCP)", () => {
-  test("mostra o catálogo real pesquisável e os estados vazios de configuração", async ({
+test.describe("Tela Plugins — marketplace de conectores", () => {
+  test("renderiza o catálogo rico com categorias, em claro e escuro", async ({
     page,
   }) => {
-    await installPluginsContract(page);
+    await installBackend(page);
 
     await page.goto("/plugins");
     await expect(
       page.getByRole("heading", { name: "Plugins", level: 2 }),
     ).toBeVisible();
 
-    // Catalogo real renderizado a partir do contrato.
+    // Conectores de varias categorias vindos do catalogo interno.
+    for (const name of ["Gmail", "Google Workspace", "Notion", "GitHub", "Instagram"]) {
+      await expect(
+        page.getByRole("heading", { name, level: 4 }),
+      ).toBeVisible();
+    }
+    // Fonte de dados tambem presente.
     await expect(
-      page.getByRole("heading", { name: "GitHub", level: 4 }),
+      page.getByRole("heading", { name: "Similarweb", level: 4 }),
+    ).toBeVisible();
+    // Chips de categoria do Manus.
+    await expect(
+      page.getByRole("tab", { name: "Fontes de dados" }),
     ).toBeVisible();
     await expect(
-      page.getByRole("heading", { name: "Slack", level: 4 }),
+      page.getByText("disponíveis no catálogo", { exact: false }),
     ).toBeVisible();
-    await expect(
-      page.getByText("Disponível para configuração").first(),
-    ).toBeVisible();
+    await captureEvidence(page, "plugins-marketplace-desktop");
 
-    // Estados vazios das secoes configuradas.
+    // Mesma tela no tema escuro (paridade visual com o Manus).
+    await page.emulateMedia({ colorScheme: "dark" });
+    await captureEvidence(page, "plugins-marketplace-dark");
+    await page.emulateMedia({ colorScheme: "light" });
+  });
+
+  test("a busca filtra o catálogo por texto", async ({ page }) => {
+    await installBackend(page);
+
+    await page.goto("/plugins");
+    await page.getByLabel("Pesquisar conectores").fill("notion");
+    await expect(
+      page.getByRole("heading", { name: "Notion", level: 4 }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "Gmail", level: 4 }),
+    ).toHaveCount(0);
+  });
+
+  test("resiliente: mostra o catálogo mesmo com o backend indisponível", async ({
+    page,
+  }) => {
+    await installBackend(page, { failAll: true });
+
+    await page.goto("/plugins");
+    // Sem alerta de erro: o marketplace continua utilizável offline.
+    await expect(
+      page.getByRole("heading", { name: "Gmail", level: 4 }),
+    ).toBeVisible();
     await expect(
       page.getByText("Nenhum connector configurado", { exact: false }),
     ).toBeVisible();
-    await expect(
-      page.getByText("Nenhum servidor MCP carregado", { exact: false }),
-    ).toBeVisible();
-    await captureEvidence(page, "plugins-sucesso-desktop");
-
-    // Pesquisa filtra o catalogo.
-    await page.getByLabel("Pesquisar conectores").fill("slack");
-    await expect(
-      page.getByRole("heading", { name: "Slack", level: 4 }),
-    ).toBeVisible();
-    await expect(
-      page.getByRole("heading", { name: "GitHub", level: 4 }),
-    ).toHaveCount(0);
-    await captureEvidence(page, "plugins-busca-desktop");
-  });
-
-  test("mostra erro de carregamento com nova tentativa", async ({ page }) => {
-    await installPluginsContract(page, { failCatalog: true });
-
-    await page.goto("/plugins");
-    const alert = page.getByRole("alert");
-    await expect(alert).toContainText("connector catalog unavailable");
-    await captureEvidence(page, "plugins-erro-desktop");
-
-    await page.getByRole("button", { name: "Tentar novamente" }).click();
-    await expect(
-      page.getByRole("heading", { name: "GitHub", level: 4 }),
-    ).toBeVisible();
+    await captureEvidence(page, "plugins-offline-desktop");
   });
 
   test("funciona em 390x844 sem overflow horizontal", async ({ page }) => {
-    await installPluginsContract(page);
+    await installBackend(page);
 
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/plugins");
     await expect(
-      page.getByRole("heading", { name: "GitHub", level: 4 }),
+      page.getByRole("heading", { name: "Gmail", level: 4 }),
     ).toBeVisible();
 
     const overflow = await page.evaluate(
@@ -158,6 +117,6 @@ test.describe("Tela Plugins (connectors + MCP)", () => {
         document.documentElement.clientWidth,
     );
     expect(overflow).toBeLessThanOrEqual(0);
-    await captureEvidence(page, "plugins-sucesso-mobile");
+    await captureEvidence(page, "plugins-marketplace-mobile");
   });
 });
