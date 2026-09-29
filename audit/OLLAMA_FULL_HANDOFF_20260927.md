@@ -263,3 +263,32 @@ Review read-only independente `job_NoiyZDTQ`: zero Critical; Request Changes par
 Próximo passo exato: implementar esses três Major em migration/init/readiness com grants mínimos e controles fail-closed; testar em PostgreSQL 16 de verdade (role runtime/migrator/admin, grants por coluna, schema column drift, PUBLIC database/schema ACL) e rerodar integration, cutover scripts, `go test ./...`, `go vet ./...`, YAML/shell/diff; pedir re-review read-only do delta. Depois: `git add -A`, commit claro, `git push origin recovery/ollama-full-snapshot` sem force-push; atualizar Mission State + este handoff com hash funcional e commit+push de docs. PostgreSQL continua BLOQUEADO para produção sem staging real HA/DR/TLS/restore e aceite operacional independente.
 
 Pergunta Manus Flex: a documentação oficial pública encontrada descreve sandbox persistente e execução de tarefas, mas não especifica exatamente o produto/plano denominado Manus Flex. Portanto não afirmar plano/créditos/eligibilidade; pode ser usado como colaborador se tiver acesso autorizado ao branch, sem substituir validação, revisão ou garantir término. Ver docs públicos: https://manus.im/docs/introduction/welcome e https://manus.im/docs/features/skills.
+
+
+## Continuidade — PG16/HBA final review e branch reconciliation — 2026-09-29 17:33 -03
+
+**Checkpoint funcional publicado**
+
+- Branch: `recovery/ollama-full-snapshot`.
+- Commit enviado sem force-push: `30ae8f22394205115e1d9154dae9866fcee82a52` — `fix(security): close postgres isolation and cutover races`.
+- Confirmação: `git ls-remote origin refs/heads/recovery/ollama-full-snapshot` retornou o mesmo SHA. Nenhuma outra branch foi modificada.
+
+**Estado implementado e evidência**
+
+- PostgreSQL RLS/tenant-context HMAC, role split, ACLs, phase-one/phase-two cutover e HBA atualizado. Membership traversal segue apenas arestas explícitas de `pg_auth_members` com CTE recursivo; não usa `pg_has_role` contra a lista geral de roles. Phase 1 faz recaptura/revoke sob lock antes da transferência, depois drena e verifica de novo; phase 2 também drena membros autenticados `SET ROLE`. SQL tem `lock_timeout` curto e aborta em caso de contenção. Readiness/fixtures não matam sessão do administrador independente.
+- HBA de produção concede runtime/migrator somente a `ollama_agent`, mantendo admins TCP via SCRAM; denies aparecem depois dos allows app-scoped. O CI constrói HBA temporário em `$RUNNER_TEMP` com entrada para `ollama_agent_reverse_member` só para o teste, confirma a linha gerada e realiza login TCP positivo antes do drain. Essa identidade não deve entrar no arquivo/deploy de produção.
+- `public.hmac(bytea,bytea,text)` tem owner verificado corretamente por `pg_proc.proowner`.
+- Harness real descartável PG16 + Redis: fresh init; cutover de legado incluindo extensão/key; search_path hostil; sessões do superuser legado e membro terminadas em ambas as fases; sessão admin não relacionada preservada; HMAC owner correto; runtime/migrator bloqueados por HBA em DB criado com `PUBLIC CONNECT`; suíte de drift RLS, rotação, Redis e cross-database passou. Cluster e listeners temporários limpos.
+- Gates: workflow YAML/bash embutido, Compose YAML, integrity guard, `bash -n`, `go test ./...`, `go vet ./...`, `go test -race ./internal/agent`, `go build`, diff check e Gitleaks passaram. Review independente final: **Approve / no remaining blocker**. Ainda não há evidência de execução do GitHub Actions associada a este commit.
+- Operação: mantenha janela de cutover sem outros DBAs/superusers/automação privilegiada; um superuser independente pode voltar a alterar memberships após um lock ser liberado. Serviço e tráfego só reabrem após phase 2 e smoke.
+
+**Branches/PR observados via GitHub API (read-only, 2026-09-29)**
+
+- PR [#38](https://github.com/DZ23-LTDA/ollama-classe-a-plus/pull/38) continua OPEN/mergeable, head `fix/audit-security-deps-2026-09-25` em `07a4f0bca2cbe327d5234abd9ebec69ff52154e6`, base `main` em `8635e30dc9e95a1f5b29700169783abc24093ceb`. Contém `ConnectorsPage`, quick-connect, Providers, icons e implementação relacionada; a interface de conectores dessa linha é mais completa que a duplicação parcial construída na linha de UI.
+- Comparação `recovery...PR38`: diverged, recovery +35 / -27, merge-base `8635e30d`, 121 paths no diff.
+- Comparação `recovery...feat/ui-shell-parity`: diverged, +17 / -15, merge-base `add5881a260ff1f740b1340c6f394c26acc2d5d2`, 57 paths. Nenhuma reconciliação/merge foi executada nesta etapa.
+- O trabalho de UI aditivo citado no contexto inclui tema Claro/Escuro/Automático, Home/dashboard, status pills e rastreador de etapas. A proposta de produto registrada pelo usuário é convergir as linhas antes de construir mais telas e priorizar chat como agente executável (tools, arquivos, terminal, browser/MCP, artifacts e approvals), mas isso ainda precisa ser integrado/revalidado na base canônica.
+
+**Próximo passo exato:** montar uma matriz de commits/paths/funcionalidades para recovery, PR #38 e `feat/ui-shell-parity`, definir qual branch vira base canônica e resolver Connectors duplicado preservando a melhor implementação; planejar integração que mantenha as correções PostgreSQL. Até lá, manter branches/PR read-only e não alegar paridade completa. Depois da decisão, integrar em branch autorizada, rodar gates reais, atualizar ambos checkpoints a cada rodada e fazer push normal apenas ao destino autorizado.
+
+**Estado release:** backend security localmente validado e revisão fechada; produto não está declarado production-ready. Staging PostgreSQL real, HA/fencing/partições, backup/restore, RPO/RTO, TLS/CA operacional, monitoramento/alertas e aceite operacional continuam pendentes.
