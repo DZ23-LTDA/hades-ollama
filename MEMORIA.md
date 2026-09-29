@@ -1,7 +1,7 @@
 ---
 projeto: ollama-mobile
 status: em andamento
-atualizado: 2026-09-29 10:18 -03:00
+atualizado: 2026-09-29 10:20 -03:00
 ultima_ia: Codex (Rover)
 tags: [mobile, expo, ollama-full]
 ---
@@ -18,7 +18,7 @@ Entregar a faixa MOBILE do Ollama Full no worktree `D:\IA\Trabalhos\DZ23-LTDA\ol
 - UI aberta por HTTP em `http://localhost:19007` com API local simulada no Playwright. Lista, detalhe e leitura offline observados. Erros de console durante a simulação offline são abortos `ERR_INTERNET_DISCONNECTED`; no fluxo online mockado houve zero erros, duas advertências de bibliotecas web.
 - Evidências: `docs/evidencias/inbox-desktop.png`, `docs/evidencias/inbox-mobile.png`, `docs/evidencias/inbox-offline-mobile.png`, `docs/evidencias/detalhe-offline-mobile.png`.
 - Regressão visual de cache: `docs/evidencias/cache-multiplas-missoes-mobile.png`. Em Expo Web (390×844), `m1` e `m2` foram abertos online; após abortar a rede e recarregar, `m1` reabriu offline com timeline. Online: zero erros de console; offline: três abortos de requisição esperados.
-- Commit `3bd97fa2b11b02f8ae0bdfcdddcd033878e008af` enviado a `origin/feat/mobile-parity`; ref remota conferida igual. Revisão Codex+Qwen pendente. Não houve integração com recovery.
+- Commits de implementação `3bd97fa2b11b02f8ae0bdfcdddcd033878e008af` e `326f3df99d35104c39b9dec81b765d56cc31f236` enviados a `origin/feat/mobile-parity`. Revisão Codex+Qwen pendente. Não houve integração com recovery.
 
 ## Próximo passo
 Codex+Qwen devem revisar o diff de `feat/mobile-parity` e as quatro evidências visuais. Não integrar recovery nesta faixa.
@@ -47,7 +47,7 @@ Em `D:\IA\Trabalhos\DZ23-LTDA\ollama-mobile\apps\mobile-agentic`: `npm install`,
 ### 2026-09-29 10:18 -03:00 — Codex (Rover)
 - Feito: revisado o handoff; como a revisão Codex+Qwen ainda não estava registrada, corrigido o cache de detalhe para preservar até 20 missões no mesmo escopo e migrar o formato antigo.
 - Evidência: `npm run typecheck`, `npm run test:inbox`, `npm run test:policy`, `git diff --check` e `docs/evidencias/cache-multiplas-missoes-mobile.png`.
-- Parou em: publicar o ajuste somente em `feat/mobile-parity` e aguardar revisão Codex+Qwen, sem integrar recovery.
+- Parou em: ajuste publicado no commit `326f3df9` de `feat/mobile-parity`, aguardando revisão Codex+Qwen, sem integrar recovery.
 
 ### 2026-09-29 10:06 -03:00 — Codex (Rover)
 - Feito: implementada inbox com lista, detalhe e leitura offline, testes e execução visual desktop/celular.
