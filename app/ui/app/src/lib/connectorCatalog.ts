@@ -104,3 +104,51 @@ export function mergeConnectorCatalog(
   );
   return [...backend, ...extras];
 }
+
+// Domínio por conector, usado para montar o logo pela CDN do Brandfetch.
+const CONNECTOR_DOMAINS: Record<string, string> = {
+  gmail: "gmail.com",
+  "outlook-mail": "outlook.com",
+  slack: "slack.com",
+  whatsapp: "whatsapp.com",
+  discord: "discord.com",
+  "google-workspace": "workspace.google.com",
+  "google-calendar": "calendar.google.com",
+  notion: "notion.so",
+  "microsoft-365": "microsoft.com",
+  jira: "atlassian.com",
+  linear: "linear.app",
+  github: "github.com",
+  gitlab: "gitlab.com",
+  supabase: "supabase.com",
+  instagram: "instagram.com",
+  "meta-ads": "meta.com",
+  tiktok: "tiktok.com",
+  linkedin: "linkedin.com",
+  higgsfield: "higgsfield.ai",
+  canva: "canva.com",
+  similarweb: "similarweb.com",
+  "world-bank": "worldbank.org",
+  bigquery: "cloud.google.com",
+  stripe: "stripe.com",
+  "google-analytics": "analytics.google.com",
+};
+
+// clientId público de embed do Brandfetch, via variável de ambiente (NÃO
+// versionado). Sem ele, o marketplace usa os monogramas coloridos por padrão —
+// o repositório não embute nenhum logo de terceiros. Configure em .env:
+//   VITE_BRANDFETCH_CLIENT_ID=<seu clientId público de embed>
+const BRANDFETCH_CLIENT_ID =
+  (import.meta.env.VITE_BRANDFETCH_CLIENT_ID as string | undefined) || "";
+
+/**
+ * URL do logo do conector via CDN do Brandfetch (somente para renderização em
+ * `<img>`), ou `null` quando não há clientId/domínio — nesse caso a UI mostra o
+ * monograma. As imagens vêm da conta Brandfetch do operador, não do repositório.
+ */
+export function connectorLogoUrl(id: string, size = 64): string | null {
+  if (!BRANDFETCH_CLIENT_ID) return null;
+  const domain = CONNECTOR_DOMAINS[id];
+  if (!domain) return null;
+  return `https://cdn.brandfetch.io/domain/${domain}/w/${size}/h/${size}/fallback/transparent?c=${BRANDFETCH_CLIENT_ID}`;
+}
