@@ -8,9 +8,9 @@ O proprietário está transformando o repositório `DZ23-LTDA/ollama-classe-a-pl
 
 - Repositório: `https://github.com/DZ23-LTDA/ollama-classe-a-plus`.
 - Branch do snapshot: `recovery/ollama-full-snapshot`.
-- SHA incluído neste pacote na geração: `65cb08bec4880447369690668b2c35e024319049` (`docs(audit): checkpoint postgres review and branch reconciliation`). Correção de código imediatamente anterior: `30ae8f22394205115e1d9154dae9866fcee82a52` (`fix(security): close postgres isolation and cutover races`).
+- O commit-base da rodada de segurança é `30ae8f22394205115e1d9154dae9866fcee82a52` (`fix(security): close postgres isolation and cutover races`); `65cb08bec4880447369690668b2c35e024319049` é um checkpoint anterior. O SHA exato do snapshot Git incluído será o valor marcado `SOURCE_SNAPSHOT_SHA` em `README-START-HERE.md` na raiz deste pacote.
 - O checkout estava limpo e alinhado a `origin/recovery/ollama-full-snapshot` quando foi empacotado; não há alteração sem commit conhecida.
-- O snapshot-base de implementação é o SHA `65cb08bec4880447369690668b2c35e024319049`; para preservar este guia e os checkpoints atualizados, o ZIP indicará também o SHA final do commit de handoff no `README-START-HERE.md` e no manifest. O ZIP contém snapshot Git-tracked da branch recovery, checkpoints, guia, Git bundle seletivo com histórico e referências visuais aprovadas anteriormente. Não contém `.git` como diretório, caches/builds locais, `.env`, credenciais, nem o ZIP antigo de backup da unidade P:.
+- O `SOURCE_SNAPSHOT_SHA` registrado no README identifica o estado completo da branch recovery exportado para `source/`; os SHAs do bundle indicam separadamente o histórico das quatro refs. O ZIP contém snapshot Git-tracked da branch recovery, checkpoints, guia, Git bundle seletivo com histórico e referências visuais aprovadas anteriormente. Não contém `.git` como diretório, caches/builds locais, `.env`, credenciais, nem o ZIP antigo de backup da unidade P:.
 
 ## Segurança implementada e evidência disponível
 

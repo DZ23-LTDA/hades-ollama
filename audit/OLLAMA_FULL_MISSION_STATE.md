@@ -1160,3 +1160,8 @@ O usuário confirmou gerar pacote com snapshot atual, bundle dos heads `main`, r
 ## Freeze dos refs para o pacote — comparação ancorada em 3203fa1 — 2026-09-29 18:14 -03
 
 A comparação mais recente, usando recovery `3203fa1f732a013c35bd46467a2c15debdd27466` como base imediatamente antes do commit final de documentação, registrou PR #38 head `07a4f0bca2cbe327d5234abd9ebec69ff52154e6`: diverged, PR +35 e recovery +32, 121 arquivos, merge-base `8635e30dc9e95a1f5b29700169783abc24093ceb`; UI parity `132e77155fed682c0b6244d256e6cdfe9b25c239`: diverged, UI +17 e recovery +20, 57 arquivos, merge-base `add5881a260ff1f740b1340c6f394c26acc2d5d2`. O commit a seguir é só documentação, não modifica esses heads das outras branches; snapshot do ZIP será um commit de docs mais novo. PR #38 continuava OPEN/mergeable na consulta às 18:14.
+
+
+## Correção SHA de snapshot no guia do pacote — 2026-09-29 18:17 -03
+
+Review detectou que o guia chamava o SHA inicial da rodada de segurança `65cb08...` de snapshot incluído, embora a fonte já tenha avançado por commits documentais. Corrigido: segurança base=commit `30ae8f22...`; `65cb08...` é checkpoint anterior; `SOURCE_SNAPSHOT_SHA` do README é o SHA exato exportado. Esta mudança exige novo commit/push recovery e rebuild do ZIP/bundle. Último commit remoto antes da correção=`24b5eee05dd3184074f8433b2397d68d3a571c69`. Próximo passo: verificar diff, scan, commit/push; re-exportar `source/` e bundle do SHA resultante, atualizar README/manifest, retestar ZIP CRC e hashes.

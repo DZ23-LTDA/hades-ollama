@@ -311,3 +311,8 @@ Escopo confirmado do handoff: snapshot Git-tracked atual + Git bundle de quatro 
 ## Frozen compare para o handoff ZIP — 2026-09-29 18:14 -03
 
 Base comparada: recovery `3203fa1f732a013c35bd46467a2c15debdd27466`, imediatamente antes do próximo commit documental. PR #38 head `07a4f0bca2cbe327d5234abd9ebec69ff52154e6`: estado OPEN/mergeable; diverged, PR head +35 e recovery +32 commits, 121 arquivos; merge-base `8635e30dc9e95a1f5b29700169783abc24093ceb`. UI parity `132e77155fed682c0b6244d256e6cdfe9b25c239`: diverged, UI +17 e recovery +20; 57 arquivos; merge-base `add5881a260ff1f740b1340c6f394c26acc2d5d2`. O commit subsequente adiciona somente documentação/checkpoint; o README do ZIP informa SHAs do snapshot e refs do bundle separadamente.
+
+
+## Ajuste final de precisão SHA — 2026-09-29 18:17 -03
+
+Corrigido no guia novo o rótulo enganoso que podia indicar `65cb08...` como snapshot entregue. Esse SHA é checkpoint antigo; a correção de segurança é `30ae8f22...`; a fonte que vai em `source/` usa `SOURCE_SNAPSHOT_SHA` exato no README do ZIP. O rebuild do pacote deve executar após a publicação do novo commit documental e recriar tanto export de source quanto Git bundle.
