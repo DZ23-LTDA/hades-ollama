@@ -1,7 +1,7 @@
 ---
 projeto: ollama-mobile
 status: em andamento
-atualizado: 2026-09-29 10:11 -03:00
+atualizado: 2026-09-29 10:13 -03:00
 ultima_ia: Codex (Rover)
 tags: [mobile, expo, ollama-full]
 ---
@@ -17,10 +17,10 @@ Entregar a faixa MOBILE do Ollama Full no worktree `D:\IA\Trabalhos\DZ23-LTDA\ol
 - Testes finais `npm run test:inbox`, `npm run test:policy` e `npm run typecheck` passaram; `git diff --check` sem erros.
 - UI aberta por HTTP em `http://localhost:19007` com API local simulada no Playwright. Lista, detalhe e leitura offline observados. Erros de console durante a simulação offline são abortos `ERR_INTERNET_DISCONNECTED`; no fluxo online mockado houve zero erros, duas advertências de bibliotecas web.
 - Evidências: `docs/evidencias/inbox-desktop.png`, `docs/evidencias/inbox-mobile.png`, `docs/evidencias/inbox-offline-mobile.png`, `docs/evidencias/detalhe-offline-mobile.png`.
-- Ainda pendem commit/push somente de `feat/mobile-parity` e revisão Codex+Qwen. Não houve integração com recovery.
+- Commit `3bd97fa2b11b02f8ae0bdfcdddcd033878e008af` enviado a `origin/feat/mobile-parity`; ref remota conferida igual. Revisão Codex+Qwen pendente. Não houve integração com recovery.
 
 ## Próximo passo
-Após publicar `feat/mobile-parity`, Codex+Qwen devem revisar o diff e as evidências. Não integrar recovery nesta faixa.
+Codex+Qwen devem revisar o diff de `feat/mobile-parity` e as quatro evidências visuais. Não integrar recovery nesta faixa.
 
 ## Decisões
 | Data | Decisão | Motivo | IA |
@@ -45,4 +45,4 @@ Em `D:\IA\Trabalhos\DZ23-LTDA\ollama-mobile\apps\mobile-agentic`: `npm install`,
 ### 2026-09-29 10:06 -03:00 — Codex (Rover)
 - Feito: implementada inbox com lista, detalhe e leitura offline, testes e execução visual desktop/celular.
 - Evidência: comandos acima, `git diff --check` e quatro PNGs em `docs/evidencias`.
-- Parou em: commit/push apenas do branch mobile e revisão Codex+Qwen.
+- Parou em: commit `3bd97fa2` publicado na branch mobile, aguardando revisão Codex+Qwen.
