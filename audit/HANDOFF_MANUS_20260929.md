@@ -103,3 +103,8 @@ O snapshot de implementação principal continua sendo `30ae8f22394205115e1d9154
 ## Snapshot exato usado antes do commit final do pacote — 2026-09-29 18:14 -03
 
 Base recovery `3203fa1f732a013c35bd46467a2c15debdd27466`. PR #38 (`07a4f0bca2cbe327d5234abd9ebec69ff52154e6`) OPEN/mergeable: diverged, head PR +35 e recovery +32, 121 arquivos, merge-base `8635e30dc9e95a1f5b29700169783abc24093ceb`. UI parity (`132e77155fed682c0b6244d256e6cdfe9b25c239`): diverged, UI +17 e recovery +20, 57 arquivos, merge-base `add5881a260ff1f740b1340c6f394c26acc2d5d2`. Em seguida, recovery recebe apenas um commit de handoff/documentação. A snapshot de código e auditorias do ZIP deve identificar esse commit posterior exato; as outras branches permanecem imutáveis.
+
+
+## Estado final do empacotamento
+
+O primeiro candidato ZIP passou checksums/CRC, com SHA256 `3ac44659eb923285ead1c04d3d4d0b8cf8fd9748f093fca33b40bbe539a46056`, mas foi criado a partir de `304f1224...` antes da última atualização documental. Ele será substituído por arquivo final gerado do commit que contém esta nota. Para decidir qual baixar, use somente o artefato cujo `SOURCE_SNAPSHOT_SHA` no README bate com `recovery/ollama-full-snapshot` e cuja SHA/size forem entregues no chat.

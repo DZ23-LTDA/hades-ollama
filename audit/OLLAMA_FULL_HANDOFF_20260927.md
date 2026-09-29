@@ -316,3 +316,8 @@ Base comparada: recovery `3203fa1f732a013c35bd46467a2c15debdd27466`, imediatamen
 ## Ajuste final de precisão SHA — 2026-09-29 18:17 -03
 
 Corrigido no guia novo o rótulo enganoso que podia indicar `65cb08...` como snapshot entregue. Esse SHA é checkpoint antigo; a correção de segurança é `30ae8f22...`; a fonte que vai em `source/` usa `SOURCE_SNAPSHOT_SHA` exato no README do ZIP. O rebuild do pacote deve executar após a publicação do novo commit documental e recriar tanto export de source quanto Git bundle.
+
+
+## Evidência preliminar do pacote ZIP — 2026-09-29 18:19 -03
+
+Candidato v2 de 132.569.470 bytes (1.871 entradas) passou `zip -T`, `unzip -t`, SHA256SUMS dos membros e `git bundle verify` (4 refs); cópia do ZIP visual comparada byte a byte com o original. Checksum do candidato v2 `3ac44659eb923285ead1c04d3d4d0b8cf8fd9748f093fca33b40bbe539a46056`. Esse não é o arquivo final a ser anexado: foi gerado no source `304f1224...`; após publicar esta atualização de auditoria, regenerar pelo SHA final, confirmar `SOURCE_SNAPSHOT_SHA`=bundle recovery=origin, recalcular SHA do ZIP e entregar somente o final validado.

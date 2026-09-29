@@ -1165,3 +1165,8 @@ A comparação mais recente, usando recovery `3203fa1f732a013c35bd46467a2c15debd
 ## Correção SHA de snapshot no guia do pacote — 2026-09-29 18:17 -03
 
 Review detectou que o guia chamava o SHA inicial da rodada de segurança `65cb08...` de snapshot incluído, embora a fonte já tenha avançado por commits documentais. Corrigido: segurança base=commit `30ae8f22...`; `65cb08...` é checkpoint anterior; `SOURCE_SNAPSHOT_SHA` do README é o SHA exato exportado. Esta mudança exige novo commit/push recovery e rebuild do ZIP/bundle. Último commit remoto antes da correção=`24b5eee05dd3184074f8433b2397d68d3a571c69`. Próximo passo: verificar diff, scan, commit/push; re-exportar `source/` e bundle do SHA resultante, atualizar README/manifest, retestar ZIP CRC e hashes.
+
+
+## Verificação do candidato de handoff — 2026-09-29 18:19 -03
+
+O candidato `ollama-full-handoff-20260929-v2.zip` foi criado e validado em CRC/manifest (1.871 entradas, 132.569.470 bytes); bundle de quatro refs validado e comparação byte a byte confirmou o ZIP visual copiado. SHA-256 do candidato `3ac44659eb923285ead1c04d3d4d0b8cf8fd9748f093fca33b40bbe539a46056`. Esse candidato foi gerado do source SHA `304f1224...`; antes da entrega, este próprio checkpoint será commitado/pushado e o pacote definitivo regenerado do novo SHA para conter a atualização também. Próximo passo: push normal desta nota e rebuild final, depois `unzip -t`, `sha256sum -c` e confirmar que source SHA, bundle recovery ref e origin head coincidem.
