@@ -91,3 +91,10 @@ O arquivo raiz `ollama-full-handoff-20260929.zip` deve incluir:
 4. `handoff/` com checkpoints e arquivos de continuação existentes.
 5. `references/ollama-full-reference-images.zip` — arquivo visual anterior, copiado sem extração.
 6. `SHA256SUMS.txt` e `README-START-HERE.md` na raiz.
+
+
+## Revalidação mais recente das branches — 2026-09-29 18:12 -03
+
+Recovery estava em `6980786c484192ace6b735458bc8e51ab7ef7279` ao recalcular pela GitHub API: PR #38 continua OPEN, head `07a4f0bca2cbe327d5234abd9ebec69ff52154e6`, compare diverged com PR head +35 e recovery +31 commits, 121 paths, merge-base `8635e30dc9e95a1f5b29700169783abc24093ceb`. UI parity head `132e77155fed682c0b6244d256e6cdfe9b25c239`, compare diverged UI +17 / recovery +19, 57 paths, merge-base `add5881a260ff1f740b1340c6f394c26acc2d5d2`. Esse número mudou porque recovery recebeu commits de documentação após medições anteriores; as direções são “head da outra branch +N; recovery +N”. O pacote e o próximo Manus devem conferir de novo os SHAs remotos.
+
+O snapshot de implementação principal continua sendo `30ae8f22394205115e1d9154dae9866fcee82a52`; commits depois dele são checkpoints/documentação. O ZIP final indicará snapshot/head incluído e SHAs no README/manifest.
