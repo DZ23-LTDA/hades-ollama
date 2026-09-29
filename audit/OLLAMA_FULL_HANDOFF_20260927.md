@@ -306,3 +306,8 @@ Guia novo: `audit/HANDOFF_MANUS_20260929.md`. Para o ZIP, incluir snapshot track
 Reconsultados PR/refs no GitHub usando recovery `6980786c484192ace6b735458bc8e51ab7ef7279` como base: PR #38 permanece OPEN, head `07a4f0bca2cbe327d5234abd9ebec69ff52154e6`; compare diverged com PR +35 commits e recovery +31, 121 arquivos, merge-base main `8635e30dc9e95a1f5b29700169783abc24093ceb`. UI parity head `132e77155fed682c0b6244d256e6cdfe9b25c239`; compare diverged UI +17 e recovery +19, 57 arquivos, merge-base `add5881a260ff1f740b1340c6f394c26acc2d5d2`. Divergência, não merge; contadores variam com cada commit em recovery.
 
 Escopo confirmado do handoff: snapshot Git-tracked atual + Git bundle de quatro refs (main/recovery/PR38/UI) + guia novo e checkpoints + cópia binária do ZIP visual já existente. Excluir o backup antigo de P:; não extrair ZIP visual. Gerar o arquivo ZIP de entrega fora do repositório, validar CRC, bundle refs e checksums, depois fornecer link de download e SHA-256. Nenhuma integração de branches foi autorizada nesta fase.
+
+
+## Frozen compare para o handoff ZIP — 2026-09-29 18:14 -03
+
+Base comparada: recovery `3203fa1f732a013c35bd46467a2c15debdd27466`, imediatamente antes do próximo commit documental. PR #38 head `07a4f0bca2cbe327d5234abd9ebec69ff52154e6`: estado OPEN/mergeable; diverged, PR head +35 e recovery +32 commits, 121 arquivos; merge-base `8635e30dc9e95a1f5b29700169783abc24093ceb`. UI parity `132e77155fed682c0b6244d256e6cdfe9b25c239`: diverged, UI +17 e recovery +20; 57 arquivos; merge-base `add5881a260ff1f740b1340c6f394c26acc2d5d2`. O commit subsequente adiciona somente documentação/checkpoint; o README do ZIP informa SHAs do snapshot e refs do bundle separadamente.

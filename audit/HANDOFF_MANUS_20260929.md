@@ -98,3 +98,8 @@ O arquivo raiz `ollama-full-handoff-20260929.zip` deve incluir:
 Recovery estava em `6980786c484192ace6b735458bc8e51ab7ef7279` ao recalcular pela GitHub API: PR #38 continua OPEN, head `07a4f0bca2cbe327d5234abd9ebec69ff52154e6`, compare diverged com PR head +35 e recovery +31 commits, 121 paths, merge-base `8635e30dc9e95a1f5b29700169783abc24093ceb`. UI parity head `132e77155fed682c0b6244d256e6cdfe9b25c239`, compare diverged UI +17 / recovery +19, 57 paths, merge-base `add5881a260ff1f740b1340c6f394c26acc2d5d2`. Esse número mudou porque recovery recebeu commits de documentação após medições anteriores; as direções são “head da outra branch +N; recovery +N”. O pacote e o próximo Manus devem conferir de novo os SHAs remotos.
 
 O snapshot de implementação principal continua sendo `30ae8f22394205115e1d9154dae9866fcee82a52`; commits depois dele são checkpoints/documentação. O ZIP final indicará snapshot/head incluído e SHAs no README/manifest.
+
+
+## Snapshot exato usado antes do commit final do pacote — 2026-09-29 18:14 -03
+
+Base recovery `3203fa1f732a013c35bd46467a2c15debdd27466`. PR #38 (`07a4f0bca2cbe327d5234abd9ebec69ff52154e6`) OPEN/mergeable: diverged, head PR +35 e recovery +32, 121 arquivos, merge-base `8635e30dc9e95a1f5b29700169783abc24093ceb`. UI parity (`132e77155fed682c0b6244d256e6cdfe9b25c239`): diverged, UI +17 e recovery +20, 57 arquivos, merge-base `add5881a260ff1f740b1340c6f394c26acc2d5d2`. Em seguida, recovery recebe apenas um commit de handoff/documentação. A snapshot de código e auditorias do ZIP deve identificar esse commit posterior exato; as outras branches permanecem imutáveis.
