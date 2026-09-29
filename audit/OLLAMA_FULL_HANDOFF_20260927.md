@@ -230,3 +230,16 @@ O runbook source/staging agora usa `sslmode=verify-full` e CA distinta/explicita
 **Ainda não production-ready:** o rehearsal é local/descartável. Falta ambiente real staging, TLS/CA do operador, HA/replicação, failover/crash, backup/retention/RPO-RTO e restore/rollback operacional independente, rollout coordenado e alertas. A execução dessas fases externas depende de staging/DSNs, CA e agenda operacional autorizados. Enquanto faltarem, status do PostgreSQL é candidato e gate de produção continua fechado.
 
 **Próximo passo:** preparar e executar staging HA com os valores reais, exercitar replicação/failover/restore/rollback e obter revisão independente. Em paralelo, manter branch recovery sincronizada e executar os checks GitHub por rota autorizada; não alegar CI remoto verde sem run/check ligado ao SHA.
+
+
+## Continuidade — streaming TLS e promoção PostgreSQL 16 comprovados localmente — 2026-09-29 12:42 -03
+
+**Commit funcional enviado:** `9dc80fa16619704b49d30c2fcf0e2833b403b929` (`docs(postgres): record tested fenced failover rehearsal`) em `origin/recovery/ollama-full-snapshot`, remote/local iguais.
+
+Adicionado `docs/agentic/POSTGRES_HA_FAILOVER_REHEARSAL.md` e link no guia principal. A sequência local usa primary/standby PostgreSQL 16 descartáveis, TLS `verify-full`, `pg_basebackup`/WAL streaming, espera por `pg_stat_replication.state='streaming'`, marcador replayado, fencing (parada do primary) antes de promoção e write após promoção. Resultado observado: 2 linhas replayadas antes da promoção; `pg_is_in_recovery()=false`; total pós-promoção 3 com 1 write novo. Fault injection após promoção confirmou remoção do standby promovido, cluster primary de teste, portas e diretório temporário. O integrity guard protege a presença do guia e avisos split-brain/fencing.
+
+Gates: `go test -json ./... -count=1` status 0; `go vet ./...`; integrity; parser yaml.v3; Bash syntax dos snippets restore/HA; `git diff --check`; secret pattern scan e verificação de ausência de cluster/porta local. A rodada anterior já ensaiou restore TLS/verify-full entre clusters diferentes e cleanup em falha.
+
+A evidência é apenas de mecânica manual em sandbox; não representa HA gerenciada, produção, RPO/RTO, topologia/quorum, comportamento sob partição, failover automatizado, recuperação segura do old-primary/`pg_rewind`, certificados reais ou retenção de backup. PostgreSQL permanece bloqueado para produção até staging autorizado e review operacional. GitHub Actions não executou neste SHA; não há PR nem check-run a relatar.
+
+**Próximo passo:** acordar e preparar staging real com CA, DSNs e topologia documentados; definir modo de replicação/fencing e metas RPO/RTO, então executar cenários de falha e restore/rollback com evidência independente. Não declarar produção aprovada só pelos ensaios descartáveis locais.

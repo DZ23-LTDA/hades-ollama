@@ -1092,3 +1092,16 @@ STATUS: RLS_ACL_REVIEW_NO_BLOCKERS — correção, recomendação menor de teste
 - **PRÓXIMO PASSO CONCRETO:** criar plano/runbook de staging e HA baseado nos DSNs/CA reais, coletar evidência de replicação/failover/rollback com revisão independente, e executar CI via mecanismo autorizado (PR se aprovado). Sem credenciais/ambiente staging disponibilizados, implementar somente harness local e manter status BLOCKED para validação operacional externa.
 
 STATUS: POSTGRES_LOCAL_RESTORE_TLS_PASS — restore real + fault-cleanup demonstrados em clusters locais distintos; produção segue bloqueada por staging HA/failover/restore operacional.
+
+
+## Estado atual autoritativo — failover PostgreSQL 16 ensaiado — 2026-09-29 12:42 -03
+
+- **Último commit funcional enviado:** `9dc80fa16619704b49d30c2fcf0e2833b403b929` (`docs(postgres): record tested fenced failover rehearsal`) em `origin/recovery/ollama-full-snapshot`; branch local/remota sincronizadas. Não alterado `main`, sem force-push.
+- **Runbook novo:** `docs/agentic/POSTGRES_HA_FAILOVER_REHEARSAL.md`, linkado pelo runbook de integrações. Registra limites explícitos: só mecânica manual local; split-brain, fencing/quorum, modo síncrono, RPO/RTO, HA automatizada, CA real e backup operacional continuam sem validação de produção.
+- **Evidência PostgreSQL 16 real em clusters descartáveis:** streaming replication TLS `verify-full`, `pg_basebackup -X stream -R -C`, marcador replicado (2 linhas), primary parado/fenced antes da promoção, `pg_promote`, saída de recovery e novo write no promovido (`3/1`). A fault injection depois da promoção terminou com cleanup verificado; não restaram cluster, listeners nem diretório CA/data. Este ensaio não prova failover automático ou ausência de perda em rede particionada.
+- **Gates da rodada:** `go test -json ./... -count=1` com `GO_TEST_EXIT=0`; `go vet ./...` passou; integrity guard, parse YAML, `bash -n` dos snippets de restore/HA, diff check, varredura redigida de padrões de secrets e estado de clusters/portas passaram.
+- **CI GitHub remoto:** sem check associado ao recovery SHA (workflow de qualidade executa em PR/push main). Não criar PR nem alegar execução sem autorização/resultado.
+- **Estado do produto:** PostgreSQL RLS/HMAC/cutover tem evidência adversarial local previamente registrada; restore TLS entre clusters distintos passou na rodada anterior; failover manual local passou nesta rodada. **PostgreSQL ainda não é production-ready**: staging real, quorum/fencing automatizado, replicação/HA, failover/rollback do antigo primary, backup completo/restoration, RPO/RTO, TLS/CA operacional, alertas e review operacional independente pendem.
+- **PRÓXIMO PASSO CONCRETO:** obter ambiente staging real e decisão operacional sobre modo de replicação, quorum/fencing e metas RPO/RTO; executar os casos de perda de primary/standby/rede particionada e restore/rollback com evidência assinada por operadores. Até haver credenciais/topologia autorizadas, manter gate de produção bloqueado e seguir próximos itens locais independentes sem simular aprovação.
+
+STATUS: LOCAL_PG16_TLS_RESTORE_AND_MANUAL_PROMOTION_PASS — produção bloqueada por HA/DR operacional externo.
