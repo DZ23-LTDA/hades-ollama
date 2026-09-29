@@ -77,11 +77,15 @@ Para desenvolvimento com `deploy/docker-compose.agentic.yml`, defina senhas dist
    umask 077
    install -d -m 700 "$HOME/ollama-full-backups"
    export BACKUP_FILE="$HOME/ollama-full-backups/ollama_agent-$(date -u +%Y%m%dT%H%M%SZ).dump"
-   export DSN_ADMIN_LEGADO='host=127.0.0.1 port=5432 dbname=ollama_agent user=ollama_agent'
-   export DSN_ADMIN_NOVO='host=127.0.0.1 port=5432 dbname=ollama_agent user=ollama_agent_admin'
-   # Ambos os DSNs devem apontar para staging, em cluster DIFERENTE da origem.
+   export SOURCE_PGHOST='source-db.example' SOURCE_PGPORT=5432 SOURCE_PGUSER='ollama_agent'
+   export SOURCE_PGSSLROOTCERT='/secure/path/source-ca.crt'
    export STAGING_PGHOST='staging-db.example' STAGING_PGPORT=5432 STAGING_PGUSER='staging_restore_admin'
-   export DSN_ADMIN_MAINTENANCE="host=$STAGING_PGHOST port=$STAGING_PGPORT dbname=postgres user=$STAGING_PGUSER sslmode=verify-full"
+   export STAGING_PGSSLROOTCERT='/secure/path/staging-ca.crt'
+   # Source e staging usam certificados/CA confiáveis e nomes presentes no SAN; verify-full é obrigatório.
+   export DSN_ADMIN_LEGADO="host=$SOURCE_PGHOST port=$SOURCE_PGPORT dbname=ollama_agent user=$SOURCE_PGUSER sslmode=verify-full sslrootcert=$SOURCE_PGSSLROOTCERT"
+   export DSN_ADMIN_NOVO="host=$SOURCE_PGHOST port=$SOURCE_PGPORT dbname=ollama_agent user=ollama_agent_admin sslmode=verify-full sslrootcert=$SOURCE_PGSSLROOTCERT"
+   # staging_restore_admin precisa CREATEDB, pg_monitor e permissão de conectar via TLS.
+   export DSN_ADMIN_MAINTENANCE="host=$STAGING_PGHOST port=$STAGING_PGPORT dbname=postgres user=$STAGING_PGUSER sslmode=verify-full sslrootcert=$STAGING_PGSSLROOTCERT"
    export DSN_RESTORE_STAGING_BASE="$DSN_ADMIN_MAINTENANCE"
    read -rsp 'Senha do administrador legado: ' PGPASSWORD; echo; export PGPASSWORD
    read -rsp 'Senha do administrador de staging: ' STAGING_PGPASSWORD; echo; export STAGING_PGPASSWORD
@@ -110,7 +114,7 @@ Para desenvolvimento com `deploy/docker-compose.agentic.yml`, defina senhas dist
    restore_db_created=1
    staging_restore_id="$(PGPASSWORD="$STAGING_PGPASSWORD" psql "$DSN_RESTORE_STAGING_BASE" --dbname="$restore_db" -v ON_ERROR_STOP=1 -Atc 'SELECT system_identifier FROM pg_catalog.pg_control_system()')"
    test "$staging_restore_id" = "$staging_cluster_id"
-   PGPASSWORD="$STAGING_PGPASSWORD" PGHOST="$STAGING_PGHOST" PGPORT="$STAGING_PGPORT" PGUSER="$STAGING_PGUSER" PGSSLMODE=verify-full pg_restore --no-owner --no-acl --dbname="$restore_db" "$BACKUP_FILE"
+   PGPASSWORD="$STAGING_PGPASSWORD" PGHOST="$STAGING_PGHOST" PGPORT="$STAGING_PGPORT" PGUSER="$STAGING_PGUSER" PGSSLMODE=verify-full PGSSLROOTCERT="$STAGING_PGSSLROOTCERT" pg_restore --no-owner --no-acl --dbname="$restore_db" "$BACKUP_FILE"
    PGPASSWORD="$STAGING_PGPASSWORD" psql "$DSN_RESTORE_STAGING_BASE" --dbname="$restore_db" -v ON_ERROR_STOP=1 -Atc 'SELECT (SELECT count(*) FROM agent_missions), (SELECT count(*) FROM agent_events)'
    PGPASSWORD="$STAGING_PGPASSWORD" psql "$DSN_ADMIN_MAINTENANCE" -v ON_ERROR_STOP=1 -c "DROP DATABASE $restore_db WITH (FORCE)"
    restore_db_created=0

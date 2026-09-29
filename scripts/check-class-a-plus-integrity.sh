@@ -170,6 +170,11 @@ grep -q 'active legacy ollama_agent login' internal/agent/postgres_security.go
 grep -q 'TestDistributedPostgresRuntimeReadinessForLegacyRole' internal/agent/distributed_integration_test.go
 grep -q 'OLLAMA_AGENT_TEST_EXPECT_LEGACY_ROLE_ACTIVE' .github/workflows/dz23-agentic-quality.yaml
 grep -q 'pg_restore --list' docs/agentic/INTEGRATIONS.md
+grep -q 'SOURCE_PGSSLROOTCERT' docs/agentic/INTEGRATIONS.md
+grep -q 'STAGING_PGSSLROOTCERT' docs/agentic/INTEGRATIONS.md
+grep -q 'sslmode=verify-full' docs/agentic/INTEGRATIONS.md
+grep -q 'PGSSLROOTCERT="$STAGING_PGSSLROOTCERT" pg_restore' docs/agentic/INTEGRATIONS.md
+grep -q 'if \[ "$source_cluster_id" = "$staging_cluster_id" \]' docs/agentic/INTEGRATIONS.md
 grep -q 'restore_check' .github/workflows/dz23-agentic-quality.yaml
 grep -q 'cleanup-placeholder' .github/workflows/dz23-agentic-quality.yaml
 if sed -n '65,210p' .github/workflows/dz23-agentic-quality.yaml | grep -q 'GITHUB_ENV'; then

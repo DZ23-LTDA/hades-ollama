@@ -136,9 +136,6 @@ jobs:
           ALTER TABLE public.agent_legacy_public_acl_probe OWNER TO ollama_agent;
           ALTER SEQUENCE public.agent_legacy_public_acl_sequence OWNER TO ollama_agent;
           ALTER FUNCTION public.agent_legacy_public_acl_secret() OWNER TO ollama_agent;
-          ALTER TABLE public.agent_legacy_public_acl_probe OWNER TO ollama_agent;
-          ALTER SEQUENCE public.agent_legacy_public_acl_sequence OWNER TO ollama_agent;
-          ALTER FUNCTION public.agent_legacy_public_acl_secret() OWNER TO ollama_agent;
           SELECT pg_catalog.lo_create(700001);
           ALTER TABLE public.agent_missions OWNER TO ollama_agent;
           ALTER TABLE public.agent_events OWNER TO ollama_agent;
