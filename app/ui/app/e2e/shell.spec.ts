@@ -7,11 +7,13 @@ test.describe("Ollama Full shell", () => {
   test("home renders local-first composer and sidebar", async ({ page }) => {
     await page.goto("/");
 
-    // Home real (redirect para o chat local): titulo central.
+    // Home real (dashboard local-first): saudação, composer de tarefa e cards.
     await expect(
-      page.getByText("O que posso fazer por você?", { exact: false }),
+      page.getByRole("heading", { name: "Ollama Full", level: 1 }),
     ).toBeVisible();
-    await expect(page.getByText("Ollama Full", { exact: true })).toHaveCount(2);
+    await expect(
+      page.getByRole("heading", { name: "Missão agentic" }),
+    ).toBeVisible();
     await expect(page.getByText("Ollama Classe A+", { exact: true })).toHaveCount(0);
 
     // Indicador de modo local-first (approvals/secrets protegidos).
