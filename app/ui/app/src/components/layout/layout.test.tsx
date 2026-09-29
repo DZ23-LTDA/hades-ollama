@@ -20,4 +20,20 @@ describe("SidebarLayout", () => {
     expect(html).toContain("transition-[padding-left]");
     expect(html).toContain("duration-300");
   });
+
+  it("starts with the sidebar closed on narrow viewports", () => {
+    vi.stubGlobal("window", {
+      OLLAMA_PLATFORM: "darwin",
+      matchMedia: (query: string) => ({ matches: query === "(max-width: 767px)" }),
+    });
+
+    const html = renderToStaticMarkup(
+      <SidebarLayout title="Tarefas" sidebar={<nav data-testid="sidebar" />}>
+        <div />
+      </SidebarLayout>,
+    );
+
+    expect(html).toContain('aria-label="Show sidebar"');
+    expect(html).not.toContain('data-testid="sidebar"');
+  });
 });

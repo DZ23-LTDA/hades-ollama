@@ -5,7 +5,17 @@ import { useState } from "react";
 
 // The agentic desktop shell is navigation-first. Keep the sidebar visible by
 // default and preserve the operator's choice only for the current session.
-let sessionSidebarOpen = true;
+// On narrow viewports the fixed sidebar would squeeze the content, so it starts
+// closed there until the operator opens it.
+let sessionSidebarOpen: boolean | null = null;
+
+function initialSidebarOpen(): boolean {
+  if (sessionSidebarOpen !== null) return sessionSidebarOpen;
+  if (typeof window !== "undefined" && typeof window.matchMedia === "function") {
+    return !window.matchMedia("(max-width: 767px)").matches;
+  }
+  return true;
+}
 
 export function SidebarLayout({
   sidebar,
@@ -15,7 +25,7 @@ export function SidebarLayout({
   sidebar: React.ReactNode;
   title?: string;
 }>) {
-  const [sidebarOpen, setSidebarOpen] = useState(sessionSidebarOpen);
+  const [sidebarOpen, setSidebarOpen] = useState(initialSidebarOpen);
   const isWindows = isWindowsPlatform();
 
   const toggleSidebar = () => {

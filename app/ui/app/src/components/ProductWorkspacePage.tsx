@@ -1,5 +1,5 @@
-import { Link } from "@tanstack/react-router";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Link, useNavigate } from "@tanstack/react-router";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { API_BASE } from "@/lib/config";
 import {
   createProject,
@@ -25,6 +25,7 @@ import {
 	setMCPEnabled,
 	setSkillEnabled,
 	updateProject,
+	agentErrorMessage,
 } from "@/lib/agenticClient";
 import type { AgentConnector, AgentConnectorCatalogEntry, AgentMCPServer, AgentMission, AgentProject, AgentSchedule, AgentSkill } from "@/lib/agenticClient";
 import {
@@ -64,9 +65,11 @@ function ResourceRow({ children, onDelete, deleteLabel = "Excluir recurso", dele
 	  return <div className="flex items-center justify-between gap-3 rounded-xl border border-neutral-200/80 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900"><div className="min-w-0 flex-1">{children}</div>{onDelete && <button type="button" onClick={onDelete} disabled={deleteDisabled} className="rounded-lg p-2 text-neutral-400 hover:bg-red-50 hover:text-red-600 disabled:cursor-wait disabled:opacity-40 dark:hover:bg-red-950/30" aria-label={deleteLabel} title={deleteLabel}><TrashIcon className="h-4 w-4" /></button>}</div>;
 }
 
-export function ProductWorkspacePage({ kind }: { kind: ProductPageKind }) {
+export function ProductWorkspacePage({ kind, createdMissionId }: { kind: ProductPageKind; createdMissionId?: string }) {
   const copy = pageCopy[kind];
   const current = kind as AppSection;
+  const navigate = useNavigate();
+  const createdBannerRef = useRef<HTMLDivElement>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -124,9 +127,9 @@ export function ProductWorkspacePage({ kind }: { kind: ProductPageKind }) {
         setCliCount(cliResult.tools.filter((item) => item.installed).length);
       }
     } catch (cause) {
-      const message = cause instanceof Error ? cause.message : "Não foi possível carregar os dados persistidos.";
-      setLoadError(message);
-      setNotice(message);
+      // The panel alert already announces the failure; a second live region
+      // would make screen readers read it twice.
+      setLoadError(agentErrorMessage(cause, "Não foi possível carregar os dados persistidos."));
     } finally {
       setLoading(false);
     }
@@ -165,8 +168,23 @@ export function ProductWorkspacePage({ kind }: { kind: ProductPageKind }) {
 		});
 	}, [connectorCatalog, connectorCategory, connectorSearch]);
 
+  // Success is confirmed only when the created mission comes back from the
+  // persisted listing; a missing record is reported instead of assumed.
+  const createdMission = useMemo(
+    () => (kind === "tasks" && createdMissionId ? missions.find((mission) => mission.id === createdMissionId) : undefined),
+    [kind, createdMissionId, missions],
+  );
+  const showCreatedBanner = kind === "tasks" && Boolean(createdMissionId) && !loading && !loadError;
+
+  useEffect(() => {
+    if (showCreatedBanner) createdBannerRef.current?.focus();
+  }, [showCreatedBanner]);
+
+  const openNewTask = () => void navigate({ to: "/tasks/new" });
+
   const handleAction = () => {
-    if (kind === "tasks" || kind === "library") window.location.assign("/agentic");
+    if (kind === "tasks") openNewTask();
+    else if (kind === "library") window.location.assign("/agentic");
     else if (kind === "projects") document.getElementById("new-project-name")?.focus();
     else if (kind === "scheduled") document.getElementById("new-schedule-objective")?.focus();
     else window.location.assign("/settings#agentic");
@@ -294,7 +312,13 @@ export function ProductWorkspacePage({ kind }: { kind: ProductPageKind }) {
 	    if (loading) return <div role="status" aria-live="polite" aria-busy="true" className="rounded-xl border border-dashed border-neutral-300 px-6 py-12 text-center text-sm text-neutral-500 dark:border-neutral-700">Consultando contratos agentic…</div>;
 	    if (loadError) return <div role="alert" aria-live="assertive" className="rounded-xl border border-red-200 bg-red-50 px-6 py-8 text-center text-sm text-red-700 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300"><p>{loadError}</p><button type="button" onClick={() => void refresh()} className="mt-4 rounded-lg border border-red-300 px-3 py-2 text-xs font-medium dark:border-red-800">Tentar novamente</button></div>;
     if (kind === "projects") return <div className="space-y-3">{projects.length ? projects.map((project) => <ResourceRow key={project.id} onDelete={() => void removeProject(project)}><div className="flex flex-wrap items-center justify-between gap-2"><div><p className="font-medium text-neutral-900 dark:text-white">{editingProject === project.id ? <input autoFocus value={editingProjectName} onChange={(event) => setEditingProjectName(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") void saveProject(project); if (event.key === "Escape") setEditingProject(null); }} className="h-8 rounded-lg border border-neutral-300 bg-transparent px-2 text-sm dark:border-neutral-700" /> : project.name}</p><p className="mt-1 text-xs text-neutral-500">{project.root || "workspace local gerenciado"} · atualizado {new Date(project.updated_at).toLocaleString()}</p></div>{editingProject === project.id ? <button onClick={() => void saveProject(project)} className="rounded-lg bg-neutral-900 px-3 py-2 text-xs text-white dark:bg-white dark:text-neutral-900">Salvar</button> : <button onClick={() => { setEditingProject(project.id); setEditingProjectName(project.name); }} className="rounded-lg border border-neutral-200 px-3 py-2 text-xs dark:border-neutral-700">Editar</button>}</div></ResourceRow>) : <EmptyState message="Crie um projeto para manter instruções, arquivos e contexto entre missões." action="Criar projeto" onAction={() => document.getElementById("new-project-name")?.focus()} />}</div>;
-    if (kind === "tasks") return missions.length ? <div className="space-y-3">{missions.map((mission) => <ResourceRow key={mission.id}><Link to="/agentic" className="block"><div className="flex flex-wrap items-center justify-between gap-2"><p className="font-medium text-neutral-900 dark:text-white">{mission.objective}</p><span className="rounded-full bg-neutral-100 px-2 py-1 text-[10px] font-medium dark:bg-neutral-800">{mission.state}</span></div><p className="mt-1 text-xs text-neutral-500">{mission.id} · {mission.plan?.length ?? 0} passos · {mission.artifacts?.length ?? 0} artifacts · {mission.model || "modelo padrão"}</p></Link></ResourceRow>)}</div> : <EmptyState message="As missões criadas no Agentic Console aparecerão aqui com timeline e artifacts." action="Nova tarefa" onAction={() => window.location.assign("/agentic")} />;
+    if (kind === "tasks") {
+      const createdBanner = showCreatedBanner && (createdMission
+        ? <div ref={createdBannerRef} tabIndex={-1} role="status" aria-live="polite" className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200"><p className="font-medium">Tarefa criada</p><p className="mt-1 break-words text-xs">{createdMission.objective} · estado {createdMission.state}</p></div>
+        : <div ref={createdBannerRef} tabIndex={-1} role="alert" aria-live="assertive" className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200"><p className="font-medium">A tarefa criada não apareceu na listagem</p><p className="mt-1 break-all text-xs">ID {createdMissionId}. Atualize a lista ou verifique a organização ativa.</p><button type="button" onClick={() => void refresh()} className="mt-3 rounded-lg border border-amber-300 px-3 py-1.5 text-xs font-medium dark:border-amber-800">Atualizar lista</button></div>);
+      if (!missions.length) return <>{createdBanner}<EmptyState message="Nenhuma tarefa criada ainda. Crie a primeira para acompanhar plano, approvals e artifacts aqui." action="Nova tarefa" onAction={openNewTask} /></>;
+      return <>{createdBanner}<ul aria-label="Tarefas" className="space-y-3">{missions.map((mission) => { const isCreated = mission.id === createdMissionId; return <li key={mission.id} aria-current={isCreated ? "true" : undefined} className={isCreated ? "rounded-xl ring-2 ring-emerald-400" : undefined}><ResourceRow><Link to="/agentic" className="block rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-400"><div className="flex flex-wrap items-center justify-between gap-2"><p className="min-w-0 break-words font-medium text-neutral-900 dark:text-white">{mission.objective}</p><span className="rounded-full bg-neutral-100 px-2 py-1 text-[10px] font-medium dark:bg-neutral-800">{mission.state}</span></div><p className="mt-1 break-all text-xs text-neutral-500">{mission.id} · {mission.plan?.length ?? 0} passos · {mission.artifacts?.length ?? 0} artifacts · {mission.model || "modelo padrão"}</p></Link></ResourceRow></li>; })}</ul></>;
+    }
     if (kind === "library") return artifacts.length ? <div className="grid gap-3 md:grid-cols-2">{artifacts.map(({ mission, ...artifact }) => <ResourceRow key={`${mission.id}-${artifact.id}`}><a href={`${API_BASE}/api/agent/v1/missions/${encodeURIComponent(mission.id)}/artifacts/${encodeURIComponent(artifact.id)}`} className="block"><p className="font-medium text-neutral-900 dark:text-white">{artifact.name}</p><p className="mt-1 text-xs text-neutral-500">{Math.round(artifact.size / 1024)} KiB · SHA-256 {artifact.sha256.slice(0, 16)}…</p><p className="mt-1 text-[10px] text-violet-600">Missão {mission.id}</p></a></ResourceRow>)}</div> : <EmptyState message="Os artifacts gerados aparecerão aqui com preview, hash, versão e download." action="Abrir Agentic Console" onAction={() => window.location.assign("/agentic")} />;
     if (kind === "scheduled") return <div className="space-y-3">{schedules.length ? schedules.map((schedule) => <ResourceRow key={schedule.id} onDelete={() => void removeSchedule(schedule)}><div className="flex flex-wrap items-center justify-between gap-2"><div><p className="font-medium text-neutral-900 dark:text-white">{schedule.objective}</p><p className="mt-1 text-xs text-neutral-500">a cada {schedule.interval_seconds}s · próxima {new Date(schedule.next_run_at).toLocaleString()}</p></div><span className={`rounded-full px-2 py-1 text-[10px] ${schedule.enabled ? "bg-emerald-50 text-emerald-700" : "bg-neutral-100 text-neutral-500"}`}>{schedule.enabled ? "ativo" : "pausado"}</span></div></ResourceRow>) : <EmptyState message="Nenhuma automação está agendada. Crie uma para ativar o worker persistente local." action="Agendar tarefa" onAction={() => document.getElementById("new-schedule-objective")?.focus()} />}</div>;
 			if (kind === "skills") return skills.length ? <div className="space-y-3">{skills.map((skill) => <ResourceRow key={skill.id} onDelete={() => void removePlugin("skill", skill.id)}><div className="flex items-start justify-between gap-3"><div><p className="font-medium text-neutral-900 dark:text-white">{skill.id} <span className="text-xs text-neutral-400">v{skill.version}</span></p><p className="mt-1 text-xs text-neutral-500">{skill.description}</p><p className="mt-1 text-[10px] text-neutral-400">{skill.tools?.length ?? 0} tools · {skill.trusted ? "trusted" : "requer revisão"}</p></div><button type="button" onClick={() => void togglePlugin("skill", skill.id, !skill.enabled)} className="rounded-lg border border-neutral-200 px-2 py-1 text-[10px] dark:border-neutral-700">{skill.enabled ? "Desabilitar" : "Habilitar"}</button></div></ResourceRow>)}</div> : <EmptyState message="Nenhuma skill foi carregada pelo runtime. Instale um manifesto revisado no diretório de skills do servidor." action="Abrir configuração" onAction={() => window.location.assign("/settings#agentic")} />;

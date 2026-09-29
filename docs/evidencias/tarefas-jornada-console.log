@@ -1,0 +1,81 @@
+Total messages: 15 (Errors: 12, Warnings: 0)
+Returning 42 messages for level "warning"
+
+[ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/api/me:0
+[ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/api/agent/v1/missions:0
+[ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/api/v1/chats:0
+[ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/api/version:0
+[ERROR] Error checking health: TypeError: Failed to fetch
+    at fetchHealth (http://127.0.0.1:5173/src/api.ts:446:28)
+    at Object.fetchFn [as fn] (http://127.0.0.1:5173/node_modules/.vite/deps/@tanstack_react-query.js?v=560cb0dd:881:14)
+    at run (http://127.0.0.1:5173/node_modules/.vite/deps/@tanstack_react-query.js?v=560cb0dd:513:49)
+    at Object.start (http://127.0.0.1:5173/node_modules/.vite/deps/@tanstack_react-query.js?v=560cb0dd:555:9)
+    at _a4.fetch (http://127.0.0.1:5173/node_modules/.vite/deps/@tanstack_react-query.js?v=560cb0dd:969:41)
+    at _a8.fetchQuery (http://127.0.0.1:5173/node_modules/.vite/deps/@tanstack_react-query.js?v=560cb0dd:1827:15)
+    at _a8.prefetchQuery (http://127.0.0.1:5173/node_modules/.vite/deps/@tanstack_react-query.js?v=560cb0dd:1830:17)
+    at preloadChatData (http://127.0.0.1:5173/src/lib/chatPreload.ts:13:17)
+    at http://127.0.0.1:5173/src/routes/__root.tsx:33:10
+    at react-stack-bottom-frame (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=7bf3691f:17478:20) @ http://127.0.0.1:5173/src/api.ts:457
+[ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/api/tags:0
+[ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/api/experimental/model-recommendations:0
+[ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/api/v1/settings:0
+[ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/api/v1/cloud:0
+[ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/api/agent/v1/missions:0
+[ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/api/v1/settings:0
+[ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/api/v1/settings:0
+[ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/api/v1/settings:0
+[ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/api/agent/v1/missions:0
+[ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/api/me:0
+[ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/api/agent/v1/missions:0
+[ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/api/v1/chats:0
+[ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/api/version:0
+[ERROR] Error checking health: TypeError: Failed to fetch
+    at fetchHealth (http://127.0.0.1:5173/src/api.ts:446:28)
+    at Object.fetchFn [as fn] (http://127.0.0.1:5173/node_modules/.vite/deps/@tanstack_react-query.js?v=560cb0dd:881:14)
+    at run (http://127.0.0.1:5173/node_modules/.vite/deps/@tanstack_react-query.js?v=560cb0dd:513:49)
+    at Object.start (http://127.0.0.1:5173/node_modules/.vite/deps/@tanstack_react-query.js?v=560cb0dd:555:9)
+    at _a4.fetch (http://127.0.0.1:5173/node_modules/.vite/deps/@tanstack_react-query.js?v=560cb0dd:969:41)
+    at _a8.fetchQuery (http://127.0.0.1:5173/node_modules/.vite/deps/@tanstack_react-query.js?v=560cb0dd:1827:15)
+    at _a8.prefetchQuery (http://127.0.0.1:5173/node_modules/.vite/deps/@tanstack_react-query.js?v=560cb0dd:1830:17)
+    at preloadChatData (http://127.0.0.1:5173/src/lib/chatPreload.ts:13:17)
+    at http://127.0.0.1:5173/src/routes/__root.tsx:33:10
+    at react-stack-bottom-frame (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=7bf3691f:17478:20) @ http://127.0.0.1:5173/src/api.ts:457
+[ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/api/experimental/model-recommendations:0
+[ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/api/tags:0
+[ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/api/v1/settings:0
+[ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/api/v1/cloud:0
+[ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/api/agent/v1/missions:0
+[ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/api/v1/settings:0
+[ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/api/v1/settings:0
+[ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/api/v1/settings:0
+[ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/api/agent/v1/missions:0
+[ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/api/me:0
+[ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/api/v1/chats:0
+[ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/api/version:0
+[ERROR] Error checking health: TypeError: Failed to fetch
+    at fetchHealth (http://127.0.0.1:5173/src/api.ts:446:28)
+    at Object.fetchFn [as fn] (http://127.0.0.1:5173/node_modules/.vite/deps/@tanstack_react-query.js?v=560cb0dd:881:14)
+    at run (http://127.0.0.1:5173/node_modules/.vite/deps/@tanstack_react-query.js?v=560cb0dd:513:49)
+    at Object.start (http://127.0.0.1:5173/node_modules/.vite/deps/@tanstack_react-query.js?v=560cb0dd:555:9)
+    at _a4.fetch (http://127.0.0.1:5173/node_modules/.vite/deps/@tanstack_react-query.js?v=560cb0dd:969:41)
+    at _a8.fetchQuery (http://127.0.0.1:5173/node_modules/.vite/deps/@tanstack_react-query.js?v=560cb0dd:1827:15)
+    at _a8.prefetchQuery (http://127.0.0.1:5173/node_modules/.vite/deps/@tanstack_react-query.js?v=560cb0dd:1830:17)
+    at preloadChatData (http://127.0.0.1:5173/src/lib/chatPreload.ts:13:17)
+    at http://127.0.0.1:5173/src/routes/__root.tsx:33:10
+    at react-stack-bottom-frame (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=7bf3691f:17478:20) @ http://127.0.0.1:5173/src/api.ts:457
+[ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/api/tags:0
+[ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/api/experimental/model-recommendations:0
+[ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/api/v1/settings:0
+[ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/api/v1/cloud:0
+[ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/api/v1/settings:0
+[ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/api/v1/settings:0
+[ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:3001/api/v1/settings:0
+TypeError: Failed to fetch
+    at fetchUser (http://127.0.0.1:5173/src/api.ts:73:26)
+    at http://127.0.0.1:5173/src/main.tsx:21:1
+TypeError: Failed to fetch
+    at fetchUser (http://127.0.0.1:5173/src/api.ts:73:26)
+    at http://127.0.0.1:5173/src/main.tsx?t=1790687206545:21:1
+TypeError: Failed to fetch
+    at fetchUser (http://127.0.0.1:5173/src/api.ts:73:26)
+    at http://127.0.0.1:5173/src/main.tsx?t=1790687206545:21:1

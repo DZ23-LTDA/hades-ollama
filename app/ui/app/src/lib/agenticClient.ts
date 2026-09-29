@@ -109,6 +109,12 @@ export async function agentFetch<T>(path: string, init: RequestInit = {}): Promi
   }
   return body as T;
 }
+// fetch() rejects with a TypeError when the runtime is unreachable; show an
+// actionable message instead of the browser's "Failed to fetch".
+export function agentErrorMessage(cause: unknown, fallback: string): string {
+  if (cause instanceof TypeError) return "Não foi possível conectar ao runtime agentic local. Verifique se ele está em execução e tente novamente.";
+  return cause instanceof Error && cause.message ? cause.message : fallback;
+}
 export const listProjects = () => agentFetch<{ projects: AgentProject[] }>("/api/agent/v1/projects");
 export const createProject = (name: string, root = "") => agentFetch<AgentProject>("/api/agent/v1/projects", { method: "POST", body: JSON.stringify({ name, root }) });
 export const updateProject = (id: string, name: string, root = "") => agentFetch<AgentProject>(`/api/agent/v1/projects/${encodeURIComponent(id)}`, { method: "PATCH", body: JSON.stringify({ name, root }) });
