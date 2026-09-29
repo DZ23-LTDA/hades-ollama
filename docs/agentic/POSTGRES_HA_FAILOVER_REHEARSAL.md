@@ -19,3 +19,10 @@ Observed result: `REPLICATION_STATE=streaming`, `STANDBY_ROWS_BEFORE_PROMOTION=2
 ## Production gate
 
 Before production approval, execute this in a dedicated staging environment using the actual HA topology and certificate authority. Record the topology, fencing/quorum mechanism, replication mode, observed RPO/RTO, backup age, restore result, timeline recovery procedure, and alert coverage. Exercise primary loss, standby loss, network partition, stale former-primary restart, and restoration from backup. Obtain an independent operations/security review. The local PostgreSQL rehearsal above is evidence of the manual replication/promotion mechanics only; it is not evidence that those production gates passed.
+
+## Referências oficiais (PostgreSQL 16)
+
+- [Failover and the former primary](https://www.postgresql.org/docs/16/warm-standby-failover.html) — PostgreSQL warns that the old primary must be prevented from returning as writable; it describes STONITH/fencing and `pg_promote()`.
+- [`pg_basebackup`](https://www.postgresql.org/docs/16/app-pgbasebackup.html) — documents WAL streaming (`-X stream`), `-R`, and the role of a replication slot.
+- [libpq SSL verification](https://www.postgresql.org/docs/16/libpq-ssl.html) — `verify-full` checks the certificate chain and the host identity; configure an explicit trusted root certificate.
+- [Administrative recovery functions](https://www.postgresql.org/docs/16/functions-admin.html) — `pg_promote(wait, wait_seconds)` waits for completion up to its timeout and returns a boolean result.
