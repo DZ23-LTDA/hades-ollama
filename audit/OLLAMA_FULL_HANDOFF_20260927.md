@@ -136,4 +136,4 @@ bash scripts/check-class-a-plus-integrity.sh
 git diff --check
 ```
 
-**Estado registrado em 2026-09-29 01:38 -03:** branch local `recovery/ollama-full-snapshot`; antes desta rodada, `HEAD` e ponta remota eram `d3a11965d57db28c5e11567d8d4a0a29f5aabd03`; `main` foi verificada em `8635e30dc9e95a1f5b29700169783abc24093ceb`. As mudanças desta rodada ainda precisam de commit/push incremental à branch de recuperação. O serviço PostgreSQL temporário de testes deve ser encerrado ao finalizar. Revalide as refs remotas antes de publicar.
+**Estado registrado em 2026-09-29 01:40 -03:** commit `fdd9abfa30d583be9b69d76f6b3a133c492ab07d` da branch `recovery/ollama-full-snapshot` foi enviado e verificado pela API GitHub e por `git ls-remote`. A ref `main` permanece `8635e30dc9e95a1f5b29700169783abc24093ceb`. O serviço PostgreSQL temporário foi encerrado e o diretório de dados descartável removido. Revalide refs e estado do checkout antes de continuar.
