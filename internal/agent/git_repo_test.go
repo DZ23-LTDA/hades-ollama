@@ -93,6 +93,7 @@ func TestGitReadViewOmitsConfigAndHooks(t *testing.T) {
 }
 
 func TestGitRepoInspectReturnsBoundedReadOnlySnapshot(t *testing.T) {
+	requireDescriptorBoundWorkspaceIsolation(t)
 	root := initGitRepository(t)
 	if err := os.WriteFile(filepath.Join(root, "tracked.txt"), []byte("original\n"), 0o600); err != nil {
 		t.Fatal(err)
@@ -187,6 +188,7 @@ func TestGitRepoInspectDoesNotExecuteConfigInjectedBeforeDiff(t *testing.T) {
 }
 
 func TestGitRepoInspectAcceptsPinnedNonIsolatedWorkspaceRoot(t *testing.T) {
+	requireDescriptorBoundWorkspaceIsolation(t)
 	root := initGitRepository(t)
 	if err := os.WriteFile(filepath.Join(root, "tracked.txt"), []byte("tracked\n"), 0o600); err != nil {
 		t.Fatal(err)
@@ -271,6 +273,7 @@ func TestGitRepoInspectRejectsExternalObjectAlternates(t *testing.T) {
 }
 
 func TestGitRepoInspectRejectsLocalAndConditionalConfigIncludes(t *testing.T) {
+	requireDescriptorBoundWorkspaceIsolation(t)
 	for _, config := range []string{
 		"[include]\n\tpath = /tmp/attacker-git-config\n",
 		"[include] # external config\n\tpath = /tmp/attacker-git-config\n",
@@ -395,6 +398,7 @@ func TestParseGitConfigRejectsSectionWhitespaceAndSubsectionBypasses(t *testing.
 }
 
 func TestGitRepoInspectBoundsDiffOutput(t *testing.T) {
+	requireDescriptorBoundWorkspaceIsolation(t)
 	root := initGitRepository(t)
 	content := strings.Repeat("line of tracked content\n", 8000)
 	path := filepath.Join(root, "large.txt")
@@ -456,6 +460,7 @@ func TestGitRepoInspectWithoutWorkspaceFailsClosed(t *testing.T) {
 }
 
 func TestGitRepoCommandUsesOpenedWorkspaceAfterPathReplacement(t *testing.T) {
+	requireDescriptorBoundWorkspaceIsolation(t)
 	parent := t.TempDir()
 	root := filepath.Join(parent, "workspace")
 	initGitRepositoryAt(t, root)

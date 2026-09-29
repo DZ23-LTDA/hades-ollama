@@ -55,8 +55,17 @@ func assertWorkspaceSnapshotOwnerDACL(t *testing.T, path string, requireInherita
 		if !aceSID.Equals(user.User.Sid) {
 			t.Fatalf("snapshot ACL grants access to unexpected SID %s", aceSID.String())
 		}
-		if ace.Mask&windows.GENERIC_ALL != windows.GENERIC_ALL {
-			t.Fatalf("service SID access mask %#x does not include GENERIC_ALL", ace.Mask)
+		// Windows expands a GENERIC_ALL grant into its specific access bits
+		// when the ACE is stored, so assert the resolved full-access bits
+		// rather than the generic alias that never survives the round trip.
+		const fullAccessBits = windows.ACCESS_MASK(
+			windows.FILE_READ_DATA | windows.FILE_WRITE_DATA | windows.FILE_APPEND_DATA |
+				windows.FILE_READ_EA | windows.FILE_WRITE_EA | windows.FILE_READ_ATTRIBUTES |
+				windows.FILE_WRITE_ATTRIBUTES | windows.DELETE | windows.READ_CONTROL |
+				windows.WRITE_DAC | windows.WRITE_OWNER | windows.SYNCHRONIZE,
+		)
+		if ace.Mask&fullAccessBits != fullAccessBits {
+			t.Fatalf("service SID access mask %#x does not grant full access to the owner", ace.Mask)
 		}
 		if requireInheritance && ace.Header.AceFlags&(windows.CONTAINER_INHERIT_ACE|windows.OBJECT_INHERIT_ACE) != windows.CONTAINER_INHERIT_ACE|windows.OBJECT_INHERIT_ACE {
 			t.Fatalf("snapshot ACL does not inherit to child directories and files: flags=%#x", ace.Header.AceFlags)

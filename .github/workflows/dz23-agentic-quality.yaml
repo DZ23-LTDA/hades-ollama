@@ -294,6 +294,11 @@ jobs:
           PGPASSWORD="$legacy_password" psql -h 127.0.0.1 -U ollama_agent -d ollama_agent \
             -v ON_ERROR_STOP=1 -c 'SELECT pg_sleep(60)' >"$RUNNER_TEMP/legacy-session.log" 2>&1 &
           legacy_session_pid=$!
+          # The fresh bootstrap already REVOKEs PUBLIC CONNECT, so this
+          # disposable member login needs an explicit grant to open the
+          # SET ROLE session that phase one must drain.
+          PGPASSWORD="$postgres_admin_password" psql -h 127.0.0.1 -U ollama_agent_admin -d ollama_agent \
+            -v ON_ERROR_STOP=1 -c 'GRANT CONNECT ON DATABASE ollama_agent TO ollama_agent_reverse_member'
           PGPASSWORD="$legacy_password" psql -h 127.0.0.1 -U ollama_agent_reverse_member -d ollama_agent \
             -v ON_ERROR_STOP=1 -c 'SET ROLE ollama_agent; SELECT pg_sleep(60)' >"$RUNNER_TEMP/reverse-member-session.log" 2>&1 &
           reverse_member_session_pid=$!

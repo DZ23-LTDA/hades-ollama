@@ -25,6 +25,7 @@ type snapshotFixtureState struct {
 }
 
 func TestCreateWorkspaceSnapshotCopiesSafeWorkingTreeWithoutMutatingSource(t *testing.T) {
+	requireDescriptorBoundWorkspaceIsolation(t)
 	source := initWorkspaceSnapshotGit(t)
 	writeSnapshotFixture(t, source, ".gitignore", "ignored.txt\n")
 	writeSnapshotFixture(t, source, "tracked.txt", "committed base\n")
@@ -324,6 +325,7 @@ func TestCreateWorkspaceSnapshotRejectsConfiguredGitFilterWithoutExecutingIt(t *
 }
 
 func TestCreateWorkspaceSnapshotRejectsGitMetadataPointersBeforeAnyGitCommand(t *testing.T) {
+	requireDescriptorBoundWorkspaceIsolation(t)
 	for _, tc := range []struct {
 		name string
 		path string
@@ -407,6 +409,7 @@ func TestCreateWorkspaceSnapshotRejectsSpecialGitMetadataBeforeAnyGitCommand(t *
 }
 
 func TestCreateWorkspaceSnapshotRejectsAliasesAndWorktreeRedirectBeforeAnyGitCommand(t *testing.T) {
+	requireDescriptorBoundWorkspaceIsolation(t)
 	marker := filepath.Join(t.TempDir(), "git-alias-executed")
 	outside := t.TempDir()
 	for _, tc := range []struct {
@@ -444,6 +447,7 @@ func TestCreateWorkspaceSnapshotRejectsAliasesAndWorktreeRedirectBeforeAnyGitCom
 }
 
 func TestCreateWorkspaceSnapshotRejectsIncludesBeforeAnyGitCommand(t *testing.T) {
+	requireDescriptorBoundWorkspaceIsolation(t)
 	for _, tc := range []struct {
 		name           string
 		config         string
@@ -497,6 +501,7 @@ func TestValidateWorkspaceSnapshotPathRejectsNonPortableComponents(t *testing.T)
 }
 
 func TestCreateWorkspaceSnapshotRecordsButDoesNotCopySubmodule(t *testing.T) {
+	requireDescriptorBoundWorkspaceIsolation(t)
 	submodule := initWorkspaceSnapshotGit(t)
 	writeSnapshotFixture(t, submodule, "private.txt", "submodule content must not be copied\n")
 	runSnapshotFixtureGit(t, submodule, "add", "private.txt")
@@ -522,6 +527,7 @@ func TestCreateWorkspaceSnapshotRecordsButDoesNotCopySubmodule(t *testing.T) {
 }
 
 func TestCreateWorkspaceSnapshotRejectsParentSymlinkEscape(t *testing.T) {
+	requireDescriptorBoundWorkspaceIsolation(t)
 	source := initWorkspaceSnapshotGit(t)
 	writeSnapshotFixture(t, source, "linked/private.txt", "tracked base\n")
 	runSnapshotFixtureGit(t, source, "add", "linked/private.txt")
@@ -553,6 +559,7 @@ func TestCreateWorkspaceSnapshotRejectsParentSymlinkEscape(t *testing.T) {
 }
 
 func TestCreateWorkspaceSnapshotRejectsNestedDataRootWithoutMutatingSource(t *testing.T) {
+	requireDescriptorBoundWorkspaceIsolation(t)
 	source := initWorkspaceSnapshotGit(t)
 	dataRoot := filepath.Join(source, "runtime-data", "snapshots")
 	_, err := CreateWorkspaceSnapshot(context.Background(), WorkspaceSnapshotRequest{
@@ -567,6 +574,7 @@ func TestCreateWorkspaceSnapshotRejectsNestedDataRootWithoutMutatingSource(t *te
 }
 
 func TestVerifyWorkspaceSnapshotRootIdentityRejectsReplacedSource(t *testing.T) {
+	requireDescriptorBoundWorkspaceIsolation(t)
 	parent := t.TempDir()
 	rootPath := filepath.Join(parent, "repo")
 	if err := os.Mkdir(rootPath, 0o700); err != nil {
@@ -589,6 +597,7 @@ func TestVerifyWorkspaceSnapshotRootIdentityRejectsReplacedSource(t *testing.T) 
 }
 
 func TestCreateWorkspaceSnapshotRejectsReplacedAuthorizedProjectRoot(t *testing.T) {
+	requireDescriptorBoundWorkspaceIsolation(t)
 	source := initWorkspaceSnapshotGit(t)
 	projectRoot := filepath.Join(source, "apps", "approved")
 	if err := os.MkdirAll(projectRoot, 0o700); err != nil {
@@ -615,6 +624,7 @@ func TestCreateWorkspaceSnapshotRejectsReplacedAuthorizedProjectRoot(t *testing.
 }
 
 func TestSweepOrphanedWorkspaceSnapshotsPreservesReferencesAndTenantScope(t *testing.T) {
+	requireDescriptorBoundWorkspaceIsolation(t)
 	source := initWorkspaceSnapshotGit(t)
 	dataRoot := t.TempDir()
 	create := func(missionID, organizationID string) WorkspaceSnapshotManifest {
@@ -659,6 +669,7 @@ func TestSweepOrphanedWorkspaceSnapshotsPreservesReferencesAndTenantScope(t *tes
 }
 
 func TestCreateWorkspaceSnapshotEnforcesFileLimitAndRemovesPartialSnapshot(t *testing.T) {
+	requireDescriptorBoundWorkspaceIsolation(t)
 	source := initWorkspaceSnapshotGit(t)
 	writeSnapshotFixture(t, source, "a-small.txt", "ok\n")
 	writeSnapshotFixture(t, source, "z-large.txt", "more than four bytes")
@@ -841,6 +852,7 @@ func snapshotFixtureSHA256(data []byte) string {
 }
 
 func TestCopyWorkspaceSnapshotFileRemainsAnchoredAfterDestinationSwap(t *testing.T) {
+	requireDescriptorBoundWorkspaceIsolation(t)
 	source := t.TempDir()
 	const content = "source content remains inside the pinned tree\n"
 	if err := os.WriteFile(filepath.Join(source, "src.txt"), []byte(content), 0o600); err != nil {
@@ -887,6 +899,7 @@ func TestCopyWorkspaceSnapshotFileRemainsAnchoredAfterDestinationSwap(t *testing
 }
 
 func TestPrepareWorkspaceSnapshotHandoffRejectsReplacedSnapshotPath(t *testing.T) {
+	requireDescriptorBoundWorkspaceIsolation(t)
 	source := initWorkspaceSnapshotGit(t)
 	dataRoot := filepath.Join(t.TempDir(), "private-data")
 	manifest, handles, err := createWorkspaceSnapshotWithHandles(context.Background(), WorkspaceSnapshotRequest{

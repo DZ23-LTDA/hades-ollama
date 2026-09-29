@@ -37,6 +37,7 @@ func TestMediaProcessToolDescriptorAndLocalTone(t *testing.T) {
 }
 
 func TestMediaProcessOutputUsesPinnedWorkspaceAfterPathReplacement(t *testing.T) {
+	requireDescriptorBoundWorkspaceIsolation(t)
 	workspace := t.TempDir()
 	root, err := os.OpenRoot(workspace)
 	if err != nil {

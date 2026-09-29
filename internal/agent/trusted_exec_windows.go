@@ -92,6 +92,14 @@ func trustedWindowsSecurity(path string) bool {
 		if ace.Mask&writeRights == 0 {
 			continue
 		}
+		// An inherit-only ACE does not apply to this object itself, so it
+		// cannot grant a caller write access to it. Windows places such
+		// entries on trusted system directories (for example Git's folder);
+		// skipping them keeps the audit accurate instead of failing closed
+		// on an entry that grants nothing here.
+		if ace.Header.AceFlags&windows.INHERIT_ONLY_ACE != 0 {
+			continue
+		}
 		principal := (*windows.SID)(unsafe.Pointer(&ace.SidStart))
 		if !trustedWindowsPrincipal(principal) {
 			return false

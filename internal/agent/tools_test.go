@@ -151,6 +151,7 @@ func TestSandboxStrictModeFailsClosedWithoutDelegatedCgroup(t *testing.T) {
 }
 
 func TestSandboxRejectsUnknownMode(t *testing.T) {
+	requireLinuxSandboxExecutor(t)
 	t.Setenv("OLLAMA_AGENT_SANDBOX_MODE", "unsafe")
 	_, err := (sandboxExecTool{}).Execute(context.Background(), ToolContext{Workspace: t.TempDir(), StepID: "step_mode_test"}, map[string]any{
 		"language": "python",
@@ -162,6 +163,7 @@ func TestSandboxRejectsUnknownMode(t *testing.T) {
 }
 
 func TestResolveSandboxInterpreterUsesSupportedLanguageOnly(t *testing.T) {
+	requireLinuxSandboxExecutor(t)
 	resolved, err := resolveSandboxInterpreter("python")
 	if err != nil || resolved == "" {
 		t.Fatalf("python interpreter=%q err=%v", resolved, err)

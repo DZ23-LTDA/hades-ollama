@@ -63,6 +63,7 @@ func TestMediaDLPBlocksSensitiveTextBeforeProviderRequest(t *testing.T) {
 }
 
 func TestApprovedMediaInputReadsFromPinnedWorkspaceAfterPathReplacement(t *testing.T) {
+	requireDescriptorBoundWorkspaceIsolation(t)
 	workspace := t.TempDir()
 	inputPath := filepath.Join(workspace, "image.png")
 	approvedBytes := []byte("approved image bytes")

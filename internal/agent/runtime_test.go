@@ -81,6 +81,7 @@ func TestRuntimePersistsAndRunsReadMission(t *testing.T) {
 }
 
 func TestRuntimeCreatesTenantScopedIsolatedWorkspaceSnapshot(t *testing.T) {
+	requireDescriptorBoundWorkspaceIsolation(t)
 	repo := initWorkspaceSnapshotGit(t)
 	writeSnapshotFixture(t, repo, "app.txt", "source version")
 	runSnapshotFixtureGit(t, repo, "add", "app.txt")
@@ -194,6 +195,7 @@ func TestNonIsolatedMissionWorkspaceIdentityRejectsPathReplacement(t *testing.T)
 }
 
 func TestIsolatedWorkspaceToolsStayAnchoredAfterPathReplacement(t *testing.T) {
+	requireDescriptorBoundWorkspaceIsolation(t)
 	repo := initWorkspaceSnapshotGit(t)
 	writeSnapshotFixture(t, repo, "app.txt", "approved source")
 	runSnapshotFixtureGit(t, repo, "add", "app.txt")
@@ -263,6 +265,7 @@ func TestIsolatedWorkspaceToolsStayAnchoredAfterPathReplacement(t *testing.T) {
 }
 
 func TestRuntimeSnapshotsGitRootForNestedProject(t *testing.T) {
+	requireDescriptorBoundWorkspaceIsolation(t)
 	repo := initWorkspaceSnapshotGit(t)
 	projectRoot := filepath.Join(repo, "apps", "service")
 	if err := os.MkdirAll(projectRoot, 0o700); err != nil {
@@ -331,6 +334,7 @@ func TestRuntimeRequiresProjectAndOrganizationForIsolation(t *testing.T) {
 }
 
 func TestRuntimePreservesWorkspaceSnapshotWhenPersistenceOutcomeIsUnknown(t *testing.T) {
+	requireDescriptorBoundWorkspaceIsolation(t)
 	repo := initWorkspaceSnapshotGit(t)
 	writeSnapshotFixture(t, repo, "app.txt", "source version")
 	runSnapshotFixtureGit(t, repo, "add", "app.txt")
@@ -583,6 +587,7 @@ func TestRuntimeWithOrganizationScopesMemoryStore(t *testing.T) {
 }
 
 func TestRuntimeScopedRecoveryDoesNotSweepOtherTenantSnapshots(t *testing.T) {
+	requireDescriptorBoundWorkspaceIsolation(t)
 	source := initWorkspaceSnapshotGit(t)
 	dataRoot := t.TempDir()
 	create := func(missionID, organizationID string) WorkspaceSnapshotManifest {
@@ -958,6 +963,7 @@ func TestSandboxExecRunsIsolatedPython(t *testing.T) {
 }
 
 func TestSandboxIsolationModeIsBoundToApproval(t *testing.T) {
+	requireLinuxSandboxExecutor(t)
 	t.Setenv("OLLAMA_AGENT_SANDBOX_MODE", "best-effort")
 	root := t.TempDir()
 	runtime, err := NewRuntime(RuntimeConfig{Store: NewMemoryStore(), WorkspaceRoot: root, Planner: fixedPlanner{steps: []Step{{ID: "step_1", Kind: "sandbox.exec", Title: "run", Risk: RiskWrite, RequiresApproval: true, State: StepPending, Input: map[string]any{"language": "python", "code": "print('must not run')", "sandbox_mode": "strict"}}}}})
@@ -1477,6 +1483,7 @@ func TestRuntimeInvalidatesReadOnlyToolWhenDescriptorChanges(t *testing.T) {
 }
 
 func TestRuntimeGitRepoInspectUsesIsolatedSnapshotBaseline(t *testing.T) {
+	requireDescriptorBoundWorkspaceIsolation(t)
 	repo := initWorkspaceSnapshotGit(t)
 	projectRoot := filepath.Join(repo, "service")
 	if err := os.MkdirAll(projectRoot, 0o700); err != nil {
