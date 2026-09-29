@@ -176,9 +176,11 @@ jobs:
 
           export OLLAMA_AGENT_TEST_POSTGRES_RUNTIME_URL="postgres://ollama_agent_runtime:${postgres_runtime_password}@127.0.0.1:5432/ollama_agent?sslmode=disable"
           export OLLAMA_AGENT_TEST_POSTGRES_MIGRATOR_URL="postgres://ollama_agent_migrator:${postgres_migrator_password}@127.0.0.1:5432/ollama_agent?sslmode=disable"
+          export OLLAMA_AGENT_TEST_POSTGRES_ADMIN_URL="postgres://ollama_agent_admin:${postgres_admin_password}@127.0.0.1:5432/ollama_agent?sslmode=disable"
+          export OLLAMA_AGENT_TEST_POSTGRES_LEGACY_URL="postgres://ollama_agent:${legacy_password}@127.0.0.1:5432/ollama_agent?sslmode=disable"
           export OLLAMA_AGENT_TEST_POSTGRES_TENANT_KEY="$tenant_key"
           export OLLAMA_AGENT_TEST_REDIS_URL="redis://:${redis_password}@127.0.0.1:6379/0"
-          for secret in "$OLLAMA_AGENT_TEST_POSTGRES_RUNTIME_URL" "$OLLAMA_AGENT_TEST_POSTGRES_MIGRATOR_URL" "$OLLAMA_AGENT_TEST_REDIS_URL"; do
+          for secret in "$OLLAMA_AGENT_TEST_POSTGRES_RUNTIME_URL" "$OLLAMA_AGENT_TEST_POSTGRES_MIGRATOR_URL" "$OLLAMA_AGENT_TEST_POSTGRES_ADMIN_URL" "$OLLAMA_AGENT_TEST_POSTGRES_LEGACY_URL" "$OLLAMA_AGENT_TEST_REDIS_URL"; do
             echo "::add-mask::$secret"
           done
           export OLLAMA_AGENT_TEST_OTLP_ENDPOINT="http://127.0.0.1:4318/v1/traces"
@@ -189,6 +191,7 @@ jobs:
           export OLLAMA_AGENT_TEST_EXPECT_LEGACY_ROLE_ACTIVE=true
           CGO_ENABLED=0 go test -tags integration ./internal/agent -run '^TestDistributedPostgresRuntimeReadinessForLegacyRole$' -count=1 -v
           unset OLLAMA_AGENT_TEST_EXPECT_LEGACY_ROLE_ACTIVE
+          CGO_ENABLED=0 go test -tags integration ./internal/agent -run '^TestDistributedPostgresRuntimeReadinessForStaleLegacySession$' -count=1 -v
 
           PGPASSWORD="$postgres_admin_password" psql -h 127.0.0.1 -U ollama_agent_admin -d ollama_agent \
             -v ON_ERROR_STOP=1 -f deploy/postgres/retire-legacy-role.sql
@@ -203,6 +206,7 @@ jobs:
             "SELECT format('%s/%s', (SELECT count(*) FROM agent_missions WHERE id='mis_legacy_fixture'), (SELECT count(*) FROM agent_events WHERE id='evt_legacy_fixture'))")"
           test "$restored_state" = "1/1"
 
+          unset OLLAMA_AGENT_TEST_POSTGRES_ADMIN_URL OLLAMA_AGENT_TEST_POSTGRES_LEGACY_URL
           CGO_ENABLED=0 go test -tags integration ./internal/agent -run TestDistributed -count=1 -v
       - name: Stop distributed dependencies
         if: always()
