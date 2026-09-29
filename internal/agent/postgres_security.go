@@ -24,7 +24,7 @@ const (
 var (
 	postgresOrganizationIDPattern  = regexp.MustCompile(`^[A-Za-z0-9_.-]{1,128}$`)
 	ErrPostgresTenantSecurityShape = errors.New("PostgreSQL tenant security shape is invalid")
-	ErrPostgresLegacyRoleActive    = errors.New("active legacy ollama_agent login or session detected")
+	ErrPostgresLegacyRoleActive    = errors.New("active legacy ollama_agent login, privilege, membership, or session detected")
 )
 
 const postgresTenantContextFunctionSource = `DECLARE
@@ -237,7 +237,7 @@ SELECT NOT r.rolcanlogin OR r.rolinherit OR r.rolsuper OR r.rolbypassrls OR r.ro
 	         AND pg_catalog.has_table_privilege(current_user, 'public.agent_events', 'SELECT,INSERT,UPDATE,DELETE'),
 	       pg_catalog.has_function_privilege(current_user, 'public.agent_tenant_context_matches(text)', 'EXECUTE'),
 	       pg_catalog.pg_has_role(current_user, 'ollama_agent_migrator', 'MEMBER'),
-	       EXISTS (SELECT 1 FROM pg_catalog.pg_roles legacy WHERE legacy.rolname='ollama_agent' AND (legacy.rolcanlogin OR legacy.rolsuper OR legacy.rolbypassrls))
+	       EXISTS (SELECT 1 FROM pg_catalog.pg_roles legacy WHERE legacy.rolname='ollama_agent' AND (legacy.rolcanlogin OR legacy.rolsuper OR legacy.rolbypassrls OR legacy.rolcreatedb OR legacy.rolcreaterole OR legacy.rolreplication OR legacy.rolinherit OR EXISTS (SELECT 1 FROM pg_catalog.pg_auth_members membership WHERE membership.member=legacy.oid OR membership.roleid=legacy.oid)))
 	         OR EXISTS (SELECT 1 FROM pg_catalog.pg_stat_activity legacy_session WHERE legacy_session.usename='ollama_agent' AND legacy_session.pid<>pg_catalog.pg_backend_pid())
   FROM pg_catalog.pg_roles AS r
 	  JOIN pg_catalog.pg_class AS m ON m.relname = 'agent_missions' AND m.relnamespace = 'public'::pg_catalog.regnamespace
@@ -381,23 +381,26 @@ END IF;
 		if _, err := tx.ExecContext(ctx, statement); err != nil {
 			return fmt.Errorf("apply PostgreSQL agent migration statement %d: %w", index+1, err)
 		}
-		if index == 3 {
-			if err := validatePostgresLegacySchemaShape(ctx, tx); err != nil {
+		if index == 12 {
+			if err := validatePostgresLegacySchemaShape(ctx, tx, false); err != nil {
 				return err
 			}
 		}
 	}
+	if err := validatePostgresLegacySchemaShape(ctx, tx, true); err != nil {
+		return err
+	}
 	var invalidMissions, invalidEvents, mismatchedEvents, invalidWorkspaceBindings int64
-	if err := tx.QueryRowContext(ctx, `SELECT count(*) FROM public.agent_missions WHERE organization_id !~ '^[A-Za-z0-9_.-]{1,128}$'`).Scan(&invalidMissions); err != nil {
+	if err := tx.QueryRowContext(ctx, `SELECT count(*) FROM public.agent_missions WHERE organization_id IS NULL OR organization_id !~ '^[A-Za-z0-9_.-]{1,128}$'`).Scan(&invalidMissions); err != nil {
 		return fmt.Errorf("validate existing mission tenant ownership: %w", err)
 	}
-	if err := tx.QueryRowContext(ctx, `SELECT count(*) FROM public.agent_events WHERE organization_id !~ '^[A-Za-z0-9_.-]{1,128}$'`).Scan(&invalidEvents); err != nil {
+	if err := tx.QueryRowContext(ctx, `SELECT count(*) FROM public.agent_events WHERE organization_id IS NULL OR organization_id !~ '^[A-Za-z0-9_.-]{1,128}$'`).Scan(&invalidEvents); err != nil {
 		return fmt.Errorf("validate existing event tenant ownership: %w", err)
 	}
-	if err := tx.QueryRowContext(ctx, `SELECT count(*) FROM public.agent_events e LEFT JOIN public.agent_missions m ON m.id=e.mission_id WHERE m.id IS NULL OR e.organization_id <> m.organization_id`).Scan(&mismatchedEvents); err != nil {
+	if err := tx.QueryRowContext(ctx, `SELECT count(*) FROM public.agent_events e LEFT JOIN public.agent_missions m ON m.id=e.mission_id WHERE m.id IS NULL OR e.organization_id IS NULL OR m.organization_id IS NULL OR e.organization_id <> m.organization_id`).Scan(&mismatchedEvents); err != nil {
 		return fmt.Errorf("validate event-to-mission ownership: %w", err)
 	}
-	if err := tx.QueryRowContext(ctx, `SELECT count(*) FROM public.agent_missions WHERE state IN ('READY','RUNNING','RECOVERING') AND btrim(workspace_identity) = ''`).Scan(&invalidWorkspaceBindings); err != nil {
+	if err := tx.QueryRowContext(ctx, `SELECT count(*) FROM public.agent_missions WHERE state IN ('READY','RUNNING','RECOVERING') AND (workspace_identity IS NULL OR btrim(workspace_identity) = '')`).Scan(&invalidWorkspaceBindings); err != nil {
 		return fmt.Errorf("validate runnable mission workspace authorization: %w", err)
 	}
 	if invalidMissions != 0 || invalidEvents != 0 || mismatchedEvents != 0 {
@@ -476,24 +479,43 @@ $function$`
 	return tx.Commit()
 }
 
-func validatePostgresLegacySchemaShape(ctx context.Context, tx *sql.Tx) error {
-	required := map[string][]string{
-		"agent_missions": {"id", "version", "objective", "model", "workspace", "project_id", "auto_run", "state", "plan", "approvals", "artifacts", "last_error", "created_at", "updated_at", "completed_at"},
-		"agent_events":   {"id", "mission_id", "type", "step_id", "payload", "created_at"},
+func validatePostgresLegacySchemaShape(ctx context.Context, tx *sql.Tx, requireOwnershipConstraints bool) error {
+	type columnShape struct {
+		typ        string
+		notNull    bool
+		defaultSQL string
+	}
+	required := map[string]map[string]columnShape{
+		"agent_missions": {
+			"id": {"text", true, ""}, "version": {"bigint", true, ""}, "objective": {"text", true, ""},
+			"provider": {"text", true, "''::text"}, "model": {"text", true, "''::text"}, "workspace": {"text", true, "''::text"},
+			"workspace_identity": {"text", true, "''::text"}, "project_id": {"text", true, "''::text"}, "organization_id": {"text", true, "''::text"},
+			"capabilities": {"jsonb", true, "'[]'::jsonb"}, "auto_run": {"boolean", true, "false"}, "workspace_isolated": {"boolean", true, "false"},
+			"workspace_snapshot_id": {"text", true, "''::text"}, "workspace_snapshot_sha256": {"text", true, "''::text"}, "state": {"text", true, ""},
+			"plan": {"jsonb", true, ""}, "approvals": {"jsonb", true, ""}, "artifacts": {"jsonb", true, ""},
+			"last_error": {"text", true, "''::text"}, "created_at": {"timestamp with time zone", true, ""},
+			"updated_at": {"timestamp with time zone", true, ""}, "completed_at": {"timestamp with time zone", false, ""},
+		},
+		"agent_events": {
+			"id": {"text", true, ""}, "mission_id": {"text", true, ""}, "organization_id": {"text", true, "''::text"},
+			"type": {"text", true, ""}, "step_id": {"text", true, "''::text"}, "payload": {"jsonb", false, ""},
+			"created_at": {"timestamp with time zone", true, ""},
+		},
 	}
 	for table, requiredColumns := range required {
-		rows, err := tx.QueryContext(ctx, `SELECT attname FROM pg_catalog.pg_attribute WHERE attrelid=pg_catalog.to_regclass($1) AND attnum>0 AND NOT attisdropped`, "public."+table)
+		rows, err := tx.QueryContext(ctx, `SELECT a.attname, pg_catalog.format_type(a.atttypid,a.atttypmod), a.attnotnull, COALESCE(pg_catalog.pg_get_expr(d.adbin,d.adrelid),'') FROM pg_catalog.pg_attribute a LEFT JOIN pg_catalog.pg_attrdef d ON d.adrelid=a.attrelid AND d.adnum=a.attnum WHERE a.attrelid=pg_catalog.to_regclass($1) AND a.attnum>0 AND NOT a.attisdropped`, "public."+table)
 		if err != nil {
 			return fmt.Errorf("inspect PostgreSQL agent schema shape: %w", err)
 		}
-		present := make(map[string]struct{}, len(requiredColumns))
+		present := make(map[string]columnShape, len(requiredColumns))
 		for rows.Next() {
 			var column string
-			if err := rows.Scan(&column); err != nil {
+			var shape columnShape
+			if err := rows.Scan(&column, &shape.typ, &shape.notNull, &shape.defaultSQL); err != nil {
 				_ = rows.Close()
 				return fmt.Errorf("inspect PostgreSQL agent schema shape: %w", err)
 			}
-			present[column] = struct{}{}
+			present[column] = shape
 		}
 		if err := rows.Err(); err != nil {
 			_ = rows.Close()
@@ -502,15 +524,72 @@ func validatePostgresLegacySchemaShape(ctx context.Context, tx *sql.Tx) error {
 		if err := rows.Close(); err != nil {
 			return fmt.Errorf("inspect PostgreSQL agent schema shape: %w", err)
 		}
-		var missing []string
-		for _, column := range requiredColumns {
-			if _, ok := present[column]; !ok {
+		var missing, incompatible []string
+		for column, expected := range requiredColumns {
+			actual, ok := present[column]
+			if !ok {
 				missing = append(missing, column)
+				continue
+			}
+			if actual.typ != expected.typ || actual.notNull != expected.notNull || actual.defaultSQL != expected.defaultSQL {
+				incompatible = append(incompatible, fmt.Sprintf("%s (got type=%s not-null=%t default=%q, want type=%s not-null=%t default=%q)", column, actual.typ, actual.notNull, actual.defaultSQL, expected.typ, expected.notNull, expected.defaultSQL))
 			}
 		}
 		if len(missing) != 0 {
 			return fmt.Errorf("PostgreSQL agent schema is older than the supported baseline: public.%s is missing required columns %s; create a verified backup and perform an explicit versioned schema upgrade before retrying", table, strings.Join(missing, ", "))
 		}
+		if len(incompatible) != 0 {
+			return fmt.Errorf("PostgreSQL agent schema has incompatible type/nullability for public.%s: %s; create a verified backup and perform an explicit versioned schema upgrade before retrying", table, strings.Join(incompatible, "; "))
+		}
+	}
+	if !requireOwnershipConstraints {
+		return nil
+	}
+	for table := range required {
+		var primaryKeyValid bool
+		if err := tx.QueryRowContext(ctx, `SELECT EXISTS (
+  SELECT 1 FROM pg_catalog.pg_constraint c
+  WHERE c.conrelid=pg_catalog.to_regclass($1) AND c.contype='p'
+    AND c.conkey=ARRAY[(SELECT attnum FROM pg_catalog.pg_attribute WHERE attrelid=pg_catalog.to_regclass($1) AND attname='id' AND NOT attisdropped)]::smallint[]
+)`, "public."+table).Scan(&primaryKeyValid); err != nil {
+			return fmt.Errorf("inspect PostgreSQL %s primary key: %w", table, err)
+		}
+		if !primaryKeyValid {
+			return fmt.Errorf("PostgreSQL supported baseline requires public.%s primary key(id)", table)
+		}
+	}
+	var tenantUniqueIndex, eventOwnershipForeignKey bool
+	if err := tx.QueryRowContext(ctx, `SELECT EXISTS (
+  SELECT 1 FROM pg_catalog.pg_index i
+  WHERE i.indrelid='public.agent_missions'::pg_catalog.regclass
+	    AND i.indisunique AND i.indisvalid AND i.indisready AND i.indnkeyatts=2 AND i.indnatts=2
+	    AND i.indkey[0]=(SELECT attnum FROM pg_catalog.pg_attribute WHERE attrelid='public.agent_missions'::pg_catalog.regclass AND attname='id' AND NOT attisdropped)
+	    AND i.indkey[1]=(SELECT attnum FROM pg_catalog.pg_attribute WHERE attrelid='public.agent_missions'::pg_catalog.regclass AND attname='organization_id' AND NOT attisdropped)
+)`).Scan(&tenantUniqueIndex); err != nil {
+		return fmt.Errorf("inspect PostgreSQL tenant ownership unique index: %w", err)
+	}
+	if !tenantUniqueIndex {
+		return errors.New("PostgreSQL supported baseline requires a valid unique index on public.agent_missions(id, organization_id)")
+	}
+	if err := tx.QueryRowContext(ctx, `SELECT EXISTS (
+  SELECT 1 FROM pg_catalog.pg_constraint c
+  WHERE c.conrelid='public.agent_events'::pg_catalog.regclass
+    AND c.confrelid='public.agent_missions'::pg_catalog.regclass
+    AND c.contype='f' AND c.convalidated
+    AND c.conkey=ARRAY[
+      (SELECT attnum FROM pg_catalog.pg_attribute WHERE attrelid='public.agent_events'::pg_catalog.regclass AND attname='mission_id' AND NOT attisdropped),
+      (SELECT attnum FROM pg_catalog.pg_attribute WHERE attrelid='public.agent_events'::pg_catalog.regclass AND attname='organization_id' AND NOT attisdropped)
+    ]::smallint[]
+    AND c.confkey=ARRAY[
+      (SELECT attnum FROM pg_catalog.pg_attribute WHERE attrelid='public.agent_missions'::pg_catalog.regclass AND attname='id' AND NOT attisdropped),
+      (SELECT attnum FROM pg_catalog.pg_attribute WHERE attrelid='public.agent_missions'::pg_catalog.regclass AND attname='organization_id' AND NOT attisdropped)
+    ]::smallint[]
+    AND c.confdeltype='c' AND c.confupdtype='r'
+)`).Scan(&eventOwnershipForeignKey); err != nil {
+		return fmt.Errorf("inspect PostgreSQL event tenant ownership foreign key: %w", err)
+	}
+	if !eventOwnershipForeignKey {
+		return errors.New("PostgreSQL supported baseline requires a validated event(mission_id, organization_id) foreign key with ON DELETE CASCADE and ON UPDATE RESTRICT")
 	}
 	return nil
 }

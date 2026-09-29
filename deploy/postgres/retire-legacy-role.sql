@@ -5,12 +5,14 @@
 -- Runtime readiness rejects any survivor.
 \set ON_ERROR_STOP on
 
+SET search_path = pg_catalog, public;
+
 DO $preflight$
 DECLARE
   unsafe_runtime BOOLEAN;
   unsafe_migrator BOOLEAN;
 BEGIN
-  IF current_database() <> 'ollama_agent' THEN
+  IF pg_catalog.current_database() <> 'ollama_agent' THEN
     RAISE EXCEPTION 'connect to the existing ollama_agent database';
   END IF;
   IF current_user <> 'ollama_agent_admin' THEN
@@ -22,9 +24,36 @@ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_catalog.pg_database WHERE datname='ollama_agent' AND datdba=(SELECT oid FROM pg_catalog.pg_roles WHERE rolname='ollama_agent_migrator')) THEN
     RAISE EXCEPTION 'database ownership has not been transferred to ollama_agent_migrator';
   END IF;
-  IF NOT EXISTS (SELECT 1 FROM pg_catalog.pg_class WHERE oid=to_regclass('public.agent_missions') AND relowner=(SELECT oid FROM pg_catalog.pg_roles WHERE rolname='ollama_agent_migrator'))
-     OR NOT EXISTS (SELECT 1 FROM pg_catalog.pg_class WHERE oid=to_regclass('public.agent_events') AND relowner=(SELECT oid FROM pg_catalog.pg_roles WHERE rolname='ollama_agent_migrator')) THEN
+  IF NOT EXISTS (SELECT 1 FROM pg_catalog.pg_class WHERE oid=pg_catalog.to_regclass('public.agent_missions') AND relowner=(SELECT oid FROM pg_catalog.pg_roles WHERE rolname='ollama_agent_migrator'))
+     OR NOT EXISTS (SELECT 1 FROM pg_catalog.pg_class WHERE oid=pg_catalog.to_regclass('public.agent_events') AND relowner=(SELECT oid FROM pg_catalog.pg_roles WHERE rolname='ollama_agent_migrator')) THEN
     RAISE EXCEPTION 'agent tables must be owned by ollama_agent_migrator before legacy retirement';
+  END IF;
+  IF EXISTS (
+    SELECT 1 FROM pg_catalog.pg_namespace n
+    WHERE n.nspname NOT IN ('pg_catalog','information_schema')
+      AND n.nspname NOT LIKE 'pg_toast%'
+      AND n.nspowner=(SELECT oid FROM pg_catalog.pg_roles WHERE rolname='ollama_agent')
+  ) OR EXISTS (
+    SELECT 1 FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace
+    WHERE n.nspname NOT IN ('pg_catalog','information_schema')
+      AND n.nspname NOT LIKE 'pg_toast%'
+      AND c.relowner=(SELECT oid FROM pg_catalog.pg_roles WHERE rolname='ollama_agent')
+  ) OR EXISTS (
+    SELECT 1 FROM pg_catalog.pg_proc p JOIN pg_catalog.pg_namespace n ON n.oid=p.pronamespace
+    WHERE n.nspname NOT IN ('pg_catalog','information_schema')
+      AND p.proowner=(SELECT oid FROM pg_catalog.pg_roles WHERE rolname='ollama_agent')
+  ) OR EXISTS (
+    SELECT 1 FROM pg_catalog.pg_type t JOIN pg_catalog.pg_namespace n ON n.oid=t.typnamespace
+    WHERE n.nspname NOT IN ('pg_catalog','information_schema')
+      AND t.typtype IN ('d','e')
+      AND t.typowner=(SELECT oid FROM pg_catalog.pg_roles WHERE rolname='ollama_agent')
+  ) OR EXISTS (
+    SELECT 1 FROM pg_catalog.pg_shdepend d
+    WHERE d.refclassid='pg_catalog.pg_authid'::pg_catalog.regclass
+      AND d.refobjid=(SELECT oid FROM pg_catalog.pg_roles WHERE rolname='ollama_agent')
+      AND d.deptype='o'
+  ) THEN
+    RAISE EXCEPTION 'legacy role still owns an application schema/object; transfer or explicitly migrate every owned object before retirement';
   END IF;
   SELECT NOT rolcanlogin OR rolsuper OR rolbypassrls OR rolcreaterole OR rolcreatedb OR rolreplication OR rolinherit
       OR EXISTS (SELECT 1 FROM pg_catalog.pg_auth_members m WHERE m.member=r.oid OR m.roleid=r.oid)
@@ -51,12 +80,16 @@ REVOKE ALL ON ALL TABLES IN SCHEMA public FROM ollama_agent;
 REVOKE ALL ON ALL SEQUENCES IN SCHEMA public FROM ollama_agent;
 REVOKE ALL ON ALL FUNCTIONS IN SCHEMA public FROM ollama_agent;
 REVOKE CREATE ON SCHEMA public FROM ollama_agent;
-SELECT format('REVOKE %I FROM ollama_agent', granted.rolname)
+
+-- Revoke both directions: roles previously granted to the legacy login, and
+-- members that were themselves granted the legacy role (including SET ROLE).
+SELECT DISTINCT pg_catalog.format('REVOKE %I FROM %I', granted.rolname, member.rolname)
 FROM pg_catalog.pg_auth_members memberships
 JOIN pg_catalog.pg_roles granted ON granted.oid=memberships.roleid
 JOIN pg_catalog.pg_roles member ON member.oid=memberships.member
-WHERE member.rolname='ollama_agent'
+WHERE member.rolname='ollama_agent' OR granted.rolname='ollama_agent'
 \gexec
+
 ALTER ROLE ollama_agent NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS NOREPLICATION;
 COMMIT;
 
@@ -69,7 +102,7 @@ DECLARE
   zero_samples INTEGER := 0;
 BEGIN
   FOR attempt IN 1..300 LOOP
-    PERFORM pg_stat_clear_snapshot();
+    PERFORM pg_catalog.pg_stat_clear_snapshot();
     SELECT count(*) INTO active_sessions
     FROM pg_catalog.pg_stat_activity
     WHERE usename='ollama_agent' AND pid<>pg_catalog.pg_backend_pid();
@@ -79,7 +112,7 @@ BEGIN
       EXIT WHEN zero_samples >= 5;
     ELSE
       zero_samples := 0;
-      PERFORM pg_terminate_backend(pid)
+      PERFORM pg_catalog.pg_terminate_backend(pid)
       FROM pg_catalog.pg_stat_activity
       WHERE usename='ollama_agent' AND pid<>pg_catalog.pg_backend_pid();
     END IF;
@@ -87,15 +120,38 @@ BEGIN
     IF attempt=300 THEN
       RAISE EXCEPTION 'legacy ollama_agent sessions remain after the 30-second termination window; keep runtime stopped and retry';
     END IF;
-    PERFORM pg_sleep(0.1);
+    PERFORM pg_catalog.pg_sleep(0.1);
   END LOOP;
 
-  PERFORM pg_stat_clear_snapshot();
+  PERFORM pg_catalog.pg_stat_clear_snapshot();
   IF EXISTS (SELECT 1 FROM pg_catalog.pg_stat_activity WHERE usename='ollama_agent' AND pid<>pg_catalog.pg_backend_pid()) THEN
     RAISE EXCEPTION 'legacy ollama_agent session appeared after termination';
   END IF;
   IF NOT EXISTS (SELECT 1 FROM pg_catalog.pg_roles r WHERE r.rolname='ollama_agent' AND NOT r.rolcanlogin AND NOT r.rolsuper AND NOT r.rolbypassrls AND NOT r.rolcreatedb AND NOT r.rolcreaterole AND NOT r.rolreplication AND NOT r.rolinherit AND NOT EXISTS (SELECT 1 FROM pg_catalog.pg_auth_members m WHERE m.member=r.oid OR m.roleid=r.oid)) THEN
     RAISE EXCEPTION 'legacy ollama_agent role did not reach the required disabled, least-privilege state';
+  END IF;
+  IF EXISTS (
+    SELECT 1 FROM pg_catalog.pg_namespace n
+    WHERE n.nspname NOT IN ('pg_catalog','information_schema') AND n.nspname NOT LIKE 'pg_toast%'
+      AND n.nspowner=(SELECT oid FROM pg_catalog.pg_roles WHERE rolname='ollama_agent')
+  ) OR EXISTS (
+    SELECT 1 FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace
+    WHERE n.nspname NOT IN ('pg_catalog','information_schema') AND n.nspname NOT LIKE 'pg_toast%'
+      AND c.relowner=(SELECT oid FROM pg_catalog.pg_roles WHERE rolname='ollama_agent')
+  ) OR EXISTS (
+    SELECT 1 FROM pg_catalog.pg_proc p JOIN pg_catalog.pg_namespace n ON n.oid=p.pronamespace
+    WHERE n.nspname NOT IN ('pg_catalog','information_schema') AND p.proowner=(SELECT oid FROM pg_catalog.pg_roles WHERE rolname='ollama_agent')
+  ) OR EXISTS (
+    SELECT 1 FROM pg_catalog.pg_type t JOIN pg_catalog.pg_namespace n ON n.oid=t.typnamespace
+    WHERE n.nspname NOT IN ('pg_catalog','information_schema') AND t.typtype IN ('d','e')
+      AND t.typowner=(SELECT oid FROM pg_catalog.pg_roles WHERE rolname='ollama_agent')
+  ) OR EXISTS (
+    SELECT 1 FROM pg_catalog.pg_shdepend d
+    WHERE d.refclassid='pg_catalog.pg_authid'::pg_catalog.regclass
+      AND d.refobjid=(SELECT oid FROM pg_catalog.pg_roles WHERE rolname='ollama_agent')
+      AND d.deptype='o'
+  ) THEN
+    RAISE EXCEPTION 'legacy ollama_agent still owns an application object after retirement';
   END IF;
 END
 $verify_retirement$;

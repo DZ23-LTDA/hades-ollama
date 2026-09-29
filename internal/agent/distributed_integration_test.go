@@ -163,6 +163,54 @@ func TestDistributedPostgresRuntimeReadinessForLegacyRole(t *testing.T) {
 	}
 }
 
+func TestDistributedPostgresRuntimeReadinessForResidualLegacyContract(t *testing.T) {
+	runtimeDSN := os.Getenv("OLLAMA_AGENT_TEST_POSTGRES_RUNTIME_URL")
+	adminDSN := os.Getenv("OLLAMA_AGENT_TEST_POSTGRES_ADMIN_URL")
+	key, keyErr := hex.DecodeString(os.Getenv("OLLAMA_AGENT_TEST_POSTGRES_TENANT_KEY"))
+	if runtimeDSN == "" || adminDSN == "" || keyErr != nil || len(key) < 32 {
+		t.Skip("runtime/admin PostgreSQL test DSNs and a 64+ byte hex tenant key are required")
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	adminDB, err := sql.Open("pgx", adminDSN)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		cleanupCtx, cleanupCancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cleanupCancel()
+		if _, cleanupErr := adminDB.ExecContext(cleanupCtx, `REVOKE ollama_agent FROM ollama_agent_legacy_fixture`); cleanupErr != nil {
+			t.Errorf("revoke legacy fixture membership: %v", cleanupErr)
+		}
+		if _, cleanupErr := adminDB.ExecContext(cleanupCtx, `DROP ROLE IF EXISTS ollama_agent_legacy_fixture`); cleanupErr != nil {
+			t.Errorf("drop legacy fixture member role: %v", cleanupErr)
+		}
+		if _, cleanupErr := adminDB.ExecContext(cleanupCtx, `ALTER ROLE ollama_agent NOCREATEDB`); cleanupErr != nil {
+			t.Errorf("restore legacy role CREATEDB fixture: %v", cleanupErr)
+		}
+		if cleanupErr := adminDB.Close(); cleanupErr != nil {
+			t.Errorf("close residual-role fixture DB: %v", cleanupErr)
+		}
+	})
+	if _, err := adminDB.ExecContext(ctx, `CREATE ROLE ollama_agent_legacy_fixture NOLOGIN`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := adminDB.ExecContext(ctx, `GRANT ollama_agent TO ollama_agent_legacy_fixture`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := adminDB.ExecContext(ctx, `ALTER ROLE ollama_agent CREATEDB`); err != nil {
+		t.Fatal(err)
+	}
+	store, err := OpenPostgresRuntimeStore(ctx, runtimeDSN, key)
+	if err == nil {
+		_ = store.Close()
+		t.Fatal("PostgreSQL runtime opened while legacy role retained CREATEDB and reverse membership")
+	}
+	if !strings.Contains(err.Error(), "active legacy ollama_agent login") {
+		t.Fatalf("runtime readiness error=%v, want residual legacy privilege/membership refusal", err)
+	}
+}
+
 func TestDistributedPostgresRuntimeReadinessForStaleLegacySession(t *testing.T) {
 	runtimeDSN := os.Getenv("OLLAMA_AGENT_TEST_POSTGRES_RUNTIME_URL")
 	adminDSN := os.Getenv("OLLAMA_AGENT_TEST_POSTGRES_ADMIN_URL")
@@ -243,12 +291,68 @@ func TestDistributedPostgresRLSAndEvents(t *testing.T) {
 
 	orgA := "org_test_a_" + uuid.NewString()
 	orgB := "org_test_b_" + uuid.NewString()
+	fixtureMissionIDs := make([]string, 0, 8)
+	t.Cleanup(func() {
+		cleanupCtx, cleanupCancel := context.WithTimeout(context.Background(), 15*time.Second)
+		defer cleanupCancel()
+		cleanupDB, cleanupErr := sql.Open("pgx", migratorDSN)
+		if cleanupErr != nil {
+			t.Errorf("open PostgreSQL fixture cleanup connection: %v", cleanupErr)
+			return
+		}
+		defer cleanupDB.Close()
+		cleanupTx, cleanupErr := cleanupDB.BeginTx(cleanupCtx, nil)
+		if cleanupErr != nil {
+			t.Errorf("begin PostgreSQL fixture cleanup: %v", cleanupErr)
+			return
+		}
+		defer cleanupTx.Rollback()
+		for _, statement := range []string{
+			`ALTER TABLE public.agent_events DISABLE ROW LEVEL SECURITY`,
+			`ALTER TABLE public.agent_missions DISABLE ROW LEVEL SECURITY`,
+		} {
+			if _, cleanupErr = cleanupTx.ExecContext(cleanupCtx, statement); cleanupErr != nil {
+				t.Errorf("disable RLS for PostgreSQL fixture cleanup: %v", cleanupErr)
+				return
+			}
+		}
+		for _, missionID := range fixtureMissionIDs {
+			if _, cleanupErr = cleanupTx.ExecContext(cleanupCtx, `DELETE FROM public.agent_missions WHERE id=$1`, missionID); cleanupErr != nil {
+				t.Errorf("delete PostgreSQL fixture mission %q: %v", missionID, cleanupErr)
+				return
+			}
+			var missionRemains, eventRemains bool
+			if cleanupErr = cleanupTx.QueryRowContext(cleanupCtx, `SELECT EXISTS (SELECT 1 FROM public.agent_missions WHERE id=$1), EXISTS (SELECT 1 FROM public.agent_events WHERE mission_id=$1)`, missionID).Scan(&missionRemains, &eventRemains); cleanupErr != nil {
+				t.Errorf("verify PostgreSQL fixture cleanup for mission %q: %v", missionID, cleanupErr)
+				return
+			}
+			if missionRemains || eventRemains {
+				t.Errorf("PostgreSQL fixture cleanup left mission %q or dependent events behind", missionID)
+				return
+			}
+		}
+		for _, statement := range []string{
+			`ALTER TABLE public.agent_missions ENABLE ROW LEVEL SECURITY`,
+			`ALTER TABLE public.agent_missions FORCE ROW LEVEL SECURITY`,
+			`ALTER TABLE public.agent_events ENABLE ROW LEVEL SECURITY`,
+			`ALTER TABLE public.agent_events FORCE ROW LEVEL SECURITY`,
+		} {
+			if _, cleanupErr = cleanupTx.ExecContext(cleanupCtx, statement); cleanupErr != nil {
+				t.Errorf("restore PostgreSQL RLS after fixture cleanup: %v", cleanupErr)
+				return
+			}
+		}
+		if cleanupErr = cleanupTx.Commit(); cleanupErr != nil {
+			t.Errorf("commit PostgreSQL fixture cleanup: %v", cleanupErr)
+		}
+	})
 	missionWorkspace := t.TempDir()
 	missionWorkspaceIdentity, err := workspaceDirectoryIdentity(missionWorkspace)
 	if err != nil {
 		t.Fatal(err)
 	}
 	mission := Mission{ID: "mis_" + uuid.NewString(), Version: 1, Objective: "tenant RLS", Provider: "ollama-local", Model: "qwen3-coder", Capabilities: []string{"workspace:read", "workspace:write"}, OrganizationID: orgA, ProjectID: "proj_test", Workspace: missionWorkspace, WorkspaceIdentity: missionWorkspaceIdentity, WorkspaceIsolated: true, WorkspaceSnapshotID: "snp_" + uuid.NewString(), WorkspaceSnapshotSHA256: strings.Repeat("a", 64), State: MissionReady, Plan: []Step{}, Approvals: []Approval{}, Artifacts: []ArtifactManifest{}, CreatedAt: time.Now().UTC(), UpdatedAt: time.Now().UTC()}
+	fixtureMissionIDs = append(fixtureMissionIDs, mission.ID)
 	if err := store.WithOrganization(orgA).PutMission(mission); err != nil {
 		t.Fatal(err)
 	}
@@ -289,6 +393,7 @@ func TestDistributedPostgresRLSAndEvents(t *testing.T) {
 		t.Fatalf("canceled tenant store operation error=%v, want context deadline exceeded", blockedErr)
 	}
 	foreignMission := Mission{ID: "mis_" + uuid.NewString(), Version: 1, Objective: "raw RLS foreign row", OrganizationID: orgB, State: MissionCompleted, Plan: []Step{}, Approvals: []Approval{}, Artifacts: []ArtifactManifest{}, CreatedAt: time.Now().UTC(), UpdatedAt: time.Now().UTC()}
+	fixtureMissionIDs = append(fixtureMissionIDs, foreignMission.ID)
 	if err := store.WithOrganization(orgB).PutMission(foreignMission); err != nil {
 		t.Fatal(err)
 	}
@@ -514,6 +619,7 @@ func TestDistributedPostgresRLSAndEvents(t *testing.T) {
 
 	// The migrator must refuse ambiguous legacy ownership instead of guessing.
 	ownerlessID := "mis_" + uuid.NewString()
+	fixtureMissionIDs = append(fixtureMissionIDs, ownerlessID)
 	adminDB, err := sql.Open("pgx", migratorDSN)
 	if err != nil {
 		t.Fatal(err)
@@ -569,6 +675,7 @@ func TestDistributedPostgresRLSAndEvents(t *testing.T) {
 		t.Fatal(err)
 	}
 	workspaceIdentityMissingID := "mis_" + uuid.NewString()
+	fixtureMissionIDs = append(fixtureMissionIDs, workspaceIdentityMissingID)
 	seedWorkspaceTx, err := adminDB.BeginTx(ctx, nil)
 	if err != nil {
 		t.Fatal(err)
@@ -623,7 +730,7 @@ func TestDistributedPostgresRLSAndEvents(t *testing.T) {
 		if redisURL == "" {
 			t.Skip("OLLAMA_AGENT_TEST_REDIS_URL is not configured")
 		}
-		queue, err := openRedisTestQueue(t, ctx, redisURL, "ollama:postgres-recovery")
+		queue, err := openRedisTestQueue(t, ctx, redisURL, "ollama:postgres-recovery:"+uuid.NewString())
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -652,6 +759,7 @@ func TestDistributedPostgresRLSAndEvents(t *testing.T) {
 			t.Fatal(err)
 		}
 		pending := Mission{ID: "mis_" + uuid.NewString(), Version: 1, Objective: "recover tenant work", Workspace: workspace, WorkspaceIdentity: workspaceIdentity, OrganizationID: organization.ID, AutoRun: true, State: MissionReady, Plan: []Step{}, Approvals: []Approval{}, Artifacts: []ArtifactManifest{}, CreatedAt: time.Now().UTC(), UpdatedAt: time.Now().UTC()}
+		fixtureMissionIDs = append(fixtureMissionIDs, pending.ID)
 		if err := recoveryStore.WithOrganization(organization.ID).PutMission(pending); err != nil {
 			t.Fatal(err)
 		}
@@ -681,6 +789,14 @@ func TestDistributedPostgresRLSAndEvents(t *testing.T) {
 		if _, err := adminDB.ExecContext(ctx, fmt.Sprintf(`ALTER TABLE public.%s RENAME COLUMN %s TO %s`, missingColumn.table, missingColumn.column, legacyColumn)); err != nil {
 			t.Fatalf("rename %s.%s for schema preflight test: %v", missingColumn.table, missingColumn.column, err)
 		}
+		restored := false
+		t.Cleanup(func() {
+			if !restored {
+				if _, cleanupErr := adminDB.ExecContext(context.Background(), fmt.Sprintf(`ALTER TABLE public.%s RENAME COLUMN %s TO %s`, missingColumn.table, legacyColumn, missingColumn.column)); cleanupErr != nil {
+					t.Errorf("restore %s.%s after aborted schema preflight: %v", missingColumn.table, missingColumn.column, cleanupErr)
+				}
+			}
+		})
 		migrationErr := MigratePostgresAgentSchema(ctx, migratorDSN, key)
 		if migrationErr == nil || !strings.Contains(migrationErr.Error(), "older than the supported baseline") || !strings.Contains(migrationErr.Error(), missingColumn.table) || !strings.Contains(migrationErr.Error(), missingColumn.column) {
 			t.Fatalf("missing %s.%s migration error=%v, want explicit unsupported-baseline refusal", missingColumn.table, missingColumn.column, migrationErr)
@@ -688,10 +804,50 @@ func TestDistributedPostgresRLSAndEvents(t *testing.T) {
 		if _, err := adminDB.ExecContext(ctx, fmt.Sprintf(`ALTER TABLE public.%s RENAME COLUMN %s TO %s`, missingColumn.table, legacyColumn, missingColumn.column)); err != nil {
 			t.Fatalf("restore %s.%s after schema preflight test: %v", missingColumn.table, missingColumn.column, err)
 		}
+		restored = true
 		if err := MigratePostgresAgentSchema(ctx, migratorDSN, key); err != nil {
 			t.Fatalf("migration after restoring supported schema shape %s.%s failed: %v", missingColumn.table, missingColumn.column, err)
 		}
 	}
+	t.Run("reject nullable tenant ownership schema", func(t *testing.T) {
+		if _, err := adminDB.ExecContext(ctx, `ALTER TABLE public.agent_events ALTER COLUMN organization_id DROP NOT NULL`); err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() {
+			if _, cleanupErr := adminDB.ExecContext(context.Background(), `ALTER TABLE public.agent_events ALTER COLUMN organization_id SET NOT NULL`); cleanupErr != nil {
+				t.Errorf("restore event tenant nullability fixture: %v", cleanupErr)
+			}
+		})
+		if err := MigratePostgresAgentSchema(ctx, migratorDSN, key); err == nil || !strings.Contains(err.Error(), "type/nullability") || !strings.Contains(err.Error(), "organization_id") {
+			t.Fatalf("nullable tenant ownership migration error=%v, want fail-closed nullability drift refusal", err)
+		}
+	})
+	t.Run("reject incompatible column type", func(t *testing.T) {
+		if _, err := adminDB.ExecContext(ctx, `ALTER TABLE public.agent_missions ALTER COLUMN version TYPE TEXT USING version::TEXT`); err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() {
+			if _, cleanupErr := adminDB.ExecContext(context.Background(), `ALTER TABLE public.agent_missions ALTER COLUMN version TYPE BIGINT USING version::BIGINT`); cleanupErr != nil {
+				t.Errorf("restore mission version type fixture: %v", cleanupErr)
+			}
+		})
+		if err := MigratePostgresAgentSchema(ctx, migratorDSN, key); err == nil || !strings.Contains(err.Error(), "type/nullability") || !strings.Contains(err.Error(), "version") {
+			t.Fatalf("incompatible column type migration error=%v, want fail-closed type drift refusal", err)
+		}
+	})
+	t.Run("reject altered default", func(t *testing.T) {
+		if _, err := adminDB.ExecContext(ctx, `ALTER TABLE public.agent_missions ALTER COLUMN workspace_identity DROP DEFAULT`); err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() {
+			if _, cleanupErr := adminDB.ExecContext(context.Background(), `ALTER TABLE public.agent_missions ALTER COLUMN workspace_identity SET DEFAULT ''`); cleanupErr != nil {
+				t.Errorf("restore workspace identity default fixture: %v", cleanupErr)
+			}
+		})
+		if err := MigratePostgresAgentSchema(ctx, migratorDSN, key); err == nil || !strings.Contains(err.Error(), "type/nullability") || !strings.Contains(err.Error(), "workspace_identity") {
+			t.Fatalf("altered default migration error=%v, want fail-closed default drift refusal", err)
+		}
+	})
 }
 
 func TestDistributedRedisRetriesDeadLetterReplay(t *testing.T) {
@@ -742,9 +898,9 @@ func TestDistributedRedisRetriesDeadLetterReplay(t *testing.T) {
 			found = true
 			break
 		}
-	}
-	if !found {
-		t.Fatalf("acknowledged job was not listed as succeeded")
+		if !found {
+			t.Fatalf("acknowledged job was not listed as succeeded")
+		}
 	}
 }
 

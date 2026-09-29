@@ -71,7 +71,7 @@ Para desenvolvimento com `deploy/docker-compose.agentic.yml`, defina senhas dist
 
 **Use exatamente esta ordem; mantenha o serviço Ollama parado e o tráfego fechado até o smoke final.** O fluxo em várias fases não é uma transação única nem tem rollback automático:
 
-1. **Backup e ensaio:** ajuste host/porta conforme o cluster. O dump fica fora do repositório, com diretório privado; valide o catálogo e restaure uma cópia em database isolado de staging antes do cutover. Não use o teste de drift adversarial contra produção; ele altera policies/RLS deliberadamente.
+1. **Backup e ensaio:** configure o destino como um cluster PostgreSQL de staging separado do cluster de origem. O script compara os `system_identifier` e recusa seguir se forem iguais. O dump fica fora do repositório, com diretório privado; o database temporário tem nome exclusivo e é removido por `trap` inclusive se `pg_restore` ou a contagem falhar. Não use o teste de drift adversarial contra produção; ele altera policies/RLS deliberadamente.
 
    ```bash
    umask 077
@@ -79,16 +79,42 @@ Para desenvolvimento com `deploy/docker-compose.agentic.yml`, defina senhas dist
    export BACKUP_FILE="$HOME/ollama-full-backups/ollama_agent-$(date -u +%Y%m%dT%H%M%SZ).dump"
    export DSN_ADMIN_LEGADO='host=127.0.0.1 port=5432 dbname=ollama_agent user=ollama_agent'
    export DSN_ADMIN_NOVO='host=127.0.0.1 port=5432 dbname=ollama_agent user=ollama_agent_admin'
-   export DSN_ADMIN_MAINTENANCE='host=127.0.0.1 port=5432 dbname=postgres user=ollama_agent'
-   export DSN_RESTORE='host=127.0.0.1 port=5432 dbname=ollama_agent_restore_rehearsal user=ollama_agent'
+   # Ambos os DSNs devem apontar para staging, em cluster DIFERENTE da origem.
+   export STAGING_PGHOST='staging-db.example' STAGING_PGPORT=5432 STAGING_PGUSER='staging_restore_admin'
+   export DSN_ADMIN_MAINTENANCE="host=$STAGING_PGHOST port=$STAGING_PGPORT dbname=postgres user=$STAGING_PGUSER sslmode=verify-full"
+   export DSN_RESTORE_STAGING_BASE="$DSN_ADMIN_MAINTENANCE"
    read -rsp 'Senha do administrador legado: ' PGPASSWORD; echo; export PGPASSWORD
-   psql "$DSN_ADMIN_LEGADO" -v ON_ERROR_STOP=1 -Atc 'SELECT current_user, current_database()'
-   pg_dump --format=custom --no-owner --no-acl --file="$BACKUP_FILE" "$DSN_ADMIN_LEGADO"
+   read -rsp 'Senha do administrador de staging: ' STAGING_PGPASSWORD; echo; export STAGING_PGPASSWORD
+   PGPASSWORD="$PGPASSWORD" psql "$DSN_ADMIN_LEGADO" -v ON_ERROR_STOP=1 -Atc 'SELECT current_user, current_database()'
+   source_cluster_id="$(PGPASSWORD="$PGPASSWORD" psql "$DSN_ADMIN_LEGADO" -v ON_ERROR_STOP=1 -Atc 'SELECT system_identifier FROM pg_catalog.pg_control_system()')"
+   staging_cluster_id="$(PGPASSWORD="$STAGING_PGPASSWORD" psql "$DSN_ADMIN_MAINTENANCE" -v ON_ERROR_STOP=1 -Atc 'SELECT system_identifier FROM pg_catalog.pg_control_system()')"
+   test -n "$source_cluster_id" && test -n "$staging_cluster_id"
+   if [ "$source_cluster_id" = "$staging_cluster_id" ]; then
+     echo 'ERROR: restore rehearsal target is the source PostgreSQL cluster; use a separate staging cluster' >&2
+     exit 1
+   fi
+   restore_db="ollama_agent_restore_$(date -u +%Y%m%d%H%M%S)_$$"
+   case "$restore_db" in (*[!a-zA-Z0-9_]*) echo 'ERROR: invalid generated rehearsal database name' >&2; exit 1;; esac
+   cleanup_restore_db() {
+     status=$?
+     trap - EXIT
+     if [ "${restore_db_created:-0}" = 1 ]; then
+       PGPASSWORD="$STAGING_PGPASSWORD" psql "$DSN_ADMIN_MAINTENANCE" -v ON_ERROR_STOP=1 -c "DROP DATABASE IF EXISTS $restore_db WITH (FORCE)" >/dev/null || true
+     fi
+     exit "$status"
+   }
+   trap cleanup_restore_db EXIT
+   PGPASSWORD="$PGPASSWORD" pg_dump --format=custom --no-owner --no-acl --file="$BACKUP_FILE" "$DSN_ADMIN_LEGADO"
    pg_restore --list "$BACKUP_FILE" >/dev/null
-   psql "$DSN_ADMIN_MAINTENANCE" -v ON_ERROR_STOP=1 -c 'CREATE DATABASE ollama_agent_restore_rehearsal'
-   pg_restore --no-owner --no-acl --dbname="$DSN_RESTORE" "$BACKUP_FILE"
-   psql "$DSN_RESTORE" -v ON_ERROR_STOP=1 -Atc 'SELECT (SELECT count(*) FROM agent_missions), (SELECT count(*) FROM agent_events)'
-   psql "$DSN_ADMIN_MAINTENANCE" -v ON_ERROR_STOP=1 -c 'DROP DATABASE ollama_agent_restore_rehearsal'
+   PGPASSWORD="$STAGING_PGPASSWORD" psql "$DSN_ADMIN_MAINTENANCE" -v ON_ERROR_STOP=1 -c "CREATE DATABASE $restore_db"
+   restore_db_created=1
+   staging_restore_id="$(PGPASSWORD="$STAGING_PGPASSWORD" psql "$DSN_RESTORE_STAGING_BASE" --dbname="$restore_db" -v ON_ERROR_STOP=1 -Atc 'SELECT system_identifier FROM pg_catalog.pg_control_system()')"
+   test "$staging_restore_id" = "$staging_cluster_id"
+   PGPASSWORD="$STAGING_PGPASSWORD" PGHOST="$STAGING_PGHOST" PGPORT="$STAGING_PGPORT" PGUSER="$STAGING_PGUSER" PGSSLMODE=verify-full pg_restore --no-owner --no-acl --dbname="$restore_db" "$BACKUP_FILE"
+   PGPASSWORD="$STAGING_PGPASSWORD" psql "$DSN_RESTORE_STAGING_BASE" --dbname="$restore_db" -v ON_ERROR_STOP=1 -Atc 'SELECT (SELECT count(*) FROM agent_missions), (SELECT count(*) FROM agent_events)'
+   PGPASSWORD="$STAGING_PGPASSWORD" psql "$DSN_ADMIN_MAINTENANCE" -v ON_ERROR_STOP=1 -c "DROP DATABASE $restore_db WITH (FORCE)"
+   restore_db_created=0
+   trap - EXIT
    ```
 
 2. **Prepare roles e ownership:** com o serviço parado e conectado como o antigo `ollama_agent` superuser, forneça interativamente ou pelo secret manager os três valores distintos exigidos pelo script. Eles precisam estar exportados com estes nomes exatos; o `psql \getenv` não lê aliases:
