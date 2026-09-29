@@ -1023,3 +1023,29 @@ STATUS: P0_CANDIDATE_PUSHED — branch de recuperação sincronizada; produção
 - **PRÓXIMO PASSO CONCRETO:** executar no HEAD `43daf0e` os gates completos; verificar os checks GitHub do mesmo SHA; solicitar/reconciliar revisão independente curta do delta. Corrigir achados concretos e, após cada rodada verificada, atualizar estes dois checkpoints e fazer commit+push somente na branch recovery.
 
 STATUS: P0_RLS_CANDIDATE — delta de segurança publicado e integração real passou; release global/produção/paridade completa permanecem bloqueados.
+
+## Estado atual autoritativo — tarefa docs/tests parity 2026-09-29
+
+- **Branch local:** `feat/docs-tests-parity`; tracking `origin/recovery/ollama-full-snapshot`.
+- **Checkout:** `D:\IA\Trabalhos\DZ23-LTDA\ollama-docs`; `HEAD` após commit `7cddd315` (`docs(audit): baseline de UI/mobile...`); worktree limpo.
+- **Escopo da tarefa:** somente `docs/`, `audit/` e `CHANGELOG.md`.
+- **Proibido nesta tarefa (e não alterado):** `internal/agent/**`, `server/**`, `deploy/postgres/**`, `main`, force-push, `git reset --hard`, merge de `recovery/ollama-full-snapshot`.
+- **Entregáveis da tarefa:**
+  1. `docs/agentic/UI_MOBILE_EVIDENCE_TRACKING.md` — inventário verificável dos gaps de UI/mobile frente a `PARITY_MATRIX.md` e `PRODUCT_TREE.md`, com rastreamento de implementação → teste → execução/print e dependências explícitas.
+  2. `CHANGELOG.md` — seção `Unreleased — docs/tests parity baseline` com baseline real e sem promoção de status de paridade.
+  3. `audit/OLLAMA_FULL_MISSION_STATE.md` — este bloco de baseline da tarefa.
+- **Baseline real observado:**
+  - Rotas React existentes: home/chat, agentic, company, settings, library, projects, scheduled, skills, plugins, tasks, connect, onboarding.
+  - Componentes existentes: `AppSidebar`, `AgenticConsole`, `Chat*` , `Company*` (mas não `MissionTimeline`, `ApprovalCenter`, `ArtifactPanel`, `ProviderPicker`, `BuilderCanvas`, `SettingsWorkspace`).
+  - E2E: `app/ui/app/e2e/shell.spec.ts` (apenas home offline).
+  - Prints desktop: 10 arquivos `class-a-plus-*.png` + `ollama-full-current-ui-2026-09-27.png`; manifesto `class-a-plus-capture-manifest.json`.
+  - Mobile: `apps/mobile-agentic/App.tsx` já implementa sessão, criação/execução de missão, approvals, outbox offline e registro Expo push; `offlinePolicy.test.ts` passa. Faltam testes físicos em dispositivo, push remoto real, resolução de conflitos em rede real e distribuição em lojas.
+  - Acessibilidade/responsividade: sem testes automáticos nem prints mobile/tablet.
+- **Checks rodados:**
+  - `git diff add5881a..HEAD --check` reportou trailing whitespace em `docs/agentic/UI_MOBILE_EVIDENCE_TRACKING.md:3`; corrigido.
+  - `git diff add5881a..HEAD --check` após correção: PASS (sem novos erros de whitespace introduzidos por este delta).
+  - `git diff --check` completo ainda reporta whitespace preexistente em linhas históricas do arquivo de auditoria, fora do escopo desta tarefa.
+- **Próxima ação desta tarefa:** aplicar correções da revisão DOCS, reexecutar checks, commit e push de `feat/docs-tests-parity`; aguardar revisão de Codex e Qwen.
+- **Bloqueadores de paridade que permanecem inalterados por esta tarefa:** PostgreSQL RLS P0; providers externos; GPU/multimídia; companion físico; builders reais; mobile físico; paridade total com Manus.
+
+STATUS: DOCS_TESTS_PARITY_BASELINE — rastreamento de UI/mobile documentado; correções pós-revisão em andamento.

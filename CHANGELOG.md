@@ -2,6 +2,14 @@
 
 Este arquivo registra as entregas públicas da distribuição `DZ23-LTDA/ollama-classe-a-plus`. O projeto mantém a atribuição e a licença do Ollama upstream; os recursos agentic específicos estão descritos com seus limites no [guia Classe A+](docs/CLASS_A_PLUS_GUIDE.md).
 
+## Unreleased — docs/tests parity baseline (rastreamento de UI/mobile)
+
+- Inventário verificável dos gaps de UI/mobile frente a [`docs/agentic/PARITY_MATRIX.md`](docs/agentic/PARITY_MATRIX.md) e [`docs/agentic/PRODUCT_TREE.md`](docs/agentic/PRODUCT_TREE.md), registrado em [`docs/agentic/UI_MOBILE_EVIDENCE_TRACKING.md`](docs/agentic/UI_MOBILE_EVIDENCE_TRACKING.md).
+- O documento vincula cada proposta de avanço a implementação, teste automatizado, execução/print e dependências explícitas; **não promove nenhum status de paridade sem prova**.
+- Baseline real das evidências atuais: 10 screenshots desktop (`docs/images/screens/class-a-plus-*.png`), manifesto de captura, E2E offline do shell (`app/ui/app/e2e/shell.spec.ts`), rotas React existentes, componentes atuais e cliente Expo parcial (`apps/mobile-agentic`).
+- Lacunas documentadas: `MissionTimeline`, `ApprovalCenter`, `ArtifactPanel`, `ProviderPicker`, `BuilderCanvas`, `SettingsWorkspace`, acessibilidade/responsividade, capturas mobile/tablet, E2E de sub-rotas com backend real e testes físicos de mobile.
+- Este é trabalho documental/auditoria; nenhum código de `internal/agent`, `server`, `deploy/postgres`, `main` ou force-push foi realizado.
+
 ## Unreleased — rodada de paridade observável
 
 - Árvore de produto completa em [`docs/agentic/PRODUCT_TREE.md`](docs/agentic/PRODUCT_TREE.md), separando superfície observável, estado atual e alvo unificado.
