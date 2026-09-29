@@ -2,7 +2,7 @@
 
 Cliente Expo para acompanhar missões, visualizar timeline, aprovar/rejeitar passos protegidos, iniciar execução e consultar uma API agentic v1 autenticada.
 
-A inbox consulta `GET /api/agent/v1/missions`, abre detalhe e timeline ao tocar numa missão e permite atualizar a lista. Lista e último detalhe consultado são armazenados no AsyncStorage por servidor e organização; falha de rede lê o cache do mesmo escopo. Respostas HTTP de erro aparecem como erro, sem esconder uma falha do servidor com dados antigos. Na web, o token fica apenas em memória durante a sessão; no Android/iOS usa SecureStore.
+A inbox consulta `GET /api/agent/v1/missions`, abre detalhe e timeline ao tocar numa missão e permite atualizar a lista. Lista e até 20 detalhes recentes são armazenados no AsyncStorage por servidor e organização; falha de rede lê o cache do mesmo escopo. O cache antigo de uma missão é migrado ao consultar um novo detalhe. Respostas HTTP de erro aparecem como erro, sem esconder uma falha do servidor com dados antigos. Na web, o token fica apenas em memória durante a sessão; no Android/iOS usa SecureStore.
 
 ## Desenvolvimento
 

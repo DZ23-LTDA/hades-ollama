@@ -5,7 +5,7 @@ import { StatusBar } from "expo-status-bar";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { shouldQueueOffline } from "./offlinePolicy";
-import { inboxKey, loadInbox, loadInboxDetail, type InboxMission } from "./inbox";
+import { cacheInboxDetail, inboxKey, loadInbox, loadInboxDetail, readInboxDetailCache, type InboxMission } from "./inbox";
 
 Notifications.setNotificationHandler({ handleNotification: async () => ({ shouldShowAlert: true, shouldShowBanner: true, shouldShowList: true, shouldPlaySound: true, shouldSetBadge: false }) });
 
@@ -199,14 +199,14 @@ export default function App() {
       ]);
       setMission(nextMission); setEvents(nextEvents.events); setOnline(true);
 	      const cacheKey = missionStorageKey(base, organizationID, Boolean(token));
-	      if (cacheKey) await AsyncStorage.setItem(cacheKey, JSON.stringify({ mission: nextMission, events: nextEvents.events }));
+	      if (cacheKey) await cacheInboxDetail(AsyncStorage, cacheKey, { mission: nextMission, events: nextEvents.events });
       void flushQueue();
 		} catch (cause) {
 			if (cause instanceof ApiError && (cause.status === 401 || cause.status === 403)) { await expireSession(); setError("Sessão expirada ou sem permissão; autentique novamente."); setOnline(false); return; }
 			setOnline(false);
 	      const cacheKey = missionStorageKey(base, organizationID, Boolean(token));
-	      const cached = cacheKey ? await AsyncStorage.getItem(cacheKey) : null;
-      if (cached && !mission) { const value = JSON.parse(cached) as { mission: Mission; events: Event[] }; setMission(value.mission); setEvents(value.events); }
+	      const cached = cacheKey ? await readInboxDetailCache(AsyncStorage, cacheKey, missionId) : null;
+      if (cached && !mission) { setMission(cached.mission as Mission); setEvents(cached.events); }
     }
   };
 
