@@ -1,6 +1,6 @@
 # Handoff de continuidade — Ollama Full
 
-**Atualizado:** 2026-09-29 02:38 (-03)
+**Atualizado:** 2026-09-29 07:51 (-03). Para o estado remoto mais recente, consulte a seção incremental no final deste documento; os hashes e estados anteriores abaixo são históricos.
 
 **Propósito:** permitir retomar o trabalho depois de encerrar/formatar este PC ou trocar de sessão, sem depender do histórico da conversa.
 
@@ -135,3 +135,14 @@ git diff --check
 ```
 
 **Estado registrado em 2026-09-29 01:40 -03:** commit `fdd9abfa30d583be9b69d76f6b3a133c492ab07d` da branch `recovery/ollama-full-snapshot` foi enviado e verificado pela API GitHub e por `git ls-remote`. A ref `main` permanece `8635e30dc9e95a1f5b29700169783abc24093ceb`. O serviço PostgreSQL temporário foi encerrado e o diretório de dados descartável removido. Revalide refs e estado do checkout antes de continuar.
+
+
+## Atualização obrigatória de continuidade — 2026-09-29 07:51 -03
+
+**Fonte da verdade:** `origin/recovery/ollama-full-snapshot` foi confirmado em `8cd2a71c8377cac46b8dd29642fe3ab38619ebff`. Commits desta retomada: `4bcc6ef2ff33c9e9c0b1ed09de1f7d9f1040d023` (arquitetura RLS candidata e remediações), `00314480e6fbb21f3b99755a1db19e143e33690e` (regressão para sessão legacy privilegiada), `8cd2a71c8377cac46b8dd29642fe3ab38619ebff` (remoção do dump de teste). Somente a branch de recovery foi atualizada; sem force-push/main/PR. O RDB de teste foi removido do tree; não incluir arquivos locais em próximos commits.
+
+**Resultado recente:** runtime PostgreSQL agora falha fechado tanto se a role antiga `ollama_agent` ainda for superuser/LOGIN quanto se houver sessão antiga aberta mesmo após a role ser demovida. O teste real `TestDistributedPostgresRuntimeReadinessForStaleLegacySession` e o grupo `go test -tags integration ./internal/agent -run '^TestDistributed' -count=1` passaram em fixture descartável PostgreSQL 16 + Redis 7. `go test -p=2 ./internal/agent ./server ./cmd -count=1`, integrity, formatação, YAML e gitleaks do delta anterior passaram; repetir full suite/vet/race/build/cross-build sobre o HEAD atual. O build do test binary Windows para `cmd` foi tentado, mas falha por constraints do MLX/upstream; isso não é evidência de execução nativa nem sucesso desse target.
+
+**Estado e limitações:** PostgreSQL/RLS é uma implementação candidata, não aprovada para produção. HMAC key rotation ainda não existe; TLS/HA, staging real, rollback de cutover, crash/failover, escala, multi-instância e auditoria independente final estão pendentes. O último trio de auditores do delta mais recente encerrou como failed/sem veredito; os reviews anteriores tiveram achados e os fixes foram implementados, mas não afirmar “auditoria final aprovada”. Feature parity com Manus Desktop/harnesses também permanece incompleta, conforme `docs/agentic/PARITY_MATRIX.md`.
+
+**Próximo passo exato:** no checkout `/home/ubuntu/ollama-full-recovery`, confirmar branch/ref/status; executar full Go tests, vet, race, build, cross-compile Windows agent, guard de integridade, parser YAML, `git diff --check` e Gitleaks para o estado atual; obter revisão read-only curta do delta; só então atualizar checkpoint incremental, commit e push **somente** em `recovery/ollama-full-snapshot`. A matriz e o runbook devem manter o gate de produção bloqueado até os itens acima terem evidência.
