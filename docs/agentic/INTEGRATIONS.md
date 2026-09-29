@@ -121,6 +121,8 @@ Para desenvolvimento com `deploy/docker-compose.agentic.yml`, defina senhas dist
    trap - EXIT
    ```
 
+   Para uma promoção de standby, faça também o [ensaio PostgreSQL 16 de streaming/failover](POSTGRES_HA_FAILOVER_REHEARSAL.md). O teste local confirma as mecânicas manuais de fencing, replay e promoção, mas não libera produção: HA real, quorum/fencing, RPO/RTO, TLS/CA operacional, restore e failover precisam ser validados em staging dedicado.
+
 2. **Prepare roles e ownership:** com o serviço parado e conectado como o antigo `ollama_agent` superuser, forneça interativamente ou pelo secret manager os três valores distintos exigidos pelo script. Eles precisam estar exportados com estes nomes exatos; o `psql \getenv` não lê aliases:
 
    ```bash

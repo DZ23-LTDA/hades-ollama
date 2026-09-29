@@ -175,6 +175,10 @@ grep -q 'STAGING_PGSSLROOTCERT' docs/agentic/INTEGRATIONS.md
 grep -q 'sslmode=verify-full' docs/agentic/INTEGRATIONS.md
 grep -q 'PGSSLROOTCERT="$STAGING_PGSSLROOTCERT" pg_restore' docs/agentic/INTEGRATIONS.md
 grep -q 'if \[ "$source_cluster_id" = "$staging_cluster_id" \]' docs/agentic/INTEGRATIONS.md
+grep -q 'POSTGRES_HA_FAILOVER_REHEARSAL.md' docs/agentic/INTEGRATIONS.md
+grep -q 'pg_basebackup' docs/agentic/POSTGRES_HA_FAILOVER_REHEARSAL.md
+grep -q 'pg_promote' docs/agentic/POSTGRES_HA_FAILOVER_REHEARSAL.md
+grep -qi 'split[- ]brain' docs/agentic/POSTGRES_HA_FAILOVER_REHEARSAL.md
 grep -q 'restore_check' .github/workflows/dz23-agentic-quality.yaml
 grep -q 'cleanup-placeholder' .github/workflows/dz23-agentic-quality.yaml
 if sed -n '65,210p' .github/workflows/dz23-agentic-quality.yaml | grep -q 'GITHUB_ENV'; then
