@@ -1189,3 +1189,27 @@ O checkout recovery está em `0ba6b15f5dc55c0b8667a5561478a14bf81e3fd4`, limpo e
 - **PRÓXIMO PASSO CONCRETO:** no próximo turno, confirmar SHA/branch limpos e consultar Actions para `8be25f6c`; corrigir qualquer falha de CI somente em recovery, com novos gates e checkpoint. Depois, elaborar uma matriz do que é aditivo na UI parity sem importar seu marketplace duplicado e priorizar o chat como executor de missão (tools, filesystem, terminal, browser/MCP, artifacts e approvals). Não refazer merge do PR #38, não tocar `main`, `fix/audit-security-deps-2026-09-25` ou `feat/ui-shell-parity` e não declarar produção pronta.
 
 STATUS: PR38_MERGED_INTO_RECOVERY_AND_PUSHED; ALL_LOCAL_GATES_PASS; REMOTE_CI_NOT_YET_OBSERVED; UI_PARITY_UNMERGED; PRODUCTION_BLOCKED.
+
+## CI recovery: correções publicadas — 2026-09-29 20:15 -03
+
+Último SHA publicado: `2aa59a20505a627d936856a350eb784eb81b63f4` (branch recovery/ollama-full-snapshot).
+
+Publicado nesta rodada:
+- `7ed0a385`: workflows de qualidade/integridade passam a rodar em push da recovery.
+- `16e71858`: fixture de CI concede CONNECT ao membro reverso; testes de isolamento
+  descriptor-bound e sandbox.exec guardados como Linux-only (Windows: 31 -> 2 falhas).
+- `2aa59a20505a627d936856a350eb784eb81b63f4`: GRANT CONNECT movido para dentro do bloco SQL do fixture, antes do probe de login.
+
+Estado dos gates: locais 100% verdes (test/vet/race/build/cross-compile Windows/gofmt/
+integrity/YAML/Compose/Gitleaks). `class-a-plus-integrity` remoto = SUCCESS.
+`dz23-agentic-quality` ainda falha nos jobs PostgreSQL e Windows — ver
+`audit/CI_DIAGNOSTICO_20260929.md` para as duas causas restantes de Windows.
+
+Pela metade: (1) confirmar o run de `2aa59a20505a627d936856a350eb784eb81b63f4`; (2) Git confiável no runner Windows;
+(3) herança de DACL via ACLFromEntries no Windows.
+
+PRÓXIMO passo concreto: ler o `--log-failed` do run de `2aa59a20505a627d936856a350eb784eb81b63f4` e, se o job PostgreSQL passou,
+atacar as duas falhas de Windows com evidência real do runner (`icacls`) antes de qualquer
+declaração de produção.
+
+Guia portátil para retomada: `audit/HANDOFF_NEXT_MANUS_20260929.md`.

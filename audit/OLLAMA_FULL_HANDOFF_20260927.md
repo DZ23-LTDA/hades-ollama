@@ -343,3 +343,20 @@ Evidência local no SHA final: `go test ./...`, `go vet ./...`, `go test -race .
 3. Não repetir o merge do PR #38 (já é segundo pai de `8be25f6c`), não fechar PR, não mudar main nem os heads `fix/audit-security-deps-2026-09-25`/`feat/ui-shell-parity`.
 4. Em seguida construir uma matriz de funcionalidades UI parity realmente aditivas (tema claro/escuro/automático, Home/dashboard, pills e rastreador), excluir conectores duplicados e seguir o foco de produto pedido: chat principal como executor de missão com tools, filesystem, terminal, browser/MCP, artifacts e approvals.
 5. Estado real: **consolidação de branches feita; produto ainda não declarado equivalente ao Manus nem pronto para produção**. Operações/staging HA, backup/restore, RPO/RTO, TLS/CA e aceite continuam pendentes.
+
+## Continuidade para o próximo Manus — 2026-09-29 20:15 -03
+
+HEAD e remoto da recovery: `2aa59a20505a627d936856a350eb784eb81b63f4`. Worktree limpo; nenhuma outra branch foi tocada
+(main, PR #38, feat/ui-shell-parity e feat/ui-additive-parity intactas).
+
+Publicado: consolidação do PR #38 já estava em `8be25f6c`; nesta rodada entraram os gatilhos de
+CI para a recovery (`7ed0a385`), os guards de plataforma + CONNECT do membro reverso (`16e71858`)
+e o GRANT CONNECT antes do probe (`2aa59a20505a627d936856a350eb784eb81b63f4`).
+
+Falhas remotas restantes (com causa identificada):
+1. Job PostgreSQL: era o probe de login do membro reverso antes do GRANT; corrigido em `2aa59a20505a627d936856a350eb784eb81b63f4`, aguardando run.
+2. Windows: `trusted system Git could not be resolved` e DACL sem flags de herança (`0x0`).
+   Ambos são lacunas reais de portabilidade, não regressões do merge.
+
+PRÓXIMO passo concreto: confirmar o run de `2aa59a20505a627d936856a350eb784eb81b63f4`, então corrigir as duas falhas de Windows com
+evidência do runner. Guia completo: `audit/HANDOFF_NEXT_MANUS_20260929.md`.
