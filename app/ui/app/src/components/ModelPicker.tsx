@@ -13,13 +13,13 @@ import { useQueryClient } from "@tanstack/react-query";
 import { getModelUpstreamInfo } from "@/api";
 import { ArrowDownTrayIcon } from "@heroicons/react/24/outline";
 import type { CloseableButtonHandle } from "@/types/imperative";
-import { modelGroup } from "./modelPickerUtils";
+import { isModelSelectable, modelGroup, sortModelsClean } from "./modelPickerUtils";
 
 const stalenessCheckCache = new Map<string, number>();
 
 function selectableModelIndexes(models: Model[]): number[] {
   return models.flatMap((model, index) =>
-    model.available === false ? [] : [index],
+    isModelSelectable(model) ? [index] : [],
   );
 }
 
@@ -144,7 +144,7 @@ export const ModelPicker = forwardRef<
   }, [isOpen, onEscape]);
 
   const handleModelSelect = (model: Model) => {
-    if (model.available === false) return;
+    if (!isModelSelectable(model)) return;
     setSettings({ SelectedModel: model.model });
     setIsOpen(false);
     onModelSelect?.();
@@ -240,11 +240,12 @@ export const ModelList = forwardRef(function ModelList(
 ): JSX.Element {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
+  const sortedModels = sortModelsClean(models);
 
   useImperativeHandle(ref, () => ({
     scrollToSelectedModel: () => {
       if (!selectedModel || !scrollContainerRef.current) return;
-      const selectedIndex = models.findIndex(
+      const selectedIndex = sortedModels.findIndex(
         (m) => m.model === selectedModel.model,
       );
       if (selectedIndex !== -1) scrollToItem(selectedIndex);
@@ -257,9 +258,9 @@ export const ModelList = forwardRef(function ModelList(
   // Handle keyboard navigation
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (!isOpen || models.length === 0) return;
+      if (!isOpen || sortedModels.length === 0) return;
 
-      const selectable = selectableModelIndexes(models);
+      const selectable = selectableModelIndexes(sortedModels);
       if (selectable.length === 0) return;
       const currentPosition = selectable.indexOf(highlightedIndex);
 
@@ -289,9 +290,9 @@ export const ModelList = forwardRef(function ModelList(
           event.preventDefault();
           if (
             currentPosition >= 0 &&
-            models[highlightedIndex]?.available !== false
+            isModelSelectable(sortedModels[highlightedIndex])
           ) {
-            onModelSelect(models[highlightedIndex]);
+            onModelSelect(sortedModels[highlightedIndex]);
           }
           break;
       }
@@ -299,7 +300,7 @@ export const ModelList = forwardRef(function ModelList(
 
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen, models, highlightedIndex, onModelSelect]);
+  }, [isOpen, sortedModels, highlightedIndex, onModelSelect]);
 
   // Scroll active item into view
   const scrollToItem = (index: number) => {
@@ -322,35 +323,42 @@ export const ModelList = forwardRef(function ModelList(
       ref={scrollContainerRef}
       className="h-64 overflow-y-auto overflow-x-hidden"
     >
-      {models.length === 0 ? (
+      {sortedModels.length === 0 ? (
         <div className="px-3 py-2 text-neutral-500 dark:text-neutral-400">
           No models found
         </div>
       ) : (
-        models.map((model, index) => {
+        sortedModels.map((model, index) => {
           const group = modelGroup(model);
-          const previousGroup = index > 0 ? modelGroup(models[index - 1]) : "";
-          const unavailable = model.available === false;
+          const previousGroup = index > 0 ? modelGroup(sortedModels[index - 1]) : "";
+          const unavailable = !isModelSelectable(model);
           return (
             <div key={`${model.model}-${model.digest || "no-digest"}-${index}`}>
               {group !== previousGroup && (
-                <div className="px-3 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">
-                  {group}
+                <div className={`px-3 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wide ${
+                  group === "Indisponíveis"
+                    ? "text-amber-600 dark:text-amber-400 mt-2 border-t border-neutral-100 dark:border-neutral-700/60"
+                    : "text-neutral-500 dark:text-neutral-400"
+                }`}>
+                  {group === "Indisponíveis" ? "Indisponíveis (requer credencial ou configuração)" : group}
                 </div>
               )}
               <button
                 type="button"
                 disabled={unavailable}
-                onClick={() => onModelSelect(model)}
+                onClick={() => {
+                  if (unavailable) return;
+                  onModelSelect(model);
+                }}
                 onMouseEnter={() => !unavailable && setHighlightedIndex(index)}
                 title={
                   unavailable
-                    ? "Configure a credencial deste provedor para usar o modelo"
+                    ? model.reason || "Configure a credencial deste provedor para usar o modelo"
                     : undefined
                 }
                 className={`flex w-full items-center gap-2 px-3 py-2 focus:outline-none ${
                   unavailable
-                    ? "cursor-not-allowed opacity-45"
+                    ? "cursor-not-allowed opacity-40 bg-neutral-50/50 dark:bg-neutral-800/30"
                     : "cursor-pointer hover:bg-neutral-100 dark:hover:bg-neutral-700/60"
                 } ${
                   highlightedIndex === index ||
@@ -359,12 +367,23 @@ export const ModelList = forwardRef(function ModelList(
                     : ""
                 }`}
               >
-                <span className="flex-1 text-left truncate min-w-0">
-                  {model.model}
-                </span>
+                <div className="flex-1 text-left min-w-0">
+                  <div className={`truncate ${unavailable ? "text-neutral-400 dark:text-neutral-500" : ""}`}>
+                    {model.model}
+                  </div>
+                  {unavailable && model.reason && (
+                    <div className="text-[10px] text-amber-600 dark:text-amber-400 truncate">
+                      {model.reason}
+                    </div>
+                  )}
+                </div>
                 {model.kind === "remote" && (
-                  <span className="shrink-0 rounded-full bg-blue-50 px-1.5 py-0.5 text-[10px] font-medium text-blue-700 dark:bg-blue-950/50 dark:text-blue-300">
-                    {unavailable ? "sem chave" : "API"}
+                  <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-medium ${
+                    unavailable
+                      ? "bg-neutral-100 text-neutral-500 dark:bg-neutral-800 dark:text-neutral-400"
+                      : "bg-blue-50 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300"
+                  }`}>
+                    {unavailable ? "indisponível" : "API"}
                   </span>
                 )}
                 {model.isCloud() && (

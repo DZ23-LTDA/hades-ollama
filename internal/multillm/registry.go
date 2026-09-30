@@ -3,6 +3,7 @@
 package multillm
 
 import (
+	"context"
 	"crypto/subtle"
 	"encoding/json"
 	"errors"
@@ -14,6 +15,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 )
 
 type Config struct {
@@ -281,6 +283,33 @@ func (r *Registry) Resolve(name string, policy Policy) (Model, bool) {
 		return Model{}, false
 	}
 	return candidates[0], true
+}
+
+func (r *Registry) ProbeModel(ctx context.Context, m Model, client *http.Client) ModelProbeResult {
+	p, ok := r.providers[m.Provider]
+	if !ok {
+		return ModelProbeResult{
+			ModelID:    m.ID,
+			Provider:   m.Provider,
+			Status:     ModelStatusNotConfigured,
+			Reason:     "provedor não registrado",
+			Selectable: false,
+			CheckedAt:  time.Now(),
+		}
+	}
+	return ProbeProviderModel(ctx, p, m.UpstreamID, client)
+}
+
+func (r *Registry) CleanSelectableModels(ctx context.Context, client *http.Client) []Model {
+	all := r.Models()
+	clean := make([]Model, 0, len(all))
+	for _, m := range all {
+		probe := r.ProbeModel(ctx, m, client)
+		if probe.Status == ModelStatusPass && probe.Selectable {
+			clean = append(clean, m)
+		}
+	}
+	return clean
 }
 
 func (r *Registry) modelAvailable(m Model) bool {

@@ -56,5 +56,15 @@
       "clean": true
     }
   ],
-  "hasErrors": false
+  "hasErrors": false,
+  "screens": {
+    "modelpicker": {
+      "status": 200,
+      "clean_console": true,
+      "errors": [],
+      "desktop_png": "docs/evidencias/screen-modelpicker-desktop.png",
+      "mobile_png": "docs/evidencias/screen-modelpicker-mobile.png",
+      "captured_at": "2026-09-30T11:05:47.939Z"
+    }
+  }
 }

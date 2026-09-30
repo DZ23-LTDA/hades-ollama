@@ -221,6 +221,8 @@ export class Model {
     provider?: string;
     available: boolean;
     capabilities?: string[];
+    status?: string;
+    reason?: string;
 
     constructor(source: any = {}) {
         if ('string' === typeof source) source = JSON.parse(source);
@@ -231,6 +233,8 @@ export class Model {
         this.provider = source["provider"];
         this.available = source["available"];
         this.capabilities = source["capabilities"];
+        this.status = source["status"];
+        this.reason = source["reason"];
     }
 
 	convertValues(a: any, classs: any, asMap: boolean = false): any {

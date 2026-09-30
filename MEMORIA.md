@@ -78,6 +78,21 @@ automatizado + execução real reproduzível em navegador (desktop e mobile), se
 
 ## Histórico de sessões
 <!-- Mais recente no topo. Uma entrada por sessão de trabalho. -->
+### 2026-09-30 08:05 -03 — Manus — FASE A7: PROVISIONAMENTO DE MODELOS, PROBING REAL E MODELPICKER LIMPO
+- **O que foi feito:**
+  - **1. Probing em Tempo Real e Cache com TTL (`internal/multillm/probe.go`):** Implementado `ProbeModel` e `ProbeProviderModel` com timeout de 4s, verificação de credencial ativa (`credentialValue`) e cache de resultado de probe por 5 minutos (`defaultProbeCache`). Modelos locais têm status `PASS` determinístico se baixados. Modelos remotos realizam probe real via `ListUpstreamModels`. Modelos sem credencial recebem `NOT_CONFIGURED` com motivo explícito. Provedores inalcançáveis recebem `FAIL`.
+  - **2. Filtro no Backend Go (`server/routes.go` e `internal/multillm/registry.go`):** O endpoint `/api/tags` e a resolução do roteador `s.multiRegistry.Resolve` agora utilizam `ProbeModel`. Provedores inalcançáveis ou com credencial inválida são marcados com tag `-unavailable` em `/api/tags` e NUNCA são selecionados pelo roteador automático.
+  - **3. Auto-Provisão Opt-In no Onboarding (`app/ui/app/src/components/Onboarding.tsx`):** Adicionado opt-in explícito `"Ativar modelos de nuvem grátis da minha conta"` no `WelcomeScreen`. Ao conectar a conta Ollama.com, se o usuário aceitar, o Cloud é ativado (`POST /api/v1/cloud` com `{ disabled: false }`) e os modelos de nuvem da conta são disponibilizados. Local-first permanece 100% como padrão (sem opt-in, nenhum dado sai da máquina).
+  - **4. Segregação e Bloqueio de Seleção no ModelPicker (`ModelPicker.tsx`, `modelPickerUtils.ts`):**
+    - O `ModelPicker` e a navegação por teclado (`selectableModelIndexes`) restringem a seleção EXCLUSIVAMENTE a modelos com status `PASS` (`isModelSelectable`).
+    - Modelos indisponíveis são reordenados para o fim da lista e agrupados sob o cabeçalho demarcado `"Indisponíveis (requer credencial ou configuração)"`.
+    - Cada modelo indisponível exibe seu motivo real em destaque (ex.: chave ausente, provedor inalcançável) e possui `disabled={true}`, `cursor-not-allowed` e clique bloqueado. NUNCA um modelo inoperante aparece misturado como selecionável.
+  - **5. Testes Unitários e Integração:**
+    - `internal/multillm/model_probe_test.go`: `TestModelListExcludesUnreachable` (PASS) e `TestModelListOnlyPassIsSelectable` (PASS).
+    - `internal/agent/model_probe_test.go`: `TestModelListOnlyPassIsSelectable` (PASS) e `TestModelListExcludesUnreachable` (PASS).
+    - `server/model_list_probe_test.go`: `TestModelListProbeFiltersListHandler` (PASS), `TestModelListExcludesUnreachable` (PASS), `TestModelListOnlyPassIsSelectable` (PASS).
+    - `app/ui/app/src/components/ModelPicker.test.ts`: 4 testes Vitest cobrindo `modelGroup`, `isModelSelectable`, segregação de indisponíveis e ordenação limpa (PASS).
+  - **6. Evidência E2E Playwright Real:** Capturadas as telas do `ModelPicker` aberto em `http://127.0.0.1:5173/c/new` em resolução Desktop (1440x900) e Mobile (390x844), comprovando a lista limpa com o modelo local ativo `gemma4:26b` e console 100% limpo com zero erros HTTP/console em `docs/evidencias/browser-console-audit.json`.
 ### 2026-09-30 04:45 -03 — Manus — FASE A.5: REGRAS ESTRITAS DE SUCESSO E HARDENING DE GATES
 - **O que foi feito:**
   - **1. Modelo de Estado Honesto (Anti-Fake Done):** Implementado `internal/agent/gate_status.go` e `internal/agent/gate_status_test.go` com espelho em `app/ui/app/src/lib/gateStatus.ts`. Define o enum estrito: `PASS`, `FAIL`, `NOT_EXECUTED`, `NOT_PRESENT`, `NOT_CONFIGURED`, `BLOCKED_EXTERNAL`, `UNKNOWN`. Testes unitários comprovam que nenhuma capacidade pode ser marcada como `PASS` sem execução verificada e que `ValidateGateMatrixEntry` rejeita `PASS` com erro determinístico.

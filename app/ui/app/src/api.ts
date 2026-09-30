@@ -163,6 +163,13 @@ export async function getModels(query?: string): Promise<Model[]> {
           details?: { format?: string; family?: string };
         };
         const family = extended.details?.family || "";
+        const isUnavailable = family.includes("-unavailable");
+        const reason = isUnavailable
+          ? family.includes("-unavailable:")
+            ? family.split("-unavailable:")[1]
+            : "Credencial ausente ou provedor inalcançável"
+          : undefined;
+        const status = isUnavailable ? "NOT_CONFIGURED" : "PASS";
         const kind =
           extended.details?.format === "remote"
             ? "remote"
@@ -171,7 +178,7 @@ export async function getModels(query?: string): Promise<Model[]> {
               : "local";
         const provider =
           kind === "remote"
-            ? family.replace(/-unavailable$/, "") || modelName.split("/")[0]
+            ? family.split("-unavailable")[0] || modelName.split("/")[0]
             : kind === "router"
               ? "DZ23 Router"
               : "Ollama";
@@ -182,7 +189,9 @@ export async function getModels(query?: string): Promise<Model[]> {
           modified_at: m.modified_at ? new Date(m.modified_at) : undefined,
           kind,
           provider,
-          available: !family.endsWith("-unavailable"),
+          available: !isUnavailable,
+          status,
+          reason,
           capabilities: Array.isArray(extended.capabilities)
             ? extended.capabilities
             : [],

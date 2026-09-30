@@ -1361,8 +1361,13 @@ func (s *Server) ShowHandler(c *gin.Context) {
 				caps = append(caps, model.Capability(capability))
 			}
 			family := remote.Provider
-			if !remote.Available {
-				family += "-unavailable"
+			probe := s.multiRegistry.ProbeModel(c.Request.Context(), remote, nil)
+			if probe.Status != multillm.ModelStatusPass {
+				if probe.Reason != "" {
+					family += "-unavailable:" + probe.Reason
+				} else {
+					family += "-unavailable"
+				}
 			}
 			c.JSON(http.StatusOK, api.ShowResponse{
 				Details: api.ModelDetails{Format: "remote", Family: family}, Capabilities: caps,
@@ -1714,7 +1719,8 @@ func (s *Server) ListHandler(c *gin.Context) {
 				caps = append(caps, model.Capability(capability))
 			}
 			family := remote.Provider
-			if !remote.Available {
+			probe := s.multiRegistry.ProbeModel(c.Request.Context(), remote, nil)
+			if !probe.Selectable {
 				family += "-unavailable"
 			}
 			models = append(models, api.ListModelResponse{
@@ -1724,15 +1730,15 @@ func (s *Server) ListHandler(c *gin.Context) {
 			})
 		}
 		if strings.TrimSpace(os.Getenv("OLLAMA_DZ23_LOCAL_MODEL")) != "" {
-				localModelName := strings.TrimSpace(os.Getenv("OLLAMA_DZ23_LOCAL_MODEL"))
-				models = append(models, api.ListModelResponse{Name: localModelName, Model: localModelName, Digest: "virtual:local", Details: api.ModelDetails{Format: "virtual", Family: "ollama-local"}})
-			}
-			for _, alias := range []string{"auto/coding", "auto/reasoning", "auto/vision"} {
-				if _, ok := s.multiRegistry.Resolve(alias, multillm.Policy{}); ok {
-					models = append(models, api.ListModelResponse{Name: alias, Model: alias, Digest: "virtual:dz23", Details: api.ModelDetails{Format: "virtual", Family: "dz23-router"}})
-				}
+			localModelName := strings.TrimSpace(os.Getenv("OLLAMA_DZ23_LOCAL_MODEL"))
+			models = append(models, api.ListModelResponse{Name: localModelName, Model: localModelName, Digest: "virtual:local", Details: api.ModelDetails{Format: "virtual", Family: "ollama-local"}})
+		}
+		for _, alias := range []string{"auto/coding", "auto/reasoning", "auto/vision"} {
+			if _, ok := s.multiRegistry.Resolve(alias, multillm.Policy{}); ok {
+				models = append(models, api.ListModelResponse{Name: alias, Model: alias, Digest: "virtual:dz23", Details: api.ModelDetails{Format: "virtual", Family: "dz23-router"}})
 			}
 		}
+	}
 	c.JSON(http.StatusOK, api.ListResponse{Models: models})
 }
 
@@ -2329,18 +2335,18 @@ func (s *Server) WhoamiHandler(c *gin.Context) {
 
 	client := api.NewClient(u, http.DefaultClient)
 	user, err := client.Whoami(c)
-		if err != nil {
-			if strings.TrimSpace(c.GetHeader("Authorization")) == "" {
-				c.JSON(http.StatusOK, gin.H{
-					"name":       "Local Operator",
-					"username":   "local",
-					"email":      "local@localhost",
-					"avatarurl":  "",
-					"local_only": true,
-				})
-				return
-			}
-			var authErr api.AuthorizationError
+	if err != nil {
+		if strings.TrimSpace(c.GetHeader("Authorization")) == "" {
+			c.JSON(http.StatusOK, gin.H{
+				"name":       "Local Operator",
+				"username":   "local",
+				"email":      "local@localhost",
+				"avatarurl":  "",
+				"local_only": true,
+			})
+			return
+		}
+		var authErr api.AuthorizationError
 		if errors.As(err, &authErr) && authErr.StatusCode == http.StatusUnauthorized {
 			// Preserve an actionable sign-in response for launch; other failures
 			// below mean account or plan verification is temporarily unavailable.
@@ -2363,18 +2369,18 @@ func (s *Server) WhoamiHandler(c *gin.Context) {
 		return
 	}
 
-		if user == nil || user.Name == "" {
-			if strings.TrimSpace(c.GetHeader("Authorization")) == "" {
-				c.JSON(http.StatusOK, gin.H{
-					"name":       "Local Operator",
-					"username":   "local",
-					"email":      "local@localhost",
-					"avatarurl":  "",
-					"local_only": true,
-				})
-				return
-			}
-			sURL, sErr := signinURL()
+	if user == nil || user.Name == "" {
+		if strings.TrimSpace(c.GetHeader("Authorization")) == "" {
+			c.JSON(http.StatusOK, gin.H{
+				"name":       "Local Operator",
+				"username":   "local",
+				"email":      "local@localhost",
+				"avatarurl":  "",
+				"local_only": true,
+			})
+			return
+		}
+		sURL, sErr := signinURL()
 		if sErr != nil {
 			slog.Error(sErr.Error())
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "error getting authorization details"})
