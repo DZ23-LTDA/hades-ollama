@@ -22,7 +22,7 @@ automatizado + execução real reproduzível em navegador (desktop e mobile), se
 
 ## Estado atual (2026-09-30 08:49 -03 / 2026-09-30 11:49 UTC)
 - **Repo:** github.com/DZ23-LTDA/ollama-classe-a-plus. Branch canônica: `recovery/ollama-full-snapshot`.
-- **STATUS DA MISSÃO: FASE A3 IMPLEMENTADA — slash-commands reais, planejamento delegado e gates locais/E2E verdes; aguardando commit e CI remoto**
+- **STATUS DA MISSÃO: FASE A3 IMPLEMENTADA — slash-commands reais, planejamento delegado e gates locais/E2E/CI verdes no commit `416410f1`**
 - **FASE A3:** Composer Home/Chat agora oferece somente `/goal`, `/plan`, `/test` e `/review`, com autocomplete acessível, navegação por setas/Enter/Esc/clique e parser compartilhado. `/goal` cria missão real e uma orquestração persistente com papéis do swarm; `/plan` não executa; `/test` e `/review` geram objetivos de missão reais. Evidências Playwright desktop/mobile estão em `docs/evidencias/screen-slash-menu-*.png` e `screen-slash-goal-*.png`; auditoria está limpa em `docs/evidencias/browser-console-audit.json`.
 - **FASE A2:** `Registry.Route` agora participa da resolução do planner via `RoutedPlannerResolver`. Aliases `auto/coding`, `auto/reasoning`, `auto/vision` e missões sem modelo fixado usam `CleanSelectableModels`, pontuam `0-local`/`0-assinatura` antes de fontes pagas, respeitam override manual, mapeiam `AgentRole` por capacidade e emitem `router.decision` com modelo, motivo e custo. Ausência de rota remota cai para planner local-first sem falha fechada.
   - **Bloco 1 (Ressalvas Corrigidas):**
@@ -91,6 +91,7 @@ automatizado + execução real reproduzível em navegador (desktop e mobile), se
 - **Backend/integração:** `internal/agent/slash_commands.go` formaliza os quatro comandos e rejeita desconhecidos; `/goal` no `AgenticConsole` cria missão via `/api/agent/v1/missions` e orquestração via `/api/agent/v1/orchestration/jobs` com papéis research/programming/testing/security/review. `/plan` usa `auto_run=false`; `/test` e `/review` recebem objetivos explícitos.
 - **Testes:** `go test -v -run 'Slash|Goal' ./internal/agent ./server` passou; `npx vitest run src/lib/slashCommands.test.ts` passou com 5 testes; gates completos corretos passaram (`tsc`, lint, Vitest completo, Go test/build, contratos, integridade e gofmt), terminando em `ALL_A3_GATES_PASS`.
 - **Evidência:** Playwright real em 1440x900 e 390x844 capturou menu e `/goal` com Mission Console, timeline SSE e tarefas de delegação. `browser-console-audit.json` registra `status: 200`, `clean_console: true`, `errors: []`; os quatro PNGs têm SHA-256 distintos.
+- **CI remoto:** `class-a-plus-integrity` run `36716452256` e `dz23-agentic-quality` run `36716452252` concluíram `success` no commit `416410f1`.
 
 ### 2026-09-30 08:35 -03 — Manus — FASE A7.1: PROVEDOR DE MODELOS POR ASSINATURA CLI (CUSTO ZERO)
 - **O que foi feito:**
