@@ -250,10 +250,121 @@ SELECT p.prosecdef AND p.provolatile='s' AND p.prorettype='boolean'::pg_catalog.
 		return fmt.Errorf("verify PostgreSQL runtime privilege set: %w", err)
 	}
 	if !runtimePrivilegesSecure {
-		return errors.New("PostgreSQL runtime role privileges differ from the required least-privilege tenant DML set")
+		var failingGroups string
+		if err := tx.QueryRowContext(ctx, postgresRuntimePrivilegeGroupDiagnostic).Scan(&failingGroups); err != nil {
+			return fmt.Errorf("PostgreSQL runtime role privileges differ from the required least-privilege tenant DML set (diagnostic failed: %w)", err)
+		}
+		if failingGroups == "" {
+			failingGroups = "unknown"
+		}
+		return fmt.Errorf("PostgreSQL runtime role privileges differ from the required least-privilege tenant DML set (failing groups: %s)", failingGroups)
 	}
 	return nil
 }
+
+// postgresRuntimePrivilegeGroupDiagnostic re-evaluates the least-privilege
+// predicate in named groups so a failure reports which requirement drifted
+// instead of an opaque boolean. Groups mirror the checks above:
+// A role flags, B database scope, C schema scope, D table DML, E functions,
+// F default privileges and memberships.
+const postgresRuntimePrivilegeGroupDiagnostic = `
+SELECT CASE WHEN (
+	       r.rolcanlogin AND NOT r.rolsuper AND NOT r.rolbypassrls AND NOT r.rolcreatedb
+	       AND NOT r.rolcreaterole AND NOT r.rolreplication AND NOT r.rolinherit
+	     ) THEN '' ELSE 'A' END ||
+	     CASE WHEN (
+	       pg_catalog.has_database_privilege(r.rolname,pg_catalog.current_database(),'CONNECT')
+	       AND NOT EXISTS (SELECT 1 FROM pg_catalog.pg_database d
+	                       WHERE d.datname<>pg_catalog.current_database()
+	                         AND pg_catalog.has_database_privilege(r.rolname,d.oid,'CONNECT'))
+	       AND NOT pg_catalog.has_database_privilege(r.rolname,pg_catalog.current_database(),'CREATE')
+	       AND NOT pg_catalog.has_database_privilege(r.rolname,pg_catalog.current_database(),'TEMP')
+	       AND NOT EXISTS (SELECT 1 FROM pg_catalog.pg_database d
+	                       CROSS JOIN LATERAL pg_catalog.aclexplode(COALESCE(d.datacl,pg_catalog.acldefault('d',d.datdba))) a
+	                       WHERE d.datname=pg_catalog.current_database() AND a.grantee=0
+	                         AND a.privilege_type IN ('CONNECT','CREATE','TEMPORARY'))
+	     ) THEN '' ELSE 'B' END ||
+	     CASE WHEN (
+	       pg_catalog.has_schema_privilege(r.rolname,'public','USAGE')
+	       AND NOT pg_catalog.has_schema_privilege(r.rolname,'public','CREATE')
+	       AND NOT EXISTS (SELECT 1 FROM pg_catalog.pg_namespace n
+	                       CROSS JOIN LATERAL pg_catalog.aclexplode(COALESCE(n.nspacl,pg_catalog.acldefault('n',n.nspowner))) a
+	                       WHERE n.nspname='public' AND a.grantee=0 AND a.privilege_type IN ('USAGE','CREATE'))
+	       AND NOT EXISTS (SELECT 1 FROM pg_catalog.pg_namespace n
+	                       WHERE n.nspname NOT IN ('pg_catalog','information_schema','public')
+	                         AND (pg_catalog.has_schema_privilege(r.rolname,n.oid,'USAGE')
+	                           OR pg_catalog.has_schema_privilege(r.rolname,n.oid,'CREATE')))
+	     ) THEN '' ELSE 'C' END ||
+	     CASE WHEN (
+	       NOT pg_catalog.has_table_privilege(r.rolname,'public.agent_tenant_context_keys','SELECT')
+	       AND pg_catalog.has_table_privilege(r.rolname,'public.agent_missions','SELECT')
+	       AND pg_catalog.has_table_privilege(r.rolname,'public.agent_missions','INSERT')
+	       AND pg_catalog.has_table_privilege(r.rolname,'public.agent_missions','UPDATE')
+	       AND pg_catalog.has_table_privilege(r.rolname,'public.agent_missions','DELETE')
+	       AND pg_catalog.has_table_privilege(r.rolname,'public.agent_events','SELECT')
+	       AND pg_catalog.has_table_privilege(r.rolname,'public.agent_events','INSERT')
+	       AND pg_catalog.has_table_privilege(r.rolname,'public.agent_events','UPDATE')
+	       AND pg_catalog.has_table_privilege(r.rolname,'public.agent_events','DELETE')
+	       AND NOT pg_catalog.has_table_privilege(r.rolname,'public.agent_missions','TRUNCATE')
+	       AND NOT pg_catalog.has_table_privilege(r.rolname,'public.agent_missions','REFERENCES')
+	       AND NOT pg_catalog.has_table_privilege(r.rolname,'public.agent_missions','TRIGGER')
+	       AND NOT pg_catalog.has_table_privilege(r.rolname,'public.agent_events','TRUNCATE')
+	       AND NOT pg_catalog.has_table_privilege(r.rolname,'public.agent_events','REFERENCES')
+	       AND NOT pg_catalog.has_table_privilege(r.rolname,'public.agent_events','TRIGGER')
+	       AND NOT EXISTS (SELECT 1 FROM pg_catalog.pg_class c
+	                       CROSS JOIN LATERAL pg_catalog.aclexplode(COALESCE(c.relacl,pg_catalog.acldefault('r',c.relowner))) a
+	                       WHERE c.oid IN ('public.agent_missions'::pg_catalog.regclass,'public.agent_events'::pg_catalog.regclass,'public.agent_tenant_context_keys'::pg_catalog.regclass)
+	                         AND a.grantee=0)
+	       AND NOT EXISTS (SELECT 1 FROM pg_catalog.pg_class c
+	                       JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace
+	                       JOIN pg_catalog.pg_attribute col ON col.attrelid=c.oid
+	                       CROSS JOIN LATERAL pg_catalog.aclexplode(col.attacl) a
+	                       WHERE n.nspname='public' AND c.relkind IN ('r','p','v','m','f')
+	                         AND col.attnum>0 AND NOT col.attisdropped AND a.grantee IN (0,r.oid)
+	                         AND a.privilege_type IN ('SELECT','INSERT','UPDATE','REFERENCES'))
+	       AND NOT EXISTS (SELECT 1 FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace
+	                       WHERE n.nspname='public' AND c.relkind IN ('r','p','v','m','f')
+	                         AND c.relname NOT IN ('agent_missions','agent_events','agent_tenant_context_keys')
+	                         AND (pg_catalog.has_table_privilege(r.rolname,c.oid,'SELECT')
+	                           OR pg_catalog.has_table_privilege(r.rolname,c.oid,'INSERT')
+	                           OR pg_catalog.has_table_privilege(r.rolname,c.oid,'UPDATE')
+	                           OR pg_catalog.has_table_privilege(r.rolname,c.oid,'DELETE')
+	                           OR pg_catalog.has_table_privilege(r.rolname,c.oid,'TRUNCATE')
+	                           OR pg_catalog.has_table_privilege(r.rolname,c.oid,'REFERENCES')
+	                           OR pg_catalog.has_table_privilege(r.rolname,c.oid,'TRIGGER')))
+	       AND NOT EXISTS (SELECT 1 FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace
+	                       WHERE n.nspname='public' AND c.relkind='S'
+	                         AND (pg_catalog.has_sequence_privilege(r.rolname,c.oid,'USAGE')
+	                           OR pg_catalog.has_sequence_privilege(r.rolname,c.oid,'SELECT')
+	                           OR pg_catalog.has_sequence_privilege(r.rolname,c.oid,'UPDATE')))
+	     ) THEN '' ELSE 'D' END ||
+	     CASE WHEN (
+	       pg_catalog.has_function_privilege(r.rolname,'public.agent_tenant_context_matches(text)','EXECUTE')
+	       AND NOT EXISTS (SELECT 1 FROM pg_catalog.pg_proc p
+	                       CROSS JOIN LATERAL pg_catalog.aclexplode(COALESCE(p.proacl,pg_catalog.acldefault('f',p.proowner))) a
+	                       WHERE p.oid='public.agent_tenant_context_matches(text)'::pg_catalog.regprocedure
+	                         AND a.grantee=0 AND a.privilege_type='EXECUTE')
+	       AND NOT EXISTS (SELECT 1 FROM pg_catalog.pg_proc p JOIN pg_catalog.pg_namespace n ON n.oid=p.pronamespace
+	                       WHERE n.nspname='public' AND p.oid<>'public.agent_tenant_context_matches(text)'::pg_catalog.regprocedure
+	                         AND pg_catalog.has_function_privilege(r.rolname,p.oid,'EXECUTE'))
+	     ) THEN '' ELSE 'E' END ||
+	     CASE WHEN (
+	       NOT EXISTS (SELECT 1 FROM pg_catalog.pg_default_acl d
+	                       CROSS JOIN LATERAL pg_catalog.aclexplode(d.defaclacl) a
+	                       WHERE d.defaclrole=(SELECT oid FROM pg_catalog.pg_roles WHERE rolname='ollama_agent_migrator')
+	                         AND d.defaclnamespace IN (0,'public'::pg_catalog.regnamespace)
+	                         AND a.grantee IN (0,r.oid)
+	                         AND ((d.defaclobjtype='f' AND a.privilege_type='EXECUTE')
+	                           OR (d.defaclobjtype='r' AND a.privilege_type IN ('SELECT','INSERT','UPDATE','DELETE','TRUNCATE','REFERENCES','TRIGGER'))
+	                           OR (d.defaclobjtype='S' AND a.privilege_type IN ('USAGE','SELECT','UPDATE'))))
+	       AND EXISTS (SELECT 1 FROM pg_catalog.pg_default_acl d
+	                   WHERE d.defaclrole=(SELECT oid FROM pg_catalog.pg_roles WHERE rolname='ollama_agent_migrator')
+	                     AND d.defaclnamespace=0 AND d.defaclobjtype='f'
+	                     AND NOT EXISTS (SELECT 1 FROM pg_catalog.aclexplode(d.defaclacl) a
+	                                     WHERE a.grantee IN (0,r.oid) AND a.privilege_type='EXECUTE'))
+	       AND NOT EXISTS (SELECT 1 FROM pg_catalog.pg_auth_members m WHERE m.member=r.oid OR m.roleid=r.oid)
+	     ) THEN '' ELSE 'F' END
+  FROM pg_catalog.pg_roles r WHERE r.rolname='ollama_agent_runtime'`
 
 // OpenPostgresRuntimeStore opens a tenant-only store. Its role must be a
 // non-owner, NOSUPERUSER/NOBYPASSRLS role with DML privileges only. The key

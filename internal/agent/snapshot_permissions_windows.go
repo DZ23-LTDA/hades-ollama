@@ -78,11 +78,7 @@ func secureWorkspaceSnapshotDirectory(path string, root *os.Root) error {
 			TrusteeValue: windows.TrusteeValueFromSID(sid),
 		},
 	}
-	acl, err := windows.ACLFromEntries([]windows.EXPLICIT_ACCESS{entry}, nil)
-	if err != nil {
-		return err
-	}
-	acl, err = aclWithInheritance(acl)
+	acl, err := inheritableOwnerACL(sid, entry.AccessPermissions)
 	if err != nil {
 		return err
 	}
@@ -94,46 +90,55 @@ func secureWorkspaceSnapshotDirectory(path string, root *os.Root) error {
 	return nil
 }
 
-// aclWithInheritance rebuilds a single-ACE DACL so its ACE carries the
-// container/object inherit flags explicitly. SetEntriesInAcl does not always
-// preserve them, and without the flags a snapshot directory would not pass
-// its protection on to child files and directories.
-func aclWithInheritance(source *windows.ACL) (*windows.ACL, error) {
-	if source == nil || source.AceCount != 1 {
-		return nil, errors.New("snapshot DACL must contain exactly one ACE")
+// inheritableOwnerACL builds a protected DACL holding exactly one allow ACE for
+// the supplied SID, carrying both container- and object-inherit flags so the
+// snapshot protection is passed on to child directories and files. The ACE is
+// laid out explicitly because SetEntriesInAcl does not reliably preserve those
+// inherit flags, and without them a snapshot directory would be protected but
+// its children would not.
+func inheritableOwnerACL(sid *windows.SID, mask windows.ACCESS_MASK) (*windows.ACL, error) {
+	if sid == nil || !sid.IsValid() {
+		return nil, errors.New("snapshot owner SID is invalid")
+	}
+	sidLength := sid.Len()
+	// ACCESS_ALLOWED_ACE is ACE_HEADER (4 bytes), ACCESS_MASK (4 bytes), SID.
+	aceSize := 4 + 4 + sidLength
+	if aceSize%4 != 0 || aceSize > 0xFFFF {
+		return nil, errors.New("snapshot owner SID has an unsupported length")
+	}
+	aclSize := 8 + aceSize
+	raw := make([]byte, aclSize)
+	// ACL header: revision, size, ACE count.
+	raw[0] = 2 // ACL_REVISION
+	raw[1] = 0
+	raw[2] = byte(aclSize)
+	raw[3] = byte(aclSize >> 8)
+	raw[4] = 1
+	// ACCESS_ALLOWED_ACE: type, size, inherit flags, access mask, SID.
+	raw[8] = windows.ACCESS_ALLOWED_ACE_TYPE
+	raw[9] = byte(windows.OBJECT_INHERIT_ACE | windows.CONTAINER_INHERIT_ACE)
+	raw[10] = byte(aceSize)
+	raw[11] = byte(aceSize >> 8)
+	raw[12] = byte(uint32(mask))
+	raw[13] = byte(uint32(mask) >> 8)
+	raw[14] = byte(uint32(mask) >> 16)
+	raw[15] = byte(uint32(mask) >> 24)
+	if err := windows.CopySid(uint32(sidLength), (*windows.SID)(unsafe.Pointer(&raw[16])), sid); err != nil {
+		return nil, err
+	}
+	acl := (*windows.ACL)(unsafe.Pointer(&raw[0]))
+	if acl.AceCount != 1 {
+		return nil, errors.New("snapshot DACL was not built with exactly one ACE")
 	}
 	var ace *windows.ACCESS_ALLOWED_ACE
-	if err := windows.GetAce(source, 0, &ace); err != nil {
+	if err := windows.GetAce(acl, 0, &ace); err != nil {
 		return nil, err
 	}
-	if ace == nil || ace.Header.AceType != windows.ACCESS_ALLOWED_ACE_TYPE {
-		return nil, errors.New("snapshot DACL entry must be an allow ACE")
+	if ace == nil || ace.Header.AceFlags&windows.OBJECT_INHERIT_ACE == 0 || ace.Header.AceFlags&windows.CONTAINER_INHERIT_ACE == 0 {
+		return nil, errors.New("snapshot DACL entry lacks inherit flags")
 	}
-	aceSize := int(ace.Header.AceSize)
-	if aceSize < 8 || aceSize > 1024 {
-		return nil, errors.New("snapshot DACL entry has an invalid size")
+	if !(*windows.SID)(unsafe.Pointer(&ace.SidStart)).Equals(sid) {
+		return nil, errors.New("snapshot DACL entry does not reference the owner SID")
 	}
-	raw := make([]byte, aceSize)
-	copy(raw, (*[(1 << 31) - 1]byte)(unsafe.Pointer(ace))[:aceSize:aceSize])
-	rebuilt, err := windows.ACLFromEntries([]windows.EXPLICIT_ACCESS{{
-		AccessPermissions: ace.Mask,
-		AccessMode:        windows.GRANT_ACCESS,
-		Inheritance:       windows.SUB_CONTAINERS_AND_OBJECTS_INHERIT,
-		Trustee: windows.TRUSTEE{
-			TrusteeForm:  windows.TRUSTEE_IS_SID,
-			TrusteeType:  windows.TRUSTEE_IS_USER,
-			TrusteeValue: windows.TrusteeValueFromSID((*windows.SID)(unsafe.Pointer(&raw[8]))),
-		},
-	}}, nil)
-	if err != nil {
-		return nil, err
-	}
-	var rebuiltACE *windows.ACCESS_ALLOWED_ACE
-	if err := windows.GetAce(rebuilt, 0, &rebuiltACE); err != nil {
-		return nil, err
-	}
-	if rebuiltACE == nil || rebuiltACE.Header.AceFlags&windows.SUB_CONTAINERS_AND_OBJECTS_INHERIT != windows.SUB_CONTAINERS_AND_OBJECTS_INHERIT {
-		return nil, errors.New("could not apply inheritable access to the snapshot directory")
-	}
-	return rebuilt, nil
+	return acl, nil
 }
