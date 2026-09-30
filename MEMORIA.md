@@ -22,6 +22,8 @@ automatizado + execução real reproduzível em navegador (desktop e mobile), se
 
 ## Estado atual (2026-09-30 08:49 -03 / 2026-09-30 11:49 UTC)
 - **Repo:** github.com/DZ23-LTDA/ollama-classe-a-plus. Branch canônica: `recovery/ollama-full-snapshot`.
+- **STATUS DA MISSÃO: FASE 10 IMPLEMENTADA — Studio/Builders Interativo para sites/apps/jogos/slides/dashboards 100% conectado ao backend real, undo/redo em pilha, preview ao vivo em iframe sandboxed, export rastreável com checksum SHA-256 e download de ZIP, deploy adapter honesto (BLOCKED_EXTERNAL sem credenciais), testes Go e E2E Playwright desktop/mobile**
+- **FASE 10:** Implementado o Studio visual interativo (`StudioCanvasPage.tsx` e `/studio`), substituindo testes com API mockada por integração de ponta a ponta contra o backend real de builders (`BuilderService` em `internal/agent/builder.go` e rotas em `server/agent_routes.go`). Suporte a paleta com componentes (Heading, Paragraph, Button, Card, Metric, Navbar) e modelos de projeto (Site, Dashboard, Slides, Jogo, App Móvel); atualização dinâmica de componentes via `POST /api/agent/v1/builders/:id/visual`; histórico de undo e redo com pilhas no backend (`POST /builders/:id/undo` e `/redo`); preview ao vivo em iframe renderizado diretamente do backend (`POST /builders/:id/preview` e `/preview/*path`); exportação de projeto em ZIP com checksum criptográfico SHA-256 verificado (`POST /builders/:id/export` e download via `GET /builders/:id/download`); adaptador de deploy externo com verificação honesta de credenciais (`BLOCKED_EXTERNAL` / `NOT_CONFIGURED` via enum `gate_status`, sem falsificar publicação); documentação de arquitetura para colaboração CRDT em tempo real; testes unitários e de integração em `internal/agent/builder_studio_test.go` e `server/builder_studio_routes_test.go` (100% PASS); captura E2E Playwright desktop (1440x900) e mobile (390x844) em `docs/evidencias/screen-studio-builder-*.png` com console e HTTP 100% limpos em `browser-console-audit.json`.
 - **STATUS DA MISSÃO: FASE 09 IMPLEMENTADA — Egress Zero-Trust Unificado em todas as saídas de rede (connectors, media, deploy, MCP remoto, push, multillm, WhatsApp) com DNS pinning, verificação de peer, bloqueio estrito de IP privado/metadata/rebinding, isolamento de credenciais em redirects, limitação de payload anti-DoS, auditoria auditável (/api/agent/v1/egress/logs e /status) e suíte de testes de regressão anti-bypass**
 - **FASE 09:** Implementada política única e centralizada em `internal/agent/egress_zero_trust.go` e `internal/multillm/egress_zero_trust.go`. Toda requisição de saída resolve todos os IPs via DNS e rejeita o host se qualquer endereço for privado/loopback/link-local/metadata (`169.254.169.254`), CGNAT ou IPv4-mapped IPv6 (protegendo contra DNS rebinding). Dials são fixados exclusivamente nos IPs aprovados com remoção forçada de proxies ambientais e TLS hooks que pudessem burlar a resolução; verificação estrita de peer address; bloqueio de redirects cross-host e downgrade HTTPS->HTTP com descarte forçado de headers de credenciais (`Authorization`, `Cookie`, `X-Api-Key`); proteção contra resource exhaustion com `ReadBoundedBody`. Registrador de auditoria em memória com endpoints `/api/agent/v1/egress/logs` e `/api/agent/v1/egress/status`. Suíte completa de testes de bypass passando em `internal/agent`, `internal/multillm` e `server`.
 - **STATUS DA MISSÃO: FASE 08 IMPLEMENTADA — Agente Sempre-Ligado / Loop Autônomo do Company OS com supervisor contínuo, disparo de schedules, ciclos autônomos, freios HITL obrigatórios e retomada pós-restart**
@@ -85,6 +87,49 @@ automatizado + execução real reproduzível em navegador (desktop e mobile), se
 
 ## Histórico de sessões
 <!-- Mais recente no topo. Uma entrada por sessão de trabalho. -->
+### 2026-09-30 11:45 -03 — Gemini — FASE 10: STUDIO/BUILDERS INTERATIVO LIGADO AO BACKEND REAL (CANVAS, UNDO/REDO, PREVIEW, EXPORT RASTREÁVEL COM SHA-256 E DEPLOY ADAPTER)
+- **Implementação Go:**
+  - **1. Evolução do BuilderService e Rastreabilidade (`internal/agent/builder.go`):**
+    - Adicionados campos `ExportChecksum` e `ExportPath` à struct `BuilderProject` para persistência do hash SHA-256 do arquivo ZIP gerado.
+    - Adicionado método thread-safe `Root()` a `BuilderService` para localização segura dos arquivos do projeto e exports.
+    - Método `Export()` calcula automaticamente o checksum criptográfico SHA-256 do arquivo `.zip` gerado e persiste no estado do projeto.
+  - **2. Rotas HTTP do Studio Builder (`server/agent_routes.go`):**
+    - `GET /api/agent/v1/builders/:id`: consulta detalhada do projeto, histórico de versões e componentes visuais.
+    - `POST /api/agent/v1/builders/:id/export`: gera arquivo ZIP, calcula SHA-256 e retorna `checksum`, `archive_path` e `download_url`.
+    - `GET /api/agent/v1/builders/:id/download`: streaming do arquivo ZIP com headers `Content-Disposition`, `Content-Type: application/zip` e `X-Checksum-SHA256` rastreável.
+  - **3. Testes Go Completos (`internal/agent/builder_studio_test.go` e `server/builder_studio_routes_test.go`):**
+    - `TestStudioCanvasInteractiveWorkflow`: simula ciclo completo do editor: criação do projeto -> inserção de componentes visuais -> modificação/movimentação de coordenadas -> undo restaurando estado anterior -> redo reaplicando modificações -> preview gerando artifact com SHA-256 -> export criando ZIP e validando integridade bit-a-bit do checksum.
+    - `TestStudioBuilderRoutesInteractiveAndTraceableExport`: testa endpoints HTTP reais (`/builders`, `/visual`, `/undo`, `/redo`, `/preview`, `/export`, `/download`), validando headers e conteúdo do arquivo ZIP baixado.
+    - `TestStudioDeployRejectsWithoutCredentialsHonestGateStatus`: comprova que tentativa de deploy sem credenciais externas válidas é barrada com status honesto fail-closed (`BLOCKED_EXTERNAL`), sem fingir publicação bem-sucedida.
+- **Implementação Frontend & UI:**
+  - **1. Studio Canvas Editor (`app/ui/app/src/components/StudioCanvasPage.tsx` e `app/ui/app/src/routes/studio.tsx`):**
+    - Paleta esquerda com templates de componentes (Título, Parágrafo, Botão, Card, Métrica, Navbar) e modelos de projeto (Site, Dashboard, Slides, Jogo, App).
+    - Canvas central interativo com numeração, visualização estilizada, seleção, reordenação (mover para cima/baixo) e exclusão.
+    - Barra superior com nome do projeto, versão (`v10`), badge de tipo, botões de Desfazer (Undo) e Refazer (Redo), alternador de modo (Editor / Preview), botão Exportar ZIP com download automático e botão Deploy.
+    - Inspetor de propriedades na barra lateral direita para edição de textos, títulos, corpos, rótulos e valores em tempo real.
+    - Modo Live Preview com iframe sandboxed consumindo o endpoint real `/api/agent/v1/builders/:id/preview/index.html`.
+    - Modal de Deploy com aviso honesto de que credenciais externas (Vercel, Cloudflare, Netlify) são obrigatórias para publicação live (`BLOCKED_EXTERNAL`).
+    - Layout responsivo adaptado com faixa de adição rápida de componentes para dispositivos móveis.
+  - **2. Integração e Navegação:**
+    - Adicionada rota `/studio` com TanStack Router em `app/ui/app/src/routes/studio.tsx`.
+    - Botão "Abrir Studio" adicionado a `CreationsPage.tsx` e atalho "Studio" adicionado a `AppSidebar.tsx`.
+    - Tipos e chamadas de API adicionados a `app/ui/app/src/lib/agenticClient.ts`.
+- **E2E Playwright & Evidências Reais:**
+  - Script `app/ui/app/e2e/capture_studio_evidence.mjs` executado contra o backend real e frontend em execução local.
+  - Capturas salvas em `docs/evidencias/`:
+    - `screen-studio-builder-desktop.png` (1440x900, SHA-256: `4b5edd78...`)
+    - `screen-studio-builder-mobile.png` (390x844, SHA-256: `94c34a9b...`)
+  - Auditoria de console e requisições HTTP 100% limpas (0 erros) gravada em `docs/evidencias/browser-console-audit.json`.
+- **Gates Executados e Verificados:**
+  - `go build ./...`: PASS
+  - `go test -run "Studio|Builder|Canvas|Export" ./internal/agent ./server`: 16 testes PASS
+  - `go test ./internal/agent ./server`: PASS
+  - `npx tsc -b`, `npm run lint`, `npx vitest run` (36 arquivos, 255 testes), `npm run build`: PASS
+  - `node scripts/verify-contracts.mjs`: PASS
+  - `bash scripts/check-class-a-plus-integrity.sh`: PASS
+  - `gofmt -l internal/agent internal/multillm server/agent_routes.go`: CLEAN (zero linhas)
+- **Próximo passo:** Monitorar workflows no GitHub Actions até ficarem verdes, mantendo a integridade Classe A+.
+
 ### 2026-09-30 11:15 -03 — Gemini — FASE 09: EGRESS ZERO-TRUST UNIFICADO (POLÍTICA ÚNICA, AUDITORIA E REGRESSÕES DE BYPASS)
 - **Implementação Go:**
   - **1. Motor Egress Zero-Trust Centralizado (`internal/agent/egress_zero_trust.go`):**

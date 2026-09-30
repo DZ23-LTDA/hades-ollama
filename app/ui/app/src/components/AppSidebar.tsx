@@ -19,6 +19,7 @@ import {
   ArrowRightOnRectangleIcon,
   CommandLineIcon,
   BellIcon,
+  PencilSquareIcon,
 } from "@heroicons/react/24/outline";
 import { ChatIcon } from "@/components/ChatIcon";
 import { SearchDialog } from "@/components/SearchDialog";
@@ -34,6 +35,7 @@ export type AppSection =
   | "settings"
   | "library"
   | "creations"
+  | "studio"
   | "projects"
   | "scheduled"
   | "skills"
@@ -229,6 +231,13 @@ export function AppNavigation({ current }: { current: AppSection }) {
         current={current}
         section="creations"
         icon={SparklesIcon}
+      />
+      <TargetLink
+        href="/studio"
+        label="Studio"
+        current={current}
+        section="studio"
+        icon={PencilSquareIcon}
       />
       <TargetLink
         href="/scheduled"

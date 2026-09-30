@@ -347,3 +347,55 @@ export type SupervisorStatus = {
 export const getSupervisorStatus = () => agentFetch<SupervisorStatus>("/api/agent/v1/supervisor/status");
 export const setSupervisorConfig = (config: { enabled: boolean }) => agentFetch<SupervisorStatus>("/api/agent/v1/supervisor/config", { method: "POST", body: JSON.stringify(config) });
 export const triggerSupervisorTick = () => agentFetch<{ result: unknown; status: SupervisorStatus }>("/api/agent/v1/supervisor/tick", { method: "POST", body: "{}" });
+
+export type VisualComponent = {
+  id: string;
+  type: string;
+  props?: Record<string, string>;
+  style?: Record<string, string>;
+  bindings?: Record<string, string>;
+  events?: Record<string, string>;
+  children?: VisualComponent[];
+  x?: number;
+  y?: number;
+  width?: number;
+  height?: number;
+};
+
+export type BuilderProject = {
+  id: string;
+  organization_id: string;
+  name: string;
+  kind: "website" | "app" | "game" | "slides" | "dashboard";
+  entry: string;
+  version: number;
+  status: string;
+  root: string;
+  preview_path?: string;
+  published_path?: string;
+  export_checksum?: string;
+  export_path?: string;
+  created_at: string;
+  updated_at: string;
+  components?: VisualComponent[];
+  undo_stack?: VisualComponent[][];
+  redo_stack?: VisualComponent[][];
+};
+
+export type BuilderSpec = {
+  name: string;
+  kind: "website" | "app" | "game" | "slides" | "dashboard";
+  entry?: string;
+  files?: Record<string, string>;
+  components?: VisualComponent[];
+};
+
+export const listBuilders = () => agentFetch<{ projects: BuilderProject[] }>("/api/agent/v1/builders");
+export const getBuilder = (id: string) => agentFetch<BuilderProject>(`/api/agent/v1/builders/${encodeURIComponent(id)}`);
+export const createBuilder = (spec: BuilderSpec) => agentFetch<BuilderProject>("/api/agent/v1/builders", { method: "POST", body: JSON.stringify(spec) });
+export const updateBuilderVisual = (id: string, components: VisualComponent[]) => agentFetch<BuilderProject>(`/api/agent/v1/builders/${encodeURIComponent(id)}/visual`, { method: "POST", body: JSON.stringify({ components }) });
+export const undoBuilder = (id: string) => agentFetch<BuilderProject>(`/api/agent/v1/builders/${encodeURIComponent(id)}/undo`, { method: "POST", body: "{}" });
+export const redoBuilder = (id: string) => agentFetch<BuilderProject>(`/api/agent/v1/builders/${encodeURIComponent(id)}/redo`, { method: "POST", body: "{}" });
+export const previewBuilder = (id: string) => agentFetch<{ project: BuilderProject; artifact: unknown }>(`/api/agent/v1/builders/${encodeURIComponent(id)}/preview`, { method: "POST", body: "{}" });
+export const exportBuilder = (id: string) => agentFetch<{ project: BuilderProject; archive_path: string; checksum: string; sha256: string; download_url: string }>(`/api/agent/v1/builders/${encodeURIComponent(id)}/export`, { method: "POST", body: "{}" });
+export const deployBuilder = (id: string, provider: string, payload: { target?: string; approval_id?: string; nonce?: string }) => agentFetch<{ status: string; url?: string }>(`/api/agent/v1/builders/${encodeURIComponent(id)}/deploy/${encodeURIComponent(provider)}`, { method: "POST", body: JSON.stringify(payload) });

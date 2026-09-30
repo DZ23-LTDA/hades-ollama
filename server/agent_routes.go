@@ -402,12 +402,14 @@ func (a *agentAPI) register(r *gin.Engine) {
 	group.GET("/metrics", a.metrics)
 	group.POST("/projects/:id/ingest", a.ingestProject)
 	group.GET("/builders", a.builders)
+	group.GET("/builders/:id", a.getBuilder)
 	group.POST("/builders", a.createBuilder)
 	group.POST("/builders/:id/visual", a.updateBuilderVisual)
 	group.POST("/builders/:id/undo", a.undoBuilder)
 	group.POST("/builders/:id/redo", a.redoBuilder)
 	group.POST("/builders/:id/preview", a.previewBuilder)
 	group.POST("/builders/:id/export", a.exportBuilder)
+	group.GET("/builders/:id/download", a.downloadBuilder)
 	group.POST("/builders/:id/export/:format", a.exportProfessionalBuilder)
 	group.POST("/builders/:id/publish", a.publishBuilder)
 	group.GET("/deployments", a.deployments)
@@ -2338,7 +2340,51 @@ func (a *agentAPI) exportBuilder(c *gin.Context) {
 		writeAgentError(c, statusForAgentError(err), err)
 		return
 	}
-	c.JSON(http.StatusAccepted, gin.H{"project": project, "archive_path": archivePath})
+	checksum := project.ExportChecksum
+	if checksum == "" {
+		if data, err := os.ReadFile(archivePath); err == nil {
+			h := sha256.Sum256(data)
+			checksum = hex.EncodeToString(h[:])
+		}
+	}
+	c.JSON(http.StatusAccepted, gin.H{
+		"project":      project,
+		"archive_path": archivePath,
+		"checksum":     checksum,
+		"sha256":       checksum,
+		"download_url": "/api/agent/v1/builders/" + project.ID + "/download",
+	})
+}
+
+func (a *agentAPI) getBuilder(c *gin.Context) {
+	project, err := a.builderForRequest(c)
+	if err != nil {
+		writeAgentError(c, statusForAgentError(err), err)
+		return
+	}
+	c.JSON(http.StatusOK, project)
+}
+
+func (a *agentAPI) downloadBuilder(c *gin.Context) {
+	project, err := a.builderForRequest(c)
+	if err != nil {
+		writeAgentError(c, statusForAgentError(err), err)
+		return
+	}
+	archivePath := filepath.Join(a.runtime.Builder().Root(), project.ID+".zip")
+	data, err := os.ReadFile(archivePath)
+	if err != nil {
+		writeAgentError(c, http.StatusNotFound, errors.New("project archive has not been exported yet"))
+		return
+	}
+	h := sha256.Sum256(data)
+	checksum := hex.EncodeToString(h[:])
+
+	filename := strings.ReplaceAll(project.Name, " ", "_") + ".zip"
+	c.Header("Content-Disposition", "attachment; filename=\""+filename+"\"")
+	c.Header("Content-Type", "application/zip")
+	c.Header("X-Checksum-SHA256", checksum)
+	c.Data(http.StatusOK, "application/zip", data)
 }
 
 func (a *agentAPI) exportProfessionalBuilder(c *gin.Context) {

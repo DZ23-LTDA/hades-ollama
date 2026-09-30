@@ -14,6 +14,7 @@ import {
   ArrowDownTrayIcon,
   EyeIcon,
   CodeBracketSquareIcon,
+  PencilSquareIcon,
 } from "@heroicons/react/24/outline";
 
 type CreationCategory = "all" | "sites" | "games" | "mobile";
@@ -93,11 +94,18 @@ export function CreationsPage() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Buscar criações..."
-                className="w-full rounded-xl border border-neutral-300 bg-white py-2 pl-9 pr-3 text-sm text-neutral-900 outline-none transition-all placeholder:text-neutral-400 focus:border-neutral-900 focus:ring-1 focus:ring-neutral-900 dark:border-neutral-700 dark:bg-neutral-800 dark:text-white dark:focus:border-white dark:focus:ring-white"
-              />
-            </div>
-            <Link
-              to="/agentic"
+              className="w-full rounded-xl border border-neutral-300 bg-white py-2 pl-9 pr-3 text-sm text-neutral-900 outline-none transition-all placeholder:text-neutral-400 focus:border-neutral-900 focus:ring-1 focus:ring-neutral-900 dark:border-neutral-700 dark:bg-neutral-800 dark:text-white dark:focus:border-white dark:focus:ring-white"
+            />
+          </div>
+          <Link
+            to="/studio"
+            className="inline-flex shrink-0 items-center gap-2 rounded-xl border border-neutral-200 bg-white px-3.5 py-2 text-sm font-medium text-neutral-800 transition hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-750"
+          >
+            <PencilSquareIcon className="h-4 w-4" />
+            Abrir Studio
+          </Link>
+          <Link
+            to="/agentic"
               search={{ auto_run: true, prompt: "Construir um aplicativo web interativo completo com interface moderna" }}
               className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-neutral-900 px-4 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90 dark:bg-white dark:text-neutral-900"
             >

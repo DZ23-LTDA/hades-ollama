@@ -3,6 +3,8 @@ package agent
 import (
 	"archive/zip"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -38,6 +40,8 @@ type BuilderProject struct {
 	Root           string              `json:"root"`
 	PreviewPath    string              `json:"preview_path,omitempty"`
 	PublishedPath  string              `json:"published_path,omitempty"`
+	ExportChecksum string              `json:"export_checksum,omitempty"`
+	ExportPath     string              `json:"export_path,omitempty"`
 	CreatedAt      time.Time           `json:"created_at"`
 	UpdatedAt      time.Time           `json:"updated_at"`
 	Components     []VisualComponent   `json:"components,omitempty"`
@@ -91,6 +95,12 @@ func NewBuilderService(root string) (*BuilderService, error) {
 		return nil, err
 	}
 	return service, nil
+}
+
+func (b *BuilderService) Root() string {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.root
 }
 
 func (b *BuilderService) Create(ctx context.Context, spec BuilderSpec) (BuilderProject, error) {
@@ -365,6 +375,17 @@ func (b *BuilderService) Export(ctx context.Context, id string) (BuilderProject,
 	}
 	if err != nil {
 		return BuilderProject{}, "", err
+	}
+	data, readErr := os.ReadFile(path)
+	if readErr == nil {
+		hasher := sha256.New()
+		hasher.Write(data)
+		project.ExportChecksum = hex.EncodeToString(hasher.Sum(nil))
+		project.ExportPath = path
+		b.mu.Lock()
+		b.projects[id] = project
+		_ = b.persistLocked()
+		b.mu.Unlock()
 	}
 	return project, path, nil
 }

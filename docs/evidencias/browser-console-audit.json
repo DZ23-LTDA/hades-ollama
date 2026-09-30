@@ -65,6 +65,30 @@
       "httpFailures": [],
       "clean": true,
       "timestamp": "2026-09-30T13:56:44.184Z"
+    },
+    {
+      "screen": "Studio Builders Interactive Real Backend",
+      "path": "/studio",
+      "title": "Studio",
+      "timestamp": "2026-09-30T14:40:35.562Z",
+      "desktopEvidence": "screen-studio-builder-desktop.png",
+      "mobileEvidence": "screen-studio-builder-mobile.png",
+      "consoleErrors": [],
+      "httpFailures": [],
+      "errorsCount": 0,
+      "clean": true
+    },
+    {
+      "screen": "Studio Builders Interactive Real Backend",
+      "path": "/studio",
+      "title": "Studio",
+      "timestamp": "2026-09-30T14:43:09.949Z",
+      "desktopEvidence": "screen-studio-builder-desktop.png",
+      "mobileEvidence": "screen-studio-builder-mobile.png",
+      "consoleErrors": [],
+      "httpFailures": [],
+      "errorsCount": 0,
+      "clean": true
     }
   ],
   "hasErrors": false,
@@ -94,6 +118,14 @@
       "desktop_png": "docs/evidencias/screen-whatsapp-gateway-desktop.png",
       "mobile_png": "docs/evidencias/screen-whatsapp-gateway-mobile.png",
       "captured_at": "2026-09-30T13:09:58.511Z"
+    },
+    "studio_builder": {
+      "status": 200,
+      "clean_console": true,
+      "errors": [],
+      "desktop_png": "docs/evidencias/screen-studio-builder-desktop.png",
+      "mobile_png": "docs/evidencias/screen-studio-builder-mobile.png",
+      "captured_at": "2026-09-30T14:43:09.949Z"
     }
   }
 }

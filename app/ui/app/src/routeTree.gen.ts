@@ -12,6 +12,7 @@
 
 import { Route as rootRoute } from './routes/__root'
 import { Route as TasksImport } from './routes/tasks'
+import { Route as StudioImport } from './routes/studio'
 import { Route as SkillsImport } from './routes/skills'
 import { Route as SettingsImport } from './routes/settings'
 import { Route as ScheduledImport } from './routes/scheduled'
@@ -34,6 +35,12 @@ import { Route as CChatIdImport } from './routes/c.$chatId'
 const TasksRoute = TasksImport.update({
   id: '/tasks',
   path: '/tasks',
+  getParentRoute: () => rootRoute,
+} as any)
+
+const StudioRoute = StudioImport.update({
+  id: '/studio',
+  path: '/studio',
   getParentRoute: () => rootRoute,
 } as any)
 
@@ -242,6 +249,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SkillsImport
       parentRoute: typeof rootRoute
     }
+    '/studio': {
+      id: '/studio'
+      path: '/studio'
+      fullPath: '/studio'
+      preLoaderRoute: typeof StudioImport
+      parentRoute: typeof rootRoute
+    }
     '/tasks': {
       id: '/tasks'
       path: '/tasks'
@@ -277,6 +291,7 @@ export interface FileRoutesByFullPath {
   '/scheduled': typeof ScheduledRoute
   '/settings': typeof SettingsRoute
   '/skills': typeof SkillsRoute
+  '/studio': typeof StudioRoute
   '/tasks': typeof TasksRoute
   '/c/$chatId': typeof CChatIdRoute
 }
@@ -297,6 +312,7 @@ export interface FileRoutesByTo {
   '/scheduled': typeof ScheduledRoute
   '/settings': typeof SettingsRoute
   '/skills': typeof SkillsRoute
+  '/studio': typeof StudioRoute
   '/tasks': typeof TasksRoute
   '/c/$chatId': typeof CChatIdRoute
 }
@@ -318,6 +334,7 @@ export interface FileRoutesById {
   '/scheduled': typeof ScheduledRoute
   '/settings': typeof SettingsRoute
   '/skills': typeof SkillsRoute
+  '/studio': typeof StudioRoute
   '/tasks': typeof TasksRoute
   '/c/$chatId': typeof CChatIdRoute
 }
@@ -340,6 +357,7 @@ export interface FileRouteTypes {
     | '/scheduled'
     | '/settings'
     | '/skills'
+    | '/studio'
     | '/tasks'
     | '/c/$chatId'
   fileRoutesByTo: FileRoutesByTo
@@ -359,6 +377,7 @@ export interface FileRouteTypes {
     | '/scheduled'
     | '/settings'
     | '/skills'
+    | '/studio'
     | '/tasks'
     | '/c/$chatId'
   id:
@@ -378,6 +397,7 @@ export interface FileRouteTypes {
     | '/scheduled'
     | '/settings'
     | '/skills'
+    | '/studio'
     | '/tasks'
     | '/c/$chatId'
   fileRoutesById: FileRoutesById
@@ -399,6 +419,7 @@ export interface RootRouteChildren {
   ScheduledRoute: typeof ScheduledRoute
   SettingsRoute: typeof SettingsRoute
   SkillsRoute: typeof SkillsRoute
+  StudioRoute: typeof StudioRoute
   TasksRoute: typeof TasksRoute
   CChatIdRoute: typeof CChatIdRoute
 }
@@ -419,6 +440,7 @@ const rootRouteChildren: RootRouteChildren = {
   ScheduledRoute: ScheduledRoute,
   SettingsRoute: SettingsRoute,
   SkillsRoute: SkillsRoute,
+  StudioRoute: StudioRoute,
   TasksRoute: TasksRoute,
   CChatIdRoute: CChatIdRoute,
 }
@@ -448,6 +470,7 @@ export const routeTree = rootRoute
         "/scheduled",
         "/settings",
         "/skills",
+        "/studio",
         "/tasks",
         "/c/$chatId"
       ]
@@ -496,6 +519,9 @@ export const routeTree = rootRoute
     },
     "/skills": {
       "filePath": "skills.tsx"
+    },
+    "/studio": {
+      "filePath": "studio.tsx"
     },
     "/tasks": {
       "filePath": "tasks.tsx"
