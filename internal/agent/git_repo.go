@@ -155,6 +155,9 @@ func validateGitMetadataTree(root *os.Root) error {
 	entries := 0
 	err := fs.WalkDir(root.FS(), ".git", func(path string, entry fs.DirEntry, walkErr error) error {
 		if walkErr != nil {
+			if errors.Is(walkErr, os.ErrNotExist) {
+				return nil
+			}
 			return walkErr
 		}
 		entries++
@@ -163,6 +166,9 @@ func validateGitMetadataTree(root *os.Root) error {
 		}
 		info, err := entry.Info()
 		if err != nil {
+			if errors.Is(err, os.ErrNotExist) {
+				return nil
+			}
 			return err
 		}
 		if info.Mode()&os.ModeSymlink != 0 || (!info.IsDir() && !info.Mode().IsRegular()) {
