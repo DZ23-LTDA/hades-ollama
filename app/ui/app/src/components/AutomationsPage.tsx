@@ -1,13 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link } from "@tanstack/react-router";
-import {
-  listSchedules,
-  createSchedule,
-  deleteSchedule,
-  updateSchedule,
-  createMission,
-  type AgentSchedule,
-} from "@/lib/agenticClient";
+import { type AgentSchedule } from "@/lib/agenticClient";
+import { API_BASE } from "@/lib/config";
 import { AppSidebar } from "@/components/AppSidebar";
 import { SidebarLayout } from "@/components/layout/layout";
 import {
@@ -33,9 +27,10 @@ export function AutomationsPage() {
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   const loadData = () => {
-    void listSchedules()
-      .then((res) => {
-        setSchedules(res.schedules || []);
+    fetch(`${API_BASE}/api/agent/v1/schedules`)
+      .then((res) => (res.ok ? res.json() : { schedules: [] }))
+      .then((data: { schedules?: AgentSchedule[] }) => {
+        setSchedules(data.schedules || []);
         setLoading(false);
       })
       .catch(() => setLoading(false));
@@ -49,11 +44,16 @@ export function AutomationsPage() {
     if (!objective.trim()) return;
     setSaving(true);
     try {
-      await createSchedule({
-        objective: objective.trim(),
-        interval_seconds: intervalSeconds,
-        enabled: true,
+      const res = await fetch(`${API_BASE}/api/agent/v1/schedules`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          objective: objective.trim(),
+          interval_seconds: intervalSeconds,
+          enabled: true,
+        }),
       });
+      if (!res.ok) throw new Error("Falha ao salvar no backend");
       setSuccessMsg("Automação criada com sucesso!");
       setTimeout(() => setSuccessMsg(null), 3000);
       setNewObjective("");
@@ -68,10 +68,15 @@ export function AutomationsPage() {
 
   const handleTriggerNow = async (sch: AgentSchedule) => {
     try {
-      await createMission({
-        objective: `[Execução Manual] ${sch.objective}`,
-        auto_run: true,
+      const res = await fetch(`${API_BASE}/api/agent/v1/missions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          objective: `[Execução Manual] ${sch.objective}`,
+          auto_run: true,
+        }),
       });
+      if (!res.ok) throw new Error("Falha ao disparar missão");
       alert(`Missão disparada com sucesso para: "${sch.objective}"! Veja o progresso na aba Agentes.`);
     } catch (e) {
       alert(e instanceof Error ? e.message : "Falha ao executar");
@@ -80,7 +85,11 @@ export function AutomationsPage() {
 
   const handleToggle = async (sch: AgentSchedule) => {
     try {
-      await updateSchedule(sch.id, { enabled: !sch.enabled });
+      await fetch(`${API_BASE}/api/agent/v1/schedules/${sch.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ enabled: !sch.enabled }),
+      });
       loadData();
     } catch (e) {
       alert(e instanceof Error ? e.message : "Falha ao alterar estado");
@@ -90,7 +99,9 @@ export function AutomationsPage() {
   const handleDelete = async (id: string) => {
     if (!confirm("Tem certeza que deseja excluir esta automação?")) return;
     try {
-      await deleteSchedule(id);
+      await fetch(`${API_BASE}/api/agent/v1/schedules/${id}`, {
+        method: "DELETE",
+      });
       loadData();
     } catch (e) {
       alert(e instanceof Error ? e.message : "Falha ao excluir");

@@ -14,7 +14,6 @@ import { AppSidebar } from "@/components/AppSidebar";
 import { SidebarLayout } from "@/components/layout/layout";
 import { SettingsTabs } from "@/components/SettingsTabs";
 import { API_BASE } from "@/lib/config";
-import { endpoints, toolSetups } from "@/lib/endpoint";
 import { Link } from "@tanstack/react-router";
 
 function CopyButton({ text, label }: { text: string; label: string }) {
@@ -47,6 +46,8 @@ export function EndpointPage() {
   const [models, setModels] = useState<string[]>([]);
   const [model, setModel] = useState("");
   const [hostname, setHostname] = useState("Este computador");
+  const [osName, setOsName] = useState("Local-First");
+  const [serverVersion, setServerVersion] = useState("");
   const [remoteRequested, setRemoteRequested] = useState(false);
 
   useEffect(() => {
@@ -65,7 +66,17 @@ export function EndpointPage() {
     fetch(`${API_BASE}/api/v1/host`)
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
-        if (data && data.hostname) setHostname(data.hostname);
+        if (data && data.hostname) {
+          setHostname(data.hostname);
+          if (data.os) setOsName(data.os === "windows" ? "Windows" : data.os === "darwin" ? "macOS" : "Linux");
+        }
+      })
+      .catch(() => {});
+
+    fetch(`${API_BASE}/api/version`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data && data.version) setServerVersion(data.version);
       })
       .catch(() => {});
   }, []);
@@ -117,7 +128,7 @@ export function EndpointPage() {
                           <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
                           Online
                         </span>
-                        <span className="text-xs text-neutral-400">• Windows / Local-First</span>
+                        <span className="text-xs text-neutral-400">• {osName} / Local-First {serverVersion ? `(v${serverVersion})` : ""}</span>
                       </div>
                     </div>
                   </div>
@@ -225,23 +236,42 @@ export function EndpointPage() {
             </div>
 
             <ul className="mt-5 space-y-3">
-              {endpoints().map((item) => (
-                <li
-                  key={item.label}
-                  className="flex items-center gap-3 rounded-xl bg-neutral-50 p-3.5 dark:bg-neutral-900"
-                >
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500">
-                      {item.label}
-                    </p>
-                    <code className="mt-0.5 block truncate font-mono text-sm text-neutral-900 dark:text-neutral-100">
-                      {item.url}
-                    </code>
-                    <p className="mt-0.5 text-[11px] text-neutral-400">{item.hint}</p>
-                  </div>
-                  <CopyButton text={item.url} label={item.label} />
-                </li>
-              ))}
+              <li className="flex items-center gap-3 rounded-xl bg-neutral-50 p-3.5 dark:bg-neutral-900">
+                <div className="min-w-0 flex-1">
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500">
+                    Ollama Nativo
+                  </p>
+                  <code className="mt-0.5 block truncate font-mono text-sm text-neutral-900 dark:text-neutral-100">
+                    {API_BASE}
+                  </code>
+                  <p className="mt-0.5 text-[11px] text-neutral-400">/api/chat, /api/generate, /api/tags, /api/agent</p>
+                </div>
+                <CopyButton text={API_BASE} label="Ollama Nativo" />
+              </li>
+              <li className="flex items-center gap-3 rounded-xl bg-neutral-50 p-3.5 dark:bg-neutral-900">
+                <div className="min-w-0 flex-1">
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500">
+                    OpenAI-Compatible
+                  </p>
+                  <code className="mt-0.5 block truncate font-mono text-sm text-neutral-900 dark:text-neutral-100">
+                    {`${API_BASE}/v1`}
+                  </code>
+                  <p className="mt-0.5 text-[11px] text-neutral-400">chat/completions, responses, models</p>
+                </div>
+                <CopyButton text={`${API_BASE}/v1`} label="OpenAI-Compatible" />
+              </li>
+              <li className="flex items-center gap-3 rounded-xl bg-neutral-50 p-3.5 dark:bg-neutral-900">
+                <div className="min-w-0 flex-1">
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500">
+                    Anthropic-Compatible (Claude Code)
+                  </p>
+                  <code className="mt-0.5 block truncate font-mono text-sm text-neutral-900 dark:text-neutral-100">
+                    {API_BASE}
+                  </code>
+                  <p className="mt-0.5 text-[11px] text-neutral-400">/v1/messages (Claude Code, SDK Anthropic)</p>
+                </div>
+                <CopyButton text={API_BASE} label="Anthropic-Compatible" />
+              </li>
             </ul>
           </section>
 
@@ -270,27 +300,38 @@ export function EndpointPage() {
             </div>
 
             <ul className="mt-4 space-y-4">
-              {toolSetups(model).map((setup) => (
-                <li
-                  key={setup.id}
-                  className="rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm dark:border-neutral-800 dark:bg-neutral-950"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <h4 className="text-sm font-bold text-neutral-900 dark:text-white">
-                        {setup.title}
-                      </h4>
-                      <p className="mt-0.5 text-xs text-neutral-500">
-                        {setup.description}
-                      </p>
-                    </div>
-                    <CopyButton text={setup.code} label={setup.title} />
+              <li className="rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm dark:border-neutral-800 dark:bg-neutral-950">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <h4 className="text-sm font-bold text-neutral-900 dark:text-white">
+                      Claude Code
+                    </h4>
+                    <p className="mt-0.5 text-xs text-neutral-500">
+                      Execução com modelos locais através da rota compatível.
+                    </p>
                   </div>
-                  <pre className="mt-3 overflow-x-auto rounded-xl bg-neutral-900 p-3.5 font-mono text-xs leading-5 text-neutral-100 dark:bg-black">
-                    {setup.code}
-                  </pre>
-                </li>
-              ))}
+                  <CopyButton text={`ollama launch claude --model ${model || "qwen2.5-coder:7b"}`} label="Claude Code" />
+                </div>
+                <pre className="mt-3 overflow-x-auto rounded-xl bg-neutral-900 p-3.5 font-mono text-xs leading-5 text-neutral-100 dark:bg-black">
+                  {`ollama launch claude --model ${model || "qwen2.5-coder:7b"}`}
+                </pre>
+              </li>
+              <li className="rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm dark:border-neutral-800 dark:bg-neutral-950">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <h4 className="text-sm font-bold text-neutral-900 dark:text-white">
+                      Codex CLI
+                    </h4>
+                    <p className="mt-0.5 text-xs text-neutral-500">
+                      Ollama configura e abre o Codex com o modelo escolhido.
+                    </p>
+                  </div>
+                  <CopyButton text={`ollama launch codex --model ${model || "qwen2.5-coder:7b"}`} label="Codex CLI" />
+                </div>
+                <pre className="mt-3 overflow-x-auto rounded-xl bg-neutral-900 p-3.5 font-mono text-xs leading-5 text-neutral-100 dark:bg-black">
+                  {`ollama launch codex --model ${model || "qwen2.5-coder:7b"}`}
+                </pre>
+              </li>
             </ul>
           </section>
         </div>

@@ -15,11 +15,8 @@ import { SidebarLayout } from "@/components/layout/layout";
 import { connectorIcon } from "@/lib/connectorIcons";
 import { ConnectorsManagePanel } from "@/components/ConnectorsManagePanel";
 import { ConnectorQuickConnect } from "@/components/ConnectorQuickConnect";
+import { API_BASE } from "@/lib/config";
 import {
-  listConnectorCatalog,
-  listConnectors,
-  listMCPServers,
-  registerConnector,
   type AgentConnector,
   type AgentConnectorCatalogEntry,
   type AgentMCPServer,
@@ -103,9 +100,9 @@ export function ConnectorsPage() {
     setError(null);
     try {
       const [catalogResult, connectorResult, mcpResult] = await Promise.all([
-        listConnectorCatalog(),
-        listConnectors(),
-        listMCPServers(),
+        fetch(`${API_BASE}/api/agent/v1/connectors/catalog`).then((r) => (r.ok ? r.json() : { connectors: [] })),
+        fetch(`${API_BASE}/api/agent/v1/connectors`).then((r) => (r.ok ? r.json() : { connectors: [] })),
+        fetch(`${API_BASE}/api/agent/v1/mcp/servers`).then((r) => (r.ok ? r.json() : { servers: [] })),
       ]);
       setCatalog(catalogResult.connectors ?? []);
       setConnectors(connectorResult.connectors ?? []);
@@ -125,19 +122,24 @@ export function ConnectorsPage() {
     if (!customName.trim() || !customBaseUrl.trim()) return;
     setCreating(true);
     try {
-      await registerConnector({
-        id: customName.toLowerCase().replace(/\s+/g, "-"),
-        provider: customName.trim(),
-        base_url: customBaseUrl.trim(),
-        token_env: customTokenEnv.trim() || undefined,
-        operations: [
-          {
-            name: "default",
-            methods: ["GET", "POST", "PUT", "DELETE"],
-            path_prefixes: ["/"],
-          },
-        ],
+      const res = await fetch(`${API_BASE}/api/agent/v1/connectors`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: customName.toLowerCase().replace(/\s+/g, "-"),
+          provider: customName.trim(),
+          base_url: customBaseUrl.trim(),
+          token_env: customTokenEnv.trim() || undefined,
+          operations: [
+            {
+              name: "default",
+              methods: ["GET", "POST", "PUT", "DELETE"],
+              path_prefixes: ["/"],
+            },
+          ],
+        }),
       });
+      if (!res.ok) throw new Error("Falha ao registrar conector no backend");
       setShowCreateModal(false);
       setCustomName("");
       setCustomBaseUrl("");

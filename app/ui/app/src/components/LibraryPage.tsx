@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import { Link } from "@tanstack/react-router";
-import { listMissions, type AgentMission, type AgentArtifact } from "@/lib/agenticClient";
+import { type AgentMission, type AgentArtifact } from "@/lib/agenticClient";
 import { API_BASE } from "@/lib/config";
 import { AppSidebar } from "@/components/AppSidebar";
 import { SidebarLayout } from "@/components/layout/layout";
@@ -38,12 +38,15 @@ export function LibraryPage() {
 
   useEffect(() => {
     let active = true;
-    void listMissions().then((res) => {
-      if (active) {
-        setMissions(res.missions || []);
-        setLoading(false);
-      }
-    }).catch(() => {
+    fetch(`${API_BASE}/api/agent/v1/missions`)
+      .then((res) => (res.ok ? res.json() : { missions: [] }))
+      .then((data: { missions?: AgentMission[] }) => {
+        if (active) {
+          setMissions(data.missions || []);
+          setLoading(false);
+        }
+      })
+      .catch(() => {
       if (active) setLoading(false);
     });
     return () => {

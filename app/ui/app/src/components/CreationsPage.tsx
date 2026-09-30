@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import { Link } from "@tanstack/react-router";
-import { listMissions, type AgentMission, type AgentArtifact } from "@/lib/agenticClient";
+import { type AgentArtifact } from "@/lib/agenticClient";
 import { API_BASE } from "@/lib/config";
 import { AppSidebar } from "@/components/AppSidebar";
 import { SidebarLayout } from "@/components/layout/layout";
@@ -31,65 +31,31 @@ interface CreationItem {
 }
 
 export function CreationsPage() {
-  const [missions, setMissions] = useState<AgentMission[]>([]);
+  const [creationsList, setCreationsList] = useState<CreationItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState<CreationCategory>("all");
 
   useEffect(() => {
     let active = true;
-    void listMissions().then((res) => {
-      if (active) {
-        setMissions(res.missions || []);
-        setLoading(false);
-      }
-    }).catch(() => {
-      if (active) setLoading(false);
-    });
+    fetch(`${API_BASE}/api/agent/v1/creations`)
+      .then((res) => (res.ok ? res.json() : { creations: [] }))
+      .then((data: { creations?: CreationItem[] }) => {
+        if (active) {
+          setCreationsList(data.creations || []);
+          setLoading(false);
+        }
+      })
+      .catch(() => {
+        if (active) setLoading(false);
+      });
     return () => {
       active = false;
     };
   }, []);
 
-  // Filtrar artefatos executáveis (HTML, sites, jogos, apps)
-  const creations: CreationItem[] = useMemo(() => {
-    const list: CreationItem[] = [];
-    for (const m of missions) {
-      if (m.artifacts && m.artifacts.length > 0) {
-        for (const art of m.artifacts) {
-          const lower = art.name.toLowerCase();
-          const objLower = m.objective.toLowerCase();
-          const isWeb = lower.endsWith(".html") || lower.endsWith(".htm") || lower.endsWith(".svg") || art.media_type?.includes("html");
-          if (isWeb) {
-            let cat: CreationCategory = "sites";
-            let label = "Site / Web App";
-            if (lower.includes("game") || lower.includes("jogo") || objLower.includes("game") || objLower.includes("jogo") || lower.includes("snake") || lower.includes("tetris")) {
-              cat = "games";
-              label = "Jogo Interativo";
-            } else if (lower.includes("mobile") || lower.includes("app") || objLower.includes("mobile") || objLower.includes("celular")) {
-              cat = "mobile";
-              label = "Aplicativo Móvel";
-            }
-            list.push({
-              id: `${m.id}-${art.id}`,
-              name: art.name,
-              category: cat,
-              categoryLabel: label,
-              missionId: m.id,
-              missionObjective: m.objective,
-              createdAt: m.created_at,
-              previewUrl: `${API_BASE}/api/agent/v1/missions/${m.id}/artifacts/${art.id}/content`,
-              artifact: art,
-            });
-          }
-        }
-      }
-    }
-    return list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-  }, [missions]);
-
   const filteredCreations = useMemo(() => {
-    return creations.filter((item) => {
+    return creationsList.filter((item) => {
       const matchesCat = activeCategory === "all" || item.category === activeCategory;
       const matchesSearch =
         search === "" ||
@@ -97,7 +63,7 @@ export function CreationsPage() {
         item.missionObjective.toLowerCase().includes(search.toLowerCase());
       return matchesCat && matchesSearch;
     });
-  }, [creations, activeCategory, search]);
+  }, [creationsList, activeCategory, search]);
 
   const categories: Array<{ id: CreationCategory; label: string; icon: React.ReactNode }> = [
     { id: "all", label: "Todos", icon: <SparklesIcon className="h-4 w-4" /> },

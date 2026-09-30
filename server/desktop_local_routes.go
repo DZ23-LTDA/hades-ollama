@@ -115,14 +115,20 @@ func (s *Server) registerDesktopLocalRoutes(r *gin.Engine) {
 	})
 
 	r.POST("/api/agent/v1/personalization", func(c *gin.Context) {
-		var body map[string]any
-		if err := c.ShouldBindJSON(&body); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
-			return
-		}
-		c.JSON(http.StatusOK, gin.H{
-			"status": "updated",
-			"data":   body,
+			var body map[string]any
+			if err := c.ShouldBindJSON(&body); err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
+				return
+			}
+			c.JSON(http.StatusOK, gin.H{
+				"status": "updated",
+				"data":   body,
+			})
 		})
-	})
-}
+
+		r.GET("/api/agent/v1/creations", func(c *gin.Context) {
+			c.JSON(http.StatusOK, gin.H{
+				"creations": []gin.H{},
+			})
+		})
+	}

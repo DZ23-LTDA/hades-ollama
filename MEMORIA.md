@@ -78,6 +78,16 @@ automatizado + execução real reproduzível em navegador (desktop e mobile), se
 
 ## Histórico de sessões
 <!-- Mais recente no topo. Uma entrada por sessão de trabalho. -->
+### 2026-09-30 01:10 -03 — Manus — PARTE 2 DE 3: 5 TELAS 100% FUNCIONAIS E LIGADAS AO BACKEND REAL
+- **O que foi feito:**
+  - **1. LibraryPage.tsx:** Removidos dados mock; ligado diretamente a `GET /api/agent/v1/missions` via `fetch()`, consolidando os artefatos reais das missões do runtime, com suporte a filtros de mídia e busca real e empty state autêntico.
+  - **2. CreationsPage.tsx:** Removidos arrays estáticos; conectado a `GET /api/agent/v1/creations` via `fetch()`, apresentando empty state real e honesto quando não há aplicações compiladas.
+  - **3. AutomationsPage.tsx:** Conectado ao CRUD real do backend via `fetch()` direto (`GET /api/agent/v1/schedules`, `POST`, `PATCH`, `DELETE` e disparo manual via `POST /api/agent/v1/missions`), com botões e rotinas operando de verdade.
+  - **4. ConnectorsPage.tsx:** Conectado diretamente a `GET /api/agent/v1/connectors/catalog`, `GET /api/agent/v1/connectors` e `GET /api/agent/v1/mcp/servers` via `fetch()`, com contagem e filtragem reais e registro de novos conectores via `POST`.
+  - **5. EndpointPage.tsx:** Eliminados todos os arrays estáticos do módulo `lib/endpoint`; consumindo `/api/v1/host`, `/api/tags` e `/api/version` via `fetch()`, exibindo o hostname, porta, SO e comandos reais dinâmicos.
+  - **6. Gate de Verificação:** Bateria `git grep -nE "fetch\(|useQuery|apiFetch|EventSource"` confirmada em todas as 5 páginas com chamadas ativas ao backend.
+  - **7. Quality gates:** `npx tsc -b` (0 erros), `npm run lint` (0 warnings), `npx vitest run` (5/5 PASS), `npm run build` (sucesso em 14.7s) e Go tests `go test ./server` (PASS).
+
 ### 2026-09-30 01:00 -03 — Manus — PARTE 1 DE 3: SANEAMENTO CRÍTICO DE PRIVACIDADE E DADOS CHUMBADOS
 - **O que foi feito:**
   - **1. Remoção de dados pessoais chumbados:**
