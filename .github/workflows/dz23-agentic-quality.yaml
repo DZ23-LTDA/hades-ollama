@@ -429,6 +429,11 @@ jobs:
           restored_state="$(PGPASSWORD="$postgres_admin_password" psql -h 127.0.0.1 -U ollama_agent_admin -d ollama_agent_restore_check -Atc \
             "SELECT format('%s/%s', (SELECT count(*) FROM agent_missions WHERE id='mis_legacy_fixture'), (SELECT count(*) FROM agent_events WHERE id='evt_legacy_fixture'))")"
           test "$restored_state" = "1/1"
+          # This database is a disposable restore probe. Its template-derived
+          # PUBLIC CONNECT ACL is outside the runtime's approved app database;
+          # remove it before runtime readiness scans every database on cluster.
+          PGPASSWORD="$postgres_admin_password" psql -h 127.0.0.1 -U ollama_agent_admin -d postgres \
+            -v ON_ERROR_STOP=1 -c 'DROP DATABASE ollama_agent_restore_check'
 
           unset OLLAMA_AGENT_TEST_POSTGRES_LEGACY_URL
           CGO_ENABLED=0 go test -tags integration ./internal/agent -run TestDistributed -count=1 -v
