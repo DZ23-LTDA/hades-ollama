@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from "react";
+import { API_BASE } from "@/lib/config";
 import { Switch } from "@/components/ui/switch";
 import { Text } from "@/components/ui/text";
 import { Input } from "@/components/ui/input";
@@ -138,6 +139,31 @@ export default function Settings() {
     queryKey: ["inferenceCompute"],
     queryFn: getInferenceCompute,
   });
+
+  const [operatorProfile, setOperatorProfile] = useState<{
+    name: string;
+    email: string;
+    plan: string;
+  }>({
+    name: "Operador local",
+    email: "local@localhost",
+    plan: "Modo Local-first",
+  });
+
+  useEffect(() => {
+    fetch(`${API_BASE}/api/me`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data && (data.name || data.email)) {
+          setOperatorProfile({
+            name: data.name || "Operador local",
+            email: data.email || "local@localhost",
+            plan: data.plan || "Modo Local-first",
+          });
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const defaultContextLength = inferenceComputeResponse?.defaultContextLength;
 
@@ -843,14 +869,14 @@ export default function Settings() {
           <section id="account" className="overflow-hidden rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm dark:border-neutral-800 dark:bg-neutral-950">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-600 font-bold text-white text-base">
-                C
+                {operatorProfile.name.charAt(0).toUpperCase()}
               </div>
               <div>
                 <h3 className="text-base font-bold text-neutral-900 dark:text-white">
-                  Conta & Operador
+                  Conta & Operador ({operatorProfile.name})
                 </h3>
                 <p className="text-xs text-neutral-500">
-                  contato.zody@gmail.com • Plano Local Pro (Ativo)
+                  {operatorProfile.email} • {operatorProfile.plan}
                 </p>
               </div>
             </div>
@@ -858,7 +884,7 @@ export default function Settings() {
             <div className="mt-5 divide-y divide-neutral-100 text-xs dark:divide-neutral-800">
               <div className="flex items-center justify-between py-2.5">
                 <span className="text-neutral-500">Armazenamento Local:</span>
-                <span className="font-mono text-neutral-800 dark:text-neutral-200">D:\IA\Trabalhos\DZ23-LTDA\ollama-classe-a-plus</span>
+                <span className="font-mono text-neutral-800 dark:text-neutral-200">{settings?.WorkingDir || "Workspace local ativo"}</span>
               </div>
               <div className="flex items-center justify-between py-2.5">
                 <span className="text-neutral-500">Banco de Dados:</span>

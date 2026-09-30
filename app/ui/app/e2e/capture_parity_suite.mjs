@@ -36,7 +36,7 @@ async function run() {
   console.log("-> Capturando Popover do Usuário (Desktop)");
   await page.goto(`${BASE_URL}/`, { waitUntil: "networkidle" });
   // Clicar no botão do perfil no rodapé
-  const profileBtn = await page.$("button:has-text('contato.zody')");
+  const profileBtn = await page.$("button:has-text('Operador')");
   if (profileBtn) {
     await profileBtn.click();
     await page.waitForTimeout(500);

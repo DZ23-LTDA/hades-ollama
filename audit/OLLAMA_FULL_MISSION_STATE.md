@@ -930,7 +930,7 @@ STATUS: CONTINUE — ler prompt de retomada, validar branch/remoto e continuar P
 
 ### Retomada de engenharia — 2026-09-29 00:33 -03
 
-**Estado verificado:** checkout `/home/ubuntu/ollama-full-recovery`, branch `recovery/ollama-full-snapshot`, HEAD e `origin/recovery/ollama-full-snapshot`=`d3a11965d57db28c5e11567d8d4a0a29f5aabd03`; worktree limpo no início da retomada. O PC reportado aparece como `DESKTOP-QNCP429` Windows online, mas sem workspace exposto/selecionável; não se presume acesso aos discos dele. No sandbox, PostgreSQL 16 está instalado; foi criado apenas um cluster temporário local em `/tmp/ollama-full-pg-test-20260929`, loopback porta 55432, com DB/role descartáveis `ollama_agent_test`; nenhum dado de produção foi usado.
+**Estado verificado:** checkout `/home/ubuntu/ollama-full-recovery`, branch `recovery/ollama-full-snapshot`, HEAD e `origin/recovery/ollama-full-snapshot`=`d3a11965d57db28c5e11567d8d4a0a29f5aabd03`; worktree limpo no início da retomada. O PC reportado aparece como host Windows online, mas sem workspace exposto/selecionável; não se presume acesso aos discos dele. No sandbox, PostgreSQL 16 está instalado; foi criado apenas um cluster temporário local em `/tmp/ollama-full-pg-test-20260929`, loopback porta 55432, com DB/role descartáveis `ollama_agent_test`; nenhum dado de produção foi usado.
 
 **Evidência inicial:** `OLLAMA_AGENT_TEST_POSTGRES_URL` do ambiente estava unset; a integração `go test -p=1 -tags integration ./internal/agent -run '^TestDistributedPostgresRLSAndEvents$' -count=1 -v` PASS com `ollama_agent_test` (`NOSUPERUSER NOBYPASSRLS`). Isto comprova compatibilidade básica do adapter, **não** isolamento contra GUC caller-settable: o desenho atual de policies ainda confia em `app.current_organization_id` e `app.system_access`, e `OpenPostgresStore` ainda mistura conexão e migração. `NewRuntime` e o startup público mantêm o bloqueio fail-closed.
 
@@ -938,7 +938,7 @@ STATUS: CONTINUE — ler prompt de retomada, validar branch/remoto e continuar P
 
 **Reauditoria P1:** workflow `08c31477da9b` concluiu sete revisões somente leitura. Reabertos: executable trusted path/ancestry; catálogos locais usando listas globais; URL assinada de direct upload em erros/logs e sanitização parcial de deployment URL; JSON percentual com alias de assinatura na query Remote MCP; TOCTOU de leitura e lock sem contexto no outbox; URLs/IDs deployment sem formato estrito. Queue owner binding foi considerado sem achado explorável nos call sites atuais. Nenhum item reaberto está corrigido ainda; ver resultados workflow na tarefa para evidência completa.
 
-**Recursos:** serviço PostgreSQL descartável `job_QRkOW9v5` está ativo nesta sessão para testes e deve ser encerrado/limpo ao finalizar; diretório é temporário. `DESKTOP-QNCP429` não expõe workspace nesta sessão. Nenhum commit/push desta retomada ocorreu.
+**Recursos:** serviço PostgreSQL descartável `job_QRkOW9v5` está ativo nesta sessão para testes e deve ser encerrado/limpo ao finalizar; diretório é temporário. O host remoto não expõe workspace nesta sessão. Nenhum commit/push desta retomada ocorreu.
 
 STATUS: CONTINUE — completar P0 e findings P1; manter Postgres público fail-closed.
 

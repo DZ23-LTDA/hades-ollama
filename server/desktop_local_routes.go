@@ -2,6 +2,8 @@ package server
 
 import (
 	"net/http"
+	"os"
+	"runtime"
 
 	"github.com/gin-gonic/gin"
 )
@@ -9,6 +11,32 @@ import (
 func (s *Server) registerDesktopLocalRoutes(r *gin.Engine) {
 	// Local-first desktop compatibility routes to ensure all desktop UI surfaces
 	// function smoothly with zero 404/401 console errors.
+	r.GET("/api/me", func(c *gin.Context) {
+		h, _ := os.Hostname()
+		if h == "" {
+			h = "Este computador"
+		}
+		c.JSON(http.StatusOK, gin.H{
+			"name":       "Operador local",
+			"username":   "local",
+			"email":      "local@localhost",
+			"plan":       "Local-first",
+			"hostname":   h,
+			"local_only": true,
+		})
+	})
+
+	r.GET("/api/v1/host", func(c *gin.Context) {
+		h, _ := os.Hostname()
+		if h == "" {
+			h = "Este computador"
+		}
+		c.JSON(http.StatusOK, gin.H{
+			"hostname": h,
+			"os":       runtime.GOOS,
+		})
+	})
+
 	r.GET("/api/v1/chats", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"chatInfos": []gin.H{}})
 	})

@@ -46,7 +46,7 @@ function CopyButton({ text, label }: { text: string; label: string }) {
 export function EndpointPage() {
   const [models, setModels] = useState<string[]>([]);
   const [model, setModel] = useState("");
-  const [hostname, setHostname] = useState("DESKTOP-QNCP429");
+  const [hostname, setHostname] = useState("Este computador");
   const [remoteRequested, setRemoteRequested] = useState(false);
 
   useEffect(() => {
@@ -62,7 +62,7 @@ export function EndpointPage() {
       .catch(() => setModels([]));
 
     // Obter hostname local se disponível
-    fetch(`${API_BASE}/api/version`)
+    fetch(`${API_BASE}/api/v1/host`)
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         if (data && data.hostname) setHostname(data.hostname);

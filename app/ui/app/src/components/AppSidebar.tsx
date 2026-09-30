@@ -97,6 +97,7 @@ function TargetLink({
     </a>
   );
 }
+import { API_BASE } from "@/lib/config";
 
 export function AppNavigation({ current }: { current: AppSection }) {
   const [searchOpen, setSearchOpen] = useState(false);
@@ -104,6 +105,33 @@ export function AppNavigation({ current }: { current: AppSection }) {
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [signOutOpen, setSignOutOpen] = useState(false);
+  const [userProfile, setUserProfile] = useState<{
+    name: string;
+    username: string;
+    email: string;
+    plan: string;
+  }>({
+    name: "Operador local",
+    username: "local",
+    email: "local@localhost",
+    plan: "Local-first",
+  });
+
+  useEffect(() => {
+    fetch(`${API_BASE}/api/me`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data && (data.name || data.username)) {
+          setUserProfile({
+            name: data.name || data.username || "Operador local",
+            username: data.username || "local",
+            email: data.email || "local@localhost",
+            plan: data.plan || "Local-first",
+          });
+        }
+      })
+      .catch(() => {});
+  }, []);
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
@@ -286,15 +314,15 @@ export function AppNavigation({ current }: { current: AppSection }) {
               <div className="flex items-center justify-between border-b border-neutral-100 pb-3 dark:border-neutral-800">
                 <div className="flex items-center gap-2.5">
                   <div className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-600 font-bold text-white text-sm">
-                    C
+                    {userProfile.name.charAt(0).toUpperCase()}
                   </div>
                   <div>
-                    <div className="text-xs font-bold text-neutral-900 dark:text-white">contato.zody</div>
+                    <div className="text-xs font-bold text-neutral-900 dark:text-white">{userProfile.name}</div>
                     <div className="text-[10px] text-neutral-400">Pessoal</div>
                   </div>
                 </div>
                 <span className="rounded bg-neutral-100 px-1.5 py-0.5 text-[10px] font-semibold text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300">
-                  Ollama Pro
+                  {userProfile.plan}
                 </span>
               </div>
 
@@ -365,11 +393,11 @@ export function AppNavigation({ current }: { current: AppSection }) {
               className="flex items-center gap-2 rounded-xl p-1 text-left transition-colors hover:bg-neutral-200/60 dark:hover:bg-neutral-800"
             >
               <div className="relative flex h-7 w-7 items-center justify-center rounded-full bg-emerald-600 font-bold text-white text-xs">
-                C
+                {userProfile.name.charAt(0).toUpperCase()}
                 <span className="absolute bottom-0 right-0 h-2 w-2 rounded-full bg-emerald-400 ring-2 ring-white dark:ring-neutral-900" />
               </div>
               <span className="truncate text-xs font-semibold text-neutral-800 dark:text-neutral-200">
-                contato.zody
+                {userProfile.name}
               </span>
             </button>
             <div className="flex items-center gap-1 text-neutral-400">
@@ -427,7 +455,7 @@ export function AppNavigation({ current }: { current: AppSection }) {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
           <div className="w-full max-w-sm rounded-2xl border border-neutral-200 bg-white p-6 shadow-2xl dark:border-neutral-800 dark:bg-neutral-900 text-center">
             <h3 className="text-base font-bold text-neutral-900 dark:text-white">Tem certeza de que deseja sair?</h3>
-            <p className="mt-2 text-xs text-neutral-500">Sair do Ollama Full como contato.zody@gmail.com?</p>
+            <p className="mt-2 text-xs text-neutral-500">Sair do Ollama Full como {userProfile.email}?</p>
             <div className="mt-6 flex items-center justify-center gap-3">
               <button onClick={() => setSignOutOpen(false)} className="flex-1 rounded-xl border border-neutral-200 py-2 text-xs font-semibold text-neutral-700 hover:bg-neutral-50 dark:border-neutral-700 dark:text-neutral-200">
                 Manter-se conectado

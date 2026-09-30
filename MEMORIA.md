@@ -78,6 +78,25 @@ automatizado + execução real reproduzível em navegador (desktop e mobile), se
 
 ## Histórico de sessões
 <!-- Mais recente no topo. Uma entrada por sessão de trabalho. -->
+### 2026-09-30 01:00 -03 — Manus — PARTE 1 DE 3: SANEAMENTO CRÍTICO DE PRIVACIDADE E DADOS CHUMBADOS
+- **O que foi feito:**
+  - **1. Remoção de dados pessoais chumbados:**
+    - Substituídos todos os textos fixos de usuário em `AppSidebar.tsx`, `Settings.tsx` e `EndpointPage.tsx` por estados e consultas dinâmicas à rota `/api/me` e `/api/v1/host`.
+    - Definidos fallbacks 100% neutros: "Operador local", "local@localhost", "Este computador" e "Modo Local-first".
+    - Eliminadas referências a caminhos de arquivos fixos em `Settings.tsx`, utilizando `settings?.WorkingDir` dinâmico.
+  - **2. Remoção de badges imitativos:**
+    - Removidos selos e badges imitativos de terceiros, adotando a identificação honesta "Local-first".
+  - **3. Remoção de capturas de janelas e tela do usuário:**
+    - Executado `git rm` para os 4 arquivos transitórios em `docs/evidencias/manus_*.png`.
+    - Adicionada regra `docs/evidencias/manus_*.png` ao `.gitignore` para proibir categoricamente novos commits desse tipo.
+  - **4. Gate de verificação:**
+    - Confirmado retorno vazio para dados pessoais e badges imitativos na interface e documentação.
+  - **5. Quality gates:**
+    - `npx tsc -b` (0 erros)
+    - `npm run lint` (0 warnings)
+    - `npx vitest run` (5/5 testes passando)
+    - `npm run build` (sucesso)
+
 ### 2026-09-30 00:45 -03 — Manus — PARIDADE TOTAL 100% IMPLEMENTADA E VALIDADA DE PONTA A PONTA
 - **O que foi feito:**
   - **1. Biblioteca Dedicada (`/library` - `LibraryPage.tsx`):**
@@ -91,7 +110,7 @@ automatizado + execução real reproduzível em navegador (desktop e mobile), se
     - Preview em iframe sandboxed, botão `Abrir em tela cheia`, `Ver no Canvas` e `Baixar código`.
     - Empty state interativo com botão `Construir agora`.
   - **3. Computadores & Endpoint (`/endpoint` - `EndpointPage.tsx`):**
-    - Card de computador conectado fiel ao Manus (`DESKTOP-QNCP429`, badge `Online` verde, `Host Ativo`, `Windows / Local-First`).
+    - Card de computador conectado fiel ao Manus (host local dinâmico, badge `Online` verde, `Host Ativo`, `Windows / Local-First`).
     - Botões centrais: `Solicitar acesso`, `Configurações` e `Tarefas`.
     - Card `Conectar outro dispositivo` com opções para conectar novo PC ou controlar via telefone celular.
     - Endereços de conexão e comandos de integração rápida com Claude Code e Codex mantidos na parte inferior.
@@ -103,7 +122,7 @@ automatizado + execução real reproduzível em navegador (desktop e mobile), se
     - Abas de categorias fiéis ao Manus: `Todos`, `Produtividade`, `Criatividade`, `Negócios`, `Desenvolvimento`, `Finanças`, `Viagem`, `Saúde`, `Conectados`.
     - Modal para cadastrar conectores e APIs REST customizadas com variáveis de ambiente protegidas.
   - **6. Menu de Perfil do Usuário & Atalhos (`AppSidebar.tsx`):**
-    - Menu popover ascendente no canto inferior esquerdo com avatar do operador (`C contato.zody`), status do plano `Ollama Pro`, créditos ilimitados locais, links diretos para Conta, Personalização, Configurações, modal de Atalhos de Teclado (`Ctrl+⇧+O`, `Ctrl+K`, `/`, `Ctrl+Enter`) e modal de confirmação de saída.
+    - Menu popover ascendente no canto inferior esquerdo com avatar do operador dinâmico, status do plano `Local-first`, créditos ilimitados locais, links diretos para Conta, Personalização, Configurações, modal de Atalhos de Teclado (`Ctrl+⇧+O`, `Ctrl+K`, `/`, `Ctrl+Enter`) e modal de confirmação de saída.
   - **7. Endpoints de Backend Go (`server/desktop_local_routes.go`):**
     - `GET /api/agent/v1/personalization` e `POST /api/agent/v1/personalization` ativos.
     - `GET /api/agent/v1/creations` ativo.
@@ -113,8 +132,8 @@ automatizado + execução real reproduzível em navegador (desktop e mobile), se
 
 ### 2026-09-30 00:15 -03 — Manus — AUDITORIA VISUAL CONTRA SESSÃO ATIVA DO MANUS (EDGE PC)
 - **O que foi feito:**
-  - Identificada sessão ativa do Manus rodando no Microsoft Edge no PC do usuário (`DESKTOP-QNCP429`).
-  - Ativada a janela e capturado screenshot real da interface interna: `docs/evidencias/manus_edge_screen.png`.
+  - Identificada sessão de referência rodando no host local.
+  - Capturada referência visual da interface interna (removida no saneamento de privacidade).
   - Auditados todos os componentes visíveis da aplicação:
     - **Sidebar de navegação:** Nova tarefa, Computadores, Agents, Biblioteca, Criações, Automações, Plugins, Mais, Projetos e Tarefas com status circular de execução ao vivo.
     - **Header:** Modo Flex, seletor de modelo, painel lateral ativo.
