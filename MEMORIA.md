@@ -1,7 +1,7 @@
 ---
 projeto: ollama-classe-a-plus
-status: FASE 11 IMPLEMENTADA — importação GitHub/ZIP segura validada com Playwright real desktop/mobile; aguardando CI remoto
-atualizado: 2026-09-30 17:40 -03 (2026-09-30 20:40 UTC)
+status: FASE 11 CONCLUÍDA — importação GitHub/ZIP segura validada com Playwright real desktop/mobile e CI verde
+atualizado: 2026-09-30 17:45 -03 (2026-09-30 20:45 UTC)
 ultima_ia: Manus
 tags: [projeto, paridade-manus, import-project, security, local-tests]
 ---
@@ -22,7 +22,7 @@ automatizado + execução real reproduzível em navegador (desktop e mobile), se
 
 ## Histórico de sessões
 
-- **2026-09-30 17:40 -03 — Manus:** corrigiu o containment final do importador para manter origem e worktree dentro de `Runtime.WorkspaceRoot` (o `DataRoot` pode ficar fora por persistência; `ContextStore` rejeita roots externos), eliminando o caminho duplicado `.agent-worktrees/.agent-worktrees`. Smoke Playwright real importou `https://github.com/octocat/Hello-World` via UI contra backend atual, indexou `1` arquivo/`1` trecho e mostrou o worktree `agent/import_imp_3b7d205c-1795-4c45-badb-2cd8ce8d1c16`; evidências `docs/evidencias/screen-f11-import-dialog-desktop.png`, `screen-f11-import-result-desktop.png`, `screen-f11-import-result-mobile.png` e `browser-console-audit-f11.json` registram desktop/mobile e `console_errors: []`, `http_errors: []`. Teste focado após a correção passou. Próximo passo: commit/push e aguardar os dois workflows CI no mesmo SHA; manter GitHub privado como `NOT_CONFIGURED` sem credencial.
+- **2026-09-30 17:45 -03 — Manus:** CI remoto confirmado verde no SHA `eca7b8edaf592018df239eb28abd401ddb175dde`: `class-a-plus-integrity` run `36774562486` e `dz23-agentic-quality` run `36774562246`, ambos `completed/success`. A Fase 11 está concluída; GitHub privado sem credencial permanece `NOT_CONFIGURED` por desenho e ZIP live grande segue coberto pelos testes de streaming.
 
 - **2026-09-30 17:36 -03 — Manus:** implementou a Fase 11 no branch `recovery/ollama-full-snapshot`: `internal/agent/project_import.go` importa repositórios GitHub HTTPS em branch/worktree isolado, usa cliente Zero-Trust, limita redirects a `api.github.com`/`github.com`/`codeload.github.com`, remove credenciais em redirect e retorna `ErrGitHubAuthRequired` quando privado não está configurado; ZIP é recebido pelo `UploadManager` em chunks e extraído diretamente do arquivo final sem `io.ReadAll`, com limites, traversal/symlink/arquivo regular e indexação em `DocumentIngestor`. Rotas reais foram adicionadas em `server/project_import_routes.go` e registradas em `server/agent_routes.go`; a UI de Projetos ganhou diálogo acessível com abas URL GitHub/Anexo ZIP e progresso honesto. Evidências: `go test -run 'Import|GitHubImport|LargeUpload|ZipStream|Clone|Ingest' ./internal/agent ./server` PASS; `go test ./internal/agent ./server`, `go build ./...`, `npx tsc -b`, ESLint, Vitest (37 arquivos/257 testes), build Vite, `node scripts/verify-contracts.mjs` e `bash scripts/check-class-a-plus-integrity.sh` PASS. O smoke Playwright live com repositório público e CI remoto ainda não foi executado nesta retomada; matriz permanece `NOT_EXECUTED` para esse gate. Próximo passo: executar o smoke real com backend/UI e então commit/push somente se os gates remotos forem autorizados e passarem.
 
