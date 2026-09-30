@@ -21,6 +21,7 @@ import { Route as PluginsImport } from './routes/plugins'
 import { Route as OnboardingImport } from './routes/onboarding'
 import { Route as LibraryImport } from './routes/library'
 import { Route as EndpointImport } from './routes/endpoint'
+import { Route as CreationsImport } from './routes/creations'
 import { Route as ConnectorsImport } from './routes/connectors'
 import { Route as ConnectImport } from './routes/connect'
 import { Route as CompanyImport } from './routes/company'
@@ -87,6 +88,12 @@ const LibraryRoute = LibraryImport.update({
 const EndpointRoute = EndpointImport.update({
   id: '/endpoint',
   path: '/endpoint',
+  getParentRoute: () => rootRoute,
+} as any)
+
+const CreationsRoute = CreationsImport.update({
+  id: '/creations',
+  path: '/creations',
   getParentRoute: () => rootRoute,
 } as any)
 
@@ -163,6 +170,13 @@ declare module '@tanstack/react-router' {
       path: '/connectors'
       fullPath: '/connectors'
       preLoaderRoute: typeof ConnectorsImport
+      parentRoute: typeof rootRoute
+    }
+    '/creations': {
+      id: '/creations'
+      path: '/creations'
+      fullPath: '/creations'
+      preLoaderRoute: typeof CreationsImport
       parentRoute: typeof rootRoute
     }
     '/endpoint': {
@@ -253,6 +267,7 @@ export interface FileRoutesByFullPath {
   '/company': typeof CompanyRoute
   '/connect': typeof ConnectRoute
   '/connectors': typeof ConnectorsRoute
+  '/creations': typeof CreationsRoute
   '/endpoint': typeof EndpointRoute
   '/library': typeof LibraryRoute
   '/onboarding': typeof OnboardingRoute
@@ -272,6 +287,7 @@ export interface FileRoutesByTo {
   '/company': typeof CompanyRoute
   '/connect': typeof ConnectRoute
   '/connectors': typeof ConnectorsRoute
+  '/creations': typeof CreationsRoute
   '/endpoint': typeof EndpointRoute
   '/library': typeof LibraryRoute
   '/onboarding': typeof OnboardingRoute
@@ -292,6 +308,7 @@ export interface FileRoutesById {
   '/company': typeof CompanyRoute
   '/connect': typeof ConnectRoute
   '/connectors': typeof ConnectorsRoute
+  '/creations': typeof CreationsRoute
   '/endpoint': typeof EndpointRoute
   '/library': typeof LibraryRoute
   '/onboarding': typeof OnboardingRoute
@@ -313,6 +330,7 @@ export interface FileRouteTypes {
     | '/company'
     | '/connect'
     | '/connectors'
+    | '/creations'
     | '/endpoint'
     | '/library'
     | '/onboarding'
@@ -331,6 +349,7 @@ export interface FileRouteTypes {
     | '/company'
     | '/connect'
     | '/connectors'
+    | '/creations'
     | '/endpoint'
     | '/library'
     | '/onboarding'
@@ -349,6 +368,7 @@ export interface FileRouteTypes {
     | '/company'
     | '/connect'
     | '/connectors'
+    | '/creations'
     | '/endpoint'
     | '/library'
     | '/onboarding'
@@ -369,6 +389,7 @@ export interface RootRouteChildren {
   CompanyRoute: typeof CompanyRoute
   ConnectRoute: typeof ConnectRoute
   ConnectorsRoute: typeof ConnectorsRoute
+  CreationsRoute: typeof CreationsRoute
   EndpointRoute: typeof EndpointRoute
   LibraryRoute: typeof LibraryRoute
   OnboardingRoute: typeof OnboardingRoute
@@ -388,6 +409,7 @@ const rootRouteChildren: RootRouteChildren = {
   CompanyRoute: CompanyRoute,
   ConnectRoute: ConnectRoute,
   ConnectorsRoute: ConnectorsRoute,
+  CreationsRoute: CreationsRoute,
   EndpointRoute: EndpointRoute,
   LibraryRoute: LibraryRoute,
   OnboardingRoute: OnboardingRoute,
@@ -416,6 +438,7 @@ export const routeTree = rootRoute
         "/company",
         "/connect",
         "/connectors",
+        "/creations",
         "/endpoint",
         "/library",
         "/onboarding",
@@ -443,6 +466,9 @@ export const routeTree = rootRoute
     },
     "/connectors": {
       "filePath": "connectors.tsx"
+    },
+    "/creations": {
+      "filePath": "creations.tsx"
     },
     "/endpoint": {
       "filePath": "endpoint.tsx"

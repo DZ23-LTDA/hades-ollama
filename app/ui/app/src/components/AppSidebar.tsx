@@ -14,6 +14,11 @@ import {
   PlusIcon,
   LinkIcon,
   Squares2X2Icon,
+  SparklesIcon,
+  UserIcon,
+  ArrowRightOnRectangleIcon,
+  CommandLineIcon,
+  BellIcon,
 } from "@heroicons/react/24/outline";
 import { ChatIcon } from "@/components/ChatIcon";
 import { SearchDialog } from "@/components/SearchDialog";
@@ -28,6 +33,7 @@ export type AppSection =
   | "agentic"
   | "settings"
   | "library"
+  | "creations"
   | "projects"
   | "scheduled"
   | "skills"
@@ -95,6 +101,9 @@ function TargetLink({
 export function AppNavigation({ current }: { current: AppSection }) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const [signOutOpen, setSignOutOpen] = useState(false);
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
@@ -159,18 +168,6 @@ export function AppNavigation({ current }: { current: AppSection }) {
       </button>
 
       <NavLabel>Agentes</NavLabel>
-      <Link
-        to="/agentic"
-        className={itemClass(current === "agentic")}
-        draggable={false}
-      >
-        <BoltIcon className={iconClass} />
-        <span className="min-w-0 flex-1 truncate">Agente</span>
-        <span
-          className="h-1.5 w-1.5 rounded-full bg-emerald-500"
-          title="Runtime local"
-        />
-      </Link>
       <TargetLink
         href="/endpoint"
         label="Computadores"
@@ -178,12 +175,32 @@ export function AppNavigation({ current }: { current: AppSection }) {
         section="endpoint"
         icon={ComputerDesktopIcon}
       />
+      <Link
+        to="/agentic"
+        className={itemClass(current === "agentic")}
+        draggable={false}
+      >
+        <BoltIcon className={iconClass} />
+        <span className="min-w-0 flex-1 truncate">Agents</span>
+        <span className="rounded bg-neutral-200 px-1 py-0.5 text-[9px] font-semibold text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300">Cue!</span>
+        <span
+          className="h-1.5 w-1.5 rounded-full bg-emerald-500"
+          title="Runtime local"
+        />
+      </Link>
       <TargetLink
-        href="/tasks"
-        label="Tarefas"
+        href="/library"
+        label="Biblioteca"
         current={current}
-        section="tasks"
-        icon={ArrowPathIcon}
+        section="library"
+        icon={BookOpenIcon}
+      />
+      <TargetLink
+        href="/creations"
+        label="Criações"
+        current={current}
+        section="creations"
+        icon={SparklesIcon}
       />
       <TargetLink
         href="/scheduled"
@@ -193,22 +210,14 @@ export function AppNavigation({ current }: { current: AppSection }) {
         icon={ClockIcon}
       />
       <TargetLink
-        href="/company"
-        label="Empresa"
-        current={current}
-        section="company"
-        icon={BuildingOffice2Icon}
-        badge="Novo"
-      />
-
-      <NavLabel>Ferramentas</NavLabel>
-      <TargetLink
         href="/connectors"
-        label="Plugins / Conectores"
+        label="Plugins"
         current={current}
         section="connectors"
         icon={LinkIcon}
       />
+
+      <NavLabel>Ferramentas</NavLabel>
       <TargetLink
         href="/skills"
         label="Habilidades"
@@ -217,11 +226,19 @@ export function AppNavigation({ current }: { current: AppSection }) {
         icon={BoltIcon}
       />
       <TargetLink
-        href="/library"
-        label="Biblioteca"
+        href="/company"
+        label="Empresa"
         current={current}
-        section="library"
-        icon={BookOpenIcon}
+        section="company"
+        icon={BuildingOffice2Icon}
+        badge="Novo"
+      />
+      <TargetLink
+        href="/tasks"
+        label="Tarefas"
+        current={current}
+        section="tasks"
+        icon={ArrowPathIcon}
       />
 
       <div className="mt-2 flex items-center justify-between px-2.5 pt-2">
@@ -262,16 +279,166 @@ export function AppNavigation({ current }: { current: AppSection }) {
       </button>
 
       <div className="mt-auto border-t border-neutral-200/80 px-2.5 pt-3 dark:border-neutral-800">
-        <div className="flex items-center justify-between gap-2">
-          <div className="text-[10px] leading-4 text-neutral-400">
-            <div className="font-medium text-neutral-500 dark:text-neutral-500">
-              Modo local-first
+        {/* Popover do Perfil (Abre para cima) */}
+        <div className="relative">
+          {userMenuOpen && (
+            <div className="absolute bottom-full left-0 mb-2 w-64 rounded-2xl border border-neutral-200 bg-white p-3 shadow-xl dark:border-neutral-800 dark:bg-neutral-900 z-50">
+              <div className="flex items-center justify-between border-b border-neutral-100 pb-3 dark:border-neutral-800">
+                <div className="flex items-center gap-2.5">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-600 font-bold text-white text-sm">
+                    C
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold text-neutral-900 dark:text-white">contato.zody</div>
+                    <div className="text-[10px] text-neutral-400">Pessoal</div>
+                  </div>
+                </div>
+                <span className="rounded bg-neutral-100 px-1.5 py-0.5 text-[10px] font-semibold text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300">
+                  Ollama Pro
+                </span>
+              </div>
+
+              <div className="py-2 border-b border-neutral-100 dark:border-neutral-800 flex items-center justify-between text-xs">
+                <span className="text-neutral-500">Créditos:</span>
+                <span className="font-semibold text-emerald-600 dark:text-emerald-400">Ilimitado (Local)</span>
+              </div>
+
+              <div className="py-2 space-y-1">
+                <a
+                  href="/settings#account"
+                  onClick={() => setUserMenuOpen(false)}
+                  className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-xs text-neutral-700 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800"
+                >
+                  <UserIcon className="h-4 w-4 text-neutral-400" />
+                  Conta
+                </a>
+                <a
+                  href="/settings#personalization"
+                  onClick={() => setUserMenuOpen(false)}
+                  className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-xs text-neutral-700 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800"
+                >
+                  <SparklesIcon className="h-4 w-4 text-neutral-400" />
+                  Personalização
+                </a>
+                <a
+                  href="/settings"
+                  onClick={() => setUserMenuOpen(false)}
+                  className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-xs text-neutral-700 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800"
+                >
+                  <Cog6ToothIcon className="h-4 w-4 text-neutral-400" />
+                  Configurações
+                </a>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setUserMenuOpen(false);
+                    setShortcutsOpen(true);
+                  }}
+                  className="w-full flex items-center gap-2 rounded-lg px-2 py-1.5 text-xs text-neutral-700 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800"
+                >
+                  <CommandLineIcon className="h-4 w-4 text-neutral-400" />
+                  Atalhos de teclado
+                </button>
+              </div>
+
+              <div className="pt-2 border-t border-neutral-100 dark:border-neutral-800">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setUserMenuOpen(false);
+                    setSignOutOpen(true);
+                  }}
+                  className="w-full flex items-center gap-2 rounded-lg px-2 py-1.5 text-xs text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"
+                >
+                  <ArrowRightOnRectangleIcon className="h-4 w-4" />
+                  Sair
+                </button>
+              </div>
             </div>
-            <div>Approvals e secrets protegidos</div>
+          )}
+
+          {/* Barra de Perfil no Rodapé */}
+          <div className="flex items-center justify-between">
+            <button
+              type="button"
+              onClick={() => setUserMenuOpen(!userMenuOpen)}
+              className="flex items-center gap-2 rounded-xl p-1 text-left transition-colors hover:bg-neutral-200/60 dark:hover:bg-neutral-800"
+            >
+              <div className="relative flex h-7 w-7 items-center justify-center rounded-full bg-emerald-600 font-bold text-white text-xs">
+                C
+                <span className="absolute bottom-0 right-0 h-2 w-2 rounded-full bg-emerald-400 ring-2 ring-white dark:ring-neutral-900" />
+              </div>
+              <span className="truncate text-xs font-semibold text-neutral-800 dark:text-neutral-200">
+                contato.zody
+              </span>
+            </button>
+            <div className="flex items-center gap-1 text-neutral-400">
+              <button
+                type="button"
+                onClick={() => alert("Nenhuma notificação pendente.")}
+                className="rounded-lg p-1 hover:text-neutral-900 dark:hover:text-white"
+                title="Notificações"
+              >
+                <BellIcon className="h-4 w-4" />
+              </button>
+              <ThemeSwitcher />
+            </div>
           </div>
-          <ThemeSwitcher />
         </div>
       </div>
+
+      {/* Modal de Atalhos de Teclado */}
+      {shortcutsOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="w-full max-w-md rounded-2xl border border-neutral-200 bg-white p-6 shadow-2xl dark:border-neutral-800 dark:bg-neutral-900">
+            <div className="flex items-center justify-between pb-3 border-b border-neutral-100 dark:border-neutral-800">
+              <h3 className="text-base font-bold text-neutral-900 dark:text-white">Atalhos de Teclado</h3>
+              <button onClick={() => setShortcutsOpen(false)} className="text-neutral-400 hover:text-neutral-600">✕</button>
+            </div>
+            <div className="mt-4 space-y-3 text-xs">
+              <div className="flex items-center justify-between">
+                <span className="text-neutral-600 dark:text-neutral-300">Nova tarefa</span>
+                <kbd className="rounded bg-neutral-100 px-2 py-1 font-mono dark:bg-neutral-800">Ctrl + ⇧ + O</kbd>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-neutral-600 dark:text-neutral-300">Pesquisar</span>
+                <kbd className="rounded bg-neutral-100 px-2 py-1 font-mono dark:bg-neutral-800">/</kbd>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-neutral-600 dark:text-neutral-300">Novo Chat rápido</span>
+                <kbd className="rounded bg-neutral-100 px-2 py-1 font-mono dark:bg-neutral-800">Ctrl + K</kbd>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-neutral-600 dark:text-neutral-300">Enviar e iniciar missão</span>
+                <kbd className="rounded bg-neutral-100 px-2 py-1 font-mono dark:bg-neutral-800">Ctrl + Enter</kbd>
+              </div>
+            </div>
+            <div className="mt-6 flex justify-end">
+              <button onClick={() => setShortcutsOpen(false)} className="rounded-xl bg-neutral-900 px-4 py-2 text-xs font-semibold text-white dark:bg-white dark:text-neutral-900">
+                Fechar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Confirmação de Saída */}
+      {signOutOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="w-full max-w-sm rounded-2xl border border-neutral-200 bg-white p-6 shadow-2xl dark:border-neutral-800 dark:bg-neutral-900 text-center">
+            <h3 className="text-base font-bold text-neutral-900 dark:text-white">Tem certeza de que deseja sair?</h3>
+            <p className="mt-2 text-xs text-neutral-500">Sair do Ollama Full como contato.zody@gmail.com?</p>
+            <div className="mt-6 flex items-center justify-center gap-3">
+              <button onClick={() => setSignOutOpen(false)} className="flex-1 rounded-xl border border-neutral-200 py-2 text-xs font-semibold text-neutral-700 hover:bg-neutral-50 dark:border-neutral-700 dark:text-neutral-200">
+                Manter-se conectado
+              </button>
+              <button onClick={() => { setSignOutOpen(false); alert("Sessão finalizada no modo local."); }} className="flex-1 rounded-xl bg-red-600 py-2 text-xs font-semibold text-white hover:bg-red-700">
+                Sair
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

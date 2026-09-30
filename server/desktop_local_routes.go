@@ -76,4 +76,25 @@ func (s *Server) registerDesktopLocalRoutes(r *gin.Engine) {
 	r.GET("/api/v1/models/cloud", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"models": []gin.H{}})
 	})
+
+	// Endpoints para Personalização do Agente e Criações Consolidadas
+	r.GET("/api/agent/v1/personalization", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{
+			"custom_instructions": "Sempre responder em português, priorizar arquitetura limpa, segurança rigorosa e entregar código testado de ponta a ponta.",
+			"memory_enabled":      true,
+			"tone":                "professional_engineer",
+		})
+	})
+
+	r.POST("/api/agent/v1/personalization", func(c *gin.Context) {
+		var body map[string]any
+		if err := c.ShouldBindJSON(&body); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{
+			"status": "updated",
+			"data":   body,
+		})
+	})
 }

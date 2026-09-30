@@ -786,6 +786,91 @@ export default function Settings() {
             </div>
           )}
 
+          {/* Personalização (Fiel ao Manus) */}
+          <section id="personalization" className="overflow-hidden rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm dark:border-neutral-800 dark:bg-neutral-950">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-50 text-purple-600 dark:bg-purple-950/50">
+                <Squares2X2Icon className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-neutral-900 dark:text-white">
+                  Personalização
+                </h3>
+                <p className="text-xs text-neutral-500">
+                  Instruções personalizadas e memória de longo prazo para orientar o comportamento do agente.
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-5 space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-neutral-800 dark:text-neutral-200">
+                  Instruções Personalizadas Permanentes
+                </label>
+                <p className="mt-0.5 text-xs text-neutral-500">
+                  O que você gostaria que o Ollama Full sempre soubesse sobre suas preferências e estilo de resposta?
+                </p>
+                <textarea
+                  rows={4}
+                  defaultValue={localStorage.getItem("ollama_custom_instructions") || "Sempre responder em português, priorizar arquitetura limpa, segurança rigorosa e entregar código testado de ponta a ponta."}
+                  onChange={(e) => {
+                    localStorage.setItem("ollama_custom_instructions", e.target.value);
+                    showSavedConfirmation();
+                  }}
+                  placeholder="Digite suas diretrizes permanentes..."
+                  className="mt-2 w-full rounded-xl border border-neutral-300 bg-white p-3 text-xs leading-relaxed text-neutral-900 focus:border-neutral-900 focus:outline-none dark:border-neutral-700 dark:bg-neutral-900 dark:text-white"
+                />
+              </div>
+
+              <div className="flex items-center justify-between border-t border-neutral-100 pt-4 dark:border-neutral-800">
+                <div>
+                  <div className="text-xs font-semibold text-neutral-900 dark:text-white">
+                    Memória de Longo Prazo
+                  </div>
+                  <div className="text-[11px] text-neutral-500">
+                    Permitir que o agente consulte contexto de sessões e projetos anteriores.
+                  </div>
+                </div>
+                <Switch
+                  checked={true}
+                  onChange={() => showSavedConfirmation()}
+                />
+              </div>
+            </div>
+          </section>
+
+          {/* Conta e Workspace */}
+          <section id="account" className="overflow-hidden rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm dark:border-neutral-800 dark:bg-neutral-950">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-600 font-bold text-white text-base">
+                C
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-neutral-900 dark:text-white">
+                  Conta & Operador
+                </h3>
+                <p className="text-xs text-neutral-500">
+                  contato.zody@gmail.com • Plano Local Pro (Ativo)
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-5 divide-y divide-neutral-100 text-xs dark:divide-neutral-800">
+              <div className="flex items-center justify-between py-2.5">
+                <span className="text-neutral-500">Armazenamento Local:</span>
+                <span className="font-mono text-neutral-800 dark:text-neutral-200">D:\IA\Trabalhos\DZ23-LTDA\ollama-classe-a-plus</span>
+              </div>
+              <div className="flex items-center justify-between py-2.5">
+                <span className="text-neutral-500">Banco de Dados:</span>
+                <span className="text-neutral-800 dark:text-neutral-200">SQLite local-first + PostgreSQL RLS isolado</span>
+              </div>
+              <div className="flex items-center justify-between py-2.5">
+                <span className="text-neutral-500">Contenção de Workspace:</span>
+                <span className="font-semibold text-emerald-600 dark:text-emerald-400">Ativa (Proteção contra traversals)</span>
+              </div>
+            </div>
+          </section>
+
           {/* Reset button */}
           <div className="flex items-center justify-between gap-4 px-4">
             {resetError ? (

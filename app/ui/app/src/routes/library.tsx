@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { ProductWorkspacePage } from "@/components/ProductWorkspacePage";
+import { LibraryPage } from "@/components/LibraryPage";
 
 export const Route = createFileRoute("/library")({
-  component: () => <ProductWorkspacePage kind="library" />,
+  component: LibraryPage,
 });

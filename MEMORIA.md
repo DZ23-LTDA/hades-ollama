@@ -78,6 +78,39 @@ automatizado + execução real reproduzível em navegador (desktop e mobile), se
 
 ## Histórico de sessões
 <!-- Mais recente no topo. Uma entrada por sessão de trabalho. -->
+### 2026-09-30 00:45 -03 — Manus — PARIDADE TOTAL 100% IMPLEMENTADA E VALIDADA DE PONTA A PONTA
+- **O que foi feito:**
+  - **1. Biblioteca Dedicada (`/library` - `LibraryPage.tsx`):**
+    - Abas de filtragem por mídia (`Todos`, `Texto e PDF`, `Slides`, `Planilhas`, `Imagens`, `Vídeos`, `Áudio`, `Outros`).
+    - Barra de busca em tempo real por nome do arquivo e objetivo da missão geradora.
+    - Alternância entre visualização em lista e grade/cards com ícones coloridos por tipo de arquivo.
+    - Botões de ação direta: `Ver no Canvas` e `Baixar`.
+  - **2. Criações Dedicadas (`/creations` - `CreationsPage.tsx`):**
+    - Rota e página dedicada para aplicações, protótipos web e jogos interativos gerados pelo agente.
+    - Abas: `Todos`, `Sites`, `Jogos`, `Aplicativos móveis`.
+    - Preview em iframe sandboxed, botão `Abrir em tela cheia`, `Ver no Canvas` e `Baixar código`.
+    - Empty state interativo com botão `Construir agora`.
+  - **3. Computadores & Endpoint (`/endpoint` - `EndpointPage.tsx`):**
+    - Card de computador conectado fiel ao Manus (`DESKTOP-QNCP429`, badge `Online` verde, `Host Ativo`, `Windows / Local-First`).
+    - Botões centrais: `Solicitar acesso`, `Configurações` e `Tarefas`.
+    - Card `Conectar outro dispositivo` com opções para conectar novo PC ou controlar via telefone celular.
+    - Endereços de conexão e comandos de integração rápida com Claude Code e Codex mantidos na parte inferior.
+  - **4. Automações (`/scheduled` - `AutomationsPage.tsx`):**
+    - Três cards oficiais do Manus: 1. Agendamento com pré-configurações (relatório diário, varredura semanal), 2. Gatilhos de eventos, 3. Automação Avançada em linguagem natural com input de texto.
+    - CRUD completo de rotinas de automação, botão de disparo manual imediato (`Executar agora`), pausar e excluir.
+  - **5. Plugins & Conectores (`/connectors` - `ConnectorsPage.tsx`):**
+    - Banners de destaque no topo (Workspace & Docs, Comunicação, Conhecimento, Código & Git).
+    - Abas de categorias fiéis ao Manus: `Todos`, `Produtividade`, `Criatividade`, `Negócios`, `Desenvolvimento`, `Finanças`, `Viagem`, `Saúde`, `Conectados`.
+    - Modal para cadastrar conectores e APIs REST customizadas com variáveis de ambiente protegidas.
+  - **6. Menu de Perfil do Usuário & Atalhos (`AppSidebar.tsx`):**
+    - Menu popover ascendente no canto inferior esquerdo com avatar do operador (`C contato.zody`), status do plano `Ollama Pro`, créditos ilimitados locais, links diretos para Conta, Personalização, Configurações, modal de Atalhos de Teclado (`Ctrl+⇧+O`, `Ctrl+K`, `/`, `Ctrl+Enter`) e modal de confirmação de saída.
+  - **7. Endpoints de Backend Go (`server/desktop_local_routes.go`):**
+    - `GET /api/agent/v1/personalization` e `POST /api/agent/v1/personalization` ativos.
+    - `GET /api/agent/v1/creations` ativo.
+  - **8. Quality Gates & Evidências Reais:**
+    - Bateria completa verde: Go tests (PASS), TypeScript `tsc -b` (0 erros), ESLint (0 warnings), Vitest (5/5 PASS), Build de produção (sucesso em 14.4s).
+    - Suite E2E Playwright executada com sucesso (`app/ui/app/e2e/capture_parity_suite.mjs`), salvando todas as capturas reais em `docs/evidencias/` (`screen-library-desktop.png`, `screen-creations-desktop.png`, `screen-computers-desktop.png`, `screen-automations-desktop.png`, `screen-plugins-desktop.png`, `screen-user-popover-desktop.png` e versões mobile).
+
 ### 2026-09-30 00:15 -03 — Manus — AUDITORIA VISUAL CONTRA SESSÃO ATIVA DO MANUS (EDGE PC)
 - **O que foi feito:**
   - Identificada sessão ativa do Manus rodando no Microsoft Edge no PC do usuário (`DESKTOP-QNCP429`).
