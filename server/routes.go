@@ -1734,13 +1734,29 @@ func (s *Server) ListHandler(c *gin.Context) {
 			models = append(models, api.ListModelResponse{Name: localModelName, Model: localModelName, Digest: "virtual:local", Details: api.ModelDetails{Format: "virtual", Family: "ollama-local"}})
 		}
 		for _, alias := range []string{"auto/coding", "auto/reasoning", "auto/vision"} {
-			if _, ok := s.multiRegistry.Resolve(alias, multillm.Policy{}); ok {
-				models = append(models, api.ListModelResponse{Name: alias, Model: alias, Digest: "virtual:dz23", Details: api.ModelDetails{Format: "virtual", Family: "dz23-router"}})
+				if _, ok := s.multiRegistry.Resolve(alias, multillm.Policy{}); ok {
+					models = append(models, api.ListModelResponse{Name: alias, Model: alias, Digest: "virtual:dz23", Details: api.ModelDetails{Format: "virtual", Family: "dz23-router"}})
+				}
+			}
+
+			for _, entry := range proxy.GetDefaultCliSubscriptionDetector().GetCatalogEntries(c.Request.Context()) {
+				caps := []model.Capability{model.CapabilityCompletion}
+				family := string(entry.Provider)
+				if !entry.Selectable {
+					family += "-unavailable:" + entry.Reason
+				}
+				models = append(models, api.ListModelResponse{
+					Name:         entry.ID,
+					Model:        entry.ID,
+					Digest:       "cli_subscription:" + string(entry.Provider),
+					Details:      api.ModelDetails{Format: "cli_subscription", Family: family},
+					Capabilities: caps,
+				})
 			}
 		}
+
+		c.JSON(http.StatusOK, api.ListResponse{Models: models})
 	}
-	c.JSON(http.StatusOK, api.ListResponse{Models: models})
-}
 
 func (s *Server) CopyHandler(c *gin.Context) {
 	var r api.CopyRequest

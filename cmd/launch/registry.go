@@ -33,7 +33,7 @@ type IntegrationInfo struct {
 	Description string
 }
 
-var launcherIntegrationOrder = []string{"claude", "chatgpt", "hermes", "openclaw", "opencode", "hermes-desktop", "codex", "copilot", "omp", "cline", "droid", "dsh", "pi", "pool", "qwen"}
+var launcherIntegrationOrder = []string{"claude", "chatgpt", "hermes", "openclaw", "opencode", "hermes-desktop", "codex", "copilot", "omp", "cline", "droid", "dsh", "pi", "pool", "qwen", "gemini"}
 
 var integrationSpecs = []*IntegrationSpec{
 	{
@@ -152,6 +152,19 @@ var integrationSpecs = []*IntegrationSpec{
 				return err == nil
 			},
 			URL: "https://github.com/features/copilot/cli/",
+		},
+	},
+	{
+		Name:        "gemini",
+		Runner:      &Gemini{},
+		Aliases:     []string{"gemini-cli"},
+		Description: "Google's Gemini CLI coding assistant",
+		Install: IntegrationInstallSpec{
+			CheckInstalled: func() bool {
+				_, err := (&Gemini{}).findPath()
+				return err == nil
+			},
+			URL: "https://github.com/google/gemini-cli",
 		},
 	},
 	{

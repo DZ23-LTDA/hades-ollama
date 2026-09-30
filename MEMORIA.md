@@ -78,6 +78,37 @@ automatizado + execução real reproduzível em navegador (desktop e mobile), se
 
 ## Histórico de sessões
 <!-- Mais recente no topo. Uma entrada por sessão de trabalho. -->
+### 2026-09-30 08:35 -03 — Manus — FASE A7.1: PROVEDOR DE MODELOS POR ASSINATURA CLI (CUSTO ZERO)
+- **O que foi feito:**
+  - **1. Módulo Core de Detecção e Adapter CLI (`internal/proxy/cli_subscription.go` e `cli_subscription_test.go`):**
+    - Implementado `CliSubscriptionDetector` cobrindo 4 ferramentas de assinatura: Claude Code (`claude_code`), Codex/ChatGPT (`codex`), Gemini CLI (`gemini`) e GitHub Copilot (`copilot`).
+    - Avaliação de estado honesto com o enum `GateStatus` da A5:
+      * `PASS` (instalada E autenticada/sessão ativa): modelos entram no catálogo como selecionáveis com tag de custo `0-assinatura`.
+      * `NOT_CONFIGURED` (instalada mas deslogada): não selecionável, com instrução de login (ex.: `claude login`, `codex auth login`, `gemini auth login`, `gh auth login`).
+      * `NOT_PRESENT` (ausente/não encontrada): não selecionável, com instrução de instalação (ex.: `npm install -g @anthropic-ai/claude-code`, etc.).
+    - Teste Go `TestCliSubscriptionDetection` cobre os 3 estados para todos os 4 provedores e comprova que ferramentas deslogadas ou ausentes NÃO entram na lista usável (`GetUsableModels`).
+  - **2. Runner Gemini CLI e Compatibilidade com `ollama launch <tool>` (`cmd/launch/gemini.go`, `cmd/launch/registry.go`, `cmd/launch/cli_subscription_test.go`):**
+    - Implementado o runner `Gemini` em `cmd/launch/gemini.go` e registrado em `registry.go`, mantendo 100% intacto o fluxo existente onde Ollama executa a CLI apontada aos modelos locais.
+    - Teste Go `TestCliSubscriptionLaunchCompatibility` confirma que os runners continuam registrados e funcionais.
+  - **3. Integração com Catálogo Backend e Validação no Agent (`server/routes.go`, `internal/agent/cli_subscription.go`, `server/cli_subscription_catalog_test.go`):**
+    - `ListHandler` em `server/routes.go` injeta modelos de assinatura no endpoint `/api/tags` com formato `cli_subscription` e digest `cli_subscription:<provider>`.
+    - No pacote `internal/agent`, implementado `ValidateCliSubscriptionSelection` e `IsCliSubscriptionModel`, garantindo que missões só podem usar modelos de assinatura com status `PASS`, rejeitando seleções em `NOT_CONFIGURED` ou `NOT_PRESENT` com instrução acionável.
+    - Teste `TestCliSubscriptionCatalogList` em `server` e `TestCliSubscriptionSelection` em `internal/agent` passando 100%.
+  - **4. Integração no Frontend e ModelPicker (`api.ts`, `gotypes.gen.ts`, `ModelPicker.tsx`, `modelPickerUtils.ts`):**
+    - `api.ts` mapeia modelos com formato `cli_subscription`, atribuindo `kind: "cli_subscription"`, `status` honesto e `cost_tag: "0-assinatura"`.
+    - `modelPickerUtils.ts` agrupa modelos de assinatura funcionais sob `"Assinatura (CLI)"` e segrega ferramentas indisponíveis sob `"Indisponíveis (requer credencial ou configuração)"`.
+    - `ModelPicker.tsx` renderiza o badge `0-assinatura` em verde/emerald para modelos com status `PASS` e `indisponível` com motivo explicativo para deslogados/ausentes.
+    - Testes Vitest em `ModelPicker.test.ts` passando 100% (5/5 testes).
+  - **5. Quality Gates Locais Completos:**
+    - `go test -run "CliSubscription" ./internal/proxy ./internal/agent ./cmd/launch ./server` -> 4/4 pacotes PASS (0.04s).
+    - `go build ./...` -> PASS.
+    - `go test ./internal/agent ./server` -> PASS (17.95s e 9.54s).
+    - `node scripts/verify-contracts.mjs` -> PASS.
+    - `bash scripts/check-class-a-plus-integrity.sh` -> PASS.
+    - `gofmt -l internal/agent internal/multillm server/agent_routes.go server/routes.go internal/proxy cmd/launch` -> 100% LIMPO.
+    - `cd app/ui/app && npx tsc -b && npm run lint && npx vitest run && npm run build` -> PASS (35 test files, 250 tests).
+  - **6. Evidência E2E Playwright Real:** Capturadas as telas do `ModelPicker` com as fontes de assinatura em Desktop (1440x900) e Mobile (390x844) em `docs/evidencias/screen-modelpicker-desktop.png` e `docs/evidencias/screen-modelpicker-mobile.png`, com console limpo registrado em `docs/evidencias/browser-console-audit.json`.
+
 ### 2026-09-30 08:05 -03 — Manus — FASE A7: PROVISIONAMENTO DE MODELOS, PROBING REAL E MODELPICKER LIMPO
 - **O que foi feito:**
   - **1. Probing em Tempo Real e Cache com TTL (`internal/multillm/probe.go`):** Implementado `ProbeModel` e `ProbeProviderModel` com timeout de 4s, verificação de credencial ativa (`credentialValue`) e cache de resultado de probe por 5 minutos (`defaultProbeCache`). Modelos locais têm status `PASS` determinístico se baixados. Modelos remotos realizam probe real via `ListUpstreamModels`. Modelos sem credencial recebem `NOT_CONFIGURED` com motivo explícito. Provedores inalcançáveis recebem `FAIL`.

@@ -170,18 +170,26 @@ export async function getModels(query?: string): Promise<Model[]> {
             : "Credencial ausente ou provedor inalcançável"
           : undefined;
         const status = isUnavailable ? "NOT_CONFIGURED" : "PASS";
+        const isCliSubscription =
+          extended.details?.format === "cli_subscription" ||
+          Boolean(m.digest && m.digest.startsWith("cli_subscription:"));
         const kind =
           extended.details?.format === "remote"
             ? "remote"
             : extended.details?.format === "virtual"
               ? "router"
-              : "local";
+              : isCliSubscription
+                ? "cli_subscription"
+                : "local";
         const provider =
-          kind === "remote"
+          kind === "cli_subscription"
+            ? family.split("-unavailable")[0] || "Assinatura (CLI)"
+            : kind === "remote"
             ? family.split("-unavailable")[0] || modelName.split("/")[0]
             : kind === "router"
               ? "DZ23 Router"
               : "Ollama";
+        const costTag = kind === "cli_subscription" && !isUnavailable ? "0-assinatura" : undefined;
 
         return new Model({
           model: modelName,
@@ -192,6 +200,7 @@ export async function getModels(query?: string): Promise<Model[]> {
           available: !isUnavailable,
           status,
           reason,
+          cost_tag: costTag,
           capabilities: Array.isArray(extended.capabilities)
             ? extended.capabilities
             : [],

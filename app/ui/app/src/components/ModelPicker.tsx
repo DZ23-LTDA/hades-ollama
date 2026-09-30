@@ -386,6 +386,15 @@ export const ModelList = forwardRef(function ModelList(
                     {unavailable ? "indisponível" : "API"}
                   </span>
                 )}
+                {model.kind === "cli_subscription" && (
+                  <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-medium ${
+                    unavailable
+                      ? "bg-neutral-100 text-neutral-500 dark:bg-neutral-800 dark:text-neutral-400"
+                      : "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300"
+                  }`}>
+                    {unavailable ? "indisponível" : "0-assinatura"}
+                  </span>
+                )}
                 {model.isCloud() && (
                   <svg
                     className="h-3 fill-current text-neutral-500 dark:text-neutral-400"

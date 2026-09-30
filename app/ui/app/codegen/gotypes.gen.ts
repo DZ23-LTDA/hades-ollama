@@ -223,6 +223,7 @@ export class Model {
     capabilities?: string[];
     status?: string;
     reason?: string;
+    cost_tag?: string;
 
     constructor(source: any = {}) {
         if ('string' === typeof source) source = JSON.parse(source);
@@ -235,6 +236,7 @@ export class Model {
         this.capabilities = source["capabilities"];
         this.status = source["status"];
         this.reason = source["reason"];
+        this.cost_tag = source["cost_tag"];
     }
 
 	convertValues(a: any, classs: any, asMap: boolean = false): any {
