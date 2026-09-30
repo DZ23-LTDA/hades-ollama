@@ -838,9 +838,11 @@ export default function Settings() {
                 </p>
                 <textarea
                   rows={4}
-                  defaultValue={localStorage.getItem("ollama_custom_instructions") || "Sempre responder em português, priorizar arquitetura limpa, segurança rigorosa e entregar código testado de ponta a ponta."}
+                  defaultValue={(typeof window !== "undefined" && typeof localStorage !== "undefined" ? localStorage.getItem("ollama_custom_instructions") : null) || "Sempre responder em português, priorizar arquitetura limpa, segurança rigorosa e entregar código testado de ponta a ponta."}
                   onChange={(e) => {
-                    localStorage.setItem("ollama_custom_instructions", e.target.value);
+                    if (typeof window !== "undefined" && typeof localStorage !== "undefined") {
+                      localStorage.setItem("ollama_custom_instructions", e.target.value);
+                    }
                     showSavedConfirmation();
                   }}
                   placeholder="Digite suas diretrizes permanentes..."
