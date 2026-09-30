@@ -504,6 +504,8 @@ func (a *agentAPI) register(r *gin.Engine) {
 	group.POST("/missions/:id/run", a.runMission)
 	group.POST("/missions/:id/cancel", a.cancelMission)
 	group.POST("/missions/:id/approvals/:approval_id", a.decideApproval)
+	group.GET("/missions/:id/worktree", a.getMissionWorktree)
+	group.POST("/missions/:id/merge", a.mergeMissionWorktree)
 }
 
 func (a *agentAPI) authMiddleware(c *gin.Context) {
@@ -2644,6 +2646,37 @@ func (a *agentAPI) requireApprovalApprover(c *gin.Context) bool {
 		return false
 	}
 	return true
+}
+
+func (a *agentAPI) getMissionWorktree(c *gin.Context) {
+	id := strings.TrimSpace(c.Param("id"))
+	if id == "" {
+		writeAgentError(c, http.StatusBadRequest, errors.New("mission id is required"))
+		return
+	}
+	diff, err := a.scopedRuntime(c).GetMissionWorktreeDiff(c.Request.Context(), id)
+	if err != nil {
+		writeAgentError(c, http.StatusBadRequest, err)
+		return
+	}
+	c.JSON(http.StatusOK, diff)
+}
+
+func (a *agentAPI) mergeMissionWorktree(c *gin.Context) {
+	id := strings.TrimSpace(c.Param("id"))
+	if id == "" {
+		writeAgentError(c, http.StatusBadRequest, errors.New("mission id is required"))
+		return
+	}
+	commitSHA, err := a.scopedRuntime(c).MergeMissionWorktree(c.Request.Context(), id)
+	if err != nil {
+		writeAgentError(c, http.StatusBadRequest, err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"status":       "merged",
+		"merge_commit": commitSHA,
+	})
 }
 
 func decodeJSON(c *gin.Context, value any) error {

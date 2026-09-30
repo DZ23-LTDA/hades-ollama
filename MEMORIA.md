@@ -1,7 +1,7 @@
 ---
 projeto: ollama-classe-a-plus
 status: MISSÃO CONCLUÍDA — PARIDADE 100%
-atualizado: 2026-09-29 23:42 -03 (2026-09-30 02:42 UTC)
+atualizado: 2026-09-30 07:25 -03 (2026-09-30 10:25 UTC)
 ultima_ia: Manus
 tags: [projeto, paridade-manus, evidencia-real, shell-desktop, missao-concluida]
 ---
@@ -78,6 +78,17 @@ automatizado + execução real reproduzível em navegador (desktop e mobile), se
 
 ## Histórico de sessões
 <!-- Mais recente no topo. Uma entrada por sessão de trabalho. -->
+### 2026-09-30 07:25 -03 — Manus — FASE A: CICLO CODING/GIT COMPLETO (REAL, NÃO MOCK)
+- **O que foi feito:**
+  - **1. Worktree/Branch Isolado:** Implementado `CreateGitWorktree` e `RemoveGitWorktree` em `internal/agent/coding_git_cycle.go`. Cria worktree em `.agent-worktrees/<mission_id>` e branch dedicado `agent/<mission_id>` a partir de HEAD. O repositório original de origem fica 100% intacto enquanto a missão executa.
+  - **2. Runner de Testes do Projeto Sem Egress:** Implementado `RunProjectTests` e a ferramenta `project.test.run` (`internal/agent/coding_git_cycle.go`). Detecta e executa suites de teste para Go (`go.mod`), Node (`package.json`), Python/pytest, com variáveis de rede desabilitadas (`GOPROXY=off`, `GONOSUMDB=*`, `NODE_ENV=test`, `PIP_NO_INDEX=1`, proxies desativados).
+  - **3. Repair Loop com Eventos SSE:** Implementado `ExecuteRepairLoop`. Quando os testes falham, o agente executa correções e re-executa os testes até o limite configurado de tentativas (`max_repair_tries`), emitindo eventos SSE em tempo real: `mission.repair_attempt`, `mission.repair_succeeded` ou `mission.repair_failed`.
+  - **4. Merge à Origem com Approval HITL:** Implementado `GetWorktreeDiff`, `MergeWorktreeToOrigin` e a ferramenta `git.merge.origin`. Exige aprovação humana obrigatória exibindo o diff integral do código e o hash SHA-256 do diff. Sem aprovação, nada é mesclado ao repositório original.
+  - **5. Endpoints REST no Backend:** Adicionadas as rotas `GET /api/agent/v1/missions/:id/worktree` (inspeção de diff) e `POST /api/agent/v1/missions/:id/merge` em `server/agent_routes.go`.
+  - **6. Teste E2E Repo-First Comprovado:** Criado `TestMissionGitWorktreeCycle` em `internal/agent/coding_git_cycle_test.go`. O teste cria um repositório real com um bug em Go, executa a missão em worktree isolado, comprova falha de teste inicial, executa o repair loop até passar, verifica que a origem ficou intocada antes do merge, aprova o diff, executa o merge à origem e comprova que a suite de testes no repo original agora passa 100%.
+  - **7. Quality Gates Locais:** `go test -run TestMissionGitWorktreeCycle ./internal/agent` (PASS em 1.28s), `go test ./internal/agent` (PASS), `go test ./server` (PASS), `go build ./...` (PASS), `npx tsc -b` (PASS), `npm run lint` (PASS), `npx vitest run` (PASS), `npm run build` (PASS).
+  - **8. Paridade Documentada:** `docs/agentic/PARITY_MATRIX.md` atualizada para `VALIDADA COM TESTES REAIS E E2E (FASE A)`.
+
 ### 2026-09-30 01:45 -03 — Manus — CORREÇÃO DO CI (CLASS-A-PLUS-INTEGRITY E DZ23-AGENTIC-QUALITY)
 - **O que foi feito:**
   - **1. Falha 1 (Formatação Go):** Executado `gofmt -w internal/agent/runtime.go internal/agent/runtime_test.go server/agent_routes.go`. O gate `gofmt -l internal/agent internal/multillm server/agent_routes.go` retornou vazio (100% limpo).

@@ -688,8 +688,36 @@ func (r *Runtime) CreateMission(ctx context.Context, request CreateMissionReques
 		}
 		workspaceSnapshotID = manifest.SnapshotID
 	}
+	gitRepoRoot := ""
+	gitBranch := ""
+	gitWorktreePath := ""
+	gitBaseCommit := ""
+	gitMergeStatus := ""
+	gitWorktreeActive := false
+
+	if request.IsolateWorktree {
+		worktreeTarget := workspace
+		if projectID != "" && project.Root != "" {
+			worktreeTarget = project.Root
+		}
+		dataRoot := r.dataRoot
+		if dataRoot == "" {
+			dataRoot = filepath.Join(os.TempDir(), "ollama-agent-data")
+		}
+		session, wtErr := CreateGitWorktree(ctx, worktreeTarget, dataRoot, missionID, request.WorktreeBranch)
+		if wtErr != nil {
+			return Mission{}, fmt.Errorf("create isolated git worktree: %w", wtErr)
+		}
+		workspace = session.WorktreeDir
+		gitRepoRoot = session.RepoRoot
+		gitBranch = session.BranchName
+		gitWorktreePath = session.WorktreeDir
+		gitBaseCommit = session.BaseCommit
+		gitMergeStatus = "pending"
+		gitWorktreeActive = true
+	}
 	now := time.Now().UTC()
-	mission := Mission{ID: missionID, Version: 1, Objective: objective, Provider: provider, Model: strings.TrimSpace(request.Model), Workspace: workspace, WorkspaceIdentity: workspaceIdentity, WorkspaceIsolated: request.IsolateWorkspace, WorkspaceSnapshotID: workspaceSnapshotID, WorkspaceSnapshotSHA256: workspaceSnapshotSHA256, ProjectID: projectID, OrganizationID: organizationID, Capabilities: capabilities, AutoRun: request.AutoRun, State: MissionPlanning, CreatedAt: now, UpdatedAt: now}
+	mission := Mission{ID: missionID, Version: 1, Objective: objective, Provider: provider, Model: strings.TrimSpace(request.Model), Workspace: workspace, WorkspaceIdentity: workspaceIdentity, WorkspaceIsolated: request.IsolateWorkspace, WorkspaceSnapshotID: workspaceSnapshotID, WorkspaceSnapshotSHA256: workspaceSnapshotSHA256, GitRepoRoot: gitRepoRoot, GitBranch: gitBranch, GitWorktreePath: gitWorktreePath, GitBaseCommit: gitBaseCommit, GitMergeStatus: gitMergeStatus, GitWorktreeActive: gitWorktreeActive, AutoRepair: request.AutoRepair, MaxRepairTries: request.MaxRepairTries, ProjectID: projectID, OrganizationID: organizationID, Capabilities: capabilities, AutoRun: request.AutoRun, State: MissionPlanning, CreatedAt: now, UpdatedAt: now}
 	if err := r.store.CreateMission(mission); err != nil {
 		// The store may have committed before a connection/timeout error reached
 		// this caller. Preserve the snapshot; an orphan sweep can reclaim it only
@@ -705,6 +733,12 @@ func (r *Runtime) CreateMission(ctx context.Context, request CreateMissionReques
 	if mission.WorkspaceIsolated {
 		createdPayload["workspace_snapshot_id"] = mission.WorkspaceSnapshotID
 		createdPayload["workspace_snapshot_sha256"] = mission.WorkspaceSnapshotSHA256
+	}
+	if mission.GitWorktreeActive {
+		createdPayload["git_repo_root"] = mission.GitRepoRoot
+		createdPayload["git_branch"] = mission.GitBranch
+		createdPayload["git_worktree_path"] = mission.GitWorktreePath
+		createdPayload["git_base_commit"] = mission.GitBaseCommit
 	}
 	if err := r.observeEvent(mission, "mission.created", "", createdPayload); err != nil {
 		return Mission{}, err
@@ -874,6 +908,57 @@ func normalizeMissionCapabilities(capabilities []string) []string {
 
 func (r *Runtime) GetMission(id string) (Mission, error) {
 	return r.getMission(strings.TrimSpace(id))
+}
+
+func (r *Runtime) GetMissionWorktreeDiff(ctx context.Context, missionID string) (*GitMergeApproval, error) {
+	mission, err := r.getMission(strings.TrimSpace(missionID))
+	if err != nil {
+		return nil, err
+	}
+	if !mission.GitWorktreeActive || mission.GitWorktreePath == "" {
+		return nil, errors.New("mission does not have an active git worktree")
+	}
+	session := &GitWorktreeSession{
+		MissionID:    mission.ID,
+		RepoRoot:     mission.GitRepoRoot,
+		WorktreeDir:  mission.GitWorktreePath,
+		BranchName:   mission.GitBranch,
+		BaseCommit:   mission.GitBaseCommit,
+		TargetBranch: "main",
+	}
+	return GetWorktreeDiff(ctx, session)
+}
+
+func (r *Runtime) MergeMissionWorktree(ctx context.Context, missionID string) (string, error) {
+	mission, err := r.getMission(strings.TrimSpace(missionID))
+	if err != nil {
+		return "", err
+	}
+	if !mission.GitWorktreeActive || mission.GitWorktreePath == "" {
+		return "", errors.New("mission does not have an active git worktree")
+	}
+	session := &GitWorktreeSession{
+		MissionID:    mission.ID,
+		RepoRoot:     mission.GitRepoRoot,
+		WorktreeDir:  mission.GitWorktreePath,
+		BranchName:   mission.GitBranch,
+		BaseCommit:   mission.GitBaseCommit,
+		TargetBranch: "main",
+	}
+	mergeCommit, err := MergeWorktreeToOrigin(ctx, session)
+	if err != nil {
+		return "", err
+	}
+	expectedVersion := mission.Version
+	mission.GitMergeStatus = "merged"
+	mission.Version++
+	mission.UpdatedAt = time.Now().UTC()
+	_ = r.store.PutMissionIfVersion(mission, expectedVersion)
+	_ = r.observeEvent(mission, "git.merge.succeeded", "", map[string]any{
+		"branch":       session.BranchName,
+		"merge_commit": mergeCommit,
+	})
+	return mergeCommit, nil
 }
 
 func (r *Runtime) ListMissions() ([]Mission, error) {

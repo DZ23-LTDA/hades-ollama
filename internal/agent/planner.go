@@ -28,6 +28,44 @@ type RulePlanner struct{}
 
 func (RulePlanner) Plan(_ context.Context, mission Mission) ([]Step, error) {
 	objective := strings.ToLower(mission.Objective)
+	if strings.Contains(objective, "test") || strings.Contains(objective, "testar") || strings.Contains(objective, "coding") || strings.Contains(objective, "repair") || strings.Contains(objective, "worktree") || strings.Contains(objective, "merge") {
+		steps := []Step{
+			{
+				ID:               "step_1",
+				Kind:             "workspace.write",
+				Title:            "Aplicar alterações de código no workspace isolado",
+				Risk:             RiskWrite,
+				RequiresApproval: true,
+				State:            StepPending,
+				Input:            map[string]any{"path": "main.go", "content": "package main\n\nfunc Answer() int { return 42 }\n"},
+			},
+			{
+				ID:               "step_2",
+				Kind:             "project.test.run",
+				Title:            "Executar runner de testes do projeto no sandbox sem egress",
+				Risk:             RiskRead,
+				RequiresApproval: false,
+				State:            StepPending,
+				Input:            map[string]any{"framework": "go", "auto_repair": mission.AutoRepair},
+			},
+		}
+		if mission.GitWorktreeActive || strings.Contains(objective, "merge") {
+			steps = append(steps, Step{
+				ID:               "step_3",
+				Kind:             "git.merge.origin",
+				Title:            "Mesclar alterações do branch da missão de volta ao repositório original",
+				Risk:             RiskWrite,
+				RequiresApproval: true,
+				State:            StepPending,
+				Input: map[string]any{
+					"repo_root":    mission.GitRepoRoot,
+					"branch_name":  mission.GitBranch,
+					"worktree_dir": mission.GitWorktreePath,
+				},
+			})
+		}
+		return steps, nil
+	}
 	if strings.Contains(objective, "navegar") || strings.Contains(objective, "browser") {
 		return []Step{
 			{
@@ -176,6 +214,8 @@ func normalizeSteps(steps []Step) ([]Step, error) {
 		"mcp.remote.call":   RiskExternalSideEffect,
 		"connector.http":    RiskExternalSideEffect,
 		"media.process":     RiskExternalSideEffect,
+		"project.test.run":  RiskRead,
+		"git.merge.origin":  RiskWrite,
 	}
 	for i := range steps {
 		if _, ok := allowed[steps[i].Kind]; !ok {

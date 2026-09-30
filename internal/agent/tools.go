@@ -41,6 +41,8 @@ func NewRegistry() *Registry {
 	registry.Register(sandboxExecTool{})
 	registry.Register(browserOperatorTool{})
 	registry.Register(desktopCompanionTool{})
+	registry.Register(projectTestRunnerTool{})
+	registry.Register(gitMergeOriginTool{})
 	return registry
 }
 

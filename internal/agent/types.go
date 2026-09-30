@@ -59,6 +59,10 @@ type CreateMissionRequest struct {
 	OrganizationID   string   `json:"organization_id,omitempty"`
 	Capabilities     []string `json:"capabilities,omitempty"`
 	AutoRun          bool     `json:"auto_run,omitempty"`
+	IsolateWorktree  bool     `json:"isolate_worktree,omitempty"`
+	WorktreeBranch   string   `json:"worktree_branch,omitempty"`
+	AutoRepair       bool     `json:"auto_repair,omitempty"`
+	MaxRepairTries   int      `json:"max_repair_tries,omitempty"`
 }
 
 type Mission struct {
@@ -80,6 +84,14 @@ type Mission struct {
 	Plan                    []Step             `json:"plan"`
 	Approvals               []Approval         `json:"approvals,omitempty"`
 	Artifacts               []ArtifactManifest `json:"artifacts,omitempty"`
+	GitRepoRoot             string             `json:"git_repo_root,omitempty"`
+	GitBranch               string             `json:"git_branch,omitempty"`
+	GitWorktreePath         string             `json:"git_worktree_path,omitempty"`
+	GitBaseCommit           string             `json:"git_base_commit,omitempty"`
+	GitMergeStatus          string             `json:"git_merge_status,omitempty"`
+	GitWorktreeActive       bool               `json:"git_worktree_active,omitempty"`
+	AutoRepair              bool               `json:"auto_repair,omitempty"`
+	MaxRepairTries          int                `json:"max_repair_tries,omitempty"`
 	LastError               string             `json:"last_error,omitempty"`
 	CreatedAt               time.Time          `json:"created_at"`
 	UpdatedAt               time.Time          `json:"updated_at"`
