@@ -27,6 +27,27 @@ const (
 	RoleReview   AgentRole = "review"
 )
 
+func CapabilitiesForRole(role AgentRole) []string {
+	switch role {
+	case RoleResearch:
+		return []string{"research"}
+	case RoleProgram:
+		return []string{"coding"}
+	case RoleTesting:
+		return []string{"testing"}
+	case RoleDesign:
+		return []string{"vision"}
+	case RoleSecurity:
+		return []string{"security"}
+	case RoleData:
+		return []string{"data"}
+	case RoleReview:
+		return []string{"reasoning"}
+	default:
+		return nil
+	}
+}
+
 type AgentTaskState string
 
 const (

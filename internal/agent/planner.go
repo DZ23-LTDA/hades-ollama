@@ -20,6 +20,17 @@ type PlannerResolver interface {
 	ResolvePlanner(provider, model string) (Planner, error)
 }
 
+type PlannerResolution struct {
+	Provider string `json:"provider"`
+	Model    string `json:"model"`
+	Reason   string `json:"reason"`
+	CostTag  string `json:"cost_tag,omitempty"`
+}
+
+type RoutedPlannerResolver interface {
+	ResolvePlannerForMission(ctx context.Context, provider, model string, capabilities []string) (Planner, PlannerResolution, error)
+}
+
 type plannerChatClient interface {
 	Chat(ctx context.Context, request *api.ChatRequest, callback api.ChatResponseFunc) error
 }

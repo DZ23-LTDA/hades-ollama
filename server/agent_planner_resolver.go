@@ -1,9 +1,11 @@
 package server
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net/http"
+	"os"
 	"strings"
 
 	"github.com/ollama/ollama/api"
@@ -52,6 +54,53 @@ func (r multiProviderPlannerResolver) ResolvePlanner(provider, model string) (ag
 		client = api.NewClient(envconfig.ConnectableHost(), http.DefaultClient)
 	}
 	return agent.OllamaPlanner{Client: client, Model: resolved.ID}, nil
+}
+
+func (r multiProviderPlannerResolver) ResolvePlannerForMission(ctx context.Context, provider, model string, capabilities []string) (agent.Planner, agent.PlannerResolution, error) {
+	provider = strings.TrimSpace(provider)
+	model = strings.TrimSpace(model)
+	if model != "" && !strings.HasPrefix(model, "auto/") && model != "auto" {
+		planner, err := r.ResolvePlanner(provider, model)
+		return planner, agent.PlannerResolution{Provider: provider, Model: model, Reason: "override manual respeitado"}, err
+	}
+
+	required := append([]string(nil), capabilities...)
+	switch model {
+	case "auto/coding":
+		required = []string{"coding"}
+	case "auto/reasoning":
+		required = []string{"reasoning"}
+	case "auto/vision":
+		required = []string{"vision"}
+	default:
+		filtered := required[:0]
+		for _, capability := range required {
+			if !strings.HasPrefix(strings.TrimSpace(capability), "workspace:") {
+				filtered = append(filtered, capability)
+			}
+		}
+		required = filtered
+	}
+	if r.registry != nil {
+		selectable := r.registry.CleanSelectableModels(ctx, http.DefaultClient)
+		decision, err := r.registry.Route(multillm.RouteRequest{RequiredCapabilities: required, Path: "/api/chat", SelectableModels: selectable})
+		if err == nil {
+			planner, resolveErr := r.ResolvePlanner(decision.Model.Provider, decision.Model.ID)
+			if resolveErr == nil {
+				return planner, agent.PlannerResolution{Provider: decision.Model.Provider, Model: decision.Model.ID, Reason: decision.Reason, CostTag: decision.Model.CostTag}, nil
+			}
+		}
+	}
+
+	localModel := strings.TrimSpace(os.Getenv("OLLAMA_DZ23_LOCAL_MODEL"))
+	if localModel != "" {
+		client := r.client
+		if client == nil {
+			client = api.NewClient(envconfig.ConnectableHost(), http.DefaultClient)
+		}
+		return agent.OllamaPlanner{Client: client, Model: localModel}, agent.PlannerResolution{Provider: "ollama-local", Model: localModel, Reason: "fallback local-first: nenhuma rota remota PASS elegível", CostTag: "0-local"}, nil
+	}
+	return agent.RulePlanner{}, agent.PlannerResolution{Provider: "ollama-local", Reason: "fallback local-first: planner de regras local sem modelo remoto elegível", CostTag: "0-local"}, nil
 }
 
 var _ agent.PlannerResolver = multiProviderPlannerResolver{}

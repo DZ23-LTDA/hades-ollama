@@ -20,9 +20,10 @@ da análise de outros harnesses/repositórios, com qualidade enterprise
 recuperação). **Pronto** = paridade comprovada por implementação + teste
 automatizado + execução real reproduzível em navegador (desktop e mobile), sem alegar "100%" sem evidência.
 
-## Estado atual (2026-09-29 23:42 -03 / 2026-09-30 02:42 UTC)
+## Estado atual (2026-09-30 08:49 -03 / 2026-09-30 11:49 UTC)
 - **Repo:** github.com/DZ23-LTDA/ollama-classe-a-plus. Branch canônica: `recovery/ollama-full-snapshot`.
-- **STATUS DA MISSÃO: CONCLUÍDA — PARIDADE 100% COMPROVADA COM EVIDÊNCIA REAL DE NAVEGADOR**
+- **STATUS DA MISSÃO: FASE A2 IMPLEMENTADA — roteamento automático por função integrado ao runtime; gates locais em execução final**
+- **FASE A2:** `Registry.Route` agora participa da resolução do planner via `RoutedPlannerResolver`. Aliases `auto/coding`, `auto/reasoning`, `auto/vision` e missões sem modelo fixado usam `CleanSelectableModels`, pontuam `0-local`/`0-assinatura` antes de fontes pagas, respeitam override manual, mapeiam `AgentRole` por capacidade e emitem `router.decision` com modelo, motivo e custo. Ausência de rota remota cai para planner local-first sem falha fechada.
   - **Bloco 1 (Ressalvas Corrigidas):**
     - Print mobile de aprovação recapturado de verdade (`docs/evidencias/agentic-approval-mobile.png`) mostrando o card in-line de `AWAITING_APPROVAL` no mobile (390x844), com hash SHA-256 único (`43ae50db...`), diferente do planning.
     - Scripts E2E reorganizados na pasta `app/ui/app/e2e/`.
@@ -78,6 +79,12 @@ automatizado + execução real reproduzível em navegador (desktop e mobile), se
 
 ## Histórico de sessões
 <!-- Mais recente no topo. Uma entrada por sessão de trabalho. -->
+### 2026-09-30 08:49 -03 — Manus — FASE A2: ROTEAMENTO AUTOMÁTICO POR FUNÇÃO, GRÁTIS-PRIMEIRO
+- **Implementação:** `internal/multillm/router.go` ganhou `SelectableModels`, custo explícito (`cost_tag`) e bônus forte grátis-primeiro; `internal/multillm/registry.go` preserva tags de custo e marca providers CLI como `0-assinatura` por padrão.
+- **Integração real:** `internal/agent/planner.go` expõe `RoutedPlannerResolver`; `server/agent_planner_resolver.go` resolve aliases e missões sem modelo usando `CleanSelectableModels` + `Registry.Route`, mantendo override manual e fallback `ollama-local`; `internal/agent/runtime.go` persiste a resolução e emite evento `router.decision` com provider, modelo, razão e custo.
+- **Swarm:** `CapabilitiesForRole` mapeia research/programming/testing/design/security/data/review para capacidades de roteamento.
+- **Evidência final:** `go test -v -run 'AutoRoute|SwarmRole' ./internal/agent ./internal/multillm ./server` passou; `go build ./...` passou; `go test ./internal/agent ./server` passou; `npx tsc -b`, `npm run lint`, `npx vitest run` (35 arquivos/250 testes) e `npm run build` passaram; `node scripts/verify-contracts.mjs`, `bash scripts/check-class-a-plus-integrity.sh`, `git diff --check` e `gofmt` protegido passaram. Próximo passo: commit/push e acompanhar os dois workflows obrigatórios no GitHub Actions.
+
 ### 2026-09-30 08:35 -03 — Manus — FASE A7.1: PROVEDOR DE MODELOS POR ASSINATURA CLI (CUSTO ZERO)
 - **O que foi feito:**
   - **1. Módulo Core de Detecção e Adapter CLI (`internal/proxy/cli_subscription.go` e `cli_subscription_test.go`):**

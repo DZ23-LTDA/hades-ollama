@@ -55,6 +55,7 @@ type ModelConfig struct {
 	ID                   string   `json:"id"`
 	HarnessID            string   `json:"harness_id,omitempty"`
 	Capabilities         []string `json:"capabilities,omitempty"`
+	CostTag              string   `json:"cost_tag,omitempty"`
 	Priority             int      `json:"priority,omitempty"`
 	CostPer1KInputCents  int64    `json:"cost_per_1k_input_cents,omitempty"`
 	CostPer1KOutputCents int64    `json:"cost_per_1k_output_cents,omitempty"`
@@ -67,6 +68,7 @@ type Model struct {
 	HarnessID            string   `json:"harness_id,omitempty"`
 	Provider             string   `json:"provider"`
 	Capabilities         []string `json:"capabilities,omitempty"`
+	CostTag              string   `json:"cost_tag,omitempty"`
 	Available            bool     `json:"available"`
 	Priority             int      `json:"priority,omitempty"`
 	CostPer1KInputCents  int64    `json:"cost_per_1k_input_cents,omitempty"`
@@ -122,7 +124,11 @@ func LoadBytes(b []byte) (*Registry, error) {
 			if _, exists := r.models[id]; exists {
 				return nil, fmt.Errorf("duplicate model %q", id)
 			}
-			r.models[id] = Model{ID: id, UpstreamID: item.ID, HarnessID: strings.TrimSpace(item.HarnessID), Provider: p.Name, Capabilities: append([]string(nil), item.Capabilities...), Available: available, Priority: p.Priority + item.Priority, CostPer1KInputCents: item.CostPer1KInputCents, CostPer1KOutputCents: item.CostPer1KOutputCents, QualityScore: item.QualityScore}
+			costTag := strings.TrimSpace(item.CostTag)
+			if costTag == "" && p.Type == ProviderTypeCLI {
+				costTag = "0-assinatura"
+			}
+			r.models[id] = Model{ID: id, UpstreamID: item.ID, HarnessID: strings.TrimSpace(item.HarnessID), Provider: p.Name, Capabilities: append([]string(nil), item.Capabilities...), CostTag: costTag, Available: available, Priority: p.Priority + item.Priority, CostPer1KInputCents: item.CostPer1KInputCents, CostPer1KOutputCents: item.CostPer1KOutputCents, QualityScore: item.QualityScore}
 		}
 	}
 	return r, nil

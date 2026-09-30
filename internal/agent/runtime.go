@@ -744,7 +744,27 @@ func (r *Runtime) CreateMission(ctx context.Context, request CreateMissionReques
 		return Mission{}, err
 	}
 	planner := r.planner
-	if provider == "ollama-local" && mission.Model != "" && r.plannerResolver != nil {
+	if routed, ok := r.plannerResolver.(RoutedPlannerResolver); ok && (mission.Model == "" || strings.HasPrefix(mission.Model, "auto/") || mission.Model == "auto") {
+		var resolution PlannerResolution
+		planner, resolution, err = routed.ResolvePlannerForMission(ctx, mission.Provider, mission.Model, mission.Capabilities)
+		if err != nil {
+			return r.failMission(mission, err)
+		}
+		if resolution.Provider != "" {
+			mission.Provider = resolution.Provider
+		}
+		if resolution.Model != "" {
+			mission.Model = resolution.Model
+		}
+		if err := r.observeEvent(mission, "router.decision", "", map[string]any{
+			"provider": resolution.Provider,
+			"model":    resolution.Model,
+			"reason":   resolution.Reason,
+			"cost_tag": resolution.CostTag,
+		}); err != nil {
+			return r.failMission(mission, err)
+		}
+	} else if provider == "ollama-local" && mission.Model != "" && r.plannerResolver != nil {
 		planner, err = r.plannerResolver.ResolvePlanner(provider, mission.Model)
 		if err != nil {
 			return r.failMission(mission, err)
