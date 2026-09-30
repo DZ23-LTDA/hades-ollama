@@ -1,7 +1,60 @@
 {
-  "timestamp": "2026-09-30T02:37:27.728Z",
-  "totalScreensTested": 10,
-  "httpErrors": [],
-  "consoleErrors": [],
-  "status": "PASSED_ZERO_ERRORS"
+  "timestamp": "2026-09-30T04:24:05.507Z",
+  "environment": {
+    "baseUrl": "http://127.0.0.1:5173",
+    "backendUrl": "http://127.0.0.1:11434"
+  },
+  "results": [
+    {
+      "screen": "library",
+      "path": "/library",
+      "title": "Biblioteca",
+      "desktopEvidence": "screen-library-desktop.png",
+      "mobileEvidence": "screen-library-mobile.png",
+      "consoleErrors": [],
+      "httpFailures": [],
+      "clean": true
+    },
+    {
+      "screen": "creations",
+      "path": "/creations",
+      "title": "Criações",
+      "desktopEvidence": "screen-creations-desktop.png",
+      "mobileEvidence": "screen-creations-mobile.png",
+      "consoleErrors": [],
+      "httpFailures": [],
+      "clean": true
+    },
+    {
+      "screen": "automations",
+      "path": "/scheduled",
+      "title": "Automações",
+      "desktopEvidence": "screen-automations-desktop.png",
+      "mobileEvidence": "screen-automations-mobile.png",
+      "consoleErrors": [],
+      "httpFailures": [],
+      "clean": true
+    },
+    {
+      "screen": "connectors",
+      "path": "/connectors",
+      "title": "Conectores",
+      "desktopEvidence": "screen-connectors-desktop.png",
+      "mobileEvidence": "screen-connectors-mobile.png",
+      "consoleErrors": [],
+      "httpFailures": [],
+      "clean": true
+    },
+    {
+      "screen": "endpoint",
+      "path": "/endpoint",
+      "title": "Computadores & Endpoint",
+      "desktopEvidence": "screen-endpoint-desktop.png",
+      "mobileEvidence": "screen-endpoint-mobile.png",
+      "consoleErrors": [],
+      "httpFailures": [],
+      "clean": true
+    }
+  ],
+  "hasErrors": false
 }

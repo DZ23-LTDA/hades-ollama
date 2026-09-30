@@ -1724,14 +1724,15 @@ func (s *Server) ListHandler(c *gin.Context) {
 			})
 		}
 		if strings.TrimSpace(os.Getenv("OLLAMA_DZ23_LOCAL_MODEL")) != "" {
-			models = append(models, api.ListModelResponse{Name: "local/private", Model: "local/private", Digest: "virtual:local", Details: api.ModelDetails{Format: "virtual", Family: "ollama-local"}})
-		}
-		for _, alias := range []string{"auto/coding", "auto/reasoning", "auto/vision"} {
-			if _, ok := s.multiRegistry.Resolve(alias, multillm.Policy{}); ok {
-				models = append(models, api.ListModelResponse{Name: alias, Model: alias, Digest: "virtual:dz23", Details: api.ModelDetails{Format: "virtual", Family: "dz23-router"}})
+				localModelName := strings.TrimSpace(os.Getenv("OLLAMA_DZ23_LOCAL_MODEL"))
+				models = append(models, api.ListModelResponse{Name: localModelName, Model: localModelName, Digest: "virtual:local", Details: api.ModelDetails{Format: "virtual", Family: "ollama-local"}})
+			}
+			for _, alias := range []string{"auto/coding", "auto/reasoning", "auto/vision"} {
+				if _, ok := s.multiRegistry.Resolve(alias, multillm.Policy{}); ok {
+					models = append(models, api.ListModelResponse{Name: alias, Model: alias, Digest: "virtual:dz23", Details: api.ModelDetails{Format: "virtual", Family: "dz23-router"}})
+				}
 			}
 		}
-	}
 	c.JSON(http.StatusOK, api.ListResponse{Models: models})
 }
 

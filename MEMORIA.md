@@ -78,6 +78,19 @@ automatizado + execução real reproduzível em navegador (desktop e mobile), se
 
 ## Histórico de sessões
 <!-- Mais recente no topo. Uma entrada por sessão de trabalho. -->
+### 2026-09-30 01:25 -03 — Manus — PARTE 3 DE 3: VERIFICAÇÃO REAL NO NAVEGADOR COM DADOS REAIS
+- **O que foi feito:**
+  - **1. Ambiente Real Integrado:** Subida e verificação contínua do backend Go na porta 11434 e frontend Vite preview na porta 5173 com proxy reverso ativo.
+  - **2. Alimentação de Dados Reais no Backend:**
+    - Missão real executada de ponta a ponta (`mis_3f43616b-7ece-42c9-8a4d-35654b380121`), alimentando a Biblioteca com o arquivo `relatorio-missao.md` (SHA-256 verificado).
+    - Rotinas reais criadas via `POST /api/agent/v1/schedules` persistidas no storage com cálculo de `next_run_at`.
+    - Catálogo real de 113 conectores servido via `/api/agent/v1/connector-catalog` e servidores MCP em `/api/agent/v1/mcp`.
+    - Hostname e sistema operacional reais servidos dinamicamente via `/api/v1/host` e modelo `qwen2.5-coder:7b` via `/api/tags`.
+    - Criações: conectado a `GET /api/agent/v1/creations` exibindo empty-state honesto e autêntico por ausência de builds web, sem dados fake.
+  - **3. Capturas Playwright E2E:** 10 capturas de tela (5 telas em Desktop 1440x900 e Mobile 390x844) com dados reais renderizados e hashes SHA-256 distintos confirmados.
+  - **4. Auditoria de Console:** `browser-console-audit.json` com `hasErrors: false`, 0 erros de console e 0 falhas HTTP em todas as 5 telas.
+  - **5. Quality Gates:** `npx tsc -b` (0 erros), `npm run lint` (0 warnings), `npx vitest run` (5/5 PASS), `npm run build` (sucesso em 14s), `go test ./internal/agent` (PASS) e `go test ./server` (PASS).
+
 ### 2026-09-30 01:15 -03 — Manus — PARTE 2.1: CORREÇÃO DAS ROTAS REAIS EM CONNECTORSPAGE
 - **O que foi feito:**
   - Corrigidas as rotas de backend em `ConnectorsPage.tsx`:
