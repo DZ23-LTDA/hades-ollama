@@ -1631,3 +1631,84 @@ func TestRuntimeCreateMissionReturnsRedactedMissionValues(t *testing.T) {
 		}
 	}
 }
+
+type mockBrowserTool struct{}
+
+func (mockBrowserTool) Descriptor() ToolDescriptor {
+	return ToolDescriptor{Name: "browser.operator", Version: "1", Risk: RiskRead, Scopes: []string{"browser:navigate"}}
+}
+
+func (mockBrowserTool) Execute(ctx context.Context, toolContext ToolContext, input map[string]any) (ToolResult, error) {
+	return ToolResult{
+		Value: map[string]any{
+			"url":        "https://example.com",
+			"title":      "Example Domain",
+			"screenshot": "data:image/jpeg;base64,ZmFrZXNjcmVlbnNob3Q=",
+		},
+	}, nil
+}
+
+func TestRuntimeEmitsBrowserFrameEvent(t *testing.T) {
+	store := NewMemoryStore()
+	workspace := t.TempDir()
+	planner := fixedPlanner{
+		steps: []Step{
+			{
+				ID:    "step_browser_1",
+				Kind:  "browser.operator",
+				Title: "Navigate to example.com",
+				Risk:  RiskRead,
+				Input: map[string]any{"action": "navigate", "url": "https://example.com"},
+			},
+		},
+	}
+		registry := NewRegistry()
+		registry.Register(mockBrowserTool{})
+		runtime, err := NewRuntime(RuntimeConfig{
+			Store:         store,
+			WorkspaceRoot: workspace,
+			Planner:       planner,
+			Tools:         registry,
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+	
+		mission, err := runtime.CreateMission(context.Background(), CreateMissionRequest{
+			Objective: "Test browser frame event",
+			AutoRun:   false,
+			Capabilities: []string{"browser:navigate"},
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+	
+		if err := runtime.Run(context.Background(), mission.ID); err != nil {
+			t.Fatalf("Run failed: %v", err)
+		}
+	
+		events, err := runtime.Events(mission.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var foundFrame bool
+	for _, evt := range events {
+		if evt.Type == "browser.frame" {
+			foundFrame = true
+			payload, ok := evt.Payload.(map[string]any)
+			if !ok {
+				t.Fatalf("expected map[string]any payload, got %T", evt.Payload)
+			}
+			if payload["url"] != "https://example.com" {
+				t.Errorf("expected url https://example.com, got %v", payload["url"])
+			}
+			if payload["screenshot"] != "data:image/jpeg;base64,ZmFrZXNjcmVlbnNob3Q=" {
+				t.Errorf("unexpected screenshot: %v", payload["screenshot"])
+			}
+		}
+	}
+	if !foundFrame {
+		t.Fatalf("expected browser.frame event to be emitted in mission events, got: %+v", events)
+	}
+}

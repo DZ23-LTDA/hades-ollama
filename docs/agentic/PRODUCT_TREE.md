@@ -59,17 +59,18 @@ Manus Desktop
 │   │   └── Pesquisa de mercado/ecossistema
 │   └── Rascunhos e histórico de prompts
 ├── Agente
-│   ├── Missões ativas
-│   ├── Missões em background
-│   ├── Plano e subtarefas
-│   ├── Timeline de eventos
-│   ├── Browser/computer use
-│   ├── Terminal e código
-│   ├── Pesquisa e citações
-│   ├── Aprovações humanas
-│   ├── Correção e recuperação
-│   ├── Artefatos gerados
-│   └── Compartilhamento e colaboração
+│   ├── Split-screen workspace (Conversa + Thought Stream à esquerda / Canvas ativo à direita) [ATUAL - VALIDADA LOCALMENTE]
+│   ├── Missões ativas [ATUAL]
+│   ├── Missões em background [ATUAL]
+│   ├── Plano e subtarefas com status ao vivo [ATUAL - VALIDADA LOCALMENTE]
+│   ├── Timeline de eventos via Server-Sent Events (SSE) sem polling [ATUAL - VALIDADA LOCALMENTE]
+│   ├── Browser ao vivo com espelhamento de viewport/screenshots por evento [ATUAL - VALIDADA LOCALMENTE]
+│   ├── Terminal e código [ATUAL]
+│   ├── Pesquisa e citações [ATUAL]
+│   ├── Aprovações humanas in-line com justificativa [ATUAL - VALIDADA LOCALMENTE]
+│   ├── Correção e recuperação [ATUAL]
+│   ├── Visualizador de artefatos com abas de preview (iframe/markdown/code/download + SHA-256) [ATUAL - VALIDADA LOCALMENTE]
+│   └── Compartilhamento e colaboração [ADAPTER]
 ├── Habilidades
 │   ├── Catálogo
 │   ├── Habilidades instaladas

@@ -54,8 +54,8 @@ export function HomePage() {
   const start = () => {
     const value = objective.trim();
     if (!value) return;
-    // O Console agentic lê ?objective da URL ao montar.
-    window.location.assign(`/agentic?objective=${encodeURIComponent(value)}`);
+    // O Console agentic lê ?objective e ?autorun da URL ao montar.
+    window.location.assign(`/agentic?objective=${encodeURIComponent(value)}&autorun=true`);
   };
 
   return (

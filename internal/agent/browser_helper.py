@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import base64
 import ipaddress
 import json
 import os
@@ -61,6 +62,12 @@ def browser_executable():
 def page_result(session_id, page, state_path, **extra):
     result = {"session_id": session_id, "url": page.url, "title": page.title()}
     result.update(extra)
+    if "screenshot" not in result:
+        try:
+            screenshot_bytes = page.screenshot(type="jpeg", quality=55)
+            result["screenshot"] = "data:image/jpeg;base64," + base64.b64encode(screenshot_bytes).decode("ascii")
+        except Exception:
+            pass
     save_session_state(state_path, page)
     return result
 
