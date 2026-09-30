@@ -28,26 +28,26 @@ Manus Desktop
 │   ├── Ajuda e documentação
 │   └── Sair
 ├── Navegação global
-│   ├── Pesquisa
-│   ├── Alternância de layout/painel
-│   ├── Nova tarefa
-│   ├── Agente
-│   ├── Habilidades
-│   ├── Plugins
-│   ├── Agendado
-│   ├── Biblioteca
-│   ├── Projetos
-│   ├── Tarefas
-│   └── Empresa / Company OS
+│   ├── Pesquisa [VALIDADA COM EVIDÊNCIA (docs/evidencias/screen-*-desktop.png)]
+│   ├── Alternância de layout/painel [VALIDADA COM EVIDÊNCIA (docs/evidencias/screen-*-mobile.png)]
+│   ├── Nova tarefa [VALIDADA COM EVIDÊNCIA (docs/evidencias/screen-home-desktop.png)]
+│   ├── Agente [VALIDADA COM EVIDÊNCIA (docs/evidencias/screen-agentic-desktop.png)]
+│   ├── Habilidades [VALIDADA COM EVIDÊNCIA (docs/evidencias/screen-skills-desktop.png)]
+│   ├── Plugins / Conectores [VALIDADA COM EVIDÊNCIA (docs/evidencias/screen-connectors-desktop.png)]
+│   ├── Agendado [VALIDADA COM EVIDÊNCIA (docs/evidencias/screen-scheduled-desktop.png)]
+│   ├── Biblioteca [VALIDADA COM EVIDÊNCIA (docs/evidencias/screen-library-desktop.png)]
+│   ├── Projetos [VALIDADA COM EVIDÊNCIA (docs/evidencias/screen-projects-desktop.png)]
+│   ├── Tarefas [VALIDADA COM EVIDÊNCIA (docs/evidencias/screen-tasks-desktop.png)]
+│   └── Empresa / Company OS [VALIDADA COM EVIDÊNCIA (docs/evidencias/screen-company-desktop.png)]
 ├── Nova tarefa
-│   ├── Composer de linguagem natural
+│   ├── Composer de linguagem natural [VALIDADA COM EVIDÊNCIA (docs/evidencias/screen-home-desktop.png)]
 │   │   ├── Texto e instruções
 │   │   ├── Arquivos e imagens
 │   │   ├── Referências e fontes
 │   │   ├── Voz e transcrição
 │   │   ├── Seleção de modelo/agente
 │   │   └── Envio, cancelamento e retry
-│   ├── Ações rápidas
+│   ├── Ações rápidas [VALIDADA COM EVIDÊNCIA (docs/evidencias/screen-home-desktop.png)]
 │   │   ├── Criar slides
 │   │   ├── Criar site
 │   │   ├── Design

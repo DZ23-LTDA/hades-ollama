@@ -106,6 +106,24 @@ export function HomePage() {
             A tarefa abre no Console agentic começando em modo leitura; escrita e
             ações externas exigem aprovação. Ctrl+Enter para iniciar.
           </p>
+          <div className="mt-3 flex flex-wrap items-center gap-2 px-1">
+            <span className="text-[11px] font-medium text-neutral-400">Ações rápidas:</span>
+            {[
+              { label: "Criar slides", prompt: "Criar apresentação profissional de slides sobre inovação em IA" },
+              { label: "Criar site", prompt: "Criar uma landing page moderna responsiva com Tailwind e React" },
+              { label: "Pesquisa profunda", prompt: "Realizar pesquisa aprofundada de mercado com síntese e fontes citadas" },
+              { label: "Analisar código", prompt: "Inspecionar o repositório, auditar segurança e listar recomendações" },
+            ].map(({ label, prompt }) => (
+              <button
+                key={label}
+                type="button"
+                onClick={() => setObjective(prompt)}
+                className="rounded-lg border border-neutral-200/80 bg-white px-2.5 py-1 text-[11px] font-medium text-neutral-600 transition hover:border-neutral-300 hover:bg-neutral-100 hover:text-neutral-900 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:bg-neutral-800 dark:hover:text-white"
+              >
+                {label}
+              </button>
+            ))}
+          </div>
         </section>
 
         <section className="mt-10 grid gap-4 sm:grid-cols-2">

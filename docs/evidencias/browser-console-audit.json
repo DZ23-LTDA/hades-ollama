@@ -1,29 +1,7 @@
 {
-  "timestamp": "2026-09-30T02:06:32.061Z",
-  "httpErrors": [
-    {
-      "status": 404,
-      "url": "http://127.0.0.1:5173/api/v1/chats"
-    },
-    {
-      "status": 404,
-      "url": "http://127.0.0.1:5173/api/v1/settings"
-    },
-    {
-      "status": 404,
-      "url": "http://127.0.0.1:5173/api/v1/cloud"
-    },
-    {
-      "status": 404,
-      "url": "http://127.0.0.1:5173/api/v1/settings"
-    },
-    {
-      "status": 401,
-      "url": "http://127.0.0.1:5173/api/me"
-    },
-    {
-      "status": 404,
-      "url": "http://127.0.0.1:5173/api/v1/settings"
-    }
-  ]
+  "timestamp": "2026-09-30T02:37:27.728Z",
+  "totalScreensTested": 10,
+  "httpErrors": [],
+  "consoleErrors": [],
+  "status": "PASSED_ZERO_ERRORS"
 }

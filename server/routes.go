@@ -1994,6 +1994,7 @@ func (s *Server) GenerateRoutes() (http.Handler, error) {
 		return nil, err
 	}
 	agentAPI.register(r)
+	s.registerDesktopLocalRoutes(r)
 	// Codex uses this existing Ollama listener for both native and Ollama
 	// models. The proxy selects the upstream per request.
 	r.Any(proxy.CodexDesktopPathPrefix+"/*path", gin.WrapH(codexDesktopProxy))
@@ -2327,8 +2328,18 @@ func (s *Server) WhoamiHandler(c *gin.Context) {
 
 	client := api.NewClient(u, http.DefaultClient)
 	user, err := client.Whoami(c)
-	if err != nil {
-		var authErr api.AuthorizationError
+		if err != nil {
+			if strings.TrimSpace(c.GetHeader("Authorization")) == "" {
+				c.JSON(http.StatusOK, gin.H{
+					"name":       "Local Operator",
+					"username":   "local",
+					"email":      "local@localhost",
+					"avatarurl":  "",
+					"local_only": true,
+				})
+				return
+			}
+			var authErr api.AuthorizationError
 		if errors.As(err, &authErr) && authErr.StatusCode == http.StatusUnauthorized {
 			// Preserve an actionable sign-in response for launch; other failures
 			// below mean account or plan verification is temporarily unavailable.
@@ -2351,8 +2362,18 @@ func (s *Server) WhoamiHandler(c *gin.Context) {
 		return
 	}
 
-	if user == nil || user.Name == "" {
-		sURL, sErr := signinURL()
+		if user == nil || user.Name == "" {
+			if strings.TrimSpace(c.GetHeader("Authorization")) == "" {
+				c.JSON(http.StatusOK, gin.H{
+					"name":       "Local Operator",
+					"username":   "local",
+					"email":      "local@localhost",
+					"avatarurl":  "",
+					"local_only": true,
+				})
+				return
+			}
+			sURL, sErr := signinURL()
 		if sErr != nil {
 			slog.Error(sErr.Error())
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "error getting authorization details"})

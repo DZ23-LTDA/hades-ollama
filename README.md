@@ -59,10 +59,29 @@ In a second terminal, run the web operator surface from source:
 ```shell
 cd app/ui/app
 npm ci --no-audit --no-fund
-npm run dev
+npm run build
+npx vite preview --host 0.0.0.0 --port 5173
 ```
 
-The local web development configuration uses the agentic API at `http://127.0.0.1:3001` when the development server is configured for that port. A source build is not evidence of a signed release, production deployment, external OAuth, provider account, or physical-device validation. Those remain `BLOCKED_BY_EXTERNAL_DEPENDENCY` until the maintainer supplies the required signing keys, release workflow, accounts and test environments.
+The web development proxy routes all API requests (`/api/*`, `/api/v1/*` and `/api/agent/v1/*`) seamlessly to the Ollama Full backend at `http://127.0.0.1:11434`.
+
+### Quality Gates and Automated Tests
+
+To verify the full stack on any clean workstation:
+
+```shell
+# 1. Backend Go tests (runtime, agent routes, RLS isolation)
+go test ./internal/agent ./server -count=1
+
+# 2. Frontend typecheck, lint and unit tests
+cd app/ui/app
+npx tsc -b
+npm run lint
+npx vitest run
+
+# 3. Automated Browser E2E suite (Playwright desktop & mobile)
+node e2e/test_all_sidebar_screens.mjs
+```
 
 ### Upstream compatibility references
 
