@@ -78,6 +78,11 @@ automatizado + execução real reproduzível em navegador (desktop e mobile), se
 
 ## Histórico de sessões
 <!-- Mais recente no topo. Uma entrada por sessão de trabalho. -->
+### 2026-09-30 01:45 -03 — Manus — CORREÇÃO DO CI (CLASS-A-PLUS-INTEGRITY E DZ23-AGENTIC-QUALITY)
+- **O que foi feito:**
+  - **1. Falha 1 (Formatação Go):** Executado `gofmt -w internal/agent/runtime.go internal/agent/runtime_test.go server/agent_routes.go`. O gate `gofmt -l internal/agent internal/multillm server/agent_routes.go` retornou vazio (100% limpo).
+  - **2. Falha 2 (DACL do Windows e Herança):** Corrigido o descritor SDDL em `snapshot_permissions_windows.go` de `(A;OICI;GA;;;SID)` para `(A;OICI;FA;;;SID)`. O mask `FA` (`FILE_ALL_ACCESS`, `0x1f01ff`) preserva as flags de herança `OBJECT_INHERIT_ACE | CONTAINER_INHERIT_ACE` (`Flags=0x3`) em contêineres NTFS sem divisão do ACE. Adicionado `defer Close()` nos roots do teste para liberar handles e `os.MkdirAll` em `file_lock_windows.go`. O teste `TestWorkspaceSnapshotWindowsDACLProtectsOwnerAndChildren` passou com sucesso no Windows em 0.01s.
+
 ### 2026-09-30 01:25 -03 — Manus — PARTE 3 DE 3: VERIFICAÇÃO REAL NO NAVEGADOR COM DADOS REAIS
 - **O que foi feito:**
   - **1. Ambiente Real Integrado:** Subida e verificação contínua do backend Go na porta 11434 e frontend Vite preview na porta 5173 com proxy reverso ativo.

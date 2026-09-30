@@ -1662,32 +1662,32 @@ func TestRuntimeEmitsBrowserFrameEvent(t *testing.T) {
 			},
 		},
 	}
-		registry := NewRegistry()
-		registry.Register(mockBrowserTool{})
-		runtime, err := NewRuntime(RuntimeConfig{
-			Store:         store,
-			WorkspaceRoot: workspace,
-			Planner:       planner,
-			Tools:         registry,
-		})
-		if err != nil {
-			t.Fatal(err)
-		}
-	
-		mission, err := runtime.CreateMission(context.Background(), CreateMissionRequest{
-			Objective: "Test browser frame event",
-			AutoRun:   false,
-			Capabilities: []string{"browser:navigate"},
-		})
-		if err != nil {
-			t.Fatal(err)
-		}
-	
-		if err := runtime.Run(context.Background(), mission.ID); err != nil {
-			t.Fatalf("Run failed: %v", err)
-		}
-	
-		events, err := runtime.Events(mission.ID)
+	registry := NewRegistry()
+	registry.Register(mockBrowserTool{})
+	runtime, err := NewRuntime(RuntimeConfig{
+		Store:         store,
+		WorkspaceRoot: workspace,
+		Planner:       planner,
+		Tools:         registry,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	mission, err := runtime.CreateMission(context.Background(), CreateMissionRequest{
+		Objective:    "Test browser frame event",
+		AutoRun:      false,
+		Capabilities: []string{"browser:navigate"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := runtime.Run(context.Background(), mission.ID); err != nil {
+		t.Fatalf("Run failed: %v", err)
+	}
+
+	events, err := runtime.Events(mission.ID)
 	if err != nil {
 		t.Fatal(err)
 	}

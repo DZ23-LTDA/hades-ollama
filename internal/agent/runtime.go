@@ -1533,21 +1533,21 @@ func (r *Runtime) Run(ctx context.Context, id string) (runErr error) {
 		mission.State = MissionRunning
 		mission.Version++
 		mission.UpdatedAt = time.Now().UTC()
-			if err := r.store.PutMissionIfVersion(mission, expectedVersion); err != nil {
-				return err
+		if err := r.store.PutMissionIfVersion(mission, expectedVersion); err != nil {
+			return err
+		}
+		if browserMap, ok := result.Value.(map[string]any); ok {
+			if shot, hasShot := browserMap["screenshot"].(string); hasShot && shot != "" {
+				_ = r.observeEvent(mission, "browser.frame", step.ID, map[string]any{
+					"url":        browserMap["url"],
+					"title":      browserMap["title"],
+					"screenshot": shot,
+				})
 			}
-			if browserMap, ok := result.Value.(map[string]any); ok {
-				if shot, hasShot := browserMap["screenshot"].(string); hasShot && shot != "" {
-					_ = r.observeEvent(mission, "browser.frame", step.ID, map[string]any{
-						"url":        browserMap["url"],
-						"title":      browserMap["title"],
-						"screenshot": shot,
-					})
-				}
-			}
-			if err := r.observeEvent(mission, "step.succeeded", step.ID, map[string]any{"artifacts": len(result.Artifacts)}); err != nil {
-				return err
-			}
+		}
+		if err := r.observeEvent(mission, "step.succeeded", step.ID, map[string]any{"artifacts": len(result.Artifacts)}); err != nil {
+			return err
+		}
 	}
 	if r.missionCancelled(id) {
 		return nil

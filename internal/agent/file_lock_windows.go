@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 	"time"
 
 	"golang.org/x/sys/windows"
@@ -20,6 +21,11 @@ func withFileLock(path string, run func() error) error {
 func withFileLockContext(ctx context.Context, path string, run func() error) error {
 	if ctx == nil || path == "" || run == nil {
 		return fmt.Errorf("file lock context, path, and callback are required")
+	}
+	if dir := filepath.Dir(path); dir != "" && dir != "." {
+		if err := os.MkdirAll(dir, 0o700); err != nil {
+			return fmt.Errorf("create file lock directory: %w", err)
+		}
 	}
 	name, err := windows.UTF16PtrFromString(path)
 	if err != nil {

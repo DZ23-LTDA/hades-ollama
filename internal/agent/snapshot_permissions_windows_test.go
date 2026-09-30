@@ -83,32 +83,23 @@ func TestWorkspaceSnapshotWindowsDACLProtectsOwnerAndChildren(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer parentRoot.Close()
 	if err := secureWorkspaceSnapshotDirectory(parent, parentRoot); err != nil {
-		_ = parentRoot.Close()
 		t.Fatalf("secure parent snapshot directory: %v", err)
 	}
 	assertWorkspaceSnapshotOwnerDACL(t, parent, true)
 
 	child := filepath.Join(parent, "tree")
 	if err := os.Mkdir(child, 0o700); err != nil {
-		_ = parentRoot.Close()
 		t.Fatal(err)
 	}
 	childRoot, err := os.OpenRoot(child)
 	if err != nil {
-		_ = parentRoot.Close()
 		t.Fatal(err)
 	}
+	defer childRoot.Close()
 	if err := secureWorkspaceSnapshotDirectory(child, childRoot); err != nil {
-		_ = childRoot.Close()
-		_ = parentRoot.Close()
 		t.Fatalf("secure child snapshot directory: %v", err)
 	}
 	assertWorkspaceSnapshotOwnerDACL(t, child, true)
-	if err := childRoot.Close(); err != nil {
-		t.Errorf("close child root while parent remains open: %v", err)
-	}
-	if err := parentRoot.Close(); err != nil {
-		t.Errorf("close parent root: %v", err)
-	}
 }

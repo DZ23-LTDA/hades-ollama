@@ -95,7 +95,7 @@ func inheritableOwnerACL(sid *windows.SID) (*windows.SECURITY_DESCRIPTOR, error)
 	if sidText == "" {
 		return nil, errors.New("snapshot owner SID could not be encoded")
 	}
-	sddl := fmt.Sprintf("D:P(A;OICI;GA;;;%s)", sidText)
+	sddl := fmt.Sprintf("D:P(A;OICI;FA;;;%s)", sidText)
 	sd, err := windows.SecurityDescriptorFromString(sddl)
 	if err != nil {
 		return nil, fmt.Errorf("build owner-only inheritable snapshot DACL: %w", err)
