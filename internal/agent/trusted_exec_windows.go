@@ -22,7 +22,16 @@ func trustedSystemExecutableDirectory(path string) (string, bool) {
 	if err != nil || !strings.EqualFold(canonical, resolved) {
 		return "", false
 	}
-	for current := resolved; ; current = filepath.Dir(current) {
+	for current := resolved; ; {
+		parent := filepath.Dir(current)
+		// The volume root (for example C:\) always grants local users the
+		// right to create new entries. That grant cannot be removed and does
+		// not let anyone modify an existing system directory such as Program
+		// Files, so validate every directory below the root and stop there
+		// instead of failing closed on a condition Windows cannot satisfy.
+		if parent == current {
+			break
+		}
 		before, err := os.Lstat(current)
 		if err != nil || !before.IsDir() || before.Mode()&os.ModeSymlink != 0 {
 			return "", false
@@ -34,10 +43,7 @@ func trustedSystemExecutableDirectory(path string) (string, bool) {
 		if err != nil || !os.SameFile(before, after) {
 			return "", false
 		}
-		parent := filepath.Dir(current)
-		if parent == current {
-			break
-		}
+		current = parent
 	}
 	return resolved, true
 }

@@ -599,7 +599,7 @@ func safeToolPath() string {
 	if runtime.GOOS == "windows" {
 		// Never trust ambient PATH entries inherited by the service: a user may
 		// write a fake git.exe there and influence the command executed by tools.
-		return `C:\Program Files\Git\cmd;C:\Program Files\Git\bin;C:\Windows\System32;C:\Windows`
+		return `C:\Program Files\Git\cmd;C:\Program Files\Git\bin;C:\Program Files\Git\mingw64\bin;C:\Windows\System32;C:\Windows`
 	}
 	return "/usr/local/bin:/usr/bin:/bin"
 }
