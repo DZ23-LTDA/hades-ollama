@@ -398,7 +398,7 @@ func (s *Server) GenerateHandler(c *gin.Context) {
 			return nil
 		}
 
-		client := api.NewClient(remoteURL, http.DefaultClient)
+		client := api.NewClient(remoteURL, newServerEgressClient("server.remote_model", true))
 		err = client.Generate(c, &req, fn)
 		if err != nil {
 			var authError api.AuthorizationError
@@ -1734,29 +1734,29 @@ func (s *Server) ListHandler(c *gin.Context) {
 			models = append(models, api.ListModelResponse{Name: localModelName, Model: localModelName, Digest: "virtual:local", Details: api.ModelDetails{Format: "virtual", Family: "ollama-local"}})
 		}
 		for _, alias := range []string{"auto/coding", "auto/reasoning", "auto/vision"} {
-				if _, ok := s.multiRegistry.Resolve(alias, multillm.Policy{}); ok {
-					models = append(models, api.ListModelResponse{Name: alias, Model: alias, Digest: "virtual:dz23", Details: api.ModelDetails{Format: "virtual", Family: "dz23-router"}})
-				}
-			}
-
-			for _, entry := range proxy.GetDefaultCliSubscriptionDetector().GetCatalogEntries(c.Request.Context()) {
-				caps := []model.Capability{model.CapabilityCompletion}
-				family := string(entry.Provider)
-				if !entry.Selectable {
-					family += "-unavailable:" + entry.Reason
-				}
-				models = append(models, api.ListModelResponse{
-					Name:         entry.ID,
-					Model:        entry.ID,
-					Digest:       "cli_subscription:" + string(entry.Provider),
-					Details:      api.ModelDetails{Format: "cli_subscription", Family: family},
-					Capabilities: caps,
-				})
+			if _, ok := s.multiRegistry.Resolve(alias, multillm.Policy{}); ok {
+				models = append(models, api.ListModelResponse{Name: alias, Model: alias, Digest: "virtual:dz23", Details: api.ModelDetails{Format: "virtual", Family: "dz23-router"}})
 			}
 		}
 
-		c.JSON(http.StatusOK, api.ListResponse{Models: models})
+		for _, entry := range proxy.GetDefaultCliSubscriptionDetector().GetCatalogEntries(c.Request.Context()) {
+			caps := []model.Capability{model.CapabilityCompletion}
+			family := string(entry.Provider)
+			if !entry.Selectable {
+				family += "-unavailable:" + entry.Reason
+			}
+			models = append(models, api.ListModelResponse{
+				Name:         entry.ID,
+				Model:        entry.ID,
+				Digest:       "cli_subscription:" + string(entry.Provider),
+				Details:      api.ModelDetails{Format: "cli_subscription", Family: family},
+				Capabilities: caps,
+			})
+		}
 	}
+
+	c.JSON(http.StatusOK, api.ListResponse{Models: models})
+}
 
 func (s *Server) CopyHandler(c *gin.Context) {
 	var r api.CopyRequest
@@ -1991,7 +1991,7 @@ func (s *Server) GenerateRoutes() (http.Handler, error) {
 		cors.New(corsConfig),
 		allowedHostsMiddleware(s.addr),
 	)
-	s.agentRuntime.SetPlannerResolver(multiProviderPlannerResolver{client: api.NewClient(envconfig.ConnectableHost(), http.DefaultClient)})
+	s.agentRuntime.SetPlannerResolver(multiProviderPlannerResolver{client: api.NewClient(envconfig.ConnectableHost(), newServerEgressClient("server.planner.local", true))})
 	if configPath := strings.TrimSpace(os.Getenv("OLLAMA_DZ23_CONFIG")); configPath != "" {
 		registry, err := multillm.Load(configPath)
 		if err != nil {
@@ -2000,7 +2000,7 @@ func (s *Server) GenerateRoutes() (http.Handler, error) {
 		s.multiRegistry = registry
 		s.multiProvider = multillm.NewGateway(registry, nil)
 		r.Use(s.multiProvider.Middleware())
-		s.agentRuntime.SetPlannerResolver(multiProviderPlannerResolver{registry: registry, client: api.NewClient(envconfig.ConnectableHost(), http.DefaultClient)})
+		s.agentRuntime.SetPlannerResolver(multiProviderPlannerResolver{registry: registry, client: api.NewClient(envconfig.ConnectableHost(), newServerEgressClient("server.planner.local", true))})
 	}
 
 	// General
@@ -2349,7 +2349,7 @@ func (s *Server) WhoamiHandler(c *gin.Context) {
 		return
 	}
 
-	client := api.NewClient(u, http.DefaultClient)
+	client := api.NewClient(u, newServerEgressClient("server.ollama_cloud_account", false))
 	user, err := client.Whoami(c)
 	if err != nil {
 		if strings.TrimSpace(c.GetHeader("Authorization")) == "" {
@@ -2432,7 +2432,7 @@ func (s *Server) SignoutHandler(c *gin.Context) {
 		return
 	}
 
-	client := api.NewClient(u, http.DefaultClient)
+	client := api.NewClient(u, newServerEgressClient("server.ollama_cloud_account", false))
 	err = client.Disconnect(c, encKey)
 	if err != nil {
 		var authError api.AuthorizationError
@@ -2773,7 +2773,7 @@ func (s *Server) ChatHandler(c *gin.Context) {
 			return nil
 		}
 
-		client := api.NewClient(remoteURL, http.DefaultClient)
+		client := api.NewClient(remoteURL, newServerEgressClient("server.remote_model", true))
 		err = client.Chat(c, &req, fn)
 		if err != nil {
 			var authError api.AuthorizationError

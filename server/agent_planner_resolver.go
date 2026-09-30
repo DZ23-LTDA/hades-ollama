@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net/http"
 	"os"
 	"strings"
 
@@ -31,7 +30,7 @@ func (r multiProviderPlannerResolver) ResolvePlanner(provider, model string) (ag
 		}
 		client := r.client
 		if client == nil {
-			client = api.NewClient(envconfig.ConnectableHost(), http.DefaultClient)
+			client = api.NewClient(envconfig.ConnectableHost(), newServerEgressClient("server.planner.local", true))
 		}
 		return agent.OllamaPlanner{Client: client, Model: model}, nil
 	}
@@ -51,7 +50,7 @@ func (r multiProviderPlannerResolver) ResolvePlanner(provider, model string) (ag
 	}
 	client := r.client
 	if client == nil {
-		client = api.NewClient(envconfig.ConnectableHost(), http.DefaultClient)
+		client = api.NewClient(envconfig.ConnectableHost(), newServerEgressClient("server.planner.local", true))
 	}
 	return agent.OllamaPlanner{Client: client, Model: resolved.ID}, nil
 }
@@ -82,7 +81,7 @@ func (r multiProviderPlannerResolver) ResolvePlannerForMission(ctx context.Conte
 		required = filtered
 	}
 	if r.registry != nil {
-		selectable := r.registry.CleanSelectableModels(ctx, http.DefaultClient)
+		selectable := r.registry.CleanSelectableModels(ctx, newServerEgressClient("server.planner.discovery", false))
 		decision, err := r.registry.Route(multillm.RouteRequest{RequiredCapabilities: required, Path: "/api/chat", SelectableModels: selectable})
 		if err == nil {
 			planner, resolveErr := r.ResolvePlanner(decision.Model.Provider, decision.Model.ID)
@@ -96,7 +95,7 @@ func (r multiProviderPlannerResolver) ResolvePlannerForMission(ctx context.Conte
 	if localModel != "" {
 		client := r.client
 		if client == nil {
-			client = api.NewClient(envconfig.ConnectableHost(), http.DefaultClient)
+			client = api.NewClient(envconfig.ConnectableHost(), newServerEgressClient("server.planner.local", true))
 		}
 		return agent.OllamaPlanner{Client: client, Model: localModel}, agent.PlannerResolution{Provider: "ollama-local", Model: localModel, Reason: "fallback local-first: nenhuma rota remota PASS elegível", CostTag: "0-local"}, nil
 	}

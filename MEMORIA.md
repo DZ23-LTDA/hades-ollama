@@ -1,7 +1,7 @@
 ---
 projeto: ollama-classe-a-plus
-status: UI-1 IMPLEMENTADA — composer Home com roteamento automático/manual, anexos e evidência E2E limpa; gates locais verdes
-atualizado: 2026-09-30 16:47 -03 (2026-09-30 19:47 UTC)
+status: R-1 IMPLEMENTADO LOCALMENTE — egress server-side unificado; gates locais verdes; CI remoto pendente de publicação
+atualizado: 2026-09-30 17:06 -03 (2026-09-30 20:06 UTC)
 ultima_ia: Manus
 tags: [projeto, paridade-manus, evidencia-real, shell-desktop, missao-concluida]
 ---
@@ -21,6 +21,8 @@ recuperação). **Pronto** = paridade comprovada por implementação + teste
 automatizado + execução real reproduzível em navegador (desktop e mobile), sem alegar "100%" sem evidência.
 
 ## Histórico de sessões
+
+- **2026-09-30 17:06 -03 — Manus:** executou R-1 para fechar o finding P1 de egress server-side. Criou `server/egress_client.go` como helper único sobre o transporte Zero-Trust existente e migrou proxy cloud, download, planner/resolver, rotas de agentes e gerais, imagens, recomendações e cache de modelo; loopback ficou permitido somente por configuração explícita ou fixture de teste. A varredura de clientes crus em `server/` retorna apenas `&http.Client{}` mockados em `server/model_recommendations_test.go`; `go build ./...`, `go test ./internal/agent ./server -count=1`, testes focados de egress/SSRF/proxy/download/planner/DLP, contratos/integrity, `tsc`, lint, Vitest e build frontend passaram. Próximo passo: commit/push do R-1 e confirmar `class-a-plus-integrity` e `dz23-agentic-quality` verdes no mesmo SHA; não declarar CI verde antes disso.
 
 - **2026-09-30 16:47 -03 — Manus:** implementou UI-1 no composer da Home. O modo automático envia `auto/coding` ao roteador real; o modo manual usa o `ModelPicker` controlado e somente modelos PASS; anexos usam `FileUpload` com seletor, drag-and-drop, paste, limite de 10 MB e chips removíveis. Evidência real desktop/mobile em `docs/evidencias/screen-ui1-home-desktop.png` e `screen-ui1-home-mobile.png`; auditoria `docs/evidencias/browser-console-audit-ui1.json` com `console_errors: []` e `http_errors: []`. Gates `npx tsc -b`, `npm run lint`, `npx vitest run` e `npm run build` verdes. Próximo passo: commit/push e validação CI remota.
 

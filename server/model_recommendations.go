@@ -48,7 +48,7 @@ type modelRecommendationsCache struct {
 func newModelRecommendationsCache() *modelRecommendationsCache {
 	return &modelRecommendationsCache{
 		recommendations: cloneModelRecommendations(defaultModelRecommendations),
-		client:          http.DefaultClient,
+		client:          newServerEgressClient("server.model_recommendations", false),
 	}
 }
 

@@ -41,6 +41,9 @@ var blobDownloadManager sync.Map
 type blobDownload struct {
 	Name   string
 	Digest string
+	// client is injectable for tests that use an explicitly local httptest
+	// server. Production downloads leave it nil and use strict public egress.
+	client *http.Client
 
 	Total     int64
 	Completed atomic.Int64
@@ -342,7 +345,11 @@ func (b *blobDownload) downloadChunk(ctx context.Context, requestURL *url.URL, w
 			return err
 		}
 		req.Header.Set("Range", fmt.Sprintf("bytes=%d-%d", part.StartsAt(), part.StopsAt()-1))
-		resp, err := http.DefaultClient.Do(req)
+		client := b.client
+		if client == nil {
+			client = newServerEgressClient("server.download", false)
+		}
+		resp, err := client.Do(req)
 		if err != nil {
 			return err
 		}

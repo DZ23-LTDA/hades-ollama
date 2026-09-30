@@ -834,7 +834,7 @@ func TestPullModelManifest(t *testing.T) {
 			n.ProtocolScheme = "http"
 			n.Host = strings.TrimPrefix(ts.URL, "http://")
 
-			mf, data, err := pullModelManifest(t.Context(), n, &registryOptions{})
+			mf, data, err := pullModelManifest(t.Context(), n, &registryOptions{Insecure: true})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -923,6 +923,11 @@ func TestPullModelDuplicateDigestVerifiesBlob(t *testing.T) {
 // (hf.co's CDN) are fine. --insecure opts out.
 func TestPullManifestRejectsCrossHostRedirect(t *testing.T) {
 	t.Setenv("OLLAMA_MODELS", t.TempDir())
+	previousDialer := testMakeRequestDialContext
+	testMakeRequestDialContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
+		return (&net.Dialer{}).DialContext(ctx, network, addr)
+	}
+	t.Cleanup(func() { testMakeRequestDialContext = previousDialer })
 
 	var internalHit atomic.Bool
 	internal := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

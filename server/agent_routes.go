@@ -171,7 +171,7 @@ func newDefaultAgentRuntime() (*agent.Runtime, error) {
 		return nil, err
 	}
 	if embedModel := strings.TrimSpace(os.Getenv("OLLAMA_AGENT_EMBED_MODEL")); embedModel != "" {
-		contextStore.SetEmbedder(agent.OllamaEmbedder{Client: api.NewClient(envconfig.ConnectableHost(), http.DefaultClient), Model: embedModel})
+		contextStore.SetEmbedder(agent.OllamaEmbedder{Client: api.NewClient(envconfig.ConnectableHost(), newServerEgressClient("server.agent.ollama_local", true)), Model: embedModel})
 	}
 	connectors, err := loadAgentConnectors(storeRoot)
 	if err != nil {
@@ -211,7 +211,7 @@ func newDefaultAgentRuntime() (*agent.Runtime, error) {
 	var planner agent.Planner = agent.RulePlanner{}
 	if model := strings.TrimSpace(os.Getenv("OLLAMA_AGENT_MODEL")); model != "" {
 		planner = agent.OllamaPlanner{
-			Client: api.NewClient(envconfig.ConnectableHost(), http.DefaultClient),
+			Client: api.NewClient(envconfig.ConnectableHost(), newServerEgressClient("server.agent.ollama_local", true)),
 			Model:  model,
 		}
 	}
@@ -1000,7 +1000,7 @@ func prepareOIDCProvider(ctx context.Context, provider agent.OAuthProvider) (age
 	if strings.TrimSpace(provider.IssuerURL) == "" {
 		return provider, provider.Validate()
 	}
-	discovery, err := provider.Discover(ctx, http.DefaultClient)
+	discovery, err := provider.Discover(ctx, newServerEgressClient("server.agent.provider_discovery", false))
 	if err != nil {
 		return agent.OAuthProvider{}, err
 	}
@@ -1034,7 +1034,7 @@ func samlProviderFromEnv(name string) agent.SAMLProviderConfig {
 
 func loadSAMLService(ctx context.Context, name string) (*agent.SAMLService, error) {
 	config := samlProviderFromEnv(name)
-	return agent.NewSAMLService(ctx, config, http.DefaultClient)
+	return agent.NewSAMLService(ctx, config, newServerEgressClient("server.agent.saml", false))
 }
 
 func (a *agentAPI) samlService(ctx context.Context, name string) (*agent.SAMLService, error) {
@@ -1111,7 +1111,7 @@ func (a *agentAPI) oauthCallback(c *gin.Context) {
 		writeAgentError(c, http.StatusBadRequest, err)
 		return
 	}
-	payload, err := provider.ExchangeCode(c.Request.Context(), http.DefaultClient, code, redirectURI, state.CodeVerifier)
+	payload, err := provider.ExchangeCode(c.Request.Context(), newServerEgressClient("server.agent.oauth.exchange", false), code, redirectURI, state.CodeVerifier)
 	if err != nil {
 		writeAgentError(c, http.StatusBadGateway, err)
 		return
@@ -1122,7 +1122,7 @@ func (a *agentAPI) oauthCallback(c *gin.Context) {
 			writeAgentError(c, http.StatusBadGateway, errors.New("oidc token response has no id_token"))
 			return
 		}
-		claims, validationErr := provider.ValidateIDToken(c.Request.Context(), http.DefaultClient, idToken, state.Nonce)
+		claims, validationErr := provider.ValidateIDToken(c.Request.Context(), newServerEgressClient("server.agent.oauth.id_token", false), idToken, state.Nonce)
 		if validationErr != nil {
 			writeAgentError(c, http.StatusBadGateway, validationErr)
 			return
@@ -1132,7 +1132,7 @@ func (a *agentAPI) oauthCallback(c *gin.Context) {
 	userID := state.UserID
 	if userID == "" && (provider.UserInfoURL != "" || provider.IssuerURL != "") {
 		accessToken, _ := payload["access_token"].(string)
-		userinfo, userinfoErr := provider.FetchUserInfo(c.Request.Context(), http.DefaultClient, accessToken)
+		userinfo, userinfoErr := provider.FetchUserInfo(c.Request.Context(), newServerEgressClient("server.agent.oauth.userinfo", false), accessToken)
 		if userinfoErr != nil {
 			writeAgentError(c, http.StatusBadGateway, userinfoErr)
 			return
@@ -1191,7 +1191,7 @@ func (a *agentAPI) oauthRefresh(c *gin.Context) {
 		writeAgentError(c, http.StatusBadRequest, err)
 		return
 	}
-	credential, err := a.auth.RefreshOAuthCredentialForOrganization(c.Request.Context(), agentOrganizationID(c), provider, request.CredentialID, http.DefaultClient)
+	credential, err := a.auth.RefreshOAuthCredentialForOrganization(c.Request.Context(), agentOrganizationID(c), provider, request.CredentialID, newServerEgressClient("server.agent.oauth.refresh", false))
 	if err != nil {
 		status := http.StatusBadGateway
 		if errors.Is(err, agent.ErrOAuthCredentialConflict) {
@@ -1221,7 +1221,7 @@ func (a *agentAPI) oauthRevoke(c *gin.Context) {
 		writeAgentError(c, http.StatusBadRequest, err)
 		return
 	}
-	if err := a.auth.RevokeOAuthCredentialForOrganization(c.Request.Context(), agentOrganizationID(c), request.CredentialID, provider, http.DefaultClient); err != nil {
+	if err := a.auth.RevokeOAuthCredentialForOrganization(c.Request.Context(), agentOrganizationID(c), request.CredentialID, provider, newServerEgressClient("server.agent.oauth.revoke", false)); err != nil {
 		status := http.StatusBadGateway
 		if errors.Is(err, agent.ErrOAuthCredentialConflict) {
 			status = http.StatusConflict

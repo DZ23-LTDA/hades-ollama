@@ -34,7 +34,7 @@ func BenchmarkDownloadChunkCompletion(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	for range b.N {
-		download := &blobDownload{Name: downloadPath, Digest: digest}
+		download := &blobDownload{Name: downloadPath, Digest: digest, client: newServerEgressClient("test.download.loopback", true)}
 		part := &blobDownloadPart{Size: int64(len(data)), blobDownload: download}
 		if err := download.downloadChunk(b.Context(), requestURL, io.Discard, part); err != nil {
 			b.Fatal(err)
@@ -58,6 +58,7 @@ func TestDownloadChunkReturnsWhenTransferCompletes(t *testing.T) {
 	download := &blobDownload{
 		Name:   filepath.Join(t.TempDir(), "blob"),
 		Digest: "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+		client: newServerEgressClient("test.download.loopback", true),
 	}
 	part := &blobDownloadPart{Size: 1, blobDownload: download}
 	ctx, cancel := context.WithTimeout(t.Context(), 250*time.Millisecond)
@@ -84,7 +85,7 @@ func TestDownloadChunkDetectsStallBeforeFirstByte(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	download := &blobDownload{Digest: "sha256:0000000000000000000000000000000000000000000000000000000000000000"}
+	download := &blobDownload{Digest: "sha256:0000000000000000000000000000000000000000000000000000000000000000", client: newServerEgressClient("test.download.loopback", true)}
 	part := &blobDownloadPart{Size: 1, blobDownload: download}
 	ctx, cancel := context.WithTimeout(t.Context(), time.Second)
 	defer cancel()

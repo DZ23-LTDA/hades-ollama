@@ -1445,11 +1445,18 @@ func makeRequest(ctx context.Context, method string, requestURL *url.URL, header
 		}
 	}
 
-	c := &http.Client{
-		CheckRedirect: checkRedirect,
-	}
+	// Tests that provide a dialer explicitly use offline httptest registries.
+	// In production this hook is nil, so private destinations remain blocked
+	// unless the caller deliberately opts into an insecure registry.
+	allowPrivate := (regOpts != nil && regOpts.Insecure) || testMakeRequestDialContext != nil
+	c := newServerEgressClient("server.images", allowPrivate)
+	c.CheckRedirect = checkRedirect
 	if testMakeRequestDialContext != nil {
-		tr := http.DefaultTransport.(*http.Transport).Clone()
+		tr, ok := c.Transport.(*http.Transport)
+		if !ok {
+			return nil, errors.New("server images egress transport is not an http.Transport")
+		}
+		tr = tr.Clone()
 		tr.DialContext = testMakeRequestDialContext
 		c.Transport = tr
 	}

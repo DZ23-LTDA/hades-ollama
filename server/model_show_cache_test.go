@@ -322,7 +322,9 @@ func TestModelShowCacheCloudColdMissFallsBackToProxy(t *testing.T) {
 	defer upstream.Close()
 	withCloudProxyBaseURL(t, upstream.URL)
 
-	s := &Server{modelCaches: &modelCaches{show: newModelShowCache()}}
+	cache := newModelShowCache()
+	cache.client = newServerEgressClient("test.model_show.loopback", true)
+	s := &Server{modelCaches: &modelCaches{show: cache}}
 	router, err := s.GenerateRoutes()
 	if err != nil {
 		t.Fatalf("GenerateRoutes failed: %v", err)
@@ -513,8 +515,13 @@ func showCacheTestResponse(call int, verbose bool) *api.ShowResponse {
 func withCloudProxyBaseURL(t *testing.T, url string) {
 	t.Helper()
 	original := cloudProxyBaseURL
+	originalClient := cloudProxyHTTPClient
 	cloudProxyBaseURL = url
+	cloudProxyHTTPClient = func() *http.Client {
+		return newServerEgressClient("test.cloud_proxy.loopback", true)
+	}
 	t.Cleanup(func() {
 		cloudProxyBaseURL = original
+		cloudProxyHTTPClient = originalClient
 	})
 }
