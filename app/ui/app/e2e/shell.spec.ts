@@ -12,17 +12,29 @@ test.describe("Ollama Full shell", () => {
       page.getByRole("heading", { name: "Ollama Full", level: 1 }),
     ).toBeVisible();
     await expect(
-      page.getByRole("heading", { name: "Missão agentic" }),
+      page.getByRole("heading", { name: "Sites, aplicativos e jogos" }),
     ).toBeVisible();
     await expect(page.getByText("Ollama Classe A+", { exact: true })).toHaveCount(0);
 
     // Indicador de modo local-first (approvals/secrets protegidos).
-    await expect(page.getByText(/Modo local-first/i)).toBeVisible();
+    await expect(page.getByText(/Local-first workspace/i)).toBeVisible();
 
     // Navegacao lateral principal presente.
     for (const item of ["Agente", "Tarefas", "Empresa"]) {
       await expect(page.getByText(item, { exact: false }).first()).toBeVisible();
     }
+  });
+
+  test("agentic composer exposes accessible names on mobile", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto("/agentic");
+
+    await expect(
+      page.getByRole("textbox", { name: "Instrução da missão" }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Enviar instrução" }),
+    ).toBeVisible();
   });
   // Navegacao para sub-rotas (/tasks, /agentic) depende do backend e nao e
   // deterministica offline; a jornada profunda e coberta por go test no runtime.

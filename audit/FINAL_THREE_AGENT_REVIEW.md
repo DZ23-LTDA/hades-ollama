@@ -387,3 +387,46 @@ A revisão confirmou no commit `883a17e2` compensações para falhas entre coman
 ## Addendum independente — moveDue Redis — 2026-09-23
 
 A revisão confirmou no commit `b1aaebfd` a compensação do caminho `ZREM`/`LPUSH` em `moveDue`, evitando perda best-effort de retries delayed. Testes locais focados passaram; Redis real, lease e fencing permanecem não homologados.
+
+
+## Auditoria independente da retomada — 2026-09-30
+
+### Escopo e evidências
+
+Auditoria somente leitura do checkout `0d3aa7318367008aec96e21a77408f016f5936c9`, complementada por validações locais da correção de acessibilidade. Nenhum deploy, merge em `main` ou provider externo foi executado.
+
+- Engenharia revisou runtime, Studio, testes e matriz; depois o Go focado foi executado com `/usr/local/go/bin/go`.
+- Segurança revisou `SECURITY.md`, ADRs, rotas WhatsApp, auth/tenant, release e egress.
+- Produto/QA/UX revisou matriz, árvore, evidências, rotas, E2E e acessibilidade.
+
+### Achados desta rodada
+
+#### HIGH
+
+1. **Webhook WhatsApp sem autenticação de origem na rota.** `server/whatsapp_routes.go` aceita challenge sem comparar o verify token configurado e encaminha POST sem validação HMAC/assinatura, `object` e `phone_number_id`.
+2. **Envio outbound WhatsApp sem allowlist/approval específico.** `POST /whatsapp/send` valida apenas destino/texto e chama o adapter; não impõe destinatário allowlisted, permissão dedicada ou HITL para novo destinatário.
+3. **Boundary de tenant frágil quando auth está desabilitado.** O header de organização pode selecionar escopo e `missionByID` não compara organização nesse modo; exposição compartilhada deve permanecer bloqueada.
+4. **Preview/download do Studio não encaminham Bearer.** Navegação direta do iframe e download via link não carregam o header usado por `agentFetch`; o fluxo autenticado pode retornar 401.
+5. **Preview do Studio sem `sandbox`.** A matriz declarava iframe sandboxed, mas o iframe do Studio não tinha o atributo; conteúdo de projeto é servido na mesma origem.
+
+#### MEDIUM / IMPROVEMENT
+
+- Atualizações visuais concorrentes podem perder edições/ordem de undo-redo porque o backend não usa CAS/versão esperada e a UI envia uma requisição por tecla.
+- Export antigo continua associado ao projeto depois de edição, sem invalidar checksum/path ou bloquear download até novo export.
+- Modais críticos de sidebar/deploy precisam semântica de diálogo, foco inicial/retorno e fechamento por Escape.
+- Evidências e matriz não registram uniformemente viewport, commit e checksums; o script Studio tem asserções condicionais e não verifica bytes/checksum do download.
+- Plugins possui duas superfícies (`/connectors` e `/plugins`) e a árvore ainda marca Builders como `[ADAPTER]` enquanto a matriz marca `PASS`.
+
+### Correção executada nesta retomada
+
+- `AgenticSplitShell.tsx`: campo e botão do composer receberam nomes acessíveis (`Instrução da missão`, `Enviar instrução`).
+- `shell.spec.ts`: adicionada asserção Playwright em viewport `390x844`; expectativas obsoletas da Home foram alinhadas aos headings e selo reais, sem reduzir cobertura.
+- Evidência: `npx playwright test e2e/shell.spec.ts` — **2 passed**; `npx vitest run` — **36 arquivos / 255 testes passed**; `go test ./internal/agent ./server -run 'WhatsApp|WA|Gateway' -count=1` — **PASS**.
+
+### Veredicto
+
+`REQUEST_CHANGES`. O produto tem implementação ampla e CI verde no commit auditado, mas **não** deve ser declarado production-ready/enterprise ou paridade final concluída enquanto os HIGHs de webhook/outbound/tenant/Studio autenticado e sandbox não tiverem regressões automatizadas e execução verificável.
+
+### Próximo passo obrigatório
+
+Implementar primeiro a autenticação de webhook WhatsApp e a política outbound fail-closed; depois corrigir boundary tenant e Studio (Bearer, sandbox, invalidação de export e concorrência), atualizar matriz/árvore e repetir os três pareceres independentes. Dependências externas continuam `NOT_CONFIGURED`/`BLOCKED_EXTERNAL`.

@@ -1,7 +1,7 @@
 ---
 projeto: ollama-classe-a-plus
-status: MISSÃO CONCLUÍDA — PARIDADE 100%
-atualizado: 2026-09-30 07:25 -03 (2026-09-30 10:25 UTC)
+status: CANDIDATE_COMPLETED — AUDITORIA FINAL REQUEST CHANGES
+atualizado: 2026-09-30 11:59 -03 (2026-09-30 14:59 UTC)
 ultima_ia: Manus
 tags: [projeto, paridade-manus, evidencia-real, shell-desktop, missao-concluida]
 ---
@@ -20,9 +20,10 @@ da análise de outros harnesses/repositórios, com qualidade enterprise
 recuperação). **Pronto** = paridade comprovada por implementação + teste
 automatizado + execução real reproduzível em navegador (desktop e mobile), sem alegar "100%" sem evidência.
 
-## Estado atual (2026-09-30 08:49 -03 / 2026-09-30 11:49 UTC)
+## Estado atual (2026-09-30 11:59 -03 / 2026-09-30 14:59 UTC)
 - **Repo:** github.com/DZ23-LTDA/ollama-classe-a-plus. Branch canônica: `recovery/ollama-full-snapshot`.
-- **STATUS DA MISSÃO: FASE 10 IMPLEMENTADA — Studio/Builders Interativo para sites/apps/jogos/slides/dashboards 100% conectado ao backend real, undo/redo em pilha, preview ao vivo em iframe sandboxed, export rastreável com checksum SHA-256 e download de ZIP, deploy adapter honesto (BLOCKED_EXTERNAL sem credenciais), testes Go e E2E Playwright desktop/mobile**
+- **STATUS DA MISSÃO: FASE 10 IMPLEMENTADA; auditoria final independente em REQUEST CHANGES.** A CI remota `class-a-plus-integrity` e `dz23-agentic-quality` está verde no mesmo commit `0d3aa731`, e o smoke Playwright do shell passou 2/2 após a correção a11y. Isso não encerra a paridade: permanecem blockers HIGH documentados em `audit/FINAL_THREE_AGENT_REVIEW.md`.
+- **Retomada 2026-09-30:** o composer agentic recebeu `aria-label` no campo e botão de envio; o E2E mobile em `390x844` comprova ambos. Expectativas obsoletas do smoke da Home foram alinhadas à UI real. O próximo slice obrigatório é fechar autenticação de webhook WhatsApp e outbound fail-closed, sem promover claims externos para PASS. A linha Builders da matriz foi reclassificada para `NOT_EXECUTED` até fechar os blockers de sandbox, Bearer, CAS e invalidação de export identificados na auditoria.
 - **FASE 10:** Implementado o Studio visual interativo (`StudioCanvasPage.tsx` e `/studio`), substituindo testes com API mockada por integração de ponta a ponta contra o backend real de builders (`BuilderService` em `internal/agent/builder.go` e rotas em `server/agent_routes.go`). Suporte a paleta com componentes (Heading, Paragraph, Button, Card, Metric, Navbar) e modelos de projeto (Site, Dashboard, Slides, Jogo, App Móvel); atualização dinâmica de componentes via `POST /api/agent/v1/builders/:id/visual`; histórico de undo e redo com pilhas no backend (`POST /builders/:id/undo` e `/redo`); preview ao vivo em iframe renderizado diretamente do backend (`POST /builders/:id/preview` e `/preview/*path`); exportação de projeto em ZIP com checksum criptográfico SHA-256 verificado (`POST /builders/:id/export` e download via `GET /builders/:id/download`); adaptador de deploy externo com verificação honesta de credenciais (`BLOCKED_EXTERNAL` / `NOT_CONFIGURED` via enum `gate_status`, sem falsificar publicação); documentação de arquitetura para colaboração CRDT em tempo real; testes unitários e de integração em `internal/agent/builder_studio_test.go` e `server/builder_studio_routes_test.go` (100% PASS); captura E2E Playwright desktop (1440x900) e mobile (390x844) em `docs/evidencias/screen-studio-builder-*.png` com console e HTTP 100% limpos em `browser-console-audit.json`.
 - **STATUS DA MISSÃO: FASE 09 IMPLEMENTADA — Egress Zero-Trust Unificado em todas as saídas de rede (connectors, media, deploy, MCP remoto, push, multillm, WhatsApp) com DNS pinning, verificação de peer, bloqueio estrito de IP privado/metadata/rebinding, isolamento de credenciais em redirects, limitação de payload anti-DoS, auditoria auditável (/api/agent/v1/egress/logs e /status) e suíte de testes de regressão anti-bypass**
 - **FASE 09:** Implementada política única e centralizada em `internal/agent/egress_zero_trust.go` e `internal/multillm/egress_zero_trust.go`. Toda requisição de saída resolve todos os IPs via DNS e rejeita o host se qualquer endereço for privado/loopback/link-local/metadata (`169.254.169.254`), CGNAT ou IPv4-mapped IPv6 (protegendo contra DNS rebinding). Dials são fixados exclusivamente nos IPs aprovados com remoção forçada de proxies ambientais e TLS hooks que pudessem burlar a resolução; verificação estrita de peer address; bloqueio de redirects cross-host e downgrade HTTPS->HTTP com descarte forçado de headers de credenciais (`Authorization`, `Cookie`, `X-Api-Key`); proteção contra resource exhaustion com `ReadBoundedBody`. Registrador de auditoria em memória com endpoints `/api/agent/v1/egress/logs` e `/api/agent/v1/egress/status`. Suíte completa de testes de bypass passando em `internal/agent`, `internal/multillm` e `server`.
@@ -87,6 +88,13 @@ automatizado + execução real reproduzível em navegador (desktop e mobile), se
 
 ## Histórico de sessões
 <!-- Mais recente no topo. Uma entrada por sessão de trabalho. -->
+### 2026-09-30 11:59 -03 — Manus — retomada, auditoria final independente e correção de acessibilidade
+- **CI remota:** `class-a-plus-integrity` e `dz23-agentic-quality` concluíram `success` no mesmo SHA `0d3aa7318367008aec96e21a77408f016f5936c9`.
+- **Auditoria:** três pareceres independentes foram consolidados em `audit/FINAL_THREE_AGENT_REVIEW.md`; veredicto `REQUEST_CHANGES` por blockers HIGH em webhook/outbound WhatsApp, boundary tenant e Studio autenticado/sandbox. Não declarar produção-ready nem paridade final.
+- **Correção aplicada:** `app/ui/app/src/components/AgenticSplitShell.tsx` agora nomeia o campo como `Instrução da missão` e o botão como `Enviar instrução`; `app/ui/app/e2e/shell.spec.ts` valida a acessibilidade no mobile e foi alinhado aos headings/selo reais da Home.
+- **Evidência:** `npx playwright test e2e/shell.spec.ts` passou 2/2; Vitest passou 36 arquivos/255 testes; `go test ./internal/agent ./server -run 'WhatsApp|WA|Gateway' -count=1` passou.
+- **Próximo passo:** implementar autenticação de webhook WhatsApp e outbound fail-closed com testes negativos; depois corrigir boundary tenant e Studio. Manter dependências externas como `NOT_CONFIGURED`/`BLOCKED_EXTERNAL`.
+
 ### 2026-09-30 11:45 -03 — Gemini — FASE 10: STUDIO/BUILDERS INTERATIVO LIGADO AO BACKEND REAL (CANVAS, UNDO/REDO, PREVIEW, EXPORT RASTREÁVEL COM SHA-256 E DEPLOY ADAPTER)
 - **Implementação Go:**
   - **1. Evolução do BuilderService e Rastreabilidade (`internal/agent/builder.go`):**

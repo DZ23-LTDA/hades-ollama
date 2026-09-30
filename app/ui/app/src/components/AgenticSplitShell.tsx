@@ -429,12 +429,14 @@ export function AgenticSplitShell({
               type="text"
               value={chatInput}
               onChange={(e) => setChatInput(e.target.value)}
+              aria-label="Instrução da missão"
               placeholder="Envie uma instrução, pergunte ou crie uma nova missão..."
               className="flex-1 bg-transparent text-sm outline-none text-neutral-900 dark:text-white"
             />
             <button
               type="submit"
               disabled={!chatInput.trim() || busy || actionLoading}
+              aria-label="Enviar instrução"
               className="rounded-lg bg-neutral-900 p-1.5 text-white hover:bg-neutral-800 disabled:opacity-30 dark:bg-white dark:text-neutral-900"
             >
               <PaperAirplaneIcon className="h-4 w-4" />
