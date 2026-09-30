@@ -26,6 +26,8 @@ jobs:
           fetch-depth: 0
       - name: Verify required product and security surfaces
         run: scripts/check-class-a-plus-integrity.sh
+      - name: Verify frontend-backend contract matrix
+        run: node scripts/verify-contracts.mjs
       - name: Verify CI surface classifier (fail-safe + workflow consistency)
         run: python3 scripts/classify_ci_surfaces_test.py
       - name: Verify Go formatting for protected backend surfaces

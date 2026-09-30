@@ -78,6 +78,25 @@ automatizado + execução real reproduzível em navegador (desktop e mobile), se
 
 ## Histórico de sessões
 <!-- Mais recente no topo. Uma entrada por sessão de trabalho. -->
+### 2026-09-30 04:45 -03 — Manus — FASE A.5: REGRAS ESTRITAS DE SUCESSO E HARDENING DE GATES
+- **O que foi feito:**
+  - **1. Modelo de Estado Honesto (Anti-Fake Done):** Implementado `internal/agent/gate_status.go` e `internal/agent/gate_status_test.go` com espelho em `app/ui/app/src/lib/gateStatus.ts`. Define o enum estrito: `PASS`, `FAIL`, `NOT_EXECUTED`, `NOT_PRESENT`, `NOT_CONFIGURED`, `BLOCKED_EXTERNAL`, `UNKNOWN`. Testes unitários comprovam que nenhuma capacidade pode ser marcada como `PASS` sem execução verificada e que `ValidateGateMatrixEntry` rejeita `PASS` com erro determinístico.
+  - **2. Matriz Automatizada de Contratos Frontend <-> Backend:** Criado `scripts/verify-contracts.mjs`. O script mapeia todas as chamadas de API do frontend (`app/ui/app/src`) e valida que cada rota existe no backend Go (`server/agent_routes.go`, `server/routes.go`, `server/desktop_local_routes.go`, `server/plugin_routes.go`, `app/ui/ui.go`). Failsafe integrado: comprovada reprovação com exit code 1 ao injetar rota inválida temporária. Adicionados endpoints ausentes (`POST /api/v1/models/pull`, etc.) e integrado ao CI em `scripts/check-class-a-plus-integrity.sh` e `.github/workflows/class-a-plus-integrity.yaml`.
+  - **3. Harness de Testes de Mutação de Segurança:** Criado `internal/agent/mutation_gate_test.go`. Testa 3 proteções críticas do sistema:
+    - Proteção 1: Enforçamento de Capabilities de Ferramentas (`TestMutationHarnessCapabilityEnforcement`) — mutação que enfraquece a validação para bypass é detectada e reprovada pelo harness.
+    - Proteção 2: Gate de Aprovação Humana HITL (`TestMutationHarnessHITLApprovalBypass`) — mutação que omite o check de aprovação é detectada e reprovada pelo harness.
+    - Proteção 3: Travessia de Symlink e Isolamento de Workspace (`TestMutationHarnessSymlinkTraversal`) — mutação que omite `rejectSymlinkComponents` é detectada e reprovada pelo harness.
+  - **4. Reclassificação Honesta de PARITY_MATRIX.md:** Atualizada a legenda oficial e reclassificados os estados de todos os domínios: capacidades com evidência comprovada e testes foram mantidas como `PASS` (`VALIDADA COM EVIDÊNCIA`), enquanto integrações que dependem de credenciais externas foram devidamente marcadas como `NOT_CONFIGURED` (`ADAPTER IMPLEMENTADO: ADR-001/003`), comércio eletrônico como `BLOCKED_EXTERNAL` (ADR-002), e módulos dependentes de testes isolados como `NOT_EXECUTED`.
+  - **5. Quality Gates Locais Completos:**
+    - `gofmt -l internal/agent internal/multillm server/agent_routes.go` -> 100% LIMPO (vazio).
+    - `go test -v -run "TestGateStatus|TestGateMatrix|TestMutationHarness" ./internal/agent` -> 5/5 PASS (0.025s).
+    - `node scripts/verify-contracts.mjs` -> PASS (todos os endpoints frontend validados contra o backend).
+    - `bash scripts/check-class-a-plus-integrity.sh` -> PASS ("Ollama Full integrity guard: PASS").
+    - `go build ./...` -> PASS.
+    - `go test ./internal/agent` -> PASS (19.17s).
+    - `go test ./server` -> PASS (7.61s).
+    - `npx tsc -b && npm run lint && npx vitest run && npm run build` -> PASS (35 test files, 246 tests, build em 15.96s).
+
 ### 2026-09-30 07:25 -03 — Manus — FASE A: CICLO CODING/GIT COMPLETO (REAL, NÃO MOCK)
 - **O que foi feito:**
   - **1. Worktree/Branch Isolado:** Implementado `CreateGitWorktree` e `RemoveGitWorktree` em `internal/agent/coding_git_cycle.go`. Cria worktree em `.agent-worktrees/<mission_id>` e branch dedicado `agent/<mission_id>` a partir de HEAD. O repositório original de origem fica 100% intacto enquanto a missão executa.

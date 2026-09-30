@@ -93,6 +93,24 @@ func (s *Server) registerDesktopLocalRoutes(r *gin.Engine) {
 	r.GET("/api/v1/providers", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"providers": []gin.H{}})
 	})
+	r.PUT("/api/v1/providers/:name/key", func(c *gin.Context) {
+		c.Status(http.StatusNoContent)
+	})
+	r.DELETE("/api/v1/providers/:name/key", func(c *gin.Context) {
+		c.Status(http.StatusNoContent)
+	})
+	r.GET("/api/v1/providers/:name/models", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"models": []string{}})
+	})
+	r.PUT("/api/v1/providers/:name/models", func(c *gin.Context) {
+		c.Status(http.StatusNoContent)
+	})
+	r.PUT("/api/v1/connectors/:id/key", func(c *gin.Context) {
+		c.Status(http.StatusNoContent)
+	})
+	r.DELETE("/api/v1/connectors/:id/key", func(c *gin.Context) {
+		c.Status(http.StatusNoContent)
+	})
 
 	r.GET("/api/v1/inference-compute", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
@@ -104,6 +122,7 @@ func (s *Server) registerDesktopLocalRoutes(r *gin.Engine) {
 	r.GET("/api/v1/models/cloud", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"models": []gin.H{}})
 	})
+	r.POST("/api/v1/models/pull", s.PullHandler)
 
 	// Endpoints para Personalização do Agente e Criações Consolidadas
 	r.GET("/api/agent/v1/personalization", func(c *gin.Context) {
@@ -115,20 +134,20 @@ func (s *Server) registerDesktopLocalRoutes(r *gin.Engine) {
 	})
 
 	r.POST("/api/agent/v1/personalization", func(c *gin.Context) {
-			var body map[string]any
-			if err := c.ShouldBindJSON(&body); err != nil {
-				c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
-				return
-			}
-			c.JSON(http.StatusOK, gin.H{
-				"status": "updated",
-				"data":   body,
-			})
+		var body map[string]any
+		if err := c.ShouldBindJSON(&body); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{
+			"status": "updated",
+			"data":   body,
 		})
+	})
 
-		r.GET("/api/agent/v1/creations", func(c *gin.Context) {
-			c.JSON(http.StatusOK, gin.H{
-				"creations": []gin.H{},
-			})
+	r.GET("/api/agent/v1/creations", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{
+			"creations": []gin.H{},
 		})
-	}
+	})
+}
