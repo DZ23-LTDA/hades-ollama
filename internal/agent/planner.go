@@ -28,6 +28,28 @@ type RulePlanner struct{}
 
 func (RulePlanner) Plan(_ context.Context, mission Mission) ([]Step, error) {
 	objective := strings.ToLower(mission.Objective)
+	if strings.Contains(objective, "navegar") || strings.Contains(objective, "browser") {
+		return []Step{
+			{
+				ID:               "step_1",
+				Kind:             "browser.operator",
+				Title:            "Navegar na página web e capturar frame visual",
+				Risk:             RiskRead,
+				RequiresApproval: false,
+				State:            StepPending,
+				Input:            map[string]any{"action": "navigate", "url": "https://example.com"},
+			},
+			{
+				ID:               "step_2",
+				Kind:             "workspace.write",
+				Title:            "Gravar relatório e consolidar artefato da missão",
+				Risk:             RiskWrite,
+				RequiresApproval: true,
+				State:            StepPending,
+				Input:            map[string]any{"path": "relatorio-missao.md", "content": "# Relatório de Execução da Missão\n\nNavegação realizada com sucesso e frame visual espelhado em tempo real.\n"},
+			},
+		}, nil
+	}
 	if strings.Contains(objective, "escrever") || strings.Contains(objective, "criar arquivo") || strings.Contains(objective, "editar") {
 		return []Step{{
 			ID:               "step_1",

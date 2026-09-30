@@ -109,6 +109,22 @@ export default function AgenticConsole() {
     const searchParams = new URLSearchParams(window.location.search);
     const requestedObjective = searchParams.get("objective");
     const autoRunParam = searchParams.get("autorun") === "true";
+    const requestedMissionId = searchParams.get("mission_id") || searchParams.get("missionId");
+    if (requestedMissionId) {
+      setViewMode("split");
+      void load(requestedMissionId);
+    } else if (!requestedObjective) {
+      void api<{ missions: Mission[] }>("/api/agent/v1/missions")
+        .then((res) => {
+          if (res.missions && res.missions.length > 0) {
+            const latest = res.missions[res.missions.length - 1];
+            setMission(latest);
+            setViewMode("split");
+            void load(latest.id);
+          }
+        })
+        .catch(() => {});
+    }
     if (requestedObjective) {
       setObjective(requestedObjective);
       if (autoRunParam) {

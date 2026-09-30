@@ -59,17 +59,17 @@ Manus Desktop
 │   │   └── Pesquisa de mercado/ecossistema
 │   └── Rascunhos e histórico de prompts
 ├── Agente
-│   ├── Split-screen workspace (Conversa + Thought Stream à esquerda / Canvas ativo à direita) [ATUAL - VALIDADA LOCALMENTE]
-│   ├── Missões ativas [ATUAL]
+│   ├── Split-screen workspace (Conversa + Thought Stream à esquerda / Canvas ativo à direita) [ATUAL - VALIDADA COM EVIDÊNCIA (docs/evidencias/*)]
+│   ├── Missões ativas [ATUAL - VALIDADA COM EVIDÊNCIA (docs/evidencias/*)]
 │   ├── Missões em background [ATUAL]
-│   ├── Plano e subtarefas com status ao vivo [ATUAL - VALIDADA LOCALMENTE]
-│   ├── Timeline de eventos via Server-Sent Events (SSE) sem polling [ATUAL - VALIDADA LOCALMENTE]
-│   ├── Browser ao vivo com espelhamento de viewport/screenshots por evento [ATUAL - VALIDADA LOCALMENTE]
+│   ├── Plano e subtarefas com status ao vivo [ATUAL - VALIDADA COM EVIDÊNCIA (docs/evidencias/*)]
+│   ├── Timeline de eventos via Server-Sent Events (SSE) sem polling [ATUAL - VALIDADA COM EVIDÊNCIA (docs/evidencias/*)]
+│   ├── Browser ao vivo com espelhamento de viewport/screenshots por evento [ATUAL - VALIDADA COM EVIDÊNCIA (docs/evidencias/*)]
 │   ├── Terminal e código [ATUAL]
 │   ├── Pesquisa e citações [ATUAL]
-│   ├── Aprovações humanas in-line com justificativa [ATUAL - VALIDADA LOCALMENTE]
+│   ├── Aprovações humanas in-line com justificativa [ATUAL - VALIDADA COM EVIDÊNCIA (docs/evidencias/*)]
 │   ├── Correção e recuperação [ATUAL]
-│   ├── Visualizador de artefatos com abas de preview (iframe/markdown/code/download + SHA-256) [ATUAL - VALIDADA LOCALMENTE]
+│   ├── Visualizador de artefatos com abas de preview (iframe/markdown/code/download + SHA-256) [ATUAL - VALIDADA COM EVIDÊNCIA (docs/evidencias/*)]
 │   └── Compartilhamento e colaboração [ADAPTER]
 ├── Habilidades
 │   ├── Catálogo

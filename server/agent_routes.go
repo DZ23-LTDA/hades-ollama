@@ -202,20 +202,20 @@ func newDefaultAgentRuntime() (*agent.Runtime, error) {
 		return nil, fmt.Errorf("initialize agent OpenTelemetry: %w", err)
 	}
 	var redisQueue *agent.RedisQueue
-	if redisURL := strings.TrimSpace(os.Getenv("OLLAMA_AGENT_REDIS_URL")); redisURL != "" {
-		redisQueue, err = agent.OpenRedisQueue(context.Background(), redisURL, os.Getenv("OLLAMA_AGENT_REDIS_PREFIX"))
-		if err != nil {
-			return nil, fmt.Errorf("open agent Redis queue: %w", err)
+		if redisURL := strings.TrimSpace(os.Getenv("OLLAMA_AGENT_REDIS_URL")); redisURL != "" {
+			redisQueue, err = agent.OpenRedisQueue(context.Background(), redisURL, os.Getenv("OLLAMA_AGENT_REDIS_PREFIX"))
+			if err != nil {
+				return nil, fmt.Errorf("open agent Redis queue: %w", err)
+			}
 		}
-	}
-	var planner agent.Planner = agent.UnconfiguredPlanner{}
-	if model := strings.TrimSpace(os.Getenv("OLLAMA_AGENT_MODEL")); model != "" {
-		planner = agent.OllamaPlanner{
-			Client: api.NewClient(envconfig.ConnectableHost(), http.DefaultClient),
-			Model:  model,
+		var planner agent.Planner = agent.RulePlanner{}
+		if model := strings.TrimSpace(os.Getenv("OLLAMA_AGENT_MODEL")); model != "" {
+			planner = agent.OllamaPlanner{
+				Client: api.NewClient(envconfig.ConnectableHost(), http.DefaultClient),
+				Model:  model,
+			}
 		}
-	}
-	runtime, err := agent.NewRuntime(agent.RuntimeConfig{Store: store, Context: contextStore, Company: companyStore, Planner: planner, WorkspaceRoot: workspaceRoot, DataRoot: storeRoot, Connectors: connectors, MCP: mcp, RemoteMCP: remoteMCP, Media: media, RedisQueue: redisQueue, Telemetry: telemetry, Push: push, Deployments: deployments})
+		runtime, err := agent.NewRuntime(agent.RuntimeConfig{Store: store, Context: contextStore, Company: companyStore, Planner: planner, WorkspaceRoot: workspaceRoot, DataRoot: storeRoot, Connectors: connectors, MCP: mcp, RemoteMCP: remoteMCP, Media: media, RedisQueue: redisQueue, Telemetry: telemetry, Push: push, Deployments: deployments})
 	if err != nil {
 		return nil, err
 	}
@@ -686,7 +686,12 @@ func agentOrganizationID(c *gin.Context) string {
 			return organization.ID
 		}
 	}
-	return ""
+	if c != nil && c.Request != nil {
+		if value := strings.TrimSpace(c.GetHeader("X-Ollama-Organization")); value != "" {
+			return value
+		}
+	}
+	return agent.LocalOrganizationID
 }
 
 func contextRecordOwnedByOrganization(owner, organizationID string) bool {

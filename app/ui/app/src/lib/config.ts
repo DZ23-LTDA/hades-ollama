@@ -1,5 +1,5 @@
 // API configuration
-const DEV_API_URL = "http://127.0.0.1:3001";
+const DEV_API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:11434";
 
 // Base URL for fetch API calls (can be relative in production)
 export const API_BASE = import.meta.env.DEV ? DEV_API_URL : "";
