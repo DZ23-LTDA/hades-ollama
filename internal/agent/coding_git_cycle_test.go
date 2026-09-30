@@ -184,7 +184,9 @@ func TestMissionGitWorktreeCycle(t *testing.T) {
 	if mission.GitBranch != "agent/fix-calc-add" {
 		t.Errorf("expected branch agent/fix-calc-add, got %s", mission.GitBranch)
 	}
-	if mission.GitRepoRoot != repoDir {
+	fi1, err1 := os.Stat(mission.GitRepoRoot)
+	fi2, err2 := os.Stat(repoDir)
+	if err1 != nil || err2 != nil || !os.SameFile(fi1, fi2) {
 		t.Errorf("expected GitRepoRoot %s, got %s", repoDir, mission.GitRepoRoot)
 	}
 

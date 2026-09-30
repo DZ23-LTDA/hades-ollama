@@ -357,10 +357,20 @@ func RunProjectTests(ctx context.Context, workspacePath string, options TestRunO
 		"NO_PROXY=*",
 		"LC_ALL=C",
 	}
-	if home := os.Getenv("HOME"); home != "" {
-		cmd.Env = append(cmd.Env, "HOME="+home)
-	} else if userProfile := os.Getenv("USERPROFILE"); userProfile != "" {
-		cmd.Env = append(cmd.Env, "USERPROFILE="+userProfile)
+	for _, envKey := range []string{
+		"SystemRoot", "SYSTEMROOT", "windir", "WINDIR",
+		"LOCALAPPDATA", "LocalAppData", "APPDATA",
+		"TEMP", "TMP", "TMPDIR", "GOCACHE", "GOPATH", "GOROOT",
+		"USERPROFILE", "HOME", "USER", "USERNAME",
+	} {
+		if val, ok := os.LookupEnv(envKey); ok && strings.TrimSpace(val) != "" {
+			cmd.Env = append(cmd.Env, envKey+"="+val)
+		}
+	}
+	if gocache := os.Getenv("GOCACHE"); gocache == "" {
+		cacheDir := filepath.Join(os.TempDir(), "agent-go-build-cache")
+		_ = os.MkdirAll(cacheDir, 0o700)
+		cmd.Env = append(cmd.Env, "GOCACHE="+cacheDir)
 	}
 
 	start := time.Now()
