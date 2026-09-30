@@ -36,6 +36,11 @@ func (a *agentAPI) addCompanyCampaign(c *gin.Context) {
 		writeAgentError(c, statusForAgentError(err), err)
 		return
 	}
+	if len(company.Campaigns) > 0 {
+		if approval, approvalErr := a.runtime.CompanyStore().PendingApproval(c.Param("id"), "campaign", company.Campaigns[len(company.Campaigns)-1].ID); approvalErr == nil {
+			_ = a.runtime.CompanyStore().BindApprovalRequester(c.Param("id"), approval.ID, agentActorID(c))
+		}
+	}
 	c.JSON(http.StatusCreated, company)
 }
 
@@ -83,6 +88,11 @@ func (a *agentAPI) addCompanyAffiliateProgram(c *gin.Context) {
 	if err != nil {
 		writeAgentError(c, statusForAgentError(err), err)
 		return
+	}
+	if len(company.AffiliatePrograms) > 0 {
+		if approval, approvalErr := a.runtime.CompanyStore().PendingApproval(c.Param("id"), "affiliate_program", company.AffiliatePrograms[len(company.AffiliatePrograms)-1].ID); approvalErr == nil {
+			_ = a.runtime.CompanyStore().BindApprovalRequester(c.Param("id"), approval.ID, agentActorID(c))
+		}
 	}
 	c.JSON(http.StatusCreated, company)
 }
@@ -168,6 +178,11 @@ func (a *agentAPI) createCompanyOrder(c *gin.Context) {
 	if err != nil {
 		writeAgentError(c, statusForAgentError(err), err)
 		return
+	}
+	if len(company.Orders) > 0 {
+		if approval, approvalErr := a.runtime.CompanyStore().PendingApproval(c.Param("id"), "order", company.Orders[len(company.Orders)-1].ID); approvalErr == nil {
+			_ = a.runtime.CompanyStore().BindApprovalRequester(c.Param("id"), approval.ID, agentActorID(c))
+		}
 	}
 	c.JSON(http.StatusCreated, company)
 }

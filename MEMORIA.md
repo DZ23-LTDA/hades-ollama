@@ -86,6 +86,13 @@ automatizado + execução real reproduzível em navegador (desktop e mobile), se
 | 2026-09-29 | Chips de Ações Rápidas adicionados à HomePage.tsx | Paridade completa com o composer e atalhos rápidos do Manus Desktop | Manus |
 | 2026-09-29 | Recaptura real de agentic-approval-mobile.png com card in-line | Resolve ressalva de imagem duplicada e comprova UX mobile de aprovação | Manus |
 
+
+### 2026-09-30 14:17 -03 — Manus — H2 approval ledger
+- Substituído o booleano de entrada `approved` por `decision: approve|reject` nos endpoints de Company, missão e deployment; `approved` fica somente como projeção derivada.
+- Adicionado `requested_by` server-side, bloqueio anti-autoaprovação, nonce/expiração/CAS/organização preservados e binding nas rotas de campaigns/ads, afiliados, orders, social drafts e spend.
+- Evidência local: `go test ./server ./internal/agent -run 'Approval|Approv|Ledger|Spend|Budget|Nonce|AutoApprove|Decision' -count=1` passou; CI remoto ainda precisa ser executado após commit/push.
+- Próximo passo: executar gates completos, revisar falhas, commit/push H2 e aguardar `class-a-plus-integrity` e `dz23-agentic-quality` verdes no mesmo SHA.
+
 ## Histórico de sessões
 <!-- Mais recente no topo. Uma entrada por sessão de trabalho. -->
 ### 2026-09-30 13:33 -03 — Manus — H1 isolamento forte de execução

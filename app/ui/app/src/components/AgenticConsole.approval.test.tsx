@@ -107,7 +107,7 @@ describe("AgenticConsole approval decisions", () => {
     );
     expect(approvalCall).toBeDefined();
     expect(JSON.parse(approvalCall![1].body)).toEqual({
-      approved: true,
+		decision: "approve",
       nonce: "nonce-1",
       reason: "Reviewed the scope and verified the release impact.",
     });

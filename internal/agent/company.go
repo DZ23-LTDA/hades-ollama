@@ -117,6 +117,7 @@ type CompanyApproval struct {
 	AmountCents    int64                 `json:"amount_cents,omitempty"`
 	Nonce          string                `json:"nonce"`
 	ActorID        string                `json:"actor_id,omitempty"`
+	RequestedBy    string                `json:"requested_by,omitempty"`
 	Status         CompanyApprovalStatus `json:"status"`
 	Reason         string                `json:"reason,omitempty"`
 	ExpiresAt      *time.Time            `json:"expires_at,omitempty"`
@@ -233,6 +234,7 @@ var (
 	ErrCompanyPaused                     = errors.New("company is paused")
 	ErrCompanyApprovalConflict           = errors.New("company approval version conflict")
 	ErrCompanyApprovalNonce              = errors.New("company approval nonce mismatch")
+	ErrCompanyApprovalSelf               = errors.New("approval requester cannot approve the same decision")
 	ErrCompanyApprovalNotFound           = errors.New("company approval not found or already decided")
 	ErrCompanySpendApprovalPending       = errors.New("company spend approval is pending")
 	ErrCompanyIdempotentReplay           = errors.New("company idempotent replay")
@@ -410,13 +412,36 @@ func (s *CompanyStore) CreateRequest(request CompanyCreateRequest, organizationI
 	})
 }
 
-func queueCompanyApproval(company *Company, resourceType, resourceID, policy string, now time.Time) {
+func queueCompanyApproval(company *Company, resourceType, resourceID, policy string, now time.Time, requester ...string) {
 	expiresAt := now.Add(30 * time.Minute)
+	requestedBy := ""
+	if len(requester) > 0 {
+		requestedBy = strings.TrimSpace(requester[0])
+	}
 	company.Approvals = append(company.Approvals, CompanyApproval{
 		ID: "capr_" + uuid.NewString(), CompanyID: company.ID, OrganizationID: company.OrganizationID,
 		ResourceType: resourceType, ResourceID: resourceID, Policy: policy, Nonce: uuid.NewString(),
-		Status: CompanyApprovalPending, ExpiresAt: &expiresAt, CreatedAt: now, UpdatedAt: now,
+		Status: CompanyApprovalPending, RequestedBy: requestedBy, ExpiresAt: &expiresAt, CreatedAt: now, UpdatedAt: now,
 	})
+}
+
+// BindApprovalRequester records the initiating actor server-side.
+func (s *CompanyStore) BindApprovalRequester(id, approvalID, requester string) error {
+	requester = strings.TrimSpace(requester)
+	if requester == "" {
+		return nil
+	}
+	_, err := s.mutate(id, func(company *Company) error {
+		for index := range company.Approvals {
+			approval := &company.Approvals[index]
+			if approval.ID == strings.TrimSpace(approvalID) && approval.Status == CompanyApprovalPending {
+				approval.RequestedBy = requester
+				return nil
+			}
+		}
+		return ErrCompanyApprovalNotFound
+	})
+	return err
 }
 
 func companyIdempotencyDigest(operation, key string) string {
@@ -612,6 +637,9 @@ func (s *CompanyStore) DecideApproval(id, approvalID string, approved bool, reas
 			approval := &company.Approvals[index]
 			if approval.ID != strings.TrimSpace(approvalID) || approval.Status != CompanyApprovalPending {
 				continue
+			}
+			if approval.RequestedBy != "" && approval.RequestedBy == strings.TrimSpace(actorID) {
+				return ErrCompanyApprovalSelf
 			}
 			if approval.ExpiresAt != nil && time.Now().UTC().After(*approval.ExpiresAt) {
 				return ErrCompanyApprovalRequired

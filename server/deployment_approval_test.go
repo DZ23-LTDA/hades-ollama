@@ -53,7 +53,7 @@ func TestDeployBuilderDoesNotTrustClientApprovedBoolean(t *testing.T) {
 		t.Fatal(err)
 	}
 	api := &agentAPI{runtime: runtime}
-	ctx, recorder := newDeploymentApprovalTestContext(t, http.MethodPost, "/builders/"+project.ID+"/deploy/self", `{"approved":true}`, project.ID, "self")
+	ctx, recorder := newDeploymentApprovalTestContext(t, http.MethodPost, "/builders/"+project.ID+"/deploy/self", `{"decision":"approve"}`, project.ID, "self")
 	api.deployBuilder(ctx)
 	if recorder.Code != http.StatusBadRequest {
 		t.Fatalf("approved boolean status=%d body=%s", recorder.Code, recorder.Body.String())
@@ -102,7 +102,7 @@ func TestDeploymentApprovalRequiresAdminAndNonceBeforeProviderCall(t *testing.T)
 	if err != nil {
 		t.Fatal(err)
 	}
-	operatorCtx, operatorRecorder := newDeploymentApprovalTestContext(t, http.MethodPost, "/builders/"+project.ID+"/deploy/self/approval/"+approval.ID, `{"approved":true,"nonce":"`+approval.Nonce+`"}`, project.ID, "self")
+	operatorCtx, operatorRecorder := newDeploymentApprovalTestContext(t, http.MethodPost, "/builders/"+project.ID+"/deploy/self/approval/"+approval.ID, `{"decision":"approve","nonce":"`+approval.Nonce+`"}`, project.ID, "self")
 	operatorCtx.Params = append(operatorCtx.Params, gin.Param{Key: "approval_id", Value: approval.ID})
 	api.decideDeploymentApproval(operatorCtx)
 	if operatorRecorder.Code != http.StatusForbidden {
@@ -112,7 +112,7 @@ func TestDeploymentApprovalRequiresAdminAndNonceBeforeProviderCall(t *testing.T)
 		t.Fatal("provider was called before admin approval")
 	}
 
-	adminCtx, adminRecorder := newDeploymentApprovalTestContext(t, http.MethodPost, "/builders/"+project.ID+"/deploy/self/approval/"+approval.ID, `{"approved":true,"nonce":"`+approval.Nonce+`"}`, project.ID, "self")
+	adminCtx, adminRecorder := newDeploymentApprovalTestContext(t, http.MethodPost, "/builders/"+project.ID+"/deploy/self/approval/"+approval.ID, `{"decision":"approve","nonce":"`+approval.Nonce+`"}`, project.ID, "self")
 	adminCtx.Set("agent.membership", agent.Membership{UserID: "admin", OrganizationID: "local", Role: agent.RoleAdmin})
 	adminCtx.Set("agent.user", agent.User{ID: "admin"})
 	adminCtx.Params = append(adminCtx.Params, gin.Param{Key: "approval_id", Value: approval.ID})
@@ -210,7 +210,7 @@ func TestForeignAndUnknownDeploymentApprovalsHaveIdenticalNotFoundResponse(t *te
 	invoke := func(id string) *httptest.ResponseRecorder {
 		recorder := httptest.NewRecorder()
 		ctx, _ := gin.CreateTestContext(recorder)
-		ctx.Request = httptest.NewRequest(http.MethodPost, "/api/agent/v1/builders/"+projectB.ID+"/deploy/self/approval/"+id, strings.NewReader(`{"approved":true,"nonce":"`+foreign.Nonce+`"}`))
+		ctx.Request = httptest.NewRequest(http.MethodPost, "/api/agent/v1/builders/"+projectB.ID+"/deploy/self/approval/"+id, strings.NewReader(`{"decision":"approve","nonce":"`+foreign.Nonce+`"}`))
 		ctx.Params = gin.Params{{Key: "id", Value: projectB.ID}, {Key: "provider", Value: "self"}, {Key: "approval_id", Value: id}}
 		ctx.Set("agent.organization", agent.Organization{ID: "org-b"})
 		ctx.Set("agent.user", agent.User{ID: "admin-b"})

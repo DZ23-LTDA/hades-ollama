@@ -119,7 +119,7 @@ func TestRegisteredMissionRoutesBindBearerTokenToOrganization(t *testing.T) {
 		{"artifact", http.MethodGet, "/artifacts/art_unknown", ""},
 		{"run", http.MethodPost, "/run", ""},
 		{"cancel", http.MethodPost, "/cancel", ""},
-		{"approval", http.MethodPost, "/approvals/apr_unknown", `{"approved":false,"nonce":"nonce"}`},
+		{"approval", http.MethodPost, "/approvals/apr_unknown", `{"decision":"reject","nonce":"nonce"}`},
 	}
 	for _, endpoint := range paths {
 		t.Run(endpoint.name, func(t *testing.T) {

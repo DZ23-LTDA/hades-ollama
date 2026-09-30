@@ -2585,7 +2585,7 @@ func (a *agentAPI) decideDeploymentApproval(c *gin.Context) {
 		return
 	}
 	var request struct {
-		Approved bool   `json:"approved"`
+		Decision string `json:"decision"`
 		Reason   string `json:"reason,omitempty"`
 		Nonce    string `json:"nonce"`
 	}
@@ -2593,7 +2593,12 @@ func (a *agentAPI) decideDeploymentApproval(c *gin.Context) {
 		writeAgentError(c, http.StatusBadRequest, err)
 		return
 	}
-	approval, err := a.runtime.DeploymentApprovals().Decide(c.Param("approval_id"), companyOrganizationID(c), project.ID, c.Param("provider"), agentActorID(c), request.Reason, request.Nonce, request.Approved)
+	approved, err := approvalDecision(request.Decision)
+	if err != nil {
+		writeAgentError(c, http.StatusBadRequest, err)
+		return
+	}
+	approval, err := a.runtime.DeploymentApprovals().Decide(c.Param("approval_id"), companyOrganizationID(c), project.ID, c.Param("provider"), agentActorID(c), request.Reason, request.Nonce, approved)
 	if err != nil {
 		writeAgentError(c, statusForAgentError(err), err)
 		return
@@ -2715,11 +2720,16 @@ func (a *agentAPI) cancelMission(c *gin.Context) {
 
 func (a *agentAPI) decideApproval(c *gin.Context) {
 	var request struct {
-		Approved bool   `json:"approved"`
+		Decision string `json:"decision"`
 		Reason   string `json:"reason,omitempty"`
 		Nonce    string `json:"nonce"`
 	}
 	if err := decodeJSON(c, &request); err != nil {
+		writeAgentError(c, http.StatusBadRequest, err)
+		return
+	}
+	approved, err := approvalDecision(request.Decision)
+	if err != nil {
 		writeAgentError(c, http.StatusBadRequest, err)
 		return
 	}
@@ -2734,7 +2744,7 @@ func (a *agentAPI) decideApproval(c *gin.Context) {
 	if !missionVersionMatches(c, mission) {
 		return
 	}
-	mission, err = a.scopedRuntime(c).DecideApprovalForActorCAS(c.Param("id"), c.Param("approval_id"), request.Approved, request.Reason, agentActorID(c), agentOrganizationID(c), mission.Version, request.Nonce)
+	mission, err = a.scopedRuntime(c).DecideApprovalForActorCAS(c.Param("id"), c.Param("approval_id"), approved, request.Reason, agentActorID(c), agentOrganizationID(c), mission.Version, request.Nonce)
 	if err != nil {
 		writeAgentError(c, statusForAgentError(err), err)
 		return

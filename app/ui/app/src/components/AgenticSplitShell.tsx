@@ -138,7 +138,7 @@ export function AgenticSplitShell({
         `/api/agent/v1/missions/${encodeURIComponent(mission.id)}/approvals/${encodeURIComponent(approval.id)}`,
         {
           method: "POST",
-          body: JSON.stringify({ approved, nonce: approval.nonce, reason }),
+          body: JSON.stringify({ decision: approved ? "approve" : "reject", nonce: approval.nonce, reason }),
         }
       );
       setApprovalReasons((prev) => {

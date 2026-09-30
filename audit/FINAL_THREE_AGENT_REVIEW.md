@@ -472,3 +472,10 @@ Próximo slice: corrigir somente os blockers remanescentes do Studio (invalidaç
 - **Invalidação:** toda edição visual, undo ou redo incrementa a versão e remove o ZIP anterior, além de limpar checksum/path/version persistidos. `Export` grava `ExportVersion`; download rejeita export ausente ou antigo com HTTP 410 (`ErrBuilderExportExpired`).
 - **Regressões:** `TestBuilderCASRejectsStaleConcurrentWriter`, `TestBuilderExportIsInvalidatedAfterVersionedEdit` e `TestStudioRoutesRejectStaleVersionAndExpiredExport` passaram. Build/test Go, typecheck, lint, Vitest, build frontend, contratos e integrity guard passaram.
 - **Estado:** achado 6 resolvido. Os seis achados CA-1–CA-4 desta auditoria foram tratados com regressões automatizadas; dependências externas e CRDT permanecem explicitamente fora deste slice.
+
+## H2 — Approval Ledger Company/Growth/Social — 2026-09-30
+
+- **Fechado nesta slice:** endpoints HTTP de decisão não aceitam mais `approved` como comando; exigem `decision: approve|reject`, enquanto `approved` permanece apenas projeção derivada do ledger. O mesmo contrato foi aplicado a decisões de missão e deployment.
+- **Proteções:** decisões continuam exigindo actor, razão, nonce, expiração, organização e CAS; decisões pending recebem `requested_by` server-side e o próprio solicitante é rejeitado (`ErrCompanyApprovalSelf`). Campaigns/ads, affiliate programs, orders, social drafts e spend vinculam o solicitante nas rotas de criação.
+- **Regressões:** `TestCompanyApprovalLedgerRejectsRequesterSelfApproval`, suíte focada `Approval|Approv|Ledger|Spend|Budget|Nonce|AutoApprove|Decision` e varredura de DTOs sem `json:"approved"` em `server` passaram localmente.
+- **Limitação honesta:** APIs internas legadas ainda usam `bool` para aplicar uma decisão já validada; esses métodos não são handlers HTTP nem aceitam payload externo. Homologação externa de providers permanece BLOCKED_EXTERNAL.

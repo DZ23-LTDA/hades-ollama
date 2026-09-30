@@ -190,7 +190,7 @@ export default function AgenticConsole() {
     }
     setBusy(true);
     try {
-      await api(`/api/agent/v1/missions/${encodeURIComponent(mission.id)}/approvals/${encodeURIComponent(approval.id)}`, { method: "POST", body: JSON.stringify({ approved, nonce: approval.nonce, reason }) });
+      await api(`/api/agent/v1/missions/${encodeURIComponent(mission.id)}/approvals/${encodeURIComponent(approval.id)}`, { method: "POST", body: JSON.stringify({ decision: approved ? "approve" : "reject", nonce: approval.nonce, reason }) });
       setApprovalReasons((current) => {
         const next = { ...current };
         delete next[approval.id];
