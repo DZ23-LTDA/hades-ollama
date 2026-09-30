@@ -35,7 +35,11 @@ type Gateway struct {
 
 func NewGateway(registry *Registry, client *http.Client) *Gateway {
 	if client == nil {
-		client = NewProviderSafeHTTPClient(10*time.Minute, false)
+		// resolveProviderDestination remains the authority for whether a provider
+		// may use a private address. The transport must also support the explicit
+		// AllowPrivate=true local-provider contract; unapproved providers are
+		// resolved and pinned before this client is used.
+		client = NewProviderSafeHTTPClient(10*time.Minute, true)
 	}
 	return &Gateway{registry: registry, client: client}
 }
