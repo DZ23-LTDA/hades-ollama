@@ -89,6 +89,18 @@
       "httpFailures": [],
       "errorsCount": 0,
       "clean": true
+    },
+    {
+      "screen": "CA-3 Studio authenticated preview sandbox",
+      "path": "/studio",
+      "timestamp": "2026-09-30T16:03:57.064Z",
+      "desktopEvidence": "screen-ca3-studio-preview-desktop.png",
+      "mobileEvidence": "screen-ca3-studio-preview-mobile.png",
+      "iframeSandbox": "allow-scripts (no allow-same-origin)",
+      "consoleErrors": [],
+      "httpFailures": [],
+      "errorsCount": 0,
+      "clean": true
     }
   ],
   "hasErrors": false,

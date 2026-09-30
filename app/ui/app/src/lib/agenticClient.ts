@@ -231,6 +231,25 @@ export async function agentFetch<T>(
   }
   return body as T;
 }
+
+export async function agentFetchBlob(path: string, init: RequestInit = {}): Promise<Blob> {
+  const response = await fetch(`${API_BASE}${path}`, {
+    ...init,
+    headers: {
+      ...agentHeaders(),
+      ...(init.headers ?? {}),
+    },
+  });
+  if (!response.ok) {
+    if (response.status === 401) clearAgentSession();
+    const body = await response.json().catch(() => ({}));
+    if (response.status === 401 && body?.error === "bearer token is required") {
+      throw new Error(AGENT_LOGIN_REQUIRED_MESSAGE);
+    }
+    throw new Error(typeof body?.error === "string" ? body.error : response.statusText || "Agent API request failed");
+  }
+  return response.blob();
+}
 export const listProjects = () => agentFetch<{ projects: AgentProject[] }>("/api/agent/v1/projects");
 export const createProject = (name: string, root = "") => agentFetch<AgentProject>("/api/agent/v1/projects", { method: "POST", body: JSON.stringify({ name, root }) });
 export const updateProject = (id: string, name: string, root = "") => agentFetch<AgentProject>(`/api/agent/v1/projects/${encodeURIComponent(id)}`, { method: "PATCH", body: JSON.stringify({ name, root }) });

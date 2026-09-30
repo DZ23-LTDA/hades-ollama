@@ -13,6 +13,7 @@ import {
   redoBuilder,
   previewBuilder,
   exportBuilder,
+  agentFetchBlob,
 } from "@/lib/agenticClient";
 import {
   SparklesIcon,
@@ -107,6 +108,7 @@ export function StudioCanvasPage() {
   const [notice, setNotice] = useState<{ type: "success" | "error" | "info"; message: string; checksum?: string } | null>(null);
   const [deployModalOpen, setDeployModalOpen] = useState(false);
   const [deployStatus, setDeployStatus] = useState<{ status: string; message: string } | null>(null);
+  const [previewSrc, setPreviewSrc] = useState<string | null>(null);
   const [, startTransition] = useTransition();
 
   // Initialize or fetch the active builder project from the real backend
@@ -166,6 +168,34 @@ export function StudioCanvasPage() {
   useEffect(() => {
     loadProject();
   }, [loadProject]);
+
+  // A cross-origin iframe cannot attach an Authorization header itself. Fetch
+  // the backend preview through the authenticated client and render only the
+  // resulting blob inside a restricted sandbox.
+  useEffect(() => {
+    if (activeTab !== "preview" || !project) {
+      setPreviewSrc(null);
+      return;
+    }
+    let objectURL: string | null = null;
+    let cancelled = false;
+    void agentFetchBlob(`/api/agent/v1/builders/${encodeURIComponent(project.id)}/preview/index.html`)
+      .then((blob) => {
+        if (cancelled) return;
+        objectURL = URL.createObjectURL(blob);
+        setPreviewSrc(objectURL);
+      })
+      .catch((err: unknown) => {
+        if (!cancelled) {
+          setPreviewSrc(null);
+          setNotice({ type: "error", message: `Erro ao carregar preview autenticado: ${String(err)}` });
+        }
+      });
+    return () => {
+      cancelled = true;
+      if (objectURL) URL.revokeObjectURL(objectURL);
+    };
+  }, [activeTab, project]);
 
   // Synchronize visual components with the real backend
   const syncComponents = async (newComponents: VisualComponent[]) => {
@@ -289,13 +319,16 @@ export function StudioCanvasPage() {
         checksum: checksum,
       });
 
-      // Trigger actual download via the backend download route
+      // Trigger an authenticated download; an anchor alone cannot carry Bearer.
+      const archive = await agentFetchBlob(res.download_url);
+      const archiveURL = URL.createObjectURL(archive);
       const link = document.createElement("a");
-      link.href = `${API_BASE}${res.download_url}`;
+      link.href = archiveURL;
       link.download = `${project.name.replace(/\s+/g, "_")}.zip`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+      window.setTimeout(() => URL.revokeObjectURL(archiveURL), 0);
     } catch (err: unknown) {
       setNotice({ type: "error", message: `Erro ao exportar: ${String(err)}` });
     }
@@ -691,18 +724,19 @@ export function StudioCanvasPage() {
                 <div className="mb-2 flex items-center justify-between text-xs text-neutral-500">
                   <span>URL do Preview: {previewUrl}</span>
                   <a
-                    href={previewUrl}
+                    href={previewSrc ?? undefined}
                     target="_blank"
                     rel="noreferrer"
-                    className="font-medium text-blue-600 hover:underline dark:text-blue-400"
+                    className={`font-medium text-blue-600 hover:underline dark:text-blue-400 ${previewSrc ? "" : "pointer-events-none opacity-50"}`}
                   >
                     Abrir em nova aba &rarr;
                   </a>
                 </div>
                 <div className="flex-1 overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
                   <iframe
-                    src={previewUrl}
+                    src={previewSrc ?? undefined}
                     title="Live Preview"
+                    sandbox="allow-scripts"
                     className="h-full w-full border-0 bg-white"
                   />
                 </div>

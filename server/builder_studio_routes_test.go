@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/ollama/ollama/internal/agent"
@@ -204,5 +205,91 @@ func TestStudioDeployRejectsWithoutCredentialsHonestGateStatus(t *testing.T) {
 	// Must fail honestly (501 or 400), NEVER 200 OK pretending to be published!
 	if rec.Code == http.StatusOK {
 		t.Fatalf("HONEST GATE VIOLATION: deploy succeeded without credentials!")
+	}
+}
+
+func TestStudioPreviewAndDownloadRequireBearerWhenAuthEnabled(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	tmpDir := t.TempDir()
+	builder, err := agent.NewBuilderService(tmpDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	runtime, err := agent.NewRuntime(agent.RuntimeConfig{WorkspaceRoot: tmpDir, Builder: builder})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = runtime.Close(context.Background()) })
+	auth, err := agent.NewAuthStore("")
+	if err != nil {
+		t.Fatal(err)
+	}
+	user, err := auth.CreateUser("studio-owner@example.test", "Studio Owner")
+	if err != nil {
+		t.Fatal(err)
+	}
+	organization, _, err := auth.CreateOrganization("Studio Org", user)
+	if err != nil {
+		t.Fatal(err)
+	}
+	project, err := builder.Create(context.Background(), agent.BuilderSpec{
+		Name: "Authenticated Studio", OrganizationID: organization.ID, Kind: agent.BuilderWebsite,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	rawToken, _, err := auth.IssueToken(user.ID, organization.ID, time.Hour)
+	if err != nil {
+		t.Fatal(err)
+	}
+	api := &agentAPI{runtime: runtime, auth: auth, authRequired: true}
+	router := gin.New()
+	group := router.Group("/api/agent/v1")
+	group.Use(api.authMiddleware)
+	group.POST("/builders/:id/preview", api.previewBuilder)
+	group.GET("/builders/:id/preview/*path", api.builderPreviewFile)
+	group.POST("/builders/:id/export", api.exportBuilder)
+	group.GET("/builders/:id/download", api.downloadBuilder)
+
+	for _, path := range []string{
+		"/api/agent/v1/builders/" + project.ID + "/preview",
+		"/api/agent/v1/builders/" + project.ID + "/preview/index.html",
+		"/api/agent/v1/builders/" + project.ID + "/download",
+	} {
+		recorder := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodGet, path, nil)
+		if strings.HasSuffix(path, "/preview") {
+			req.Method = http.MethodPost
+		}
+		router.ServeHTTP(recorder, req)
+		if recorder.Code != http.StatusUnauthorized {
+			t.Fatalf("unauthenticated %s status=%d body=%s", path, recorder.Code, recorder.Body.String())
+		}
+	}
+
+	authed := func(method, path string) *httptest.ResponseRecorder {
+		recorder := httptest.NewRecorder()
+		req := httptest.NewRequest(method, path, nil)
+		req.Header.Set("Authorization", "Bearer "+rawToken)
+		router.ServeHTTP(recorder, req)
+		return recorder
+	}
+	preview := authed(http.MethodPost, "/api/agent/v1/builders/"+project.ID+"/preview")
+	if preview.Code != http.StatusOK {
+		t.Fatalf("authenticated preview status=%d body=%s", preview.Code, preview.Body.String())
+	}
+	previewFile := authed(http.MethodGet, "/api/agent/v1/builders/"+project.ID+"/preview/index.html")
+	// net/http ServeFile canonically redirects index.html to the directory;
+	// the browser/fetch client follows this same-origin redirect.
+	if previewFile.Code != http.StatusOK && previewFile.Code != http.StatusMovedPermanently {
+		t.Fatalf("authenticated preview file status=%d body=%s", previewFile.Code, previewFile.Body.String())
+	}
+	export := authed(http.MethodPost, "/api/agent/v1/builders/"+project.ID+"/export")
+	if export.Code != http.StatusAccepted {
+		t.Fatalf("authenticated export status=%d body=%s", export.Code, export.Body.String())
+	}
+	download := authed(http.MethodGet, "/api/agent/v1/builders/"+project.ID+"/download")
+	if download.Code != http.StatusOK || download.Header().Get("X-Checksum-SHA256") == "" {
+		t.Fatalf("authenticated download status=%d checksum=%q", download.Code, download.Header().Get("X-Checksum-SHA256"))
 	}
 }
