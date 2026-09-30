@@ -928,6 +928,7 @@ func TestContextStorePersistsProjectAndMemory(t *testing.T) {
 
 func TestSandboxExecRunsIsolatedPython(t *testing.T) {
 	t.Setenv("OLLAMA_AGENT_SANDBOX_MODE", "best-effort")
+	t.Setenv("OLLAMA_AGENT_SANDBOX_ALLOW_BEST_EFFORT", "true")
 	if _, err := exec.LookPath("unshare"); err != nil {
 		t.Skip("sandbox test requires unshare")
 	}
@@ -965,6 +966,7 @@ func TestSandboxExecRunsIsolatedPython(t *testing.T) {
 func TestSandboxIsolationModeIsBoundToApproval(t *testing.T) {
 	requireLinuxSandboxExecutor(t)
 	t.Setenv("OLLAMA_AGENT_SANDBOX_MODE", "best-effort")
+	t.Setenv("OLLAMA_AGENT_SANDBOX_ALLOW_BEST_EFFORT", "true")
 	root := t.TempDir()
 	runtime, err := NewRuntime(RuntimeConfig{Store: NewMemoryStore(), WorkspaceRoot: root, Planner: fixedPlanner{steps: []Step{{ID: "step_1", Kind: "sandbox.exec", Title: "run", Risk: RiskWrite, RequiresApproval: true, State: StepPending, Input: map[string]any{"language": "python", "code": "print('must not run')", "sandbox_mode": "strict"}}}}})
 	if err != nil {
@@ -996,6 +998,7 @@ func TestSandboxIsolationModeIsBoundToApproval(t *testing.T) {
 
 func TestRuntimeFailsClosedWhenApprovalRecordIsMissing(t *testing.T) {
 	t.Setenv("OLLAMA_AGENT_SANDBOX_MODE", "best-effort")
+	t.Setenv("OLLAMA_AGENT_SANDBOX_ALLOW_BEST_EFFORT", "true")
 	store := NewMemoryStore()
 	runtime, err := NewRuntime(RuntimeConfig{Store: store, WorkspaceRoot: t.TempDir(), Planner: fixedPlanner{steps: []Step{{ID: "step_1", Kind: "sandbox.exec", Title: "run", Risk: RiskWrite, RequiresApproval: true, Input: map[string]any{"language": "python", "code": "print('must not run')"}}}}})
 	if err != nil {
@@ -1035,6 +1038,7 @@ func TestSandboxExecUsesAnchoredWorkspaceAfterPathReplacement(t *testing.T) {
 		t.Skipf("user namespace sandbox unavailable: %v (%s)", err, strings.TrimSpace(string(output)))
 	}
 	t.Setenv("OLLAMA_AGENT_SANDBOX_MODE", "best-effort")
+	t.Setenv("OLLAMA_AGENT_SANDBOX_ALLOW_BEST_EFFORT", "true")
 	workspace := t.TempDir()
 	if err := os.WriteFile(filepath.Join(workspace, "marker.txt"), []byte("original workspace"), 0o600); err != nil {
 		t.Fatal(err)
@@ -1061,7 +1065,7 @@ func TestSandboxExecUsesAnchoredWorkspaceAfterPathReplacement(t *testing.T) {
 	}
 	result, err := (sandboxExecTool{}).Execute(context.Background(), ToolContext{
 		StepID: "step_anchored_sandbox", Workspace: workspace, WorkspaceRoot: root,
-	}, map[string]any{"language": "python", "code": "print(open('marker.txt', encoding='utf-8').read())\nfor p in ['/proc/self/fd/3/../secret.txt', '" + siblingSecret + "', '/etc/passwd']:\n try:\n  print('ESCAPED:' + open(p).read())\n except Exception:\n  print('blocked')", "sandbox_mode": "best-effort"})
+	}, map[string]any{"language": "python", "code": "print(open('marker.txt', encoding='utf-8').read())\nfor p in ['/proc/self/fd/3/../secret.txt', '" + siblingSecret + "', '/etc/passwd']:\n try:\n  print('ESCAPED:' + open(p).read())\n except Exception:\n  print('blocked')", "sandbox_mode": "best-effort", "sandbox_gate_status": string(GateStatusNotConfigured), "sandbox_approval_notice": sandboxBestEffortApprovalNotice})
 	if err != nil {
 		t.Fatalf("anchored sandbox execution: %v; result=%+v", err, result.Value)
 	}

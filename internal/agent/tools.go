@@ -582,13 +582,18 @@ func sandboxSharedLibraryPath() (string, error) {
 func configuredSandboxMode() (string, error) {
 	mode := strings.ToLower(strings.TrimSpace(os.Getenv("OLLAMA_AGENT_SANDBOX_MODE")))
 	if mode == "" {
-		mode = "best-effort"
+		mode = "strict"
 	}
 	if mode != "best-effort" && mode != "strict" {
 		return "", errors.New("OLLAMA_AGENT_SANDBOX_MODE must be best-effort or strict")
 	}
+	if mode == "best-effort" && strings.TrimSpace(os.Getenv("OLLAMA_AGENT_SANDBOX_ALLOW_BEST_EFFORT")) != "true" {
+		return "", fmt.Errorf("sandbox best-effort is disabled by default: set OLLAMA_AGENT_SANDBOX_ALLOW_BEST_EFFORT=true only with explicit approval notice (%s)", sandboxBestEffortApprovalNotice)
+	}
 	return mode, nil
 }
+
+const sandboxBestEffortApprovalNotice = "strong process isolation is unavailable; this run is NOT_CONFIGURED and only permitted by explicit operator approval"
 
 func (sandboxExecTool) Execute(ctx context.Context, toolContext ToolContext, input map[string]any) (ToolResult, error) {
 	if err := validateStepID(toolContext.StepID); err != nil {
@@ -604,6 +609,11 @@ func (sandboxExecTool) Execute(ctx context.Context, toolContext ToolContext, inp
 	approvedMode := strings.ToLower(strings.TrimSpace(stringInput(input, "sandbox_mode", "")))
 	if approvedMode == "" || approvedMode != mode {
 		return ToolResult{}, fmt.Errorf("%w: sandbox isolation mode changed or is not bound to approval", ErrApprovalPayloadChanged)
+	}
+	if mode == "best-effort" {
+		if stringInput(input, "sandbox_gate_status", "") != string(GateStatusNotConfigured) || stringInput(input, "sandbox_approval_notice", "") != sandboxBestEffortApprovalNotice {
+			return ToolResult{Value: map[string]any{"gate_status": GateStatusNotConfigured, "execution_isolation": "best-effort-not-approved"}}, fmt.Errorf("sandbox best-effort requires explicit approval notice (%s)", GateStatusNotConfigured)
+		}
 	}
 	language := strings.ToLower(strings.TrimSpace(stringInput(input, "language", "")))
 	interpreter, err := resolveSandboxInterpreter(language)
@@ -640,7 +650,7 @@ func (sandboxExecTool) Execute(ctx context.Context, toolContext ToolContext, inp
 		var err error
 		control, err = newSandboxControl(runID)
 		if err != nil {
-			return ToolResult{}, fmt.Errorf("strict sandbox unavailable: %w", err)
+			return ToolResult{Value: map[string]any{"gate_status": GateStatusNotConfigured, "execution_isolation": "unavailable"}}, fmt.Errorf("strict sandbox unavailable (%s): %w", GateStatusNotConfigured, err)
 		}
 		defer closeSandboxControl(control)
 	}
@@ -700,11 +710,10 @@ func (sandboxExecTool) Execute(ctx context.Context, toolContext ToolContext, inp
 		return ToolResult{}, err
 	}
 	mountScript := `set -eu
-ulimit -t 55 || true
-ulimit -v 524288 || true
-ulimit -u 64 || true
-ulimit -n 256 || true
-ulimit -f 1048576 || true
+ulimit -t 55
+ulimit -v 524288
+ulimit -n 256
+ulimit -f 1048576
 mount --make-rprivate /
 mount -t tmpfs -o size=256m,nosuid,nodev tmpfs /home
 ROOT=/home/sandbox-root
@@ -737,10 +746,7 @@ for device in null zero urandom; do : > "$ROOT/dev/$device"; mount --bind "/dev/
 exec 3<&-
 
 if [ "$4" = "strict" ]; then
-  if [ "$8" = "node" ]; then
-    exec "$6" --no-new-privs "$7" "$ROOT" /bin/sh -c 'cd /workspace && exec /usr/bin/python3 -I -S "$@"' sandbox "$5" "$INTERPRETER_ROOT" "$3"
-  fi
-  exec "$6" --no-new-privs "$7" "$ROOT" /bin/sh -c 'cd /workspace && exec /usr/bin/python3 -I -S "$@"' sandbox "$5" "$INTERPRETER_ROOT" -I -S "$3"
+  exec "$6" --no-new-privs --clear-groups --inh-caps=-all --ambient-caps=-all --bounding-set=-all "$7" "$ROOT" /bin/sh -c 'cd /workspace && exec /usr/bin/python3 -I -S "$@"' sandbox "$5" "$INTERPRETER_ROOT" "$3"
 fi
 if [ "$8" != "node" ]; then
   exec "$7" "$ROOT" /bin/sh -c 'cd /workspace && exec /usr/bin/python3 -I -S "$@"' sandbox "$3"
@@ -778,7 +784,11 @@ exec "$7" "$ROOT" /bin/sh -c 'cd /workspace && exec /usr/bin/node "$@"' sandbox 
 		isolation = "strict-linux-user-mount-pid-net-seccomp-cgroupv2"
 		limits = "cgroup-v2-cpu-memory-pids-swap-timeout-output-bounded"
 	}
-	return ToolResult{Value: map[string]any{"stdout": RedactDLP(stdout.String()), "stderr": RedactDLP(stderr.String()), "exit_code": 0, "execution_isolation": isolation, "resource_limits": limits}}, nil
+	gateStatus := GateStatusPass
+	if !strict {
+		gateStatus = GateStatusNotConfigured
+	}
+	return ToolResult{Value: map[string]any{"stdout": RedactDLP(stdout.String()), "stderr": RedactDLP(stderr.String()), "exit_code": 0, "execution_isolation": isolation, "resource_limits": limits, "gate_status": gateStatus}}, nil
 }
 
 func writeContainedSandboxFile(root *os.Root, relative string, data []byte) error {

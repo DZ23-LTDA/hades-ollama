@@ -869,6 +869,10 @@ func (r *Runtime) CreateMission(ctx context.Context, request CreateMissionReques
 			// Planner-provided values are untrusted. Store the authoritative
 			// runtime mode in the approved payload and execute only that mode.
 			plan[index].Input["sandbox_mode"] = mode
+			if mode == "best-effort" {
+				plan[index].Input["sandbox_gate_status"] = string(GateStatusNotConfigured)
+				plan[index].Input["sandbox_approval_notice"] = sandboxBestEffortApprovalNotice
+			}
 		}
 		plan[index].RequiresApproval = plan[index].RequiresApproval || descriptor.RequiresApproval
 		if riskRank(descriptor.Risk) > riskRank(plan[index].Risk) {

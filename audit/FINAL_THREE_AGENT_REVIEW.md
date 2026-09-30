@@ -44,7 +44,7 @@ apps/mobile-agentic: npm run typecheck
 
 ## Riscos residuais internos
 
-A proteção de filesystem é uma contenção robusta contra symlinks presentes no momento da validação e deve evoluir para `openat`/handles de diretório por plataforma se o produto for exposto a concorrência hostil no mesmo filesystem. A política de skills ainda precisa de um formato de atestado assinado para promover uma skill a `trusted`; até lá, manifests carregados permanecem em revisão. Os testes de distributed RLS, Redis, OTLP, SAML/OIDC contra IdP real e companheiros físicos não podem ser simulados por testes locais.
+O sandbox strict Linux agora instala allowlist seccomp antes do interpreter, aplica no-new-privs/capability drop, rlimits e cgroup; a homologação física do host/AppArmor/SELinux ainda não foi executada. A proteção de filesystem é uma contenção robusta contra symlinks presentes no momento da validação e deve evoluir para `openat`/handles de diretório por plataforma se o produto for exposto a concorrência hostil no mesmo filesystem. A política de skills ainda precisa de um formato de atestado assinado para promover uma skill a `trusted`; até lá, manifests carregados permanecem em revisão. Os testes de distributed RLS, Redis, OTLP, SAML/OIDC contra IdP real e companheiros físicos não podem ser simulados por testes locais.
 
 ## Blockers externos
 
@@ -456,6 +456,15 @@ Próximo slice: corrigir somente os blockers remanescentes do Studio (invalidaç
 - **Evidência real:** Playwright desktop 1440x900 e mobile 390x844 abriu o Studio, executou preview real, confirmou o atributo sandbox e terminou com zero erros de console/HTTP. Checksums: `0ddaa7a96f2c6b48ab0a69f3860dc13a7e7c43192221fe88ab7f9fadda5609d5` e `ad3577c0f975eeec19d9b5a68d7e1a3f9e0a15d743a868814f166dad2ef01063`.
 - **Estado:** achados 4 e 5 encerrados. CAS/concorrência e invalidação de export permanecem abertos e impedem promover Builders para PASS.
 
+
+## H1 — Isolamento forte de execução — 2026-09-30
+
+- **Seccomp real:** o launcher strict agora é executado dentro do chroot antes do interpretador e instala uma allowlist BPF com ação padrão `SECCOMP_RET_KILL_PROCESS`; namespaces/mounts não são permitidos pela lista.
+- **Privilégios e recursos:** `setpriv` aplica `no_new_privs`, limpa grupos e remove capacidades; o launcher aplica `RLIMIT_CPU`, `RLIMIT_AS`, `RLIMIT_NPROC`, `RLIMIT_NOFILE` e `RLIMIT_FSIZE`; cgroup v2 continua obrigatório para strict.
+- **Fail-closed:** o default passou a `strict`; sem cgroup delegado o resultado é `NOT_CONFIGURED` e a execução é recusada. `best-effort` exige opt-in de operador e payload de aprovação contendo aviso explícito e `gate_status=NOT_CONFIGURED`.
+- **Regressões:** `TestSandboxBestEffortRequiresExplicitOperatorOptIn`, `TestStrictSandboxLauncherUsesFailClosedAllowlistAndRlimits`, `TestStrictSandboxReportsNotConfiguredWhenCgroupIsUnavailable` e a suíte `Sandbox|Seccomp|Cgroup|Isolation|Rlimit|ForkBomb|Syscall` passaram. O strict completo é `NOT_EXECUTED` neste sandbox porque não há subtree cgroup v2 delegado, não convertido artificialmente em PASS.
+- **Gates locais:** `go build ./...`, `go test ./internal/agent ./server`, `npx tsc -b`, `npm run lint`, `npx vitest run`, `npm run build`, contratos e integrity guard passaram.
+- **Estado:** mitigação de código concluída; homologação de host Linux com cgroup delegado, AppArmor/SELinux e runners nativos permanece pendente.
 
 ## CA-4 — CAS e invalidação de export do Studio — 2026-09-30
 

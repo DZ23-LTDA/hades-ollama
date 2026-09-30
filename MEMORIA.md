@@ -1,7 +1,7 @@
 ---
 projeto: ollama-classe-a-plus
-status: COMPLETED — CA-4 IMPLEMENTADO E CI VERDE
-atualizado: 2026-09-30 13:04 -03 (2026-09-30 16:04 UTC)
+status: H1 IMPLEMENTADO LOCALMENTE — CI PENDENTE
+atualizado: 2026-09-30 13:33 -03 (2026-09-30 16:33 UTC)
 ultima_ia: Manus
 tags: [projeto, paridade-manus, evidencia-real, shell-desktop, missao-concluida]
 ---
@@ -22,7 +22,7 @@ automatizado + execução real reproduzível em navegador (desktop e mobile), se
 
 ## Estado atual (2026-09-30 11:59 -03 / 2026-09-30 14:59 UTC)
 - **Repo:** github.com/DZ23-LTDA/ollama-classe-a-plus. Branch canônica: `recovery/ollama-full-snapshot`.
-- **STATUS DA MISSÃO: FASE 10 IMPLEMENTADA; auditoria final independente em REQUEST CHANGES.** A CI remota `class-a-plus-integrity` e `dz23-agentic-quality` está verde no mesmo commit `0d3aa731`, e o smoke Playwright do shell passou 2/2 após a correção a11y. Isso não encerra a paridade: permanecem blockers HIGH documentados em `audit/FINAL_THREE_AGENT_REVIEW.md`.
+- **STATUS DA MISSÃO: H1 IMPLEMENTADO (sandbox strict hardening); auditoria final independente em REQUEST CHANGES.** A CI remota `class-a-plus-integrity` e `dz23-agentic-quality` está verde no mesmo commit `0d3aa731`, e o smoke Playwright do shell passou 2/2 após a correção a11y. Isso não encerra a paridade: permanecem blockers HIGH documentados em `audit/FINAL_THREE_AGENT_REVIEW.md`.
 - **Retomada 2026-09-30:** o composer agentic recebeu `aria-label` no campo e botão de envio; o E2E mobile em `390x844` comprova ambos. Expectativas obsoletas do smoke da Home foram alinhadas à UI real. O CA-1 de autenticação do webhook WhatsApp e outbound fail-closed e o CA-2 de isolamento tenant no modo local foram implementados e validados; o CA-3 agora fechou Bearer e sandbox do Studio com evidência real; permanecem apenas CAS/concorrência e invalidação de export, sem promover Builders a PASS. CA-4 fechou CAS/concorrência e invalidação de export; Builders pode ser promovido a PASS com base nos testes reais, enquanto colaboração CRDT e deploy externo continuam fora deste slice.
 - **FASE 10:** Implementado o Studio visual interativo (`StudioCanvasPage.tsx` e `/studio`), substituindo testes com API mockada por integração de ponta a ponta contra o backend real de builders (`BuilderService` em `internal/agent/builder.go` e rotas em `server/agent_routes.go`). Suporte a paleta com componentes (Heading, Paragraph, Button, Card, Metric, Navbar) e modelos de projeto (Site, Dashboard, Slides, Jogo, App Móvel); atualização dinâmica de componentes via `POST /api/agent/v1/builders/:id/visual`; histórico de undo e redo com pilhas no backend (`POST /builders/:id/undo` e `/redo`); preview ao vivo em iframe renderizado diretamente do backend (`POST /builders/:id/preview` e `/preview/*path`); exportação de projeto em ZIP com checksum criptográfico SHA-256 verificado (`POST /builders/:id/export` e download via `GET /builders/:id/download`); adaptador de deploy externo com verificação honesta de credenciais (`BLOCKED_EXTERNAL` / `NOT_CONFIGURED` via enum `gate_status`, sem falsificar publicação); documentação de arquitetura para colaboração CRDT em tempo real; testes unitários e de integração em `internal/agent/builder_studio_test.go` e `server/builder_studio_routes_test.go` (100% PASS); captura E2E Playwright desktop (1440x900) e mobile (390x844) em `docs/evidencias/screen-studio-builder-*.png` com console e HTTP 100% limpos em `browser-console-audit.json`.
 - **STATUS DA MISSÃO: FASE 09 IMPLEMENTADA — Egress Zero-Trust Unificado em todas as saídas de rede (connectors, media, deploy, MCP remoto, push, multillm, WhatsApp) com DNS pinning, verificação de peer, bloqueio estrito de IP privado/metadata/rebinding, isolamento de credenciais em redirects, limitação de payload anti-DoS, auditoria auditável (/api/agent/v1/egress/logs e /status) e suíte de testes de regressão anti-bypass**
@@ -88,6 +88,12 @@ automatizado + execução real reproduzível em navegador (desktop e mobile), se
 
 ## Histórico de sessões
 <!-- Mais recente no topo. Uma entrada por sessão de trabalho. -->
+### 2026-09-30 13:33 -03 — Manus — H1 isolamento forte de execução
+- **Correção:** `sandbox.exec` agora usa strict como default; o caminho strict realmente executa o launcher Python antes do interpreter, instala allowlist seccomp BPF fail-closed, aplica `no_new_privs`, capability drop, `RLIMIT_CPU/AS/NPROC/NOFILE/FSIZE`, namespaces e cgroup v2 obrigatório. O modo `best-effort` deixou de ser silencioso: exige opt-in explícito e payload aprovado com aviso `NOT_CONFIGURED`.
+- **Evidência:** `go test -run 'Sandbox|Seccomp|Cgroup|Isolation|Rlimit|ForkBomb|Syscall' ./internal/agent -count=1` passou; `TestSandboxBestEffortRequiresExplicitOperatorOptIn`, `TestStrictSandboxLauncherUsesFailClosedAllowlistAndRlimits` e `TestStrictSandboxReportsNotConfiguredWhenCgroupIsUnavailable` passaram. Sem subtree cgroup v2 delegado neste sandbox, strict real ficou honestamente `NOT_CONFIGURED`/não executado.
+- **Gates:** `go build ./...`, `go test ./internal/agent ./server`, `npx tsc -b`, `npm run lint`, `npx vitest run`, `npm run build`, `node scripts/verify-contracts.mjs` e `bash scripts/check-class-a-plus-integrity.sh` passaram.
+- **Próximo passo:** commit/push deste H1 e acompanhar `class-a-plus-integrity` e `dz23-agentic-quality` no mesmo SHA; depois, se houver runner provisionado, executar a prova strict com cgroup delegado. Não declarar produção universal sem AppArmor/SELinux e matriz nativa.
+
 ### 2026-09-30 13:16 -03 — Manus — CA-4 CAS e invalidação de export do Studio
 - **Correção:** `BuilderService` serializa writers do mesmo projeto e oferece `ApplyVisualComponentsCAS`, `UndoCAS` e `RedoCAS`; o frontend envia `expected_version` em toda edição/undo/redo e o backend retorna conflito 409 para versão obsoleta.
 - **Export:** cada ZIP persiste `ExportVersion`; qualquer edição invalida e remove o ZIP anterior e limpa checksum/path/version. Download obsoleto retorna 410 e exige novo export.
