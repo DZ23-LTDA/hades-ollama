@@ -1,12 +1,26 @@
 import { API_BASE } from "@/lib/config";
 
 export type AgentProject = {
-  id: string;
-  name: string;
-  root?: string;
-  organization_id?: string;
-  created_at: string;
-  updated_at: string;
+	id: string;
+	name: string;
+	root?: string;
+	organization_id?: string;
+	created_at: string;
+	updated_at: string;
+};
+
+export type ProjectImportResult = {
+	project: AgentProject;
+	source: "github" | "zip";
+	repository_url?: string;
+	ref?: string;
+	worktree_path: string;
+	branch: string;
+	indexed_files: number;
+	indexed_memories: number;
+	archive_sha256: string;
+	state: string;
+	notice: string;
 };
 
 export type AgentSchedule = {
@@ -252,6 +266,11 @@ export async function agentFetchBlob(path: string, init: RequestInit = {}): Prom
 }
 export const listProjects = () => agentFetch<{ projects: AgentProject[] }>("/api/agent/v1/projects");
 export const createProject = (name: string, root = "") => agentFetch<AgentProject>("/api/agent/v1/projects", { method: "POST", body: JSON.stringify({ name, root }) });
+export const importGitHubProject = (payload: { url: string; ref?: string; name?: string }) => agentFetch<ProjectImportResult>("/api/agent/v1/projects/import/github", { method: "POST", body: JSON.stringify(payload) });
+export const importZIPProject = (payload: { project_id: string; upload_id: string; name?: string }) => agentFetch<ProjectImportResult>("/api/agent/v1/projects/import/zip", { method: "POST", body: JSON.stringify(payload) });
+export const startProjectUpload = (payload: { project_id: string; filename: string; total_size: number; chunk_size: number; sha256?: string }) => agentFetch<{ id: string } & Record<string, unknown>>("/api/agent/v1/uploads", { method: "POST", body: JSON.stringify(payload) });
+export const uploadProjectChunk = (uploadID: string, offset: number, data: ArrayBuffer) => agentFetch<Record<string, unknown>>(`/api/agent/v1/uploads/${encodeURIComponent(uploadID)}/chunk?offset=${offset}`, { method: "PUT", headers: { "Content-Type": "application/zip" }, body: data });
+export const finalizeProjectUpload = (uploadID: string) => agentFetch<Record<string, unknown>>(`/api/agent/v1/uploads/${encodeURIComponent(uploadID)}/finalize`, { method: "POST", body: "{}" });
 export const updateProject = (id: string, name: string, root = "") => agentFetch<AgentProject>(`/api/agent/v1/projects/${encodeURIComponent(id)}`, { method: "PATCH", body: JSON.stringify({ name, root }) });
 export const deleteProject = (id: string) => agentFetch<void>(`/api/agent/v1/projects/${encodeURIComponent(id)}`, { method: "DELETE" });
 export const listMissions = () => agentFetch<{ missions: AgentMission[] }>("/api/agent/v1/missions");

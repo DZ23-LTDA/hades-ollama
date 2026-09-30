@@ -400,6 +400,8 @@ func (a *agentAPI) register(r *gin.Engine) {
 	group.POST("/devices/:id/revoke", a.revokeDevice)
 	group.GET("/devices/:id/connect", a.deviceConnect)
 	group.GET("/metrics", a.metrics)
+	group.POST("/projects/import/github", a.importGitHubProject)
+	group.POST("/projects/import/zip", a.importZIPProject)
 	group.POST("/projects/:id/ingest", a.ingestProject)
 	group.GET("/builders", a.builders)
 	group.GET("/builders/:id", a.getBuilder)

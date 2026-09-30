@@ -1,5 +1,27 @@
 # Estado da missão autônoma — Ollama DZ23 Agentic Platform
 
+## Checkpoint vigente — FASE 11 Import Full Project — 2026-09-30 17:40 -03
+```yaml
+state: LIVE_VALIDATED_AWAITING_CI
+branch: recovery/ollama-full-snapshot
+base_commit: 2b6ff7d7
+implemented:
+  - GitHub HTTPS import with Zero-Trust transport, approved redirects and server-side optional auth
+  - resumable ZIP upload connected to direct-on-disk bounded extraction and incremental ingestion
+  - isolated git worktree/branch, tenant checks, traversal/symlink/size/file limits, no auto-execution
+  - authenticated project import routes and accessible Projects dialog with GitHub/ZIP tabs
+proofs:
+  - go test -run 'Import|GitHubImport|LargeUpload|ZipStream|Clone|Ingest' ./internal/agent ./server: PASS
+  - go test ./internal/agent ./server and go build ./...: PASS
+  - npx tsc -b, npm run lint, npx vitest run (37 files/257 tests), npm run build: PASS
+  - node scripts/verify-contracts.mjs and bash scripts/check-class-a-plus-integrity.sh: PASS
+  - Playwright live public GitHub import: PASS; desktop/mobile evidence and browser-console-audit-f11.json have zero console/http errors
+not_executed:
+  - CI remote runs for the new commit
+next_action: commit/push and validate class-a-plus-integrity plus dz23-agentic-quality on the same SHA
+rollback: preserve commit 2b6ff7d7; no reset/clean/force-push
+```
+
 ```yaml
 mission_id: dz23-agentic-platform-2026-09-21
 objective: Evoluir o Ollama DZ23 para uma plataforma agentic local-first com execução segura, ferramentas, memória, artefatos, automações, integrações e superfícies Desktop/Mobile.
@@ -2546,3 +2568,17 @@ head: 9b188b92
 report: audit/E2E_AUDIT_2026-09-30.md
 result: local gates PASS; P1 Studio visual desktop HTTP 400; P1 server egress/DLP coverage incomplete; routes /whatsapp and /models were invalid script paths and were retested through /connectors and /c/new
 next_action: documentation-only commit, push branch, verify both GitHub workflows on resulting docs commit
+
+## FASE 11 — retomada no sandbox atual (2026-09-30 17:26 -03)
+```yaml
+state: IMPLEMENTING
+mission: Importar projeto inteiro por GitHub ou ZIP grande, com isolamento, ingestão e UI real
+branch: recovery/ollama-full-snapshot
+head_verified: 2b6ff7d7
+facts:
+  - UploadManager já é chunked/resumable e org-scoped, ContextStore/DocumentIngestor persistem projetos e memórias
+  - CreateGitWorktree já cria branch/worktree isolado para reuso
+  - importador seguro foi implementado no runtime, com egress, limites ZIP e sem execução do código importado
+next_action: adicionar testes focados, executar gates disponíveis e corrigir contratos
+rollback: preservar commit 2b6ff7d7; não usar reset/clean/force-push
+```

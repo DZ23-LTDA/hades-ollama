@@ -1,9 +1,9 @@
 ---
 projeto: ollama-classe-a-plus
-status: R-2 CONCLUÍDO — Studio CAS validado no backend atual e E2E desktop/mobile sem HTTP 400; CI verde no SHA 2f2d6c2f
-atualizado: 2026-09-30 17:15 -03 (2026-09-30 20:15 UTC)
+status: FASE 11 IMPLEMENTADA — importação GitHub/ZIP segura validada com Playwright real desktop/mobile; aguardando CI remoto
+atualizado: 2026-09-30 17:40 -03 (2026-09-30 20:40 UTC)
 ultima_ia: Manus
-tags: [projeto, paridade-manus, evidencia-real, shell-desktop, missao-concluida]
+tags: [projeto, paridade-manus, import-project, security, local-tests]
 ---
 
 # Ollama Classe A+ (Ollama Full)
@@ -21,6 +21,10 @@ recuperação). **Pronto** = paridade comprovada por implementação + teste
 automatizado + execução real reproduzível em navegador (desktop e mobile), sem alegar "100%" sem evidência.
 
 ## Histórico de sessões
+
+- **2026-09-30 17:40 -03 — Manus:** corrigiu o containment final do importador para manter origem e worktree dentro de `Runtime.WorkspaceRoot` (o `DataRoot` pode ficar fora por persistência; `ContextStore` rejeita roots externos), eliminando o caminho duplicado `.agent-worktrees/.agent-worktrees`. Smoke Playwright real importou `https://github.com/octocat/Hello-World` via UI contra backend atual, indexou `1` arquivo/`1` trecho e mostrou o worktree `agent/import_imp_3b7d205c-1795-4c45-badb-2cd8ce8d1c16`; evidências `docs/evidencias/screen-f11-import-dialog-desktop.png`, `screen-f11-import-result-desktop.png`, `screen-f11-import-result-mobile.png` e `browser-console-audit-f11.json` registram desktop/mobile e `console_errors: []`, `http_errors: []`. Teste focado após a correção passou. Próximo passo: commit/push e aguardar os dois workflows CI no mesmo SHA; manter GitHub privado como `NOT_CONFIGURED` sem credencial.
+
+- **2026-09-30 17:36 -03 — Manus:** implementou a Fase 11 no branch `recovery/ollama-full-snapshot`: `internal/agent/project_import.go` importa repositórios GitHub HTTPS em branch/worktree isolado, usa cliente Zero-Trust, limita redirects a `api.github.com`/`github.com`/`codeload.github.com`, remove credenciais em redirect e retorna `ErrGitHubAuthRequired` quando privado não está configurado; ZIP é recebido pelo `UploadManager` em chunks e extraído diretamente do arquivo final sem `io.ReadAll`, com limites, traversal/symlink/arquivo regular e indexação em `DocumentIngestor`. Rotas reais foram adicionadas em `server/project_import_routes.go` e registradas em `server/agent_routes.go`; a UI de Projetos ganhou diálogo acessível com abas URL GitHub/Anexo ZIP e progresso honesto. Evidências: `go test -run 'Import|GitHubImport|LargeUpload|ZipStream|Clone|Ingest' ./internal/agent ./server` PASS; `go test ./internal/agent ./server`, `go build ./...`, `npx tsc -b`, ESLint, Vitest (37 arquivos/257 testes), build Vite, `node scripts/verify-contracts.mjs` e `bash scripts/check-class-a-plus-integrity.sh` PASS. O smoke Playwright live com repositório público e CI remoto ainda não foi executado nesta retomada; matriz permanece `NOT_EXECUTED` para esse gate. Próximo passo: executar o smoke real com backend/UI e então commit/push somente se os gates remotos forem autorizados e passarem.
 
 - **2026-09-30 17:15 -03 — Manus:** executou R-2 para fechar o finding P1 do Studio. A causa foi confirmada como backend stale anterior ao contrato CAS: o payload real da UI continha `components` e `expected_version`, mas o processo antigo retornava `json: unknown field "expected_version"`/HTTP 400. Após recompilar e reiniciar o backend no código atual, o mesmo payload retornou HTTP 200 e incrementou a versão do projeto. O roteiro `app/ui/app/e2e/capture_studio_evidence.mjs` passou a exigir HTTP 200 na mutação visual; E2E real desktop 1440x900 e mobile 390x844 passou com console/rede limpos. Evidências: `docs/evidencias/screen-r2-studio-edit-desktop.png`, `screen-r2-studio-edit-mobile.png` e `browser-console-audit.json`. Testes focados de Studio/CAS, gates Go/frontend/contratos e E2E passaram. O commit `2f2d6c2f` foi publicado; `class-a-plus-integrity` run `36771481595` e `dz23-agentic-quality` run `36771481751` terminaram success no mesmo SHA. Próximo passo: nenhum dentro do escopo R-2; manter colaboração CRDT e deploy externo como limitações documentadas.
 

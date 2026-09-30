@@ -41,6 +41,7 @@ type Runtime struct {
 	research            *ResearchEngine
 	devices             *DeviceStore
 	uploads             *UploadManager
+	projectImporter     *ProjectImporter
 	ingestion           DocumentIngestor
 	push                *PushService
 	pushOutbox          *PushOutbox
@@ -243,6 +244,7 @@ func NewRuntime(config RuntimeConfig) (*Runtime, error) {
 		return nil, err
 	}
 	runtime.ingestion = DocumentIngestor{Context: contextStore, Research: runtime.research, WorkspaceRoot: root}
+	runtime.projectImporter = NewProjectImporter(root, dataRoot, contextStore, runtime.ingestion)
 	if config.WhatsApp != nil {
 		runtime.whatsapp = config.WhatsApp
 	} else {
@@ -575,6 +577,9 @@ func (r *Runtime) Builder() *BuilderService { return r.builder }
 
 // Uploads exposes the large-file upload manager (chunked/resumable, org-scoped).
 func (r *Runtime) Uploads() *UploadManager { return r.uploads }
+
+// ProjectImporter exposes the bounded, non-executing GitHub/ZIP import flow.
+func (r *Runtime) ProjectImporter() *ProjectImporter { return r.projectImporter }
 
 func (r *Runtime) Collaboration() *CollaborationStore { return r.collaboration }
 
