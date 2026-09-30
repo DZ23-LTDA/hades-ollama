@@ -1,7 +1,7 @@
 ---
 projeto: ollama-classe-a-plus
-status: H1 IMPLEMENTADO LOCALMENTE — CI PENDENTE
-atualizado: 2026-09-30 13:33 -03 (2026-09-30 16:33 UTC)
+status: H1 IMPLEMENTADO — CI VERDE
+atualizado: 2026-09-30 13:52 -03 (2026-09-30 16:52 UTC)
 ultima_ia: Manus
 tags: [projeto, paridade-manus, evidencia-real, shell-desktop, missao-concluida]
 ---
@@ -92,7 +92,8 @@ automatizado + execução real reproduzível em navegador (desktop e mobile), se
 - **Correção:** `sandbox.exec` agora usa strict como default; o caminho strict realmente executa o launcher Python antes do interpreter, instala allowlist seccomp BPF fail-closed, aplica `no_new_privs`, capability drop, `RLIMIT_CPU/AS/NPROC/NOFILE/FSIZE`, namespaces e cgroup v2 obrigatório. O modo `best-effort` deixou de ser silencioso: exige opt-in explícito e payload aprovado com aviso `NOT_CONFIGURED`.
 - **Evidência:** `go test -run 'Sandbox|Seccomp|Cgroup|Isolation|Rlimit|ForkBomb|Syscall' ./internal/agent -count=1` passou; `TestSandboxBestEffortRequiresExplicitOperatorOptIn`, `TestStrictSandboxLauncherUsesFailClosedAllowlistAndRlimits` e `TestStrictSandboxReportsNotConfiguredWhenCgroupIsUnavailable` passaram. Sem subtree cgroup v2 delegado neste sandbox, strict real ficou honestamente `NOT_CONFIGURED`/não executado.
 - **Gates:** `go build ./...`, `go test ./internal/agent ./server`, `npx tsc -b`, `npm run lint`, `npx vitest run`, `npm run build`, `node scripts/verify-contracts.mjs` e `bash scripts/check-class-a-plus-integrity.sh` passaram.
-- **Próximo passo:** commit/push deste H1 e acompanhar `class-a-plus-integrity` e `dz23-agentic-quality` no mesmo SHA; depois, se houver runner provisionado, executar a prova strict com cgroup delegado. Não declarar produção universal sem AppArmor/SELinux e matriz nativa.
+- **CI final:** após correção cross-platform do teste Linux-only, `class-a-plus-integrity` run `36747071202` e `dz23-agentic-quality` run `36747071132` passaram no SHA `998d240d12570045f853cde92ee2071ca6b3a6a6` (commit local `998d240d`).
+- **Próximo passo:** executar a prova strict em runner Linux provisionado com cgroup delegado, se disponível. Não declarar produção universal sem AppArmor/SELinux e matriz nativa.
 
 ### 2026-09-30 13:16 -03 — Manus — CA-4 CAS e invalidação de export do Studio
 - **Correção:** `BuilderService` serializa writers do mesmo projeto e oferece `ApplyVisualComponentsCAS`, `UndoCAS` e `RedoCAS`; o frontend envia `expected_version` em toda edição/undo/redo e o backend retorna conflito 409 para versão obsoleta.
