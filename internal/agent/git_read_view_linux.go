@@ -101,6 +101,9 @@ func copyGitReadViewPath(source, destination *os.Root, sourcePath string, state 
 	if info.IsDir() {
 		return fs.WalkDir(source.FS(), sourcePath, func(path string, entry fs.DirEntry, walkErr error) error {
 			if walkErr != nil {
+				if errors.Is(walkErr, os.ErrNotExist) || strings.Contains(walkErr.Error(), "no such file or directory") {
+					return nil
+				}
 				return walkErr
 			}
 			if isGitReadViewPointerPath(path) {
@@ -108,6 +111,9 @@ func copyGitReadViewPath(source, destination *os.Root, sourcePath string, state 
 			}
 			entryInfo, err := entry.Info()
 			if err != nil {
+				if errors.Is(err, os.ErrNotExist) || strings.Contains(err.Error(), "no such file or directory") {
+					return nil
+				}
 				return err
 			}
 			if entryInfo.Mode()&os.ModeSymlink != 0 || (!entryInfo.IsDir() && !entryInfo.Mode().IsRegular()) {
@@ -120,7 +126,13 @@ func copyGitReadViewPath(source, destination *os.Root, sourcePath string, state 
 				target := strings.TrimPrefix(path, ".git/")
 				return destination.MkdirAll(filepath.ToSlash(filepath.Join(".git", target)), 0o700)
 			}
-			return copyGitReadViewFile(source, destination, path, entryInfo, state)
+			if err := copyGitReadViewFile(source, destination, path, entryInfo, state); err != nil {
+				if errors.Is(err, os.ErrNotExist) || strings.Contains(err.Error(), "no such file or directory") {
+					return nil
+				}
+				return err
+			}
+			return nil
 		})
 	}
 	return copyGitReadViewFile(source, destination, sourcePath, info, state)
