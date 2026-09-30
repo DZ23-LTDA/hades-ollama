@@ -27,15 +27,60 @@ var lookupRemoteMCPIPs = func(ctx context.Context, host string) ([]net.IP, error
 }
 
 type RemoteMCPServerConfig struct {
-	ID             string            `json:"id"`
-	OrganizationID string            `json:"organization_id,omitempty"`
-	URL            string            `json:"url"`
-	TokenEnv       string            `json:"token_env,omitempty"`
-	HeadersEnv     map[string]string `json:"headers_env,omitempty"`
-	AllowedMethods []string          `json:"allowed_methods,omitempty"`
-	TimeoutSeconds int               `json:"timeout_seconds,omitempty"`
-	Disabled       bool              `json:"disabled,omitempty"`
+	ID              string                `json:"id"`
+	OrganizationID  string                `json:"organization_id,omitempty"`
+	URL             string                `json:"url"`
+	TokenEnv        string                `json:"token_env,omitempty"`
+	HeadersEnv      map[string]string     `json:"headers_env,omitempty"`
+	AllowedMethods  []string              `json:"allowed_methods,omitempty"`
+	TimeoutSeconds  int                   `json:"timeout_seconds,omitempty"`
+	Disabled        bool                  `json:"disabled,omitempty"`
+	OAuth           *RemoteMCPOAuthConfig `json:"oauth,omitempty"`
+	PairingTokenEnv string                `json:"pairing_token_env,omitempty"`
 }
+
+type RemoteMCPOAuthConfig struct {
+	AuthorizationURL string   `json:"authorization_url"`
+	TokenURL         string   `json:"token_url"`
+	ClientIDEnv      string   `json:"client_id_env"`
+	ClientSecretEnv  string   `json:"client_secret_env,omitempty"`
+	RedirectURI      string   `json:"redirect_uri"`
+	Scopes           []string `json:"scopes,omitempty"`
+}
+
+type remoteMCPOAuthToken struct {
+	AccessToken  string
+	RefreshToken string
+	ExpiresAt    time.Time
+}
+
+type remoteMCPAuthState struct {
+	ServerID       string
+	OrganizationID string
+	Verifier       string
+	State          string
+	ExpiresAt      time.Time
+}
+
+type remoteMCPSession struct {
+	ID             string
+	ServerID       string
+	OrganizationID string
+	ExpiresAt      time.Time
+	LastEventID    string
+}
+
+type remoteMCPPairing struct {
+	Challenge string
+	ExpiresAt time.Time
+}
+
+var (
+	ErrRemoteMCPNotConfigured       = errors.New("remote MCP is NOT_CONFIGURED")
+	ErrRemoteMCPSessionInvalid      = errors.New("remote MCP session is invalid or expired")
+	ErrRemoteMCPPairingUnauthorized = errors.New("remote MCP pairing is unauthorized")
+	ErrRemoteMCPOAuthStateInvalid   = errors.New("remote MCP OAuth state is invalid or expired")
+)
 
 type RemoteMCPManager struct {
 	mu          sync.RWMutex
@@ -43,6 +88,10 @@ type RemoteMCPManager struct {
 	servers     map[string]RemoteMCPServerConfig
 	nextID      int64
 	persistPath string
+	oauthTokens map[string]remoteMCPOAuthToken
+	oauthStates map[string]remoteMCPAuthState
+	sessions    map[string]remoteMCPSession
+	pairings    map[string]remoteMCPPairing
 }
 
 func NewRemoteMCPManager() *RemoteMCPManager {
@@ -67,7 +116,11 @@ func NewRemoteMCPManager() *RemoteMCPManager {
 				return nil
 			},
 		},
-		servers: map[string]RemoteMCPServerConfig{},
+		servers:     map[string]RemoteMCPServerConfig{},
+		oauthTokens: map[string]remoteMCPOAuthToken{},
+		oauthStates: map[string]remoteMCPAuthState{},
+		sessions:    map[string]remoteMCPSession{},
+		pairings:    map[string]remoteMCPPairing{},
 	}
 }
 
@@ -143,6 +196,27 @@ func (m *RemoteMCPManager) register(config RemoteMCPServerConfig, organizationID
 	}
 	if config.TokenEnv != "" && !validEnvName(config.TokenEnv) {
 		return errors.New("remote MCP token_env is invalid")
+	}
+	if config.PairingTokenEnv != "" && !validEnvName(config.PairingTokenEnv) {
+		return errors.New("remote MCP pairing_token_env is invalid")
+	}
+	if config.OAuth != nil {
+		oauth := *config.OAuth
+		if err := validateConfiguredEndpointURL(oauth.AuthorizationURL); err != nil {
+			return fmt.Errorf("remote MCP OAuth authorization URL is unsafe: %w", err)
+		}
+		if err := validateConfiguredEndpointURL(oauth.TokenURL); err != nil {
+			return fmt.Errorf("remote MCP OAuth token URL is unsafe: %w", err)
+		}
+		authURL, authErr := url.Parse(oauth.AuthorizationURL)
+		tokenURL, tokenErr := url.Parse(oauth.TokenURL)
+		if authErr != nil || tokenErr != nil || !remoteMCPURLAllowed(authURL) || !remoteMCPURLAllowed(tokenURL) {
+			return errors.New("remote MCP OAuth endpoints require HTTPS outside loopback")
+		}
+		if !validEnvName(oauth.ClientIDEnv) || (oauth.ClientSecretEnv != "" && !validEnvName(oauth.ClientSecretEnv)) || strings.TrimSpace(oauth.RedirectURI) == "" {
+			return errors.New("remote MCP OAuth client environment and redirect URI are required")
+		}
+		config.OAuth = &oauth
 	}
 	for header, envName := range config.HeadersEnv {
 		if !validRemoteMCPHeaderName(header) || !validEnvName(envName) {
@@ -525,14 +599,6 @@ func (m *RemoteMCPManager) call(ctx context.Context, organizationID, serverID, m
 	if err := validateOutboundPayload(map[string]any{"server_id": serverID, "method": method, "params": params}); err != nil {
 		return nil, err
 	}
-	token := ""
-	if config.TokenEnv != "" {
-		value, ok := os.LookupEnv(config.TokenEnv)
-		if !ok || strings.TrimSpace(value) == "" {
-			return nil, errors.New("remote MCP credential is unavailable")
-		}
-		token = strings.TrimSpace(value)
-	}
 	headerValues := make(map[string]string, len(config.HeadersEnv))
 	for header, envName := range config.HeadersEnv {
 		value, ok := os.LookupEnv(envName)
@@ -552,6 +618,10 @@ func (m *RemoteMCPManager) call(ctx context.Context, organizationID, serverID, m
 	}
 	requestContext, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
+	token, tokenErr := m.accessToken(requestContext, serverID, config)
+	if tokenErr != nil {
+		return nil, tokenErr
+	}
 	parsedURL, err := url.Parse(config.URL)
 	if err != nil {
 		return nil, err
@@ -570,6 +640,13 @@ func (m *RemoteMCPManager) call(ctx context.Context, organizationID, serverID, m
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json, text/event-stream")
+	req.Header.Set("MCP-Protocol-Version", "2025-03-26")
+	if session, hasSession := m.latestSession(serverID, organizationID); hasSession {
+		req.Header.Set("Mcp-Session-Id", session.ID)
+		if session.LastEventID != "" {
+			req.Header.Set("Last-Event-ID", session.LastEventID)
+		}
+	}
 	if token != "" {
 		req.Header.Set("Authorization", "Bearer "+token)
 	}
@@ -581,6 +658,9 @@ func (m *RemoteMCPManager) call(ctx context.Context, organizationID, serverID, m
 		return nil, errors.New("remote MCP provider request failed")
 	}
 	defer response.Body.Close()
+	if sessionID := response.Header.Get("Mcp-Session-Id"); sessionID != "" {
+		m.rememberSession(serverID, organizationID, sessionID, time.Now().UTC().Add(30*time.Minute))
+	}
 	if response.StatusCode < 200 || response.StatusCode >= 300 {
 		return nil, fmt.Errorf("remote MCP provider returned HTTP status %d", response.StatusCode)
 	}

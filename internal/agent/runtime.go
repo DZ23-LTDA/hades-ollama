@@ -484,6 +484,34 @@ func (r *Runtime) RemoveRemoteMCP(id string) error {
 	return r.remoteMCP.Remove(id)
 }
 
+func (r *Runtime) BeginRemoteMCPOAuth(id, organizationID string) (string, error) {
+	if r.remoteMCP == nil {
+		return "", errors.New("remote MCP manager is unavailable")
+	}
+	return r.remoteMCP.BeginOAuth(id, organizationID)
+}
+
+func (r *Runtime) CompleteRemoteMCPOAuth(ctx context.Context, state, code string) error {
+	if r.remoteMCP == nil {
+		return errors.New("remote MCP manager is unavailable")
+	}
+	return r.remoteMCP.CompleteOAuth(ctx, state, code)
+}
+
+func (r *Runtime) BeginRemoteMCPPairing(id, organizationID string) (string, error) {
+	if r.remoteMCP == nil {
+		return "", errors.New("remote MCP manager is unavailable")
+	}
+	return r.remoteMCP.BeginPairing(id, organizationID)
+}
+
+func (r *Runtime) CompleteRemoteMCPPairing(id, organizationID, presented, challenge string) error {
+	if r.remoteMCP == nil {
+		return errors.New("remote MCP manager is unavailable")
+	}
+	return r.remoteMCP.CompletePairing(id, organizationID, presented, challenge)
+}
+
 func (r *Runtime) SetSkillEnabled(id string, enabled bool) error {
 	if r.context == nil {
 		return errors.New("context store is unavailable")

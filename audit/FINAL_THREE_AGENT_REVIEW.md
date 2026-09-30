@@ -497,3 +497,14 @@ Próximo slice: corrigir somente os blockers remanescentes do Studio (invalidaç
 - **Supply chain:** `SignedArtifact`, `SignArtifact` e `VerifyArtifactSignature` vinculam uma assinatura ao SHA-256 exato do artefato. O workflow de release gera SBOM CycloneDX, checksum, chave pública e assinatura detached do manifesto, verifica tudo antes da publicação e mantém a attestation de provenance opcional/explicitamente configurada. `scripts/verify-release-artifact.sh` permite verificação independente.
 - **Evidência local:** `go test -run 'Skill|Capability|Signed|Signature|Attestation|Provenance|SBOM|Trusted|Tamper|SupplyChain' ./internal/agent ./server`, `go build ./...`, suites Go, Web, contracts e `check-class-a-plus-integrity.sh` passaram.
 - **Limite honesto:** a chave RSA do workflow é efêmera por execução e a autenticidade de origem continua sendo a attestation do GitHub Actions quando habilitada; uma chave de release persistente/externamente gerenciada e verificação real em registry permanecem opt-in.
+
+
+## H5 — Remote MCP Streamable HTTP/OAuth/session/pairing — 2026-09-30
+
+- **Transporte:** Remote MCP usa POST Streamable HTTP com `Accept: application/json, text/event-stream`, `MCP-Protocol-Version`, JSON-RPC correlation ID, SSE multiline e limite agregado de resposta; o transporte continua passando por DNS pinning, peer verification, redirect same-origin e DLP.
+- **OAuth:** `BeginOAuth` cria PKCE S256 + state one-shot com expiração; `CompleteOAuth` troca authorization code; tokens e refresh tokens ficam somente em memória do manager, e `accessToken` renova token expirado sem registrar credenciais.
+- **Sessão/resumption:** `Mcp-Session-Id` retornado pelo upstream é guardado com tenant, expiração e `Last-Event-ID`; chamadas posteriores retomam a sessão e sessões expiradas são rejeitadas.
+- **Pairing:** challenge one-shot é vinculado ao servidor/tenant e comparado em tempo constante com segredo server-side; challenge, segredo errado e reuso são rejeitados.
+- **Regressões:** `TestRemoteMCPOAuthRefreshAndSessionResumption`, `TestRemoteMCPPairingIsAuthenticatedOneShotAndBoundToChallenge` e `TestRemoteMCPNotConfiguredStatusAndExpiredSession` passaram, junto da suíte Remote MCP existente.
+- **Gates:** `go build ./...`, `go test ./internal/agent ./server`, typecheck, lint, Vitest, build, contratos e integrity guard passaram localmente.
+- **Limite honesto:** sem servidor/credencial configurado o status é `NOT_CONFIGURED`; consentimento contra IdP, upstream MCP oficial, revogação externa e pairing físico permanecem `BLOCKED_EXTERNAL`/não executados neste sandbox.

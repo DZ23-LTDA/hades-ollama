@@ -1,7 +1,7 @@
 ---
 projeto: ollama-classe-a-plus
-status: H4 IMPLEMENTADO — CI LOCAL VERDE; CI REMOTA PENDENTE
-atualizado: 2026-09-30 14:45 -03 (2026-09-30 17:45 UTC)
+status: H5 IMPLEMENTADO — GATES LOCAIS VERDES; CI REMOTA PENDENTE
+atualizado: 2026-09-30 15:59 -03 (2026-09-30 18:59 UTC)
 ultima_ia: Manus
 tags: [projeto, paridade-manus, evidencia-real, shell-desktop, missao-concluida]
 ---
@@ -105,6 +105,13 @@ automatizado + execução real reproduzível em navegador (desktop e mobile), se
 - **Supply chain:** adicionados `SignedArtifact`/`VerifyArtifactSignature`, script `scripts/verify-release-artifact.sh` e assinatura/verificação do manifesto SHA-256 no workflow de release, além do SBOM CycloneDX e provenance condicional já existentes.
 - **Evidência:** testes focados de Skill/Capability/Signed/Signature/SupplyChain, `go build ./...`, Go/server, TypeScript/lint/Vitest/build, contratos e integrity guard passaram localmente.
 - **Próximo passo:** publicar este commit e acompanhar `class-a-plus-integrity` e `dz23-agentic-quality` no mesmo SHA; não declarar CI verde antes da conclusão remota. Chave persistente de release e attestation externa continuam condicionais/honestas.
+
+
+### 2026-09-30 15:59 -03 — Manus — H5 Remote MCP completo
+- **Correção:** Remote MCP agora possui transporte Streamable HTTP com `MCP-Protocol-Version`, SSE/correlation preservados, OAuth authorization-code com PKCE S256, state one-shot/expirável, refresh automático de token expirado, sessões `Mcp-Session-Id` tenant-scoped com resumption e expiração, além de pairing autenticado one-shot vinculado a challenge e segredo server-side.
+- **Honestidade:** tokens/refresh tokens ficam apenas em memória; servidor/IdP/credenciais ausentes retornam `NOT_CONFIGURED`; live OAuth/upstream/pairing físico continuam externos, não simulados.
+- **Evidência:** `go test ./internal/agent -run 'MCP|Remote|OAuth|Session|Refresh|Resumption|Pairing|Streamable' -count=1` passou; `go build ./...`, `go test ./internal/agent ./server`, `npx tsc -b`, `npm run lint`, `npx vitest run`, `npm run build`, contratos e integrity guard passaram.
+- **Próximo passo:** commitar/pushar H5 e acompanhar `class-a-plus-integrity` e `dz23-agentic-quality` no mesmo SHA; não declarar CI verde antes do resultado remoto.
 
 ## Histórico de sessões
 <!-- Mais recente no topo. Uma entrada por sessão de trabalho. -->
