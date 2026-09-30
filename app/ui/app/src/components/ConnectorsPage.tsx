@@ -100,9 +100,9 @@ export function ConnectorsPage() {
     setError(null);
     try {
       const [catalogResult, connectorResult, mcpResult] = await Promise.all([
-        fetch(`${API_BASE}/api/agent/v1/connectors/catalog`).then((r) => (r.ok ? r.json() : { connectors: [] })),
+        fetch(`${API_BASE}/api/agent/v1/connector-catalog`).then((r) => (r.ok ? r.json() : { connectors: [] })),
         fetch(`${API_BASE}/api/agent/v1/connectors`).then((r) => (r.ok ? r.json() : { connectors: [] })),
-        fetch(`${API_BASE}/api/agent/v1/mcp/servers`).then((r) => (r.ok ? r.json() : { servers: [] })),
+        fetch(`${API_BASE}/api/agent/v1/mcp`).then((r) => (r.ok ? r.json() : { servers: [] })),
       ]);
       setCatalog(catalogResult.connectors ?? []);
       setConnectors(connectorResult.connectors ?? []);

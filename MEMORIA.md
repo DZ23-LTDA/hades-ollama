@@ -78,6 +78,16 @@ automatizado + execução real reproduzível em navegador (desktop e mobile), se
 
 ## Histórico de sessões
 <!-- Mais recente no topo. Uma entrada por sessão de trabalho. -->
+### 2026-09-30 01:15 -03 — Manus — PARTE 2.1: CORREÇÃO DAS ROTAS REAIS EM CONNECTORSPAGE
+- **O que foi feito:**
+  - Corrigidas as rotas de backend em `ConnectorsPage.tsx`:
+    - Substituído `/connectors/catalog` por `/connector-catalog` (`GET /api/agent/v1/connector-catalog`, `agent_routes.go:421`).
+    - Substituído `/mcp/servers` por `/mcp` (`GET /api/agent/v1/mcp`, `agent_routes.go:426`), realizando o parse do payload `{ servers, remote_servers }` retornando `resp.servers`.
+  - Validados os gates de conformidade:
+    - `git grep -nE "/api/agent/v1/(connector-catalog|mcp)\b" app/ui/app/src/components/ConnectorsPage.tsx` retornou as 2 linhas corrigidas.
+    - `git grep -nE "/connectors/catalog|/mcp/servers" app/ui/app/src/components/ConnectorsPage.tsx` retornou vazio (zero ocorrências).
+  - Quality gates: `npx tsc -b` (0 erros), `npm run lint` (0 warnings), `npx vitest run` (5/5 PASS), `npm run build` (sucesso).
+
 ### 2026-09-30 01:10 -03 — Manus — PARTE 2 DE 3: 5 TELAS 100% FUNCIONAIS E LIGADAS AO BACKEND REAL
 - **O que foi feito:**
   - **1. LibraryPage.tsx:** Removidos dados mock; ligado diretamente a `GET /api/agent/v1/missions` via `fetch()`, consolidando os artefatos reais das missões do runtime, com suporte a filtros de mídia e busca real e empty state autêntico.
