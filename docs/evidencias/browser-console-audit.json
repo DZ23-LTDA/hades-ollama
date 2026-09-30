@@ -65,6 +65,16 @@
       "desktop_png": "docs/evidencias/screen-modelpicker-desktop.png",
       "mobile_png": "docs/evidencias/screen-modelpicker-mobile.png",
       "captured_at": "2026-09-30T11:25:51.886Z"
+    },
+    "slash_commands": {
+      "status": 200,
+      "clean_console": true,
+      "errors": [],
+      "desktop_menu_png": "docs/evidencias/screen-slash-menu-desktop.png",
+      "mobile_menu_png": "docs/evidencias/screen-slash-menu-mobile.png",
+      "desktop_goal_png": "docs/evidencias/screen-slash-goal-desktop.png",
+      "mobile_goal_png": "docs/evidencias/screen-slash-goal-mobile.png",
+      "captured_at": "2026-09-30T12:40:28.627Z"
     }
   }
 }

@@ -109,6 +109,7 @@ export default function AgenticConsole() {
     const searchParams = new URLSearchParams(window.location.search);
     const requestedObjective = searchParams.get("objective");
     const autoRunParam = searchParams.get("autorun") === "true";
+    const slashCommand = searchParams.get("slash");
     const requestedMissionId = searchParams.get("mission_id") || searchParams.get("missionId");
     if (requestedMissionId) {
       setViewMode("split");
@@ -127,7 +128,7 @@ export default function AgenticConsole() {
     }
     if (requestedObjective) {
       setObjective(requestedObjective);
-      if (autoRunParam) {
+      if (autoRunParam || slashCommand === "plan") {
         setViewMode("split");
         void (async () => {
           setBusy(true);
@@ -138,10 +139,22 @@ export default function AgenticConsole() {
                 objective: requestedObjective,
                 provider: "ollama-local",
                 capabilities: ["workspace:read", "workspace:write", "browser:navigate", "browser:files", "browser:takeover"],
-                auto_run: true,
+                auto_run: autoRunParam,
               }),
             });
             setMission(created);
+            if (slashCommand === "goal") {
+              const delegated = await api<OrchestrationJob>("/api/agent/v1/orchestration/jobs", {
+                method: "POST",
+                body: JSON.stringify({
+                  objective: requestedObjective,
+                  roles: ["research", "programming", "testing", "security", "review"],
+                  budget: { max_agents: 3, max_seconds: 600, max_retries: 1 },
+                  auto_run: true,
+                }),
+              });
+              setOrchestration(delegated);
+            }
             await load(created.id);
           } catch (cause) {
             setError(cause instanceof Error ? cause.message : "Falha ao iniciar missão automática");
