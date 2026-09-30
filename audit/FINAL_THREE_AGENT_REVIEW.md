@@ -405,7 +405,7 @@ Auditoria somente leitura do checkout `0d3aa7318367008aec96e21a77408f016f5936c9`
 
 1. **RESOLVIDO — Webhook WhatsApp autenticado.** O GET delega o verify token ao adapter ativo; o POST valida HMAC-SHA256 do corpo cru em comparação constante, exige app secret, `object=whatsapp` e `phone_number_id` configurado. Assinatura inválida retorna 401 e segredo ausente retorna NOT_CONFIGURED/424.
 2. **RESOLVIDO — Outbound WhatsApp fail-closed.** `SendMessage` exige destinatário allowlisted, adapter configurado e aprovação HITL aprovada e vinculada ao destinatário exato; sem qualquer requisito retorna bloqueio e nunca chama o adapter.
-3. **Boundary de tenant frágil quando auth está desabilitado.** O header de organização pode selecionar escopo e `missionByID` não compara organização nesse modo; exposição compartilhada deve permanecer bloqueada.
+3. **RESOLVIDO — Boundary tenant fixo em auth desabilitado.** O middleware agora injeta sempre `LocalOrganizationID` e ignora `X-Ollama-Organization`/contexto externo no modo local; handlers usam o escopo fixo nos stores de missões, Company, connectors e schedules. Tentativas cross-tenant retornam 403/404 sem vazamento ou mutação.
 4. **Preview/download do Studio não encaminham Bearer.** Navegação direta do iframe e download via link não carregam o header usado por `agentFetch`; o fluxo autenticado pode retornar 401.
 5. **Preview do Studio sem `sandbox`.** A matriz declarava iframe sandboxed, mas o iframe do Studio não tinha o atributo; conteúdo de projeto é servido na mesma origem.
 
@@ -429,7 +429,7 @@ Auditoria somente leitura do checkout `0d3aa7318367008aec96e21a77408f016f5936c9`
 
 ### Próximo passo obrigatório
 
-Próximo slice: corrigir boundary tenant e Studio (Bearer, sandbox, invalidação de export e concorrência), atualizar matriz/árvore e repetir os três pareceres independentes. Dependências externas continuam `NOT_CONFIGURED`/`BLOCKED_EXTERNAL`.
+Próximo slice: corrigir Studio (Bearer, sandbox, invalidação de export e concorrência), atualizar matriz/árvore e repetir os três pareceres independentes. Dependências externas continuam `NOT_CONFIGURED`/`BLOCKED_EXTERNAL`.
 
 
 ## CA-1 — Correção dos achados WhatsApp 1 e 2 — 2026-09-30
@@ -438,3 +438,11 @@ Próximo slice: corrigir boundary tenant e Studio (Bearer, sandbox, invalidaçã
 - **Outbound:** `internal/agent/whatsapp_gateway.go` exige allowlist e aprovação HITL aprovada, vinculada ao número exato; `RequestOutboundApproval`/`ApproveOutbound` registram o ciclo sem chamar provider antes da aprovação.
 - **Regressões:** `TestWhatsAppCloudWebhookHMACAndIdentity`, `TestWhatsAppOutboundRequiresAllowlistAndApproval` e `TestWhatsAppRoutesWebhookRejectsInvalidSignatureAndIdentity`; focused Go e gates completos passaram.
 - **Estado:** achados 1 e 2 encerrados. Permanecem abertos somente os achados 3–5 e melhorias listadas acima.
+
+
+## CA-2 — Isolamento de tenant no modo local — 2026-09-30
+
+- **Correção:** `server/agent_routes.go` fixa `agent.organization` em `agent.LocalOrganizationID` quando `authRequired=false`, marca o contexto como local e ignora headers/contexto de organização enviados pelo cliente.
+- **Cobertura:** `TestAuthDisabledAlwaysUsesLocalOrganizationAcrossStores` verifica listagem sem vazamento e escrita forçada ao tenant local para missões, Company, connectors e schedules; também verifica leitura cross-tenant bloqueada.
+- **Regressão:** `go test -run 'Tenant|Isolation|CrossTenant|Organization|AuthDisabled|LocalOrg' ./internal/agent ./server` passou.
+- **Estado:** achado 3 encerrado para o modo local/dev. O isolamento enterprise PostgreSQL/RLS distribuído continua governado pelos gates próprios e não foi promovido artificialmente.

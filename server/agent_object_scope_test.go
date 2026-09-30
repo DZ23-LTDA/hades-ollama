@@ -3,6 +3,7 @@ package server
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
@@ -182,5 +183,104 @@ func TestUnauthenticatedLocalModeCannotAccessTenantContextRecords(t *testing.T) 
 				t.Fatalf("status = %d, want %d; body=%s", recorder.Code, http.StatusForbidden, recorder.Body.String())
 			}
 		})
+	}
+}
+
+func TestAuthDisabledAlwaysUsesLocalOrganizationAcrossStores(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	contextStore, err := agent.NewContextStore("")
+	if err != nil {
+		t.Fatal(err)
+	}
+	companies, err := agent.NewCompanyStore("")
+	if err != nil {
+		t.Fatal(err)
+	}
+	connectors := agent.NewConnectorManager()
+	root := t.TempDir()
+	runtime, err := agent.NewRuntime(agent.RuntimeConfig{
+		Context: contextStore, Company: companies, Connectors: connectors,
+		Planner: agent.RulePlanner{}, WorkspaceRoot: root,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = runtime.Close(context.Background()) })
+	api := &agentAPI{runtime: runtime, context: contextStore, authRequired: false}
+
+	tenantCompany, err := companies.Create(agent.Company{OrganizationID: "org_b", Name: "tenant-company"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := connectors.Register(agent.ConnectorConfig{
+		ID: "tenant-connector", OrganizationID: "org_b", Provider: "private",
+		BaseURL:    "https://tenant.example.test",
+		Operations: []agent.ConnectorOperation{{Name: "read", Methods: []string{"GET"}, PathPrefixes: []string{"/"}}},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	tenantSchedule, err := contextStore.CreateSchedule(agent.Schedule{ID: "sch_" + uuid.NewString(), OrganizationID: "org_b", Objective: "tenant-only", IntervalSeconds: 60})
+	if err != nil {
+		t.Fatal(err)
+	}
+	tenantMission, err := runtime.CreateMission(context.Background(), agent.CreateMissionRequest{Objective: "tenant-only", Workspace: root, OrganizationID: "org_b"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	localRequest := func(method, path, body string) (*gin.Context, *httptest.ResponseRecorder) {
+		recorder := httptest.NewRecorder()
+		ctx, _ := gin.CreateTestContext(recorder)
+		ctx.Request = httptest.NewRequest(method, path, bytes.NewBufferString(body))
+		// A client-controlled organization header must be ignored in local mode.
+		ctx.Request.Header.Set("X-Ollama-Organization", "org_b")
+		return ctx, recorder
+	}
+
+	ctx, recorder := localRequest(http.MethodGet, "/api/agent/missions", "")
+	api.authMiddleware(ctx)
+	api.missions(ctx)
+	if recorder.Code != http.StatusOK || strings.Contains(recorder.Body.String(), tenantMission.ID) {
+		t.Fatalf("local missions leaked tenant data: status=%d body=%s", recorder.Code, recorder.Body.String())
+	}
+	ctx, recorder = localRequest(http.MethodGet, "/api/agent/companies", "")
+	api.authMiddleware(ctx)
+	api.companies(ctx)
+	if recorder.Code != http.StatusOK || strings.Contains(recorder.Body.String(), tenantCompany.ID) {
+		t.Fatalf("local companies leaked tenant data: status=%d body=%s", recorder.Code, recorder.Body.String())
+	}
+	ctx, recorder = localRequest(http.MethodGet, "/api/agent/connectors", "")
+	api.authMiddleware(ctx)
+	api.connectors(ctx)
+	if recorder.Code != http.StatusOK || strings.Contains(recorder.Body.String(), "tenant-connector") {
+		t.Fatalf("local connectors leaked tenant data: status=%d body=%s", recorder.Code, recorder.Body.String())
+	}
+	ctx, recorder = localRequest(http.MethodGet, "/api/agent/schedules", "")
+	api.authMiddleware(ctx)
+	api.schedules(ctx)
+	if recorder.Code != http.StatusOK || strings.Contains(recorder.Body.String(), tenantSchedule.ID) {
+		t.Fatalf("local schedules leaked tenant data: status=%d body=%s", recorder.Code, recorder.Body.String())
+	}
+
+	ctx, recorder = localRequest(http.MethodPost, "/api/agent/missions", `{"objective":"must stay local","workspace":"`+root+`","organization_id":"org_b"}`)
+	api.authMiddleware(ctx)
+	api.createMission(ctx)
+	if recorder.Code != http.StatusCreated {
+		t.Fatalf("local mission write status=%d body=%s", recorder.Code, recorder.Body.String())
+	}
+	var created agent.Mission
+	if err := json.Unmarshal(recorder.Body.Bytes(), &created); err != nil {
+		t.Fatal(err)
+	}
+	if created.OrganizationID != agent.LocalOrganizationID {
+		t.Fatalf("local write accepted foreign organization: got %q", created.OrganizationID)
+	}
+
+	ctx, recorder = localRequest(http.MethodGet, "/api/agent/companies/"+tenantCompany.ID, "")
+	ctx.Params = gin.Params{{Key: "id", Value: tenantCompany.ID}}
+	api.authMiddleware(ctx)
+	api.getCompany(ctx)
+	if recorder.Code != http.StatusForbidden && recorder.Code != http.StatusNotFound {
+		t.Fatalf("cross-tenant company read status=%d body=%s", recorder.Code, recorder.Body.String())
 	}
 }

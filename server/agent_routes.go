@@ -531,6 +531,11 @@ func (a *agentAPI) authMiddleware(c *gin.Context) {
 			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "request origin is not allowed"})
 			return
 		}
+		// Local/dev mode is deliberately single-tenant. Do not honor an
+		// organization header or pre-populated context supplied by the client.
+		// Every downstream handler and scoped store receives this fixed scope.
+		c.Set("agent.organization", agent.Organization{ID: agent.LocalOrganizationID})
+		c.Set("agent.local_mode", true)
 		c.Next()
 		return
 	}
