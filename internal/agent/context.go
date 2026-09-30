@@ -592,6 +592,35 @@ func (s *ContextStore) SetSkillEnabledForOrganization(organizationID, id string,
 	return nil
 }
 
+// PromoteSkillTrustedForOrganization verifies the signed attestation against
+// the supplied policy before persisting elevated trust. No JSON boolean can
+// reach this state by itself.
+func (s *ContextStore) PromoteSkillTrustedForOrganization(organizationID, id string, policy CapabilityPolicy) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	id = strings.TrimSpace(id)
+	organizationID = strings.TrimSpace(organizationID)
+	skill, ok := s.skills[id]
+	if !ok {
+		return fmt.Errorf("skill %q is not registered", id)
+	}
+	if !pluginOwnedByOrganization(skill.OrganizationID, organizationID) {
+		return ErrPluginOrganizationScope
+	}
+	trusted, err := policy.PromoteSkillTrusted(skill)
+	if err != nil {
+		skill.Trusted = false
+		s.skills[id] = skill
+		return err
+	}
+	s.skills[id] = trusted
+	if err := s.persistSkillLocked(id); err != nil {
+		s.skills[id] = skill
+		return fmt.Errorf("persist trusted skill: %w", err)
+	}
+	return nil
+}
+
 func (s *ContextStore) RemoveSkill(id string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()

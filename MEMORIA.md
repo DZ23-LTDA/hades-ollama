@@ -1,6 +1,6 @@
 ---
 projeto: ollama-classe-a-plus
-status: H3 IMPLEMENTADO — CI VERDE
+status: H4 IMPLEMENTADO — CI LOCAL VERDE; CI REMOTA PENDENTE
 atualizado: 2026-09-30 14:45 -03 (2026-09-30 17:45 UTC)
 ultima_ia: Manus
 tags: [projeto, paridade-manus, evidencia-real, shell-desktop, missao-concluida]
@@ -97,6 +97,14 @@ automatizado + execução real reproduzível em navegador (desktop e mobile), se
 - **Manus:** conectei o ConnectorManager ao cliente zero-trust compartilhado, preservei pinning/peer verification/redirect policy, removi defaults `http.DefaultClient` de caminhos de produção relevantes e usei fallback seguro em pesquisa, OAuth e multillm.
 - **Evidência:** focused `go test ./internal/agent ./internal/multillm -run 'Egress|DLP|Redact|SSRF|Connector|Provider|ZeroTrust'` PASS; `go build ./...` + `go test ./internal/agent ./server` PASS; frontend, contratos e integrity PASS.
 - **Estado:** correção adicional do Gateway local publicada no SHA `bccfbd03`; ambas as workflows CI passaram nesse mesmo SHA. Próximo passo: parar esta slice, conforme escopo H3.
+
+
+
+## H4 — capability policy assinada + supply chain (2026-09-30 15:45 -03)
+- **Manus:** implementada assinatura Ed25519 de `SkillManifest`, com hash canônico, chave autorizada e promoção trusted exclusivamente por `CapabilityPolicy`; skills não assinadas/adulteradas permanecem untrusted.
+- **Supply chain:** adicionados `SignedArtifact`/`VerifyArtifactSignature`, script `scripts/verify-release-artifact.sh` e assinatura/verificação do manifesto SHA-256 no workflow de release, além do SBOM CycloneDX e provenance condicional já existentes.
+- **Evidência:** testes focados de Skill/Capability/Signed/Signature/SupplyChain, `go build ./...`, Go/server, TypeScript/lint/Vitest/build, contratos e integrity guard passaram localmente.
+- **Próximo passo:** publicar este commit e acompanhar `class-a-plus-integrity` e `dz23-agentic-quality` no mesmo SHA; não declarar CI verde antes da conclusão remota. Chave persistente de release e attestation externa continuam condicionais/honestas.
 
 ## Histórico de sessões
 <!-- Mais recente no topo. Uma entrada por sessão de trabalho. -->

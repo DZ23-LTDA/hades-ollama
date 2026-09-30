@@ -211,6 +211,9 @@ type SkillManifest struct {
 	Tools          []string `json:"tools,omitempty"`
 	Trusted        bool     `json:"trusted"`
 	Enabled        bool     `json:"enabled"`
+	SigningKeyID   string   `json:"signing_key_id,omitempty"`
+	ContentSHA256  string   `json:"content_sha256,omitempty"`
+	Signature      string   `json:"signature,omitempty"`
 }
 
 type Schedule struct {

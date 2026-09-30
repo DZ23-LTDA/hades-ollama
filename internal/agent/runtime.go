@@ -498,6 +498,13 @@ func (r *Runtime) RegisterSkill(manifest SkillManifest) error {
 	return r.context.RegisterSkill(manifest)
 }
 
+func (r *Runtime) PromoteSkillTrustedForOrganization(organizationID, id string, policy CapabilityPolicy) error {
+	if r.context == nil {
+		return errors.New("context store is unavailable")
+	}
+	return r.context.PromoteSkillTrustedForOrganization(organizationID, id, policy)
+}
+
 func (r *Runtime) RemoveSkill(id string) error {
 	if r.context == nil {
 		return errors.New("context store is unavailable")

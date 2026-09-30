@@ -489,3 +489,11 @@ Próximo slice: corrigir somente os blockers remanescentes do Studio (invalidaç
 - **Cobertura:** `TestEveryCatalogConnectorUsesSharedSafeEgressClient` percorre o catálogo e verifica o transporte hardened compartilhado; focused `Egress|DLP|Redact|SSRF|Connector|Provider|ZeroTrust` passou.
 - **Gates:** `go build ./...`, `go test ./internal/agent ./server`, typecheck, lint, Vitest, build frontend, contratos e integrity guard passaram.
 - **Limitação honesta:** providers/upstreams externos e ausência de segredo real permanecem `NOT_CONFIGURED`/`BLOCKED_EXTERNAL`; a heurística DLP não prova ausência de dados sensíveis desconhecidos.
+
+
+## H4 — capability policy assinada e supply chain verificável — 2026-09-30
+
+- **Skills:** `SkillManifest` agora carrega `signing_key_id`, `content_sha256` e assinatura detached Ed25519. `CapabilityPolicy.WithTrustedSkillKey`, `VerifySkillAttestation` e `PromoteSkillTrusted` exigem chave autorizada, hash canônico e assinatura válida; skills sem assinatura, com chave não autorizada ou adulteradas permanecem não confiáveis. A promoção persistente passa por `ContextStore.PromoteSkillTrustedForOrganization`; o booleano `trusted` do JSON não é autoridade.
+- **Supply chain:** `SignedArtifact`, `SignArtifact` e `VerifyArtifactSignature` vinculam uma assinatura ao SHA-256 exato do artefato. O workflow de release gera SBOM CycloneDX, checksum, chave pública e assinatura detached do manifesto, verifica tudo antes da publicação e mantém a attestation de provenance opcional/explicitamente configurada. `scripts/verify-release-artifact.sh` permite verificação independente.
+- **Evidência local:** `go test -run 'Skill|Capability|Signed|Signature|Attestation|Provenance|SBOM|Trusted|Tamper|SupplyChain' ./internal/agent ./server`, `go build ./...`, suites Go, Web, contracts e `check-class-a-plus-integrity.sh` passaram.
+- **Limite honesto:** a chave RSA do workflow é efêmera por execução e a autenticidade de origem continua sendo a attestation do GitHub Actions quando habilitada; uma chave de release persistente/externamente gerenciada e verificação real em registry permanecem opt-in.

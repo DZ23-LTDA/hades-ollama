@@ -248,6 +248,9 @@ grep -q 'TestRuntimeRejectsUnconfiguredMissionProvider' internal/agent/runtime_t
 	grep -q 'OLLAMA_ENABLE_ATTESTATIONS' .github/workflows/release.yaml
 	grep -q 'ollama-classe-a-plus-sbom.cdx.json' .github/workflows/release.yaml
 	grep -q 'sha256sum -c sha256sum.txt' .github/workflows/release.yaml
+grep -q 'Sign release checksum manifest' .github/workflows/release.yaml
+grep -q 'release-signing-public.pem' .github/workflows/release.yaml
+grep -q 'verify-release-artifact.sh' .github/workflows/release.yaml
 	grep -q 'release-metadata.json' .github/workflows/release.yaml
 	grep -q 'workflow_dispatch:' .github/workflows/latest.yaml
 	grep -q "vars.OLLAMA_ENABLE_LATEST == 'true'" .github/workflows/latest.yaml
