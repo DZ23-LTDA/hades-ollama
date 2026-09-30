@@ -1,7 +1,7 @@
 ---
 projeto: ollama-classe-a-plus
-status: WIN-1 IMPLEMENTADO — builds sem CGO e Windows passam localmente; CI remoto pendente
-atualizado: 2026-09-30 18:03 -03 (2026-09-30 21:03 UTC)
+status: WIN-1 CONCLUÍDO — builds sem CGO/Windows e CI remoto verdes
+atualizado: 2026-09-30 18:10 -03 (2026-09-30 21:10 UTC)
 ultima_ia: Manus
 tags: [projeto, paridade-manus, windows, cgo, multiplatform, local-tests]
 ---
@@ -22,7 +22,7 @@ automatizado + execução real reproduzível em navegador (desktop e mobile), se
 
 ## Histórico de sessões
 
-- **2026-09-30 18:03 -03 — Manus:** executou WIN-1. Isolou MLX/xgrammar, gerador e webview nativos atrás de `cgo`, criou fallbacks `!cgo` honestos e corrigiu o wrapper desktop para não materializar `app/store` em Linux headless. Substituiu `os.DevNull` por `GIT_CONFIG_SYSTEM=`/`GIT_CONFIG_GLOBAL=` para Git for Windows. Provas locais: `CGO_ENABLED=0 go build ./...`, `GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build ./...`, `go build ./...`, `go test ./internal/agent ./server`, `tsc`, lint, Vitest, Vite build, contratos e integrity passaram. Adicionou o job `platform-builds` ao workflow Class A+. Documentação em `audit/auditoria.md`, `audit/E2E_AUDIT_2026-09-30.md` e `docs/agentic/PARITY_MATRIX.md`. **Parou antes do commit/push para aguardar a validação CI remota do novo gate.**
+- **2026-09-30 18:10 -03 — Manus:** concluiu WIN-1. Isolou MLX/xgrammar, gerador e webview nativos atrás de `cgo`, criou fallbacks `!cgo` honestos e corrigiu o wrapper desktop para não materializar `app/store` em Linux headless. Substituiu `os.DevNull` por `GIT_CONFIG_SYSTEM=`/`GIT_CONFIG_GLOBAL=` para Git for Windows. Provas locais: `CGO_ENABLED=0 go build ./...`, `GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build ./...`, `go build ./...`, `go test ./internal/agent ./server`, `tsc`, lint, Vitest, Vite build, contratos e integrity passaram. O job `platform-builds` foi adicionado ao workflow Class A+; após corrigir o preparo de `app/dist`, CI remoto confirmou `class-a-plus-integrity` run `36777180701` e `dz23-agentic-quality` run `36777180620` como `completed/success` no SHA `b703f2a505f2daa1b0980c11580ca594265775dc`.
 
 - **2026-09-30 17:45 -03 — Manus:** CI remoto confirmado verde no SHA `eca7b8edaf592018df239eb28abd401ddb175dde`: `class-a-plus-integrity` run `36774562486` e `dz23-agentic-quality` run `36774562246`, ambos `completed/success`. A Fase 11 está concluída; GitHub privado sem credencial permanece `NOT_CONFIGURED` por desenho e ZIP live grande segue coberto pelos testes de streaming.
 

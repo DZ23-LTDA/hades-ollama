@@ -20,6 +20,8 @@ Os caminhos nativos MLX/xgrammar e o webview foram isolados por build tags `cgo`
 
 O workflow `class-a-plus-integrity` recebeu o job `platform-builds`, que executa ambos os comandos acima em cada push relevante.
 
+No commit `b703f2a505f2daa1b0980c11580ca594265775dc`, o GitHub Actions confirmou `class-a-plus-integrity` (run `36777180701`) e `dz23-agentic-quality` (run `36777180620`) como `completed/success`.
+
 ## Limitações
 
 A evidência é de compilação cruzada no sandbox. Ainda não é evidência de execução em um host Windows físico, DACL nativo, MLX/WebView nativos, instalador assinado ou smoke end-to-end do aplicativo Windows. O CI remoto é o gate final desta alteração.

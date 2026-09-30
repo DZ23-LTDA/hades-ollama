@@ -1,8 +1,8 @@
 # Estado da missão autônoma — Ollama DZ23 Agentic Platform
 
-## Checkpoint vigente — WIN-1 build Windows/sem-CGO — 2026-09-30 18:03 -03
+## Checkpoint vigente — WIN-1 build Windows/sem-CGO — 2026-09-30 18:10 -03
 ```yaml
-state: IMPLEMENTED_LOCAL_CI_PENDING
+state: COMPLETED_CI_GREEN
 branch: recovery/ollama-full-snapshot
 base_commit: ebd51c69
 objective: corrigir o build completo sem CGO e o cross-build Windows, substituir os.DevNull no Git e adicionar gate CI permanente
@@ -16,7 +16,11 @@ acceptance:
   - go build ./..., go test ./internal/agent ./server e frontend gates PASS
   - CI executa os dois builds e reprova regressões
 rollback: preservar ebd51c69; sem reset/clean/force-push
-next_action: revisar diff, commitar/pushar e acompanhar class-a-plus-integrity, platform-builds e dz23-agentic-quality no mesmo SHA
+ci:
+  class_a_plus_integrity: {id: 36777180701, conclusion: success}
+  dz23_agentic_quality: {id: 36777180620, conclusion: success}
+  sha: b703f2a505f2daa1b0980c11580ca594265775dc
+next_action: nenhum dentro do WIN-1; smoke nativo Windows/DACL/MLX/WebView continuam limites externos documentados
 ```
 
 ## Checkpoint vigente — FASE 11 Import Full Project — 2026-09-30 17:45 -03
