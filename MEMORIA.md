@@ -1,7 +1,7 @@
 ---
 projeto: ollama-classe-a-plus
-status: FASE 12 AUDITADA — GATES LOCAIS VERDES; FINDINGS P1 ABERTOS
-atualizado: 2026-09-30 15:59 -03 (2026-09-30 18:59 UTC)
+status: UI-1 IMPLEMENTADA — composer Home com roteamento automático/manual, anexos e evidência E2E limpa; gates locais verdes
+atualizado: 2026-09-30 16:47 -03 (2026-09-30 19:47 UTC)
 ultima_ia: Manus
 tags: [projeto, paridade-manus, evidencia-real, shell-desktop, missao-concluida]
 ---
@@ -19,6 +19,10 @@ da análise de outros harnesses/repositórios, com qualidade enterprise
 (isolamento por tenant, segurança de filesystem/processo, privacidade,
 recuperação). **Pronto** = paridade comprovada por implementação + teste
 automatizado + execução real reproduzível em navegador (desktop e mobile), sem alegar "100%" sem evidência.
+
+## Histórico de sessões
+
+- **2026-09-30 16:47 -03 — Manus:** implementou UI-1 no composer da Home. O modo automático envia `auto/coding` ao roteador real; o modo manual usa o `ModelPicker` controlado e somente modelos PASS; anexos usam `FileUpload` com seletor, drag-and-drop, paste, limite de 10 MB e chips removíveis. Evidência real desktop/mobile em `docs/evidencias/screen-ui1-home-desktop.png` e `screen-ui1-home-mobile.png`; auditoria `docs/evidencias/browser-console-audit-ui1.json` com `console_errors: []` e `http_errors: []`. Gates `npx tsc -b`, `npm run lint`, `npx vitest run` e `npm run build` verdes. Próximo passo: commit/push e validação CI remota.
 
 ## Estado atual (2026-09-30 11:59 -03 / 2026-09-30 14:59 UTC)
 - **Repo:** github.com/DZ23-LTDA/ollama-classe-a-plus. Branch canônica: `recovery/ollama-full-snapshot`.

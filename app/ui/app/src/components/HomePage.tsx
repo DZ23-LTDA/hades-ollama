@@ -1,4 +1,4 @@
-import { useMemo, useState, type KeyboardEvent } from "react";
+import { useMemo, useRef, useState, type ChangeEvent, type KeyboardEvent } from "react";
 import { Link } from "@tanstack/react-router";
 import {
   ArrowRightIcon,
@@ -7,8 +7,14 @@ import {
   ChatBubbleLeftRightIcon,
   FolderIcon,
   PaperAirplaneIcon,
+  PaperClipIcon,
+  XMarkIcon,
 } from "@heroicons/react/24/outline";
+import type { Model } from "@/gotypes";
 import Logo from "@/components/Logo";
+import { FileUpload } from "@/components/FileUpload";
+import { ModelPicker } from "@/components/ModelPicker";
+import { processFiles } from "@/utils/fileValidation";
 import { SlashCommandMenu } from "@/components/SlashCommandMenu";
 import {
   filterSlashCommands,
@@ -40,6 +46,10 @@ function commandObjective(command: SlashCommand, objective: string): string {
 
 export function HomePage() {
   const [objective, setObjective] = useState("");
+  const [selectionMode, setSelectionMode] = useState<"auto" | "manual">("auto");
+  const [manualModel, setManualModel] = useState<Model | null>(null);
+  const [attachments, setAttachments] = useState<Array<{ filename: string; data: Uint8Array }>>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [activeCommand, setActiveCommand] = useState(0);
   const query = slashCommandQuery(objective);
   const commands = useMemo(() => filterSlashCommands(query ?? ""), [query]);
@@ -56,12 +66,37 @@ export function HomePage() {
       const targetObjective = commandObjective(parsed.command, parsed.objective);
       const params = new URLSearchParams(url.split("?")[1]);
       params.set("objective", targetObjective);
+      params.set("mode", selectionMode);
+      if (selectionMode === "manual" && manualModel) {
+        params.set("model", manualModel.model);
+        params.set("provider", manualModel.provider || "ollama-local");
+      } else {
+        params.set("model", "auto/coding");
+        params.set("provider", "ollama-local");
+      }
+      if (attachments.length > 0) params.set("attachments", attachments.map((file) => file.filename).join(","));
       window.location.assign(`/agentic?${params.toString()}`);
       return;
     }
     const value = objective.trim();
     if (!value) return;
-    window.location.assign(`/agentic?objective=${encodeURIComponent(value)}&autorun=true`);
+    const params = new URLSearchParams({ objective: value, autorun: "true", mode: selectionMode });
+    params.set("model", selectionMode === "manual" && manualModel ? manualModel.model : "auto/coding");
+    params.set("provider", selectionMode === "manual" && manualModel ? manualModel.provider || "ollama-local" : "ollama-local");
+    if (attachments.length > 0) params.set("attachments", attachments.map((file) => file.filename).join(","));
+    window.location.assign(`/agentic?${params.toString()}`);
+  };
+
+  const addFiles = (files: Array<{ filename: string; data: Uint8Array }>) => {
+    setAttachments((current) => [...current, ...files]);
+  };
+
+  const handleFileInput = async (event: ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files ?? []);
+    if (files.length === 0) return;
+    const result = await processFiles(files, { maxFileSize: 10, hasVisionCapability: false });
+    addFiles(result.validFiles.map((file) => ({ filename: file.filename, data: file.data })));
+    event.target.value = "";
   };
 
   const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -110,10 +145,19 @@ export function HomePage() {
           <label htmlFor="home-objective" className="sr-only">Descreva uma tarefa</label>
           <div className="relative">
             <div className="absolute inset-x-0 bottom-full mb-2"><SlashCommandMenu query={query} activeIndex={activeCommand} onActiveIndexChange={setActiveCommand} onSelect={selectCommand} /></div>
-            <div className="flex items-end gap-2 rounded-2xl border border-neutral-200 bg-white p-3 shadow-sm focus-within:border-neutral-400 dark:border-neutral-800 dark:bg-neutral-900">
+            <FileUpload onFilesAdded={(files) => addFiles(files.map((file) => ({ filename: file.filename, data: file.data })))}>
+            <div className="rounded-2xl border border-neutral-200 bg-white p-3 shadow-sm focus-within:border-neutral-400 dark:border-neutral-800 dark:bg-neutral-900">
+              {attachments.length > 0 && <div className="mb-2 flex flex-wrap gap-1.5" aria-label="Arquivos anexados">{attachments.map((file, index) => <span key={`${file.filename}-${index}`} className="inline-flex items-center gap-1 rounded-lg bg-neutral-100 px-2 py-1 text-[11px] text-neutral-700 dark:bg-neutral-800 dark:text-neutral-200">{file.filename}<button type="button" aria-label={`Remover ${file.filename}`} onClick={() => setAttachments((current) => current.filter((_, fileIndex) => fileIndex !== index))}><XMarkIcon className="h-3 w-3" /></button></span>)}</div>}
+              <div className="flex items-end gap-2">
               <textarea id="home-objective" value={objective} onChange={(event) => { setObjective(event.target.value); setActiveCommand(0); }} onKeyDown={handleKeyDown} rows={2} placeholder="Atribua uma tarefa ou digite / para mais opções..." className="min-h-11 w-full resize-none bg-transparent px-2 py-1.5 text-sm outline-none placeholder:text-neutral-400" />
+              <button type="button" aria-label="Anexar arquivo" title="Anexar arquivo" onClick={() => fileInputRef.current?.click()} className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-neutral-200 text-neutral-600 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"><PaperClipIcon className="h-4 w-4" /></button>
               <button type="button" onClick={start} disabled={!objective.trim()} aria-label="Iniciar no Console agentic" className="inline-flex h-10 shrink-0 items-center gap-2 rounded-xl bg-neutral-950 px-4 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-40 dark:bg-white dark:text-neutral-950"><PaperAirplaneIcon className="h-4 w-4" />Iniciar</button>
+              </div>
+              <input ref={fileInputRef} type="file" multiple className="hidden" onChange={(event) => void handleFileInput(event)} aria-label="Escolher arquivos para anexar" />
+              <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-neutral-100 pt-3 dark:border-neutral-800"><span className="text-[11px] font-medium text-neutral-500">IA da tarefa</span><button type="button" aria-pressed={selectionMode === "auto"} onClick={() => setSelectionMode("auto")} className={`rounded-lg px-2.5 py-1.5 text-[11px] font-medium ${selectionMode === "auto" ? "bg-neutral-900 text-white dark:bg-white dark:text-neutral-900" : "border border-neutral-200 text-neutral-600 dark:border-neutral-700 dark:text-neutral-300"}`}>Automático · grátis-primeiro</button><button type="button" aria-pressed={selectionMode === "manual"} onClick={() => setSelectionMode("manual")} className={`rounded-lg px-2.5 py-1.5 text-[11px] font-medium ${selectionMode === "manual" ? "bg-neutral-900 text-white dark:bg-white dark:text-neutral-900" : "border border-neutral-200 text-neutral-600 dark:border-neutral-700 dark:text-neutral-300"}`}>Manual</button>{selectionMode === "manual" && <ModelPicker chatId="new" selectedModelOverride={manualModel} onModelSelectModel={setManualModel} selectableOnly buttonLabel={manualModel ? `${manualModel.model} · ${manualModel.cost_tag || (manualModel.kind === "remote" ? "pago" : manualModel.kind === "cli_subscription" ? "0-assinatura" : "0-local")}` : "Escolher modelo PASS"} />}</div>
+              <p className="mt-2 text-[11px] text-neutral-400">Automático usa o roteador do runtime. Manual respeita somente modelos disponíveis no catálogo; anexos seguem os limites locais de arquivo.</p>
             </div>
+            </FileUpload>
           </div>
           <p className="mt-2 px-1 text-[11px] text-neutral-400">Comandos reais: /goal delega, /plan apenas planeja, /test executa testes e /review revisa. Ctrl+Enter para iniciar.</p>
           <div className="mt-3 flex flex-wrap items-center gap-2 px-1"><span className="text-[11px] font-medium text-neutral-400">Ações rápidas:</span>{[{ label: "Criar slides", prompt: "Criar apresentação profissional de slides sobre inovação em IA" }, { label: "Criar site", prompt: "Criar uma landing page moderna responsiva com Tailwind e React" }, { label: "Pesquisa profunda", prompt: "Realizar pesquisa aprofundada de mercado com síntese e fontes citadas" }, { label: "Analisar código", prompt: "Inspecionar o repositório, auditar segurança e listar recomendações" }].map(({ label, prompt }) => <button key={label} type="button" onClick={() => setObjective(prompt)} className="rounded-lg border border-neutral-200/80 bg-white px-2.5 py-1 text-[11px] font-medium text-neutral-600 transition hover:border-neutral-300 hover:bg-neutral-100 hover:text-neutral-900 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:bg-neutral-800 dark:hover:text-white">{label}</button>)}</div>

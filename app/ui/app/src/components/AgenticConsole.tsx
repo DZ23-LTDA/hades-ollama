@@ -110,6 +110,8 @@ export default function AgenticConsole() {
     const requestedObjective = searchParams.get("objective");
     const autoRunParam = searchParams.get("autorun") === "true";
     const slashCommand = searchParams.get("slash");
+    const requestedProvider = searchParams.get("provider") || "ollama-local";
+    const requestedModel = searchParams.get("model") || "auto/coding";
     const requestedMissionId = searchParams.get("mission_id") || searchParams.get("missionId");
     if (requestedMissionId) {
       setViewMode("split");
@@ -137,12 +139,15 @@ export default function AgenticConsole() {
               method: "POST",
               body: JSON.stringify({
                 objective: requestedObjective,
-                provider: "ollama-local",
+                provider: requestedProvider,
+                model: requestedModel,
                 capabilities: ["workspace:read", "workspace:write", "browser:navigate", "browser:files", "browser:takeover"],
                 auto_run: autoRunParam,
               }),
             });
-            setMission(created);
+              setProvider(requestedProvider);
+              setSelectedModel(requestedModel.startsWith("auto/") ? "" : requestedModel);
+              setMission(created);
             if (slashCommand === "goal") {
               const delegated = await api<OrchestrationJob>("/api/agent/v1/orchestration/jobs", {
                 method: "POST",

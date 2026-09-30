@@ -31,17 +31,22 @@ export const ModelPicker = forwardRef<
     onEscape?: () => void;
     onDropdownToggle?: (isOpen: boolean) => void;
     isDisabled?: boolean;
+    selectedModelOverride?: Model | null;
+    onModelSelectModel?: (model: Model) => void;
+    selectableOnly?: boolean;
+    buttonLabel?: string;
   }
 >(function ModelPicker(
-  { chatId, onModelSelect, onEscape, onDropdownToggle, isDisabled },
+  { chatId, onModelSelect, onEscape, onDropdownToggle, isDisabled, selectedModelOverride, onModelSelectModel, selectableOnly = false, buttonLabel },
   ref,
 ): JSX.Element {
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const { selectedModel, setSettings, models, loading } = useSelectedModel(
+  const { selectedModel: storedSelectedModel, setSettings, models, loading } = useSelectedModel(
     chatId,
     searchQuery,
   );
+  const selectedModel = onModelSelectModel ? selectedModelOverride ?? null : storedSelectedModel;
   const { cloudDisabled } = useCloudStatus();
   const dropdownRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -145,8 +150,9 @@ export const ModelPicker = forwardRef<
 
   const handleModelSelect = (model: Model) => {
     if (!isModelSelectable(model)) return;
-    setSettings({ SelectedModel: model.model });
+    if (!onModelSelectModel) setSettings({ SelectedModel: model.model });
     setIsOpen(false);
+    onModelSelectModel?.(model);
     onModelSelect?.();
   };
 
@@ -177,7 +183,7 @@ export const ModelPicker = forwardRef<
           <span>
             {isDisabled
               ? "Loading..."
-              : selectedModel?.model || "Select a model"}
+              : buttonLabel || selectedModel?.model || "Selecionar modelo"}
           </span>
         </div>
         <svg
@@ -210,7 +216,7 @@ export const ModelPicker = forwardRef<
 
           <ModelList
             ref={modelListRef}
-            models={models}
+            models={selectableOnly ? models.filter(isModelSelectable) : models}
             selectedModel={selectedModel}
             onModelSelect={handleModelSelect}
             cloudDisabled={cloudDisabled}
