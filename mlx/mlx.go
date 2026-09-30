@@ -1,3 +1,5 @@
+//go:build cgo
+
 // Package mlx wraps the MLX C API.
 //
 // MLX keeps stream and backend state in thread-locals, so all calls into this

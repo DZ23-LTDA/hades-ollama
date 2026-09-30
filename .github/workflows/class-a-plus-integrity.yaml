@@ -33,3 +33,23 @@ jobs:
       - name: Verify Go formatting for protected backend surfaces
         run: |
           test -z "$(gofmt -l internal/agent internal/multillm server/agent_routes.go)"
+
+  platform-builds:
+    name: CGO-free and Windows build gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Build all packages without CGO
+        env:
+          CGO_ENABLED: '0'
+        run: go build ./...
+      - name: Cross-build complete Windows binary and packages
+        env:
+          CGO_ENABLED: '0'
+          GOOS: windows
+          GOARCH: amd64
+        run: go build ./...

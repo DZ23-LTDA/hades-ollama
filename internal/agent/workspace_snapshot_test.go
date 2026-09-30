@@ -842,7 +842,7 @@ func runSnapshotFixtureGitOutput(t *testing.T, root string, args ...string) []by
 
 func runSnapshotFixtureGitCommand(root string, args ...string) ([]byte, error) {
 	command := exec.Command("git", append([]string{"-C", root}, args...)...)
-	command.Env = append(os.Environ(), "GIT_CONFIG_NOSYSTEM=1", "GIT_CONFIG_GLOBAL="+os.DevNull, "GIT_TERMINAL_PROMPT=0")
+	command.Env = append(os.Environ(), "GIT_CONFIG_NOSYSTEM=1", "GIT_CONFIG_GLOBAL=", "GIT_TERMINAL_PROMPT=0")
 	return command.CombinedOutput()
 }
 

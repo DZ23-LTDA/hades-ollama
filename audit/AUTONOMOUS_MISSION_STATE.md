@@ -1,5 +1,24 @@
 # Estado da missão autônoma — Ollama DZ23 Agentic Platform
 
+## Checkpoint vigente — WIN-1 build Windows/sem-CGO — 2026-09-30 18:03 -03
+```yaml
+state: IMPLEMENTED_LOCAL_CI_PENDING
+branch: recovery/ollama-full-snapshot
+base_commit: ebd51c69
+objective: corrigir o build completo sem CGO e o cross-build Windows, substituir os.DevNull no Git e adicionar gate CI permanente
+facts:
+  - CGO_ENABLED=0 go build ./... passa com fallback MLX/xgrammar/webview e app desktop isolado por plataforma
+  - GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build ./... passa
+  - internal/agent/git_repo.go e workspace_snapshot.go usam GIT_CONFIG_SYSTEM/GLOBAL vazios, sem os.DevNull
+acceptance:
+  - CGO_ENABLED=0 go build ./... PASS
+  - GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build ./... PASS
+  - go build ./..., go test ./internal/agent ./server e frontend gates PASS
+  - CI executa os dois builds e reprova regressões
+rollback: preservar ebd51c69; sem reset/clean/force-push
+next_action: revisar diff, commitar/pushar e acompanhar class-a-plus-integrity, platform-builds e dz23-agentic-quality no mesmo SHA
+```
+
 ## Checkpoint vigente — FASE 11 Import Full Project — 2026-09-30 17:45 -03
 ```yaml
 state: COMPLETED
