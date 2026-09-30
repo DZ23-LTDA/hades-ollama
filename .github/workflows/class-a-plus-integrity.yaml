@@ -43,6 +43,14 @@ jobs:
         with:
           go-version-file: go.mod
           cache: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Build embedded UI
+        working-directory: ./app/ui/app
+        run: |
+          npm ci --cache "${RUNNER_TEMP}/npm-cache" --prefer-online
+          npm run build
       - name: Build all packages without CGO
         env:
           CGO_ENABLED: '0'
