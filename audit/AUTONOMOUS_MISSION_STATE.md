@@ -2,7 +2,7 @@
 
 ## Checkpoint vigente — UI-2 launcher central Home/Nova tarefa — 2026-09-30 19:00 -03
 ```yaml
-state: IMPLEMENTED_LOCAL_CI_PENDING
+state: COMPLETED_CI_GREEN
 branch: recovery/ollama-full-snapshot
 base_commit: 3dd15dec
 objective: tornar Home/Nova tarefa o launcher central com composer, anexos, importação de projeto e ações rápidas
@@ -18,7 +18,11 @@ proofs:
   - node scripts/verify-contracts.mjs: PASS
   - bash scripts/check-class-a-plus-integrity.sh: PASS
   - Playwright desktop/mobile: quatro screenshots UI-2 e auditoria com zero erros
-next_action: commit/push UI-2 e confirmar class-a-plus-integrity e dz23-agentic-quality no mesmo SHA
+ci:
+  class_a_plus_integrity: {id: 36782993795, conclusion: success}
+  dz23_agentic_quality: {id: 36782993723, conclusion: success}
+  sha: 849faa97751d43f96e6f9d4e05dd1137d4d9e356
+next_action: nenhum dentro do UI-2; manter integrações privadas e ZIP grande como dependências externas honestas
 rollback: preservar 3dd15dec; sem reset/clean/force-push
 ```
 
