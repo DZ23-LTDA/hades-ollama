@@ -75,6 +75,14 @@
       "desktop_goal_png": "docs/evidencias/screen-slash-goal-desktop.png",
       "mobile_goal_png": "docs/evidencias/screen-slash-goal-mobile.png",
       "captured_at": "2026-09-30T12:40:28.627Z"
+    },
+    "whatsapp_gateway": {
+      "status": 200,
+      "clean_console": true,
+      "errors": [],
+      "desktop_png": "docs/evidencias/screen-whatsapp-gateway-desktop.png",
+      "mobile_png": "docs/evidencias/screen-whatsapp-gateway-mobile.png",
+      "captured_at": "2026-09-30T13:09:58.511Z"
     }
   }
 }

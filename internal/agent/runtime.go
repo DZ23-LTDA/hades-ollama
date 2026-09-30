@@ -48,6 +48,7 @@ type Runtime struct {
 	deploymentApprovals *DeploymentApprovalStore
 	webhookReplay       *WebhookReplayStore
 	authStore           *AuthStore
+	whatsapp            *WhatsAppGateway
 	mu                  *sync.Mutex
 	running             map[string]bool
 	activeCancels       map[string]context.CancelFunc
@@ -78,6 +79,7 @@ type RuntimeConfig struct {
 	Deployments         *DeploymentManager
 	DeploymentApprovals *DeploymentApprovalStore
 	WebhookReplay       *WebhookReplayStore
+	WhatsApp            *WhatsAppGateway
 }
 
 var (
@@ -239,6 +241,11 @@ func NewRuntime(config RuntimeConfig) (*Runtime, error) {
 		return nil, err
 	}
 	runtime.ingestion = DocumentIngestor{Context: contextStore, Research: runtime.research, WorkspaceRoot: root}
+	if config.WhatsApp != nil {
+		runtime.whatsapp = config.WhatsApp
+	} else {
+		runtime.whatsapp = NewWhatsAppGateway(WhatsAppGatewayConfig{}, runtime)
+	}
 	return runtime, nil
 }
 
@@ -347,6 +354,19 @@ func (r *Runtime) DataRoot() string {
 		return ""
 	}
 	return r.dataRoot
+}
+
+func (r *Runtime) WhatsApp() *WhatsAppGateway {
+	if r == nil {
+		return nil
+	}
+	return r.whatsapp
+}
+
+func (r *Runtime) SetWhatsApp(w *WhatsAppGateway) {
+	if r != nil {
+		r.whatsapp = w
+	}
 }
 
 func (r *Runtime) CompanyStore() *CompanyStore {

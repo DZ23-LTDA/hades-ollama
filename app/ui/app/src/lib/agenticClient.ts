@@ -300,3 +300,31 @@ export const addCompanyProduct = (id: string, payload: Record<string, unknown>) 
 export const createCompanyOrder = (id: string, payload: Record<string, unknown>) => agentFetch<AgentCompany>(`/api/agent/v1/companies/${encodeURIComponent(id)}/orders`, { method: "POST", body: JSON.stringify(payload) });
 export const approveCompanyOrder = (id: string, orderID: string, nonce: string) => agentFetch<AgentCompany>(`/api/agent/v1/companies/${encodeURIComponent(id)}/orders/${encodeURIComponent(orderID)}/approve`, { method: "POST", body: JSON.stringify({ approved: true, nonce, reason: "Aprovado no Company OS" }) });
 export const fulfillCompanyOrder = (id: string, orderID: string, tracking_code: string) => agentFetch<AgentCompany>(`/api/agent/v1/companies/${encodeURIComponent(id)}/orders/${encodeURIComponent(orderID)}/fulfill`, { method: "POST", body: JSON.stringify({ tracking_code }) });
+
+export type WhatsAppContactPolicy = {
+  phone_number: string;
+  name: string;
+  role: "owner" | "operator" | "viewer";
+  allowed: boolean;
+};
+
+export type WhatsAppStatusSummary = {
+  active_backend: "evolution_api" | "cloud_api";
+  gate_status: "PASS" | "FAIL" | "NOT_CONFIGURED" | "BLOCKED_EXTERNAL" | "UNKNOWN";
+  adapters: Record<string, { status: string; details: string }>;
+  allowlist_size: number;
+  pending_hitl: number;
+  dlq_size: number;
+  capabilities: {
+    stt: string;
+    tts: string;
+    vision: string;
+  };
+};
+
+export const getWhatsAppStatus = () => agentFetch<WhatsAppStatusSummary>("/api/agent/v1/whatsapp/status");
+export const getWhatsAppAllowlist = () => agentFetch<{ count: number; items: WhatsAppContactPolicy[] }>("/api/agent/v1/whatsapp/allowlist");
+export const setWhatsAppContactPolicy = (policy: WhatsAppContactPolicy) => agentFetch<{ status: string; policy: WhatsAppContactPolicy }>("/api/agent/v1/whatsapp/allowlist", { method: "POST", body: JSON.stringify(policy) });
+export const removeWhatsAppContactPolicy = (phone: string) => agentFetch<{ status: string; phone: string }>(`/api/agent/v1/whatsapp/allowlist/${encodeURIComponent(phone)}`, { method: "DELETE" });
+export const setWhatsAppActiveBackend = (active_backend: "evolution_api" | "cloud_api") => agentFetch<WhatsAppStatusSummary>("/api/agent/v1/whatsapp/config", { method: "POST", body: JSON.stringify({ active_backend }) });
+export const getWhatsAppDLQ = () => agentFetch<{ count: number; items: unknown[] }>("/api/agent/v1/whatsapp/dlq");

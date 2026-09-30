@@ -15,6 +15,7 @@ import { SidebarLayout } from "@/components/layout/layout";
 import { connectorIcon } from "@/lib/connectorIcons";
 import { ConnectorsManagePanel } from "@/components/ConnectorsManagePanel";
 import { ConnectorQuickConnect } from "@/components/ConnectorQuickConnect";
+import { WhatsAppGatewayPanel } from "@/components/WhatsAppGatewayPanel";
 import { API_BASE } from "@/lib/config";
 import {
   type AgentConnector,
@@ -34,7 +35,8 @@ type CategoryFilter =
   | "finance"
   | "travel"
   | "health"
-  | "connected";
+  | "connected"
+  | "whatsapp";
 
 const CATEGORIES: Array<{ id: CategoryFilter; label: string }> = [
   { id: "all", label: "Todos" },
@@ -46,6 +48,7 @@ const CATEGORIES: Array<{ id: CategoryFilter; label: string }> = [
   { id: "travel", label: "Viagem" },
   { id: "health", label: "Saúde" },
   { id: "connected", label: "Conectados" },
+  { id: "whatsapp", label: "WhatsApp Gateway" },
 ];
 
 function ConnectorLogo({ id }: { id: string }) {
@@ -219,6 +222,15 @@ export function ConnectorsPage() {
             </div>
           </div>
 
+          {/* Visualização de WhatsApp Gateway quando selecionado */}
+          {category === "whatsapp" && (
+            <div className="pt-2">
+              <WhatsAppGatewayPanel />
+            </div>
+          )}
+
+          {category !== "whatsapp" && (
+            <>
           {/* Banners de Destaque Oficiais do Manus */}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <div className="flex flex-col justify-between rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-950">
@@ -302,6 +314,8 @@ export function ConnectorsPage() {
               })}
             </div>
           </div>
+            </>
+          )}
 
           {/* Modal de Criar Conector Customizado */}
           {showCreateModal && (

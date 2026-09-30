@@ -80,6 +80,35 @@ automatizado + execução real reproduzível em navegador (desktop e mobile), se
 
 ## Histórico de sessões
 <!-- Mais recente no topo. Uma entrada por sessão de trabalho. -->
+### 2026-09-30 10:15 -03 — Gemini — FASE 07: WHATSAPP GATEWAY (CONTROLE REMOTO DO AGENTE VIA CELULAR)
+- **Implementação Go:**
+  - **1. Adapter Duplo (`internal/agent/whatsapp_adapter.go`):** Suporte nativo para Evolution API (self-hosted) e WhatsApp Business Cloud API (Meta Graph API v21.0) por trás da interface unificada `WhatsAppAdapter`. Avaliação rigorosa de `GateStatus`: sem credencial retorna `NOT_CONFIGURED` (nunca finge conectado), com credencial inválida/bloqueada retorna `BLOCKED_EXTERNAL`.
+  - **2. Gateway com Idempotência, Filtro Anti-Loop e DLQ (`internal/agent/whatsapp_gateway.go`):**
+    - Idempotência com cache dedupe por ID de mensagem e TTL configurável.
+    - Filtro `fromMe` que ignora silenciosamente mensagens originadas pelo próprio assistente, impedindo loops recursivos.
+    - Dead Letter Queue (`DLQ`) e política de retry com backoff para falhas transitórias. DLQ inspecionável via API e UI.
+  - **3. Autorização e Aprovação HITL (`internal/agent/whatsapp_gateway.go`):**
+    - Allowlist de contatos com normalização E.164 e níveis de acesso (`owner`, `operator`, `viewer`). Contatos fora da allowlist são bloqueados e rejeitados como `unauthorized`.
+    - Classificador de comandos sensíveis (exclusão de recursos, deploy em produção, transações, parada de serviços, exposição de credenciais) exigindo confirmação explícita de um Dono (`APROVAR <id>` / `REJEITAR <id>`) antes de qualquer execução.
+  - **4. Roteador de Intenção & Engineering Command Bridge:**
+    - Comandos suportados pelo celular: `health`/`status`, `projetos`, `progresso`/`missoes`, `resumo`/`daily`, `lembrete <texto>`, `ajuda`.
+    - Command Bridge: comandos `missao <objetivo>` ou `/goal <objetivo>` criam missões reais no runtime (`runtime.CreateMission`) e enfileiram execução (`runtime.EnqueueMission`), retornando ID e status imediato para o celular.
+  - **5. Capabilities Opcionais (`internal/agent/whatsapp_media.go`):** STT (áudio->texto), TTS (texto->áudio) e Vision (imagem), reportando honestamente `NOT_CONFIGURED` caso os módulos correspondentes não estejam ativos.
+  - **6. Rotas HTTP do Gateway (`server/whatsapp_routes.go` e `server/agent_routes.go`):** endpoints `/api/agent/v1/whatsapp/webhook` (GET para verificação Meta e POST para recebimento), `/status`, `/send`, `/dlq`, `/allowlist` e `/config`.
+- **UI & Frontend (`app/ui/app/src/components/WhatsAppGatewayPanel.tsx` e `ConnectorsPage.tsx`):**
+  - Painel de controle no menu Plugins/Conectores com visualização honesta de status (`NOT_CONFIGURED`), seleção de backend ativo, gerenciamento de allowlist (adicionar/remover números com roles) e métricas de segurança.
+- **Validação & Gates:**
+  - `go test -v -run "WhatsApp|WA|Gateway" ./internal/agent ./server` -> 100% PASS (dedupe, fromMe loop, allowlist, unauthorized bloqueado, approval, command bridge cria missão, sem credencial = NOT_CONFIGURED).
+  - `go build ./...` -> PASS.
+  - `go test ./internal/agent ./server` -> PASS (18.4s e 15.2s).
+  - `npx tsc -b`, `npm run lint`, `npx vitest run` (36 arquivos, 255 testes), `npm run build` -> 100% PASS.
+  - `node scripts/verify-contracts.mjs` -> PASS (todos os endpoints frontend correspondem ao backend).
+  - `bash scripts/check-class-a-plus-integrity.sh` -> PASS.
+  - `gofmt -l internal/agent server/companion_ws.go server/agent_routes.go` -> LIMPO.
+  - Compilação cruzada Windows (`GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go test ./internal/agent`) -> PASS.
+- **Evidências E2E Playwright:** Capturadas telas em Desktop (1440x900) e Mobile (390x844) em `docs/evidencias/screen-whatsapp-gateway-desktop.png` e `docs/evidencias/screen-whatsapp-gateway-mobile.png`, com console limpo (status 200, zero erros) em `docs/evidencias/browser-console-audit.json`.
+- **Próximo passo:** Prosseguir para próximas fases do roadmap conforme solicitado.
+
 ### 2026-09-30 08:49 -03 — Manus — FASE A2: ROTEAMENTO AUTOMÁTICO POR FUNÇÃO, GRÁTIS-PRIMEIRO
 - **Implementação:** `internal/multillm/router.go` ganhou `SelectableModels`, custo explícito (`cost_tag`) e bônus forte grátis-primeiro; `internal/multillm/registry.go` preserva tags de custo e marca providers CLI como `0-assinatura` por padrão.
 - **Integração real:** `internal/agent/planner.go` expõe `RoutedPlannerResolver`; `server/agent_planner_resolver.go` resolve aliases e missões sem modelo usando `CleanSelectableModels` + `Registry.Route`, mantendo override manual e fallback `ollama-local`; `internal/agent/runtime.go` persiste a resolução e emite evento `router.decision` com provider, modelo, razão e custo.

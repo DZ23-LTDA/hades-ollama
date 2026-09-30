@@ -506,6 +506,16 @@ func (a *agentAPI) register(r *gin.Engine) {
 	group.POST("/missions/:id/approvals/:approval_id", a.decideApproval)
 	group.GET("/missions/:id/worktree", a.getMissionWorktree)
 	group.POST("/missions/:id/merge", a.mergeMissionWorktree)
+	group.POST("/whatsapp/webhook", a.whatsappWebhook)
+	group.GET("/whatsapp/webhook", a.whatsappWebhookVerify)
+	group.GET("/whatsapp/status", a.whatsappStatus)
+	group.POST("/whatsapp/send", a.whatsappSend)
+	group.GET("/whatsapp/dlq", a.whatsappDLQ)
+	group.DELETE("/whatsapp/dlq", a.whatsappClearDLQ)
+	group.GET("/whatsapp/allowlist", a.whatsappAllowlist)
+	group.POST("/whatsapp/allowlist", a.whatsappSetContactPolicy)
+	group.DELETE("/whatsapp/allowlist/:phone", a.whatsappRemoveContactPolicy)
+	group.POST("/whatsapp/config", a.whatsappConfig)
 }
 
 func (a *agentAPI) authMiddleware(c *gin.Context) {
