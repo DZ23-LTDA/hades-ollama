@@ -54,6 +54,17 @@
       "consoleErrors": [],
       "httpFailures": [],
       "clean": true
+    },
+    {
+      "screen": "company_supervisor",
+      "path": "/company",
+      "title": "Empresa / Supervisor Autônomo",
+      "desktopEvidence": "screen-company-supervisor-desktop.png",
+      "mobileEvidence": "screen-company-supervisor-mobile.png",
+      "consoleErrors": [],
+      "httpFailures": [],
+      "clean": true,
+      "timestamp": "2026-09-30T13:56:44.184Z"
     }
   ],
   "hasErrors": false,

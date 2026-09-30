@@ -49,6 +49,7 @@ type Runtime struct {
 	webhookReplay       *WebhookReplayStore
 	authStore           *AuthStore
 	whatsapp            *WhatsAppGateway
+	supervisor          *Supervisor
 	mu                  *sync.Mutex
 	running             map[string]bool
 	activeCancels       map[string]context.CancelFunc
@@ -80,6 +81,7 @@ type RuntimeConfig struct {
 	DeploymentApprovals *DeploymentApprovalStore
 	WebhookReplay       *WebhookReplayStore
 	WhatsApp            *WhatsAppGateway
+	SupervisorConfig    *SupervisorConfig
 }
 
 var (
@@ -246,6 +248,11 @@ func NewRuntime(config RuntimeConfig) (*Runtime, error) {
 	} else {
 		runtime.whatsapp = NewWhatsAppGateway(WhatsAppGatewayConfig{}, runtime)
 	}
+	supCfg := DefaultSupervisorConfig()
+	if config.SupervisorConfig != nil {
+		supCfg = *config.SupervisorConfig
+	}
+	runtime.supervisor = NewSupervisor(runtime, supCfg)
 	return runtime, nil
 }
 
@@ -286,6 +293,19 @@ func (r *Runtime) SetPlannerResolver(resolver PlannerResolver) {
 
 func (r *Runtime) Context() *ContextStore {
 	return r.context
+}
+
+func (r *Runtime) Supervisor() *Supervisor {
+	if r == nil {
+		return nil
+	}
+	return r.supervisor
+}
+
+func (r *Runtime) SetSupervisor(s *Supervisor) {
+	if r != nil {
+		r.supervisor = s
+	}
 }
 
 func (r *Runtime) WorkspaceRoot() string {

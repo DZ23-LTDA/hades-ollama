@@ -328,3 +328,22 @@ export const setWhatsAppContactPolicy = (policy: WhatsAppContactPolicy) => agent
 export const removeWhatsAppContactPolicy = (phone: string) => agentFetch<{ status: string; phone: string }>(`/api/agent/v1/whatsapp/allowlist/${encodeURIComponent(phone)}`, { method: "DELETE" });
 export const setWhatsAppActiveBackend = (active_backend: "evolution_api" | "cloud_api") => agentFetch<WhatsAppStatusSummary>("/api/agent/v1/whatsapp/config", { method: "POST", body: JSON.stringify({ active_backend }) });
 export const getWhatsAppDLQ = () => agentFetch<{ count: number; items: unknown[] }>("/api/agent/v1/whatsapp/dlq");
+
+export type SupervisorStatus = {
+  enabled: boolean;
+  running: boolean;
+  worker_id: string;
+  last_tick_at?: string;
+  tick_count: number;
+  pending_missions_resumed: number;
+  schedules_triggered: number;
+  company_cycles_advanced: number;
+  risk_paused_companies: string[];
+  blocked_external_actions: number;
+  pending_approvals_count: number;
+  last_error?: string;
+};
+
+export const getSupervisorStatus = () => agentFetch<SupervisorStatus>("/api/agent/v1/supervisor/status");
+export const setSupervisorConfig = (config: { enabled: boolean }) => agentFetch<SupervisorStatus>("/api/agent/v1/supervisor/config", { method: "POST", body: JSON.stringify(config) });
+export const triggerSupervisorTick = () => agentFetch<{ result: unknown; status: SupervisorStatus }>("/api/agent/v1/supervisor/tick", { method: "POST", body: "{}" });

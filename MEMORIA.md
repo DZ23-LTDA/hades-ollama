@@ -22,6 +22,9 @@ automatizado + execução real reproduzível em navegador (desktop e mobile), se
 
 ## Estado atual (2026-09-30 08:49 -03 / 2026-09-30 11:49 UTC)
 - **Repo:** github.com/DZ23-LTDA/ollama-classe-a-plus. Branch canônica: `recovery/ollama-full-snapshot`.
+- **STATUS DA MISSÃO: FASE 08 IMPLEMENTADA — Agente Sempre-Ligado / Loop Autônomo do Company OS com supervisor contínuo, disparo de schedules, ciclos autônomos, freios HITL obrigatórios e retomada pós-restart**
+- **FASE 08:** Supervisor contínuo em background (`internal/agent/supervisor.go`) acoplado ao `Runtime`. Executa tick periódico que processa schedules vencidos, avança ciclos de negócio da empresa (Company OS), reativa missões pendentes (`resumePending`) com suporte a lease/heartbeat e freios de segurança HITL que barram qualquer gasto ou publicação externa não autorizada em status `AWAITING_APPROVAL`. Rotas HTTP `/api/agent/v1/supervisor/*` (status, config, tick manual) e painel UI acessível integrado à CompanyWorkspacePage (`CompanySupervisorPanel.tsx`). Testes Go em `internal/agent` e `server` 100% PASS, typecheck e vitest verdes, e evidências Playwright desktop/mobile capturadas em `docs/evidencias/screen-company-supervisor-*.png` com console limpo.
+- **FASE 07:** WhatsApp Gateway com adapter duplo (Evolution API + Meta Cloud API), allowlist, anti-loop, DLQ, approval HITL e command bridge.
 - **STATUS DA MISSÃO: FASE A3 IMPLEMENTADA — slash-commands reais, planejamento delegado e gates locais/E2E/CI verdes no commit `416410f1`**
 - **FASE A3:** Composer Home/Chat agora oferece somente `/goal`, `/plan`, `/test` e `/review`, com autocomplete acessível, navegação por setas/Enter/Esc/clique e parser compartilhado. `/goal` cria missão real e uma orquestração persistente com papéis do swarm; `/plan` não executa; `/test` e `/review` geram objetivos de missão reais. Evidências Playwright desktop/mobile estão em `docs/evidencias/screen-slash-menu-*.png` e `screen-slash-goal-*.png`; auditoria está limpa em `docs/evidencias/browser-console-audit.json`.
 - **FASE A2:** `Registry.Route` agora participa da resolução do planner via `RoutedPlannerResolver`. Aliases `auto/coding`, `auto/reasoning`, `auto/vision` e missões sem modelo fixado usam `CleanSelectableModels`, pontuam `0-local`/`0-assinatura` antes de fontes pagas, respeitam override manual, mapeiam `AgentRole` por capacidade e emitem `router.decision` com modelo, motivo e custo. Ausência de rota remota cai para planner local-first sem falha fechada.
@@ -80,6 +83,44 @@ automatizado + execução real reproduzível em navegador (desktop e mobile), se
 
 ## Histórico de sessões
 <!-- Mais recente no topo. Uma entrada por sessão de trabalho. -->
+### 2026-09-30 10:45 -03 — Gemini — FASE 08: AGENTE SEMPRE-LIGADO / LOOP AUTÔNOMO DO COMPANY OS
+- **Implementação Go:**
+  - **1. Supervisor Contínuo (`internal/agent/supervisor.go`):**
+    - Loop daemon com ticker configurável (`Interval`, default 30s) e controle manual/automático (`Enabled`, `Running`, `WorkerID`).
+    - Execução atômica por ciclo (`Tick`):
+      a) Retomada de missões pendentes (`resumePending`) garantindo sobrevivência a crash/restart via lease e heartbeat;
+      b) Disparo de rotinas/agendamentos vencidos (`ClaimDueSchedulesForOrganization`), instanciando missões reais com capabilities adequadas;
+      c) Avanço dos ciclos de negócio do Company OS: roadmap -> tarefas no backlog -> delegação aos papéis do swarm usando roteamento automático (A2) -> criação de missões executivas -> atualização de KPIs e relatórios;
+      d) Reação a gatilhos de WhatsApp e Webhooks criando missões de forma orquestrada.
+  - **2. Freios de Segurança HITL Obrigatórios (`internal/agent/supervisor.go` e `company.go`):**
+    - Bloqueio estrito de autonomia cega: ações financeiras (gastos/budget) e mensagens/publicações externas NUNCA disparam sozinhas — entram em estado `AWAITING_APPROVAL` (`AddApproval` com nonce de segurança).
+    - Classificação honesta de dependências: ações dependentes de credenciais externas ausentes são marcadas como `BLOCKED_EXTERNAL` (usando `gate_status.go`), nunca fingindo execução.
+    - Pausa automática do loop por risco/anomalia (`company.risk.paused`), interrompendo imediatamente o ciclo da empresa afetada.
+  - **3. Rotas HTTP do Supervisor (`server/supervisor_routes.go` e `server/agent_routes.go`):**
+    - `GET /api/agent/v1/supervisor/status`: status operacional, contadores de ticks, missões retomadas, schedules disparados, ciclos avançados, aprovações pendentes e empresas pausadas por risco.
+    - `POST /api/agent/v1/supervisor/config`: configuração dinâmica (ativar/desativar, alterar intervalo).
+    - `POST /api/agent/v1/supervisor/tick`: execução forçada de um ciclo de supervisão (trigger manual).
+  - **4. Testes Automatizados Go (`internal/agent/supervisor_test.go` e `server/supervisor_routes_test.go`):**
+    - `TestSupervisorTickDispatchesDueSchedule`: schedule vencido dispara missão real.
+    - `TestSupervisorCompanyCycleAdvances`: ciclo do Company OS avança e cria missões delegadas.
+    - `TestSupervisorRiskActionRequiresHITLApproval`: ação de risco gera aprovação e não executa sem intervenção humana.
+    - `TestSupervisorResumesPendingMissionsAfterRestart`: missões pendentes retomam com sucesso após restart simulado do runtime.
+    - `TestSupervisorCompanyRiskAnomalyStopsLoop`: empresa em risco/pausada é pulada pelo supervisor.
+    - `TestSupervisorHTTPRoutes`: rotas HTTP de status, config e tick manual com status 200.
+- **UI & Frontend (`app/ui/app/src/components/CompanySupervisorPanel.tsx` e `CompanyWorkspacePage.tsx`):**
+  - Painel visual do Supervisor com badge "Sempre-Ligado (Ativo)", botão de pausa/ativação, botão "Ciclo Manual (Tick)", cartões de métricas (Ciclos Avançados, Schedules Disparados, Missões Retomadas, Freios HITL, Ações Bloqueadas) e nota informativa sobre freios de segurança ativos.
+  - Saneamento defensivo em `CompanyWorkspacePage.tsx` tornando listas de histórico imunes a nulos.
+- **Validação & Gates:**
+  - `go test -v -run "Supervisor|Autonomous|Loop|CompanyCycle|ResumePending|Schedule" ./internal/agent ./server` -> 100% PASS.
+  - `go build ./...` -> PASS.
+  - `go test ./internal/agent ./server` -> PASS.
+  - `npx tsc -b`, `npm run lint`, `npx vitest run` (36 arquivos, 255 testes), `npm run build` -> 100% PASS.
+  - `node scripts/verify-contracts.mjs` -> PASS.
+  - `bash scripts/check-class-a-plus-integrity.sh` -> PASS.
+  - `gofmt -l internal/agent server/agent_routes.go` -> LIMPO.
+- **Evidências E2E Playwright:** Capturadas telas Desktop (1440x900) e Mobile (390x844) em `docs/evidencias/screen-company-supervisor-desktop.png` e `docs/evidencias/screen-company-supervisor-mobile.png`, com console limpo (0 erros HTTP e 0 erros de console) registrado em `docs/evidencias/browser-console-audit.json`.
+- **Próximo passo:** Prosseguir para a próxima fase do roadmap da paridade total.
+
 ### 2026-09-30 10:15 -03 — Gemini — FASE 07: WHATSAPP GATEWAY (CONTROLE REMOTO DO AGENTE VIA CELULAR)
 - **Implementação Go:**
   - **1. Adapter Duplo (`internal/agent/whatsapp_adapter.go`):** Suporte nativo para Evolution API (self-hosted) e WhatsApp Business Cloud API (Meta Graph API v21.0) por trás da interface unificada `WhatsAppAdapter`. Avaliação rigorosa de `GateStatus`: sem credencial retorna `NOT_CONFIGURED` (nunca finge conectado), com credencial inválida/bloqueada retorna `BLOCKED_EXTERNAL`.

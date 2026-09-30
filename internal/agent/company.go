@@ -881,6 +881,39 @@ func (s *CompanyStore) SetCycleSchedule(id, cycleID, scheduleID string) (Company
 	})
 }
 
+func (s *CompanyStore) AddApproval(id string, approval CompanyApproval) (Company, error) {
+	return s.mutate(id, func(company *Company) error {
+		if approval.ID == "" {
+			approval.ID = "appr_" + uuid.NewString()[:8]
+		}
+		if approval.CreatedAt.IsZero() {
+			approval.CreatedAt = time.Now().UTC()
+		}
+		approval.UpdatedAt = approval.CreatedAt
+		if approval.Status == "" {
+			approval.Status = CompanyApprovalPending
+		}
+		approval.CompanyID = company.ID
+		approval.OrganizationID = company.OrganizationID
+		company.Approvals = append(company.Approvals, approval)
+		return nil
+	})
+}
+
+func (s *CompanyStore) UpdateCycleRun(id, cycleID string, lastRunAt time.Time, nextRunAt time.Time) (Company, error) {
+	return s.mutate(id, func(company *Company) error {
+		for index := range company.Cycles {
+			if company.Cycles[index].ID == cycleID {
+				company.Cycles[index].LastRunAt = &lastRunAt
+				company.Cycles[index].NextRunAt = nextRunAt
+				company.Cycles[index].UpdatedAt = time.Now().UTC()
+				return nil
+			}
+		}
+		return errors.New("company cycle not found")
+	})
+}
+
 func (s *CompanyStore) Pause(id, reason string) (Company, error) {
 	return s.mutate(id, func(company *Company) error {
 		company.Status = CompanyPaused

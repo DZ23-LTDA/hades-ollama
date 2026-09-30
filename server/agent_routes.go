@@ -516,6 +516,9 @@ func (a *agentAPI) register(r *gin.Engine) {
 	group.POST("/whatsapp/allowlist", a.whatsappSetContactPolicy)
 	group.DELETE("/whatsapp/allowlist/:phone", a.whatsappRemoveContactPolicy)
 	group.POST("/whatsapp/config", a.whatsappConfig)
+	group.GET("/supervisor/status", a.supervisorStatus)
+	group.POST("/supervisor/config", a.supervisorConfig)
+	group.POST("/supervisor/tick", a.supervisorTick)
 }
 
 func (a *agentAPI) authMiddleware(c *gin.Context) {
