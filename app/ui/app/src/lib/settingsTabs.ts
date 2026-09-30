@@ -1,4 +1,4 @@
-export type SettingsTabId = "general" | "providers" | "endpoint" | "apps";
+export type SettingsTabId = "general" | "providers" | "endpoint" | "connectors" | "apps";
 
 export const SETTINGS_TABS: Array<{
   id: SettingsTabId;
@@ -7,8 +7,9 @@ export const SETTINGS_TABS: Array<{
 }> = [
   { id: "general", label: "Geral", href: "/settings" },
   { id: "providers", label: "Provedores de IA", href: "/providers" },
-  { id: "endpoint", label: "Endpoint da API", href: "/endpoint" },
-  { id: "apps", label: "Apps e integrações", href: "/connect" },
+  { id: "endpoint", label: "Computadores & API", href: "/endpoint" },
+  { id: "connectors", label: "Conectores e Plugins", href: "/connectors" },
+  { id: "apps", label: "Harnesses & Codex", href: "/connect" },
 ];
 
 // Sidebar sections that belong to Configurações keep that item highlighted.
@@ -16,5 +17,6 @@ export const SETTINGS_SECTIONS = new Set([
   "settings",
   "providers",
   "endpoint",
+  "connectors",
   "apps",
 ]);

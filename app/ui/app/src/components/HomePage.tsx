@@ -20,31 +20,31 @@ const ACTIONS: {
 }[] = [
   {
     to: "/agentic",
-    eyebrow: "Compilar e executar",
-    title: "Missão agentic",
-    description: "Planeje, orquestre, pesquise, aprove e execute com trilha e artifacts.",
+    eyebrow: "Compilar >",
+    title: "Sites, aplicativos e jogos",
+    description: "Planeje, execute em split-screen, aprove etapas e gere código com artifacts.",
     Icon: BoltIcon,
   },
   {
-    to: "/c/new",
-    eyebrow: "Conversar",
-    title: "Nova conversa",
-    description: "Chat local com modelos do Ollama e provedores configurados.",
-    Icon: ChatBubbleLeftRightIcon,
+    to: "/library",
+    eyebrow: "Criar >",
+    title: "Slides, imagens e vídeos",
+    description: "Documentos executivos, apresentações e mídias geradas pelas missões.",
+    Icon: BookOpenIcon,
   },
   {
     to: "/projects",
-    eyebrow: "Contexto persistente",
-    title: "Projetos",
-    description: "Organize memória, fontes, tarefas e workspaces isolados.",
+    eyebrow: "Workspace local",
+    title: "Começar a partir de arquivo local",
+    description: "Abrir e orquestrar arquivos e projetos locais com contexto persistente.",
     Icon: FolderIcon,
   },
   {
-    to: "/library",
-    eyebrow: "Artifacts e arquivos",
-    title: "Biblioteca",
-    description: "Documentos, sites, dashboards e mídias produzidos pelas missões.",
-    Icon: BookOpenIcon,
+    to: "/c/new",
+    eyebrow: "Chat e Modelos",
+    title: "Conversa com modelo",
+    description: "Chat local-first com modelos do Ollama e provedores configurados.",
+    Icon: ChatBubbleLeftRightIcon,
   },
 ];
 
@@ -88,8 +88,8 @@ export function HomePage() {
                 }
               }}
               rows={2}
-              placeholder="Descreva uma tarefa (ex.: revisar o README e listar pendências)…"
-              className="min-h-11 w-full resize-none bg-transparent px-2 py-1.5 text-sm outline-none placeholder:text-neutral-400"
+            placeholder="Atribua uma tarefa ou digite / para mais opções..."
+            className="min-h-11 w-full resize-none bg-transparent px-2 py-1.5 text-sm outline-none placeholder:text-neutral-400"
             />
             <button
               type="button"
