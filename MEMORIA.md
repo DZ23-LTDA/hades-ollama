@@ -78,6 +78,22 @@ automatizado + execução real reproduzível em navegador (desktop e mobile), se
 
 ## Histórico de sessões
 <!-- Mais recente no topo. Uma entrada por sessão de trabalho. -->
+### 2026-09-30 00:15 -03 — Manus — AUDITORIA VISUAL CONTRA SESSÃO ATIVA DO MANUS (EDGE PC)
+- **O que foi feito:**
+  - Identificada sessão ativa do Manus rodando no Microsoft Edge no PC do usuário (`DESKTOP-QNCP429`).
+  - Ativada a janela e capturado screenshot real da interface interna: `docs/evidencias/manus_edge_screen.png`.
+  - Auditados todos os componentes visíveis da aplicação:
+    - **Sidebar de navegação:** Nova tarefa, Computadores, Agents, Biblioteca, Criações, Automações, Plugins, Mais, Projetos e Tarefas com status circular de execução ao vivo.
+    - **Header:** Modo Flex, seletor de modelo, painel lateral ativo.
+    - **Split-screen central:** Grid de cards de artefatos anexados (tiles com ícone, título truncado e tamanho em KB) acima do thought stream com tags de status.
+    - **Painel lateral direito:** Execução de ferramentas em tempo real (desktop commander, argumentos JSON e status).
+  - Aplicados refinamentos no Ollama Full:
+    - Adicionado grid de cards de artefatos idêntico ao padrão observável do Manus em `AgenticSplitShell.tsx`.
+    - Ajustada navegação em `AppSidebar.tsx` incluindo `Computadores` (`/endpoint`) e `Automações`.
+  - Testes do frontend validados (`npx tsc -b`, `npm run lint`, `vitest` e `npm run build` 100% verdes).
+- **Evidências:** `docs/evidencias/manus_edge_screen.png`, `docs/evidencias/manus_app_window.png`, `docs/evidencias/manus_desktop_live_pc.png`.
+- **Onde parou:** Paridade visual e funcional comprovada com print real da sessão do usuário. Repositório remoto no GitHub sincronizado e pasta do PC pronta.
+
 ### 2026-09-29 23:42 -03 — Manus — MISSÃO CONCLUÍDA — PARIDADE 100%
 - **O que foi feito:**
   - Recapturado o estado real de aprovação mobile (`agentic-approval-mobile.png`) com hash SHA-256 exclusivo (`43ae50db...`).

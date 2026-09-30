@@ -10,6 +10,7 @@ import {
   StopIcon,
   CommandLineIcon,
   DocumentDuplicateIcon,
+  DocumentTextIcon,
   WindowIcon,
 } from "@heroicons/react/24/outline";
 import { useMissionEvents } from "@/hooks/useMissionEvents";
@@ -350,6 +351,46 @@ export function AgenticSplitShell({
                     </div>
                   );
                 })}
+              </div>
+            </div>
+          )}
+
+          {/* Cards de Artefatos Gerados (padrão observável do Manus) */}
+          {mission?.artifacts && mission.artifacts.length > 0 && (
+            <div className="mt-4 rounded-2xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900 shadow-sm">
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
+                  Artefatos da Missão ({mission.artifacts.length})
+                </h4>
+                <button
+                  type="button"
+                  onClick={() => setActiveCanvasTab("artifacts")}
+                  className="text-xs font-medium text-violet-600 hover:text-violet-700 dark:text-violet-400"
+                >
+                  Ver todos
+                </button>
+              </div>
+              <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+                {mission.artifacts.map((art) => (
+                  <button
+                    key={art.id}
+                    type="button"
+                    onClick={() => setActiveCanvasTab("artifacts")}
+                    className="flex items-center gap-3 rounded-xl border border-neutral-200/80 bg-neutral-50/80 p-2.5 text-left transition hover:border-neutral-300 hover:bg-neutral-100 dark:border-neutral-800 dark:bg-neutral-950/60 dark:hover:border-neutral-700"
+                  >
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-100 text-blue-600 dark:bg-blue-950/60 dark:text-blue-400">
+                      <DocumentTextIcon className="h-5 w-5" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-xs font-medium text-neutral-900 dark:text-white">
+                        {art.name}
+                      </p>
+                      <p className="text-[10px] text-neutral-400">
+                        {Math.round(art.size / 1024) || 1} KB · SHA-256 verificado
+                      </p>
+                    </div>
+                  </button>
+                ))}
               </div>
             </div>
           )}

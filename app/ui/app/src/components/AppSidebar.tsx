@@ -7,6 +7,7 @@ import {
   BuildingOffice2Icon,
   BoltIcon,
   ClockIcon,
+  ComputerDesktopIcon,
   Cog6ToothIcon,
   FolderIcon,
   MagnifyingGlassIcon,
@@ -171,6 +172,13 @@ export function AppNavigation({ current }: { current: AppSection }) {
         />
       </Link>
       <TargetLink
+        href="/endpoint"
+        label="Computadores"
+        current={current}
+        section="endpoint"
+        icon={ComputerDesktopIcon}
+      />
+      <TargetLink
         href="/tasks"
         label="Tarefas"
         current={current}
@@ -179,7 +187,7 @@ export function AppNavigation({ current }: { current: AppSection }) {
       />
       <TargetLink
         href="/scheduled"
-        label="Agendado"
+        label="Automações"
         current={current}
         section="scheduled"
         icon={ClockIcon}
@@ -196,7 +204,7 @@ export function AppNavigation({ current }: { current: AppSection }) {
       <NavLabel>Ferramentas</NavLabel>
       <TargetLink
         href="/connectors"
-        label="Conectores"
+        label="Plugins / Conectores"
         current={current}
         section="connectors"
         icon={LinkIcon}
