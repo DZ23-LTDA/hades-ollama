@@ -85,6 +85,17 @@ jobs:
       - name: Install Browser Operator dependencies
         shell: bash
         run: python -m pip install --user 'playwright==1.63.0'
+      - name: Diagnose trusted Git and snapshot DACL prerequisites
+        if: always()
+        shell: bash
+        run: |
+          echo '--- git executables in PATH'
+          which -a git git.exe 2>/dev/null || true
+          echo '--- candidate Git directories'
+          for d in "/c/Program Files/Git/cmd" "/c/Program Files/Git/bin" "/c/Program Files/Git/mingw64/bin" "/c/Program Files/Git/usr/bin"; do
+            if [ -d "$d" ]; then echo "== $d"; icacls "$d" 2>&1 | head -25; fi
+          done
+          echo '--- diagnostics complete'
       - name: Agent runtime tests
         shell: bash
         env:
@@ -237,10 +248,12 @@ jobs:
           PGPASSWORD="$legacy_password" psql -h 127.0.0.1 -U ollama_agent -d ollama_agent \
             -v ON_ERROR_STOP=1 -c 'CREATE TABLE public.unrelated_service_probe(secret TEXT)'
           set +e
+          trap - ERR
           PGOPTIONS='-c search_path=ollama_cutover_hostile,pg_catalog,public' PGPASSWORD="$legacy_password" psql -h 127.0.0.1 -U ollama_agent -d ollama_agent \
             -v ON_ERROR_STOP=1 -f deploy/postgres/migrate-existing-roles.sql >"$RUNNER_TEMP/unrelated-object-preflight.log" 2>&1
           unrelated_object_status=$?
           set -e
+          trap on_failure ERR
           if [ "$unrelated_object_status" -eq 0 ] || ! grep -q 'unrelated non-extension objects' "$RUNNER_TEMP/unrelated-object-preflight.log"; then
             cat "$RUNNER_TEMP/unrelated-object-preflight.log"
             echo 'legacy cutover did not reject an unrelated public object' >&2
@@ -253,10 +266,12 @@ jobs:
           PGPASSWORD="$postgres_admin_password" psql -h 127.0.0.1 -U ollama_agent_admin -d postgres \
             -v ON_ERROR_STOP=1 -c 'CREATE DATABASE ollama_unrelated_probe'
           set +e
+          trap - ERR
           PGOPTIONS='-c search_path=ollama_cutover_hostile,pg_catalog,public' PGPASSWORD="$legacy_password" psql -h 127.0.0.1 -U ollama_agent -d ollama_agent \
             -v ON_ERROR_STOP=1 -f deploy/postgres/migrate-existing-roles.sql >"$RUNNER_TEMP/unrelated-database-preflight.log" 2>&1
           unrelated_database_status=$?
           set -e
+          trap on_failure ERR
           if [ "$unrelated_database_status" -eq 0 ] || ! grep -q 'dedicated PostgreSQL cluster' "$RUNNER_TEMP/unrelated-database-preflight.log"; then
             cat "$RUNNER_TEMP/unrelated-database-preflight.log"
             echo 'legacy cutover did not reject an unrelated database' >&2
@@ -271,10 +286,12 @@ jobs:
           PGPASSWORD="$postgres_admin_password" psql -h 127.0.0.1 -U ollama_agent_admin -d postgres \
             -v ON_ERROR_STOP=1 -c 'ALTER DATABASE ollama_disabled_unrelated_probe ALLOW_CONNECTIONS false'
           set +e
+          trap - ERR
           PGOPTIONS='-c search_path=ollama_cutover_hostile,pg_catalog,public' PGPASSWORD="$legacy_password" psql -h 127.0.0.1 -U ollama_agent -d ollama_agent \
             -v ON_ERROR_STOP=1 -f deploy/postgres/migrate-existing-roles.sql >"$RUNNER_TEMP/disabled-database-preflight.log" 2>&1
           disabled_database_status=$?
           set -e
+          trap on_failure ERR
           if [ "$disabled_database_status" -eq 0 ] || ! grep -q 'dedicated PostgreSQL cluster' "$RUNNER_TEMP/disabled-database-preflight.log"; then
             cat "$RUNNER_TEMP/disabled-database-preflight.log"
             echo 'legacy cutover did not reject a connection-disabled unrelated database' >&2
