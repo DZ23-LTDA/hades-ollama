@@ -16,6 +16,11 @@ function observe(page, label) {
   });
   page.on("pageerror", (error) => errors.push(`[${label}] pageerror: ${error.message}`));
   page.on("response", (response) => {
+    if (response.url().includes("/builders/") && response.url().endsWith("/visual")) {
+      if (response.status() !== 200) {
+        errors.push(`[${label}] Studio visual mutation HTTP ${response.status()} ${response.url()}`);
+      }
+    }
     if (response.status() >= 500) {
       errors.push(`[${label}] HTTP ${response.status()} ${response.url()}`);
     }
@@ -49,6 +54,9 @@ async function capture(viewport, suffix) {
     if (await cardButton.isVisible()) {
       await cardButton.click();
       await page.waitForTimeout(600);
+      if (errors.some((error) => error.includes("Studio visual mutation HTTP"))) {
+        throw new Error(`${suffix}: visual edit did not return HTTP 200`);
+      }
     }
 
     // 2. Click Undo
@@ -74,7 +82,7 @@ async function capture(viewport, suffix) {
   }
 
   // Take screenshot
-  const screenshotPath = path.join(EVIDENCE_DIR, `screen-studio-builder-${suffix}.png`);
+  const screenshotPath = path.join(EVIDENCE_DIR, `screen-r2-studio-edit-${suffix}.png`);
   await page.screenshot({ path: screenshotPath });
 
   const body = await page.locator("body").innerText();
@@ -111,8 +119,8 @@ async function main() {
     path: "/studio",
     title: "Studio",
     timestamp: new Date().toISOString(),
-    desktopEvidence: "screen-studio-builder-desktop.png",
-    mobileEvidence: "screen-studio-builder-mobile.png",
+    desktopEvidence: "screen-r2-studio-edit-desktop.png",
+    mobileEvidence: "screen-r2-studio-edit-mobile.png",
     consoleErrors: errors.filter((e) => e.includes("console:")),
     httpFailures: errors.filter((e) => e.includes("HTTP")),
     errorsCount: errors.length,
