@@ -386,7 +386,7 @@ func NewEgressCheckRedirect(callsite string, allowLoopback bool) func(req *http.
 		StripSensitiveEgressHeaders(req)
 
 		// 1. Host Pinning: reject cross-host redirects
-		if !strings.EqualFold(originHost, targetHost) {
+		if !strings.EqualFold(via[0].URL.Host, req.URL.Host) {
 			DefaultEgressAuditStore.Record(EgressDecision{
 				Timestamp:   time.Now(),
 				Callsite:    callsite,
@@ -415,7 +415,11 @@ func NewEgressCheckRedirect(callsite string, allowLoopback bool) func(req *http.
 
 		// 3. Verify redirect destination IP is not restricted
 		if _, err := ResolveAllPublicIPs(req.Context(), targetHost); err != nil {
-			if !(allowLoopback && strings.EqualFold(targetHost, "localhost")) {
+			loopbackTarget := false
+			if parsedIP := net.ParseIP(targetHost); parsedIP != nil {
+				loopbackTarget = parsedIP.IsLoopback()
+			}
+			if !(allowLoopback && (strings.EqualFold(targetHost, "localhost") || loopbackTarget)) {
 				DefaultEgressAuditStore.Record(EgressDecision{
 					Timestamp:   time.Now(),
 					Callsite:    callsite,

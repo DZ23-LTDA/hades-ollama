@@ -746,7 +746,7 @@ func (s *AuthStore) refreshOAuthCredential(ctx context.Context, organizationID s
 		return OAuthCredential{}, err
 	}
 	if client == nil {
-		client = http.DefaultClient
+		client = NewSafeEgressHTTPClient(EgressOptions{Callsite: "oauth", Timeout: 30 * time.Second})
 	}
 	form := url.Values{"grant_type": {"refresh_token"}, "refresh_token": {refresh}, "client_id": {os.Getenv(provider.ClientIDEnv)}, "client_secret": {os.Getenv(provider.SecretEnv)}}
 	client = oauthClient(client)
@@ -1132,7 +1132,7 @@ type oauthLoopbackContextKey struct{}
 
 func oauthClient(base *http.Client) *http.Client {
 	if base == nil {
-		base = http.DefaultClient
+		base = NewSafeEgressHTTPClient(EgressOptions{Callsite: "oauth", Timeout: 30 * time.Second})
 	}
 	client := *base
 	client.CheckRedirect = func(_ *http.Request, _ []*http.Request) error { return errors.New("oauth redirects are disabled") }
@@ -1443,7 +1443,7 @@ func (p OAuthProvider) Revoke(ctx context.Context, client *http.Client, accessTo
 		return errors.New("oauth access token is required for revocation")
 	}
 	if client == nil {
-		client = http.DefaultClient
+		client = NewSafeEgressHTTPClient(EgressOptions{Callsite: "oauth", Timeout: 30 * time.Second})
 	}
 	client = oauthClient(client)
 	form := url.Values{

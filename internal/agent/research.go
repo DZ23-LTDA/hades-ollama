@@ -57,7 +57,7 @@ type ResearchEngine struct {
 }
 
 func NewResearchEngine() *ResearchEngine {
-	return &ResearchEngine{Client: &http.Client{Timeout: 30 * time.Second}, MaxConcurrency: 4, MaxBytesSource: 2 << 20, cache: map[string]ResearchSource{}, robots: map[string][]string{}}
+	return &ResearchEngine{MaxConcurrency: 4, MaxBytesSource: 2 << 20, cache: map[string]ResearchSource{}, robots: map[string][]string{}}
 }
 
 func (e *ResearchEngine) Research(ctx context.Context, request ResearchRequest) (ResearchReport, error) {
@@ -283,7 +283,7 @@ func (e *ResearchEngine) client() *http.Client {
 	if e.Client != nil {
 		return e.Client
 	}
-	return http.DefaultClient
+	return NewSafeEgressHTTPClient(EgressOptions{Callsite: "research", Timeout: 30 * time.Second, MaxBodyBytes: 2 << 20, AllowLoopback: e.AllowHTTPForTests})
 }
 
 func truncateResearch(value string, limit int) string {

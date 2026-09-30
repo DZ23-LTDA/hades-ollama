@@ -479,3 +479,13 @@ Próximo slice: corrigir somente os blockers remanescentes do Studio (invalidaç
 - **Proteções:** decisões continuam exigindo actor, razão, nonce, expiração, organização e CAS; decisões pending recebem `requested_by` server-side e o próprio solicitante é rejeitado (`ErrCompanyApprovalSelf`). Campaigns/ads, affiliate programs, orders, social drafts e spend vinculam o solicitante nas rotas de criação.
 - **Regressões:** `TestCompanyApprovalLedgerRejectsRequesterSelfApproval`, suíte focada `Approval|Approv|Ledger|Spend|Budget|Nonce|AutoApprove|Decision` e varredura de DTOs sem `json:"approved"` em `server` passaram localmente.
 - **Limitação honesta:** APIs internas legadas ainda usam `bool` para aplicar uma decisão já validada; esses métodos não são handlers HTTP nem aceitam payload externo. Homologação externa de providers permanece BLOCKED_EXTERNAL.
+
+
+## H3 — Egress zero-trust e DLP em connectors/providers — 2026-09-30
+
+- **Transporte compartilhado:** `NewConnectorManager` agora usa `NewSafeEgressHTTPClient`; o caminho de execução preserva o transporte pinado e o redirect checker, sem substituir a política por um `DialContext` genérico. Fallbacks de pesquisa, OAuth e multillm também usam clientes egress seguros.
+- **DLP e limites:** requests de connectors continuam rejeitando payloads credential-shaped antes do envio; a auditoria registra apenas metadados e contagem de findings, nunca corpo ou credencial. Respostas passam por leitura limitada e `sanitizeProviderJSON` antes de retornar a logs/artifacts/memória.
+- **Redirect/SSRF:** pinning agora cobre host e porta; cross-host/cross-port, downgrade, IP privado e rebinding permanecem bloqueados. Loopback só é permitido no modo de teste explícito da pesquisa.
+- **Cobertura:** `TestEveryCatalogConnectorUsesSharedSafeEgressClient` percorre o catálogo e verifica o transporte hardened compartilhado; focused `Egress|DLP|Redact|SSRF|Connector|Provider|ZeroTrust` passou.
+- **Gates:** `go build ./...`, `go test ./internal/agent ./server`, typecheck, lint, Vitest, build frontend, contratos e integrity guard passaram.
+- **Limitação honesta:** providers/upstreams externos e ausência de segredo real permanecem `NOT_CONFIGURED`/`BLOCKED_EXTERNAL`; a heurística DLP não prova ausência de dados sensíveis desconhecidos.

@@ -298,7 +298,8 @@ func NewProviderSafeHTTPClient(timeout time.Duration, allowPrivate bool) *http.C
 	}
 
 	return &http.Client{
-		Timeout:   timeout,
-		Transport: transport,
+		Timeout:       timeout,
+		Transport:     transport,
+		CheckRedirect: CheckProviderRedirectPolicy(""),
 	}
 }

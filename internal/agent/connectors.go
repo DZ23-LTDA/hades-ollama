@@ -67,10 +67,14 @@ var (
 type connectorLoopbackContextKey struct{}
 
 func NewConnectorManager() *ConnectorManager {
-	transport := http.DefaultTransport.(*http.Transport).Clone()
-	transport.Proxy = nil
-	transport.DialContext = connectorDialContext
-	return &ConnectorManager{connectors: make(map[string]ConnectorConfig), client: &http.Client{Transport: transport, CheckRedirect: func(_ *http.Request, _ []*http.Request) error { return errConnectorRedirectDisabled }}}
+	return &ConnectorManager{
+		connectors: make(map[string]ConnectorConfig),
+		client: NewSafeEgressHTTPClient(EgressOptions{
+			Callsite:     "connectors",
+			Timeout:      30 * time.Second,
+			MaxBodyBytes: 2 << 20,
+		}),
+	}
 }
 
 // NewPersistentConnectorManager loads a connector manifest that contains only
@@ -586,11 +590,24 @@ func (m *ConnectorManager) call(ctx context.Context, organizationID string, conf
 		header, value := connectorAuth(config, token)
 		request.Header.Set(header, value)
 	}
+	// Never place request bodies or credentials in the audit trail. The
+	// payload validator above rejects credential-shaped data; this second
+	// defense records only the redaction result and request metadata.
+	findings := ScanDLP(string(body))
+	DefaultEgressAuditStore.Record(EgressDecision{
+		Timestamp:   time.Now(),
+		Callsite:    "connectors",
+		Method:      request.Method,
+		Destination: request.URL.Redacted(),
+		Host:        request.URL.Hostname(),
+		Allowed:     true,
+		Reason:      fmt.Sprintf("connector request approved; dlp_findings=%d", len(findings)),
+	})
 	client := connectorClientForRequest(m.client, time.Duration(config.TimeoutSeconds)*time.Second)
 	response, err := client.Do(request)
 	if err != nil {
-		if errors.Is(err, errConnectorRedirectDisabled) {
-			return 0, "", errConnectorRedirectDisabled
+		if errors.Is(err, errConnectorRedirectDisabled) || errors.Is(err, ErrEgressRedirectDisallowed) || strings.Contains(strings.ToLower(err.Error()), "redirect") {
+			return 0, "", fmt.Errorf("%w: %v", errConnectorRedirectDisabled, err)
 		}
 		return 0, "", errors.New("connector provider request failed")
 	}
@@ -623,24 +640,10 @@ func connectorClientForRequest(base *http.Client, timeout time.Duration) *http.C
 	}
 	client := *base
 	client.Timeout = timeout
-	client.CheckRedirect = func(_ *http.Request, _ []*http.Request) error { return errConnectorRedirectDisabled }
-	switch transport := base.Transport.(type) {
-	case nil:
-		safe := http.DefaultTransport.(*http.Transport).Clone()
-		safe.Proxy = nil
-		safe.DialContext = connectorDialContext
-		client.Transport = safe
-	case *http.Transport:
-		safe := transport.Clone()
-		safe.Proxy = nil
-		safe.DialContext = connectorDialContext
-		client.Transport = safe
-	default:
-		safe := http.DefaultTransport.(*http.Transport).Clone()
-		safe.Proxy = nil
-		safe.DialContext = connectorDialContext
-		client.Transport = safe
-	}
+	// The manager's production client is already built by
+	// NewSafeEgressHTTPClient. Keep its pinned transport intact; replacing it
+	// with a generic DialContext would discard peer verification and audit logs.
+	client.CheckRedirect = NewEgressCheckRedirect("connectors", false)
 	return &client
 }
 

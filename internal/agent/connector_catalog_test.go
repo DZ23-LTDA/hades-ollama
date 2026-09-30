@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"net/http"
 	"strings"
 	"testing"
 )
@@ -152,6 +153,26 @@ func TestConnectorAuthHeader(t *testing.T) {
 	for _, bad := range []string{"Host", "Cookie", "X Bad", "Content-Length", ""} {
 		if validAuthHeader(bad) {
 			t.Errorf("%q must be rejected", bad)
+		}
+	}
+}
+
+func TestEveryCatalogConnectorUsesSharedSafeEgressClient(t *testing.T) {
+	manager := NewConnectorManager()
+	if manager.client == nil || manager.client.Transport == nil || manager.client.CheckRedirect == nil {
+		t.Fatal("connector catalog has no hardened egress client")
+	}
+	transport, ok := manager.client.Transport.(*http.Transport)
+	if !ok || transport.Proxy != nil || transport.DialContext == nil {
+		t.Fatal("connector catalog manager is not backed by the zero-trust transport")
+	}
+	entries := ConnectorCatalog()
+	if len(entries) == 0 {
+		t.Fatal("connector catalog is empty")
+	}
+	for _, entry := range entries {
+		if manager.client.Transport == nil {
+			t.Fatalf("catalog connector %q lost its shared egress transport", entry.ID)
 		}
 	}
 }

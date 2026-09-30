@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"sort"
 	"strings"
+	"time"
 )
 
 const maxModelListBytes = 4 << 20
@@ -25,7 +26,7 @@ func ListUpstreamModels(ctx context.Context, provider Provider, client *http.Cli
 		return nil, ErrNoCredential
 	}
 	if client == nil {
-		client = http.DefaultClient
+		client = NewProviderSafeHTTPClient(30*time.Second, provider.AllowPrivate)
 	}
 	endpoint := strings.TrimRight(strings.TrimSpace(provider.BaseURL), "/") + "/models"
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)

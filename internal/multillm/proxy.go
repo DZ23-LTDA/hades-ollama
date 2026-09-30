@@ -35,7 +35,7 @@ type Gateway struct {
 
 func NewGateway(registry *Registry, client *http.Client) *Gateway {
 	if client == nil {
-		client = &http.Client{Timeout: 10 * time.Minute}
+		client = NewProviderSafeHTTPClient(10*time.Minute, false)
 	}
 	return &Gateway{registry: registry, client: client}
 }
