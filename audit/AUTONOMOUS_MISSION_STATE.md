@@ -1,5 +1,28 @@
 # Estado da missão autônoma — Ollama DZ23 Agentic Platform
 
+## Checkpoint vigente — UI-2 launcher central Home/Nova tarefa — 2026-09-30 19:00 -03
+```yaml
+state: IMPLEMENTED_LOCAL_CI_PENDING
+branch: recovery/ollama-full-snapshot
+base_commit: 3dd15dec
+objective: tornar Home/Nova tarefa o launcher central com composer, anexos, importação de projeto e ações rápidas
+implemented:
+  - ImportProjectDialog reutilizável extraído de ProductWorkspacePage
+  - Home oferece Anexar arquivo e Importar projeto junto dos modos Automático/Manual e ações rápidas
+  - Projetos reutiliza o mesmo componente; chamadas GitHub/ZIP e segurança permanecem reais
+proofs:
+  - npx tsc -b: PASS
+  - npm run lint: PASS
+  - npx vitest run: 37 arquivos/257 testes PASS
+  - npm run build: PASS
+  - node scripts/verify-contracts.mjs: PASS
+  - bash scripts/check-class-a-plus-integrity.sh: PASS
+  - Playwright desktop/mobile: quatro screenshots UI-2 e auditoria com zero erros
+next_action: commit/push UI-2 e confirmar class-a-plus-integrity e dz23-agentic-quality no mesmo SHA
+rollback: preservar 3dd15dec; sem reset/clean/force-push
+```
+
+
 ## Checkpoint vigente — WIN-1 build Windows/sem-CGO — 2026-09-30 18:10 -03
 ```yaml
 state: COMPLETED_CI_GREEN

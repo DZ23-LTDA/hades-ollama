@@ -1,0 +1,49 @@
+{
+  "flow": "UI-2 Home/Nova tarefa launcher",
+  "captured_at": "2026-09-30T21:59:44.814Z",
+  "viewports": {
+    "desktop": {
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "home_screenshot": "screen-ui2-home-desktop.png",
+      "import_screenshot": "screen-ui2-import-desktop.png",
+      "console_errors": [],
+      "http_errors": [],
+      "body_checks": [
+        "Automático",
+        "Manual",
+        "Anexar arquivo",
+        "Importar projeto"
+      ],
+      "tab_checks": [
+        "URL do GitHub",
+        "Anexo ZIP"
+      ]
+    },
+    "mobile": {
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "home_screenshot": "screen-ui2-home-mobile.png",
+      "import_screenshot": "screen-ui2-import-mobile.png",
+      "console_errors": [],
+      "http_errors": [],
+      "body_checks": [
+        "Automático",
+        "Manual",
+        "Anexar arquivo",
+        "Importar projeto"
+      ],
+      "tab_checks": [
+        "URL do GitHub",
+        "Anexo ZIP"
+      ]
+    }
+  },
+  "console_errors": [],
+  "http_errors": [],
+  "ignored": []
+}

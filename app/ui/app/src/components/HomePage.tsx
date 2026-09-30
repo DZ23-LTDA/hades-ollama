@@ -16,6 +16,7 @@ import { FileUpload } from "@/components/FileUpload";
 import { ModelPicker } from "@/components/ModelPicker";
 import { processFiles } from "@/utils/fileValidation";
 import { SlashCommandMenu } from "@/components/SlashCommandMenu";
+import { ImportProjectDialog } from "@/components/ImportProjectDialog";
 import {
   filterSlashCommands,
   parseSlashCommand,
@@ -49,6 +50,7 @@ export function HomePage() {
   const [selectionMode, setSelectionMode] = useState<"auto" | "manual">("auto");
   const [manualModel, setManualModel] = useState<Model | null>(null);
   const [attachments, setAttachments] = useState<Array<{ filename: string; data: Uint8Array }>>([]);
+  const [importOpen, setImportOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [activeCommand, setActiveCommand] = useState(0);
   const query = slashCommandQuery(objective);
@@ -159,9 +161,15 @@ export function HomePage() {
             </div>
             </FileUpload>
           </div>
+          <div className="mt-3 flex flex-wrap items-center gap-2 px-1" aria-label="Formas de começar">
+            <span className="text-[11px] font-medium text-neutral-400">Começar por:</span>
+            <button type="button" onClick={() => fileInputRef.current?.click()} className="rounded-lg border border-neutral-200/80 bg-white px-2.5 py-1.5 text-[11px] font-medium text-neutral-600 hover:border-neutral-300 hover:bg-neutral-100 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:bg-neutral-800">Anexar arquivo</button>
+            <button type="button" onClick={() => setImportOpen(true)} className="rounded-lg border border-violet-200 bg-violet-50 px-2.5 py-1.5 text-[11px] font-medium text-violet-700 hover:border-violet-300 hover:bg-violet-100 dark:border-violet-900/60 dark:bg-violet-950/20 dark:text-violet-300 dark:hover:bg-violet-950/40">Importar projeto</button>
+          </div>
           <p className="mt-2 px-1 text-[11px] text-neutral-400">Comandos reais: /goal delega, /plan apenas planeja, /test executa testes e /review revisa. Ctrl+Enter para iniciar.</p>
           <div className="mt-3 flex flex-wrap items-center gap-2 px-1"><span className="text-[11px] font-medium text-neutral-400">Ações rápidas:</span>{[{ label: "Criar slides", prompt: "Criar apresentação profissional de slides sobre inovação em IA" }, { label: "Criar site", prompt: "Criar uma landing page moderna responsiva com Tailwind e React" }, { label: "Pesquisa profunda", prompt: "Realizar pesquisa aprofundada de mercado com síntese e fontes citadas" }, { label: "Analisar código", prompt: "Inspecionar o repositório, auditar segurança e listar recomendações" }].map(({ label, prompt }) => <button key={label} type="button" onClick={() => setObjective(prompt)} className="rounded-lg border border-neutral-200/80 bg-white px-2.5 py-1 text-[11px] font-medium text-neutral-600 transition hover:border-neutral-300 hover:bg-neutral-100 hover:text-neutral-900 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:bg-neutral-800 dark:hover:text-white">{label}</button>)}</div>
         </section>
+        <ImportProjectDialog open={importOpen} onClose={() => setImportOpen(false)} onImported={() => undefined} />
         <section className="mt-10 grid gap-4 sm:grid-cols-2">{ACTIONS.map(({ to, eyebrow, title, description, Icon }) => <Link key={to} to={to} className="group flex items-start gap-4 rounded-2xl border border-neutral-200/80 bg-white p-5 transition hover:border-neutral-300 hover:shadow-sm dark:border-neutral-800 dark:bg-neutral-900 dark:hover:border-neutral-700"><div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-200"><Icon className="h-5 w-5" /></div><div className="min-w-0 flex-1"><p className="text-[11px] font-medium uppercase tracking-[0.12em] text-violet-600 dark:text-violet-300">{eyebrow}</p><h2 className="mt-1 flex items-center gap-1 font-medium text-neutral-900 dark:text-white">{title}<ArrowRightIcon className="h-4 w-4 -translate-x-1 opacity-0 transition group-hover:translate-x-0 group-hover:opacity-100" /></h2><p className="mt-1 text-xs leading-5 text-neutral-500 dark:text-neutral-400">{description}</p></div></Link>)}</section>
       </div>
     </div>
