@@ -201,7 +201,7 @@ export function StudioCanvasPage() {
   const syncComponents = async (newComponents: VisualComponent[]) => {
     if (!project) return;
     try {
-      const updated = await updateBuilderVisual(project.id, newComponents);
+      const updated = await updateBuilderVisual(project.id, newComponents, project.version);
       setProject(updated);
       setNotice({ type: "info", message: `Canvas atualizado (v${updated.version})` });
     } catch (err: unknown) {
@@ -273,7 +273,7 @@ export function StudioCanvasPage() {
   const handleUndo = async () => {
     if (!project) return;
     try {
-      const undone = await undoBuilder(project.id);
+      const undone = await undoBuilder(project.id, project.version);
       setProject(undone);
       setNotice({ type: "info", message: `Undo executado (v${undone.version})` });
     } catch (err: unknown) {
@@ -285,7 +285,7 @@ export function StudioCanvasPage() {
   const handleRedo = async () => {
     if (!project) return;
     try {
-      const redone = await redoBuilder(project.id);
+      const redone = await redoBuilder(project.id, project.version);
       setProject(redone);
       setNotice({ type: "info", message: `Redo executado (v${redone.version})` });
     } catch (err: unknown) {

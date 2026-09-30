@@ -293,3 +293,59 @@ func TestStudioPreviewAndDownloadRequireBearerWhenAuthEnabled(t *testing.T) {
 		t.Fatalf("authenticated download status=%d checksum=%q", download.Code, download.Header().Get("X-Checksum-SHA256"))
 	}
 }
+
+func TestStudioRoutesRejectStaleVersionAndExpiredExport(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	root := t.TempDir()
+	builder, err := agent.NewBuilderService(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	runtime, err := agent.NewRuntime(agent.RuntimeConfig{WorkspaceRoot: root, Builder: builder})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = runtime.Close(context.Background()) })
+	project, err := builder.Create(context.Background(), agent.BuilderSpec{
+		Name: "CAS Routes", Kind: agent.BuilderWebsite,
+		Components: []agent.VisualComponent{{ID: "one", Type: "text"}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	api := &agentAPI{runtime: runtime}
+	router := gin.New()
+	router.POST("/api/agent/v1/builders/:id/visual", api.updateBuilderVisual)
+	router.POST("/api/agent/v1/builders/:id/export", api.exportBuilder)
+	router.GET("/api/agent/v1/builders/:id/download", api.downloadBuilder)
+
+	exportRecorder := httptest.NewRecorder()
+	exportRequest := httptest.NewRequest(http.MethodPost, "/api/agent/v1/builders/"+project.ID+"/export", strings.NewReader(`{}`))
+	router.ServeHTTP(exportRecorder, exportRequest)
+	if exportRecorder.Code != http.StatusAccepted {
+		t.Fatalf("initial export status=%d body=%s", exportRecorder.Code, exportRecorder.Body.String())
+	}
+
+	staleRecorder := httptest.NewRecorder()
+	staleRequest := httptest.NewRequest(http.MethodPost, "/api/agent/v1/builders/"+project.ID+"/visual", strings.NewReader(`{"expected_version":0,"components":[{"id":"stale","type":"card"}]}`))
+	staleRequest.Header.Set("Content-Type", "application/json")
+	router.ServeHTTP(staleRecorder, staleRequest)
+	if staleRecorder.Code != http.StatusConflict {
+		t.Fatalf("stale edit status=%d body=%s", staleRecorder.Code, staleRecorder.Body.String())
+	}
+
+	editRecorder := httptest.NewRecorder()
+	editRequest := httptest.NewRequest(http.MethodPost, "/api/agent/v1/builders/"+project.ID+"/visual", strings.NewReader(`{"expected_version":1,"components":[{"id":"current","type":"card"}]}`))
+	editRequest.Header.Set("Content-Type", "application/json")
+	router.ServeHTTP(editRecorder, editRequest)
+	if editRecorder.Code != http.StatusOK {
+		t.Fatalf("current edit status=%d body=%s", editRecorder.Code, editRecorder.Body.String())
+	}
+
+	downloadRecorder := httptest.NewRecorder()
+	downloadRequest := httptest.NewRequest(http.MethodGet, "/api/agent/v1/builders/"+project.ID+"/download", nil)
+	router.ServeHTTP(downloadRecorder, downloadRequest)
+	if downloadRecorder.Code != http.StatusGone {
+		t.Fatalf("expired download status=%d body=%s", downloadRecorder.Code, downloadRecorder.Body.String())
+	}
+}

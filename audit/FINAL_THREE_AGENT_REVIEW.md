@@ -455,3 +455,11 @@ Próximo slice: corrigir somente os blockers remanescentes do Studio (invalidaç
 - **Regressões:** `TestStudioPreviewAndDownloadRequireBearerWhenAuthEnabled` passou; Vitest `StudioCanvasPage.security.test.ts` passou 2/2.
 - **Evidência real:** Playwright desktop 1440x900 e mobile 390x844 abriu o Studio, executou preview real, confirmou o atributo sandbox e terminou com zero erros de console/HTTP. Checksums: `0ddaa7a96f2c6b48ab0a69f3860dc13a7e7c43192221fe88ab7f9fadda5609d5` e `ad3577c0f975eeec19d9b5a68d7e1a3f9e0a15d743a868814f166dad2ef01063`.
 - **Estado:** achados 4 e 5 encerrados. CAS/concorrência e invalidação de export permanecem abertos e impedem promover Builders para PASS.
+
+
+## CA-4 — CAS e invalidação de export do Studio — 2026-09-30
+
+- **CAS/serialização:** `BuilderService` agora serializa writers do mesmo projeto sob o mutex do serviço. `ApplyVisualComponentsCAS`, `UndoCAS` e `RedoCAS` validam `expected_version` antes de escrever e retornam `BuilderVersionConflictError` (HTTP 409) quando a versão está obsoleta.
+- **Invalidação:** toda edição visual, undo ou redo incrementa a versão e remove o ZIP anterior, além de limpar checksum/path/version persistidos. `Export` grava `ExportVersion`; download rejeita export ausente ou antigo com HTTP 410 (`ErrBuilderExportExpired`).
+- **Regressões:** `TestBuilderCASRejectsStaleConcurrentWriter`, `TestBuilderExportIsInvalidatedAfterVersionedEdit` e `TestStudioRoutesRejectStaleVersionAndExpiredExport` passaram. Build/test Go, typecheck, lint, Vitest, build frontend, contratos e integrity guard passaram.
+- **Estado:** achado 6 resolvido. Os seis achados CA-1–CA-4 desta auditoria foram tratados com regressões automatizadas; dependências externas e CRDT permanecem explicitamente fora deste slice.

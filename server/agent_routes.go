@@ -2295,13 +2295,20 @@ func (a *agentAPI) updateBuilderVisual(c *gin.Context) {
 		return
 	}
 	var request struct {
-		Components []agent.VisualComponent `json:"components"`
+		Components      []agent.VisualComponent `json:"components"`
+		ExpectedVersion *int                    `json:"expected_version,omitempty"`
 	}
 	if err := decodeJSON(c, &request); err != nil {
 		writeAgentError(c, http.StatusBadRequest, err)
 		return
 	}
-	project, err := a.runtime.Builder().ApplyVisualComponents(c.Request.Context(), c.Param("id"), request.Components)
+	var project agent.BuilderProject
+	var err error
+	if request.ExpectedVersion != nil {
+		project, err = a.runtime.Builder().ApplyVisualComponentsCAS(c.Request.Context(), c.Param("id"), *request.ExpectedVersion, request.Components)
+	} else {
+		project, err = a.runtime.Builder().ApplyVisualComponents(c.Request.Context(), c.Param("id"), request.Components)
+	}
 	if err != nil {
 		writeAgentError(c, statusForAgentError(err), err)
 		return
@@ -2314,7 +2321,22 @@ func (a *agentAPI) undoBuilder(c *gin.Context) {
 		writeAgentError(c, statusForAgentError(err), err)
 		return
 	}
-	project, err := a.runtime.Builder().Undo(c.Request.Context(), c.Param("id"))
+	var request struct {
+		ExpectedVersion *int `json:"expected_version,omitempty"`
+	}
+	if c.Request.Body != nil && c.Request.Body != http.NoBody {
+		if err := decodeJSON(c, &request); err != nil && !errors.Is(err, io.EOF) {
+			writeAgentError(c, http.StatusBadRequest, err)
+			return
+		}
+	}
+	var project agent.BuilderProject
+	var err error
+	if request.ExpectedVersion != nil {
+		project, err = a.runtime.Builder().UndoCAS(c.Request.Context(), c.Param("id"), *request.ExpectedVersion)
+	} else {
+		project, err = a.runtime.Builder().Undo(c.Request.Context(), c.Param("id"))
+	}
 	if err != nil {
 		writeAgentError(c, statusForAgentError(err), err)
 		return
@@ -2327,7 +2349,22 @@ func (a *agentAPI) redoBuilder(c *gin.Context) {
 		writeAgentError(c, statusForAgentError(err), err)
 		return
 	}
-	project, err := a.runtime.Builder().Redo(c.Request.Context(), c.Param("id"))
+	var request struct {
+		ExpectedVersion *int `json:"expected_version,omitempty"`
+	}
+	if c.Request.Body != nil && c.Request.Body != http.NoBody {
+		if err := decodeJSON(c, &request); err != nil && !errors.Is(err, io.EOF) {
+			writeAgentError(c, http.StatusBadRequest, err)
+			return
+		}
+	}
+	var project agent.BuilderProject
+	var err error
+	if request.ExpectedVersion != nil {
+		project, err = a.runtime.Builder().RedoCAS(c.Request.Context(), c.Param("id"), *request.ExpectedVersion)
+	} else {
+		project, err = a.runtime.Builder().Redo(c.Request.Context(), c.Param("id"))
+	}
 	if err != nil {
 		writeAgentError(c, statusForAgentError(err), err)
 		return
@@ -2374,6 +2411,10 @@ func (a *agentAPI) downloadBuilder(c *gin.Context) {
 	project, err := a.builderForRequest(c)
 	if err != nil {
 		writeAgentError(c, statusForAgentError(err), err)
+		return
+	}
+	if project.ExportVersion == 0 || project.ExportVersion != project.Version || project.ExportChecksum == "" {
+		writeAgentError(c, statusForAgentError(agent.ErrBuilderExportExpired), agent.ErrBuilderExportExpired)
 		return
 	}
 	archivePath := filepath.Join(a.runtime.Builder().Root(), project.ID+".zip")
@@ -2784,8 +2825,11 @@ func statusForAgentError(err error) int {
 	if errors.Is(err, errAgentForbidden) || errors.Is(err, agent.ErrPluginOrganizationScope) || errors.Is(err, agent.ErrBuilderForbidden) || errors.Is(err, agent.ErrOrchestrationForbidden) || errors.Is(err, agent.ErrDeviceForbidden) || errors.Is(err, agent.ErrQueueJobForbidden) {
 		return http.StatusForbidden
 	}
-	if errors.Is(err, agent.ErrApprovalVersionConflict) || errors.Is(err, agent.ErrDeploymentApprovalNonce) || errors.Is(err, agent.ErrDeploymentApprovalConflict) || errors.Is(err, agent.ErrDeploymentApprovalExpired) {
+	if errors.Is(err, agent.ErrApprovalVersionConflict) || errors.Is(err, agent.ErrBuilderVersionConflict) || errors.Is(err, agent.ErrDeploymentApprovalNonce) || errors.Is(err, agent.ErrDeploymentApprovalConflict) || errors.Is(err, agent.ErrDeploymentApprovalExpired) {
 		return http.StatusConflict
+	}
+	if errors.Is(err, agent.ErrBuilderExportExpired) {
+		return http.StatusGone
 	}
 	if errors.Is(err, agent.ErrDeploymentApprovalNotFound) || errors.Is(err, agent.ErrDeploymentApprovalOrganization) || errors.Is(err, agent.ErrDeploymentProviderNotFound) {
 		return http.StatusNotFound
