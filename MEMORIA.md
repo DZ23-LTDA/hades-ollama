@@ -1,6 +1,6 @@
 ---
 projeto: ollama-classe-a-plus
-status: H3 IMPLEMENTADO — GATES LOCAIS VERDES; CI REMOTA PENDENTE
+status: H3 IMPLEMENTADO — CI VERDE
 atualizado: 2026-09-30 14:45 -03 (2026-09-30 17:45 UTC)
 ultima_ia: Manus
 tags: [projeto, paridade-manus, evidencia-real, shell-desktop, missao-concluida]
@@ -22,7 +22,7 @@ automatizado + execução real reproduzível em navegador (desktop e mobile), se
 
 ## Estado atual (2026-09-30 11:59 -03 / 2026-09-30 14:59 UTC)
 - **Repo:** github.com/DZ23-LTDA/ollama-classe-a-plus. Branch canônica: `recovery/ollama-full-snapshot`.
-- **STATUS DA MISSÃO: H3 implementado localmente; aguardando commit e CI remota. H1/H2/H3 permanecem honestos sobre limitações de host, providers externos e DLP semântico.** A CI remota `class-a-plus-integrity` e `dz23-agentic-quality` está verde no mesmo commit `0d3aa731`, e o smoke Playwright do shell passou 2/2 após a correção a11y. Isso não encerra a paridade: permanecem blockers HIGH documentados em `audit/FINAL_THREE_AGENT_REVIEW.md`.
+- **STATUS DA MISSÃO: H3 implementado e publicado; CI remota verde no SHA `bccfbd03`. H1/H2/H3 permanecem honestos sobre limitações de host, providers externos e DLP semântico.** A CI remota `class-a-plus-integrity` e `dz23-agentic-quality` está verde no mesmo commit `0d3aa731`, e o smoke Playwright do shell passou 2/2 após a correção a11y. Isso não encerra a paridade: permanecem blockers HIGH documentados em `audit/FINAL_THREE_AGENT_REVIEW.md`.
 - **Retomada 2026-09-30:** o composer agentic recebeu `aria-label` no campo e botão de envio; o E2E mobile em `390x844` comprova ambos. Expectativas obsoletas do smoke da Home foram alinhadas à UI real. O CA-1 de autenticação do webhook WhatsApp e outbound fail-closed e o CA-2 de isolamento tenant no modo local foram implementados e validados; o CA-3 agora fechou Bearer e sandbox do Studio com evidência real; permanecem apenas CAS/concorrência e invalidação de export, sem promover Builders a PASS. CA-4 fechou CAS/concorrência e invalidação de export; Builders pode ser promovido a PASS com base nos testes reais, enquanto colaboração CRDT e deploy externo continuam fora deste slice.
 - **FASE 10:** Implementado o Studio visual interativo (`StudioCanvasPage.tsx` e `/studio`), substituindo testes com API mockada por integração de ponta a ponta contra o backend real de builders (`BuilderService` em `internal/agent/builder.go` e rotas em `server/agent_routes.go`). Suporte a paleta com componentes (Heading, Paragraph, Button, Card, Metric, Navbar) e modelos de projeto (Site, Dashboard, Slides, Jogo, App Móvel); atualização dinâmica de componentes via `POST /api/agent/v1/builders/:id/visual`; histórico de undo e redo com pilhas no backend (`POST /builders/:id/undo` e `/redo`); preview ao vivo em iframe renderizado diretamente do backend (`POST /builders/:id/preview` e `/preview/*path`); exportação de projeto em ZIP com checksum criptográfico SHA-256 verificado (`POST /builders/:id/export` e download via `GET /builders/:id/download`); adaptador de deploy externo com verificação honesta de credenciais (`BLOCKED_EXTERNAL` / `NOT_CONFIGURED` via enum `gate_status`, sem falsificar publicação); documentação de arquitetura para colaboração CRDT em tempo real; testes unitários e de integração em `internal/agent/builder_studio_test.go` e `server/builder_studio_routes_test.go` (100% PASS); captura E2E Playwright desktop (1440x900) e mobile (390x844) em `docs/evidencias/screen-studio-builder-*.png` com console e HTTP 100% limpos em `browser-console-audit.json`.
 - **STATUS DA MISSÃO: FASE 09 IMPLEMENTADA — Egress Zero-Trust Unificado em todas as saídas de rede (connectors, media, deploy, MCP remoto, push, multillm, WhatsApp) com DNS pinning, verificação de peer, bloqueio estrito de IP privado/metadata/rebinding, isolamento de credenciais em redirects, limitação de payload anti-DoS, auditoria auditável (/api/agent/v1/egress/logs e /status) e suíte de testes de regressão anti-bypass**
@@ -96,7 +96,7 @@ automatizado + execução real reproduzível em navegador (desktop e mobile), se
 ## H3 — Egress zero-trust + DLP (2026-09-30 14:45 -03)
 - **Manus:** conectei o ConnectorManager ao cliente zero-trust compartilhado, preservei pinning/peer verification/redirect policy, removi defaults `http.DefaultClient` de caminhos de produção relevantes e usei fallback seguro em pesquisa, OAuth e multillm.
 - **Evidência:** focused `go test ./internal/agent ./internal/multillm -run 'Egress|DLP|Redact|SSRF|Connector|Provider|ZeroTrust'` PASS; `go build ./...` + `go test ./internal/agent ./server` PASS; frontend, contratos e integrity PASS.
-- **Estado:** mudanças ainda não commitadas; próximo passo obrigatório é revisar diff, commit/push na branch `recovery/ollama-full-snapshot` e confirmar as duas workflows CI no mesmo SHA.
+- **Estado:** correção adicional do Gateway local publicada no SHA `bccfbd03`; ambas as workflows CI passaram nesse mesmo SHA. Próximo passo: parar esta slice, conforme escopo H3.
 
 ## Histórico de sessões
 <!-- Mais recente no topo. Uma entrada por sessão de trabalho. -->
