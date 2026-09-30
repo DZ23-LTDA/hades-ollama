@@ -6,6 +6,7 @@ import {
   EyeIcon,
   ShieldCheckIcon,
 } from "@heroicons/react/24/outline";
+import { agentFetchBlob } from "@/lib/agenticClient";
 
 export interface ArtifactItem {
   id: string;
@@ -54,11 +55,8 @@ export function ArtifactsViewer({
     }
 
     setLoading(true);
-    fetch(`/api/agent/v1/missions/${encodeURIComponent(missionId)}/artifacts/${encodeURIComponent(currentArtifact.id)}`)
-      .then((res) => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        return res.text();
-      })
+    agentFetchBlob(`/api/agent/v1/missions/${encodeURIComponent(missionId)}/artifacts/${encodeURIComponent(currentArtifact.id)}`)
+      .then((blob) => blob.text())
       .then((text) => setContent(text))
       .catch(() => setContent("// Não foi possível carregar o conteúdo prévio do artefato."))
       .finally(() => setLoading(false));
@@ -76,6 +74,21 @@ export function ArtifactsViewer({
 
   const isHtml = currentArtifact?.name.endsWith(".html") || currentArtifact?.media_type === "text/html";
   const isMd = currentArtifact?.name.endsWith(".md") || currentArtifact?.media_type === "text/markdown";
+  const downloadArtifact = async () => {
+    if (!currentArtifact) return;
+    try {
+      const blob = await agentFetchBlob(`/api/agent/v1/missions/${encodeURIComponent(missionId)}/artifacts/${encodeURIComponent(currentArtifact.id)}`);
+      const href = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = href;
+      anchor.download = currentArtifact.name;
+      anchor.click();
+      window.setTimeout(() => URL.revokeObjectURL(href), 0);
+    } catch (error) {
+      setContent(`// Download indisponível: ${error instanceof Error ? error.message : "erro de autenticação"}`);
+      setActiveTab("code");
+    }
+  };
 
   return (
     <div className="flex h-full flex-col bg-white dark:bg-neutral-900">
@@ -172,14 +185,14 @@ export function ArtifactsViewer({
                     Tamanho: {currentArtifact.size ? `${(currentArtifact.size / 1024).toFixed(1)} KB` : "Automático"}
                   </p>
                 </div>
-                <a
-                  href={`/api/agent/v1/missions/${encodeURIComponent(missionId)}/artifacts/${encodeURIComponent(currentArtifact.id)}`}
-                  download={currentArtifact.name}
+                <button
+                  type="button"
+                  onClick={() => void downloadArtifact()}
                   className="flex items-center gap-2 rounded-xl bg-neutral-900 px-4 py-2 text-xs font-semibold text-white shadow hover:bg-neutral-800 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-100"
                 >
                   <ArrowDownTrayIcon className="h-4 w-4" />
                   Baixar Arquivo
-                </a>
+                </button>
               </div>
 
               {currentArtifact.sha256 && (

@@ -46,7 +46,10 @@ type trackedSAMLRequest struct {
 
 func NewSAMLService(ctx context.Context, config SAMLProviderConfig, client *http.Client) (*SAMLService, error) {
 	if client == nil {
-		client = &http.Client{Timeout: 20 * time.Second}
+		client = NewSafeEgressHTTPClient(EgressOptions{
+			Callsite: "saml.idp-metadata",
+			Timeout:  20 * time.Second,
+		})
 	}
 	if strings.TrimSpace(config.Name) == "" {
 		return nil, errors.New("saml provider name is required")

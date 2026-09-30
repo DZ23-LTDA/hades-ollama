@@ -281,6 +281,11 @@ func extractProjectArchive(reader io.ReaderAt, size int64, destination string) e
 		if clean == "." || clean == ".." || strings.HasPrefix(clean, ".."+string(os.PathSeparator)) {
 			return ErrImportArchiveUnsafe
 		}
+		// Never import Git's control plane. .git/config can enable filters,
+		// includes, alternates or core.worktree outside the extracted tree.
+		if strings.Split(filepath.ToSlash(clean), "/")[0] == ".git" {
+			return ErrImportArchiveUnsafe
+		}
 		if entry.Mode()&os.ModeSymlink != 0 {
 			return ErrImportArchiveUnsafe
 		}
@@ -330,13 +335,19 @@ func extractProjectArchive(reader io.ReaderAt, size int64, destination string) e
 }
 
 func initializeImportedRepository(ctx context.Context, root string) error {
-	commands := [][]string{{"init", root}, {"-C", root, "config", "user.email", "ollama-full@localhost"}, {"-C", root, "config", "user.name", "Ollama Full Import"}, {"-C", root, "config", "core.hooksPath", "/dev/null"}, {"-C", root, "add", "--all"}, {"-C", root, "commit", "--no-verify", "-m", "Imported project snapshot"}}
+	commands := [][]string{{"init", root}, {"-C", root, "config", "user.email", "ollama-full@localhost"}, {"-C", root, "config", "user.name", "Ollama Full Import"}, {"-C", root, "config", "core.hooksPath", ""}, {"-C", root, "config", "core.worktree", root}, {"-C", root, "add", "--all"}, {"-C", root, "commit", "--no-verify", "-m", "Imported project snapshot"}}
 	for _, args := range commands {
 		command := exec.CommandContext(ctx, "git", args...)
-		command.Env = append(os.Environ(), "GIT_CONFIG_NOSYSTEM=1", "GIT_TERMINAL_PROMPT=0")
+		command.Env = append(os.Environ(), "GIT_CONFIG_NOSYSTEM=1", "GIT_CONFIG_GLOBAL=", "GIT_TERMINAL_PROMPT=0", "GIT_OPTIONAL_LOCKS=0")
 		if output, err := command.CombinedOutput(); err != nil {
 			return fmt.Errorf("initialize imported repository: %s: %w", RedactDLP(strings.TrimSpace(string(output))), err)
 		}
+	}
+	check := exec.CommandContext(ctx, "git", "-C", root, "rev-parse", "--show-toplevel")
+	check.Env = append(os.Environ(), "GIT_CONFIG_NOSYSTEM=1", "GIT_CONFIG_GLOBAL=", "GIT_TERMINAL_PROMPT=0")
+	output, err := check.Output()
+	if err != nil || filepath.Clean(strings.TrimSpace(string(output))) != filepath.Clean(root) {
+		return ErrImportArchiveUnsafe
 	}
 	return nil
 }

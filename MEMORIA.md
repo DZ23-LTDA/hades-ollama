@@ -1,7 +1,7 @@
 ---
 projeto: ollama-classe-a-plus
-status: UI-2 CONCLUÍDO — launcher central Home/Nova tarefa com CI remoto verde
-atualizado: 2026-09-30 19:00 -03 (2026-09-30 22:00 UTC)
+status: AUDITORIA AMPLA — correções locais aplicadas; CI remoto pendente
+atualizado: 2026-09-30 19:41 -03 (2026-09-30 22:41 UTC)
 ultima_ia: Manus
 tags: [projeto, paridade-manus, ui-2, import-project, accessibility, local-tests]
 ---
@@ -21,6 +21,8 @@ recuperação). **Pronto** = paridade comprovada por implementação + teste
 automatizado + execução real reproduzível em navegador (desktop e mobile), sem alegar "100%" sem evidência.
 
 ## Histórico de sessões
+
+- **2026-09-30 19:41 -03 — Manus:** retomou a auditoria ampla e corrigiu riscos reproduzíveis em importação, approvals, egress/download, DLP de respostas WhatsApp, export atômico do Builder, fechamento de descriptors de artifacts, foco/ARIA e anexos da Home, preview/download autenticado, RBAC administrativo WhatsApp e pipeline de release. Evidência local: `go test ./internal/agent ./server`, `npx tsc -b`, lint, Vitest (37 arquivos/257 testes) e build UI passaram após os ajustes; a primeira execução Go revelou e foi corrigida a incompatibilidade de `git add --no-renames` e os fixtures de anti-auto-aprovação. Próximo passo: executar contratos/integrity, builds CGO0/Windows, varreduras finais, revisar o diff e só então decidir commit/push e acompanhar CI no SHA final; não declarar produção nem 100% de paridade.
 
 - **2026-09-30 19:00 -03 — Manus:** concluiu UI-2 no branch `recovery/ollama-full-snapshot`. Extraiu o fluxo existente de importação para `app/ui/app/src/components/ImportProjectDialog.tsx`, preservando as APIs reais de GitHub/ZIP, worktree isolado, estado `NOT_CONFIGURED` para privados sem credencial, upload em chunks e regra de não executar código importado. A Home/Nova tarefa agora oferece `Anexar arquivo` e `Importar projeto` junto do composer, seletor `Automático · grátis-primeiro`/`Manual`, comandos slash e ações rápidas; Projetos reutiliza o mesmo componente sem duplicar lógica. Evidência Playwright real desktop 1440x900 e mobile 390x844: `docs/evidencias/screen-ui2-home-{desktop,mobile}.png` e `screen-ui2-import-{desktop,mobile}.png`; auditoria `docs/evidencias/browser-console-audit-ui2.json` com `console_errors: []` e `http_errors: []`, abas GitHub/ZIP verificadas por teclado/clique. Gates: `npx tsc -b`, `npm run lint`, `npx vitest run` (37 arquivos/257 testes), `npm run build`, contratos e integrity passaram. CI remoto confirmado no SHA `849faa97751d43f96e6f9d4e05dd1137d4d9e356`: `class-a-plus-integrity` run `36782993795` e `dz23-agentic-quality` run `36782993723`, ambos `completed/success`.
 

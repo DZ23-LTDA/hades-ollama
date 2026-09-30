@@ -28,13 +28,34 @@ export function ImportProjectDialog({
   const [status, setStatus] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const returnFocusRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     if (!open) return;
+    returnFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     setStatus(null);
     window.setTimeout(() => closeButtonRef.current?.focus(), 0);
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && !pending) onClose();
+      if (event.key === "Escape" && !pending) {
+        onClose();
+        window.setTimeout(() => returnFocusRef.current?.focus(), 0);
+        return;
+      }
+      if (event.key !== "Tab" || pending || !dialogRef.current) return;
+      const focusable = Array.from(dialogRef.current.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), input:not([disabled]), [href], [tabindex]:not([tabindex="-1"])',
+      ));
+      if (focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
@@ -90,7 +111,7 @@ export function ImportProjectDialog({
   };
 
   return (
-    <div role="dialog" aria-modal="true" aria-labelledby="import-project-title" className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onMouseDown={(event) => { if (event.target === event.currentTarget && !pending) onClose(); }}>
+    <div role="dialog" aria-modal="true" aria-labelledby="import-project-title" ref={dialogRef} className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onMouseDown={(event) => { if (event.target === event.currentTarget && !pending) onClose(); }}>
       <div className="w-full max-w-xl rounded-2xl border border-neutral-200 bg-white p-5 shadow-2xl dark:border-neutral-700 dark:bg-neutral-900">
         <div className="flex items-start justify-between gap-4">
           <div>

@@ -157,3 +157,14 @@ func TestProjectImportRejectsTraversalArchive(t *testing.T) {
 		t.Fatalf("expected traversal rejection, got %v", err)
 	}
 }
+
+func TestProjectImportRejectsGitControlPlane(t *testing.T) {
+	importer, _, _ := newProjectImporterFixture(t)
+	archive := projectImportZIP(t, map[string]string{
+		"README.md":   "safe\n",
+		".git/config": "[core]\nworktree = /tmp/outside\n",
+	})
+	if _, err := importer.importArchive(context.Background(), LocalOrganizationID, "", "unsafe-git", bytes.NewReader(archive), int64(len(archive)), "hash", "zip", "", ""); !errors.Is(err, ErrImportArchiveUnsafe) {
+		t.Fatalf("expected Git metadata rejection, got %v", err)
+	}
+}

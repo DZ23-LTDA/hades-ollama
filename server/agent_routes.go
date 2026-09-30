@@ -2681,6 +2681,7 @@ func (a *agentAPI) artifact(c *gin.Context) {
 		return
 	}
 	defer os.Remove(path)
+	defer agent.CloseArtifactSnapshot(path)
 	c.Header("X-Artifact-SHA256", manifest.SHA256)
 	c.FileAttachment(path, manifest.Name)
 }

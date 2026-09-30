@@ -4,6 +4,7 @@ import { AgenticSplitShell, type MissionData } from "./AgenticSplitShell";
 
 vi.mock("@/lib/agenticClient", () => ({
   agentFetch: vi.fn().mockResolvedValue({ events: [] }),
+  agentFetchBlob: vi.fn().mockResolvedValue(new Blob(["artifact content"], { type: "text/plain" })),
 }));
 
 function textContent(node: ReactTestInstance): string {

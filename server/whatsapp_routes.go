@@ -10,6 +10,19 @@ import (
 	"github.com/ollama/ollama/internal/agent"
 )
 
+func (a *agentAPI) requireWhatsAppAdmin(c *gin.Context) bool {
+	if !a.authRequired {
+		return true
+	}
+	value, _ := c.Get("agent.membership")
+	membership, ok := value.(agent.Membership)
+	if !ok || (membership.Role != agent.RoleOwner && membership.Role != agent.RoleAdmin) {
+		c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "WhatsApp administration requires organization owner or admin"})
+		return false
+	}
+	return true
+}
+
 func (a *agentAPI) whatsappWebhookVerify(c *gin.Context) {
 	if a.runtime == nil || a.runtime.WhatsApp() == nil {
 		c.String(http.StatusServiceUnavailable, "whatsapp gateway not available")
@@ -128,6 +141,9 @@ func (a *agentAPI) whatsappDLQ(c *gin.Context) {
 }
 
 func (a *agentAPI) whatsappClearDLQ(c *gin.Context) {
+	if !a.requireWhatsAppAdmin(c) {
+		return
+	}
 	if a.runtime == nil || a.runtime.WhatsApp() == nil {
 		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "whatsapp gateway not available"})
 		return
@@ -151,6 +167,9 @@ func (a *agentAPI) whatsappAllowlist(c *gin.Context) {
 }
 
 func (a *agentAPI) whatsappSetContactPolicy(c *gin.Context) {
+	if !a.requireWhatsAppAdmin(c) {
+		return
+	}
 	if a.runtime == nil || a.runtime.WhatsApp() == nil {
 		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "whatsapp gateway not available"})
 		return
@@ -175,6 +194,9 @@ func (a *agentAPI) whatsappSetContactPolicy(c *gin.Context) {
 }
 
 func (a *agentAPI) whatsappRemoveContactPolicy(c *gin.Context) {
+	if !a.requireWhatsAppAdmin(c) {
+		return
+	}
 	if a.runtime == nil || a.runtime.WhatsApp() == nil {
 		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "whatsapp gateway not available"})
 		return
@@ -194,6 +216,9 @@ func (a *agentAPI) whatsappRemoveContactPolicy(c *gin.Context) {
 }
 
 func (a *agentAPI) whatsappConfig(c *gin.Context) {
+	if !a.requireWhatsAppAdmin(c) {
+		return
+	}
 	if a.runtime == nil || a.runtime.WhatsApp() == nil {
 		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "whatsapp gateway not available"})
 		return

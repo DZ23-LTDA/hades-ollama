@@ -46,7 +46,7 @@ func (p MediaProvider) Validate() error {
 		return errors.New("media provider base URL is required")
 	}
 	u, err := url.Parse(p.BaseURL)
-	if err != nil || u.Host == "" || u.User != nil || (u.Scheme != "https" && !(u.Scheme == "http" && isLoopbackHost(u.Hostname()))) {
+	if err != nil || u.Host == "" || u.User != nil || u.RawQuery != "" || u.Fragment != "" || (u.Scheme != "https" && !(u.Scheme == "http" && isLoopbackHost(u.Hostname()))) {
 		return errors.New("media provider must use HTTPS or a loopback HTTP endpoint")
 	}
 	if u.Scheme == "https" && strings.TrimSpace(p.APIKey) == "" {
@@ -368,7 +368,16 @@ func mediaDialContextWithResolver(ctx context.Context, network, address string, 
 }
 
 func mediaPrivateIP(ip net.IP) bool {
-	return ip.IsLoopback() || ip.IsUnspecified() || ip.IsPrivate() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() || ip.IsMulticast()
+	if ip == nil || ip.IsLoopback() || ip.IsUnspecified() || ip.IsPrivate() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() || ip.IsMulticast() {
+		return true
+	}
+	for _, cidr := range []string{"100.64.0.0/10", "198.18.0.0/15", "192.0.2.0/24", "198.51.100.0/24", "203.0.113.0/24", "2001:db8::/32"} {
+		_, network, err := net.ParseCIDR(cidr)
+		if err == nil && network.Contains(ip) {
+			return true
+		}
+	}
+	return false
 }
 
 func mediaLoopbackContext(ctx context.Context) bool {

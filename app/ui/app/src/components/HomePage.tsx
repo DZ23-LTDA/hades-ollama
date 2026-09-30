@@ -50,6 +50,7 @@ export function HomePage() {
   const [selectionMode, setSelectionMode] = useState<"auto" | "manual">("auto");
   const [manualModel, setManualModel] = useState<Model | null>(null);
   const [attachments, setAttachments] = useState<Array<{ filename: string; data: Uint8Array }>>([]);
+  const [attachmentErrors, setAttachmentErrors] = useState<string[]>([]);
   const [importOpen, setImportOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [activeCommand, setActiveCommand] = useState(0);
@@ -93,11 +94,16 @@ export function HomePage() {
     setAttachments((current) => [...current, ...files]);
   };
 
+  const handleFilesAdded = (files: Array<{ filename: string; data: Uint8Array }>, errors: Array<{ filename: string; error: string }> = []) => {
+    addFiles(files.map((file) => ({ filename: file.filename, data: file.data })));
+    setAttachmentErrors(errors.map((item) => `${item.filename}: ${item.error}`));
+  };
+
   const handleFileInput = async (event: ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files ?? []);
     if (files.length === 0) return;
     const result = await processFiles(files, { maxFileSize: 10, hasVisionCapability: false });
-    addFiles(result.validFiles.map((file) => ({ filename: file.filename, data: file.data })));
+    handleFilesAdded(result.validFiles.map((file) => ({ filename: file.filename, data: file.data })), result.errors);
     event.target.value = "";
   };
 
@@ -147,7 +153,7 @@ export function HomePage() {
           <label htmlFor="home-objective" className="sr-only">Descreva uma tarefa</label>
           <div className="relative">
             <div className="absolute inset-x-0 bottom-full mb-2"><SlashCommandMenu query={query} activeIndex={activeCommand} onActiveIndexChange={setActiveCommand} onSelect={selectCommand} /></div>
-            <FileUpload onFilesAdded={(files) => addFiles(files.map((file) => ({ filename: file.filename, data: file.data })))}>
+            <FileUpload onFilesAdded={handleFilesAdded}>
             <div className="rounded-2xl border border-neutral-200 bg-white p-3 shadow-sm focus-within:border-neutral-400 dark:border-neutral-800 dark:bg-neutral-900">
               {attachments.length > 0 && <div className="mb-2 flex flex-wrap gap-1.5" aria-label="Arquivos anexados">{attachments.map((file, index) => <span key={`${file.filename}-${index}`} className="inline-flex items-center gap-1 rounded-lg bg-neutral-100 px-2 py-1 text-[11px] text-neutral-700 dark:bg-neutral-800 dark:text-neutral-200">{file.filename}<button type="button" aria-label={`Remover ${file.filename}`} onClick={() => setAttachments((current) => current.filter((_, fileIndex) => fileIndex !== index))}><XMarkIcon className="h-3 w-3" /></button></span>)}</div>}
               <div className="flex items-end gap-2">
@@ -156,6 +162,7 @@ export function HomePage() {
               <button type="button" onClick={start} disabled={!objective.trim()} aria-label="Iniciar no Console agentic" className="inline-flex h-10 shrink-0 items-center gap-2 rounded-xl bg-neutral-950 px-4 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-40 dark:bg-white dark:text-neutral-950"><PaperAirplaneIcon className="h-4 w-4" />Iniciar</button>
               </div>
               <input ref={fileInputRef} type="file" multiple className="hidden" onChange={(event) => void handleFileInput(event)} aria-label="Escolher arquivos para anexar" />
+              {attachmentErrors.length > 0 && <p role="alert" className="mt-2 text-xs text-rose-600 dark:text-rose-400">{attachmentErrors.join(" • ")}</p>}
               <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-neutral-100 pt-3 dark:border-neutral-800"><span className="text-[11px] font-medium text-neutral-500">IA da tarefa</span><button type="button" aria-pressed={selectionMode === "auto"} onClick={() => setSelectionMode("auto")} className={`rounded-lg px-2.5 py-1.5 text-[11px] font-medium ${selectionMode === "auto" ? "bg-neutral-900 text-white dark:bg-white dark:text-neutral-900" : "border border-neutral-200 text-neutral-600 dark:border-neutral-700 dark:text-neutral-300"}`}>Automático · grátis-primeiro</button><button type="button" aria-pressed={selectionMode === "manual"} onClick={() => setSelectionMode("manual")} className={`rounded-lg px-2.5 py-1.5 text-[11px] font-medium ${selectionMode === "manual" ? "bg-neutral-900 text-white dark:bg-white dark:text-neutral-900" : "border border-neutral-200 text-neutral-600 dark:border-neutral-700 dark:text-neutral-300"}`}>Manual</button>{selectionMode === "manual" && <ModelPicker chatId="new" selectedModelOverride={manualModel} onModelSelectModel={setManualModel} selectableOnly buttonLabel={manualModel ? `${manualModel.model} · ${manualModel.cost_tag || (manualModel.kind === "remote" ? "pago" : manualModel.kind === "cli_subscription" ? "0-assinatura" : "0-local")}` : "Escolher modelo PASS"} />}</div>
               <p className="mt-2 text-[11px] text-neutral-400">Automático usa o roteador do runtime. Manual respeita somente modelos disponíveis no catálogo; anexos seguem os limites locais de arquivo.</p>
             </div>

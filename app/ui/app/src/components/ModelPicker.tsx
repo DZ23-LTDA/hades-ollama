@@ -162,6 +162,8 @@ export const ModelPicker = forwardRef<
         ref={ref}
         type="button"
         title="Select model"
+        aria-haspopup="listbox"
+        aria-expanded={isOpen}
         onClick={() => {
           const newState = !isOpen;
           setIsOpen(newState);
@@ -206,6 +208,7 @@ export const ModelPicker = forwardRef<
             <input
               ref={searchInputRef}
               type="text"
+              aria-label="Buscar modelos"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Find model..."
@@ -327,6 +330,8 @@ export const ModelList = forwardRef(function ModelList(
   return (
     <div
       ref={scrollContainerRef}
+      role="listbox"
+      aria-label="Modelos disponíveis"
       className="h-64 overflow-y-auto overflow-x-hidden"
     >
       {sortedModels.length === 0 ? (
@@ -351,18 +356,21 @@ export const ModelList = forwardRef(function ModelList(
               )}
               <button
                 type="button"
+                role="option"
+                aria-selected={selectedModel?.model === model.model}
                 disabled={unavailable}
                 onClick={() => {
                   if (unavailable) return;
                   onModelSelect(model);
                 }}
                 onMouseEnter={() => !unavailable && setHighlightedIndex(index)}
+                onFocus={() => !unavailable && setHighlightedIndex(index)}
                 title={
                   unavailable
                     ? model.reason || "Configure a credencial deste provedor para usar o modelo"
                     : undefined
                 }
-                className={`flex w-full items-center gap-2 px-3 py-2 focus:outline-none ${
+                className={`flex w-full items-center gap-2 px-3 py-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500 ${
                   unavailable
                     ? "cursor-not-allowed opacity-40 bg-neutral-50/50 dark:bg-neutral-800/30"
                     : "cursor-pointer hover:bg-neutral-100 dark:hover:bg-neutral-700/60"

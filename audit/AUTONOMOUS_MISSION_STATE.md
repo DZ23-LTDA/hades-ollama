@@ -1,5 +1,30 @@
 # Estado da missão autônoma — Ollama DZ23 Agentic Platform
 
+## Checkpoint vigente — Auditoria ampla e hardening local — 2026-09-30 19:41 -03
+```yaml
+state: LOCAL_FIXES_APPLIED_GATES_PENDING
+branch: recovery/ollama-full-snapshot
+scope: auditoria ampla de segurança, qualidade, UX e release
+implemented:
+  - reject imported .git control plane and validate contained Git worktree
+  - reject self-approval for deployment ledger while preserving replay conflict
+  - harden media/download redirects and special-use IP handling
+  - bound/redact WhatsApp error responses
+  - atomic builder export with regular-file-only policy and artifact descriptor close
+  - accessible ModelPicker/import dialog; Home attachment errors visible
+  - authenticated artifact preview/download and WhatsApp admin RBAC
+  - reproducible Linux metadata and trusted release signing key requirement
+proofs_local:
+  - go test ./internal/agent ./server: PASS
+  - frontend tsc/lint/vitest/build: PASS
+pending:
+  - contracts/integrity and full platform gates
+  - final static scan and diff review
+  - commit/push and remote CI on final SHA
+  - real browser re-audit for changed Studio/Import flows
+next_action: run remaining gates; fix only reproducible failures; do not claim production or 100% parity
+```
+
 ## Checkpoint vigente — UI-2 launcher central Home/Nova tarefa — 2026-09-30 19:00 -03
 ```yaml
 state: COMPLETED_CI_GREEN
@@ -2632,4 +2657,31 @@ facts:
   - importador seguro foi implementado no runtime, com egress, limites ZIP e sem execução do código importado
 next_action: adicionar testes focados, executar gates disponíveis e corrigir contratos
 rollback: preservar commit 2b6ff7d7; não usar reset/clean/force-push
+```
+
+
+## Checkpoint vigente — Auditoria ampla e correções — 2026-09-30 19:16 -03
+```yaml
+state: AUDITING
+mission: auditar e corrigir de ponta a ponta o projeto sem push remoto
+branch: recovery/ollama-full-snapshot
+head: 943339931bfc9fac995b12c77313264ce5b4e08b
+worktree: clean_before_audit
+remote: origin/recovery/ollama-full-snapshot
+scope:
+  - backend Go/runtime/API e fronteiras de tenant, approvals, egress, uploads, execução e integrações
+  - frontend React/TypeScript, acessibilidade, responsividade e fluxos reais Playwright
+  - native/CMake, mobile, Docker, CI, scripts, documentação e coerência de claims
+constraints:
+  - preservar trabalho preexistente; sem reset/clean/rebase/merge/exclusões destrutivas
+  - sem push, PR, publicação, deploy, serviços pagos ou credenciais reais
+acceptance:
+  - reproduzir achados confirmados, corrigir causa raiz quando possível e adicionar regressões
+  - executar gates reais e registrar antes/depois, evidências e bloqueios externos
+  - criar docs/auditoria.md e atualizar MEMORIA.md antes de encerrar
+baseline_observed:
+  - UI preview e backend local estavam ativos; serão encerrados ao final se iniciados/reutilizados pela auditoria
+  - último commit é documentação UI-2; não há alterações não commitadas
+next_action: executar linha de base de testes/build/vet/integridade e mapear falhas reais
+rollback: preservar HEAD 94333993; não descartar alterações de terceiros
 ```

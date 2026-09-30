@@ -183,6 +183,9 @@ func (s *DeploymentApprovalStore) Decide(id, organizationID, builderID, provider
 	if approval.Status != DeploymentApprovalPending {
 		return DeploymentApproval{}, ErrDeploymentApprovalConflict
 	}
+	if actorID == approval.RequestedBy {
+		return DeploymentApproval{}, errors.New("deployment approval requires a different actor than the requester")
+	}
 	if err := validateDeploymentApprovalRecord(approval); err != nil {
 		return DeploymentApproval{}, fmt.Errorf("deployment approval is invalid: %w", err)
 	}

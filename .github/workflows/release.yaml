@@ -39,9 +39,9 @@ jobs:
           RELEASE_VERSION: ${{ inputs.release_version }}
         run: |
           version="$RELEASE_VERSION"
-          case "$version" in
-            ''|*[!0-9.]*|.*|*.) echo "Invalid release_version: $version"; exit 1 ;;
-          esac
+          if ! [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+([-.][0-9A-Za-z.-]+)?$ ]]; then
+            echo "Invalid release_version: $version"; exit 1
+          fi
           echo GOFLAGS="'-ldflags=-w -s \"-X=github.com/ollama/ollama/version.Version=$version\" \"-X=github.com/ollama/ollama/server.mode=release\"'" | tee -a $GITHUB_OUTPUT
           echo VERSION="$version" | tee -a $GITHUB_OUTPUT
           echo vendorsha=$(cat LLAMA_CPP_VERSION)-$(cat MLX_VERSION)-$(cat MLX_C_VERSION) | tee -a $GITHUB_OUTPUT
@@ -922,9 +922,15 @@ jobs:
         run: sha256sum -c sha256sum.txt
         working-directory: dist
       - name: Sign release checksum manifest
+        env:
+          RELEASE_SIGNING_PRIVATE_KEY: ${{ secrets.RELEASE_SIGNING_PRIVATE_KEY }}
         run: |
           umask 077
-          openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:3072 -out release-signing-private.pem
+          if [ -z "$RELEASE_SIGNING_PRIVATE_KEY" ]; then
+            echo "::error::RELEASE_SIGNING_PRIVATE_KEY is not configured; refusing an unverifiable release signature"
+            exit 1
+          fi
+          printf '%s\n' "$RELEASE_SIGNING_PRIVATE_KEY" > release-signing-private.pem
           openssl rsa -in release-signing-private.pem -pubout -out release-signing-public.pem
           openssl dgst -sha256 -sign release-signing-private.pem -out sha256sum.txt.sig sha256sum.txt
           rm -f release-signing-private.pem
@@ -983,7 +989,7 @@ jobs:
 
           shopt -s nullglob
           pids=()
-          for payload in dist/*.txt dist/*.json dist/*.zip dist/*.tgz dist/*.tar.zst dist/*.exe dist/*.dmg dist/*.ps1 dist/*.sh ; do
+          for payload in dist/*.txt dist/*.sig dist/*.pem dist/*.json dist/*.zip dist/*.tgz dist/*.tar.zst dist/*.exe dist/*.dmg dist/*.ps1 dist/*.sh ; do
             # Publish the checksum manifest only after every payload has succeeded.
             [ "$payload" = dist/sha256sum.txt ] && continue
             echo "Uploading $payload"

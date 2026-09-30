@@ -246,9 +246,12 @@ func (b *blobDownload) run(ctx context.Context, requestURL *url.URL, opts *regis
 				if len(via) > 10 {
 					return errMaxRedirectsExceeded
 				}
+				if len(via) > 0 && via[len(via)-1].URL.Scheme == "https" && req.URL.Scheme != "https" {
+					return fmt.Errorf("download redirect would downgrade HTTPS")
+				}
 
 				// if the hostname is the same, allow the redirect
-				if req.URL.Hostname() == requestURL.Hostname() {
+				if strings.EqualFold(req.URL.Hostname(), requestURL.Hostname()) {
 					return nil
 				}
 

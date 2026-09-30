@@ -404,10 +404,12 @@ func (b *BuilderService) Export(ctx context.Context, id string) (BuilderProject,
 		return BuilderProject{}, "", os.ErrNotExist
 	}
 	path := filepath.Join(b.root, id+".zip")
-	file, err := os.OpenFile(path, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o600)
+	tmpPath := path + ".tmp-" + uuid.NewString()
+	file, err := os.OpenFile(tmpPath, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600)
 	if err != nil {
 		return BuilderProject{}, "", err
 	}
+	defer os.Remove(tmpPath)
 	archive := zip.NewWriter(file)
 	err = filepath.Walk(project.Root, func(path string, info os.FileInfo, walkErr error) error {
 		if walkErr != nil {
@@ -415,6 +417,9 @@ func (b *BuilderService) Export(ctx context.Context, id string) (BuilderProject,
 		}
 		if info.IsDir() {
 			return nil
+		}
+		if info.Mode()&os.ModeSymlink != 0 || !info.Mode().IsRegular() {
+			return fmt.Errorf("builder export rejects non-regular file: %s", path)
 		}
 		relative, err := filepath.Rel(project.Root, path)
 		if err != nil {
@@ -428,9 +433,9 @@ func (b *BuilderService) Export(ctx context.Context, id string) (BuilderProject,
 		if err != nil {
 			return err
 		}
-		defer input.Close()
-		_, err = io.Copy(writer, input)
-		return err
+		_, copyErr := io.Copy(writer, input)
+		closeErr := input.Close()
+		return errors.Join(copyErr, closeErr)
 	})
 	if closeErr := archive.Close(); err == nil {
 		err = closeErr
@@ -439,6 +444,9 @@ func (b *BuilderService) Export(ctx context.Context, id string) (BuilderProject,
 		err = closeErr
 	}
 	if err != nil {
+		return BuilderProject{}, "", err
+	}
+	if err := os.Rename(tmpPath, path); err != nil {
 		return BuilderProject{}, "", err
 	}
 	data, readErr := os.ReadFile(path)

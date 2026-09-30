@@ -9,7 +9,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -247,8 +246,8 @@ func (e *EvolutionAdapter) SendMessage(ctx context.Context, msg WhatsAppOutbound
 	defer resp.Body.Close()
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		respBody, _ := io.ReadAll(resp.Body)
-		return WhatsAppSendResult{}, fmt.Errorf("evolution send failed HTTP %d: %s", resp.StatusCode, string(respBody))
+		respBody, _ := ReadBoundedBody(resp.Body, 64<<10)
+		return WhatsAppSendResult{}, fmt.Errorf("evolution send failed HTTP %d: %s", resp.StatusCode, RedactDLP(strings.TrimSpace(string(respBody))))
 	}
 
 	var resMap map[string]any
@@ -517,8 +516,8 @@ func (c *CloudAPIAdapter) SendMessage(ctx context.Context, msg WhatsAppOutboundM
 	defer resp.Body.Close()
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		respBody, _ := io.ReadAll(resp.Body)
-		return WhatsAppSendResult{}, fmt.Errorf("cloud api send failed HTTP %d: %s", resp.StatusCode, string(respBody))
+		respBody, _ := ReadBoundedBody(resp.Body, 64<<10)
+		return WhatsAppSendResult{}, fmt.Errorf("cloud api send failed HTTP %d: %s", resp.StatusCode, RedactDLP(strings.TrimSpace(string(respBody))))
 	}
 
 	var resMap struct {

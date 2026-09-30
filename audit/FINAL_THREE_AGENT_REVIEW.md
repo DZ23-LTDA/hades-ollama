@@ -508,3 +508,21 @@ Próximo slice: corrigir somente os blockers remanescentes do Studio (invalidaç
 - **Regressões:** `TestRemoteMCPOAuthRefreshAndSessionResumption`, `TestRemoteMCPPairingIsAuthenticatedOneShotAndBoundToChallenge` e `TestRemoteMCPNotConfiguredStatusAndExpiredSession` passaram, junto da suíte Remote MCP existente.
 - **Gates:** `go build ./...`, `go test ./internal/agent ./server`, typecheck, lint, Vitest, build, contratos e integrity guard passaram localmente.
 - **Limite honesto:** sem servidor/credencial configurado o status é `NOT_CONFIGURED`; consentimento contra IdP, upstream MCP oficial, revogação externa e pairing físico permanecem `BLOCKED_EXTERNAL`/não executados neste sandbox.
+
+
+## Auditoria ampla de continuidade — 2026-09-30 19:16–19:41 -03
+
+Correções aplicadas nesta rodada, ainda **não publicadas nem validadas por CI remoto**:
+
+- **Importação:** ZIPs contendo o diretório `.git` agora são rejeitados antes da extração; o repositório é inicializado com configuração Git global/system desabilitada, `core.worktree` contido e validação de `rev-parse` do topo.
+- **Approval ledger:** aprovação de deploy rejeita o solicitante como aprovador; replay continua retornando conflito. Fixtures foram ajustadas para representar owner/admin distinto.
+- **Egress/media/download:** ranges especiais/documentação e URLs com query/fragmento foram endurecidos no media guard; downloads não permitem downgrade HTTPS em redirect e comparam hostname sem diferenciação de caixa.
+- **DLP/limites:** respostas de erro WhatsApp são limitadas a 64 KiB e redigidas antes de entrar em erros/logs.
+- **Builder/artifacts:** export usa arquivo temporário exclusivo, publicação atômica e rejeita symlinks/arquivos não regulares; o handler fecha o descriptor de artifact após o envio.
+- **UI/a11y:** ModelPicker recebeu listbox/option, estado selecionado, labels e foco visível; o diálogo de importação recebeu focus trap e restauração de foco; anexos inválidos na Home agora geram alerta visível em vez de descarte silencioso; downloads/preview do ArtifactsViewer usam `agentFetchBlob` com Bearer.
+- **Release:** pacote Linux usa o prefixo real `ollama-full-*`; `SOURCE_DATE_EPOCH` controla `built_at_utc`; SemVer aceita prerelease; a assinatura de release exige `RELEASE_SIGNING_PRIVATE_KEY` configurada, sem gerar chave efêmera.
+- **WhatsApp admin:** mutações de configuração/policy/DLQ exigem owner/admin quando auth está ligada.
+
+Gates locais desta rodada: frontend `tsc`, lint, Vitest (37 arquivos/257 testes) e build passaram; `go test ./internal/agent ./server` passou após as correções. A varredura final e os gates completos de plataforma/contratos ainda precisam ser executados. Não declarar CI, produção ou paridade 100% até esses gates e a validação de navegador/CI no SHA final.
+
+Limitações que permanecem abertas: DLP semântico completo para todas as estruturas de connector, RLS/distribuído real, sandbox físico/host, OAuth/IdP e dispositivos externos, assinatura de instalador, colaboração CRDT e deploy externo. Elas continuam BLOCKED_EXTERNAL/NOT_EXECUTED conforme evidência disponível.

@@ -23,7 +23,7 @@ func TestDeploymentApprovalPersistsAcrossRestartAndConsumesOnce(t *testing.T) {
 	if requested.Status != DeploymentApprovalPending || requested.Nonce == "" {
 		t.Fatalf("requested approval = %+v", requested)
 	}
-	if _, err := store.Decide(requested.ID, "org_a", "bld_a", "self", "operator_a", "self approved", requested.Nonce, true); err != nil {
+	if _, err := store.Decide(requested.ID, "org_a", "bld_a", "self", "admin_a", "approved", requested.Nonce, true); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := store.Decide(requested.ID, "org_a", "bld_a", "self", "operator_a", "replay", requested.Nonce, true); !errors.Is(err, ErrDeploymentApprovalConflict) {
@@ -41,7 +41,7 @@ func TestDeploymentApprovalPersistsAcrossRestartAndConsumesOnce(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if consumed.Status != DeploymentApprovalConsumed || consumed.DecidedBy != "operator_a" {
+	if consumed.Status != DeploymentApprovalConsumed || consumed.DecidedBy != "admin_a" {
 		t.Fatalf("consumed approval = %+v", consumed)
 	}
 	if _, err := reloaded.Consume(requested.ID, "org_a", "bld_a", "self", "staging", "manifest-a", requested.Nonce); !errors.Is(err, ErrDeploymentApprovalConflict) {
@@ -158,7 +158,7 @@ func TestDeploymentApprovalRedactsDecisionReasonInMemoryAndOnDisk(t *testing.T) 
 		t.Fatal(err)
 	}
 	secret := `{"api_key":"ghp_ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmn"}`
-	decided, err := store.Decide(requested.ID, "org_a", "bld_a", "self", "operator_a", secret, requested.Nonce, true)
+	decided, err := store.Decide(requested.ID, "org_a", "bld_a", "self", "admin_a", secret, requested.Nonce, true)
 	if err != nil {
 		t.Fatal(err)
 	}

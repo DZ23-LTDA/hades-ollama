@@ -24,6 +24,7 @@ if [ -z "${VERSION:-}" ]; then
   [ -n "$VERSION" ] || VERSION="0.0.0-dev+$(git rev-parse --short=12 HEAD 2>/dev/null || echo unknown)"
 fi
 COMMIT="$(git rev-parse --short=12 HEAD 2>/dev/null || echo unknown)"
+BUILD_EPOCH="${SOURCE_DATE_EPOCH:-0}"
 
 PKG="ollama-full-${VERSION}-linux-${ARCH}"
 STAGE="${OUTDIR}/${PKG}"
@@ -40,7 +41,7 @@ product=Ollama Full
 version=${VERSION}
 commit=${COMMIT}
 arch=${ARCH}
-built_at_utc=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+built_at_utc=$(date -u -d "@${BUILD_EPOCH}" +%Y-%m-%dT%H:%M:%SZ)
 signed=false
 META
 
