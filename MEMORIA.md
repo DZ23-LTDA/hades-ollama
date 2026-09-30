@@ -22,6 +22,8 @@ automatizado + execução real reproduzível em navegador (desktop e mobile), se
 
 ## Estado atual (2026-09-30 08:49 -03 / 2026-09-30 11:49 UTC)
 - **Repo:** github.com/DZ23-LTDA/ollama-classe-a-plus. Branch canônica: `recovery/ollama-full-snapshot`.
+- **STATUS DA MISSÃO: FASE 09 IMPLEMENTADA — Egress Zero-Trust Unificado em todas as saídas de rede (connectors, media, deploy, MCP remoto, push, multillm, WhatsApp) com DNS pinning, verificação de peer, bloqueio estrito de IP privado/metadata/rebinding, isolamento de credenciais em redirects, limitação de payload anti-DoS, auditoria auditável (/api/agent/v1/egress/logs e /status) e suíte de testes de regressão anti-bypass**
+- **FASE 09:** Implementada política única e centralizada em `internal/agent/egress_zero_trust.go` e `internal/multillm/egress_zero_trust.go`. Toda requisição de saída resolve todos os IPs via DNS e rejeita o host se qualquer endereço for privado/loopback/link-local/metadata (`169.254.169.254`), CGNAT ou IPv4-mapped IPv6 (protegendo contra DNS rebinding). Dials são fixados exclusivamente nos IPs aprovados com remoção forçada de proxies ambientais e TLS hooks que pudessem burlar a resolução; verificação estrita de peer address; bloqueio de redirects cross-host e downgrade HTTPS->HTTP com descarte forçado de headers de credenciais (`Authorization`, `Cookie`, `X-Api-Key`); proteção contra resource exhaustion com `ReadBoundedBody`. Registrador de auditoria em memória com endpoints `/api/agent/v1/egress/logs` e `/api/agent/v1/egress/status`. Suíte completa de testes de bypass passando em `internal/agent`, `internal/multillm` e `server`.
 - **STATUS DA MISSÃO: FASE 08 IMPLEMENTADA — Agente Sempre-Ligado / Loop Autônomo do Company OS com supervisor contínuo, disparo de schedules, ciclos autônomos, freios HITL obrigatórios e retomada pós-restart**
 - **FASE 08:** Supervisor contínuo em background (`internal/agent/supervisor.go`) acoplado ao `Runtime`. Executa tick periódico que processa schedules vencidos, avança ciclos de negócio da empresa (Company OS), reativa missões pendentes (`resumePending`) com suporte a lease/heartbeat e freios de segurança HITL que barram qualquer gasto ou publicação externa não autorizada em status `AWAITING_APPROVAL`. Rotas HTTP `/api/agent/v1/supervisor/*` (status, config, tick manual) e painel UI acessível integrado à CompanyWorkspacePage (`CompanySupervisorPanel.tsx`). Testes Go em `internal/agent` e `server` 100% PASS, typecheck e vitest verdes, e evidências Playwright desktop/mobile capturadas em `docs/evidencias/screen-company-supervisor-*.png` com console limpo.
 - **FASE 07:** WhatsApp Gateway com adapter duplo (Evolution API + Meta Cloud API), allowlist, anti-loop, DLQ, approval HITL e command bridge.
@@ -83,6 +85,45 @@ automatizado + execução real reproduzível em navegador (desktop e mobile), se
 
 ## Histórico de sessões
 <!-- Mais recente no topo. Uma entrada por sessão de trabalho. -->
+### 2026-09-30 11:15 -03 — Gemini — FASE 09: EGRESS ZERO-TRUST UNIFICADO (POLÍTICA ÚNICA, AUDITORIA E REGRESSÕES DE BYPASS)
+- **Implementação Go:**
+  - **1. Motor Egress Zero-Trust Centralizado (`internal/agent/egress_zero_trust.go`):**
+    - `ClassifyEgressIP`: classificação exaustiva e fail-closed de endereços de rede. Bloqueia loopback (`127.0.0.0/8`, `::1`), RFC 1918 e RFC 4193, link-local unicast/multicast (`169.254.0.0/16`, `fe80::/10`), cloud metadata (`169.254.169.254`), CGNAT (`100.64.0.0/10`), broadcast e unspecified (`0.0.0.0`, `::`). Trata e desempacota endereços IPv4-mapped IPv6 (`::ffff:127.0.0.1`, etc.).
+    - `ResolveAllPublicIPs`: resolve todos os IPs via DNS do host destino. Se *qualquer* IP for restrito, rejeita a resolução inteira (`ErrEgressBlockedDNSRebind`), blindando o agente contra ataques de DNS rebinding com respostas mistas.
+    - `NewEgressTransport`: transporte HTTP fixado (`pinned`) que disca unicamente para os IPs validados, desabilita proxies ambientais (`Proxy = nil`), remove interceptores TLS (`DialTLS = nil`, `DialTLSContext = nil`) e confere o peer address conectado via socket antes de transmitir dados.
+    - `NewEgressCheckRedirect`: política de redirect estrita que bloqueia redirects cross-host e downgrades de HTTPS para HTTP, e remove cabeçalhos sensíveis (`Authorization`, `Cookie`, `X-Api-Key`, `X-Auth-Token`) em qualquer salto.
+    - `ReadBoundedBody`: proteção nativa contra resource exhaustion / DoS em respostas upstream (limitação de leitura com `io.LimitReader`).
+    - `EgressAuditStore`: buffer circular thread-safe para auditoria de decisões de egress (timestamp, callsite, method, destination, host, resolved_ips, allowed, reason, latency_ms).
+  - **2. Integração em Todas as Saídas de Rede:**
+    - `internal/agent/whatsapp_adapter.go`: adaptadores Evolution API e Meta Cloud API agora usam `NewSafeEgressHTTPClient`.
+    - `internal/agent/ssrf.go`: `unsafeIP` atualizado para usar `ClassifyEgressIP`.
+    - `internal/multillm/egress_zero_trust.go` & `proxy.go`: multillm implementa a mesma política estrita de IP, DNS rebinding, descarte de credenciais e auditoria com `DefaultProviderEgressAuditor`.
+  - **3. Rotas HTTP de Auditoria (`server/egress_routes.go` e `server/agent_routes.go`):**
+    - `GET /api/agent/v1/egress/logs`: lista decisões auditadas com filtro por callsite e limit.
+    - `GET /api/agent/v1/egress/status`: resumo operacional de egress, contadores de allow/block e lista de proteções ativas.
+  - **4. Testes de Regressão Anti-Bypass (Estilo Mutação):**
+    - `internal/agent/egress_zero_trust_test.go`:
+      - `TestEgressSSRFBlocksInternalIPs`: tenta conectar a 127.0.0.1, 10.0.0.1, 192.168.1.1, 169.254.169.254, ::1, ::ffff:127.0.0.1, 100.64.0.1 e comprova bloqueio.
+      - `TestEgressDNSRebindingMixedRecordsRejected`: host com resposta mista (IP público + IP loopback/metadata) rejeitado fail-closed.
+      - `TestEgressRedirectBlocksUnapprovedHost`: redirect para host externo/interno diferente é barrado com `ErrEgressRedirectDisallowed`.
+      - `TestEgressRedirectStripsSensitiveCredentials`: credenciais vazadas em redirect são neutralizadas.
+      - `TestEgressResourceExhaustionPayloadBounded`: stream de 5MB com limite de 1MB rejeitado com `ErrEgressPayloadExceedsLimit`.
+      - `TestEgressAuditLogRecordsDecisions`: decisões permitidas e negadas registradas com callsite e motivo.
+      - `TestEgressPeerVerificationRejectsHijackedSocket`: conexão com socket desviado para loopback é encerrada.
+    - `internal/multillm/egress_zero_trust_test.go`: 4 testes cobrindo SSRF, DNS rebinding, credenciais e auditoria de providers.
+    - `server/egress_zero_trust_test.go`: teste completo das rotas de status e logs auditáveis.
+- **Validação & Gates:**
+  - `go test -v -run "Egress|SSRF|ZeroTrust|Bypass|Redirect|Credential" ./internal/agent ./internal/multillm ./server` -> 100% PASS.
+  - `go build ./...` -> PASS.
+  - `go test ./internal/agent ./server` -> PASS.
+  - `npx tsc -b`, `npm run lint`, `npx vitest run` (36 arquivos, 255 testes), `npm run build` -> 100% PASS.
+  - `node scripts/verify-contracts.mjs` -> PASS.
+  - `bash scripts/check-class-a-plus-integrity.sh` -> PASS.
+  - `gofmt -l internal/agent internal/multillm server/agent_routes.go` -> LIMPO.
+  - `python3 scripts/classify_ci_surfaces_test.py` -> PASS.
+  - Compilação cruzada Windows (`GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go test ./internal/agent`) -> PASS.
+- **Próximo passo:** Prosseguir para próximas etapas conforme solicitação.
+
 ### 2026-09-30 10:45 -03 — Gemini — FASE 08: AGENTE SEMPRE-LIGADO / LOOP AUTÔNOMO DO COMPANY OS
 - **Implementação Go:**
   - **1. Supervisor Contínuo (`internal/agent/supervisor.go`):**

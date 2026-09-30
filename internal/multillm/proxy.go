@@ -410,10 +410,31 @@ func resolveProviderDestination(ctx context.Context, provider Provider) ([]net.I
 	approved := make([]net.IP, 0, len(addresses))
 	for _, address := range addresses {
 		if unsafeProviderIP(address.IP) {
+			DefaultProviderEgressAuditor.Record(ProviderEgressDecision{
+				Timestamp:   time.Now(),
+				Provider:    provider.Name,
+				Destination: provider.BaseURL,
+				Host:        base.Hostname(),
+				Allowed:     false,
+				Reason:      fmt.Sprintf("provider host resolved to restricted address %s", address.IP.String()),
+			})
 			return nil, errors.New("provider host resolved to a private or link-local address")
 		}
 		approved = append(approved, append(net.IP(nil), address.IP...))
 	}
+	ipStrs := make([]string, len(approved))
+	for i, ip := range approved {
+		ipStrs[i] = ip.String()
+	}
+	DefaultProviderEgressAuditor.Record(ProviderEgressDecision{
+		Timestamp:   time.Now(),
+		Provider:    provider.Name,
+		Destination: provider.BaseURL,
+		Host:        base.Hostname(),
+		ResolvedIPs: ipStrs,
+		Allowed:     true,
+		Reason:      "approved provider public destination",
+	})
 	return approved, nil
 }
 

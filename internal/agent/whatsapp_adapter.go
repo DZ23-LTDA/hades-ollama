@@ -83,9 +83,11 @@ type EvolutionAdapter struct {
 func NewEvolutionAdapter(cfg EvolutionConfig) *EvolutionAdapter {
 	return &EvolutionAdapter{
 		config: cfg,
-		httpClient: &http.Client{
-			Timeout: 10 * time.Second,
-		},
+		httpClient: NewSafeEgressHTTPClient(EgressOptions{
+			Callsite:      "whatsapp_evolution",
+			Timeout:       10 * time.Second,
+			AllowLoopback: true,
+		}),
 	}
 }
 
@@ -267,9 +269,11 @@ type CloudAPIAdapter struct {
 func NewCloudAPIAdapter(cfg CloudAPIConfig) *CloudAPIAdapter {
 	return &CloudAPIAdapter{
 		config: cfg,
-		httpClient: &http.Client{
-			Timeout: 10 * time.Second,
-		},
+		httpClient: NewSafeEgressHTTPClient(EgressOptions{
+			Callsite:      "whatsapp_cloud_api",
+			Timeout:       10 * time.Second,
+			AllowLoopback: false,
+		}),
 	}
 }
 

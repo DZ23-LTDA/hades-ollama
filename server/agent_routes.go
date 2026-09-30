@@ -519,6 +519,8 @@ func (a *agentAPI) register(r *gin.Engine) {
 	group.GET("/supervisor/status", a.supervisorStatus)
 	group.POST("/supervisor/config", a.supervisorConfig)
 	group.POST("/supervisor/tick", a.supervisorTick)
+	group.GET("/egress/logs", a.getEgressLogs)
+	group.GET("/egress/status", a.getEgressStatus)
 }
 
 func (a *agentAPI) authMiddleware(c *gin.Context) {

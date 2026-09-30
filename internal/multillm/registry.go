@@ -327,7 +327,8 @@ func (r *Registry) modelAvailable(m Model) bool {
 }
 
 func unsafeProviderIP(ip net.IP) bool {
-	return ip.IsLoopback() || ip.IsPrivate() || ip.IsUnspecified() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast()
+	blocked, _ := ClassifyProviderEgressIP(ip)
+	return blocked
 }
 
 func (r *Registry) supportsPath(m Model, path string) bool {
