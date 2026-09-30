@@ -2,11 +2,20 @@ package agent
 
 import (
 	"context"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
 	"net/http"
 	"strings"
 	"testing"
 	"time"
 )
+
+func signedWhatsAppPayload(body, secret string) string {
+	h := hmac.New(sha256.New, []byte(secret))
+	_, _ = h.Write([]byte(body))
+	return "sha256=" + hex.EncodeToString(h.Sum(nil))
+}
 
 // MockWhatsAppAdapter implements WhatsAppAdapter for deterministic testing.
 type MockWhatsAppAdapter struct {
@@ -92,6 +101,60 @@ func TestWhatsAppAdapterStatusWithoutCredentials(t *testing.T) {
 	gw := NewWhatsAppGateway(WhatsAppGatewayConfig{}, nil)
 	if gw.Status() != GateStatusNotConfigured {
 		t.Fatalf("expected gateway status %s without config, got %s", GateStatusNotConfigured, gw.Status())
+	}
+}
+
+func TestWhatsAppCloudWebhookHMACAndIdentity(t *testing.T) {
+	adapter := NewCloudAPIAdapter(CloudAPIConfig{PhoneNumberID: "phone-001", AppSecret: "app-secret"})
+	body := `{"object":"whatsapp","entry":[{"changes":[{"value":{"metadata":{"phone_number_id":"phone-001"}}}]}]}`
+	header := http.Header{"X-Hub-Signature-256": []string{signedWhatsAppPayload(body, "app-secret")}}
+	if err := adapter.ValidateWebhook([]byte(body), header); err != nil {
+		t.Fatalf("valid webhook rejected: %v", err)
+	}
+	header.Set("X-Hub-Signature-256", signedWhatsAppPayload(body, "wrong-secret"))
+	if err := adapter.ValidateWebhook([]byte(body), header); err != ErrWhatsAppInvalidSignature {
+		t.Fatalf("invalid signature must be rejected, got %v", err)
+	}
+	missingSecret := NewCloudAPIAdapter(CloudAPIConfig{PhoneNumberID: "phone-001"})
+	if err := missingSecret.ValidateWebhook([]byte(body), http.Header{}); err != ErrWhatsAppWebhookNotConfigured {
+		t.Fatalf("missing app secret must be NOT_CONFIGURED, got %v", err)
+	}
+	badObject := `{"object":"not-whatsapp","entry":[{"changes":[{"value":{"metadata":{"phone_number_id":"phone-001"}}}]}]}`
+	if err := adapter.ValidateWebhook([]byte(badObject), http.Header{"X-Hub-Signature-256": []string{signedWhatsAppPayload(badObject, "app-secret")}}); err != ErrWhatsAppInvalidPayload {
+		t.Fatalf("wrong object must be rejected, got %v", err)
+	}
+	badPhone := `{"object":"whatsapp","entry":[{"changes":[{"value":{"metadata":{"phone_number_id":"phone-999"}}}]}]}`
+	if err := adapter.ValidateWebhook([]byte(badPhone), http.Header{"X-Hub-Signature-256": []string{signedWhatsAppPayload(badPhone, "app-secret")}}); err != ErrWhatsAppInvalidPayload {
+		t.Fatalf("wrong phone_number_id must be rejected, got %v", err)
+	}
+}
+
+func TestWhatsAppOutboundRequiresAllowlistAndApproval(t *testing.T) {
+	mock := NewMockWhatsAppAdapter(WhatsAppBackendEvolution, GateStatusPass)
+	gw := NewWhatsAppGateway(WhatsAppGatewayConfig{Allowlist: []WhatsAppContactPolicy{
+		{PhoneNumber: "5511999999999", Role: ContactRoleOwner, Allowed: true},
+		{PhoneNumber: "5511888888888", Role: ContactRoleOperator, Allowed: true},
+	}}, nil)
+	gw.SetAdapter(WhatsAppBackendEvolution, mock)
+	msg := WhatsAppOutboundMessage{To: "5511888888888", Text: "mensagem controlada"}
+	if _, err := gw.SendMessage(context.Background(), msg); err != ErrWhatsAppOutboundApproval {
+		t.Fatalf("missing HITL approval must block, got %v", err)
+	}
+	msg.To = "5511777777777"
+	if _, err := gw.SendMessage(context.Background(), msg); err != ErrWhatsAppUnauthorized {
+		t.Fatalf("recipient outside allowlist must block, got %v", err)
+	}
+	msg.To = "5511888888888"
+	approvalID, err := gw.RequestOutboundApproval("5511999999999", msg)
+	if err != nil {
+		t.Fatalf("request approval: %v", err)
+	}
+	if err := gw.ApproveOutbound(approvalID, "5511999999999"); err != nil {
+		t.Fatalf("approve outbound: %v", err)
+	}
+	msg.ApprovalID = approvalID
+	if _, err := gw.SendMessage(context.Background(), msg); err != nil {
+		t.Fatalf("approved allowlisted outbound rejected: %v", err)
 	}
 }
 

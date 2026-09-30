@@ -3,6 +3,9 @@ package agent
 import (
 	"bytes"
 	"context"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -44,6 +47,7 @@ type WhatsAppOutboundMessage struct {
 	MediaURL   string `json:"media_url,omitempty"`
 	MediaBytes []byte `json:"-"`
 	FileName   string `json:"file_name,omitempty"`
+	ApprovalID string `json:"approval_id,omitempty"`
 }
 
 // WhatsAppSendResult is the outcome of an outbound send operation.
@@ -62,15 +66,27 @@ type WhatsAppAdapter interface {
 	SendMessage(ctx context.Context, msg WhatsAppOutboundMessage) (WhatsAppSendResult, error)
 }
 
+// webhookAuthenticator authenticates the raw provider payload before parsing.
+type webhookAuthenticator interface {
+	ValidateWebhook(body []byte, header http.Header) error
+}
+
+var (
+	ErrWhatsAppWebhookNotConfigured = errors.New("whatsapp webhook is NOT_CONFIGURED: app secret is required")
+	ErrWhatsAppInvalidSignature     = errors.New("whatsapp webhook signature is invalid")
+	ErrWhatsAppInvalidPayload       = errors.New("whatsapp webhook identity is invalid")
+)
+
 // -------------------------------------------------------------------------
 // Evolution API Backend
 // -------------------------------------------------------------------------
 
 // EvolutionConfig holds credentials and endpoint for Evolution API.
 type EvolutionConfig struct {
-	BaseURL  string `json:"base_url"`
-	APIKey   string `json:"api_key"`
-	Instance string `json:"instance"`
+	BaseURL       string `json:"base_url"`
+	APIKey        string `json:"api_key"`
+	Instance      string `json:"instance"`
+	WebhookSecret string `json:"webhook_secret,omitempty"`
 }
 
 // EvolutionAdapter implements WhatsAppAdapter for Evolution API.
@@ -96,7 +112,7 @@ func (e *EvolutionAdapter) Backend() WhatsAppBackendType {
 }
 
 func (e *EvolutionAdapter) Status() GateStatus {
-	if strings.TrimSpace(e.config.BaseURL) == "" || strings.TrimSpace(e.config.APIKey) == "" || strings.TrimSpace(e.config.Instance) == "" {
+	if strings.TrimSpace(e.config.BaseURL) == "" || strings.TrimSpace(e.config.APIKey) == "" || strings.TrimSpace(e.config.Instance) == "" || strings.TrimSpace(e.config.WebhookSecret) == "" {
 		return GateStatusNotConfigured
 	}
 	return GateStatusPass
@@ -104,14 +120,18 @@ func (e *EvolutionAdapter) Status() GateStatus {
 
 func (e *EvolutionAdapter) StatusDetails() string {
 	if e.Status() == GateStatusNotConfigured {
-		return "Evolution API não configurada (requer base_url, api_key e instance)"
+		return "Evolution API não configurada (requer base_url, api_key, instance e webhook_secret)"
 	}
 	return fmt.Sprintf("Evolution API ativa (instância: %s)", e.config.Instance)
 }
 
 func (e *EvolutionAdapter) VerifyWebhook(req *http.Request) ([]byte, bool) {
-	// Evolution API does not require challenge verification; accept POST payloads
-	return nil, true
+	// Evolution has no Meta-style challenge. Unsigned payloads are never accepted.
+	return nil, false
+}
+
+func (e *EvolutionAdapter) ValidateWebhook(body []byte, header http.Header) error {
+	return validateWhatsAppHMAC(body, header.Get("X-Hub-Signature-256"), e.config.WebhookSecret)
 }
 
 func (e *EvolutionAdapter) ParseWebhook(body []byte, header http.Header) ([]WhatsAppInboundMessage, error) {
@@ -282,7 +302,7 @@ func (c *CloudAPIAdapter) Backend() WhatsAppBackendType {
 }
 
 func (c *CloudAPIAdapter) Status() GateStatus {
-	if strings.TrimSpace(c.config.PhoneNumberID) == "" || strings.TrimSpace(c.config.AccessToken) == "" {
+	if strings.TrimSpace(c.config.PhoneNumberID) == "" || strings.TrimSpace(c.config.AccessToken) == "" || strings.TrimSpace(c.config.AppSecret) == "" {
 		return GateStatusNotConfigured
 	}
 	return GateStatusPass
@@ -290,7 +310,7 @@ func (c *CloudAPIAdapter) Status() GateStatus {
 
 func (c *CloudAPIAdapter) StatusDetails() string {
 	if c.Status() == GateStatusNotConfigured {
-		return "WhatsApp Cloud API não configurada (requer phone_number_id e access_token)"
+		return "WhatsApp Cloud API não configurada (requer phone_number_id, access_token e app_secret)"
 	}
 	return fmt.Sprintf("WhatsApp Cloud API ativa (Phone ID: %s)", c.config.PhoneNumberID)
 }
@@ -300,10 +320,67 @@ func (c *CloudAPIAdapter) VerifyWebhook(req *http.Request) ([]byte, bool) {
 	token := req.URL.Query().Get("hub.verify_token")
 	challenge := req.URL.Query().Get("hub.challenge")
 
-	if mode == "subscribe" && token != "" && token == c.config.VerifyToken {
+	if strings.TrimSpace(c.config.VerifyToken) != "" && mode == "subscribe" && token != "" && token == c.config.VerifyToken {
 		return []byte(challenge), true
 	}
 	return nil, false
+}
+
+func (c *CloudAPIAdapter) ValidateWebhook(body []byte, header http.Header) error {
+	if err := validateWhatsAppHMAC(body, header.Get("X-Hub-Signature-256"), c.config.AppSecret); err != nil {
+		return err
+	}
+
+	var root struct {
+		Object string `json:"object"`
+		Entry  []struct {
+			Changes []struct {
+				Value struct {
+					Metadata struct {
+						PhoneNumberID string `json:"phone_number_id"`
+					} `json:"metadata"`
+				} `json:"value"`
+			} `json:"changes"`
+		} `json:"entry"`
+	}
+	if err := json.Unmarshal(body, &root); err != nil {
+		return fmt.Errorf("%w: invalid JSON", ErrWhatsAppInvalidPayload)
+	}
+	if root.Object != "whatsapp" || strings.TrimSpace(c.config.PhoneNumberID) == "" || len(root.Entry) == 0 {
+		return ErrWhatsAppInvalidPayload
+	}
+	for _, entry := range root.Entry {
+		if len(entry.Changes) == 0 {
+			return ErrWhatsAppInvalidPayload
+		}
+		for _, change := range entry.Changes {
+			if change.Value.Metadata.PhoneNumberID == "" || change.Value.Metadata.PhoneNumberID != c.config.PhoneNumberID {
+				return ErrWhatsAppInvalidPayload
+			}
+		}
+	}
+	return nil
+}
+
+func validateWhatsAppHMAC(body []byte, signature, secret string) error {
+	secret = strings.TrimSpace(secret)
+	if secret == "" {
+		return ErrWhatsAppWebhookNotConfigured
+	}
+	signature = strings.TrimSpace(signature)
+	if !strings.HasPrefix(signature, "sha256=") {
+		return ErrWhatsAppInvalidSignature
+	}
+	provided, err := hex.DecodeString(strings.TrimPrefix(signature, "sha256="))
+	if err != nil {
+		return ErrWhatsAppInvalidSignature
+	}
+	digest := hmac.New(sha256.New, []byte(secret))
+	_, _ = digest.Write(body)
+	if !hmac.Equal(provided, digest.Sum(nil)) {
+		return ErrWhatsAppInvalidSignature
+	}
+	return nil
 }
 
 func (c *CloudAPIAdapter) ParseWebhook(body []byte, header http.Header) ([]WhatsAppInboundMessage, error) {

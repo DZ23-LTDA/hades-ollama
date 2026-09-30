@@ -403,8 +403,8 @@ Auditoria somente leitura do checkout `0d3aa7318367008aec96e21a77408f016f5936c9`
 
 #### HIGH
 
-1. **Webhook WhatsApp sem autenticação de origem na rota.** `server/whatsapp_routes.go` aceita challenge sem comparar o verify token configurado e encaminha POST sem validação HMAC/assinatura, `object` e `phone_number_id`.
-2. **Envio outbound WhatsApp sem allowlist/approval específico.** `POST /whatsapp/send` valida apenas destino/texto e chama o adapter; não impõe destinatário allowlisted, permissão dedicada ou HITL para novo destinatário.
+1. **RESOLVIDO — Webhook WhatsApp autenticado.** O GET delega o verify token ao adapter ativo; o POST valida HMAC-SHA256 do corpo cru em comparação constante, exige app secret, `object=whatsapp` e `phone_number_id` configurado. Assinatura inválida retorna 401 e segredo ausente retorna NOT_CONFIGURED/424.
+2. **RESOLVIDO — Outbound WhatsApp fail-closed.** `SendMessage` exige destinatário allowlisted, adapter configurado e aprovação HITL aprovada e vinculada ao destinatário exato; sem qualquer requisito retorna bloqueio e nunca chama o adapter.
 3. **Boundary de tenant frágil quando auth está desabilitado.** O header de organização pode selecionar escopo e `missionByID` não compara organização nesse modo; exposição compartilhada deve permanecer bloqueada.
 4. **Preview/download do Studio não encaminham Bearer.** Navegação direta do iframe e download via link não carregam o header usado por `agentFetch`; o fluxo autenticado pode retornar 401.
 5. **Preview do Studio sem `sandbox`.** A matriz declarava iframe sandboxed, mas o iframe do Studio não tinha o atributo; conteúdo de projeto é servido na mesma origem.
@@ -429,4 +429,12 @@ Auditoria somente leitura do checkout `0d3aa7318367008aec96e21a77408f016f5936c9`
 
 ### Próximo passo obrigatório
 
-Implementar primeiro a autenticação de webhook WhatsApp e a política outbound fail-closed; depois corrigir boundary tenant e Studio (Bearer, sandbox, invalidação de export e concorrência), atualizar matriz/árvore e repetir os três pareceres independentes. Dependências externas continuam `NOT_CONFIGURED`/`BLOCKED_EXTERNAL`.
+Próximo slice: corrigir boundary tenant e Studio (Bearer, sandbox, invalidação de export e concorrência), atualizar matriz/árvore e repetir os três pareceres independentes. Dependências externas continuam `NOT_CONFIGURED`/`BLOCKED_EXTERNAL`.
+
+
+## CA-1 — Correção dos achados WhatsApp 1 e 2 — 2026-09-30
+
+- **Webhook:** `internal/agent/whatsapp_adapter.go` implementa HMAC-SHA256 sobre o corpo cru, comparação constante, bloqueio sem `app_secret`/`webhook_secret`, validação de `object` e `phone_number_id`; `server/whatsapp_routes.go` delega o handshake GET ao adapter e retorna 401/424 de forma honesta.
+- **Outbound:** `internal/agent/whatsapp_gateway.go` exige allowlist e aprovação HITL aprovada, vinculada ao número exato; `RequestOutboundApproval`/`ApproveOutbound` registram o ciclo sem chamar provider antes da aprovação.
+- **Regressões:** `TestWhatsAppCloudWebhookHMACAndIdentity`, `TestWhatsAppOutboundRequiresAllowlistAndApproval` e `TestWhatsAppRoutesWebhookRejectsInvalidSignatureAndIdentity`; focused Go e gates completos passaram.
+- **Estado:** achados 1 e 2 encerrados. Permanecem abertos somente os achados 3–5 e melhorias listadas acima.

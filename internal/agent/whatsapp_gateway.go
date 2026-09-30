@@ -37,6 +37,7 @@ type WhatsAppPendingApproval struct {
 	ActionDesc  string                 `json:"action_desc"`
 	CommandText string                 `json:"command_text"`
 	OriginalMsg WhatsAppInboundMessage `json:"original_msg"`
+	OutboundTo  string                 `json:"outbound_to,omitempty"`
 	Status      string                 `json:"status"` // PENDING, APPROVED, REJECTED, EXPIRED
 	CreatedAt   time.Time              `json:"created_at"`
 	ExpiresAt   time.Time              `json:"expires_at"`
@@ -92,6 +93,7 @@ var (
 	ErrWhatsAppUnauthorized     = errors.New("whatsapp: contact not authorized in allowlist")
 	ErrWhatsAppUnknownBackend   = errors.New("whatsapp: unknown or inactive backend adapter")
 	ErrWhatsAppAdapterNotConfig = errors.New("whatsapp: adapter is NOT_CONFIGURED")
+	ErrWhatsAppOutboundApproval = errors.New("whatsapp: outbound message requires an approved HITL approval")
 )
 
 // NewWhatsAppGateway creates and initializes a WhatsAppGateway.
@@ -168,10 +170,23 @@ func (g *WhatsAppGateway) ActiveBackend() WhatsAppBackendType {
 	return g.activeBackend
 }
 
+// VerifyWebhook verifies the active backend's challenge handshake.
+func (g *WhatsAppGateway) VerifyWebhook(req *http.Request) ([]byte, bool) {
+	g.mu.RLock()
+	adapter, ok := g.adapters[g.activeBackend]
+	g.mu.RUnlock()
+	if !ok || adapter == nil {
+		return nil, false
+	}
+	return adapter.VerifyWebhook(req)
+}
+
 // SendMessage sends an outbound message using the active backend adapter.
 func (g *WhatsAppGateway) SendMessage(ctx context.Context, msg WhatsAppOutboundMessage) (WhatsAppSendResult, error) {
 	g.mu.RLock()
 	adapter, ok := g.adapters[g.activeBackend]
+	policy, allowed := g.allowlist[cleanWhatsAppNumber(msg.To)]
+	approval, approved := g.pendingApprovals[msg.ApprovalID]
 	g.mu.RUnlock()
 
 	if !ok || adapter == nil {
@@ -179,6 +194,12 @@ func (g *WhatsAppGateway) SendMessage(ctx context.Context, msg WhatsAppOutboundM
 	}
 	if adapter.Status() == GateStatusNotConfigured {
 		return WhatsAppSendResult{}, ErrWhatsAppAdapterNotConfig
+	}
+	if !allowed || !policy.Allowed {
+		return WhatsAppSendResult{}, ErrWhatsAppUnauthorized
+	}
+	if msg.ApprovalID == "" || !approved || approval.Status != "APPROVED" || approval.OutboundTo != cleanWhatsAppNumber(msg.To) {
+		return WhatsAppSendResult{}, ErrWhatsAppOutboundApproval
 	}
 	return adapter.SendMessage(ctx, msg)
 }
@@ -270,6 +291,45 @@ func (g *WhatsAppGateway) Authorize(from string) (WhatsAppContactPolicy, error) 
 	return policy, nil
 }
 
+// RequestOutboundApproval creates an auditable HITL approval for a manual send.
+// It never contacts the provider. The returned ID must be approved before send.
+func (g *WhatsAppGateway) RequestOutboundApproval(from string, msg WhatsAppOutboundMessage) (string, error) {
+	policy, err := g.Authorize(from)
+	if err != nil || policy.Role != ContactRoleOwner {
+		return "", ErrWhatsAppUnauthorized
+	}
+	if cleanWhatsAppNumber(msg.To) == "" || strings.TrimSpace(msg.Text) == "" {
+		return "", errors.New("whatsapp: outbound recipient and text are required")
+	}
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	id := "appr_" + uuid.NewString()[:8]
+	now := time.Now().UTC()
+	g.pendingApprovals[id] = &WhatsAppPendingApproval{
+		ID: id, From: policy.PhoneNumber, ActionDesc: "Envio outbound WhatsApp",
+		CommandText: "send_whatsapp", Status: "PENDING", CreatedAt: now,
+		OutboundTo: cleanWhatsAppNumber(msg.To),
+		ExpiresAt:  now.Add(15 * time.Minute),
+	}
+	return id, nil
+}
+
+// ApproveOutbound records owner HITL approval for a previously requested send.
+func (g *WhatsAppGateway) ApproveOutbound(approvalID, approver string) error {
+	policy, err := g.Authorize(approver)
+	if err != nil || policy.Role != ContactRoleOwner {
+		return ErrWhatsAppUnauthorized
+	}
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	appr, ok := g.pendingApprovals[strings.TrimSpace(approvalID)]
+	if !ok || appr.Status != "PENDING" || time.Now().UTC().After(appr.ExpiresAt) {
+		return ErrWhatsAppOutboundApproval
+	}
+	appr.Status = "APPROVED"
+	return nil
+}
+
 // Dedupe check and registration.
 func (g *WhatsAppGateway) isDuplicate(id string) bool {
 	if strings.TrimSpace(id) == "" {
@@ -326,6 +386,11 @@ func (g *WhatsAppGateway) ProcessWebhook(ctx context.Context, backend WhatsAppBa
 
 	if !ok || adapter == nil {
 		return nil, ErrWhatsAppUnknownBackend
+	}
+	if validator, ok := adapter.(webhookAuthenticator); ok {
+		if err := validator.ValidateWebhook(body, header); err != nil {
+			return nil, fmt.Errorf("authenticate webhook: %w", err)
+		}
 	}
 
 	messages, err := adapter.ParseWebhook(body, header)

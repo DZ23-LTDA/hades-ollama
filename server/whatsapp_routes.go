@@ -1,6 +1,7 @@
 package server
 
 import (
+	"errors"
 	"io"
 	"net/http"
 	"strings"
@@ -15,12 +16,8 @@ func (a *agentAPI) whatsappWebhookVerify(c *gin.Context) {
 		return
 	}
 
-	mode := c.Query("hub.mode")
-	token := c.Query("hub.verify_token")
-	challenge := c.Query("hub.challenge")
-
-	if mode == "subscribe" && token != "" {
-		c.String(http.StatusOK, challenge)
+	if challenge, ok := a.runtime.WhatsApp().VerifyWebhook(c.Request); ok {
+		c.Data(http.StatusOK, "text/plain; charset=utf-8", challenge)
 		return
 	}
 
@@ -50,6 +47,14 @@ func (a *agentAPI) whatsappWebhook(c *gin.Context) {
 
 	results, err := a.runtime.WhatsApp().ProcessWebhook(c.Request.Context(), backend, body, c.Request.Header)
 	if err != nil {
+		if errors.Is(err, agent.ErrWhatsAppInvalidSignature) {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid webhook signature"})
+			return
+		}
+		if errors.Is(err, agent.ErrWhatsAppWebhookNotConfigured) {
+			c.JSON(http.StatusFailedDependency, gin.H{"error": "whatsapp webhook is NOT_CONFIGURED"})
+			return
+		}
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -94,6 +99,14 @@ func (a *agentAPI) whatsappSend(c *gin.Context) {
 
 	res, err := a.runtime.WhatsApp().SendMessage(c.Request.Context(), req)
 	if err != nil {
+		if errors.Is(err, agent.ErrWhatsAppAdapterNotConfig) {
+			c.JSON(http.StatusFailedDependency, gin.H{"error": "whatsapp adapter is NOT_CONFIGURED"})
+			return
+		}
+		if errors.Is(err, agent.ErrWhatsAppUnauthorized) || errors.Is(err, agent.ErrWhatsAppOutboundApproval) {
+			c.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
+			return
+		}
 		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
 		return
 	}

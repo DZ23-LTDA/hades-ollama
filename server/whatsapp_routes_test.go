@@ -2,6 +2,9 @@ package server
 
 import (
 	"bytes"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -10,6 +13,12 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/ollama/ollama/internal/agent"
 )
+
+func signWhatsAppBody(body, secret string) string {
+	h := hmac.New(sha256.New, []byte(secret))
+	_, _ = h.Write([]byte(body))
+	return "sha256=" + hex.EncodeToString(h.Sum(nil))
+}
 
 func setupWhatsAppTestServer(t *testing.T) (*gin.Engine, *agent.Runtime, *agent.WhatsAppGateway) {
 	gin.SetMode(gin.TestMode)
@@ -25,6 +34,12 @@ func setupWhatsAppTestServer(t *testing.T) (*gin.Engine, *agent.Runtime, *agent.
 	}
 
 	gw := agent.NewWhatsAppGateway(agent.WhatsAppGatewayConfig{
+		PrimaryBackend: agent.WhatsAppBackendCloudAPI,
+		CloudAPI: agent.CloudAPIConfig{
+			PhoneNumberID: "phone-test-001",
+			VerifyToken:   "my_secret_token",
+			AppSecret:     "app-secret-test",
+		},
 		Allowlist: []agent.WhatsAppContactPolicy{
 			{PhoneNumber: "5511999999999", Name: "Owner", Role: agent.ContactRoleOwner, Allowed: true},
 		},
@@ -63,6 +78,27 @@ func TestWhatsAppRoutesWebhookVerify(t *testing.T) {
 	}
 	if w.Body.String() != "test_challenge_1234" {
 		t.Fatalf("expected challenge echo, got %s", w.Body.String())
+	}
+}
+
+func TestWhatsAppRoutesWebhookRejectsInvalidSignatureAndIdentity(t *testing.T) {
+	srv, _, _ := setupWhatsAppTestServer(t)
+	body := `{"object":"whatsapp","entry":[{"changes":[{"value":{"metadata":{"phone_number_id":"phone-test-001"}}}]}]}`
+	req := httptest.NewRequest(http.MethodPost, "/api/agent/v1/whatsapp/webhook", bytes.NewBufferString(body))
+	req.Header.Set("X-Hub-Signature-256", signWhatsAppBody(body, "wrong-secret"))
+	w := httptest.NewRecorder()
+	srv.ServeHTTP(w, req)
+	if w.Code != http.StatusUnauthorized {
+		t.Fatalf("invalid HMAC must return 401, got %d: %s", w.Code, w.Body.String())
+	}
+
+	badObject := `{"object":"wrong","entry":[{"changes":[{"value":{"metadata":{"phone_number_id":"phone-test-001"}}}]}]}`
+	req = httptest.NewRequest(http.MethodPost, "/api/agent/v1/whatsapp/webhook", bytes.NewBufferString(badObject))
+	req.Header.Set("X-Hub-Signature-256", signWhatsAppBody(badObject, "app-secret-test"))
+	w = httptest.NewRecorder()
+	srv.ServeHTTP(w, req)
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("wrong object must return 400, got %d: %s", w.Code, w.Body.String())
 	}
 }
 
