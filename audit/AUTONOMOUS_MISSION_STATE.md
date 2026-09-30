@@ -2527,3 +2527,22 @@ last_progress_at: 2026-09-26 21:56 -03
 next_action: Run integrity and focused Go regressions on the current checkout; reconcile any failure before full gates.
 resume_instructions: Read this section and the latest security checkpoint; verify HEAD/worktree again; preserve every inherited edit; continue from first pending plan item and update this file after significant progress.
 ```
+
+
+## Fase 12 — auditoria E2E adversarial — retomada 2026-09-30 16:14 -03
+state: AUDITING
+head: 9b188b92
+branch: recovery/ollama-full-snapshot
+scope: somente auditoria, relatório, evidências e reclassificação documental; nenhuma alteração de comportamento
+known_observations:
+  - backend/frontend locais ativos; frontend / retorna 200; endpoint /api/agent/v1/status retorna 404 (endpoint não é health check válido)
+  - scan encontrou clientes HTTP crus em vários caminhos server/agent; approved bool ainda existe em structs de domínio company_growth/company_social
+next_action: executar gates completos, adversarial H1-H5 e E2E real; consolidar findings sem corrigir código
+
+
+## Fase 12 — fechamento da auditoria — 2026-09-30 16:22 -03
+state: AUDIT_COMPLETE
+head: 9b188b92
+report: audit/E2E_AUDIT_2026-09-30.md
+result: local gates PASS; P1 Studio visual desktop HTTP 400; P1 server egress/DLP coverage incomplete; routes /whatsapp and /models were invalid script paths and were retested through /connectors and /c/new
+next_action: documentation-only commit, push branch, verify both GitHub workflows on resulting docs commit

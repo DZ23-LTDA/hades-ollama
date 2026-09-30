@@ -1,6 +1,6 @@
 ---
 projeto: ollama-classe-a-plus
-status: H5 IMPLEMENTADO — GATES LOCAIS VERDES; CI REMOTA PENDENTE
+status: FASE 12 AUDITADA — GATES LOCAIS VERDES; FINDINGS P1 ABERTOS
 atualizado: 2026-09-30 15:59 -03 (2026-09-30 18:59 UTC)
 ultima_ia: Manus
 tags: [projeto, paridade-manus, evidencia-real, shell-desktop, missao-concluida]
@@ -114,6 +114,14 @@ automatizado + execução real reproduzível em navegador (desktop e mobile), se
 - **Próximo passo:** commitar/pushar H5 e acompanhar `class-a-plus-integrity` e `dz23-agentic-quality` no mesmo SHA; não declarar CI verde antes do resultado remoto.
 
 ## Histórico de sessões
+### 2026-09-30 16:22 -03 — Manus — FASE 12 auditoria E2E adversarial
+- **Escopo:** somente auditoria, evidência e reclassificação; nenhum comportamento foi alterado.
+- **Evidência:** `audit/E2E_AUDIT_2026-09-30.md`, `docs/evidencias/browser-console-audit-f12.json` e capturas desktop/mobile.
+- **Gates:** `go vet ./...`, `go test ./... -race`, TypeScript, lint, Vitest, build, contratos e integrity passaram; `golangci-lint` não está instalado.
+- **Findings P1:** Studio desktop registrou POST visual HTTP 400; a varredura mostrou clientes HTTP crus em caminhos `server/`, então H3 não deve ser promovido para cobertura universal.
+- **Rotas corrigidas no relatório:** WhatsApp foi validado em `/connectors` e ModelPicker em `/c/new`, ambos com console limpo; `/whatsapp` e `/models` não são rotas do produto.
+- **Próximo passo:** corrigir em slice separado o contrato CAS/E2E do Studio e unificar egress/DLP nos callsites `server/`; não declarar 100%/produção-ready.
+
 <!-- Mais recente no topo. Uma entrada por sessão de trabalho. -->
 ### 2026-09-30 13:33 -03 — Manus — H1 isolamento forte de execução
 - **Correção:** `sandbox.exec` agora usa strict como default; o caminho strict realmente executa o launcher Python antes do interpreter, instala allowlist seccomp BPF fail-closed, aplica `no_new_privs`, capability drop, `RLIMIT_CPU/AS/NPROC/NOFILE/FSIZE`, namespaces e cgroup v2 obrigatório. O modo `best-effort` deixou de ser silencioso: exige opt-in explícito e payload aprovado com aviso `NOT_CONFIGURED`.

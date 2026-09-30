@@ -1,0 +1,215 @@
+{
+  "timestamp": "2026-09-30T19:16:53.471Z",
+  "results": [
+    {
+      "label": "desktop",
+      "consoleErrors": [
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 400 (Bad Request)"
+        }
+      ],
+      "httpErrors": [
+        {
+          "status": 400,
+          "url": "http://127.0.0.1:5173/api/agent/v1/builders/bld_c9c00f7d-d785-45be-b4c4-0d46612027e3/visual"
+        }
+      ]
+    },
+    {
+      "label": "mobile",
+      "consoleErrors": [],
+      "httpErrors": []
+    }
+  ],
+  "evidence": [
+    {
+      "name": "home",
+      "route": "/",
+      "label": "desktop",
+      "title": "Ollama",
+      "body": "OF\nOllama Full\nLocal-first workspace\nNova tarefa\nCtrl K\nPesquisar\n/\nAGENTES\nComputadores\nAgents\nCue!\nBiblioteca\nCriações\nStudio\nAutomações\nPlugins\nFERRAMENTAS\nHabilidades\nEmpresa\nNovo\nTarefas\nPROJETOS\nTodos os projetos\nSISTEMA\nConfigurações\nAjuda e sobre\nO\nOperador local\nInício\nOllama Full\n\nUm runti",
+      "url": "http://127.0.0.1:5173/"
+    },
+    {
+      "name": "goal-after-submit",
+      "label": "desktop",
+      "url": "http://127.0.0.1:5173/agentic?objective=Auditoria%20local%20Fase%2012%3A%20gerar%20um%20relat%C3%B3rio%20de%20diagn%C3%B3stico%20sem%20sa%C3%ADda%20externa&autorun=true",
+      "body": "OF\nOllama Full\nLocal-first workspace\nNova tarefa\nCtrl K\nPesquisar\n/\nAGENTES\nComputadores\nAgents\nCue!\nBiblioteca\nCriações\nStudio\nAutomações\nPlugins\nFERRAMENTAS\nHabilidades\nEmpresa\nNovo\nTarefas\nPROJETOS\nTodos os projetos\nSISTEMA\nConfigurações\nAjuda e sobre\nO\nOperador local\nAgentic\n\nDZ23 AGENTIC RUNTIME\n\nMission Console\n\nPlaneje, orquestre, pesquise, aprove, execute e observe operações com a mesma trilha persistente usada pela API local.\n\nNova tarefa\nMotor\nOllama local (local)\nalibaba (sem chave)\na"
+    },
+    {
+      "name": "agentic",
+      "route": "/agentic",
+      "label": "desktop",
+      "title": "Ollama",
+      "body": "OF\nOllama Full\nLocal-first workspace\nNova tarefa\nCtrl K\nPesquisar\n/\nAGENTES\nComputadores\nAgents\nCue!\nBiblioteca\nCriações\nStudio\nAutomações\nPlugins\nFERRAMENTAS\nHabilidades\nEmpresa\nNovo\nTarefas\nPROJETOS\nTodos os projetos\nSISTEMA\nConfigurações\nAjuda e sobre\nO\nOperador local\nAgentic\n\nDZ23 AGENTIC RUNTIM",
+      "url": "http://127.0.0.1:5173/agentic"
+    },
+    {
+      "name": "library",
+      "route": "/library",
+      "label": "desktop",
+      "title": "Ollama",
+      "body": "OF\nOllama Full\nLocal-first workspace\nNova tarefa\nCtrl K\nPesquisar\n/\nAGENTES\nComputadores\nAgents\nCue!\nBiblioteca\nCriações\nStudio\nAutomações\nPlugins\nFERRAMENTAS\nHabilidades\nEmpresa\nNovo\nTarefas\nPROJETOS\nTodos os projetos\nSISTEMA\nConfigurações\nAjuda e sobre\nO\nOperador local\nBiblioteca\nBiblioteca\n\nDocum",
+      "url": "http://127.0.0.1:5173/library"
+    },
+    {
+      "name": "creations",
+      "route": "/creations",
+      "label": "desktop",
+      "title": "Ollama",
+      "body": "OF\nOllama Full\nLocal-first workspace\nNova tarefa\nCtrl K\nPesquisar\n/\nAGENTES\nComputadores\nAgents\nCue!\nBiblioteca\nCriações\nStudio\nAutomações\nPlugins\nFERRAMENTAS\nHabilidades\nEmpresa\nNovo\nTarefas\nPROJETOS\nTodos os projetos\nSISTEMA\nConfigurações\nAjuda e sobre\nO\nOperador local\nCriações\nCriações\n\nSites, jo",
+      "url": "http://127.0.0.1:5173/creations"
+    },
+    {
+      "name": "connectors",
+      "route": "/connectors",
+      "label": "desktop",
+      "title": "Ollama",
+      "body": "OF\nOllama Full\nLocal-first workspace\nNova tarefa\nCtrl K\nPesquisar\n/\nAGENTES\nComputadores\nAgents\nCue!\nBiblioteca\nCriações\nStudio\nAutomações\nPlugins\nFERRAMENTAS\nHabilidades\nEmpresa\nNovo\nTarefas\nPROJETOS\nTodos os projetos\nSISTEMA\nConfigurações\nAjuda e sobre\nO\nOperador local\nPlugins & Conectores\nPlugins",
+      "url": "http://127.0.0.1:5173/connectors"
+    },
+    {
+      "name": "scheduled",
+      "route": "/scheduled",
+      "label": "desktop",
+      "title": "Ollama",
+      "body": "OF\nOllama Full\nLocal-first workspace\nNova tarefa\nCtrl K\nPesquisar\n/\nAGENTES\nComputadores\nAgents\nCue!\nBiblioteca\nCriações\nStudio\nAutomações\nPlugins\nFERRAMENTAS\nHabilidades\nEmpresa\nNovo\nTarefas\nPROJETOS\nTodos os projetos\nSISTEMA\nConfigurações\nAjuda e sobre\nO\nOperador local\nAutomações\nAutomações\n\nAutom",
+      "url": "http://127.0.0.1:5173/scheduled"
+    },
+    {
+      "name": "company",
+      "route": "/company",
+      "label": "desktop",
+      "title": "Ollama",
+      "body": "OF\nOllama Full\nLocal-first workspace\nNova tarefa\nCtrl K\nPesquisar\n/\nAGENTES\nComputadores\nAgents\nCue!\nBiblioteca\nCriações\nStudio\nAutomações\nPlugins\nFERRAMENTAS\nHabilidades\nEmpresa\nNovo\nTarefas\nPROJETOS\nTodos os projetos\nSISTEMA\nConfigurações\nAjuda e sobre\nO\nOperador local\nEmpresa\nCOMPANY OS\nCrie e op",
+      "url": "http://127.0.0.1:5173/company"
+    },
+    {
+      "name": "studio",
+      "route": "/studio",
+      "label": "desktop",
+      "title": "Ollama",
+      "body": "OF\nOllama Full\nLocal-first workspace\nNova tarefa\nCtrl K\nPesquisar\n/\nAGENTES\nComputadores\nAgents\nCue!\nBiblioteca\nCriações\nStudio\nAutomações\nPlugins\nFERRAMENTAS\nHabilidades\nEmpresa\nNovo\nTarefas\nPROJETOS\nTodos os projetos\nSISTEMA\nConfigurações\nAjuda e sobre\nO\nOperador local\nStudio\nOllama Full Studio Ap",
+      "url": "http://127.0.0.1:5173/studio"
+    },
+    {
+      "name": "whatsapp",
+      "route": "/whatsapp",
+      "label": "desktop",
+      "title": "Ollama",
+      "body": "Not Found",
+      "url": "http://127.0.0.1:5173/whatsapp"
+    },
+    {
+      "name": "models",
+      "route": "/models",
+      "label": "desktop",
+      "title": "Ollama",
+      "body": "Not Found",
+      "url": "http://127.0.0.1:5173/models"
+    },
+    {
+      "name": "settings",
+      "route": "/settings",
+      "label": "desktop",
+      "title": "Ollama",
+      "body": "OF\nOllama Full\nLocal-first workspace\nNova tarefa\nCtrl K\nPesquisar\n/\nAGENTES\nComputadores\nAgents\nCue!\nBiblioteca\nCriações\nStudio\nAutomações\nPlugins\nFERRAMENTAS\nHabilidades\nEmpresa\nNovo\nTarefas\nPROJETOS\nTodos os projetos\nSISTEMA\nConfigurações\nAjuda e sobre\nO\nOperador local\nConfigurações\nGeral\nProvedor",
+      "url": "http://127.0.0.1:5173/settings"
+    },
+    {
+      "name": "home",
+      "route": "/",
+      "label": "mobile",
+      "title": "Ollama",
+      "body": "Início\nOllama Full\n\nUm runtime local-first: converse, compile, pesquise, automatize e acompanhe missões com aprovações e dados no seu ambiente.\n\nDescreva uma tarefa\nIniciar\n\nComandos reais: /goal delega, /plan apenas planeja, /test executa testes e /review revisa. Ctrl+Enter para iniciar.\n\nAções ráp",
+      "url": "http://127.0.0.1:5173/"
+    },
+    {
+      "name": "goal-after-submit",
+      "label": "mobile",
+      "url": "http://127.0.0.1:5173/agentic?objective=Auditoria%20local%20Fase%2012%3A%20gerar%20um%20relat%C3%B3rio%20de%20diagn%C3%B3stico%20sem%20sa%C3%ADda%20externa&autorun=true",
+      "body": "Agentic\n\nDZ23 AGENTIC RUNTIME\n\nMission Console\n\nPlaneje, orquestre, pesquise, aprove, execute e observe operações com a mesma trilha persistente usada pela API local.\n\nNova tarefa\nMotor\nOllama local (local)\nalibaba (sem chave)\nanthropic (sem chave)\ncerebras (sem chave)\ndeepseek (sem chave)\nfireworks (sem chave)\ngemini (sem chave)\ngroq (sem chave)\nhuggingface (sem chave)\nhyperbolic (sem chave)\nmistral (sem chave)\nnovita (sem chave)\nnvidia (sem chave)\nollama-cloud (sem chave)\nopenai (sem chave)\nop"
+    },
+    {
+      "name": "agentic",
+      "route": "/agentic",
+      "label": "mobile",
+      "title": "Ollama",
+      "body": "Agentic\n\nDZ23 AGENTIC RUNTIME\n\nMission Console\n\nPlaneje, orquestre, pesquise, aprove, execute e observe operações com a mesma trilha persistente usada pela API local.\n\nNova tarefa\nMotor\nOllama local (local)\nalibaba (sem chave)\nanthropic (sem chave)\ncerebras (sem chave)\ndeepseek (sem chave)\nfireworks",
+      "url": "http://127.0.0.1:5173/agentic"
+    },
+    {
+      "name": "library",
+      "route": "/library",
+      "label": "mobile",
+      "title": "Ollama",
+      "body": "Biblioteca\nBiblioteca\n\nDocumentos, relatórios, apresentações e criações geradas por suas missões.\n\nTodos\nTexto e PDF\nSlides\nPlanilhas\nImagens\nVídeos\nÁudio\nOutros\n\nrelatorio-missao.md\n\nNavegar no site e gravar relatório • 9/30/2026\n\nVer no Canvas\nBaixar",
+      "url": "http://127.0.0.1:5173/library"
+    },
+    {
+      "name": "creations",
+      "route": "/creations",
+      "label": "mobile",
+      "title": "Ollama",
+      "body": "Criações\nCriações\n\nSites, jogos e aplicações construídos pelas suas missões no Ollama Full.\n\nAbrir Studio\nConstruir agora\nTodos\nSites\nJogos\nAplicativos móveis\nAinda sem criações\n\nTransforme ideias em sites, protótipos e jogos executáveis no navegador.\n\nConstruir agora",
+      "url": "http://127.0.0.1:5173/creations"
+    },
+    {
+      "name": "connectors",
+      "route": "/connectors",
+      "label": "mobile",
+      "title": "Ollama",
+      "body": "Plugins & Conectores\nPlugins\n\nConecte serviços externos, contas OAuth e servidores MCP para expandir as capacidades do agente.\n\nGerenciar Conectores (0)\nCriar Conector\nWorkspace & Docs\n\nReúna e-mail, documentos e calendário em um só lugar.\n\nComunicação\n\nAcompanhe discussões e atualizações da equipe ",
+      "url": "http://127.0.0.1:5173/connectors"
+    },
+    {
+      "name": "scheduled",
+      "route": "/scheduled",
+      "label": "mobile",
+      "title": "Ollama",
+      "body": "Automações\nAutomações\n\nAutomatize fluxos recorrentes, configure gatilhos e deixe o agente trabalhar em segundo plano.\n\nNova automação\nAgendamento\n\nAutomatize trabalhos recorrentes escolhendo quando e com que frequência o Ollama Full deve ser executado.\n\n⚡ Relatório diário de progresso (24h)⚡ Varredu",
+      "url": "http://127.0.0.1:5173/scheduled"
+    },
+    {
+      "name": "company",
+      "route": "/company",
+      "label": "mobile",
+      "title": "Ollama",
+      "body": "Empresa\nCOMPANY OS\nCrie e opere sua empresa\n\nEstratégia, produto, engenharia, marketing, vendas, suporte e operações em um tenant com ciclos autônomos, métricas, approvals e pausa segura.\n\nAtualizar\nSupervisor Autônomo — Agente Sempre-Ligado\n\nExecuta rotinas, avança ciclos de negócio e monitora agen",
+      "url": "http://127.0.0.1:5173/company"
+    },
+    {
+      "name": "studio",
+      "route": "/studio",
+      "label": "mobile",
+      "title": "Ollama",
+      "body": "Studio\nOllama Full Studio App\nv17\n\nEditor visual interativo conectado ao backend real\n\nADICIONAR:\n+\nTítulo\n+\nParágrafo\n+\nBotão de Ação\n+\nCard / Recurso\n+\nMétrica / KPI\n+\nBarra de Navegação\nÁrea do Canvas (9 componentes)\nClique em um componente para editar suas propriedades\n#1 HEADING\nBem-vindo ao St",
+      "url": "http://127.0.0.1:5173/studio"
+    },
+    {
+      "name": "whatsapp",
+      "route": "/whatsapp",
+      "label": "mobile",
+      "title": "Ollama",
+      "body": "Not Found",
+      "url": "http://127.0.0.1:5173/whatsapp"
+    },
+    {
+      "name": "models",
+      "route": "/models",
+      "label": "mobile",
+      "title": "Ollama",
+      "body": "Not Found",
+      "url": "http://127.0.0.1:5173/models"
+    },
+    {
+      "name": "settings",
+      "route": "/settings",
+      "label": "mobile",
+      "title": "Ollama",
+      "body": "Configurações\nGeral\nProvedores de IA\nComputadores & API\nConectores e Plugins\nHarnesses & Codex\nAgentic Control Center\n\nCatálogo e estado reais do runtime: providers, CLIs, connectors, MCP, skills, approvals e integrações. Valores de secrets nunca são retornados.\n\nRuntime online\nAbrir console\nProvide",
+      "url": "http://127.0.0.1:5173/settings"
+    }
+  ]
+}
