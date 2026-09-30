@@ -1,6 +1,6 @@
 ---
 projeto: ollama-classe-a-plus
-status: CANDIDATE_COMPLETED — CA-4 IMPLEMENTADO; CI PENDENTE
+status: COMPLETED — CA-4 IMPLEMENTADO E CI VERDE
 atualizado: 2026-09-30 13:04 -03 (2026-09-30 16:04 UTC)
 ultima_ia: Manus
 tags: [projeto, paridade-manus, evidencia-real, shell-desktop, missao-concluida]
@@ -93,7 +93,7 @@ automatizado + execução real reproduzível em navegador (desktop e mobile), se
 - **Export:** cada ZIP persiste `ExportVersion`; qualquer edição invalida e remove o ZIP anterior e limpa checksum/path/version. Download obsoleto retorna 410 e exige novo export.
 - **Evidência:** `TestBuilderCASRejectsStaleConcurrentWriter`, `TestBuilderExportIsInvalidatedAfterVersionedEdit` e `TestStudioRoutesRejectStaleVersionAndExpiredExport` passaram.
 - **Gates:** `go build ./...`, `go test ./internal/agent ./server`, `npx tsc -b`, `npm run lint`, `npx vitest run`, `npm run build`, `node scripts/verify-contracts.mjs` e `bash scripts/check-class-a-plus-integrity.sh` passaram.
-- **Próximo passo:** commitar/pushar CA-4 e acompanhar `class-a-plus-integrity` e `dz23-agentic-quality` no mesmo SHA; CRDT e deploy externo continuam explicitamente fora do escopo.
+- **CI remota:** `class-a-plus-integrity` run `36743042751` e `dz23-agentic-quality` run `36743042826` concluíram `success` no mesmo SHA `703af793083c063a2fc8d43d2c341ac92ffe9554`. CRDT e deploy externo continuam explicitamente fora do escopo.
 
 ### 2026-09-30 13:04 -03 — Manus — CA-3 Studio security hardening
 - **Correção:** preview/export/download do Studio usam `agentFetchBlob` com headers de sessão; o backend mantém `authMiddleware` nas rotas. Em auth mode, ausência de Bearer retorna 401; token válido é tenant-scoped.
