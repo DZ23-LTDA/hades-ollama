@@ -42,19 +42,70 @@ jobs:
         shell: pwsh
         # Sem VERSION hardcoded: build_windows.ps1 deriva de `git describe --tags`.
         run: ./scripts/build_windows.ps1 cpu ollama app installer
+      - name: Detect SSL.com signing configuration
+        id: signing
+        shell: pwsh
+        env:
+          SSL_COM_USERNAME: ${{ secrets.SSL_COM_USERNAME }}
+          SSL_COM_PASSWORD: ${{ secrets.SSL_COM_PASSWORD }}
+          SSL_COM_CREDENTIAL_ID: ${{ secrets.SSL_COM_CREDENTIAL_ID }}
+          SSL_COM_TOTP_SECRET: ${{ secrets.SSL_COM_TOTP_SECRET }}
+        run: |
+          $names = @(
+            "SSL_COM_USERNAME",
+            "SSL_COM_PASSWORD",
+            "SSL_COM_CREDENTIAL_ID",
+            "SSL_COM_TOTP_SECRET"
+          )
+          $missing = @($names | Where-Object { [string]::IsNullOrWhiteSpace([Environment]::GetEnvironmentVariable($_)) })
+          if ($missing.Count -eq 0) {
+            "enabled=true" >> $env:GITHUB_OUTPUT
+            "artifact_suffix=signed" >> $env:GITHUB_OUTPUT
+            "SSL.com eSigner configuration detected; signing will run." >> $env:GITHUB_STEP_SUMMARY
+          } else {
+            "enabled=false" >> $env:GITHUB_OUTPUT
+            "artifact_suffix=unsigned" >> $env:GITHUB_OUTPUT
+            "SSL.com eSigner secrets are incomplete; installer remains UNSIGNED." >> $env:GITHUB_STEP_SUMMARY
+            Write-Host "Signing disabled: missing required secrets: $($missing -join ', ')"
+          }
+      - name: Sign installer with SSL.com eSigner
+        if: steps.signing.outputs.enabled == 'true'
+        uses: sslcom/esigner-codesign@develop
+        with:
+          command: sign
+          username: ${{ secrets.SSL_COM_USERNAME }}
+          password: ${{ secrets.SSL_COM_PASSWORD }}
+          credential_id: ${{ secrets.SSL_COM_CREDENTIAL_ID }}
+          totp_secret: ${{ secrets.SSL_COM_TOTP_SECRET }}
+          file_path: ${{ github.workspace }}/dist/OllamaClasseAPlusSetup.exe
+          override: true
+          clean_logs: true
+          signing_method: v1
+      - name: Report installer signing state
+        shell: pwsh
+        env:
+          SIGNING_ENABLED: ${{ steps.signing.outputs.enabled }}
+        run: |
+          if ($env:SIGNING_ENABLED -eq "true") {
+            Write-Host "INSTALLER_SIGNING=SIGNED (SSL.com eSigner OV)"
+            "### Installer signing`n`n**SIGNED** with SSL.com eSigner OV." >> $env:GITHUB_STEP_SUMMARY
+          } else {
+            Write-Host "INSTALLER_SIGNING=UNSIGNED (SSL.com secrets not configured)"
+            "### Installer signing`n`n**UNSIGNED** — SSL.com secrets are not configured." >> $env:GITHUB_STEP_SUMMARY
+          }
       - name: Compute SHA-256 checksum
         shell: pwsh
-        # Formato "<hash>  <arquivo>" (dois espacos) compativel com `sha256sum -c`.
+        # O checksum é calculado depois da assinatura, quando habilitada.
         run: |
           $exe = "dist/OllamaClasseAPlusSetup.exe"
           $hash = (Get-FileHash -Algorithm SHA256 $exe).Hash.ToLower()
           $line = "$hash  OllamaClasseAPlusSetup.exe"
           Set-Content -Path "$exe.sha256" -Value $line -NoNewline -Encoding ascii
           Write-Host $line
-      - name: Upload unsigned installer + checksum
+      - name: Upload installer + checksum
         uses: actions/upload-artifact@v4
         with:
-          name: OllamaClasseAPlusSetup-windows-amd64-unsigned
+          name: OllamaClasseAPlusSetup-windows-amd64-${{ steps.signing.outputs.artifact_suffix }}
           path: |
             dist/OllamaClasseAPlusSetup.exe
             dist/OllamaClasseAPlusSetup.exe.sha256
