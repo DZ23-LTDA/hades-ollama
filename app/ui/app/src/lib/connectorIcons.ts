@@ -198,26 +198,27 @@ const ICONS: Record<string, SimpleIcon> = {
   zoom: siZoom,
 };
 
-// Official favicons, fetched once from each brand's own site and shipped in
-// public/connector-icons, for brands that simple-icons does not distribute.
+// Official Brandfetch assets, downloaded and shipped locally in
+// public/connector-icons/brandfetch. AWS and Azure retain their prior assets
+// because Brandfetch resolved their parent companies rather than the product.
 const IMAGE_ICONS: Record<string, string> = {
-  "amazon-seller": "amazon-seller.png",
-  asaas: "asaas.png",
+  "amazon-seller": "brandfetch/amazon-seller.svg",
+  asaas: "brandfetch/asaas.svg",
   aws: "aws.png",
   azure: "azure.png",
-  canva: "canva.jpg",
-  composio: "composio.png",
-  "fiscal-ai": "fiscal-ai.png",
-  linkedin: "linkedin.png",
-  outlook: "outlook.jpg",
-  pagarme: "pagarme.png",
-  pinecone: "pinecone.png",
-  postmark: "postmark.png",
-  salesforce: "salesforce.png",
-  sendgrid: "sendgrid.png",
-  slack: "slack.png",
-  twilio: "twilio.png",
-  "woovi-openpix": "woovi-openpix.png",
+  canva: "brandfetch/canva.svg",
+  composio: "brandfetch/composio.svg",
+  "fiscal-ai": "brandfetch/fiscal-ai.svg",
+  linkedin: "brandfetch/linkedin.svg",
+  outlook: "brandfetch/outlook.png",
+  pagarme: "brandfetch/pagarme.svg",
+  pinecone: "brandfetch/pinecone.svg",
+  postmark: "brandfetch/postmark.svg",
+  salesforce: "brandfetch/salesforce.svg",
+  sendgrid: "brandfetch/sendgrid.svg",
+  slack: "brandfetch/slack.svg",
+  twilio: "brandfetch/twilio.svg",
+  "woovi-openpix": "brandfetch/woovi-openpix.svg",
 };
 
 export type ConnectorIcon =
