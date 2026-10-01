@@ -77,7 +77,7 @@ jobs:
           password: ${{ secrets.SSL_COM_PASSWORD }}
           credential_id: ${{ secrets.SSL_COM_CREDENTIAL_ID }}
           totp_secret: ${{ secrets.SSL_COM_TOTP_SECRET }}
-          file_path: ${{ github.workspace }}/dist/OllamaClasseAPlusSetup.exe
+          file_path: ${{ github.workspace }}/dist/OllamaFullSetup.exe
           override: true
           clean_logs: true
           signing_method: v1
@@ -97,17 +97,17 @@ jobs:
         shell: pwsh
         # O checksum é calculado depois da assinatura, quando habilitada.
         run: |
-          $exe = "dist/OllamaClasseAPlusSetup.exe"
+          $exe = "dist/OllamaFullSetup.exe"
           $hash = (Get-FileHash -Algorithm SHA256 $exe).Hash.ToLower()
-          $line = "$hash  OllamaClasseAPlusSetup.exe"
+          $line = "$hash  OllamaFullSetup.exe"
           Set-Content -Path "$exe.sha256" -Value $line -NoNewline -Encoding ascii
           Write-Host $line
       - name: Upload installer + checksum
         uses: actions/upload-artifact@v4
         with:
-          name: OllamaClasseAPlusSetup-windows-amd64-${{ steps.signing.outputs.artifact_suffix }}
+          name: OllamaFullSetup-windows-amd64-${{ steps.signing.outputs.artifact_suffix }}
           path: |
-            dist/OllamaClasseAPlusSetup.exe
-            dist/OllamaClasseAPlusSetup.exe.sha256
+            dist/OllamaFullSetup.exe
+            dist/OllamaFullSetup.exe.sha256
           if-no-files-found: error
           retention-days: 30

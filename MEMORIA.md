@@ -28,6 +28,10 @@ automatizado + execução real reproduzível em navegador (desktop e mobile), se
 
 ## Histórico de sessões
 
+- **2026-10-01 22:40 UTC — Correção do smoke SSL.com:** o workflow Windows foi executado sem secrets no run `36934704349` e falhou honestamente no checksum porque o Inno Setup produz `dist/OllamaFullSetup.exe`, enquanto o workflow procurava o nome inexistente `OllamaClasseAPlusSetup.exe`. Corrigido o caminho no passo de assinatura, checksum e upload; a documentação também foi alinhada ao nome real. A assinatura continua antes do checksum e o estado unsigned permanece explícito. Próximo passo: repetir o workflow Windows unsigned no novo commit.
+
+
+
 - **2026-10-01 22:22 UTC — Preparação SSL.com eSigner (Gemini):** agregado suporte condicional de code signing OV no workflow `.github/workflows/dz23-windows-installer.yaml`. O detector exige `SSL_COM_USERNAME`, `SSL_COM_PASSWORD`, `SSL_COM_CREDENTIAL_ID` e `SSL_COM_TOTP_SECRET`; sem os quatro, a assinatura é pulada, o job registra `INSTALLER_SIGNING=UNSIGNED`, calcula o SHA-256 do `.exe` unsigned e publica `...-unsigned`. Com todos presentes, a action oficial `sslcom/esigner-codesign@develop` assina o executável antes do checksum, e o artefato é nomeado `...-signed`. Criado `docs/SIGNING.md` em pt-BR com configuração, disparo, limitações de macOS/Linux e verificação honesta. Evidência local: `SIGNING_WORKFLOW_STATIC_CHECK=PASS`, `git diff --check=PASS`; actionlint não está instalado no sandbox. Próximo passo: executar o workflow Windows em `workflow_dispatch` sem secrets e confirmar o artefato unsigned; a assinatura signed só pode ser validada após o proprietário adicionar credenciais reais.
 
 

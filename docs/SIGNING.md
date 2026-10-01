@@ -33,8 +33,8 @@ O workflow é `.github/workflows/dz23-windows-installer.yaml` e pode ser iniciad
 
 O artefato terá um dos nomes:
 
-- `OllamaClasseAPlusSetup-windows-amd64-signed`, quando a assinatura SSL.com foi executada;
-- `OllamaClasseAPlusSetup-windows-amd64-unsigned`, quando os secrets não existem ou estão incompletos.
+- `OllamaFullSetup-windows-amd64-signed`, quando a assinatura SSL.com foi executada;
+- `OllamaFullSetup-windows-amd64-unsigned`, quando os secrets não existem ou estão incompletos.
 
 O resumo do job também informa explicitamente `SIGNED` ou `UNSIGNED`. O arquivo `.sha256` acompanha o instalador e é calculado somente depois da etapa de assinatura.
 
@@ -42,7 +42,7 @@ O resumo do job também informa explicitamente `SIGNED` ou `UNSIGNED`. O arquivo
 
 A validação padrão do CI não exige credenciais de assinatura. Sem os quatro secrets, o job deve:
 
-1. construir `dist/OllamaClasseAPlusSetup.exe`;
+1. construir `dist/OllamaFullSetup.exe`;
 2. pular a action SSL.com;
 3. mostrar `INSTALLER_SIGNING=UNSIGNED`;
 4. gerar o checksum do instalador unsigned;
