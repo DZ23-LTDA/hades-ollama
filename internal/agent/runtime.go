@@ -1326,7 +1326,18 @@ func (r *Runtime) resumePending(ctx context.Context) error {
 			}
 		}
 		if _, err := r.EnqueueMission(mission.ID); err != nil {
-			recoveryErrors = append(recoveryErrors, fmt.Errorf("enqueue mission %s during recovery: %w", mission.ID, err))
+			// A crash can leave the queue root between directory discovery and
+			// opening its lock (notably while macOS cleans a temporary root).
+			// Retry once only for that missing-path condition; ordinary queue
+			// persistence failures remain fail-closed.
+			if errors.Is(err, os.ErrNotExist) && r.queue != nil {
+				if recoverErr := r.queue.recoverStateForRestart(); recoverErr == nil {
+					_, err = r.EnqueueMission(mission.ID)
+				}
+			}
+			if err != nil {
+				recoveryErrors = append(recoveryErrors, fmt.Errorf("enqueue mission %s during recovery: %w", mission.ID, err))
+			}
 		}
 	}
 	return errors.Join(recoveryErrors...)
