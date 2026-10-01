@@ -56,6 +56,17 @@ OLLAMA_HOST=127.0.0.1:11434 ./bin/ollama-full serve
 
 The equivalent helpers are `scripts/install.sh` on Unix-like systems and `scripts/install.ps1` on Windows. They build the checked-out source locally and never download `ollama.com` installers or official upstream binaries. They require Go and do not install models or configure external providers.
 
+### Code signing policy
+
+**Free code signing provided by SignPath.io, certificate by SignPath Foundation**
+
+The Windows installer is prepared for the SignPath Foundation program. Until the project is approved and the repository owner configures `SIGNPATH_API_TOKEN`, release builds remain explicitly **UNSIGNED**. The release workflow runs only on GitHub-hosted `windows-latest` runners and never prints signing credentials.
+
+- **Committers/Reviewers:** `@DZ23-LTDA`, `@LMPrado-DZ23`
+- **Approvers:** `@DZ23-LTDA` (owner/admin approval remains required by the repository policy)
+
+See [`docs/SIGNING.md`](docs/SIGNING.md) for the SignPath project identifiers, artifact ZIP flow, eligibility prerequisites and verification procedure.
+
 ### Quickstart local de um comando
 
 Em uma árvore clonada, o caminho recomendado para o primeiro uso Unix-like é:

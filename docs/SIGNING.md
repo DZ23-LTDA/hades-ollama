@@ -1,59 +1,57 @@
 # Code signing do instalador Windows
 
-## Provider e modelo
+## Estado atual
 
-O instalador Windows do Hades/Ollama Full está preparado para assinatura em nuvem com **SSL.com eSigner OV**. O fluxo usa a action oficial `sslcom/esigner-codesign` e não depende de token USB no runner.
+O Hades está preparado para solicitar assinatura gratuita pelo **SignPath Foundation**. Até a aprovação da Foundation e a configuração do secret pelo proprietário, os builds saem **UNSIGNED**. Isso é intencional e honesto: o CI nunca declara assinatura sem receber e aplicar um artefato assinado real.
 
-A assinatura é **fail-safe e honesta**:
+A frase exigida para a política pública do projeto está no README:
 
-- com os quatro secrets configurados, o `.exe` é assinado antes do checksum;
-- sem qualquer secret obrigatório, a etapa de assinatura é pulada e o instalador é publicado como **UNSIGNED**;
-- o workflow não imprime valores de credenciais nos logs;
-- o SHA-256 sempre é calculado sobre o arquivo final que será entregue.
+> Free code signing provided by SignPath.io, certificate by SignPath Foundation
 
-## Secrets do GitHub
+## Configuração SignPath
 
-Adicione em **Settings → Secrets and variables → Actions → New repository secret** os nomes exatos abaixo. Os valores são fornecidos pelo proprietário da conta SSL.com e **não devem ser commitados**:
+Os identificadores abaixo são específicos do projeto criado no dashboard SignPath e devem ser preenchidos pelo proprietário; não são inventados ou inferidos pelo código. Em **Settings → Secrets and variables → Actions → Variables**, configure:
+
+| Variable | Valor |
+| --- | --- |
+| `SIGNPATH_ORGANIZATION_ID` | Organization ID fornecido pelo SignPath |
+| `SIGNPATH_PROJECT_SLUG` | Project slug aprovado no SignPath |
+| `SIGNPATH_SIGNING_POLICY_SLUG` | Signing policy slug aprovada |
+| `SIGNPATH_ARTIFACT_CONFIGURATION_SLUG` | Artifact configuration slug com raiz `<zip-file>` |
+
+Em **Secrets**, configure:
 
 | Secret | Uso |
 | --- | --- |
-| `SSL_COM_USERNAME` | Usuário da conta SSL.com eSigner |
-| `SSL_COM_PASSWORD` | Senha da conta SSL.com eSigner |
-| `SSL_COM_CREDENTIAL_ID` | ID da credencial/certificado OV usado para assinar |
-| `SSL_COM_TOTP_SECRET` | Segredo OAuth/TOTP usado pela automação eSigner |
+| `SIGNPATH_API_TOKEN` | Token SignPath com permissão de submitter para o projeto/policy |
 
-A action só é executada quando os quatro valores estão presentes. Configuração parcial permanece unsigned para não produzir um estado ambíguo.
+Nunca coloque o token no código, em documentação, em artefatos ou em logs.
+
+## Fluxo do workflow
+
+O workflow `.github/workflows/dz23-windows-installer.yaml` usa apenas `windows-latest`, builda `dist/OllamaFullSetup.exe` e funciona em dois estados:
+
+1. **Sem `SIGNPATH_API_TOKEN`:** pula a assinatura, calcula o checksum do executável unsigned e publica `OllamaFullSetup-windows-amd64-unsigned`.
+2. **Com `SIGNPATH_API_TOKEN`:** envia o executável ao GitHub Actions Artifact, solicita a assinatura usando a configuração SignPath, extrai o `.zip` assinado, substitui o executável local e só então calcula o checksum; publica `OllamaFullSetup-windows-amd64-signed`.
+
+A configuração `hades-exe` deve aceitar um `<zip-file>` na raiz, porque o `actions/upload-artifact@v4` fornece o arquivo ao SignPath como ZIP. A action oficial de submissão usa o ID do artefato produzido pelo upload anterior.
+
+O workflow registra `INSTALLER_SIGNING=SIGNED` ou `INSTALLER_SIGNING=UNSIGNED` no log e no resumo do job. A assinatura só pode ser considerada homologada depois de um run real com token válido e verificação do Authenticode no `.exe` retornado.
+
+Referência oficial: [SignPath — GitHub Actions](https://docs.signpath.io/trusted-build-systems/github).
 
 ## Como disparar
 
-O workflow é `.github/workflows/dz23-windows-installer.yaml` e pode ser iniciado por:
+- **Actions → dz23-windows-installer → Run workflow**; ou
+- push de uma tag `v*`, conforme os gatilhos do workflow.
 
-1. **Actions → dz23-windows-installer → Run workflow**; ou
-2. push de uma tag `v*` (por exemplo, `v1.2.3`), conforme os gatilhos definidos no workflow.
+A Foundation ainda precisa aprovar o projeto e habilitar o Trusted Build System `GitHub.com`. Reputação do projeto, release pública e eventual fork visível são responsabilidades do proprietário durante o processo de elegibilidade; não são simuladas pelo código.
 
-O artefato terá um dos nomes:
+## Metadados e desinstalação
 
-- `OllamaFullSetup-windows-amd64-signed`, quando a assinatura SSL.com foi executada;
-- `OllamaFullSetup-windows-amd64-unsigned`, quando os secrets não existem ou estão incompletos.
+O instalador usa ProductName `Hades`, CompanyName `DZ23 LTDA`, versão derivada de `git describe`/`PKG_VERSION` e gera desinstalador por padrão do Inno Setup. Os binários Go e o aplicativo desktop recebem a mesma versão derivada pelo script de build.
 
-O resumo do job também informa explicitamente `SIGNED` ou `UNSIGNED`. O arquivo `.sha256` acompanha o instalador e é calculado somente depois da etapa de assinatura.
+## Outras plataformas
 
-## Verificação sem secrets
-
-A validação padrão do CI não exige credenciais de assinatura. Sem os quatro secrets, o job deve:
-
-1. construir `dist/OllamaFullSetup.exe`;
-2. pular a action SSL.com;
-3. mostrar `INSTALLER_SIGNING=UNSIGNED`;
-4. gerar o checksum do instalador unsigned;
-5. publicar o artefato `...-unsigned` sem falhar.
-
-A lógica de ativação pode ser revisada no step `Detect SSL.com signing configuration`, sem inserir valores reais. A execução assinada só deve ser considerada validada depois de um run com credenciais reais e de uma verificação externa da assinatura no `.exe`.
-
-## Plataformas
-
-- **Windows:** SSL.com eSigner OV está preparado no CI deste workflow.
-- **macOS:** distribuição assinada exige Apple Developer Program (US$ 99/ano), certificado e notarização; permanece como próximo passo separado.
-- **Linux:** os pacotes continuam unsigned por padrão; assinatura de pacote Linux será tratada em uma etapa própria.
-
-Nunca marque um artefato como assinado apenas porque os secrets existem: a confirmação final depende do sucesso real da action e da verificação da assinatura produzida.
+- **macOS:** exige Apple Developer Program (US$ 99/ano), certificado e notarização; permanece como trabalho separado.
+- **Linux:** pacotes permanecem unsigned por padrão; assinatura de pacotes Linux é um próximo passo.

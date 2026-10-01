@@ -5,13 +5,13 @@
 ; powershell -ExecutionPolicy Bypass -File .\scripts\build_windows.ps
 
 
-#define MyAppName "Ollama Full"
+#define MyAppName "Hades"
 #if GetEnv("PKG_VERSION") != ""
   #define MyAppVersion GetEnv("PKG_VERSION")
 #else
   #define MyAppVersion "0.0.0"
 #endif
-#define MyAppPublisher "DZ23-LTDA"
+#define MyAppPublisher "DZ23 LTDA"
 #define MyAppURL "https://github.com/DZ23-LTDA/hades-ollama"
 #define MyAppExeName "ollama app.exe"
 #define LlamaServerExeName "llama-server.exe"

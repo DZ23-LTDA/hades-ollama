@@ -19,6 +19,7 @@ on:
       - '.github/workflows/dz23-windows-installer.yaml'
 
 permissions:
+  actions: read
   contents: read
 
 jobs:
@@ -42,56 +43,72 @@ jobs:
         shell: pwsh
         # Sem VERSION hardcoded: build_windows.ps1 deriva de `git describe --tags`.
         run: ./scripts/build_windows.ps1 cpu ollama app installer
-      - name: Detect SSL.com signing configuration
+      - name: Detect SignPath signing configuration
         id: signing
         shell: pwsh
         env:
-          SSL_COM_USERNAME: ${{ secrets.SSL_COM_USERNAME }}
-          SSL_COM_PASSWORD: ${{ secrets.SSL_COM_PASSWORD }}
-          SSL_COM_CREDENTIAL_ID: ${{ secrets.SSL_COM_CREDENTIAL_ID }}
-          SSL_COM_TOTP_SECRET: ${{ secrets.SSL_COM_TOTP_SECRET }}
+          SIGNPATH_API_TOKEN: ${{ secrets.SIGNPATH_API_TOKEN }}
         run: |
-          $names = @(
-            "SSL_COM_USERNAME",
-            "SSL_COM_PASSWORD",
-            "SSL_COM_CREDENTIAL_ID",
-            "SSL_COM_TOTP_SECRET"
-          )
-          $missing = @($names | Where-Object { [string]::IsNullOrWhiteSpace([Environment]::GetEnvironmentVariable($_)) })
+          $required = @{
+            SIGNPATH_API_TOKEN = $env:SIGNPATH_API_TOKEN
+            SIGNPATH_ORGANIZATION_ID = "${{ vars.SIGNPATH_ORGANIZATION_ID }}"
+            SIGNPATH_PROJECT_SLUG = "${{ vars.SIGNPATH_PROJECT_SLUG }}"
+            SIGNPATH_SIGNING_POLICY_SLUG = "${{ vars.SIGNPATH_SIGNING_POLICY_SLUG }}"
+            SIGNPATH_ARTIFACT_CONFIGURATION_SLUG = "${{ vars.SIGNPATH_ARTIFACT_CONFIGURATION_SLUG }}"
+          }
+          $missing = @($required.GetEnumerator() | Where-Object { [string]::IsNullOrWhiteSpace($_.Value) } | ForEach-Object { $_.Key })
           if ($missing.Count -eq 0) {
             "enabled=true" >> $env:GITHUB_OUTPUT
             "artifact_suffix=signed" >> $env:GITHUB_OUTPUT
-            "SSL.com eSigner configuration detected; signing will run." >> $env:GITHUB_STEP_SUMMARY
+            "SignPath token detected; signing request will run." >> $env:GITHUB_STEP_SUMMARY
           } else {
             "enabled=false" >> $env:GITHUB_OUTPUT
             "artifact_suffix=unsigned" >> $env:GITHUB_OUTPUT
-            "SSL.com eSigner secrets are incomplete; installer remains UNSIGNED." >> $env:GITHUB_STEP_SUMMARY
-            Write-Host "Signing disabled: missing required secrets: $($missing -join ', ')"
+            "SignPath configuration is incomplete; installer remains UNSIGNED." >> $env:GITHUB_STEP_SUMMARY
+            Write-Host "Signing disabled: missing $($missing -join ', ')."
           }
-      - name: Sign installer with SSL.com eSigner
+      - name: Upload unsigned installer for SignPath
+        id: upload-unsigned-installer
         if: steps.signing.outputs.enabled == 'true'
-        uses: sslcom/esigner-codesign@develop
+        uses: actions/upload-artifact@v4
         with:
-          command: sign
-          username: ${{ secrets.SSL_COM_USERNAME }}
-          password: ${{ secrets.SSL_COM_PASSWORD }}
-          credential_id: ${{ secrets.SSL_COM_CREDENTIAL_ID }}
-          totp_secret: ${{ secrets.SSL_COM_TOTP_SECRET }}
-          file_path: ${{ github.workspace }}/dist/OllamaFullSetup.exe
-          override: true
-          clean_logs: true
-          signing_method: v1
+          name: hades-signpath-input-${{ github.run_id }}
+          path: dist/OllamaFullSetup.exe
+          if-no-files-found: error
+          retention-days: 2
+      - name: Submit installer to SignPath
+        if: steps.signing.outputs.enabled == 'true'
+        uses: signpath/github-action-submit-signing-request@v3
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG }}
+          signing-policy-slug: ${{ vars.SIGNPATH_SIGNING_POLICY_SLUG }}
+          artifact-configuration-slug: ${{ vars.SIGNPATH_ARTIFACT_CONFIGURATION_SLUG }}
+          github-artifact-id: ${{ steps.upload-unsigned-installer.outputs.artifact-id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          wait-for-completion: true
+          output-artifact-directory: dist/signpath-signed
+      - name: Replace installer with SignPath output
+        if: steps.signing.outputs.enabled == 'true'
+        shell: pwsh
+        run: |
+          $signed = Get-ChildItem -Path "dist/signpath-signed" -Recurse -Filter "OllamaFullSetup.exe" | Select-Object -First 1
+          if ($null -eq $signed) {
+            throw "SignPath completed without returning OllamaFullSetup.exe"
+          }
+          Copy-Item -Path $signed.FullName -Destination "dist/OllamaFullSetup.exe" -Force
       - name: Report installer signing state
         shell: pwsh
         env:
           SIGNING_ENABLED: ${{ steps.signing.outputs.enabled }}
         run: |
           if ($env:SIGNING_ENABLED -eq "true") {
-            Write-Host "INSTALLER_SIGNING=SIGNED (SSL.com eSigner OV)"
-            "### Installer signing`n`n**SIGNED** with SSL.com eSigner OV." >> $env:GITHUB_STEP_SUMMARY
+            Write-Host "INSTALLER_SIGNING=SIGNED (SignPath Foundation)"
+            "### Installer signing`n`n**SIGNED** with SignPath Foundation." >> $env:GITHUB_STEP_SUMMARY
           } else {
-            Write-Host "INSTALLER_SIGNING=UNSIGNED (SSL.com secrets not configured)"
-            "### Installer signing`n`n**UNSIGNED** — SSL.com secrets are not configured." >> $env:GITHUB_STEP_SUMMARY
+            Write-Host "INSTALLER_SIGNING=UNSIGNED (SignPath token not configured)"
+            "### Installer signing`n`n**UNSIGNED** — SignPath token is not configured." >> $env:GITHUB_STEP_SUMMARY
           }
       - name: Compute SHA-256 checksum
         shell: pwsh
