@@ -28,6 +28,10 @@ automatizado + execução real reproduzível em navegador (desktop e mobile), se
 
 ## Histórico de sessões
 
+- **2026-10-01 18:02 UTC — Quickstart smoke (Gemini):** smoke real em portas isoladas comprovou backend e build/UI, mas encontrou colisão de porta: o Vite fazia fallback silencioso de `5174` para `5175` enquanto o script anunciava `5174`. Corrigido com `--strictPort`, para falhar claramente em vez de expor URL errada. O primeiro intento sem PATH de Go falhou honestamente por dependência ausente no ambiente; o segundo iniciou backend/UI e foi interrompido após detectar a colisão existente. Artefato `bin/` removido. Próximo passo: novo commit/CI e smoke com porta livre; depois continuar estados offline/sem modelo.
+
+
+
 - **2026-10-01 17:45 UTC — Quickstart usuário final (Gemini):** após confirmar `class-a-plus-integrity` e `dz23-agentic-quality` verdes no SHA `e7680a48`, foi adicionada a primeira melhoria do adendo de produto: `scripts/hades-quickstart.sh`. O script valida Go/Node/npm, builda backend e UI, inicia ambos, verifica `/api/version`, oferece (sem download silencioso) o modelo recomendado `gemma4:e2b` quando não há modelo e documenta a configuração de providers em Configurações → Provedores de IA. README atualizado com limitações honestas: ainda requer dependências de build e não é instalador assinado. Validação local: `bash -n`, `--help` e `git diff --check` passaram. Próximo passo: smoke do quickstart em ambiente limpo/isolado e depois estados acionáveis offline/sem modelo.
 
 

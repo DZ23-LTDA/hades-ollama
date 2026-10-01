@@ -82,7 +82,9 @@ if [[ "$NO_MODEL" -eq 0 ]]; then
 fi
 
 echo "[4/4] Iniciando UI em http://127.0.0.1:$UI_PORT ..."
-(cd "$ROOT/app/ui/app" && npm run preview -- --host 0.0.0.0 --port "$UI_PORT") &
+# Do not let Vite silently move to another port: the advertised URL must be
+# the URL that is actually serving the UI.
+(cd "$ROOT/app/ui/app" && npm run preview -- --host 0.0.0.0 --port "$UI_PORT" --strictPort) &
 UI_PID=$!
 echo
 echo "Hades está disponível em http://127.0.0.1:$UI_PORT"
