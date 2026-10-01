@@ -635,8 +635,8 @@ next_action: run complete release gates, capture final screens, commit and push 
 ```yaml
 commit: d0809136fdda6871a7371bd632750972cbb65305
 branch: feat/manus-parity-omniroute
-remote: https://github.com/DZ23-LTDA/ollama-classe-a-plus.git
-pull_request: https://github.com/DZ23-LTDA/ollama-classe-a-plus/pull/1
+remote: https://github.com/DZ23-LTDA/hades-ollama.git
+pull_request: https://github.com/DZ23-LTDA/hades-ollama/pull/1
 local_tree: clean_after_commit
 public_ci: queued_at_publish
 next_action: external credentialed journeys and distributed staging; do not claim universal production readiness
@@ -737,8 +737,8 @@ state: FIXING
 iteration: 4
 commit: 3f7e4065
 branch: feat/manus-parity-omniroute
-remote: https://github.com/DZ23-LTDA/ollama-classe-a-plus.git
-pull_request: https://github.com/DZ23-LTDA/ollama-classe-a-plus/pull/1
+remote: https://github.com/DZ23-LTDA/hades-ollama.git
+pull_request: https://github.com/DZ23-LTDA/hades-ollama/pull/1
 published: true
 working_tree: clean
 changes_published:
@@ -807,8 +807,8 @@ state: FIXING
 iteration: 5
 commit: 4344b24b
 branch: feat/manus-parity-omniroute
-remote: https://github.com/DZ23-LTDA/ollama-classe-a-plus.git
-pull_request: https://github.com/DZ23-LTDA/ollama-classe-a-plus/pull/1
+remote: https://github.com/DZ23-LTDA/hades-ollama.git
+pull_request: https://github.com/DZ23-LTDA/hades-ollama/pull/1
 working_tree: clean
 published: true
 proofs: integrity, go test ./..., go vet, go build, UI Vitest/build, mobile typecheck and HTTP cross-tenant Builder regression all PASS
@@ -851,8 +851,8 @@ state: FIXING
 iteration: 6
 commit: 07c56edd
 branch: feat/manus-parity-omniroute
-remote: https://github.com/DZ23-LTDA/ollama-classe-a-plus.git
-pull_request: https://github.com/DZ23-LTDA/ollama-classe-a-plus/pull/1
+remote: https://github.com/DZ23-LTDA/hades-ollama.git
+pull_request: https://github.com/DZ23-LTDA/hades-ollama/pull/1
 working_tree: clean
 published: true
 proofs: integrity, Go tests/vet/build, UI Vitest/build, mobile typecheck and HTTP cross-tenant P0 regression all PASS
@@ -898,8 +898,8 @@ state: FIXING
 iteration: 7
 commit: 45cd4f42
 branch: feat/manus-parity-omniroute
-remote: https://github.com/DZ23-LTDA/ollama-classe-a-plus.git
-pull_request: https://github.com/DZ23-LTDA/ollama-classe-a-plus/pull/1
+remote: https://github.com/DZ23-LTDA/hades-ollama.git
+pull_request: https://github.com/DZ23-LTDA/hades-ollama/pull/1
 working_tree: checkpoint pending commit
 published: true
 proofs: integrity, Go tests/vet/build, UI Vitest/build, mobile typecheck and approval negative tests all PASS
@@ -944,8 +944,8 @@ state: FIXING
 iteration: 8
 commit: 45b6e019
 branch: feat/manus-parity-omniroute
-remote: https://github.com/DZ23-LTDA/ollama-classe-a-plus.git
-pull_request: https://github.com/DZ23-LTDA/ollama-classe-a-plus/pull/1
+remote: https://github.com/DZ23-LTDA/hades-ollama.git
+pull_request: https://github.com/DZ23-LTDA/hades-ollama/pull/1
 working_tree: checkpoint pending commit
 published: true
 proofs: integrity, Go tests/vet/build, UI Vitest/build, mobile typecheck and Company HTTP/domain approval regressions all PASS
@@ -989,8 +989,8 @@ state: FIXING
 iteration: 9
 commit: 99ea0b01
 branch: feat/manus-parity-omniroute
-remote: https://github.com/DZ23-LTDA/ollama-classe-a-plus.git
-pull_request: https://github.com/DZ23-LTDA/ollama-classe-a-plus/pull/1
+remote: https://github.com/DZ23-LTDA/hades-ollama.git
+pull_request: https://github.com/DZ23-LTDA/hades-ollama/pull/1
 working_tree: checkpoint pending commit
 published: true
 proofs: integrity, Go tests/vet/build, UI Vitest/build, mobile typecheck and spend HTTP/domain regressions all PASS
@@ -1032,8 +1032,8 @@ state: FIXING
 iteration: 10
 commit: 157e7012
 branch: feat/manus-parity-omniroute
-remote: https://github.com/DZ23-LTDA/ollama-classe-a-plus.git
-pull_request: https://github.com/DZ23-LTDA/ollama-classe-a-plus/pull/1
+remote: https://github.com/DZ23-LTDA/hades-ollama.git
+pull_request: https://github.com/DZ23-LTDA/hades-ollama/pull/1
 working_tree: checkpoint pending commit
 published: true
 proofs: integrity, Go tests/vet/build, UI Vitest/build, mobile typecheck and DLP token-injection regressions all PASS
@@ -1076,8 +1076,8 @@ state: FIXING
 iteration: 11
 commit: b74c25ea
 branch: feat/manus-parity-omniroute
-remote: https://github.com/DZ23-LTDA/ollama-classe-a-plus.git
-pull_request: https://github.com/DZ23-LTDA/ollama-classe-a-plus/pull/1
+remote: https://github.com/DZ23-LTDA/hades-ollama.git
+pull_request: https://github.com/DZ23-LTDA/hades-ollama/pull/1
 working_tree: checkpoint pending commit
 published: true
 proofs: integrity, Go tests/vet/build, UI Vitest/build, mobile typecheck and Remote MCP egress regressions all PASS
@@ -1121,8 +1121,8 @@ state: FIXING
 iteration: 12
 commit: 86302569
 branch: feat/manus-parity-omniroute
-remote: https://github.com/DZ23-LTDA/ollama-classe-a-plus.git
-pull_request: https://github.com/DZ23-LTDA/ollama-classe-a-plus/pull/1
+remote: https://github.com/DZ23-LTDA/hades-ollama.git
+pull_request: https://github.com/DZ23-LTDA/hades-ollama/pull/1
 working_tree: checkpoint pending commit
 published: true
 proofs: integrity, Go tests/vet/build, UI Vitest/build, mobile typecheck and MCP stdio negative lifecycle tests all PASS
@@ -1166,8 +1166,8 @@ state: FIXING
 iteration: 13
 commit: b84ac97c
 branch: feat/manus-parity-omniroute
-remote: https://github.com/DZ23-LTDA/ollama-classe-a-plus.git
-pull_request: https://github.com/DZ23-LTDA/ollama-classe-a-plus/pull/1
+remote: https://github.com/DZ23-LTDA/hades-ollama.git
+pull_request: https://github.com/DZ23-LTDA/hades-ollama/pull/1
 working_tree: checkpoint pending commit
 published: true
 proofs: integrity, Go tests/vet/build, UI Vitest/build, mobile typecheck and Media egress negative tests all PASS
@@ -1210,8 +1210,8 @@ state: FIXING
 iteration: 14
 commit: d6506a1a
 branch: feat/manus-parity-omniroute
-remote: https://github.com/DZ23-LTDA/ollama-classe-a-plus.git
-pull_request: https://github.com/DZ23-LTDA/ollama-classe-a-plus/pull/1
+remote: https://github.com/DZ23-LTDA/hades-ollama.git
+pull_request: https://github.com/DZ23-LTDA/hades-ollama/pull/1
 working_tree: checkpoint pending commit
 published: true
 proofs: integrity, Go tests/vet/build, UI Vitest/build, mobile typecheck and Connector egress negative tests all PASS
@@ -1254,8 +1254,8 @@ state: FIXING
 iteration: 15
 commit: 150273ee
 branch: feat/manus-parity-omniroute
-remote: https://github.com/DZ23-LTDA/ollama-classe-a-plus.git
-pull_request: https://github.com/DZ23-LTDA/ollama-classe-a-plus/pull/1
+remote: https://github.com/DZ23-LTDA/hades-ollama.git
+pull_request: https://github.com/DZ23-LTDA/hades-ollama/pull/1
 working_tree: checkpoint pending commit
 published: true
 proofs: integrity, Go tests/vet/build, UI Vitest/build, mobile typecheck and OAuth redirect negative tests all PASS
@@ -1295,8 +1295,8 @@ state: FIXING
 iteration: 16
 commit: 772b07a1
 branch: feat/manus-parity-omniroute
-remote: https://github.com/DZ23-LTDA/ollama-classe-a-plus.git
-pull_request: https://github.com/DZ23-LTDA/ollama-classe-a-plus/pull/1
+remote: https://github.com/DZ23-LTDA/hades-ollama.git
+pull_request: https://github.com/DZ23-LTDA/hades-ollama/pull/1
 working_tree: checkpoint pending commit
 published: true
 proofs: integrity, Go tests/vet/build, UI security Vitest/build, mobile typecheck all PASS
@@ -1339,8 +1339,8 @@ state: FIXING
 iteration: 17
 commit: 7e72d9d9
 branch: feat/manus-parity-omniroute
-remote: https://github.com/DZ23-LTDA/ollama-classe-a-plus.git
-pull_request: https://github.com/DZ23-LTDA/ollama-classe-a-plus/pull/1
+remote: https://github.com/DZ23-LTDA/hades-ollama.git
+pull_request: https://github.com/DZ23-LTDA/hades-ollama/pull/1
 working_tree: checkpoint pending commit
 published: true
 proofs: integrity, Go tests/vet/build, UI Vitest/build, mobile typecheck and OAuth egress negative tests all PASS
@@ -1383,8 +1383,8 @@ state: FIXING
 iteration: 18
 commit: 3d19f111
 branch: feat/manus-parity-omniroute
-remote: https://github.com/DZ23-LTDA/ollama-classe-a-plus.git
-pull_request: https://github.com/DZ23-LTDA/ollama-classe-a-plus/pull/1
+remote: https://github.com/DZ23-LTDA/hades-ollama.git
+pull_request: https://github.com/DZ23-LTDA/hades-ollama/pull/1
 working_tree: checkpoint pending commit
 published: true
 proofs: integrity, Go tests/vet/build, internal/agent suite, UI Vitest/build, mobile typecheck and process cancellation/redaction tests all PASS
@@ -1425,8 +1425,8 @@ state: FIXING
 iteration: 19
 commit: 30b1ecb8
 branch: feat/manus-parity-omniroute
-remote: https://github.com/DZ23-LTDA/ollama-classe-a-plus.git
-pull_request: https://github.com/DZ23-LTDA/ollama-classe-a-plus/pull/1
+remote: https://github.com/DZ23-LTDA/hades-ollama.git
+pull_request: https://github.com/DZ23-LTDA/hades-ollama/pull/1
 working_tree: checkpoint pending commit
 published: true
 proofs: integrity, Go tests/vet/build, UI Vitest/build, mobile typecheck and cross-tenant plugin tests all PASS
@@ -1464,8 +1464,8 @@ state: FIXING
 iteration: 20
 commit: 66258da7
 branch: feat/manus-parity-omniroute
-remote: https://github.com/DZ23-LTDA/ollama-classe-a-plus.git
-pull_request: https://github.com/DZ23-LTDA/ollama-classe-a-plus/pull/1
+remote: https://github.com/DZ23-LTDA/hades-ollama.git
+pull_request: https://github.com/DZ23-LTDA/hades-ollama/pull/1
 working_tree: checkpoint pending commit
 published: true
 proofs: YAML parser, integrity guard and diff check PASS; CI now declares full Go/UI/mobile gates
@@ -1506,8 +1506,8 @@ state: FIXING
 iteration: 21
 commit: 0739dec7
 branch: feat/manus-parity-omniroute
-remote: https://github.com/DZ23-LTDA/ollama-classe-a-plus.git
-pull_request: https://github.com/DZ23-LTDA/ollama-classe-a-plus/pull/1
+remote: https://github.com/DZ23-LTDA/hades-ollama.git
+pull_request: https://github.com/DZ23-LTDA/hades-ollama/pull/1
 working_tree: checkpoint pending commit
 published: true
 proofs: integrity, Go tests/vet/build, UI Vitest/build, mobile typecheck and Grok negative tests all PASS
@@ -1546,8 +1546,8 @@ state: FIXING
 iteration: 22
 commit: a07d1a68
 branch: feat/manus-parity-omniroute
-remote: https://github.com/DZ23-LTDA/ollama-classe-a-plus.git
-pull_request: https://github.com/DZ23-LTDA/ollama-classe-a-plus/pull/1
+remote: https://github.com/DZ23-LTDA/hades-ollama.git
+pull_request: https://github.com/DZ23-LTDA/hades-ollama/pull/1
 working_tree: checkpoint pending commit
 published: true
 proofs: integrity/static Compose checks and diff check PASS; Docker integration remains NOT_RUN_DOCKER_UNAVAILABLE
@@ -1584,8 +1584,8 @@ state: FIXING
 iteration: 23
 commit: dcd3a19f
 branch: feat/manus-parity-omniroute
-remote: https://github.com/DZ23-LTDA/ollama-classe-a-plus.git
-pull_request: https://github.com/DZ23-LTDA/ollama-classe-a-plus/pull/1
+remote: https://github.com/DZ23-LTDA/hades-ollama.git
+pull_request: https://github.com/DZ23-LTDA/hades-ollama/pull/1
 working_tree: checkpoint pending commit
 published: true
 proofs: provider negative test, integrity, Go focused, UI Vitest/build PASS
@@ -1623,8 +1623,8 @@ state: FIXING
 iteration: 24
 commit: 6d35ad20
 branch: feat/manus-parity-omniroute
-remote: https://github.com/DZ23-LTDA/ollama-classe-a-plus.git
-pull_request: https://github.com/DZ23-LTDA/ollama-classe-a-plus/pull/1
+remote: https://github.com/DZ23-LTDA/hades-ollama.git
+pull_request: https://github.com/DZ23-LTDA/hades-ollama/pull/1
 working_tree: checkpoint pending commit
 published: true
 proofs: integrity/YAML/diff checks PASS; release execution/signing NOT_RUN in sandbox
@@ -1663,8 +1663,8 @@ state: FIXING
 iteration: 25
 commit: 287484e7
 branch: feat/manus-parity-omniroute
-remote: https://github.com/DZ23-LTDA/ollama-classe-a-plus.git
-pull_request: https://github.com/DZ23-LTDA/ollama-classe-a-plus/pull/1
+remote: https://github.com/DZ23-LTDA/hades-ollama.git
+pull_request: https://github.com/DZ23-LTDA/hades-ollama/pull/1
 working_tree: checkpoint pending commit
 published: true
 proofs: focused/full Go, vet/build, integrity, UI and mobile gates PASS; distributed Redis not run locally
@@ -1703,8 +1703,8 @@ state: FIXING
 iteration: 26
 commit: 4bf40774
 branch: feat/manus-parity-omniroute
-remote: https://github.com/DZ23-LTDA/ollama-classe-a-plus.git
-pull_request: https://github.com/DZ23-LTDA/ollama-classe-a-plus/pull/1
+remote: https://github.com/DZ23-LTDA/hades-ollama.git
+pull_request: https://github.com/DZ23-LTDA/hades-ollama/pull/1
 working_tree: checkpoint pending commit
 published: true
 proofs: focused/full Go, vet/build, integrity, UI and mobile gates PASS
@@ -1720,8 +1720,8 @@ state: FIXING
 iteration: 27
 audit_commit: 146d203c
 branch: feat/manus-parity-omniroute
-remote: https://github.com/DZ23-LTDA/ollama-classe-a-plus.git
-pull_request: https://github.com/DZ23-LTDA/ollama-classe-a-plus/pull/1
+remote: https://github.com/DZ23-LTDA/hades-ollama.git
+pull_request: https://github.com/DZ23-LTDA/hades-ollama/pull/1
 working_tree: checkpoint pending commit
 published: true
 classification: preview/local RC em hardening
@@ -2595,7 +2595,7 @@ repository:
   path: /home/ubuntu/ollama-full-recovery
   branch: recovery/ollama-full-snapshot
   head: 8635e30d (origin/main; commit Windows checksum)
-  remote: origin -> https://github.com/DZ23-LTDA/ollama-classe-a-plus.git
+  remote: origin -> https://github.com/DZ23-LTDA/hades-ollama.git
   uncommitted_changes: true
   observed_modified_and_untracked_paths: dozens; backend, server, web, docs, packaging and untracked security/snapshot modules
 scope_in:

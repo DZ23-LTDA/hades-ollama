@@ -6,8 +6,8 @@
 
 ## Estado remoto confirmado
 
-- **Projeto:** [DZ23-LTDA/ollama-classe-a-plus](https://github.com/DZ23-LTDA/ollama-classe-a-plus)
-- **Branch de continuidade:** [`recovery/ollama-full-snapshot`](https://github.com/DZ23-LTDA/ollama-classe-a-plus/tree/recovery/ollama-full-snapshot)
+- **Projeto:** [DZ23-LTDA/hades-ollama](https://github.com/DZ23-LTDA/hades-ollama)
+- **Branch de continuidade:** [`recovery/ollama-full-snapshot`](https://github.com/DZ23-LTDA/hades-ollama/tree/recovery/ollama-full-snapshot)
 - **Commit fixo do snapshot de código:** `8c2e3604a086abeab401e2c80e96fe6ad4473566` — `security: harden tenant isolation and workspace boundaries` (134 arquivos; 22.536 inserções, 1.582 remoções).
 - A branch contém commits documentais posteriores. **Sua ponta é móvel:** consulte-a no checkout/remote antes de retomar, em vez de tratar um hash escrito aqui como atual:
   ```bash
@@ -21,7 +21,7 @@
 
 ```bash
 git clone --branch recovery/ollama-full-snapshot \
-  https://github.com/DZ23-LTDA/ollama-classe-a-plus.git
+  https://github.com/DZ23-LTDA/hades-ollama.git
 cd ollama-classe-a-plus
 ```
 
@@ -284,7 +284,7 @@ Pergunta Manus Flex: a documentação oficial pública encontrada descreve sandb
 
 **Branches/PR observados via GitHub API (read-only, 2026-09-29)**
 
-- PR [#38](https://github.com/DZ23-LTDA/ollama-classe-a-plus/pull/38) continua OPEN/mergeable, head `fix/audit-security-deps-2026-09-25` em `07a4f0bca2cbe327d5234abd9ebec69ff52154e6`, base `main` em `8635e30dc9e95a1f5b29700169783abc24093ceb`. Contém `ConnectorsPage`, quick-connect, Providers, icons e implementação relacionada; a interface de conectores dessa linha é mais completa que a duplicação parcial construída na linha de UI.
+- PR [#38](https://github.com/DZ23-LTDA/hades-ollama/pull/38) continua OPEN/mergeable, head `fix/audit-security-deps-2026-09-25` em `07a4f0bca2cbe327d5234abd9ebec69ff52154e6`, base `main` em `8635e30dc9e95a1f5b29700169783abc24093ceb`. Contém `ConnectorsPage`, quick-connect, Providers, icons e implementação relacionada; a interface de conectores dessa linha é mais completa que a duplicação parcial construída na linha de UI.
 - Comparação `recovery...PR38`: diverged, recovery +35 / -27, merge-base `8635e30d`, 121 paths no diff.
 - Comparação `recovery...feat/ui-shell-parity`: diverged, +17 / -15, merge-base `add5881a260ff1f740b1340c6f394c26acc2d5d2`, 57 paths. Nenhuma reconciliação/merge foi executada nesta etapa.
 - O trabalho de UI aditivo citado no contexto inclui tema Claro/Escuro/Automático, Home/dashboard, status pills e rastreador de etapas. A proposta de produto registrada pelo usuário é convergir as linhas antes de construir mais telas e priorizar chat como agente executável (tools, arquivos, terminal, browser/MCP, artifacts e approvals), mas isso ainda precisa ser integrado/revalidado na base canônica.

@@ -16,7 +16,7 @@ describe("help", () => {
   it("points every help link at the project repository", () => {
     for (const link of HELP_LINKS) {
       expect(link.href).toMatch(
-        /^https:\/\/github\.com\/DZ23-LTDA\/ollama-classe-a-plus/,
+        /^https:\/\/github\.com\/DZ23-LTDA\/hades-ollama/,
       );
     }
   });

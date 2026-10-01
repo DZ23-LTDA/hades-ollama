@@ -12,7 +12,7 @@
   #define MyAppVersion "0.0.0"
 #endif
 #define MyAppPublisher "DZ23-LTDA"
-#define MyAppURL "https://github.com/DZ23-LTDA/ollama-classe-a-plus"
+#define MyAppURL "https://github.com/DZ23-LTDA/hades-ollama"
 #define MyAppExeName "ollama app.exe"
 #define LlamaServerExeName "llama-server.exe"
 #define MyIcon ".\assets\app.ico"

@@ -29,7 +29,7 @@ paths que nao sao criados em PRs docs-only.
 Ruleset pronto em [`.github/rulesets/main-protection.json`](../.github/rulesets/main-protection.json).
 
 ```bash
-gh api -X POST repos/DZ23-LTDA/ollama-classe-a-plus/rulesets \
+gh api -X POST repos/DZ23-LTDA/hades-ollama/rulesets \
   --input .github/rulesets/main-protection.json
 ```
 
@@ -71,6 +71,6 @@ próprio autor — seria só cerimônia). Em vez de inventar revisores, aplicamo
 ## Verificação após aplicar
 
 ```bash
-gh api repos/DZ23-LTDA/ollama-classe-a-plus/rulesets            # lista rulesets
-gh api repos/DZ23-LTDA/ollama-classe-a-plus/branches/main -q '.protected'
+gh api repos/DZ23-LTDA/hades-ollama/rulesets            # lista rulesets
+gh api repos/DZ23-LTDA/hades-ollama/branches/main -q '.protected'
 ```

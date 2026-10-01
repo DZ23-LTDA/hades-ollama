@@ -108,8 +108,8 @@ A sequência permanece a do checkpoint do projeto: consolidar authorization por 
 
 ## Referências
 
-[1]: https://github.com/DZ23-LTDA/ollama-classe-a-plus "Repositório público Ollama Classe A+"
-[2]: https://github.com/DZ23-LTDA/ollama-classe-a-plus/pull/1 "Pull request público do Ollama Classe A+"
+[1]: https://github.com/DZ23-LTDA/hades-ollama "Repositório público Ollama Classe A+"
+[2]: https://github.com/DZ23-LTDA/hades-ollama/pull/1 "Pull request público do Ollama Classe A+"
 [3]: ../agentic/PARITY_MATRIX.md "Matriz de paridade observável do Ollama Classe A+"
 [4]: https://developers.openai.com/pt-BR/blog/codex-as-a-platform "OpenAI Codex as a platform"
 [5]: https://code.claude.com/docs/en/agent-sdk/overview "Claude Agent SDK overview"

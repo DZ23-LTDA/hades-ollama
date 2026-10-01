@@ -1,6 +1,6 @@
 # Changelog — Hades
 
-Este arquivo registra as entregas públicas da distribuição `DZ23-LTDA/ollama-classe-a-plus`. O projeto mantém a atribuição e a licença do Ollama upstream; os recursos agentic específicos estão descritos com seus limites no [guia Hades](docs/CLASS_A_PLUS_GUIDE.md).
+Este arquivo registra as entregas públicas da distribuição `DZ23-LTDA/hades-ollama`. O projeto mantém a atribuição e a licença do Ollama upstream; os recursos agentic específicos estão descritos com seus limites no [guia Hades](docs/CLASS_A_PLUS_GUIDE.md).
 
 ## Unreleased — rodada de paridade observável
 
@@ -36,7 +36,7 @@ Adapters, contratos, testes e documentação não significam que contas externas
 
 Os gates comprovados desta revisão incluem testes focados do runtime/server, build Go, build/typecheck da UI e typecheck mobile em suas fases correspondentes. O workflow público [`dz23-agentic-quality`](.github/workflows/dz23-agentic-quality.yaml) executa os gates de qualidade e a integração distribuída no GitHub Actions.
 
-[0.1.0]: https://github.com/DZ23-LTDA/ollama-classe-a-plus/releases/tag/v0.1.0
+[0.1.0]: https://github.com/DZ23-LTDA/hades-ollama/releases/tag/v0.1.0
 
 ## Unreleased — fluxo vertical funcional e HarnessRouter — 2026-09-22
 

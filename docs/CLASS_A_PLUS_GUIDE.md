@@ -47,7 +47,7 @@ O relatório [`READINESS_2026-09-22.md`](agentic/READINESS_2026-09-22.md) regist
 O fork público distribui o código-fonte, não um instalador assinado, binário de release, imagem Docker pública ou pacote de loja Hades. Não use `ollama.com/install.sh`, `OllamaSetup.exe`, `Ollama.dmg` ou `ollama/ollama` para instalar este fork: esses artefatos pertencem ao upstream. Compile a revisão do repositório para desenvolvimento e validação local:
 
 ```bash
-git clone https://github.com/DZ23-LTDA/ollama-classe-a-plus.git
+git clone https://github.com/DZ23-LTDA/hades-ollama.git
 cd ollama-classe-a-plus
 
 # Conferir a revisão pública
@@ -309,9 +309,9 @@ Este repositório deriva de uma base Ollama e deve preservar os arquivos de lice
 
 ## Links públicos
 
-- [Repositório público canônico](https://github.com/DZ23-LTDA/ollama-classe-a-plus)
-- [Branch de evolução agentic](https://github.com/DZ23-LTDA/ollama-classe-a-plus/tree/feat/manus-parity-omniroute)
-- [PRs de revisão](https://github.com/DZ23-LTDA/ollama-classe-a-plus/pulls)
+- [Repositório público canônico](https://github.com/DZ23-LTDA/hades-ollama)
+- [Branch de evolução agentic](https://github.com/DZ23-LTDA/hades-ollama/tree/feat/manus-parity-omniroute)
+- [PRs de revisão](https://github.com/DZ23-LTDA/hades-ollama/pulls)
 - [Arquitetura agentic](agentic/ARCHITECTURE.md)
 - [API agentic](agentic/API.md)
 - [Integrações](agentic/INTEGRATIONS.md)
