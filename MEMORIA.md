@@ -540,3 +540,6 @@ automatizado + execução real reproduzível em navegador (desktop e mobile), se
   - Quality gates 100% verdes (Go, tsc, eslint, vitest, build e E2E).
 - **Evidências:** `docs/evidencias/screen-*-desktop.png`, `docs/evidencias/screen-*-mobile.png`, `docs/evidencias/browser-console-audit.json`, `docs/decisions/ADR-*.md`.
 - **Onde parou:** Missão 100% concluída. Repositório remoto no GitHub sincronizado na branch `recovery/ollama-full-snapshot` e pasta local do PC do usuário (`D:\IA\Trabalhos\DZ23-LTDA\ollama-classe-a-plus`) atualizada.
+
+### Auditoria ampla — correção do gate Windows — 2026-09-30 22:02 -03
+O CI `dz23-agentic-quality` revelou um falso negativo no teste de importação ZIP em Windows: a validação comparava literalmente o caminho do topo retornado pelo Git com o caminho local. A implementação foi ajustada para normalizar separadores/paths absolutos e comparar sem diferenciar caixa no Windows, sem relaxar a rejeição de `.git`, traversal ou symlink. Evidência local: testes focados de importação, `CGO_ENABLED=0 go build ./...` e `GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build ./...` passaram. Próximo passo: novo commit e CI remoto.

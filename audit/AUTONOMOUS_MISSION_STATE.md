@@ -2685,3 +2685,11 @@ baseline_observed:
 next_action: executar linha de base de testes/build/vet/integridade e mapear falhas reais
 rollback: preservar HEAD 94333993; não descartar alterações de terceiros
 ```
+
+## Retomada após CI — 2026-09-30 22:02 -03
+state: RETESTING
+commit: edff7c44
+finding: dz23-agentic-quality falhou apenas no Windows em TestLargeUploadProjectImportStreamsZipAndCreatesIsolatedWorktree; o erro vinha da comparação literal do caminho retornado por `git rev-parse --show-toplevel` com o caminho do fixture.
+fix: project_import.go agora normaliza separadores, absolutiza e compara caminhos sem diferenciar caixa no Windows; a rejeição de `.git` permanece ativa.
+evidence: go test -run 'Import|GitHubImport|LargeUpload|ZipStream|Clone|Ingest' ./internal/agent ./server PASS; CGO_ENABLED=0 go build ./... PASS; GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build ./... PASS.
+next: commit, push e acompanhar novamente class-a-plus-integrity e dz23-agentic-quality no mesmo SHA.

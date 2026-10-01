@@ -16,6 +16,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strings"
 	"time"
 
@@ -346,10 +347,22 @@ func initializeImportedRepository(ctx context.Context, root string) error {
 	check := exec.CommandContext(ctx, "git", "-C", root, "rev-parse", "--show-toplevel")
 	check.Env = append(os.Environ(), "GIT_CONFIG_NOSYSTEM=1", "GIT_CONFIG_GLOBAL=", "GIT_TERMINAL_PROMPT=0")
 	output, err := check.Output()
-	if err != nil || filepath.Clean(strings.TrimSpace(string(output))) != filepath.Clean(root) {
+	if err != nil || !sameImportPath(strings.TrimSpace(string(output)), root) {
 		return ErrImportArchiveUnsafe
 	}
 	return nil
+}
+
+func sameImportPath(left, right string) bool {
+	left, leftErr := filepath.Abs(filepath.Clean(filepath.FromSlash(strings.TrimSpace(left))))
+	right, rightErr := filepath.Abs(filepath.Clean(filepath.FromSlash(strings.TrimSpace(right))))
+	if leftErr != nil || rightErr != nil {
+		return false
+	}
+	if runtime.GOOS == "windows" {
+		return strings.EqualFold(left, right)
+	}
+	return left == right
 }
 
 func importedTextFiles(root string) []string {
