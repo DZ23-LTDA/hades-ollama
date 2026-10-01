@@ -78,9 +78,11 @@ jobs:
                 echo "... aguardando: $name (status='ausente')"; pending=1
               else
                 cc=$(printf '%s\n' "$lines" | tail -1 | cut -d'|' -f2)
-                # Gate obrigatório só aceita success; failure/cancelled/skipped
-                # sem nenhuma tentativa bem-sucedida não pode passar.
-                echo "FAIL -> $name (conclusao='${cc:-none}'; obrigatorio exige success)"; fail=1
+                # Uma tentativa cancelada pode ser imediatamente seguida por
+                # outra tentativa criada pelo concurrency group. Aguarde a
+                # substituta; se nenhuma tentativa terminar com success até o
+                # deadline, o timeout reprova o gate sem mascarar a falha.
+                echo "... aguardando substituta: $name (conclusao='${cc:-none}')"; pending=1
               fi
             done
             if [ "$fail" -ne 0 ]; then

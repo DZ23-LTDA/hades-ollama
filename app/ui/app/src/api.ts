@@ -134,6 +134,32 @@ export async function disconnectUser(): Promise<void> {
   }
 }
 
+export interface AgentNotification {
+  id: string;
+  mission_id: string;
+  type: string;
+  title: string;
+  body?: string;
+  created_at: string;
+}
+
+export async function fetchAgentNotifications(limit = 20): Promise<AgentNotification[]> {
+  const response = await fetch(`${API_BASE}/api/agent/v1/notifications?limit=${limit}`);
+  if (!response.ok) {
+    if (response.status === 401 || response.status === 403) return [];
+    throw new Error(`Falha ao carregar notificações: ${response.status}`);
+  }
+  const payload: unknown = await response.json();
+  if (
+    payload !== null &&
+    typeof payload === "object" &&
+    Array.isArray((payload as { notifications?: unknown }).notifications)
+  ) {
+    return (payload as { notifications: AgentNotification[] }).notifications;
+  }
+  return [];
+}
+
 export async function getChats(): Promise<ChatsResponse> {
   const response = await fetch(`${API_BASE}/api/v1/chats`);
   const data = await response.json();

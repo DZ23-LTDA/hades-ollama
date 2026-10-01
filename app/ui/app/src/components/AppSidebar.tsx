@@ -28,7 +28,7 @@ import { HelpDialog } from "@/components/HelpDialog";
 import { newTaskShortcut } from "@/lib/help";
 import { SETTINGS_SECTIONS } from "@/lib/settingsTabs";
 import { isTypingTarget } from "@/lib/search";
-import { disconnectUser, fetchUser } from "@/api";
+import { disconnectUser, fetchAgentNotifications, fetchUser, type AgentNotification } from "@/api";
 import { clearAgentSession } from "@/lib/agenticClient";
 
 export type AppSection =
@@ -116,6 +116,9 @@ export function AppNavigation({ current }: { current: AppSection }) {
   const [signOutPending, setSignOutPending] = useState(false);
   const [signOutError, setSignOutError] = useState<string | null>(null);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [notifications, setNotifications] = useState<AgentNotification[]>([]);
+  const [notificationsLoading, setNotificationsLoading] = useState(false);
+  const [notificationsError, setNotificationsError] = useState<string | null>(null);
   const [userProfile, setUserProfile] = useState<{
     name: string;
     username: string;
@@ -142,6 +145,26 @@ export function AppNavigation({ current }: { current: AppSection }) {
       })
       .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (!notificationsOpen) return;
+    let active = true;
+    setNotificationsLoading(true);
+    setNotificationsError(null);
+    fetchAgentNotifications()
+      .then((items) => {
+        if (active) setNotifications(items);
+      })
+      .catch((error) => {
+        if (active) setNotificationsError(error instanceof Error ? error.message : "Não foi possível carregar notificações.");
+      })
+      .finally(() => {
+        if (active) setNotificationsLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [notificationsOpen]);
 
   const handleSignOut = async () => {
     setSignOutPending(true);
@@ -454,8 +477,24 @@ export function AppNavigation({ current }: { current: AppSection }) {
             <h3 className="text-sm font-semibold text-neutral-900 dark:text-white">Notificações</h3>
             <button type="button" aria-label="Fechar notificações" onClick={() => setNotificationsOpen(false)} className="rounded p-1 text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800">×</button>
           </div>
-          <p className="mt-3 text-xs leading-5 text-neutral-500 dark:text-neutral-400">Nenhuma notificação persistida para este workspace.</p>
-          <p className="mt-2 text-[10px] text-neutral-400">Eventos de missões e approvals aparecem aqui quando o backend registrar uma notificação.</p>
+          {notificationsLoading && <p className="mt-3 text-xs text-neutral-500 dark:text-neutral-400">Carregando eventos…</p>}
+          {notificationsError && <p role="alert" className="mt-3 text-xs text-red-600">{notificationsError}</p>}
+          {!notificationsLoading && !notificationsError && notifications.length === 0 && (
+            <p className="mt-3 text-xs leading-5 text-neutral-500 dark:text-neutral-400">Nenhum evento de missão registrado ainda.</p>
+          )}
+          {!notificationsLoading && !notificationsError && notifications.length > 0 && (
+            <ul className="mt-3 max-h-72 space-y-2 overflow-y-auto" aria-label="Eventos recentes de missões">
+              {notifications.map((notification) => (
+                <li key={notification.id} className="rounded-xl border border-neutral-100 p-2.5 dark:border-neutral-800">
+                  <a href={`/agentic?mission=${encodeURIComponent(notification.mission_id)}`} className="block rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500">
+                    <p className="text-xs font-semibold text-neutral-800 dark:text-neutral-100">{notification.title}</p>
+                    <p className="mt-1 line-clamp-2 text-[11px] text-neutral-500 dark:text-neutral-400">{notification.body || notification.type}</p>
+                    <time className="mt-1 block text-[10px] text-neutral-400" dateTime={notification.created_at}>{new Date(notification.created_at).toLocaleString("pt-BR")}</time>
+                  </a>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       )}
       {/* Modal de Atalhos de Teclado */}

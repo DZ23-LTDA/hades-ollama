@@ -500,6 +500,7 @@ func (a *agentAPI) register(r *gin.Engine) {
 	group.POST("/collab/:project_id/presence", a.collabPresence)
 	group.POST("/missions", a.createMission)
 	group.GET("/missions", a.missions)
+	group.GET("/notifications", a.notifications)
 	group.GET("/missions/:id", a.getMission)
 	group.GET("/missions/:id/events", a.events)
 	group.GET("/missions/:id/events/stream", a.eventStream)
@@ -1753,6 +1754,24 @@ func (a *agentAPI) missions(c *gin.Context) {
 		missions = filtered
 	}
 	c.JSON(http.StatusOK, gin.H{"missions": missions})
+}
+
+func (a *agentAPI) notifications(c *gin.Context) {
+	limit := 50
+	if raw := strings.TrimSpace(c.Query("limit")); raw != "" {
+		parsed, err := strconv.Atoi(raw)
+		if err != nil || parsed < 1 || parsed > 100 {
+			writeAgentError(c, http.StatusBadRequest, errors.New("notification limit must be between 1 and 100"))
+			return
+		}
+		limit = parsed
+	}
+	notifications, err := a.scopedRuntime(c).ListNotifications(limit)
+	if err != nil {
+		writeAgentError(c, statusForAgentError(err), err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"notifications": notifications})
 }
 
 func (a *agentAPI) createMission(c *gin.Context) {
