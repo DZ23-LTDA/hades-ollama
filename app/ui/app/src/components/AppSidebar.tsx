@@ -114,6 +114,7 @@ export function AppNavigation({ current }: { current: AppSection }) {
   const [signOutOpen, setSignOutOpen] = useState(false);
   const [signOutPending, setSignOutPending] = useState(false);
   const [signOutError, setSignOutError] = useState<string | null>(null);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [userProfile, setUserProfile] = useState<{
     name: string;
     username: string;
@@ -432,7 +433,8 @@ export function AppNavigation({ current }: { current: AppSection }) {
             <div className="flex items-center gap-1 text-neutral-400">
               <button
                 type="button"
-                onClick={() => alert("Nenhuma notificação pendente.")}
+                onClick={() => setNotificationsOpen((open) => !open)}
+                aria-expanded={notificationsOpen}
                 className="rounded-lg p-1 hover:text-neutral-900 dark:hover:text-white"
                 title="Notificações"
               >
@@ -444,6 +446,16 @@ export function AppNavigation({ current }: { current: AppSection }) {
         </div>
       </div>
 
+      {notificationsOpen && (
+        <div role="status" aria-live="polite" className="fixed bottom-16 right-4 z-50 w-72 rounded-2xl border border-neutral-200 bg-white p-4 shadow-xl dark:border-neutral-800 dark:bg-neutral-900">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-semibold text-neutral-900 dark:text-white">Notificações</h3>
+            <button type="button" aria-label="Fechar notificações" onClick={() => setNotificationsOpen(false)} className="rounded p-1 text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800">×</button>
+          </div>
+          <p className="mt-3 text-xs leading-5 text-neutral-500 dark:text-neutral-400">Nenhuma notificação persistida para este workspace.</p>
+          <p className="mt-2 text-[10px] text-neutral-400">Eventos de missões e approvals aparecem aqui quando o backend registrar uma notificação.</p>
+        </div>
+      )}
       {/* Modal de Atalhos de Teclado */}
       {shortcutsOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">

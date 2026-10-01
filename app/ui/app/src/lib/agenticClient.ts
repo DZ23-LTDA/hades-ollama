@@ -32,6 +32,7 @@ export type AgentSchedule = {
   organization_id?: string;
   interval_seconds: number;
   enabled: boolean;
+  webhook_secret_env?: string;
   next_run_at: string;
   last_run_at?: string;
 };

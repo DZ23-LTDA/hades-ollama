@@ -2767,3 +2767,28 @@ ci:
   sha: 2b13a2ce42ef09b0a48908b3b8b02af3eb6c24a2
 rollback: preservar 1214a90b; sem reset/clean/force-push
 ```
+
+
+## Missão noturna T3–T7 — 2026-10-01 06:30 UTC
+state: IMPLEMENTED_LOCAL_CI_PENDING
+completed:
+  - T3 Criações: status NOT_EXECUTED real, sem PASS falso
+  - T4 Notificações: painel vazio honesto, sem alert fictício
+  - T5 i18n: controles de configuração traduzidos para pt-BR
+  - T6 Automações: formulário intervalo/webhook com segredo referenciado
+  - T7 Código morto: kinds duplicados e mensagem fixa removidos
+evidence: docs/evidencias/browser-console-audit-night-t3-t7.json; screen-night-t3-t7-*.png
+gates: Go build/test + CGO0 PASS; tsc/lint/Vitest/build PASS; contracts/integrity PASS
+limitation: Playwright sem Bearer registrou 401 em scheduled/settings; não declarar console limpo nessas telas
+next_action: T8 varredura final honesta, gates completos, commit/push e CI
+
+
+## Missão noturna T3–T8 — checkpoint T8 — 2026-10-01 06:34 UTC
+state: COMPLETED_LOCAL_CI_PENDING
+branch: recovery/ollama-full-snapshot
+completed: [T3, T4, T5, T6, T7, T8]
+evidence: docs/evidencias/screen-night-t3-t7-*.png, docs/evidencias/browser-console-audit-night-t3-t7.json
+gates: go build, CGO_ENABLED=0 build, go test, go vet, tsc, lint, Vitest, UI build, contracts, integrity PASS
+limitations: protected scheduled/settings requests without Bearer recorded 401; external credentials, persistent notifications, deploy/live creations, physical mobile, signed installer remain outside proof
+next_action: commit/push and wait for class-a-plus-integrity plus dz23-agentic-quality on same SHA
+rollback: preserve ea6d8fd2; no force-push

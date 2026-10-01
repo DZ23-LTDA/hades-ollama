@@ -190,7 +190,7 @@ describe("Settings reset interactions", () => {
     vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   });
 
-  it("locks every control and shows Saved after reset succeeds", async () => {
+  it("locks every control and shows Salvo after reset succeeds", async () => {
     const pendingClaudeReset = deferred<boolean>();
     mocks.resetClaudeMappings.mockImplementation(
       () => pendingClaudeReset.promise,
@@ -205,7 +205,7 @@ describe("Settings reset interactions", () => {
 
       const resetButton = renderer!.root
         .findAllByType("button")
-        .find((button) => textContent(button).includes("Reset to defaults"));
+        .find((button) => textContent(button).includes("Restaurar padrões"));
       if (!resetButton) throw new Error("Reset button not found");
 
       await act(async () => {
@@ -216,7 +216,7 @@ describe("Settings reset interactions", () => {
       const settingsFieldset = renderer!.root.findByType("fieldset");
       expect(settingsFieldset.props.disabled).toBe(true);
       expect(settingsFieldset.props["aria-busy"]).toBe(true);
-      expect(textContent(resetButton)).toContain("Resetting…");
+      expect(textContent(resetButton)).toContain("Restaurando…");
       expect(renderer!.root.findAllByType(Badge)).toHaveLength(0);
       expect(mocks.resetChatGPTModels).toHaveBeenCalledOnce();
 
@@ -257,7 +257,7 @@ describe("Settings reset interactions", () => {
 
       const resetButton = renderer!.root
         .findAllByType("button")
-        .find((button) => textContent(button).includes("Reset to defaults"));
+        .find((button) => textContent(button).includes("Restaurar padrões"));
       if (!resetButton) throw new Error("Reset button not found");
 
       await act(async () => {

@@ -554,7 +554,7 @@ describe("Onboarding", () => {
     expect(html).not.toContain("GLM 5.2");
     expect(html).not.toContain("Qwen 3.8 27B");
     expect(html).not.toContain('type="checkbox"');
-    expect(html).not.toContain("Restart Claude");
+    expect(html).not.toContain("Reiniciar Claude");
     expect(html).not.toContain("Built-in defaults");
   });
 

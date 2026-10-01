@@ -423,8 +423,8 @@ export const CodexDesktopModelsSettings = forwardRef<
         if (
           !window.confirm(
             result.settings.connected
-              ? "Restart ChatGPT to update Ollama models? Any running task will stop."
-              : "Restart ChatGPT to add Ollama models? Any running task will stop.",
+              ? "Reiniciar ChatGPT para atualizar os modelos Ollama? Qualquer tarefa em execução será interrompida."
+              : "Reiniciar ChatGPT para adicionar modelos Ollama? Qualquer tarefa em execução será interrompida.",
           )
         ) {
           return;
@@ -549,15 +549,15 @@ export const CodexDesktopModelsSettings = forwardRef<
                 )}
                 {applying
                   ? launchAction === "restart"
-                    ? "Restarting…"
-                    : "Starting…"
+                    ? "Reiniciando…"
+                    : "Iniciando…"
                   : settings?.running
                     ? hasChanges
-                      ? "Save & restart ChatGPT"
-                      : "Restart ChatGPT"
+                      ? "Salvar e reiniciar ChatGPT"
+                      : "Reiniciar ChatGPT"
                     : hasChanges
-                      ? "Save & start ChatGPT"
-                      : "Start ChatGPT"}
+                      ? "Salvar e iniciar ChatGPT"
+                      : "Iniciar ChatGPT"}
               </Button>
             </div>
           </div>

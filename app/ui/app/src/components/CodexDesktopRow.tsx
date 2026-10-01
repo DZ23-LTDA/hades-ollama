@@ -403,7 +403,7 @@ export function CodexDesktopRow({
         setStatus(liveStatus);
         if (liveStatus.running && !restartConfirmed) {
           restartConfirmed = window.confirm(
-            "Restart ChatGPT to add Ollama models? Any running task will stop.",
+            "Reiniciar ChatGPT para adicionar modelos Ollama? Qualquer tarefa em execução será interrompida.",
           );
           if (!restartConfirmed) return;
         }
@@ -426,8 +426,8 @@ export function CodexDesktopRow({
         if (
           !window.confirm(
             enabled
-              ? "Restart ChatGPT to add Ollama models? Any running task will stop."
-              : "Restart ChatGPT to remove Ollama models? Any running task will stop.",
+              ? "Reiniciar ChatGPT para adicionar modelos Ollama? Qualquer tarefa em execução será interrompida."
+              : "Reiniciar ChatGPT para remover modelos Ollama? Qualquer tarefa em execução será interrompida.",
           ) ||
           !mounted.current
         ) {

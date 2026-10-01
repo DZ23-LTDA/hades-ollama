@@ -682,7 +682,7 @@ export function ConnectAppsScreen({
       let restartConfirmed = claudeRestartConfirmed.current;
       if (liveStatus.running && !restartConfirmed) {
         restartConfirmed = window.confirm(
-          "Restart Claude Desktop to use Ollama? Any running task will stop.",
+          "Reiniciar Claude Desktop para usar Ollama? Qualquer tarefa em execução será interrompida.",
         );
         if (!screenMounted.current) return;
         if (!restartConfirmed) {
@@ -931,8 +931,8 @@ export function ConnectAppsScreen({
     if (status.running) {
       restartConfirmed = window.confirm(
         enabling
-          ? "Restart Claude Desktop to use Ollama? Any running task will stop."
-          : "Restart Claude Desktop to remove Ollama? Any running task will stop.",
+          ? "Reiniciar Claude Desktop para usar Ollama? Qualquer tarefa em execução será interrompida."
+          : "Reiniciar Claude Desktop para remover Ollama? Qualquer tarefa em execução será interrompida.",
       );
       if (!screenMounted.current) return;
       if (!restartConfirmed) {

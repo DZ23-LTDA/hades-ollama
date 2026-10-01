@@ -34,6 +34,8 @@ interface CreationItem {
 export function CreationsPage() {
   const [creationsList, setCreationsList] = useState<CreationItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [status, setStatus] = useState("NOT_EXECUTED");
+  const [statusReason, setStatusReason] = useState("");
   const [search, setSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState<CreationCategory>("all");
 
@@ -41,9 +43,11 @@ export function CreationsPage() {
     let active = true;
     fetch(`${API_BASE}/api/agent/v1/creations`)
       .then((res) => (res.ok ? res.json() : { creations: [] }))
-      .then((data: { creations?: CreationItem[] }) => {
+      .then((data: { creations?: CreationItem[]; status?: string; reason?: string }) => {
         if (active) {
-          setCreationsList(data.creations || []);
+          setCreationsList(Array.isArray(data.creations) ? data.creations : []);
+          setStatus(data.status || "NOT_EXECUTED");
+          setStatusReason(data.reason || "");
           setLoading(false);
         }
       })
@@ -83,7 +87,7 @@ export function CreationsPage() {
               Criações
             </h1>
             <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
-              Sites, jogos e aplicações construídos pelas suas missões no Ollama Full.
+              Artefatos publicáveis produzidos pelas missões. O runtime informa honestamente quando a publicação ainda não está disponível.
             </p>
           </div>
           <div className="flex items-center gap-3">
@@ -147,10 +151,10 @@ export function CreationsPage() {
           <div className="rounded-2xl border border-dashed border-neutral-300 p-16 text-center dark:border-neutral-700">
             <CodeBracketSquareIcon className="mx-auto h-12 w-12 text-neutral-300 dark:text-neutral-600" />
             <h3 className="mt-4 text-base font-semibold text-neutral-900 dark:text-white">
-              Ainda sem criações
+              Nenhuma criação publicável
             </h3>
             <p className="mx-auto mt-2 max-w-md text-sm text-neutral-500 dark:text-neutral-400">
-              Transforme ideias em sites, protótipos e jogos executáveis no navegador.
+              {status === "NOT_EXECUTED" ? (statusReason || "A publicação e o rollback ainda não estão disponíveis neste runtime.") : "Nenhum artefato corresponde aos filtros atuais."}
             </p>
             <Link
               to="/agentic"

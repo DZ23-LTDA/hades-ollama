@@ -532,7 +532,7 @@ describe("CodexDesktopRow", () => {
       });
 
       expect(confirm).toHaveBeenCalledWith(
-        "Restart ChatGPT to add Ollama models? Any running task will stop.",
+        "Reiniciar ChatGPT para adicionar modelos Ollama? Qualquer tarefa em execução será interrompida.",
       );
       expect(connect).toHaveBeenCalledOnce();
       expect(connect).toHaveBeenCalledWith(true, false);
@@ -583,7 +583,7 @@ describe("CodexDesktopRow", () => {
       });
 
       expect(confirm).toHaveBeenCalledWith(
-        "Restart ChatGPT to add Ollama models? Any running task will stop.",
+        "Reiniciar ChatGPT para adicionar modelos Ollama? Qualquer tarefa em execução será interrompida.",
       );
       expect(connect).toHaveBeenNthCalledWith(1, true, false);
       expect(connect).toHaveBeenNthCalledWith(2, true, true);

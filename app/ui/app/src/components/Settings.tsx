@@ -67,7 +67,7 @@ const savedConfirmationDuration = 3000;
 
 export default function Settings() {
   const queryClient = useQueryClient();
-  const [showSaved, setShowSaved] = useState(false);
+  const [showSalvo, setShowSalvo] = useState(false);
   const [restartMessage, setRestartMessage] = useState(false);
   const [showAppsInMenu, setShowAppsInMenuState] = useState(true);
   const [showAppsInMenuPending, setShowAppsInMenuPending] = useState(false);
@@ -104,13 +104,13 @@ export default function Settings() {
     isKnown: cloudStatusKnown,
   } = useCloudStatus();
 
-  const showSavedConfirmation = useCallback(() => {
+  const showSalvoConfirmation = useCallback(() => {
     if (savedConfirmationTimeoutRef.current !== null) {
       window.clearTimeout(savedConfirmationTimeoutRef.current);
     }
-    setShowSaved(true);
+    setShowSalvo(true);
     savedConfirmationTimeoutRef.current = window.setTimeout(() => {
-      setShowSaved(false);
+      setShowSalvo(false);
       savedConfirmationTimeoutRef.current = null;
     }, savedConfirmationDuration);
   }, []);
@@ -302,11 +302,11 @@ export default function Settings() {
         }
 
         updateSettingsMutation.mutate(updatedSettings, {
-          onSuccess: showSavedConfirmation,
+          onSuccess: showSalvoConfirmation,
         });
       }
     },
-    [settings, showSavedConfirmation, updateSettingsMutation],
+    [settings, showSalvoConfirmation, updateSettingsMutation],
   );
 
   const updateShowAppsInMenuVisibility = async (checked: boolean) => {
@@ -325,7 +325,7 @@ export default function Settings() {
 
   const handleShowAppsInMenu = (checked: boolean) => {
     void updateShowAppsInMenuVisibility(checked)
-      .then(showSavedConfirmation)
+      .then(showSalvoConfirmation)
       .catch((error) =>
         console.error("Failed to update menu app visibility:", error),
       );
@@ -333,7 +333,7 @@ export default function Settings() {
 
   const handleCloudUpdate = (enabled: boolean) => {
     void requestCloudUpdate(enabled)
-      .then(showSavedConfirmation)
+      .then(showSalvoConfirmation)
       .catch((error) =>
         console.error("Failed to update cloud setting:", error),
       );
@@ -352,7 +352,7 @@ export default function Settings() {
       window.clearTimeout(savedConfirmationTimeoutRef.current);
       savedConfirmationTimeoutRef.current = null;
     }
-    setShowSaved(false);
+    setShowSalvo(false);
     setRestartMessage(false);
     setResetError(null);
     try {
@@ -368,7 +368,7 @@ export default function Settings() {
         currentSettings: settings,
         currentShowAppsInMenu: showAppsInMenu,
         cloudSource,
-        onSaved: showSavedConfirmation,
+        onSaved: showSalvoConfirmation,
       });
     } catch (error) {
       console.error("Failed to reset settings:", error);
@@ -667,8 +667,8 @@ export default function Settings() {
                 <div className="flex items-start space-x-3">
                   <FolderIcon className="mt-1 h-5 w-5 flex-shrink-0 text-black dark:text-neutral-100" />
                   <div className="w-full">
-                    <Label>Model location</Label>
-                    <Description>Location where models are stored.</Description>
+                    <Label>Local dos modelos</Label>
+                    <Description>Local onde os modelos são armazenados.</Description>
                     <div className="mt-2 flex items-center space-x-2">
                       <Input
                         value={settings.Models || ""}
@@ -697,7 +697,7 @@ export default function Settings() {
                         }}
                       >
                         <FolderIcon className="w-4 h-4 mr-1" />
-                        Browse
+                        Procurar
                       </Button>
                     </div>
                   </div>
@@ -709,9 +709,9 @@ export default function Settings() {
                 <div className="flex items-start space-x-3">
                   <CogIcon className="mt-1 h-5 w-5 flex-shrink-0 text-black dark:text-neutral-100" />
                   <div className="w-full">
-                    <Label>Context length</Label>
+                    <Label>Tamanho do contexto</Label>
                     <Description>
-                      Context length determines how much of your conversation
+                      Tamanho do contexto determines how much of your conversation
                       local LLMs can remember and use to generate responses.
                     </Description>
                     <div className="mt-3">
@@ -776,9 +776,9 @@ export default function Settings() {
                     <div className="flex items-start space-x-3">
                       <BoltIcon className="mt-1 h-5 w-5 flex-shrink-0 text-black dark:text-neutral-100" />
                       <div>
-                        <Label>Enable Agent Mode</Label>
+                        <Label>Ativar modo agente</Label>
                         <Description>
-                          Use multi-turn tools to fulfill user requests
+                          Usar ferramentas em múltiplas etapas para cumprir solicitações
                         </Description>
                       </div>
                     </div>
@@ -795,9 +795,9 @@ export default function Settings() {
                     <div className="flex items-start space-x-3">
                       <WrenchIcon className="mt-1 h-5 w-5 flex-shrink-0 text-black dark:text-neutral-100" />
                       <div>
-                        <Label>Enable Tools Mode</Label>
+                        <Label>Ativar modo ferramentas</Label>
                         <Description>
-                          Use single-turn tools to fulfill user requests
+                          Usar ferramentas em uma única etapa para cumprir solicitações
                         </Description>
                       </div>
                     </div>
@@ -842,7 +842,7 @@ export default function Settings() {
                     if (typeof window !== "undefined" && typeof localStorage !== "undefined") {
                       localStorage.setItem("ollama_custom_instructions", e.target.value);
                     }
-                    showSavedConfirmation();
+                    showSalvoConfirmation();
                   }}
                   placeholder="Digite suas diretrizes permanentes..."
                   className="mt-2 w-full rounded-xl border border-neutral-300 bg-white p-3 text-xs leading-relaxed text-neutral-900 focus:border-neutral-900 focus:outline-none dark:border-neutral-700 dark:bg-neutral-900 dark:text-white"
@@ -860,7 +860,7 @@ export default function Settings() {
                 </div>
                 <Switch
                   checked={true}
-                  onChange={() => showSavedConfirmation()}
+                  onChange={() => showSalvoConfirmation()}
                 />
               </div>
             </div>
@@ -920,19 +920,19 @@ export default function Settings() {
               {resettingToDefaults && (
                 <ArrowPathIcon data-slot="icon" className="animate-spin" />
               )}
-              {resettingToDefaults ? "Resetting…" : "Reset to defaults"}
+              {resettingToDefaults ? "Restaurando…" : "Restaurar padrões"}
             </Button>
           </div>
         </fieldset>
 
-        {/* Saved indicator */}
-        {(showSaved || restartMessage) && (
+        {/* Salvo indicator */}
+        {(showSalvo || restartMessage) && (
           <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 transition-opacity duration-300 z-50">
             <Badge
               color="green"
               className="!bg-green-500 !text-white dark:!bg-green-600"
             >
-              Saved
+              Salvo
             </Badge>
           </div>
         )}

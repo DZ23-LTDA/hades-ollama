@@ -1,7 +1,7 @@
 ---
 projeto: ollama-classe-a-plus
-status: T2 CONCLUÍDA — Endpoint remoto honesto e CI verde
-atualizado: 2026-10-01 03:20 UTC
+status: T3–T8 IMPLEMENTADAS LOCALMENTE — CI PENDENTE
+atualizado: 2026-10-01 06:34 UTC
 ultima_ia: Manus
 tags: [projeto, paridade-manus, ui-2, import-project, accessibility, aud-fix-2, local-tests]
 ---
@@ -23,7 +23,11 @@ da análise de outros harnesses/repositórios, com qualidade enterprise
 recuperação). **Pronto** = paridade comprovada por implementação + teste
 automatizado + execução real reproduzível em navegador (desktop e mobile), sem alegar "100%" sem evidência.
 
+
+- **2026-10-01 06:34 UTC — Manus:** concluiu T3–T8 da missão noturna no working tree atual. T3 reclassificou Criações para `NOT_EXECUTED` com empty-state real, sem prometer publicação/rollback/health inexistentes; T4 substituiu o `alert()` fixo de Notificações por painel vazio honesto; T5 traduziu controles de configuração Claude/ChatGPT para pt-BR e alinhou regressões; T6 adicionou seleção real de gatilho por intervalo ou webhook com segredo referenciado; T7 removeu kinds `library`/`scheduled` inacessíveis e mensagem fixa de reinício. Evidências Playwright: `docs/evidencias/screen-night-t3-t7-*.png` e `browser-console-audit-night-t3-t7.json`; o relatório preserva os 401 esperados sem Bearer em rotas protegidas. T8 passou `go build ./...`, `CGO_ENABLED=0 go build ./...`, `go test ./internal/agent ./server`, `go vet ./...`, `npx tsc -b`, lint, Vitest, build, contratos e integrity. Avisos do verificador: 135 rotas backend sem chamador frontend estático, informativos e não falhas. Próximo passo: commit/push e CI remoto dos dois workflows; limitações continuam Criações/deploy, notificações persistentes, credenciais externas, mobile físico e instalador assinado.
+
 ## Histórico de sessões
+- **2026-10-01 06:30 UTC — Manus:** executou T3–T7 em sequência. Criações agora exibem `NOT_EXECUTED` honesto quando o endpoint real não possui publicações/rollback; notificações abriram painel vazio explícito sem `alert()`; Automações passaram a distinguir intervalo de webhook autenticado (`webhook_secret_env`) e erros aparecem no painel; controles de Settings/Claude/ChatGPT foram traduzidos para pt-BR; referências mortas `library`/`scheduled` do ProductWorkspace e a mensagem fixa de reinício foram removidas. Evidência Playwright: `docs/evidencias/screen-night-t3-t7-{creations,scheduled,settings}-{desktop,mobile}.png` e `browser-console-audit-night-t3-t7.json`; Criações sem erros de console, Automações/Configurações retornaram 401 por sessão Bearer ausente e isso permanece registrado, não mascarado. Gates locais Go (incluindo CGO0), typecheck, lint, Vitest e build UI passaram após ajuste das asserções pt-BR; contratos/integrity passaram. Próximo passo: rodar T8, documentar matriz final, commitar/push e acompanhar CI.
 - **2026-10-01 03:13 UTC — Manus:** confirmou T1/AUD-FIX-2 no SHA `1214a90b671beaca8cab6e309e21d033002a41f0`: `class-a-plus-integrity` e `dz23-agentic-quality` concluíram `success`. Iniciou T2 da missão noturna: ações de nuvem, acesso remoto, pareamento de computador e controle por telefone na EndpointPage foram reclassificadas como `NOT_CONFIGURED`, desabilitadas e sem autorização/alerta falso; a matriz agora marca Endpoint como `PARCIAL` (host local validado, recursos remotos não configurados). Próximo passo: iniciar T3 somente após decisão/escopo explícito; não declarar 100% de paridade.
 - **2026-10-01 02:43 UTC — Manus:** executou AUD-FIX-1. Corrigiu logout real (`POST /api/signout`), perfil (`POST /api/me`) e downloads da Biblioteca (rota de artifact sem `/content`). Reforçou `scripts/verify-contracts.mjs` para método HTTP, chamadas multilinha/condicionais, parâmetros posicionais, wrappers e `href`; o verificador terminou `CONTRACT VERIFICATION PASSED`, com avisos de órfãos informativos. Evidências locais: Vitest 38 arquivos/259 testes, `npx tsc -b`, lint, build Vite, `go build ./...`, `go test ./internal/agent ./server` e integrity verdes. CI confirmado no SHA `edd226e2013a39913ce119181861e4493165f5ac`: `class-a-plus-integrity` run `36807155105` e `dz23-agentic-quality` run `36807155101`, ambos `completed/success`. A evidência live autenticada continua condicionada a sessão Bearer e artefato reais.
 
@@ -138,6 +142,7 @@ automatizado + execução real reproduzível em navegador (desktop e mobile), se
 - **Próximo passo:** commitar/pushar H5 e acompanhar `class-a-plus-integrity` e `dz23-agentic-quality` no mesmo SHA; não declarar CI verde antes do resultado remoto.
 
 ## Histórico de sessões
+- **2026-10-01 06:30 UTC — Manus:** executou T3–T7 em sequência. Criações agora exibem `NOT_EXECUTED` honesto quando o endpoint real não possui publicações/rollback; notificações abriram painel vazio explícito sem `alert()`; Automações passaram a distinguir intervalo de webhook autenticado (`webhook_secret_env`) e erros aparecem no painel; controles de Settings/Claude/ChatGPT foram traduzidos para pt-BR; referências mortas `library`/`scheduled` do ProductWorkspace e a mensagem fixa de reinício foram removidas. Evidência Playwright: `docs/evidencias/screen-night-t3-t7-{creations,scheduled,settings}-{desktop,mobile}.png` e `browser-console-audit-night-t3-t7.json`; Criações sem erros de console, Automações/Configurações retornaram 401 por sessão Bearer ausente e isso permanece registrado, não mascarado. Gates locais Go (incluindo CGO0), typecheck, lint, Vitest e build UI passaram após ajuste das asserções pt-BR; contratos/integrity passaram. Próximo passo: rodar T8, documentar matriz final, commitar/push e acompanhar CI.
 ### 2026-09-30 16:22 -03 — Manus — FASE 12 auditoria E2E adversarial
 - **Escopo:** somente auditoria, evidência e reclassificação; nenhum comportamento foi alterado.
 - **Evidência:** `audit/E2E_AUDIT_2026-09-30.md`, `docs/evidencias/browser-console-audit-f12.json` e capturas desktop/mobile.

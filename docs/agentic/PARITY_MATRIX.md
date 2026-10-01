@@ -86,7 +86,7 @@ A regra de integridade é estrita: **nenhuma capacidade é marcada como `PASS` s
 | Builders | `PASS` (`R-2 VALIDADO COM E2E REAL: docs/evidencias/screen-r2-studio-edit-*.png; console limpo`): Studio visual interativo (`/studio`) com paleta, inserção/movimentação, undo/redo, preview autenticado e iframe `sandbox="allow-scripts"` sem `allow-same-origin`; mutações visuais serializadas por projeto com CAS (`expected_version`) e erro HTTP 409 para versão obsoleta; cada edição incrementa a versão e invalida checksum/path/version do ZIP anterior; download de export obsoleto retorna 410 e exige novo export. Regressões `TestBuilderCASRejectsStaleConcurrentWriter`, `TestBuilderExportIsInvalidatedAfterVersionedEdit` e `TestStudioRoutesRejectStaleVersionAndExpiredExport` passaram, além dos gates completos. | Studio visual interativo para sites, apps, jogos, slides e dashboards com export e deploy rastreáveis | CAS/undo/redo/export permanecem cobertos por testes e a edição desktop/mobile retorna HTTP 200 sem erros; colaboração CRDT e deploy externo continuam `BLOCKED_EXTERNAL` |
 | Artefatos | `PASS` (`VALIDADA COM EVIDÊNCIA: docs/evidencias/*`): visualizador com abas (preview iframe sandboxed, markdown, código e download) e integridade criptográfica SHA-256 comprovada em teste E2E | Artifacts navegáveis em timeline, diff, preview, export e rollback | E2E com arquivos grandes e permissões por organização |
 | Biblioteca | `PASS` (`VALIDADA COM DADO REAL: docs/evidencias/screen-library-*.png`): consolidação dos artefatos reais das missões (`relatorio-missao.md`), filtros de mídia, busca em tempo real e visualização no Canvas | Gestão centralizada de documentos, relatórios e apresentações geradas por missões | Validada com Playwright E2E desktop e mobile |
-| Criações / Deploy | `PASS` (`VALIDADA COM EMPTY-STATE HONESTO: docs/evidencias/screen-creations-*.png`): tela de Criações conectada a `GET /api/agent/v1/creations` exibindo empty-state honesto por ausência de compilações ativas no workspace, com CTA funcional para nova missão | Publicação real segura com logs, domínio, rollback e health check | Smoke autorizado com contas reais; AWS/Cloudflare ainda requerem adapters específicos |
+| Criações / Deploy | `NOT_EXECUTED` (`T3: empty-state honesto`): `GET /api/agent/v1/creations` informa explicitamente `NOT_EXECUTED`; não há publicação/rollback/health de deploy implementados | Publicação real segura com logs, domínio, rollback e health check | Adapters externos, credenciais e smoke autorizado ainda faltam |
 | Auth/RBAC/SSO | `NOT_CONFIGURED` (`PARCIAL COM FALLBACK LOCAL-FIRST: ADR-004`): organizações/RBAC e adapters OAuth/OIDC, SAML e MFA existem; runtime Postgres tenant-only com HMAC em RLS e fallback seguro para `LocalOrganizationID` no desktop local | Login, recovery, grupos, ABAC/DLP/secrets manager e boundary multi-tenant enterprise validada operacionalmente | Staging TLS/HA/backup-restore, escala da varredura tenant e auditoria independente final |
 | Egress DLP / approvals | `PASS` (`VALIDADA EM TESTES UNITÁRIOS: internal/agent/secrets_test.go`): scanner recursivo/limitado em Connector, MCP local/remoto, Push, Deployment, planner remoto e mídia; resultados/erros e arquivos de transcrição/visão redigem tokens/keys reconhecidos, inclusive propriedades JSON sensíveis embutidas em strings; approval hash-bound a descritor e configuração efetiva do connector | Minimização de dados por finalidade, approvals consistentes e trilha de auditoria por destino | Política própria para credenciais em headers/env, classificação semântica de PII/dados comerciais, testes de provider real e deployment multi-tenant endurecido; heurística DLP não comprova ausência de segredo desconhecido ; H3 cobre request metadata redigida, response sanitization e limite de resposta nos connectors` |
 | Colaboração | `NOT_CONFIGURED` (`ADAPTER IMPLEMENTADO`): comentários, presença e snapshots | Multiplayer de projetos, missões e builders com conflitos resolvidos | CRDT/realtime E2E e políticas por tenant |
@@ -159,3 +159,20 @@ Correções locais foram aplicadas para importação segura, approval ledger ant
 
 ### AUD-FIX-2 — rota `/connect`
 A falha P1 observada na auditoria live foi corrigida: o catálogo de integrações agora normaliza arrays e envelopes locais, com fallback honesto `[]`, e a tela Harnesses & Codex não quebra quando a resposta está ausente ou malformada. Evidência Playwright: `docs/evidencias/screen-audfix2-connect-{desktop,mobile}.png` e `docs/evidencias/browser-console-audit-audfix2.json`, sem erros de console/rede e sem texto de crash.
+
+
+### Missão noturna T3–T7 — 2026-10-01
+- **Criações:** reclassificada para `NOT_EXECUTED`; empty-state não é prova de deploy.
+- **Notificações:** painel local honesto sem notificações persistidas; backend de inbox ainda não implementado.
+- **Automações:** intervalos e webhook autenticado agora têm contratos distintos; entrega live de evento/webhook ainda depende de segredo configurado.
+- **i18n:** controles de configuração alterados para pt-BR; permanecem nomes próprios/integrações externas em inglês quando necessário.
+- **Código morto:** referências `library`/`scheduled` no ProductWorkspace e mensagem fixa de reinício removidas.
+- **Evidência:** `docs/evidencias/browser-console-audit-night-t3-t7.json`; 401 por ausência de Bearer em `/scheduled` e `/settings` foi observado e não ocultado.
+
+
+## Missão noturna T3–T8 — 2026-10-01 06:34 UTC
+- Criações/Deploy permanecem `NOT_EXECUTED`; não promover empty-state a PASS.
+- Notificações permanecem `PARCIAL`: estado vazio real, sem inbox persistente.
+- i18n de Configurações: controles alterados para pt-BR e regressões alinhadas.
+- Gatilhos de Automação: intervalo e webhook agora são distinguíveis no contrato/UI; live webhook depende de segredo/configuração.
+- T8: matriz revisada sem declarar 100% de paridade; limitações externas continuam explícitas.

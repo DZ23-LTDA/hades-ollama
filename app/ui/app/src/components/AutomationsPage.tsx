@@ -23,6 +23,9 @@ export function AutomationsPage() {
   const [naturalPrompt, setNaturalPrompt] = useState("");
   const [newObjective, setNewObjective] = useState("");
   const [newInterval, setNewInterval] = useState("86400"); // 24h default
+  const [triggerType, setTriggerType] = useState<"interval" | "webhook">("interval");
+  const [webhookSecretEnv, setWebhookSecretEnv] = useState("");
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
@@ -40,8 +43,9 @@ export function AutomationsPage() {
     loadData();
   }, []);
 
-  const handleCreate = async (objective: string, intervalSeconds: number) => {
-    if (!objective.trim()) return;
+  const handleCreate = async (objective: string, intervalSeconds: number, type = triggerType) => {
+    if (!objective.trim() || (type === "webhook" && !webhookSecretEnv.trim())) return;
+    setErrorMsg(null);
     setSaving(true);
     try {
       const res = await fetch(`${API_BASE}/api/agent/v1/schedules`, {
@@ -51,16 +55,18 @@ export function AutomationsPage() {
           objective: objective.trim(),
           interval_seconds: intervalSeconds,
           enabled: true,
+          ...(type === "webhook" ? { webhook_secret_env: webhookSecretEnv.trim() } : {}),
         }),
       });
       if (!res.ok) throw new Error("Falha ao salvar no backend");
       setSuccessMsg("Automação criada com sucesso!");
       setTimeout(() => setSuccessMsg(null), 3000);
       setNewObjective("");
+      setWebhookSecretEnv("");
       setShowModal(false);
       loadData();
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Erro ao criar automação");
+      setErrorMsg(e instanceof Error ? e.message : "Erro ao criar automação");
     } finally {
       setSaving(false);
     }
@@ -77,9 +83,9 @@ export function AutomationsPage() {
         }),
       });
       if (!res.ok) throw new Error("Falha ao disparar missão");
-      alert(`Missão disparada com sucesso para: "${sch.objective}"! Veja o progresso na aba Agentes.`);
+      setSuccessMsg(`Missão disparada: ${sch.objective}`);
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Falha ao executar");
+      setErrorMsg(e instanceof Error ? e.message : "Falha ao executar");
     }
   };
 
@@ -92,19 +98,19 @@ export function AutomationsPage() {
       });
       loadData();
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Falha ao alterar estado");
+      setErrorMsg(e instanceof Error ? e.message : "Falha ao alterar estado");
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Tem certeza que deseja excluir esta automação?")) return;
+    if (!window.confirm("Tem certeza que deseja excluir esta automação?")) return;
     try {
       await fetch(`${API_BASE}/api/agent/v1/schedules/${id}`, {
         method: "DELETE",
       });
       loadData();
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Falha ao excluir");
+      setErrorMsg(e instanceof Error ? e.message : "Falha ao excluir");
     }
   };
 
@@ -197,19 +203,19 @@ export function AutomationsPage() {
                 Gatilho
               </h3>
               <p className="mt-2 text-xs leading-relaxed text-neutral-500 dark:text-neutral-400">
-                Escolha um evento de webhook ou mudança de estado e defina o que o agente deve fazer imediatamente.
+                Configure um webhook autenticado; o endpoint exige segredo em variável de ambiente e chave de idempotência.
               </p>
               <div className="mt-4 space-y-2 border-t border-neutral-100 pt-3 dark:border-neutral-800">
                 <button
                   type="button"
-                  onClick={() => handleCreate("Disparar testes e validar build quando novo commit for detectado", 3600)}
+                  onClick={() => { setTriggerType("webhook"); setNewObjective("Disparar testes e validar build quando novo commit for detectado"); setShowModal(true); }}
                   className="w-full text-left rounded-lg bg-neutral-50 px-2.5 py-1.5 text-[11px] font-medium text-neutral-700 hover:bg-neutral-100 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-700"
                 >
                   ⚡ Testar repositório ao detectar commits
                 </button>
                 <button
                   type="button"
-                  onClick={() => handleCreate("Processar arquivos e faturas adicionadas na pasta local", 7200)}
+                  onClick={() => { setTriggerType("webhook"); setNewObjective("Processar arquivos e faturas adicionadas na pasta local"); setShowModal(true); }}
                   className="w-full text-left rounded-lg bg-neutral-50 px-2.5 py-1.5 text-[11px] font-medium text-neutral-700 hover:bg-neutral-100 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-700"
                 >
                   ⚡ Extrair dados de faturas recebidas
@@ -267,6 +273,7 @@ export function AutomationsPage() {
         </div>
 
         {/* Modal Inline de Criação de Automação */}
+        {errorMsg && <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-700 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300">{errorMsg}</div>}
         {showModal && (
           <div className="rounded-2xl border border-neutral-200 bg-white p-6 shadow-md dark:border-neutral-800 dark:bg-neutral-950">
             <h3 className="text-base font-bold text-neutral-900 dark:text-white">
@@ -285,6 +292,16 @@ export function AutomationsPage() {
                   className="mt-1 w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 focus:border-neutral-900 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
                 />
               </div>
+              <div>
+                <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300">Tipo de gatilho</label>
+                <select value={triggerType} onChange={(e) => setTriggerType(e.target.value as "interval" | "webhook")} className="mt-1 w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-800">
+                  <option value="interval">Intervalo recorrente</option><option value="webhook">Webhook/evento</option>
+                </select>
+              </div>
+              {triggerType === "webhook" && <div>
+                <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300">Variável do segredo webhook</label>
+                <input value={webhookSecretEnv} onChange={(e) => setWebhookSecretEnv(e.target.value)} placeholder="NOME_DA_VARIAVEL" className="mt-1 w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-800" />
+              </div>}
               <div>
                 <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300">
                   Frequência de Execução
@@ -312,8 +329,8 @@ export function AutomationsPage() {
               </button>
               <button
                 type="button"
-                disabled={saving || !newObjective.trim()}
-                onClick={() => handleCreate(newObjective, parseInt(newInterval, 10))}
+                disabled={saving || !newObjective.trim() || (triggerType === "webhook" && !webhookSecretEnv.trim())}
+                onClick={() => handleCreate(newObjective, parseInt(newInterval, 10), triggerType)}
                 className="rounded-xl bg-neutral-900 px-4 py-2 text-xs font-semibold text-white hover:opacity-90 disabled:opacity-50 dark:bg-white dark:text-neutral-900"
               >
                 {saving ? "Salvando..." : "Salvar automação"}

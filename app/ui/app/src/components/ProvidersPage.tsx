@@ -376,7 +376,7 @@ export function ProvidersPage() {
                 provider={provider}
                 onChanged={() => {
                   setNotice(
-                    `${provider.name}: alteração salva. O motor foi reiniciado para aplicar.`,
+                    `${provider.name}: alteração salva. As alterações foram salvas; o runtime aplicará a configuração na próxima inicialização.`,
                   );
                   void load();
                 }}
