@@ -1,17 +1,17 @@
-# Changelog — Ollama Classe A+
+# Changelog — Hades
 
-Este arquivo registra as entregas públicas da distribuição `DZ23-LTDA/ollama-classe-a-plus`. O projeto mantém a atribuição e a licença do Ollama upstream; os recursos agentic específicos estão descritos com seus limites no [guia Classe A+](docs/CLASS_A_PLUS_GUIDE.md).
+Este arquivo registra as entregas públicas da distribuição `DZ23-LTDA/ollama-classe-a-plus`. O projeto mantém a atribuição e a licença do Ollama upstream; os recursos agentic específicos estão descritos com seus limites no [guia Hades](docs/CLASS_A_PLUS_GUIDE.md).
 
 ## Unreleased — rodada de paridade observável
 
 - Árvore de produto completa em [`docs/agentic/PRODUCT_TREE.md`](docs/agentic/PRODUCT_TREE.md), separando superfície observável, estado atual e alvo unificado.
 - Matriz de paridade em [`docs/agentic/PARITY_MATRIX.md`](docs/agentic/PARITY_MATRIX.md), com gates para Manus, Claude, Codex, OmniRoute e demais famílias de harness.
-- Shell desktop com rotas reais de Projetos, Biblioteca, Agendado, Habilidades, Plugins e Tarefas, além de navegação lateral Classe A+.
+- Shell desktop com rotas reais de Projetos, Biblioteca, Agendado, Habilidades, Plugins e Tarefas, além de navegação lateral Hades.
 - Agentic Control Center na Settings com catálogo de modelos e configuração sanitizada; o estado sem backend permanece explícito.
 - Endpoint `GET /api/agent/v1/config/safe` sem tokens, caminhos privados ou valores sensíveis.
 - Preset OmniRoute local, opt-in HTTP loopback protegido e smoke tests de forwarding/bearer server-side.
 - Screenshots reais das novas rotas capturadas com Chromium e notas de proveniência atualizadas.
-- Menu lateral Classe A+ aberto por padrão, com smoke test Chromium de rotas, links, ações primárias e estados vazios.
+- Menu lateral Hades aberto por padrão, com smoke test Chromium de rotas, links, ações primárias e estados vazios.
 - `UPSTREAM_BASE_COMMIT`, `UPSTREAM_POLICY.md`, guardrail de integridade e workflow CI para impedir perda silenciosa das superfícies agentic.
 
 ## [0.1.0] — Preview público
@@ -115,7 +115,7 @@ A rodada continua sem conectar contas externas nem publicar posts, anúncios, pr
 ## Unreleased — smoke de APIs e correção do Browser Operator — 2026-09-22
 
 - Smoke seguro de catálogos provider com as chaves fornecidas, sem persistir ou imprimir valores secretos.
-- Inferência curta em modelo gratuito do OpenRouter aprovada diretamente e pelo gateway local Classe A+ (`/v1/chat/completions`).
+- Inferência curta em modelo gratuito do OpenRouter aprovada diretamente e pelo gateway local Hades (`/v1/chat/completions`).
 - Relatório público de prontidão em [`docs/agentic/READINESS_2026-09-22.md`](docs/agentic/READINESS_2026-09-22.md), distinguindo adapters, validações locais e blockers externos.
 - Workflow agentic-quality atualizado para instalar Playwright/Chromium antes do teste real do Browser Operator.
 - Erros do Browser Operator agora incluem stderr sanitizado para diagnóstico de dependência, sem expor credenciais.

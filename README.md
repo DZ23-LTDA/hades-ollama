@@ -1,18 +1,18 @@
-# Ollama Full
+# Hades
 
 > **Uma distribuição agentic local-first para modelos, automações, pesquisa, builders e operação segura.**
 
 Este é o fork público mantido por [DZ23-LTDA](https://github.com/DZ23-LTDA), baseado no Ollama e preservando a licença MIT e os avisos de atribuição upstream. O projeto adiciona superfícies agentic próprias; não é o instalador, serviço hospedado ou distribuição oficial do Ollama. O manual completo, os contratos, a configuração e a política de atualização estão em [`docs/CLASS_A_PLUS_GUIDE.md`](docs/CLASS_A_PLUS_GUIDE.md).
 
-### Visão rápida — capturas reais atualizadas em 2026-09-22
+### Visão rápida — capturas reais atualizadas em 2026-10-01
 
-![Home atual do shell Ollama Full](docs/images/screens/class-a-plus-home.png?v=2)
+![Home atual do shell Hades](docs/images/screens/class-a-plus-home.png?v=3)
 
-![Agentic Console atual](docs/images/screens/class-a-plus-agentic.png)
+![Agentic Console atual](docs/images/screens/class-a-plus-agentic.png?v=3)
 
-![Settings e Agentic Control Center atuais](docs/images/screens/class-a-plus-settings.png)
+![Settings e Agentic Control Center atuais](docs/images/screens/class-a-plus-settings.png?v=3)
 
-![Company OS atual](docs/images/screens/class-a-plus-company.png)
+![Company OS atual](docs/images/screens/class-a-plus-company.png?v=3)
 
 As imagens acima foram recapturadas com Chromium contra o Vite dev e o servidor Ollama local em `127.0.0.1:3001`, sem provider externo. A captura mostra a implementação e dados sandbox locais; não comprova credenciais, contas, dispositivos, deploys ou integrações externas conectadas. A [galeria complementar](docs/CLASS_A_PLUS_GUIDE.md#telas-e-estado-visual) inclui Projetos, Biblioteca, Agendado, Skills, Plugins e Tarefas. Para conhecer a árvore completa, as telas planejadas de builder/mobile e os limites de cada integração, veja a [árvore de produto](docs/agentic/PRODUCT_TREE.md), a [matriz de paridade](docs/agentic/PARITY_MATRIX.md), a [integração HarnessRouter](docs/agentic/HARNESSROUTER.md) e a [documentação Company OS](docs/agentic/COMPANY_OS.md). Mockups conceituais são identificados como conceito dentro da própria imagem; eles não são apresentados como funcionalidades concluídas. A rodada mais recente também reforçou autenticação fail-closed, allowlists MCP, lifecycle de plugins/skills, contenção de symlink, approvals auditáveis e DLP.
 
@@ -30,7 +30,7 @@ As imagens acima foram recapturadas com Chromium contra o Vite dev e o servidor 
 | Smoke operacional de Growth OS e Builder | [`smoke-company-growth.sh`](scripts/smoke-company-growth.sh) + [`smoke-builder.sh`](scripts/smoke-builder.sh) |
 | Desktop Commander local e Remote MCP | [`agentic/DESKTOP_COMMANDER_REMOTE.md`](docs/agentic/DESKTOP_COMMANDER_REMOTE.md) + [`dz23-desktop-commander-remote.json`](examples/dz23-desktop-commander-remote.json) |
 | Roadmap e status por fase | [`agentic/ROADMAP.md`](docs/agentic/ROADMAP.md) |
-| Árvore Manus observável + Ollama Full | [`agentic/PRODUCT_TREE.md`](docs/agentic/PRODUCT_TREE.md) |
+| Árvore Manus observável + Hades | [`agentic/PRODUCT_TREE.md`](docs/agentic/PRODUCT_TREE.md) |
 | Matriz de paridade e evidências | [`agentic/PARITY_MATRIX.md`](docs/agentic/PARITY_MATRIX.md) |
 | Referências de harnesses, capacidades e decisões de integração | [`HARNESS_CAPABILITY_MATRIX.md`](audit/HARNESS_CAPABILITY_MATRIX.md) |
 | Proteção contra regressões upstream | [`UPSTREAM_POLICY.md`](UPSTREAM_POLICY.md) + [`check-class-a-plus-integrity.sh`](scripts/check-class-a-plus-integrity.sh) |
@@ -41,7 +41,7 @@ Start building with open models.
 
 ## Build and run this fork
 
-The public repository currently distributes source code, not a signed Ollama Full installer, release binary, Docker image, or app-store package. Build the revision you have checked out so the executable and agentic runtime come from this fork:
+The public repository currently distributes source code, not a signed Hades installer, release binary, Docker image, or app-store package. Build the revision you have checked out so the executable and agentic runtime come from this fork:
 
 ```shell
 git clone https://github.com/DZ23-LTDA/ollama-classe-a-plus.git
@@ -63,7 +63,7 @@ npm run build
 npx vite preview --host 0.0.0.0 --port 5173
 ```
 
-The web development proxy routes all API requests (`/api/*`, `/api/v1/*` and `/api/agent/v1/*`) seamlessly to the Ollama Full backend at `http://127.0.0.1:11434`.
+The web development proxy routes all API requests (`/api/*`, `/api/v1/*` and `/api/agent/v1/*`) seamlessly to the Hades backend at `http://127.0.0.1:11434`.
 
 ### Quality Gates and Automated Tests
 
@@ -85,7 +85,7 @@ node e2e/test_all_sidebar_screens.mjs
 
 ### Upstream compatibility references
 
-The inherited Ollama CLI/API and integration pages remain available for compatibility and attribution. Links to `ollama.com`, `docs.ollama.com`, upstream libraries, Docker Hub, or upstream communities describe the upstream project; they do **not** install or publish this fork. Use the source-build instructions above for Ollama Full.
+The inherited Ollama CLI/API and integration pages remain available for compatibility and attribution. Links to `ollama.com`, `docs.ollama.com`, upstream libraries, Docker Hub, or upstream communities describe the upstream project; they do **not** install or publish this fork. Use the source-build instructions above for Hades.
 
 ## Get started
 
@@ -121,7 +121,7 @@ Run and chat with a model already available in your local Ollama-compatible mode
 ./bin/ollama-full run <modelo-local>
 ```
 
-See the [upstream model library](https://ollama.com/library) only as a compatibility reference; model availability, licensing and downloads are operator responsibilities. The [Ollama Full guide](docs/CLASS_A_PLUS_GUIDE.md) is the canonical source-build documentation.
+See the [upstream model library](https://ollama.com/library) only as a compatibility reference; model availability, licensing and downloads are operator responsibilities. The [Hades guide](docs/CLASS_A_PLUS_GUIDE.md) is the canonical source-build documentation.
 
 ## REST API
 

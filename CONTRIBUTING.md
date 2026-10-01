@@ -88,7 +88,7 @@ did not work without it.
 If you need help with anything, feel free to reach out to us on our [Discord server](https://discord.gg/ollama).
 
 
-## Regras adicionais do Ollama Full
+## Regras adicionais do Hades
 
 Leia [`docs/CLASS_A_PLUS_GUIDE.md`](docs/CLASS_A_PLUS_GUIDE.md) antes de alterar o runtime agentic. A contribuição deve preservar a distinção entre capacidade implementada, parcial, dependente de ambiente e conceitual.
 

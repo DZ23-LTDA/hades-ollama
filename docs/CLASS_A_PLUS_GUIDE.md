@@ -1,8 +1,8 @@
-# Ollama Full
+# Hades
 
 ## Manual público do projeto
 
-O **Ollama Full** é a distribuição experimental do Ollama DZ23 que combina execução local de modelos, roteamento multi-provider e um runtime agentic com missões persistentes, ferramentas com aprovação, sandbox, memória, pesquisa, Browser Operator, companions, conectores, builders, observabilidade e publicação controlada. O projeto preserva a compatibilidade da base Ollama sempre que possível e evolui as superfícies agentic em camadas verificáveis.
+O **Hades** é a distribuição experimental do Ollama DZ23 que combina execução local de modelos, roteamento multi-provider e um runtime agentic com missões persistentes, ferramentas com aprovação, sandbox, memória, pesquisa, Browser Operator, companions, conectores, builders, observabilidade e publicação controlada. O projeto preserva a compatibilidade da base Ollama sempre que possível e evolui as superfícies agentic em camadas verificáveis.
 
 > **Estado real:** o projeto possui uma base extensa implementada e endurecida com testes locais. Os gates de backend, vet, UI e mobile desta revisão passaram. Isso ainda não equivale a paridade total com todos os produtos do mercado: recursos dependentes de contas externas, hardware, certificados, lojas, modelos multimodais e ambientes distribuídos precisam de validação adicional.
 
@@ -20,7 +20,7 @@ A arquitetura é local-first. Um operador pode começar apenas com o binário e 
 | Multi-provider DZ23 | Implementado | Provedores explicitamente configurados e endpoints compatíveis. |
 | xAI/Grok API | Adapter implementado | Preset Responses/chat com bearer server-side; a validação externa depende de chave, quota e modelo xAI. Não é o Grok Bot hospedado. |
 | Composio Connect | Adapter implementado | Remote MCP com headers server-side, allowlist e approval; connected accounts e OAuth por app/tenant dependem do operador. |
-| OmniRoute | Adapter OpenAI-compatible com preset local | Exige instância OmniRoute, chave e smoke test do operador; auto-routing externo não é inventado pelo Ollama Full. |
+| OmniRoute | Adapter OpenAI-compatible com preset local | Exige instância OmniRoute, chave e smoke test do operador; auto-routing externo não é inventado pelo Hades. |
 | Missões agentic | Implementado | Plano validado, execução, eventos, recovery e artefatos. |
 | Approvals e sandbox | Implementado | Tools classificadas e execução protegida por políticas do servidor. |
 | Multiagente e pesquisa | Implementado localmente | Papéis, orçamento, síntese, citações, cache, robots e SSRF guard. |
@@ -32,7 +32,7 @@ A arquitetura é local-first. Um operador pode começar apenas com o binário e 
 | SSO | Implementado em adapters | OAuth/OIDC e SAML exigem IdP, certificados e testes de produção. |
 | Mobile | Base Expo implementada | Push, conflitos avançados, assinatura e lojas ainda dependem de ambiente real. |
 | Modelos locais de mídia | Adapter configurável | Não confundir adapter multimodal com modelos locais completos já distribuídos. |
-| Shell desktop Ollama Full | Parcialmente implementado | Home com composer e recomendações, menu persistente, CRUD real de Projetos e Agendado, catálogos reais de Tasks/Skills/Plugins/Biblioteca, lifecycle de plugins e Control Center sanitizado; builder rico e superfícies de produção ainda evoluem. |
+| Shell desktop Hades | Parcialmente implementado | Home com composer e recomendações, menu persistente, CRUD real de Projetos e Agendado, catálogos reais de Tasks/Skills/Plugins/Biblioteca, lifecycle de plugins e Control Center sanitizado; builder rico e superfícies de produção ainda evoluem. |
 | HarnessRouter | Adapter implementado | Provider OpenAI Responses-compatible com `harness_id` server-side para Codex/Claude Code; exige instância, chave e harness instalados para validação ponta a ponta. |
 | Company OS | Implementado localmente nesta rodada | Empresa/tenant, identidade, 7 departamentos, roadmap, KPIs, backlog, ciclos, relatório, budget, approvals, pausa por limite/anomalia e Growth OS sandbox para campanhas, afiliados, catálogo e pedidos; CRM, social, marketplaces, fulfillment e ads reais ainda dependem de connectors e ambientes externos. |
 | Desktop Commander Remote MCP | Adapter implementado | Stdio local e Streamable HTTP remoto com allowlist, HTTPS, bearer opcional e approval; OAuth PKCE, conta, device pairing e testes físicos dependem do operador. |
@@ -44,7 +44,7 @@ O relatório [`READINESS_2026-09-22.md`](agentic/READINESS_2026-09-22.md) regist
 
 ## Build e execução rápidos
 
-O fork público distribui o código-fonte, não um instalador assinado, binário de release, imagem Docker pública ou pacote de loja Ollama Full. Não use `ollama.com/install.sh`, `OllamaSetup.exe`, `Ollama.dmg` ou `ollama/ollama` para instalar este fork: esses artefatos pertencem ao upstream. Compile a revisão do repositório para desenvolvimento e validação local:
+O fork público distribui o código-fonte, não um instalador assinado, binário de release, imagem Docker pública ou pacote de loja Hades. Não use `ollama.com/install.sh`, `OllamaSetup.exe`, `Ollama.dmg` ou `ollama/ollama` para instalar este fork: esses artefatos pertencem ao upstream. Compile a revisão do repositório para desenvolvimento e validação local:
 
 ```bash
 git clone https://github.com/DZ23-LTDA/ollama-classe-a-plus.git
@@ -266,7 +266,7 @@ Para testes distribuídos que exigem serviços reais, use a tag e variáveis doc
 
 Também revise `git diff --check`, rode scanners de segredos, verifique permissões dos arquivos, confirme que não há tokens em logs e valide autorização negativa por organização. Toda operação com efeito externo deve ter approval, timeout, limite e registro auditável.
 
-Para proteger as superfícies Ollama Full durante atualizações do motor, execute também `scripts/check-class-a-plus-integrity.sh` e `node app/ui/app/scripts/smoke-shell.mjs`. A política completa de atualização manual, o commit upstream aceito e o procedimento de rollback estão em [`UPSTREAM_POLICY.md`](../UPSTREAM_POLICY.md). O remote `upstream` nunca é mesclado automaticamente.
+Para proteger as superfícies Hades durante atualizações do motor, execute também `scripts/check-class-a-plus-integrity.sh` e `node app/ui/app/scripts/smoke-shell.mjs`. A política completa de atualização manual, o commit upstream aceito e o procedimento de rollback estão em [`UPSTREAM_POLICY.md`](../UPSTREAM_POLICY.md). O remote `upstream` nunca é mesclado automaticamente.
 
 ## Como contribuir
 

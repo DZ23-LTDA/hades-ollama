@@ -5,17 +5,17 @@ The Ollama maintainer team takes security seriously and will actively work to re
 ## Reporting a vulnerability
 
 > **Escolha o canal certo pelo componente afetado.** Este repositório é o fork
-> **Ollama Full** (DZ23), com uma superfície agentic própria sobre o Ollama.
+> **Hades** (DZ23), com uma superfície agentic própria sobre o Ollama.
 
 ### A) Vulnerabilidade no núcleo do Ollama upstream
 
-Se a falha está no motor Ollama original (não na camada agentic/Ollama Full),
+Se a falha está no motor Ollama original (não na camada agentic/Hades),
 reporte ao canal do upstream, **não** a este repositório: envie para
 hello@ollama.com. Dê tempo hábil para investigação antes da divulgação pública.
 
-### B) Vulnerabilidade específica do Ollama Full (este fork)
+### B) Vulnerabilidade específica do Hades (este fork)
 
-Se a falha está na camada Ollama Full — runtime agentic, connectors, MCP, deploy,
+Se a falha está na camada Hades — runtime agentic, connectors, MCP, deploy,
 Company OS, HarnessRouter, companion, UI/mobile deste repositório — **não abra
 issue pública** e **não** use hello@ollama.com. Reporte de forma privada por:
 
@@ -53,13 +53,13 @@ While the maintainer team does its best to secure Ollama, users are encouraged t
 
 For any other questions or concerns related to security, please contact us at hello@ollama.com
 
-## Ollama Full
+## Hades
 
 O runtime agentic pode executar ferramentas, acessar conectores, controlar companions, manipular arquivos e publicar builders. Em instalações públicas, mantenha `OLLAMA_AGENT_AUTH_REQUIRED=true`, use TLS/mTLS quando houver dispositivo remoto, mantenha tokens em um secrets manager e não habilite modos `DEV` ou `ALLOW_INSECURE` fora de loopback.
 
 **PostgreSQL multi-tenant está em implementação candidata e ainda não aprovado para declarar produção/isolamento enterprise.** O novo caminho substitui os GUCs confiáveis anteriores por `app.tenant_context`: valor com HMAC, tenant e expiração curta, verificado pela policy RLS por função `SECURITY DEFINER` com `search_path` fixo e segredo em tabela sem `SELECT` para runtime. O startup usa apenas a role `ollama_agent_runtime` (sem ownership, `CREATE`, superuser ou `BYPASSRLS`); DDL ocorre somente via `ollama agent migrate-postgres` e DSN separada `OLLAMA_AGENT_MIGRATOR_DATABASE_URL`. A migration verifica que as tabelas pertencem ao migrator, trava as tabelas e recusa ownership de tenant ambíguo, eventos órfãos ou owner divergente em vez de inferir backfill. Eventos estão vinculados ao par `(mission_id, organization_id)` por FK e policy RLS checa a missão pai. A recuperação de jobs/agenda percorre IDs da `AuthStore` confiável usando runtimes por tenant; não concede enumeração global à role SQL. Volumes legados exigem janela de manutenção, backup validado e execução administrativa de `deploy/postgres/migrate-existing-roles.sql`; o processo antigo deve ser parado e a role privilegiada antiga é desativada pelo procedimento antes do migrator/runtime entrarem em operação. A chave HMAC (`OLLAMA_AGENT_TENANT_CONTEXT_KEY`) precisa permanecer secreta, persistente e idêntica no migrator/runtime. **Rotação não é suportada hoje**: não existe comando nem procedimento de atualização transacional validado. Não troque a variável isoladamente nem execute migrations com outra chave; isso provoca indisponibilidade. O uso em produção compartilhada permanece bloqueado até existir e ser testada uma rotação em janela de manutenção, com quiescência dos processos, verificação e rollback.
 
-Os testes adversariais locais em PostgreSQL 16 e Redis 7 verificaram SQL raw para spoofing de tenant/evento, chave errada, leitura da chave, `SET ROLE`, DDL, `row_security=off`, migração sem owner e recuperação tenant-scoped. Isso **não prova ainda production-readiness**: antes de ativar serviço compartilhado, repetir e registrar as verificações em staging com política TLS, dados/backups representativos e plano de restore; revisar tenant provisioning/auth directory, concorrência/race e implementar/testar um procedimento de rotação/recuperação; obter aprovação da auditoria independente final. O usuário do processo Ollama Full conhece a chave HMAC e, se esse processo for integralmente comprometido, pode assinar contextos de qualquer tenant; o mecanismo protege a boundary SQL contra role runtime/SQL arbitrário sem esse segredo, não contra comprometimento completo do processo. Não exponha DSNs/segredos nem marque RLS como certificada antes dos gates.
+Os testes adversariais locais em PostgreSQL 16 e Redis 7 verificaram SQL raw para spoofing de tenant/evento, chave errada, leitura da chave, `SET ROLE`, DDL, `row_security=off`, migração sem owner e recuperação tenant-scoped. Isso **não prova ainda production-readiness**: antes de ativar serviço compartilhado, repetir e registrar as verificações em staging com política TLS, dados/backups representativos e plano de restore; revisar tenant provisioning/auth directory, concorrência/race e implementar/testar um procedimento de rotação/recuperação; obter aprovação da auditoria independente final. O usuário do processo Hades conhece a chave HMAC e, se esse processo for integralmente comprometido, pode assinar contextos de qualquer tenant; o mecanismo protege a boundary SQL contra role runtime/SQL arbitrário sem esse segredo, não contra comprometimento completo do processo. Não exponha DSNs/segredos nem marque RLS como certificada antes dos gates.
 
 A camada agentic executa inspeção DLP antes dos egressos cobertos e redige tokens reconhecidos, propriedades JSON sensíveis e erros/resultados de ferramentas antes de persistir ou serializar. Propriedades sensíveis encontradas dentro de strings livres causam ocultação da string inteira. A inspeção decodifica escapes Unicode e camadas de JSON string até um limite fixo de oito passos; nomes de propriedade acima de 256 bytes e entradas além do limite falham fechados. **Isso é uma defesa heurística, não classificação semântica nem garantia de que dados pessoais/comerciais desconhecidos serão identificados**; aplique minimização de dados, approvals e controle de destino, e não trate a redação como substituta de uma política de dados do deployment.
 
