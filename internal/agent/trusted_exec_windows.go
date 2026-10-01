@@ -81,9 +81,9 @@ func trustedWindowsSecurity(path string) bool {
 			windows.FILE_WRITE_ATTRIBUTES | windows.DELETE | windows.WRITE_DAC |
 			windows.WRITE_OWNER | windows.GENERIC_WRITE | windows.GENERIC_ALL | 0x40, // FILE_DELETE_CHILD
 	)
-	for index := uint32(0); index < uint32(dacl.AceCount); index++ {
+	for index := range dacl.AceCount {
 		var ace *windows.ACCESS_ALLOWED_ACE
-		if err := windows.GetAce(dacl, index, &ace); err != nil || ace == nil {
+		if err := windows.GetAce(dacl, uint32(index), &ace); err != nil || ace == nil {
 			return false
 		}
 		switch ace.Header.AceType {

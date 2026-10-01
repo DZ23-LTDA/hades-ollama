@@ -43,9 +43,9 @@ func assertWorkspaceSnapshotOwnerDACL(t *testing.T, path string, requireInherita
 		t.Fatal("snapshot directory is not owned by the current service SID")
 	}
 	ownerAllowed := false
-	for index := uint32(0); index < uint32(dacl.AceCount); index++ {
+	for index := range dacl.AceCount {
 		var ace *windows.ACCESS_ALLOWED_ACE
-		if err := windows.GetAce(dacl, index, &ace); err != nil {
+		if err := windows.GetAce(dacl, uint32(index), &ace); err != nil {
 			t.Fatal(err)
 		}
 		if ace.Header.AceType != windows.ACCESS_ALLOWED_ACE_TYPE {
