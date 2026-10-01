@@ -1,7 +1,7 @@
 ---
 projeto: ollama-classe-a-plus
-status: AUDITORIA AMPLA — correções locais aplicadas; CI remoto pendente
-atualizado: 2026-09-30 19:41 -03 (2026-09-30 22:41 UTC)
+status: AUD-FIX-1 IMPLEMENTADO LOCALMENTE — CI remoto pendente
+atualizado: 2026-10-01 02:43 UTC
 ultima_ia: Manus
 tags: [projeto, paridade-manus, ui-2, import-project, accessibility, local-tests]
 ---
@@ -21,6 +21,7 @@ recuperação). **Pronto** = paridade comprovada por implementação + teste
 automatizado + execução real reproduzível em navegador (desktop e mobile), sem alegar "100%" sem evidência.
 
 ## Histórico de sessões
+- **2026-10-01 02:43 UTC — Manus:** executou AUD-FIX-1. Corrigiu logout real (`POST /api/signout`), perfil (`POST /api/me`) e downloads da Biblioteca (rota de artifact sem `/content`). Reforçou `scripts/verify-contracts.mjs` para método HTTP, chamadas multilinha/condicionais, parâmetros posicionais, wrappers e `href`; o verificador terminou `CONTRACT VERIFICATION PASSED`, com avisos de órfãos informativos. Evidências locais: Vitest 38 arquivos/259 testes, `npx tsc -b`, lint, build Vite, `go build ./...`, `go test ./internal/agent ./server` e integrity verdes. Próximo passo: publicar e confirmar os dois workflows CI no mesmo SHA; não declarar evidência live autenticada sem token e artefato reais.
 
 - **2026-09-30 19:41 -03 — Manus:** retomou a auditoria ampla e corrigiu riscos reproduzíveis em importação, approvals, egress/download, DLP de respostas WhatsApp, export atômico do Builder, fechamento de descriptors de artifacts, foco/ARIA e anexos da Home, preview/download autenticado, RBAC administrativo WhatsApp e pipeline de release. Evidência local: `go test ./internal/agent ./server`, `npx tsc -b`, lint, Vitest (37 arquivos/257 testes) e build UI passaram após os ajustes; a primeira execução Go revelou e foi corrigida a incompatibilidade de `git add --no-renames` e os fixtures de anti-auto-aprovação. Próximo passo: executar contratos/integrity, builds CGO0/Windows, varreduras finais, revisar o diff e só então decidir commit/push e acompanhar CI no SHA final; não declarar produção nem 100% de paridade.
 

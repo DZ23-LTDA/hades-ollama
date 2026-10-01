@@ -29,6 +29,10 @@ interface ArtifactWithMission extends AgentArtifact {
   missionCreatedAt: string;
 }
 
+export function artifactDownloadPath(missionId: string, artifactId: string): string {
+  return `${API_BASE}/api/agent/v1/missions/${encodeURIComponent(missionId)}/artifacts/${encodeURIComponent(artifactId)}`;
+}
+
 export function LibraryPage() {
   const [missions, setMissions] = useState<AgentMission[]>([]);
   const [loading, setLoading] = useState(true);
@@ -261,7 +265,7 @@ export function LibraryPage() {
                     Ver no Canvas
                   </Link>
                   <a
-                    href={`${API_BASE}/api/agent/v1/missions/${art.missionId}/artifacts/${art.id}/content`}
+                    href={artifactDownloadPath(art.missionId, art.id)}
                     download={art.name}
                     className="inline-flex items-center gap-1.5 rounded-lg bg-neutral-900 px-3 py-1.5 text-xs font-medium text-white hover:opacity-90 dark:bg-white dark:text-neutral-900"
                   >
@@ -310,7 +314,7 @@ export function LibraryPage() {
                       <EyeIcon className="h-4 w-4" />
                     </Link>
                     <a
-                      href={`${API_BASE}/api/agent/v1/missions/${art.missionId}/artifacts/${art.id}/content`}
+                      href={artifactDownloadPath(art.missionId, art.id)}
                       download={art.name}
                       className="rounded-lg p-1.5 text-neutral-900 hover:bg-neutral-100 dark:text-white dark:hover:bg-neutral-800"
                       title="Baixar artefato"

@@ -2707,3 +2707,28 @@ commit: da49fd89
 ci: class-a-plus-integrity=success (run 36799588232); dz23-agentic-quality=success (run 36799588701), ambos no mesmo SHA.
 final_evidence: testes Go críticos, build nativo, CGO0 e GOOS=windows passaram localmente; o job Windows remoto passou após a validação portátil do topo Git.
 next: nenhuma ação pendente desta auditoria ampla; novas mudanças devem iniciar novo checkpoint.
+
+
+## AUD-FIX-1 — retomada 2026-09-30 23:37 -03
+```yaml
+state: FIXING
+branch: recovery/ollama-full-snapshot
+base_commit: c393b0bc
+scope: logout real, perfil POST /api/me, download Library e verificador de contratos
+acceptance:
+  - POST /api/signout antes de fechar modal e limpar sessão
+  - sidebar/Settings usam POST /api/me via fetchUser
+  - Library usa GET /api/agent/v1/missions/:id/artifacts/:artifact_id
+  - verify-contracts considera método, parâmetros por posição, href/wrappers e avisa rotas órfãs
+  - testes frontend, build Go, contratos, integrity e Playwright desktop/mobile
+next_action: aplicar correções e executar gates; não alterar escopo
+rollback: preservar c393b0bc; sem reset/clean/force-push
+```
+
+
+## AUD-FIX-1 — checkpoint local
+state: IMPLEMENTED_LOCAL_CI_PENDING
+commit_base: c393b0bc
+changes: AppSidebar/Settings profile+logout, Library artifact route, contract scanner, frontend regression tests
+gates: frontend, Go, contracts and integrity PASS
+next_step: commit/push and verify class-a-plus-integrity + dz23-agentic-quality on same SHA

@@ -1,5 +1,4 @@
 import { useEffect, useState, useCallback, useRef } from "react";
-import { API_BASE } from "@/lib/config";
 import { Switch } from "@/components/ui/switch";
 import { Text } from "@/components/ui/text";
 import { Input } from "@/components/ui/input";
@@ -40,6 +39,7 @@ import {
   updateCloudSetting,
   updateSettings,
   getInferenceCompute,
+  fetchUser,
 } from "@/api";
 import { applySettingsDefaults } from "./settingsUtils";
 
@@ -151,8 +151,7 @@ export default function Settings() {
   });
 
   useEffect(() => {
-    fetch(`${API_BASE}/api/me`)
-      .then((res) => (res.ok ? res.json() : null))
+    fetchUser()
       .then((data) => {
         if (data && (data.name || data.email)) {
           setOperatorProfile({

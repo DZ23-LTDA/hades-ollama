@@ -27,6 +27,8 @@ import { HelpDialog } from "@/components/HelpDialog";
 import { newTaskShortcut } from "@/lib/help";
 import { SETTINGS_SECTIONS } from "@/lib/settingsTabs";
 import { isTypingTarget } from "@/lib/search";
+import { disconnectUser, fetchUser } from "@/api";
+import { clearAgentSession } from "@/lib/agenticClient";
 
 export type AppSection =
   | "apps"
@@ -49,6 +51,11 @@ export type AppSection =
 type Icon = React.ComponentType<{ className?: string }>;
 
 const iconClass = "h-[18px] w-[18px] shrink-0 stroke-[1.7]";
+
+export async function performLogout(): Promise<void> {
+  await disconnectUser();
+  clearAgentSession();
+}
 
 function itemClass(active: boolean, prominent = false) {
   return `group flex w-full items-center gap-3 rounded-lg px-2.5 py-2 text-left text-[13px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-400 ${
@@ -99,14 +106,14 @@ function TargetLink({
     </a>
   );
 }
-import { API_BASE } from "@/lib/config";
-
 export function AppNavigation({ current }: { current: AppSection }) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [signOutOpen, setSignOutOpen] = useState(false);
+  const [signOutPending, setSignOutPending] = useState(false);
+  const [signOutError, setSignOutError] = useState<string | null>(null);
   const [userProfile, setUserProfile] = useState<{
     name: string;
     username: string;
@@ -120,13 +127,12 @@ export function AppNavigation({ current }: { current: AppSection }) {
   });
 
   useEffect(() => {
-    fetch(`${API_BASE}/api/me`)
-      .then((res) => (res.ok ? res.json() : null))
+    fetchUser()
       .then((data) => {
-        if (data && (data.name || data.username)) {
+        if (data && data.name) {
           setUserProfile({
-            name: data.name || data.username || "Operador local",
-            username: data.username || "local",
+            name: data.name || "Operador local",
+            username: data.name || "local",
             email: data.email || "local@localhost",
             plan: data.plan || "Local-first",
           });
@@ -134,6 +140,20 @@ export function AppNavigation({ current }: { current: AppSection }) {
       })
       .catch(() => {});
   }, []);
+
+  const handleSignOut = async () => {
+    setSignOutPending(true);
+    setSignOutError(null);
+    try {
+      await performLogout();
+      setSignOutOpen(false);
+      window.location.reload();
+    } catch (error) {
+      setSignOutError(error instanceof Error ? error.message : "Não foi possível encerrar a sessão.");
+    } finally {
+      setSignOutPending(false);
+    }
+  };
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
@@ -465,12 +485,13 @@ export function AppNavigation({ current }: { current: AppSection }) {
           <div className="w-full max-w-sm rounded-2xl border border-neutral-200 bg-white p-6 shadow-2xl dark:border-neutral-800 dark:bg-neutral-900 text-center">
             <h3 className="text-base font-bold text-neutral-900 dark:text-white">Tem certeza de que deseja sair?</h3>
             <p className="mt-2 text-xs text-neutral-500">Sair do Ollama Full como {userProfile.email}?</p>
+            {signOutError && <p role="alert" className="mt-3 text-xs text-red-600">{signOutError}</p>}
             <div className="mt-6 flex items-center justify-center gap-3">
-              <button onClick={() => setSignOutOpen(false)} className="flex-1 rounded-xl border border-neutral-200 py-2 text-xs font-semibold text-neutral-700 hover:bg-neutral-50 dark:border-neutral-700 dark:text-neutral-200">
+              <button type="button" disabled={signOutPending} onClick={() => setSignOutOpen(false)} className="flex-1 rounded-xl border border-neutral-200 py-2 text-xs font-semibold text-neutral-700 hover:bg-neutral-50 disabled:opacity-50 dark:border-neutral-700 dark:text-neutral-200">
                 Manter-se conectado
               </button>
-              <button onClick={() => { setSignOutOpen(false); alert("Sessão finalizada no modo local."); }} className="flex-1 rounded-xl bg-red-600 py-2 text-xs font-semibold text-white hover:bg-red-700">
-                Sair
+              <button type="button" disabled={signOutPending} onClick={() => void handleSignOut()} className="flex-1 rounded-xl bg-red-600 py-2 text-xs font-semibold text-white hover:bg-red-700 disabled:opacity-50">
+                {signOutPending ? "Saindo…" : "Sair"}
               </button>
             </div>
           </div>

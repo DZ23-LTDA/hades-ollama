@@ -6,6 +6,7 @@ import { Badge } from "./ui/badge";
 import Settings from "./Settings";
 
 const mocks = vi.hoisted(() => ({
+  fetchUser: vi.fn().mockResolvedValue(null),
   resetClaudeMappings: vi.fn(),
   resetChatGPTModels: vi.fn(),
   updateSettings: vi.fn(),
@@ -137,6 +138,7 @@ vi.mock("@tanstack/react-query", () => ({
 }));
 
 vi.mock("@/api", () => ({
+  fetchUser: mocks.fetchUser,
   getSettings: vi.fn(),
   getModels: vi.fn().mockResolvedValue([]),
   getModelRecommendations: vi.fn().mockResolvedValue([]),

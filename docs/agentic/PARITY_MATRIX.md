@@ -148,3 +148,10 @@ A terceira rodada adiciona identidade estável de diretório para missões não 
 
 ## Auditoria ampla — 2026-09-30 19:41 -03
 Correções locais foram aplicadas para importação segura, approval ledger anti-auto-aprovação, egress/download, DLP limitado, export atômico do Builder, fechamento de descriptors, preview/download autenticado, acessibilidade do ModelPicker/import dialog, anexos com erro visível, RBAC administrativo WhatsApp e release reproduzível/assinável. Os gates Go/UI afetados passaram localmente. O status dos itens não é promovido a PASS nesta nota: contratos, integrity, builds multiplataforma, navegador e CI do SHA final ainda são obrigatórios.
+
+
+### AUD-FIX-1 — contratos de sessão, perfil e Biblioteca
+
+- Logout real via `POST /api/signout`, carregamento de identidade via `POST /api/me` e download da Biblioteca via rota de artifact foram corrigidos e cobertos por regressões frontend.
+- O verificador de contratos passou a validar método HTTP, parâmetros posicionais, templates condicionais, wrappers e `href` de download.
+- A Biblioteca permanece `PASS` por implementação/testes, mas a confirmação live autenticada do download continua condicionada a sessão Bearer e artefato real disponível.

@@ -114,3 +114,14 @@
 ## Conclusão honesta
 
 A auditoria live **não aprova 100% de paridade**. A casca visual e vários estados honestos existem, mas o backend agentic não está utilizável pelo navegador sem um token Bearer, `/connect` tem crash determinístico e não há modelo local disponível. Esses bloqueios devem ser corrigidos e a auditoria E2E repetida antes de declarar os fluxos funcionais.
+
+
+## AUD-FIX-1 — correções verificadas
+
+- **Logout:** `AppSidebar` agora chama o `POST /api/signout` real e encerra a sessão antes de fechar o modal; regressão em `audfix1.contracts.test.ts`.
+- **Perfil:** Sidebar e Settings usam `POST /api/me`, removendo o 405 causado pelo método incorreto.
+- **Biblioteca:** os downloads usam `GET /api/agent/v1/missions/:id/artifacts/:artifact_id`; o sufixo inexistente `/content` foi removido.
+- **Contratos:** `scripts/verify-contracts.mjs` agora considera método HTTP, templates condicionais/multilinha, parâmetros posicionais, wrappers e links de download. O gate terminou com `CONTRACT VERIFICATION PASSED`; avisos de rotas órfãs permanecem informativos.
+- **Gates locais:** `npx tsc -b`, lint, Vitest (38 arquivos/259 testes), build Vite, `go build ./...`, `go test ./internal/agent ./server` e integrity passaram.
+
+A evidência live da auditoria original continua válida como diagnóstico; uma nova captura autenticada de logout/perfil/download depende de uma sessão Bearer real e não foi inventada nesta rodada.
