@@ -1,6 +1,6 @@
 ---
 projeto: ollama-classe-a-plus
-status: T3–T8 IMPLEMENTADAS LOCALMENTE — CI PENDENTE
+status: MISSÃO NOTURNA CONCLUÍDA — T3–T8 IMPLEMENTADAS; CI VERDE NO SHA a0e10cb0
 atualizado: 2026-10-01 06:34 UTC
 ultima_ia: Manus
 tags: [projeto, paridade-manus, ui-2, import-project, accessibility, aud-fix-2, local-tests]
