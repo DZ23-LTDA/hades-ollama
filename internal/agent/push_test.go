@@ -28,7 +28,7 @@ func TestPushSubscriptionQuotasBoundPerOrganizationCountAndBytes(t *testing.T) {
 	}
 
 	tooManyBytes := make(map[string]PushSubscription, 150)
-	for index := 0; index < 150; index++ {
+	for index := 0; index < 150; index++ { //nolint:intrange // index is part of deterministic fixture IDs
 		id := "push-bytes-" + strconv.Itoa(index)
 		tooManyBytes[id] = PushSubscription{ID: id, Token: "token", TokenCiphertext: strings.Repeat("x", 15_000), UserID: "user", OrganizationID: "org-a"}
 	}
@@ -41,7 +41,7 @@ func TestPushSubscriptionQuotaMatchesIndentedPersistedRepresentation(t *testing.
 	items := make(map[string]PushSubscription)
 	records := make(map[string]pushSubscriptionRecord)
 	compactBytes := 0
-	for index := 0; index < maxPushSubscriptionsPerOrg; index++ {
+	for index := 0; index < maxPushSubscriptionsPerOrg; index++ { //nolint:intrange // index is part of deterministic fixture IDs
 		id := "push-indent-" + strconv.Itoa(index)
 		item := PushSubscription{ID: id, Token: "token", TokenCiphertext: strings.Repeat("x", 15_000), Platform: "ios", UserID: "user", OrganizationID: "org-a"}
 		items[id] = item

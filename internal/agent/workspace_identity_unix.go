@@ -35,5 +35,5 @@ func workspaceDirectoryIdentity(path string) (string, error) {
 	if !ok {
 		return "", errors.New("workspace filesystem identity is unavailable")
 	}
-	return fmt.Sprintf("%x:%x", uint64(stat.Dev), uint64(stat.Ino)), nil
+	return fmt.Sprintf("%x:%x", stat.Dev, stat.Ino), nil
 }

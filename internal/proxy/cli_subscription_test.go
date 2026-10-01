@@ -17,7 +17,7 @@ type fakeFileInfo struct {
 
 func (f fakeFileInfo) Name() string       { return f.name }
 func (f fakeFileInfo) Size() int64        { return f.size }
-func (f fakeFileInfo) Mode() fs.FileMode  { return 0644 }
+func (f fakeFileInfo) Mode() fs.FileMode  { return 0o644 }
 func (f fakeFileInfo) ModTime() time.Time { return time.Now() }
 func (f fakeFileInfo) IsDir() bool        { return false }
 func (f fakeFileInfo) Sys() any           { return nil }

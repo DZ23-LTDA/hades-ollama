@@ -21,11 +21,13 @@ type PostgresStore struct {
 	organizationID   string
 	tenantContextKey []byte
 	tenantKeyVersion int
-	requestContext   context.Context
+	requestContext   context.Context //nolint:containedctx // immutable tenant view retains request cancellation
 }
 
-var ErrPostgresTenantRequiresNonSuperuser = errors.New("tenant-scoped postgres store requires a non-superuser role")
-var ErrPostgresTenantIsolationUnavailable = errors.New("PostgreSQL agent storage requires the signed-tenant runtime and separate migrator configuration")
+var (
+	ErrPostgresTenantRequiresNonSuperuser = errors.New("tenant-scoped postgres store requires a non-superuser role")
+	ErrPostgresTenantIsolationUnavailable = errors.New("PostgreSQL agent storage requires the signed-tenant runtime and separate migrator configuration")
+)
 
 // WithOrganization returns a tenant-only view. The view shares the runtime
 // connection pool but carries an immutable organization scope.
@@ -104,7 +106,7 @@ func (s *PostgresStore) GetMission(id string) (Mission, error) {
 	if !validSnapshotID(id) {
 		return Mission{}, os.ErrNotExist
 	}
-	tx, operationCtx, cancel, err := s.begin(nil)
+	tx, operationCtx, cancel, err := s.begin(s.requestContext)
 	if err != nil {
 		return Mission{}, err
 	}
@@ -183,7 +185,7 @@ func scrubMissionDLPInTransaction(ctx context.Context, tx *sql.Tx, mission Missi
 }
 
 func (s *PostgresStore) ListMissions() ([]Mission, error) {
-	tx, operationCtx, cancel, err := s.begin(nil)
+	tx, operationCtx, cancel, err := s.begin(s.requestContext)
 	if err != nil {
 		return nil, err
 	}
@@ -253,7 +255,7 @@ func (s *PostgresStore) PutMission(mission Mission) error {
 	if err != nil {
 		return err
 	}
-	tx, operationCtx, cancel, err := s.begin(nil)
+	tx, operationCtx, cancel, err := s.begin(s.requestContext)
 	if err != nil {
 		return err
 	}
@@ -331,7 +333,7 @@ func (s *PostgresStore) CreateMission(mission Mission) error {
 	if err != nil {
 		return err
 	}
-	tx, operationCtx, cancel, err := s.begin(nil)
+	tx, operationCtx, cancel, err := s.begin(s.requestContext)
 	if err != nil {
 		return err
 	}
@@ -381,7 +383,7 @@ func (s *PostgresStore) PutMissionIfVersion(mission Mission, expectedVersion int
 	if err != nil {
 		return err
 	}
-	tx, operationCtx, cancel, err := s.begin(nil)
+	tx, operationCtx, cancel, err := s.begin(s.requestContext)
 	if err != nil {
 		return err
 	}
@@ -413,7 +415,7 @@ func (s *PostgresStore) AppendEvent(event Event) error {
 	if err != nil {
 		return fmt.Errorf("marshal event payload: %w", err)
 	}
-	tx, operationCtx, cancel, err := s.begin(nil)
+	tx, operationCtx, cancel, err := s.begin(s.requestContext)
 	if err != nil {
 		return err
 	}
@@ -453,7 +455,7 @@ func (s *PostgresStore) ListEvents(missionID string) ([]Event, error) {
 	if !validSnapshotID(missionID) {
 		return nil, os.ErrNotExist
 	}
-	tx, operationCtx, cancel, err := s.begin(nil)
+	tx, operationCtx, cancel, err := s.begin(s.requestContext)
 	if err != nil {
 		return nil, err
 	}

@@ -40,6 +40,10 @@ linters:
         - componentes
         # misspell splits words at accented letters ("conversão" -> "convers").
         - convers
+        - comando
+        - comandos
+        - progresso
+        - operacional
     depguard:
       rules:
         test-only-packages:

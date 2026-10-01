@@ -498,7 +498,7 @@ func resolveSandboxInterpreter(language string) (string, error) {
 	if runtime.GOOS != "linux" {
 		return "", errors.New("sandbox interpreter resolution is supported only on Linux trusted system paths")
 	}
-	name := ""
+	var name string
 	switch language {
 	case "python", "python3":
 		name = "python3"
@@ -555,7 +555,7 @@ func sandboxPythonStdlibPath(ctx context.Context, interpreter string) (string, e
 }
 
 func sandboxSharedLibraryPath() (string, error) {
-	triplet := ""
+	var triplet string
 	switch runtime.GOARCH {
 	case "amd64":
 		triplet = "x86_64-linux-gnu"

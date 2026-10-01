@@ -855,12 +855,27 @@ func TestDistributedPostgresRLSAndEvents(t *testing.T) {
 		}
 	})
 	for _, missingColumn := range []struct{ table, column string }{
-		{"agent_missions", "id"}, {"agent_missions", "version"}, {"agent_missions", "objective"}, {"agent_missions", "model"},
-		{"agent_missions", "workspace"}, {"agent_missions", "project_id"}, {"agent_missions", "auto_run"}, {"agent_missions", "state"},
-		{"agent_missions", "plan"}, {"agent_missions", "approvals"}, {"agent_missions", "artifacts"}, {"agent_missions", "last_error"},
-		{"agent_missions", "created_at"}, {"agent_missions", "updated_at"}, {"agent_missions", "completed_at"},
-		{"agent_events", "id"}, {"agent_events", "mission_id"}, {"agent_events", "type"}, {"agent_events", "step_id"},
-		{"agent_events", "payload"}, {"agent_events", "created_at"},
+		{"agent_missions", "id"},
+		{"agent_missions", "version"},
+		{"agent_missions", "objective"},
+		{"agent_missions", "model"},
+		{"agent_missions", "workspace"},
+		{"agent_missions", "project_id"},
+		{"agent_missions", "auto_run"},
+		{"agent_missions", "state"},
+		{"agent_missions", "plan"},
+		{"agent_missions", "approvals"},
+		{"agent_missions", "artifacts"},
+		{"agent_missions", "last_error"},
+		{"agent_missions", "created_at"},
+		{"agent_missions", "updated_at"},
+		{"agent_missions", "completed_at"},
+		{"agent_events", "id"},
+		{"agent_events", "mission_id"},
+		{"agent_events", "type"},
+		{"agent_events", "step_id"},
+		{"agent_events", "payload"},
+		{"agent_events", "created_at"},
 	} {
 		legacyColumn := "legacy_missing_" + missingColumn.column
 		if _, err := adminDB.ExecContext(ctx, fmt.Sprintf(`ALTER TABLE public.%s RENAME COLUMN %s TO %s`, missingColumn.table, missingColumn.column, legacyColumn)); err != nil {

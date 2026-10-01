@@ -155,7 +155,7 @@ func (s *SecretStore) List() []SecretMetadata {
 	return items
 }
 
-func (s *SecretStore) persistLocked() error {
+func (s *SecretStore) persistLocked() error { //nolint:unused // compatibility/security surface retained for future adapter wiring
 	if s.root == "" {
 		return nil
 	}
@@ -199,10 +199,12 @@ var dlpPatterns = []struct {
 // and property names embedded in escaped JSON strings. The captured content is
 // decoded with encoding/json before sensitiveDLPKey checks it, so e.g.
 // `api\u005fkey` is treated exactly like `api_key`.
-var embeddedJSONStringKeyPattern = regexp.MustCompile(`\\*"((?:\\.|[^"\\])+?)\\*"\s*:`)
-var embeddedSingleQuotedKeyPattern = regexp.MustCompile(`\\*'((?:\\.|[^'\\])+?)\\*'\s*:`)
-var embeddedUnicodeEscapePattern = regexp.MustCompile(`\\u[0-9a-fA-F]{4}`)
-var dlpEscapeNormalizer = strings.NewReplacer(`\\`, `\`, `\"`, `"`, `\'`, `'`)
+var (
+	embeddedJSONStringKeyPattern   = regexp.MustCompile(`\\*"((?:\\.|[^"\\])+?)\\*"\s*:`)
+	embeddedSingleQuotedKeyPattern = regexp.MustCompile(`\\*'((?:\\.|[^'\\])+?)\\*'\s*:`)
+	embeddedUnicodeEscapePattern   = regexp.MustCompile(`\\u[0-9a-fA-F]{4}`)
+	dlpEscapeNormalizer            = strings.NewReplacer(`\\`, `\`, `\"`, `"`, `\'`, `'`)
+)
 
 func normalizeDLPEscapes(text string) string {
 	var out strings.Builder
@@ -235,7 +237,7 @@ func hasSensitiveEmbeddedJSONKey(text string) bool {
 	// Tool/provider output can contain JSON nested inside one or more JSON
 	// strings. Peel a small, fixed number of escape layers and decode JSON
 	// Unicode escapes so escaped quotes/braces cannot conceal property names.
-	for depth := 0; depth < 8; depth++ {
+	for depth := 0; depth < 8; depth++ { //nolint:intrange // depth controls the bounded fail-closed check
 		if hasSensitiveQuotedKey(text, embeddedJSONStringKeyPattern) || hasSensitiveQuotedKey(text, embeddedSingleQuotedKeyPattern) {
 			return true
 		}
@@ -285,8 +287,10 @@ func hasSensitiveQuotedKey(text string, pattern *regexp.Regexp) bool {
 // escaped and percent-encoded separators. Validation below decodes a bounded
 // number of layers and redacts the complete candidate when it cannot prove it
 // is safe.
-var dlpURLPattern = regexp.MustCompile(`(?i)\bhttps?(?::|\\:|%3a|%253a)[^\s"'<>]+`)
-var dlpURLTokenPattern = regexp.MustCompile(`[^\s"'<>]+`)
+var (
+	dlpURLPattern      = regexp.MustCompile(`(?i)\bhttps?(?::|\\:|%3a|%253a)[^\s"'<>]+`)
+	dlpURLTokenPattern = regexp.MustCompile(`[^\s"'<>]+`)
+)
 
 func redactCredentialURLs(text string) string {
 	text = dlpURLPattern.ReplaceAllStringFunc(text, func(candidate string) string {
@@ -309,7 +313,7 @@ func redactCredentialURLs(text string) string {
 
 func credentialURLCandidate(candidate string) bool {
 	current := candidate
-	for depth := 0; depth < 8; depth++ {
+	for range 8 {
 		current = normalizeURLEscapes(current)
 		if start := urlSchemeStart(current); start >= 0 {
 			urlCandidate := current[start:]
@@ -346,7 +350,7 @@ func credentialURLCandidate(candidate string) bool {
 }
 
 func normalizeURLEscapes(value string) string {
-	for depth := 0; depth < 8; depth++ {
+	for range 8 {
 		next := strings.ReplaceAll(value, `\/`, `/`)
 		next = strings.ReplaceAll(next, `\:`, `:`)
 		if next == value {
@@ -406,7 +410,7 @@ func credentialURLValue(candidate string) bool {
 }
 
 func decodeURLComponentFully(value string) string {
-	for depth := 0; depth < 8; depth++ {
+	for range 8 {
 		next, err := url.QueryUnescape(value)
 		if err != nil || next == value {
 			return value

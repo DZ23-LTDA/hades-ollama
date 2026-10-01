@@ -4,11 +4,12 @@ package main
 
 import (
 	"errors"
-	"github.com/ollama/ollama/app/store"
-	"github.com/ollama/ollama/app/webview"
 	"sync"
 	"sync/atomic"
 	"unsafe"
+
+	"github.com/ollama/ollama/app/store"
+	"github.com/ollama/ollama/app/webview"
 )
 
 type Webview struct {

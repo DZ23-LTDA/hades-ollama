@@ -127,7 +127,7 @@ func TestTraceStoreRejectsOverLimitCrossInstanceMerge(t *testing.T) {
 	local := make([]TraceSpan, maxTraceSpans)
 	disk := make([]TraceSpan, maxTraceSpans)
 	now := time.Now().UTC()
-	for index := 0; index < maxTraceSpans; index++ {
+	for index := 0; index < maxTraceSpans; index++ { //nolint:intrange // index is part of deterministic fixture IDs
 		localID := fmt.Sprintf("sp_local_%05d", index)
 		diskID := fmt.Sprintf("sp_disk_%05d", index)
 		if index == 0 {

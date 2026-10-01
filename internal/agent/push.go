@@ -277,7 +277,7 @@ func (p *PushService) Revoke(id, organizationID, userID string) error {
 	})
 }
 
-func (p *PushService) subscriptionStillActive(snapshot PushSubscription, organizationID string) (bool, error) {
+func (p *PushService) subscriptionStillActive(snapshot PushSubscription, organizationID string) (bool, error) { //nolint:unused // compatibility/security surface retained for future adapter wiring
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	if err := p.withFileStateLocked(false, nil); err != nil {

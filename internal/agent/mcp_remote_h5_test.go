@@ -84,14 +84,14 @@ func TestRemoteMCPPairingIsAuthenticatedOneShotAndBoundToChallenge(t *testing.T)
 	if err := manager.RegisterForOrganization("org-a", RemoteMCPServerConfig{ID: "pair", URL: "https://mcp.example.test/mcp", AllowedMethods: []string{"ping"}, PairingTokenEnv: "MCP_PAIRING_SECRET"}); err != nil {
 		t.Fatal(err)
 	}
-	challenge, err := manager.BeginPairing("pair", "org-a")
+	_, err := manager.BeginPairing("pair", "org-a")
 	if err != nil {
 		t.Fatal(err)
 	}
 	if err := manager.CompletePairing("pair", "org-a", "pair-secret", "wrong"); err != ErrRemoteMCPPairingUnauthorized {
 		t.Fatalf("wrong challenge err=%v", err)
 	}
-	challenge, err = manager.BeginPairing("pair", "org-a")
+	challenge, err := manager.BeginPairing("pair", "org-a")
 	if err != nil {
 		t.Fatal(err)
 	}

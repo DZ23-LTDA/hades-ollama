@@ -55,8 +55,10 @@ type ConnectorManager struct {
 	persistPath string
 }
 
-var errConnectorRedirectDisabled = errors.New("connector redirects are disabled")
-var errConnectorResponseTooLarge = errors.New("connector response payload exceeds limit")
+var (
+	errConnectorRedirectDisabled = errors.New("connector redirects are disabled")
+	errConnectorResponseTooLarge = errors.New("connector response payload exceeds limit")
+)
 
 var (
 	ErrConnectorDisabled              = errors.New("connector is disabled")
@@ -244,7 +246,10 @@ func validateConnectorURL(raw string, originOnly bool) error {
 			return errors.New("must not contain credential-shaped URL data")
 		}
 		next, decodeErr := url.PathUnescape(decoded)
-		if decodeErr != nil || next == decoded {
+		if decodeErr != nil {
+			return errors.New("must contain valid URL escaping")
+		}
+		if next == decoded {
 			break
 		}
 		decoded = next
@@ -709,11 +714,13 @@ func connectorHostIsLoopback(host string) bool {
 func connectorPrivateIP(ip net.IP) bool {
 	return unsafeEgressIP(ip)
 }
-func connectorDialContext(ctx context.Context, network, address string) (net.Conn, error) {
+
+func connectorDialContext(ctx context.Context, network, address string) (net.Conn, error) { //nolint:unused // compatibility/security surface retained for future adapter wiring
 	return connectorDialContextWithResolver(ctx, network, address, func(ctx context.Context, host string) ([]net.IP, error) {
 		return net.DefaultResolver.LookupIP(ctx, "ip", host)
 	})
 }
+
 func connectorDialContextWithResolver(ctx context.Context, network, address string, lookup func(context.Context, string) ([]net.IP, error)) (net.Conn, error) {
 	dialer := &net.Dialer{Timeout: 10 * time.Second}
 	host, port, err := net.SplitHostPort(address)
@@ -835,7 +842,7 @@ func validConnectorPath(value string) bool {
 		return false
 	}
 	decoded := value
-	for depth := 0; depth < 8; depth++ {
+	for range 8 {
 		next, err := url.PathUnescape(decoded)
 		if err != nil {
 			return false

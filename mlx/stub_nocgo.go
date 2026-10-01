@@ -13,8 +13,10 @@ import (
 
 var ErrUnavailable = errors.New("MLX indisponível: este build não inclui CGO/native MLX")
 
-const End = int(^uint32(0) >> 1)
-const Nvfp4MaxProduct = 448 * 6
+const (
+	End             = int(^uint32(0) >> 1)
+	Nvfp4MaxProduct = 448 * 6
+)
 
 type DType int
 
@@ -38,17 +40,19 @@ const (
 func (t DType) String() string              { return "unavailable" }
 func (t *DType) UnmarshalJSON([]byte) error { return ErrUnavailable }
 
-type Array struct{}
-type Scope struct{}
-type Device struct{}
-type Stream struct{}
-type Memory struct{}
-type SafetensorsFile struct{}
-type Byte int
-type KibiByte int
-type MebiByte int
-type GibiByte int
-type TebiByte int
+type (
+	Array           struct{}
+	Scope           struct{}
+	Device          struct{}
+	Stream          struct{}
+	Memory          struct{}
+	SafetensorsFile struct{}
+	Byte            int
+	KibiByte        int
+	MebiByte        int
+	GibiByte        int
+	TebiByte        int
+)
 
 func (b Byte) String() string       { return fmt.Sprintf("%d B", b) }
 func (b KibiByte) String() string   { return fmt.Sprintf("%d KiB", b) }
@@ -63,9 +67,11 @@ type slice struct{ args []int }
 
 func Slice(args ...int) slice { return slice{args} }
 
-type CompileOption func(*compileConfig)
-type compileConfig struct{}
-type CompileFunc func(...*Array) []*Array
+type (
+	CompileOption func(*compileConfig)
+	compileConfig struct{}
+	CompileFunc   func(...*Array) []*Array
+)
 
 func Shapeless() CompileOption          { return func(*compileConfig) {} }
 func unavailable() *Array               { panic(ErrUnavailable) }
@@ -73,24 +79,29 @@ func unavailableN(_ ...*Array) []*Array { panic(ErrUnavailable) }
 func Compile(_ string, _ CompileFunc, _ ...CompileOption) CompileFunc {
 	return func(...*Array) []*Array { panic(ErrUnavailable) }
 }
+
 func Compile1(_ string, _ func(*Array) *Array, _ ...CompileOption) func(*Array) *Array {
 	return func(*Array) *Array { panic(ErrUnavailable) }
 }
+
 func Compile2(_ string, _ func(*Array, *Array) *Array, _ ...CompileOption) func(*Array, *Array) *Array {
 	return func(*Array, *Array) *Array { panic(ErrUnavailable) }
 }
+
 func Compile3(_ string, _ func(*Array, *Array, *Array) *Array, _ ...CompileOption) func(*Array, *Array, *Array) *Array {
 	return func(*Array, *Array, *Array) *Array { panic(ErrUnavailable) }
 }
 
-var GELU = func(*Array) *Array { return unavailable() }
-var GELUApprox = GELU
-var SiLU = GELU
-var ReLUSquared = GELU
-var SoftplusF32 = GELU
-var SwiGLU = func(*Array, *Array) *Array { return unavailable() }
-var GeGLU = SwiGLU
-var LogitSoftcap = SwiGLU
+var (
+	GELU         = func(*Array) *Array { return unavailable() }
+	GELUApprox   = GELU
+	SiLU         = GELU
+	ReLUSquared  = GELU
+	SoftplusF32  = GELU
+	SwiGLU       = func(*Array, *Array) *Array { return unavailable() }
+	GeGLU        = SwiGLU
+	LogitSoftcap = SwiGLU
+)
 
 func CheckInit() error                           { return ErrUnavailable }
 func LoadedLibraryPath() (string, error)         { return "", ErrUnavailable }
@@ -119,6 +130,7 @@ func FromValue[T interface {
 }](T) *Array {
 	return unavailable()
 }
+
 func FromValues[S ~[]E, E interface {
 	~bool | ~uint8 | ~uint16 | ~uint32 | ~uint64 | ~int8 | ~int16 | ~int32 | ~int64 | ~float32 | ~float64 | ~complex64
 }](S, ...int) *Array {
@@ -243,35 +255,61 @@ func Quantize(*Array, int, int, string) (*Array, *Array, *Array) { return nil, n
 func QuantizedMatmul(*Array, *Array, *Array, *Array, bool, int, int, string, *Array) *Array {
 	return unavailable()
 }
-func RMSNormFn(*Array, *Array, float32) *Array                                 { return unavailable() }
-func RSqrt(*Array) *Array                                                      { return unavailable() }
-func RandomKey(uint64) *Array                                                  { return unavailable() }
-func ReLU(*Array) *Array                                                       { return unavailable() }
-func Reshape(*Array, ...int32) *Array                                          { return unavailable() }
-func RoPEWithBase(*Array, int, bool, float32, float32, *Array) *Array          { return unavailable() }
+
+func RMSNormFn(*Array, *Array, float32) *Array { return unavailable() }
+
+func RSqrt(*Array) *Array { return unavailable() }
+
+func RandomKey(uint64) *Array { return unavailable() }
+
+func ReLU(*Array) *Array { return unavailable() }
+
+func Reshape(*Array, ...int32) *Array { return unavailable() }
+
+func RoPEWithBase(*Array, int, bool, float32, float32, *Array) *Array { return unavailable() }
+
 func RoPEWithFreqs(*Array, int, bool, float32, float32, *Array, *Array) *Array { return unavailable() }
-func Sigmoid(*Array) *Array                                                    { return unavailable() }
-func Sin(*Array) *Array                                                        { return unavailable() }
-func SliceStartStop(*Array, []int32, []int32) *Array                           { return unavailable() }
-func SoftmaxAxis(*Array, int, bool) *Array                                     { return unavailable() }
-func Softplus(*Array) *Array                                                   { return unavailable() }
-func Squeeze(*Array, int) *Array                                               { return unavailable() }
-func Stack([]*Array, int) *Array                                               { return unavailable() }
-func Sub(*Array, *Array) *Array                                                { return unavailable() }
-func Sum(*Array, int, bool) *Array                                             { return unavailable() }
-func Take(*Array, *Array, int) *Array                                          { return unavailable() }
-func TakeAlongAxis(*Array, *Array, int) *Array                                 { return unavailable() }
-func Tile(*Array, []int32) *Array                                              { return unavailable() }
-func ToFP8(*Array) *Array                                                      { return unavailable() }
-func Transpose(*Array, ...int) *Array                                          { return unavailable() }
-func Tri(int32, int32, int) *Array                                             { return unavailable() }
-func Where(*Array, *Array, *Array) *Array                                      { return unavailable() }
+
+func Sigmoid(*Array) *Array { return unavailable() }
+
+func Sin(*Array) *Array { return unavailable() }
+
+func SliceStartStop(*Array, []int32, []int32) *Array { return unavailable() }
+
+func SoftmaxAxis(*Array, int, bool) *Array { return unavailable() }
+
+func Softplus(*Array) *Array { return unavailable() }
+
+func Squeeze(*Array, int) *Array { return unavailable() }
+
+func Stack([]*Array, int) *Array { return unavailable() }
+
+func Sub(*Array, *Array) *Array { return unavailable() }
+
+func Sum(*Array, int, bool) *Array { return unavailable() }
+
+func Take(*Array, *Array, int) *Array { return unavailable() }
+
+func TakeAlongAxis(*Array, *Array, int) *Array { return unavailable() }
+
+func Tile(*Array, []int32) *Array { return unavailable() }
+
+func ToFP8(*Array) *Array { return unavailable() }
+
+func Transpose(*Array, ...int) *Array { return unavailable() }
+
+func Tri(int32, int32, int) *Array { return unavailable() }
+
+func Where(*Array, *Array, *Array) *Array { return unavailable() }
+
 func GatedDelta(*Array, *Array, *Array, *Array, *Array, *Array, bool) (*Array, *Array, []*Array) {
 	return nil, nil, nil
 }
+
 func Mamba2Scan(*Array, *Array, *Array, *Array, *Array, *Array, *Array, *Array, *Array, bool) (*Array, *Array, []*Array) {
 	return nil, nil, nil
 }
+
 func Load(string) iter.Seq2[string, *Array]                  { return func(yield func(string, *Array) bool) {} }
 func LoadSafetensorsNative(string) (*SafetensorsFile, error) { return nil, ErrUnavailable }
 func (s *SafetensorsFile) Free()                             {}

@@ -55,6 +55,7 @@ func (*unavailableWebView) Eval(string)            {}
 func (*unavailableWebView) Bind(string, interface{}) error {
 	return errors.New("webview indisponível sem CGO")
 }
+
 func (*unavailableWebView) Unbind(string) error { return errors.New("webview indisponível sem CGO") }
 func (*unavailableWebView) SetZoom(float64)     {}
 func (*unavailableWebView) GetZoom() float64    { return 1 }

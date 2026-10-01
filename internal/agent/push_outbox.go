@@ -29,8 +29,10 @@ type PushOutboxItem struct {
 	LastError      string         `json:"last_error,omitempty"`
 }
 
-var errPushOutboxLeaseLost = errors.New("push outbox lease is no longer current")
-var errPushOutboxQuota = errors.New("push outbox capacity limit reached")
+var (
+	errPushOutboxLeaseLost = errors.New("push outbox lease is no longer current")
+	errPushOutboxQuota     = errors.New("push outbox capacity limit reached")
+)
 
 const (
 	maxPushOutboxAttempts       = 8

@@ -9,10 +9,10 @@ import (
 
 func setupTestSupervisorRuntime(t *testing.T) (*Runtime, *CompanyStore, *ContextStore) {
 	tempDir := t.TempDir()
-	if err := os.MkdirAll(tempDir+"/workspace", 0755); err != nil {
+	if err := os.MkdirAll(tempDir+"/workspace", 0o755); err != nil {
 		t.Fatalf("mkdir workspace: %v", err)
 	}
-	if err := os.MkdirAll(tempDir+"/data", 0755); err != nil {
+	if err := os.MkdirAll(tempDir+"/data", 0o755); err != nil {
 		t.Fatalf("mkdir data: %v", err)
 	}
 

@@ -158,8 +158,10 @@ func (i *ProjectImporter) ImportUpload(ctx context.Context, organizationID strin
 	return i.importArchive(ctx, organizationID, upload.ProjectID, name, file, info.Size(), digest, "zip", "", "")
 }
 
-var errGitHubUnauthorized = errors.New("GitHub rejected the import credentials")
-var errGitHubForbidden = errors.New("GitHub denied access to the repository")
+var (
+	errGitHubUnauthorized = errors.New("GitHub rejected the import credentials")
+	errGitHubForbidden    = errors.New("GitHub denied access to the repository")
+)
 
 func (i *ProjectImporter) downloadArchive(ctx context.Context, client *http.Client, rawURL, token string) ([]byte, string, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, rawURL, nil)
@@ -365,7 +367,10 @@ func initializeImportedRepository(ctx context.Context, root string) error {
 func importedTextFiles(root string) []string {
 	var paths []string
 	_ = filepath.WalkDir(root, func(path string, entry os.DirEntry, err error) error {
-		if err != nil || entry == nil {
+		if err != nil {
+			return err
+		}
+		if entry == nil {
 			return nil
 		}
 		if entry.IsDir() {
@@ -384,6 +389,7 @@ func importedTextFiles(root string) []string {
 	})
 	return paths
 }
+
 func isLikelyTextImportFile(path string) bool {
 	ext := strings.ToLower(filepath.Ext(path))
 	if ext == "" {

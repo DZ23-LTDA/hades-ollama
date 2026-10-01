@@ -727,7 +727,10 @@ func (g *WhatsAppGateway) routeIntent(ctx context.Context, text string, policy W
 			return "Missões: Nenhum runtime conectado.", nil
 		}
 		missions, err := g.runtime.ListMissions()
-		if err != nil || len(missions) == 0 {
+		if err != nil {
+			return "📋 *Missões Recentes*: Não foi possível consultar o progresso agora.", err
+		}
+		if len(missions) == 0 {
 			return "📋 *Missões Recentes*: Nenhuma missão executada recentemente.", nil
 		}
 		var sb strings.Builder

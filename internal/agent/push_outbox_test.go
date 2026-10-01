@@ -435,7 +435,7 @@ func TestPushOutboxEnforcesStorageQuotas(t *testing.T) {
 	}
 	outbox.mu.Lock()
 	outbox.items = make(map[string]PushOutboxItem, maxPushOutboxItems)
-	for i := 0; i < maxPushOutboxItems; i++ {
+	for i := 0; i < maxPushOutboxItems; i++ { //nolint:intrange // index is part of deterministic fixture IDs
 		organizationID := "org-" + strconv.Itoa(i)
 		if i < maxPushOutboxItemsPerTenant {
 			organizationID = "org-full"
@@ -487,7 +487,7 @@ func TestRuntimeFlushPushOutboxIsBoundedByBatchSize(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for i := 0; i < maxPushOutboxBatch+1; i++ {
+	for range maxPushOutboxBatch + 1 {
 		if _, err := outbox.Enqueue("org", "title", "body", nil); err != nil {
 			t.Fatal(err)
 		}

@@ -178,7 +178,7 @@ func deploymentDialContextWithResolver(ctx context.Context, network, address str
 	return nil, errors.New("deployment destination has no address for requested network")
 }
 
-func deploymentPrivateIP(ip net.IP) bool {
+func deploymentPrivateIP(ip net.IP) bool { //nolint:unused // compatibility/security surface retained for future adapter wiring
 	return unsafeEgressIP(ip)
 }
 

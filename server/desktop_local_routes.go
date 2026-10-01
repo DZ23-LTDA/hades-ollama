@@ -148,8 +148,8 @@ func (s *Server) registerDesktopLocalRoutes(r *gin.Engine) {
 	r.GET("/api/agent/v1/creations", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
 			"creations": []gin.H{},
-			"status": "NOT_EXECUTED",
-			"reason": "A publicação e o rollback de criações ainda não estão implementados neste runtime.",
+			"status":    "NOT_EXECUTED",
+			"reason":    "A publicação e o rollback de criações ainda não estão implementados neste runtime.",
 		})
 	})
 }

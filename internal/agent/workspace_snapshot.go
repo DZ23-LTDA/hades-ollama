@@ -1392,10 +1392,6 @@ func equalStrings(left, right []string) bool {
 	return true
 }
 
-func runWorkspaceSnapshotGit(ctx context.Context, root string, args ...string) ([]byte, error) {
-	return nil, errors.New("private descriptor-bound Git view is required for snapshot commands")
-}
-
 // runWorkspaceSnapshotGitAtRoot executes Git with cwd pinned to the directory
 // descriptor used by snapshot file reads. On Linux, command.Dir is resolved
 // before ExtraFiles are remapped in the child, so use the still-open parent
@@ -1879,7 +1875,7 @@ func isSensitiveSnapshotFilename(relative string) bool {
 	return extension == ".pem" || extension == ".key" || extension == ".p12" || extension == ".pfx" || extension == ".keystore"
 }
 
-func containsSnapshotCredentialSignal(reader io.Reader) (bool, error) {
+func containsSnapshotCredentialSignal(reader io.Reader) (bool, error) { //nolint:unused // compatibility/security surface retained for future adapter wiring
 	const overlapSize = 512
 	buffer := make([]byte, 64<<10)
 	var overlap []byte

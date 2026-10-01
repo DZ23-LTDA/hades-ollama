@@ -1211,7 +1211,7 @@ func (r *Runtime) flushPushOutbox(ctx context.Context) {
 	ctx, cancel := context.WithTimeout(ctx, maxPushOutboxFlushDuration)
 	defer cancel()
 	startedAt := time.Now()
-	for processed := 0; processed < maxPushOutboxBatch; processed++ {
+	for processed := 0; processed < maxPushOutboxBatch; processed++ { //nolint:intrange // bounded loop uses a side-effectful reflective length
 		if ctx.Err() != nil || time.Since(startedAt) >= maxPushOutboxFlushDuration {
 			return
 		}

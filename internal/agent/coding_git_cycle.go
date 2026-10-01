@@ -239,10 +239,10 @@ func MergeWorktreeToOrigin(ctx context.Context, session *GitWorktreeSession) (st
 
 	// Perform merge in origin repo
 	mergeMsg := fmt.Sprintf("merge branch '%s' for mission %s", session.BranchName, session.MissionID)
-	out, err := runRawGit(ctx, session.RepoRoot, "merge", "--no-ff", "-m", mergeMsg, session.BranchName)
+	_, err = runRawGit(ctx, session.RepoRoot, "merge", "--no-ff", "-m", mergeMsg, session.BranchName)
 	if err != nil {
 		// Try fast-forward if no-ff failed
-		out, err = runRawGit(ctx, session.RepoRoot, "merge", session.BranchName)
+		out, err := runRawGit(ctx, session.RepoRoot, "merge", session.BranchName)
 		if err != nil {
 			return "", fmt.Errorf("git merge failed: %w (output: %s)", err, out)
 		}

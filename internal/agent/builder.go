@@ -50,8 +50,10 @@ type BuilderProject struct {
 	RedoStack      [][]VisualComponent `json:"redo_stack,omitempty"`
 }
 
-var ErrBuilderVersionConflict = errors.New("builder version conflict")
-var ErrBuilderExportExpired = errors.New("builder export is expired; export the current version again")
+var (
+	ErrBuilderVersionConflict = errors.New("builder version conflict")
+	ErrBuilderExportExpired   = errors.New("builder export is expired; export the current version again")
+)
 
 type BuilderVersionConflictError struct {
 	ProjectID string

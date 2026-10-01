@@ -58,10 +58,8 @@ func (m *RemoteMCPManager) BeginOAuth(serverID, organizationID string) (string, 
 	}
 	now := time.Now().UTC()
 	m.oauthStates[state] = remoteMCPAuthState{ServerID: serverID, OrganizationID: organizationID, Verifier: verifier, State: state, ExpiresAt: now.Add(10 * time.Minute)}
-	challenge := base64.RawURLEncoding.EncodeToString(sha256.New().Sum([]byte(verifier)))
-	// Correct S256 challenge calculation without exposing verifier.
 	digest := sha256.Sum256([]byte(verifier))
-	challenge = base64.RawURLEncoding.EncodeToString(digest[:])
+	challenge := base64.RawURLEncoding.EncodeToString(digest[:])
 	parsed, err := url.Parse(config.OAuth.AuthorizationURL)
 	if err != nil {
 		return "", err

@@ -1,3 +1,19 @@
+
+## LINT-DEBT — gates locais concluídos — 2026-10-01 12:16 UTC
+```yaml
+state: LOCAL_GATES_PASS_CI_PENDING
+branch: recovery/ollama-full-snapshot
+implemented:
+  - golangci-lint v2: 0 issues, sem desabilitar linters
+  - testes Go completos e race dos pacotes críticos
+  - builds nativo, CGO_ENABLED=0 e GOOS=windows
+  - gates frontend, contratos, integrity e go vet
+  - correções portáveis em fixtures, contexto, HTTP bodies e loops bounded
+pending:
+  - commit/push
+  - test.yaml completo, incluindo macOS race
+next_action: publicar e acompanhar todos os jobs no SHA final; corrigir apenas falhas reproduzíveis
+```
 # Estado da missão autônoma — Ollama DZ23 Agentic Platform
 
 ## Checkpoint vigente — Auditoria ampla e hardening local — 2026-09-30 19:41 -03
@@ -2792,3 +2808,25 @@ gates: go build, CGO_ENABLED=0 build, go test, go vet, tsc, lint, Vitest, UI bui
 limitations: protected scheduled/settings requests without Bearer recorded 401; external credentials, persistent notifications, deploy/live creations, physical mobile, signed installer remain outside proof
 next_action: commit/push and wait for class-a-plus-integrity plus dz23-agentic-quality on same SHA
 rollback: preserve ea6d8fd2; no force-push
+
+## LINT-DEBT — retomada 2026-10-01 08:51 -03
+state: PLANNING
+mission: tornar .github/workflows/test.yaml verde na matriz Ubuntu/macOS/Windows e race, corrigindo a dívida golangci-lint sem alterar comportamento
+branch: recovery/ollama-full-snapshot
+base_commit: b573bf251d1526b86ce03763101bafd5b4492e53
+scope:
+  - .golangci.yaml
+  - arquivos Go apontados por golangci-lint/gofmt/gofumpt
+  - MEMORIA.md e este checkpoint
+out_of_scope:
+  - mudanças de lógica de produto não exigidas pelos linters
+  - desativar linters, reduzir assertions ou alterar workflow para esconder falhas
+acceptance:
+  - golangci-lint run ./... sem findings
+  - gofmt -l . e gofumpt -l . vazios
+  - go build ./...
+  - CGO_ENABLED=0 go build ./...
+  - go test ./...
+  - go test -race ./internal/agent ./server
+  - workflow test.yaml verde em Ubuntu/macOS/Windows e race no SHA final
+next_step: instalar a mesma versão do golangci-lint da action e capturar a linha de base

@@ -1290,6 +1290,7 @@ func (a *agentAPI) metrics(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, a.runtime.Metrics())
 }
+
 func (a *agentAPI) prometheus(c *gin.Context) {
 	if a.authRequired {
 		c.AbortWithStatus(http.StatusNotFound)
@@ -2047,7 +2048,7 @@ func (a *agentAPI) mediaWorkspace(c *gin.Context, missionID string) (agent.Missi
 	return mission, mission.Workspace, root, nil
 }
 
-func (a *agentAPI) mediaImage(c *gin.Context) {
+func (a *agentAPI) mediaImage(c *gin.Context) { //nolint:unused // compatibility/security surface retained for future adapter wiring
 	var request struct {
 		MissionID string `json:"mission_id"`
 		Prompt    string `json:"prompt"`
@@ -2076,7 +2077,7 @@ func (a *agentAPI) mediaImage(c *gin.Context) {
 	c.JSON(http.StatusCreated, result)
 }
 
-func (a *agentAPI) mediaVideo(c *gin.Context) {
+func (a *agentAPI) mediaVideo(c *gin.Context) { //nolint:unused // compatibility/security surface retained for future adapter wiring
 	var request struct {
 		MissionID string `json:"mission_id"`
 		Prompt    string `json:"prompt"`
@@ -2105,7 +2106,7 @@ func (a *agentAPI) mediaVideo(c *gin.Context) {
 	c.JSON(http.StatusCreated, result)
 }
 
-func (a *agentAPI) mediaSpeech(c *gin.Context) {
+func (a *agentAPI) mediaSpeech(c *gin.Context) { //nolint:unused // compatibility/security surface retained for future adapter wiring
 	var request struct {
 		MissionID string `json:"mission_id"`
 		Text      string `json:"text"`
@@ -2135,7 +2136,7 @@ func (a *agentAPI) mediaSpeech(c *gin.Context) {
 	c.JSON(http.StatusCreated, result)
 }
 
-func (a *agentAPI) mediaTranscribe(c *gin.Context) {
+func (a *agentAPI) mediaTranscribe(c *gin.Context) { //nolint:unused // compatibility/security surface retained for future adapter wiring
 	var request struct {
 		MissionID string `json:"mission_id"`
 		InputPath string `json:"input_path"`
@@ -2169,7 +2170,7 @@ func (a *agentAPI) mediaTranscribe(c *gin.Context) {
 	c.JSON(http.StatusCreated, result)
 }
 
-func (a *agentAPI) mediaVision(c *gin.Context) {
+func (a *agentAPI) mediaVision(c *gin.Context) { //nolint:unused // compatibility/security surface retained for future adapter wiring
 	var request struct {
 		MissionID string `json:"mission_id"`
 		InputPath string `json:"input_path"`

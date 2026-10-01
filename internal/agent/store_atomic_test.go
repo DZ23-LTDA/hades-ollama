@@ -106,12 +106,12 @@ func TestJSONStoreCreateMissionCannotOverwriteAcrossInstances(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	second, err := NewJSONStore(root)
-	if err != nil {
-		t.Fatal(err)
-	}
 	original := Mission{ID: "mis_webhook_stable", Version: 1, Objective: "original", OrganizationID: "org_a", State: MissionPlanning}
 	if err := first.CreateMission(original); err != nil {
+		t.Fatal(err)
+	}
+	second, err := NewJSONStore(root)
+	if err != nil {
 		t.Fatal(err)
 	}
 	foreign := original
@@ -371,7 +371,6 @@ func TestJSONStoreArtifactMetadataAndPutMissionVersions(t *testing.T) {
 			}
 		})
 	}
-
 }
 
 func TestOrganizationScopedStoreEnforcesMemoryStoreOwnership(t *testing.T) {
@@ -605,15 +604,11 @@ func TestJSONStorePutMissionRejectsStaleAndForeignPersistentWrites(t *testing.T)
 	if err != nil {
 		t.Fatal(err)
 	}
-	second, err := NewJSONStore(root)
-	if err != nil {
-		t.Fatal(err)
-	}
 	original := Mission{ID: "mis_stale_put", Version: 1, OrganizationID: "org_a", Objective: "v1"}
 	if err := first.PutMission(original); err != nil {
 		t.Fatal(err)
 	}
-	second, err = NewJSONStore(root)
+	second, err := NewJSONStore(root)
 	if err != nil {
 		t.Fatal(err)
 	}

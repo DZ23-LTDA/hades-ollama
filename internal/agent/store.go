@@ -25,8 +25,10 @@ type Store interface {
 	ListEvents(missionID string) ([]Event, error)
 }
 
-var ErrMissionVersionConflict = errors.New("mission version conflict")
-var ErrMissionAlreadyExists = errors.New("mission already exists")
+var (
+	ErrMissionVersionConflict = errors.New("mission version conflict")
+	ErrMissionAlreadyExists   = errors.New("mission already exists")
+)
 
 const (
 	maxJSONStoreEventPayloadBytes = 1 << 20
@@ -623,13 +625,13 @@ func validateBoundedJSONValue(value reflect.Value, depth int, budget *missionJSO
 		if value.Len() > maxMissionRecordNodes-budget.nodes {
 			return errors.New("JSON array exceeds persistence limit")
 		}
-		for index := 0; index < value.Len(); index++ {
+		for index := range value.Len() {
 			if err := validateBoundedJSONValue(value.Index(index), depth+1, budget); err != nil {
 				return err
 			}
 		}
 	case reflect.Struct:
-		for index := 0; index < value.NumField(); index++ {
+		for index := range value.NumField() {
 			field := value.Type().Field(index)
 			if field.PkgPath != "" || field.Tag.Get("json") == "-" {
 				continue
@@ -1150,13 +1152,13 @@ func cloneJSONReflect(value reflect.Value) reflect.Value {
 			return reflect.Zero(value.Type())
 		}
 		result := reflect.MakeSlice(value.Type(), value.Len(), value.Len())
-		for index := 0; index < value.Len(); index++ {
+		for index := range value.Len() {
 			result.Index(index).Set(cloneJSONReflect(value.Index(index)))
 		}
 		return result
 	case reflect.Array:
 		result := reflect.New(value.Type()).Elem()
-		for index := 0; index < value.Len(); index++ {
+		for index := range value.Len() {
 			result.Index(index).Set(cloneJSONReflect(value.Index(index)))
 		}
 		return result

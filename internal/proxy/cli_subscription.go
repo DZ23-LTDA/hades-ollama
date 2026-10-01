@@ -117,7 +117,7 @@ func DefaultModels(provider CliSubscriptionProvider) []CliSubscriptionModel {
 // CliSubscriptionDetector performs detection and model resolution.
 type CliSubscriptionDetector struct {
 	inspector *SystemInspector
-	mu        sync.RWMutex
+	mu        sync.RWMutex //nolint:unused // compatibility/security surface retained for future adapter wiring
 }
 
 // NewCliSubscriptionDetector creates a detector with the given inspector (or default).

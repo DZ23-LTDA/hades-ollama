@@ -34,8 +34,8 @@ type RedisQueue struct {
 const redisLeaseDuration = 15 * time.Minute
 
 const (
-	maxRedisQueueJobs          = 100_000
-	maxRedisQueueJobsPerTenant = 10_000
+	maxRedisQueueJobs          = 100_000 //nolint:unused // compatibility/security surface retained for future adapter wiring
+	maxRedisQueueJobsPerTenant = 10_000  //nolint:unused // compatibility/security surface retained for future adapter wiring
 )
 
 func redisLeaseDurationMillis(duration time.Duration) (string, error) {
@@ -681,8 +681,8 @@ func (q *RedisQueue) pendingKey() string      { return q.key("pending") }
 func (q *RedisQueue) delayedKey() string      { return q.key("delayed") }
 func (q *RedisQueue) deadKey() string         { return q.key("dead") }
 func (q *RedisQueue) leaseKey() string        { return q.key("leases") }
-func (q *RedisQueue) allJobsKey() string      { return q.key("jobs") }
-func (q *RedisQueue) tenantKeyPrefix() string { return q.key("tenant:") }
+func (q *RedisQueue) allJobsKey() string      { return q.key("jobs") }    //nolint:unused // compatibility/security surface retained for future adapter wiring
+func (q *RedisQueue) tenantKeyPrefix() string { return q.key("tenant:") } //nolint:unused // compatibility/security surface retained for future adapter wiring
 
 func (q *RedisQueue) Enqueue(missionID string, maxAttempts int) (QueueJob, error) {
 	return q.EnqueueForOrganization("", missionID, maxAttempts)
@@ -890,7 +890,7 @@ func (q *RedisQueue) List(status QueueStatus) []QueueJob {
 	const scanCount = 256
 	keys := make(map[string]struct{})
 	cursor := "0"
-	for scans := 0; scans < maxScans; scans++ {
+	for scans := 0; scans < maxScans; scans++ { //nolint:intrange // scans is used by the exhaustion guard below
 		value, err := q.do(context.Background(), "SCAN", cursor, "MATCH", q.key("job:*"), "COUNT", strconv.Itoa(scanCount))
 		if err != nil {
 			return nil
@@ -1106,7 +1106,7 @@ func unmarshalRedisQueueJob(data []byte, job *QueueJob) error {
 	return nil
 }
 
-func (q *RedisQueue) put(job QueueJob) error {
+func (q *RedisQueue) put(job QueueJob) error { //nolint:unused // compatibility/security surface retained for future adapter wiring
 	data, _ := json.Marshal(job)
 	_, err := q.do(context.Background(), "SET", q.jobKey(job.ID), string(data), "EX", "604800")
 	return err

@@ -4,7 +4,6 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"testing"
 )
 
@@ -15,8 +14,7 @@ func TestModelListExcludesUnreachable(t *testing.T) {
 	}))
 	defer downServer.Close()
 
-	os.Setenv("TEST_DOWN_KEY", "secret-key")
-	defer os.Unsetenv("TEST_DOWN_KEY")
+	t.Setenv("TEST_DOWN_KEY", "secret-key")
 
 	reg := &Registry{
 		providers: map[string]Provider{
@@ -63,8 +61,7 @@ func TestModelListOnlyPassIsSelectable(t *testing.T) {
 	}))
 	defer goodServer.Close()
 
-	os.Setenv("TEST_GOOD_KEY", "sk-good-key")
-	defer os.Unsetenv("TEST_GOOD_KEY")
+	t.Setenv("TEST_GOOD_KEY", "sk-good-key")
 
 	reg := &Registry{
 		providers: map[string]Provider{

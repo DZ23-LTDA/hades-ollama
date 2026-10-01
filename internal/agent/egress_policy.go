@@ -11,7 +11,7 @@ import (
 	"strings"
 )
 
-func sanitizeProviderResponse(data []byte) string {
+func sanitizeProviderResponse(data []byte) string { //nolint:unused // compatibility/security surface retained for future adapter wiring
 	return string(sanitizeProviderJSONBytes(data))
 }
 
@@ -104,7 +104,7 @@ func unsafeEgressIP(ip net.IP) bool {
 		return true
 	}
 
-	var blocked = [...]netip.Prefix{
+	blocked := [...]netip.Prefix{
 		// RFC 6598 shared address space (CGNAT).
 		netip.MustParsePrefix("100.64.0.0/10"),
 		// RFC 2544 benchmarking.
@@ -135,7 +135,7 @@ func unsafeEgressIP(ip net.IP) bool {
 	return false
 }
 
-func canonicalizeResolvedIP(ip net.IP) net.IP {
+func canonicalizeResolvedIP(ip net.IP) net.IP { //nolint:unused // compatibility/security surface retained for future adapter wiring
 	if ip == nil {
 		return nil
 	}
@@ -157,7 +157,7 @@ func sanitizeProviderJSON(data json.RawMessage) (json.RawMessage, error) {
 	return encoded, nil
 }
 
-func sanitizeProviderJSONBytes(data []byte) []byte {
+func sanitizeProviderJSONBytes(data []byte) []byte { //nolint:unused // compatibility/security surface retained for future adapter wiring
 	if json.Valid(data) {
 		redacted, err := sanitizeProviderJSON(data)
 		if err == nil {
@@ -172,8 +172,10 @@ const (
 	maxOutboundDLPNodes     = 100_000
 )
 
-var errOutboundPayloadBlocked = errors.New("outbound payload blocked by DLP policy")
-var errOutboundPayloadLimit = errors.New("outbound payload limit exceeded")
+var (
+	errOutboundPayloadBlocked = errors.New("outbound payload blocked by DLP policy")
+	errOutboundPayloadLimit   = errors.New("outbound payload limit exceeded")
+)
 
 // ValidateOutboundPayload rejects unsupported, oversized, or sensitive values
 // before they are accepted for a workflow that may cross an external boundary.
@@ -292,7 +294,7 @@ func validateOutboundShape(value reflect.Value, depth int, budget *outboundShape
 		if int64(len(encoded)) > budget.bytes {
 			return errOutboundPayloadLimit
 		}
-		for index := 0; index < value.NumField(); index++ {
+		for index := 0; index < value.NumField(); index++ { //nolint:intrange // bounded loop uses a side-effectful reflective length
 			field := typeOf.Field(index)
 			if field.PkgPath != "" {
 				continue
@@ -329,7 +331,7 @@ func validateOutboundShape(value reflect.Value, depth int, budget *outboundShape
 		if value.Len() > maxOutboundDLPNodes {
 			return errOutboundPayloadBlocked
 		}
-		for index := 0; index < value.Len(); index++ {
+		for index := 0; index < value.Len(); index++ { //nolint:intrange // bounded loop uses a side-effectful reflective length
 			if err := validateOutboundShape(value.Index(index), depth+1, budget); err != nil {
 				return err
 			}

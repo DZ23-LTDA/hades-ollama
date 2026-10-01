@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -22,8 +21,7 @@ func TestModelListProbeFiltersListHandler(t *testing.T) {
 	}))
 	defer failingServer.Close()
 
-	os.Setenv("TEST_FAILING_KEY", "bad-key")
-	defer os.Unsetenv("TEST_FAILING_KEY")
+	t.Setenv("TEST_FAILING_KEY", "bad-key")
 
 	reg, err := multillm.LoadBytes([]byte(`{
 		"providers": [

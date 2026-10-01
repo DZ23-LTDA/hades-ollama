@@ -241,7 +241,10 @@ func TestEgressPeerVerificationRejectsHijackedSocket(t *testing.T) {
 	}
 
 	client := &http.Client{Transport: dialer, Timeout: 2 * time.Second}
-	_, err = client.Do(req)
+	resp, err := client.Do(req)
+	if resp != nil {
+		defer resp.Body.Close()
+	}
 	if err == nil {
 		t.Fatal("PEER HIJACK BUG: connection to loopback without explicit permission was allowed!")
 	}

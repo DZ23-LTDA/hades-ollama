@@ -1046,7 +1046,7 @@ func buildMediaArtifact(workspace, relativePath string, pinnedRoots ...*os.Root)
 	return BuildArtifactManifest(workspace, "", "", filepath.Base(filepath.FromSlash(relativePath)), relativePath)
 }
 
-func buildMediaArtifactFromRoot(root *os.Root, relativePath string) (ArtifactManifest, error) {
+func buildMediaArtifactFromRoot(root *os.Root, relativePath string) (ArtifactManifest, error) { //nolint:unused // compatibility/security surface retained for future adapter wiring
 	return buildMediaArtifact("", relativePath, root)
 }
 

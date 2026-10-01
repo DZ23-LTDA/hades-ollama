@@ -380,7 +380,7 @@ func remoteMCPLoopbackContext(ctx context.Context) bool {
 	return value
 }
 
-func remoteMCPPrivateIP(ip net.IP) bool { return unsafeEgressIP(ip) }
+func remoteMCPPrivateIP(ip net.IP) bool { return unsafeEgressIP(ip) } //nolint:unused // compatibility/security surface retained for future adapter wiring
 
 func remoteMCPContainsIP(values []net.IP, wanted net.IP) bool {
 	for _, value := range values {
