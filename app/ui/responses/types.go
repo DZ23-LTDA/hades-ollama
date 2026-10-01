@@ -32,6 +32,9 @@ type Model struct {
 	Kind         string     `json:"kind,omitempty"`
 	Provider     string     `json:"provider,omitempty"`
 	Available    bool       `json:"available"`
+	Status       string     `json:"status,omitempty"`
+	CostTag      string     `json:"cost_tag,omitempty"`
+	Reason       string     `json:"reason,omitempty"`
 	Capabilities []string   `json:"capabilities,omitempty"`
 }
 
