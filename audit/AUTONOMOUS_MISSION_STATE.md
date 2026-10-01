@@ -1,3 +1,26 @@
+## Checkpoint vigente — Release candidate e auditoria final — 2026-10-01 20:13 UTC
+```yaml
+state: RELEASE_CANDIDATE_VALIDATED
+branch: recovery/ollama-full-snapshot
+sha: 76a6dcfe
+proofs_local:
+  - go build ./...: PASS
+  - CGO_ENABLED=0 go build ./...: PASS
+  - go test ./internal/agent ./server ./cmd/launch: PASS
+  - go vet ./...: PASS
+  - frontend tsc/lint/vitest/build: PASS
+  - contracts/integrity/gofmt/diff-check: PASS
+  - shell E2E 10 telas desktop+mobile: PASS (0 HTTP, 0 console)
+external_status:
+  - class-a-plus-integrity: SUCCESS
+  - dz23-agentic-quality: SUCCESS
+  - test.yaml: SUCCESS (manual dispatch 36919935756; Ubuntu/macOS/Windows tests, Ubuntu/macOS race, tidy, patches)
+known_limits:
+  - Ollama local sem modelos instalados neste ambiente
+  - credenciais/IdP/WhatsApp/MCP/deploy externos continuam BLOCKED_EXTERNAL ou NOT_CONFIGURED
+next_action: commitar evidências; repetir workflows de qualidade no novo SHA; limites externos permanecem honestos
+```
+
 
 ## LINT-DEBT — gates locais concluídos — 2026-10-01 12:16 UTC
 ```yaml

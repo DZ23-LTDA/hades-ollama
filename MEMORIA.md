@@ -1,7 +1,7 @@
 ---
 projeto: ollama-classe-a-plus
-status: LINT-DEBT IMPLEMENTADA LOCALMENTE — CI macOS pendente após correções de portabilidade
-atualizado: 2026-10-01 12:43 UTC
+status: RELEASE CANDIDATE VALIDADO — gates locais e test.yaml verde; integrações externas dependem de configuração
+atualizado: 2026-10-01 20:13 UTC
 ultima_ia: Claude (Opus 4.8)
 tags: [projeto, paridade-manus, ui-2, import-project, accessibility, aud-fix-2, local-tests]
 ---
@@ -27,6 +27,11 @@ automatizado + execução real reproduzível em navegador (desktop e mobile), se
 - **2026-10-01 06:34 UTC — Manus:** concluiu T3–T8 da missão noturna no working tree atual. T3 reclassificou Criações para `NOT_EXECUTED` com empty-state real, sem prometer publicação/rollback/health inexistentes; T4 substituiu o `alert()` fixo de Notificações por painel vazio honesto; T5 traduziu controles de configuração Claude/ChatGPT para pt-BR e alinhou regressões; T6 adicionou seleção real de gatilho por intervalo ou webhook com segredo referenciado; T7 removeu kinds `library`/`scheduled` inacessíveis e mensagem fixa de reinício. Evidências Playwright: `docs/evidencias/screen-night-t3-t7-*.png` e `browser-console-audit-night-t3-t7.json`; o relatório preserva os 401 esperados sem Bearer em rotas protegidas. T8 passou `go build ./...`, `CGO_ENABLED=0 go build ./...`, `go test ./internal/agent ./server`, `go vet ./...`, `npx tsc -b`, lint, Vitest, build, contratos e integrity. Avisos do verificador: 135 rotas backend sem chamador frontend estático, informativos e não falhas. Próximo passo: commit/push e CI remoto dos dois workflows; limitações continuam Criações/deploy, notificações persistentes, credenciais externas, mobile físico e instalador assinado.
 
 ## Histórico de sessões
+- **2026-10-01 20:22 UTC — Gemini — test.yaml validado:** o run manual `36919935756` passou no SHA `76a6dcfe` com `go_mod_tidy`, patches Ubuntu/Windows, `test` Ubuntu/macOS/Windows e `race` Ubuntu/macOS. Não foram usados skips para mascarar falhas; jobs nativos Linux/Windows ficaram skipped porque `run_native_matrix=false`, conforme a opção manual. O E2E das 10 telas segue com 0 erros HTTP/console. Próximo passo: commit/push das evidências e novo CI de qualidade no SHA resultante.
+
+
+- **2026-10-01 20:13 UTC — Gemini — auditoria final de prontidão:** `go build ./...`, `CGO_ENABLED=0 go build ./...`, testes Go de `internal/agent`, `server` e `cmd/launch`, `go vet`, gofmt, frontend (`tsc`, lint, Vitest, build), contratos e integrity passaram. O E2E real percorreu 10 telas em desktop (1440x900) e mobile (390x844), com 0 erros HTTP e 0 erros de console; evidências foram atualizadas em `docs/evidencias/`. O modelo local permanece ausente (`/api/tags` retornou 0 modelos), portanto execução agentic com modelo ainda depende de configuração do usuário. Os workflows `class-a-plus-integrity` e `dz23-agentic-quality` estão verdes no SHA `76a6dcfe`; o `test.yaml` manual `36919935756` passou no mesmo SHA com Ubuntu/macOS/Windows, race Ubuntu/macOS, tidy e patches. Próximo passo: commitar as evidências e repetir os workflows de qualidade no novo SHA.
+
 
 - **2026-10-01 18:18 UTC — CI do quickstart concluído (Gemini):** o SHA `d0e605e2` passou em `class-a-plus-integrity` (run `36905224638`) e `dz23-agentic-quality` (run `36905224523`). O quickstart está publicado, validado localmente com backend/UI reais e sem artefatos residuais.
 
