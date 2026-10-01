@@ -183,7 +183,7 @@ jobs:
         arch: [amd64, arm64]
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           pattern: linux-payload-${{ matrix.arch }}-*
           path: ${{ runner.temp }}/payloads
@@ -555,12 +555,12 @@ jobs:
             LLAMA_CPP_VERSION
             MLX_VERSION
             MLX_C_VERSION
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           pattern: depends-windows*
           path: dist
           merge-multiple: true
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           pattern: build-windows*
           path: dist
