@@ -124,7 +124,7 @@ func (s *Server) registerDesktopLocalRoutes(r *gin.Engine) {
 	})
 	r.POST("/api/v1/models/pull", s.PullHandler)
 
-	// Endpoints para Personalização do Agente e Criações Consolidadas
+	// Endpoint para Personalização do Agente.
 	r.GET("/api/agent/v1/personalization", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
 			"custom_instructions": "Sempre responder em português, priorizar arquitetura limpa, segurança rigorosa e entregar código testado de ponta a ponta.",
@@ -145,11 +145,4 @@ func (s *Server) registerDesktopLocalRoutes(r *gin.Engine) {
 		})
 	})
 
-	r.GET("/api/agent/v1/creations", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{
-			"creations": []gin.H{},
-			"status":    "NOT_EXECUTED",
-			"reason":    "A publicação e o rollback de criações ainda não estão implementados neste runtime.",
-		})
-	})
 }

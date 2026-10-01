@@ -15,6 +15,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -501,6 +502,7 @@ func (a *agentAPI) register(r *gin.Engine) {
 	group.POST("/missions", a.createMission)
 	group.GET("/missions", a.missions)
 	group.GET("/notifications", a.notifications)
+	group.GET("/creations", a.creations)
 	group.GET("/missions/:id", a.getMission)
 	group.GET("/missions/:id/events", a.events)
 	group.GET("/missions/:id/events/stream", a.eventStream)
@@ -1772,6 +1774,52 @@ func (a *agentAPI) notifications(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"notifications": notifications})
+}
+
+func (a *agentAPI) creations(c *gin.Context) {
+	missions, err := a.scopedRuntime(c).ListMissions()
+	if err != nil {
+		writeAgentError(c, statusForAgentError(err), err)
+		return
+	}
+	creations := make([]gin.H, 0)
+	for _, mission := range missions {
+		for _, artifact := range mission.Artifacts {
+			if strings.TrimSpace(artifact.ID) == "" || strings.TrimSpace(artifact.MissionID) != mission.ID {
+				continue
+			}
+			category, label := creationCategory(artifact)
+			creations = append(creations, gin.H{
+				"id":               artifact.ID,
+				"name":             artifact.Name,
+				"category":         category,
+				"categoryLabel":    label,
+				"missionId":        mission.ID,
+				"missionObjective": mission.Objective,
+				"createdAt":        artifact.CreatedAt,
+				"previewUrl":       "/api/agent/v1/missions/" + url.PathEscape(mission.ID) + "/artifacts/" + url.PathEscape(artifact.ID),
+				"artifact":         artifact,
+			})
+		}
+	}
+	sort.SliceStable(creations, func(i, j int) bool {
+		left, _ := creations[i]["createdAt"].(time.Time)
+		right, _ := creations[j]["createdAt"].(time.Time)
+		return left.After(right)
+	})
+	c.JSON(http.StatusOK, gin.H{"creations": creations, "status": "PASS", "reason": "Artefatos reais das missões"})
+}
+
+func creationCategory(artifact agent.ArtifactManifest) (string, string) {
+	value := strings.ToLower(artifact.Name + " " + artifact.MediaType)
+	switch {
+	case strings.Contains(value, "game"), strings.Contains(value, "jogo"):
+		return "games", "Jogos"
+	case strings.Contains(value, "mobile"), strings.Contains(value, "android"), strings.Contains(value, "ios"):
+		return "mobile", "Aplicativos móveis"
+	default:
+		return "sites", "Sites"
+	}
 }
 
 func (a *agentAPI) createMission(c *gin.Context) {
