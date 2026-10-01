@@ -35,6 +35,7 @@ done
 command -v go >/dev/null 2>&1 || { echo "Go não encontrado. Instale Go conforme o guia do projeto." >&2; exit 1; }
 command -v node >/dev/null 2>&1 || { echo "Node.js não encontrado. Instale Node.js conforme o guia do projeto." >&2; exit 1; }
 command -v npm >/dev/null 2>&1 || { echo "npm não encontrado. Instale Node.js conforme o guia do projeto." >&2; exit 1; }
+command -v curl >/dev/null 2>&1 || { echo "curl não encontrado; ele é necessário para verificar a saúde do backend." >&2; exit 1; }
 [[ -f "$ROOT/go.mod" && -f "$ROOT/app/ui/app/package.json" ]] || { echo "Execute este script na árvore clonada do Hades." >&2; exit 1; }
 
 mkdir -p "$INSTALL_DIR"

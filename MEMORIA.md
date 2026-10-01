@@ -28,6 +28,10 @@ automatizado + execução real reproduzível em navegador (desktop e mobile), se
 
 ## Histórico de sessões
 
+- **2026-10-01 18:14 UTC — Quickstart validado (Gemini):** no SHA `1336567d`, `class-a-plus-integrity` e `dz23-agentic-quality` passaram. Smoke real com `PATH=/usr/local/go/bin:$PATH`, `OLLAMA_HOST=127.0.0.1:11436`, `HADES_UI_PORT=5187` e `--no-model`: backend `/api/version=200`, UI `/studio=200`, Vite manteve `5187` com `--strictPort`; encerramento limpou o processo. Adicionado preflight explícito de `curl`, usado nos health checks. O log de GPU sem `llama-server` é esperado para build-fonte sem runtime C++ compilado e não foi mascarado como modelo disponível. Próximo passo: CI do novo ajuste e auditoria final de primeira execução/offline.
+
+
+
 - **2026-10-01 18:02 UTC — Quickstart smoke (Gemini):** smoke real em portas isoladas comprovou backend e build/UI, mas encontrou colisão de porta: o Vite fazia fallback silencioso de `5174` para `5175` enquanto o script anunciava `5174`. Corrigido com `--strictPort`, para falhar claramente em vez de expor URL errada. O primeiro intento sem PATH de Go falhou honestamente por dependência ausente no ambiente; o segundo iniciou backend/UI e foi interrompido após detectar a colisão existente. Artefato `bin/` removido. Próximo passo: novo commit/CI e smoke com porta livre; depois continuar estados offline/sem modelo.
 
 
