@@ -2733,3 +2733,13 @@ ci_commit: edd226e2
 changes: AppSidebar/Settings profile+logout, Library artifact route, contract scanner, frontend regression tests
 gates: frontend, Go, contracts and integrity PASS
 next_step: nenhum dentro do escopo AUD-FIX-1; repetir evidência live autenticada quando houver sessão Bearer e artifact real
+
+
+## AUD-FIX-2 — 2026-10-01 03:02 UTC
+state: IMPLEMENTED_LOCAL_CI_PENDING
+branch: recovery/ollama-full-snapshot
+base: 331759eb
+finding: `/connect` quebrava com TypeError ao aplicar `.find()`/`.filter()` sobre o envelope de integrações.
+fix: normalização em `api.ts`, guarda de runtime em `Onboarding.tsx` e regressão de payload inválido em `Onboarding.test.tsx`.
+evidence: Playwright desktop/mobile sem console ou HTTP errors e sem tela de crash; Vitest 38 arquivos/260 testes; tsc/lint/build/contracts/integrity/Go PASS.
+next_action: commit, push e acompanhar `class-a-plus-integrity` e `dz23-agentic-quality` no mesmo SHA.

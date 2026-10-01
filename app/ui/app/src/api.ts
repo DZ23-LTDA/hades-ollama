@@ -48,7 +48,20 @@ export async function getIntegrationStatuses(): Promise<IntegrationStatuses> {
   if (!response.ok) {
     throw new Error(`Failed to fetch integration statuses: ${response.status}`);
   }
-  return response.json();
+  const payload: unknown = await response.json();
+  if (Array.isArray(payload)) {
+    return payload as IntegrationStatuses;
+  }
+  if (
+    payload !== null &&
+    typeof payload === "object" &&
+    Array.isArray((payload as { integrations?: unknown }).integrations)
+  ) {
+    return (payload as { integrations: IntegrationStatuses }).integrations;
+  }
+  // Local desktop builds may return an empty envelope. Keep the UI honest and
+  // render its empty state rather than calling array methods on an object.
+  return [];
 }
 // Helper function to convert Uint8Array to base64
 function uint8ArrayToBase64(uint8Array: Uint8Array): string {

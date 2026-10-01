@@ -1,9 +1,9 @@
 ---
 projeto: ollama-classe-a-plus
-status: AUD-FIX-1 CONCLUÍDO — CI remoto verde no SHA edd226e2
-atualizado: 2026-10-01 02:54 UTC
+status: AUD-FIX-2 CONCLUÍDO — /connect corrigido e evidenciado; CI pendente
+atualizado: 2026-10-01 03:02 UTC
 ultima_ia: Manus
-tags: [projeto, paridade-manus, ui-2, import-project, accessibility, local-tests]
+tags: [projeto, paridade-manus, ui-2, import-project, accessibility, aud-fix-2, local-tests]
 ---
 
 # Ollama Classe A+ (Ollama Full)
@@ -11,6 +11,9 @@ tags: [projeto, paridade-manus, ui-2, import-project, accessibility, local-tests
 > Memória compartilhada entre todas as IAs. **Leia inteiro antes de trabalhar**.
 > A fonte durável detalhada do projeto está em `docs/agentic/` (matriz de paridade,
 > relatórios de fase, evidências em `docs/evidencias/` e decisões em `docs/decisions/`).
+
+## Conclusão honesta
+A auditoria live **não aprova 100% de paridade**. A casca visual e vários estados honestos existem, mas o backend agentic não está utilizável pelo navegador sem um token Bearer e não há modelo local disponível. O crash determinístico original de `/connect` foi corrigido no AUD-FIX-2 e comprovado em Playwright desktop/mobile; os demais bloqueios continuam sem declaração de paridade total.
 
 ## Objetivo
 Fazer o `ollama-classe-a-plus` (fork do Ollama, da DZ23-LTDA) ter **paridade
@@ -21,6 +24,7 @@ recuperação). **Pronto** = paridade comprovada por implementação + teste
 automatizado + execução real reproduzível em navegador (desktop e mobile), sem alegar "100%" sem evidência.
 
 ## Histórico de sessões
+- **2026-10-01 03:02 UTC — Manus:** executou AUD-FIX-2. Corrigiu o crash P1 da rota `/connect`: a API local retorna `{ integrations: [] }`, mas o componente esperava um array e chamava `.find()` no objeto. A normalização agora aceita array/envelope e cai para `[]` em payload inválido; props também são protegidas em runtime. Evidência Playwright real desktop/mobile em `docs/evidencias/screen-audfix2-connect-{desktop,mobile}.png`, auditoria `docs/evidencias/browser-console-audit-audfix2.json` com console/rede limpos e sem texto de crash. Regressão `Onboarding.test.tsx`: 37/37; suíte UI: 38 arquivos/260 testes; tsc, lint, build, contratos, integrity, Go build/test passaram. Próximo passo: commit/push e confirmar os dois workflows CI no mesmo SHA.
 - **2026-10-01 02:43 UTC — Manus:** executou AUD-FIX-1. Corrigiu logout real (`POST /api/signout`), perfil (`POST /api/me`) e downloads da Biblioteca (rota de artifact sem `/content`). Reforçou `scripts/verify-contracts.mjs` para método HTTP, chamadas multilinha/condicionais, parâmetros posicionais, wrappers e `href`; o verificador terminou `CONTRACT VERIFICATION PASSED`, com avisos de órfãos informativos. Evidências locais: Vitest 38 arquivos/259 testes, `npx tsc -b`, lint, build Vite, `go build ./...`, `go test ./internal/agent ./server` e integrity verdes. CI confirmado no SHA `edd226e2013a39913ce119181861e4493165f5ac`: `class-a-plus-integrity` run `36807155105` e `dz23-agentic-quality` run `36807155101`, ambos `completed/success`. A evidência live autenticada continua condicionada a sessão Bearer e artefato reais.
 
 - **2026-09-30 19:41 -03 — Manus:** retomou a auditoria ampla e corrigiu riscos reproduzíveis em importação, approvals, egress/download, DLP de respostas WhatsApp, export atômico do Builder, fechamento de descriptors de artifacts, foco/ARIA e anexos da Home, preview/download autenticado, RBAC administrativo WhatsApp e pipeline de release. Evidência local: `go test ./internal/agent ./server`, `npx tsc -b`, lint, Vitest (37 arquivos/257 testes) e build UI passaram após os ajustes; a primeira execução Go revelou e foi corrigida a incompatibilidade de `git add --no-renames` e os fixtures de anti-auto-aprovação. Próximo passo: executar contratos/integrity, builds CGO0/Windows, varreduras finais, revisar o diff e só então decidir commit/push e acompanhar CI no SHA final; não declarar produção nem 100% de paridade.

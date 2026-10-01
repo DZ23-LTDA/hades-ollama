@@ -1,0 +1,19 @@
+{
+  "route": "/connect",
+  "results": [
+    {
+      "viewport": "desktop",
+      "console_errors": [],
+      "http_errors": [],
+      "hasCrashText": false,
+      "body_excerpt": "OF\nOllama Full\nLocal-first workspace\nNova tarefa\nCtrl K\nPesquisar\n/\nAGENTES\nComputadores\nAgents\nCue!\nBiblioteca\nCriações\nStudio\nAutomações\nPlugins\nFERRAMENTAS\nHabilidades\nEmpresa\nNovo\nTarefas\nPROJETOS\nTodos os projetos\nSISTEMA\nConfigurações\nAjuda e sobre\nL\nLocal Operator\nConfigurações\nGeral\nProvedores de IA\nComputadores & API\nConectores e Plugins\nHarnesses & Codex\nRECOMMENDED\n\nChatGPT\n\nWe’ll download ChatGPT and connect it to Ollama.\n\nConnect"
+    },
+    {
+      "viewport": "mobile",
+      "console_errors": [],
+      "http_errors": [],
+      "hasCrashText": false,
+      "body_excerpt": "Configurações\nGeral\nProvedores de IA\nComputadores & API\nConectores e Plugins\nHarnesses & Codex\nRECOMMENDED\n\nChatGPT\n\nWe’ll download ChatGPT and connect it to Ollama.\n\nConnect"
+    }
+  ]
+}

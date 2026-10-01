@@ -125,3 +125,12 @@ A auditoria live **não aprova 100% de paridade**. A casca visual e vários esta
 - **Gates locais:** `npx tsc -b`, lint, Vitest (38 arquivos/259 testes), build Vite, `go build ./...`, `go test ./internal/agent ./server` e integrity passaram.
 
 A evidência live da auditoria original continua válida como diagnóstico; uma nova captura autenticada de logout/perfil/download depende de uma sessão Bearer real e não foi inventada nesta rodada.
+
+
+## AUD-FIX-2 — /connect corrigido
+
+- **Causa:** `/api/v1/integrations` retornava o envelope local `{ "integrations": [...] }`, enquanto `ConnectAppsScreen` tratava o JSON inteiro como `IntegrationStatus[]` e chamava `.find()`/`.filter()` no objeto.
+- **Correção:** `getIntegrationStatuses()` agora aceita array legado, extrai `integrations` quando o envelope é válido e retorna `[]` para payload inválido; `ConnectAppsScreen` também valida props em runtime antes de usar métodos de array.
+- **Regressão:** `Onboarding.test.tsx` cobre payload `{ unexpected: "object" }` e comprova que a tela renderiza sem crash.
+- **Playwright real:** `docs/evidencias/screen-audfix2-connect-desktop.png` e `screen-audfix2-connect-mobile.png`; `browser-console-audit-audfix2.json` registrou `console_errors: []`, `http_errors: []` e `hasCrashText: false` nos dois viewports.
+- **Gates:** Onboarding 37/37; Vitest 38 arquivos/260 testes; `tsc`, lint, build, contratos, integrity, `go build ./...` e `go test ./internal/agent ./server` passaram.

@@ -155,3 +155,7 @@ Correções locais foram aplicadas para importação segura, approval ledger ant
 - Logout real via `POST /api/signout`, carregamento de identidade via `POST /api/me` e download da Biblioteca via rota de artifact foram corrigidos e cobertos por regressões frontend.
 - O verificador de contratos passou a validar método HTTP, parâmetros posicionais, templates condicionais, wrappers e `href` de download.
 - A Biblioteca permanece `PASS` por implementação/testes, mas a confirmação live autenticada do download continua condicionada a sessão Bearer e artefato real disponível.
+
+
+### AUD-FIX-2 — rota `/connect`
+A falha P1 observada na auditoria live foi corrigida: o catálogo de integrações agora normaliza arrays e envelopes locais, com fallback honesto `[]`, e a tela Harnesses & Codex não quebra quando a resposta está ausente ou malformada. Evidência Playwright: `docs/evidencias/screen-audfix2-connect-{desktop,mobile}.png` e `docs/evidencias/browser-console-audit-audfix2.json`, sem erros de console/rede e sem texto de crash.

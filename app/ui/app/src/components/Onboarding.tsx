@@ -460,6 +460,9 @@ export function ConnectAppsScreen({
   initialCodexStatus,
 }: ConnectAppsScreenProps) {
   const isWindows = isWindowsPlatform();
+  const safeInitialIntegrations = Array.isArray(initialIntegrations)
+    ? initialIntegrations
+    : undefined;
   const [copyNotice, setCopyNotice] = useState<{
     sequence: number;
     id: string;
@@ -485,7 +488,7 @@ export function ConnectAppsScreen({
   const claudeRestartConfirmed = useRef(false);
   const screenMounted = useRef(true);
   const [integrationStatuses, setIntegrationStatuses] =
-    useState<IntegrationStatuses | null>(initialIntegrations ?? null);
+    useState<IntegrationStatuses | null>(safeInitialIntegrations ?? null);
   const [statusError, setStatusError] = useState(false);
 
   useEffect(() => {
@@ -549,8 +552,8 @@ export function ConnectAppsScreen({
 
   useEffect(() => {
     let active = true;
-    const integrations = initialIntegrations
-      ? Promise.resolve(initialIntegrations)
+    const integrations = safeInitialIntegrations
+      ? Promise.resolve(safeInitialIntegrations)
       : getIntegrationStatuses();
 
     void integrations.then(
@@ -567,7 +570,7 @@ export function ConnectAppsScreen({
     return () => {
       active = false;
     };
-  }, [initialIntegrations]);
+  }, [safeInitialIntegrations]);
 
   useEffect(() => {
     let active = true;

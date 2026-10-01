@@ -1243,6 +1243,36 @@ describe("ConnectAppsScreen interactions", () => {
     }
   });
 
+  it("renders an honest empty catalog when the integrations payload is not an array", async () => {
+    stubAppsWindow({
+      getClaudeDesktopConnectionSummary: vi
+        .fn()
+        .mockResolvedValue(DISCONNECTED_CLAUDE),
+    });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ unexpected: "object" }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      ),
+    );
+
+    let renderer: ReactTestRenderer | undefined;
+    try {
+      await act(async () => {
+        renderer = create(<ConnectAppsScreen />);
+        await settle();
+      });
+      expect(renderer!.root.findByProps({ id: "integration-chatgpt" })).toBeTruthy();
+      expect(renderer!.root.findAllByProps({ role: "alert" })).toHaveLength(0);
+    } finally {
+      if (renderer) act(() => renderer?.unmount());
+      vi.unstubAllGlobals();
+    }
+  });
+
   it("shows the first-use intro after the user connects Claude", async () => {
     const connectedStatus = {
       ...DISCONNECTED_CLAUDE,
