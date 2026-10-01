@@ -47,7 +47,7 @@ export function HelpDialog({
         <div className="flex items-start justify-between gap-4">
           <div>
             <h2 className="text-lg font-semibold text-neutral-900 dark:text-white">
-              Ollama Classe A+
+              Hades
             </h2>
             <p className="mt-1 text-xs text-neutral-500">
               Versão {version ?? "desconhecida"} · Local-first

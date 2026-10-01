@@ -25,7 +25,7 @@ export const HELP_LINKS = [
   },
   {
     label: "Código-fonte",
-    hint: "Repositório do Ollama Classe A+",
+    hint: "Repositório do Hades",
     href: REPO,
   },
 ];
