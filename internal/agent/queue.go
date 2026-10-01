@@ -140,17 +140,6 @@ func (q *JobQueue) withFileStateLocked(run func() error) error {
 	if q.root == "" {
 		return run()
 	}
-	// A temporary root can be replaced while a macOS race suite is draining
-	// background work. Recreate only this queue-owned directory before opening
-	// its lock; never recreate or follow a caller-owned parent.
-	if err := os.MkdirAll(q.root, 0o700); err != nil {
-		return err
-	}
-	if info, err := os.Lstat(q.root); err != nil {
-		return err
-	} else if info.Mode()&os.ModeSymlink != 0 || !info.IsDir() {
-		return errors.New("queue state root must be a real directory")
-	}
 	return withFileLock(q.lockPath(), func() error {
 		if err := q.refreshLocked(); err != nil {
 			return err
