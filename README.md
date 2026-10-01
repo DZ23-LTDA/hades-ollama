@@ -4,6 +4,8 @@
 
 Este é o fork público mantido por [DZ23-LTDA](https://github.com/DZ23-LTDA), baseado no Ollama e preservando a licença MIT e os avisos de atribuição upstream. O projeto adiciona superfícies agentic próprias; não é o instalador, serviço hospedado ou distribuição oficial do Ollama. O manual completo, os contratos, a configuração e a política de atualização estão em [`docs/CLASS_A_PLUS_GUIDE.md`](docs/CLASS_A_PLUS_GUIDE.md).
 
+![Hades em 20 segundos — hook, Home, Mission Console e o fecho local-first](docs/images/hades-demo.gif)
+
 ### Visão rápida — capturas reais atualizadas em 2026-10-01
 
 ![Home atual do shell Hades](docs/images/screens/class-a-plus-home.png?v=3)
