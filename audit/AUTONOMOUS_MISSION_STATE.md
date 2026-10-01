@@ -2700,3 +2700,10 @@ finding: a comparação de caminho ainda falhava no runner Windows apesar da nor
 fix: validação agora usa `rev-parse --is-inside-work-tree` e `--show-prefix` vazio, sem depender de drive letters/separadores; o diretório verificado continua sendo o root criado pelo importador.
 evidence: go test ./internal/agent ./server PASS; CGO_ENABLED=0 go build ./... PASS; GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build ./... PASS.
 next: commit, push e acompanhar os dois workflows novamente.
+
+## CI final verde — 2026-09-30 22:15 -03
+state: COMPLETED
+commit: da49fd89
+ci: class-a-plus-integrity=success (run 36799588232); dz23-agentic-quality=success (run 36799588701), ambos no mesmo SHA.
+final_evidence: testes Go críticos, build nativo, CGO0 e GOOS=windows passaram localmente; o job Windows remoto passou após a validação portátil do topo Git.
+next: nenhuma ação pendente desta auditoria ampla; novas mudanças devem iniciar novo checkpoint.

@@ -546,3 +546,6 @@ O CI `dz23-agentic-quality` revelou um falso negativo no teste de importação Z
 
 ### Auditoria ampla — segunda correção do gate Windows — 2026-09-30 22:06 -03
 O runner Windows continuou rejeitando a validação literal de `--show-toplevel` por diferenças de formato do shell Git. A checagem foi tornada independente de drive letter e separadores: confirma `--is-inside-work-tree=true` e `--show-prefix` vazio no diretório criado pelo próprio importador. O bloqueio de `.git`, traversal e symlink permanece. Gates locais de Go, CGO0 e cross-build Windows passaram; CI remoto será rerodado.
+
+### Auditoria ampla — CI fechado — 2026-09-30 22:15 -03
+O commit `da49fd89` foi validado com os dois workflows verdes no mesmo SHA: `class-a-plus-integrity` run `36799588232` e `dz23-agentic-quality` run `36799588701`. O bloqueio Windows de importação ZIP foi corrigido sem enfraquecer as proteções; testes focados, suíte Go crítica, build sem CGO e cross-build Windows passaram.
