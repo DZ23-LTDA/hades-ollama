@@ -65,16 +65,22 @@ jobs:
               -q '.check_runs[] | [.name, .status, (.conclusion // "")] | @tsv' > runs.tsv || true
             pending=0; fail=0
             for name in "${REQUIRED[@]}"; do
-              line=$(awk -F'\t' -v n="$name" '$1==n {print $2"|"$3}' runs.tsv | tail -1)
-              st="${line%%|*}"; cc="${line##*|}"
-              if [ -z "$line" ] || [ "$st" != "completed" ]; then
-                echo "... aguardando: $name (status='${st:-ausente}')"; pending=1
-              elif [ "$cc" != "success" ]; then
-                # Gate obrigatorio SO aceita success. skipped/cancelled/failure/
-                # timed_out/action_required/stale/neutral => NAO aceita.
-                echo "FAIL -> $name (conclusao='${cc:-none}'; obrigatorio exige success)"; fail=1
-              else
+              lines=$(awk -F'\t' -v n="$name" '$1==n {print $2"|"$3}' runs.tsv)
+              # A mesma SHA pode ter tentativas duplicadas/canceladas por
+              # concurrency. Um sucesso terminal é suficiente; não escolha
+              # arbitrariamente a última linha, pois ela pode ser cancelada.
+              if printf '%s\n' "$lines" | grep -qx 'completed|success'; then
                 echo "OK   -> $name (success)"
+              elif printf '%s\n' "$lines" | grep -Eq '^(queued|in_progress)\|'; then
+                st=$(printf '%s\n' "$lines" | grep -E '^(queued|in_progress)\|' | head -1 | cut -d'|' -f1)
+                echo "... aguardando: $name (status='$st')"; pending=1
+              elif [ -z "$lines" ]; then
+                echo "... aguardando: $name (status='ausente')"; pending=1
+              else
+                cc=$(printf '%s\n' "$lines" | tail -1 | cut -d'|' -f2)
+                # Gate obrigatório só aceita success; failure/cancelled/skipped
+                # sem nenhuma tentativa bem-sucedida não pode passar.
+                echo "FAIL -> $name (conclusao='${cc:-none}'; obrigatorio exige success)"; fail=1
               fi
             done
             if [ "$fail" -ne 0 ]; then
