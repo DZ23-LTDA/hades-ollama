@@ -543,3 +543,6 @@ automatizado + execução real reproduzível em navegador (desktop e mobile), se
 
 ### Auditoria ampla — correção do gate Windows — 2026-09-30 22:02 -03
 O CI `dz23-agentic-quality` revelou um falso negativo no teste de importação ZIP em Windows: a validação comparava literalmente o caminho do topo retornado pelo Git com o caminho local. A implementação foi ajustada para normalizar separadores/paths absolutos e comparar sem diferenciar caixa no Windows, sem relaxar a rejeição de `.git`, traversal ou symlink. Evidência local: testes focados de importação, `CGO_ENABLED=0 go build ./...` e `GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build ./...` passaram. Próximo passo: novo commit e CI remoto.
+
+### Auditoria ampla — segunda correção do gate Windows — 2026-09-30 22:06 -03
+O runner Windows continuou rejeitando a validação literal de `--show-toplevel` por diferenças de formato do shell Git. A checagem foi tornada independente de drive letter e separadores: confirma `--is-inside-work-tree=true` e `--show-prefix` vazio no diretório criado pelo próprio importador. O bloqueio de `.git`, traversal e symlink permanece. Gates locais de Go, CGO0 e cross-build Windows passaram; CI remoto será rerodado.

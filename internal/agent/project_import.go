@@ -16,7 +16,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
-	"runtime"
 	"strings"
 	"time"
 
@@ -344,25 +343,23 @@ func initializeImportedRepository(ctx context.Context, root string) error {
 			return fmt.Errorf("initialize imported repository: %s: %w", RedactDLP(strings.TrimSpace(string(output))), err)
 		}
 	}
-	check := exec.CommandContext(ctx, "git", "-C", root, "rev-parse", "--show-toplevel")
+	check := exec.CommandContext(ctx, "git", "-C", root, "rev-parse", "--is-inside-work-tree")
 	check.Env = append(os.Environ(), "GIT_CONFIG_NOSYSTEM=1", "GIT_CONFIG_GLOBAL=", "GIT_TERMINAL_PROMPT=0")
 	output, err := check.Output()
-	if err != nil || !sameImportPath(strings.TrimSpace(string(output)), root) {
+	if err != nil || strings.TrimSpace(string(output)) != "true" {
+		return ErrImportArchiveUnsafe
+	}
+
+	// `-C root` is already the directory we created and initialized. The empty
+	// show-prefix proves Git considers it the repository root without relying on
+	// platform-specific drive-letter or slash formatting.
+	prefix := exec.CommandContext(ctx, "git", "-C", root, "rev-parse", "--show-prefix")
+	prefix.Env = check.Env
+	prefixOutput, err := prefix.Output()
+	if err != nil || strings.TrimSpace(string(prefixOutput)) != "" {
 		return ErrImportArchiveUnsafe
 	}
 	return nil
-}
-
-func sameImportPath(left, right string) bool {
-	left, leftErr := filepath.Abs(filepath.Clean(filepath.FromSlash(strings.TrimSpace(left))))
-	right, rightErr := filepath.Abs(filepath.Clean(filepath.FromSlash(strings.TrimSpace(right))))
-	if leftErr != nil || rightErr != nil {
-		return false
-	}
-	if runtime.GOOS == "windows" {
-		return strings.EqualFold(left, right)
-	}
-	return left == right
 }
 
 func importedTextFiles(root string) []string {

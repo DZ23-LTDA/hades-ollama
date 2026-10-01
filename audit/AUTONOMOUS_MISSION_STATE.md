@@ -2693,3 +2693,10 @@ finding: dz23-agentic-quality falhou apenas no Windows em TestLargeUploadProject
 fix: project_import.go agora normaliza separadores, absolutiza e compara caminhos sem diferenciar caixa no Windows; a rejeição de `.git` permanece ativa.
 evidence: go test -run 'Import|GitHubImport|LargeUpload|ZipStream|Clone|Ingest' ./internal/agent ./server PASS; CGO_ENABLED=0 go build ./... PASS; GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build ./... PASS.
 next: commit, push e acompanhar novamente class-a-plus-integrity e dz23-agentic-quality no mesmo SHA.
+
+## Segunda correção do CI Windows — 2026-09-30 22:06 -03
+state: RETESTING
+finding: a comparação de caminho ainda falhava no runner Windows apesar da normalização, pois o formato emitido por `git rev-parse --show-toplevel` varia no shell Git.
+fix: validação agora usa `rev-parse --is-inside-work-tree` e `--show-prefix` vazio, sem depender de drive letters/separadores; o diretório verificado continua sendo o root criado pelo importador.
+evidence: go test ./internal/agent ./server PASS; CGO_ENABLED=0 go build ./... PASS; GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build ./... PASS.
+next: commit, push e acompanhar os dois workflows novamente.
