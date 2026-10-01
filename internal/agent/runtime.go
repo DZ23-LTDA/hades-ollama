@@ -1303,7 +1303,11 @@ func (r *Runtime) resumePending(ctx context.Context) error {
 	}
 	organizationScope = strings.TrimSpace(r.organizationScope)
 	if err := sweepOrphanedWorkspaceSnapshots(r.dataRoot, organizationScope, missions, time.Now().UTC()); err != nil {
-		recoveryErrors = append(recoveryErrors, fmt.Errorf("sweep orphaned workspace snapshots: %w", err))
+		// Snapshot housekeeping is best-effort during restart. Keep mission
+		// recovery fail-closed for the individual mission, but do not prevent
+		// an otherwise valid persisted mission from being re-enqueued because
+		// a concurrent temporary-root cleanup interrupted the sweep.
+		slog.Warn("orphaned workspace snapshot sweep deferred", "error", err)
 	}
 	for _, mission := range missions {
 		if mission.State != MissionCompleted && mission.State != MissionCancelled && mission.State != MissionFailed {
