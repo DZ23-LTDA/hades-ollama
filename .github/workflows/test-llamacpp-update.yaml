@@ -63,7 +63,7 @@ jobs:
           ./scripts/build_darwin.sh build package
       - name: Log build results
         run: ls -l dist/
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: ollama-darwin.tgz
           path: dist/ollama-darwin.tgz
@@ -131,7 +131,7 @@ jobs:
         run: |
           set -euo pipefail
           tar -C "${{ runner.temp }}/payload" -cf - . | zstd -9 -T0 >"${{ runner.temp }}/linux-payload-${{ matrix.arch }}-${{ matrix.payload }}.tar.zst"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: linux-payload-${{ matrix.arch }}-${{ matrix.payload }}
           path: ${{ runner.temp }}/linux-payload-${{ matrix.arch }}-${{ matrix.payload }}.tar.zst
@@ -166,7 +166,7 @@ jobs:
         run: |
           set -euo pipefail
           tar -C "${{ runner.temp }}/payload" -cf - . | zstd -9 -T0 >"${{ runner.temp }}/linux-payload-${{ matrix.arch }}-go.tar.zst"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: linux-payload-${{ matrix.arch }}-go
           path: ${{ runner.temp }}/linux-payload-${{ matrix.arch }}-go.tar.zst
@@ -266,25 +266,25 @@ jobs:
             tar c -C dist/linux-${{ matrix.arch }} -T "${ARCHIVE}" --owner 0 --group 0 | zstd -19 -T0 >"$(basename "${ARCHIVE//.*/}.tar.zst")" &
           done
           wait
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: ollama-linux-${{ matrix.arch }}.tar.zst
           path: ollama-linux-${{ matrix.arch }}.tar.zst
           compression-level: 0
       - if: matrix.arch == 'amd64'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ollama-linux-amd64-rocm.tar.zst
           path: ollama-linux-amd64-rocm.tar.zst
           compression-level: 0
       - if: matrix.arch == 'arm64'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ollama-linux-arm64-jetpack5.tar.zst
           path: ollama-linux-arm64-jetpack5.tar.zst
           compression-level: 0
       - if: matrix.arch == 'arm64'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ollama-linux-arm64-jetpack6.tar.zst
           path: ollama-linux-arm64-jetpack6.tar.zst
@@ -470,7 +470,7 @@ jobs:
           do
             [ -f "$payload" ] || { echo "missing $payload"; exit 1; }
           done
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: depends-${{ matrix.os }}-${{ matrix.arch }}-${{ matrix.preset }}
           path: dist\*
@@ -533,7 +533,7 @@ jobs:
       - name: Log build results
         run: |
           gci -path .\dist -Recurse -File | ForEach-Object { get-filehash -path $_.FullName -Algorithm SHA256 } | format-list
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: build-windows-amd64
           path: dist\*
@@ -609,27 +609,27 @@ jobs:
           do
             [ -f "$payload" ] || { echo "missing $payload"; exit 1; }
           done
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: ollama-windows-amd64.zip
           path: dist/ollama-windows-amd64.zip
           compression-level: 0
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: ollama-windows-arm64.zip
           path: dist/ollama-windows-arm64.zip
           compression-level: 0
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: ollama-windows-amd64-rocm.zip
           path: dist/ollama-windows-amd64-rocm.zip
           compression-level: 0
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: OllamaSetup.exe
           path: dist/OllamaSetup.exe
           compression-level: 0
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: install.ps1
           path: dist/install.ps1

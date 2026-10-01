@@ -132,7 +132,7 @@ jobs:
       - name: Log build results
         run: |
           ls -l dist/
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: bundles-darwin
           path: |
@@ -377,7 +377,7 @@ jobs:
           do
             [ -f "$payload" ] || { echo "missing $payload"; exit 1; }
           done
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: depends-${{ matrix.os }}-${{ matrix.arch }}-${{ matrix.preset }}
           path: dist\*
@@ -441,7 +441,7 @@ jobs:
       - name: Log build results
         run: |
           gci -path .\dist -Recurse -File | ForEach-Object { get-filehash -path $_.FullName -Algorithm SHA256 } | format-list
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: build-windows-amd64
           path: |
@@ -520,7 +520,7 @@ jobs:
       - name: Log contents after build
         run: |
           gci -path .\dist -Recurse -File | ForEach-Object { get-filehash -path $_.FullName -Algorithm SHA256 } | format-list
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: bundles-windows
           path: |
@@ -698,7 +698,7 @@ jobs:
           mkdir -p ${{ matrix.os }}-${{ matrix.arch }}
           echo "${{ steps.build-push.outputs.digest }}" >${{ matrix.os }}-${{ matrix.arch }}-${{ matrix.suffix }}.txt
         working-directory: ${{ runner.temp }}
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: digest-${{ matrix.os }}-${{ matrix.arch }}-${{ matrix.suffix }}
           path: |
@@ -757,7 +757,7 @@ jobs:
             tar c -C dist/${{ matrix.os }}-${{ matrix.arch }} -T $ARCHIVE --owner 0 --group 0 | zstd -19 -T0 >$(basename ${ARCHIVE//.*/}.tar.zst) &
           done
           wait
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: bundles-${{ matrix.os }}-${{ matrix.arch }}${{ matrix.suffix }}
           path: |
