@@ -5,7 +5,7 @@ import path from "path";
 const ROOT = "/home/ubuntu/ollama-classe-a-plus";
 const EVIDENCE_DIR = path.join(ROOT, "docs/evidencias");
 const AUDIT_PATH = path.join(EVIDENCE_DIR, "browser-console-audit.json");
-const BASE = "http://127.0.0.1:5173";
+const BASE = process.env.E2E_BASE_URL || "http://127.0.0.1:5173";
 const errors = [];
 
 function observe(page, label) {
@@ -21,7 +21,7 @@ function observe(page, label) {
         errors.push(`[${label}] Studio visual mutation HTTP ${response.status()} ${response.url()}`);
       }
     }
-    if (response.status() >= 500) {
+    if (response.status() >= 400 && !response.url().includes("/favicon.ico")) {
       errors.push(`[${label}] HTTP ${response.status()} ${response.url()}`);
     }
   });
@@ -136,6 +136,9 @@ async function main() {
   }
 
   fs.writeFileSync(AUDIT_PATH, JSON.stringify(audit, null, 2));
+  if (errors.length > 0) {
+    throw new Error(`Studio evidence contains live console/network failures: ${JSON.stringify(errors)}`);
+  }
   console.log("Studio evidence capture complete with 0 errors!");
 }
 
