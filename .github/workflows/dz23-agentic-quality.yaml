@@ -63,7 +63,7 @@ jobs:
       - name: Windows amd64 cross-compilation for agent package
         run: |
           GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go test -run '^$' -c -o "$RUNNER_TEMP/ollama-agent-windows.test.exe" ./internal/agent
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: ollama-agentic-linux
           path: dist/ollama-agentic
@@ -495,7 +495,7 @@ jobs:
           path: .
           format: cyclonedx-json
           output-file: sbom-cyclonedx.json
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: dz23-sbom
           path: sbom-cyclonedx.json
