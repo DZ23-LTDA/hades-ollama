@@ -165,7 +165,7 @@ export function AutomationsPage() {
                 Agendamento
               </h3>
               <p className="mt-2 text-xs leading-relaxed text-neutral-500 dark:text-neutral-400">
-                Automatize trabalhos recorrentes escolhendo quando e com que frequência o Ollama Full deve ser executado.
+                Automatize trabalhos recorrentes escolhendo quando e com que frequência o Hades deve ser executado.
               </p>
               <div className="mt-4 space-y-2 border-t border-neutral-100 pt-3 dark:border-neutral-800">
                 <button
@@ -246,7 +246,7 @@ export function AutomationsPage() {
                 Automação avançada
               </h3>
               <p className="mt-2 text-xs leading-relaxed text-neutral-500 dark:text-neutral-400">
-                Descreva com suas próprias palavras quando o Ollama Full deve agir e o que deve fazer.
+                Descreva com suas próprias palavras quando o Hades deve agir e o que deve fazer.
               </p>
               <div className="mt-4">
                 <input

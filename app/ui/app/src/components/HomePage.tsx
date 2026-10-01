@@ -148,7 +148,7 @@ export function HomePage() {
   return (
     <div className="min-h-0 flex-1 overflow-y-auto bg-neutral-50 dark:bg-neutral-950">
       <div className="mx-auto w-full max-w-5xl px-6 pb-16 pt-14 lg:px-10">
-        <header className="flex flex-col items-center text-center"><Logo size={56} containerClassName="mb-5" /><h1 className="font-rounded text-3xl font-semibold tracking-tight text-neutral-950 dark:text-white sm:text-4xl">Ollama Full</h1><p className="mt-3 max-w-xl text-sm leading-6 text-neutral-500 dark:text-neutral-400">Um runtime local-first: converse, compile, pesquise, automatize e acompanhe missões com aprovações e dados no seu ambiente.</p></header>
+        <header className="flex flex-col items-center text-center"><Logo size={56} containerClassName="mb-5" /><h1 className="font-rounded text-3xl font-semibold tracking-tight text-neutral-950 dark:text-white sm:text-4xl">Hades</h1><p className="mt-3 max-w-xl text-sm leading-6 text-neutral-500 dark:text-neutral-400">Um runtime local-first: converse, compile, pesquise, automatize e acompanhe missões com aprovações e dados no seu ambiente.</p></header>
         <section className="mx-auto mt-9 w-full max-w-3xl">
           <label htmlFor="home-objective" className="sr-only">Descreva uma tarefa</label>
           <div className="relative">

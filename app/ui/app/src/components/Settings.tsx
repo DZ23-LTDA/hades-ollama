@@ -833,7 +833,7 @@ export default function Settings() {
                   Instruções Personalizadas Permanentes
                 </label>
                 <p className="mt-0.5 text-xs text-neutral-500">
-                  O que você gostaria que o Ollama Full sempre soubesse sobre suas preferências e estilo de resposta?
+                  O que você gostaria que o Hades sempre soubesse sobre suas preferências e estilo de resposta?
                 </p>
                 <textarea
                   rows={4}
