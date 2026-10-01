@@ -412,9 +412,6 @@ func samePath(left, right string) bool {
 }
 
 func runGitRepoCommand(ctx context.Context, root string, args ...string) (string, bool, error) {
-	if runtime.GOOS != "linux" {
-		return "", false, errors.New("descriptor-bound Git execution is unsupported on this platform")
-	}
 	handle, err := os.OpenRoot(root)
 	if err != nil {
 		return "", false, err
@@ -439,9 +436,6 @@ func runGitRepoCommandAtRootWithView(ctx context.Context, root string, handle *o
 	if view == nil || view.gitDir == "" {
 		return "", false, errors.New("private Git metadata view is required")
 	}
-	if runtime.GOOS != "linux" {
-		return "", false, errors.New("descriptor-bound Git execution is unsupported on this platform")
-	}
 	if err := validateGitMetadataTree(handle); err != nil {
 		return "", false, fmt.Errorf("unsafe Git metadata: %w", err)
 	}
@@ -453,7 +447,10 @@ func runGitRepoCommandAtRootWithView(ctx context.Context, root string, handle *o
 		return "", false, err
 	}
 	defer file.Close()
-	commandDir := fmt.Sprintf("/proc/%d/fd/%d", os.Getpid(), file.Fd())
+	commandDir := root
+	if runtime.GOOS == "linux" {
+		commandDir = fmt.Sprintf("/proc/%d/fd/%d", os.Getpid(), file.Fd())
+	}
 	output, truncated, commandErr := runGitRepoCommandWithDir(ctx, root, commandDir, view, args...)
 	if err := validateGitMetadataTree(handle); err != nil {
 		return output, truncated, fmt.Errorf("Git metadata changed or became unsafe during inspection: %w", err)
@@ -465,11 +462,14 @@ func runGitRepoCommandAtRootWithView(ctx context.Context, root string, handle *o
 }
 
 func runGitRepoCommandWithDir(ctx context.Context, root, commandDir string, view *gitReadView, args ...string) (string, bool, error) {
-	if runtime.GOOS != "linux" {
-		return "", false, errors.New("descriptor-bound Git execution is unsupported on this platform")
+	if view == nil || view.gitDir == "" {
+		return "", false, errors.New("private Git metadata view is required")
 	}
-	if view == nil || view.gitDir == "" || !strings.HasPrefix(commandDir, fmt.Sprintf("/proc/%d/fd/", os.Getpid())) {
+	if runtime.GOOS == "linux" && !strings.HasPrefix(commandDir, fmt.Sprintf("/proc/%d/fd/", os.Getpid())) {
 		return "", false, errors.New("descriptor-bound Git command directory is required")
+	}
+	if runtime.GOOS != "linux" && !filepath.IsAbs(commandDir) {
+		return "", false, errors.New("canonical Git command directory is required")
 	}
 	gitExecutable, err := trustedGitExecutable()
 	if err != nil {
@@ -483,6 +483,9 @@ func runGitRepoCommandWithDir(ctx context.Context, root, commandDir string, view
 		"-c", "core.pager=cat",
 		"-c", "color.ui=false",
 		"-c", "diff.external=",
+	}
+	if runtime.GOOS != "linux" {
+		gitArgs = append(gitArgs, "-C", root)
 	}
 	gitArgs = append(gitArgs, args...)
 	command := exec.CommandContext(commandContext, gitExecutable, gitArgs...)

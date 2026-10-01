@@ -1402,18 +1402,24 @@ func runWorkspaceSnapshotGitAtRoot(ctx context.Context, root string, directory *
 	if directory == nil || gitView == nil || gitView.gitDir == "" {
 		return nil, errors.New("descriptor-bound Git workspace directory and private view are required")
 	}
-	if runtime.GOOS != "linux" {
-		return nil, errors.New("descriptor-bound Git execution is unsupported on this platform")
+	if runtime.GOOS == "linux" {
+		return runWorkspaceSnapshotGitCommand(ctx, root, fmt.Sprintf("/proc/%d/fd/%d", os.Getpid(), directory.Fd()), nil, gitView, args...)
 	}
-	return runWorkspaceSnapshotGitCommand(ctx, root, fmt.Sprintf("/proc/%d/fd/%d", os.Getpid(), directory.Fd()), nil, gitView, args...)
+	// macOS and Windows do not expose Linux's proc-fd cwd contract. The
+	// repository root was canonicalized and opened by the caller; use that
+	// stable path while keeping Git metadata in the private read view.
+	return runWorkspaceSnapshotGitCommand(ctx, root, root, nil, gitView, args...)
 }
 
 func runWorkspaceSnapshotGitCommand(ctx context.Context, root, commandDir string, extraFiles []*os.File, gitView *gitReadView, args ...string) ([]byte, error) {
-	if runtime.GOOS != "linux" {
-		return nil, errors.New("descriptor-bound Git execution is unsupported on this platform")
+	if gitView == nil || gitView.gitDir == "" {
+		return nil, errors.New("private Git read view is required")
 	}
-	if gitView == nil || gitView.gitDir == "" || !strings.HasPrefix(commandDir, fmt.Sprintf("/proc/%d/fd/", os.Getpid())) {
+	if runtime.GOOS == "linux" && !strings.HasPrefix(commandDir, fmt.Sprintf("/proc/%d/fd/", os.Getpid())) {
 		return nil, errors.New("private descriptor-bound Git view is required")
+	}
+	if runtime.GOOS != "linux" && !filepath.IsAbs(commandDir) {
+		return nil, errors.New("canonical Git workspace directory is required")
 	}
 	gitExecutable, err := trustedGitExecutable()
 	if err != nil {

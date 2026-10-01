@@ -108,6 +108,13 @@ func (s *Server) connectConnector(w http.ResponseWriter, r *http.Request) error 
 	if err := json.NewDecoder(io.LimitReader(r.Body, secrets.MaxKeyBytes+1024)).Decode(&body); err != nil {
 		return fmt.Errorf("invalid request body: %w", err)
 	}
+	// Validate malformed credentials before contacting the agent API. This
+	// keeps client input errors deterministic even when the local server also
+	// requires login, and never persists or transmits an empty secret.
+	if strings.TrimSpace(body.Key) == "" || len(body.Key) > secrets.MaxKeyBytes || strings.ContainsAny(body.Key, "\r\n\x00") {
+		w.WriteHeader(http.StatusBadRequest)
+		return errors.New("invalid credential: key must be a single non-empty line")
+	}
 	var err error
 	baseURL := entry.APIBaseURL
 	if entry.APISelfHosted {

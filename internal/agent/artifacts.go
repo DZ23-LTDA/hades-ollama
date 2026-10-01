@@ -115,9 +115,6 @@ func createVerifiedArtifactSnapshot(workspace, relativePath string, manifest Art
 }
 
 func createVerifiedArtifactSnapshotFromRoot(workspaceRoot *os.Root, relativePath string, manifest ArtifactManifest) (string, error) {
-	if runtime.GOOS != "linux" {
-		return "", fmt.Errorf("%w: descriptor-backed artifact delivery is unsupported on this platform", ErrArtifactIntegrity)
-	}
 	if workspaceRoot == nil || !filepath.IsLocal(filepath.FromSlash(relativePath)) {
 		return "", fmt.Errorf("%w: artifact path is not workspace-relative", ErrArtifactIntegrity)
 	}
@@ -156,9 +153,29 @@ func createVerifiedArtifactSnapshotFromRoot(workspaceRoot *os.Root, relativePath
 		_ = file.Close()
 		return "", fmt.Errorf("%w: rewind verified artifact: %v", ErrArtifactIntegrity, err)
 	}
-	handoffPath := fmt.Sprintf("/proc/%d/fd/%d", os.Getpid(), file.Fd())
-	artifactHandoffs.Store(handoffPath, file)
-	return handoffPath, nil
+	if runtime.GOOS == "linux" {
+		handoffPath := fmt.Sprintf("/proc/%d/fd/%d", os.Getpid(), file.Fd())
+		artifactHandoffs.Store(handoffPath, file)
+		return handoffPath, nil
+	}
+	// macOS and Windows do not provide a stable proc-fd path to the HTTP
+	// server. Copy only the already verified bytes to a private temporary file;
+	// the route removes it and closes the retained descriptor after delivery.
+	temporary, err := os.CreateTemp("", ".ollama-artifact-*.tmp")
+	if err != nil {
+		_ = file.Close()
+		return "", fmt.Errorf("%w: create verified artifact handoff: %v", ErrArtifactIntegrity, err)
+	}
+	temporaryPath := temporary.Name()
+	if _, err := io.Copy(temporary, file); err != nil {
+		_ = temporary.Close()
+		_ = os.Remove(temporaryPath)
+		_ = file.Close()
+		return "", fmt.Errorf("%w: copy verified artifact handoff: %v", ErrArtifactIntegrity, err)
+	}
+	_ = file.Close()
+	artifactHandoffs.Store(temporaryPath, temporary)
+	return temporaryPath, nil
 }
 
 // CloseArtifactSnapshot releases the descriptor retained for an artifact

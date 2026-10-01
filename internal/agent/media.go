@@ -1040,10 +1040,20 @@ func validateMediaOutputDirectoryFromRoot(root *os.Root, relativePath string) er
 }
 
 func buildMediaArtifact(workspace, relativePath string, pinnedRoots ...*os.Root) (ArtifactManifest, error) {
+	var artifact ArtifactManifest
+	var err error
 	if len(pinnedRoots) > 0 {
-		return buildArtifactManifestFromRoot(pinnedRoots[0], relativePath, "", "", filepath.Base(filepath.FromSlash(relativePath)))
+		artifact, err = buildArtifactManifestFromRoot(pinnedRoots[0], relativePath, "", "", filepath.Base(filepath.FromSlash(relativePath)))
+	} else {
+		artifact, err = BuildArtifactManifest(workspace, "", "", filepath.Base(filepath.FromSlash(relativePath)), relativePath)
 	}
-	return BuildArtifactManifest(workspace, "", "", filepath.Base(filepath.FromSlash(relativePath)), relativePath)
+	if err != nil {
+		return ArtifactManifest{}, err
+	}
+	if strings.EqualFold(filepath.Ext(relativePath), ".wav") {
+		artifact.MediaType = "audio/wav"
+	}
+	return artifact, nil
 }
 
 func buildMediaArtifactFromRoot(root *os.Root, relativePath string) (ArtifactManifest, error) { //nolint:unused // compatibility/security surface retained for future adapter wiring
