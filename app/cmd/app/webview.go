@@ -20,6 +20,7 @@ import (
 	"time"
 	"unsafe"
 
+	"github.com/ollama/ollama/app/attachments"
 	"github.com/ollama/ollama/app/dialog"
 	"github.com/ollama/ollama/app/store"
 	"github.com/ollama/ollama/app/webview"
@@ -307,7 +308,7 @@ func (w *Webview) Run(path string) unsafe.Pointer {
 
 				// Use native multiple file selection with extension filtering
 				filenames, err := dialog.File().
-					Filter("Supported Files", allowedExts...).
+					Filter("Supported Files", append(append([]string(nil), allowedExts...), "zip")...).
 					Title("Select Files").
 					LoadMultiple()
 				if err != nil {
@@ -327,6 +328,25 @@ func (w *Webview) Run(path string) unsafe.Pointer {
 				for _, filename := range filenames {
 					// Check file extension (double-check after native dialog filtering)
 					ext := strings.ToLower(strings.TrimPrefix(filepath.Ext(filename), "."))
+					if ext == "zip" {
+						// Archives become one text attachment per supported file
+						// inside; reading is bounded by attachments.DefaultZipLimits.
+						report, err := attachments.ReadZipText(filename, textExts, attachments.DefaultZipLimits)
+						if err != nil {
+							slog.Warn("zip attachment rejected", "filename", filepath.Base(filename), "error", err)
+						}
+						for _, skipped := range report.Skipped {
+							slog.Debug("zip entry skipped", "filename", filepath.Base(filename), "entry", skipped)
+						}
+						for _, entry := range report.Entries {
+							files = append(files, map[string]string{
+								"filename": filepath.Base(filename) + "/" + entry.Name,
+								"path":     filename,
+								"dataURL":  "data:text/plain;base64," + base64.StdEncoding.EncodeToString(entry.Data),
+							})
+						}
+						continue
+					}
 					validExt := false
 					for _, allowedExt := range allowedExts {
 						if ext == allowedExt {

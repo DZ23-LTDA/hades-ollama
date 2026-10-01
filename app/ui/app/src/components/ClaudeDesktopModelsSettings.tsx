@@ -159,7 +159,7 @@ function ClaudeModelPicker({
         <span
           className={`min-w-0 flex-1 truncate ${value ? "" : "text-neutral-400"}`}
         >
-          {value || "Select a model"}
+          {value || "Selecione um modelo"}
         </span>
         <ChevronUpDownIcon className="h-4 w-4 flex-shrink-0 text-neutral-400" />
       </PopoverButton>
@@ -423,7 +423,7 @@ export const ClaudeDesktopModelsSettings = forwardRef<
           applyStatus(result.status, true);
           if (
             !window.confirm(
-              "Restart Claude Desktop? Any running task will stop.",
+              "Reiniciar Claude Desktop? Qualquer tarefa em execução será interrompida.",
             )
           ) {
             return false;
@@ -497,7 +497,7 @@ export const ClaudeDesktopModelsSettings = forwardRef<
         applyStatus(result.status, true);
         if (
           !window.confirm(
-            "Restart Claude to change auto mode? Any running task will stop.",
+            "Reiniciar Claude para alterar o modo automático? Qualquer tarefa em execução será interrompida.",
           )
         ) {
           return;
@@ -568,12 +568,12 @@ export const ClaudeDesktopModelsSettings = forwardRef<
         ? "Select a cloud model from Ollama.com to use auto mode."
         : autoModeModelNames.length > 0
           ? `Select one of ${formatModelList(autoModeModelNames)} to use auto mode.`
-          : "Auto mode needs a cloud model available to your Ollama.com account.";
+          : "O modo automático precisa de um modelo na nuvem disponível na sua conta Ollama.com.";
 
   const guidance =
     claudeDesktopRecoveryMessage(status.error, error) ??
     (hasDraftChanges && status.running
-      ? "Restarting Claude will stop any running task."
+      ? "Reiniciar Claude interromperá qualquer tarefa em execução."
       : null);
 
   return (
@@ -609,7 +609,7 @@ export const ClaudeDesktopModelsSettings = forwardRef<
                   Claude
                 </h2>
                 <p className="mt-1 text-base/6 text-zinc-500 sm:text-sm/6 dark:text-zinc-400">
-                  Choose which Ollama model Claude uses for each model option.
+                  Escolha qual modelo Ollama o Claude usa para cada opção.
                 </p>
               </div>
               <Button
@@ -628,14 +628,14 @@ export const ClaudeDesktopModelsSettings = forwardRef<
                   <ArrowPathIcon data-slot="icon" className="animate-spin" />
                 )}
                 {resettingMappings
-                  ? "Resetting…"
+                  ? "Restaurando…"
                   : applying
                     ? status.running
-                      ? "Restarting…"
-                      : "Starting…"
+                      ? "Reiniciando…"
+                      : "Iniciando…"
                     : status.running
-                      ? "Restart Claude"
-                      : "Start Claude"}
+                      ? "Reiniciar Claude"
+                      : "Iniciar Claude"}
               </Button>
             </div>
 
@@ -673,7 +673,7 @@ export const ClaudeDesktopModelsSettings = forwardRef<
             <Field className="mt-3 w-full max-w-xl border-t border-neutral-200 pt-3 dark:border-neutral-700">
               <div className="flex items-center justify-between gap-4">
                 <div className="min-w-0">
-                  <Label>Enable auto mode</Label>
+                  <Label>Ativar modo automático</Label>
                   <Description>{autoModeDescription}</Description>
                 </div>
                 <Switch

@@ -32,6 +32,9 @@ type Model struct {
 	Kind         string     `json:"kind,omitempty"`
 	Provider     string     `json:"provider,omitempty"`
 	Available    bool       `json:"available"`
+	Status       string     `json:"status,omitempty"`
+	CostTag      string     `json:"cost_tag,omitempty"`
+	Reason       string     `json:"reason,omitempty"`
 	Capabilities []string   `json:"capabilities,omitempty"`
 }
 
@@ -130,6 +133,9 @@ type ChatRequest struct {
 	FileTools   *bool        `json:"file_tools,omitempty"`
 	ForceUpdate bool         `json:"forceUpdate,omitempty"`
 	Think       any          `json:"think,omitempty"`
+	// Temporary starts an anonymous chat that is kept in memory only and
+	// never written to history. Only honored when the chat is created.
+	Temporary bool `json:"temporary,omitempty"`
 }
 
 type Error struct {

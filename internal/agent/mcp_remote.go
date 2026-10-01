@@ -27,15 +27,60 @@ var lookupRemoteMCPIPs = func(ctx context.Context, host string) ([]net.IP, error
 }
 
 type RemoteMCPServerConfig struct {
-	ID             string            `json:"id"`
-	OrganizationID string            `json:"organization_id,omitempty"`
-	URL            string            `json:"url"`
-	TokenEnv       string            `json:"token_env,omitempty"`
-	HeadersEnv     map[string]string `json:"headers_env,omitempty"`
-	AllowedMethods []string          `json:"allowed_methods,omitempty"`
-	TimeoutSeconds int               `json:"timeout_seconds,omitempty"`
-	Disabled       bool              `json:"disabled,omitempty"`
+	ID              string                `json:"id"`
+	OrganizationID  string                `json:"organization_id,omitempty"`
+	URL             string                `json:"url"`
+	TokenEnv        string                `json:"token_env,omitempty"`
+	HeadersEnv      map[string]string     `json:"headers_env,omitempty"`
+	AllowedMethods  []string              `json:"allowed_methods,omitempty"`
+	TimeoutSeconds  int                   `json:"timeout_seconds,omitempty"`
+	Disabled        bool                  `json:"disabled,omitempty"`
+	OAuth           *RemoteMCPOAuthConfig `json:"oauth,omitempty"`
+	PairingTokenEnv string                `json:"pairing_token_env,omitempty"`
 }
+
+type RemoteMCPOAuthConfig struct {
+	AuthorizationURL string   `json:"authorization_url"`
+	TokenURL         string   `json:"token_url"`
+	ClientIDEnv      string   `json:"client_id_env"`
+	ClientSecretEnv  string   `json:"client_secret_env,omitempty"`
+	RedirectURI      string   `json:"redirect_uri"`
+	Scopes           []string `json:"scopes,omitempty"`
+}
+
+type remoteMCPOAuthToken struct {
+	AccessToken  string
+	RefreshToken string
+	ExpiresAt    time.Time
+}
+
+type remoteMCPAuthState struct {
+	ServerID       string
+	OrganizationID string
+	Verifier       string
+	State          string
+	ExpiresAt      time.Time
+}
+
+type remoteMCPSession struct {
+	ID             string
+	ServerID       string
+	OrganizationID string
+	ExpiresAt      time.Time
+	LastEventID    string
+}
+
+type remoteMCPPairing struct {
+	Challenge string
+	ExpiresAt time.Time
+}
+
+var (
+	ErrRemoteMCPNotConfigured       = errors.New("remote MCP is NOT_CONFIGURED")
+	ErrRemoteMCPSessionInvalid      = errors.New("remote MCP session is invalid or expired")
+	ErrRemoteMCPPairingUnauthorized = errors.New("remote MCP pairing is unauthorized")
+	ErrRemoteMCPOAuthStateInvalid   = errors.New("remote MCP OAuth state is invalid or expired")
+)
 
 type RemoteMCPManager struct {
 	mu          sync.RWMutex
@@ -43,6 +88,10 @@ type RemoteMCPManager struct {
 	servers     map[string]RemoteMCPServerConfig
 	nextID      int64
 	persistPath string
+	oauthTokens map[string]remoteMCPOAuthToken
+	oauthStates map[string]remoteMCPAuthState
+	sessions    map[string]remoteMCPSession
+	pairings    map[string]remoteMCPPairing
 }
 
 func NewRemoteMCPManager() *RemoteMCPManager {
@@ -67,7 +116,11 @@ func NewRemoteMCPManager() *RemoteMCPManager {
 				return nil
 			},
 		},
-		servers: map[string]RemoteMCPServerConfig{},
+		servers:     map[string]RemoteMCPServerConfig{},
+		oauthTokens: map[string]remoteMCPOAuthToken{},
+		oauthStates: map[string]remoteMCPAuthState{},
+		sessions:    map[string]remoteMCPSession{},
+		pairings:    map[string]remoteMCPPairing{},
 	}
 }
 
@@ -132,14 +185,38 @@ func (m *RemoteMCPManager) register(config RemoteMCPServerConfig, organizationID
 	if err != nil || parsed.Scheme == "" || parsed.Host == "" || parsed.User != nil || parsed.Fragment != "" {
 		return errors.New("remote MCP url must be an absolute URL without credentials or fragment")
 	}
+	if err := validateConfiguredEndpointURL(config.URL); err != nil {
+		return fmt.Errorf("remote MCP url is not safe to persist: %w", err)
+	}
 	if !remoteMCPURLAllowed(parsed) {
 		return errors.New("remote MCP requires HTTPS outside loopback")
 	}
-	if ip := net.ParseIP(parsed.Hostname()); ip != nil && remoteMCPPrivateIP(ip) && !ip.IsLoopback() {
+	if ip := net.ParseIP(parsed.Hostname()); ip != nil && unsafeEgressIP(ip) && !ip.IsLoopback() {
 		return errors.New("remote MCP destination cannot be a private address")
 	}
 	if config.TokenEnv != "" && !validEnvName(config.TokenEnv) {
 		return errors.New("remote MCP token_env is invalid")
+	}
+	if config.PairingTokenEnv != "" && !validEnvName(config.PairingTokenEnv) {
+		return errors.New("remote MCP pairing_token_env is invalid")
+	}
+	if config.OAuth != nil {
+		oauth := *config.OAuth
+		if err := validateConfiguredEndpointURL(oauth.AuthorizationURL); err != nil {
+			return fmt.Errorf("remote MCP OAuth authorization URL is unsafe: %w", err)
+		}
+		if err := validateConfiguredEndpointURL(oauth.TokenURL); err != nil {
+			return fmt.Errorf("remote MCP OAuth token URL is unsafe: %w", err)
+		}
+		authURL, authErr := url.Parse(oauth.AuthorizationURL)
+		tokenURL, tokenErr := url.Parse(oauth.TokenURL)
+		if authErr != nil || tokenErr != nil || !remoteMCPURLAllowed(authURL) || !remoteMCPURLAllowed(tokenURL) {
+			return errors.New("remote MCP OAuth endpoints require HTTPS outside loopback")
+		}
+		if !validEnvName(oauth.ClientIDEnv) || (oauth.ClientSecretEnv != "" && !validEnvName(oauth.ClientSecretEnv)) || strings.TrimSpace(oauth.RedirectURI) == "" {
+			return errors.New("remote MCP OAuth client environment and redirect URI are required")
+		}
+		config.OAuth = &oauth
 	}
 	for header, envName := range config.HeadersEnv {
 		if !validRemoteMCPHeaderName(header) || !validEnvName(envName) {
@@ -166,6 +243,7 @@ func (m *RemoteMCPManager) register(config RemoteMCPServerConfig, organizationID
 		return errors.New("remote MCP allowed_methods must contain at least one non-empty method")
 	}
 	config.AllowedMethods = allowed
+	config.HeadersEnv = mapsClone(config.HeadersEnv)
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if organizationID != "" {
@@ -216,6 +294,10 @@ type remoteMCPLoopbackContextKey struct{}
 type remoteMCPApprovedIPsContextKey struct{}
 
 func remoteMCPDialContext(ctx context.Context, network, address string) (net.Conn, error) {
+	return remoteMCPDialContextWithResolver(ctx, network, address, lookupRemoteMCPIPs)
+}
+
+func remoteMCPDialContextWithResolver(ctx context.Context, network, address string, lookup func(context.Context, string) ([]net.IP, error)) (net.Conn, error) {
 	dialer := &net.Dialer{Timeout: 10 * time.Second}
 	host, port, err := net.SplitHostPort(address)
 	if err != nil {
@@ -227,7 +309,7 @@ func remoteMCPDialContext(ctx context.Context, network, address string) (net.Con
 		}
 		var lastErr error
 		for _, ip := range approved {
-			if ip == nil || (!remoteMCPLoopbackContext(ctx) && remoteMCPPrivateIP(ip)) {
+			if ip == nil || (!remoteMCPLoopbackContext(ctx) && unsafeEgressIP(ip)) {
 				continue
 			}
 			conn, dialErr := dialer.DialContext(ctx, network, net.JoinHostPort(ip.String(), port))
@@ -249,37 +331,48 @@ func remoteMCPDialContext(ctx context.Context, network, address string) (net.Con
 		}
 		return nil, errors.New("remote MCP could not connect to an approved address")
 	}
-	if !remoteMCPLoopbackContext(ctx) {
-		addresses, err := lookupRemoteMCPIPs(ctx, host)
-		if err != nil {
-			return nil, err
-		}
-		if len(addresses) == 0 {
-			return nil, errors.New("remote MCP destination has no addresses")
-		}
-		for _, ip := range addresses {
-			if remoteMCPPrivateIP(ip) {
-				return nil, errors.New("remote MCP destination resolves to a private address")
-			}
-		}
+	if lookup == nil {
+		return nil, errors.New("remote MCP destination resolver is unavailable")
 	}
-	conn, err := dialer.DialContext(ctx, network, net.JoinHostPort(host, port))
+	addresses, err := lookup(ctx, host)
 	if err != nil {
 		return nil, err
 	}
-	if remoteMCPLoopbackContext(ctx) {
+	if len(addresses) == 0 {
+		return nil, errors.New("remote MCP destination has no addresses")
+	}
+	allowLoopback := remoteMCPLoopbackContext(ctx)
+	for _, ip := range addresses {
+		if ip == nil || (allowLoopback && !ip.IsLoopback()) {
+			return nil, errors.New("remote MCP loopback destination resolves outside loopback")
+		}
+		if !allowLoopback && unsafeEgressIP(ip) {
+			return nil, errors.New("remote MCP destination resolves to a private address")
+		}
+	}
+	var lastErr error
+	for _, ip := range addresses {
+		if network == "tcp4" && ip.To4() == nil || network == "tcp6" && ip.To4() != nil {
+			continue
+		}
+		conn, dialErr := dialer.DialContext(ctx, network, net.JoinHostPort(ip.String(), port))
+		if dialErr != nil {
+			lastErr = dialErr
+			continue
+		}
+		remote, _, splitErr := net.SplitHostPort(conn.RemoteAddr().String())
+		connected := net.ParseIP(strings.Trim(remote, "[]"))
+		if splitErr != nil || connected == nil || !connected.Equal(ip) || (allowLoopback && !connected.IsLoopback()) || (!allowLoopback && unsafeEgressIP(connected)) {
+			_ = conn.Close()
+			lastErr = errors.New("remote MCP connected address was not approved")
+			continue
+		}
 		return conn, nil
 	}
-	remote, _, splitErr := net.SplitHostPort(conn.RemoteAddr().String())
-	if splitErr != nil {
-		_ = conn.Close()
-		return nil, errors.New("remote MCP connected address is invalid")
+	if lastErr != nil {
+		return nil, lastErr
 	}
-	if ip := net.ParseIP(strings.Trim(remote, "[]")); ip != nil && remoteMCPPrivateIP(ip) {
-		_ = conn.Close()
-		return nil, errors.New("remote MCP destination connected to a private address")
-	}
-	return conn, nil
+	return nil, errors.New("remote MCP has no address for requested network")
 }
 
 func remoteMCPLoopbackContext(ctx context.Context) bool {
@@ -287,9 +380,7 @@ func remoteMCPLoopbackContext(ctx context.Context) bool {
 	return value
 }
 
-func remoteMCPPrivateIP(ip net.IP) bool {
-	return ip.IsLoopback() || ip.IsUnspecified() || ip.IsPrivate() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() || ip.IsMulticast()
-}
+func remoteMCPPrivateIP(ip net.IP) bool { return unsafeEgressIP(ip) } //nolint:unused // compatibility/security surface retained for future adapter wiring
 
 func remoteMCPContainsIP(values []net.IP, wanted net.IP) bool {
 	for _, value := range values {
@@ -316,7 +407,7 @@ func resolveRemoteMCPDestination(ctx context.Context, parsed *url.URL) ([]net.IP
 	}
 	approved := make([]net.IP, 0, len(addresses))
 	for _, address := range addresses {
-		if remoteMCPPrivateIP(address) {
+		if unsafeEgressIP(address) {
 			return nil, errors.New("remote MCP host resolved to a private or link-local address")
 		}
 		approved = append(approved, append(net.IP(nil), address...))
@@ -343,7 +434,9 @@ func (m *RemoteMCPManager) List() []RemoteMCPServerConfig {
 	defer m.mu.RUnlock()
 	result := make([]RemoteMCPServerConfig, 0, len(m.servers))
 	for _, config := range m.servers {
+		config.URL = providerCatalogOrigin(config.URL)
 		config.AllowedMethods = append([]string(nil), config.AllowedMethods...)
+		config.HeadersEnv = mapsClone(config.HeadersEnv)
 		result = append(result, config)
 	}
 	return result
@@ -355,11 +448,13 @@ func (m *RemoteMCPManager) ListForOrganization(organizationID string) []RemoteMC
 	defer m.mu.RUnlock()
 	result := make([]RemoteMCPServerConfig, 0)
 	for _, config := range m.servers {
-		if config.OrganizationID != "" && !pluginOwnedByOrganization(config.OrganizationID, organizationID) {
+		if !pluginAccessibleByOrganization(config.OrganizationID, organizationID) {
 			continue
 		}
 		copy := config
-		copy.HeadersEnv = mapsClone(config.HeadersEnv)
+		copy.URL = providerCatalogOrigin(config.URL)
+		copy.TokenEnv = ""
+		copy.HeadersEnv = nil
 		copy.AllowedMethods = append([]string(nil), config.AllowedMethods...)
 		result = append(result, copy)
 	}
@@ -385,6 +480,9 @@ func (m *RemoteMCPManager) SetEnabled(id string, enabled bool) error {
 	if !ok {
 		return fmt.Errorf("remote MCP server %q is not registered", id)
 	}
+	if !pluginGlobal(config.OrganizationID) {
+		return ErrPluginOrganizationScope
+	}
 	config.Disabled = !enabled
 	m.servers[id] = config
 	if err := m.persistLocked(); err != nil {
@@ -401,7 +499,7 @@ func (m *RemoteMCPManager) SetEnabledForOrganization(organizationID, id string, 
 	id = strings.TrimSpace(id)
 	config, ok := m.servers[id]
 	if !ok {
-		return fmt.Errorf("remote MCP server %q is not registered", id)
+		return ErrPluginNotFound
 	}
 	if !pluginOwnedByOrganization(config.OrganizationID, strings.TrimSpace(organizationID)) {
 		return ErrPluginOrganizationScope
@@ -424,6 +522,9 @@ func (m *RemoteMCPManager) Remove(id string) error {
 	if !ok {
 		return fmt.Errorf("remote MCP server %q is not registered", id)
 	}
+	if !pluginGlobal(config.OrganizationID) {
+		return ErrPluginOrganizationScope
+	}
 	delete(m.servers, id)
 	if err := m.persistLocked(); err != nil {
 		m.servers[id] = config
@@ -438,7 +539,7 @@ func (m *RemoteMCPManager) RemoveForOrganization(organizationID, id string) erro
 	id = strings.TrimSpace(id)
 	config, ok := m.servers[id]
 	if !ok {
-		return fmt.Errorf("remote MCP server %q is not registered", id)
+		return ErrPluginNotFound
 	}
 	if !pluginOwnedByOrganization(config.OrganizationID, strings.TrimSpace(organizationID)) {
 		return ErrPluginOrganizationScope
@@ -452,10 +553,25 @@ func (m *RemoteMCPManager) RemoveForOrganization(organizationID, id string) erro
 }
 
 func (m *RemoteMCPManager) Call(ctx context.Context, serverID, method string, params any) (json.RawMessage, error) {
-	return m.CallForOrganization(ctx, "", serverID, method, params)
+	return nil, ErrPluginOrganizationScope
+}
+
+// CallGlobal is reserved for explicitly configured ownerless servers used by
+// the trusted single-user/local runtime. Organization-scoped requests must use
+// CallForOrganization and can access only organization-owned servers.
+func (m *RemoteMCPManager) CallGlobal(ctx context.Context, serverID, method string, params any) (json.RawMessage, error) {
+	return m.call(ctx, "", serverID, method, params, true)
 }
 
 func (m *RemoteMCPManager) CallForOrganization(ctx context.Context, organizationID, serverID, method string, params any) (json.RawMessage, error) {
+	organizationID = strings.TrimSpace(organizationID)
+	if organizationID == "" {
+		return nil, ErrPluginOrganizationScope
+	}
+	return m.call(ctx, organizationID, serverID, method, params, false)
+}
+
+func (m *RemoteMCPManager) call(ctx context.Context, organizationID, serverID, method string, params any, global bool) (json.RawMessage, error) {
 	m.mu.RLock()
 	config, ok := m.servers[strings.TrimSpace(serverID)]
 	client := m.client
@@ -463,7 +579,11 @@ func (m *RemoteMCPManager) CallForOrganization(ctx context.Context, organization
 	if !ok {
 		return nil, fmt.Errorf("remote MCP server %q is not registered", serverID)
 	}
-	if !pluginAccessibleByOrganization(config.OrganizationID, strings.TrimSpace(organizationID)) {
+	if global {
+		if strings.TrimSpace(config.OrganizationID) != "" {
+			return nil, ErrPluginOrganizationScope
+		}
+	} else if !pluginOwnedByOrganization(config.OrganizationID, organizationID) {
 		return nil, ErrPluginOrganizationScope
 	}
 	if config.Disabled {
@@ -476,6 +596,17 @@ func (m *RemoteMCPManager) CallForOrganization(ctx context.Context, organization
 	if len(config.AllowedMethods) > 0 && !remoteMCPContains(config.AllowedMethods, method) {
 		return nil, fmt.Errorf("remote MCP method %q is not allowlisted", method)
 	}
+	if err := validateOutboundPayload(map[string]any{"server_id": serverID, "method": method, "params": params}); err != nil {
+		return nil, err
+	}
+	headerValues := make(map[string]string, len(config.HeadersEnv))
+	for header, envName := range config.HeadersEnv {
+		value, ok := os.LookupEnv(envName)
+		if !ok || strings.TrimSpace(value) == "" {
+			return nil, fmt.Errorf("remote MCP header credential %q is unavailable", header)
+		}
+		headerValues[header] = strings.TrimSpace(value)
+	}
 	requestID := atomic.AddInt64(&m.nextID, 1)
 	requestBody, err := json.Marshal(map[string]any{"jsonrpc": "2.0", "id": requestID, "method": method, "params": params})
 	if err != nil {
@@ -487,6 +618,10 @@ func (m *RemoteMCPManager) CallForOrganization(ctx context.Context, organization
 	}
 	requestContext, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
+	token, tokenErr := m.accessToken(requestContext, serverID, config)
+	if tokenErr != nil {
+		return nil, tokenErr
+	}
 	parsedURL, err := url.Parse(config.URL)
 	if err != nil {
 		return nil, err
@@ -505,24 +640,29 @@ func (m *RemoteMCPManager) CallForOrganization(ctx context.Context, organization
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json, text/event-stream")
-	if config.TokenEnv != "" {
-		if token, ok := os.LookupEnv(config.TokenEnv); ok && strings.TrimSpace(token) != "" {
-			req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("MCP-Protocol-Version", "2025-03-26")
+	if session, hasSession := m.latestSession(serverID, organizationID); hasSession {
+		req.Header.Set("Mcp-Session-Id", session.ID)
+		if session.LastEventID != "" {
+			req.Header.Set("Last-Event-ID", session.LastEventID)
 		}
 	}
-	for header, envName := range config.HeadersEnv {
-		if value, ok := os.LookupEnv(envName); ok && strings.TrimSpace(value) != "" {
-			req.Header.Set(header, value)
-		}
+	if token != "" {
+		req.Header.Set("Authorization", "Bearer "+token)
+	}
+	for header, value := range headerValues {
+		req.Header.Set(header, value)
 	}
 	response, err := client.Do(req)
 	if err != nil {
-		return nil, err
+		return nil, errors.New("remote MCP provider request failed")
 	}
 	defer response.Body.Close()
+	if sessionID := response.Header.Get("Mcp-Session-Id"); sessionID != "" {
+		m.rememberSession(serverID, organizationID, sessionID, time.Now().UTC().Add(30*time.Minute))
+	}
 	if response.StatusCode < 200 || response.StatusCode >= 300 {
-		body, _ := io.ReadAll(io.LimitReader(response.Body, 16<<10))
-		return nil, fmt.Errorf("remote MCP returned %s: %s", response.Status, strings.TrimSpace(string(body)))
+		return nil, fmt.Errorf("remote MCP provider returned HTTP status %d", response.StatusCode)
 	}
 	stream := strings.Contains(strings.ToLower(response.Header.Get("Content-Type")), "text/event-stream")
 	payload, err := readRemoteMCPResponse(response.Body, stream, requestID)
@@ -548,8 +688,14 @@ func readRemoteMCPResponse(body io.Reader, stream bool, requestID int64) (json.R
 	scanner := bufio.NewScanner(body)
 	scanner.Buffer(make([]byte, 4096), 1<<20)
 	var data strings.Builder
+	totalBytes := 0
 	for scanner.Scan() {
-		line := scanner.Text()
+		lineBytes := scanner.Bytes()
+		totalBytes += len(lineBytes) + 1 // include the line terminator consumed by Scanner
+		if totalBytes > maxPayload {
+			return nil, errors.New("remote MCP SSE response exceeded limit")
+		}
+		line := string(lineBytes)
 		if line == "" {
 			if data.Len() == 0 {
 				continue
@@ -603,12 +749,12 @@ func decodeRemoteMCPEnvelope(payload []byte, requestID int64) (json.RawMessage, 
 		return nil, errRemoteMCPIDMismatch
 	}
 	if envelope.Error != nil {
-		return nil, fmt.Errorf("remote MCP error: %s", envelope.Error.Message)
+		return nil, errors.New("remote MCP provider returned an error")
 	}
 	if len(envelope.Result) == 0 {
 		return nil, errors.New("remote MCP response has no result")
 	}
-	return envelope.Result, nil
+	return sanitizeProviderJSON(envelope.Result)
 }
 
 func remoteMCPResponseMatches(raw json.RawMessage, expected int64) bool {
@@ -663,7 +809,13 @@ func (t remoteMCPCallTool) Execute(ctx context.Context, toolContext ToolContext,
 	if t.manager == nil {
 		return ToolResult{}, errors.New("remote MCP manager is unavailable")
 	}
-	result, err := t.manager.CallForOrganization(ctx, toolContext.OrganizationID, stringInput(input, "server_id", ""), stringInput(input, "method", ""), input["params"])
+	var result json.RawMessage
+	var err error
+	if strings.TrimSpace(toolContext.OrganizationID) == "" {
+		result, err = t.manager.CallGlobal(ctx, stringInput(input, "server_id", ""), stringInput(input, "method", ""), input["params"])
+	} else {
+		result, err = t.manager.CallForOrganization(ctx, toolContext.OrganizationID, stringInput(input, "server_id", ""), stringInput(input, "method", ""), input["params"])
+	}
 	if err != nil {
 		return ToolResult{}, err
 	}

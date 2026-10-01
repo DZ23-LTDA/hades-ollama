@@ -5,6 +5,11 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { routeTree } from "./routeTree.gen";
 import { fetchUser } from "./api";
 import { StreamingProvider } from "./contexts/StreamingProvider";
+import { bootstrapTheme } from "./lib/theme";
+
+// Aplica a preferência de tema salva (Claro/Escuro/Automático) antes do render.
+bootstrapTheme();
+import { RouteErrorFallback } from "./components/RouteErrorFallback";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -26,6 +31,7 @@ fetchUser().then((userData) => {
 const router = createRouter({
   routeTree,
   context: { queryClient },
+  defaultErrorComponent: RouteErrorFallback,
 });
 
 // Register the router instance for type safety

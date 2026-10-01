@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"reflect"
 	"sort"
 	"strings"
 	"time"
@@ -15,120 +16,83 @@ import (
 )
 
 type PostgresStore struct {
-	db             *sql.DB
-	timeout        time.Duration
-	organizationID string
-	systemAccess   bool
+	db               *sql.DB
+	timeout          time.Duration
+	organizationID   string
+	tenantContextKey []byte
+	tenantKeyVersion int
+	requestContext   context.Context //nolint:containedctx // immutable tenant view retains request cancellation
 }
 
-var ErrPostgresTenantRequiresNonSuperuser = errors.New("tenant-scoped postgres store requires a non-superuser role")
+var (
+	ErrPostgresTenantRequiresNonSuperuser = errors.New("tenant-scoped postgres store requires a non-superuser role")
+	ErrPostgresTenantIsolationUnavailable = errors.New("PostgreSQL agent storage requires the signed-tenant runtime and separate migrator configuration")
+)
 
-func OpenPostgresStore(ctx context.Context, dsn string) (*PostgresStore, error) {
-	if strings.TrimSpace(dsn) == "" {
-		return nil, errors.New("postgres DSN is required")
-	}
-	db, err := sql.Open("pgx", dsn)
-	if err != nil {
-		return nil, err
-	}
-	store := &PostgresStore{db: db, timeout: 10 * time.Second, systemAccess: true}
-	pingCtx, cancel := context.WithTimeout(ctx, store.timeout)
-	defer cancel()
-	if err := db.PingContext(pingCtx); err != nil {
-		_ = db.Close()
-		return nil, err
-	}
-	// PostgreSQL bypasses Row Level Security for superusers and BYPASSRLS roles,
-	// even with FORCE ROW LEVEL SECURITY — which would silently void the
-	// per-tenant isolation this store depends on. Refuse to run as such a role
-	// unless the operator explicitly opts out (e.g. a single-tenant deployment).
-	if os.Getenv("OLLAMA_AGENT_ALLOW_SUPERUSER_DB") != "1" {
-		var privileged bool
-		if err := db.QueryRowContext(pingCtx, `SELECT rolsuper OR rolbypassrls FROM pg_roles WHERE rolname = current_user`).Scan(&privileged); err != nil {
-			_ = db.Close()
-			return nil, fmt.Errorf("verify database role privileges: %w", err)
-		}
-		if privileged {
-			_ = db.Close()
-			return nil, errors.New("agent database role must not be a superuser or have BYPASSRLS (it silently disables tenant RLS); use a NOSUPERUSER NOBYPASSRLS role, or set OLLAMA_AGENT_ALLOW_SUPERUSER_DB=1 to override")
-		}
-	}
-	if err := store.Migrate(ctx); err != nil {
-		_ = db.Close()
-		return nil, err
-	}
-	return store, nil
-}
-
-// WithOrganization returns a view that sets the PostgreSQL tenant context for every transaction.
-// It shares the connection pool but never mutates the parent store.
+// WithOrganization returns a tenant-only view. The view shares the runtime
+// connection pool but carries an immutable organization scope.
 func (s *PostgresStore) WithOrganization(organizationID string) *PostgresStore {
+	return s.WithOrganizationContext(context.Background(), organizationID)
+}
+
+// WithOrganizationContext binds database operations to the lifetime of one
+// request or background operation while retaining the immutable tenant scope.
+func (s *PostgresStore) WithOrganizationContext(ctx context.Context, organizationID string) *PostgresStore {
 	if s == nil {
 		return nil
 	}
-	return &PostgresStore{db: s.db, timeout: s.timeout, organizationID: strings.TrimSpace(organizationID), systemAccess: false}
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	return &PostgresStore{db: s.db, timeout: s.timeout, organizationID: strings.TrimSpace(organizationID), tenantContextKey: s.tenantContextKey, tenantKeyVersion: s.tenantKeyVersion, requestContext: ctx}
 }
 
-func (s *PostgresStore) Migrate(ctx context.Context) error {
+func (s *PostgresStore) begin(ctx context.Context) (*sql.Tx, context.Context, context.CancelFunc, error) {
 	if s == nil || s.db == nil {
-		return errors.New("postgres store is not initialized")
+		return nil, nil, nil, errors.New("postgres store is not initialized")
 	}
-	statements := []string{
-		`CREATE TABLE IF NOT EXISTS agent_missions (id TEXT PRIMARY KEY, version BIGINT NOT NULL, objective TEXT NOT NULL, model TEXT NOT NULL DEFAULT '', workspace TEXT NOT NULL DEFAULT '', project_id TEXT NOT NULL DEFAULT '', organization_id TEXT NOT NULL DEFAULT '', auto_run BOOLEAN NOT NULL DEFAULT FALSE, state TEXT NOT NULL, plan JSONB NOT NULL, approvals JSONB NOT NULL, artifacts JSONB NOT NULL, last_error TEXT NOT NULL DEFAULT '', created_at TIMESTAMPTZ NOT NULL, updated_at TIMESTAMPTZ NOT NULL, completed_at TIMESTAMPTZ NULL)`,
-		`ALTER TABLE agent_missions ADD COLUMN IF NOT EXISTS organization_id TEXT NOT NULL DEFAULT ''`,
-		`CREATE TABLE IF NOT EXISTS agent_events (id TEXT PRIMARY KEY, mission_id TEXT NOT NULL, organization_id TEXT NOT NULL DEFAULT '', type TEXT NOT NULL, step_id TEXT NOT NULL DEFAULT '', payload JSONB NULL, created_at TIMESTAMPTZ NOT NULL)`,
-		`ALTER TABLE agent_events ADD COLUMN IF NOT EXISTS organization_id TEXT NOT NULL DEFAULT ''`,
-		`CREATE INDEX IF NOT EXISTS agent_events_mission_created_idx ON agent_events (mission_id, created_at, id)`,
-		`CREATE INDEX IF NOT EXISTS agent_missions_organization_updated_idx ON agent_missions (organization_id, updated_at, id)`,
-		`ALTER TABLE agent_missions FORCE ROW LEVEL SECURITY`,
-		`ALTER TABLE agent_events FORCE ROW LEVEL SECURITY`,
-		`DROP POLICY IF EXISTS agent_missions_tenant_policy ON agent_missions`,
-		`DROP POLICY IF EXISTS agent_events_tenant_policy ON agent_events`,
-		`ALTER TABLE agent_missions ENABLE ROW LEVEL SECURITY`,
-		`ALTER TABLE agent_events ENABLE ROW LEVEL SECURITY`,
-		`CREATE POLICY agent_missions_tenant_policy ON agent_missions USING (current_setting('app.system_access', true) = '1' OR (organization_id <> '' AND organization_id = current_setting('app.current_organization_id', true))) WITH CHECK (current_setting('app.system_access', true) = '1' OR (organization_id <> '' AND organization_id = current_setting('app.current_organization_id', true)))`,
-		`CREATE POLICY agent_events_tenant_policy ON agent_events USING (current_setting('app.system_access', true) = '1' OR (organization_id <> '' AND organization_id = current_setting('app.current_organization_id', true))) WITH CHECK (current_setting('app.system_access', true) = '1' OR (organization_id <> '' AND organization_id = current_setting('app.current_organization_id', true)))`,
+	if ctx == nil {
+		ctx = s.requestContext
 	}
-	for _, statement := range statements {
-		if _, err := s.db.ExecContext(ctx, statement); err != nil {
-			return err
-		}
+	if ctx == nil {
+		ctx = context.Background()
 	}
-	return nil
-}
-
-func (s *PostgresStore) begin(ctx context.Context) (*sql.Tx, error) {
-	if s == nil || s.db == nil {
-		return nil, errors.New("postgres store is not initialized")
+	if strings.TrimSpace(s.organizationID) == "" {
+		return nil, nil, nil, errors.New("organization-scoped postgres store requires an organization id")
 	}
-	tx, err := s.db.BeginTx(ctx, nil)
+	if err := validatePostgresOrganizationID(s.organizationID); err != nil {
+		return nil, nil, nil, err
+	}
+	timeout := s.timeout
+	if timeout <= 0 {
+		timeout = 10 * time.Second
+	}
+	operationCtx, cancel := context.WithTimeout(ctx, timeout)
+	tx, err := s.db.BeginTx(operationCtx, nil)
 	if err != nil {
-		return nil, err
+		cancel()
+		return nil, nil, nil, err
 	}
-	if !s.systemAccess {
-		var isSuperuser bool
-		if err := tx.QueryRowContext(ctx, `SELECT usesuper FROM pg_user WHERE usename = current_user`).Scan(&isSuperuser); err != nil {
-			_ = tx.Rollback()
-			return nil, err
-		}
-		if isSuperuser {
-			_ = tx.Rollback()
-			return nil, ErrPostgresTenantRequiresNonSuperuser
-		}
-	}
-	org := s.organizationID
-	if _, err := tx.ExecContext(ctx, `SELECT set_config('app.current_organization_id', $1, true), set_config('app.system_access', $2, true)`, org, boolString(s.systemAccess)); err != nil {
+	if _, err := tx.ExecContext(operationCtx, `SET LOCAL search_path = pg_catalog, public`); err != nil {
 		_ = tx.Rollback()
-		return nil, err
+		cancel()
+		return nil, nil, nil, fmt.Errorf("pin PostgreSQL tenant transaction search path: %w", err)
 	}
-	return tx, nil
-}
-
-func boolString(value bool) string {
-	if value {
-		return "1"
+	if err := verifyPostgresTenantSecurityShape(operationCtx, tx); err != nil {
+		_ = tx.Rollback()
+		cancel()
+		return nil, nil, nil, fmt.Errorf("%w: %v", ErrPostgresTenantSecurityShape, err)
 	}
-	return "0"
+	tenantContext, err := s.signedTenantContext(s.organizationID, time.Now())
+	if err == nil {
+		_, err = tx.ExecContext(operationCtx, `SELECT set_config('app.tenant_context', $1, true)`, tenantContext)
+	}
+	if err != nil {
+		_ = tx.Rollback()
+		cancel()
+		return nil, nil, nil, err
+	}
+	return tx, operationCtx, cancel, nil
 }
 
 func (s *PostgresStore) Close() error {
@@ -139,30 +103,41 @@ func (s *PostgresStore) Close() error {
 }
 
 func (s *PostgresStore) GetMission(id string) (Mission, error) {
-	tx, err := s.begin(context.Background())
-	if err != nil {
-		return Mission{}, err
-	}
-	defer tx.Rollback()
-	mission, err := s.getMissionTx(tx, id)
-	if err != nil {
-		return Mission{}, err
-	}
-	if !s.systemAccess && mission.OrganizationID != s.organizationID {
+	if !validSnapshotID(id) {
 		return Mission{}, os.ErrNotExist
+	}
+	tx, operationCtx, cancel, err := s.begin(s.requestContext)
+	if err != nil {
+		return Mission{}, err
+	}
+	defer cancel()
+	defer tx.Rollback()
+	mission, err := s.getMissionTx(operationCtx, tx, id)
+	if err != nil {
+		return Mission{}, err
+	}
+	if mission.OrganizationID != s.organizationID {
+		return Mission{}, os.ErrNotExist
+	}
+	mission, err = scrubMissionDLPInTransaction(operationCtx, tx, mission)
+	if err != nil {
+		return Mission{}, err
 	}
 	return mission, tx.Commit()
 }
 
-func (s *PostgresStore) getMissionTx(tx *sql.Tx, id string) (Mission, error) {
+func (s *PostgresStore) getMissionTx(ctx context.Context, tx *sql.Tx, id string) (Mission, error) {
 	var mission Mission
-	var plan, approvals, artifacts []byte
+	var capabilities, plan, approvals, artifacts []byte
 	var completed sql.NullTime
-	err := tx.QueryRow(`SELECT id,version,objective,model,workspace,project_id,organization_id,auto_run,state,plan,approvals,artifacts,last_error,created_at,updated_at,completed_at FROM agent_missions WHERE id=$1`, strings.TrimSpace(id)).Scan(&mission.ID, &mission.Version, &mission.Objective, &mission.Model, &mission.Workspace, &mission.ProjectID, &mission.OrganizationID, &mission.AutoRun, &mission.State, &plan, &approvals, &artifacts, &mission.LastError, &mission.CreatedAt, &mission.UpdatedAt, &completed)
+	err := tx.QueryRowContext(ctx, `SELECT id,version,objective,provider,model,workspace,workspace_identity,project_id,organization_id,capabilities,workspace_isolated,workspace_snapshot_id,workspace_snapshot_sha256,auto_run,state,plan,approvals,artifacts,last_error,created_at,updated_at,completed_at FROM public.agent_missions WHERE id=$1 AND ($2 = '' OR organization_id=$2)`, id, s.organizationID).Scan(&mission.ID, &mission.Version, &mission.Objective, &mission.Provider, &mission.Model, &mission.Workspace, &mission.WorkspaceIdentity, &mission.ProjectID, &mission.OrganizationID, &capabilities, &mission.WorkspaceIsolated, &mission.WorkspaceSnapshotID, &mission.WorkspaceSnapshotSHA256, &mission.AutoRun, &mission.State, &plan, &approvals, &artifacts, &mission.LastError, &mission.CreatedAt, &mission.UpdatedAt, &completed)
 	if errors.Is(err, sql.ErrNoRows) {
 		return Mission{}, os.ErrNotExist
 	}
 	if err != nil {
+		return Mission{}, err
+	}
+	if err = json.Unmarshal(capabilities, &mission.Capabilities); err != nil {
 		return Mission{}, err
 	}
 	if err = json.Unmarshal(plan, &mission.Plan); err != nil {
@@ -180,31 +155,71 @@ func (s *PostgresStore) getMissionTx(tx *sql.Tx, id string) (Mission, error) {
 	return mission, nil
 }
 
+func scrubMissionDLPInTransaction(ctx context.Context, tx *sql.Tx, mission Mission) (Mission, error) {
+	safe := redactMissionForPersistence(mission)
+	if samePersistedMission(mission, safe) {
+		return safe, nil
+	}
+	plan, err := json.Marshal(safe.Plan)
+	if err != nil {
+		return Mission{}, err
+	}
+	approvals, err := json.Marshal(safe.Approvals)
+	if err != nil {
+		return Mission{}, err
+	}
+	artifacts, err := json.Marshal(safe.Artifacts)
+	if err != nil {
+		return Mission{}, err
+	}
+	result, err := tx.ExecContext(ctx, `UPDATE public.agent_missions SET objective=$1,last_error=$2,plan=$3,approvals=$4,artifacts=$5 WHERE id=$6 AND version=$7 AND organization_id=$8`, safe.Objective, safe.LastError, plan, approvals, artifacts, mission.ID, mission.Version, mission.OrganizationID)
+	if err != nil {
+		return Mission{}, err
+	}
+	if rows, err := result.RowsAffected(); err != nil {
+		return Mission{}, err
+	} else if rows != 1 {
+		return Mission{}, ErrMissionVersionConflict
+	}
+	return safe, nil
+}
+
 func (s *PostgresStore) ListMissions() ([]Mission, error) {
-	tx, err := s.begin(context.Background())
+	tx, operationCtx, cancel, err := s.begin(s.requestContext)
 	if err != nil {
 		return nil, err
 	}
+	defer cancel()
 	defer tx.Rollback()
-	rows, err := tx.Query(`SELECT id FROM agent_missions WHERE ($1 = '' OR organization_id = $1) ORDER BY updated_at ASC,id ASC`, s.organizationID)
+	rows, err := tx.QueryContext(operationCtx, `SELECT id FROM public.agent_missions WHERE ($1 = '' OR organization_id = $1) ORDER BY updated_at ASC,id ASC`, s.organizationID)
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
-	var missions []Mission
+	var ids []string
 	for rows.Next() {
 		var id string
 		if err := rows.Scan(&id); err != nil {
 			return nil, err
 		}
-		mission, err := s.getMissionTx(tx, id)
+		ids = append(ids, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	var missions []Mission
+	for _, id := range ids {
+		mission, err := s.getMissionTx(operationCtx, tx, id)
+		if err != nil {
+			return nil, err
+		}
+		mission, err = scrubMissionDLPInTransaction(operationCtx, tx, mission)
 		if err != nil {
 			return nil, err
 		}
 		missions = append(missions, mission)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
 	}
 	if err := tx.Commit(); err != nil {
 		return nil, err
@@ -214,36 +229,20 @@ func (s *PostgresStore) ListMissions() ([]Mission, error) {
 }
 
 func (s *PostgresStore) PutMission(mission Mission) error {
-	if strings.TrimSpace(mission.ID) == "" {
-		return errors.New("mission id is required")
+	if !validSnapshotID(mission.ID) {
+		return errors.New("valid mission id is required")
 	}
-	if !s.systemAccess && strings.TrimSpace(mission.OrganizationID) != s.organizationID {
+	if strings.TrimSpace(mission.OrganizationID) != s.organizationID {
 		return os.ErrPermission
 	}
-	mission = redactMissionForPersistence(mission)
-	plan, _ := json.Marshal(mission.Plan)
-	approvals, _ := json.Marshal(mission.Approvals)
-	artifacts, _ := json.Marshal(mission.Artifacts)
-	tx, err := s.begin(context.Background())
+	mission, err := normalizeMissionForPersistence(mission)
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback()
-	_, err = tx.Exec(`INSERT INTO agent_missions (id,version,objective,model,workspace,project_id,organization_id,auto_run,state,plan,approvals,artifacts,last_error,created_at,updated_at,completed_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16) ON CONFLICT (id) DO UPDATE SET version=EXCLUDED.version,objective=EXCLUDED.objective,model=EXCLUDED.model,workspace=EXCLUDED.workspace,project_id=EXCLUDED.project_id,organization_id=EXCLUDED.organization_id,auto_run=EXCLUDED.auto_run,state=EXCLUDED.state,plan=EXCLUDED.plan,approvals=EXCLUDED.approvals,artifacts=EXCLUDED.artifacts,last_error=EXCLUDED.last_error,updated_at=EXCLUDED.updated_at,completed_at=EXCLUDED.completed_at`, mission.ID, mission.Version, mission.Objective, mission.Model, mission.Workspace, mission.ProjectID, mission.OrganizationID, mission.AutoRun, mission.State, plan, approvals, artifacts, mission.LastError, mission.CreatedAt, mission.UpdatedAt, mission.CompletedAt)
+	capabilities, err := json.Marshal(mission.Capabilities)
 	if err != nil {
 		return err
 	}
-	return tx.Commit()
-}
-
-func (s *PostgresStore) PutMissionIfVersion(mission Mission, expectedVersion int64) error {
-	if strings.TrimSpace(mission.ID) == "" {
-		return errors.New("mission id is required")
-	}
-	if !s.systemAccess && strings.TrimSpace(mission.OrganizationID) != s.organizationID {
-		return os.ErrPermission
-	}
-	mission = redactMissionForPersistence(mission)
 	plan, err := json.Marshal(mission.Plan)
 	if err != nil {
 		return err
@@ -256,12 +255,141 @@ func (s *PostgresStore) PutMissionIfVersion(mission Mission, expectedVersion int
 	if err != nil {
 		return err
 	}
-	tx, err := s.begin(context.Background())
+	tx, operationCtx, cancel, err := s.begin(s.requestContext)
 	if err != nil {
 		return err
 	}
+	defer cancel()
 	defer tx.Rollback()
-	result, err := tx.Exec(`UPDATE agent_missions SET version=$1,objective=$2,model=$3,workspace=$4,project_id=$5,organization_id=$6,auto_run=$7,state=$8,plan=$9,approvals=$10,artifacts=$11,last_error=$12,updated_at=$13,completed_at=$14 WHERE id=$15 AND version=$16`, mission.Version, mission.Objective, mission.Model, mission.Workspace, mission.ProjectID, mission.OrganizationID, mission.AutoRun, mission.State, plan, approvals, artifacts, mission.LastError, mission.UpdatedAt, mission.CompletedAt, mission.ID, expectedVersion)
+	var currentVersion int64
+	var currentOrganization string
+	err = tx.QueryRowContext(operationCtx, `SELECT version,organization_id FROM public.agent_missions WHERE id=$1 FOR UPDATE`, mission.ID).Scan(&currentVersion, &currentOrganization)
+	if errors.Is(err, sql.ErrNoRows) {
+		result, insertErr := tx.ExecContext(operationCtx, `INSERT INTO public.agent_missions (id,version,objective,provider,model,workspace,workspace_identity,project_id,organization_id,capabilities,workspace_isolated,workspace_snapshot_id,workspace_snapshot_sha256,auto_run,state,plan,approvals,artifacts,last_error,created_at,updated_at,completed_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22) ON CONFLICT (id) DO NOTHING`, mission.ID, mission.Version, mission.Objective, mission.Provider, mission.Model, mission.Workspace, mission.WorkspaceIdentity, mission.ProjectID, mission.OrganizationID, capabilities, mission.WorkspaceIsolated, mission.WorkspaceSnapshotID, mission.WorkspaceSnapshotSHA256, mission.AutoRun, mission.State, plan, approvals, artifacts, mission.LastError, mission.CreatedAt, mission.UpdatedAt, mission.CompletedAt)
+		if insertErr != nil {
+			return insertErr
+		}
+		if rows, rowsErr := result.RowsAffected(); rowsErr != nil {
+			return rowsErr
+		} else if rows != 1 {
+			return ErrMissionVersionConflict
+		}
+		return tx.Commit()
+	}
+	if err != nil {
+		return err
+	}
+	if currentOrganization != "" && currentOrganization != mission.OrganizationID {
+		return os.ErrPermission
+	}
+	if !validMissionVersionTransition(currentVersion, mission.Version) {
+		return ErrMissionVersionConflict
+	}
+	if mission.Version == currentVersion {
+		current, readErr := s.getMissionTx(operationCtx, tx, mission.ID)
+		if readErr != nil {
+			return readErr
+		}
+		if !samePersistedMission(redactMissionForPersistence(current), mission) {
+			return ErrMissionVersionConflict
+		}
+	}
+	result, err := tx.ExecContext(operationCtx, `UPDATE public.agent_missions SET version=$1,objective=$2,provider=$3,model=$4,workspace=$5,workspace_identity=$6,project_id=$7,organization_id=$8,capabilities=$9,workspace_isolated=$10,workspace_snapshot_id=$11,workspace_snapshot_sha256=$12,auto_run=$13,state=$14,plan=$15,approvals=$16,artifacts=$17,last_error=$18,updated_at=$19,completed_at=$20 WHERE id=$21 AND version=$22 AND organization_id=$23`, mission.Version, mission.Objective, mission.Provider, mission.Model, mission.Workspace, mission.WorkspaceIdentity, mission.ProjectID, mission.OrganizationID, capabilities, mission.WorkspaceIsolated, mission.WorkspaceSnapshotID, mission.WorkspaceSnapshotSHA256, mission.AutoRun, mission.State, plan, approvals, artifacts, mission.LastError, mission.UpdatedAt, mission.CompletedAt, mission.ID, currentVersion, currentOrganization)
+	if err != nil {
+		return err
+	}
+	if rows, rowsErr := result.RowsAffected(); rowsErr != nil {
+		return rowsErr
+	} else if rows != 1 {
+		return ErrMissionVersionConflict
+	}
+	return tx.Commit()
+}
+
+func (s *PostgresStore) CreateMission(mission Mission) error {
+	if !validSnapshotID(mission.ID) {
+		return errors.New("valid mission id is required")
+	}
+	if strings.TrimSpace(mission.OrganizationID) != s.organizationID {
+		return os.ErrPermission
+	}
+	mission, err := normalizeMissionForPersistence(mission)
+	if err != nil {
+		return err
+	}
+	capabilities, err := json.Marshal(mission.Capabilities)
+	if err != nil {
+		return err
+	}
+	plan, err := json.Marshal(mission.Plan)
+	if err != nil {
+		return err
+	}
+	approvals, err := json.Marshal(mission.Approvals)
+	if err != nil {
+		return err
+	}
+	artifacts, err := json.Marshal(mission.Artifacts)
+	if err != nil {
+		return err
+	}
+	tx, operationCtx, cancel, err := s.begin(s.requestContext)
+	if err != nil {
+		return err
+	}
+	defer cancel()
+	defer tx.Rollback()
+	result, err := tx.ExecContext(operationCtx, `INSERT INTO public.agent_missions (id,version,objective,provider,model,workspace,workspace_identity,project_id,organization_id,capabilities,workspace_isolated,workspace_snapshot_id,workspace_snapshot_sha256,auto_run,state,plan,approvals,artifacts,last_error,created_at,updated_at,completed_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22) ON CONFLICT (id) DO NOTHING`, mission.ID, mission.Version, mission.Objective, mission.Provider, mission.Model, mission.Workspace, mission.WorkspaceIdentity, mission.ProjectID, mission.OrganizationID, capabilities, mission.WorkspaceIsolated, mission.WorkspaceSnapshotID, mission.WorkspaceSnapshotSHA256, mission.AutoRun, mission.State, plan, approvals, artifacts, mission.LastError, mission.CreatedAt, mission.UpdatedAt, mission.CompletedAt)
+	if err != nil {
+		return err
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rows != 1 {
+		return ErrMissionAlreadyExists
+	}
+	return tx.Commit()
+}
+
+func (s *PostgresStore) PutMissionIfVersion(mission Mission, expectedVersion int64) error {
+	if !validSnapshotID(mission.ID) {
+		return errors.New("valid mission id is required")
+	}
+	if !validMissionVersionAdvance(expectedVersion, mission.Version) {
+		return fmt.Errorf("mission version must advance exactly once from %d", expectedVersion)
+	}
+	if strings.TrimSpace(mission.OrganizationID) != s.organizationID {
+		return os.ErrPermission
+	}
+	mission, err := normalizeMissionForPersistence(mission)
+	if err != nil {
+		return err
+	}
+	capabilities, err := json.Marshal(mission.Capabilities)
+	if err != nil {
+		return err
+	}
+	plan, err := json.Marshal(mission.Plan)
+	if err != nil {
+		return err
+	}
+	approvals, err := json.Marshal(mission.Approvals)
+	if err != nil {
+		return err
+	}
+	artifacts, err := json.Marshal(mission.Artifacts)
+	if err != nil {
+		return err
+	}
+	tx, operationCtx, cancel, err := s.begin(s.requestContext)
+	if err != nil {
+		return err
+	}
+	defer cancel()
+	defer tx.Rollback()
+	result, err := tx.ExecContext(operationCtx, `UPDATE public.agent_missions SET version=$1,objective=$2,provider=$3,model=$4,workspace=$5,workspace_identity=$6,project_id=$7,organization_id=$8,capabilities=$9,workspace_isolated=$10,workspace_snapshot_id=$11,workspace_snapshot_sha256=$12,auto_run=$13,state=$14,plan=$15,approvals=$16,artifacts=$17,last_error=$18,updated_at=$19,completed_at=$20 WHERE id=$21 AND version=$22 AND ($23 = '' OR organization_id=$23)`, mission.Version, mission.Objective, mission.Provider, mission.Model, mission.Workspace, mission.WorkspaceIdentity, mission.ProjectID, mission.OrganizationID, capabilities, mission.WorkspaceIsolated, mission.WorkspaceSnapshotID, mission.WorkspaceSnapshotSHA256, mission.AutoRun, mission.State, plan, approvals, artifacts, mission.LastError, mission.UpdatedAt, mission.CompletedAt, mission.ID, expectedVersion, s.organizationID)
 	if err != nil {
 		return err
 	}
@@ -276,33 +404,64 @@ func (s *PostgresStore) PutMissionIfVersion(mission Mission, expectedVersion int
 }
 
 func (s *PostgresStore) AppendEvent(event Event) error {
-	if event.ID == "" || event.MissionID == "" {
-		return errors.New("event id and mission id are required")
+	if !validSnapshotID(event.ID) || !validSnapshotID(event.MissionID) {
+		return errors.New("valid event and mission ids are required")
 	}
-	if !s.systemAccess && strings.TrimSpace(event.OrganizationID) != s.organizationID {
+	if strings.TrimSpace(event.OrganizationID) != s.organizationID {
 		return os.ErrPermission
 	}
 	event.Payload = RedactValue(event.Payload)
-	payload, _ := json.Marshal(event.Payload)
-	tx, err := s.begin(context.Background())
+	payload, err := json.Marshal(event.Payload)
+	if err != nil {
+		return fmt.Errorf("marshal event payload: %w", err)
+	}
+	tx, operationCtx, cancel, err := s.begin(s.requestContext)
 	if err != nil {
 		return err
 	}
+	defer cancel()
 	defer tx.Rollback()
-	_, err = tx.Exec(`INSERT INTO agent_events (id,mission_id,organization_id,type,step_id,payload,created_at) VALUES ($1,$2,$3,$4,$5,$6,$7) ON CONFLICT (id) DO NOTHING`, event.ID, event.MissionID, event.OrganizationID, event.Type, event.StepID, payload, event.CreatedAt)
+	result, err := tx.ExecContext(operationCtx, `INSERT INTO public.agent_events (id,mission_id,organization_id,type,step_id,payload,created_at)
+		SELECT $1,m.id,m.organization_id,$4,$5,$6,$7 FROM public.agent_missions AS m WHERE m.id=$2 AND m.organization_id=$3
+		ON CONFLICT (id) DO UPDATE SET id=public.agent_events.id
+		WHERE public.agent_events.mission_id=EXCLUDED.mission_id
+		  AND public.agent_events.organization_id=EXCLUDED.organization_id
+		  AND public.agent_events.type=EXCLUDED.type
+		  AND public.agent_events.step_id=EXCLUDED.step_id
+		  AND public.agent_events.payload IS NOT DISTINCT FROM EXCLUDED.payload
+		  AND public.agent_events.created_at=EXCLUDED.created_at`, event.ID, event.MissionID, event.OrganizationID, event.Type, event.StepID, payload, event.CreatedAt)
 	if err != nil {
 		return err
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rows != 1 {
+		var existingID string
+		existingErr := tx.QueryRowContext(operationCtx, `SELECT id FROM public.agent_events WHERE id=$1`, event.ID).Scan(&existingID)
+		if existingErr == nil {
+			return fmt.Errorf("event %s already exists with different content", event.ID)
+		}
+		if !errors.Is(existingErr, sql.ErrNoRows) {
+			return existingErr
+		}
+		return fmt.Errorf("event %s was not inserted: mission is missing/outside the active organization or event ID conflicts", event.ID)
 	}
 	return tx.Commit()
 }
 
 func (s *PostgresStore) ListEvents(missionID string) ([]Event, error) {
-	tx, err := s.begin(context.Background())
+	if !validSnapshotID(missionID) {
+		return nil, os.ErrNotExist
+	}
+	tx, operationCtx, cancel, err := s.begin(s.requestContext)
 	if err != nil {
 		return nil, err
 	}
+	defer cancel()
 	defer tx.Rollback()
-	rows, err := tx.Query(`SELECT id,mission_id,organization_id,type,step_id,payload,created_at FROM agent_events WHERE mission_id=$1 AND ($2 = '' OR organization_id=$2) ORDER BY created_at ASC,id ASC`, strings.TrimSpace(missionID), s.organizationID)
+	rows, err := tx.QueryContext(operationCtx, `SELECT id,mission_id,organization_id,type,step_id,payload,created_at FROM public.agent_events WHERE mission_id=$1 AND ($2 = '' OR organization_id=$2) ORDER BY created_at ASC,id ASC`, missionID, s.organizationID)
 	if err != nil {
 		return nil, err
 	}
@@ -324,6 +483,29 @@ func (s *PostgresStore) ListEvents(missionID string) ([]Event, error) {
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	for index := range events {
+		original := events[index].Payload
+		safePayload := RedactValue(original)
+		if !reflect.DeepEqual(original, safePayload) {
+			encoded, err := json.Marshal(safePayload)
+			if err != nil {
+				return nil, err
+			}
+			result, err := tx.ExecContext(operationCtx, `UPDATE public.agent_events SET payload=$1 WHERE id=$2 AND mission_id=$3 AND organization_id=$4`, encoded, events[index].ID, events[index].MissionID, events[index].OrganizationID)
+			if err != nil {
+				return nil, err
+			}
+			if rows, err := result.RowsAffected(); err != nil {
+				return nil, err
+			} else if rows != 1 {
+				return nil, errors.New("event changed while applying legacy DLP redaction")
+			}
+		}
+		events[index].Payload = safePayload
+	}
 	if err := tx.Commit(); err != nil {
 		return nil, err
 	}
@@ -337,5 +519,5 @@ func (s *PostgresStore) SetTimeout(timeout time.Duration) {
 }
 
 func (s *PostgresStore) String() string {
-	return fmt.Sprintf("PostgresStore(timeout=%s, organization=%q, system=%t)", s.timeout, s.organizationID, s.systemAccess)
+	return fmt.Sprintf("PostgresStore(timeout=%s, organization=%q, tenant_only=true)", s.timeout, s.organizationID)
 }

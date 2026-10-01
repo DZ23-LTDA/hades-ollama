@@ -1,6 +1,6 @@
 # Evaluation OS e provider router
 
-O Ollama Classe A+ agora possui uma camada local de avaliação determinística para transformar paridade funcional em evidência reproduzível. O catálogo padrão cobre coding, browser, tools, segurança, memória, planejamento e recuperação. Cada caso possui identificador, domínio, timeout e resultado explícito; falhas e timeouts não são convertidos em sucesso.
+O Ollama Full agora possui uma camada local de avaliação determinística para transformar paridade funcional em evidência reproduzível. O catálogo padrão cobre coding, browser, tools, segurança, memória, planejamento e recuperação. Cada caso possui identificador, domínio, timeout e resultado explícito; falhas e timeouts não são convertidos em sucesso.
 
 O provider router seleciona entre modelos registrados usando capacidades requeridas, estado de saúde, latência observada, custo, privacidade e qualidade histórica. A decisão é explicável e pode ser limitada por `local_only`, orçamento, provider preferido e capacidades multimodais. O router não cria credenciais nem afirma que um provider está disponível: modelos sem registro, sem saúde ou fora das restrições são excluídos.
 

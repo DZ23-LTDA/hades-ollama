@@ -22,6 +22,7 @@ import {
   withClaudeConnectionTimeout,
 } from "@/lib/claudeDesktop";
 import { isWindowsPlatform } from "@/lib/platform";
+import { API_BASE } from "@/lib/config";
 import type {
   ClaudeDesktopActionResult,
   ClaudeDesktopStatus,
@@ -86,6 +87,8 @@ interface WelcomeScreenProps extends ScreenProps {
   onRetryCompletion?: () => void;
   onLocal: () => void;
   onSignUp: () => void;
+  cloudOptIn?: boolean;
+  onCloudOptInChange?: (enabled: boolean) => void;
 }
 
 interface RunOllamaScreenProps {
@@ -267,6 +270,8 @@ export function WelcomeScreen({
   onSignUp,
   onLocal,
   onRetryCompletion,
+  cloudOptIn,
+  onCloudOptInChange,
 }: WelcomeScreenProps) {
   return (
     <main className="light-only flex min-h-screen w-full flex-col bg-white text-neutral-950">
@@ -297,6 +302,15 @@ export function WelcomeScreen({
                 ? "Finish in your browser…"
                 : "Sign up"}
           </button>
+          <label className="mt-4 flex items-center gap-2 text-xs text-neutral-600 select-none cursor-pointer">
+            <input
+              type="checkbox"
+              checked={cloudOptIn ?? false}
+              onChange={(e) => onCloudOptInChange?.(e.target.checked)}
+              className="rounded border-neutral-300 text-neutral-900 focus:ring-neutral-500 cursor-pointer"
+            />
+            <span>Ativar modelos de nuvem grátis da minha conta</span>
+          </label>
           <button
             type="button"
             className="mt-2 cursor-pointer rounded-md px-3 py-2 text-sm font-normal text-neutral-600 underline decoration-neutral-300 underline-offset-4 hover:text-neutral-950 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-500"
@@ -446,6 +460,9 @@ export function ConnectAppsScreen({
   initialCodexStatus,
 }: ConnectAppsScreenProps) {
   const isWindows = isWindowsPlatform();
+  const safeInitialIntegrations = Array.isArray(initialIntegrations)
+    ? initialIntegrations
+    : undefined;
   const [copyNotice, setCopyNotice] = useState<{
     sequence: number;
     id: string;
@@ -471,7 +488,7 @@ export function ConnectAppsScreen({
   const claudeRestartConfirmed = useRef(false);
   const screenMounted = useRef(true);
   const [integrationStatuses, setIntegrationStatuses] =
-    useState<IntegrationStatuses | null>(initialIntegrations ?? null);
+    useState<IntegrationStatuses | null>(safeInitialIntegrations ?? null);
   const [statusError, setStatusError] = useState(false);
 
   useEffect(() => {
@@ -535,8 +552,8 @@ export function ConnectAppsScreen({
 
   useEffect(() => {
     let active = true;
-    const integrations = initialIntegrations
-      ? Promise.resolve(initialIntegrations)
+    const integrations = safeInitialIntegrations
+      ? Promise.resolve(safeInitialIntegrations)
       : getIntegrationStatuses();
 
     void integrations.then(
@@ -553,7 +570,7 @@ export function ConnectAppsScreen({
     return () => {
       active = false;
     };
-  }, [initialIntegrations]);
+  }, [safeInitialIntegrations]);
 
   useEffect(() => {
     let active = true;
@@ -665,7 +682,7 @@ export function ConnectAppsScreen({
       let restartConfirmed = claudeRestartConfirmed.current;
       if (liveStatus.running && !restartConfirmed) {
         restartConfirmed = window.confirm(
-          "Restart Claude Desktop to use Ollama? Any running task will stop.",
+          "Reiniciar Claude Desktop para usar Ollama? Qualquer tarefa em execução será interrompida.",
         );
         if (!screenMounted.current) return;
         if (!restartConfirmed) {
@@ -914,8 +931,8 @@ export function ConnectAppsScreen({
     if (status.running) {
       restartConfirmed = window.confirm(
         enabling
-          ? "Restart Claude Desktop to use Ollama? Any running task will stop."
-          : "Restart Claude Desktop to remove Ollama? Any running task will stop.",
+          ? "Reiniciar Claude Desktop para usar Ollama? Qualquer tarefa em execução será interrompida."
+          : "Reiniciar Claude Desktop para remover Ollama? Qualquer tarefa em execução será interrompida.",
       );
       if (!screenMounted.current) return;
       if (!restartConfirmed) {
@@ -1217,6 +1234,7 @@ interface OnboardingProps extends ScreenProps {
 export default function Onboarding(props: OnboardingProps) {
   const [step, setStep] = useState<OnboardingStep>("intro");
   const [isLeaving, setIsLeaving] = useState(false);
+  const [cloudOptIn, setCloudOptIn] = useState(false);
   const leavingRef = useRef(false);
   const authenticationHandoffStarted = useRef(false);
   const { onOpenApps } = props;
@@ -1225,12 +1243,23 @@ export default function Onboarding(props: OnboardingProps) {
     if (leavingRef.current) return;
     leavingRef.current = true;
     setIsLeaving(true);
+    if (cloudOptIn) {
+      try {
+        await fetch(`${API_BASE}/api/v1/cloud`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ disabled: false }),
+        });
+      } catch (err) {
+        console.warn("Failed to activate cloud models opt-in:", err);
+      }
+    }
     const opened = await onOpenApps();
     if (!opened) {
       leavingRef.current = false;
       setIsLeaving(false);
     }
-  }, [onOpenApps]);
+  }, [onOpenApps, cloudOptIn]);
 
   useEffect(() => {
     window.setOnboardingWindow?.(true);
@@ -1275,6 +1304,8 @@ export default function Onboarding(props: OnboardingProps) {
   return (
     <WelcomeScreen
       {...props}
+      cloudOptIn={cloudOptIn}
+      onCloudOptInChange={setCloudOptIn}
       isLeaving={isLeaving}
       onRetryCompletion={() => void leave()}
       onLocal={() => {

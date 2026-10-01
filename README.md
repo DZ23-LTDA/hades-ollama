@@ -1,18 +1,20 @@
-# Ollama Classe A+
+# Hades
 
 > **Uma distribuição agentic local-first para modelos, automações, pesquisa, builders e operação segura.**
 
 Este é o fork público mantido por [DZ23-LTDA](https://github.com/DZ23-LTDA), baseado no Ollama e preservando a licença MIT e os avisos de atribuição upstream. O projeto adiciona superfícies agentic próprias; não é o instalador, serviço hospedado ou distribuição oficial do Ollama. O manual completo, os contratos, a configuração e a política de atualização estão em [`docs/CLASS_A_PLUS_GUIDE.md`](docs/CLASS_A_PLUS_GUIDE.md).
 
-### Visão rápida — capturas reais atualizadas em 2026-09-22
+![Hades em 20 segundos — hook, Home, Mission Console e o fecho local-first](docs/images/hades-demo.gif)
 
-![Home atual do shell Classe A+](docs/images/screens/class-a-plus-home.png?v=2)
+### Visão rápida — capturas reais atualizadas em 2026-10-01
 
-![Agentic Console atual](docs/images/screens/class-a-plus-agentic.png)
+![Home atual do shell Hades](docs/images/screens/class-a-plus-home.png?v=3)
 
-![Settings e Agentic Control Center atuais](docs/images/screens/class-a-plus-settings.png)
+![Agentic Console atual](docs/images/screens/class-a-plus-agentic.png?v=3)
 
-![Company OS atual](docs/images/screens/class-a-plus-company.png)
+![Settings e Agentic Control Center atuais](docs/images/screens/class-a-plus-settings.png?v=3)
+
+![Company OS atual](docs/images/screens/class-a-plus-company.png?v=3)
 
 As imagens acima foram recapturadas com Chromium contra o Vite dev e o servidor Ollama local em `127.0.0.1:3001`, sem provider externo. A captura mostra a implementação e dados sandbox locais; não comprova credenciais, contas, dispositivos, deploys ou integrações externas conectadas. A [galeria complementar](docs/CLASS_A_PLUS_GUIDE.md#telas-e-estado-visual) inclui Projetos, Biblioteca, Agendado, Skills, Plugins e Tarefas. Para conhecer a árvore completa, as telas planejadas de builder/mobile e os limites de cada integração, veja a [árvore de produto](docs/agentic/PRODUCT_TREE.md), a [matriz de paridade](docs/agentic/PARITY_MATRIX.md), a [integração HarnessRouter](docs/agentic/HARNESSROUTER.md) e a [documentação Company OS](docs/agentic/COMPANY_OS.md). Mockups conceituais são identificados como conceito dentro da própria imagem; eles não são apresentados como funcionalidades concluídas. A rodada mais recente também reforçou autenticação fail-closed, allowlists MCP, lifecycle de plugins/skills, contenção de symlink, approvals auditáveis e DLP.
 
@@ -30,7 +32,7 @@ As imagens acima foram recapturadas com Chromium contra o Vite dev e o servidor 
 | Smoke operacional de Growth OS e Builder | [`smoke-company-growth.sh`](scripts/smoke-company-growth.sh) + [`smoke-builder.sh`](scripts/smoke-builder.sh) |
 | Desktop Commander local e Remote MCP | [`agentic/DESKTOP_COMMANDER_REMOTE.md`](docs/agentic/DESKTOP_COMMANDER_REMOTE.md) + [`dz23-desktop-commander-remote.json`](examples/dz23-desktop-commander-remote.json) |
 | Roadmap e status por fase | [`agentic/ROADMAP.md`](docs/agentic/ROADMAP.md) |
-| Árvore Manus observável + Classe A+ unificado | [`agentic/PRODUCT_TREE.md`](docs/agentic/PRODUCT_TREE.md) |
+| Árvore Manus observável + Hades | [`agentic/PRODUCT_TREE.md`](docs/agentic/PRODUCT_TREE.md) |
 | Matriz de paridade e evidências | [`agentic/PARITY_MATRIX.md`](docs/agentic/PARITY_MATRIX.md) |
 | Referências de harnesses, capacidades e decisões de integração | [`HARNESS_CAPABILITY_MATRIX.md`](audit/HARNESS_CAPABILITY_MATRIX.md) |
 | Proteção contra regressões upstream | [`UPSTREAM_POLICY.md`](UPSTREAM_POLICY.md) + [`check-class-a-plus-integrity.sh`](scripts/check-class-a-plus-integrity.sh) |
@@ -41,15 +43,15 @@ Start building with open models.
 
 ## Build and run this fork
 
-The public repository currently distributes source code, not a signed Classe A+ installer, release binary, Docker image, or app-store package. Build the revision you have checked out so the executable and agentic runtime come from this fork:
+The public repository currently distributes source code, not a signed Hades installer, release binary, Docker image, or app-store package. Build the revision you have checked out so the executable and agentic runtime come from this fork:
 
 ```shell
 git clone https://github.com/DZ23-LTDA/ollama-classe-a-plus.git
 cd ollama-classe-a-plus
 go version  # Go version required by go.mod
 mkdir -p bin
-go build -trimpath -o bin/ollama-classe-a-plus .
-OLLAMA_HOST=127.0.0.1:11434 ./bin/ollama-classe-a-plus serve
+go build -trimpath -o bin/ollama-full .
+OLLAMA_HOST=127.0.0.1:11434 ./bin/ollama-full serve
 ```
 
 The equivalent helpers are `scripts/install.sh` on Unix-like systems and `scripts/install.ps1` on Windows. They build the checked-out source locally and never download `ollama.com` installers or official upstream binaries. They require Go and do not install models or configure external providers.
@@ -59,19 +61,38 @@ In a second terminal, run the web operator surface from source:
 ```shell
 cd app/ui/app
 npm ci --no-audit --no-fund
-npm run dev
+npm run build
+npx vite preview --host 0.0.0.0 --port 5173
 ```
 
-The local web development configuration uses the agentic API at `http://127.0.0.1:3001` when the development server is configured for that port. A source build is not evidence of a signed release, production deployment, external OAuth, provider account, or physical-device validation. Those remain `BLOCKED_BY_EXTERNAL_DEPENDENCY` until the maintainer supplies the required signing keys, release workflow, accounts and test environments.
+The web development proxy routes all API requests (`/api/*`, `/api/v1/*` and `/api/agent/v1/*`) seamlessly to the Hades backend at `http://127.0.0.1:11434`.
+
+### Quality Gates and Automated Tests
+
+To verify the full stack on any clean workstation:
+
+```shell
+# 1. Backend Go tests (runtime, agent routes, RLS isolation)
+go test ./internal/agent ./server -count=1
+
+# 2. Frontend typecheck, lint and unit tests
+cd app/ui/app
+npx tsc -b
+npm run lint
+npx vitest run
+
+# 3. Automated Browser E2E suite (Playwright desktop & mobile)
+node e2e/test_all_sidebar_screens.mjs
+```
 
 ### Upstream compatibility references
 
-The inherited Ollama CLI/API and integration pages remain available for compatibility and attribution. Links to `ollama.com`, `docs.ollama.com`, upstream libraries, Docker Hub, or upstream communities describe the upstream project; they do **not** install or publish this fork. Use the source-build instructions above for Classe A+.
+The inherited Ollama CLI/API and integration pages remain available for compatibility and attribution. Links to `ollama.com`, `docs.ollama.com`, upstream libraries, Docker Hub, or upstream communities describe the upstream project; they do **not** install or publish this fork. Use the source-build instructions above for Hades.
 
 ## Get started
 
 ```
-./bin/ollama-classe-a-plus
+./bin/ollama-full
 ```
 
 You'll be prompted to run a model or connect Ollama to your existing agents or applications such as `Claude Code`, `OpenClaw`, `OpenCode` , `Codex`, `Copilot`,  and more.
@@ -81,7 +102,7 @@ You'll be prompted to run a model or connect Ollama to your existing agents or a
 To launch a specific integration:
 
 ```
-./bin/ollama-classe-a-plus launch claude
+./bin/ollama-full launch claude
 ```
 
 Supported integrations include [Claude Code](https://docs.ollama.com/integrations/claude-code), [Codex](https://docs.ollama.com/integrations/codex), [Copilot CLI](https://docs.ollama.com/integrations/copilot-cli), [DeepSeek Harness](https://docs.ollama.com/integrations/deepseek-harness), [Droid](https://docs.ollama.com/integrations/droid), and [OpenCode](https://docs.ollama.com/integrations/opencode).
@@ -91,7 +112,7 @@ Supported integrations include [Claude Code](https://docs.ollama.com/integration
 Use [OpenClaw](https://docs.ollama.com/integrations/openclaw) to turn Ollama into a personal AI assistant across WhatsApp, Telegram, Slack, Discord, and more:
 
 ```
-./bin/ollama-classe-a-plus launch openclaw
+./bin/ollama-full launch openclaw
 ```
 
 ### Chat with a model
@@ -99,10 +120,10 @@ Use [OpenClaw](https://docs.ollama.com/integrations/openclaw) to turn Ollama int
 Run and chat with a model already available in your local Ollama-compatible model store:
 
 ```
-./bin/ollama-classe-a-plus run <modelo-local>
+./bin/ollama-full run <modelo-local>
 ```
 
-See the [upstream model library](https://ollama.com/library) only as a compatibility reference; model availability, licensing and downloads are operator responsibilities. The [Classe A+ guide](docs/CLASS_A_PLUS_GUIDE.md) is the canonical source-build documentation.
+See the [upstream model library](https://ollama.com/library) only as a compatibility reference; model availability, licensing and downloads are operator responsibilities. The [Hades guide](docs/CLASS_A_PLUS_GUIDE.md) is the canonical source-build documentation.
 
 ## REST API
 

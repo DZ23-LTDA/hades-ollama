@@ -1,4 +1,4 @@
-# Auditoria de dependências web — Ollama Classe A+
+# Auditoria de dependências web — Ollama Full
 
 Verificado em **2026-09-24** (`app/ui/app`, npm 10.9.8 / node 22).
 

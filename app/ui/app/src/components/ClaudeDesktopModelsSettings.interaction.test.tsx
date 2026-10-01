@@ -332,7 +332,7 @@ describe("ClaudeDesktopModelsSettings interactions", () => {
       });
 
       expect(confirm).toHaveBeenCalledWith(
-        "Restart Claude Desktop? Any running task will stop.",
+        "Reiniciar Claude Desktop? Qualquer tarefa em execução será interrompida.",
       );
       expect(apply).toHaveBeenNthCalledWith(
         1,
@@ -405,7 +405,7 @@ describe("ClaudeDesktopModelsSettings interactions", () => {
       expect(setAutoMode).toHaveBeenCalledTimes(1);
       expect(setAutoMode).toHaveBeenCalledWith(false, false);
       expect(confirm).toHaveBeenCalledWith(
-        "Restart Claude to change auto mode? Any running task will stop.",
+        "Reiniciar Claude para alterar o modo automático? Qualquer tarefa em execução será interrompida.",
       );
       expect(
         renderer!.root.findByProps({ role: "switch" }).props["aria-checked"],
@@ -677,7 +677,7 @@ describe("ClaudeDesktopModelsSettings interactions", () => {
         await Promise.resolve();
       });
       expect(actionButton(renderer!).props.disabled).toBe(true);
-      expect(textContent(actionButton(renderer!))).toContain("Resetting…");
+      expect(textContent(actionButton(renderer!))).toContain("Restaurando…");
 
       resolveReset(resetResult);
       let resetSucceeded = false;
@@ -695,7 +695,7 @@ describe("ClaudeDesktopModelsSettings interactions", () => {
         "aria-label": "Ollama model for Sonnet 5",
       });
       expect(fable.findAllByType("span")[0].children.join("")).toBe(
-        "Select a model",
+        "Selecione um modelo",
       );
       expect(sonnet.findAllByType("span")[0].children.join("")).toBe(
         "glm-5.2:cloud",

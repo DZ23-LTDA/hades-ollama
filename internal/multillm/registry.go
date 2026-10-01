@@ -3,6 +3,7 @@
 package multillm
 
 import (
+	"context"
 	"crypto/subtle"
 	"encoding/json"
 	"errors"
@@ -14,6 +15,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 )
 
 type Config struct {
@@ -53,6 +55,7 @@ type ModelConfig struct {
 	ID                   string   `json:"id"`
 	HarnessID            string   `json:"harness_id,omitempty"`
 	Capabilities         []string `json:"capabilities,omitempty"`
+	CostTag              string   `json:"cost_tag,omitempty"`
 	Priority             int      `json:"priority,omitempty"`
 	CostPer1KInputCents  int64    `json:"cost_per_1k_input_cents,omitempty"`
 	CostPer1KOutputCents int64    `json:"cost_per_1k_output_cents,omitempty"`
@@ -65,6 +68,7 @@ type Model struct {
 	HarnessID            string   `json:"harness_id,omitempty"`
 	Provider             string   `json:"provider"`
 	Capabilities         []string `json:"capabilities,omitempty"`
+	CostTag              string   `json:"cost_tag,omitempty"`
 	Available            bool     `json:"available"`
 	Priority             int      `json:"priority,omitempty"`
 	CostPer1KInputCents  int64    `json:"cost_per_1k_input_cents,omitempty"`
@@ -92,6 +96,12 @@ func Load(path string) (*Registry, error) {
 	if err != nil {
 		return nil, fmt.Errorf("read DZ23 provider config: %w", err)
 	}
+	return LoadBytes(b)
+}
+
+// LoadBytes builds a registry from provider config JSON, applying the same
+// validation as Load.
+func LoadBytes(b []byte) (*Registry, error) {
 	var cfg Config
 	dec := json.NewDecoder(strings.NewReader(string(b)))
 	dec.DisallowUnknownFields()
@@ -114,7 +124,11 @@ func Load(path string) (*Registry, error) {
 			if _, exists := r.models[id]; exists {
 				return nil, fmt.Errorf("duplicate model %q", id)
 			}
-			r.models[id] = Model{ID: id, UpstreamID: item.ID, HarnessID: strings.TrimSpace(item.HarnessID), Provider: p.Name, Capabilities: append([]string(nil), item.Capabilities...), Available: available, Priority: p.Priority + item.Priority, CostPer1KInputCents: item.CostPer1KInputCents, CostPer1KOutputCents: item.CostPer1KOutputCents, QualityScore: item.QualityScore}
+			costTag := strings.TrimSpace(item.CostTag)
+			if costTag == "" && p.Type == ProviderTypeCLI {
+				costTag = "0-assinatura"
+			}
+			r.models[id] = Model{ID: id, UpstreamID: item.ID, HarnessID: strings.TrimSpace(item.HarnessID), Provider: p.Name, Capabilities: append([]string(nil), item.Capabilities...), CostTag: costTag, Available: available, Priority: p.Priority + item.Priority, CostPer1KInputCents: item.CostPer1KInputCents, CostPer1KOutputCents: item.CostPer1KOutputCents, QualityScore: item.QualityScore}
 		}
 	}
 	return r, nil
@@ -277,6 +291,33 @@ func (r *Registry) Resolve(name string, policy Policy) (Model, bool) {
 	return candidates[0], true
 }
 
+func (r *Registry) ProbeModel(ctx context.Context, m Model, client *http.Client) ModelProbeResult {
+	p, ok := r.providers[m.Provider]
+	if !ok {
+		return ModelProbeResult{
+			ModelID:    m.ID,
+			Provider:   m.Provider,
+			Status:     ModelStatusNotConfigured,
+			Reason:     "provedor não registrado",
+			Selectable: false,
+			CheckedAt:  time.Now(),
+		}
+	}
+	return ProbeProviderModel(ctx, p, m.UpstreamID, client)
+}
+
+func (r *Registry) CleanSelectableModels(ctx context.Context, client *http.Client) []Model {
+	all := r.Models()
+	clean := make([]Model, 0, len(all))
+	for _, m := range all {
+		probe := r.ProbeModel(ctx, m, client)
+		if probe.Status == ModelStatusPass && probe.Selectable {
+			clean = append(clean, m)
+		}
+	}
+	return clean
+}
+
 func (r *Registry) modelAvailable(m Model) bool {
 	p, ok := r.providers[m.Provider]
 	if !ok || (p.Enabled != nil && !*p.Enabled) {
@@ -286,7 +327,8 @@ func (r *Registry) modelAvailable(m Model) bool {
 }
 
 func unsafeProviderIP(ip net.IP) bool {
-	return ip.IsLoopback() || ip.IsPrivate() || ip.IsUnspecified() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast()
+	blocked, _ := ClassifyProviderEgressIP(ip)
+	return blocked
 }
 
 func (r *Registry) supportsPath(m Model, path string) bool {

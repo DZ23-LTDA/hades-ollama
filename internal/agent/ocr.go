@@ -4,29 +4,32 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 )
 
-func OCRLocal(ctx context.Context, workspace, inputPath, language string) (MediaResult, error) {
+const ocrInputLimit int64 = 25 << 20
+
+// OCRLocal uses a pinned mission workspace for all filesystem access. Image
+// bytes are read once through the root descriptor and supplied on stdin, so the
+// subprocess never reopens a caller-controlled pathname.
+func OCRLocal(ctx context.Context, workspace, inputPath, language string, pinnedRoots ...*os.Root) (MediaResult, error) {
 	if strings.TrimSpace(inputPath) == "" {
 		return MediaResult{}, errors.New("ocr input is required")
 	}
-	if _, err := exec.LookPath("tesseract"); err != nil {
-		return MediaResult{}, errors.New("tesseract is not installed")
+	if len(pinnedRoots) == 0 || pinnedRoots[0] == nil {
+		return MediaResult{}, errors.New("pinned media workspace is required")
 	}
-	root, err := filepath.Abs(workspace)
+	executable, err := trustedToolExecutable("tesseract")
+	if err != nil {
+		return MediaResult{}, errors.New("tesseract is not installed in a trusted system directory")
+	}
+	_, input, err := readMediaInputBoundedFromRoot(ctx, workspace, pinnedRoots[0], inputPath, ocrInputLimit)
 	if err != nil {
 		return MediaResult{}, err
-	}
-	input, err := filepath.Abs(inputPath)
-	if err != nil {
-		return MediaResult{}, err
-	}
-	relative, err := filepath.Rel(root, input)
-	if err != nil || relative == ".." || strings.HasPrefix(relative, ".."+string(filepath.Separator)) || filepath.IsAbs(relative) {
-		return MediaResult{}, errors.New("ocr input escapes workspace")
 	}
 	language = strings.TrimSpace(language)
 	if language == "" {
@@ -35,25 +38,32 @@ func OCRLocal(ctx context.Context, workspace, inputPath, language string) (Media
 	if len(language) > 64 || strings.ContainsAny(language, " ;|&\n\r\t") {
 		return MediaResult{}, errors.New("invalid OCR language")
 	}
-	if err := validateMediaOutputDirectory(workspace, ".agent-media"); err != nil {
+	if err := validateMediaOutputDirectory(workspace, ".agent-media", pinnedRoots...); err != nil {
 		return MediaResult{}, err
 	}
-	command := exec.CommandContext(ctx, "tesseract", input, "stdout", "-l", language)
+	command := exec.CommandContext(ctx, executable, "stdin", "stdout", "-l", language)
+	command.Stdin = bytes.NewReader(input)
+	command.Env = []string{"PATH=" + safeToolPath(), "LANG=C.UTF-8", "LC_ALL=C.UTF-8"}
 	var output bytes.Buffer
+	stderr := &limitedWriter{writer: &bytes.Buffer{}, limit: 1 << 20}
 	command.Stdout = &limitedWriter{writer: &output, limit: 8 << 20}
-	command.Stderr = &limitedWriter{writer: &bytes.Buffer{}, limit: 1 << 20}
+	command.Stderr = stderr
 	if err := command.Run(); err != nil {
-		return MediaResult{}, err
+		if errors.Is(err, exec.ErrNotFound) {
+			return MediaResult{}, errors.New("tesseract execution failed")
+		}
+		return MediaResult{}, fmt.Errorf("tesseract execution failed: %w", err)
 	}
-	text := strings.TrimSpace(output.String())
+	text := RedactDLP(strings.TrimSpace(output.String()))
 	if text == "" {
 		return MediaResult{}, errors.New("OCR returned no text")
 	}
-	path, err := writeMediaFile(workspace, filepath.ToSlash(filepath.Join(".agent-media", "ocr-result.txt")), []byte(text+"\n"), 8<<20)
+	relativePath := filepath.ToSlash(filepath.Join(".agent-media", "ocr-result.txt"))
+	path, err := writeMediaFile(workspace, relativePath, []byte(text+"\n"), 8<<20, pinnedRoots...)
 	if err != nil {
 		return MediaResult{}, err
 	}
-	artifact, err := BuildArtifactManifest(workspace, "", "", filepath.Base(path), filepath.ToSlash(filepath.Join(".agent-media", filepath.Base(path))))
+	artifact, err := buildMediaArtifact(workspace, relativePath, pinnedRoots...)
 	if err != nil {
 		return MediaResult{}, err
 	}

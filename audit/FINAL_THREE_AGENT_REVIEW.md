@@ -44,7 +44,7 @@ apps/mobile-agentic: npm run typecheck
 
 ## Riscos residuais internos
 
-A proteção de filesystem é uma contenção robusta contra symlinks presentes no momento da validação e deve evoluir para `openat`/handles de diretório por plataforma se o produto for exposto a concorrência hostil no mesmo filesystem. A política de skills ainda precisa de um formato de atestado assinado para promover uma skill a `trusted`; até lá, manifests carregados permanecem em revisão. Os testes de distributed RLS, Redis, OTLP, SAML/OIDC contra IdP real e companheiros físicos não podem ser simulados por testes locais.
+O sandbox strict Linux agora instala allowlist seccomp antes do interpreter, aplica no-new-privs/capability drop, rlimits e cgroup; a homologação física do host/AppArmor/SELinux ainda não foi executada. A proteção de filesystem é uma contenção robusta contra symlinks presentes no momento da validação e deve evoluir para `openat`/handles de diretório por plataforma se o produto for exposto a concorrência hostil no mesmo filesystem. A política de skills ainda precisa de um formato de atestado assinado para promover uma skill a `trusted`; até lá, manifests carregados permanecem em revisão. Os testes de distributed RLS, Redis, OTLP, SAML/OIDC contra IdP real e companheiros físicos não podem ser simulados por testes locais.
 
 ## Blockers externos
 
@@ -387,3 +387,142 @@ A revisão confirmou no commit `883a17e2` compensações para falhas entre coman
 ## Addendum independente — moveDue Redis — 2026-09-23
 
 A revisão confirmou no commit `b1aaebfd` a compensação do caminho `ZREM`/`LPUSH` em `moveDue`, evitando perda best-effort de retries delayed. Testes locais focados passaram; Redis real, lease e fencing permanecem não homologados.
+
+
+## Auditoria independente da retomada — 2026-09-30
+
+### Escopo e evidências
+
+Auditoria somente leitura do checkout `0d3aa7318367008aec96e21a77408f016f5936c9`, complementada por validações locais da correção de acessibilidade. Nenhum deploy, merge em `main` ou provider externo foi executado.
+
+- Engenharia revisou runtime, Studio, testes e matriz; depois o Go focado foi executado com `/usr/local/go/bin/go`.
+- Segurança revisou `SECURITY.md`, ADRs, rotas WhatsApp, auth/tenant, release e egress.
+- Produto/QA/UX revisou matriz, árvore, evidências, rotas, E2E e acessibilidade.
+
+### Achados desta rodada
+
+#### HIGH
+
+1. **RESOLVIDO — Webhook WhatsApp autenticado.** O GET delega o verify token ao adapter ativo; o POST valida HMAC-SHA256 do corpo cru em comparação constante, exige app secret, `object=whatsapp` e `phone_number_id` configurado. Assinatura inválida retorna 401 e segredo ausente retorna NOT_CONFIGURED/424.
+2. **RESOLVIDO — Outbound WhatsApp fail-closed.** `SendMessage` exige destinatário allowlisted, adapter configurado e aprovação HITL aprovada e vinculada ao destinatário exato; sem qualquer requisito retorna bloqueio e nunca chama o adapter.
+3. **RESOLVIDO — Boundary tenant fixo em auth desabilitado.** O middleware agora injeta sempre `LocalOrganizationID` e ignora `X-Ollama-Organization`/contexto externo no modo local; handlers usam o escopo fixo nos stores de missões, Company, connectors e schedules. Tentativas cross-tenant retornam 403/404 sem vazamento ou mutação.
+4. **RESOLVIDO — Preview/download do Studio autenticados.** O cliente agora busca bytes via `agentFetchBlob`, encaminhando `Authorization: Bearer` quando configurado; o backend mantém `authMiddleware` nas rotas POST de preview, GET do preview e download. Sem token em auth mode retorna 401; token válido acessa somente o builder do tenant.
+5. **RESOLVIDO — Preview do Studio isolado.** O iframe do Studio usa `sandbox="allow-scripts"`, sem `allow-same-origin`; o ArtifactsViewer mantém a mesma restrição. O conteúdo gerado não recebe acesso à origem/contexto pai.
+
+#### MEDIUM / IMPROVEMENT
+
+- Atualizações visuais concorrentes podem perder edições/ordem de undo-redo porque o backend não usa CAS/versão esperada e a UI envia uma requisição por tecla.
+- Export antigo continua associado ao projeto depois de edição, sem invalidar checksum/path ou bloquear download até novo export.
+- Modais críticos de sidebar/deploy precisam semântica de diálogo, foco inicial/retorno e fechamento por Escape.
+- Evidências e matriz não registram uniformemente viewport, commit e checksums; o script Studio tem asserções condicionais e não verifica bytes/checksum do download.
+- Plugins possui duas superfícies (`/connectors` e `/plugins`) e a árvore ainda marca Builders como `[ADAPTER]` enquanto a matriz marca `PASS`.
+
+### Correção executada nesta retomada
+
+- `AgenticSplitShell.tsx`: campo e botão do composer receberam nomes acessíveis (`Instrução da missão`, `Enviar instrução`).
+- `shell.spec.ts`: adicionada asserção Playwright em viewport `390x844`; expectativas obsoletas da Home foram alinhadas aos headings e selo reais, sem reduzir cobertura.
+- Evidência: `npx playwright test e2e/shell.spec.ts` — **2 passed**; `npx vitest run` — **36 arquivos / 255 testes passed**; `go test ./internal/agent ./server -run 'WhatsApp|WA|Gateway' -count=1` — **PASS**.
+
+### Veredicto
+
+`REQUEST_CHANGES`. O produto tem implementação ampla e CI verde no commit auditado, mas **não** deve ser declarado production-ready/enterprise ou paridade final concluída enquanto os HIGHs de webhook/outbound/tenant/Studio autenticado e sandbox não tiverem regressões automatizadas e execução verificável.
+
+### Próximo passo obrigatório
+
+Próximo slice: corrigir somente os blockers remanescentes do Studio (invalidação de export e concorrência/CAS), atualizar matriz/árvore e repetir os três pareceres independentes. Dependências externas continuam `NOT_CONFIGURED`/`BLOCKED_EXTERNAL`.
+
+
+## CA-1 — Correção dos achados WhatsApp 1 e 2 — 2026-09-30
+
+- **Webhook:** `internal/agent/whatsapp_adapter.go` implementa HMAC-SHA256 sobre o corpo cru, comparação constante, bloqueio sem `app_secret`/`webhook_secret`, validação de `object` e `phone_number_id`; `server/whatsapp_routes.go` delega o handshake GET ao adapter e retorna 401/424 de forma honesta.
+- **Outbound:** `internal/agent/whatsapp_gateway.go` exige allowlist e aprovação HITL aprovada, vinculada ao número exato; `RequestOutboundApproval`/`ApproveOutbound` registram o ciclo sem chamar provider antes da aprovação.
+- **Regressões:** `TestWhatsAppCloudWebhookHMACAndIdentity`, `TestWhatsAppOutboundRequiresAllowlistAndApproval` e `TestWhatsAppRoutesWebhookRejectsInvalidSignatureAndIdentity`; focused Go e gates completos passaram.
+- **Estado:** achados 1 e 2 encerrados. Permanecem abertos somente os achados 3–5 e melhorias listadas acima.
+
+
+## CA-2 — Isolamento de tenant no modo local — 2026-09-30
+
+- **Correção:** `server/agent_routes.go` fixa `agent.organization` em `agent.LocalOrganizationID` quando `authRequired=false`, marca o contexto como local e ignora headers/contexto de organização enviados pelo cliente.
+- **Cobertura:** `TestAuthDisabledAlwaysUsesLocalOrganizationAcrossStores` verifica listagem sem vazamento e escrita forçada ao tenant local para missões, Company, connectors e schedules; também verifica leitura cross-tenant bloqueada.
+- **Regressão:** `go test -run 'Tenant|Isolation|CrossTenant|Organization|AuthDisabled|LocalOrg' ./internal/agent ./server` passou.
+- **Estado:** achado 3 encerrado para o modo local/dev. O isolamento enterprise PostgreSQL/RLS distribuído continua governado pelos gates próprios e não foi promovido artificialmente.
+
+
+## CA-3 — Segurança do Studio — 2026-09-30
+
+- **Bearer:** `agentFetchBlob` encaminha headers de sessão para bytes de preview/export/download. As rotas Builder continuam sob `authMiddleware`: sem Bearer em auth mode retornam 401; token válido permite preview/download apenas no tenant autenticado.
+- **Sandbox:** `StudioCanvasPage` e `ArtifactsViewer` usam `sandbox="allow-scripts"`, sem `allow-same-origin`.
+- **Regressões:** `TestStudioPreviewAndDownloadRequireBearerWhenAuthEnabled` passou; Vitest `StudioCanvasPage.security.test.ts` passou 2/2.
+- **Evidência real:** Playwright desktop 1440x900 e mobile 390x844 abriu o Studio, executou preview real, confirmou o atributo sandbox e terminou com zero erros de console/HTTP. Checksums: `0ddaa7a96f2c6b48ab0a69f3860dc13a7e7c43192221fe88ab7f9fadda5609d5` e `ad3577c0f975eeec19d9b5a68d7e1a3f9e0a15d743a868814f166dad2ef01063`.
+- **Estado:** achados 4 e 5 encerrados. CAS/concorrência e invalidação de export permanecem abertos e impedem promover Builders para PASS.
+
+
+## H1 — Isolamento forte de execução — 2026-09-30
+
+- **Seccomp real:** o launcher strict agora é executado dentro do chroot antes do interpretador e instala uma allowlist BPF com ação padrão `SECCOMP_RET_KILL_PROCESS`; namespaces/mounts não são permitidos pela lista.
+- **Privilégios e recursos:** `setpriv` aplica `no_new_privs`, limpa grupos e remove capacidades; o launcher aplica `RLIMIT_CPU`, `RLIMIT_AS`, `RLIMIT_NPROC`, `RLIMIT_NOFILE` e `RLIMIT_FSIZE`; cgroup v2 continua obrigatório para strict.
+- **Fail-closed:** o default passou a `strict`; sem cgroup delegado o resultado é `NOT_CONFIGURED` e a execução é recusada. `best-effort` exige opt-in de operador e payload de aprovação contendo aviso explícito e `gate_status=NOT_CONFIGURED`.
+- **Regressões:** `TestSandboxBestEffortRequiresExplicitOperatorOptIn`, `TestStrictSandboxLauncherUsesFailClosedAllowlistAndRlimits`, `TestStrictSandboxReportsNotConfiguredWhenCgroupIsUnavailable` e a suíte `Sandbox|Seccomp|Cgroup|Isolation|Rlimit|ForkBomb|Syscall` passaram. O strict completo é `NOT_EXECUTED` neste sandbox porque não há subtree cgroup v2 delegado, não convertido artificialmente em PASS.
+- **Gates locais:** `go build ./...`, `go test ./internal/agent ./server`, `npx tsc -b`, `npm run lint`, `npx vitest run`, `npm run build`, contratos e integrity guard passaram.
+- **Estado:** mitigação de código concluída; homologação de host Linux com cgroup delegado, AppArmor/SELinux e runners nativos permanece pendente.
+
+## CA-4 — CAS e invalidação de export do Studio — 2026-09-30
+
+- **CAS/serialização:** `BuilderService` agora serializa writers do mesmo projeto sob o mutex do serviço. `ApplyVisualComponentsCAS`, `UndoCAS` e `RedoCAS` validam `expected_version` antes de escrever e retornam `BuilderVersionConflictError` (HTTP 409) quando a versão está obsoleta.
+- **Invalidação:** toda edição visual, undo ou redo incrementa a versão e remove o ZIP anterior, além de limpar checksum/path/version persistidos. `Export` grava `ExportVersion`; download rejeita export ausente ou antigo com HTTP 410 (`ErrBuilderExportExpired`).
+- **Regressões:** `TestBuilderCASRejectsStaleConcurrentWriter`, `TestBuilderExportIsInvalidatedAfterVersionedEdit` e `TestStudioRoutesRejectStaleVersionAndExpiredExport` passaram. Build/test Go, typecheck, lint, Vitest, build frontend, contratos e integrity guard passaram.
+- **Estado:** achado 6 resolvido. Os seis achados CA-1–CA-4 desta auditoria foram tratados com regressões automatizadas; dependências externas e CRDT permanecem explicitamente fora deste slice.
+
+## H2 — Approval Ledger Company/Growth/Social — 2026-09-30
+
+- **Fechado nesta slice:** endpoints HTTP de decisão não aceitam mais `approved` como comando; exigem `decision: approve|reject`, enquanto `approved` permanece apenas projeção derivada do ledger. O mesmo contrato foi aplicado a decisões de missão e deployment.
+- **Proteções:** decisões continuam exigindo actor, razão, nonce, expiração, organização e CAS; decisões pending recebem `requested_by` server-side e o próprio solicitante é rejeitado (`ErrCompanyApprovalSelf`). Campaigns/ads, affiliate programs, orders, social drafts e spend vinculam o solicitante nas rotas de criação.
+- **Regressões:** `TestCompanyApprovalLedgerRejectsRequesterSelfApproval`, suíte focada `Approval|Approv|Ledger|Spend|Budget|Nonce|AutoApprove|Decision` e varredura de DTOs sem `json:"approved"` em `server` passaram localmente.
+- **Limitação honesta:** APIs internas legadas ainda usam `bool` para aplicar uma decisão já validada; esses métodos não são handlers HTTP nem aceitam payload externo. Homologação externa de providers permanece BLOCKED_EXTERNAL.
+
+
+## H3 — Egress zero-trust e DLP em connectors/providers — 2026-09-30
+
+- **Transporte compartilhado:** `NewConnectorManager` agora usa `NewSafeEgressHTTPClient`; o caminho de execução preserva o transporte pinado e o redirect checker, sem substituir a política por um `DialContext` genérico. Fallbacks de pesquisa, OAuth e multillm também usam clientes egress seguros.
+- **DLP e limites:** requests de connectors continuam rejeitando payloads credential-shaped antes do envio; a auditoria registra apenas metadados e contagem de findings, nunca corpo ou credencial. Respostas passam por leitura limitada e `sanitizeProviderJSON` antes de retornar a logs/artifacts/memória.
+- **Redirect/SSRF:** pinning agora cobre host e porta; cross-host/cross-port, downgrade, IP privado e rebinding permanecem bloqueados. Loopback só é permitido no modo de teste explícito da pesquisa.
+- **Cobertura:** `TestEveryCatalogConnectorUsesSharedSafeEgressClient` percorre o catálogo e verifica o transporte hardened compartilhado; focused `Egress|DLP|Redact|SSRF|Connector|Provider|ZeroTrust` passou.
+- **Gates:** `go build ./...`, `go test ./internal/agent ./server`, typecheck, lint, Vitest, build frontend, contratos e integrity guard passaram.
+- **Limitação honesta:** providers/upstreams externos e ausência de segredo real permanecem `NOT_CONFIGURED`/`BLOCKED_EXTERNAL`; a heurística DLP não prova ausência de dados sensíveis desconhecidos.
+
+
+## H4 — capability policy assinada e supply chain verificável — 2026-09-30
+
+- **Skills:** `SkillManifest` agora carrega `signing_key_id`, `content_sha256` e assinatura detached Ed25519. `CapabilityPolicy.WithTrustedSkillKey`, `VerifySkillAttestation` e `PromoteSkillTrusted` exigem chave autorizada, hash canônico e assinatura válida; skills sem assinatura, com chave não autorizada ou adulteradas permanecem não confiáveis. A promoção persistente passa por `ContextStore.PromoteSkillTrustedForOrganization`; o booleano `trusted` do JSON não é autoridade.
+- **Supply chain:** `SignedArtifact`, `SignArtifact` e `VerifyArtifactSignature` vinculam uma assinatura ao SHA-256 exato do artefato. O workflow de release gera SBOM CycloneDX, checksum, chave pública e assinatura detached do manifesto, verifica tudo antes da publicação e mantém a attestation de provenance opcional/explicitamente configurada. `scripts/verify-release-artifact.sh` permite verificação independente.
+- **Evidência local:** `go test -run 'Skill|Capability|Signed|Signature|Attestation|Provenance|SBOM|Trusted|Tamper|SupplyChain' ./internal/agent ./server`, `go build ./...`, suites Go, Web, contracts e `check-class-a-plus-integrity.sh` passaram.
+- **Limite honesto:** a chave RSA do workflow é efêmera por execução e a autenticidade de origem continua sendo a attestation do GitHub Actions quando habilitada; uma chave de release persistente/externamente gerenciada e verificação real em registry permanecem opt-in.
+
+
+## H5 — Remote MCP Streamable HTTP/OAuth/session/pairing — 2026-09-30
+
+- **Transporte:** Remote MCP usa POST Streamable HTTP com `Accept: application/json, text/event-stream`, `MCP-Protocol-Version`, JSON-RPC correlation ID, SSE multiline e limite agregado de resposta; o transporte continua passando por DNS pinning, peer verification, redirect same-origin e DLP.
+- **OAuth:** `BeginOAuth` cria PKCE S256 + state one-shot com expiração; `CompleteOAuth` troca authorization code; tokens e refresh tokens ficam somente em memória do manager, e `accessToken` renova token expirado sem registrar credenciais.
+- **Sessão/resumption:** `Mcp-Session-Id` retornado pelo upstream é guardado com tenant, expiração e `Last-Event-ID`; chamadas posteriores retomam a sessão e sessões expiradas são rejeitadas.
+- **Pairing:** challenge one-shot é vinculado ao servidor/tenant e comparado em tempo constante com segredo server-side; challenge, segredo errado e reuso são rejeitados.
+- **Regressões:** `TestRemoteMCPOAuthRefreshAndSessionResumption`, `TestRemoteMCPPairingIsAuthenticatedOneShotAndBoundToChallenge` e `TestRemoteMCPNotConfiguredStatusAndExpiredSession` passaram, junto da suíte Remote MCP existente.
+- **Gates:** `go build ./...`, `go test ./internal/agent ./server`, typecheck, lint, Vitest, build, contratos e integrity guard passaram localmente.
+- **Limite honesto:** sem servidor/credencial configurado o status é `NOT_CONFIGURED`; consentimento contra IdP, upstream MCP oficial, revogação externa e pairing físico permanecem `BLOCKED_EXTERNAL`/não executados neste sandbox.
+
+
+## Auditoria ampla de continuidade — 2026-09-30 19:16–19:41 -03
+
+Correções aplicadas nesta rodada, ainda **não publicadas nem validadas por CI remoto**:
+
+- **Importação:** ZIPs contendo o diretório `.git` agora são rejeitados antes da extração; o repositório é inicializado com configuração Git global/system desabilitada, `core.worktree` contido e validação de `rev-parse` do topo.
+- **Approval ledger:** aprovação de deploy rejeita o solicitante como aprovador; replay continua retornando conflito. Fixtures foram ajustadas para representar owner/admin distinto.
+- **Egress/media/download:** ranges especiais/documentação e URLs com query/fragmento foram endurecidos no media guard; downloads não permitem downgrade HTTPS em redirect e comparam hostname sem diferenciação de caixa.
+- **DLP/limites:** respostas de erro WhatsApp são limitadas a 64 KiB e redigidas antes de entrar em erros/logs.
+- **Builder/artifacts:** export usa arquivo temporário exclusivo, publicação atômica e rejeita symlinks/arquivos não regulares; o handler fecha o descriptor de artifact após o envio.
+- **UI/a11y:** ModelPicker recebeu listbox/option, estado selecionado, labels e foco visível; o diálogo de importação recebeu focus trap e restauração de foco; anexos inválidos na Home agora geram alerta visível em vez de descarte silencioso; downloads/preview do ArtifactsViewer usam `agentFetchBlob` com Bearer.
+- **Release:** pacote Linux usa o prefixo real `ollama-full-*`; `SOURCE_DATE_EPOCH` controla `built_at_utc`; SemVer aceita prerelease; a assinatura de release exige `RELEASE_SIGNING_PRIVATE_KEY` configurada, sem gerar chave efêmera.
+- **WhatsApp admin:** mutações de configuração/policy/DLQ exigem owner/admin quando auth está ligada.
+
+Gates locais desta rodada: frontend `tsc`, lint, Vitest (37 arquivos/257 testes) e build passaram; `go test ./internal/agent ./server` passou após as correções. A varredura final e os gates completos de plataforma/contratos ainda precisam ser executados. Não declarar CI, produção ou paridade 100% até esses gates e a validação de navegador/CI no SHA final.
+
+Limitações que permanecem abertas: DLP semântico completo para todas as estruturas de connector, RLS/distribuído real, sandbox físico/host, OAuth/IdP e dispositivos externos, assinatura de instalador, colaboração CRDT e deploy externo. Elas continuam BLOCKED_EXTERNAL/NOT_EXECUTED conforme evidência disponível.

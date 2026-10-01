@@ -108,7 +108,7 @@ func newModelShowCache() *modelShowCache {
 		cloud:                     make(map[modelShowCloudKey]*api.ShowResponse),
 		cloudRefreshing:           make(map[modelShowCloudKey]bool),
 		cloudNextReadRefreshAfter: make(map[modelShowCloudKey]time.Time),
-		client:                    http.DefaultClient,
+		client:                    newServerEgressClient("server.model_show_cloud", false),
 		getModelInfo:              GetModelInfo,
 	}
 }

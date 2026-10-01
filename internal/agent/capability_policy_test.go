@@ -43,7 +43,7 @@ func TestCapabilityPolicyKnownScopesAreDeterministic(t *testing.T) {
 	want := []string{
 		"browser:files", "browser:navigate", "browser:takeover", "connector:external",
 		"desktop:clipboard", "desktop:input", "desktop:process", "desktop:screen",
-		"mcp:call", "mcp:remote:call", "sandbox:execute", "terminal:allowlisted",
+		"mcp:call", "mcp:remote:call", "media:execute", "repo:read", "sandbox:execute", "terminal:allowlisted",
 		"workspace:read", "workspace:write",
 	}
 	if !reflect.DeepEqual(got, want) {

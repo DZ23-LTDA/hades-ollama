@@ -2,6 +2,8 @@ package agent
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -9,12 +11,33 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
 )
+
+type failingMissionPutStore struct{ Store }
+
+func snapshotManifestDigest(t *testing.T, snapshotRoot string) string {
+	t.Helper()
+	manifest, err := os.ReadFile(filepath.Join(snapshotRoot, "manifest.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	digest := sha256.Sum256(manifest)
+	return hex.EncodeToString(digest[:])
+}
+
+func (s failingMissionPutStore) PutMission(Mission) error {
+	return errors.New("mission persistence unavailable")
+}
+
+func (s failingMissionPutStore) CreateMission(Mission) error {
+	return errors.New("mission persistence unavailable")
+}
 
 func TestRuntimePersistsAndRunsReadMission(t *testing.T) {
 	root := t.TempDir()
@@ -57,6 +80,351 @@ func TestRuntimePersistsAndRunsReadMission(t *testing.T) {
 	}
 }
 
+func TestRuntimeCreatesTenantScopedIsolatedWorkspaceSnapshot(t *testing.T) {
+	requireDescriptorBoundWorkspaceIsolation(t)
+	repo := initWorkspaceSnapshotGit(t)
+	writeSnapshotFixture(t, repo, "app.txt", "source version")
+	runSnapshotFixtureGit(t, repo, "add", "app.txt")
+	runSnapshotFixtureGit(t, repo, "commit", "-m", "initial")
+	contextStore, err := NewContextStore(filepath.Join(t.TempDir(), "context"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := contextStore.SetWorkspaceRoot(repo); err != nil {
+		t.Fatal(err)
+	}
+	project, err := contextStore.CreateProject("isolated", repo, "org_snapshot_test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	dataRoot := t.TempDir()
+	missionStore, err := NewJSONStore(filepath.Join(dataRoot, ".store"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	runtime, err := NewRuntime(RuntimeConfig{Store: missionStore, Planner: RulePlanner{}, WorkspaceRoot: repo, DataRoot: dataRoot, Context: contextStore})
+	if err != nil {
+		t.Fatal(err)
+	}
+	mission, err := runtime.CreateMission(context.Background(), CreateMissionRequest{
+		Objective:        "inspect isolated project",
+		ProjectID:        project.ID,
+		OrganizationID:   "org_snapshot_test",
+		IsolateWorkspace: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !mission.WorkspaceIsolated || mission.WorkspaceSnapshotID == "" || len(mission.WorkspaceSnapshotSHA256) != 64 {
+		t.Fatalf("snapshot metadata missing from mission: %+v", mission)
+	}
+	if samePath(mission.Workspace, repo) || !isWithin(filepath.Join(dataRoot, ".agent-workspace-snapshots"), mission.Workspace) {
+		t.Fatalf("mission workspace is not isolated: source=%q mission=%q", repo, mission.Workspace)
+	}
+	snapshotBytes, err := os.ReadFile(filepath.Join(mission.Workspace, "app.txt"))
+	if err != nil || string(snapshotBytes) != "source version" {
+		t.Fatalf("snapshot file=%q err=%v", snapshotBytes, err)
+	}
+	if err := os.WriteFile(filepath.Join(mission.Workspace, "app.txt"), []byte("agent edit"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if root, err := openMissionWorkspaceSnapshot(dataRoot, mission); err == nil {
+		_ = root.Close()
+		t.Fatal("tampered snapshot opened without a persisted artifact manifest")
+	}
+	sourceBytes, err := os.ReadFile(filepath.Join(repo, "app.txt"))
+	if err != nil || string(sourceBytes) != "source version" {
+		t.Fatalf("source changed through isolated workspace: %q err=%v", sourceBytes, err)
+	}
+	reloadedStore, err := NewJSONStore(filepath.Join(dataRoot, ".store"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	recoveredRuntime, err := NewRuntime(RuntimeConfig{Store: reloadedStore, Planner: RulePlanner{}, WorkspaceRoot: repo, DataRoot: dataRoot, Context: contextStore})
+	if err != nil {
+		t.Fatal(err)
+	}
+	persisted, err := recoveredRuntime.GetMission(mission.ID)
+	if err != nil || persisted.WorkspaceSnapshotID != mission.WorkspaceSnapshotID || persisted.WorkspaceSnapshotSHA256 != mission.WorkspaceSnapshotSHA256 {
+		t.Fatalf("snapshot metadata did not persist: %+v err=%v", persisted, err)
+	}
+	if err := validateMissionWorkspaceSnapshot(dataRoot, persisted); err != nil {
+		t.Fatalf("persisted snapshot failed integrity validation: %v", err)
+	}
+	manifestPath := filepath.Join(dataRoot, ".agent-workspace-snapshots", "snapshots", "*")
+	manifestPaths, err := filepath.Glob(filepath.Join(manifestPath, "mis_*", mission.WorkspaceSnapshotID, "manifest.json"))
+	if err != nil || len(manifestPaths) != 1 {
+		t.Fatalf("snapshot manifest paths = %v, err=%v", manifestPaths, err)
+	}
+	if err := os.WriteFile(manifestPaths[0], []byte("{}\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := validateMissionWorkspaceSnapshot(dataRoot, persisted); err == nil || !strings.Contains(err.Error(), "digest mismatch") {
+		t.Fatalf("tampered manifest validation error = %v, want digest mismatch", err)
+	}
+}
+
+func TestNonIsolatedMissionWorkspaceIdentityRejectsPathReplacement(t *testing.T) {
+	workspace := t.TempDir()
+	identity, err := workspaceDirectoryIdentity(workspace)
+	if err != nil {
+		t.Fatal(err)
+	}
+	mission := Mission{ID: "mis_workspace_identity_test", Workspace: workspace, WorkspaceIdentity: identity}
+	root, err := openMissionWorkspaceSnapshot(t.TempDir(), mission)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := root.Close(); err != nil {
+		t.Fatal(err)
+	}
+	moved := workspace + ".authorized"
+	if err := os.Rename(workspace, moved); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(workspace, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := openMissionWorkspaceSnapshot(t.TempDir(), mission); err == nil || !strings.Contains(err.Error(), "changed after authorization") {
+		t.Fatalf("replaced workspace error = %v, want identity mismatch", err)
+	}
+	mission.WorkspaceIdentity = ""
+	if _, err := openMissionWorkspaceSnapshot(t.TempDir(), mission); err == nil || !strings.Contains(err.Error(), "identity is missing") {
+		t.Fatalf("legacy workspace error = %v, want fail-closed identity requirement", err)
+	}
+}
+
+func TestIsolatedWorkspaceToolsStayAnchoredAfterPathReplacement(t *testing.T) {
+	requireDescriptorBoundWorkspaceIsolation(t)
+	repo := initWorkspaceSnapshotGit(t)
+	writeSnapshotFixture(t, repo, "app.txt", "approved source")
+	runSnapshotFixtureGit(t, repo, "add", "app.txt")
+	runSnapshotFixtureGit(t, repo, "commit", "-m", "initial")
+	contextStore, err := NewContextStore(filepath.Join(t.TempDir(), "context"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := contextStore.SetWorkspaceRoot(repo); err != nil {
+		t.Fatal(err)
+	}
+	project, err := contextStore.CreateProject("anchored", repo, "org_anchor_test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	dataRoot := t.TempDir()
+	runtime, err := NewRuntime(RuntimeConfig{Store: NewMemoryStore(), Planner: RulePlanner{}, WorkspaceRoot: repo, DataRoot: dataRoot, Context: contextStore})
+	if err != nil {
+		t.Fatal(err)
+	}
+	mission, err := runtime.CreateMission(context.Background(), CreateMissionRequest{Objective: "read isolated snapshot", ProjectID: project.ID, OrganizationID: "org_anchor_test", IsolateWorkspace: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	root, err := openMissionWorkspaceSnapshot(dataRoot, mission)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer root.Close()
+	originalPath := mission.Workspace + ".original"
+	if err := os.Rename(mission.Workspace, originalPath); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(mission.Workspace, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(mission.Workspace, "app.txt"), []byte("other tenant data"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	result, err := (workspaceReadTool{}).Execute(context.Background(), ToolContext{Workspace: mission.Workspace, WorkspaceRoot: root}, map[string]any{"path": "app.txt"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	value, ok := result.Value.(map[string]any)
+	if !ok || value["content"] != "approved source" {
+		t.Fatalf("anchored read=%+v, want original snapshot content", result.Value)
+	}
+	if _, err := (workspaceReadTool{}).Execute(context.Background(), ToolContext{Workspace: mission.Workspace, WorkspaceRoot: root}, map[string]any{"path": "../../etc/passwd"}); err == nil {
+		t.Fatal("anchored read accepted traversal")
+	}
+	writeResult, err := writeWorkspaceFile(ToolContext{MissionID: mission.ID, StepID: "step_anchor_write", Workspace: mission.Workspace, WorkspaceRoot: root}, map[string]any{
+		"path": "agent.txt", "content": "anchored output", "expected_sha256": "", "expected_absent": true,
+	})
+	if err != nil {
+		t.Fatalf("anchored write failed: %v", err)
+	}
+	if len(writeResult.Artifacts) != 1 {
+		t.Fatalf("anchored write artifacts=%+v, want one verified artifact", writeResult.Artifacts)
+	}
+	originalOutput, err := os.ReadFile(filepath.Join(originalPath, "agent.txt"))
+	if err != nil || string(originalOutput) != "anchored output" {
+		t.Fatalf("anchored write target=%q err=%v", originalOutput, err)
+	}
+	if _, err := os.Stat(filepath.Join(mission.Workspace, "agent.txt")); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("anchored write modified replacement workspace: err=%v", err)
+	}
+}
+
+func TestRuntimeSnapshotsGitRootForNestedProject(t *testing.T) {
+	requireDescriptorBoundWorkspaceIsolation(t)
+	repo := initWorkspaceSnapshotGit(t)
+	projectRoot := filepath.Join(repo, "apps", "service")
+	if err := os.MkdirAll(projectRoot, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	writeSnapshotFixture(t, projectRoot, "app.txt", "nested project source")
+	runSnapshotFixtureGit(t, repo, "add", "apps/service/app.txt")
+	runSnapshotFixtureGit(t, repo, "commit", "-m", "nested project")
+	contextStore, err := NewContextStore(filepath.Join(t.TempDir(), "context"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := contextStore.SetWorkspaceRoot(repo); err != nil {
+		t.Fatal(err)
+	}
+	project, err := contextStore.CreateProject("nested service", projectRoot, "org_nested_snapshot")
+	if err != nil {
+		t.Fatal(err)
+	}
+	dataRoot := t.TempDir()
+	runtime, err := NewRuntime(RuntimeConfig{Store: NewMemoryStore(), Planner: RulePlanner{}, WorkspaceRoot: repo, DataRoot: dataRoot, Context: contextStore})
+	if err != nil {
+		t.Fatal(err)
+	}
+	mission, err := runtime.CreateMission(context.Background(), CreateMissionRequest{Objective: "inspect nested project", ProjectID: project.ID, OrganizationID: "org_nested_snapshot", IsolateWorkspace: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !isWithin(filepath.Join(dataRoot, ".agent-workspace-snapshots"), mission.Workspace) || !strings.HasSuffix(filepath.Clean(mission.Workspace), filepath.Join("tree", "apps", "service")) {
+		t.Fatalf("nested mission workspace = %q", mission.Workspace)
+	}
+	content, err := os.ReadFile(filepath.Join(mission.Workspace, "app.txt"))
+	if err != nil || string(content) != "nested project source" {
+		t.Fatalf("nested snapshot content = %q, err=%v", content, err)
+	}
+}
+
+func TestRuntimeRequiresProjectAndOrganizationForIsolation(t *testing.T) {
+	root := t.TempDir()
+	runtime, err := NewRuntime(RuntimeConfig{Store: NewMemoryStore(), Planner: RulePlanner{}, WorkspaceRoot: root, DataRoot: t.TempDir()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := runtime.CreateMission(context.Background(), CreateMissionRequest{Objective: "isolated without project", IsolateWorkspace: true}); err == nil || !strings.Contains(err.Error(), "project and organization") {
+		t.Fatalf("isolation without project/tenant error = %v", err)
+	}
+	projectRoot := t.TempDir()
+	contextStore, err := NewContextStore(filepath.Join(t.TempDir(), "context"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := contextStore.SetWorkspaceRoot(projectRoot); err != nil {
+		t.Fatal(err)
+	}
+	legacyProject, err := contextStore.CreateProject("unscoped legacy", projectRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	legacyRuntime, err := NewRuntime(RuntimeConfig{Store: NewMemoryStore(), Planner: RulePlanner{}, WorkspaceRoot: projectRoot, Context: contextStore, DataRoot: t.TempDir()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := legacyRuntime.CreateMission(context.Background(), CreateMissionRequest{Objective: "isolate legacy", ProjectID: legacyProject.ID, OrganizationID: "org_test", IsolateWorkspace: true}); err == nil || !strings.Contains(err.Error(), "owned by the active organization") {
+		t.Fatalf("isolation of unscoped project error = %v", err)
+	}
+}
+
+func TestRuntimePreservesWorkspaceSnapshotWhenPersistenceOutcomeIsUnknown(t *testing.T) {
+	requireDescriptorBoundWorkspaceIsolation(t)
+	repo := initWorkspaceSnapshotGit(t)
+	writeSnapshotFixture(t, repo, "app.txt", "source version")
+	runSnapshotFixtureGit(t, repo, "add", "app.txt")
+	runSnapshotFixtureGit(t, repo, "commit", "-m", "initial")
+	contextStore, err := NewContextStore(filepath.Join(t.TempDir(), "context"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := contextStore.SetWorkspaceRoot(repo); err != nil {
+		t.Fatal(err)
+	}
+	project, err := contextStore.CreateProject("isolated", repo, "org_snapshot_test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	dataRoot := t.TempDir()
+	store := failingMissionPutStore{Store: NewMemoryStore()}
+	runtime, err := NewRuntime(RuntimeConfig{Store: store, Planner: RulePlanner{}, WorkspaceRoot: repo, DataRoot: dataRoot, Context: contextStore})
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = runtime.CreateMission(context.Background(), CreateMissionRequest{
+		Objective:        "snapshot cleanup",
+		ProjectID:        project.ID,
+		OrganizationID:   "org_snapshot_test",
+		IsolateWorkspace: true,
+	})
+	if err == nil || !strings.Contains(err.Error(), "mission persistence unavailable") {
+		t.Fatalf("CreateMission error = %v", err)
+	}
+	manifests, err := filepath.Glob(filepath.Join(dataRoot, ".agent-workspace-snapshots", "snapshots", "*", "mis_*", "snp_*", "manifest.json"))
+	if err != nil || len(manifests) != 1 {
+		t.Fatalf("snapshot manifests = %v, err=%v; ambiguous persistence errors must preserve the snapshot for reconciliation", manifests, err)
+	}
+}
+
+func TestRuntimePushOutboxRechecksDLPBeforeNetworkDelivery(t *testing.T) {
+	var requests atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		requests.Add(1)
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+	push, err := NewPushService("", server.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := push.Register("push-token", "ios", "user", "org_push_test"); err != nil {
+		t.Fatal(err)
+	}
+	outbox, err := NewPushOutbox(filepath.Join(t.TempDir(), "outbox"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	item, err := outbox.Enqueue("org_push_test", "Notice", "Body", map[string]any{"message": "safe"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	outbox.mu.Lock()
+	corrupted := outbox.items[item.ID]
+	outbox.mu.Unlock()
+	corrupted.Data = map[string]any{"details": map[string]any{"api_key": "abcdef0123456789abcdef"}}
+	encoded, err := json.Marshal(map[string]PushOutboxItem{item.ID: corrupted})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(outbox.path, encoded, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	before, err := os.ReadFile(outbox.path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	runtime, err := NewRuntime(RuntimeConfig{Store: NewMemoryStore(), Planner: RulePlanner{}, WorkspaceRoot: t.TempDir(), DataRoot: t.TempDir(), Push: push, PushOutbox: outbox})
+	if err != nil {
+		t.Fatal(err)
+	}
+	runtime.flushPushOutbox(context.Background())
+	if got := requests.Load(); got != 0 {
+		t.Fatalf("push provider received %d request(s) with DLP-blocked outbox data", got)
+	}
+	if runtime.Metrics().PushOutboxFailures != 1 {
+		t.Fatalf("corrupted legacy record should fail closed during claim: %+v", runtime.Metrics())
+	}
+	after, err := os.ReadFile(outbox.path)
+	if err != nil || string(after) != string(before) {
+		t.Fatalf("corrupted record changed during failed delivery claim: err=%v", err)
+	}
+}
+
 func TestRuntimeRejectsUnconfiguredMissionProvider(t *testing.T) {
 	root := t.TempDir()
 	store, err := NewJSONStore(filepath.Join(root, ".store"))
@@ -93,6 +461,9 @@ func TestRuntimeQueueJobsOrganizationScope(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if job.OrganizationID != "org_a" {
+		t.Fatalf("queue job organization=%q, want org_a", job.OrganizationID)
+	}
 	jobs, err := runtime.QueueJobsForOrganization("org_a", "")
 	if err != nil || len(jobs) != 1 || jobs[0].ID != job.ID {
 		t.Fatalf("org_a jobs=%+v err=%v", jobs, err)
@@ -104,9 +475,159 @@ func TestRuntimeQueueJobsOrganizationScope(t *testing.T) {
 	if _, err := runtime.ReplayJobForOrganization(job.ID, "org_b"); !errors.Is(err, ErrQueueJobForbidden) {
 		t.Fatalf("cross-tenant replay error=%v", err)
 	}
+	viewB := runtime.WithOrganization("org_b")
+	if jobs := viewB.QueueJobs(""); len(jobs) != 0 {
+		t.Fatalf("org_b scoped queue leaked tenant A jobs: %+v", jobs)
+	}
+	if _, err := viewB.ReplayJobForOrganization(job.ID, "org_b"); !errors.Is(err, ErrQueueJobForbidden) {
+		t.Fatalf("scoped cross-tenant replay error=%v, want forbidden", err)
+	}
 	jobs, err = runtime.QueueJobsForOrganization("org_a", "")
 	if err != nil || len(jobs) != 1 || jobs[0].Status != QueuePending {
 		t.Fatalf("job mutated after rejected replay: %+v err=%v", jobs, err)
+	}
+}
+
+func TestRuntimeQueueListingsHideJobsWithMismatchedOwnerMetadata(t *testing.T) {
+	runtime, err := NewRuntime(RuntimeConfig{Store: NewMemoryStore(), Planner: RulePlanner{}, WorkspaceRoot: t.TempDir()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	mission, err := runtime.CreateMission(context.Background(), CreateMissionRequest{Objective: "queue metadata leak", OrganizationID: "org-a"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := runtime.queue.EnqueueForOrganization("org-b", mission.ID, 1); err != nil {
+		t.Fatal(err)
+	}
+	if jobs, err := runtime.QueueJobsForOrganization("org-a", ""); err != nil || len(jobs) != 0 {
+		t.Fatalf("org-a listing exposed owner-mismatched job: jobs=%+v err=%v", jobs, err)
+	}
+	if jobs := runtime.WithOrganization("org-a").QueueJobs(""); len(jobs) != 0 {
+		t.Fatalf("scoped QueueJobs exposed owner-mismatched job: %+v", jobs)
+	}
+	if _, err := runtime.QueueJobsForOrganization("", ""); !errors.Is(err, ErrQueueJobForbidden) {
+		t.Fatalf("unscoped listing of tenant mission error=%v, want forbidden", err)
+	}
+}
+
+func TestNewRuntimeFailsClosedForPostgresStoresAndDecorators(t *testing.T) {
+	for name, store := range map[string]Store{
+		"direct":              &PostgresStore{},
+		"organization-scoped": organizationScopedStore{store: &PostgresStore{}, organizationID: "org-a"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			if _, err := NewRuntime(RuntimeConfig{Store: store, WorkspaceRoot: t.TempDir()}); !errors.Is(err, ErrPostgresTenantIsolationUnavailable) {
+				t.Fatalf("Postgres runtime error=%v, want fail-closed tenant-isolation error", err)
+			}
+		})
+	}
+}
+
+func TestRuntimeQueueWorkerRejectsOwnerlessAndForeignJobs(t *testing.T) {
+	store := NewMemoryStore()
+	runtime, err := NewRuntime(RuntimeConfig{Store: store, Planner: RulePlanner{}, WorkspaceRoot: t.TempDir()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	mission, err := runtime.CreateMission(context.Background(), CreateMissionRequest{Objective: "queue tenant boundary", OrganizationID: "org-a"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, job := range []QueueJob{{MissionID: mission.ID}, {MissionID: mission.ID, OrganizationID: "org-b"}} {
+		if err := runtime.runQueueJob(context.Background(), job); !errors.Is(err, ErrQueueJobForbidden) {
+			t.Fatalf("base worker accepted ownerless/foreign job %+v: %v", job, err)
+		}
+	}
+	if err := runtime.WithOrganization("org-a").runQueueJob(context.Background(), QueueJob{MissionID: mission.ID, OrganizationID: "org-b"}); !errors.Is(err, ErrQueueJobForbidden) {
+		t.Fatalf("scoped worker accepted mismatched organization job: %v", err)
+	}
+	after, err := store.GetMission(mission.ID)
+	if err != nil || after.Version != mission.Version || after.State != mission.State {
+		t.Fatalf("rejected queue job mutated mission: after=%+v err=%v", after, err)
+	}
+}
+
+func TestRuntimeWithOrganizationScopesMemoryStore(t *testing.T) {
+	runtime, err := NewRuntime(RuntimeConfig{Store: NewMemoryStore(), Planner: RulePlanner{}, WorkspaceRoot: t.TempDir()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	missionA, err := runtime.CreateMission(context.Background(), CreateMissionRequest{Objective: "tenant A", OrganizationID: "org_a"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	missionB, err := runtime.CreateMission(context.Background(), CreateMissionRequest{Objective: "tenant B", OrganizationID: "org_b"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	viewA := runtime.WithOrganization("org_a")
+	if got, err := viewA.GetMission(missionA.ID); err != nil || got.OrganizationID != "org_a" {
+		t.Fatalf("org_a mission=%+v err=%v", got, err)
+	}
+	if _, err := viewA.GetMission(missionB.ID); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("cross-tenant get error=%v, want not found", err)
+	}
+	if _, err := viewA.EnqueueMission(missionB.ID); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("cross-tenant enqueue error=%v, want not found", err)
+	}
+	if _, err := viewA.Events(missionB.ID); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("cross-tenant events error=%v, want not found", err)
+	}
+	missions, err := viewA.ListMissions()
+	if err != nil || len(missions) != 1 || missions[0].ID != missionA.ID {
+		t.Fatalf("org_a missions=%+v err=%v", missions, err)
+	}
+	if _, err := viewA.CreateMission(context.Background(), CreateMissionRequest{Objective: "spoof", OrganizationID: "org_b"}); err == nil {
+		t.Fatal("organization-scoped runtime accepted a forged tenant")
+	}
+	if _, err := viewA.CreateMission(context.Background(), CreateMissionRequest{Objective: "shared workspace IDOR"}); err == nil || !strings.Contains(err.Error(), "require a project") {
+		t.Fatalf("organization-scoped mission without project error=%v, want project ownership rejection", err)
+	}
+}
+
+func TestRuntimeScopedRecoveryDoesNotSweepOtherTenantSnapshots(t *testing.T) {
+	requireDescriptorBoundWorkspaceIsolation(t)
+	source := initWorkspaceSnapshotGit(t)
+	dataRoot := t.TempDir()
+	create := func(missionID, organizationID string) WorkspaceSnapshotManifest {
+		t.Helper()
+		manifest, err := CreateWorkspaceSnapshot(context.Background(), WorkspaceSnapshotRequest{
+			SourceRoot: source, DataRoot: filepath.Join(dataRoot, ".agent-workspace-snapshots"),
+			MissionID: missionID, OrganizationID: organizationID, ProjectID: "proj_" + missionID,
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return manifest
+	}
+	kept := create("mis_scope_keep", "org_a")
+	otherTenantOrphan := create("mis_scope_other", "org_b")
+	old := time.Now().Add(-workspaceSnapshotOrphanGrace - time.Minute)
+	if err := os.Chtimes(otherTenantOrphan.SnapshotRoot, old, old); err != nil {
+		t.Fatal(err)
+	}
+	store := NewMemoryStore()
+	mission := Mission{
+		ID: kept.MissionID, Version: 1, Objective: "kept", Workspace: kept.TreeRoot,
+		WorkspaceIsolated: true, WorkspaceSnapshotID: kept.SnapshotID,
+		WorkspaceSnapshotSHA256: snapshotManifestDigest(t, kept.SnapshotRoot),
+		ProjectID:               kept.ProjectID, OrganizationID: kept.OrganizationID,
+		State: MissionCompleted, Plan: []Step{}, Approvals: []Approval{}, Artifacts: []ArtifactManifest{},
+		CreatedAt: time.Now().UTC(), UpdatedAt: time.Now().UTC(),
+	}
+	if err := store.PutMission(mission); err != nil {
+		t.Fatal(err)
+	}
+	runtime, err := NewRuntime(RuntimeConfig{Store: store, Planner: RulePlanner{}, WorkspaceRoot: source, DataRoot: dataRoot})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := runtime.WithOrganization("org_a").resumePending(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Lstat(otherTenantOrphan.SnapshotRoot); err != nil {
+		t.Fatalf("scoped org_a recovery removed org_b snapshot: %v", err)
 	}
 }
 
@@ -284,9 +805,10 @@ func (dlpResultTool) Descriptor() ToolDescriptor {
 
 func (dlpResultTool) Execute(context.Context, ToolContext, map[string]any) (ToolResult, error) {
 	return ToolResult{Value: map[string]any{
-		"safe":       "visible",
-		"nested":     map[string]any{"token": "xai-abcdefghijklmnopqrstuvwxyz123456"},
-		"credential": "api_key=super-secret-token-value",
+		"safe":        "visible",
+		"nested":      map[string]any{"token": "xai-abcdefghijklmnopqrstuvwxyz123456"},
+		"nested_json": `provider error: {"api_key":"plain-secret-value"}`,
+		"credential":  "api_key=super-secret-token-value",
 	}}, nil
 }
 
@@ -318,7 +840,7 @@ func TestRuntimeRedactsStepResultsEventsTracesAndPersistence(t *testing.T) {
 		t.Fatal(err)
 	}
 	encodedResult, _ := json.Marshal(completed.Plan[0].Result)
-	if strings.Contains(string(encodedResult), "xai-") || strings.Contains(string(encodedResult), "super-secret-token-value") {
+	if strings.Contains(string(encodedResult), "xai-") || strings.Contains(string(encodedResult), "super-secret-token-value") || strings.Contains(string(encodedResult), "plain-secret-value") || strings.Contains(string(encodedResult), `"api_key"`) {
 		t.Fatalf("step result leaked credential: %s", encodedResult)
 	}
 	if err := runtime.event(completed, "test.secret", completed.Plan[0].ID, map[string]any{"token": "Bearer abcdefghijklmnop1234"}); err != nil {
@@ -352,6 +874,32 @@ func TestRuntimeRedactsStepResultsEventsTracesAndPersistence(t *testing.T) {
 	}
 }
 
+func TestRuntimeEventReportsPushOutboxFailureWithoutFailingMissionEvent(t *testing.T) {
+	root := t.TempDir()
+	outboxPath := filepath.Join(root, "outbox.json")
+	if err := os.Mkdir(outboxPath, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	store := NewMemoryStore()
+	mission := Mission{ID: "mission_push_failure", Version: 1, OrganizationID: "org_push_failure", CreatedAt: time.Now().UTC(), UpdatedAt: time.Now().UTC()}
+	if err := store.CreateMission(mission); err != nil {
+		t.Fatal(err)
+	}
+	runtime := &Runtime{
+		store:      store,
+		metrics:    &RuntimeMetrics{},
+		push:       &PushService{endpoint: "https://push.example.test/send"},
+		pushOutbox: &PushOutbox{path: outboxPath, items: map[string]PushOutboxItem{}},
+	}
+	err := runtime.event(mission, "mission.failed", "", map[string]any{"state": "failed"})
+	if err != nil {
+		t.Fatalf("optional notification failure changed persisted mission event result: %v", err)
+	}
+	if got := runtime.Metrics().PushOutboxFailures; got != 1 {
+		t.Fatalf("push outbox failure metric=%d, want 1", got)
+	}
+}
+
 func TestContextStorePersistsProjectAndMemory(t *testing.T) {
 	root := t.TempDir()
 	store, err := NewContextStore(filepath.Join(root, "context"))
@@ -379,6 +927,8 @@ func TestContextStorePersistsProjectAndMemory(t *testing.T) {
 }
 
 func TestSandboxExecRunsIsolatedPython(t *testing.T) {
+	t.Setenv("OLLAMA_AGENT_SANDBOX_MODE", "best-effort")
+	t.Setenv("OLLAMA_AGENT_SANDBOX_ALLOW_BEST_EFFORT", "true")
 	if _, err := exec.LookPath("unshare"); err != nil {
 		t.Skip("sandbox test requires unshare")
 	}
@@ -413,12 +963,125 @@ func TestSandboxExecRunsIsolatedPython(t *testing.T) {
 	}
 }
 
+func TestSandboxIsolationModeIsBoundToApproval(t *testing.T) {
+	requireLinuxSandboxExecutor(t)
+	t.Setenv("OLLAMA_AGENT_SANDBOX_MODE", "best-effort")
+	t.Setenv("OLLAMA_AGENT_SANDBOX_ALLOW_BEST_EFFORT", "true")
+	root := t.TempDir()
+	runtime, err := NewRuntime(RuntimeConfig{Store: NewMemoryStore(), WorkspaceRoot: root, Planner: fixedPlanner{steps: []Step{{ID: "step_1", Kind: "sandbox.exec", Title: "run", Risk: RiskWrite, RequiresApproval: true, State: StepPending, Input: map[string]any{"language": "python", "code": "print('must not run')", "sandbox_mode": "strict"}}}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	mission, err := runtime.CreateMission(context.Background(), CreateMissionRequest{Objective: "approve sandbox mode", Capabilities: []string{"sandbox:execute"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if mode := stringInput(mission.Plan[0].Input, "sandbox_mode", ""); mode != "best-effort" {
+		t.Fatalf("planner was able to select sandbox mode %q; want authoritative best-effort", mode)
+	}
+	mission, err = runtime.DecideApproval(mission.ID, mission.Approvals[0].ID, true, "approved")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("OLLAMA_AGENT_SANDBOX_MODE", "strict")
+	if err := runtime.Run(context.Background(), mission.ID); err == nil || !strings.Contains(err.Error(), ErrApprovalPayloadChanged.Error()) {
+		t.Fatalf("sandbox mode drift error=%v, want approval payload mismatch", err)
+	}
+	completed, err := runtime.GetMission(mission.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if completed.State != MissionFailed || completed.Plan[0].State != StepFailed {
+		t.Fatalf("mode drift did not fail closed: mission=%s step=%s", completed.State, completed.Plan[0].State)
+	}
+}
+
+func TestRuntimeFailsClosedWhenApprovalRecordIsMissing(t *testing.T) {
+	t.Setenv("OLLAMA_AGENT_SANDBOX_MODE", "best-effort")
+	t.Setenv("OLLAMA_AGENT_SANDBOX_ALLOW_BEST_EFFORT", "true")
+	store := NewMemoryStore()
+	runtime, err := NewRuntime(RuntimeConfig{Store: store, WorkspaceRoot: t.TempDir(), Planner: fixedPlanner{steps: []Step{{ID: "step_1", Kind: "sandbox.exec", Title: "run", Risk: RiskWrite, RequiresApproval: true, Input: map[string]any{"language": "python", "code": "print('must not run')"}}}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	mission, err := runtime.CreateMission(context.Background(), CreateMissionRequest{Objective: "missing approval regression", Capabilities: []string{"sandbox:execute"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	mission.Approvals = nil
+	mission.State = MissionReady
+	mission.Version++
+	if err := store.PutMission(mission); err != nil {
+		t.Fatal(err)
+	}
+	if err := runtime.Run(context.Background(), mission.ID); !errors.Is(err, ErrApprovalPayloadChanged) {
+		t.Fatalf("missing approval execution error=%v, want fail-closed approval error", err)
+	}
+	stored, err := runtime.GetMission(mission.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stored.State != MissionFailed || stored.Plan[0].State == StepSucceeded {
+		t.Fatalf("mission executed or did not fail closed: state=%s step=%s", stored.State, stored.Plan[0].State)
+	}
+}
+
+func TestSandboxExecUsesAnchoredWorkspaceAfterPathReplacement(t *testing.T) {
+	if runtime.GOOS != "linux" {
+		t.Skip("anchored namespace mount test requires Linux")
+	}
+	if _, err := exec.LookPath("unshare"); err != nil {
+		t.Skip("sandbox test requires unshare")
+	}
+	probe := exec.Command("unshare", "--user", "--map-root-user", "--mount", "--pid", "--fork", "--mount-proc", "--net", "/bin/true")
+	if output, err := probe.CombinedOutput(); err != nil {
+		t.Skipf("user namespace sandbox unavailable: %v (%s)", err, strings.TrimSpace(string(output)))
+	}
+	t.Setenv("OLLAMA_AGENT_SANDBOX_MODE", "best-effort")
+	t.Setenv("OLLAMA_AGENT_SANDBOX_ALLOW_BEST_EFFORT", "true")
+	workspace := t.TempDir()
+	if err := os.WriteFile(filepath.Join(workspace, "marker.txt"), []byte("original workspace"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	siblingSecret := workspace + ".secret"
+	if err := os.WriteFile(siblingSecret, []byte("OUTSIDE_SECRET"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(siblingSecret)
+	root, err := os.OpenRoot(workspace)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer root.Close()
+	originalPath := workspace + ".original"
+	if err := os.Rename(workspace, originalPath); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(workspace, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(workspace, "marker.txt"), []byte("replacement workspace"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	result, err := (sandboxExecTool{}).Execute(context.Background(), ToolContext{
+		StepID: "step_anchored_sandbox", Workspace: workspace, WorkspaceRoot: root,
+	}, map[string]any{"language": "python", "code": "print(open('marker.txt', encoding='utf-8').read())\nfor p in ['/proc/self/fd/3/../secret.txt', '" + siblingSecret + "', '/etc/passwd']:\n try:\n  print('ESCAPED:' + open(p).read())\n except Exception:\n  print('blocked')", "sandbox_mode": "best-effort", "sandbox_gate_status": string(GateStatusNotConfigured), "sandbox_approval_notice": sandboxBestEffortApprovalNotice})
+	if err != nil {
+		t.Fatalf("anchored sandbox execution: %v; result=%+v", err, result.Value)
+	}
+	value, ok := result.Value.(map[string]any)
+	stdout, stdoutOK := value["stdout"].(string)
+	if !ok || !stdoutOK || !strings.Contains(stdout, "original workspace") || strings.Contains(stdout, "replacement workspace") || strings.Contains(stdout, "OUTSIDE_SECRET") || strings.Contains(stdout, "root:x:") || strings.Count(stdout, "blocked") != 3 {
+		t.Fatalf("sandbox output=%+v, want workspace-only content", result.Value)
+	}
+}
+
 func TestApprovalBindsActorOrganizationAndReason(t *testing.T) {
 	runtime, err := NewRuntime(RuntimeConfig{Store: NewMemoryStore(), WorkspaceRoot: t.TempDir(), Planner: fixedPlanner{steps: []Step{{ID: "step_1", Kind: "workspace.write", Title: "write", Risk: RiskWrite, RequiresApproval: true, Input: map[string]any{"path": "approval.txt", "content": "ok"}}}}})
 	if err != nil {
 		t.Fatal(err)
 	}
-	mission, err := runtime.CreateMission(context.Background(), CreateMissionRequest{Objective: "aprovar operação", OrganizationID: "org_a"})
+	mission, err := runtime.CreateMission(context.Background(), CreateMissionRequest{Objective: "aprovar operação", OrganizationID: "org_a", Capabilities: []string{"workspace:write"}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -438,12 +1101,48 @@ func TestApprovalBindsActorOrganizationAndReason(t *testing.T) {
 	}
 }
 
+func TestApprovalValidationBindsPolicyExpiryAndDecisionActor(t *testing.T) {
+	runtime, err := NewRuntime(RuntimeConfig{Store: NewMemoryStore(), WorkspaceRoot: t.TempDir(), Planner: fixedPlanner{steps: []Step{{ID: "step_1", Kind: "workspace.write", Title: "write", Risk: RiskWrite, RequiresApproval: true, Input: map[string]any{"path": "approval-validation.txt", "content": "ok"}}}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	mission, err := runtime.CreateMission(context.Background(), CreateMissionRequest{Objective: "approval record validation", OrganizationID: "org_a", Capabilities: []string{"workspace:write"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	assertInvalid := func(name string, mutate func(*Approval)) {
+		t.Run(name, func(t *testing.T) {
+			copy := cloneMission(mission)
+			mutate(&copy.Approvals[0])
+			if err := runtime.validateMissionApprovalBindings(copy); err == nil {
+				t.Fatal("tampered approval record was accepted")
+			}
+		})
+	}
+	assertInvalid("policy", func(approval *Approval) { approval.Policy = "capabilities:;risk:read" })
+	assertInvalid("missing expiry", func(approval *Approval) { approval.ExpiresAt = nil })
+	assertInvalid("expired", func(approval *Approval) {
+		expired := time.Now().UTC().Add(-time.Second)
+		approval.ExpiresAt = &expired
+	})
+	assertInvalid("approved without actor", func(approval *Approval) {
+		approval.Status = ApprovalApproved
+		approval.ActorID = ""
+		approval.Reason = "approved"
+	})
+	assertInvalid("approved without reason", func(approval *Approval) {
+		approval.Status = ApprovalApproved
+		approval.ActorID = "admin_a"
+		approval.Reason = ""
+	})
+}
+
 func TestApprovalCASAndNonceAreSingleUse(t *testing.T) {
 	runtime, err := NewRuntime(RuntimeConfig{Store: NewMemoryStore(), WorkspaceRoot: t.TempDir(), Planner: fixedPlanner{steps: []Step{{ID: "step_1", Kind: "workspace.write", Title: "write", Risk: RiskWrite, RequiresApproval: true, Input: map[string]any{"path": "approval-cas.txt", "content": "ok"}}}}})
 	if err != nil {
 		t.Fatal(err)
 	}
-	mission, err := runtime.CreateMission(context.Background(), CreateMissionRequest{Objective: "approval CAS", OrganizationID: "org_a"})
+	mission, err := runtime.CreateMission(context.Background(), CreateMissionRequest{Objective: "approval CAS", OrganizationID: "org_a", Capabilities: []string{"workspace:write"}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -466,12 +1165,55 @@ func TestApprovalCASAndNonceAreSingleUse(t *testing.T) {
 	}
 }
 
+func TestApprovalReasonDLPIsRedactedBeforeMissionAndEvent(t *testing.T) {
+	const secret = "ghp_abcdefghijklmnopqrstuvwxyz123456"
+	runtime, err := NewRuntime(RuntimeConfig{Store: NewMemoryStore(), WorkspaceRoot: t.TempDir(), Planner: fixedPlanner{steps: []Step{{ID: "step_1", Kind: "workspace.write", Title: "write", Risk: RiskWrite, RequiresApproval: true, Input: map[string]any{"path": "approval-dlp.txt", "content": "ok"}}}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	mission, err := runtime.CreateMission(context.Background(), CreateMissionRequest{Objective: "approval DLP", OrganizationID: "org_a", Capabilities: []string{"workspace:write"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	approval := mission.Approvals[0]
+	reason := `{"api_key":"` + secret + `"}`
+	decided, err := runtime.DecideApprovalForActorCAS(mission.ID, approval.ID, true, reason, "admin_a", "org_a", mission.Version, approval.Nonce)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if decided.Approvals[0].Reason != "[REDACTED]" {
+		t.Fatalf("returned approval reason = %q, want DLP redaction", decided.Approvals[0].Reason)
+	}
+	stored, err := runtime.GetMission(mission.ID)
+	if err != nil || stored.Approvals[0].Reason != "[REDACTED]" {
+		t.Fatalf("stored approval reason = %q err=%v", stored.Approvals[0].Reason, err)
+	}
+	events, err := runtime.Events(mission.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, event := range events {
+		if event.Type != "approval.decided" {
+			continue
+		}
+		encoded, marshalErr := json.Marshal(event.Payload)
+		if marshalErr != nil {
+			t.Fatal(marshalErr)
+		}
+		if strings.Contains(string(encoded), secret) {
+			t.Fatalf("approval event contains raw credential: %s", encoded)
+		}
+		return
+	}
+	t.Fatal("approval decision event was not recorded")
+}
+
 func TestApprovalCASConcurrentDecisionsHaveOneWinner(t *testing.T) {
 	runtime, err := NewRuntime(RuntimeConfig{Store: NewMemoryStore(), WorkspaceRoot: t.TempDir(), Planner: fixedPlanner{steps: []Step{{ID: "step_1", Kind: "workspace.write", Title: "write", Risk: RiskWrite, RequiresApproval: true, Input: map[string]any{"path": "approval-concurrent.txt", "content": "ok"}}}}})
 	if err != nil {
 		t.Fatal(err)
 	}
-	mission, err := runtime.CreateMission(context.Background(), CreateMissionRequest{Objective: "approval concurrent CAS", OrganizationID: "org_a"})
+	mission, err := runtime.CreateMission(context.Background(), CreateMissionRequest{Objective: "approval concurrent CAS", OrganizationID: "org_a", Capabilities: []string{"workspace:write"}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -626,5 +1368,351 @@ func TestRuntimeRejectsRemoteProviderWithoutResolver(t *testing.T) {
 	}
 	if _, err := runtime.CreateMission(context.Background(), CreateMissionRequest{Objective: "remote", Provider: "codex", Model: "codex-mini"}); err == nil || !strings.Contains(err.Error(), "not configured") {
 		t.Fatalf("err = %v, want explicit unavailable provider", err)
+	}
+}
+
+type countingPlanner struct{ calls atomic.Int32 }
+
+func (p *countingPlanner) Plan(_ context.Context, _ Mission) ([]Step, error) {
+	p.calls.Add(1)
+	return RulePlanner{}.Plan(context.Background(), Mission{Objective: "inspect"})
+}
+
+func TestRuntimeBlocksSensitiveObjectiveBeforeRemotePlanner(t *testing.T) {
+	store := NewMemoryStore()
+	planner := &countingPlanner{}
+	resolver := &plannerResolverStub{planner: planner}
+	runtime, err := NewRuntime(RuntimeConfig{Store: store, PlannerResolver: resolver, WorkspaceRoot: t.TempDir()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = runtime.CreateMission(context.Background(), CreateMissionRequest{
+		Objective: "analyze incident token=ghp_abcdefghijklmnopqrstuvwxyz123456",
+		Provider:  "anthropic",
+		Model:     "claude-sonnet-4-5",
+	})
+	if err == nil || !strings.Contains(err.Error(), "data-egress policy") {
+		t.Fatalf("sensitive external mission error=%v", err)
+	}
+	if planner.calls.Load() != 0 {
+		t.Fatalf("remote planner was called %d times", planner.calls.Load())
+	}
+	missions, err := store.ListMissions()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(missions) != 0 {
+		t.Fatalf("sensitive mission was persisted: %+v", missions)
+	}
+	_, err = runtime.CreateMission(context.Background(), CreateMissionRequest{
+		Objective: `review incident payload {"api_key":"ordinary-secret-value"}`,
+		Provider:  "anthropic",
+		Model:     "claude-sonnet-4-5",
+	})
+	if err == nil || !strings.Contains(err.Error(), "data-egress policy") {
+		t.Fatalf("embedded JSON credential objective error=%v", err)
+	}
+	if planner.calls.Load() != 0 {
+		t.Fatalf("remote planner received embedded JSON credential; calls=%d", planner.calls.Load())
+	}
+	missions, err = store.ListMissions()
+	if err != nil || len(missions) != 0 {
+		t.Fatalf("embedded JSON credential mission persisted: missions=%+v err=%v", missions, err)
+	}
+}
+
+type descriptorMutationTool struct{ executed atomic.Bool }
+
+func (t *descriptorMutationTool) Descriptor() ToolDescriptor {
+	return ToolDescriptor{Name: "workspace.write", Version: "changed", Risk: RiskWrite, RequiresApproval: true, Scopes: []string{"workspace:write"}}
+}
+
+func (t *descriptorMutationTool) Execute(context.Context, ToolContext, map[string]any) (ToolResult, error) {
+	t.executed.Store(true)
+	return ToolResult{}, nil
+}
+
+func TestRuntimeInvalidatesApprovalWhenToolDescriptorChanges(t *testing.T) {
+	runtime, err := NewRuntime(RuntimeConfig{Store: NewMemoryStore(), WorkspaceRoot: t.TempDir(), Planner: fixedPlanner{steps: []Step{{ID: "step_1", Kind: "workspace.write", Title: "write", Risk: RiskWrite, RequiresApproval: true, Input: map[string]any{"path": "descriptor.txt", "content": "safe"}}}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	mission, err := runtime.CreateMission(context.Background(), CreateMissionRequest{Objective: "descriptor binding", OrganizationID: "org_a", Capabilities: []string{"workspace:write"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	mission, err = runtime.DecideApprovalForActor(mission.ID, mission.Approvals[0].ID, true, "approved for original tool", "user_a", "org_a")
+	if err != nil {
+		t.Fatal(err)
+	}
+	changed := &descriptorMutationTool{}
+	runtime.tools.Register(changed)
+	err = runtime.Run(context.Background(), mission.ID)
+	if !errors.Is(err, ErrApprovalPayloadChanged) {
+		t.Fatalf("run error=%v, want ErrApprovalPayloadChanged", err)
+	}
+	if changed.executed.Load() {
+		t.Fatal("tool executed despite descriptor changing after approval")
+	}
+}
+
+type readOnlyDescriptorMutationTool struct{ executed atomic.Bool }
+
+func (t *readOnlyDescriptorMutationTool) Descriptor() ToolDescriptor {
+	return ToolDescriptor{Name: "git.repo.inspect", Version: "mutated", Description: "unexpected replacement", Risk: RiskRead, Scopes: []string{"repo:read"}}
+}
+
+func (t *readOnlyDescriptorMutationTool) Execute(context.Context, ToolContext, map[string]any) (ToolResult, error) {
+	t.executed.Store(true)
+	return ToolResult{Value: "executed"}, nil
+}
+
+func TestRuntimeInvalidatesReadOnlyToolWhenDescriptorChanges(t *testing.T) {
+	runtime, err := NewRuntime(RuntimeConfig{Store: NewMemoryStore(), WorkspaceRoot: t.TempDir(), Planner: fixedPlanner{steps: []Step{{ID: "step_read", Kind: "git.repo.inspect", Title: "inspect", Risk: RiskRead}}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	mission, err := runtime.CreateMission(context.Background(), CreateMissionRequest{Objective: "descriptor drift", Capabilities: []string{"repo:read"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	changed := &readOnlyDescriptorMutationTool{}
+	runtime.tools.Register(changed)
+	if err := runtime.Run(context.Background(), mission.ID); !errors.Is(err, ErrApprovalPayloadChanged) {
+		t.Fatalf("run error=%v, want descriptor mismatch", err)
+	}
+	if changed.executed.Load() {
+		t.Fatal("replacement read-only tool executed despite descriptor drift")
+	}
+}
+
+func TestRuntimeGitRepoInspectUsesIsolatedSnapshotBaseline(t *testing.T) {
+	requireDescriptorBoundWorkspaceIsolation(t)
+	repo := initWorkspaceSnapshotGit(t)
+	projectRoot := filepath.Join(repo, "service")
+	if err := os.MkdirAll(projectRoot, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	writeSnapshotFixture(t, repo, "service/app.txt", "source version\n")
+	runSnapshotFixtureGit(t, repo, "add", "service/app.txt")
+	runSnapshotFixtureGit(t, repo, "commit", "-m", "initial")
+
+	contextStore, err := NewContextStore(filepath.Join(t.TempDir(), "context"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := contextStore.SetWorkspaceRoot(repo); err != nil {
+		t.Fatal(err)
+	}
+	project, err := contextStore.CreateProject("nested service", projectRoot, "org_git_snapshot")
+	if err != nil {
+		t.Fatal(err)
+	}
+	dataRoot := t.TempDir()
+	missionStore, err := NewJSONStore(filepath.Join(dataRoot, ".store"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	runtime, err := NewRuntime(RuntimeConfig{
+		Store:         missionStore,
+		WorkspaceRoot: repo,
+		DataRoot:      dataRoot,
+		Context:       contextStore,
+		Planner: fixedPlanner{steps: []Step{{
+			ID:    "step_repo_inspect",
+			Kind:  "git.repo.inspect",
+			Title: "Inspect isolated repository changes",
+		}}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	mission, err := runtime.CreateMission(context.Background(), CreateMissionRequest{
+		Objective:        "inspect repository status after an approved edit",
+		ProjectID:        project.ID,
+		OrganizationID:   "org_git_snapshot",
+		Capabilities:     []string{"repo:read", "workspace:read", "workspace:write"},
+		IsolateWorkspace: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.HasSuffix(filepath.ToSlash(mission.Workspace), "/tree/service") {
+		t.Fatalf("nested mission workspace=%q; want snapshot tree/service", mission.Workspace)
+	}
+	root, err := openMissionWorkspaceSnapshot(dataRoot, mission)
+	if err != nil {
+		t.Fatal(err)
+	}
+	input, err := prepareWorkspaceWriteApproval(mission.Workspace, map[string]any{
+		"path":    "app.txt",
+		"content": "agent version\n",
+	})
+	if err != nil {
+		_ = root.Close()
+		t.Fatal(err)
+	}
+	writeResult, err := writeWorkspaceFile(ToolContext{
+		MissionID:     mission.ID,
+		StepID:        "step_approved_edit",
+		Workspace:     mission.Workspace,
+		WorkspaceRoot: root,
+	}, input)
+	_ = root.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+	mission.Artifacts = appendUniqueArtifacts(mission.Artifacts, writeResult.Artifacts)
+	oldVersion := mission.Version
+	mission.Version++
+	mission.UpdatedAt = time.Now().UTC()
+	if err := missionStore.PutMissionIfVersion(mission, oldVersion); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := runtime.Run(context.Background(), mission.ID); err != nil {
+		t.Fatal(err)
+	}
+	completed, err := runtime.GetMission(mission.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if completed.State != MissionCompleted || len(completed.Plan) != 1 || completed.Plan[0].State != StepSucceeded {
+		t.Fatalf("mission did not complete inspection: state=%s plan=%+v", completed.State, completed.Plan)
+	}
+	result, ok := completed.Plan[0].Result.(map[string]any)
+	if !ok {
+		t.Fatalf("Git result type=%T value=%#v", completed.Plan[0].Result, completed.Plan[0].Result)
+	}
+	if result["repository_root"] != "." || result["baseline_is_mission_start"] != true || result["read_only"] != true || result["change_scope"] != "persisted_mission_artifacts_only" || result["changes_complete"] != false {
+		t.Fatalf("unsafe/missing snapshot metadata: %#v", result)
+	}
+	changes, ok := result["changes"].([]any)
+	if !ok || len(changes) != 1 {
+		t.Fatalf("snapshot changes=%#v", result["changes"])
+	}
+	change, ok := changes[0].(map[string]any)
+	if !ok || change["change"] != "modified" || change["path"] != "app.txt" {
+		t.Fatalf("nested project change=%#v", changes[0])
+	}
+	if result["staged_diff_available"] != false {
+		t.Fatalf("snapshot must not claim access to source index: %#v", result)
+	}
+	encoded, err := json.Marshal(result)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(encoded), repo) || strings.Contains(string(encoded), dataRoot) {
+		t.Fatalf("Git inspection exposed a host path: %s", encoded)
+	}
+	original, err := os.ReadFile(filepath.Join(repo, "service", "app.txt"))
+	if err != nil || string(original) != "source version\n" {
+		t.Fatalf("source repository changed: content=%q err=%v", original, err)
+	}
+}
+
+func TestRuntimeCreateMissionReturnsRedactedMissionValues(t *testing.T) {
+	const secret = "example-secret-value"
+	planner := fixedPlanner{steps: []Step{{ID: "step_1", Kind: "workspace.list", Title: "token=ghp_abcdefghijklmnopqrstuvwxyz123456", Risk: RiskRead, Input: map[string]any{"api_key": secret, "path": "."}}}}
+	runtime, err := NewRuntime(RuntimeConfig{Store: NewMemoryStore(), WorkspaceRoot: t.TempDir(), Planner: planner})
+	if err != nil {
+		t.Fatal(err)
+	}
+	mission, err := runtime.CreateMission(context.Background(), CreateMissionRequest{Objective: `Investigate {"api_key":"` + secret + `"}`})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, current := range []Mission{mission, func() Mission {
+		loaded, loadErr := runtime.GetMission(mission.ID)
+		if loadErr != nil {
+			t.Fatal(loadErr)
+		}
+		return loaded
+	}()} {
+		encoded, err := json.Marshal(current)
+		if err != nil || strings.Contains(string(encoded), secret) || strings.Contains(string(encoded), "ghp_abcdefghijklmnopqrstuvwxyz123456") {
+			t.Fatalf("mission response/cache exposed sensitive data: err=%v", err)
+		}
+	}
+}
+
+type mockBrowserTool struct{}
+
+func (mockBrowserTool) Descriptor() ToolDescriptor {
+	return ToolDescriptor{Name: "browser.operator", Version: "1", Risk: RiskRead, Scopes: []string{"browser:navigate"}}
+}
+
+func (mockBrowserTool) Execute(ctx context.Context, toolContext ToolContext, input map[string]any) (ToolResult, error) {
+	return ToolResult{
+		Value: map[string]any{
+			"url":        "https://example.com",
+			"title":      "Example Domain",
+			"screenshot": "data:image/jpeg;base64,ZmFrZXNjcmVlbnNob3Q=",
+		},
+	}, nil
+}
+
+func TestRuntimeEmitsBrowserFrameEvent(t *testing.T) {
+	store := NewMemoryStore()
+	workspace := t.TempDir()
+	planner := fixedPlanner{
+		steps: []Step{
+			{
+				ID:    "step_browser_1",
+				Kind:  "browser.operator",
+				Title: "Navigate to example.com",
+				Risk:  RiskRead,
+				Input: map[string]any{"action": "navigate", "url": "https://example.com"},
+			},
+		},
+	}
+	registry := NewRegistry()
+	registry.Register(mockBrowserTool{})
+	runtime, err := NewRuntime(RuntimeConfig{
+		Store:         store,
+		WorkspaceRoot: workspace,
+		Planner:       planner,
+		Tools:         registry,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	mission, err := runtime.CreateMission(context.Background(), CreateMissionRequest{
+		Objective:    "Test browser frame event",
+		AutoRun:      false,
+		Capabilities: []string{"browser:navigate"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := runtime.Run(context.Background(), mission.ID); err != nil {
+		t.Fatalf("Run failed: %v", err)
+	}
+
+	events, err := runtime.Events(mission.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var foundFrame bool
+	for _, evt := range events {
+		if evt.Type == "browser.frame" {
+			foundFrame = true
+			payload, ok := evt.Payload.(map[string]any)
+			if !ok {
+				t.Fatalf("expected map[string]any payload, got %T", evt.Payload)
+			}
+			if payload["url"] != "https://example.com" {
+				t.Errorf("expected url https://example.com, got %v", payload["url"])
+			}
+			if payload["screenshot"] != "data:image/jpeg;base64,ZmFrZXNjcmVlbnNob3Q=" {
+				t.Errorf("unexpected screenshot: %v", payload["screenshot"])
+			}
+		}
+	}
+	if !foundFrame {
+		t.Fatalf("expected browser.frame event to be emitted in mission events, got: %+v", events)
 	}
 }

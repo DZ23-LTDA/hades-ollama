@@ -2,6 +2,7 @@ package agent
 
 import (
 	"context"
+	"os"
 	"time"
 )
 
@@ -48,48 +49,68 @@ const (
 )
 
 type CreateMissionRequest struct {
-	Objective      string   `json:"objective"`
-	Provider       string   `json:"provider,omitempty"`
-	Model          string   `json:"model,omitempty"`
-	Workspace      string   `json:"workspace,omitempty"`
-	ProjectID      string   `json:"project_id,omitempty"`
-	OrganizationID string   `json:"organization_id,omitempty"`
-	Capabilities   []string `json:"capabilities,omitempty"`
-	AutoRun        bool     `json:"auto_run,omitempty"`
+	MissionID        string   `json:"-"`
+	Objective        string   `json:"objective"`
+	Provider         string   `json:"provider,omitempty"`
+	Model            string   `json:"model,omitempty"`
+	Workspace        string   `json:"workspace,omitempty"`
+	IsolateWorkspace bool     `json:"isolate_workspace,omitempty"`
+	ProjectID        string   `json:"project_id,omitempty"`
+	OrganizationID   string   `json:"organization_id,omitempty"`
+	Capabilities     []string `json:"capabilities,omitempty"`
+	AutoRun          bool     `json:"auto_run,omitempty"`
+	IsolateWorktree  bool     `json:"isolate_worktree,omitempty"`
+	WorktreeBranch   string   `json:"worktree_branch,omitempty"`
+	AutoRepair       bool     `json:"auto_repair,omitempty"`
+	MaxRepairTries   int      `json:"max_repair_tries,omitempty"`
 }
 
 type Mission struct {
-	ID             string             `json:"id"`
-	Version        int64              `json:"version"`
-	Objective      string             `json:"objective"`
-	Provider       string             `json:"provider,omitempty"`
-	Model          string             `json:"model,omitempty"`
-	Workspace      string             `json:"workspace,omitempty"`
-	ProjectID      string             `json:"project_id,omitempty"`
-	OrganizationID string             `json:"organization_id,omitempty"`
-	Capabilities   []string           `json:"capabilities,omitempty"`
-	AutoRun        bool               `json:"auto_run,omitempty"`
-	State          MissionState       `json:"state"`
-	Plan           []Step             `json:"plan"`
-	Approvals      []Approval         `json:"approvals,omitempty"`
-	Artifacts      []ArtifactManifest `json:"artifacts,omitempty"`
-	LastError      string             `json:"last_error,omitempty"`
-	CreatedAt      time.Time          `json:"created_at"`
-	UpdatedAt      time.Time          `json:"updated_at"`
-	CompletedAt    *time.Time         `json:"completed_at,omitempty"`
+	ID                      string             `json:"id"`
+	Version                 int64              `json:"version"`
+	Objective               string             `json:"objective"`
+	Provider                string             `json:"provider,omitempty"`
+	Model                   string             `json:"model,omitempty"`
+	Workspace               string             `json:"workspace,omitempty"`
+	WorkspaceIdentity       string             `json:"workspace_identity,omitempty"`
+	WorkspaceIsolated       bool               `json:"workspace_isolated,omitempty"`
+	WorkspaceSnapshotID     string             `json:"workspace_snapshot_id,omitempty"`
+	WorkspaceSnapshotSHA256 string             `json:"workspace_snapshot_sha256,omitempty"`
+	ProjectID               string             `json:"project_id,omitempty"`
+	OrganizationID          string             `json:"organization_id,omitempty"`
+	Capabilities            []string           `json:"capabilities,omitempty"`
+	AutoRun                 bool               `json:"auto_run,omitempty"`
+	State                   MissionState       `json:"state"`
+	Plan                    []Step             `json:"plan"`
+	Approvals               []Approval         `json:"approvals,omitempty"`
+	Artifacts               []ArtifactManifest `json:"artifacts,omitempty"`
+	GitRepoRoot             string             `json:"git_repo_root,omitempty"`
+	GitBranch               string             `json:"git_branch,omitempty"`
+	GitWorktreePath         string             `json:"git_worktree_path,omitempty"`
+	GitBaseCommit           string             `json:"git_base_commit,omitempty"`
+	GitMergeStatus          string             `json:"git_merge_status,omitempty"`
+	GitWorktreeActive       bool               `json:"git_worktree_active,omitempty"`
+	AutoRepair              bool               `json:"auto_repair,omitempty"`
+	MaxRepairTries          int                `json:"max_repair_tries,omitempty"`
+	LastError               string             `json:"last_error,omitempty"`
+	CreatedAt               time.Time          `json:"created_at"`
+	UpdatedAt               time.Time          `json:"updated_at"`
+	CompletedAt             *time.Time         `json:"completed_at,omitempty"`
 }
 
 type Step struct {
-	ID               string         `json:"id"`
-	Kind             string         `json:"kind"`
-	Title            string         `json:"title"`
-	Input            map[string]any `json:"input,omitempty"`
-	Risk             RiskClass      `json:"risk"`
-	RequiresApproval bool           `json:"requires_approval,omitempty"`
-	State            StepState      `json:"state"`
-	Attempts         int            `json:"attempts"`
-	Result           any            `json:"result,omitempty"`
-	Error            string         `json:"error,omitempty"`
+	ID                   string         `json:"id"`
+	Kind                 string         `json:"kind"`
+	Title                string         `json:"title"`
+	Input                map[string]any `json:"input,omitempty"`
+	Risk                 RiskClass      `json:"risk"`
+	RequiresApproval     bool           `json:"requires_approval,omitempty"`
+	ToolDescriptorSHA256 string         `json:"tool_descriptor_sha256,omitempty"`
+	ToolConfigSHA256     string         `json:"tool_config_sha256,omitempty"`
+	State                StepState      `json:"state"`
+	Attempts             int            `json:"attempts"`
+	Result               any            `json:"result,omitempty"`
+	Error                string         `json:"error,omitempty"`
 }
 
 type Approval struct {
@@ -99,6 +120,7 @@ type Approval struct {
 	OrganizationID string         `json:"organization_id,omitempty"`
 	ActorID        string         `json:"actor_id,omitempty"`
 	Policy         string         `json:"policy,omitempty"`
+	PayloadSHA256  string         `json:"payload_sha256,omitempty"`
 	Nonce          string         `json:"nonce,omitempty"`
 	Status         ApprovalStatus `json:"status"`
 	Reason         string         `json:"reason,omitempty"`
@@ -139,10 +161,15 @@ type ToolDescriptor struct {
 }
 
 type ToolContext struct {
-	MissionID      string
-	StepID         string
-	Workspace      string
-	OrganizationID string
+	MissionID                 string
+	StepID                    string
+	Workspace                 string
+	WorkspaceRoot             *os.Root
+	OrganizationID            string
+	ToolConfigSHA256          string
+	WorkspaceSnapshotManifest *WorkspaceSnapshotManifest
+	WorkspaceSnapshotPrefix   string
+	MissionArtifacts          []ArtifactManifest
 }
 
 type ToolResult struct {
@@ -184,6 +211,9 @@ type SkillManifest struct {
 	Tools          []string `json:"tools,omitempty"`
 	Trusted        bool     `json:"trusted"`
 	Enabled        bool     `json:"enabled"`
+	SigningKeyID   string   `json:"signing_key_id,omitempty"`
+	ContentSHA256  string   `json:"content_sha256,omitempty"`
+	Signature      string   `json:"signature,omitempty"`
 }
 
 type Schedule struct {

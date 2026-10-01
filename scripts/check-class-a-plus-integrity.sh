@@ -75,7 +75,7 @@ required_files=(
 )
 
 for file in "${required_files[@]}"; do
-  test -s "$file" || { echo "missing required Class A+ surface: $file" >&2; exit 1; }
+  test -s "$file" || { echo "missing required Ollama Full surface: $file" >&2; exit 1; }
 done
 
 grep -q '^policy=manual-review-only$' UPSTREAM_BASE_COMMIT
@@ -112,7 +112,7 @@ grep -q 'CompanyApprovalQueue' app/ui/app/src/components/CompanyApprovalQueue.ts
 grep -q 'func RedactValue' internal/agent/secrets.go
 grep -q 'TestRuntimeRedactsStepResultsEventsTracesAndPersistence' internal/agent/runtime_test.go
 grep -q 'redactMissionForPersistence' internal/agent/store.go
-grep -q 'remote MCP destination connected to a private address' internal/agent/mcp_remote.go
+grep -q 'remote MCP destination resolves to a private address' internal/agent/mcp_remote.go
 grep -q 'TestRemoteMCPDialRejectsPrivateActualAddress' internal/agent/mcp_remote_test.go
 grep -q 'MCP command must be an absolute executable path' internal/agent/mcp.go
 	grep -q 'TestMCPPayloadLimitAndCancellationRestart' internal/agent/mcp_test.go
@@ -159,18 +159,82 @@ grep -q 'validateCatalogModel' internal/grok/client.go
 grep -q 'Grok streaming is not exposed' server/grok_routes.go
 grep -q 'TestGrokResponsesRejectsStreamBeforeUpstream' server/grok_routes_test.go
 grep -q '127.0.0.1:' deploy/docker-compose.agentic.yml
-grep -q 'OLLAMA_AGENT_POSTGRES_PASSWORD' deploy/docker-compose.agentic.yml
+grep -q 'OLLAMA_AGENT_POSTGRES_ADMIN_PASSWORD' deploy/docker-compose.agentic.yml
+grep -q 'OLLAMA_AGENT_RUNTIME_PASSWORD' deploy/docker-compose.agentic.yml
+grep -q 'OLLAMA_AGENT_MIGRATOR_PASSWORD' deploy/docker-compose.agentic.yml
 grep -q 'OLLAMA_AGENT_REDIS_PASSWORD' deploy/docker-compose.agentic.yml
-grep -q 'ollama_agent_test' .github/workflows/dz23-agentic-quality.yaml
-grep -q 'tenant_password' .github/workflows/dz23-agentic-quality.yaml
-grep -q 'SELECT 1 FROM pg_roles' .github/workflows/dz23-agentic-quality.yaml
+grep -q 'OLLAMA_AGENT_TEST_POSTGRES_RUNTIME_URL' .github/workflows/dz23-agentic-quality.yaml
+grep -q 'OLLAMA_AGENT_TEST_POSTGRES_MIGRATOR_URL' .github/workflows/dz23-agentic-quality.yaml
+grep -q 'OLLAMA_AGENT_TEST_POSTGRES_TENANT_KEY' .github/workflows/dz23-agentic-quality.yaml
+grep -q 'active legacy ollama_agent login' internal/agent/postgres_security.go
+grep -q 'unexpected columns' internal/agent/postgres_security.go
+grep -q 'legacy tenant key table has unsupported columns' internal/agent/postgres_security.go
+grep -q 'legacy_key_rows<>1' internal/agent/postgres_security.go
+grep -q 'dedicated PostgreSQL cluster' deploy/postgres/migrate-existing-roles.sql
+grep -q 'public schema contains unrelated non-extension objects' deploy/postgres/migrate-existing-roles.sql
+grep -q 'legacy role owns large objects outside the supported Ollama schema' deploy/postgres/migrate-existing-roles.sql
+grep -q 'agent_tenant_context_matches' deploy/postgres/migrate-existing-roles.sql
+grep -q 'ALTER ROLE ollama_agent NOLOGIN NOSUPERUSER' deploy/postgres/migrate-existing-roles.sql
+grep -q 'WITH RECURSIVE legacy_members(member_oid)' deploy/postgres/migrate-existing-roles.sql
+grep -q "SET LOCAL lock_timeout = '5s'" deploy/postgres/migrate-existing-roles.sql
+grep -q 'drain_post_transfer_legacy_sessions' deploy/postgres/migrate-existing-roles.sql
+grep -q 'WITH RECURSIVE legacy_members(member_oid)' deploy/postgres/retire-legacy-role.sql
+grep -q "SET LOCAL lock_timeout = '5s'" deploy/postgres/retire-legacy-role.sql
+grep -q 'ollama_cutover_unrelated_admin_probe' .github/workflows/dz23-agentic-quality.yaml
+grep -q 'pg_catalog.pg_proc p JOIN pg_catalog.pg_roles r ON r.oid=p.proowner' .github/workflows/dz23-agentic-quality.yaml
+grep -q 'TestDistributedPostgresRuntimeCannotConnectOutsideApplicationDatabase' internal/agent/distributed_integration_test.go
+grep -q 'OLLAMA_AGENT_TEST_POSTGRES_ADMIN_OTHER_DB_URL' internal/agent/distributed_integration_test.go
+grep -q "d.classid='pg_catalog.pg_database'::pg_catalog.regclass" deploy/postgres/migrate-existing-roles.sql
+grep -q 'hba_file=/etc/postgresql/pg_hba.conf' deploy/docker-compose.agentic.yml
+grep -q '\${OLLAMA_AGENT_POSTGRES_HBA_FILE:-./postgres/pg_hba-runtime.conf}:/etc/postgresql/pg_hba.conf:ro' deploy/docker-compose.agentic.yml
+grep -qE '^host[[:space:]]+all[[:space:]]+ollama_agent_runtime.*reject' deploy/postgres/pg_hba-runtime.conf
+grep -qE '^local[[:space:]]+all[[:space:]]+ollama_agent_runtime.*reject' deploy/postgres/pg_hba-runtime.conf
+grep -qE '^host[[:space:]]+ollama_agent[[:space:]]+ollama_agent_runtime.*scram-sha-256' deploy/postgres/pg_hba-runtime.conf
+if grep -qE '^host[[:space:]]+all[[:space:]]+ollama_agent_runtime.*scram-sha-256' deploy/postgres/pg_hba-runtime.conf; then
+  echo 'runtime HBA allow must not precede and shadow database-isolation rejects' >&2
+  exit 1
+fi
+grep -qE '^host[[:space:]]+ollama_agent[[:space:]]+ollama_agent_migrator.*scram-sha-256' deploy/postgres/pg_hba-runtime.conf
+if grep -qE '^host[[:space:]]+all[[:space:]]+ollama_agent_migrator.*scram-sha-256' deploy/postgres/pg_hba-runtime.conf; then
+  echo 'migrator HBA allow must not precede and shadow database-isolation rejects' >&2
+  exit 1
+fi
+test "$(grep -cE '^host[[:space:]]+ollama_agent[[:space:]]+ollama_agent_runtime[[:space:]]+(0\.0\.0\.0/0|::/0)[[:space:]]+scram-sha-256$' deploy/postgres/pg_hba-runtime.conf)" -eq 2
+test "$(grep -cE '^host[[:space:]]+ollama_agent[[:space:]]+ollama_agent_migrator[[:space:]]+(0\.0\.0\.0/0|::/0)[[:space:]]+scram-sha-256$' deploy/postgres/pg_hba-runtime.conf)" -eq 2
+runtime_allow_line="$(grep -nE '^host[[:space:]]+ollama_agent[[:space:]]+ollama_agent_runtime[[:space:]]+0\.0\.0\.0/0[[:space:]]+scram-sha-256$' deploy/postgres/pg_hba-runtime.conf | cut -d: -f1)"
+runtime_reject_line="$(grep -nE '^host[[:space:]]+all[[:space:]]+ollama_agent_runtime[[:space:]]+0\.0\.0\.0/0[[:space:]]+reject$' deploy/postgres/pg_hba-runtime.conf | cut -d: -f1)"
+migrator_allow_line="$(grep -nE '^host[[:space:]]+ollama_agent[[:space:]]+ollama_agent_migrator[[:space:]]+0\.0\.0\.0/0[[:space:]]+scram-sha-256$' deploy/postgres/pg_hba-runtime.conf | cut -d: -f1)"
+migrator_reject_line="$(grep -nE '^host[[:space:]]+all[[:space:]]+ollama_agent_migrator[[:space:]]+0\.0\.0\.0/0[[:space:]]+reject$' deploy/postgres/pg_hba-runtime.conf | cut -d: -f1)"
+test "$runtime_allow_line" -lt "$runtime_reject_line"
+test "$migrator_allow_line" -lt "$migrator_reject_line"
+grep -q 'ollama_agent_reverse_member.*scram-sha-256' .github/workflows/dz23-agentic-quality.yaml
+grep -q 'reverse_member_login' .github/workflows/dz23-agentic-quality.yaml
+grep -q 'REVOKE CONNECT ON DATABASE ollama_agent FROM PUBLIC' deploy/postgres/init/001-agent-role.sql
+grep -q 'REVOKE USAGE, CREATE ON SCHEMA public FROM PUBLIC' deploy/postgres/init/001-agent-role.sql
+grep -q 'aclexplode(col.attacl)' internal/agent/postgres_security.go
+grep -q 'public-database-create-temp-granted' internal/agent/distributed_integration_test.go
+grep -q 'keyring-secret-column-granted' internal/agent/distributed_integration_test.go
+grep -q 'GRANT SELECT (objective) ON TABLE public.agent_missions TO PUBLIC' .github/workflows/dz23-agentic-quality.yaml
+grep -q 'TestDistributedPostgresRuntimeReadinessForLegacyRole' internal/agent/distributed_integration_test.go
+grep -q 'OLLAMA_AGENT_TEST_EXPECT_LEGACY_ROLE_ACTIVE' .github/workflows/dz23-agentic-quality.yaml
+grep -q 'pg_restore --list' docs/agentic/INTEGRATIONS.md
+grep -q 'SOURCE_PGSSLROOTCERT' docs/agentic/INTEGRATIONS.md
+grep -q 'STAGING_PGSSLROOTCERT' docs/agentic/INTEGRATIONS.md
+grep -q 'sslmode=verify-full' docs/agentic/INTEGRATIONS.md
+grep -q 'PGSSLROOTCERT="$STAGING_PGSSLROOTCERT" pg_restore' docs/agentic/INTEGRATIONS.md
+grep -q 'if \[ "$source_cluster_id" = "$staging_cluster_id" \]' docs/agentic/INTEGRATIONS.md
+grep -q 'POSTGRES_HA_FAILOVER_REHEARSAL.md' docs/agentic/INTEGRATIONS.md
+grep -q 'pg_basebackup' docs/agentic/POSTGRES_HA_FAILOVER_REHEARSAL.md
+grep -q 'pg_promote' docs/agentic/POSTGRES_HA_FAILOVER_REHEARSAL.md
+grep -qi 'split[- ]brain' docs/agentic/POSTGRES_HA_FAILOVER_REHEARSAL.md
+grep -q 'restore_check' .github/workflows/dz23-agentic-quality.yaml
 grep -q 'cleanup-placeholder' .github/workflows/dz23-agentic-quality.yaml
-if sed -n '56,110p' .github/workflows/dz23-agentic-quality.yaml | grep -q 'GITHUB_ENV'; then
+if sed -n '65,210p' .github/workflows/dz23-agentic-quality.yaml | grep -q 'GITHUB_ENV'; then
   echo 'distributed integration secrets must remain step-local' >&2
   exit 1
 fi
 if grep -Rqi 'change-me-local-only' deploy; then echo 'fixed development credential found'; exit 1; fi
-grep -q 'Provider       string' internal/agent/types.go
+grep -Eq 'Provider[[:space:]]+string' internal/agent/types.go
 grep -q 'provider != "ollama-local"' internal/agent/runtime.go
 	grep -q 'const providerChoices = useMemo' app/ui/app/src/components/AgenticConsole.tsx
 	grep -q 'getModels("")' app/ui/app/src/components/AgenticConsole.tsx
@@ -184,6 +248,9 @@ grep -q 'TestRuntimeRejectsUnconfiguredMissionProvider' internal/agent/runtime_t
 	grep -q 'OLLAMA_ENABLE_ATTESTATIONS' .github/workflows/release.yaml
 	grep -q 'ollama-classe-a-plus-sbom.cdx.json' .github/workflows/release.yaml
 	grep -q 'sha256sum -c sha256sum.txt' .github/workflows/release.yaml
+grep -q 'Sign release checksum manifest' .github/workflows/release.yaml
+grep -q 'release-signing-public.pem' .github/workflows/release.yaml
+grep -q 'verify-release-artifact.sh' .github/workflows/release.yaml
 	grep -q 'release-metadata.json' .github/workflows/release.yaml
 	grep -q 'workflow_dispatch:' .github/workflows/latest.yaml
 	grep -q "vars.OLLAMA_ENABLE_LATEST == 'true'" .github/workflows/latest.yaml
@@ -191,7 +258,7 @@ grep -q 'TestRuntimeRejectsUnconfiguredMissionProvider' internal/agent/runtime_t
 		echo "latest Docker publication must not be release-triggered in the fork" >&2
 		exit 1
 	fi
-	grep -q 'local/ollama-classe-a-plus' scripts/env.sh
+	grep -q 'local/ollama-full' scripts/env.sh
 	grep -q 'refusing to publish an upstream or local placeholder image' scripts/tag_latest.sh
 	grep -q 'operator-owned registry' scripts/build_docker.sh
 		grep -q 'strictSandboxLauncher' internal/agent/sandbox_seccomp_linux.go
@@ -232,4 +299,7 @@ if git ls-files | grep -E '(^|/)(\.env|.*\.key|.*\.pem|node_modules/)' >/dev/nul
 fi
 
 git diff --check
-printf '%s\n' "Class A+ integrity guard: PASS"
+echo "Verifying frontend-backend contract matrix..."
+node scripts/verify-contracts.mjs
+
+printf '%s\n' "Ollama Full integrity guard: PASS"

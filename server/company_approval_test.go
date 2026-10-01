@@ -39,7 +39,7 @@ func TestCompanyCampaignApprovalHTTPUsesNonceAndOrganization(t *testing.T) {
 	ctx.Params = gin.Params{{Key: "id", Value: company.ID}, {Key: "campaign_id", Value: campaignID}}
 	ctx.Set("agent.membership", agent.Membership{Role: agent.RoleAdmin, OrganizationID: "org-a"})
 	ctx.Set("agent.user", agent.User{ID: "admin-a"})
-	ctx.Request = httptest.NewRequest(http.MethodPost, "/companies/"+company.ID+"/campaigns/"+campaignID+"/approve", bytes.NewBufferString(`{"approved":true,"nonce":"`+approval.Nonce+`","reason":"approved by policy"}`))
+	ctx.Request = httptest.NewRequest(http.MethodPost, "/companies/"+company.ID+"/campaigns/"+campaignID+"/approve", bytes.NewBufferString(`{"decision":"approve","nonce":"`+approval.Nonce+`","reason":"approved by policy"}`))
 	api.approveCompanyCampaign(ctx)
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("approval status=%d body=%s", recorder.Code, recorder.Body.String())
@@ -56,7 +56,7 @@ func TestCompanyCampaignApprovalHTTPUsesNonceAndOrganization(t *testing.T) {
 	replay.Params = ctx.Params
 	replay.Set("agent.membership", agent.Membership{Role: agent.RoleAdmin, OrganizationID: "org-a"})
 	replay.Set("agent.user", agent.User{ID: "admin-a"})
-	replay.Request = httptest.NewRequest(http.MethodPost, "/companies/"+company.ID+"/campaigns/"+campaignID+"/approve", bytes.NewBufferString(`{"approved":true,"nonce":"`+approval.Nonce+`","reason":"replay"}`))
+	replay.Request = httptest.NewRequest(http.MethodPost, "/companies/"+company.ID+"/campaigns/"+campaignID+"/approve", bytes.NewBufferString(`{"decision":"approve","nonce":"`+approval.Nonce+`","reason":"replay"}`))
 	api.approveCompanyCampaign(replay)
 	if replayRecorder.Code != http.StatusNotFound {
 		t.Fatalf("replay status=%d body=%s", replayRecorder.Code, replayRecorder.Body.String())
@@ -96,7 +96,7 @@ func TestCompanySpendHTTPRequiresDecisionBeforeDebit(t *testing.T) {
 	decide.Params = gin.Params{{Key: "id", Value: company.ID}, {Key: "approval_id", Value: approval.ID}}
 	decide.Set("agent.membership", agent.Membership{Role: agent.RoleAdmin, OrganizationID: "org-a"})
 	decide.Set("agent.user", agent.User{ID: "admin-a"})
-	decide.Request = httptest.NewRequest(http.MethodPost, "/companies/"+company.ID+"/approvals/"+approval.ID+"/decide", bytes.NewBufferString(`{"approved":true,"nonce":"`+approval.Nonce+`","reason":"approved by policy"}`))
+	decide.Request = httptest.NewRequest(http.MethodPost, "/companies/"+company.ID+"/approvals/"+approval.ID+"/decide", bytes.NewBufferString(`{"decision":"approve","nonce":"`+approval.Nonce+`","reason":"approved by policy"}`))
 	api.decideCompanyApprovalByID(decide)
 	if decideRecorder.Code != http.StatusOK {
 		t.Fatalf("decide status=%d body=%s", decideRecorder.Code, decideRecorder.Body.String())

@@ -42,6 +42,7 @@ func TestThinkingInputErrors(t *testing.T) {
 	}))
 	defer upstream.Close()
 	withCloudProxyBaseURL(t, upstream.URL)
+	s.modelCaches.show.client = newServerEgressClient("test.model_thinking.loopback", true)
 
 	for _, tc := range []struct {
 		name, values string

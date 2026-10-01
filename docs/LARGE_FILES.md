@@ -1,4 +1,4 @@
-# Large Files / Projetos grandes — Ollama Classe A+
+# Large Files / Projetos grandes — Ollama Full
 
 Arquitetura interna para upload/ingestão de arquivos e projetos grandes (§17).
 SIP/PBX e provedores externos não estão envolvidos aqui.

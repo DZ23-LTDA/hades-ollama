@@ -5,8 +5,12 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -81,6 +85,9 @@ func TestUploadRoutesHappyPathAndCrossTenant(t *testing.T) {
 	if err := json.Unmarshal(rec.Body.Bytes(), &session); err != nil || session.State != agent.UploadCompleted {
 		t.Fatalf("finalize decode: %v state=%s", err, session.State)
 	}
+	if strings.Contains(rec.Body.String(), "final_path") {
+		t.Fatalf("finalize response disclosed a server filesystem path: %s", rec.Body.String())
+	}
 }
 
 func itoaTest(i int) string {
@@ -93,4 +100,47 @@ func itoaTest(i int) string {
 		i /= 10
 	}
 	return string(b)
+}
+
+func TestUploadRouteSanitizesFilesystemErrors(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	dataRoot := t.TempDir()
+	workspace := t.TempDir()
+	runtime, err := agent.NewRuntime(agent.RuntimeConfig{WorkspaceRoot: workspace, DataRoot: dataRoot})
+	if err != nil {
+		t.Fatal(err)
+	}
+	api := &agentAPI{runtime: runtime}
+	session, err := runtime.Uploads().StartUpload("org-a", "p", "f.bin", 4, 4, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := runtime.Uploads().AppendChunk("org-a", session.ID, 0, []byte("data")); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(filepath.Join(dataRoot, ".agent-uploads", session.ID+".part")); err != nil {
+		t.Fatal(err)
+	}
+	params := gin.Params{{Key: "id", Value: session.ID}}
+	ctx, recorder := uploadTestCtx(http.MethodPost, "/api/agent/v1/uploads/"+session.ID+"/finalize", "org-a", params, nil)
+	api.finalizeUpload(ctx)
+	if recorder.Code != http.StatusInternalServerError {
+		t.Fatalf("status=%d body=%s, want 500", recorder.Code, recorder.Body.String())
+	}
+	if strings.Contains(recorder.Body.String(), dataRoot) || strings.Contains(recorder.Body.String(), ".part") {
+		t.Fatalf("filesystem details leaked in response: %s", recorder.Body.String())
+	}
+}
+
+func TestWriteAgentErrorRedactsEmbeddedCredentialJSON(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	recorder := httptest.NewRecorder()
+	ctx, _ := gin.CreateTestContext(recorder)
+	writeAgentError(ctx, http.StatusBadGateway, errors.New(`provider rejected request: {"api_key":"plain-secret-value"}`))
+	if recorder.Code != http.StatusBadGateway {
+		t.Fatalf("status=%d, want %d", recorder.Code, http.StatusBadGateway)
+	}
+	if strings.Contains(recorder.Body.String(), "plain-secret-value") || strings.Contains(recorder.Body.String(), "api_key") {
+		t.Fatalf("API error leaked embedded credential: %s", recorder.Body.String())
+	}
 }

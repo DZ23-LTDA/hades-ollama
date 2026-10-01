@@ -107,10 +107,42 @@ describe("AgenticConsole approval decisions", () => {
     );
     expect(approvalCall).toBeDefined();
     expect(JSON.parse(approvalCall![1].body)).toEqual({
-      approved: true,
+		decision: "approve",
       nonce: "nonce-1",
       reason: "Reviewed the scope and verified the release impact.",
     });
+  });
+
+  it("requests an isolated mission snapshot only after an explicit opt-in with a project", async () => {
+    mocks.listProjects.mockResolvedValue({ projects: [{ id: "project-1", name: "Workspace", root: "/workspace", organization_id: "org-1" }] });
+    let renderer!: ReturnType<typeof create>;
+    await act(async () => {
+      renderer = create(<AgenticConsole />);
+      await Promise.resolve();
+    });
+
+    const project = renderer.root.findByProps({ "aria-label": "Projeto" });
+    await act(async () => {
+      project.props.onChange({ target: { value: "project-1" } });
+    });
+    const isolate = renderer.root.findByProps({ id: "isolate-workspace" });
+    expect(isolate.props.disabled).toBe(false);
+    await act(async () => {
+      isolate.props.onChange({ target: { checked: true } });
+    });
+    const objective = renderer.root.findByProps({ id: "agent-objective" });
+    await act(async () => {
+      objective.props.onChange({ target: { value: "Inspect project safely" } });
+    });
+    const createButton = renderer.root.findAllByType("button").find((button) => textContent(button).includes("Criar missão"));
+    await act(async () => {
+      createButton!.props.onClick();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    const createCall = mocks.agentFetch.mock.calls.find(([path, init]) => path === "/api/agent/v1/missions" && init?.method === "POST");
+    expect(createCall).toBeDefined();
+    expect(JSON.parse(createCall![1].body)).toMatchObject({ project_id: "project-1", isolate_workspace: true });
   });
 
   it("announces runtime load failures as an accessible alert", async () => {

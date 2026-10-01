@@ -15,6 +15,7 @@ type ProviderHealth struct {
 type RouteRequest struct {
 	RequiredCapabilities []string
 	Path                 string
+	SelectableModels     []Model
 	PreferredProvider    string
 	MaxLatencyMS         int64
 	MaxCostCents         int64
@@ -32,8 +33,15 @@ var ErrNoRoute = errors.New("no provider route satisfies the requested constrain
 
 func (r *Registry) Route(request RouteRequest) (RouteDecision, error) {
 	candidates := make([]RouteDecision, 0, len(r.models))
-	for _, model := range r.models {
+	models := r.Models()
+	if request.SelectableModels != nil {
+		models = append([]Model(nil), request.SelectableModels...)
+	}
+	for _, model := range models {
 		model.Available = r.modelAvailable(model)
+		if request.SelectableModels != nil {
+			model.Available = true
+		}
 		if !model.Available || !supports(model, request.RequiredCapabilities) || !r.supportsPath(model, request.Path) {
 			continue
 		}
@@ -55,6 +63,9 @@ func (r *Registry) Route(request RouteRequest) (RouteDecision, error) {
 		score := int64(model.Priority * 100)
 		score += int64(model.QualityScore * 10)
 		score -= cost
+		if modelIsFree(model) {
+			score += 100000
+		}
 		if health.LatencyMS > 0 {
 			if request.MaxLatencyMS > 0 && health.LatencyMS > request.MaxLatencyMS {
 				continue
@@ -83,6 +94,11 @@ func (r *Registry) Route(request RouteRequest) (RouteDecision, error) {
 
 func routeReason(model Model, health ProviderHealth, request RouteRequest) string {
 	parts := []string{"capabilities matched"}
+	if modelIsFree(model) {
+		parts = append(parts, "free-first: custo zero priorizado")
+	} else {
+		parts = append(parts, "fallback pago: nenhuma fonte gratuita elegível com pontuação superior")
+	}
 	if request.PreferredProvider != "" {
 		parts = append(parts, "preferred provider")
 	}
@@ -93,4 +109,11 @@ func routeReason(model Model, health ProviderHealth, request RouteRequest) strin
 		parts = append(parts, "model catalog metadata")
 	}
 	return strings.Join(parts, "; ")
+}
+
+func modelIsFree(model Model) bool {
+	if strings.TrimSpace(model.CostTag) == "0-assinatura" || strings.TrimSpace(model.CostTag) == "0-local" {
+		return true
+	}
+	return model.CostPer1KInputCents+model.CostPer1KOutputCents == 0
 }

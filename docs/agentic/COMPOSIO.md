@@ -1,6 +1,6 @@
-# Composio no Ollama Classe A+
+# Composio no Ollama Full
 
-O Classe A+ possui um adapter para registrar o **Composio Connect** como Remote MCP. A integração usa o protocolo público documentado pelo Composio e não incorpora código proprietário no runtime.
+O Ollama Full possui um adapter para registrar o **Composio Connect** como Remote MCP. A integração usa o protocolo público documentado pelo Composio e não incorpora código proprietário no runtime.
 
 ## O que foi implementado
 
@@ -25,7 +25,7 @@ Reinicie o servidor depois de alterar as variáveis. O catálogo pode ser consul
 
 ## Autorização de apps
 
-O Composio Connect expõe meta-tools para procurar tools, obter schemas, gerenciar conexões e executar ações. Na primeira utilização de um app, o operador deve completar o OAuth no navegador e revisar a conta e os scopes solicitados. O Classe A+ deve registrar a organização, o usuário, o tool slug, o approval e o resultado, mas nunca o token.
+O Composio Connect expõe meta-tools para procurar tools, obter schemas, gerenciar conexões e executar ações. Na primeira utilização de um app, o operador deve completar o OAuth no navegador e revisar a conta e os scopes solicitados. O Ollama Full deve registrar a organização, o usuário, o tool slug, o approval e o resultado, mas nunca o token.
 
 Para uma futura operação multiusuário, a integração deve trocar o preset global por sessões Composio por organização/usuário, com:
 

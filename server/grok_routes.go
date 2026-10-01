@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/ollama/ollama/internal/agent"
 	"github.com/ollama/ollama/internal/grok"
 )
 
@@ -33,10 +34,14 @@ func (a *agentAPI) grokResponses(c *gin.Context) {
 		writeAgentError(c, http.StatusNotImplemented, errors.New("Grok streaming is not exposed by this route yet"))
 		return
 	}
+	if err := agent.ValidateOutboundPayload(request); err != nil {
+		writeAgentError(c, http.StatusUnprocessableEntity, errors.New("Grok payload rejected by data-egress policy"))
+		return
+	}
 	response, err := a.grok.Responses(c.Request.Context(), request)
 	if err != nil {
 		writeAgentError(c, http.StatusBadGateway, err)
 		return
 	}
-	c.JSON(http.StatusOK, response)
+	c.JSON(http.StatusOK, agent.RedactValue(response))
 }

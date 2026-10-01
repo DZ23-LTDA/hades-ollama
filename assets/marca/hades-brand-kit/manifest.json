@@ -1,0 +1,14 @@
+{
+  "name": "Hades",
+  "short_name": "Hades",
+  "description": "Agente de IA local — paridade funcional com o Manus Desktop.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0B0F17",
+  "theme_color": "#0B0F17",
+  "icons": [
+    { "src": "/icons/hades-icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icons/hades-icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/icons/hades-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

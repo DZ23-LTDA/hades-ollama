@@ -1,12 +1,12 @@
 {
   "schema": "class-a-plus.capture.v1",
-  "capturedAtUTC": "2026-09-22",
+  "capturedAtUTC": "2026-10-01",
   "source": {
     "repository": "DZ23-LTDA/ollama-classe-a-plus",
-    "branch": "feat/manus-parity-omniroute",
-    "gitSHA": "366a4964",
-    "baseURL": "http://127.0.0.1:4173",
-    "apiURL": "http://127.0.0.1:3001",
+    "branch": "feat/marca-hades",
+    "gitSHA": "6ba2138d",
+    "baseURL": "http://127.0.0.1:5320",
+    "apiURL": "http://127.0.0.1:11434",
     "captureScript": "app/ui/app/scripts/capture-parity-screens.mjs"
   },
   "viewport": {
@@ -15,16 +15,56 @@
     "deviceScaleFactor": 1
   },
   "files": [
-    { "path": "class-a-plus-home.png", "bytes": 107111, "sha256": "0291a918e1af8ea282721ea4b4f126c7d9ceb95c983299da964d1e9461b235bf" },
-    { "path": "class-a-plus-projects.png", "bytes": 123306, "sha256": "93ad91537292455d3f9afcc28d83b31394a0a13f18a0b676083b79ece453e068" },
-    { "path": "class-a-plus-library.png", "bytes": 114374, "sha256": "c9264148bd9da4c1bc585eedbb6e91d0548b821ab6165fa020aadbb7f1723e67" },
-    { "path": "class-a-plus-scheduled.png", "bytes": 155005, "sha256": "81c9dc84bb1aa0cff5aba06e536e761e50102d5c019f4a7e462a5b075e330207" },
-    { "path": "class-a-plus-skills.png", "bytes": 114374, "sha256": "48cddfb1b454a7164ef8482412e01375a6d740ae9b41068a4943f18f68ff0896" },
-    { "path": "class-a-plus-plugins.png", "bytes": 129228, "sha256": "edb642ee03459b7b3cbe3531a0d93209cad9774dcdb467b119069509f72d0035" },
-    { "path": "class-a-plus-tasks.png", "bytes": 161665, "sha256": "d7ea2a746d6540563a5ca5134d9b906660276a39e49cd1b9413c5bc8f939893c" },
-    { "path": "class-a-plus-agentic.png", "bytes": 110239, "sha256": "cfa1a74b8874cd1d1745408543cf9492f06481637e6a09c167a13281131e4149" },
-    { "path": "class-a-plus-settings.png", "bytes": 161659, "sha256": "89420370b9d3c7317a2c5d7c51bb9f8d4eba914a6d7b7bf829c855c909902e72" },
-    { "path": "class-a-plus-company.png", "bytes": 130236, "sha256": "dd29f61eaed8bfbd9c7a8e146dd8fc2f615a9e896ebba15e0fc89651af6d2781" }
+    {
+      "path": "class-a-plus-home.png",
+      "bytes": 86042,
+      "sha256": "a7e551add5fcdf511868fcfe8af60530c9eee93b5e0fad8ba5452b83aca0d6ff"
+    },
+    {
+      "path": "class-a-plus-projects.png",
+      "bytes": 88054,
+      "sha256": "83c6fece4ad1d053e7ed523f03560ad3bab63e74d6396dff94d4b4bf4bee185c"
+    },
+    {
+      "path": "class-a-plus-library.png",
+      "bytes": 55838,
+      "sha256": "605529e2f5d99d97309b6758e74df08ee197d7d2eebcce0edfa82dfcbe20d4d9"
+    },
+    {
+      "path": "class-a-plus-scheduled.png",
+      "bytes": 83163,
+      "sha256": "36eb42c3208f615aa0fdeaf05502f75db3726e24887c084bfac4d7282a606a3e"
+    },
+    {
+      "path": "class-a-plus-skills.png",
+      "bytes": 77479,
+      "sha256": "f7e0762a8e34a07315b742dedec0c5915e79e5d269af0feff7e79dc022bcc5dd"
+    },
+    {
+      "path": "class-a-plus-plugins.png",
+      "bytes": 76068,
+      "sha256": "dd2d77d6ae27d43c8a0615665b4c24587145687c8393b5b57a36352fd6b3f9fb"
+    },
+    {
+      "path": "class-a-plus-tasks.png",
+      "bytes": 74889,
+      "sha256": "b53746ef5729705ae38ad33ef985fc7d642609ec8d7fe42202407152e2704f2c"
+    },
+    {
+      "path": "class-a-plus-agentic.png",
+      "bytes": 89323,
+      "sha256": "4e0f380c6c63b6bbbfa64e853a78e6166e7762d7c611295ebe113d866766efcc"
+    },
+    {
+      "path": "class-a-plus-settings.png",
+      "bytes": 134511,
+      "sha256": "725b85980c65287584ae6c6c3fd2bc090054954ace25e20f1254521cda9a576b"
+    },
+    {
+      "path": "class-a-plus-company.png",
+      "bytes": 81507,
+      "sha256": "3e1ff7fafa1ee6fcf09c8ac68fd3d33480882e8164fab29ce98778a7118357b7"
+    }
   ],
   "limitations": [
     "These files show observed local/sandbox UI state only; they do not prove external providers, accounts, devices, deployment, store review, or production readiness.",

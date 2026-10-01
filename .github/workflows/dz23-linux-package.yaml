@@ -43,7 +43,7 @@ jobs:
       - name: Smoke — install, --version, start/stop, data dir
         run: |
           set -euo pipefail
-          PKG_DIR=$(find dist -maxdepth 1 -type d -name 'ollama-classe-a-plus-*-linux-amd64' | head -1)
+          PKG_DIR=$(find dist -maxdepth 1 -type d -name 'ollama-full-*-linux-amd64' | head -1)
           echo "pacote: $PKG_DIR"
           export PREFIX="$RUNNER_TEMP/claseaplus"
           bash "$PKG_DIR/install.sh"
@@ -68,7 +68,7 @@ jobs:
         with:
           name: ollama-classe-a-plus-linux-amd64-unsigned
           path: |
-            dist/ollama-classe-a-plus-*-linux-amd64.tgz
-            dist/ollama-classe-a-plus-*-linux-amd64.tgz.sha256
+            dist/ollama-full-*-linux-amd64.tgz
+            dist/ollama-full-*-linux-amd64.tgz.sha256
             dist/sbom.cyclonedx.json
           if-no-files-found: error

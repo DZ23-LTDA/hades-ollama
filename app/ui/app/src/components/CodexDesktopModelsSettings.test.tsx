@@ -233,7 +233,7 @@ describe("CodexDesktopModelsSettings", () => {
       expect(
         renderer!.root
           .findAllByType("button")
-          .some((button) => textContent(button) === "Restart ChatGPT"),
+          .some((button) => textContent(button) === "Reiniciar ChatGPT"),
       ).toBe(true);
     } finally {
       await act(async () => renderer?.unmount());
@@ -289,7 +289,7 @@ describe("CodexDesktopModelsSettings", () => {
       );
       const restartButton = renderer!.root
         .findAllByType("button")
-        .find((button) => textContent(button) === "Restart ChatGPT");
+        .find((button) => textContent(button) === "Reiniciar ChatGPT");
       if (!restartButton) throw new Error("Restart button not found");
       expect(Boolean(restartButton.props.disabled)).toBe(false);
     } finally {
@@ -332,7 +332,7 @@ describe("CodexDesktopModelsSettings", () => {
       });
       const restartButton = renderer!.root
         .findAllByType("button")
-        .find((button) => textContent(button) === "Restart ChatGPT");
+        .find((button) => textContent(button) === "Reiniciar ChatGPT");
       if (!restartButton) throw new Error("Restart button not found");
 
       await act(async () => {
@@ -347,10 +347,10 @@ describe("CodexDesktopModelsSettings", () => {
       expect(getStatus).toHaveBeenCalledTimes(1);
       const busyButton = renderer!.root
         .findAllByType("button")
-        .find((button) => textContent(button) === "Restarting…");
+        .find((button) => textContent(button) === "Reiniciando…");
       if (!busyButton) throw new Error("Busy restart button not found");
       expect(busyButton.props.disabled).toBe(true);
-      expect(textContent(renderer!.root)).not.toContain("Starting…");
+      expect(textContent(renderer!.root)).not.toContain("Iniciando…");
 
       await act(async () => {
         restartButton.props.onClick();
@@ -364,7 +364,7 @@ describe("CodexDesktopModelsSettings", () => {
 
       const readyButton = renderer!.root
         .findAllByType("button")
-        .find((button) => textContent(button) === "Restart ChatGPT");
+        .find((button) => textContent(button) === "Reiniciar ChatGPT");
       if (!readyButton) throw new Error("Ready restart button not found");
       expect(Boolean(readyButton.props.disabled)).toBe(false);
       expect(getStatus).toHaveBeenCalledTimes(2);
@@ -399,7 +399,7 @@ describe("CodexDesktopModelsSettings", () => {
       });
       const startButton = renderer!.root
         .findAllByType("button")
-        .find((button) => textContent(button) === "Start ChatGPT");
+        .find((button) => textContent(button) === "Iniciar ChatGPT");
       if (!startButton) throw new Error("Start button not found");
 
       await act(async () => {
@@ -530,7 +530,7 @@ describe("CodexDesktopModelsSettings", () => {
           })
           .filter((node) => node.type === "button"),
       ).toHaveLength(1);
-      expect(textContent(renderer!.root)).toContain("Start ChatGPT");
+      expect(textContent(renderer!.root)).toContain("Iniciar ChatGPT");
     } finally {
       await act(async () => renderer?.unmount());
     }
@@ -776,7 +776,7 @@ describe("CodexDesktopModelsSettings", () => {
 
       const applyButton = renderer!.root
         .findAllByType("button")
-        .find((button) => textContent(button).includes("Save & start ChatGPT"));
+        .find((button) => textContent(button).includes("Salvar e iniciar ChatGPT"));
       if (!applyButton) throw new Error("Apply button not found");
       await act(async () => {
         await applyButton.props.onClick();
@@ -785,7 +785,7 @@ describe("CodexDesktopModelsSettings", () => {
       expect(apply).toHaveBeenCalledWith(next, false);
       const restartButton = renderer!.root
         .findAllByType("button")
-        .find((button) => textContent(button) === "Restart ChatGPT");
+        .find((button) => textContent(button) === "Reiniciar ChatGPT");
       if (!restartButton) throw new Error("Restart button not found");
       expect(Boolean(restartButton.props.disabled)).toBe(false);
       expect(textContent(renderer!.root)).not.toContain(
@@ -800,12 +800,12 @@ describe("CodexDesktopModelsSettings", () => {
     {
       connected: false,
       confirmation:
-        "Restart ChatGPT to add Ollama models? Any running task will stop.",
+        "Reiniciar ChatGPT para adicionar modelos Ollama? Qualquer tarefa em execução será interrompida.",
     },
     {
       connected: true,
       confirmation:
-        "Restart ChatGPT to update Ollama models? Any running task will stop.",
+        "Reiniciar ChatGPT para atualizar os modelos Ollama? Qualquer tarefa em execução será interrompida.",
     },
   ])(
     "uses the native restart copy when connected is $connected",
@@ -842,7 +842,7 @@ describe("CodexDesktopModelsSettings", () => {
         const applyButton = renderer!.root
           .findAllByType("button")
           .find((button) =>
-            textContent(button).includes("Save & restart ChatGPT"),
+            textContent(button).includes("Salvar e reiniciar ChatGPT"),
           );
         if (!applyButton) throw new Error("Apply button not found");
         expect(Boolean(applyButton.props.disabled)).toBe(false);
@@ -894,14 +894,14 @@ describe("CodexDesktopModelsSettings", () => {
       });
       const applyButton = renderer!.root
         .findAllByType("button")
-        .find((button) => textContent(button).includes("Save & start ChatGPT"));
+        .find((button) => textContent(button).includes("Salvar e iniciar ChatGPT"));
       if (!applyButton) throw new Error("Apply button not found");
       await act(async () => {
         await applyButton.props.onClick();
       });
 
       expect(window.confirm).toHaveBeenCalledWith(
-        "Restart ChatGPT to update Ollama models? Any running task will stop.",
+        "Reiniciar ChatGPT para atualizar os modelos Ollama? Qualquer tarefa em execução será interrompida.",
       );
       expect(apply.mock.calls).toEqual([
         [next, false],
@@ -956,7 +956,7 @@ describe("CodexDesktopModelsSettings", () => {
       });
       const applyButton = renderer!.root
         .findAllByType("button")
-        .find((button) => textContent(button).includes("Save & start ChatGPT"));
+        .find((button) => textContent(button).includes("Salvar e iniciar ChatGPT"));
       if (!applyButton) throw new Error("Apply button not found");
       await act(async () => {
         await applyButton.props.onClick();
@@ -972,7 +972,7 @@ describe("CodexDesktopModelsSettings", () => {
           "aria-label": `Remove ${available[4]}`,
         }),
       ).toHaveLength(0);
-      expect(textContent(renderer!.root)).not.toContain("Save & start ChatGPT");
+      expect(textContent(renderer!.root)).not.toContain("Salvar e iniciar ChatGPT");
     } finally {
       await act(async () => renderer?.unmount());
     }
@@ -995,11 +995,11 @@ describe("CodexDesktopModelsSettings", () => {
         );
       });
       const content = textContent(renderer!.root);
-      expect(content).toContain("Restart ChatGPT");
+      expect(content).toContain("Reiniciar ChatGPT");
       expect(content).not.toContain("Remove Ollama models");
       const restartButton = renderer!.root
         .findAllByType("button")
-        .find((button) => textContent(button) === "Restart ChatGPT");
+        .find((button) => textContent(button) === "Reiniciar ChatGPT");
       if (!restartButton) throw new Error("Restart button not found");
       expect(Boolean(restartButton.props.disabled)).toBe(false);
     } finally {

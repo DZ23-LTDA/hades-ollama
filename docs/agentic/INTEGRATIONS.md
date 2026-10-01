@@ -17,6 +17,8 @@ O exemplo [agent-connectors.json](../../examples/agent-connectors.json) cobre Gi
 
 O fluxo de autenticação OAuth usa PKCE, state one-time, armazenamento AES-GCM, refresh server-side com rotação/CAS e revogação local com endpoint remoto opcional. Configure os endpoints do provider, incluindo `OLLAMA_AGENT_OAUTH_<PROVIDER>_REVOCATION_URL` quando suportado, e `OLLAMA_AGENT_CREDENTIAL_KEY` fora do repositório. Tokens pessoais por `token_env` continuam disponíveis apenas para desenvolvimento ou conectores explicitamente não multiusuário. A implementação possui testes com provider TLS fixture; a homologação contra cada IdP, revocation semantics, quotas e rotação real continua dependente de conta de teste do operador.
 
+O mesmo `OLLAMA_AGENT_CREDENTIAL_KEY` cifra tokens de push quando subscriptions são persistidas. Configure e mantenha essa chave estável antes de iniciar o serviço com registros existentes; arquivos legados de subscriptions com token em texto claro são regravados em formato cifrado no startup. Se a chave estiver ausente ou não puder decifrar um registro existente, a inicialização falha fechado — não remova a chave nem apague o arquivo para contornar a falha.
+
 O endpoint `GET /api/agent/v1/connectors` também expõe um catálogo de integrações com categoria, capabilities, estado de habilitação e `credential_configured`. Esse último campo é somente booleano e não revela token, nome de variável ou ciphertext. O catálogo inclui contratos para GitHub, Google Workspace, Slack, Discord, WhatsApp, Composio, deploy, social commerce, Woovi/OpenPix e fiscal/NF-e; ele não declara qualquer conta externa como conectada. Uma conexão real exige credencial provisionada pelo operador, escopos mínimos, approval e smoke reversível com auditoria.
 
 ## SAML enterprise
@@ -54,16 +56,148 @@ O catálogo `GET /api/agent/v1/mcp` retorna servidores stdio e remotos sem o val
 
 ## HarnessRouter e harnesses de coding
 
-O [HarnessRouter Community Edition](https://github.com/HarnessRouter/harnessrouter) pode ser configurado como provider `openai-compatible` em [`examples/dz23-harnessrouter.json`](../../examples/dz23-harnessrouter.json). Cada `ModelConfig` pode declarar `harness_id`; o proxy Classe A+ preserva metadata existente e sobrescreve `metadata.harness_id` no servidor, permitindo selecionar `harnessrouter/codex` ou `harnessrouter/claude-code` sem aceitar esse controle do browser.
+O [HarnessRouter Community Edition](https://github.com/HarnessRouter/harnessrouter) pode ser configurado como provider `openai-compatible` em [`examples/dz23-harnessrouter.json`](../../examples/dz23-harnessrouter.json). Cada `ModelConfig` pode declarar `harness_id`; o proxy Ollama Full preserva metadata existente e sobrescreve `metadata.harness_id` no servidor, permitindo selecionar `harnessrouter/codex` ou `harnessrouter/claude-code` sem aceitar esse controle do browser.
 
-A integração é opt-in, usa `HARNESSROUTER_API_KEY` somente no processo do servidor e mantém uma chave de entrada do gateway Classe A+ separada. O endpoint local HTTP é permitido apenas com allowlist de loopback; hosts externos exigem HTTPS. O adapter não prova instalação, autenticação, licença ou disponibilidade de um CLI: streaming, sessões de follow-up, cancelamento, artifacts e recovery precisam ser testados contra uma instância real antes de classificar o provider como validado.
+A integração é opt-in, usa `HARNESSROUTER_API_KEY` somente no processo do servidor e mantém uma chave de entrada do gateway Ollama Full separada. O endpoint local HTTP é permitido apenas com allowlist de loopback; hosts externos exigem HTTPS. O adapter não prova instalação, autenticação, licença ou disponibilidade de um CLI: streaming, sessões de follow-up, cancelamento, artifacts e recovery precisam ser testados contra uma instância real antes de classificar o provider como validado.
 
 
 ## Infraestrutura distribuída
 
-O runtime permanece local-first por padrão. Para persistência compartilhada, defina `OLLAMA_AGENT_DATABASE_URL` com uma URL PostgreSQL; o servidor executa migrações idempotentes para `agent_missions` e `agent_events`, preservando o JSON store como fallback quando a variável não existe. Para workers compartilhados, defina `OLLAMA_AGENT_REDIS_URL` e opcionalmente `OLLAMA_AGENT_REDIS_PREFIX`; a fila Redis implementa enqueue, claim, retry com backoff, dead-letter e replay. Não configure uma URL de produção com credenciais embutidas em arquivos versionados.
+O runtime permanece local-first por padrão. O adapter PostgreSQL separa um papel migrator de um papel runtime sem ownership, `CREATE`, `BYPASSRLS` ou superuser; migrations não executam no startup. As policies usam somente `app.tenant_context`, com contexto HMAC versionado, segredo inacessível à role runtime, expiração curta e validação SQL na própria policy; os GUCs antigos não concedem acesso. Cutover e migration removem privilégios herdados de `PUBLIC`/runtime em database, schema, grants por coluna, relations, sequences e routines públicas não permitidas; o runtime attesta a allowlist e os default ACLs do migrator, impedindo herança de rotinas SECURITY DEFINER legadas ou grants futuros. A integração adversarial local PostgreSQL 16/Redis 7 cobre cross-tenant, drift, schema inválido, ACL público, role cutover e keyring. **A arquitetura continua candidata, não está liberada nem declarada production-ready:** rotação versionada foi implementada, mas requer revisão independente fechada, gates globais e ensaio TLS/backup-restore em staging antes de produção. Migrations normais recusam mudanças de versão/segredo; use somente `ollama agent rotate-postgres-key`, descrito no [protocolo de rotação](POSTGRES_HMAC_KEY_ROTATION.md). A migration falha fechada para ownership ou dados tenant inconsistentes; não faz backfill automático de ownership.
 
-Para traces distribuídos, defina `OLLAMA_AGENT_OTLP_ENDPOINT` com uma URL HTTPS de OTLP HTTP. O provider exige HTTPS por padrão; `OLLAMA_AGENT_OTLP_ALLOW_INSECURE=1` é reservado para desenvolvimento local. A stack de desenvolvimento em `deploy/docker-compose.agentic.yml` fornece PostgreSQL, Redis e OpenTelemetry Collector.
+Como PostgreSQL autentica roles em nível de cluster, mantenha esse cluster dedicado: phase-one recusa outros databases e objetos públicos fora da allowlist antes de qualquer `REASSIGN OWNED`/ACL mutation; o runtime e `PUBLIC` perdem `CONNECT` nos databases existentes. **Isso não protege por si só databases criados depois:** privilégios padrão de database podem reaparecer mesmo quando `template1` teve ACLs revogadas. Portanto, instale uma allowlist `pg_hba.conf` obrigatória, incluindo acesso por socket local e TCP, para permitir `ollama_agent_runtime` somente no database de aplicação e rejeitar as demais rotas, colocando estas regras **antes** de qualquer regra geral que possa corresponder. O Docker Compose monta `deploy/postgres/pg_hba-runtime.conf`; em PostgreSQL externo, adapte CIDRs e métodos de autenticação, preservando a ordem:
+
+```conf
+# Primeiro, permita o database da aplicação nos canais usados pelo runtime.
+local   ollama_agent  ollama_agent_runtime                         scram-sha-256
+hostssl ollama_agent  ollama_agent_runtime 10.20.0.0/16            scram-sha-256
+hostssl ollama_agent  ollama_agent_runtime 2001:db8:20::/48         scram-sha-256
+# Depois, negue qualquer database diferente, antes de regras gerais.
+local   all           ollama_agent_runtime                         reject
+host    all           ollama_agent_runtime 0.0.0.0/0               reject
+host    all           ollama_agent_runtime ::/0                    reject
+```
+
+Não copie regras de exemplo sem revisar a origem de rede, método de autenticação, TLS e a ordem completa do arquivo. A documentação oficial PostgreSQL 16 confirma que o primeiro registro `pg_hba.conf` correspondente encerra a busca; a regra de app database precisa preceder os rejects. A verificação de readiness também falha se qualquer database atualmente existente conceder `CONNECT` ao runtime, mas somente o HBA impede autenticação em bancos futuros. O workflow de CI gera um HBA descartável em `$RUNNER_TEMP` com uma regra adicional para `ollama_agent_reverse_member`, exclusivamente para testar a drenagem de sessões `SET ROLE`; essa identidade e sua exceção **não fazem parte** do arquivo de produção `deploy/postgres/pg_hba-runtime.conf` e nunca devem ser implantadas fora do job isolado.
+
+Para desenvolvimento com `deploy/docker-compose.agentic.yml`, defina senhas distintas `OLLAMA_AGENT_POSTGRES_ADMIN_PASSWORD`, `OLLAMA_AGENT_MIGRATOR_PASSWORD`, `OLLAMA_AGENT_RUNTIME_PASSWORD` e `OLLAMA_AGENT_REDIS_PASSWORD`. O script de init instala `pgcrypto` e saneia ACLs como o administrador de bootstrap. Para um banco novo provisionado externamente, o administrador/superuser deve criar `pgcrypto` no schema `public`, remover `PUBLIC CONNECT` no database e `PUBLIC USAGE/CREATE` no schema, revogar `PUBLIC`/runtime de todas as routines públicas e grants por coluna, e conceder somente `EXECUTE` em `public.hmac(bytea, bytea, text)` ao `ollama_agent_migrator` antes de executar o migrator (essa role não pode revogar rotinas pertencentes a terceiros nem recebe superuser). O cutover de uma instalação legada executa a limpeza de `PUBLIC` e grants por coluna na fase privilegiada de preparação. Também aplique defaults restritivos de function/table/sequence para o migrator; `OpenPostgresRuntimeStore` falha fechado se a allowlist ou defaults não estiverem satisfeitos. Gere a chave HMAC com `openssl rand -hex 32`, persista-a em secret manager e configure `OLLAMA_AGENT_TENANT_CONTEXT_KEY`; `OLLAMA_AGENT_TENANT_CONTEXT_KEY_VERSION` é `1` por compatibilidade e deve acompanhar explicitamente todas as instâncias após cada rotação. Use `OLLAMA_AGENT_MIGRATOR_DATABASE_URL` apenas em jobs administrativos, `OLLAMA_AGENT_POSTGRES_ADMIN_DATABASE_URL` apenas no comando protegido de rotação e `OLLAMA_AGENT_DATABASE_URL` somente no runtime; não inclua DSNs/secrets em argumentos, logs ou arquivos versionados. Para banco novo, inicialize roles/extensão, rode `ollama agent migrate-postgres` explicitamente e depois suba servidor com `OLLAMA_AGENT_AUTH_REQUIRED=true` e Redis owner-bound. Migrations recusam substituir o segredo ativo.
+
+### Cutover de volume legado PostgreSQL
+
+**Use exatamente esta ordem; mantenha o serviço Ollama parado e o tráfego fechado até o smoke final.** O fluxo em várias fases não é uma transação única nem tem rollback automático:
+
+1. **Backup e ensaio:** configure o destino como um cluster PostgreSQL de staging separado do cluster de origem. O script compara os `system_identifier` e recusa seguir se forem iguais. O dump fica fora do repositório, com diretório privado; o database temporário tem nome exclusivo e é removido por `trap` inclusive se `pg_restore` ou a contagem falhar. Não use o teste de drift adversarial contra produção; ele altera policies/RLS deliberadamente.
+
+   ```bash
+   umask 077
+   install -d -m 700 "$HOME/ollama-full-backups"
+   export BACKUP_FILE="$HOME/ollama-full-backups/ollama_agent-$(date -u +%Y%m%dT%H%M%SZ).dump"
+   export SOURCE_PGHOST='source-db.example' SOURCE_PGPORT=5432 SOURCE_PGUSER='ollama_agent'
+   export SOURCE_PGSSLROOTCERT='/secure/path/source-ca.crt'
+   export STAGING_PGHOST='staging-db.example' STAGING_PGPORT=5432 STAGING_PGUSER='staging_restore_admin'
+   export STAGING_PGSSLROOTCERT='/secure/path/staging-ca.crt'
+   # Source e staging usam certificados/CA confiáveis e nomes presentes no SAN; verify-full é obrigatório.
+   export DSN_ADMIN_LEGADO="host=$SOURCE_PGHOST port=$SOURCE_PGPORT dbname=ollama_agent user=$SOURCE_PGUSER sslmode=verify-full sslrootcert=$SOURCE_PGSSLROOTCERT"
+   export DSN_ADMIN_NOVO="host=$SOURCE_PGHOST port=$SOURCE_PGPORT dbname=ollama_agent user=ollama_agent_admin sslmode=verify-full sslrootcert=$SOURCE_PGSSLROOTCERT"
+   # staging_restore_admin precisa CREATEDB, pg_monitor e permissão de conectar via TLS.
+   export DSN_ADMIN_MAINTENANCE="host=$STAGING_PGHOST port=$STAGING_PGPORT dbname=postgres user=$STAGING_PGUSER sslmode=verify-full sslrootcert=$STAGING_PGSSLROOTCERT"
+   export DSN_RESTORE_STAGING_BASE="$DSN_ADMIN_MAINTENANCE"
+   read -rsp 'Senha do administrador legado: ' PGPASSWORD; echo; export PGPASSWORD
+   read -rsp 'Senha do administrador de staging: ' STAGING_PGPASSWORD; echo; export STAGING_PGPASSWORD
+   PGPASSWORD="$PGPASSWORD" psql "$DSN_ADMIN_LEGADO" -v ON_ERROR_STOP=1 -Atc 'SELECT current_user, current_database()'
+   source_cluster_id="$(PGPASSWORD="$PGPASSWORD" psql "$DSN_ADMIN_LEGADO" -v ON_ERROR_STOP=1 -Atc 'SELECT system_identifier FROM pg_catalog.pg_control_system()')"
+   staging_cluster_id="$(PGPASSWORD="$STAGING_PGPASSWORD" psql "$DSN_ADMIN_MAINTENANCE" -v ON_ERROR_STOP=1 -Atc 'SELECT system_identifier FROM pg_catalog.pg_control_system()')"
+   test -n "$source_cluster_id" && test -n "$staging_cluster_id"
+   if [ "$source_cluster_id" = "$staging_cluster_id" ]; then
+     echo 'ERROR: restore rehearsal target is the source PostgreSQL cluster; use a separate staging cluster' >&2
+     exit 1
+   fi
+   restore_db="ollama_agent_restore_$(date -u +%Y%m%d%H%M%S)_$$"
+   case "$restore_db" in (*[!a-zA-Z0-9_]*) echo 'ERROR: invalid generated rehearsal database name' >&2; exit 1;; esac
+   cleanup_restore_db() {
+     status=$?
+     trap - EXIT
+     if [ "${restore_db_created:-0}" = 1 ]; then
+       PGPASSWORD="$STAGING_PGPASSWORD" psql "$DSN_ADMIN_MAINTENANCE" -v ON_ERROR_STOP=1 -c "DROP DATABASE IF EXISTS $restore_db WITH (FORCE)" >/dev/null || true
+     fi
+     exit "$status"
+   }
+   trap cleanup_restore_db EXIT
+   PGPASSWORD="$PGPASSWORD" pg_dump --format=custom --no-owner --no-acl --file="$BACKUP_FILE" "$DSN_ADMIN_LEGADO"
+   pg_restore --list "$BACKUP_FILE" >/dev/null
+   PGPASSWORD="$STAGING_PGPASSWORD" psql "$DSN_ADMIN_MAINTENANCE" -v ON_ERROR_STOP=1 -c "CREATE DATABASE $restore_db"
+   restore_db_created=1
+   staging_restore_id="$(PGPASSWORD="$STAGING_PGPASSWORD" psql "$DSN_RESTORE_STAGING_BASE" --dbname="$restore_db" -v ON_ERROR_STOP=1 -Atc 'SELECT system_identifier FROM pg_catalog.pg_control_system()')"
+   test "$staging_restore_id" = "$staging_cluster_id"
+   PGPASSWORD="$STAGING_PGPASSWORD" PGHOST="$STAGING_PGHOST" PGPORT="$STAGING_PGPORT" PGUSER="$STAGING_PGUSER" PGSSLMODE=verify-full PGSSLROOTCERT="$STAGING_PGSSLROOTCERT" pg_restore --no-owner --no-acl --dbname="$restore_db" "$BACKUP_FILE"
+   PGPASSWORD="$STAGING_PGPASSWORD" psql "$DSN_RESTORE_STAGING_BASE" --dbname="$restore_db" -v ON_ERROR_STOP=1 -Atc 'SELECT (SELECT count(*) FROM agent_missions), (SELECT count(*) FROM agent_events)'
+   PGPASSWORD="$STAGING_PGPASSWORD" psql "$DSN_ADMIN_MAINTENANCE" -v ON_ERROR_STOP=1 -c "DROP DATABASE $restore_db WITH (FORCE)"
+   restore_db_created=0
+   trap - EXIT
+   ```
+
+   Para uma promoção de standby, faça também o [ensaio PostgreSQL 16 de streaming/failover](POSTGRES_HA_FAILOVER_REHEARSAL.md). O teste local confirma as mecânicas manuais de fencing, replay e promoção, mas não libera produção: HA real, quorum/fencing, RPO/RTO, TLS/CA operacional, restore e failover precisam ser validados em staging dedicado.
+
+2. **Prepare roles e ownership:** com o serviço parado, conectado por TCP/TLS como o antigo `ollama_agent` superuser e com acesso administrativo autorizado ao cluster, forneça interativamente ou pelo secret manager os três valores distintos exigidos pelo script. O cutover aceita apenas um cluster dedicado com `ollama_agent` e `postgres`, sem outros databases não-template — mesmo com `ALLOW_CONNECTIONS=false` —, sem shared objects do legado (exceto a propriedade opcional deste database de aplicação), sem large objects legados e sem objetos públicos fora da allowlist exata das tabelas/verifier Ollama e membros da extensão `pgcrypto`; relações/verifier existentes também precisam ter o tipo, assinatura e owner esperados. Objetos/colunas extras ou dados fora desse contrato causam recusa no inventário completo depois do fence inicial; pare e migre-os separadamente, não remova-os para “fazer passar”. Eles precisam estar exportados com estes nomes exatos; o `psql \getenv` não lê aliases:
+
+   ```bash
+   read -rsp 'Nova senha admin: ' OLLAMA_AGENT_POSTGRES_ADMIN_PASSWORD; echo
+   read -rsp 'Nova senha migrator: ' OLLAMA_AGENT_MIGRATOR_PASSWORD; echo
+   read -rsp 'Nova senha runtime: ' OLLAMA_AGENT_RUNTIME_PASSWORD; echo
+   export OLLAMA_AGENT_POSTGRES_ADMIN_PASSWORD OLLAMA_AGENT_MIGRATOR_PASSWORD OLLAMA_AGENT_RUNTIME_PASSWORD
+   psql "$DSN_ADMIN_LEGADO" -v ON_ERROR_STOP=1 -f deploy/postgres/migrate-existing-roles.sql
+   ```
+
+   O script executa primeiro um preflight mínimo de identidade/endpoint e, numa transação curta, provisiona/atualiza `ollama_agent_admin` e **commita `NOLOGIN NOSUPERUSER` no papel antigo antes de qualquer mudança de ACL, membership, ownership ou dados**. Em seguida reconecta como o novo administrador e drena sessões antigas e sessões de membros diretos/transitivos que pudessem ter executado `SET ROLE`. Faz o inventário completo do cluster e, na transação de ownership, bloqueia novamente alterações em memberships, refaz o snapshot/revoke, transfere objetos/ACLs e, após o commit, drena/verifica qualquer sessão membro que tenha surgido durante o inventário. Os locks têm `lock_timeout` curto e falham fechados; corrija a causa e reexecute, sem manter uma implantação presa indefinidamente. **Durante toda a janela de cutover, suspenda outros DBAs/superusers, automações de administração e qualquer processo que possa recriar memberships ou alterar roles**; um superuser independente pode sempre mudar os catálogos depois de um lock ser liberado. O ensaio prova que sessões de superusers não relacionados não são encerradas. A senha antiga deixa de funcionar já no primeiro commit. Se a reconexão, inventário ou etapa posterior falhar, mantenha serviço/tráfego desligados e a role antiga cercada; corrija somente com `ollama_agent_admin` e reexecute a preparação como essa identidade, sem reativar o legado por improviso. Guarde as credenciais novas e só inicie runtime após migration, fase 2 e smoke.
+
+3. **Verifique as novas identidades e migre o schema enquanto o legado já está cercado:**
+
+   ```bash
+   read -rsp 'Senha do novo admin: ' PGPASSWORD; echo; export PGPASSWORD
+   psql "$DSN_ADMIN_NOVO" -v ON_ERROR_STOP=1 -Atc 'SELECT current_user, current_database()'
+   PGPASSWORD="$OLLAMA_AGENT_MIGRATOR_PASSWORD" psql 'host=127.0.0.1 port=5432 dbname=ollama_agent user=ollama_agent_migrator' -v ON_ERROR_STOP=1 -Atc 'SELECT current_user'
+   PGPASSWORD="$OLLAMA_AGENT_RUNTIME_PASSWORD" psql 'host=127.0.0.1 port=5432 dbname=ollama_agent user=ollama_agent_runtime' -v ON_ERROR_STOP=1 -Atc 'SELECT current_user'
+   # Instale a extensão privilegiada antes de executar o migrator.
+   PGPASSWORD="$OLLAMA_AGENT_POSTGRES_ADMIN_PASSWORD" psql "$DSN_ADMIN_NOVO" -v ON_ERROR_STOP=1 -c 'CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA public'
+   export OLLAMA_AGENT_MIGRATOR_DATABASE_URL='postgres://ollama_agent_migrator@127.0.0.1:5432/ollama_agent?sslmode=verify-full'
+   read -rsp 'Chave HMAC persistente (hex, 64 caracteres): ' OLLAMA_AGENT_TENANT_CONTEXT_KEY; echo; export OLLAMA_AGENT_TENANT_CONTEXT_KEY
+   export OLLAMA_AGENT_TENANT_CONTEXT_KEY_VERSION=1
+   PGPASSWORD="$OLLAMA_AGENT_MIGRATOR_PASSWORD" ollama agent migrate-postgres
+   ```
+
+   Configure TLS/CA e DSNs de acordo com o cluster; `sslmode=verify-full` pressupõe certificado/hostname válidos. Execute a suíte adversarial e o smoke do runtime em **staging isolado**, usando as roles e a mesma chave persistente, e confira ownership/preservação dos dados antes de continuar.
+
+4. **Finalize e reconcilie a role antiga:** conecte pelo novo admin verificado, com senha do secret manager/prompt, e rode a segunda etapa. Ela é retry-safe após a fase 1, confirma as flags/memberships, reafirma `NOLOGIN`, revoga privilégios e termina/aguarda sessões que ainda existam em qualquer database do cluster:
+
+   ```bash
+   psql "$DSN_ADMIN_NOVO" -v ON_ERROR_STOP=1 -f deploy/postgres/retire-legacy-role.sql
+   ```
+
+5. **Suba o runtime e reabra tráfego só após o smoke:** configure `OLLAMA_AGENT_DATABASE_URL` com `ollama_agent_runtime`, a chave e `OLLAMA_AGENT_TENANT_CONTEXT_KEY_VERSION` ativos, e `OLLAMA_AGENT_REDIS_URL`; inicie o serviço, confirme readiness e faça leitura/escrita de tenant autorizado. Runtime recusa se chave/versão não correspondem à única ativa ou se legado ainda está ativo.
+
+Se qualquer etapa falhar, mantenha o serviço parado e siga o backup/restore de staging ensaiado; não reative a role antiga por improviso nem execute testes de drift em produção. Dados sem `organization_id` válido e missões executáveis sem `workspace_identity` exigem correção manual antes da migration.
+
+### Rotação versionada de chave HMAC PostgreSQL
+
+**A rotação exige quiescência operacional total; o advisory lock drena transações já abertas, mas não bloqueia conexões/requests novos após liberar. Não rode com qualquer runtime/worker ativo.** Preserve ambas as chaves no secret manager. O formato do token é `version|organization|expiry|HMAC-SHA256`, e o banco aceita apenas a versão única ativa. Veja o [protocolo detalhado, invariantes e evidência requerida](POSTGRES_HMAC_KEY_ROTATION.md).
+
+```bash
+# Parar todas as instâncias e workers, bloquear tráfego novo e aguardar drain.
+# Injectar (não passar como flags nem imprimir): migrator DSN, chave atual e próxima.
+export OLLAMA_AGENT_MIGRATOR_DATABASE_URL='postgres://ollama_agent_migrator@db/ollama_agent?sslmode=verify-full'
+export OLLAMA_AGENT_POSTGRES_ADMIN_DATABASE_URL='postgres://ollama_agent_admin@db/ollama_agent?sslmode=verify-full'
+export OLLAMA_AGENT_TENANT_CONTEXT_KEY_VERSION=1
+read -rsp 'Chave HMAC atual (hex): ' OLLAMA_AGENT_TENANT_CONTEXT_KEY; echo; export OLLAMA_AGENT_TENANT_CONTEXT_KEY
+export OLLAMA_AGENT_TENANT_CONTEXT_KEY_NEXT_VERSION=2
+read -rsp 'Próxima chave HMAC (hex): ' OLLAMA_AGENT_TENANT_CONTEXT_KEY_NEXT; echo; export OLLAMA_AGENT_TENANT_CONTEXT_KEY_NEXT
+ollama agent rotate-postgres-key
+# Somente após sucesso: configurar nova chave atual e versão 2 em todas instâncias,
+# rodar `ollama agent migrate-postgres`, subir runtime e executar smoke antes de liberar tráfego.
+```
+
+O comando aborta sem mudar estado se as credenciais/versionamento atuais não coincidirem, se a próxima versão existir ou se a transação falhar/expirar aguardando conexões. Após commit bem-sucedido, rollback é outra rotação: configure a antiga chave como `OLLAMA_AGENT_TENANT_CONTEXT_KEY_NEXT` com versão nova monotônica (por exemplo, 3), nunca rebaixe nem reutilize versão. Não remova versões históricas automaticamente. A rotação foi testada contra PostgreSQL 16 descartável; TLS/HA/failover, restore operacional e revisão independente final ainda pendem, portanto o sistema permanece candidato e não está aprovado para produção.
+
+Para traces distribuídos, defina `OLLAMA_AGENT_OTLP_ENDPOINT` com URL OTLP HTTP `https://`; `OLLAMA_AGENT_OTLP_ALLOW_INSECURE=1` é reservado para desenvolvimento local. A stack em `deploy/docker-compose.agentic.yml` fornece PostgreSQL, Redis e OpenTelemetry Collector.
 
 ## Companion WebSocket e mTLS
 
@@ -75,17 +209,19 @@ O protocolo inicial é `dz23-companion.v1` e suporta `hello`, `heartbeat`, `ping
 
 Configure `OLLAMA_AGENT_DEPLOYMENTS` apontando para um JSON como [`examples/agent-deployments.json`](../../examples/agent-deployments.json). Os adapters `vercel` e `netlify` usam as APIs oficiais; `generic` envia um payload de arquivos base64 para `/deploy`, permitindo integrar AWS, Cloudflare, um pipeline interno ou outro hosting sem colocar SDKs e credenciais no binário. Os tokens são lidos de `token_env`, e uma publicação exige approval no endpoint. O código cria a requisição de publicação e valida o workspace, mas credenciais de conta, domínio, projeto, DNS, billing e permissões de hosting continuam responsabilidade do operador.
 
+Em modo autenticado multi-organização, cada provider precisa declarar `organization_id` igual ao ID da organização proprietária. `GET /api/agent/v1/deployments`, a solicitação de approval e a execução mostram/aceitam somente providers dessa organização; providers antigos sem proprietário continuam disponíveis apenas no modo local não autenticado. Não há cadastro HTTP global de provider. Um exemplo de entrada é `{"id":"vercel-org-a","organization_id":"org-a","provider":"vercel","base_url":"https://api.vercel.com","token_env":"ORG_A_VERCEL_TOKEN"}`. Erros HTTP não-2xx dos providers são convertidos em mensagens genéricas com status e não devolvem o corpo arbitrário upstream.
+
 
 ## Composio Connect e plugin Composio
 
-O Classe A+ pode registrar o [Composio Connect](https://docs.composio.dev/docs/composio-connect) como Remote MCP através de [`examples/dz23-composio-connect.json`](../../examples/dz23-composio-connect.json). O preset usa `https://connect.composio.dev/mcp`, permite somente os métodos JSON-RPC necessários (`initialize`, `notifications/initialized`, `tools/list` e `tools/call`) e injeta `x-consumer-api-key` apenas no servidor por meio de `COMPOSIO_CONSUMER_API_KEY`. O valor nunca é retornado pela API de capabilities, browser ou logs.
+O Ollama Full pode registrar o [Composio Connect](https://docs.composio.dev/docs/composio-connect) como Remote MCP através de [`examples/dz23-composio-connect.json`](../../examples/dz23-composio-connect.json). O preset usa `https://connect.composio.dev/mcp`, permite somente os métodos JSON-RPC necessários (`initialize`, `notifications/initialized`, `tools/list` e `tools/call`) e injeta `x-consumer-api-key` apenas no servidor por meio de `COMPOSIO_CONSUMER_API_KEY`. O valor nunca é retornado pela API de capabilities, browser ou logs.
 
 ```bash
 export OLLAMA_AGENT_REMOTE_MCP="$PWD/examples/dz23-composio-connect.json"
 export COMPOSIO_CONSUMER_API_KEY='valor-fora-do-repositorio'
 ```
 
-O Composio Connect expõe meta-tools para descobrir tools, obter schemas, iniciar conexões OAuth e executar tools. Por isso, “ter o plugin” significa ter o adapter MCP e o fluxo de aprovação no Classe A+; ainda é necessário autorizar cada conta upstream no navegador do operador. A integração não cria uma conta Composio, não completa OAuth automaticamente e não declara que Instagram, TikTok Shop, Shopify ou qualquer outro toolkit está conectado. Para multiusuário, a próxima evolução deve usar uma sessão Composio por `organization_id`/usuário, persistir somente referências cifradas e aplicar scopes mínimos por departamento.
+O Composio Connect expõe meta-tools para descobrir tools, obter schemas, iniciar conexões OAuth e executar tools. Por isso, “ter o plugin” significa ter o adapter MCP e o fluxo de aprovação no Ollama Full; ainda é necessário autorizar cada conta upstream no navegador do operador. A integração não cria uma conta Composio, não completa OAuth automaticamente e não declara que Instagram, TikTok Shop, Shopify ou qualquer outro toolkit está conectado. Para multiusuário, a próxima evolução deve usar uma sessão Composio por `organization_id`/usuário, persistir somente referências cifradas e aplicar scopes mínimos por departamento.
 
 ## xAI / Grok por API
 
@@ -97,7 +233,7 @@ export OLLAMA_DZ23_GATEWAY_KEY='chave-do-cliente-fora-do-repositorio'
 export XAI_API_KEY='chave-xai-fora-do-repositorio'
 ```
 
-No cliente compatível com Responses API, use o modelo `xai/grok-4.7` e envie `input`, `tools` e as opções suportadas pela versão da API. O proxy Classe A+ preserva o corpo Responses, reescreve apenas o identificador lógico para o modelo upstream e aplica autenticação server-side. Isso integra a **API xAI**, não o produto hospedado Grok Bot. Browser, computador cloud persistente, bots coordenados, skills e rotinas continuam sendo implementados pelo runtime próprio do Classe A+ ou pelos adapters aprovados, sem copiar internals proprietários.
+No cliente compatível com Responses API, use o modelo `xai/grok-4.7` e envie `input`, `tools` e as opções suportadas pela versão da API. O proxy Ollama Full preserva o corpo Responses, reescreve apenas o identificador lógico para o modelo upstream e aplica autenticação server-side. Isso integra a **API xAI**, não o produto hospedado Grok Bot. Browser, computador cloud persistente, bots coordenados, skills e rotinas continuam sendo implementados pelo runtime próprio do Ollama Full ou pelos adapters aprovados, sem copiar internals proprietários.
 
 ## Redes sociais, afiliados e marketplaces
 
@@ -105,7 +241,7 @@ A base atual tem Growth OS sandbox, conectores HTTP allowlisted, OAuth tenant-aw
 
 | Canal | Estado atual | Próximo adapter operacional |
 |---|---|---|
-| Instagram/Meta | Adapter genérico e catálogo Composio possível; publicação não validada no Classe A+ | Meta Login/OAuth, `instagram_business_content_publish`, mídia pública, webhooks, rate limit, approval e teste em conta profissional |
+| Instagram/Meta | Adapter genérico e catálogo Composio possível; publicação não validada no Ollama Full | Meta Login/OAuth, `instagram_business_content_publish`, mídia pública, webhooks, rate limit, approval e teste em conta profissional |
 | X/Twitter | Toolkit Composio listado; não há conexão validada no projeto | OAuth, publicação/leitura permitida, rate limits, políticas de automação e approval |
 | YouTube | Toolkit/API pública disponível; não há upload validado no projeto | OAuth Google, upload/resumable, metadata, quota, copyright e approval |
 | WhatsApp | Connector HTTP/MCP possível; não há fluxo Cloud API validado | Meta Business, templates, opt-in, webhooks, proteção contra spam e approval |
@@ -122,7 +258,7 @@ Nenhum connector deve publicar posts, iniciar anúncios, enviar mensagens, criar
 
 Connectors, MCP stdio, Remote MCP e skills possuem lifecycle explícito no runtime. A UI pode solicitar habilitar, desabilitar ou remover um recurso, mas a decisão é server-side e revalida tenant, allowlist, estado e capabilities antes de alterar o registro. Desabilitar bloqueia a execução sem apagar credenciais; remover exige uma ação explícita e não remove secrets externos.
 
-O Composio, xAI/Grok, Desktop Commander e canais de Social Commerce permanecem adapters opt-in. O Classe A+ fornece contratos, presets sem segredos, headers server-side, approvals e testes locais. Connected accounts, OAuth, quotas, app review, webhooks, device pairing e publicação real só podem ser promovidos após smoke autorizado e reversível.
+O Composio, xAI/Grok, Desktop Commander e canais de Social Commerce permanecem adapters opt-in. O Ollama Full fornece contratos, presets sem segredos, headers server-side, approvals e testes locais. Connected accounts, OAuth, quotas, app review, webhooks, device pairing e publicação real só podem ser promovidos após smoke autorizado e reversível.
 
 
 ## Cadastro durável e estados de conexão
@@ -178,3 +314,10 @@ A captura de dez rotas usa o backend Ollama local e um bridge local para o bundl
 O estado publicado em `45393d8c` cobre `tel-agent.text` dentro do Company OS. O canal aceita operações locais allowlisted, persiste histórico redigido por tenant e exige role operacional para mutações autenticadas. `report.read` retorna o estado da empresa; `backlog.create` cria uma tarefa local; `campaign.draft` cria um rascunho sandbox com approval pendente.
 
 Isso não equivale a telefonia ou mensageria externa. SIP, PSTN, SMS, WhatsApp, gravação de voz e discagem permanecem `telephony: not_configured` e `BLOCKED_BY_EXTERNAL_DEPENDENCY` até contas, credenciais, consentimento, destino de teste e homologação autorizada. Nenhum catálogo ou tela de configuração deve ser interpretado como conta conectada.
+
+
+### Projeções seguras dos catálogos e limites operacionais
+
+Os catálogos tenant-facing de Remote MCP, Connector e Deployment omitem recursos ownerless/globais e mostram apenas a origem da URL configurada; paths, query strings, fragments e mapeamentos de env/headers que indicam credenciais não devem ser usados como configuração executável pelo cliente. O manager mantém a configuração completa somente no servidor. `terminal.exec` resolve binários allowlisted em caminhos absolutos confiáveis, sem confiar no PATH herdado.
+
+O push outbox aceita até 256 registros globais (64 por organização), até 64 KiB por registro e 20 MiB de snapshot; cada flush processa no máximo 32 notificações durante até 30 segundos e respeita cancelamento. Há no máximo oito tentativas, com compactação de itens terminais após sete dias. Respostas de deployment são limitadas a 4 MiB e JSON 2xx inválido/sem identidade não é tratado como sucesso. Quotas excedidas e respostas inválidas exigem investigação operacional do backlog/provider; não copie corpos upstream para logs ou tickets.

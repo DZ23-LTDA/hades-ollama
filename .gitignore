@@ -25,3 +25,6 @@ __pycache__/
 # Playwright artifacts
 app/ui/app/test-results/
 app/ui/app/playwright-report/
+
+# Evidências externas de terceiros (nunca commitar telas do usuário)
+docs/evidencias/manus_*.png

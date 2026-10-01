@@ -9,6 +9,9 @@ on:
   push:
     branches:
       - main
+      # Linha de recuperacao autorizada: manter as superficies Class A+ e a
+      # consistencia do classificador de CI verificadas tambem nestes pushes.
+      - recovery/ollama-full-snapshot
 
 permissions:
   contents: read
@@ -23,8 +26,38 @@ jobs:
           fetch-depth: 0
       - name: Verify required product and security surfaces
         run: scripts/check-class-a-plus-integrity.sh
+      - name: Verify frontend-backend contract matrix
+        run: node scripts/verify-contracts.mjs
       - name: Verify CI surface classifier (fail-safe + workflow consistency)
         run: python3 scripts/classify_ci_surfaces_test.py
       - name: Verify Go formatting for protected backend surfaces
         run: |
           test -z "$(gofmt -l internal/agent internal/multillm server/agent_routes.go)"
+
+  platform-builds:
+    name: CGO-free and Windows build gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Build embedded UI
+        working-directory: ./app/ui/app
+        run: |
+          npm ci --cache "${RUNNER_TEMP}/npm-cache" --prefer-online
+          npm run build
+      - name: Build all packages without CGO
+        env:
+          CGO_ENABLED: '0'
+        run: go build ./...
+      - name: Cross-build complete Windows binary and packages
+        env:
+          CGO_ENABLED: '0'
+          GOOS: windows
+          GOARCH: amd64
+        run: go build ./...

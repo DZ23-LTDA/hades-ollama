@@ -3,6 +3,8 @@ package agent
 import (
 	"archive/zip"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -38,12 +40,32 @@ type BuilderProject struct {
 	Root           string              `json:"root"`
 	PreviewPath    string              `json:"preview_path,omitempty"`
 	PublishedPath  string              `json:"published_path,omitempty"`
+	ExportChecksum string              `json:"export_checksum,omitempty"`
+	ExportPath     string              `json:"export_path,omitempty"`
+	ExportVersion  int                 `json:"export_version,omitempty"`
 	CreatedAt      time.Time           `json:"created_at"`
 	UpdatedAt      time.Time           `json:"updated_at"`
 	Components     []VisualComponent   `json:"components,omitempty"`
 	UndoStack      [][]VisualComponent `json:"undo_stack,omitempty"`
 	RedoStack      [][]VisualComponent `json:"redo_stack,omitempty"`
 }
+
+var (
+	ErrBuilderVersionConflict = errors.New("builder version conflict")
+	ErrBuilderExportExpired   = errors.New("builder export is expired; export the current version again")
+)
+
+type BuilderVersionConflictError struct {
+	ProjectID string
+	Expected  int
+	Current   int
+}
+
+func (e *BuilderVersionConflictError) Error() string {
+	return fmt.Sprintf("builder version conflict for %s: expected %d, current %d", e.ProjectID, e.Expected, e.Current)
+}
+
+func (e *BuilderVersionConflictError) Unwrap() error { return ErrBuilderVersionConflict }
 
 type VisualComponent struct {
 	ID       string            `json:"id"`
@@ -91,6 +113,12 @@ func NewBuilderService(root string) (*BuilderService, error) {
 		return nil, err
 	}
 	return service, nil
+}
+
+func (b *BuilderService) Root() string {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.root
 }
 
 func (b *BuilderService) Create(ctx context.Context, spec BuilderSpec) (BuilderProject, error) {
@@ -158,6 +186,14 @@ func (b *BuilderService) Create(ctx context.Context, spec BuilderSpec) (BuilderP
 }
 
 func (b *BuilderService) ApplyVisualComponents(ctx context.Context, id string, components []VisualComponent) (BuilderProject, error) {
+	return b.applyVisualComponents(ctx, id, components, nil)
+}
+
+func (b *BuilderService) ApplyVisualComponentsCAS(ctx context.Context, id string, expectedVersion int, components []VisualComponent) (BuilderProject, error) {
+	return b.applyVisualComponents(ctx, id, components, &expectedVersion)
+}
+
+func (b *BuilderService) applyVisualComponents(ctx context.Context, id string, components []VisualComponent, expectedVersion *int) (BuilderProject, error) {
 	if err := ctx.Err(); err != nil {
 		return BuilderProject{}, err
 	}
@@ -167,9 +203,15 @@ func (b *BuilderService) ApplyVisualComponents(ctx context.Context, id string, c
 	if err := validateVisualComponents(components, 0); err != nil {
 		return BuilderProject{}, err
 	}
-	project, err := b.Get(id)
-	if err != nil {
-		return BuilderProject{}, err
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	id = strings.TrimSpace(id)
+	project, ok := b.projects[id]
+	if !ok {
+		return BuilderProject{}, os.ErrNotExist
+	}
+	if expectedVersion != nil && project.Version != *expectedVersion {
+		return BuilderProject{}, &BuilderVersionConflictError{ProjectID: id, Expected: *expectedVersion, Current: project.Version}
 	}
 	indexPath := filepath.Join(project.Root, filepath.FromSlash(project.Entry))
 	if err := os.WriteFile(indexPath, []byte(renderVisualHTML(project.Name, components)), 0o600); err != nil {
@@ -187,20 +229,42 @@ func (b *BuilderService) ApplyVisualComponents(ctx context.Context, id string, c
 	project.Version++
 	project.Status = "draft"
 	project.UpdatedAt = time.Now().UTC()
-	b.mu.Lock()
+	b.invalidateExportLocked(&project)
 	b.projects[id] = project
-	err = b.persistLocked()
-	b.mu.Unlock()
-	return project, err
+	return project, b.persistLocked()
+}
+
+func (b *BuilderService) invalidateExportLocked(project *BuilderProject) {
+	if project.ExportPath != "" {
+		_ = os.Remove(project.ExportPath)
+	}
+	_ = os.Remove(filepath.Join(b.root, project.ID+".zip"))
+	project.ExportChecksum = ""
+	project.ExportPath = ""
+	project.ExportVersion = 0
 }
 
 func (b *BuilderService) Undo(ctx context.Context, id string) (BuilderProject, error) {
+	return b.undo(ctx, id, nil)
+}
+
+func (b *BuilderService) UndoCAS(ctx context.Context, id string, expectedVersion int) (BuilderProject, error) {
+	return b.undo(ctx, id, &expectedVersion)
+}
+
+func (b *BuilderService) undo(ctx context.Context, id string, expectedVersion *int) (BuilderProject, error) {
 	if err := ctx.Err(); err != nil {
 		return BuilderProject{}, err
 	}
-	project, err := b.Get(id)
-	if err != nil {
-		return BuilderProject{}, err
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	id = strings.TrimSpace(id)
+	project, ok := b.projects[id]
+	if !ok {
+		return BuilderProject{}, os.ErrNotExist
+	}
+	if expectedVersion != nil && project.Version != *expectedVersion {
+		return BuilderProject{}, &BuilderVersionConflictError{ProjectID: id, Expected: *expectedVersion, Current: project.Version}
 	}
 	if len(project.UndoStack) == 0 {
 		return project, errors.New("builder has no undo history")
@@ -214,20 +278,32 @@ func (b *BuilderService) Undo(ctx context.Context, id string) (BuilderProject, e
 	}
 	project.Version++
 	project.UpdatedAt = time.Now().UTC()
-	b.mu.Lock()
+	b.invalidateExportLocked(&project)
 	b.projects[id] = project
-	err = b.persistLocked()
-	b.mu.Unlock()
-	return project, err
+	return project, b.persistLocked()
 }
 
 func (b *BuilderService) Redo(ctx context.Context, id string) (BuilderProject, error) {
+	return b.redo(ctx, id, nil)
+}
+
+func (b *BuilderService) RedoCAS(ctx context.Context, id string, expectedVersion int) (BuilderProject, error) {
+	return b.redo(ctx, id, &expectedVersion)
+}
+
+func (b *BuilderService) redo(ctx context.Context, id string, expectedVersion *int) (BuilderProject, error) {
 	if err := ctx.Err(); err != nil {
 		return BuilderProject{}, err
 	}
-	project, err := b.Get(id)
-	if err != nil {
-		return BuilderProject{}, err
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	id = strings.TrimSpace(id)
+	project, ok := b.projects[id]
+	if !ok {
+		return BuilderProject{}, os.ErrNotExist
+	}
+	if expectedVersion != nil && project.Version != *expectedVersion {
+		return BuilderProject{}, &BuilderVersionConflictError{ProjectID: id, Expected: *expectedVersion, Current: project.Version}
 	}
 	if len(project.RedoStack) == 0 {
 		return project, errors.New("builder has no redo history")
@@ -241,11 +317,9 @@ func (b *BuilderService) Redo(ctx context.Context, id string) (BuilderProject, e
 	}
 	project.Version++
 	project.UpdatedAt = time.Now().UTC()
-	b.mu.Lock()
+	b.invalidateExportLocked(&project)
 	b.projects[id] = project
-	err = b.persistLocked()
-	b.mu.Unlock()
-	return project, err
+	return project, b.persistLocked()
 }
 
 func (b *BuilderService) writeVisualProject(project BuilderProject) error {
@@ -324,15 +398,20 @@ func (b *BuilderService) Export(ctx context.Context, id string) (BuilderProject,
 	if err := ctx.Err(); err != nil {
 		return BuilderProject{}, "", err
 	}
-	project, err := b.Get(id)
-	if err != nil {
-		return BuilderProject{}, "", err
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	id = strings.TrimSpace(id)
+	project, ok := b.projects[id]
+	if !ok {
+		return BuilderProject{}, "", os.ErrNotExist
 	}
 	path := filepath.Join(b.root, id+".zip")
-	file, err := os.OpenFile(path, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o600)
+	tmpPath := path + ".tmp-" + uuid.NewString()
+	file, err := os.OpenFile(tmpPath, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600)
 	if err != nil {
 		return BuilderProject{}, "", err
 	}
+	defer os.Remove(tmpPath)
 	archive := zip.NewWriter(file)
 	err = filepath.Walk(project.Root, func(path string, info os.FileInfo, walkErr error) error {
 		if walkErr != nil {
@@ -340,6 +419,9 @@ func (b *BuilderService) Export(ctx context.Context, id string) (BuilderProject,
 		}
 		if info.IsDir() {
 			return nil
+		}
+		if info.Mode()&os.ModeSymlink != 0 || !info.Mode().IsRegular() {
+			return fmt.Errorf("builder export rejects non-regular file: %s", path)
 		}
 		relative, err := filepath.Rel(project.Root, path)
 		if err != nil {
@@ -353,9 +435,9 @@ func (b *BuilderService) Export(ctx context.Context, id string) (BuilderProject,
 		if err != nil {
 			return err
 		}
-		defer input.Close()
-		_, err = io.Copy(writer, input)
-		return err
+		_, copyErr := io.Copy(writer, input)
+		closeErr := input.Close()
+		return errors.Join(copyErr, closeErr)
 	})
 	if closeErr := archive.Close(); err == nil {
 		err = closeErr
@@ -365,6 +447,21 @@ func (b *BuilderService) Export(ctx context.Context, id string) (BuilderProject,
 	}
 	if err != nil {
 		return BuilderProject{}, "", err
+	}
+	if err := os.Rename(tmpPath, path); err != nil {
+		return BuilderProject{}, "", err
+	}
+	data, readErr := os.ReadFile(path)
+	if readErr == nil {
+		hasher := sha256.New()
+		hasher.Write(data)
+		project.ExportChecksum = hex.EncodeToString(hasher.Sum(nil))
+		project.ExportPath = path
+		project.ExportVersion = project.Version
+		b.projects[id] = project
+		if err := b.persistLocked(); err != nil {
+			return BuilderProject{}, "", err
+		}
 	}
 	return project, path, nil
 }

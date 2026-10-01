@@ -54,6 +54,11 @@ func (a *agentAPI) createCompanySocialDraft(c *gin.Context) {
 		writeAgentError(c, statusForAgentError(err), err)
 		return
 	}
+	if len(company.SocialDrafts) > 0 {
+		if approval, approvalErr := a.runtime.CompanyStore().PendingApproval(c.Param("id"), "social_draft", company.SocialDrafts[len(company.SocialDrafts)-1].ID); approvalErr == nil {
+			_ = a.runtime.CompanyStore().BindApprovalRequester(c.Param("id"), approval.ID, agentActorID(c))
+		}
+	}
 	c.JSON(http.StatusCreated, company)
 }
 

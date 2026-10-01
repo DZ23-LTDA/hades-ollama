@@ -13,11 +13,8 @@ import (
 // fetch (browser, research, media, connectors). Kept in one place so every
 // egress path shares the same block list.
 func unsafeIP(ip net.IP) bool {
-	if ip == nil {
-		return true
-	}
-	return ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast() ||
-		ip.IsLinkLocalMulticast() || ip.IsInterfaceLocalMulticast() || ip.IsUnspecified()
+	blocked, _ := ClassifyEgressIP(ip)
+	return blocked
 }
 
 // resolvePublicIPs resolves host and returns its addresses, rejecting the whole

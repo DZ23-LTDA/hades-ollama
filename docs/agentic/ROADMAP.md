@@ -66,7 +66,7 @@ Foi adicionado o DeploymentManager com adapters Vercel, Netlify e generic, colet
 
 ## Incremento 2026-09-22 — Árvore de produto, shell desktop e OmniRoute
 
-Foi criada a árvore pública [`PRODUCT_TREE.md`](PRODUCT_TREE.md), que separa a superfície observável de um desktop agentic, a árvore atual do Classe A+ e a árvore-alvo unificada com Claude, Codex, OmniRoute, coding agents, pesquisa, builders, mobile, colaboração e operações. A matriz [`PARITY_MATRIX.md`](PARITY_MATRIX.md) passa a ser o contrato de honestidade para diferenciar `VALIDADA LOCALMENTE`, `ADAPTER IMPLEMENTADO`, `PARCIAL` e `PENDENTE`.
+Foi criada a árvore pública [`PRODUCT_TREE.md`](PRODUCT_TREE.md), que separa a superfície observável de um desktop agentic, a árvore atual do Ollama Full e a árvore-alvo unificada com Claude, Codex, OmniRoute, coding agents, pesquisa, builders, mobile, colaboração e operações. A matriz [`PARITY_MATRIX.md`](PARITY_MATRIX.md) passa a ser o contrato de honestidade para diferenciar `VALIDADA LOCALMENTE`, `ADAPTER IMPLEMENTADO`, `PARCIAL` e `PENDENTE`.
 
 O shell web ganhou rotas reais para Biblioteca, Projetos, Agendado, Habilidades, Plugins e Tarefas, além de uma navegação lateral com Nova tarefa, Agente, workspace e conta. A Settings ganhou o Agentic Control Center com catálogo de modelos, status sanitizado de runtime, approvals, isolamento, conectores, MCP, mídia, deploy e OTLP. O endpoint `/api/agent/v1/config/safe` nunca retorna tokens, caminhos privados ou valores de configuração.
 
@@ -140,7 +140,7 @@ A promoção para produção continua condicionada a credenciais e ambientes ext
 
 ## Incremento 2026-09-22 — prontidão e smoke de APIs
 
-Foi executado um smoke seguro com as chaves fornecidas pelo operador: catálogos OpenRouter, Groq, DeepSeek, Fireworks, Cerebras, Mistral, NVIDIA, Novita, Cohere, Gemini, Hugging Face, GitHub e Cloudflare responderam; Together, xAI, Hyperbolic e Alibaba foram recusados; o endpoint tentado de Voyage retornou 404 e não foi interpretado como prova de validade ou invalidade. Uma inferência curta no modelo gratuito do OpenRouter respondeu diretamente e também através do gateway Ollama Classe A+ local, comprovando o caminho provider → gateway → cliente.
+Foi executado um smoke seguro com as chaves fornecidas pelo operador: catálogos OpenRouter, Groq, DeepSeek, Fireworks, Cerebras, Mistral, NVIDIA, Novita, Cohere, Gemini, Hugging Face, GitHub e Cloudflare responderam; Together, xAI, Hyperbolic e Alibaba foram recusados; o endpoint tentado de Voyage retornou 404 e não foi interpretado como prova de validade ou invalidade. Uma inferência curta no modelo gratuito do OpenRouter respondeu diretamente e também através do gateway Ollama Full local, comprovando o caminho provider → gateway → cliente.
 
 A auditoria do CI encontrou falha no teste real do Browser Operator porque o job não instalava a dependência Python Playwright/Chromium. O workflow agora instala a dependência e exporta o executável descoberto; o teste específico passa localmente. O CI remoto do novo commit ainda precisa concluir para fechar essa pendência.
 

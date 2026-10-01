@@ -99,13 +99,13 @@ describe("ClaudeDesktopModelsSettings", () => {
     expect((html.match(/aria-haspopup="listbox"/g) ?? []).length).toBe(5);
     expect(html).not.toContain('for="claude-route-');
     expect(html).toContain(
-      "Choose which Ollama model Claude uses for each model option.",
+      "Escolha qual modelo Ollama o Claude usa para cada opção.",
     );
     expect(html).not.toContain("routing");
     expect(html).not.toContain("Built-in defaults");
     expect(html).not.toContain("Unassigned");
-    expect(html).toContain("Select a model");
-    expect(html).toContain("Start Claude");
+    expect(html).toContain("Selecione um modelo");
+    expect(html).toContain("Iniciar Claude");
   });
 
   it("allows the same Ollama model to be assigned to multiple routes", () => {
@@ -157,13 +157,13 @@ describe("ClaudeDesktopModelsSettings", () => {
       />,
     );
 
-    expect(html).toContain("Start Claude");
+    expect(html).toContain("Iniciar Claude");
     expect(html).not.toContain("Apply changes");
 
     const runningHTML = renderToStaticMarkup(
       <ClaudeDesktopModelsSettings initialStatus={status({ running: true })} />,
     );
-    expect(runningHTML).toContain("Restart Claude");
+    expect(runningHTML).toContain("Reiniciar Claude");
     expect(runningHTML).toContain("disabled");
   });
 

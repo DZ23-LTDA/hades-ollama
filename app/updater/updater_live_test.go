@@ -63,6 +63,20 @@ func TestLiveAppUpdate(t *testing.T) {
 	updater := &Updater{Store: &store.Store{DBPath: filepath.Join(t.TempDir(), "db.sqlite")}}
 	defer updater.Store.Close()
 
+	// This distribution must ignore upstream installers by default.
+	if available, resp := updater.checkForUpdate(ctx); available {
+		t.Fatalf("upstream update %q must be ignored by the Classe A+ allowlist", resp.UpdateURL)
+	}
+
+	// Allow the upstream release hosts only inside this test so the download
+	// and signature verification pipeline is still exercised end to end.
+	oldAllowed := AllowedUpdateURLPrefixes
+	defer func() { AllowedUpdateURLPrefixes = oldAllowed }()
+	AllowedUpdateURLPrefixes = append(append([]string(nil), oldAllowed...),
+		"https://github.com/ollama/ollama/releases/download/",
+		"https://ollama.com/",
+	)
+
 	available, updateResp := updater.checkForUpdate(ctx)
 	if !available {
 		t.Fatalf("expected production update check to offer an update for spoofed version %s", spoofedVersion)

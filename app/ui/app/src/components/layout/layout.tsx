@@ -15,7 +15,8 @@ export function SidebarLayout({
   sidebar: React.ReactNode;
   title?: string;
 }>) {
-  const [sidebarOpen, setSidebarOpen] = useState(sessionSidebarOpen);
+  const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
+  const [sidebarOpen, setSidebarOpen] = useState(() => (isMobile ? false : sessionSidebarOpen));
   const isWindows = isWindowsPlatform();
 
   const toggleSidebar = () => {
@@ -26,7 +27,7 @@ export function SidebarLayout({
   return (
     <div className="flex h-screen w-full overflow-hidden dark:bg-neutral-900">
       <div
-        className={`absolute flex mx-2 py-2 z-20 items-center transition-[left] duration-375 text-neutral-500 dark:text-neutral-400 ${sidebarOpen ? (isWindows ? "left-2" : "left-[140px]") : isWindows ? "left-2" : "left-20"}`}
+        className={`absolute flex mx-2 py-2 z-20 items-center transition-[left] duration-375 text-neutral-500 dark:text-neutral-400 ${sidebarOpen ? (isWindows ? "left-2" : "left-[140px]") : "left-2"}`}
       >
         <button
           onClick={toggleSidebar}

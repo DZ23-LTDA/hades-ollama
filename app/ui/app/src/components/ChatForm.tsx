@@ -27,11 +27,21 @@ import { ErrorEvent, Message } from "@/gotypes";
 import { useSettings } from "@/hooks/useSettings";
 import { useCloudStatus } from "@/hooks/useCloudStatus";
 import { ThinkButton } from "./ThinkButton";
+import { AnonymousChatToggle } from "./AnonymousChatToggle";
 import { ErrorMessage } from "./ErrorMessage";
 import { processFiles } from "@/utils/fileValidation";
 import type { ImageData } from "@/types/webview";
 import { PlusIcon } from "@heroicons/react/24/outline";
 import type { CloseableButtonHandle } from "@/types/imperative";
+import { SlashCommandMenu } from "@/components/SlashCommandMenu";
+import {
+  filterSlashCommands,
+  moveSlashCommandIndex,
+  parseSlashCommand,
+  slashCommandQuery,
+  slashCommandURL,
+  type SlashCommand,
+} from "@/lib/slashCommands";
 
 export type ThinkingLevel = "low" | "medium" | "high";
 
@@ -122,6 +132,7 @@ function ChatForm({
   const [fileUploadError, setFileUploadError] = useState<ErrorEvent | null>(
     null,
   );
+  const [slashActiveIndex, setSlashActiveIndex] = useState(0);
 
   const handleThinkingLevelDropdownToggle = (isOpen: boolean) => {
     if (
@@ -496,6 +507,19 @@ function ChatForm({
   const handleSubmit = async () => {
     if (!message.content.trim() || isStreaming || isDownloading) return;
 
+    const parsedSlash = parseSlashCommand(message.content);
+    const slashURL = slashCommandURL(message.content);
+    if (parsedSlash && slashURL) {
+      const params = new URLSearchParams(slashURL.split("?")[1]);
+      if (parsedSlash.command.id === "test") {
+        params.set("objective", `Rodar o runner de testes do projeto atual e registrar o resultado. Contexto: ${parsedSlash.objective}`);
+      } else if (parsedSlash.command.id === "review") {
+        params.set("objective", `Revisar o código ou artefato atual, apontar riscos e recomendações acionáveis. Contexto: ${parsedSlash.objective}`);
+      }
+      window.location.assign(`/agentic?${params.toString()}`);
+      return;
+    }
+
     if (cloudDisabled && selectedModel?.isCloud()) {
       return;
     }
@@ -566,6 +590,36 @@ function ChatForm({
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    const query = slashCommandQuery(message.content);
+    const commands = filterSlashCommands(query ?? "");
+    if (query !== null && commands.length > 0) {
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setSlashActiveIndex((index) => moveSlashCommandIndex(index, "next", commands.length));
+        return;
+      }
+      if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setSlashActiveIndex((index) => moveSlashCommandIndex(index, "previous", commands.length));
+        return;
+      }
+      if (e.key === "Escape") {
+        e.preventDefault();
+        setMessage((current) => ({ ...current, content: "" }));
+        return;
+      }
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        const selected = commands[slashActiveIndex] ?? commands[0];
+        if (!message.content.trimEnd().includes(" ")) {
+          setMessage((current) => ({ ...current, content: `${selected.label} ` }));
+          setSlashActiveIndex(0);
+        } else {
+          void handleSubmit();
+        }
+        return;
+      }
+    }
     // Handle Enter to submit
     if (e.key === "Enter" && !e.shiftKey && !isEditing) {
       e.preventDefault();
@@ -633,6 +687,7 @@ function ChatForm({
   // Auto-resize textarea function
   const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setMessage((prev) => ({ ...prev, content: e.target.value }));
+    setSlashActiveIndex(0);
 
     // Reset height to auto to get the correct scrollHeight, then cap at 8 lines
     e.target.style.height = "auto";
@@ -646,27 +701,17 @@ function ChatForm({
       const results = await window.webview?.selectMultipleFiles();
       if (results && results.length > 0) {
         // Convert native dialog results to File objects
-        const files = results
-          .map((result: ImageData) => {
-            if (result.dataURL) {
-              // Convert dataURL back to File object
-              const base64Data = result.dataURL.split(",")[1];
-              const mimeType = result.dataURL.split(";")[0].split(":")[1];
-              const binaryString = atob(base64Data);
-              const bytes = new Uint8Array(binaryString.length);
-              for (let i = 0; i < binaryString.length; i++) {
-                bytes[i] = binaryString.charCodeAt(i);
-              }
-
-              const blob = new Blob([bytes], { type: mimeType });
-              const file = new File([blob], result.filename, {
-                type: mimeType,
-              });
-              return file;
-            }
-            return null;
-          })
-          .filter(Boolean) as File[];
+        // Decode with the browser's native data: URL handling instead of a
+        // per-byte JavaScript loop, which froze the UI on larger files.
+        const files = (
+          await Promise.all(
+            results.map(async (result: ImageData) => {
+              if (!result.dataURL) return null;
+              const blob = await (await fetch(result.dataURL)).blob();
+              return new File([blob], result.filename, { type: blob.type });
+            }),
+          )
+        ).filter(Boolean) as File[];
 
         if (files.length > 0) {
           const { validFiles, errors } = await processFiles(files, {
@@ -698,6 +743,7 @@ function ChatForm({
   return (
     <div className={`pb-3 px-3 ${hasMessages ? "mt-auto" : "my-auto"}`}>
       {chatId === "new" && <Logo />}
+      <AnonymousChatToggle chatId={chatId} />
 
       {shouldShowLoginBanner && (
         <DisplayLogin
@@ -861,6 +907,7 @@ function ChatForm({
         )}
 
         <div className="relative w-full px-5">
+          <div className="absolute inset-x-5 bottom-full mb-2"><SlashCommandMenu query={slashCommandQuery(message.content)} activeIndex={slashActiveIndex} onActiveIndexChange={setSlashActiveIndex} onSelect={(command: SlashCommand) => setMessage((current) => ({ ...current, content: `${command.label} ` }))} /></div>
           <textarea
             ref={textareaRef}
             value={message.content}

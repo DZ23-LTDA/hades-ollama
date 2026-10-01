@@ -48,7 +48,20 @@ export async function getIntegrationStatuses(): Promise<IntegrationStatuses> {
   if (!response.ok) {
     throw new Error(`Failed to fetch integration statuses: ${response.status}`);
   }
-  return response.json();
+  const payload: unknown = await response.json();
+  if (Array.isArray(payload)) {
+    return payload as IntegrationStatuses;
+  }
+  if (
+    payload !== null &&
+    typeof payload === "object" &&
+    Array.isArray((payload as { integrations?: unknown }).integrations)
+  ) {
+    return (payload as { integrations: IntegrationStatuses }).integrations;
+  }
+  // Local desktop builds may return an empty envelope. Keep the UI honest and
+  // render its empty state rather than calling array methods on an object.
+  return [];
 }
 // Helper function to convert Uint8Array to base64
 function uint8ArrayToBase64(uint8Array: Uint8Array): string {
@@ -121,6 +134,32 @@ export async function disconnectUser(): Promise<void> {
   }
 }
 
+export interface AgentNotification {
+  id: string;
+  mission_id: string;
+  type: string;
+  title: string;
+  body?: string;
+  created_at: string;
+}
+
+export async function fetchAgentNotifications(limit = 20): Promise<AgentNotification[]> {
+  const response = await fetch(`${API_BASE}/api/agent/v1/notifications?limit=${limit}`);
+  if (!response.ok) {
+    if (response.status === 401 || response.status === 403) return [];
+    throw new Error(`Falha ao carregar notificações: ${response.status}`);
+  }
+  const payload: unknown = await response.json();
+  if (
+    payload !== null &&
+    typeof payload === "object" &&
+    Array.isArray((payload as { notifications?: unknown }).notifications)
+  ) {
+    return (payload as { notifications: AgentNotification[] }).notifications;
+  }
+  return [];
+}
+
 export async function getChats(): Promise<ChatsResponse> {
   const response = await fetch(`${API_BASE}/api/v1/chats`);
   const data = await response.json();
@@ -163,18 +202,33 @@ export async function getModels(query?: string): Promise<Model[]> {
           details?: { format?: string; family?: string };
         };
         const family = extended.details?.family || "";
+        const isUnavailable = family.includes("-unavailable");
+        const reason = isUnavailable
+          ? family.includes("-unavailable:")
+            ? family.split("-unavailable:")[1]
+            : "Credencial ausente ou provedor inalcançável"
+          : undefined;
+        const status = isUnavailable ? "NOT_CONFIGURED" : "PASS";
+        const isCliSubscription =
+          extended.details?.format === "cli_subscription" ||
+          Boolean(m.digest && m.digest.startsWith("cli_subscription:"));
         const kind =
           extended.details?.format === "remote"
             ? "remote"
             : extended.details?.format === "virtual"
               ? "router"
-              : "local";
+              : isCliSubscription
+                ? "cli_subscription"
+                : "local";
         const provider =
-          kind === "remote"
-            ? family.replace(/-unavailable$/, "") || modelName.split("/")[0]
+          kind === "cli_subscription"
+            ? family.split("-unavailable")[0] || "Assinatura (CLI)"
+            : kind === "remote"
+            ? family.split("-unavailable")[0] || modelName.split("/")[0]
             : kind === "router"
               ? "DZ23 Router"
               : "Ollama";
+        const costTag = kind === "cli_subscription" && !isUnavailable ? "0-assinatura" : undefined;
 
         return new Model({
           model: modelName,
@@ -182,7 +236,10 @@ export async function getModels(query?: string): Promise<Model[]> {
           modified_at: m.modified_at ? new Date(m.modified_at) : undefined,
           kind,
           provider,
-          available: !family.endsWith("-unavailable"),
+          available: !isUnavailable,
+          status,
+          reason,
+          cost_tag: costTag,
           capabilities: Array.isArray(extended.capabilities)
             ? extended.capabilities
             : [],
@@ -330,6 +387,7 @@ export async function* sendMessage(
   fileTools?: boolean,
   forceUpdate?: boolean,
   think?: boolean | string,
+  temporary?: boolean,
 ): AsyncGenerator<ChatEventUnion> {
   // Convert Uint8Array to base64 for JSON serialization
   const serializedAttachments = attachments?.map((att) => ({
@@ -360,6 +418,7 @@ export async function* sendMessage(
         file_tools: fileTools ?? false,
         ...(forceUpdate !== undefined ? { forceUpdate } : {}),
         ...(shouldSendThink ? { think } : {}),
+        ...(temporary ? { temporary: true } : {}),
       }),
     ),
     signal,

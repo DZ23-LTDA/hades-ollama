@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 )
 
@@ -12,6 +13,10 @@ func TestPersistentMCPManagerRoundTripAndTenantCollision(t *testing.T) {
 	root := t.TempDir()
 	manifest := filepath.Join(root, "mcp.json")
 	command := filepath.Join(root, "mcp-server")
+	if runtime.GOOS == "windows" {
+		// Windows identifies executables by extension, not by mode bits.
+		command += ".exe"
+	}
 	if err := os.WriteFile(command, []byte("#!/bin/sh\n"), 0o700); err != nil {
 		t.Fatal(err)
 	}
@@ -44,7 +49,7 @@ func TestPersistentMCPManagerRoundTripAndTenantCollision(t *testing.T) {
 	if len(saved) != 1 || saved[0].WorkingDirectory != "" {
 		t.Fatalf("temporary workspace must not be persisted: %#v", saved)
 	}
-	if mode := fileMode(t, manifest); mode.Perm() != 0o600 {
+	if mode := fileMode(t, manifest); runtime.GOOS != "windows" && mode.Perm() != 0o600 {
 		t.Fatalf("manifest permissions = %o, want 600", mode.Perm())
 	}
 	if err := manager.SetEnabledForOrganization("org-a", "local-tools", false); err != nil {
@@ -93,12 +98,18 @@ func TestPersistentRemoteMCPManagerRoundTripAndTenantCollision(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	reloaded.mu.RLock()
+	persisted := reloaded.servers["remote-tools"]
+	reloaded.mu.RUnlock()
+	if persisted.TokenEnv != "REMOTE_MCP_TOKEN" || persisted.HeadersEnv["X-Org"] != "REMOTE_MCP_ORG" || persisted.URL != "https://example.com/mcp" {
+		t.Fatalf("private persisted configuration did not round-trip: %#v", persisted)
+	}
 	loaded := reloaded.ListForOrganization("org-a")
-	if len(loaded) != 1 || !loaded[0].Disabled || loaded[0].TokenEnv != "REMOTE_MCP_TOKEN" {
+	if len(loaded) != 1 || !loaded[0].Disabled || loaded[0].TokenEnv != "" || loaded[0].URL != "https://example.com" {
 		t.Fatalf("unexpected reloaded Remote MCP config: %#v", loaded)
 	}
-	if loaded[0].HeadersEnv["X-Org"] != "REMOTE_MCP_ORG" {
-		t.Fatalf("unexpected header env map: %#v", loaded[0].HeadersEnv)
+	if len(loaded[0].HeadersEnv) != 0 {
+		t.Fatalf("tenant-facing config exposed header env mappings: %#v", loaded[0].HeadersEnv)
 	}
 }
 
@@ -120,7 +131,7 @@ func TestPersistentSkillManifestRoundTripIsNeverTrusted(t *testing.T) {
 		t.Fatal(err)
 	}
 	path := filepath.Join(root, "skills", "research-skill.json")
-	if mode := fileMode(t, path); mode.Perm() != 0o600 {
+	if mode := fileMode(t, path); runtime.GOOS != "windows" && mode.Perm() != 0o600 {
 		t.Fatalf("skill manifest permissions = %o, want 600", mode.Perm())
 	}
 	reloaded, err := NewContextStore(root)

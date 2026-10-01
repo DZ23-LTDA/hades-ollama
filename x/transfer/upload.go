@@ -273,7 +273,10 @@ func (u *uploader) exists(ctx context.Context, blob Blob) (bool, error) {
 
 	resp, err := u.client.Do(req)
 	if err != nil {
-		return false, err
+		if ctxErr := ctx.Err(); ctxErr != nil {
+			return false, ctxErr
+		}
+		return false, errors.New("blob existence request failed")
 	}
 	io.Copy(io.Discard, resp.Body)
 	resp.Body.Close()
@@ -337,7 +340,10 @@ func (u *uploader) initUpload(ctx context.Context, blob Blob) (uploadEndpoint, e
 
 		resp, err := u.client.Do(req)
 		if err != nil {
-			lastErr = err
+			if ctxErr := ctx.Err(); ctxErr != nil {
+				return uploadEndpoint{}, ctxErr
+			}
+			lastErr = errors.New("init upload request failed")
 			continue
 		}
 		io.Copy(io.Discard, resp.Body)
@@ -461,13 +467,15 @@ func (u *uploader) streamPutBody(ctx context.Context, ep uploadEndpoint, f *os.F
 
 	resp, err := u.client.Do(req)
 	if err != nil {
-		return pr, fmt.Errorf("direct put: %w", err)
+		if ctxErr := ctx.Err(); ctxErr != nil {
+			return pr, ctxErr
+		}
+		return pr, errors.New("direct put: request failed")
 	}
 	defer func() { io.Copy(io.Discard, resp.Body); resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
-		body, _ := io.ReadAll(resp.Body)
-		return pr, fmt.Errorf("direct put: status %d: %s", resp.StatusCode, body)
+		return pr, fmt.Errorf("direct put: status %d", resp.StatusCode)
 	}
 	return pr, nil
 }
@@ -477,7 +485,7 @@ func (u *uploader) streamPutBody(ctx context.Context, ep uploadEndpoint, f *os.F
 func (u *uploader) commit(ctx context.Context, sessionURL, digest string) error {
 	finalURL, err := url.Parse(sessionURL)
 	if err != nil {
-		return fmt.Errorf("parse session URL: %w", err)
+		return errors.New("parse session URL: invalid URL")
 	}
 	q := finalURL.Query()
 	q.Set("digest", digest)
@@ -509,7 +517,10 @@ func (u *uploader) bodylessRegistryPUT(ctx context.Context, url string, op strin
 
 		resp, err := u.client.Do(req)
 		if err != nil {
-			lastErr = err
+			if ctxErr := ctx.Err(); ctxErr != nil {
+				return ctxErr
+			}
+			lastErr = errors.New("request failed")
 			continue
 		}
 
@@ -526,10 +537,8 @@ func (u *uploader) bodylessRegistryPUT(ctx context.Context, url string, op strin
 			resp.Body.Close()
 			return nil
 		default:
-			// Capture body for the error message before closing.
-			body, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
 			resp.Body.Close()
-			lastErr = fmt.Errorf("%s: status %d: %s", op, resp.StatusCode, body)
+			lastErr = fmt.Errorf("%s: status %d", op, resp.StatusCode)
 		}
 	}
 	return fmt.Errorf("%w: %w", errMaxRetriesExceeded, lastErr)
@@ -556,7 +565,7 @@ func (u *uploader) putChunked(ctx context.Context, uploadURL string, f *os.File,
 
 	current, err := url.Parse(uploadURL)
 	if err != nil {
-		return 0, fmt.Errorf("parse upload URL: %w", err)
+		return 0, errors.New("parse upload URL: invalid URL")
 	}
 
 	composite := md5.New()
@@ -645,7 +654,10 @@ func (u *uploader) uploadOnePart(ctx context.Context, sessionURL *url.URL, part 
 
 	resp, err := u.client.Do(req)
 	if err != nil {
-		return nil, nil, pr.bytes(), fmt.Errorf("patch part %d: %w", part.n, err)
+		if ctxErr := ctx.Err(); ctxErr != nil {
+			return nil, nil, pr.bytes(), ctxErr
+		}
+		return nil, nil, pr.bytes(), fmt.Errorf("patch part %d: request failed", part.n)
 	}
 	defer func() { io.Copy(io.Discard, resp.Body); resp.Body.Close() }()
 
@@ -693,8 +705,7 @@ func (u *uploader) uploadOnePart(ctx context.Context, sessionURL *url.URL, part 
 		return nil, nil, pr.bytes(), fmt.Errorf("patch part %d: auth retry", part.n)
 
 	case resp.StatusCode >= http.StatusBadRequest:
-		body, _ := io.ReadAll(resp.Body)
-		return nil, nil, pr.bytes(), fmt.Errorf("patch part %d: status %d: %s", part.n, resp.StatusCode, body)
+		return nil, nil, pr.bytes(), fmt.Errorf("patch part %d: status %d", part.n, resp.StatusCode)
 	}
 
 	if next == nil {
@@ -723,13 +734,15 @@ func (u *uploader) putPartToCDN(ctx context.Context, cdnURL *url.URL, part *uplo
 
 	resp, err := u.client.Do(req)
 	if err != nil {
-		return nil, pr.bytes(), fmt.Errorf("cdn put part %d: %w", part.n, err)
+		if ctxErr := ctx.Err(); ctxErr != nil {
+			return nil, pr.bytes(), ctxErr
+		}
+		return nil, pr.bytes(), fmt.Errorf("cdn put part %d: request failed", part.n)
 	}
 	defer func() { io.Copy(io.Discard, resp.Body); resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusAccepted && resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, pr.bytes(), fmt.Errorf("cdn put part %d: status %d: %s", part.n, resp.StatusCode, body)
+		return nil, pr.bytes(), fmt.Errorf("cdn put part %d: status %d", part.n, resp.StatusCode)
 	}
 	return partHash.Sum(nil), pr.bytes(), nil
 }
@@ -786,7 +799,10 @@ func (u *uploader) pushManifest(ctx context.Context, repo, ref string, manifest 
 
 	resp, err := u.client.Do(req)
 	if err != nil {
-		return err
+		if ctxErr := ctx.Err(); ctxErr != nil {
+			return ctxErr
+		}
+		return errors.New("manifest upload request failed")
 	}
 	defer func() { io.Copy(io.Discard, resp.Body); resp.Body.Close() }()
 
@@ -799,8 +815,7 @@ func (u *uploader) pushManifest(ctx context.Context, repo, ref string, manifest 
 	}
 
 	if resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("status %d: %s", resp.StatusCode, body)
+		return fmt.Errorf("manifest upload: status %d", resp.StatusCode)
 	}
 	return nil
 }

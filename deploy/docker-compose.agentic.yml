@@ -2,17 +2,21 @@ services:
   postgres:
     image: postgres:16-alpine
     restart: unless-stopped
+    command: ["postgres", "-c", "hba_file=/etc/postgresql/pg_hba.conf"]
     environment:
       POSTGRES_DB: ollama_agent
-      POSTGRES_USER: ollama_agent
-      POSTGRES_PASSWORD: ${OLLAMA_AGENT_POSTGRES_PASSWORD:?set OLLAMA_AGENT_POSTGRES_PASSWORD before starting compose}
+      POSTGRES_USER: ollama_agent_admin
+      POSTGRES_PASSWORD: ${OLLAMA_AGENT_POSTGRES_ADMIN_PASSWORD:?set OLLAMA_AGENT_POSTGRES_ADMIN_PASSWORD before starting compose}
+      OLLAMA_AGENT_RUNTIME_PASSWORD: ${OLLAMA_AGENT_RUNTIME_PASSWORD:?set OLLAMA_AGENT_RUNTIME_PASSWORD before starting compose}
+      OLLAMA_AGENT_MIGRATOR_PASSWORD: ${OLLAMA_AGENT_MIGRATOR_PASSWORD:?set OLLAMA_AGENT_MIGRATOR_PASSWORD before starting compose}
     volumes:
       - agent-postgres:/var/lib/postgresql/data
       - ./postgres/init:/docker-entrypoint-initdb.d:ro
+      - "${OLLAMA_AGENT_POSTGRES_HBA_FILE:-./postgres/pg_hba-runtime.conf}:/etc/postgresql/pg_hba.conf:ro"
     ports:
       - "127.0.0.1:${OLLAMA_AGENT_POSTGRES_PORT:-5432}:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      test: ["CMD-SHELL", "PGPASSWORD=$$OLLAMA_AGENT_RUNTIME_PASSWORD psql -h 127.0.0.1 -U ollama_agent_runtime -d ollama_agent -c 'SELECT 1' >/dev/null"]
       interval: 5s
       timeout: 3s
       retries: 20

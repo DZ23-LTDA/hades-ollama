@@ -57,8 +57,17 @@ func TestPluginManagersEnforceOrganizationOwnership(t *testing.T) {
 	if err := contextStore.LoadSkillsForOrganization(skillDir, "org-a"); err != nil {
 		t.Fatal(err)
 	}
+	if err := contextStore.RegisterSkill(SkillManifest{ID: "skill-local-only", Version: "1", Description: "local manifest"}); err != nil {
+		t.Fatal(err)
+	}
 	if got := len(contextStore.SkillsForOrganization("org-b")); got != 0 {
 		t.Fatalf("skill leaked to org-b: %d", got)
+	}
+	if got := contextStore.SkillsForOrganization("org-a"); len(got) != 1 || got[0].ID != "skill" {
+		t.Fatalf("org-a skills include an ownerless manifest or omit its own skill: %+v", got)
+	}
+	if got := contextStore.SkillsForOrganization(LocalOrganizationID); len(got) != 1 || got[0].ID != "skill-local-only" {
+		t.Fatalf("local skills should include only the local ownerless manifest: %+v", got)
 	}
 	if err := contextStore.SetSkillEnabledForOrganization("org-b", "skill", false); !errors.Is(err, ErrPluginOrganizationScope) {
 		t.Fatalf("cross-tenant skill mutation err=%v", err)

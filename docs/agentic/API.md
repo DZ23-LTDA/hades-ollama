@@ -25,6 +25,10 @@ ollama serve
 
 O modelo não recebe permissão implícita. Ele somente sugere passos; o runtime valida cada passo contra o registry e a policy.
 
+### CLI autenticada
+
+Os comandos `ollama agent` enviam `Authorization: Bearer ...` quando `OLLAMA_AGENT_TOKEN` está definido. Forneça o token por secret manager ou pelo ambiente seguro do processo; não passe token como flag/argumento nem o grave em arquivo versionado. As respostas dos callbacks OAuth/OIDC e SAML incluem um token local de sessão sujeito à expiração. O CLI ainda não implementa login interativo nem renovação automática; obtenção/refresh devem ocorrer por um fluxo de identidade já configurado. O endpoint `auth/dev/token` é exclusivamente bootstrap local com a proteção de desenvolvimento e loopback; nunca o habilite como fluxo de produção.
+
 ## MFA e proteção contra tentativa repetida
 
 Quando `auth_required=true` e o usuário tem MFA habilitado, o middleware aceita `X-Ollama-MFA-Code` ou um `X-Ollama-MFA-Recovery-Code` de uso único. Falhas são contabilizadas por usuário e peer remoto, com limite de cinco falhas em cinco minutos; a quinta falha abre lockout de 15 minutos. Durante o lockout, a API responde `429 Too Many Requests` com `Retry-After` em segundos e não executa a ação protegida. O estado fica em `OLLAMA_AGENT_AUTH_STORE/mfa-attempts.json` e sobrevive a restart do `AuthStore`; um código TOTP válido após o lockout limpa a janela.
@@ -235,7 +239,7 @@ As variáveis são `OLLAMA_AGENT_SAML_<PROVIDER>_IDP_METADATA_URL`, `_METADATA_U
 
 ### TLS, mTLS e RLS
 
-`OLLAMA_AGENT_TLS_CERT_FILE` e `OLLAMA_AGENT_TLS_KEY_FILE` ativam TLS 1.3 para o listener. `OLLAMA_AGENT_REQUIRE_MTLS=1` exige também `OLLAMA_AGENT_TLS_CLIENT_CA_FILE` e valida certificado de cliente. O certificado do servidor é recarregado a cada handshake, permitindo rotação sem reiniciar o processo. Quando o store PostgreSQL é usado, `FORCE ROW LEVEL SECURITY` e o contexto transacional `app.current_organization_id` impedem acesso entre organizações, inclusive para o dono da tabela.
+`OLLAMA_AGENT_TLS_CERT_FILE` e `OLLAMA_AGENT_TLS_KEY_FILE` ativam TLS 1.3 para o listener. `OLLAMA_AGENT_REQUIRE_MTLS=1` exige também `OLLAMA_AGENT_TLS_CLIENT_CA_FILE` e valida certificado de cliente. O certificado do servidor é recarregado a cada handshake, permitindo rotação sem reiniciar o processo. O adapter PostgreSQL candidato aplica `FORCE ROW LEVEL SECURITY` e verifica `app.tenant_context` por HMAC em cada policy; a role runtime não possui o segredo, ownership, `CREATE`, `BYPASSRLS` nem acesso de migração. A integração adversarial real e a revisão de release continuam gates obrigatórios; consulte [`SECURITY.md`](../../SECURITY.md) antes de qualquer uso compartilhado.
 
 ## Mídia
 

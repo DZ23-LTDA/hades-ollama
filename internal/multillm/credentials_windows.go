@@ -21,6 +21,8 @@ type dataBlob struct {
 
 var cryptUnprotectData = windows.NewLazySystemDLL("crypt32.dll").NewProc("CryptUnprotectData")
 
+const credentialFileExtension = ".dpapi"
+
 func credentialFilePermissionsSafe(os.FileInfo) bool { return true }
 
 func decodeCredentialFile(path string, raw []byte) (string, error) {

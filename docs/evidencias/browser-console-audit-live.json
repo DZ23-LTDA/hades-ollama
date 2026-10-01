@@ -1,0 +1,5398 @@
+{
+  "generated_at": "2026-10-01T02:25:00Z",
+  "base": "http://127.0.0.1:5173",
+  "routes": [
+    {
+      "browser": "desktop",
+      "name": "home",
+      "route": "/",
+      "viewport": "1440x900",
+      "loaded": true,
+      "title": "Ollama",
+      "heading": "Início",
+      "buttons": [
+        {
+          "i": 0,
+          "text": "Hide sidebar",
+          "disabled": false
+        },
+        {
+          "i": 1,
+          "text": "Pesquisar /",
+          "disabled": false
+        },
+        {
+          "i": 2,
+          "text": "Ajuda e sobre",
+          "disabled": false
+        },
+        {
+          "i": 3,
+          "text": "O Operador local",
+          "disabled": false
+        },
+        {
+          "i": 4,
+          "text": "Notificações",
+          "disabled": false
+        },
+        {
+          "i": 5,
+          "text": "Claro",
+          "disabled": false
+        },
+        {
+          "i": 6,
+          "text": "Escuro",
+          "disabled": false
+        },
+        {
+          "i": 7,
+          "text": "Automático",
+          "disabled": false
+        },
+        {
+          "i": 8,
+          "text": "Anexar arquivo",
+          "disabled": false
+        },
+        {
+          "i": 9,
+          "text": "Iniciar",
+          "disabled": true
+        },
+        {
+          "i": 10,
+          "text": "Automático · grátis-primeiro",
+          "disabled": false
+        },
+        {
+          "i": 11,
+          "text": "Manual",
+          "disabled": false
+        },
+        {
+          "i": 12,
+          "text": "Anexar arquivo",
+          "disabled": false
+        },
+        {
+          "i": 13,
+          "text": "Importar projeto",
+          "disabled": false
+        },
+        {
+          "i": 14,
+          "text": "Criar slides",
+          "disabled": false
+        },
+        {
+          "i": 15,
+          "text": "Criar site",
+          "disabled": false
+        },
+        {
+          "i": 16,
+          "text": "Pesquisa profunda",
+          "disabled": false
+        },
+        {
+          "i": 17,
+          "text": "Analisar código",
+          "disabled": false
+        }
+      ],
+      "links": [
+        {
+          "i": 0,
+          "text": "Nova tarefa Ctrl K",
+          "href": "/"
+        },
+        {
+          "i": 1,
+          "text": "Computadores",
+          "href": "/endpoint"
+        },
+        {
+          "i": 2,
+          "text": "Agents Cue!",
+          "href": "/agentic"
+        },
+        {
+          "i": 3,
+          "text": "Biblioteca",
+          "href": "/library"
+        },
+        {
+          "i": 4,
+          "text": "Criações",
+          "href": "/creations"
+        },
+        {
+          "i": 5,
+          "text": "Studio",
+          "href": "/studio"
+        },
+        {
+          "i": 6,
+          "text": "Automações",
+          "href": "/scheduled"
+        },
+        {
+          "i": 7,
+          "text": "Plugins",
+          "href": "/connectors"
+        },
+        {
+          "i": 8,
+          "text": "Habilidades",
+          "href": "/skills"
+        },
+        {
+          "i": 9,
+          "text": "Empresa Novo",
+          "href": "/company"
+        },
+        {
+          "i": 10,
+          "text": "Tarefas",
+          "href": "/tasks"
+        },
+        {
+          "i": 12,
+          "text": "Todos os projetos",
+          "href": "/projects"
+        },
+        {
+          "i": 13,
+          "text": "Configurações",
+          "href": "/settings"
+        },
+        {
+          "i": 14,
+          "text": "COMPILAR > Sites, aplicativos e jogos Planeje, execute em split-screen, aprove etapas e gere código com artifacts.",
+          "href": "/agentic"
+        },
+        {
+          "i": 15,
+          "text": "CRIAR > Slides, imagens e vídeos Documentos executivos, apresentações e mídias geradas pelas missões.",
+          "href": "/library"
+        },
+        {
+          "i": 16,
+          "text": "WORKSPACE LOCAL Começar a partir de arquivo local Abrir e orquestrar arquivos e projetos locais com contexto persistente",
+          "href": "/projects"
+        },
+        {
+          "i": 17,
+          "text": "CHAT E MODELOS Conversa com modelo Chat local-first com modelos do Ollama e provedores configurados.",
+          "href": "/c/new"
+        }
+      ],
+      "inputs": [
+        {
+          "tag": "textarea",
+          "label": "",
+          "placeholder": "Atribua uma tarefa ou digite / para mais opções...",
+          "id": "home-objective",
+          "name": ""
+        }
+      ],
+      "interactions": [
+        {
+          "action": "Manual",
+          "result": "OF Ollama Full Local-first workspace Nova tarefa Ctrl K Pesquisar / AGENTES Computadores Agents Cue! Biblioteca Criações Studio Automações Plugins FERRAMENTAS Habilidades Empresa Novo Tarefas PROJETOS Todos os projetos SISTEMA Configurações"
+        },
+        {
+          "action": "Importar projeto",
+          "result": "OF Ollama Full Local-first workspace Nova tarefa Ctrl K Pesquisar / AGENTES Computadores Agents Cue! Biblioteca Criações Studio Automações Plugins FERRAMENTAS Habilidades Empresa Novo Tarefas PROJETOS Todos os projetos SISTEMA Configurações"
+        }
+      ],
+      "console": [],
+      "network": [],
+      "exception": "locator.click: Timeout 30000ms exceeded. Call log: \u001b[2m - waiting for getByRole('button', { name: /Operador local/i }).first()\u001b[22m \u001b[2m - locator resolved to <button type=\"button\" class=\"flex items-center gap-2 rounded-xl p-1 text-left tra"
+    },
+    {
+      "browser": "desktop",
+      "name": "agentic",
+      "route": "/agentic",
+      "viewport": "1440x900",
+      "loaded": true,
+      "title": "Ollama",
+      "heading": "Agentic",
+      "buttons": [
+        {
+          "i": 0,
+          "text": "Hide sidebar",
+          "disabled": false
+        },
+        {
+          "i": 1,
+          "text": "Pesquisar /",
+          "disabled": false
+        },
+        {
+          "i": 2,
+          "text": "Ajuda e sobre",
+          "disabled": false
+        },
+        {
+          "i": 3,
+          "text": "O Operador local",
+          "disabled": false
+        },
+        {
+          "i": 4,
+          "text": "Notificações",
+          "disabled": false
+        },
+        {
+          "i": 5,
+          "text": "Claro",
+          "disabled": false
+        },
+        {
+          "i": 6,
+          "text": "Escuro",
+          "disabled": false
+        },
+        {
+          "i": 7,
+          "text": "Automático",
+          "disabled": false
+        },
+        {
+          "i": 8,
+          "text": "Criar missão",
+          "disabled": true
+        },
+        {
+          "i": 9,
+          "text": "Iniciar orquestração",
+          "disabled": true
+        },
+        {
+          "i": 10,
+          "text": "Pesquisar",
+          "disabled": true
+        }
+      ],
+      "links": [
+        {
+          "i": 0,
+          "text": "Nova tarefa Ctrl K",
+          "href": "/"
+        },
+        {
+          "i": 1,
+          "text": "Computadores",
+          "href": "/endpoint"
+        },
+        {
+          "i": 2,
+          "text": "Agents Cue!",
+          "href": "/agentic"
+        },
+        {
+          "i": 3,
+          "text": "Biblioteca",
+          "href": "/library"
+        },
+        {
+          "i": 4,
+          "text": "Criações",
+          "href": "/creations"
+        },
+        {
+          "i": 5,
+          "text": "Studio",
+          "href": "/studio"
+        },
+        {
+          "i": 6,
+          "text": "Automações",
+          "href": "/scheduled"
+        },
+        {
+          "i": 7,
+          "text": "Plugins",
+          "href": "/connectors"
+        },
+        {
+          "i": 8,
+          "text": "Habilidades",
+          "href": "/skills"
+        },
+        {
+          "i": 9,
+          "text": "Empresa Novo",
+          "href": "/company"
+        },
+        {
+          "i": 10,
+          "text": "Tarefas",
+          "href": "/tasks"
+        },
+        {
+          "i": 12,
+          "text": "Todos os projetos",
+          "href": "/projects"
+        },
+        {
+          "i": 13,
+          "text": "Configurações",
+          "href": "/settings"
+        }
+      ],
+      "inputs": [
+        {
+          "tag": "textarea",
+          "label": "",
+          "placeholder": "Descreva o que você quer construir, pesquisar, revisar ou automatizar",
+          "id": "agent-objective",
+          "name": ""
+        },
+        {
+          "tag": "select",
+          "label": "Motor",
+          "placeholder": "",
+          "id": "",
+          "name": ""
+        },
+        {
+          "tag": "select",
+          "label": "Projeto",
+          "placeholder": "",
+          "id": "",
+          "name": ""
+        },
+        {
+          "tag": "input",
+          "label": "",
+          "placeholder": "",
+          "id": "isolate-workspace",
+          "name": ""
+        },
+        {
+          "tag": "input",
+          "label": "",
+          "placeholder": "",
+          "id": "",
+          "name": ""
+        },
+        {
+          "tag": "textarea",
+          "label": "",
+          "placeholder": "Ex.: pesquisar concorrentes, revisar segurança e propor implementação",
+          "id": "",
+          "name": ""
+        },
+        {
+          "tag": "input",
+          "label": "",
+          "placeholder": "Pergunta de pesquisa",
+          "id": "",
+          "name": ""
+        },
+        {
+          "tag": "textarea",
+          "label": "",
+          "placeholder": "Uma URL HTTPS pública por linha",
+          "id": "",
+          "name": ""
+        }
+      ],
+      "interactions": [
+        {
+          "action": "fill /plan",
+          "result": "filled"
+        },
+        {
+          "action": "start mission",
+          "result": "OF Ollama Full Local-first workspace Nova tarefa Ctrl K Pesquisar / AGENTES Computadores Agents Cue! Biblioteca Criações Studio Automações Plugins FERRAMENTAS Habilidades Empresa Novo Tarefas PROJETOS Todos os projetos SISTEMA Configurações"
+        }
+      ],
+      "console": [
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+        }
+      ],
+      "network": [
+        {
+          "status": 401,
+          "url": "/api/agent/v1/projects"
+        },
+        {
+          "status": 401,
+          "url": "/api/agent/v1/metrics"
+        },
+        {
+          "status": 401,
+          "url": "/api/agent/v1/missions"
+        },
+        {
+          "status": 401,
+          "url": "/api/agent/v1/missions"
+        }
+      ]
+    },
+    {
+      "browser": "desktop",
+      "name": "tasks",
+      "route": "/tasks",
+      "viewport": "1440x900",
+      "loaded": true,
+      "title": "Ollama",
+      "heading": "Tarefas",
+      "buttons": [
+        {
+          "i": 0,
+          "text": "Hide sidebar",
+          "disabled": false
+        },
+        {
+          "i": 1,
+          "text": "Pesquisar /",
+          "disabled": false
+        },
+        {
+          "i": 2,
+          "text": "Ajuda e sobre",
+          "disabled": false
+        },
+        {
+          "i": 3,
+          "text": "O Operador local",
+          "disabled": false
+        },
+        {
+          "i": 4,
+          "text": "Notificações",
+          "disabled": false
+        },
+        {
+          "i": 5,
+          "text": "Claro",
+          "disabled": false
+        },
+        {
+          "i": 6,
+          "text": "Escuro",
+          "disabled": false
+        },
+        {
+          "i": 7,
+          "text": "Automático",
+          "disabled": false
+        },
+        {
+          "i": 8,
+          "text": "Nova tarefa",
+          "disabled": false
+        },
+        {
+          "i": 9,
+          "text": "Tentar novamente",
+          "disabled": false
+        }
+      ],
+      "links": [
+        {
+          "i": 0,
+          "text": "Nova tarefa Ctrl K",
+          "href": "/"
+        },
+        {
+          "i": 1,
+          "text": "Computadores",
+          "href": "/endpoint"
+        },
+        {
+          "i": 2,
+          "text": "Agents Cue!",
+          "href": "/agentic"
+        },
+        {
+          "i": 3,
+          "text": "Biblioteca",
+          "href": "/library"
+        },
+        {
+          "i": 4,
+          "text": "Criações",
+          "href": "/creations"
+        },
+        {
+          "i": 5,
+          "text": "Studio",
+          "href": "/studio"
+        },
+        {
+          "i": 6,
+          "text": "Automações",
+          "href": "/scheduled"
+        },
+        {
+          "i": 7,
+          "text": "Plugins",
+          "href": "/connectors"
+        },
+        {
+          "i": 8,
+          "text": "Habilidades",
+          "href": "/skills"
+        },
+        {
+          "i": 9,
+          "text": "Empresa Novo",
+          "href": "/company"
+        },
+        {
+          "i": 10,
+          "text": "Tarefas",
+          "href": "/tasks"
+        },
+        {
+          "i": 12,
+          "text": "Todos os projetos",
+          "href": "/projects"
+        },
+        {
+          "i": 13,
+          "text": "Configurações",
+          "href": "/settings"
+        },
+        {
+          "i": 14,
+          "text": "Abrir Agentic Console",
+          "href": "/agentic"
+        }
+      ],
+      "inputs": [],
+      "interactions": [],
+      "console": [
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+        }
+      ],
+      "network": [
+        {
+          "status": 401,
+          "url": "/api/agent/v1/missions"
+        }
+      ]
+    },
+    {
+      "browser": "desktop",
+      "name": "scheduled",
+      "route": "/scheduled",
+      "viewport": "1440x900",
+      "loaded": true,
+      "title": "Ollama",
+      "heading": "Automações",
+      "buttons": [
+        {
+          "i": 0,
+          "text": "Hide sidebar",
+          "disabled": false
+        },
+        {
+          "i": 1,
+          "text": "Pesquisar /",
+          "disabled": false
+        },
+        {
+          "i": 2,
+          "text": "Ajuda e sobre",
+          "disabled": false
+        },
+        {
+          "i": 3,
+          "text": "O Operador local",
+          "disabled": false
+        },
+        {
+          "i": 4,
+          "text": "Notificações",
+          "disabled": false
+        },
+        {
+          "i": 5,
+          "text": "Claro",
+          "disabled": false
+        },
+        {
+          "i": 6,
+          "text": "Escuro",
+          "disabled": false
+        },
+        {
+          "i": 7,
+          "text": "Automático",
+          "disabled": false
+        },
+        {
+          "i": 8,
+          "text": "Nova automação",
+          "disabled": false
+        },
+        {
+          "i": 9,
+          "text": "⚡ Relatório diário de progresso (24h)",
+          "disabled": false
+        },
+        {
+          "i": 10,
+          "text": "⚡ Varredura semanal de segurança (7d)",
+          "disabled": false
+        },
+        {
+          "i": 11,
+          "text": "Criar agendamento",
+          "disabled": false
+        },
+        {
+          "i": 12,
+          "text": "⚡ Testar repositório ao detectar commits",
+          "disabled": false
+        },
+        {
+          "i": 13,
+          "text": "⚡ Extrair dados de faturas recebidas",
+          "disabled": false
+        },
+        {
+          "i": 14,
+          "text": "Criar gatilho",
+          "disabled": false
+        },
+        {
+          "i": 15,
+          "text": "Começar",
+          "disabled": false
+        }
+      ],
+      "links": [
+        {
+          "i": 0,
+          "text": "Nova tarefa Ctrl K",
+          "href": "/"
+        },
+        {
+          "i": 1,
+          "text": "Computadores",
+          "href": "/endpoint"
+        },
+        {
+          "i": 2,
+          "text": "Agents Cue!",
+          "href": "/agentic"
+        },
+        {
+          "i": 3,
+          "text": "Biblioteca",
+          "href": "/library"
+        },
+        {
+          "i": 4,
+          "text": "Criações",
+          "href": "/creations"
+        },
+        {
+          "i": 5,
+          "text": "Studio",
+          "href": "/studio"
+        },
+        {
+          "i": 6,
+          "text": "Automações",
+          "href": "/scheduled"
+        },
+        {
+          "i": 7,
+          "text": "Plugins",
+          "href": "/connectors"
+        },
+        {
+          "i": 8,
+          "text": "Habilidades",
+          "href": "/skills"
+        },
+        {
+          "i": 9,
+          "text": "Empresa Novo",
+          "href": "/company"
+        },
+        {
+          "i": 10,
+          "text": "Tarefas",
+          "href": "/tasks"
+        },
+        {
+          "i": 12,
+          "text": "Todos os projetos",
+          "href": "/projects"
+        },
+        {
+          "i": 13,
+          "text": "Configurações",
+          "href": "/settings"
+        },
+        {
+          "i": 14,
+          "text": "Ver histórico de execuções →",
+          "href": "/agentic"
+        }
+      ],
+      "inputs": [
+        {
+          "tag": "input",
+          "label": "",
+          "placeholder": "Ex: Monitore meu repositório e envie resumo diário...",
+          "id": "",
+          "name": ""
+        }
+      ],
+      "interactions": [
+        {
+          "action": "open schedule form",
+          "result": "OF Ollama Full Local-first workspace Nova tarefa Ctrl K Pesquisar / AGENTES Computadores Agents Cue! Biblioteca Criações Studio Automações Plugins FERRAMENTAS Habilidades Empresa Novo Tarefas PROJETOS Todos os projetos SISTEMA Configurações"
+        }
+      ],
+      "console": [
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+        }
+      ],
+      "network": [
+        {
+          "status": 401,
+          "url": "/api/agent/v1/schedules"
+        }
+      ]
+    },
+    {
+      "browser": "desktop",
+      "name": "library",
+      "route": "/library",
+      "viewport": "1440x900",
+      "loaded": true,
+      "title": "Ollama",
+      "heading": "Biblioteca",
+      "buttons": [
+        {
+          "i": 0,
+          "text": "Hide sidebar",
+          "disabled": false
+        },
+        {
+          "i": 1,
+          "text": "Pesquisar /",
+          "disabled": false
+        },
+        {
+          "i": 2,
+          "text": "Ajuda e sobre",
+          "disabled": false
+        },
+        {
+          "i": 3,
+          "text": "O Operador local",
+          "disabled": false
+        },
+        {
+          "i": 4,
+          "text": "Notificações",
+          "disabled": false
+        },
+        {
+          "i": 5,
+          "text": "Claro",
+          "disabled": false
+        },
+        {
+          "i": 6,
+          "text": "Escuro",
+          "disabled": false
+        },
+        {
+          "i": 7,
+          "text": "Automático",
+          "disabled": false
+        },
+        {
+          "i": 8,
+          "text": "Visualização em Lista",
+          "disabled": false
+        },
+        {
+          "i": 9,
+          "text": "Visualização em Grade",
+          "disabled": false
+        },
+        {
+          "i": 10,
+          "text": "Todos",
+          "disabled": false
+        },
+        {
+          "i": 11,
+          "text": "Texto e PDF",
+          "disabled": false
+        },
+        {
+          "i": 12,
+          "text": "Slides",
+          "disabled": false
+        },
+        {
+          "i": 13,
+          "text": "Planilhas",
+          "disabled": false
+        },
+        {
+          "i": 14,
+          "text": "Imagens",
+          "disabled": false
+        },
+        {
+          "i": 15,
+          "text": "Vídeos",
+          "disabled": false
+        },
+        {
+          "i": 16,
+          "text": "Áudio",
+          "disabled": false
+        },
+        {
+          "i": 17,
+          "text": "Outros",
+          "disabled": false
+        }
+      ],
+      "links": [
+        {
+          "i": 0,
+          "text": "Nova tarefa Ctrl K",
+          "href": "/"
+        },
+        {
+          "i": 1,
+          "text": "Computadores",
+          "href": "/endpoint"
+        },
+        {
+          "i": 2,
+          "text": "Agents Cue!",
+          "href": "/agentic"
+        },
+        {
+          "i": 3,
+          "text": "Biblioteca",
+          "href": "/library"
+        },
+        {
+          "i": 4,
+          "text": "Criações",
+          "href": "/creations"
+        },
+        {
+          "i": 5,
+          "text": "Studio",
+          "href": "/studio"
+        },
+        {
+          "i": 6,
+          "text": "Automações",
+          "href": "/scheduled"
+        },
+        {
+          "i": 7,
+          "text": "Plugins",
+          "href": "/connectors"
+        },
+        {
+          "i": 8,
+          "text": "Habilidades",
+          "href": "/skills"
+        },
+        {
+          "i": 9,
+          "text": "Empresa Novo",
+          "href": "/company"
+        },
+        {
+          "i": 10,
+          "text": "Tarefas",
+          "href": "/tasks"
+        },
+        {
+          "i": 12,
+          "text": "Todos os projetos",
+          "href": "/projects"
+        },
+        {
+          "i": 13,
+          "text": "Configurações",
+          "href": "/settings"
+        },
+        {
+          "i": 14,
+          "text": "Iniciar nova missão",
+          "href": "/agentic"
+        }
+      ],
+      "inputs": [
+        {
+          "tag": "input",
+          "label": "",
+          "placeholder": "Buscar arquivos...",
+          "id": "",
+          "name": ""
+        }
+      ],
+      "interactions": [],
+      "console": [
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+        }
+      ],
+      "network": [
+        {
+          "status": 401,
+          "url": "/api/agent/v1/missions"
+        }
+      ]
+    },
+    {
+      "browser": "desktop",
+      "name": "creations",
+      "route": "/creations",
+      "viewport": "1440x900",
+      "loaded": true,
+      "title": "Ollama",
+      "heading": "Criações",
+      "buttons": [
+        {
+          "i": 0,
+          "text": "Hide sidebar",
+          "disabled": false
+        },
+        {
+          "i": 1,
+          "text": "Pesquisar /",
+          "disabled": false
+        },
+        {
+          "i": 2,
+          "text": "Ajuda e sobre",
+          "disabled": false
+        },
+        {
+          "i": 3,
+          "text": "O Operador local",
+          "disabled": false
+        },
+        {
+          "i": 4,
+          "text": "Notificações",
+          "disabled": false
+        },
+        {
+          "i": 5,
+          "text": "Claro",
+          "disabled": false
+        },
+        {
+          "i": 6,
+          "text": "Escuro",
+          "disabled": false
+        },
+        {
+          "i": 7,
+          "text": "Automático",
+          "disabled": false
+        },
+        {
+          "i": 8,
+          "text": "Todos",
+          "disabled": false
+        },
+        {
+          "i": 9,
+          "text": "Sites",
+          "disabled": false
+        },
+        {
+          "i": 10,
+          "text": "Jogos",
+          "disabled": false
+        },
+        {
+          "i": 11,
+          "text": "Aplicativos móveis",
+          "disabled": false
+        }
+      ],
+      "links": [
+        {
+          "i": 0,
+          "text": "Nova tarefa Ctrl K",
+          "href": "/"
+        },
+        {
+          "i": 1,
+          "text": "Computadores",
+          "href": "/endpoint"
+        },
+        {
+          "i": 2,
+          "text": "Agents Cue!",
+          "href": "/agentic"
+        },
+        {
+          "i": 3,
+          "text": "Biblioteca",
+          "href": "/library"
+        },
+        {
+          "i": 4,
+          "text": "Criações",
+          "href": "/creations"
+        },
+        {
+          "i": 5,
+          "text": "Studio",
+          "href": "/studio"
+        },
+        {
+          "i": 6,
+          "text": "Automações",
+          "href": "/scheduled"
+        },
+        {
+          "i": 7,
+          "text": "Plugins",
+          "href": "/connectors"
+        },
+        {
+          "i": 8,
+          "text": "Habilidades",
+          "href": "/skills"
+        },
+        {
+          "i": 9,
+          "text": "Empresa Novo",
+          "href": "/company"
+        },
+        {
+          "i": 10,
+          "text": "Tarefas",
+          "href": "/tasks"
+        },
+        {
+          "i": 12,
+          "text": "Todos os projetos",
+          "href": "/projects"
+        },
+        {
+          "i": 13,
+          "text": "Configurações",
+          "href": "/settings"
+        },
+        {
+          "i": 14,
+          "text": "Abrir Studio",
+          "href": "/studio"
+        },
+        {
+          "i": 15,
+          "text": "Construir agora",
+          "href": "/agentic?auto_run=true&prompt=Construir+um+aplicativo+web+interativo+completo+com+interface+moderna"
+        },
+        {
+          "i": 16,
+          "text": "Construir agora",
+          "href": "/agentic?auto_run=true&prompt=Construir+uma+aplica%C3%A7%C3%A3o+interativa+com+HTML5+e+visual+moderno"
+        }
+      ],
+      "inputs": [
+        {
+          "tag": "input",
+          "label": "",
+          "placeholder": "Buscar criações...",
+          "id": "",
+          "name": ""
+        }
+      ],
+      "interactions": [],
+      "console": [],
+      "network": []
+    },
+    {
+      "browser": "desktop",
+      "name": "endpoint",
+      "route": "/endpoint",
+      "viewport": "1440x900",
+      "loaded": true,
+      "title": "Ollama",
+      "heading": "Computadores & Endpoint",
+      "buttons": [
+        {
+          "i": 0,
+          "text": "Hide sidebar",
+          "disabled": false
+        },
+        {
+          "i": 1,
+          "text": "Pesquisar /",
+          "disabled": false
+        },
+        {
+          "i": 2,
+          "text": "Ajuda e sobre",
+          "disabled": false
+        },
+        {
+          "i": 3,
+          "text": "O Operador local",
+          "disabled": false
+        },
+        {
+          "i": 4,
+          "text": "Notificações",
+          "disabled": false
+        },
+        {
+          "i": 5,
+          "text": "Claro",
+          "disabled": false
+        },
+        {
+          "i": 6,
+          "text": "Escuro",
+          "disabled": false
+        },
+        {
+          "i": 7,
+          "text": "Automático",
+          "disabled": false
+        },
+        {
+          "i": 8,
+          "text": "Criar computador na nuvem",
+          "disabled": false
+        },
+        {
+          "i": 9,
+          "text": "Solicitar acesso",
+          "disabled": false
+        },
+        {
+          "i": 10,
+          "text": "Conectar meu computador",
+          "disabled": false
+        },
+        {
+          "i": 11,
+          "text": "Controlar pelo seu telefone",
+          "disabled": false
+        },
+        {
+          "i": 12,
+          "text": "Copiar Ollama Nativo",
+          "disabled": false
+        },
+        {
+          "i": 13,
+          "text": "Copiar OpenAI-Compatible",
+          "disabled": false
+        },
+        {
+          "i": 14,
+          "text": "Copiar Anthropic-Compatible",
+          "disabled": false
+        },
+        {
+          "i": 15,
+          "text": "Copiar Claude Code",
+          "disabled": false
+        },
+        {
+          "i": 16,
+          "text": "Copiar Codex CLI",
+          "disabled": false
+        }
+      ],
+      "links": [
+        {
+          "i": 0,
+          "text": "Nova tarefa Ctrl K",
+          "href": "/"
+        },
+        {
+          "i": 1,
+          "text": "Computadores",
+          "href": "/endpoint"
+        },
+        {
+          "i": 2,
+          "text": "Agents Cue!",
+          "href": "/agentic"
+        },
+        {
+          "i": 3,
+          "text": "Biblioteca",
+          "href": "/library"
+        },
+        {
+          "i": 4,
+          "text": "Criações",
+          "href": "/creations"
+        },
+        {
+          "i": 5,
+          "text": "Studio",
+          "href": "/studio"
+        },
+        {
+          "i": 6,
+          "text": "Automações",
+          "href": "/scheduled"
+        },
+        {
+          "i": 7,
+          "text": "Plugins",
+          "href": "/connectors"
+        },
+        {
+          "i": 8,
+          "text": "Habilidades",
+          "href": "/skills"
+        },
+        {
+          "i": 9,
+          "text": "Empresa Novo",
+          "href": "/company"
+        },
+        {
+          "i": 10,
+          "text": "Tarefas",
+          "href": "/tasks"
+        },
+        {
+          "i": 12,
+          "text": "Todos os projetos",
+          "href": "/projects"
+        },
+        {
+          "i": 13,
+          "text": "Configurações",
+          "href": "/settings"
+        },
+        {
+          "i": 14,
+          "text": "Geral",
+          "href": "/settings"
+        },
+        {
+          "i": 15,
+          "text": "Provedores de IA",
+          "href": "/providers"
+        },
+        {
+          "i": 16,
+          "text": "Computadores & API",
+          "href": "/endpoint"
+        },
+        {
+          "i": 17,
+          "text": "Conectores e Plugins",
+          "href": "/connectors"
+        },
+        {
+          "i": 18,
+          "text": "Harnesses & Codex",
+          "href": "/connect"
+        },
+        {
+          "i": 19,
+          "text": "Configurações",
+          "href": "#endpoints-section"
+        },
+        {
+          "i": 20,
+          "text": "Tarefas",
+          "href": "/tasks"
+        }
+      ],
+      "inputs": [],
+      "interactions": [],
+      "console": [],
+      "network": []
+    },
+    {
+      "browser": "desktop",
+      "name": "connectors",
+      "route": "/connectors",
+      "viewport": "1440x900",
+      "loaded": true,
+      "title": "Ollama",
+      "heading": "Plugins & Conectores",
+      "buttons": [
+        {
+          "i": 0,
+          "text": "Hide sidebar",
+          "disabled": false
+        },
+        {
+          "i": 1,
+          "text": "Pesquisar /",
+          "disabled": false
+        },
+        {
+          "i": 2,
+          "text": "Ajuda e sobre",
+          "disabled": false
+        },
+        {
+          "i": 3,
+          "text": "O Operador local",
+          "disabled": false
+        },
+        {
+          "i": 4,
+          "text": "Notificações",
+          "disabled": false
+        },
+        {
+          "i": 5,
+          "text": "Claro",
+          "disabled": false
+        },
+        {
+          "i": 6,
+          "text": "Escuro",
+          "disabled": false
+        },
+        {
+          "i": 7,
+          "text": "Automático",
+          "disabled": false
+        },
+        {
+          "i": 8,
+          "text": "Gerenciar Conectores (0)",
+          "disabled": false
+        },
+        {
+          "i": 9,
+          "text": "Criar Conector",
+          "disabled": false
+        },
+        {
+          "i": 10,
+          "text": "Todos",
+          "disabled": false
+        },
+        {
+          "i": 11,
+          "text": "Produtividade",
+          "disabled": false
+        },
+        {
+          "i": 12,
+          "text": "Criatividade",
+          "disabled": false
+        },
+        {
+          "i": 13,
+          "text": "Negócios",
+          "disabled": false
+        },
+        {
+          "i": 14,
+          "text": "Desenvolvimento",
+          "disabled": false
+        },
+        {
+          "i": 15,
+          "text": "Finanças",
+          "disabled": false
+        },
+        {
+          "i": 16,
+          "text": "Viagem",
+          "disabled": false
+        },
+        {
+          "i": 17,
+          "text": "Saúde",
+          "disabled": false
+        },
+        {
+          "i": 18,
+          "text": "Conectados",
+          "disabled": false
+        },
+        {
+          "i": 19,
+          "text": "WhatsApp Gateway",
+          "disabled": false
+        }
+      ],
+      "links": [
+        {
+          "i": 0,
+          "text": "Nova tarefa Ctrl K",
+          "href": "/"
+        },
+        {
+          "i": 1,
+          "text": "Computadores",
+          "href": "/endpoint"
+        },
+        {
+          "i": 2,
+          "text": "Agents Cue!",
+          "href": "/agentic"
+        },
+        {
+          "i": 3,
+          "text": "Biblioteca",
+          "href": "/library"
+        },
+        {
+          "i": 4,
+          "text": "Criações",
+          "href": "/creations"
+        },
+        {
+          "i": 5,
+          "text": "Studio",
+          "href": "/studio"
+        },
+        {
+          "i": 6,
+          "text": "Automações",
+          "href": "/scheduled"
+        },
+        {
+          "i": 7,
+          "text": "Plugins",
+          "href": "/connectors"
+        },
+        {
+          "i": 8,
+          "text": "Habilidades",
+          "href": "/skills"
+        },
+        {
+          "i": 9,
+          "text": "Empresa Novo",
+          "href": "/company"
+        },
+        {
+          "i": 10,
+          "text": "Tarefas",
+          "href": "/tasks"
+        },
+        {
+          "i": 12,
+          "text": "Todos os projetos",
+          "href": "/projects"
+        },
+        {
+          "i": 13,
+          "text": "Configurações",
+          "href": "/settings"
+        }
+      ],
+      "inputs": [
+        {
+          "tag": "input",
+          "label": "Buscar conectores",
+          "placeholder": "Buscar conectores e plugins...",
+          "id": "",
+          "name": ""
+        }
+      ],
+      "interactions": [
+        {
+          "action": "WhatsApp Gateway",
+          "result": "OF Ollama Full Local-first workspace Nova tarefa Ctrl K Pesquisar / AGENTES Computadores Agents Cue! Biblioteca Criações Studio Automações Plugins FERRAMENTAS Habilidades Empresa Novo Tarefas PROJETOS Todos os projetos SISTEMA Configurações"
+        }
+      ],
+      "console": [
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+        }
+      ],
+      "network": [
+        {
+          "status": 401,
+          "url": "/api/agent/v1/connector-catalog"
+        },
+        {
+          "status": 401,
+          "url": "/api/agent/v1/mcp"
+        },
+        {
+          "status": 401,
+          "url": "/api/agent/v1/connectors"
+        },
+        {
+          "status": 401,
+          "url": "/api/agent/v1/whatsapp/status"
+        },
+        {
+          "status": 401,
+          "url": "/api/agent/v1/whatsapp/allowlist"
+        }
+      ]
+    },
+    {
+      "browser": "desktop",
+      "name": "skills",
+      "route": "/skills",
+      "viewport": "1440x900",
+      "loaded": true,
+      "title": "Ollama",
+      "heading": "Habilidades",
+      "buttons": [
+        {
+          "i": 0,
+          "text": "Hide sidebar",
+          "disabled": false
+        },
+        {
+          "i": 1,
+          "text": "Pesquisar /",
+          "disabled": false
+        },
+        {
+          "i": 2,
+          "text": "Ajuda e sobre",
+          "disabled": false
+        },
+        {
+          "i": 3,
+          "text": "O Operador local",
+          "disabled": false
+        },
+        {
+          "i": 4,
+          "text": "Notificações",
+          "disabled": false
+        },
+        {
+          "i": 5,
+          "text": "Claro",
+          "disabled": false
+        },
+        {
+          "i": 6,
+          "text": "Escuro",
+          "disabled": false
+        },
+        {
+          "i": 7,
+          "text": "Automático",
+          "disabled": false
+        },
+        {
+          "i": 8,
+          "text": "Abrir configuração",
+          "disabled": false
+        },
+        {
+          "i": 9,
+          "text": "Tentar novamente",
+          "disabled": false
+        }
+      ],
+      "links": [
+        {
+          "i": 0,
+          "text": "Nova tarefa Ctrl K",
+          "href": "/"
+        },
+        {
+          "i": 1,
+          "text": "Computadores",
+          "href": "/endpoint"
+        },
+        {
+          "i": 2,
+          "text": "Agents Cue!",
+          "href": "/agentic"
+        },
+        {
+          "i": 3,
+          "text": "Biblioteca",
+          "href": "/library"
+        },
+        {
+          "i": 4,
+          "text": "Criações",
+          "href": "/creations"
+        },
+        {
+          "i": 5,
+          "text": "Studio",
+          "href": "/studio"
+        },
+        {
+          "i": 6,
+          "text": "Automações",
+          "href": "/scheduled"
+        },
+        {
+          "i": 7,
+          "text": "Plugins",
+          "href": "/connectors"
+        },
+        {
+          "i": 8,
+          "text": "Habilidades",
+          "href": "/skills"
+        },
+        {
+          "i": 9,
+          "text": "Empresa Novo",
+          "href": "/company"
+        },
+        {
+          "i": 10,
+          "text": "Tarefas",
+          "href": "/tasks"
+        },
+        {
+          "i": 12,
+          "text": "Todos os projetos",
+          "href": "/projects"
+        },
+        {
+          "i": 13,
+          "text": "Configurações",
+          "href": "/settings"
+        },
+        {
+          "i": 14,
+          "text": "Abrir Agentic Console",
+          "href": "/agentic"
+        }
+      ],
+      "inputs": [],
+      "interactions": [],
+      "console": [
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+        }
+      ],
+      "network": [
+        {
+          "status": 401,
+          "url": "/api/agent/v1/skills"
+        }
+      ]
+    },
+    {
+      "browser": "desktop",
+      "name": "company",
+      "route": "/company",
+      "viewport": "1440x900",
+      "loaded": true,
+      "title": "Ollama",
+      "heading": "Empresa",
+      "buttons": [
+        {
+          "i": 0,
+          "text": "Hide sidebar",
+          "disabled": false
+        },
+        {
+          "i": 1,
+          "text": "Pesquisar /",
+          "disabled": false
+        },
+        {
+          "i": 2,
+          "text": "Ajuda e sobre",
+          "disabled": false
+        },
+        {
+          "i": 3,
+          "text": "O Operador local",
+          "disabled": false
+        },
+        {
+          "i": 4,
+          "text": "Notificações",
+          "disabled": false
+        },
+        {
+          "i": 5,
+          "text": "Claro",
+          "disabled": false
+        },
+        {
+          "i": 6,
+          "text": "Escuro",
+          "disabled": false
+        },
+        {
+          "i": 7,
+          "text": "Automático",
+          "disabled": false
+        },
+        {
+          "i": 8,
+          "text": "Atualizar",
+          "disabled": false
+        },
+        {
+          "i": 9,
+          "text": "Ativar",
+          "disabled": false
+        },
+        {
+          "i": 10,
+          "text": "Ciclo Manual (Tick)",
+          "disabled": false
+        },
+        {
+          "i": 11,
+          "text": "Criar empresa e tenant",
+          "disabled": true
+        }
+      ],
+      "links": [
+        {
+          "i": 0,
+          "text": "Nova tarefa Ctrl K",
+          "href": "/"
+        },
+        {
+          "i": 1,
+          "text": "Computadores",
+          "href": "/endpoint"
+        },
+        {
+          "i": 2,
+          "text": "Agents Cue!",
+          "href": "/agentic"
+        },
+        {
+          "i": 3,
+          "text": "Biblioteca",
+          "href": "/library"
+        },
+        {
+          "i": 4,
+          "text": "Criações",
+          "href": "/creations"
+        },
+        {
+          "i": 5,
+          "text": "Studio",
+          "href": "/studio"
+        },
+        {
+          "i": 6,
+          "text": "Automações",
+          "href": "/scheduled"
+        },
+        {
+          "i": 7,
+          "text": "Plugins",
+          "href": "/connectors"
+        },
+        {
+          "i": 8,
+          "text": "Habilidades",
+          "href": "/skills"
+        },
+        {
+          "i": 9,
+          "text": "Empresa Novo",
+          "href": "/company"
+        },
+        {
+          "i": 10,
+          "text": "Tarefas",
+          "href": "/tasks"
+        },
+        {
+          "i": 12,
+          "text": "Todos os projetos",
+          "href": "/projects"
+        },
+        {
+          "i": 13,
+          "text": "Configurações",
+          "href": "/settings"
+        }
+      ],
+      "inputs": [
+        {
+          "tag": "input",
+          "label": "Nome da empresa",
+          "placeholder": "Nome da empresa",
+          "id": "",
+          "name": ""
+        },
+        {
+          "tag": "input",
+          "label": "Modelo de negócio",
+          "placeholder": "Modelo de negócio",
+          "id": "",
+          "name": ""
+        },
+        {
+          "tag": "textarea",
+          "label": "Missão",
+          "placeholder": "Missão e resultado que a empresa entrega",
+          "id": "",
+          "name": ""
+        },
+        {
+          "tag": "textarea",
+          "label": "Posicionamento",
+          "placeholder": "Posicionamento e diferencial",
+          "id": "",
+          "name": ""
+        },
+        {
+          "tag": "input",
+          "label": "Público-alvo",
+          "placeholder": "Público-alvo",
+          "id": "",
+          "name": ""
+        },
+        {
+          "tag": "input",
+          "label": "Oferta",
+          "placeholder": "Oferta principal",
+          "id": "",
+          "name": ""
+        },
+        {
+          "tag": "input",
+          "label": "Limite mensal",
+          "placeholder": "Limite mensal em BRL",
+          "id": "",
+          "name": ""
+        }
+      ],
+      "interactions": [],
+      "console": [
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+        }
+      ],
+      "network": [
+        {
+          "status": 401,
+          "url": "/api/agent/v1/companies"
+        },
+        {
+          "status": 401,
+          "url": "/api/agent/v1/supervisor/status"
+        }
+      ]
+    },
+    {
+      "browser": "desktop",
+      "name": "projects",
+      "route": "/projects",
+      "viewport": "1440x900",
+      "loaded": true,
+      "title": "Ollama",
+      "heading": "Projetos",
+      "buttons": [
+        {
+          "i": 0,
+          "text": "Hide sidebar",
+          "disabled": false
+        },
+        {
+          "i": 1,
+          "text": "Pesquisar /",
+          "disabled": false
+        },
+        {
+          "i": 2,
+          "text": "Ajuda e sobre",
+          "disabled": false
+        },
+        {
+          "i": 3,
+          "text": "O Operador local",
+          "disabled": false
+        },
+        {
+          "i": 4,
+          "text": "Notificações",
+          "disabled": false
+        },
+        {
+          "i": 5,
+          "text": "Claro",
+          "disabled": false
+        },
+        {
+          "i": 6,
+          "text": "Escuro",
+          "disabled": false
+        },
+        {
+          "i": 7,
+          "text": "Automático",
+          "disabled": false
+        },
+        {
+          "i": 8,
+          "text": "Novo projeto",
+          "disabled": false
+        },
+        {
+          "i": 9,
+          "text": "Criar",
+          "disabled": true
+        },
+        {
+          "i": 10,
+          "text": "Importar projeto",
+          "disabled": false
+        },
+        {
+          "i": 11,
+          "text": "Tentar novamente",
+          "disabled": false
+        }
+      ],
+      "links": [
+        {
+          "i": 0,
+          "text": "Nova tarefa Ctrl K",
+          "href": "/"
+        },
+        {
+          "i": 1,
+          "text": "Computadores",
+          "href": "/endpoint"
+        },
+        {
+          "i": 2,
+          "text": "Agents Cue!",
+          "href": "/agentic"
+        },
+        {
+          "i": 3,
+          "text": "Biblioteca",
+          "href": "/library"
+        },
+        {
+          "i": 4,
+          "text": "Criações",
+          "href": "/creations"
+        },
+        {
+          "i": 5,
+          "text": "Studio",
+          "href": "/studio"
+        },
+        {
+          "i": 6,
+          "text": "Automações",
+          "href": "/scheduled"
+        },
+        {
+          "i": 7,
+          "text": "Plugins",
+          "href": "/connectors"
+        },
+        {
+          "i": 8,
+          "text": "Habilidades",
+          "href": "/skills"
+        },
+        {
+          "i": 9,
+          "text": "Empresa Novo",
+          "href": "/company"
+        },
+        {
+          "i": 10,
+          "text": "Tarefas",
+          "href": "/tasks"
+        },
+        {
+          "i": 12,
+          "text": "Todos os projetos",
+          "href": "/projects"
+        },
+        {
+          "i": 13,
+          "text": "Configurações",
+          "href": "/settings"
+        },
+        {
+          "i": 14,
+          "text": "Abrir Agentic Console",
+          "href": "/agentic"
+        }
+      ],
+      "inputs": [
+        {
+          "tag": "input",
+          "label": "Nome do novo projeto",
+          "placeholder": "Nome do projeto",
+          "id": "new-project-name",
+          "name": ""
+        },
+        {
+          "tag": "input",
+          "label": "Workspace do novo projeto",
+          "placeholder": "Workspace (opcional)",
+          "id": "",
+          "name": ""
+        }
+      ],
+      "interactions": [
+        {
+          "action": "open import dialog",
+          "result": "OF Ollama Full Local-first workspace Nova tarefa Ctrl K Pesquisar / AGENTES Computadores Agents Cue! Biblioteca Criações Studio Automações Plugins FERRAMENTAS Habilidades Empresa Novo Tarefas PROJETOS Todos os projetos SISTEMA Configurações"
+        }
+      ],
+      "console": [
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+        }
+      ],
+      "network": [
+        {
+          "status": 401,
+          "url": "/api/agent/v1/projects"
+        }
+      ]
+    },
+    {
+      "browser": "desktop",
+      "name": "studio",
+      "route": "/studio",
+      "viewport": "1440x900",
+      "loaded": true,
+      "title": "Ollama",
+      "heading": "Studio",
+      "buttons": [
+        {
+          "i": 0,
+          "text": "Hide sidebar",
+          "disabled": false
+        },
+        {
+          "i": 1,
+          "text": "Pesquisar /",
+          "disabled": false
+        },
+        {
+          "i": 2,
+          "text": "Ajuda e sobre",
+          "disabled": false
+        },
+        {
+          "i": 3,
+          "text": "O Operador local",
+          "disabled": false
+        },
+        {
+          "i": 4,
+          "text": "Notificações",
+          "disabled": false
+        },
+        {
+          "i": 5,
+          "text": "Claro",
+          "disabled": false
+        },
+        {
+          "i": 6,
+          "text": "Escuro",
+          "disabled": false
+        },
+        {
+          "i": 7,
+          "text": "Automático",
+          "disabled": false
+        },
+        {
+          "i": 8,
+          "text": "Desfazer (Undo)",
+          "disabled": true
+        },
+        {
+          "i": 9,
+          "text": "Refazer (Redo)",
+          "disabled": true
+        },
+        {
+          "i": 10,
+          "text": "Editor",
+          "disabled": false
+        },
+        {
+          "i": 11,
+          "text": "Preview",
+          "disabled": false
+        },
+        {
+          "i": 12,
+          "text": "Exportar ZIP",
+          "disabled": false
+        },
+        {
+          "i": 13,
+          "text": "Deploy",
+          "disabled": false
+        },
+        {
+          "i": 14,
+          "text": "×",
+          "disabled": false
+        },
+        {
+          "i": 15,
+          "text": "H Título Clique para adicionar",
+          "disabled": false
+        },
+        {
+          "i": 16,
+          "text": "P Parágrafo Clique para adicionar",
+          "disabled": false
+        },
+        {
+          "i": 17,
+          "text": "B Botão de Ação Clique para adicionar",
+          "disabled": false
+        },
+        {
+          "i": 18,
+          "text": "C Card / Recurso Clique para adicionar",
+          "disabled": false
+        },
+        {
+          "i": 19,
+          "text": "M Métrica / KPI Clique para adicionar",
+          "disabled": false
+        },
+        {
+          "i": 20,
+          "text": "N Barra de Navegação Clique para adicionar",
+          "disabled": false
+        },
+        {
+          "i": 21,
+          "text": "Site / Landing Page",
+          "disabled": false
+        },
+        {
+          "i": 22,
+          "text": "Dashboard Analítico",
+          "disabled": false
+        },
+        {
+          "i": 23,
+          "text": "Slides / Pitch Deck",
+          "disabled": false
+        },
+        {
+          "i": 24,
+          "text": "Jogo 2D Interativo",
+          "disabled": false
+        },
+        {
+          "i": 25,
+          "text": "Aplicação Web App",
+          "disabled": false
+        }
+      ],
+      "links": [
+        {
+          "i": 0,
+          "text": "Nova tarefa Ctrl K",
+          "href": "/"
+        },
+        {
+          "i": 1,
+          "text": "Computadores",
+          "href": "/endpoint"
+        },
+        {
+          "i": 2,
+          "text": "Agents Cue!",
+          "href": "/agentic"
+        },
+        {
+          "i": 3,
+          "text": "Biblioteca",
+          "href": "/library"
+        },
+        {
+          "i": 4,
+          "text": "Criações",
+          "href": "/creations"
+        },
+        {
+          "i": 5,
+          "text": "Studio",
+          "href": "/studio"
+        },
+        {
+          "i": 6,
+          "text": "Automações",
+          "href": "/scheduled"
+        },
+        {
+          "i": 7,
+          "text": "Plugins",
+          "href": "/connectors"
+        },
+        {
+          "i": 8,
+          "text": "Habilidades",
+          "href": "/skills"
+        },
+        {
+          "i": 9,
+          "text": "Empresa Novo",
+          "href": "/company"
+        },
+        {
+          "i": 10,
+          "text": "Tarefas",
+          "href": "/tasks"
+        },
+        {
+          "i": 12,
+          "text": "Todos os projetos",
+          "href": "/projects"
+        },
+        {
+          "i": 13,
+          "text": "Configurações",
+          "href": "/settings"
+        }
+      ],
+      "inputs": [],
+      "interactions": [
+        {
+          "action": "Card",
+          "result": "clicked"
+        },
+        {
+          "action": "Undo",
+          "result": "clicked"
+        },
+        {
+          "action": "Redo",
+          "result": "clicked"
+        },
+        {
+          "action": "Preview",
+          "result": "clicked"
+        },
+        {
+          "action": "Export",
+          "result": "clicked"
+        }
+      ],
+      "console": [
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+        }
+      ],
+      "network": [
+        {
+          "status": 401,
+          "url": "/api/agent/v1/builders"
+        }
+      ]
+    },
+    {
+      "browser": "desktop",
+      "name": "settings",
+      "route": "/settings",
+      "viewport": "1440x900",
+      "loaded": true,
+      "title": "Ollama",
+      "heading": "Configurações",
+      "buttons": [
+        {
+          "i": 0,
+          "text": "Hide sidebar",
+          "disabled": false
+        },
+        {
+          "i": 1,
+          "text": "Pesquisar /",
+          "disabled": false
+        },
+        {
+          "i": 2,
+          "text": "Ajuda e sobre",
+          "disabled": false
+        },
+        {
+          "i": 3,
+          "text": "O Operador local",
+          "disabled": false
+        },
+        {
+          "i": 4,
+          "text": "Notificações",
+          "disabled": false
+        },
+        {
+          "i": 5,
+          "text": "Claro",
+          "disabled": false
+        },
+        {
+          "i": 6,
+          "text": "Escuro",
+          "disabled": false
+        },
+        {
+          "i": 7,
+          "text": "Automático",
+          "disabled": false
+        },
+        {
+          "i": 12,
+          "text": "Browse",
+          "disabled": false
+        },
+        {
+          "i": 20,
+          "text": "Start ChatGPT",
+          "disabled": true
+        },
+        {
+          "i": 21,
+          "text": "Choose ChatGPT models",
+          "disabled": false
+        },
+        {
+          "i": 23,
+          "text": "Reset to defaults",
+          "disabled": false
+        }
+      ],
+      "links": [
+        {
+          "i": 0,
+          "text": "Nova tarefa Ctrl K",
+          "href": "/"
+        },
+        {
+          "i": 1,
+          "text": "Computadores",
+          "href": "/endpoint"
+        },
+        {
+          "i": 2,
+          "text": "Agents Cue!",
+          "href": "/agentic"
+        },
+        {
+          "i": 3,
+          "text": "Biblioteca",
+          "href": "/library"
+        },
+        {
+          "i": 4,
+          "text": "Criações",
+          "href": "/creations"
+        },
+        {
+          "i": 5,
+          "text": "Studio",
+          "href": "/studio"
+        },
+        {
+          "i": 6,
+          "text": "Automações",
+          "href": "/scheduled"
+        },
+        {
+          "i": 7,
+          "text": "Plugins",
+          "href": "/connectors"
+        },
+        {
+          "i": 8,
+          "text": "Habilidades",
+          "href": "/skills"
+        },
+        {
+          "i": 9,
+          "text": "Empresa Novo",
+          "href": "/company"
+        },
+        {
+          "i": 10,
+          "text": "Tarefas",
+          "href": "/tasks"
+        },
+        {
+          "i": 12,
+          "text": "Todos os projetos",
+          "href": "/projects"
+        },
+        {
+          "i": 13,
+          "text": "Configurações",
+          "href": "/settings"
+        },
+        {
+          "i": 14,
+          "text": "Geral",
+          "href": "/settings"
+        },
+        {
+          "i": 15,
+          "text": "Provedores de IA",
+          "href": "/providers"
+        },
+        {
+          "i": 16,
+          "text": "Computadores & API",
+          "href": "/endpoint"
+        },
+        {
+          "i": 17,
+          "text": "Conectores e Plugins",
+          "href": "/connectors"
+        },
+        {
+          "i": 18,
+          "text": "Harnesses & Codex",
+          "href": "/connect"
+        },
+        {
+          "i": 19,
+          "text": "Abrir console",
+          "href": "/agentic"
+        }
+      ],
+      "inputs": [
+        {
+          "tag": "input",
+          "label": "",
+          "placeholder": "",
+          "id": "headlessui-control-_r_h_",
+          "name": ""
+        },
+        {
+          "tag": "textarea",
+          "label": "",
+          "placeholder": "Digite suas diretrizes permanentes...",
+          "id": "",
+          "name": ""
+        }
+      ],
+      "interactions": [
+        {
+          "action": "/providers",
+          "result": "OF Ollama Full Local-first workspace Nova tarefa Ctrl K Pesquisar / AGENTES Computadores Agents Cue! Biblioteca Criações Studio Automações Plugins FERRAMENTAS Habilidades Empresa Novo Tarefas PROJETOS Todos os projetos SISTEMA Configurações"
+        },
+        {
+          "action": "/endpoint",
+          "result": "OF Ollama Full Local-first workspace Nova tarefa Ctrl K Pesquisar / AGENTES Computadores Agents Cue! Biblioteca Criações Studio Automações Plugins FERRAMENTAS Habilidades Empresa Novo Tarefas PROJETOS Todos os projetos SISTEMA Configurações"
+        },
+        {
+          "action": "/connect",
+          "result": "Esta página encontrou um erro O restante do app continua funcionando. Volte, vá para o início ou tente carregar a página de novo. Voltar Ir para o início Recarregar Mostrar detalhes"
+        }
+      ],
+      "console": [
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+        },
+        {
+          "type": "error",
+          "text": "TypeError: M.find is not a function at SX (http://127.0.0.1:5173/assets/index-CB-R3-KY.js:105:99473) at Sg (http://127.0.0.1:5173/assets/index-CB-R3-KY.js:49:50597) at Yg (http://127.0.0.1:5173/assets/index-CB-R3-KY.js:49:73717) at cy (http"
+        }
+      ],
+      "network": [
+        {
+          "status": 401,
+          "url": "/api/agent/v1/skills"
+        },
+        {
+          "status": 401,
+          "url": "/api/agent/v1/mcp"
+        },
+        {
+          "status": 401,
+          "url": "/api/agent/v1/config/safe"
+        },
+        {
+          "status": 401,
+          "url": "/api/agent/v1/connectors"
+        },
+        {
+          "status": 401,
+          "url": "/api/agent/v1/config/safe"
+        },
+        {
+          "status": 401,
+          "url": "/api/agent/v1/connectors"
+        },
+        {
+          "status": 401,
+          "url": "/api/agent/v1/mcp"
+        },
+        {
+          "status": 401,
+          "url": "/api/agent/v1/skills"
+        }
+      ]
+    },
+    {
+      "browser": "desktop",
+      "name": "providers",
+      "route": "/providers",
+      "viewport": "1440x900",
+      "loaded": true,
+      "title": "Ollama",
+      "heading": "Configurações",
+      "buttons": [
+        {
+          "i": 0,
+          "text": "Hide sidebar",
+          "disabled": false
+        },
+        {
+          "i": 1,
+          "text": "Pesquisar /",
+          "disabled": false
+        },
+        {
+          "i": 2,
+          "text": "Ajuda e sobre",
+          "disabled": false
+        },
+        {
+          "i": 3,
+          "text": "O Operador local",
+          "disabled": false
+        },
+        {
+          "i": 4,
+          "text": "Notificações",
+          "disabled": false
+        },
+        {
+          "i": 5,
+          "text": "Claro",
+          "disabled": false
+        },
+        {
+          "i": 6,
+          "text": "Escuro",
+          "disabled": false
+        },
+        {
+          "i": 7,
+          "text": "Automático",
+          "disabled": false
+        }
+      ],
+      "links": [
+        {
+          "i": 0,
+          "text": "Nova tarefa Ctrl K",
+          "href": "/"
+        },
+        {
+          "i": 1,
+          "text": "Computadores",
+          "href": "/endpoint"
+        },
+        {
+          "i": 2,
+          "text": "Agents Cue!",
+          "href": "/agentic"
+        },
+        {
+          "i": 3,
+          "text": "Biblioteca",
+          "href": "/library"
+        },
+        {
+          "i": 4,
+          "text": "Criações",
+          "href": "/creations"
+        },
+        {
+          "i": 5,
+          "text": "Studio",
+          "href": "/studio"
+        },
+        {
+          "i": 6,
+          "text": "Automações",
+          "href": "/scheduled"
+        },
+        {
+          "i": 7,
+          "text": "Plugins",
+          "href": "/connectors"
+        },
+        {
+          "i": 8,
+          "text": "Habilidades",
+          "href": "/skills"
+        },
+        {
+          "i": 9,
+          "text": "Empresa Novo",
+          "href": "/company"
+        },
+        {
+          "i": 10,
+          "text": "Tarefas",
+          "href": "/tasks"
+        },
+        {
+          "i": 12,
+          "text": "Todos os projetos",
+          "href": "/projects"
+        },
+        {
+          "i": 13,
+          "text": "Configurações",
+          "href": "/settings"
+        },
+        {
+          "i": 14,
+          "text": "Geral",
+          "href": "/settings"
+        },
+        {
+          "i": 15,
+          "text": "Provedores de IA",
+          "href": "/providers"
+        },
+        {
+          "i": 16,
+          "text": "Computadores & API",
+          "href": "/endpoint"
+        },
+        {
+          "i": 17,
+          "text": "Conectores e Plugins",
+          "href": "/connectors"
+        },
+        {
+          "i": 18,
+          "text": "Harnesses & Codex",
+          "href": "/connect"
+        }
+      ],
+      "inputs": [],
+      "interactions": [],
+      "console": [],
+      "network": []
+    },
+    {
+      "browser": "desktop",
+      "name": "connect",
+      "route": "/connect",
+      "viewport": "1440x900",
+      "loaded": true,
+      "title": "Ollama",
+      "heading": "Esta página encontrou um erro",
+      "buttons": [
+        {
+          "i": 0,
+          "text": "Voltar",
+          "disabled": false
+        },
+        {
+          "i": 1,
+          "text": "Ir para o início",
+          "disabled": false
+        },
+        {
+          "i": 2,
+          "text": "Recarregar",
+          "disabled": false
+        },
+        {
+          "i": 3,
+          "text": "Mostrar detalhes",
+          "disabled": false
+        }
+      ],
+      "links": [],
+      "inputs": [],
+      "interactions": [],
+      "console": [
+        {
+          "type": "error",
+          "text": "TypeError: M.find is not a function at SX (http://127.0.0.1:5173/assets/index-CB-R3-KY.js:105:99473) at Sg (http://127.0.0.1:5173/assets/index-CB-R3-KY.js:49:50597) at Yg (http://127.0.0.1:5173/assets/index-CB-R3-KY.js:49:73717) at cy (http"
+        }
+      ],
+      "network": []
+    },
+    {
+      "browser": "desktop",
+      "name": "plugins",
+      "route": "/plugins",
+      "viewport": "1440x900",
+      "loaded": true,
+      "title": "Ollama",
+      "heading": "Registro avançado",
+      "buttons": [
+        {
+          "i": 0,
+          "text": "Hide sidebar",
+          "disabled": false
+        },
+        {
+          "i": 1,
+          "text": "Pesquisar /",
+          "disabled": false
+        },
+        {
+          "i": 2,
+          "text": "Ajuda e sobre",
+          "disabled": false
+        },
+        {
+          "i": 3,
+          "text": "O Operador local",
+          "disabled": false
+        },
+        {
+          "i": 4,
+          "text": "Notificações",
+          "disabled": false
+        },
+        {
+          "i": 5,
+          "text": "Claro",
+          "disabled": false
+        },
+        {
+          "i": 6,
+          "text": "Escuro",
+          "disabled": false
+        },
+        {
+          "i": 7,
+          "text": "Automático",
+          "disabled": false
+        },
+        {
+          "i": 8,
+          "text": "Abrir configuração",
+          "disabled": false
+        },
+        {
+          "i": 9,
+          "text": "Tentar novamente",
+          "disabled": false
+        }
+      ],
+      "links": [
+        {
+          "i": 0,
+          "text": "Nova tarefa Ctrl K",
+          "href": "/"
+        },
+        {
+          "i": 1,
+          "text": "Computadores",
+          "href": "/endpoint"
+        },
+        {
+          "i": 2,
+          "text": "Agents Cue!",
+          "href": "/agentic"
+        },
+        {
+          "i": 3,
+          "text": "Biblioteca",
+          "href": "/library"
+        },
+        {
+          "i": 4,
+          "text": "Criações",
+          "href": "/creations"
+        },
+        {
+          "i": 5,
+          "text": "Studio",
+          "href": "/studio"
+        },
+        {
+          "i": 6,
+          "text": "Automações",
+          "href": "/scheduled"
+        },
+        {
+          "i": 7,
+          "text": "Plugins",
+          "href": "/connectors"
+        },
+        {
+          "i": 8,
+          "text": "Habilidades",
+          "href": "/skills"
+        },
+        {
+          "i": 9,
+          "text": "Empresa Novo",
+          "href": "/company"
+        },
+        {
+          "i": 10,
+          "text": "Tarefas",
+          "href": "/tasks"
+        },
+        {
+          "i": 12,
+          "text": "Todos os projetos",
+          "href": "/projects"
+        },
+        {
+          "i": 13,
+          "text": "Configurações",
+          "href": "/settings"
+        },
+        {
+          "i": 14,
+          "text": "Abrir Agentic Console",
+          "href": "/agentic"
+        }
+      ],
+      "inputs": [],
+      "interactions": [],
+      "console": [
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+        }
+      ],
+      "network": [
+        {
+          "status": 401,
+          "url": "/api/agent/v1/mcp"
+        },
+        {
+          "status": 401,
+          "url": "/api/agent/v1/connector-catalog"
+        },
+        {
+          "status": 401,
+          "url": "/api/agent/v1/connectors"
+        }
+      ]
+    },
+    {
+      "browser": "desktop",
+      "name": "chat-new",
+      "route": "/c/new",
+      "viewport": "1440x900",
+      "loaded": true,
+      "title": "Ollama",
+      "heading": "O que posso fazer por você?",
+      "buttons": [
+        {
+          "i": 0,
+          "text": "Hide sidebar",
+          "disabled": false
+        },
+        {
+          "i": 1,
+          "text": "Pesquisar /",
+          "disabled": false
+        },
+        {
+          "i": 2,
+          "text": "Ajuda e sobre",
+          "disabled": false
+        },
+        {
+          "i": 3,
+          "text": "O Operador local",
+          "disabled": false
+        },
+        {
+          "i": 4,
+          "text": "Notificações",
+          "disabled": false
+        },
+        {
+          "i": 5,
+          "text": "Claro",
+          "disabled": false
+        },
+        {
+          "i": 6,
+          "text": "Escuro",
+          "disabled": false
+        },
+        {
+          "i": 7,
+          "text": "Automático",
+          "disabled": false
+        },
+        {
+          "i": 8,
+          "text": "Chat anônimo",
+          "disabled": false
+        },
+        {
+          "i": 9,
+          "text": "Upload multiple files",
+          "disabled": false
+        },
+        {
+          "i": 10,
+          "text": "Selecionar modelo",
+          "disabled": false
+        },
+        {
+          "i": 12,
+          "text": "Criar slides",
+          "disabled": false
+        },
+        {
+          "i": 13,
+          "text": "Criar site",
+          "disabled": false
+        },
+        {
+          "i": 14,
+          "text": "Design",
+          "disabled": false
+        },
+        {
+          "i": 15,
+          "text": "Criar jogos",
+          "disabled": false
+        },
+        {
+          "i": 16,
+          "text": "Mais",
+          "disabled": false
+        },
+        {
+          "i": 17,
+          "text": "Atualizar",
+          "disabled": false
+        },
+        {
+          "i": 18,
+          "text": "⌁ Audite meu projeto Inspecione o código, encontre riscos e proponha correções testáveis.",
+          "disabled": false
+        },
+        {
+          "i": 19,
+          "text": "⌁ Construa um MVP Crie um produto completo, com backend, frontend, testes e preview.",
+          "disabled": false
+        },
+        {
+          "i": 20,
+          "text": "⌁ Pesquise o mercado Compare soluções, cite fontes e entregue uma síntese com próximos passos.",
+          "disabled": false
+        }
+      ],
+      "links": [
+        {
+          "i": 1,
+          "text": "Nova tarefa Ctrl K",
+          "href": "/"
+        },
+        {
+          "i": 2,
+          "text": "Computadores",
+          "href": "/endpoint"
+        },
+        {
+          "i": 3,
+          "text": "Agents Cue!",
+          "href": "/agentic"
+        },
+        {
+          "i": 4,
+          "text": "Biblioteca",
+          "href": "/library"
+        },
+        {
+          "i": 5,
+          "text": "Criações",
+          "href": "/creations"
+        },
+        {
+          "i": 6,
+          "text": "Studio",
+          "href": "/studio"
+        },
+        {
+          "i": 7,
+          "text": "Automações",
+          "href": "/scheduled"
+        },
+        {
+          "i": 8,
+          "text": "Plugins",
+          "href": "/connectors"
+        },
+        {
+          "i": 9,
+          "text": "Habilidades",
+          "href": "/skills"
+        },
+        {
+          "i": 10,
+          "text": "Empresa Novo",
+          "href": "/company"
+        },
+        {
+          "i": 11,
+          "text": "Tarefas",
+          "href": "/tasks"
+        },
+        {
+          "i": 13,
+          "text": "Todos os projetos",
+          "href": "/projects"
+        },
+        {
+          "i": 14,
+          "text": "Configurações",
+          "href": "/settings"
+        }
+      ],
+      "inputs": [
+        {
+          "tag": "textarea",
+          "label": "",
+          "placeholder": "Send a message",
+          "id": "",
+          "name": ""
+        }
+      ],
+      "interactions": [],
+      "console": [],
+      "network": []
+    },
+    {
+      "browser": "mobile",
+      "name": "home",
+      "route": "/",
+      "viewport": "390x844",
+      "loaded": true,
+      "title": "Ollama",
+      "heading": "Início",
+      "buttons": [
+        {
+          "i": 0,
+          "text": "Show sidebar",
+          "disabled": false
+        },
+        {
+          "i": 1,
+          "text": "Anexar arquivo",
+          "disabled": false
+        },
+        {
+          "i": 2,
+          "text": "Iniciar",
+          "disabled": true
+        },
+        {
+          "i": 3,
+          "text": "Automático · grátis-primeiro",
+          "disabled": false
+        },
+        {
+          "i": 4,
+          "text": "Manual",
+          "disabled": false
+        },
+        {
+          "i": 5,
+          "text": "Anexar arquivo",
+          "disabled": false
+        },
+        {
+          "i": 6,
+          "text": "Importar projeto",
+          "disabled": false
+        },
+        {
+          "i": 7,
+          "text": "Criar slides",
+          "disabled": false
+        },
+        {
+          "i": 8,
+          "text": "Criar site",
+          "disabled": false
+        },
+        {
+          "i": 9,
+          "text": "Pesquisa profunda",
+          "disabled": false
+        },
+        {
+          "i": 10,
+          "text": "Analisar código",
+          "disabled": false
+        }
+      ],
+      "links": [
+        {
+          "i": 0,
+          "text": "COMPILAR > Sites, aplicativos e jogos Planeje, execute em split-screen, aprove etapas e gere código com artifacts.",
+          "href": "/agentic"
+        },
+        {
+          "i": 1,
+          "text": "CRIAR > Slides, imagens e vídeos Documentos executivos, apresentações e mídias geradas pelas missões.",
+          "href": "/library"
+        },
+        {
+          "i": 2,
+          "text": "WORKSPACE LOCAL Começar a partir de arquivo local Abrir e orquestrar arquivos e projetos locais com contexto persistente",
+          "href": "/projects"
+        },
+        {
+          "i": 3,
+          "text": "CHAT E MODELOS Conversa com modelo Chat local-first com modelos do Ollama e provedores configurados.",
+          "href": "/c/new"
+        }
+      ],
+      "inputs": [
+        {
+          "tag": "textarea",
+          "label": "",
+          "placeholder": "Atribua uma tarefa ou digite / para mais opções...",
+          "id": "home-objective",
+          "name": ""
+        }
+      ],
+      "interactions": [
+        {
+          "action": "Manual",
+          "result": "Início Ollama Full Um runtime local-first: converse, compile, pesquise, automatize e acompanhe missões com aprovações e dados no seu ambiente. Descreva uma tarefa Iniciar IA da tarefa Automático · grátis-primeiro Manual Escolher modelo PASS"
+        },
+        {
+          "action": "Importar projeto",
+          "result": "Início Ollama Full Um runtime local-first: converse, compile, pesquise, automatize e acompanhe missões com aprovações e dados no seu ambiente. Descreva uma tarefa Iniciar IA da tarefa Automático · grátis-primeiro Manual Escolher modelo PASS"
+        }
+      ],
+      "console": [],
+      "network": []
+    },
+    {
+      "browser": "mobile",
+      "name": "agentic",
+      "route": "/agentic",
+      "viewport": "390x844",
+      "loaded": true,
+      "title": "Ollama",
+      "heading": "Agentic",
+      "buttons": [
+        {
+          "i": 0,
+          "text": "Show sidebar",
+          "disabled": false
+        },
+        {
+          "i": 1,
+          "text": "Criar missão",
+          "disabled": true
+        },
+        {
+          "i": 2,
+          "text": "Iniciar orquestração",
+          "disabled": true
+        },
+        {
+          "i": 3,
+          "text": "Pesquisar",
+          "disabled": true
+        }
+      ],
+      "links": [],
+      "inputs": [
+        {
+          "tag": "textarea",
+          "label": "",
+          "placeholder": "Descreva o que você quer construir, pesquisar, revisar ou automatizar",
+          "id": "agent-objective",
+          "name": ""
+        },
+        {
+          "tag": "select",
+          "label": "Motor",
+          "placeholder": "",
+          "id": "",
+          "name": ""
+        },
+        {
+          "tag": "select",
+          "label": "Projeto",
+          "placeholder": "",
+          "id": "",
+          "name": ""
+        },
+        {
+          "tag": "input",
+          "label": "",
+          "placeholder": "",
+          "id": "isolate-workspace",
+          "name": ""
+        },
+        {
+          "tag": "input",
+          "label": "",
+          "placeholder": "",
+          "id": "",
+          "name": ""
+        },
+        {
+          "tag": "textarea",
+          "label": "",
+          "placeholder": "Ex.: pesquisar concorrentes, revisar segurança e propor implementação",
+          "id": "",
+          "name": ""
+        },
+        {
+          "tag": "input",
+          "label": "",
+          "placeholder": "Pergunta de pesquisa",
+          "id": "",
+          "name": ""
+        },
+        {
+          "tag": "textarea",
+          "label": "",
+          "placeholder": "Uma URL HTTPS pública por linha",
+          "id": "",
+          "name": ""
+        }
+      ],
+      "interactions": [
+        {
+          "action": "fill /plan",
+          "result": "filled"
+        },
+        {
+          "action": "start mission",
+          "result": "Agentic DZ23 AGENTIC RUNTIME Mission Console Planeje, orquestre, pesquise, aprove, execute e observe operações com a mesma trilha persistente usada pela API local. Nova tarefa Motor Ollama local (local) Projeto Sem projeto Executar em cópia"
+        }
+      ],
+      "console": [
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+        }
+      ],
+      "network": [
+        {
+          "status": 401,
+          "url": "/api/agent/v1/metrics"
+        },
+        {
+          "status": 401,
+          "url": "/api/agent/v1/projects"
+        },
+        {
+          "status": 401,
+          "url": "/api/agent/v1/missions"
+        },
+        {
+          "status": 401,
+          "url": "/api/agent/v1/missions"
+        }
+      ]
+    },
+    {
+      "browser": "mobile",
+      "name": "tasks",
+      "route": "/tasks",
+      "viewport": "390x844",
+      "loaded": true,
+      "title": "Ollama",
+      "heading": "Tarefas",
+      "buttons": [
+        {
+          "i": 0,
+          "text": "Show sidebar",
+          "disabled": false
+        },
+        {
+          "i": 1,
+          "text": "Nova tarefa",
+          "disabled": false
+        },
+        {
+          "i": 2,
+          "text": "Tentar novamente",
+          "disabled": false
+        }
+      ],
+      "links": [
+        {
+          "i": 0,
+          "text": "Abrir Agentic Console",
+          "href": "/agentic"
+        }
+      ],
+      "inputs": [],
+      "interactions": [],
+      "console": [
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+        }
+      ],
+      "network": [
+        {
+          "status": 401,
+          "url": "/api/agent/v1/missions"
+        }
+      ]
+    },
+    {
+      "browser": "mobile",
+      "name": "scheduled",
+      "route": "/scheduled",
+      "viewport": "390x844",
+      "loaded": true,
+      "title": "Ollama",
+      "heading": "Automações",
+      "buttons": [
+        {
+          "i": 0,
+          "text": "Show sidebar",
+          "disabled": false
+        },
+        {
+          "i": 1,
+          "text": "Nova automação",
+          "disabled": false
+        },
+        {
+          "i": 2,
+          "text": "⚡ Relatório diário de progresso (24h)",
+          "disabled": false
+        },
+        {
+          "i": 3,
+          "text": "⚡ Varredura semanal de segurança (7d)",
+          "disabled": false
+        },
+        {
+          "i": 4,
+          "text": "Criar agendamento",
+          "disabled": false
+        },
+        {
+          "i": 5,
+          "text": "⚡ Testar repositório ao detectar commits",
+          "disabled": false
+        },
+        {
+          "i": 6,
+          "text": "⚡ Extrair dados de faturas recebidas",
+          "disabled": false
+        },
+        {
+          "i": 7,
+          "text": "Criar gatilho",
+          "disabled": false
+        },
+        {
+          "i": 8,
+          "text": "Começar",
+          "disabled": false
+        }
+      ],
+      "links": [
+        {
+          "i": 0,
+          "text": "Ver histórico de execuções →",
+          "href": "/agentic"
+        }
+      ],
+      "inputs": [
+        {
+          "tag": "input",
+          "label": "",
+          "placeholder": "Ex: Monitore meu repositório e envie resumo diário...",
+          "id": "",
+          "name": ""
+        }
+      ],
+      "interactions": [
+        {
+          "action": "open schedule form",
+          "result": "Automações Automações Automatize fluxos recorrentes, configure gatilhos e deixe o agente trabalhar em segundo plano. Nova automação Agendamento Automatize trabalhos recorrentes escolhendo quando e com que frequência o Ollama Full deve ser e"
+        }
+      ],
+      "console": [
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+        }
+      ],
+      "network": [
+        {
+          "status": 401,
+          "url": "/api/agent/v1/schedules"
+        }
+      ]
+    },
+    {
+      "browser": "mobile",
+      "name": "library",
+      "route": "/library",
+      "viewport": "390x844",
+      "loaded": true,
+      "title": "Ollama",
+      "heading": "Biblioteca",
+      "buttons": [
+        {
+          "i": 0,
+          "text": "Show sidebar",
+          "disabled": false
+        },
+        {
+          "i": 1,
+          "text": "Visualização em Lista",
+          "disabled": false
+        },
+        {
+          "i": 2,
+          "text": "Visualização em Grade",
+          "disabled": false
+        },
+        {
+          "i": 3,
+          "text": "Todos",
+          "disabled": false
+        },
+        {
+          "i": 4,
+          "text": "Texto e PDF",
+          "disabled": false
+        },
+        {
+          "i": 5,
+          "text": "Slides",
+          "disabled": false
+        },
+        {
+          "i": 6,
+          "text": "Planilhas",
+          "disabled": false
+        },
+        {
+          "i": 7,
+          "text": "Imagens",
+          "disabled": false
+        },
+        {
+          "i": 8,
+          "text": "Vídeos",
+          "disabled": false
+        },
+        {
+          "i": 9,
+          "text": "Áudio",
+          "disabled": false
+        },
+        {
+          "i": 10,
+          "text": "Outros",
+          "disabled": false
+        }
+      ],
+      "links": [
+        {
+          "i": 0,
+          "text": "Iniciar nova missão",
+          "href": "/agentic"
+        }
+      ],
+      "inputs": [
+        {
+          "tag": "input",
+          "label": "",
+          "placeholder": "Buscar arquivos...",
+          "id": "",
+          "name": ""
+        }
+      ],
+      "interactions": [],
+      "console": [
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+        }
+      ],
+      "network": [
+        {
+          "status": 401,
+          "url": "/api/agent/v1/missions"
+        }
+      ]
+    },
+    {
+      "browser": "mobile",
+      "name": "creations",
+      "route": "/creations",
+      "viewport": "390x844",
+      "loaded": true,
+      "title": "Ollama",
+      "heading": "Criações",
+      "buttons": [
+        {
+          "i": 0,
+          "text": "Show sidebar",
+          "disabled": false
+        },
+        {
+          "i": 1,
+          "text": "Todos",
+          "disabled": false
+        },
+        {
+          "i": 2,
+          "text": "Sites",
+          "disabled": false
+        },
+        {
+          "i": 3,
+          "text": "Jogos",
+          "disabled": false
+        },
+        {
+          "i": 4,
+          "text": "Aplicativos móveis",
+          "disabled": false
+        }
+      ],
+      "links": [
+        {
+          "i": 0,
+          "text": "Abrir Studio",
+          "href": "/studio"
+        },
+        {
+          "i": 1,
+          "text": "Construir agora",
+          "href": "/agentic?auto_run=true&prompt=Construir+um+aplicativo+web+interativo+completo+com+interface+moderna"
+        },
+        {
+          "i": 2,
+          "text": "Construir agora",
+          "href": "/agentic?auto_run=true&prompt=Construir+uma+aplica%C3%A7%C3%A3o+interativa+com+HTML5+e+visual+moderno"
+        }
+      ],
+      "inputs": [
+        {
+          "tag": "input",
+          "label": "",
+          "placeholder": "Buscar criações...",
+          "id": "",
+          "name": ""
+        }
+      ],
+      "interactions": [],
+      "console": [],
+      "network": []
+    },
+    {
+      "browser": "mobile",
+      "name": "endpoint",
+      "route": "/endpoint",
+      "viewport": "390x844",
+      "loaded": true,
+      "title": "Ollama",
+      "heading": "Computadores & Endpoint",
+      "buttons": [
+        {
+          "i": 0,
+          "text": "Show sidebar",
+          "disabled": false
+        },
+        {
+          "i": 1,
+          "text": "Criar computador na nuvem",
+          "disabled": false
+        },
+        {
+          "i": 2,
+          "text": "Solicitar acesso",
+          "disabled": false
+        },
+        {
+          "i": 3,
+          "text": "Conectar meu computador",
+          "disabled": false
+        },
+        {
+          "i": 4,
+          "text": "Controlar pelo seu telefone",
+          "disabled": false
+        },
+        {
+          "i": 5,
+          "text": "Copiar Ollama Nativo",
+          "disabled": false
+        },
+        {
+          "i": 6,
+          "text": "Copiar OpenAI-Compatible",
+          "disabled": false
+        },
+        {
+          "i": 7,
+          "text": "Copiar Anthropic-Compatible",
+          "disabled": false
+        },
+        {
+          "i": 8,
+          "text": "Copiar Claude Code",
+          "disabled": false
+        },
+        {
+          "i": 9,
+          "text": "Copiar Codex CLI",
+          "disabled": false
+        }
+      ],
+      "links": [
+        {
+          "i": 0,
+          "text": "Geral",
+          "href": "/settings"
+        },
+        {
+          "i": 1,
+          "text": "Provedores de IA",
+          "href": "/providers"
+        },
+        {
+          "i": 2,
+          "text": "Computadores & API",
+          "href": "/endpoint"
+        },
+        {
+          "i": 3,
+          "text": "Conectores e Plugins",
+          "href": "/connectors"
+        },
+        {
+          "i": 4,
+          "text": "Harnesses & Codex",
+          "href": "/connect"
+        },
+        {
+          "i": 5,
+          "text": "Configurações",
+          "href": "#endpoints-section"
+        },
+        {
+          "i": 6,
+          "text": "Tarefas",
+          "href": "/tasks"
+        }
+      ],
+      "inputs": [],
+      "interactions": [],
+      "console": [],
+      "network": []
+    },
+    {
+      "browser": "mobile",
+      "name": "connectors",
+      "route": "/connectors",
+      "viewport": "390x844",
+      "loaded": true,
+      "title": "Ollama",
+      "heading": "Plugins & Conectores",
+      "buttons": [
+        {
+          "i": 0,
+          "text": "Show sidebar",
+          "disabled": false
+        },
+        {
+          "i": 1,
+          "text": "Gerenciar Conectores (0)",
+          "disabled": false
+        },
+        {
+          "i": 2,
+          "text": "Criar Conector",
+          "disabled": false
+        },
+        {
+          "i": 3,
+          "text": "Todos",
+          "disabled": false
+        },
+        {
+          "i": 4,
+          "text": "Produtividade",
+          "disabled": false
+        },
+        {
+          "i": 5,
+          "text": "Criatividade",
+          "disabled": false
+        },
+        {
+          "i": 6,
+          "text": "Negócios",
+          "disabled": false
+        },
+        {
+          "i": 7,
+          "text": "Desenvolvimento",
+          "disabled": false
+        },
+        {
+          "i": 8,
+          "text": "Finanças",
+          "disabled": false
+        },
+        {
+          "i": 9,
+          "text": "Viagem",
+          "disabled": false
+        },
+        {
+          "i": 10,
+          "text": "Saúde",
+          "disabled": false
+        },
+        {
+          "i": 11,
+          "text": "Conectados",
+          "disabled": false
+        },
+        {
+          "i": 12,
+          "text": "WhatsApp Gateway",
+          "disabled": false
+        }
+      ],
+      "links": [],
+      "inputs": [
+        {
+          "tag": "input",
+          "label": "Buscar conectores",
+          "placeholder": "Buscar conectores e plugins...",
+          "id": "",
+          "name": ""
+        }
+      ],
+      "interactions": [
+        {
+          "action": "WhatsApp Gateway",
+          "result": "Plugins & Conectores Plugins Conecte serviços externos, contas OAuth e servidores MCP para expandir as capacidades do agente. Gerenciar Conectores (0) Criar Conector WhatsApp Gateway — Controle Remoto do Agente Dispare missões, consulte pro"
+        }
+      ],
+      "console": [
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+        }
+      ],
+      "network": [
+        {
+          "status": 401,
+          "url": "/api/agent/v1/connector-catalog"
+        },
+        {
+          "status": 401,
+          "url": "/api/agent/v1/connectors"
+        },
+        {
+          "status": 401,
+          "url": "/api/agent/v1/mcp"
+        },
+        {
+          "status": 401,
+          "url": "/api/agent/v1/whatsapp/status"
+        },
+        {
+          "status": 401,
+          "url": "/api/agent/v1/whatsapp/allowlist"
+        }
+      ]
+    },
+    {
+      "browser": "mobile",
+      "name": "skills",
+      "route": "/skills",
+      "viewport": "390x844",
+      "loaded": true,
+      "title": "Ollama",
+      "heading": "Habilidades",
+      "buttons": [
+        {
+          "i": 0,
+          "text": "Show sidebar",
+          "disabled": false
+        },
+        {
+          "i": 1,
+          "text": "Abrir configuração",
+          "disabled": false
+        },
+        {
+          "i": 2,
+          "text": "Tentar novamente",
+          "disabled": false
+        }
+      ],
+      "links": [
+        {
+          "i": 0,
+          "text": "Abrir Agentic Console",
+          "href": "/agentic"
+        }
+      ],
+      "inputs": [],
+      "interactions": [],
+      "console": [
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+        }
+      ],
+      "network": [
+        {
+          "status": 401,
+          "url": "/api/agent/v1/skills"
+        }
+      ]
+    },
+    {
+      "browser": "mobile",
+      "name": "company",
+      "route": "/company",
+      "viewport": "390x844",
+      "loaded": true,
+      "title": "Ollama",
+      "heading": "Empresa",
+      "buttons": [
+        {
+          "i": 0,
+          "text": "Show sidebar",
+          "disabled": false
+        },
+        {
+          "i": 1,
+          "text": "Atualizar",
+          "disabled": false
+        },
+        {
+          "i": 2,
+          "text": "Ativar",
+          "disabled": false
+        },
+        {
+          "i": 3,
+          "text": "Ciclo Manual (Tick)",
+          "disabled": false
+        },
+        {
+          "i": 4,
+          "text": "Criar empresa e tenant",
+          "disabled": true
+        }
+      ],
+      "links": [],
+      "inputs": [
+        {
+          "tag": "input",
+          "label": "Nome da empresa",
+          "placeholder": "Nome da empresa",
+          "id": "",
+          "name": ""
+        },
+        {
+          "tag": "input",
+          "label": "Modelo de negócio",
+          "placeholder": "Modelo de negócio",
+          "id": "",
+          "name": ""
+        },
+        {
+          "tag": "textarea",
+          "label": "Missão",
+          "placeholder": "Missão e resultado que a empresa entrega",
+          "id": "",
+          "name": ""
+        },
+        {
+          "tag": "textarea",
+          "label": "Posicionamento",
+          "placeholder": "Posicionamento e diferencial",
+          "id": "",
+          "name": ""
+        },
+        {
+          "tag": "input",
+          "label": "Público-alvo",
+          "placeholder": "Público-alvo",
+          "id": "",
+          "name": ""
+        },
+        {
+          "tag": "input",
+          "label": "Oferta",
+          "placeholder": "Oferta principal",
+          "id": "",
+          "name": ""
+        },
+        {
+          "tag": "input",
+          "label": "Limite mensal",
+          "placeholder": "Limite mensal em BRL",
+          "id": "",
+          "name": ""
+        }
+      ],
+      "interactions": [],
+      "console": [
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+        }
+      ],
+      "network": [
+        {
+          "status": 401,
+          "url": "/api/agent/v1/supervisor/status"
+        },
+        {
+          "status": 401,
+          "url": "/api/agent/v1/companies"
+        }
+      ]
+    },
+    {
+      "browser": "mobile",
+      "name": "projects",
+      "route": "/projects",
+      "viewport": "390x844",
+      "loaded": true,
+      "title": "Ollama",
+      "heading": "Projetos",
+      "buttons": [
+        {
+          "i": 0,
+          "text": "Show sidebar",
+          "disabled": false
+        },
+        {
+          "i": 1,
+          "text": "Novo projeto",
+          "disabled": false
+        },
+        {
+          "i": 2,
+          "text": "Criar",
+          "disabled": true
+        },
+        {
+          "i": 3,
+          "text": "Importar projeto",
+          "disabled": false
+        },
+        {
+          "i": 4,
+          "text": "Tentar novamente",
+          "disabled": false
+        }
+      ],
+      "links": [
+        {
+          "i": 0,
+          "text": "Abrir Agentic Console",
+          "href": "/agentic"
+        }
+      ],
+      "inputs": [
+        {
+          "tag": "input",
+          "label": "Nome do novo projeto",
+          "placeholder": "Nome do projeto",
+          "id": "new-project-name",
+          "name": ""
+        },
+        {
+          "tag": "input",
+          "label": "Workspace do novo projeto",
+          "placeholder": "Workspace (opcional)",
+          "id": "",
+          "name": ""
+        }
+      ],
+      "interactions": [
+        {
+          "action": "open import dialog",
+          "result": "Projetos Contexto persistente Projetos Organize memória, fontes, tarefas, membros e builders em workspaces isolados. Novo projeto O Ollama está exposto na rede, então os recursos de agente exigem login. Entre em Configurações → Workspace ou"
+        }
+      ],
+      "console": [
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+        }
+      ],
+      "network": [
+        {
+          "status": 401,
+          "url": "/api/agent/v1/projects"
+        }
+      ]
+    },
+    {
+      "browser": "mobile",
+      "name": "studio",
+      "route": "/studio",
+      "viewport": "390x844",
+      "loaded": true,
+      "title": "Ollama",
+      "heading": "Studio",
+      "buttons": [
+        {
+          "i": 0,
+          "text": "Show sidebar",
+          "disabled": false
+        },
+        {
+          "i": 1,
+          "text": "Desfazer (Undo)",
+          "disabled": true
+        },
+        {
+          "i": 2,
+          "text": "Refazer (Redo)",
+          "disabled": true
+        },
+        {
+          "i": 5,
+          "text": "Exportar ZIP com checksum SHA-256",
+          "disabled": false
+        },
+        {
+          "i": 7,
+          "text": "×",
+          "disabled": false
+        },
+        {
+          "i": 8,
+          "text": "+ Título",
+          "disabled": false
+        },
+        {
+          "i": 9,
+          "text": "+ Parágrafo",
+          "disabled": false
+        },
+        {
+          "i": 10,
+          "text": "+ Botão de Ação",
+          "disabled": false
+        },
+        {
+          "i": 11,
+          "text": "+ Card / Recurso",
+          "disabled": false
+        },
+        {
+          "i": 12,
+          "text": "+ Métrica / KPI",
+          "disabled": false
+        },
+        {
+          "i": 13,
+          "text": "+ Barra de Navegação",
+          "disabled": false
+        }
+      ],
+      "links": [],
+      "inputs": [],
+      "interactions": [
+        {
+          "action": "Card",
+          "result": "clicked"
+        },
+        {
+          "action": "Undo",
+          "result": "clicked"
+        },
+        {
+          "action": "Redo",
+          "result": "clicked"
+        },
+        {
+          "action": "Export",
+          "result": "clicked"
+        }
+      ],
+      "console": [
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+        }
+      ],
+      "network": [
+        {
+          "status": 401,
+          "url": "/api/agent/v1/builders"
+        }
+      ]
+    },
+    {
+      "browser": "mobile",
+      "name": "settings",
+      "route": "/settings",
+      "viewport": "390x844",
+      "loaded": true,
+      "title": "Ollama",
+      "heading": "Configurações",
+      "buttons": [
+        {
+          "i": 0,
+          "text": "Show sidebar",
+          "disabled": false
+        },
+        {
+          "i": 5,
+          "text": "Browse",
+          "disabled": false
+        },
+        {
+          "i": 13,
+          "text": "Start ChatGPT",
+          "disabled": true
+        },
+        {
+          "i": 14,
+          "text": "Choose ChatGPT models",
+          "disabled": false
+        },
+        {
+          "i": 16,
+          "text": "Reset to defaults",
+          "disabled": false
+        }
+      ],
+      "links": [
+        {
+          "i": 0,
+          "text": "Geral",
+          "href": "/settings"
+        },
+        {
+          "i": 1,
+          "text": "Provedores de IA",
+          "href": "/providers"
+        },
+        {
+          "i": 2,
+          "text": "Computadores & API",
+          "href": "/endpoint"
+        },
+        {
+          "i": 3,
+          "text": "Conectores e Plugins",
+          "href": "/connectors"
+        },
+        {
+          "i": 4,
+          "text": "Harnesses & Codex",
+          "href": "/connect"
+        },
+        {
+          "i": 5,
+          "text": "Abrir console",
+          "href": "/agentic"
+        }
+      ],
+      "inputs": [
+        {
+          "tag": "input",
+          "label": "",
+          "placeholder": "",
+          "id": "headlessui-control-_r_h_",
+          "name": ""
+        },
+        {
+          "tag": "textarea",
+          "label": "",
+          "placeholder": "Digite suas diretrizes permanentes...",
+          "id": "",
+          "name": ""
+        }
+      ],
+      "interactions": [
+        {
+          "action": "/providers",
+          "result": "Configurações Geral Provedores de IA Computadores & API Conectores e Plugins Harnesses & Codex Provedores de IA Modelos de outros provedores usados pelo roteador, ao lado dos modelos locais e do Ollama Cloud. As chaves ficam protegidas no s"
+        },
+        {
+          "action": "/endpoint",
+          "result": "Computadores & Endpoint Geral Provedores de IA Computadores & API Conectores e Plugins Harnesses & Codex Computadores Gerencie seus computadores locais e na nuvem para execução segura de missões e Computer Use. Criar computador na nuvem 63b"
+        },
+        {
+          "action": "/connect",
+          "result": "Esta página encontrou um erro O restante do app continua funcionando. Volte, vá para o início ou tente carregar a página de novo. Voltar Ir para o início Recarregar Mostrar detalhes"
+        }
+      ],
+      "console": [
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+        },
+        {
+          "type": "error",
+          "text": "TypeError: M.find is not a function at SX (http://127.0.0.1:5173/assets/index-CB-R3-KY.js:105:99473) at Sg (http://127.0.0.1:5173/assets/index-CB-R3-KY.js:49:50597) at Yg (http://127.0.0.1:5173/assets/index-CB-R3-KY.js:49:73717) at cy (http"
+        }
+      ],
+      "network": [
+        {
+          "status": 401,
+          "url": "/api/agent/v1/config/safe"
+        },
+        {
+          "status": 401,
+          "url": "/api/agent/v1/mcp"
+        },
+        {
+          "status": 401,
+          "url": "/api/agent/v1/connectors"
+        },
+        {
+          "status": 401,
+          "url": "/api/agent/v1/skills"
+        },
+        {
+          "status": 401,
+          "url": "/api/agent/v1/config/safe"
+        },
+        {
+          "status": 401,
+          "url": "/api/agent/v1/connectors"
+        },
+        {
+          "status": 401,
+          "url": "/api/agent/v1/skills"
+        },
+        {
+          "status": 401,
+          "url": "/api/agent/v1/mcp"
+        }
+      ]
+    },
+    {
+      "browser": "mobile",
+      "name": "providers",
+      "route": "/providers",
+      "viewport": "390x844",
+      "loaded": true,
+      "title": "Ollama",
+      "heading": "Configurações",
+      "buttons": [
+        {
+          "i": 0,
+          "text": "Show sidebar",
+          "disabled": false
+        }
+      ],
+      "links": [
+        {
+          "i": 0,
+          "text": "Geral",
+          "href": "/settings"
+        },
+        {
+          "i": 1,
+          "text": "Provedores de IA",
+          "href": "/providers"
+        },
+        {
+          "i": 2,
+          "text": "Computadores & API",
+          "href": "/endpoint"
+        },
+        {
+          "i": 3,
+          "text": "Conectores e Plugins",
+          "href": "/connectors"
+        },
+        {
+          "i": 4,
+          "text": "Harnesses & Codex",
+          "href": "/connect"
+        }
+      ],
+      "inputs": [],
+      "interactions": [],
+      "console": [],
+      "network": []
+    },
+    {
+      "browser": "mobile",
+      "name": "connect",
+      "route": "/connect",
+      "viewport": "390x844",
+      "loaded": true,
+      "title": "Ollama",
+      "heading": "Esta página encontrou um erro",
+      "buttons": [
+        {
+          "i": 0,
+          "text": "Voltar",
+          "disabled": false
+        },
+        {
+          "i": 1,
+          "text": "Ir para o início",
+          "disabled": false
+        },
+        {
+          "i": 2,
+          "text": "Recarregar",
+          "disabled": false
+        },
+        {
+          "i": 3,
+          "text": "Mostrar detalhes",
+          "disabled": false
+        }
+      ],
+      "links": [],
+      "inputs": [],
+      "interactions": [],
+      "console": [
+        {
+          "type": "error",
+          "text": "TypeError: M.find is not a function at SX (http://127.0.0.1:5173/assets/index-CB-R3-KY.js:105:99473) at Sg (http://127.0.0.1:5173/assets/index-CB-R3-KY.js:49:50597) at Yg (http://127.0.0.1:5173/assets/index-CB-R3-KY.js:49:73717) at cy (http"
+        }
+      ],
+      "network": []
+    },
+    {
+      "browser": "mobile",
+      "name": "plugins",
+      "route": "/plugins",
+      "viewport": "390x844",
+      "loaded": true,
+      "title": "Ollama",
+      "heading": "Registro avançado",
+      "buttons": [
+        {
+          "i": 0,
+          "text": "Show sidebar",
+          "disabled": false
+        },
+        {
+          "i": 1,
+          "text": "Abrir configuração",
+          "disabled": false
+        },
+        {
+          "i": 2,
+          "text": "Tentar novamente",
+          "disabled": false
+        }
+      ],
+      "links": [
+        {
+          "i": 0,
+          "text": "Abrir Agentic Console",
+          "href": "/agentic"
+        }
+      ],
+      "inputs": [],
+      "interactions": [],
+      "console": [
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+        }
+      ],
+      "network": [
+        {
+          "status": 401,
+          "url": "/api/agent/v1/connectors"
+        },
+        {
+          "status": 401,
+          "url": "/api/agent/v1/connector-catalog"
+        },
+        {
+          "status": 401,
+          "url": "/api/agent/v1/mcp"
+        }
+      ]
+    },
+    {
+      "browser": "mobile",
+      "name": "chat-new",
+      "route": "/c/new",
+      "viewport": "390x844",
+      "loaded": true,
+      "title": "Ollama",
+      "heading": "O que posso fazer por você?",
+      "buttons": [
+        {
+          "i": 0,
+          "text": "Show sidebar",
+          "disabled": false
+        },
+        {
+          "i": 1,
+          "text": "Chat anônimo",
+          "disabled": false
+        },
+        {
+          "i": 2,
+          "text": "Upload multiple files",
+          "disabled": false
+        },
+        {
+          "i": 3,
+          "text": "Selecionar modelo",
+          "disabled": false
+        },
+        {
+          "i": 5,
+          "text": "Criar slides",
+          "disabled": false
+        },
+        {
+          "i": 6,
+          "text": "Criar site",
+          "disabled": false
+        },
+        {
+          "i": 7,
+          "text": "Design",
+          "disabled": false
+        },
+        {
+          "i": 8,
+          "text": "Criar jogos",
+          "disabled": false
+        },
+        {
+          "i": 9,
+          "text": "Mais",
+          "disabled": false
+        },
+        {
+          "i": 10,
+          "text": "Atualizar",
+          "disabled": false
+        },
+        {
+          "i": 11,
+          "text": "⌁ Audite meu projeto Inspecione o código, encontre riscos e proponha correções testáveis.",
+          "disabled": false
+        },
+        {
+          "i": 12,
+          "text": "⌁ Construa um MVP Crie um produto completo, com backend, frontend, testes e preview.",
+          "disabled": false
+        },
+        {
+          "i": 13,
+          "text": "⌁ Pesquise o mercado Compare soluções, cite fontes e entregue uma síntese com próximos passos.",
+          "disabled": false
+        }
+      ],
+      "links": [],
+      "inputs": [
+        {
+          "tag": "textarea",
+          "label": "",
+          "placeholder": "Send a message",
+          "id": "",
+          "name": ""
+        }
+      ],
+      "interactions": [],
+      "console": [],
+      "network": []
+    }
+  ],
+  "console_errors": [
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "screen": "agentic",
+      "viewport": "1440x900"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "screen": "agentic",
+      "viewport": "1440x900"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "screen": "agentic",
+      "viewport": "1440x900"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "screen": "agentic",
+      "viewport": "1440x900"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "screen": "tasks",
+      "viewport": "1440x900"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "screen": "scheduled",
+      "viewport": "1440x900"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "screen": "library",
+      "viewport": "1440x900"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "screen": "connectors",
+      "viewport": "1440x900"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "screen": "connectors",
+      "viewport": "1440x900"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "screen": "connectors",
+      "viewport": "1440x900"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "screen": "connectors",
+      "viewport": "1440x900"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "screen": "connectors",
+      "viewport": "1440x900"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "screen": "skills",
+      "viewport": "1440x900"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "screen": "company",
+      "viewport": "1440x900"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "screen": "company",
+      "viewport": "1440x900"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "screen": "projects",
+      "viewport": "1440x900"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "screen": "studio",
+      "viewport": "1440x900"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "screen": "settings",
+      "viewport": "1440x900"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "screen": "settings",
+      "viewport": "1440x900"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "screen": "settings",
+      "viewport": "1440x900"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "screen": "settings",
+      "viewport": "1440x900"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "screen": "settings",
+      "viewport": "1440x900"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "screen": "settings",
+      "viewport": "1440x900"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "screen": "settings",
+      "viewport": "1440x900"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "screen": "settings",
+      "viewport": "1440x900"
+    },
+    {
+      "type": "error",
+      "text": "TypeError: M.find is not a function at SX (http://127.0.0.1:5173/assets/index-CB-R3-KY.js:105:99473) at Sg (http://127.0.0.1:5173/assets/index-CB-R3-KY.js:49:50597) at Yg (http://127.0.0.1:5173/assets/index-CB-R3-KY.js:49:73717) at cy (http",
+      "screen": "settings",
+      "viewport": "1440x900"
+    },
+    {
+      "type": "error",
+      "text": "TypeError: M.find is not a function at SX (http://127.0.0.1:5173/assets/index-CB-R3-KY.js:105:99473) at Sg (http://127.0.0.1:5173/assets/index-CB-R3-KY.js:49:50597) at Yg (http://127.0.0.1:5173/assets/index-CB-R3-KY.js:49:73717) at cy (http",
+      "screen": "connect",
+      "viewport": "1440x900"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "screen": "plugins",
+      "viewport": "1440x900"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "screen": "plugins",
+      "viewport": "1440x900"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "screen": "plugins",
+      "viewport": "1440x900"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "screen": "agentic",
+      "viewport": "390x844"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "screen": "agentic",
+      "viewport": "390x844"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "screen": "agentic",
+      "viewport": "390x844"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "screen": "agentic",
+      "viewport": "390x844"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "screen": "tasks",
+      "viewport": "390x844"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "screen": "scheduled",
+      "viewport": "390x844"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "screen": "library",
+      "viewport": "390x844"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "screen": "connectors",
+      "viewport": "390x844"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "screen": "connectors",
+      "viewport": "390x844"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "screen": "connectors",
+      "viewport": "390x844"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "screen": "connectors",
+      "viewport": "390x844"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "screen": "connectors",
+      "viewport": "390x844"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "screen": "skills",
+      "viewport": "390x844"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "screen": "company",
+      "viewport": "390x844"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "screen": "company",
+      "viewport": "390x844"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "screen": "projects",
+      "viewport": "390x844"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "screen": "studio",
+      "viewport": "390x844"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "screen": "settings",
+      "viewport": "390x844"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "screen": "settings",
+      "viewport": "390x844"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "screen": "settings",
+      "viewport": "390x844"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "screen": "settings",
+      "viewport": "390x844"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "screen": "settings",
+      "viewport": "390x844"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "screen": "settings",
+      "viewport": "390x844"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "screen": "settings",
+      "viewport": "390x844"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "screen": "settings",
+      "viewport": "390x844"
+    },
+    {
+      "type": "error",
+      "text": "TypeError: M.find is not a function at SX (http://127.0.0.1:5173/assets/index-CB-R3-KY.js:105:99473) at Sg (http://127.0.0.1:5173/assets/index-CB-R3-KY.js:49:50597) at Yg (http://127.0.0.1:5173/assets/index-CB-R3-KY.js:49:73717) at cy (http",
+      "screen": "settings",
+      "viewport": "390x844"
+    },
+    {
+      "type": "error",
+      "text": "TypeError: M.find is not a function at SX (http://127.0.0.1:5173/assets/index-CB-R3-KY.js:105:99473) at Sg (http://127.0.0.1:5173/assets/index-CB-R3-KY.js:49:50597) at Yg (http://127.0.0.1:5173/assets/index-CB-R3-KY.js:49:73717) at cy (http",
+      "screen": "connect",
+      "viewport": "390x844"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "screen": "plugins",
+      "viewport": "390x844"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "screen": "plugins",
+      "viewport": "390x844"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "screen": "plugins",
+      "viewport": "390x844"
+    }
+  ],
+  "http_errors": [
+    {
+      "status": 401,
+      "url": "/api/agent/v1/projects",
+      "screen": "agentic",
+      "viewport": "1440x900"
+    },
+    {
+      "status": 401,
+      "url": "/api/agent/v1/metrics",
+      "screen": "agentic",
+      "viewport": "1440x900"
+    },
+    {
+      "status": 401,
+      "url": "/api/agent/v1/missions",
+      "screen": "agentic",
+      "viewport": "1440x900"
+    },
+    {
+      "status": 401,
+      "url": "/api/agent/v1/missions",
+      "screen": "agentic",
+      "viewport": "1440x900"
+    },
+    {
+      "status": 401,
+      "url": "/api/agent/v1/missions",
+      "screen": "tasks",
+      "viewport": "1440x900"
+    },
+    {
+      "status": 401,
+      "url": "/api/agent/v1/schedules",
+      "screen": "scheduled",
+      "viewport": "1440x900"
+    },
+    {
+      "status": 401,
+      "url": "/api/agent/v1/missions",
+      "screen": "library",
+      "viewport": "1440x900"
+    },
+    {
+      "status": 401,
+      "url": "/api/agent/v1/connector-catalog",
+      "screen": "connectors",
+      "viewport": "1440x900"
+    },
+    {
+      "status": 401,
+      "url": "/api/agent/v1/mcp",
+      "screen": "connectors",
+      "viewport": "1440x900"
+    },
+    {
+      "status": 401,
+      "url": "/api/agent/v1/connectors",
+      "screen": "connectors",
+      "viewport": "1440x900"
+    },
+    {
+      "status": 401,
+      "url": "/api/agent/v1/whatsapp/status",
+      "screen": "connectors",
+      "viewport": "1440x900"
+    },
+    {
+      "status": 401,
+      "url": "/api/agent/v1/whatsapp/allowlist",
+      "screen": "connectors",
+      "viewport": "1440x900"
+    },
+    {
+      "status": 401,
+      "url": "/api/agent/v1/skills",
+      "screen": "skills",
+      "viewport": "1440x900"
+    },
+    {
+      "status": 401,
+      "url": "/api/agent/v1/companies",
+      "screen": "company",
+      "viewport": "1440x900"
+    },
+    {
+      "status": 401,
+      "url": "/api/agent/v1/supervisor/status",
+      "screen": "company",
+      "viewport": "1440x900"
+    },
+    {
+      "status": 401,
+      "url": "/api/agent/v1/projects",
+      "screen": "projects",
+      "viewport": "1440x900"
+    },
+    {
+      "status": 401,
+      "url": "/api/agent/v1/builders",
+      "screen": "studio",
+      "viewport": "1440x900"
+    },
+    {
+      "status": 401,
+      "url": "/api/agent/v1/skills",
+      "screen": "settings",
+      "viewport": "1440x900"
+    },
+    {
+      "status": 401,
+      "url": "/api/agent/v1/mcp",
+      "screen": "settings",
+      "viewport": "1440x900"
+    },
+    {
+      "status": 401,
+      "url": "/api/agent/v1/config/safe",
+      "screen": "settings",
+      "viewport": "1440x900"
+    },
+    {
+      "status": 401,
+      "url": "/api/agent/v1/connectors",
+      "screen": "settings",
+      "viewport": "1440x900"
+    },
+    {
+      "status": 401,
+      "url": "/api/agent/v1/config/safe",
+      "screen": "settings",
+      "viewport": "1440x900"
+    },
+    {
+      "status": 401,
+      "url": "/api/agent/v1/connectors",
+      "screen": "settings",
+      "viewport": "1440x900"
+    },
+    {
+      "status": 401,
+      "url": "/api/agent/v1/mcp",
+      "screen": "settings",
+      "viewport": "1440x900"
+    },
+    {
+      "status": 401,
+      "url": "/api/agent/v1/skills",
+      "screen": "settings",
+      "viewport": "1440x900"
+    },
+    {
+      "status": 401,
+      "url": "/api/agent/v1/mcp",
+      "screen": "plugins",
+      "viewport": "1440x900"
+    },
+    {
+      "status": 401,
+      "url": "/api/agent/v1/connector-catalog",
+      "screen": "plugins",
+      "viewport": "1440x900"
+    },
+    {
+      "status": 401,
+      "url": "/api/agent/v1/connectors",
+      "screen": "plugins",
+      "viewport": "1440x900"
+    },
+    {
+      "status": 401,
+      "url": "/api/agent/v1/metrics",
+      "screen": "agentic",
+      "viewport": "390x844"
+    },
+    {
+      "status": 401,
+      "url": "/api/agent/v1/projects",
+      "screen": "agentic",
+      "viewport": "390x844"
+    },
+    {
+      "status": 401,
+      "url": "/api/agent/v1/missions",
+      "screen": "agentic",
+      "viewport": "390x844"
+    },
+    {
+      "status": 401,
+      "url": "/api/agent/v1/missions",
+      "screen": "agentic",
+      "viewport": "390x844"
+    },
+    {
+      "status": 401,
+      "url": "/api/agent/v1/missions",
+      "screen": "tasks",
+      "viewport": "390x844"
+    },
+    {
+      "status": 401,
+      "url": "/api/agent/v1/schedules",
+      "screen": "scheduled",
+      "viewport": "390x844"
+    },
+    {
+      "status": 401,
+      "url": "/api/agent/v1/missions",
+      "screen": "library",
+      "viewport": "390x844"
+    },
+    {
+      "status": 401,
+      "url": "/api/agent/v1/connector-catalog",
+      "screen": "connectors",
+      "viewport": "390x844"
+    },
+    {
+      "status": 401,
+      "url": "/api/agent/v1/connectors",
+      "screen": "connectors",
+      "viewport": "390x844"
+    },
+    {
+      "status": 401,
+      "url": "/api/agent/v1/mcp",
+      "screen": "connectors",
+      "viewport": "390x844"
+    },
+    {
+      "status": 401,
+      "url": "/api/agent/v1/whatsapp/status",
+      "screen": "connectors",
+      "viewport": "390x844"
+    },
+    {
+      "status": 401,
+      "url": "/api/agent/v1/whatsapp/allowlist",
+      "screen": "connectors",
+      "viewport": "390x844"
+    },
+    {
+      "status": 401,
+      "url": "/api/agent/v1/skills",
+      "screen": "skills",
+      "viewport": "390x844"
+    },
+    {
+      "status": 401,
+      "url": "/api/agent/v1/supervisor/status",
+      "screen": "company",
+      "viewport": "390x844"
+    },
+    {
+      "status": 401,
+      "url": "/api/agent/v1/companies",
+      "screen": "company",
+      "viewport": "390x844"
+    },
+    {
+      "status": 401,
+      "url": "/api/agent/v1/projects",
+      "screen": "projects",
+      "viewport": "390x844"
+    },
+    {
+      "status": 401,
+      "url": "/api/agent/v1/builders",
+      "screen": "studio",
+      "viewport": "390x844"
+    },
+    {
+      "status": 401,
+      "url": "/api/agent/v1/config/safe",
+      "screen": "settings",
+      "viewport": "390x844"
+    },
+    {
+      "status": 401,
+      "url": "/api/agent/v1/mcp",
+      "screen": "settings",
+      "viewport": "390x844"
+    },
+    {
+      "status": 401,
+      "url": "/api/agent/v1/connectors",
+      "screen": "settings",
+      "viewport": "390x844"
+    },
+    {
+      "status": 401,
+      "url": "/api/agent/v1/skills",
+      "screen": "settings",
+      "viewport": "390x844"
+    },
+    {
+      "status": 401,
+      "url": "/api/agent/v1/config/safe",
+      "screen": "settings",
+      "viewport": "390x844"
+    },
+    {
+      "status": 401,
+      "url": "/api/agent/v1/connectors",
+      "screen": "settings",
+      "viewport": "390x844"
+    },
+    {
+      "status": 401,
+      "url": "/api/agent/v1/skills",
+      "screen": "settings",
+      "viewport": "390x844"
+    },
+    {
+      "status": 401,
+      "url": "/api/agent/v1/mcp",
+      "screen": "settings",
+      "viewport": "390x844"
+    },
+    {
+      "status": 401,
+      "url": "/api/agent/v1/connectors",
+      "screen": "plugins",
+      "viewport": "390x844"
+    },
+    {
+      "status": 401,
+      "url": "/api/agent/v1/connector-catalog",
+      "screen": "plugins",
+      "viewport": "390x844"
+    },
+    {
+      "status": 401,
+      "url": "/api/agent/v1/mcp",
+      "screen": "plugins",
+      "viewport": "390x844"
+    }
+  ]
+}

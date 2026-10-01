@@ -221,6 +221,9 @@ export class Model {
     provider?: string;
     available: boolean;
     capabilities?: string[];
+    status?: string;
+    reason?: string;
+    cost_tag?: string;
 
     constructor(source: any = {}) {
         if ('string' === typeof source) source = JSON.parse(source);
@@ -231,6 +234,9 @@ export class Model {
         this.provider = source["provider"];
         this.available = source["available"];
         this.capabilities = source["capabilities"];
+        this.status = source["status"];
+        this.reason = source["reason"];
+        this.cost_tag = source["cost_tag"];
     }
 
 	convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -524,6 +530,7 @@ export class ChatRequest {
     file_tools?: boolean;
     forceUpdate?: boolean;
     think?: any;
+    temporary?: boolean;
 
     constructor(source: any = {}) {
         if ('string' === typeof source) source = JSON.parse(source);
@@ -535,6 +542,7 @@ export class ChatRequest {
         this.file_tools = source["file_tools"];
         this.forceUpdate = source["forceUpdate"];
         this.think = source["think"];
+        this.temporary = source["temporary"];
     }
 
 	convertValues(a: any, classs: any, asMap: boolean = false): any {

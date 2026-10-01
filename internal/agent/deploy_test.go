@@ -5,12 +5,16 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -75,6 +79,58 @@ func TestDeploymentManagerRejectsExternalHTTP(t *testing.T) {
 	manager := NewDeploymentManager()
 	if err := manager.Register(DeployConfig{ID: "unsafe", Provider: "generic", BaseURL: "http://example.com"}); err == nil {
 		t.Fatal("external HTTP deployment unexpectedly accepted")
+	}
+}
+
+func TestDeploymentManagerConcurrentRegisterAndList(t *testing.T) {
+	manager := NewDeploymentManager()
+	var group sync.WaitGroup
+	for worker := range 8 {
+		group.Add(1)
+		go func(worker int) {
+			defer group.Done()
+			for index := range 80 {
+				if worker == 0 {
+					id := fmt.Sprintf("provider-%d", index)
+					if err := manager.Register(DeployConfig{ID: id, OrganizationID: "org-a", Provider: "generic", BaseURL: "https://example.test"}); err != nil {
+						t.Errorf("Register(%s): %v", id, err)
+						return
+					}
+					continue
+				}
+				_, _ = manager.Deploy(context.Background(), "provider-0", DeploymentRequest{})
+				_ = manager.List()
+				_ = manager.ListForOrganization("org-a")
+			}
+		}(worker)
+	}
+	group.Wait()
+	if got := len(manager.ListForOrganization("org-a")); got != 80 {
+		t.Fatalf("registered providers=%d, want 80", got)
+	}
+}
+
+func TestDeploymentBlocksSecretContentBeforeProviderSideEffects(t *testing.T) {
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, "config.yaml"), []byte("password: \"example-secret-value\"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	var requests atomic.Int32
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		requests.Add(1)
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+	manager := NewDeploymentManager()
+	manager.client = server.Client()
+	if err := manager.Register(DeployConfig{ID: "provider", Provider: "netlify", BaseURL: server.URL}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := manager.Deploy(context.Background(), "provider", DeploymentRequest{Name: "safe-name", Root: root}); err == nil || !strings.Contains(err.Error(), "DLP") {
+		t.Fatalf("deployment error = %v, want DLP block", err)
+	}
+	if requests.Load() != 0 {
+		t.Fatalf("deployment made %d provider request(s) with secret content", requests.Load())
 	}
 }
 
@@ -195,6 +251,55 @@ func TestDeploymentPackageExcludesPrivateFiles(t *testing.T) {
 	}
 	if len(files) != 1 || files[0].Path != "index.html" {
 		t.Fatalf("public deployment files=%+v", files)
+	}
+}
+
+func TestDeploymentResultSanitizesURLsAndIdentifiers(t *testing.T) {
+	for _, value := range []string{
+		"javascript:alert(1)",
+		"file:///etc/passwd",
+		"https://user:password@example.test/deploy",
+		"https://example.test/deploy?meta=%7B%22providerSignature%22%3A%22synthetic%22%7D",
+		"https://example.test/deploy#fragment",
+	} {
+		result := sanitizeDeploymentResult(DeploymentResult{URL: value})
+		if result.URL != "[REDACTED]" {
+			t.Errorf("unsafe URL %q sanitized to %q", value, result.URL)
+		}
+	}
+	result := sanitizeDeploymentResult(DeploymentResult{DeploymentID: "../other-tenant", URL: "https://example.test/deploy"})
+	if result.DeploymentID != "[REDACTED]" {
+		t.Fatalf("unsafe deployment id was not redacted: %+v", result)
+	}
+	for _, id := range []string{"../escape", "has/slash", "has\\backslash", "line\nbreak", strings.Repeat("a", 129)} {
+		if validDeploymentIdentifier(id) {
+			t.Errorf("unsafe deployment identifier accepted: %q", id)
+		}
+	}
+	for _, id := range []string{"site-123", "dep_abc.1", "550e8400-e29b-41d4-a716-446655440000"} {
+		if !validDeploymentIdentifier(id) {
+			t.Errorf("valid deployment identifier rejected: %q", id)
+		}
+	}
+}
+
+func TestDeploymentManagerRejectsUnsafeConfiguredIdentifiers(t *testing.T) {
+	manager := NewDeploymentManager()
+	for _, id := range []string{"../provider", "bad/provider", "bad\nprovider"} {
+		if err := manager.Register(DeployConfig{ID: id, Provider: "netlify", BaseURL: "https://example.test"}); err == nil {
+			t.Errorf("unsafe provider ID accepted: %q", id)
+		}
+	}
+	for _, field := range []string{"project", "account"} {
+		config := DeployConfig{ID: "safe", Provider: "vercel", BaseURL: "https://example.test"}
+		if field == "project" {
+			config.ProjectID = "../escape"
+		} else {
+			config.AccountID = "bad/id"
+		}
+		if err := manager.Register(config); err == nil {
+			t.Errorf("unsafe %s ID accepted", field)
+		}
 	}
 }
 
@@ -320,5 +425,214 @@ func TestDeploymentAllowsLocalhostHTTPConfiguration(t *testing.T) {
 	manager := NewDeploymentManager()
 	if err := manager.Register(DeployConfig{ID: "local", Provider: "generic", BaseURL: "http://localhost:43123"}); err != nil {
 		t.Fatalf("localhost deployment config rejected: %v", err)
+	}
+}
+
+func TestDeploymentProviderErrorDoesNotEchoResponseBody(t *testing.T) {
+	const sentinel = "provider-opaque-diagnostic-not-for-users"
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusBadGateway)
+		_, _ = w.Write([]byte(sentinel))
+	}))
+	defer server.Close()
+	manager := NewDeploymentManager()
+	manager.client = server.Client()
+	_, err := manager.request(context.Background(), DeployConfig{BaseURL: server.URL, TimeoutSeconds: 5}, http.MethodPost, "/deploy", []byte(`{}`), "application/json")
+	if err == nil || !strings.Contains(err.Error(), "502") || strings.Contains(err.Error(), sentinel) {
+		t.Fatalf("deployment error=%v; expected status only and no provider body", err)
+	}
+}
+
+type deploymentRoundTripFunc func(*http.Request) (*http.Response, error)
+
+func (f deploymentRoundTripFunc) RoundTrip(request *http.Request) (*http.Response, error) {
+	return f(request)
+}
+
+func TestDeploymentTransportErrorDoesNotEchoProviderQuery(t *testing.T) {
+	const sentinel = "deployment-provider-query-sentinel"
+	manager := NewDeploymentManager()
+	manager.client = &http.Client{Transport: deploymentRoundTripFunc(func(request *http.Request) (*http.Response, error) {
+		return nil, errors.New("transport failed for " + request.URL.String())
+	})}
+	_, err := manager.request(context.Background(), DeployConfig{BaseURL: "https://provider.invalid", TimeoutSeconds: 5}, http.MethodPost, "/deploy?signature="+sentinel, []byte(`{}`), "application/json")
+	if err == nil || err.Error() != "deployment provider request failed" || strings.Contains(err.Error(), sentinel) {
+		t.Fatalf("deployment transport error=%v; expected stable sanitized failure", err)
+	}
+}
+
+func TestDeploymentProvidersAreOrganizationScoped(t *testing.T) {
+	var requests atomic.Int32
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		requests.Add(1)
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+	manager := NewDeploymentManager()
+	for _, config := range []DeployConfig{
+		{ID: "org-a-provider", OrganizationID: "org-a", Provider: "generic", BaseURL: server.URL},
+		{ID: "org-b-provider", OrganizationID: "org-b", Provider: "generic", BaseURL: server.URL},
+		{ID: "legacy-global", Provider: "generic", BaseURL: server.URL},
+	} {
+		if err := manager.Register(config); err != nil {
+			t.Fatal(err)
+		}
+	}
+	providers := manager.ListForOrganization("org-a")
+	if len(providers) != 1 || providers[0].ID != "org-a-provider" || providers[0].OrganizationID != "org-a" {
+		t.Fatalf("org-a provider list=%+v", providers)
+	}
+	if _, err := manager.DeployForOrganization(context.Background(), "org-a", "org-b-provider", DeploymentRequest{Root: t.TempDir()}); !errors.Is(err, ErrDeploymentProviderNotFound) {
+		t.Fatalf("foreign provider error=%v", err)
+	}
+	if _, err := manager.DeployForOrganization(context.Background(), "org-a", "legacy-global", DeploymentRequest{Root: t.TempDir()}); !errors.Is(err, ErrDeploymentProviderNotFound) {
+		t.Fatalf("unscoped provider error=%v", err)
+	}
+	if _, err := manager.Deploy(context.Background(), "org-a-provider", DeploymentRequest{Root: t.TempDir()}); !errors.Is(err, ErrDeploymentProviderNotFound) {
+		t.Fatalf("unscoped API reached tenant-owned provider: %v", err)
+	}
+	if requests.Load() != 0 {
+		t.Fatalf("foreign provider caused %d network request(s)", requests.Load())
+	}
+}
+
+func TestDeploymentTenantCatalogSanitizesProviderURL(t *testing.T) {
+	manager := NewDeploymentManager()
+	if err := manager.Register(DeployConfig{
+		ID:             "private-provider",
+		OrganizationID: "org-a",
+		Provider:       "generic",
+		BaseURL:        "https://deploy.example.test/private-path",
+		TokenEnv:       "DEPLOYMENT_TOKEN_ENV_SECRET",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	providers := manager.ListForOrganization("org-a")
+	if len(providers) != 1 || providers[0].BaseURL != "https://deploy.example.test" || providers[0].TokenEnv != "" {
+		t.Fatalf("sanitized provider catalog=%+v", providers)
+	}
+	encoded, err := json.Marshal(providers)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, secret := range []string{"private-path", "DEPLOYMENT_TOKEN_ENV_SECRET"} {
+		if strings.Contains(string(encoded), secret) {
+			t.Fatalf("tenant deployment catalog exposed %q: %s", secret, encoded)
+		}
+	}
+}
+
+func TestDeploymentRejectsCredentialBearingEndpointURL(t *testing.T) {
+	manager := NewDeploymentManager()
+	err := manager.Register(DeployConfig{ID: "signed", Provider: "generic", BaseURL: "https://deploy.example.test/private?x.sig=provider-url-secret"})
+	if err == nil {
+		t.Fatal("accepted credential-bearing deployment endpoint URL")
+	}
+}
+
+func TestDeploymentRequestRejectsMalformedAndOversizedSuccessfulResponses(t *testing.T) {
+	oversized := strings.Repeat("x", (4<<20)+1)
+	for _, tc := range []struct {
+		name string
+		body string
+	}{
+		{name: "truncated-json", body: `{"id":"partial`},
+		{name: "non-object-json", body: `[]`},
+		{name: "oversized", body: oversized},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				w.WriteHeader(http.StatusOK)
+				_, _ = w.Write([]byte(tc.body))
+			}))
+			defer server.Close()
+			manager := NewDeploymentManager()
+			manager.client = server.Client()
+			_, err := manager.request(context.Background(), DeployConfig{BaseURL: server.URL, TimeoutSeconds: 5}, http.MethodGet, "/result", nil, "")
+			if err == nil {
+				t.Fatalf("successful provider response %q was accepted", tc.name)
+			}
+		})
+	}
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(`{}`))
+	}))
+	defer server.Close()
+	manager := NewDeploymentManager()
+	manager.client = server.Client()
+	if _, err := manager.deployGeneric(context.Background(), DeployConfig{BaseURL: server.URL, TimeoutSeconds: 5}, DeploymentRequest{}, nil); err == nil {
+		t.Fatal("generic deployment accepted a success response without deployment identity")
+	}
+}
+
+func TestVercelDeploymentRejectsSuccessfulResponseWithoutIdentity(t *testing.T) {
+	manager := NewDeploymentManager()
+	manager.client = &http.Client{Transport: deploymentRoundTripFunc(func(request *http.Request) (*http.Response, error) {
+		return &http.Response{StatusCode: http.StatusOK, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(`{"readyState":"READY"}`)), Request: request}, nil
+	})}
+	_, err := manager.deployVercel(context.Background(), DeployConfig{BaseURL: "https://127.0.0.1", TimeoutSeconds: 5}, DeploymentRequest{Name: "test", Root: t.TempDir()}, nil)
+	if err == nil || !strings.Contains(err.Error(), "omitted deployment identity") {
+		t.Fatalf("Vercel result without deployment identity error = %v", err)
+	}
+}
+
+func TestVercelDeploymentRejectsEmptySuccessfulResponse(t *testing.T) {
+	manager := NewDeploymentManager()
+	manager.client = &http.Client{Transport: deploymentRoundTripFunc(func(request *http.Request) (*http.Response, error) {
+		return &http.Response{StatusCode: http.StatusNoContent, Header: make(http.Header), Body: io.NopCloser(strings.NewReader("")), Request: request}, nil
+	})}
+	_, err := manager.deployVercel(context.Background(), DeployConfig{BaseURL: "https://127.0.0.1", TimeoutSeconds: 5}, DeploymentRequest{Name: "test", Root: t.TempDir()}, nil)
+	if err == nil || !strings.Contains(err.Error(), "omitted deployment identity") {
+		t.Fatalf("empty Vercel success error = %v, want missing identity", err)
+	}
+}
+
+func TestDeploymentRejectsSecretBearingEndpointBeforePersistence(t *testing.T) {
+	for _, rawURL := range []string{
+		"https://example.test/deploy?x.sig=provider-secret",
+		"https://example.test/deploy?safe=1;sig=provider-secret",
+		"https://example.test/deploy?next=https%253A%252F%252Fexample.test%252F?token%253Dprovider-secret",
+	} {
+		manager := NewDeploymentManager()
+		if err := manager.Register(DeployConfig{ID: "secret", Provider: "generic", BaseURL: rawURL}); err == nil {
+			t.Fatalf("secret-bearing deployment endpoint %q was accepted", rawURL)
+		}
+		if len(manager.List()) != 0 {
+			t.Fatalf("rejected endpoint %q entered manager state", rawURL)
+		}
+	}
+}
+
+func TestDeploymentLoopbackHostnameCannotResolveToPublicAddress(t *testing.T) {
+	ctx := context.WithValue(context.Background(), deploymentLoopbackContextKey{}, true)
+	lookup := func(context.Context, string) ([]net.IPAddr, error) {
+		return []net.IPAddr{{IP: net.ParseIP("127.0.0.1")}, {IP: net.ParseIP("203.0.113.8")}}, nil
+	}
+	if _, err := deploymentDialContextWithResolver(ctx, "tcp", "localhost:443", lookup); err == nil || !strings.Contains(err.Error(), "outside loopback") {
+		t.Fatalf("deployment loopback accepted a public DNS answer: %v", err)
+	}
+}
+
+func TestDeploymentRedactsCredentialBearingSuccessfulURL(t *testing.T) {
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, "index.html"), []byte("ok"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"id":"dep_safe","url":"https://example.test/deploy?x.sig=provider-secret&view=1","status":"ready"}`))
+	}))
+	defer server.Close()
+	manager := NewDeploymentManager()
+	manager.client = server.Client()
+	if err := manager.Register(DeployConfig{ID: "self", Provider: "generic", BaseURL: server.URL}); err != nil {
+		t.Fatal(err)
+	}
+	result, err := manager.Deploy(context.Background(), "self", DeploymentRequest{Name: "site", Root: root})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(result.URL, "provider-secret") || result.URL != "[REDACTED]" {
+		t.Fatalf("credential-bearing URL was exposed: %q", result.URL)
 	}
 }

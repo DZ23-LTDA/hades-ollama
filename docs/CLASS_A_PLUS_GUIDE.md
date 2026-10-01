@@ -1,8 +1,8 @@
-# Ollama Classe A+
+# Hades
 
 ## Manual público do projeto
 
-O **Ollama Classe A+** é a distribuição experimental do Ollama DZ23 que combina execução local de modelos, roteamento multi-provider e um runtime agentic com missões persistentes, ferramentas com aprovação, sandbox, memória, pesquisa, Browser Operator, companions, conectores, builders, observabilidade e publicação controlada. O projeto preserva a compatibilidade da base Ollama sempre que possível e evolui as superfícies agentic em camadas verificáveis.
+O **Hades** é a distribuição experimental do Ollama DZ23 que combina execução local de modelos, roteamento multi-provider e um runtime agentic com missões persistentes, ferramentas com aprovação, sandbox, memória, pesquisa, Browser Operator, companions, conectores, builders, observabilidade e publicação controlada. O projeto preserva a compatibilidade da base Ollama sempre que possível e evolui as superfícies agentic em camadas verificáveis.
 
 > **Estado real:** o projeto possui uma base extensa implementada e endurecida com testes locais. Os gates de backend, vet, UI e mobile desta revisão passaram. Isso ainda não equivale a paridade total com todos os produtos do mercado: recursos dependentes de contas externas, hardware, certificados, lojas, modelos multimodais e ambientes distribuídos precisam de validação adicional.
 
@@ -20,7 +20,7 @@ A arquitetura é local-first. Um operador pode começar apenas com o binário e 
 | Multi-provider DZ23 | Implementado | Provedores explicitamente configurados e endpoints compatíveis. |
 | xAI/Grok API | Adapter implementado | Preset Responses/chat com bearer server-side; a validação externa depende de chave, quota e modelo xAI. Não é o Grok Bot hospedado. |
 | Composio Connect | Adapter implementado | Remote MCP com headers server-side, allowlist e approval; connected accounts e OAuth por app/tenant dependem do operador. |
-| OmniRoute | Adapter OpenAI-compatible com preset local | Exige instância OmniRoute, chave e smoke test do operador; auto-routing externo não é inventado pelo Classe A+. |
+| OmniRoute | Adapter OpenAI-compatible com preset local | Exige instância OmniRoute, chave e smoke test do operador; auto-routing externo não é inventado pelo Hades. |
 | Missões agentic | Implementado | Plano validado, execução, eventos, recovery e artefatos. |
 | Approvals e sandbox | Implementado | Tools classificadas e execução protegida por políticas do servidor. |
 | Multiagente e pesquisa | Implementado localmente | Papéis, orçamento, síntese, citações, cache, robots e SSRF guard. |
@@ -32,7 +32,7 @@ A arquitetura é local-first. Um operador pode começar apenas com o binário e 
 | SSO | Implementado em adapters | OAuth/OIDC e SAML exigem IdP, certificados e testes de produção. |
 | Mobile | Base Expo implementada | Push, conflitos avançados, assinatura e lojas ainda dependem de ambiente real. |
 | Modelos locais de mídia | Adapter configurável | Não confundir adapter multimodal com modelos locais completos já distribuídos. |
-| Shell desktop Classe A+ | Parcialmente implementado | Home com composer e recomendações, menu persistente, CRUD real de Projetos e Agendado, catálogos reais de Tasks/Skills/Plugins/Biblioteca, lifecycle de plugins e Control Center sanitizado; builder rico e superfícies de produção ainda evoluem. |
+| Shell desktop Hades | Parcialmente implementado | Home com composer e recomendações, menu persistente, CRUD real de Projetos e Agendado, catálogos reais de Tasks/Skills/Plugins/Biblioteca, lifecycle de plugins e Control Center sanitizado; builder rico e superfícies de produção ainda evoluem. |
 | HarnessRouter | Adapter implementado | Provider OpenAI Responses-compatible com `harness_id` server-side para Codex/Claude Code; exige instância, chave e harness instalados para validação ponta a ponta. |
 | Company OS | Implementado localmente nesta rodada | Empresa/tenant, identidade, 7 departamentos, roadmap, KPIs, backlog, ciclos, relatório, budget, approvals, pausa por limite/anomalia e Growth OS sandbox para campanhas, afiliados, catálogo e pedidos; CRM, social, marketplaces, fulfillment e ads reais ainda dependem de connectors e ambientes externos. |
 | Desktop Commander Remote MCP | Adapter implementado | Stdio local e Streamable HTTP remoto com allowlist, HTTPS, bearer opcional e approval; OAuth PKCE, conta, device pairing e testes físicos dependem do operador. |
@@ -44,7 +44,7 @@ O relatório [`READINESS_2026-09-22.md`](agentic/READINESS_2026-09-22.md) regist
 
 ## Build e execução rápidos
 
-O fork público distribui o código-fonte, não um instalador assinado, binário de release, imagem Docker pública ou pacote de loja Classe A+. Não use `ollama.com/install.sh`, `OllamaSetup.exe`, `Ollama.dmg` ou `ollama/ollama` para instalar este fork: esses artefatos pertencem ao upstream. Compile a revisão do repositório para desenvolvimento e validação local:
+O fork público distribui o código-fonte, não um instalador assinado, binário de release, imagem Docker pública ou pacote de loja Hades. Não use `ollama.com/install.sh`, `OllamaSetup.exe`, `Ollama.dmg` ou `ollama/ollama` para instalar este fork: esses artefatos pertencem ao upstream. Compile a revisão do repositório para desenvolvimento e validação local:
 
 ```bash
 git clone https://github.com/DZ23-LTDA/ollama-classe-a-plus.git
@@ -77,16 +77,23 @@ Os helpers `scripts/install.sh` e `scripts/install.ps1` fazem o mesmo build loca
 A composição de desenvolvimento está em `deploy/docker-compose.agentic.yml`. Ela fornece os serviços auxiliares usados para testar PostgreSQL, Redis e OpenTelemetry Collector, prende as portas em loopback por padrão e exige senhas fornecidas pelo ambiente. Não trate o compose de desenvolvimento como configuração de produção: use secrets manager, TLS, backups e rede privada antes de qualquer exposição.
 
 ```bash
-export OLLAMA_AGENT_POSTGRES_PASSWORD="$(openssl rand -hex 24)"
+export OLLAMA_AGENT_POSTGRES_ADMIN_PASSWORD="$(openssl rand -hex 24)"
+export OLLAMA_AGENT_MIGRATOR_PASSWORD="$(openssl rand -hex 24)"
+export OLLAMA_AGENT_RUNTIME_PASSWORD="$(openssl rand -hex 24)"
 export OLLAMA_AGENT_REDIS_PASSWORD="$(openssl rand -hex 24)"
 docker compose -f deploy/docker-compose.agentic.yml up -d --wait
-export OLLAMA_AGENT_DATABASE_URL="postgres://ollama_agent:${OLLAMA_AGENT_POSTGRES_PASSWORD}@127.0.0.1:5432/ollama_agent?sslmode=disable"
+export OLLAMA_AGENT_TENANT_CONTEXT_KEY="$(openssl rand -hex 32)"
+export OLLAMA_AGENT_MIGRATOR_DATABASE_URL="postgres://ollama_agent_migrator:${OLLAMA_AGENT_MIGRATOR_PASSWORD}@127.0.0.1:5432/ollama_agent?sslmode=disable"
+export OLLAMA_AGENT_DATABASE_URL="postgres://ollama_agent_runtime:${OLLAMA_AGENT_RUNTIME_PASSWORD}@127.0.0.1:5432/ollama_agent?sslmode=disable"
 export OLLAMA_AGENT_REDIS_URL="redis://:${OLLAMA_AGENT_REDIS_PASSWORD}@127.0.0.1:6379/0"
 export OLLAMA_AGENT_OTLP_ENDPOINT='http://127.0.0.1:4318'
+export OLLAMA_AGENT_OTLP_ALLOW_INSECURE=1 # apenas para desenvolvimento local; nunca em produção
+./bin/ollama-classe-a-plus agent migrate-postgres
+export OLLAMA_AGENT_AUTH_REQUIRED=true
 OLLAMA_HOST=127.0.0.1:11434 ./bin/ollama-classe-a-plus serve
 ```
 
-Em produção, use PostgreSQL gerenciado ou uma instância com backups e RLS revisado, Redis com autenticação e rede privada, e um collector OTLP com autenticação e retenção definida.
+O store runtime usa somente `OLLAMA_AGENT_DATABASE_URL`; `agent migrate-postgres` usa `OLLAMA_AGENT_MIGRATOR_DATABASE_URL`. A chave HMAC persistente é compartilhada por migração e servidor, nunca registrada no repositório nem exposta ao runtime de outro serviço. **PostgreSQL/RLS continua candidato não aprovado para produção** até validar TLS, backup/restore, execução da rotação versionada, HA/failover, escala e auditoria independente de staging. Não altere a chave isoladamente: use somente `ollama agent rotate-postgres-key` e siga [o protocolo de rotação](agentic/POSTGRES_HMAC_KEY_ROTATION.md), que exige fencing do runtime, versão monotônica e rollback usando uma versão superior. A descoberta de tenants para recovery depende do AuthStore local; suporte multi-instância não está habilitado. A documentação de operadores e do upgrade de volume existente está em `docs/agentic/INTEGRATIONS.md`.
 
 ## Configuração essencial
 
@@ -115,8 +122,14 @@ OLLAMA_HOST=127.0.0.1:11434 ./bin/ollama-classe-a-plus serve
 | `OLLAMA_AGENT_AUTH_DEV` | Modo de desenvolvimento; não habilitar em produção. |
 | `OLLAMA_AGENT_AUTH_SSO_PUBLIC` | Permite início de SSO sem sessão prévia quando explicitamente habilitado. |
 | `OLLAMA_AGENT_CREDENTIAL_KEY` | Chave externa usada para cifrar credenciais OAuth e MFA. |
-| `OLLAMA_AGENT_DATABASE_URL` | Habilita store PostgreSQL com isolamento por organização. |
+| `OLLAMA_AGENT_DATABASE_URL` | DSN da role `ollama_agent_runtime`; exige roles separadas, migrations explícitas e chave tenant HMAC. PostgreSQL/RLS ainda não foi aprovado para produção. |
+| `OLLAMA_AGENT_MIGRATOR_DATABASE_URL` | DSN administrativa da role dedicada `ollama_agent_migrator`; usada somente por `ollama agent migrate-postgres`, nunca pelo processo runtime. |
+| `OLLAMA_AGENT_TENANT_CONTEXT_KEY` | Chave HMAC persistente, em hexadecimal com ao menos 32 bytes, compartilhada pelo comando migrator e runtime. Para rotação, siga o procedimento versionado; não altere a variável isoladamente. |
+| `OLLAMA_AGENT_TENANT_CONTEXT_KEY_VERSION` | Versão ativa da chave HMAC tenant; padrão `1`. Deve corresponder à versão ativa do keyring PostgreSQL. |
+| `OLLAMA_AGENT_POSTGRES_ADMIN_PASSWORD` | Credencial bootstrap/admin do Compose; manter em secret manager e fora do runtime/app. |
+| `OLLAMA_AGENT_RUNTIME_PASSWORD` / `OLLAMA_AGENT_MIGRATOR_PASSWORD` | Credenciais distintas para seus respectivos DSNs e serviços. |
 | `OLLAMA_AGENT_REDIS_URL` | Habilita fila Redis e workers compartilhados. |
+| `OLLAMA_AGENT_TOKEN` | Token bearer para comandos HTTP do CLI `ollama agent`; forneça pelo ambiente/secret manager, nunca como argumento de linha de comando. |
 | `OLLAMA_AGENT_REDIS_PREFIX` | Prefixo lógico das chaves Redis. |
 | `OLLAMA_AGENT_OTLP_ENDPOINT` | Endpoint OTLP HTTP para traces distribuídos. |
 | `OLLAMA_AGENT_OTLP_ALLOW_INSECURE` | Permite OTLP HTTP sem TLS apenas em desenvolvimento controlado. |
@@ -253,7 +266,7 @@ Para testes distribuídos que exigem serviços reais, use a tag e variáveis doc
 
 Também revise `git diff --check`, rode scanners de segredos, verifique permissões dos arquivos, confirme que não há tokens em logs e valide autorização negativa por organização. Toda operação com efeito externo deve ter approval, timeout, limite e registro auditável.
 
-Para proteger as superfícies Classe A+ durante atualizações do motor, execute também `scripts/check-class-a-plus-integrity.sh` e `node app/ui/app/scripts/smoke-shell.mjs`. A política completa de atualização manual, o commit upstream aceito e o procedimento de rollback estão em [`UPSTREAM_POLICY.md`](../UPSTREAM_POLICY.md). O remote `upstream` nunca é mesclado automaticamente.
+Para proteger as superfícies Hades durante atualizações do motor, execute também `scripts/check-class-a-plus-integrity.sh` e `node app/ui/app/scripts/smoke-shell.mjs`. A política completa de atualização manual, o commit upstream aceito e o procedimento de rollback estão em [`UPSTREAM_POLICY.md`](../UPSTREAM_POLICY.md). O remote `upstream` nunca é mesclado automaticamente.
 
 ## Como contribuir
 

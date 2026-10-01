@@ -35,7 +35,11 @@ type Gateway struct {
 
 func NewGateway(registry *Registry, client *http.Client) *Gateway {
 	if client == nil {
-		client = &http.Client{Timeout: 10 * time.Minute}
+		// resolveProviderDestination remains the authority for whether a provider
+		// may use a private address. The transport must also support the explicit
+		// AllowPrivate=true local-provider contract; unapproved providers are
+		// resolved and pinned before this client is used.
+		client = NewProviderSafeHTTPClient(10*time.Minute, true)
 	}
 	return &Gateway{registry: registry, client: client}
 }
@@ -410,10 +414,31 @@ func resolveProviderDestination(ctx context.Context, provider Provider) ([]net.I
 	approved := make([]net.IP, 0, len(addresses))
 	for _, address := range addresses {
 		if unsafeProviderIP(address.IP) {
+			DefaultProviderEgressAuditor.Record(ProviderEgressDecision{
+				Timestamp:   time.Now(),
+				Provider:    provider.Name,
+				Destination: provider.BaseURL,
+				Host:        base.Hostname(),
+				Allowed:     false,
+				Reason:      fmt.Sprintf("provider host resolved to restricted address %s", address.IP.String()),
+			})
 			return nil, errors.New("provider host resolved to a private or link-local address")
 		}
 		approved = append(approved, append(net.IP(nil), address.IP...))
 	}
+	ipStrs := make([]string, len(approved))
+	for i, ip := range approved {
+		ipStrs[i] = ip.String()
+	}
+	DefaultProviderEgressAuditor.Record(ProviderEgressDecision{
+		Timestamp:   time.Now(),
+		Provider:    provider.Name,
+		Destination: provider.BaseURL,
+		Host:        base.Hostname(),
+		ResolvedIPs: ipStrs,
+		Allowed:     true,
+		Reason:      "approved provider public destination",
+	})
 	return approved, nil
 }
 

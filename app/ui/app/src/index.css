@@ -3,8 +3,13 @@
 @import "katex/dist/katex.min.css";
 
 @custom-variant dark {
+  /* Escuro forçado pelo controle de tema (Aparência). */
+  &:where(.theme-dark, .theme-dark *) {
+    @slot;
+  }
+  /* Automático: segue o sistema, exceto quando o tema Claro foi forçado. */
   @media (prefers-color-scheme: dark) {
-    &:not(.light-only, .light-only *) {
+    &:not(.theme-light, .theme-light *, .light-only, .light-only *) {
       @slot;
     }
   }
@@ -23,6 +28,27 @@
 
   .light-only {
     color-scheme: light;
+  }
+
+  /* Native <select> popups ignore the transparent control background, so
+     options rendered light text on a white list in dark mode. */
+  select option,
+  select optgroup {
+    background-color: #ffffff;
+    color: #171717;
+  }
+  @media (prefers-color-scheme: dark) {
+    select:not(.light-only, .light-only *) {
+      color-scheme: dark;
+    }
+    select:not(.light-only, .light-only *) option,
+    select:not(.light-only, .light-only *) optgroup {
+      background-color: #262626;
+      color: #f5f5f5;
+    }
+  }
+  select option:disabled {
+    color: #737373;
   }
 
   a[href],

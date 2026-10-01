@@ -1,4 +1,118 @@
+
+## LINT-DEBT — gates locais concluídos — 2026-10-01 12:16 UTC
+```yaml
+state: LOCAL_GATES_PASS_CI_PENDING
+branch: recovery/ollama-full-snapshot
+implemented:
+  - golangci-lint v2: 0 issues, sem desabilitar linters
+  - testes Go completos e race dos pacotes críticos
+  - builds nativo, CGO_ENABLED=0 e GOOS=windows
+  - gates frontend, contratos, integrity e go vet
+  - correções portáveis em fixtures, contexto, HTTP bodies e loops bounded
+pending:
+  - commit/push
+  - test.yaml completo, incluindo macOS race
+next_action: publicar e acompanhar todos os jobs no SHA final; corrigir apenas falhas reproduzíveis
+```
 # Estado da missão autônoma — Ollama DZ23 Agentic Platform
+
+## Checkpoint vigente — Auditoria ampla e hardening local — 2026-09-30 19:41 -03
+```yaml
+state: LOCAL_FIXES_APPLIED_GATES_PENDING
+branch: recovery/ollama-full-snapshot
+scope: auditoria ampla de segurança, qualidade, UX e release
+implemented:
+  - reject imported .git control plane and validate contained Git worktree
+  - reject self-approval for deployment ledger while preserving replay conflict
+  - harden media/download redirects and special-use IP handling
+  - bound/redact WhatsApp error responses
+  - atomic builder export with regular-file-only policy and artifact descriptor close
+  - accessible ModelPicker/import dialog; Home attachment errors visible
+  - authenticated artifact preview/download and WhatsApp admin RBAC
+  - reproducible Linux metadata and trusted release signing key requirement
+proofs_local:
+  - go test ./internal/agent ./server: PASS
+  - frontend tsc/lint/vitest/build: PASS
+pending:
+  - contracts/integrity and full platform gates
+  - final static scan and diff review
+  - commit/push and remote CI on final SHA
+  - real browser re-audit for changed Studio/Import flows
+next_action: run remaining gates; fix only reproducible failures; do not claim production or 100% parity
+```
+
+## Checkpoint vigente — UI-2 launcher central Home/Nova tarefa — 2026-09-30 19:00 -03
+```yaml
+state: COMPLETED_CI_GREEN
+branch: recovery/ollama-full-snapshot
+base_commit: 3dd15dec
+objective: tornar Home/Nova tarefa o launcher central com composer, anexos, importação de projeto e ações rápidas
+implemented:
+  - ImportProjectDialog reutilizável extraído de ProductWorkspacePage
+  - Home oferece Anexar arquivo e Importar projeto junto dos modos Automático/Manual e ações rápidas
+  - Projetos reutiliza o mesmo componente; chamadas GitHub/ZIP e segurança permanecem reais
+proofs:
+  - npx tsc -b: PASS
+  - npm run lint: PASS
+  - npx vitest run: 37 arquivos/257 testes PASS
+  - npm run build: PASS
+  - node scripts/verify-contracts.mjs: PASS
+  - bash scripts/check-class-a-plus-integrity.sh: PASS
+  - Playwright desktop/mobile: quatro screenshots UI-2 e auditoria com zero erros
+ci:
+  class_a_plus_integrity: {id: 36782993795, conclusion: success}
+  dz23_agentic_quality: {id: 36782993723, conclusion: success}
+  sha: 849faa97751d43f96e6f9d4e05dd1137d4d9e356
+next_action: nenhum dentro do UI-2; manter integrações privadas e ZIP grande como dependências externas honestas
+rollback: preservar 3dd15dec; sem reset/clean/force-push
+```
+
+
+## Checkpoint vigente — WIN-1 build Windows/sem-CGO — 2026-09-30 18:10 -03
+```yaml
+state: COMPLETED_CI_GREEN
+branch: recovery/ollama-full-snapshot
+base_commit: ebd51c69
+objective: corrigir o build completo sem CGO e o cross-build Windows, substituir os.DevNull no Git e adicionar gate CI permanente
+facts:
+  - CGO_ENABLED=0 go build ./... passa com fallback MLX/xgrammar/webview e app desktop isolado por plataforma
+  - GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build ./... passa
+  - internal/agent/git_repo.go e workspace_snapshot.go usam GIT_CONFIG_SYSTEM/GLOBAL vazios, sem os.DevNull
+acceptance:
+  - CGO_ENABLED=0 go build ./... PASS
+  - GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build ./... PASS
+  - go build ./..., go test ./internal/agent ./server e frontend gates PASS
+  - CI executa os dois builds e reprova regressões
+rollback: preservar ebd51c69; sem reset/clean/force-push
+ci:
+  class_a_plus_integrity: {id: 36777180701, conclusion: success}
+  dz23_agentic_quality: {id: 36777180620, conclusion: success}
+  sha: b703f2a505f2daa1b0980c11580ca594265775dc
+next_action: nenhum dentro do WIN-1; smoke nativo Windows/DACL/MLX/WebView continuam limites externos documentados
+```
+
+## Checkpoint vigente — FASE 11 Import Full Project — 2026-09-30 17:45 -03
+```yaml
+state: COMPLETED
+branch: recovery/ollama-full-snapshot
+base_commit: 2b6ff7d7
+implemented:
+  - GitHub HTTPS import with Zero-Trust transport, approved redirects and server-side optional auth
+  - resumable ZIP upload connected to direct-on-disk bounded extraction and incremental ingestion
+  - isolated git worktree/branch, tenant checks, traversal/symlink/size/file limits, no auto-execution
+  - authenticated project import routes and accessible Projects dialog with GitHub/ZIP tabs
+proofs:
+  - go test -run 'Import|GitHubImport|LargeUpload|ZipStream|Clone|Ingest' ./internal/agent ./server: PASS
+  - go test ./internal/agent ./server and go build ./...: PASS
+  - npx tsc -b, npm run lint, npx vitest run (37 files/257 tests), npm run build: PASS
+  - node scripts/verify-contracts.mjs and bash scripts/check-class-a-plus-integrity.sh: PASS
+  - Playwright live public GitHub import: PASS; desktop/mobile evidence and browser-console-audit-f11.json have zero console/http errors
+ci:
+  class_a_plus_integrity: {id: 36774562486, conclusion: success}
+  dz23_agentic_quality: {id: 36774562246, conclusion: success}
+next_action: none for Fase 11; private GitHub remains NOT_CONFIGURED without operator credentials
+rollback: preserve commit 2b6ff7d7; no reset/clean/force-push
+```
 
 ```yaml
 mission_id: dz23-agentic-platform-2026-09-21
@@ -2445,3 +2559,274 @@ O commit `b1aaebfdb4ad7ad753591402ad47a220fcd67fdd` fecha o caso restante de `mo
 ## Correção de screenshot Settings e captura fail-closed — 2026-09-23
 
 A auditoria visual encontrou que `docs/images/screens/settings.png` era um arquivo histórico quase vazio de 8.2 KB, embora a implementação de Settings e a captura atual `class-a-plus-settings.png` estivessem funcionais. O alias foi substituído pela captura funcional, com checksum `89420370b9d3c7317a2c5d7c51bb9f8d4eba914a6d7b7bf829c855c909902e72`. O capturador agora exige conteúdo mínimo em `body`/`main` e rejeita PNG menor que 16 KiB, evitando publicar uma tela branca silenciosamente. Testes de `Settings`, build UI, Node syntax, integrity e YAML passaram. Commit publicado: `0b0710cfe9d646c859aed8c624fb19fe1ac3cd43`; CI remota iniciou com checks pendentes.
+
+
+## Retomada autônoma — completar Ollama Full sem sobrescrever trabalho herdado — 2026-09-26 21:56 -03
+
+```yaml
+mission_id: viqyzCzZsu3R88Zh33feNk-ollama-full-completion
+objective: Evoluir o fork em direção às jornadas verificáveis do Ollama Full e fechar o maior próximo gap local sem alegar paridade/produção sem evidência.
+state: RECOVERING
+rigor: L3 (plataforma com autenticação, isolamento multi-tenant, filesystem, shell e integrações externas)
+repository:
+  path: /home/ubuntu/ollama-full-recovery
+  branch: recovery/ollama-full-snapshot
+  head: 8635e30d (origin/main; commit Windows checksum)
+  remote: origin -> https://github.com/DZ23-LTDA/ollama-classe-a-plus.git
+  uncommitted_changes: true
+  observed_modified_and_untracked_paths: dozens; backend, server, web, docs, packaging and untracked security/snapshot modules
+scope_in:
+  - preservar integralmente as alterações herdadas e reconciliar os checkpoints com o estado de disco;
+  - priorizar jornadas locais de alto valor da árvore de produto, com implementação + teste + execução real;
+  - executar gates oficiais/aplicáveis e corrigir falhas pela causa raiz;
+  - documentar limitações, dependências externas e prova observada.
+scope_out:
+  - declarar paridade total com Manus/60+ ferramentas sem matriz e benchmarks observáveis;
+  - usar/adivinhar ativo Swole que não esteja presente no checkout;
+  - conectar contas/credenciais externas, publicar/deploy produção, assinar artefatos ou testar dispositivos sem dependências/autoridade apropriadas;
+  - force-push, reescrever história, limpar/resetar worktree ou mesclar main.
+acceptance_criteria:
+  - checkpoint corresponde ao branch/HEAD/worktree e distingue histórico de estado atual;
+  - pelo menos uma próxima jornada crítica selecionada do roadmap tem fluxo/API, testes e execução real no ambiente local;
+  - gates aplicáveis passam no mesmo estado de fonte, com failures e N/A justificados;
+  - alterações herdadas não são descartadas nem commitadas sem revisão/secret scan/gates;
+  - matriz/readiness não afirma capabilities externas como homologadas;
+  - blockers finais listam logo original, serviços/credenciais, CI/assinatura/dispositivos quando ainda faltarem.
+gates:
+  required: [integrity, gofmt, go_test_all, go_vet, go_build, postgres_redis_integration_if_available, web_typecheck_lint_unit_build, mobile_typecheck_policy, e2e_smoke, secret_scan, final_security_review]
+  not_applicable: [external_provider_smoke_without_operator_credentials, signed_release_without_signing_keys, native_physical_device_test_without_devices]
+delivery_destination: branch recovery/ollama-full-snapshot; push permitido pelo pedido anterior somente após gates e auditoria; nunca main/merge/release sem novo escopo explícito.
+approvals_required: [production deploy/publish, external accounts or paid services, signing credentials, publication beyond authorized feature branch]
+rollback_plan: preservar HEAD 8635e30d e nunca executar reset/clean; reverter somente hunks introduzidos neste ciclo com patch revisado; manter logs/teste temporários fora do repo.
+current_task: Reconciliar alterações herdadas e executar a primeira auditoria de gates desta retomada.
+current_failure: Checkpoint autônomo histórico está em 2026-09-23 e não representa o checkout observado de 2026-09-26; não há processos de teste ativos.
+current_strategy: Preservar worktree; evidência mais nova primeiro; escolher fatia repo-first do produto, sem paralelismo sobre os mesmos arquivos.
+plan:
+  - id: recover-and-freeze
+    status: in_progress
+    action: inventory full diff and checkpoint current state; no destructive git operations
+  - id: verify-inherited-backend
+    status: pending
+    action: integrity, gofmt, focused tests, then full Go tests/vet/build
+  - id: verify-product-surfaces
+    status: pending
+    action: web/mobile E2E and accessibility/security-relevant gates after backend fixes
+  - id: advance-repo-first
+    status: pending
+    action: implement the smallest missing project-test-runner/worktree flow with safe isolation and regression proof
+  - id: final-review-and-release
+    status: pending
+    action: independent review, secret scan, same-tree gates, then branch-only publication if still authorized and safe
+blockers:
+  - item: original Swole brand asset
+    status: BLOCKED_BY_EXTERNAL_DEPENDENCY
+    evidence: no Swole-specific logo file found in checkout's bounded asset search
+    needed: exact source image/vector from maintainer
+    impact: brand/logo replacement cannot be truthfully marked complete
+  - item: external service and device validation
+    status: BLOCKED_BY_EXTERNAL_DEPENDENCY
+    evidence: provider accounts, credentials, signing keys and physical devices are not present in the project context
+    needed: operator-configured authorized test accounts/devices/signing materials
+    impact: no claim of upstream OAuth/provider/deploy/store/physical smoke
+hypotheses:
+  - The highest-value local gap remains repo-first coding completion: isolated branch/worktree, project test runner, repair loop and E2E.
+decisions:
+  - decision: rigor L3, but explicitly not regulated-finance L4
+    reason: multi-tenant agent platform executes filesystem/shell actions and holds integrations; high security/privacy bar is warranted without claiming a regulated deployment.
+  - decision: preserve all pre-existing and untracked work; do not rebase, reset, clean, or squash it
+    reason: checkout contains dozens of user-requested changes from the earlier task, and ownership/status of each file cannot be safely inferred by destructive cleanup.
+  - decision: do not push until a single frozen tree passes release gates and secret review
+    reason: branch-only publication is previously authorized, but current tree is broad/uncommitted and not yet verified end-to-end.
+last_progress_at: 2026-09-26 21:56 -03
+next_action: Run integrity and focused Go regressions on the current checkout; reconcile any failure before full gates.
+resume_instructions: Read this section and the latest security checkpoint; verify HEAD/worktree again; preserve every inherited edit; continue from first pending plan item and update this file after significant progress.
+```
+
+
+## Fase 12 — auditoria E2E adversarial — retomada 2026-09-30 16:14 -03
+state: AUDITING
+head: 9b188b92
+branch: recovery/ollama-full-snapshot
+scope: somente auditoria, relatório, evidências e reclassificação documental; nenhuma alteração de comportamento
+known_observations:
+  - backend/frontend locais ativos; frontend / retorna 200; endpoint /api/agent/v1/status retorna 404 (endpoint não é health check válido)
+  - scan encontrou clientes HTTP crus em vários caminhos server/agent; approved bool ainda existe em structs de domínio company_growth/company_social
+next_action: executar gates completos, adversarial H1-H5 e E2E real; consolidar findings sem corrigir código
+
+
+## Fase 12 — fechamento da auditoria — 2026-09-30 16:22 -03
+state: AUDIT_COMPLETE
+head: 9b188b92
+report: audit/E2E_AUDIT_2026-09-30.md
+result: local gates PASS; P1 Studio visual desktop HTTP 400; P1 server egress/DLP coverage incomplete; routes /whatsapp and /models were invalid script paths and were retested through /connectors and /c/new
+next_action: documentation-only commit, push branch, verify both GitHub workflows on resulting docs commit
+
+## FASE 11 — retomada no sandbox atual (2026-09-30 17:26 -03)
+```yaml
+state: IMPLEMENTING
+mission: Importar projeto inteiro por GitHub ou ZIP grande, com isolamento, ingestão e UI real
+branch: recovery/ollama-full-snapshot
+head_verified: 2b6ff7d7
+facts:
+  - UploadManager já é chunked/resumable e org-scoped, ContextStore/DocumentIngestor persistem projetos e memórias
+  - CreateGitWorktree já cria branch/worktree isolado para reuso
+  - importador seguro foi implementado no runtime, com egress, limites ZIP e sem execução do código importado
+next_action: adicionar testes focados, executar gates disponíveis e corrigir contratos
+rollback: preservar commit 2b6ff7d7; não usar reset/clean/force-push
+```
+
+
+## Checkpoint vigente — Auditoria ampla e correções — 2026-09-30 19:16 -03
+```yaml
+state: AUDITING
+mission: auditar e corrigir de ponta a ponta o projeto sem push remoto
+branch: recovery/ollama-full-snapshot
+head: 943339931bfc9fac995b12c77313264ce5b4e08b
+worktree: clean_before_audit
+remote: origin/recovery/ollama-full-snapshot
+scope:
+  - backend Go/runtime/API e fronteiras de tenant, approvals, egress, uploads, execução e integrações
+  - frontend React/TypeScript, acessibilidade, responsividade e fluxos reais Playwright
+  - native/CMake, mobile, Docker, CI, scripts, documentação e coerência de claims
+constraints:
+  - preservar trabalho preexistente; sem reset/clean/rebase/merge/exclusões destrutivas
+  - sem push, PR, publicação, deploy, serviços pagos ou credenciais reais
+acceptance:
+  - reproduzir achados confirmados, corrigir causa raiz quando possível e adicionar regressões
+  - executar gates reais e registrar antes/depois, evidências e bloqueios externos
+  - criar docs/auditoria.md e atualizar MEMORIA.md antes de encerrar
+baseline_observed:
+  - UI preview e backend local estavam ativos; serão encerrados ao final se iniciados/reutilizados pela auditoria
+  - último commit é documentação UI-2; não há alterações não commitadas
+next_action: executar linha de base de testes/build/vet/integridade e mapear falhas reais
+rollback: preservar HEAD 94333993; não descartar alterações de terceiros
+```
+
+## Retomada após CI — 2026-09-30 22:02 -03
+state: RETESTING
+commit: edff7c44
+finding: dz23-agentic-quality falhou apenas no Windows em TestLargeUploadProjectImportStreamsZipAndCreatesIsolatedWorktree; o erro vinha da comparação literal do caminho retornado por `git rev-parse --show-toplevel` com o caminho do fixture.
+fix: project_import.go agora normaliza separadores, absolutiza e compara caminhos sem diferenciar caixa no Windows; a rejeição de `.git` permanece ativa.
+evidence: go test -run 'Import|GitHubImport|LargeUpload|ZipStream|Clone|Ingest' ./internal/agent ./server PASS; CGO_ENABLED=0 go build ./... PASS; GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build ./... PASS.
+next: commit, push e acompanhar novamente class-a-plus-integrity e dz23-agentic-quality no mesmo SHA.
+
+## Segunda correção do CI Windows — 2026-09-30 22:06 -03
+state: RETESTING
+finding: a comparação de caminho ainda falhava no runner Windows apesar da normalização, pois o formato emitido por `git rev-parse --show-toplevel` varia no shell Git.
+fix: validação agora usa `rev-parse --is-inside-work-tree` e `--show-prefix` vazio, sem depender de drive letters/separadores; o diretório verificado continua sendo o root criado pelo importador.
+evidence: go test ./internal/agent ./server PASS; CGO_ENABLED=0 go build ./... PASS; GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build ./... PASS.
+next: commit, push e acompanhar os dois workflows novamente.
+
+## CI final verde — 2026-09-30 22:15 -03
+state: COMPLETED
+commit: da49fd89
+ci: class-a-plus-integrity=success (run 36799588232); dz23-agentic-quality=success (run 36799588701), ambos no mesmo SHA.
+final_evidence: testes Go críticos, build nativo, CGO0 e GOOS=windows passaram localmente; o job Windows remoto passou após a validação portátil do topo Git.
+next: nenhuma ação pendente desta auditoria ampla; novas mudanças devem iniciar novo checkpoint.
+
+
+## AUD-FIX-1 — retomada 2026-09-30 23:37 -03
+```yaml
+state: FIXING
+branch: recovery/ollama-full-snapshot
+base_commit: c393b0bc
+scope: logout real, perfil POST /api/me, download Library e verificador de contratos
+acceptance:
+  - POST /api/signout antes de fechar modal e limpar sessão
+  - sidebar/Settings usam POST /api/me via fetchUser
+  - Library usa GET /api/agent/v1/missions/:id/artifacts/:artifact_id
+  - verify-contracts considera método, parâmetros por posição, href/wrappers e avisa rotas órfãs
+  - testes frontend, build Go, contratos, integrity e Playwright desktop/mobile
+next_action: aplicar correções e executar gates; não alterar escopo
+rollback: preservar c393b0bc; sem reset/clean/force-push
+```
+
+
+## AUD-FIX-1 — checkpoint local
+state: COMPLETED
+commit_base: c393b0bc
+ci_commit: edd226e2
+changes: AppSidebar/Settings profile+logout, Library artifact route, contract scanner, frontend regression tests
+gates: frontend, Go, contracts and integrity PASS
+next_step: nenhum dentro do escopo AUD-FIX-1; repetir evidência live autenticada quando houver sessão Bearer e artifact real
+
+
+## AUD-FIX-2 — 2026-10-01 03:02 UTC
+state: IMPLEMENTED_LOCAL_CI_PENDING
+branch: recovery/ollama-full-snapshot
+base: 331759eb
+finding: `/connect` quebrava com TypeError ao aplicar `.find()`/`.filter()` sobre o envelope de integrações.
+fix: normalização em `api.ts`, guarda de runtime em `Onboarding.tsx` e regressão de payload inválido em `Onboarding.test.tsx`.
+evidence: Playwright desktop/mobile sem console ou HTTP errors e sem tela de crash; Vitest 38 arquivos/260 testes; tsc/lint/build/contracts/integrity/Go PASS.
+next_action: commit, push e acompanhar `class-a-plus-integrity` e `dz23-agentic-quality` no mesmo SHA.
+
+## Retomada — missão noturna T2 — 2026-10-01 03:13 UTC
+```yaml
+state: COMPLETED_CI_GREEN
+mission: fechar achados de auditoria em ordem, sem avançar antes de CI verde
+branch: recovery/ollama-full-snapshot
+base_commit: 1214a90b671beaca8cab6e309e21d033002a41f0
+completed:
+  - T1 /connect: correção de normalização de integrações e evidência Playwright desktop/mobile
+  - T1 CI: class-a-plus-integrity e dz23-agentic-quality success no mesmo SHA
+current:
+  - T2 Endpoint: remover ações falsas e autorização local simulada; recursos remotos honestamente NOT_CONFIGURED
+acceptance_t2:
+  - sem alert() nem mutação local ao clicar ações remotas
+  - controles remotos disabled com estado NOT_CONFIGURED acessível
+  - matriz de paridade Endpoint PARCIAL, sem PASS indevido
+  - gates locais e Playwright desktop/mobile
+next_action: T2 encerrada; iniciar T3 somente após decisão/escopo explícito
+ci:
+  class_a_plus_integrity: {id: 36809795958, conclusion: success}
+  dz23_agentic_quality: {id: 36809796036, conclusion: success}
+  sha: 2b13a2ce42ef09b0a48908b3b8b02af3eb6c24a2
+rollback: preservar 1214a90b; sem reset/clean/force-push
+```
+
+
+## Missão noturna T3–T7 — 2026-10-01 06:30 UTC
+state: IMPLEMENTED_LOCAL_CI_PENDING
+completed:
+  - T3 Criações: status NOT_EXECUTED real, sem PASS falso
+  - T4 Notificações: painel vazio honesto, sem alert fictício
+  - T5 i18n: controles de configuração traduzidos para pt-BR
+  - T6 Automações: formulário intervalo/webhook com segredo referenciado
+  - T7 Código morto: kinds duplicados e mensagem fixa removidos
+evidence: docs/evidencias/browser-console-audit-night-t3-t7.json; screen-night-t3-t7-*.png
+gates: Go build/test + CGO0 PASS; tsc/lint/Vitest/build PASS; contracts/integrity PASS
+limitation: Playwright sem Bearer registrou 401 em scheduled/settings; não declarar console limpo nessas telas
+next_action: T8 varredura final honesta, gates completos, commit/push e CI
+
+
+## Missão noturna T3–T8 — checkpoint T8 — 2026-10-01 06:34 UTC
+state: COMPLETED_LOCAL_CI_PENDING
+branch: recovery/ollama-full-snapshot
+completed: [T3, T4, T5, T6, T7, T8]
+evidence: docs/evidencias/screen-night-t3-t7-*.png, docs/evidencias/browser-console-audit-night-t3-t7.json
+gates: go build, CGO_ENABLED=0 build, go test, go vet, tsc, lint, Vitest, UI build, contracts, integrity PASS
+limitations: protected scheduled/settings requests without Bearer recorded 401; external credentials, persistent notifications, deploy/live creations, physical mobile, signed installer remain outside proof
+next_action: commit/push and wait for class-a-plus-integrity plus dz23-agentic-quality on same SHA
+rollback: preserve ea6d8fd2; no force-push
+
+## LINT-DEBT — retomada 2026-10-01 08:51 -03
+state: PLANNING
+mission: tornar .github/workflows/test.yaml verde na matriz Ubuntu/macOS/Windows e race, corrigindo a dívida golangci-lint sem alterar comportamento
+branch: recovery/ollama-full-snapshot
+base_commit: b573bf251d1526b86ce03763101bafd5b4492e53
+scope:
+  - .golangci.yaml
+  - arquivos Go apontados por golangci-lint/gofmt/gofumpt
+  - MEMORIA.md e este checkpoint
+out_of_scope:
+  - mudanças de lógica de produto não exigidas pelos linters
+  - desativar linters, reduzir assertions ou alterar workflow para esconder falhas
+acceptance:
+  - golangci-lint run ./... sem findings
+  - gofmt -l . e gofumpt -l . vazios
+  - go build ./...
+  - CGO_ENABLED=0 go build ./...
+  - go test ./...
+  - go test -race ./internal/agent ./server
+  - workflow test.yaml verde em Ubuntu/macOS/Windows e race no SHA final
+next_step: instalar a mesma versão do golangci-lint da action e capturar a linha de base

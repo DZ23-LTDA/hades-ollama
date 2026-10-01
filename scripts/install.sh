@@ -1,5 +1,5 @@
 #!/bin/sh
-# Ollama Classe A+ source installer.
+# Ollama Full source installer.
 #
 # This script intentionally builds the checked-out fork from source. It does
 # not download Ollama upstream binaries, installers, models, or Docker images.
@@ -8,15 +8,15 @@ set -eu
 
 repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 install_dir=${OLLAMA_INSTALL_DIR:-"$HOME/.local/bin"}
-binary_name=${OLLAMA_BINARY_NAME:-ollama-classe-a-plus}
+binary_name=${OLLAMA_BINARY_NAME:-ollama-full}
 output="$install_dir/$binary_name"
 
 if ! command -v go >/dev/null 2>&1; then
-  echo "ERROR: Go is required to build Ollama Classe A+ from source." >&2
+  echo "ERROR: Go is required to build Ollama Full from source." >&2
   exit 1
 fi
 if [ ! -f "$repo_root/go.mod" ]; then
-  echo "ERROR: run this script from a checked-out Ollama Classe A+ repository." >&2
+  echo "ERROR: run this script from a checked-out Ollama Full repository." >&2
   exit 1
 fi
 case "$install_dir" in
@@ -25,7 +25,7 @@ case "$install_dir" in
 esac
 
 mkdir -p "$install_dir"
-printf '%s\n' "Building Ollama Classe A+ from $repo_root"
+printf '%s\n' "Building Ollama Full from $repo_root"
 (cd "$repo_root" && go build -trimpath -o "$output" .)
 chmod 0755 "$output"
 printf '%s\n' "Installed source-built binary at $output"

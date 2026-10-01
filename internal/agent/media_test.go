@@ -23,9 +23,9 @@ func TestMediaManagerGeneratesArtifactsThroughHTTPSProvider(t *testing.T) {
 			png := []byte{0x89, 'P', 'N', 'G', '\r', '\n', 0x1a, '\n', 'p', 'n', 'g'}
 			_ = json.NewEncoder(w).Encode(map[string]any{"data": []any{map[string]any{"b64_json": base64.StdEncoding.EncodeToString(png)}}})
 		case "/audio/transcriptions":
-			_ = json.NewEncoder(w).Encode(map[string]any{"text": "transcrição aprovada"})
+			_ = json.NewEncoder(w).Encode(map[string]any{"text": "transcrição token=ghp_abcdefghijklmnopqrstuvwxyz123456"})
 		case "/chat/completions":
-			_ = json.NewEncoder(w).Encode(map[string]any{"choices": []any{map[string]any{"message": map[string]any{"content": "OCR: texto visível"}}}})
+			_ = json.NewEncoder(w).Encode(map[string]any{"choices": []any{map[string]any{"message": map[string]any{"content": "OCR token=ghp_abcdefghijklmnopqrstuvwxyz123456"}}}})
 		default:
 			w.WriteHeader(http.StatusNotFound)
 		}
@@ -49,16 +49,24 @@ func TestMediaManagerGeneratesArtifactsThroughHTTPSProvider(t *testing.T) {
 		t.Fatal(err)
 	}
 	transcript, err := manager.Transcribe(context.Background(), workspace, input, "")
-	if err != nil || transcript.Text != "transcrição aprovada" {
+	if err != nil || strings.Contains(transcript.Text, "ghp_abcdefghijklmnopqrstuvwxyz123456") || !strings.Contains(transcript.Text, "[REDACTED]") {
 		t.Fatalf("transcript=%+v err=%v", transcript, err)
+	}
+	transcriptBytes, err := os.ReadFile(transcript.Path)
+	if err != nil || strings.Contains(string(transcriptBytes), "ghp_abcdefghijklmnopqrstuvwxyz123456") {
+		t.Fatalf("transcript artifact retained provider credential: %q err=%v", transcriptBytes, err)
 	}
 	inputImage := filepath.Join(workspace, "input.png")
 	if err := os.WriteFile(inputImage, []byte("fake-png"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	vision, err := manager.AnalyzeImage(context.Background(), workspace, inputImage, "Extraia o texto da imagem", "vision-test")
-	if err != nil || vision.Text != "OCR: texto visível" {
+	if err != nil || strings.Contains(vision.Text, "ghp_abcdefghijklmnopqrstuvwxyz123456") || !strings.Contains(vision.Text, "[REDACTED]") {
 		t.Fatalf("vision=%+v err=%v", vision, err)
+	}
+	visionBytes, err := os.ReadFile(vision.Path)
+	if err != nil || strings.Contains(string(visionBytes), "ghp_abcdefghijklmnopqrstuvwxyz123456") {
+		t.Fatalf("vision artifact retained provider credential: %q err=%v", visionBytes, err)
 	}
 }
 
@@ -350,4 +358,70 @@ type readerWithReadCounter struct {
 func (r readerWithReadCounter) Read(p []byte) (int, error) {
 	*r.reads++
 	return r.reader.Read(p)
+}
+
+func TestMediaProviderErrorsDoNotEchoResponseBodies(t *testing.T) {
+	const sentinel = "media-opaque-provider-diagnostic"
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusBadGateway)
+		_, _ = w.Write([]byte(sentinel))
+	}))
+	defer server.Close()
+	manager, err := NewMediaManager(MediaProvider{Name: "local", BaseURL: server.URL})
+	if err != nil {
+		t.Fatal(err)
+	}
+	manager.Client = server.Client()
+	if _, err := manager.postJSON(context.Background(), "/json", map[string]any{"input": "safe"}); err == nil || !strings.Contains(err.Error(), "502") || strings.Contains(err.Error(), sentinel) {
+		t.Fatalf("media JSON error=%v; expected status only and no provider body", err)
+	}
+	if _, err := manager.postBytes(context.Background(), "/bytes", map[string]any{"input": "safe"}); err == nil || !strings.Contains(err.Error(), "502") || strings.Contains(err.Error(), sentinel) {
+		t.Fatalf("media binary error=%v; expected status only and no provider body", err)
+	}
+}
+
+func TestMediaProviderRejectsUserinfo(t *testing.T) {
+	const sentinel = "media-userinfo-sentinel"
+	if err := (MediaProvider{BaseURL: "https://" + sentinel + ":password@example.com", APIKey: "test-key"}).Validate(); err == nil || strings.Contains(err.Error(), sentinel) {
+		t.Fatalf("userinfo provider validation error=%v; expected rejection without userinfo", err)
+	}
+}
+
+func TestMediaDownloadTransportErrorDoesNotEchoSignedQuery(t *testing.T) {
+	const sentinel = "media-signed-query-sentinel"
+	server := httptest.NewTLSServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
+	serverURL := server.URL
+	server.Close()
+	manager, err := NewMediaManager(MediaProvider{Name: "local", BaseURL: "http://127.0.0.1:43123"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	manager.Client = server.Client()
+	_, _, err = manager.materializeEntry(context.Background(), t.TempDir(), "image", ".png", map[string]any{
+		"url": serverURL + "/download?X-Amz-Signature=" + sentinel,
+	})
+	if err == nil || !strings.Contains(err.Error(), "media download failed") || strings.Contains(err.Error(), sentinel) {
+		t.Fatalf("media download error=%v; expected sanitized transport failure", err)
+	}
+}
+
+func TestMediaOutputTextRedactsCredentialAssignments(t *testing.T) {
+	const secret = "ghp_abcdefghijklmnopqrstuvwxyz123456"
+	output := sanitizeMediaOutputText("recognized text: token=" + secret)
+	if strings.Contains(output, secret) {
+		t.Fatalf("media output retained a credential: %q", output)
+	}
+	if !strings.Contains(output, "[REDACTED]") {
+		t.Fatalf("media output was not visibly redacted: %q", output)
+	}
+}
+
+func TestMediaLoopbackHostnameCannotResolveToPublicAddress(t *testing.T) {
+	ctx := context.WithValue(context.Background(), mediaLoopbackContextKey{}, true)
+	lookup := func(context.Context, string) ([]net.IPAddr, error) {
+		return []net.IPAddr{{IP: net.ParseIP("127.0.0.1")}, {IP: net.ParseIP("203.0.113.8")}}, nil
+	}
+	if _, err := mediaDialContextWithResolver(ctx, "tcp", "localhost:443", lookup); err == nil || !strings.Contains(err.Error(), "outside loopback") {
+		t.Fatalf("media loopback accepted a public DNS answer: %v", err)
+	}
 }

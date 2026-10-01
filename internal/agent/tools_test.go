@@ -2,17 +2,30 @@ package agent
 
 import (
 	"context"
+	"errors"
+	"os"
 	"os/exec"
+	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
 )
 
 func TestTerminalToolRedactsStderrAndReportsBestEffortIsolation(t *testing.T) {
-	result, err := (terminalExecTool{allowed: map[string]bool{"sh": true}}).Execute(context.Background(), ToolContext{Workspace: t.TempDir()}, map[string]any{
-		"executable": "sh",
-		"args":       []string{"-c", "printf 'api_key=supersecret123\\n' >&2"},
-	})
+	if runtime.GOOS != "linux" {
+		t.Skip("descriptor-bound terminal execution is Linux-only")
+	}
+	workspace := t.TempDir()
+	if err := os.WriteFile(filepath.Join(workspace, "visible.txt"), []byte("safe"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	root, err := os.OpenRoot(workspace)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer root.Close()
+	result, err := (terminalExecTool{allowed: map[string]bool{"ls": true}}).Execute(context.Background(), ToolContext{Workspace: workspace, WorkspaceRoot: root}, map[string]any{"executable": "ls"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -20,12 +33,78 @@ func TestTerminalToolRedactsStderrAndReportsBestEffortIsolation(t *testing.T) {
 	if !ok {
 		t.Fatalf("result value = %#v", result.Value)
 	}
-	stderr, _ := value["stderr"].(string)
-	if strings.Contains(stderr, "supersecret123") || !strings.Contains(stderr, "[REDACTED]") {
-		t.Fatalf("stderr was not redacted: %q", stderr)
+	stdout, _ := value["stdout"].(string)
+	if !strings.Contains(stdout, "visible.txt") {
+		t.Fatalf("pinned terminal output = %q", stdout)
 	}
-	if value["execution_isolation"] != "best-effort-process-group" {
+	if value["execution_isolation"] != "descriptor-rooted-read" {
 		t.Fatalf("execution isolation = %#v", value["execution_isolation"])
+	}
+}
+
+func TestTerminalGitIgnoresAmbientPATHReplacement(t *testing.T) {
+	fakeDir := t.TempDir()
+	marker := filepath.Join(fakeDir, "executed")
+	fakeGit := filepath.Join(fakeDir, "git")
+	if err := os.WriteFile(fakeGit, []byte("#!/bin/sh\nprintf executed > \"$OLLAMA_TEST_GIT_MARKER\"\nexit 0\n"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("OLLAMA_TEST_GIT_MARKER", marker)
+	t.Setenv("PATH", fakeDir+string(os.PathListSeparator)+os.Getenv("PATH"))
+	_, err := (terminalExecTool{allowed: map[string]bool{"git": true}}).Execute(context.Background(), ToolContext{Workspace: t.TempDir()}, map[string]any{
+		"executable": "git",
+		"args":       []string{"status"},
+	})
+	if err == nil || !strings.Contains(err.Error(), "git.repo.inspect") {
+		t.Fatalf("terminal Git was not denied in favor of the dedicated inspector: %v", err)
+	}
+	if _, statErr := os.Stat(marker); !errors.Is(statErr, os.ErrNotExist) {
+		t.Fatalf("ambient fake git executed, marker stat error=%v", statErr)
+	}
+}
+
+func TestTerminalUsesPinnedWorkspaceAfterPathReplacement(t *testing.T) {
+	if runtime.GOOS != "linux" {
+		t.Skip("descriptor cwd regression is Linux-only")
+	}
+	parent := t.TempDir()
+	workspace := filepath.Join(parent, "workspace")
+	if err := os.Mkdir(workspace, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(workspace, "authorized.txt"), []byte("safe"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	root, err := os.OpenRoot(workspace)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer root.Close()
+	moved := filepath.Join(parent, "authorized-original")
+	if err := os.Rename(workspace, moved); err != nil {
+		t.Fatal(err)
+	}
+	outside := t.TempDir()
+	if err := os.WriteFile(filepath.Join(outside, "foreign-secret.txt"), []byte("secret"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(outside, workspace); err != nil {
+		t.Fatal(err)
+	}
+	result, err := (terminalExecTool{allowed: map[string]bool{"ls": true}}).Execute(context.Background(), ToolContext{Workspace: workspace, WorkspaceRoot: root}, map[string]any{"executable": "ls"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	stdout := result.Value.(map[string]any)["stdout"].(string)
+	if !strings.Contains(stdout, "authorized.txt") || strings.Contains(stdout, "foreign-secret.txt") {
+		t.Fatalf("terminal escaped pinned workspace: %q", stdout)
+	}
+}
+
+func TestTerminalFailsClosedWithoutPinnedWorkspace(t *testing.T) {
+	_, err := (terminalExecTool{allowed: map[string]bool{"pwd": true}}).Execute(context.Background(), ToolContext{Workspace: t.TempDir()}, map[string]any{"executable": "pwd"})
+	if err == nil || !strings.Contains(err.Error(), "pinned Linux workspace") {
+		t.Fatalf("unanchored terminal execution error = %v", err)
 	}
 }
 
@@ -72,6 +151,7 @@ func TestSandboxStrictModeFailsClosedWithoutDelegatedCgroup(t *testing.T) {
 }
 
 func TestSandboxRejectsUnknownMode(t *testing.T) {
+	requireLinuxSandboxExecutor(t)
 	t.Setenv("OLLAMA_AGENT_SANDBOX_MODE", "unsafe")
 	_, err := (sandboxExecTool{}).Execute(context.Background(), ToolContext{Workspace: t.TempDir(), StepID: "step_mode_test"}, map[string]any{
 		"language": "python",
@@ -83,6 +163,7 @@ func TestSandboxRejectsUnknownMode(t *testing.T) {
 }
 
 func TestResolveSandboxInterpreterUsesSupportedLanguageOnly(t *testing.T) {
+	requireLinuxSandboxExecutor(t)
 	resolved, err := resolveSandboxInterpreter("python")
 	if err != nil || resolved == "" {
 		t.Fatalf("python interpreter=%q err=%v", resolved, err)

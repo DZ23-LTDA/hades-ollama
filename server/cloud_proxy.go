@@ -41,6 +41,15 @@ var (
 	cloudProxySigningHost = defaultCloudProxySigningHost
 	cloudProxySignRequest = signCloudProxyRequest
 	cloudProxySigninURL   = signinURL
+	cloudProxyHTTPClient  = func() *http.Client {
+		allowLoopback := false
+		if parsed, err := url.Parse(cloudProxyBaseURL); err == nil {
+			// Loopback is permitted only when the cloud endpoint itself was
+			// explicitly configured as loopback by the existing policy.
+			allowLoopback = isLoopbackHost(parsed.Hostname())
+		}
+		return newServerEgressClient("server.cloud_proxy", allowLoopback)
+	}
 )
 
 var hopByHopHeaders = map[string]struct{}{
@@ -217,7 +226,7 @@ func proxyCloudRequestWithPath(c *gin.Context, body []byte, path string, disable
 	// TODO(drifkin): Add phase-specific proxy timeouts.
 	// Connect/TLS/TTFB should have bounded timeouts, but once streaming starts
 	// we should not enforce a short total timeout for long-lived responses.
-	resp, err := http.DefaultClient.Do(outReq)
+	resp, err := cloudProxyHTTPClient().Do(outReq)
 	if err != nil {
 		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
 		return

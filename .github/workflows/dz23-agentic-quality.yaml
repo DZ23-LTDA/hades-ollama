@@ -22,6 +22,10 @@ on:
   push:
     branches:
       - main
+      # Branch de recuperacao autorizada: os gates profundos (PostgreSQL 16/
+      # Redis, RLS, cutover legado, web) precisam rodar nos pushes de
+      # consolidacao desta linha, nao apenas em pull_request/main.
+      - recovery/ollama-full-snapshot
 
 permissions:
   contents: read
@@ -46,6 +50,8 @@ jobs:
           test -x "$browser_path"
           echo "OLLAMA_AGENT_BROWSER_EXECUTABLE=$browser_path" >> "$GITHUB_ENV"
       - run: go mod verify
+      - name: Go vulnerability scan (reachable symbols only)
+        run: go run golang.org/x/vuln/cmd/govulncheck@v1.8.0 ./...
       - run: gofmt -l internal/agent server/companion_ws.go server/agent_routes.go | tee /tmp/gofmt.txt && test ! -s /tmp/gofmt.txt
       - run: ./scripts/check-class-a-plus-integrity.sh
       - run: bash -n scripts/smoke-company-os.sh && python3 -m json.tool examples/dz23-desktop-commander-mcp.json >/dev/null && python3 -m json.tool examples/dz23-desktop-commander-remote.json >/dev/null
@@ -54,10 +60,48 @@ jobs:
       - run: CGO_ENABLED=1 go test ./... -count=1
       - run: CGO_ENABLED=1 go vet ./...
       - run: CGO_ENABLED=1 go build -o dist/ollama-agentic .
+      - name: Windows amd64 cross-compilation for agent package
+        run: |
+          GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go test -run '^$' -c -o "$RUNNER_TEMP/ollama-agent-windows.test.exe" ./internal/agent
       - uses: actions/upload-artifact@v4
         with:
           name: ollama-agentic-linux
           path: dist/ollama-agentic
+
+  go-agentic-windows:
+    name: Go agentic Windows portability
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      # Windows has no POSIX execute bit or 0600 modes; this job keeps the
+      # agent runtime (MCP launch, manifests, artifacts) working on the
+      # platform the desktop installer ships to.
+      # The browser operator drives the preinstalled Edge through Python
+      # Playwright, so only the Python package is needed (no browser download).
+      - name: Install Browser Operator dependencies
+        shell: bash
+        run: python -m pip install --user 'playwright==1.63.0'
+      - name: Diagnose trusted Git and snapshot DACL prerequisites
+        if: always()
+        shell: bash
+        run: |
+          echo '--- git executables in PATH'
+          which -a git git.exe 2>/dev/null || true
+          echo '--- candidate Git directories'
+          for d in "/c/Program Files/Git/cmd" "/c/Program Files/Git/bin" "/c/Program Files/Git/mingw64/bin" "/c/Program Files/Git/usr/bin"; do
+            if [ -d "$d" ]; then echo "== $d"; icacls "$d" 2>&1 | head -25; fi
+          done
+          echo '--- diagnostics complete'
+      - name: Agent runtime tests
+        shell: bash
+        env:
+          CGO_ENABLED: '0'
+          OLLAMA_AGENT_BROWSER_EXECUTABLE: 'C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe'
+        run: go test ./internal/agent -count=1
 
   distributed-integration:
     name: PostgreSQL RLS, Redis DLQ and OTLP integration
@@ -71,45 +115,334 @@ jobs:
       - name: Start dependencies and run integration tests
         run: |
           set -euo pipefail
-          postgres_password="$(openssl rand -hex 24)"
+          postgres_admin_password="$(openssl rand -hex 24)"
+          postgres_runtime_password="$(openssl rand -hex 24)"
+          postgres_migrator_password="$(openssl rand -hex 24)"
           redis_password="$(openssl rand -hex 24)"
-          tenant_password="$(openssl rand -hex 24)"
-          export OLLAMA_AGENT_POSTGRES_PASSWORD="$postgres_password"
+          tenant_key="$(openssl rand -hex 32)"
+          legacy_password="$(openssl rand -hex 24)"
+          postgres_hba_file="$RUNNER_TEMP/pg_hba-runtime-ci.conf"
+          awk '/^host[[:space:]]+ollama_agent[[:space:]]+ollama_agent[[:space:]]+0\.0\.0\.0\/0/ { print "host    ollama_agent  ollama_agent_reverse_member  0.0.0.0/0  scram-sha-256" } { print }' deploy/postgres/pg_hba-runtime.conf >"$postgres_hba_file"
+          grep -qE '^host[[:space:]]+ollama_agent[[:space:]]+ollama_agent_reverse_member[[:space:]]+0\.0\.0\.0/0[[:space:]]+scram-sha-256$' "$postgres_hba_file"
+          ! grep -qE '^host[[:space:]]+all[[:space:]]+ollama_agent_(runtime|migrator)[[:space:]].*scram-sha-256' "$postgres_hba_file"
+          export OLLAMA_AGENT_POSTGRES_HBA_FILE="$postgres_hba_file"
+          for secret in "$postgres_admin_password" "$postgres_runtime_password" "$postgres_migrator_password" "$redis_password" "$tenant_key" "$legacy_password"; do
+            echo "::add-mask::$secret"
+          done
+          on_failure() {
+            status=$?
+            trap - ERR
+            log_file="$RUNNER_TEMP/distributed-dependency-logs.txt"
+            docker compose -f deploy/docker-compose.agentic.yml logs --no-color >"$log_file" 2>&1 || true
+            for secret in "$postgres_admin_password" "$postgres_runtime_password" "$postgres_migrator_password" "$redis_password" "$tenant_key" "$legacy_password" "${OLLAMA_AGENT_TEST_POSTGRES_ADMIN_URL:-}" "${OLLAMA_AGENT_TEST_POSTGRES_ADMIN_OTHER_DB_URL:-}" "${OLLAMA_AGENT_TEST_POSTGRES_RUNTIME_URL:-}" "${OLLAMA_AGENT_TEST_POSTGRES_RUNTIME_OTHER_DB_URL:-}" "${OLLAMA_AGENT_TEST_POSTGRES_MIGRATOR_URL:-}" "${OLLAMA_AGENT_TEST_POSTGRES_MIGRATOR_OTHER_DB_URL:-}" "${OLLAMA_AGENT_TEST_POSTGRES_LEGACY_URL:-}" "${OLLAMA_AGENT_TEST_REDIS_URL:-}"; do
+              if [ -n "$secret" ] && grep -Fq -- "$secret" "$log_file"; then
+                echo 'Dependency logs suppressed because buffered diagnostics contain a credential value.' >&2
+                exit "$status"
+              fi
+            done
+            cat "$log_file"
+            exit "$status"
+          }
+          trap on_failure ERR
+          export OLLAMA_AGENT_POSTGRES_ADMIN_PASSWORD="$postgres_admin_password"
+          export OLLAMA_AGENT_RUNTIME_PASSWORD="$postgres_runtime_password"
+          export OLLAMA_AGENT_MIGRATOR_PASSWORD="$postgres_migrator_password"
           export OLLAMA_AGENT_REDIS_PASSWORD="$redis_password"
           docker compose -f deploy/docker-compose.agentic.yml up -d --wait
 
-          # The Compose bootstrap role owns the database and is a superuser by
-          # design. Use a separate role for tenant-scoped RLS operations.
-          role_exists="$(docker compose -f deploy/docker-compose.agentic.yml exec -T postgres \
-            psql -Atq -U ollama_agent -d ollama_agent \
-            -c "SELECT 1 FROM pg_roles WHERE rolname = 'ollama_agent_test'")"
-          if [ "$role_exists" = "1" ]; then
-            docker compose -f deploy/docker-compose.agentic.yml exec -T postgres \
-              psql -v ON_ERROR_STOP=1 -U ollama_agent -d ollama_agent \
-              -c "ALTER ROLE ollama_agent_test WITH LOGIN PASSWORD '$tenant_password'"
-          else
-            docker compose -f deploy/docker-compose.agentic.yml exec -T postgres \
-              psql -v ON_ERROR_STOP=1 -U ollama_agent -d ollama_agent \
-              -c "CREATE ROLE ollama_agent_test LOGIN PASSWORD '$tenant_password'"
+          fresh_acl_state="$(PGPASSWORD="$postgres_admin_password" psql -h 127.0.0.1 -U ollama_agent_admin -d ollama_agent -Atc \
+            "SELECT format('%s/%s/%s/%s/%s', NOT EXISTS (SELECT 1 FROM pg_catalog.pg_database d CROSS JOIN LATERAL pg_catalog.aclexplode(COALESCE(d.datacl,pg_catalog.acldefault('d',d.datdba))) a WHERE d.datname=current_database() AND a.grantee=0 AND a.privilege_type='CONNECT'), NOT EXISTS (SELECT 1 FROM pg_catalog.pg_namespace n CROSS JOIN LATERAL pg_catalog.aclexplode(COALESCE(n.nspacl,pg_catalog.acldefault('n',n.nspowner))) a WHERE n.nspname='public' AND a.grantee=0 AND a.privilege_type IN ('USAGE','CREATE')), has_database_privilege('ollama_agent_runtime',current_database(),'CONNECT'), has_schema_privilege('ollama_agent_runtime','public','USAGE'), NOT EXISTS (SELECT 1 FROM pg_catalog.pg_database d WHERE d.datname<>current_database() AND has_database_privilege('ollama_agent_runtime',d.oid,'CONNECT')))")"
+          test "$fresh_acl_state" = "t/t/t/t/t"
+          PGPASSWORD="$postgres_admin_password" psql -h 127.0.0.1 -U ollama_agent_admin -d postgres -v ON_ERROR_STOP=1 -c 'CREATE DATABASE ollama_runtime_template_probe TEMPLATE template1'
+          PGPASSWORD="$postgres_admin_password" psql -h 127.0.0.1 -U ollama_agent_admin -d postgres -v ON_ERROR_STOP=1 -c 'GRANT CONNECT ON DATABASE ollama_runtime_template_probe TO PUBLIC'
+          fresh_probe_acl="$(PGPASSWORD="$postgres_admin_password" psql -h 127.0.0.1 -U ollama_agent_admin -d postgres -Atc "SELECT format('%s/%s', has_database_privilege('ollama_agent_runtime','ollama_runtime_template_probe','CONNECT'), has_database_privilege('ollama_agent_migrator','ollama_runtime_template_probe','CONNECT'))")"
+          test "$fresh_probe_acl" = "t/t"
+          if PGPASSWORD="$postgres_runtime_password" psql -h 127.0.0.1 -U ollama_agent_runtime -d ollama_runtime_template_probe -v ON_ERROR_STOP=1 -c 'SELECT 1' >/dev/null 2>&1; then
+            echo 'runtime authenticated to a fresh PUBLIC-CONNECT template-derived database' >&2
+            exit 1
           fi
-          docker compose -f deploy/docker-compose.agentic.yml exec -T postgres \
-            psql -v ON_ERROR_STOP=1 -U ollama_agent -d ollama_agent <<'SQL'
-          GRANT CONNECT ON DATABASE ollama_agent TO ollama_agent_test;
-          GRANT USAGE, CREATE ON SCHEMA public TO ollama_agent_test;
+          if PGPASSWORD="$postgres_migrator_password" psql -h 127.0.0.1 -U ollama_agent_migrator -d ollama_runtime_template_probe -v ON_ERROR_STOP=1 -c 'SELECT 1' >/dev/null 2>&1; then
+            echo 'migrator authenticated to a fresh PUBLIC-CONNECT template-derived database' >&2
+            exit 1
+          fi
+          PGPASSWORD="$postgres_admin_password" psql -h 127.0.0.1 -U ollama_agent_admin -d postgres -v ON_ERROR_STOP=1 -c 'DROP DATABASE ollama_runtime_template_probe'
+          if PGPASSWORD="$postgres_runtime_password" psql -h 127.0.0.1 -U ollama_agent_runtime -d postgres \
+            -v ON_ERROR_STOP=1 -c 'SELECT 1' >/dev/null 2>&1; then
+            echo 'fresh runtime credential connected to postgres maintenance database' >&2
+            exit 1
+          fi
+
+          # Build a disposable volume matching the old all-powerful runtime role.
+          PGPASSWORD="$postgres_admin_password" psql -h 127.0.0.1 -U ollama_agent_admin -d ollama_agent \
+            -v ON_ERROR_STOP=1 -v legacy_password="$legacy_password" <<'SQL'
+          CREATE ROLE ollama_agent LOGIN SUPERUSER PASSWORD :'legacy_password';
+          CREATE ROLE ollama_agent_reverse_member LOGIN PASSWORD :'legacy_password';
+          GRANT ollama_agent TO ollama_agent_reverse_member;
+          -- Fresh bootstrap revokes PUBLIC CONNECT, so this disposable member
+          -- login needs an explicit grant before its readiness probe runs.
+          GRANT CONNECT ON DATABASE ollama_agent TO ollama_agent_reverse_member;
+          SQL
+          reverse_member_login="$(PGPASSWORD="$legacy_password" psql -h 127.0.0.1 -U ollama_agent_reverse_member -d ollama_agent -Atc 'SELECT current_user')"
+          test "$reverse_member_login" = ollama_agent_reverse_member
+          PGPASSWORD="$legacy_password" psql -h 127.0.0.1 -U ollama_agent -d ollama_agent \
+            -v ON_ERROR_STOP=1 -v legacy_key="$tenant_key" <<'SQL'
+          -- Fresh bootstrap owns the extension as admin. Recreate it as the old
+          -- role so this fixture models an existing legacy-owned installation.
+          DROP EXTENSION pgcrypto;
+          CREATE EXTENSION pgcrypto WITH SCHEMA public;
+          CREATE TABLE public.agent_tenant_context_key (key_id BOOLEAN PRIMARY KEY DEFAULT true, secret BYTEA NOT NULL);
+          INSERT INTO public.agent_tenant_context_key (key_id,secret) VALUES (true,decode(:'legacy_key','hex'));
+          CREATE TABLE public.agent_missions (
+            id TEXT PRIMARY KEY, version BIGINT NOT NULL, objective TEXT NOT NULL,
+            model TEXT NOT NULL DEFAULT '', workspace TEXT NOT NULL DEFAULT '', project_id TEXT NOT NULL DEFAULT '',
+            organization_id TEXT NOT NULL DEFAULT '', auto_run BOOLEAN NOT NULL DEFAULT FALSE,
+            state TEXT NOT NULL, plan JSONB NOT NULL, approvals JSONB NOT NULL, artifacts JSONB NOT NULL,
+            last_error TEXT NOT NULL DEFAULT '', created_at TIMESTAMPTZ NOT NULL,
+            updated_at TIMESTAMPTZ NOT NULL, completed_at TIMESTAMPTZ NULL
+          );
+          CREATE TABLE public.agent_events (
+            id TEXT PRIMARY KEY, mission_id TEXT NOT NULL, organization_id TEXT NOT NULL DEFAULT '',
+            type TEXT NOT NULL, step_id TEXT NOT NULL DEFAULT '', payload JSONB NULL, created_at TIMESTAMPTZ NOT NULL
+          );
+          GRANT SELECT (objective) ON TABLE public.agent_missions TO PUBLIC;
+          GRANT EXECUTE ON FUNCTION public.hmac(bytea,bytea,text) TO PUBLIC;
+          GRANT CONNECT, CREATE, TEMP ON DATABASE ollama_agent TO PUBLIC;
+          GRANT USAGE, CREATE ON SCHEMA public TO PUBLIC;
+          ALTER TABLE public.agent_missions OWNER TO ollama_agent;
+          ALTER TABLE public.agent_events OWNER TO ollama_agent;
+          ALTER SCHEMA public OWNER TO ollama_agent;
+          INSERT INTO public.agent_missions
+            (id,version,objective,model,organization_id,state,plan,approvals,artifacts,created_at,updated_at)
+            VALUES ('mis_legacy_fixture',1,'legacy row survives role cutover','fixture-model','org_legacy_fixture','COMPLETED','[]','[]','[]',NOW(),NOW());
+          INSERT INTO public.agent_events (id,mission_id,organization_id,type,payload,created_at)
+            VALUES ('evt_legacy_fixture','mis_legacy_fixture','org_legacy_fixture','legacy.fixture',NULL,NOW());
           SQL
 
-          export OLLAMA_AGENT_TEST_POSTGRES_URL="postgres://ollama_agent_test:${tenant_password}@127.0.0.1:5432/ollama_agent?sslmode=disable"
+          umask 077
+          legacy_backup="$RUNNER_TEMP/ollama-agent-pre-upgrade.dump"
+          PGPASSWORD="$legacy_password" pg_dump -h 127.0.0.1 -U ollama_agent -d ollama_agent -Fc -f "$legacy_backup"
+          pg_restore --list "$legacy_backup" >/dev/null
+
+          # Poison an explicitly hostile search_path. Both deployment scripts
+          # must pin pg_catalog first before any unqualified call can resolve.
+          PGPASSWORD="$postgres_admin_password" psql -h 127.0.0.1 -U ollama_agent_admin -d ollama_agent \
+            -v ON_ERROR_STOP=1 <<'SQL'
+          CREATE SCHEMA ollama_cutover_hostile;
+          CREATE FUNCTION ollama_cutover_hostile.current_database() RETURNS text LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'hostile current_database resolved'; END $$;
+          CREATE FUNCTION ollama_cutover_hostile.to_regclass(text) RETURNS regclass LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'hostile to_regclass resolved'; END $$;
+          CREATE FUNCTION ollama_cutover_hostile.pg_backend_pid() RETURNS integer LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'hostile pg_backend_pid resolved'; END $$;
+          CREATE FUNCTION ollama_cutover_hostile.pg_stat_clear_snapshot() RETURNS void LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'hostile pg_stat_clear_snapshot resolved'; END $$;
+          CREATE FUNCTION ollama_cutover_hostile.pg_sleep(double precision) RETURNS void LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'hostile pg_sleep resolved'; END $$;
+          CREATE FUNCTION ollama_cutover_hostile.pg_terminate_backend(integer) RETURNS boolean LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'hostile pg_terminate_backend resolved'; END $$;
+          SQL
+
+          # The legacy script performs broad owner/ACL transfer only after
+          # fencing the old superuser and draining its sessions.
+          restore_legacy_superuser() {
+            PGPASSWORD="$postgres_admin_password" psql -h 127.0.0.1 -U ollama_agent_admin -d ollama_agent \
+              -v ON_ERROR_STOP=1 -v legacy_password="$legacy_password" <<'SQL'
+          ALTER ROLE ollama_agent LOGIN SUPERUSER PASSWORD :'legacy_password';
+          GRANT ollama_agent TO ollama_agent_reverse_member;
+          SQL
+          }
+          PGPASSWORD="$legacy_password" psql -h 127.0.0.1 -U ollama_agent -d ollama_agent \
+            -v ON_ERROR_STOP=1 -c 'CREATE TABLE public.unrelated_service_probe(secret TEXT)'
+          set +e
+          trap - ERR
+          PGOPTIONS='-c search_path=ollama_cutover_hostile,pg_catalog,public' PGPASSWORD="$legacy_password" psql -h 127.0.0.1 -U ollama_agent -d ollama_agent \
+            -v ON_ERROR_STOP=1 -f deploy/postgres/migrate-existing-roles.sql >"$RUNNER_TEMP/unrelated-object-preflight.log" 2>&1
+          unrelated_object_status=$?
+          set -e
+          trap on_failure ERR
+          if [ "$unrelated_object_status" -eq 0 ] || ! grep -q 'unrelated non-extension objects' "$RUNNER_TEMP/unrelated-object-preflight.log"; then
+            cat "$RUNNER_TEMP/unrelated-object-preflight.log"
+            echo 'legacy cutover did not reject an unrelated public object' >&2
+            exit 1
+          fi
+          PGPASSWORD="$postgres_admin_password" psql -h 127.0.0.1 -U ollama_agent_admin -d ollama_agent \
+            -v ON_ERROR_STOP=1 -c 'DROP TABLE public.unrelated_service_probe'
+          restore_legacy_superuser
+
+          PGPASSWORD="$postgres_admin_password" psql -h 127.0.0.1 -U ollama_agent_admin -d postgres \
+            -v ON_ERROR_STOP=1 -c 'CREATE DATABASE ollama_unrelated_probe'
+          set +e
+          trap - ERR
+          PGOPTIONS='-c search_path=ollama_cutover_hostile,pg_catalog,public' PGPASSWORD="$legacy_password" psql -h 127.0.0.1 -U ollama_agent -d ollama_agent \
+            -v ON_ERROR_STOP=1 -f deploy/postgres/migrate-existing-roles.sql >"$RUNNER_TEMP/unrelated-database-preflight.log" 2>&1
+          unrelated_database_status=$?
+          set -e
+          trap on_failure ERR
+          if [ "$unrelated_database_status" -eq 0 ] || ! grep -q 'dedicated PostgreSQL cluster' "$RUNNER_TEMP/unrelated-database-preflight.log"; then
+            cat "$RUNNER_TEMP/unrelated-database-preflight.log"
+            echo 'legacy cutover did not reject an unrelated database' >&2
+            exit 1
+          fi
+          PGPASSWORD="$postgres_admin_password" psql -h 127.0.0.1 -U ollama_agent_admin -d postgres \
+            -v ON_ERROR_STOP=1 -c 'DROP DATABASE ollama_unrelated_probe'
+          restore_legacy_superuser
+
+          PGPASSWORD="$postgres_admin_password" psql -h 127.0.0.1 -U ollama_agent_admin -d postgres \
+            -v ON_ERROR_STOP=1 -c 'CREATE DATABASE ollama_disabled_unrelated_probe'
+          PGPASSWORD="$postgres_admin_password" psql -h 127.0.0.1 -U ollama_agent_admin -d postgres \
+            -v ON_ERROR_STOP=1 -c 'ALTER DATABASE ollama_disabled_unrelated_probe ALLOW_CONNECTIONS false'
+          set +e
+          trap - ERR
+          PGOPTIONS='-c search_path=ollama_cutover_hostile,pg_catalog,public' PGPASSWORD="$legacy_password" psql -h 127.0.0.1 -U ollama_agent -d ollama_agent \
+            -v ON_ERROR_STOP=1 -f deploy/postgres/migrate-existing-roles.sql >"$RUNNER_TEMP/disabled-database-preflight.log" 2>&1
+          disabled_database_status=$?
+          set -e
+          trap on_failure ERR
+          if [ "$disabled_database_status" -eq 0 ] || ! grep -q 'dedicated PostgreSQL cluster' "$RUNNER_TEMP/disabled-database-preflight.log"; then
+            cat "$RUNNER_TEMP/disabled-database-preflight.log"
+            echo 'legacy cutover did not reject a connection-disabled unrelated database' >&2
+            exit 1
+          fi
+          PGPASSWORD="$postgres_admin_password" psql -h 127.0.0.1 -U ollama_agent_admin -d postgres \
+            -v ON_ERROR_STOP=1 -c 'ALTER DATABASE ollama_disabled_unrelated_probe ALLOW_CONNECTIONS true'
+          PGPASSWORD="$postgres_admin_password" psql -h 127.0.0.1 -U ollama_agent_admin -d postgres \
+            -v ON_ERROR_STOP=1 -c 'DROP DATABASE ollama_disabled_unrelated_probe'
+          restore_legacy_superuser
+
+          # Both the legacy login and a distinct authenticated member using
+          # SET ROLE must be drained before ownership transfer can proceed.
+          PGAPPNAME=ollama_cutover_unrelated_admin_probe PGPASSWORD="$postgres_admin_password" psql -h 127.0.0.1 -U ollama_agent_admin -d ollama_agent \
+            -v ON_ERROR_STOP=1 -c 'SELECT pg_sleep(600)' >"$RUNNER_TEMP/unrelated-admin-session.log" 2>&1 &
+          unrelated_admin_session_pid=$!
+          sleep 1
+          unrelated_admin_ready="$(PGPASSWORD="$postgres_admin_password" psql -h 127.0.0.1 -U ollama_agent_admin -d ollama_agent -Atc "SELECT EXISTS (SELECT 1 FROM pg_catalog.pg_stat_activity WHERE application_name='ollama_cutover_unrelated_admin_probe' AND state='active' AND query LIKE '%pg_sleep(600)%')")"
+          test "$unrelated_admin_ready" = t
+          PGPASSWORD="$legacy_password" psql -h 127.0.0.1 -U ollama_agent -d ollama_agent \
+            -v ON_ERROR_STOP=1 -c 'SELECT pg_sleep(60)' >"$RUNNER_TEMP/legacy-session.log" 2>&1 &
+          legacy_session_pid=$!
+          # The fresh bootstrap already REVOKEs PUBLIC CONNECT, so this
+          # disposable member login needs an explicit grant to open the
+          # SET ROLE session that phase one must drain.
+          PGPASSWORD="$postgres_admin_password" psql -h 127.0.0.1 -U ollama_agent_admin -d ollama_agent \
+            -v ON_ERROR_STOP=1 -c 'GRANT CONNECT ON DATABASE ollama_agent TO ollama_agent_reverse_member'
+          PGPASSWORD="$legacy_password" psql -h 127.0.0.1 -U ollama_agent_reverse_member -d ollama_agent \
+            -v ON_ERROR_STOP=1 -c 'SET ROLE ollama_agent; SELECT pg_sleep(60)' >"$RUNNER_TEMP/reverse-member-session.log" 2>&1 &
+          reverse_member_session_pid=$!
+          sleep 1
+          member_session_ready="$(PGPASSWORD="$postgres_admin_password" psql -h 127.0.0.1 -U ollama_agent_admin -d ollama_agent -Atc "SELECT EXISTS (SELECT 1 FROM pg_catalog.pg_stat_activity WHERE usename='ollama_agent_reverse_member' AND state='active' AND query LIKE '%pg_sleep(60)%')")"
+          test "$member_session_ready" = t
+          PGOPTIONS='-c search_path=ollama_cutover_hostile,pg_catalog,public' PGPASSWORD="$legacy_password" psql -h 127.0.0.1 -U ollama_agent -d ollama_agent \
+            -v ON_ERROR_STOP=1 -f deploy/postgres/migrate-existing-roles.sql
+          if wait "$legacy_session_pid" 2>/dev/null; then
+            echo 'legacy session survived the committed NOLOGIN fence and administrator drain' >&2
+            exit 1
+          fi
+          if wait "$reverse_member_session_pid" 2>/dev/null; then
+            echo 'authenticated role-member SET ROLE session survived the administrator drain' >&2
+            exit 1
+          fi
+          unrelated_admin_alive="$(PGPASSWORD="$postgres_admin_password" psql -h 127.0.0.1 -U ollama_agent_admin -d ollama_agent -Atc "SELECT EXISTS (SELECT 1 FROM pg_catalog.pg_stat_activity WHERE application_name='ollama_cutover_unrelated_admin_probe' AND state='active' AND query LIKE '%pg_sleep(600)%')")"
+          test "$unrelated_admin_alive" = t
+          PGPASSWORD="$postgres_admin_password" psql -h 127.0.0.1 -U ollama_agent_admin -d ollama_agent \
+            -v ON_ERROR_STOP=1 -c 'SELECT current_user' | grep -q ollama_agent_admin
+          PGPASSWORD="$postgres_migrator_password" psql -h 127.0.0.1 -U ollama_agent_migrator -d ollama_agent \
+            -v ON_ERROR_STOP=1 -c 'SELECT current_user' | grep -q ollama_agent_migrator
+          PGPASSWORD="$postgres_runtime_password" psql -h 127.0.0.1 -U ollama_agent_runtime -d ollama_agent \
+            -v ON_ERROR_STOP=1 -c 'SELECT current_user' | grep -q ollama_agent_runtime
+          if PGPASSWORD="$legacy_password" psql -h 127.0.0.1 -U ollama_agent -d ollama_agent \
+            -v ON_ERROR_STOP=1 -c 'SELECT 1' >/dev/null 2>&1; then
+            echo 'legacy superuser credential reconnected after phase-one fence' >&2
+            exit 1
+          fi
+
+          export OLLAMA_AGENT_TEST_POSTGRES_RUNTIME_URL="postgres://ollama_agent_runtime:${postgres_runtime_password}@127.0.0.1:5432/ollama_agent?sslmode=disable"
+          export OLLAMA_AGENT_TEST_POSTGRES_RUNTIME_OTHER_DB_URL="postgres://ollama_agent_runtime:${postgres_runtime_password}@127.0.0.1:5432/ollama_hba_probe?sslmode=disable"
+          export OLLAMA_AGENT_TEST_POSTGRES_MIGRATOR_OTHER_DB_URL="postgres://ollama_agent_migrator:${postgres_migrator_password}@127.0.0.1:5432/ollama_hba_probe?sslmode=disable"
+          export OLLAMA_AGENT_TEST_POSTGRES_MIGRATOR_URL="postgres://ollama_agent_migrator:${postgres_migrator_password}@127.0.0.1:5432/ollama_agent?sslmode=disable"
+          export OLLAMA_AGENT_TEST_POSTGRES_ADMIN_URL="postgres://ollama_agent_admin:${postgres_admin_password}@127.0.0.1:5432/ollama_agent?sslmode=disable"
+          export OLLAMA_AGENT_TEST_POSTGRES_ADMIN_OTHER_DB_URL="postgres://ollama_agent_admin:${postgres_admin_password}@127.0.0.1:5432/postgres?sslmode=disable"
+          export OLLAMA_AGENT_TEST_POSTGRES_LEGACY_URL="postgres://ollama_agent:${legacy_password}@127.0.0.1:5432/ollama_agent?sslmode=disable"
+          export OLLAMA_AGENT_TEST_POSTGRES_TENANT_KEY="$tenant_key"
           export OLLAMA_AGENT_TEST_REDIS_URL="redis://:${redis_password}@127.0.0.1:6379/0"
+          for secret in "$OLLAMA_AGENT_TEST_POSTGRES_RUNTIME_URL" "$OLLAMA_AGENT_TEST_POSTGRES_RUNTIME_OTHER_DB_URL" "$OLLAMA_AGENT_TEST_POSTGRES_MIGRATOR_URL" "$OLLAMA_AGENT_TEST_POSTGRES_MIGRATOR_OTHER_DB_URL" "$OLLAMA_AGENT_TEST_POSTGRES_ADMIN_URL" "$OLLAMA_AGENT_TEST_POSTGRES_ADMIN_OTHER_DB_URL" "$OLLAMA_AGENT_TEST_POSTGRES_LEGACY_URL" "$OLLAMA_AGENT_TEST_REDIS_URL"; do
+            echo "::add-mask::$secret"
+          done
           export OLLAMA_AGENT_TEST_OTLP_ENDPOINT="http://127.0.0.1:4318/v1/traces"
           export OLLAMA_AGENT_OTLP_ALLOW_INSECURE=1
+          export OLLAMA_AGENT_MIGRATOR_DATABASE_URL="$OLLAMA_AGENT_TEST_POSTGRES_MIGRATOR_URL"
+          export OLLAMA_AGENT_TENANT_CONTEXT_KEY="$tenant_key"
+          CGO_ENABLED=1 go run . agent migrate-postgres
+          CGO_ENABLED=0 go test -tags integration ./internal/agent -run '^TestDistributedPostgresRuntimeReadinessForStaleLegacySession$' -count=1 -v
+          CGO_ENABLED=0 go test -tags integration ./internal/agent -run '^TestDistributedPostgresRuntimeCannotConnectOutsideApplicationDatabase$' -count=1 -v
+          unset OLLAMA_AGENT_TEST_POSTGRES_RUNTIME_OTHER_DB_URL OLLAMA_AGENT_TEST_POSTGRES_MIGRATOR_OTHER_DB_URL
+          # Temporarily restore the prohibited legacy shape only to prove runtime
+          # readiness detects it; immediately restore the phase-one fence.
+          PGPASSWORD="$postgres_admin_password" psql -h 127.0.0.1 -U ollama_agent_admin -d ollama_agent \
+            -v ON_ERROR_STOP=1 -c 'ALTER ROLE ollama_agent LOGIN SUPERUSER'
+          export OLLAMA_AGENT_TEST_EXPECT_LEGACY_ROLE_ACTIVE=true
+          CGO_ENABLED=0 go test -tags integration ./internal/agent -run '^TestDistributedPostgresRuntimeReadinessForLegacyRole$' -count=1 -v
+          unset OLLAMA_AGENT_TEST_EXPECT_LEGACY_ROLE_ACTIVE
+          PGPASSWORD="$postgres_admin_password" psql -h 127.0.0.1 -U ollama_agent_admin -d ollama_agent \
+            -v ON_ERROR_STOP=1 -c 'ALTER ROLE ollama_agent NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS NOREPLICATION'
+          CGO_ENABLED=0 go test -tags integration ./internal/agent -run '^TestDistributedPostgresRuntimeReadinessForStaleLegacySession$' -count=1 -v
+          PGPASSWORD="$postgres_admin_password" psql -h 127.0.0.1 -U ollama_agent_admin -d ollama_agent \
+            -v ON_ERROR_STOP=1 -c 'GRANT CONNECT ON DATABASE ollama_agent TO ollama_agent_reverse_member; GRANT ollama_agent TO ollama_agent_reverse_member'
+          PGPASSWORD="$legacy_password" psql -h 127.0.0.1 -U ollama_agent_reverse_member -d ollama_agent \
+            -v ON_ERROR_STOP=1 -c 'SET ROLE ollama_agent; SELECT pg_sleep(60)' >"$RUNNER_TEMP/reverse-member-retirement-session.log" 2>&1 &
+          retirement_member_session_pid=$!
+          sleep 1
+          retirement_member_ready="$(PGPASSWORD="$postgres_admin_password" psql -h 127.0.0.1 -U ollama_agent_admin -d ollama_agent -Atc "SELECT EXISTS (SELECT 1 FROM pg_catalog.pg_stat_activity WHERE usename='ollama_agent_reverse_member' AND state='active' AND query LIKE '%pg_sleep(60)%')")"
+          test "$retirement_member_ready" = t
+          PGOPTIONS='-c search_path=ollama_cutover_hostile,pg_catalog,public' PGPASSWORD="$postgres_admin_password" psql -h 127.0.0.1 -U ollama_agent_admin -d ollama_agent \
+            -v ON_ERROR_STOP=1 -f deploy/postgres/retire-legacy-role.sql
+          if wait "$retirement_member_session_pid" 2>/dev/null; then
+            echo 'phase-two retirement left an authenticated SET ROLE member session alive' >&2
+            exit 1
+          fi
+          unrelated_admin_alive="$(PGPASSWORD="$postgres_admin_password" psql -h 127.0.0.1 -U ollama_agent_admin -d ollama_agent -Atc "SELECT EXISTS (SELECT 1 FROM pg_catalog.pg_stat_activity WHERE application_name='ollama_cutover_unrelated_admin_probe' AND state='active' AND query LIKE '%pg_sleep(600)%')")"
+          test "$unrelated_admin_alive" = t
+          PGPASSWORD="$postgres_admin_password" psql -h 127.0.0.1 -U ollama_agent_admin -d ollama_agent \
+            -v ON_ERROR_STOP=1 -c "SELECT pg_catalog.pg_terminate_backend(pid) FROM pg_catalog.pg_stat_activity WHERE application_name='ollama_cutover_unrelated_admin_probe'"
+          if wait "$unrelated_admin_session_pid" 2>/dev/null; then
+            echo 'unrelated administrator probe did not terminate after phase-two assertions' >&2
+            exit 1
+          fi
+          PGPASSWORD="$postgres_admin_password" psql -h 127.0.0.1 -U ollama_agent_admin -d ollama_agent \
+            -v ON_ERROR_STOP=1 -c 'REVOKE CONNECT ON DATABASE ollama_agent FROM ollama_agent_reverse_member'
+          test "$(PGPASSWORD="$postgres_admin_password" psql -h 127.0.0.1 -U ollama_agent_admin -d ollama_agent -Atc \
+            "SELECT count(*) FROM pg_catalog.pg_stat_activity WHERE usename IN ('ollama_agent','ollama_agent_reverse_member') AND pid<>pg_catalog.pg_backend_pid()")" = 0
+          legacy_state="$(PGPASSWORD="$postgres_admin_password" psql -h 127.0.0.1 -U ollama_agent_admin -d ollama_agent -Atc \
+            "SELECT format('%s/%s/%s/%s/%s/%s/%s/%s/%s', (SELECT count(*) FROM agent_missions WHERE id='mis_legacy_fixture'), (SELECT count(*) FROM agent_events WHERE id='evt_legacy_fixture'), (SELECT count(*) FROM pg_catalog.pg_roles r WHERE r.rolname='ollama_agent' AND NOT r.rolcanlogin AND NOT r.rolsuper AND NOT r.rolbypassrls AND NOT r.rolcreatedb AND NOT r.rolcreaterole AND NOT r.rolreplication AND NOT r.rolinherit AND NOT EXISTS (SELECT 1 FROM pg_catalog.pg_auth_members m WHERE m.member=r.oid OR m.roleid=r.oid)), (SELECT count(*) FROM pg_catalog.pg_tables WHERE tablename IN ('agent_missions','agent_events','agent_tenant_context_keys') AND tableowner='ollama_agent_migrator'), (SELECT count(*) FROM pg_catalog.pg_stat_activity WHERE usename='ollama_agent' AND pid<>pg_backend_pid()), (SELECT count(*) FROM pg_catalog.pg_auth_members m JOIN pg_catalog.pg_roles r ON r.oid=m.roleid OR r.oid=m.member WHERE r.rolname='ollama_agent'), (SELECT count(*) FROM pg_catalog.pg_extension e JOIN pg_catalog.pg_roles r ON r.oid=e.extowner WHERE e.extname='pgcrypto' AND r.rolname='ollama_agent_migrator'), (SELECT count(*) FROM pg_catalog.pg_proc p JOIN pg_catalog.pg_roles r ON r.oid=p.proowner WHERE p.oid='public.hmac(bytea,bytea,text)'::pg_catalog.regprocedure AND r.rolname='ollama_agent_migrator'), (SELECT count(*) FROM pg_catalog.pg_class WHERE relname='agent_tenant_context_key'))")"
+          test "$legacy_state" = "1/1/1/3/0/0/1/1/0"
+          # psql does not interpolate variables inside -c strings, so use a
+          # heredoc where :'expected_key' is substituted by the client.
+          versioned_key_matches="$(PGPASSWORD="$postgres_admin_password" psql -h 127.0.0.1 -U ollama_agent_admin -d ollama_agent -At -v expected_key="$tenant_key" <<'SQL'
+          SELECT count(*)=1 AND bool_and(key_version=1 AND is_active AND secret=decode(:'expected_key','hex')) FROM agent_tenant_context_keys;
+          SQL
+          )"
+          test "$versioned_key_matches" = "t"
+          global_acl_state="$(PGPASSWORD="$postgres_admin_password" psql -h 127.0.0.1 -U ollama_agent_admin -d ollama_agent -Atc \
+            "SELECT format('%s/%s/%s/%s', NOT EXISTS (SELECT 1 FROM pg_catalog.pg_database d CROSS JOIN LATERAL pg_catalog.aclexplode(COALESCE(d.datacl,pg_catalog.acldefault('d',d.datdba))) a WHERE d.datname=current_database() AND a.grantee=0 AND a.privilege_type IN ('CONNECT','CREATE','TEMPORARY')), NOT EXISTS (SELECT 1 FROM pg_catalog.pg_namespace n CROSS JOIN LATERAL pg_catalog.aclexplode(COALESCE(n.nspacl,pg_catalog.acldefault('n',n.nspowner))) a WHERE n.nspname='public' AND a.grantee=0 AND a.privilege_type IN ('USAGE','CREATE')), NOT EXISTS (SELECT 1 FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace JOIN pg_catalog.pg_attribute col ON col.attrelid=c.oid CROSS JOIN LATERAL pg_catalog.aclexplode(col.attacl) a WHERE n.nspname='public' AND c.relname IN ('agent_missions','agent_events','agent_tenant_context_keys') AND a.grantee IN (0,(SELECT oid FROM pg_catalog.pg_roles WHERE rolname='ollama_agent_runtime'))), NOT has_function_privilege('ollama_agent_runtime','public.hmac(bytea,bytea,text)','EXECUTE'))")"
+          test "$global_acl_state" = "t/t/t/t"
+          PGPASSWORD="$postgres_admin_password" psql -h 127.0.0.1 -U ollama_agent_admin -d ollama_agent -v ON_ERROR_STOP=1 \
+            -c 'DROP ROLE ollama_agent_reverse_member'
+          PGPASSWORD="$postgres_admin_password" psql -h 127.0.0.1 -U ollama_agent_admin -d ollama_agent \
+            -v ON_ERROR_STOP=1 -c 'DROP SCHEMA ollama_cutover_hostile CASCADE'
+          PGPASSWORD="$postgres_admin_password" psql -h 127.0.0.1 -U ollama_agent_admin -d postgres \
+            -v ON_ERROR_STOP=1 -c 'CREATE DATABASE ollama_agent_restore_check OWNER ollama_agent_admin'
+          PGPASSWORD="$postgres_admin_password" pg_restore --no-owner --no-acl -h 127.0.0.1 -U ollama_agent_admin \
+            -d ollama_agent_restore_check "$legacy_backup"
+          restored_state="$(PGPASSWORD="$postgres_admin_password" psql -h 127.0.0.1 -U ollama_agent_admin -d ollama_agent_restore_check -Atc \
+            "SELECT format('%s/%s', (SELECT count(*) FROM agent_missions WHERE id='mis_legacy_fixture'), (SELECT count(*) FROM agent_events WHERE id='evt_legacy_fixture'))")"
+          test "$restored_state" = "1/1"
+          # This database is a disposable restore probe. Its template-derived
+          # PUBLIC CONNECT ACL is outside the runtime's approved app database;
+          # remove it before runtime readiness scans every database on cluster.
+          PGPASSWORD="$postgres_admin_password" psql -h 127.0.0.1 -U ollama_agent_admin -d postgres \
+            -v ON_ERROR_STOP=1 -c 'DROP DATABASE ollama_agent_restore_check'
+
+          unset OLLAMA_AGENT_TEST_POSTGRES_LEGACY_URL
           CGO_ENABLED=0 go test -tags integration ./internal/agent -run TestDistributed -count=1 -v
-      - name: Dump dependency logs on failure
-        if: failure()
-        run: docker compose -f deploy/docker-compose.agentic.yml logs --no-color
       - name: Stop distributed dependencies
         if: always()
         run: |
-          export OLLAMA_AGENT_POSTGRES_PASSWORD=cleanup-placeholder
+          export OLLAMA_AGENT_POSTGRES_ADMIN_PASSWORD=cleanup-placeholder
+          export OLLAMA_AGENT_RUNTIME_PASSWORD=cleanup-placeholder
+          export OLLAMA_AGENT_MIGRATOR_PASSWORD=cleanup-placeholder
           export OLLAMA_AGENT_REDIS_PASSWORD=cleanup-placeholder
           docker compose -f deploy/docker-compose.agentic.yml down -v
 

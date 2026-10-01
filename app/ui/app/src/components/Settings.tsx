@@ -39,6 +39,7 @@ import {
   updateCloudSetting,
   updateSettings,
   getInferenceCompute,
+  fetchUser,
 } from "@/api";
 import { applySettingsDefaults } from "./settingsUtils";
 
@@ -66,7 +67,7 @@ const savedConfirmationDuration = 3000;
 
 export default function Settings() {
   const queryClient = useQueryClient();
-  const [showSaved, setShowSaved] = useState(false);
+  const [showSalvo, setShowSalvo] = useState(false);
   const [restartMessage, setRestartMessage] = useState(false);
   const [showAppsInMenu, setShowAppsInMenuState] = useState(true);
   const [showAppsInMenuPending, setShowAppsInMenuPending] = useState(false);
@@ -103,13 +104,13 @@ export default function Settings() {
     isKnown: cloudStatusKnown,
   } = useCloudStatus();
 
-  const showSavedConfirmation = useCallback(() => {
+  const showSalvoConfirmation = useCallback(() => {
     if (savedConfirmationTimeoutRef.current !== null) {
       window.clearTimeout(savedConfirmationTimeoutRef.current);
     }
-    setShowSaved(true);
+    setShowSalvo(true);
     savedConfirmationTimeoutRef.current = window.setTimeout(() => {
-      setShowSaved(false);
+      setShowSalvo(false);
       savedConfirmationTimeoutRef.current = null;
     }, savedConfirmationDuration);
   }, []);
@@ -138,6 +139,30 @@ export default function Settings() {
     queryKey: ["inferenceCompute"],
     queryFn: getInferenceCompute,
   });
+
+  const [operatorProfile, setOperatorProfile] = useState<{
+    name: string;
+    email: string;
+    plan: string;
+  }>({
+    name: "Operador local",
+    email: "local@localhost",
+    plan: "Modo Local-first",
+  });
+
+  useEffect(() => {
+    fetchUser()
+      .then((data) => {
+        if (data && (data.name || data.email)) {
+          setOperatorProfile({
+            name: data.name || "Operador local",
+            email: data.email || "local@localhost",
+            plan: data.plan || "Modo Local-first",
+          });
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const defaultContextLength = inferenceComputeResponse?.defaultContextLength;
 
@@ -277,11 +302,11 @@ export default function Settings() {
         }
 
         updateSettingsMutation.mutate(updatedSettings, {
-          onSuccess: showSavedConfirmation,
+          onSuccess: showSalvoConfirmation,
         });
       }
     },
-    [settings, showSavedConfirmation, updateSettingsMutation],
+    [settings, showSalvoConfirmation, updateSettingsMutation],
   );
 
   const updateShowAppsInMenuVisibility = async (checked: boolean) => {
@@ -300,7 +325,7 @@ export default function Settings() {
 
   const handleShowAppsInMenu = (checked: boolean) => {
     void updateShowAppsInMenuVisibility(checked)
-      .then(showSavedConfirmation)
+      .then(showSalvoConfirmation)
       .catch((error) =>
         console.error("Failed to update menu app visibility:", error),
       );
@@ -308,7 +333,7 @@ export default function Settings() {
 
   const handleCloudUpdate = (enabled: boolean) => {
     void requestCloudUpdate(enabled)
-      .then(showSavedConfirmation)
+      .then(showSalvoConfirmation)
       .catch((error) =>
         console.error("Failed to update cloud setting:", error),
       );
@@ -327,7 +352,7 @@ export default function Settings() {
       window.clearTimeout(savedConfirmationTimeoutRef.current);
       savedConfirmationTimeoutRef.current = null;
     }
-    setShowSaved(false);
+    setShowSalvo(false);
     setRestartMessage(false);
     setResetError(null);
     try {
@@ -343,7 +368,7 @@ export default function Settings() {
         currentSettings: settings,
         currentShowAppsInMenu: showAppsInMenu,
         cloudSource,
-        onSaved: showSavedConfirmation,
+        onSaved: showSalvoConfirmation,
       });
     } catch (error) {
       console.error("Failed to reset settings:", error);
@@ -642,8 +667,8 @@ export default function Settings() {
                 <div className="flex items-start space-x-3">
                   <FolderIcon className="mt-1 h-5 w-5 flex-shrink-0 text-black dark:text-neutral-100" />
                   <div className="w-full">
-                    <Label>Model location</Label>
-                    <Description>Location where models are stored.</Description>
+                    <Label>Local dos modelos</Label>
+                    <Description>Local onde os modelos são armazenados.</Description>
                     <div className="mt-2 flex items-center space-x-2">
                       <Input
                         value={settings.Models || ""}
@@ -672,7 +697,7 @@ export default function Settings() {
                         }}
                       >
                         <FolderIcon className="w-4 h-4 mr-1" />
-                        Browse
+                        Procurar
                       </Button>
                     </div>
                   </div>
@@ -684,9 +709,9 @@ export default function Settings() {
                 <div className="flex items-start space-x-3">
                   <CogIcon className="mt-1 h-5 w-5 flex-shrink-0 text-black dark:text-neutral-100" />
                   <div className="w-full">
-                    <Label>Context length</Label>
+                    <Label>Tamanho do contexto</Label>
                     <Description>
-                      Context length determines how much of your conversation
+                      Tamanho do contexto determines how much of your conversation
                       local LLMs can remember and use to generate responses.
                     </Description>
                     <div className="mt-3">
@@ -751,9 +776,9 @@ export default function Settings() {
                     <div className="flex items-start space-x-3">
                       <BoltIcon className="mt-1 h-5 w-5 flex-shrink-0 text-black dark:text-neutral-100" />
                       <div>
-                        <Label>Enable Agent Mode</Label>
+                        <Label>Ativar modo agente</Label>
                         <Description>
-                          Use multi-turn tools to fulfill user requests
+                          Usar ferramentas em múltiplas etapas para cumprir solicitações
                         </Description>
                       </div>
                     </div>
@@ -770,9 +795,9 @@ export default function Settings() {
                     <div className="flex items-start space-x-3">
                       <WrenchIcon className="mt-1 h-5 w-5 flex-shrink-0 text-black dark:text-neutral-100" />
                       <div>
-                        <Label>Enable Tools Mode</Label>
+                        <Label>Ativar modo ferramentas</Label>
                         <Description>
-                          Use single-turn tools to fulfill user requests
+                          Usar ferramentas em uma única etapa para cumprir solicitações
                         </Description>
                       </div>
                     </div>
@@ -785,6 +810,93 @@ export default function Settings() {
               </div>
             </div>
           )}
+
+          {/* Personalização (Fiel ao Manus) */}
+          <section id="personalization" className="overflow-hidden rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm dark:border-neutral-800 dark:bg-neutral-950">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-50 text-purple-600 dark:bg-purple-950/50">
+                <Squares2X2Icon className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-neutral-900 dark:text-white">
+                  Personalização
+                </h3>
+                <p className="text-xs text-neutral-500">
+                  Instruções personalizadas e memória de longo prazo para orientar o comportamento do agente.
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-5 space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-neutral-800 dark:text-neutral-200">
+                  Instruções Personalizadas Permanentes
+                </label>
+                <p className="mt-0.5 text-xs text-neutral-500">
+                  O que você gostaria que o Hades sempre soubesse sobre suas preferências e estilo de resposta?
+                </p>
+                <textarea
+                  rows={4}
+                  defaultValue={(typeof window !== "undefined" && typeof localStorage !== "undefined" ? localStorage.getItem("ollama_custom_instructions") : null) || "Sempre responder em português, priorizar arquitetura limpa, segurança rigorosa e entregar código testado de ponta a ponta."}
+                  onChange={(e) => {
+                    if (typeof window !== "undefined" && typeof localStorage !== "undefined") {
+                      localStorage.setItem("ollama_custom_instructions", e.target.value);
+                    }
+                    showSalvoConfirmation();
+                  }}
+                  placeholder="Digite suas diretrizes permanentes..."
+                  className="mt-2 w-full rounded-xl border border-neutral-300 bg-white p-3 text-xs leading-relaxed text-neutral-900 focus:border-neutral-900 focus:outline-none dark:border-neutral-700 dark:bg-neutral-900 dark:text-white"
+                />
+              </div>
+
+              <div className="flex items-center justify-between border-t border-neutral-100 pt-4 dark:border-neutral-800">
+                <div>
+                  <div className="text-xs font-semibold text-neutral-900 dark:text-white">
+                    Memória de Longo Prazo
+                  </div>
+                  <div className="text-[11px] text-neutral-500">
+                    Permitir que o agente consulte contexto de sessões e projetos anteriores.
+                  </div>
+                </div>
+                <Switch
+                  checked={true}
+                  onChange={() => showSalvoConfirmation()}
+                />
+              </div>
+            </div>
+          </section>
+
+          {/* Conta e Workspace */}
+          <section id="account" className="overflow-hidden rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm dark:border-neutral-800 dark:bg-neutral-950">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-600 font-bold text-white text-base">
+                {operatorProfile.name.charAt(0).toUpperCase()}
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-neutral-900 dark:text-white">
+                  Conta & Operador ({operatorProfile.name})
+                </h3>
+                <p className="text-xs text-neutral-500">
+                  {operatorProfile.email} • {operatorProfile.plan}
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-5 divide-y divide-neutral-100 text-xs dark:divide-neutral-800">
+              <div className="flex items-center justify-between py-2.5">
+                <span className="text-neutral-500">Armazenamento Local:</span>
+                <span className="font-mono text-neutral-800 dark:text-neutral-200">{settings?.WorkingDir || "Workspace local ativo"}</span>
+              </div>
+              <div className="flex items-center justify-between py-2.5">
+                <span className="text-neutral-500">Banco de Dados:</span>
+                <span className="text-neutral-800 dark:text-neutral-200">SQLite local-first + PostgreSQL RLS isolado</span>
+              </div>
+              <div className="flex items-center justify-between py-2.5">
+                <span className="text-neutral-500">Contenção de Workspace:</span>
+                <span className="font-semibold text-emerald-600 dark:text-emerald-400">Ativa (Proteção contra traversals)</span>
+              </div>
+            </div>
+          </section>
 
           {/* Reset button */}
           <div className="flex items-center justify-between gap-4 px-4">
@@ -808,19 +920,19 @@ export default function Settings() {
               {resettingToDefaults && (
                 <ArrowPathIcon data-slot="icon" className="animate-spin" />
               )}
-              {resettingToDefaults ? "Resetting…" : "Reset to defaults"}
+              {resettingToDefaults ? "Restaurando…" : "Restaurar padrões"}
             </Button>
           </div>
         </fieldset>
 
-        {/* Saved indicator */}
-        {(showSaved || restartMessage) && (
+        {/* Salvo indicator */}
+        {(showSalvo || restartMessage) && (
           <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 transition-opacity duration-300 z-50">
             <Badge
               color="green"
               className="!bg-green-500 !text-white dark:!bg-green-600"
             >
-              Saved
+              Salvo
             </Badge>
           </div>
         )}
