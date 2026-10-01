@@ -134,6 +134,36 @@ func (q *JobQueue) lockPath() string {
 	return filepath.Join(q.root, ".jobs.lock")
 }
 
+// recoverStateForRestart recreates a missing queue-owned directory during
+// durable mission recovery. Normal queue mutations remain fail-closed: a
+// caller that removed the state directory still receives a persistence error.
+func (q *JobQueue) recoverStateForRestart() error {
+	if q == nil || q.root == "" {
+		return nil
+	}
+	info, err := os.Lstat(q.root)
+	if err == nil {
+		if info.Mode()&os.ModeSymlink != 0 || !info.IsDir() {
+			return errors.New("queue state root must be a real directory")
+		}
+		return nil
+	}
+	if !errors.Is(err, os.ErrNotExist) {
+		return err
+	}
+	if err := os.MkdirAll(q.root, 0o700); err != nil {
+		return err
+	}
+	info, err = os.Lstat(q.root)
+	if err != nil {
+		return err
+	}
+	if info.Mode()&os.ModeSymlink != 0 || !info.IsDir() {
+		return errors.New("queue state root must be a real directory")
+	}
+	return nil
+}
+
 // withFileStateLocked serializes persistent queue operations across processes
 // and refreshes the complete snapshot before applying an operation.
 func (q *JobQueue) withFileStateLocked(run func() error) error {

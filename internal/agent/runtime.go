@@ -1319,6 +1319,12 @@ func (r *Runtime) resumePending(ctx context.Context) error {
 		if !resume || !r.approvalsReady(mission) {
 			continue
 		}
+		if r.queue != nil {
+			if err := r.queue.recoverStateForRestart(); err != nil {
+				recoveryErrors = append(recoveryErrors, fmt.Errorf("recover queue state before mission %s: %w", mission.ID, err))
+				continue
+			}
+		}
 		if _, err := r.EnqueueMission(mission.ID); err != nil {
 			recoveryErrors = append(recoveryErrors, fmt.Errorf("enqueue mission %s during recovery: %w", mission.ID, err))
 		}
