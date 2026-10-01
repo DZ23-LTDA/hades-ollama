@@ -56,6 +56,18 @@ OLLAMA_HOST=127.0.0.1:11434 ./bin/ollama-full serve
 
 The equivalent helpers are `scripts/install.sh` on Unix-like systems and `scripts/install.ps1` on Windows. They build the checked-out source locally and never download `ollama.com` installers or official upstream binaries. They require Go and do not install models or configure external providers.
 
+### Quickstart local de um comando
+
+Em uma árvore clonada, o caminho recomendado para o primeiro uso Unix-like é:
+
+```shell
+./scripts/hades-quickstart.sh
+```
+
+O script verifica Go/Node/npm, compila o backend, instala as dependências e compila a UI, inicia os dois processos e abre a UI em `http://127.0.0.1:5173`. Se nenhum modelo local existir, ele **pergunta antes** de baixar o modelo recomendado (`gemma4:e2b`); em execução não interativa apenas informa o comando, sem baixar nada silenciosamente. Para iniciar sem essa oferta, use `./scripts/hades-quickstart.sh --no-model`. Chaves de provedores externos continuam opcionais e devem ser configuradas na tela **Configurações → Provedores de IA**; o motor local não exige chave.
+
+O quickstart é local-first e não é um instalador assinado: uma máquina limpa ainda precisa ter Go, Node.js/npm e o comando `curl` disponíveis. O instalador Windows equivalente permanece `scripts/install.ps1`; a UI pode ser iniciada com `npm run preview` após o build.
+
 In a second terminal, run the web operator surface from source:
 
 ```shell

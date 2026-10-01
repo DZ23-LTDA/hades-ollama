@@ -28,6 +28,10 @@ automatizado + execução real reproduzível em navegador (desktop e mobile), se
 
 ## Histórico de sessões
 
+- **2026-10-01 17:45 UTC — Quickstart usuário final (Gemini):** após confirmar `class-a-plus-integrity` e `dz23-agentic-quality` verdes no SHA `e7680a48`, foi adicionada a primeira melhoria do adendo de produto: `scripts/hades-quickstart.sh`. O script valida Go/Node/npm, builda backend e UI, inicia ambos, verifica `/api/version`, oferece (sem download silencioso) o modelo recomendado `gemma4:e2b` quando não há modelo e documenta a configuração de providers em Configurações → Provedores de IA. README atualizado com limitações honestas: ainda requer dependências de build e não é instalador assinado. Validação local: `bash -n`, `--help` e `git diff --check` passaram. Próximo passo: smoke do quickstart em ambiente limpo/isolado e depois estados acionáveis offline/sem modelo.
+
+
+
 - **2026-10-01 17:13 UTC — fechamento de evidência Studio (Gemini):** a captura Playwright foi repetida contra o backend real em modo local explícito (`auth off`, tenant `local`) após a primeira tentativa registrar corretamente 401 por ausência de Bearer. O harness agora aceita `E2E_BASE_URL`, reprova qualquer HTTP 4xx/5xx (exceto favicon) e falha se houver erro de console. Evidência final limpa: `docs/evidencias/screen-r2-studio-edit-desktop.png` e `screen-r2-studio-edit-mobile.png`, com SHA-256 distintos; desktop executou edição visual, undo/redo e export ZIP. CI publicado no SHA `f112602f` permanece verde em `test`, `class-a-plus-integrity`, `dz23-agentic-quality`, `pr-gate`, `test-install`, `dz23-e2e` e `dz23-multi-provider`. O histórico de 401 continua preservado no `browser-console-audit.json`; não é tratado como sucesso. Próximo passo: validação live autenticada das demais telas protegidas quando uma sessão Bearer real estiver disponível.
 
 
