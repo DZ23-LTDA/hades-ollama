@@ -144,5 +144,4 @@ func (s *Server) registerDesktopLocalRoutes(r *gin.Engine) {
 			"data":   body,
 		})
 	})
-
 }
