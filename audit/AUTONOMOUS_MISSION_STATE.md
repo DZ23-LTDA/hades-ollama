@@ -2727,8 +2727,9 @@ rollback: preservar c393b0bc; sem reset/clean/force-push
 
 
 ## AUD-FIX-1 — checkpoint local
-state: IMPLEMENTED_LOCAL_CI_PENDING
+state: COMPLETED
 commit_base: c393b0bc
+ci_commit: edd226e2
 changes: AppSidebar/Settings profile+logout, Library artifact route, contract scanner, frontend regression tests
 gates: frontend, Go, contracts and integrity PASS
-next_step: commit/push and verify class-a-plus-integrity + dz23-agentic-quality on same SHA
+next_step: nenhum dentro do escopo AUD-FIX-1; repetir evidência live autenticada quando houver sessão Bearer e artifact real
