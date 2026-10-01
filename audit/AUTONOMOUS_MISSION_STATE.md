@@ -2746,7 +2746,7 @@ next_action: commit, push e acompanhar `class-a-plus-integrity` e `dz23-agentic-
 
 ## Retomada — missão noturna T2 — 2026-10-01 03:13 UTC
 ```yaml
-state: FIXING
+state: COMPLETED_CI_GREEN
 mission: fechar achados de auditoria em ordem, sem avançar antes de CI verde
 branch: recovery/ollama-full-snapshot
 base_commit: 1214a90b671beaca8cab6e309e21d033002a41f0
@@ -2760,6 +2760,10 @@ acceptance_t2:
   - controles remotos disabled com estado NOT_CONFIGURED acessível
   - matriz de paridade Endpoint PARCIAL, sem PASS indevido
   - gates locais e Playwright desktop/mobile
-next_action: executar gates T2, commit/push e aguardar CI verde; então iniciar T3
+next_action: T2 encerrada; iniciar T3 somente após decisão/escopo explícito
+ci:
+  class_a_plus_integrity: {id: 36809795958, conclusion: success}
+  dz23_agentic_quality: {id: 36809796036, conclusion: success}
+  sha: 2b13a2ce42ef09b0a48908b3b8b02af3eb6c24a2
 rollback: preservar 1214a90b; sem reset/clean/force-push
 ```

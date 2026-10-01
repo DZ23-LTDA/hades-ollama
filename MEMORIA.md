@@ -1,7 +1,7 @@
 ---
 projeto: ollama-classe-a-plus
-status: MISSÃO NOTURNA EM ANDAMENTO — T1 concluída com CI verde; T2 em execução
-atualizado: 2026-10-01 03:13 UTC
+status: T2 CONCLUÍDA — Endpoint remoto honesto e CI verde
+atualizado: 2026-10-01 03:20 UTC
 ultima_ia: Manus
 tags: [projeto, paridade-manus, ui-2, import-project, accessibility, aud-fix-2, local-tests]
 ---
@@ -24,7 +24,7 @@ recuperação). **Pronto** = paridade comprovada por implementação + teste
 automatizado + execução real reproduzível em navegador (desktop e mobile), sem alegar "100%" sem evidência.
 
 ## Histórico de sessões
-- **2026-10-01 03:13 UTC — Manus:** confirmou T1/AUD-FIX-2 no SHA `1214a90b671beaca8cab6e309e21d033002a41f0`: `class-a-plus-integrity` e `dz23-agentic-quality` concluíram `success`. Iniciou T2 da missão noturna: ações de nuvem, acesso remoto, pareamento de computador e controle por telefone na EndpointPage foram reclassificadas como `NOT_CONFIGURED`, desabilitadas e sem autorização/alerta falso; a matriz agora marca Endpoint como `PARCIAL` (host local validado, recursos remotos não configurados). Próximo passo: gates locais da T2, evidência Playwright desktop/mobile e commit/push; só depois iniciar T3.
+- **2026-10-01 03:13 UTC — Manus:** confirmou T1/AUD-FIX-2 no SHA `1214a90b671beaca8cab6e309e21d033002a41f0`: `class-a-plus-integrity` e `dz23-agentic-quality` concluíram `success`. Iniciou T2 da missão noturna: ações de nuvem, acesso remoto, pareamento de computador e controle por telefone na EndpointPage foram reclassificadas como `NOT_CONFIGURED`, desabilitadas e sem autorização/alerta falso; a matriz agora marca Endpoint como `PARCIAL` (host local validado, recursos remotos não configurados). Próximo passo: iniciar T3 somente após decisão/escopo explícito; não declarar 100% de paridade.
 - **2026-10-01 02:43 UTC — Manus:** executou AUD-FIX-1. Corrigiu logout real (`POST /api/signout`), perfil (`POST /api/me`) e downloads da Biblioteca (rota de artifact sem `/content`). Reforçou `scripts/verify-contracts.mjs` para método HTTP, chamadas multilinha/condicionais, parâmetros posicionais, wrappers e `href`; o verificador terminou `CONTRACT VERIFICATION PASSED`, com avisos de órfãos informativos. Evidências locais: Vitest 38 arquivos/259 testes, `npx tsc -b`, lint, build Vite, `go build ./...`, `go test ./internal/agent ./server` e integrity verdes. CI confirmado no SHA `edd226e2013a39913ce119181861e4493165f5ac`: `class-a-plus-integrity` run `36807155105` e `dz23-agentic-quality` run `36807155101`, ambos `completed/success`. A evidência live autenticada continua condicionada a sessão Bearer e artefato reais.
 
 - **2026-09-30 19:41 -03 — Manus:** retomou a auditoria ampla e corrigiu riscos reproduzíveis em importação, approvals, egress/download, DLP de respostas WhatsApp, export atômico do Builder, fechamento de descriptors de artifacts, foco/ARIA e anexos da Home, preview/download autenticado, RBAC administrativo WhatsApp e pipeline de release. Evidência local: `go test ./internal/agent ./server`, `npx tsc -b`, lint, Vitest (37 arquivos/257 testes) e build UI passaram após os ajustes; a primeira execução Go revelou e foi corrigida a incompatibilidade de `git add --no-renames` e os fixtures de anti-auto-aprovação. Próximo passo: executar contratos/integrity, builds CGO0/Windows, varreduras finais, revisar o diff e só então decidir commit/push e acompanhar CI no SHA final; não declarar produção nem 100% de paridade.
