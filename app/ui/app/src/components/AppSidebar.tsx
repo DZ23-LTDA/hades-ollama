@@ -149,6 +149,7 @@ export function AppNavigation({ current }: { current: AppSection }) {
   useEffect(() => {
     if (!notificationsOpen) return;
     let active = true;
+    const stream = new EventSource("/api/agent/v1/notifications/stream");
     setNotificationsLoading(true);
     setNotificationsError(null);
     fetchAgentNotifications()
@@ -161,8 +162,23 @@ export function AppNavigation({ current }: { current: AppSection }) {
       .finally(() => {
         if (active) setNotificationsLoading(false);
       });
+    stream.addEventListener("notifications", (event) => {
+      if (!active) return;
+      try {
+        const items = JSON.parse((event as MessageEvent).data) as AgentNotification[];
+        if (Array.isArray(items)) setNotifications(items);
+      } catch {
+        setNotificationsError("O stream de notificações retornou dados inválidos.");
+      }
+    });
+    stream.onerror = () => {
+      if (active) {
+        setNotificationsError("Atualização ao vivo indisponível; os eventos já carregados permanecem visíveis.");
+      }
+    };
     return () => {
       active = false;
+      stream.close();
     };
   }, [notificationsOpen]);
 

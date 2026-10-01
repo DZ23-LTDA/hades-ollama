@@ -502,6 +502,7 @@ func (a *agentAPI) register(r *gin.Engine) {
 	group.POST("/missions", a.createMission)
 	group.GET("/missions", a.missions)
 	group.GET("/notifications", a.notifications)
+	group.GET("/notifications/stream", a.notificationStream)
 	group.GET("/creations", a.creations)
 	group.GET("/missions/:id", a.getMission)
 	group.GET("/missions/:id/events", a.events)
@@ -1774,6 +1775,41 @@ func (a *agentAPI) notifications(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"notifications": notifications})
+}
+
+func (a *agentAPI) notificationStream(c *gin.Context) {
+	c.Header("Content-Type", "text/event-stream")
+	c.Header("Cache-Control", "no-cache")
+	c.Header("Connection", "keep-alive")
+	flusher, ok := c.Writer.(http.Flusher)
+	if !ok {
+		c.Status(http.StatusNotImplemented)
+		return
+	}
+	lastID := ""
+	ticker := time.NewTicker(750 * time.Millisecond)
+	defer ticker.Stop()
+	for {
+		notifications, err := a.scopedRuntime(c).ListNotifications(20)
+		if err != nil {
+			return
+		}
+		currentID := ""
+		if len(notifications) > 0 {
+			currentID = notifications[0].ID
+		}
+		if currentID != lastID {
+			payload, _ := json.Marshal(notifications)
+			_, _ = fmt.Fprintf(c.Writer, "event: notifications\ndata: %s\n\n", payload)
+			flusher.Flush()
+			lastID = currentID
+		}
+		select {
+		case <-c.Request.Context().Done():
+			return
+		case <-ticker.C:
+		}
+	}
 }
 
 func (a *agentAPI) creations(c *gin.Context) {
