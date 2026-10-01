@@ -663,7 +663,7 @@ func (g *WhatsAppGateway) routeIntent(ctx context.Context, text string, policy W
 
 	// 1. Help / Ajuda
 	if lower == "ajuda" || lower == "help" || lower == "/help" || lower == "?" {
-		return "🤖 *Ollama Full — Comandos via Celular*:\n\n" +
+		return "🤖 *Hades — Comandos via Celular*:\n\n" +
 			"• *health* ou *status* — Saúde dos serviços e runtime\n" +
 			"• *projetos* — Listar projetos ativos\n" +
 			"• *progresso* ou *missoes* — Consultar missões recentes\n" +
@@ -689,7 +689,7 @@ func (g *WhatsAppGateway) routeIntent(ctx context.Context, text string, policy W
 		}
 
 		return fmt.Sprintf(
-			"🟢 *Saúde do Sistema (Ollama Full)*:\n\n"+
+			"🟢 *Saúde do Sistema (Hades)*:\n\n"+
 				"• *Runtime Agentic*: %s\n"+
 				"• *WhatsApp Gateway*: %s (%s)\n"+
 				"• *Backend Ativo*: %s\n"+

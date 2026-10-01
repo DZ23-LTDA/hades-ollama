@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { readFile, stat } from "node:fs/promises";
-import { dirname, resolve } from "node:path";
+import { dirname, resolve, relative, isAbsolute } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
@@ -18,7 +18,8 @@ for (const entry of manifest.files) {
     throw new Error(`invalid screenshot path in manifest: ${JSON.stringify(entry)}`);
   }
   const filePath = resolve(screenshotRoot, entry.path);
-  if (!filePath.startsWith(`${screenshotRoot}/`)) {
+  const rel = relative(screenshotRoot, filePath);
+  if (rel === "" || rel.startsWith("..") || isAbsolute(rel)) {
     throw new Error(`screenshot path escaped root: ${entry.path}`);
   }
   const info = await stat(filePath);

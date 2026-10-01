@@ -20,7 +20,7 @@ go run . serve
 See `docs/development.md` for prerequisites, platform notes, GPU backends, and
 the full development workflow.
 
-## Ongoing Ollama Full mission
+## Ongoing Hades mission
 
 Before continuing agentic-security or Manus-parity work, read
 `audit/CLAUDE_CODEX_RESUME_PROMPT_20260927.md` and

@@ -335,7 +335,7 @@ func extractProjectArchive(reader io.ReaderAt, size int64, destination string) e
 }
 
 func initializeImportedRepository(ctx context.Context, root string) error {
-	commands := [][]string{{"init", root}, {"-C", root, "config", "user.email", "ollama-full@localhost"}, {"-C", root, "config", "user.name", "Ollama Full Import"}, {"-C", root, "config", "core.hooksPath", ""}, {"-C", root, "config", "core.worktree", root}, {"-C", root, "add", "--all"}, {"-C", root, "commit", "--no-verify", "-m", "Imported project snapshot"}}
+	commands := [][]string{{"init", root}, {"-C", root, "config", "user.email", "hades@localhost"}, {"-C", root, "config", "user.name", "Hades Import"}, {"-C", root, "config", "core.hooksPath", ""}, {"-C", root, "config", "core.worktree", root}, {"-C", root, "add", "--all"}, {"-C", root, "commit", "--no-verify", "-m", "Imported project snapshot"}}
 	for _, args := range commands {
 		command := exec.CommandContext(ctx, "git", args...)
 		command.Env = append(os.Environ(), "GIT_CONFIG_NOSYSTEM=1", "GIT_CONFIG_GLOBAL=", "GIT_TERMINAL_PROMPT=0", "GIT_OPTIONAL_LOCKS=0")

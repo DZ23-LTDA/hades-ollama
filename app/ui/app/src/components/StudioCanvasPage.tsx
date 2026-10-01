@@ -124,13 +124,13 @@ export function StudioCanvasPage() {
       } else {
         // Create initial starter project via real backend API
         const created = await createBuilder({
-          name: "Ollama Full Studio App",
+          name: "Hades Studio App",
           kind: "website",
           components: [
             {
               id: "comp_hero",
               type: "heading",
-              props: { text: "Bem-vindo ao Studio do Ollama Full", level: "h1" },
+              props: { text: "Bem-vindo ao Studio do Hades", level: "h1" },
               x: 40,
               y: 40,
               width: 700,

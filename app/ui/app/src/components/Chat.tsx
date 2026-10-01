@@ -205,7 +205,7 @@ export default function Chat({ chatId }: { chatId: string }) {
         <div className="flex min-h-screen flex-col bg-neutral-50 dark:bg-neutral-950">
           <section className="mx-auto flex w-full max-w-5xl flex-1 flex-col justify-center px-5 pb-16 pt-10 sm:px-8">
             <div className="mx-auto w-full max-w-3xl text-center">
-              <p className="text-xs font-medium uppercase tracking-[0.22em] text-neutral-400">Ollama Full</p>
+              <p className="text-xs font-medium uppercase tracking-[0.22em] text-neutral-400">Hades</p>
               <h1 className="mt-4 font-serif text-4xl font-medium tracking-tight text-neutral-900 dark:text-neutral-100 sm:text-5xl">O que posso fazer por você?</h1>
               <p className="mx-auto mt-4 max-w-xl text-sm leading-6 text-neutral-500 dark:text-neutral-400">Converse, pesquise, construa e execute com o runtime local-first. Para missões com plano, ferramentas e approvals, use o Agentic Console.</p>
               <div className="mt-8 text-left">

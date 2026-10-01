@@ -1,10 +1,17 @@
 package multillm
 
-import "testing"
+import (
+	"fmt"
+	"path/filepath"
+	"testing"
+)
 
 func testRouteRegistry(t *testing.T) *Registry {
 	t.Helper()
-	registry, err := LoadBytes([]byte(`{"providers":[{"name":"local","type":"openai-compatible","base_url":"https://local.example","priority":1,"models":[{"id":"coder","capabilities":["coding"],"cost_tag":"0-local","quality_score":1}]},{"name":"subscription","type":"cli","executable":"/usr/bin/true","allow_execution":true,"priority":2,"models":[{"id":"coder","capabilities":["coding"],"cost_tag":"0-assinatura","quality_score":2}]},{"name":"paid","type":"openai-compatible","base_url":"https://paid.example","priority":100,"models":[{"id":"coder","capabilities":["coding"],"cost_per_1k_input_cents":10,"cost_per_1k_output_cents":10,"quality_score":10}]}]}`))
+	// Absolute executable path valid on every OS (ToSlash keeps it JSON-safe on
+	// Windows, where filepath.IsAbs rejects POSIX-style paths like /usr/bin/true).
+	exe := filepath.ToSlash(filepath.Join(t.TempDir(), "subscription-cli"))
+	registry, err := LoadBytes([]byte(fmt.Sprintf(`{"providers":[{"name":"local","type":"openai-compatible","base_url":"https://local.example","priority":1,"models":[{"id":"coder","capabilities":["coding"],"cost_tag":"0-local","quality_score":1}]},{"name":"subscription","type":"cli","executable":%q,"allow_execution":true,"priority":2,"models":[{"id":"coder","capabilities":["coding"],"cost_tag":"0-assinatura","quality_score":2}]},{"name":"paid","type":"openai-compatible","base_url":"https://paid.example","priority":100,"models":[{"id":"coder","capabilities":["coding"],"cost_per_1k_input_cents":10,"cost_per_1k_output_cents":10,"quality_score":10}]}]}`, exe)))
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { ThemeSwitcher } from "@/components/ThemeSwitcher";
+import HadesEmblem from "@/components/HadesEmblem";
 import {
   ArrowPathIcon,
   BookOpenIcon,
@@ -181,12 +182,13 @@ export function AppNavigation({ current }: { current: AppSection }) {
       <SearchDialog open={searchOpen} onClose={() => setSearchOpen(false)} />
       <HelpDialog open={helpOpen} onClose={() => setHelpOpen(false)} />
       <div className="mb-3 flex items-center gap-2 px-2.5 pt-1">
-        <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-neutral-900 text-xs font-semibold text-white dark:bg-white dark:text-neutral-900">
-          OF
-        </div>
+        <HadesEmblem
+          size={22}
+          className="shrink-0 text-neutral-900 dark:text-white"
+        />
         <div className="min-w-0">
           <div className="truncate text-[12px] font-semibold text-neutral-900 dark:text-white">
-            Ollama Full
+            Hades
           </div>
           <div className="truncate text-[10px] text-neutral-400">
             Local-first workspace
@@ -496,7 +498,7 @@ export function AppNavigation({ current }: { current: AppSection }) {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
           <div className="w-full max-w-sm rounded-2xl border border-neutral-200 bg-white p-6 shadow-2xl dark:border-neutral-800 dark:bg-neutral-900 text-center">
             <h3 className="text-base font-bold text-neutral-900 dark:text-white">Tem certeza de que deseja sair?</h3>
-            <p className="mt-2 text-xs text-neutral-500">Sair do Ollama Full como {userProfile.email}?</p>
+            <p className="mt-2 text-xs text-neutral-500">Sair do Hades como {userProfile.email}?</p>
             {signOutError && <p role="alert" className="mt-3 text-xs text-red-600">{signOutError}</p>}
             <div className="mt-6 flex items-center justify-center gap-3">
               <button type="button" disabled={signOutPending} onClick={() => setSignOutOpen(false)} className="flex-1 rounded-xl border border-neutral-200 py-2 text-xs font-semibold text-neutral-700 hover:bg-neutral-50 disabled:opacity-50 dark:border-neutral-700 dark:text-neutral-200">
