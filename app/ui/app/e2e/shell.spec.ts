@@ -30,11 +30,14 @@ test.describe("Hades shell", () => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/agentic");
 
+    // Smoke offline: o composer de criação ("Nova tarefa") é o que o usuario ve
+    // sem backend. O chat da missao ("Instrução da missão") so existe com missao
+    // ativa — que depende do backend e e coberto por go test, nao por este smoke.
     await expect(
-      page.getByRole("textbox", { name: "Instrução da missão" }),
+      page.getByRole("textbox", { name: "Nova tarefa" }),
     ).toBeVisible();
     await expect(
-      page.getByRole("button", { name: "Enviar instrução" }),
+      page.getByRole("button", { name: "Criar missão" }),
     ).toBeVisible();
   });
   // Navegacao para sub-rotas (/tasks, /agentic) depende do backend e nao e
