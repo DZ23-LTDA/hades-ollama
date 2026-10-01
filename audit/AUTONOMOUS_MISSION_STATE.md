@@ -2743,3 +2743,23 @@ finding: `/connect` quebrava com TypeError ao aplicar `.find()`/`.filter()` sobr
 fix: normalização em `api.ts`, guarda de runtime em `Onboarding.tsx` e regressão de payload inválido em `Onboarding.test.tsx`.
 evidence: Playwright desktop/mobile sem console ou HTTP errors e sem tela de crash; Vitest 38 arquivos/260 testes; tsc/lint/build/contracts/integrity/Go PASS.
 next_action: commit, push e acompanhar `class-a-plus-integrity` e `dz23-agentic-quality` no mesmo SHA.
+
+## Retomada — missão noturna T2 — 2026-10-01 03:13 UTC
+```yaml
+state: FIXING
+mission: fechar achados de auditoria em ordem, sem avançar antes de CI verde
+branch: recovery/ollama-full-snapshot
+base_commit: 1214a90b671beaca8cab6e309e21d033002a41f0
+completed:
+  - T1 /connect: correção de normalização de integrações e evidência Playwright desktop/mobile
+  - T1 CI: class-a-plus-integrity e dz23-agentic-quality success no mesmo SHA
+current:
+  - T2 Endpoint: remover ações falsas e autorização local simulada; recursos remotos honestamente NOT_CONFIGURED
+acceptance_t2:
+  - sem alert() nem mutação local ao clicar ações remotas
+  - controles remotos disabled com estado NOT_CONFIGURED acessível
+  - matriz de paridade Endpoint PARCIAL, sem PASS indevido
+  - gates locais e Playwright desktop/mobile
+next_action: executar gates T2, commit/push e aguardar CI verde; então iniciar T3
+rollback: preservar 1214a90b; sem reset/clean/force-push
+```

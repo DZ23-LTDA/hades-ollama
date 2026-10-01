@@ -48,7 +48,6 @@ export function EndpointPage() {
   const [hostname, setHostname] = useState("Este computador");
   const [osName, setOsName] = useState("Local-First");
   const [serverVersion, setServerVersion] = useState("");
-  const [remoteRequested, setRemoteRequested] = useState(false);
 
   useEffect(() => {
     fetch(`${API_BASE}/api/tags`)
@@ -101,11 +100,12 @@ export function EndpointPage() {
             </div>
             <button
               type="button"
-              onClick={() => alert("Acesso local ativo. Novos nós podem ser conectados via túnel seguro ou endpoint de rede.")}
-              className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-neutral-900 px-4 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90 dark:bg-white dark:text-neutral-900"
+              disabled
+              title="NOT_CONFIGURED: nenhum provedor de computador em nuvem foi configurado"
+              className="inline-flex shrink-0 cursor-not-allowed items-center gap-2 rounded-xl bg-neutral-200 px-4 py-2 text-sm font-medium text-neutral-500 dark:bg-neutral-800 dark:text-neutral-500"
             >
               <PlusIcon className="h-4 w-4" />
-              Criar computador na nuvem
+              Criar computador na nuvem (não configurado)
             </button>
           </div>
 
@@ -156,15 +156,15 @@ export function EndpointPage() {
               <div className="mt-6 flex flex-col gap-3">
                 <button
                   type="button"
-                  onClick={() => setRemoteRequested(!remoteRequested)}
-                  className={`w-full rounded-xl py-2.5 text-sm font-semibold transition-all ${
-                    remoteRequested
-                      ? "bg-emerald-600 text-white hover:bg-emerald-700"
-                      : "bg-neutral-900 text-white hover:opacity-90 dark:bg-white dark:text-neutral-900"
-                  }`}
+                  disabled
+                  title="NOT_CONFIGURED: acesso remoto exige um endpoint e aprovação configurados"
+                  className="w-full cursor-not-allowed rounded-xl bg-neutral-200 py-2.5 text-sm font-semibold text-neutral-500 dark:bg-neutral-800 dark:text-neutral-500"
                 >
-                  {remoteRequested ? "Acesso Remoto Autorizado" : "Solicitar acesso"}
+                  Acesso remoto (não configurado)
                 </button>
+                <p className="text-center text-xs text-neutral-500 dark:text-neutral-400" role="status">
+                  NOT_CONFIGURED — este host local não autoriza acesso remoto automaticamente.
+                </p>
                 <div className="flex items-center gap-2">
                   <a
                     href="#endpoints-section"
@@ -201,18 +201,20 @@ export function EndpointPage() {
               <div className="mt-6 flex flex-col gap-2.5">
                 <button
                   type="button"
-                  onClick={() => alert("Para conectar um computador adicional, instale o Ollama e aponte para OLLAMA_HOST.")}
-                  className="w-full rounded-xl border border-neutral-200 bg-white py-2 text-xs font-medium text-neutral-700 hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700"
+                  disabled
+                  title="NOT_CONFIGURED: pareamento de outro computador ainda não está disponível"
+                  className="w-full cursor-not-allowed rounded-xl border border-neutral-200 bg-neutral-100 py-2 text-xs font-medium text-neutral-500 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-500"
                 >
-                  Conectar meu computador
+                  Conectar meu computador (não configurado)
                 </button>
                 <button
                   type="button"
-                  onClick={() => alert("Abra o navegador no seu celular e acesse o IP deste PC na porta 5173 para controle móvel.")}
-                  className="w-full inline-flex items-center justify-center gap-1.5 rounded-xl border border-neutral-200 bg-white py-2 text-xs font-medium text-neutral-700 hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700"
+                  disabled
+                  title="NOT_CONFIGURED: controle por telefone exige pareamento explícito"
+                  className="inline-flex w-full cursor-not-allowed items-center justify-center gap-1.5 rounded-xl border border-neutral-200 bg-neutral-100 py-2 text-xs font-medium text-neutral-500 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-500"
                 >
                   <DevicePhoneMobileIcon className="h-4 w-4" />
-                  Controlar pelo seu telefone
+                  Controlar pelo seu telefone (não configurado)
                 </button>
               </div>
             </div>

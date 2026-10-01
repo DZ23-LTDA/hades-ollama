@@ -1,0 +1,33 @@
+{
+  "generatedAt": "2026-10-01T03:15:44.439Z",
+  "routes": [
+    {
+      "name": "desktop",
+      "consoleErrors": [],
+      "httpErrors": [],
+      "disabledButtons": [
+        "Criar computador na nuvem (não configurado)",
+        "Acesso remoto (não configurado)",
+        "Conectar meu computador (não configurado)",
+        "Controlar pelo seu telefone (não configurado)"
+      ],
+      "falseAuthorization": false,
+      "hasNotConfigured": true,
+      "hasErrorPage": false
+    },
+    {
+      "name": "mobile",
+      "consoleErrors": [],
+      "httpErrors": [],
+      "disabledButtons": [
+        "Criar computador na nuvem (não configurado)",
+        "Acesso remoto (não configurado)",
+        "Conectar meu computador (não configurado)",
+        "Controlar pelo seu telefone (não configurado)"
+      ],
+      "falseAuthorization": false,
+      "hasNotConfigured": true,
+      "hasErrorPage": false
+    }
+  ]
+}
