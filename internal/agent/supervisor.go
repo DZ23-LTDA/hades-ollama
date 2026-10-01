@@ -240,6 +240,11 @@ func (s *Supervisor) Tick(ctx context.Context, now time.Time) (SupervisorTickRes
 	if s.runtime != nil {
 		if err := s.runtime.resumePending(ctx); err == nil {
 			result.MissionsResumed++
+		} else if retryErr := s.runtime.resumePending(ctx); retryErr == nil {
+			// Recovery is idempotent. Retry once when a temporary filesystem
+			// race interrupts the first scan, while persistent errors remain
+			// observable through the existing recovery path.
+			result.MissionsResumed++
 		}
 	}
 
