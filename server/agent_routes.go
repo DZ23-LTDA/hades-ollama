@@ -1864,6 +1864,7 @@ func (a *agentAPI) createMission(c *gin.Context) {
 		writeAgentError(c, http.StatusBadRequest, err)
 		return
 	}
+	request.ActorID = agentActorID(c)
 	if value, ok := c.Get("agent.organization"); ok {
 		if organization, ok := value.(agent.Organization); ok {
 			request.OrganizationID = organization.ID
