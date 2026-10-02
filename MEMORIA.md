@@ -746,3 +746,8 @@ Auditei botões de ícone na UI e encontrei um único botão sem nome acessível
 ## D3-D4 — 2026-10-02 13:45 UTC — Claude
 
 Corrigi nomes acessíveis explícitos nos compositores Home (`Objetivo da nova tarefa`) e Chat (`Mensagem para o agente`), preservando labels e comportamento. Também confirmei a regra global `prefers-reduced-motion: reduce`, que desativa as animações/transições customizadas relevantes. Typecheck, lint, 275 testes Vitest, build, contratos e integrity passaram. Próximo passo: D5-D7 de acessibilidade/UX.
+
+
+## D5-D7 — 2026-10-02 13:54 UTC — Claude
+
+Concluí a triagem de landmarks/foco, estrutura de headings e targets/teclado. Não houve falha reproduzível além dos itens já corrigidos em D2-D4; os alertas restantes eram falsos positivos de análise textual sobre classes Tailwind multiline. Nenhum patch adicional foi inventado. O CI D2-D4 ficou verde no SHA `0d714d2f`: test `37015174329`, integrity `37015178025`, agentic-quality `37015181389`. Próximo passo: auditoria final de release e claims.

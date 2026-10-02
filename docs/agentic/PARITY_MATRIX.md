@@ -192,3 +192,5 @@ A falha P1 observada na auditoria live foi corrigida: o catálogo de integraçõ
 
 - **D3 Formulários:** `VALIDADO` — compositores principais têm nomes programáticos explícitos.
 - **D4 Movimento reduzido:** `VALIDADO` — preferência do sistema desativa motion customizado global relevante.
+
+- **D5-D7 Acessibilidade estrutural:** `AUDITADO` — sem lacunas reproduzíveis em foco, landmarks, headings ou targets/teclado após triagem estática; manter auditoria com navegador/axe para cobertura adicional.

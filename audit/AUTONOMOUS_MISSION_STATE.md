@@ -55,7 +55,10 @@ CI final b4848398: PASS — test.yaml run 37003763891 (Ubuntu/macOS/Windows), cl
   - D2 acessibilidade: PASS — triagem estática não encontrou botões de ícone sem nome; o botão de fechar alertas agora tem `aria-label`, `type=button` e mantém operação por teclado.
   - D3 formulários: PASS — os compositores Home e Chat receberam nomes acessíveis explícitos; os demais falsos positivos da triagem são controles dentro de labels ou já possuem nome ARIA.
   - D4 movimento: PASS — `prefers-reduced-motion: reduce` já desativa animações e transições customizadas globais.
-next_action: continuar D5-D7 de acessibilidade/UX; fora de escopo continuam assinatura real, IdP/dispositivos/HA e homologação live de providers
+  - D5 landmarks/foco: AUDITADO — triagem não encontrou remoção efetiva de foco; alertas restantes eram falsos positivos de classes Tailwind multiline; componentes base preservam focus-visible.
+  - D6 headings: AUDITADO — rotas principais possuem heading de página; múltiplos `h1` pertencem a componentes/rotas distintas, não ao mesmo documento renderizado.
+  - D7 targets/teclado: AUDITADO — controles principais usam elementos nativos e dimensões de toque confortáveis; nenhuma lacuna reproduzível exigiu patch adicional.
+next_action: executar auditoria final de release e atualizar somente claims comprovados; fora de escopo continuam assinatura real, IdP/dispositivos/HA e homologação live de providers
 ```
 
 
