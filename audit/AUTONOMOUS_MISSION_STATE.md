@@ -2,7 +2,7 @@
 ```yaml
 state: EXECUTING_P0_SECURITY_BACKLOG
 branch: recovery/ollama-full-snapshot
-sha: 21238528
+sha: e6625bdc
 proofs_local:
   - go build ./...: PASS (após remover node_modules gerado)
   - CGO_ENABLED=0 go build ./...: PASS
@@ -24,6 +24,9 @@ proofs_local:
   - I1 Windows release gate: PASS (installer checksum/name already corrected; release publication gate now requires only checks that run on the candidate SHA)
   - U1 guided model onboarding: PASS (local-only user reaches Run Ollama, real POST /api/v1/models/pull with JSONL progress, accessible status, success continuation and honest errors)
   - U1 browser E2E: PASS (desktop/mobile qwen2.5:0.5b pull and continuation to /connect; clean console)
+  - final test.yaml: SUCCESS (run 36998217811, SHA e6625bdc; Ubuntu/macOS/Windows test jobs, Go/UI gates and golangci-lint passed; optional native matrix intentionally false)
+  - final class-a-plus-integrity: SUCCESS (run 36996527740, SHA e6625bdc)
+  - final dz23-agentic-quality: SUCCESS (run 36996527818, SHA e6625bdc)
   - Ollama local model: PASS (qwen2.5:0.5b downloaded and generated OK on loopback 127.0.0.1:11435)
   - provider API smoke: PASS for preconfigured OpenAI-compatible endpoint (GET /models HTTP 200; minimal gpt-5-mini chat HTTP 200 with non-empty completion); requested rotated provider keys are not present in this sandbox
   - strict sandbox live executor: BLOCKED_EXTERNAL (delegated cgroup v2 subtree is unavailable; fail-closed tests PASS)
@@ -37,7 +40,7 @@ external_status:
 known_limits:
   - Ollama local validado com qwen2.5:0.5b em 127.0.0.1:11435
   - credenciais/IdP/WhatsApp/MCP/deploy externos continuam BLOCKED_EXTERNAL ou NOT_CONFIGURED
-next_action: validate test.yaml, integrity and agentic-quality on the final onboarding SHA; then review remaining P0/P1 release blockers and sync recovery to main only after all gates
+next_action: review remaining P0/P1 release blockers; production readiness still requires a delegated strong sandbox, real external integration credentials, and a signed Windows release before any public release claim
 ```
 
 
