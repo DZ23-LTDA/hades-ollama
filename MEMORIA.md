@@ -711,3 +711,8 @@ Eliminei os dois avisos de Fast Refresh movendo `performLogout` e `artifactDownl
 ## Continuação da missão — 2026-10-02 12:35 UTC — Claude
 
 Corrigi a identidade visível do instalador Inno Setup para **Hades** (nome, título, mutex e mensagem de instalação), preservando o nome de artefato do workflow para não quebrar o contrato de release. Também concluí a camada de uso leigo: documento `lang=pt-BR`, remoção de `select-none` das áreas de conversa/configuração, textos SSE/HITL/NOT_CONFIGURED traduzidos quando visíveis e model picker com rótulos amigáveis. Testes frontend: 273 Vitest, typecheck, lint e build passaram. Commits publicados: `86656e48` e `210de716`. Próximo passo: validar CI do novo SHA e seguir somente com melhorias internas comprováveis; assinatura SignPath, sandbox forte e integrações externas continuam bloqueios externos honestos.
+
+
+## CI do SHA final — 2026-10-02 12:44 UTC — Claude
+
+O SHA `a7984fd7` foi validado com sucesso no GitHub: `test` run `37007672156` verde em Ubuntu/macOS/Windows, `class-a-plus-integrity` run `37007675181` verde e `dz23-agentic-quality` run `37007677811` verde. O instalador ainda está **UNSIGNED/BLOCKED_EXTERNAL** até a credencial SignPath do proprietário; a missão continua no backlog interno de UX, acessibilidade e resiliência.

@@ -2,7 +2,7 @@
 ```yaml
 state: EXECUTING_P0_SECURITY_BACKLOG
 branch: recovery/ollama-full-snapshot
-sha: 210de716
+sha: a7984fd7
 proofs_local:
   - go build ./...: PASS (após remover node_modules gerado)
   - CGO_ENABLED=0 go build ./...: PASS
@@ -28,9 +28,9 @@ proofs_local:
   - U5 humanized API errors: PASS (retry/sign-in/configure/CAS actions, secret-redacted technical detail, 41 files / 273 tests)
   - U3 i18n: PASS (ChatGPT/Claude settings controls, labels, errors and keyboard expectations translated to pt-BR).
   - U2 onboarding/docs: PASS (quickstart reports backend health, model recovery command, loopback defaults and LAN opt-in clearly).
-  - final test.yaml: SUCCESS (run 36998217811, SHA e6625bdc; Ubuntu/macOS/Windows test jobs, Go/UI gates and golangci-lint passed; optional native matrix intentionally false)
-  - final class-a-plus-integrity: SUCCESS (run 36996527740, SHA e6625bdc)
-  - final dz23-agentic-quality: SUCCESS (run 36996527818, SHA e6625bdc)
+  - final test.yaml: SUCCESS (run 37007672156, SHA a7984fd7; Ubuntu/macOS/Windows test jobs, Go/UI gates and golangci-lint passed; optional native matrix intentionally false)
+  - final class-a-plus-integrity: SUCCESS (run 37007675181, SHA a7984fd7)
+  - final dz23-agentic-quality: SUCCESS (run 37007677811, SHA a7984fd7)
   - Ollama local model: PASS (qwen2.5:0.5b downloaded and generated OK on loopback 127.0.0.1:11435)
   - provider API smoke: PASS for preconfigured OpenAI-compatible endpoint (GET /models HTTP 200; minimal gpt-5-mini chat HTTP 200 with non-empty completion); requested rotated provider keys are not present in this sandbox
   - strict sandbox live executor: BLOCKED_EXTERNAL (delegated cgroup v2 subtree is unavailable; fail-closed tests PASS)
@@ -45,7 +45,7 @@ known_limits:
   - Ollama local validado com qwen2.5:0.5b em 127.0.0.1:11435
   - credenciais/IdP/WhatsApp/MCP/deploy externos continuam BLOCKED_EXTERNAL ou NOT_CONFIGURED
 CI final b4848398: PASS — test.yaml run 37003763891 (Ubuntu/macOS/Windows), class-a-plus-integrity run 37003766034, dz23-agentic-quality run 37003768562.
-next_action: validate the current SHA in all three workflows; then remaining closure is external-only: signed installer credentials, real external IdP/devices/HA, and live provider homologation
+next_action: continue internal UX/accessibility/resilience backlog; external-only closure remains signed installer credentials, real external IdP/devices/HA, and live provider homologation
 ```
 
 
