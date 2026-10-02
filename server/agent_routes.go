@@ -805,18 +805,41 @@ func (a *agentAPI) health(c *gin.Context) {
 	if sandboxStatus == "" {
 		sandboxStatus = "best-effort"
 	}
+	// Real queue depth instead of a static label: surface how much work is
+	// pending/running and whether anything has landed in the dead-letter queue.
+	pending, running, dead := 0, 0, 0
+	if a.runtime != nil {
+		pending = len(a.runtime.QueueJobs(agent.QueuePending))
+		running = len(a.runtime.QueueJobs(agent.QueueRunning))
+		dead = len(a.runtime.QueueJobs(agent.QueueDeadLetter))
+	}
 	status := "ok"
 	if !runtimeReady {
 		status = "degraded"
+	}
+	queueHealth := "ok"
+	if dead > 0 {
+		// Dead-lettered jobs are a real, actionable problem; reflect it.
+		queueHealth = "degraded"
+		if status == "ok" {
+			status = "degraded"
+		}
 	}
 	c.JSON(http.StatusOK, gin.H{
 		"status":     status,
 		"runtime":    "agent-v1",
 		"checked_at": time.Now().UTC(),
 		"subsystems": gin.H{
-			"agent":   gin.H{"status": map[bool]string{true: "ok", false: "degraded"}[runtimeReady], "detail": "Motor de missões"},
-			"store":   gin.H{"status": storeStatus, "detail": "Persistência de missões e configurações"},
-			"queue":   gin.H{"status": queueStatus, "detail": "Fila de execução"},
+			"agent": gin.H{"status": map[bool]string{true: "ok", false: "degraded"}[runtimeReady], "detail": "Motor de missões"},
+			"store": gin.H{"status": storeStatus, "detail": "Persistência de missões e configurações"},
+			"queue": gin.H{
+				"status":      queueStatus,
+				"health":      queueHealth,
+				"detail":      "Fila de execução",
+				"pending":     pending,
+				"running":     running,
+				"dead_letter": dead,
+			},
 			"sandbox": gin.H{"status": sandboxStatus, "detail": "Execução isolada"},
 		},
 	})
