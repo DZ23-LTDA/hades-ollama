@@ -776,3 +776,11 @@ Removi `app/ui/app/tailwind.config.js`, que era configuração Tailwind v3 não 
 - **D7 publicado e validado:** SHA `27e432cf`; `test` 37039489770, `class-a-plus-integrity` 37039477385 e `dz23-agentic-quality` 37039477250 concluíram `success` no mesmo SHA.
 - **Estado:** worktree limpo, branch recovery sincronizada com origin. Warnings dos runners sobre Node 20/ubuntu-latest foram registrados pelo GitHub, sem falha de gate.
 - **Próximo passo honesto:** não há mais correção local P0 reproduzível nesta rodada; release final ainda depende de sandbox forte real, credenciais/IdP/WhatsApp/MCP/deploy externos e validação nativa do instalador assinado.
+
+
+## D7b — Gate E2E de acessibilidade reproduzível — 2026-10-02 UTC — Claude
+
+- **Implementado:** `app/ui/app/e2e/accessibility.spec.ts` usa `@axe-core/playwright` em seis rotas (`/`, `/connect`, `/endpoint`, `/library`, `/settings`, `/agentic`) nos viewports 1440x900 e 390x844, validando 0 violações axe, 0 erros de console e 0 respostas HTTP >=400; inclui jornada mobile somente por teclado com Enter/Escape no drawer.
+- **Correção encontrada:** o code splitting anterior tinha ciclo de chunks e quebrava o runtime com `Cannot read properties of undefined (reading 'createContext')`. Removido o catch-all/vendor-markdown da configuração Vite; o preview voltou a renderizar e o smoke E2E existente também passou.
+- **Evidência local:** `npm run test:e2e -- e2e/shell.spec.ts e2e/accessibility.spec.ts` — **5 passed**; `npx tsc -b`, lint, Vitest (**42 arquivos / 276 testes**), build, bundle budget, contratos, integrity, `go build ./...` e `go test ./internal/agent ./server` — PASS.
+- **Estado:** pendente apenas commit/push e validação dos workflows remotos no mesmo SHA. O gate mantém a limitação honesta: axe automatizado não substitui leitor de tela manual em integrações externas.

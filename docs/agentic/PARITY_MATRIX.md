@@ -200,3 +200,5 @@ A falha P1 observada na auditoria live foi corrigida: o catálogo de integraçõ
 - **Estado:** PASS
 - **Prova:** axe-core em 12 combinações desktop/mobile nas seis rotas principais, 0 violações, 0 erros HTTP/console; `docs/evidencias/d7-axe-audit-20261002.json`.
 - **Limite:** auditoria cobre as rotas principais e não substitui teste manual com leitor de tela em cada integração externa.
+
+- **D7b Gate CI:** `VALIDADO` — `npm run test:e2e -- e2e/shell.spec.ts e2e/accessibility.spec.ts` passou com 5 testes: axe em desktop/mobile e jornada mobile somente por teclado (abrir/fechar drawer com Enter/Escape, sem foco perdido).

@@ -1,6 +1,6 @@
 ## Checkpoint vigente — Missão contínua T0/P0 — 2026-10-02 03:58 UTC
 ```yaml
-state: D8_FINAL_REVIEW
+state: D7B_VALIDATING
 branch: recovery/ollama-full-snapshot
 sha: 27e432cf
 proofs_local:
@@ -59,11 +59,13 @@ CI final b4848398: PASS — test.yaml run 37003763891 (Ubuntu/macOS/Windows), cl
   - D6 headings: AUDITADO — rotas principais possuem heading de página; múltiplos `h1` pertencem a componentes/rotas distintas, não ao mesmo documento renderizado.
   - D7 targets/teclado: PASS — controles principais usam elementos nativos e dimensões de toque confortáveis; nenhuma lacuna reproduzível exigiu patch adicional.
   - D7 axe: PASS — 12 combinações de rota/viewport auditadas (/, /connect, /endpoint, /library, /settings, /agentic em desktop 1440x900 e mobile 390x844), 0 violações, 0 erros de console e 0 erros HTTP; evidência em docs/evidencias/d7-axe-audit-20261002.json.
+  - D7b E2E gate: PASS — `npm run test:e2e -- e2e/shell.spec.ts e2e/accessibility.spec.ts` passou 5/5; axe via `@axe-core/playwright` e jornada mobile por teclado Enter/Escape.
+  - D7b runtime fix: PASS — removido o catch-all/vendor-markdown que gerava ciclo de chunks; preview e shell E2E voltaram a renderizar sem `createContext` indefinido.
   - D5 drawer mobile: PASS — drawer lateral real em viewport <768px, backdrop, Escape, resize reativo; desktop preserva sidebar fixa.
   - D5 browser E2E: PASS — desktop 1440x900 e mobile 390x844, abertura/fechamento, console e HTTP limpos; evidências em docs/evidencias/d5-drawer-*-20261002.png.
   - D6 design system: PASS — removido `app/ui/app/tailwind.config.js` morto; tokens Tailwind v4 e estilos compartilhados `page-title`, `page-description`, `section-title` agora vivem em `src/index.css`; Home, Conectores e Endpoint migrados.
   - D6 verification: PASS — `scripts/verify-design-system.mjs`, typecheck, lint, 273 testes, build, bundle budget, contratos e integrity.
-next_action: fechar release somente após validação das dependências externas e do sandbox forte; não há mais patch local P0 reproduzível nesta rodada.
+next_action: publicar D7b e validar test.yaml, class-a-plus-integrity e dz23-agentic-quality no mesmo SHA; depois revisar limites externos de release.
 ```
 
 

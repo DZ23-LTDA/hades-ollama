@@ -66,9 +66,11 @@ export default defineConfig(() => ({
           if (!id.includes("node_modules")) return undefined;
           if (/[\\/]react(?:-dom)?[\\/]|[\\/]scheduler[\\/]/.test(id)) return "vendor-react";
           if (id.includes("@tanstack")) return "vendor-router";
-          if (/(shiki|rehype|remark|micromark|katex|streamdown)/.test(id)) return "vendor-markdown";
           if (/(heroicons|simple-icons)/.test(id)) return "vendor-icons";
-          return "vendor";
+          // Do not force the remaining dependency graph into a catch-all
+          // chunk: React-heavy markdown packages can otherwise create a
+          // circular chunk graph and execute before createContext exists.
+          return undefined;
         },
       },
     },
