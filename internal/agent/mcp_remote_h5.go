@@ -185,12 +185,12 @@ func (m *RemoteMCPManager) setOAuthTokenForTest(serverID string, token remoteMCP
 	m.oauthTokens[serverID] = token
 }
 
-func (m *RemoteMCPManager) accessToken(ctx context.Context, serverID string, config RemoteMCPServerConfig) (string, error) {
+func (m *RemoteMCPManager) accessToken(ctx context.Context, serverID string, config RemoteMCPServerConfig, organizationID string, global bool) (string, error) {
 	if config.OAuth == nil {
 		if config.TokenEnv == "" {
 			return "", nil
 		}
-		value, ok := os.LookupEnv(config.TokenEnv)
+		value, ok := m.resolveSecret(organizationID, config.TokenEnv, global)
 		if !ok || strings.TrimSpace(value) == "" {
 			return "", ErrRemoteMCPNotConfigured
 		}
@@ -308,7 +308,7 @@ func (m *RemoteMCPManager) CompletePairing(serverID, organizationID, presented, 
 	if !configOK || !pluginAccessibleByOrganization(config.OrganizationID, organizationID) {
 		return ErrRemoteMCPPairingUnauthorized
 	}
-	expected, ok := os.LookupEnv(config.PairingTokenEnv)
+	expected, ok := m.resolveSecret(organizationID, config.PairingTokenEnv, false)
 	if !ok || subtle.ConstantTimeCompare([]byte(strings.TrimSpace(expected)), []byte(strings.TrimSpace(presented))) != 1 || subtle.ConstantTimeCompare([]byte(pairing.Challenge), []byte(strings.TrimSpace(challenge))) != 1 {
 		return ErrRemoteMCPPairingUnauthorized
 	}

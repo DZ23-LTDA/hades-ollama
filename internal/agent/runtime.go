@@ -444,6 +444,13 @@ func (r *Runtime) RegisterConnectorForOrganization(organizationID string, config
 	return r.connectors.RegisterForOrganization(organizationID, config)
 }
 
+func (r *Runtime) SetConnectorOrganizationSecret(organizationID, name, value string) error {
+	if r.connectors == nil {
+		return errors.New("connector manager is unavailable")
+	}
+	return r.connectors.SetOrganizationSecret(organizationID, name, value)
+}
+
 func (r *Runtime) SetMCPEnabled(id string, enabled bool) error {
 	if r.mcp == nil {
 		return errors.New("MCP manager is unavailable")
@@ -477,6 +484,13 @@ func (r *Runtime) RegisterRemoteMCP(config RemoteMCPServerConfig) error {
 		return errors.New("remote MCP manager is unavailable")
 	}
 	return r.remoteMCP.Register(config)
+}
+
+func (r *Runtime) SetRemoteMCPOrganizationSecret(organizationID, name, value string) error {
+	if r.remoteMCP == nil {
+		return errors.New("remote MCP manager is unavailable")
+	}
+	return r.remoteMCP.SetOrganizationSecret(organizationID, name, value)
 }
 
 func (r *Runtime) RemoveRemoteMCP(id string) error {
