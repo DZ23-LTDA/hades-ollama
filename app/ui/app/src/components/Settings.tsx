@@ -42,6 +42,7 @@ import {
   fetchUser,
 } from "@/api";
 import { applySettingsDefaults } from "./settingsUtils";
+import { getStoredInterfaceMode, persistInterfaceMode, type InterfaceMode } from "@/lib/interfaceMode";
 
 function AnimatedDots() {
   return (
@@ -54,6 +55,23 @@ function AnimatedDots() {
         .
       </span>
     </span>
+  );
+}
+
+function InterfaceModeControl({ mode, onChange }: { mode: InterfaceMode; onChange: (mode: InterfaceMode) => void }) {
+  return (
+    <section aria-labelledby="interface-mode-heading" className="rounded-xl border border-blue-200 bg-blue-50 p-4 dark:border-blue-900/60 dark:bg-blue-950/20">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 id="interface-mode-heading" className="text-sm font-semibold text-blue-950 dark:text-blue-100">Modo da interface</h2>
+          <p className="mt-1 text-xs leading-5 text-blue-800 dark:text-blue-200">Simples mostra só o essencial. Avançado também mostra MCP, diagnósticos e detalhes técnicos.</p>
+        </div>
+        <div className="inline-flex rounded-lg border border-blue-200 bg-white p-1 dark:border-blue-800 dark:bg-neutral-900" role="group" aria-label="Modo da interface">
+          <button type="button" aria-pressed={mode === "simple"} onClick={() => onChange("simple")} className={`min-h-9 rounded-md px-3 text-xs font-medium ${mode === "simple" ? "bg-blue-700 text-white" : "text-blue-800 dark:text-blue-200"}`}>Simples</button>
+          <button type="button" aria-pressed={mode === "advanced"} onClick={() => onChange("advanced")} className={`min-h-9 rounded-md px-3 text-xs font-medium ${mode === "advanced" ? "bg-blue-700 text-white" : "text-blue-800 dark:text-blue-200"}`}>Avançado</button>
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -73,6 +91,10 @@ export default function Settings() {
   const [showAppsInMenuPending, setShowAppsInMenuPending] = useState(false);
   const [resettingToDefaults, setResettingToDefaults] = useState(false);
   const [resetError, setResetError] = useState<string | null>(null);
+  const [interfaceMode, setInterfaceMode] = useState<InterfaceMode>(() => {
+    if (typeof window === "undefined" || !window.localStorage) return "simple";
+    return getStoredInterfaceMode(window.localStorage);
+  });
   const [hasClaudeDraftChanges, setHasClaudeDraftChanges] = useState(false);
   const [hasCodexDraftChanges, setHasCodexDraftChanges] = useState(false);
   const claudeModelsSettingsRef =
@@ -165,6 +187,11 @@ export default function Settings() {
   }, []);
 
   const defaultContextLength = inferenceComputeResponse?.defaultContextLength;
+
+  const changeInterfaceMode = useCallback((mode: InterfaceMode) => {
+    setInterfaceMode(mode);
+    persistInterfaceMode(mode, window.localStorage);
+  }, []);
 
   const updateSettingsMutation = useMutation({
     scope: settingsMutationScope,
@@ -430,7 +457,8 @@ export default function Settings() {
       <main className="flex min-h-0 w-full flex-1 flex-col dark:bg-neutral-900">
         <div className="w-full flex-1 overflow-y-auto p-6 overscroll-contain">
           <div className="mx-auto max-w-4xl space-y-4">
-            <AgenticControlCenter />
+            <InterfaceModeControl mode={interfaceMode} onChange={changeInterfaceMode} />
+            {interfaceMode === "advanced" && <AgenticControlCenter />}
             <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/20 dark:text-amber-200">
               <div className="font-medium">
                 {loading ? "Consultando configuração nativa…" : "Configuração nativa indisponível neste momento"}
@@ -455,7 +483,8 @@ export default function Settings() {
           aria-busy={resettingToDefaults}
           className="mx-auto max-w-4xl space-y-4 border-0 p-0"
         >
-          <AgenticControlCenter />
+          <InterfaceModeControl mode={interfaceMode} onChange={changeInterfaceMode} />
+          {interfaceMode === "advanced" && <AgenticControlCenter />}
           {/* Connect Ollama Account */}
           <div className="overflow-hidden rounded-xl bg-white dark:bg-neutral-800">
             <div className="p-4">
@@ -869,7 +898,7 @@ export default function Settings() {
           </section>
 
           {/* Conta e Workspace */}
-          <section id="account" className="overflow-hidden rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm dark:border-neutral-800 dark:bg-neutral-950">
+          {interfaceMode === "advanced" && <section id="account" className="overflow-hidden rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm dark:border-neutral-800 dark:bg-neutral-950">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-600 font-bold text-white text-base">
                 {operatorProfile.name.charAt(0).toUpperCase()}
@@ -898,7 +927,7 @@ export default function Settings() {
                 <span className="font-semibold text-emerald-600 dark:text-emerald-400">Ativa (Proteção contra traversals)</span>
               </div>
             </div>
-          </section>
+          </section>}
 
           {/* Reset button */}
           <div className="flex items-center justify-between gap-4 px-4">

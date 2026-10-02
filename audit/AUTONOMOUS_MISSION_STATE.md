@@ -45,7 +45,8 @@ known_limits:
   - Ollama local validado com qwen2.5:0.5b em 127.0.0.1:11435
   - credenciais/IdP/WhatsApp/MCP/deploy externos continuam BLOCKED_EXTERNAL ou NOT_CONFIGURED
 CI final b4848398: PASS — test.yaml run 37003763891 (Ubuntu/macOS/Windows), class-a-plus-integrity run 37003766034, dz23-agentic-quality run 37003768562.
-next_action: continue internal UX/accessibility/resilience backlog; external-only closure remains signed installer credentials, real external IdP/devices/HA, and live provider homologation
+  - U8 simple/advanced disclosure: PASS (persistent accessible toggle; simple hides technical Agentic Control Center/account diagnostics; advanced exposes them; 275 frontend tests; desktop/mobile screenshots with zero console/HTTP errors)
+next_action: continue U10-U12, then resilience E1-E7 and accessibility D2-D7; external-only closure remains signed installer credentials, real external IdP/devices/HA, and live provider homologation
 ```
 
 

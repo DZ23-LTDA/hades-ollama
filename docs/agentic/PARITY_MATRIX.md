@@ -176,3 +176,8 @@ A falha P1 observada na auditoria live foi corrigida: o catálogo de integraçõ
 - i18n de Configurações: controles alterados para pt-BR e regressões alinhadas.
 - Gatilhos de Automação: intervalo e webhook agora são distinguíveis no contrato/UI; live webhook depende de segredo/configuração.
 - T8: matriz revisada sem declarar 100% de paridade; limitações externas continuam explícitas.
+
+
+### Fechamento contínuo — UX leiga
+
+- **U8 Modo Simples/Avançado:** `VALIDADO COM DADO REAL` — alternância persistente, progressive disclosure dos diagnósticos técnicos e evidências desktop/mobile em `docs/evidencias/u8-settings-*-20261002.png`.

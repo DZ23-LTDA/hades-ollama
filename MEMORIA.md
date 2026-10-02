@@ -716,3 +716,8 @@ Corrigi a identidade visível do instalador Inno Setup para **Hades** (nome, tí
 ## CI do SHA final — 2026-10-02 12:44 UTC — Claude
 
 O SHA `a7984fd7` foi validado com sucesso no GitHub: `test` run `37007672156` verde em Ubuntu/macOS/Windows, `class-a-plus-integrity` run `37007675181` verde e `dz23-agentic-quality` run `37007677811` verde. O instalador ainda está **UNSIGNED/BLOCKED_EXTERNAL** até a credencial SignPath do proprietário; a missão continua no backlog interno de UX, acessibilidade e resiliência.
+
+
+## U8 — 2026-10-02 13:08 UTC — Claude
+
+Implementei o modo **Simples/Avançado** em Configurações com preferência persistente e fallback seguro quando localStorage não existe ou é bloqueado. O modo simples oculta diagnósticos técnicos, Agentic Control Center e detalhes de conta/workspace; o modo avançado reabre esses blocos. A Home continua oferecendo ações rápidas de um clique. Evidência real contra backend local: `docs/evidencias/u8-settings-desktop-20261002.png` e `u8-settings-mobile-20261002.png`, sem erros HTTP/console; hashes distintos registrados nos arquivos JSON adjacentes. Gates locais: typecheck, lint, build, contratos, integrity e 275 testes Vitest passaram. Próximo passo: U10 central de saúde, U11 entrega de artefato e U12 proteção de ação externa.
