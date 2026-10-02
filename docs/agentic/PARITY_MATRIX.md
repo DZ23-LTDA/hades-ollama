@@ -187,3 +187,5 @@ A falha P1 observada na auditoria live foi corrigida: o catálogo de integraçõ
 - **U11 Entrega de artefato:** `VALIDADO COM DADO REAL` — card de entrega com checksum verificável e download autenticado; estado vazio honesto quando a missão não produz arquivo.
 
 - **U12 Aprovação compreensível:** `VALIDADO` — ações sensíveis exibem risco e explicação antes da decisão; execução permanece bloqueada até aprovação server-side válida.
+
+- **D2 Acessibilidade — nomes de controles:** `VALIDADO` — triagem estática sem botões de ícone sem nome; fechamento de alertas nomeado e operável por teclado.

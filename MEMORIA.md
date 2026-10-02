@@ -736,3 +736,8 @@ Implementei a entrega rastreável no Agentic Console. Missões agora exibem um c
 ## U12 — 2026-10-02 13:34 UTC — Claude
 
 Melhorei a proteção compreensível de ações externas no Agentic Console. Cada aprovação pendente agora explica em pt-BR o risco inferido — envio/publicação, gasto/anúncio, escrita/deploy ou ação desconhecida — e informa claramente que nada é executado antes de decisão explícita validada pelo servidor; o motivo continua obrigatório. Não alterei o modelo de segurança nem adicionei autoaprovação. Gates locais: typecheck, lint, 275 testes Vitest, build, `go build ./...`, `go test ./internal/agent ./server`, contratos e integrity passaram. Próximo passo: E1-E7 e D2-D7; bloqueios externos honestos permanecem.
+
+
+## D2 — 2026-10-02 13:43 UTC — Claude
+
+Auditei botões de ícone na UI e encontrei um único botão sem nome acessível no componente de alertas. Corrigi com `aria-label="Fechar aviso"` e `type="button"`. A triagem passou com `ICON_BUTTON_NAME_ISSUES=0`; typecheck, lint, 275 testes Vitest, build, contratos e integrity passaram. Próximo passo: D3-D7 de acessibilidade/UX.
