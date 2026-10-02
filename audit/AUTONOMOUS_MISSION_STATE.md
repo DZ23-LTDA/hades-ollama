@@ -2,7 +2,7 @@
 ```yaml
 state: EXECUTING_P0_SECURITY_BACKLOG
 branch: recovery/ollama-full-snapshot
-sha: 72819367
+sha: bcbeabc7
 proofs_local:
   - go build ./...: PASS (após remover node_modules gerado)
   - CGO_ENABLED=0 go build ./...: PASS
@@ -18,17 +18,20 @@ proofs_local:
 	  - S3 HITL intent policy and S4 requester separation: PASS (negative tests)
 	  - S5 tenant-scoped connector/MCP secrets: PASS (negative cross-tenant env fallback test)
 	  - S6 GitHub import OAuth scope: PASS (private import tests; non-local org cannot use global env)
+  - Ollama local model: PASS (qwen2.5:0.5b downloaded and generated OK on loopback 127.0.0.1:11435)
+  - provider API smoke: PASS for preconfigured OpenAI-compatible endpoint (GET /models HTTP 200; minimal gpt-5-mini chat HTTP 200 with non-empty completion); requested rotated provider keys are not present in this sandbox
+  - strict sandbox live executor: BLOCKED_EXTERNAL (delegated cgroup v2 subtree is unavailable; fail-closed tests PASS)
 external_status:
-  - class-a-plus-integrity: SUCCESS (run 36964769681, SHA 72819367)
-  - dz23-agentic-quality: SUCCESS (run 36964769788, SHA 72819367)
+  - class-a-plus-integrity: SUCCESS (run 36965671309, SHA bcbeabc7)
+  - dz23-agentic-quality: SUCCESS (run 36965671365, SHA bcbeabc7)
   - prior evidence: runs 36949729206/36949729166 reached runners, then were cancelled by same-branch concurrency
   - fix_published: concurrency now uses pull_request.number || run_id, matching test.yaml
 	  - prior_auth_issue: GH_TOKEN/stored gh token briefly returned 401; Git credential helper restored read access for verification
 	  - latest hardening CI: SUCCESS (class-a-plus-integrity and dz23-agentic-quality, SHA 72819367)
 known_limits:
-  - Ollama local sem modelos instalados neste ambiente
+  - Ollama local validado com qwen2.5:0.5b em 127.0.0.1:11435
   - credenciais/IdP/WhatsApp/MCP/deploy externos continuam BLOCKED_EXTERNAL ou NOT_CONFIGURED
-next_action: continue remaining P0 security backlog (S2 strong sandbox, S8 loopback default, S9 HMAC rotation); retain CI proof for 72819367
+next_action: configure a real delegated cgroup/seccomp executor, then dispatch and validate test.yaml on the release SHA; external providers without rotated keys remain BLOCKED_EXTERNAL
 ```
 
 
