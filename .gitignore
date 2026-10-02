@@ -3,6 +3,7 @@
 .env
 .venv
 .swp
+.tmp/
 dist
 build
 **/node_modules

@@ -16,9 +16,11 @@ function formatBytes(bytes: number, unit?: string): string {
 export default function Downloading({
   completed,
   total,
+  label = "Downloading model",
 }: {
   completed: number;
   total: number;
+  label?: string;
 }) {
   const percentage = total > 0 ? (completed / total) * 100 : 0;
   const unitIndex = total > 0 ? Math.floor(Math.log(total) / Math.log(K)) : 0;
@@ -37,7 +39,7 @@ export default function Downloading({
             <path d="M8.67188 1.83594C8.25195 1.83594 7.89062 2.17773 7.89062 2.58789V12.5195L8.00781 15.1562C8.02734 15.5176 8.31055 15.8105 8.67188 15.8105C9.02344 15.8105 9.30664 15.5176 9.32617 15.1562L9.44336 12.5195V2.58789C9.44336 2.17773 9.0918 1.83594 8.67188 1.83594ZM5.35156 11.5625C4.94141 11.5625 4.64844 11.8457 4.64844 12.2461C4.64844 12.4609 4.73633 12.6172 4.88281 12.7637L8.10547 15.8691C8.30078 16.0645 8.4668 16.123 8.67188 16.123C8.86719 16.123 9.0332 16.0645 9.22852 15.8691L12.4512 12.7637C12.5977 12.6172 12.6855 12.4609 12.6855 12.2461C12.6855 11.8457 12.373 11.5625 11.9727 11.5625C11.7773 11.5625 11.582 11.6406 11.4453 11.7969L9.93164 13.4082L8.67188 14.7461L7.40234 13.4082L5.88867 11.7969C5.75195 11.6406 5.54688 11.5625 5.35156 11.5625Z" />
           </svg>
 
-          <div className="ml-6">Downloading model</div>
+          <div className="ml-6">{label}</div>
         </div>
         <div className="text-sm text-neutral-500 dark:text-neutral-500 ml-6">
           {`${formatBytes(completed, unit)} / ${formatBytes(total, unit)} (${Math.floor(percentage)}%)`}
