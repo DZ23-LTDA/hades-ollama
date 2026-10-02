@@ -8,12 +8,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { pullModel } from "@/api";
 import { useModels, useRefetchModels } from "@/hooks/useModels";
-import { useFeaturedModels } from "@/hooks/useFeaturedModels";
 import { useSettings } from "@/hooks/useSettings";
 import {
   FIRST_MODEL_ERROR_MESSAGE,
-  FIRST_MODEL_FALLBACK,
-  pickFirstModel,
+  RECOMMENDED_FIRST_MODEL,
 } from "@/lib/firstModel";
 import { FirstModelCard } from "./FirstModelCard";
 
@@ -22,13 +20,11 @@ vi.mock("@/hooks/useModels", () => ({
   useModels: vi.fn(),
   useRefetchModels: vi.fn(),
 }));
-vi.mock("@/hooks/useFeaturedModels", () => ({ useFeaturedModels: vi.fn() }));
 vi.mock("@/hooks/useSettings", () => ({ useSettings: vi.fn() }));
 
 const mockPull = vi.mocked(pullModel);
 const mockUseModels = vi.mocked(useModels);
 const mockUseRefetch = vi.mocked(useRefetchModels);
-const mockUseFeatured = vi.mocked(useFeaturedModels);
 const mockUseSettings = vi.mocked(useSettings);
 
 const setSettings = vi.fn();
@@ -51,34 +47,15 @@ beforeEach(() => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   setSettings.mockReset();
   refetch.mockReset().mockResolvedValue(undefined);
-  // Default: no local models, one small recommendation.
+  // Default: no local models.
   mockUseModels.mockReturnValue({ data: [], isLoading: false } as never);
   mockUseRefetch.mockReturnValue(refetch as never);
-  mockUseFeatured.mockReturnValue({
-    data: [{ model: "gemma3:1b", description: "", vram_bytes: 1 }],
-  } as never);
   mockUseSettings.mockReturnValue({ settings: {}, setSettings } as never);
 });
 
 afterEach(() => {
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
-});
-
-describe("pickFirstModel", () => {
-  it("falls back to the small default when there is no recommendation", () => {
-    expect(pickFirstModel(undefined)).toBe(FIRST_MODEL_FALLBACK);
-    expect(pickFirstModel([])).toBe(FIRST_MODEL_FALLBACK);
-  });
-
-  it("ignores cloud models and picks the smallest by VRAM", () => {
-    const picked = pickFirstModel([
-      { model: "big:cloud", description: "", vram_bytes: 1 },
-      { model: "qwen3.5", description: "", vram_bytes: 14 },
-      { model: "gemma4", description: "", vram_bytes: 12 },
-    ]);
-    expect(picked).toBe("gemma4");
-  });
 });
 
 describe("FirstModelCard", () => {
@@ -94,7 +71,7 @@ describe("FirstModelCard", () => {
 
   it("renders nothing when a local model already exists", async () => {
     mockUseModels.mockReturnValue({
-      data: [{ model: "gemma3:1b", digest: "abc" }],
+      data: [{ model: "qwen2.5:0.5b", digest: "abc" }],
       isLoading: false,
     } as never);
     let renderer!: ReactTestRenderer;
@@ -105,7 +82,7 @@ describe("FirstModelCard", () => {
     expect(renderer.root.findAllByType("section")).toHaveLength(0);
   });
 
-  it("downloads the recommended model and selects it", async () => {
+  it("downloads the recommended first model and selects it", async () => {
     mockPull.mockImplementation(async function* () {
       yield { status: "pulling", completed: 50, total: 100 };
       yield { status: "success", completed: 100, total: 100, done: true };
@@ -117,9 +94,9 @@ describe("FirstModelCard", () => {
       await Promise.resolve();
     });
 
-    // The recommended model is prefilled.
+    // The small, predictable recommended model is prefilled.
     const input = renderer.root.findByType("input");
-    expect(input.props.value).toBe("gemma3:1b");
+    expect(input.props.value).toBe(RECOMMENDED_FIRST_MODEL);
 
     const button = findButton(renderer, "Baixar e começar");
     expect(button).toBeDefined();
@@ -128,8 +105,13 @@ describe("FirstModelCard", () => {
       for (let i = 0; i < 6; i++) await Promise.resolve();
     });
 
-    expect(mockPull).toHaveBeenCalledWith("gemma3:1b", expect.anything());
-    expect(setSettings).toHaveBeenCalledWith({ SelectedModel: "gemma3:1b" });
+    expect(mockPull).toHaveBeenCalledWith(
+      RECOMMENDED_FIRST_MODEL,
+      expect.anything(),
+    );
+    expect(setSettings).toHaveBeenCalledWith({
+      SelectedModel: RECOMMENDED_FIRST_MODEL,
+    });
     expect(refetch).toHaveBeenCalledTimes(1);
   });
 

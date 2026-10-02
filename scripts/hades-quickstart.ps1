@@ -17,7 +17,7 @@ $Binary = if ($env:OLLAMA_BINARY) { $env:OLLAMA_BINARY } else { Join-Path $Insta
 $HostAddr = if ($env:OLLAMA_HOST) { $env:OLLAMA_HOST } else { "127.0.0.1:11434" }
 $UiPort = if ($env:HADES_UI_PORT) { $env:HADES_UI_PORT } else { "5173" }
 $UiHost = if ($env:HADES_UI_HOST) { $env:HADES_UI_HOST } else { "127.0.0.1" }
-$Model = if ($env:HADES_RECOMMENDED_MODEL) { $env:HADES_RECOMMENDED_MODEL } else { "gemma4:e2b" }
+$Model = if ($env:HADES_RECOMMENDED_MODEL) { $env:HADES_RECOMMENDED_MODEL } else { "qwen2.5:0.5b" }
 
 function Show-Usage {
   @"

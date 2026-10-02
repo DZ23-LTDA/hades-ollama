@@ -1,12 +1,14 @@
-import { useMemo, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { ArrowDownTrayIcon } from "@heroicons/react/24/outline";
 
 import { pullModel } from "@/api";
 import { useModels, useRefetchModels } from "@/hooks/useModels";
-import { useFeaturedModels } from "@/hooks/useFeaturedModels";
 import { useSettings } from "@/hooks/useSettings";
 import Downloading from "@/components/Downloading";
-import { FIRST_MODEL_ERROR_MESSAGE, pickFirstModel } from "@/lib/firstModel";
+import {
+  FIRST_MODEL_ERROR_MESSAGE,
+  RECOMMENDED_FIRST_MODEL,
+} from "@/lib/firstModel";
 
 // FirstModelCard is the zero-model first-run surface: when the local backend has
 // no downloaded model yet, it offers the recommended first model and downloads it
@@ -14,14 +16,10 @@ import { FIRST_MODEL_ERROR_MESSAGE, pickFirstModel } from "@/lib/firstModel";
 // user can start immediately — no terminal required.
 export function FirstModelCard() {
   const { data: models = [], isLoading } = useModels();
-  const { data: recommendations } = useFeaturedModels();
   const { setSettings } = useSettings();
   const refetchModels = useRefetchModels();
 
-  const recommended = useMemo(
-    () => pickFirstModel(recommendations),
-    [recommendations],
-  );
+  const recommended = RECOMMENDED_FIRST_MODEL;
   const [modelName, setModelName] = useState("");
   const effectiveName = (modelName || recommended).trim();
 

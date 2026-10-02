@@ -33,6 +33,7 @@ import {
   FIRST_MODEL_COMMAND,
   shouldShowClaudeConnectedIntro,
 } from "./onboardingUtils";
+import { RECOMMENDED_FIRST_MODEL } from "@/lib/firstModel";
 import { copyTextToClipboard } from "@/utils/clipboard";
 import {
   ArrowsRightLeftIcon,
@@ -342,7 +343,7 @@ export function RunOllamaScreen({
   onRetryCompletion,
   onContinue,
 }: RunOllamaScreenProps) {
-  const [modelName, setModelName] = useState("qwen2.5:0.5b");
+  const [modelName, setModelName] = useState(RECOMMENDED_FIRST_MODEL);
   const [pulling, setPulling] = useState(false);
   const [modelReady, setModelReady] = useState(false);
   const [pullStatus, setPullStatus] = useState<string | null>(null);
@@ -414,7 +415,7 @@ export function RunOllamaScreen({
               onChange={(event) => setModelName(event.target.value)}
               disabled={pulling}
               className="min-w-0 flex-1 rounded-xl border border-neutral-200 px-3 py-2 text-sm outline-none focus:border-neutral-500 focus:ring-2 focus:ring-neutral-200"
-              placeholder="ex.: qwen2.5:0.5b"
+              placeholder={`ex.: ${RECOMMENDED_FIRST_MODEL}`}
             />
             <button
               type="button"

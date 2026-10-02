@@ -1,25 +1,12 @@
-import type { ModelRecommendation } from "@/api";
-
-// A sensible tiny default that runs even on modest hardware, used when the
-// backend offers no local (non-cloud) recommendation.
-export const FIRST_MODEL_FALLBACK = "gemma3:1b";
+// Single source of truth for the "first model" a brand-new user is offered.
+// It must be small, fast to download, and reliable on modest hardware so that
+// "install and use" works out of the box. Bigger/featured models stay available
+// through the model picker and the backend recommendations — this is only the
+// friendly default for the very first download.
+//
+// Used by: FirstModelCard (home zero-model card), the onboarding "run" step
+// (via FIRST_MODEL_COMMAND), and the quickstart scripts.
+export const RECOMMENDED_FIRST_MODEL = "qwen2.5:0.5b";
 
 export const FIRST_MODEL_ERROR_MESSAGE =
   "Não foi possível baixar o modelo agora. Verifique sua conexão e tente novamente.";
-
-// pickFirstModel chooses the friendliest first local model to download: the
-// smallest (by VRAM) non-cloud recommendation from the backend, falling back to
-// a small default when there is no usable recommendation. Pure for testing.
-export function pickFirstModel(
-  recommendations: ModelRecommendation[] | undefined,
-  fallback: string = FIRST_MODEL_FALLBACK,
-): string {
-  const local = (recommendations || []).filter(
-    (r) => r.model && !r.model.endsWith("cloud"),
-  );
-  if (local.length === 0) return fallback;
-  const sorted = [...local].sort(
-    (a, b) => (a.vram_bytes ?? Infinity) - (b.vram_bytes ?? Infinity),
-  );
-  return sorted[0].model;
-}
