@@ -1,8 +1,8 @@
 ## Checkpoint vigente — Missão contínua T0/P0 — 2026-10-02 03:58 UTC
 ```yaml
-state: TESTING_D7_ACCESSIBILITY_AXE
+state: D8_FINAL_REVIEW
 branch: recovery/ollama-full-snapshot
-sha: 6e1dee55
+sha: 27e432cf
 proofs_local:
   - go build ./...: PASS (após remover node_modules gerado)
   - CGO_ENABLED=0 go build ./...: PASS
@@ -63,7 +63,7 @@ CI final b4848398: PASS — test.yaml run 37003763891 (Ubuntu/macOS/Windows), cl
   - D5 browser E2E: PASS — desktop 1440x900 e mobile 390x844, abertura/fechamento, console e HTTP limpos; evidências em docs/evidencias/d5-drawer-*-20261002.png.
   - D6 design system: PASS — removido `app/ui/app/tailwind.config.js` morto; tokens Tailwind v4 e estilos compartilhados `page-title`, `page-description`, `section-title` agora vivem em `src/index.css`; Home, Conectores e Endpoint migrados.
   - D6 verification: PASS — `scripts/verify-design-system.mjs`, typecheck, lint, 273 testes, build, bundle budget, contratos e integrity.
-next_action: D8 — revisão final de claims, auditoria de release e confirmação dos workflows no SHA publicado.
+next_action: fechar release somente após validação das dependências externas e do sandbox forte; não há mais patch local P0 reproduzível nesta rodada.
 ```
 
 

@@ -769,3 +769,10 @@ Removi `app/ui/app/tailwind.config.js`, que era configuração Tailwind v3 não 
 - **Evidência real:** axe auditou desktop 1440x900 e mobile 390x844 nas rotas `/`, `/connect`, `/endpoint`, `/library`, `/settings` e `/agentic`: 0 violações, 0 erros de console e 0 erros HTTP em `docs/evidencias/d7-axe-audit-20261002.json`.
 - **Gates locais:** TypeScript, lint, 276 testes Vitest, build, bundle budget, design-system, contratos, integrity e diff-check passaram.
 - **Próximo passo:** D8 — revisão final honesta e confirmação dos workflows no SHA publicado; integrações externas continuam condicionadas a credenciais/configuração reais.
+
+
+## Atualização contínua — 2026-10-02 14:24 UTC — Claude
+
+- **D7 publicado e validado:** SHA `27e432cf`; `test` 37039489770, `class-a-plus-integrity` 37039477385 e `dz23-agentic-quality` 37039477250 concluíram `success` no mesmo SHA.
+- **Estado:** worktree limpo, branch recovery sincronizada com origin. Warnings dos runners sobre Node 20/ubuntu-latest foram registrados pelo GitHub, sem falha de gate.
+- **Próximo passo honesto:** não há mais correção local P0 reproduzível nesta rodada; release final ainda depende de sandbox forte real, credenciais/IdP/WhatsApp/MCP/deploy externos e validação nativa do instalador assinado.
