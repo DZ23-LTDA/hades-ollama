@@ -3,6 +3,7 @@ import { agentFetch, listProjects, type AgentProject } from "@/lib/agenticClient
 import { AgenticSplitShell } from "@/components/AgenticSplitShell";
 import { getModels } from "@/api";
 import type { Model } from "@/gotypes";
+import { humanizeApiError } from "@/lib/userFacingError";
 
 type Mission = {
   id: string;
@@ -93,7 +94,7 @@ export default function AgenticConsole() {
       setEvents(nextEvents.events ?? []);
       if (nextOrchestration) setOrchestration(nextOrchestration);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Não foi possível carregar o runtime agentic");
+      setError(humanizeApiError(cause, "Não foi possível carregar o runtime agentic.").message);
     }
   };
 
@@ -162,7 +163,7 @@ export default function AgenticConsole() {
             }
             await load(created.id);
           } catch (cause) {
-            setError(cause instanceof Error ? cause.message : "Falha ao iniciar missão automática");
+            setError(humanizeApiError(cause, "Falha ao iniciar a missão automática.").message);
           } finally {
             setBusy(false);
           }
@@ -183,7 +184,7 @@ export default function AgenticConsole() {
     try {
       const created = await api<Mission>("/api/agent/v1/missions", { method: "POST", body: JSON.stringify({ objective, provider, model: selectedModel || undefined, project_id: projectID || undefined, isolate_workspace: isolateWorkspace && projectID ? true : undefined, capabilities: allowWorkspaceWrite ? ["workspace:read", "workspace:write"] : ["workspace:read"], auto_run: false }) });
       setMission(created); setObjective(""); await load(created.id, orchestration?.id);
-    } catch (cause) { setError(cause instanceof Error ? cause.message : "Falha ao criar missão"); } finally { setBusy(false); }
+    } catch (cause) { setError(humanizeApiError(cause, "Falha ao criar a missão.").message); } finally { setBusy(false); }
   };
 
   const decide = async (approval: { id: string; nonce?: string }, approved: boolean) => {
@@ -202,14 +203,14 @@ export default function AgenticConsole() {
         return next;
       });
       await load(mission.id, orchestration?.id);
-    } catch (cause) { setError(cause instanceof Error ? cause.message : "Falha ao decidir aprovação"); } finally { setBusy(false); }
+    } catch (cause) { setError(humanizeApiError(cause, "Falha ao registrar a decisão.").message); } finally { setBusy(false); }
   };
 
   const run = async () => {
     if (!mission) return;
     setBusy(true);
     try { await api(`/api/agent/v1/missions/${encodeURIComponent(mission.id)}/run`, { method: "POST", body: "{}" }); await load(mission.id, orchestration?.id); }
-    catch (cause) { setError(cause instanceof Error ? cause.message : "Falha ao iniciar missão"); } finally { setBusy(false); }
+    catch (cause) { setError(humanizeApiError(cause, "Falha ao iniciar a missão.").message); } finally { setBusy(false); }
   };
 
   const createOrchestration = async () => {
@@ -218,7 +219,7 @@ export default function AgenticConsole() {
     try {
       const created = await api<OrchestrationJob>("/api/agent/v1/orchestration/jobs", { method: "POST", body: JSON.stringify({ objective: orchestrationObjective, roles: ["research", "programming", "testing", "security", "review"], budget: { max_agents: 3, max_seconds: 600, max_retries: 1 }, auto_run: true }) });
       setOrchestration(created); setOrchestrationObjective(""); await load(mission?.id, created.id);
-    } catch (cause) { setError(cause instanceof Error ? cause.message : "Falha ao iniciar orquestração"); } finally { setBusy(false); }
+    } catch (cause) { setError(humanizeApiError(cause, "Falha ao iniciar a orquestração.").message); } finally { setBusy(false); }
   };
 
   const runResearch = async () => {
@@ -226,7 +227,7 @@ export default function AgenticConsole() {
     if (!researchQuery.trim() || urls.length === 0) return;
     setBusy(true); setError("");
     try { setResearch(await api<ResearchReport>("/api/agent/v1/research", { method: "POST", body: JSON.stringify({ query: researchQuery, urls, max_sources: 8, respect_robots: true }) })); }
-    catch (cause) { setError(cause instanceof Error ? cause.message : "Falha na pesquisa profunda"); } finally { setBusy(false); }
+    catch (cause) { setError(humanizeApiError(cause, "Falha na pesquisa profunda.").message); } finally { setBusy(false); }
   };
 
   return (

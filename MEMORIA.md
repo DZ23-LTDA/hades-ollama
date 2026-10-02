@@ -686,3 +686,8 @@ Validação externa concluída no SHA `e6625bdc`: `test.yaml` run `36998217811` 
 ## U4 — degradação offline global — 2026-10-02 11:29 UTC — Claude
 
 Implementado `BackendStatusBanner` no shell raiz: quando `/api/version` não responde ou retorna estado inválido, a UI mostra “O backend local está offline. Suas alterações não foram enviadas.” com `role=alert`, live region e botão “Tentar novamente”. O health check deixou de emitir erro ruidoso no console; offline é um estado suportado e honesto. Regressão Vitest passou; typecheck, lint, build, verify-contracts e integrity passaram localmente. Próximo passo: U5, mensagens humanizadas para falhas de API preservando rascunhos.
+
+
+## U5 — erros de API acionáveis — 2026-10-02 11:42 UTC — Claude
+
+Criado `humanizeApiError` para converter falhas de rede, sessão expirada, autorização, conflito CAS, excesso de tentativas, `NOT_CONFIGURED` e `BLOCKED_EXTERNAL` em mensagens pt-BR com ação recomendada. Aplicado ao Agentic Console, Automações e Providers; o objetivo/rascunho permanece no formulário quando a operação falha. Detalhes técnicos são limitados e redigem Authorization/token/api_key/secret/password antes da UI. Gates: typecheck, lint, Vitest completo (41 arquivos, 273 testes), build, contratos e integrity passaram. Próximo passo: U3/U2, depois validação final.

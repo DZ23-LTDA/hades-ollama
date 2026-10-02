@@ -4,6 +4,7 @@ import { type AgentSchedule } from "@/lib/agenticClient";
 import { API_BASE } from "@/lib/config";
 import { AppSidebar } from "@/components/AppSidebar";
 import { SidebarLayout } from "@/components/layout/layout";
+import { humanizeApiError } from "@/lib/userFacingError";
 import {
   CalendarDaysIcon,
   BoltIcon,
@@ -66,7 +67,7 @@ export function AutomationsPage() {
       setShowModal(false);
       loadData();
     } catch (e) {
-      setErrorMsg(e instanceof Error ? e.message : "Erro ao criar automação");
+      setErrorMsg(humanizeApiError(e, "Não foi possível criar a automação.").message);
     } finally {
       setSaving(false);
     }
@@ -85,7 +86,7 @@ export function AutomationsPage() {
       if (!res.ok) throw new Error("Falha ao disparar missão");
       setSuccessMsg(`Missão disparada: ${sch.objective}`);
     } catch (e) {
-      setErrorMsg(e instanceof Error ? e.message : "Falha ao executar");
+      setErrorMsg(humanizeApiError(e, "Não foi possível executar a automação.").message);
     }
   };
 
@@ -98,7 +99,7 @@ export function AutomationsPage() {
       });
       loadData();
     } catch (e) {
-      setErrorMsg(e instanceof Error ? e.message : "Falha ao alterar estado");
+      setErrorMsg(humanizeApiError(e, "Não foi possível alterar o estado da automação.").message);
     }
   };
 
@@ -110,7 +111,7 @@ export function AutomationsPage() {
       });
       loadData();
     } catch (e) {
-      setErrorMsg(e instanceof Error ? e.message : "Falha ao excluir");
+      setErrorMsg(humanizeApiError(e, "Não foi possível excluir a automação.").message);
     }
   };
 

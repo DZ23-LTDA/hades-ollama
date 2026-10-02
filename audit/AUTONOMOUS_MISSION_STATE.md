@@ -25,6 +25,7 @@ proofs_local:
   - U1 guided model onboarding: PASS (local-only user reaches Run Ollama, real POST /api/v1/models/pull with JSONL progress, accessible status, success continuation and honest errors)
   - U1 browser E2E: PASS (desktop/mobile qwen2.5:0.5b pull and continuation to /connect; clean console)
   - U4 backend-offline shell banner: PASS (global alert, retry action, no console noise; Vitest regression)
+  - U5 humanized API errors: PASS (retry/sign-in/configure/CAS actions, secret-redacted technical detail, 41 files / 273 tests)
   - final test.yaml: SUCCESS (run 36998217811, SHA e6625bdc; Ubuntu/macOS/Windows test jobs, Go/UI gates and golangci-lint passed; optional native matrix intentionally false)
   - final class-a-plus-integrity: SUCCESS (run 36996527740, SHA e6625bdc)
   - final dz23-agentic-quality: SUCCESS (run 36996527818, SHA e6625bdc)
@@ -41,7 +42,7 @@ external_status:
 known_limits:
   - Ollama local validado com qwen2.5:0.5b em 127.0.0.1:11435
   - credenciais/IdP/WhatsApp/MCP/deploy externos continuam BLOCKED_EXTERNAL ou NOT_CONFIGURED
-next_action: complete U5 humanized API errors after CI for U4; production readiness still requires a delegated strong sandbox, real external integration credentials, and a signed Windows release before any public release claim
+next_action: complete U3/U2 documentation and i18n audits after CI for U5; production readiness still requires a delegated strong sandbox, real external integration credentials, and a signed Windows release before any public release claim
 ```
 
 

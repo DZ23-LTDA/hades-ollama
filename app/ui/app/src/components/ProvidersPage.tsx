@@ -3,6 +3,7 @@ import { CheckCircleIcon, KeyIcon } from "@heroicons/react/24/outline";
 import { AppSidebar } from "@/components/AppSidebar";
 import { SidebarLayout } from "@/components/layout/layout";
 import { SettingsTabs } from "@/components/SettingsTabs";
+import { humanizeApiError } from "@/lib/userFacingError";
 import {
   listProviderModels,
   listProviders,
@@ -44,9 +45,7 @@ function ModelPicker({
           ),
         );
       })
-      .catch((err) =>
-        setError(err instanceof Error ? err.message : String(err)),
-      );
+      .catch((err) => setError(humanizeApiError(err, "Não foi possível consultar os modelos deste provedor.").message));
   }, [name]);
 
   if (!models && !error) {
@@ -121,7 +120,7 @@ function ModelPicker({
               await saveProviderModels(name, [...selected]);
               onSaved();
             } catch (err) {
-              setError(err instanceof Error ? err.message : String(err));
+              setError(humanizeApiError(err, "Não foi possível salvar os modelos selecionados.").message);
             } finally {
               setBusy(false);
             }
