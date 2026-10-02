@@ -189,3 +189,6 @@ A falha P1 observada na auditoria live foi corrigida: o catálogo de integraçõ
 - **U12 Aprovação compreensível:** `VALIDADO` — ações sensíveis exibem risco e explicação antes da decisão; execução permanece bloqueada até aprovação server-side válida.
 
 - **D2 Acessibilidade — nomes de controles:** `VALIDADO` — triagem estática sem botões de ícone sem nome; fechamento de alertas nomeado e operável por teclado.
+
+- **D3 Formulários:** `VALIDADO` — compositores principais têm nomes programáticos explícitos.
+- **D4 Movimento reduzido:** `VALIDADO` — preferência do sistema desativa motion customizado global relevante.

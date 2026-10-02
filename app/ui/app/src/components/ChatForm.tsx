@@ -910,6 +910,7 @@ function ChatForm({
           <div className="absolute inset-x-5 bottom-full mb-2"><SlashCommandMenu query={slashCommandQuery(message.content)} activeIndex={slashActiveIndex} onActiveIndexChange={setSlashActiveIndex} onSelect={(command: SlashCommand) => setMessage((current) => ({ ...current, content: `${command.label} ` }))} /></div>
           <textarea
             ref={textareaRef}
+            aria-label="Mensagem para o agente"
             value={message.content}
             onChange={handleTextareaChange}
             placeholder="Send a message"

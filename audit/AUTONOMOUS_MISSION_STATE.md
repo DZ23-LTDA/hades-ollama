@@ -53,7 +53,9 @@ CI final b4848398: PASS — test.yaml run 37003763891 (Ubuntu/macOS/Windows), cl
   - CI U12: SUCCESS (test 37013825002, integrity 37013828045, agentic-quality 37013831164; SHA 6e1dee55)
   - E1-E7 resiliência: IMPLEMENTADOS em commits históricos com regressões normais/race (idempotência Tel-Agent, ciclos Company, retry bounded de schedules, rollback/transições/compensações de fila); smoke Redis/lease distribuído/múltiplas réplicas permanecem BLOCKED_EXTERNAL.
   - D2 acessibilidade: PASS — triagem estática não encontrou botões de ícone sem nome; o botão de fechar alertas agora tem `aria-label`, `type=button` e mantém operação por teclado.
-next_action: continuar D3-D7 de acessibilidade/UX; fora de escopo continuam assinatura real, IdP/dispositivos/HA e homologação live de providers
+  - D3 formulários: PASS — os compositores Home e Chat receberam nomes acessíveis explícitos; os demais falsos positivos da triagem são controles dentro de labels ou já possuem nome ARIA.
+  - D4 movimento: PASS — `prefers-reduced-motion: reduce` já desativa animações e transições customizadas globais.
+next_action: continuar D5-D7 de acessibilidade/UX; fora de escopo continuam assinatura real, IdP/dispositivos/HA e homologação live de providers
 ```
 
 

@@ -741,3 +741,8 @@ Melhorei a proteção compreensível de ações externas no Agentic Console. Cad
 ## D2 — 2026-10-02 13:43 UTC — Claude
 
 Auditei botões de ícone na UI e encontrei um único botão sem nome acessível no componente de alertas. Corrigi com `aria-label="Fechar aviso"` e `type="button"`. A triagem passou com `ICON_BUTTON_NAME_ISSUES=0`; typecheck, lint, 275 testes Vitest, build, contratos e integrity passaram. Próximo passo: D3-D7 de acessibilidade/UX.
+
+
+## D3-D4 — 2026-10-02 13:45 UTC — Claude
+
+Corrigi nomes acessíveis explícitos nos compositores Home (`Objetivo da nova tarefa`) e Chat (`Mensagem para o agente`), preservando labels e comportamento. Também confirmei a regra global `prefers-reduced-motion: reduce`, que desativa as animações/transições customizadas relevantes. Typecheck, lint, 275 testes Vitest, build, contratos e integrity passaram. Próximo passo: D5-D7 de acessibilidade/UX.
