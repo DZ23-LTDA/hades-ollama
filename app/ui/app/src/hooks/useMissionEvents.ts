@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { agentFetch } from "@/lib/agenticClient";
+import { shouldStopSseReconnect } from "@/lib/sse";
 
 export interface MissionEvent {
   id: string;
@@ -64,8 +65,10 @@ export function useMissionEvents(missionId?: string | null) {
       const streamUrl = `/api/agent/v1/missions/${encodeURIComponent(missionId)}/events/stream`;
       const es = new EventSource(streamUrl);
       eventSourceRef.current = es;
+      let consecutiveErrors = 0;
 
       es.onopen = () => {
+        consecutiveErrors = 0;
         if (isMounted) {
           setIsLive(true);
           setConnectionError(null);
@@ -103,6 +106,18 @@ export function useMissionEvents(missionId?: string | null) {
       es.onerror = () => {
         if (isMounted) {
           setIsLive(false);
+        }
+        consecutiveErrors += 1;
+        // Stop the native auto-reconnect once it keeps failing, so a down/404
+        // stream endpoint does not become a reconnect storm.
+        if (shouldStopSseReconnect(consecutiveErrors)) {
+          es.close();
+          if (eventSourceRef.current === es) eventSourceRef.current = null;
+          if (isMounted) {
+            setConnectionError(
+              "Conexão com o stream perdida. Recarregue para tentar novamente.",
+            );
+          }
         }
       };
     } catch (e) {

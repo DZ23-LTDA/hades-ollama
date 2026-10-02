@@ -30,6 +30,7 @@ import { SETTINGS_SECTIONS } from "@/lib/settingsTabs";
 import { isTypingTarget } from "@/lib/search";
 import { fetchAgentNotifications, fetchUser, type AgentNotification } from "@/api";
 import { performLogout } from "@/lib/logout";
+import { shouldStopSseReconnect } from "@/lib/sse";
 
 export type AppSection =
   | "apps"
@@ -166,9 +167,19 @@ export function AppNavigation({ current }: { current: AppSection }) {
         setNotificationsError("O stream de notificações retornou dados inválidos.");
       }
     });
+    let consecutiveErrors = 0;
+    stream.onopen = () => {
+      consecutiveErrors = 0;
+    };
     stream.onerror = () => {
       if (active) {
         setNotificationsError("Atualização ao vivo indisponível; os eventos já carregados permanecem visíveis.");
+      }
+      consecutiveErrors += 1;
+      // Cap the native auto-reconnect so a down/404 stream endpoint does not
+      // become a reconnect storm.
+      if (shouldStopSseReconnect(consecutiveErrors)) {
+        stream.close();
       }
     };
     return () => {
