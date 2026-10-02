@@ -281,6 +281,27 @@ export const uploadProjectChunk = (uploadID: string, offset: number, data: Array
 export const finalizeProjectUpload = (uploadID: string) => agentFetch<Record<string, unknown>>(`/api/agent/v1/uploads/${encodeURIComponent(uploadID)}/finalize`, { method: "POST", body: "{}" });
 export const updateProject = (id: string, name: string, root = "") => agentFetch<AgentProject>(`/api/agent/v1/projects/${encodeURIComponent(id)}`, { method: "PATCH", body: JSON.stringify({ name, root }) });
 export const deleteProject = (id: string) => agentFetch<void>(`/api/agent/v1/projects/${encodeURIComponent(id)}`, { method: "DELETE" });
+
+export interface AgentCitation {
+  index: number;
+  source: string;
+  score: number;
+  snippet?: string;
+}
+
+export interface AskDocumentsResult {
+  project_id: string;
+  query: string;
+  context: string;
+  citations: AgentCitation[];
+  grounded: boolean;
+}
+
+// askProjectDocuments answers a question strictly from a project's indexed
+// documents (RAG, G1). When `grounded` is false there were no relevant sources,
+// so the UI should show "não encontrei nos documentos" rather than an answer.
+export const askProjectDocuments = (projectID: string, query: string) =>
+  agentFetch<AskDocumentsResult>(`/api/agent/v1/projects/${encodeURIComponent(projectID)}/ask?q=${encodeURIComponent(query)}`);
 export const listMissions = () => agentFetch<{ missions: AgentMission[] }>("/api/agent/v1/missions");
 export const getMission = (id: string) => agentFetch<AgentMission>(`/api/agent/v1/missions/${encodeURIComponent(id)}`);
 export const listMissionEvents = (id: string) => agentFetch<{ events: AgentEvent[] }>(`/api/agent/v1/missions/${encodeURIComponent(id)}/events`);
