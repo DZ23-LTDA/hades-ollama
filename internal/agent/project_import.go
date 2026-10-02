@@ -23,11 +23,15 @@ import (
 )
 
 const (
-	maxImportedArchiveBytes = 1 << 30
-	maxImportedFileBytes    = 256 << 20
-	maxImportedFiles        = 10000
-	maxImportedIndexBytes   = 64 << 20
+	maxImportedFileBytes  = 256 << 20
+	maxImportedFiles      = 10000
+	maxImportedIndexBytes = 64 << 20
 )
+
+// maxImportedArchiveBytes is the aggregate on-disk budget for an imported
+// archive. It is a var (not a const) only so tests can lower it to exercise the
+// real-bytes aggregate enforcement without materializing a gigabyte on disk.
+var maxImportedArchiveBytes int64 = 1 << 30
 
 var (
 	ErrGitHubURLInvalid        = errors.New("GitHub repository URL must use https://github.com/owner/repository")
@@ -304,10 +308,12 @@ func extractProjectArchive(reader io.ReaderAt, size int64, destination string) e
 			}
 			continue
 		}
+		// ZIP header sizes are attacker-controlled; use them only as a cheap early
+		// reject, never as the real budget. The authoritative accounting happens
+		// after the copy, against the actual bytes written to disk.
 		if entry.UncompressedSize64 > maxImportedFileBytes || total+int64(entry.UncompressedSize64) > maxImportedArchiveBytes {
 			return ErrImportArchiveTooLarge
 		}
-		total += int64(entry.UncompressedSize64)
 		target := filepath.Join(destination, clean)
 		if !isWithin(destination, target) {
 			return ErrImportArchiveUnsafe
@@ -332,7 +338,14 @@ func extractProjectArchive(reader io.ReaderAt, size int64, destination string) e
 		if closeErr != nil {
 			return closeErr
 		}
-		if info, statErr := os.Stat(target); statErr != nil || info.Size() > maxImportedFileBytes {
+		info, statErr := os.Stat(target)
+		if statErr != nil || info.Size() > maxImportedFileBytes {
+			return ErrImportArchiveTooLarge
+		}
+		// Enforce the aggregate budget against real bytes written, so an archive
+		// that lies about per-entry sizes in its header cannot exhaust the disk.
+		total += info.Size()
+		if total > maxImportedArchiveBytes {
 			return ErrImportArchiveTooLarge
 		}
 	}
