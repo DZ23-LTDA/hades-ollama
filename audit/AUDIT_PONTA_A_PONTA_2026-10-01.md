@@ -254,3 +254,14 @@ Também foi observada divergência entre evidências versionadas (`Ollama Full`/
 O projeto avançou muito além de um protótipo visual, mas ainda não é honesto classificá-lo como 100% funcional ou pronto para qualquer usuário final. A prioridade deve ser fechar P0/P1 com implementação + teste negativo + execução real, e só então reavaliar a matriz de paridade e o release gate.
 
 **Próxima ação recomendada:** criar uma sequência de correções por P0, começando por sandbox/secrets/tenant e pelo release gate; não iniciar novas features de superfície antes desses bloqueios.
+
+
+## Follow-up — CI e dependências mobile
+
+**Achado reproduzido:** o job Go rodava depois do build web e descobria uma árvore Go acidental dentro de `app/ui/app/node_modules`, causando falhas multiplataforma por diretório transitivo incompleto.
+
+**Correção aplicada:** o `test.yaml` remove a árvore de dependências web antes de `go test` e `go test -race`; o teste Go continua sendo exatamente `./...`.
+
+**Hardening adicional:** o `node-forge` transitivo do Expo é resolvido por um commit upstream que contém a correção ASN.1, através de tarball HTTPS fixado no lockfile. Instalação limpa, typecheck e `npm audit --omit=dev --audit-level=high` passaram.
+
+**Estado:** validado localmente; confirmação final depende do runner remoto macOS/Windows e do `go_mod_tidy` no SHA publicado.

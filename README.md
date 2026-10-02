@@ -85,10 +85,12 @@ In a second terminal, run the web operator surface from source:
 cd app/ui/app
 npm ci --no-audit --no-fund
 npm run build
-npx vite preview --host 0.0.0.0 --port 5173
+npx vite preview --host 127.0.0.1 --port 5173
 ```
 
 The web development proxy routes all API requests (`/api/*`, `/api/v1/*` and `/api/agent/v1/*`) seamlessly to the Hades backend at `http://127.0.0.1:11434`.
+
+The web UI binds to loopback by default. LAN exposure requires the explicit environment controls `HADES_UI_HOST=<lan-ip>`, `HADES_UI_ALLOW_LAN=true` and `HADES_UI_AUTH_REQUIRED=true`; never expose the development proxy on a shared network without backend authentication.
 
 ### Quality Gates and Automated Tests
 

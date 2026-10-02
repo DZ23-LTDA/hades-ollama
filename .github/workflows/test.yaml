@@ -484,6 +484,10 @@ jobs:
         if: ${{ startsWith(matrix.os, 'ubuntu') }}
         run: git diff --exit-code -- app/ui/app/codegen/gotypes.gen.ts
 
+      - name: Remove UI dependencies before Go package discovery
+        shell: bash
+        run: rm -rf app/ui/app/node_modules
+
       - name: go test
         if: always()
         # Smoke-run each benchmark once to catch panics and bit rot; this does
@@ -550,5 +554,8 @@ jobs:
         run: |
           npm ci --cache "${RUNNER_TEMP}/npm-cache" --prefer-online
           npm run build
+      - name: Remove UI dependencies before Go package discovery
+        shell: bash
+        run: rm -rf app/ui/app/node_modules
       - name: go test -race
         run: go test -race -count=1 ./...

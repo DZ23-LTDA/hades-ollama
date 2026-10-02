@@ -9,6 +9,7 @@ INSTALL_DIR=${OLLAMA_INSTALL_DIR:-"$ROOT/bin"}
 BINARY=${OLLAMA_BINARY:-"$INSTALL_DIR/ollama-full"}
 HOST=${OLLAMA_HOST:-"127.0.0.1:11434"}
 UI_PORT=${HADES_UI_PORT:-5173}
+UI_HOST=${HADES_UI_HOST:-127.0.0.1}
 MODEL=${HADES_RECOMMENDED_MODEL:-"gemma4:e2b"}
 NO_MODEL=0
 
@@ -18,10 +19,11 @@ Uso: $(basename "$0") [--no-model]
 
 Builda e inicia Hades localmente:
   backend: http://$HOST
-  UI:      http://127.0.0.1:$UI_PORT
+  UI:      http://$UI_HOST:$UI_PORT
 
 Variáveis: OLLAMA_INSTALL_DIR, OLLAMA_BINARY, OLLAMA_HOST,
-HADES_UI_PORT, HADES_RECOMMENDED_MODEL.
+HADES_UI_PORT, HADES_UI_HOST, HADES_UI_ALLOW_LAN, HADES_UI_AUTH_REQUIRED,
+HADES_RECOMMENDED_MODEL.
 EOF
 }
 for arg in "$@"; do
@@ -82,13 +84,13 @@ if [[ "$NO_MODEL" -eq 0 ]]; then
   fi
 fi
 
-echo "[4/4] Iniciando UI em http://127.0.0.1:$UI_PORT ..."
+echo "[4/4] Iniciando UI em http://$UI_HOST:$UI_PORT ..."
 # Do not let Vite silently move to another port: the advertised URL must be
 # the URL that is actually serving the UI.
-(cd "$ROOT/app/ui/app" && npm run preview -- --host 0.0.0.0 --port "$UI_PORT" --strictPort) &
+(cd "$ROOT/app/ui/app" && HADES_UI_HOST="$UI_HOST" HADES_UI_ALLOW_LAN="${HADES_UI_ALLOW_LAN:-false}" HADES_UI_AUTH_REQUIRED="${HADES_UI_AUTH_REQUIRED:-false}" npm run preview -- --host "$UI_HOST" --port "$UI_PORT" --strictPort) &
 UI_PID=$!
 echo
-echo "Hades está disponível em http://127.0.0.1:$UI_PORT"
+echo "Hades está disponível em http://$UI_HOST:$UI_PORT"
 echo "Backend: http://${HOST}"
 echo "Pressione Ctrl+C para encerrar backend e UI."
 wait "$UI_PID"

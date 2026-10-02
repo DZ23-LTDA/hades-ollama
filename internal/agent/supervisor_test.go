@@ -244,6 +244,48 @@ func TestSupervisorRiskyActionRequiresApproval(t *testing.T) {
 	}
 }
 
+func TestSupervisorRiskApprovalCannotBeDisabledByConfig(t *testing.T) {
+	runtime, compStore, _ := setupTestSupervisorRuntime(t)
+	config := runtime.Supervisor().Config()
+	config.RequireApprovalRisk = false
+	runtime.Supervisor().SetConfig(config)
+
+	company, err := compStore.Create(Company{Name: "Protected Corp", OrganizationID: LocalOrganizationID})
+	if err != nil {
+		t.Fatalf("create company: %v", err)
+	}
+	_, err = compStore.AddCycle(company.ID, CompanyCycle{
+		ID:              "cycle_explicit_risk",
+		Name:            "Ação externa",
+		Objective:       "executar ação autorizada pelo operador",
+		Risk:            RiskExternalSideEffect,
+		IntervalSeconds: 3600,
+		Enabled:         true,
+		NextRunAt:       time.Now().UTC().Add(-time.Minute),
+	})
+	if err != nil {
+		t.Fatalf("add cycle: %v", err)
+	}
+
+	result, err := runtime.Supervisor().Tick(context.Background(), time.Now().UTC())
+	if err != nil {
+		t.Fatalf("tick: %v", err)
+	}
+	if result.ApprovalsCreated != 1 {
+		t.Fatalf("approvals created = %d, want 1", result.ApprovalsCreated)
+	}
+	updated, err := compStore.Get(company.ID)
+	if err != nil {
+		t.Fatalf("get company: %v", err)
+	}
+	if len(updated.Approvals) != 1 || updated.Approvals[0].Status != CompanyApprovalPending {
+		t.Fatalf("approval ledger = %+v, want one pending approval", updated.Approvals)
+	}
+	if updated.Approvals[0].Nonce == "" || updated.Approvals[0].ExpiresAt == nil {
+		t.Fatalf("approval missing nonce or expiry: %+v", updated.Approvals[0])
+	}
+}
+
 // 4. TestSupervisorBlockedExternalActionHonesty verifies that actions depending on missing external credentials receive BLOCKED_EXTERNAL.
 func TestSupervisorBlockedExternalActionHonesty(t *testing.T) {
 	runtime, compStore, _ := setupTestSupervisorRuntime(t)

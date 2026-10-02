@@ -5,6 +5,7 @@ import tailwindcss from "@tailwindcss/vite";
 import tsconfigPaths from "vite-tsconfig-paths";
 import postcssPresetEnv from "postcss-preset-env";
 import { resolve } from "path";
+import { resolveViteHost } from "./src/lib/viteHostPolicy";
 
 export default defineConfig(() => ({
   base: "/",
@@ -66,7 +67,7 @@ export default defineConfig(() => ({
   },
 
   server: {
-    host: "0.0.0.0",
+    host: resolveViteHost(),
     port: 5173,
     proxy: {
       "/api": {
@@ -76,7 +77,7 @@ export default defineConfig(() => ({
     },
   },
   preview: {
-    host: "0.0.0.0",
+    host: resolveViteHost(),
     port: 5173,
     proxy: {
       "/api": {

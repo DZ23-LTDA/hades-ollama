@@ -137,6 +137,7 @@ type CompanyCycle struct {
 	ID              string     `json:"id"`
 	Name            string     `json:"name"`
 	Objective       string     `json:"objective"`
+	Risk            RiskClass  `json:"risk,omitempty"`
 	Frequency       string     `json:"frequency"`
 	IntervalSeconds int64      `json:"interval_seconds"`
 	ScheduleID      string     `json:"schedule_id,omitempty"`

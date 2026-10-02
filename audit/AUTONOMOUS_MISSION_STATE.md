@@ -2902,3 +2902,11 @@ remaining:
   - credenciais externas, IdP, deploy, assinatura e PostgreSQL production cutover permanecem externos/bloqueados
 next_action: executar gates completos, atualizar auditoria e publicar se tudo estiver verde
 ```
+
+
+## Fechamento de CI e dependências — 2026-10-02 UTC
+
+- **Causa do vermelho em `test.yaml`:** depois do build da UI, `go test ./...` e `go test -race ./...` atravessavam `app/ui/app/node_modules`; o pacote transitivo `flatted/golang/pkg/flatted` podia aparecer como árvore Go incompleta (`stat .../node_modules/flatted/golang/pkg/flatted: directory not found`). O workflow agora remove `app/ui/app/node_modules` antes de cada descoberta/teste Go, preservando o build da UI e mantendo o comando Go integral, sem excluir pacotes via filtro.
+- **Dependência mobile:** `node-forge` transitivo do Expo estava no release vulnerável. O lockfile agora fixa o commit upstream `529a5b4f004595c8f8a75697eca958efe1a2f70d` via tarball HTTPS do codeload; `npm audit --omit=dev --audit-level=high` retorna 0 vulnerabilidades após `npm ci` limpo.
+- **Evidências locais:** `go test -race -p=2 ./... -count=1`, `go test -count=1 -bench=. -benchtime=1x ./...`, `go generate ./...`, `go build ./...`, `CGO_ENABLED=0 go build ./...`, typecheck/lint/Vitest/build web e typecheck/policy/audit mobile passaram.
+- **Próximo passo:** executar o `test.yaml` no SHA publicado e confirmar Ubuntu/macOS/Windows, race e `go_mod_tidy` verdes; se o runner macOS ainda falhar, usar o log do job para corrigir somente a causa reproduzível.

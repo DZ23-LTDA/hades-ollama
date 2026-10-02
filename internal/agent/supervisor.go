@@ -95,6 +95,29 @@ func NewSupervisor(runtime *Runtime, config SupervisorConfig) *Supervisor {
 	}
 }
 
+// companyCycleRisk classifies the action a Company OS cycle intends to take.
+// Explicit risk is authoritative; recognized sensitive intents are conservative
+// by default and must pass the approval ledger before a mission is created.
+func companyCycleRisk(cycle CompanyCycle) RiskClass {
+	if cycle.Risk != "" {
+		return effectiveRisk(cycle.Risk)
+	}
+	combined := strings.ToLower(strings.TrimSpace(cycle.Name + " " + cycle.Objective))
+	if strings.Contains(combined, "spend") || strings.Contains(combined, "budget") ||
+		strings.Contains(combined, "buy") || strings.Contains(combined, "comprar") ||
+		strings.Contains(combined, "pagar") || strings.Contains(combined, "investir") ||
+		strings.Contains(combined, "contratar") || strings.Contains(combined, "anúncios") ||
+		strings.Contains(combined, "ads") {
+		return RiskDestructive
+	}
+	if strings.Contains(combined, "publish") || strings.Contains(combined, "deploy") ||
+		strings.Contains(combined, "publicar") || strings.Contains(combined, "send_external") ||
+		strings.Contains(combined, "email_blast") || strings.Contains(combined, "disparar") {
+		return RiskExternalSideEffect
+	}
+	return RiskRead
+}
+
 func (s *Supervisor) Config() SupervisorConfig {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -271,19 +294,24 @@ func (s *Supervisor) Tick(ctx context.Context, now time.Time) (SupervisorTickRes
 				objLower := strings.ToLower(cycle.Objective)
 				nameLower := strings.ToLower(cycle.Name)
 				combinedText := objLower + " " + nameLower
+				cycleRisk := companyCycleRisk(cycle)
 
-				// Risk Condition 1: Financial spend / budget allocation
-				isSpendRisk := strings.Contains(combinedText, "spend") ||
-					strings.Contains(combinedText, "budget") ||
-					strings.Contains(combinedText, "buy") ||
-					strings.Contains(combinedText, "comprar") ||
-					strings.Contains(combinedText, "pagar") ||
-					strings.Contains(combinedText, "investir") ||
-					strings.Contains(combinedText, "contratar") ||
-					strings.Contains(combinedText, "anúncios") ||
-					strings.Contains(combinedText, "ads")
+				// Missing credentials are blocked before approval: an approval
+				// must never imply that an unavailable integration is connected.
+				isExternalIntegration := strings.Contains(combinedText, "tiktok_shop") ||
+					strings.Contains(combinedText, "meta_ads") ||
+					strings.Contains(combinedText, "shopify_sync") ||
+					strings.Contains(combinedText, "whatsapp_live")
+				if isExternalIntegration {
+					result.BlockedExternalActions++
+					nextRun := now.Add(time.Hour)
+					_, _ = s.runtime.company.UpdateCycleRun(company.ID, cycle.ID, now, nextRun)
+					continue
+				}
 
-				if isSpendRisk && s.config.RequireApprovalRisk {
+				// Approval is mandatory for every non-read risk. The config flag
+				// cannot disable this safety boundary.
+				if cycleRisk == RiskDestructive {
 					approval := CompanyApproval{
 						ID:             "appr_" + uuid.NewString()[:8],
 						CompanyID:      company.ID,
@@ -291,29 +319,22 @@ func (s *Supervisor) Tick(ctx context.Context, now time.Time) (SupervisorTickRes
 						ResourceType:   "cycle_action",
 						ResourceID:     cycle.ID,
 						Policy:         "budget_spend",
+						Nonce:          uuid.NewString(),
 						Status:         CompanyApprovalPending,
 						Reason:         fmt.Sprintf("Ação de gasto financeiro detectada pelo Supervisor (%s). Requer aprovação HITL prévia.", cycle.Name),
 						CreatedAt:      now,
 						UpdatedAt:      now,
 					}
+					expiresAt := now.Add(15 * time.Minute)
+					approval.ExpiresAt = &expiresAt
 					_, _ = s.runtime.company.AddApproval(company.ID, approval)
 					result.ApprovalsCreated++
-
-					// Postpone next cycle check so it does not loop infinitely
 					nextRun := now.Add(time.Hour)
 					_, _ = s.runtime.company.UpdateCycleRun(company.ID, cycle.ID, now, nextRun)
 					continue
 				}
 
-				// Risk Condition 2: External publishing / message blasting
-				isPublishRisk := strings.Contains(combinedText, "publish") ||
-					strings.Contains(combinedText, "deploy") ||
-					strings.Contains(combinedText, "publicar") ||
-					strings.Contains(combinedText, "send_external") ||
-					strings.Contains(combinedText, "email_blast") ||
-					strings.Contains(combinedText, "disparar")
-
-				if isPublishRisk && s.config.RequireApprovalRisk {
+				if cycleRisk == RiskExternalSideEffect {
 					approval := CompanyApproval{
 						ID:             "appr_" + uuid.NewString()[:8],
 						CompanyID:      company.ID,
@@ -321,28 +342,16 @@ func (s *Supervisor) Tick(ctx context.Context, now time.Time) (SupervisorTickRes
 						ResourceType:   "cycle_action",
 						ResourceID:     cycle.ID,
 						Policy:         "external_publish",
+						Nonce:          uuid.NewString(),
 						Status:         CompanyApprovalPending,
 						Reason:         fmt.Sprintf("Ação de publicação/envio externo detectada pelo Supervisor (%s). Requer aprovação HITL prévia.", cycle.Name),
 						CreatedAt:      now,
 						UpdatedAt:      now,
 					}
+					expiresAt := now.Add(15 * time.Minute)
+					approval.ExpiresAt = &expiresAt
 					_, _ = s.runtime.company.AddApproval(company.ID, approval)
 					result.ApprovalsCreated++
-
-					nextRun := now.Add(time.Hour)
-					_, _ = s.runtime.company.UpdateCycleRun(company.ID, cycle.ID, now, nextRun)
-					continue
-				}
-
-				// Honestidade: Missing external credentials -> BLOCKED_EXTERNAL
-				isExternalIntegration := strings.Contains(combinedText, "tiktok_shop") ||
-					strings.Contains(combinedText, "meta_ads") ||
-					strings.Contains(combinedText, "shopify_sync") ||
-					strings.Contains(combinedText, "whatsapp_live")
-
-				if isExternalIntegration {
-					// External credentials missing: mark honest status BLOCKED_EXTERNAL
-					result.BlockedExternalActions++
 					nextRun := now.Add(time.Hour)
 					_, _ = s.runtime.company.UpdateCycleRun(company.ID, cycle.ID, now, nextRun)
 					continue
