@@ -1,12 +1,20 @@
 package server
 
 import (
+	"net/http"
 	"runtime"
 	"strings"
+
+	"github.com/gin-gonic/gin"
 
 	"github.com/ollama/ollama/internal/agent"
 	"github.com/ollama/ollama/version"
 )
+
+// diagnostics serves a secret-safe troubleshooting snapshot for support/export.
+func (a *agentAPI) diagnostics(c *gin.Context) {
+	c.JSON(http.StatusOK, buildDiagnosticReport())
+}
 
 // diagnosticIntegrationVars are the integration environment variables reported
 // in a diagnostic export — as configured/not booleans, never their values.
