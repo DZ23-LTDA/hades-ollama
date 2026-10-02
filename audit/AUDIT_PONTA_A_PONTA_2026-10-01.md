@@ -290,3 +290,10 @@ Nos SHAs `8816da06`, `01d94ae2` e `81b05741`, os workflows `class-a-plus-integri
 - `bash scripts/check-class-a-plus-integrity.sh`: passou.
 
 **Reclassificação:** o produto continua como candidato de release interno. O bundle budget e o hardening de supply chain estão implementados, mas a liberação pública permanece bloqueada até o GitHub Actions executar os jobs em runners reais e todos os checks obrigatórios concluírem no mesmo SHA.
+
+## Follow-up — 2026-10-02 01:28 UTC — fechamento técnico e CI externo
+
+- **Gates locais:** PASS após remover `node_modules` gerado pelo smoke web antes da descoberta Go. Passaram build nativo, build `CGO_ENABLED=0`, testes dos pacotes agent/server, `go vet`, contratos, integrity, frontend completo e bundle budget (entry 1.823.863 bytes bruto / 530.772 gzip).
+- **CI remoto:** NÃO aprovado. Os workflows `class-a-plus-integrity` (`36949729206`) e `dz23-agentic-quality` (`36949729166`) foram rerunados no SHA `2444e6d2`, mas nenhum job iniciou. A annotation oficial do GitHub é: **“The job was not started because your account is locked due to a billing issue.”**
+- **Classificação:** `BLOCKED_EXTERNAL`, não falha de implementação. O bloqueio precisa ser resolvido pelo proprietário da conta/organização no GitHub; não deve ser mascarado por skip, alteração de required checks ou declaração de CI verde.
+- **Ação pendente:** após desbloqueio, rerodar os dois workflows e o `test.yaml` completo, confirmando o mesmo SHA.

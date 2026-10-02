@@ -1,24 +1,25 @@
-## Checkpoint vigente — Release candidate e auditoria final — 2026-10-01 20:13 UTC
+## Checkpoint vigente — Release candidate e auditoria final — 2026-10-02 01:28 UTC
 ```yaml
-state: RELEASE_CANDIDATE_VALIDATED
+state: RELEASE_CANDIDATE_LOCAL_GATES_PASS_EXTERNAL_CI_BLOCKED
 branch: recovery/ollama-full-snapshot
-sha: 76a6dcfe
+sha: 2444e6d2
 proofs_local:
-  - go build ./...: PASS
+  - go build ./...: PASS (após remover node_modules gerado)
   - CGO_ENABLED=0 go build ./...: PASS
-  - go test ./internal/agent ./server ./cmd/launch: PASS
+  - go test ./internal/agent ./server: PASS
   - go vet ./...: PASS
   - frontend tsc/lint/vitest/build: PASS
+  - bundle budget: PASS (1,823,863 bytes bruto / 530,772 gzip)
   - contracts/integrity/gofmt/diff-check: PASS
   - shell E2E 10 telas desktop+mobile: PASS (0 HTTP, 0 console)
 external_status:
-  - class-a-plus-integrity: SUCCESS
-  - dz23-agentic-quality: SUCCESS
-  - test.yaml: SUCCESS (manual dispatch 36919935756; Ubuntu/macOS/Windows tests, Ubuntu/macOS race, tidy, patches)
+  - class-a-plus-integrity: BLOCKED_EXTERNAL (run 36949729206, job não iniciou)
+  - dz23-agentic-quality: BLOCKED_EXTERNAL (run 36949729166, job não iniciou)
+  - reason: GitHub reportou "account is locked due to a billing issue"; rerun attempt 2 confirmou o mesmo bloqueio
 known_limits:
   - Ollama local sem modelos instalados neste ambiente
   - credenciais/IdP/WhatsApp/MCP/deploy externos continuam BLOCKED_EXTERNAL ou NOT_CONFIGURED
-next_action: commitar evidências; repetir workflows de qualidade no novo SHA; limites externos permanecem honestos
+next_action: proprietário deve resolver o bloqueio de billing do GitHub; então rerun class-a-plus-integrity, dz23-agentic-quality e test.yaml no SHA 2444e6d2
 ```
 
 
