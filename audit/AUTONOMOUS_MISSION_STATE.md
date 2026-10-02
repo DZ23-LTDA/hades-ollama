@@ -51,7 +51,8 @@ CI final b4848398: PASS — test.yaml run 37003763891 (Ubuntu/macOS/Windows), cl
   - U12 Aprovação compreensível: PASS (explicação por classe de risco e bloqueio explícito até decisão server-side)
   - CI U10: SUCCESS (test 37012575579, integrity 37012578533, agentic-quality 37012582124; SHA 9f9af310)
   - CI U12: SUCCESS (test 37013825002, integrity 37013828045, agentic-quality 37013831164; SHA 6e1dee55)
-next_action: continuar E1-E7 de resiliência e D2-D7 de acessibilidade; fora de escopo continuam assinatura real, IdP/dispositivos/HA e homologação live de providers
+  - E1-E7 resiliência: IMPLEMENTADOS em commits históricos com regressões normais/race (idempotência Tel-Agent, ciclos Company, retry bounded de schedules, rollback/transições/compensações de fila); smoke Redis/lease distribuído/múltiplas réplicas permanecem BLOCKED_EXTERNAL.
+next_action: auditar D2-D7 de acessibilidade e UX; fora de escopo continuam assinatura real, IdP/dispositivos/HA e homologação live de providers
 ```
 
 
