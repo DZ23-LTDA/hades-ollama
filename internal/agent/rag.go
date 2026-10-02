@@ -48,7 +48,7 @@ func BuildGroundedContext(query string, sources []ScoredMemory) (string, []Citat
 	citations := make([]Citation, 0, len(sources))
 	var b strings.Builder
 	b.WriteString("Responda à pergunta usando SOMENTE os trechos abaixo. ")
-	b.WriteString("Cite cada afirmação com o marcador [n] da fonte correspondente. ")
+	b.WriteString("Cite cada afirmação com o marcador [n] da fonte usada. ")
 	b.WriteString("Se a resposta não estiver nos trechos, diga que não encontrou nos documentos.\n\n")
 	for i, src := range sources {
 		index := i + 1

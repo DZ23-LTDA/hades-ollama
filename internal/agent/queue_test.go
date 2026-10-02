@@ -20,7 +20,7 @@ func TestNackAppliesJitteredBackoff(t *testing.T) {
 
 	const base = time.Second // attempt 1 -> 1<<0 seconds
 	delays := make([]time.Duration, 0, 24)
-	for i := 0; i < 24; i++ {
+	for i := range 24 {
 		if _, err := queue.Enqueue(fmt.Sprintf("mission-jitter-%d", i), 3); err != nil {
 			t.Fatal(err)
 		}

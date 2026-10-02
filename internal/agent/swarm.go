@@ -401,18 +401,14 @@ func (o *AgentOrchestrator) Cancel(id string) (OrchestrationJob, error) {
 		return job, nil
 	}
 	if job.State == OrchestrationRunning {
-		// Signal the in-flight Run to abort; its finalization marks the job
-		// Cancelled. Reflect the state immediately so readers see it right away.
 		if cancel, ok := o.cancels[id]; ok && cancel != nil {
+			// Signal the in-flight Run to abort. Do NOT modify o.jobs or persist
+			// here: the task goroutines are still mutating job.Tasks under
+			// taskMu, so marshaling the job now would be a data race. Run's
+			// finalization persists the Cancelled state once the goroutines
+			// finish; report Cancelled to the caller on a local copy only.
 			cancel()
-			previous := job
 			job.State = OrchestrationCancelled
-			job.UpdatedAt = time.Now().UTC()
-			o.jobs[id] = job
-			if err := o.persistLocked(); err != nil {
-				o.jobs[id] = previous
-				return previous, err
-			}
 			return job, nil
 		}
 	}
