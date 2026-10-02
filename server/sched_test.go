@@ -312,7 +312,9 @@ func TestSchedRequestsSameModelSameRequest(t *testing.T) {
 	// model's memory estimate past the mocked GPU, so the model never loads and
 	// the test times out (E9 determinism).
 	t.Setenv("OLLAMA_CONTEXT_LENGTH", "")
-	ctx, done := context.WithTimeout(t.Context(), 500*time.Millisecond)
+	// Generous timeout so the test is not flaky under the race detector, which
+	// slows the mocked scheduler ~10x on loaded CI runners (R5).
+	ctx, done := context.WithTimeout(t.Context(), 10*time.Second)
 	defer done()
 	s := InitScheduler(ctx)
 	s.waitForRecovery = 10 * time.Millisecond
@@ -424,7 +426,9 @@ func TestSchedRequestsMultipleLoadedModels(t *testing.T) {
 	// the scheduler refuse the extra models and the test time out). Part of E9.
 	t.Setenv("OLLAMA_MAX_LOADED_MODELS", "0")
 	t.Setenv("OLLAMA_NUM_PARALLEL", "0")
-	ctx, done := context.WithTimeout(t.Context(), 1000*time.Millisecond)
+	// Generous timeout so the test is not flaky under the race detector, which
+	// slows the mocked scheduler ~10x on loaded CI runners (R5).
+	ctx, done := context.WithTimeout(t.Context(), 10*time.Second)
 	defer done()
 	s := InitScheduler(ctx)
 	s.waitForRecovery = 10 * time.Millisecond
