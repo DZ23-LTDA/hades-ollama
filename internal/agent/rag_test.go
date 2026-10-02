@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"context"
 	"strings"
 	"testing"
 	"time"
@@ -77,5 +78,42 @@ func TestBuildGroundedContextTruncatesLongSnippet(t *testing.T) {
 	}
 	if !strings.Contains(ctx, "…") {
 		t.Fatalf("truncated snippet should end with an ellipsis")
+	}
+}
+
+func TestGroundedAnswerContextEndToEnd(t *testing.T) {
+	store, err := NewContextStore("")
+	if err != nil {
+		t.Fatal(err)
+	}
+	store.SetEmbedder(testEmbedder{
+		"a politica de ferias da empresa e de 30 dias": {1, 0},
+		"ferias":  {1, 0},
+		"salario": {0, 1},
+	})
+	mem := Memory{ProjectID: "p", Kind: "doc", Content: "a politica de ferias da empresa e de 30 dias", Source: "rh.pdf#3", Confidence: 1}
+	if _, err := store.AddMemoryContext(context.Background(), mem); err != nil {
+		t.Fatal(err)
+	}
+
+	text, citations, err := store.GroundedAnswerContext(context.Background(), "p", "ferias", 5, 0.5)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(citations) != 1 || citations[0].Source != "rh.pdf#3" {
+		t.Fatalf("citations = %+v, want one citing rh.pdf#3", citations)
+	}
+	if !strings.Contains(text, "rh.pdf#3") || !strings.Contains(text, "30 dias") {
+		t.Fatalf("grounded context missing source/content:\n%s", text)
+	}
+
+	// A question the documents cannot answer yields no citations and an honest
+	// instruction instead of a fabricated answer.
+	_, none, err := store.GroundedAnswerContext(context.Background(), "p", "salario", 5, 0.5)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if none != nil {
+		t.Fatalf("unanswerable query returned citations: %+v", none)
 	}
 }

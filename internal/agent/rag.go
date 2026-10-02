@@ -1,9 +1,24 @@
 package agent
 
 import (
+	"context"
 	"fmt"
 	"strings"
 )
+
+// GroundedAnswerContext is the end-to-end retrieval step for "converse com seus
+// documentos" (G1): it retrieves the most relevant indexed sources for query in
+// projectID (gated by minScore) and formats them into a cited grounded-context
+// block. An unanswerable query yields the honest no-source context with no
+// citations, so the answer layer does not hallucinate.
+func (s *ContextStore) GroundedAnswerContext(ctx context.Context, projectID, query string, limit int, minScore float64) (string, []Citation, error) {
+	hits, err := s.RetrieveRelevant(ctx, projectID, query, limit, minScore)
+	if err != nil {
+		return "", nil, err
+	}
+	text, citations := BuildGroundedContext(query, hits)
+	return text, citations, nil
+}
 
 // Citation identifies a source used to ground an answer. Index is the [n]
 // marker used in the grounded context; Source is the provenance (file#chunk or
