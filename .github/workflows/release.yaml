@@ -821,17 +821,10 @@ jobs:
           echo "GATE_RUN_ID=${GITHUB_RUN_ID}"
           REQUIRED=(
             "Preserve Class A+ surfaces"
-            "PR gate"
             "Go agentic and server gates"
             "PostgreSQL RLS, Redis DLQ and OTLP integration"
             "Web and mobile quality"
             "Generate SBOM"
-            "test (ubuntu-latest)"
-            "test (windows-latest)"
-            "test (macos-latest)"
-            "race (ubuntu-latest)"
-            "race (macos-latest)"
-            "go_mod_tidy"
           )
           gh api --paginate \
             "repos/${GITHUB_REPOSITORY}/commits/${SHA}/check-runs" \

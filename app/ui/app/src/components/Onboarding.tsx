@@ -6,6 +6,7 @@ import { IntegrationConnectButton } from "@/components/IntegrationConnectButton"
 import { Transition } from "@headlessui/react";
 import {
   getIntegrationStatuses,
+  pullModel,
   type IntegrationStatus,
   type IntegrationStatuses,
 } from "@/api";
@@ -339,6 +340,40 @@ export function RunOllamaScreen({
   completionError,
   onRetryCompletion,
 }: RunOllamaScreenProps) {
+  const [modelName, setModelName] = useState("qwen2.5:0.5b");
+  const [pulling, setPulling] = useState(false);
+  const [pullStatus, setPullStatus] = useState<string | null>(null);
+  const [pullError, setPullError] = useState<string | null>(null);
+
+  const downloadModel = async () => {
+    const requestedModel = modelName.trim();
+    if (!requestedModel || pulling) return;
+    setPulling(true);
+    setPullError(null);
+    setPullStatus("Preparando download…");
+    try {
+      for await (const event of pullModel(requestedModel)) {
+        const completed = event.completed ?? 0;
+        const total = event.total ?? 0;
+        setPullStatus(
+          total > 0
+            ? `${event.status} (${Math.round((completed / total) * 100)}%)`
+            : event.status,
+        );
+      }
+      setPullStatus(`Modelo ${requestedModel} pronto para uso local.`);
+    } catch (error) {
+      setPullError(
+        error instanceof Error
+          ? error.message
+          : "Não foi possível baixar o modelo neste computador.",
+      );
+      setPullStatus(null);
+    } finally {
+      setPulling(false);
+    }
+  };
+
   return (
     <main className="light-only flex min-h-screen w-full flex-col bg-white text-neutral-950">
       <TitleBar />
@@ -361,8 +396,43 @@ export function RunOllamaScreen({
         </div>
 
         <p className="mt-3 max-w-xs text-[13px] leading-5 text-neutral-400">
-          Run this command in your terminal to get started.
+          Escolha um modelo local para começar. O download usa o backend Ollama deste computador.
         </p>
+
+        <div className="mt-5 flex w-full max-w-[360px] flex-col gap-2 text-left">
+          <label htmlFor="onboarding-model" className="text-xs font-medium text-neutral-700">
+            Modelo local
+          </label>
+          <div className="flex gap-2">
+            <input
+              id="onboarding-model"
+              value={modelName}
+              onChange={(event) => setModelName(event.target.value)}
+              disabled={pulling}
+              className="min-w-0 flex-1 rounded-xl border border-neutral-200 px-3 py-2 text-sm outline-none focus:border-neutral-500 focus:ring-2 focus:ring-neutral-200"
+              placeholder="ex.: qwen2.5:0.5b"
+            />
+            <button
+              type="button"
+              onClick={() => void downloadModel()}
+              disabled={pulling || !modelName.trim()}
+              className="rounded-xl bg-neutral-900 px-3 py-2 text-xs font-medium text-white disabled:cursor-wait disabled:opacity-60"
+              aria-busy={pulling}
+            >
+              {pulling ? "Baixando…" : "Baixar"}
+            </button>
+          </div>
+          <p className="text-[11px] text-neutral-400">
+            O arquivo pode ser grande; mantenha o Ollama em execução durante o processo.
+          </p>
+        </div>
+
+        {pullStatus && (
+          <p className="mt-3 text-xs text-emerald-700" role="status" aria-live="polite">
+            {pullStatus}
+          </p>
+        )}
+        <InlineError message={pullError} />
 
         <InlineError message={completionError} />
         {completionError && (

@@ -659,6 +659,16 @@ describe("Onboarding", () => {
     expect(html).not.toContain("create an account");
   });
 
+  it("offers a real model download instead of only an unexplained command", () => {
+    const html = renderToStaticMarkup(
+      <RunOllamaScreen completionError={null} onRetryCompletion={vi.fn()} />,
+    );
+
+    expect(html).toContain('id="onboarding-model"');
+    expect(html).toContain("Baixar");
+    expect(html).toContain("O download usa o backend Ollama deste computador.");
+  });
+
   it("shows the connecting state on the welcome action", () => {
     const html = renderToStaticMarkup(
       <WelcomeScreen
