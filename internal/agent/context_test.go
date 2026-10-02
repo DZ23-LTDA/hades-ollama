@@ -39,6 +39,52 @@ func TestSemanticMemorySearchRanksByCosineSimilarity(t *testing.T) {
 	}
 }
 
+func TestRetrieveRelevantGatesByScoreAndKeepsProvenance(t *testing.T) {
+	store, err := NewContextStore("")
+	if err != nil {
+		t.Fatal(err)
+	}
+	store.SetEmbedder(testEmbedder{
+		"documento sobre gatos":  {1, 0},
+		"documento sobre carros": {0, 1}, // orthogonal to the "gatos" query
+		"gatos":                  {1, 0}, // query vector (already lowercase)
+		"avioes":                 {0, -1},
+	})
+	cat := Memory{ProjectID: "project", Kind: "doc", Content: "documento sobre gatos", Source: "gatos.txt#1", Confidence: 1}
+	car := Memory{ProjectID: "project", Kind: "doc", Content: "documento sobre carros", Source: "carros.txt#1", Confidence: 1}
+	if _, err := store.AddMemoryContext(context.Background(), cat); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := store.AddMemoryContext(context.Background(), car); err != nil {
+		t.Fatal(err)
+	}
+
+	// A relevant query returns only the matching source, with its provenance.
+	hits, err := store.RetrieveRelevant(context.Background(), "project", "gatos", 10, 0.5)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(hits) != 1 {
+		t.Fatalf("relevant query returned %d hits, want 1: %+v", len(hits), hits)
+	}
+	if hits[0].Memory.Source != "gatos.txt#1" {
+		t.Fatalf("missing provenance for citation: %+v", hits[0].Memory)
+	}
+	if hits[0].Score < 0.9 {
+		t.Fatalf("relevant score = %v, want ~1.0", hits[0].Score)
+	}
+
+	// A query with no relevant source returns nothing, so the answer layer can
+	// honestly say it does not know instead of citing a weak match.
+	none, err := store.RetrieveRelevant(context.Background(), "project", "avioes", 10, 0.5)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(none) != 0 {
+		t.Fatalf("irrelevant query returned %d hits, want 0: %+v", len(none), none)
+	}
+}
+
 func TestProjectAndScheduleCRUDPersistsAndDeletes(t *testing.T) {
 	root := t.TempDir()
 	store, err := NewContextStore(root)

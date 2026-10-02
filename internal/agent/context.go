@@ -322,6 +322,68 @@ func (s *ContextStore) SearchMemories(projectID, query string, limit int) []Memo
 	return result
 }
 
+// ScoredMemory pairs a memory with its relevance score for a query. The Source
+// field of the memory carries the provenance (file/URL) used for citation.
+type ScoredMemory struct {
+	Memory Memory  `json:"memory"`
+	Score  float64 `json:"score"`
+}
+
+// RetrieveRelevant is the retrieval half of RAG: it returns the memories whose
+// semantic similarity to the query is at least minScore, most relevant first,
+// together with their scores. By gating on minScore, a query with no relevant
+// source yields no results, so the answer layer can honestly say it does not
+// know instead of hallucinating from weak matches. minScore <= 0 disables the
+// gate (returns the top matches regardless of score).
+func (s *ContextStore) RetrieveRelevant(ctx context.Context, projectID, query string, limit int, minScore float64) ([]ScoredMemory, error) {
+	query = strings.ToLower(strings.TrimSpace(query))
+	if limit <= 0 || limit > 100 {
+		limit = 20
+	}
+	s.mu.RLock()
+	embedder := s.embedder
+	memories := append([]Memory(nil), s.memories[projectID]...)
+	s.mu.RUnlock()
+
+	var queryVector []float32
+	var err error
+	if embedder != nil && query != "" {
+		queryVector, err = embedder.Embed(ctx, query)
+		if err != nil {
+			return nil, fmt.Errorf("embed query: %w", err)
+		}
+	}
+
+	scored := make([]ScoredMemory, 0, len(memories))
+	for _, memory := range memories {
+		var score float64
+		switch {
+		case len(queryVector) > 0 && len(memory.Embedding) > 0:
+			score = cosineSimilarity(queryVector, memory.Embedding)
+			if score < minScore {
+				continue
+			}
+		case query == "" || strings.Contains(strings.ToLower(memory.Content), query) || strings.Contains(strings.ToLower(memory.Kind), query):
+			// Exact textual match (or no query) is treated as fully relevant so
+			// retrieval still works before any embeddings are computed.
+			score = 1
+		default:
+			continue
+		}
+		scored = append(scored, ScoredMemory{Memory: memory, Score: score})
+	}
+	sort.SliceStable(scored, func(i, j int) bool {
+		if scored[i].Score == scored[j].Score {
+			return scored[i].Memory.CreatedAt.After(scored[j].Memory.CreatedAt)
+		}
+		return scored[i].Score > scored[j].Score
+	})
+	if len(scored) > limit {
+		scored = scored[:limit]
+	}
+	return scored, nil
+}
+
 func (s *ContextStore) SearchMemoriesContext(ctx context.Context, projectID, query string, limit int) ([]Memory, error) {
 	query = strings.ToLower(strings.TrimSpace(query))
 	if limit <= 0 || limit > 100 {
