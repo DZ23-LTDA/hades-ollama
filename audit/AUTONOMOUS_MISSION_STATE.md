@@ -44,7 +44,8 @@ external_status:
 known_limits:
   - Ollama local validado com qwen2.5:0.5b em 127.0.0.1:11435
   - credenciais/IdP/WhatsApp/MCP/deploy externos continuam BLOCKED_EXTERNAL ou NOT_CONFIGURED
-next_action: perform final release audit; remaining external blockers are signed installer credentials, real external IdP/devices/HA, and live provider homologation; production readiness still requires a delegated strong sandbox, real external integration credentials, and a signed Windows release before any public release claim
+CI final b4848398: PASS — test.yaml run 37003763891 (Ubuntu/macOS/Windows), class-a-plus-integrity run 37003766034, dz23-agentic-quality run 37003768562.
+next_action: release readiness remains conditional on external owner-owned prerequisites: signed installer credentials, real external IdP/devices/HA, and live provider homologation; production readiness still requires a delegated strong sandbox, real external integration credentials, and a signed Windows release before any public release claim
 ```
 
 

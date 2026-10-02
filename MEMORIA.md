@@ -696,3 +696,8 @@ Criado `humanizeApiError` para converter falhas de rede, sessão expirada, autor
 ## U3/U2 — acabamento de idioma e primeiro uso — 2026-10-02 11:55 UTC — Claude
 
 Traduzi controles, labels acessíveis e mensagens de erro dos painéis ChatGPT/Codex e Claude para pt-BR, atualizando as expectativas de teclado/interação sem remover cobertura. O quickstart agora informa explicitamente a saúde do backend, mantém loopback como padrão e mostra o comando de recuperação para instalar o modelo quando não houver nenhum. Gates locais: Vitest 41 arquivos/273 testes, typecheck, lint, build, contratos e integrity passaram. CI remoto do U5 no commit `373e5908` passou nos runners Ubuntu/macOS/Windows. Próximo passo: auditoria final de release; permanecem apenas bloqueios externos de assinatura, IdP/dispositivos/HA reais e homologação de providers externos.
+
+
+## Validação final do CI — 2026-10-02 12:03 UTC — Claude
+
+O SHA `b4848398` passou no `test.yaml` completo (run `37003763891`, Ubuntu/macOS/Windows), `class-a-plus-integrity` (run `37003766034`) e `dz23-agentic-quality` (run `37003768562`). A branch `recovery/ollama-full-snapshot` está publicada e limpa. Estado honesto: release candidate tecnicamente validado nos gates disponíveis; não declarar 100% final enquanto permanecerem dependências externas não verificáveis neste ambiente: credencial/certificado de assinatura Windows, IdP/dispositivos/HA reais e homologação live de providers externos.
