@@ -270,7 +270,7 @@ describe("ClaudeDesktopModelsSettings interactions", () => {
             node.children
               .join("")
               .includes(
-                "Start or restart Claude to apply model changes before changing auto mode.",
+                "Inicie ou reinicie o Claude para aplicar as alterações antes de mudar o modo automático.",
               ),
           ),
       ).toBe(true);

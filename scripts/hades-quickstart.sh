@@ -60,11 +60,13 @@ trap cleanup EXIT INT TERM
 echo "[3/4] Iniciando backend em $HOST..."
 OLLAMA_HOST="$HOST" "$BINARY" serve &
 BACKEND_PID=$!
+echo "Aguardando o backend responder..."
 for _ in $(seq 1 40); do
   if curl -fsS "http://${HOST}/api/version" >/dev/null 2>&1; then break; fi
   sleep 0.25
 done
 curl -fsS "http://${HOST}/api/version" >/dev/null || { echo "Backend não ficou saudável." >&2; exit 1; }
+echo "Backend saudável em http://${HOST}"
 
 if [[ "$NO_MODEL" -eq 0 ]]; then
   tags=$(curl -fsS "http://${HOST}/api/tags" || echo '{"models":[]}')
@@ -91,6 +93,7 @@ echo "[4/4] Iniciando UI em http://$UI_HOST:$UI_PORT ..."
 UI_PID=$!
 echo
 echo "Hades está disponível em http://$UI_HOST:$UI_PORT"
-echo "Backend: http://${HOST}"
+echo "Backend saudável: http://${HOST}"
+echo "Se a tela informar que não há modelo, abra Configurações ou execute: $BINARY pull $MODEL"
 echo "Pressione Ctrl+C para encerrar backend e UI."
 wait "$UI_PID"

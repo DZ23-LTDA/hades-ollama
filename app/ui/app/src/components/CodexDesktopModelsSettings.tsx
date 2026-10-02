@@ -318,7 +318,7 @@ export const CodexDesktopModelsSettings = forwardRef<
 
   const refresh = useCallback(async () => {
     if (!window.getCodexDesktopModelsSettings) {
-      setError("ChatGPT model settings are unavailable in this Ollama build.");
+      setError("As configurações de modelos do ChatGPT não estão disponíveis nesta versão do Ollama.");
       setWarning(null);
       setLoading(false);
       return;
@@ -337,7 +337,7 @@ export const CodexDesktopModelsSettings = forwardRef<
         request === statusRequestRef.current &&
         !operationInFlightRef.current
       ) {
-        setError("Ollama could not load the ChatGPT model settings.");
+        setError("Não foi possível carregar as configurações de modelos do ChatGPT.");
         setWarning(null);
       }
     } finally {
@@ -399,11 +399,11 @@ export const CodexDesktopModelsSettings = forwardRef<
 
   const applyChanges = async () => {
     if (!window.applyCodexDesktopModels) {
-      setError("ChatGPT model settings are available in the Ollama macOS app.");
+      setError("As configurações de modelos do ChatGPT estão disponíveis no aplicativo Ollama para macOS.");
       return;
     }
     if (selected.length === 0) {
-      setError("Choose at least one model for ChatGPT.");
+      setError("Escolha pelo menos um modelo para o ChatGPT.");
       return;
     }
     if (operationInFlightRef.current) return;
@@ -457,7 +457,7 @@ export const CodexDesktopModelsSettings = forwardRef<
         );
       }
     } catch {
-      setError("Ollama could not apply the ChatGPT models.");
+      setError("Não foi possível aplicar os modelos do ChatGPT.");
     } finally {
       ++statusRequestRef.current;
       operationInFlightRef.current = false;
@@ -470,7 +470,7 @@ export const CodexDesktopModelsSettings = forwardRef<
 
     const resetModels = window.resetCodexDesktopModels;
     if (!resetModels) {
-      setError("Ollama could not reset the ChatGPT models.");
+      setError("Não foi possível restaurar os modelos do ChatGPT.");
       return false;
     }
 
@@ -491,7 +491,7 @@ export const CodexDesktopModelsSettings = forwardRef<
       applyResult(result);
       return true;
     } catch {
-      setError("Ollama could not reset the ChatGPT models.");
+      setError("Não foi possível restaurar os modelos do ChatGPT.");
       return false;
     } finally {
       ++statusRequestRef.current;
@@ -534,7 +534,7 @@ export const CodexDesktopModelsSettings = forwardRef<
                 ChatGPT
               </h2>
               <p className="mt-1 text-base/6 text-zinc-500 sm:text-sm/6 dark:text-zinc-400">
-                Choose up to {maxModels} Ollama models to use in ChatGPT.
+                Escolha até {maxModels} modelos Ollama para usar no ChatGPT.
               </p>
             </div>
             <div className="shrink-0">
@@ -569,11 +569,11 @@ export const CodexDesktopModelsSettings = forwardRef<
                 className="relative flex min-h-10 w-full flex-wrap items-center gap-2 rounded-lg bg-neutral-50 p-2 ring-1 ring-inset ring-neutral-200 hover:bg-neutral-100 dark:bg-neutral-700 dark:ring-neutral-600 dark:hover:bg-neutral-600"
               >
                 <PopoverButton
-                  aria-label="Add ChatGPT model"
+                  aria-label="Adicionar modelo do ChatGPT"
                   disabled={loading || busy}
                   className="absolute inset-0 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:cursor-not-allowed"
                 >
-                  <span className="sr-only">Choose ChatGPT models</span>
+                  <span className="sr-only">Escolher modelos do ChatGPT</span>
                 </PopoverButton>
                 <div className="pointer-events-none relative z-10 flex min-w-0 flex-1 flex-wrap items-center gap-2">
                   {selected.map((model) => (
@@ -588,7 +588,7 @@ export const CodexDesktopModelsSettings = forwardRef<
                       </span>
                       <button
                         type="button"
-                        aria-label={`Remove ${model}`}
+                        aria-label={`Remover ${model}`}
                         disabled={busy}
                         onClick={(event) => {
                           event.stopPropagation();
@@ -602,7 +602,7 @@ export const CodexDesktopModelsSettings = forwardRef<
                   ))}
                   {selected.length === 0 && (
                     <span className="px-1 py-1 text-sm text-neutral-400">
-                      {loading ? "Loading models…" : "Select models"}
+                      {loading ? "Carregando modelos…" : "Selecionar modelos"}
                     </span>
                   )}
                 </div>

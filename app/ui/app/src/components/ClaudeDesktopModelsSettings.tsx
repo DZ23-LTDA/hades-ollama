@@ -335,7 +335,7 @@ export const ClaudeDesktopModelsSettings = forwardRef<
         request === statusRequestRef.current &&
         !operationInFlightRef.current
       ) {
-        setError("Ollama could not read the Claude connection status.");
+        setError("Não foi possível ler o estado de conexão do Claude.");
       }
     }
   }, [applyStatus]);
@@ -363,7 +363,7 @@ export const ClaudeDesktopModelsSettings = forwardRef<
         }
       })
       .catch(() => {
-        if (!cancelled) setError("Ollama could not load your models.");
+        if (!cancelled) setError("Não foi possível carregar seus modelos.");
       })
       .finally(() => {
         if (!cancelled) setModelsLoading(false);
@@ -450,16 +450,16 @@ export const ClaudeDesktopModelsSettings = forwardRef<
     const applyMappings = window.applyClaudeDesktopMappings;
     if (!applyMappings) {
       setError(
-        "Claude routing settings are available in the Ollama macOS app.",
+        "As configurações de roteamento do Claude estão disponíveis no aplicativo Ollama para macOS.",
       );
       return;
     }
     if (assignedModels.length === 0) {
-      setError("Choose at least one Ollama model for Claude.");
+      setError("Escolha pelo menos um modelo Ollama para o Claude.");
       return;
     }
     if (hasInvalidMapping) {
-      setError("Choose models available to your account and device.");
+      setError("Escolha modelos disponíveis para sua conta e seu dispositivo.");
       return;
     }
     if (operationInFlightRef.current) return;
@@ -472,7 +472,7 @@ export const ClaudeDesktopModelsSettings = forwardRef<
     try {
       await runMappingAction(
         (restartConfirmed) => applyMappings(mappingsToApply, restartConfirmed),
-        "Ollama could not apply the Claude model mappings.",
+        "Não foi possível aplicar os modelos do Claude.",
       );
     } finally {
       ++statusRequestRef.current;
@@ -483,7 +483,7 @@ export const ClaudeDesktopModelsSettings = forwardRef<
 
   const toggleAutoMode = async (checked: boolean) => {
     if (!window.setClaudeDesktopAutoMode) {
-      setError("Auto mode is available in the Ollama macOS app.");
+      setError("O modo automático está disponível no aplicativo Ollama para macOS.");
       return;
     }
     setError(null);
@@ -508,7 +508,7 @@ export const ClaudeDesktopModelsSettings = forwardRef<
       applyStatus(result.status);
       if (result.error) setError(result.error);
     } catch {
-      setError("Ollama could not update Claude auto mode.");
+      setError("Não foi possível atualizar o modo automático do Claude.");
     } finally {
       ++statusRequestRef.current;
       operationInFlightRef.current = false;
@@ -522,7 +522,7 @@ export const ClaudeDesktopModelsSettings = forwardRef<
 
     const resetMappings = window.resetClaudeDesktopMappings;
     if (!resetMappings) {
-      setError("Ollama could not reset the Claude model mappings.");
+      setError("Não foi possível restaurar os modelos do Claude.");
       return false;
     }
 
@@ -533,7 +533,7 @@ export const ClaudeDesktopModelsSettings = forwardRef<
     try {
       return await runMappingAction(
         resetMappings,
-        "Ollama could not reset the Claude model mappings.",
+        "Não foi possível restaurar os modelos do Claude.",
       );
     } finally {
       ++statusRequestRef.current;
@@ -561,13 +561,13 @@ export const ClaudeDesktopModelsSettings = forwardRef<
     ? (autoModeOverride ?? status.autoMode ?? false)
     : (status.autoMode ?? false);
   const autoModeDescription = hasDraftChanges
-    ? "Start or restart Claude to apply model changes before changing auto mode."
+    ? "Inicie ou reinicie o Claude para aplicar as alterações antes de mudar o modo automático."
     : autoModeAvailable
       ? "Let Claude decide when to ask before making changes."
       : accountCloudModels.length > 0
-        ? "Select a cloud model from Ollama.com to use auto mode."
+        ? "Selecione um modelo na nuvem do Ollama.com para usar o modo automático."
         : autoModeModelNames.length > 0
-          ? `Select one of ${formatModelList(autoModeModelNames)} to use auto mode.`
+          ? `Selecione um destes modelos para usar o modo automático: ${formatModelList(autoModeModelNames)}.`
           : "O modo automático precisa de um modelo na nuvem disponível na sua conta Ollama.com.";
 
   const guidance =
@@ -578,7 +578,7 @@ export const ClaudeDesktopModelsSettings = forwardRef<
 
   return (
     <div
-      aria-label={showSectionHeading ? undefined : "Claude settings"}
+      aria-label={showSectionHeading ? undefined : "Configurações do Claude"}
       className="space-y-2"
     >
       {showSectionHeading && (
@@ -586,7 +586,7 @@ export const ClaudeDesktopModelsSettings = forwardRef<
           id="apps-settings-heading"
           className="px-1 text-xs font-medium uppercase tracking-wider text-neutral-400 dark:text-neutral-500"
         >
-          Apps
+          Aplicativos
         </h2>
       )}
       <div

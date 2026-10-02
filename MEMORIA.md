@@ -691,3 +691,8 @@ Implementado `BackendStatusBanner` no shell raiz: quando `/api/version` não res
 ## U5 — erros de API acionáveis — 2026-10-02 11:42 UTC — Claude
 
 Criado `humanizeApiError` para converter falhas de rede, sessão expirada, autorização, conflito CAS, excesso de tentativas, `NOT_CONFIGURED` e `BLOCKED_EXTERNAL` em mensagens pt-BR com ação recomendada. Aplicado ao Agentic Console, Automações e Providers; o objetivo/rascunho permanece no formulário quando a operação falha. Detalhes técnicos são limitados e redigem Authorization/token/api_key/secret/password antes da UI. Gates: typecheck, lint, Vitest completo (41 arquivos, 273 testes), build, contratos e integrity passaram. Próximo passo: U3/U2, depois validação final.
+
+
+## U3/U2 — acabamento de idioma e primeiro uso — 2026-10-02 11:55 UTC — Claude
+
+Traduzi controles, labels acessíveis e mensagens de erro dos painéis ChatGPT/Codex e Claude para pt-BR, atualizando as expectativas de teclado/interação sem remover cobertura. O quickstart agora informa explicitamente a saúde do backend, mantém loopback como padrão e mostra o comando de recuperação para instalar o modelo quando não houver nenhum. Gates locais: Vitest 41 arquivos/273 testes, typecheck, lint, build, contratos e integrity passaram. CI remoto do U5 no commit `373e5908` passou nos runners Ubuntu/macOS/Windows. Próximo passo: auditoria final de release; permanecem apenas bloqueios externos de assinatura, IdP/dispositivos/HA reais e homologação de providers externos.

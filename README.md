@@ -79,7 +79,7 @@ O script verifica Go/Node/npm, compila o backend, instala as dependências e com
 
 O quickstart é local-first e não é um instalador assinado: uma máquina limpa ainda precisa ter Go, Node.js/npm e o comando `curl` disponíveis. O instalador Windows equivalente permanece `scripts/install.ps1`; a UI pode ser iniciada com `npm run preview` após o build.
 
-In a second terminal, run the web operator surface from source:
+Em outro terminal, se preferir iniciar somente a interface web a partir do código-fonte:
 
 ```shell
 cd app/ui/app
@@ -88,13 +88,13 @@ npm run build
 npx vite preview --host 127.0.0.1 --port 5173
 ```
 
-The web development proxy routes all API requests (`/api/*`, `/api/v1/*` and `/api/agent/v1/*`) seamlessly to the Hades backend at `http://127.0.0.1:11434`.
+O proxy web encaminha as requisições da API (`/api/*`, `/api/v1/*` e `/api/agent/v1/*`) para o backend Hades em `http://127.0.0.1:11434`.
 
-The web UI binds to loopback by default. LAN exposure requires the explicit environment controls `HADES_UI_HOST=<lan-ip>`, `HADES_UI_ALLOW_LAN=true` and `HADES_UI_AUTH_REQUIRED=true`; never expose the development proxy on a shared network without backend authentication.
+A interface web usa loopback por padrão. A exposição na rede local exige explicitamente `HADES_UI_HOST=<ip-da-lan>`, `HADES_UI_ALLOW_LAN=true` e `HADES_UI_AUTH_REQUIRED=true`; nunca exponha o proxy de desenvolvimento em uma rede compartilhada sem autenticação do backend.
 
-### Quality Gates and Automated Tests
+### Gates de qualidade e testes automatizados
 
-To verify the full stack on any clean workstation:
+Para verificar a stack completa em uma máquina limpa:
 
 ```shell
 # 1. Backend Go tests (runtime, agent routes, RLS isolation)

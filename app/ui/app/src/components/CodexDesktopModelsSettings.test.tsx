@@ -178,16 +178,16 @@ describe("CodexDesktopModelsSettings", () => {
       expect(resetModels).toHaveBeenCalledWith();
       expect(
         renderer!.root.findAllByProps({
-          "aria-label": "Remove glm-5.3-flash:cloud",
+          "aria-label": "Remover glm-5.3-flash:cloud",
         }),
       ).toHaveLength(1);
       for (const model of recommendationDefaults) {
         expect(
-          renderer!.root.findAllByProps({ "aria-label": `Remove ${model}` }),
+          renderer!.root.findAllByProps({ "aria-label": `Remover ${model}` }),
         ).toHaveLength(1);
       }
       expect(
-        renderer!.root.findAllByProps({ "aria-label": "Remove qwen3:8b" }),
+        renderer!.root.findAllByProps({ "aria-label": "Remover qwen3:8b" }),
       ).toHaveLength(0);
     } finally {
       await act(async () => renderer?.unmount());
@@ -253,7 +253,7 @@ describe("CodexDesktopModelsSettings", () => {
       });
 
       expect(textContent(renderer!.root)).toContain(
-        "ChatGPT model settings are unavailable in this Ollama build.",
+        "As configurações de modelos do ChatGPT não estão disponíveis nesta versão do Ollama.",
       );
       expect(textContent(renderer!.root)).not.toContain("Loading models…");
     } finally {
@@ -451,7 +451,7 @@ describe("CodexDesktopModelsSettings", () => {
       expect(refresh).toHaveBeenCalledOnce();
       for (const model of recommendationDefaults) {
         expect(
-          renderer!.root.findAllByProps({ "aria-label": `Remove ${model}` }),
+          renderer!.root.findAllByProps({ "aria-label": `Remover ${model}` }),
         ).toHaveLength(1);
       }
     } finally {
@@ -500,7 +500,7 @@ describe("CodexDesktopModelsSettings", () => {
 
       expect(textContent(renderer!.root)).toContain("ChatGPT");
       expect(textContent(renderer!.root)).toContain(
-        "Choose up to 5 Ollama models to use in ChatGPT.",
+        "Escolha até 5 modelos Ollama para usar no ChatGPT.",
       );
       expect(textContent(renderer!.root)).not.toContain("5 of 5 selected");
       const lightIcon = renderer!.root.findByProps({
@@ -519,14 +519,14 @@ describe("CodexDesktopModelsSettings", () => {
       for (const model of available.slice(0, 5)) {
         expect(
           renderer!.root.findAllByProps({
-            "aria-label": `Remove ${model}`,
+            "aria-label": `Remover ${model}`,
           }),
         ).toHaveLength(1);
       }
       expect(
         renderer!.root
           .findAllByProps({
-            "aria-label": "Add ChatGPT model",
+            "aria-label": "Adicionar modelo do ChatGPT",
           })
           .filter((node) => node.type === "button"),
       ).toHaveLength(1);
@@ -553,7 +553,7 @@ describe("CodexDesktopModelsSettings", () => {
       });
       await act(async () => {
         const addButton = renderer!.root
-          .findAllByProps({ "aria-label": "Add ChatGPT model" })
+          .findAllByProps({ "aria-label": "Adicionar modelo do ChatGPT" })
           .find((node) => node.type === "button");
         if (!addButton) throw new Error("Add model button not found");
         addButton.props.onClick();
@@ -589,7 +589,7 @@ describe("CodexDesktopModelsSettings", () => {
       });
       await act(async () => {
         const addButton = renderer!.root
-          .findAllByProps({ "aria-label": "Add ChatGPT model" })
+          .findAllByProps({ "aria-label": "Adicionar modelo do ChatGPT" })
           .find((node) => node.type === "button");
         if (!addButton) throw new Error("Add model button not found");
         addButton.props.onClick();
@@ -621,7 +621,7 @@ describe("CodexDesktopModelsSettings", () => {
       });
       expect(
         renderer!.root.findAllByProps({
-          "aria-label": `Remove ${available[0]}`,
+          "aria-label": `Remover ${available[0]}`,
         }),
       ).toHaveLength(1);
       expect(preventDefault).toHaveBeenCalledTimes(4);
@@ -669,7 +669,7 @@ describe("CodexDesktopModelsSettings", () => {
       });
       await act(async () => {
         renderer!.root
-          .findAllByProps({ "aria-label": "Add ChatGPT model" })
+          .findAllByProps({ "aria-label": "Adicionar modelo do ChatGPT" })
           .find((node) => node.type === "button")!
           .props.onClick({});
       });
@@ -681,7 +681,7 @@ describe("CodexDesktopModelsSettings", () => {
       await act(async () => options[0].props.onClick());
       expect(
         renderer!.root.findAllByProps({
-          "aria-label": "Remove glm-5.3-flash:cloud",
+          "aria-label": "Remover glm-5.3-flash:cloud",
         }),
       ).toHaveLength(1);
     } finally {
@@ -726,7 +726,7 @@ describe("CodexDesktopModelsSettings", () => {
       });
       await act(async () => {
         renderer!.root
-          .findAllByProps({ "aria-label": "Add ChatGPT model" })
+          .findAllByProps({ "aria-label": "Adicionar modelo do ChatGPT" })
           .find((node) => node.type === "button")!
           .props.onClick({});
       });
@@ -766,7 +766,7 @@ describe("CodexDesktopModelsSettings", () => {
         const stopPropagation = vi.fn();
         renderer!.root
           .findByProps({
-            "aria-label": `Remove ${available[4]}`,
+            "aria-label": `Remover ${available[4]}`,
           })
           .props.onClick({ stopPropagation });
         expect(stopPropagation).toHaveBeenCalledOnce();
@@ -835,7 +835,7 @@ describe("CodexDesktopModelsSettings", () => {
         await act(async () => {
           renderer!.root
             .findByProps({
-              "aria-label": `Remove ${available[4]}`,
+              "aria-label": `Remover ${available[4]}`,
             })
             .props.onClick({ stopPropagation: vi.fn() });
         });
@@ -889,7 +889,7 @@ describe("CodexDesktopModelsSettings", () => {
       });
       await act(async () => {
         renderer!.root
-          .findByProps({ "aria-label": `Remove ${available[4]}` })
+          .findByProps({ "aria-label": `Remover ${available[4]}` })
           .props.onClick({ stopPropagation: vi.fn() });
       });
       const applyButton = renderer!.root
@@ -909,7 +909,7 @@ describe("CodexDesktopModelsSettings", () => {
       ]);
       expect(
         renderer!.root.findAllByProps({
-          "aria-label": `Remove ${available[4]}`,
+          "aria-label": `Remover ${available[4]}`,
         }),
       ).toHaveLength(0);
     } finally {
@@ -950,7 +950,7 @@ describe("CodexDesktopModelsSettings", () => {
       });
       await act(async () => {
         renderer!.root
-          .findByProps({ "aria-label": `Remove ${available[4]}` })
+          .findByProps({ "aria-label": `Remover ${available[4]}` })
           .props.onClick({ stopPropagation: vi.fn() });
         focusHandler?.();
       });
@@ -969,7 +969,7 @@ describe("CodexDesktopModelsSettings", () => {
       expect(apply).toHaveBeenCalledWith(next, false);
       expect(
         renderer!.root.findAllByProps({
-          "aria-label": `Remove ${available[4]}`,
+          "aria-label": `Remover ${available[4]}`,
         }),
       ).toHaveLength(0);
       expect(textContent(renderer!.root)).not.toContain("Salvar e iniciar ChatGPT");
@@ -1039,11 +1039,11 @@ describe("CodexDesktopModelsSettings", () => {
       ).toHaveLength(0);
       expect(pill.findAllByType("button")).toHaveLength(1);
       expect(pill.findByType("button").props["aria-label"]).toBe(
-        `Remove ${available[0]}`,
+        `Remover ${available[0]}`,
       );
 
       const fieldTrigger = renderer!.root
-        .findAllByProps({ "aria-label": "Add ChatGPT model" })
+        .findAllByProps({ "aria-label": "Adicionar modelo do ChatGPT" })
         .find((node) => node.type === "button");
       if (!fieldTrigger) throw new Error("Model field trigger not found");
       await act(async () => {
@@ -1055,7 +1055,7 @@ describe("CodexDesktopModelsSettings", () => {
       );
       expect(
         renderer!.root.findAllByProps({
-          "aria-label": `Remove ${available[0]}`,
+          "aria-label": `Remover ${available[0]}`,
         }),
       ).toHaveLength(1);
       expect(
