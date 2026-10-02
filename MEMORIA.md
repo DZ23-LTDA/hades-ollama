@@ -784,3 +784,6 @@ Removi `app/ui/app/tailwind.config.js`, que era configuração Tailwind v3 não 
 - **Correção encontrada:** o code splitting anterior tinha ciclo de chunks e quebrava o runtime com `Cannot read properties of undefined (reading 'createContext')`. Removido o catch-all/vendor-markdown da configuração Vite; o preview voltou a renderizar e o smoke E2E existente também passou.
 - **Evidência local:** `npm run test:e2e -- e2e/shell.spec.ts e2e/accessibility.spec.ts` — **5 passed**; `npx tsc -b`, lint, Vitest (**42 arquivos / 276 testes**), build, bundle budget, contratos, integrity, `go build ./...` e `go test ./internal/agent ./server` — PASS.
 - **Estado:** pendente apenas commit/push e validação dos workflows remotos no mesmo SHA. O gate mantém a limitação honesta: axe automatizado não substitui leitor de tela manual em integrações externas.
+
+
+**Fechamento D7b:** o SHA `e1efa725` passou nos três workflows remotos no mesmo commit: `test` run `37045772508` (Ubuntu/macOS/Windows e gates Go/UI), `class-a-plus-integrity` run `37045759735` e `dz23-agentic-quality` run `37045759716`. O gate axe/teclado está integrado ao `npm run test:e2e`; o runtime de preview foi corrigido após o ciclo de chunks. Próximo passo honesto: somente dependências externas e sandbox forte permanecem fora da validação local.
