@@ -495,6 +495,7 @@ func (a *agentAPI) register(r *gin.Engine) {
 	group.DELETE("/projects/:id", a.deleteProject)
 	group.POST("/projects/:id/memories", a.addMemory)
 	group.GET("/projects/:id/memories", a.searchMemories)
+	group.GET("/projects/:id/ask", a.askProjectDocuments)
 	group.GET("/collab/:project_id", a.collabSnapshot)
 	group.GET("/collab/:project_id/stream", a.collabStream)
 	group.POST("/collab/:project_id/comments", a.collabComment)
@@ -1789,6 +1790,39 @@ func (a *agentAPI) searchMemories(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"project_id": c.Param("id"), "memories": memories})
+}
+
+// askProjectDocuments answers a question strictly from the project's indexed
+// documents (RAG, G1): it retrieves the most relevant sources above a relevance
+// threshold and returns a cited grounded-context block plus the citations. When
+// nothing relevant is indexed it returns grounded=false and a context that tells
+// the model to say it did not find the information, so the UI never fabricates.
+func (a *agentAPI) askProjectDocuments(c *gin.Context) {
+	if _, err := a.projectForRequest(c); err != nil {
+		writeAgentError(c, statusForAgentError(err), err)
+		return
+	}
+	query := strings.TrimSpace(c.Query("q"))
+	if query == "" {
+		writeAgentError(c, http.StatusBadRequest, errors.New("q (consulta) é obrigatório"))
+		return
+	}
+	const (
+		askLimit    = 8
+		askMinScore = 0.2 // relevance gate: unrelated queries return no sources
+	)
+	prompt, citations, err := a.context.GroundedAnswerContext(c.Request.Context(), c.Param("id"), query, askLimit, askMinScore)
+	if err != nil {
+		writeAgentError(c, http.StatusBadRequest, err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"project_id": c.Param("id"),
+		"query":      query,
+		"context":    prompt,
+		"citations":  citations,
+		"grounded":   len(citations) > 0,
+	})
 }
 
 func (a *agentAPI) missions(c *gin.Context) {
