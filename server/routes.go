@@ -1948,10 +1948,14 @@ func (s *Server) GenerateRoutes() (http.Handler, error) {
 	if s.agentRuntime == nil {
 		runtime, err := newDefaultAgentRuntime()
 		if err != nil {
-			return nil, err
+			// Degrade gracefully: the agentic layer is optional. If it cannot
+			// initialize (misconfigured Redis/Postgres/OTLP/push, etc.), keep
+			// serving the core Ollama API instead of refusing to start.
+			slog.Error("agent runtime unavailable; serving core Ollama routes only", "error", err)
+		} else {
+			createdRuntime = runtime
+			s.agentRuntime = runtime
 		}
-		createdRuntime = runtime
-		s.agentRuntime = runtime
 	}
 	codexDesktopProxy, err := newCodexDesktopProxy()
 	if err != nil {
@@ -1991,7 +1995,9 @@ func (s *Server) GenerateRoutes() (http.Handler, error) {
 		cors.New(corsConfig),
 		allowedHostsMiddleware(s.addr),
 	)
-	s.agentRuntime.SetPlannerResolver(multiProviderPlannerResolver{client: api.NewClient(envconfig.ConnectableHost(), newServerEgressClient("server.planner.local", true))})
+	if s.agentRuntime != nil {
+		s.agentRuntime.SetPlannerResolver(multiProviderPlannerResolver{client: api.NewClient(envconfig.ConnectableHost(), newServerEgressClient("server.planner.local", true))})
+	}
 	if configPath := strings.TrimSpace(os.Getenv("OLLAMA_DZ23_CONFIG")); configPath != "" {
 		registry, err := multillm.Load(configPath)
 		if err != nil {
@@ -2000,7 +2006,9 @@ func (s *Server) GenerateRoutes() (http.Handler, error) {
 		s.multiRegistry = registry
 		s.multiProvider = multillm.NewGateway(registry, nil)
 		r.Use(s.multiProvider.Middleware())
-		s.agentRuntime.SetPlannerResolver(multiProviderPlannerResolver{registry: registry, client: api.NewClient(envconfig.ConnectableHost(), newServerEgressClient("server.planner.local", true))})
+		if s.agentRuntime != nil {
+			s.agentRuntime.SetPlannerResolver(multiProviderPlannerResolver{registry: registry, client: api.NewClient(envconfig.ConnectableHost(), newServerEgressClient("server.planner.local", true))})
+		}
 	}
 
 	// General
@@ -2012,11 +2020,14 @@ func (s *Server) GenerateRoutes() (http.Handler, error) {
 	r.GET("/api/dz23/cli-catalog", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"tools": multillm.DetectCLIs()})
 	})
-	agentAPI, err := newAgentAPI(s.agentRuntime)
-	if err != nil {
-		return nil, err
+	if s.agentRuntime != nil {
+		agentAPI, err := newAgentAPI(s.agentRuntime)
+		if err != nil {
+			slog.Error("agent API unavailable; serving core Ollama routes only", "error", err)
+		} else {
+			agentAPI.register(r)
+		}
 	}
-	agentAPI.register(r)
 	s.registerDesktopLocalRoutes(r)
 	// Codex uses this existing Ollama listener for both native and Ollama
 	// models. The proxy selects the upstream per request.
@@ -2152,8 +2163,10 @@ func Serve(ln net.Listener) error {
 	defer schedDone()
 	sched := InitScheduler(schedCtx)
 	s.sched = sched
-	s.agentRuntime.Start(ctx)
-	defer func() { _ = s.agentRuntime.Close(context.Background()) }()
+	if s.agentRuntime != nil {
+		s.agentRuntime.Start(ctx)
+		defer func() { _ = s.agentRuntime.Close(context.Background()) }()
+	}
 	s.modelCaches.Start(ctx)
 
 	slog.Info(fmt.Sprintf("Listening on %s (version %s)", ln.Addr(), version.Version))
