@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { askProjectDocuments } from "./agenticClient";
+import { askProjectDocuments, fetchDiagnostics } from "./agenticClient";
 
 describe("askProjectDocuments", () => {
   afterEach(() => {
@@ -40,5 +40,19 @@ describe("askProjectDocuments", () => {
     const result = await askProjectDocuments("p1", "x");
     expect(result.grounded).toBe(false);
     expect(result.citations).toHaveLength(0);
+  });
+});
+
+describe("fetchDiagnostics", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("fetches the diagnostics snapshot", async () => {
+    const payload = { product: "Hades", integrations: { agent_database_url: true } };
+    vi.stubGlobal("window", { dispatchEvent: vi.fn() });
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify(payload), { status: 200, headers: { "Content-Type": "application/json" } })));
+    const result = await fetchDiagnostics();
+    expect(result.product).toBe("Hades");
   });
 });

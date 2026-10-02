@@ -302,6 +302,11 @@ export interface AskDocumentsResult {
 // so the UI should show "não encontrei nos documentos" rather than an answer.
 export const askProjectDocuments = (projectID: string, query: string) =>
   agentFetch<AskDocumentsResult>(`/api/agent/v1/projects/${encodeURIComponent(projectID)}/ask?q=${encodeURIComponent(query)}`);
+
+// fetchDiagnostics returns a secret-safe support snapshot (A7) and
+// downloadBackupArchive streams a local-first backup of the data root (A6).
+export const fetchDiagnostics = () => agentFetch<Record<string, unknown>>("/api/agent/v1/diagnostics");
+export const downloadBackupArchive = () => agentFetchBlob("/api/agent/v1/backup");
 export const listMissions = () => agentFetch<{ missions: AgentMission[] }>("/api/agent/v1/missions");
 export const getMission = (id: string) => agentFetch<AgentMission>(`/api/agent/v1/missions/${encodeURIComponent(id)}`);
 export const listMissionEvents = (id: string) => agentFetch<{ events: AgentEvent[] }>(`/api/agent/v1/missions/${encodeURIComponent(id)}/events`);
