@@ -956,7 +956,8 @@ func (r *Runtime) CreateMission(ctx context.Context, request CreateMissionReques
 			if hashErr != nil {
 				return r.failMission(mission, fmt.Errorf("hash approval payload: %w", hashErr))
 			}
-			mission.Approvals = append(mission.Approvals, Approval{ID: "apr_" + uuid.NewString(), MissionID: mission.ID, StepID: step.ID, OrganizationID: mission.OrganizationID, Policy: toolApprovalPolicy(descriptor.Descriptor(), step.Risk), PayloadSHA256: payloadHash, Nonce: uuid.NewString(), Status: ApprovalPending, ExpiresAt: &approvalExpiresAt, CreatedAt: now, UpdatedAt: now})
+			requester := strings.TrimSpace(request.ActorID)
+			mission.Approvals = append(mission.Approvals, Approval{ID: "apr_" + uuid.NewString(), MissionID: mission.ID, StepID: step.ID, OrganizationID: mission.OrganizationID, Policy: toolApprovalPolicy(descriptor.Descriptor(), step.Risk), PayloadSHA256: payloadHash, Nonce: uuid.NewString(), RequestedBy: requester, Status: ApprovalPending, ExpiresAt: &approvalExpiresAt, CreatedAt: now, UpdatedAt: now})
 		}
 	}
 	if len(mission.Approvals) > 0 {
@@ -1861,6 +1862,9 @@ func (r *Runtime) decideApprovalForActor(missionID, approvalID string, approved 
 		}
 		if strings.TrimSpace(actorID) == "" {
 			return Mission{}, errors.New("approval actor is required")
+		}
+		if approved && strings.TrimSpace(mission.Approvals[index].RequestedBy) != "" && strings.TrimSpace(mission.Approvals[index].RequestedBy) == strings.TrimSpace(actorID) {
+			return Mission{}, errors.New("approval requester cannot approve the same decision")
 		}
 		reason = strings.TrimSpace(reason)
 		if reason == "" {

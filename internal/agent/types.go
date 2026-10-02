@@ -50,6 +50,7 @@ const (
 
 type CreateMissionRequest struct {
 	MissionID        string   `json:"-"`
+	ActorID          string   `json:"-"`
 	Objective        string   `json:"objective"`
 	Provider         string   `json:"provider,omitempty"`
 	Model            string   `json:"model,omitempty"`
@@ -119,6 +120,7 @@ type Approval struct {
 	StepID         string         `json:"step_id"`
 	OrganizationID string         `json:"organization_id,omitempty"`
 	ActorID        string         `json:"actor_id,omitempty"`
+	RequestedBy    string         `json:"requested_by,omitempty"`
 	Policy         string         `json:"policy,omitempty"`
 	PayloadSHA256  string         `json:"payload_sha256,omitempty"`
 	Nonce          string         `json:"nonce,omitempty"`

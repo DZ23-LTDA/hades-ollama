@@ -102,20 +102,37 @@ func companyCycleRisk(cycle CompanyCycle) RiskClass {
 	if cycle.Risk != "" {
 		return effectiveRisk(cycle.Risk)
 	}
-	combined := strings.ToLower(strings.TrimSpace(cycle.Name + " " + cycle.Objective))
-	if strings.Contains(combined, "spend") || strings.Contains(combined, "budget") ||
-		strings.Contains(combined, "buy") || strings.Contains(combined, "comprar") ||
-		strings.Contains(combined, "pagar") || strings.Contains(combined, "investir") ||
-		strings.Contains(combined, "contratar") || strings.Contains(combined, "anúncios") ||
-		strings.Contains(combined, "ads") {
+	intent := companyCycleIntentTokens(cycle)
+	if containsAnyCompanyIntent(intent, "spend", "budget", "buy", "purchase", "transfer", "transferir", "acquire", "adquirir", "comprar", "compras", "pagar", "pagamento", "investir", "contratar", "anuncios", "anúncios", "ads") {
 		return RiskDestructive
 	}
-	if strings.Contains(combined, "publish") || strings.Contains(combined, "deploy") ||
-		strings.Contains(combined, "publicar") || strings.Contains(combined, "send_external") ||
-		strings.Contains(combined, "email_blast") || strings.Contains(combined, "disparar") {
+	if containsAnyCompanyIntent(intent, "publish", "post", "deploy", "publicar", "postar", "lancar", "lançar", "lancar", "lançar", "send_external", "email_blast", "disparar", "enviar") {
 		return RiskExternalSideEffect
 	}
 	return RiskRead
+}
+
+func companyCycleIntentTokens(cycle CompanyCycle) map[string]struct{} {
+	combined := strings.ToLower(strings.TrimSpace(cycle.Name + " " + cycle.Objective))
+	for _, separator := range []string{"-", "_", "/", ":", ",", ".", "(", ")", "[", "]"} {
+		combined = strings.ReplaceAll(combined, separator, " ")
+	}
+	// Explicit tokens avoid substring matches such as "adsorption" or
+	// "deployment-notes" while retaining conservative coverage for commands.
+	result := make(map[string]struct{})
+	for _, token := range strings.Fields(combined) {
+		result[token] = struct{}{}
+	}
+	return result
+}
+
+func containsAnyCompanyIntent(tokens map[string]struct{}, values ...string) bool {
+	for _, value := range values {
+		if _, ok := tokens[value]; ok {
+			return true
+		}
+	}
+	return false
 }
 
 func (s *Supervisor) Config() SupervisorConfig {
