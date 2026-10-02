@@ -265,3 +265,28 @@ O projeto avançou muito além de um protótipo visual, mas ainda não é honest
 **Hardening adicional:** o `node-forge` transitivo do Expo é resolvido por um commit upstream que contém a correção ASN.1, através de tarball HTTPS fixado no lockfile. Instalação limpa, typecheck e `npm audit --omit=dev --audit-level=high` passaram.
 
 **Estado:** validado localmente; confirmação final depende do runner remoto macOS/Windows e do `go_mod_tidy` no SHA publicado.
+
+
+## Follow-up — 2026-10-02 — hardening de CI/DevEx
+
+### Correções aplicadas
+
+- Todas as referências `uses:` nos workflows versionados foram fixadas em SHAs imutáveis, mantendo a tag apenas como comentário documental.
+- `dz23-e2e` e `dz23-provider-smoke` agora têm execução semanal e, quando uma execução agendada falha, tentam abrir uma issue com link para o run; a falha do workflow permanece preservada.
+- O frontend passou a ter orçamento verificável para o entry JavaScript: máximo de 2.000.000 bytes bruto e 600.000 bytes gzip. O build real mediu **1.823.863 bytes bruto / 530.772 bytes gzip** e passou.
+- A tentativa de `manualChunks` foi revertida após evidência de regressão: ela agrupou Shiki em um chunk de 9,5 MB. O Vite já gera chunks de linguagens sob demanda; a otimização regressiva não foi mantida.
+
+### CI remoto — estado honesto
+
+Nos SHAs `8816da06`, `01d94ae2` e `81b05741`, os workflows `class-a-plus-integrity` e `dz23-agentic-quality` terminaram como `failure` em aproximadamente 2–3 segundos, com **zero steps executados e nenhum runner materializado** em todos os jobs. O rerun do SHA `8816da06` repetiu o mesmo padrão. O status público do GitHub indicou “All Systems Operational”, portanto a causa exata do startup failure não foi comprovada pelo código nem pelos logs disponíveis. Isso é um bloqueio de validação remota, não deve ser reportado como CI verde.
+
+### Gates locais desta etapa
+
+- `npm run build`: passou após reinstalação limpa.
+- `node scripts/check-bundle-budget.mjs`: passou.
+- `npm run lint`: passou.
+- `npx vitest run`: **39 arquivos / 265 testes passaram**.
+- `node scripts/verify-contracts.mjs`: passou com aviso honesto de 135 rotas backend sem chamador frontend estático; essas rotas incluem endpoints de auth, uploads, media, traces e health e precisam de triagem separada, não devem ser apagadas automaticamente.
+- `bash scripts/check-class-a-plus-integrity.sh`: passou.
+
+**Reclassificação:** o produto continua como candidato de release interno. O bundle budget e o hardening de supply chain estão implementados, mas a liberação pública permanece bloqueada até o GitHub Actions executar os jobs em runners reais e todos os checks obrigatórios concluírem no mesmo SHA.
