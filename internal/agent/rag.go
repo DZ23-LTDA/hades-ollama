@@ -58,3 +58,35 @@ func BuildGroundedContext(query string, sources []ScoredMemory) (string, []Citat
 	}
 	return strings.TrimRight(b.String(), "\n"), citations
 }
+
+// BuildWebGroundedContext formats fetched web sources into a cited prompt block,
+// reusing BuildGroundedContext. Only sources that were actually fetched (2xx, no
+// error, non-empty text) are cited, so the model never cites a page it could not
+// read; each citation carries the page title, URL and fetch date. With no usable
+// source the model is told it did not find the information (G2).
+func BuildWebGroundedContext(query string, sources []ResearchSource) (string, []Citation) {
+	usable := make([]ScoredMemory, 0, len(sources))
+	for _, s := range sources {
+		text := strings.TrimSpace(s.Text)
+		if text == "" || strings.TrimSpace(s.Error) != "" {
+			continue
+		}
+		if s.Status != 0 && (s.Status < 200 || s.Status >= 300) {
+			continue
+		}
+		label := strings.TrimSpace(s.Title)
+		url := strings.TrimSpace(s.URL)
+		if label == "" {
+			label = url
+		}
+		source := label
+		if url != "" && url != label {
+			source = label + " — " + url
+		}
+		if !s.FetchedAt.IsZero() {
+			source += " (" + s.FetchedAt.UTC().Format("2006-01-02") + ")"
+		}
+		usable = append(usable, ScoredMemory{Memory: Memory{Content: text, Source: source}, Score: 1})
+	}
+	return BuildGroundedContext(query, usable)
+}

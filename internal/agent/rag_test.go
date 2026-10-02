@@ -3,7 +3,37 @@ package agent
 import (
 	"strings"
 	"testing"
+	"time"
 )
+
+func TestBuildWebGroundedContextCitesOnlyFetchedSources(t *testing.T) {
+	fetched := time.Date(2026, 10, 2, 0, 0, 0, 0, time.UTC)
+	sources := []ResearchSource{
+		{URL: "https://ex.com/a", Title: "Página A", Status: 200, Text: "conteúdo A", FetchedAt: fetched},
+		{URL: "https://ex.com/404", Title: "Faltante", Status: 404, Text: "", Error: "not found"},
+		{URL: "https://ex.com/b", Title: "Página B", Status: 200, Text: "conteúdo B", FetchedAt: fetched},
+	}
+	ctx, citations := BuildWebGroundedContext("pergunta", sources)
+	if len(citations) != 2 {
+		t.Fatalf("citations = %d, want 2 (failed fetch excluded)", len(citations))
+	}
+	for _, want := range []string{"https://ex.com/a", "Página A", "2026-10-02", "conteúdo B"} {
+		if !strings.Contains(ctx, want) {
+			t.Fatalf("web context missing %q:\n%s", want, ctx)
+		}
+	}
+	if strings.Contains(ctx, "ex.com/404") || strings.Contains(ctx, "Faltante") {
+		t.Fatalf("failed fetch must not be cited:\n%s", ctx)
+	}
+}
+
+func TestBuildWebGroundedContextNoUsableSourcesIsHonest(t *testing.T) {
+	sources := []ResearchSource{{URL: "https://ex.com/x", Status: 500, Error: "boom"}}
+	_, citations := BuildWebGroundedContext("q", sources)
+	if citations != nil {
+		t.Fatalf("citations = %+v, want nil when nothing was fetched", citations)
+	}
+}
 
 func TestBuildGroundedContextCitesSources(t *testing.T) {
 	sources := []ScoredMemory{
