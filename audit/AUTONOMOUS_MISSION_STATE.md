@@ -1,8 +1,8 @@
-## Checkpoint vigente — Release candidate e auditoria final — 2026-10-02 01:28 UTC
+## Checkpoint vigente — Missão contínua T0/P0 — 2026-10-02 03:58 UTC
 ```yaml
-state: RELEASE_CANDIDATE_LOCAL_GATES_PASS_EXTERNAL_CI_BLOCKED
+state: EXECUTING_T0_EXTERNAL_ACTIONS_BLOCKED
 branch: recovery/ollama-full-snapshot
-sha: c4a36a9a
+sha: e697a43d
 proofs_local:
   - go build ./...: PASS (após remover node_modules gerado)
   - CGO_ENABLED=0 go build ./...: PASS
@@ -12,14 +12,18 @@ proofs_local:
   - bundle budget: PASS (1,823,863 bytes bruto / 530,772 gzip)
   - contracts/integrity/gofmt/diff-check: PASS
   - shell E2E 10 telas desktop+mobile: PASS (0 HTTP, 0 console)
+  - CI surface classifier: PASS (13 testes)
+  - bash integrity syntax check: PASS
 external_status:
-  - class-a-plus-integrity: BLOCKED_EXTERNAL (run 36949729206, job não iniciou)
-  - dz23-agentic-quality: BLOCKED_EXTERNAL (run 36949729166, job não iniciou)
-  - reason: GitHub reportou "account is locked due to a billing issue"; rerun attempt 2 confirmou o mesmo bloqueio
+  - class-a-plus-integrity: BLOCKED_EXTERNAL (nenhuma run criada para e697a43d)
+  - dz23-agentic-quality: BLOCKED_EXTERNAL (nenhuma run criada para e697a43d)
+  - prior evidence: runs 36949729206/36949729166 reached runners, then were cancelled by same-branch concurrency
+  - fix_published: concurrency now uses pull_request.number || run_id, matching test.yaml
+  - remaining_reason: GitHub Actions account/service did not enqueue push workflows after e697a43d; permissions API says enabled
 known_limits:
   - Ollama local sem modelos instalados neste ambiente
   - credenciais/IdP/WhatsApp/MCP/deploy externos continuam BLOCKED_EXTERNAL ou NOT_CONFIGURED
-next_action: proprietário deve resolver o bloqueio de billing do GitHub; então rerun class-a-plus-integrity, dz23-agentic-quality e test.yaml no SHA c4a36a9a
+next_action: keep T0 marked BLOCKED_EXTERNAL; after Actions service/account is restored, run the two workflows and test.yaml on e697a43d; continue S3/S4/S5/S6/S7 independently now
 ```
 
 
