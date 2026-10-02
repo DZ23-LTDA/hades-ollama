@@ -5,10 +5,11 @@ import (
 	"encoding/json"
 	"errors"
 	"net"
-	"net/netip"
 	"net/url"
 	"reflect"
 	"strings"
+
+	"github.com/ollama/ollama/internal/egresspolicy"
 )
 
 func sanitizeProviderResponse(data []byte) string { //nolint:unused // compatibility/security surface retained for future adapter wiring
@@ -79,60 +80,11 @@ func endpointURLHasSensitiveMaterial(raw string) bool {
 	return false
 }
 
-// unsafeEgressIP is the single policy for addresses used after DNS
-// resolution. IsPrivate and IsGlobalUnicast alone are insufficient: Go
-// deliberately treats documentation, benchmarking, and CGNAT ranges as
-// global-unicast, and IPv4-mapped IPv6 values can otherwise bypass a family
-// check. The policy is conservative because these addresses are used for
-// DNS-pinned outbound connections.
+// unsafeEgressIP is retained as the agent-local compatibility name, while the
+// actual policy is shared with multillm through internal/egresspolicy.
 func unsafeEgressIP(ip net.IP) bool {
-	if ip == nil {
-		return true
-	}
-	// Normalize both dotted-quad values represented as 16 bytes and explicit
-	// IPv4-mapped IPv6 answers before applying the same IPv4 special-use ranges.
-	// The connector revalidates the actual connected peer against this policy.
-	if ipv4 := ip.To4(); ipv4 != nil {
-		ip = ipv4
-	}
-	address, ok := netip.AddrFromSlice(ip)
-	if !ok || !address.IsGlobalUnicast() {
-		return true
-	}
-	address = address.Unmap()
-	if address.IsPrivate() || address.IsLoopback() || address.IsUnspecified() || address.IsLinkLocalUnicast() || address.IsLinkLocalMulticast() || address.IsMulticast() {
-		return true
-	}
-
-	blocked := [...]netip.Prefix{
-		// RFC 6598 shared address space (CGNAT).
-		netip.MustParsePrefix("100.64.0.0/10"),
-		// RFC 2544 benchmarking.
-		netip.MustParsePrefix("198.18.0.0/15"),
-		// IPv4 special-use, documentation, and reserved ranges.
-		netip.MustParsePrefix("0.0.0.0/8"),
-		netip.MustParsePrefix("192.0.0.0/24"),
-		netip.MustParsePrefix("192.0.2.0/24"),
-		netip.MustParsePrefix("192.88.99.0/24"),
-		netip.MustParsePrefix("198.51.100.0/24"),
-		netip.MustParsePrefix("203.0.113.0/24"),
-		netip.MustParsePrefix("224.0.0.0/4"),
-		netip.MustParsePrefix("240.0.0.0/4"),
-		// IPv6 special-use, benchmarking, documentation, and reserved ranges.
-		netip.MustParsePrefix("2001:0000::/32"),
-		netip.MustParsePrefix("2001:0002::/48"),
-		netip.MustParsePrefix("2001:0010::/28"),
-		netip.MustParsePrefix("2001:0020::/28"),
-		netip.MustParsePrefix("2001:db8::/32"),
-		netip.MustParsePrefix("3fff::/20"),
-		netip.MustParsePrefix("5f00::/16"),
-	}
-	for _, prefix := range blocked {
-		if prefix.Contains(address) {
-			return true
-		}
-	}
-	return false
+	blocked, _ := egresspolicy.ClassifyIP(ip)
+	return blocked
 }
 
 func canonicalizeResolvedIP(ip net.IP) net.IP { //nolint:unused // compatibility/security surface retained for future adapter wiring

@@ -22,6 +22,41 @@ next_action: commitar evidências; repetir workflows de qualidade no novo SHA; l
 ```
 
 
+
+
+## Checkpoint — S1 egress provider fechado — 2026-10-01 20:56 -03
+```yaml
+state: TESTING
+current_task: S2 — isolamento forte do MCP local
+completed_tasks:
+  - S1: internal/egresspolicy agora é a política única consumida por agent e multillm
+  - S1: provider bloqueia loopback, privado, metadata, CGNAT, RFC2544 198.18/15, ranges de documentação e IPv6 documentation
+proofs:
+  - go test ./internal/egresspolicy ./internal/multillm ./internal/agent -run Egress|SSRF|DNSRebind|Provider -count=1: PASS
+  - git diff --check: PASS
+remaining: S2,S3,S4,S5,S6,S7,R1-R4,F1-F2,U1-U11,E1-E8,D1-D6,A1-A10
+next_action: inspecionar o sandbox forte existente e o processo MCP local; implementar bloqueio honesto ou isolamento real
+```
+
+## Checkpoint vigente — Hardening consolidado P0/P1 — 2026-10-01 20:54 -03
+```yaml
+state: EXECUTING
+branch: recovery/ollama-full-snapshot
+head: ef9c21d2
+objective: fechar os P0/P1 do adendo de 8 auditorias com testes negativos e execução real, sem declarar production/public pronto
+current_task: S1 — alinhar egress multillm ao classificador zero-trust do agent
+completed_tasks:
+  - auditoria consolidada criada em audit/AUDIT_PONTA_A_PONTA_2026-10-01.md
+  - inventário P0/P1 recebido em pasted_content_21.txt
+acceptance:
+  - provider bloqueia loopback, privado, metadata, CGNAT, 198.18/documentation e DNS rebinding
+  - testes negativos reproduzem bloqueios
+  - nenhum gate ou assertion será removido/enfraquecido
+next_action: implementar S1, testar, revisar diff e atualizar checkpoint
+blockers:
+  - credenciais externas, IdP, WhatsApp, deploy e assinatura de release permanecem dependências externas
+```
+
 ## LINT-DEBT — gates locais concluídos — 2026-10-01 12:16 UTC
 ```yaml
 state: LOCAL_GATES_PASS_CI_PENDING
@@ -2853,3 +2888,17 @@ acceptance:
   - go test -race ./internal/agent ./server
   - workflow test.yaml verde em Ubuntu/macOS/Windows e race no SHA final
 next_step: instalar a mesma versão do golangci-lint da action e capturar a linha de base
+
+## Checkpoint — S1/S2 e E2E de shell validados — 2026-10-01 21:02 UTC
+```yaml
+state: LOCAL_HARDENING_VALIDATED_CI_PENDING
+completed:
+  - S1: política egress compartilhada entre agent e multillm, com testes negativos
+  - S2: MCP local tenant-scoped bloqueado sem sandbox forte; sem fallback inseguro
+  - E2E shell: 10 telas desktop/mobile, 0 HTTP errors, 0 console errors
+remaining:
+  - gates completos locais e CI remoto
+  - sandbox MCP forte ainda não disponível/configurado
+  - credenciais externas, IdP, deploy, assinatura e PostgreSQL production cutover permanecem externos/bloqueados
+next_action: executar gates completos, atualizar auditoria e publicar se tudo estiver verde
+```

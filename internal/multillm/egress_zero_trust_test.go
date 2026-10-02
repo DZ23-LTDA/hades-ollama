@@ -17,7 +17,12 @@ func TestProviderEgressSSRFBlocksPrivateAndMetadata(t *testing.T) {
 		"169.254.169.254", // Cloud metadata
 		"::1",
 		"::ffff:127.0.0.1",
-		"100.64.0.1", // CGNAT
+		"100.64.0.1",   // CGNAT
+		"198.18.0.1",   // RFC 2544 benchmarking
+		"192.0.2.1",    // TEST-NET-1 documentation
+		"198.51.100.1", // TEST-NET-2 documentation
+		"203.0.113.1",  // TEST-NET-3 documentation
+		"2001:db8::1",  // IPv6 documentation
 	}
 
 	for _, ipStr := range blockedIPs {

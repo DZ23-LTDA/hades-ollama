@@ -11,6 +11,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/ollama/ollama/internal/egresspolicy"
 )
 
 var (
@@ -22,47 +24,7 @@ var (
 
 // ClassifyProviderEgressIP determines whether an IP is blocked for outbound multillm traffic.
 func ClassifyProviderEgressIP(ip net.IP) (blocked bool, reason string) {
-	if ip == nil {
-		return true, "nil IP address"
-	}
-	// Unwrap IPv4-mapped IPv6 addresses (e.g. ::ffff:127.0.0.1)
-	if v4 := ip.To4(); v4 != nil {
-		ip = v4
-	}
-
-	if ip.IsLoopback() {
-		return true, "loopback address"
-	}
-	if ip.IsPrivate() {
-		return true, "private network address"
-	}
-	if ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() || ip.IsInterfaceLocalMulticast() {
-		return true, "link-local address"
-	}
-	if ip.IsUnspecified() {
-		return true, "unspecified (0.0.0.0) address"
-	}
-	if ip.IsMulticast() {
-		return true, "multicast address"
-	}
-
-	// Explicit Cloud Metadata check
-	if ip.Equal(net.ParseIP("169.254.169.254")) {
-		return true, "cloud metadata service address (169.254.169.254)"
-	}
-
-	if v4 := ip.To4(); v4 != nil {
-		// Carrier-Grade NAT 100.64.0.0/10
-		if v4[0] == 100 && (v4[1]&0xc0) == 64 {
-			return true, "carrier-grade NAT address (100.64.0.0/10)"
-		}
-		// Broadcast 255.255.255.255
-		if v4[0] == 255 && v4[1] == 255 && v4[2] == 255 && v4[3] == 255 {
-			return true, "broadcast address"
-		}
-	}
-
-	return false, ""
+	return egresspolicy.ClassifyIP(ip)
 }
 
 // ProviderEgressDecision records an audited decision for multi-provider egress.
