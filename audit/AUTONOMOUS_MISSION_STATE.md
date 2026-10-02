@@ -2,7 +2,7 @@
 ```yaml
 state: EXECUTING_P0_SECURITY_BACKLOG
 branch: recovery/ollama-full-snapshot
-sha: 03a23957
+sha: 210de716
 proofs_local:
   - go build ./...: PASS (após remover node_modules gerado)
   - CGO_ENABLED=0 go build ./...: PASS
@@ -45,7 +45,7 @@ known_limits:
   - Ollama local validado com qwen2.5:0.5b em 127.0.0.1:11435
   - credenciais/IdP/WhatsApp/MCP/deploy externos continuam BLOCKED_EXTERNAL ou NOT_CONFIGURED
 CI final b4848398: PASS — test.yaml run 37003763891 (Ubuntu/macOS/Windows), class-a-plus-integrity run 37003766034, dz23-agentic-quality run 37003768562.
-next_action: remaining closure is external-only: signed installer credentials, real external IdP/devices/HA, and live provider homologation; internal code gates and non-blocking frontend warnings are closed
+next_action: validate the current SHA in all three workflows; then remaining closure is external-only: signed installer credentials, real external IdP/devices/HA, and live provider homologation
 ```
 
 

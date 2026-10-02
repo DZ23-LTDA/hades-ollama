@@ -706,3 +706,8 @@ O SHA `b4848398` passou no `test.yaml` completo (run `37003763891`, Ubuntu/macOS
 ## Fechamento interno de qualidade — 2026-10-02 12:29 UTC — Claude
 
 Eliminei os dois avisos de Fast Refresh movendo `performLogout` e `artifactDownloadPath` para helpers estáveis; mantive os testes de contrato. Adicionei code splitting determinístico no Vite: o entry caiu para 588.720 bytes bruto / 144.232 gzip, com `BUNDLE_BUDGET=PASS`; antes o entry era 1.830.665 bytes. Validação local final: 273 testes Vitest, typecheck, lint sem warnings, build, Go build/test/vet, contratos e integrity passaram. Os 135 avisos de rotas órfãs continuam apenas como aviso honesto do verificador para endpoints backend-only (auth, upload, mídia, traces etc.), sem caller UI obrigatório.
+
+
+## Continuação da missão — 2026-10-02 12:35 UTC — Claude
+
+Corrigi a identidade visível do instalador Inno Setup para **Hades** (nome, título, mutex e mensagem de instalação), preservando o nome de artefato do workflow para não quebrar o contrato de release. Também concluí a camada de uso leigo: documento `lang=pt-BR`, remoção de `select-none` das áreas de conversa/configuração, textos SSE/HITL/NOT_CONFIGURED traduzidos quando visíveis e model picker com rótulos amigáveis. Testes frontend: 273 Vitest, typecheck, lint e build passaram. Commits publicados: `86656e48` e `210de716`. Próximo passo: validar CI do novo SHA e seguir somente com melhorias internas comprováveis; assinatura SignPath, sandbox forte e integrações externas continuam bloqueios externos honestos.
