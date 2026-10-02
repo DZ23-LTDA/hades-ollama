@@ -2,7 +2,7 @@
 ```yaml
 state: RELEASE_CANDIDATE_LOCAL_GATES_PASS_EXTERNAL_CI_BLOCKED
 branch: recovery/ollama-full-snapshot
-sha: 2444e6d2
+sha: c4a36a9a
 proofs_local:
   - go build ./...: PASS (após remover node_modules gerado)
   - CGO_ENABLED=0 go build ./...: PASS
@@ -19,7 +19,7 @@ external_status:
 known_limits:
   - Ollama local sem modelos instalados neste ambiente
   - credenciais/IdP/WhatsApp/MCP/deploy externos continuam BLOCKED_EXTERNAL ou NOT_CONFIGURED
-next_action: proprietário deve resolver o bloqueio de billing do GitHub; então rerun class-a-plus-integrity, dz23-agentic-quality e test.yaml no SHA 2444e6d2
+next_action: proprietário deve resolver o bloqueio de billing do GitHub; então rerun class-a-plus-integrity, dz23-agentic-quality e test.yaml no SHA c4a36a9a
 ```
 
 
