@@ -27,14 +27,14 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 90
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           fetch-depth: 0   # tags necessarios para git describe (versao derivada do build)
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
           go-version-file: go.mod
           cache: true
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
           cache: npm
@@ -70,7 +70,7 @@ jobs:
       - name: Upload unsigned installer for SignPath
         id: upload-unsigned-installer
         if: steps.signing.outputs.enabled == 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: hades-signpath-input-${{ github.run_id }}
           path: dist/OllamaClasseAPlusSetup.exe
@@ -78,7 +78,7 @@ jobs:
           retention-days: 2
       - name: Submit installer to SignPath
         if: steps.signing.outputs.enabled == 'true'
-        uses: signpath/github-action-submit-signing-request@v3
+        uses: signpath/github-action-submit-signing-request@f6d04783b4569d051e0c80105fe66e82819d0092 # v3
         with:
           api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
           organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
@@ -120,7 +120,7 @@ jobs:
           Set-Content -Path "$exe.sha256" -Value $line -NoNewline -Encoding ascii
           Write-Host $line
       - name: Upload installer + checksum
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: OllamaClasseAPlusSetup-windows-amd64-${{ steps.signing.outputs.artifact_suffix }}
           path: |

@@ -36,6 +36,9 @@ automatizado + execução real reproduzível em navegador (desktop e mobile), se
 - **Próximo passo:** executar o `test.yaml` no SHA publicado e confirmar Ubuntu/macOS/Windows, race e `go_mod_tidy` verdes; se o runner macOS ainda falhar, usar o log do job para corrigir somente a causa reproduzível.
 
 ## Histórico de sessões
+- **2026-10-02 01:07 UTC — Supply chain CI:** todas as actions dos workflows foram fixadas em SHAs imutáveis (com tag documental); `dz23-e2e` e `dz23-provider-smoke` ganharam cron semanal e abertura automática de issue em falha agendada. O CI do SHA 8816da06 falhou imediatamente sem steps/runners materializados em ambos os workflows; rerun repetiu o startup failure, então o estado permanece não-verde e será revalidado após este commit.
+
+
 - **2026-10-02 01:04 UTC — P0 loopback/CI e release:** Vite passou a usar loopback por padrão com opt-in LAN autenticado; package manager do web fixado em npm e pnpm-lock removido; fixes same-SHA e identidade/checksum do instalador integrados seletivamente. O test.yaml agora remove todas as árvores node_modules antes dos gates Go, corrigindo o atravessamento de links quebrados; `CGO_ENABLED=1 go test -p=2 ./...` e `CGO_ENABLED=0 go build ./...` passaram localmente. Mobile `npm audit --omit=dev --audit-level=high` passou com 0 vulnerabilidades e node-forge corrigido. Próximo: publicar e validar CI remoto, depois P1 de supply-chain/performance.
 
 
