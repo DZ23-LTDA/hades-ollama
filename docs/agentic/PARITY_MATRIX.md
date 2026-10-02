@@ -181,3 +181,5 @@ A falha P1 observada na auditoria live foi corrigida: o catálogo de integraçõ
 ### Fechamento contínuo — UX leiga
 
 - **U8 Modo Simples/Avançado:** `VALIDADO COM DADO REAL` — alternância persistente, progressive disclosure dos diagnósticos técnicos e evidências desktop/mobile em `docs/evidencias/u8-settings-*-20261002.png`.
+
+- **U10 Central de Saúde:** `VALIDADO COM DADO REAL` — health backend com subsistemas e estados loading/erro/retry/detalhes; evidência desktop/mobile em `docs/evidencias/u10-health-*-20261002.png`.

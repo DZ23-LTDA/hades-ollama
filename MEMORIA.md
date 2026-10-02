@@ -721,3 +721,8 @@ O SHA `a7984fd7` foi validado com sucesso no GitHub: `test` run `37007672156` ve
 ## U8 — 2026-10-02 13:08 UTC — Claude
 
 Implementei o modo **Simples/Avançado** em Configurações com preferência persistente e fallback seguro quando localStorage não existe ou é bloqueado. O modo simples oculta diagnósticos técnicos, Agentic Control Center e detalhes de conta/workspace; o modo avançado reabre esses blocos. A Home continua oferecendo ações rápidas de um clique. Evidência real contra backend local: `docs/evidencias/u8-settings-desktop-20261002.png` e `u8-settings-mobile-20261002.png`, sem erros HTTP/console; hashes distintos registrados nos arquivos JSON adjacentes. Gates locais: typecheck, lint, build, contratos, integrity e 275 testes Vitest passaram. Próximo passo: U10 central de saúde, U11 entrega de artefato e U12 proteção de ação externa.
+
+
+## U10 — 2026-10-02 13:22 UTC — Claude
+
+Implementei a **Central de Saúde** baseada no backend real. `GET /api/agent/v1/health` agora retorna status degradado quando o runtime não está inicializado, timestamp e os subsistemas agent/store/queue/sandbox derivados do estado do servidor. A UI apresenta loading, erro com retry, status sem depender apenas de cor e ações `Detalhes`/`Corrigir` que explicam o próximo passo sem fingir mutação automática. Evidências contra backend recompilado: `docs/evidencias/u10-health-desktop-20261002.png` e `u10-health-mobile-20261002.png`, hashes distintos, detalhes visíveis e zero erros HTTP/console. Gates locais: Go health/build, typecheck, lint, 275 testes Vitest, build, contratos e integrity passaram. Próximo passo: U11 entrega de artefato e U12 proteção compreensível de ação externa.

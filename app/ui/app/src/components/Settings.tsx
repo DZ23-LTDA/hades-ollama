@@ -26,6 +26,7 @@ import {
   Squares2X2Icon,
 } from "@heroicons/react/20/solid";
 import { AgenticControlCenter } from "@/components/AgenticControlCenter";
+import { HealthCenter } from "@/components/HealthCenter";
 import { Settings as SettingsType } from "@/gotypes";
 import { isWindowsPlatform } from "@/lib/platform";
 import { settingsMutationScope } from "@/lib/settingsMutationScope";
@@ -457,6 +458,7 @@ export default function Settings() {
       <main className="flex min-h-0 w-full flex-1 flex-col dark:bg-neutral-900">
         <div className="w-full flex-1 overflow-y-auto p-6 overscroll-contain">
           <div className="mx-auto max-w-4xl space-y-4">
+            <HealthCenter />
             <InterfaceModeControl mode={interfaceMode} onChange={changeInterfaceMode} />
             {interfaceMode === "advanced" && <AgenticControlCenter />}
             <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/20 dark:text-amber-200">
@@ -483,6 +485,7 @@ export default function Settings() {
           aria-busy={resettingToDefaults}
           className="mx-auto max-w-4xl space-y-4 border-0 p-0"
         >
+          <HealthCenter />
           <InterfaceModeControl mode={interfaceMode} onChange={changeInterfaceMode} />
           {interfaceMode === "advanced" && <AgenticControlCenter />}
           {/* Connect Ollama Account */}

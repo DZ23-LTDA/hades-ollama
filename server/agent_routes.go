@@ -792,7 +792,34 @@ func missionVersionMatches(c *gin.Context, mission agent.Mission) bool {
 }
 
 func (a *agentAPI) health(c *gin.Context) {
-	c.JSON(http.StatusOK, gin.H{"status": "ok", "runtime": "agent-v1"})
+	runtimeReady := a.runtime != nil
+	storeStatus := "local"
+	if strings.TrimSpace(os.Getenv("OLLAMA_AGENT_DATABASE_URL")) != "" {
+		storeStatus = "postgres-configured"
+	}
+	queueStatus := "local"
+	if strings.TrimSpace(os.Getenv("OLLAMA_AGENT_REDIS_URL")) != "" {
+		queueStatus = "redis-configured"
+	}
+	sandboxStatus := strings.ToLower(strings.TrimSpace(os.Getenv("OLLAMA_AGENT_SANDBOX_MODE")))
+	if sandboxStatus == "" {
+		sandboxStatus = "best-effort"
+	}
+	status := "ok"
+	if !runtimeReady {
+		status = "degraded"
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"status":     status,
+		"runtime":    "agent-v1",
+		"checked_at": time.Now().UTC(),
+		"subsystems": gin.H{
+			"agent":   gin.H{"status": map[bool]string{true: "ok", false: "degraded"}[runtimeReady], "detail": "Motor de missões"},
+			"store":   gin.H{"status": storeStatus, "detail": "Persistência de missões e configurações"},
+			"queue":   gin.H{"status": queueStatus, "detail": "Fila de execução"},
+			"sandbox": gin.H{"status": sandboxStatus, "detail": "Execução isolada"},
+		},
+	})
 }
 
 func (a *agentAPI) safeConfig(c *gin.Context) {

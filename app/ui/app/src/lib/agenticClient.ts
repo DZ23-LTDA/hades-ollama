@@ -174,6 +174,12 @@ export type CompanyProduct = { id: string; sku: string; name: string; supplier: 
 export type CompanyOrder = { id: string; product_id: string; customer_ref: string; quantity: number; total_cents: number; status: string; approved: boolean; tracking_code?: string };
 export type CompanyGrowthReport = { company: AgentCompany; campaigns_total: number; campaigns_active: number; affiliate_programs: number; affiliate_conversions: number; products: number; pending_orders: number; fulfilled_orders: number; revenue_cents: number };
 export type GrokStatus = { provider: string; model: string; state: string; authenticated: boolean; healthy: boolean; last_latency_ms?: number; last_error?: string; checked_at: string };
+export type AgentHealth = {
+  status: "ok" | "degraded";
+  runtime: string;
+  checked_at: string;
+  subsystems: Record<string, { status: string; detail: string }>;
+};
 
 type AgentSession = { token: string; organization?: string };
 let agentSession: AgentSession | null = null;
@@ -205,6 +211,7 @@ export async function logoutAgentSession(): Promise<void> {
 
 export const refreshOAuthCredential = (provider: string, credentialID: string) => agentFetch<{ credential_id: string; provider: string; expires_at?: string; updated_at: string; revoked_at?: string | null }>(`/api/agent/v1/auth/oauth/${encodeURIComponent(provider)}/refresh`, { method: "POST", body: JSON.stringify({ credential_id: credentialID }) });
 export const revokeOAuthCredential = (provider: string, credentialID: string) => agentFetch<void>(`/api/agent/v1/auth/oauth/${encodeURIComponent(provider)}/revoke`, { method: "POST", body: JSON.stringify({ credential_id: credentialID }) });
+export const fetchAgentHealth = () => agentFetch<AgentHealth>("/api/agent/v1/health");
 
 function agentHeaders(): Record<string, string> {
   if (!agentSession) return {};

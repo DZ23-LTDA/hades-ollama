@@ -46,7 +46,8 @@ known_limits:
   - credenciais/IdP/WhatsApp/MCP/deploy externos continuam BLOCKED_EXTERNAL ou NOT_CONFIGURED
 CI final b4848398: PASS — test.yaml run 37003763891 (Ubuntu/macOS/Windows), class-a-plus-integrity run 37003766034, dz23-agentic-quality run 37003768562.
   - U8 simple/advanced disclosure: PASS (persistent accessible toggle; simple hides technical Agentic Control Center/account diagnostics; advanced exposes them; 275 frontend tests; desktop/mobile screenshots with zero console/HTTP errors)
-next_action: continue U10-U12, then resilience E1-E7 and accessibility D2-D7; external-only closure remains signed installer credentials, real external IdP/devices/HA, and live provider homologation
+  - U10 Central de Saúde: PASS (GET /api/agent/v1/health retorna status, timestamp e subsistemas agent/store/queue/sandbox; UI tem estados loading/erro, Corrigir/Detalhes honestos; desktop/mobile sem erros)
+next_action: continue U11 entrega de artefato e U12 proteção de ação externa; depois E1-E7 e D2-D7
 ```
 
 
