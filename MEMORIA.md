@@ -731,3 +731,8 @@ Implementei a **Central de Saúde** baseada no backend real. `GET /api/agent/v1/
 ## U11 — 2026-10-02 13:32 UTC — Claude
 
 Implementei a entrega rastreável no Agentic Console. Missões agora exibem um card real com estado da entrega, número de arquivos, tamanho, prefixo e checksum SHA-256 completo expandível, além de download autenticado com IDs codificados. Missões sem arquivo informam honestamente que não há artefato para baixar. Gates locais: `go build ./...`, `go test ./internal/agent ./server`, typecheck, lint, 275 testes Vitest, build, contratos e integrity passaram. Próximo passo: U12 — proteção compreensível para ações externas.
+
+
+## U12 — 2026-10-02 13:34 UTC — Claude
+
+Melhorei a proteção compreensível de ações externas no Agentic Console. Cada aprovação pendente agora explica em pt-BR o risco inferido — envio/publicação, gasto/anúncio, escrita/deploy ou ação desconhecida — e informa claramente que nada é executado antes de decisão explícita validada pelo servidor; o motivo continua obrigatório. Não alterei o modelo de segurança nem adicionei autoaprovação. Gates locais: typecheck, lint, 275 testes Vitest, build, `go build ./...`, `go test ./internal/agent ./server`, contratos e integrity passaram. Próximo passo: E1-E7 e D2-D7; bloqueios externos honestos permanecem.

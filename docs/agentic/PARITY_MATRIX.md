@@ -185,3 +185,5 @@ A falha P1 observada na auditoria live foi corrigida: o catálogo de integraçõ
 - **U10 Central de Saúde:** `VALIDADO COM DADO REAL` — health backend com subsistemas e estados loading/erro/retry/detalhes; evidência desktop/mobile em `docs/evidencias/u10-health-*-20261002.png`.
 
 - **U11 Entrega de artefato:** `VALIDADO COM DADO REAL` — card de entrega com checksum verificável e download autenticado; estado vazio honesto quando a missão não produz arquivo.
+
+- **U12 Aprovação compreensível:** `VALIDADO` — ações sensíveis exibem risco e explicação antes da decisão; execução permanece bloqueada até aprovação server-side válida.

@@ -25,6 +25,14 @@ type OrchestrationTask = { id: string; role: string; state: string; output?: str
 type OrchestrationJob = { id: string; objective: string; state: string; summary?: string; conflicts?: string[]; tasks: OrchestrationTask[] };
 type ResearchReport = { query: string; summary: string; citations: Array<{ url: string; title?: string; excerpt?: string }>; sources: Array<{ url: string; title?: string; error?: string }> };
 
+function approvalExplanation(approval: { step_id: string; policy?: string }): string {
+  const value = `${approval.step_id} ${approval.policy ?? ""}`.toLowerCase();
+  if (/send|message|whatsapp|email|publish|social/.test(value)) return "Pode enviar ou publicar conteúdo fora do Hades. Revise destinatário, texto e escopo antes de decidir.";
+  if (/spend|budget|payment|purchase|ads|contract/.test(value)) return "Pode gerar gasto, compromisso financeiro ou anúncio. Confirme valor, limite e destinatário antes de decidir.";
+  if (/write|delete|merge|deploy|external/.test(value)) return "Pode alterar arquivos, publicar ou modificar um serviço externo. Verifique o resumo e o projeto afetado.";
+  return "Esta ação foi bloqueada preventivamente pelo servidor até uma decisão explícita. Revise o contexto antes de decidir.";
+}
+
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
   return agentFetch<T>(path, init);
 }
@@ -350,6 +358,8 @@ export default function AgenticConsole() {
                     return (
                       <div key={approval.id} className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 dark:border-amber-900 dark:bg-amber-950/30">
                         <p className="text-xs text-amber-800 dark:text-amber-200">{approval.step_id}</p>
+                        <p className="mt-2 text-xs leading-5 text-amber-900 dark:text-amber-100" role="note">{approvalExplanation(approval)}</p>
+                        <p className="mt-2 text-[11px] text-amber-800/80 dark:text-amber-200/80">Nada será executado enquanto a decisão não for validada pelo servidor. A aprovação não pode ser feita automaticamente pela missão.</p>
                         <label className="mt-3 block text-xs font-medium text-amber-900 dark:text-amber-100" htmlFor={`approval-reason-${approval.id}`}>Motivo da decisão</label>
                         <textarea id={`approval-reason-${approval.id}`} aria-label={`Motivo da decisão para ${approval.step_id}`} maxLength={512} value={reason} onChange={(event) => setApprovalReasons((current) => ({ ...current, [approval.id]: event.target.value }))} placeholder="Explique por que esta ação deve ser aprovada ou rejeitada" className="mt-1 min-h-16 w-full resize-y rounded-lg border border-amber-300 bg-white/70 px-2 py-2 text-xs text-neutral-900 outline-none focus:border-amber-500 dark:border-amber-800 dark:bg-neutral-950/50 dark:text-neutral-100" />
                         <div className="mt-3 flex gap-2">
