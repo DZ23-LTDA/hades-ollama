@@ -454,6 +454,41 @@ func TestSupervisorResumesPendingMissionsAfterRestart(t *testing.T) {
 	}
 }
 
+func TestSupervisorResumesObservingMissionAfterRestart(t *testing.T) {
+	runtime, _, _ := setupTestSupervisorRuntime(t)
+	ctx := context.Background()
+
+	// AutoRun is false, so the only reason this mission may resume is that it
+	// was persisted in the transient OBSERVING state before a crash (E3).
+	mission, err := runtime.CreateMission(ctx, CreateMissionRequest{
+		Objective:      "Missão interrompida enquanto observava",
+		Model:          "qwen2.5-coder:7b",
+		OrganizationID: LocalOrganizationID,
+		AutoRun:        false,
+	})
+	if err != nil {
+		t.Fatalf("create mission: %v", err)
+	}
+
+	stored, err := runtime.GetMission(mission.ID)
+	if err != nil {
+		t.Fatalf("get mission: %v", err)
+	}
+	stored.State = MissionObserving
+	stored.Version++
+	if err := runtime.store.PutMission(stored); err != nil {
+		t.Fatalf("persist observing mission: %v", err)
+	}
+
+	res, err := runtime.Supervisor().Tick(ctx, time.Now().UTC())
+	if err != nil {
+		t.Fatalf("tick failed: %v", err)
+	}
+	if res.MissionsResumed < 1 {
+		t.Fatalf("expected the OBSERVING mission to be re-enqueued on restart, resumed=%d", res.MissionsResumed)
+	}
+}
+
 // 8. TestSupervisorDaemonStartStop verifies that the background ticker runs ticks and stops cleanly.
 func TestSupervisorDaemonStartStop(t *testing.T) {
 	runtime, _, _ := setupTestSupervisorRuntime(t)

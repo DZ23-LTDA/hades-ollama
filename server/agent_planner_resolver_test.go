@@ -38,3 +38,24 @@ func TestMultiProviderPlannerResolverRejectsMissingModel(t *testing.T) {
 		t.Fatal("missing model must fail closed")
 	}
 }
+
+func TestRoutePreferenceFromEnv(t *testing.T) {
+	cases := map[string]multillm.RoutePreference{
+		"":             multillm.RoutePreferenceAuto,
+		"desconhecido": multillm.RoutePreferenceAuto,
+		"fastest":      multillm.RoutePreferenceFastest,
+		"rápido":       multillm.RoutePreferenceFastest,
+		"velocidade":   multillm.RoutePreferenceFastest,
+		"quality":      multillm.RoutePreferenceBestQuality,
+		"melhor":       multillm.RoutePreferenceBestQuality,
+		"cheapest":     multillm.RoutePreferenceCheapest,
+		"barato":       multillm.RoutePreferenceCheapest,
+		" CUSTO ":      multillm.RoutePreferenceCheapest,
+	}
+	for in, want := range cases {
+		t.Setenv("OLLAMA_AGENT_ROUTE_PREFERENCE", in)
+		if got := routePreferenceFromEnv(); got != want {
+			t.Fatalf("routePreferenceFromEnv(%q) = %q, want %q", in, got, want)
+		}
+	}
+}

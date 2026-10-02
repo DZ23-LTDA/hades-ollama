@@ -22,6 +22,11 @@ func signWhatsAppBody(body, secret string) string {
 
 func setupWhatsAppTestServer(t *testing.T) (*gin.Engine, *agent.Runtime, *agent.WhatsAppGateway) {
 	gin.SetMode(gin.TestMode)
+	// Pin a loopback host so the agent API initializes in local (no-auth) mode
+	// deterministically. Without this the test inherits the ambient OLLAMA_HOST;
+	// a non-loopback value (e.g. 0.0.0.0) flips agentAuthRequired() to true and
+	// the admin write returns 403, making the test environment-dependent (E9).
+	t.Setenv("OLLAMA_HOST", "127.0.0.1:11434")
 	r := gin.New()
 
 	runtime, err := agent.NewRuntime(agent.RuntimeConfig{

@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -25,6 +26,11 @@ func mcpSkillRegistrationContext(t *testing.T, body string, organizationID strin
 	gin.SetMode(gin.TestMode)
 	root := t.TempDir()
 	command := filepath.Join(root, "mcp-server")
+	// Windows determines "executable" by extension (.exe/.com), not a mode bit,
+	// so the fixture needs an executable extension there to be accepted (E9).
+	if runtime.GOOS == "windows" {
+		command += ".exe"
+	}
 	if err := writeExecutableFixture(command); err != nil {
 		t.Fatal(err)
 	}

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"math/rand/v2"
 	"os"
 	"path/filepath"
 	"sort"
@@ -423,10 +424,15 @@ func (q *JobQueue) Nack(claim QueueJob, runErr error) (QueueJob, error) {
 			return q.persistLocked(job)
 		}
 		job.Status = QueuePending
-		backoff := time.Duration(1<<(job.Attempts-1)) * time.Second
-		if backoff > 5*time.Minute {
-			backoff = 5 * time.Minute
+		base := time.Duration(1<<(job.Attempts-1)) * time.Second
+		if base > 5*time.Minute {
+			base = 5 * time.Minute
 		}
+		// Equal jitter: spread retries across [base/2, base] so a burst of jobs
+		// that fail at the same instant do not all retry in lockstep (thundering
+		// herd against the same downstream dependency).
+		half := base / 2
+		backoff := half + time.Duration(rand.Int64N(int64(half)+1))
 		setQueueAvailableAt(&job, now.Add(backoff))
 		result = job
 		return q.persistLocked(job)

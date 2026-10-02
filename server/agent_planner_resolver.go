@@ -82,7 +82,7 @@ func (r multiProviderPlannerResolver) ResolvePlannerForMission(ctx context.Conte
 	}
 	if r.registry != nil {
 		selectable := r.registry.CleanSelectableModels(ctx, newServerEgressClient("server.planner.discovery", false))
-		decision, err := r.registry.Route(multillm.RouteRequest{RequiredCapabilities: required, Path: "/api/chat", SelectableModels: selectable})
+		decision, err := r.registry.Route(multillm.RouteRequest{RequiredCapabilities: required, Path: "/api/chat", SelectableModels: selectable, Preference: routePreferenceFromEnv()})
 		if err == nil {
 			planner, resolveErr := r.ResolvePlanner(decision.Model.Provider, decision.Model.ID)
 			if resolveErr == nil {
@@ -103,3 +103,20 @@ func (r multiProviderPlannerResolver) ResolvePlannerForMission(ctx context.Conte
 }
 
 var _ agent.PlannerResolver = multiProviderPlannerResolver{}
+
+// routePreferenceFromEnv maps OLLAMA_AGENT_ROUTE_PREFERENCE (with pt-BR aliases)
+// to a router preference so the user can bias model selection toward speed,
+// quality or cost without code changes (G9). An unset/unknown value keeps the
+// balanced default.
+func routePreferenceFromEnv() multillm.RoutePreference {
+	switch strings.ToLower(strings.TrimSpace(os.Getenv("OLLAMA_AGENT_ROUTE_PREFERENCE"))) {
+	case "fastest", "rapido", "rápido", "speed", "velocidade":
+		return multillm.RoutePreferenceFastest
+	case "quality", "qualidade", "best", "melhor":
+		return multillm.RoutePreferenceBestQuality
+	case "cheapest", "barato", "cost", "custo":
+		return multillm.RoutePreferenceCheapest
+	default:
+		return multillm.RoutePreferenceAuto
+	}
+}

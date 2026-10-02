@@ -92,10 +92,9 @@ func TestModelOptionsNumCtxPriority(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Set or clear environment variable
-			if tt.envContextLen != "" {
-				t.Setenv("OLLAMA_CONTEXT_LENGTH", tt.envContextLen)
-			}
+			// Always assign (empty clears) so an ambient OLLAMA_CONTEXT_LENGTH
+			// cannot leak into the "nothing set" cases and change the default.
+			t.Setenv("OLLAMA_CONTEXT_LENGTH", tt.envContextLen)
 
 			// Create server with VRAM-based default
 			s := &Server{
@@ -220,6 +219,9 @@ func TestModelOptionsEmbeddingNumBatchDefault(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			// Clear any ambient OLLAMA_CONTEXT_LENGTH so the VRAM-based
+			// defaultNumCtx drives the embedding batch cap deterministically.
+			t.Setenv("OLLAMA_CONTEXT_LENGTH", "")
 			s := &Server{defaultNumCtx: tt.defaultNumCtx}
 			m := &Model{
 				Options: tt.modelOpts,

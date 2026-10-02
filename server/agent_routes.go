@@ -367,6 +367,8 @@ func (a *agentAPI) register(r *gin.Engine) {
 	group.GET("/health", a.health)
 	group.GET("/grok/status", a.grokStatus)
 	group.GET("/config/safe", a.safeConfig)
+	group.GET("/diagnostics", a.diagnostics)
+	group.GET("/backup", a.downloadBackup)
 	group.GET("/auth/session", a.authSession)
 	group.POST("/auth/logout", a.authLogout)
 	group.POST("/auth/dev/token", a.devToken)
@@ -495,6 +497,7 @@ func (a *agentAPI) register(r *gin.Engine) {
 	group.DELETE("/projects/:id", a.deleteProject)
 	group.POST("/projects/:id/memories", a.addMemory)
 	group.GET("/projects/:id/memories", a.searchMemories)
+	group.GET("/projects/:id/ask", a.askProjectDocuments)
 	group.GET("/collab/:project_id", a.collabSnapshot)
 	group.GET("/collab/:project_id/stream", a.collabStream)
 	group.POST("/collab/:project_id/comments", a.collabComment)
@@ -805,18 +808,41 @@ func (a *agentAPI) health(c *gin.Context) {
 	if sandboxStatus == "" {
 		sandboxStatus = "best-effort"
 	}
+	// Real queue depth instead of a static label: surface how much work is
+	// pending/running and whether anything has landed in the dead-letter queue.
+	pending, running, dead := 0, 0, 0
+	if a.runtime != nil {
+		pending = len(a.runtime.QueueJobs(agent.QueuePending))
+		running = len(a.runtime.QueueJobs(agent.QueueRunning))
+		dead = len(a.runtime.QueueJobs(agent.QueueDeadLetter))
+	}
 	status := "ok"
 	if !runtimeReady {
 		status = "degraded"
+	}
+	queueHealth := "ok"
+	if dead > 0 {
+		// Dead-lettered jobs are a real, actionable problem; reflect it.
+		queueHealth = "degraded"
+		if status == "ok" {
+			status = "degraded"
+		}
 	}
 	c.JSON(http.StatusOK, gin.H{
 		"status":     status,
 		"runtime":    "agent-v1",
 		"checked_at": time.Now().UTC(),
 		"subsystems": gin.H{
-			"agent":   gin.H{"status": map[bool]string{true: "ok", false: "degraded"}[runtimeReady], "detail": "Motor de missões"},
-			"store":   gin.H{"status": storeStatus, "detail": "Persistência de missões e configurações"},
-			"queue":   gin.H{"status": queueStatus, "detail": "Fila de execução"},
+			"agent": gin.H{"status": map[bool]string{true: "ok", false: "degraded"}[runtimeReady], "detail": "Motor de missões"},
+			"store": gin.H{"status": storeStatus, "detail": "Persistência de missões e configurações"},
+			"queue": gin.H{
+				"status":      queueStatus,
+				"health":      queueHealth,
+				"detail":      "Fila de execução",
+				"pending":     pending,
+				"running":     running,
+				"dead_letter": dead,
+			},
 			"sandbox": gin.H{"status": sandboxStatus, "detail": "Execução isolada"},
 		},
 	})
@@ -1766,6 +1792,39 @@ func (a *agentAPI) searchMemories(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"project_id": c.Param("id"), "memories": memories})
+}
+
+// askProjectDocuments answers a question strictly from the project's indexed
+// documents (RAG, G1): it retrieves the most relevant sources above a relevance
+// threshold and returns a cited grounded-context block plus the citations. When
+// nothing relevant is indexed it returns grounded=false and a context that tells
+// the model to say it did not find the information, so the UI never fabricates.
+func (a *agentAPI) askProjectDocuments(c *gin.Context) {
+	if _, err := a.projectForRequest(c); err != nil {
+		writeAgentError(c, statusForAgentError(err), err)
+		return
+	}
+	query := strings.TrimSpace(c.Query("q"))
+	if query == "" {
+		writeAgentError(c, http.StatusBadRequest, errors.New("q (consulta) é obrigatório"))
+		return
+	}
+	const (
+		askLimit    = 8
+		askMinScore = 0.2 // relevance gate: unrelated queries return no sources
+	)
+	prompt, citations, err := a.context.GroundedAnswerContext(c.Request.Context(), c.Param("id"), query, askLimit, askMinScore)
+	if err != nil {
+		writeAgentError(c, http.StatusBadRequest, err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"project_id": c.Param("id"),
+		"query":      query,
+		"context":    prompt,
+		"citations":  citations,
+		"grounded":   len(citations) > 0,
+	})
 }
 
 func (a *agentAPI) missions(c *gin.Context) {

@@ -1342,9 +1342,25 @@ func (r *Runtime) resumePending(ctx context.Context) error {
 				continue
 			}
 		}
-		resume := mission.State == MissionRunning || mission.State == MissionRecovering || (mission.State == MissionReady && mission.AutoRun)
+		// MissionObserving is a transient state persisted right before a tool or
+		// observation runs; a crash in that window must be re-enqueued too, or the
+		// mission is stranded forever. The execution entry point accepts it.
+		resume := mission.State == MissionRunning || mission.State == MissionRecovering || mission.State == MissionObserving || (mission.State == MissionReady && mission.AutoRun)
 		if !resume || !r.approvalsReady(mission) {
 			continue
+		}
+		// In-flight states (Running/Observing) are persisted mid-execution and are
+		// not directly enqueueable; move them to Recovering so the queue accepts the
+		// resume. Recovering and Ready+AutoRun already pass EnqueueMission's guard.
+		if mission.State == MissionRunning || mission.State == MissionObserving {
+			expectedVersion := mission.Version
+			mission.State = MissionRecovering
+			mission.Version++
+			mission.UpdatedAt = time.Now().UTC()
+			if err := r.store.PutMissionIfVersion(mission, expectedVersion); err != nil {
+				recoveryErrors = append(recoveryErrors, fmt.Errorf("mark mission %s recovering: %w", mission.ID, err))
+				continue
+			}
 		}
 		if r.queue != nil {
 			if err := r.queue.recoverStateForRestart(); err != nil {

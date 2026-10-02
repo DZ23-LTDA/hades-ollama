@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"net"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
@@ -72,6 +74,41 @@ func TestPostgresRuntimeFailsClosedEvenWhenAuthIsEnabled(t *testing.T) {
 	t.Setenv("OLLAMA_AGENT_AUTH_REQUIRED", "true")
 	if _, err := agent.NewRuntime(agent.RuntimeConfig{Store: &agent.PostgresStore{}, WorkspaceRoot: t.TempDir(), DataRoot: t.TempDir()}); !errors.Is(err, agent.ErrPostgresTenantIsolationUnavailable) {
 		t.Fatalf("PostgreSQL runtime construction error=%v, want tenant-isolation fail-closed error", err)
+	}
+}
+
+func TestGenerateRoutesDegradesWhenAgentRuntimeUnavailable(t *testing.T) {
+	// When the optional agentic runtime cannot initialize (here: Postgres is
+	// configured but the mandatory tenant context key is missing), the server
+	// must still come up and serve the core Ollama API instead of refusing to
+	// start. Regression guard for graceful degradation (E1).
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("OLLAMA_AGENT_DATABASE_URL", "postgres://invalid.invalid/unused")
+	t.Setenv("OLLAMA_AGENT_TENANT_CONTEXT_KEY", "")
+	t.Setenv("OLLAMA_AGENT_REDIS_URL", "")
+	t.Setenv("OLLAMA_DZ23_CONFIG", "")
+
+	// Sanity: this configuration really does fail runtime init.
+	if _, err := newDefaultAgentRuntime(); err == nil {
+		t.Fatal("expected newDefaultAgentRuntime to fail with missing tenant key")
+	}
+
+	server := &Server{addr: &net.TCPAddr{IP: net.ParseIP("127.0.0.1"), Port: 11434}}
+	handler, err := server.GenerateRoutes()
+	if err != nil {
+		t.Fatalf("GenerateRoutes() error = %v, want nil (core must stay up)", err)
+	}
+	if server.agentRuntime != nil {
+		t.Fatal("agentRuntime should remain nil when init failed")
+	}
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/api/version", nil)
+	req.Host = "127.0.0.1:11434"
+	req.RemoteAddr = "127.0.0.1:52000"
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("GET /api/version = %d, want 200 (core route must work without the agent)", rec.Code)
 	}
 }
 

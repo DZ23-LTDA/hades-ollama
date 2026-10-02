@@ -150,6 +150,31 @@ func TestLargeUploadProjectImportStreamsZipAndCreatesIsolatedWorktree(t *testing
 	}
 }
 
+func TestExtractProjectArchiveEnforcesAggregateBudgetOnRealBytes(t *testing.T) {
+	original := maxImportedArchiveBytes
+	t.Cleanup(func() { maxImportedArchiveBytes = original })
+	maxImportedArchiveBytes = 1024
+
+	// Three 512-byte files total 1536 bytes of real content, over the 1024 budget.
+	over := projectImportZIP(t, map[string]string{
+		"a.txt": strings.Repeat("a", 512),
+		"b.txt": strings.Repeat("b", 512),
+		"c.txt": strings.Repeat("c", 512),
+	})
+	if err := extractProjectArchive(bytes.NewReader(over), int64(len(over)), t.TempDir()); !errors.Is(err, ErrImportArchiveTooLarge) {
+		t.Fatalf("over-budget archive: err = %v, want ErrImportArchiveTooLarge", err)
+	}
+
+	// Two 400-byte files total 800 bytes, under budget: extraction must succeed.
+	under := projectImportZIP(t, map[string]string{
+		"a.txt": strings.Repeat("a", 400),
+		"b.txt": strings.Repeat("b", 400),
+	})
+	if err := extractProjectArchive(bytes.NewReader(under), int64(len(under)), t.TempDir()); err != nil {
+		t.Fatalf("under-budget archive: err = %v, want nil", err)
+	}
+}
+
 func TestProjectImportRejectsTraversalArchive(t *testing.T) {
 	importer, _, _ := newProjectImporterFixture(t)
 	archive := projectImportZIP(t, map[string]string{"../../escape.txt": "nope"})
