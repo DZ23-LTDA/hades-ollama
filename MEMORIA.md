@@ -1,7 +1,7 @@
 ---
 projeto: ollama-classe-a-plus
 status: RELEASE CANDIDATE VALIDADO — gates locais e test.yaml verde; assinatura Windows preparada, ainda unsigned sem configuração SignPath
-atualizado: 2026-10-01 20:13 UTC
+atualizado: 2026-10-02 UTC
 ultima_ia: Claude (Opus 4.8)
 tags: [projeto, paridade-manus, ui-2, import-project, accessibility, aud-fix-2, local-tests]
 ---
@@ -36,6 +36,7 @@ automatizado + execução real reproduzível em navegador (desktop e mobile), se
 - **Próximo passo:** executar o `test.yaml` no SHA publicado e confirmar Ubuntu/macOS/Windows, race e `go_mod_tidy` verdes; se o runner macOS ainda falhar, usar o log do job para corrigir somente a causa reproduzível.
 
 ## Histórico de sessões
+- **2026-10-02 UTC — Claude (Opus 4.8) — renome do instalador para HadesSetup:** o instalador Windows ainda saía como `OllamaClasseAPlusSetup.exe` (nome legado), apesar do app já instalar como "Hades" (`#define MyAppName "Hades"`). Renomeei `OutputBaseFilename` em `app/ollama.iss` para `HadesSetup` e alinhei todas as referências ao artefato: `.github/workflows/dz23-windows-installer.yaml` (upload SignPath, replace do assinado, checksum `HadesSetup.exe.sha256`, nome do artefato `HadesSetup-windows-amd64-{signed|unsigned}`), `.github/workflows/release.yaml` (upload `bundles-windows` e verificação de artefatos obrigatórios) e a URL de exemplo em `app/updater/update_source_test.go`. O auto-updater não é afetado: usa glob `*.exe` e valida o host, não o nome do arquivo (`Installer = "OllamaSetup.exe"` em `updater_windows.go` é o default upstream). Evidência: `go test ./app/updater/ -run TestUpdateURLAllowedOnlyForThisDistribution` PASS; `grep` confirma 0 referências ao nome legado fora de entradas históricas deste MEMORIA. Nota: `TestIsInstallerRunning` dá panic local em `IsProcRunning` (syscall Windows) — pré-existente e sem relação com esta mudança. O instalador unsigned já entregue ao usuário continua com o nome antigo; o próximo build de CI produzirá `HadesSetup.exe`. Próximo passo: ao mergear o PR #43 (wiring de UI do AskDocumentsPanel/DataToolsPanel), regerar o instalador para capturar as telas novas + o nome HadesSetup.
 - **2026-10-02 01:10 UTC — Bundle/DevEx:** confirmei que o splitting nativo do Vite já separa linguagens sob demanda; uma tentativa de `manualChunks` inflou Shiki para 9,5 MB e foi removida. Foi adicionado `scripts/check-bundle-budget.mjs`, com orçamento do entry JS de 2 MB bruto/600 KB gzip; build real mediu 1.823.863 bytes/530.772 gzip e passou. Frontend: 39 arquivos e 265 testes Vitest passaram.
 
 
