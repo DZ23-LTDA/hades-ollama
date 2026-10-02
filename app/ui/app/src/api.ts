@@ -15,6 +15,7 @@ import { parseJsonlFromResponse } from "./util/jsonl-parsing";
 import { ollamaClient as ollama } from "./lib/ollama-client";
 import type { ModelResponse } from "ollama/browser";
 import { API_BASE, OLLAMA_DOT_COM } from "./lib/config";
+import { timeoutSignal } from "./lib/fetchTimeout";
 
 // Extend Model class with utility methods
 declare module "@/gotypes" {
@@ -161,7 +162,9 @@ export async function fetchAgentNotifications(limit = 20): Promise<AgentNotifica
 }
 
 export async function getChats(): Promise<ChatsResponse> {
-  const response = await fetch(`${API_BASE}/api/v1/chats`);
+  const response = await fetch(`${API_BASE}/api/v1/chats`, {
+    signal: timeoutSignal(),
+  });
   if (!response.ok) {
     throw new Error(`Failed to fetch chats: ${response.status}`);
   }
@@ -170,7 +173,9 @@ export async function getChats(): Promise<ChatsResponse> {
 }
 
 export async function getChat(chatId: string): Promise<ChatResponse> {
-  const response = await fetch(`${API_BASE}/api/v1/chat/${chatId}`);
+  const response = await fetch(`${API_BASE}/api/v1/chat/${chatId}`, {
+    signal: timeoutSignal(),
+  });
   if (!response.ok) {
     throw new Error(`Failed to fetch chat: ${response.status}`);
   }
