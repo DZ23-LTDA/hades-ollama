@@ -110,7 +110,7 @@ export function EndpointPage() {
             <button
               type="button"
               disabled
-              title="NOT_CONFIGURED: nenhum provedor de computador em nuvem foi configurado"
+              title="Ainda não configurado: nenhum provedor de computador em nuvem foi configurado"
               className="inline-flex shrink-0 cursor-not-allowed items-center gap-2 rounded-xl bg-neutral-200 px-4 py-2 text-sm font-medium text-neutral-500 dark:bg-neutral-800 dark:text-neutral-500"
             >
               <PlusIcon className="h-4 w-4" />
@@ -160,7 +160,7 @@ export function EndpointPage() {
                   </div>
                   <div className="flex items-center justify-between py-1">
                     <span className="text-neutral-400">Permissão de Agente:</span>
-                    <span className="font-medium">Total com HITL Approval</span>
+                    <span className="font-medium">Total com aprovação humana</span>
                   </div>
                 </div>
               </div>
@@ -169,13 +169,13 @@ export function EndpointPage() {
                 <button
                   type="button"
                   disabled
-                  title="NOT_CONFIGURED: acesso remoto exige um endpoint e aprovação configurados"
+                  title="Ainda não configurado: acesso remoto exige um endpoint e aprovação configurados"
                   className="w-full cursor-not-allowed rounded-xl bg-neutral-200 py-2.5 text-sm font-semibold text-neutral-500 dark:bg-neutral-800 dark:text-neutral-500"
                 >
                   Acesso remoto (não configurado)
                 </button>
                 <p className="text-center text-xs text-neutral-500 dark:text-neutral-400" role="status">
-                  NOT_CONFIGURED — este host local não autoriza acesso remoto automaticamente.
+                  Ainda não configurado — este host local não autoriza acesso remoto automaticamente.
                 </p>
                 <div className="flex items-center gap-2">
                   <a
@@ -214,7 +214,7 @@ export function EndpointPage() {
                 <button
                   type="button"
                   disabled
-                  title="NOT_CONFIGURED: pareamento de outro computador ainda não está disponível"
+                  title="Ainda não configurado: pareamento de outro computador ainda não está disponível"
                   className="w-full cursor-not-allowed rounded-xl border border-neutral-200 bg-neutral-100 py-2 text-xs font-medium text-neutral-500 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-500"
                 >
                   Conectar meu computador (não configurado)
@@ -222,7 +222,7 @@ export function EndpointPage() {
                 <button
                   type="button"
                   disabled
-                  title="NOT_CONFIGURED: controle por telefone exige pareamento explícito"
+                  title="Ainda não configurado: controle por telefone exige pareamento explícito"
                   className="inline-flex w-full cursor-not-allowed items-center justify-center gap-1.5 rounded-xl border border-neutral-200 bg-neutral-100 py-2 text-xs font-medium text-neutral-500 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-500"
                 >
                   <DevicePhoneMobileIcon className="h-4 w-4" />

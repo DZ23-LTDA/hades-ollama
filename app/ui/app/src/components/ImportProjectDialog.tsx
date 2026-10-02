@@ -129,7 +129,7 @@ export function ImportProjectDialog({
             <label className="block text-xs text-neutral-600 dark:text-neutral-300">URL pública ou privada<input value={url} onChange={(event) => setURL(event.target.value)} placeholder="https://github.com/owner/repository" className="mt-1 h-10 w-full rounded-xl border border-neutral-300 bg-transparent px-3 text-sm dark:border-neutral-700" /></label>
             <label className="block text-xs text-neutral-600 dark:text-neutral-300">Ref opcional<input value={ref} onChange={(event) => setRef(event.target.value)} placeholder="main ou tag" className="mt-1 h-10 w-full rounded-xl border border-neutral-300 bg-transparent px-3 text-sm dark:border-neutral-700" /></label>
             <label className="block text-xs text-neutral-600 dark:text-neutral-300">Nome do projeto<input value={githubName} onChange={(event) => setGithubName(event.target.value)} placeholder="Usa o nome do repositório se vazio" className="mt-1 h-10 w-full rounded-xl border border-neutral-300 bg-transparent px-3 text-sm dark:border-neutral-700" /></label>
-            <p className="text-[11px] text-neutral-500">Repositórios privados exigem autenticação GitHub configurada no servidor; sem ela o estado é NOT_CONFIGURED.</p>
+            <p className="text-[11px] text-neutral-500">Repositórios privados exigem autenticação GitHub configurada no servidor; sem ela o estado é “Ainda não configurado”.</p>
             <button type="button" onClick={() => void importGitHub()} disabled={!url.trim() || pending} className="rounded-xl bg-violet-700 px-4 py-2.5 text-xs font-medium text-white disabled:opacity-40">{pending ? "Importando…" : "Importar do GitHub"}</button>
           </div>
         ) : (

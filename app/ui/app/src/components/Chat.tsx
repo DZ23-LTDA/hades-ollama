@@ -238,11 +238,11 @@ export default function Chat({ chatId }: { chatId: string }) {
           </section>
         </div>
       ) : (
-        <main className="flex h-screen w-full flex-col relative allow-context-menu select-none">
+        <main className="flex h-screen w-full flex-col relative allow-context-menu">
           <section
             key={chatId} // This key forces React to recreate the element when chatId changes
             ref={containerRef}
-            className={`flex-1 overflow-y-auto overscroll-contain relative min-h-0 select-none ${isWindows ? "xl:pt-4" : "xl:pt-8"}`}
+            className={`flex-1 overflow-y-auto overscroll-contain relative min-h-0 ${isWindows ? "xl:pt-4" : "xl:pt-8"}`}
           >
             <MessageList
               messages={messages}

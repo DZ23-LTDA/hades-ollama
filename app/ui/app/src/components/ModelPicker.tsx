@@ -161,7 +161,7 @@ export const ModelPicker = forwardRef<
       <button
         ref={ref}
         type="button"
-        title="Select model"
+        title="Selecionar modelo de IA"
         aria-haspopup="listbox"
         aria-expanded={isOpen}
         onClick={() => {
@@ -184,7 +184,7 @@ export const ModelPicker = forwardRef<
         <div className="flex items-center gap-2">
           <span>
             {isDisabled
-              ? "Loading..."
+              ? "Carregando…"
               : buttonLabel || selectedModel?.model || "Selecionar modelo"}
           </span>
         </div>
@@ -211,7 +211,7 @@ export const ModelPicker = forwardRef<
               aria-label="Buscar modelos"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Find model..."
+              placeholder="Buscar modelo…"
               autoCorrect="off"
               className="w-full px-2 py-0.5 bg-transparent border-none border-neutral-200 rounded-md outline-none focus:border-neutral-400 dark:border-neutral-600 dark:focus:border-neutral-400"
             />
@@ -336,7 +336,7 @@ export const ModelList = forwardRef(function ModelList(
     >
       {sortedModels.length === 0 ? (
         <div className="px-3 py-2 text-neutral-500 dark:text-neutral-400">
-          No models found
+          Nenhum modelo encontrado
         </div>
       ) : (
         sortedModels.map((model, index) => {
@@ -367,7 +367,7 @@ export const ModelList = forwardRef(function ModelList(
                 onFocus={() => !unavailable && setHighlightedIndex(index)}
                 title={
                   unavailable
-                    ? model.reason || "Configure a credencial deste provedor para usar o modelo"
+                    ? model.reason || "Configure a conta deste provedor para usar o modelo"
                     : undefined
                 }
                 className={`flex w-full items-center gap-2 px-3 py-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500 ${

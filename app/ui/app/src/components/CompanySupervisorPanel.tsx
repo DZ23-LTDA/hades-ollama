@@ -75,7 +75,7 @@ export function CompanySupervisorPanel() {
               Supervisor Autônomo — Agente Sempre-Ligado
             </h2>
             <p className="text-xs text-neutral-500">
-              Executa rotinas, avança ciclos de negócio e monitora agendamentos com freios HITL de segurança.
+              Executa rotinas, avança ciclos de negócio e monitora agendamentos com freios de aprovação humana.
             </p>
           </div>
         </div>
@@ -161,7 +161,7 @@ export function CompanySupervisorPanel() {
         </div>
 
         <div className="rounded-xl border border-neutral-200/80 p-3 dark:border-neutral-800">
-          <span className="text-[10px] uppercase tracking-wider text-neutral-400">Freios HITL (Aprovação)</span>
+          <span className="text-[10px] uppercase tracking-wider text-neutral-400">Freios de aprovação humana</span>
           <p className="mt-1 text-lg font-bold text-amber-600 dark:text-amber-400">
             {status?.pending_approvals_count ?? 0}
           </p>

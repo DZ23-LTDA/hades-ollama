@@ -210,7 +210,7 @@ export function WhatsAppGatewayPanel() {
           </div>
           <div className="rounded-xl border border-neutral-100 bg-neutral-50 p-3 dark:border-neutral-800/80 dark:bg-neutral-900/50">
             <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-400">
-              Segurança & HITL
+              Segurança e aprovação humana
             </span>
             <p className="mt-1 text-xs font-medium text-neutral-800 dark:text-neutral-200">
               Aprovação via celular (APROVAR/REJEITAR)

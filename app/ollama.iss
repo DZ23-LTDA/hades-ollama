@@ -1,11 +1,11 @@
-; Inno Setup Installer for Ollama
+; Inno Setup Installer for Hades
 ;
 ; To build the installer use the build script invoked from the top of the source tree
 ; 
 ; powershell -ExecutionPolicy Bypass -File .\scripts\build_windows.ps
 
 
-#define MyAppName "Ollama Classe A+"
+#define MyAppName "Hades"
 #if GetEnv("PKG_VERSION") != ""
   #define MyAppVersion GetEnv("PKG_VERSION")
 #else
@@ -80,7 +80,7 @@ SignTool=MySignTool
 SignedUninstaller=yes
 #endif
 
-SetupMutex=OllamaSetupMutex
+SetupMutex=HadesSetupMutex
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
@@ -136,9 +136,9 @@ Type: filesandordirs; Name: "{userstartup}\{#MyAppName}.lnk"
 Type: filesandordirs; Name: "{app}\lib\ollama"
 
 [Messages]
-WizardReady=Ollama
+WizardReady=Hades
 ReadyLabel1=%nLet's get you up and running with your own large language models.
-SetupAppRunningError=Another Ollama installer is running.%n%nPlease cancel or finish the other installer, then click OK to continue with this install, or Cancel to exit.
+SetupAppRunningError=Another Hades installer is running.%n%nPlease cancel or finish the other installer, then click OK to continue with this install, or Cancel to exit.
 
 
 ;FinishedHeadingLabel=Run your first model

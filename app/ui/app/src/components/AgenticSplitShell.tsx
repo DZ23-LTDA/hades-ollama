@@ -177,7 +177,7 @@ export function AgenticSplitShell({
               {isLive && (
                 <span className="flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
                   <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                  LIVE SSE
+                  AO VIVO
                 </span>
               )}
             </div>
@@ -399,7 +399,7 @@ export function AgenticSplitShell({
           {events.length > 0 && (
             <div className="mt-4 rounded-xl border border-neutral-200 bg-neutral-50/50 p-3 dark:border-neutral-800 dark:bg-neutral-950/30">
               <h4 className="text-[11px] font-bold uppercase tracking-wider text-neutral-400 mb-2">
-                Trilha de Execução (SSE)
+                Trilha de execução ao vivo
               </h4>
               <div className="space-y-1.5 font-mono text-xs">
                 {events.slice(-15).map((evt) => (

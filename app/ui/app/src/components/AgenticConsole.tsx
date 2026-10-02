@@ -256,7 +256,7 @@ export default function AgenticConsole() {
                     : "text-neutral-500 hover:text-neutral-800 dark:text-neutral-400"
                 }`}
               >
-                Visão Split-Screen (Manus)
+                Visão dividida
               </button>
               <button
                 type="button"

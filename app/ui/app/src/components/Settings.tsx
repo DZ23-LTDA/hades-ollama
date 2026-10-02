@@ -427,7 +427,7 @@ export default function Settings() {
 
   if (loading || error || !settings) {
     return (
-      <main className="flex min-h-0 w-full flex-1 flex-col select-none dark:bg-neutral-900">
+      <main className="flex min-h-0 w-full flex-1 flex-col dark:bg-neutral-900">
         <div className="w-full flex-1 overflow-y-auto p-6 overscroll-contain">
           <div className="mx-auto max-w-4xl space-y-4">
             <AgenticControlCenter />
@@ -448,7 +448,7 @@ export default function Settings() {
   const isWindows = isWindowsPlatform();
 
   return (
-    <main className="flex min-h-0 w-full flex-1 flex-col select-none dark:bg-neutral-900">
+    <main className="flex min-h-0 w-full flex-1 flex-col dark:bg-neutral-900">
       <div className="w-full p-6 overflow-y-auto flex-1 overscroll-contain">
         <fieldset
           disabled={resettingToDefaults}
@@ -711,7 +711,7 @@ export default function Settings() {
                   <div className="w-full">
                     <Label>Tamanho do contexto</Label>
                     <Description>
-                      Tamanho do contexto determines how much of your conversation
+                      O tamanho do contexto define quanto da sua conversa a IA consegue considerar
                       local LLMs can remember and use to generate responses.
                     </Description>
                     <div className="mt-3">
