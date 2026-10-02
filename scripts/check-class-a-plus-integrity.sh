@@ -304,6 +304,7 @@ if git ls-files | grep -E '(^|/)(\.env|.*\.key|.*\.pem|node_modules/)' >/dev/nul
 fi
 
 git diff --check
+node scripts/verify-design-system.mjs
 echo "Verifying frontend-backend contract matrix..."
 node scripts/verify-contracts.mjs
 

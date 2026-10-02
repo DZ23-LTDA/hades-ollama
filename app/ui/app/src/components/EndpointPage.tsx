@@ -100,7 +100,7 @@ export function EndpointPage() {
           {/* Cabeçalho da seção de Computadores */}
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h1 className="font-rounded text-2xl font-bold tracking-tight text-neutral-950 dark:text-white sm:text-3xl">
+              <h1 className="page-title font-bold sm:text-3xl">
                 Computadores
               </h1>
               <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">

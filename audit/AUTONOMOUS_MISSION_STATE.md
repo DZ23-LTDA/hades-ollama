@@ -1,6 +1,6 @@
 ## Checkpoint vigente — Missão contínua T0/P0 — 2026-10-02 03:58 UTC
 ```yaml
-state: TESTING_D5_DRAWER
+state: TESTING_D6_DESIGN_SYSTEM
 branch: recovery/ollama-full-snapshot
 sha: 6e1dee55
 proofs_local:
@@ -60,7 +60,9 @@ CI final b4848398: PASS — test.yaml run 37003763891 (Ubuntu/macOS/Windows), cl
   - D7 targets/teclado: AUDITADO — controles principais usam elementos nativos e dimensões de toque confortáveis; nenhuma lacuna reproduzível exigiu patch adicional.
   - D5 drawer mobile: PASS — drawer lateral real em viewport <768px, backdrop, Escape, resize reativo; desktop preserva sidebar fixa.
   - D5 browser E2E: PASS — desktop 1440x900 e mobile 390x844, abertura/fechamento, console e HTTP limpos; evidências em docs/evidencias/d5-drawer-*-20261002.png.
-next_action: D6 — unificar design system e remover tailwind.config.js morto; depois D7 axe automatizado.
+  - D6 design system: PASS — removido `app/ui/app/tailwind.config.js` morto; tokens Tailwind v4 e estilos compartilhados `page-title`, `page-description`, `section-title` agora vivem em `src/index.css`; Home, Conectores e Endpoint migrados.
+  - D6 verification: PASS — `scripts/verify-design-system.mjs`, typecheck, lint, 273 testes, build, bundle budget, contratos e integrity.
+next_action: D7 — auditoria automatizada axe em rotas principais e correção das lacunas reproduzíveis.
 ```
 
 

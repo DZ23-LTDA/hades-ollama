@@ -19,6 +19,49 @@
   --font-sans: ui-sans-serif, system-ui, "Segoe UI", sans-serif;
   --font-rounded:
     "SF Pro Rounded", ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+  --color-gray-350: #a1a1aa;
+  --spacing-3_5: 0.875rem;
+  --spacing-4_5: 1.125rem;
+}
+
+@layer components {
+  .page-title {
+    color: #171717;
+    font-family: var(--font-rounded);
+    font-size: 1.875rem;
+    font-weight: 600;
+    letter-spacing: -0.025em;
+    line-height: 2.25rem;
+  }
+  .page-description {
+    color: #737373;
+    font-size: 0.875rem;
+    line-height: 1.5rem;
+    margin-top: 0.75rem;
+    max-width: 42rem;
+  }
+  .section-title {
+    color: #171717;
+    font-size: 0.875rem;
+    font-weight: 600;
+    line-height: 1.25rem;
+  }
+  .theme-dark .page-title,
+  .theme-dark .section-title {
+    color: #ffffff;
+  }
+  .theme-dark .page-description {
+    color: #a3a3a3;
+  }
+  @media (prefers-color-scheme: dark) {
+    .page-title,
+    .section-title {
+      color: #ffffff;
+    }
+    .page-description {
+      color: #a3a3a3;
+    }
+  }
 }
 
 @layer base {

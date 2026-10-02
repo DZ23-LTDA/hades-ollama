@@ -756,3 +756,8 @@ Concluí a triagem de landmarks/foco, estrutura de headings e targets/teclado. N
 ## D5 — 2026-10-02 14:52 UTC — Claude
 
 Implementei drawer mobile real na `SidebarLayout`: sidebar fixa lateral abaixo de 768px, backdrop clicável, fechamento por Escape, listener de resize e foco/labels preservados; desktop mantém a sidebar normal. Reg regressão em `layout.test.tsx` cobre abrir, backdrop e Escape. Gates locais de typecheck, teste direcionado, lint, build, contratos e integrity passaram. E2E real em 1440x900 e 390x844 passou sem erros HTTP/console; evidências `docs/evidencias/d5-drawer-{desktop,mobile}-{closed,open}-20261002.png` e auditoria JSON correspondente. Próximo: D6 — unificar design system e remover configuração Tailwind morta.
+
+
+## D6 — 2026-10-02 16:56 UTC — Claude
+
+Removi `app/ui/app/tailwind.config.js`, que era configuração Tailwind v3 não consumida pelo Vite/Tailwind v4. Migrei os tokens de espaçamento/cor para `src/index.css`, criei os estilos compartilhados `page-title`, `page-description` e `section-title`, e apliquei o título compartilhado em Home, Conectores e Endpoint. Adicionei `scripts/verify-design-system.mjs` ao gate de integridade para impedir regressão. Typecheck, lint, Vitest (273 testes), build, bundle budget, contratos, integrity e diff-check passaram. Próximo: D7 — axe automatizado em rotas principais.
