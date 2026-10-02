@@ -486,7 +486,7 @@ jobs:
 
       - name: Remove UI dependencies before Go package discovery
         shell: bash
-        run: rm -rf app/ui/app/node_modules
+        run: find . -type d -name node_modules -prune -exec rm -rf {} +
 
       - name: go test
         if: always()
@@ -556,6 +556,6 @@ jobs:
           npm run build
       - name: Remove UI dependencies before Go package discovery
         shell: bash
-        run: rm -rf app/ui/app/node_modules
+        run: find . -type d -name node_modules -prune -exec rm -rf {} +
       - name: go test -race
         run: go test -race -count=1 ./...

@@ -36,6 +36,9 @@ automatizado + execução real reproduzível em navegador (desktop e mobile), se
 - **Próximo passo:** executar o `test.yaml` no SHA publicado e confirmar Ubuntu/macOS/Windows, race e `go_mod_tidy` verdes; se o runner macOS ainda falhar, usar o log do job para corrigir somente a causa reproduzível.
 
 ## Histórico de sessões
+- **2026-10-02 01:04 UTC — P0 loopback/CI e release:** Vite passou a usar loopback por padrão com opt-in LAN autenticado; package manager do web fixado em npm e pnpm-lock removido; fixes same-SHA e identidade/checksum do instalador integrados seletivamente. O test.yaml agora remove todas as árvores node_modules antes dos gates Go, corrigindo o atravessamento de links quebrados; `CGO_ENABLED=1 go test -p=2 ./...` e `CGO_ENABLED=0 go build ./...` passaram localmente. Mobile `npm audit --omit=dev --audit-level=high` passou com 0 vulnerabilidades e node-forge corrigido. Próximo: publicar e validar CI remoto, depois P1 de supply-chain/performance.
+
+
 
 - **2026-10-01 21:02 UTC — Gemini — hardening e auditoria E2E:** S1 unificou o classificador zero-trust de IP em `internal/egresspolicy`, consumido por `internal/agent` e `internal/multillm`, preservando bloqueios de loopback, privado, metadata, CGNAT, documentação e DNS rebinding; testes negativos focados passaram. S2 fechou de forma fail-closed o MCP stdio tenant-scoped: sem launcher completo de namespace/rede/seccomp, `CallForOrganization` retorna `BLOCKED_EXTERNAL` e não inicia processo; escopo cross-tenant continua sendo validado antes do bloqueio. E2E real do shell percorreu 10 telas em desktop e mobile com 0 erros HTTP e 0 erros de console. O sandbox forte ainda não é declarado PASS; permanece dependência operacional para habilitar MCP local por tenant. Próximo passo: executar gates completos, revisar auditoria P0/P1 e acompanhar CI do novo commit.
 
