@@ -297,3 +297,10 @@ Nos SHAs `8816da06`, `01d94ae2` e `81b05741`, os workflows `class-a-plus-integri
 - **CI remoto:** NÃO aprovado. Os workflows `class-a-plus-integrity` (`36949729206`) e `dz23-agentic-quality` (`36949729166`) foram rerunados no SHA `2444e6d2`, mas nenhum job iniciou. A annotation oficial do GitHub é: **“The job was not started because your account is locked due to a billing issue.”**
 - **Classificação:** `BLOCKED_EXTERNAL`, não falha de implementação. O bloqueio precisa ser resolvido pelo proprietário da conta/organização no GitHub; não deve ser mascarado por skip, alteração de required checks ou declaração de CI verde.
 - **Ação pendente:** após desbloqueio, rerodar os dois workflows e o `test.yaml` completo, confirmando o mesmo SHA.
+
+
+## Follow-up F1/F2 — 2026-10-02
+
+- **F1 resolvido:** o controle de memória de longo prazo deixou de ser um switch decorativo (`checked={true}` sem persistência) e passou a declarar “Ainda não configurada”.
+- **F2 resolvido:** o Endpoint deriva o estado do host de `/api/tags`, com estados `Verificando…`, `Online` e `Offline`; não há mais claim de Online quando o backend está indisponível.
+- **Evidência local:** `npx tsc -b`, `npm run lint`, `npx vitest run` (266 testes), `npm run build`, `go test ./internal/agent ./server`, `verify-contracts` e `check-class-a-plus-integrity` passaram.

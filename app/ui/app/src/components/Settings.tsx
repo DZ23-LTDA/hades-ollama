@@ -855,13 +855,15 @@ export default function Settings() {
                     Memória de Longo Prazo
                   </div>
                   <div className="text-[11px] text-neutral-500">
-                    Permitir que o agente consulte contexto de sessões e projetos anteriores.
+                    Consulta de contexto entre sessões ainda não está configurada neste ambiente.
                   </div>
                 </div>
-                <Switch
-                  checked={true}
-                  onChange={() => showSalvoConfirmation()}
-                />
+                <span
+                  className="rounded-full bg-neutral-100 px-2.5 py-1 text-[11px] font-semibold text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300"
+                  role="status"
+                >
+                  Ainda não configurada
+                </span>
               </div>
             </div>
           </section>

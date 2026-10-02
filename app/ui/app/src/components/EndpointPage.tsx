@@ -14,6 +14,7 @@ import { AppSidebar } from "@/components/AppSidebar";
 import { SidebarLayout } from "@/components/layout/layout";
 import { SettingsTabs } from "@/components/SettingsTabs";
 import { API_BASE } from "@/lib/config";
+import { endpointHealthLabel, type EndpointHealthStatus } from "@/lib/endpoint";
 import { Link } from "@tanstack/react-router";
 
 function CopyButton({ text, label }: { text: string; label: string }) {
@@ -48,10 +49,15 @@ export function EndpointPage() {
   const [hostname, setHostname] = useState("Este computador");
   const [osName, setOsName] = useState("Local-First");
   const [serverVersion, setServerVersion] = useState("");
+  const [hostStatus, setHostStatus] = useState<EndpointHealthStatus>("checking");
 
   useEffect(() => {
     fetch(`${API_BASE}/api/tags`)
-      .then((response) => (response.ok ? response.json() : { models: [] }))
+      .then((response) => {
+        if (!response.ok) throw new Error(`tags request failed: ${response.status}`);
+        setHostStatus("online");
+        return response.json();
+      })
       .then((body: { models?: Array<{ name?: string; model?: string }> }) => {
         const names = (body.models ?? [])
           .map((item) => item.name ?? item.model ?? "")
@@ -59,7 +65,10 @@ export function EndpointPage() {
         setModels(names);
         setModel((current) => current || names[0] || "");
       })
-      .catch(() => setModels([]));
+      .catch(() => {
+        setHostStatus("offline");
+        setModels([]);
+      });
 
     // Obter hostname local se disponível
     fetch(`${API_BASE}/api/v1/host`)
@@ -124,16 +133,19 @@ export function EndpointPage() {
                         {hostname}
                       </h3>
                       <div className="flex items-center gap-2">
-                        <span className="flex items-center gap-1.5 text-xs font-medium text-emerald-600 dark:text-emerald-400">
-                          <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                          Online
+                        <span
+                          className={`flex items-center gap-1.5 text-xs font-medium ${hostStatus === "online" ? "text-emerald-600 dark:text-emerald-400" : hostStatus === "offline" ? "text-red-600 dark:text-red-400" : "text-neutral-500 dark:text-neutral-400"}`}
+                          role="status"
+                        >
+                          <span className={`h-2 w-2 rounded-full ${hostStatus === "online" ? "bg-emerald-500 animate-pulse" : hostStatus === "offline" ? "bg-red-500" : "bg-neutral-400 animate-pulse"}`} />
+                          {endpointHealthLabel(hostStatus)}
                         </span>
                         <span className="text-xs text-neutral-400">• {osName} / Local-First {serverVersion ? `(v${serverVersion})` : ""}</span>
                       </div>
                     </div>
                   </div>
-                  <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
-                    Host Ativo
+                  <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${hostStatus === "online" ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300" : "bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300"}`}>
+                    {hostStatus === "online" ? "Host Ativo" : hostStatus === "offline" ? "Host Offline" : "Verificando host"}
                   </span>
                 </div>
 

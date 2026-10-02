@@ -18,6 +18,9 @@ proofs_local:
 	  - S3 HITL intent policy and S4 requester separation: PASS (negative tests)
 	  - S5 tenant-scoped connector/MCP secrets: PASS (negative cross-tenant env fallback test)
 	  - S6 GitHub import OAuth scope: PASS (private import tests; non-local org cannot use global env)
+  - S8 loopback default: PASS (Vite resolves loopback unless explicit LAN opt-in; desktop exposes only when settings.Expose is enabled)
+  - F1 long-term memory control: PASS (decorative switch removed; UI says not configured)
+  - F2 endpoint health: PASS (status derives from /api/tags and shows Offline/Verificando instead of claiming Online)
   - Ollama local model: PASS (qwen2.5:0.5b downloaded and generated OK on loopback 127.0.0.1:11435)
   - provider API smoke: PASS for preconfigured OpenAI-compatible endpoint (GET /models HTTP 200; minimal gpt-5-mini chat HTTP 200 with non-empty completion); requested rotated provider keys are not present in this sandbox
   - strict sandbox live executor: BLOCKED_EXTERNAL (delegated cgroup v2 subtree is unavailable; fail-closed tests PASS)
@@ -31,7 +34,7 @@ external_status:
 known_limits:
   - Ollama local validado com qwen2.5:0.5b em 127.0.0.1:11435
   - credenciais/IdP/WhatsApp/MCP/deploy externos continuam BLOCKED_EXTERNAL ou NOT_CONFIGURED
-next_action: configure a real delegated cgroup/seccomp executor, then dispatch and validate test.yaml on the release SHA; external providers without rotated keys remain BLOCKED_EXTERNAL
+next_action: validate test.yaml plus integrity and agentic-quality on the F1/F2 SHA; then proceed to I1 installer and U1 guided model onboarding
 ```
 
 

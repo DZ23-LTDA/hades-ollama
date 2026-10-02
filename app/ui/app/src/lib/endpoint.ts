@@ -5,6 +5,14 @@ export const LOCAL_BASE_URL = "http://localhost:11434";
 
 export type EndpointInfo = { label: string; url: string; hint: string };
 
+export type EndpointHealthStatus = "checking" | "online" | "offline";
+
+export function endpointHealthLabel(status: EndpointHealthStatus): string {
+  if (status === "online") return "Online";
+  if (status === "offline") return "Offline";
+  return "Verificando…";
+}
+
 export function endpoints(base: string = LOCAL_BASE_URL): EndpointInfo[] {
   return [
     {
