@@ -12,9 +12,10 @@ vi.mock("@tanstack/react-query", () => ({
 import { BackendStatusBanner } from "./BackendStatusBanner";
 
 describe("BackendStatusBanner", () => {
-  it("explica que o backend está offline e oferece retry", () => {
+  it("explica que o backend ainda não respondeu e oferece retry", () => {
     const html = renderToStaticMarkup(<BackendStatusBanner />);
-    expect(html).toContain("O backend local está offline");
+    expect(html).toContain("O backend local ainda não respondeu");
+    expect(html).toContain("pode estar iniciando");
     expect(html).toContain("Tentar novamente");
     expect(html).toContain('role="alert"');
     expect(html).toContain('aria-live="assertive"');

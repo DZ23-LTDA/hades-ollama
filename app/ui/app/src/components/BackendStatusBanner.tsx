@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { fetchHealth } from "@/api";
 
 export const BACKEND_OFFLINE_MESSAGE =
-  "O backend local está offline. Suas alterações não foram enviadas.";
+  "O backend local ainda não respondeu. Ele pode estar iniciando — aguarde alguns segundos e tente novamente.";
 
 export function BackendStatusBanner() {
   const health = useQuery({
