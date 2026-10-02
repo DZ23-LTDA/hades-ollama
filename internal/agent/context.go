@@ -677,6 +677,9 @@ func (s *ContextStore) CreateSchedule(schedule Schedule) (Schedule, error) {
 	if schedule.ID == "" {
 		schedule.ID = "sch_" + uuid.NewString()
 	}
+	if !validSnapshotID(schedule.ID) {
+		return Schedule{}, errors.New("schedule id contains invalid path characters")
+	}
 	now := time.Now().UTC()
 	if schedule.NextRunAt.IsZero() || schedule.NextRunAt.Before(now) {
 		schedule.NextRunAt = now.Add(time.Duration(schedule.IntervalSeconds) * time.Second)
@@ -700,9 +703,13 @@ func (s *ContextStore) CreateSchedule(schedule Schedule) (Schedule, error) {
 }
 
 func (s *ContextStore) GetSchedule(id string) (Schedule, error) {
+	id = strings.TrimSpace(id)
+	if !validSnapshotID(id) {
+		return Schedule{}, os.ErrNotExist
+	}
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	schedule, ok := s.schedules[strings.TrimSpace(id)]
+	schedule, ok := s.schedules[id]
 	if !ok {
 		return Schedule{}, os.ErrNotExist
 	}
@@ -760,6 +767,9 @@ func (s *ContextStore) updateScheduleForOrganization(organizationID, id string, 
 	if id == "" {
 		return Schedule{}, errors.New("schedule id is required")
 	}
+	if !validSnapshotID(id) {
+		return Schedule{}, errors.New("schedule id contains invalid path characters")
+	}
 	if strings.TrimSpace(schedule.Objective) == "" {
 		return Schedule{}, errors.New("schedule objective is required")
 	}
@@ -805,6 +815,9 @@ func (s *ContextStore) deleteScheduleForOrganization(organizationID, id string, 
 	id = strings.TrimSpace(id)
 	if id == "" {
 		return errors.New("schedule id is required")
+	}
+	if !validSnapshotID(id) {
+		return errors.New("schedule id contains invalid path characters")
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()

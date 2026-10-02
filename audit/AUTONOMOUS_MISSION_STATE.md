@@ -1,8 +1,8 @@
 ## Checkpoint vigente — Missão contínua T0/P0 — 2026-10-02 03:58 UTC
 ```yaml
-state: EXECUTING_T0_EXTERNAL_ACTIONS_BLOCKED
+state: EXECUTING_P0_GITHUB_AUTH_BLOCKED
 branch: recovery/ollama-full-snapshot
-sha: e697a43d
+sha: 9ba1a2fc
 proofs_local:
   - go build ./...: PASS (após remover node_modules gerado)
   - CGO_ENABLED=0 go build ./...: PASS
@@ -14,16 +14,17 @@ proofs_local:
   - shell E2E 10 telas desktop+mobile: PASS (0 HTTP, 0 console)
   - CI surface classifier: PASS (13 testes)
   - bash integrity syntax check: PASS
+  - schedule traversal hardening: PASS (`go test ./internal/agent -run 'Schedule|ContextStore'` and scoped server tests)
 external_status:
-  - class-a-plus-integrity: BLOCKED_EXTERNAL (nenhuma run criada para e697a43d)
-  - dz23-agentic-quality: BLOCKED_EXTERNAL (nenhuma run criada para e697a43d)
+  - class-a-plus-integrity: e697a43d push run SUCCESS; 9ba1a2fc status UNKNOWN after API credential expiry
+  - dz23-agentic-quality: e697a43d push run SUCCESS; 9ba1a2fc status UNKNOWN after API credential expiry
   - prior evidence: runs 36949729206/36949729166 reached runners, then were cancelled by same-branch concurrency
   - fix_published: concurrency now uses pull_request.number || run_id, matching test.yaml
-  - remaining_reason: GitHub Actions account/service did not enqueue push workflows after e697a43d; permissions API says enabled
+  - remaining_reason: GH_TOKEN and stored gh token both now return HTTP 401 Bad credentials; cannot inspect/push until connector token is refreshed
 known_limits:
   - Ollama local sem modelos instalados neste ambiente
   - credenciais/IdP/WhatsApp/MCP/deploy externos continuam BLOCKED_EXTERNAL ou NOT_CONFIGURED
-next_action: keep T0 marked BLOCKED_EXTERNAL; after Actions service/account is restored, run the two workflows and test.yaml on e697a43d; continue S3/S4/S5/S6/S7 independently now
+next_action: refresh GitHub CLI credentials; verify runs and push local schedule hardening; then continue S3/S4/S5/S6/S7
 ```
 
 
