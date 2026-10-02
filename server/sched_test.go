@@ -400,6 +400,12 @@ func TestSchedRequestsSimpleReloadSameModel(t *testing.T) {
 
 func TestSchedRequestsMultipleLoadedModels(t *testing.T) {
 	slog.Info("TestRequestsMultipleLoadedModels")
+	// This test intentionally loads several models at once. Pin the runner
+	// limits to auto so it is independent of an ambient OLLAMA_MAX_LOADED_MODELS
+	// / OLLAMA_NUM_PARALLEL (a dev box that caps these to 1 would otherwise make
+	// the scheduler refuse the extra models and the test time out). Part of E9.
+	t.Setenv("OLLAMA_MAX_LOADED_MODELS", "0")
+	t.Setenv("OLLAMA_NUM_PARALLEL", "0")
 	ctx, done := context.WithTimeout(t.Context(), 1000*time.Millisecond)
 	defer done()
 	s := InitScheduler(ctx)
