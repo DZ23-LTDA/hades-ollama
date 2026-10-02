@@ -416,6 +416,14 @@ func (r *Runtime) SetAuthStore(store *AuthStore) {
 	}
 }
 
+func (r *Runtime) OAuthAccessTokenForOrganization(organizationID, provider string) (string, error) {
+	if r.authStore == nil {
+		return "", os.ErrNotExist
+	}
+	token, _, err := r.authStore.OAuthAccessTokenForOrganization(organizationID, provider)
+	return token, err
+}
+
 func (r *Runtime) SetConnectorEnabled(id string, enabled bool) error {
 	if r.connectors == nil {
 		return errors.New("connector manager is unavailable")

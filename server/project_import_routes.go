@@ -34,6 +34,15 @@ func (a *agentAPI) importGitHubProject(c *gin.Context) {
 		return
 	}
 	importer.GitHubToken = func() string { return os.Getenv("OLLAMA_GITHUB_TOKEN") }
+	importer.GitHubTokenForOrganization = func(orgID string) string {
+		if token, err := a.scopedRuntime(c).OAuthAccessTokenForOrganization(orgID, "github"); err == nil {
+			return token
+		}
+		if orgID == agent.LocalOrganizationID {
+			return os.Getenv("OLLAMA_GITHUB_TOKEN")
+		}
+		return ""
+	}
 	result, err := importer.ImportGitHub(c.Request.Context(), organizationID, agent.ProjectImportRequest{URL: request.URL, Ref: request.Ref, Name: request.Name})
 	if err != nil {
 		if errors.Is(err, agent.ErrGitHubAuthRequired) {

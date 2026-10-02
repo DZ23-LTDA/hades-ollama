@@ -60,12 +60,13 @@ type ProjectImportResult struct {
 }
 
 type ProjectImporter struct {
-	WorkspaceRoot string
-	DataRoot      string
-	Context       *ContextStore
-	Ingestion     DocumentIngestor
-	HTTPClient    *http.Client
-	GitHubToken   func() string
+	WorkspaceRoot              string
+	DataRoot                   string
+	Context                    *ContextStore
+	Ingestion                  DocumentIngestor
+	HTTPClient                 *http.Client
+	GitHubToken                func() string
+	GitHubTokenForOrganization func(string) string
 }
 
 func NewProjectImporter(workspaceRoot, dataRoot string, store *ContextStore, ingestion DocumentIngestor) *ProjectImporter {
@@ -78,7 +79,9 @@ func (i *ProjectImporter) ImportGitHub(ctx context.Context, organizationID strin
 		return ProjectImportResult{}, err
 	}
 	token := ""
-	if i.GitHubToken != nil {
+	if i.GitHubTokenForOrganization != nil {
+		token = strings.TrimSpace(i.GitHubTokenForOrganization(strings.TrimSpace(organizationID)))
+	} else if i.GitHubToken != nil && strings.TrimSpace(organizationID) == LocalOrganizationID {
 		token = strings.TrimSpace(i.GitHubToken())
 	}
 	client := i.HTTPClient

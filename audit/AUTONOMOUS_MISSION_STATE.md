@@ -2,7 +2,7 @@
 ```yaml
 state: EXECUTING_P0_SECURITY_BACKLOG
 branch: recovery/ollama-full-snapshot
-sha: 9ba1a2fc
+sha: 72819367
 proofs_local:
   - go build ./...: PASS (após remover node_modules gerado)
   - CGO_ENABLED=0 go build ./...: PASS
@@ -14,17 +14,21 @@ proofs_local:
   - shell E2E 10 telas desktop+mobile: PASS (0 HTTP, 0 console)
   - CI surface classifier: PASS (13 testes)
   - bash integrity syntax check: PASS
-  - schedule traversal hardening: PASS (`go test ./internal/agent -run 'Schedule|ContextStore'` and scoped server tests)
+	  - schedule traversal hardening: PASS (`go test ./internal/agent -run 'Schedule|ContextStore'` and scoped server tests)
+	  - S3 HITL intent policy and S4 requester separation: PASS (negative tests)
+	  - S5 tenant-scoped connector/MCP secrets: PASS (negative cross-tenant env fallback test)
+	  - S6 GitHub import OAuth scope: PASS (private import tests; non-local org cannot use global env)
 external_status:
-  - class-a-plus-integrity: SUCCESS (run 36963450294, SHA 3ae0e6b4)
-  - dz23-agentic-quality: SUCCESS (run 36963450321, SHA 3ae0e6b4)
+  - class-a-plus-integrity: SUCCESS (run 36964769681, SHA 72819367)
+  - dz23-agentic-quality: SUCCESS (run 36964769788, SHA 72819367)
   - prior evidence: runs 36949729206/36949729166 reached runners, then were cancelled by same-branch concurrency
   - fix_published: concurrency now uses pull_request.number || run_id, matching test.yaml
-  - prior_auth_issue: GH_TOKEN/stored gh token briefly returned 401; Git credential helper restored read access for verification
+	  - prior_auth_issue: GH_TOKEN/stored gh token briefly returned 401; Git credential helper restored read access for verification
+	  - latest hardening CI: SUCCESS (class-a-plus-integrity and dz23-agentic-quality, SHA 72819367)
 known_limits:
   - Ollama local sem modelos instalados neste ambiente
   - credenciais/IdP/WhatsApp/MCP/deploy externos continuam BLOCKED_EXTERNAL ou NOT_CONFIGURED
-next_action: continue the remaining P0 security backlog; retain CI proof for 3ae0e6b4
+next_action: continue remaining P0 security backlog (S2 strong sandbox, S8 loopback default, S9 HMAC rotation); retain CI proof for 72819367
 ```
 
 
