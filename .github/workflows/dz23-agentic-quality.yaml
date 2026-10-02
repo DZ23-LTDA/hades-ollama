@@ -481,6 +481,9 @@ jobs:
       - name: Web production build
         working-directory: app/ui/app
         run: npm run build
+      - name: Web bundle budget
+        working-directory: app/ui/app
+        run: node scripts/check-bundle-budget.mjs
       - name: Screenshot provenance manifest
         working-directory: app/ui/app
         run: npm run screens:verify

@@ -36,6 +36,9 @@ automatizado + execução real reproduzível em navegador (desktop e mobile), se
 - **Próximo passo:** executar o `test.yaml` no SHA publicado e confirmar Ubuntu/macOS/Windows, race e `go_mod_tidy` verdes; se o runner macOS ainda falhar, usar o log do job para corrigir somente a causa reproduzível.
 
 ## Histórico de sessões
+- **2026-10-02 01:10 UTC — Bundle/DevEx:** confirmei que o splitting nativo do Vite já separa linguagens sob demanda; uma tentativa de `manualChunks` inflou Shiki para 9,5 MB e foi removida. Foi adicionado `scripts/check-bundle-budget.mjs`, com orçamento do entry JS de 2 MB bruto/600 KB gzip; build real mediu 1.823.863 bytes/530.772 gzip e passou. Frontend: 39 arquivos e 265 testes Vitest passaram.
+
+
 - **2026-10-02 01:07 UTC — Supply chain CI:** todas as actions dos workflows foram fixadas em SHAs imutáveis (com tag documental); `dz23-e2e` e `dz23-provider-smoke` ganharam cron semanal e abertura automática de issue em falha agendada. O CI do SHA 8816da06 falhou imediatamente sem steps/runners materializados em ambos os workflows; rerun repetiu o startup failure, então o estado permanece não-verde e será revalidado após este commit.
 
 
