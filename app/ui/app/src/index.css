@@ -187,3 +187,10 @@
     transform: none;
   }
 }
+
+@layer utilities {
+  .text-neutral-400 { color: #525252; }
+  .text-emerald-600 { color: #047857; }
+  .dark\:text-neutral-400:is(.dark *) { color: #a3a3a3; }
+  .dark\:text-emerald-400:is(.dark *) { color: #6ee7b7; }
+}

@@ -184,7 +184,7 @@ export function LibraryPage() {
 
         {/* Abas de Categorias */}
         <div className="border-b border-neutral-200 dark:border-neutral-800">
-          <nav className="flex space-x-2 overflow-x-auto pb-px">
+          <nav aria-label="Filtros da biblioteca" className="flex space-x-2 overflow-x-auto pb-px">
             {categories.map((cat) => {
               const active = activeCategory === cat.id;
               return (

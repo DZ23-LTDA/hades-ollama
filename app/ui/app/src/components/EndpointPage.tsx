@@ -129,9 +129,9 @@ export function EndpointPage() {
                       <ComputerDesktopIcon className="h-6 w-6 text-neutral-900 dark:text-white" />
                     </div>
                     <div>
-                      <h3 className="text-base font-bold text-neutral-900 dark:text-white">
+                      <h2 className="text-base font-bold text-neutral-900 dark:text-white">
                         {hostname}
-                      </h3>
+                      </h2>
                       <div className="flex items-center gap-2">
                         <span
                           className={`flex items-center gap-1.5 text-xs font-medium ${hostStatus === "online" ? "text-emerald-600 dark:text-emerald-400" : hostStatus === "offline" ? "text-red-600 dark:text-red-400" : "text-neutral-500 dark:text-neutral-400"}`}
@@ -202,9 +202,9 @@ export function EndpointPage() {
                 <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-neutral-100 dark:bg-neutral-800">
                   <CloudArrowUpIcon className="h-6 w-6 text-neutral-400" />
                 </div>
-                <h3 className="mt-4 text-base font-semibold text-neutral-900 dark:text-white">
+                <h2 className="mt-4 text-base font-semibold text-neutral-900 dark:text-white">
                   Conectar outro dispositivo
-                </h3>
+                </h2>
                 <p className="mx-auto mt-2 max-w-xs text-xs text-neutral-500 dark:text-neutral-400">
                   Adicione nós remotos, instâncias na nuvem ou conecte seu smartphone para controlar tarefas em andamento.
                 </p>
@@ -326,7 +326,7 @@ export function EndpointPage() {
                   </div>
                   <CopyButton text={`ollama launch claude --model ${model || "qwen2.5-coder:7b"}`} label="Claude Code" />
                 </div>
-                <pre className="mt-3 overflow-x-auto rounded-xl bg-neutral-900 p-3.5 font-mono text-xs leading-5 text-neutral-100 dark:bg-black">
+                <pre tabIndex={0} aria-label="Comando de integração Claude" className="mt-3 overflow-x-auto rounded-xl bg-neutral-900 p-3.5 font-mono text-xs leading-5 text-neutral-100 dark:bg-black">
                   {`ollama launch claude --model ${model || "qwen2.5-coder:7b"}`}
                 </pre>
               </li>
@@ -342,7 +342,7 @@ export function EndpointPage() {
                   </div>
                   <CopyButton text={`ollama launch codex --model ${model || "qwen2.5-coder:7b"}`} label="Codex CLI" />
                 </div>
-                <pre className="mt-3 overflow-x-auto rounded-xl bg-neutral-900 p-3.5 font-mono text-xs leading-5 text-neutral-100 dark:bg-black">
+                <pre tabIndex={0} aria-label="Comando de integração Codex" className="mt-3 overflow-x-auto rounded-xl bg-neutral-900 p-3.5 font-mono text-xs leading-5 text-neutral-100 dark:bg-black">
                   {`ollama launch codex --model ${model || "qwen2.5-coder:7b"}`}
                 </pre>
               </li>

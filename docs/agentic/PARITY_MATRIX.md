@@ -194,3 +194,9 @@ A falha P1 observada na auditoria live foi corrigida: o catálogo de integraçõ
 - **D4 Movimento reduzido:** `VALIDADO` — preferência do sistema desativa motion customizado global relevante.
 
 - **D5-D7 Acessibilidade estrutural:** `AUDITADO` — sem lacunas reproduzíveis em foco, landmarks, headings ou targets/teclado após triagem estática; manter auditoria com navegador/axe para cobertura adicional.
+
+
+### D7 — Acessibilidade automatizada
+- **Estado:** PASS
+- **Prova:** axe-core em 12 combinações desktop/mobile nas seis rotas principais, 0 violações, 0 erros HTTP/console; `docs/evidencias/d7-axe-audit-20261002.json`.
+- **Limite:** auditoria cobre as rotas principais e não substitui teste manual com leitor de tela em cada integração externa.

@@ -567,7 +567,7 @@ export function AppNavigation({ current }: { current: AppSection }) {
 
 export function AppSidebar({ current }: { current: AppSection }) {
   return (
-    <nav className="flex flex-1 flex-col overflow-y-auto px-3 pb-4 select-none">
+    <nav aria-label="Navegação principal" className="flex flex-1 flex-col overflow-y-auto px-3 pb-4 select-none">
       <AppNavigation current={current} />
     </nav>
   );

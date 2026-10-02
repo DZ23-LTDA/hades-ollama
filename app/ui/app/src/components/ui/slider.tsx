@@ -89,6 +89,9 @@ const Slider = React.forwardRef<HTMLDivElement, SliderProps>(
             {options.map((option) => (
               <div key={option.value} className="flex flex-col items-center">
                 <button
+                  type="button"
+                  aria-label={`${label || "Valor"}: ${option.label}`}
+                  aria-pressed={selectedValue === option.value}
                   onClick={() => handleClick(option.value)}
                   onMouseDown={handleMouseDown}
                   disabled={disabled}

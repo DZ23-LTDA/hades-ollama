@@ -761,3 +761,11 @@ Implementei drawer mobile real na `SidebarLayout`: sidebar fixa lateral abaixo d
 ## D6 — 2026-10-02 16:56 UTC — Claude
 
 Removi `app/ui/app/tailwind.config.js`, que era configuração Tailwind v3 não consumida pelo Vite/Tailwind v4. Migrei os tokens de espaçamento/cor para `src/index.css`, criei os estilos compartilhados `page-title`, `page-description` e `section-title`, e apliquei o título compartilhado em Home, Conectores e Endpoint. Adicionei `scripts/verify-design-system.mjs` ao gate de integridade para impedir regressão. Typecheck, lint, Vitest (273 testes), build, bundle budget, contratos, integrity e diff-check passaram. Próximo: D7 — axe automatizado em rotas principais.
+
+
+## Atualização contínua — 2026-10-02 14:15 UTC — Claude
+
+- **D7 acessibilidade automatizada:** corrigi nomes acessíveis dos pontos do Slider, landmarks duplicados/aninhados em Settings, Agentic e ConnectApps, labels de navegação da sidebar/Biblioteca, heading order do Endpoint, foco por teclado nos comandos de integração e contraste do console/navegador.
+- **Evidência real:** axe auditou desktop 1440x900 e mobile 390x844 nas rotas `/`, `/connect`, `/endpoint`, `/library`, `/settings` e `/agentic`: 0 violações, 0 erros de console e 0 erros HTTP em `docs/evidencias/d7-axe-audit-20261002.json`.
+- **Gates locais:** TypeScript, lint, 276 testes Vitest, build, bundle budget, design-system, contratos, integrity e diff-check passaram.
+- **Próximo passo:** D8 — revisão final honesta e confirmação dos workflows no SHA publicado; integrações externas continuam condicionadas a credenciais/configuração reais.

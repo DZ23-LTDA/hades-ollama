@@ -519,10 +519,10 @@ export function AgenticSplitShell({
                     className="max-h-full max-w-full rounded-lg shadow-2xl object-contain border border-neutral-800"
                   />
                 ) : (
-                  <div className="text-center text-neutral-500">
+                  <div className="text-center text-neutral-700 dark:text-neutral-300">
                     <GlobeAltIcon className="mx-auto h-12 w-12 stroke-[1.2]" />
-                    <p className="mt-3 text-sm font-medium">Navegador aguardando ação.</p>
-                    <p className="mt-1 text-xs">Ações como navegação, cliques e preenchimentos serão espelhadas em tempo real aqui.</p>
+                    <p className="mt-3 text-sm font-medium text-neutral-100">Navegador aguardando ação.</p>
+                    <p className="mt-1 text-xs text-neutral-100">Ações como navegação, cliques e preenchimentos serão espelhadas em tempo real aqui.</p>
                   </div>
                 )}
               </div>
