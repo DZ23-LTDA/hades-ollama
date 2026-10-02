@@ -726,3 +726,8 @@ Implementei o modo **Simples/Avançado** em Configurações com preferência per
 ## U10 — 2026-10-02 13:22 UTC — Claude
 
 Implementei a **Central de Saúde** baseada no backend real. `GET /api/agent/v1/health` agora retorna status degradado quando o runtime não está inicializado, timestamp e os subsistemas agent/store/queue/sandbox derivados do estado do servidor. A UI apresenta loading, erro com retry, status sem depender apenas de cor e ações `Detalhes`/`Corrigir` que explicam o próximo passo sem fingir mutação automática. Evidências contra backend recompilado: `docs/evidencias/u10-health-desktop-20261002.png` e `u10-health-mobile-20261002.png`, hashes distintos, detalhes visíveis e zero erros HTTP/console. Gates locais: Go health/build, typecheck, lint, 275 testes Vitest, build, contratos e integrity passaram. Próximo passo: U11 entrega de artefato e U12 proteção compreensível de ação externa.
+
+
+## U11 — 2026-10-02 13:32 UTC — Claude
+
+Implementei a entrega rastreável no Agentic Console. Missões agora exibem um card real com estado da entrega, número de arquivos, tamanho, prefixo e checksum SHA-256 completo expandível, além de download autenticado com IDs codificados. Missões sem arquivo informam honestamente que não há artefato para baixar. Gates locais: `go build ./...`, `go test ./internal/agent ./server`, typecheck, lint, 275 testes Vitest, build, contratos e integrity passaram. Próximo passo: U12 — proteção compreensível para ações externas.

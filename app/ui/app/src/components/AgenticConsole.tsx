@@ -4,6 +4,7 @@ import { AgenticSplitShell } from "@/components/AgenticSplitShell";
 import { getModels } from "@/api";
 import type { Model } from "@/gotypes";
 import { humanizeApiError } from "@/lib/userFacingError";
+import { MissionDeliveryCard } from "@/components/MissionDeliveryCard";
 
 type Mission = {
   id: string;
@@ -333,11 +334,9 @@ export default function AgenticConsole() {
                     </div>
                   ))}
                 </div>
+                <MissionDeliveryCard missionId={mission.id} state={mission.state} artifacts={mission.artifacts} />
                 <div className="mt-5 flex gap-2">
                   <button type="button" disabled={busy || pendingApprovals.length > 0 || mission.state === "COMPLETED"} onClick={() => void run()} className="rounded-lg bg-neutral-900 px-3 py-2 text-sm text-white disabled:opacity-40 dark:bg-neutral-100 dark:text-neutral-900">Executar</button>
-                  {mission.artifacts?.map((artifact) => (
-                    <a key={artifact.id} href={`/api/agent/v1/missions/${mission.id}/artifacts/${artifact.id}`} className="rounded-lg border border-neutral-300 px-3 py-2 text-sm dark:border-neutral-700">Baixar {artifact.name}</a>
-                  ))}
                 </div>
               </div>
               <div className="rounded-2xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-950">
