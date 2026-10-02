@@ -681,3 +681,8 @@ O primeiro E2E revelou que o operador local (`/api/me` com `local_only=true`) er
 ## CI final do onboarding — 2026-10-02 11:04 UTC — Claude
 
 Validação externa concluída no SHA `e6625bdc`: `test.yaml` run `36998217811` terminou SUCCESS com jobs Linux/macOS/Windows, UI build/test, Go test e golangci-lint; a matriz nativa opcional foi explicitamente desativada porque requer runners GPU/self-hosted. Os gates `class-a-plus-integrity` (run `36996527740`) e `dz23-agentic-quality` (run `36996527818`) também terminaram SUCCESS no mesmo SHA. O checkpoint foi alinhado ao SHA final. O produto está em release candidate técnico, não em “100% produção”: permanecem bloqueios honestos para sandbox forte com cgroup delegado, assinatura SignPath com secrets do projeto e validação live de integrações externas/IdP/WhatsApp/MCP/deploy.
+
+
+## U4 — degradação offline global — 2026-10-02 11:29 UTC — Claude
+
+Implementado `BackendStatusBanner` no shell raiz: quando `/api/version` não responde ou retorna estado inválido, a UI mostra “O backend local está offline. Suas alterações não foram enviadas.” com `role=alert`, live region e botão “Tentar novamente”. O health check deixou de emitir erro ruidoso no console; offline é um estado suportado e honesto. Regressão Vitest passou; typecheck, lint, build, verify-contracts e integrity passaram localmente. Próximo passo: U5, mensagens humanizadas para falhas de API preservando rascunhos.

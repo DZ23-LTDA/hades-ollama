@@ -644,8 +644,8 @@ export async function fetchHealth(): Promise<boolean> {
     }
 
     return false;
-  } catch (error) {
-    console.error("Error checking health:", error);
+  } catch {
+    // Offline is a supported UI state; callers render the retry affordance.
     return false;
   }
 }
