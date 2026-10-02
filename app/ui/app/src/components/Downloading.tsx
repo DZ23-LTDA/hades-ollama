@@ -22,8 +22,9 @@ export default function Downloading({
   total: number;
   label?: string;
 }) {
-  const percentage = total > 0 ? (completed / total) * 100 : 0;
-  const unitIndex = total > 0 ? Math.floor(Math.log(total) / Math.log(K)) : 0;
+  const preparing = total <= 0;
+  const percentage = preparing ? 0 : (completed / total) * 100;
+  const unitIndex = preparing ? 0 : Math.floor(Math.log(total) / Math.log(K));
   const unit = SIZES[unitIndex];
 
   return (
@@ -42,15 +43,15 @@ export default function Downloading({
           <div className="ml-6">{label}</div>
         </div>
         <div className="text-sm text-neutral-500 dark:text-neutral-500 ml-6">
-          {`${formatBytes(completed, unit)} / ${formatBytes(total, unit)} (${Math.floor(percentage)}%)`}
+          {preparing
+            ? "Preparando download…"
+            : `${formatBytes(completed, unit)} / ${formatBytes(total, unit)} (${Math.floor(percentage)}%)`}
         </div>
       </div>
       <div className="relative h-1.5 bg-neutral-200 dark:bg-neutral-700 rounded-full overflow-hidden ml-6">
         <div
-          className="absolute left-0 top-0 h-full bg-neutral-700 dark:bg-neutral-500 rounded-full"
-          style={{
-            width: `${percentage}%`,
-          }}
+          className={`absolute left-0 top-0 h-full rounded-full bg-neutral-700 dark:bg-neutral-500 ${preparing ? "w-1/3 animate-pulse" : ""}`}
+          style={preparing ? undefined : { width: `${percentage}%` }}
         />
       </div>
     </div>
