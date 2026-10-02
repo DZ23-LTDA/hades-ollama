@@ -368,6 +368,7 @@ func (a *agentAPI) register(r *gin.Engine) {
 	group.GET("/grok/status", a.grokStatus)
 	group.GET("/config/safe", a.safeConfig)
 	group.GET("/diagnostics", a.diagnostics)
+	group.GET("/backup", a.downloadBackup)
 	group.GET("/auth/session", a.authSession)
 	group.POST("/auth/logout", a.authLogout)
 	group.POST("/auth/dev/token", a.devToken)
