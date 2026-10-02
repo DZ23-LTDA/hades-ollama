@@ -23,6 +23,20 @@ import (
 
 func TestMain(m *testing.M) {
 	os.Setenv("OLLAMA_DEBUG", "1")
+	// Run the suite hermetically: clear ambient runtime-tuning variables so the
+	// package behaves the same on a developer box as in CI. A dev shell that
+	// pins e.g. OLLAMA_HOST=0.0.0.0 or OLLAMA_CONTEXT_LENGTH=16384 would
+	// otherwise flip auth on or inflate memory estimates and fail unrelated
+	// tests. Tests that need a specific value set it with t.Setenv. Part of E9.
+	for _, name := range []string{
+		"OLLAMA_HOST",
+		"OLLAMA_CONTEXT_LENGTH",
+		"OLLAMA_MAX_LOADED_MODELS",
+		"OLLAMA_NUM_PARALLEL",
+		"OLLAMA_KEEP_ALIVE",
+	} {
+		os.Unsetenv(name)
+	}
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}))
 	slog.SetDefault(logger)
 	os.Exit(m.Run())
@@ -294,6 +308,10 @@ func getSystemInfoFn() ml.SystemInfo {
 }
 
 func TestSchedRequestsSameModelSameRequest(t *testing.T) {
+	// Clear any ambient OLLAMA_CONTEXT_LENGTH: a large value inflates the
+	// model's memory estimate past the mocked GPU, so the model never loads and
+	// the test times out (E9 determinism).
+	t.Setenv("OLLAMA_CONTEXT_LENGTH", "")
 	ctx, done := context.WithTimeout(t.Context(), 500*time.Millisecond)
 	defer done()
 	s := InitScheduler(ctx)
