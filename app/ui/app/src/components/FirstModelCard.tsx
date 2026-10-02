@@ -1,8 +1,8 @@
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { ArrowDownTrayIcon } from "@heroicons/react/24/outline";
 
-import { pullModel } from "@/api";
-import { useModels, useRefetchModels } from "@/hooks/useModels";
+import { useModels } from "@/hooks/useModels";
+import { useModelPull } from "@/hooks/useModelPull";
 import { useSettings } from "@/hooks/useSettings";
 import Downloading from "@/components/Downloading";
 import {
@@ -12,26 +12,18 @@ import {
 
 // FirstModelCard is the zero-model first-run surface: when the local backend has
 // no downloaded model yet, it offers the recommended first model and downloads it
-// with live progress using the existing pull pipeline, then selects it so the
+// with live progress using the shared pull pipeline, then selects it so the
 // user can start immediately — no terminal required.
 export function FirstModelCard() {
   const { data: models = [], isLoading } = useModels();
   const { setSettings } = useSettings();
-  const refetchModels = useRefetchModels();
+  const { pulling, progress, status, error, pull, cancel } =
+    useModelPull(FIRST_MODEL_ERROR_MESSAGE);
 
   const recommended = RECOMMENDED_FIRST_MODEL;
   const [modelName, setModelName] = useState("");
   const effectiveName = (modelName || recommended).trim();
-
-  const [pulling, setPulling] = useState(false);
-  const [progress, setProgress] = useState<{ completed: number; total: number }>({
-    completed: 0,
-    total: 0,
-  });
-  const [status, setStatus] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const [skipped, setSkipped] = useState(false);
-  const abortRef = useRef<AbortController | null>(null);
 
   const hasLocalModel = models.some((m) => !!m.digest);
   // Only surface the card once we actually know there are no local models — never
@@ -39,42 +31,10 @@ export function FirstModelCard() {
   if (isLoading || hasLocalModel || skipped) return null;
 
   const download = async () => {
-    if (!effectiveName || pulling) return;
-    const controller = new AbortController();
-    abortRef.current = controller;
-    setPulling(true);
-    setError(null);
-    setStatus("Preparando download…");
-    setProgress({ completed: 0, total: 0 });
-    try {
-      for await (const event of pullModel(effectiveName, controller.signal)) {
-        setProgress({
-          completed: event.completed ?? 0,
-          total: event.total ?? 0,
-        });
-        if (event.status) setStatus(event.status);
-      }
-      setStatus(`Modelo ${effectiveName} pronto.`);
-      setSettings({ SelectedModel: effectiveName });
-      await refetchModels();
-    } catch (err) {
-      if (controller.signal.aborted) {
-        setStatus(null);
-        return;
-      }
-      setError(
-        err instanceof Error && err.message
-          ? `${FIRST_MODEL_ERROR_MESSAGE} (${err.message})`
-          : FIRST_MODEL_ERROR_MESSAGE,
-      );
-      setStatus(null);
-    } finally {
-      setPulling(false);
-      abortRef.current = null;
-    }
+    if (!effectiveName) return;
+    const ok = await pull(effectiveName);
+    if (ok) setSettings({ SelectedModel: effectiveName });
   };
-
-  const cancel = () => abortRef.current?.abort();
 
   return (
     <section
