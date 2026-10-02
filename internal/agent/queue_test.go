@@ -4,12 +4,55 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 )
+
+func TestNackAppliesJitteredBackoff(t *testing.T) {
+	queue, err := NewJobQueue("")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	const base = time.Second // attempt 1 -> 1<<0 seconds
+	delays := make([]time.Duration, 0, 24)
+	for i := 0; i < 24; i++ {
+		if _, err := queue.Enqueue(fmt.Sprintf("mission-jitter-%d", i), 3); err != nil {
+			t.Fatal(err)
+		}
+		claimed, ok, err := queue.Claim("worker", time.Now().UTC())
+		if err != nil || !ok {
+			t.Fatalf("claim: ok=%v err=%v", ok, err)
+		}
+		t0 := time.Now().UTC()
+		retry, err := queue.Nack(claimed, errors.New("temporary"))
+		if err != nil {
+			t.Fatalf("nack: %v", err)
+		}
+		delay := retry.AvailableAt.Sub(t0)
+		// Equal jitter keeps the retry delay within [base/2, base].
+		if delay < base/2-50*time.Millisecond || delay > base+100*time.Millisecond {
+			t.Fatalf("iteration %d: backoff %v outside jitter window [%v, %v]", i, delay, base/2, base)
+		}
+		delays = append(delays, delay)
+	}
+
+	// Jitter must actually vary: a fixed backoff would make every delay identical.
+	allEqual := true
+	for _, d := range delays[1:] {
+		if d != delays[0] {
+			allEqual = false
+			break
+		}
+	}
+	if allEqual {
+		t.Fatalf("all %d backoffs were identical (%v); jitter not applied", len(delays), delays[0])
+	}
+}
 
 func TestRunQueueHandlerRecoversPanicAsNonRetryable(t *testing.T) {
 	err := runQueueHandler(context.Background(), QueueJob{ID: "job_panic_test"}, func(context.Context, QueueJob) error {
