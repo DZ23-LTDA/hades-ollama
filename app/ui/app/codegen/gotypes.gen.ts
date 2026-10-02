@@ -498,6 +498,7 @@ export class User {
     firstname?: string;
     lastname?: string;
     plan?: string;
+    local_only?: boolean;
 
     constructor(source: any = {}) {
         if ('string' === typeof source) source = JSON.parse(source);
@@ -509,6 +510,7 @@ export class User {
         this.firstname = source["firstname"];
         this.lastname = source["lastname"];
         this.plan = source["plan"];
+        this.local_only = source["local_only"];
     }
 }
 export class Attachment {

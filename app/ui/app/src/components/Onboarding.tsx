@@ -95,6 +95,7 @@ interface WelcomeScreenProps extends ScreenProps {
 interface RunOllamaScreenProps {
   completionError: string | null;
   onRetryCompletion: () => void;
+  onContinue: () => void;
 }
 
 interface ConnectAppsScreenProps {
@@ -339,9 +340,11 @@ export function WelcomeScreen({
 export function RunOllamaScreen({
   completionError,
   onRetryCompletion,
+  onContinue,
 }: RunOllamaScreenProps) {
   const [modelName, setModelName] = useState("qwen2.5:0.5b");
   const [pulling, setPulling] = useState(false);
+  const [modelReady, setModelReady] = useState(false);
   const [pullStatus, setPullStatus] = useState<string | null>(null);
   const [pullError, setPullError] = useState<string | null>(null);
 
@@ -362,6 +365,7 @@ export function RunOllamaScreen({
         );
       }
       setPullStatus(`Modelo ${requestedModel} pronto para uso local.`);
+      setModelReady(true);
     } catch (error) {
       setPullError(
         error instanceof Error
@@ -435,6 +439,15 @@ export function RunOllamaScreen({
         <InlineError message={pullError} />
 
         <InlineError message={completionError} />
+        {modelReady && (
+          <button
+            type="button"
+            onClick={onContinue}
+            className="mt-5 h-11 w-full max-w-[240px] rounded-full bg-neutral-900 px-5 text-sm font-normal text-white transition-colors hover:bg-neutral-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-500"
+          >
+            Continuar
+          </button>
+        )}
         {completionError && (
           <button
             type="button"
@@ -1295,6 +1308,7 @@ export function ConnectAppsScreen({
 interface OnboardingProps extends ScreenProps {
   completionError: string | null;
   isAuthenticated: boolean;
+  isLocalOnly: boolean;
   onOpenApps: () => Promise<boolean>;
   onRetryCompletion: () => void;
   onSignUp: () => void;
@@ -1353,6 +1367,7 @@ export default function Onboarding(props: OnboardingProps) {
       <RunOllamaScreen
         completionError={props.completionError}
         onRetryCompletion={props.onRetryCompletion}
+        onContinue={() => void onOpenApps()}
       />
     );
   }
@@ -1364,7 +1379,8 @@ export default function Onboarding(props: OnboardingProps) {
         isLeaving={isLeaving}
         onRetryCompletion={() => void leave()}
         onContinue={() => {
-          if (props.isAuthenticated) void leave();
+          if (props.isAuthenticated && props.isLocalOnly) setStep("run");
+          else if (props.isAuthenticated) void leave();
           else setStep("welcome");
         }}
       />

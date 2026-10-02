@@ -3,5 +3,26 @@
   "totalScreensTested": 10,
   "httpErrors": [],
   "consoleErrors": [],
-  "status": "PASSED_ZERO_ERRORS"
+  "status": "PASSED_ZERO_ERRORS",
+  "screens": {
+    "onboarding_intro": {
+      "status": 200,
+      "clean_console": true,
+      "errors": [],
+      "desktop_png": "docs/evidencias/onboarding-intro-desktop.png",
+      "mobile_png": "docs/evidencias/onboarding-intro-mobile.png",
+      "captured_at": "2026-10-02T10:30:38.450Z",
+      "real_backend": true
+    },
+    "onboarding_model": {
+      "status": 200,
+      "clean_console": true,
+      "errors": [],
+      "desktop_png": "docs/evidencias/onboarding-model-desktop-ready.png",
+      "mobile_png": "docs/evidencias/onboarding-model-mobile-ready.png",
+      "captured_at": "2026-10-02T10:35:27.227Z",
+      "real_backend": true,
+      "model": "qwen2.5:0.5b"
+    }
+  }
 }

@@ -49,6 +49,7 @@ export function useUser() {
 
   const isLoading = userQuery.isLoading || userQuery.isFetching;
   const isAuthenticated = Boolean(userQuery.data?.name);
+  const isLocalOnly = userQuery.data?.local_only === true;
 
   return {
     user: userQuery.data,
@@ -56,6 +57,7 @@ export function useUser() {
     isError: userQuery.isError,
     error: userQuery.error,
     isAuthenticated,
+    isLocalOnly,
     refreshUser: refreshUser.mutate,
     isRefreshing: refreshUser.isPending,
     refetchUser: userQuery.refetch,

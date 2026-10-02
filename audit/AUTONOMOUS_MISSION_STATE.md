@@ -2,7 +2,7 @@
 ```yaml
 state: EXECUTING_P0_SECURITY_BACKLOG
 branch: recovery/ollama-full-snapshot
-sha: ac49b180
+sha: 21238528
 proofs_local:
   - go build ./...: PASS (após remover node_modules gerado)
   - CGO_ENABLED=0 go build ./...: PASS
@@ -22,7 +22,8 @@ proofs_local:
   - F1 long-term memory control: PASS (decorative switch removed; UI says not configured)
   - F2 endpoint health: PASS (status derives from /api/tags and shows Offline/Verificando instead of claiming Online)
   - I1 Windows release gate: PASS (installer checksum/name already corrected; release publication gate now requires only checks that run on the candidate SHA)
-  - U1 guided model onboarding: PASS (real POST /api/v1/models/pull with JSONL progress, model input, accessible status and honest errors)
+  - U1 guided model onboarding: PASS (local-only user reaches Run Ollama, real POST /api/v1/models/pull with JSONL progress, accessible status, success continuation and honest errors)
+  - U1 browser E2E: PASS (desktop/mobile qwen2.5:0.5b pull and continuation to /connect; clean console)
   - Ollama local model: PASS (qwen2.5:0.5b downloaded and generated OK on loopback 127.0.0.1:11435)
   - provider API smoke: PASS for preconfigured OpenAI-compatible endpoint (GET /models HTTP 200; minimal gpt-5-mini chat HTTP 200 with non-empty completion); requested rotated provider keys are not present in this sandbox
   - strict sandbox live executor: BLOCKED_EXTERNAL (delegated cgroup v2 subtree is unavailable; fail-closed tests PASS)
@@ -36,7 +37,7 @@ external_status:
 known_limits:
   - Ollama local validado com qwen2.5:0.5b em 127.0.0.1:11435
   - credenciais/IdP/WhatsApp/MCP/deploy externos continuam BLOCKED_EXTERNAL ou NOT_CONFIGURED
-next_action: validate test.yaml, integrity and agentic-quality on the I1/U1 SHA; then run installer workflow and browser evidence for onboarding
+next_action: validate test.yaml, integrity and agentic-quality on the final onboarding SHA; then review remaining P0/P1 release blockers and sync recovery to main only after all gates
 ```
 
 

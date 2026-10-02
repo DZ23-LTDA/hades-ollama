@@ -44,7 +44,7 @@ export const Route = createFileRoute("/onboarding")({
 function OnboardingRoute() {
   const navigate = useNavigate();
   const { settingsData, setSettings } = useSettings({ refetchInterval: 2000 });
-  const { fetchConnectUrl, refetchUser, isAuthenticated } = useUser();
+  const { fetchConnectUrl, refetchUser, isAuthenticated, isLocalOnly } = useUser();
   const [isAwaitingAuth, setIsAwaitingAuth] = useState(false);
   const [signInError, setSignInError] = useState<string | null>(null);
   const [completionError, setCompletionError] = useState<string | null>(null);
@@ -205,6 +205,7 @@ function OnboardingRoute() {
     <Onboarding
       completionError={completionError}
       isAuthenticated={isAuthenticated}
+      isLocalOnly={isLocalOnly}
       isSigningIn={isAwaitingAuth}
       signInError={signInError}
       onOpenApps={openApps}

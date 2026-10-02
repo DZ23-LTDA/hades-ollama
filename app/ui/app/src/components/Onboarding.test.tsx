@@ -435,6 +435,7 @@ describe("Onboarding", () => {
     const html = renderToStaticMarkup(
       <Onboarding
         isAuthenticated
+        isLocalOnly={false}
         isSigningIn={false}
         signInError={null}
         completionError={null}
@@ -648,7 +649,11 @@ describe("Onboarding", () => {
 
   it("shows only the local command on the final page", () => {
     const html = renderToStaticMarkup(
-      <RunOllamaScreen completionError={null} onRetryCompletion={vi.fn()} />,
+      <RunOllamaScreen
+        completionError={null}
+        onRetryCompletion={vi.fn()}
+        onContinue={vi.fn()}
+      />,
     );
 
     expect(html).toContain("Run Ollama");
@@ -661,7 +666,11 @@ describe("Onboarding", () => {
 
   it("offers a real model download instead of only an unexplained command", () => {
     const html = renderToStaticMarkup(
-      <RunOllamaScreen completionError={null} onRetryCompletion={vi.fn()} />,
+      <RunOllamaScreen
+        completionError={null}
+        onRetryCompletion={vi.fn()}
+        onContinue={vi.fn()}
+      />,
     );
 
     expect(html).toContain('id="onboarding-model"');
@@ -691,6 +700,7 @@ describe("Onboarding", () => {
       <RunOllamaScreen
         completionError="Unable to save setup. Please try again."
         onRetryCompletion={onRetryCompletion}
+        onContinue={vi.fn()}
       />,
     );
 
@@ -732,6 +742,7 @@ function appsIntegrations(claudeInstalled: boolean): IntegrationStatuses {
 function onboardingProps(onOpenApps: () => Promise<boolean>) {
   return {
     isAuthenticated: true,
+    isLocalOnly: false,
     isSigningIn: false,
     signInError: null,
     completionError: null,
@@ -770,6 +781,25 @@ function stubOnboardingWindow(platform = "darwin") {
 }
 
 describe("Onboarding handoff", () => {
+  it("sends an authenticated local operator to model setup", async () => {
+    stubOnboardingWindow();
+    const props = { ...onboardingProps(vi.fn()), isLocalOnly: true };
+    let renderer: ReactTestRenderer | undefined;
+    try {
+      await act(async () => {
+        renderer = create(<Onboarding {...props} />);
+      });
+      await act(async () => {
+        renderer!.root.findByType(IntroScreen).props.onContinue();
+      });
+      expect(renderer!.root.findByType(RunOllamaScreen)).toBeTruthy();
+      expect(props.onOpenApps).not.toHaveBeenCalled();
+    } finally {
+      if (renderer) act(() => renderer?.unmount());
+      vi.unstubAllGlobals();
+    }
+  });
+
   it("preserves local setup without opening Apps", async () => {
     stubOnboardingWindow();
     const props = { ...onboardingProps(vi.fn()), isAuthenticated: false };
