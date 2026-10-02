@@ -1,6 +1,6 @@
 ## Checkpoint vigente — Missão contínua T0/P0 — 2026-10-02 03:58 UTC
 ```yaml
-state: EXECUTING_P0_SECURITY_BACKLOG
+state: TESTING_D5_DRAWER
 branch: recovery/ollama-full-snapshot
 sha: 6e1dee55
 proofs_local:
@@ -58,7 +58,9 @@ CI final b4848398: PASS — test.yaml run 37003763891 (Ubuntu/macOS/Windows), cl
   - D5 landmarks/foco: AUDITADO — triagem não encontrou remoção efetiva de foco; alertas restantes eram falsos positivos de classes Tailwind multiline; componentes base preservam focus-visible.
   - D6 headings: AUDITADO — rotas principais possuem heading de página; múltiplos `h1` pertencem a componentes/rotas distintas, não ao mesmo documento renderizado.
   - D7 targets/teclado: AUDITADO — controles principais usam elementos nativos e dimensões de toque confortáveis; nenhuma lacuna reproduzível exigiu patch adicional.
-next_action: executar auditoria final de release e atualizar somente claims comprovados; fora de escopo continuam assinatura real, IdP/dispositivos/HA e homologação live de providers
+  - D5 drawer mobile: PASS — drawer lateral real em viewport <768px, backdrop, Escape, resize reativo; desktop preserva sidebar fixa.
+  - D5 browser E2E: PASS — desktop 1440x900 e mobile 390x844, abertura/fechamento, console e HTTP limpos; evidências em docs/evidencias/d5-drawer-*-20261002.png.
+next_action: D6 — unificar design system e remover tailwind.config.js morto; depois D7 axe automatizado.
 ```
 
 

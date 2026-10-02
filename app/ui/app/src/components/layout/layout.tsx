@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { ChatIcon } from "@/components/ChatIcon";
 import { isWindowsPlatform } from "@/lib/platform";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 // The agentic desktop shell is navigation-first. Keep the sidebar visible by
 // default and preserve the operator's choice only for the current session.
@@ -15,9 +15,37 @@ export function SidebarLayout({
   sidebar: React.ReactNode;
   title?: string;
 }>) {
-  const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
+  const [isMobile, setIsMobile] = useState(
+    () => typeof window !== "undefined" && window.innerWidth < 768,
+  );
   const [sidebarOpen, setSidebarOpen] = useState(() => (isMobile ? false : sessionSidebarOpen));
   const isWindows = isWindowsPlatform();
+
+  useEffect(() => {
+    const updateViewport = () => {
+      const mobile = window.innerWidth < 768;
+      setIsMobile(mobile);
+      if (!mobile) {
+        setSidebarOpen(true);
+        sessionSidebarOpen = true;
+      }
+    };
+    updateViewport();
+    window.addEventListener("resize", updateViewport);
+    return () => window.removeEventListener("resize", updateViewport);
+  }, []);
+
+  useEffect(() => {
+    if (!isMobile || !sidebarOpen) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        sessionSidebarOpen = false;
+        setSidebarOpen(false);
+      }
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [isMobile, sidebarOpen]);
 
   const toggleSidebar = () => {
     sessionSidebarOpen = !sidebarOpen;
@@ -27,7 +55,7 @@ export function SidebarLayout({
   return (
     <div className="flex h-screen w-full overflow-hidden dark:bg-neutral-900">
       <div
-        className={`absolute flex mx-2 py-2 z-20 items-center transition-[left] duration-375 text-neutral-500 dark:text-neutral-400 ${sidebarOpen ? (isWindows ? "left-2" : "left-[140px]") : "left-2"}`}
+        className={`absolute z-50 mx-2 flex items-center py-2 text-neutral-500 transition-[left] duration-300 dark:text-neutral-400 ${isMobile ? (sidebarOpen ? "left-[17rem]" : "left-2") : sidebarOpen ? (isWindows ? "left-2" : "left-[140px]") : "left-2"}`}
       >
         <button
           onClick={toggleSidebar}
@@ -60,19 +88,32 @@ export function SidebarLayout({
           </Link>
         )}
       </div>
+      {isMobile && sidebarOpen && (
+        <button
+          type="button"
+          aria-label="Fechar menu"
+          className="fixed inset-0 z-30 cursor-default bg-black/30 backdrop-blur-[1px] md:hidden"
+          onClick={() => {
+            sessionSidebarOpen = false;
+            setSidebarOpen(false);
+          }}
+        />
+      )}
       <div
-        className={`flex max-h-screen flex-col transition-[width] duration-300 ${
-          sidebarOpen
-            ? "w-48 border-r border-neutral-200 bg-neutral-50 dark:border-neutral-800 dark:bg-neutral-950/40"
-            : "w-0"
+        className={`flex max-h-screen flex-col overflow-hidden border-neutral-200 bg-neutral-50 transition-[width,transform] duration-300 dark:border-neutral-800 dark:bg-neutral-950/40 ${
+          isMobile
+            ? `fixed inset-y-0 left-0 z-40 w-72 border-r shadow-xl ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`
+            : sidebarOpen
+              ? "relative w-48 border-r"
+              : "relative w-0"
         }`}
       >
         <div
           onDoubleClick={() => window.doubleClick && window.doubleClick()}
           onMouseDown={() => window.drag && window.drag()}
-          className="flex-none h-13 w-full"
+          className="h-13 w-full flex-none"
         ></div>
-        {sidebarOpen && sidebar}
+        {sidebar}
       </div>
       <main className="flex min-w-0 flex-1 flex-col transition-all duration-300">
         <div
@@ -82,7 +123,7 @@ export function SidebarLayout({
         >
           {title && (
             <h1
-              className={`${sidebarOpen ? "pl-6" : isWindows ? "pl-16" : "pl-36"} transition-[padding-left] duration-300 font-rounded text-md font-medium dark:text-white`}
+              className={`${isMobile ? "pl-16" : sidebarOpen ? "pl-6" : isWindows ? "pl-16" : "pl-36"} font-rounded text-md font-medium transition-[padding-left] duration-300 dark:text-white`}
             >
               {title}
             </h1>

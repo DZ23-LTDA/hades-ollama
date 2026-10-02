@@ -1,0 +1,31 @@
+{
+  "generatedAt": "2026-10-02T14:51:53.167Z",
+  "results": [
+    {
+      "viewport": {
+        "name": "desktop",
+        "width": 1440,
+        "height": 900
+      },
+      "drawerOpened": true,
+      "closedBy": "backdrop",
+      "consoleErrors": [],
+      "requestFailures": [],
+      "httpErrors": [],
+      "url": "http://127.0.0.1:5173/"
+    },
+    {
+      "viewport": {
+        "name": "mobile",
+        "width": 390,
+        "height": 844
+      },
+      "drawerOpened": true,
+      "closedBy": "Escape",
+      "consoleErrors": [],
+      "requestFailures": [],
+      "httpErrors": [],
+      "url": "http://127.0.0.1:5173/"
+    }
+  ]
+}

@@ -751,3 +751,8 @@ Corrigi nomes acessíveis explícitos nos compositores Home (`Objetivo da nova t
 ## D5-D7 — 2026-10-02 13:54 UTC — Claude
 
 Concluí a triagem de landmarks/foco, estrutura de headings e targets/teclado. Não houve falha reproduzível além dos itens já corrigidos em D2-D4; os alertas restantes eram falsos positivos de análise textual sobre classes Tailwind multiline. Nenhum patch adicional foi inventado. O CI D2-D4 ficou verde no SHA `0d714d2f`: test `37015174329`, integrity `37015178025`, agentic-quality `37015181389`. Próximo passo: auditoria final de release e claims.
+
+
+## D5 — 2026-10-02 14:52 UTC — Claude
+
+Implementei drawer mobile real na `SidebarLayout`: sidebar fixa lateral abaixo de 768px, backdrop clicável, fechamento por Escape, listener de resize e foco/labels preservados; desktop mantém a sidebar normal. Reg regressão em `layout.test.tsx` cobre abrir, backdrop e Escape. Gates locais de typecheck, teste direcionado, lint, build, contratos e integrity passaram. E2E real em 1440x900 e 390x844 passou sem erros HTTP/console; evidências `docs/evidencias/d5-drawer-{desktop,mobile}-{closed,open}-20261002.png` e auditoria JSON correspondente. Próximo: D6 — unificar design system e remover configuração Tailwind morta.
