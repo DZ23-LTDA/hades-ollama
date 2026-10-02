@@ -28,8 +28,8 @@ import { HelpDialog } from "@/components/HelpDialog";
 import { newTaskShortcut } from "@/lib/help";
 import { SETTINGS_SECTIONS } from "@/lib/settingsTabs";
 import { isTypingTarget } from "@/lib/search";
-import { disconnectUser, fetchAgentNotifications, fetchUser, type AgentNotification } from "@/api";
-import { clearAgentSession } from "@/lib/agenticClient";
+import { fetchAgentNotifications, fetchUser, type AgentNotification } from "@/api";
+import { performLogout } from "@/lib/logout";
 
 export type AppSection =
   | "apps"
@@ -52,11 +52,6 @@ export type AppSection =
 type Icon = React.ComponentType<{ className?: string }>;
 
 const iconClass = "h-[18px] w-[18px] shrink-0 stroke-[1.7]";
-
-export async function performLogout(): Promise<void> {
-  await disconnectUser();
-  clearAgentSession();
-}
 
 function itemClass(active: boolean, prominent = false) {
   return `group flex w-full items-center gap-3 rounded-lg px-2.5 py-2 text-left text-[13px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-400 ${

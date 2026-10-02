@@ -701,3 +701,8 @@ Traduzi controles, labels acessíveis e mensagens de erro dos painéis ChatGPT/C
 ## Validação final do CI — 2026-10-02 12:03 UTC — Claude
 
 O SHA `b4848398` passou no `test.yaml` completo (run `37003763891`, Ubuntu/macOS/Windows), `class-a-plus-integrity` (run `37003766034`) e `dz23-agentic-quality` (run `37003768562`). A branch `recovery/ollama-full-snapshot` está publicada e limpa. Estado honesto: release candidate tecnicamente validado nos gates disponíveis; não declarar 100% final enquanto permanecerem dependências externas não verificáveis neste ambiente: credencial/certificado de assinatura Windows, IdP/dispositivos/HA reais e homologação live de providers externos.
+
+
+## Fechamento interno de qualidade — 2026-10-02 12:29 UTC — Claude
+
+Eliminei os dois avisos de Fast Refresh movendo `performLogout` e `artifactDownloadPath` para helpers estáveis; mantive os testes de contrato. Adicionei code splitting determinístico no Vite: o entry caiu para 588.720 bytes bruto / 144.232 gzip, com `BUNDLE_BUDGET=PASS`; antes o entry era 1.830.665 bytes. Validação local final: 273 testes Vitest, typecheck, lint sem warnings, build, Go build/test/vet, contratos e integrity passaram. Os 135 avisos de rotas órfãs continuam apenas como aviso honesto do verificador para endpoints backend-only (auth, upload, mídia, traces etc.), sem caller UI obrigatório.

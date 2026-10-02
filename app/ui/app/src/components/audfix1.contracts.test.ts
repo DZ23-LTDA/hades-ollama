@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { disconnectUser } from "@/api";
 import { clearAgentSession, hasAgentSession, setAgentSession } from "@/lib/agenticClient";
-import { artifactDownloadPath } from "./LibraryPage";
+import { artifactDownloadPath } from "@/lib/artifacts";
 
 const originalFetch = globalThis.fetch;
 

@@ -2,14 +2,14 @@
 ```yaml
 state: EXECUTING_P0_SECURITY_BACKLOG
 branch: recovery/ollama-full-snapshot
-sha: e6625bdc
+sha: 03a23957
 proofs_local:
   - go build ./...: PASS (após remover node_modules gerado)
   - CGO_ENABLED=0 go build ./...: PASS
   - go test ./internal/agent ./server: PASS
   - go vet ./...: PASS
   - frontend tsc/lint/vitest/build: PASS
-  - bundle budget: PASS (1,823,863 bytes bruto / 530,772 gzip)
+  - bundle budget: PASS after vendor splitting (entry 588,720 bytes raw / 144,232 gzip)
   - contracts/integrity/gofmt/diff-check: PASS
   - shell E2E 10 telas desktop+mobile: PASS (0 HTTP, 0 console)
   - CI surface classifier: PASS (13 testes)
@@ -45,7 +45,7 @@ known_limits:
   - Ollama local validado com qwen2.5:0.5b em 127.0.0.1:11435
   - credenciais/IdP/WhatsApp/MCP/deploy externos continuam BLOCKED_EXTERNAL ou NOT_CONFIGURED
 CI final b4848398: PASS — test.yaml run 37003763891 (Ubuntu/macOS/Windows), class-a-plus-integrity run 37003766034, dz23-agentic-quality run 37003768562.
-next_action: release readiness remains conditional on external owner-owned prerequisites: signed installer credentials, real external IdP/devices/HA, and live provider homologation; production readiness still requires a delegated strong sandbox, real external integration credentials, and a signed Windows release before any public release claim
+next_action: remaining closure is external-only: signed installer credentials, real external IdP/devices/HA, and live provider homologation; internal code gates and non-blocking frontend warnings are closed
 ```
 
 

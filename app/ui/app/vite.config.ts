@@ -60,6 +60,18 @@ export default defineConfig(() => ({
 
   build: {
     target: "es2017",
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes("node_modules")) return undefined;
+          if (/[\\/]react(?:-dom)?[\\/]|[\\/]scheduler[\\/]/.test(id)) return "vendor-react";
+          if (id.includes("@tanstack")) return "vendor-router";
+          if (/(shiki|rehype|remark|micromark|katex|streamdown)/.test(id)) return "vendor-markdown";
+          if (/(heroicons|simple-icons)/.test(id)) return "vendor-icons";
+          return "vendor";
+        },
+      },
+    },
   },
 
   esbuild: {

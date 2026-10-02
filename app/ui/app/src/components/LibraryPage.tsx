@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect } from "react";
 import { Link } from "@tanstack/react-router";
 import { type AgentMission, type AgentArtifact } from "@/lib/agenticClient";
 import { API_BASE } from "@/lib/config";
+import { artifactDownloadPath } from "@/lib/artifacts";
 import { AppSidebar } from "@/components/AppSidebar";
 import { SidebarLayout } from "@/components/layout/layout";
 import {
@@ -27,10 +28,6 @@ interface ArtifactWithMission extends AgentArtifact {
   missionId: string;
   missionObjective: string;
   missionCreatedAt: string;
-}
-
-export function artifactDownloadPath(missionId: string, artifactId: string): string {
-  return `${API_BASE}/api/agent/v1/missions/${encodeURIComponent(missionId)}/artifacts/${encodeURIComponent(artifactId)}`;
 }
 
 export function LibraryPage() {
