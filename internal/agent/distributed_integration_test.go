@@ -1439,6 +1439,50 @@ func TestDistributedRedisStartCancellationDominatesNilHandler(t *testing.T) {
 	t.Fatalf("cancelled handler was not terminalized: pending=%+v running=%+v", pendingSnapshot, runningSnapshot)
 }
 
+func TestDistributedRedisClaimSkipsOrphanPendingEntries(t *testing.T) {
+	redisURL := os.Getenv("OLLAMA_AGENT_TEST_REDIS_URL")
+	if redisURL == "" {
+		t.Skip("OLLAMA_AGENT_TEST_REDIS_URL is not configured")
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	queue, err := openRedisTestQueue(t, ctx, redisURL, "ollama:integration:"+uuid.NewString())
+	if err != nil {
+		t.Fatal(err)
+	}
+	orphan, err := queue.Enqueue("mis_"+uuid.NewString(), 3)
+	if err != nil {
+		t.Fatal(err)
+	}
+	live, err := queue.Enqueue("mis_"+uuid.NewString(), 3)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Simulate the orphan's payload expiring while its id lingers in the
+	// pending list (the 7-day TTL elapsing on a still-pending job).
+	if _, err := queue.do(ctx, "DEL", queue.key("job:")+orphan.ID); err != nil {
+		t.Fatal(err)
+	}
+	// First claim drops the dangling orphan entry (no job claimed); the queue
+	// must not get stuck on it.
+	if _, ok, err := queue.Claim("integration-worker", time.Now().UTC()); err != nil || ok {
+		t.Fatalf("claim over an orphan must self-heal without claiming: ok=%v err=%v", ok, err)
+	}
+	// The next claim reaches the live job.
+	claimed, ok, err := queue.Claim("integration-worker", time.Now().UTC())
+	if err != nil || !ok || claimed.ID != live.ID {
+		t.Fatalf("live job was not claimed after orphan removal: job=%+v ok=%v err=%v", claimed, ok, err)
+	}
+	// The orphan must be gone from the pending index.
+	remaining, err := queue.do(ctx, "LREM", queue.pendingKey(), "0", orphan.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if count, _ := remaining.(int64); count != 0 {
+		t.Fatalf("orphan pending entry was not removed: still present %d time(s)", count)
+	}
+}
+
 func TestDistributedRedisEnqueueEnforcesGlobalQuota(t *testing.T) {
 	redisURL := os.Getenv("OLLAMA_AGENT_TEST_REDIS_URL")
 	if redisURL == "" {
