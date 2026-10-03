@@ -1353,3 +1353,31 @@ Authenticode/SignPath, attestation/provenance SLSA, staging TLS/mTLS real,
 certificação RLS em produção, pentest externo, runners macOS/MLX e mobile
 físico/EAS. Esses exigem credenciais/infra/decisão do usuário e não são
 simuláveis.
+
+
+## Checkpoint — backlog de código ENCERRADO (sem certificado) — 2026-10-03
+
+Tip `57718598`, ambos os workflows verdes (inclusive o job de integração com
+Redis e Postgres reais).
+
+Além dos 4 findings já fechados, esta rodada adicionou:
+- `afc94f87`→`57718598` H-09 (fila Redis, órfãos): a tentativa de auto-sanear
+  órfãos no claim foi REVERTIDA porque violava uma invariante INTENCIONAL
+  (TestDistributedRedisRejectsOrphanAndMismatchedJobRecords): um id pendente sem
+  job é corrupção e deve ser REJEITADO+PRESERVADO (fail-closed), não consumido.
+  Comportamento original restaurado. Isto NÃO é um gap — é o design correto.
+- `ea68fceb` quota POR-TENANT na fila Redis
+  (OLLAMA_AGENT_REDIS_MAX_JOBS_PER_TENANT, default 10k), com índice por tenant
+  (SET) auto-saneável no enqueue (poda membros ausentes/terminais antes de
+  contar) — só o script de enqueue muda. Teste de integração verde no CI.
+
+Estado de código: **todos os findings P1/P2 acionáveis desta auditoria estão
+fechados e validados no CI** (Redis/Postgres reais). Não há mais itens de código
+pendentes do backlog.
+
+Permanece APENAS o que é externo (e o usuário pediu para seguir SEM o
+certificado): assinatura Authenticode/SignPath, attestation/provenance SLSA,
+staging TLS/mTLS real, certificação RLS em produção e pentest externo. Esses
+exigem credenciais/infra/decisão e um auditor independente — não são código e
+não são simuláveis. O scaffolding de assinatura/attestation nos workflows já
+existe e ativa quando os segredos forem fornecidos.
