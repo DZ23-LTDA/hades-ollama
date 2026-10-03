@@ -1407,3 +1407,26 @@ Robustez de release SEM certificado:
 Resíduo conhecido (não feito): publicar SHA256SUMS + SBOM também em builds
 unsigned ([13], mudança de workflow de médio risco) permanece como follow-up.
 Assinatura/attestation/staging TLS/pentest continuam externos.
+
+
+## Checkpoint — teto SEM certificado atingido — 2026-10-03
+
+Tip `a56ee509`, ambos os workflows verdes. Concluído tudo que é CÓDIGO e não
+depende de certificado/infra externa:
+- Onboarding + toda a UI (chat, erros, Codex/ChatGPT, Control Center, busca de
+  modelo) e o app mobile em pt-BR com branding Hades e a11y; `6fd58e65`
+  verify-release ancorado (fingerprint+identidade) sem cert; `fc9b5d52` SBOM do
+  instalador em build unsigned; `a56ee509` resíduos de inglês.
+- Verificação em navegador real (Vite dev): a UI carrega em pt-BR, trata
+  backend-offline com error boundary + banner em pt-BR e é responsiva no mobile
+  (375px). Erros de console = apenas ERR_CONNECTION_REFUSED do backend ausente
+  (esperado). Telas de welcome provadas por testes unitários
+  (renderToStaticMarkup asserta as strings pt-BR).
+
+Backlog de código (findings + usabilidade + release sem cert): ENCERRADO.
+Follow-up de médio prazo opcional: estender SHA256SUMS/SBOM aos builds por
+plataforma do release.yaml (workflow frágil, só valida em release).
+
+Delta restante para 100% TOTAL = EXCLUSIVAMENTE EXTERNO (precisa do usuário):
+assinatura Authenticode/SignPath, attestation/provenance SLSA, staging TLS/mTLS,
+certificação RLS em produção e pentest externo independente.
