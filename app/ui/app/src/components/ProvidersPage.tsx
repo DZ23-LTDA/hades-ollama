@@ -1,12 +1,15 @@
-import { useCallback, useEffect, useState } from "react";
-import { CheckCircleIcon, KeyIcon } from "@heroicons/react/24/outline";
+import { type FormEvent, useCallback, useEffect, useId, useState } from "react";
+import { CheckCircleIcon, KeyIcon, PlusIcon } from "@heroicons/react/24/outline";
 import { AppSidebar } from "@/components/AppSidebar";
 import { SidebarLayout } from "@/components/layout/layout";
 import { SettingsTabs } from "@/components/SettingsTabs";
 import { humanizeApiError } from "@/lib/userFacingError";
 import {
+  createProvider,
   listProviderModels,
   listProviders,
+  parseModelIds,
+  PROVIDER_PRESETS,
   removeProviderKey,
   saveProviderKey,
   saveProviderModels,
@@ -285,12 +288,216 @@ function ProviderCard({
   );
 }
 
+function AddProviderForm({
+  onCreated,
+  onCancel,
+}: {
+  onCreated: (name: string) => void;
+  onCancel: () => void;
+}) {
+  const [presetId, setPresetId] = useState("openai");
+  const [name, setName] = useState("openai");
+  const [baseUrl, setBaseUrl] = useState("https://api.openai.com/v1");
+  const [type, setType] = useState<string | undefined>(undefined);
+  const [modelsText, setModelsText] = useState("");
+  const [apiKey, setApiKey] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const ids = useId();
+
+  const applyPreset = (id: string) => {
+    setPresetId(id);
+    setError(null);
+    const preset = PROVIDER_PRESETS.find((p) => p.id === id);
+    if (!preset) return;
+    setName(preset.name);
+    setBaseUrl(preset.base_url);
+    setType(preset.type);
+  };
+
+  const models = parseModelIds(modelsText);
+
+  const submit = async (event: FormEvent) => {
+    event.preventDefault();
+    setError(null);
+    if (!name.trim()) {
+      setError("Dê um nome ao provedor.");
+      return;
+    }
+    if (!baseUrl.trim()) {
+      setError("Informe o endpoint (base URL) do provedor.");
+      return;
+    }
+    if (models.length === 0) {
+      setError("Informe ao menos um ID de modelo.");
+      return;
+    }
+    setBusy(true);
+    try {
+      await createProvider({
+        name: name.trim(),
+        base_url: baseUrl.trim(),
+        type,
+        models,
+        api_key: apiKey.trim() || undefined,
+      });
+      onCreated(name.trim());
+    } catch (err) {
+      setError(
+        humanizeApiError(err, "Não foi possível cadastrar o provedor.").message,
+      );
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const field =
+    "mt-1 w-full rounded-lg border border-neutral-300 bg-transparent px-3 py-2 text-sm text-neutral-900 outline-none focus:border-neutral-500 dark:border-neutral-700 dark:text-neutral-100";
+  const labelClass =
+    "block text-xs font-medium text-neutral-700 dark:text-neutral-300";
+
+  return (
+    <form
+      onSubmit={submit}
+      className="mt-6 rounded-2xl border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-950"
+      aria-label="Adicionar provedor de IA"
+    >
+      <h3 className="text-sm font-semibold text-neutral-900 dark:text-white">
+        Adicionar provedor
+      </h3>
+      <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
+        Escolha um modelo de serviço compatível ou use &quot;Personalizado&quot;.
+        O preço e a cota dependem sempre do provedor escolhido; o cadastro aqui
+        não torna o serviço gratuito.
+      </p>
+
+      <div className="mt-4 grid gap-4 sm:grid-cols-2">
+        <div>
+          <label htmlFor={`${ids}-preset`} className={labelClass}>
+            Serviço
+          </label>
+          <select
+            id={`${ids}-preset`}
+            value={presetId}
+            onChange={(event) => applyPreset(event.target.value)}
+            className={field}
+          >
+            {PROVIDER_PRESETS.map((preset) => (
+              <option key={preset.id} value={preset.id}>
+                {preset.label}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label htmlFor={`${ids}-name`} className={labelClass}>
+            Nome
+          </label>
+          <input
+            id={`${ids}-name`}
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            placeholder="ex.: openai"
+            className={field}
+            autoComplete="off"
+            spellCheck={false}
+          />
+        </div>
+      </div>
+
+      <div className="mt-4">
+        <label htmlFor={`${ids}-url`} className={labelClass}>
+          Endpoint (base URL)
+        </label>
+        <input
+          id={`${ids}-url`}
+          value={baseUrl}
+          onChange={(event) => setBaseUrl(event.target.value)}
+          placeholder="https://api.exemplo.com/v1 ou http://localhost:1234/v1"
+          className={field}
+          autoComplete="off"
+          spellCheck={false}
+          inputMode="url"
+        />
+        <p className="mt-1 text-[11px] text-neutral-400">
+          Serviços externos exigem HTTPS. HTTP é aceito apenas para serviços
+          locais (localhost / 127.0.0.1), como LM Studio ou llama.cpp.
+        </p>
+      </div>
+
+      <div className="mt-4">
+        <label htmlFor={`${ids}-models`} className={labelClass}>
+          IDs de modelos
+        </label>
+        <textarea
+          id={`${ids}-models`}
+          value={modelsText}
+          onChange={(event) => setModelsText(event.target.value)}
+          placeholder="Um por linha ou separados por vírgula. Ex.: gpt-4o, gpt-4o-mini"
+          rows={3}
+          className={field}
+          spellCheck={false}
+        />
+        <p className="mt-1 text-[11px] text-neutral-400">
+          {models.length} modelo(s) reconhecido(s).
+        </p>
+      </div>
+
+      <div className="mt-4">
+        <label htmlFor={`${ids}-key`} className={labelClass}>
+          Chave de API (opcional)
+        </label>
+        <input
+          id={`${ids}-key`}
+          type="password"
+          value={apiKey}
+          onChange={(event) => setApiKey(event.target.value)}
+          placeholder="Cole aqui a chave do provedor, se necessária"
+          className={field}
+          autoComplete="off"
+          spellCheck={false}
+        />
+        <p className="mt-1 text-[11px] text-neutral-400">
+          A chave é guardada protegida no seu usuário do sistema e nunca volta
+          para esta tela. Serviços locais geralmente não precisam de chave.
+        </p>
+      </div>
+
+      {error && (
+        <p role="alert" className="mt-4 text-xs text-red-600 dark:text-red-400">
+          {error}
+        </p>
+      )}
+
+      <div className="mt-5 flex gap-2">
+        <button
+          type="submit"
+          disabled={busy}
+          className="rounded-lg bg-neutral-900 px-4 py-2 text-xs font-medium text-white disabled:opacity-40 dark:bg-white dark:text-neutral-900"
+        >
+          {busy ? "Cadastrando…" : "Cadastrar provedor"}
+        </button>
+        <button
+          type="button"
+          onClick={onCancel}
+          disabled={busy}
+          className="rounded-lg px-4 py-2 text-xs text-neutral-500 disabled:opacity-40"
+        >
+          Cancelar
+        </button>
+      </div>
+    </form>
+  );
+}
+
 export function ProvidersPage() {
   const [providers, setProviders] = useState<ProviderStatus[]>([]);
   const [configPath, setConfigPath] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [adding, setAdding] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -328,6 +535,31 @@ export function ProvidersPage() {
             modelos locais e do Ollama Cloud. As chaves ficam protegidas no seu
             usuário do sistema e nunca voltam para esta tela.
           </p>
+          {!loading && !error && !adding && (
+            <button
+              type="button"
+              onClick={() => {
+                setNotice(null);
+                setAdding(true);
+              }}
+              className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-neutral-900 px-3 py-2 text-xs font-medium text-white hover:bg-neutral-800 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-200"
+            >
+              <PlusIcon className="h-4 w-4" />
+              Adicionar provedor
+            </button>
+          )}
+          {adding && (
+            <AddProviderForm
+              onCancel={() => setAdding(false)}
+              onCreated={(name) => {
+                setAdding(false);
+                setNotice(
+                  `${name}: provedor cadastrado. O runtime aplicará a configuração na próxima inicialização.`,
+                );
+                void load();
+              }}
+            />
+          )}
           {!loading && !error && (
             <p className="mt-3 text-xs text-neutral-500">
               {ready} de {providers.length} provedores prontos
@@ -362,11 +594,19 @@ export function ProvidersPage() {
               Carregando provedores…
             </p>
           )}
-          {!loading && !error && providers.length === 0 && (
-            <p className="mt-8 text-sm text-neutral-500">
-              Nenhum provedor configurado. Defina OLLAMA_DZ23_CONFIG com um
-              arquivo de provedores.
-            </p>
+          {!loading && !error && !adding && providers.length === 0 && (
+            <div className="mt-8 max-w-2xl rounded-2xl border border-dashed border-neutral-300 p-6 text-sm leading-6 text-neutral-600 dark:border-neutral-700 dark:text-neutral-300">
+              <p>
+                Você ainda não cadastrou nenhum provedor externo. Use o botão
+                &quot;Adicionar provedor&quot; acima para cadastrar um serviço
+                compatível (como OpenAI, Groq ou OpenRouter) colando a chave de
+                API — não é preciso editar nenhum arquivo.
+              </p>
+              <p className="mt-2 text-neutral-500 dark:text-neutral-400">
+                Os modelos locais e o Ollama Cloud (com login) continuam
+                funcionando normalmente, sem precisar de nenhum provedor aqui.
+              </p>
+            </div>
           )}
           <ul className="mt-6 grid gap-3 md:grid-cols-2">
             {providers.map((provider) => (

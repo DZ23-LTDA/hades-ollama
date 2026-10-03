@@ -298,6 +298,7 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle("GET /api/v1/models/cloud", handle(s.getCloudModels))
 	mux.Handle("GET /api/v1/integrations", handle(s.getIntegrationStatuses))
 	mux.Handle("GET /api/v1/providers", handle(s.listProviders))
+	mux.Handle("POST /api/v1/providers", handle(s.createProvider))
 	mux.Handle("PUT /api/v1/providers/{name}/key", handle(s.setProviderKey))
 	mux.Handle("DELETE /api/v1/providers/{name}/key", handle(s.removeProviderKey))
 	mux.Handle("GET /api/v1/providers/{name}/models", handle(s.listProviderModels))

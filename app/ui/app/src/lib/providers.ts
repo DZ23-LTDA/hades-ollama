@@ -64,6 +64,79 @@ export async function removeProviderKey(name: string): Promise<void> {
   if (!response.ok) throw await failure(response, "Falha ao remover a chave");
 }
 
+export type CreateProviderInput = {
+  name: string;
+  base_url: string;
+  type?: string;
+  api_key_env?: string;
+  models: string[];
+  api_key?: string;
+};
+
+// createProvider registers a brand-new provider from the UI. The optional API
+// key travels only in this request body; the backend stores it in the OS
+// credential vault and never returns it.
+export async function createProvider(
+  input: CreateProviderInput,
+): Promise<ProviderStatus> {
+  const response = await fetch(`${API_BASE}/api/v1/providers`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  if (!response.ok)
+    throw await failure(response, "Falha ao cadastrar o provedor");
+  return (await response.json()) as ProviderStatus;
+}
+
+// parseModelIds splits a free-text field (commas or line breaks) into a unique,
+// trimmed, non-empty list of model ids, preserving the order the user typed.
+export function parseModelIds(raw: string): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const piece of raw.split(/[\n,]+/)) {
+    const id = piece.trim();
+    if (id && !seen.has(id)) {
+      seen.add(id);
+      out.push(id);
+    }
+  }
+  return out;
+}
+
+export type ProviderPreset = {
+  id: string;
+  label: string;
+  name: string;
+  base_url: string;
+  type?: string;
+};
+
+// PROVIDER_PRESETS pre-fill the name and endpoint for well-known
+// OpenAI-compatible services. They do NOT imply the service is free: price and
+// quota always depend on the chosen provider. "custom" clears the fields.
+export const PROVIDER_PRESETS: ProviderPreset[] = [
+  { id: "openai", label: "OpenAI", name: "openai", base_url: "https://api.openai.com/v1" },
+  {
+    id: "anthropic",
+    label: "Anthropic (Claude)",
+    name: "anthropic",
+    base_url: "https://api.anthropic.com",
+    type: "anthropic",
+  },
+  { id: "groq", label: "Groq", name: "groq", base_url: "https://api.groq.com/openai/v1" },
+  { id: "openrouter", label: "OpenRouter", name: "openrouter", base_url: "https://openrouter.ai/api/v1" },
+  { id: "deepseek", label: "DeepSeek", name: "deepseek", base_url: "https://api.deepseek.com" },
+  { id: "mistral", label: "Mistral", name: "mistral", base_url: "https://api.mistral.ai/v1" },
+  {
+    id: "gemini",
+    label: "Google Gemini",
+    name: "gemini",
+    base_url: "https://generativelanguage.googleapis.com/v1beta/openai",
+  },
+  { id: "custom", label: "Personalizado", name: "", base_url: "" },
+];
+
 // sortProviders lists ready providers first, then the rest by name.
 export function sortProviders(providers: ProviderStatus[]): ProviderStatus[] {
   return [...providers].sort(
