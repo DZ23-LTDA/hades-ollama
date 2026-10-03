@@ -455,8 +455,8 @@ export default function Settings() {
 
   if (loading || error || !settings) {
     return (
-      <div className="flex min-h-0 w-full flex-1 flex-col dark:bg-neutral-900">
-        <div className="w-full flex-1 overflow-y-auto p-6 overscroll-contain">
+      <div className="w-full dark:bg-neutral-900">
+        <div className="w-full p-6">
           <div className="mx-auto max-w-4xl space-y-4">
             <HealthCenter />
             <InterfaceModeControl mode={interfaceMode} onChange={changeInterfaceMode} />
@@ -478,8 +478,8 @@ export default function Settings() {
   const isWindows = isWindowsPlatform();
 
   return (
-    <div className="flex min-h-0 w-full flex-1 flex-col dark:bg-neutral-900">
-      <div className="w-full p-6 overflow-y-auto flex-1 overscroll-contain">
+    <div className="w-full dark:bg-neutral-900">
+      <div className="w-full p-6">
         <fieldset
           disabled={resettingToDefaults}
           aria-busy={resettingToDefaults}
