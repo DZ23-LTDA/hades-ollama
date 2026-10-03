@@ -75,9 +75,15 @@ Em uma árvore clonada, o caminho recomendado para o primeiro uso Unix-like é:
 ./scripts/hades-quickstart.sh
 ```
 
-O script verifica Go/Node/npm, compila o backend, instala as dependências e compila a UI, inicia os dois processos e abre a UI em `http://127.0.0.1:5173`. Se nenhum modelo local existir, ele **pergunta antes** de baixar o modelo recomendado (`gemma4:e2b`); em execução não interativa apenas informa o comando, sem baixar nada silenciosamente. Para iniciar sem essa oferta, use `./scripts/hades-quickstart.sh --no-model`. Chaves de provedores externos continuam opcionais e devem ser configuradas na tela **Configurações → Provedores de IA**; o motor local não exige chave.
+No Windows (PowerShell 5.1+ ou 7+), use o equivalente:
 
-O quickstart é local-first e não é um instalador assinado: uma máquina limpa ainda precisa ter Go, Node.js/npm e o comando `curl` disponíveis. O instalador Windows equivalente permanece `scripts/install.ps1`; a UI pode ser iniciada com `npm run preview` após o build.
+```powershell
+./scripts/hades-quickstart.ps1
+```
+
+O script verifica Go/Node/npm, compila o backend, instala as dependências e compila a UI, inicia os dois processos e abre a UI em `http://127.0.0.1:5173`. Se nenhum modelo local existir, ele **pergunta antes** de baixar o modelo recomendado (`qwen2.5:0.5b`, pequeno e rápido para o primeiro uso); em execução não interativa apenas informa o comando, sem baixar nada silenciosamente. Para iniciar sem essa oferta, use `--no-model` (`./scripts/hades-quickstart.sh --no-model` ou `./scripts/hades-quickstart.ps1 -NoModel`). Chaves de provedores externos continuam opcionais e devem ser configuradas na tela **Configurações → Provedores de IA**; o motor local não exige chave.
+
+O quickstart é local-first e não é um instalador assinado: uma máquina limpa ainda precisa ter Go e Node.js/npm disponíveis (a versão `.sh` também requer `curl`; a `.ps1` usa o `Invoke-WebRequest` nativo do PowerShell). Para o usuário final sem ambiente de build, o caminho é o instalador Windows gerado pelo workflow `dz23-windows-installer`; `scripts/install.ps1` permanece como instalador alternativo.
 
 Em outro terminal, se preferir iniciar somente a interface web a partir do código-fonte:
 

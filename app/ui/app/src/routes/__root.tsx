@@ -7,6 +7,7 @@ import { preloadChatData } from "@/lib/chatPreload";
 import { preventPageSelectAll } from "@/lib/keyboard";
 import { useEffect } from "react";
 import { BackendStatusBanner } from "@/components/BackendStatusBanner";
+import { RouteErrorFallback } from "@/components/RouteErrorFallback";
 
 function RootComponent() {
   const queryClient = useQueryClient();
@@ -40,4 +41,7 @@ export const Route = createRootRouteWithContext<{
   queryClient: QueryClient;
 }>()({
   component: RootComponent,
+  // Friendly route-level fallback so a failing page never traps the user with
+  // the bare default error component.
+  errorComponent: RouteErrorFallback,
 });

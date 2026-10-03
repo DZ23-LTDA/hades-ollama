@@ -13,6 +13,7 @@ import {
 import type { Model } from "@/gotypes";
 import Logo from "@/components/Logo";
 import { FileUpload } from "@/components/FileUpload";
+import { FirstModelCard } from "@/components/FirstModelCard";
 import { ModelPicker } from "@/components/ModelPicker";
 import { processFiles } from "@/utils/fileValidation";
 import { SlashCommandMenu } from "@/components/SlashCommandMenu";
@@ -149,6 +150,7 @@ export function HomePage() {
     <div className="min-h-0 flex-1 overflow-y-auto bg-neutral-50 dark:bg-neutral-950">
       <div className="mx-auto w-full max-w-5xl px-6 pb-16 pt-14 lg:px-10">
         <header className="flex flex-col items-center text-center"><Logo size={56} containerClassName="mb-5" /><h1 className="page-title sm:text-4xl">Hades</h1><p className="page-description max-w-xl">Um runtime local-first: converse, compile, pesquise, automatize e acompanhe missões com aprovações e dados no seu ambiente.</p></header>
+        <div className="mt-9"><FirstModelCard /></div>
         <section className="mx-auto mt-9 w-full max-w-3xl">
           <label htmlFor="home-objective" className="sr-only">Descreva uma tarefa</label>
           <div className="relative">

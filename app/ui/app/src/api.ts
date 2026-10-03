@@ -15,6 +15,7 @@ import { parseJsonlFromResponse } from "./util/jsonl-parsing";
 import { ollamaClient as ollama } from "./lib/ollama-client";
 import type { ModelResponse } from "ollama/browser";
 import { API_BASE, OLLAMA_DOT_COM } from "./lib/config";
+import { timeoutSignal } from "./lib/fetchTimeout";
 
 // Extend Model class with utility methods
 declare module "@/gotypes" {
@@ -161,13 +162,23 @@ export async function fetchAgentNotifications(limit = 20): Promise<AgentNotifica
 }
 
 export async function getChats(): Promise<ChatsResponse> {
-  const response = await fetch(`${API_BASE}/api/v1/chats`);
+  const response = await fetch(`${API_BASE}/api/v1/chats`, {
+    signal: timeoutSignal(),
+  });
+  if (!response.ok) {
+    throw new Error(`Failed to fetch chats: ${response.status}`);
+  }
   const data = await response.json();
   return new ChatsResponse(data);
 }
 
 export async function getChat(chatId: string): Promise<ChatResponse> {
-  const response = await fetch(`${API_BASE}/api/v1/chat/${chatId}`);
+  const response = await fetch(`${API_BASE}/api/v1/chat/${chatId}`, {
+    signal: timeoutSignal(),
+  });
+  if (!response.ok) {
+    throw new Error(`Failed to fetch chat: ${response.status}`);
+  }
   const data = await response.json();
   return new ChatResponse(data);
 }
@@ -423,6 +434,17 @@ export async function* sendMessage(
     ),
     signal,
   });
+
+  if (!response.ok) {
+    // Surface backend failures (500/502, auth redirect, proxy error) through the
+    // same path as in-band error events, so the chat shows an error instead of
+    // silently going quiet when the response body is not valid JSONL.
+    yield new ErrorEvent({
+      eventName: "error",
+      error: `Não foi possível enviar a mensagem (HTTP ${response.status}).`,
+    });
+    return;
+  }
 
   for await (const event of parseJsonlFromResponse<ChatEventUnion>(response)) {
     switch (event.eventName) {
