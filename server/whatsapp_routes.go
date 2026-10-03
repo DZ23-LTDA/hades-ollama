@@ -4,12 +4,23 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"os"
 	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/ollama/ollama/internal/agent"
 )
 
+// requireWhatsAppAdmin gates every sensitive WhatsApp operation (SEC-08). The
+// gateway is a single deployment-wide resource shared by all tenants, so these
+// handlers must never be reachable by an ordinary member, and in a multi-tenant
+// deployment they must not let one organization administer another's gateway.
+//
+// When OLLAMA_WHATSAPP_ORG is set, it pins the single organization that owns the
+// global gateway: only owners/admins of that organization may administer, read
+// the DLQ/allowlist, or send. When it is unset (the default single-tenant and
+// local setups) the check is role-based, as before. Pinning the org is the
+// supported way to keep the gateway isolated in a multi-tenant deployment.
 func (a *agentAPI) requireWhatsAppAdmin(c *gin.Context) bool {
 	if !a.authRequired {
 		return true
@@ -19,6 +30,12 @@ func (a *agentAPI) requireWhatsAppAdmin(c *gin.Context) bool {
 	if !ok || (membership.Role != agent.RoleOwner && membership.Role != agent.RoleAdmin) {
 		c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "WhatsApp administration requires organization owner or admin"})
 		return false
+	}
+	if pinned := strings.TrimSpace(os.Getenv("OLLAMA_WHATSAPP_ORG")); pinned != "" {
+		if strings.TrimSpace(membership.OrganizationID) != pinned {
+			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "WhatsApp gateway is owned by a different organization"})
+			return false
+		}
 	}
 	return true
 }
@@ -90,6 +107,9 @@ func (a *agentAPI) whatsappWebhook(c *gin.Context) {
 }
 
 func (a *agentAPI) whatsappStatus(c *gin.Context) {
+	if !a.requireWhatsAppAdmin(c) {
+		return
+	}
 	if a.runtime == nil || a.runtime.WhatsApp() == nil {
 		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "whatsapp gateway not available"})
 		return
@@ -100,6 +120,9 @@ func (a *agentAPI) whatsappStatus(c *gin.Context) {
 }
 
 func (a *agentAPI) whatsappSend(c *gin.Context) {
+	if !a.requireWhatsAppAdmin(c) {
+		return
+	}
 	if a.runtime == nil || a.runtime.WhatsApp() == nil {
 		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "whatsapp gateway not available"})
 		return
@@ -139,6 +162,9 @@ func (a *agentAPI) whatsappSend(c *gin.Context) {
 }
 
 func (a *agentAPI) whatsappDLQ(c *gin.Context) {
+	if !a.requireWhatsAppAdmin(c) {
+		return
+	}
 	if a.runtime == nil || a.runtime.WhatsApp() == nil {
 		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "whatsapp gateway not available"})
 		return
@@ -165,6 +191,9 @@ func (a *agentAPI) whatsappClearDLQ(c *gin.Context) {
 }
 
 func (a *agentAPI) whatsappAllowlist(c *gin.Context) {
+	if !a.requireWhatsAppAdmin(c) {
+		return
+	}
 	if a.runtime == nil || a.runtime.WhatsApp() == nil {
 		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "whatsapp gateway not available"})
 		return

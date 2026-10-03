@@ -2,13 +2,43 @@ package server
 
 import (
 	"net/http"
+	"os"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/ollama/ollama/internal/agent"
 )
 
+// requireSupervisorAdmin gates the deployment-wide supervisor (SEC-09). The
+// supervisor is a single global runtime component, so reconfiguring it or
+// triggering a tick is a deployment-level action: it must never be reachable by
+// an ordinary member, and in a multi-tenant deployment it must not let one
+// organization drive another's supervisor. OLLAMA_SUPERVISOR_ORG pins the owning
+// organization; when unset the check is role-based (single-tenant/local default).
+func (a *agentAPI) requireSupervisorAdmin(c *gin.Context) bool {
+	if !a.authRequired {
+		return true
+	}
+	value, _ := c.Get("agent.membership")
+	membership, ok := value.(agent.Membership)
+	if !ok || (membership.Role != agent.RoleOwner && membership.Role != agent.RoleAdmin) {
+		c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "supervisor administration requires organization owner or admin"})
+		return false
+	}
+	if pinned := strings.TrimSpace(os.Getenv("OLLAMA_SUPERVISOR_ORG")); pinned != "" {
+		if strings.TrimSpace(membership.OrganizationID) != pinned {
+			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "supervisor is owned by a different organization"})
+			return false
+		}
+	}
+	return true
+}
+
 func (a *agentAPI) supervisorStatus(c *gin.Context) {
+	if !a.requireSupervisorAdmin(c) {
+		return
+	}
 	if a.runtime == nil || a.runtime.Supervisor() == nil {
 		c.JSON(http.StatusOK, gin.H{
 			"enabled": false,
@@ -22,6 +52,9 @@ func (a *agentAPI) supervisorStatus(c *gin.Context) {
 }
 
 func (a *agentAPI) supervisorConfig(c *gin.Context) {
+	if !a.requireSupervisorAdmin(c) {
+		return
+	}
 	if a.runtime == nil || a.runtime.Supervisor() == nil {
 		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "supervisor not initialized in runtime"})
 		return
@@ -39,6 +72,9 @@ func (a *agentAPI) supervisorConfig(c *gin.Context) {
 }
 
 func (a *agentAPI) supervisorTick(c *gin.Context) {
+	if !a.requireSupervisorAdmin(c) {
+		return
+	}
 	if a.runtime == nil || a.runtime.Supervisor() == nil {
 		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "supervisor not initialized in runtime"})
 		return

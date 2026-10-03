@@ -57,6 +57,12 @@ func (a *agentAPI) deviceConnect(c *gin.Context) {
 		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "mTLS client certificate is required"})
 		return
 	}
+	// Bound concurrent companion sockets alongside the SSE streams (SEC-13).
+	release, ok := a.acquireStreamSlot(c)
+	if !ok {
+		return
+	}
+	defer release()
 	connection, err := companionUpgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
 		return

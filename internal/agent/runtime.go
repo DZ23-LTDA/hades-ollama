@@ -1061,13 +1061,24 @@ func (r *Runtime) GetMissionWorktreeDiff(ctx context.Context, missionID string) 
 	return GetWorktreeDiff(ctx, session)
 }
 
-func (r *Runtime) MergeMissionWorktree(ctx context.Context, missionID string) (string, error) {
+// MergeMissionWorktree merges the mission's worktree branch into origin. The
+// human approval must be bound to the exact diff being merged (SEC-03):
+// approvedDiffSHA is the diff_sha256 the reviewer saw (from
+// GetMissionWorktreeDiff). The merge recomputes the current diff and refuses if
+// it no longer matches, so an agent that mutates the worktree after approval
+// cannot merge a different diff than the one that was reviewed ("approve A,
+// merge B"). An empty approvedDiffSHA is rejected: a merge is never unbound.
+func (r *Runtime) MergeMissionWorktree(ctx context.Context, missionID, approvedDiffSHA string) (string, error) {
 	mission, err := r.getMission(strings.TrimSpace(missionID))
 	if err != nil {
 		return "", err
 	}
 	if !mission.GitWorktreeActive || mission.GitWorktreePath == "" {
 		return "", errors.New("mission does not have an active git worktree")
+	}
+	approvedDiffSHA = strings.ToLower(strings.TrimSpace(approvedDiffSHA))
+	if approvedDiffSHA == "" {
+		return "", errors.New("merge requires the approved diff digest (approved_diff_sha256) from the reviewed diff")
 	}
 	session := &GitWorktreeSession{
 		MissionID:    mission.ID,
@@ -1076,6 +1087,20 @@ func (r *Runtime) MergeMissionWorktree(ctx context.Context, missionID string) (s
 		BranchName:   mission.GitBranch,
 		BaseCommit:   mission.GitBaseCommit,
 		TargetBranch: "main",
+	}
+	// Recompute the diff that is actually about to be merged and bind it to the
+	// approval the caller is presenting.
+	current, err := GetWorktreeDiff(ctx, session)
+	if err != nil {
+		return "", fmt.Errorf("inspect worktree before merge: %w", err)
+	}
+	if !strings.EqualFold(current.DiffSHA256, approvedDiffSHA) {
+		_ = r.observeEvent(mission, "git.merge.rejected", "", map[string]any{
+			"reason":       "diff_changed_since_approval",
+			"approved_sha": approvedDiffSHA,
+			"current_sha":  current.DiffSHA256,
+		})
+		return "", fmt.Errorf("the worktree changed since approval (approved %s, current %s); re-review the diff before merging", approvedDiffSHA, current.DiffSHA256)
 	}
 	mergeCommit, err := MergeWorktreeToOrigin(ctx, session)
 	if err != nil {
@@ -1089,6 +1114,7 @@ func (r *Runtime) MergeMissionWorktree(ctx context.Context, missionID string) (s
 	_ = r.observeEvent(mission, "git.merge.succeeded", "", map[string]any{
 		"branch":       session.BranchName,
 		"merge_commit": mergeCommit,
+		"approved_sha": approvedDiffSHA,
 	})
 	return mergeCommit, nil
 }

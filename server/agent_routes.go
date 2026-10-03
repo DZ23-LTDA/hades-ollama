@@ -19,6 +19,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -37,6 +38,8 @@ type agentAPI struct {
 	grok         *grok.Client
 	samlMu       sync.Mutex
 	samlServices map[string]*agent.SAMLService
+	// activeStreams bounds concurrent long-lived SSE/WS connections (SEC-13).
+	activeStreams atomic.Int64
 }
 
 var errAgentForbidden = errors.New("object is outside the active organization")
@@ -1776,6 +1779,11 @@ func (a *agentAPI) collabStream(c *gin.Context) {
 		writeAgentError(c, statusForAgentError(err), err)
 		return
 	}
+	release, ok := a.acquireStreamSlot(c)
+	if !ok {
+		return
+	}
+	defer release()
 	c.Header("Content-Type", "text/event-stream")
 	c.Header("Cache-Control", "no-cache")
 	c.Header("Connection", "keep-alive")
@@ -1897,6 +1905,11 @@ func (a *agentAPI) notifications(c *gin.Context) {
 }
 
 func (a *agentAPI) notificationStream(c *gin.Context) {
+	release, ok := a.acquireStreamSlot(c)
+	if !ok {
+		return
+	}
+	defer release()
 	c.Header("Content-Type", "text/event-stream")
 	c.Header("Cache-Control", "no-cache")
 	c.Header("Connection", "keep-alive")
@@ -2065,6 +2078,11 @@ func (a *agentAPI) eventStream(c *gin.Context) {
 		writeAgentError(c, statusForAgentError(err), err)
 		return
 	}
+	release, ok := a.acquireStreamSlot(c)
+	if !ok {
+		return
+	}
+	defer release()
 	c.Header("Content-Type", "text/event-stream")
 	c.Header("Cache-Control", "no-cache")
 	c.Header("Connection", "keep-alive")
@@ -3064,7 +3082,19 @@ func (a *agentAPI) mergeMissionWorktree(c *gin.Context) {
 		writeAgentError(c, http.StatusBadRequest, errors.New("mission id is required"))
 		return
 	}
-	commitSHA, err := a.scopedRuntime(c).MergeMissionWorktree(c.Request.Context(), id)
+	// SEC-03: the merge must carry the diff digest the reviewer approved so the
+	// server can bind the approval to the exact diff being merged. Accept it from
+	// the JSON body or, as a convenience, a query parameter.
+	approvedDiffSHA := strings.TrimSpace(c.Query("approved_diff_sha256"))
+	if c.Request.Body != nil && c.Request.ContentLength != 0 {
+		var body struct {
+			ApprovedDiffSHA256 string `json:"approved_diff_sha256"`
+		}
+		if err := decodeJSON(c, &body); err == nil && strings.TrimSpace(body.ApprovedDiffSHA256) != "" {
+			approvedDiffSHA = strings.TrimSpace(body.ApprovedDiffSHA256)
+		}
+	}
+	commitSHA, err := a.scopedRuntime(c).MergeMissionWorktree(c.Request.Context(), id, approvedDiffSHA)
 	if err != nil {
 		writeAgentError(c, http.StatusBadRequest, err)
 		return
