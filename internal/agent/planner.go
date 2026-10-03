@@ -28,7 +28,9 @@ type PlannerResolution struct {
 }
 
 type RoutedPlannerResolver interface {
-	ResolvePlannerForMission(ctx context.Context, provider, model string, capabilities []string) (Planner, PlannerResolution, error)
+	// organizationID lets the resolver enforce per-organization policy (e.g. a
+	// spend cap) when auto-routing to a provider.
+	ResolvePlannerForMission(ctx context.Context, provider, model, organizationID string, capabilities []string) (Planner, PlannerResolution, error)
 }
 
 type plannerChatClient interface {

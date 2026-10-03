@@ -853,7 +853,7 @@ func (r *Runtime) CreateMission(ctx context.Context, request CreateMissionReques
 	planner := r.planner
 	if routed, ok := r.plannerResolver.(RoutedPlannerResolver); ok && (mission.Model == "" || strings.HasPrefix(mission.Model, "auto/") || mission.Model == "auto") {
 		var resolution PlannerResolution
-		planner, resolution, err = routed.ResolvePlannerForMission(ctx, mission.Provider, mission.Model, mission.Capabilities)
+		planner, resolution, err = routed.ResolvePlannerForMission(ctx, mission.Provider, mission.Model, mission.OrganizationID, mission.Capabilities)
 		if err != nil {
 			return r.failMission(mission, err)
 		}

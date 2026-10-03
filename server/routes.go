@@ -1996,7 +1996,7 @@ func (s *Server) GenerateRoutes() (http.Handler, error) {
 		allowedHostsMiddleware(s.addr),
 	)
 	if s.agentRuntime != nil {
-		s.agentRuntime.SetPlannerResolver(multiProviderPlannerResolver{client: api.NewClient(envconfig.ConnectableHost(), newServerEgressClient("server.planner.local", true))})
+		s.agentRuntime.SetPlannerResolver(multiProviderPlannerResolver{client: api.NewClient(envconfig.ConnectableHost(), newServerEgressClient("server.planner.local", true)), spend: newAgentSpendLedger()})
 	}
 	if configPath := strings.TrimSpace(os.Getenv("OLLAMA_DZ23_CONFIG")); configPath != "" {
 		registry, err := multillm.Load(configPath)
@@ -2007,7 +2007,7 @@ func (s *Server) GenerateRoutes() (http.Handler, error) {
 		s.multiProvider = multillm.NewGateway(registry, nil)
 		r.Use(s.multiProvider.Middleware())
 		if s.agentRuntime != nil {
-			s.agentRuntime.SetPlannerResolver(multiProviderPlannerResolver{registry: registry, client: api.NewClient(envconfig.ConnectableHost(), newServerEgressClient("server.planner.local", true))})
+			s.agentRuntime.SetPlannerResolver(multiProviderPlannerResolver{registry: registry, client: api.NewClient(envconfig.ConnectableHost(), newServerEgressClient("server.planner.local", true)), spend: newAgentSpendLedger()})
 		}
 	}
 
