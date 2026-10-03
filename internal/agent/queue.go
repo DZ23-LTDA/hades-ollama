@@ -482,7 +482,10 @@ func (q *JobQueue) ReplayForOrganization(organizationID, jobID string) (QueueJob
 	return result, nil
 }
 
-func (q *JobQueue) List(status QueueStatus) []QueueJob {
+// List returns the queue jobs for a status, or an error when the backing file
+// state cannot be refreshed. Returning an error (rather than a silent empty
+// slice) lets health checks tell "no jobs" apart from "queue state is broken".
+func (q *JobQueue) List(status QueueStatus) ([]QueueJob, error) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 	var result []QueueJob
@@ -497,9 +500,9 @@ func (q *JobQueue) List(status QueueStatus) []QueueJob {
 		return nil
 	}); err != nil {
 		slog.Error("agent queue state refresh failed", "error", err)
-		return nil
+		return nil, fmt.Errorf("queue state refresh: %w", err)
 	}
-	return result
+	return result, nil
 }
 
 func (q *JobQueue) Start(ctx context.Context, workerID string, handler func(context.Context, QueueJob) error) error {

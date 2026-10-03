@@ -1449,10 +1449,23 @@ func (r *Runtime) EnqueueMission(missionID string) (QueueJob, error) {
 	return r.queue.EnqueueForOrganization(mission.OrganizationID, mission.ID, 3)
 }
 
+// QueueJobs returns the jobs for a status on a best-effort basis: a backing
+// queue error yields an empty slice. Callers that must distinguish "no jobs"
+// from "queue dependency is down" (e.g. health) use QueueJobsWithError.
 func (r *Runtime) QueueJobs(status QueueStatus) []QueueJob {
-	jobs := r.queueJobsRaw(status)
+	jobs, _ := r.QueueJobsWithError(status)
+	return jobs
+}
+
+// QueueJobsWithError is like QueueJobs but surfaces a backing-queue failure
+// instead of masking it as an empty result.
+func (r *Runtime) QueueJobsWithError(status QueueStatus) ([]QueueJob, error) {
+	jobs, err := r.queueJobsRaw(status)
+	if err != nil {
+		return nil, err
+	}
 	if r.organizationScope == "" {
-		return jobs
+		return jobs, nil
 	}
 	filtered := make([]QueueJob, 0, len(jobs))
 	for _, job := range jobs {
@@ -1460,22 +1473,23 @@ func (r *Runtime) QueueJobs(status QueueStatus) []QueueJob {
 			filtered = append(filtered, job)
 		}
 	}
-	return filtered
+	return filtered, nil
 }
 
-func (r *Runtime) queueJobsRaw(status QueueStatus) []QueueJob {
-	var jobs []QueueJob
+func (r *Runtime) queueJobsRaw(status QueueStatus) ([]QueueJob, error) {
 	if r.redisQueue != nil {
-		jobs = r.redisQueue.List(status)
-	} else {
-		jobs = r.queue.List(status)
+		return r.redisQueue.List(status)
 	}
-	return jobs
+	return r.queue.List(status)
 }
 
 func (r *Runtime) ReplayJob(jobID string) (QueueJob, error) {
 	jobID = strings.TrimSpace(jobID)
-	for _, job := range r.queueJobsRaw(QueueDeadLetter) {
+	deadJobs, err := r.queueJobsRaw(QueueDeadLetter)
+	if err != nil {
+		return QueueJob{}, err
+	}
+	for _, job := range deadJobs {
 		if job.ID != jobID {
 			continue
 		}
@@ -1533,8 +1547,12 @@ func (r *Runtime) ReplayJobForOrganization(jobID, organizationID string) (QueueJ
 	if r.organizationScope != "" && organizationID != r.organizationScope {
 		return QueueJob{}, ErrQueueJobForbidden
 	}
+	allJobs, err := r.queueJobsRaw("")
+	if err != nil {
+		return QueueJob{}, err
+	}
 	if organizationID == "" {
-		for _, job := range r.queueJobsRaw("") {
+		for _, job := range allJobs {
 			if job.ID != strings.TrimSpace(jobID) {
 				continue
 			}
@@ -1549,7 +1567,7 @@ func (r *Runtime) ReplayJobForOrganization(jobID, organizationID string) (QueueJ
 		}
 		return QueueJob{}, os.ErrNotExist
 	}
-	for _, job := range r.queueJobsRaw("") {
+	for _, job := range allJobs {
 		if job.ID != strings.TrimSpace(jobID) {
 			continue
 		}

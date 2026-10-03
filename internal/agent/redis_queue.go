@@ -884,7 +884,12 @@ func (q *RedisQueue) ReplayForOrganization(organizationID, jobID string) (QueueJ
 	return job, nil
 }
 
-func (q *RedisQueue) List(status QueueStatus) []QueueJob {
+// List returns the queue jobs for a status, or an error when the Redis
+// dependency is unavailable or returns an unexpected response. Callers that
+// derive health MUST distinguish an error (dependency down) from an empty
+// slice (genuinely no jobs); returning nil for both would mask outages as a
+// healthy empty queue.
+func (q *RedisQueue) List(status QueueStatus) ([]QueueJob, error) {
 	const maxScans = 10000
 	const maxJobs = 100000
 	const scanCount = 256
@@ -893,19 +898,19 @@ func (q *RedisQueue) List(status QueueStatus) []QueueJob {
 	for scans := 0; scans < maxScans; scans++ { //nolint:intrange // scans is used by the exhaustion guard below
 		value, err := q.do(context.Background(), "SCAN", cursor, "MATCH", q.key("job:*"), "COUNT", strconv.Itoa(scanCount))
 		if err != nil {
-			return nil
+			return nil, fmt.Errorf("redis queue list scan: %w", err)
 		}
 		response, ok := value.([]any)
 		if !ok || len(response) != 2 {
-			return nil
+			return nil, errors.New("redis queue list: unexpected SCAN response")
 		}
 		cursor, ok = response[0].(string)
 		if !ok {
-			return nil
+			return nil, errors.New("redis queue list: invalid SCAN cursor")
 		}
 		page, ok := response[1].([]any)
 		if !ok {
-			return nil
+			return nil, errors.New("redis queue list: invalid SCAN page")
 		}
 		for _, raw := range page {
 			key, ok := raw.(string)
@@ -914,14 +919,14 @@ func (q *RedisQueue) List(status QueueStatus) []QueueJob {
 			}
 			keys[key] = struct{}{}
 			if len(keys) > maxJobs {
-				return nil
+				return nil, fmt.Errorf("redis queue list: exceeded %d keys", maxJobs)
 			}
 		}
 		if cursor == "0" {
 			break
 		}
 		if scans == maxScans-1 {
-			return nil
+			return nil, errors.New("redis queue list: scan did not converge")
 		}
 	}
 	keyList := make([]string, 0, len(keys))
@@ -937,11 +942,11 @@ func (q *RedisQueue) List(status QueueStatus) []QueueJob {
 		args = append(args, keyList[offset:end]...)
 		value, err := q.do(context.Background(), args...)
 		if err != nil {
-			return nil
+			return nil, fmt.Errorf("redis queue list mget: %w", err)
 		}
 		values, ok := value.([]any)
 		if !ok || len(values) != end-offset {
-			return nil
+			return nil, errors.New("redis queue list: unexpected MGET response")
 		}
 		for _, raw := range values {
 			text, ok := raw.(string)
@@ -960,7 +965,7 @@ func (q *RedisQueue) List(status QueueStatus) []QueueJob {
 		}
 		return jobs[i].CreatedAt.Before(jobs[j].CreatedAt)
 	})
-	return jobs
+	return jobs, nil
 }
 
 func (q *RedisQueue) Start(ctx context.Context, workerID string, handler func(context.Context, QueueJob) error) error {

@@ -812,17 +812,36 @@ func (a *agentAPI) health(c *gin.Context) {
 	// Real queue depth instead of a static label: surface how much work is
 	// pending/running and whether anything has landed in the dead-letter queue.
 	pending, running, dead := 0, 0, 0
+	queueHealth := "ok"
+	var queueErr error
 	if a.runtime != nil {
-		pending = len(a.runtime.QueueJobs(agent.QueuePending))
-		running = len(a.runtime.QueueJobs(agent.QueueRunning))
-		dead = len(a.runtime.QueueJobs(agent.QueueDeadLetter))
+		for _, probe := range []struct {
+			status agent.QueueStatus
+			count  *int
+		}{
+			{agent.QueuePending, &pending},
+			{agent.QueueRunning, &running},
+			{agent.QueueDeadLetter, &dead},
+		} {
+			jobs, err := a.runtime.QueueJobsWithError(probe.status)
+			if err != nil {
+				queueErr = err
+				break
+			}
+			*probe.count = len(jobs)
+		}
 	}
 	status := "ok"
 	if !runtimeReady {
 		status = "degraded"
 	}
-	queueHealth := "ok"
-	if dead > 0 {
+	if queueErr != nil {
+		// The queue dependency is unreachable or returned an unexpected
+		// response. Report it as unavailable instead of masking the outage as
+		// a healthy, empty queue.
+		queueHealth = "unavailable"
+		status = "degraded"
+	} else if dead > 0 {
 		// Dead-lettered jobs are a real, actionable problem; reflect it.
 		queueHealth = "degraded"
 		if status == "ok" {

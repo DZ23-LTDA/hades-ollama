@@ -116,7 +116,11 @@ func TestJobQueueRetriesDeadLettersAndReplays(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if jobs := reloaded.List(QueuePending); len(jobs) != 1 {
+	jobs, err := reloaded.List(QueuePending)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(jobs) != 1 {
 		t.Fatalf("pending after reload = %+v", jobs)
 	}
 }
@@ -147,11 +151,17 @@ func TestJobQueueWorkerAcknowledgesJobs(t *testing.T) {
 	}
 	deadline := time.Now().Add(2 * time.Second)
 	for {
-		if status := queue.List(QueueSucceeded); len(status) == 1 {
+		status, err := queue.List(QueueSucceeded)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(status) == 1 {
 			break
 		}
 		if time.Now().After(deadline) {
-			t.Fatalf("worker returned but job was not acknowledged: pending=%+v running=%+v succeeded=%+v", queue.List(QueuePending), queue.List(QueueRunning), queue.List(QueueSucceeded))
+			pending, _ := queue.List(QueuePending)
+			running, _ := queue.List(QueueRunning)
+			t.Fatalf("worker returned but job was not acknowledged: pending=%+v running=%+v succeeded=%+v", pending, running, status)
 		}
 		time.Sleep(time.Millisecond)
 	}
@@ -265,7 +275,10 @@ func TestJobQueueReplayRequiresPersistedOrganizationOwner(t *testing.T) {
 	if !errors.Is(err, ErrQueueJobForbidden) {
 		t.Fatalf("ownerless replay error=%v, want forbidden", err)
 	}
-	legacyItems := legacyQueue.List(QueueDeadLetter)
+	legacyItems, err := legacyQueue.List(QueueDeadLetter)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if len(legacyItems) != 1 || legacyItems[0].ID != legacy.ID || legacyItems[0].OrganizationID != "" {
 		t.Fatalf("ownerless dead-letter changed after rejected replay: %+v", legacyItems)
 	}
@@ -284,7 +297,11 @@ func TestJobQueueEnqueueIsIdempotentByMission(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if second.ID != first.ID || len(queue.List("")) != 1 {
-		t.Fatalf("duplicate mission jobs: first=%+v second=%+v jobs=%+v", first, second, queue.List(""))
+	listed, err := queue.List("")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if second.ID != first.ID || len(listed) != 1 {
+		t.Fatalf("duplicate mission jobs: first=%+v second=%+v jobs=%+v", first, second, listed)
 	}
 }
