@@ -164,14 +164,6 @@ local candidateKey = KEYS[4] .. candidateID
 err = typeError(candidateKey, 'string')
 if err then return err end
 local candidateRaw = redis.call('GET', candidateKey)
-if not candidateRaw then
-  -- Orphan pending index entry: the job payload expired (7-day TTL) or was
-  -- removed while its id lingered in the pending list. Drop the dangling entry
-  -- so the queue does not get stuck repeatedly claiming a missing job; the next
-  -- claim proceeds to the following candidate.
-  redis.call('LREM', KEYS[1], 0, candidateID)
-  return nil
-end
 local candidateJob, decodeErr = decodeJob(candidateKey, candidateRaw, candidateID)
 if decodeErr then return decodeErr end
 if candidateJob.status ~= 'pending' then
@@ -747,7 +739,7 @@ func validRedisQueuePrefix(prefix string) bool {
 	return true
 }
 
-func (q *RedisQueue) key(name string) string  { return q.prefix + ":" + name }
+func (q *RedisQueue) key(name string) string { return q.prefix + ":" + name }
 
 func (q *RedisQueue) tenantActiveKey(organizationID string) string {
 	return q.key("tenant-active:" + organizationID)
