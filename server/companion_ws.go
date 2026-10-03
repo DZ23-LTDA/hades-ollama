@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -14,12 +15,24 @@ import (
 
 var companionUpgrader = websocket.Upgrader{ReadBufferSize: 16 << 10, WriteBufferSize: 16 << 10, CheckOrigin: companionOriginAllowed}
 
-// companionIdleTimeout bounds how long the post-handshake read loop waits for the
-// next client frame. Without it, an authenticated client that completes the
-// handshake then goes silent pins a goroutine + socket forever, so opening many
-// idle connections exhausts goroutines/FDs. A healthy companion sends heartbeats
-// well within this window, which refreshes the deadline. Overridable in tests.
-var companionIdleTimeout = 2 * time.Minute
+// defaultCompanionIdleTimeout bounds how long the post-handshake read loop waits
+// for the next client frame. Without it, an authenticated client that completes
+// the handshake then goes silent pins a goroutine + socket forever, so opening
+// many idle connections exhausts goroutines/FDs. A healthy companion sends
+// heartbeats well within this window, which refreshes the deadline.
+const defaultCompanionIdleTimeout = 2 * time.Minute
+
+// companionIdleTimeoutNanos overrides the idle timeout when > 0 (tests only). It
+// is atomic because the per-connection handler goroutine reads it concurrently
+// with any test override.
+var companionIdleTimeoutNanos atomic.Int64
+
+func companionIdleTimeout() time.Duration {
+	if n := companionIdleTimeoutNanos.Load(); n > 0 {
+		return time.Duration(n)
+	}
+	return defaultCompanionIdleTimeout
+}
 
 func companionOriginAllowed(request *http.Request) bool {
 	origin := strings.TrimSpace(request.Header.Get("Origin"))
@@ -67,7 +80,7 @@ func (a *agentAPI) deviceConnect(c *gin.Context) {
 	for {
 		// Rolling idle deadline: a silent connection is dropped instead of
 		// blocking a goroutine forever. Each received frame refreshes it.
-		_ = connection.SetReadDeadline(time.Now().Add(companionIdleTimeout))
+		_ = connection.SetReadDeadline(time.Now().Add(companionIdleTimeout()))
 		var frame agent.CompanionFrame
 		if err := connection.ReadJSON(&frame); err != nil {
 			return

@@ -19,9 +19,8 @@ func TestCompanionWebSocketDropsIdleConnection(t *testing.T) {
 	t.Setenv("OLLAMA_HOST", "127.0.0.1:11434")
 	t.Setenv("OLLAMA_AGENT_ALLOW_INSECURE_COMPANION", "1")
 
-	prev := companionIdleTimeout
-	companionIdleTimeout = 300 * time.Millisecond
-	t.Cleanup(func() { companionIdleTimeout = prev })
+	companionIdleTimeoutNanos.Store(int64(300 * time.Millisecond))
+	t.Cleanup(func() { companionIdleTimeoutNanos.Store(0) })
 
 	runtime, err := agent.NewRuntime(agent.RuntimeConfig{
 		Store:         agent.NewMemoryStore(),
