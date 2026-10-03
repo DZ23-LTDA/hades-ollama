@@ -106,7 +106,8 @@ func browserProcessEnvironment(workspace string) []string {
 		"PATH", "PATHEXT", "SYSTEMROOT", "WINDIR", "TEMP", "TMP",
 		"HOME", "USERPROFILE", "LOCALAPPDATA", "APPDATA", "XDG_CACHE_HOME",
 		"PLAYWRIGHT_BROWSERS_PATH", "OLLAMA_AGENT_BROWSER_EXECUTABLE",
-		"OLLAMA_AGENT_BROWSER_ALLOW_PRIVATE", "LANG", "LC_ALL", "TZ",
+		"OLLAMA_AGENT_BROWSER_ALLOW_PRIVATE", "OLLAMA_AGENT_BROWSER_CDP_URL",
+		"OLLAMA_AGENT_BROWSER_HEADLESS", "LANG", "LC_ALL", "TZ",
 	}
 	environment := make([]string, 0, len(allowed)+1)
 	for _, name := range allowed {

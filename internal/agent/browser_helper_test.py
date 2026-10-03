@@ -87,6 +87,27 @@ class BrowserHelperSecurityTests(unittest.TestCase):
         self.assertTrue(route.continued)
         self.assertFalse(route.aborted)
 
+    @patch.object(helper.socket, "getaddrinfo")
+    def test_cdp_url_must_point_to_loopback_debugger(self, getaddrinfo):
+        getaddrinfo.return_value = self.resolved("127.0.0.1")
+        helper.validate_cdp_url("http://127.0.0.1:9222")
+
+    @patch.object(helper.socket, "getaddrinfo")
+    def test_cdp_url_rejects_non_loopback_debugger(self, getaddrinfo):
+        getaddrinfo.return_value = self.resolved("93.184.216.34")
+        with self.assertRaises(RuntimeError):
+            helper.validate_cdp_url("http://evil.example.com:9222")
+
+    def test_cdp_url_rejects_non_http_scheme(self):
+        with self.assertRaises(RuntimeError):
+            helper.validate_cdp_url("ftp://127.0.0.1:9222")
+
+    def test_headless_defaults_true_and_opt_out(self):
+        with patch.dict("os.environ", {"OLLAMA_AGENT_BROWSER_HEADLESS": ""}, clear=False):
+            self.assertTrue(helper.browser_headless())
+        with patch.dict("os.environ", {"OLLAMA_AGENT_BROWSER_HEADLESS": "0"}):
+            self.assertFalse(helper.browser_headless())
+
 
 if __name__ == "__main__":
     unittest.main()
