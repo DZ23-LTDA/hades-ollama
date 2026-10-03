@@ -1273,3 +1273,51 @@ Verificados os workflows associados ao SHA publicado: `class-a-plus-integrity` (
   - `git diff --check` sem erros (apenas avisos de CRLF/line-ending repo-wide).
 - `.gitignore` passou a ignorar `.manus/`, `.work/` e `outputs/` (scratch local de agentes, fora do código). Esses diretórios não foram commitados.
 - Não executado / permanece bloqueado por ambiente externo (sem conversão em PASS): suíte Go completa `go test ./...` (sqlite CGO stub e símbolos MLX ausentes neste host); Playwright real para o Browser Operator; assinatura Authenticode/SignPath, attestation/provenance e trust anchor de release; staging TLS/mTLS; Redis/PostgreSQL/roles reais; mobile físico/EAS/push. Release NÃO declarado pronto.
+
+
+## Checkpoint — rodada "finalizar para usuário final" (Claude) — 2026-10-03
+
+Meta do usuário: deixar tudo pronto para o usuário final e o GitHub no estado
+final. Branch `recovery/ollama-full-snapshot`; cada fatia abaixo foi commitada e
+enviada por push fast-forward (sem tocar `main`, sem force). CI remoto do
+primeiro commit da sessão anterior (`89e92367`) ficou verde
+(`dz23-agentic-quality` + `class-a-plus-integrity`).
+
+Fatias entregues (cada uma com teste e gates locais verdes):
+- `0c3ab12a` Health não mascara falha da fila (RedisQueue.List/JobQueue.List
+  devolvem erro; QueueJobsWithError; health reporta "unavailable"); SECURITY.md
+  corrigido sobre a rotação de chave HMAC (comando `rotate-postgres-key` existe).
+- `853deed4` `/missions/:id/run` reporta estado real (enfileirada) + queued,
+  não RUNNING prematuro.
+- `fb20e096` Import de projeto expõe manifesto por arquivo (indexado/ignorado +
+  motivo) no backend e na UI (ImportProjectDialog/describeImport).
+- `e1ef28a1` Pesquisa aceita SearchProvider opcional (descobre fontes da query)
+  com fallback honesto; URLs descobertas passam pelo mesmo fetch SSRF-safe.
+- `66b4e428` fsync do diretório pai após rename atômico (POSIX; no-op no Windows).
+- `98189d65` Guia rápido para usuário final leigo (docs/GUIA_RAPIDO_USUARIO.md),
+  linkado no README, com aviso honesto do SmartScreen (instalador unsigned).
+- `bdf4a744` SSE com Last-Event-ID + heartbeat; eventos com ?limit e total
+  (fatia segura/compatível de H-12).
+
+Prontidão para usuário final confirmada: binário principal compila
+(`go build .`), instalador `app/ollama.iss` coerente (HadesSetup), CI verde,
+guia leigo publicado.
+
+Findings que permanecem ABERTOS e NÃO foram feitos (com motivo honesto — não
+declarar prontos):
+- H-25 spend ledger desconectado do roteamento: exige propagar organization_id
+  + possuir o SpendLedger + contabilizar tokens DEPOIS da chamada (dentro do
+  planner). Authorize sozinho não enforce. Integração transversal no hot path;
+  não validável sem providers reais. NÃO feito.
+- H-08/H-09 quotas/GC do Redis: admissão por quota precisa entrar no script Lua
+  de enqueue (hot path) e exige Redis real/fake para validar. NÃO feito.
+- H-10/S6 cancelamento entre instâncias: marcador durável + checagem pelo worker
+  em safe points; toca o loop de execução e precisa de prova multi-processo.
+  NÃO feito (a fatia SSE não cobre isto).
+- M-15 migration ledger PostgreSQL: precisa de Postgres real para validar. NÃO
+  feito.
+- M-30 matriz MCP: revisada; a matriz já carrega caveats honestos
+  (NOT_CONFIGURED, coluna de gaps externos) e o código MCP é fail-closed — sem
+  mudança necessária.
+- Bloqueios externos inalterados: Authenticode/SignPath, attestation/provenance,
+  staging TLS/mTLS, Playwright real, runners macOS/MLX, mobile físico/EAS.
