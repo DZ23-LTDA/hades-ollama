@@ -676,7 +676,7 @@ describe("CodexDesktopModelsSettings", () => {
 
       const options = renderer!.root.findAllByProps({ role: "option" });
       expect(textContent(options[0])).toContain("glm-5.3-flash:cloud");
-      expect(textContent(options[0])).toContain("Pro plan required");
+      expect(textContent(options[0])).toContain("Requer plano Pro");
       expect(options[0].props.disabled).toBe(false);
       await act(async () => options[0].props.onClick());
       expect(
@@ -735,7 +735,7 @@ describe("CodexDesktopModelsSettings", () => {
         .findAllByProps({ role: "option" })
         .find((option) => textContent(option).includes("glm-5.3-flash:cloud"));
       if (!cloud) throw new Error("Cloud recommendation not found");
-      expect(textContent(cloud)).toContain("Sign in required");
+      expect(textContent(cloud)).toContain("Login necessário");
       expect(cloud.props.disabled).toBe(false);
     } finally {
       await act(async () => renderer?.unmount());

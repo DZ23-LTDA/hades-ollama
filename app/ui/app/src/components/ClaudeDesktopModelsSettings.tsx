@@ -250,7 +250,7 @@ function ClaudeModelPickerOptions({
           );
         })}
         {filteredModels.length === 0 && (
-          <p className="px-3 py-2 text-neutral-400">No models found</p>
+          <p className="px-3 py-2 text-neutral-400">Nenhum modelo encontrado</p>
         )}
       </div>
     </>

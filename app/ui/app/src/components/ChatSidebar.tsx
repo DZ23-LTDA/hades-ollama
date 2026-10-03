@@ -154,16 +154,16 @@ export function ChatSidebar({ currentChatId }: ChatSidebarProps) {
 
   const chatGroups = useMemo(() => {
     return [
-      { name: "Today", chats: groupedChats.today },
-      { name: "This week", chats: groupedChats.thisWeek },
-      { name: "Older", chats: groupedChats.older },
+      { name: "Hoje", chats: groupedChats.today },
+      { name: "Esta semana", chats: groupedChats.thisWeek },
+      { name: "Mais antigas", chats: groupedChats.older },
     ].filter((group) => group.chats.length > 0);
   }, [groupedChats]);
 
   const handleDeleteChat = useCallback(
     async (chatId: string) => {
       const confirmed = window.confirm(
-        `Are you sure you want to remove this chat?`,
+        `Tem certeza de que deseja remover esta conversa?`,
       );
 
       if (!confirmed) return;
@@ -223,13 +223,13 @@ export function ChatSidebar({ currentChatId }: ChatSidebarProps) {
   const handleContextMenu = useCallback(
     async (_: React.MouseEvent, chatId: string, chatTitle: string) => {
       const selectedAction = await window.menu([
-        { label: "Rename", enabled: true },
-        { label: "Delete", enabled: true },
+        { label: "Renomear", enabled: true },
+        { label: "Excluir", enabled: true },
       ]);
 
-      if (selectedAction === "Rename") {
+      if (selectedAction === "Renomear") {
         startEditing(chatId, chatTitle);
-      } else if (selectedAction === "Delete") {
+      } else if (selectedAction === "Excluir") {
         handleDeleteChat(chatId);
       }
     },
@@ -241,13 +241,17 @@ export function ChatSidebar({ currentChatId }: ChatSidebarProps) {
       aria-busy={isLoading || undefined}
       className="flex flex-1 flex-col min-h-0 select-none"
     >
-      <header className="flex flex-col gap-0.5 px-4 pb-2">
+      {/* Single scroll region: the navigation (with the profile) and the chat
+          history share one scrollable column so nothing is cut off on short
+          viewports (they used to compete for height). */}
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain scrollbar-gutter">
+      <div className="flex flex-col gap-0.5 px-4 pb-2">
         <AppNavigation current="chat" />
-      </header>
-      <div className="flex flex-1 flex-col px-4 py-1 overflow-y-auto overscroll-auto scrollbar-gutter">
+      </div>
+      <div className="flex flex-col px-4 py-1">
         {error ? (
           <div className="px-2 pt-4 text-sm text-red-500">
-            Error loading chats
+            Erro ao carregar as conversas
           </div>
         ) : (
           <div className="flex flex-col gap-3 pt-4">
@@ -319,7 +323,7 @@ export function ChatSidebar({ currentChatId }: ChatSidebarProps) {
                         </span>
                         {copiedChatId === chat.id && (
                           <span className="ml-2 text-xs text-green-600 dark:text-green-400">
-                            Copied!
+                            Copiado!
                           </span>
                         )}
                       </Link>
@@ -330,6 +334,7 @@ export function ChatSidebar({ currentChatId }: ChatSidebarProps) {
             ))}
           </div>
         )}
+      </div>
       </div>
     </nav>
   );

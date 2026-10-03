@@ -47,7 +47,7 @@ export function EndpointPage() {
   const [models, setModels] = useState<string[]>([]);
   const [model, setModel] = useState("");
   const [hostname, setHostname] = useState("Este computador");
-  const [osName, setOsName] = useState("Local-First");
+  const [osName, setOsName] = useState("Local");
   const [serverVersion, setServerVersion] = useState("");
   const [hostStatus, setHostStatus] = useState<EndpointHealthStatus>("checking");
 
@@ -156,7 +156,7 @@ export function EndpointPage() {
                   </div>
                   <div className="flex items-center justify-between py-1 border-b border-neutral-200/50 dark:border-neutral-800">
                     <span className="text-neutral-400">Isolamento:</span>
-                    <span className="font-medium text-emerald-600 dark:text-emerald-400">Local Sandbox & RLS</span>
+                    <span className="font-medium text-emerald-600 dark:text-emerald-400">Sandbox local e RLS</span>
                   </div>
                   <div className="flex items-center justify-between py-1">
                     <span className="text-neutral-400">Permissão de Agente:</span>

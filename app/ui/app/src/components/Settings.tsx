@@ -862,23 +862,30 @@ export default function Settings() {
             </div>
 
             <div className="mt-5 space-y-4">
+              <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-xs leading-5 text-emerald-900 dark:border-emerald-900/50 dark:bg-emerald-950/20 dark:text-emerald-200">
+                <strong className="font-semibold">Idioma:</strong> o Hades responde
+                sempre em <strong>português do Brasil</strong> por padrão (a menos que
+                você peça outro idioma na conversa). Isso já está ativo.
+              </div>
               <div>
                 <label className="block text-xs font-semibold text-neutral-800 dark:text-neutral-200">
-                  Instruções Personalizadas Permanentes
+                  Instruções personalizadas (preferência local)
                 </label>
                 <p className="mt-0.5 text-xs text-neutral-500">
-                  O que você gostaria que o Hades sempre soubesse sobre suas preferências e estilo de resposta?
+                  Anote preferências de estilo/resposta. <strong>Aviso honesto:</strong> por
+                  enquanto isto é salvo só neste computador e <em>ainda não é enviado ao
+                  modelo</em> — o envio automático dessas instruções está em desenvolvimento.
                 </p>
                 <textarea
-                  rows={4}
-                  defaultValue={(typeof window !== "undefined" && typeof localStorage !== "undefined" ? localStorage.getItem("ollama_custom_instructions") : null) || "Sempre responder em português, priorizar arquitetura limpa, segurança rigorosa e entregar código testado de ponta a ponta."}
+                  rows={3}
+                  defaultValue={(typeof window !== "undefined" && typeof localStorage !== "undefined" ? localStorage.getItem("ollama_custom_instructions") : null) || ""}
                   onChange={(e) => {
                     if (typeof window !== "undefined" && typeof localStorage !== "undefined") {
                       localStorage.setItem("ollama_custom_instructions", e.target.value);
                     }
                     showSalvoConfirmation();
                   }}
-                  placeholder="Digite suas diretrizes permanentes..."
+                  placeholder="Ex.: respostas curtas e diretas; sempre com exemplos."
                   className="mt-2 w-full rounded-xl border border-neutral-300 bg-white p-3 text-xs leading-relaxed text-neutral-900 focus:border-neutral-900 focus:outline-none dark:border-neutral-700 dark:bg-neutral-900 dark:text-white"
                 />
               </div>
@@ -896,7 +903,7 @@ export default function Settings() {
                   className="rounded-full bg-neutral-100 px-2.5 py-1 text-[11px] font-semibold text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300"
                   role="status"
                 >
-                  Ainda não configurada
+                  Em desenvolvimento
                 </span>
               </div>
             </div>

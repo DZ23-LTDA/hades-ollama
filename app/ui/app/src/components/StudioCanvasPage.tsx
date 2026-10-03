@@ -357,7 +357,7 @@ export function StudioCanvasPage() {
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="text-sm font-semibold text-neutral-900 dark:text-white sm:text-base">
-                  {project?.name || "Studio Builder"}
+                  {project?.name || "Editor do Studio"}
                 </h1>
                 {project && (
                   <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-[11px] font-mono text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400">
@@ -370,7 +370,7 @@ export function StudioCanvasPage() {
                   </span>
                 )}
               </div>
-              <p className="text-xs text-neutral-400">Editor visual interativo conectado ao backend real</p>
+              <p className="text-xs text-neutral-400">Monte um site ou app arrastando componentes; veja a prévia e exporte em ZIP.</p>
             </div>
           </div>
 
@@ -421,7 +421,7 @@ export function StudioCanvasPage() {
                 }`}
               >
                 <EyeIcon className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Preview</span>
+                <span className="hidden sm:inline">Prévia</span>
               </button>
             </div>
 
@@ -443,7 +443,7 @@ export function StudioCanvasPage() {
               className="inline-flex items-center gap-1.5 rounded-lg bg-neutral-900 px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-neutral-800 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-100"
             >
               <RocketLaunchIcon className="h-4 w-4" />
-              <span className="hidden sm:inline">Deploy</span>
+              <span className="hidden sm:inline">Publicar</span>
             </button>
           </div>
         </header>
@@ -735,7 +735,7 @@ export function StudioCanvasPage() {
                 <div className="flex-1 overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
                   <iframe
                     src={previewSrc ?? undefined}
-                    title="Live Preview"
+                    title="Prévia ao vivo"
                     sandbox="allow-scripts"
                     className="h-full w-full border-0 bg-white"
                   />
@@ -877,8 +877,8 @@ export function StudioCanvasPage() {
                     className="flex w-full items-center justify-between rounded-xl border border-neutral-200 p-3 text-left text-xs font-medium text-neutral-800 transition hover:bg-neutral-50 dark:border-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-800"
                   >
                     <span>{prov}</span>
-                    <span className="rounded bg-neutral-100 px-2 py-0.5 text-[10px] text-neutral-500 dark:bg-neutral-800">
-                      Disponível
+                    <span className="rounded bg-amber-100 px-2 py-0.5 text-[10px] font-medium text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
+                      Requer credenciais
                     </span>
                   </button>
                 ))}

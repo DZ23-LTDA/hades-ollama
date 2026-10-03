@@ -63,8 +63,8 @@ export function SidebarLayout({
             e.stopPropagation();
           }}
           className="h-9 w-9 flex items-center justify-center rounded-full hover:bg-neutral-100 dark:hover:bg-neutral-700/75 cursor-pointer"
-          aria-label={sidebarOpen ? "Hide sidebar" : "Show sidebar"}
-          title={sidebarOpen ? "Hide sidebar" : "Show sidebar"}
+          aria-label={sidebarOpen ? "Ocultar barra lateral" : "Mostrar barra lateral"}
+          title={sidebarOpen ? "Ocultar barra lateral" : "Mostrar barra lateral"}
         >
           <svg
             className="h-5 w-5 fill-current"
@@ -79,7 +79,7 @@ export function SidebarLayout({
           <Link
             to="/c/$chatId"
             params={{ chatId: "new" }}
-            title="New chat"
+            title="Nova conversa"
             className={`flex ml-1 items-center justify-center rounded-full transition-opacity duration-375 h-9 w-9 hover:bg-neutral-100 dark:hover:bg-neutral-700 ${
               sidebarOpen ? "opacity-0 pointer-events-none" : "opacity-100"
             }`}

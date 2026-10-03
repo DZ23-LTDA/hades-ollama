@@ -5,10 +5,6 @@ import {
   MagnifyingGlassIcon,
   PlusIcon,
   SparklesIcon,
-  EnvelopeIcon,
-  ChatBubbleLeftRightIcon,
-  BookOpenIcon,
-  CodeBracketIcon,
 } from "@heroicons/react/24/outline";
 import { AppSidebar } from "@/components/AppSidebar";
 import { SidebarLayout } from "@/components/layout/layout";
@@ -98,6 +94,7 @@ export function ConnectorsPage() {
   const [customBaseUrl, setCustomBaseUrl] = useState("");
   const [customTokenEnv, setCustomTokenEnv] = useState("");
   const [creating, setCreating] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -125,6 +122,7 @@ export function ConnectorsPage() {
   const handleCreateCustom = async () => {
     if (!customName.trim() || !customBaseUrl.trim()) return;
     setCreating(true);
+    setCreateError(null);
     try {
       const res = await fetch(`${API_BASE}/api/agent/v1/connectors`, {
         method: "POST",
@@ -150,7 +148,7 @@ export function ConnectorsPage() {
       setCustomTokenEnv("");
       load();
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Falha ao registrar conector");
+      setCreateError(e instanceof Error ? e.message : "Falha ao registrar conector");
     } finally {
       setCreating(false);
     }
@@ -233,54 +231,6 @@ export function ConnectorsPage() {
 
           {category !== "whatsapp" && (
             <>
-          {/* Banners de Destaque Oficiais do Manus */}
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <div className="flex flex-col justify-between rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-950">
-              <div className="flex items-center gap-3">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-950/50">
-                  <EnvelopeIcon className="h-5 w-5" />
-                </div>
-                <h4 className="text-xs font-bold text-neutral-900 dark:text-white">Workspace & Docs</h4>
-              </div>
-              <p className="mt-3 text-[11px] leading-relaxed text-neutral-500">
-                Reúna e-mail, documentos e calendário em um só lugar.
-              </p>
-            </div>
-            <div className="flex flex-col justify-between rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-950">
-              <div className="flex items-center gap-3">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-purple-50 text-purple-600 dark:bg-purple-950/50">
-                  <ChatBubbleLeftRightIcon className="h-5 w-5" />
-                </div>
-                <h4 className="text-xs font-bold text-neutral-900 dark:text-white">Comunicação</h4>
-              </div>
-              <p className="mt-3 text-[11px] leading-relaxed text-neutral-500">
-                Acompanhe discussões e atualizações da equipe em tempo real.
-              </p>
-            </div>
-            <div className="flex flex-col justify-between rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-950">
-              <div className="flex items-center gap-3">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-50 text-amber-600 dark:bg-amber-950/50">
-                  <BookOpenIcon className="h-5 w-5" />
-                </div>
-                <h4 className="text-xs font-bold text-neutral-900 dark:text-white">Conhecimento</h4>
-              </div>
-              <p className="mt-3 text-[11px] leading-relaxed text-neutral-500">
-                Encontre respostas no seu workspace do Notion e Obsidian.
-              </p>
-            </div>
-            <div className="flex flex-col justify-between rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-950">
-              <div className="flex items-center gap-3">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-950/50">
-                  <CodeBracketIcon className="h-5 w-5" />
-                </div>
-                <h4 className="text-xs font-bold text-neutral-900 dark:text-white">Código & Git</h4>
-              </div>
-              <p className="mt-3 text-[11px] leading-relaxed text-neutral-500">
-                Automatize tarefas, commits e auditoria de repositórios.
-              </p>
-            </div>
-          </div>
-
           {/* Barra de Busca e Categorias */}
           <div className="space-y-4">
             <label className="flex items-center gap-3 rounded-2xl border border-neutral-300 bg-white px-4 py-2.5 dark:border-neutral-700 dark:bg-neutral-950">
@@ -366,10 +316,22 @@ export function ConnectorsPage() {
                   />
                 </div>
               </div>
+              {createError && (
+                <div
+                  role="alert"
+                  aria-live="assertive"
+                  className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-xs text-red-700 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300"
+                >
+                  {createError}
+                </div>
+              )}
               <div className="mt-5 flex justify-end gap-3">
                 <button
                   type="button"
-                  onClick={() => setShowCreateModal(false)}
+                  onClick={() => {
+                    setShowCreateModal(false);
+                    setCreateError(null);
+                  }}
                   className="rounded-xl border border-neutral-200 px-4 py-2 text-xs font-medium text-neutral-700 hover:bg-neutral-50 dark:border-neutral-700 dark:text-neutral-300"
                 >
                   Cancelar

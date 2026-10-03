@@ -213,7 +213,7 @@ export default function Chat({ chatId }: { chatId: string }) {
             <div className="mx-auto w-full max-w-3xl text-center">
               <p className="text-xs font-medium uppercase tracking-[0.22em] text-neutral-400">Hades</p>
               <h1 className="mt-4 font-serif text-4xl font-medium tracking-tight text-neutral-900 dark:text-neutral-100 sm:text-5xl">O que posso fazer por você?</h1>
-              <p className="mx-auto mt-4 max-w-xl text-sm leading-6 text-neutral-500 dark:text-neutral-400">Converse, pesquise, construa e execute com o runtime local-first. Para missões com plano, ferramentas e approvals, use o Agentic Console.</p>
+              <p className="mx-auto mt-4 max-w-xl text-sm leading-6 text-neutral-500 dark:text-neutral-400">Converse, pesquise, construa e execute com o runtime local-first. Para missões com plano, ferramentas e aprovações, use o Console de Agentes.</p>
               <div className="mt-8 text-left">
                 <FirstModelCard />
               </div>
@@ -350,6 +350,6 @@ export default function Chat({ chatId }: { chatId: string }) {
       )}
     </FileUpload>
   ) : (
-    <div>Loading...</div>
+    <div>Carregando...</div>
   );
 }

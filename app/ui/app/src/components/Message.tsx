@@ -214,7 +214,7 @@ function BrowserToolResult({
                   : processedContent.url.replace(/_search$/i, "");
                 return (
                   <>
-                    Search results for <InlineSearchTerm term={term} />
+                    Resultados da busca para <InlineSearchTerm term={term} />
                   </>
                 );
               })()}
@@ -228,9 +228,9 @@ function BrowserToolResult({
             </span>
           )}
           <span className="text-neutral-500 text-sm ml-2">
-            (lines {processedContent.startingLine}-
+            (linhas {processedContent.startingLine}-
             {processedContent.startingLine + processedContent.lines.length - 1}{" "}
-            of {processedContent.totalLines})
+            de {processedContent.totalLines})
           </span>
         </div>
       </div>
@@ -340,10 +340,10 @@ function ToolRoleContent({
                           : "");
                       return q ? (
                         <>
-                          Search results for <InlineSearchTerm term={q} />
+                          Resultados da busca para <InlineSearchTerm term={q} />
                         </>
                       ) : (
-                        "Web search results"
+                        "Resultados da busca na web"
                       );
                     })()
                   : toolName === "web_fetch"
@@ -357,14 +357,14 @@ function ToolRoleContent({
                             : "");
                         return u ? (
                           <>
-                            Fetch results for{" "}
+                            Resultado de{" "}
                             <span className="break-all">{u}</span>
                           </>
                         ) : (
-                          "Web fetch results"
+                          "Resultado da página"
                         );
                       })()
-                    : "Raw tool result"}
+                    : "Resultado bruto da ferramenta"}
               </span>
             </div>
           </div>
@@ -409,19 +409,19 @@ function cursorToPageText(
     if (page) {
       if (page.startsWith("search_results_")) {
         const searchTerm = page.replace(/^search_results_/, "");
-        page = `Search results for "${searchTerm}"`;
+        page = `Resultados da busca para "${searchTerm}"`;
       }
       return page;
     }
-    return page || "Unknown page";
+    return page || "Página desconhecida";
   }
 
   if (cursor === undefined) {
     console.warn("cursor is undefined");
-    return "Page";
+    return "Página";
   }
 
-  return `Page #${cursor}`;
+  return `Página nº ${cursor}`;
 }
 
 function cursorToPage(
@@ -458,7 +458,7 @@ function BrowserToolCallDisplay({
           <path d="M0 7.01367C0 10.8809 3.14648 14.0273 7.01367 14.0273C8.54297 14.0273 9.94043 13.5352 11.0918 12.709L15.416 17.042C15.6182 17.2441 15.8818 17.3408 16.1631 17.3408C16.7607 17.3408 17.1738 16.8926 17.1738 16.3037C17.1738 16.0225 17.0684 15.7676 16.8838 15.583L12.5859 11.2588C13.4912 10.0811 14.0273 8.61328 14.0273 7.01367C14.0273 3.14648 10.8809 0 7.01367 0C3.14648 0 0 3.14648 0 7.01367ZM1.50293 7.01367C1.50293 3.97266 3.97266 1.50293 7.01367 1.50293C10.0547 1.50293 12.5244 3.97266 12.5244 7.01367C12.5244 10.0547 10.0547 12.5244 7.01367 12.5244C3.97266 12.5244 1.50293 10.0547 1.50293 7.01367Z" />
         </svg>
         <div className="ml-6">
-          Searching for <InlineSearchTerm term={query} />
+          Buscando por <InlineSearchTerm term={query} />
           &#8230;
         </div>
       </div>
@@ -479,7 +479,7 @@ function BrowserToolCallDisplay({
             <path d="M0 7.01367C0 10.8809 3.14648 14.0273 7.01367 14.0273C8.54297 14.0273 9.94043 13.5352 11.0918 12.709L15.416 17.042C15.6182 17.2441 15.8818 17.3408 16.1631 17.3408C16.7607 17.3408 17.1738 16.8926 17.1738 16.3037C17.1738 16.0225 17.0684 15.7676 16.8838 15.583L12.5859 11.2588C13.4912 10.0811 14.0273 8.61328 14.0273 7.01367C14.0273 3.14648 10.8809 0 7.01367 0C3.14648 0 0 3.14648 0 7.01367ZM1.50293 7.01367C1.50293 3.97266 3.97266 1.50293 7.01367 1.50293C10.0547 1.50293 12.5244 3.97266 12.5244 7.01367C12.5244 10.0547 10.0547 12.5244 7.01367 12.5244C3.97266 12.5244 1.50293 10.0547 1.50293 7.01367Z" />
           </svg>
           <div className="ml-6">
-            Opening link #{id} from {cursorToPage(cursor, browserToolResult)}
+            Abrindo link nº {id} de {cursorToPage(cursor, browserToolResult)}
           </div>
         </div>
       );
@@ -496,11 +496,11 @@ function BrowserToolCallDisplay({
           </svg>
           <div className="ml-6">
             {loc
-              ? `Scrolling to line ${loc} on ${cursorToPageText(
+              ? `Rolando até a linha ${loc} em ${cursorToPageText(
                   cursor,
                   browserToolResult,
                 )}`
-              : `Scrolling`}
+              : `Rolando`}
           </div>
         </div>
       );
@@ -519,7 +519,7 @@ function BrowserToolCallDisplay({
           <path d="M0 7.01367C0 10.8809 3.14648 14.0273 7.01367 14.0273C8.54297 14.0273 9.94043 13.5352 11.0918 12.709L15.416 17.042C15.6182 17.2441 15.8818 17.3408 16.1631 17.3408C16.7607 17.3408 17.1738 16.8926 17.1738 16.3037C17.1738 16.0225 17.0684 15.7676 16.8838 15.583L12.5859 11.2588C13.4912 10.0811 14.0273 8.61328 14.0273 7.01367C14.0273 3.14648 10.8809 0 7.01367 0C3.14648 0 0 3.14648 0 7.01367ZM1.50293 7.01367C1.50293 3.97266 3.97266 1.50293 7.01367 1.50293C10.0547 1.50293 12.5244 3.97266 12.5244 7.01367C12.5244 10.0547 10.0547 12.5244 7.01367 12.5244C3.97266 12.5244 1.50293 10.0547 1.50293 7.01367Z" />
         </svg>
         <div className="ml-6">
-          Searching for <InlineSearchTerm term={pattern} /> on{" "}
+          Buscando por <InlineSearchTerm term={pattern} /> em{" "}
           {cursorToPage(cursor, browserToolResult)}
         </div>
       </div>
@@ -565,7 +565,7 @@ function ToolCallDisplay({
           <path d="M0 7.01367C0 10.8809 3.14648 14.0273 7.01367 14.0273C8.54297 14.0273 9.94043 13.5352 11.0918 12.709L15.416 17.042C15.6182 17.2441 15.8818 17.3408 16.1631 17.3408C16.7607 17.3408 17.1738 16.8926 17.1738 16.3037C17.1738 16.0225 17.0684 15.7676 16.8838 15.583L12.5859 11.2588C13.4912 10.0811 14.0273 8.61328 14.0273 7.01367C14.0273 3.14648 10.8809 0 7.01367 0C3.14648 0 0 3.14648 0 7.01367ZM1.50293 7.01367C1.50293 3.97266 3.97266 1.50293 7.01367 1.50293C10.0547 1.50293 12.5244 3.97266 12.5244 7.01367C12.5244 10.0547 10.0547 12.5244 7.01367 12.5244C3.97266 12.5244 1.50293 10.0547 1.50293 7.01367Z" />
         </svg>
         <div className="ml-6">
-          Searching for <InlineSearchTerm term={query} />
+          Buscando por <InlineSearchTerm term={query} />
           &#8230;
         </div>
       </div>
@@ -591,7 +591,7 @@ function ToolCallDisplay({
           <path d="M0 7.01367C0 10.8809 3.14648 14.0273 7.01367 14.0273C8.54297 14.0273 9.94043 13.5352 11.0918 12.709L15.416 17.042C15.6182 17.2441 15.8818 17.3408 16.1631 17.3408C16.7607 17.3408 17.1738 16.8926 17.1738 16.3037C17.1738 16.0225 17.0684 15.7676 16.8838 15.583L12.5859 11.2588C13.4912 10.0811 14.0273 8.61328 14.0273 7.01367C14.0273 3.14648 10.8809 0 7.01367 0C3.14648 0 0 3.14648 0 7.01367ZM1.50293 7.01367C1.50293 3.97266 3.97266 1.50293 7.01367 1.50293C10.0547 1.50293 12.5244 3.97266 12.5244 7.01367C12.5244 10.0547 10.0547 12.5244 7.01367 12.5244C3.97266 12.5244 1.50293 10.0547 1.50293 7.01367Z" />
         </svg>
         <div className="ml-6">
-          Fetching for <InlineSearchTerm term={url} />
+          Buscando <InlineSearchTerm term={url} />
           &#8230;
         </div>
       </div>
@@ -638,7 +638,7 @@ function ToolCallDisplay({
           <path d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
         </svg>
         <div className="ml-6">
-          Calling <span className="font-mono">{toolCall.function.name}</span>
+          Chamando <span className="font-mono">{toolCall.function.name}</span>
           {preview ? (
             <>
               : <InlineSearchTerm term={preview} />
@@ -754,7 +754,7 @@ function ToolCallDisplay({
           {parsedArgs && (
             <div className="mb-4">
               <div className="text-xs font-semibold text-neutral-600 dark:text-neutral-400 mb-1">
-                Arguments:
+                Argumentos:
               </div>
               <pre className="text-xs bg-neutral-100 dark:bg-neutral-800 p-2 rounded overflow-x-auto">
                 <code className="text-neutral-800 dark:text-neutral-200">
@@ -769,7 +769,7 @@ function ToolCallDisplay({
           {toolCall.function.result && (
             <div>
               <div className="text-xs font-semibold text-neutral-600 dark:text-neutral-400 mb-1">
-                Result:
+                Resultado:
               </div>
               <pre className="text-xs bg-neutral-100 dark:bg-neutral-800 p-2 rounded overflow-x-auto max-h-40">
                 <code className="text-neutral-800 dark:text-neutral-200">
@@ -880,7 +880,7 @@ function UserMessage({
                      }`}
             onClick={isFaded ? undefined : handleEdit}
           >
-            edit
+            editar
           </button>
         </div>
       </div>
@@ -995,7 +995,7 @@ function OtherRoleMessage({
               size="md"
               showLabels={false}
               className="copy-button z-10 text-neutral-500 dark:text-neutral-400"
-              title="Copy"
+              title="Copiar"
             />
           </div>
         )}

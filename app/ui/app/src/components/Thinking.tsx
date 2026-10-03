@@ -130,16 +130,16 @@ export default function Thinking({
 
         <h3 className="ml-6 select-text">
           {activelyThinking
-            ? "Thinking..."
+            ? "Pensando..."
             : finishedThinking
               ? (() => {
                   const thinkingTime =
                     (endTime.getTime() - startTime.getTime()) / 1000;
                   return thinkingTime < 2
-                    ? "Thought for a moment"
-                    : `Thought for ${thinkingTime.toFixed(1)} seconds`;
+                    ? "Pensou por um instante"
+                    : `Pensou por ${thinkingTime.toFixed(1)} segundos`;
                 })()
-              : "Thinking..."}
+              : "Pensando..."}
         </h3>
       </div>
       <div

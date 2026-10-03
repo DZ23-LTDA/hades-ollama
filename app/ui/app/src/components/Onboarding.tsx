@@ -906,7 +906,7 @@ export function ConnectAppsScreen({
     const timeout = scheduleClaudeInstallTimeout(() => {
       if (!active) return;
       setClaudePhase("idle");
-      setClaudeError("Claude installation wasn’t detected. Try again.");
+      setClaudeError("A instalação do Claude não foi detectada. Tente novamente.");
     });
     return () => {
       active = false;

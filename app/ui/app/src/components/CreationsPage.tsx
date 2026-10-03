@@ -111,7 +111,7 @@ export function CreationsPage() {
           </Link>
           <Link
             to="/agentic"
-              search={{ auto_run: true, prompt: "Construir um aplicativo web interativo completo com interface moderna" }}
+              search={{ autorun: true, objective: "Construir um aplicativo web interativo completo com interface moderna" }}
               className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-neutral-900 px-4 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90 dark:bg-white dark:text-neutral-900"
             >
               <SparklesIcon className="h-4 w-4" />
@@ -159,7 +159,7 @@ export function CreationsPage() {
             </p>
             <Link
               to="/agentic"
-              search={{ auto_run: true, prompt: "Construir uma aplicação interativa com HTML5 e visual moderno" }}
+              search={{ autorun: true, objective: "Construir uma aplicação interativa com HTML5 e visual moderno" }}
               className="mt-6 inline-flex items-center gap-2 rounded-xl bg-neutral-900 px-5 py-2.5 text-sm font-medium text-white transition-opacity hover:opacity-90 dark:bg-white dark:text-neutral-900"
             >
               <SparklesIcon className="h-4 w-4" />

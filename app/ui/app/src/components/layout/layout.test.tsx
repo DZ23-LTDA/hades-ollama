@@ -46,16 +46,16 @@ describe("SidebarLayout", () => {
 			);
 		});
 
-		const showButton = renderer.root.findByProps({ "aria-label": "Show sidebar" });
+		const showButton = renderer.root.findByProps({ "aria-label": "Mostrar barra lateral" });
 		act(() => showButton.props.onClick());
-		expect(renderer.root.findByProps({ "aria-label": "Hide sidebar" })).toBeDefined();
+		expect(renderer.root.findByProps({ "aria-label": "Ocultar barra lateral" })).toBeDefined();
 		expect(renderer.root.findByProps({ "aria-label": "Fechar menu" })).toBeDefined();
 
 		act(() => renderer.root.findByProps({ "aria-label": "Fechar menu" }).props.onClick());
-		expect(renderer.root.findByProps({ "aria-label": "Show sidebar" })).toBeDefined();
+		expect(renderer.root.findByProps({ "aria-label": "Mostrar barra lateral" })).toBeDefined();
 
-		act(() => renderer.root.findByProps({ "aria-label": "Show sidebar" }).props.onClick());
+		act(() => renderer.root.findByProps({ "aria-label": "Mostrar barra lateral" }).props.onClick());
 		act(() => (listeners.get("keydown") as (event: KeyboardEvent) => void)({ key: "Escape" } as KeyboardEvent));
-		expect(renderer.root.findByProps({ "aria-label": "Show sidebar" })).toBeDefined();
+		expect(renderer.root.findByProps({ "aria-label": "Mostrar barra lateral" })).toBeDefined();
 	});
 });

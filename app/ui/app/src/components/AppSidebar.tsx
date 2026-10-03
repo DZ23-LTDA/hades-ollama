@@ -32,6 +32,7 @@ import { fetchAgentNotifications, fetchUser, type AgentNotification } from "@/ap
 import { performLogout } from "@/lib/logout";
 import { shouldStopSseReconnect } from "@/lib/sse";
 import { useUser } from "@/hooks/useUser";
+import { useInterfaceMode } from "@/lib/interfaceMode";
 
 export type AppSection =
   | "apps"
@@ -105,6 +106,9 @@ function TargetLink({
   );
 }
 export function AppNavigation({ current }: { current: AppSection }) {
+  // In "Simples" mode (the default for non-technical users) the sidebar shows
+  // only the essentials; the advanced/agentic surfaces appear in "Avançado".
+  const advanced = useInterfaceMode() === "advanced";
   const [searchOpen, setSearchOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
@@ -127,7 +131,7 @@ export function AppNavigation({ current }: { current: AppSection }) {
     name: "Operador local",
     username: "local",
     email: "local@localhost",
-    plan: "Local-first",
+    plan: "Local",
   });
 
   useEffect(() => {
@@ -138,7 +142,7 @@ export function AppNavigation({ current }: { current: AppSection }) {
             name: data.name || "Operador local",
             username: data.name || "local",
             email: data.email || "local@localhost",
-            plan: data.plan || "Local-first",
+            plan: data.plan || "Local",
           });
         }
       })
@@ -257,7 +261,7 @@ export function AppNavigation({ current }: { current: AppSection }) {
             Hades
           </div>
           <div className="truncate text-[10px] text-neutral-400">
-            Local-first workspace
+            Espaço de trabalho local
           </div>
         </div>
       </div>
@@ -286,27 +290,7 @@ export function AppNavigation({ current }: { current: AppSection }) {
         <span className="text-[10px] text-neutral-400">/</span>
       </button>
 
-      <NavLabel>Agentes</NavLabel>
-      <TargetLink
-        href="/endpoint"
-        label="Computadores"
-        current={current}
-        section="endpoint"
-        icon={ComputerDesktopIcon}
-      />
-      <Link
-        to="/agentic"
-        className={itemClass(current === "agentic")}
-        draggable={false}
-      >
-        <BoltIcon className={iconClass} />
-        <span className="min-w-0 flex-1 truncate">Agents</span>
-        <span className="rounded bg-neutral-200 px-1 py-0.5 text-[9px] font-semibold text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300">Cue!</span>
-        <span
-          className="h-1.5 w-1.5 rounded-full bg-emerald-500"
-          title="Runtime local"
-        />
-      </Link>
+      <NavLabel>Conteúdo</NavLabel>
       <TargetLink
         href="/library"
         label="Biblioteca"
@@ -321,51 +305,77 @@ export function AppNavigation({ current }: { current: AppSection }) {
         section="creations"
         icon={SparklesIcon}
       />
-      <TargetLink
-        href="/studio"
-        label="Studio"
-        current={current}
-        section="studio"
-        icon={PencilSquareIcon}
-      />
-      <TargetLink
-        href="/scheduled"
-        label="Automações"
-        current={current}
-        section="scheduled"
-        icon={ClockIcon}
-      />
-      <TargetLink
-        href="/connectors"
-        label="Plugins"
-        current={current}
-        section="connectors"
-        icon={LinkIcon}
-      />
 
-      <NavLabel>Ferramentas</NavLabel>
-      <TargetLink
-        href="/skills"
-        label="Habilidades"
-        current={current}
-        section="skills"
-        icon={BoltIcon}
-      />
-      <TargetLink
-        href="/company"
-        label="Empresa"
-        current={current}
-        section="company"
-        icon={BuildingOffice2Icon}
-        badge="Novo"
-      />
-      <TargetLink
-        href="/tasks"
-        label="Tarefas"
-        current={current}
-        section="tasks"
-        icon={ArrowPathIcon}
-      />
+      {advanced && (
+        <>
+          <NavLabel>Agentes</NavLabel>
+          <TargetLink
+            href="/endpoint"
+            label="Computadores"
+            current={current}
+            section="endpoint"
+            icon={ComputerDesktopIcon}
+          />
+          <Link
+            to="/agentic"
+            className={itemClass(current === "agentic")}
+            draggable={false}
+          >
+            <BoltIcon className={iconClass} />
+            <span className="min-w-0 flex-1 truncate">Agentes</span>
+            <span className="rounded bg-violet-100 px-1 py-0.5 text-[9px] font-semibold text-violet-700 dark:bg-violet-950/60 dark:text-violet-300">Novo</span>
+            <span
+              className="h-1.5 w-1.5 rounded-full bg-emerald-500"
+              title="Runtime local"
+            />
+          </Link>
+          <TargetLink
+            href="/studio"
+            label="Studio"
+            current={current}
+            section="studio"
+            icon={PencilSquareIcon}
+          />
+          <TargetLink
+            href="/scheduled"
+            label="Automações"
+            current={current}
+            section="scheduled"
+            icon={ClockIcon}
+          />
+          <TargetLink
+            href="/connectors"
+            label="Plugins"
+            current={current}
+            section="connectors"
+            icon={LinkIcon}
+          />
+
+          <NavLabel>Ferramentas</NavLabel>
+          <TargetLink
+            href="/skills"
+            label="Habilidades"
+            current={current}
+            section="skills"
+            icon={BoltIcon}
+          />
+          <TargetLink
+            href="/company"
+            label="Empresa"
+            current={current}
+            section="company"
+            icon={BuildingOffice2Icon}
+            badge="Novo"
+          />
+          <TargetLink
+            href="/tasks"
+            label="Tarefas"
+            current={current}
+            section="tasks"
+            icon={ArrowPathIcon}
+          />
+        </>
+      )}
 
       <div className="mt-2 flex items-center justify-between px-2.5 pt-2">
         <NavLabel>Projetos</NavLabel>

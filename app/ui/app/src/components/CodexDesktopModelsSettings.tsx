@@ -107,17 +107,17 @@ function modelCanBeSelected(model: CodexDesktopModelStatus): boolean {
 function modelStatusLabel(model: CodexDesktopModelStatus): string | null {
   switch (model.reason) {
     case "cloud_off":
-      return "Cloud models are off";
+      return "Modelos de nuvem desativados";
     case "sign_in_required":
-      return "Sign in required";
+      return "Login necessário";
     case "upgrade_required":
       return model.requiredPlan
-        ? `${model.requiredPlan[0]?.toUpperCase()}${model.requiredPlan.slice(1)} plan required`
-        : "Upgrade required";
+        ? `Requer plano ${model.requiredPlan[0]?.toUpperCase()}${model.requiredPlan.slice(1)}`
+        : "Requer upgrade de plano";
     case "verification_unavailable":
-      return "Access unavailable";
+      return "Acesso indisponível";
     case "model_not_installed":
-      return "Not installed";
+      return "Não instalado";
   }
   return null;
 }
@@ -259,7 +259,7 @@ function ModelOptions({
           );
         })}
         {filtered.length === 0 && (
-          <p className="px-3 py-2 text-neutral-400">No models found</p>
+          <p className="px-3 py-2 text-neutral-400">Nenhum modelo encontrado</p>
         )}
       </div>
     </>

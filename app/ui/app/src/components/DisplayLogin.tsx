@@ -59,13 +59,13 @@ export const DisplayLogin = ({
   };
 
   const action: DisplayAction = {
-    label: "Sign In",
+    label: "Entrar",
     onClick: handleSignIn,
   };
 
   return (
     <Display
-      message={message || "Cloud models require an Ollama account"}
+      message={message || "Modelos de nuvem exigem uma conta Ollama"}
       action={action}
       className={className}
       onDismiss={onDismiss}

@@ -17,7 +17,7 @@ describe("Downloading", () => {
     const html = renderToStaticMarkup(
       <Downloading completed={500_000_000} total={1_000_000_000} />,
     );
-    expect(html).toContain("Downloading model");
+    expect(html).toContain("Baixando modelo");
     expect(html).toContain("50%");
     expect(html).not.toContain("Preparando download");
   });

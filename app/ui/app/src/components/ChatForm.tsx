@@ -754,10 +754,10 @@ function ChatForm({
       const errorEvent = new ErrorEvent({
         eventName: "error" as const,
         error:
-          error instanceof Error ? error.message : "Failed to select files",
+          error instanceof Error ? error.message : "Não foi possível selecionar os arquivos",
         code: "file_selection_error",
         details:
-          "An error occurred while trying to open the file selection dialog. Please try again.",
+          "Ocorreu um erro ao abrir a janela de seleção de arquivos. Tente novamente.",
       });
 
       setFileUploadError(errorEvent);
@@ -775,15 +775,15 @@ function ChatForm({
               eventName: "error",
               error:
                 activeFeatureForBanner === "webSearch"
-                  ? "Web search requires authentication"
-                  : "Cloud models require authentication",
+                  ? "A busca na web exige autenticação"
+                  : "Modelos de nuvem exigem autenticação",
               code: "cloud_unauthorized",
             })
           }
           message={
             activeFeatureForBanner === "webSearch"
-              ? "Web search requires an Ollama account"
-              : "Cloud models require an Ollama account"
+              ? "A busca na web exige uma conta Ollama"
+              : "Modelos de nuvem exigem uma conta Ollama"
           }
           className="mb-4"
           onDismiss={() => {
@@ -806,7 +806,7 @@ function ChatForm({
         {editingMessage && (
           <div className="w-full px-5 pb-2">
             <p className="text-xs text-neutral-500 dark:text-neutral-400">
-              Press ESC to cancel editing
+              Pressione ESC para cancelar a edição
             </p>
           </div>
         )}
@@ -853,7 +853,7 @@ function ChatForm({
                   </span>
                   {isUnsupportedImage && (
                     <span className="text-xs text-red-600 dark:text-red-400 opacity-75">
-                      This model does not support images
+                      Este modelo não suporta imagens
                     </span>
                   )}
                 </div>
@@ -1040,6 +1040,16 @@ function ChatForm({
             />
             <button
               ref={submitButtonRef}
+              aria-label={
+                isStreaming || isDownloading
+                  ? "Cancelar geração"
+                  : "Enviar mensagem"
+              }
+              title={
+                isStreaming || isDownloading
+                  ? "Cancelar geração"
+                  : "Enviar mensagem"
+              }
               onClick={
                 isStreaming || isDownloading ? handleCancel : handleSubmit
               }

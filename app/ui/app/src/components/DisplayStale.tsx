@@ -38,7 +38,7 @@ export const DisplayStale = ({
   };
 
   const action: DisplayAction = {
-    label: "Update",
+    label: "Atualizar",
     onClick: handleUpdateModel,
     disabled: isStreaming,
     gradientColors: "from-zinc-500/20 via-slate-500/20 to-gray-500/20",
@@ -46,7 +46,7 @@ export const DisplayStale = ({
 
   return (
     <Display
-      message={`A newer version of ${model.model} is available`}
+      message={`Há uma versão mais nova de ${model.model} disponível`}
       variant="zinc"
       onDismiss={onDismiss}
       action={action}

@@ -16,7 +16,7 @@ function formatBytes(bytes: number, unit?: string): string {
 export default function Downloading({
   completed,
   total,
-  label = "Downloading model",
+  label = "Baixando modelo",
 }: {
   completed: number;
   total: number;
