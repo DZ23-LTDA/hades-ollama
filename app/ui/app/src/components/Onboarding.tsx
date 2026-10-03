@@ -65,7 +65,7 @@ function setClaudeConnection(
     return window.prepareClaudeDesktopConnection();
   }
   if (!window.setClaudeDesktopConnected) {
-    throw new Error("Claude Desktop connection is unavailable");
+    throw new Error("A conexão com o Claude Desktop está indisponível");
   }
   return window.setClaudeDesktopConnected(enabled, restartConfirmed);
 }
@@ -123,7 +123,7 @@ function TitleBar({ onSignIn }: { onSignIn?: () => void }) {
           onClick={onSignIn}
           onMouseDown={(event) => event.stopPropagation()}
         >
-          Sign in
+          Entrar
         </button>
       )}
     </header>
@@ -154,18 +154,18 @@ function OnboardingCard({ children }: { children: ReactNode }) {
 
 const OLLAMA_FEATURES = [
   {
-    title: "Connect your apps",
-    description: "Power your existing coding apps with open models",
+    title: "Conecte seus apps",
+    description: "Turbine seus apps de código com modelos abertos",
     icon: CommandLineIcon,
   },
   {
-    title: "Easily switch models",
-    description: "Swap between frontier models in one click.",
+    title: "Troque de modelo facilmente",
+    description: "Alterne entre modelos de ponta em um clique.",
     icon: ArrowsRightLeftIcon,
   },
   {
-    title: "Your data stays yours",
-    description: "Local models process prompts on this device. Cloud models receive requests when you choose to use them.",
+    title: "Seus dados continuam seus",
+    description: "Modelos locais processam seus pedidos neste computador. Modelos de nuvem só recebem pedidos quando você escolhe usá-los.",
     icon: ShieldCheckIcon,
   },
 ];
@@ -190,17 +190,17 @@ export function IntroScreen({
           <div className="flex flex-col items-center justify-center gap-2">
             <img
               src="/hello.png"
-              alt="Ollama waving"
+              alt="Hades dando boas-vindas"
               className="h-[72px] w-[72px] select-none object-contain"
               draggable={false}
             />
             <h1 className="font-rounded text-2xl font-medium leading-8">
-              Welcome to Ollama!
+              Bem-vindo ao Hades!
             </h1>
           </div>
           <p className="mt-4 max-w-[380px] text-sm leading-6 text-neutral-500">
-            Run open models with your coding agents so you can spend less while
-            keeping your data private.
+            Rode modelos abertos com seus agentes de código para gastar menos
+            mantendo seus dados privados.
           </p>
           <div className="mx-auto mt-8 flex w-fit max-w-full flex-col gap-6 text-left">
             {OLLAMA_FEATURES.map((feature) => {
@@ -229,7 +229,7 @@ export function IntroScreen({
             disabled={isLeaving}
             aria-busy={isLeaving || undefined}
           >
-            Continue
+            Continuar
           </button>
           <InlineError message={completionError} />
           {completionError && onRetryCompletion && (
@@ -238,7 +238,7 @@ export function IntroScreen({
               className="mt-2 cursor-pointer rounded-md px-3 py-1 text-sm font-normal text-neutral-600 underline decoration-neutral-300 underline-offset-4 hover:text-neutral-950 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-500"
               onClick={onRetryCompletion}
             >
-              Try again
+              Tentar de novo
             </button>
           )}
         </div>
@@ -282,13 +282,13 @@ export function WelcomeScreen({
       <OnboardingCard>
         <OnboardingIcon />
         <h1 className="mt-7 font-rounded text-2xl font-medium leading-8">
-          Create an account
+          Crie uma conta
         </h1>
         <p className="mt-3 max-w-[400px] text-sm leading-6 text-neutral-400">
-          Create your account for access to faster, larger open models.
+          Crie sua conta para acessar modelos abertos maiores e mais rápidos.
         </p>
         <p className="mt-1 max-w-[400px] text-sm leading-6 text-neutral-400">
-          Local models process prompts on this device. If you opt in to cloud models, prompts are sent to the selected provider when you use them.
+          Modelos locais processam seus pedidos neste computador. Se você ativar os modelos de nuvem, os pedidos são enviados ao provedor escolhido quando você os usa.
         </p>
 
         <div className="mt-7 flex w-full max-w-[240px] flex-col items-center">
@@ -300,10 +300,10 @@ export function WelcomeScreen({
             aria-busy={isSigningIn || isLeaving}
           >
             {isLeaving
-              ? "Opening apps…"
+              ? "Abrindo os apps…"
               : isSigningIn
-                ? "Finish in your browser…"
-                : "Sign up"}
+                ? "Conclua no seu navegador…"
+                : "Criar conta"}
           </button>
           <label className="mt-4 flex items-center gap-2 text-xs text-neutral-600 select-none cursor-pointer">
             <input
@@ -320,7 +320,7 @@ export function WelcomeScreen({
             onClick={onLocal}
             disabled={isLeaving}
           >
-            No thanks, I&apos;ll use Ollama locally
+            Não, obrigado — vou usar os modelos locais
           </button>
           <InlineError message={signInError ?? completionError} />
           {completionError && onRetryCompletion && (
@@ -329,7 +329,7 @@ export function WelcomeScreen({
               className="mt-2 cursor-pointer rounded-md px-3 py-1 text-sm font-normal text-neutral-600 underline decoration-neutral-300 underline-offset-4 hover:text-neutral-950 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-500"
               onClick={onRetryCompletion}
             >
-              Try again
+              Tentar de novo
             </button>
           )}
         </div>
@@ -385,7 +385,7 @@ export function RunOllamaScreen({
       <OnboardingCard>
         <OnboardingIcon compact />
         <h1 className="mt-6 font-rounded text-[22px] font-medium leading-7">
-          Run Ollama
+          Baixe seu primeiro modelo
         </h1>
 
         <div className="mt-6 grid h-12 w-full max-w-[330px] grid-cols-[minmax(0,1fr)_32px] items-center rounded-full bg-neutral-100 px-4 pr-3">
@@ -395,7 +395,7 @@ export function RunOllamaScreen({
           <CopyButton
             content={FIRST_MODEL_COMMAND}
             size="md"
-            title="Copy command to clipboard"
+            title="Copiar comando"
             className="shrink-0 text-neutral-400 hover:!bg-transparent hover:!text-neutral-400"
           />
         </div>
@@ -455,7 +455,7 @@ export function RunOllamaScreen({
             className="mt-2 cursor-pointer rounded-md px-3 py-1 text-sm font-normal text-neutral-600 underline decoration-neutral-300 underline-offset-4 hover:text-neutral-950 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-500"
             onClick={onRetryCompletion}
           >
-            Try again
+            Tentar de novo
           </button>
         )}
       </OnboardingCard>
@@ -502,7 +502,7 @@ export function ClaudeConnectedIntro({ onDone }: { onDone: () => void }) {
       >
         <img
           src="/claude-connected.png"
-          alt="Example Claude model mappings in Ollama settings"
+          alt="Exemplo de mapeamento de modelos do Claude nas configurações do Hades"
           width={896}
           height={768}
           className="h-auto w-full object-contain"
@@ -513,14 +513,15 @@ export function ClaudeConnectedIntro({ onDone }: { onDone: () => void }) {
             id="claude-connected-title"
             className="font-rounded text-lg font-medium leading-6 text-neutral-950 dark:text-neutral-100"
           >
-            Easily access Ollama models in your Claude
+            Acesse os modelos do Hades no seu Claude
           </h2>
           <p
             id="claude-connected-description"
             className="mt-2 text-[13px] leading-5 text-neutral-500 dark:text-neutral-400"
           >
-            Ollama automatically routes Claude models for you. Open settings in
-            Ollama to update which models are used by Claude Desktop.
+            O Hades roteia os modelos do Claude automaticamente. Abra as
+            configurações do Hades para escolher quais modelos o Claude Desktop
+            usa.
           </p>
           <div className="mt-11 flex justify-end">
             <button
@@ -529,7 +530,7 @@ export function ClaudeConnectedIntro({ onDone }: { onDone: () => void }) {
               className="rounded-full bg-neutral-100 px-6 py-2 text-sm font-normal text-neutral-950 transition-colors hover:bg-neutral-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-500 dark:bg-white dark:hover:bg-neutral-100"
               onClick={onDone}
             >
-              Continue
+              Continuar
             </button>
           </div>
         </div>
@@ -628,7 +629,7 @@ export function ConnectAppsScreen({
       return status;
     } catch {
       if (screenMounted.current) {
-        setClaudeError("Ollama could not read the Claude connection status.");
+        setClaudeError("O Hades não conseguiu ler o status da conexão com o Claude.");
       }
       return null;
     }
@@ -670,7 +671,7 @@ export function ConnectAppsScreen({
       },
       () => {
         if (!active) return;
-        setClaudeError("Ollama could not read the Claude connection status.");
+        setClaudeError("O Hades não conseguiu ler o status da conexão com o Claude.");
         setInitialClaudeStatusSettled(true);
       },
     );
@@ -688,7 +689,7 @@ export function ConnectAppsScreen({
       try {
         return (await window.openClaudeDesktop()) || null;
       } catch {
-        return "Ollama connected Claude, but could not open the app.";
+        return "O Hades conectou o Claude, mas não conseguiu abrir o app.";
       }
     },
     [],
@@ -729,7 +730,7 @@ export function ConnectAppsScreen({
             () => {
               if (screenMounted.current) {
                 setClaudeError(
-                  "Ollama connected Claude, but could not open the app.",
+                  "O Hades conectou o Claude, mas não conseguiu abrir o app.",
                 );
               }
             },
@@ -741,8 +742,8 @@ export function ConnectAppsScreen({
           if (screenMounted.current) {
             setClaudeError(
               enabled
-                ? "Ollama could not connect to Claude."
-                : "Ollama could not disconnect from Claude.",
+                ? "O Hades não conseguiu conectar ao Claude."
+                : "O Hades não conseguiu desconectar do Claude.",
             );
           }
         });
@@ -759,7 +760,7 @@ export function ConnectAppsScreen({
       );
       if (!screenMounted.current) return;
       if (!liveStatus) {
-        throw new Error("Claude Desktop connection status is unavailable");
+        throw new Error("O status da conexão com o Claude Desktop está indisponível");
       }
       setClaudeStatus(liveStatus);
 
@@ -788,8 +789,8 @@ export function ConnectAppsScreen({
     } catch (error) {
       setClaudeError(
         error instanceof ClaudeConnectionTimeoutError
-          ? "Claude is taking too long to launch. Check Claude and try again."
-          : "Ollama connected Claude, but could not open the app.",
+          ? "O Claude está demorando demais para abrir. Verifique o Claude e tente de novo."
+          : "O Hades conectou o Claude, mas não conseguiu abrir o app.",
       );
     } finally {
       setClaudePhase("idle");
@@ -865,7 +866,7 @@ export function ConnectAppsScreen({
         if (status.running) {
           setClaudePhase("idle");
           setClaudeError(
-            "Claude is installed. Turn on Connect to restart it with Ollama.",
+            "O Claude está instalado. Ative o Conectar para reiniciá-lo com o Hades.",
           );
           return;
         }
@@ -883,7 +884,7 @@ export function ConnectAppsScreen({
         if (!actionError && result.status.connected) {
           actionError = await finishClaudeConnection(result.status);
         } else if (!actionError) {
-          actionError = "Ollama could not connect to Claude.";
+          actionError = "O Hades não conseguiu conectar ao Claude.";
         }
         setClaudeError(actionError);
         setClaudePhase("idle");
@@ -892,8 +893,8 @@ export function ConnectAppsScreen({
         setClaudePhase("idle");
         setClaudeError(
           error instanceof ClaudeConnectionTimeoutError
-            ? "Claude is taking too long to connect. Check Claude and try again."
-            : "Ollama could not finish connecting Claude.",
+            ? "O Claude está demorando demais para conectar. Verifique o Claude e tente de novo."
+            : "O Hades não conseguiu concluir a conexão com o Claude.",
         );
       } finally {
         checking = false;
@@ -943,7 +944,7 @@ export function ConnectAppsScreen({
         !window.getClaudeDesktopStatus) ||
       !window.setClaudeDesktopConnected
     ) {
-      setClaudeError("Claude connection is available in the Ollama macOS app.");
+      setClaudeError("A conexão com o Claude está disponível no app do Hades para macOS.");
       return;
     }
 
@@ -959,15 +960,15 @@ export function ConnectAppsScreen({
       setClaudePhase("idle");
       setClaudeError(
         error instanceof ClaudeConnectionTimeoutError
-          ? `Claude is taking too long to ${enabling ? "connect" : "disconnect"}. Try again.`
-          : "Ollama could not read the Claude connection status.",
+          ? `O Claude está demorando demais para ${enabling ? "conectar" : "desconectar"}. Tente de novo.`
+          : "O Hades não conseguiu ler o status da conexão com o Claude.",
       );
       return;
     }
     if (!screenMounted.current) return;
     if (!status) {
       setClaudePhase("idle");
-      setClaudeError("Ollama could not read the Claude connection status.");
+      setClaudeError("O Hades não conseguiu ler o status da conexão com o Claude.");
       return;
     }
     setClaudeStatus(status);
@@ -988,7 +989,7 @@ export function ConnectAppsScreen({
     if (enabling && !status.installed) {
       if (!window.installClaudeDesktop) {
         setClaudePhase("idle");
-        setClaudeError("Ollama could not open the Claude installer.");
+        setClaudeError("O Hades não conseguiu abrir o instalador do Claude.");
         return;
       }
       setClaudePhase("installing");
@@ -1004,7 +1005,7 @@ export function ConnectAppsScreen({
       }
       if (installResult !== "opened") {
         setClaudePhase("idle");
-        setClaudeError("Ollama could not open the Claude installer.");
+        setClaudeError("O Hades não conseguiu abrir o instalador do Claude.");
         return;
       }
       setClaudePhase("waiting-for-install");
@@ -1046,17 +1047,17 @@ export function ConnectAppsScreen({
         (enabling ? !result.status.connected : result.status.configured)
       ) {
         actionError = enabling
-          ? "Ollama could not connect to Claude."
-          : "Ollama could not disconnect from Claude.";
+          ? "O Hades não conseguiu conectar ao Claude."
+          : "O Hades não conseguiu desconectar do Claude.";
       }
       setClaudeError(actionError);
     } catch (error) {
       setClaudeError(
         error instanceof ClaudeConnectionTimeoutError
-          ? `Claude is taking too long to ${enabling ? "connect" : "disconnect"}. Try again.`
+          ? `O Claude está demorando demais para ${enabling ? "conectar" : "desconectar"}. Tente de novo.`
           : enabling
-            ? "Ollama could not connect to Claude."
-            : "Ollama could not disconnect from Claude.",
+            ? "O Hades não conseguiu conectar ao Claude."
+            : "O Hades não conseguiu desconectar do Claude.",
       );
     } finally {
       if (!claudeConnectedIntroPending.current) {
@@ -1074,7 +1075,7 @@ export function ConnectAppsScreen({
     : (integrationStatuses?.find((item) => item.id === "chatgpt") ?? {
         id: "chatgpt",
         name: "ChatGPT (Desktop)",
-        description: "Use Ollama models in ChatGPT",
+        description: "Use os modelos do Hades no ChatGPT",
         installed: false,
       });
   const launchIntegrations =
@@ -1104,15 +1105,15 @@ export function ConnectAppsScreen({
   const isConnectingClaude = claudePhase !== "idle";
   const claudeStatusLabel =
     claudePhase === "installing"
-      ? "Downloading…"
+      ? "Baixando…"
       : claudePhase === "waiting-for-install"
-        ? "Finish installing…"
+        ? "Conclua a instalação…"
         : claudePhase === "connecting"
-          ? "Connecting…"
+          ? "Conectando…"
           : claudePhase === "launching"
-            ? "Opening…"
+            ? "Abrindo…"
             : claudePhase === "disconnecting"
-              ? "Disconnecting…"
+              ? "Desconectando…"
               : null;
   const claudeGuidance = claudeDesktopRecoveryMessage(
     claudeStatus?.error,
@@ -1128,7 +1129,9 @@ export function ConnectAppsScreen({
         type="button"
         onClick={() => copyLaunchCommand(item)}
         aria-label={
-          copied ? `${item.name} command copied` : `Copy ${item.name} command`
+          copied
+            ? `Comando do ${item.name} copiado`
+            : `Copiar comando do ${item.name}`
         }
         title={item.description}
         className="relative isolate flex min-w-0 items-center gap-3 rounded-2xl border border-neutral-200 bg-white px-4 py-3 text-left transition-colors duration-700 hover:bg-neutral-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-500 motion-reduce:transition-none dark:border-neutral-700 dark:bg-neutral-900 dark:hover:bg-neutral-800"
@@ -1164,20 +1167,20 @@ export function ConnectAppsScreen({
           >
             {claudeGuidance ??
               (claudeConnected
-                ? `Connected to Ollama · ${claudeDesktopRequestCountLabel(claudeStatus?.routedRequests ?? 0)}`
+                ? `Conectado ao Hades · ${claudeDesktopRequestCountLabel(claudeStatus?.routedRequests ?? 0)}`
                 : claudePhase === "installing"
-                  ? "Ollama is downloading the Claude installer…"
+                  ? "O Hades está baixando o instalador do Claude…"
                   : claudePhase === "waiting-for-install"
-                    ? "Finish installing Claude. Ollama will connect it automatically."
+                    ? "Conclua a instalação do Claude. O Hades vai conectá-lo automaticamente."
                     : claudePhase === "connecting"
-                      ? "Connecting Claude to Ollama…"
+                      ? "Conectando o Claude ao Hades…"
                       : claudePhase === "launching"
-                        ? "Opening Claude…"
+                        ? "Abrindo o Claude…"
                         : claudePhase === "disconnecting"
-                          ? "Restoring Claude’s usual connection…"
+                          ? "Restaurando a conexão normal do Claude…"
                           : !claudeInstalled
-                            ? "We’ll download Claude and connect it to Ollama."
-                            : "Use Ollama models in your Claude Code.")}
+                            ? "Vamos baixar o Claude e conectá-lo ao Hades."
+                            : "Use os modelos do Hades no seu Claude Code.")}
           </p>
         </div>
       </div>
@@ -1187,12 +1190,12 @@ export function ConnectAppsScreen({
         progress={isConnectingClaude ? claudeStatusLabel : null}
         label={
           claudeConfigured
-            ? "Disconnect Claude"
+            ? "Desconectar Claude"
             : isConnectingClaude
-              ? "Connecting Claude"
-              : "Connect Claude"
+              ? "Conectando Claude"
+              : "Conectar Claude"
         }
-        title={claudeConfigured ? "Disconnect" : "Connect"}
+        title={claudeConfigured ? "Desconectar" : "Conectar"}
         disabled={!initialClaudeStatusSettled || isConnectingClaude}
         onClick={connectClaude}
       />
@@ -1212,7 +1215,7 @@ export function ConnectAppsScreen({
                       id="recommended-heading"
                       className="text-xs font-medium uppercase tracking-wider text-neutral-400 dark:text-neutral-500"
                     >
-                      Recommended
+                      Recomendados
                     </h2>
                     <div className="mt-2 space-y-2 bg-white dark:bg-neutral-900">
                       {claudeRow}
@@ -1232,7 +1235,7 @@ export function ConnectAppsScreen({
                       id="terminal-heading"
                       className="text-xs font-medium uppercase tracking-wider text-neutral-400 dark:text-neutral-500"
                     >
-                      {isWindows ? "Apps" : "Other apps"}
+                      {isWindows ? "Apps" : "Outros apps"}
                     </h2>
                     <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
                       {launchIntegrations.map(launchIntegrationCard)}
@@ -1244,17 +1247,17 @@ export function ConnectAppsScreen({
                   !codexIntegration &&
                   launchIntegrations.length === 0 && (
                     <p className="py-12 text-center text-sm text-neutral-400 dark:text-neutral-500">
-                      No apps found.
+                      Nenhum app encontrado.
                     </p>
                   )}
               </div>
             ) : statusError ? (
               <p role="alert" className="mt-8 text-sm text-red-600">
-                Couldn&apos;t load integrations.
+                Não foi possível carregar as integrações.
               </p>
             ) : (
               <p className="mt-8 text-sm text-neutral-400 dark:text-neutral-500">
-                Checking integrations…
+                Verificando integrações…
               </p>
             )}
           </div>
@@ -1280,13 +1283,13 @@ export function ConnectAppsScreen({
             <div className="min-w-0 flex-1">
               <p className="font-semibold leading-5 text-neutral-900 dark:text-neutral-100">
                 {copyNotice.copied
-                  ? "Launch command copied."
-                  : `Couldn’t copy the ${copyNotice.name} command`}
+                  ? "Comando de inicialização copiado."
+                  : `Não foi possível copiar o comando do ${copyNotice.name}`}
               </p>
               <p className="mt-0.5 leading-5 text-neutral-600 dark:text-neutral-200">
                 {copyNotice.copied
-                  ? "Paste it into your terminal"
-                  : "Select and copy the command below, then paste it into your terminal."}
+                  ? "Cole no seu terminal"
+                  : "Selecione e copie o comando abaixo e cole no seu terminal."}
               </p>
               {!copyNotice.copied && (
                 <code className="mt-2 block select-all break-all rounded-md bg-white/70 px-3 py-2 text-xs dark:bg-neutral-900/60">

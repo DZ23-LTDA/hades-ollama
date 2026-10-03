@@ -75,26 +75,26 @@ describe("Onboarding", () => {
   it("explains what Ollama is before asking the user to choose a path", () => {
     const html = renderToStaticMarkup(<IntroScreen onContinue={vi.fn()} />);
 
-    expect(html).toContain("Welcome to Ollama!");
-    expect(html.indexOf('alt="Ollama waving"')).toBeLessThan(
-      html.indexOf("Welcome to Ollama!"),
+    expect(html).toContain("Bem-vindo ao Hades!");
+    expect(html.indexOf('alt="Hades dando boas-vindas"')).toBeLessThan(
+      html.indexOf("Bem-vindo ao Hades!"),
     );
     expect(html).toMatch(/<main class="light-only [^"]*bg-white/);
-    expect(html).not.toMatch(/alt="Ollama waving" class="[^"]*dark:/);
+    expect(html).not.toMatch(/alt="Hades dando boas-vindas" class="[^"]*dark:/);
     expect(html).toContain(
-      "Run open models with your coding agents so you can spend less while keeping your data private.",
+      "Rode modelos abertos com seus agentes de código para gastar menos",
     );
-    expect(html.indexOf("Connect your apps")).toBeLessThan(
-      html.indexOf("Easily switch models"),
+    expect(html.indexOf("Conecte seus apps")).toBeLessThan(
+      html.indexOf("Troque de modelo facilmente"),
     );
-    expect(html.indexOf("Easily switch models")).toBeLessThan(
-      html.indexOf("Your data stays yours"),
+    expect(html.indexOf("Troque de modelo facilmente")).toBeLessThan(
+      html.indexOf("Seus dados continuam seus"),
     );
-    expect(html).toContain("Power your existing coding apps with open models");
-    expect(html).toContain("Swap between frontier models in one click.");
-    expect(html).toContain("Local models process prompts on this device. Cloud models receive requests when you choose to use them.");
+    expect(html).toContain("Turbine seus apps de código com modelos abertos");
+    expect(html).toContain("Alterne entre modelos de ponta em um clique.");
+    expect(html).toContain("Modelos locais processam seus pedidos neste computador. Modelos de nuvem só recebem pedidos quando você escolhe usá-los.");
     expect(html).not.toContain("never logged or trained on");
-    expect(html).toContain("Continue");
+    expect(html).toContain("Continuar");
     expect(html).not.toContain("Skip");
   });
 
@@ -346,7 +346,7 @@ describe("Onboarding", () => {
       expect(claudeSwitch().props.disabled).toBe(false);
       expect(
         renderer.root.findByProps({ role: "alert" }).children.join(""),
-      ).toContain("Claude is taking too long to connect");
+      ).toContain("O Claude está demorando demais para conectar");
 
       await act(async () => {
         finishNativeAction({
@@ -411,7 +411,7 @@ describe("Onboarding", () => {
       <ClaudeConnectedIntro onDone={vi.fn()} />,
     );
 
-    expect(html).toContain(">Continue</button>");
+    expect(html).toContain(">Continuar</button>");
     expect(html).not.toContain('aria-label="Close"');
   });
 
@@ -448,9 +448,9 @@ describe("Onboarding", () => {
       />,
     );
 
-    expect(html).toContain("Welcome to Ollama");
-    expect(html).not.toContain("Run Ollama");
-    expect(html).not.toContain("Sign up");
+    expect(html).toContain("Bem-vindo ao Hades");
+    expect(html).not.toContain("Baixe seu primeiro modelo");
+    expect(html).not.toContain("Criar conta");
   });
 
   it("offers ChatGPT when the catalog has no desktop metadata", () => {
@@ -508,7 +508,7 @@ describe("Onboarding", () => {
     expect(html).toContain('role="alert"');
     expect(html).not.toContain("text-red");
     expect(html).toContain('aria-pressed="true"');
-    expect(html).toContain('aria-label="Disconnect Claude"');
+    expect(html).toContain('aria-label="Desconectar Claude"');
   });
 
   it("keeps Claude model management off the Connect Apps page", () => {
@@ -616,16 +616,16 @@ describe("Onboarding", () => {
       />,
     );
 
-    expect(html).toContain("Create an account");
+    expect(html).toContain("Crie uma conta");
     expect(html).toMatch(/<main class="light-only [^"]*bg-white/);
     expect(html).toContain(
-      "Create your account for access to faster, larger open models.",
+      "Crie sua conta para acessar modelos abertos maiores e mais rápidos.",
     );
-    expect(html).toContain("If you opt in to cloud models, prompts are sent to the selected provider when you use them.");
+    expect(html).toContain("Se você ativar os modelos de nuvem, os pedidos são enviados ao provedor escolhido quando você os usa.");
     expect(html).not.toContain("never logged or trained on");
-    expect(html).toContain("Sign up");
-    expect(html).toContain("No thanks, I&#x27;ll use Ollama locally");
-    expect(html).toContain("Sign in");
+    expect(html).toContain("Criar conta");
+    expect(html).toContain("Não, obrigado — vou usar os modelos locais");
+    expect(html).toContain("Entrar");
     expect(html).not.toContain("Skip");
   });
 
@@ -641,13 +641,13 @@ describe("Onboarding", () => {
       />,
     );
 
-    expect(html).toContain("Create an account");
+    expect(html).toContain("Crie uma conta");
     expect(html).toContain(
-      "Create your account for access to faster, larger open models.",
+      "Crie sua conta para acessar modelos abertos maiores e mais rápidos.",
     );
-    expect(html).toContain("If you opt in to cloud models, prompts are sent to the selected provider when you use them.");
+    expect(html).toContain("Se você ativar os modelos de nuvem, os pedidos são enviados ao provedor escolhido quando você os usa.");
     expect(html).not.toContain("never logged or trained on");
-    expect(html).not.toContain(">Sign in<");
+    expect(html).not.toContain(">Entrar<");
   });
 
   it("shows only the local command on the final page", () => {
@@ -659,11 +659,11 @@ describe("Onboarding", () => {
       />,
     );
 
-    expect(html).toContain("Run Ollama");
+    expect(html).toContain("Baixe seu primeiro modelo");
     expect(html).toMatch(/<main class="light-only [^"]*bg-white/);
     expect(html).toContain(FIRST_MODEL_COMMAND);
     expect(html).not.toContain("Finish");
-    expect(html).not.toContain("Sign in");
+    expect(html).not.toContain("Entrar");
     expect(html).not.toContain("create an account");
   });
 
@@ -693,7 +693,7 @@ describe("Onboarding", () => {
       />,
     );
 
-    expect(html).toContain("Finish in your browser…");
+    expect(html).toContain("Conclua no seu navegador…");
     expect(html).not.toContain("Waiting for sign in…");
   });
 
@@ -709,7 +709,7 @@ describe("Onboarding", () => {
 
     expect(html).toContain("Unable to save setup. Please try again.");
     expect(html).toContain('role="alert"');
-    expect(html).toContain("Try again");
+    expect(html).toContain("Tentar de novo");
   });
 });
 
