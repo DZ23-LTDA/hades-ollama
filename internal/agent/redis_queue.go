@@ -11,6 +11,7 @@ import (
 	"math/rand"
 	"net"
 	"net/url"
+	"os"
 	"sort"
 	"strconv"
 	"strings"
@@ -34,9 +35,25 @@ type RedisQueue struct {
 const redisLeaseDuration = 15 * time.Minute
 
 const (
-	maxRedisQueueJobs          = 100_000 //nolint:unused // compatibility/security surface retained for future adapter wiring
-	maxRedisQueueJobsPerTenant = 10_000  //nolint:unused // compatibility/security surface retained for future adapter wiring
+	maxRedisQueueJobs          = 100_000
+	maxRedisQueueJobsPerTenant = 10_000 //nolint:unused // per-tenant quota needs a per-tenant index; global admission cap is enforced today
 )
+
+// redisMaxJobsCap is the global admission ceiling for active jobs (pending +
+// delayed + running + dead). It is enforced atomically inside the enqueue
+// script to bound unbounded backlog/noisy-neighbor load. OLLAMA_AGENT_REDIS_MAX_JOBS
+// overrides the default.
+func redisMaxJobsCap() int {
+	raw := strings.TrimSpace(os.Getenv("OLLAMA_AGENT_REDIS_MAX_JOBS"))
+	if raw == "" {
+		return maxRedisQueueJobs
+	}
+	value, err := strconv.Atoi(raw)
+	if err != nil || value <= 0 {
+		return maxRedisQueueJobs
+	}
+	return value
+}
 
 func redisLeaseDurationMillis(duration time.Duration) (string, error) {
 	if duration <= 0 {
@@ -469,7 +486,7 @@ return reclaimed
 
 const redisEnqueueScript = redisKeyTypeHelpers + `
 if not distinctKeys(KEYS) then return redis.error_reply('queue script requires distinct Redis keys') end
-if #ARGV ~= 3 then return redis.error_reply('invalid queue script argument count') end
+if #ARGV < 3 or #ARGV > 4 then return redis.error_reply('invalid queue script argument count') end
 if not nonemptyArgument(ARGV[2], 256) then return redis.error_reply('invalid mission id') end
 if type(ARGV[3]) ~= 'string' or #ARGV[3] > 256 then return redis.error_reply('invalid organization id') end
 local err = typeError(KEYS[1], 'string')
@@ -542,6 +559,18 @@ if existingID then
 end
 if redis.call('EXISTS', newJobKey) == 1 then
   return redis.error_reply('queue job id already exists')
+end
+-- Global admission cap: bound total active jobs (pending + delayed + running +
+-- dead) so a flood cannot grow the queue without limit. Only applies to a
+-- genuinely new job; idempotent re-enqueue of an existing mission returned above.
+if #ARGV == 4 then
+  local cap = tonumber(ARGV[4])
+  if cap and cap > 0 then
+    local active = redis.call('LLEN', KEYS[3]) + redis.call('ZCARD', KEYS[4]) + redis.call('ZCARD', KEYS[5]) + redis.call('LLEN', KEYS[6])
+    if active >= cap then
+      return redis.error_reply('queue admission rejected: global job quota reached')
+    end
+  end
 end
 local serverTime = redis.call('TIME')
 local nowMs = tonumber(serverTime[1]) * 1000 + math.floor(tonumber(serverTime[2]) / 1000)
@@ -705,7 +734,7 @@ func (q *RedisQueue) EnqueueForOrganization(organizationID, missionID string, ma
 	if err != nil {
 		return QueueJob{}, err
 	}
-	value, err := q.do(context.Background(), "EVAL", redisEnqueueScript, "7", q.missionKey(missionID), q.key("job:"), q.pendingKey(), q.delayedKey(), q.leaseKey(), q.deadKey(), q.key("sequence"), string(data), missionID, organizationID)
+	value, err := q.do(context.Background(), "EVAL", redisEnqueueScript, "7", q.missionKey(missionID), q.key("job:"), q.pendingKey(), q.delayedKey(), q.leaseKey(), q.deadKey(), q.key("sequence"), string(data), missionID, organizationID, strconv.Itoa(redisMaxJobsCap()))
 	if err != nil {
 		return QueueJob{}, err
 	}

@@ -1439,6 +1439,31 @@ func TestDistributedRedisStartCancellationDominatesNilHandler(t *testing.T) {
 	t.Fatalf("cancelled handler was not terminalized: pending=%+v running=%+v", pendingSnapshot, runningSnapshot)
 }
 
+func TestDistributedRedisEnqueueEnforcesGlobalQuota(t *testing.T) {
+	redisURL := os.Getenv("OLLAMA_AGENT_TEST_REDIS_URL")
+	if redisURL == "" {
+		t.Skip("OLLAMA_AGENT_TEST_REDIS_URL is not configured")
+	}
+	// Small global cap so the third distinct mission is rejected atomically by
+	// the enqueue script (bounds unbounded backlog / noisy-neighbor load).
+	t.Setenv("OLLAMA_AGENT_REDIS_MAX_JOBS", "2")
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	queue, err := openRedisTestQueue(t, ctx, redisURL, "ollama:integration:"+uuid.NewString())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := queue.Enqueue("mis_"+uuid.NewString(), 3); err != nil {
+		t.Fatalf("first enqueue within the cap failed: %v", err)
+	}
+	if _, err := queue.Enqueue("mis_"+uuid.NewString(), 3); err != nil {
+		t.Fatalf("second enqueue within the cap failed: %v", err)
+	}
+	if _, err := queue.Enqueue("mis_"+uuid.NewString(), 3); err == nil || !strings.Contains(err.Error(), "global job quota reached") {
+		t.Fatalf("third enqueue past the global cap must be rejected, got %v", err)
+	}
+}
+
 func TestDistributedRedisWrongTypesDoNotPartiallyMutateQueue(t *testing.T) {
 	redisURL := os.Getenv("OLLAMA_AGENT_TEST_REDIS_URL")
 	if redisURL == "" {
