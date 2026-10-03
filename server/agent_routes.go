@@ -2034,7 +2034,14 @@ func (a *agentAPI) events(c *gin.Context) {
 		writeAgentError(c, statusForAgentError(err), err)
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"mission_id": c.Param("id"), "events": events})
+	// Optional limit returns only the most recent N events so a long-running
+	// mission's history cannot force an unbounded response. total lets the
+	// client know how many exist. Without limit the behavior is unchanged.
+	total := len(events)
+	if limit, limitErr := strconv.Atoi(strings.TrimSpace(c.Query("limit"))); limitErr == nil && limit > 0 && limit < len(events) {
+		events = events[len(events)-limit:]
+	}
+	c.JSON(http.StatusOK, gin.H{"mission_id": c.Param("id"), "events": events, "total": total})
 }
 
 func (a *agentAPI) eventStream(c *gin.Context) {
@@ -2050,19 +2057,46 @@ func (a *agentAPI) eventStream(c *gin.Context) {
 		c.Status(http.StatusNotImplemented)
 		return
 	}
+	// Resume from the client's Last-Event-ID so a reconnect does not replay the
+	// entire history. EventSource sends this header automatically with the id:
+	// we emit below; other clients may send it explicitly.
 	lastCount := 0
+	if resume := strings.TrimSpace(c.GetHeader("Last-Event-ID")); resume != "" {
+		if parsed, parseErr := strconv.Atoi(resume); parseErr == nil && parsed >= 0 {
+			lastCount = parsed
+		}
+	}
 	ticker := time.NewTicker(750 * time.Millisecond)
 	defer ticker.Stop()
+	const heartbeatEveryTicks = 20 // ~15s with a 750ms tick
+	idleTicks := 0
 	for {
 		events, err := a.scopedRuntime(c).Events(c.Param("id"))
 		if err != nil {
 			return
 		}
+		// Guard against a cursor beyond the current log (e.g. a stale resume id
+		// or a reset log) so the slice below never panics.
+		if lastCount > len(events) {
+			lastCount = 0
+		}
 		if len(events) > lastCount {
 			payload, _ := json.Marshal(events[lastCount:])
-			_, _ = fmt.Fprintf(c.Writer, "event: mission\ndata: %s\n\n", payload)
+			// The id: lets the client resume from here on reconnect.
+			_, _ = fmt.Fprintf(c.Writer, "id: %d\nevent: mission\ndata: %s\n\n", len(events), payload)
 			flusher.Flush()
 			lastCount = len(events)
+			idleTicks = 0
+		} else {
+			// Periodic heartbeat comment keeps the connection (and any proxy)
+			// alive without emitting a data event. SSE comment lines start with
+			// ':' and are ignored by clients.
+			idleTicks++
+			if idleTicks >= heartbeatEveryTicks {
+				_, _ = fmt.Fprint(c.Writer, ": heartbeat\n\n")
+				flusher.Flush()
+				idleTicks = 0
+			}
 		}
 		select {
 		case <-c.Request.Context().Done():
