@@ -526,7 +526,7 @@ jobs:
           path: |
             dist/*.zip
             dist/*.ps1
-            dist/OllamaClasseAPlusSetup.exe
+            dist/HadesSetup.exe
 
   linux-depends:
     if: ${{ inputs.enable_release == true && vars.OLLAMA_ENABLE_RELEASE == 'true' }}
@@ -875,7 +875,7 @@ jobs:
       - name: Verify release artifacts
         run: |
           required=(
-            dist/OllamaClasseAPlusSetup.exe
+            dist/HadesSetup.exe
             dist/install.ps1
             dist/install.sh
             dist/ollama-windows-amd64.zip

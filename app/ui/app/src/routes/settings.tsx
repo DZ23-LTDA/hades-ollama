@@ -4,6 +4,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import Settings from "@/components/Settings";
 import { SettingsTabs } from "@/components/SettingsTabs";
 import { ModelsPanel } from "@/components/ModelsPanel";
+import { DataToolsPanel } from "@/components/DataToolsPanel";
 
 export const Route = createFileRoute("/settings")({
   component: SettingsRoute,
@@ -19,6 +20,9 @@ function SettingsRoute() {
       <Settings />
       <div className="mt-6">
         <ModelsPanel />
+      </div>
+      <div className="mt-6">
+        <DataToolsPanel />
       </div>
     </SidebarLayout>
   );

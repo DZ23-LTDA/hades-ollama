@@ -20,7 +20,7 @@ func TestUpdateURLAllowedOnlyForThisDistribution(t *testing.T) {
 			t.Errorf("updateURLAllowed(%q) = true, want false", u)
 		}
 	}
-	if !updateURLAllowed("https://github.com/DZ23-LTDA/hades-ollama/releases/download/v0.2.0/OllamaClasseAPlusSetup.exe") {
+	if !updateURLAllowed("https://github.com/DZ23-LTDA/hades-ollama/releases/download/v0.2.0/HadesSetup.exe") {
 		t.Error("DZ23 release URL should be allowed")
 	}
 

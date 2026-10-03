@@ -76,3 +76,33 @@ func TestDownloadBackupStreamsVerifiableArchive(t *testing.T) {
 		}
 	}
 }
+
+func TestDownloadBackupRefusedInMultiTenantMode(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	dataRoot := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(dataRoot, "context"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dataRoot, "context", "note.txt"), []byte("hello"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	runtime, err := agent.NewRuntime(agent.RuntimeConfig{WorkspaceRoot: t.TempDir(), DataRoot: dataRoot})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// The full backup covers the whole (multi-tenant) data root, so under auth it
+	// must be refused rather than letting any member export every org's data.
+	recorder := httptest.NewRecorder()
+	ctx, _ := gin.CreateTestContext(recorder)
+	(&agentAPI{runtime: runtime, authRequired: true}).downloadBackup(ctx)
+
+	if recorder.Code != http.StatusForbidden {
+		t.Fatalf("expected 403 in multi-tenant mode, got %d: %s", recorder.Code, recorder.Body.String())
+	}
+	if recorder.Body.Len() > 0 && recorder.Header().Get("X-Backup-SHA256") != "" {
+		t.Fatal("multi-tenant backup must not stream archive bytes")
+	}
+}
