@@ -94,3 +94,33 @@ agentic Classe A+): `Preserve Class A+ surfaces`, `Go agentic and server gates`,
 O estado agregado atual do produto é **RELEASE_CANDIDATE** (núcleo verde,
 instalador Windows não assinado disponível), com assinatura e publicação
 multiplataforma **BLOCKED_BY_EXTERNAL_DEPENDENCY**.
+
+## Verificação de release ancorada (sem certificado)
+
+`scripts/verify-release-artifact.sh` confere o manifesto (`sha256sum.txt`) e sua
+assinatura destacada. Como a chave pública viaja junto do release, a assinatura
+sozinha é auto-referente; para ancorar confiança **sem** depender de attestation,
+o script aceita (todos opcionais, fail-closed quando fornecidos):
+
+- `OLLAMA_RELEASE_PUBKEY_SHA256` — SHA-256 esperado do PEM da chave pública,
+  publicado fora do release (neste repo/docs). Sem ele, o script avisa que a
+  chave não está pinada.
+- `OLLAMA_RELEASE_EXPECT_REPOSITORY` / `OLLAMA_RELEASE_EXPECT_COMMIT` /
+  `OLLAMA_RELEASE_EXPECT_REF` — identidade esperada em `release-metadata.json`.
+  Quando qualquer um é definido, o script exige que o `release-metadata.json`
+  exista, esteja **coberto pelo manifesto assinado** e bata com o esperado.
+
+Exemplo:
+
+```bash
+OLLAMA_RELEASE_PUBKEY_SHA256=<sha256-do-pem> \
+OLLAMA_RELEASE_EXPECT_REPOSITORY=DZ23-LTDA/hades-ollama \
+OLLAMA_RELEASE_EXPECT_COMMIT=<sha> \
+  bash scripts/verify-release-artifact.sh sha256sum.txt sha256sum.txt.sig release-signing-public.pem
+```
+
+Teste: `bash scripts/verify-release-artifact.test.sh` (gera keypair/manifesto/
+assinatura temporários e cobre chave trocada, identidade divergente, manifesto
+que não cobre o metadata e checksum adulterado). A assinatura criptográfica
+confiável (Authenticode/attestation) continua sendo o gate externo pendente;
+este pinning reduz a confiança auto-referente sem exigir o certificado.
