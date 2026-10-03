@@ -75,7 +75,7 @@ function RouteComponent() {
   if (chatError) {
     return (
       <SidebarLayout sidebar={<ChatSidebar currentChatId={chatId} />}>
-        <div className="p-4 text-red-500">Error loading chat</div>
+        <div className="p-4 text-red-500">Erro ao carregar o chat</div>
       </SidebarLayout>
     );
   }
