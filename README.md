@@ -20,6 +20,7 @@ As imagens acima foram recapturadas com Chromium contra o Vite dev e o servidor 
 
 | Recurso | Documento |
 |---|---|
+| **Guia rápido para quem não é técnico (instalar e usar)** | [`GUIA_RAPIDO_USUARIO.md`](docs/GUIA_RAPIDO_USUARIO.md) |
 | Instalação, configuração, telas e contribuição | [`CLASS_A_PLUS_GUIDE.md`](docs/CLASS_A_PLUS_GUIDE.md) |
 | Arquitetura do runtime | [`agentic/ARCHITECTURE.md`](docs/agentic/ARCHITECTURE.md) |
 | API e endpoints | [`agentic/API.md`](docs/agentic/API.md) |
