@@ -64,7 +64,12 @@ for (const viewport of viewports) {
           }
         });
 
-        await page.goto(route, { waitUntil: "networkidle" });
+        // `networkidle` never settles here: the shell keeps local polling/SSE
+        // traffic open, so the gate used to time out at 60s. Wait for the DOM
+        // and a brief settle instead, which is enough for axe to analyze the
+        // rendered shell without hanging on a backend that never goes idle.
+        await page.goto(route, { waitUntil: "domcontentloaded" });
+        await page.waitForTimeout(500);
         const results = await new AxeBuilder({ page }).analyze();
         // This shell-smoke run has NO backend, so the critical routes render
         // transient loading/error states rather than their real content. axe

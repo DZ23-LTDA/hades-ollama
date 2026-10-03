@@ -1,6 +1,5 @@
 import { gzipSync } from "node:zlib";
 import { readdir, readFile } from "node:fs/promises";
-import { join } from "node:path";
 
 const assetsDir = new URL("../dist/assets/", import.meta.url);
 const rawBudget = Number(process.env.HADES_BUNDLE_MAX_JS_BYTES ?? 2_000_000);
@@ -13,7 +12,10 @@ if (files.length === 0) {
 
 const entries = await Promise.all(
   files.map(async (name) => {
-    const data = await readFile(join(new URL(assetsDir).pathname, name));
+    // Resolve each asset against the directory URL so the path stays correct
+    // on Windows too (URL.pathname yields a leading-slash "/D:/..." that join
+    // turns into "D:\D:\...").
+    const data = await readFile(new URL(name, assetsDir));
     return { name, raw: data.byteLength, gzip: gzipSync(data, { level: 9 }).byteLength };
   }),
 );
