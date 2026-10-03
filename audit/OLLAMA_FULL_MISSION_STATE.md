@@ -1381,3 +1381,29 @@ staging TLS/mTLS real, certificação RLS em produção e pentest externo. Esses
 exigem credenciais/infra/decisão e um auditor independente — não são código e
 não são simuláveis. O scaffolding de assinatura/attestation nos workflows já
 existe e ativa quando os segredos forem fornecidos.
+
+
+## Checkpoint — avanços SEM certificado (usabilidade + release) — 2026-10-03
+
+A pedido do usuário ("continue sem o certificado"), fechei melhorias de CÓDIGO
+que não dependem de assinatura. Tip `6fd58e65`, dz23-agentic-quality verde
+(inclusive Web/mobile quality e integração Redis/Postgres).
+
+Usabilidade leigo (pt-BR + a11y):
+- `80844621` Onboarding inteiro em pt-BR + branding Hades (V-05), 39 testes.
+- `ed94116c` ChatForm (placeholder + aria-label do anexar), ErrorMessage
+  ("Erro"), CodexConnectedIntro, CodexDesktopRow (todo o fluxo ChatGPT),
+  Codex/Claude DesktopModelsSettings ("Buscar modelo…"); testes atualizados.
+- `1822e2a2` Mobile App.tsx em pt-BR (Missões/Linha do tempo/Aprovação) +
+  accessibilityRole nos botões restantes.
+
+Robustez de release SEM certificado:
+- `6fd58e65` verify-release-artifact.sh ancora fingerprint da chave pública
+  (OLLAMA_RELEASE_PUBKEY_SHA256) e a identidade repo/commit/ref via
+  release-metadata.json coberto pelo manifesto assinado; novo teste de shell
+  (5/5) e doc em RELEASE_READINESS.md. Resolve a confiança auto-referente sem
+  precisar de Authenticode/attestation (que seguem como gate externo).
+
+Resíduo conhecido (não feito): publicar SHA256SUMS + SBOM também em builds
+unsigned ([13], mudança de workflow de médio risco) permanece como follow-up.
+Assinatura/attestation/staging TLS/pentest continuam externos.
