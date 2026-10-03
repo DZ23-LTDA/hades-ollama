@@ -13,7 +13,10 @@ vi.mock("@/components/Logo", () => ({ default: () => <span>Logo</span> }));
 vi.mock("@/components/FirstModelCard", () => ({ FirstModelCard: () => <div /> }));
 vi.mock("@/components/ModelPicker", () => ({ ModelPicker: () => <div /> }));
 vi.mock("@/components/SlashCommandMenu", () => ({ SlashCommandMenu: () => null }));
-vi.mock("@/components/ImportProjectDialog", () => ({ ImportProjectDialog: () => null }));
+vi.mock("@/components/ImportProjectDialog", () => ({
+  ImportProjectDialog: ({ open, onImported }: { open: boolean; onImported: (project: { id: string; name: string }) => void }) =>
+    open ? <button type="button" id="mock-project-import" onClick={() => onImported({ id: "imported-project", name: "Example project" })}>Select imported project</button> : null,
+}));
 vi.mock("@/components/FileUpload", () => ({
   FileUpload: ({ children, onFilesAdded }: {
     children: ReactNode;
@@ -47,6 +50,7 @@ describe("HomePage mission start", () => {
   beforeEach(() => {
     vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
     vi.stubGlobal("window", { location: { assign: vi.fn() } });
+    mockImport.mockClear();
     mockImport.mockResolvedValue({ project: { id: "project-1" }, source: "attachments" } as Awaited<ReturnType<typeof importMissionAttachments>>);
   });
 
@@ -95,5 +99,26 @@ describe("HomePage mission start", () => {
     const destination = String(assign.mock.calls[0][0]);
     expect(destination).toContain("allow_write=true");
     expect(destination).not.toContain("autorun=true");
+  });
+
+  it("passes a GitHub/ZIP project selected in the import dialog into the mission", async () => {
+    const renderer = await renderHome();
+    await act(async () => {
+      renderer.root.findByProps({ id: "import-project-open" }).props.onClick();
+    });
+    await act(async () => {
+      renderer.root.findByProps({ id: "mock-project-import" }).props.onClick();
+    });
+    await act(async () => {
+      renderer.root.findByProps({ "aria-label": "Objetivo da nova tarefa" }).props.onChange({ target: { value: "Revise o projeto importado" } });
+    });
+    await act(async () => {
+      renderer.root.findByProps({ "aria-label": "Iniciar no Console agentic" }).props.onClick();
+      await Promise.resolve();
+    });
+
+    const assign = window.location.assign as ReturnType<typeof vi.fn>;
+    expect(String(assign.mock.calls[0][0])).toContain("project_id=imported-project");
+    expect(mockImport).not.toHaveBeenCalled();
   });
 });

@@ -52,6 +52,8 @@ jobs:
           if [ ! -x "$browser_path" ] && [ -x /usr/bin/chromium ]; then browser_path=/usr/bin/chromium; fi
           test -x "$browser_path"
           echo "OLLAMA_AGENT_BROWSER_EXECUTABLE=$browser_path" >> "$GITHUB_ENV"
+      - name: Browser request guard tests
+        run: python3 internal/agent/browser_helper_test.py
       - run: go mod verify
       - name: Go vulnerability scan (reachable symbols only)
         run: go run golang.org/x/vuln/cmd/govulncheck@v1.8.0 ./...
@@ -88,6 +90,9 @@ jobs:
       - name: Install Browser Operator dependencies
         shell: bash
         run: python -m pip install --user 'playwright==1.63.0'
+      - name: Browser request guard tests
+        shell: bash
+        run: python internal/agent/browser_helper_test.py
       - name: Diagnose trusted Git and snapshot DACL prerequisites
         if: always()
         shell: bash

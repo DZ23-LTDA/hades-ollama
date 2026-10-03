@@ -2157,6 +2157,12 @@ func Serve(ln net.Listener) error {
 
 	http.Handle("/", h)
 
+	srvr := &http.Server{Handler: nil}
+	secureAgentServer, err := configureAgentTLS(srvr, ln.Addr())
+	if err != nil {
+		return err
+	}
+
 	ctx, done := context.WithCancel(context.Background())
 	defer done()
 	schedCtx, schedDone := context.WithCancel(ctx)
@@ -2170,21 +2176,6 @@ func Serve(ln net.Listener) error {
 	s.modelCaches.Start(ctx)
 
 	slog.Info(fmt.Sprintf("Listening on %s (version %s)", ln.Addr(), version.Version))
-	srvr := &http.Server{
-		// Use http.DefaultServeMux so we get net/http/pprof for
-		// free.
-		//
-		// TODO(bmizerany): Decide if we want to make this
-		// configurable so it is not exposed by default, or allow
-		// users to bind it to a different port. This was a quick
-		// and easy way to get pprof, but it may not be the best
-		// way.
-		Handler: nil,
-	}
-	secureAgentServer, err := configureAgentTLS(srvr)
-	if err != nil {
-		return err
-	}
 
 	// listen for a ctrl+c and stop any loaded llm
 	signals := make(chan os.Signal, 1)

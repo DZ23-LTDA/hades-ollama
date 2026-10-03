@@ -5,18 +5,25 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"os"
 	"strings"
 )
 
-func configureAgentTLS(server *http.Server) (bool, error) {
+func configureAgentTLS(server *http.Server, listenerAddress net.Addr) (bool, error) {
 	certFile := strings.TrimSpace(os.Getenv("OLLAMA_AGENT_TLS_CERT_FILE"))
 	keyFile := strings.TrimSpace(os.Getenv("OLLAMA_AGENT_TLS_KEY_FILE"))
 	requireMTLS := os.Getenv("OLLAMA_AGENT_REQUIRE_MTLS") == "1"
 	if certFile == "" || keyFile == "" {
 		if requireMTLS {
 			return false, errors.New("mTLS requires OLLAMA_AGENT_TLS_CERT_FILE and OLLAMA_AGENT_TLS_KEY_FILE")
+		}
+		if certFile != "" || keyFile != "" {
+			return false, errors.New("agent TLS requires both OLLAMA_AGENT_TLS_CERT_FILE and OLLAMA_AGENT_TLS_KEY_FILE")
+		}
+		if !isLoopbackListener(listenerAddress) {
+			return false, errors.New("non-loopback agent listener requires OLLAMA_AGENT_TLS_CERT_FILE and OLLAMA_AGENT_TLS_KEY_FILE")
 		}
 		return false, nil
 	}
@@ -53,4 +60,9 @@ func configureAgentTLS(server *http.Server) (bool, error) {
 	}
 	server.TLSConfig = config
 	return true, nil
+}
+
+func isLoopbackListener(address net.Addr) bool {
+	tcpAddress, ok := address.(*net.TCPAddr)
+	return ok && tcpAddress.IP != nil && tcpAddress.IP.IsLoopback()
 }

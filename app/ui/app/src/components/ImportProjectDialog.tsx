@@ -7,6 +7,7 @@ import {
   startProjectUpload,
   uploadProjectChunk,
 } from "@/lib/agenticClient";
+import type { AgentProject } from "@/lib/agenticClient";
 
 type ImportTab = "github" | "zip";
 
@@ -17,7 +18,7 @@ export function ImportProjectDialog({
 }: {
   open: boolean;
   onClose: () => void;
-  onImported?: () => void;
+  onImported?: (project: AgentProject) => void;
 }) {
   const [tab, setTab] = useState<ImportTab>("github");
   const [url, setURL] = useState("");
@@ -70,10 +71,10 @@ export function ImportProjectDialog({
     try {
       const result = await importGitHubProject({ url: url.trim(), ref: ref.trim() || undefined, name: githubName.trim() || undefined });
       setStatus(`Importado e indexado: ${result.indexed_files} arquivos e ${result.indexed_memories} trechos. Worktree ${result.branch}.`);
-      setURL("");
-      setRef("");
-      setGithubName("");
-      onImported?.();
+	      setURL("");
+	      setRef("");
+	      setGithubName("");
+	      onImported?.(result.project);
     } catch (cause) {
       setStatus(cause instanceof Error ? cause.message : "Não foi possível importar o repositório.");
     } finally {
@@ -100,9 +101,9 @@ export function ImportProjectDialog({
       await finalizeProjectUpload(upload.id);
       const result = await importZIPProject({ project_id: project.id, upload_id: upload.id, name: project.name });
       setStatus(`ZIP importado e indexado: ${result.indexed_files} arquivos e ${result.indexed_memories} trechos.`);
-      setFile(null);
-      setZipName("");
-      onImported?.();
+	      setFile(null);
+	      setZipName("");
+	      onImported?.(result.project);
     } catch (cause) {
       setStatus(cause instanceof Error ? cause.message : "Não foi possível importar o ZIP.");
     } finally {

@@ -1,6 +1,7 @@
 package server
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -17,7 +18,25 @@ func writeAgentConfig(t *testing.T, name, content string) string {
 }
 
 func TestLoadAgentMCPBootstrapsStrictManifest(t *testing.T) {
-	path := writeAgentConfig(t, "mcp.json", `[{"id":"local","command":"/bin/echo","args":["mcp"],"allowed_methods":["tools/list"],"environment_vars":["PATH"],"timeout_seconds":3}]`)
+	// Use the running test binary as a real absolute executable so the strict
+	// manifest validation (absolute path + executable regular file) passes on
+	// every OS, including Windows where /bin/echo does not exist.
+	executable, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	manifest, err := json.Marshal([]map[string]any{{
+		"id":               "local",
+		"command":          executable,
+		"args":             []string{"mcp"},
+		"allowed_methods":  []string{"tools/list"},
+		"environment_vars": []string{"PATH"},
+		"timeout_seconds":  3,
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	path := writeAgentConfig(t, "mcp.json", string(manifest))
 	t.Setenv("OLLAMA_AGENT_MCP", path)
 	manager, err := loadAgentMCP()
 	if err != nil {

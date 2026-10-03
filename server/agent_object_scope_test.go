@@ -154,12 +154,17 @@ func TestUnauthenticatedLocalModeCannotAccessTenantContextRecords(t *testing.T) 
 		t.Fatalf("local schedule list leaked tenant or omitted local schedule: status=%d body=%s", recorder.Code, recorder.Body.String())
 	}
 
+	projectUpdateBody, err := json.Marshal(map[string]string{"name": "changed", "root": tenantProject.Root})
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	for _, test := range []struct {
 		name, method, path, body string
 		handler                  func(*gin.Context)
 	}{
 		{"project get", http.MethodGet, "/api/agent/projects/" + tenantProject.ID, "", api.getProject},
-		{"project update", http.MethodPut, "/api/agent/projects/" + tenantProject.ID, `{"name":"changed","root":"` + tenantProject.Root + `"}`, api.updateProject},
+		{"project update", http.MethodPut, "/api/agent/projects/" + tenantProject.ID, string(projectUpdateBody), api.updateProject},
 		{"project delete", http.MethodDelete, "/api/agent/projects/" + tenantProject.ID, "", api.deleteProject},
 		{"memory add", http.MethodPost, "/api/agent/projects/" + tenantProject.ID + "/memories", `{"content":"private"}`, api.addMemory},
 		{"memory search", http.MethodGet, "/api/agent/projects/" + tenantProject.ID + "/memories", "", api.searchMemories},
@@ -262,7 +267,15 @@ func TestAuthDisabledAlwaysUsesLocalOrganizationAcrossStores(t *testing.T) {
 		t.Fatalf("local schedules leaked tenant data: status=%d body=%s", recorder.Code, recorder.Body.String())
 	}
 
-	ctx, recorder = localRequest(http.MethodPost, "/api/agent/missions", `{"objective":"must stay local","workspace":"`+root+`","organization_id":"org_b"}`)
+	localMissionBody, err := json.Marshal(map[string]string{
+		"objective":       "must stay local",
+		"workspace":       root,
+		"organization_id": "org_b",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, recorder = localRequest(http.MethodPost, "/api/agent/missions", string(localMissionBody))
 	api.authMiddleware(ctx)
 	api.createMission(ctx)
 	if recorder.Code != http.StatusCreated {

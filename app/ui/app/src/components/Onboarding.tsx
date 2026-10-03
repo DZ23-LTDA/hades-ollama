@@ -23,7 +23,7 @@ import {
   withClaudeConnectionTimeout,
 } from "@/lib/claudeDesktop";
 import { isWindowsPlatform } from "@/lib/platform";
-import { API_BASE } from "@/lib/config";
+import { enableCloudModelsOptIn } from "@/lib/cloudSettings";
 import type {
   ClaudeDesktopActionResult,
   ClaudeDesktopStatus,
@@ -1320,6 +1320,7 @@ export default function Onboarding(props: OnboardingProps) {
   const [step, setStep] = useState<OnboardingStep>("intro");
   const [isLeaving, setIsLeaving] = useState(false);
   const [cloudOptIn, setCloudOptIn] = useState(false);
+  const [cloudError, setCloudError] = useState<string | null>(null);
   const leavingRef = useRef(false);
   const authenticationHandoffStarted = useRef(false);
   const { onOpenApps } = props;
@@ -1330,13 +1331,13 @@ export default function Onboarding(props: OnboardingProps) {
     setIsLeaving(true);
     if (cloudOptIn) {
       try {
-        await fetch(`${API_BASE}/api/v1/cloud`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ disabled: false }),
-        });
-      } catch (err) {
-        console.warn("Failed to activate cloud models opt-in:", err);
+        await enableCloudModelsOptIn();
+        setCloudError(null);
+      } catch {
+        setCloudError("Não foi possível salvar sua escolha de modelos de nuvem. A ativação não foi confirmada; tente novamente.");
+        leavingRef.current = false;
+        setIsLeaving(false);
+        return;
       }
     }
     const opened = await onOpenApps();
@@ -1391,8 +1392,9 @@ export default function Onboarding(props: OnboardingProps) {
   return (
     <WelcomeScreen
       {...props}
+      completionError={cloudError ?? props.completionError}
       cloudOptIn={cloudOptIn}
-      onCloudOptInChange={setCloudOptIn}
+      onCloudOptInChange={(enabled) => { setCloudOptIn(enabled); setCloudError(null); }}
       isLeaving={isLeaving}
       onRetryCompletion={() => void leave()}
       onLocal={() => {

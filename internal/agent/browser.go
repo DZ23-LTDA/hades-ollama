@@ -20,10 +20,13 @@ var browserHelper []byte
 type browserOperatorTool struct{}
 
 func (browserOperatorTool) Descriptor() ToolDescriptor {
-	return ToolDescriptor{Name: "browser.operator", Version: "1", Description: "Operar um browser Playwright em sessão isolada", Risk: RiskExternalSideEffect, RequiresApproval: true, Scopes: []string{"browser:navigate", "browser:files", "browser:takeover"}}
+	return ToolDescriptor{Name: "browser.operator", Version: "1", Description: "Operar um browser Playwright local com destinos de rede validados", Risk: RiskExternalSideEffect, RequiresApproval: true, Scopes: []string{"browser:navigate", "browser:files", "browser:takeover"}}
 }
 
 func (browserOperatorTool) Execute(ctx context.Context, toolContext ToolContext, input map[string]any) (ToolResult, error) {
+	if toolContext.OrganizationID != LocalOrganizationID {
+		return ToolResult{}, errors.New("browser operator is restricted to the single-user local organization until a strict OS and network sandbox is configured")
+	}
 	action := strings.TrimSpace(stringInput(input, "action", ""))
 	if action == "" {
 		return ToolResult{}, errors.New("browser action is required")
@@ -71,7 +74,7 @@ func (browserOperatorTool) Execute(ctx context.Context, toolContext ToolContext,
 	}
 	command := exec.CommandContext(deadline, pythonExecutable, tempName)
 	command.Stdin = bytes.NewReader(requestData)
-	command.Env = append(os.Environ(), "OLLAMA_AGENT_BROWSER_ROOT="+filepath.Join(toolContext.Workspace, ".browser"))
+	command.Env = browserProcessEnvironment(toolContext.Workspace)
 	var stdout, stderr bytes.Buffer
 	command.Stdout = &limitedBuffer{Buffer: &stdout, Limit: 256 << 10}
 	command.Stderr = &limitedBuffer{Buffer: &stderr, Limit: 64 << 10}
@@ -96,6 +99,22 @@ func (browserOperatorTool) Execute(ctx context.Context, toolContext ToolContext,
 		return ToolResult{Value: result}, fmt.Errorf("browser operator: %v", result["error"])
 	}
 	return ToolResult{Value: result}, nil
+}
+
+func browserProcessEnvironment(workspace string) []string {
+	allowed := []string{
+		"PATH", "PATHEXT", "SYSTEMROOT", "WINDIR", "TEMP", "TMP",
+		"HOME", "USERPROFILE", "LOCALAPPDATA", "APPDATA", "XDG_CACHE_HOME",
+		"PLAYWRIGHT_BROWSERS_PATH", "OLLAMA_AGENT_BROWSER_EXECUTABLE",
+		"OLLAMA_AGENT_BROWSER_ALLOW_PRIVATE", "LANG", "LC_ALL", "TZ",
+	}
+	environment := make([]string, 0, len(allowed)+1)
+	for _, name := range allowed {
+		if value, ok := os.LookupEnv(name); ok {
+			environment = append(environment, name+"="+value)
+		}
+	}
+	return append(environment, "OLLAMA_AGENT_BROWSER_ROOT="+filepath.Join(workspace, ".browser"))
 }
 
 func browserPythonExecutable() (string, error) {

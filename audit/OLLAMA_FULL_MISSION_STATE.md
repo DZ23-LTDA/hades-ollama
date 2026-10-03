@@ -1235,3 +1235,41 @@ Guia portátil para retomada: `audit/HANDOFF_NEXT_MANUS_20260929.md`.
 - Evidências locais: `go test ./internal/agent -run 'TestSupportedProjectDocumentFilename|TestProjectImport' -count=1`, testes selecionados de `server` (anexos, autorun e RAG) e `go vet ./internal/agent ./server` passaram; Vitest completo: 56 arquivos/317 testes passaram; `npm run build` passou (warning conhecido de chunk acima de 500 kB); `npm run lint` passou; `git diff --check` passou.
 - Gate amplo `go test ./... -count=1` não ficou verde neste Windows: falhou por `CGO_ENABLED=0`/sqlite stub nos pacotes que usam `go-sqlite3` e por testes `mlx` com símbolos ausentes (`gelu`, `currentScope`, `gatedDeltaGraph`, etc.). Os testes Go focados dos pacotes alterados passaram; não declarar a suíte Go completa aprovada.
 - Instrução mais recente do usuário (2026-10-03 10:15): corrigir melhorias e subir ao GitHub. Autorização abrange commit e push normal somente para `recovery/ollama-full-snapshot`; não abrange PR, `main`, force-push ou alterações em outras refs. Atualizar este checkpoint com o SHA após confirmar o push.
+
+
+## Checkpoint de publicação — 2026-10-03
+
+O commit `6473ed1c4d22763bad103c2d563bafd4b11b78f9` foi criado com exatamente um trailer `Co-authored-by: Manus <dev-agent@manus.ai>` e enviado por push normal para `recovery/ollama-full-snapshot`. A ref remota foi relida e coincide com esse SHA; `main` não foi escrita. Não foi aberto PR, pois a instrução foi subir as correções à branch autorizada. No momento do registro, `class-a-plus-integrity` (run 37125844818) e `dz23-agentic-quality` (run 37125844862) estavam `in_progress`; aguardar e substituir este estado provisório pelo resultado final.
+
+
+## CI remoto — resultado final do commit 6473ed1c
+
+Verificados os workflows associados ao SHA publicado: `class-a-plus-integrity` (run 37125844818) e `dz23-agentic-quality` (run 37125844862) concluíram com sucesso; `gh run watch` retornou exit code 0 para ambos. No integrity, o gate CGO-free/Windows build e a preservação Class A+ passaram. No quality, os jobs Go agentic/server, PostgreSQL RLS/Redis DLQ/OTLP, Windows portability, web/mobile, SBOM e classificação de superfícies concluíram com sucesso. O relatório registrou os avisos upstream do GitHub sobre Node.js 20 e a migração futura de `ubuntu-latest`; não foram falhas do commit.
+
+
+## Checkpoint — auditoria independente pós-remediação — 2026-10-03 11:10 -03
+
+- Branch: `recovery/ollama-full-snapshot`; HEAD e tip remoto confirmados em `6473ed1c4d22763bad103c2d563bafd4b11b78f9`. `main` não foi alterada. A árvore de código estava limpa; permanecem arquivos locais de auditoria/planejamento que devem ser preservados.
+- GitHub Actions consultado pelo SHA exato: `class-a-plus-integrity` run `37125844818` e `dz23-agentic-quality` run `37125844862`, ambos `completed/success`, head_sha exatamente igual ao candidato. Isto não equivale a release-readiness/signing/provenance.
+- Seis revisões read-only e consolidação concluídas no mesmo SHA. Findings confirmados: listener não-loopback aceita HTTP sem TLS; Browser Operator não intercepta redirects/subrecursos privados e roda sem isolamento de host; cadeia de release/provenance e downloads de toolchain sem digest verificado; quotas/GC Redis ausentes; cancelamento não se propaga entre instâncias; health pode mascarar erro; APIs/SSE sem paginação/cursor/heartbeat; resposta de execução declara RUNNING antes de claim; fsync de diretório ausente após rename; migration ledger ausente; falhas mobile (cloud opt-in payload, approval payload, outbox, troca de usuário); continuidade Home após import, acessibilidade/i18n; importação sem status por arquivo; search não descobre fontes; spend ledger desconectado; deploy sem health/rollback remoto; MCP matrix superestima a capacidade; SECURITY.md está desatualizado sobre a rotação HMAC.
+- Correções anteriores confirmadas/não repetir: anexos Home são enviados antes de navegar e bytes não entram na URL; autorun e permissão de escrita foram restringidos; copy de privacidade já remove alegação absoluta; busca documental não devolve contexto bruto; alias DLP, manifestos locais, auth remota e cancelamento na mesma instância foram tratados/cobertos.
+- Próxima execução autorizada pelo usuário: continuar corrigindo e fazer commit/push normal somente em `recovery/ollama-full-snapshot`; sem PR, sem `main`, sem force-push. Trabalhar em fatias testáveis; preservar `outputs/`, `.work/` e `.manus/`.
+- Gates externos que permanecem bloqueados: SignPath/Authenticode/OIDC attestation e trust anchor; runners macOS/arm64 e downloads MLX; staging TLS/mTLS; Playwright instalado para Browser Operator; Redis/PostgreSQL/roles e fault-injection; providers/search/deploy reais; mobile físico/EAS/push; leitores de tela. Não converter ausência de ambiente em PASS.
+
+
+## Checkpoint — continuação Claude (validação do WIP de remediação) — 2026-10-03
+
+- Branch `recovery/ollama-full-snapshot`; tip local e remoto confirmados em `6473ed1c` antes do commit (push fast-forward). `main` não tocada; sem force-push; sem PR.
+- Revisado o WIP não commitado deixado pela rodada anterior (TLS fail-closed para bind não-loopback; redução de ambiente herdado + bloqueio por tenant do Browser Operator; jornadas Home/Import/Onboarding+cloud opt-in; mobile `App.tsx`/`offlinePolicy.ts` com particionamento por org+usuário e modo offline conservador). Mudanças de segurança consideradas sólidas como defesa em profundidade; mantido o bloqueio fail-closed do Browser Operator por tenant até existir sandbox real de SO/rede.
+- Corrigidos os testes que falhavam neste Windows **sem enfraquecer validação**:
+  - `server/agent_object_scope_test.go`: corpos JSON agora serializados com `json.Marshal` (eliminado o `invalid escape sequence '\U'` ao concatenar caminhos Windows).
+  - `server/agent_mcp_bootstrap_test.go` e `server/agent_catalog_scope_test.go`: fixtures passam a usar `os.Executable()` (caminho absoluto + executável regular real em qualquer SO) em vez de `/bin/echo` ou arquivo sem extensão; a validação estrita de executável permanece intacta.
+  - `internal/agent/runtime_test.go`: `TestBrowserOperatorNavigateAndSnapshot` agora faz `t.Skip` quando falta a dependência Python `playwright`/intérprete, em vez de falhar; as asserções permanecem quando a dependência existe (CI instala e exercita o caminho completo).
+- Gates locais executados e verdes nesta máquina (Windows):
+  - Go: `go vet ./server ./internal/agent`; `go test ./server -count=1` **ok**; `go test ./internal/agent -count=1` **ok** (com 1 SKIP de Playwright).
+  - Python: `py_compile` de `browser_helper.py` **ok**; `browser_helper_test.py` 5 testes **ok**.
+  - Frontend: Vitest 57 arquivos/321 testes **ok**; `npm run lint` **ok**; `npm run build` **ok** (warning conhecido de chunk > 500 kB).
+  - Mobile: `npm run typecheck` **ok**; `npm run test:policy` `offlinePolicy: PASS`.
+  - `git diff --check` sem erros (apenas avisos de CRLF/line-ending repo-wide).
+- `.gitignore` passou a ignorar `.manus/`, `.work/` e `outputs/` (scratch local de agentes, fora do código). Esses diretórios não foram commitados.
+- Não executado / permanece bloqueado por ambiente externo (sem conversão em PASS): suíte Go completa `go test ./...` (sqlite CGO stub e símbolos MLX ausentes neste host); Playwright real para o Browser Operator; assinatura Authenticode/SignPath, attestation/provenance e trust anchor de release; staging TLS/mTLS; Redis/PostgreSQL/roles reais; mobile físico/EAS/push. Release NÃO declarado pronto.

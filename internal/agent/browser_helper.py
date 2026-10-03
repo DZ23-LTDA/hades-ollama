@@ -9,9 +9,6 @@ import socket
 import sys
 from urllib.parse import urlparse
 
-from playwright.sync_api import sync_playwright
-
-
 def fail(message):
     raise RuntimeError(message)
 
@@ -20,16 +17,38 @@ def validate_url(value):
     parsed = urlparse(value)
     if parsed.scheme not in {"http", "https"} or not parsed.hostname:
         fail("browser only permits http and https URLs")
-    if os.environ.get("OLLAMA_AGENT_BROWSER_ALLOW_PRIVATE", "") == "1":
-        return
+    if parsed.username or parsed.password:
+        fail("browser URLs must not contain embedded credentials")
     try:
-        addresses = socket.getaddrinfo(parsed.hostname, parsed.port or 443, type=socket.SOCK_STREAM)
-    except socket.gaierror as exc:
-        fail(f"browser DNS resolution failed: {exc}")
+        port = parsed.port or (80 if parsed.scheme == "http" else 443)
+    except ValueError:
+        fail("browser URL has an invalid port")
+    try:
+        addresses = socket.getaddrinfo(parsed.hostname, port, type=socket.SOCK_STREAM)
+    except OSError:
+        fail("browser DNS resolution failed")
+    if not addresses:
+        fail("browser DNS resolution returned no addresses")
+
+    allow_loopback = os.environ.get("OLLAMA_AGENT_BROWSER_ALLOW_PRIVATE", "") == "1"
     for address in addresses:
-        ip = ipaddress.ip_address(address[4][0])
-        if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved or ip.is_multicast or ip.is_unspecified:
-            fail("browser URL resolves to a private or local address")
+        try:
+            ip = ipaddress.ip_address(address[4][0].split("%", 1)[0])
+        except ValueError:
+            fail("browser DNS resolution returned an invalid address")
+        if allow_loopback and ip.is_loopback:
+            continue
+        if not ip.is_global:
+            fail("browser URL resolves to a non-public address")
+
+
+def guard_browser_route(route):
+    try:
+        validate_url(route.request.url)
+    except Exception:
+        route.abort(error_code="blockedbyclient")
+        return
+    route.continue_()
 
 
 def page_for(context):
@@ -50,6 +69,8 @@ def browser_executable():
         if candidate and pathlib.Path(candidate).is_file():
             return candidate
     try:
+        from playwright.sync_api import sync_playwright
+
         with sync_playwright() as playwright:
             managed = pathlib.Path(playwright.chromium.executable_path)
         if managed.is_file():
@@ -73,6 +94,8 @@ def page_result(session_id, page, state_path, **extra):
 
 
 def main(request):
+    from playwright.sync_api import sync_playwright
+
     action = str(request.get("action", "")).strip()
     session_id = str(request.get("session_id", "")).strip()
     if not re.fullmatch(r"[A-Za-z0-9_-]{1,64}", session_id):
@@ -86,9 +109,11 @@ def main(request):
     with sync_playwright() as playwright:
         browser_context = playwright.chromium.launch_persistent_context(
             str(user_dir), headless=True, executable_path=executable,
-            accept_downloads=True, args=["--disable-dev-shm-usage"],
+            accept_downloads=True, service_workers="block",
+            args=["--disable-dev-shm-usage", "--disable-background-networking", "--disable-sync"],
         )
         try:
+            browser_context.route("**/*", guard_browser_route)
             page = page_for(browser_context)
             timeout = min(max(int(request.get("timeout_ms", 15000)), 1000), 60000)
             page.set_default_timeout(timeout)

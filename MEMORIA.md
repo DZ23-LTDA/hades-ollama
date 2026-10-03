@@ -1,7 +1,7 @@
 ---
 projeto: ollama-classe-a-plus
 status: RELEASE CANDIDATE VALIDADO — gates locais e test.yaml verde; assinatura Windows preparada, ainda unsigned sem configuração SignPath
-atualizado: 2026-10-01 20:13 UTC
+atualizado: 2026-10-03 15:00 UTC
 ultima_ia: Claude (Opus 4.8)
 tags: [projeto, paridade-manus, ui-2, import-project, accessibility, aud-fix-2, local-tests]
 ---
@@ -36,6 +36,7 @@ automatizado + execução real reproduzível em navegador (desktop e mobile), se
 - **Próximo passo:** executar o `test.yaml` no SHA publicado e confirmar Ubuntu/macOS/Windows, race e `go_mod_tidy` verdes; se o runner macOS ainda falhar, usar o log do job para corrigir somente a causa reproduzível.
 
 ## Histórico de sessões
+- **2026-10-03 ~15:00 UTC — Claude (Opus 4.8):** continuei o WIP de remediação deixado pela rodada anterior (Manus) na branch `recovery/ollama-full-snapshot` (tip `6473ed1c`). Revisei o diff completo (TLS fail-closed para bind não-loopback em `server/agent_tls.go`/`routes.go`; redução de ambiente herdado + bloqueio por tenant do Browser Operator em `internal/agent/browser.go`; jornadas Home/Import/Onboarding + `app/ui/app/src/lib/cloudSettings.ts`; mobile `App.tsx`/`offlinePolicy.ts` com storage particionado por org+usuário e offline conservador). **Corrigi os testes que falhavam no Windows sem enfraquecer validação:** `server/agent_object_scope_test.go` (JSON via `json.Marshal` em vez de concatenar caminho Windows — resolvia `invalid escape sequence '\U'`); `server/agent_mcp_bootstrap_test.go` e `server/agent_catalog_scope_test.go` (fixtures usam `os.Executable()` em vez de `/bin/echo`/arquivo sem extensão); `internal/agent/runtime_test.go` (`TestBrowserOperatorNavigateAndSnapshot` agora `t.Skip` se faltar o módulo Python `playwright`). **Gates locais verdes:** `go test ./server` e `go test ./internal/agent` ok (1 skip de Playwright), `go vet` ok; Vitest 57/321 ok, lint ok, build web ok; mobile typecheck + `offlinePolicy: PASS`; Python 5 testes ok; `git diff --check` limpo. `.gitignore` agora ignora `.manus/`, `.work/`, `outputs/`. Detalhes em `audit/OLLAMA_FULL_MISSION_STATE.md` (checkpoint "continuação Claude"). **Não declarado pronto para release:** suíte Go completa (sqlite CGO/MLX), Playwright real, Authenticode/attestation e staging TLS continuam bloqueados por ambiente externo. **Próximo passo:** aguardar CI remoto do novo commit; se verde, seguir para os findings P1 restantes (paginação/cursor em APIs/SSE, propagação de cancelamento entre instâncias, quotas/GC Redis) conforme a auditoria consolidada.
 - **2026-10-02 01:10 UTC — Bundle/DevEx:** confirmei que o splitting nativo do Vite já separa linguagens sob demanda; uma tentativa de `manualChunks` inflou Shiki para 9,5 MB e foi removida. Foi adicionado `scripts/check-bundle-budget.mjs`, com orçamento do entry JS de 2 MB bruto/600 KB gzip; build real mediu 1.823.863 bytes/530.772 gzip e passou. Frontend: 39 arquivos e 265 testes Vitest passaram.
 
 

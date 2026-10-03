@@ -2,6 +2,7 @@ package server
 
 import (
 	"encoding/base32"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -247,6 +248,39 @@ func TestAgentOriginWildcardMatchesPortOnlyOnExactHost(t *testing.T) {
 		context.Request.Header.Set("Origin", test.origin)
 		if got := agentOriginAllowed(context); got != test.want {
 			t.Fatalf("agentOriginAllowed(%q)=%v, want %v", test.origin, got, test.want)
+		}
+	}
+}
+
+func TestConfigureAgentTLSRequiresTLSForNonLoopbackBind(t *testing.T) {
+	t.Setenv("OLLAMA_AGENT_TLS_CERT_FILE", "")
+	t.Setenv("OLLAMA_AGENT_TLS_KEY_FILE", "")
+	t.Setenv("OLLAMA_AGENT_REQUIRE_MTLS", "")
+
+	for _, address := range []net.Addr{
+		&net.TCPAddr{IP: net.IPv4zero, Port: 11434},
+		&net.TCPAddr{IP: net.IPv6unspecified, Port: 11434},
+		&net.TCPAddr{IP: net.ParseIP("192.168.1.10"), Port: 11434},
+	} {
+		server := &http.Server{}
+		if _, err := configureAgentTLS(server, address); err == nil {
+			t.Fatalf("configureAgentTLS(%s) accepted a non-loopback listener without TLS", address)
+		}
+	}
+}
+
+func TestConfigureAgentTLSAllowsLoopbackWithoutTLS(t *testing.T) {
+	t.Setenv("OLLAMA_AGENT_TLS_CERT_FILE", "")
+	t.Setenv("OLLAMA_AGENT_TLS_KEY_FILE", "")
+	t.Setenv("OLLAMA_AGENT_REQUIRE_MTLS", "")
+
+	for _, address := range []net.Addr{
+		&net.TCPAddr{IP: net.ParseIP("127.0.0.1"), Port: 11434},
+		&net.TCPAddr{IP: net.ParseIP("::1"), Port: 11434},
+	} {
+		secure, err := configureAgentTLS(&http.Server{}, address)
+		if err != nil || secure {
+			t.Fatalf("configureAgentTLS(%s) = (%v, %v), want (false, nil)", address, secure, err)
 		}
 	}
 }
