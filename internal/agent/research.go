@@ -46,8 +46,16 @@ type ResearchReport struct {
 	CreatedAt time.Time        `json:"created_at"`
 }
 
+// SearchProvider discovers candidate source URLs for a query. It is optional:
+// when unset, Research requires explicit URLs and returns an honest error for a
+// bare "pesquise X". A real web-search backend is external, but wiring a
+// provider here lets a query resolve to sources that then pass through the same
+// SSRF-safe fetch/citation path as user-supplied URLs.
+type SearchProvider func(ctx context.Context, query string, max int) ([]string, error)
+
 type ResearchEngine struct {
 	Client            *http.Client
+	Search            SearchProvider
 	MaxConcurrency    int
 	MaxBytesSource    int64
 	AllowHTTPForTests bool
@@ -65,11 +73,24 @@ func (e *ResearchEngine) Research(ctx context.Context, request ResearchRequest) 
 	if request.Query == "" {
 		return ResearchReport{}, errors.New("research query is required")
 	}
-	if len(request.URLs) == 0 {
-		return ResearchReport{}, errors.New("research requires at least one URL")
-	}
 	if request.MaxSources <= 0 || request.MaxSources > 32 {
 		request.MaxSources = 16
+	}
+	if len(request.URLs) == 0 {
+		// No explicit URLs: discover them from the query when a search provider
+		// is configured, otherwise fail honestly instead of pretending a bare
+		// query can be researched without sources.
+		if e.Search == nil {
+			return ResearchReport{}, errors.New("research requires at least one URL, or a configured search provider to discover sources from the query")
+		}
+		discovered, err := e.Search(ctx, request.Query, request.MaxSources)
+		if err != nil {
+			return ResearchReport{}, fmt.Errorf("source discovery failed: %w", err)
+		}
+		request.URLs = discovered
+		if len(request.URLs) == 0 {
+			return ResearchReport{}, errors.New("search provider returned no sources for the query")
+		}
 	}
 	if len(request.URLs) > request.MaxSources {
 		request.URLs = request.URLs[:request.MaxSources]

@@ -39,6 +39,39 @@ func TestResearchEngineFetchesSourcesWithCitationsAndCache(t *testing.T) {
 	}
 }
 
+func TestResearchDiscoversSourcesFromQueryViaProvider(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		_, _ = w.Write([]byte("<html><title>Found</title><body>Evidence discovered from the query.</body></html>"))
+	}))
+	defer server.Close()
+	engine := NewResearchEngine()
+	engine.AllowHTTPForTests = true
+	var gotQuery string
+	engine.Search = func(_ context.Context, query string, _ int) ([]string, error) {
+		gotQuery = query
+		return []string{server.URL + "/discovered"}, nil
+	}
+	report, err := engine.Research(context.Background(), ResearchRequest{Query: "qual o melhor plano"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if gotQuery != "qual o melhor plano" {
+		t.Fatalf("search provider received query %q", gotQuery)
+	}
+	if len(report.Citations) != 1 || !strings.Contains(report.Summary, "Evidence discovered") {
+		t.Fatalf("report did not use the discovered source: %+v", report)
+	}
+}
+
+func TestResearchWithoutURLsOrProviderFailsHonestly(t *testing.T) {
+	engine := NewResearchEngine()
+	_, err := engine.Research(context.Background(), ResearchRequest{Query: "pesquise algo"})
+	if err == nil || !strings.Contains(err.Error(), "search provider") {
+		t.Fatalf("expected an honest error about the missing search provider, got %v", err)
+	}
+}
+
 func TestResearchBlocksPrivateHostsByDefault(t *testing.T) {
 	engine := NewResearchEngine()
 	report, err := engine.Research(context.Background(), ResearchRequest{Query: "private", URLs: []string{"http://127.0.0.1:1"}})
