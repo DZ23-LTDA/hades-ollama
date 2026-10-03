@@ -60,7 +60,7 @@ export const ErrorMessage = ({ error }: ErrorMessageProps) => {
             />
           </svg>
         </div>
-        <h3>Error</h3>
+        <h3>Erro</h3>
       </div>
 
       <div className="flex items-start ml-[1.8rem] mt-2">

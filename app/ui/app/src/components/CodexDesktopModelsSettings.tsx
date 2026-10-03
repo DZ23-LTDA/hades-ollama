@@ -200,8 +200,8 @@ function ModelOptions({
               onToggle(filtered[highlightedIndex].name);
             }
           }}
-          placeholder="Find model..."
-          aria-label="Find ChatGPT model"
+          placeholder="Buscar modelo…"
+          aria-label="Buscar modelo do ChatGPT"
           role="combobox"
           aria-expanded="true"
           aria-controls="chatgpt-model-options-listbox"

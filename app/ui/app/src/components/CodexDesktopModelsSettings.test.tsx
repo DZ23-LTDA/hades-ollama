@@ -596,7 +596,7 @@ describe("CodexDesktopModelsSettings", () => {
       });
 
       const search = renderer!.root.findByProps({
-        "aria-label": "Find ChatGPT model",
+        "aria-label": "Buscar modelo do ChatGPT",
       });
       const preventDefault = vi.fn();
       await act(async () => {
@@ -616,7 +616,7 @@ describe("CodexDesktopModelsSettings", () => {
       });
       await act(async () => {
         renderer!.root
-          .findByProps({ "aria-label": "Find ChatGPT model" })
+          .findByProps({ "aria-label": "Buscar modelo do ChatGPT" })
           .props.onKeyDown({ key: "Enter", preventDefault });
       });
       expect(

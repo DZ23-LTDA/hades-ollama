@@ -913,7 +913,7 @@ function ChatForm({
             aria-label="Mensagem para o agente"
             value={message.content}
             onChange={handleTextareaChange}
-            placeholder="Send a message"
+            placeholder="Envie uma mensagem"
             disabled={isDisabled}
             className={`allow-context-menu w-full overflow-y-auto text-neutral-700 outline-none resize-none border-none bg-transparent dark:text-white placeholder:text-neutral-400 dark:placeholder:text-neutral-500 min-h-[24px] leading-6 transition-opacity duration-300 ${
               editingMessage ? "animate-fade-in" : ""
@@ -936,7 +936,8 @@ function ChatForm({
                   type="button"
                   onClick={handleFilesUpload}
                   className="flex h-9 w-9 items-center justify-center rounded-full bg-white dark:bg-neutral-700 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer border border-transparent"
-                  title="Upload multiple files"
+                  aria-label="Anexar arquivos"
+                  title="Anexar arquivos"
                 >
                   <PlusIcon className="w-4.5 h-4.5 stroke-2 text-neutral-500 dark:text-neutral-400" />
                 </button>

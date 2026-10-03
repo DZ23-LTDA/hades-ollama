@@ -209,7 +209,7 @@ describe("Onboarding completion", () => {
           onboarding.root
             .find(
               (node) =>
-                node.type === "button" && node.props.children === "Try again",
+                node.type === "button" && node.props.children === "Tentar de novo",
             )
             .props.onClick();
         });
