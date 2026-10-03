@@ -996,6 +996,9 @@ func (s *Server) chat(w http.ResponseWriter, r *http.Request) error {
 	var pendingAssistantToolCalls []store.ToolCall
 
 	passNum := 1
+	// textToolFallbacks caps how many times we rescue a plain-text tool call, so
+	// a model that keeps emitting text instead of answering can't loop forever.
+	textToolFallbacks := 0
 
 	for {
 		var toolsExecuted bool
@@ -1323,6 +1326,63 @@ func (s *Server) chat(w http.ResponseWriter, r *http.Request) error {
 			json.NewEncoder(w).Encode(errorEvent)
 			flusher.Flush()
 			return nil
+		}
+
+		// Fallback for local models that emit a standalone web_search/web_fetch
+		// call as plain text instead of a structured tool_call: detect it, run the
+		// tool, and continue the loop so the user gets real results instead of raw
+		// JSON. Bounded by textToolFallbacks to avoid loops.
+		if !toolsExecuted && textToolFallbacks < 3 {
+			if n := len(chat.Messages); n > 0 && chat.Messages[n-1].Role == "assistant" {
+				lastMsg := &chat.Messages[n-1]
+				if name, args, ok := parseTextToolCall(lastMsg.Content); ok &&
+					(name == "web_search" || name == "web_fetch") {
+					if _, registered := registry.Get(name); registered {
+						textToolFallbacks++
+						argsJSON, _ := json.Marshal(args)
+						// Rewrite the raw-JSON assistant turn as a proper tool_call
+						// turn so the UI shows a tool step, not the literal JSON.
+						lastMsg.Content = ""
+						lastMsg.ToolCalls = []store.ToolCall{{
+							Type:     "function",
+							Function: store.ToolFunction{Name: name, Arguments: string(argsJSON)},
+						}}
+						if err := chats.UpdateLastMessage(chat.ID, *lastMsg); err != nil {
+							return err
+						}
+
+						result, content, execErr := registry.Execute(ctx, name, args)
+						if execErr != nil {
+							errContent := fmt.Sprintf("Error: %v", execErr)
+							toolErrMsg := store.NewMessage("tool", errContent, nil)
+							toolErrMsg.ToolName = name
+							chat.Messages = append(chat.Messages, toolErrMsg)
+							if err := chats.AppendMessage(chat.ID, toolErrMsg); err != nil {
+								return err
+							}
+						} else {
+							b, _ := json.Marshal(result)
+							tr := json.RawMessage(b)
+							modelContent := content
+							if modelContent == "" && len(tr) > 0 {
+								modelContent = string(tr)
+							}
+							toolMsg := store.NewMessage("tool", modelContent, &store.MessageOptions{ToolResult: &tr})
+							toolMsg.ToolName = name
+							chat.Messages = append(chat.Messages, toolMsg)
+							if err := chats.AppendMessage(chat.ID, toolMsg); err != nil {
+								return err
+							}
+							toolResult := true
+							json.NewEncoder(w).Encode(responses.ChatEvent{EventName: "tool", Content: &content, ToolName: &name})
+							flusher.Flush()
+							json.NewEncoder(w).Encode(responses.ChatEvent{EventName: "tool_result", Content: &content, ToolName: &name, ToolResult: &toolResult, ToolResultData: result})
+							flusher.Flush()
+						}
+						toolsExecuted = true
+					}
+				}
+			}
 		}
 
 		// If no tools were executed, exit the loop
@@ -1925,6 +1985,48 @@ func chatSystemPrompt() string {
 		return strings.TrimSpace(custom)
 	}
 	return "Você é o assistente do Hades. Responda sempre em português do Brasil, de forma clara e objetiva, a menos que o usuário peça explicitamente outro idioma."
+}
+
+// parseTextToolCall extracts a tool call that a model emitted as plain text
+// (e.g. `{"name": "web_search", "arguments": {"query": "x"}}`) instead of as a
+// structured tool_call, which some local models do. It only succeeds when the
+// whole trimmed content is that single JSON object (optionally inside a code
+// fence), so a normal answer that merely mentions JSON is never misread.
+func parseTextToolCall(content string) (string, map[string]any, bool) {
+	text := strings.TrimSpace(content)
+	if strings.HasPrefix(text, "```") {
+		text = strings.TrimPrefix(text, "```")
+		if i := strings.IndexByte(text, '\n'); i >= 0 {
+			text = text[i+1:]
+		}
+		text = strings.TrimSpace(strings.TrimSuffix(strings.TrimSpace(text), "```"))
+	}
+	if !strings.HasPrefix(text, "{") || !strings.HasSuffix(text, "}") {
+		return "", nil, false
+	}
+	var parsed struct {
+		Name       string          `json:"name"`
+		Parameters json.RawMessage `json:"parameters"`
+		Arguments  json.RawMessage `json:"arguments"`
+	}
+	if err := json.Unmarshal([]byte(text), &parsed); err != nil {
+		return "", nil, false
+	}
+	name := strings.TrimSpace(parsed.Name)
+	if name == "" {
+		return "", nil, false
+	}
+	raw := parsed.Arguments
+	if len(raw) == 0 {
+		raw = parsed.Parameters
+	}
+	args := map[string]any{}
+	if len(raw) > 0 {
+		if err := json.Unmarshal(raw, &args); err != nil {
+			return "", nil, false
+		}
+	}
+	return name, args, true
 }
 
 // buildChatRequest converts store.Chat to api.ChatRequest
