@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect } from "react";
 import { Link } from "@tanstack/react-router";
 import { type AgentArtifact } from "@/lib/agenticClient";
 import { API_BASE } from "@/lib/config";
+import { safeHttpUrl } from "@/lib/safeUrl";
 import { AppSidebar } from "@/components/AppSidebar";
 import { SidebarLayout } from "@/components/layout/layout";
 import {
@@ -212,7 +213,7 @@ export function CreationsPage() {
                         Canvas
                       </Link>
                       <a
-                        href={item.previewUrl}
+                        href={safeHttpUrl(item.previewUrl)}
                         target="_blank"
                         rel="noreferrer"
                         className="inline-flex items-center gap-1 rounded-lg bg-neutral-900 px-2.5 py-1 text-xs font-medium text-white hover:opacity-90 dark:bg-white dark:text-neutral-900"
@@ -222,7 +223,7 @@ export function CreationsPage() {
                         Abrir
                       </a>
                       <a
-                        href={item.previewUrl}
+                        href={safeHttpUrl(item.previewUrl)}
                         download={item.name}
                         className="rounded-lg p-1 text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800"
                         title="Baixar código"
