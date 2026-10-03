@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -277,6 +278,16 @@ func (s *Server) cmd(ctx context.Context) (*exec.Cmd, error) {
 	} else {
 		env["OLLAMA_NO_CLOUD"] = "0"
 	}
+	// The agent server fails closed when it binds a non-loopback address without
+	// TLS. A user who has OLLAMA_HOST=0.0.0.0 in their environment (common for
+	// exposing Ollama on the LAN) would otherwise make the whole local app's
+	// server refuse to start. Downgrade to loopback with a clear warning instead
+	// of crashing; exposing on the network means also configuring agent TLS.
+	if host := strings.TrimSpace(env["OLLAMA_HOST"]); host != "" && !hostSpecIsLoopback(host) && !agentTLSConfigured(env) {
+		loopback := forceLoopbackHostSpec(host)
+		slog.Warn("OLLAMA_HOST binds a non-loopback address without agent TLS; using loopback instead", "requested", host, "using", loopback, "hint", "set OLLAMA_AGENT_TLS_CERT_FILE and OLLAMA_AGENT_TLS_KEY_FILE to expose on the network")
+		env["OLLAMA_HOST"] = loopback
+	}
 	cmd.Env = []string{}
 	for k, v := range env {
 		cmd.Env = append(cmd.Env, k+"="+v)
@@ -290,6 +301,45 @@ func (s *Server) cmd(ctx context.Context) (*exec.Cmd, error) {
 	}
 
 	return cmd, nil
+}
+
+func agentTLSConfigured(env map[string]string) bool {
+	return strings.TrimSpace(env["OLLAMA_AGENT_TLS_CERT_FILE"]) != "" && strings.TrimSpace(env["OLLAMA_AGENT_TLS_KEY_FILE"]) != ""
+}
+
+// hostSpecIsLoopback reports whether an OLLAMA_HOST value (which may be
+// "host:port", "host", or a URL) binds only the loopback interface.
+func hostSpecIsLoopback(spec string) bool {
+	h := spec
+	if i := strings.Index(h, "://"); i >= 0 {
+		h = h[i+3:]
+	}
+	if hh, _, err := net.SplitHostPort(h); err == nil {
+		h = hh
+	}
+	h = strings.Trim(h, "[]")
+	if h == "" || strings.EqualFold(h, "localhost") {
+		return true
+	}
+	if ip := net.ParseIP(h); ip != nil {
+		return ip.IsLoopback()
+	}
+	return false
+}
+
+// forceLoopbackHostSpec rewrites the host portion of an OLLAMA_HOST value to
+// 127.0.0.1, preserving any scheme and port.
+func forceLoopbackHostSpec(spec string) string {
+	scheme := ""
+	h := spec
+	if i := strings.Index(h, "://"); i >= 0 {
+		scheme = h[:i+3]
+		h = h[i+3:]
+	}
+	if _, port, err := net.SplitHostPort(h); err == nil {
+		return scheme + net.JoinHostPort("127.0.0.1", port)
+	}
+	return scheme + "127.0.0.1"
 }
 
 func openRotatingLog() (io.WriteCloser, error) {
