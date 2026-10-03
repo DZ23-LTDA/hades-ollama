@@ -107,6 +107,21 @@ func TestWhatsAppRoutesWebhookRejectsInvalidSignatureAndIdentity(t *testing.T) {
 	}
 }
 
+func TestWhatsAppRoutesWebhookRejectsOversizedBody(t *testing.T) {
+	srv, _, _ := setupWhatsAppTestServer(t)
+
+	// A body larger than the 4 MiB cap must be rejected before it is buffered
+	// (and before signature verification), not fully read into memory.
+	big := bytes.Repeat([]byte("a"), 5<<20)
+	req := httptest.NewRequest(http.MethodPost, "/api/agent/v1/whatsapp/webhook", bytes.NewReader(big))
+	w := httptest.NewRecorder()
+	srv.ServeHTTP(w, req)
+
+	if w.Code != http.StatusRequestEntityTooLarge {
+		t.Fatalf("oversized webhook body must return 413, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
 func TestWhatsAppRoutesStatus(t *testing.T) {
 	srv, _, _ := setupWhatsAppTestServer(t)
 

@@ -43,8 +43,19 @@ func (a *agentAPI) whatsappWebhook(c *gin.Context) {
 		return
 	}
 
+	// Bound the webhook body before buffering it: the HMAC signature is only
+	// verified inside ProcessWebhook (after the full read), so without a cap a
+	// multi-GB POST would be buffered into memory before being rejected. Webhook
+	// payloads are small JSON; mirror the agent JSON limit.
+	const maxWhatsAppWebhookBody = 4 << 20 // 4 MiB
+	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, maxWhatsAppWebhookBody)
 	body, err := io.ReadAll(c.Request.Body)
 	if err != nil {
+		var maxErr *http.MaxBytesError
+		if errors.As(err, &maxErr) {
+			c.JSON(http.StatusRequestEntityTooLarge, gin.H{"error": "webhook body too large"})
+			return
+		}
 		c.JSON(http.StatusBadRequest, gin.H{"error": "failed to read request body"})
 		return
 	}
