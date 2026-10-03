@@ -18,11 +18,12 @@ func (a *agentAPI) getEgressLogs(c *gin.Context) {
 		}
 	}
 	callsite := c.Query("callsite")
+	organizationID := a.organizationID(c)
 	var entries []agent.EgressDecision
 	if callsite != "" {
-		entries = agent.DefaultEgressAuditStore.Filter(callsite, limit)
+		entries = agent.DefaultEgressAuditStore.FilterForOrganization(organizationID, callsite, limit)
 	} else {
-		entries = agent.DefaultEgressAuditStore.List(limit)
+		entries = agent.DefaultEgressAuditStore.ListForOrganization(organizationID, limit)
 	}
 	c.JSON(http.StatusOK, gin.H{
 		"count":   len(entries),
@@ -32,7 +33,7 @@ func (a *agentAPI) getEgressLogs(c *gin.Context) {
 
 // getEgressStatus returns summary metrics and current state of the zero-trust egress policy.
 func (a *agentAPI) getEgressStatus(c *gin.Context) {
-	all := agent.DefaultEgressAuditStore.List(1000)
+	all := agent.DefaultEgressAuditStore.ListForOrganization(a.organizationID(c), 1000)
 	allowedCount := 0
 	blockedCount := 0
 	callsites := make(map[string]int)

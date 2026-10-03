@@ -815,7 +815,7 @@ func TestDistributedPostgresRLSAndEvents(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		_, organization, _, err := authStore.ProvisionOAuthUser(map[string]any{"email": "pg-recovery@example.test", "name": "Recovery Test"}, "integration")
+		_, organization, _, err := authStore.ProvisionOAuthUser(map[string]any{"sub": "pg-recovery-subject", "email": "pg-recovery@example.test", "name": "Recovery Test"}, "integration")
 		if err != nil {
 			t.Fatal(err)
 		}

@@ -263,7 +263,27 @@ func RunProjectTests(ctx context.Context, workspacePath string, options TestRunO
 	}
 	targetDir := workspacePath
 	if options.SubPath != "" {
-		targetDir = filepath.Join(workspacePath, options.SubPath)
+		// Contain the subpath strictly within the workspace: reject absolute
+		// paths and "..", then resolve symlinks and verify the result stays
+		// under the workspace root (SEC-02).
+		if !filepath.IsLocal(options.SubPath) {
+			return TestRunResult{}, fmt.Errorf("invalid sub_path %q: must be a relative path inside the workspace", options.SubPath)
+		}
+		candidate := filepath.Join(workspacePath, options.SubPath)
+		rootReal, err := filepath.EvalSymlinks(workspacePath)
+		if err != nil {
+			return TestRunResult{}, fmt.Errorf("resolve workspace root: %w", err)
+		}
+		candidateReal, err := filepath.EvalSymlinks(candidate)
+		if err != nil {
+			// Target may not exist yet; fall back to the lexically cleaned path.
+			candidateReal = filepath.Clean(candidate)
+		}
+		rel, err := filepath.Rel(rootReal, candidateReal)
+		if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+			return TestRunResult{}, fmt.Errorf("sub_path %q escapes the workspace", options.SubPath)
+		}
+		targetDir = candidate
 	}
 
 	framework := strings.ToLower(strings.TrimSpace(options.Framework))
@@ -526,12 +546,17 @@ type projectTestRunnerTool struct{}
 
 func (projectTestRunnerTool) Descriptor() ToolDescriptor {
 	return ToolDescriptor{
-		Name:             "project.test.run",
-		Version:          "1",
-		Description:      "Executar testes automatizados do projeto (Go, Node/npm, Python) em ambiente sandbox isolado sem egress de rede",
-		Risk:             RiskRead,
-		Scopes:           []string{"workspace:read"},
-		RequiresApproval: false,
+		Name:    "project.test.run",
+		Version: "1",
+		// Honest risk: this runs the project's own test command (go test, npm
+		// test, pytest or a custom command), which executes arbitrary project
+		// code on the host. It is NOT a real kernel sandbox, so it is treated as
+		// an external-side-effect action and requires explicit human approval
+		// (SEC-01).
+		Description:      "Executar o runner de testes do projeto (Go, Node/npm, Python). Atenção: executa código do projeto no host e exige aprovação.",
+		Risk:             RiskExternalSideEffect,
+		Scopes:           []string{"workspace:read", "sandbox:execute"},
+		RequiresApproval: true,
 	}
 }
 

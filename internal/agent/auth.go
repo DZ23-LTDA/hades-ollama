@@ -119,6 +119,10 @@ type AuthStore struct {
 	oauthStates   map[string]OAuthState
 	credentials   map[string]OAuthCredential
 	mfaAttempts   map[string]MFAAttemptState
+	// identities binds a federated sign-in ("provider|subject") to a local
+	// user ID. Email alone is never the identity key (SEC-04): it can be
+	// reassigned and is not unique across identity providers.
+	identities map[string]string
 }
 
 const (
@@ -144,14 +148,14 @@ func (e *MFAThrottleError) Error() string {
 }
 
 func NewAuthStore(root string) (*AuthStore, error) {
-	store := &AuthStore{root: strings.TrimSpace(root), users: map[string]User{}, organizations: map[string]Organization{}, memberships: map[string]Membership{}, tokens: map[string]AccessToken{}, oauthStates: map[string]OAuthState{}, credentials: map[string]OAuthCredential{}, mfaAttempts: map[string]MFAAttemptState{}}
+	store := &AuthStore{root: strings.TrimSpace(root), users: map[string]User{}, organizations: map[string]Organization{}, memberships: map[string]Membership{}, tokens: map[string]AccessToken{}, oauthStates: map[string]OAuthState{}, credentials: map[string]OAuthCredential{}, mfaAttempts: map[string]MFAAttemptState{}, identities: map[string]string{}}
 	if store.root == "" {
 		return store, nil
 	}
 	if err := os.MkdirAll(store.root, 0o700); err != nil {
 		return nil, err
 	}
-	for name, target := range map[string]any{"users": &store.users, "organizations": &store.organizations, "memberships": &store.memberships, "tokens": &store.tokens, "oauth-states": &store.oauthStates, "credentials": &store.credentials, "mfa-attempts": &store.mfaAttempts} {
+	for name, target := range map[string]any{"users": &store.users, "organizations": &store.organizations, "memberships": &store.memberships, "tokens": &store.tokens, "oauth-states": &store.oauthStates, "credentials": &store.credentials, "mfa-attempts": &store.mfaAttempts, "identities": &store.identities} {
 		path := filepathJoin(store.root, name+".json")
 		if _, err := os.Stat(path); errors.Is(err, os.ErrNotExist) {
 			continue
@@ -162,6 +166,9 @@ func NewAuthStore(root string) (*AuthStore, error) {
 	}
 	if store.mfaAttempts == nil {
 		store.mfaAttempts = map[string]MFAAttemptState{}
+	}
+	if store.identities == nil {
+		store.identities = map[string]string{}
 	}
 	return store, nil
 }
@@ -613,6 +620,13 @@ func (s *AuthStore) CreateOAuthStateWithNonce(provider, redirectURI, codeVerifie
 	}
 	state := OAuthState{Hash: hashSecret(raw), Provider: provider, RedirectURI: canonicalRedirectURI, CodeVerifier: codeVerifier, Nonce: strings.TrimSpace(nonce), UserID: userID, ExpiresAt: time.Now().UTC().Add(ttl)}
 	s.mu.Lock()
+	// Drop stale/consumed states and cap the total so an attacker cannot grow
+	// the persisted store without bound by repeatedly starting OAuth (SEC-06).
+	s.sweepOAuthStatesLocked(time.Now().UTC())
+	if len(s.oauthStates) >= maxPendingOAuthStates {
+		s.mu.Unlock()
+		return "", OAuthState{}, errors.New("too many pending oauth states; try again later")
+	}
 	s.oauthStates[state.Hash] = state
 	err = s.persistLocked()
 	s.mu.Unlock()
@@ -629,11 +643,26 @@ func (s *AuthStore) ConsumeOAuthState(raw, provider, redirectURI string) (OAuthS
 	}
 	now := time.Now().UTC()
 	state.ConsumedAt = &now
-	s.oauthStates[hash] = state
+	// Delete on consume (atomic single-use) so consumed states never accumulate
+	// in the persisted store. Reuse is still rejected because the hash is gone
+	// (SEC-06).
+	delete(s.oauthStates, hash)
 	if err := s.persistLocked(); err != nil {
 		return OAuthState{}, err
 	}
 	return state, nil
+}
+
+const maxPendingOAuthStates = 10000
+
+// sweepOAuthStatesLocked removes expired or already-consumed OAuth states so the
+// persisted store cannot grow without bound. Callers must hold s.mu (SEC-06).
+func (s *AuthStore) sweepOAuthStatesLocked(now time.Time) {
+	for h, st := range s.oauthStates {
+		if st.ConsumedAt != nil || now.After(st.ExpiresAt) {
+			delete(s.oauthStates, h)
+		}
+	}
 }
 
 func (s *AuthStore) StoreOAuthCredential(provider, userID, organizationID string, payload map[string]any) (OAuthCredential, error) {
@@ -883,23 +912,66 @@ func (s *AuthStore) FirstOrganization(userID string) (Organization, Membership, 
 }
 
 func (s *AuthStore) ProvisionOAuthUser(payload map[string]any, provider string) (User, Organization, Membership, error) {
-	email := oauthClaim(payload, "email", "email_address", "preferred_username", "login")
+	provider = strings.TrimSpace(provider)
+	email := strings.ToLower(strings.TrimSpace(oauthClaim(payload, "email", "email_address", "preferred_username", "login")))
 	if email == "" || !strings.Contains(email, "@") {
 		return User{}, Organization{}, Membership{}, errors.New("oauth userinfo did not provide a valid email")
 	}
+	// SEC-04: bind the local account to the provider's stable subject, never
+	// to the email alone. An email address is reassignable and is not unique
+	// across identity providers, so linking purely by email lets a second IdP
+	// (or an unverified-email account at a federatable provider) silently take
+	// over an account created through a different sign-in.
+	subject := oauthClaim(payload, "sub", "oid", "user_id", "uid", "id")
+	if subject == "" {
+		return User{}, Organization{}, Membership{}, errors.New("oauth userinfo did not provide a stable subject identifier")
+	}
+	if provider == "" {
+		return User{}, Organization{}, Membership{}, errors.New("oauth provider is required")
+	}
+	identityKey := provider + "|" + subject
 	name := oauthClaim(payload, "name", "preferred_username", "login")
 	if name == "" {
 		name = email
 	}
-	user, err := s.CreateUser(email, name)
-	if err != nil {
+	if len(email) > 320 || len(name) > 200 {
+		return User{}, Organization{}, Membership{}, errors.New("user field is too long")
+	}
+
+	s.mu.Lock()
+	// A known federated identity always resolves to the same local user.
+	if uid, ok := s.identities[identityKey]; ok {
+		if user, ok := s.users[uid]; ok {
+			s.mu.Unlock()
+			organization, membership, err := s.FirstOrganization(user.ID)
+			if err == nil {
+				return user, organization, membership, nil
+			}
+			organization, membership, err = s.CreateOrganization(provider+" — "+email, user)
+			return user, organization, membership, err
+		}
+		// The bound user no longer exists; drop the stale binding and re-provision.
+		delete(s.identities, identityKey)
+	}
+	// A brand-new identity must not silently attach to an account that already
+	// exists under a different sign-in — that is the account-takeover vector.
+	for _, existing := range s.users {
+		if existing.Email == email {
+			s.mu.Unlock()
+			return User{}, Organization{}, Membership{}, errors.New("an account with this email already exists under a different sign-in; link it from account settings instead")
+		}
+	}
+	now := time.Now().UTC()
+	user := User{ID: "usr_" + uuid.NewString(), Email: email, Name: name, CreatedAt: now}
+	s.users[user.ID] = user
+	s.identities[identityKey] = user.ID
+	if err := s.persistLocked(); err != nil {
+		s.mu.Unlock()
 		return User{}, Organization{}, Membership{}, err
 	}
-	organization, membership, err := s.FirstOrganization(user.ID)
-	if err == nil {
-		return user, organization, membership, nil
-	}
-	organization, membership, err = s.CreateOrganization(strings.TrimSpace(provider)+" — "+email, user)
+	s.mu.Unlock()
+
+	organization, membership, err := s.CreateOrganization(provider+" — "+email, user)
 	return user, organization, membership, err
 }
 
@@ -909,8 +981,15 @@ func oauthClaim(payload map[string]any, keys ...string) string {
 			return strings.TrimSpace(value)
 		}
 	}
-	if nested, ok := payload["userinfo"].(map[string]any); ok {
-		return oauthClaim(nested, keys...)
+	// Fall back to the nested claim maps the server attaches during the OAuth
+	// and OIDC flows (userinfo endpoint response and validated id_token
+	// claims). The subject identifier (SEC-04) usually lives there.
+	for _, nestedKey := range []string{"userinfo", "id_token_claims"} {
+		if nested, ok := payload[nestedKey].(map[string]any); ok {
+			if value := oauthClaim(nested, keys...); value != "" {
+				return value
+			}
+		}
 	}
 	return ""
 }
@@ -927,6 +1006,7 @@ func (s *AuthStore) persistLocked() error {
 		"oauth-states":  s.oauthStates,
 		"credentials":   s.credentials,
 		"mfa-attempts":  s.mfaAttempts,
+		"identities":    s.identities,
 	} {
 		if err := writeJSONAtomic(filepathJoin(s.root, name+".json"), value); err != nil {
 			return err

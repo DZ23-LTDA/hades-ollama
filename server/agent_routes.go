@@ -584,9 +584,9 @@ func (a *agentAPI) authMiddleware(c *gin.Context) {
 		recoveryCode := strings.TrimSpace(c.GetHeader("X-Ollama-MFA-Recovery-Code"))
 		var mfaErr error
 		if recoveryCode != "" {
-			mfaErr = a.auth.VerifyRecoveryCodeWithThrottle(user.ID, recoveryCode, c.Request.RemoteAddr, time.Now().UTC())
+			mfaErr = a.auth.VerifyRecoveryCodeWithThrottle(user.ID, recoveryCode, throttleHostKey(c.Request.RemoteAddr), time.Now().UTC())
 		} else {
-			mfaErr = a.auth.VerifyMFAWithThrottle(user.ID, mfaCode, c.Request.RemoteAddr, time.Now().UTC())
+			mfaErr = a.auth.VerifyMFAWithThrottle(user.ID, mfaCode, throttleHostKey(c.Request.RemoteAddr), time.Now().UTC())
 		}
 		if mfaErr != nil {
 			var throttle *agent.MFAThrottleError
@@ -690,6 +690,22 @@ func isLoopbackRemoteAddr(remoteAddr string) bool {
 	}
 	ip := net.ParseIP(strings.Trim(host, "[]"))
 	return ip != nil && ip.IsLoopback()
+}
+
+// throttleHostKey returns the client host without the ephemeral TCP port so
+// rate limits key on the IP, not IP:port. Keying on the full RemoteAddr let a
+// caller reset an MFA/recovery throttle just by opening a new connection with a
+// fresh source port (SEC-05).
+func throttleHostKey(remoteAddr string) string {
+	remoteAddr = strings.TrimSpace(remoteAddr)
+	host, _, err := net.SplitHostPort(remoteAddr)
+	if err != nil {
+		host = strings.Trim(remoteAddr, "[]")
+	}
+	if host == "" {
+		return remoteAddr
+	}
+	return host
 }
 
 func (a *agentAPI) scopedRuntime(c *gin.Context) *agent.Runtime {

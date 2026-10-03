@@ -37,9 +37,21 @@ func TestMain(m *testing.M) {
 	} {
 		os.Unsetenv(name)
 	}
+	// Isolate the models directory (Q-11): several server tests create manifests
+	// via CreateModel/pull. If the suite inherited a real OLLAMA_MODELS (e.g. a
+	// developer's D:\IA\ollama\models) those fixtures would be persisted into the
+	// user's actual catalog and pollute the model picker. Always point it at a
+	// throwaway temp dir and remove it afterwards.
+	modelsDir, err := os.MkdirTemp("", "ollama-models-test-")
+	if err != nil {
+		panic("failed to create temp OLLAMA_MODELS for tests: " + err.Error())
+	}
+	os.Setenv("OLLAMA_MODELS", modelsDir)
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}))
 	slog.SetDefault(logger)
-	os.Exit(m.Run())
+	code := m.Run()
+	os.RemoveAll(modelsDir)
+	os.Exit(code)
 }
 
 func TestSchedInit(t *testing.T) {

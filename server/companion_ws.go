@@ -2,6 +2,7 @@ package server
 
 import (
 	"crypto/subtle"
+	"net"
 	"net/http"
 	"os"
 	"strings"
@@ -99,6 +100,50 @@ func (a *agentAPI) deviceConnect(c *gin.Context) {
 	}
 }
 
+// companionSecureRequest reports whether the companion request arrived over a
+// secure transport. A direct TLS connection is always trusted. The
+// X-Forwarded-Proto header is only honored when the request's RemoteAddr is a
+// trusted proxy (loopback or an entry in OLLAMA_TRUSTED_PROXIES); otherwise an
+// attacker could spoof the header to bypass the TLS requirement.
 func companionSecureRequest(request *http.Request) bool {
-	return request.TLS != nil || strings.EqualFold(request.Header.Get("X-Forwarded-Proto"), "https")
+	if request.TLS != nil {
+		return true
+	}
+	if !trustedCompanionProxy(request.RemoteAddr) {
+		return false
+	}
+	return strings.EqualFold(request.Header.Get("X-Forwarded-Proto"), "https")
+}
+
+// trustedCompanionProxy reports whether remoteAddr belongs to a proxy whose
+// X-Forwarded-* headers may be trusted: loopback, or an exact IP/host match or
+// CIDR range listed (comma-separated) in OLLAMA_TRUSTED_PROXIES.
+func trustedCompanionProxy(remoteAddr string) bool {
+	if isLoopbackRemoteAddr(remoteAddr) {
+		return true
+	}
+	host := strings.TrimSpace(remoteAddr)
+	if h, _, err := net.SplitHostPort(host); err == nil {
+		host = h
+	}
+	host = strings.Trim(host, "[]")
+	if host == "" {
+		return false
+	}
+	ip := net.ParseIP(host)
+	for _, entry := range strings.Split(os.Getenv("OLLAMA_TRUSTED_PROXIES"), ",") {
+		entry = strings.TrimSpace(entry)
+		if entry == "" {
+			continue
+		}
+		if strings.EqualFold(entry, host) {
+			return true
+		}
+		if ip != nil {
+			if _, network, err := net.ParseCIDR(entry); err == nil && network.Contains(ip) {
+				return true
+			}
+		}
+	}
+	return false
 }
