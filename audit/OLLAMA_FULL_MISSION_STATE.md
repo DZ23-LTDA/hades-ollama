@@ -1321,3 +1321,35 @@ declarar prontos):
   mudança necessária.
 - Bloqueios externos inalterados: Authenticode/SignPath, attestation/provenance,
   staging TLS/mTLS, Playwright real, runners macOS/MLX, mobile físico/EAS.
+
+
+## Checkpoint — findings de código FECHADOS (autorizado) — 2026-10-03
+
+Com autorização explícita do usuário para assumir premissas de infra, os 4
+findings de código que restavam foram implementados, testados e validados
+(inclusive pelos jobs de integração do CI com Redis e Postgres reais). Tip
+`e5bb698a`, ambos os workflows verdes.
+
+- `81a5c0c0` H-10/S6 — cancelamento entre instâncias: watchDurableCancellation
+  propaga o marcador durável para o runCtx local (abortando passo longo em voo
+  em qualquer instância). Teste: TestWatchDurableCancellationPropagatesAcrossInstances.
+- `8fd68e0d` H-25 — spend cap por organização no roteamento: resolver possui
+  SpendLedger por env (OLLAMA_AGENT_SPEND_DAILY_CAP_CENTS/_MONTHLY_CAP_CENTS/
+  _LEDGER_PATH); pré-autoriza custo nominal por roteamento e cai para local/free
+  com motivo honesto ao estourar. organization_id threadado na interface.
+  Teste: TestSpendLedgerEnforcesPaidModelCap. (Hold estimado, não contabilidade
+  exata por token — documentado.)
+- `0435f36a` H-08 — quota global atômica no enqueue Redis
+  (OLLAMA_AGENT_REDIS_MAX_JOBS, default 100k). Teste de integração verde no CI
+  com Redis real. (Sweeper de órfãos H-09 e quota por-tenant seguem como
+  follow-up menor.)
+- `e5bb698a` M-15 — ledger de migrations Postgres (agent_schema_migrations
+  append-only, provenance + drift por checksum). Checksum testado puro; SQL
+  exercido pelo job Postgres do CI.
+
+Estado de código: os findings P1/P2 acionáveis desta auditoria estão fechados.
+Permanecem APENAS os bloqueios externos (fora do código): assinatura
+Authenticode/SignPath, attestation/provenance SLSA, staging TLS/mTLS real,
+certificação RLS em produção, pentest externo, runners macOS/MLX e mobile
+físico/EAS. Esses exigem credenciais/infra/decisão do usuário e não são
+simuláveis.
