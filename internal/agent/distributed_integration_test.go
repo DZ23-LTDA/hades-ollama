@@ -844,7 +844,11 @@ func TestDistributedPostgresRLSAndEvents(t *testing.T) {
 			t.Fatalf("tenant-aware recovery failed: %v", err)
 		}
 		found := false
-		for _, job := range queue.List(QueuePending) {
+		pendingJobs, listErr := queue.List(QueuePending)
+		if listErr != nil {
+			t.Fatal(listErr)
+		}
+		for _, job := range pendingJobs {
 			if job.MissionID == pending.ID && job.OrganizationID == organization.ID {
 				found = true
 				break
@@ -1006,7 +1010,10 @@ func TestDistributedRedisRetriesDeadLetterReplay(t *testing.T) {
 	if err := queue.Ack(claimed); err != nil {
 		t.Fatal(err)
 	}
-	jobs := queue.List(QueueSucceeded)
+	jobs, listErr := queue.List(QueueSucceeded)
+	if listErr != nil {
+		t.Fatal(listErr)
+	}
 	found := false
 	for _, candidate := range jobs {
 		if candidate.ID == job.ID {
@@ -1407,19 +1414,29 @@ func TestDistributedRedisStartCancellationDominatesNilHandler(t *testing.T) {
 	cancelWorker()
 	deadline := time.Now().Add(5 * time.Second)
 	for time.Now().Before(deadline) {
-		for _, candidate := range queue.List(QueueFailed) {
+		failed, listErr := queue.List(QueueFailed)
+		if listErr != nil {
+			t.Fatal(listErr)
+		}
+		for _, candidate := range failed {
 			if candidate.ID == job.ID {
 				return
 			}
 		}
-		for _, candidate := range queue.List(QueueSucceeded) {
+		succeeded, listErr := queue.List(QueueSucceeded)
+		if listErr != nil {
+			t.Fatal(listErr)
+		}
+		for _, candidate := range succeeded {
 			if candidate.ID == job.ID {
 				t.Fatalf("cancelled handler was acknowledged as succeeded: %+v", candidate)
 			}
 		}
 		time.Sleep(10 * time.Millisecond)
 	}
-	t.Fatalf("cancelled handler was not terminalized: pending=%+v running=%+v", queue.List(QueuePending), queue.List(QueueRunning))
+	pendingSnapshot, _ := queue.List(QueuePending)
+	runningSnapshot, _ := queue.List(QueueRunning)
+	t.Fatalf("cancelled handler was not terminalized: pending=%+v running=%+v", pendingSnapshot, runningSnapshot)
 }
 
 func TestDistributedRedisWrongTypesDoNotPartiallyMutateQueue(t *testing.T) {
