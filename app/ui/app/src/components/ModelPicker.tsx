@@ -7,7 +7,7 @@ import {
   useImperativeHandle,
 } from "react";
 import { Model } from "@/gotypes";
-import { useSelectedModel } from "@/hooks/useSelectedModel";
+import { useSelectedModel, isChatModel } from "@/hooks/useSelectedModel";
 import { useCloudStatus } from "@/hooks/useCloudStatus";
 import { useQueryClient } from "@tanstack/react-query";
 import { getModelUpstreamInfo } from "@/api";
@@ -35,9 +35,13 @@ export const ModelPicker = forwardRef<
     onModelSelectModel?: (model: Model) => void;
     selectableOnly?: boolean;
     buttonLabel?: string;
+    // When true, hides DZ23 multi-provider router/remote models (auto/*, groq/…)
+    // that only work in the Agentic Console, keeping the plain chat to local and
+    // Ollama Cloud models.
+    hideMultiProvider?: boolean;
   }
 >(function ModelPicker(
-  { chatId, onModelSelect, onEscape, onDropdownToggle, isDisabled, selectedModelOverride, onModelSelectModel, selectableOnly = false, buttonLabel },
+  { chatId, onModelSelect, onEscape, onDropdownToggle, isDisabled, selectedModelOverride, onModelSelectModel, selectableOnly = false, buttonLabel, hideMultiProvider = false },
   ref,
 ): JSX.Element {
   const [isOpen, setIsOpen] = useState(false);
@@ -219,7 +223,11 @@ export const ModelPicker = forwardRef<
 
           <ModelList
             ref={modelListRef}
-            models={selectableOnly ? models.filter(isModelSelectable) : models}
+            models={(() => {
+              let list = selectableOnly ? models.filter(isModelSelectable) : models;
+              if (hideMultiProvider) list = list.filter(isChatModel);
+              return list;
+            })()}
             selectedModel={selectedModel}
             onModelSelect={handleModelSelect}
             cloudDisabled={cloudDisabled}

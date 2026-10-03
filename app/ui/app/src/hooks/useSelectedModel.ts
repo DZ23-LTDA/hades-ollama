@@ -19,6 +19,49 @@ export function recommendDefaultModel(totalVRAM: number): string {
   return "gpt-oss:20b";
 }
 
+// The plain chat only supports local models and Ollama Cloud. The DZ23
+// multi-provider router models (kind "router", e.g. auto/coding) and external
+// provider models (kind "remote", e.g. groq/...) only work through the Agentic
+// Console, and return 404 in the plain chat — so they must never be selected or
+// defaulted to here.
+export function isChatModel(model: Model): boolean {
+  if (model.isCloud?.()) return true;
+  const kind = model.kind;
+  return kind === undefined || kind === null || kind === "local";
+}
+
+// isInstalledLocal is true for a local model whose weights are already on disk
+// (has a digest), i.e. something the chat can run immediately offline.
+function isInstalledLocal(model: Model): boolean {
+  return (
+    isChatModel(model) &&
+    !model.isCloud?.() &&
+    typeof model.digest === "string" &&
+    model.digest !== ""
+  );
+}
+
+// pickChatDefault chooses a model the plain chat can actually use, preferring an
+// installed local model (works offline, no usage limits) over cloud.
+export function pickChatDefault(
+  models: Model[],
+  recommendedModel: string,
+  cloudDisabled: boolean,
+): Model | null {
+  const recommended = models.find(
+    (m) => m.model === recommendedModel && isChatModel(m) && (isInstalledLocal(m) || m.isCloud?.()),
+  );
+  return (
+    recommended ||
+    models.find(isInstalledLocal) ||
+    (cloudDisabled
+      ? models.find((m) => isChatModel(m) && !m.isCloud?.())
+      : models.find((m) => m.isCloud?.())) ||
+    models.find(isChatModel) ||
+    null
+  );
+}
+
 export function useSelectedModel(currentChatId?: string, searchQuery?: string) {
   const { settings, setSettings } = useSettings();
   const { data: models = [], isLoading } = useModels(searchQuery || "");
@@ -89,8 +132,15 @@ export function useSelectedModel(currentChatId?: string, searchQuery?: string) {
       );
     }
 
+    const found = models.find((m) => m.model === settings.selectedModel);
+    // If the stored selection is a known multi-provider router/remote model, the
+    // plain chat can't use it (404). Fall back to a chat-compatible model so a
+    // leftover "auto/coding" never breaks the composer.
+    if (found && !isChatModel(found)) {
+      return pickChatDefault(models, recommendedModel, cloudDisabled) || found;
+    }
     return (
-      models.find((m) => m.model === settings.selectedModel) ||
+      found ||
       (settings.selectedModel &&
         new Model({
           model: settings.selectedModel,
@@ -171,35 +221,31 @@ export function useSelectedModel(currentChatId?: string, searchQuery?: string) {
     setSettings,
   ]);
 
-  // On initial load, if no model is selected, set default model
+  // Set a chat-compatible default when nothing is selected, or replace a
+  // leftover multi-provider router/remote selection (e.g. "auto/coding") that
+  // the plain chat cannot use.
   useEffect(() => {
-    if (
-      isLoading ||
-      inferenceComputes.length === 0 ||
-      models.length === 0 ||
-      settings.selectedModel
-    ) {
-      return;
-    }
+    if (isLoading || models.length === 0) return;
 
-    const defaultModel =
-      models.find((m) => m.model === recommendedModel) ||
-      (cloudDisabled
-        ? models.find((m) => !m.isCloud())
-        : models.find((m) => m.isCloud())) ||
-      models.find((m) => m.digest === undefined || m.digest === "") ||
-      models[0];
+    const current = settings.selectedModel
+      ? models.find((m) => m.model === settings.selectedModel)
+      : null;
 
-    if (defaultModel) {
+    // A valid chat selection stays as-is.
+    if (current && isChatModel(current)) return;
+    // An unknown selection (e.g. a cloud name synthesized on the fly that is not
+    // in the local list yet) is left alone; only known router/remote is reset.
+    if (settings.selectedModel && !current) return;
+
+    const defaultModel = pickChatDefault(models, recommendedModel, cloudDisabled);
+    if (defaultModel && defaultModel.model !== settings.selectedModel) {
       setSettings({ SelectedModel: defaultModel.model });
     }
   }, [
     isLoading,
-    inferenceComputes.length,
-    models.length,
+    models,
     settings.selectedModel,
     cloudDisabled,
-    models,
     recommendedModel,
     setSettings,
   ]);

@@ -4,6 +4,23 @@ interface ErrorMessageProps {
   error: ErrorEvent;
 }
 
+// friendlyError turns cryptic backend/upstream errors (e.g. a raw
+// "404 Not Found: [{" when a model can't be routed) into guidance a
+// non-technical user can act on, while leaving already-clear messages intact.
+function friendlyError(raw: string): string {
+  const text = (raw || "").trim();
+  if (!text) return "Algo deu errado. Tente novamente em instantes.";
+  if (
+    /\b404\b/.test(text) ||
+    /not found/i.test(text) ||
+    /does not exist|no such model|model .*not found/i.test(text) ||
+    /^\[?\{/.test(text)
+  ) {
+    return "O modelo selecionado não está disponível neste chat. Escolha um modelo local ou do Ollama Cloud no seletor de modelos abaixo.";
+  }
+  return text;
+}
+
 const renderWithLinks = (text: string) => {
   const urlRegex =
     /(https?:\/\/(?!127\.|localhost|0\.0\.0\.0|10\.|192\.168\.|172\.(1[6-9]|2[0-9]|3[0-1])\.)[^\s]+)/g;
@@ -65,7 +82,7 @@ export const ErrorMessage = ({ error }: ErrorMessageProps) => {
 
       <div className="flex items-start ml-[1.8rem] mt-2">
         <div className="text-sm text-neutral-500 dark:text-neutral-500 opacity-75 flex-1">
-          {renderWithLinks(error.error)}
+          {renderWithLinks(friendlyError(error.error))}
         </div>
       </div>
     </div>

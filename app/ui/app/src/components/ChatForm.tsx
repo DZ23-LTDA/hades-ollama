@@ -1036,6 +1036,7 @@ function ChatForm({
               onEscape={focusChatFormInput}
               isDisabled={isDisabled}
               onDropdownToggle={handleModelPickerDropdownToggle}
+              hideMultiProvider
             />
             <button
               ref={submitButtonRef}
