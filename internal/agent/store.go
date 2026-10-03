@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"sort"
 	"strings"
 	"sync"
@@ -924,7 +925,30 @@ func writeJSONAtomicBounded(path string, value any, maxBytes int, label string) 
 	if err := tmp.Close(); err != nil {
 		return err
 	}
-	return os.Rename(tmpName, path)
+	if err := os.Rename(tmpName, path); err != nil {
+		return err
+	}
+	// Durability: after the atomic content rename, fsync the parent directory so
+	// the rename entry itself survives a crash, not just the file's data.
+	syncParentDir(path)
+	return nil
+}
+
+// syncParentDir best-effort fsyncs the directory containing path so a prior
+// rename is durable. Directory fsync is a POSIX concept: on Windows it is a
+// no-op (directory handles do not support it and NTFS persists metadata
+// differently), and on filesystems that reject it the error is ignored rather
+// than failing an otherwise successful write.
+func syncParentDir(path string) {
+	if runtime.GOOS == "windows" {
+		return
+	}
+	dir, err := os.Open(filepath.Dir(path))
+	if err != nil {
+		return
+	}
+	_ = dir.Sync()
+	_ = dir.Close()
 }
 
 func readJSON(path string, target any) error {
