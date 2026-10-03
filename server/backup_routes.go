@@ -21,6 +21,15 @@ func (a *agentAPI) downloadBackup(c *gin.Context) {
 		writeAgentError(c, http.StatusServiceUnavailable, errors.New("agent runtime unavailable"))
 		return
 	}
+	// BackupData archives the entire data root, which in multi-tenant mode holds
+	// every organization's data. GET is a "read" action allowed to every role,
+	// and there is no cross-org super-admin, so serving a full backup under auth
+	// would let any member exfiltrate other organizations' data. This is a
+	// local-first, single-tenant feature; refuse it when auth is enabled.
+	if a.authRequired {
+		writeAgentError(c, http.StatusForbidden, errors.New("full backup is only available in local-first single-tenant mode"))
+		return
+	}
 	var buf bytes.Buffer
 	manifest, err := agent.BackupData(a.runtime.DataRoot(), &buf)
 	if err != nil {
