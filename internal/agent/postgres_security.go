@@ -802,7 +802,46 @@ $function$`
 			return fmt.Errorf("finalize PostgreSQL tenant RLS migration: %w", err)
 		}
 	}
+	// Migration ledger: an append-only record of the applied schema definition
+	// (name + checksum + applied_at), giving operators provenance and drift
+	// history without blocking the idempotent re-apply. A new row is written
+	// only when the definition's checksum differs from the latest recorded one,
+	// so repeated migrate runs do not add noise and a changed checksum is a
+	// visible, queryable drift marker.
+	if _, err := tx.ExecContext(ctx, `CREATE TABLE IF NOT EXISTS public.agent_schema_migrations (seq BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY, name TEXT NOT NULL, checksum TEXT NOT NULL, applied_at TIMESTAMPTZ NOT NULL DEFAULT now())`); err != nil {
+		return fmt.Errorf("create PostgreSQL migration ledger: %w", err)
+	}
+	migrationChecksum := postgresSchemaMigrationChecksum(statements, finalStatements, []string{functionSQL})
+	var latestChecksum string
+	ledgerErr := tx.QueryRowContext(ctx, `SELECT checksum FROM public.agent_schema_migrations WHERE name=$1 ORDER BY seq DESC LIMIT 1`, postgresSchemaMigrationName).Scan(&latestChecksum)
+	switch {
+	case errors.Is(ledgerErr, sql.ErrNoRows) || (ledgerErr == nil && latestChecksum != migrationChecksum):
+		if _, err := tx.ExecContext(ctx, `INSERT INTO public.agent_schema_migrations (name, checksum) VALUES ($1, $2)`, postgresSchemaMigrationName, migrationChecksum); err != nil {
+			return fmt.Errorf("record PostgreSQL migration ledger: %w", err)
+		}
+	case ledgerErr != nil:
+		return fmt.Errorf("read PostgreSQL migration ledger: %w", ledgerErr)
+	}
 	return tx.Commit()
+}
+
+// postgresSchemaMigrationName identifies the evolving agent schema baseline in
+// the migration ledger.
+const postgresSchemaMigrationName = "agent-schema-baseline"
+
+// postgresSchemaMigrationChecksum is a deterministic fingerprint of the schema
+// definition (all DDL/statement groups), used by the migration ledger to record
+// provenance and surface drift. It is pure and unit-testable without a database.
+func postgresSchemaMigrationChecksum(groups ...[]string) string {
+	digest := sha256.New()
+	for _, group := range groups {
+		for _, statement := range group {
+			digest.Write([]byte(statement))
+			digest.Write([]byte{0})
+		}
+		digest.Write([]byte{'\n'})
+	}
+	return hex.EncodeToString(digest.Sum(nil))
 }
 
 func validatePostgresLegacySchemaShape(ctx context.Context, tx *sql.Tx, requireOwnershipConstraints bool) error {
