@@ -18,9 +18,18 @@ export type ProjectImportResult = {
 	branch: string;
 	indexed_files: number;
 	indexed_memories: number;
+	ignored_files: number;
+	files: ProjectImportFile[];
 	archive_sha256: string;
 	state: string;
 	notice: string;
+};
+
+export type ProjectImportFile = {
+	path: string;
+	indexed: boolean;
+	reason?: string;
+	size_bytes: number;
 };
 
 export type AgentSchedule = {

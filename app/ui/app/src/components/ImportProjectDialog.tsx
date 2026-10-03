@@ -8,6 +8,7 @@ import {
   uploadProjectChunk,
 } from "@/lib/agenticClient";
 import type { AgentProject } from "@/lib/agenticClient";
+import { describeImport } from "@/lib/importSummary";
 
 type ImportTab = "github" | "zip";
 
@@ -70,7 +71,7 @@ export function ImportProjectDialog({
     setStatus(null);
     try {
       const result = await importGitHubProject({ url: url.trim(), ref: ref.trim() || undefined, name: githubName.trim() || undefined });
-      setStatus(`Importado e indexado: ${result.indexed_files} arquivos e ${result.indexed_memories} trechos. Worktree ${result.branch}.`);
+      setStatus(`Importado e indexado: ${describeImport(result)}. Worktree ${result.branch}.`);
 	      setURL("");
 	      setRef("");
 	      setGithubName("");
@@ -100,7 +101,7 @@ export function ImportProjectDialog({
       }
       await finalizeProjectUpload(upload.id);
       const result = await importZIPProject({ project_id: project.id, upload_id: upload.id, name: project.name });
-      setStatus(`ZIP importado e indexado: ${result.indexed_files} arquivos e ${result.indexed_memories} trechos.`);
+      setStatus(`ZIP importado e indexado: ${describeImport(result)}.`);
 	      setFile(null);
 	      setZipName("");
 	      onImported?.(result.project);
