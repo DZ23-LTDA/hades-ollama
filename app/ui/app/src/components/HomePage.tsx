@@ -15,9 +15,10 @@ import Logo from "@/components/Logo";
 import { FileUpload } from "@/components/FileUpload";
 import { FirstModelCard } from "@/components/FirstModelCard";
 import { ModelPicker } from "@/components/ModelPicker";
-import { processFiles } from "@/utils/fileValidation";
+import { AGENT_ATTACHMENT_EXTENSIONS, processFiles } from "@/utils/fileValidation";
 import { SlashCommandMenu } from "@/components/SlashCommandMenu";
 import { ImportProjectDialog } from "@/components/ImportProjectDialog";
+import { importMissionAttachments } from "@/lib/agenticClient";
 import {
   filterSlashCommands,
   parseSlashCommand,
@@ -50,8 +51,12 @@ export function HomePage() {
   const [objective, setObjective] = useState("");
   const [selectionMode, setSelectionMode] = useState<"auto" | "manual">("auto");
   const [manualModel, setManualModel] = useState<Model | null>(null);
-  const [attachments, setAttachments] = useState<Array<{ filename: string; data: Uint8Array }>>([]);
+  const [attachments, setAttachments] = useState<Array<{ filename: string; data: Uint8Array; type?: string }>>([]);
   const [attachmentErrors, setAttachmentErrors] = useState<string[]>([]);
+  const [startError, setStartError] = useState("");
+  const [starting, setStarting] = useState(false);
+  const [allowWorkspaceWrite, setAllowWorkspaceWrite] = useState(false);
+  const [allowRemoteAttachmentSend, setAllowRemoteAttachmentSend] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [activeCommand, setActiveCommand] = useState(0);
@@ -63,48 +68,76 @@ export function HomePage() {
     setActiveCommand(0);
   };
 
-  const start = () => {
-    const parsed = parseSlashCommand(objective);
-    const url = parsed ? slashCommandURL(objective) : null;
-    if (parsed && url) {
-      const targetObjective = commandObjective(parsed.command, parsed.objective);
-      const params = new URLSearchParams(url.split("?")[1]);
-      params.set("objective", targetObjective);
-      params.set("mode", selectionMode);
-      if (selectionMode === "manual" && manualModel) {
-        params.set("model", manualModel.model);
-        params.set("provider", manualModel.provider || "ollama-local");
-      } else {
-        params.set("model", "auto/coding");
-        params.set("provider", "ollama-local");
-      }
-      if (attachments.length > 0) params.set("attachments", attachments.map((file) => file.filename).join(","));
-      window.location.assign(`/agentic?${params.toString()}`);
+  const remoteModelWithAttachments = attachments.length > 0 && selectionMode === "manual" && manualModel?.kind === "remote";
+
+  const start = async () => {
+    if (starting || !objective.trim()) return;
+    if (remoteModelWithAttachments && !allowRemoteAttachmentSend) {
+      setStartError("Confirme que entende que o provider remoto selecionado pode receber o pedido e o contexto dos anexos.");
       return;
     }
+    const parsed = parseSlashCommand(objective);
+    const url = parsed ? slashCommandURL(objective) : null;
     const value = objective.trim();
-    if (!value) return;
-    const params = new URLSearchParams({ objective: value, autorun: "true", mode: selectionMode });
-    params.set("model", selectionMode === "manual" && manualModel ? manualModel.model : "auto/coding");
-    params.set("provider", selectionMode === "manual" && manualModel ? manualModel.provider || "ollama-local" : "ollama-local");
-    if (attachments.length > 0) params.set("attachments", attachments.map((file) => file.filename).join(","));
-    window.location.assign(`/agentic?${params.toString()}`);
+    const targetObjective = parsed && url ? commandObjective(parsed.command, parsed.objective) : value;
+    setStarting(true);
+    setStartError("");
+    try {
+      let importedProjectID = "";
+      if (attachments.length > 0) {
+        const imported = await importMissionAttachments(attachments, `Anexos: ${targetObjective.slice(0, 96)}`);
+        importedProjectID = imported.project?.id ?? "";
+        if (!importedProjectID) throw new Error("O servidor não confirmou a criação do projeto dos anexos.");
+      }
+
+      const params = parsed && url ? new URLSearchParams(url.split("?")[1]) : new URLSearchParams();
+      params.set("objective", targetObjective);
+      params.set("mode", selectionMode);
+      params.set("model", selectionMode === "manual" && manualModel ? manualModel.model : "auto/coding");
+      params.set("provider", selectionMode === "manual" && manualModel ? manualModel.provider || "ollama-local" : "ollama-local");
+      if (importedProjectID) params.set("project_id", importedProjectID);
+      if (allowWorkspaceWrite) {
+        params.set("allow_write", "true");
+        params.delete("autorun");
+      } else if (!(parsed && url)) {
+        params.set("autorun", "true");
+      }
+      window.location.assign(`/agentic?${params.toString()}`);
+    } catch (cause) {
+      setStartError(cause instanceof Error ? cause.message : "Falha ao enviar ou indexar os anexos.");
+    } finally {
+      setStarting(false);
+    }
   };
 
-  const addFiles = (files: Array<{ filename: string; data: Uint8Array }>) => {
-    setAttachments((current) => [...current, ...files]);
+  const addFiles = (files: Array<{ filename: string; data: Uint8Array; type?: string }>) => {
+    const accepted: typeof files = [];
+    const errors: string[] = [];
+    let totalBytes = attachments.reduce((total, file) => total + file.data.byteLength, 0);
+    for (const file of files) {
+      if (attachments.length + accepted.length >= 10) {
+        errors.push(`${file.filename}: limite de 10 arquivos por tarefa`);
+      } else if (totalBytes + file.data.byteLength > 32 * 1024 * 1024) {
+        errors.push(`${file.filename}: limite total de 32 MB por tarefa`);
+      } else {
+        accepted.push(file);
+        totalBytes += file.data.byteLength;
+      }
+    }
+    if (accepted.length > 0) setAttachments((current) => [...current, ...accepted]);
+    if (errors.length > 0) setAttachmentErrors((current) => [...current, ...errors]);
   };
 
-  const handleFilesAdded = (files: Array<{ filename: string; data: Uint8Array }>, errors: Array<{ filename: string; error: string }> = []) => {
-    addFiles(files.map((file) => ({ filename: file.filename, data: file.data })));
-    setAttachmentErrors(errors.map((item) => `${item.filename}: ${item.error}`));
+  const handleFilesAdded = (files: Array<{ filename: string; data: Uint8Array; type?: string }>, errors: Array<{ filename: string; error: string }> = []) => {
+    addFiles(files);
+    if (errors.length > 0) setAttachmentErrors((current) => [...current, ...errors.map((item) => `${item.filename}: ${item.error}`)]);
   };
 
   const handleFileInput = async (event: ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files ?? []);
     if (files.length === 0) return;
-    const result = await processFiles(files, { maxFileSize: 10, hasVisionCapability: false });
-    handleFilesAdded(result.validFiles.map((file) => ({ filename: file.filename, data: file.data })), result.errors);
+    const result = await processFiles(files, { maxFileSize: 10, allowedExtensions: AGENT_ATTACHMENT_EXTENSIONS, hasVisionCapability: false });
+    handleFilesAdded(result.validFiles, result.errors);
     event.target.value = "";
   };
 
@@ -155,18 +188,23 @@ export function HomePage() {
           <label htmlFor="home-objective" className="sr-only">Descreva uma tarefa</label>
           <div className="relative">
             <div className="absolute inset-x-0 bottom-full mb-2"><SlashCommandMenu query={query} activeIndex={activeCommand} onActiveIndexChange={setActiveCommand} onSelect={selectCommand} /></div>
-            <FileUpload onFilesAdded={handleFilesAdded}>
+            <FileUpload onFilesAdded={handleFilesAdded} allowedExtensions={AGENT_ATTACHMENT_EXTENSIONS} maxFileSize={10}>
             <div className="rounded-2xl border border-neutral-200 bg-white p-3 shadow-sm focus-within:border-neutral-400 dark:border-neutral-800 dark:bg-neutral-900">
               {attachments.length > 0 && <div className="mb-2 flex flex-wrap gap-1.5" aria-label="Arquivos anexados">{attachments.map((file, index) => <span key={`${file.filename}-${index}`} className="inline-flex items-center gap-1 rounded-lg bg-neutral-100 px-2 py-1 text-[11px] text-neutral-700 dark:bg-neutral-800 dark:text-neutral-200">{file.filename}<button type="button" aria-label={`Remover ${file.filename}`} onClick={() => setAttachments((current) => current.filter((_, fileIndex) => fileIndex !== index))}><XMarkIcon className="h-3 w-3" /></button></span>)}</div>}
               <div className="flex items-end gap-2">
               <textarea id="home-objective" aria-label="Objetivo da nova tarefa" value={objective} onChange={(event) => { setObjective(event.target.value); setActiveCommand(0); }} onKeyDown={handleKeyDown} rows={2} placeholder="Atribua uma tarefa ou digite / para mais opções..." className="min-h-11 w-full resize-none bg-transparent px-2 py-1.5 text-sm outline-none placeholder:text-neutral-400" />
               <button type="button" aria-label="Anexar arquivo" title="Anexar arquivo" onClick={() => fileInputRef.current?.click()} className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-neutral-200 text-neutral-600 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"><PaperClipIcon className="h-4 w-4" /></button>
-              <button type="button" onClick={start} disabled={!objective.trim()} aria-label="Iniciar no Console agentic" className="inline-flex h-10 shrink-0 items-center gap-2 rounded-xl bg-neutral-950 px-4 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-40 dark:bg-white dark:text-neutral-950"><PaperAirplaneIcon className="h-4 w-4" />Iniciar</button>
+              <button type="button" onClick={() => void start()} disabled={!objective.trim() || starting || (remoteModelWithAttachments && !allowRemoteAttachmentSend)} aria-busy={starting || undefined} aria-label="Iniciar no Console agentic" className="inline-flex h-10 shrink-0 items-center gap-2 rounded-xl bg-neutral-950 px-4 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-40 dark:bg-white dark:text-neutral-950"><PaperAirplaneIcon className="h-4 w-4" />{starting ? "Enviando…" : allowWorkspaceWrite ? "Continuar para revisar" : "Iniciar"}</button>
               </div>
-              <input ref={fileInputRef} type="file" multiple className="hidden" onChange={(event) => void handleFileInput(event)} aria-label="Escolher arquivos para anexar" />
+              <input ref={fileInputRef} type="file" multiple accept={AGENT_ATTACHMENT_EXTENSIONS.map((extension) => `.${extension}`).join(",")} className="hidden" onChange={(event) => void handleFileInput(event)} aria-label="Escolher arquivos para anexar" />
               {attachmentErrors.length > 0 && <p role="alert" className="mt-2 text-xs text-rose-600 dark:text-rose-400">{attachmentErrors.join(" • ")}</p>}
+              {startError && <p role="alert" className="mt-2 text-xs text-rose-600 dark:text-rose-400">{startError}</p>}
               <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-neutral-100 pt-3 dark:border-neutral-800"><span className="text-[11px] font-medium text-neutral-500">IA da tarefa</span><button type="button" aria-pressed={selectionMode === "auto"} onClick={() => setSelectionMode("auto")} className={`rounded-lg px-2.5 py-1.5 text-[11px] font-medium ${selectionMode === "auto" ? "bg-neutral-900 text-white dark:bg-white dark:text-neutral-900" : "border border-neutral-200 text-neutral-600 dark:border-neutral-700 dark:text-neutral-300"}`}>Automático · grátis-primeiro</button><button type="button" aria-pressed={selectionMode === "manual"} onClick={() => setSelectionMode("manual")} className={`rounded-lg px-2.5 py-1.5 text-[11px] font-medium ${selectionMode === "manual" ? "bg-neutral-900 text-white dark:bg-white dark:text-neutral-900" : "border border-neutral-200 text-neutral-600 dark:border-neutral-700 dark:text-neutral-300"}`}>Manual</button>{selectionMode === "manual" && <ModelPicker chatId="new" selectedModelOverride={manualModel} onModelSelectModel={setManualModel} selectableOnly buttonLabel={manualModel ? `${manualModel.model} · ${manualModel.cost_tag || (manualModel.kind === "remote" ? "pago" : manualModel.kind === "cli_subscription" ? "0-assinatura" : "0-local")}` : "Escolher modelo PASS"} />}</div>
-              <p className="mt-2 text-[11px] text-neutral-400">Automático usa o roteador do runtime. Manual respeita somente modelos disponíveis no catálogo; anexos seguem os limites locais de arquivo.</p>
+              <div className="mt-3 flex flex-col gap-2 border-t border-neutral-100 pt-3 text-xs text-neutral-600 dark:border-neutral-800 dark:text-neutral-300">
+                <label className="flex items-start gap-2"><input type="checkbox" checked={allowWorkspaceWrite} onChange={(event) => setAllowWorkspaceWrite(event.target.checked)} className="mt-0.5 rounded" /><span>Permitir alterações nos arquivos do projeto. Se marcar, a tarefa não executará automaticamente: você revisará e iniciará a missão no console.</span></label>
+                {remoteModelWithAttachments && <label className="flex items-start gap-2"><input type="checkbox" checked={allowRemoteAttachmentSend} onChange={(event) => setAllowRemoteAttachmentSend(event.target.checked)} className="mt-0.5 rounded" /><span>Entendo que o provider remoto selecionado pode receber meu pedido e trechos dos anexos para gerar a resposta.</span></label>}
+                <p className="text-[11px] text-neutral-400">Anexos são enviados ao Hades para indexação local (até 10 arquivos, 10 MB cada e 32 MB no total). Imagens ainda não são indexadas. O modo automático recebe somente leitura; escrita exige consentimento e revisão.</p>
+              </div>
             </div>
             </FileUpload>
           </div>

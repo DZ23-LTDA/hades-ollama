@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { IMAGE_EXTENSIONS, validateFile } from "./fileValidation";
+import { AGENT_ATTACHMENT_EXTENSIONS, IMAGE_EXTENSIONS, validateFile } from "./fileValidation";
 
 describe("fileValidation", () => {
   describe("IMAGE_EXTENSIONS", () => {
@@ -8,6 +8,18 @@ describe("fileValidation", () => {
       expect(IMAGE_EXTENSIONS).toContain("jpg");
       expect(IMAGE_EXTENSIONS).toContain("jpeg");
       expect(IMAGE_EXTENSIONS).toContain("webp");
+    });
+  });
+
+  describe("AGENT_ATTACHMENT_EXTENSIONS", () => {
+    it("matches indexer formats and excludes unsupported images and RTF", () => {
+      expect(AGENT_ATTACHMENT_EXTENSIONS).toContain("pdf");
+      expect(AGENT_ATTACHMENT_EXTENSIONS).toContain("docx");
+      expect(AGENT_ATTACHMENT_EXTENSIONS).toContain("xlsx");
+      expect(AGENT_ATTACHMENT_EXTENSIONS).toContain("css");
+      expect(AGENT_ATTACHMENT_EXTENSIONS).toContain("sql");
+      expect(AGENT_ATTACHMENT_EXTENSIONS).not.toContain("png");
+      expect(AGENT_ATTACHMENT_EXTENSIONS).not.toContain("rtf");
     });
   });
 

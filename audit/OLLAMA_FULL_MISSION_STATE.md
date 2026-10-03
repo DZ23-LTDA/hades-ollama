@@ -1213,3 +1213,25 @@ atacar as duas falhas de Windows com evidência real do runner (`icacls`) antes 
 declaração de produção.
 
 Guia portátil para retomada: `audit/HANDOFF_NEXT_MANUS_20260929.md`.
+
+
+## Checkpoint — 2026-10-03: início da rodada de correções UX/segurança
+
+- Solicitação explícita do usuário: “bora corrigir e melhorar”.
+- Branch autorizada e ativa: `recovery/ollama-full-snapshot`; a branch `main` não será alterada. O tip remoto foi verificado antes desta rodada; não haverá commit, push nem publicação sem pedido.
+- O relatório entregue em `outputs/auditoria_hades_ollama_2026-10-03.txt` e artefatos preexistentes em `.work/`/`.manus/` devem ser preservados.
+- A árvore de código estava sem alterações rastreadas antes desta rodada. A rodada será incremental e coberta por testes: (1) anexos da Home persistidos por API, associados a projeto/organização e indexados; não transportar bytes em query string/sessionStorage nem afirmar sucesso antes de confirmação do servidor; (2) limitar privilégios do autorun e cobrir o comportamento no backend/UI; (3) corrigir onboarding/privacidade com copy condicional e tradução coerente; (4) tornar a busca documental útil mostrando trechos citados, sem apresentar instruções RAG como resposta gerada.
+- Limite técnico reconhecido: o endpoint atual de documentos monta contexto para uma camada de resposta mas não chama inferência, e `agentAPI` não tem provider/modelo explícito; a UI desta rodada explicará a recuperação e apresentará snippets/citações. Não será adicionada geração implícita nem egress a provider externo.
+- Validação prevista: testes focados, lint/build frontend e testes Go nos pacotes/rotas alterados. Registrar limitações reais do toolchain Windows/CGO, sem declarar gates não executados como aprovados.
+
+
+## Checkpoint — 2026-10-03: primeira fatia de correções concluída localmente
+
+- Branch ativa: `recovery/ollama-full-snapshot`, HEAD-base `553002b2915e716ba0720fa6a04edce2df08cbac`; antes do commit, a ref remota GitHub foi confirmada no mesmo SHA. `main` não foi alterada.
+- Escopo entregue nesta fatia: upload multipart real de anexos da Home para projeto org-scoped/indexado (10 arquivos; 10 MiB por arquivo; 32 MiB agregado; allowlist do indexador; nomes/paths validados); conteúdo não vai em query string; provider remoto com anexos exige consentimento; escrita desliga autorun na Home e o Console só cria missão manual, enquanto o backend aceita autorun apenas com `workspace:read`.
+- A busca documental agora é descrita como busca de trechos, renderiza snippets/fontes e não devolve ao cliente o prompt/contexto RAG interno.
+- Onboarding: removida a alegação absoluta “never logged or trained on”; copy agora distingue modelos locais e remotos. A localização integral do onboarding em PT-BR permanece pendente para uma próxima fatia.
+- Novos testes: importação e allowlist Go, endpoint multipart, validação de autorun, API documental sem `context`, Home upload/navegação/consentimento, snippets e copy de privacidade.
+- Evidências locais: `go test ./internal/agent -run 'TestSupportedProjectDocumentFilename|TestProjectImport' -count=1`, testes selecionados de `server` (anexos, autorun e RAG) e `go vet ./internal/agent ./server` passaram; Vitest completo: 56 arquivos/317 testes passaram; `npm run build` passou (warning conhecido de chunk acima de 500 kB); `npm run lint` passou; `git diff --check` passou.
+- Gate amplo `go test ./... -count=1` não ficou verde neste Windows: falhou por `CGO_ENABLED=0`/sqlite stub nos pacotes que usam `go-sqlite3` e por testes `mlx` com símbolos ausentes (`gelu`, `currentScope`, `gatedDeltaGraph`, etc.). Os testes Go focados dos pacotes alterados passaram; não declarar a suíte Go completa aprovada.
+- Instrução mais recente do usuário (2026-10-03 10:15): corrigir melhorias e subir ao GitHub. Autorização abrange commit e push normal somente para `recovery/ollama-full-snapshot`; não abrange PR, `main`, force-push ou alterações em outras refs. Atualizar este checkpoint com o SHA após confirmar o push.

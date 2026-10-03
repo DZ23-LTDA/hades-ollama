@@ -165,7 +165,7 @@ const OLLAMA_FEATURES = [
   },
   {
     title: "Your data stays yours",
-    description: "Your prompt data is never logged or trained on.",
+    description: "Local models process prompts on this device. Cloud models receive requests when you choose to use them.",
     icon: ShieldCheckIcon,
   },
 ];
@@ -288,7 +288,7 @@ export function WelcomeScreen({
           Create your account for access to faster, larger open models.
         </p>
         <p className="mt-1 max-w-[400px] text-sm leading-6 text-neutral-400">
-          Your data is never logged or trained on.
+          Local models process prompts on this device. If you opt in to cloud models, prompts are sent to the selected provider when you use them.
         </p>
 
         <div className="mt-7 flex w-full max-w-[240px] flex-col items-center">

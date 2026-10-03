@@ -406,16 +406,29 @@ func importedTextFiles(root string) []string {
 	return paths
 }
 
+// SupportedProjectDocumentFilename reports whether the document ingestion
+// pipeline can index a standalone project attachment. Images are intentionally
+// excluded until a vision/OCR adapter is configured.
+func SupportedProjectDocumentFilename(name string) bool {
+	if strings.TrimSpace(name) == "" || strings.ContainsAny(name, `/\`) || strings.Contains(name, "..") {
+		return false
+	}
+	switch strings.ToLower(filepath.Ext(name)) {
+	case ".pdf", ".docx", ".xlsx", ".txt", ".md", ".csv", ".json", ".xml", ".html", ".htm", ".css", ".sql",
+		".js", ".jsx", ".ts", ".tsx", ".py", ".java", ".cpp", ".c", ".cc", ".h", ".cs",
+		".php", ".rb", ".go", ".rs", ".swift", ".kt", ".scala", ".sh", ".bat", ".yaml",
+		".yml", ".toml", ".ini", ".cfg", ".conf", ".log":
+		return true
+	default:
+		return false
+	}
+}
+
 func isLikelyTextImportFile(path string) bool {
-	ext := strings.ToLower(filepath.Ext(path))
-	if ext == "" {
+	if filepath.Ext(path) == "" {
 		return true
 	}
-	switch ext {
-	case ".go", ".ts", ".tsx", ".js", ".jsx", ".json", ".md", ".txt", ".yaml", ".yml", ".toml", ".css", ".html", ".htm", ".sql", ".py", ".rs", ".java", ".sh", ".xml", ".csv":
-		return true
-	}
-	return false
+	return SupportedProjectDocumentFilename(filepath.Base(path))
 }
 
 func (r ProjectImportResult) MarshalJSON() ([]byte, error) {

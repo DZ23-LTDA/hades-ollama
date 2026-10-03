@@ -92,7 +92,8 @@ describe("Onboarding", () => {
     );
     expect(html).toContain("Power your existing coding apps with open models");
     expect(html).toContain("Swap between frontier models in one click.");
-    expect(html).toContain("Your prompt data is never logged or trained on.");
+    expect(html).toContain("Local models process prompts on this device. Cloud models receive requests when you choose to use them.");
+    expect(html).not.toContain("never logged or trained on");
     expect(html).toContain("Continue");
     expect(html).not.toContain("Skip");
   });
@@ -620,7 +621,8 @@ describe("Onboarding", () => {
     expect(html).toContain(
       "Create your account for access to faster, larger open models.",
     );
-    expect(html).toContain("Your data is never logged or trained on.");
+    expect(html).toContain("If you opt in to cloud models, prompts are sent to the selected provider when you use them.");
+    expect(html).not.toContain("never logged or trained on");
     expect(html).toContain("Sign up");
     expect(html).toContain("No thanks, I&#x27;ll use Ollama locally");
     expect(html).toContain("Sign in");
@@ -643,7 +645,8 @@ describe("Onboarding", () => {
     expect(html).toContain(
       "Create your account for access to faster, larger open models.",
     );
-    expect(html).toContain("Your data is never logged or trained on.");
+    expect(html).toContain("If you opt in to cloud models, prompts are sent to the selected provider when you use them.");
+    expect(html).not.toContain("never logged or trained on");
     expect(html).not.toContain(">Sign in<");
   });
 

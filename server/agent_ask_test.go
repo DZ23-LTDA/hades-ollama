@@ -60,6 +60,13 @@ func TestAskProjectDocumentsGroundsAndGates(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("relevant ask status=%d body=%s", rec.Code, rec.Body.String())
 	}
+	var response map[string]json.RawMessage
+	if err := json.Unmarshal(rec.Body.Bytes(), &response); err != nil {
+		t.Fatal(err)
+	}
+	if _, leaked := response["context"]; leaked {
+		t.Fatalf("internal prompt context must not be returned to the client: %s", rec.Body.String())
+	}
 	var ok struct {
 		Grounded  bool `json:"grounded"`
 		Citations []struct {

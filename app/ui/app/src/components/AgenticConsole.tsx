@@ -119,6 +119,8 @@ export default function AgenticConsole() {
     const searchParams = new URLSearchParams(window.location.search);
     const requestedObjective = searchParams.get("objective");
     const autoRunParam = searchParams.get("autorun") === "true";
+    const requestedAllowWrite = searchParams.get("allow_write") === "true";
+    const requestedProjectID = searchParams.get("project_id") || "";
     const slashCommand = searchParams.get("slash");
     const requestedProvider = searchParams.get("provider") || "ollama-local";
     const requestedModel = searchParams.get("model") || "auto/coding";
@@ -140,7 +142,11 @@ export default function AgenticConsole() {
     }
     if (requestedObjective) {
       setObjective(requestedObjective);
-      if (autoRunParam || slashCommand === "plan") {
+      setProjectID(requestedProjectID);
+      setAllowWorkspaceWrite(requestedAllowWrite);
+      setProvider(requestedProvider);
+      setSelectedModel(requestedModel.startsWith("auto/") ? "" : requestedModel);
+      if (!requestedAllowWrite && (autoRunParam || slashCommand === "plan")) {
         setViewMode("split");
         void (async () => {
           setBusy(true);
@@ -151,13 +157,12 @@ export default function AgenticConsole() {
                 objective: requestedObjective,
                 provider: requestedProvider,
                 model: requestedModel,
-                capabilities: ["workspace:read", "workspace:write", "browser:navigate", "browser:files", "browser:takeover"],
-                auto_run: autoRunParam,
+                project_id: requestedProjectID || undefined,
+                capabilities: ["workspace:read"],
+                auto_run: autoRunParam && !requestedAllowWrite,
               }),
             });
-              setProvider(requestedProvider);
-              setSelectedModel(requestedModel.startsWith("auto/") ? "" : requestedModel);
-              setMission(created);
+            setMission(created);
             if (slashCommand === "goal") {
               const delegated = await api<OrchestrationJob>("/api/agent/v1/orchestration/jobs", {
                 method: "POST",

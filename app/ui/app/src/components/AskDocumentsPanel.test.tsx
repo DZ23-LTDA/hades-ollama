@@ -45,8 +45,7 @@ describe("AskDocumentsPanel", () => {
     mockAsk.mockResolvedValue({
       project_id: "p1",
       query: "férias",
-      context: "ctx",
-      citations: [{ index: 1, source: "rh.pdf#1", score: 0.98 }],
+      citations: [{ index: 1, source: "rh.pdf#1", score: 0.98, snippet: "A política prevê 30 dias de férias." }],
       grounded: true,
     });
 
@@ -55,11 +54,13 @@ describe("AskDocumentsPanel", () => {
     expect(mockAsk).toHaveBeenCalledWith("p1", "férias");
     const text = textContent(renderer.root);
     expect(text).toContain("rh.pdf#1");
+    expect(text).toContain("A política prevê 30 dias de férias.");
+    expect(text).toContain("não gera uma resposta de IA");
     expect(text).not.toContain(ASK_NO_SOURCES_MESSAGE);
   });
 
   it("shows an honest message and no citations when not grounded", async () => {
-    mockAsk.mockResolvedValue({ project_id: "p1", query: "x", context: "", citations: [], grounded: false });
+    mockAsk.mockResolvedValue({ project_id: "p1", query: "x", citations: [], grounded: false });
 
     const renderer = await ask("x");
 

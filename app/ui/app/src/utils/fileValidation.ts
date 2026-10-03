@@ -4,6 +4,7 @@ import { Model } from "@/gotypes";
 export const TEXT_FILE_EXTENSIONS = [
   "pdf",
   "docx",
+  "xlsx",
   "txt",
   "md",
   "csv",
@@ -42,6 +43,14 @@ export const TEXT_FILE_EXTENSIONS = [
 ];
 
 export const IMAGE_EXTENSIONS = ["png", "jpg", "jpeg", "webp"];
+
+// Match the server-side project document indexer; image OCR is not implied.
+export const AGENT_ATTACHMENT_EXTENSIONS = [
+  "pdf", "docx", "xlsx", "txt", "md", "csv", "json", "xml", "html", "htm",
+  "css", "sql", "js", "jsx", "ts", "tsx", "py", "java", "cpp", "c", "cc",
+  "h", "cs", "php", "rb", "go", "rs", "swift", "kt", "scala", "sh", "bat",
+  "yaml", "yml", "toml", "ini", "cfg", "conf", "log",
+];
 
 export interface FileValidationOptions {
   maxFileSize?: number; // in MB

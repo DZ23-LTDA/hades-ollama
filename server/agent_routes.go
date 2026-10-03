@@ -405,6 +405,7 @@ func (a *agentAPI) register(r *gin.Engine) {
 	group.GET("/metrics", a.metrics)
 	group.POST("/projects/import/github", a.importGitHubProject)
 	group.POST("/projects/import/zip", a.importZIPProject)
+	group.POST("/projects/import/attachments", a.importMissionAttachments)
 	group.POST("/projects/:id/ingest", a.ingestProject)
 	group.GET("/builders", a.builders)
 	group.GET("/builders/:id", a.getBuilder)
@@ -1794,11 +1795,9 @@ func (a *agentAPI) searchMemories(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"project_id": c.Param("id"), "memories": memories})
 }
 
-// askProjectDocuments answers a question strictly from the project's indexed
-// documents (RAG, G1): it retrieves the most relevant sources above a relevance
-// threshold and returns a cited grounded-context block plus the citations. When
-// nothing relevant is indexed it returns grounded=false and a context that tells
-// the model to say it did not find the information, so the UI never fabricates.
+// askProjectDocuments retrieves relevant excerpts from the project's indexed
+// documents (RAG, G1). It returns citations and snippets only; it does not
+// synthesize an answer or expose the internal prompt/context block to the UI.
 func (a *agentAPI) askProjectDocuments(c *gin.Context) {
 	if _, err := a.projectForRequest(c); err != nil {
 		writeAgentError(c, statusForAgentError(err), err)
@@ -1813,7 +1812,7 @@ func (a *agentAPI) askProjectDocuments(c *gin.Context) {
 		askLimit    = 8
 		askMinScore = 0.2 // relevance gate: unrelated queries return no sources
 	)
-	prompt, citations, err := a.context.GroundedAnswerContext(c.Request.Context(), c.Param("id"), query, askLimit, askMinScore)
+	_, citations, err := a.context.GroundedAnswerContext(c.Request.Context(), c.Param("id"), query, askLimit, askMinScore)
 	if err != nil {
 		writeAgentError(c, http.StatusBadRequest, err)
 		return
@@ -1821,7 +1820,6 @@ func (a *agentAPI) askProjectDocuments(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"project_id": c.Param("id"),
 		"query":      query,
-		"context":    prompt,
 		"citations":  citations,
 		"grounded":   len(citations) > 0,
 	})
@@ -1944,11 +1942,26 @@ func creationCategory(artifact agent.ArtifactManifest) (string, string) {
 	}
 }
 
+func validateAutoRunCapabilities(capabilities []string) error {
+	for _, capability := range capabilities {
+		if strings.TrimSpace(capability) != "" && strings.TrimSpace(capability) != "workspace:read" {
+			return errors.New("autorun accepts only workspace:read; create the mission without autorun for elevated capabilities")
+		}
+	}
+	return nil
+}
+
 func (a *agentAPI) createMission(c *gin.Context) {
 	var request agent.CreateMissionRequest
 	if err := decodeJSON(c, &request); err != nil {
 		writeAgentError(c, http.StatusBadRequest, err)
 		return
+	}
+	if request.AutoRun {
+		if err := validateAutoRunCapabilities(request.Capabilities); err != nil {
+			writeAgentError(c, http.StatusBadRequest, err)
+			return
+		}
 	}
 	request.ActorID = agentActorID(c)
 	if value, ok := c.Get("agent.organization"); ok {

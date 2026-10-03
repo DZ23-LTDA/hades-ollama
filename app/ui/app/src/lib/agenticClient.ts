@@ -10,8 +10,8 @@ export type AgentProject = {
 };
 
 export type ProjectImportResult = {
-	project: AgentProject;
-	source: "github" | "zip";
+  project: AgentProject;
+  source: "github" | "zip" | "attachments";
 	repository_url?: string;
 	ref?: string;
 	worktree_path: string;
@@ -226,10 +226,11 @@ export async function agentFetch<T>(
   path: string,
   init: RequestInit = {},
 ): Promise<T> {
+  const multipart = typeof FormData !== "undefined" && init.body instanceof FormData;
   const response = await fetch(`${API_BASE}${path}`, {
     ...init,
     headers: {
-      "Content-Type": "application/json",
+      ...(multipart ? {} : { "Content-Type": "application/json" }),
       ...agentHeaders(),
       ...(init.headers ?? {}),
     },
@@ -276,6 +277,16 @@ export const listProjects = () => agentFetch<{ projects: AgentProject[] }>("/api
 export const createProject = (name: string, root = "") => agentFetch<AgentProject>("/api/agent/v1/projects", { method: "POST", body: JSON.stringify({ name, root }) });
 export const importGitHubProject = (payload: { url: string; ref?: string; name?: string }) => agentFetch<ProjectImportResult>("/api/agent/v1/projects/import/github", { method: "POST", body: JSON.stringify(payload) });
 export const importZIPProject = (payload: { project_id: string; upload_id: string; name?: string }) => agentFetch<ProjectImportResult>("/api/agent/v1/projects/import/zip", { method: "POST", body: JSON.stringify(payload) });
+export async function importMissionAttachments(files: Array<{ filename: string; data: Uint8Array; type?: string }>, name: string) {
+  const body = new FormData();
+  body.append("name", name);
+  for (const file of files) {
+    const bytes = file.data.slice();
+    const blob = new Blob([bytes.buffer as ArrayBuffer], { type: file.type || "application/octet-stream" });
+    body.append("files", blob, file.filename);
+  }
+  return agentFetch<ProjectImportResult>("/api/agent/v1/projects/import/attachments", { method: "POST", body });
+}
 export const startProjectUpload = (payload: { project_id: string; filename: string; total_size: number; chunk_size: number; sha256?: string }) => agentFetch<{ id: string } & Record<string, unknown>>("/api/agent/v1/uploads", { method: "POST", body: JSON.stringify(payload) });
 export const uploadProjectChunk = (uploadID: string, offset: number, data: ArrayBuffer) => agentFetch<Record<string, unknown>>(`/api/agent/v1/uploads/${encodeURIComponent(uploadID)}/chunk?offset=${offset}`, { method: "PUT", headers: { "Content-Type": "application/zip" }, body: data });
 export const finalizeProjectUpload = (uploadID: string) => agentFetch<Record<string, unknown>>(`/api/agent/v1/uploads/${encodeURIComponent(uploadID)}/finalize`, { method: "POST", body: "{}" });
@@ -292,14 +303,12 @@ export interface AgentCitation {
 export interface AskDocumentsResult {
   project_id: string;
   query: string;
-  context: string;
   citations: AgentCitation[];
   grounded: boolean;
 }
 
-// askProjectDocuments answers a question strictly from a project's indexed
-// documents (RAG, G1). When `grounded` is false there were no relevant sources,
-// so the UI should show "não encontrei nos documentos" rather than an answer.
+// askProjectDocuments retrieves relevant, cited excerpts. It does not invoke a
+// language model, so callers must not display the prompt context as an answer.
 export const askProjectDocuments = (projectID: string, query: string) =>
   agentFetch<AskDocumentsResult>(`/api/agent/v1/projects/${encodeURIComponent(projectID)}/ask?q=${encodeURIComponent(query)}`);
 
