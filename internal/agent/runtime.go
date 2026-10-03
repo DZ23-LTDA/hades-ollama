@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -54,6 +55,10 @@ type Runtime struct {
 	mu                  *sync.Mutex
 	running             map[string]bool
 	activeCancels       map[string]context.CancelFunc
+	// cancelPollInterval is how often a running mission re-reads the durable
+	// store to detect a cancellation requested by ANOTHER instance and abort
+	// the in-flight step. Zero falls back to the default.
+	cancelPollInterval time.Duration
 }
 
 type RuntimeConfig struct {
@@ -224,7 +229,7 @@ func NewRuntime(config RuntimeConfig) (*Runtime, error) {
 			return nil, err
 		}
 	}
-	runtime := &Runtime{store: store, planner: planner, plannerResolver: config.PlannerResolver, tools: tools, capabilityPolicy: capabilityPolicy, workspaceRoot: root, dataRoot: dataRoot, context: contextStore, company: companyStore, remoteMCP: config.RemoteMCP, metrics: &RuntimeMetrics{}, connectors: config.Connectors, mcp: config.MCP, queue: queue, redisQueue: config.RedisQueue, traces: traces, telemetry: telemetry, media: config.Media, builder: builder, collaboration: collaboration, push: config.Push, pushOutbox: pushOutbox, deployments: config.Deployments, deploymentApprovals: deploymentApprovals, webhookReplay: webhookReplay, mu: &sync.Mutex{}, running: make(map[string]bool), activeCancels: make(map[string]context.CancelFunc)}
+	runtime := &Runtime{store: store, planner: planner, plannerResolver: config.PlannerResolver, tools: tools, capabilityPolicy: capabilityPolicy, workspaceRoot: root, dataRoot: dataRoot, context: contextStore, company: companyStore, remoteMCP: config.RemoteMCP, metrics: &RuntimeMetrics{}, connectors: config.Connectors, mcp: config.MCP, queue: queue, redisQueue: config.RedisQueue, traces: traces, telemetry: telemetry, media: config.Media, builder: builder, collaboration: collaboration, push: config.Push, pushOutbox: pushOutbox, deployments: config.Deployments, deploymentApprovals: deploymentApprovals, webhookReplay: webhookReplay, mu: &sync.Mutex{}, running: make(map[string]bool), activeCancels: make(map[string]context.CancelFunc), cancelPollInterval: durableCancelPollInterval()}
 	orchestrator, err := NewAgentOrchestrator(filepath.Join(dataRoot, ".agent-orchestrator"), runtime.SubagentRunner)
 	if err != nil {
 		return nil, err
@@ -1607,7 +1612,13 @@ func (r *Runtime) Run(ctx context.Context, id string) (runErr error) {
 	r.running[id] = true
 	r.activeCancels[id] = cancel
 	r.mu.Unlock()
+	// Propagate a cancellation persisted by ANY instance to this run's context,
+	// so a long-running step here is aborted even when another instance served
+	// the Cancel() call and holds no in-memory cancel func for this mission.
+	cancelWatchDone := make(chan struct{})
+	go r.watchDurableCancellation(runCtx, id, cancel, cancelWatchDone)
 	defer func() {
+		close(cancelWatchDone)
 		cancel()
 		r.mu.Lock()
 		delete(r.running, id)
@@ -1979,6 +1990,54 @@ func (r *Runtime) decideApprovalForActor(missionID, approvalID string, approved 
 func (r *Runtime) missionCancelled(id string) bool {
 	mission, err := r.getMission(strings.TrimSpace(id))
 	return err == nil && mission.State == MissionCancelled
+}
+
+const defaultDurableCancelPollInterval = 2 * time.Second
+
+// durableCancelPollInterval reads OLLAMA_AGENT_CANCEL_POLL_MS (clamped to a sane
+// range) so operators can tune how quickly a running instance reacts to a
+// cancellation persisted by another instance. Defaults to 2s.
+func durableCancelPollInterval() time.Duration {
+	raw := strings.TrimSpace(os.Getenv("OLLAMA_AGENT_CANCEL_POLL_MS"))
+	if raw == "" {
+		return defaultDurableCancelPollInterval
+	}
+	ms, err := strconv.Atoi(raw)
+	if err != nil || ms < 50 {
+		return defaultDurableCancelPollInterval
+	}
+	if ms > 60000 {
+		ms = 60000
+	}
+	return time.Duration(ms) * time.Millisecond
+}
+
+// watchDurableCancellation bridges a durable cancellation (persisted in the
+// store, possibly by a DIFFERENT instance) to the local run context. The step
+// loop already re-reads the store between steps, but a long-running step on
+// this instance would otherwise keep going until it finishes, because only the
+// instance that served Cancel() holds the in-memory cancel func. Polling the
+// durable state here lets any instance's cancel abort the in-flight step.
+func (r *Runtime) watchDurableCancellation(ctx context.Context, id string, cancel context.CancelFunc, done <-chan struct{}) {
+	interval := r.cancelPollInterval
+	if interval <= 0 {
+		interval = defaultDurableCancelPollInterval
+	}
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-done:
+			return
+		case <-ticker.C:
+			if r.missionCancelled(id) {
+				cancel()
+				return
+			}
+		}
+	}
 }
 
 func (r *Runtime) Events(id string) ([]Event, error) {
