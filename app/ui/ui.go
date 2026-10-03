@@ -1916,6 +1916,17 @@ func splitMessageAttachments(files []store.File) ([]attachmentText, []api.ImageD
 	return texts, images
 }
 
+// chatSystemPrompt returns the default system instruction for the plain chat.
+// Hades targets Brazilian Portuguese users, so chat responses default to pt-BR
+// unless the user explicitly asks for another language. Override with
+// OLLAMA_CHAT_SYSTEM_PROMPT (set it to a single space to disable).
+func chatSystemPrompt() string {
+	if custom, ok := os.LookupEnv("OLLAMA_CHAT_SYSTEM_PROMPT"); ok {
+		return strings.TrimSpace(custom)
+	}
+	return "Você é o assistente do Hades. Responda sempre em português do Brasil, de forma clara e objetiva, a menos que o usuário peça explicitamente outro idioma."
+}
+
 // buildChatRequest converts store.Chat to api.ChatRequest
 func (s *Server) buildChatRequest(chat *store.Chat, model string, think any, availableTools []map[string]any, attachmentBudget int, lastDigest *attachmentDigest) (*api.ChatRequest, error) {
 	var msgs []api.Message
@@ -1980,6 +1991,20 @@ func (s *Server) buildChatRequest(chat *store.Chat, model string, think any, ava
 		}
 
 		msgs = append(msgs, apiMsg)
+	}
+
+	// Default the plain chat to a Brazilian-Portuguese system instruction so the
+	// model does not answer in English by default. Only injected when the
+	// conversation has no system message of its own.
+	hasSystem := false
+	for _, m := range msgs {
+		if m.Role == "system" {
+			hasSystem = true
+			break
+		}
+	}
+	if prompt := chatSystemPrompt(); prompt != "" && !hasSystem {
+		msgs = append([]api.Message{{Role: "system", Content: prompt}}, msgs...)
 	}
 
 	var thinkValue *api.ThinkValue
