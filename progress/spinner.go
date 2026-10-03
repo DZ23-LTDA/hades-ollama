@@ -24,6 +24,9 @@ type Spinner struct {
 	stopOnce sync.Once
 	// done is closed to tell the animation loop to exit.
 	done chan struct{}
+	// finished is closed by the animation loop when it has fully exited, so Stop
+	// can wait and guarantee no further frame updates happen after it returns.
+	finished chan struct{}
 }
 
 func NewSpinner(message string) *Spinner {
@@ -31,8 +34,9 @@ func NewSpinner(message string) *Spinner {
 		parts: []string{
 			"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏",
 		},
-		started: time.Now(),
-		done:    make(chan struct{}),
+		started:  time.Now(),
+		done:     make(chan struct{}),
+		finished: make(chan struct{}),
 	}
 	s.SetMessage(message)
 	go s.start()
@@ -73,6 +77,8 @@ func (s *Spinner) String() string {
 }
 
 func (s *Spinner) start() {
+	defer close(s.finished)
+
 	ticker := time.NewTicker(100 * time.Millisecond)
 	defer ticker.Stop()
 
@@ -96,4 +102,7 @@ func (s *Spinner) Stop() {
 	s.mu.Unlock()
 
 	s.stopOnce.Do(func() { close(s.done) })
+	// Wait for the animation loop to fully exit so the frame value is stable
+	// once Stop returns (no late ticker update can race a caller reading it).
+	<-s.finished
 }
