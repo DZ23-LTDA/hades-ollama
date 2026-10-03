@@ -53,6 +53,9 @@ func TestCompanionWebSocketDropsIdleConnection(t *testing.T) {
 
 	wsURL := strings.Replace(srv.URL, "http", "ws", 1) + "/devices/" + device.ID + "/connect"
 	conn, resp, err := websocket.DefaultDialer.Dial(wsURL, nil)
+	if resp != nil {
+		defer resp.Body.Close()
+	}
 	if err != nil {
 		if resp != nil {
 			t.Fatalf("dial: %v (status %d)", err, resp.StatusCode)
