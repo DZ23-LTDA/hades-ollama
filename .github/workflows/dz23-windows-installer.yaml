@@ -128,3 +128,23 @@ jobs:
             dist/HadesSetup.exe.sha256
           if-no-files-found: error
           retention-days: 30
+      # SBOM for the installer so even an UNSIGNED build is verifiable (supply
+      # chain), independent of signing. Isolated and non-fatal: a failure here
+      # must never break the installer build/upload above.
+      - name: Generate installer SBOM (CycloneDX)
+        id: installer-sbom
+        continue-on-error: true
+        uses: anchore/sbom-action@006b7ce8314066bdf1765b4500370d40fa6917a3 # v0.24.2
+        with:
+          path: .
+          format: cyclonedx-json
+          output-file: dist/HadesSetup-sbom.cdx.json
+      - name: Upload installer SBOM
+        if: always()
+        continue-on-error: true
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: HadesSetup-sbom-${{ steps.signing.outputs.artifact_suffix }}
+          path: dist/HadesSetup-sbom.cdx.json
+          if-no-files-found: warn
+          retention-days: 30
