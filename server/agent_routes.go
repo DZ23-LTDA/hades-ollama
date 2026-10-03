@@ -2924,7 +2924,10 @@ func (a *agentAPI) runMission(c *gin.Context) {
 		writeAgentError(c, statusForAgentError(err), err)
 		return
 	}
-	c.JSON(http.StatusAccepted, gin.H{"mission_id": id, "state": agent.MissionRunning, "job": job})
+	// The mission is enqueued, not yet running: the transition to RUNNING only
+	// happens when a worker claims the job. Report the real mission state and
+	// the queued job instead of a premature RUNNING that misleads the client.
+	c.JSON(http.StatusAccepted, gin.H{"mission_id": id, "state": mission.State, "queued": true, "job": job})
 }
 
 func (a *agentAPI) cancelMission(c *gin.Context) {
