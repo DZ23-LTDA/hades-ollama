@@ -15,6 +15,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { useMissionEvents } from "@/hooks/useMissionEvents";
 import { ArtifactsViewer } from "@/components/ArtifactsViewer";
+import { safeImageSrc } from "@/lib/safeUrl";
 import { agentFetch } from "@/lib/agenticClient";
 
 export interface MissionStep {
@@ -514,7 +515,7 @@ export function AgenticSplitShell({
               <div className="flex min-h-0 flex-1 items-center justify-center overflow-auto p-4">
                 {browserFrame?.screenshot ? (
                   <img
-                    src={browserFrame.screenshot}
+                    src={safeImageSrc(browserFrame.screenshot)}
                     alt={browserFrame.title || "Browser Viewport"}
                     className="max-h-full max-w-full rounded-lg shadow-2xl object-contain border border-neutral-800"
                   />
