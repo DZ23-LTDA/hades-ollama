@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import {
   createProject,
   finalizeProjectUpload,
+  getProjectUpload,
   importGitHubProject,
   importZIPProject,
   startProjectUpload,
@@ -94,10 +95,42 @@ export function ImportProjectDialog({
       const project = await createProject(zipName.trim());
       const chunkSize = 8 * 1024 * 1024;
       const upload = await startProjectUpload({ project_id: project.id, filename: file.name, total_size: file.size, chunk_size: chunkSize });
-      for (let offset = 0; offset < file.size; offset += chunkSize) {
-        const chunk = await file.slice(offset, Math.min(offset + chunkSize, file.size)).arrayBuffer();
-        await uploadProjectChunk(upload.id, offset, chunk);
-        setStatus(`Enviando ZIP: ${Math.min(file.size, offset + chunk.byteLength)} de ${file.size} bytes…`);
+      // Resilient chunked upload: the backend accepts chunks strictly in order
+      // from its current received_bytes, so on any transient failure (network
+      // blip, proxy hiccup) we back off, re-read the server's real offset and
+      // resume from there instead of aborting and leaving a partial upload.
+      const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+      let offset = 0;
+      let failures = 0;
+      const maxFailures = 6;
+      while (offset < file.size) {
+        const end = Math.min(offset + chunkSize, file.size);
+        try {
+          const chunk = await file.slice(offset, end).arrayBuffer();
+          await uploadProjectChunk(upload.id, offset, chunk);
+          offset = end;
+          failures = 0;
+          const pct = Math.round((offset / file.size) * 100);
+          setStatus(`Enviando ZIP: ${pct}% (${offset} de ${file.size} bytes)…`);
+        } catch (chunkError) {
+          failures += 1;
+          if (failures > maxFailures) {
+            throw chunkError instanceof Error
+              ? new Error(`Falha ao enviar o ZIP após várias tentativas: ${chunkError.message}`)
+              : chunkError;
+          }
+          setStatus(`Conexão instável, retomando o envio… (tentativa ${failures})`);
+          await sleep(Math.min(500 * failures, 3000));
+          // Re-sync with the server's truth so we resume from the exact byte it expects.
+          try {
+            const state = await getProjectUpload(upload.id);
+            if (Number.isFinite(state.received_bytes)) {
+              offset = Math.max(0, Math.min(state.received_bytes, file.size));
+            }
+          } catch {
+            // Keep the current offset and retry the same chunk.
+          }
+        }
       }
       await finalizeProjectUpload(upload.id);
       const result = await importZIPProject({ project_id: project.id, upload_id: upload.id, name: project.name });
@@ -138,7 +171,7 @@ export function ImportProjectDialog({
           <div className="mt-5 space-y-3">
             <label className="block text-xs text-neutral-600 dark:text-neutral-300">Nome do novo projeto<input value={zipName} onChange={(event) => setZipName(event.target.value)} placeholder="Nome do projeto" className="mt-1 h-10 w-full rounded-xl border border-neutral-300 bg-transparent px-3 text-sm dark:border-neutral-700" /></label>
             <label className="block text-xs text-neutral-600 dark:text-neutral-300">Arquivo ZIP<input type="file" accept=".zip,application/zip" onChange={(event) => setFile(event.target.files?.[0] ?? null)} className="mt-1 block w-full text-sm" /></label>
-            <p className="text-[11px] text-neutral-500">O arquivo é enviado em chunks de 8 MiB. Limites e caminhos são verificados no servidor antes da indexação.</p>
+            <p className="text-[11px] text-neutral-500">O arquivo é enviado em partes de 8 MiB, com retomada automática se a conexão oscilar. Limites e caminhos são verificados no servidor antes da indexação.</p>
             <button type="button" onClick={() => void importZIP()} disabled={!file || !zipName.trim() || pending} className="rounded-xl bg-violet-700 px-4 py-2.5 text-xs font-medium text-white disabled:opacity-40">{pending ? "Enviando e indexando…" : "Importar ZIP"}</button>
           </div>
         )}

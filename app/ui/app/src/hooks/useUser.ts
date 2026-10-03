@@ -55,8 +55,12 @@ export function useUser() {
   });
 
   const isLoading = userQuery.isLoading || userQuery.isFetching;
-  const isAuthenticated = Boolean(userQuery.data?.name);
   const isLocalOnly = userQuery.data?.local_only === true;
+  // The backend always returns a placeholder "Local Operator" identity when no
+  // Ollama account is connected (local_only=true). Treating that as signed-in
+  // hid the "Entrar" affordances and let cloud requests fail silently, so a
+  // real account requires a name AND local_only to be false.
+  const isAuthenticated = Boolean(userQuery.data?.name) && !isLocalOnly;
 
   return {
     user: userQuery.data,

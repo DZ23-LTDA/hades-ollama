@@ -299,6 +299,7 @@ export async function importMissionAttachments(files: Array<{ filename: string; 
 export const startProjectUpload = (payload: { project_id: string; filename: string; total_size: number; chunk_size: number; sha256?: string }) => agentFetch<{ id: string } & Record<string, unknown>>("/api/agent/v1/uploads", { method: "POST", body: JSON.stringify(payload) });
 export const uploadProjectChunk = (uploadID: string, offset: number, data: ArrayBuffer) => agentFetch<Record<string, unknown>>(`/api/agent/v1/uploads/${encodeURIComponent(uploadID)}/chunk?offset=${offset}`, { method: "PUT", headers: { "Content-Type": "application/zip" }, body: data });
 export const finalizeProjectUpload = (uploadID: string) => agentFetch<Record<string, unknown>>(`/api/agent/v1/uploads/${encodeURIComponent(uploadID)}/finalize`, { method: "POST", body: "{}" });
+export const getProjectUpload = (uploadID: string) => agentFetch<{ id: string; received_bytes: number; total_size: number; state: string } & Record<string, unknown>>(`/api/agent/v1/uploads/${encodeURIComponent(uploadID)}`);
 export const updateProject = (id: string, name: string, root = "") => agentFetch<AgentProject>(`/api/agent/v1/projects/${encodeURIComponent(id)}`, { method: "PATCH", body: JSON.stringify({ name, root }) });
 export const deleteProject = (id: string) => agentFetch<void>(`/api/agent/v1/projects/${encodeURIComponent(id)}`, { method: "DELETE" });
 

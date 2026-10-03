@@ -401,7 +401,7 @@ export default function Settings() {
     } catch (error) {
       console.error("Failed to reset settings:", error);
       setResetError(
-        "Ollama could not reset every setting. Check the settings above and try again.",
+        "Não foi possível restaurar todas as configurações. Confira as opções acima e tente novamente.",
       );
     } finally {
       setResettingToDefaults(false);
@@ -501,7 +501,7 @@ export default function Settings() {
                     </div>
                     <div className="h-10 w-10 bg-neutral-200 dark:bg-neutral-700 rounded-full animate-pulse"></div>
                   </div>
-                ) : user && user.name ? (
+                ) : isAuthenticated && user && user.name ? (
                   <div className="flex items-center justify-between">
                     <div>
                       <div className="flex items-center space-x-2">
@@ -528,7 +528,7 @@ export default function Settings() {
                             <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/20 via-purple-500/20 to-green-500/20 opacity-60 group-hover:opacity-80 transition-opacity duration-300"></div>
                             <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000 ease-out"></div>
                             <span className="relative z-10 flex items-center space-x-2">
-                              <span>Upgrade</span>
+                              <span>Fazer upgrade</span>
                             </span>
                           </Button>
                         )}
@@ -540,7 +540,7 @@ export default function Settings() {
                             window.open("https://ollama.com/settings", "_blank")
                           }
                         >
-                          Manage
+                          Gerenciar
                         </Button>
                         <Button
                           type="button"
@@ -548,7 +548,7 @@ export default function Settings() {
                           className="px-3 py-2 text-sm"
                           onClick={() => void handleDisconnectOllamaAccount()}
                         >
-                          Sign out
+                          Desconectar
                         </Button>
                       </div>
                     </div>
@@ -567,19 +567,21 @@ export default function Settings() {
                 ) : (
                   <div className="flex items-center justify-between">
                     <div>
-                      <Label>Ollama account</Label>
-                      <Description>Not connected</Description>
+                      <Label>Conta Ollama</Label>
+                      <Description>
+                        Não conectada · entre para usar modelos na nuvem e busca na web
+                      </Description>
                     </div>
                     <Button
                       type="button"
-                      color="white"
+                      color="dark"
                       onClick={handleConnectOllamaAccount}
                       disabled={isRefreshing || isAwaitingConnection}
                     >
                       {isRefreshing || isAwaitingConnection ? (
                         <AnimatedDots />
                       ) : (
-                        "Sign In"
+                        "Entrar"
                       )}
                     </Button>
                   </div>
@@ -602,11 +604,11 @@ export default function Settings() {
                   <div className="flex items-start space-x-3 flex-1">
                     <CloudIcon className="mt-1 h-5 w-5 flex-shrink-0 text-black dark:text-neutral-100" />
                     <div>
-                      <Label>Cloud</Label>
+                      <Label>Nuvem</Label>
                       <Description>
                         {cloudOverriddenByEnv
-                          ? "The OLLAMA_NO_CLOUD environment variable is currently forcing cloud off."
-                          : "Enable cloud models and web search."}
+                          ? "A variável de ambiente OLLAMA_NO_CLOUD está forçando a nuvem desligada."
+                          : "Ativar modelos na nuvem e busca na web."}
                       </Description>
                     </div>
                   </div>
@@ -654,11 +656,11 @@ export default function Settings() {
                   <div className="flex items-start space-x-3 flex-1">
                     <ArrowDownTrayIcon className="mt-1 h-5 w-5 flex-shrink-0 text-black dark:text-neutral-100" />
                     <div>
-                      <Label>Auto-download updates</Label>
+                      <Label>Baixar atualizações automaticamente</Label>
                       <Description>
                         {settings.AutoUpdateEnabled
-                          ? "Automatically download updates when available."
-                          : "Updates will not be downloaded automatically."}
+                          ? "Baixar atualizações automaticamente quando disponíveis."
+                          : "As atualizações não serão baixadas automaticamente."}
                       </Description>
                     </div>
                   </div>
@@ -679,9 +681,9 @@ export default function Settings() {
                   <div className="flex items-start space-x-3 flex-1">
                     <WifiIcon className="mt-1 h-5 w-5 flex-shrink-0 text-black dark:text-neutral-100" />
                     <div>
-                      <Label>Expose Ollama to the network</Label>
+                      <Label>Expor o Hades na rede</Label>
                       <Description>
-                        Allow other devices or services to access Ollama.
+                        Permitir que outros dispositivos ou serviços acessem o Hades.
                       </Description>
                     </div>
                   </div>

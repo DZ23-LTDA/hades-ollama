@@ -31,6 +31,7 @@ import { isTypingTarget } from "@/lib/search";
 import { fetchAgentNotifications, fetchUser, type AgentNotification } from "@/api";
 import { performLogout } from "@/lib/logout";
 import { shouldStopSseReconnect } from "@/lib/sse";
+import { useUser } from "@/hooks/useUser";
 
 export type AppSection =
   | "apps"
@@ -115,6 +116,8 @@ export function AppNavigation({ current }: { current: AppSection }) {
   const [notifications, setNotifications] = useState<AgentNotification[]>([]);
   const [notificationsLoading, setNotificationsLoading] = useState(false);
   const [notificationsError, setNotificationsError] = useState<string | null>(null);
+  const { isAuthenticated, fetchConnectUrl } = useUser();
+  const [ollamaLoginPending, setOllamaLoginPending] = useState(false);
   const [userProfile, setUserProfile] = useState<{
     name: string;
     username: string;
@@ -199,6 +202,24 @@ export function AppNavigation({ current }: { current: AppSection }) {
       setSignOutError(error instanceof Error ? error.message : "Não foi possível encerrar a sessão.");
     } finally {
       setSignOutPending(false);
+    }
+  };
+
+  const handleOllamaLogin = async () => {
+    setOllamaLoginPending(true);
+    try {
+      const { data: connectUrl } = await fetchConnectUrl();
+      if (connectUrl) {
+        window.open(connectUrl, "_blank");
+      } else {
+        window.location.assign("/settings");
+      }
+    } catch {
+      // Fall back to the Settings page where the account block lives.
+      window.location.assign("/settings");
+    } finally {
+      setOllamaLoginPending(false);
+      setUserMenuOpen(false);
     }
   };
   useEffect(() => {
@@ -407,6 +428,23 @@ export function AppNavigation({ current }: { current: AppSection }) {
                 <span className="text-neutral-500">Créditos:</span>
                 <span className="font-semibold text-emerald-600 dark:text-emerald-400">Ilimitado (Local)</span>
               </div>
+
+              {!isAuthenticated && (
+                <div className="py-2 border-b border-neutral-100 dark:border-neutral-800">
+                  <button
+                    type="button"
+                    disabled={ollamaLoginPending}
+                    onClick={() => void handleOllamaLogin()}
+                    className="flex w-full items-center justify-center gap-2 rounded-lg bg-neutral-900 px-2 py-2 text-xs font-semibold text-white hover:bg-neutral-700 disabled:opacity-50 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-200"
+                  >
+                    <ArrowRightOnRectangleIcon className="h-4 w-4" />
+                    {ollamaLoginPending ? "Abrindo…" : "Entrar com conta Ollama"}
+                  </button>
+                  <p className="mt-1.5 px-1 text-[10px] leading-4 text-neutral-400">
+                    Opcional — só para modelos na nuvem e busca na web. Os modelos locais funcionam sem conta.
+                  </p>
+                </div>
+              )}
 
               <div className="py-2 space-y-1">
                 <a

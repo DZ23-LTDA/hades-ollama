@@ -12,6 +12,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { AppSidebar } from "@/components/AppSidebar";
 import { SidebarLayout } from "@/components/layout/layout";
+import { SettingsTabs } from "@/components/SettingsTabs";
 import { connectorIcon } from "@/lib/connectorIcons";
 import { ConnectorsManagePanel } from "@/components/ConnectorsManagePanel";
 import { ConnectorQuickConnect } from "@/components/ConnectorQuickConnect";
@@ -191,6 +192,7 @@ export function ConnectorsPage() {
       title="Plugins & Conectores"
       sidebar={<AppSidebar current="connectors" />}
     >
+      <SettingsTabs current="connectors" />
       <div className="min-h-0 flex-1 overflow-y-auto bg-neutral-50 dark:bg-neutral-900">
         <div className="mx-auto w-full max-w-6xl space-y-8 px-6 pb-16 pt-8 lg:px-10">
           {/* Cabeçalho */}

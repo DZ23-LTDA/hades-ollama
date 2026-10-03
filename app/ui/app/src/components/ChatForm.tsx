@@ -90,6 +90,10 @@ interface ChatFormProps {
       errors: Array<{ filename: string; error: string }>,
     ) => void,
   ) => void;
+  // When set, fills the composer with this text (e.g. from a suggestion
+  // chip) and focuses it, without navigating away. The nonce lets the same
+  // text be re-applied when a chip is clicked again.
+  prefill?: { text: string; nonce: number } | null;
 }
 
 function ChatForm({
@@ -102,6 +106,7 @@ function ChatForm({
   editingMessage,
   onCancelEdit,
   onFilesReceived,
+  prefill,
 }: ChatFormProps) {
   const [message, setMessage] = useState<MessageInput>({
     content: "",
@@ -330,6 +335,24 @@ function ChatForm({
   useEffect(() => {
     resetChatForm();
   }, [chatId]);
+
+  // Fill the composer when a suggestion chip is clicked, keeping the user on
+  // the chat screen instead of navigating to the agentic console.
+  useEffect(() => {
+    if (!prefill || !prefill.text) return;
+    setMessage((prev) => ({ ...prev, content: prefill.text }));
+    const timer = setTimeout(() => {
+      const el = textareaRef.current;
+      if (el) {
+        el.focus();
+        el.style.height = "auto";
+        el.style.height = Math.min(el.scrollHeight, 24 * 8) + "px";
+        el.setSelectionRange(el.value.length, el.value.length);
+      }
+    }, 0);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prefill?.nonce]);
 
   // Auto-focus textarea when autoFocus is true or when streaming completes (but not when editing)
   useEffect(() => {
@@ -837,8 +860,9 @@ function ChatForm({
                 <button
                   type="button"
                   onClick={() => removeFile(index)}
-                  className="opacity-0 group-hover:opacity-100 transition-opacity text-neutral-400 hover:text-neutral-600 dark:text-neutral-500 dark:hover:text-neutral-300 -mr-1 cursor-pointer"
-                  aria-label={`Remove ${attachment.filename}`}
+                  className="ml-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-neutral-200 text-neutral-500 transition-colors hover:bg-neutral-300 hover:text-neutral-800 dark:bg-neutral-600 dark:text-neutral-200 dark:hover:bg-neutral-500 dark:hover:text-white -mr-1 cursor-pointer"
+                  aria-label={`Remover ${attachment.filename}`}
+                  title="Remover anexo"
                 >
                   <svg
                     className="w-4 h-4"
@@ -884,8 +908,9 @@ function ChatForm({
                 <button
                   type="button"
                   onClick={() => removeFileError(index)}
-                  className="opacity-0 group-hover:opacity-100 transition-opacity text-red-400 hover:text-red-600 dark:text-red-500 dark:hover:text-red-300 -mr-1 ml-auto"
-                  aria-label={`Remove ${fileError.filename}`}
+                  className="ml-auto flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-red-100 text-red-500 transition-colors hover:bg-red-200 hover:text-red-700 dark:bg-red-900/40 dark:text-red-300 dark:hover:bg-red-900/70 -mr-1 cursor-pointer"
+                  aria-label={`Remover ${fileError.filename}`}
+                  title="Remover"
                 >
                   <svg
                     className="w-4 h-4"
