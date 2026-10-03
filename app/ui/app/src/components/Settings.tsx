@@ -869,12 +869,12 @@ export default function Settings() {
               </div>
               <div>
                 <label className="block text-xs font-semibold text-neutral-800 dark:text-neutral-200">
-                  Instruções personalizadas (preferência local)
+                  Instruções personalizadas
                 </label>
                 <p className="mt-0.5 text-xs text-neutral-500">
-                  Anote preferências de estilo/resposta. <strong>Aviso honesto:</strong> por
-                  enquanto isto é salvo só neste computador e <em>ainda não é enviado ao
-                  modelo</em> — o envio automático dessas instruções está em desenvolvimento.
+                  Anote preferências de estilo/resposta. Estas instruções são salvas
+                  neste computador e <strong>enviadas ao modelo em toda conversa</strong>,
+                  junto com o comportamento padrão do Hades.
                 </p>
                 <textarea
                   rows={3}

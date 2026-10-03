@@ -1030,7 +1030,7 @@ func (s *Server) chat(w http.ResponseWriter, r *http.Request) error {
 				reqChat = &temp
 			}
 		}
-		chatReq, err := s.buildChatRequest(reqChat, req.Model, thinkValue, availableTools, attachmentBudget, lastDigest)
+		chatReq, err := s.buildChatRequest(reqChat, req.Model, thinkValue, availableTools, attachmentBudget, lastDigest, req.CustomInstructions)
 		if err != nil {
 			return err
 		}
@@ -1987,6 +1987,29 @@ func chatSystemPrompt() string {
 	return "Você é o assistente do Hades. Responda sempre em português do Brasil, de forma clara e objetiva, a menos que o usuário peça explicitamente outro idioma."
 }
 
+// composeSystemPrompt combines the default chat system prompt with the user's
+// own custom instructions (from Settings). Both are applied: the default sets
+// the pt-BR behavior and the custom instructions are appended so the model
+// follows them on every turn. Either part may be empty.
+func composeSystemPrompt(base, custom string) string {
+	base = strings.TrimSpace(base)
+	custom = strings.TrimSpace(custom)
+	// Bound the custom instructions so a huge paste cannot crowd out the
+	// conversation in the context window.
+	const maxCustomInstructions = 4000
+	if len(custom) > maxCustomInstructions {
+		custom = strings.TrimSpace(custom[:maxCustomInstructions])
+	}
+	switch {
+	case custom == "":
+		return base
+	case base == "":
+		return custom
+	default:
+		return base + "\n\nInstruções do usuário (siga-as):\n" + custom
+	}
+}
+
 // parseTextToolCall extracts a tool call that a model emitted as plain text
 // (e.g. `{"name": "web_search", "arguments": {"query": "x"}}`) instead of as a
 // structured tool_call, which some local models do. It only succeeds when the
@@ -2030,7 +2053,7 @@ func parseTextToolCall(content string) (string, map[string]any, bool) {
 }
 
 // buildChatRequest converts store.Chat to api.ChatRequest
-func (s *Server) buildChatRequest(chat *store.Chat, model string, think any, availableTools []map[string]any, attachmentBudget int, lastDigest *attachmentDigest) (*api.ChatRequest, error) {
+func (s *Server) buildChatRequest(chat *store.Chat, model string, think any, availableTools []map[string]any, attachmentBudget int, lastDigest *attachmentDigest, customInstructions string) (*api.ChatRequest, error) {
 	var msgs []api.Message
 	for i, m := range chat.Messages {
 		// Skip empty messages if present
@@ -2105,8 +2128,10 @@ func (s *Server) buildChatRequest(chat *store.Chat, model string, think any, ava
 			break
 		}
 	}
-	if prompt := chatSystemPrompt(); prompt != "" && !hasSystem {
-		msgs = append([]api.Message{{Role: "system", Content: prompt}}, msgs...)
+	if !hasSystem {
+		if prompt := composeSystemPrompt(chatSystemPrompt(), customInstructions); prompt != "" {
+			msgs = append([]api.Message{{Role: "system", Content: prompt}}, msgs...)
+		}
 	}
 
 	var thinkValue *api.ThinkValue

@@ -411,6 +411,15 @@ export async function* sendMessage(
     think !== undefined &&
     (typeof think === "boolean" || (typeof think === "string" && think !== ""));
 
+  // Forward the user's custom instructions (Settings → localStorage) so the
+  // backend applies them as the system prompt on every turn.
+  let customInstructions = "";
+  try {
+    customInstructions = (localStorage.getItem("ollama_custom_instructions") || "").trim();
+  } catch {
+    customInstructions = "";
+  }
+
   const response = await fetch(`${API_BASE}/api/v1/chat/${chatId}`, {
     method: "POST",
     headers: {
@@ -430,6 +439,7 @@ export async function* sendMessage(
         ...(forceUpdate !== undefined ? { forceUpdate } : {}),
         ...(shouldSendThink ? { think } : {}),
         ...(temporary ? { temporary: true } : {}),
+        ...(customInstructions ? { custom_instructions: customInstructions } : {}),
       }),
     ),
     signal,
