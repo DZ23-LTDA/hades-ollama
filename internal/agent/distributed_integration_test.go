@@ -1439,6 +1439,49 @@ func TestDistributedRedisStartCancellationDominatesNilHandler(t *testing.T) {
 	t.Fatalf("cancelled handler was not terminalized: pending=%+v running=%+v", pendingSnapshot, runningSnapshot)
 }
 
+func TestDistributedRedisEnqueueEnforcesPerTenantQuota(t *testing.T) {
+	redisURL := os.Getenv("OLLAMA_AGENT_TEST_REDIS_URL")
+	if redisURL == "" {
+		t.Skip("OLLAMA_AGENT_TEST_REDIS_URL is not configured")
+	}
+	// Per-tenant cap of 2 active jobs; global cap stays at the default so only
+	// the per-tenant limit is exercised here.
+	t.Setenv("OLLAMA_AGENT_REDIS_MAX_JOBS_PER_TENANT", "2")
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	queue, err := openRedisTestQueue(t, ctx, redisURL, "ollama:integration:"+uuid.NewString())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := queue.EnqueueForOrganization("org-a", "mis_"+uuid.NewString(), 3); err != nil {
+		t.Fatalf("first tenant enqueue failed: %v", err)
+	}
+	if _, err := queue.EnqueueForOrganization("org-a", "mis_"+uuid.NewString(), 3); err != nil {
+		t.Fatalf("second tenant enqueue failed: %v", err)
+	}
+	if _, err := queue.EnqueueForOrganization("org-a", "mis_"+uuid.NewString(), 3); err == nil || !strings.Contains(err.Error(), "per-tenant job quota reached") {
+		t.Fatalf("third enqueue for the same tenant must be rejected, got %v", err)
+	}
+	// A different tenant has its own budget.
+	if _, err := queue.EnqueueForOrganization("org-b", "mis_"+uuid.NewString(), 3); err != nil {
+		t.Fatalf("a different tenant must not be blocked by org-a's quota: %v", err)
+	}
+	// Draining one of org-a's jobs to a terminal state frees a slot (the
+	// admission prune drops terminal members from the tenant set).
+	claimed, ok, err := queue.Claim("integration-worker", time.Now().UTC())
+	if err != nil || !ok {
+		t.Fatalf("claim for drain failed: ok=%v err=%v", ok, err)
+	}
+	if err := queue.Ack(claimed); err != nil {
+		t.Fatalf("ack for drain failed: %v", err)
+	}
+	if claimed.OrganizationID == "org-a" {
+		if _, err := queue.EnqueueForOrganization("org-a", "mis_"+uuid.NewString(), 3); err != nil {
+			t.Fatalf("after draining a terminal job, org-a should have a free slot: %v", err)
+		}
+	}
+}
+
 func TestDistributedRedisClaimSkipsOrphanPendingEntries(t *testing.T) {
 	redisURL := os.Getenv("OLLAMA_AGENT_TEST_REDIS_URL")
 	if redisURL == "" {

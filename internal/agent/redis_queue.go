@@ -36,7 +36,7 @@ const redisLeaseDuration = 15 * time.Minute
 
 const (
 	maxRedisQueueJobs          = 100_000
-	maxRedisQueueJobsPerTenant = 10_000 //nolint:unused // per-tenant quota needs a per-tenant index; global admission cap is enforced today
+	maxRedisQueueJobsPerTenant = 10_000
 )
 
 // redisMaxJobsCap is the global admission ceiling for active jobs (pending +
@@ -494,7 +494,7 @@ return reclaimed
 
 const redisEnqueueScript = redisKeyTypeHelpers + `
 if not distinctKeys(KEYS) then return redis.error_reply('queue script requires distinct Redis keys') end
-if #ARGV < 3 or #ARGV > 4 then return redis.error_reply('invalid queue script argument count') end
+if #ARGV < 3 or #ARGV > 5 then return redis.error_reply('invalid queue script argument count') end
 if not nonemptyArgument(ARGV[2], 256) then return redis.error_reply('invalid mission id') end
 if type(ARGV[3]) ~= 'string' or #ARGV[3] > 256 then return redis.error_reply('invalid organization id') end
 local err = typeError(KEYS[1], 'string')
@@ -509,6 +509,10 @@ err = typeError(KEYS[6], 'list')
 if err then return err end
 err = typeError(KEYS[7], 'string')
 if err then return err end
+if #KEYS >= 8 then
+  err = typeError(KEYS[8], 'set')
+  if err then return err end
+end
 local job, decodeErr = decodeJob('enqueue payload', ARGV[1], nil, true)
 if decodeErr then return decodeErr end
 if not nonemptyArgument(job.id, 256) or type(job.mission_id) ~= 'string' or job.mission_id ~= ARGV[2]
@@ -571,12 +575,42 @@ end
 -- Global admission cap: bound total active jobs (pending + delayed + running +
 -- dead) so a flood cannot grow the queue without limit. Only applies to a
 -- genuinely new job; idempotent re-enqueue of an existing mission returned above.
-if #ARGV == 4 then
+if #ARGV >= 4 then
   local cap = tonumber(ARGV[4])
   if cap and cap > 0 then
     local active = redis.call('LLEN', KEYS[3]) + redis.call('ZCARD', KEYS[4]) + redis.call('ZCARD', KEYS[5]) + redis.call('LLEN', KEYS[6])
     if active >= cap then
       return redis.error_reply('queue admission rejected: global job quota reached')
+    end
+  end
+end
+-- Per-tenant quota: bound how many ACTIVE (pending/running) jobs one tenant may
+-- hold, so a single organization cannot starve others even below the global
+-- cap. The per-tenant set (KEYS[8]) is self-healing: before counting, members
+-- whose job payload is gone or already terminal are pruned, so a missed removal
+-- on a terminal path cannot cause a stuck over-count.
+if #KEYS >= 8 and #ARGV == 5 then
+  local tenantCap = tonumber(ARGV[5])
+  if tenantCap and tenantCap > 0 then
+    local members = redis.call('SMEMBERS', KEYS[8])
+    local activeForTenant = 0
+    for i = 1, #members do
+      local memberID = members[i]
+      local memberRaw = redis.call('GET', KEYS[2] .. memberID)
+      if not memberRaw then
+        redis.call('SREM', KEYS[8], memberID)
+      else
+        local memberJob = cjson.decode(memberRaw)
+        local memberStatus = memberJob.status
+        if memberStatus == 'succeeded' or memberStatus == 'failed' or memberStatus == 'dead_letter' then
+          redis.call('SREM', KEYS[8], memberID)
+        else
+          activeForTenant = activeForTenant + 1
+        end
+      end
+    end
+    if activeForTenant >= tenantCap then
+      return redis.error_reply('queue admission rejected: per-tenant job quota reached')
     end
   end
 end
@@ -595,6 +629,10 @@ local encoded = cjson.encode(job)
 redis.call('SET', newJobKey, encoded, 'EX', '604800')
 redis.call('SET', KEYS[1], job.id, 'EX', '604800')
 redis.call('LPUSH', KEYS[3], job.id)
+if #KEYS >= 8 then
+  redis.call('SADD', KEYS[8], job.id)
+  redis.call('EXPIRE', KEYS[8], '604800')
+end
 return encoded
 `
 
@@ -710,6 +748,25 @@ func validRedisQueuePrefix(prefix string) bool {
 }
 
 func (q *RedisQueue) key(name string) string  { return q.prefix + ":" + name }
+
+func (q *RedisQueue) tenantActiveKey(organizationID string) string {
+	return q.key("tenant-active:" + organizationID)
+}
+
+// redisMaxJobsPerTenantCap is the per-organization active-job ceiling, applied
+// only to tenant-scoped enqueues. OLLAMA_AGENT_REDIS_MAX_JOBS_PER_TENANT
+// overrides the default.
+func redisMaxJobsPerTenantCap() int {
+	raw := strings.TrimSpace(os.Getenv("OLLAMA_AGENT_REDIS_MAX_JOBS_PER_TENANT"))
+	if raw == "" {
+		return maxRedisQueueJobsPerTenant
+	}
+	value, err := strconv.Atoi(raw)
+	if err != nil || value <= 0 {
+		return maxRedisQueueJobsPerTenant
+	}
+	return value
+}
 func (q *RedisQueue) jobKey(id string) string { return q.key("job:" + id) }
 func (q *RedisQueue) missionKey(id string) string {
 	return q.key("mission:" + id)
@@ -742,7 +799,16 @@ func (q *RedisQueue) EnqueueForOrganization(organizationID, missionID string, ma
 	if err != nil {
 		return QueueJob{}, err
 	}
-	value, err := q.do(context.Background(), "EVAL", redisEnqueueScript, "7", q.missionKey(missionID), q.key("job:"), q.pendingKey(), q.delayedKey(), q.leaseKey(), q.deadKey(), q.key("sequence"), string(data), missionID, organizationID, strconv.Itoa(redisMaxJobsCap()))
+	globalCap := strconv.Itoa(redisMaxJobsCap())
+	var args []string
+	if organizationID != "" {
+		// Tenant-scoped: add the per-tenant active set (KEYS[8]) and the
+		// per-tenant cap (ARGV[5]) so one organization cannot starve others.
+		args = []string{"EVAL", redisEnqueueScript, "8", q.missionKey(missionID), q.key("job:"), q.pendingKey(), q.delayedKey(), q.leaseKey(), q.deadKey(), q.key("sequence"), q.tenantActiveKey(organizationID), string(data), missionID, organizationID, globalCap, strconv.Itoa(redisMaxJobsPerTenantCap())}
+	} else {
+		args = []string{"EVAL", redisEnqueueScript, "7", q.missionKey(missionID), q.key("job:"), q.pendingKey(), q.delayedKey(), q.leaseKey(), q.deadKey(), q.key("sequence"), string(data), missionID, organizationID, globalCap}
+	}
+	value, err := q.do(context.Background(), args...)
 	if err != nil {
 		return QueueJob{}, err
 	}
