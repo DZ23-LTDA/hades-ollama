@@ -234,6 +234,7 @@ export function StudioCanvasPage() {
   const [dragId, setDragId] = useState<string | null>(null);
   const [aiPrompt, setAiPrompt] = useState("");
   const [aiGenerating, setAiGenerating] = useState(false);
+  const [aiReplace, setAiReplace] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [notice, setNotice] = useState<{ type: "success" | "error" | "info"; message: string; checksum?: string } | null>(null);
   const [deployModalOpen, setDeployModalOpen] = useState(false);
@@ -367,7 +368,7 @@ export function StudioCanvasPage() {
         setNotice({ type: "error", message: "A IA não retornou componentes válidos. Tente descrever de outro jeito." });
         return;
       }
-      const base = project.components || [];
+      const base = aiReplace ? [] : project.components || [];
       const positioned: VisualComponent[] = generated.map((c, i) => ({
         ...c,
         x: 40,
@@ -376,7 +377,8 @@ export function StudioCanvasPage() {
         height: 80,
       }));
       await syncComponents([...base, ...positioned]);
-      setNotice({ type: "success", message: `${generated.length} componentes gerados pelo modelo local (${model}).` });
+      const how = aiReplace ? "gerados do zero" : "adicionados";
+      setNotice({ type: "success", message: `${generated.length} componentes ${how} pelo modelo local (${model}).` });
       setAiPrompt("");
     } catch (err: unknown) {
       setNotice({ type: "error", message: `Falha ao gerar com IA: ${String(err)}` });
@@ -786,6 +788,15 @@ export function StudioCanvasPage() {
                 rows={2}
                 className="mt-1.5 w-full resize-none rounded-lg border border-neutral-300 bg-white px-2 py-1.5 text-xs dark:border-neutral-700 dark:bg-neutral-800"
               />
+              <label className="mt-1.5 flex items-center gap-1.5 text-[11px] text-neutral-600 dark:text-neutral-300">
+                <input
+                  type="checkbox"
+                  checked={aiReplace}
+                  onChange={(e) => setAiReplace(e.target.checked)}
+                  className="h-3 w-3"
+                />
+                Gerar do zero (substituir o canvas)
+              </label>
               <button
                 type="button"
                 onClick={() => void handleGenerateAI()}
