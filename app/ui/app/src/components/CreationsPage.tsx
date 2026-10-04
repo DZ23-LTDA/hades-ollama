@@ -84,6 +84,16 @@ export function CreationsPage() {
   const [actionError, setActionError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState<CreationCategory>("all");
+  const [openView, setOpenView] = useState<{ url: string; name: string } | null>(null);
+
+  useEffect(() => {
+    if (!openView) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpenView(null);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [openView]);
 
   useEffect(() => {
     let active = true;
@@ -108,21 +118,28 @@ export function CreationsPage() {
     };
   }, []);
 
-  // "Abrir": o artefato é protegido por Bearer, então abrimos o blob autenticado
-  // em nova aba (pré-abrimos a aba para não ser bloqueada após o await).
-  const handleOpen = async (previewUrl: string) => {
+  // "Abrir": o artefato é protegido por Bearer, então buscamos o blob autenticado
+  // e o exibimos num modal in-app (<iframe src=blob>). Evita window.open(blob:…),
+  // que o webview do app desktop não consegue abrir (cai em "Not Found").
+  const handleOpen = async (previewUrl: string, name: string) => {
     setActionError(null);
-    const tab = window.open("about:blank", "_blank");
     try {
       const blob = await agentFetchBlob(previewUrl);
       const objectURL = URL.createObjectURL(blob);
-      if (tab) tab.location.href = objectURL;
-      else window.open(objectURL, "_blank");
-      window.setTimeout(() => URL.revokeObjectURL(objectURL), 60000);
+      setOpenView((prev) => {
+        if (prev) URL.revokeObjectURL(prev.url);
+        return { url: objectURL, name };
+      });
     } catch (err) {
-      if (tab) tab.close();
       setActionError(err instanceof Error ? err.message : "Falha ao abrir a criação.");
     }
+  };
+
+  const closeView = () => {
+    setOpenView((prev) => {
+      if (prev) URL.revokeObjectURL(prev.url);
+      return null;
+    });
   };
 
   // "Baixar código": download autenticado via blob em vez de <a href download>.
@@ -302,7 +319,7 @@ export function CreationsPage() {
                       </Link>
                       <button
                         type="button"
-                        onClick={() => void handleOpen(item.previewUrl)}
+                        onClick={() => void handleOpen(item.previewUrl, item.name)}
                         className="inline-flex items-center gap-1 rounded-lg bg-neutral-900 px-2.5 py-1 text-xs font-medium text-white hover:opacity-90 dark:bg-white dark:text-neutral-900"
                         title="Abrir em Tela Cheia"
                       >
@@ -322,6 +339,40 @@ export function CreationsPage() {
                 </div>
               </div>
             ))}
+          </div>
+        )}
+
+        {/* Abrir em tela cheia: modal in-app com iframe autenticado (funciona no app e no navegador) */}
+        {openView && (
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label={`Criação: ${openView.name}`}
+            className="fixed inset-0 z-50 flex flex-col bg-black/70 p-4"
+            onClick={closeView}
+          >
+            <div
+              className="mx-auto flex h-full w-full max-w-5xl flex-col overflow-hidden rounded-2xl bg-white shadow-xl dark:bg-neutral-900"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between border-b border-neutral-200 px-4 py-2 dark:border-neutral-800">
+                <span className="truncate text-sm font-semibold text-neutral-900 dark:text-white">{openView.name}</span>
+                <button
+                  type="button"
+                  onClick={closeView}
+                  aria-label="Fechar"
+                  className="rounded-lg px-3 py-1 text-xs font-medium text-neutral-600 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800"
+                >
+                  Fechar ✕
+                </button>
+              </div>
+              <iframe
+                title={openView.name}
+                src={openView.url}
+                sandbox="allow-scripts"
+                className="h-full w-full flex-1 border-0 bg-white"
+              />
+            </div>
           </div>
         )}
       </div>
