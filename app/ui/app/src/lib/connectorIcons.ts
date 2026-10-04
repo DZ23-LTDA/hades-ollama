@@ -96,6 +96,11 @@ import {
   siZapier,
   siZendesk,
   siZoom,
+  siOpenrouter,
+  siMistralai,
+  siClickup,
+  siVultr,
+  siAkamai,
 } from "simple-icons";
 
 // Brand marks from simple-icons (CC0). Brands it does not distribute use the
@@ -188,6 +193,11 @@ const ICONS: Record<string, SimpleIcon> = {
   trello: siTrello,
   typeform: siTypeform,
   vercel: siVercel,
+  openrouter: siOpenrouter,
+  mistral: siMistralai,
+  clickup: siClickup,
+  vultr: siVultr,
+  linode: siAkamai,
   whatsapp: siWhatsapp,
   woocommerce: siWoocommerce,
   wordpress: siWordpress,
@@ -204,6 +214,10 @@ const ICONS: Record<string, SimpleIcon> = {
 const IMAGE_ICONS: Record<string, string> = {
   "amazon-seller": "brandfetch/amazon-seller.svg",
   asaas: "brandfetch/asaas.svg",
+  openai: "mono/openai.svg",
+  groq: "mono/groq.svg",
+  together: "mono/together.svg",
+  cohere: "mono/cohere.svg",
   aws: "aws.png",
   azure: "azure.png",
   canva: "brandfetch/canva.svg",

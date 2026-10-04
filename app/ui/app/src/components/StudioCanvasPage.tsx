@@ -4,6 +4,8 @@ import { SidebarLayout } from "@/components/layout/layout";
 import { missionStateLabel } from "@/lib/labels";
 import { generateStudioHTML } from "@/lib/studioHtml";
 import { reorderById } from "@/lib/studioReorder";
+import { buildGenerationPrompt, parseGeneratedComponents } from "@/lib/studioAI";
+import { API_BASE } from "@/lib/config";
 import {
   type BuilderProject,
   type VisualComponent,
@@ -209,6 +211,8 @@ export function StudioCanvasPage() {
   const [activeTab, setActiveTab] = useState<"canvas" | "preview">("canvas");
   const [selectedCompId, setSelectedCompId] = useState<string | null>(null);
   const [dragId, setDragId] = useState<string | null>(null);
+  const [aiPrompt, setAiPrompt] = useState("");
+  const [aiGenerating, setAiGenerating] = useState(false);
   const [notice, setNotice] = useState<{ type: "success" | "error" | "info"; message: string; checksum?: string } | null>(null);
   const [deployModalOpen, setDeployModalOpen] = useState(false);
   const [deployStatus, setDeployStatus] = useState<{ status: string; message: string } | null>(null);
@@ -310,6 +314,52 @@ export function StudioCanvasPage() {
       setNotice({ type: "info", message: `Canvas atualizado (v${updated.version})` });
     } catch (err: unknown) {
       setNotice({ type: "error", message: `Erro ao salvar canvas: ${String(err)}` });
+    }
+  };
+
+  // Generate components from a natural-language description using a local model.
+  // The model is asked for strict JSON; parseGeneratedComponents never trusts the
+  // raw output — only known, sanitized component types reach the canvas.
+  const handleGenerateAI = async () => {
+    if (!project || !aiPrompt.trim() || aiGenerating) return;
+    setAiGenerating(true);
+    setNotice({ type: "info", message: "Gerando componentes com o modelo local…" });
+    try {
+      const tags = await fetch(`${API_BASE}/api/tags`).then((r) => r.json());
+      const names: string[] = (tags?.models ?? [])
+        .map((m: { model?: string; name?: string }) => m.model || m.name)
+        .filter((n: unknown): n is string => typeof n === "string" && n !== "");
+      // Local-first: prefer a model that runs on the user's machine over a cloud one.
+      const model = names.find((n) => !n.endsWith(":cloud")) || names[0];
+      if (!model) {
+        setNotice({ type: "error", message: "Nenhum modelo disponível. Baixe um modelo em Configurações primeiro." });
+        return;
+      }
+      const res = await fetch(`${API_BASE}/api/generate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ model, prompt: buildGenerationPrompt(aiPrompt), stream: false, format: "json" }),
+      }).then((r) => r.json());
+      const generated = parseGeneratedComponents(String(res?.response ?? ""));
+      if (generated.length === 0) {
+        setNotice({ type: "error", message: "A IA não retornou componentes válidos. Tente descrever de outro jeito." });
+        return;
+      }
+      const base = project.components || [];
+      const positioned: VisualComponent[] = generated.map((c, i) => ({
+        ...c,
+        x: 40,
+        y: 40 + (base.length + i) * 60,
+        width: 600,
+        height: 80,
+      }));
+      await syncComponents([...base, ...positioned]);
+      setNotice({ type: "success", message: `${generated.length} componentes gerados pelo modelo local (${model}).` });
+      setAiPrompt("");
+    } catch (err: unknown) {
+      setNotice({ type: "error", message: `Falha ao gerar com IA: ${String(err)}` });
+    } finally {
+      setAiGenerating(false);
     }
   };
 
@@ -702,6 +752,27 @@ export function StudioCanvasPage() {
         <div className="flex flex-1 overflow-hidden">
           {/* Left Palette (Components) */}
           <aside className="hidden md:block w-56 shrink-0 border-r border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900 overflow-y-auto">
+            {/* Geração por IA local (descreva o app e o modelo monta os componentes) */}
+            <div className="mb-4 rounded-xl border border-blue-200 bg-blue-50 p-2.5 dark:border-blue-900/60 dark:bg-blue-950/20">
+              <label className="text-xs font-semibold uppercase tracking-wider text-blue-700 dark:text-blue-300">
+                Gerar com IA
+              </label>
+              <textarea
+                value={aiPrompt}
+                onChange={(e) => setAiPrompt(e.target.value)}
+                placeholder="Descreva o app/site que você quer…"
+                rows={2}
+                className="mt-1.5 w-full resize-none rounded-lg border border-neutral-300 bg-white px-2 py-1.5 text-xs dark:border-neutral-700 dark:bg-neutral-800"
+              />
+              <button
+                type="button"
+                onClick={() => void handleGenerateAI()}
+                disabled={aiGenerating || !aiPrompt.trim()}
+                className="mt-1.5 w-full rounded-lg bg-blue-600 px-2 py-1.5 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+              >
+                {aiGenerating ? "Gerando com modelo local…" : "Gerar componentes"}
+              </button>
+            </div>
             <h2 className="text-xs font-semibold uppercase tracking-wider text-neutral-400">
               Componentes
             </h2>
