@@ -235,3 +235,82 @@ export function validateFlow(graph: FlowGraph): string[] {
   }
   return problems;
 }
+
+export interface CompiledSchedule {
+  objective: string;
+  interval_seconds?: number;
+  webhook_secret_env?: string;
+}
+
+export interface CompileResult {
+  /** The schedule to create, or null when the flow cannot run as-is. */
+  schedule: CompiledSchedule | null;
+  /** Blocking problems in pt-BR (empty when schedule is non-null). */
+  errors: string[];
+  /** Labels of nodes that are valid but not yet executed by the backend. */
+  unsupported: string[];
+}
+
+/**
+ * Compiles a flow into the automation primitive the backend can run today: a
+ * single trigger (interval or webhook) driving a mission objective. This is an
+ * honest partial compiler — it never pretends to run node types the backend
+ * cannot yet execute (connectors, HTTP, conditions); those are returned in
+ * `unsupported` so the UI can say plainly what will and will not run.
+ */
+export function compileFlow(graph: FlowGraph): CompileResult {
+  const errors = validateFlow(graph);
+  if (errors.length > 0) {
+    return { schedule: null, errors, unsupported: [] };
+  }
+
+  const triggers = graph.nodes.filter((n) => n.kind === "trigger");
+  if (triggers.length !== 1) {
+    return {
+      schedule: null,
+      errors: ["A execução por agendamento aceita exatamente um gatilho por fluxo."],
+      unsupported: [],
+    };
+  }
+  const trigger = triggers[0];
+
+  const order = topologicalOrder(graph) ?? graph.nodes;
+  const missionNode = order.find((n) => n.type === "action.mission");
+  if (!missionNode) {
+    return {
+      schedule: null,
+      errors: ['O fluxo precisa de uma ação "Rodar missão" para ser executado por agendamento.'],
+      unsupported: [],
+    };
+  }
+  const objective = String(missionNode.config.objective ?? "").trim();
+  if (!objective) {
+    return {
+      schedule: null,
+      errors: ['Preencha o objetivo da ação "Rodar missão".'],
+      unsupported: [],
+    };
+  }
+
+  const unsupported = graph.nodes
+    .filter((n) => n.type === "action.connector" || n.type === "action.http" || n.kind === "condition")
+    .map((n) => n.label);
+
+  const schedule: CompiledSchedule = { objective };
+  if (trigger.type === "trigger.interval") {
+    const seconds = Number(trigger.config.seconds);
+    schedule.interval_seconds = Number.isFinite(seconds) && seconds > 0 ? Math.floor(seconds) : 3600;
+  } else if (trigger.type === "trigger.webhook") {
+    const secretEnv = String(trigger.config.secretEnv ?? "").trim();
+    if (!secretEnv) {
+      return {
+        schedule: null,
+        errors: ["Informe a variável de ambiente com o segredo do gatilho de webhook."],
+        unsupported,
+      };
+    }
+    schedule.webhook_secret_env = secretEnv;
+    schedule.interval_seconds = 0;
+  }
+  return { schedule, errors: [], unsupported };
+}

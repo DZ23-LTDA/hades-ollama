@@ -202,7 +202,13 @@ export function AutomationsPage() {
               Monte o fluxo arrastando nós da paleta, conecte as etapas e valide antes de publicar.
               O rascunho fica salvo neste navegador.
             </p>
-            <FlowEditor />
+            <FlowEditor
+              onPublished={() => {
+                loadData();
+                setView("list");
+                setSuccessMsg("Fluxo publicado como automação. Veja em Rotinas Ativas.");
+              }}
+            />
           </section>
         )}
 

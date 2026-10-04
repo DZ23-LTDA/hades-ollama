@@ -10,6 +10,7 @@ import {
   hasCycle,
   topologicalOrder,
   validateFlow,
+  compileFlow,
   type FlowGraph,
   type FlowNode,
 } from "./flowGraph";
@@ -188,5 +189,112 @@ describe("flowGraph validation", () => {
     g = connect(g, "t", "a").graph;
     g = connect(g, "a", "b").graph;
     expect(validateFlow(g)).toEqual([]);
+  });
+});
+
+describe("compileFlow", () => {
+  const mission = (id: string, objective: string): FlowNode => ({
+    id,
+    kind: "action",
+    type: "action.mission",
+    label: "Rodar missão",
+    x: 0,
+    y: 0,
+    config: { objective },
+  });
+  const interval = (id: string, seconds: number): FlowNode => ({
+    id,
+    kind: "trigger",
+    type: "trigger.interval",
+    label: "Intervalo",
+    x: 0,
+    y: 0,
+    config: { seconds },
+  });
+  const webhook = (id: string, secretEnv: string): FlowNode => ({
+    id,
+    kind: "trigger",
+    type: "trigger.webhook",
+    label: "Webhook",
+    x: 0,
+    y: 0,
+    config: { secretEnv },
+  });
+
+  it("compiles interval trigger + mission into a schedule", () => {
+    let g = emptyFlow("f", "x");
+    g = addNode(g, interval("t", 7200));
+    g = addNode(g, mission("m", "Rodar testes"));
+    g = connect(g, "t", "m").graph;
+    const r = compileFlow(g);
+    expect(r.errors).toEqual([]);
+    expect(r.schedule).toEqual({ objective: "Rodar testes", interval_seconds: 7200 });
+  });
+
+  it("compiles webhook trigger + mission with secret env", () => {
+    let g = emptyFlow("f", "x");
+    g = addNode(g, webhook("t", "MY_SECRET"));
+    g = addNode(g, mission("m", "Processar faturas"));
+    g = connect(g, "t", "m").graph;
+    const r = compileFlow(g);
+    expect(r.schedule).toEqual({
+      objective: "Processar faturas",
+      webhook_secret_env: "MY_SECRET",
+      interval_seconds: 0,
+    });
+  });
+
+  it("refuses a webhook trigger without a secret env", () => {
+    let g = emptyFlow("f", "x");
+    g = addNode(g, webhook("t", ""));
+    g = addNode(g, mission("m", "x"));
+    g = connect(g, "t", "m").graph;
+    const r = compileFlow(g);
+    expect(r.schedule).toBeNull();
+    expect(r.errors[0]).toMatch(/segredo do gatilho de webhook/);
+  });
+
+  it("refuses a flow without a mission action", () => {
+    let g = emptyFlow("f", "x");
+    g = addNode(g, interval("t", 3600));
+    const r = compileFlow(g);
+    expect(r.schedule).toBeNull();
+    expect(r.errors[0]).toMatch(/Rodar missão/);
+  });
+
+  it("refuses when the mission objective is empty", () => {
+    let g = emptyFlow("f", "x");
+    g = addNode(g, interval("t", 3600));
+    g = addNode(g, mission("m", "   "));
+    g = connect(g, "t", "m").graph;
+    const r = compileFlow(g);
+    expect(r.schedule).toBeNull();
+    expect(r.errors[0]).toMatch(/objetivo/);
+  });
+
+  it("reports connector/http/condition nodes as unsupported but still compiles the mission", () => {
+    let g = emptyFlow("f", "x");
+    g = addNode(g, interval("t", 3600));
+    g = addNode(g, mission("m", "Rodar"));
+    g = addNode(g, {
+      id: "c",
+      kind: "action",
+      type: "action.connector",
+      label: "Chamar conector",
+      x: 0,
+      y: 0,
+      config: {},
+    });
+    g = connect(g, "t", "m").graph;
+    g = connect(g, "m", "c").graph;
+    const r = compileFlow(g);
+    expect(r.schedule?.objective).toBe("Rodar");
+    expect(r.unsupported).toContain("Chamar conector");
+  });
+
+  it("propagates validation errors (empty flow)", () => {
+    const r = compileFlow(emptyFlow("f", "x"));
+    expect(r.schedule).toBeNull();
+    expect(r.errors.length).toBeGreaterThan(0);
   });
 });

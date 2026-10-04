@@ -16,10 +16,13 @@ import {
   connect,
   disconnect,
   validateFlow,
+  compileFlow,
   type FlowGraph,
   type FlowNode,
   type FlowNodeKind,
 } from "@/lib/flowGraph";
+import { createSchedule } from "@/lib/agenticClient";
+import { humanizeApiError } from "@/lib/userFacingError";
 
 // Catalog of node types offered in the palette. Each produces a concrete node
 // with a sensible default label and config. Kept data-driven so new node types
@@ -66,6 +69,8 @@ const KIND_STYLE: Record<FlowNodeKind, string> = {
 
 interface FlowEditorProps {
   storageKey?: string;
+  /** Called after a flow is successfully published as an automation. */
+  onPublished?: () => void;
 }
 
 function loadDraft(storageKey: string): FlowGraph | null {
@@ -82,13 +87,15 @@ function loadDraft(storageKey: string): FlowGraph | null {
   return null;
 }
 
-export function FlowEditor({ storageKey = "hades.flow.draft" }: FlowEditorProps) {
+export function FlowEditor({ storageKey = "hades.flow.draft", onPublished }: FlowEditorProps) {
   const [graph, setGraph] = useState<FlowGraph>(
     () => loadDraft(storageKey) ?? emptyFlow("flow_1", "Novo fluxo"),
   );
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [connectFrom, setConnectFrom] = useState<{ node: string; port?: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [publishing, setPublishing] = useState(false);
+  const [publishMsg, setPublishMsg] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
   const canvasRef = useRef<HTMLDivElement | null>(null);
   const dragState = useRef<{ id: string; dx: number; dy: number } | null>(null);
   const nextId = useRef(1);
@@ -189,6 +196,32 @@ export function FlowEditor({ storageKey = "hades.flow.draft" }: FlowEditorProps)
     setGraph((g) => removeNode(g, id));
     setSelectedId((cur) => (cur === id ? null : cur));
   }, []);
+
+  const handlePublish = useCallback(async () => {
+    setPublishMsg(null);
+    const result = compileFlow(graph);
+    if (!result.schedule) {
+      setPublishMsg({ kind: "err", text: result.errors[0] ?? "Fluxo inválido." });
+      return;
+    }
+    setPublishing(true);
+    try {
+      await createSchedule(result.schedule);
+      const warn =
+        result.unsupported.length > 0
+          ? ` (ainda não executados: ${result.unsupported.join(", ")})`
+          : "";
+      setPublishMsg({
+        kind: "ok",
+        text: `Fluxo publicado como automação${warn}.`,
+      });
+      onPublished?.();
+    } catch (e) {
+      setPublishMsg({ kind: "err", text: humanizeApiError(e, "Não foi possível publicar o fluxo.").message });
+    } finally {
+      setPublishing(false);
+    }
+  }, [graph, onPublished]);
 
   const portCenter = (node: FlowNode, side: "out" | "in") => ({
     x: node.x + (side === "out" ? NODE_W : 0),
@@ -327,6 +360,26 @@ export function FlowEditor({ storageKey = "hades.flow.draft" }: FlowEditorProps)
 
       {/* Inspector + validation */}
       <aside className="w-full shrink-0 space-y-3 overflow-y-auto lg:w-56">
+        <div>
+          <button
+            type="button"
+            onClick={handlePublish}
+            disabled={publishing || problems.length > 0}
+            className="w-full rounded-xl bg-neutral-900 px-3 py-2 text-sm font-medium text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-white dark:text-neutral-900"
+          >
+            {publishing ? "Publicando…" : "Publicar fluxo"}
+          </button>
+          {publishMsg && (
+            <p
+              role="status"
+              className={`mt-2 text-xs ${publishMsg.kind === "ok" ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}`}
+              data-testid="flow-publish-msg"
+            >
+              {publishMsg.text}
+            </p>
+          )}
+        </div>
+
         {selected ? (
           <div className="rounded-xl border border-neutral-200 bg-white p-3 dark:border-neutral-700 dark:bg-neutral-800">
             <div className="mb-2 flex items-center justify-between">

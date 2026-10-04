@@ -1,5 +1,11 @@
 import { act, create, type ReactTestRenderer } from "react-test-renderer";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+const createScheduleMock = vi.fn(() => Promise.resolve({}));
+vi.mock("@/lib/agenticClient", () => ({
+  createSchedule: (...args: unknown[]) => createScheduleMock(...args),
+}));
+
 import { FlowEditor } from "./FlowEditor";
 
 type TestNode = ReturnType<ReactTestRenderer["root"]["findAll"]>[number];
@@ -51,6 +57,15 @@ function clickTestId(renderer: ReactTestRenderer, testid: string) {
   });
 }
 
+function setInputs(renderer: ReactTestRenderer, values: string[]) {
+  const inputs = renderer.root.findAll((n) => n.type === "input");
+  values.forEach((value, i) => {
+    if (inputs[i]) {
+      act(() => inputs[i].props.onChange({ target: { value } }));
+    }
+  });
+}
+
 function nodeTestIds(renderer: ReactTestRenderer): string[] {
   return renderer.root
     .findAll((n) => typeof n.props?.["data-testid"] === "string" && n.props["data-testid"].startsWith("node-"))
@@ -99,6 +114,48 @@ describe("FlowEditor", () => {
     expect(hasTestId(r, "flow-valid")).toBe(true);
     const removeButtons = r.root.findAll((n) => n.props?.["aria-label"] === "Remover conexão");
     expect(removeButtons.length).toBe(1);
+    act(() => r.unmount());
+  });
+
+  it("publishes a valid interval+mission flow as a schedule", async () => {
+    let r!: ReactTestRenderer;
+    act(() => {
+      r = create(<FlowEditor storageKey="test.flow.pub" />);
+    });
+    clickButtonWithText(r, "Intervalo"); // n1_trigger
+    clickButtonWithText(r, "Rodar missão"); // n2_action
+    clickByAriaLabel(r, "Conectar saída de Intervalo");
+    clickTestId(r, "node-n2_action"); // completes connection
+    clickTestId(r, "node-n2_action"); // selects the mission node
+    // Inspector inputs: [0] = Rótulo, [1] = objective config field.
+    setInputs(r, ["Rodar missão", "Rodar testes do repositório"]);
+    clickButtonWithText(r, "Publicar fluxo");
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(createScheduleMock).toHaveBeenCalledWith({
+      objective: "Rodar testes do repositório",
+      interval_seconds: 3600,
+    });
+    act(() => r.unmount());
+  });
+
+  it("refuses to publish when the mission objective is empty", async () => {
+    createScheduleMock.mockClear();
+    let r!: ReactTestRenderer;
+    act(() => {
+      r = create(<FlowEditor storageKey="test.flow.pub2" />);
+    });
+    clickButtonWithText(r, "Intervalo");
+    clickButtonWithText(r, "Rodar missão");
+    clickByAriaLabel(r, "Conectar saída de Intervalo");
+    clickTestId(r, "node-n2_action");
+    clickButtonWithText(r, "Publicar fluxo");
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(createScheduleMock).not.toHaveBeenCalled();
+    expect(hasTestId(r, "flow-publish-msg")).toBe(true);
     act(() => r.unmount());
   });
 
