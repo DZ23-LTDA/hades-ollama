@@ -105,8 +105,11 @@ export function FlowEditor({ storageKey = "hades.flow.draft" }: FlowEditorProps)
   const selected = graph.nodes.find((n) => n.id === selectedId) ?? null;
 
   const handleAdd = useCallback((item: PaletteItem) => {
+    // Generate the id in the handler (runs once) rather than inside the setState
+    // updater, which React StrictMode double-invokes — mutating a ref there would
+    // skip ids. addNode dedups by id, so a double-invoked updater stays safe.
+    const id = `n${nextId.current++}_${item.kind}`;
     setGraph((g) => {
-      const id = `n${nextId.current++}_${item.kind}`;
       const count = g.nodes.length;
       const node: FlowNode = {
         id,
@@ -193,9 +196,12 @@ export function FlowEditor({ storageKey = "hades.flow.draft" }: FlowEditorProps)
   });
 
   return (
-    <div className="flex h-[70vh] gap-3" data-testid="flow-editor">
+    <div
+      className="flex h-auto flex-col gap-3 lg:h-[70vh] lg:flex-row"
+      data-testid="flow-editor"
+    >
       {/* Palette */}
-      <aside className="w-44 shrink-0 space-y-3 overflow-y-auto">
+      <aside className="w-full shrink-0 space-y-3 overflow-y-auto lg:w-44">
         {PALETTE.map((group) => (
           <div key={group.group}>
             <h4 className="mb-1 text-xs font-semibold uppercase tracking-wide text-neutral-500">
@@ -219,7 +225,7 @@ export function FlowEditor({ storageKey = "hades.flow.draft" }: FlowEditorProps)
       </aside>
 
       {/* Canvas */}
-      <div className="relative flex-1 overflow-hidden rounded-xl border border-neutral-200 bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-900/40">
+      <div className="relative min-h-[55vh] flex-1 overflow-hidden rounded-xl border border-neutral-200 bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-900/40 lg:min-h-0">
         {connectFrom && (
           <div className="absolute left-2 top-2 z-20 flex items-center gap-2 rounded-lg bg-blue-600 px-3 py-1.5 text-xs text-white shadow">
             <ArrowsRightLeftIcon className="h-4 w-4" />
@@ -320,7 +326,7 @@ export function FlowEditor({ storageKey = "hades.flow.draft" }: FlowEditorProps)
       </div>
 
       {/* Inspector + validation */}
-      <aside className="w-56 shrink-0 space-y-3 overflow-y-auto">
+      <aside className="w-full shrink-0 space-y-3 overflow-y-auto lg:w-56">
         {selected ? (
           <div className="rounded-xl border border-neutral-200 bg-white p-3 dark:border-neutral-700 dark:bg-neutral-800">
             <div className="mb-2 flex items-center justify-between">
