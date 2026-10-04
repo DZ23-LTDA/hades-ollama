@@ -276,8 +276,13 @@ func RunProjectTests(ctx context.Context, workspacePath string, options TestRunO
 		}
 		candidateReal, err := filepath.EvalSymlinks(candidate)
 		if err != nil {
-			// Target may not exist yet; fall back to the lexically cleaned path.
-			candidateReal = filepath.Clean(candidate)
+			// Target may not exist yet; fall back to the lexically cleaned path
+			// built on the RESOLVED root. Using rootReal here keeps both paths in
+			// the same namespace: on Windows, EvalSymlinks expands 8.3 short names
+			// (e.g. RUNNER~1 -> runneradmin), so joining against the unresolved
+			// workspacePath would leave different prefixes and make filepath.Rel
+			// wrongly report a valid subdir as escaping.
+			candidateReal = filepath.Clean(filepath.Join(rootReal, options.SubPath))
 		}
 		rel, err := filepath.Rel(rootReal, candidateReal)
 		if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {

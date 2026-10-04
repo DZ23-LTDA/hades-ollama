@@ -153,7 +153,7 @@ grep -q 'pluginCatalog' server/plugin_routes.go
 grep -q 'npm test -- --run' .github/workflows/dz23-agentic-quality.yaml
 grep -q 'npm run build' .github/workflows/dz23-agentic-quality.yaml
 grep -q 'CGO_ENABLED=1 go vet ./...' .github/workflows/dz23-agentic-quality.yaml
-grep -q 'needs: \[release-gate, darwin-build, windows-app, docker-build-push, quality\]' .github/workflows/release.yaml
+grep -q 'needs: \[release-gate, darwin-build, windows-app, docker-merge-push, quality\]' .github/workflows/release.yaml
 grep -q 'ErrModelNotAllowed' internal/grok/client.go
 grep -q 'validateCatalogModel' internal/grok/client.go
 grep -q 'Grok streaming is not exposed' server/grok_routes.go
