@@ -272,10 +272,10 @@ describe("compileFlow", () => {
     expect(r.errors[0]).toMatch(/objetivo/);
   });
 
-  it("reports connector/http/condition nodes as unsupported but still compiles the mission", () => {
+  it("compiles a multi-node flow into an ordered agent-executed plan", () => {
     let g = emptyFlow("f", "x");
     g = addNode(g, interval("t", 3600));
-    g = addNode(g, mission("m", "Rodar"));
+    g = addNode(g, mission("m", "Rodar testes"));
     g = addNode(g, {
       id: "c",
       kind: "action",
@@ -283,13 +283,47 @@ describe("compileFlow", () => {
       label: "Chamar conector",
       x: 0,
       y: 0,
-      config: {},
+      config: { connectorId: "slack", operation: "postMessage" },
     });
     g = connect(g, "t", "m").graph;
     g = connect(g, "m", "c").graph;
     const r = compileFlow(g);
-    expect(r.schedule?.objective).toBe("Rodar");
-    expect(r.unsupported).toContain("Chamar conector");
+    expect(r.errors).toEqual([]);
+    expect(r.unsupported).toEqual([]);
+    expect(r.schedule?.objective).toContain("1. Rodar missão: Rodar testes");
+    expect(r.schedule?.objective).toContain('2. Chamar o conector "slack", operação "postMessage"');
+    expect(r.schedule?.interval_seconds).toBe(3600);
+  });
+
+  it("compiles an HTTP action step and requires its URL", () => {
+    const base = () => {
+      let g = emptyFlow("f", "x");
+      g = addNode(g, interval("t", 3600));
+      g = addNode(g, mission("m", "Preparar"));
+      g = addNode(g, {
+        id: "h",
+        kind: "action",
+        type: "action.http",
+        label: "Requisição HTTP",
+        x: 0,
+        y: 0,
+        config: { method: "post", url: "https://api.exemplo.com/hook" },
+      });
+      g = connect(g, "t", "m").graph;
+      g = connect(g, "m", "h").graph;
+      return g;
+    };
+    const ok = compileFlow(base());
+    expect(ok.schedule?.objective).toContain("Fazer uma requisição POST para https://api.exemplo.com/hook");
+
+    let missingUrl = base();
+    missingUrl = {
+      ...missingUrl,
+      nodes: missingUrl.nodes.map((n) => (n.id === "h" ? { ...n, config: { method: "POST", url: "" } } : n)),
+    };
+    const bad = compileFlow(missingUrl);
+    expect(bad.schedule).toBeNull();
+    expect(bad.errors[0]).toMatch(/URL/);
   });
 
   it("propagates validation errors (empty flow)", () => {

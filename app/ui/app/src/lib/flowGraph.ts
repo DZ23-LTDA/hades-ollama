@@ -247,16 +247,61 @@ export interface CompileResult {
   schedule: CompiledSchedule | null;
   /** Blocking problems in pt-BR (empty when schedule is non-null). */
   errors: string[];
-  /** Labels of nodes that are valid but not yet executed by the backend. */
+  /** Node types not recognized by the compiler (normally empty). */
   unsupported: string[];
 }
 
+interface StepResult {
+  text?: string;
+  error?: string;
+}
+
+// describeFlowStep turns an action/condition node into one pt-BR instruction the
+// agent executes with its real tools (HTTP, connectors), or an error when the
+// node is underspecified. This is how non-mission nodes actually run: they
+// become explicit, ordered steps of the mission objective — not a fake label.
+function describeFlowStep(node: FlowNode): StepResult {
+  switch (node.type) {
+    case "action.mission": {
+      const objective = String(node.config.objective ?? "").trim();
+      if (!objective) return { error: 'Preencha o objetivo da ação "Rodar missão".' };
+      return { text: `Rodar missão: ${objective}` };
+    }
+    case "action.http": {
+      const url = String(node.config.url ?? "").trim();
+      if (!url) return { error: 'Preencha a URL da ação "Requisição HTTP".' };
+      const method = String(node.config.method ?? "GET").trim().toUpperCase() || "GET";
+      return { text: `Fazer uma requisição ${method} para ${url}` };
+    }
+    case "action.connector": {
+      const connectorId = String(node.config.connectorId ?? "").trim();
+      if (!connectorId) return { error: 'Escolha o conector da ação "Chamar conector".' };
+      const operation = String(node.config.operation ?? "").trim();
+      return {
+        text: operation
+          ? `Chamar o conector "${connectorId}", operação "${operation}"`
+          : `Chamar o conector "${connectorId}"`,
+      };
+    }
+    case "condition.if": {
+      const expression = String(node.config.expression ?? "").trim();
+      return {
+        text: expression
+          ? `Avaliar a condição "${expression}": se verdadeira, prosseguir; caso contrário, encerrar o fluxo`
+          : "Avaliar a condição configurada: se verdadeira, prosseguir; caso contrário, encerrar",
+      };
+    }
+    default:
+      return { text: node.label };
+  }
+}
+
 /**
- * Compiles a flow into the automation primitive the backend can run today: a
- * single trigger (interval or webhook) driving a mission objective. This is an
- * honest partial compiler — it never pretends to run node types the backend
- * cannot yet execute (connectors, HTTP, conditions); those are returned in
- * `unsupported` so the UI can say plainly what will and will not run.
+ * Compiles a flow into the schedule the backend runs: one trigger (interval or
+ * webhook) driving a mission objective. A single mission compiles to its plain
+ * objective; a multi-node flow compiles to an ordered, numbered plan the agent
+ * executes step by step with its real tools (HTTP, connectors). Nothing is
+ * faked: every valid node becomes a real instruction.
  */
 export function compileFlow(graph: FlowGraph): CompileResult {
   const errors = validateFlow(graph);
@@ -275,26 +320,36 @@ export function compileFlow(graph: FlowGraph): CompileResult {
   const trigger = triggers[0];
 
   const order = topologicalOrder(graph) ?? graph.nodes;
-  const missionNode = order.find((n) => n.type === "action.mission");
-  if (!missionNode) {
+  const actionNodes = order.filter((n) => n.kind !== "trigger");
+  if (!actionNodes.some((n) => n.type === "action.mission")) {
     return {
       schedule: null,
       errors: ['O fluxo precisa de uma ação "Rodar missão" para ser executado por agendamento.'],
       unsupported: [],
     };
   }
-  const objective = String(missionNode.config.objective ?? "").trim();
-  if (!objective) {
-    return {
-      schedule: null,
-      errors: ['Preencha o objetivo da ação "Rodar missão".'],
-      unsupported: [],
-    };
+
+  const steps: string[] = [];
+  for (const node of actionNodes) {
+    const step = describeFlowStep(node);
+    if (step.error) {
+      return { schedule: null, errors: [step.error], unsupported: [] };
+    }
+    if (step.text) steps.push(step.text);
   }
 
-  const unsupported = graph.nodes
-    .filter((n) => n.type === "action.connector" || n.type === "action.http" || n.kind === "condition")
-    .map((n) => n.label);
+  // One lone mission keeps its plain objective (simplest case); any richer flow
+  // becomes an ordered plan executed in sequence by the agent.
+  let objective: string;
+  if (actionNodes.length === 1 && actionNodes[0].type === "action.mission") {
+    objective = String(actionNodes[0].config.objective ?? "").trim();
+  } else {
+    objective =
+      "Execute este fluxo de automação, seguindo os passos na ordem:\n" +
+      steps.map((s, i) => `${i + 1}. ${s}`).join("\n");
+  }
+
+  const unsupported: string[] = [];
 
   const schedule: CompiledSchedule = { objective };
   if (trigger.type === "trigger.interval") {
