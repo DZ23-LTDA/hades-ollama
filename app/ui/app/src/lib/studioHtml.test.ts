@@ -49,6 +49,32 @@ describe("generateStudioHTML", () => {
     expect(html).toContain("<span>Sobre</span>");
   });
 
+  it("renders the extended component types (hero, input, link, list, divider)", () => {
+    const html = generateStudioHTML(
+      project([
+        { id: "h", type: "hero", props: { title: "Grande", subtitle: "Sub", cta: "Ir" } },
+        { id: "f", type: "input", props: { label: "E-mail", placeholder: "voce@ex.com" } },
+        { id: "l", type: "link", props: { text: "Abrir", href: "https://ex.com" } },
+        { id: "u", type: "list", props: { items: "Um, Dois" } },
+        { id: "d", type: "divider" },
+      ]),
+    );
+    expect(html).toContain('<section class="c-hero">');
+    expect(html).toContain("Grande");
+    expect(html).toContain('placeholder="voce@ex.com"');
+    expect(html).toContain('href="https://ex.com"');
+    expect(html).toContain("<li>Um</li>");
+    expect(html).toContain('<hr class="c-divider" />');
+  });
+
+  it("blocks dangerous link hrefs (javascript:)", () => {
+    const html = generateStudioHTML(
+      project([{ id: "l", type: "link", props: { text: "x", href: "javascript:alert(1)" } }]),
+    );
+    expect(html).not.toContain("javascript:alert(1)");
+    expect(html).toContain('href="#"');
+  });
+
   it("escapes user content so a component cannot inject markup (XSS-safe)", () => {
     const html = generateStudioHTML(
       project([{ id: "x", type: "heading", props: { text: "<script>alert(1)</script>" } }]),

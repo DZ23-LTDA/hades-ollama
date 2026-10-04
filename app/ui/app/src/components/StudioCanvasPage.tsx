@@ -101,6 +101,60 @@ const COMPONENT_TEMPLATES: Array<{
     width: 800,
     height: 60,
   },
+  {
+    type: "hero",
+    label: "Hero / Destaque",
+    icon: "★",
+    defaultProps: { title: "Sua ideia, pronta em minutos", subtitle: "Monte, publique e evolua — tudo local.", cta: "Começar agora" },
+    defaultStyle: {},
+    width: 800,
+    height: 220,
+  },
+  {
+    type: "image",
+    label: "Imagem",
+    icon: "I",
+    defaultProps: { src: "", alt: "Descrição da imagem" },
+    defaultStyle: {},
+    width: 400,
+    height: 240,
+  },
+  {
+    type: "input",
+    label: "Campo de Formulário",
+    icon: "F",
+    defaultProps: { label: "Seu e-mail", placeholder: "voce@exemplo.com" },
+    defaultStyle: {},
+    width: 320,
+    height: 70,
+  },
+  {
+    type: "link",
+    label: "Link",
+    icon: "L",
+    defaultProps: { text: "Saiba mais", href: "https://" },
+    defaultStyle: {},
+    width: 160,
+    height: 32,
+  },
+  {
+    type: "list",
+    label: "Lista",
+    icon: "≡",
+    defaultProps: { items: "Primeiro item, Segundo item, Terceiro item" },
+    defaultStyle: {},
+    width: 400,
+    height: 120,
+  },
+  {
+    type: "divider",
+    label: "Divisor",
+    icon: "—",
+    defaultProps: {},
+    defaultStyle: {},
+    width: 600,
+    height: 20,
+  },
 ];
 
 // Provedores de publicação: cada um exige a credencial correta no ambiente do
@@ -790,6 +844,39 @@ export function StudioCanvasPage() {
                                   ))}
                                 </div>
                               </div>
+                            )}
+                            {comp.type === "hero" && (
+                              <div className="rounded-xl bg-gradient-to-br from-neutral-900 to-neutral-700 p-6 text-center text-white dark:from-neutral-100 dark:to-neutral-300 dark:text-neutral-900">
+                                <h1 className="text-2xl font-bold">{comp.props?.title || "Título do Hero"}</h1>
+                                <p className="mt-2 text-sm opacity-80">{comp.props?.subtitle || "Subtítulo explicativo"}</p>
+                                <span className="mt-4 inline-flex rounded-lg bg-white px-4 py-2 text-xs font-semibold text-neutral-900 dark:bg-neutral-900 dark:text-white">{comp.props?.cta || "Ação"}</span>
+                              </div>
+                            )}
+                            {comp.type === "image" && (
+                              comp.props?.src ? (
+                                <img src={comp.props.src} alt={comp.props?.alt || ""} className="max-w-full rounded-lg" />
+                              ) : (
+                                <div className="flex h-24 items-center justify-center rounded-lg border border-dashed border-neutral-300 text-xs text-neutral-400 dark:border-neutral-700">Imagem (defina a URL nas propriedades)</div>
+                              )
+                            )}
+                            {comp.type === "input" && (
+                              <label className="block text-xs">
+                                <span className="text-neutral-700 dark:text-neutral-300">{comp.props?.label || "Rótulo"}</span>
+                                <input type="text" disabled placeholder={comp.props?.placeholder || ""} className="mt-1 w-full rounded-lg border border-neutral-300 bg-white px-3 py-1.5 text-sm dark:border-neutral-700 dark:bg-neutral-900" />
+                              </label>
+                            )}
+                            {comp.type === "link" && (
+                              <span className="text-sm font-medium text-blue-600 underline dark:text-blue-400">{comp.props?.text || "Link"}</span>
+                            )}
+                            {comp.type === "list" && (
+                              <ul className="list-disc space-y-1 pl-5 text-sm text-neutral-700 dark:text-neutral-300">
+                                {(comp.props?.items || "Item 1, Item 2").split(",").map((it, i) => (
+                                  <li key={i}>{it.trim()}</li>
+                                ))}
+                              </ul>
+                            )}
+                            {comp.type === "divider" && (
+                              <hr className="border-neutral-200 dark:border-neutral-800" />
                             )}
                           </div>
                         );

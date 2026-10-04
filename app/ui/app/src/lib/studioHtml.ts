@@ -46,6 +46,25 @@ function renderComponent(comp: VisualComponent): string {
       const safeSrc = /^(https?:)?\/\//i.test(src) || src.startsWith("/") ? escapeHTML(src) : "";
       return safeSrc ? `<img class="c-image" src="${safeSrc}" alt="${alt}" />` : "";
     }
+    case "hero":
+      return `<section class="c-hero"><h1>${prop(comp, "title", "Título do Hero")}</h1><p>${prop(comp, "subtitle", "Subtítulo explicativo")}</p><button type="button" class="c-button">${prop(comp, "cta", "Ação")}</button></section>`;
+    case "input":
+      return `<label class="c-field"><span>${prop(comp, "label", "Rótulo")}</span><input type="text" placeholder="${prop(comp, "placeholder", "")}" /></label>`;
+    case "link": {
+      const href = comp.props?.href || "#";
+      // Only http(s)/relative/anchor hrefs; block javascript:/data: schemes.
+      const safeHref = /^(https?:)?\/\//i.test(href) || href.startsWith("/") || href.startsWith("#") ? escapeHTML(href) : "#";
+      return `<a class="c-link" href="${safeHref}">${prop(comp, "text", "Link")}</a>`;
+    }
+    case "list": {
+      const items = (comp.props?.items || "Item 1, Item 2")
+        .split(",")
+        .map((it) => `<li>${escapeHTML(it.trim())}</li>`)
+        .join("");
+      return `<ul class="c-list">${items}</ul>`;
+    }
+    case "divider":
+      return `<hr class="c-divider" />`;
     default:
       // Unknown component: render its text prop if any, never raw markup.
       return comp.props?.text ? `<div class="c-unknown">${escapeHTML(comp.props.text)}</div>` : "";
@@ -70,6 +89,16 @@ const BASE_CSS = `
   .c-brand { font-weight: 700; }
   .c-links { display: flex; gap: 14px; font-size: .8rem; color: #6b7280; }
   .c-image { max-width: 100%; border-radius: 8px; }
+  .c-hero { border-radius: 14px; padding: 40px 24px; text-align: center; background: linear-gradient(135deg, #111827, #374151); color: #fff; }
+  .c-hero h1 { margin: 0; font-size: 2rem; }
+  .c-hero p { margin: 10px 0 20px; opacity: .85; }
+  .c-hero .c-button { background: #fff; color: #111827; }
+  .c-field { display: block; font-size: .85rem; }
+  .c-field span { display: block; margin-bottom: 4px; color: #374151; }
+  .c-field input { width: 100%; border: 1px solid #d1d5db; border-radius: 8px; padding: 8px 12px; font-size: .9rem; }
+  .c-link { color: #2563eb; font-weight: 600; text-decoration: underline; }
+  .c-list { padding-left: 20px; color: #374151; display: flex; flex-direction: column; gap: 4px; }
+  .c-divider { border: 0; border-top: 1px solid #e5e7eb; margin: 8px 0; }
   @media (prefers-color-scheme: dark) { body { background: #0a0a0a; color: #f3f4f6; } .c-paragraph { color: #d1d5db; } .c-card { background: #171717; border-color: #262626; } .c-metric { background: #171717; } }
 `;
 
