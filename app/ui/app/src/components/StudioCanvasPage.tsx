@@ -215,6 +215,16 @@ export function StudioCanvasPage() {
   const [aiGenerating, setAiGenerating] = useState(false);
   const [aiReplace, setAiReplace] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [instantPreviewHtml, setInstantPreviewHtml] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (instantPreviewHtml === null) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setInstantPreviewHtml(null);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [instantPreviewHtml]);
   const [notice, setNotice] = useState<{ type: "success" | "error" | "info"; message: string; checksum?: string } | null>(null);
   const [deployModalOpen, setDeployModalOpen] = useState(false);
   const [deployStatus, setDeployStatus] = useState<{ status: string; message: string } | null>(null);
@@ -439,20 +449,14 @@ export function StudioCanvasPage() {
   };
 
   // Undo via real backend
-  // Instant client-side preview: render the project to standalone HTML and open
-  // it in a new tab via a blob URL — no backend build needed, works offline.
+  // Instant client-side preview: render the project to standalone HTML and show
+  // it in an in-app modal via <iframe srcDoc>. This works both in a normal
+  // browser and inside the desktop app's webview — unlike window.open(blob:…),
+  // which the webview cannot navigate to (it 404s against the app server).
   const handleInstantPreview = () => {
     if (!project) return;
     try {
-      const html = generateStudioHTML(project);
-      const blob = new Blob([html], { type: "text/html" });
-      const url = URL.createObjectURL(blob);
-      const tab = window.open(url, "_blank", "noopener,noreferrer");
-      if (!tab) {
-        setNotice({ type: "error", message: "O navegador bloqueou a prévia. Permita pop-ups para visualizar." });
-      }
-      // Revoke after a delay so the new tab has time to load the document.
-      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+      setInstantPreviewHtml(generateStudioHTML(project));
     } catch (err: unknown) {
       setNotice({ type: "error", message: `Não foi possível gerar a prévia: ${String(err)}` });
     }
@@ -1351,6 +1355,40 @@ export function StudioCanvasPage() {
                   Fechar
                 </button>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Prévia instantânea em modal (iframe srcDoc) — funciona no app e no navegador */}
+        {instantPreviewHtml !== null && (
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Prévia do app"
+            className="fixed inset-0 z-50 flex flex-col bg-black/70 p-4"
+            onClick={() => setInstantPreviewHtml(null)}
+          >
+            <div
+              className="mx-auto flex h-full w-full max-w-5xl flex-col overflow-hidden rounded-2xl bg-white shadow-xl dark:bg-neutral-900"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between border-b border-neutral-200 px-4 py-2 dark:border-neutral-800">
+                <span className="text-sm font-semibold text-neutral-900 dark:text-white">Prévia — {project?.name || "app"}</span>
+                <button
+                  type="button"
+                  onClick={() => setInstantPreviewHtml(null)}
+                  aria-label="Fechar prévia"
+                  className="rounded-lg px-3 py-1 text-xs font-medium text-neutral-600 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800"
+                >
+                  Fechar ✕
+                </button>
+              </div>
+              <iframe
+                title="Prévia do app"
+                srcDoc={instantPreviewHtml}
+                sandbox=""
+                className="h-full w-full flex-1 border-0 bg-white"
+              />
             </div>
           </div>
         )}
