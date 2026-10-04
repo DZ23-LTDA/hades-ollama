@@ -32,7 +32,6 @@ import { fetchAgentNotifications, fetchUser, type AgentNotification } from "@/ap
 import { performLogout } from "@/lib/logout";
 import { shouldStopSseReconnect } from "@/lib/sse";
 import { useUser } from "@/hooks/useUser";
-import { useInterfaceMode } from "@/lib/interfaceMode";
 
 export type AppSection =
   | "apps"
@@ -106,9 +105,8 @@ function TargetLink({
   );
 }
 export function AppNavigation({ current }: { current: AppSection }) {
-  // In "Simples" mode (the default for non-technical users) the sidebar shows
-  // only the essentials; the advanced/agentic surfaces appear in "Avançado".
-  const advanced = useInterfaceMode() === "advanced";
+  // The full menu (all Manus-parity surfaces) is always shown — nothing in the
+  // navigation is hidden behind an interface mode.
   const [searchOpen, setSearchOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
@@ -306,16 +304,14 @@ export function AppNavigation({ current }: { current: AppSection }) {
         icon={SparklesIcon}
       />
 
-      {advanced && (
-        <>
-          <NavLabel>Agentes</NavLabel>
-          <TargetLink
-            href="/endpoint"
-            label="Computadores"
-            current={current}
-            section="endpoint"
-            icon={ComputerDesktopIcon}
-          />
+      <NavLabel>Agentes</NavLabel>
+      <TargetLink
+        href="/endpoint"
+        label="Computadores"
+        current={current}
+        section="endpoint"
+        icon={ComputerDesktopIcon}
+      />
           <Link
             to="/agentic"
             className={itemClass(current === "agentic")}
@@ -374,8 +370,6 @@ export function AppNavigation({ current }: { current: AppSection }) {
             section="tasks"
             icon={ArrowPathIcon}
           />
-        </>
-      )}
 
       <div className="mt-2 flex items-center justify-between px-2.5 pt-2">
         <NavLabel>Projetos</NavLabel>
@@ -626,7 +620,7 @@ export function AppNavigation({ current }: { current: AppSection }) {
 
 export function AppSidebar({ current }: { current: AppSection }) {
   return (
-    <nav aria-label="Navegação principal" className="flex flex-1 flex-col overflow-y-auto px-3 pb-4 select-none">
+    <nav aria-label="Navegação principal" className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain px-3 pb-4 select-none">
       <AppNavigation current={current} />
     </nav>
   );
