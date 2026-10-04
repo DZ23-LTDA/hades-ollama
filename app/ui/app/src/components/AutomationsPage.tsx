@@ -9,6 +9,7 @@ import {
 import { API_BASE } from "@/lib/config";
 import { AppSidebar } from "@/components/AppSidebar";
 import { SidebarLayout } from "@/components/layout/layout";
+import { FlowEditor } from "@/components/FlowEditor";
 import { humanizeApiError } from "@/lib/userFacingError";
 import {
   CalendarDaysIcon,
@@ -24,6 +25,7 @@ import {
 
 export function AutomationsPage() {
   const [schedules, setSchedules] = useState<AgentSchedule[]>([]);
+  const [view, setView] = useState<"list" | "flow">("list");
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [naturalPrompt, setNaturalPrompt] = useState("");
@@ -164,15 +166,47 @@ export function AutomationsPage() {
               Automatize fluxos recorrentes, configure gatilhos e deixe o agente trabalhar em segundo plano.
             </p>
           </div>
+          {view === "list" && (
+            <button
+              type="button"
+              onClick={() => setShowModal(true)}
+              className="inline-flex items-center gap-2 rounded-xl bg-neutral-900 px-4 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90 dark:bg-white dark:text-neutral-900"
+            >
+              <PlusIcon className="h-4 w-4" />
+              Nova automação
+            </button>
+          )}
+        </div>
+
+        {/* Alternância entre a lista de rotinas e o editor visual de fluxo */}
+        <div className="inline-flex rounded-xl border border-neutral-200 p-1 dark:border-neutral-700">
           <button
             type="button"
-            onClick={() => setShowModal(true)}
-            className="inline-flex items-center gap-2 rounded-xl bg-neutral-900 px-4 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90 dark:bg-white dark:text-neutral-900"
+            onClick={() => setView("list")}
+            className={`rounded-lg px-3 py-1.5 text-sm font-medium ${view === "list" ? "bg-neutral-900 text-white dark:bg-white dark:text-neutral-900" : "text-neutral-600 dark:text-neutral-300"}`}
           >
-            <PlusIcon className="h-4 w-4" />
-            Nova automação
+            Lista
+          </button>
+          <button
+            type="button"
+            onClick={() => setView("flow")}
+            className={`rounded-lg px-3 py-1.5 text-sm font-medium ${view === "flow" ? "bg-neutral-900 text-white dark:bg-white dark:text-neutral-900" : "text-neutral-600 dark:text-neutral-300"}`}
+          >
+            Editor visual (beta)
           </button>
         </div>
+
+        {view === "flow" && (
+          <section className="space-y-3">
+            <p className="text-sm text-neutral-500 dark:text-neutral-400">
+              Monte o fluxo arrastando nós da paleta, conecte as etapas e valide antes de publicar.
+              O rascunho fica salvo neste navegador.
+            </p>
+            <FlowEditor />
+          </section>
+        )}
+
+        {view === "list" && (<>
 
         {/* Mensagem de sucesso */}
         {successMsg && (
@@ -547,6 +581,7 @@ export function AutomationsPage() {
             </div>
           )}
         </section>
+        </>)}
       </div>
     </SidebarLayout>
   );
