@@ -848,7 +848,7 @@ jobs:
     if: ${{ inputs.enable_release == true && vars.OLLAMA_ENABLE_RELEASE == 'true' }}
     runs-on: ubuntu-latest
     environment: release
-    needs: [release-gate, darwin-build, windows-app, docker-build-push, quality]
+    needs: [release-gate, darwin-build, windows-app, docker-merge-push, quality]
     concurrency:
       group: release-publish
       queue: max
