@@ -132,6 +132,20 @@ export function AppNavigation({ current }: { current: AppSection }) {
     plan: "Local",
   });
 
+  // Close the keyboard-shortcuts / sign-out dialogs with Escape (a11y: a modal
+  // dialog must be dismissable from the keyboard).
+  useEffect(() => {
+    if (!shortcutsOpen && !signOutOpen) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setShortcutsOpen(false);
+        if (!signOutPending) setSignOutOpen(false);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [shortcutsOpen, signOutOpen, signOutPending]);
+
   useEffect(() => {
     fetchUser()
       .then((data) => {
@@ -563,11 +577,20 @@ export function AppNavigation({ current }: { current: AppSection }) {
       )}
       {/* Modal de Atalhos de Teclado */}
       {shortcutsOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div className="w-full max-w-md rounded-2xl border border-neutral-200 bg-white p-6 shadow-2xl dark:border-neutral-800 dark:bg-neutral-900">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+          onClick={() => setShortcutsOpen(false)}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="shortcuts-title"
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-md rounded-2xl border border-neutral-200 bg-white p-6 shadow-2xl dark:border-neutral-800 dark:bg-neutral-900"
+          >
             <div className="flex items-center justify-between pb-3 border-b border-neutral-100 dark:border-neutral-800">
-              <h3 className="text-base font-bold text-neutral-900 dark:text-white">Atalhos de Teclado</h3>
-              <button onClick={() => setShortcutsOpen(false)} className="text-neutral-400 hover:text-neutral-600">✕</button>
+              <h3 id="shortcuts-title" className="text-base font-bold text-neutral-900 dark:text-white">Atalhos de Teclado</h3>
+              <button type="button" aria-label="Fechar" onClick={() => setShortcutsOpen(false)} className="text-neutral-400 hover:text-neutral-600">✕</button>
             </div>
             <div className="mt-4 space-y-3 text-xs">
               <div className="flex items-center justify-between">
@@ -598,9 +621,18 @@ export function AppNavigation({ current }: { current: AppSection }) {
 
       {/* Modal de Confirmação de Saída */}
       {signOutOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div className="w-full max-w-sm rounded-2xl border border-neutral-200 bg-white p-6 shadow-2xl dark:border-neutral-800 dark:bg-neutral-900 text-center">
-            <h3 className="text-base font-bold text-neutral-900 dark:text-white">Tem certeza de que deseja sair?</h3>
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+          onClick={() => { if (!signOutPending) setSignOutOpen(false); }}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="signout-title"
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-sm rounded-2xl border border-neutral-200 bg-white p-6 shadow-2xl dark:border-neutral-800 dark:bg-neutral-900 text-center"
+          >
+            <h3 id="signout-title" className="text-base font-bold text-neutral-900 dark:text-white">Tem certeza de que deseja sair?</h3>
             <p className="mt-2 text-xs text-neutral-500">Sair do Hades como {userProfile.email}?</p>
             {signOutError && <p role="alert" className="mt-3 text-xs text-red-600">{signOutError}</p>}
             <div className="mt-6 flex items-center justify-center gap-3">
