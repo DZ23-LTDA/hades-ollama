@@ -92,6 +92,22 @@ func BrowserEnvironment(ctx context.Context) BrowserEnvironmentStatus {
 	})
 }
 
+// SetupBrowserEnvironment installs the missing browser-operator dependencies on
+// this machine using the real environment. It is side-effectful (runs pip and
+// downloads Chromium) and must only be invoked on explicit user request.
+func SetupBrowserEnvironment(ctx context.Context) BrowserSetupResult {
+	status := BrowserEnvironment(ctx)
+	run := func(runCtx context.Context, name string, args ...string) (string, error) {
+		stepCtx, cancel := context.WithTimeout(runCtx, 10*time.Minute)
+		defer cancel()
+		out, err := exec.CommandContext(stepCtx, name, args...).CombinedOutput()
+		return string(out), err
+	}
+	return setupBrowserEnvironment(ctx, status, run, func() BrowserEnvironmentStatus {
+		return BrowserEnvironment(ctx)
+	})
+}
+
 // BrowserSetupStep is one command run while provisioning the browser operator.
 type BrowserSetupStep struct {
 	Description string `json:"description"`

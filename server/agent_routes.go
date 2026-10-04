@@ -447,6 +447,8 @@ func (a *agentAPI) register(r *gin.Engine) {
 	group.DELETE("/connectors/:id", a.removeConnector)
 	group.GET("/oauth-clients", a.listOAuthClients)
 	group.POST("/oauth-clients/:provider", a.saveOAuthClient)
+	group.GET("/browser/environment", a.browserEnvironment)
+	group.POST("/browser/environment/setup", a.browserEnvironmentSetup)
 	group.GET("/mcp", a.mcp)
 	group.POST("/mcp", a.registerMCP)
 	group.POST("/mcp/:id/enable", a.enableMCP)
