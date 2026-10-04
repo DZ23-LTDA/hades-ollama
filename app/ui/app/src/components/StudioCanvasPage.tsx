@@ -205,6 +205,27 @@ const DEPLOY_PROVIDERS: Array<{ label: string; slug: string; credential: string 
   { label: "SSH / Servidor Próprio", slug: "ssh", credential: "chave SSH e host (SSH_PRIVATE_KEY, SSH_HOST, SSH_USER)" },
 ];
 
+// The main editable text prop per component type — used for double-click
+// inline editing on the canvas. Types absent here (e.g. divider) are not edited
+// inline; their props are still editable in the side panel.
+const PRIMARY_TEXT_PROP: Record<string, string> = {
+  heading: "text",
+  paragraph: "text",
+  button: "label",
+  card: "title",
+  metric: "value",
+  navbar: "brand",
+  hero: "title",
+  image: "alt",
+  input: "label",
+  link: "text",
+  list: "items",
+  pricing: "plan",
+  testimonial: "quote",
+  faq: "question",
+  footer: "text",
+};
+
 export function StudioCanvasPage() {
   const [project, setProject] = useState<BuilderProject | null>(null);
   const [loading, setLoading] = useState(true);
@@ -213,6 +234,7 @@ export function StudioCanvasPage() {
   const [dragId, setDragId] = useState<string | null>(null);
   const [aiPrompt, setAiPrompt] = useState("");
   const [aiGenerating, setAiGenerating] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [notice, setNotice] = useState<{ type: "success" | "error" | "info"; message: string; checksum?: string } | null>(null);
   const [deployModalOpen, setDeployModalOpen] = useState(false);
   const [deployStatus, setDeployStatus] = useState<{ status: string; message: string } | null>(null);
@@ -897,7 +919,14 @@ export function StudioCanvasPage() {
                           <div
                             key={comp.id}
                             onClick={() => setSelectedCompId(comp.id)}
-                            draggable
+                            onDoubleClick={(e) => {
+                              e.stopPropagation();
+                              if (PRIMARY_TEXT_PROP[comp.type]) {
+                                setSelectedCompId(comp.id);
+                                setEditingId(comp.id);
+                              }
+                            }}
+                            draggable={editingId !== comp.id}
                             onDragStart={(e) => {
                               setDragId(comp.id);
                               e.dataTransfer.effectAllowed = "move";
@@ -961,6 +990,30 @@ export function StudioCanvasPage() {
                                 </button>
                               </div>
                             </div>
+
+                            {/* Inline editing: double-click a component to edit
+                                its main text right on the canvas. */}
+                            {editingId === comp.id && PRIMARY_TEXT_PROP[comp.type] && (
+                              <input
+                                autoFocus
+                                data-testid="inline-edit-input"
+                                defaultValue={comp.props?.[PRIMARY_TEXT_PROP[comp.type]] ?? ""}
+                                onClick={(e) => e.stopPropagation()}
+                                onBlur={(e) => {
+                                  handleUpdateProps(comp.id, PRIMARY_TEXT_PROP[comp.type], e.target.value);
+                                  setEditingId(null);
+                                }}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") {
+                                    handleUpdateProps(comp.id, PRIMARY_TEXT_PROP[comp.type], (e.target as HTMLInputElement).value);
+                                    setEditingId(null);
+                                  } else if (e.key === "Escape") {
+                                    setEditingId(null);
+                                  }
+                                }}
+                                className="mb-2 w-full rounded-lg border border-blue-400 bg-white px-2 py-1 text-sm text-neutral-900 outline-none ring-2 ring-blue-200 dark:bg-neutral-800 dark:text-white dark:ring-blue-900/40"
+                              />
+                            )}
 
                             {/* Render Component Content */}
                             {comp.type === "heading" && (
