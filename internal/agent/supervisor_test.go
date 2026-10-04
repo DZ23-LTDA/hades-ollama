@@ -524,3 +524,44 @@ func TestSupervisorDaemonStartStop(t *testing.T) {
 		t.Fatal("expected supervisor to report not running after Stop()")
 	}
 }
+
+func TestCycleRequestsExternalIntegration(t *testing.T) {
+	cases := []struct {
+		name  string
+		cycle CompanyCycle
+		want  bool
+	}{
+		{
+			name:  "structured field names an external connector",
+			cycle: CompanyCycle{Name: "campanha", Objective: "rodar anúncios", Integrations: []string{"meta_ads"}},
+			want:  true,
+		},
+		{
+			name:  "structured field is authoritative and names none external",
+			cycle: CompanyCycle{Name: "relatorio tiktok_shop", Objective: "ler vendas tiktok_shop", Integrations: []string{"internal_report"}},
+			want:  false,
+		},
+		{
+			name:  "structured match is case-insensitive and trims space",
+			cycle: CompanyCycle{Integrations: []string{"  Shopify_Sync "}},
+			want:  true,
+		},
+		{
+			name:  "free-text fallback detects connector when field empty",
+			cycle: CompanyCycle{Name: "sync", Objective: "disparar whatsapp_live para clientes"},
+			want:  true,
+		},
+		{
+			name:  "no integration declared and no connector mentioned",
+			cycle: CompanyCycle{Name: "resumo", Objective: "escrever relatório interno"},
+			want:  false,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := cycleRequestsExternalIntegration(tc.cycle); got != tc.want {
+				t.Fatalf("cycleRequestsExternalIntegration(%q) = %v, want %v", tc.name, got, tc.want)
+			}
+		})
+	}
+}

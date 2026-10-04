@@ -135,6 +135,44 @@ func containsAnyCompanyIntent(tokens map[string]struct{}, values ...string) bool
 	return false
 }
 
+// externalIntegrationKeys are connector identifiers whose cycles require live
+// credentials and therefore must be blocked until the integration is actually
+// connected — an approval must never imply an unavailable integration is ready.
+var externalIntegrationKeys = []string{
+	"tiktok_shop",
+	"meta_ads",
+	"shopify_sync",
+	"whatsapp_live",
+}
+
+// cycleRequestsExternalIntegration reports whether a cycle intends to drive an
+// external connector. The structured Integrations field is authoritative; when
+// it is empty (cycles persisted before the field existed) it falls back to a
+// conservative scan of the free-text name/objective.
+func cycleRequestsExternalIntegration(cycle CompanyCycle) bool {
+	if len(cycle.Integrations) > 0 {
+		for _, declared := range cycle.Integrations {
+			normalized := strings.ToLower(strings.TrimSpace(declared))
+			for _, key := range externalIntegrationKeys {
+				if normalized == key {
+					return true
+				}
+			}
+		}
+		// A cycle that declared its integrations explicitly and named none of
+		// the external connectors is trusted: do not second-guess it with a
+		// fragile free-text scan.
+		return false
+	}
+	combined := strings.ToLower(strings.TrimSpace(cycle.Name + " " + cycle.Objective))
+	for _, key := range externalIntegrationKeys {
+		if strings.Contains(combined, key) {
+			return true
+		}
+	}
+	return false
+}
+
 func (s *Supervisor) Config() SupervisorConfig {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -308,18 +346,11 @@ func (s *Supervisor) Tick(ctx context.Context, now time.Time) (SupervisorTickRes
 				}
 
 				// FREIOS HITL OBRIGATÓRIOS: Check for risky actions before executing
-				objLower := strings.ToLower(cycle.Objective)
-				nameLower := strings.ToLower(cycle.Name)
-				combinedText := objLower + " " + nameLower
 				cycleRisk := companyCycleRisk(cycle)
 
 				// Missing credentials are blocked before approval: an approval
 				// must never imply that an unavailable integration is connected.
-				isExternalIntegration := strings.Contains(combinedText, "tiktok_shop") ||
-					strings.Contains(combinedText, "meta_ads") ||
-					strings.Contains(combinedText, "shopify_sync") ||
-					strings.Contains(combinedText, "whatsapp_live")
-				if isExternalIntegration {
+				if cycleRequestsExternalIntegration(cycle) {
 					result.BlockedExternalActions++
 					nextRun := now.Add(time.Hour)
 					_, _ = s.runtime.company.UpdateCycleRun(company.ID, cycle.ID, now, nextRun)
