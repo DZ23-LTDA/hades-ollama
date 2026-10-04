@@ -331,6 +331,7 @@ export const getMission = (id: string) => agentFetch<AgentMission>(`/api/agent/v
 export const listMissionEvents = (id: string) => agentFetch<{ events: AgentEvent[] }>(`/api/agent/v1/missions/${encodeURIComponent(id)}/events`);
 export const createMission = (payload: { objective: string; provider?: string; model?: string; project_id?: string; workspace?: string; isolate_workspace?: boolean; capabilities?: string[]; auto_run?: boolean }) => agentFetch<AgentMission>("/api/agent/v1/missions", { method: "POST", body: JSON.stringify(payload) });
 export const runMission = (id: string) => agentFetch<AgentMission>(`/api/agent/v1/missions/${encodeURIComponent(id)}/run`, { method: "POST", body: "{}" });
+export const deleteMission = (id: string) => agentFetch<{ status: string; id: string }>(`/api/agent/v1/missions/${encodeURIComponent(id)}`, { method: "DELETE" });
 export const decideMissionApproval = (missionID: string, approvalID: string, approved: boolean, nonce?: string) => agentFetch<AgentMission>(`/api/agent/v1/missions/${encodeURIComponent(missionID)}/approvals/${encodeURIComponent(approvalID)}`, { method: "POST", body: JSON.stringify({ decision: approved ? "approve" : "reject", nonce, reason: approved ? "Aprovado no Agentic Console" : "Rejeitado no Agentic Console" }) });
 export const listSchedules = () => agentFetch<{ schedules: AgentSchedule[] }>("/api/agent/v1/schedules");
 export const createSchedule = (payload: Partial<AgentSchedule>) => agentFetch<AgentSchedule>("/api/agent/v1/schedules", { method: "POST", body: JSON.stringify(payload) });

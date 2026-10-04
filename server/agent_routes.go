@@ -518,6 +518,7 @@ func (a *agentAPI) register(r *gin.Engine) {
 	group.GET("/missions/:id/artifacts/:artifact_id", a.artifact)
 	group.POST("/missions/:id/run", a.runMission)
 	group.POST("/missions/:id/cancel", a.cancelMission)
+	group.DELETE("/missions/:id", a.deleteMission)
 	group.POST("/missions/:id/approvals/:approval_id", a.decideApproval)
 	group.GET("/missions/:id/worktree", a.getMissionWorktree)
 	group.POST("/missions/:id/merge", a.mergeMissionWorktree)
@@ -3013,6 +3014,19 @@ func (a *agentAPI) cancelMission(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, mission)
+}
+
+func (a *agentAPI) deleteMission(c *gin.Context) {
+	id := strings.TrimSpace(c.Param("id"))
+	if id == "" {
+		writeAgentError(c, http.StatusBadRequest, errors.New("mission id is required"))
+		return
+	}
+	if err := a.scopedRuntime(c).DeleteMission(c.Request.Context(), id); err != nil {
+		writeAgentError(c, statusForAgentError(err), err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"status": "deleted", "id": id})
 }
 
 func (a *agentAPI) decideApproval(c *gin.Context) {

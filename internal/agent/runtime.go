@@ -1144,6 +1144,26 @@ func (r *Runtime) getMission(id string) (Mission, error) {
 	return mission, nil
 }
 
+// DeleteMission permanently removes a mission (and its event history) from the
+// store. A mission that is still active cannot be deleted — it must be cancelled
+// first — so a running task is never yanked out from under the runtime. The
+// lookup is organization-scoped, so a mission owned by another tenant is
+// reported as not-found.
+func (r *Runtime) DeleteMission(ctx context.Context, missionID string) error {
+	mission, err := r.getMission(strings.TrimSpace(missionID))
+	if err != nil {
+		return err
+	}
+	switch mission.State {
+	case "RUNNING", "OBSERVING", "RECOVERING", "PLANNING", "PENDING":
+		return fmt.Errorf("a tarefa está em andamento (%s); cancele-a antes de excluir", mission.State)
+	}
+	if err := r.store.DeleteMission(mission.ID); err != nil {
+		return err
+	}
+	return nil
+}
+
 func (r *Runtime) runQueueJob(jobContext context.Context, job QueueJob) error {
 	organizationID := strings.TrimSpace(job.OrganizationID)
 	if r.organizationScope != "" {
