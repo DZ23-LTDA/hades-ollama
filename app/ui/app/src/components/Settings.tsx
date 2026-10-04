@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { Switch } from "@/components/ui/switch";
+import { BrowserOperatorPanel } from "@/components/BrowserOperatorPanel";
 import { Text } from "@/components/ui/text";
 import { Input } from "@/components/ui/input";
 import { Field, Label, Description } from "@/components/ui/fieldset";
@@ -941,6 +942,9 @@ export default function Settings() {
               </div>
             </div>
           </section>}
+
+          {/* Operador de navegador (plug-and-play) */}
+          <BrowserOperatorPanel />
 
           {/* Reset button */}
           <div className="flex items-center justify-between gap-4 px-4">

@@ -353,6 +353,23 @@ export const createMission = (payload: { objective: string; provider?: string; m
 export const runMission = (id: string) => agentFetch<AgentMission>(`/api/agent/v1/missions/${encodeURIComponent(id)}/run`, { method: "POST", body: "{}" });
 export const deleteMission = (id: string) => agentFetch<{ status: string; id: string }>(`/api/agent/v1/missions/${encodeURIComponent(id)}`, { method: "DELETE" });
 export const decideMissionApproval = (missionID: string, approvalID: string, approved: boolean, nonce?: string) => agentFetch<AgentMission>(`/api/agent/v1/missions/${encodeURIComponent(missionID)}/approvals/${encodeURIComponent(approvalID)}`, { method: "POST", body: JSON.stringify({ decision: approved ? "approve" : "reject", nonce, reason: approved ? "Aprovado no Agentic Console" : "Rejeitado no Agentic Console" }) });
+export type BrowserEnvironmentStatus = {
+  python_path?: string;
+  python_ok: boolean;
+  playwright_ok: boolean;
+  playwright_version?: string;
+  chromium_ok: boolean;
+  ready: boolean;
+  guidance?: string[] | null;
+  can_auto_setup: boolean;
+};
+export type BrowserSetupResult = {
+  steps?: { description: string; ok: boolean; output?: string }[] | null;
+  status: BrowserEnvironmentStatus;
+};
+export const getBrowserEnvironment = () => agentFetch<BrowserEnvironmentStatus>("/api/agent/v1/browser/environment");
+export const setupBrowserEnvironment = () => agentFetch<BrowserSetupResult>("/api/agent/v1/browser/environment/setup", { method: "POST", body: "{}" });
+
 export const listSchedules = () => agentFetch<{ schedules: AgentSchedule[] }>("/api/agent/v1/schedules");
 export const createSchedule = (payload: Partial<AgentSchedule>) => agentFetch<AgentSchedule>("/api/agent/v1/schedules", { method: "POST", body: JSON.stringify(payload) });
 export const updateSchedule = (id: string, payload: Partial<AgentSchedule>) => agentFetch<AgentSchedule>(`/api/agent/v1/schedules/${encodeURIComponent(id)}`, { method: "PATCH", body: JSON.stringify(payload) });
