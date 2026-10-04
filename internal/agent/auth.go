@@ -666,8 +666,14 @@ func (s *AuthStore) sweepOAuthStatesLocked(now time.Time) {
 }
 
 func (s *AuthStore) StoreOAuthCredential(provider, userID, organizationID string, payload map[string]any) (OAuthCredential, error) {
-	if _, err := s.Authorize(userID, organizationID, "write"); err != nil {
-		return OAuthCredential{}, err
+	// The trusted single-user local scope has no users or memberships (the
+	// unauthenticated local runtime is already a single operator). Every other
+	// (multi-tenant) organization must prove a write membership before a
+	// credential may be attached to it.
+	if strings.TrimSpace(organizationID) != LocalOrganizationID {
+		if _, err := s.Authorize(userID, organizationID, "write"); err != nil {
+			return OAuthCredential{}, err
+		}
 	}
 	access, _ := payload["access_token"].(string)
 	refresh, _ := payload["refresh_token"].(string)
@@ -1142,6 +1148,19 @@ func (p OAuthProvider) NormalizeRedirectURI(raw string) (string, error) {
 	canonical, err := validateOAuthRedirectSyntax(raw, p.AllowLoopbackRedirect)
 	if err != nil {
 		return "", err
+	}
+	// A desktop app receives the OAuth callback on a loopback address it opens
+	// locally (127.0.0.1/localhost/[::1]); that URI cannot be pinned in a fixed
+	// allowlist because the port is chosen at runtime. When loopback redirects
+	// are enabled, accept a validated loopback URI without requiring the
+	// allowlist. This does not loosen the security binding: CreateOAuthState
+	// stores the exact redirect_uri and ConsumeOAuthState demands the identical
+	// value at the callback, so a tampered redirect still fails. Anything that
+	// is not loopback continues to require the allowlist below.
+	if p.AllowLoopbackRedirect {
+		if parsed, parseErr := url.Parse(canonical); parseErr == nil && isLoopbackHost(parsed.Hostname()) {
+			return canonical, nil
+		}
 	}
 	if len(p.RedirectURIs) == 0 {
 		return "", errors.New("oauth redirect URI allowlist is required")

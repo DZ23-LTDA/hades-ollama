@@ -220,6 +220,26 @@ export async function logoutAgentSession(): Promise<void> {
 
 export const refreshOAuthCredential = (provider: string, credentialID: string) => agentFetch<{ credential_id: string; provider: string; expires_at?: string; updated_at: string; revoked_at?: string | null }>(`/api/agent/v1/auth/oauth/${encodeURIComponent(provider)}/refresh`, { method: "POST", body: JSON.stringify({ credential_id: credentialID }) });
 export const revokeOAuthCredential = (provider: string, credentialID: string) => agentFetch<void>(`/api/agent/v1/auth/oauth/${encodeURIComponent(provider)}/revoke`, { method: "POST", body: JSON.stringify({ credential_id: credentialID }) });
+
+export type OAuthClientStatus = { provider: string; configured: boolean; built_in: boolean };
+// saveOAuthClient stores the OAuth app client_id/secret for a provider (admin).
+export const saveOAuthClient = (provider: string, clientID: string, clientSecret: string) =>
+  agentFetch<{ status: string; provider: string; configured: boolean }>(
+    `/api/agent/v1/oauth-clients/${encodeURIComponent(provider)}`,
+    { method: "POST", body: JSON.stringify({ client_id: clientID, client_secret: clientSecret }) },
+  );
+// listOAuthClients lists which OAuth providers have an app credential (no secrets).
+export const listOAuthClients = async () => {
+  const result = await agentFetch<{ providers?: OAuthClientStatus[] | null }>("/api/agent/v1/oauth-clients");
+  return { providers: Array.isArray(result.providers) ? result.providers : [] };
+};
+// startConnectorOAuth begins an OAuth connect for a catalog connector and
+// returns the provider authorization URL to open in the browser.
+export const startConnectorOAuth = (connectorID: string, redirectURI: string, codeVerifier: string) =>
+  agentFetch<{ connector: string; provider: string; authorization_url: string; state: string; expires_in: number }>(
+    `/api/agent/v1/connectors/${encodeURIComponent(connectorID)}/oauth/start`,
+    { method: "POST", body: JSON.stringify({ redirect_uri: redirectURI, code_verifier: codeVerifier }) },
+  );
 export const fetchAgentHealth = () => agentFetch<AgentHealth>("/api/agent/v1/health");
 
 function agentHeaders(): Record<string, string> {

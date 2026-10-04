@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"html"
 	"io"
 	"log/slog"
 	"net"
@@ -33,6 +34,7 @@ type agentAPI struct {
 	runtime      *agent.Runtime
 	context      *agent.ContextStore
 	auth         *agent.AuthStore
+	oauthClients *agent.OAuthClientStore
 	authRequired bool
 	push         *agent.PushService
 	grok         *grok.Client
@@ -54,6 +56,14 @@ func newAgentAPI(runtime *agent.Runtime) (*agentAPI, error) {
 		return nil, err
 	}
 	runtime.SetAuthStore(auth)
+	oauthClientRoot := ""
+	if runtime != nil {
+		oauthClientRoot = runtime.DataRoot()
+	}
+	oauthClients, err := agent.NewOAuthClientStore(oauthClientRoot)
+	if err != nil {
+		return nil, err
+	}
 	required, err := agentAuthRequired()
 	if err != nil {
 		return nil, err
@@ -65,7 +75,7 @@ func newAgentAPI(runtime *agent.Runtime) (*agentAPI, error) {
 	if runtime != nil && runtime.RequiresOrganizationAuthentication() {
 		required = true
 	}
-	return &agentAPI{runtime: runtime, context: runtime.Context(), auth: auth, authRequired: required, push: runtime.Push(), grok: grokClient, samlServices: map[string]*agent.SAMLService{}}, nil
+	return &agentAPI{runtime: runtime, context: runtime.Context(), auth: auth, oauthClients: oauthClients, authRequired: required, push: runtime.Push(), grok: grokClient, samlServices: map[string]*agent.SAMLService{}}, nil
 }
 
 func newAgentGrokClient() (*grok.Client, error) {
@@ -433,7 +443,11 @@ func (a *agentAPI) register(r *gin.Engine) {
 	group.POST("/connectors", a.registerConnector)
 	group.POST("/connectors/:id/enable", a.enableConnector)
 	group.POST("/connectors/:id/disable", a.disableConnector)
+	group.POST("/connectors/:id/oauth/start", a.connectorOAuthStart)
+	group.GET("/connectors/:id/oauth/callback", a.connectorOAuthCallback)
 	group.DELETE("/connectors/:id", a.removeConnector)
+	group.GET("/oauth-clients", a.listOAuthClients)
+	group.POST("/oauth-clients/:provider", a.saveOAuthClient)
 	group.GET("/mcp", a.mcp)
 	group.POST("/mcp", a.registerMCP)
 	group.POST("/mcp/:id/enable", a.enableMCP)
@@ -1180,6 +1194,17 @@ func oauthProviderFromEnv(name string) agent.OAuthProvider {
 			secretEnv = prefix + "_SECRET"
 		}
 	}
+	// Even for providers without a built-in profile, default the credential
+	// variable names to the canonical ones so the file-backed OAuth client
+	// store (ensureOAuthClientCredentials) has a stable place to publish the
+	// client_id/secret. An explicit *_CLIENT_ID_ENV / *_SECRET_ENV override
+	// still wins.
+	if clientIDEnv == "" {
+		clientIDEnv = prefix + "_CLIENT_ID"
+	}
+	if secretEnv == "" {
+		secretEnv = prefix + "_SECRET"
+	}
 	return agent.OAuthProvider{Name: name, AuthorizeURL: authorizeURL, TokenURL: tokenURL, RevocationURL: os.Getenv(prefix + "_REVOCATION_URL"), UserInfoURL: userInfoURL, IssuerURL: os.Getenv(prefix + "_ISSUER_URL"), Audience: os.Getenv(prefix + "_AUDIENCE"), ClientIDEnv: clientIDEnv, SecretEnv: secretEnv, RedirectURIs: redirects, AllowLoopbackRedirect: allowLoopback}
 }
 
@@ -1419,6 +1444,355 @@ func (a *agentAPI) oauthRevoke(c *gin.Context) {
 		return
 	}
 	c.Status(http.StatusNoContent)
+}
+
+// connectorOAuthProvider maps a catalog connector id to the OAuth provider that
+// issues its tokens. The Google services share a single Google OAuth app;
+// every other connector authenticates against a provider named after itself.
+func connectorOAuthProvider(connectorID string) string {
+	switch strings.ToLower(strings.TrimSpace(connectorID)) {
+	case "gmail", "google-drive", "google-calendar", "google-analytics", "google-ads", "youtube", "google-workspace":
+		return "google"
+	default:
+		return strings.ToLower(strings.TrimSpace(connectorID))
+	}
+}
+
+// connectorOAuthAPIBaseURLs pins the REST base URL used when a connector is
+// registered through OAuth and has no quick-connect base in the catalog.
+var connectorOAuthAPIBaseURLs = map[string]string{
+	"gmail":            "https://gmail.googleapis.com",
+	"google-drive":     "https://www.googleapis.com",
+	"google-workspace": "https://www.googleapis.com",
+	"google-calendar":  "https://www.googleapis.com/calendar/v3",
+	"google-analytics": "https://analyticsdata.googleapis.com",
+	"google-ads":       "https://googleads.googleapis.com",
+	"youtube":          "https://www.googleapis.com/youtube/v3",
+	"outlook":          "https://graph.microsoft.com/v1.0",
+}
+
+// providerOAuthAPIBaseURLs is the last-resort REST base keyed by provider.
+var providerOAuthAPIBaseURLs = map[string]string{
+	"google":    "https://www.googleapis.com",
+	"microsoft": "https://graph.microsoft.com/v1.0",
+	"github":    "https://api.github.com",
+	"slack":     "https://slack.com/api",
+	"dropbox":   "https://api.dropboxapi.com/2",
+	"canva":     "https://api.canva.com/rest/v1",
+}
+
+// connectorOAuthExtraScopes are read-only scopes requested in addition to the
+// provider's default scopes when connecting a specific service.
+var connectorOAuthExtraScopes = map[string][]string{
+	"gmail":            {"https://www.googleapis.com/auth/gmail.readonly"},
+	"google-drive":     {"https://www.googleapis.com/auth/drive.readonly"},
+	"google-calendar":  {"https://www.googleapis.com/auth/calendar.readonly"},
+	"google-analytics": {"https://www.googleapis.com/auth/analytics.readonly"},
+	"google-ads":       {"https://www.googleapis.com/auth/adwords"},
+	"youtube":          {"https://www.googleapis.com/auth/youtube.readonly"},
+}
+
+func connectorOAuthScopes(connectorID, providerName string) []string {
+	scopes := make([]string, 0, 6)
+	seen := map[string]bool{}
+	add := func(values ...string) {
+		for _, value := range values {
+			value = strings.TrimSpace(value)
+			if value == "" || seen[value] {
+				continue
+			}
+			seen[value] = true
+			scopes = append(scopes, value)
+		}
+	}
+	add(builtinOAuthScopes(providerName)...)
+	add(connectorOAuthExtraScopes[strings.ToLower(strings.TrimSpace(connectorID))]...)
+	if len(scopes) == 0 {
+		add("openid", "email")
+	}
+	return scopes
+}
+
+func connectorOAuthBaseURL(connectorID, providerName string) string {
+	id := strings.ToLower(strings.TrimSpace(connectorID))
+	if base := connectorOAuthAPIBaseURLs[id]; base != "" {
+		return base
+	}
+	for _, entry := range agent.ConnectorCatalog() {
+		if entry.ID == id && strings.TrimSpace(entry.APIBaseURL) != "" {
+			return entry.APIBaseURL
+		}
+	}
+	return providerOAuthAPIBaseURLs[strings.ToLower(strings.TrimSpace(providerName))]
+}
+
+func connectorOAuthOperations(connectorID string) []agent.ConnectorOperation {
+	if operations := agent.QuickConnectOperations(connectorID); len(operations) > 0 {
+		return operations
+	}
+	// Least-privilege default: allow only read (GET) requests until an operator
+	// configures a richer policy through the advanced connector registration.
+	return []agent.ConnectorOperation{{Name: "read", Methods: []string{"GET"}, PathPrefixes: []string{"/"}}}
+}
+
+// ensureOAuthClientCredentials publishes the provider's stored app
+// client_id/secret into the environment variables the OAuth flow reads
+// (ClientIDEnv/SecretEnv). An explicit OS environment value always wins; only
+// an empty variable is filled from the file store. The secret is never logged.
+func (a *agentAPI) ensureOAuthClientCredentials(providerName string) {
+	if a == nil || a.oauthClients == nil {
+		return
+	}
+	clientID, secret, ok := a.oauthClients.Get(providerName)
+	if !ok {
+		return
+	}
+	provider := oauthProviderFromEnv(providerName)
+	if provider.ClientIDEnv != "" && strings.TrimSpace(os.Getenv(provider.ClientIDEnv)) == "" {
+		_ = os.Setenv(provider.ClientIDEnv, clientID)
+	}
+	if provider.SecretEnv != "" && strings.TrimSpace(os.Getenv(provider.SecretEnv)) == "" {
+		_ = os.Setenv(provider.SecretEnv, secret)
+	}
+}
+
+// oauthClientConfigured reports whether the provider has an app client_id and
+// secret available, either from the file store or the OS environment.
+func (a *agentAPI) oauthClientConfigured(providerName string) bool {
+	if a != nil && a.oauthClients != nil && a.oauthClients.Configured(providerName) {
+		return true
+	}
+	provider := oauthProviderFromEnv(providerName)
+	return provider.ClientIDEnv != "" && provider.SecretEnv != "" &&
+		strings.TrimSpace(os.Getenv(provider.ClientIDEnv)) != "" &&
+		strings.TrimSpace(os.Getenv(provider.SecretEnv)) != ""
+}
+
+// saveOAuthClient stores the app client_id/secret for a provider. Admin only.
+// The secret is never returned.
+func (a *agentAPI) saveOAuthClient(c *gin.Context) {
+	if !a.requireApprovalApprover(c) {
+		return
+	}
+	provider := strings.ToLower(strings.TrimSpace(c.Param("provider")))
+	if provider == "" {
+		writeAgentError(c, http.StatusBadRequest, errors.New("provider é obrigatório"))
+		return
+	}
+	if a.oauthClients == nil {
+		writeAgentError(c, http.StatusInternalServerError, errors.New("armazenamento de credenciais OAuth indisponível"))
+		return
+	}
+	var request struct {
+		ClientID     string `json:"client_id"`
+		ClientSecret string `json:"client_secret"`
+	}
+	if err := decodeJSON(c, &request); err != nil {
+		writeAgentError(c, http.StatusBadRequest, err)
+		return
+	}
+	if strings.TrimSpace(request.ClientID) == "" || strings.TrimSpace(request.ClientSecret) == "" {
+		writeAgentError(c, http.StatusBadRequest, errors.New("client_id e client_secret são obrigatórios"))
+		return
+	}
+	if err := a.oauthClients.Save(provider, request.ClientID, request.ClientSecret); err != nil {
+		writeAgentError(c, http.StatusBadRequest, err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"status": "saved", "provider": provider, "configured": true})
+}
+
+// listOAuthClients lists the configured OAuth providers (names only, never
+// secrets), including the known built-ins with their configuration flag.
+func (a *agentAPI) listOAuthClients(c *gin.Context) {
+	if !a.requireApprovalApprover(c) {
+		return
+	}
+	type providerStatus struct {
+		Provider   string `json:"provider"`
+		Configured bool   `json:"configured"`
+		BuiltIn    bool   `json:"built_in"`
+	}
+	seen := map[string]bool{}
+	result := make([]providerStatus, 0)
+	for name := range builtinOAuthProviders {
+		result = append(result, providerStatus{Provider: name, Configured: a.oauthClientConfigured(name), BuiltIn: true})
+		seen[name] = true
+	}
+	if a.oauthClients != nil {
+		for _, name := range a.oauthClients.Providers() {
+			if !seen[name] {
+				result = append(result, providerStatus{Provider: name, Configured: true, BuiltIn: false})
+				seen[name] = true
+			}
+		}
+	}
+	sort.Slice(result, func(i, j int) bool { return result[i].Provider < result[j].Provider })
+	c.JSON(http.StatusOK, gin.H{"providers": result})
+}
+
+// connectorOAuthStart begins connecting a connector through OAuth: it ensures
+// the provider's app credentials are available, mints a bound state, and
+// returns the authorization URL the desktop opens in the browser.
+func (a *agentAPI) connectorOAuthStart(c *gin.Context) {
+	connectorID := strings.TrimSpace(c.Param("id"))
+	if connectorID == "" {
+		writeAgentError(c, http.StatusBadRequest, errors.New("connector id é obrigatório"))
+		return
+	}
+	providerName := connectorOAuthProvider(connectorID)
+	a.ensureOAuthClientCredentials(providerName)
+	if !a.oauthClientConfigured(providerName) {
+		writeAgentError(c, http.StatusPreconditionFailed, errors.New("configure o client_id/secret deste provedor primeiro"))
+		return
+	}
+	provider, err := prepareOIDCProvider(c.Request.Context(), oauthProviderFromEnv(providerName))
+	if err != nil {
+		writeAgentError(c, http.StatusBadRequest, err)
+		return
+	}
+	var request struct {
+		RedirectURI  string `json:"redirect_uri"`
+		CodeVerifier string `json:"code_verifier"`
+	}
+	if err := decodeJSON(c, &request); err != nil {
+		writeAgentError(c, http.StatusBadRequest, err)
+		return
+	}
+	redirectURI, redirectErr := provider.NormalizeRedirectURI(request.RedirectURI)
+	verifier := strings.TrimSpace(request.CodeVerifier)
+	if redirectErr != nil || verifier == "" {
+		if redirectErr == nil {
+			redirectErr = errors.New("redirect_uri e code_verifier (PKCE) são obrigatórios")
+		}
+		writeAgentError(c, http.StatusBadRequest, redirectErr)
+		return
+	}
+	userID := ""
+	if value, ok := c.Get("agent.user"); ok {
+		if user, ok := value.(agent.User); ok {
+			userID = user.ID
+		}
+	}
+	nonce := fmt.Sprintf("%x", sha256.Sum256([]byte(provider.Name+"|"+connectorID+"|"+redirectURI+"|"+verifier+"|"+time.Now().UTC().String())))
+	state, _, err := a.auth.CreateOAuthStateWithNonce(provider.Name, redirectURI, verifier, nonce, userID, 5*time.Minute)
+	if err != nil {
+		writeAgentError(c, http.StatusBadRequest, err)
+		return
+	}
+	authorizationURL, err := provider.AuthorizationURLWithNonce(state, nonce, connectorOAuthScopes(connectorID, provider.Name))
+	if err != nil {
+		writeAgentError(c, http.StatusBadRequest, err)
+		return
+	}
+	// Request a long-lived connection: without offline access the provider only
+	// returns a short-lived access token and the connector would stop working
+	// after ~1h. Google needs access_type=offline (+ prompt=consent to re-issue a
+	// refresh token on reconnection).
+	authorizationURL = withOfflineAccessParams(provider.Name, authorizationURL)
+	c.JSON(http.StatusOK, gin.H{"connector": connectorID, "provider": provider.Name, "authorization_url": authorizationURL, "state": state, "expires_in": 300})
+}
+
+// withOfflineAccessParams adds the provider-specific query parameters needed to
+// obtain a refresh token, so a connected account keeps working after the initial
+// access token expires. Unknown providers are returned unchanged.
+func withOfflineAccessParams(providerName, rawURL string) string {
+	u, err := url.Parse(rawURL)
+	if err != nil {
+		return rawURL
+	}
+	query := u.Query()
+	switch strings.ToLower(strings.TrimSpace(providerName)) {
+	case "google":
+		query.Set("access_type", "offline")
+		query.Set("prompt", "consent")
+	}
+	u.RawQuery = query.Encode()
+	return u.String()
+}
+
+// connectorOAuthCallback completes the connector OAuth flow: it exchanges the
+// code for a token, stores the credential for the active organization, and
+// registers the connector with that OAuth provider. It answers with a simple
+// HTML page because the browser (not the SPA) lands here.
+func (a *agentAPI) connectorOAuthCallback(c *gin.Context) {
+	connectorID := strings.TrimSpace(c.Param("id"))
+	providerName := connectorOAuthProvider(connectorID)
+	a.ensureOAuthClientCredentials(providerName)
+	provider, err := prepareOIDCProvider(c.Request.Context(), oauthProviderFromEnv(providerName))
+	if err != nil {
+		writeConnectorOAuthHTML(c, http.StatusBadRequest, "Não foi possível preparar o provedor OAuth. Verifique o client_id/secret configurado.")
+		return
+	}
+	redirectURI, redirectErr := provider.NormalizeRedirectURI(c.Query("redirect_uri"))
+	code := strings.TrimSpace(c.Query("code"))
+	stateValue := strings.TrimSpace(c.Query("state"))
+	if redirectErr != nil || code == "" || stateValue == "" {
+		writeConnectorOAuthHTML(c, http.StatusBadRequest, "Parâmetros de retorno inválidos (code, state e redirect_uri são obrigatórios).")
+		return
+	}
+	state, err := a.auth.ConsumeOAuthState(stateValue, provider.Name, redirectURI)
+	if err != nil {
+		writeConnectorOAuthHTML(c, http.StatusBadRequest, "Sessão de autorização inválida, expirada ou já usada. Tente conectar novamente.")
+		return
+	}
+	payload, err := provider.ExchangeCode(c.Request.Context(), newServerEgressClient("server.agent.connector.oauth.exchange", false), code, redirectURI, state.CodeVerifier)
+	if err != nil {
+		writeConnectorOAuthHTML(c, http.StatusBadGateway, "Falha ao trocar o código de autorização com o provedor.")
+		return
+	}
+	organizationID := agentOrganizationID(c)
+	if _, err := a.auth.StoreOAuthCredential(provider.Name, state.UserID, organizationID, payload); err != nil {
+		writeConnectorOAuthHTML(c, http.StatusBadRequest, "Não foi possível salvar a credencial da conta para esta organização.")
+		return
+	}
+	if err := a.registerConnectorOAuth(organizationID, connectorID, provider.Name); err != nil {
+		writeConnectorOAuthHTML(c, http.StatusBadRequest, "A conta foi autorizada, mas o conector não pôde ser registrado: "+err.Error())
+		return
+	}
+	slog.Info("connector connected via oauth", "connector", connectorID, "provider", provider.Name)
+	writeConnectorOAuthHTML(c, http.StatusOK, "")
+}
+
+// registerConnectorOAuth registers (or refreshes) the catalog connector so it
+// resolves its token through the OAuth provider for the active organization.
+func (a *agentAPI) registerConnectorOAuth(organizationID, connectorID, providerName string) error {
+	baseURL := connectorOAuthBaseURL(connectorID, providerName)
+	if strings.TrimSpace(baseURL) == "" {
+		return fmt.Errorf("endereço de API desconhecido para o conector %q", connectorID)
+	}
+	config := agent.ConnectorConfig{
+		ID:            connectorID,
+		Provider:      connectorID,
+		BaseURL:       baseURL,
+		OAuthProvider: providerName,
+		Operations:    connectorOAuthOperations(connectorID),
+	}
+	if a.authRequired {
+		return a.runtime.RegisterConnectorForOrganization(organizationID, config)
+	}
+	return a.runtime.RegisterConnector(config)
+}
+
+// writeConnectorOAuthHTML renders the browser-facing result page in pt-BR. An
+// empty message renders the success page.
+func writeConnectorOAuthHTML(c *gin.Context, status int, message string) {
+	title := "Conta conectada!"
+	body := "Você já pode fechar esta aba e voltar ao Hades."
+	if strings.TrimSpace(message) != "" {
+		title = "Não foi possível conectar"
+		body = message
+	}
+	page := "<!doctype html><html lang=\"pt-BR\"><head><meta charset=\"utf-8\">" +
+		"<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">" +
+		"<title>" + html.EscapeString(title) + "</title></head>" +
+		"<body style=\"font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;" +
+		"display:flex;min-height:100vh;align-items:center;justify-content:center;margin:0;background:#0b0b0f;color:#f5f5f7\">" +
+		"<main style=\"max-width:28rem;padding:2rem;text-align:center\">" +
+		"<h1 style=\"font-size:1.25rem;margin:0 0 .75rem\">" + html.EscapeString(title) + "</h1>" +
+		"<p style=\"margin:0;color:#b8b8c0;line-height:1.5\">" + html.EscapeString(body) + "</p>" +
+		"</main></body></html>"
+	c.Data(status, "text/html; charset=utf-8", []byte(page))
 }
 
 func (a *agentAPI) samlStart(c *gin.Context) {
