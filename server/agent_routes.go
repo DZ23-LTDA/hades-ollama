@@ -1188,6 +1188,39 @@ var builtinOAuthProviders = map[string]builtinOAuthProvider{
 		TokenURL:     "https://accounts.zoho.com/oauth/v2/token",
 		Scopes:       []string{"AaaServer.profile.READ"},
 	},
+	"mercado-livre": {
+		AuthorizeURL: "https://auth.mercadolivre.com.br/authorization",
+		TokenURL:     "https://api.mercadolibre.com/oauth/token",
+		UserInfoURL:  "https://api.mercadolibre.com/users/me",
+		Scopes:       []string{"read"},
+	},
+	"tiktok-business": {
+		AuthorizeURL: "https://www.tiktok.com/v2/auth/authorize/",
+		TokenURL:     "https://open.tiktokapis.com/v2/oauth/token/",
+		Scopes:       []string{"user.info.basic"},
+	},
+	"notion": {
+		AuthorizeURL: "https://api.notion.com/v1/oauth/authorize",
+		TokenURL:     "https://api.notion.com/v1/oauth/token",
+		Scopes:       []string{},
+	},
+	"hubspot": {
+		AuthorizeURL: "https://app.hubspot.com/oauth/authorize",
+		TokenURL:     "https://api.hubapi.com/oauth/v1/token",
+		Scopes:       []string{"oauth"},
+	},
+	"gitlab": {
+		AuthorizeURL: "https://gitlab.com/oauth/authorize",
+		TokenURL:     "https://gitlab.com/oauth/token",
+		UserInfoURL:  "https://gitlab.com/oauth/userinfo",
+		Scopes:       []string{"read_user"},
+	},
+	"discord": {
+		AuthorizeURL: "https://discord.com/oauth2/authorize",
+		TokenURL:     "https://discord.com/api/oauth2/token",
+		UserInfoURL:  "https://discord.com/api/users/@me",
+		Scopes:       []string{"identify", "email"},
+	},
 }
 
 // builtinOAuthScopes returns the default scopes for a known provider id.
