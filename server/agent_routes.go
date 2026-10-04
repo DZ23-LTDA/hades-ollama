@@ -1147,6 +1147,47 @@ var builtinOAuthProviders = map[string]builtinOAuthProvider{
 		TokenURL:     "https://api.canva.com/rest/v1/oauth/token",
 		Scopes:       []string{"profile:read"},
 	},
+	"facebook": {
+		AuthorizeURL: "https://www.facebook.com/v19.0/dialog/oauth",
+		TokenURL:     "https://graph.facebook.com/v19.0/oauth/access_token",
+		UserInfoURL:  "https://graph.facebook.com/me",
+		Scopes:       []string{"public_profile", "email"},
+	},
+	"linkedin": {
+		AuthorizeURL: "https://www.linkedin.com/oauth/v2/authorization",
+		TokenURL:     "https://www.linkedin.com/oauth/v2/accessToken",
+		UserInfoURL:  "https://api.linkedin.com/v2/userinfo",
+		Scopes:       []string{"openid", "profile", "email"},
+	},
+	"zoom": {
+		AuthorizeURL: "https://zoom.us/oauth/authorize",
+		TokenURL:     "https://zoom.us/oauth/token",
+		UserInfoURL:  "https://api.zoom.us/v2/users/me",
+		Scopes:       []string{"user:read"},
+	},
+	"pinterest": {
+		AuthorizeURL: "https://www.pinterest.com/oauth/",
+		TokenURL:     "https://api.pinterest.com/v5/oauth/token",
+		UserInfoURL:  "https://api.pinterest.com/v5/user_account",
+		Scopes:       []string{"user_accounts:read"},
+	},
+	"twitter": {
+		AuthorizeURL: "https://twitter.com/i/oauth2/authorize",
+		TokenURL:     "https://api.twitter.com/2/oauth2/token",
+		UserInfoURL:  "https://api.twitter.com/2/users/me",
+		Scopes:       []string{"tweet.read", "users.read", "offline.access"},
+	},
+	"salesforce": {
+		AuthorizeURL: "https://login.salesforce.com/services/oauth2/authorize",
+		TokenURL:     "https://login.salesforce.com/services/oauth2/token",
+		UserInfoURL:  "https://login.salesforce.com/services/oauth2/userinfo",
+		Scopes:       []string{"openid", "email", "api", "refresh_token"},
+	},
+	"zoho": {
+		AuthorizeURL: "https://accounts.zoho.com/oauth/v2/auth",
+		TokenURL:     "https://accounts.zoho.com/oauth/v2/token",
+		Scopes:       []string{"AaaServer.profile.READ"},
+	},
 }
 
 // builtinOAuthScopes returns the default scopes for a known provider id.
@@ -1451,8 +1492,16 @@ func (a *agentAPI) oauthRevoke(c *gin.Context) {
 // every other connector authenticates against a provider named after itself.
 func connectorOAuthProvider(connectorID string) string {
 	switch strings.ToLower(strings.TrimSpace(connectorID)) {
-	case "gmail", "google-drive", "google-calendar", "google-analytics", "google-ads", "youtube", "google-workspace":
+	case "gmail", "google-drive", "google-calendar", "google-analytics", "google-ads", "google-cloud", "youtube", "google-workspace":
 		return "google"
+	case "azure", "outlook", "microsoft-365", "onedrive":
+		return "microsoft"
+	case "facebook-pages", "instagram", "meta-ads":
+		// Meta's platform uses a single Facebook Login OAuth app for Pages,
+		// Instagram and the Marketing (Ads) API.
+		return "facebook"
+	case "x-twitter":
+		return "twitter"
 	default:
 		return strings.ToLower(strings.TrimSpace(connectorID))
 	}
