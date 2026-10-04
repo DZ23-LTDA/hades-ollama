@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState, useTransition } from "react";
 import { AppSidebar } from "@/components/AppSidebar";
 import { SidebarLayout } from "@/components/layout/layout";
 import { missionStateLabel } from "@/lib/labels";
+import { generateStudioHTML } from "@/lib/studioHtml";
 import {
   type BuilderProject,
   type VisualComponent,
@@ -281,6 +282,25 @@ export function StudioCanvasPage() {
   };
 
   // Undo via real backend
+  // Instant client-side preview: render the project to standalone HTML and open
+  // it in a new tab via a blob URL — no backend build needed, works offline.
+  const handleInstantPreview = () => {
+    if (!project) return;
+    try {
+      const html = generateStudioHTML(project);
+      const blob = new Blob([html], { type: "text/html" });
+      const url = URL.createObjectURL(blob);
+      const tab = window.open(url, "_blank", "noopener,noreferrer");
+      if (!tab) {
+        setNotice({ type: "error", message: "O navegador bloqueou a prévia. Permita pop-ups para visualizar." });
+      }
+      // Revoke after a delay so the new tab has time to load the document.
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    } catch (err: unknown) {
+      setNotice({ type: "error", message: `Não foi possível gerar a prévia: ${String(err)}` });
+    }
+  };
+
   const handleUndo = async () => {
     if (!project) return;
     try {
@@ -481,6 +501,17 @@ export function StudioCanvasPage() {
             >
               <ArrowDownTrayIcon className="h-4 w-4" />
               <span className="hidden md:inline">Exportar ZIP</span>
+            </button>
+
+            {/* Instant client-side preview */}
+            <button
+              type="button"
+              onClick={handleInstantPreview}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-neutral-300 px-3 py-1.5 text-xs font-medium text-neutral-700 hover:bg-neutral-50 dark:border-neutral-700 dark:text-neutral-200 dark:hover:bg-neutral-800"
+              title="Ver o app agora em uma nova aba (prévia instantânea, sem servidor)"
+            >
+              <EyeIcon className="h-4 w-4" />
+              <span className="hidden md:inline">Ver agora</span>
             </button>
 
             {/* Deploy Adapter Button */}
