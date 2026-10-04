@@ -1096,53 +1096,6 @@ func (a *agentAPI) devToken(c *gin.Context) {
 	c.JSON(http.StatusCreated, gin.H{"access_token": raw, "token": token, "user": user.Public(), "organization": organization})
 }
 
-func (a *agentAPI) samlStart(c *gin.Context) {
-	service, err := a.samlService(c.Request.Context(), c.Param("provider"))
-	if err != nil {
-		writeAgentError(c, http.StatusBadRequest, err)
-		return
-	}
-	redirect, relay, err := service.Start(c.Query("redirect_uri"))
-	if err != nil {
-		writeAgentError(c, http.StatusBadRequest, err)
-		return
-	}
-	c.JSON(http.StatusOK, gin.H{"provider": service.Provider.Name, "authorization_url": redirect, "relay_state": relay, "expires_in": 300})
-}
-
-func (a *agentAPI) samlMetadata(c *gin.Context) {
-	service, err := a.samlService(c.Request.Context(), c.Param("provider"))
-	if err != nil {
-		writeAgentError(c, http.StatusBadRequest, err)
-		return
-	}
-	service.Metadata(c.Writer, c.Request)
-}
-
-func (a *agentAPI) samlACS(c *gin.Context) {
-	service, err := a.samlService(c.Request.Context(), c.Param("provider"))
-	if err != nil {
-		writeAgentError(c, http.StatusBadRequest, err)
-		return
-	}
-	claims, err := service.ParseACS(c.Request)
-	if err != nil {
-		writeAgentError(c, http.StatusUnauthorized, err)
-		return
-	}
-	user, organization, _, err := a.auth.ProvisionOAuthUser(claims, service.Provider.Name)
-	if err != nil {
-		writeAgentError(c, http.StatusBadRequest, err)
-		return
-	}
-	localToken, session, err := a.auth.IssueToken(user.ID, organization.ID, 24*time.Hour)
-	if err != nil {
-		writeAgentError(c, http.StatusInternalServerError, err)
-		return
-	}
-	c.JSON(http.StatusOK, gin.H{"access_token": localToken, "token": session, "provider": service.Provider.Name, "organization": organization, "user": user.Public()})
-}
-
 func (a *agentAPI) metrics(c *gin.Context) {
 	if a.authRequired {
 		c.AbortWithStatus(http.StatusNotFound)
