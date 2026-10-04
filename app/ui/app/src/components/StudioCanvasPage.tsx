@@ -355,6 +355,27 @@ export function StudioCanvasPage() {
     }
   };
 
+  // Download the project as a standalone .html file (offline export).
+  const handleDownloadHTML = () => {
+    if (!project) return;
+    try {
+      const html = generateStudioHTML(project);
+      const blob = new Blob([html], { type: "text/html" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      const safeName = (project.name || "meu-app").replace(/[^a-zA-Z0-9-_]+/g, "-").toLowerCase();
+      a.href = url;
+      a.download = `${safeName || "meu-app"}.html`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 10_000);
+      setNotice({ type: "info", message: "HTML do app baixado." });
+    } catch (err: unknown) {
+      setNotice({ type: "error", message: `Não foi possível baixar o HTML: ${String(err)}` });
+    }
+  };
+
   const handleUndo = async () => {
     if (!project) return;
     try {
@@ -555,6 +576,17 @@ export function StudioCanvasPage() {
             >
               <ArrowDownTrayIcon className="h-4 w-4" />
               <span className="hidden md:inline">Exportar ZIP</span>
+            </button>
+
+            {/* Download the app as standalone HTML */}
+            <button
+              type="button"
+              onClick={handleDownloadHTML}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-neutral-300 px-3 py-1.5 text-xs font-medium text-neutral-700 hover:bg-neutral-50 dark:border-neutral-700 dark:text-neutral-200 dark:hover:bg-neutral-800"
+              title="Baixar o app como um arquivo HTML standalone"
+            >
+              <ArrowDownTrayIcon className="h-4 w-4" />
+              <span className="hidden md:inline">Baixar HTML</span>
             </button>
 
             {/* Instant client-side preview */}
