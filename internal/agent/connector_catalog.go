@@ -92,6 +92,15 @@ var quickConnects = map[string]quickConnect{
 	"typeform":        {base: "https://api.typeform.com"},
 	"vercel":          {base: "https://api.vercel.com"},
 	"whatsapp":        {base: "https://graph.facebook.com/v21.0"},
+	"openai":          {base: "https://api.openai.com/v1"},
+	"openrouter":      {base: "https://openrouter.ai/api/v1"},
+	"groq":            {base: "https://api.groq.com/openai/v1"},
+	"together":        {base: "https://api.together.xyz/v1"},
+	"mistral":         {base: "https://api.mistral.ai/v1"},
+	"cohere":          {base: "https://api.cohere.com/v1"},
+	"clickup":         {base: "https://api.clickup.com/api/v2", scheme: "raw"},
+	"vultr":           {base: "https://api.vultr.com/v2"},
+	"linode":          {base: "https://api.linode.com/v4"},
 }
 
 // quickConnectOperations is the least-privilege capability registry for API keys.
@@ -144,6 +153,15 @@ var quickConnectOperations = map[string][]ConnectorOperation{
 	"supabase":        readOnlyConnectorPaths("/projects"),
 	"typeform":        readOnlyConnectorPaths("/forms"),
 	"vercel":          readOnlyConnectorPaths("/v2/user"),
+	"openai":          readOnlyConnectorPaths("/models"),
+	"openrouter":      readOnlyConnectorPaths("/models"),
+	"groq":            readOnlyConnectorPaths("/models"),
+	"together":        readOnlyConnectorPaths("/models"),
+	"mistral":         readOnlyConnectorPaths("/models"),
+	"cohere":          readOnlyConnectorPaths("/models"),
+	"clickup":         readOnlyConnectorPaths("/user"),
+	"vultr":           readOnlyConnectorPaths("/account"),
+	"linode":          readOnlyConnectorPaths("/account"),
 }
 
 func readOnlyConnectorPaths(paths ...string) []ConnectorOperation {
@@ -290,6 +308,15 @@ func ConnectorCatalog() []ConnectorCatalogEntry {
 		{ID: "asaas", Name: "Asaas", Category: "Pagamentos", Kind: "custom_api", Description: "Cobranças por boleto, Pix e cartão no Brasil; movimentações exigem approval.", Auth: "api_key", Source: "custom_api", Status: "operator_setup_required", Scopes: []string{"payments"}},
 		{ID: "pagseguro", Name: "PagBank / PagSeguro", Category: "Pagamentos", Kind: "custom_api", Description: "Checkout, Pix e cartão; movimentações exigem approval.", Auth: "api_key", Source: "custom_api", Status: "operator_setup_required", Scopes: []string{"orders"}},
 		{ID: "pagarme", Name: "Pagar.me", Category: "Pagamentos", Kind: "custom_api", Description: "Pedidos, cobranças e recebedores; movimentações exigem approval.", Auth: "api_key", Source: "custom_api", Status: "operator_setup_required", Scopes: []string{"orders", "charges"}},
+		{ID: "openai", Name: "OpenAI", Category: "Modelos de IA", Kind: "custom_api", Description: "Modelos GPT, embeddings e áudio; conecte colando a API key.", Auth: "api_key", Source: "custom_api", Status: "operator_setup_required", Scopes: []string{"models"}},
+		{ID: "openrouter", Name: "OpenRouter", Category: "Modelos de IA", Kind: "custom_api", Description: "Gateway para centenas de modelos de múltiplos provedores.", Auth: "api_key", Source: "custom_api", Status: "operator_setup_required", Scopes: []string{"models"}},
+		{ID: "groq", Name: "Groq", Category: "Modelos de IA", Kind: "custom_api", Description: "Inferência LLM de baixa latência (API compatível com OpenAI).", Auth: "api_key", Source: "custom_api", Status: "operator_setup_required", Scopes: []string{"models"}},
+		{ID: "together", Name: "Together AI", Category: "Modelos de IA", Kind: "custom_api", Description: "Centenas de modelos open-weights hospedados via API.", Auth: "api_key", Source: "custom_api", Status: "operator_setup_required", Scopes: []string{"models"}},
+		{ID: "mistral", Name: "Mistral AI", Category: "Modelos de IA", Kind: "custom_api", Description: "Modelos Mistral/Codestral via API; conecte colando a API key.", Auth: "api_key", Source: "custom_api", Status: "operator_setup_required", Scopes: []string{"models"}},
+		{ID: "cohere", Name: "Cohere", Category: "Modelos de IA", Kind: "custom_api", Description: "Modelos de geração, embeddings e rerank via API.", Auth: "api_key", Source: "custom_api", Status: "operator_setup_required", Scopes: []string{"models"}},
+		{ID: "clickup", Name: "ClickUp", Category: "Produtividade", Kind: "custom_api", Description: "Tarefas, listas e espaços; leitura por chave, mutações exigem approval.", Auth: "api_key", Source: "custom_api", Status: "operator_setup_required", Scopes: []string{"tasks", "spaces"}},
+		{ID: "vultr", Name: "Vultr", Category: "Infraestrutura", Kind: "custom_api", Description: "Instâncias, redes e billing da conta Vultr.", Auth: "api_key", Source: "custom_api", Status: "operator_setup_required", Scopes: []string{"instances", "account"}},
+		{ID: "linode", Name: "Linode / Akamai", Category: "Infraestrutura", Kind: "custom_api", Description: "Linodes, volumes e billing via API da Akamai Connected Cloud.", Auth: "api_key", Source: "custom_api", Status: "operator_setup_required", Scopes: []string{"linodes", "account"}},
 	}
 	for i := range entries {
 		if qc, ok := quickConnects[entries[i].ID]; ok && len(QuickConnectOperations(entries[i].ID)) > 0 {
