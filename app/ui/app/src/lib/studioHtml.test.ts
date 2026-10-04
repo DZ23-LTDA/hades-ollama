@@ -67,6 +67,33 @@ describe("generateStudioHTML", () => {
     expect(html).toContain('<hr class="c-divider" />');
   });
 
+  it("renders the richer component types (pricing, testimonial, faq, footer)", () => {
+    const html = generateStudioHTML(
+      project([
+        { id: "p", type: "pricing", props: { plan: "Pro", price: "R$ 49", features: "A, B", cta: "Assinar" } },
+        { id: "t", type: "testimonial", props: { quote: "Ótimo", author: "Ana" } },
+        { id: "q", type: "faq", props: { question: "Como?", answer: "Assim." } },
+        { id: "ft", type: "footer", props: { text: "© 2026", links: "Sobre, Contato" } },
+      ]),
+    );
+    expect(html).toContain('<div class="c-pricing">');
+    expect(html).toContain("R$ 49");
+    expect(html).toContain("<li>A</li>");
+    expect(html).toContain('<figure class="c-testimonial">');
+    expect(html).toContain("Ana");
+    expect(html).toContain('<details class="c-faq"><summary>Como?</summary>');
+    expect(html).toContain('<footer class="c-footer">');
+    expect(html).toContain("<span>Sobre</span>");
+  });
+
+  it("escapes user content in the richer components (XSS-safe)", () => {
+    const html = generateStudioHTML(
+      project([{ id: "t", type: "testimonial", props: { quote: "<img src=x onerror=alert(1)>", author: "x" } }]),
+    );
+    expect(html).not.toContain("<img src=x onerror=alert(1)>");
+    expect(html).toContain("&lt;img");
+  });
+
   it("blocks dangerous link hrefs (javascript:)", () => {
     const html = generateStudioHTML(
       project([{ id: "l", type: "link", props: { text: "x", href: "javascript:alert(1)" } }]),

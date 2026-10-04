@@ -156,6 +156,42 @@ const COMPONENT_TEMPLATES: Array<{
     width: 600,
     height: 20,
   },
+  {
+    type: "pricing",
+    label: "Plano / Preço",
+    icon: "$",
+    defaultProps: { plan: "Plano Pro", price: "R$ 49/mês", features: "Tudo do Básico, Suporte prioritário, Sem limites", cta: "Assinar" },
+    defaultStyle: { backgroundColor: "#F9FAFB", borderColor: "#E5E7EB", borderRadius: "12px" },
+    width: 280,
+    height: 260,
+  },
+  {
+    type: "testimonial",
+    label: "Depoimento",
+    icon: "“",
+    defaultProps: { quote: "Mudou completamente o nosso fluxo de trabalho.", author: "Cliente satisfeito" },
+    defaultStyle: {},
+    width: 420,
+    height: 110,
+  },
+  {
+    type: "faq",
+    label: "FAQ (pergunta)",
+    icon: "?",
+    defaultProps: { question: "Pergunta frequente?", answer: "Resposta clara e objetiva para a dúvida." },
+    defaultStyle: { borderColor: "#E5E7EB", borderRadius: "8px" },
+    width: 480,
+    height: 90,
+  },
+  {
+    type: "footer",
+    label: "Rodapé",
+    icon: "_",
+    defaultProps: { text: "© 2026 Minha Empresa", links: "Sobre, Contato, Privacidade" },
+    defaultStyle: {},
+    width: 600,
+    height: 60,
+  },
 ];
 
 // Provedores de publicação: cada um exige a credencial correta no ambiente do
@@ -938,6 +974,40 @@ export function StudioCanvasPage() {
                             )}
                             {comp.type === "divider" && (
                               <hr className="border-neutral-200 dark:border-neutral-800" />
+                            )}
+                            {comp.type === "pricing" && (
+                              <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-4 text-center dark:border-neutral-700 dark:bg-neutral-900">
+                                <div className="text-sm font-bold text-neutral-900 dark:text-white">{comp.props?.plan || "Plano Pro"}</div>
+                                <div className="my-1 text-2xl font-extrabold text-neutral-900 dark:text-white">{comp.props?.price || "R$ 49/mês"}</div>
+                                <ul className="space-y-1 text-xs text-neutral-600 dark:text-neutral-400">
+                                  {(comp.props?.features || "Recurso 1, Recurso 2").split(",").map((f, i) => (
+                                    <li key={i}>{f.trim()}</li>
+                                  ))}
+                                </ul>
+                                <span className="mt-3 inline-flex rounded-lg bg-neutral-900 px-3 py-1.5 text-xs font-semibold text-white dark:bg-white dark:text-neutral-900">{comp.props?.cta || "Assinar"}</span>
+                              </div>
+                            )}
+                            {comp.type === "testimonial" && (
+                              <figure className="m-0 border-l-[3px] border-neutral-900 pl-4 dark:border-neutral-100">
+                                <blockquote className="m-0 text-sm italic text-neutral-800 dark:text-neutral-100">{comp.props?.quote || "Mudou completamente o nosso fluxo de trabalho."}</blockquote>
+                                <figcaption className="mt-2 text-xs font-semibold text-neutral-500">{comp.props?.author || "Cliente satisfeito"}</figcaption>
+                              </figure>
+                            )}
+                            {comp.type === "faq" && (
+                              <details className="rounded-lg border border-neutral-200 p-3 dark:border-neutral-700">
+                                <summary className="cursor-pointer text-sm font-semibold text-neutral-800 dark:text-neutral-100">{comp.props?.question || "Pergunta frequente?"}</summary>
+                                <p className="mt-2 text-xs text-neutral-600 dark:text-neutral-400">{comp.props?.answer || "Resposta clara e objetiva para a dúvida."}</p>
+                              </details>
+                            )}
+                            {comp.type === "footer" && (
+                              <div className="flex items-center justify-between border-t border-neutral-200 pt-3 text-xs text-neutral-500 dark:border-neutral-800">
+                                <span>{comp.props?.text || "© 2026 Minha Empresa"}</span>
+                                <div className="flex gap-3">
+                                  {(comp.props?.links || "Sobre, Contato").split(",").map((l, i) => (
+                                    <span key={i}>{l.trim()}</span>
+                                  ))}
+                                </div>
+                              </div>
                             )}
                           </div>
                         );

@@ -65,6 +65,24 @@ function renderComponent(comp: VisualComponent): string {
     }
     case "divider":
       return `<hr class="c-divider" />`;
+    case "pricing": {
+      const features = (comp.props?.features || "Recurso 1, Recurso 2, Recurso 3")
+        .split(",")
+        .map((f) => `<li>${escapeHTML(f.trim())}</li>`)
+        .join("");
+      return `<div class="c-pricing"><div class="c-pricing-name">${prop(comp, "plan", "Plano Pro")}</div><div class="c-pricing-price">${prop(comp, "price", "R$ 49/mês")}</div><ul class="c-pricing-features">${features}</ul><button type="button" class="c-button">${prop(comp, "cta", "Assinar")}</button></div>`;
+    }
+    case "testimonial":
+      return `<figure class="c-testimonial"><blockquote>${prop(comp, "quote", "Mudou completamente o nosso fluxo de trabalho.")}</blockquote><figcaption>${prop(comp, "author", "Cliente satisfeito")}</figcaption></figure>`;
+    case "faq":
+      return `<details class="c-faq"><summary>${prop(comp, "question", "Pergunta frequente?")}</summary><p>${prop(comp, "answer", "Resposta clara e objetiva para a dúvida.")}</p></details>`;
+    case "footer": {
+      const links = (comp.props?.links || "Sobre, Contato, Privacidade")
+        .split(",")
+        .map((l) => `<span>${escapeHTML(l.trim())}</span>`)
+        .join("");
+      return `<footer class="c-footer"><span>${prop(comp, "text", "© 2026 Minha Empresa")}</span><div class="c-footer-links">${links}</div></footer>`;
+    }
     default:
       // Unknown component: render its text prop if any, never raw markup.
       return comp.props?.text ? `<div class="c-unknown">${escapeHTML(comp.props.text)}</div>` : "";
@@ -99,7 +117,19 @@ const BASE_CSS = `
   .c-link { color: #2563eb; font-weight: 600; text-decoration: underline; }
   .c-list { padding-left: 20px; color: #374151; display: flex; flex-direction: column; gap: 4px; }
   .c-divider { border: 0; border-top: 1px solid #e5e7eb; margin: 8px 0; }
-  @media (prefers-color-scheme: dark) { body { background: #0a0a0a; color: #f3f4f6; } .c-paragraph { color: #d1d5db; } .c-card { background: #171717; border-color: #262626; } .c-metric { background: #171717; } }
+  .c-pricing { border: 1px solid #e5e7eb; border-radius: 12px; padding: 20px; text-align: center; background: #f9fafb; max-width: 280px; }
+  .c-pricing-name { font-weight: 700; font-size: 1.05rem; }
+  .c-pricing-price { font-size: 1.8rem; font-weight: 800; margin: 6px 0 12px; }
+  .c-pricing-features { list-style: none; padding: 0; margin: 0 0 14px; display: flex; flex-direction: column; gap: 6px; font-size: .85rem; color: #4b5563; }
+  .c-testimonial { margin: 0; border-left: 3px solid #111827; padding: 6px 0 6px 16px; }
+  .c-testimonial blockquote { margin: 0; font-size: 1rem; font-style: italic; }
+  .c-testimonial figcaption { margin-top: 8px; font-size: .8rem; color: #6b7280; font-weight: 600; }
+  .c-faq { border: 1px solid #e5e7eb; border-radius: 8px; padding: 10px 14px; }
+  .c-faq summary { cursor: pointer; font-weight: 600; font-size: .9rem; }
+  .c-faq p { margin: 8px 0 0; font-size: .85rem; color: #4b5563; }
+  .c-footer { display: flex; align-items: center; justify-content: space-between; border-top: 1px solid #e5e7eb; padding-top: 14px; margin-top: 8px; font-size: .8rem; color: #6b7280; }
+  .c-footer-links { display: flex; gap: 14px; }
+  @media (prefers-color-scheme: dark) { body { background: #0a0a0a; color: #f3f4f6; } .c-paragraph { color: #d1d5db; } .c-card { background: #171717; border-color: #262626; } .c-metric { background: #171717; } .c-pricing { background: #171717; border-color: #262626; } .c-testimonial { border-left-color: #f3f4f6; } .c-faq { border-color: #262626; } }
 `;
 
 export function generateStudioHTML(project: BuilderProject): string {
