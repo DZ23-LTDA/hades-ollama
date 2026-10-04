@@ -3,6 +3,7 @@ import { AppSidebar } from "@/components/AppSidebar";
 import { SidebarLayout } from "@/components/layout/layout";
 import { missionStateLabel } from "@/lib/labels";
 import { generateStudioHTML } from "@/lib/studioHtml";
+import { reorderById } from "@/lib/studioReorder";
 import {
   type BuilderProject,
   type VisualComponent,
@@ -171,6 +172,7 @@ export function StudioCanvasPage() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"canvas" | "preview">("canvas");
   const [selectedCompId, setSelectedCompId] = useState<string | null>(null);
+  const [dragId, setDragId] = useState<string | null>(null);
   const [notice, setNotice] = useState<{ type: "success" | "error" | "info"; message: string; checksum?: string } | null>(null);
   const [deployModalOpen, setDeployModalOpen] = useState(false);
   const [deployStatus, setDeployStatus] = useState<{ status: string; message: string } | null>(null);
@@ -298,6 +300,18 @@ export function StudioCanvasPage() {
   };
 
   // Move component up/down in the stack
+  // Drag-and-drop reordering on the canvas: the reorder itself is a pure,
+  // unit-tested function; here we only track the dragged id and persist.
+  const handleReorderDrop = (targetId: string) => {
+    if (!project?.components || !dragId || dragId === targetId) {
+      setDragId(null);
+      return;
+    }
+    const next = reorderById(project.components, dragId, targetId);
+    setDragId(null);
+    syncComponents(next);
+  };
+
   const handleMoveComponent = (id: string, direction: "up" | "down") => {
     if (!project || !project.components) return;
     const comps = [...project.components];
@@ -776,7 +790,22 @@ export function StudioCanvasPage() {
                           <div
                             key={comp.id}
                             onClick={() => setSelectedCompId(comp.id)}
-                            className={`group relative rounded-xl border p-4 transition cursor-pointer ${
+                            draggable
+                            onDragStart={(e) => {
+                              setDragId(comp.id);
+                              e.dataTransfer.effectAllowed = "move";
+                            }}
+                            onDragOver={(e) => {
+                              e.preventDefault();
+                              e.dataTransfer.dropEffect = "move";
+                            }}
+                            onDrop={(e) => {
+                              e.preventDefault();
+                              handleReorderDrop(comp.id);
+                            }}
+                            onDragEnd={() => setDragId(null)}
+                            title="Arraste para reordenar"
+                            className={`group relative rounded-xl border p-4 transition cursor-pointer ${dragId === comp.id ? "opacity-50 ring-2 ring-violet-400" : ""} ${
                               isSelected
                                 ? "border-neutral-900 bg-neutral-50/80 shadow-md ring-2 ring-neutral-900/10 dark:border-white dark:bg-neutral-800/80 dark:ring-white/10"
                                 : "border-neutral-200/80 bg-white hover:border-neutral-300 dark:border-neutral-800 dark:bg-neutral-900"
