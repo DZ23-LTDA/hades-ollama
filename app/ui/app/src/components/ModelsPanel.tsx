@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useModels } from "@/hooks/useModels";
 import { useModelPull } from "@/hooks/useModelPull";
 import { useSettings } from "@/hooks/useSettings";
+import { isInstalledLocal } from "@/hooks/useSelectedModel";
 import Downloading from "@/components/Downloading";
 import { RECOMMENDED_FIRST_MODEL } from "@/lib/firstModel";
 
@@ -23,7 +24,12 @@ export function ModelsPanel() {
   const [newModel, setNewModel] = useState("");
   const name = (newModel || RECOMMENDED_FIRST_MODEL).trim();
 
-  const downloaded = models.filter((m) => !!m.digest && !m.isCloud());
+  // Only models actually installed on this computer belong under "Modelos
+  // locais". Provider/router models (alibaba/, anthropic/, auto/… from the
+  // multi-provider config) carry a digest but are NOT local, so they are
+  // excluded here — they remain available in the Agentic Console and the chat
+  // model picker.
+  const downloaded = models.filter(isInstalledLocal);
   const active = settings.selectedModel;
 
   const download = async () => {

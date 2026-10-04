@@ -505,13 +505,13 @@ export function AppNavigation({ current }: { current: AppSection }) {
           )}
 
           {/* Barra de Perfil no Rodapé */}
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-2">
             <button
               type="button"
               onClick={() => setUserMenuOpen(!userMenuOpen)}
-              className="flex items-center gap-2 rounded-xl p-1 text-left transition-colors hover:bg-neutral-200/60 dark:hover:bg-neutral-800"
+              className="flex min-w-0 flex-1 items-center gap-2 rounded-xl p-1 text-left transition-colors hover:bg-neutral-200/60 dark:hover:bg-neutral-800"
             >
-              <div className="relative flex h-7 w-7 items-center justify-center rounded-full bg-emerald-600 font-bold text-white text-xs">
+              <div className="relative flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-emerald-600 font-bold text-white text-xs">
                 {userProfile.name.charAt(0).toUpperCase()}
                 <span className="absolute bottom-0 right-0 h-2 w-2 rounded-full bg-emerald-400 ring-2 ring-white dark:ring-neutral-900" />
               </div>
@@ -519,7 +519,7 @@ export function AppNavigation({ current }: { current: AppSection }) {
                 {userProfile.name}
               </span>
             </button>
-            <div className="flex items-center gap-1 text-neutral-400">
+            <div className="flex shrink-0 items-center gap-1 text-neutral-400">
               <button
                 type="button"
                 onClick={() => setNotificationsOpen((open) => !open)}

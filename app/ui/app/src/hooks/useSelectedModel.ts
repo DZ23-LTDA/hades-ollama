@@ -31,8 +31,10 @@ export function isChatModel(model: Model): boolean {
 }
 
 // isInstalledLocal is true for a local model whose weights are already on disk
-// (has a digest), i.e. something the chat can run immediately offline.
-function isInstalledLocal(model: Model): boolean {
+// (has a digest), i.e. something the chat can run immediately offline. Provider
+// and router models (kind "remote"/"router") are excluded even though they carry
+// a digest, so "Modelos locais" never lists them.
+export function isInstalledLocal(model: Model): boolean {
   return (
     isChatModel(model) &&
     !model.isCloud?.() &&
