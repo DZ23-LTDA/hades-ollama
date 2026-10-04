@@ -603,8 +603,20 @@ func (s *AuthStore) CreateOAuthState(provider, redirectURI, codeVerifier, userID
 }
 
 func (s *AuthStore) CreateOAuthStateWithNonce(provider, redirectURI, codeVerifier, nonce, userID string, ttl time.Duration) (string, OAuthState, error) {
+	return s.createOAuthState(provider, redirectURI, codeVerifier, nonce, userID, ttl, false)
+}
+
+// CreateOAuthStateLoopback is like CreateOAuthStateWithNonce but accepts a
+// loopback HTTP redirect_uri (for desktop OAuth, where the callback lands on a
+// local 127.0.0.1 port). The security binding is unchanged: the exact redirect
+// URI is stored and must match at the callback.
+func (s *AuthStore) CreateOAuthStateLoopback(provider, redirectURI, codeVerifier, nonce, userID string, ttl time.Duration, allowLoopbackHTTP bool) (string, OAuthState, error) {
+	return s.createOAuthState(provider, redirectURI, codeVerifier, nonce, userID, ttl, allowLoopbackHTTP)
+}
+
+func (s *AuthStore) createOAuthState(provider, redirectURI, codeVerifier, nonce, userID string, ttl time.Duration, allowLoopbackHTTP bool) (string, OAuthState, error) {
 	provider = strings.TrimSpace(provider)
-	canonicalRedirectURI, err := validateOAuthRedirectSyntax(redirectURI, false)
+	canonicalRedirectURI, err := validateOAuthRedirectSyntax(redirectURI, allowLoopbackHTTP)
 	if err != nil {
 		return "", OAuthState{}, err
 	}

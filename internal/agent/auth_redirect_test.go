@@ -1,6 +1,30 @@
 package agent
 
-import "testing"
+import (
+	"testing"
+	"time"
+)
+
+// TestCreateOAuthStateLoopbackAcceptsLoopback locks in the fix for the desktop
+// OAuth flow: creating the state must accept a loopback HTTP redirect_uri when
+// loopback is allowed (the default CreateOAuthStateWithNonce stays HTTPS-only).
+func TestCreateOAuthStateLoopbackAcceptsLoopback(t *testing.T) {
+	store, err := NewAuthStore("")
+	if err != nil {
+		t.Fatal(err)
+	}
+	const verifier = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWX012345678"
+	const loopback = "http://127.0.0.1:54848/api/agent/v1/connectors/gmail/oauth/callback"
+
+	// Loopback allowed → accepted.
+	if _, _, err := store.CreateOAuthStateLoopback("google", loopback, verifier, "n", "", time.Minute, true); err != nil {
+		t.Fatalf("loopback redirect should be accepted when allowed: %v", err)
+	}
+	// Loopback NOT allowed (default behavior) → rejected.
+	if _, _, err := store.CreateOAuthStateWithNonce("google", loopback, verifier, "n", "", time.Minute); err == nil {
+		t.Fatal("loopback redirect must be rejected by the default (HTTPS-only) state creation")
+	}
+}
 
 // TestNormalizeRedirectURILoopback covers the desktop loopback redirect rule:
 // a loopback callback URI is accepted without an allowlist when loopback

@@ -1675,7 +1675,7 @@ func (a *agentAPI) connectorOAuthStart(c *gin.Context) {
 		}
 	}
 	nonce := fmt.Sprintf("%x", sha256.Sum256([]byte(provider.Name+"|"+connectorID+"|"+redirectURI+"|"+verifier+"|"+time.Now().UTC().String())))
-	state, _, err := a.auth.CreateOAuthStateWithNonce(provider.Name, redirectURI, verifier, nonce, userID, 5*time.Minute)
+	state, _, err := a.auth.CreateOAuthStateLoopback(provider.Name, redirectURI, verifier, nonce, userID, 5*time.Minute, provider.AllowLoopbackRedirect)
 	if err != nil {
 		writeAgentError(c, http.StatusBadRequest, err)
 		return
