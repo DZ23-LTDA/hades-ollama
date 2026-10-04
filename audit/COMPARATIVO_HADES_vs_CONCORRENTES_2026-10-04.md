@@ -21,10 +21,10 @@ Legenda: ✅ já funciona e verificado · 🟡 existe, falta prova/ampliar · �
 |---|---|---|---|
 | **Chat local + cloud** | Ollama, LM Studio, ChatGPT | ✅ chat local/cloud, pt-BR, instruções personalizadas, web_search | 🟡 multimodal (imagem) só em alguns modelos |
 | **Agente de código** | Devin, OpenHands, Aider, SWE-agent, Cursor | 🟡 missões agênticas, git worktree, merge com approval-por-diff, runner de testes | ⛔ issue→PR fim-a-fim, review por hunk, E2E longo provado |
-| **App builder** | v0, Bolt, Lovable, Replit, Builder.io, FlutterFlow | 🟡 Studio (canvas→deploy real via deployBuilder) | ⛔ preview ao vivo embarcado, drag-and-drop no canvas, templates ricos |
+| **App builder** | v0, Bolt, Lovable, Replit, Builder.io, FlutterFlow | 🟡 Studio: 12 componentes, deploy real (deployBuilder), **preview instantâneo + export HTML offline** ✅ (verificado) | ⛔ drag-and-drop no canvas, preview ao vivo embarcado do backend, templates ricos |
 | **Automação/workflow** | n8n, dify, Make | 🟡 agendamentos, webhooks (com URL+segredo), DLQ, retry | ⛔ editor visual de fluxo (nós), mais gatilhos |
 | **Roteamento LLM** | litellm, omniroute, HarnessRouter, 9router | ✅ roteador multi-provedor (DZ23 Router), harness metadata | 🟡 harness Claude/Codex só macOS (falta ponte Windows) |
-| **Conectores/integrações** | n8n (~400), Zapier, dify | 🟡 catálogo 113; 33 por chave de API ✅; OAuth real p/ Google/MS/GitHub/Slack/Dropbox/Canva ✅ (start verificado) | ⛔ ampliar OAuth (Notion/HubSpot/Zoom/Salesforce/Linear…), teste live E2E |
+| **Conectores/integrações** | n8n (~400), Zapier, dify | 🟡 catálogo 113; 33 por chave de API ✅; **OAuth real p/ 13 provedores** (Google/MS/GitHub/Slack/Dropbox/Canva/Meta/LinkedIn/Zoom/Pinterest/X/Salesforce/Zoho) ✅ (13/13 URLs verificadas + teste de regressão) | ⛔ teste live E2E (1 clique do usuário), mais serviços de nicho |
 | **Browser/computer use** | OpenHands, Devin, Manus | 🟡 Browser Operator sob guards (precisa Python/Playwright) | ⛔ setup automático do navegador, computer-use nos 3 SOs |
 | **Deep research** | Perplexity | 🟡 pesquisa + citações | ⛔ síntese multi-fonte com proveniência exportável |
 | **Canvas/flow** | tldraw, xyflow | 🟡 Studio canvas (pilha) | ⛔ canvas livre com arraste/zoom (estilo tldraw) |
@@ -37,8 +37,11 @@ Legenda: ✅ já funciona e verificado · 🟡 existe, falta prova/ampliar · �
 ## Onde o Hades JÁ está à frente da maioria (verificado nesta sessão)
 - **Honestidade da UI**: 73 defeitos de "promessa falsa" corrigidos — promete = cumpre.
 - **Excluir tudo que cria** (inclui tarefas/missões) — vários concorrentes não deixam.
-- **OAuth local real** (campo de credencial no app + fluxo de login) num app desktop
-  local-first — raro; a maioria é SaaS com app OAuth pré-registrado deles.
+- **OAuth local real com 13 provedores** (campo de credencial no app + fluxo de login)
+  num app desktop local-first — raro; a maioria é SaaS com app OAuth pré-registrado deles.
+  13/13 geram a URL de login correta (verificado) + teste de regressão.
+- **Studio preview/export instantâneo offline** (Ver agora + Baixar HTML) — v0/Bolt fazem,
+  mas Hades faz local e sem servidor; núcleo com testes.
 - **Segurança**: 13 findings corrigidos + approval vinculado ao diff.
 
 ## Roadmap priorizado para LIDERAR (próximas capacidades, por impacto)
