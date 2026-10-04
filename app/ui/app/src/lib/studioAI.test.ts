@@ -1,5 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { parseGeneratedComponents, buildGenerationPrompt } from "./studioAI";
+import {
+  parseGeneratedComponents,
+  buildGenerationPrompt,
+  pickLocalFirstModel,
+  PRIMARY_TEXT_PROP,
+  KNOWN_STUDIO_TYPES,
+} from "./studioAI";
 
 describe("buildGenerationPrompt", () => {
   it("includes the allowed types and the user description", () => {
@@ -67,5 +73,36 @@ describe("parseGeneratedComponents", () => {
     const long = "x".repeat(5000);
     const out = parseGeneratedComponents(JSON.stringify({ components: [{ type: "paragraph", props: { text: long } }] }));
     expect(out[0].props!.text.length).toBe(2000);
+  });
+});
+
+describe("pickLocalFirstModel", () => {
+  it("prefers a non-cloud (local) model over cloud ones", () => {
+    expect(pickLocalFirstModel(["glm-5:cloud", "qwen2.5-coder:7b", "kimi:cloud"])).toBe("qwen2.5-coder:7b");
+  });
+  it("falls back to the first model when all are cloud", () => {
+    expect(pickLocalFirstModel(["a:cloud", "b:cloud"])).toBe("a:cloud");
+  });
+  it("returns undefined for an empty list", () => {
+    expect(pickLocalFirstModel([])).toBeUndefined();
+  });
+});
+
+describe("PRIMARY_TEXT_PROP", () => {
+  it("only references known Studio component types", () => {
+    const known = new Set<string>(KNOWN_STUDIO_TYPES);
+    for (const type of Object.keys(PRIMARY_TEXT_PROP)) {
+      expect(known.has(type)).toBe(true);
+    }
+  });
+  it("covers every known type except divider (which has no inline text)", () => {
+    const editable = new Set(Object.keys(PRIMARY_TEXT_PROP));
+    for (const type of KNOWN_STUDIO_TYPES) {
+      if (type === "divider") {
+        expect(editable.has(type)).toBe(false);
+      } else {
+        expect(editable.has(type)).toBe(true);
+      }
+    }
   });
 });

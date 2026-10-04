@@ -4,7 +4,7 @@ import { SidebarLayout } from "@/components/layout/layout";
 import { missionStateLabel } from "@/lib/labels";
 import { generateStudioHTML } from "@/lib/studioHtml";
 import { reorderById } from "@/lib/studioReorder";
-import { buildGenerationPrompt, parseGeneratedComponents } from "@/lib/studioAI";
+import { buildGenerationPrompt, parseGeneratedComponents, pickLocalFirstModel, PRIMARY_TEXT_PROP } from "@/lib/studioAI";
 import { API_BASE } from "@/lib/config";
 import {
   type BuilderProject,
@@ -205,27 +205,6 @@ const DEPLOY_PROVIDERS: Array<{ label: string; slug: string; credential: string 
   { label: "SSH / Servidor Próprio", slug: "ssh", credential: "chave SSH e host (SSH_PRIVATE_KEY, SSH_HOST, SSH_USER)" },
 ];
 
-// The main editable text prop per component type — used for double-click
-// inline editing on the canvas. Types absent here (e.g. divider) are not edited
-// inline; their props are still editable in the side panel.
-const PRIMARY_TEXT_PROP: Record<string, string> = {
-  heading: "text",
-  paragraph: "text",
-  button: "label",
-  card: "title",
-  metric: "value",
-  navbar: "brand",
-  hero: "title",
-  image: "alt",
-  input: "label",
-  link: "text",
-  list: "items",
-  pricing: "plan",
-  testimonial: "quote",
-  faq: "question",
-  footer: "text",
-};
-
 export function StudioCanvasPage() {
   const [project, setProject] = useState<BuilderProject | null>(null);
   const [loading, setLoading] = useState(true);
@@ -353,7 +332,7 @@ export function StudioCanvasPage() {
         .map((m: { model?: string; name?: string }) => m.model || m.name)
         .filter((n: unknown): n is string => typeof n === "string" && n !== "");
       // Local-first: prefer a model that runs on the user's machine over a cloud one.
-      const model = names.find((n) => !n.endsWith(":cloud")) || names[0];
+      const model = pickLocalFirstModel(names);
       if (!model) {
         setNotice({ type: "error", message: "Nenhum modelo disponível. Baixe um modelo em Configurações primeiro." });
         return;

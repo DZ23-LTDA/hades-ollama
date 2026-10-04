@@ -30,6 +30,35 @@ const KNOWN = new Set<string>(KNOWN_STUDIO_TYPES);
 const MAX_COMPONENTS = 40;
 const MAX_PROP_LEN = 2000;
 
+// The main editable text prop per component type, used by the Studio canvas for
+// double-click inline editing. A subset of KNOWN_STUDIO_TYPES (divider has no
+// text to edit inline). Co-located here so it stays consistent with the type
+// list and is unit-testable.
+export const PRIMARY_TEXT_PROP: Record<string, string> = {
+  heading: "text",
+  paragraph: "text",
+  button: "label",
+  card: "title",
+  metric: "value",
+  navbar: "brand",
+  hero: "title",
+  image: "alt",
+  input: "label",
+  link: "text",
+  list: "items",
+  pricing: "plan",
+  testimonial: "quote",
+  faq: "question",
+  footer: "text",
+};
+
+// pickLocalFirstModel chooses which model to use for Studio AI generation,
+// preferring a model that runs locally (not a ":cloud" one) to honor Hades's
+// local-first positioning, falling back to the first available model.
+export function pickLocalFirstModel(names: string[]): string | undefined {
+  return names.find((n) => typeof n === "string" && n !== "" && !n.endsWith(":cloud")) ?? names.find((n) => typeof n === "string" && n !== "");
+}
+
 export function buildGenerationPrompt(description: string): string {
   return [
     "Você é um gerador de layout. A partir da descrição do usuário, responda APENAS",
