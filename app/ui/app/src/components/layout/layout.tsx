@@ -7,6 +7,25 @@ import { useEffect, useState } from "react";
 // default and preserve the operator's choice only for the current session.
 let sessionSidebarOpen = true;
 
+// The sidebar width is resizable via a draggable divider and is remembered
+// across sessions, so the operator can fix it where they want.
+const SIDEBAR_MIN_WIDTH = 176;
+const SIDEBAR_MAX_WIDTH = 440;
+const SIDEBAR_DEFAULT_WIDTH = 208;
+
+function getStoredSidebarWidth(): number {
+  try {
+    const raw = window.localStorage.getItem("hades_sidebar_width");
+    const value = raw ? parseInt(raw, 10) : NaN;
+    if (!Number.isNaN(value) && value >= SIDEBAR_MIN_WIDTH && value <= SIDEBAR_MAX_WIDTH) {
+      return value;
+    }
+  } catch {
+    // Restricted storage: fall back to the default width.
+  }
+  return SIDEBAR_DEFAULT_WIDTH;
+}
+
 export function SidebarLayout({
   sidebar,
   title,
@@ -19,7 +38,43 @@ export function SidebarLayout({
     () => typeof window !== "undefined" && window.innerWidth < 768,
   );
   const [sidebarOpen, setSidebarOpen] = useState(() => (isMobile ? false : sessionSidebarOpen));
+  const [sidebarWidth, setSidebarWidth] = useState(getStoredSidebarWidth);
+  const [resizing, setResizing] = useState(false);
   const isWindows = isWindowsPlatform();
+
+  // Drag-to-resize: while the divider is held, track the pointer and clamp the
+  // width; release ends the drag. The width is persisted below so it sticks.
+  useEffect(() => {
+    if (!resizing) return;
+    const onMove = (event: MouseEvent) => {
+      const next = Math.min(
+        SIDEBAR_MAX_WIDTH,
+        Math.max(SIDEBAR_MIN_WIDTH, Math.round(event.clientX)),
+      );
+      setSidebarWidth(next);
+    };
+    const onUp = () => setResizing(false);
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+    const previousCursor = document.body.style.cursor;
+    const previousSelect = document.body.style.userSelect;
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+    return () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+      document.body.style.cursor = previousCursor;
+      document.body.style.userSelect = previousSelect;
+    };
+  }, [resizing]);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem("hades_sidebar_width", String(sidebarWidth));
+    } catch {
+      // Ignore storage failures (private mode / restricted webview).
+    }
+  }, [sidebarWidth]);
 
   useEffect(() => {
     const updateViewport = () => {
@@ -100,11 +155,12 @@ export function SidebarLayout({
         />
       )}
       <div
-        className={`flex max-h-screen flex-col overflow-hidden border-neutral-200 bg-neutral-50 transition-[width,transform] duration-300 dark:border-neutral-800 dark:bg-neutral-950/40 ${
+        style={!isMobile && sidebarOpen ? { width: sidebarWidth } : undefined}
+        className={`flex max-h-screen flex-col overflow-hidden border-neutral-200 bg-neutral-50 ${resizing ? "" : "transition-[width,transform] duration-300"} dark:border-neutral-800 dark:bg-neutral-950/40 ${
           isMobile
             ? `fixed inset-y-0 left-0 z-40 w-72 border-r shadow-xl ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`
             : sidebarOpen
-              ? "relative w-48 border-r"
+              ? "relative border-r"
               : "relative w-0"
         }`}
       >
@@ -115,6 +171,22 @@ export function SidebarLayout({
         ></div>
         {sidebar}
       </div>
+      {!isMobile && sidebarOpen && (
+        <div
+          role="separator"
+          aria-orientation="vertical"
+          aria-label="Redimensionar a barra lateral"
+          title="Arraste para redimensionar · duplo clique para restaurar"
+          onMouseDown={(event) => {
+            event.preventDefault();
+            setResizing(true);
+          }}
+          onDoubleClick={() => setSidebarWidth(SIDEBAR_DEFAULT_WIDTH)}
+          className={`relative z-20 w-1 shrink-0 cursor-col-resize transition-colors hover:bg-violet-400 dark:hover:bg-violet-500 ${
+            resizing ? "bg-violet-400 dark:bg-violet-500" : "bg-neutral-200 dark:bg-neutral-800"
+          }`}
+        />
+      )}
       <main className="flex min-w-0 flex-1 flex-col transition-all duration-300">
         <div
           className={`h-13 z-10 flex w-full flex-none items-center bg-white dark:bg-neutral-900 ${title ? "" : isWindows ? "xl:hidden" : "xl:fixed xl:bg-transparent xl:dark:bg-transparent"}`}

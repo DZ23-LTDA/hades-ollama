@@ -7,6 +7,7 @@ import { Link } from "@/components/ui/link";
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { ChatsResponse } from "@/gotypes";
 import { AppNavigation } from "@/components/AppSidebar";
+import { PencilSquareIcon, TrashIcon } from "@heroicons/react/24/outline";
 
 // there's a hidden debug feature to copy a chat's data to the clipboard by
 // holding shift and clicking this many times within this many seconds
@@ -263,7 +264,7 @@ export function ChatSidebar({ currentChatId }: ChatSidebarProps) {
                 {group.chats.map((chat) => (
                   <div
                     key={chat.id}
-                    className={`allow-context-menu flex items-center relative text-sm text-neutral-800 dark:text-neutral-400 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 ${
+                    className={`allow-context-menu group/chat flex items-center relative text-sm text-neutral-800 dark:text-neutral-400 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 ${
                       chat.id === currentChatId
                         ? "bg-neutral-100 text-black dark:bg-neutral-800"
                         : ""
@@ -327,6 +328,41 @@ export function ChatSidebar({ currentChatId }: ChatSidebarProps) {
                           </span>
                         )}
                       </Link>
+                    )}
+                    {editingChatId !== chat.id && (
+                      <div className="absolute right-1 top-1/2 flex -translate-y-1/2 items-center gap-0.5 rounded-md bg-neutral-100/95 opacity-0 transition-opacity focus-within:opacity-100 group-hover/chat:opacity-100 dark:bg-neutral-800/95">
+                        <button
+                          type="button"
+                          aria-label="Renomear conversa"
+                          title="Renomear"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            startEditing(
+                              chat.id,
+                              chat.title ||
+                                chat.userExcerpt ||
+                                chat.createdAt.toLocaleString(),
+                            );
+                          }}
+                          className="rounded p-1 text-neutral-500 hover:bg-neutral-200 hover:text-neutral-900 dark:hover:bg-neutral-700 dark:hover:text-white"
+                        >
+                          <PencilSquareIcon className="h-4 w-4" />
+                        </button>
+                        <button
+                          type="button"
+                          aria-label="Excluir conversa"
+                          title="Excluir"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            handleDeleteChat(chat.id);
+                          }}
+                          className="rounded p-1 text-neutral-500 hover:bg-red-100 hover:text-red-700 dark:hover:bg-red-950/50 dark:hover:text-red-300"
+                        >
+                          <TrashIcon className="h-4 w-4" />
+                        </button>
+                      </div>
                     )}
                   </div>
                 ))}
