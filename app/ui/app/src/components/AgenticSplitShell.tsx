@@ -17,6 +17,7 @@ import { useMissionEvents } from "@/hooks/useMissionEvents";
 import { ArtifactsViewer } from "@/components/ArtifactsViewer";
 import { safeImageSrc } from "@/lib/safeUrl";
 import { agentFetch } from "@/lib/agenticClient";
+import { missionStateLabel, eventTypeLabel, stepKindLabel } from "@/lib/labels";
 
 export interface MissionStep {
   id: string;
@@ -202,7 +203,7 @@ export function AgenticSplitShell({
                     : "bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300"
                 }`}
               >
-                {mission.state}
+                {missionStateLabel(mission.state)}
               </span>
             )}
 
@@ -296,8 +297,8 @@ export function AgenticSplitShell({
                             <p className="text-xs font-semibold text-neutral-900 dark:text-white truncate">
                               {step.title}
                             </p>
-                            <span className="rounded bg-neutral-100 px-1.5 py-0.5 font-mono text-[10px] text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400 shrink-0">
-                              {step.kind}
+                            <span className="rounded bg-neutral-100 px-1.5 py-0.5 text-[10px] text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400 shrink-0">
+                              {stepKindLabel(step.kind)}
                             </span>
                           </div>
 
@@ -405,8 +406,8 @@ export function AgenticSplitShell({
               <div className="space-y-1.5 font-mono text-xs">
                 {events.slice(-15).map((evt) => (
                   <div key={evt.id} className="flex items-start gap-2 text-neutral-600 dark:text-neutral-400">
-                    <span className="text-neutral-400">[{new Date(evt.created_at).toLocaleTimeString()}]</span>
-                    <span className="font-semibold text-neutral-800 dark:text-neutral-200">{evt.type}</span>
+                    <span className="text-neutral-400">[{new Date(evt.created_at).toLocaleTimeString("pt-BR")}]</span>
+                    <span className="font-semibold text-neutral-800 dark:text-neutral-200">{eventTypeLabel(evt.type)}</span>
                     {evt.step_id && <span className="text-neutral-500 truncate">({evt.step_id})</span>}
                   </div>
                 ))}
@@ -430,14 +431,14 @@ export function AgenticSplitShell({
               type="text"
               value={chatInput}
               onChange={(e) => setChatInput(e.target.value)}
-              aria-label="Instrução da missão"
-              placeholder="Envie uma instrução, pergunte ou crie uma nova missão..."
+              aria-label="Objetivo da nova missão"
+              placeholder="Descreva uma tarefa para criar uma nova missão..."
               className="flex-1 bg-transparent text-sm outline-none text-neutral-900 dark:text-white"
             />
             <button
               type="submit"
               disabled={!chatInput.trim() || busy || actionLoading}
-              aria-label="Enviar instrução"
+              aria-label="Criar missão"
               className="rounded-lg bg-neutral-900 p-1.5 text-white hover:bg-neutral-800 disabled:opacity-30 dark:bg-white dark:text-neutral-900"
             >
               <PaperAirplaneIcon className="h-4 w-4" />
@@ -488,7 +489,7 @@ export function AgenticSplitShell({
               }`}
             >
               <WindowIcon className="h-4 w-4" />
-              Terminal / Canvas
+              Eventos
             </button>
           </div>
         </header>
@@ -520,10 +521,15 @@ export function AgenticSplitShell({
                     className="max-h-full max-w-full rounded-lg shadow-2xl object-contain border border-neutral-800"
                   />
                 ) : (
-                  <div className="text-center text-neutral-700 dark:text-neutral-300">
+                  <div className="mx-auto max-w-sm text-center text-neutral-300">
                     <GlobeAltIcon className="mx-auto h-12 w-12 stroke-[1.2]" />
-                    <p className="mt-3 text-sm font-medium text-neutral-100">Navegador aguardando ação.</p>
-                    <p className="mt-1 text-xs text-neutral-100">Ações como navegação, cliques e preenchimentos serão espelhadas em tempo real aqui.</p>
+                    <p className="mt-3 text-sm font-medium text-neutral-100">Sem navegação ao vivo nesta missão.</p>
+                    <p className="mt-1 text-xs leading-relaxed text-neutral-400">
+                      O navegador ao vivo aparece apenas quando a missão usa navegação (objetivo
+                      que peça navegar/acessar um site) e o ambiente tem o navegador configurado
+                      (Python com Playwright). Enquanto isso não ocorrer, nenhum quadro é
+                      transmitido aqui.
+                    </p>
                   </div>
                 )}
               </div>
@@ -535,19 +541,53 @@ export function AgenticSplitShell({
               artifacts={mission?.artifacts ?? []}
             />
           ) : (
-            /* Terminal / Canvas de Código */
-            <div className="flex h-full flex-col bg-neutral-950 p-4 font-mono text-xs text-neutral-300 overflow-auto">
-              <p className="text-neutral-500 mb-2">// Registro de saída e canvas de execução</p>
-              {events
-                .filter((e) => e.type.startsWith("step.") || e.type.startsWith("mission."))
-                .map((e) => (
-                  <div key={e.id} className="py-0.5">
-                    <span className="text-violet-400">{e.type}</span>:{" "}
-                    <span className="text-neutral-300">
-                      {e.payload ? JSON.stringify(e.payload) : "(sem payload)"}
-                    </span>
-                  </div>
-                ))}
+            /* Eventos: trilha legível dos eventos da missão (sem JSON cru) */
+            <div className="flex h-full flex-col gap-2 overflow-auto bg-neutral-50 p-4 text-xs dark:bg-neutral-950">
+              <p className="mb-1 text-neutral-500">
+                Trilha de eventos da missão, em ordem cronológica.
+              </p>
+              {(() => {
+                const relevant = events.filter(
+                  (e) => e.type.startsWith("step.") || e.type.startsWith("mission.") || e.type.startsWith("browser."),
+                );
+                if (relevant.length === 0) {
+                  return (
+                    <p className="text-neutral-400">
+                      Nenhum evento registrado ainda. Os eventos aparecem aqui conforme a missão é
+                      planejada e executada.
+                    </p>
+                  );
+                }
+                return relevant.map((e) => {
+                  const payloadText =
+                    e.payload && Object.keys(e.payload as Record<string, unknown>).length > 0
+                      ? JSON.stringify(e.payload, null, 2)
+                      : null;
+                  return (
+                    <div
+                      key={e.id}
+                      className="rounded-lg border border-neutral-200 bg-white p-2.5 dark:border-neutral-800 dark:bg-neutral-900"
+                    >
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <span className="font-semibold text-neutral-800 dark:text-neutral-200">
+                          {eventTypeLabel(e.type)}
+                        </span>
+                        <span className="text-[10px] text-neutral-400">
+                          {new Date(e.created_at).toLocaleString("pt-BR")}
+                        </span>
+                      </div>
+                      {e.step_id && (
+                        <p className="mt-0.5 text-[11px] text-neutral-500">Passo: {e.step_id}</p>
+                      )}
+                      {payloadText && (
+                        <pre className="mt-1.5 max-h-40 overflow-auto whitespace-pre-wrap rounded bg-neutral-100 p-2 font-mono text-[11px] text-neutral-700 dark:bg-neutral-950 dark:text-neutral-300">
+                          {payloadText}
+                        </pre>
+                      )}
+                    </div>
+                  );
+                });
+              })()}
             </div>
           )}
         </div>

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import {
   createProject,
+  deleteProject,
   finalizeProjectUpload,
   getProjectUpload,
   importGitHubProject,
@@ -33,6 +34,9 @@ export function ImportProjectDialog({
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
   const returnFocusRef = useRef<HTMLElement | null>(null);
+  // Projeto-casca criado para receber o upload. Mantido entre tentativas para
+  // não duplicar projetos a cada retry; limpo ao concluir ou ao falhar.
+  const shellProjectRef = useRef<AgentProject | null>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -91,8 +95,18 @@ export function ImportProjectDialog({
     }
     setPending(true);
     setStatus(null);
+    // Reaproveita o projeto-casca de uma tentativa anterior que falhou, em vez de
+    // criar um novo a cada clique (o que deixava órfãos e duplicava projetos).
+    const project = shellProjectRef.current ?? (await createProject(zipName.trim()).catch((cause) => {
+      setStatus(cause instanceof Error ? cause.message : "Não foi possível preparar o projeto para o ZIP.");
+      return null;
+    }));
+    if (!project) {
+      setPending(false);
+      return;
+    }
+    shellProjectRef.current = project;
     try {
-      const project = await createProject(zipName.trim());
       const chunkSize = 8 * 1024 * 1024;
       const upload = await startProjectUpload({ project_id: project.id, filename: file.name, total_size: file.size, chunk_size: chunkSize });
       // Resilient chunked upload: the backend accepts chunks strictly in order
@@ -134,11 +148,20 @@ export function ImportProjectDialog({
       }
       await finalizeProjectUpload(upload.id);
       const result = await importZIPProject({ project_id: project.id, upload_id: upload.id, name: project.name });
+      shellProjectRef.current = null;
       setStatus(`ZIP importado e indexado: ${describeImport(result)}.`);
 	      setFile(null);
 	      setZipName("");
 	      onImported?.(result.project);
     } catch (cause) {
+      // Limpa o projeto-casca para não deixar órfão. Se a limpeza falhar,
+      // mantemos a referência para reaproveitá-lo na próxima tentativa.
+      try {
+        await deleteProject(project.id);
+        shellProjectRef.current = null;
+      } catch {
+        shellProjectRef.current = project;
+      }
       setStatus(cause instanceof Error ? cause.message : "Não foi possível importar o ZIP.");
     } finally {
       setPending(false);

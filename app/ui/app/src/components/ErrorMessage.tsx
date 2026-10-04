@@ -4,6 +4,19 @@ interface ErrorMessageProps {
   error: ErrorEvent;
 }
 
+// looksTechnical detects raw payloads a non-technical user should never see:
+// JSON blobs, Go panics/goroutine dumps and JS stack traces. The backend now
+// sends plain pt-BR messages for known error codes (those are short sentences
+// and pass straight through); this only catches unexpected raw dumps.
+function looksTechnical(text: string): boolean {
+  if (/^[[{]/.test(text)) return true; // starts like a JSON object/array
+  if (/"[\w.-]+"\s*:/.test(text)) return true; // contains JSON "key": pairs
+  if (/\bpanic:|goroutine\s+\d+/.test(text)) return true; // Go stack dump
+  if (/\n\s+at\s+\S/.test(text)) return true; // JS stack frames
+  if (/\b0x[0-9a-fA-F]{6,}\b/.test(text)) return true; // raw pointers/addresses
+  return false;
+}
+
 // friendlyError turns cryptic backend/upstream errors (e.g. a raw
 // "404 Not Found: [{" when a model can't be routed) into guidance a
 // non-technical user can act on, while leaving already-clear messages intact.
@@ -17,6 +30,10 @@ function friendlyError(raw: string): string {
     /^\[?\{/.test(text)
   ) {
     return "O modelo selecionado não está disponível neste chat. Escolha um modelo local ou do Ollama Cloud no seletor de modelos abaixo.";
+  }
+  // Never surface raw JSON or stack traces to the user.
+  if (looksTechnical(text)) {
+    return "Não foi possível concluir. Tente novamente.";
   }
   return text;
 }

@@ -1,4 +1,3 @@
-import CopyButton from "@/components/CopyButton";
 import { CodexDesktopRow } from "@/components/CodexDesktopRow";
 import Logo from "@/components/Logo";
 import type { OnboardingStep } from "@/lib/onboarding";
@@ -29,10 +28,7 @@ import type {
   ClaudeDesktopStatus,
   CodexDesktopStatus,
 } from "@/types/webview";
-import {
-  FIRST_MODEL_COMMAND,
-  shouldShowClaudeConnectedIntro,
-} from "./onboardingUtils";
+import { shouldShowClaudeConnectedIntro } from "./onboardingUtils";
 import { RECOMMENDED_FIRST_MODEL } from "@/lib/firstModel";
 import { copyTextToClipboard } from "@/utils/clipboard";
 import {
@@ -388,20 +384,9 @@ export function RunOllamaScreen({
           Baixe seu primeiro modelo
         </h1>
 
-        <div className="mt-6 grid h-12 w-full max-w-[330px] grid-cols-[minmax(0,1fr)_32px] items-center rounded-full bg-neutral-100 px-4 pr-3">
-          <code className="min-w-0 truncate text-left font-mono text-sm">
-            {FIRST_MODEL_COMMAND}
-          </code>
-          <CopyButton
-            content={FIRST_MODEL_COMMAND}
-            size="md"
-            title="Copiar comando"
-            className="shrink-0 text-neutral-400 hover:!bg-transparent hover:!text-neutral-400"
-          />
-        </div>
-
         <p className="mt-3 max-w-xs text-[13px] leading-5 text-neutral-400">
-          Escolha um modelo local para começar. O download usa o backend Ollama deste computador.
+          Escolha um modelo local para começar. O Hades baixa e roda o modelo no
+          seu computador — sem precisar de terminal.
         </p>
 
         <div className="mt-5 flex w-full max-w-[360px] flex-col gap-2 text-left">

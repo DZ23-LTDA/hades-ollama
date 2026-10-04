@@ -99,7 +99,7 @@ export function ModelsPanel() {
           <div className="mt-1 flex flex-col gap-2 sm:flex-row">
             <input
               id="new-model"
-              value={newModel || RECOMMENDED_FIRST_MODEL}
+              value={newModel}
               onChange={(event) => setNewModel(event.target.value)}
               placeholder={RECOMMENDED_FIRST_MODEL}
               className="min-w-0 flex-1 rounded-xl border border-neutral-300 bg-white px-3 py-2 text-sm outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-200 dark:border-neutral-700 dark:bg-neutral-900"

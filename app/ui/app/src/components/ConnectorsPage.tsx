@@ -29,24 +29,48 @@ type CategoryFilter =
   | "creativity"
   | "business"
   | "development"
+  | "infra"
   | "finance"
-  | "travel"
-  | "health"
+  | "data"
   | "connected"
   | "whatsapp";
 
 const CATEGORIES: Array<{ id: CategoryFilter; label: string }> = [
   { id: "all", label: "Todos" },
   { id: "productivity", label: "Produtividade" },
-  { id: "creativity", label: "Criatividade" },
+  { id: "creativity", label: "Criatividade e mídia" },
   { id: "business", label: "Negócios" },
   { id: "development", label: "Desenvolvimento" },
+  { id: "infra", label: "Infraestrutura" },
   { id: "finance", label: "Finanças" },
-  { id: "travel", label: "Viagem" },
-  { id: "health", label: "Saúde" },
+  { id: "data", label: "Dados e métricas" },
   { id: "connected", label: "Conectados" },
   { id: "whatsapp", label: "WhatsApp Gateway" },
 ];
+
+// Cada aba mapeia para as categorias REAIS do catálogo (em português, como
+// vêm do backend). O casamento é por igualdade exata — não por palavra em
+// inglês — e cobre todas as categorias do catálogo, de forma que nenhuma aba
+// fique falsamente vazia e nenhuma categoria do catálogo fique órfã.
+const CATEGORY_GROUPS: Partial<Record<CategoryFilter, readonly string[]>> = {
+  productivity: ["Produtividade", "Comunicação", "E-mail", "Notificações", "Suporte"],
+  creativity: ["Design", "Mídia", "CMS"],
+  business: ["CRM e Vendas", "Marketing", "Comércio"],
+  development: [
+    "Desenvolvimento",
+    "Automação",
+    "Backend",
+    "Banco de dados",
+    "IA e vetores",
+    "Autenticação",
+    "Busca",
+    "Tempo real",
+    "Mobile",
+  ],
+  infra: ["Deploy", "Observabilidade"],
+  finance: ["Pagamentos", "Fiscal", "Dados financeiros"],
+  data: ["Dados e métricas"],
+};
 
 function ConnectorLogo({ id }: { id: string }) {
   const icon = connectorIcon(id);
@@ -93,6 +117,8 @@ export function ConnectorsPage() {
   const [customName, setCustomName] = useState("");
   const [customBaseUrl, setCustomBaseUrl] = useState("");
   const [customTokenEnv, setCustomTokenEnv] = useState("");
+  const [customPath, setCustomPath] = useState("/");
+  const [customAllowWrite, setCustomAllowWrite] = useState(false);
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
 
@@ -124,6 +150,25 @@ export function ConnectorsPage() {
     setCreating(true);
     setCreateError(null);
     try {
+      // Padrão seguro: somente leitura (GET) num caminho específico. A escrita
+      // (POST/PUT/PATCH/DELETE) só é liberada quando o operador marca
+      // explicitamente a opção, evitando conectores full-access silenciosos.
+      const pathPrefix = customPath.trim() || "/";
+      const operations = customAllowWrite
+        ? [
+            {
+              name: "read-write",
+              methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
+              path_prefixes: [pathPrefix],
+            },
+          ]
+        : [
+            {
+              name: "read",
+              methods: ["GET"],
+              path_prefixes: [pathPrefix],
+            },
+          ];
       const res = await fetch(`${API_BASE}/api/agent/v1/connectors`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -132,13 +177,7 @@ export function ConnectorsPage() {
           provider: customName.trim(),
           base_url: customBaseUrl.trim(),
           token_env: customTokenEnv.trim() || undefined,
-          operations: [
-            {
-              name: "default",
-              methods: ["GET", "POST", "PUT", "DELETE"],
-              path_prefixes: ["/"],
-            },
-          ],
+          operations,
         }),
       });
       if (!res.ok) throw new Error("Falha ao registrar conector no backend");
@@ -146,6 +185,8 @@ export function ConnectorsPage() {
       setCustomName("");
       setCustomBaseUrl("");
       setCustomTokenEnv("");
+      setCustomPath("/");
+      setCustomAllowWrite(false);
       load();
     } catch (e) {
       setCreateError(e instanceof Error ? e.message : "Falha ao registrar conector");
@@ -171,17 +212,9 @@ export function ConnectorsPage() {
         return state === "connected";
       }
 
-      // Mapeamento aproximado de categoria
-      const catLower = entry.category.toLowerCase();
-      if (category === "productivity" && (catLower.includes("prod") || catLower.includes("doc") || catLower.includes("mail"))) return true;
-      if (category === "creativity" && (catLower.includes("media") || catLower.includes("video") || catLower.includes("art") || catLower.includes("audio"))) return true;
-      if (category === "business" && (catLower.includes("crm") || catLower.includes("sales") || catLower.includes("negócios"))) return true;
-      if (category === "development" && (catLower.includes("dev") || catLower.includes("code") || catLower.includes("git") || catLower.includes("api"))) return true;
-      if (category === "finance" && (catLower.includes("fin") || catLower.includes("pay") || catLower.includes("bank"))) return true;
-      if (category === "travel" && (catLower.includes("trip") || catLower.includes("viagem") || catLower.includes("flight"))) return true;
-      if (category === "health" && (catLower.includes("health") || catLower.includes("saúde"))) return true;
-
-      return catLower.includes(category);
+      // Correspondência exata contra as categorias reais do catálogo.
+      const group = CATEGORY_GROUPS[category];
+      return group ? group.includes(entry.category) : false;
     });
   }, [catalog, category, query, connectors, mcpServers]);
 
@@ -315,6 +348,40 @@ export function ConnectorsPage() {
                     className="mt-1 w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
                   />
                 </div>
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300">
+                    Caminho permitido (prefixo)
+                  </label>
+                  <input
+                    type="text"
+                    value={customPath}
+                    onChange={(e) => setCustomPath(e.target.value)}
+                    placeholder="Ex: /v1/clientes"
+                    className="mt-1 w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+                  />
+                  <p className="mt-1 text-[11px] text-neutral-500">
+                    O agente só poderá chamar rotas sob este prefixo. Mantenha o
+                    menor escopo possível.
+                  </p>
+                </div>
+                <div className="sm:col-span-2">
+                  <label className="flex items-start gap-2 text-xs font-medium text-neutral-700 dark:text-neutral-300">
+                    <input
+                      type="checkbox"
+                      checked={customAllowWrite}
+                      onChange={(e) => setCustomAllowWrite(e.target.checked)}
+                      className="mt-0.5 h-4 w-4 rounded border-neutral-300 dark:border-neutral-600"
+                    />
+                    <span>
+                      Permitir escrita (POST/PUT/PATCH/DELETE) neste caminho.
+                      <span className="mt-0.5 block font-normal text-[11px] text-neutral-500">
+                        Por padrão o conector é somente leitura (apenas GET).
+                        Habilite a escrita apenas se este endereço realmente
+                        precisar executar alterações.
+                      </span>
+                    </span>
+                  </label>
+                </div>
               </div>
               {createError && (
                 <div
@@ -385,6 +452,10 @@ export function ConnectorsPage() {
                 {visible.map((entry) => {
                   const state = connectorState(entry, connectors, mcpServers);
                   const open = expanded === entry.id;
+                  // Conectores exclusivamente OAuth não conectam com chave
+                  // colada: exigem um app OAuth registrado pela DZ23. Em vez de
+                  // prometer "Conectar" e cair num aviso, deixamos isso claro.
+                  const oauthOnly = entry.auth === "oauth" && !entry.quick_connect;
                   return (
                     <li
                       key={entry.id}
@@ -410,6 +481,16 @@ export function ConnectorsPage() {
                             <CheckIcon className="h-3.5 w-3.5" />
                             Ativo
                           </span>
+                        ) : oauthOnly ? (
+                          <button
+                            type="button"
+                            aria-expanded={open}
+                            onClick={() => setExpanded(open ? null : entry.id)}
+                            title="Requer um app OAuth registrado pela DZ23"
+                            className="inline-flex shrink-0 items-center gap-1 rounded-xl border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-700 hover:bg-amber-100 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-300"
+                          >
+                            Requer configuração OAuth
+                          </button>
                         ) : (
                           <button
                             type="button"

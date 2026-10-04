@@ -1,8 +1,27 @@
 import type { ClaudeDesktopStatus } from "@/types/webview";
 import { claudeDesktopModelStatusLabel } from "@/lib/claudeDesktopModelStatus";
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ClaudeDesktopModelsSettings } from "./ClaudeDesktopModelsSettings";
+
+// The component reads the native routing bridge (window.applyClaudeDesktopMappings)
+// during render to decide whether routing is available. Provide it so the
+// macOS-only warning stays hidden and the apply flow is enabled.
+beforeEach(() => {
+  vi.stubGlobal("window", {
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    getClaudeDesktopStatus: vi.fn(),
+    applyClaudeDesktopMappings: vi.fn(),
+    resetClaudeDesktopMappings: vi.fn(),
+    setClaudeDesktopAutoMode: vi.fn(),
+    confirm: vi.fn(() => true),
+  });
+});
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 
 const routes = [
   { routeId: "claude-fable-5", routeName: "Fable 5" },

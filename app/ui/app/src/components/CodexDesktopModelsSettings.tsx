@@ -399,7 +399,7 @@ export const CodexDesktopModelsSettings = forwardRef<
 
   const applyChanges = async () => {
     if (!window.applyCodexDesktopModels) {
-      setError("As configurações de modelos do ChatGPT estão disponíveis no aplicativo Ollama para macOS.");
+      setError("As configurações de modelos do ChatGPT estão disponíveis apenas no macOS por enquanto.");
       return;
     }
     if (selected.length === 0) {
@@ -441,7 +441,7 @@ export const CodexDesktopModelsSettings = forwardRef<
       applyResult(result);
       const openedStatus = await waitForChatGPTToOpen();
       if (openedStatus === null) {
-        setError("ChatGPT is taking longer than expected to open. Try again.");
+        setError("O ChatGPT está demorando mais que o esperado para abrir. Tente novamente.");
         return;
       }
       if (openedStatus) {
@@ -505,6 +505,10 @@ export const CodexDesktopModelsSettings = forwardRef<
   if (!settings?.supported && !loading && !error) return null;
 
   const busy = applying || resetting;
+  // A aplicação de modelos no ChatGPT depende de uma ponte nativa que, hoje,
+  // só existe no macOS. Sem ela, não oferecemos um botão que cairia em aviso.
+  const macBridgeAvailable =
+    typeof window.applyCodexDesktopModels === "function";
 
   return (
     <div
@@ -542,7 +546,7 @@ export const CodexDesktopModelsSettings = forwardRef<
                 type="button"
                 color="white"
                 onClick={() => void applyChanges()}
-                disabled={loading || busy || selected.length === 0}
+                disabled={loading || busy || selected.length === 0 || !macBridgeAvailable}
               >
                 {applying && (
                   <ArrowPathIcon data-slot="icon" className="animate-spin" />
@@ -561,6 +565,13 @@ export const CodexDesktopModelsSettings = forwardRef<
               </Button>
             </div>
           </div>
+
+          {!macBridgeAvailable && (
+            <p className="mt-3 w-full max-w-xl rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-700 dark:border-amber-900/50 dark:bg-amber-950/20 dark:text-amber-300">
+              Disponível apenas no macOS por enquanto. A configuração de modelos
+              do ChatGPT depende do aplicativo Ollama para macOS.
+            </p>
+          )}
 
           <div className="mt-4 w-full max-w-xl">
             <Popover className="relative w-full">

@@ -13,7 +13,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { getModelUpstreamInfo } from "@/api";
 import { ArrowDownTrayIcon } from "@heroicons/react/24/outline";
 import type { CloseableButtonHandle } from "@/types/imperative";
-import { isModelSelectable, modelGroup, sortModelsClean } from "./modelPickerUtils";
+import { getModelCostTag, isModelSelectable, modelGroup, sortModelsClean } from "./modelPickerUtils";
 
 const stalenessCheckCache = new Map<string, number>();
 
@@ -414,7 +414,7 @@ export const ModelList = forwardRef(function ModelList(
                       ? "bg-neutral-100 text-neutral-500 dark:bg-neutral-800 dark:text-neutral-400"
                       : "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300"
                   }`}>
-                    {unavailable ? "indisponível" : "0-assinatura"}
+                    {unavailable ? "indisponível" : (getModelCostTag(model) ?? "Assinatura")}
                   </span>
                 )}
                 {model.isCloud() && (

@@ -643,25 +643,28 @@ func (s *Server) getError(err error) responses.ErrorEvent {
 	case strings.Contains(errStr, "402"):
 		return responses.ErrorEvent{
 			EventName: "error",
-			Error:     "You've reached your usage limit, please upgrade to continue",
+			Error:     "Você atingiu seu limite de uso. Faça upgrade para continuar.",
 			Code:      "usage_limit_upgrade",
 		}
 	case strings.HasPrefix(errStr, "pull model manifest") && isNetworkError(errStr):
 		return responses.ErrorEvent{
 			EventName: "error",
-			Error:     "Unable to download model. Please check your internet connection to download the model for offline use.",
+			Error:     "Não foi possível baixar o modelo. Verifique sua conexão com a internet para baixá-lo e usar offline.",
 			Code:      "offline_download_error",
 		}
 	case errors.Is(err, ErrNetworkOffline) || strings.Contains(errStr, "operation timed out"):
 		return responses.ErrorEvent{
 			EventName: "error",
-			Error:     "Connection lost",
+			Error:     "Conexão perdida. Verifique sua internet e tente novamente.",
 			Code:      "turbo_connection_lost",
 		}
 	}
+	// Fallback: never leak a raw Go/network error string to the user. The
+	// technical detail stays in the logs; the UI shows a clear pt-BR message.
 	return responses.ErrorEvent{
 		EventName: "error",
-		Error:     err.Error(),
+		Error:     "Algo deu errado ao processar sua mensagem. Tente novamente em instantes.",
+		Code:      "chat_unexpected_error",
 	}
 }
 

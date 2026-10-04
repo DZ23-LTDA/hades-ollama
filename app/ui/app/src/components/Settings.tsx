@@ -104,7 +104,7 @@ export default function Settings() {
   const savedConfirmationTimeoutRef = useRef<number | null>(null);
   useBlocker({
     shouldBlockFn: () =>
-      !window.confirm("Discard unapplied app model changes?"),
+      !window.confirm("Descartar as alterações de modelos dos apps que ainda não foram aplicadas?"),
     enableBeforeUnload: hasClaudeDraftChanges || hasCodexDraftChanges,
     disabled: !hasClaudeDraftChanges && !hasCodexDraftChanges,
   });
@@ -633,9 +633,9 @@ export default function Settings() {
                     <div className="flex flex-1 items-start space-x-3">
                       <Squares2X2Icon className="mt-1 h-5 w-5 flex-shrink-0 text-black dark:text-neutral-100" />
                       <div>
-                        <Label>Show apps in menu</Label>
+                        <Label>Mostrar apps no menu</Label>
                         <Description>
-                          Show connected apps at the top of the Ollama menu.
+                          Exibir os apps conectados no topo do menu do Ollama.
                         </Description>
                       </div>
                     </div>
@@ -745,8 +745,9 @@ export default function Settings() {
                   <div className="w-full">
                     <Label>Tamanho do contexto</Label>
                     <Description>
-                      O tamanho do contexto define quanto da sua conversa a IA consegue considerar
-                      local LLMs can remember and use to generate responses.
+                      O tamanho do contexto define quanto da conversa o modelo consegue
+                      lembrar e usar para gerar as respostas. Valores maiores mantêm mais
+                      histórico, mas consomem mais memória.
                     </Description>
                     <div className="mt-3">
                       <Slider
@@ -883,8 +884,8 @@ export default function Settings() {
                     if (typeof window !== "undefined" && typeof localStorage !== "undefined") {
                       localStorage.setItem("ollama_custom_instructions", e.target.value);
                     }
-                    showSalvoConfirmation();
                   }}
+                  onBlur={() => showSalvoConfirmation()}
                   placeholder="Ex.: respostas curtas e diretas; sempre com exemplos."
                   className="mt-2 w-full rounded-xl border border-neutral-300 bg-white p-3 text-xs leading-relaxed text-neutral-900 focus:border-neutral-900 focus:outline-none dark:border-neutral-700 dark:bg-neutral-900 dark:text-white"
                 />
@@ -900,10 +901,10 @@ export default function Settings() {
                   </div>
                 </div>
                 <span
-                  className="rounded-full bg-neutral-100 px-2.5 py-1 text-[11px] font-semibold text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300"
+                  className="rounded-full bg-neutral-100 px-2.5 py-1 text-[11px] font-medium text-neutral-500 dark:bg-neutral-800 dark:text-neutral-400"
                   role="status"
                 >
-                  Em desenvolvimento
+                  Indisponível
                 </span>
               </div>
             </div>
@@ -932,11 +933,11 @@ export default function Settings() {
               </div>
               <div className="flex items-center justify-between py-2.5">
                 <span className="text-neutral-500">Banco de Dados:</span>
-                <span className="text-neutral-800 dark:text-neutral-200">SQLite local-first + PostgreSQL RLS isolado</span>
+                <span className="text-neutral-800 dark:text-neutral-200">SQLite (armazenamento local)</span>
               </div>
               <div className="flex items-center justify-between py-2.5">
-                <span className="text-neutral-500">Contenção de Workspace:</span>
-                <span className="font-semibold text-emerald-600 dark:text-emerald-400">Ativa (Proteção contra traversals)</span>
+                <span className="text-neutral-500">Modo:</span>
+                <span className="font-semibold text-emerald-600 dark:text-emerald-400">Local-first (sem dependência de nuvem)</span>
               </div>
             </div>
           </section>}

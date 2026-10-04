@@ -501,7 +501,7 @@ export function CodexDesktopRow({
             onClick={() => void retryAcknowledgment()}
             className="text-xs font-medium text-neutral-700 hover:underline disabled:cursor-wait disabled:opacity-50 dark:text-neutral-300"
           >
-            Retry
+            Tentar novamente
           </button>
         )}
         <IntegrationConnectButton

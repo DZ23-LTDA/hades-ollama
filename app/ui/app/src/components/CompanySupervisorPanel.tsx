@@ -185,7 +185,7 @@ export function CompanySupervisorPanel() {
           <ClockIcon className="h-4 w-4 text-neutral-400" />
           <span>
             {status?.last_tick_at
-              ? `Último ciclo: ${new Date(status.last_tick_at).toLocaleTimeString()}`
+              ? `Último ciclo: ${new Date(status.last_tick_at).toLocaleTimeString("pt-BR")}`
               : "Aguardando primeiro ciclo"}
           </span>
         </div>

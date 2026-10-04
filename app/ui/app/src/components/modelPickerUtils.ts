@@ -26,11 +26,25 @@ export function isModelSelectable(model: Model): boolean {
   return model.available !== false && (model.status === undefined || model.status === "PASS");
 }
 
+// costTagLabel turns the internal machine cost tags that the backend router
+// uses ("0-local", "0-assinatura") into human pt-BR labels for the UI. The raw
+// tags must never be shown to the user. Unknown/already-human tags pass through.
+export function costTagLabel(tag: string | undefined | null): string | undefined {
+  const raw = (tag ?? "").trim();
+  if (!raw) return undefined;
+  if (raw === "0-local") return "Grátis";
+  if (raw === "0-assinatura") return "Incluído na assinatura";
+  return raw;
+}
+
+// getModelCostTag returns a human-readable pt-BR cost label for display, never
+// the raw internal tag. Local models are free, CLI-subscription models are
+// included in the subscription, and any explicit cost_tag is humanized.
 export function getModelCostTag(model: Model): string | undefined {
   if (model.kind === "cli_subscription" && isModelSelectable(model)) {
-    return "0-assinatura";
+    return "Incluído na assinatura";
   }
-  return model.cost_tag;
+  return costTagLabel(model.cost_tag);
 }
 
 export function sortModelsClean(models: Model[]): Model[] {

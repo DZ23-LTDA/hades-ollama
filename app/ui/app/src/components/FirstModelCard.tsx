@@ -66,7 +66,7 @@ export function FirstModelCard() {
                 </label>
                 <input
                   id="first-model"
-                  value={modelName || recommended}
+                  value={modelName}
                   onChange={(event) => setModelName(event.target.value)}
                   className="mt-1 w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-sm outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-200 dark:border-neutral-700 dark:bg-neutral-900"
                   placeholder={recommended}

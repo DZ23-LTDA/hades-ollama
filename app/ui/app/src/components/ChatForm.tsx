@@ -138,6 +138,7 @@ function ChatForm({
     null,
   );
   const [slashActiveIndex, setSlashActiveIndex] = useState(0);
+  const [slashHint, setSlashHint] = useState<string | null>(null);
 
   const handleThinkingLevelDropdownToggle = (isOpen: boolean) => {
     if (
@@ -543,6 +544,16 @@ function ChatForm({
       return;
     }
 
+    // Known slash command typed with no objective (e.g. just "/goal"). Don't
+    // forward the raw "/goal" text to the model — it is a command, not a
+    // message. Ask the user for the objective instead.
+    if (parsedSlash && !parsedSlash.objective) {
+      setSlashHint(
+        `Descreva o objetivo após ${parsedSlash.command.label} (ex.: "${parsedSlash.command.label} revisar a tela de login").`,
+      );
+      return;
+    }
+
     if (cloudDisabled && selectedModel?.isCloud()) {
       return;
     }
@@ -692,18 +703,40 @@ function ChatForm({
     }, 10);
   };
 
-  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files) return;
-
-    Array.from(files).forEach((file) => {
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-    });
-
-    // Reset file input
+  const handleFileInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const fileList = e.target.files;
+    const files = fileList ? Array.from(fileList) : [];
+    // Reset the input up front so re-selecting the same file fires onChange again.
     if (e.target) {
       e.target.value = "";
+    }
+    if (files.length === 0) return;
+
+    try {
+      // Read and validate the selected files into the same {filename, data}
+      // shape the native webview path produces, then hand them to the shared
+      // receiver so the attachments actually show up and get sent.
+      const { validFiles, errors } = await processFiles(files, {
+        selectedModel,
+        hasVisionCapability,
+      });
+      if (validFiles.length > 0 || errors.length > 0) {
+        handleFilesReceived(validFiles, errors);
+      }
+    } catch (error) {
+      console.error("Error reading selected files:", error);
+      setFileUploadError(
+        new ErrorEvent({
+          eventName: "error" as const,
+          error:
+            error instanceof Error
+              ? error.message
+              : "Não foi possível ler os arquivos selecionados",
+          code: "file_selection_error",
+          details:
+            "Ocorreu um erro ao ler os arquivos selecionados. Tente novamente.",
+        }),
+      );
     }
   };
 
@@ -711,6 +744,7 @@ function ChatForm({
   const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setMessage((prev) => ({ ...prev, content: e.target.value }));
     setSlashActiveIndex(0);
+    if (slashHint) setSlashHint(null);
 
     // Reset height to auto to get the correct scrollHeight, then cap at 8 lines
     e.target.style.height = "auto";
@@ -721,7 +755,15 @@ function ChatForm({
     try {
       setFileUploadError(null);
 
-      const results = await window.webview?.selectMultipleFiles();
+      // Outside the native desktop shell (e.g. a plain browser) there is no
+      // webview file picker. Fall back to the hidden <input type="file"> so the
+      // "+" button still opens a real file selector instead of doing nothing.
+      if (typeof window.webview?.selectMultipleFiles !== "function") {
+        fileInputRef.current?.click();
+        return;
+      }
+
+      const results = await window.webview.selectMultipleFiles();
       if (results && results.length > 0) {
         // Convert native dialog results to File objects
         // Decode with the browser's native data: URL handling instead of a
@@ -796,6 +838,16 @@ function ChatForm({
 
       {/* File upload error message */}
       {fileUploadError && <ErrorMessage error={fileUploadError} />}
+
+      {/* Slash command needs an objective */}
+      {slashHint && (
+        <p
+          role="alert"
+          className="mx-auto mb-2 w-full max-w-[768px] px-5 text-xs text-amber-600 dark:text-amber-400"
+        >
+          {slashHint}
+        </p>
+      )}
       <div
         className={`relative mx-auto flex bg-neutral-100 w-full max-w-[768px] flex-col items-center rounded-3xl pb-2 pt-4 dark:bg-neutral-800 dark:border-neutral-700 min-h-[88px] transition-opacity duration-200 ${isDisabled ? "opacity-50" : "opacity-100"}`}
       >

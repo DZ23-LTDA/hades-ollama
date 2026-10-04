@@ -39,16 +39,20 @@ export function ConnectorQuickConnect({
   };
 
   if (!entry.quick_connect) {
+    const oauthOnly = entry.auth === "oauth";
     return (
       <div className="mt-4 rounded-xl bg-neutral-50 p-3 text-xs leading-5 text-neutral-600 dark:bg-neutral-900 dark:text-neutral-300">
+        {oauthOnly && (
+          <span className="mb-2 inline-flex items-center gap-1 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-700 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-300">
+            Requer configuração OAuth
+          </span>
+        )}
         <p>{connectHint(entry.name, entry.auth)}</p>
-        {entry.auth !== "oauth" && (
-          <a
-            href="/plugins"
-            className="mt-2 inline-block font-medium text-violet-600 hover:underline dark:text-violet-300"
-          >
-            Abrir registro avançado →
-          </a>
+        {!oauthOnly && (
+          <p className="mt-2 text-[11px] text-neutral-500 dark:text-neutral-400">
+            Para registrá-lo, use o botão “Criar Conector” no topo desta página,
+            informando o endereço e a variável de ambiente com a credencial.
+          </p>
         )}
       </div>
     );

@@ -154,14 +154,8 @@ export function ConnectorsManagePanel() {
         );
       })}
       <p className="text-xs text-neutral-500">
-        Para registrar um conector, servidor MCP ou skill manualmente, use o{" "}
-        <a
-          href="/plugins"
-          className="font-medium text-violet-600 hover:underline dark:text-violet-300"
-        >
-          registro avançado
-        </a>
-        .
+        Para registrar um conector, servidor MCP ou skill manualmente, use o
+        botão “Criar Conector” no topo da página de Plugins.
       </p>
     </div>
   );

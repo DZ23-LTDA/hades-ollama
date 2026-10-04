@@ -5,6 +5,7 @@ import { getModels } from "@/api";
 import type { Model } from "@/gotypes";
 import { humanizeApiError } from "@/lib/userFacingError";
 import { MissionDeliveryCard } from "@/components/MissionDeliveryCard";
+import { missionStateLabel, eventTypeLabel } from "@/lib/labels";
 
 type Mission = {
   id: string;
@@ -192,11 +193,15 @@ export default function AgenticConsole() {
 
   const pendingApprovals = useMemo(() => mission?.approvals?.filter((approval) => approval.status === "PENDING") ?? [], [mission]);
 
-  const createMission = async () => {
-    if (!objective.trim()) return;
+  const createMission = async (objArg?: string) => {
+    // Accept the objective as an explicit argument so the footer composer does
+    // not depend on the asynchronous setObjective state update (which would be
+    // read stale by closure and fall into the early-return).
+    const obj = (objArg ?? objective).trim();
+    if (!obj) return;
     setBusy(true); setError("");
     try {
-      const created = await api<Mission>("/api/agent/v1/missions", { method: "POST", body: JSON.stringify({ objective, provider, model: selectedModel || undefined, project_id: projectID || undefined, isolate_workspace: isolateWorkspace && projectID ? true : undefined, capabilities: allowWorkspaceWrite ? ["workspace:read", "workspace:write"] : ["workspace:read"], auto_run: false }) });
+      const created = await api<Mission>("/api/agent/v1/missions", { method: "POST", body: JSON.stringify({ objective: obj, provider, model: selectedModel || undefined, project_id: projectID || undefined, isolate_workspace: isolateWorkspace && projectID ? true : undefined, capabilities: allowWorkspaceWrite ? ["workspace:read", "workspace:write"] : ["workspace:read"], auto_run: false }) });
       setMission(created); setObjective(""); await load(created.id, orchestration?.id);
     } catch (cause) { setError(humanizeApiError(cause, "Falha ao criar a missão.").message); } finally { setBusy(false); }
   };
@@ -253,7 +258,7 @@ export default function AgenticConsole() {
       <section className="grid grid-cols-2 gap-3 sm:grid-cols-4">{[["Criadas", metrics.missions_created], ["Concluídas", metrics.missions_completed], ["Novas tentativas", metrics.retries], ["Ferramentas", metrics.tool_calls]].map(([label, value]) => <div key={label} className="rounded-xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-950"><p className="text-xs text-neutral-500">{label}</p><p className="mt-1 text-2xl font-semibold text-neutral-900 dark:text-neutral-100">{value ?? 0}</p></div>)}</section>
 
       <section className="grid gap-4 xl:grid-cols-2">
-        <div className="rounded-2xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-950"><div className="flex items-start justify-between gap-3"><div><p className="text-xs font-medium uppercase tracking-[0.14em] text-neutral-500">Multiagente</p><h2 className="mt-1 font-medium text-neutral-900 dark:text-neutral-100">Orquestrar especialistas</h2></div>{orchestration && <span className="rounded-full bg-neutral-100 px-3 py-1 text-xs font-medium dark:bg-neutral-800">{orchestration.state}</span>}</div><textarea value={orchestrationObjective} onChange={(event) => setOrchestrationObjective(event.target.value)} placeholder="Ex.: pesquisar concorrentes, revisar segurança e propor implementação" className="mt-3 min-h-20 w-full resize-y rounded-xl border border-neutral-300 bg-transparent px-3 py-2 text-sm outline-none dark:border-neutral-700" /><button type="button" disabled={busy || !orchestrationObjective.trim()} onClick={() => void createOrchestration()} className="mt-3 rounded-lg bg-neutral-900 px-3 py-2 text-sm text-white disabled:opacity-40 dark:bg-neutral-100 dark:text-neutral-900">Iniciar orquestração</button>{orchestration && <div className="mt-4 space-y-2">{orchestration.tasks.map((task) => <div key={task.id} className="rounded-lg border border-neutral-200 p-3 text-sm dark:border-neutral-800"><div className="flex justify-between"><span className="font-medium">{task.role}</span><span className="text-xs text-neutral-500">{task.state}</span></div>{task.error && <p className="mt-1 text-xs text-red-600">{task.error}</p>}</div>)}{orchestration.summary && <details className="rounded-lg bg-neutral-50 p-3 text-xs dark:bg-neutral-900"><summary className="cursor-pointer font-medium">Ver síntese</summary><pre className="mt-2 whitespace-pre-wrap font-sans">{orchestration.summary}</pre></details>}</div>}</div>
+        <div className="rounded-2xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-950"><div className="flex items-start justify-between gap-3"><div><p className="text-xs font-medium uppercase tracking-[0.14em] text-neutral-500">Multiagente</p><h2 className="mt-1 font-medium text-neutral-900 dark:text-neutral-100">Orquestrar especialistas</h2></div>{orchestration && <span className="rounded-full bg-neutral-100 px-3 py-1 text-xs font-medium dark:bg-neutral-800">{missionStateLabel(orchestration.state)}</span>}</div><textarea value={orchestrationObjective} onChange={(event) => setOrchestrationObjective(event.target.value)} placeholder="Ex.: pesquisar concorrentes, revisar segurança e propor implementação" className="mt-3 min-h-20 w-full resize-y rounded-xl border border-neutral-300 bg-transparent px-3 py-2 text-sm outline-none dark:border-neutral-700" /><button type="button" disabled={busy || !orchestrationObjective.trim()} onClick={() => void createOrchestration()} className="mt-3 rounded-lg bg-neutral-900 px-3 py-2 text-sm text-white disabled:opacity-40 dark:bg-neutral-100 dark:text-neutral-900">Iniciar orquestração</button>{orchestration && <div className="mt-4 space-y-2">{orchestration.tasks.map((task) => <div key={task.id} className="rounded-lg border border-neutral-200 p-3 text-sm dark:border-neutral-800"><div className="flex justify-between"><span className="font-medium">{task.role}</span><span className="text-xs text-neutral-500">{missionStateLabel(task.state)}</span></div>{task.error && <p className="mt-1 text-xs text-red-600">{task.error}</p>}</div>)}{orchestration.summary && <details className="rounded-lg bg-neutral-50 p-3 text-xs dark:bg-neutral-900"><summary className="cursor-pointer font-medium">Ver síntese</summary><pre className="mt-2 whitespace-pre-wrap font-sans">{orchestration.summary}</pre></details>}</div>}</div>
         <div className="rounded-2xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-950"><p className="text-xs font-medium uppercase tracking-[0.14em] text-neutral-500">Pesquisa profunda</p><h2 className="mt-1 font-medium text-neutral-900 dark:text-neutral-100">Fontes e citações</h2><input value={researchQuery} onChange={(event) => setResearchQuery(event.target.value)} placeholder="Pergunta de pesquisa" className="mt-3 h-10 w-full rounded-xl border border-neutral-300 bg-transparent px-3 text-sm outline-none dark:border-neutral-700" /><textarea value={researchURLs} onChange={(event) => setResearchURLs(event.target.value)} placeholder="Uma URL HTTPS pública por linha" className="mt-2 min-h-20 w-full resize-y rounded-xl border border-neutral-300 bg-transparent px-3 py-2 text-sm outline-none dark:border-neutral-700" /><button type="button" disabled={busy || !researchQuery.trim() || !researchURLs.trim()} onClick={() => void runResearch()} className="mt-3 rounded-lg border border-neutral-300 px-3 py-2 text-sm dark:border-neutral-700">Pesquisar</button>{research && <div className="mt-4 space-y-2 text-sm"><p className="whitespace-pre-wrap text-neutral-700 dark:text-neutral-300">{research.summary}</p>{research.citations.map((citation) => <a key={citation.url} href={citation.url} target="_blank" rel="noreferrer" className="block rounded-lg border border-neutral-200 p-2 text-xs underline dark:border-neutral-800">{citation.title || citation.url}</a>)}</div>}</div>
       </section>
 
@@ -292,8 +297,7 @@ export default function AgenticConsole() {
                 mission={mission}
                 onRefreshMission={() => load(mission.id, orchestration?.id)}
                 onCreateMission={async (obj) => {
-                  setObjective(obj);
-                  await createMission();
+                  await createMission(obj);
                 }}
                 busy={busy}
               />
@@ -306,7 +310,7 @@ export default function AgenticConsole() {
                     <p className="text-xs text-neutral-500">{mission.id}</p>
                     <h2 className="mt-1 font-medium text-neutral-900 dark:text-neutral-100">{mission.objective}</h2>
                   </div>
-                  <span className="rounded-full bg-neutral-100 px-3 py-1 text-xs font-medium dark:bg-neutral-800">{mission.state}</span>
+                  <span className="rounded-full bg-neutral-100 px-3 py-1 text-xs font-medium dark:bg-neutral-800">{missionStateLabel(mission.state)}</span>
                 </div>
                 {(mission.plan?.length ?? 0) > 0 && (() => {
                   const steps = mission.plan ?? [];
@@ -328,7 +332,7 @@ export default function AgenticConsole() {
                             <li key={step.id} className="flex items-center gap-2 text-xs">
                               <span className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[9px] font-semibold ${kind === "done" ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300" : kind === "run" ? "bg-violet-100 text-violet-700 dark:bg-violet-950/40 dark:text-violet-300" : "bg-neutral-200 text-neutral-500 dark:bg-neutral-800 dark:text-neutral-400"}`}>{kind === "done" ? "✓" : index + 1}</span>
                               <span className={`min-w-0 flex-1 truncate ${kind === "todo" ? "text-neutral-500" : "text-neutral-800 dark:text-neutral-200"}`}>{step.title}</span>
-                              {step.requires_approval && <span className="shrink-0 rounded-full bg-amber-50 px-1.5 py-0.5 text-[9px] text-amber-700 dark:bg-amber-950/30 dark:text-amber-300">approval</span>}
+                              {step.requires_approval && <span className="shrink-0 rounded-full bg-amber-50 px-1.5 py-0.5 text-[9px] text-amber-700 dark:bg-amber-950/30 dark:text-amber-300">aprovação</span>}
                             </li>
                           );
                         })}
@@ -341,7 +345,7 @@ export default function AgenticConsole() {
                     <div key={event.id} className="flex gap-3 text-sm">
                       <div className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-neutral-500" />
                       <div>
-                        <p className="font-medium text-neutral-800 dark:text-neutral-200">{event.type}</p>
+                        <p className="font-medium text-neutral-800 dark:text-neutral-200">{eventTypeLabel(event.type)}</p>
                         <p className="text-xs text-neutral-500">{event.step_id ?? "mission"} · {new Date(event.created_at).toLocaleString()}</p>
                       </div>
                     </div>

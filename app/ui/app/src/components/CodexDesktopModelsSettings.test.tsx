@@ -266,6 +266,8 @@ describe("CodexDesktopModelsSettings", () => {
     vi.stubGlobal("window", {
       addEventListener: vi.fn(),
       removeEventListener: vi.fn(),
+      // The native macOS bridge must exist so the restart button isn't gated off.
+      applyCodexDesktopModels: vi.fn(),
       getCodexDesktopModelsSettings: vi.fn().mockResolvedValue({
         settings: settings({
           connected: true,
@@ -983,6 +985,8 @@ describe("CodexDesktopModelsSettings", () => {
     vi.stubGlobal("window", {
       addEventListener: vi.fn(),
       removeEventListener: vi.fn(),
+      // The native macOS bridge must exist so the restart button isn't gated off.
+      applyCodexDesktopModels: vi.fn(),
     });
 
     let renderer;

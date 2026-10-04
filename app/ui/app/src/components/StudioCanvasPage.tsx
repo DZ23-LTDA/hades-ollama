@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState, useTransition } from "react";
 import { AppSidebar } from "@/components/AppSidebar";
 import { SidebarLayout } from "@/components/layout/layout";
-import { API_BASE } from "@/lib/config";
+import { missionStateLabel } from "@/lib/labels";
 import {
   type BuilderProject,
   type VisualComponent,
@@ -13,6 +13,7 @@ import {
   redoBuilder,
   previewBuilder,
   exportBuilder,
+  deployBuilder,
   agentFetchBlob,
 } from "@/lib/agenticClient";
 import {
@@ -27,7 +28,8 @@ import {
   PlusIcon,
   CheckCircleIcon,
   ExclamationTriangleIcon,
-  ArrowsUpDownIcon,
+  ArrowUpIcon,
+  ArrowDownIcon,
   GlobeAltIcon,
   PresentationChartBarIcon,
   PuzzlePieceIcon,
@@ -98,6 +100,15 @@ const COMPONENT_TEMPLATES: Array<{
     width: 800,
     height: 60,
   },
+];
+
+// Provedores de publicação: cada um exige a credencial correta no ambiente do
+// servidor (inclusive SSH). O slug é enviado ao Deploy Adapter real do backend.
+const DEPLOY_PROVIDERS: Array<{ label: string; slug: string; credential: string }> = [
+  { label: "Vercel", slug: "vercel", credential: "VERCEL_TOKEN" },
+  { label: "Cloudflare Pages", slug: "cloudflare", credential: "CLOUDFLARE_API_TOKEN e CLOUDFLARE_ACCOUNT_ID" },
+  { label: "Netlify", slug: "netlify", credential: "NETLIFY_AUTH_TOKEN" },
+  { label: "SSH / Servidor Próprio", slug: "ssh", credential: "chave SSH e host (SSH_PRIVATE_KEY, SSH_HOST, SSH_USER)" },
 ];
 
 export function StudioCanvasPage() {
@@ -334,16 +345,52 @@ export function StudioCanvasPage() {
     }
   };
 
-  // Honest Deploy Adapter test (without pretending published)
-  const handleDeployAttempt = () => {
-    setDeployStatus({
-      status: "BLOCKED_EXTERNAL",
-      message: "Deploy externo requer configuração de credenciais no ambiente (ex: VERCEL_TOKEN, CLOUDFLARE_API_TOKEN ou NETLIFY_AUTH_TOKEN). O sistema não falsifica publicação.",
-    });
+  // Criação a partir de modelo: confirma antes de substituir o projeto aberto e
+  // trata erros (os botões antigos trocavam o projeto sem aviso e sem .catch).
+  const handleCreateTemplate = async (name: string, kind: BuilderProject["kind"]) => {
+    if (project && !window.confirm(`Criar "${name}"? O projeto atualmente aberto no editor será substituído por um novo projeto em branco.`)) {
+      return;
+    }
+    try {
+      const created = await createBuilder({ name, kind });
+      setProject(created);
+      setSelectedCompId(null);
+      setNotice({ type: "success", message: `Novo projeto "${name}" criado.` });
+    } catch (err: unknown) {
+      setNotice({ type: "error", message: `Erro ao criar projeto a partir do modelo: ${String(err)}` });
+    }
+  };
+
+  // Publicação real: chama o Deploy Adapter do backend e mostra o resultado
+  // honesto — sucesso com URL, estado em processamento, ou o motivo real (ex.:
+  // credencial ausente), sempre citando a credencial correta do provedor.
+  const handleDeployAttempt = async (provider: (typeof DEPLOY_PROVIDERS)[number]) => {
+    if (!project) return;
+    setDeployStatus({ status: "Publicando…", message: `Enviando o projeto para ${provider.label} pelo Deploy Adapter…` });
+    try {
+      const result = await deployBuilder(project.id, provider.slug, {});
+      const deployment = (result as { deployment?: { status?: string; url?: string }; status?: string; url?: string }).deployment ?? result;
+      const url = deployment?.url;
+      const rawStatus = deployment?.status ?? "";
+      const humanStatus = missionStateLabel(rawStatus);
+      if (url) {
+        setDeployStatus({ status: humanStatus || "Publicado", message: `Publicado em ${provider.label}. URL: ${url}` });
+      } else {
+        setDeployStatus({
+          status: humanStatus || "Em processamento",
+          message: `${provider.label}: solicitação de publicação aceita pelo runtime${humanStatus ? ` (estado: ${humanStatus})` : ""}. Acompanhe a conclusão e a URL final.`,
+        });
+      }
+    } catch (err) {
+      const reason = err instanceof Error ? err.message : String(err);
+      setDeployStatus({
+        status: "Bloqueado (dependência externa)",
+        message: `Não foi possível publicar em ${provider.label}: ${reason}. Configure a credencial no ambiente do servidor: ${provider.credential}. O sistema não falsifica a publicação.`,
+      });
+    }
   };
 
   const selectedComponent = project?.components?.find((c) => c.id === selectedCompId);
-  const previewUrl = project ? `${API_BASE}/api/agent/v1/builders/${project.id}/preview/index.html` : "";
 
   return (
     <SidebarLayout title="Studio" sidebar={<AppSidebar current="studio" />}>
@@ -370,7 +417,7 @@ export function StudioCanvasPage() {
                   </span>
                 )}
               </div>
-              <p className="text-xs text-neutral-400">Monte um site ou app arrastando componentes; veja a prévia e exporte em ZIP.</p>
+              <p className="text-xs text-neutral-400">Monte um site ou app adicionando componentes com um clique e reordenando a lista; veja a prévia e exporte em ZIP.</p>
             </div>
           </div>
 
@@ -518,9 +565,7 @@ export function StudioCanvasPage() {
               <div className="mt-2 space-y-1 text-xs">
                 <button
                   type="button"
-                  onClick={() =>
-                    createBuilder({ name: "Novo Site Web", kind: "website" }).then((p) => setProject(p))
-                  }
+                  onClick={() => void handleCreateTemplate("Novo Site Web", "website")}
                   className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-neutral-600 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800"
                 >
                   <GlobeAltIcon className="h-4 w-4 text-emerald-500" />
@@ -528,9 +573,7 @@ export function StudioCanvasPage() {
                 </button>
                 <button
                   type="button"
-                  onClick={() =>
-                    createBuilder({ name: "Novo Dashboard", kind: "dashboard" }).then((p) => setProject(p))
-                  }
+                  onClick={() => void handleCreateTemplate("Novo Dashboard", "dashboard")}
                   className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-neutral-600 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800"
                 >
                   <ChartBarIcon className="h-4 w-4 text-blue-500" />
@@ -538,9 +581,7 @@ export function StudioCanvasPage() {
                 </button>
                 <button
                   type="button"
-                  onClick={() =>
-                    createBuilder({ name: "Nova Apresentação", kind: "slides" }).then((p) => setProject(p))
-                  }
+                  onClick={() => void handleCreateTemplate("Nova Apresentação", "slides")}
                   className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-neutral-600 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800"
                 >
                   <PresentationChartBarIcon className="h-4 w-4 text-violet-500" />
@@ -548,9 +589,7 @@ export function StudioCanvasPage() {
                 </button>
                 <button
                   type="button"
-                  onClick={() =>
-                    createBuilder({ name: "Novo Jogo Web", kind: "game" }).then((p) => setProject(p))
-                  }
+                  onClick={() => void handleCreateTemplate("Novo Jogo Web", "game")}
                   className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-neutral-600 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800"
                 >
                   <PuzzlePieceIcon className="h-4 w-4 text-amber-500" />
@@ -558,9 +597,7 @@ export function StudioCanvasPage() {
                 </button>
                 <button
                   type="button"
-                  onClick={() =>
-                    createBuilder({ name: "Novo App Móvel", kind: "app" }).then((p) => setProject(p))
-                  }
+                  onClick={() => void handleCreateTemplate("Novo App Móvel", "app")}
                   className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-neutral-600 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800"
                 >
                   <DevicePhoneMobileIcon className="h-4 w-4 text-rose-500" />
@@ -644,7 +681,19 @@ export function StudioCanvasPage() {
                                   className="rounded p-1 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700 disabled:opacity-20 dark:hover:bg-neutral-800"
                                   title="Mover para cima"
                                 >
-                                  <ArrowsUpDownIcon className="h-3.5 w-3.5" />
+                                  <ArrowUpIcon className="h-3.5 w-3.5" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleMoveComponent(comp.id, "down");
+                                  }}
+                                  disabled={idx === (project?.components?.length ?? 0) - 1}
+                                  className="rounded p-1 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700 disabled:opacity-20 dark:hover:bg-neutral-800"
+                                  title="Mover para baixo"
+                                >
+                                  <ArrowDownIcon className="h-3.5 w-3.5" />
                                 </button>
                                 <button
                                   type="button"
@@ -722,7 +771,7 @@ export function StudioCanvasPage() {
               /* Live Preview Mode (Real iframe to backend preview) */
               <div className="flex h-full flex-col">
                 <div className="mb-2 flex items-center justify-between text-xs text-neutral-500">
-                  <span>URL do Preview: {previewUrl}</span>
+                  <span>Prévia autenticada: carregada com a sua sessão; a URL interna é protegida e não é compartilhável.</span>
                   <a
                     href={previewSrc ?? undefined}
                     target="_blank"
@@ -843,6 +892,42 @@ export function StudioCanvasPage() {
                   </div>
                 )}
 
+                {selectedComponent.props?.links !== undefined && (
+                  <div>
+                    <label className="block text-neutral-700 dark:text-neutral-300">Links (separados por vírgula)</label>
+                    <textarea
+                      rows={2}
+                      value={selectedComponent.props.links}
+                      onChange={(e) => handleUpdateProps(selectedComponent.id, "links", e.target.value)}
+                      className="mt-1 w-full rounded-lg border border-neutral-300 p-2 text-neutral-900 outline-none focus:border-neutral-900 dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+                    />
+                  </div>
+                )}
+
+                {selectedComponent.props?.change !== undefined && (
+                  <div>
+                    <label className="block text-neutral-700 dark:text-neutral-300">Variação</label>
+                    <input
+                      type="text"
+                      value={selectedComponent.props.change}
+                      onChange={(e) => handleUpdateProps(selectedComponent.id, "change", e.target.value)}
+                      className="mt-1 w-full rounded-lg border border-neutral-300 px-2.5 py-1.5 text-neutral-900 outline-none focus:border-neutral-900 dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+                    />
+                  </div>
+                )}
+
+                {selectedComponent.props?.action !== undefined && (
+                  <div>
+                    <label className="block text-neutral-700 dark:text-neutral-300">Ação</label>
+                    <input
+                      type="text"
+                      value={selectedComponent.props.action}
+                      onChange={(e) => handleUpdateProps(selectedComponent.id, "action", e.target.value)}
+                      className="mt-1 w-full rounded-lg border border-neutral-300 px-2.5 py-1.5 text-neutral-900 outline-none focus:border-neutral-900 dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+                    />
+                  </div>
+                )}
+
                 <div className="pt-4 border-t border-neutral-100 dark:border-neutral-800 flex gap-2">
                   <button
                     type="button"
@@ -862,21 +947,21 @@ export function StudioCanvasPage() {
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
             <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl dark:bg-neutral-900">
               <h3 className="text-base font-bold text-neutral-900 dark:text-white">
-                Publicar com Deploy Adapter
+                Publicar projeto
               </h3>
               <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
                 Selecione o provedor de nuvem para hospedar seu projeto. Sem credenciais ativas, o sistema mantém status honesto.
               </p>
 
               <div className="mt-4 space-y-2">
-                {["Vercel", "Cloudflare Pages", "Netlify", "SSH / Servidor Próprio"].map((prov) => (
+                {DEPLOY_PROVIDERS.map((prov) => (
                   <button
-                    key={prov}
+                    key={prov.slug}
                     type="button"
-                    onClick={handleDeployAttempt}
+                    onClick={() => void handleDeployAttempt(prov)}
                     className="flex w-full items-center justify-between rounded-xl border border-neutral-200 p-3 text-left text-xs font-medium text-neutral-800 transition hover:bg-neutral-50 dark:border-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-800"
                   >
-                    <span>{prov}</span>
+                    <span>{prov.label}</span>
                     <span className="rounded bg-amber-100 px-2 py-0.5 text-[10px] font-medium text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
                       Requer credenciais
                     </span>

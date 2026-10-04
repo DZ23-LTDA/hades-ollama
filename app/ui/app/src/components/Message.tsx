@@ -77,6 +77,28 @@ function asRecord(value: unknown): Record<string, unknown> | undefined {
     : undefined;
 }
 
+// formatRawToolResult pretty-prints the tool result for the technical details
+// panel. Objects are indented; a string that is itself JSON is parsed and
+// re-indented so the user sees readable structure instead of a one-line blob.
+function formatRawToolResult(value: unknown): string {
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
+      try {
+        return JSON.stringify(JSON.parse(trimmed), null, 2);
+      } catch {
+        return value;
+      }
+    }
+    return value;
+  }
+  try {
+    return JSON.stringify(value, null, 2);
+  } catch {
+    return String(value);
+  }
+}
+
 type BrowserToolContent = {
   cursor: number;
   title: string;
@@ -364,7 +386,7 @@ function ToolRoleContent({
                           "Resultado da página"
                         );
                       })()
-                    : "Resultado bruto da ferramenta"}
+                    : "Detalhes técnicos da ferramenta"}
               </span>
             </div>
           </div>
@@ -376,14 +398,15 @@ function ToolRoleContent({
               opacity: isCollapsed ? 0 : 1,
             }}
           >
+            <p className="mb-1 text-[11px] text-neutral-400 dark:text-neutral-500">
+              Dados técnicos da ferramenta (JSON), úteis para depuração.
+            </p>
             <pre
               id="raw-json-tool-result"
               className="text-xs overflow-x-auto bg-neutral-50 dark:bg-neutral-900 text-neutral-800 dark:text-neutral-200 p-2 rounded-md border border-neutral-200 dark:border-neutral-700"
             >
               <code>
-                {typeof rawToolResult === "string"
-                  ? rawToolResult
-                  : JSON.stringify(rawToolResult, null, 2)}
+                {formatRawToolResult(rawToolResult)}
               </code>
             </pre>
           </div>

@@ -11,10 +11,7 @@ import {
   RunOllamaScreen,
   WelcomeScreen,
 } from "./Onboarding";
-import {
-  FIRST_MODEL_COMMAND,
-  shouldShowClaudeConnectedIntro,
-} from "./onboardingUtils";
+import { shouldShowClaudeConnectedIntro } from "./onboardingUtils";
 import {
   CLAUDE_CONNECTION_TIMEOUT_MS,
   CLAUDE_INSTALL_TIMEOUT_MS,
@@ -650,7 +647,7 @@ describe("Onboarding", () => {
     expect(html).not.toContain(">Entrar<");
   });
 
-  it("shows only the local command on the final page", () => {
+  it("guides a terminal-free download on the final page", () => {
     const html = renderToStaticMarkup(
       <RunOllamaScreen
         completionError={null}
@@ -661,7 +658,10 @@ describe("Onboarding", () => {
 
     expect(html).toContain("Baixe seu primeiro modelo");
     expect(html).toMatch(/<main class="light-only [^"]*bg-white/);
-    expect(html).toContain(FIRST_MODEL_COMMAND);
+    // The final page no longer surfaces a terminal command to copy; it downloads
+    // the model straight from the app, so no `ollama run …` line is shown.
+    expect(html).toContain("sem precisar de terminal");
+    expect(html).not.toContain("ollama run");
     expect(html).not.toContain("Finish");
     expect(html).not.toContain("Entrar");
     expect(html).not.toContain("create an account");
@@ -678,7 +678,9 @@ describe("Onboarding", () => {
 
     expect(html).toContain('id="onboarding-model"');
     expect(html).toContain("Baixar");
-    expect(html).toContain("O download usa o backend Ollama deste computador.");
+    expect(html).toContain(
+      "O arquivo pode ser grande; mantenha o Ollama em execução durante o processo.",
+    );
   });
 
   it("shows the connecting state on the welcome action", () => {

@@ -101,7 +101,10 @@ describe("ModelsPanel", () => {
   it("downloads a new model and selects it", async () => {
     const renderer = await render();
     const input = renderer.root.findByType("input");
-    expect(input.props.value).toBe(RECOMMENDED_FIRST_MODEL);
+    // The field starts empty with the recommended model as a placeholder; an
+    // empty field still downloads the recommended model.
+    expect(input.props.value).toBe("");
+    expect(input.props.placeholder).toBe(RECOMMENDED_FIRST_MODEL);
     const button = findButton(renderer, "Baixar modelo");
     await act(async () => {
       button!.props.onClick();

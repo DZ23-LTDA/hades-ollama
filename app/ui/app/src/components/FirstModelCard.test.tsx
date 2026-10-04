@@ -94,9 +94,11 @@ describe("FirstModelCard", () => {
       await Promise.resolve();
     });
 
-    // The small, predictable recommended model is prefilled.
+    // The field starts empty and shows the small, predictable recommended model
+    // as a placeholder; leaving it empty downloads that recommended model.
     const input = renderer.root.findByType("input");
-    expect(input.props.value).toBe(RECOMMENDED_FIRST_MODEL);
+    expect(input.props.value).toBe("");
+    expect(input.props.placeholder).toBe(RECOMMENDED_FIRST_MODEL);
 
     const button = findButton(renderer, "Baixar e começar");
     expect(button).toBeDefined();

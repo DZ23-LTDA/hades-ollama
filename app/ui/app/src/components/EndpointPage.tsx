@@ -14,8 +14,23 @@ import { AppSidebar } from "@/components/AppSidebar";
 import { SidebarLayout } from "@/components/layout/layout";
 import { SettingsTabs } from "@/components/SettingsTabs";
 import { API_BASE } from "@/lib/config";
+import { agentFetch } from "@/lib/agenticClient";
 import { endpointHealthLabel, type EndpointHealthStatus } from "@/lib/endpoint";
 import { Link } from "@tanstack/react-router";
+
+// apiPort deriva a porta real a partir do endereço efetivo da API (API_BASE,
+// ou a mesma origem quando ele é relativo), em vez de assumir um valor fixo.
+function apiPort(): string {
+  try {
+    const href = typeof window !== "undefined" ? window.location.href : "http://localhost";
+    const base = API_BASE || (typeof window !== "undefined" ? window.location.origin : "http://localhost:11434");
+    const url = new URL(base, href);
+    if (url.port) return url.port;
+    return url.protocol === "https:" ? "443" : "80";
+  } catch {
+    return "11434";
+  }
+}
 
 function CopyButton({ text, label }: { text: string; label: string }) {
   const [copied, setCopied] = useState(false);
@@ -50,6 +65,36 @@ export function EndpointPage() {
   const [osName, setOsName] = useState("Local");
   const [serverVersion, setServerVersion] = useState("");
   const [hostStatus, setHostStatus] = useState<EndpointHealthStatus>("checking");
+
+  // Qual aviso informativo (pré-requisitos) está aberto; nenhum botão fica morto.
+  const [openInfo, setOpenInfo] = useState<string | null>(null);
+  const toggleInfo = (key: string) => setOpenInfo((current) => (current === key ? null : key));
+
+  // Pareamento real de dispositivo (ex.: celular) via backend de companion devices.
+  const [pairing, setPairing] = useState<{ code: string; expiresAt?: string } | null>(null);
+  const [pairingError, setPairingError] = useState<string | null>(null);
+  const [pairingBusy, setPairingBusy] = useState(false);
+
+  const startPairing = async () => {
+    setPairingBusy(true);
+    setPairingError(null);
+    setPairing(null);
+    try {
+      const result = await agentFetch<{ pairing_code: string; expires_at?: string }>(
+        "/api/agent/v1/devices/pair/start",
+        { method: "POST", body: "{}" },
+      );
+      setPairing({ code: result.pairing_code, expiresAt: result.expires_at });
+    } catch (error) {
+      setPairingError(
+        error instanceof Error
+          ? error.message
+          : "Não foi possível iniciar o pareamento agora.",
+      );
+    } finally {
+      setPairingBusy(false);
+    }
+  };
 
   useEffect(() => {
     fetch(`${API_BASE}/api/tags`)
@@ -109,14 +154,22 @@ export function EndpointPage() {
             </div>
             <button
               type="button"
-              disabled
-              title="Ainda não configurado: nenhum provedor de computador em nuvem foi configurado"
-              className="inline-flex shrink-0 cursor-not-allowed items-center gap-2 rounded-xl bg-neutral-200 px-4 py-2 text-sm font-medium text-neutral-500 dark:bg-neutral-800 dark:text-neutral-500"
+              onClick={() => toggleInfo("cloud")}
+              aria-expanded={openInfo === "cloud"}
+              className="inline-flex shrink-0 items-center gap-2 rounded-xl border border-neutral-300 bg-white px-4 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:bg-neutral-800"
             >
               <PlusIcon className="h-4 w-4" />
-              Criar computador na nuvem (não configurado)
+              Criar computador na nuvem
             </button>
           </div>
+          {openInfo === "cloud" && (
+            <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-xs leading-5 text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/20 dark:text-amber-200" role="status">
+              <strong className="font-semibold">Pré-requisito:</strong> computadores na nuvem exigem um provedor
+              de infraestrutura configurado (credenciais e região). Este build local-first não inclui um provedor
+              de nuvem, portanto a criação ainda não está disponível. Enquanto isso, use o seu computador local,
+              que já aparece conectado abaixo.
+            </div>
+          )}
 
           {/* Cards de Computadores Conectados (Fiel ao Manus) */}
           <div className="mt-8 grid grid-cols-1 gap-6 md:grid-cols-2">
@@ -140,7 +193,7 @@ export function EndpointPage() {
                           <span className={`h-2 w-2 rounded-full ${hostStatus === "online" ? "bg-emerald-500 animate-pulse" : hostStatus === "offline" ? "bg-red-500" : "bg-neutral-400 animate-pulse"}`} />
                           {endpointHealthLabel(hostStatus)}
                         </span>
-                        <span className="text-xs text-neutral-400">• {osName} / Local-First {serverVersion ? `(v${serverVersion})` : ""}</span>
+                        <span className="text-xs text-neutral-400">• {osName} / Local {serverVersion ? `(v${serverVersion})` : ""}</span>
                       </div>
                     </div>
                   </div>
@@ -152,15 +205,15 @@ export function EndpointPage() {
                 <div className="mt-6 rounded-xl bg-neutral-50 p-3.5 text-xs text-neutral-600 dark:bg-neutral-900 dark:text-neutral-300">
                   <div className="flex items-center justify-between py-1 border-b border-neutral-200/50 dark:border-neutral-800">
                     <span className="text-neutral-400">Porta da API:</span>
-                    <span className="font-mono font-medium">11434</span>
+                    <span className="font-mono font-medium">{apiPort()}</span>
                   </div>
                   <div className="flex items-center justify-between py-1 border-b border-neutral-200/50 dark:border-neutral-800">
-                    <span className="text-neutral-400">Isolamento:</span>
-                    <span className="font-medium text-emerald-600 dark:text-emerald-400">Sandbox local e RLS</span>
+                    <span className="text-neutral-400">Sistema:</span>
+                    <span className="font-medium">{osName}</span>
                   </div>
                   <div className="flex items-center justify-between py-1">
-                    <span className="text-neutral-400">Permissão de Agente:</span>
-                    <span className="font-medium">Total com aprovação humana</span>
+                    <span className="text-neutral-400">Versão do servidor:</span>
+                    <span className="font-mono font-medium">{serverVersion ? `v${serverVersion}` : "—"}</span>
                   </div>
                 </div>
               </div>
@@ -168,15 +221,20 @@ export function EndpointPage() {
               <div className="mt-6 flex flex-col gap-3">
                 <button
                   type="button"
-                  disabled
-                  title="Ainda não configurado: acesso remoto exige um endpoint e aprovação configurados"
-                  className="w-full cursor-not-allowed rounded-xl bg-neutral-200 py-2.5 text-sm font-semibold text-neutral-500 dark:bg-neutral-800 dark:text-neutral-500"
+                  onClick={() => toggleInfo("remote")}
+                  aria-expanded={openInfo === "remote"}
+                  className="w-full rounded-xl border border-neutral-300 bg-white py-2.5 text-sm font-semibold text-neutral-700 hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:bg-neutral-800"
                 >
-                  Acesso remoto (não configurado)
+                  Acesso remoto
                 </button>
-                <p className="text-center text-xs text-neutral-500 dark:text-neutral-400" role="status">
-                  Ainda não configurado — este host local não autoriza acesso remoto automaticamente.
-                </p>
+                {openInfo === "remote" && (
+                  <div className="rounded-xl border border-amber-200 bg-amber-50 p-3.5 text-xs leading-5 text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/20 dark:text-amber-200" role="status">
+                    Por padrão este host responde apenas localmente. Para acesso remoto é preciso ativar
+                    <strong> “Expor o Hades na rede”</strong> em Configurações e proteger a porta
+                    {" "}<span className="font-mono">{apiPort()}</span> com TLS/autenticação (por exemplo, um proxy reverso).
+                    Enquanto isso não for feito, o acesso remoto permanece desligado por segurança.
+                  </div>
+                )}
                 <div className="flex items-center gap-2">
                   <a
                     href="#endpoints-section"
@@ -213,21 +271,46 @@ export function EndpointPage() {
               <div className="mt-6 flex flex-col gap-2.5">
                 <button
                   type="button"
-                  disabled
-                  title="Ainda não configurado: pareamento de outro computador ainda não está disponível"
-                  className="w-full cursor-not-allowed rounded-xl border border-neutral-200 bg-neutral-100 py-2 text-xs font-medium text-neutral-500 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-500"
+                  onClick={() => toggleInfo("computer")}
+                  aria-expanded={openInfo === "computer"}
+                  className="w-full rounded-xl border border-neutral-300 bg-white py-2 text-xs font-medium text-neutral-700 hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:bg-neutral-800"
                 >
-                  Conectar meu computador (não configurado)
+                  Conectar meu computador
                 </button>
+                {openInfo === "computer" && (
+                  <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-left text-[11px] leading-5 text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/20 dark:text-amber-200" role="status">
+                    Para conectar outro computador como nó remoto é preciso que ele rode o Hades e seja alcançável
+                    pela rede (host e porta <span className="font-mono">{apiPort()}</span> expostos com TLS). Não há,
+                    neste build local-first, um provedor que faça esse provisionamento automaticamente.
+                  </div>
+                )}
                 <button
                   type="button"
-                  disabled
-                  title="Ainda não configurado: controle por telefone exige pareamento explícito"
-                  className="inline-flex w-full cursor-not-allowed items-center justify-center gap-1.5 rounded-xl border border-neutral-200 bg-neutral-100 py-2 text-xs font-medium text-neutral-500 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-500"
+                  onClick={() => void startPairing()}
+                  disabled={pairingBusy}
+                  className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl border border-neutral-300 bg-white py-2 text-xs font-medium text-neutral-700 hover:bg-neutral-50 disabled:opacity-50 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:bg-neutral-800"
                 >
                   <DevicePhoneMobileIcon className="h-4 w-4" />
-                  Controlar pelo seu telefone (não configurado)
+                  {pairingBusy ? "Gerando código…" : "Parear o seu telefone"}
                 </button>
+                {pairingError && (
+                  <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-left text-[11px] leading-5 text-red-800 dark:border-red-900/50 dark:bg-red-950/20 dark:text-red-200" role="alert">
+                    {pairingError}
+                  </div>
+                )}
+                {pairing && (
+                  <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-left text-[11px] leading-5 text-emerald-900 dark:border-emerald-900/50 dark:bg-emerald-950/20 dark:text-emerald-200" role="status">
+                    <p className="font-semibold">Código de pareamento:</p>
+                    <p className="mt-1 select-all font-mono text-base tracking-widest text-emerald-700 dark:text-emerald-300">{pairing.code}</p>
+                    <p className="mt-2">
+                      Abra o app complementar do Hades no seu celular e informe este código para concluir o pareamento.
+                      {pairing.expiresAt ? ` O código expira às ${new Date(pairing.expiresAt).toLocaleTimeString("pt-BR")}.` : ""}
+                    </p>
+                    <p className="mt-1 opacity-80">
+                      O pareamento só se conclui a partir do app no telefone; nada é enviado para fora deste computador.
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -265,26 +348,26 @@ export function EndpointPage() {
               <li className="flex items-center gap-3 rounded-xl bg-neutral-50 p-3.5 dark:bg-neutral-900">
                 <div className="min-w-0 flex-1">
                   <p className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500">
-                    OpenAI-Compatible
+                    Compatível com OpenAI
                   </p>
                   <code className="mt-0.5 block truncate font-mono text-sm text-neutral-900 dark:text-neutral-100">
                     {`${API_BASE}/v1`}
                   </code>
                   <p className="mt-0.5 text-[11px] text-neutral-400">chat/completions, responses, models</p>
                 </div>
-                <CopyButton text={`${API_BASE}/v1`} label="OpenAI-Compatible" />
+                <CopyButton text={`${API_BASE}/v1`} label="compatível com OpenAI" />
               </li>
               <li className="flex items-center gap-3 rounded-xl bg-neutral-50 p-3.5 dark:bg-neutral-900">
                 <div className="min-w-0 flex-1">
                   <p className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500">
-                    Anthropic-Compatible (Claude Code)
+                    Compatível com Anthropic (Claude Code)
                   </p>
                   <code className="mt-0.5 block truncate font-mono text-sm text-neutral-900 dark:text-neutral-100">
                     {API_BASE}
                   </code>
                   <p className="mt-0.5 text-[11px] text-neutral-400">/v1/messages (Claude Code, SDK Anthropic)</p>
                 </div>
-                <CopyButton text={API_BASE} label="Anthropic-Compatible" />
+                <CopyButton text={API_BASE} label="compatível com Anthropic" />
               </li>
             </ul>
           </section>

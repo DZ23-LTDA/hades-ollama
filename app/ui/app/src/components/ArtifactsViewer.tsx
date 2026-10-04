@@ -7,6 +7,7 @@ import {
   ShieldCheckIcon,
 } from "@heroicons/react/24/outline";
 import { agentFetchBlob } from "@/lib/agenticClient";
+import StreamingMarkdownContent from "@/components/StreamingMarkdownContent";
 
 export interface ArtifactItem {
   id: string;
@@ -30,7 +31,7 @@ export function ArtifactsViewer({
   selectedArtifactId,
   onSelectArtifact,
 }: ArtifactsViewerProps) {
-  const [activeTab, setActiveTab] = useState<"preview" | "markdown" | "code" | "download">("preview");
+  const [activeTab, setActiveTab] = useState<"preview" | "code" | "download">("preview");
   const [activeArtifactIndex, setActiveArtifactIndex] = useState(0);
   const [content, setContent] = useState<string>("");
   const [loading, setLoading] = useState(false);
@@ -160,8 +161,8 @@ export function ArtifactsViewer({
               className="h-full w-full border-0 bg-white"
             />
           ) : isMd ? (
-            <div className="prose prose-neutral dark:prose-invert max-w-none p-6 text-sm">
-              <pre className="whitespace-pre-wrap font-sans text-neutral-800 dark:text-neutral-200">{content}</pre>
+            <div className="max-w-none p-6 text-sm">
+              <StreamingMarkdownContent content={content} />
             </div>
           ) : (
             <div className="p-6">
