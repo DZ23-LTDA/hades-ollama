@@ -1083,6 +1083,66 @@ func (a *agentAPI) devToken(c *gin.Context) {
 	c.JSON(http.StatusCreated, gin.H{"access_token": raw, "token": token, "user": user.Public(), "organization": organization})
 }
 
+// builtinOAuthProvider holds the fixed, public OAuth endpoints for a well-known
+// provider so the operator only has to supply the app's client_id/secret — not
+// the URLs. These are the published authorize/token/userinfo endpoints and the
+// default scopes; loopback redirect is allowed so the desktop app can receive
+// the callback on 127.0.0.1.
+type builtinOAuthProvider struct {
+	AuthorizeURL string
+	TokenURL     string
+	UserInfoURL  string
+	Scopes       []string
+}
+
+// builtinOAuthProviders maps a provider id to its public OAuth endpoints. One
+// Google app covers Gmail, Drive, Calendar, etc. (scopes are requested per
+// connection). The operator still registers the app on the provider and pastes
+// the client_id/secret; nothing here fabricates credentials.
+var builtinOAuthProviders = map[string]builtinOAuthProvider{
+	"google": {
+		AuthorizeURL: "https://accounts.google.com/o/oauth2/v2/auth",
+		TokenURL:     "https://oauth2.googleapis.com/token",
+		UserInfoURL:  "https://openidconnect.googleapis.com/v1/userinfo",
+		Scopes:       []string{"openid", "email", "profile"},
+	},
+	"microsoft": {
+		AuthorizeURL: "https://login.microsoftonline.com/common/oauth2/v2.0/authorize",
+		TokenURL:     "https://login.microsoftonline.com/common/oauth2/v2.0/token",
+		UserInfoURL:  "https://graph.microsoft.com/oidc/userinfo",
+		Scopes:       []string{"openid", "email", "profile", "offline_access"},
+	},
+	"github": {
+		AuthorizeURL: "https://github.com/login/oauth/authorize",
+		TokenURL:     "https://github.com/login/oauth/access_token",
+		UserInfoURL:  "https://api.github.com/user",
+		Scopes:       []string{"read:user", "user:email"},
+	},
+	"slack": {
+		AuthorizeURL: "https://slack.com/oauth/v2/authorize",
+		TokenURL:     "https://slack.com/api/oauth.v2.access",
+		Scopes:       []string{"users:read"},
+	},
+	"dropbox": {
+		AuthorizeURL: "https://www.dropbox.com/oauth2/authorize",
+		TokenURL:     "https://api.dropboxapi.com/oauth2/token",
+		Scopes:       []string{"account_info.read"},
+	},
+	"canva": {
+		AuthorizeURL: "https://www.canva.com/api/oauth/authorize",
+		TokenURL:     "https://api.canva.com/rest/v1/oauth/token",
+		Scopes:       []string{"profile:read"},
+	},
+}
+
+// builtinOAuthScopes returns the default scopes for a known provider id.
+func builtinOAuthScopes(name string) []string {
+	if b, ok := builtinOAuthProviders[strings.ToLower(strings.TrimSpace(name))]; ok {
+		return b.Scopes
+	}
+	return nil
+}
+
 func oauthProviderFromEnv(name string) agent.OAuthProvider {
 	key := strings.ToUpper(strings.NewReplacer("-", "_", " ", "_").Replace(strings.TrimSpace(name)))
 	prefix := "OLLAMA_AGENT_OAUTH_" + key
@@ -1092,7 +1152,35 @@ func oauthProviderFromEnv(name string) agent.OAuthProvider {
 			redirects = append(redirects, value)
 		}
 	}
-	return agent.OAuthProvider{Name: name, AuthorizeURL: os.Getenv(prefix + "_AUTHORIZE_URL"), TokenURL: os.Getenv(prefix + "_TOKEN_URL"), RevocationURL: os.Getenv(prefix + "_REVOCATION_URL"), UserInfoURL: os.Getenv(prefix + "_USERINFO_URL"), IssuerURL: os.Getenv(prefix + "_ISSUER_URL"), Audience: os.Getenv(prefix + "_AUDIENCE"), ClientIDEnv: os.Getenv(prefix + "_CLIENT_ID_ENV"), SecretEnv: os.Getenv(prefix + "_SECRET_ENV"), RedirectURIs: redirects, AllowLoopbackRedirect: strings.EqualFold(os.Getenv(prefix+"_ALLOW_LOOPBACK_REDIRECT"), "true")}
+	authorizeURL := os.Getenv(prefix + "_AUTHORIZE_URL")
+	tokenURL := os.Getenv(prefix + "_TOKEN_URL")
+	userInfoURL := os.Getenv(prefix + "_USERINFO_URL")
+	allowLoopback := strings.EqualFold(os.Getenv(prefix+"_ALLOW_LOOPBACK_REDIRECT"), "true")
+	clientIDEnv := os.Getenv(prefix + "_CLIENT_ID_ENV")
+	secretEnv := os.Getenv(prefix + "_SECRET_ENV")
+	// Fall back to the built-in public endpoints for well-known providers so the
+	// operator only supplies the client_id/secret. Explicit env overrides win.
+	if builtin, ok := builtinOAuthProviders[strings.ToLower(strings.TrimSpace(name))]; ok {
+		if authorizeURL == "" {
+			authorizeURL = builtin.AuthorizeURL
+		}
+		if tokenURL == "" {
+			tokenURL = builtin.TokenURL
+		}
+		if userInfoURL == "" {
+			userInfoURL = builtin.UserInfoURL
+		}
+		// A desktop app registered on these providers receives the callback on a
+		// loopback address, so allow it by default for the built-ins.
+		allowLoopback = true
+		if clientIDEnv == "" {
+			clientIDEnv = prefix + "_CLIENT_ID"
+		}
+		if secretEnv == "" {
+			secretEnv = prefix + "_SECRET"
+		}
+	}
+	return agent.OAuthProvider{Name: name, AuthorizeURL: authorizeURL, TokenURL: tokenURL, RevocationURL: os.Getenv(prefix + "_REVOCATION_URL"), UserInfoURL: userInfoURL, IssuerURL: os.Getenv(prefix + "_ISSUER_URL"), Audience: os.Getenv(prefix + "_AUDIENCE"), ClientIDEnv: clientIDEnv, SecretEnv: secretEnv, RedirectURIs: redirects, AllowLoopbackRedirect: allowLoopback}
 }
 
 func prepareOIDCProvider(ctx context.Context, provider agent.OAuthProvider) (agent.OAuthProvider, error) {
