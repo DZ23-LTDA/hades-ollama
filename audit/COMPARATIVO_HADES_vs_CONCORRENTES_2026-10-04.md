@@ -42,7 +42,10 @@ Legenda: ✅ já funciona e verificado · 🟡 existe, falta prova/ampliar · �
   13/13 geram a URL de login correta (verificado) + teste de regressão.
 - **Studio preview/export instantâneo offline** (Ver agora + Baixar HTML) — v0/Bolt fazem,
   mas Hades faz local e sem servidor; núcleo com testes.
-- **Segurança**: 13 findings corrigidos + approval vinculado ao diff.
+- **Segurança**: 13 findings SEC corrigidos + approval vinculado ao diff; auditoria
+  Codex fechada (SEC-01..13, Q-11, UX-01..06/09..13, CI-01..05, Q-02 já unificado,
+  Q-03 gating por campo estruturado). SSRF/egress com política única em
+  `internal/egresspolicy`.
 
 ## Roadmap priorizado para LIDERAR (próximas capacidades, por impacto)
 1. **Fechar OAuth E2E** (teste live Google) + ampliar provedores (Notion, HubSpot, Zoom,
