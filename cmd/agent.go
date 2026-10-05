@@ -122,6 +122,11 @@ func postgresTenantKeyVersionFromEnv() (int, error) {
 	return agent.TenantContextKeyVersionFromEnv()
 }
 
+// agentCLIHTTPClient bounds CLI agent requests with an explicit timeout, so a
+// hung server cannot block the command indefinitely even if the caller's
+// context has no deadline.
+var agentCLIHTTPClient = &http.Client{Timeout: 2 * time.Minute}
+
 func runAgentRequest(ctx context.Context, method, path string, payload any) error {
 	base := envconfig.Host()
 	base.Path = strings.TrimSuffix(base.Path, "/")
@@ -144,7 +149,7 @@ func runAgentRequest(ctx context.Context, method, path string, payload any) erro
 	if token := strings.TrimSpace(os.Getenv("OLLAMA_AGENT_TOKEN")); token != "" {
 		req.Header.Set("Authorization", "Bearer "+token)
 	}
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := agentCLIHTTPClient.Do(req)
 	if err != nil {
 		return err
 	}
