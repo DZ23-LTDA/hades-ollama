@@ -31,6 +31,7 @@ export function ImportProjectDialog({
   const [file, setFile] = useState<File | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const zipInputRef = useRef<HTMLInputElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
   const returnFocusRef = useRef<HTMLElement | null>(null);
@@ -69,6 +70,48 @@ export function ImportProjectDialog({
   }, [open, onClose, pending]);
 
   if (!open) return null;
+
+  // Selecting the ZIP: a bare <input type="file"> does not reliably open a
+  // picker inside the desktop webview (WebView2), which left "Nenhum arquivo
+  // escolhido" and nothing to upload. Prefer the File System Access API
+  // (showOpenFilePicker), available in the webview's Chromium and in modern
+  // browsers, which returns a real File with the raw bytes the chunked upload
+  // needs. Fall back to the hidden <input> when the API is unavailable or the
+  // call fails for any reason other than the user cancelling.
+  const pickZip = async () => {
+    if (pending) return;
+    type FilePicker = (options?: {
+      multiple?: boolean;
+      excludeAcceptAllOption?: boolean;
+      types?: { description?: string; accept: Record<string, string[]> }[];
+    }) => Promise<{ getFile: () => Promise<File> }[]>;
+    const picker = (window as unknown as { showOpenFilePicker?: FilePicker })
+      .showOpenFilePicker;
+    if (typeof picker === "function") {
+      try {
+        const [handle] = await picker({
+          multiple: false,
+          types: [
+            {
+              description: "Arquivo ZIP",
+              accept: { "application/zip": [".zip"], "application/x-zip-compressed": [".zip"] },
+            },
+          ],
+        });
+        if (handle) {
+          const picked = await handle.getFile();
+          setFile(picked);
+          setStatus(null);
+        }
+        return;
+      } catch (cause) {
+        // User cancelled the native dialog: leave the current selection as-is.
+        if (cause instanceof DOMException && cause.name === "AbortError") return;
+        // Any other failure: fall through to the <input> fallback below.
+      }
+    }
+    zipInputRef.current?.click();
+  };
 
   const importGitHub = async () => {
     if (!url.trim() || pending) return;
@@ -193,7 +236,14 @@ export function ImportProjectDialog({
         ) : (
           <div className="mt-5 space-y-3">
             <label className="block text-xs text-neutral-600 dark:text-neutral-300">Nome do novo projeto<input value={zipName} onChange={(event) => setZipName(event.target.value)} placeholder="Nome do projeto" className="mt-1 h-10 w-full rounded-xl border border-neutral-300 bg-transparent px-3 text-sm dark:border-neutral-700" /></label>
-            <label className="block text-xs text-neutral-600 dark:text-neutral-300">Arquivo ZIP<input type="file" accept=".zip,application/zip" onChange={(event) => setFile(event.target.files?.[0] ?? null)} className="mt-1 block w-full text-sm" /></label>
+            <div className="block text-xs text-neutral-600 dark:text-neutral-300">
+              Arquivo ZIP
+              <div className="mt-1 flex items-center gap-3">
+                <button type="button" onClick={() => void pickZip()} disabled={pending} className="rounded-xl border border-neutral-300 px-3 py-2 text-xs font-medium disabled:opacity-40 dark:border-neutral-700">Escolher arquivo ZIP</button>
+                <span className="truncate text-xs text-neutral-500 dark:text-neutral-400">{file ? `${file.name} (${(file.size / (1024 * 1024)).toFixed(1)} MiB)` : "Nenhum arquivo escolhido"}</span>
+              </div>
+              <input ref={zipInputRef} type="file" accept=".zip,application/zip" onChange={(event) => { setFile(event.target.files?.[0] ?? null); setStatus(null); }} className="sr-only" tabIndex={-1} aria-hidden="true" />
+            </div>
             <p className="text-[11px] text-neutral-500">O arquivo é enviado em partes de 8 MiB, com retomada automática se a conexão oscilar. Limites e caminhos são verificados no servidor antes da indexação.</p>
             <button type="button" onClick={() => void importZIP()} disabled={!file || !zipName.trim() || pending} className="rounded-xl bg-violet-700 px-4 py-2.5 text-xs font-medium text-white disabled:opacity-40">{pending ? "Enviando e indexando…" : "Importar ZIP"}</button>
           </div>
