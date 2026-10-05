@@ -35,6 +35,7 @@ import {
   TrashIcon,
 } from "@heroicons/react/24/outline";
 import { missionStateLabel } from "@/lib/labels";
+import { confirmDialog } from "@/lib/confirmDialog";
 import { AppSidebar, type AppSection } from "@/components/AppSidebar";
 import { ImportProjectDialog } from "@/components/ImportProjectDialog";
 import { AskDocumentsPanel } from "@/components/AskDocumentsPanel";
@@ -184,7 +185,7 @@ export function ProductWorkspacePage({ kind }: { kind: ProductPageKind }) {
   };
 
   const removeProject = async (project: AgentProject) => {
-    if (!window.confirm(`Excluir o projeto ${project.name}? Memórias locais associadas também serão removidas.`)) return;
+    if (!(await confirmDialog(`Excluir o projeto ${project.name}? Memórias locais associadas também serão removidas.`, { danger: true, confirmLabel: "Excluir" }))) return;
     await runPending(`project-delete:${project.id}`, async () => {
       try { await deleteProject(project.id); setNotice("Projeto excluído."); await refresh(); }
       catch (cause) { setNotice(cause instanceof Error ? cause.message : "Falha ao excluir projeto."); }
@@ -192,7 +193,7 @@ export function ProductWorkspacePage({ kind }: { kind: ProductPageKind }) {
   };
 
   const removeMission = async (mission: AgentMission) => {
-    if (!window.confirm(`Excluir a tarefa "${mission.objective}"? Esta ação não pode ser desfeita.`)) return;
+    if (!(await confirmDialog(`Excluir a tarefa "${mission.objective}"? Esta ação não pode ser desfeita.`, { danger: true, confirmLabel: "Excluir" }))) return;
     await runPending(`mission-delete:${mission.id}`, async () => {
       try { await deleteMission(mission.id); setNotice("Tarefa excluída."); await refresh(); }
       catch (cause) { setNotice(cause instanceof Error ? cause.message : "Falha ao excluir a tarefa."); }
@@ -213,7 +214,7 @@ export function ProductWorkspacePage({ kind }: { kind: ProductPageKind }) {
 		};
 
 			const removePlugin = async (type: "connector" | "mcp" | "remote-mcp" | "skill", id: string) => {
-				if (!window.confirm(`Remover ${id} do manifest durável? Essa ação não revoga credenciais upstream.`)) return;
+				if (!(await confirmDialog(`Remover ${id} do manifest durável? Essa ação não revoga credenciais upstream.`, { danger: true, confirmLabel: "Remover" }))) return;
 				await runPending(`plugin-delete:${type}:${id}`, async () => {
 					try {
 						if (type === "connector") await removeConnector(id);

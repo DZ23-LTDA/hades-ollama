@@ -5,6 +5,7 @@ import { missionStateLabel } from "@/lib/labels";
 import { generateStudioHTML } from "@/lib/studioHtml";
 import { reorderById } from "@/lib/studioReorder";
 import { buildGenerationPrompt, parseGeneratedComponents, pickLocalFirstModel, PRIMARY_TEXT_PROP } from "@/lib/studioAI";
+import { confirmDialog } from "@/lib/confirmDialog";
 import { API_BASE } from "@/lib/config";
 import {
   type BuilderProject,
@@ -601,7 +602,7 @@ export function StudioCanvasPage() {
   // Criação a partir de modelo: confirma antes de substituir o projeto aberto e
   // trata erros (os botões antigos trocavam o projeto sem aviso e sem .catch).
   const handleCreateTemplate = async (name: string, kind: BuilderProject["kind"]) => {
-    if (project && !window.confirm(`Criar "${name}"? O projeto atualmente aberto no editor será substituído por um novo projeto em branco.`)) {
+    if (project && !(await confirmDialog(`Criar "${name}"? O projeto atualmente aberto no editor será substituído por um novo projeto em branco.`, { confirmLabel: "Criar" }))) {
       return;
     }
     try {

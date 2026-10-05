@@ -11,6 +11,7 @@ import {
   setSkillEnabled,
 } from "@/lib/agenticClient";
 import { buildManagedItems, type ManagedItem } from "@/lib/connectors";
+import { confirmDialog } from "@/lib/confirmDialog";
 
 const KIND_LABEL: Record<ManagedItem["kind"], string> = {
   connector: "Conectores registrados",
@@ -51,7 +52,7 @@ export function ConnectorsManagePanel() {
   }, [load]);
 
   const act = async (item: ManagedItem, action: "toggle" | "remove") => {
-    if (action === "remove" && !window.confirm(`Remover "${item.id}"?`)) return;
+    if (action === "remove" && !(await confirmDialog(`Remover "${item.id}"?`, { danger: true, confirmLabel: "Remover" }))) return;
     setBusy(`${item.kind}:${item.id}`);
     setError(null);
     try {

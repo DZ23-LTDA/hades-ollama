@@ -12,6 +12,7 @@ import { AppSidebar } from "@/components/AppSidebar";
 import { SidebarLayout } from "@/components/layout/layout";
 import { FlowEditor } from "@/components/FlowEditor";
 import { humanizeApiError } from "@/lib/userFacingError";
+import { confirmDialog } from "@/lib/confirmDialog";
 import {
   CalendarDaysIcon,
   BoltIcon,
@@ -131,7 +132,7 @@ export function AutomationsPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm("Tem certeza que deseja excluir esta automação?")) return;
+    if (!(await confirmDialog("Tem certeza que deseja excluir esta automação?", { danger: true, confirmLabel: "Excluir" }))) return;
     try {
       await deleteSchedule(id);
       loadData();

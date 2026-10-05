@@ -1,4 +1,5 @@
 import { CodexConnectedIntro } from "./CodexConnectedIntro";
+import { confirmDialog } from "@/lib/confirmDialog";
 import type { IntegrationStatus } from "@/api";
 import { INTEGRATION_ICONS } from "@/lib/launchCommands";
 import type {
@@ -402,8 +403,9 @@ export function CodexDesktopRow({
         if (!mounted.current) return;
         setStatus(liveStatus);
         if (liveStatus.running && !restartConfirmed) {
-          restartConfirmed = window.confirm(
+          restartConfirmed = await confirmDialog(
             "Reiniciar ChatGPT para adicionar modelos Ollama? Qualquer tarefa em execução será interrompida.",
+            { confirmLabel: "Reiniciar" },
           );
           if (!restartConfirmed) return;
         }
@@ -424,11 +426,12 @@ export function CodexDesktopRow({
         // Keep focus-driven status refreshes from discarding this operation
         // while the native confirmation dialog temporarily owns focus.
         if (
-          !window.confirm(
+          !(await confirmDialog(
             enabled
               ? "Reiniciar ChatGPT para adicionar modelos Ollama? Qualquer tarefa em execução será interrompida."
               : "Reiniciar ChatGPT para remover modelos Ollama? Qualquer tarefa em execução será interrompida.",
-          ) ||
+            { confirmLabel: "Reiniciar" },
+          )) ||
           !mounted.current
         ) {
           return;

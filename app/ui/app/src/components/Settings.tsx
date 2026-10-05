@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { openExternal } from "@/lib/openExternal";
+import { confirmDialog } from "@/lib/confirmDialog";
 import { Switch } from "@/components/ui/switch";
 import { BrowserOperatorPanel } from "@/components/BrowserOperatorPanel";
 import { Text } from "@/components/ui/text";
@@ -105,8 +106,8 @@ export default function Settings() {
   const codexModelsSettingsRef = useRef<CodexDesktopModelsSettingsHandle>(null);
   const savedConfirmationTimeoutRef = useRef<number | null>(null);
   useBlocker({
-    shouldBlockFn: () =>
-      !window.confirm("Descartar as alterações de modelos dos apps que ainda não foram aplicadas?"),
+    shouldBlockFn: async () =>
+      !(await confirmDialog("Descartar as alterações de modelos dos apps que ainda não foram aplicadas?", { confirmLabel: "Descartar" })),
     enableBeforeUnload: hasClaudeDraftChanges || hasCodexDraftChanges,
     disabled: !hasClaudeDraftChanges && !hasCodexDraftChanges,
   });

@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/button";
+import { confirmDialog } from "@/lib/confirmDialog";
 import type {
   CodexDesktopModelStatus,
   CodexDesktopModelsSettings as ModelsSettings,
@@ -421,11 +422,12 @@ export const CodexDesktopModelsSettings = forwardRef<
       if (result.restartConfirmationRequired) {
         applyResult(result, true);
         if (
-          !window.confirm(
+          !(await confirmDialog(
             result.settings.connected
               ? "Reiniciar ChatGPT para atualizar os modelos Ollama? Qualquer tarefa em execução será interrompida."
               : "Reiniciar ChatGPT para adicionar modelos Ollama? Qualquer tarefa em execução será interrompida.",
-          )
+            { confirmLabel: "Reiniciar" },
+          ))
         ) {
           return;
         }

@@ -1,4 +1,5 @@
 import { CodexDesktopRow } from "@/components/CodexDesktopRow";
+import { confirmDialog } from "@/lib/confirmDialog";
 import Logo from "@/components/Logo";
 import type { OnboardingStep } from "@/lib/onboarding";
 import { IntegrationConnectButton } from "@/components/IntegrationConnectButton";
@@ -751,8 +752,9 @@ export function ConnectAppsScreen({
 
       let restartConfirmed = claudeRestartConfirmed.current;
       if (liveStatus.running && !restartConfirmed) {
-        restartConfirmed = window.confirm(
+        restartConfirmed = await confirmDialog(
           "Reiniciar Claude Desktop para usar Ollama? Qualquer tarefa em execução será interrompida.",
+          { confirmLabel: "Reiniciar" },
         );
         if (!screenMounted.current) return;
         if (!restartConfirmed) {
@@ -999,10 +1001,11 @@ export function ConnectAppsScreen({
 
     let restartConfirmed = false;
     if (status.running) {
-      restartConfirmed = window.confirm(
+      restartConfirmed = await confirmDialog(
         enabling
           ? "Reiniciar Claude Desktop para usar Ollama? Qualquer tarefa em execução será interrompida."
           : "Reiniciar Claude Desktop para remover Ollama? Qualquer tarefa em execução será interrompida.",
+        { confirmLabel: "Reiniciar" },
       );
       if (!screenMounted.current) return;
       if (!restartConfirmed) {

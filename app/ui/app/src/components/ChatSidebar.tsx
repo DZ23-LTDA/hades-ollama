@@ -8,6 +8,7 @@ import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { ChatsResponse } from "@/gotypes";
 import { AppNavigation } from "@/components/AppSidebar";
 import { PencilSquareIcon, TrashIcon } from "@heroicons/react/24/outline";
+import { confirmDialog } from "@/lib/confirmDialog";
 
 // there's a hidden debug feature to copy a chat's data to the clipboard by
 // holding shift and clicking this many times within this many seconds
@@ -173,8 +174,9 @@ export function ChatSidebar({ currentChatId }: ChatSidebarProps) {
 
   const handleDeleteChat = useCallback(
     async (chatId: string) => {
-      const confirmed = window.confirm(
+      const confirmed = await confirmDialog(
         `Tem certeza de que deseja remover esta conversa?`,
+        { danger: true, confirmLabel: "Excluir" },
       );
 
       if (!confirmed) return;

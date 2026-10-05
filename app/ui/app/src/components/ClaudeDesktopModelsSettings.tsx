@@ -1,4 +1,5 @@
 import { getClaudeDesktopAvailableModels } from "@/api";
+import { confirmDialog } from "@/lib/confirmDialog";
 import { Button } from "@/components/ui/button";
 import { Description, Field, Label } from "@/components/ui/fieldset";
 import { Switch } from "@/components/ui/switch";
@@ -426,9 +427,10 @@ export const ClaudeDesktopModelsSettings = forwardRef<
         if (result.restartConfirmationRequired) {
           applyStatus(result.status, true);
           if (
-            !window.confirm(
+            !(await confirmDialog(
               "Reiniciar Claude Desktop? Qualquer tarefa em execução será interrompida.",
-            )
+              { confirmLabel: "Reiniciar" },
+            ))
           ) {
             return false;
           }
@@ -500,9 +502,10 @@ export const ClaudeDesktopModelsSettings = forwardRef<
       if (result.restartConfirmationRequired) {
         applyStatus(result.status, true);
         if (
-          !window.confirm(
+          !(await confirmDialog(
             "Reiniciar Claude para alterar o modo automático? Qualquer tarefa em execução será interrompida.",
-          )
+            { confirmLabel: "Reiniciar" },
+          ))
         ) {
           return;
         }
