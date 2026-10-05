@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import { openExternal } from "@/lib/openExternal";
 import { useEffect, useState } from "react";
 import { ThemeSwitcher } from "@/components/ThemeSwitcher";
 import HadesEmblem from "@/components/HadesEmblem";
@@ -226,7 +227,7 @@ export function AppNavigation({ current }: { current: AppSection }) {
     try {
       const { data: connectUrl } = await fetchConnectUrl();
       if (connectUrl) {
-        window.open(connectUrl, "_blank");
+        openExternal(connectUrl);
       } else {
         window.location.assign("/settings");
       }

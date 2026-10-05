@@ -1,4 +1,5 @@
 import type { ErrorEvent } from "@/gotypes";
+import { openExternal } from "@/lib/openExternal";
 import { Display, type DisplayAction } from "@/components/ui/display";
 import { useUser } from "@/hooks/useUser";
 import { useEffect, useState } from "react";
@@ -50,7 +51,7 @@ export const DisplayLogin = ({
     try {
       const { data: connectUrl } = await fetchConnectUrl();
       if (connectUrl) {
-        window.open(connectUrl, "_blank");
+        openExternal(connectUrl);
         setIsAwaitingAuth(true);
       }
     } catch (error) {

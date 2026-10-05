@@ -1,4 +1,5 @@
 import Onboarding from "@/components/Onboarding";
+import { openExternal } from "@/lib/openExternal";
 import { getSettings } from "@/api";
 import { useSettings } from "@/hooks/useSettings";
 import { useUser } from "@/hooks/useUser";
@@ -119,7 +120,7 @@ function OnboardingRoute() {
           throw new Error("No sign-in URL was returned");
         }
 
-        window.open(onboardingConnectUrl(result.data, mode), "_blank");
+        openExternal(onboardingConnectUrl(result.data, mode));
       } catch (error) {
         if (authAttempt !== authAttemptRef.current) return;
         console.error("Failed to start sign in:", error);

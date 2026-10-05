@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from "react";
+import { openExternal } from "@/lib/openExternal";
 import { Switch } from "@/components/ui/switch";
 import { BrowserOperatorPanel } from "@/components/BrowserOperatorPanel";
 import { Text } from "@/components/ui/text";
@@ -422,7 +423,7 @@ export default function Settings() {
       if (!user || !user?.name) {
         const { data: connectUrl } = await fetchConnectUrl();
         if (connectUrl) {
-          window.open(connectUrl, "_blank");
+          openExternal(connectUrl);
           setIsAwaitingConnection(true);
           // Start polling every 5 seconds
           const interval = setInterval(() => {
@@ -519,12 +520,7 @@ export default function Settings() {
                             type="button"
                             color="dark"
                             className="px-3 py-2 text-sm font-medium bg-black/90 backdrop-blur-sm text-white rounded-lg border border-white/10 shadow-2xl transition-all duration-300 ease-out relative overflow-hidden group"
-                            onClick={() =>
-                              window.open(
-                                "https://ollama.com/upgrade",
-                                "_blank",
-                              )
-                            }
+                            onClick={() => openExternal("https://ollama.com/upgrade")}
                           >
                             <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/20 via-purple-500/20 to-green-500/20 opacity-60 group-hover:opacity-80 transition-opacity duration-300"></div>
                             <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000 ease-out"></div>
@@ -537,9 +533,7 @@ export default function Settings() {
                           type="button"
                           color="white"
                           className="px-3 py-2 text-sm"
-                          onClick={() =>
-                            window.open("https://ollama.com/settings", "_blank")
-                          }
+                          onClick={() => openExternal("https://ollama.com/settings")}
                         >
                           Gerenciar
                         </Button>

@@ -223,6 +223,21 @@ func (w *Webview) Run(path string) unsafe.Pointer {
 			showWindow(wv.Window())
 		})
 
+		// openExternal lets the UI open a link in the system browser. The webview
+		// itself swallows window.open(...) (nothing happens), so every external
+		// link — OAuth connect/authorize URLs, docs, ollama.com — must route here.
+		// Only http(s) and the app's own scheme are allowed, never javascript:,
+		// data:, file: or other schemes the page could abuse.
+		wv.Bind("openExternal", func(target string) {
+			target = strings.TrimSpace(target)
+			lower := strings.ToLower(target)
+			if strings.HasPrefix(lower, "http://") || strings.HasPrefix(lower, "https://") || strings.HasPrefix(lower, "ollama://") {
+				openInBrowser(target)
+				return
+			}
+			slog.Warn("openExternal refused non-web URL", "scheme", strings.SplitN(lower, ":", 2)[0])
+		})
+
 		bindClaudeDesktop(wv)
 		bindCodexDesktop(wv)
 

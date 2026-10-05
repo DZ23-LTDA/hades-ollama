@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react";
+import { openExternal } from "@/lib/openExternal";
 import {
   type AgentConnectorCatalogEntry,
   listOAuthClients,
@@ -250,7 +251,7 @@ function OAuthConnect({
       if (target === "#") {
         throw new Error("URL de autorização inválida recebida do servidor");
       }
-      window.open(target, "_blank", "noopener,noreferrer");
+      openExternal(target);
       setWaiting(true);
     } catch (err) {
       fail(err);
