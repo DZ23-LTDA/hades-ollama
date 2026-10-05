@@ -188,6 +188,7 @@
             url.origin !== window.location.origin;
           if (isExternalWeb) {
             e.preventDefault();
+            e.stopPropagation();
             window.openExternal(url.href);
           }
         },

@@ -13,6 +13,12 @@ import "strings"
 // scheme are refused so a hostile page cannot abuse the binding.
 func Allowed(target string) (string, bool) {
 	target = strings.TrimSpace(target)
+	// Reject any URL carrying ASCII control characters (NUL, CR, LF, TAB, …):
+	// they have no legitimate place in a web URL and could be used to smuggle
+	// argument boundaries or confuse the OS URL handler.
+	if target == "" || hasControlChar(target) {
+		return "", false
+	}
 	switch {
 	case hasSchemePrefix(target, "http://"),
 		hasSchemePrefix(target, "https://"),
@@ -21,6 +27,17 @@ func Allowed(target string) (string, bool) {
 	default:
 		return "", false
 	}
+}
+
+// hasControlChar reports whether s contains any ASCII control character
+// (code points below 0x20, or DEL 0x7f).
+func hasControlChar(s string) bool {
+	for _, r := range s {
+		if r < 0x20 || r == 0x7f {
+			return true
+		}
+	}
+	return false
 }
 
 // hasSchemePrefix reports whether target begins with scheme, case-insensitively,

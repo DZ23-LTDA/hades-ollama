@@ -419,7 +419,11 @@ func (c *Client) checkCircuit() error {
 func (c *Client) record(code int, latency time.Duration, err error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	if err != nil || code >= 500 || code == 0 {
+	// Count transport errors, 5xx, and the transient rate-limit/timeout codes
+	// (429/408) as failures so repeated rate limiting opens the circuit and
+	// backs off instead of hammering the provider; other 4xx are caller errors
+	// that should not trip the breaker.
+	if err != nil || code >= 500 || code == 0 || code == http.StatusTooManyRequests || code == http.StatusRequestTimeout {
 		c.failures++
 		if c.failures >= 3 {
 			c.openedUntil = time.Now().Add(10 * time.Second)

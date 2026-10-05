@@ -16,6 +16,9 @@ export interface ConfirmOptions {
 interface Pending extends ConfirmOptions {
   message: string;
   resolve: (value: boolean) => void;
+  // Element focused when the dialog was requested, so focus can be restored to
+  // it after the dialog closes (keyboard/screen-reader users keep their place).
+  trigger: HTMLElement | null;
 }
 
 let notify: ((pending: Pending | null) => void) | null = null;
@@ -39,8 +42,10 @@ export function confirmDialog(
       return Promise.resolve(false);
     }
   }
+  const trigger =
+    document.activeElement instanceof HTMLElement ? document.activeElement : null;
   return new Promise<boolean>((resolve) => {
-    queue.push({ message, resolve, ...opts });
+    queue.push({ message, resolve, trigger, ...opts });
     emitNext();
   });
 }
@@ -69,6 +74,18 @@ export function ConfirmHost() {
     const pending = queue.shift();
     pending?.resolve(result);
     emitNext();
+    // Restore focus to whatever was focused when this dialog opened, once no
+    // further dialog is queued, after the dialog has unmounted.
+    const trigger = pending?.trigger;
+    if (trigger && queue.length === 0) {
+      window.setTimeout(() => {
+        try {
+          trigger.focus();
+        } catch {
+          // element may have been removed from the DOM; ignore.
+        }
+      }, 0);
+    }
   }
 
   if (!current) return null;

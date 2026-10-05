@@ -40,6 +40,10 @@ func TestAllowedRefusesDangerousOrUnknownSchemes(t *testing.T) {
 		"   ",
 		"not a url",
 		"//evil.com",
+		"https://example.com/\x00evil",
+		"https://example.com/\nSet-Cookie: x",
+		"https://example.com/\r\nSet-Cookie: x",
+		"https://example.com/\tfoo",
 	}
 	for _, in := range refused {
 		if got, ok := Allowed(in); ok {
