@@ -1028,7 +1028,14 @@ function sign {
             "${script:SRC_DIR}\dist\install.ps1"
         if ($LASTEXITCODE -ne 0) { exit($LASTEXITCODE)}
     } else {
-        Write-Output "Signing not enabled"
+        # Sem KEY_CONTAINER não há assinatura. Em um build de release isso é um
+        # erro: o passo não pode passar verde fingindo que assinou. Em build
+        # local/de teste, segue como "não assinado" de forma explícita.
+        if ("${env:OLLAMA_REQUIRE_SIGNING}" -eq "1") {
+            Write-Error "OLLAMA_REQUIRE_SIGNING=1 mas KEY_CONTAINER nao esta definido; recusando build de release nao assinado"
+            exit 1
+        }
+        Write-Warning "KEY_CONTAINER nao definido: binarios e install.ps1 NAO foram assinados (build nao assinado)"
     }
 }
 

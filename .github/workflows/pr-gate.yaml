@@ -76,8 +76,14 @@ jobs:
                 echo "... aguardando: $name (status='$st')"; pending=1
               elif [ -z "$lines" ]; then
                 echo "... aguardando: $name (status='ausente')"; pending=1
+              elif printf '%s\n' "$lines" | grep -Eq '^completed\|(failure|timed_out|action_required|startup_failure)$'; then
+                # Conclusão terminal de falha: reprove de imediato, sem esperar
+                # 30 min nem emitir mensagem de timeout enganosa.
+                cc=$(printf '%s\n' "$lines" | grep -E '^completed\|(failure|timed_out|action_required|startup_failure)$' | head -1 | cut -d'|' -f2)
+                echo "::error::$name concluiu com '$cc' neste SHA."; fail=1
               else
                 cc=$(printf '%s\n' "$lines" | tail -1 | cut -d'|' -f2)
+                # Só sobram conclusões não-falha (ex.: cancelled/neutral/skipped).
                 # Uma tentativa cancelada pode ser imediatamente seguida por
                 # outra tentativa criada pelo concurrency group. Aguarde a
                 # substituta; se nenhuma tentativa terminar com success até o
