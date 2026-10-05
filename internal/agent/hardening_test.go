@@ -83,7 +83,8 @@ func TestBrowserChildEnvForwardsConfigNotSecrets(t *testing.T) {
 	t.Setenv("OLLAMA_AGENT_BROWSER_EXECUTABLE", "/usr/bin/chromium")
 	t.Setenv("PATH", "/usr/bin:/bin")
 
-	env := browserChildEnv("/tmp/workspace")
+	workspace := t.TempDir()
+	env := browserChildEnv(workspace)
 	joined := strings.Join(env, "\n")
 
 	if strings.Contains(joined, "valor-secreto") || strings.Contains(joined, "senha@host") {
@@ -91,11 +92,12 @@ func TestBrowserChildEnvForwardsConfigNotSecrets(t *testing.T) {
 	}
 	// A config do próprio subsistema de browser precisa chegar ao helper, senão
 	// o guard de endereço privado e o executável configurado se perdem (foi o
-	// que quebrou os gates de CI).
+	// que quebrou os gates de CI). O BROWSER_ROOT usa filepath.Join, então o
+	// esperado também, para ser portável a Windows.
 	for _, want := range []string{
 		"OLLAMA_AGENT_BROWSER_ALLOW_PRIVATE=1",
 		"OLLAMA_AGENT_BROWSER_EXECUTABLE=/usr/bin/chromium",
-		"OLLAMA_AGENT_BROWSER_ROOT=/tmp/workspace/.browser",
+		"OLLAMA_AGENT_BROWSER_ROOT=" + filepath.Join(workspace, ".browser"),
 	} {
 		found := false
 		for _, entry := range env {
