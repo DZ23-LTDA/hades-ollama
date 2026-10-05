@@ -46,7 +46,7 @@ Start building with open models.
 The public repository currently distributes source code, not a signed Hades installer, release binary, Docker image, or app-store package. Build the revision you have checked out so the executable and agentic runtime come from this fork:
 
 ```shell
-git clone https://github.com/DZ23-LTDA/ollama-classe-a-plus.git
+git clone https://github.com/DZ23-LTDA/hades-ollama.git
 cd ollama-classe-a-plus
 go version  # Go version required by go.mod
 mkdir -p bin

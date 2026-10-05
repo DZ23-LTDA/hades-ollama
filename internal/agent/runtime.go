@@ -1057,7 +1057,11 @@ func (r *Runtime) MergeMissionWorktree(ctx context.Context, missionID string) (s
 	mission.GitMergeStatus = "merged"
 	mission.Version++
 	mission.UpdatedAt = time.Now().UTC()
-	_ = r.store.PutMissionIfVersion(mission, expectedVersion)
+	if err := r.store.PutMissionIfVersion(mission, expectedVersion); err != nil {
+		// O merge no origin já ocorreu; não persistir o estado "merged" deixa a
+		// missão divergir do repositório. Registre para investigação.
+		slog.Error("failed to persist merged mission state", "mission", mission.ID, "error", err)
+	}
 	_ = r.observeEvent(mission, "git.merge.succeeded", "", map[string]any{
 		"branch":       session.BranchName,
 		"merge_commit": mergeCommit,

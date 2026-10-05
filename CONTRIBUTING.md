@@ -94,6 +94,6 @@ Leia [`docs/CLASS_A_PLUS_GUIDE.md`](docs/CLASS_A_PLUS_GUIDE.md) antes de alterar
 
 Crie uma branch curta a partir de `main`, reproduza o problema, registre o contrato afetado e implemente uma mudança vertical com teste de regressão. Atualize API, arquitetura, roadmap ou screenshots quando o comportamento mudar. Não inclua tokens, certificados, dumps, `.env`, `node_modules`, binários pessoais ou credenciais de loja.
 
-Antes do PR, execute `git diff --check`, `CGO_ENABLED=0 go test ./internal/agent -count=1`, `CGO_ENABLED=1 go test ./server ./cmd/launch ./internal/multillm -count=1`, `CGO_ENABLED=1 go build -o /tmp/ollama-classe-a-plus .` e o typecheck de `apps/mobile-agentic`. Para alterações web, execute também o build da UI em `app/ui/app`. Para conectores, MCP, deploy ou companions, inclua testes negativos de autorização, timeout, limite e segredo.
+Antes do PR, execute `git diff --check`, `CGO_ENABLED=0 go test ./internal/agent -count=1`, `CGO_ENABLED=1 go test ./server ./cmd/launch ./internal/multillm -count=1`, `CGO_ENABLED=1 go build -o /tmp/ollama-full .` e o typecheck de `apps/mobile-agentic`. Para alterações web, execute também o build da UI em `app/ui/app`. Para conectores, MCP, deploy ou companions, inclua testes negativos de autorização, timeout, limite e segredo.
 
 O PR deve explicar objetivo, escopo, arquivos principais, testes executados, riscos, dependências externas e limitações. Uma tela ou mockup não substitui um fluxo funcional. Toda ação externa ou publicação deve passar pelo approval e permanecer documentada.

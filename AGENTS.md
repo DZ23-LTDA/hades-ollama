@@ -25,5 +25,7 @@ the full development workflow.
 Before continuing agentic-security or Manus-parity work, read
 `audit/CLAUDE_CODEX_RESUME_PROMPT_20260927.md` and
 `audit/OLLAMA_FULL_HANDOFF_20260927.md`; verify the live Git branch and remote
-tip. Continue on `recovery/ollama-full-snapshot`; never force-push or change
-`main` without explicit authorization.
+tip. `main` is the integration branch: cut a short-lived branch from `main`,
+open a PR against it, and let the required checks run. The historical
+`recovery/ollama-full-snapshot` snapshot has already been merged into `main`.
+Never force-push or change `main` directly without explicit authorization.

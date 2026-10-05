@@ -22,7 +22,7 @@ A existência do arquivo não basta. Os testes Go, build da UI, smoke Chromium e
 ## Procedimento de atualização do motor
 
 1. Faça `git fetch --no-tags upstream main` sem modificar `main`, a branch de publicação ou a branch agentic ativa.
-2. Crie uma branch `chore/upstream-YYYYMMDD` a partir de `class-a-plus/main`.
+2. Crie uma branch `chore/upstream-YYYYMMDD` a partir de `main`.
 3. Compare o novo commit com [`UPSTREAM_BASE_COMMIT`](UPSTREAM_BASE_COMMIT). Nunca faça force-push nem substitua o histórico público.
 4. Reaplique ou resolva conflitos preservando `internal/agent`, `internal/multillm`, `server/agent_routes.go`, UI, mobile, políticas e documentação Ollama Full.
 5. Atualize `UPSTREAM_BASE_COMMIT` somente depois de revisar o diff e os riscos.

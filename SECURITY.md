@@ -24,7 +24,7 @@ issue pública** e **não** use hello@ollama.com. Reporte de forma privada por:
    privado com histórico e correção coordenada).
 2. Se o botão acima não aparecer, o recurso ainda não foi habilitado pelo
    mantenedor (veja a nota abaixo); nesse caso, contate de forma privada o
-   mantenedor do repositório público **DZ23-LTDA/ollama-classe-a-plus** pelo
+   mantenedor do repositório público **DZ23-LTDA/hades-ollama** pelo
    GitHub para combinar um canal privado antes de qualquer divulgação.
 
 Inclua sempre: descrição, passos de reprodução, impacto avaliado, mitigações

@@ -3,7 +3,7 @@
 > **Registro histórico, não runbook atual.** Este documento descreve o estado e configuração observados em 2026-09-22 e não deve ser usado para provisionar PostgreSQL. Para o desenho candidato atual, siga `docs/agentic/INTEGRATIONS.md` e `SECURITY.md`; PostgreSQL/RLS continua sem aprovação de produção.
 
 **Data:** 2026-09-22
-**Repositório:** `DZ23-LTDA/ollama-classe-a-plus`
+**Repositório:** `DZ23-LTDA/hades-ollama`
 **Branch auditada:** `feat/manus-parity-omniroute`
 **Base local:** commit `dfe07d5665b11f025fb36c6382298e8c053733f5`
 
@@ -818,7 +818,7 @@ A branch documental do PR #5 foi atualizada no head `605cd959` com a imagem Home
 
 Os bloqueios externos permanecem: instaladores assinados, imagens Docker publicadas, auto-update/rollback verificável, homologação física Windows/macOS/Linux/Android/iOS, contas OAuth/IdP/providers, Redis/PostgreSQL/OTLP operacionais e providers de deploy reais. Esses itens continuam `BLOCKED_BY_EXTERNAL_DEPENDENCY` com requisitos explicitados, não como funcionalidades homologadas.
 
-Evidência de referência: `https://github.com/DZ23-LTDA/ollama-classe-a-plus/pull/1`, `https://github.com/DZ23-LTDA/ollama-classe-a-plus/pull/5`.
+Evidência de referência: `https://github.com/DZ23-LTDA/hades-ollama/pull/1`, `https://github.com/DZ23-LTDA/hades-ollama/pull/5`.
 
 
 ## Addendum de publicação Docker fail-closed — 2026-09-23
