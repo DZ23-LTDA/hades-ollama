@@ -119,15 +119,7 @@ func agentCommand() *cobra.Command {
 }
 
 func postgresTenantKeyVersionFromEnv() (int, error) {
-	raw := strings.TrimSpace(os.Getenv("OLLAMA_AGENT_TENANT_CONTEXT_KEY_VERSION"))
-	if raw == "" {
-		return 1, nil
-	}
-	version, err := strconv.Atoi(raw)
-	if err != nil || version < 1 || version > 999999999 {
-		return 0, errors.New("OLLAMA_AGENT_TENANT_CONTEXT_KEY_VERSION must be an integer between 1 and 999999999")
-	}
-	return version, nil
+	return agent.TenantContextKeyVersionFromEnv()
 }
 
 func runAgentRequest(ctx context.Context, method, path string, payload any) error {
