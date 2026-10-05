@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, useTransition } from "react";
+import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { AppSidebar } from "@/components/AppSidebar";
 import { SidebarLayout } from "@/components/layout/layout";
 import { missionStateLabel } from "@/lib/labels";
@@ -229,6 +229,21 @@ export function StudioCanvasPage() {
   const [deployModalOpen, setDeployModalOpen] = useState(false);
   const [deployStatus, setDeployStatus] = useState<{ status: string; message: string } | null>(null);
   const [previewSrc, setPreviewSrc] = useState<string | null>(null);
+  // The authenticated preview is a blob: URL; the webview swallows
+  // target="_blank"/window.open for it, so "open in a new tab" is shown as an
+  // in-app expanded overlay instead.
+  const [previewExpanded, setPreviewExpanded] = useState(false);
+  useEffect(() => {
+    if (!previewExpanded) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setPreviewExpanded(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [previewExpanded]);
+  useEffect(() => {
+    if (!previewSrc) setPreviewExpanded(false);
+  }, [previewSrc]);
   const [, startTransition] = useTransition();
 
   // Initialize or fetch the active builder project from the real backend
@@ -328,6 +343,26 @@ export function StudioCanvasPage() {
       setNotice({ type: "error", message: `Erro ao salvar canvas: ${String(err)}` });
     }
   };
+
+  // Debounced prop saves. Editing an inspector field must not POST (and bump
+  // project.version) on every keystroke — that floods the backend and, because
+  // each save carries the optimistic-concurrency version, causes spurious
+  // version-conflict errors mid-typing. We keep a ref to the latest
+  // syncComponents and flush the pending edit after a short idle, on switching
+  // components, and on unmount.
+  const syncRef = useRef(syncComponents);
+  syncRef.current = syncComponents;
+  const propsSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingComponentsRef = useRef<VisualComponent[] | null>(null);
+  const flushPendingProps = useCallback(() => {
+    if (propsSaveTimerRef.current) {
+      clearTimeout(propsSaveTimerRef.current);
+      propsSaveTimerRef.current = null;
+    }
+    const pending = pendingComponentsRef.current;
+    pendingComponentsRef.current = null;
+    if (pending) syncRef.current(pending);
+  }, []);
 
   // Generate components from a natural-language description using a local model.
   // The model is asked for strict JSON; parseGeneratedComponents never trusts the
@@ -445,8 +480,24 @@ export function StudioCanvasPage() {
       }
       return c;
     });
-    syncComponents(next);
+    // Optimistic local update keeps the inspector responsive; the backend save
+    // is debounced (see flushPendingProps).
+    setProject((prev) => (prev ? { ...prev, components: next } : prev));
+    pendingComponentsRef.current = next;
+    if (propsSaveTimerRef.current) clearTimeout(propsSaveTimerRef.current);
+    propsSaveTimerRef.current = setTimeout(() => {
+      propsSaveTimerRef.current = null;
+      const pending = pendingComponentsRef.current;
+      pendingComponentsRef.current = null;
+      if (pending) syncRef.current(pending);
+    }, 500);
   };
+
+  // Flush a pending debounced prop save when switching away from a component or
+  // unmounting, so the last edit is never lost.
+  useEffect(() => {
+    return () => flushPendingProps();
+  }, [selectedCompId, flushPendingProps]);
 
   // Undo via real backend
   // Instant client-side preview: render the project to standalone HTML and show
@@ -1139,14 +1190,14 @@ export function StudioCanvasPage() {
               <div className="flex h-full flex-col">
                 <div className="mb-2 flex items-center justify-between text-xs text-neutral-500">
                   <span>Prévia autenticada: carregada com a sua sessão; a URL interna é protegida e não é compartilhável.</span>
-                  <a
-                    href={previewSrc ?? undefined}
-                    target="_blank"
-                    rel="noreferrer"
+                  <button
+                    type="button"
+                    disabled={!previewSrc}
+                    onClick={() => setPreviewExpanded(true)}
                     className={`font-medium text-blue-600 hover:underline dark:text-blue-400 ${previewSrc ? "" : "pointer-events-none opacity-50"}`}
                   >
-                    Abrir em nova aba &rarr;
-                  </a>
+                    Expandir prévia &rarr;
+                  </button>
                 </div>
                 <div className="flex-1 overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
                   <iframe
@@ -1387,6 +1438,38 @@ export function StudioCanvasPage() {
                 title="Prévia do app"
                 srcDoc={instantPreviewHtml}
                 sandbox=""
+                className="h-full w-full flex-1 border-0 bg-white"
+              />
+            </div>
+          </div>
+        )}
+        {previewExpanded && previewSrc && (
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Prévia expandida"
+            className="fixed inset-0 z-50 flex flex-col bg-black/70 p-4"
+            onClick={() => setPreviewExpanded(false)}
+          >
+            <div
+              className="mx-auto flex h-full w-full max-w-5xl flex-col overflow-hidden rounded-2xl bg-white shadow-xl dark:bg-neutral-900"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between border-b border-neutral-200 px-4 py-2 dark:border-neutral-800">
+                <span className="text-sm font-semibold text-neutral-900 dark:text-white">Prévia autenticada — {project?.name || "app"}</span>
+                <button
+                  type="button"
+                  onClick={() => setPreviewExpanded(false)}
+                  aria-label="Fechar prévia"
+                  className="rounded-lg px-3 py-1 text-xs font-medium text-neutral-600 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800"
+                >
+                  Fechar ✕
+                </button>
+              </div>
+              <iframe
+                title="Prévia autenticada expandida"
+                src={previewSrc}
+                sandbox="allow-scripts"
                 className="h-full w-full flex-1 border-0 bg-white"
               />
             </div>

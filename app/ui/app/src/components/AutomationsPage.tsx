@@ -4,9 +4,10 @@ import {
   listSchedules,
   createSchedule,
   createMission,
+  updateSchedule,
+  deleteSchedule,
   type AgentSchedule,
 } from "@/lib/agenticClient";
-import { API_BASE } from "@/lib/config";
 import { AppSidebar } from "@/components/AppSidebar";
 import { SidebarLayout } from "@/components/layout/layout";
 import { FlowEditor } from "@/components/FlowEditor";
@@ -122,11 +123,7 @@ export function AutomationsPage() {
 
   const handleToggle = async (sch: AgentSchedule) => {
     try {
-      await fetch(`${API_BASE}/api/agent/v1/schedules/${sch.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ enabled: !sch.enabled }),
-      });
+      await updateSchedule(sch.id, { enabled: !sch.enabled });
       loadData();
     } catch (e) {
       setErrorMsg(humanizeApiError(e, "Não foi possível alterar o estado da automação.").message);
@@ -136,9 +133,7 @@ export function AutomationsPage() {
   const handleDelete = async (id: string) => {
     if (!window.confirm("Tem certeza que deseja excluir esta automação?")) return;
     try {
-      await fetch(`${API_BASE}/api/agent/v1/schedules/${id}`, {
-        method: "DELETE",
-      });
+      await deleteSchedule(id);
       loadData();
     } catch (e) {
       setErrorMsg(humanizeApiError(e, "Não foi possível excluir a automação.").message);

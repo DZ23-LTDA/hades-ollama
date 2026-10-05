@@ -229,8 +229,14 @@ grep -q 'pg_promote' docs/agentic/POSTGRES_HA_FAILOVER_REHEARSAL.md
 grep -qi 'split[- ]brain' docs/agentic/POSTGRES_HA_FAILOVER_REHEARSAL.md
 grep -q 'restore_check' .github/workflows/dz23-agentic-quality.yaml
 grep -q 'cleanup-placeholder' .github/workflows/dz23-agentic-quality.yaml
-if sed -n '65,210p' .github/workflows/dz23-agentic-quality.yaml | grep -q 'GITHUB_ENV'; then
-  echo 'distributed integration secrets must remain step-local' >&2
+# Distributed-integration DB/Redis secrets must stay step-local shell exports
+# and never be promoted to $GITHUB_ENV (which persists them into every later
+# step). Anchoring on secret-shaped tokens keeps this robust to line drift,
+# unlike the previous hardcoded line range which missed the secrets entirely.
+github_env_writes="$(grep -nE '>>[[:space:]]*"?\$\{?GITHUB_ENV' .github/workflows/dz23-agentic-quality.yaml || true)"
+if printf '%s\n' "$github_env_writes" | grep -Eqi 'password|postgres://|redis://|tenant_key|_URL='; then
+  echo 'distributed integration secrets must remain step-local (never written to $GITHUB_ENV):' >&2
+  printf '%s\n' "$github_env_writes" | grep -Ei 'password|postgres://|redis://|tenant_key|_URL=' >&2
   exit 1
 fi
 if grep -Rqi 'change-me-local-only' deploy; then echo 'fixed development credential found'; exit 1; fi

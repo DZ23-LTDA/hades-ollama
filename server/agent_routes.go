@@ -750,14 +750,17 @@ func (a *agentAPI) organizationID(c *gin.Context) string {
 }
 
 func agentOrganizationID(c *gin.Context) string {
+	// The organization is trusted only from the request context, which the auth
+	// middleware populates from the verified bearer token (and fixes to the
+	// local organization in local mode). The client-supplied
+	// X-Ollama-Organization header is NEVER used to select the tenant: doing so
+	// would let any caller on an auth-exempt route (e.g. an OAuth callback) pick
+	// an arbitrary organization. The header is only ever cross-checked against
+	// the authenticated org in authMiddleware. Absent a context org, fail closed
+	// to the local organization.
 	if value, ok := c.Get("agent.organization"); ok {
 		if organization, ok := value.(agent.Organization); ok {
 			return organization.ID
-		}
-	}
-	if c != nil && c.Request != nil {
-		if value := strings.TrimSpace(c.GetHeader("X-Ollama-Organization")); value != "" {
-			return value
 		}
 	}
 	return agent.LocalOrganizationID

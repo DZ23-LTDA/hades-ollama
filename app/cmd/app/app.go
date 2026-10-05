@@ -500,10 +500,30 @@ func openInBrowser(url string) {
 		slog.Warn("unsupported OS for openInBrowser", "os", runtime.GOOS)
 	}
 
-	slog.Info("executing browser command", "cmd", cmd, "args", args)
+	// Never log the full URL: OAuth connect/authorize URLs carry state/code/token
+	// in the query string. Log only scheme+host so secrets never reach app.log.
+	slog.Info("executing browser command", "cmd", cmd, "target", safeLogURL(url))
 	if err := exec.Command(cmd, args...).Start(); err != nil {
-		slog.Error("failed to open URL in browser", "url", url, "cmd", cmd, "args", args, "error", err)
+		slog.Error("failed to open URL in browser", "target", safeLogURL(url), "cmd", cmd, "error", err)
 	}
+}
+
+// safeLogURL returns a log-safe representation of a URL, dropping any query
+// string or fragment (which may contain OAuth state/code/token) and keeping
+// only scheme+host (and path for app schemes that have no host).
+func safeLogURL(raw string) string {
+	u, err := url.Parse(raw)
+	if err != nil {
+		return "<unparseable-url>"
+	}
+	if u.Host != "" {
+		return u.Scheme + "://" + u.Host
+	}
+	// Schemes like ollama:// may encode the action in Opaque/Path with no host.
+	if u.Opaque != "" {
+		return u.Scheme + ":" + u.Opaque
+	}
+	return u.Scheme + ":" + u.Path
 }
 
 // parseURLScheme parses an ollama:// URL and validates it

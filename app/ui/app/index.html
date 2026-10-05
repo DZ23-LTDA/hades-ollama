@@ -151,6 +151,49 @@
         return false;
       });
 
+      // External links: the webview swallows new-window requests, so a plain
+      // <a target="_blank"> or a link to another origin does nothing when
+      // clicked (no feedback). Route any external http(s) link to the system
+      // browser through the native openExternal binding. Same-origin internal
+      // links are left untouched so the SPA router handles them. In a real
+      // browser (dev) window.openExternal is absent and we keep native
+      // behavior.
+      document.addEventListener(
+        "click",
+        function (e) {
+          if (typeof window.openExternal !== "function") return;
+          if (
+            e.defaultPrevented ||
+            e.button !== 0 ||
+            e.metaKey ||
+            e.ctrlKey ||
+            e.shiftKey ||
+            e.altKey
+          ) {
+            return;
+          }
+          let el = e.target;
+          while (el && el !== document && el.tagName !== "A") {
+            el = el.parentElement;
+          }
+          if (!el || el.tagName !== "A" || !el.getAttribute("href")) return;
+          let url;
+          try {
+            url = new URL(el.href, window.location.href);
+          } catch (_err) {
+            return;
+          }
+          const isExternalWeb =
+            (url.protocol === "http:" || url.protocol === "https:") &&
+            url.origin !== window.location.origin;
+          if (isExternalWeb) {
+            e.preventDefault();
+            window.openExternal(url.href);
+          }
+        },
+        true,
+      );
+
       // TODO (jmorganca): this is a way for different components to elect
       // to show custom context menu items on top of the default one
       // we should integrate this better since it's confusing to follow

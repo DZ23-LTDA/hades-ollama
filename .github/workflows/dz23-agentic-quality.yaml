@@ -47,7 +47,7 @@ jobs:
           cache: true
       - name: Install Browser Operator dependencies
         run: |
-          python3 -m pip install --user --break-system-packages playwright
+          python3 -m pip install --user --break-system-packages 'playwright==1.63.0'
           python3 -m playwright install --with-deps chromium
           browser_path="$(python3 -c 'from playwright.sync_api import sync_playwright; p=sync_playwright().start(); print(p.chromium.executable_path); p.stop()')"
           if [ ! -x "$browser_path" ] && [ -x /usr/bin/chromium ]; then browser_path=/usr/bin/chromium; fi

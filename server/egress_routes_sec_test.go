@@ -20,6 +20,17 @@ func TestEgressLogsOrganizationScoped(t *testing.T) {
 
 	api := &agentAPI{authRequired: true}
 	group := router.Group("/api/agent/v1")
+	// In production these routes sit behind authMiddleware, which derives the
+	// organization from the verified bearer token and stores it in the context;
+	// agentOrganizationID no longer trusts a client-supplied header (that was a
+	// tenant-spoofing vector). Inject the org into the context the same way here
+	// so the test exercises the real scoping path.
+	group.Use(func(c *gin.Context) {
+		if org := strings.TrimSpace(c.GetHeader("X-Ollama-Organization")); org != "" {
+			c.Set("agent.organization", agent.Organization{ID: org})
+		}
+		c.Next()
+	})
 	{
 		group.GET("/egress/logs", api.getEgressLogs)
 		group.GET("/egress/status", api.getEgressStatus)

@@ -27,6 +27,16 @@ export function ChatSidebar({ currentChatId }: ChatSidebarProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [shiftClicks, setShiftClicks] = useState<Record<string, number[]>>({});
   const [copiedChatId, setCopiedChatId] = useState<string | null>(null);
+  // In-app context menu. The native webview context menu is only implemented
+  // on macOS (window.menu never resolves on Windows, hanging the right-click
+  // "Renomear/Excluir" action), so we render our own menu, which works on
+  // every platform.
+  const [contextMenu, setContextMenu] = useState<{
+    chatId: string;
+    chatTitle: string;
+    x: number;
+    y: number;
+  } | null>(null);
 
   const handleMouseEnter = useCallback(
     (chatId: string) => {
@@ -222,20 +232,31 @@ export function ChatSidebar({ currentChatId }: ChatSidebarProps) {
   );
 
   const handleContextMenu = useCallback(
-    async (_: React.MouseEvent, chatId: string, chatTitle: string) => {
-      const selectedAction = await window.menu([
-        { label: "Renomear", enabled: true },
-        { label: "Excluir", enabled: true },
-      ]);
-
-      if (selectedAction === "Renomear") {
-        startEditing(chatId, chatTitle);
-      } else if (selectedAction === "Excluir") {
-        handleDeleteChat(chatId);
-      }
+    (e: React.MouseEvent, chatId: string, chatTitle: string) => {
+      e.preventDefault();
+      setContextMenu({ chatId, chatTitle, x: e.clientX, y: e.clientY });
     },
-    [startEditing, handleDeleteChat],
+    [],
   );
+
+  // Dismiss the context menu on outside click, Escape, scroll or resize.
+  useEffect(() => {
+    if (!contextMenu) return;
+    const close = () => setContextMenu(null);
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") close();
+    };
+    window.addEventListener("click", close);
+    window.addEventListener("resize", close);
+    window.addEventListener("keydown", onKey);
+    window.addEventListener("scroll", close, true);
+    return () => {
+      window.removeEventListener("click", close);
+      window.removeEventListener("resize", close);
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("scroll", close, true);
+    };
+  }, [contextMenu]);
 
   return (
     <nav
@@ -372,6 +393,41 @@ export function ChatSidebar({ currentChatId }: ChatSidebarProps) {
         )}
       </div>
       </div>
+      {contextMenu && (
+        <div
+          role="menu"
+          aria-label="Ações da conversa"
+          className="fixed z-50 min-w-[160px] rounded-lg border border-neutral-200 bg-white py-1 shadow-lg dark:border-neutral-700 dark:bg-neutral-800"
+          style={{ top: contextMenu.y, left: contextMenu.x }}
+          onClick={(e) => e.stopPropagation()}
+          onContextMenu={(e) => e.preventDefault()}
+        >
+          <button
+            type="button"
+            role="menuitem"
+            className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm text-neutral-800 hover:bg-neutral-100 dark:text-neutral-200 dark:hover:bg-neutral-700"
+            onClick={() => {
+              startEditing(contextMenu.chatId, contextMenu.chatTitle);
+              setContextMenu(null);
+            }}
+          >
+            <PencilSquareIcon className="h-4 w-4" />
+            Renomear
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm text-red-600 hover:bg-neutral-100 dark:text-red-400 dark:hover:bg-neutral-700"
+            onClick={() => {
+              handleDeleteChat(contextMenu.chatId);
+              setContextMenu(null);
+            }}
+          >
+            <TrashIcon className="h-4 w-4" />
+            Excluir
+          </button>
+        </div>
+      )}
     </nav>
   );
 }
