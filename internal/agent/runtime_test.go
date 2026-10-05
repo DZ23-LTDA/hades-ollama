@@ -1687,6 +1687,16 @@ func TestRuntimeEmitsBrowserFrameEvent(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	// browser.operator tem efeito externo e exige approval; o planner não pode
+	// rebaixar esse risco. Aprovar o passo antes de executar reflete o fluxo real.
+	if len(mission.Approvals) != 1 {
+		t.Fatalf("expected one approval-gated browser step, got %d", len(mission.Approvals))
+	}
+	mission, err = runtime.DecideApproval(mission.ID, mission.Approvals[0].ID, true, "approved for test")
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	if err := runtime.Run(context.Background(), mission.ID); err != nil {
 		t.Fatalf("Run failed: %v", err)
 	}

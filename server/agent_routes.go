@@ -617,19 +617,26 @@ func (a *agentAPI) authMiddleware(c *gin.Context) {
 }
 
 func agentOriginAllowed(c *gin.Context) bool {
-	if c == nil || c.Request == nil || c.Request.Method == http.MethodGet || c.Request.Method == http.MethodHead || c.Request.Method == http.MethodOptions || isPublicSSORoute(c) {
+	if c == nil || c.Request == nil || c.Request.Method == http.MethodOptions || isPublicSSORoute(c) {
 		return true
 	}
 	origin := strings.TrimSpace(c.GetHeader("Origin"))
 	if origin == "" {
+		// Cliente não-browser (CLI, SDK). O browser sempre envia Origin em
+		// request cross-origin, inclusive GET, então a ausência não é bypass.
 		return true
 	}
 	if strings.ContainsAny(origin, "\r\n") {
 		return false
 	}
+	// A superfície agêntica executa e administra; origens opacas herdadas da
+	// API de modelos (file://, app://, tauri://, vscode-*) não valem aqui.
+	if !isHTTPOrigin(origin) {
+		return false
+	}
 	for _, allowed := range envconfig.AllowedOrigins() {
 		allowed = strings.TrimRight(strings.TrimSpace(allowed), "/")
-		if allowed == "*" {
+		if allowed == "*" || !isHTTPOriginPattern(allowed) {
 			continue
 		}
 		if originMatchesAllowed(origin, allowed) {
@@ -637,6 +644,19 @@ func agentOriginAllowed(c *gin.Context) bool {
 		}
 	}
 	return false
+}
+
+func isHTTPOrigin(origin string) bool {
+	parsed, err := url.Parse(origin)
+	if err != nil {
+		return false
+	}
+	return strings.EqualFold(parsed.Scheme, "http") || strings.EqualFold(parsed.Scheme, "https")
+}
+
+func isHTTPOriginPattern(allowed string) bool {
+	lowered := strings.ToLower(strings.TrimSpace(allowed))
+	return strings.HasPrefix(lowered, "http://") || strings.HasPrefix(lowered, "https://")
 }
 
 func originMatchesAllowed(origin, allowed string) bool {
@@ -672,7 +692,28 @@ func isPublicSSORoute(c *gin.Context) bool {
 }
 
 func isDevTokenRequestAllowed(c *gin.Context) bool {
-	return strings.EqualFold(strings.TrimSpace(os.Getenv("OLLAMA_AGENT_AUTH_DEV")), "true") && isLoopbackRemoteAddr(c.Request.RemoteAddr)
+	if !strings.EqualFold(strings.TrimSpace(os.Getenv("OLLAMA_AGENT_AUTH_DEV")), "true") {
+		return false
+	}
+	if !isLoopbackRemoteAddr(c.Request.RemoteAddr) {
+		return false
+	}
+	// Atrás de um reverse proxy no mesmo host, RemoteAddr é sempre loopback.
+	// A presença de cabeçalhos de encaminhamento prova que o request foi
+	// intermediado, então o loopback deixa de ser evidência de origem local.
+	return !hasForwardedHeaders(c.Request)
+}
+
+func hasForwardedHeaders(request *http.Request) bool {
+	if request == nil {
+		return false
+	}
+	for _, header := range []string{"X-Forwarded-For", "X-Real-Ip", "Forwarded", "X-Forwarded-Host", "X-Client-Ip"} {
+		if strings.TrimSpace(request.Header.Get(header)) != "" {
+			return true
+		}
+	}
+	return false
 }
 
 func isLoopbackRemoteAddr(remoteAddr string) bool {
@@ -2857,6 +2898,21 @@ func (a *agentAPI) decideApproval(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, mission)
+}
+
+// requireOrganizationAdmin exige papel owner/admin para superfícies administrativas.
+// Em modo local (sem auth) o servidor já é single-tenant e loopback-only.
+func (a *agentAPI) requireOrganizationAdmin(c *gin.Context, surface string) bool {
+	if !a.authRequired {
+		return true
+	}
+	value, _ := c.Get("agent.membership")
+	membership, ok := value.(agent.Membership)
+	if !ok || (membership.Role != agent.RoleOwner && membership.Role != agent.RoleAdmin) {
+		c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": surface + " requires organization admin"})
+		return false
+	}
+	return true
 }
 
 func (a *agentAPI) requireApprovalApprover(c *gin.Context) bool {

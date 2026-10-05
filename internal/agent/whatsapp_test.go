@@ -472,8 +472,13 @@ func TestWhatsAppGatewayCommandBridgeCreatesMission(t *testing.T) {
 		t.Fatalf("expected status 'processed', got %+v", res)
 	}
 
-	if !strings.Contains(res[0].ReplySent, "Missão Iniciada via WhatsApp Bridge") {
+	// A ponte cria a missão, mas não a executa: o objetivo veio de texto
+	// externo e quem inicia é um operador autenticado.
+	if !strings.Contains(res[0].ReplySent, "Missão criada via WhatsApp Bridge") {
 		t.Fatalf("expected mission bridge response, got %s", res[0].ReplySent)
+	}
+	if !strings.Contains(res[0].ReplySent, "PENDENTE") {
+		t.Fatalf("mission created from an external message must not start by itself, got %s", res[0].ReplySent)
 	}
 
 	// Verify mission was created in runtime store

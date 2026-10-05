@@ -98,7 +98,10 @@ func TestAgentOriginPolicyBlocksCrossSiteMutations(t *testing.T) {
 		{name: "same local web app", method: "POST", origin: "http://localhost:3000", want: true},
 		{name: "native bearer client", method: "POST", origin: "", want: true},
 		{name: "cross site mutation", method: "POST", origin: "https://evil.example", want: false},
-		{name: "safe read", method: "GET", origin: "https://evil.example", want: true},
+		// Leitura cross-origin não é inofensiva nesta API: /missions, /traces,
+		// /connectors e /egress/logs expõem estado operacional. A origem passa
+		// a valer para GET também.
+		{name: "cross site read", method: "GET", origin: "https://evil.example", want: false},
 		{name: "preflight", method: "OPTIONS", origin: "https://evil.example", want: true},
 	} {
 		t.Run(test.name, func(t *testing.T) {

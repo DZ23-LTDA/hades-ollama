@@ -6,7 +6,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"os"
 	"os/exec"
 	"strconv"
 	"strings"
@@ -56,7 +55,7 @@ func runPowerShellOutput(ctx context.Context, script string, variables map[strin
 		executable = "pwsh"
 	}
 	command := exec.CommandContext(deadline, executable, "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", script)
-	command.Env = os.Environ()
+	command.Env = minimalChildEnv()
 	for key, value := range variables {
 		command.Env = append(command.Env, key+"="+value)
 	}

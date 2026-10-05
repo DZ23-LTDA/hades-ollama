@@ -800,23 +800,25 @@ func (g *WhatsAppGateway) routeIntent(ctx context.Context, text string, policy W
 		}
 
 		// Create mission via Engineering Command Bridge!
+		// O objetivo vem de texto externo (mensagem recebida). Criar a missão
+		// é aceitável; executá-la sozinha transformaria uma mensagem em
+		// execução automática no escopo global de conectores.
 		mission, err := g.runtime.CreateMission(ctx, CreateMissionRequest{
 			Objective: objective,
 			Provider:  "ollama-local",
-			AutoRun:   true,
+			AutoRun:   false,
 		})
 		if err != nil {
 			return fmt.Sprintf("❌ Erro ao criar missão: %v", err), nil
 		}
 
-		// Start execution via queue
-		_, _ = g.runtime.EnqueueMission(mission.ID)
-
+		// A missão fica pendente: quem inicia é um operador autenticado pela
+		// API ou pelo console, não a mensagem recebida.
 		return fmt.Sprintf(
-			"🚀 *Missão Iniciada via WhatsApp Bridge*!\n\n"+
+			"🚀 *Missão criada via WhatsApp Bridge*\n\n"+
 				"• *ID*: `%s`\n"+
 				"• *Objetivo*: %s\n"+
-				"• *Status*: RUNNING (em execução no runtime local)\n"+
+				"• *Status*: PENDENTE — precisa ser iniciada por um operador no console\n"+
 				"Acompanhe o progresso com o comando *progresso*.",
 			mission.ID, mission.Objective,
 		), nil

@@ -225,7 +225,7 @@ func normalizeSteps(steps []Step) ([]Step, error) {
 		"mcp.remote.call":   RiskExternalSideEffect,
 		"connector.http":    RiskExternalSideEffect,
 		"media.process":     RiskExternalSideEffect,
-		"project.test.run":  RiskRead,
+		"project.test.run":  RiskWrite,
 		"git.merge.origin":  RiskWrite,
 	}
 	for i := range steps {
@@ -236,9 +236,9 @@ func normalizeSteps(steps []Step) ([]Step, error) {
 		if steps[i].Title == "" {
 			steps[i].Title = steps[i].Kind
 		}
-		if steps[i].Risk == "" {
-			steps[i].Risk = allowed[steps[i].Kind]
-		}
+		// O risco é sempre o do registry: o planner (saída de LLM) não pode
+		// rebaixar o risco de uma ferramenta para escapar do approval.
+		steps[i].Risk = allowed[steps[i].Kind]
 		if steps[i].Risk != RiskRead {
 			steps[i].RequiresApproval = true
 		}

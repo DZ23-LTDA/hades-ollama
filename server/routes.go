@@ -2017,7 +2017,7 @@ func (s *Server) GenerateRoutes() (http.Handler, error) {
 		return nil, err
 	}
 	agentAPI.register(r)
-	s.registerDesktopLocalRoutes(r)
+	s.registerDesktopLocalRoutes(r, agentAPI)
 	// Codex uses this existing Ollama listener for both native and Ollama
 	// models. The proxy selects the upstream per request.
 	r.Any(proxy.CodexDesktopPathPrefix+"/*path", gin.WrapH(codexDesktopProxy))

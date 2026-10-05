@@ -263,7 +263,11 @@ func RunProjectTests(ctx context.Context, workspacePath string, options TestRunO
 	}
 	targetDir := workspacePath
 	if options.SubPath != "" {
-		targetDir = filepath.Join(workspacePath, options.SubPath)
+		contained, err := safeWorkspacePath(workspacePath, options.SubPath)
+		if err != nil {
+			return TestRunResult{}, fmt.Errorf("sub_path invalid: %w", err)
+		}
+		targetDir = contained
 	}
 
 	framework := strings.ToLower(strings.TrimSpace(options.Framework))
@@ -527,11 +531,11 @@ type projectTestRunnerTool struct{}
 func (projectTestRunnerTool) Descriptor() ToolDescriptor {
 	return ToolDescriptor{
 		Name:             "project.test.run",
-		Version:          "1",
-		Description:      "Executar testes automatizados do projeto (Go, Node/npm, Python) em ambiente sandbox isolado sem egress de rede",
-		Risk:             RiskRead,
+		Version:          "2",
+		Description:      "Executar testes automatizados do projeto (Go, Node/npm, Python) após approval, contido no workspace e sem egress de rede",
+		Risk:             RiskWrite,
 		Scopes:           []string{"workspace:read"},
-		RequiresApproval: false,
+		RequiresApproval: true,
 	}
 }
 

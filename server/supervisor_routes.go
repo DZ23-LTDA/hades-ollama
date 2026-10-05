@@ -22,6 +22,9 @@ func (a *agentAPI) supervisorStatus(c *gin.Context) {
 }
 
 func (a *agentAPI) supervisorConfig(c *gin.Context) {
+	if !a.requireOrganizationAdmin(c, "supervisor configuration") {
+		return
+	}
 	if a.runtime == nil || a.runtime.Supervisor() == nil {
 		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "supervisor not initialized in runtime"})
 		return

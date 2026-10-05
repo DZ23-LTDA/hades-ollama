@@ -8,7 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func (s *Server) registerDesktopLocalRoutes(r *gin.Engine) {
+func (s *Server) registerDesktopLocalRoutes(r *gin.Engine, agentAPI *agentAPI) {
 	// Local-first desktop compatibility routes to ensure all desktop UI surfaces
 	// function smoothly with zero 404/401 console errors.
 	r.GET("/api/me", func(c *gin.Context) {
@@ -124,8 +124,13 @@ func (s *Server) registerDesktopLocalRoutes(r *gin.Engine) {
 	})
 	r.POST("/api/v1/models/pull", s.PullHandler)
 
-	// Endpoint para Personalização do Agente.
-	r.GET("/api/agent/v1/personalization", func(c *gin.Context) {
+	// Endpoint para Personalização do Agente. Vive sob /api/agent/v1, logo
+	// precisa do mesmo middleware de autenticação e origem do grupo agêntico.
+	personalization := r.Group("/api/agent/v1")
+	if agentAPI != nil {
+		personalization.Use(agentAPI.authMiddleware)
+	}
+	personalization.GET("/personalization", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
 			"custom_instructions": "Sempre responder em português, priorizar arquitetura limpa, segurança rigorosa e entregar código testado de ponta a ponta.",
 			"memory_enabled":      true,
@@ -133,7 +138,7 @@ func (s *Server) registerDesktopLocalRoutes(r *gin.Engine) {
 		})
 	})
 
-	r.POST("/api/agent/v1/personalization", func(c *gin.Context) {
+	personalization.POST("/personalization", func(c *gin.Context) {
 		var body map[string]any
 		if err := c.ShouldBindJSON(&body); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})

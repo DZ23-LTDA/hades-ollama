@@ -1642,7 +1642,7 @@ func (r *Runtime) Run(ctx context.Context, id string) (runErr error) {
 		}
 		if mission.WorkspaceIsolated {
 			switch step.Kind {
-			case "terminal.exec", "sandbox.exec", "media.process":
+			case "terminal.exec", "sandbox.exec", "media.process", "project.test.run":
 				return r.failStep(mission, step, fmt.Errorf("tool %q uses pathname-based workspace access and is disabled for isolated snapshots", step.Kind))
 			}
 		}

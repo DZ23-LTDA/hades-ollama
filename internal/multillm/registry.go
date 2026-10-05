@@ -24,21 +24,25 @@ type Config struct {
 }
 
 type Provider struct {
-	Name                  string        `json:"name"`
-	Type                  string        `json:"type"`
-	BaseURL               string        `json:"base_url"`
-	APIKeyEnv             string        `json:"api_key_env,omitempty"`
-	Models                []ModelConfig `json:"models"`
-	Priority              int           `json:"priority,omitempty"`
-	Enabled               *bool         `json:"enabled,omitempty"`
-	Executable            string        `json:"executable,omitempty"`
-	Args                  []string      `json:"args,omitempty"`
-	AllowExecution        bool          `json:"allow_execution,omitempty"`
-	TimeoutSeconds        int           `json:"timeout_seconds,omitempty"`
-	Paths                 []string      `json:"paths,omitempty"`
-	AuthStyle             string        `json:"auth_style,omitempty"`
-	AllowPrivate          bool          `json:"allow_private,omitempty"`
-	AllowInsecureLoopback bool          `json:"allow_insecure_loopback,omitempty"`
+	Name           string        `json:"name"`
+	Type           string        `json:"type"`
+	BaseURL        string        `json:"base_url"`
+	APIKeyEnv      string        `json:"api_key_env,omitempty"`
+	Models         []ModelConfig `json:"models"`
+	Priority       int           `json:"priority,omitempty"`
+	Enabled        *bool         `json:"enabled,omitempty"`
+	Executable     string        `json:"executable,omitempty"`
+	Args           []string      `json:"args,omitempty"`
+	AllowExecution bool          `json:"allow_execution,omitempty"`
+	TimeoutSeconds int           `json:"timeout_seconds,omitempty"`
+	Paths          []string      `json:"paths,omitempty"`
+	AuthStyle      string        `json:"auth_style,omitempty"`
+	AllowPrivate   bool          `json:"allow_private,omitempty"`
+	// PassthroughEnv lista nomes de variáveis de ambiente que este provider CLI
+	// precisa receber. Sem declaração explícita o processo só recebe o ambiente
+	// mínimo, para não vazar credencial de outros providers nem do banco.
+	PassthroughEnv        []string `json:"passthrough_env,omitempty"`
+	AllowInsecureLoopback bool     `json:"allow_insecure_loopback,omitempty"`
 }
 
 const (

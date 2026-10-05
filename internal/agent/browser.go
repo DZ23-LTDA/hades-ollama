@@ -33,14 +33,23 @@ func (browserOperatorTool) Execute(ctx context.Context, toolContext ToolContext,
 			return ToolResult{}, errors.New("browser navigate requires url")
 		}
 	}
+	containedPaths := map[string]string{}
 	for _, key := range []string{"path", "save_path"} {
 		if value := stringInput(input, key, ""); value != "" {
-			if _, err := safeWorkspacePath(toolContext.Workspace, value); err != nil {
+			contained, err := safeWorkspacePath(toolContext.Workspace, value)
+			if err != nil {
 				return ToolResult{}, fmt.Errorf("browser %s: %w", key, err)
 			}
+			containedPaths[key] = contained
 		}
 	}
 	request := cloneMap(input)
+	// O helper resolve caminho relativo contra o CWD do servidor, não contra o
+	// workspace. Enviar o caminho já validado faz a verificação e o uso
+	// apontarem para o mesmo lugar.
+	for key, contained := range containedPaths {
+		request[key] = contained
+	}
 	request["session_id"] = toolContext.MissionID
 	requestData, err := json.Marshal(request)
 	if err != nil {
@@ -71,7 +80,9 @@ func (browserOperatorTool) Execute(ctx context.Context, toolContext ToolContext,
 	}
 	command := exec.CommandContext(deadline, pythonExecutable, tempName)
 	command.Stdin = bytes.NewReader(requestData)
-	command.Env = append(os.Environ(), "OLLAMA_AGENT_BROWSER_ROOT="+filepath.Join(toolContext.Workspace, ".browser"))
+	// Este processo navega em conteúdo hostil: herdar o ambiente do servidor
+	// entregaria a ele as chaves de provider e as senhas de banco.
+	command.Env = minimalChildEnv("OLLAMA_AGENT_BROWSER_ROOT=" + filepath.Join(toolContext.Workspace, ".browser"))
 	var stdout, stderr bytes.Buffer
 	command.Stdout = &limitedBuffer{Buffer: &stdout, Limit: 256 << 10}
 	command.Stderr = &limitedBuffer{Buffer: &stderr, Limit: 64 << 10}
