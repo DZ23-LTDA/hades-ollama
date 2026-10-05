@@ -80,9 +80,7 @@ func (browserOperatorTool) Execute(ctx context.Context, toolContext ToolContext,
 	}
 	command := exec.CommandContext(deadline, pythonExecutable, tempName)
 	command.Stdin = bytes.NewReader(requestData)
-	// Este processo navega em conteúdo hostil: herdar o ambiente do servidor
-	// entregaria a ele as chaves de provider e as senhas de banco.
-	command.Env = minimalChildEnv("OLLAMA_AGENT_BROWSER_ROOT=" + filepath.Join(toolContext.Workspace, ".browser"))
+	command.Env = browserChildEnv(toolContext.Workspace)
 	var stdout, stderr bytes.Buffer
 	command.Stdout = &limitedBuffer{Buffer: &stdout, Limit: 256 << 10}
 	command.Stderr = &limitedBuffer{Buffer: &stderr, Limit: 64 << 10}
@@ -107,6 +105,20 @@ func (browserOperatorTool) Execute(ctx context.Context, toolContext ToolContext,
 		return ToolResult{Value: result}, fmt.Errorf("browser operator: %v", result["error"])
 	}
 	return ToolResult{Value: result}, nil
+}
+
+// browserChildEnv builds the environment for the Playwright helper. The helper
+// navigates hostile content, so inheriting the server environment would hand it
+// provider API keys and database passwords. It gets the minimal passthrough
+// plus the browser subsystem's own non-secret configuration.
+func browserChildEnv(workspace string) []string {
+	browserEnv := []string{"OLLAMA_AGENT_BROWSER_ROOT=" + filepath.Join(workspace, ".browser")}
+	for _, name := range []string{"OLLAMA_AGENT_BROWSER_ALLOW_PRIVATE", "OLLAMA_AGENT_BROWSER_EXECUTABLE"} {
+		if value, ok := os.LookupEnv(name); ok && strings.TrimSpace(value) != "" {
+			browserEnv = append(browserEnv, name+"="+value)
+		}
+	}
+	return minimalChildEnv(browserEnv...)
 }
 
 func browserPythonExecutable() (string, error) {

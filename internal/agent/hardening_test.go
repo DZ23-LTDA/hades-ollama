@@ -76,6 +76,40 @@ func TestRejectGenericInterpreterCommand(t *testing.T) {
 	}
 }
 
+func TestBrowserChildEnvForwardsConfigNotSecrets(t *testing.T) {
+	t.Setenv("ANTHROPIC_API_KEY", "valor-secreto")
+	t.Setenv("OLLAMA_AGENT_POSTGRES_RUNTIME_URL", "postgres://user:senha@host/db")
+	t.Setenv("OLLAMA_AGENT_BROWSER_ALLOW_PRIVATE", "1")
+	t.Setenv("OLLAMA_AGENT_BROWSER_EXECUTABLE", "/usr/bin/chromium")
+	t.Setenv("PATH", "/usr/bin:/bin")
+
+	env := browserChildEnv("/tmp/workspace")
+	joined := strings.Join(env, "\n")
+
+	if strings.Contains(joined, "valor-secreto") || strings.Contains(joined, "senha@host") {
+		t.Fatal("ambiente do helper de browser carrega credencial do servidor")
+	}
+	// A config do próprio subsistema de browser precisa chegar ao helper, senão
+	// o guard de endereço privado e o executável configurado se perdem (foi o
+	// que quebrou os gates de CI).
+	for _, want := range []string{
+		"OLLAMA_AGENT_BROWSER_ALLOW_PRIVATE=1",
+		"OLLAMA_AGENT_BROWSER_EXECUTABLE=/usr/bin/chromium",
+		"OLLAMA_AGENT_BROWSER_ROOT=/tmp/workspace/.browser",
+	} {
+		found := false
+		for _, entry := range env {
+			if entry == want {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Fatalf("esperava %q no ambiente do helper de browser", want)
+		}
+	}
+}
+
 func TestMinimalChildEnvDropsSecrets(t *testing.T) {
 	t.Setenv("ANTHROPIC_API_KEY", "valor-secreto")
 	t.Setenv("OLLAMA_AGENT_CREDENTIAL_KEY", "valor-secreto")
