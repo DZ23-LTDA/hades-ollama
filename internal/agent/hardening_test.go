@@ -76,6 +76,21 @@ func TestRejectGenericInterpreterCommand(t *testing.T) {
 	}
 }
 
+func TestRejectVersionSuffixedInterpreter(t *testing.T) {
+	t.Setenv("OLLAMA_AGENT_MCP_COMMAND_ALLOWLIST", "")
+	for _, command := range []string{"/usr/bin/python3.12", "/usr/bin/python3.11", "/usr/local/bin/node20", "/usr/bin/ruby2.7", "/usr/bin/python3.12.exe"} {
+		if err := rejectGenericInterpreterCommand(command); !errors.Is(err, ErrMCPInterpreterCommand) {
+			t.Fatalf("interpretador com sufixo de versão %q deveria ser recusado, erro=%v", command, err)
+		}
+	}
+	// Não pode pegar um binário de servidor que só por acaso começa com o nome.
+	for _, command := range []string{"/usr/local/bin/python-mcp-server", "/usr/local/bin/node-red-server"} {
+		if err := rejectGenericInterpreterCommand(command); err != nil {
+			t.Fatalf("binário de servidor %q não deveria ser recusado: %v", command, err)
+		}
+	}
+}
+
 func TestBrowserChildEnvForwardsConfigNotSecrets(t *testing.T) {
 	t.Setenv("ANTHROPIC_API_KEY", "valor-secreto")
 	t.Setenv("OLLAMA_AGENT_POSTGRES_RUNTIME_URL", "postgres://user:senha@host/db")

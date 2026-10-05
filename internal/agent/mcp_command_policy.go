@@ -5,8 +5,14 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 )
+
+// versionedInterpreter casa nomes de interpretador seguidos de sufixo de versão
+// (python3.12, python3.12.exe, node20, ruby2.7), que não entram na lista exata
+// mas executam código arbitrário igual.
+var versionedInterpreter = regexp.MustCompile(`^(python|pypy|node|nodejs|deno|bun|ruby|perl|php|lua|tclsh|pwsh|powershell)[0-9]+(\.[0-9]+)*(\.exe)?$`)
 
 // genericInterpreters are executables whose whole purpose is to run whatever
 // they are handed. Registering one as an "MCP server" turns plugin
@@ -36,7 +42,7 @@ var ErrMCPInterpreterCommand = errors.New("MCP command is a generic interpreter"
 // hatch explicit, auditable and per-path instead of blanket.
 func rejectGenericInterpreterCommand(command string) error {
 	base := strings.ToLower(filepath.Base(command))
-	if !genericInterpreters[base] {
+	if !genericInterpreters[base] && !versionedInterpreter.MatchString(base) {
 		return nil
 	}
 	if mcpCommandExplicitlyAllowed(command) {

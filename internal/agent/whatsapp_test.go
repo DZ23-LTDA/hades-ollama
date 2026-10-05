@@ -497,6 +497,15 @@ func TestWhatsAppGatewayCommandBridgeCreatesMission(t *testing.T) {
 	if missions[0].State == MissionRunning || missions[0].State == MissionCompleted {
 		t.Fatalf("mission from an external message must remain unstarted, got state %s", missions[0].State)
 	}
+	// Checar o estado não basta: uma missão enfileirada permanece READY. A ponte
+	// também não pode tê-la colocado na fila de execução.
+	for _, status := range []QueueStatus{QueuePending, QueueRunning} {
+		for _, job := range runtime.QueueJobs(status) {
+			if job.MissionID == missions[0].ID {
+				t.Fatalf("mission from an external message must not be enqueued, found %s job %s", status, job.ID)
+			}
+		}
+	}
 }
 
 // 7. Intent Routing (Health, Resumo, Lembrete, Ajuda)
