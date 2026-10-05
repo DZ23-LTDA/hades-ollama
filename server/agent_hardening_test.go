@@ -44,20 +44,50 @@ func TestAgentOriginAllowedChecksReadsToo(t *testing.T) {
 
 func TestIsDevTokenRequestAllowedRejectsProxiedRequests(t *testing.T) {
 	t.Setenv("OLLAMA_AGENT_AUTH_DEV", "true")
+	t.Setenv("OLLAMA_AGENT_AUTH_DEV_SECRET", "dev-secret")
 
 	ctx := newOriginTestContext(t, http.MethodPost, "")
 	ctx.Request.RemoteAddr = "127.0.0.1:54321"
+	ctx.Request.Header.Set("X-Ollama-Agent-Dev-Secret", "dev-secret")
 	if !isDevTokenRequestAllowed(ctx) {
-		t.Fatal("loopback direto deveria continuar emitindo token de desenvolvimento")
+		t.Fatal("loopback direto com segredo correto deveria emitir token de desenvolvimento")
 	}
 
 	for _, header := range []string{"X-Forwarded-For", "X-Real-Ip", "Forwarded", "X-Forwarded-Host", "X-Client-Ip"} {
 		proxied := newOriginTestContext(t, http.MethodPost, "")
 		proxied.Request.RemoteAddr = "127.0.0.1:54321"
+		proxied.Request.Header.Set("X-Ollama-Agent-Dev-Secret", "dev-secret")
 		proxied.Request.Header.Set(header, "203.0.113.10")
 		if isDevTokenRequestAllowed(proxied) {
 			t.Fatalf("request com %s deveria ser recusado: loopback vem do proxy, não do cliente", header)
 		}
+	}
+}
+
+func TestDevTokenRequiresOperatorSecret(t *testing.T) {
+	t.Setenv("OLLAMA_AGENT_AUTH_DEV", "true")
+
+	// Sem segredo configurado, o endpoint é fail-closed: fecha o caminho do
+	// proxy same-host que encaminha para loopback sem adicionar cabeçalhos.
+	t.Setenv("OLLAMA_AGENT_AUTH_DEV_SECRET", "")
+	clean := newOriginTestContext(t, http.MethodPost, "")
+	clean.Request.RemoteAddr = "127.0.0.1:54321"
+	if isDevTokenRequestAllowed(clean) {
+		t.Fatal("sem segredo configurado, o token de dev deve ser recusado mesmo em loopback limpo")
+	}
+
+	// Com segredo configurado mas ausente ou errado no request, recusar.
+	t.Setenv("OLLAMA_AGENT_AUTH_DEV_SECRET", "dev-secret")
+	missing := newOriginTestContext(t, http.MethodPost, "")
+	missing.Request.RemoteAddr = "127.0.0.1:54321"
+	if isDevTokenRequestAllowed(missing) {
+		t.Fatal("sem o header do segredo, o request deve ser recusado")
+	}
+	wrong := newOriginTestContext(t, http.MethodPost, "")
+	wrong.Request.RemoteAddr = "127.0.0.1:54321"
+	wrong.Request.Header.Set("X-Ollama-Agent-Dev-Secret", "errado")
+	if isDevTokenRequestAllowed(wrong) {
+		t.Fatal("segredo incorreto deve ser recusado")
 	}
 }
 

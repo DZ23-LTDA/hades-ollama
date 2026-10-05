@@ -392,7 +392,7 @@ Os handlers agentic que usam `decodeJSON` aceitam exatamente um documento JSON. 
 O limite de transporte do `decodeJSON` é 4 MiB por request. Bodies maiores são rejeitados antes de concluir o parse; endpoints com payloads específicos podem impor limites menores. O orçamento não substitui limites de arquivos, documentos comprimidos ou respostas de providers.
 
 
-`POST /api/agent/v1/auth/dev/token` é apenas uma rota de desenvolvimento: requer `OLLAMA_AGENT_AUTH_DEV=true` e peer loopback. Seu body também respeita o limite de 4 MiB, campos conhecidos e documento JSON único; a rota não deve ser exposta como onboarding de produção.
+`POST /api/agent/v1/auth/dev/token` é apenas uma rota de desenvolvimento: requer `OLLAMA_AGENT_AUTH_DEV=true`, listener e peer loopback, e uma credencial de operador `OLLAMA_AGENT_AUTH_DEV_SECRET` apresentada no cabeçalho `X-Ollama-Agent-Dev-Secret` (sem o segredo configurado a rota é fail-closed). Seu body também respeita o limite de 4 MiB, campos conhecidos e documento JSON único; a rota não deve ser exposta como onboarding de produção.
 
 
 ## Deployments

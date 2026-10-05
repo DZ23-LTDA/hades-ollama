@@ -13,6 +13,7 @@ import (
 func TestDevTokenUsesStrictJSONDecoder(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	t.Setenv("OLLAMA_AGENT_AUTH_DEV", "true")
+	t.Setenv("OLLAMA_AGENT_AUTH_DEV_SECRET", "dev-secret")
 	auth, err := agent.NewAuthStore("")
 	if err != nil {
 		t.Fatal(err)
@@ -22,6 +23,7 @@ func TestDevTokenUsesStrictJSONDecoder(t *testing.T) {
 	context, _ := gin.CreateTestContext(recorder)
 	context.Request = httptest.NewRequest(http.MethodPost, "/api/agent/v1/auth/dev/token", strings.NewReader(`{"email":"dev@example.com","name":"Dev","organization":"Dev Org","unexpected":true}`))
 	context.Request.RemoteAddr = "127.0.0.1:12345"
+	context.Request.Header.Set("X-Ollama-Agent-Dev-Secret", "dev-secret")
 
 	api.devToken(context)
 

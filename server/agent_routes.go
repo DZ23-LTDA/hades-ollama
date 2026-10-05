@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/hmac"
 	"crypto/sha256"
+	"crypto/subtle"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -691,8 +692,25 @@ func isPublicSSORoute(c *gin.Context) bool {
 	return false
 }
 
+// devTokenSecretHeader carries the operator credential that gates dev-token
+// issuance.
+const devTokenSecretHeader = "X-Ollama-Agent-Dev-Secret"
+
 func isDevTokenRequestAllowed(c *gin.Context) bool {
 	if !strings.EqualFold(strings.TrimSpace(os.Getenv("OLLAMA_AGENT_AUTH_DEV")), "true") {
+		return false
+	}
+	// Credencial de operador obrigatória. As checagens de loopback abaixo são
+	// defesa em profundidade, mas um proxy same-host que encaminha para
+	// 127.0.0.1 sem adicionar cabeçalhos passaria por elas; o segredo fecha esse
+	// caminho, pois o atacante remoto não o conhece. Sem segredo configurado, o
+	// endpoint é fail-closed.
+	secret := strings.TrimSpace(os.Getenv("OLLAMA_AGENT_AUTH_DEV_SECRET"))
+	if secret == "" {
+		return false
+	}
+	presented := strings.TrimSpace(c.GetHeader(devTokenSecretHeader))
+	if subtle.ConstantTimeCompare([]byte(presented), []byte(secret)) != 1 {
 		return false
 	}
 	// Se o servidor escuta fora de loopback, há um proxy ou acesso remoto na

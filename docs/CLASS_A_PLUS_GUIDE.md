@@ -120,6 +120,7 @@ OLLAMA_HOST=127.0.0.1:11434 ./bin/ollama-classe-a-plus serve
 | `OLLAMA_AGENT_AUTH_STORE` | Diretório do store de identidade e sessão. |
 | `OLLAMA_AGENT_AUTH_REQUIRED` | Exige autenticação para o runtime HTTP. |
 | `OLLAMA_AGENT_AUTH_DEV` | Modo de desenvolvimento; não habilitar em produção. |
+| `OLLAMA_AGENT_AUTH_DEV_SECRET` | Obrigatório para emitir token de dev: o chamador apresenta o valor no cabeçalho `X-Ollama-Agent-Dev-Secret`. Sem ele a rota é fail-closed, fechando o acesso via proxy same-host. |
 | `OLLAMA_AGENT_AUTH_SSO_PUBLIC` | Permite início de SSO sem sessão prévia quando explicitamente habilitado. |
 | `OLLAMA_AGENT_CREDENTIAL_KEY` | Chave externa usada para cifrar credenciais OAuth e MFA. |
 | `OLLAMA_AGENT_DATABASE_URL` | DSN da role `ollama_agent_runtime`; exige roles separadas, migrations explícitas e chave tenant HMAC. PostgreSQL/RLS ainda não foi aprovado para produção. |
