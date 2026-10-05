@@ -94,9 +94,13 @@ func companionSecureRequest(request *http.Request) bool {
 		return true
 	}
 	// X-Forwarded-Proto é escrito pelo próprio cliente quando não há proxy na
-	// frente. Só vale como prova de TLS se o operador declarar explicitamente
-	// que existe um proxy confiável terminando TLS antes deste servidor.
+	// frente. Só vale como prova de TLS quando o operador declarou um proxy
+	// confiável E o peer imediato é loopback (o proxy same-host do setup
+	// documentado). Um cliente remoto direto não consegue forjar o header.
 	if os.Getenv("OLLAMA_AGENT_TRUSTED_TLS_PROXY") != "1" {
+		return false
+	}
+	if !isLoopbackRemoteAddr(request.RemoteAddr) {
 		return false
 	}
 	return strings.EqualFold(request.Header.Get("X-Forwarded-Proto"), "https")

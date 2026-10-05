@@ -48,7 +48,7 @@ O fork público distribui o código-fonte, não um instalador assinado, binário
 
 ```bash
 git clone https://github.com/DZ23-LTDA/hades-ollama.git
-cd ollama-classe-a-plus
+cd hades-ollama
 
 # Conferir a revisão pública
 git log -1 --oneline

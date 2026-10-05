@@ -45,8 +45,12 @@ func (browserOperatorTool) Execute(ctx context.Context, toolContext ToolContext,
 	}
 	request := cloneMap(input)
 	// O helper resolve caminho relativo contra o CWD do servidor, não contra o
-	// workspace. Enviar o caminho já validado faz a verificação e o uso
-	// apontarem para o mesmo lugar.
+	// workspace. Remover as chaves e reinserir só os caminhos já validados
+	// garante que um valor null/não-string (que o helper converteria em "None"
+	// e escreveria fora do workspace) nunca seja repassado.
+	for _, key := range []string{"path", "save_path"} {
+		delete(request, key)
+	}
 	for key, contained := range containedPaths {
 		request[key] = contained
 	}

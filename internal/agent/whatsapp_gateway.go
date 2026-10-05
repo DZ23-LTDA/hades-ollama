@@ -669,7 +669,7 @@ func (g *WhatsAppGateway) routeIntent(ctx context.Context, text string, policy W
 			"• *progresso* ou *missoes* — Consultar missões recentes\n" +
 			"• *resumo* — Resumo executivo diário\n" +
 			"• *lembrete <texto>* — Criar lembrete agendado\n" +
-			"• *missao <objetivo>* ou */goal <objetivo>* — Disparar missão na Factory\n\n" +
+			"• *missao <objetivo>* ou */goal <objetivo>* — Criar missão na Factory (um operador a inicia)\n\n" +
 			"🔒 *Segurança*: Comandos sensíveis exigem aprovação HITL do Dono.", nil
 	}
 

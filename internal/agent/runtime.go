@@ -875,6 +875,16 @@ func (r *Runtime) CreateMission(ctx context.Context, request CreateMissionReques
 	if err != nil {
 		return r.failMission(mission, err)
 	}
+	if mission.WorkspaceIsolated {
+		// project.test.run usa acesso por caminho e é bloqueado na execução de
+		// missão isolada; rejeitar já no planejamento evita aprovar uma missão
+		// que falharia depois de trabalho parcial (ex.: após workspace.write).
+		for index := range plan {
+			if plan[index].Kind == "project.test.run" {
+				return r.failMission(mission, fmt.Errorf("tool %q is not supported in isolated snapshots and cannot be planned", plan[index].Kind))
+			}
+		}
+	}
 	for index := range plan {
 		tool, ok := r.tools.Get(plan[index].Kind)
 		if !ok {

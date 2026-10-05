@@ -695,6 +695,12 @@ func isDevTokenRequestAllowed(c *gin.Context) bool {
 	if !strings.EqualFold(strings.TrimSpace(os.Getenv("OLLAMA_AGENT_AUTH_DEV")), "true") {
 		return false
 	}
+	// Se o servidor escuta fora de loopback, há um proxy ou acesso remoto na
+	// frente e o RemoteAddr loopback deixa de provar origem local. O token de
+	// dev só é emitido quando o próprio listener é loopback-only.
+	if !serverListensOnLoopback() {
+		return false
+	}
 	if !isLoopbackRemoteAddr(c.Request.RemoteAddr) {
 		return false
 	}
@@ -702,6 +708,31 @@ func isDevTokenRequestAllowed(c *gin.Context) bool {
 	// A presença de cabeçalhos de encaminhamento prova que o request foi
 	// intermediado, então o loopback deixa de ser evidência de origem local.
 	return !hasForwardedHeaders(c.Request)
+}
+
+// globalProcessScopeAllowed autoriza superfícies de processo global (sem campo
+// de organização), como o buffer de egress e a config do supervisor. Um admin
+// de uma organização não deve enxergar nem alterar o estado global das demais:
+// o acesso exige modo local single-tenant ou um opt-in explícito do operador do
+// servidor.
+func (a *agentAPI) globalProcessScopeAllowed(c *gin.Context, surface string) bool {
+	if !a.authRequired {
+		return true
+	}
+	if strings.EqualFold(strings.TrimSpace(os.Getenv("OLLAMA_AGENT_ALLOW_GLOBAL_SCOPE")), "true") {
+		return a.requireOrganizationAdmin(c, surface)
+	}
+	c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": surface + " is process-global and not scoped to one organization; set OLLAMA_AGENT_ALLOW_GLOBAL_SCOPE=true to permit a server operator to access it"})
+	return false
+}
+
+func serverListensOnLoopback() bool {
+	host := envconfig.Host()
+	if host == nil {
+		return false
+	}
+	ip := net.ParseIP(host.Hostname())
+	return ip != nil && ip.IsLoopback()
 }
 
 func hasForwardedHeaders(request *http.Request) bool {

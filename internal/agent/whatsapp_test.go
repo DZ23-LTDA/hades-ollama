@@ -492,6 +492,11 @@ func TestWhatsAppGatewayCommandBridgeCreatesMission(t *testing.T) {
 	if missions[0].Objective != "auditar segurança da fábrica" {
 		t.Fatalf("expected objective 'auditar segurança da fábrica', got %s", missions[0].Objective)
 	}
+	// A missão criada por mensagem externa não pode ter começado sozinha: só um
+	// operador autenticado a inicia.
+	if missions[0].State == MissionRunning || missions[0].State == MissionCompleted {
+		t.Fatalf("mission from an external message must remain unstarted, got state %s", missions[0].State)
+	}
 }
 
 // 7. Intent Routing (Health, Resumo, Lembrete, Ajuda)

@@ -534,7 +534,7 @@ func (projectTestRunnerTool) Descriptor() ToolDescriptor {
 		Version:          "2",
 		Description:      "Executar testes automatizados do projeto (Go, Node/npm, Python) após approval, contido no workspace e sem egress de rede",
 		Risk:             RiskWrite,
-		Scopes:           []string{"workspace:read"},
+		Scopes:           []string{"workspace:write"},
 		RequiresApproval: true,
 	}
 }

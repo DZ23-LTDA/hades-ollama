@@ -64,6 +64,7 @@ func TestIsDevTokenRequestAllowedRejectsProxiedRequests(t *testing.T) {
 func TestCompanionSecureRequestDoesNotTrustClientHeader(t *testing.T) {
 	request := httptest.NewRequest(http.MethodGet, "/api/agent/v1/devices/dev-1/connect", nil)
 	request.Header.Set("X-Forwarded-Proto", "https")
+	request.RemoteAddr = "127.0.0.1:54321"
 
 	t.Setenv("OLLAMA_AGENT_TRUSTED_TLS_PROXY", "")
 	if companionSecureRequest(request) {
@@ -72,6 +73,14 @@ func TestCompanionSecureRequestDoesNotTrustClientHeader(t *testing.T) {
 
 	t.Setenv("OLLAMA_AGENT_TRUSTED_TLS_PROXY", "1")
 	if !companionSecureRequest(request) {
-		t.Fatal("com proxy TLS declarado pelo operador, o header deve valer")
+		t.Fatal("com proxy TLS declarado e peer loopback, o header deve valer")
+	}
+
+	// Peer remoto direto: nem com a flag o header forjado pode valer.
+	remote := httptest.NewRequest(http.MethodGet, "/api/agent/v1/devices/dev-1/connect", nil)
+	remote.Header.Set("X-Forwarded-Proto", "https")
+	remote.RemoteAddr = "203.0.113.10:4444"
+	if companionSecureRequest(remote) {
+		t.Fatal("cliente remoto direto não pode forjar TLS via X-Forwarded-Proto")
 	}
 }

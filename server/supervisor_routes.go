@@ -22,7 +22,7 @@ func (a *agentAPI) supervisorStatus(c *gin.Context) {
 }
 
 func (a *agentAPI) supervisorConfig(c *gin.Context) {
-	if !a.requireOrganizationAdmin(c, "supervisor configuration") {
+	if !a.globalProcessScopeAllowed(c, "supervisor configuration") {
 		return
 	}
 	if a.runtime == nil || a.runtime.Supervisor() == nil {

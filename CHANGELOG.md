@@ -2,7 +2,7 @@
 
 Este arquivo registra as entregas públicas da distribuição `DZ23-LTDA/hades-ollama`. O projeto mantém a atribuição e a licença do Ollama upstream; os recursos agentic específicos estão descritos com seus limites no [guia Hades](docs/CLASS_A_PLUS_GUIDE.md).
 
-Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/). As entradas acumuladas para a próxima versão ficam sob **[Unreleased]**; as notas datadas abaixo de [0.1.0] são o registro cronológico de desenvolvimento que antecede o primeiro release público.
+Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/). As entradas acumuladas para a próxima versão ficam sob **[Unreleased]**; as notas datadas abaixo de [0.1.0] são o registro cronológico de desenvolvimento, incluindo trabalho posterior à tag v0.1.0 ainda não promovido a um novo release.
 
 ## [Unreleased]
 
@@ -272,7 +272,7 @@ Os gates comprovados desta revisão incluem testes focados do runtime/server, bu
 
 [0.1.0]: https://github.com/DZ23-LTDA/hades-ollama/releases/tag/v0.1.0
 
-## Registro de desenvolvimento (pré-0.1.0)
+## Registro de desenvolvimento
 
 ### 2026-09-22 — P0 ownership e Company invariants
 

@@ -11,8 +11,8 @@ import (
 // getEgressLogs returns the audited egress decisions from the unified zero-trust policy.
 func (a *agentAPI) getEgressLogs(c *gin.Context) {
 	// O buffer de egress é global ao processo e não carrega organização:
-	// expor para qualquer leitor vaza infraestrutura de outros tenants.
-	if !a.requireOrganizationAdmin(c, "egress audit log") {
+	// expor para um admin de uma única org vaza infraestrutura de outros tenants.
+	if !a.globalProcessScopeAllowed(c, "egress audit log") {
 		return
 	}
 	limitStr := c.Query("limit")
@@ -37,7 +37,7 @@ func (a *agentAPI) getEgressLogs(c *gin.Context) {
 
 // getEgressStatus returns summary metrics and current state of the zero-trust egress policy.
 func (a *agentAPI) getEgressStatus(c *gin.Context) {
-	if !a.requireOrganizationAdmin(c, "egress audit status") {
+	if !a.globalProcessScopeAllowed(c, "egress audit status") {
 		return
 	}
 	all := agent.DefaultEgressAuditStore.List(1000)

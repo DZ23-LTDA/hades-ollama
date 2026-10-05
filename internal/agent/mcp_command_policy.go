@@ -21,6 +21,9 @@ var genericInterpreters = map[string]bool{
 	"sudo": true, "doas": true, "su": true, "nice": true, "stdbuf": true,
 	"perl": true, "ruby": true, "php": true, "lua": true, "tclsh": true,
 	"osascript": true, "expect": true,
+	// Runtimes de script: executam código arbitrário passado por argumento.
+	"python": true, "python2": true, "python3": true, "python.exe": true, "python3.exe": true, "pythonw.exe": true,
+	"node": true, "nodejs": true, "node.exe": true, "deno": true, "deno.exe": true, "bun": true, "bun.exe": true,
 }
 
 // ErrMCPInterpreterCommand is returned when an MCP registration points at a
