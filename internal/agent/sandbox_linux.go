@@ -132,8 +132,8 @@ func killSandboxControl(control *sandboxControl) {
 	if control == nil {
 		return
 	}
-	// Falha ao matar o cgroup deixa processos do sandbox vivos: registre em vez
-	// de descartar em silêncio.
+	// Falha ao matar o cgroup deixa o sandbox em execução: registre em vez de
+	// descartar em silêncio.
 	path := filepath.Join(control.dir, "cgroup.kill")
 	if err := os.WriteFile(path, []byte("1\n"), 0o600); err != nil {
 		slog.Error("failed to kill sandbox cgroup", "path", path, "error", err)

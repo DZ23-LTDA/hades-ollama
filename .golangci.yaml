@@ -44,6 +44,8 @@ linters:
         - comandos
         - progresso
         - operacional
+        - processo
+        - processos
     depguard:
       rules:
         test-only-packages:
