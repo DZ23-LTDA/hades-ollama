@@ -117,7 +117,8 @@ Source: "..\scripts\dz23-configure.ps1"; DestDir: "{app}"; Flags: ignoreversion
 Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\app.ico"
 Name: "{app}\lib\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\app.ico"
 Name: "{userprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\app.ico"
-Name: "{userprograms}\{#MyAppName} - Configure APIs"; Filename: "powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -File ""{app}\dz23-configure.ps1"""; IconFilename: "{app}\app.ico"
+; A configuração de provedores fica dentro do app (Configurações -> Provedores);
+; um atalho separado no menu Iniciar parecia um segundo "Hades" para o usuário.
 
 [Run]
 Filename: "{cmd}"; Parameters: "/C set ""OLLAMA_DZ23_CONFIG={userappdata}\Ollama DZ23\dz23-providers.json"" & set PATH={app};%PATH% & ""{app}\{#MyAppExeName}"""; Flags: postinstall nowait runhidden
@@ -130,6 +131,9 @@ Filename: "{cmd}"; Parameters: "/c timeout 5"; Flags: runhidden
 
 [UninstallDelete]
 Type: filesandordirs; Name: "{userstartup}\{#MyAppName}.lnk"
+; Remove the legacy separate "Configure APIs" Start menu shortcut (now folded
+; into the in-app settings) so an upgrade/uninstall leaves a single Hades entry.
+Type: files; Name: "{userprograms}\{#MyAppName} - Configure APIs.lnk"
 ; Shared Ollama models, history, and official-app data are always preserved.
 
 [InstallDelete]
