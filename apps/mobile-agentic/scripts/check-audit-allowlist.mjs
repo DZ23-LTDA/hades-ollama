@@ -17,6 +17,15 @@ const ALLOWLIST = new Map([
       "React Native's bundler (metro -> micromatch -> braces) at build time, not " +
       "in the shipped app. Remove when braces ships a fixed version.",
   ],
+  [
+    "GHSA-68fv-2mgg-jv7q",
+    "source-map-js <=1.2.1 event-loop DoS via crafted indexed source-map section " +
+      "offsets: 1.2.1 is the latest published release and is still in the vulnerable " +
+      "range (no fix available). Reached only via React Native's build-time tooling " +
+      "(metro/postcss parsing source maps during bundling), not in the shipped app, " +
+      "and only an attacker-supplied source map could trigger it. Remove when " +
+      "source-map-js ships a fixed version.",
+  ],
 ]);
 
 function runAudit() {
