@@ -614,11 +614,18 @@ function cudaCommon {
         $cudaToolsetArgs = cudaCMakeArgs $cuda
         # DZ23: o preset do llama.cpp pede sm_120 (Blackwell), que o nvcc do
         # CUDA 12.6 recusa ('Unsupported gpu architecture compute_120'). Para o
-        # CUDA 12 (usado no CI) forçamos a lista até Hopper (cobre sm_89/Ada da
-        # RTX 4060); o CUDA 13 mantém o default do preset (suporta sm_120).
+        # CUDA 12 (usado no CI) forçamos a lista de arquiteturas.
+        # Compilar as 11 arquiteturas (50..90a) estourava o limite de 1h30m do
+        # runner (build cancelado, instalador sem GPU). Reduzimos ao conjunto de
+        # placas consumer modernas Turing->Ada: sm_75 (RTX 20xx/GTX 16),
+        # sm_80 (A100), sm_86 (RTX 30xx) e sm_89 (RTX 40xx, inclui a RTX 4060
+        # do usuário). O PTX da maior arch dá compat para frente. Override por
+        # env OLLAMA_CUDA12_ARCHITECTURES se precisar de outras placas.
+        # O CUDA 13 mantém o default do preset (suporta sm_120).
         $archArgs = @()
         if ($cudaMajorVer -eq "12") {
-            $archArgs = @("-DCMAKE_CUDA_ARCHITECTURES=50;52;60;61;70;75;80;86;89;90;90a")
+            $cuda12Archs = if ($env:OLLAMA_CUDA12_ARCHITECTURES) { $env:OLLAMA_CUDA12_ARCHITECTURES } else { "75;80;86;89" }
+            $archArgs = @("-DCMAKE_CUDA_ARCHITECTURES=$cuda12Archs")
         }
         $configureArgs = @("-S", "llama\server", "--preset", $preset) + $cudaToolsetArgs + $archArgs + @("--install-prefix", "$script:DIST_DIR")
         & cmake @configureArgs

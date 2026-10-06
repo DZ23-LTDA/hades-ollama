@@ -27,7 +27,9 @@ jobs:
     # windows-2022 traz o Visual Studio 2022, suportado pelo CUDA 12.6 (o
     # windows-latest migrou para o VS 18/2026, que o nvcc do CUDA 12 recusa).
     runs-on: windows-2022
-    timeout-minutes: 90
+    # 90 min estourava no compile CUDA; agora compilamos menos arquiteturas
+    # (build_windows.ps1: sm_75/80/86/89), mas deixamos margem p/ runner lento.
+    timeout-minutes: 150
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
