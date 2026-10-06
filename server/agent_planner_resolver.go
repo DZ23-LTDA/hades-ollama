@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
 	"os"
 	"strconv"
 	"strings"
@@ -14,6 +15,28 @@ import (
 	"github.com/ollama/ollama/internal/agent"
 	"github.com/ollama/ollama/internal/multillm"
 )
+
+// plannerEgressClient builds the HTTP client used to call the planner model.
+// Planning legitimately takes much longer than an ordinary API call: a local
+// model may be cold-loading into VRAM on the first mission, and a cloud model
+// may stream a longer plan. The shared 30s egress timeout was aborting missions
+// with "context deadline exceeded (Client.Timeout exceeded while awaiting
+// headers)" on first run, so the planner gets a generous timeout (default
+// 3 minutes, override with OLLAMA_AGENT_PLANNER_TIMEOUT_MS).
+func plannerEgressClient() *http.Client {
+	timeout := 180 * time.Second
+	if raw := strings.TrimSpace(os.Getenv("OLLAMA_AGENT_PLANNER_TIMEOUT_MS")); raw != "" {
+		if ms, err := strconv.Atoi(raw); err == nil && ms > 0 {
+			timeout = time.Duration(ms) * time.Millisecond
+		}
+	}
+	return agent.NewSafeEgressHTTPClient(agent.EgressOptions{
+		Callsite:      "server.planner.local",
+		AllowLoopback: true,
+		Timeout:       timeout,
+		MaxBodyBytes:  20 << 20,
+	})
+}
 
 type multiProviderPlannerResolver struct {
 	registry *multillm.Registry
@@ -41,7 +64,7 @@ func (r multiProviderPlannerResolver) ResolvePlanner(provider, model string) (ag
 		}
 		client := r.client
 		if client == nil {
-			client = api.NewClient(envconfig.ConnectableHost(), newServerEgressClient("server.planner.local", true))
+			client = api.NewClient(envconfig.ConnectableHost(), plannerEgressClient())
 		}
 		return agent.OllamaPlanner{Client: client, Model: model}, nil
 	}
@@ -61,7 +84,7 @@ func (r multiProviderPlannerResolver) ResolvePlanner(provider, model string) (ag
 	}
 	client := r.client
 	if client == nil {
-		client = api.NewClient(envconfig.ConnectableHost(), newServerEgressClient("server.planner.local", true))
+		client = api.NewClient(envconfig.ConnectableHost(), plannerEgressClient())
 	}
 	return agent.OllamaPlanner{Client: client, Model: resolved.ID}, nil
 }
@@ -117,7 +140,7 @@ func (r multiProviderPlannerResolver) ResolvePlannerForMission(ctx context.Conte
 	if localModel != "" {
 		client := r.client
 		if client == nil {
-			client = api.NewClient(envconfig.ConnectableHost(), newServerEgressClient("server.planner.local", true))
+			client = api.NewClient(envconfig.ConnectableHost(), plannerEgressClient())
 		}
 		return agent.OllamaPlanner{Client: client, Model: localModel}, agent.PlannerResolution{Provider: "ollama-local", Model: localModel, Reason: "fallback local-first: nenhuma rota remota PASS elegível" + capNote, CostTag: "0-local"}, nil
 	}
