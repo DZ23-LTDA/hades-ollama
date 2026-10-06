@@ -48,7 +48,9 @@ jobs:
         uses: Jimver/cuda-toolkit@v0.2.21
         id: cuda-toolkit
         with:
-          cuda: '12.6.2'
+          # 12.9 suporta as arquiteturas que o Ollama compila (inclui sm_120 /
+          # Blackwell e sm_89 / Ada da RTX 4060); o 12.6 recusava compute_120.
+          cuda: '12.9.1'
           method: 'network'
           sub-packages: '["nvcc", "cudart", "cublas", "cublas_dev", "nvtx", "visual_studio_integration"]'
       - name: Build CPU+CUDA runtime, Desktop, and installer
