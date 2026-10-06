@@ -266,10 +266,47 @@ func (a *agentAPI) whatsappConfig(c *gin.Context) {
 
 	var req struct {
 		ActiveBackend string `json:"active_backend,omitempty"`
+		Evolution     *struct {
+			BaseURL       string `json:"base_url"`
+			APIKey        string `json:"api_key"`
+			Instance      string `json:"instance"`
+			WebhookSecret string `json:"webhook_secret"`
+		} `json:"evolution,omitempty"`
+		CloudAPI *struct {
+			PhoneNumberID string `json:"phone_number_id"`
+			AccessToken   string `json:"access_token"`
+			VerifyToken   string `json:"verify_token"`
+			AppSecret     string `json:"app_secret"`
+		} `json:"cloud_api,omitempty"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid config body"})
 		return
+	}
+
+	// Apply (and persist, 0600) any provided credentials. Secrets are never
+	// logged or echoed back; the client only receives the masked status summary.
+	if req.Evolution != nil {
+		if err := a.runtime.WhatsApp().SetEvolutionConfig(agent.EvolutionConfig{
+			BaseURL:       strings.TrimSpace(req.Evolution.BaseURL),
+			APIKey:        strings.TrimSpace(req.Evolution.APIKey),
+			Instance:      strings.TrimSpace(req.Evolution.Instance),
+			WebhookSecret: strings.TrimSpace(req.Evolution.WebhookSecret),
+		}); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "não foi possível salvar a configuração do Evolution API"})
+			return
+		}
+	}
+	if req.CloudAPI != nil {
+		if err := a.runtime.WhatsApp().SetCloudAPIConfig(agent.CloudAPIConfig{
+			PhoneNumberID: strings.TrimSpace(req.CloudAPI.PhoneNumberID),
+			AccessToken:   strings.TrimSpace(req.CloudAPI.AccessToken),
+			VerifyToken:   strings.TrimSpace(req.CloudAPI.VerifyToken),
+			AppSecret:     strings.TrimSpace(req.CloudAPI.AppSecret),
+		}); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "não foi possível salvar a configuração do Cloud API"})
+			return
+		}
 	}
 
 	if req.ActiveBackend == string(agent.WhatsAppBackendCloudAPI) {

@@ -2,9 +2,12 @@ package agent
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
+	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 	"sync"
@@ -86,6 +89,10 @@ type WhatsAppGateway struct {
 	reminders        []string
 	runtime          *Runtime
 	media            *WhatsAppMediaProcessor
+	// Current backend credentials, kept so they can be re-applied and persisted
+	// (0600) across restarts. Secrets are never logged.
+	evolutionCfg EvolutionConfig
+	cloudCfg     CloudAPIConfig
 }
 
 // Common errors.
@@ -118,6 +125,8 @@ func NewWhatsAppGateway(cfg WhatsAppGatewayConfig, runtime *Runtime) *WhatsAppGa
 		maxRetries:       maxRetries,
 		reminders:        make([]string, 0),
 		runtime:          runtime,
+		evolutionCfg:     cfg.Evolution,
+		cloudCfg:         cfg.CloudAPI,
 	}
 
 	// Register adapters
@@ -156,11 +165,103 @@ func (g *WhatsAppGateway) SetAdapter(backend WhatsAppBackendType, adapter WhatsA
 	g.adapters[backend] = adapter
 }
 
-// SetActiveBackend switches the active backend.
+// SetActiveBackend switches the active backend and persists the choice.
 func (g *WhatsAppGateway) SetActiveBackend(backend WhatsAppBackendType) {
 	g.mu.Lock()
-	defer g.mu.Unlock()
 	g.activeBackend = backend
+	g.mu.Unlock()
+	_ = g.persist()
+}
+
+// persistedGatewayConfig is the subset of the gateway state saved to disk.
+type persistedGatewayConfig struct {
+	ActiveBackend WhatsAppBackendType `json:"active_backend"`
+	Evolution     EvolutionConfig     `json:"evolution"`
+	CloudAPI      CloudAPIConfig      `json:"cloud_api"`
+}
+
+// configPath returns the secure on-disk path for the gateway credentials, or ""
+// when no data root is available (e.g. in tests).
+func (g *WhatsAppGateway) configPath() string {
+	if g.runtime == nil || strings.TrimSpace(g.runtime.dataRoot) == "" {
+		return ""
+	}
+	return filepath.Join(g.runtime.dataRoot, "whatsapp-config.json")
+}
+
+// persist writes the current backend credentials to disk with mode 0600. The
+// file holds secrets (Evolution API key / Cloud API token), so it is never
+// logged and is written only to the private data root.
+func (g *WhatsAppGateway) persist() error {
+	path := g.configPath()
+	if path == "" {
+		return nil
+	}
+	g.mu.RLock()
+	snapshot := persistedGatewayConfig{ActiveBackend: g.activeBackend, Evolution: g.evolutionCfg, CloudAPI: g.cloudCfg}
+	g.mu.RUnlock()
+	data, err := json.MarshalIndent(snapshot, "", "  ")
+	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+		return err
+	}
+	tmp := path + ".tmp"
+	if err := os.WriteFile(tmp, data, 0o600); err != nil {
+		return err
+	}
+	return os.Rename(tmp, path)
+}
+
+// LoadPersistedConfig re-applies credentials saved by a previous session so the
+// WhatsApp gateway keeps working across restarts. Missing file is not an error.
+func (g *WhatsAppGateway) LoadPersistedConfig() error {
+	path := g.configPath()
+	if path == "" {
+		return nil
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return err
+	}
+	var snapshot persistedGatewayConfig
+	if err := json.Unmarshal(data, &snapshot); err != nil {
+		return err
+	}
+	g.mu.Lock()
+	g.evolutionCfg = snapshot.Evolution
+	g.cloudCfg = snapshot.CloudAPI
+	g.adapters[WhatsAppBackendEvolution] = NewEvolutionAdapter(snapshot.Evolution)
+	g.adapters[WhatsAppBackendCloudAPI] = NewCloudAPIAdapter(snapshot.CloudAPI)
+	if snapshot.ActiveBackend != "" {
+		g.activeBackend = snapshot.ActiveBackend
+	}
+	g.mu.Unlock()
+	return nil
+}
+
+// SetEvolutionConfig rebuilds the Evolution adapter with new credentials and
+// persists them (0600). Secrets are never logged.
+func (g *WhatsAppGateway) SetEvolutionConfig(cfg EvolutionConfig) error {
+	g.mu.Lock()
+	g.evolutionCfg = cfg
+	g.adapters[WhatsAppBackendEvolution] = NewEvolutionAdapter(cfg)
+	g.mu.Unlock()
+	return g.persist()
+}
+
+// SetCloudAPIConfig rebuilds the Meta Cloud API adapter with new credentials
+// and persists them (0600). Secrets are never logged.
+func (g *WhatsAppGateway) SetCloudAPIConfig(cfg CloudAPIConfig) error {
+	g.mu.Lock()
+	g.cloudCfg = cfg
+	g.adapters[WhatsAppBackendCloudAPI] = NewCloudAPIAdapter(cfg)
+	g.mu.Unlock()
+	return g.persist()
 }
 
 // ActiveBackend returns the currently selected primary backend.

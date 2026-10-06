@@ -39,10 +39,21 @@ jobs:
           node-version: 22
           cache: npm
           cache-dependency-path: app/ui/app/package-lock.json
-      - name: Build CPU runtime, Desktop, and installer
+      - name: Install CUDA Toolkit 12 (GPU backend)
+        # Compila o backend CUDA (ggml-cuda.dll) para o Hades usar a GPU NVIDIA
+        # localmente, em vez de rodar o modelo só na CPU. Rede + subpacotes
+        # mínimos para caber no disco/tempo do runner.
+        uses: Jimver/cuda-toolkit@v0.2.21
+        id: cuda-toolkit
+        with:
+          cuda: '12.6.2'
+          method: 'network'
+          sub-packages: '["nvcc", "cudart", "cublas", "cublas_dev", "nvtx", "visual_studio_integration"]'
+      - name: Build CPU+CUDA runtime, Desktop, and installer
         shell: pwsh
         # Sem VERSION hardcoded: build_windows.ps1 deriva de `git describe --tags`.
-        run: ./scripts/build_windows.ps1 cpu ollama app installer
+        # cuda12 adiciona ggml-cuda.dll (GPU) além do runtime de CPU.
+        run: ./scripts/build_windows.ps1 cpu cuda12 ollama app installer
       - name: Detect SignPath signing configuration
         id: signing
         shell: pwsh

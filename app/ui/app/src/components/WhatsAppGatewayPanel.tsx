@@ -14,6 +14,7 @@ import {
   setWhatsAppContactPolicy,
   removeWhatsAppContactPolicy,
   setWhatsAppActiveBackend,
+  configureWhatsAppEvolution,
   type WhatsAppStatusSummary,
   type WhatsAppContactPolicy,
 } from "@/lib/agenticClient";
@@ -49,6 +50,37 @@ export function WhatsAppGatewayPanel() {
   const [newName, setNewName] = useState("");
   const [newRole, setNewRole] = useState<"owner" | "operator" | "viewer">("owner");
   const [saving, setSaving] = useState(false);
+  // Credenciais do Evolution API (auto-hospedado). O servidor guarda com 0600 e
+  // nunca devolve os segredos; por isso começam vazios e só são enviados ao salvar.
+  const [evoBaseURL, setEvoBaseURL] = useState("");
+  const [evoApiKey, setEvoApiKey] = useState("");
+  const [evoInstance, setEvoInstance] = useState("");
+  const [evoWebhookSecret, setEvoWebhookSecret] = useState("");
+  const [evoSaving, setEvoSaving] = useState(false);
+  const [evoSaved, setEvoSaved] = useState(false);
+
+  const handleSaveEvolution = async () => {
+    setEvoSaving(true);
+    setEvoSaved(false);
+    setError(null);
+    try {
+      const updated = await configureWhatsAppEvolution({
+        base_url: evoBaseURL.trim(),
+        api_key: evoApiKey.trim(),
+        instance: evoInstance.trim(),
+        webhook_secret: evoWebhookSecret.trim(),
+      });
+      setStatus(updated);
+      setEvoSaved(true);
+      // Limpa os campos de segredo da memória da UI depois de salvar.
+      setEvoApiKey("");
+      setEvoWebhookSecret("");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setEvoSaving(false);
+    }
+  };
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -221,6 +253,43 @@ export function WhatsAppGatewayPanel() {
               Status: {translateStatus(status?.adapters?.cloud_api?.status)}
             </div>
           </button>
+        </div>
+
+        {/* Configuração do Evolution API (credenciais) */}
+        <div className="mt-6 rounded-xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
+          <h3 className="text-xs font-bold text-neutral-900 dark:text-white">
+            Conectar Evolution API
+          </h3>
+          <p className="mt-1 text-[11px] text-neutral-500">
+            Informe o endereço e a chave do seu servidor Evolution API. As credenciais são guardadas com segurança no servidor local (0600) e nunca são exibidas de volta.
+          </p>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            <label className="flex flex-col gap-1 text-[11px] text-neutral-500">
+              URL do servidor
+              <input type="url" value={evoBaseURL} onChange={(e) => setEvoBaseURL(e.target.value)} placeholder="https://evolution.seudominio.com" className="h-9 rounded-lg border border-neutral-300 bg-transparent px-2.5 text-sm outline-none dark:border-neutral-700" />
+            </label>
+            <label className="flex flex-col gap-1 text-[11px] text-neutral-500">
+              Instância
+              <input type="text" value={evoInstance} onChange={(e) => setEvoInstance(e.target.value)} placeholder="nome-da-instancia" className="h-9 rounded-lg border border-neutral-300 bg-transparent px-2.5 text-sm outline-none dark:border-neutral-700" />
+            </label>
+            <label className="flex flex-col gap-1 text-[11px] text-neutral-500">
+              API Key
+              <input type="password" value={evoApiKey} onChange={(e) => setEvoApiKey(e.target.value)} autoComplete="off" placeholder="chave da API" className="h-9 rounded-lg border border-neutral-300 bg-transparent px-2.5 text-sm outline-none dark:border-neutral-700" />
+            </label>
+            <label className="flex flex-col gap-1 text-[11px] text-neutral-500">
+              Segredo do webhook
+              <input type="password" value={evoWebhookSecret} onChange={(e) => setEvoWebhookSecret(e.target.value)} autoComplete="off" placeholder="segredo para validar o webhook" className="h-9 rounded-lg border border-neutral-300 bg-transparent px-2.5 text-sm outline-none dark:border-neutral-700" />
+            </label>
+          </div>
+          <div className="mt-3 flex items-center gap-3">
+            <button type="button" onClick={() => void handleSaveEvolution()} disabled={evoSaving || !evoBaseURL.trim() || !evoApiKey.trim() || !evoInstance.trim()} className="h-9 rounded-lg bg-emerald-600 px-4 text-xs font-medium text-white disabled:opacity-40 hover:bg-emerald-700">
+              {evoSaving ? "Salvando…" : "Salvar e conectar"}
+            </button>
+            {evoSaved && <span className="text-[11px] text-emerald-600">Credenciais salvas. Verificando status…</span>}
+          </div>
+          <p className="mt-2 text-[10px] text-neutral-400">
+            Dica: configure o webhook do seu Evolution API para apontar para o endpoint do Hades (/api/agent/v1/whatsapp/webhook) usando o mesmo segredo.
+          </p>
         </div>
 
         {/* Command Bridge & Security Badges — só quando o gateway está

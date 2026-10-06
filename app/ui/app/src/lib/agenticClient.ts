@@ -456,6 +456,7 @@ export const getWhatsAppAllowlist = () => agentFetch<{ count: number; items: Wha
 export const setWhatsAppContactPolicy = (policy: WhatsAppContactPolicy) => agentFetch<{ status: string; policy: WhatsAppContactPolicy }>("/api/agent/v1/whatsapp/allowlist", { method: "POST", body: JSON.stringify(policy) });
 export const removeWhatsAppContactPolicy = (phone: string) => agentFetch<{ status: string; phone: string }>(`/api/agent/v1/whatsapp/allowlist/${encodeURIComponent(phone)}`, { method: "DELETE" });
 export const setWhatsAppActiveBackend = (active_backend: "evolution_api" | "cloud_api") => agentFetch<WhatsAppStatusSummary>("/api/agent/v1/whatsapp/config", { method: "POST", body: JSON.stringify({ active_backend }) });
+export const configureWhatsAppEvolution = (evolution: { base_url: string; api_key: string; instance: string; webhook_secret: string }, active_backend?: "evolution_api" | "cloud_api") => agentFetch<WhatsAppStatusSummary>("/api/agent/v1/whatsapp/config", { method: "POST", body: JSON.stringify({ evolution, active_backend: active_backend ?? "evolution_api" }) });
 export const getWhatsAppDLQ = () => agentFetch<{ count: number; items: unknown[] }>("/api/agent/v1/whatsapp/dlq");
 
 export type SupervisorStatus = {

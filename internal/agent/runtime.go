@@ -254,6 +254,11 @@ func NewRuntime(config RuntimeConfig) (*Runtime, error) {
 		runtime.whatsapp = config.WhatsApp
 	} else {
 		runtime.whatsapp = NewWhatsAppGateway(WhatsAppGatewayConfig{}, runtime)
+		// Re-apply WhatsApp credentials saved by a previous session so the
+		// gateway keeps working across restarts.
+		if err := runtime.whatsapp.LoadPersistedConfig(); err != nil {
+			slog.Warn("failed to load persisted WhatsApp config", "error", err)
+		}
 	}
 	supCfg := DefaultSupervisorConfig()
 	if config.SupervisorConfig != nil {
