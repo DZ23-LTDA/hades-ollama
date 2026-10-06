@@ -39,6 +39,14 @@ type Embedder interface {
 // but tenant-owned records must never be visible through the local scope.
 const LocalOrganizationID = "local"
 
+// LocalActorID is the synthetic actor the unauthenticated single-user API
+// attributes every request to (see agentActorID in the server package). In
+// this mode there is exactly one human, who is also the approver, so the
+// separation-of-duties rule that forbids a requester from approving their own
+// decision is relaxed for this actor only — a real, named actor (enterprise or
+// any authenticated user) is still held to separation of duties.
+const LocalActorID = "local"
+
 func scheduleOwnedByOrganization(owner, organizationID string) bool {
 	owner = strings.TrimSpace(owner)
 	organizationID = strings.TrimSpace(organizationID)

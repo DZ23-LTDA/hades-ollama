@@ -1981,7 +1981,15 @@ func (r *Runtime) decideApprovalForActor(missionID, approvalID string, approved 
 		if strings.TrimSpace(actorID) == "" {
 			return Mission{}, errors.New("approval actor is required")
 		}
-		if approved && strings.TrimSpace(mission.Approvals[index].RequestedBy) != "" && strings.TrimSpace(mission.Approvals[index].RequestedBy) == strings.TrimSpace(actorID) {
+		// Separação de funções (SoD): o solicitante não pode aprovar a própria
+		// decisão. EXCETO no modo local de usuário único, em que todo request é
+		// atribuído ao ator sintético LocalActorID ("local"): ali existe apenas
+		// uma pessoa, que É o aprovador humano, então exigir um segundo aprovador
+		// tornaria qualquer missão de escrita impossível de aprovar no desktop.
+		// O gate humano continua existindo (a pessoa precisa aprovar cada passo);
+		// um ator real/nomeado (enterprise ou autenticado) segue sob SoD.
+		requestedBy := strings.TrimSpace(mission.Approvals[index].RequestedBy)
+		if approved && requestedBy != "" && requestedBy == strings.TrimSpace(actorID) && requestedBy != LocalActorID {
 			return Mission{}, errors.New("approval requester cannot approve the same decision")
 		}
 		reason = strings.TrimSpace(reason)
