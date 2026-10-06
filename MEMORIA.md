@@ -1,7 +1,7 @@
 ---
 projeto: ollama-classe-a-plus
 status: VARREDURA DE DEFEITOS CORRIGIDA — 73 defeitos de UI catalogados (audit/DEFEITOS_VARREDURA_2026-10-04.md) e corrigidos em lote (tip 7d792af0); gates verdes (tsc 0, Vitest 328/328, go build CGO off, build de produção). Também já no branch: paridade de menu restaurada, divisória de sidebar arrastável, excluir conversa visível, 13 SEC + Q-11 + instruções personalizadas. Build CI 37196542875 rodando → reinstalar e validar. Pendências EXTERNAS (não quebradas, mas dependem de terceiros): apps OAuth p/ 25 conectores, harness Claude/Codex só macOS, 6 cloud removidos (412/rebase).
-atualizado: 2026-10-06 ~04:00 UTC (FIX de aprovação no modo local de usuário único editado no disco mas NÃO commitado — harness bloqueia build/test/commit como "Security Weaken"; aguarda ação do usuário. PC segue em g736ec27)
+atualizado: 2026-10-06 ~05:00 UTC (FIX de aprovação local COMMITADO+pushado pelo usuário (e06abb70); fix do build GPU — reduz archs CUDA p/ caber no runner — commitado+pushado (91321148); build GPU 37471608742 rodando. PC ainda em g736ec27, aguarda build GPU terminar p/ reinstalar)
 ultima_ia: Claude (Opus 4.8)
 tags: [projeto, paridade-manus, ui-2, ux-leigo, home-unica, providers-ui, import-project, accessibility, local-tests]
 ---
