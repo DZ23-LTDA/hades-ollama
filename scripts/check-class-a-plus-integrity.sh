@@ -251,7 +251,10 @@ grep -q 'provider != "ollama-local"' internal/agent/runtime.go
 grep -q 'TestRuntimeRejectsUnconfiguredMissionProvider' internal/agent/runtime_test.go
 		grep -q 'Empty release artifact' .github/workflows/release.yaml
 	grep -q '#define MyAppName "Hades"' app/ollama.iss
-	if grep -q 'Ollama Classe A+' app/ollama.iss; then
+	# The legacy name may ONLY appear in the migration code that removes an old
+	# "Ollama Classe A+" install; it must never return as the app's own branding
+	# (MyAppName / AppName / DefaultGroupName / OutputBaseFilename).
+	if grep -qE '(#define[[:space:]]+MyAppName|AppName=|DefaultGroupName=|OutputBaseFilename=)[^;]*Ollama Classe A\+' app/ollama.iss; then
 		echo 'legacy installer branding must not return' >&2
 		exit 1
 	fi

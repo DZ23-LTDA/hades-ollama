@@ -181,3 +181,39 @@ begin
       taskkill would also terminate an official Ollama installation. }
     Exec('powershell.exe', '-NoProfile -ExecutionPolicy Bypass -Command "Get-CimInstance Win32_Process | Where-Object { $_.ExecutablePath -and $_.ExecutablePath.StartsWith(''''' + ExpandConstant('{app}') + '\'''',[System.StringComparison]::OrdinalIgnoreCase) } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }"', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
 end;
+
+procedure StopProcessesInDir(Dir: String);
+var
+  ResultCode: Integer;
+begin
+    Exec('powershell.exe', '-NoProfile -ExecutionPolicy Bypass -Command "Get-CimInstance Win32_Process | Where-Object { $_.ExecutablePath -and $_.ExecutablePath.StartsWith(''''' + Dir + '\'''',[System.StringComparison]::OrdinalIgnoreCase) } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }"', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+end;
+
+{ Before the rebrand this app shipped as "Ollama Classe A+" with a different
+  window class (OllamaClass) and install directory. Because that build's window
+  class differs from Hades's, the single-instance guard cannot see it, so a
+  left-over legacy install keeps auto-starting next to Hades and the user ends
+  up with two windows fighting over the local server. Remove the legacy app on
+  install so only Hades remains. Shared models/history live under
+  %LOCALAPPDATA%\Ollama (not the program dir) and are left untouched. }
+procedure RemoveLegacyInstalls();
+var
+  LegacyDir: String;
+  AppDir: String;
+begin
+  AppDir := ExpandConstant('{app}');
+  LegacyDir := ExpandConstant('{localappdata}\Programs\Ollama Classe A+');
+  StopProcessesInDir(LegacyDir);
+  DeleteFile(ExpandConstant('{userstartup}\Ollama Classe A+.lnk'));
+  DeleteFile(ExpandConstant('{userprograms}\Ollama Classe A+.lnk'));
+  DeleteFile(ExpandConstant('{userprograms}\Ollama Classe A+ - Configure APIs.lnk'));
+  { Only delete the legacy directory when Inno is not reusing it as {app}. }
+  if (CompareText(LegacyDir, AppDir) <> 0) and DirExists(LegacyDir) then
+    DelTree(LegacyDir, True, True, True);
+end;
+
+procedure CurStepChanged(CurStep: TSetupStep);
+begin
+  if CurStep = ssInstall then
+    RemoveLegacyInstalls();
+end;
