@@ -612,7 +612,15 @@ function cudaCommon {
         Write-Output "Building llama-server CUDA v$cudaMajorVer backend $cuda"
         $preset = "llama_cuda_v$($cudaMajorVer)_windows"
         $cudaToolsetArgs = cudaCMakeArgs $cuda
-        $configureArgs = @("-S", "llama\server", "--preset", $preset) + $cudaToolsetArgs + @("--install-prefix", "$script:DIST_DIR")
+        # DZ23: o preset do llama.cpp pede sm_120 (Blackwell), que o nvcc do
+        # CUDA 12.6 recusa ('Unsupported gpu architecture compute_120'). Para o
+        # CUDA 12 (usado no CI) forçamos a lista até Hopper (cobre sm_89/Ada da
+        # RTX 4060); o CUDA 13 mantém o default do preset (suporta sm_120).
+        $archArgs = @()
+        if ($cudaMajorVer -eq "12") {
+            $archArgs = @("-DCMAKE_CUDA_ARCHITECTURES=50;52;60;61;70;75;80;86;89;90;90a")
+        }
+        $configureArgs = @("-S", "llama\server", "--preset", $preset) + $cudaToolsetArgs + $archArgs + @("--install-prefix", "$script:DIST_DIR")
         & cmake @configureArgs
         if ($LASTEXITCODE -ne 0) { exit($LASTEXITCODE)}
         & cmake --build "build\llama-server-cuda_v$cudaMajorVer" --config Release --parallel $script:JOBS
