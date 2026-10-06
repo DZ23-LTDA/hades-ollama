@@ -24,7 +24,9 @@ permissions:
 
 jobs:
   installer:
-    runs-on: windows-latest
+    # windows-2022 traz o Visual Studio 2022, suportado pelo CUDA 12.6 (o
+    # windows-latest migrou para o VS 18/2026, que o nvcc do CUDA 12 recusa).
+    runs-on: windows-2022
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
