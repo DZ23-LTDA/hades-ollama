@@ -207,7 +207,7 @@ begin
   DeleteFile(ExpandConstant('{userstartup}\Ollama Classe A+.lnk'));
   DeleteFile(ExpandConstant('{userprograms}\Ollama Classe A+.lnk'));
   DeleteFile(ExpandConstant('{userprograms}\Ollama Classe A+ - Configure APIs.lnk'));
-  { Only delete the legacy directory when Inno is not reusing it as {app}. }
+  { Only delete the legacy directory when it is not the current install dir. }
   if (CompareText(LegacyDir, AppDir) <> 0) and DirExists(LegacyDir) then
     DelTree(LegacyDir, True, True, True);
 end;
