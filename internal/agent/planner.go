@@ -230,8 +230,8 @@ func normalizeSteps(steps []Step) ([]Step, error) {
 		// SEC-01: this registry is the single source of truth for step risk, so it
 		// must declare the same class as the tool descriptor: project.test.run
 		// executes project code on the host (external side effect).
-		"project.test.run":  RiskExternalSideEffect,
-		"git.merge.origin":  RiskWrite,
+		"project.test.run": RiskExternalSideEffect,
+		"git.merge.origin": RiskWrite,
 	}
 	for i := range steps {
 		if _, ok := allowed[steps[i].Kind]; !ok {
