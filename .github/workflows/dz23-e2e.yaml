@@ -6,6 +6,8 @@ name: dz23-e2e
 
 on:
   workflow_dispatch:
+  schedule:
+    - cron: "17 3 * * 1"
   pull_request:
     paths:
       - "app/ui/app/**"
@@ -13,6 +15,7 @@ on:
 
 permissions:
   contents: read
+  issues: write
 
 jobs:
   e2e:
@@ -23,8 +26,8 @@ jobs:
       run:
         working-directory: app/ui/app
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
           cache: npm
@@ -37,8 +40,17 @@ jobs:
         run: npm run test:e2e
       - name: Upload Playwright report on failure
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: playwright-report
           path: app/ui/app/playwright-report
           if-no-files-found: ignore
+      - name: Open issue for scheduled E2E failure
+        if: failure() && github.event_name == 'schedule'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue create \
+            --title "Scheduled E2E failure — ${GITHUB_RUN_ID}" \
+            --body "The weekly E2E smoke failed. Run: https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" \
+            --label "bug" || echo "Could not create failure issue; preserving the failed workflow status."

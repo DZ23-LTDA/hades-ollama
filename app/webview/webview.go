@@ -53,6 +53,7 @@ import "C"
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"reflect"
 	"runtime"
 	"sync"
@@ -262,16 +263,27 @@ func _webviewBindingGoCallback(w C.webview_t, id *C.char, req *C.char, index uin
 	jsString := func(v interface{}) string { b, _ := json.Marshal(v); return string(b) }
 	status := 0
 	var result string
-	if res, err := f(C.GoString(id), C.GoString(req)); err != nil {
-		status = -1
-		result = jsString(err.Error())
-	} else if b, err := json.Marshal(res); err != nil {
-		status = -1
-		result = jsString(err.Error())
-	} else {
-		status = 0
-		result = string(b)
-	}
+	// This callback is invoked across the cgo boundary, where an unrecovered
+	// panic in a bound Go function aborts the whole process. Recover and turn
+	// it into a binding error returned to the caller so the app stays alive.
+	func() {
+		defer func() {
+			if r := recover(); r != nil {
+				status = -1
+				result = jsString(fmt.Sprintf("binding panic: %v", r))
+			}
+		}()
+		if res, err := f(C.GoString(id), C.GoString(req)); err != nil {
+			status = -1
+			result = jsString(err.Error())
+		} else if b, err := json.Marshal(res); err != nil {
+			status = -1
+			result = jsString(err.Error())
+		} else {
+			status = 0
+			result = string(b)
+		}
+	}()
 	s := C.CString(result)
 	defer C.free(unsafe.Pointer(s))
 	C.webview_return(w, id, C.int(status), s)

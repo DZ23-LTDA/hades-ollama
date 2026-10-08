@@ -98,6 +98,20 @@ var (
 	ErrStreamingUnsupported = errors.New("grok HTTP route does not expose streaming")
 )
 
+// newHardenedHTTPClient returns an HTTP client that never routes provider
+// traffic through an environment proxy (which would leak the API key carried in
+// the Authorization header to HTTP_PROXY/HTTPS_PROXY) and enforces TLS 1.2+.
+func newHardenedHTTPClient(timeout time.Duration) *http.Client {
+	transport := http.DefaultTransport.(*http.Transport).Clone()
+	transport.Proxy = nil
+	if transport.TLSClientConfig == nil {
+		transport.TLSClientConfig = &tls.Config{MinVersion: tls.VersionTLS12}
+	} else {
+		transport.TLSClientConfig.MinVersion = tls.VersionTLS12
+	}
+	return &http.Client{Timeout: timeout, Transport: transport}
+}
+
 func NewClient(baseURL, apiKey, model string) (*Client, error) {
 	baseURL = strings.TrimRight(strings.TrimSpace(baseURL), "/")
 	parsed, err := url.Parse(baseURL)
@@ -105,7 +119,7 @@ func NewClient(baseURL, apiKey, model string) (*Client, error) {
 		return nil, ErrInvalidBaseURL
 	}
 	model = strings.TrimSpace(model)
-	client := &Client{BaseURL: baseURL, APIKey: strings.TrimSpace(apiKey), Model: model, HTTPClient: &http.Client{Timeout: 60 * time.Second}, MaxRetries: 2, Backoff: 150 * time.Millisecond}
+	client := &Client{BaseURL: baseURL, APIKey: strings.TrimSpace(apiKey), Model: model, HTTPClient: newHardenedHTTPClient(60 * time.Second), MaxRetries: 2, Backoff: 150 * time.Millisecond}
 	if model != "" {
 		client.AllowedModels = []string{model}
 	}
@@ -405,7 +419,11 @@ func (c *Client) checkCircuit() error {
 func (c *Client) record(code int, latency time.Duration, err error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	if err != nil || code >= 500 || code == 0 {
+	// Count transport errors, 5xx, and the transient rate-limit/timeout codes
+	// (429/408) as failures so repeated rate limiting opens the circuit and
+	// backs off instead of hammering the provider; other 4xx are caller errors
+	// that should not trip the breaker.
+	if err != nil || code >= 500 || code == 0 || code == http.StatusTooManyRequests || code == http.StatusRequestTimeout {
 		c.failures++
 		if c.failures >= 3 {
 			c.openedUntil = time.Now().Add(10 * time.Second)

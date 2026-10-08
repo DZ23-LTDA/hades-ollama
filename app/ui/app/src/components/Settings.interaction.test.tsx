@@ -286,7 +286,7 @@ describe("Settings reset interactions", () => {
 
       const signOutButton = renderer!.root
         .findAllByType("button")
-        .find((button) => textContent(button) === "Sign out");
+        .find((button) => textContent(button) === "Desconectar");
       if (!signOutButton) throw new Error("Sign out button not found");
 
       await act(async () => {

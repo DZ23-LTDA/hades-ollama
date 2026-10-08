@@ -1,6 +1,8 @@
 import MessageList from "./MessageList";
 import ChatForm from "./ChatForm";
+import { FirstModelCard } from "./FirstModelCard";
 import { FileUpload } from "./FileUpload";
+import { ImportProjectDialog } from "./ImportProjectDialog";
 import { DisplayUpgrade } from "./DisplayUpgrade";
 import { DisplayStale } from "./DisplayStale";
 import { DisplayLogin } from "./DisplayLogin";
@@ -47,6 +49,10 @@ export default function Chat({ chatId }: { chatId: string }) {
     index: number;
     originalMessage: Message;
   } | null>(null);
+  const [prefill, setPrefill] = useState<{ text: string; nonce: number } | null>(
+    null,
+  );
+  const [importOpen, setImportOpen] = useState(false);
   const prevChatIdRef = useRef<string>(chatId);
 
   const chatFormCallbackRef = useRef<
@@ -207,7 +213,10 @@ export default function Chat({ chatId }: { chatId: string }) {
             <div className="mx-auto w-full max-w-3xl text-center">
               <p className="text-xs font-medium uppercase tracking-[0.22em] text-neutral-400">Hades</p>
               <h1 className="mt-4 font-serif text-4xl font-medium tracking-tight text-neutral-900 dark:text-neutral-100 sm:text-5xl">O que posso fazer por você?</h1>
-              <p className="mx-auto mt-4 max-w-xl text-sm leading-6 text-neutral-500 dark:text-neutral-400">Converse, pesquise, construa e execute com o runtime local-first. Para missões com plano, ferramentas e approvals, use o Agentic Console.</p>
+              <p className="mx-auto mt-4 max-w-xl text-sm leading-6 text-neutral-500 dark:text-neutral-400">Converse, pesquise, construa e execute com o runtime local-first. Para missões com plano, ferramentas e aprovações, use o Console de Agentes.</p>
+              <div className="mt-8 text-left">
+                <FirstModelCard />
+              </div>
               <div className="mt-8 text-left">
                 <ChatForm
                   hasMessages={false}
@@ -219,30 +228,58 @@ export default function Chat({ chatId }: { chatId: string }) {
                   isDownloadingModel={isDownloadingModel}
                   isDisabled={isDisabled}
                   onFilesReceived={handleFilesReceived}
+                  prefill={prefill}
                 />
               </div>
 
               <div className="mt-3 flex flex-wrap justify-center gap-2">
-                {[['Criar slides', 'Crie uma apresentação profissional com roteiro, conteúdo e exportação.'], ['Criar site', 'Construa um site responsivo com preview e artifacts.'], ['Design', 'Proponha uma interface e um design system para meu produto.'], ['Criar jogos', 'Crie um jogo browser jogável e explique como executar.'], ['Mais', 'Planeje uma missão multiagente para construir e validar um produto.']].map(([label, objective]) => (
-                  <button key={label} type="button" onClick={() => window.location.assign(`/agentic?objective=${encodeURIComponent(objective)}`)} className="rounded-full border border-neutral-200 bg-white px-4 py-2 text-xs font-medium text-neutral-600 transition hover:border-neutral-400 hover:text-neutral-900 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:border-neutral-600 dark:hover:text-white">{label}</button>
+                {[['Criar slides', 'Crie uma apresentação profissional com roteiro, conteúdo e exportação.'], ['Criar site', 'Construa um site responsivo com preview e artifacts.'], ['Design', 'Proponha uma interface e um design system para meu produto.'], ['Criar jogos', 'Crie um jogo browser jogável e explique como executar.'], ['Pesquisar', 'Pesquise e sintetize as melhores opções para a minha tarefa, citando fontes.']].map(([label, objective]) => (
+                  <button key={label} type="button" onClick={() => setPrefill({ text: objective, nonce: Date.now() })} className="rounded-full border border-neutral-200 bg-white px-4 py-2 text-xs font-medium text-neutral-600 transition hover:border-neutral-400 hover:text-neutral-900 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:border-neutral-600 dark:hover:text-white">{label}</button>
                 ))}
               </div>
 
+              <div className="mt-4 flex flex-wrap items-center justify-center gap-2 text-xs">
+                <button
+                  type="button"
+                  onClick={() => setImportOpen(true)}
+                  className="rounded-full border border-violet-200 bg-violet-50 px-4 py-2 font-medium text-violet-700 transition hover:border-violet-300 hover:bg-violet-100 dark:border-violet-900/60 dark:bg-violet-950/20 dark:text-violet-300 dark:hover:bg-violet-950/40"
+                >
+                  Importar projeto
+                </button>
+                <button
+                  type="button"
+                  onClick={() => window.location.assign("/agentic")}
+                  className="rounded-full border border-neutral-200 bg-white px-4 py-2 font-medium text-neutral-600 transition hover:border-neutral-400 hover:text-neutral-900 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:border-neutral-600 dark:hover:text-white"
+                >
+                  Modo missão (avançado)
+                </button>
+              </div>
+
               <div className="mt-8 text-left">
-                <div className="mb-3 flex items-center justify-between"><h2 className="text-sm font-semibold text-neutral-800 dark:text-neutral-200">Recomendado para você</h2><button type="button" onClick={() => window.location.assign('/agentic?objective=Pesquise%20e%20sintetize%20as%20melhores%20opcoes%20para%20minha%20tarefa')} className="text-xs text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200">Atualizar</button></div>
+                <div className="mb-3 flex items-center justify-between"><h2 className="text-sm font-semibold text-neutral-800 dark:text-neutral-200">Sugestões para começar</h2></div>
                 <div className="grid gap-3 md:grid-cols-3">
-                  {[['Audite meu projeto', 'Inspecione o código, encontre riscos e proponha correções testáveis.'], ['Construa um MVP', 'Crie um produto completo, com backend, frontend, testes e preview.'], ['Pesquise o mercado', 'Compare soluções, cite fontes e entregue uma síntese com próximos passos.']].map(([title, objective]) => <button key={title} type="button" onClick={() => window.location.assign(`/agentic?objective=${encodeURIComponent(objective)}`)} className="min-h-28 rounded-2xl border border-neutral-200 bg-white p-4 text-left transition hover:-translate-y-0.5 hover:border-neutral-400 hover:shadow-sm dark:border-neutral-800 dark:bg-neutral-900 dark:hover:border-neutral-600"><span className="text-xs text-neutral-400">⌁</span><span className="mt-3 block text-sm font-medium leading-5 text-neutral-800 dark:text-neutral-200">{title}</span><span className="mt-1 block text-xs leading-5 text-neutral-500 dark:text-neutral-400">{objective}</span></button>)}
+                  {[['Audite meu projeto', 'Inspecione o código, encontre riscos e proponha correções testáveis.'], ['Construa um MVP', 'Crie um produto completo, com backend, frontend, testes e preview.'], ['Pesquise o mercado', 'Compare soluções, cite fontes e entregue uma síntese com próximos passos.']].map(([title, objective]) => <button key={title} type="button" onClick={() => setPrefill({ text: objective, nonce: Date.now() })} className="min-h-28 rounded-2xl border border-neutral-200 bg-white p-4 text-left transition hover:-translate-y-0.5 hover:border-neutral-400 hover:shadow-sm dark:border-neutral-800 dark:bg-neutral-900 dark:hover:border-neutral-600"><span className="text-xs text-neutral-400">⌁</span><span className="mt-3 block text-sm font-medium leading-5 text-neutral-800 dark:text-neutral-200">{title}</span><span className="mt-1 block text-xs leading-5 text-neutral-500 dark:text-neutral-400">{objective}</span></button>)}
                 </div>
               </div>
             </div>
           </section>
+          <ImportProjectDialog
+            open={importOpen}
+            onClose={() => setImportOpen(false)}
+            onImported={(project) => {
+              setImportOpen(false);
+              window.location.assign(
+                `/agentic?project_id=${encodeURIComponent(project.id)}`,
+              );
+            }}
+          />
         </div>
       ) : (
-        <main className="flex h-screen w-full flex-col relative allow-context-menu select-none">
+        <main className="flex h-screen w-full flex-col relative allow-context-menu">
           <section
             key={chatId} // This key forces React to recreate the element when chatId changes
             ref={containerRef}
-            className={`flex-1 overflow-y-auto overscroll-contain relative min-h-0 select-none ${isWindows ? "xl:pt-4" : "xl:pt-8"}`}
+            className={`flex-1 overflow-y-auto overscroll-contain relative min-h-0 ${isWindows ? "xl:pt-4" : "xl:pt-8"}`}
           >
             <MessageList
               messages={messages}
@@ -313,6 +350,6 @@ export default function Chat({ chatId }: { chatId: string }) {
       )}
     </FileUpload>
   ) : (
-    <div>Loading...</div>
+    <div>Carregando...</div>
   );
 }

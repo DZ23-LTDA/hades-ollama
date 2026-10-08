@@ -117,6 +117,7 @@ type User struct {
 	FirstName string `json:"firstname,omitempty"`
 	LastName  string `json:"lastname,omitempty"`
 	Plan      string `json:"plan,omitempty"`
+	LocalOnly bool   `json:"local_only,omitempty"`
 }
 
 type Attachment struct {
@@ -136,6 +137,10 @@ type ChatRequest struct {
 	// Temporary starts an anonymous chat that is kept in memory only and
 	// never written to history. Only honored when the chat is created.
 	Temporary bool `json:"temporary,omitempty"`
+	// CustomInstructions is the user's own system instruction (from Settings).
+	// When present it is prepended to the chat's system prompt so the model
+	// follows it on every turn.
+	CustomInstructions string `json:"custom_instructions,omitempty"`
 }
 
 type Error struct {

@@ -403,6 +403,45 @@ func (s *PostgresStore) PutMissionIfVersion(mission Mission, expectedVersion int
 	return tx.Commit()
 }
 
+func (s *PostgresStore) DeleteMission(id string) error {
+	if !validSnapshotID(id) {
+		return os.ErrNotExist
+	}
+	tx, operationCtx, cancel, err := s.begin(s.requestContext)
+	if err != nil {
+		return err
+	}
+	defer cancel()
+	defer tx.Rollback()
+	// Lock and scope the row to the active organization: a mission owned by
+	// another tenant (or missing) resolves to not-found, matching GetMission.
+	var organization string
+	err = tx.QueryRowContext(operationCtx, `SELECT organization_id FROM public.agent_missions WHERE id=$1 AND organization_id=$2 FOR UPDATE`, id, s.organizationID).Scan(&organization)
+	if errors.Is(err, sql.ErrNoRows) {
+		return os.ErrNotExist
+	}
+	if err != nil {
+		return err
+	}
+	// Remove the mission's associated events first. There is no FK cascade
+	// (the runtime role is denied REFERENCES by design; tenant isolation is
+	// enforced via RLS), so delete the related rows explicitly in the same
+	// transaction to avoid leaving orphaned event history.
+	if _, err := tx.ExecContext(operationCtx, `DELETE FROM public.agent_events WHERE mission_id=$1 AND organization_id=$2`, id, s.organizationID); err != nil {
+		return err
+	}
+	result, err := tx.ExecContext(operationCtx, `DELETE FROM public.agent_missions WHERE id=$1 AND organization_id=$2`, id, s.organizationID)
+	if err != nil {
+		return err
+	}
+	if rows, rowsErr := result.RowsAffected(); rowsErr != nil {
+		return rowsErr
+	} else if rows != 1 {
+		return os.ErrNotExist
+	}
+	return tx.Commit()
+}
+
 func (s *PostgresStore) AppendEvent(event Event) error {
 	if !validSnapshotID(event.ID) || !validSnapshotID(event.MissionID) {
 		return errors.New("valid event and mission ids are required")

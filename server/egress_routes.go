@@ -23,11 +23,12 @@ func (a *agentAPI) getEgressLogs(c *gin.Context) {
 		}
 	}
 	callsite := c.Query("callsite")
+	organizationID := a.organizationID(c)
 	var entries []agent.EgressDecision
 	if callsite != "" {
-		entries = agent.DefaultEgressAuditStore.Filter(callsite, limit)
+		entries = agent.DefaultEgressAuditStore.FilterForOrganization(organizationID, callsite, limit)
 	} else {
-		entries = agent.DefaultEgressAuditStore.List(limit)
+		entries = agent.DefaultEgressAuditStore.ListForOrganization(organizationID, limit)
 	}
 	c.JSON(http.StatusOK, gin.H{
 		"count":   len(entries),
@@ -37,10 +38,10 @@ func (a *agentAPI) getEgressLogs(c *gin.Context) {
 
 // getEgressStatus returns summary metrics and current state of the zero-trust egress policy.
 func (a *agentAPI) getEgressStatus(c *gin.Context) {
-	if !a.globalProcessScopeAllowed(c, "egress audit status") {
-		return
-	}
-	all := agent.DefaultEgressAuditStore.List(1000)
+	// SEC-10: the status counters are scoped to the caller's organization. The
+	// global view is intentionally not exposed here; a process-wide audit would
+	// leak other tenants' callsites.
+	all := agent.DefaultEgressAuditStore.ListForOrganization(a.organizationID(c), 1000)
 	allowedCount := 0
 	blockedCount := 0
 	callsites := make(map[string]int)

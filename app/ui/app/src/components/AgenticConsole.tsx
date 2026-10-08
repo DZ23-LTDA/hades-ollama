@@ -3,6 +3,9 @@ import { agentFetch, listProjects, type AgentProject } from "@/lib/agenticClient
 import { AgenticSplitShell } from "@/components/AgenticSplitShell";
 import { getModels } from "@/api";
 import type { Model } from "@/gotypes";
+import { humanizeApiError } from "@/lib/userFacingError";
+import { MissionDeliveryCard } from "@/components/MissionDeliveryCard";
+import { missionStateLabel, eventTypeLabel } from "@/lib/labels";
 
 type Mission = {
   id: string;
@@ -23,8 +26,27 @@ type OrchestrationTask = { id: string; role: string; state: string; output?: str
 type OrchestrationJob = { id: string; objective: string; state: string; summary?: string; conflicts?: string[]; tasks: OrchestrationTask[] };
 type ResearchReport = { query: string; summary: string; citations: Array<{ url: string; title?: string; excerpt?: string }>; sources: Array<{ url: string; title?: string; error?: string }> };
 
+function approvalExplanation(approval: { step_id: string; policy?: string }): string {
+  const value = `${approval.step_id} ${approval.policy ?? ""}`.toLowerCase();
+  if (/send|message|whatsapp|email|publish|social/.test(value)) return "Pode enviar ou publicar conteúdo fora do Hades. Revise destinatário, texto e escopo antes de decidir.";
+  if (/spend|budget|payment|purchase|ads|contract/.test(value)) return "Pode gerar gasto, compromisso financeiro ou anúncio. Confirme valor, limite e destinatário antes de decidir.";
+  if (/write|delete|merge|deploy|external/.test(value)) return "Pode alterar arquivos, publicar ou modificar um serviço externo. Verifique o resumo e o projeto afetado.";
+  return "Esta ação foi bloqueada preventivamente pelo servidor até uma decisão explícita. Revise o contexto antes de decidir.";
+}
+
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
   return agentFetch<T>(path, init);
+}
+
+// Default the mission model to a fast cloud model (…-flash:cloud) when one is
+// available, so tasks run through the API (fast, no local cold-start) instead
+// of a slow local model. Falls back to any cloud model, then the first listed.
+function pickFastModel(models: string[]): string {
+  return (
+    models.find((m) => m.includes(":cloud") && /flash/i.test(m)) ??
+    models.find((m) => m.includes(":cloud")) ??
+    models[0]
+  );
 }
 
 export default function AgenticConsole() {
@@ -74,7 +96,7 @@ export default function AgenticConsole() {
       setProvider("ollama-local");
       setSelectedModel("");
     } else if (current.models.length > 0 && !current.models.includes(selectedModel)) {
-      setSelectedModel(current.models[0]);
+      setSelectedModel(pickFastModel(current.models));
     } else if (current.models.length === 0 && selectedModel) {
       setSelectedModel("");
     }
@@ -93,7 +115,7 @@ export default function AgenticConsole() {
       setEvents(nextEvents.events ?? []);
       if (nextOrchestration) setOrchestration(nextOrchestration);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Não foi possível carregar o runtime agentic");
+      setError(humanizeApiError(cause, "Não foi possível carregar o runtime agentic.").message);
     }
   };
 
@@ -109,6 +131,8 @@ export default function AgenticConsole() {
     const searchParams = new URLSearchParams(window.location.search);
     const requestedObjective = searchParams.get("objective");
     const autoRunParam = searchParams.get("autorun") === "true";
+    const requestedAllowWrite = searchParams.get("allow_write") === "true";
+    const requestedProjectID = searchParams.get("project_id") || "";
     const slashCommand = searchParams.get("slash");
     const requestedProvider = searchParams.get("provider") || "ollama-local";
     const requestedModel = searchParams.get("model") || "auto/coding";
@@ -130,7 +154,11 @@ export default function AgenticConsole() {
     }
     if (requestedObjective) {
       setObjective(requestedObjective);
-      if (autoRunParam || slashCommand === "plan") {
+      setProjectID(requestedProjectID);
+      setAllowWorkspaceWrite(requestedAllowWrite);
+      setProvider(requestedProvider);
+      setSelectedModel(requestedModel.startsWith("auto/") ? "" : requestedModel);
+      if (!requestedAllowWrite && (autoRunParam || slashCommand === "plan")) {
         setViewMode("split");
         void (async () => {
           setBusy(true);
@@ -141,13 +169,12 @@ export default function AgenticConsole() {
                 objective: requestedObjective,
                 provider: requestedProvider,
                 model: requestedModel,
-                capabilities: ["workspace:read", "workspace:write", "browser:navigate", "browser:files", "browser:takeover"],
-                auto_run: autoRunParam,
+                project_id: requestedProjectID || undefined,
+                capabilities: ["workspace:read"],
+                auto_run: autoRunParam && !requestedAllowWrite,
               }),
             });
-              setProvider(requestedProvider);
-              setSelectedModel(requestedModel.startsWith("auto/") ? "" : requestedModel);
-              setMission(created);
+            setMission(created);
             if (slashCommand === "goal") {
               const delegated = await api<OrchestrationJob>("/api/agent/v1/orchestration/jobs", {
                 method: "POST",
@@ -162,7 +189,7 @@ export default function AgenticConsole() {
             }
             await load(created.id);
           } catch (cause) {
-            setError(cause instanceof Error ? cause.message : "Falha ao iniciar missão automática");
+            setError(humanizeApiError(cause, "Falha ao iniciar a missão automática.").message);
           } finally {
             setBusy(false);
           }
@@ -177,13 +204,17 @@ export default function AgenticConsole() {
 
   const pendingApprovals = useMemo(() => mission?.approvals?.filter((approval) => approval.status === "PENDING") ?? [], [mission]);
 
-  const createMission = async () => {
-    if (!objective.trim()) return;
+  const createMission = async (objArg?: string) => {
+    // Accept the objective as an explicit argument so the footer composer does
+    // not depend on the asynchronous setObjective state update (which would be
+    // read stale by closure and fall into the early-return).
+    const obj = (objArg ?? objective).trim();
+    if (!obj) return;
     setBusy(true); setError("");
     try {
-      const created = await api<Mission>("/api/agent/v1/missions", { method: "POST", body: JSON.stringify({ objective, provider, model: selectedModel || undefined, project_id: projectID || undefined, isolate_workspace: isolateWorkspace && projectID ? true : undefined, capabilities: allowWorkspaceWrite ? ["workspace:read", "workspace:write"] : ["workspace:read"], auto_run: false }) });
+      const created = await api<Mission>("/api/agent/v1/missions", { method: "POST", body: JSON.stringify({ objective: obj, provider, model: selectedModel || undefined, project_id: projectID || undefined, isolate_workspace: isolateWorkspace && projectID ? true : undefined, capabilities: allowWorkspaceWrite ? ["workspace:read", "workspace:write"] : ["workspace:read"], auto_run: false }) });
       setMission(created); setObjective(""); await load(created.id, orchestration?.id);
-    } catch (cause) { setError(cause instanceof Error ? cause.message : "Falha ao criar missão"); } finally { setBusy(false); }
+    } catch (cause) { setError(humanizeApiError(cause, "Falha ao criar a missão.").message); } finally { setBusy(false); }
   };
 
   const decide = async (approval: { id: string; nonce?: string }, approved: boolean) => {
@@ -202,14 +233,14 @@ export default function AgenticConsole() {
         return next;
       });
       await load(mission.id, orchestration?.id);
-    } catch (cause) { setError(cause instanceof Error ? cause.message : "Falha ao decidir aprovação"); } finally { setBusy(false); }
+    } catch (cause) { setError(humanizeApiError(cause, "Falha ao registrar a decisão.").message); } finally { setBusy(false); }
   };
 
   const run = async () => {
     if (!mission) return;
     setBusy(true);
     try { await api(`/api/agent/v1/missions/${encodeURIComponent(mission.id)}/run`, { method: "POST", body: "{}" }); await load(mission.id, orchestration?.id); }
-    catch (cause) { setError(cause instanceof Error ? cause.message : "Falha ao iniciar missão"); } finally { setBusy(false); }
+    catch (cause) { setError(humanizeApiError(cause, "Falha ao iniciar a missão.").message); } finally { setBusy(false); }
   };
 
   const createOrchestration = async () => {
@@ -218,7 +249,7 @@ export default function AgenticConsole() {
     try {
       const created = await api<OrchestrationJob>("/api/agent/v1/orchestration/jobs", { method: "POST", body: JSON.stringify({ objective: orchestrationObjective, roles: ["research", "programming", "testing", "security", "review"], budget: { max_agents: 3, max_seconds: 600, max_retries: 1 }, auto_run: true }) });
       setOrchestration(created); setOrchestrationObjective(""); await load(mission?.id, created.id);
-    } catch (cause) { setError(cause instanceof Error ? cause.message : "Falha ao iniciar orquestração"); } finally { setBusy(false); }
+    } catch (cause) { setError(humanizeApiError(cause, "Falha ao iniciar a orquestração.").message); } finally { setBusy(false); }
   };
 
   const runResearch = async () => {
@@ -226,19 +257,19 @@ export default function AgenticConsole() {
     if (!researchQuery.trim() || urls.length === 0) return;
     setBusy(true); setError("");
     try { setResearch(await api<ResearchReport>("/api/agent/v1/research", { method: "POST", body: JSON.stringify({ query: researchQuery, urls, max_sources: 8, respect_robots: true }) })); }
-    catch (cause) { setError(cause instanceof Error ? cause.message : "Falha na pesquisa profunda"); } finally { setBusy(false); }
+    catch (cause) { setError(humanizeApiError(cause, "Falha na pesquisa profunda.").message); } finally { setBusy(false); }
   };
 
   return (
-    <main className="flex h-full min-h-0 flex-col gap-5 overflow-y-auto p-6" aria-busy={busy}>
-      <header><p className="text-xs font-medium uppercase tracking-[0.18em] text-neutral-500">DZ23 Agentic Runtime</p><h1 className="mt-1 text-2xl font-semibold text-neutral-900 dark:text-neutral-100">Mission Console</h1><p className="mt-2 max-w-3xl text-sm text-neutral-600 dark:text-neutral-400">Planeje, orquestre, pesquise, aprove, execute e observe operações com a mesma trilha persistente usada pela API local.</p></header>
+    <section className="flex h-full min-h-0 flex-col gap-5 overflow-y-auto p-6" aria-busy={busy} aria-label="Console agentic">
+      <header><p className="text-xs font-medium uppercase tracking-[0.18em] text-neutral-500">Runtime de Agentes DZ23</p><h1 className="mt-1 text-2xl font-semibold text-neutral-900 dark:text-neutral-100">Console de Missões</h1><p className="mt-2 max-w-3xl text-sm text-neutral-600 dark:text-neutral-400">Planeje, orquestre, pesquise, aprove, execute e observe operações com a mesma trilha persistente usada pela API local.</p></header>
 
-      <section className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-950"><label className="text-sm font-medium text-neutral-800 dark:text-neutral-200" htmlFor="agent-objective">Nova tarefa</label><div className="mt-3 flex flex-col gap-3"><textarea id="agent-objective" value={objective} onChange={(event) => setObjective(event.target.value)} placeholder="Descreva o que você quer construir, pesquisar, revisar ou automatizar" className="min-h-20 w-full resize-y rounded-xl border border-neutral-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-neutral-500 dark:border-neutral-700" /><div className="flex flex-col gap-2 sm:flex-row"><label className="flex flex-1 flex-col gap-1 text-[11px] text-neutral-500">Motor<select aria-label="Motor" value={provider} onChange={(event) => { const nextProvider = event.target.value; setProvider(nextProvider); setSelectedModel(providerChoices.find((choice) => choice.id === nextProvider)?.models[0] ?? ""); }} className="h-10 rounded-xl border border-neutral-300 bg-transparent px-3 text-sm text-neutral-800 outline-none dark:border-neutral-700 dark:text-neutral-200">{providerChoices.map((choice) => <option key={choice.id} value={choice.id}>{choice.label}{choice.id === "ollama-local" ? " (local)" : choice.available ? " (configurado)" : " (sem chave)"}</option>)}</select></label>{selectedProviderChoice && selectedProviderChoice.models.length > 0 && <label className="flex flex-1 flex-col gap-1 text-[11px] text-neutral-500">Modelo<select aria-label="Modelo" value={selectedModel} onChange={(event) => setSelectedModel(event.target.value)} className="h-10 rounded-xl border border-neutral-300 bg-transparent px-3 text-sm text-neutral-800 outline-none dark:border-neutral-700 dark:text-neutral-200">{selectedProviderChoice.models.map((model) => <option key={model} value={model}>{model}</option>)}</select></label>}<label className="flex flex-1 flex-col gap-1 text-[11px] text-neutral-500">Projeto<select aria-label="Projeto" value={projectID} onChange={(event) => { setProjectID(event.target.value); setIsolateWorkspace(false); }} className="h-10 rounded-xl border border-neutral-300 bg-transparent px-3 text-sm text-neutral-800 outline-none dark:border-neutral-700 dark:text-neutral-200"><option value="">Sem projeto</option>{projects.map((project) => <option key={project.id} value={project.id}>{project.name}</option>)}</select></label><label className="flex items-center gap-2 self-end rounded-xl border border-neutral-300 px-3 py-2 text-xs text-neutral-600 dark:border-neutral-700 dark:text-neutral-300"><input id="isolate-workspace" type="checkbox" aria-describedby="isolate-workspace-help" checked={isolateWorkspace} disabled={!projectID || busy} onChange={(event) => setIsolateWorkspace(event.target.checked)} />Executar em cópia isolada</label><label className="flex items-center gap-2 self-end rounded-xl border border-neutral-300 px-3 py-2 text-xs text-neutral-600 dark:border-neutral-700 dark:text-neutral-300"><input type="checkbox" checked={allowWorkspaceWrite} onChange={(event) => setAllowWorkspaceWrite(event.target.checked)} />Permitir escrita</label><button type="button" disabled={busy || !objective.trim()} onClick={() => void createMission()} className="h-10 self-end rounded-xl bg-neutral-900 px-4 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-40 dark:bg-neutral-100 dark:text-neutral-900">Criar missão</button></div><p className="text-[11px] text-neutral-500">Motor selecionado: <span className="font-mono">{provider}</span>{selectedModel ? ` · ${selectedModel}` : ""}. Providers remotos só aparecem quando o catálogo os publica; a missão falha fechado se não houver adapter/credencial. A missão começa somente com leitura; habilite “Permitir escrita” quando a tarefa precisar alterar arquivos. “Executar em cópia isolada” cria um snapshot Git por missão e não altera a origem; exige projeto associado à organização e exclui caminhos/arquivos sensíveis. A opção só fica disponível com projeto selecionado. O servidor valida grants e exige approval para efeitos de escrita.</p><p id="isolate-workspace-help" className="text-[11px] text-neutral-500">A cópia isolada é opt-in; selecione um projeto. Segredos, arquivos ignorados e symlinks não são copiados.</p></div>{error && <p ref={errorRef} id="agentic-console-error" role="alert" aria-live="assertive" aria-atomic="true" tabIndex={-1} className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 outline-none focus:ring-2 focus:ring-red-500 dark:bg-red-950/30 dark:text-red-300">{error}</p>}</section>
+      <section className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-950"><label className="text-sm font-medium text-neutral-800 dark:text-neutral-200" htmlFor="agent-objective">Nova tarefa</label><div className="mt-3 flex flex-col gap-3"><textarea id="agent-objective" value={objective} onChange={(event) => setObjective(event.target.value)} placeholder="Descreva o que você quer construir, pesquisar, revisar ou automatizar" className="min-h-20 w-full resize-y rounded-xl border border-neutral-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-neutral-500 dark:border-neutral-700" /><div className="flex flex-col gap-2 sm:flex-row"><label className="flex flex-1 flex-col gap-1 text-[11px] text-neutral-500">Motor<select aria-label="Motor" value={provider} onChange={(event) => { const nextProvider = event.target.value; setProvider(nextProvider); const nextChoice = providerChoices.find((choice) => choice.id === nextProvider); setSelectedModel(nextChoice && nextChoice.models.length > 0 ? pickFastModel(nextChoice.models) : ""); }} className="h-10 rounded-xl border border-neutral-300 bg-transparent px-3 text-sm text-neutral-800 outline-none dark:border-neutral-700 dark:text-neutral-200">{providerChoices.map((choice) => <option key={choice.id} value={choice.id}>{choice.label}{choice.id === "ollama-local" ? " (local)" : choice.available ? " (configurado)" : " (sem chave)"}</option>)}</select></label>{selectedProviderChoice && selectedProviderChoice.models.length > 0 && <label className="flex flex-1 flex-col gap-1 text-[11px] text-neutral-500">Modelo<select aria-label="Modelo" value={selectedModel} onChange={(event) => setSelectedModel(event.target.value)} className="h-10 rounded-xl border border-neutral-300 bg-transparent px-3 text-sm text-neutral-800 outline-none dark:border-neutral-700 dark:text-neutral-200">{selectedProviderChoice.models.map((model) => <option key={model} value={model}>{model}</option>)}</select></label>}<label className="flex flex-1 flex-col gap-1 text-[11px] text-neutral-500">Projeto<select aria-label="Projeto" value={projectID} onChange={(event) => { setProjectID(event.target.value); setIsolateWorkspace(false); }} className="h-10 rounded-xl border border-neutral-300 bg-transparent px-3 text-sm text-neutral-800 outline-none dark:border-neutral-700 dark:text-neutral-200"><option value="">Sem projeto</option>{projects.map((project) => <option key={project.id} value={project.id}>{project.name}</option>)}</select></label><label className="flex items-center gap-2 self-end rounded-xl border border-neutral-300 px-3 py-2 text-xs text-neutral-600 dark:border-neutral-700 dark:text-neutral-300"><input id="isolate-workspace" type="checkbox" aria-describedby="isolate-workspace-help" checked={isolateWorkspace} disabled={!projectID || busy} onChange={(event) => setIsolateWorkspace(event.target.checked)} />Executar em cópia isolada</label><label className="flex items-center gap-2 self-end rounded-xl border border-neutral-300 px-3 py-2 text-xs text-neutral-600 dark:border-neutral-700 dark:text-neutral-300"><input type="checkbox" checked={allowWorkspaceWrite} onChange={(event) => setAllowWorkspaceWrite(event.target.checked)} />Permitir escrita</label><button type="button" disabled={busy || !objective.trim()} onClick={() => void createMission()} className="h-10 self-end rounded-xl bg-neutral-900 px-4 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-40 dark:bg-neutral-100 dark:text-neutral-900">Criar missão</button></div><p className="text-[11px] text-neutral-500">Motor selecionado: <span className="font-mono">{provider}</span>{selectedModel ? ` · ${selectedModel}` : ""}. Providers remotos só aparecem quando o catálogo os publica; a missão falha fechado se não houver adapter/credencial. A missão começa somente com leitura; habilite “Permitir escrita” quando a tarefa precisar alterar arquivos. “Executar em cópia isolada” cria um snapshot Git por missão e não altera a origem; exige projeto associado à organização e exclui caminhos/arquivos sensíveis. A opção só fica disponível com projeto selecionado. O servidor valida grants e exige approval para efeitos de escrita.</p><p id="isolate-workspace-help" className="text-[11px] text-neutral-500">A cópia isolada é opt-in; selecione um projeto. Segredos, arquivos ignorados e symlinks não são copiados.</p></div>{error && <p ref={errorRef} id="agentic-console-error" role="alert" aria-live="assertive" aria-atomic="true" tabIndex={-1} className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 outline-none focus:ring-2 focus:ring-red-500 dark:bg-red-950/30 dark:text-red-300">{error}</p>}</section>
 
-      <section className="grid grid-cols-2 gap-3 sm:grid-cols-4">{[["Criadas", metrics.missions_created], ["Concluídas", metrics.missions_completed], ["Retries", metrics.retries], ["Tools", metrics.tool_calls]].map(([label, value]) => <div key={label} className="rounded-xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-950"><p className="text-xs text-neutral-500">{label}</p><p className="mt-1 text-2xl font-semibold text-neutral-900 dark:text-neutral-100">{value ?? 0}</p></div>)}</section>
+      <section className="grid grid-cols-2 gap-3 sm:grid-cols-4">{[["Criadas", metrics.missions_created], ["Concluídas", metrics.missions_completed], ["Novas tentativas", metrics.retries], ["Ferramentas", metrics.tool_calls]].map(([label, value]) => <div key={label} className="rounded-xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-950"><p className="text-xs text-neutral-500">{label}</p><p className="mt-1 text-2xl font-semibold text-neutral-900 dark:text-neutral-100">{value ?? 0}</p></div>)}</section>
 
       <section className="grid gap-4 xl:grid-cols-2">
-        <div className="rounded-2xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-950"><div className="flex items-start justify-between gap-3"><div><p className="text-xs font-medium uppercase tracking-[0.14em] text-neutral-500">Multiagent</p><h2 className="mt-1 font-medium text-neutral-900 dark:text-neutral-100">Orquestrar especialistas</h2></div>{orchestration && <span className="rounded-full bg-neutral-100 px-3 py-1 text-xs font-medium dark:bg-neutral-800">{orchestration.state}</span>}</div><textarea value={orchestrationObjective} onChange={(event) => setOrchestrationObjective(event.target.value)} placeholder="Ex.: pesquisar concorrentes, revisar segurança e propor implementação" className="mt-3 min-h-20 w-full resize-y rounded-xl border border-neutral-300 bg-transparent px-3 py-2 text-sm outline-none dark:border-neutral-700" /><button type="button" disabled={busy || !orchestrationObjective.trim()} onClick={() => void createOrchestration()} className="mt-3 rounded-lg bg-neutral-900 px-3 py-2 text-sm text-white disabled:opacity-40 dark:bg-neutral-100 dark:text-neutral-900">Iniciar orquestração</button>{orchestration && <div className="mt-4 space-y-2">{orchestration.tasks.map((task) => <div key={task.id} className="rounded-lg border border-neutral-200 p-3 text-sm dark:border-neutral-800"><div className="flex justify-between"><span className="font-medium">{task.role}</span><span className="text-xs text-neutral-500">{task.state}</span></div>{task.error && <p className="mt-1 text-xs text-red-600">{task.error}</p>}</div>)}{orchestration.summary && <details className="rounded-lg bg-neutral-50 p-3 text-xs dark:bg-neutral-900"><summary className="cursor-pointer font-medium">Ver síntese</summary><pre className="mt-2 whitespace-pre-wrap font-sans">{orchestration.summary}</pre></details>}</div>}</div>
+        <div className="rounded-2xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-950"><div className="flex items-start justify-between gap-3"><div><p className="text-xs font-medium uppercase tracking-[0.14em] text-neutral-500">Multiagente</p><h2 className="mt-1 font-medium text-neutral-900 dark:text-neutral-100">Orquestrar especialistas</h2></div>{orchestration && <span className="rounded-full bg-neutral-100 px-3 py-1 text-xs font-medium dark:bg-neutral-800">{missionStateLabel(orchestration.state)}</span>}</div><textarea value={orchestrationObjective} onChange={(event) => setOrchestrationObjective(event.target.value)} placeholder="Ex.: pesquisar concorrentes, revisar segurança e propor implementação" className="mt-3 min-h-20 w-full resize-y rounded-xl border border-neutral-300 bg-transparent px-3 py-2 text-sm outline-none dark:border-neutral-700" /><button type="button" disabled={busy || !orchestrationObjective.trim()} onClick={() => void createOrchestration()} className="mt-3 rounded-lg bg-neutral-900 px-3 py-2 text-sm text-white disabled:opacity-40 dark:bg-neutral-100 dark:text-neutral-900">Iniciar orquestração</button>{orchestration && <div className="mt-4 space-y-2">{orchestration.tasks.map((task) => <div key={task.id} className="rounded-lg border border-neutral-200 p-3 text-sm dark:border-neutral-800"><div className="flex justify-between"><span className="font-medium">{task.role}</span><span className="text-xs text-neutral-500">{missionStateLabel(task.state)}</span></div>{task.error && <p className="mt-1 text-xs text-red-600">{task.error}</p>}</div>)}{orchestration.summary && <details className="rounded-lg bg-neutral-50 p-3 text-xs dark:bg-neutral-900"><summary className="cursor-pointer font-medium">Ver síntese</summary><pre className="mt-2 whitespace-pre-wrap font-sans">{orchestration.summary}</pre></details>}</div>}</div>
         <div className="rounded-2xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-950"><p className="text-xs font-medium uppercase tracking-[0.14em] text-neutral-500">Pesquisa profunda</p><h2 className="mt-1 font-medium text-neutral-900 dark:text-neutral-100">Fontes e citações</h2><input value={researchQuery} onChange={(event) => setResearchQuery(event.target.value)} placeholder="Pergunta de pesquisa" className="mt-3 h-10 w-full rounded-xl border border-neutral-300 bg-transparent px-3 text-sm outline-none dark:border-neutral-700" /><textarea value={researchURLs} onChange={(event) => setResearchURLs(event.target.value)} placeholder="Uma URL HTTPS pública por linha" className="mt-2 min-h-20 w-full resize-y rounded-xl border border-neutral-300 bg-transparent px-3 py-2 text-sm outline-none dark:border-neutral-700" /><button type="button" disabled={busy || !researchQuery.trim() || !researchURLs.trim()} onClick={() => void runResearch()} className="mt-3 rounded-lg border border-neutral-300 px-3 py-2 text-sm dark:border-neutral-700">Pesquisar</button>{research && <div className="mt-4 space-y-2 text-sm"><p className="whitespace-pre-wrap text-neutral-700 dark:text-neutral-300">{research.summary}</p>{research.citations.map((citation) => <a key={citation.url} href={citation.url} target="_blank" rel="noreferrer" className="block rounded-lg border border-neutral-200 p-2 text-xs underline dark:border-neutral-800">{citation.title || citation.url}</a>)}</div>}</div>
       </section>
 
@@ -252,10 +283,10 @@ export default function AgenticConsole() {
                 className={`rounded-lg px-3 py-1 text-xs font-semibold transition-colors ${
                   viewMode === "split"
                     ? "bg-white text-neutral-900 shadow-sm dark:bg-neutral-700 dark:text-white"
-                    : "text-neutral-500 hover:text-neutral-800 dark:text-neutral-400"
+                    : "text-neutral-700 hover:text-neutral-900 dark:text-neutral-300"
                 }`}
               >
-                Visão Split-Screen (Manus)
+                Visão dividida
               </button>
               <button
                 type="button"
@@ -263,7 +294,7 @@ export default function AgenticConsole() {
                 className={`rounded-lg px-3 py-1 text-xs font-semibold transition-colors ${
                   viewMode === "classic"
                     ? "bg-white text-neutral-900 shadow-sm dark:bg-neutral-700 dark:text-white"
-                    : "text-neutral-500 hover:text-neutral-800 dark:text-neutral-400"
+                    : "text-neutral-700 hover:text-neutral-900 dark:text-neutral-300"
                 }`}
               >
                 Visão Clássica
@@ -277,8 +308,7 @@ export default function AgenticConsole() {
                 mission={mission}
                 onRefreshMission={() => load(mission.id, orchestration?.id)}
                 onCreateMission={async (obj) => {
-                  setObjective(obj);
-                  await createMission();
+                  await createMission(obj);
                 }}
                 busy={busy}
               />
@@ -291,7 +321,7 @@ export default function AgenticConsole() {
                     <p className="text-xs text-neutral-500">{mission.id}</p>
                     <h2 className="mt-1 font-medium text-neutral-900 dark:text-neutral-100">{mission.objective}</h2>
                   </div>
-                  <span className="rounded-full bg-neutral-100 px-3 py-1 text-xs font-medium dark:bg-neutral-800">{mission.state}</span>
+                  <span className="rounded-full bg-neutral-100 px-3 py-1 text-xs font-medium dark:bg-neutral-800">{missionStateLabel(mission.state)}</span>
                 </div>
                 {(mission.plan?.length ?? 0) > 0 && (() => {
                   const steps = mission.plan ?? [];
@@ -313,7 +343,7 @@ export default function AgenticConsole() {
                             <li key={step.id} className="flex items-center gap-2 text-xs">
                               <span className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[9px] font-semibold ${kind === "done" ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300" : kind === "run" ? "bg-violet-100 text-violet-700 dark:bg-violet-950/40 dark:text-violet-300" : "bg-neutral-200 text-neutral-500 dark:bg-neutral-800 dark:text-neutral-400"}`}>{kind === "done" ? "✓" : index + 1}</span>
                               <span className={`min-w-0 flex-1 truncate ${kind === "todo" ? "text-neutral-500" : "text-neutral-800 dark:text-neutral-200"}`}>{step.title}</span>
-                              {step.requires_approval && <span className="shrink-0 rounded-full bg-amber-50 px-1.5 py-0.5 text-[9px] text-amber-700 dark:bg-amber-950/30 dark:text-amber-300">approval</span>}
+                              {step.requires_approval && <span className="shrink-0 rounded-full bg-amber-50 px-1.5 py-0.5 text-[9px] text-amber-700 dark:bg-amber-950/30 dark:text-amber-300">aprovação</span>}
                             </li>
                           );
                         })}
@@ -326,21 +356,19 @@ export default function AgenticConsole() {
                     <div key={event.id} className="flex gap-3 text-sm">
                       <div className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-neutral-500" />
                       <div>
-                        <p className="font-medium text-neutral-800 dark:text-neutral-200">{event.type}</p>
+                        <p className="font-medium text-neutral-800 dark:text-neutral-200">{eventTypeLabel(event.type)}</p>
                         <p className="text-xs text-neutral-500">{event.step_id ?? "mission"} · {new Date(event.created_at).toLocaleString()}</p>
                       </div>
                     </div>
                   ))}
                 </div>
+                <MissionDeliveryCard missionId={mission.id} state={mission.state} artifacts={mission.artifacts} />
                 <div className="mt-5 flex gap-2">
                   <button type="button" disabled={busy || pendingApprovals.length > 0 || mission.state === "COMPLETED"} onClick={() => void run()} className="rounded-lg bg-neutral-900 px-3 py-2 text-sm text-white disabled:opacity-40 dark:bg-neutral-100 dark:text-neutral-900">Executar</button>
-                  {mission.artifacts?.map((artifact) => (
-                    <a key={artifact.id} href={`/api/agent/v1/missions/${mission.id}/artifacts/${artifact.id}`} className="rounded-lg border border-neutral-300 px-3 py-2 text-sm dark:border-neutral-700">Baixar {artifact.name}</a>
-                  ))}
                 </div>
               </div>
               <div className="rounded-2xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-950">
-                <h2 className="font-medium text-neutral-900 dark:text-neutral-100">Approvals</h2>
+                <h2 className="font-medium text-neutral-900 dark:text-neutral-100">Aprovações</h2>
                 {pendingApprovals.length === 0 ? (
                   <p className="mt-3 text-sm text-neutral-500">Nenhuma aprovação pendente.</p>
                 ) : (
@@ -350,6 +378,8 @@ export default function AgenticConsole() {
                     return (
                       <div key={approval.id} className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 dark:border-amber-900 dark:bg-amber-950/30">
                         <p className="text-xs text-amber-800 dark:text-amber-200">{approval.step_id}</p>
+                        <p className="mt-2 text-xs leading-5 text-amber-900 dark:text-amber-100" role="note">{approvalExplanation(approval)}</p>
+                        <p className="mt-2 text-[11px] text-amber-800/80 dark:text-amber-200/80">Nada será executado enquanto a decisão não for validada pelo servidor. A aprovação não pode ser feita automaticamente pela missão.</p>
                         <label className="mt-3 block text-xs font-medium text-amber-900 dark:text-amber-100" htmlFor={`approval-reason-${approval.id}`}>Motivo da decisão</label>
                         <textarea id={`approval-reason-${approval.id}`} aria-label={`Motivo da decisão para ${approval.step_id}`} maxLength={512} value={reason} onChange={(event) => setApprovalReasons((current) => ({ ...current, [approval.id]: event.target.value }))} placeholder="Explique por que esta ação deve ser aprovada ou rejeitada" className="mt-1 min-h-16 w-full resize-y rounded-lg border border-amber-300 bg-white/70 px-2 py-2 text-xs text-neutral-900 outline-none focus:border-amber-500 dark:border-amber-800 dark:bg-neutral-950/50 dark:text-neutral-100" />
                         <div className="mt-3 flex gap-2">
@@ -365,6 +395,6 @@ export default function AgenticConsole() {
           )}
         </div>
       )}
-    </main>
+    </section>
   );
 }

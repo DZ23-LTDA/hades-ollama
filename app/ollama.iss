@@ -1,18 +1,18 @@
-; Inno Setup Installer for Ollama
+; Inno Setup Installer for Hades
 ;
 ; To build the installer use the build script invoked from the top of the source tree
 ; 
 ; powershell -ExecutionPolicy Bypass -File .\scripts\build_windows.ps
 
 
-#define MyAppName "Ollama Full"
+#define MyAppName "Hades"
 #if GetEnv("PKG_VERSION") != ""
   #define MyAppVersion GetEnv("PKG_VERSION")
 #else
   #define MyAppVersion "0.0.0"
 #endif
 #define MyAppPublisher "DZ23-LTDA"
-#define MyAppURL "https://github.com/DZ23-LTDA/ollama-classe-a-plus"
+#define MyAppURL "https://github.com/DZ23-LTDA/hades-ollama"
 #define MyAppExeName "ollama app.exe"
 #define LlamaServerExeName "llama-server.exe"
 #define MyIcon ".\assets\app.ico"
@@ -35,7 +35,7 @@ DefaultDirName={localappdata}\Programs\{#MyAppName}
 DefaultGroupName={#MyAppName}
 DisableProgramGroupPage=yes
 PrivilegesRequired=lowest
-OutputBaseFilename="OllamaFullSetup"
+OutputBaseFilename="HadesSetup"
 SetupIconFile={#MyIcon}
 UninstallDisplayIcon={uninstallexe}
 Compression=lzma2/ultra64
@@ -80,7 +80,7 @@ SignTool=MySignTool
 SignedUninstaller=yes
 #endif
 
-SetupMutex=OllamaSetupMutex
+SetupMutex=HadesSetupMutex
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
@@ -117,7 +117,8 @@ Source: "..\scripts\dz23-configure.ps1"; DestDir: "{app}"; Flags: ignoreversion
 Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\app.ico"
 Name: "{app}\lib\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\app.ico"
 Name: "{userprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\app.ico"
-Name: "{userprograms}\{#MyAppName} - Configure APIs"; Filename: "powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -File ""{app}\dz23-configure.ps1"""; IconFilename: "{app}\app.ico"
+; A configuração de provedores fica dentro do app (Configurações -> Provedores);
+; um atalho separado no menu Iniciar parecia um segundo "Hades" para o usuário.
 
 [Run]
 Filename: "{cmd}"; Parameters: "/C set ""OLLAMA_DZ23_CONFIG={userappdata}\Ollama DZ23\dz23-providers.json"" & set PATH={app};%PATH% & ""{app}\{#MyAppExeName}"""; Flags: postinstall nowait runhidden
@@ -130,15 +131,18 @@ Filename: "{cmd}"; Parameters: "/c timeout 5"; Flags: runhidden
 
 [UninstallDelete]
 Type: filesandordirs; Name: "{userstartup}\{#MyAppName}.lnk"
+; Remove the legacy separate "Configure APIs" Start menu shortcut (now folded
+; into the in-app settings) so an upgrade/uninstall leaves a single Hades entry.
+Type: files; Name: "{userprograms}\{#MyAppName} - Configure APIs.lnk"
 ; Shared Ollama models, history, and official-app data are always preserved.
 
 [InstallDelete]
 Type: filesandordirs; Name: "{app}\lib\ollama"
 
 [Messages]
-WizardReady=Ollama
+WizardReady=Hades
 ReadyLabel1=%nLet's get you up and running with your own large language models.
-SetupAppRunningError=Another Ollama installer is running.%n%nPlease cancel or finish the other installer, then click OK to continue with this install, or Cancel to exit.
+SetupAppRunningError=Another Hades installer is running.%n%nPlease cancel or finish the other installer, then click OK to continue with this install, or Cancel to exit.
 
 
 ;FinishedHeadingLabel=Run your first model
@@ -180,4 +184,40 @@ begin
     { Stop only processes installed under this fork's directory. Image-wide
       taskkill would also terminate an official Ollama installation. }
     Exec('powershell.exe', '-NoProfile -ExecutionPolicy Bypass -Command "Get-CimInstance Win32_Process | Where-Object { $_.ExecutablePath -and $_.ExecutablePath.StartsWith(''''' + ExpandConstant('{app}') + '\'''',[System.StringComparison]::OrdinalIgnoreCase) } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }"', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+end;
+
+procedure StopProcessesInDir(Dir: String);
+var
+  ResultCode: Integer;
+begin
+    Exec('powershell.exe', '-NoProfile -ExecutionPolicy Bypass -Command "Get-CimInstance Win32_Process | Where-Object { $_.ExecutablePath -and $_.ExecutablePath.StartsWith(''''' + Dir + '\'''',[System.StringComparison]::OrdinalIgnoreCase) } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }"', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+end;
+
+{ Before the rebrand this app shipped as "Ollama Classe A+" with a different
+  window class (OllamaClass) and install directory. Because that build's window
+  class differs from Hades's, the single-instance guard cannot see it, so a
+  left-over legacy install keeps auto-starting next to Hades and the user ends
+  up with two windows fighting over the local server. Remove the legacy app on
+  install so only Hades remains. Shared models/history live under
+  %LOCALAPPDATA%\Ollama (not the program dir) and are left untouched. }
+procedure RemoveLegacyInstalls();
+var
+  LegacyDir: String;
+  AppDir: String;
+begin
+  AppDir := ExpandConstant('{app}');
+  LegacyDir := ExpandConstant('{localappdata}\Programs\Ollama Classe A+');
+  StopProcessesInDir(LegacyDir);
+  DeleteFile(ExpandConstant('{userstartup}\Ollama Classe A+.lnk'));
+  DeleteFile(ExpandConstant('{userprograms}\Ollama Classe A+.lnk'));
+  DeleteFile(ExpandConstant('{userprograms}\Ollama Classe A+ - Configure APIs.lnk'));
+  { Only delete the legacy directory when it is not the current install dir. }
+  if (CompareText(LegacyDir, AppDir) <> 0) and DirExists(LegacyDir) then
+    DelTree(LegacyDir, True, True, True);
+end;
+
+procedure CurStepChanged(CurStep: TSetupStep);
+begin
+  if CurStep = ssInstall then
+    RemoveLegacyInstalls();
 end;

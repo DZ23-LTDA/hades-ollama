@@ -9,9 +9,9 @@ const THINKING_LEVELS = {
 } as const;
 
 const THINKING_LEVEL_LABELS = {
-  low: "Low",
-  medium: "Medium",
-  high: "High",
+  low: "Baixo",
+  medium: "Médio",
+  high: "Alto",
 } as const;
 
 interface ThinkButtonProps {
@@ -74,7 +74,7 @@ export const ThinkButton = forwardRef<CloseableButtonHandle, ThinkButtonProps>(
       return (
         <button
           ref={ref}
-          title={isActive ? "Disable think mode" : "Enable think mode"}
+          title={isActive ? "Desativar modo raciocínio" : "Ativar modo raciocínio"}
           onClick={onToggle}
           className={`select-none flex items-center justify-center rounded-full h-9 w-9 bg-white dark:bg-neutral-700 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer transition-all whitespace-nowrap border border-transparent ${
             isActive
@@ -102,7 +102,7 @@ export const ThinkButton = forwardRef<CloseableButtonHandle, ThinkButtonProps>(
       <div className="relative" ref={dropdownRef}>
         <button
           ref={ref}
-          title={`Thinking level: ${displayLabel}`}
+          title={`Nível de raciocínio: ${displayLabel}`}
           onClick={() => {
             const newState = !isDropdownOpen;
             setIsDropdownOpen(newState);

@@ -26,13 +26,13 @@ export function IntegrationConnectButton({
         <>
           <ArrowPathIcon className="h-3.5 w-3.5 animate-spin" />
           <span role="status" aria-live="polite">
-            {progress ?? "Checking…"}
+            {progress ?? "Verificando…"}
           </span>
         </>
       ) : connected ? (
-        "Disconnect"
+        "Desconectar"
       ) : (
-        "Connect"
+        "Conectar"
       )}
     </button>
   );

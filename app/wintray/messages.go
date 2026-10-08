@@ -3,15 +3,15 @@
 package wintray
 
 const (
-	firstTimeTitle   = "Ollama is running"
-	firstTimeMessage = "Click here to get started"
-	updateTitle      = "Update available"
-	updateMessage    = "Ollama version %s is ready to install"
+	firstTimeTitle   = "O Hades está rodando"
+	firstTimeMessage = "Clique aqui para começar"
+	updateTitle      = "Atualização disponível"
+	updateMessage    = "A versão %s do Hades está pronta para instalar"
 
-	quitMenuTitle            = "Quit Ollama"
-	updateAvailableMenuTitle = "An update is available"
-	updateMenuTitle          = "Restart to update"
-	diagLogsMenuTitle        = "View logs"
-	openAppsMenuTitle        = "Open Ollama"
-	settingsUIMenuTitle      = "Settings"
+	quitMenuTitle            = "Sair do Hades"
+	updateAvailableMenuTitle = "Uma atualização está disponível"
+	updateMenuTitle          = "Reiniciar para atualizar"
+	diagLogsMenuTitle        = "Ver logs"
+	openAppsMenuTitle        = "Abrir Hades"
+	settingsUIMenuTitle      = "Configurações"
 )

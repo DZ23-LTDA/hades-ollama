@@ -5,13 +5,10 @@ import {
   MagnifyingGlassIcon,
   PlusIcon,
   SparklesIcon,
-  EnvelopeIcon,
-  ChatBubbleLeftRightIcon,
-  BookOpenIcon,
-  CodeBracketIcon,
 } from "@heroicons/react/24/outline";
 import { AppSidebar } from "@/components/AppSidebar";
 import { SidebarLayout } from "@/components/layout/layout";
+import { SettingsTabs } from "@/components/SettingsTabs";
 import { connectorIcon } from "@/lib/connectorIcons";
 import { ConnectorsManagePanel } from "@/components/ConnectorsManagePanel";
 import { ConnectorQuickConnect } from "@/components/ConnectorQuickConnect";
@@ -32,24 +29,48 @@ type CategoryFilter =
   | "creativity"
   | "business"
   | "development"
+  | "infra"
   | "finance"
-  | "travel"
-  | "health"
+  | "data"
   | "connected"
   | "whatsapp";
 
 const CATEGORIES: Array<{ id: CategoryFilter; label: string }> = [
   { id: "all", label: "Todos" },
   { id: "productivity", label: "Produtividade" },
-  { id: "creativity", label: "Criatividade" },
+  { id: "creativity", label: "Criatividade e mídia" },
   { id: "business", label: "Negócios" },
   { id: "development", label: "Desenvolvimento" },
+  { id: "infra", label: "Infraestrutura" },
   { id: "finance", label: "Finanças" },
-  { id: "travel", label: "Viagem" },
-  { id: "health", label: "Saúde" },
+  { id: "data", label: "Dados e métricas" },
   { id: "connected", label: "Conectados" },
   { id: "whatsapp", label: "WhatsApp Gateway" },
 ];
+
+// Cada aba mapeia para as categorias REAIS do catálogo (em português, como
+// vêm do backend). O casamento é por igualdade exata — não por palavra em
+// inglês — e cobre todas as categorias do catálogo, de forma que nenhuma aba
+// fique falsamente vazia e nenhuma categoria do catálogo fique órfã.
+const CATEGORY_GROUPS: Partial<Record<CategoryFilter, readonly string[]>> = {
+  productivity: ["Produtividade", "Comunicação", "E-mail", "Notificações", "Suporte"],
+  creativity: ["Design", "Mídia", "CMS"],
+  business: ["CRM e Vendas", "Marketing", "Comércio"],
+  development: [
+    "Desenvolvimento",
+    "Automação",
+    "Backend",
+    "Banco de dados",
+    "IA e vetores",
+    "Autenticação",
+    "Busca",
+    "Tempo real",
+    "Mobile",
+  ],
+  infra: ["Deploy", "Observabilidade"],
+  finance: ["Pagamentos", "Fiscal", "Dados financeiros"],
+  data: ["Dados e métricas"],
+};
 
 function ConnectorLogo({ id }: { id: string }) {
   const icon = connectorIcon(id);
@@ -96,7 +117,10 @@ export function ConnectorsPage() {
   const [customName, setCustomName] = useState("");
   const [customBaseUrl, setCustomBaseUrl] = useState("");
   const [customTokenEnv, setCustomTokenEnv] = useState("");
+  const [customPath, setCustomPath] = useState("/");
+  const [customAllowWrite, setCustomAllowWrite] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -124,7 +148,27 @@ export function ConnectorsPage() {
   const handleCreateCustom = async () => {
     if (!customName.trim() || !customBaseUrl.trim()) return;
     setCreating(true);
+    setCreateError(null);
     try {
+      // Padrão seguro: somente leitura (GET) num caminho específico. A escrita
+      // (POST/PUT/PATCH/DELETE) só é liberada quando o operador marca
+      // explicitamente a opção, evitando conectores full-access silenciosos.
+      const pathPrefix = customPath.trim() || "/";
+      const operations = customAllowWrite
+        ? [
+            {
+              name: "read-write",
+              methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
+              path_prefixes: [pathPrefix],
+            },
+          ]
+        : [
+            {
+              name: "read",
+              methods: ["GET"],
+              path_prefixes: [pathPrefix],
+            },
+          ];
       const res = await fetch(`${API_BASE}/api/agent/v1/connectors`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -133,13 +177,7 @@ export function ConnectorsPage() {
           provider: customName.trim(),
           base_url: customBaseUrl.trim(),
           token_env: customTokenEnv.trim() || undefined,
-          operations: [
-            {
-              name: "default",
-              methods: ["GET", "POST", "PUT", "DELETE"],
-              path_prefixes: ["/"],
-            },
-          ],
+          operations,
         }),
       });
       if (!res.ok) throw new Error("Falha ao registrar conector no backend");
@@ -147,9 +185,11 @@ export function ConnectorsPage() {
       setCustomName("");
       setCustomBaseUrl("");
       setCustomTokenEnv("");
+      setCustomPath("/");
+      setCustomAllowWrite(false);
       load();
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Falha ao registrar conector");
+      setCreateError(e instanceof Error ? e.message : "Falha ao registrar conector");
     } finally {
       setCreating(false);
     }
@@ -172,17 +212,9 @@ export function ConnectorsPage() {
         return state === "connected";
       }
 
-      // Mapeamento aproximado de categoria
-      const catLower = entry.category.toLowerCase();
-      if (category === "productivity" && (catLower.includes("prod") || catLower.includes("doc") || catLower.includes("mail"))) return true;
-      if (category === "creativity" && (catLower.includes("media") || catLower.includes("video") || catLower.includes("art") || catLower.includes("audio"))) return true;
-      if (category === "business" && (catLower.includes("crm") || catLower.includes("sales") || catLower.includes("negócios"))) return true;
-      if (category === "development" && (catLower.includes("dev") || catLower.includes("code") || catLower.includes("git") || catLower.includes("api"))) return true;
-      if (category === "finance" && (catLower.includes("fin") || catLower.includes("pay") || catLower.includes("bank"))) return true;
-      if (category === "travel" && (catLower.includes("trip") || catLower.includes("viagem") || catLower.includes("flight"))) return true;
-      if (category === "health" && (catLower.includes("health") || catLower.includes("saúde"))) return true;
-
-      return catLower.includes(category);
+      // Correspondência exata contra as categorias reais do catálogo.
+      const group = CATEGORY_GROUPS[category];
+      return group ? group.includes(entry.category) : false;
     });
   }, [catalog, category, query, connectors, mcpServers]);
 
@@ -191,12 +223,13 @@ export function ConnectorsPage() {
       title="Plugins & Conectores"
       sidebar={<AppSidebar current="connectors" />}
     >
+      <SettingsTabs current="connectors" />
       <div className="min-h-0 flex-1 overflow-y-auto bg-neutral-50 dark:bg-neutral-900">
         <div className="mx-auto w-full max-w-6xl space-y-8 px-6 pb-16 pt-8 lg:px-10">
           {/* Cabeçalho */}
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h1 className="font-rounded text-2xl font-bold tracking-tight text-neutral-950 dark:text-white sm:text-3xl">
+              <h1 className="page-title font-bold sm:text-3xl">
                 Plugins
               </h1>
               <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
@@ -231,54 +264,6 @@ export function ConnectorsPage() {
 
           {category !== "whatsapp" && (
             <>
-          {/* Banners de Destaque Oficiais do Manus */}
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <div className="flex flex-col justify-between rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-950">
-              <div className="flex items-center gap-3">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-950/50">
-                  <EnvelopeIcon className="h-5 w-5" />
-                </div>
-                <h4 className="text-xs font-bold text-neutral-900 dark:text-white">Workspace & Docs</h4>
-              </div>
-              <p className="mt-3 text-[11px] leading-relaxed text-neutral-500">
-                Reúna e-mail, documentos e calendário em um só lugar.
-              </p>
-            </div>
-            <div className="flex flex-col justify-between rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-950">
-              <div className="flex items-center gap-3">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-purple-50 text-purple-600 dark:bg-purple-950/50">
-                  <ChatBubbleLeftRightIcon className="h-5 w-5" />
-                </div>
-                <h4 className="text-xs font-bold text-neutral-900 dark:text-white">Comunicação</h4>
-              </div>
-              <p className="mt-3 text-[11px] leading-relaxed text-neutral-500">
-                Acompanhe discussões e atualizações da equipe em tempo real.
-              </p>
-            </div>
-            <div className="flex flex-col justify-between rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-950">
-              <div className="flex items-center gap-3">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-50 text-amber-600 dark:bg-amber-950/50">
-                  <BookOpenIcon className="h-5 w-5" />
-                </div>
-                <h4 className="text-xs font-bold text-neutral-900 dark:text-white">Conhecimento</h4>
-              </div>
-              <p className="mt-3 text-[11px] leading-relaxed text-neutral-500">
-                Encontre respostas no seu workspace do Notion e Obsidian.
-              </p>
-            </div>
-            <div className="flex flex-col justify-between rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-950">
-              <div className="flex items-center gap-3">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-950/50">
-                  <CodeBracketIcon className="h-5 w-5" />
-                </div>
-                <h4 className="text-xs font-bold text-neutral-900 dark:text-white">Código & Git</h4>
-              </div>
-              <p className="mt-3 text-[11px] leading-relaxed text-neutral-500">
-                Automatize tarefas, commits e auditoria de repositórios.
-              </p>
-            </div>
-          </div>
-
           {/* Barra de Busca e Categorias */}
           <div className="space-y-4">
             <label className="flex items-center gap-3 rounded-2xl border border-neutral-300 bg-white px-4 py-2.5 dark:border-neutral-700 dark:bg-neutral-950">
@@ -363,11 +348,57 @@ export function ConnectorsPage() {
                     className="mt-1 w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
                   />
                 </div>
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300">
+                    Caminho permitido (prefixo)
+                  </label>
+                  <input
+                    type="text"
+                    value={customPath}
+                    onChange={(e) => setCustomPath(e.target.value)}
+                    placeholder="Ex: /v1/clientes"
+                    className="mt-1 w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+                  />
+                  <p className="mt-1 text-[11px] text-neutral-500">
+                    O agente só poderá chamar rotas sob este prefixo. Mantenha o
+                    menor escopo possível.
+                  </p>
+                </div>
+                <div className="sm:col-span-2">
+                  <label className="flex items-start gap-2 text-xs font-medium text-neutral-700 dark:text-neutral-300">
+                    <input
+                      type="checkbox"
+                      checked={customAllowWrite}
+                      onChange={(e) => setCustomAllowWrite(e.target.checked)}
+                      className="mt-0.5 h-4 w-4 rounded border-neutral-300 dark:border-neutral-600"
+                    />
+                    <span>
+                      Permitir escrita (POST/PUT/PATCH/DELETE) neste caminho.
+                      <span className="mt-0.5 block font-normal text-[11px] text-neutral-500">
+                        Por padrão o conector é somente leitura (apenas GET).
+                        Habilite a escrita apenas se este endereço realmente
+                        precisar executar alterações.
+                      </span>
+                    </span>
+                  </label>
+                </div>
               </div>
+              {createError && (
+                <div
+                  role="alert"
+                  aria-live="assertive"
+                  className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-xs text-red-700 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300"
+                >
+                  {createError}
+                </div>
+              )}
               <div className="mt-5 flex justify-end gap-3">
                 <button
                   type="button"
-                  onClick={() => setShowCreateModal(false)}
+                  onClick={() => {
+                    setShowCreateModal(false);
+                    setCreateError(null);
+                  }}
                   className="rounded-xl border border-neutral-200 px-4 py-2 text-xs font-medium text-neutral-700 hover:bg-neutral-50 dark:border-neutral-700 dark:text-neutral-300"
                 >
                   Cancelar
@@ -421,6 +452,10 @@ export function ConnectorsPage() {
                 {visible.map((entry) => {
                   const state = connectorState(entry, connectors, mcpServers);
                   const open = expanded === entry.id;
+                  // Conectores exclusivamente OAuth não conectam com chave
+                  // colada: exigem um app OAuth registrado pela DZ23. Em vez de
+                  // prometer "Conectar" e cair num aviso, deixamos isso claro.
+                  const oauthOnly = entry.auth === "oauth" && !entry.quick_connect;
                   return (
                     <li
                       key={entry.id}
@@ -446,6 +481,16 @@ export function ConnectorsPage() {
                             <CheckIcon className="h-3.5 w-3.5" />
                             Ativo
                           </span>
+                        ) : oauthOnly ? (
+                          <button
+                            type="button"
+                            aria-expanded={open}
+                            onClick={() => setExpanded(open ? null : entry.id)}
+                            title="Requer um app OAuth registrado pela DZ23"
+                            className="inline-flex shrink-0 items-center gap-1 rounded-xl border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-700 hover:bg-amber-100 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-300"
+                          >
+                            Requer configuração OAuth
+                          </button>
                         ) : (
                           <button
                             type="button"

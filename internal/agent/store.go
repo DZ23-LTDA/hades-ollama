@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"sort"
 	"strings"
 	"sync"
@@ -21,6 +22,7 @@ type Store interface {
 	CreateMission(mission Mission) error
 	PutMission(mission Mission) error
 	PutMissionIfVersion(mission Mission, expectedVersion int64) error
+	DeleteMission(id string) error
 	AppendEvent(event Event) error
 	ListEvents(missionID string) ([]Event, error)
 }
@@ -308,6 +310,51 @@ func (s *JSONStore) PutMission(mission Mission) error {
 			return err
 		}
 		s.missions[mission.ID] = cloneMission(stored)
+		return nil
+	})
+}
+
+func (s *JSONStore) DeleteMission(id string) error {
+	if !validSnapshotID(id) {
+		return os.ErrNotExist
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if !s.persistent {
+		if _, exists := s.missions[id]; !exists {
+			return os.ErrNotExist
+		}
+		delete(s.missions, id)
+		delete(s.events, id)
+		return nil
+	}
+	return withMissionStoreLock(s.root, func() error {
+		path := filepath.Join(s.root, "missions", id+".json")
+		var existing Mission
+		if err := readMissionJSON(path, &existing); err != nil {
+			if errors.Is(err, os.ErrNotExist) {
+				delete(s.missions, id)
+				return os.ErrNotExist
+			}
+			return err
+		}
+		if err := os.Remove(path); err != nil {
+			if errors.Is(err, os.ErrNotExist) {
+				delete(s.missions, id)
+				return os.ErrNotExist
+			}
+			return err
+		}
+		syncParentDir(path)
+		delete(s.missions, id)
+		// Best-effort cleanup of the mission's associated events file so the
+		// store does not retain orphaned event history for a deleted mission.
+		eventsPath := filepath.Join(s.root, "events", id+".json")
+		if err := os.Remove(eventsPath); err != nil && !errors.Is(err, os.ErrNotExist) {
+			return err
+		}
+		syncParentDir(eventsPath)
+		delete(s.events, id)
 		return nil
 	})
 }
@@ -831,6 +878,16 @@ func (s organizationScopedStore) PutMissionIfVersion(mission Mission, expectedVe
 	return s.store.PutMissionIfVersion(mission, expectedVersion)
 }
 
+func (s organizationScopedStore) DeleteMission(id string) error {
+	// GetMission scopes by organization: a mission owned by another tenant is
+	// reported as not-found, so this both confirms existence and rejects
+	// cross-tenant deletion before delegating to the inner store.
+	if _, err := s.GetMission(id); err != nil {
+		return err
+	}
+	return s.store.DeleteMission(id)
+}
+
 func (s organizationScopedStore) AppendEvent(event Event) error {
 	mission, err := s.GetMission(event.MissionID)
 	if err != nil {
@@ -924,7 +981,30 @@ func writeJSONAtomicBounded(path string, value any, maxBytes int, label string) 
 	if err := tmp.Close(); err != nil {
 		return err
 	}
-	return os.Rename(tmpName, path)
+	if err := os.Rename(tmpName, path); err != nil {
+		return err
+	}
+	// Durability: after the atomic content rename, fsync the parent directory so
+	// the rename entry itself survives a crash, not just the file's data.
+	syncParentDir(path)
+	return nil
+}
+
+// syncParentDir best-effort fsyncs the directory containing path so a prior
+// rename is durable. Directory fsync is a POSIX concept: on Windows it is a
+// no-op (directory handles do not support it and NTFS persists metadata
+// differently), and on filesystems that reject it the error is ignored rather
+// than failing an otherwise successful write.
+func syncParentDir(path string) {
+	if runtime.GOOS == "windows" {
+		return
+	}
+	dir, err := os.Open(filepath.Dir(path))
+	if err != nil {
+		return
+	}
+	_ = dir.Sync()
+	_ = dir.Close()
 }
 
 func readJSON(path string, target any) error {

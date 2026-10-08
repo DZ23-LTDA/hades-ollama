@@ -12,6 +12,19 @@ type ProviderHealth struct {
 	ErrorRate float64
 }
 
+// RoutePreference lets the user bias model selection by what they care about
+// most. The empty value keeps the balanced default; the others reweight the
+// score so the picker can offer "mais rápido / melhor qualidade / mais barato"
+// (G9) without changing the baseline behavior.
+type RoutePreference string
+
+const (
+	RoutePreferenceAuto        RoutePreference = ""
+	RoutePreferenceFastest     RoutePreference = "fastest"
+	RoutePreferenceBestQuality RoutePreference = "quality"
+	RoutePreferenceCheapest    RoutePreference = "cheapest"
+)
+
 type RouteRequest struct {
 	RequiredCapabilities []string
 	Path                 string
@@ -20,6 +33,7 @@ type RouteRequest struct {
 	MaxLatencyMS         int64
 	MaxCostCents         int64
 	LocalOnly            bool
+	Preference           RoutePreference
 	Health               map[string]ProviderHealth
 }
 
@@ -77,6 +91,18 @@ func (r *Registry) Route(request RouteRequest) (RouteDecision, error) {
 		}
 		if request.PreferredProvider != "" {
 			score += 10000
+		}
+		// Optional user preference reweights the balanced default. The empty
+		// (Auto) preference leaves the score unchanged for backward compatibility.
+		switch request.Preference {
+		case RoutePreferenceBestQuality:
+			score += int64(model.QualityScore) * 100
+		case RoutePreferenceCheapest:
+			score -= cost * 100
+		case RoutePreferenceFastest:
+			if health.LatencyMS > 0 {
+				score -= health.LatencyMS * 20
+			}
 		}
 		candidates = append(candidates, RouteDecision{Model: model, Score: score, Reason: routeReason(model, health, request)})
 	}

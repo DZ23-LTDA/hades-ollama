@@ -1,4 +1,4 @@
-# Release Readiness — Ollama Full
+# Release Readiness — Ollama Classe A+
 
 Este documento define a política de **um único SHA candidato passar por todo o
 gate** antes de virar release. Ele não inventa checks: lista os workflows reais
@@ -21,7 +21,7 @@ SHA devem estar verdes.
 | `dz23-agentic-quality.yaml` | **Web and mobile quality** | web typecheck/lint/tests/prod-audit + mobile typecheck/audit/policy |
 | `release.yaml` | **Agentic release quality gate** | gate de qualidade agregado da release |
 | `test.yaml` | test matrix (Linux/macOS/Windows) + race | testes Go multiplataforma |
-| `test-install.yaml` | `test` | instala o fork de fonte e **verifica que o binário é o Ollama Full** |
+| `test-install.yaml` | `test` | instala o fork de fonte e **verifica que o binário é o Classe A+** |
 | `dz23-windows-installer.yaml` | `installer` | build CPU + Desktop + **instalador Windows (não assinado)** |
 | `dz23-multi-provider.yaml` / `dz23-provider-smoke.yaml` | provider gates/smoke | roteamento multi-provider |
 
@@ -39,7 +39,7 @@ check obrigatório só conta com conclusão **`success`** — `skipped`, `cancel
 
 Conjunto obrigatório verificado — apenas os contexts que **realmente rodam num
 commit de `main`/tag** e constituem a prova de release **deste fork** (camada
-agentic Ollama Full): `Preserve Class A+ surfaces`, `Go agentic and server gates`,
+agentic Classe A+): `Preserve Class A+ surfaces`, `Go agentic and server gates`,
 `PostgreSQL RLS, Redis DLQ and OTLP integration`, `Web and mobile quality`,
 `Generate SBOM`.
 
@@ -94,3 +94,33 @@ agentic Ollama Full): `Preserve Class A+ surfaces`, `Go agentic and server gates
 O estado agregado atual do produto é **RELEASE_CANDIDATE** (núcleo verde,
 instalador Windows não assinado disponível), com assinatura e publicação
 multiplataforma **BLOCKED_BY_EXTERNAL_DEPENDENCY**.
+
+## Verificação de release ancorada (sem certificado)
+
+`scripts/verify-release-artifact.sh` confere o manifesto (`sha256sum.txt`) e sua
+assinatura destacada. Como a chave pública viaja junto do release, a assinatura
+sozinha é auto-referente; para ancorar confiança **sem** depender de attestation,
+o script aceita (todos opcionais, fail-closed quando fornecidos):
+
+- `OLLAMA_RELEASE_PUBKEY_SHA256` — SHA-256 esperado do PEM da chave pública,
+  publicado fora do release (neste repo/docs). Sem ele, o script avisa que a
+  chave não está pinada.
+- `OLLAMA_RELEASE_EXPECT_REPOSITORY` / `OLLAMA_RELEASE_EXPECT_COMMIT` /
+  `OLLAMA_RELEASE_EXPECT_REF` — identidade esperada em `release-metadata.json`.
+  Quando qualquer um é definido, o script exige que o `release-metadata.json`
+  exista, esteja **coberto pelo manifesto assinado** e bata com o esperado.
+
+Exemplo:
+
+```bash
+OLLAMA_RELEASE_PUBKEY_SHA256=<sha256-do-pem> \
+OLLAMA_RELEASE_EXPECT_REPOSITORY=DZ23-LTDA/hades-ollama \
+OLLAMA_RELEASE_EXPECT_COMMIT=<sha> \
+  bash scripts/verify-release-artifact.sh sha256sum.txt sha256sum.txt.sig release-signing-public.pem
+```
+
+Teste: `bash scripts/verify-release-artifact.test.sh` (gera keypair/manifesto/
+assinatura temporários e cobre chave trocada, identidade divergente, manifesto
+que não cobre o metadata e checksum adulterado). A assinatura criptográfica
+confiável (Authenticode/attestation) continua sendo o gate externo pendente;
+este pinning reduz a confiança auto-referente sem exigir o certificado.

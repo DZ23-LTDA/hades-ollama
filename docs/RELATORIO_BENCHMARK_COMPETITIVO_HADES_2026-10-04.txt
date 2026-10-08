@@ -1,0 +1,68 @@
+/goal objetivo e ser melhor e mais completo que eles Builder.io
+FlutterFlow
+GitHub Copilot-Workspace
+OpenHands
+Devin
+Plandex
+Roo Code
+Cline
+Aider
+Claude Code
+Void
+Trae
+Zed
+Windsurf
+Cursor
+Databutton
+Marblism
+Create.xyz
+Replit Agent
+v0 (Vercel)
+Base44
+Bolt.diy
+Bolt.new
+Lovable.dev
+perplexity
+polsia
+manus
+omniroute
+deepseek
+códex
+chatgpt
+gemini
+agente hermes
+hercules.app
+verdent.ai
+SWE-agent (Princeton)
+MetaGPT / ChatDev
+AutoGen (Microsoft) / CrewAI
+Continue.dev
+Ollama / vLLM
+E2B (Code Interpreter Sandboxes)
+GROK BOT
+blink
+
+repositórios GitHub
+
+https://github.com/Dpro-at/Tel-Agent
+https://github.com/wickedapp/openclaw-office
+https://github.com/block/buzz
+https://github.com/lemonade-sdk/lemonade
+https://github.com/agentconnect-md/agentconnect
+https://github.com/nexu-io/open-design
+https://github.com/renatoasse/opensquad
+https://github.com/vinzdg/codenotch
+https://github.com/MakazhanAlpamys/Soup
+https://github.com/dyad-sh/dyad
+https://github.com/BerriAI/litellm
+https://github.com/langgenius/dify
+https://github.com/HarnessRouter/harnessrouter
+https://github.com/decolua/9router
+https://github.com/tldraw/tldraw
+https://github.com/xyflow/xyflow
+https://github.com/n8n-io/n8n
+https://github.com/vinzdg/codenotch
+https://github.com/agentscope-ai/agentscope-java
+
+
+entre outros

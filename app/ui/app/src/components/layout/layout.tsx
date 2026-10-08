@@ -1,11 +1,30 @@
 import { Link } from "@tanstack/react-router";
 import { ChatIcon } from "@/components/ChatIcon";
 import { isWindowsPlatform } from "@/lib/platform";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 // The agentic desktop shell is navigation-first. Keep the sidebar visible by
 // default and preserve the operator's choice only for the current session.
 let sessionSidebarOpen = true;
+
+// The sidebar width is resizable via a draggable divider and is remembered
+// across sessions, so the operator can fix it where they want.
+const SIDEBAR_MIN_WIDTH = 176;
+const SIDEBAR_MAX_WIDTH = 440;
+const SIDEBAR_DEFAULT_WIDTH = 208;
+
+function getStoredSidebarWidth(): number {
+  try {
+    const raw = window.localStorage.getItem("hades_sidebar_width");
+    const value = raw ? parseInt(raw, 10) : NaN;
+    if (!Number.isNaN(value) && value >= SIDEBAR_MIN_WIDTH && value <= SIDEBAR_MAX_WIDTH) {
+      return value;
+    }
+  } catch {
+    // Restricted storage: fall back to the default width.
+  }
+  return SIDEBAR_DEFAULT_WIDTH;
+}
 
 export function SidebarLayout({
   sidebar,
@@ -15,9 +34,73 @@ export function SidebarLayout({
   sidebar: React.ReactNode;
   title?: string;
 }>) {
-  const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
+  const [isMobile, setIsMobile] = useState(
+    () => typeof window !== "undefined" && window.innerWidth < 768,
+  );
   const [sidebarOpen, setSidebarOpen] = useState(() => (isMobile ? false : sessionSidebarOpen));
+  const [sidebarWidth, setSidebarWidth] = useState(getStoredSidebarWidth);
+  const [resizing, setResizing] = useState(false);
   const isWindows = isWindowsPlatform();
+
+  // Drag-to-resize: while the divider is held, track the pointer and clamp the
+  // width; release ends the drag. The width is persisted below so it sticks.
+  useEffect(() => {
+    if (!resizing) return;
+    const onMove = (event: MouseEvent) => {
+      const next = Math.min(
+        SIDEBAR_MAX_WIDTH,
+        Math.max(SIDEBAR_MIN_WIDTH, Math.round(event.clientX)),
+      );
+      setSidebarWidth(next);
+    };
+    const onUp = () => setResizing(false);
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+    const previousCursor = document.body.style.cursor;
+    const previousSelect = document.body.style.userSelect;
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+    return () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+      document.body.style.cursor = previousCursor;
+      document.body.style.userSelect = previousSelect;
+    };
+  }, [resizing]);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem("hades_sidebar_width", String(sidebarWidth));
+    } catch {
+      // Ignore storage failures (private mode / restricted webview).
+    }
+  }, [sidebarWidth]);
+
+  useEffect(() => {
+    const updateViewport = () => {
+      const mobile = window.innerWidth < 768;
+      setIsMobile(mobile);
+      if (!mobile) {
+        setSidebarOpen(true);
+        sessionSidebarOpen = true;
+      }
+    };
+    updateViewport();
+    window.addEventListener("resize", updateViewport);
+    return () => window.removeEventListener("resize", updateViewport);
+  }, []);
+
+  useEffect(() => {
+    if (!isMobile || !sidebarOpen) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        sessionSidebarOpen = false;
+        setSidebarOpen(false);
+      }
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [isMobile, sidebarOpen]);
 
   const toggleSidebar = () => {
     sessionSidebarOpen = !sidebarOpen;
@@ -27,7 +110,7 @@ export function SidebarLayout({
   return (
     <div className="flex h-screen w-full overflow-hidden dark:bg-neutral-900">
       <div
-        className={`absolute flex mx-2 py-2 z-20 items-center transition-[left] duration-375 text-neutral-500 dark:text-neutral-400 ${sidebarOpen ? (isWindows ? "left-2" : "left-[140px]") : "left-2"}`}
+        className={`absolute z-50 mx-2 flex items-center py-2 text-neutral-500 transition-[left] duration-300 dark:text-neutral-400 ${isMobile ? (sidebarOpen ? "left-[17rem]" : "left-2") : sidebarOpen ? (isWindows ? "left-2" : "left-[140px]") : "left-2"}`}
       >
         <button
           onClick={toggleSidebar}
@@ -35,8 +118,8 @@ export function SidebarLayout({
             e.stopPropagation();
           }}
           className="h-9 w-9 flex items-center justify-center rounded-full hover:bg-neutral-100 dark:hover:bg-neutral-700/75 cursor-pointer"
-          aria-label={sidebarOpen ? "Hide sidebar" : "Show sidebar"}
-          title={sidebarOpen ? "Hide sidebar" : "Show sidebar"}
+          aria-label={sidebarOpen ? "Ocultar barra lateral" : "Mostrar barra lateral"}
+          title={sidebarOpen ? "Ocultar barra lateral" : "Mostrar barra lateral"}
         >
           <svg
             className="h-5 w-5 fill-current"
@@ -51,7 +134,7 @@ export function SidebarLayout({
           <Link
             to="/c/$chatId"
             params={{ chatId: "new" }}
-            title="New chat"
+            title="Nova conversa"
             className={`flex ml-1 items-center justify-center rounded-full transition-opacity duration-375 h-9 w-9 hover:bg-neutral-100 dark:hover:bg-neutral-700 ${
               sidebarOpen ? "opacity-0 pointer-events-none" : "opacity-100"
             }`}
@@ -60,20 +143,50 @@ export function SidebarLayout({
           </Link>
         )}
       </div>
+      {isMobile && sidebarOpen && (
+        <button
+          type="button"
+          aria-label="Fechar menu"
+          className="fixed inset-0 z-30 cursor-default bg-black/30 backdrop-blur-[1px] md:hidden"
+          onClick={() => {
+            sessionSidebarOpen = false;
+            setSidebarOpen(false);
+          }}
+        />
+      )}
       <div
-        className={`flex max-h-screen flex-col transition-[width] duration-300 ${
-          sidebarOpen
-            ? "w-48 border-r border-neutral-200 bg-neutral-50 dark:border-neutral-800 dark:bg-neutral-950/40"
-            : "w-0"
+        style={!isMobile && sidebarOpen ? { width: sidebarWidth } : undefined}
+        className={`flex max-h-screen flex-col overflow-hidden border-neutral-200 bg-neutral-50 ${resizing ? "" : "transition-[width,transform] duration-300"} dark:border-neutral-800 dark:bg-neutral-950/40 ${
+          isMobile
+            ? `fixed inset-y-0 left-0 z-40 w-72 border-r shadow-xl ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`
+            : sidebarOpen
+              ? "relative border-r"
+              : "relative w-0"
         }`}
       >
         <div
           onDoubleClick={() => window.doubleClick && window.doubleClick()}
           onMouseDown={() => window.drag && window.drag()}
-          className="flex-none h-13 w-full"
+          className="h-13 w-full flex-none"
         ></div>
-        {sidebarOpen && sidebar}
+        {sidebar}
       </div>
+      {!isMobile && sidebarOpen && (
+        <div
+          role="separator"
+          aria-orientation="vertical"
+          aria-label="Redimensionar a barra lateral"
+          title="Arraste para redimensionar · duplo clique para restaurar"
+          onMouseDown={(event) => {
+            event.preventDefault();
+            setResizing(true);
+          }}
+          onDoubleClick={() => setSidebarWidth(SIDEBAR_DEFAULT_WIDTH)}
+          className={`relative z-20 w-1 shrink-0 cursor-col-resize transition-colors hover:bg-violet-400 dark:hover:bg-violet-500 ${
+            resizing ? "bg-violet-400 dark:bg-violet-500" : "bg-neutral-200 dark:bg-neutral-800"
+          }`}
+        />
+      )}
       <main className="flex min-w-0 flex-1 flex-col transition-all duration-300">
         <div
           className={`h-13 z-10 flex w-full flex-none items-center bg-white dark:bg-neutral-900 ${title ? "" : isWindows ? "xl:hidden" : "xl:fixed xl:bg-transparent xl:dark:bg-transparent"}`}
@@ -82,7 +195,7 @@ export function SidebarLayout({
         >
           {title && (
             <h1
-              className={`${sidebarOpen ? "pl-6" : isWindows ? "pl-16" : "pl-36"} transition-[padding-left] duration-300 font-rounded text-md font-medium dark:text-white`}
+              className={`${isMobile ? "pl-16" : sidebarOpen ? "pl-6" : isWindows ? "pl-16" : "pl-36"} font-rounded text-md font-medium transition-[padding-left] duration-300 dark:text-white`}
             >
               {title}
             </h1>

@@ -87,7 +87,7 @@ const CopyButton: React.FC<CopyButtonProps> = ({
       {showLabels ? (
         <span className="flex items-center gap-1">
           {icon}
-          {isCopied ? "Copied" : "Copy"}
+          {isCopied ? "Copiado" : "Copiar"}
         </span>
       ) : (
         icon

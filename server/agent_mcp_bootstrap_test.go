@@ -1,9 +1,8 @@
 package server
 
 import (
-	"fmt"
+	"encoding/json"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -19,19 +18,25 @@ func writeAgentConfig(t *testing.T, name, content string) string {
 }
 
 func TestLoadAgentMCPBootstrapsStrictManifest(t *testing.T) {
-	// A política de MCP recusa link simbólico. Em distribuições onde /bin/echo
-	// é link (Ubuntu com coreutils via cargo, por exemplo), o manifesto precisa
-	// apontar para o caminho real.
-	echoPath, err := exec.LookPath("echo")
+	// Use the running test binary as a real absolute executable so the strict
+	// manifest validation (absolute path + executable regular file) passes on
+	// every OS, including Windows where /bin/echo does not exist.
+	executable, err := os.Executable()
 	if err != nil {
-		t.Skipf("echo não encontrado no PATH: %v", err)
+		t.Fatal(err)
 	}
-	echoPath, err = filepath.EvalSymlinks(echoPath)
+	manifest, err := json.Marshal([]map[string]any{{
+		"id":               "local",
+		"command":          executable,
+		"args":             []string{"mcp"},
+		"allowed_methods":  []string{"tools/list"},
+		"environment_vars": []string{"PATH"},
+		"timeout_seconds":  3,
+	}})
 	if err != nil {
-		t.Skipf("não foi possível resolver o caminho real de echo: %v", err)
+		t.Fatal(err)
 	}
-	manifest := fmt.Sprintf(`[{"id":"local","command":%q,"args":["mcp"],"allowed_methods":["tools/list"],"environment_vars":["PATH"],"timeout_seconds":3}]`, echoPath)
-	path := writeAgentConfig(t, "mcp.json", manifest)
+	path := writeAgentConfig(t, "mcp.json", string(manifest))
 	t.Setenv("OLLAMA_AGENT_MCP", path)
 	manager, err := loadAgentMCP()
 	if err != nil {

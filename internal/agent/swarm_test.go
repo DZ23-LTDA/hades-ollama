@@ -79,6 +79,53 @@ func TestAgentOrchestratorPersistsAndCancelsPlannedJob(t *testing.T) {
 	}
 }
 
+func TestAgentOrchestratorCancelsRunningJob(t *testing.T) {
+	root := t.TempDir()
+	started := make(chan struct{})
+	runner := func(ctx context.Context, task AgentTask) (AgentResult, error) {
+		close(started) // single task -> called once
+		<-ctx.Done()   // block until the orchestration is cancelled
+		return AgentResult{}, ctx.Err()
+	}
+	orchestrator, err := NewAgentOrchestrator(root, runner)
+	if err != nil {
+		t.Fatal(err)
+	}
+	job, err := orchestrator.Plan("cancel running", root, "", []AgentRole{RoleTesting}, AgentBudget{MaxAgents: 1})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	done := make(chan OrchestrationJob, 1)
+	go func() {
+		result, _ := orchestrator.Run(context.Background(), job.ID)
+		done <- result
+	}()
+
+	select {
+	case <-started:
+	case <-time.After(3 * time.Second):
+		t.Fatal("runner did not start")
+	}
+
+	cancelled, err := orchestrator.Cancel(job.ID)
+	if err != nil {
+		t.Fatalf("cancel running job: %v", err)
+	}
+	if cancelled.State != OrchestrationCancelled {
+		t.Fatalf("Cancel state = %v, want %v", cancelled.State, OrchestrationCancelled)
+	}
+
+	select {
+	case result := <-done:
+		if result.State != OrchestrationCancelled {
+			t.Fatalf("Run final state = %v, want %v", result.State, OrchestrationCancelled)
+		}
+	case <-time.After(3 * time.Second):
+		t.Fatal("Run did not return after cancellation (job was not interrupted)")
+	}
+}
+
 func TestAgentOrchestratorOrganizationScope(t *testing.T) {
 	orchestrator, err := NewAgentOrchestrator(t.TempDir(), func(context.Context, AgentTask) (AgentResult, error) { return AgentResult{}, nil })
 	if err != nil {

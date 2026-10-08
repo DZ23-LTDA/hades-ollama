@@ -3,15 +3,17 @@
 //
 // Replaces a bare `npm audit --omit=dev --audit-level=high`: it STILL fails on
 // any high/critical advisory, EXCEPT ids in ALLOWLIST — advisories that have no
-// fixed version to upgrade to yet and are reached only through React Native's /
-// Expo's build-time tooling (not the shipped app). New/unknown high advisories,
-// and any advisory that gains a fix, still fail the gate. Remove an entry once
-// upstream ships a fix so the audit re-asserts it.
+// fixed version to upgrade to yet and are reached only through build-time
+// tooling (not the shipped app). New/unknown high advisories, and any advisory
+// that gains a fix, still fail the gate. Remove an entry once upstream ships a
+// fix so the audit re-asserts it.
 //
-// Lockfile bumps applied on 2026-10-08 (non-breaking `npm audit fix`) removed two
-// entries that used to need allowlisting: GHSA-pqg4-j6r4-53mv (critical,
-// shell-quote 1.10.0 -> 1.12.0) and GHSA-68fv-2mgg-jv7q (high, source-map-js
-// 1.2.1 -> 1.2.2). Keep them out of the allowlist.
+// Prefer pinning/upgrading over allowlisting. Advisories closed that way on
+// 2026-10-08 and kept OUT of the allowlist:
+//  - shell-quote 1.10.0 -> 1.12.0 and source-map-js 1.2.1 -> 1.2.2, via the
+//    non-breaking `npm audit fix` (GHSA-pqg4-j6r4-53mv, GHSA-68fv-2mgg-jv7q);
+//  - node-forge pinned by the `overrides` entry in package.json to the patched
+//    upstream tarball 1.4.1-0 (GHSA-86w9-cpqp-85rv).
 import { execSync } from "node:child_process";
 
 const ALLOWLIST = new Map([
@@ -19,19 +21,10 @@ const ALLOWLIST = new Map([
     "GHSA-vfj7-8cjw-p6xm",
     "braces <=3.0.3 stack-exhaustion DoS: 3.0.3 is the latest published release " +
       "and is still in the vulnerable range (no fix available). Reached only via " +
-      "React Native's test/build tooling (react-native -> babel-jest -> " +
-      "@jest/transform -> micromatch -> braces), not in the shipped app. The only " +
-      "fix npm offers is react-native@0.87.1, a breaking major upgrade. Remove when " +
-      "the dependency chain ships a fixed braces.",
-  ],
-  [
-    "GHSA-86w9-cpqp-85rv",
-    "node-forge RSA PKCS#1 v1.5 signature verification accepts extra nested " +
-      "DigestAlgorithm elements: node-forge 1.4.0 is the latest published release " +
-      "and is still in the vulnerable range (no fix available). Reached only via " +
-      "Expo's build-time CLI (expo -> @expo/cli -> @expo/code-signing-certificates " +
-      "-> node-forge), not in the shipped app. The only fix npm offers is " +
-      "expo@44.0.6, a breaking downgrade. Remove when Expo ships a fixed chain.",
+      "React Native's bundler (metro -> micromatch -> braces) and its test/build " +
+      "tooling at build time, not in the shipped app. The only fix npm offers is " +
+      "react-native@0.87.1, a breaking major upgrade. Remove when the dependency " +
+      "chain ships a fixed braces.",
   ],
 ]);
 

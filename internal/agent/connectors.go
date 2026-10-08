@@ -48,11 +48,12 @@ type ConnectorOperation struct {
 }
 
 type ConnectorManager struct {
-	mu          sync.RWMutex
-	connectors  map[string]ConnectorConfig
-	client      *http.Client
-	auth        *AuthStore
-	persistPath string
+	mu                  sync.RWMutex
+	connectors          map[string]ConnectorConfig
+	organizationSecrets map[string]map[string]string
+	client              *http.Client
+	auth                *AuthStore
+	persistPath         string
 }
 
 var (
@@ -70,13 +71,37 @@ type connectorLoopbackContextKey struct{}
 
 func NewConnectorManager() *ConnectorManager {
 	return &ConnectorManager{
-		connectors: make(map[string]ConnectorConfig),
+		connectors:          make(map[string]ConnectorConfig),
+		organizationSecrets: make(map[string]map[string]string),
 		client: NewSafeEgressHTTPClient(EgressOptions{
 			Callsite:     "connectors",
 			Timeout:      30 * time.Second,
 			MaxBodyBytes: 2 << 20,
 		}),
 	}
+}
+
+// SetOrganizationSecret binds a credential to one organization and purpose.
+// Tenant-scoped calls never fall back to process-global environment values.
+func (m *ConnectorManager) SetOrganizationSecret(organizationID, name, value string) error {
+	organizationID = strings.TrimSpace(organizationID)
+	name = normalizeSecretName(name)
+	if organizationID == "" || name == "" || strings.TrimSpace(value) == "" {
+		return errors.New("organization, secret name and value are required")
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.organizationSecrets[organizationID] == nil {
+		m.organizationSecrets[organizationID] = make(map[string]string)
+	}
+	m.organizationSecrets[organizationID][name] = value
+	return nil
+}
+
+func (m *ConnectorManager) organizationSecret(organizationID, name string) string {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	return m.organizationSecrets[strings.TrimSpace(organizationID)][normalizeSecretName(name)]
 }
 
 // NewPersistentConnectorManager loads a connector manifest that contains only
@@ -586,7 +611,11 @@ func (m *ConnectorManager) call(ctx context.Context, organizationID string, conf
 		}
 	}
 	if token == "" && config.TokenEnv != "" {
-		token = multillm.CredentialValue(config.TokenEnv)
+		if global {
+			token = multillm.CredentialValue(config.TokenEnv)
+		} else {
+			token = m.organizationSecret(organizationID, config.TokenEnv)
+		}
 	}
 	if strings.TrimSpace(token) == "" && (config.TokenEnv != "" || config.OAuthProvider != "") {
 		return 0, "", fmt.Errorf("%w for connector %q", ErrConnectorCredentialUnavailable, connectorID)

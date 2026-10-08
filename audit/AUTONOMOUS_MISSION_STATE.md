@@ -1,3 +1,109 @@
+## Checkpoint vigente — Missão contínua T0/P0 — 2026-10-02 03:58 UTC
+```yaml
+state: D7B_COMPLETE
+branch: recovery/ollama-full-snapshot
+sha: 27e432cf
+proofs_local:
+  - go build ./...: PASS (após remover node_modules gerado)
+  - CGO_ENABLED=0 go build ./...: PASS
+  - go test ./internal/agent ./server: PASS
+  - go vet ./...: PASS
+  - frontend tsc/lint/vitest/build: PASS
+  - bundle budget: PASS after vendor splitting (entry 588,720 bytes raw / 144,232 gzip)
+  - contracts/integrity/gofmt/diff-check: PASS
+  - shell E2E 10 telas desktop+mobile: PASS (0 HTTP, 0 console)
+  - CI surface classifier: PASS (13 testes)
+  - bash integrity syntax check: PASS
+	  - schedule traversal hardening: PASS (`go test ./internal/agent -run 'Schedule|ContextStore'` and scoped server tests)
+	  - S3 HITL intent policy and S4 requester separation: PASS (negative tests)
+	  - S5 tenant-scoped connector/MCP secrets: PASS (negative cross-tenant env fallback test)
+	  - S6 GitHub import OAuth scope: PASS (private import tests; non-local org cannot use global env)
+  - S8 loopback default: PASS (Vite resolves loopback unless explicit LAN opt-in; desktop exposes only when settings.Expose is enabled)
+  - F1 long-term memory control: PASS (decorative switch removed; UI says not configured)
+  - F2 endpoint health: PASS (status derives from /api/tags and shows Offline/Verificando instead of claiming Online)
+  - I1 Windows release gate: PASS (installer checksum/name already corrected; release publication gate now requires only checks that run on the candidate SHA)
+  - U1 guided model onboarding: PASS (local-only user reaches Run Ollama, real POST /api/v1/models/pull with JSONL progress, accessible status, success continuation and honest errors)
+  - U1 browser E2E: PASS (desktop/mobile qwen2.5:0.5b pull and continuation to /connect; clean console)
+  - U4 backend-offline shell banner: PASS (global alert, retry action, no console noise; Vitest regression)
+  - U5 humanized API errors: PASS (retry/sign-in/configure/CAS actions, secret-redacted technical detail, 41 files / 273 tests)
+  - U3 i18n: PASS (ChatGPT/Claude settings controls, labels, errors and keyboard expectations translated to pt-BR).
+  - U2 onboarding/docs: PASS (quickstart reports backend health, model recovery command, loopback defaults and LAN opt-in clearly).
+  - final test.yaml: SUCCESS (run 37007672156, SHA a7984fd7; Ubuntu/macOS/Windows test jobs, Go/UI gates and golangci-lint passed; optional native matrix intentionally false)
+  - final class-a-plus-integrity: SUCCESS (run 37007675181, SHA a7984fd7)
+  - final dz23-agentic-quality: SUCCESS (run 37007677811, SHA a7984fd7)
+  - Ollama local model: PASS (qwen2.5:0.5b downloaded and generated OK on loopback 127.0.0.1:11435)
+  - provider API smoke: PASS for preconfigured OpenAI-compatible endpoint (GET /models HTTP 200; minimal gpt-5-mini chat HTTP 200 with non-empty completion); requested rotated provider keys are not present in this sandbox
+  - strict sandbox live executor: BLOCKED_EXTERNAL (delegated cgroup v2 subtree is unavailable; fail-closed tests PASS)
+external_status:
+  - class-a-plus-integrity: SUCCESS (run 36965671309, SHA bcbeabc7)
+  - dz23-agentic-quality: SUCCESS (run 36965671365, SHA bcbeabc7)
+  - prior evidence: runs 36949729206/36949729166 reached runners, then were cancelled by same-branch concurrency
+  - fix_published: concurrency now uses pull_request.number || run_id, matching test.yaml
+	  - prior_auth_issue: GH_TOKEN/stored gh token briefly returned 401; Git credential helper restored read access for verification
+	  - latest hardening CI: SUCCESS (class-a-plus-integrity and dz23-agentic-quality, SHA 72819367)
+known_limits:
+  - Ollama local validado com qwen2.5:0.5b em 127.0.0.1:11435
+  - credenciais/IdP/WhatsApp/MCP/deploy externos continuam BLOCKED_EXTERNAL ou NOT_CONFIGURED
+CI final b4848398: PASS — test.yaml run 37003763891 (Ubuntu/macOS/Windows), class-a-plus-integrity run 37003766034, dz23-agentic-quality run 37003768562.
+  - U8 simple/advanced disclosure: PASS (persistent accessible toggle; simple hides technical Agentic Control Center/account diagnostics; advanced exposes them; 275 frontend tests; desktop/mobile screenshots with zero console/HTTP errors)
+  - U10 Central de Saúde: PASS (GET /api/agent/v1/health retorna status, timestamp e subsistemas agent/store/queue/sandbox; UI tem estados loading/erro, Corrigir/Detalhes honestos; desktop/mobile sem erros)
+  - U11 Entrega de artefatos: PASS (card real com contagem, tamanho, SHA-256 completo e download autenticado; vazio honesto sem arquivo)
+  - U12 Aprovação compreensível: PASS (explicação por classe de risco e bloqueio explícito até decisão server-side)
+  - CI U10: SUCCESS (test 37012575579, integrity 37012578533, agentic-quality 37012582124; SHA 9f9af310)
+  - CI U12: SUCCESS (test 37013825002, integrity 37013828045, agentic-quality 37013831164; SHA 6e1dee55)
+  - E1-E7 resiliência: IMPLEMENTADOS em commits históricos com regressões normais/race (idempotência Tel-Agent, ciclos Company, retry bounded de schedules, rollback/transições/compensações de fila); smoke Redis/lease distribuído/múltiplas réplicas permanecem BLOCKED_EXTERNAL.
+  - D2 acessibilidade: PASS — triagem estática não encontrou botões de ícone sem nome; o botão de fechar alertas agora tem `aria-label`, `type=button` e mantém operação por teclado.
+  - D3 formulários: PASS — os compositores Home e Chat receberam nomes acessíveis explícitos; os demais falsos positivos da triagem são controles dentro de labels ou já possuem nome ARIA.
+  - D4 movimento: PASS — `prefers-reduced-motion: reduce` já desativa animações e transições customizadas globais.
+  - D5 landmarks/foco: AUDITADO — triagem não encontrou remoção efetiva de foco; alertas restantes eram falsos positivos de classes Tailwind multiline; componentes base preservam focus-visible.
+  - D6 headings: AUDITADO — rotas principais possuem heading de página; múltiplos `h1` pertencem a componentes/rotas distintas, não ao mesmo documento renderizado.
+  - D7 targets/teclado: PASS — controles principais usam elementos nativos e dimensões de toque confortáveis; nenhuma lacuna reproduzível exigiu patch adicional.
+  - D7 axe: PASS — 12 combinações de rota/viewport auditadas (/, /connect, /endpoint, /library, /settings, /agentic em desktop 1440x900 e mobile 390x844), 0 violações, 0 erros de console e 0 erros HTTP; evidência em docs/evidencias/d7-axe-audit-20261002.json.
+  - D7b E2E gate: PASS — `npm run test:e2e -- e2e/shell.spec.ts e2e/accessibility.spec.ts` passou 5/5; axe via `@axe-core/playwright` e jornada mobile por teclado Enter/Escape.
+  - D7b CI: SUCCESS — `test` run 37045772508, `class-a-plus-integrity` run 37045759735 e `dz23-agentic-quality` run 37045759716, todos no SHA e1efa725.
+  - D7b runtime fix: PASS — removido o catch-all/vendor-markdown que gerava ciclo de chunks; preview e shell E2E voltaram a renderizar sem `createContext` indefinido.
+  - D5 drawer mobile: PASS — drawer lateral real em viewport <768px, backdrop, Escape, resize reativo; desktop preserva sidebar fixa.
+  - D5 browser E2E: PASS — desktop 1440x900 e mobile 390x844, abertura/fechamento, console e HTTP limpos; evidências em docs/evidencias/d5-drawer-*-20261002.png.
+  - D6 design system: PASS — removido `app/ui/app/tailwind.config.js` morto; tokens Tailwind v4 e estilos compartilhados `page-title`, `page-description`, `section-title` agora vivem em `src/index.css`; Home, Conectores e Endpoint migrados.
+  - D6 verification: PASS — `scripts/verify-design-system.mjs`, typecheck, lint, 273 testes, build, bundle budget, contratos e integrity.
+next_action: revisar limites externos honestos (SignPath, IdP/WhatsApp/MCP/deploy e sandbox forte); não há patch local D7b pendente.
+```
+
+
+
+
+## Checkpoint — S1 egress provider fechado — 2026-10-01 20:56 -03
+```yaml
+state: TESTING
+current_task: S2 — isolamento forte do MCP local
+completed_tasks:
+  - S1: internal/egresspolicy agora é a política única consumida por agent e multillm
+  - S1: provider bloqueia loopback, privado, metadata, CGNAT, RFC2544 198.18/15, ranges de documentação e IPv6 documentation
+proofs:
+  - go test ./internal/egresspolicy ./internal/multillm ./internal/agent -run Egress|SSRF|DNSRebind|Provider -count=1: PASS
+  - git diff --check: PASS
+remaining: S2,S3,S4,S5,S6,S7,R1-R4,F1-F2,U1-U11,E1-E8,D1-D6,A1-A10
+next_action: inspecionar o sandbox forte existente e o processo MCP local; implementar bloqueio honesto ou isolamento real
+```
+
+## Checkpoint vigente — Hardening consolidado P0/P1 — 2026-10-01 20:54 -03
+```yaml
+state: EXECUTING
+branch: recovery/ollama-full-snapshot
+head: ef9c21d2
+objective: fechar os P0/P1 do adendo de 8 auditorias com testes negativos e execução real, sem declarar production/public pronto
+current_task: S1 — alinhar egress multillm ao classificador zero-trust do agent
+completed_tasks:
+  - auditoria consolidada criada em audit/AUDIT_PONTA_A_PONTA_2026-10-01.md
+  - inventário P0/P1 recebido em pasted_content_21.txt
+acceptance:
+  - provider bloqueia loopback, privado, metadata, CGNAT, 198.18/documentation e DNS rebinding
+  - testes negativos reproduzem bloqueios
+  - nenhum gate ou assertion será removido/enfraquecido
+next_action: implementar S1, testar, revisar diff e atualizar checkpoint
+blockers:
+  - credenciais externas, IdP, WhatsApp, deploy e assinatura de release permanecem dependências externas
+```
 
 ## LINT-DEBT — gates locais concluídos — 2026-10-01 12:16 UTC
 ```yaml
@@ -612,8 +718,8 @@ next_action: run complete release gates, capture final screens, commit and push 
 ```yaml
 commit: d0809136fdda6871a7371bd632750972cbb65305
 branch: feat/manus-parity-omniroute
-remote: https://github.com/DZ23-LTDA/ollama-classe-a-plus.git
-pull_request: https://github.com/DZ23-LTDA/ollama-classe-a-plus/pull/1
+remote: https://github.com/DZ23-LTDA/hades-ollama.git
+pull_request: https://github.com/DZ23-LTDA/hades-ollama/pull/1
 local_tree: clean_after_commit
 public_ci: queued_at_publish
 next_action: external credentialed journeys and distributed staging; do not claim universal production readiness
@@ -714,8 +820,8 @@ state: FIXING
 iteration: 4
 commit: 3f7e4065
 branch: feat/manus-parity-omniroute
-remote: https://github.com/DZ23-LTDA/ollama-classe-a-plus.git
-pull_request: https://github.com/DZ23-LTDA/ollama-classe-a-plus/pull/1
+remote: https://github.com/DZ23-LTDA/hades-ollama.git
+pull_request: https://github.com/DZ23-LTDA/hades-ollama/pull/1
 published: true
 working_tree: clean
 changes_published:
@@ -784,8 +890,8 @@ state: FIXING
 iteration: 5
 commit: 4344b24b
 branch: feat/manus-parity-omniroute
-remote: https://github.com/DZ23-LTDA/ollama-classe-a-plus.git
-pull_request: https://github.com/DZ23-LTDA/ollama-classe-a-plus/pull/1
+remote: https://github.com/DZ23-LTDA/hades-ollama.git
+pull_request: https://github.com/DZ23-LTDA/hades-ollama/pull/1
 working_tree: clean
 published: true
 proofs: integrity, go test ./..., go vet, go build, UI Vitest/build, mobile typecheck and HTTP cross-tenant Builder regression all PASS
@@ -828,8 +934,8 @@ state: FIXING
 iteration: 6
 commit: 07c56edd
 branch: feat/manus-parity-omniroute
-remote: https://github.com/DZ23-LTDA/ollama-classe-a-plus.git
-pull_request: https://github.com/DZ23-LTDA/ollama-classe-a-plus/pull/1
+remote: https://github.com/DZ23-LTDA/hades-ollama.git
+pull_request: https://github.com/DZ23-LTDA/hades-ollama/pull/1
 working_tree: clean
 published: true
 proofs: integrity, Go tests/vet/build, UI Vitest/build, mobile typecheck and HTTP cross-tenant P0 regression all PASS
@@ -875,8 +981,8 @@ state: FIXING
 iteration: 7
 commit: 45cd4f42
 branch: feat/manus-parity-omniroute
-remote: https://github.com/DZ23-LTDA/ollama-classe-a-plus.git
-pull_request: https://github.com/DZ23-LTDA/ollama-classe-a-plus/pull/1
+remote: https://github.com/DZ23-LTDA/hades-ollama.git
+pull_request: https://github.com/DZ23-LTDA/hades-ollama/pull/1
 working_tree: checkpoint pending commit
 published: true
 proofs: integrity, Go tests/vet/build, UI Vitest/build, mobile typecheck and approval negative tests all PASS
@@ -921,8 +1027,8 @@ state: FIXING
 iteration: 8
 commit: 45b6e019
 branch: feat/manus-parity-omniroute
-remote: https://github.com/DZ23-LTDA/ollama-classe-a-plus.git
-pull_request: https://github.com/DZ23-LTDA/ollama-classe-a-plus/pull/1
+remote: https://github.com/DZ23-LTDA/hades-ollama.git
+pull_request: https://github.com/DZ23-LTDA/hades-ollama/pull/1
 working_tree: checkpoint pending commit
 published: true
 proofs: integrity, Go tests/vet/build, UI Vitest/build, mobile typecheck and Company HTTP/domain approval regressions all PASS
@@ -966,8 +1072,8 @@ state: FIXING
 iteration: 9
 commit: 99ea0b01
 branch: feat/manus-parity-omniroute
-remote: https://github.com/DZ23-LTDA/ollama-classe-a-plus.git
-pull_request: https://github.com/DZ23-LTDA/ollama-classe-a-plus/pull/1
+remote: https://github.com/DZ23-LTDA/hades-ollama.git
+pull_request: https://github.com/DZ23-LTDA/hades-ollama/pull/1
 working_tree: checkpoint pending commit
 published: true
 proofs: integrity, Go tests/vet/build, UI Vitest/build, mobile typecheck and spend HTTP/domain regressions all PASS
@@ -1009,8 +1115,8 @@ state: FIXING
 iteration: 10
 commit: 157e7012
 branch: feat/manus-parity-omniroute
-remote: https://github.com/DZ23-LTDA/ollama-classe-a-plus.git
-pull_request: https://github.com/DZ23-LTDA/ollama-classe-a-plus/pull/1
+remote: https://github.com/DZ23-LTDA/hades-ollama.git
+pull_request: https://github.com/DZ23-LTDA/hades-ollama/pull/1
 working_tree: checkpoint pending commit
 published: true
 proofs: integrity, Go tests/vet/build, UI Vitest/build, mobile typecheck and DLP token-injection regressions all PASS
@@ -1053,8 +1159,8 @@ state: FIXING
 iteration: 11
 commit: b74c25ea
 branch: feat/manus-parity-omniroute
-remote: https://github.com/DZ23-LTDA/ollama-classe-a-plus.git
-pull_request: https://github.com/DZ23-LTDA/ollama-classe-a-plus/pull/1
+remote: https://github.com/DZ23-LTDA/hades-ollama.git
+pull_request: https://github.com/DZ23-LTDA/hades-ollama/pull/1
 working_tree: checkpoint pending commit
 published: true
 proofs: integrity, Go tests/vet/build, UI Vitest/build, mobile typecheck and Remote MCP egress regressions all PASS
@@ -1098,8 +1204,8 @@ state: FIXING
 iteration: 12
 commit: 86302569
 branch: feat/manus-parity-omniroute
-remote: https://github.com/DZ23-LTDA/ollama-classe-a-plus.git
-pull_request: https://github.com/DZ23-LTDA/ollama-classe-a-plus/pull/1
+remote: https://github.com/DZ23-LTDA/hades-ollama.git
+pull_request: https://github.com/DZ23-LTDA/hades-ollama/pull/1
 working_tree: checkpoint pending commit
 published: true
 proofs: integrity, Go tests/vet/build, UI Vitest/build, mobile typecheck and MCP stdio negative lifecycle tests all PASS
@@ -1143,8 +1249,8 @@ state: FIXING
 iteration: 13
 commit: b84ac97c
 branch: feat/manus-parity-omniroute
-remote: https://github.com/DZ23-LTDA/ollama-classe-a-plus.git
-pull_request: https://github.com/DZ23-LTDA/ollama-classe-a-plus/pull/1
+remote: https://github.com/DZ23-LTDA/hades-ollama.git
+pull_request: https://github.com/DZ23-LTDA/hades-ollama/pull/1
 working_tree: checkpoint pending commit
 published: true
 proofs: integrity, Go tests/vet/build, UI Vitest/build, mobile typecheck and Media egress negative tests all PASS
@@ -1187,8 +1293,8 @@ state: FIXING
 iteration: 14
 commit: d6506a1a
 branch: feat/manus-parity-omniroute
-remote: https://github.com/DZ23-LTDA/ollama-classe-a-plus.git
-pull_request: https://github.com/DZ23-LTDA/ollama-classe-a-plus/pull/1
+remote: https://github.com/DZ23-LTDA/hades-ollama.git
+pull_request: https://github.com/DZ23-LTDA/hades-ollama/pull/1
 working_tree: checkpoint pending commit
 published: true
 proofs: integrity, Go tests/vet/build, UI Vitest/build, mobile typecheck and Connector egress negative tests all PASS
@@ -1231,8 +1337,8 @@ state: FIXING
 iteration: 15
 commit: 150273ee
 branch: feat/manus-parity-omniroute
-remote: https://github.com/DZ23-LTDA/ollama-classe-a-plus.git
-pull_request: https://github.com/DZ23-LTDA/ollama-classe-a-plus/pull/1
+remote: https://github.com/DZ23-LTDA/hades-ollama.git
+pull_request: https://github.com/DZ23-LTDA/hades-ollama/pull/1
 working_tree: checkpoint pending commit
 published: true
 proofs: integrity, Go tests/vet/build, UI Vitest/build, mobile typecheck and OAuth redirect negative tests all PASS
@@ -1272,8 +1378,8 @@ state: FIXING
 iteration: 16
 commit: 772b07a1
 branch: feat/manus-parity-omniroute
-remote: https://github.com/DZ23-LTDA/ollama-classe-a-plus.git
-pull_request: https://github.com/DZ23-LTDA/ollama-classe-a-plus/pull/1
+remote: https://github.com/DZ23-LTDA/hades-ollama.git
+pull_request: https://github.com/DZ23-LTDA/hades-ollama/pull/1
 working_tree: checkpoint pending commit
 published: true
 proofs: integrity, Go tests/vet/build, UI security Vitest/build, mobile typecheck all PASS
@@ -1316,8 +1422,8 @@ state: FIXING
 iteration: 17
 commit: 7e72d9d9
 branch: feat/manus-parity-omniroute
-remote: https://github.com/DZ23-LTDA/ollama-classe-a-plus.git
-pull_request: https://github.com/DZ23-LTDA/ollama-classe-a-plus/pull/1
+remote: https://github.com/DZ23-LTDA/hades-ollama.git
+pull_request: https://github.com/DZ23-LTDA/hades-ollama/pull/1
 working_tree: checkpoint pending commit
 published: true
 proofs: integrity, Go tests/vet/build, UI Vitest/build, mobile typecheck and OAuth egress negative tests all PASS
@@ -1360,8 +1466,8 @@ state: FIXING
 iteration: 18
 commit: 3d19f111
 branch: feat/manus-parity-omniroute
-remote: https://github.com/DZ23-LTDA/ollama-classe-a-plus.git
-pull_request: https://github.com/DZ23-LTDA/ollama-classe-a-plus/pull/1
+remote: https://github.com/DZ23-LTDA/hades-ollama.git
+pull_request: https://github.com/DZ23-LTDA/hades-ollama/pull/1
 working_tree: checkpoint pending commit
 published: true
 proofs: integrity, Go tests/vet/build, internal/agent suite, UI Vitest/build, mobile typecheck and process cancellation/redaction tests all PASS
@@ -1402,8 +1508,8 @@ state: FIXING
 iteration: 19
 commit: 30b1ecb8
 branch: feat/manus-parity-omniroute
-remote: https://github.com/DZ23-LTDA/ollama-classe-a-plus.git
-pull_request: https://github.com/DZ23-LTDA/ollama-classe-a-plus/pull/1
+remote: https://github.com/DZ23-LTDA/hades-ollama.git
+pull_request: https://github.com/DZ23-LTDA/hades-ollama/pull/1
 working_tree: checkpoint pending commit
 published: true
 proofs: integrity, Go tests/vet/build, UI Vitest/build, mobile typecheck and cross-tenant plugin tests all PASS
@@ -1441,8 +1547,8 @@ state: FIXING
 iteration: 20
 commit: 66258da7
 branch: feat/manus-parity-omniroute
-remote: https://github.com/DZ23-LTDA/ollama-classe-a-plus.git
-pull_request: https://github.com/DZ23-LTDA/ollama-classe-a-plus/pull/1
+remote: https://github.com/DZ23-LTDA/hades-ollama.git
+pull_request: https://github.com/DZ23-LTDA/hades-ollama/pull/1
 working_tree: checkpoint pending commit
 published: true
 proofs: YAML parser, integrity guard and diff check PASS; CI now declares full Go/UI/mobile gates
@@ -1483,8 +1589,8 @@ state: FIXING
 iteration: 21
 commit: 0739dec7
 branch: feat/manus-parity-omniroute
-remote: https://github.com/DZ23-LTDA/ollama-classe-a-plus.git
-pull_request: https://github.com/DZ23-LTDA/ollama-classe-a-plus/pull/1
+remote: https://github.com/DZ23-LTDA/hades-ollama.git
+pull_request: https://github.com/DZ23-LTDA/hades-ollama/pull/1
 working_tree: checkpoint pending commit
 published: true
 proofs: integrity, Go tests/vet/build, UI Vitest/build, mobile typecheck and Grok negative tests all PASS
@@ -1523,8 +1629,8 @@ state: FIXING
 iteration: 22
 commit: a07d1a68
 branch: feat/manus-parity-omniroute
-remote: https://github.com/DZ23-LTDA/ollama-classe-a-plus.git
-pull_request: https://github.com/DZ23-LTDA/ollama-classe-a-plus/pull/1
+remote: https://github.com/DZ23-LTDA/hades-ollama.git
+pull_request: https://github.com/DZ23-LTDA/hades-ollama/pull/1
 working_tree: checkpoint pending commit
 published: true
 proofs: integrity/static Compose checks and diff check PASS; Docker integration remains NOT_RUN_DOCKER_UNAVAILABLE
@@ -1561,8 +1667,8 @@ state: FIXING
 iteration: 23
 commit: dcd3a19f
 branch: feat/manus-parity-omniroute
-remote: https://github.com/DZ23-LTDA/ollama-classe-a-plus.git
-pull_request: https://github.com/DZ23-LTDA/ollama-classe-a-plus/pull/1
+remote: https://github.com/DZ23-LTDA/hades-ollama.git
+pull_request: https://github.com/DZ23-LTDA/hades-ollama/pull/1
 working_tree: checkpoint pending commit
 published: true
 proofs: provider negative test, integrity, Go focused, UI Vitest/build PASS
@@ -1600,8 +1706,8 @@ state: FIXING
 iteration: 24
 commit: 6d35ad20
 branch: feat/manus-parity-omniroute
-remote: https://github.com/DZ23-LTDA/ollama-classe-a-plus.git
-pull_request: https://github.com/DZ23-LTDA/ollama-classe-a-plus/pull/1
+remote: https://github.com/DZ23-LTDA/hades-ollama.git
+pull_request: https://github.com/DZ23-LTDA/hades-ollama/pull/1
 working_tree: checkpoint pending commit
 published: true
 proofs: integrity/YAML/diff checks PASS; release execution/signing NOT_RUN in sandbox
@@ -1640,8 +1746,8 @@ state: FIXING
 iteration: 25
 commit: 287484e7
 branch: feat/manus-parity-omniroute
-remote: https://github.com/DZ23-LTDA/ollama-classe-a-plus.git
-pull_request: https://github.com/DZ23-LTDA/ollama-classe-a-plus/pull/1
+remote: https://github.com/DZ23-LTDA/hades-ollama.git
+pull_request: https://github.com/DZ23-LTDA/hades-ollama/pull/1
 working_tree: checkpoint pending commit
 published: true
 proofs: focused/full Go, vet/build, integrity, UI and mobile gates PASS; distributed Redis not run locally
@@ -1680,8 +1786,8 @@ state: FIXING
 iteration: 26
 commit: 4bf40774
 branch: feat/manus-parity-omniroute
-remote: https://github.com/DZ23-LTDA/ollama-classe-a-plus.git
-pull_request: https://github.com/DZ23-LTDA/ollama-classe-a-plus/pull/1
+remote: https://github.com/DZ23-LTDA/hades-ollama.git
+pull_request: https://github.com/DZ23-LTDA/hades-ollama/pull/1
 working_tree: checkpoint pending commit
 published: true
 proofs: focused/full Go, vet/build, integrity, UI and mobile gates PASS
@@ -1697,8 +1803,8 @@ state: FIXING
 iteration: 27
 audit_commit: 146d203c
 branch: feat/manus-parity-omniroute
-remote: https://github.com/DZ23-LTDA/ollama-classe-a-plus.git
-pull_request: https://github.com/DZ23-LTDA/ollama-classe-a-plus/pull/1
+remote: https://github.com/DZ23-LTDA/hades-ollama.git
+pull_request: https://github.com/DZ23-LTDA/hades-ollama/pull/1
 working_tree: checkpoint pending commit
 published: true
 classification: preview/local RC em hardening
@@ -2572,7 +2678,7 @@ repository:
   path: /home/ubuntu/ollama-full-recovery
   branch: recovery/ollama-full-snapshot
   head: 8635e30d (origin/main; commit Windows checksum)
-  remote: origin -> https://github.com/DZ23-LTDA/ollama-classe-a-plus.git
+  remote: origin -> https://github.com/DZ23-LTDA/hades-ollama.git
   uncommitted_changes: true
   observed_modified_and_untracked_paths: dozens; backend, server, web, docs, packaging and untracked security/snapshot modules
 scope_in:
@@ -2830,3 +2936,25 @@ acceptance:
   - go test -race ./internal/agent ./server
   - workflow test.yaml verde em Ubuntu/macOS/Windows e race no SHA final
 next_step: instalar a mesma versão do golangci-lint da action e capturar a linha de base
+
+## Checkpoint — S1/S2 e E2E de shell validados — 2026-10-01 21:02 UTC
+```yaml
+state: LOCAL_HARDENING_VALIDATED_CI_PENDING
+completed:
+  - S1: política egress compartilhada entre agent e multillm, com testes negativos
+  - S2: MCP local tenant-scoped bloqueado sem sandbox forte; sem fallback inseguro
+  - E2E shell: 10 telas desktop/mobile, 0 HTTP errors, 0 console errors
+remaining:
+  - gates completos locais e CI remoto
+  - sandbox MCP forte ainda não disponível/configurado
+  - credenciais externas, IdP, deploy, assinatura e PostgreSQL production cutover permanecem externos/bloqueados
+next_action: executar gates completos, atualizar auditoria e publicar se tudo estiver verde
+```
+
+
+## Fechamento de CI e dependências — 2026-10-02 UTC
+
+- **Causa do vermelho em `test.yaml`:** depois do build da UI, `go test ./...` e `go test -race ./...` atravessavam `app/ui/app/node_modules`; o pacote transitivo `flatted/golang/pkg/flatted` podia aparecer como árvore Go incompleta (`stat .../node_modules/flatted/golang/pkg/flatted: directory not found`). O workflow agora remove `app/ui/app/node_modules` antes de cada descoberta/teste Go, preservando o build da UI e mantendo o comando Go integral, sem excluir pacotes via filtro.
+- **Dependência mobile:** `node-forge` transitivo do Expo estava no release vulnerável. O lockfile agora fixa o commit upstream `529a5b4f004595c8f8a75697eca958efe1a2f70d` via tarball HTTPS do codeload; `npm audit --omit=dev --audit-level=high` retorna 0 vulnerabilidades após `npm ci` limpo.
+- **Evidências locais:** `go test -race -p=2 ./... -count=1`, `go test -count=1 -bench=. -benchtime=1x ./...`, `go generate ./...`, `go build ./...`, `CGO_ENABLED=0 go build ./...`, typecheck/lint/Vitest/build web e typecheck/policy/audit mobile passaram.
+- **Próximo passo:** executar o `test.yaml` no SHA publicado e confirmar Ubuntu/macOS/Windows, race e `go_mod_tidy` verdes; se o runner macOS ainda falhar, usar o log do job para corrigir somente a causa reproduzível.

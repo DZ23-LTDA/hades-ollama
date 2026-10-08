@@ -1,6 +1,7 @@
 package server
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -18,6 +19,7 @@ import (
 	"github.com/ollama/ollama/api"
 	"github.com/ollama/ollama/envconfig"
 	"github.com/ollama/ollama/format"
+	"github.com/ollama/ollama/internal/agent"
 )
 
 const modelRecommendationsURL = "https://ollama.com/api/experimental/model-recommendations"
@@ -214,8 +216,16 @@ func (c *modelRecommendationsCache) refresh(ctx context.Context) error {
 		return fmt.Errorf("status %d: %s", resp.StatusCode, strings.TrimSpace(string(body)))
 	}
 
+	// Bound the success body too: the egress client sets MaxBodyBytes but the
+	// transport does not enforce it, so decoding straight off resp.Body would be
+	// unbounded if the upstream (or a MITM) returned a huge 200. Decode from the
+	// bounded buffer so the error semantics stay identical.
+	raw, err := agent.ReadBoundedBody(resp.Body, 20<<20)
+	if err != nil {
+		return err
+	}
 	var payload api.ModelRecommendationsResponse
-	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
+	if err := json.NewDecoder(bytes.NewReader(raw)).Decode(&payload); err != nil {
 		return err
 	}
 

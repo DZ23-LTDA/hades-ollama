@@ -44,6 +44,16 @@ type trackedSAMLRequest struct {
 	ExpiresAt time.Time
 }
 
+const (
+	// samlRequestTTL bounds how long a pending SAML request (ID + RelayState)
+	// is retained while waiting for the IdP callback.
+	samlRequestTTL = 5 * time.Minute
+	// maxPendingSAMLRequests caps the number of in-memory pending SAML requests.
+	// Abandoned login attempts (user never returns from the IdP) would otherwise
+	// accumulate without bound since ExpiresAt was only checked on callback.
+	maxPendingSAMLRequests = 2048
+)
+
 func NewSAMLService(ctx context.Context, config SAMLProviderConfig, client *http.Client) (*SAMLService, error) {
 	if client == nil {
 		client = NewSafeEgressHTTPClient(EgressOptions{
@@ -126,14 +136,55 @@ func (s *SAMLService) Start(target string) (string, string, error) {
 	if err != nil {
 		return "", "", err
 	}
-	s.mu.Lock()
-	s.requests[relay] = trackedSAMLRequest{RequestID: request.ID, Target: target, ExpiresAt: time.Now().UTC().Add(5 * time.Minute)}
-	s.mu.Unlock()
+	s.trackRequest(relay, request.ID, target, time.Now().UTC())
 	redirect, err := request.Redirect(relay, &s.SP)
 	if err != nil {
 		return "", "", err
 	}
 	return redirect.String(), relay, nil
+}
+
+// trackRequest stores a pending SAML request keyed by its RelayState. Before
+// inserting it sweeps expired entries and enforces a capacity quota, so
+// abandoned login attempts (whose callback never arrives) can no longer grow
+// the map without bound.
+func (s *SAMLService) trackRequest(relay, requestID, target string, now time.Time) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.sweepExpiredRequestsLocked(now)
+	if len(s.requests) >= maxPendingSAMLRequests {
+		// All pending requests share the same TTL, so the entry with the
+		// earliest ExpiresAt is the oldest. Evicting it keeps new logins
+		// working while bounding memory to maxPendingSAMLRequests entries.
+		s.evictOldestRequestLocked()
+	}
+	s.requests[relay] = trackedSAMLRequest{RequestID: requestID, Target: target, ExpiresAt: now.Add(samlRequestTTL)}
+}
+
+// sweepExpiredRequestsLocked removes tracked requests whose ExpiresAt is not in
+// the future. The caller must hold s.mu.
+func (s *SAMLService) sweepExpiredRequestsLocked(now time.Time) {
+	for relay, tracked := range s.requests {
+		if !now.Before(tracked.ExpiresAt) {
+			delete(s.requests, relay)
+		}
+	}
+}
+
+// evictOldestRequestLocked drops the pending request closest to expiry. The
+// caller must hold s.mu.
+func (s *SAMLService) evictOldestRequestLocked() {
+	var oldestRelay string
+	var oldest time.Time
+	for relay, tracked := range s.requests {
+		if oldestRelay == "" || tracked.ExpiresAt.Before(oldest) {
+			oldestRelay = relay
+			oldest = tracked.ExpiresAt
+		}
+	}
+	if oldestRelay != "" {
+		delete(s.requests, oldestRelay)
+	}
 }
 
 func (s *SAMLService) Metadata(w http.ResponseWriter, r *http.Request) {

@@ -74,9 +74,13 @@ describe("AgenticSplitShell component", () => {
     const rootText = textContent(renderer.root);
     expect(rootText).toContain("mis_test_split_1");
     expect(rootText).toContain("Desenvolver protótipo interativo");
-    expect(rootText).toContain("AWAITING_APPROVAL");
+    // Mission state is now rendered through the pt-BR label map, not the raw enum.
+    expect(rootText).toContain("Aguardando aprovação");
+    expect(rootText).not.toContain("AWAITING_APPROVAL");
     expect(rootText).toContain("Navegador ao Vivo");
     expect(rootText).toContain("Artefatos");
+    // The former "Terminal / Canvas" tab is now "Eventos".
+    expect(rootText).toContain("Eventos");
     expect(rootText).toContain("Esta etapa requer aprovação humana");
   });
 

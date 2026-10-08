@@ -65,6 +65,20 @@ func TestRedisQueueFailuresAreExportedInMetrics(t *testing.T) {
 	}
 }
 
+func TestRedisQueueListReturnsErrorWhenUnavailable(t *testing.T) {
+	// Port 1 has nothing listening, so the dial fails fast. The point is that
+	// List must surface the dependency failure instead of masking it as an
+	// empty, healthy queue (which is what health derives its state from).
+	queue := &RedisQueue{address: "127.0.0.1:1", timeout: time.Second, errors: make(chan error, 1)}
+	jobs, err := queue.List("")
+	if err == nil {
+		t.Fatalf("List must return an error when Redis is unreachable; got jobs=%v err=nil", jobs)
+	}
+	if jobs != nil {
+		t.Fatalf("List must return nil jobs on error, got %v", jobs)
+	}
+}
+
 func TestRedisQueueDroppedErrorsRemainObservable(t *testing.T) {
 	queue := &RedisQueue{errors: make(chan error, 1)}
 	queue.reportError(errors.New("first"))

@@ -2,14 +2,22 @@ name: dz23-provider-smoke
 
 on:
   workflow_dispatch:
+  schedule:
+    - cron: "47 3 * * 1"
 
 permissions:
   contents: read
+  issues: write
 
 jobs:
   live-provider-smoke:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    # Live provider API keys are scoped to a protected GitHub Environment so that
+    # they are only reachable from this job. Add required reviewers and a branch
+    # restriction to the "provider-smoke" environment in repo settings to gate
+    # who may dispatch a live run (CI-05).
+    environment: provider-smoke
     env:
       OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
       DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
@@ -32,8 +40,17 @@ jobs:
       HUGGINGFACE_TOKEN: ${{ secrets.HUGGINGFACE_TOKEN }}
       HUGGINGFACE_MODEL: deepseek-ai/DeepSeek-R1:fastest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - name: Compile smoke checker
         run: python3 -m py_compile scripts/dz23_provider_smoke.py
       - name: Probe configured providers
         run: python3 scripts/dz23_provider_smoke.py
+      - name: Open issue for scheduled provider failure
+        if: failure() && github.event_name == 'schedule'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue create \
+            --title "Scheduled provider smoke failure — ${GITHUB_RUN_ID}" \
+            --body "The weekly provider smoke failed. Run: https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" \
+            --label "bug" || echo "Could not create failure issue; preserving the failed workflow status."

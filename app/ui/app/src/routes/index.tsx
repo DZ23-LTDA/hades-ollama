@@ -24,11 +24,21 @@ export const Route = createFileRoute("/")({
     ) {
       throw redirect({ to: "/onboarding" });
     }
+    // Single, consistent home: the friendly conversational screen that the
+    // prominent "Nova tarefa" button also opens. The advanced mission launcher
+    // lives in the Agentic Console (/agentic); keeping two different "home"
+    // screens was the main source of the "confusing / different menu" feedback.
+    throw redirect({
+      to: "/c/$chatId",
+      params: { chatId: "new" },
+      mask: { to: "/" },
+    });
   },
   component: HomeRoute,
 });
 
 function HomeRoute() {
+  // Fallback only; beforeLoad always redirects to the chat home.
   return (
     <SidebarLayout title="Início" sidebar={<AppSidebar current="chat" />}>
       <HomePage />

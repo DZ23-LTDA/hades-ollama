@@ -1,4 +1,5 @@
 import Onboarding from "@/components/Onboarding";
+import { openExternal } from "@/lib/openExternal";
 import { getSettings } from "@/api";
 import { useSettings } from "@/hooks/useSettings";
 import { useUser } from "@/hooks/useUser";
@@ -44,7 +45,7 @@ export const Route = createFileRoute("/onboarding")({
 function OnboardingRoute() {
   const navigate = useNavigate();
   const { settingsData, setSettings } = useSettings({ refetchInterval: 2000 });
-  const { fetchConnectUrl, refetchUser, isAuthenticated } = useUser();
+  const { fetchConnectUrl, refetchUser, isAuthenticated, isLocalOnly } = useUser();
   const [isAwaitingAuth, setIsAwaitingAuth] = useState(false);
   const [signInError, setSignInError] = useState<string | null>(null);
   const [completionError, setCompletionError] = useState<string | null>(null);
@@ -119,7 +120,7 @@ function OnboardingRoute() {
           throw new Error("No sign-in URL was returned");
         }
 
-        window.open(onboardingConnectUrl(result.data, mode), "_blank");
+        openExternal(onboardingConnectUrl(result.data, mode));
       } catch (error) {
         if (authAttempt !== authAttemptRef.current) return;
         console.error("Failed to start sign in:", error);
@@ -205,6 +206,7 @@ function OnboardingRoute() {
     <Onboarding
       completionError={completionError}
       isAuthenticated={isAuthenticated}
+      isLocalOnly={isLocalOnly}
       isSigningIn={isAwaitingAuth}
       signInError={signInError}
       onOpenApps={openApps}

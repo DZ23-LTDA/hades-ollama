@@ -1,4 +1,5 @@
 import { getClaudeDesktopAvailableModels } from "@/api";
+import { confirmDialog } from "@/lib/confirmDialog";
 import { Button } from "@/components/ui/button";
 import { Description, Field, Label } from "@/components/ui/fieldset";
 import { Switch } from "@/components/ui/switch";
@@ -126,8 +127,8 @@ function mappingRecord(
 
 function formatModelList(names: string[]): string {
   if (names.length < 2) return names[0] ?? "";
-  if (names.length === 2) return `${names[0]} or ${names[1]}`;
-  return `${names.slice(0, -1).join(", ")}, or ${names[names.length - 1]}`;
+  if (names.length === 2) return `${names[0]} ou ${names[1]}`;
+  return `${names.slice(0, -1).join(", ")} ou ${names[names.length - 1]}`;
 }
 
 interface ClaudeModelPickerProps {
@@ -151,7 +152,7 @@ function ClaudeModelPicker({
     <Popover className="relative min-w-0">
       <PopoverButton
         id={id}
-        aria-label={`Ollama model for ${routeName}`}
+        aria-label={`Modelo Ollama para ${routeName}`}
         aria-haspopup="listbox"
         disabled={disabled}
         className="flex min-h-9 w-full items-center gap-2 rounded-lg bg-neutral-50 px-3 py-1.5 text-left text-sm text-neutral-800 outline-none ring-1 ring-inset ring-neutral-200 hover:bg-neutral-100 focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-neutral-700 dark:text-neutral-100 dark:ring-neutral-600 dark:hover:bg-neutral-600"
@@ -213,8 +214,8 @@ function ClaudeModelPickerOptions({
           type="text"
           value={query}
           onChange={(event) => setQuery(event.target.value)}
-          placeholder="Find model..."
-          aria-label={`Find model for ${routeName}`}
+          placeholder="Buscar modelo…"
+          aria-label={`Buscar modelo para ${routeName}`}
           autoCorrect="off"
           autoComplete="off"
           className="min-w-0 flex-1 border-none bg-transparent py-0.5 outline-none"
@@ -250,7 +251,7 @@ function ClaudeModelPickerOptions({
           );
         })}
         {filteredModels.length === 0 && (
-          <p className="px-3 py-2 text-neutral-400">No models found</p>
+          <p className="px-3 py-2 text-neutral-400">Nenhum modelo encontrado</p>
         )}
       </div>
     </>
@@ -335,7 +336,7 @@ export const ClaudeDesktopModelsSettings = forwardRef<
         request === statusRequestRef.current &&
         !operationInFlightRef.current
       ) {
-        setError("Ollama could not read the Claude connection status.");
+        setError("Não foi possível ler o estado de conexão do Claude.");
       }
     }
   }, [applyStatus]);
@@ -363,7 +364,7 @@ export const ClaudeDesktopModelsSettings = forwardRef<
         }
       })
       .catch(() => {
-        if (!cancelled) setError("Ollama could not load your models.");
+        if (!cancelled) setError("Não foi possível carregar seus modelos.");
       })
       .finally(() => {
         if (!cancelled) setModelsLoading(false);
@@ -396,6 +397,10 @@ export const ClaudeDesktopModelsSettings = forwardRef<
     return !model || !modelIsAvailable(model);
   });
   const busy = applying || resettingMappings || autoModeApplying;
+  // O roteamento depende de uma ponte nativa que, hoje, só existe no macOS.
+  // Sem ela, não prometemos um botão que cairia em aviso.
+  const routingBridgeAvailable =
+    typeof window.applyClaudeDesktopMappings === "function";
 
   useEffect(() => {
     onDraftChange?.(hasDraftChanges);
@@ -422,9 +427,10 @@ export const ClaudeDesktopModelsSettings = forwardRef<
         if (result.restartConfirmationRequired) {
           applyStatus(result.status, true);
           if (
-            !window.confirm(
+            !(await confirmDialog(
               "Reiniciar Claude Desktop? Qualquer tarefa em execução será interrompida.",
-            )
+              { confirmLabel: "Reiniciar" },
+            ))
           ) {
             return false;
           }
@@ -450,16 +456,16 @@ export const ClaudeDesktopModelsSettings = forwardRef<
     const applyMappings = window.applyClaudeDesktopMappings;
     if (!applyMappings) {
       setError(
-        "Claude routing settings are available in the Ollama macOS app.",
+        "O roteamento de modelos do Claude está disponível apenas no macOS por enquanto.",
       );
       return;
     }
     if (assignedModels.length === 0) {
-      setError("Choose at least one Ollama model for Claude.");
+      setError("Escolha pelo menos um modelo Ollama para o Claude.");
       return;
     }
     if (hasInvalidMapping) {
-      setError("Choose models available to your account and device.");
+      setError("Escolha modelos disponíveis para sua conta e seu dispositivo.");
       return;
     }
     if (operationInFlightRef.current) return;
@@ -472,7 +478,7 @@ export const ClaudeDesktopModelsSettings = forwardRef<
     try {
       await runMappingAction(
         (restartConfirmed) => applyMappings(mappingsToApply, restartConfirmed),
-        "Ollama could not apply the Claude model mappings.",
+        "Não foi possível aplicar os modelos do Claude.",
       );
     } finally {
       ++statusRequestRef.current;
@@ -483,7 +489,7 @@ export const ClaudeDesktopModelsSettings = forwardRef<
 
   const toggleAutoMode = async (checked: boolean) => {
     if (!window.setClaudeDesktopAutoMode) {
-      setError("Auto mode is available in the Ollama macOS app.");
+      setError("O modo automático está disponível apenas no macOS por enquanto.");
       return;
     }
     setError(null);
@@ -496,9 +502,10 @@ export const ClaudeDesktopModelsSettings = forwardRef<
       if (result.restartConfirmationRequired) {
         applyStatus(result.status, true);
         if (
-          !window.confirm(
+          !(await confirmDialog(
             "Reiniciar Claude para alterar o modo automático? Qualquer tarefa em execução será interrompida.",
-          )
+            { confirmLabel: "Reiniciar" },
+          ))
         ) {
           return;
         }
@@ -508,7 +515,7 @@ export const ClaudeDesktopModelsSettings = forwardRef<
       applyStatus(result.status);
       if (result.error) setError(result.error);
     } catch {
-      setError("Ollama could not update Claude auto mode.");
+      setError("Não foi possível atualizar o modo automático do Claude.");
     } finally {
       ++statusRequestRef.current;
       operationInFlightRef.current = false;
@@ -522,7 +529,7 @@ export const ClaudeDesktopModelsSettings = forwardRef<
 
     const resetMappings = window.resetClaudeDesktopMappings;
     if (!resetMappings) {
-      setError("Ollama could not reset the Claude model mappings.");
+      setError("Não foi possível restaurar os modelos do Claude.");
       return false;
     }
 
@@ -533,7 +540,7 @@ export const ClaudeDesktopModelsSettings = forwardRef<
     try {
       return await runMappingAction(
         resetMappings,
-        "Ollama could not reset the Claude model mappings.",
+        "Não foi possível restaurar os modelos do Claude.",
       );
     } finally {
       ++statusRequestRef.current;
@@ -561,13 +568,13 @@ export const ClaudeDesktopModelsSettings = forwardRef<
     ? (autoModeOverride ?? status.autoMode ?? false)
     : (status.autoMode ?? false);
   const autoModeDescription = hasDraftChanges
-    ? "Start or restart Claude to apply model changes before changing auto mode."
+    ? "Inicie ou reinicie o Claude para aplicar as alterações antes de mudar o modo automático."
     : autoModeAvailable
-      ? "Let Claude decide when to ask before making changes."
+      ? "Deixe o Claude decidir quando pedir confirmação antes de fazer alterações."
       : accountCloudModels.length > 0
-        ? "Select a cloud model from Ollama.com to use auto mode."
+        ? "Selecione um modelo na nuvem do Ollama.com para usar o modo automático."
         : autoModeModelNames.length > 0
-          ? `Select one of ${formatModelList(autoModeModelNames)} to use auto mode.`
+          ? `Selecione um destes modelos para usar o modo automático: ${formatModelList(autoModeModelNames)}.`
           : "O modo automático precisa de um modelo na nuvem disponível na sua conta Ollama.com.";
 
   const guidance =
@@ -578,7 +585,7 @@ export const ClaudeDesktopModelsSettings = forwardRef<
 
   return (
     <div
-      aria-label={showSectionHeading ? undefined : "Claude settings"}
+      aria-label={showSectionHeading ? undefined : "Configurações do Claude"}
       className="space-y-2"
     >
       {showSectionHeading && (
@@ -586,7 +593,7 @@ export const ClaudeDesktopModelsSettings = forwardRef<
           id="apps-settings-heading"
           className="px-1 text-xs font-medium uppercase tracking-wider text-neutral-400 dark:text-neutral-500"
         >
-          Apps
+          Aplicativos
         </h2>
       )}
       <div
@@ -618,6 +625,7 @@ export const ClaudeDesktopModelsSettings = forwardRef<
                 onClick={applyChanges}
                 disabled={
                   busy ||
+                  !routingBridgeAvailable ||
                   assignedModels.length === 0 ||
                   hasInvalidMapping ||
                   (status.running && !hasDraftChanges)
@@ -638,6 +646,13 @@ export const ClaudeDesktopModelsSettings = forwardRef<
                       : "Iniciar Claude"}
               </Button>
             </div>
+
+            {!routingBridgeAvailable && (
+              <p className="mt-3 w-full max-w-xl rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-700 dark:border-amber-900/50 dark:bg-amber-950/20 dark:text-amber-300">
+                Disponível apenas no macOS por enquanto. O roteamento de modelos
+                do Claude depende do aplicativo Ollama para macOS.
+              </p>
+            )}
 
             <div className="mt-4 w-full max-w-xl space-y-1">
               {mappings.map((mapping) => (

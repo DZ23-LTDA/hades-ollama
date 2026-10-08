@@ -298,6 +298,7 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle("GET /api/v1/models/cloud", handle(s.getCloudModels))
 	mux.Handle("GET /api/v1/integrations", handle(s.getIntegrationStatuses))
 	mux.Handle("GET /api/v1/providers", handle(s.listProviders))
+	mux.Handle("POST /api/v1/providers", handle(s.createProvider))
 	mux.Handle("PUT /api/v1/providers/{name}/key", handle(s.setProviderKey))
 	mux.Handle("DELETE /api/v1/providers/{name}/key", handle(s.removeProviderKey))
 	mux.Handle("GET /api/v1/providers/{name}/models", handle(s.listProviderModels))
@@ -642,25 +643,28 @@ func (s *Server) getError(err error) responses.ErrorEvent {
 	case strings.Contains(errStr, "402"):
 		return responses.ErrorEvent{
 			EventName: "error",
-			Error:     "You've reached your usage limit, please upgrade to continue",
+			Error:     "Você atingiu seu limite de uso. Faça upgrade para continuar.",
 			Code:      "usage_limit_upgrade",
 		}
 	case strings.HasPrefix(errStr, "pull model manifest") && isNetworkError(errStr):
 		return responses.ErrorEvent{
 			EventName: "error",
-			Error:     "Unable to download model. Please check your internet connection to download the model for offline use.",
+			Error:     "Não foi possível baixar o modelo. Verifique sua conexão com a internet para baixá-lo e usar offline.",
 			Code:      "offline_download_error",
 		}
 	case errors.Is(err, ErrNetworkOffline) || strings.Contains(errStr, "operation timed out"):
 		return responses.ErrorEvent{
 			EventName: "error",
-			Error:     "Connection lost",
+			Error:     "Conexão perdida. Verifique sua internet e tente novamente.",
 			Code:      "turbo_connection_lost",
 		}
 	}
+	// Fallback: never leak a raw Go/network error string to the user. The
+	// technical detail stays in the logs; the UI shows a clear pt-BR message.
 	return responses.ErrorEvent{
 		EventName: "error",
-		Error:     err.Error(),
+		Error:     "Algo deu errado ao processar sua mensagem. Tente novamente em instantes.",
+		Code:      "chat_unexpected_error",
 	}
 }
 
@@ -995,6 +999,9 @@ func (s *Server) chat(w http.ResponseWriter, r *http.Request) error {
 	var pendingAssistantToolCalls []store.ToolCall
 
 	passNum := 1
+	// textToolFallbacks caps how many times we rescue a plain-text tool call, so
+	// a model that keeps emitting text instead of answering can't loop forever.
+	textToolFallbacks := 0
 
 	for {
 		var toolsExecuted bool
@@ -1026,7 +1033,7 @@ func (s *Server) chat(w http.ResponseWriter, r *http.Request) error {
 				reqChat = &temp
 			}
 		}
-		chatReq, err := s.buildChatRequest(reqChat, req.Model, thinkValue, availableTools, attachmentBudget, lastDigest)
+		chatReq, err := s.buildChatRequest(reqChat, req.Model, thinkValue, availableTools, attachmentBudget, lastDigest, req.CustomInstructions)
 		if err != nil {
 			return err
 		}
@@ -1322,6 +1329,63 @@ func (s *Server) chat(w http.ResponseWriter, r *http.Request) error {
 			json.NewEncoder(w).Encode(errorEvent)
 			flusher.Flush()
 			return nil
+		}
+
+		// Fallback for local models that emit a standalone web_search/web_fetch
+		// call as plain text instead of a structured tool_call: detect it, run the
+		// tool, and continue the loop so the user gets real results instead of raw
+		// JSON. Bounded by textToolFallbacks to avoid loops.
+		if !toolsExecuted && textToolFallbacks < 3 {
+			if n := len(chat.Messages); n > 0 && chat.Messages[n-1].Role == "assistant" {
+				lastMsg := &chat.Messages[n-1]
+				if name, args, ok := parseTextToolCall(lastMsg.Content); ok &&
+					(name == "web_search" || name == "web_fetch") {
+					if _, registered := registry.Get(name); registered {
+						textToolFallbacks++
+						argsJSON, _ := json.Marshal(args)
+						// Rewrite the raw-JSON assistant turn as a proper tool_call
+						// turn so the UI shows a tool step, not the literal JSON.
+						lastMsg.Content = ""
+						lastMsg.ToolCalls = []store.ToolCall{{
+							Type:     "function",
+							Function: store.ToolFunction{Name: name, Arguments: string(argsJSON)},
+						}}
+						if err := chats.UpdateLastMessage(chat.ID, *lastMsg); err != nil {
+							return err
+						}
+
+						result, content, execErr := registry.Execute(ctx, name, args)
+						if execErr != nil {
+							errContent := fmt.Sprintf("Error: %v", execErr)
+							toolErrMsg := store.NewMessage("tool", errContent, nil)
+							toolErrMsg.ToolName = name
+							chat.Messages = append(chat.Messages, toolErrMsg)
+							if err := chats.AppendMessage(chat.ID, toolErrMsg); err != nil {
+								return err
+							}
+						} else {
+							b, _ := json.Marshal(result)
+							tr := json.RawMessage(b)
+							modelContent := content
+							if modelContent == "" && len(tr) > 0 {
+								modelContent = string(tr)
+							}
+							toolMsg := store.NewMessage("tool", modelContent, &store.MessageOptions{ToolResult: &tr})
+							toolMsg.ToolName = name
+							chat.Messages = append(chat.Messages, toolMsg)
+							if err := chats.AppendMessage(chat.ID, toolMsg); err != nil {
+								return err
+							}
+							toolResult := true
+							json.NewEncoder(w).Encode(responses.ChatEvent{EventName: "tool", Content: &content, ToolName: &name})
+							flusher.Flush()
+							json.NewEncoder(w).Encode(responses.ChatEvent{EventName: "tool_result", Content: &content, ToolName: &name, ToolResult: &toolResult, ToolResultData: result})
+							flusher.Flush()
+						}
+						toolsExecuted = true
+					}
+				}
+			}
 		}
 
 		// If no tools were executed, exit the loop
@@ -1915,8 +1979,89 @@ func splitMessageAttachments(files []store.File) ([]attachmentText, []api.ImageD
 	return texts, images
 }
 
+// chatSystemPrompt returns the default system instruction for the plain chat.
+// Hades targets Brazilian Portuguese users, so chat responses default to pt-BR
+// unless the user explicitly asks for another language. Override with
+// OLLAMA_CHAT_SYSTEM_PROMPT (set it to a single space to disable).
+func chatSystemPrompt() string {
+	if custom, ok := os.LookupEnv("OLLAMA_CHAT_SYSTEM_PROMPT"); ok {
+		return strings.TrimSpace(custom)
+	}
+	return "Você é o assistente do Hades — um aplicativo de IA local-first que roda no computador do usuário. " +
+		"Neste chat você conversa, raciocina e pode pesquisar na web. " +
+		"Para EXECUTAR tarefas de verdade (ler/editar arquivos, rodar código, operar o navegador, usar conectores ou automações de vários passos), " +
+		"oriente o usuário a abrir \"Nova tarefa\" / \"Tarefas\" (o agente do Hades), que planeja e executa com aprovações — e, para apps/sites, o \"Studio\". " +
+		"\"Hades\" e \"harness\" referem-se a ESTE ambiente; nunca os confunda com produtos externos de mesmo nome nem pesquise sobre eles na web. " +
+		"Responda sempre em português do Brasil, de forma clara e objetiva, a menos que o usuário peça explicitamente outro idioma."
+}
+
+// composeSystemPrompt combines the default chat system prompt with the user's
+// own custom instructions (from Settings). Both are applied: the default sets
+// the pt-BR behavior and the custom instructions are appended so the model
+// follows them on every turn. Either part may be empty.
+func composeSystemPrompt(base, custom string) string {
+	base = strings.TrimSpace(base)
+	custom = strings.TrimSpace(custom)
+	// Bound the custom instructions so a huge paste cannot crowd out the
+	// conversation in the context window.
+	const maxCustomInstructions = 4000
+	if len(custom) > maxCustomInstructions {
+		custom = strings.TrimSpace(custom[:maxCustomInstructions])
+	}
+	switch {
+	case custom == "":
+		return base
+	case base == "":
+		return custom
+	default:
+		return base + "\n\nInstruções do usuário (siga-as):\n" + custom
+	}
+}
+
+// parseTextToolCall extracts a tool call that a model emitted as plain text
+// (e.g. `{"name": "web_search", "arguments": {"query": "x"}}`) instead of as a
+// structured tool_call, which some local models do. It only succeeds when the
+// whole trimmed content is that single JSON object (optionally inside a code
+// fence), so a normal answer that merely mentions JSON is never misread.
+func parseTextToolCall(content string) (string, map[string]any, bool) {
+	text := strings.TrimSpace(content)
+	if strings.HasPrefix(text, "```") {
+		text = strings.TrimPrefix(text, "```")
+		if i := strings.IndexByte(text, '\n'); i >= 0 {
+			text = text[i+1:]
+		}
+		text = strings.TrimSpace(strings.TrimSuffix(strings.TrimSpace(text), "```"))
+	}
+	if !strings.HasPrefix(text, "{") || !strings.HasSuffix(text, "}") {
+		return "", nil, false
+	}
+	var parsed struct {
+		Name       string          `json:"name"`
+		Parameters json.RawMessage `json:"parameters"`
+		Arguments  json.RawMessage `json:"arguments"`
+	}
+	if err := json.Unmarshal([]byte(text), &parsed); err != nil {
+		return "", nil, false
+	}
+	name := strings.TrimSpace(parsed.Name)
+	if name == "" {
+		return "", nil, false
+	}
+	raw := parsed.Arguments
+	if len(raw) == 0 {
+		raw = parsed.Parameters
+	}
+	args := map[string]any{}
+	if len(raw) > 0 {
+		if err := json.Unmarshal(raw, &args); err != nil {
+			return "", nil, false
+		}
+	}
+	return name, args, true
+}
+
 // buildChatRequest converts store.Chat to api.ChatRequest
-func (s *Server) buildChatRequest(chat *store.Chat, model string, think any, availableTools []map[string]any, attachmentBudget int, lastDigest *attachmentDigest) (*api.ChatRequest, error) {
+func (s *Server) buildChatRequest(chat *store.Chat, model string, think any, availableTools []map[string]any, attachmentBudget int, lastDigest *attachmentDigest, customInstructions string) (*api.ChatRequest, error) {
 	var msgs []api.Message
 	for i, m := range chat.Messages {
 		// Skip empty messages if present
@@ -1979,6 +2124,22 @@ func (s *Server) buildChatRequest(chat *store.Chat, model string, think any, ava
 		}
 
 		msgs = append(msgs, apiMsg)
+	}
+
+	// Default the plain chat to a Brazilian-Portuguese system instruction so the
+	// model does not answer in English by default. Only injected when the
+	// conversation has no system message of its own.
+	hasSystem := false
+	for _, m := range msgs {
+		if m.Role == "system" {
+			hasSystem = true
+			break
+		}
+	}
+	if !hasSystem {
+		if prompt := composeSystemPrompt(chatSystemPrompt(), customInstructions); prompt != "" {
+			msgs = append([]api.Message{{Role: "system", Content: prompt}}, msgs...)
+		}
 	}
 
 	var thinkValue *api.ThinkValue

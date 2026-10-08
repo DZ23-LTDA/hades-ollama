@@ -21,7 +21,18 @@ describe("connectorIcon", () => {
   it("uses a bundled image for brands outside simple-icons", () => {
     expect(connectorIcon("slack")).toEqual({
       kind: "image",
-      src: "/connector-icons/slack.png",
+      src: "/connector-icons/brandfetch/slack.svg",
+    });
+  });
+
+  it("uses downloaded Brandfetch assets for confirmed brands", () => {
+    expect(connectorIcon("canva")).toEqual({
+      kind: "image",
+      src: "/connector-icons/brandfetch/canva.svg",
+    });
+    expect(connectorIcon("twilio")).toEqual({
+      kind: "image",
+      src: "/connector-icons/brandfetch/twilio.svg",
     });
   });
 

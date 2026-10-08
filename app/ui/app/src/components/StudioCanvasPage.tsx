@@ -1,6 +1,11 @@
-import { useCallback, useEffect, useState, useTransition } from "react";
+import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { AppSidebar } from "@/components/AppSidebar";
 import { SidebarLayout } from "@/components/layout/layout";
+import { missionStateLabel } from "@/lib/labels";
+import { generateStudioHTML } from "@/lib/studioHtml";
+import { reorderById } from "@/lib/studioReorder";
+import { buildGenerationPrompt, parseGeneratedComponents, pickLocalFirstModel, PRIMARY_TEXT_PROP } from "@/lib/studioAI";
+import { confirmDialog } from "@/lib/confirmDialog";
 import { API_BASE } from "@/lib/config";
 import {
   type BuilderProject,
@@ -13,6 +18,7 @@ import {
   redoBuilder,
   previewBuilder,
   exportBuilder,
+  deployBuilder,
   agentFetchBlob,
 } from "@/lib/agenticClient";
 import {
@@ -27,7 +33,8 @@ import {
   PlusIcon,
   CheckCircleIcon,
   ExclamationTriangleIcon,
-  ArrowsUpDownIcon,
+  ArrowUpIcon,
+  ArrowDownIcon,
   GlobeAltIcon,
   PresentationChartBarIcon,
   PuzzlePieceIcon,
@@ -98,6 +105,105 @@ const COMPONENT_TEMPLATES: Array<{
     width: 800,
     height: 60,
   },
+  {
+    type: "hero",
+    label: "Hero / Destaque",
+    icon: "★",
+    defaultProps: { title: "Sua ideia, pronta em minutos", subtitle: "Monte, publique e evolua — tudo local.", cta: "Começar agora" },
+    defaultStyle: {},
+    width: 800,
+    height: 220,
+  },
+  {
+    type: "image",
+    label: "Imagem",
+    icon: "I",
+    defaultProps: { src: "", alt: "Descrição da imagem" },
+    defaultStyle: {},
+    width: 400,
+    height: 240,
+  },
+  {
+    type: "input",
+    label: "Campo de Formulário",
+    icon: "F",
+    defaultProps: { label: "Seu e-mail", placeholder: "voce@exemplo.com" },
+    defaultStyle: {},
+    width: 320,
+    height: 70,
+  },
+  {
+    type: "link",
+    label: "Link",
+    icon: "L",
+    defaultProps: { text: "Saiba mais", href: "https://" },
+    defaultStyle: {},
+    width: 160,
+    height: 32,
+  },
+  {
+    type: "list",
+    label: "Lista",
+    icon: "≡",
+    defaultProps: { items: "Primeiro item, Segundo item, Terceiro item" },
+    defaultStyle: {},
+    width: 400,
+    height: 120,
+  },
+  {
+    type: "divider",
+    label: "Divisor",
+    icon: "—",
+    defaultProps: {},
+    defaultStyle: {},
+    width: 600,
+    height: 20,
+  },
+  {
+    type: "pricing",
+    label: "Plano / Preço",
+    icon: "$",
+    defaultProps: { plan: "Plano Pro", price: "R$ 49/mês", features: "Tudo do Básico, Suporte prioritário, Sem limites", cta: "Assinar" },
+    defaultStyle: { backgroundColor: "#F9FAFB", borderColor: "#E5E7EB", borderRadius: "12px" },
+    width: 280,
+    height: 260,
+  },
+  {
+    type: "testimonial",
+    label: "Depoimento",
+    icon: "“",
+    defaultProps: { quote: "Mudou completamente o nosso fluxo de trabalho.", author: "Cliente satisfeito" },
+    defaultStyle: {},
+    width: 420,
+    height: 110,
+  },
+  {
+    type: "faq",
+    label: "FAQ (pergunta)",
+    icon: "?",
+    defaultProps: { question: "Pergunta frequente?", answer: "Resposta clara e objetiva para a dúvida." },
+    defaultStyle: { borderColor: "#E5E7EB", borderRadius: "8px" },
+    width: 480,
+    height: 90,
+  },
+  {
+    type: "footer",
+    label: "Rodapé",
+    icon: "_",
+    defaultProps: { text: "© 2026 Minha Empresa", links: "Sobre, Contato, Privacidade" },
+    defaultStyle: {},
+    width: 600,
+    height: 60,
+  },
+];
+
+// Provedores de publicação: cada um exige a credencial correta no ambiente do
+// servidor (inclusive SSH). O slug é enviado ao Deploy Adapter real do backend.
+const DEPLOY_PROVIDERS: Array<{ label: string; slug: string; credential: string }> = [
+  { label: "Vercel", slug: "vercel", credential: "VERCEL_TOKEN" },
+  { label: "Cloudflare Pages", slug: "cloudflare", credential: "CLOUDFLARE_API_TOKEN e CLOUDFLARE_ACCOUNT_ID" },
+  { label: "Netlify", slug: "netlify", credential: "NETLIFY_AUTH_TOKEN" },
+  { label: "SSH / Servidor Próprio", slug: "ssh", credential: "chave SSH e host (SSH_PRIVATE_KEY, SSH_HOST, SSH_USER)" },
 ];
 
 export function StudioCanvasPage() {
@@ -105,10 +211,40 @@ export function StudioCanvasPage() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"canvas" | "preview">("canvas");
   const [selectedCompId, setSelectedCompId] = useState<string | null>(null);
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [aiPrompt, setAiPrompt] = useState("");
+  const [aiGenerating, setAiGenerating] = useState(false);
+  const [aiReplace, setAiReplace] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [instantPreviewHtml, setInstantPreviewHtml] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (instantPreviewHtml === null) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setInstantPreviewHtml(null);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [instantPreviewHtml]);
   const [notice, setNotice] = useState<{ type: "success" | "error" | "info"; message: string; checksum?: string } | null>(null);
   const [deployModalOpen, setDeployModalOpen] = useState(false);
   const [deployStatus, setDeployStatus] = useState<{ status: string; message: string } | null>(null);
   const [previewSrc, setPreviewSrc] = useState<string | null>(null);
+  // The authenticated preview is a blob: URL; the webview swallows
+  // target="_blank"/window.open for it, so "open in a new tab" is shown as an
+  // in-app expanded overlay instead.
+  const [previewExpanded, setPreviewExpanded] = useState(false);
+  useEffect(() => {
+    if (!previewExpanded) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setPreviewExpanded(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [previewExpanded]);
+  useEffect(() => {
+    if (!previewSrc) setPreviewExpanded(false);
+  }, [previewSrc]);
   const [, startTransition] = useTransition();
 
   // Initialize or fetch the active builder project from the real backend
@@ -209,6 +345,73 @@ export function StudioCanvasPage() {
     }
   };
 
+  // Debounced prop saves. Editing an inspector field must not POST (and bump
+  // project.version) on every keystroke — that floods the backend and, because
+  // each save carries the optimistic-concurrency version, causes spurious
+  // version-conflict errors mid-typing. We keep a ref to the latest
+  // syncComponents and flush the pending edit after a short idle, on switching
+  // components, and on unmount.
+  const syncRef = useRef(syncComponents);
+  syncRef.current = syncComponents;
+  const propsSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingComponentsRef = useRef<VisualComponent[] | null>(null);
+  const flushPendingProps = useCallback(() => {
+    if (propsSaveTimerRef.current) {
+      clearTimeout(propsSaveTimerRef.current);
+      propsSaveTimerRef.current = null;
+    }
+    const pending = pendingComponentsRef.current;
+    pendingComponentsRef.current = null;
+    if (pending) syncRef.current(pending);
+  }, []);
+
+  // Generate components from a natural-language description using a local model.
+  // The model is asked for strict JSON; parseGeneratedComponents never trusts the
+  // raw output — only known, sanitized component types reach the canvas.
+  const handleGenerateAI = async () => {
+    if (!project || !aiPrompt.trim() || aiGenerating) return;
+    setAiGenerating(true);
+    setNotice({ type: "info", message: "Gerando componentes com o modelo local…" });
+    try {
+      const tags = await fetch(`${API_BASE}/api/tags`).then((r) => r.json());
+      const names: string[] = (tags?.models ?? [])
+        .map((m: { model?: string; name?: string }) => m.model || m.name)
+        .filter((n: unknown): n is string => typeof n === "string" && n !== "");
+      // Local-first: prefer a model that runs on the user's machine over a cloud one.
+      const model = pickLocalFirstModel(names);
+      if (!model) {
+        setNotice({ type: "error", message: "Nenhum modelo disponível. Baixe um modelo em Configurações primeiro." });
+        return;
+      }
+      const res = await fetch(`${API_BASE}/api/generate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ model, prompt: buildGenerationPrompt(aiPrompt), stream: false, format: "json" }),
+      }).then((r) => r.json());
+      const generated = parseGeneratedComponents(String(res?.response ?? ""));
+      if (generated.length === 0) {
+        setNotice({ type: "error", message: "A IA não retornou componentes válidos. Tente descrever de outro jeito." });
+        return;
+      }
+      const base = aiReplace ? [] : project.components || [];
+      const positioned: VisualComponent[] = generated.map((c, i) => ({
+        ...c,
+        x: 40,
+        y: 40 + (base.length + i) * 60,
+        width: 600,
+        height: 80,
+      }));
+      await syncComponents([...base, ...positioned]);
+      const how = aiReplace ? "gerados do zero" : "adicionados";
+      setNotice({ type: "success", message: `${generated.length} componentes ${how} pelo modelo local (${model}).` });
+      setAiPrompt("");
+    } catch (err: unknown) {
+      setNotice({ type: "error", message: `Falha ao gerar com IA: ${String(err)}` });
+    } finally {
+      setAiGenerating(false);
+    }
+  };
+
   // Add component from palette
   const handleAddComponent = (tmpl: (typeof COMPONENT_TEMPLATES)[0]) => {
     if (!project) return;
@@ -232,6 +435,18 @@ export function StudioCanvasPage() {
   };
 
   // Move component up/down in the stack
+  // Drag-and-drop reordering on the canvas: the reorder itself is a pure,
+  // unit-tested function; here we only track the dragged id and persist.
+  const handleReorderDrop = (targetId: string) => {
+    if (!project?.components || !dragId || dragId === targetId) {
+      setDragId(null);
+      return;
+    }
+    const next = reorderById(project.components, dragId, targetId);
+    setDragId(null);
+    syncComponents(next);
+  };
+
   const handleMoveComponent = (id: string, direction: "up" | "down") => {
     if (!project || !project.components) return;
     const comps = [...project.components];
@@ -266,10 +481,60 @@ export function StudioCanvasPage() {
       }
       return c;
     });
-    syncComponents(next);
+    // Optimistic local update keeps the inspector responsive; the backend save
+    // is debounced (see flushPendingProps).
+    setProject((prev) => (prev ? { ...prev, components: next } : prev));
+    pendingComponentsRef.current = next;
+    if (propsSaveTimerRef.current) clearTimeout(propsSaveTimerRef.current);
+    propsSaveTimerRef.current = setTimeout(() => {
+      propsSaveTimerRef.current = null;
+      const pending = pendingComponentsRef.current;
+      pendingComponentsRef.current = null;
+      if (pending) syncRef.current(pending);
+    }, 500);
   };
 
+  // Flush a pending debounced prop save when switching away from a component or
+  // unmounting, so the last edit is never lost.
+  useEffect(() => {
+    return () => flushPendingProps();
+  }, [selectedCompId, flushPendingProps]);
+
   // Undo via real backend
+  // Instant client-side preview: render the project to standalone HTML and show
+  // it in an in-app modal via <iframe srcDoc>. This works both in a normal
+  // browser and inside the desktop app's webview — unlike window.open(blob:…),
+  // which the webview cannot navigate to (it 404s against the app server).
+  const handleInstantPreview = () => {
+    if (!project) return;
+    try {
+      setInstantPreviewHtml(generateStudioHTML(project));
+    } catch (err: unknown) {
+      setNotice({ type: "error", message: `Não foi possível gerar a prévia: ${String(err)}` });
+    }
+  };
+
+  // Download the project as a standalone .html file (offline export).
+  const handleDownloadHTML = () => {
+    if (!project) return;
+    try {
+      const html = generateStudioHTML(project);
+      const blob = new Blob([html], { type: "text/html" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      const safeName = (project.name || "meu-app").replace(/[^a-zA-Z0-9-_]+/g, "-").toLowerCase();
+      a.href = url;
+      a.download = `${safeName || "meu-app"}.html`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 10_000);
+      setNotice({ type: "info", message: "HTML do app baixado." });
+    } catch (err: unknown) {
+      setNotice({ type: "error", message: `Não foi possível baixar o HTML: ${String(err)}` });
+    }
+  };
+
   const handleUndo = async () => {
     if (!project) return;
     try {
@@ -334,16 +599,52 @@ export function StudioCanvasPage() {
     }
   };
 
-  // Honest Deploy Adapter test (without pretending published)
-  const handleDeployAttempt = () => {
-    setDeployStatus({
-      status: "BLOCKED_EXTERNAL",
-      message: "Deploy externo requer configuração de credenciais no ambiente (ex: VERCEL_TOKEN, CLOUDFLARE_API_TOKEN ou NETLIFY_AUTH_TOKEN). O sistema não falsifica publicação.",
-    });
+  // Criação a partir de modelo: confirma antes de substituir o projeto aberto e
+  // trata erros (os botões antigos trocavam o projeto sem aviso e sem .catch).
+  const handleCreateTemplate = async (name: string, kind: BuilderProject["kind"]) => {
+    if (project && !(await confirmDialog(`Criar "${name}"? O projeto atualmente aberto no editor será substituído por um novo projeto em branco.`, { confirmLabel: "Criar" }))) {
+      return;
+    }
+    try {
+      const created = await createBuilder({ name, kind });
+      setProject(created);
+      setSelectedCompId(null);
+      setNotice({ type: "success", message: `Novo projeto "${name}" criado.` });
+    } catch (err: unknown) {
+      setNotice({ type: "error", message: `Erro ao criar projeto a partir do modelo: ${String(err)}` });
+    }
+  };
+
+  // Publicação real: chama o Deploy Adapter do backend e mostra o resultado
+  // honesto — sucesso com URL, estado em processamento, ou o motivo real (ex.:
+  // credencial ausente), sempre citando a credencial correta do provedor.
+  const handleDeployAttempt = async (provider: (typeof DEPLOY_PROVIDERS)[number]) => {
+    if (!project) return;
+    setDeployStatus({ status: "Publicando…", message: `Enviando o projeto para ${provider.label} pelo Deploy Adapter…` });
+    try {
+      const result = await deployBuilder(project.id, provider.slug, {});
+      const deployment = (result as { deployment?: { status?: string; url?: string }; status?: string; url?: string }).deployment ?? result;
+      const url = deployment?.url;
+      const rawStatus = deployment?.status ?? "";
+      const humanStatus = missionStateLabel(rawStatus);
+      if (url) {
+        setDeployStatus({ status: humanStatus || "Publicado", message: `Publicado em ${provider.label}. URL: ${url}` });
+      } else {
+        setDeployStatus({
+          status: humanStatus || "Em processamento",
+          message: `${provider.label}: solicitação de publicação aceita pelo runtime${humanStatus ? ` (estado: ${humanStatus})` : ""}. Acompanhe a conclusão e a URL final.`,
+        });
+      }
+    } catch (err) {
+      const reason = err instanceof Error ? err.message : String(err);
+      setDeployStatus({
+        status: "Bloqueado (dependência externa)",
+        message: `Não foi possível publicar em ${provider.label}: ${reason}. Configure a credencial no ambiente do servidor: ${provider.credential}. O sistema não falsifica a publicação.`,
+      });
+    }
   };
 
   const selectedComponent = project?.components?.find((c) => c.id === selectedCompId);
-  const previewUrl = project ? `${API_BASE}/api/agent/v1/builders/${project.id}/preview/index.html` : "";
 
   return (
     <SidebarLayout title="Studio" sidebar={<AppSidebar current="studio" />}>
@@ -357,7 +658,7 @@ export function StudioCanvasPage() {
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="text-sm font-semibold text-neutral-900 dark:text-white sm:text-base">
-                  {project?.name || "Studio Builder"}
+                  {project?.name || "Editor do Studio"}
                 </h1>
                 {project && (
                   <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-[11px] font-mono text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400">
@@ -370,7 +671,7 @@ export function StudioCanvasPage() {
                   </span>
                 )}
               </div>
-              <p className="text-xs text-neutral-400">Editor visual interativo conectado ao backend real</p>
+              <p className="text-xs text-neutral-400">Monte um site ou app adicionando componentes com um clique e reordenando a lista; veja a prévia e exporte em ZIP.</p>
             </div>
           </div>
 
@@ -421,7 +722,7 @@ export function StudioCanvasPage() {
                 }`}
               >
                 <EyeIcon className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Preview</span>
+                <span className="hidden sm:inline">Prévia</span>
               </button>
             </div>
 
@@ -436,6 +737,28 @@ export function StudioCanvasPage() {
               <span className="hidden md:inline">Exportar ZIP</span>
             </button>
 
+            {/* Download the app as standalone HTML */}
+            <button
+              type="button"
+              onClick={handleDownloadHTML}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-neutral-300 px-3 py-1.5 text-xs font-medium text-neutral-700 hover:bg-neutral-50 dark:border-neutral-700 dark:text-neutral-200 dark:hover:bg-neutral-800"
+              title="Baixar o app como um arquivo HTML standalone"
+            >
+              <ArrowDownTrayIcon className="h-4 w-4" />
+              <span className="hidden md:inline">Baixar HTML</span>
+            </button>
+
+            {/* Instant client-side preview */}
+            <button
+              type="button"
+              onClick={handleInstantPreview}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-neutral-300 px-3 py-1.5 text-xs font-medium text-neutral-700 hover:bg-neutral-50 dark:border-neutral-700 dark:text-neutral-200 dark:hover:bg-neutral-800"
+              title="Ver o app agora em uma nova aba (prévia instantânea, sem servidor)"
+            >
+              <EyeIcon className="h-4 w-4" />
+              <span className="hidden md:inline">Ver agora</span>
+            </button>
+
             {/* Deploy Adapter Button */}
             <button
               type="button"
@@ -443,7 +766,7 @@ export function StudioCanvasPage() {
               className="inline-flex items-center gap-1.5 rounded-lg bg-neutral-900 px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-neutral-800 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-100"
             >
               <RocketLaunchIcon className="h-4 w-4" />
-              <span className="hidden sm:inline">Deploy</span>
+              <span className="hidden sm:inline">Publicar</span>
             </button>
           </div>
         </header>
@@ -488,6 +811,36 @@ export function StudioCanvasPage() {
         <div className="flex flex-1 overflow-hidden">
           {/* Left Palette (Components) */}
           <aside className="hidden md:block w-56 shrink-0 border-r border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900 overflow-y-auto">
+            {/* Geração por IA local (descreva o app e o modelo monta os componentes) */}
+            <div className="mb-4 rounded-xl border border-blue-200 bg-blue-50 p-2.5 dark:border-blue-900/60 dark:bg-blue-950/20">
+              <label className="text-xs font-semibold uppercase tracking-wider text-blue-700 dark:text-blue-300">
+                Gerar com IA
+              </label>
+              <textarea
+                value={aiPrompt}
+                onChange={(e) => setAiPrompt(e.target.value)}
+                placeholder="Descreva o app/site que você quer…"
+                rows={2}
+                className="mt-1.5 w-full resize-none rounded-lg border border-neutral-300 bg-white px-2 py-1.5 text-xs dark:border-neutral-700 dark:bg-neutral-800"
+              />
+              <label className="mt-1.5 flex items-center gap-1.5 text-[11px] text-neutral-600 dark:text-neutral-300">
+                <input
+                  type="checkbox"
+                  checked={aiReplace}
+                  onChange={(e) => setAiReplace(e.target.checked)}
+                  className="h-3 w-3"
+                />
+                Gerar do zero (substituir o canvas)
+              </label>
+              <button
+                type="button"
+                onClick={() => void handleGenerateAI()}
+                disabled={aiGenerating || !aiPrompt.trim()}
+                className="mt-1.5 w-full rounded-lg bg-blue-600 px-2 py-1.5 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+              >
+                {aiGenerating ? "Gerando com modelo local…" : "Gerar componentes"}
+              </button>
+            </div>
             <h2 className="text-xs font-semibold uppercase tracking-wider text-neutral-400">
               Componentes
             </h2>
@@ -518,9 +871,7 @@ export function StudioCanvasPage() {
               <div className="mt-2 space-y-1 text-xs">
                 <button
                   type="button"
-                  onClick={() =>
-                    createBuilder({ name: "Novo Site Web", kind: "website" }).then((p) => setProject(p))
-                  }
+                  onClick={() => void handleCreateTemplate("Novo Site Web", "website")}
                   className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-neutral-600 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800"
                 >
                   <GlobeAltIcon className="h-4 w-4 text-emerald-500" />
@@ -528,9 +879,7 @@ export function StudioCanvasPage() {
                 </button>
                 <button
                   type="button"
-                  onClick={() =>
-                    createBuilder({ name: "Novo Dashboard", kind: "dashboard" }).then((p) => setProject(p))
-                  }
+                  onClick={() => void handleCreateTemplate("Novo Dashboard", "dashboard")}
                   className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-neutral-600 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800"
                 >
                   <ChartBarIcon className="h-4 w-4 text-blue-500" />
@@ -538,9 +887,7 @@ export function StudioCanvasPage() {
                 </button>
                 <button
                   type="button"
-                  onClick={() =>
-                    createBuilder({ name: "Nova Apresentação", kind: "slides" }).then((p) => setProject(p))
-                  }
+                  onClick={() => void handleCreateTemplate("Nova Apresentação", "slides")}
                   className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-neutral-600 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800"
                 >
                   <PresentationChartBarIcon className="h-4 w-4 text-violet-500" />
@@ -548,9 +895,7 @@ export function StudioCanvasPage() {
                 </button>
                 <button
                   type="button"
-                  onClick={() =>
-                    createBuilder({ name: "Novo Jogo Web", kind: "game" }).then((p) => setProject(p))
-                  }
+                  onClick={() => void handleCreateTemplate("Novo Jogo Web", "game")}
                   className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-neutral-600 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800"
                 >
                   <PuzzlePieceIcon className="h-4 w-4 text-amber-500" />
@@ -558,9 +903,7 @@ export function StudioCanvasPage() {
                 </button>
                 <button
                   type="button"
-                  onClick={() =>
-                    createBuilder({ name: "Novo App Móvel", kind: "app" }).then((p) => setProject(p))
-                  }
+                  onClick={() => void handleCreateTemplate("Novo App Móvel", "app")}
                   className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-neutral-600 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800"
                 >
                   <DevicePhoneMobileIcon className="h-4 w-4 text-rose-500" />
@@ -622,7 +965,29 @@ export function StudioCanvasPage() {
                           <div
                             key={comp.id}
                             onClick={() => setSelectedCompId(comp.id)}
-                            className={`group relative rounded-xl border p-4 transition cursor-pointer ${
+                            onDoubleClick={(e) => {
+                              e.stopPropagation();
+                              if (PRIMARY_TEXT_PROP[comp.type]) {
+                                setSelectedCompId(comp.id);
+                                setEditingId(comp.id);
+                              }
+                            }}
+                            draggable={editingId !== comp.id}
+                            onDragStart={(e) => {
+                              setDragId(comp.id);
+                              e.dataTransfer.effectAllowed = "move";
+                            }}
+                            onDragOver={(e) => {
+                              e.preventDefault();
+                              e.dataTransfer.dropEffect = "move";
+                            }}
+                            onDrop={(e) => {
+                              e.preventDefault();
+                              handleReorderDrop(comp.id);
+                            }}
+                            onDragEnd={() => setDragId(null)}
+                            title="Arraste para reordenar"
+                            className={`group relative rounded-xl border p-4 transition cursor-pointer ${dragId === comp.id ? "opacity-50 ring-2 ring-violet-400" : ""} ${
                               isSelected
                                 ? "border-neutral-900 bg-neutral-50/80 shadow-md ring-2 ring-neutral-900/10 dark:border-white dark:bg-neutral-800/80 dark:ring-white/10"
                                 : "border-neutral-200/80 bg-white hover:border-neutral-300 dark:border-neutral-800 dark:bg-neutral-900"
@@ -644,7 +1009,19 @@ export function StudioCanvasPage() {
                                   className="rounded p-1 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700 disabled:opacity-20 dark:hover:bg-neutral-800"
                                   title="Mover para cima"
                                 >
-                                  <ArrowsUpDownIcon className="h-3.5 w-3.5" />
+                                  <ArrowUpIcon className="h-3.5 w-3.5" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleMoveComponent(comp.id, "down");
+                                  }}
+                                  disabled={idx === (project?.components?.length ?? 0) - 1}
+                                  className="rounded p-1 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700 disabled:opacity-20 dark:hover:bg-neutral-800"
+                                  title="Mover para baixo"
+                                >
+                                  <ArrowDownIcon className="h-3.5 w-3.5" />
                                 </button>
                                 <button
                                   type="button"
@@ -659,6 +1036,30 @@ export function StudioCanvasPage() {
                                 </button>
                               </div>
                             </div>
+
+                            {/* Inline editing: double-click a component to edit
+                                its main text right on the canvas. */}
+                            {editingId === comp.id && PRIMARY_TEXT_PROP[comp.type] && (
+                              <input
+                                autoFocus
+                                data-testid="inline-edit-input"
+                                defaultValue={comp.props?.[PRIMARY_TEXT_PROP[comp.type]] ?? ""}
+                                onClick={(e) => e.stopPropagation()}
+                                onBlur={(e) => {
+                                  handleUpdateProps(comp.id, PRIMARY_TEXT_PROP[comp.type], e.target.value);
+                                  setEditingId(null);
+                                }}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") {
+                                    handleUpdateProps(comp.id, PRIMARY_TEXT_PROP[comp.type], (e.target as HTMLInputElement).value);
+                                    setEditingId(null);
+                                  } else if (e.key === "Escape") {
+                                    setEditingId(null);
+                                  }
+                                }}
+                                className="mb-2 w-full rounded-lg border border-blue-400 bg-white px-2 py-1 text-sm text-neutral-900 outline-none ring-2 ring-blue-200 dark:bg-neutral-800 dark:text-white dark:ring-blue-900/40"
+                              />
+                            )}
 
                             {/* Render Component Content */}
                             {comp.type === "heading" && (
@@ -711,6 +1112,73 @@ export function StudioCanvasPage() {
                                 </div>
                               </div>
                             )}
+                            {comp.type === "hero" && (
+                              <div className="rounded-xl bg-gradient-to-br from-neutral-900 to-neutral-700 p-6 text-center text-white dark:from-neutral-100 dark:to-neutral-300 dark:text-neutral-900">
+                                <h1 className="text-2xl font-bold">{comp.props?.title || "Título do Hero"}</h1>
+                                <p className="mt-2 text-sm opacity-80">{comp.props?.subtitle || "Subtítulo explicativo"}</p>
+                                <span className="mt-4 inline-flex rounded-lg bg-white px-4 py-2 text-xs font-semibold text-neutral-900 dark:bg-neutral-900 dark:text-white">{comp.props?.cta || "Ação"}</span>
+                              </div>
+                            )}
+                            {comp.type === "image" && (
+                              comp.props?.src ? (
+                                <img src={comp.props.src} alt={comp.props?.alt || ""} className="max-w-full rounded-lg" />
+                              ) : (
+                                <div className="flex h-24 items-center justify-center rounded-lg border border-dashed border-neutral-300 text-xs text-neutral-400 dark:border-neutral-700">Imagem (defina a URL nas propriedades)</div>
+                              )
+                            )}
+                            {comp.type === "input" && (
+                              <label className="block text-xs">
+                                <span className="text-neutral-700 dark:text-neutral-300">{comp.props?.label || "Rótulo"}</span>
+                                <input type="text" disabled placeholder={comp.props?.placeholder || ""} className="mt-1 w-full rounded-lg border border-neutral-300 bg-white px-3 py-1.5 text-sm dark:border-neutral-700 dark:bg-neutral-900" />
+                              </label>
+                            )}
+                            {comp.type === "link" && (
+                              <span className="text-sm font-medium text-blue-600 underline dark:text-blue-400">{comp.props?.text || "Link"}</span>
+                            )}
+                            {comp.type === "list" && (
+                              <ul className="list-disc space-y-1 pl-5 text-sm text-neutral-700 dark:text-neutral-300">
+                                {(comp.props?.items || "Item 1, Item 2").split(",").map((it, i) => (
+                                  <li key={i}>{it.trim()}</li>
+                                ))}
+                              </ul>
+                            )}
+                            {comp.type === "divider" && (
+                              <hr className="border-neutral-200 dark:border-neutral-800" />
+                            )}
+                            {comp.type === "pricing" && (
+                              <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-4 text-center dark:border-neutral-700 dark:bg-neutral-900">
+                                <div className="text-sm font-bold text-neutral-900 dark:text-white">{comp.props?.plan || "Plano Pro"}</div>
+                                <div className="my-1 text-2xl font-extrabold text-neutral-900 dark:text-white">{comp.props?.price || "R$ 49/mês"}</div>
+                                <ul className="space-y-1 text-xs text-neutral-600 dark:text-neutral-400">
+                                  {(comp.props?.features || "Recurso 1, Recurso 2").split(",").map((f, i) => (
+                                    <li key={i}>{f.trim()}</li>
+                                  ))}
+                                </ul>
+                                <span className="mt-3 inline-flex rounded-lg bg-neutral-900 px-3 py-1.5 text-xs font-semibold text-white dark:bg-white dark:text-neutral-900">{comp.props?.cta || "Assinar"}</span>
+                              </div>
+                            )}
+                            {comp.type === "testimonial" && (
+                              <figure className="m-0 border-l-[3px] border-neutral-900 pl-4 dark:border-neutral-100">
+                                <blockquote className="m-0 text-sm italic text-neutral-800 dark:text-neutral-100">{comp.props?.quote || "Mudou completamente o nosso fluxo de trabalho."}</blockquote>
+                                <figcaption className="mt-2 text-xs font-semibold text-neutral-500">{comp.props?.author || "Cliente satisfeito"}</figcaption>
+                              </figure>
+                            )}
+                            {comp.type === "faq" && (
+                              <details className="rounded-lg border border-neutral-200 p-3 dark:border-neutral-700">
+                                <summary className="cursor-pointer text-sm font-semibold text-neutral-800 dark:text-neutral-100">{comp.props?.question || "Pergunta frequente?"}</summary>
+                                <p className="mt-2 text-xs text-neutral-600 dark:text-neutral-400">{comp.props?.answer || "Resposta clara e objetiva para a dúvida."}</p>
+                              </details>
+                            )}
+                            {comp.type === "footer" && (
+                              <div className="flex items-center justify-between border-t border-neutral-200 pt-3 text-xs text-neutral-500 dark:border-neutral-800">
+                                <span>{comp.props?.text || "© 2026 Minha Empresa"}</span>
+                                <div className="flex gap-3">
+                                  {(comp.props?.links || "Sobre, Contato").split(",").map((l, i) => (
+                                    <span key={i}>{l.trim()}</span>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
                           </div>
                         );
                       })}
@@ -722,20 +1190,20 @@ export function StudioCanvasPage() {
               /* Live Preview Mode (Real iframe to backend preview) */
               <div className="flex h-full flex-col">
                 <div className="mb-2 flex items-center justify-between text-xs text-neutral-500">
-                  <span>URL do Preview: {previewUrl}</span>
-                  <a
-                    href={previewSrc ?? undefined}
-                    target="_blank"
-                    rel="noreferrer"
+                  <span>Prévia autenticada: carregada com a sua sessão; a URL interna é protegida e não é compartilhável.</span>
+                  <button
+                    type="button"
+                    disabled={!previewSrc}
+                    onClick={() => setPreviewExpanded(true)}
                     className={`font-medium text-blue-600 hover:underline dark:text-blue-400 ${previewSrc ? "" : "pointer-events-none opacity-50"}`}
                   >
-                    Abrir em nova aba &rarr;
-                  </a>
+                    Expandir prévia &rarr;
+                  </button>
                 </div>
                 <div className="flex-1 overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
                   <iframe
                     src={previewSrc ?? undefined}
-                    title="Live Preview"
+                    title="Prévia ao vivo"
                     sandbox="allow-scripts"
                     className="h-full w-full border-0 bg-white"
                   />
@@ -843,6 +1311,42 @@ export function StudioCanvasPage() {
                   </div>
                 )}
 
+                {selectedComponent.props?.links !== undefined && (
+                  <div>
+                    <label className="block text-neutral-700 dark:text-neutral-300">Links (separados por vírgula)</label>
+                    <textarea
+                      rows={2}
+                      value={selectedComponent.props.links}
+                      onChange={(e) => handleUpdateProps(selectedComponent.id, "links", e.target.value)}
+                      className="mt-1 w-full rounded-lg border border-neutral-300 p-2 text-neutral-900 outline-none focus:border-neutral-900 dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+                    />
+                  </div>
+                )}
+
+                {selectedComponent.props?.change !== undefined && (
+                  <div>
+                    <label className="block text-neutral-700 dark:text-neutral-300">Variação</label>
+                    <input
+                      type="text"
+                      value={selectedComponent.props.change}
+                      onChange={(e) => handleUpdateProps(selectedComponent.id, "change", e.target.value)}
+                      className="mt-1 w-full rounded-lg border border-neutral-300 px-2.5 py-1.5 text-neutral-900 outline-none focus:border-neutral-900 dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+                    />
+                  </div>
+                )}
+
+                {selectedComponent.props?.action !== undefined && (
+                  <div>
+                    <label className="block text-neutral-700 dark:text-neutral-300">Ação</label>
+                    <input
+                      type="text"
+                      value={selectedComponent.props.action}
+                      onChange={(e) => handleUpdateProps(selectedComponent.id, "action", e.target.value)}
+                      className="mt-1 w-full rounded-lg border border-neutral-300 px-2.5 py-1.5 text-neutral-900 outline-none focus:border-neutral-900 dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+                    />
+                  </div>
+                )}
+
                 <div className="pt-4 border-t border-neutral-100 dark:border-neutral-800 flex gap-2">
                   <button
                     type="button"
@@ -862,23 +1366,23 @@ export function StudioCanvasPage() {
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
             <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl dark:bg-neutral-900">
               <h3 className="text-base font-bold text-neutral-900 dark:text-white">
-                Publicar com Deploy Adapter
+                Publicar projeto
               </h3>
               <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
                 Selecione o provedor de nuvem para hospedar seu projeto. Sem credenciais ativas, o sistema mantém status honesto.
               </p>
 
               <div className="mt-4 space-y-2">
-                {["Vercel", "Cloudflare Pages", "Netlify", "SSH / Servidor Próprio"].map((prov) => (
+                {DEPLOY_PROVIDERS.map((prov) => (
                   <button
-                    key={prov}
+                    key={prov.slug}
                     type="button"
-                    onClick={handleDeployAttempt}
+                    onClick={() => void handleDeployAttempt(prov)}
                     className="flex w-full items-center justify-between rounded-xl border border-neutral-200 p-3 text-left text-xs font-medium text-neutral-800 transition hover:bg-neutral-50 dark:border-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-800"
                   >
-                    <span>{prov}</span>
-                    <span className="rounded bg-neutral-100 px-2 py-0.5 text-[10px] text-neutral-500 dark:bg-neutral-800">
-                      Disponível
+                    <span>{prov.label}</span>
+                    <span className="rounded bg-amber-100 px-2 py-0.5 text-[10px] font-medium text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
+                      Requer credenciais
                     </span>
                   </button>
                 ))}
@@ -903,6 +1407,72 @@ export function StudioCanvasPage() {
                   Fechar
                 </button>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Prévia instantânea em modal (iframe srcDoc) — funciona no app e no navegador */}
+        {instantPreviewHtml !== null && (
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Prévia do app"
+            className="fixed inset-0 z-50 flex flex-col bg-black/70 p-4"
+            onClick={() => setInstantPreviewHtml(null)}
+          >
+            <div
+              className="mx-auto flex h-full w-full max-w-5xl flex-col overflow-hidden rounded-2xl bg-white shadow-xl dark:bg-neutral-900"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between border-b border-neutral-200 px-4 py-2 dark:border-neutral-800">
+                <span className="text-sm font-semibold text-neutral-900 dark:text-white">Prévia — {project?.name || "app"}</span>
+                <button
+                  type="button"
+                  onClick={() => setInstantPreviewHtml(null)}
+                  aria-label="Fechar prévia"
+                  className="rounded-lg px-3 py-1 text-xs font-medium text-neutral-600 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800"
+                >
+                  Fechar ✕
+                </button>
+              </div>
+              <iframe
+                title="Prévia do app"
+                srcDoc={instantPreviewHtml}
+                sandbox=""
+                className="h-full w-full flex-1 border-0 bg-white"
+              />
+            </div>
+          </div>
+        )}
+        {previewExpanded && previewSrc && (
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Prévia expandida"
+            className="fixed inset-0 z-50 flex flex-col bg-black/70 p-4"
+            onClick={() => setPreviewExpanded(false)}
+          >
+            <div
+              className="mx-auto flex h-full w-full max-w-5xl flex-col overflow-hidden rounded-2xl bg-white shadow-xl dark:bg-neutral-900"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between border-b border-neutral-200 px-4 py-2 dark:border-neutral-800">
+                <span className="text-sm font-semibold text-neutral-900 dark:text-white">Prévia autenticada — {project?.name || "app"}</span>
+                <button
+                  type="button"
+                  onClick={() => setPreviewExpanded(false)}
+                  aria-label="Fechar prévia"
+                  className="rounded-lg px-3 py-1 text-xs font-medium text-neutral-600 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800"
+                >
+                  Fechar ✕
+                </button>
+              </div>
+              <iframe
+                title="Prévia autenticada expandida"
+                src={previewSrc}
+                sandbox="allow-scripts"
+                className="h-full w-full flex-1 border-0 bg-white"
+              />
             </div>
           </div>
         )}

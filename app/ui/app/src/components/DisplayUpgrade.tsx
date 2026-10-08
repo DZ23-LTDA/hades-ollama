@@ -15,7 +15,7 @@ export const DisplayUpgrade = ({
   onDismiss,
   className,
   message,
-  label = "Upgrade",
+  label = "Fazer upgrade",
   href = "https://ollama.com/upgrade",
 }: DisplayUpgradeProps) => {
   if (!error || error.code !== "usage_limit_upgrade") return null;
@@ -34,7 +34,7 @@ export const DisplayUpgrade = ({
 
   return (
     <Display
-      message={message || error.error || "An error occurred"}
+      message={message || error.error || "Ocorreu um erro"}
       variant={variant}
       onDismiss={onDismiss}
       action={action}

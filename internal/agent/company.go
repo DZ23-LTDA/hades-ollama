@@ -134,9 +134,15 @@ type CompanyIdempotencyRecord struct {
 }
 
 type CompanyCycle struct {
-	ID              string     `json:"id"`
-	Name            string     `json:"name"`
-	Objective       string     `json:"objective"`
+	ID        string    `json:"id"`
+	Name      string    `json:"name"`
+	Objective string    `json:"objective"`
+	Risk      RiskClass `json:"risk,omitempty"`
+	// Integrations names the external connectors this cycle intends to drive
+	// (e.g. "tiktok_shop", "meta_ads"). When populated it is the authoritative
+	// source for external-side-effect gating; free-text scanning is only a
+	// backward-compatible fallback for cycles persisted before this field.
+	Integrations    []string   `json:"integrations,omitempty"`
 	Frequency       string     `json:"frequency"`
 	IntervalSeconds int64      `json:"interval_seconds"`
 	ScheduleID      string     `json:"schedule_id,omitempty"`

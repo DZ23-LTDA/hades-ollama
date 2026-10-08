@@ -1309,8 +1309,11 @@ func TestBrowserOperatorNavigateAndSnapshot(t *testing.T) {
 	defer server.Close()
 	root := t.TempDir()
 	tool := browserOperatorTool{}
-	toolContext := ToolContext{MissionID: "browser-test", StepID: "step_1", Workspace: root}
+	toolContext := ToolContext{MissionID: "browser-test", StepID: "step_1", Workspace: root, OrganizationID: LocalOrganizationID}
 	if _, err := tool.Execute(context.Background(), toolContext, map[string]any{"action": "navigate", "url": server.URL}); err != nil {
+		if browserDependencyUnavailable(err) {
+			t.Skipf("Playwright browser dependency unavailable; skipping integration test: %v", err)
+		}
 		t.Fatal(err)
 	}
 	result, err := tool.Execute(context.Background(), toolContext, map[string]any{"action": "snapshot"})
@@ -1320,6 +1323,40 @@ func TestBrowserOperatorNavigateAndSnapshot(t *testing.T) {
 	content, ok := result.Value.(map[string]any)["content"].(string)
 	if !ok || !strings.Contains(content, "Hello Browser") {
 		t.Fatalf("browser result = %+v", result.Value)
+	}
+}
+
+// browserDependencyUnavailable reports whether the error is caused by the
+// Python interpreter or the Playwright module being absent from the dev
+// machine, rather than by a defect in the browser operator. CI installs the
+// dependency and exercises the full path; locally we skip instead of failing.
+func browserDependencyUnavailable(err error) bool {
+	if err == nil {
+		return false
+	}
+	message := err.Error()
+	for _, marker := range []string{
+		"No module named 'playwright'",
+		"requires python3 or python on PATH",
+		"executable file not found",
+	} {
+		if strings.Contains(message, marker) {
+			return true
+		}
+	}
+	return false
+}
+
+func TestBrowserOperatorRejectsOrganizationScopeWithoutStrictSandbox(t *testing.T) {
+	tool := browserOperatorTool{}
+	for _, organizationID := range []string{"", "org_example"} {
+		_, err := tool.Execute(context.Background(), ToolContext{OrganizationID: organizationID}, map[string]any{
+			"action": "navigate",
+			"url":    "https://example.com",
+		})
+		if err == nil || !strings.Contains(err.Error(), "strict OS and network sandbox") {
+			t.Fatalf("organization %q error=%v, want explicit sandbox requirement", organizationID, err)
+		}
 	}
 }
 

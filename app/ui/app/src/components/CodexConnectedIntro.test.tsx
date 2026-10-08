@@ -26,7 +26,7 @@ it("hands Continue to the connection flow, like Claude's intro", async () => {
     });
     expect(done).not.toHaveBeenCalled();
     const button = renderer!.root.findByType("button");
-    expect(button.children).toEqual(["Continue"]);
+    expect(button.children).toEqual(["Continuar"]);
     await act(async () => button.props.onClick());
     expect(done).toHaveBeenCalledOnce();
   } finally {

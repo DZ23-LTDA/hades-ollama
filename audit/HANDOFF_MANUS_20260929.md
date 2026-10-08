@@ -2,11 +2,11 @@
 
 ## Objetivo do projeto
 
-O proprietário está transformando o repositório `DZ23-LTDA/ollama-classe-a-plus` em **Ollama Full**: produto agentic local-first que pretende reunir e superar funcionalidades de Manus e de outros harnesses. A intenção é construir uma experiência integrada, não apenas telas: o chat deve executar missões e ferramentas, com autorização, histórico, arquivos/artifacts, terminal/browser/MCP e controles de segurança. **Paridade total não foi comprovada nem alcançada**; trate as análises anteriores como requisitos e direção, não como funcionalidades concluídas.
+O proprietário está transformando o repositório `DZ23-LTDA/hades-ollama` em **Ollama Full**: produto agentic local-first que pretende reunir e superar funcionalidades de Manus e de outros harnesses. A intenção é construir uma experiência integrada, não apenas telas: o chat deve executar missões e ferramentas, com autorização, histórico, arquivos/artifacts, terminal/browser/MCP e controles de segurança. **Paridade total não foi comprovada nem alcançada**; trate as análises anteriores como requisitos e direção, não como funcionalidades concluídas.
 
 ## Estado do snapshot e repositório
 
-- Repositório: `https://github.com/DZ23-LTDA/ollama-classe-a-plus`.
+- Repositório: `https://github.com/DZ23-LTDA/hades-ollama`.
 - Branch do snapshot: `recovery/ollama-full-snapshot`.
 - O commit-base da rodada de segurança é `30ae8f22394205115e1d9154dae9866fcee82a52` (`fix(security): close postgres isolation and cutover races`); `65cb08bec4880447369690668b2c35e024319049` é um checkpoint anterior. O SHA exato do snapshot Git incluído será o valor marcado `SOURCE_SNAPSHOT_SHA` em `README-START-HERE.md` na raiz deste pacote.
 - O checkout estava limpo e alinhado a `origin/recovery/ollama-full-snapshot` quando foi empacotado; não há alteração sem commit conhecida.
@@ -45,11 +45,11 @@ Arquivos-chave para começar:
 | `fix/audit-security-deps-2026-09-25` (head do PR #38) | `07a4f0bca2cbe327d5234abd9ebec69ff52154e6` | PR #38 aberto contra `main`, API marcou mergeable |
 | `feat/ui-shell-parity` | `132e77155fed682c0b6244d256e6cdfe9b25c239` | Branch divergente de UI |
 
-PR #38: https://github.com/DZ23-LTDA/ollama-classe-a-plus/pull/38 (estado `OPEN`). Comparação `recovery...PR38`: `diverged`; head do PR está 35 commits à frente de recovery e recovery está 29 commits à frente do PR; merge-base `8635e30dc9e95a1f5b29700169783abc24093ceb`, 121 arquivos no diff. PR #38 contém Connectors/Providers, quick-connect, rotas, catálogo/persistência Go, ícones e upload; por isso a tela de conectores duplicada em `feat/ui-shell-parity` não deve ser expandida sem reconciliar.
+PR #38: https://github.com/DZ23-LTDA/hades-ollama/pull/38 (estado `OPEN`). Comparação `recovery...PR38`: `diverged`; head do PR está 35 commits à frente de recovery e recovery está 29 commits à frente do PR; merge-base `8635e30dc9e95a1f5b29700169783abc24093ceb`, 121 arquivos no diff. PR #38 contém Connectors/Providers, quick-connect, rotas, catálogo/persistência Go, ícones e upload; por isso a tela de conectores duplicada em `feat/ui-shell-parity` não deve ser expandida sem reconciliar.
 
 Comparação `recovery...feat/ui-shell-parity`: `diverged`, 17 commits à frente e 17 atrás, merge-base `add5881a260ff1f740b1340c6f394c26acc2d5d2`, 57 arquivos no diff. A branch de UI inclui elementos potencialmente aditivos como tema claro/escuro/automático, Home, `AgenticConsole`, jornadas/evidências E2E, rastreador de tarefas, status e `ProductWorkspacePage`. Há sobreposição direta em `ProductWorkspacePage`, `ConnectorLogo` e `connectorCatalog.ts`; preservar as páginas mais completas de Connectors/Providers do PR e adaptar a shell aditiva é hipótese de trabalho, ainda não validada.
 
-Esses números são uma fotografia de 17:43 -03; PR/branches podem avançar. Antes de integração, atualizar todos os SHAs/comparações por `gh pr view 38` e `gh api repos/DZ23-LTDA/ollama-classe-a-plus/compare/<base>...<head>`. No Git bundle, recuperar branches remotas não cria automaticamente branches locais: use os comandos desta seção após verificar `git bundle list-heads`.
+Esses números são uma fotografia de 17:43 -03; PR/branches podem avançar. Antes de integração, atualizar todos os SHAs/comparações por `gh pr view 38` e `gh api repos/DZ23-LTDA/hades-ollama/compare/<base>...<head>`. No Git bundle, recuperar branches remotas não cria automaticamente branches locais: use os comandos desta seção após verificar `git bundle list-heads`.
 
 ## Procedimento para abrir o Git bundle
 

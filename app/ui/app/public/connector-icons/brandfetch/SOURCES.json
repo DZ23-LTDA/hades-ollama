@@ -1,0 +1,81 @@
+{
+  "provider": "Brandfetch",
+  "retrieved": "2026-10-01",
+  "assets": {
+    "amazon-seller": {
+      "domain": "amazon.com",
+      "url": "https://cdn.brandfetch.io/idawOgYOsG/theme/light/logo.svg?c=1bxqvuz3dohuyv1uab5pjdl0a3dq3pTmJni",
+      "local": "connector-icons/brandfetch/amazon-seller.svg"
+    },
+    "asaas": {
+      "domain": "asaas.com",
+      "url": "https://cdn.brandfetch.io/idLRcDynC3/theme/light/logo.svg?c=1bxqvuz3dohuyv1uab5pjdl0a3dq3pTmJni",
+      "local": "connector-icons/brandfetch/asaas.svg"
+    },
+    "canva": {
+      "domain": "canva.com",
+      "url": "https://cdn.brandfetch.io/id9mVQlyB1/theme/light/logo.svg?c=1bxqvuz3dohuyv1uab5pjdl0a3dq3pTmJni",
+      "local": "connector-icons/brandfetch/canva.svg"
+    },
+    "composio": {
+      "domain": "composio.dev",
+      "url": "https://cdn.brandfetch.io/idBEXnLL0x/theme/light/logo.svg?c=1bxqvuz3dohuyv1uab5pjdl0a3dq3pTmJni",
+      "local": "connector-icons/brandfetch/composio.svg"
+    },
+    "fiscal-ai": {
+      "domain": "fiscal.ai",
+      "url": "https://cdn.brandfetch.io/idNOja6TDE/theme/dark/logo.svg?c=1bxqvuz3dohuyv1uab5pjdl0a3dq3pTmJni",
+      "local": "connector-icons/brandfetch/fiscal-ai.svg"
+    },
+    "linkedin": {
+      "domain": "linkedin.com",
+      "url": "https://cdn.brandfetch.io/idJFz6sAsl/theme/light/logo.svg?c=1bxqvuz3dohuyv1uab5pjdl0a3dq3pTmJni",
+      "local": "connector-icons/brandfetch/linkedin.svg"
+    },
+    "outlook": {
+      "domain": "outlook.com",
+      "url": "https://cdn.brandfetch.io/idmOzMM07F/w/216/h/46/theme/dark/logo.png?c=1bxqvuz3dohuyv1uab5pjdl0a3dq3pTmJni",
+      "local": "connector-icons/brandfetch/outlook.png"
+    },
+    "pagarme": {
+      "domain": "pagar.me",
+      "url": "https://cdn.brandfetch.io/idWaIc0qv7/theme/dark/logo.svg?c=1bxqvuz3dohuyv1uab5pjdl0a3dq3pTmJni",
+      "local": "connector-icons/brandfetch/pagarme.svg"
+    },
+    "pinecone": {
+      "domain": "pinecone.io",
+      "url": "https://cdn.brandfetch.io/idCLuo1dQ8/theme/light/logo.svg?c=1bxqvuz3dohuyv1uab5pjdl0a3dq3pTmJni",
+      "local": "connector-icons/brandfetch/pinecone.svg"
+    },
+    "postmark": {
+      "domain": "postmarkapp.com",
+      "url": "https://cdn.brandfetch.io/iduRT_MsOS/theme/light/logo.svg?c=1bxqvuz3dohuyv1uab5pjdl0a3dq3pTmJni",
+      "local": "connector-icons/brandfetch/postmark.svg"
+    },
+    "salesforce": {
+      "domain": "salesforce.com",
+      "url": "https://cdn.brandfetch.io/idVE84WdIN/theme/dark/logo.svg?c=1bxqvuz3dohuyv1uab5pjdl0a3dq3pTmJni",
+      "local": "connector-icons/brandfetch/salesforce.svg"
+    },
+    "sendgrid": {
+      "domain": "sendgrid.com",
+      "url": "https://cdn.brandfetch.io/idHHcfw5Qu/theme/light/logo.svg?c=1bxqvuz3dohuyv1uab5pjdl0a3dq3pTmJni",
+      "local": "connector-icons/brandfetch/sendgrid.svg"
+    },
+    "slack": {
+      "domain": "slack.com",
+      "url": "https://cdn.brandfetch.io/idJ_HhtG0Z/theme/dark/symbol.svg?c=1bxqvuz3dohuyv1uab5pjdl0a3dq3pTmJni",
+      "local": "connector-icons/brandfetch/slack.svg"
+    },
+    "twilio": {
+      "domain": "twilio.com",
+      "url": "https://cdn.brandfetch.io/idT7wVo_zL/theme/dark/logo.svg?c=1bxqvuz3dohuyv1uab5pjdl0a3dq3pTmJni",
+      "local": "connector-icons/brandfetch/twilio.svg"
+    },
+    "woovi-openpix": {
+      "domain": "openpix.com.br",
+      "url": "https://cdn.brandfetch.io/idLyexZt9J/theme/light/logo.svg?c=1bxqvuz3dohuyv1uab5pjdl0a3dq3pTmJni",
+      "local": "connector-icons/brandfetch/woovi-openpix.svg"
+    }
+  }
+}

@@ -5,6 +5,7 @@ import tailwindcss from "@tailwindcss/vite";
 import tsconfigPaths from "vite-tsconfig-paths";
 import postcssPresetEnv from "postcss-preset-env";
 import { resolve } from "path";
+import { resolveViteHost } from "./src/lib/viteHostPolicy";
 
 export default defineConfig(() => ({
   base: "/",
@@ -59,6 +60,20 @@ export default defineConfig(() => ({
 
   build: {
     target: "es2017",
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes("node_modules")) return undefined;
+          if (/[\\/]react(?:-dom)?[\\/]|[\\/]scheduler[\\/]/.test(id)) return "vendor-react";
+          if (id.includes("@tanstack")) return "vendor-router";
+          if (/(heroicons|simple-icons)/.test(id)) return "vendor-icons";
+          // Do not force the remaining dependency graph into a catch-all
+          // chunk: React-heavy markdown packages can otherwise create a
+          // circular chunk graph and execute before createContext exists.
+          return undefined;
+        },
+      },
+    },
   },
 
   esbuild: {
@@ -66,7 +81,7 @@ export default defineConfig(() => ({
   },
 
   server: {
-    host: "0.0.0.0",
+    host: resolveViteHost(),
     port: 5173,
     proxy: {
       "/api": {
@@ -76,7 +91,7 @@ export default defineConfig(() => ({
     },
   },
   preview: {
-    host: "0.0.0.0",
+    host: resolveViteHost(),
     port: 5173,
     proxy: {
       "/api": {

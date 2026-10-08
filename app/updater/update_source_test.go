@@ -12,7 +12,7 @@ func TestUpdateURLAllowedOnlyForThisDistribution(t *testing.T) {
 	for _, u := range []string{
 		"https://github.com/ollama/ollama/releases/download/v0.34.4/OllamaSetup.exe",
 		"https://ollama.com/download/OllamaSetup.exe",
-		"https://github.com/DZ23-LTDA/ollama-classe-a-plus.evil.com/releases/download/x.exe",
+		"https://github.com/DZ23-LTDA/hades-ollama.evil.com/releases/download/x.exe",
 		"not a url",
 		"",
 	} {
@@ -20,7 +20,7 @@ func TestUpdateURLAllowedOnlyForThisDistribution(t *testing.T) {
 			t.Errorf("updateURLAllowed(%q) = true, want false", u)
 		}
 	}
-	if !updateURLAllowed("https://github.com/DZ23-LTDA/ollama-classe-a-plus/releases/download/v0.2.0/OllamaClasseAPlusSetup.exe") {
+	if !updateURLAllowed("https://github.com/DZ23-LTDA/hades-ollama/releases/download/v0.2.0/HadesSetup.exe") {
 		t.Error("DZ23 release URL should be allowed")
 	}
 

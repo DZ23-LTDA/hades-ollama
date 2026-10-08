@@ -2,9 +2,11 @@ package server
 
 import (
 	"crypto/subtle"
+	"net"
 	"net/http"
 	"os"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -12,11 +14,26 @@ import (
 	"github.com/ollama/ollama/internal/agent"
 )
 
-// companionIdleTimeout limita quanto tempo uma conexão companion pode ficar
-// sem enviar frame algum antes de ser encerrada.
-const companionIdleTimeout = 2 * time.Minute
-
 var companionUpgrader = websocket.Upgrader{ReadBufferSize: 16 << 10, WriteBufferSize: 16 << 10, CheckOrigin: companionOriginAllowed}
+
+// defaultCompanionIdleTimeout bounds how long the post-handshake read loop waits
+// for the next client frame. Without it, an authenticated client that completes
+// the handshake then goes silent pins a goroutine + socket forever, so opening
+// many idle connections exhausts goroutines/FDs. A healthy companion sends
+// heartbeats well within this window, which refreshes the deadline.
+const defaultCompanionIdleTimeout = 2 * time.Minute
+
+// companionIdleTimeoutNanos overrides the idle timeout when > 0 (tests only). It
+// is atomic because the per-connection handler goroutine reads it concurrently
+// with any test override.
+var companionIdleTimeoutNanos atomic.Int64
+
+func companionIdleTimeout() time.Duration {
+	if n := companionIdleTimeoutNanos.Load(); n > 0 {
+		return time.Duration(n)
+	}
+	return defaultCompanionIdleTimeout
+}
 
 func companionOriginAllowed(request *http.Request) bool {
 	origin := strings.TrimSpace(request.Header.Get("Origin"))
@@ -40,6 +57,12 @@ func (a *agentAPI) deviceConnect(c *gin.Context) {
 		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "mTLS client certificate is required"})
 		return
 	}
+	// Bound concurrent companion sockets alongside the SSE streams (SEC-13).
+	release, ok := a.acquireStreamSlot(c)
+	if !ok {
+		return
+	}
+	defer release()
 	connection, err := companionUpgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
 		return
@@ -64,17 +87,20 @@ func (a *agentAPI) deviceConnect(c *gin.Context) {
 	// Sem deadline, uma conexão ociosa (ou um peer que sumiu sem FIN) segura a
 	// goroutine e o descriptor indefinidamente. O prazo é renovado a cada frame
 	// recebido e a cada pong do peer.
-	_ = connection.SetReadDeadline(time.Now().Add(companionIdleTimeout))
+	_ = connection.SetReadDeadline(time.Now().Add(companionIdleTimeout()))
 	connection.SetPongHandler(func(string) error {
-		return connection.SetReadDeadline(time.Now().Add(companionIdleTimeout))
+		return connection.SetReadDeadline(time.Now().Add(companionIdleTimeout()))
 	})
 	_ = connection.WriteJSON(agent.CompanionWelcome{Type: "welcome", DeviceID: device.ID, Protocol: "dz23-companion.v1", ServerNow: time.Now().UTC()})
 	for {
+		// Rolling idle deadline: a silent connection is dropped instead of
+		// blocking a goroutine forever. Each received frame refreshes it.
+		_ = connection.SetReadDeadline(time.Now().Add(companionIdleTimeout()))
 		var frame agent.CompanionFrame
 		if err := connection.ReadJSON(&frame); err != nil {
 			return
 		}
-		_ = connection.SetReadDeadline(time.Now().Add(companionIdleTimeout))
+		_ = connection.SetReadDeadline(time.Now().Add(companionIdleTimeout()))
 		switch frame.Type {
 		case "heartbeat":
 			if _, err := a.runtime.Devices().Heartbeat(device.ID, hello.Token, frame.Capabilities); err != nil {
@@ -89,19 +115,58 @@ func (a *agentAPI) deviceConnect(c *gin.Context) {
 	}
 }
 
+// companionSecureRequest reports whether the companion request arrived over a
+// secure transport. A direct TLS connection is always trusted. The
+// X-Forwarded-Proto header is only honored when the request's RemoteAddr is a
+// trusted proxy (loopback or an entry in OLLAMA_TRUSTED_PROXIES); otherwise an
+// attacker could spoof the header to bypass the TLS requirement.
 func companionSecureRequest(request *http.Request) bool {
 	if request.TLS != nil {
 		return true
 	}
 	// X-Forwarded-Proto é escrito pelo próprio cliente quando não há proxy na
 	// frente. Só vale como prova de TLS quando o operador declarou um proxy
-	// confiável E o peer imediato é loopback (o proxy same-host do setup
-	// documentado). Um cliente remoto direto não consegue forjar o header.
+	// confiável (OLLAMA_AGENT_TRUSTED_TLS_PROXY=1) E o peer imediato é loopback
+	// ou está listado em OLLAMA_TRUSTED_PROXIES. Um cliente remoto direto não
+	// consegue forjar o header.
 	if os.Getenv("OLLAMA_AGENT_TRUSTED_TLS_PROXY") != "1" {
 		return false
 	}
-	if !isLoopbackRemoteAddr(request.RemoteAddr) {
+	if !trustedCompanionProxy(request.RemoteAddr) {
 		return false
 	}
 	return strings.EqualFold(request.Header.Get("X-Forwarded-Proto"), "https")
+}
+
+// trustedCompanionProxy reports whether remoteAddr belongs to a proxy whose
+// X-Forwarded-* headers may be trusted: loopback, or an exact IP/host match or
+// CIDR range listed (comma-separated) in OLLAMA_TRUSTED_PROXIES.
+func trustedCompanionProxy(remoteAddr string) bool {
+	if isLoopbackRemoteAddr(remoteAddr) {
+		return true
+	}
+	host := strings.TrimSpace(remoteAddr)
+	if h, _, err := net.SplitHostPort(host); err == nil {
+		host = h
+	}
+	host = strings.Trim(host, "[]")
+	if host == "" {
+		return false
+	}
+	ip := net.ParseIP(host)
+	for _, entry := range strings.Split(os.Getenv("OLLAMA_TRUSTED_PROXIES"), ",") {
+		entry = strings.TrimSpace(entry)
+		if entry == "" {
+			continue
+		}
+		if strings.EqualFold(entry, host) {
+			return true
+		}
+		if ip != nil {
+			if _, network, err := net.ParseCIDR(entry); err == nil && network.Contains(ip) {
+				return true
+			}
+		}
+	}
+	return false
 }

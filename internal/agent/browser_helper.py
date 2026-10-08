@@ -9,9 +9,6 @@ import socket
 import sys
 from urllib.parse import urlparse
 
-from playwright.sync_api import sync_playwright
-
-
 def fail(message):
     raise RuntimeError(message)
 
@@ -20,16 +17,72 @@ def validate_url(value):
     parsed = urlparse(value)
     if parsed.scheme not in {"http", "https"} or not parsed.hostname:
         fail("browser only permits http and https URLs")
-    if os.environ.get("OLLAMA_AGENT_BROWSER_ALLOW_PRIVATE", "") == "1":
-        return
+    if parsed.username or parsed.password:
+        fail("browser URLs must not contain embedded credentials")
     try:
-        addresses = socket.getaddrinfo(parsed.hostname, parsed.port or 443, type=socket.SOCK_STREAM)
-    except socket.gaierror as exc:
-        fail(f"browser DNS resolution failed: {exc}")
+        port = parsed.port or (80 if parsed.scheme == "http" else 443)
+    except ValueError:
+        fail("browser URL has an invalid port")
+    try:
+        addresses = socket.getaddrinfo(parsed.hostname, port, type=socket.SOCK_STREAM)
+    except OSError:
+        fail("browser DNS resolution failed")
+    if not addresses:
+        fail("browser DNS resolution returned no addresses")
+
+    allow_loopback = os.environ.get("OLLAMA_AGENT_BROWSER_ALLOW_PRIVATE", "") == "1"
     for address in addresses:
-        ip = ipaddress.ip_address(address[4][0])
-        if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved or ip.is_multicast or ip.is_unspecified:
-            fail("browser URL resolves to a private or local address")
+        try:
+            ip = ipaddress.ip_address(address[4][0].split("%", 1)[0])
+        except ValueError:
+            fail("browser DNS resolution returned an invalid address")
+        if allow_loopback and ip.is_loopback:
+            continue
+        if not ip.is_global:
+            fail("browser URL resolves to a non-public address")
+
+
+def validate_cdp_url(value):
+    # The Browser Operator may attach to a Chrome the user launched with a
+    # remote-debugging port (so it can act within the user's own, logged-in
+    # session). For safety this is restricted to a LOOPBACK debugger: Hades
+    # never attaches to a remote browser, and each action still goes through the
+    # per-step human approval gate and the same anti-SSRF route guard below.
+    parsed = urlparse(value)
+    if parsed.scheme not in {"http", "https"} or not parsed.hostname:
+        fail("browser CDP URL must be an http(s) endpoint")
+    try:
+        port = parsed.port or (80 if parsed.scheme == "http" else 443)
+    except ValueError:
+        fail("browser CDP URL has an invalid port")
+    try:
+        addresses = socket.getaddrinfo(parsed.hostname, port, type=socket.SOCK_STREAM)
+    except OSError:
+        fail("browser CDP host did not resolve")
+    if not addresses:
+        fail("browser CDP host resolved to no addresses")
+    for address in addresses:
+        try:
+            ip = ipaddress.ip_address(address[4][0].split("%", 1)[0])
+        except ValueError:
+            fail("browser CDP host resolved to an invalid address")
+        if not ip.is_loopback:
+            fail("browser CDP URL must point to a loopback debugger (127.0.0.1)")
+
+
+def browser_headless():
+    # Default to headless. Set OLLAMA_AGENT_BROWSER_HEADLESS=0 to launch a
+    # visible window (useful when the user drives/logs in alongside the agent).
+    return os.environ.get("OLLAMA_AGENT_BROWSER_HEADLESS", "1").strip() != "0"
+
+
+def guard_browser_route(route):
+    try:
+        validate_url(route.request.url)
+    except Exception:
+        route.abort(error_code="blockedbyclient")
+        return
+    route.continue_()
 
 
 def page_for(context):
@@ -50,6 +103,8 @@ def browser_executable():
         if candidate and pathlib.Path(candidate).is_file():
             return candidate
     try:
+        from playwright.sync_api import sync_playwright
+
         with sync_playwright() as playwright:
             managed = pathlib.Path(playwright.chromium.executable_path)
         if managed.is_file():
@@ -73,6 +128,8 @@ def page_result(session_id, page, state_path, **extra):
 
 
 def main(request):
+    from playwright.sync_api import sync_playwright
+
     action = str(request.get("action", "")).strip()
     session_id = str(request.get("session_id", "")).strip()
     if not re.fullmatch(r"[A-Za-z0-9_-]{1,64}", session_id):
@@ -81,14 +138,26 @@ def main(request):
     user_dir = root / "sessions" / session_id
     user_dir.mkdir(parents=True, mode=0o700, exist_ok=True)
     state_path = user_dir / "state.json"
-    executable = browser_executable()
+    cdp_url = os.environ.get("OLLAMA_AGENT_BROWSER_CDP_URL", "").strip()
 
     with sync_playwright() as playwright:
-        browser_context = playwright.chromium.launch_persistent_context(
-            str(user_dir), headless=True, executable_path=executable,
-            accept_downloads=True, args=["--disable-dev-shm-usage"],
-        )
+        own_context = True
+        if cdp_url:
+            # Attach to the user's running Chrome (loopback debugger) so the
+            # agent operates within the user's real, logged-in session.
+            validate_cdp_url(cdp_url)
+            browser = playwright.chromium.connect_over_cdp(cdp_url)
+            browser_context = browser.contexts[0] if browser.contexts else browser.new_context(accept_downloads=True)
+            own_context = False
+        else:
+            executable = browser_executable()
+            browser_context = playwright.chromium.launch_persistent_context(
+                str(user_dir), headless=browser_headless(), executable_path=executable,
+                accept_downloads=True, service_workers="block",
+                args=["--disable-dev-shm-usage", "--disable-background-networking", "--disable-sync"],
+            )
         try:
+            browser_context.route("**/*", guard_browser_route)
             page = page_for(browser_context)
             timeout = min(max(int(request.get("timeout_ms", 15000)), 1000), 60000)
             page.set_default_timeout(timeout)
@@ -141,7 +210,10 @@ def main(request):
                 return {"session_id": session_id, "status": "approval_required", "reason": "human takeover must be completed by a connected Desktop/Browser surface", "url": page.url}
             fail(f"unsupported browser action: {action}")
         finally:
-            browser_context.close()
+            # Never close the user's own browser when attached over CDP; only
+            # tear down contexts we launched ourselves.
+            if own_context:
+                browser_context.close()
 
 
 if __name__ == "__main__":

@@ -134,6 +134,7 @@ type AgentOrchestrator struct {
 	runner  SubagentRunner
 	reducer ResultReducer
 	jobs    map[string]OrchestrationJob
+	cancels map[string]context.CancelFunc
 }
 
 var ErrOrchestrationForbidden = errors.New("orchestration job is outside the active organization")
@@ -247,6 +248,23 @@ func (o *AgentOrchestrator) Run(ctx context.Context, id string) (OrchestrationJo
 		return previous, err
 	}
 	o.mu.Unlock()
+	// Register a cancel function so Cancel(id) can interrupt this running job
+	// (not just Planned ones). The goroutines below observe ctx.Done() and the
+	// finalization block marks the job Cancelled when the context is cancelled.
+	runCtx, runCancel := context.WithCancel(ctx)
+	ctx = runCtx
+	o.mu.Lock()
+	if o.cancels == nil {
+		o.cancels = make(map[string]context.CancelFunc)
+	}
+	o.cancels[id] = runCancel
+	o.mu.Unlock()
+	defer func() {
+		runCancel()
+		o.mu.Lock()
+		delete(o.cancels, id)
+		o.mu.Unlock()
+	}()
 	if job.Budget.MaxSeconds > 0 {
 		var cancel context.CancelFunc
 		ctx, cancel = context.WithTimeout(ctx, time.Duration(job.Budget.MaxSeconds)*time.Second)
@@ -381,6 +399,18 @@ func (o *AgentOrchestrator) Cancel(id string) (OrchestrationJob, error) {
 			return previous, err
 		}
 		return job, nil
+	}
+	if job.State == OrchestrationRunning {
+		if cancel, ok := o.cancels[id]; ok && cancel != nil {
+			// Signal the in-flight Run to abort. Do NOT modify o.jobs or persist
+			// here: the task goroutines are still mutating job.Tasks under
+			// taskMu, so marshaling the job now would be a data race. Run's
+			// finalization persists the Cancelled state once the goroutines
+			// finish; report Cancelled to the caller on a local copy only.
+			cancel()
+			job.State = OrchestrationCancelled
+			return job, nil
+		}
 	}
 	return job, errors.New("running cancellation requires the request context")
 }

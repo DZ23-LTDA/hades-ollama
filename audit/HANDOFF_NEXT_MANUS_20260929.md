@@ -4,7 +4,7 @@
 
 - Repositório local: `/home/ubuntu/ollama-full-recovery`
 - Branch autorizada: **`recovery/ollama-full-snapshot`** (NUNCA `main`, NUNCA force-push)
-- Remoto: `https://github.com/DZ23-LTDA/ollama-classe-a-plus`
+- Remoto: `https://github.com/DZ23-LTDA/hades-ollama`
 - SHA funcional (código + CI) desta rodada: **`2aa59a20505a627d936856a350eb784eb81b63f4`**
 - O commit imediatamente seguinte é **apenas documentação** (este guia + os dois checkpoints).
   Confirme o topo real com `git log --oneline -3` e trate qualquer commit `docs(audit):`
@@ -61,7 +61,7 @@ Branches que NÃO devem ser tocadas: `main`, `fix/audit-security-deps-2026-09-25
 - Causa: o fixture criava `ollama_agent_reverse_member` e imediatamente testava o login, antes de qualquer GRANT.
 - Correção publicada em `2aa59a20` (GRANT CONNECT dentro do bloco SQL do fixture, antes do probe).
 - **Ação**: confirmar o run de `2aa59a20` em
-  `gh run list --repo DZ23-LTDA/ollama-classe-a-plus --branch recovery/ollama-full-snapshot`.
+  `gh run list --repo DZ23-LTDA/hades-ollama --branch recovery/ollama-full-snapshot`.
   Se ainda falhar, ler `--log-failed` e filtrar apenas as linhas de saída real (o log é dominado
   pelo script ecoado com escape `[36;1m`).
 

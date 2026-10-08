@@ -815,7 +815,7 @@ func TestDistributedPostgresRLSAndEvents(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		_, organization, _, err := authStore.ProvisionOAuthUser(map[string]any{"email": "pg-recovery@example.test", "name": "Recovery Test"}, "integration")
+		_, organization, _, err := authStore.ProvisionOAuthUser(map[string]any{"sub": "pg-recovery-subject", "email": "pg-recovery@example.test", "name": "Recovery Test"}, "integration")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -844,7 +844,11 @@ func TestDistributedPostgresRLSAndEvents(t *testing.T) {
 			t.Fatalf("tenant-aware recovery failed: %v", err)
 		}
 		found := false
-		for _, job := range queue.List(QueuePending) {
+		pendingJobs, listErr := queue.List(QueuePending)
+		if listErr != nil {
+			t.Fatal(listErr)
+		}
+		for _, job := range pendingJobs {
 			if job.MissionID == pending.ID && job.OrganizationID == organization.ID {
 				found = true
 				break
@@ -1006,7 +1010,10 @@ func TestDistributedRedisRetriesDeadLetterReplay(t *testing.T) {
 	if err := queue.Ack(claimed); err != nil {
 		t.Fatal(err)
 	}
-	jobs := queue.List(QueueSucceeded)
+	jobs, listErr := queue.List(QueueSucceeded)
+	if listErr != nil {
+		t.Fatal(listErr)
+	}
 	found := false
 	for _, candidate := range jobs {
 		if candidate.ID == job.ID {
@@ -1407,19 +1414,97 @@ func TestDistributedRedisStartCancellationDominatesNilHandler(t *testing.T) {
 	cancelWorker()
 	deadline := time.Now().Add(5 * time.Second)
 	for time.Now().Before(deadline) {
-		for _, candidate := range queue.List(QueueFailed) {
+		failed, listErr := queue.List(QueueFailed)
+		if listErr != nil {
+			t.Fatal(listErr)
+		}
+		for _, candidate := range failed {
 			if candidate.ID == job.ID {
 				return
 			}
 		}
-		for _, candidate := range queue.List(QueueSucceeded) {
+		succeeded, listErr := queue.List(QueueSucceeded)
+		if listErr != nil {
+			t.Fatal(listErr)
+		}
+		for _, candidate := range succeeded {
 			if candidate.ID == job.ID {
 				t.Fatalf("cancelled handler was acknowledged as succeeded: %+v", candidate)
 			}
 		}
 		time.Sleep(10 * time.Millisecond)
 	}
-	t.Fatalf("cancelled handler was not terminalized: pending=%+v running=%+v", queue.List(QueuePending), queue.List(QueueRunning))
+	pendingSnapshot, _ := queue.List(QueuePending)
+	runningSnapshot, _ := queue.List(QueueRunning)
+	t.Fatalf("cancelled handler was not terminalized: pending=%+v running=%+v", pendingSnapshot, runningSnapshot)
+}
+
+func TestDistributedRedisEnqueueEnforcesPerTenantQuota(t *testing.T) {
+	redisURL := os.Getenv("OLLAMA_AGENT_TEST_REDIS_URL")
+	if redisURL == "" {
+		t.Skip("OLLAMA_AGENT_TEST_REDIS_URL is not configured")
+	}
+	// Per-tenant cap of 2 active jobs; global cap stays at the default so only
+	// the per-tenant limit is exercised here.
+	t.Setenv("OLLAMA_AGENT_REDIS_MAX_JOBS_PER_TENANT", "2")
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	queue, err := openRedisTestQueue(t, ctx, redisURL, "ollama:integration:"+uuid.NewString())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := queue.EnqueueForOrganization("org-a", "mis_"+uuid.NewString(), 3); err != nil {
+		t.Fatalf("first tenant enqueue failed: %v", err)
+	}
+	if _, err := queue.EnqueueForOrganization("org-a", "mis_"+uuid.NewString(), 3); err != nil {
+		t.Fatalf("second tenant enqueue failed: %v", err)
+	}
+	if _, err := queue.EnqueueForOrganization("org-a", "mis_"+uuid.NewString(), 3); err == nil || !strings.Contains(err.Error(), "per-tenant job quota reached") {
+		t.Fatalf("third enqueue for the same tenant must be rejected, got %v", err)
+	}
+	// A different tenant has its own budget.
+	if _, err := queue.EnqueueForOrganization("org-b", "mis_"+uuid.NewString(), 3); err != nil {
+		t.Fatalf("a different tenant must not be blocked by org-a's quota: %v", err)
+	}
+	// Draining one of org-a's jobs to a terminal state frees a slot (the
+	// admission prune drops terminal members from the tenant set).
+	claimed, ok, err := queue.Claim("integration-worker", time.Now().UTC())
+	if err != nil || !ok {
+		t.Fatalf("claim for drain failed: ok=%v err=%v", ok, err)
+	}
+	if err := queue.Ack(claimed); err != nil {
+		t.Fatalf("ack for drain failed: %v", err)
+	}
+	if claimed.OrganizationID == "org-a" {
+		if _, err := queue.EnqueueForOrganization("org-a", "mis_"+uuid.NewString(), 3); err != nil {
+			t.Fatalf("after draining a terminal job, org-a should have a free slot: %v", err)
+		}
+	}
+}
+
+func TestDistributedRedisEnqueueEnforcesGlobalQuota(t *testing.T) {
+	redisURL := os.Getenv("OLLAMA_AGENT_TEST_REDIS_URL")
+	if redisURL == "" {
+		t.Skip("OLLAMA_AGENT_TEST_REDIS_URL is not configured")
+	}
+	// Small global cap so the third distinct mission is rejected atomically by
+	// the enqueue script (bounds unbounded backlog / noisy-neighbor load).
+	t.Setenv("OLLAMA_AGENT_REDIS_MAX_JOBS", "2")
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	queue, err := openRedisTestQueue(t, ctx, redisURL, "ollama:integration:"+uuid.NewString())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := queue.Enqueue("mis_"+uuid.NewString(), 3); err != nil {
+		t.Fatalf("first enqueue within the cap failed: %v", err)
+	}
+	if _, err := queue.Enqueue("mis_"+uuid.NewString(), 3); err != nil {
+		t.Fatalf("second enqueue within the cap failed: %v", err)
+	}
+	if _, err := queue.Enqueue("mis_"+uuid.NewString(), 3); err == nil || !strings.Contains(err.Error(), "global job quota reached") {
+		t.Fatalf("third enqueue past the global cap must be rejected, got %v", err)
+	}
 }
 
 func TestDistributedRedisWrongTypesDoNotPartiallyMutateQueue(t *testing.T) {

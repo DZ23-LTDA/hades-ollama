@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"math/rand/v2"
 	"os"
 	"path/filepath"
 	"sort"
@@ -423,10 +424,15 @@ func (q *JobQueue) Nack(claim QueueJob, runErr error) (QueueJob, error) {
 			return q.persistLocked(job)
 		}
 		job.Status = QueuePending
-		backoff := time.Duration(1<<(job.Attempts-1)) * time.Second
-		if backoff > 5*time.Minute {
-			backoff = 5 * time.Minute
+		base := time.Duration(1<<(job.Attempts-1)) * time.Second
+		if base > 5*time.Minute {
+			base = 5 * time.Minute
 		}
+		// Equal jitter: spread retries across [base/2, base] so a burst of jobs
+		// that fail at the same instant do not all retry in lockstep (thundering
+		// herd against the same downstream dependency).
+		half := base / 2
+		backoff := half + time.Duration(rand.Int64N(int64(half)+1))
 		setQueueAvailableAt(&job, now.Add(backoff))
 		result = job
 		return q.persistLocked(job)
@@ -476,7 +482,10 @@ func (q *JobQueue) ReplayForOrganization(organizationID, jobID string) (QueueJob
 	return result, nil
 }
 
-func (q *JobQueue) List(status QueueStatus) []QueueJob {
+// List returns the queue jobs for a status, or an error when the backing file
+// state cannot be refreshed. Returning an error (rather than a silent empty
+// slice) lets health checks tell "no jobs" apart from "queue state is broken".
+func (q *JobQueue) List(status QueueStatus) ([]QueueJob, error) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 	var result []QueueJob
@@ -491,9 +500,9 @@ func (q *JobQueue) List(status QueueStatus) []QueueJob {
 		return nil
 	}); err != nil {
 		slog.Error("agent queue state refresh failed", "error", err)
-		return nil
+		return nil, fmt.Errorf("queue state refresh: %w", err)
 	}
-	return result
+	return result, nil
 }
 
 func (q *JobQueue) Start(ctx context.Context, workerID string, handler func(context.Context, QueueJob) error) error {

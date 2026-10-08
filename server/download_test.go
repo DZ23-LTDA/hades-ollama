@@ -69,6 +69,53 @@ func TestDownloadChunkReturnsWhenTransferCompletes(t *testing.T) {
 	}
 }
 
+func TestDownloadChunkRejectsNonPartialStatus(t *testing.T) {
+	// A ranged part that does not start at offset 0 must reject a plain 200 (the
+	// server ignored Range) and any error status, instead of copying bad bytes.
+	cases := []struct {
+		name   string
+		status int
+		body   string
+	}{
+		{name: "whole-file-200-for-offset-part", status: http.StatusOK, body: "whole file body"},
+		{name: "forbidden", status: http.StatusForbidden, body: "<html>denied</html>"},
+		{name: "server-error", status: http.StatusInternalServerError, body: "boom"},
+		{name: "range-not-satisfiable", status: http.StatusRequestedRangeNotSatisfiable, body: ""},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(tc.status)
+				_, _ = io.WriteString(w, tc.body)
+			}))
+			t.Cleanup(server.Close)
+
+			requestURL, err := url.Parse(server.URL)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			download := &blobDownload{
+				Name:   filepath.Join(t.TempDir(), "blob"),
+				Digest: "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+				client: newServerEgressClient("test.download.loopback", true),
+			}
+			// A part that starts at a non-zero offset: a 200 whole-file response is unsafe.
+			part := &blobDownloadPart{Offset: 16, Size: 8, blobDownload: download}
+			ctx, cancel := context.WithTimeout(t.Context(), time.Second)
+			defer cancel()
+
+			err = download.downloadChunk(ctx, requestURL, io.Discard, part)
+			if err == nil {
+				t.Fatalf("downloadChunk() error = nil, want non-nil for status %d", tc.status)
+			}
+			if part.Completed.Load() != 0 {
+				t.Fatalf("part.Completed = %d, want 0 (no bytes should be written on a bad status)", part.Completed.Load())
+			}
+		})
+	}
+}
+
 func TestDownloadChunkDetectsStallBeforeFirstByte(t *testing.T) {
 	requestStarted := make(chan struct{})
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

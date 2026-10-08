@@ -1,7 +1,15 @@
 import { describe, expect, it } from "vitest";
 import { EndpointPage } from "@/components/EndpointPage";
 import { Route } from "@/routes/endpoint";
-import { endpoints, toolSetups } from "./endpoint";
+import { endpointHealthLabel, endpoints, toolSetups } from "./endpoint";
+
+describe("endpoint health", () => {
+  it("does not claim online while the backend is unavailable", () => {
+    expect(endpointHealthLabel("offline")).toBe("Offline");
+    expect(endpointHealthLabel("checking")).toBe("Verificando…");
+    expect(endpointHealthLabel("online")).toBe("Online");
+  });
+});
 
 describe("endpoint page data", () => {
   it("exposes native, OpenAI and Anthropic base addresses", () => {

@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/button";
+import { confirmDialog } from "@/lib/confirmDialog";
 import type {
   CodexDesktopModelStatus,
   CodexDesktopModelsSettings as ModelsSettings,
@@ -107,17 +108,17 @@ function modelCanBeSelected(model: CodexDesktopModelStatus): boolean {
 function modelStatusLabel(model: CodexDesktopModelStatus): string | null {
   switch (model.reason) {
     case "cloud_off":
-      return "Cloud models are off";
+      return "Modelos de nuvem desativados";
     case "sign_in_required":
-      return "Sign in required";
+      return "Login necessário";
     case "upgrade_required":
       return model.requiredPlan
-        ? `${model.requiredPlan[0]?.toUpperCase()}${model.requiredPlan.slice(1)} plan required`
-        : "Upgrade required";
+        ? `Requer plano ${model.requiredPlan[0]?.toUpperCase()}${model.requiredPlan.slice(1)}`
+        : "Requer upgrade de plano";
     case "verification_unavailable":
-      return "Access unavailable";
+      return "Acesso indisponível";
     case "model_not_installed":
-      return "Not installed";
+      return "Não instalado";
   }
   return null;
 }
@@ -200,8 +201,8 @@ function ModelOptions({
               onToggle(filtered[highlightedIndex].name);
             }
           }}
-          placeholder="Find model..."
-          aria-label="Find ChatGPT model"
+          placeholder="Buscar modelo…"
+          aria-label="Buscar modelo do ChatGPT"
           role="combobox"
           aria-expanded="true"
           aria-controls="chatgpt-model-options-listbox"
@@ -259,7 +260,7 @@ function ModelOptions({
           );
         })}
         {filtered.length === 0 && (
-          <p className="px-3 py-2 text-neutral-400">No models found</p>
+          <p className="px-3 py-2 text-neutral-400">Nenhum modelo encontrado</p>
         )}
       </div>
     </>
@@ -318,7 +319,7 @@ export const CodexDesktopModelsSettings = forwardRef<
 
   const refresh = useCallback(async () => {
     if (!window.getCodexDesktopModelsSettings) {
-      setError("ChatGPT model settings are unavailable in this Ollama build.");
+      setError("As configurações de modelos do ChatGPT não estão disponíveis nesta versão do Ollama.");
       setWarning(null);
       setLoading(false);
       return;
@@ -337,7 +338,7 @@ export const CodexDesktopModelsSettings = forwardRef<
         request === statusRequestRef.current &&
         !operationInFlightRef.current
       ) {
-        setError("Ollama could not load the ChatGPT model settings.");
+        setError("Não foi possível carregar as configurações de modelos do ChatGPT.");
         setWarning(null);
       }
     } finally {
@@ -399,11 +400,11 @@ export const CodexDesktopModelsSettings = forwardRef<
 
   const applyChanges = async () => {
     if (!window.applyCodexDesktopModels) {
-      setError("ChatGPT model settings are available in the Ollama macOS app.");
+      setError("As configurações de modelos do ChatGPT estão disponíveis apenas no macOS por enquanto.");
       return;
     }
     if (selected.length === 0) {
-      setError("Choose at least one model for ChatGPT.");
+      setError("Escolha pelo menos um modelo para o ChatGPT.");
       return;
     }
     if (operationInFlightRef.current) return;
@@ -421,11 +422,12 @@ export const CodexDesktopModelsSettings = forwardRef<
       if (result.restartConfirmationRequired) {
         applyResult(result, true);
         if (
-          !window.confirm(
+          !(await confirmDialog(
             result.settings.connected
               ? "Reiniciar ChatGPT para atualizar os modelos Ollama? Qualquer tarefa em execução será interrompida."
               : "Reiniciar ChatGPT para adicionar modelos Ollama? Qualquer tarefa em execução será interrompida.",
-          )
+            { confirmLabel: "Reiniciar" },
+          ))
         ) {
           return;
         }
@@ -441,7 +443,7 @@ export const CodexDesktopModelsSettings = forwardRef<
       applyResult(result);
       const openedStatus = await waitForChatGPTToOpen();
       if (openedStatus === null) {
-        setError("ChatGPT is taking longer than expected to open. Try again.");
+        setError("O ChatGPT está demorando mais que o esperado para abrir. Tente novamente.");
         return;
       }
       if (openedStatus) {
@@ -457,7 +459,7 @@ export const CodexDesktopModelsSettings = forwardRef<
         );
       }
     } catch {
-      setError("Ollama could not apply the ChatGPT models.");
+      setError("Não foi possível aplicar os modelos do ChatGPT.");
     } finally {
       ++statusRequestRef.current;
       operationInFlightRef.current = false;
@@ -470,7 +472,7 @@ export const CodexDesktopModelsSettings = forwardRef<
 
     const resetModels = window.resetCodexDesktopModels;
     if (!resetModels) {
-      setError("Ollama could not reset the ChatGPT models.");
+      setError("Não foi possível restaurar os modelos do ChatGPT.");
       return false;
     }
 
@@ -491,7 +493,7 @@ export const CodexDesktopModelsSettings = forwardRef<
       applyResult(result);
       return true;
     } catch {
-      setError("Ollama could not reset the ChatGPT models.");
+      setError("Não foi possível restaurar os modelos do ChatGPT.");
       return false;
     } finally {
       ++statusRequestRef.current;
@@ -505,6 +507,10 @@ export const CodexDesktopModelsSettings = forwardRef<
   if (!settings?.supported && !loading && !error) return null;
 
   const busy = applying || resetting;
+  // A aplicação de modelos no ChatGPT depende de uma ponte nativa que, hoje,
+  // só existe no macOS. Sem ela, não oferecemos um botão que cairia em aviso.
+  const macBridgeAvailable =
+    typeof window.applyCodexDesktopModels === "function";
 
   return (
     <div
@@ -534,7 +540,7 @@ export const CodexDesktopModelsSettings = forwardRef<
                 ChatGPT
               </h2>
               <p className="mt-1 text-base/6 text-zinc-500 sm:text-sm/6 dark:text-zinc-400">
-                Choose up to {maxModels} Ollama models to use in ChatGPT.
+                Escolha até {maxModels} modelos Ollama para usar no ChatGPT.
               </p>
             </div>
             <div className="shrink-0">
@@ -542,7 +548,7 @@ export const CodexDesktopModelsSettings = forwardRef<
                 type="button"
                 color="white"
                 onClick={() => void applyChanges()}
-                disabled={loading || busy || selected.length === 0}
+                disabled={loading || busy || selected.length === 0 || !macBridgeAvailable}
               >
                 {applying && (
                   <ArrowPathIcon data-slot="icon" className="animate-spin" />
@@ -562,6 +568,13 @@ export const CodexDesktopModelsSettings = forwardRef<
             </div>
           </div>
 
+          {!macBridgeAvailable && (
+            <p className="mt-3 w-full max-w-xl rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-700 dark:border-amber-900/50 dark:bg-amber-950/20 dark:text-amber-300">
+              Disponível apenas no macOS por enquanto. A configuração de modelos
+              do ChatGPT depende do aplicativo Ollama para macOS.
+            </p>
+          )}
+
           <div className="mt-4 w-full max-w-xl">
             <Popover className="relative w-full">
               <div
@@ -569,11 +582,11 @@ export const CodexDesktopModelsSettings = forwardRef<
                 className="relative flex min-h-10 w-full flex-wrap items-center gap-2 rounded-lg bg-neutral-50 p-2 ring-1 ring-inset ring-neutral-200 hover:bg-neutral-100 dark:bg-neutral-700 dark:ring-neutral-600 dark:hover:bg-neutral-600"
               >
                 <PopoverButton
-                  aria-label="Add ChatGPT model"
+                  aria-label="Adicionar modelo do ChatGPT"
                   disabled={loading || busy}
                   className="absolute inset-0 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:cursor-not-allowed"
                 >
-                  <span className="sr-only">Choose ChatGPT models</span>
+                  <span className="sr-only">Escolher modelos do ChatGPT</span>
                 </PopoverButton>
                 <div className="pointer-events-none relative z-10 flex min-w-0 flex-1 flex-wrap items-center gap-2">
                   {selected.map((model) => (
@@ -588,7 +601,7 @@ export const CodexDesktopModelsSettings = forwardRef<
                       </span>
                       <button
                         type="button"
-                        aria-label={`Remove ${model}`}
+                        aria-label={`Remover ${model}`}
                         disabled={busy}
                         onClick={(event) => {
                           event.stopPropagation();
@@ -602,7 +615,7 @@ export const CodexDesktopModelsSettings = forwardRef<
                   ))}
                   {selected.length === 0 && (
                     <span className="px-1 py-1 text-sm text-neutral-400">
-                      {loading ? "Loading models…" : "Select models"}
+                      {loading ? "Carregando modelos…" : "Selecionar modelos"}
                     </span>
                   )}
                 </div>

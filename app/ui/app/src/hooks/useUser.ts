@@ -1,6 +1,13 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { fetchUser, fetchConnectUrl, disconnectUser } from "@/api";
 
+// userRetryDelay backs off between /api/me retries. attemptIndex is 0-based, so
+// we add 1 — otherwise the first retry fires at 0ms and hammers a backend that
+// just failed before any backoff applies. Pure, for testing.
+export function userRetryDelay(attemptIndex: number): number {
+  return Math.min(500 * (attemptIndex + 1), 2000);
+}
+
 export function useUser() {
   const queryClient = useQueryClient();
 
@@ -13,7 +20,7 @@ export function useUser() {
     staleTime: 5 * 60 * 1000, // Consider data stale after 5 minutes
     gcTime: 10 * 60 * 1000, // Keep in cache for 10 minutes
     retry: 10,
-    retryDelay: (attemptIndex) => Math.min(500 * attemptIndex, 2000),
+    retryDelay: userRetryDelay,
     refetchOnMount: true, // Always fetch when component mounts
   });
 
@@ -48,7 +55,12 @@ export function useUser() {
   });
 
   const isLoading = userQuery.isLoading || userQuery.isFetching;
-  const isAuthenticated = Boolean(userQuery.data?.name);
+  const isLocalOnly = userQuery.data?.local_only === true;
+  // The backend always returns a placeholder "Local Operator" identity when no
+  // Ollama account is connected (local_only=true). Treating that as signed-in
+  // hid the "Entrar" affordances and let cloud requests fail silently, so a
+  // real account requires a name AND local_only to be false.
+  const isAuthenticated = Boolean(userQuery.data?.name) && !isLocalOnly;
 
   return {
     user: userQuery.data,
@@ -56,6 +68,7 @@ export function useUser() {
     isError: userQuery.isError,
     error: userQuery.error,
     isAuthenticated,
+    isLocalOnly,
     refreshUser: refreshUser.mutate,
     isRefreshing: refreshUser.isPending,
     refetchUser: userQuery.refetch,

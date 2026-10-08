@@ -105,6 +105,8 @@ export const Display = ({
         {action && <ActionButton action={action} />}
         {onDismiss && (
           <button
+            type="button"
+            aria-label="Fechar aviso"
             onClick={onDismiss}
             className={clsx(
               "rounded-full p-1.5 cursor-pointer",
