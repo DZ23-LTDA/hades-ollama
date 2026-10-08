@@ -36,7 +36,7 @@ async function capture(viewport, suffix) {
   await page.waitForTimeout(1200);
   await page.screenshot({ path: path.join(EVIDENCE_DIR, `screen-slash-goal-${suffix}.png`) });
   const body = await page.locator("body").innerText();
-  if (!body.includes("Mission Console")) throw new Error(`${suffix}: Mission Console not visible after /goal`);
+  if (!body.includes("Console de Missões")) throw new Error(`${suffix}: Console de Missões not visible after /goal`);
   await context.close();
   await browser.close();
 }

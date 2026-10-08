@@ -101,12 +101,12 @@ test("mobile shell is operable by keyboard without a trap", async ({ page }) => 
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/");
 
-  const menuButton = page.locator('button[aria-label*="sidebar" i]');
+  const menuButton = page.locator('button[aria-label*="barra lateral" i]');
   await expect(menuButton).toHaveCount(1);
-  if ((await menuButton.getAttribute("aria-label")) === "Hide sidebar") {
+  if ((await menuButton.getAttribute("aria-label")) === "Ocultar barra lateral") {
     await menuButton.focus();
     await page.keyboard.press("Enter");
-    await expect(menuButton).toHaveAttribute("aria-label", "Show sidebar");
+    await expect(menuButton).toHaveAttribute("aria-label", "Mostrar barra lateral");
   }
   await menuButton.focus();
   await page.keyboard.press("Enter");

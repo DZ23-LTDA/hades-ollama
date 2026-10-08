@@ -28,8 +28,11 @@ test.describe("Hades shell", () => {
     await expect(page.getByText("Ollama Classe A+", { exact: true })).toHaveCount(0);
     await expect(page.getByText("Ollama Full", { exact: true })).toHaveCount(0);
 
-    // Indicador de modo local-first na barra lateral.
-    await expect(page.getByText(/Local-first workspace/i)).toBeVisible();
+    // Indicador de modo local-first na barra lateral: a navegacao principal
+    // (AppNavigation) e a superficie estavel que declara o modo local-first.
+    await expect(
+      page.getByRole("navigation", { name: "Navegação principal" }),
+    ).toBeVisible();
 
     // Navegacao lateral principal presente.
     for (const item of ["Agents", "Tarefas", "Empresa"]) {
@@ -41,11 +44,11 @@ test.describe("Hades shell", () => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/agentic");
 
-    // Smoke offline: o Mission Console mostra o cabecalho, o composer de missao
-    // e o botao "Criar missão" sem depender de uma missao ativa (coberta por go
-    // test no runtime).
+    // Smoke offline: o Console de Missões (/agentic) mostra o cabecalho, o
+    // composer de missao e o botao "Criar missão" sem depender de uma missao
+    // ativa (coberta por go test no runtime).
     await expect(
-      page.getByRole("heading", { name: "Mission Console" }),
+      page.getByRole("heading", { name: "Console de Missões" }),
     ).toBeVisible();
     await expect(
       page.getByPlaceholder(/Descreva o que você quer construir/i),
