@@ -10,11 +10,16 @@ import (
 
 // getEgressLogs returns the audited egress decisions from the unified zero-trust policy.
 func (a *agentAPI) getEgressLogs(c *gin.Context) {
-	// O buffer de egress é global ao processo e não carrega organização:
-	// expor para um admin de uma única org vaza infraestrutura de outros tenants.
-	if !a.globalProcessScopeAllowed(c, "egress audit log") {
+	// O buffer de egress é global ao processo. O resultado é sempre filtrado
+	// pela organização do chamador (ListForOrganization/FilterForOrganization),
+	// então um chamador com locatário autenticado só enxerga os próprios
+	// registros. Quem não tem locatário no contexto (queda fail-closed para a
+	// organização local) é o único que poderia pedir a visão de processo
+	// inteiro, e por isso precisa do opt-in do operador.
+	if tenantOrganizationID(c) == "" && !a.globalProcessScopeAllowed(c, "egress audit log") {
 		return
 	}
+	organizationID := a.organizationID(c)
 	limitStr := c.Query("limit")
 	limit := 100
 	if limitStr != "" {
@@ -23,7 +28,6 @@ func (a *agentAPI) getEgressLogs(c *gin.Context) {
 		}
 	}
 	callsite := c.Query("callsite")
-	organizationID := a.organizationID(c)
 	var entries []agent.EgressDecision
 	if callsite != "" {
 		entries = agent.DefaultEgressAuditStore.FilterForOrganization(organizationID, callsite, limit)

@@ -841,6 +841,20 @@ func (a *agentAPI) organizationID(c *gin.Context) string {
 	return ""
 }
 
+// tenantOrganizationID devolve a organização explicitamente autenticada no
+// contexto da requisição. Diferente de agentOrganizationID, NÃO cai para a
+// organização local: string vazia significa "chamador sem locatário", que é
+// exatamente o caso em que uma superfície de escopo global precisa do opt-in
+// explícito do operador (OLLAMA_AGENT_ALLOW_GLOBAL_SCOPE).
+func tenantOrganizationID(c *gin.Context) string {
+	if value, ok := c.Get("agent.organization"); ok {
+		if organization, ok := value.(agent.Organization); ok {
+			return strings.TrimSpace(organization.ID)
+		}
+	}
+	return ""
+}
+
 func agentOrganizationID(c *gin.Context) string {
 	// The organization is trusted only from the request context, which the auth
 	// middleware populates from the verified bearer token (and fixes to the
@@ -850,10 +864,8 @@ func agentOrganizationID(c *gin.Context) string {
 	// an arbitrary organization. The header is only ever cross-checked against
 	// the authenticated org in authMiddleware. Absent a context org, fail closed
 	// to the local organization.
-	if value, ok := c.Get("agent.organization"); ok {
-		if organization, ok := value.(agent.Organization); ok {
-			return organization.ID
-		}
+	if organizationID := tenantOrganizationID(c); organizationID != "" {
+		return organizationID
 	}
 	return agent.LocalOrganizationID
 }

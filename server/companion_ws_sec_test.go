@@ -8,9 +8,16 @@ import (
 )
 
 // TestCompanionSecureRequestForwardedProtoSpoofing proves SEC-11: the
-// X-Forwarded-Proto header is only honored from a trusted proxy. A direct,
-// non-TLS client cannot spoof it to bypass the TLS requirement.
+// X-Forwarded-Proto header is only honored when the operator declared a TLS
+// proxy (OLLAMA_AGENT_TRUSTED_TLS_PROXY=1) AND the immediate peer is a trusted
+// proxy (loopback or OLLAMA_TRUSTED_PROXIES). A direct, non-TLS client cannot
+// spoof it to bypass the TLS requirement.
 func TestCompanionSecureRequestForwardedProtoSpoofing(t *testing.T) {
+	// Política mesclada: opt-in explícito do operador (main) + allowlist/loopback
+	// (SEC-11). Sem o opt-in o header é ignorado, mesmo vindo de loopback.
+	t.Setenv("OLLAMA_AGENT_TRUSTED_TLS_PROXY", "1")
+	t.Setenv("OLLAMA_TRUSTED_PROXIES", "")
+
 	newReq := func(remoteAddr, forwardedProto string, tlsState *tls.ConnectionState) *http.Request {
 		req := httptest.NewRequest(http.MethodGet, "/devices/abc/connect", nil)
 		req.RemoteAddr = remoteAddr
@@ -45,15 +52,20 @@ func TestCompanionSecureRequestForwardedProtoSpoofing(t *testing.T) {
 	}
 }
 
-// TestCompanionSecureRequestTrustedProxyAllowlist proves that an explicit
-// allowlist entry (OLLAMA_TRUSTED_PROXIES) enables X-Forwarded-Proto trust for a
+// TestCompanionSecureRequestTrustedProxyAllowlist proves SEC-11: with the TLS
+// proxy opt-in declared (OLLAMA_AGENT_TRUSTED_TLS_PROXY=1), an explicit allowlist
+// entry (OLLAMA_TRUSTED_PROXIES) enables X-Forwarded-Proto trust for a
 // non-loopback proxy, by exact IP and by CIDR range.
 func TestCompanionSecureRequestTrustedProxyAllowlist(t *testing.T) {
+	t.Setenv("OLLAMA_AGENT_TRUSTED_TLS_PROXY", "1")
+	t.Setenv("OLLAMA_TRUSTED_PROXIES", "")
+
 	req := httptest.NewRequest(http.MethodGet, "/devices/abc/connect", nil)
 	req.RemoteAddr = "203.0.113.9:5555"
 	req.Header.Set("X-Forwarded-Proto", "https")
 
-	// Without allowlist, not trusted.
+	// Com o opt-in declarado, mas sem entrada na allowlist, o peer remoto segue
+	// não confiável.
 	if companionSecureRequest(req) {
 		t.Fatal("remote must not be trusted before being allowlisted")
 	}

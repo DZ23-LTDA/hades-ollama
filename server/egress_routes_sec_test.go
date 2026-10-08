@@ -79,3 +79,44 @@ func TestEgressLogsOrganizationScoped(t *testing.T) {
 		t.Fatalf("expected blocked_count 0 for org-a, got %v", statusResp["blocked_count"])
 	}
 }
+
+// TestEgressLogsUnscopedCallerRequiresGlobalOptIn preserva o SEC-10(a) para o
+// chamador sem locatário: uma chamada autenticada sem organização no contexto
+// não recebe a visão de processo inteiro, e nem o opt-in do operador
+// (OLLAMA_AGENT_ALLOW_GLOBAL_SCOPE=true) dispensa o papel owner/admin.
+func TestEgressLogsUnscopedCallerRequiresGlobalOptIn(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	t.Setenv("OLLAMA_AGENT_ALLOW_GLOBAL_SCOPE", "")
+	router := gin.New()
+
+	api := &agentAPI{authRequired: true}
+	group := router.Group("/api/agent/v1")
+	group.GET("/egress/logs", api.getEgressLogs)
+
+	agent.DefaultEgressAuditStore.Clear()
+	t.Cleanup(agent.DefaultEgressAuditStore.Clear)
+	agent.DefaultEgressAuditStore.Record(agent.EgressDecision{OrganizationID: "org-a", Callsite: "connectors", Destination: "https://a.example.com", Host: "a.example.com", Allowed: true})
+
+	rec := httptest.NewRecorder()
+	req, _ := http.NewRequest(http.MethodGet, "/api/agent/v1/egress/logs", nil)
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("expected 403 for a caller without organization, got %d: %s", rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), "process-global") {
+		t.Fatalf("expected the process-global scope refusal, got %s", rec.Body.String())
+	}
+
+	// Com o opt-in declarado, o portão continua exigindo papel owner/admin.
+	t.Setenv("OLLAMA_AGENT_ALLOW_GLOBAL_SCOPE", "true")
+	rec = httptest.NewRecorder()
+	req, _ = http.NewRequest(http.MethodGet, "/api/agent/v1/egress/logs", nil)
+	router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("expected 403 without organization admin, got %d: %s", rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), "requires organization admin") {
+		t.Fatalf("expected the organization admin refusal, got %s", rec.Body.String())
+	}
+}
