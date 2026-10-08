@@ -33,14 +33,27 @@ func (browserOperatorTool) Execute(ctx context.Context, toolContext ToolContext,
 			return ToolResult{}, errors.New("browser navigate requires url")
 		}
 	}
+	containedPaths := map[string]string{}
 	for _, key := range []string{"path", "save_path"} {
 		if value := stringInput(input, key, ""); value != "" {
-			if _, err := safeWorkspacePath(toolContext.Workspace, value); err != nil {
+			contained, err := safeWorkspacePath(toolContext.Workspace, value)
+			if err != nil {
 				return ToolResult{}, fmt.Errorf("browser %s: %w", key, err)
 			}
+			containedPaths[key] = contained
 		}
 	}
 	request := cloneMap(input)
+	// O helper resolve caminho relativo contra o CWD do servidor, não contra o
+	// workspace. Remover as chaves e reinserir só os caminhos já validados
+	// garante que um valor null/não-string (que o helper converteria em "None"
+	// e escreveria fora do workspace) nunca seja repassado.
+	for _, key := range []string{"path", "save_path"} {
+		delete(request, key)
+	}
+	for key, contained := range containedPaths {
+		request[key] = contained
+	}
 	request["session_id"] = toolContext.MissionID
 	requestData, err := json.Marshal(request)
 	if err != nil {
@@ -71,7 +84,7 @@ func (browserOperatorTool) Execute(ctx context.Context, toolContext ToolContext,
 	}
 	command := exec.CommandContext(deadline, pythonExecutable, tempName)
 	command.Stdin = bytes.NewReader(requestData)
-	command.Env = append(os.Environ(), "OLLAMA_AGENT_BROWSER_ROOT="+filepath.Join(toolContext.Workspace, ".browser"))
+	command.Env = browserChildEnv(toolContext.Workspace)
 	var stdout, stderr bytes.Buffer
 	command.Stdout = &limitedBuffer{Buffer: &stdout, Limit: 256 << 10}
 	command.Stderr = &limitedBuffer{Buffer: &stderr, Limit: 64 << 10}
@@ -96,6 +109,20 @@ func (browserOperatorTool) Execute(ctx context.Context, toolContext ToolContext,
 		return ToolResult{Value: result}, fmt.Errorf("browser operator: %v", result["error"])
 	}
 	return ToolResult{Value: result}, nil
+}
+
+// browserChildEnv builds the environment for the Playwright helper. The helper
+// navigates hostile content, so inheriting the server environment would hand it
+// provider API keys and database passwords. It gets the minimal passthrough
+// plus the browser subsystem's own non-secret configuration.
+func browserChildEnv(workspace string) []string {
+	browserEnv := []string{"OLLAMA_AGENT_BROWSER_ROOT=" + filepath.Join(workspace, ".browser")}
+	for _, name := range []string{"OLLAMA_AGENT_BROWSER_ALLOW_PRIVATE", "OLLAMA_AGENT_BROWSER_EXECUTABLE"} {
+		if value, ok := os.LookupEnv(name); ok && strings.TrimSpace(value) != "" {
+			browserEnv = append(browserEnv, name+"="+value)
+		}
+	}
+	return minimalChildEnv(browserEnv...)
 }
 
 func browserPythonExecutable() (string, error) {

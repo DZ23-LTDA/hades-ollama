@@ -12,6 +12,10 @@ import (
 	"github.com/ollama/ollama/internal/agent"
 )
 
+// companionIdleTimeout limita quanto tempo uma conexão companion pode ficar
+// sem enviar frame algum antes de ser encerrada.
+const companionIdleTimeout = 2 * time.Minute
+
 var companionUpgrader = websocket.Upgrader{ReadBufferSize: 16 << 10, WriteBufferSize: 16 << 10, CheckOrigin: companionOriginAllowed}
 
 func companionOriginAllowed(request *http.Request) bool {
@@ -44,11 +48,12 @@ func (a *agentAPI) deviceConnect(c *gin.Context) {
 	connection.SetReadLimit(1 << 20)
 	_ = connection.SetReadDeadline(time.Now().Add(30 * time.Second))
 	var hello agent.CompanionFrame
-	if err := connection.ReadJSON(&hello); err != nil || hello.Type != "hello" || hello.DeviceID != c.Param("id") {
+	if err := connection.ReadJSON(&hello); err != nil || hello.Type != "hello" {
 		_ = connection.WriteJSON(gin.H{"type": "error", "error": "invalid companion handshake"})
 		return
 	}
 	if subtle.ConstantTimeCompare([]byte(hello.DeviceID), []byte(c.Param("id"))) != 1 {
+		_ = connection.WriteJSON(gin.H{"type": "error", "error": "invalid companion handshake"})
 		return
 	}
 	device, err := a.runtime.Devices().Heartbeat(hello.DeviceID, hello.Token, hello.Capabilities)
@@ -56,13 +61,20 @@ func (a *agentAPI) deviceConnect(c *gin.Context) {
 		_ = connection.WriteJSON(gin.H{"type": "error", "error": "device authentication failed"})
 		return
 	}
-	_ = connection.SetReadDeadline(time.Time{})
+	// Sem deadline, uma conexão ociosa (ou um peer que sumiu sem FIN) segura a
+	// goroutine e o descriptor indefinidamente. O prazo é renovado a cada frame
+	// recebido e a cada pong do peer.
+	_ = connection.SetReadDeadline(time.Now().Add(companionIdleTimeout))
+	connection.SetPongHandler(func(string) error {
+		return connection.SetReadDeadline(time.Now().Add(companionIdleTimeout))
+	})
 	_ = connection.WriteJSON(agent.CompanionWelcome{Type: "welcome", DeviceID: device.ID, Protocol: "dz23-companion.v1", ServerNow: time.Now().UTC()})
 	for {
 		var frame agent.CompanionFrame
 		if err := connection.ReadJSON(&frame); err != nil {
 			return
 		}
+		_ = connection.SetReadDeadline(time.Now().Add(companionIdleTimeout))
 		switch frame.Type {
 		case "heartbeat":
 			if _, err := a.runtime.Devices().Heartbeat(device.ID, hello.Token, frame.Capabilities); err != nil {
@@ -78,5 +90,18 @@ func (a *agentAPI) deviceConnect(c *gin.Context) {
 }
 
 func companionSecureRequest(request *http.Request) bool {
-	return request.TLS != nil || strings.EqualFold(request.Header.Get("X-Forwarded-Proto"), "https")
+	if request.TLS != nil {
+		return true
+	}
+	// X-Forwarded-Proto é escrito pelo próprio cliente quando não há proxy na
+	// frente. Só vale como prova de TLS quando o operador declarou um proxy
+	// confiável E o peer imediato é loopback (o proxy same-host do setup
+	// documentado). Um cliente remoto direto não consegue forjar o header.
+	if os.Getenv("OLLAMA_AGENT_TRUSTED_TLS_PROXY") != "1" {
+		return false
+	}
+	if !isLoopbackRemoteAddr(request.RemoteAddr) {
+		return false
+	}
+	return strings.EqualFold(request.Header.Get("X-Forwarded-Proto"), "https")
 }

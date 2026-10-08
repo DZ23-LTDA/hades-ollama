@@ -106,6 +106,9 @@ func (m *MCPManager) register(config MCPServerConfig, organizationID string) err
 	if err != nil || commandInfo.Mode()&os.ModeSymlink != 0 || commandInfo.IsDir() || !isExecutableMode(config.Command, commandInfo) {
 		return errors.New("MCP command must be an executable regular file")
 	}
+	if err := rejectGenericInterpreterCommand(config.Command); err != nil {
+		return err
+	}
 	if len(config.Args) > 64 {
 		return errors.New("MCP args limit exceeded")
 	}

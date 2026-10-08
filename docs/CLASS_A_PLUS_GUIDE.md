@@ -47,8 +47,8 @@ O relatório [`READINESS_2026-09-22.md`](agentic/READINESS_2026-09-22.md) regist
 O fork público distribui o código-fonte, não um instalador assinado, binário de release, imagem Docker pública ou pacote de loja Hades. Não use `ollama.com/install.sh`, `OllamaSetup.exe`, `Ollama.dmg` ou `ollama/ollama` para instalar este fork: esses artefatos pertencem ao upstream. Compile a revisão do repositório para desenvolvimento e validação local:
 
 ```bash
-git clone https://github.com/DZ23-LTDA/ollama-classe-a-plus.git
-cd ollama-classe-a-plus
+git clone https://github.com/DZ23-LTDA/hades-ollama.git
+cd hades-ollama
 
 # Conferir a revisão pública
 git log -1 --oneline
@@ -120,6 +120,7 @@ OLLAMA_HOST=127.0.0.1:11434 ./bin/ollama-classe-a-plus serve
 | `OLLAMA_AGENT_AUTH_STORE` | Diretório do store de identidade e sessão. |
 | `OLLAMA_AGENT_AUTH_REQUIRED` | Exige autenticação para o runtime HTTP. |
 | `OLLAMA_AGENT_AUTH_DEV` | Modo de desenvolvimento; não habilitar em produção. |
+| `OLLAMA_AGENT_AUTH_DEV_SECRET` | Obrigatório para emitir token de dev: o chamador apresenta o valor no cabeçalho `X-Ollama-Agent-Dev-Secret`. Sem ele a rota é fail-closed, fechando o acesso via proxy same-host. |
 | `OLLAMA_AGENT_AUTH_SSO_PUBLIC` | Permite início de SSO sem sessão prévia quando explicitamente habilitado. |
 | `OLLAMA_AGENT_CREDENTIAL_KEY` | Chave externa usada para cifrar credenciais OAuth e MFA. |
 | `OLLAMA_AGENT_DATABASE_URL` | DSN da role `ollama_agent_runtime`; exige roles separadas, migrations explícitas e chave tenant HMAC. PostgreSQL/RLS ainda não foi aprovado para produção. |
@@ -309,9 +310,9 @@ Este repositório deriva de uma base Ollama e deve preservar os arquivos de lice
 
 ## Links públicos
 
-- [Repositório público canônico](https://github.com/DZ23-LTDA/ollama-classe-a-plus)
-- [Branch de evolução agentic](https://github.com/DZ23-LTDA/ollama-classe-a-plus/tree/feat/manus-parity-omniroute)
-- [PRs de revisão](https://github.com/DZ23-LTDA/ollama-classe-a-plus/pulls)
+- [Repositório público canônico](https://github.com/DZ23-LTDA/hades-ollama)
+- [Branch de evolução agentic](https://github.com/DZ23-LTDA/hades-ollama/tree/main)
+- [PRs de revisão](https://github.com/DZ23-LTDA/hades-ollama/pulls)
 - [Arquitetura agentic](agentic/ARCHITECTURE.md)
 - [API agentic](agentic/API.md)
 - [Integrações](agentic/INTEGRATIONS.md)

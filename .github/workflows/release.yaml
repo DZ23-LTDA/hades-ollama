@@ -515,7 +515,11 @@ jobs:
               "-DOLLAMA_GO_LICENSE_TARGETS=windows/${arch}"
             cmake --build build/go-license --target ollama-go-license
           done
-      - run: |
+      - env:
+          # Em release com assinatura habilitada, a ausência de KEY_CONTAINER
+          # deve reprovar em vez de produzir um build não assinado silencioso.
+          OLLAMA_REQUIRE_SIGNING: ${{ vars.OLLAMA_ENABLE_WINDOWS_SIGNING == 'true' && '1' || '0' }}
+        run: |
           ./scripts/build_windows.ps1 deps sign installer zip
       - name: Log contents after build
         run: |
@@ -819,19 +823,18 @@ jobs:
           echo "SOURCE_SHA=$SHA"
           echo "VERSION=${GITHUB_REF_NAME:-manual}"
           echo "GATE_RUN_ID=${GITHUB_RUN_ID}"
+          # Conjunto REAL de provas que rodam NO commit de release (push:main / tag),
+          # idêntico ao de .github/workflows/release-readiness.yaml e a
+          # docs/RELEASE_READINESS.md. "PR gate", "test (*)", "race (*)" e
+          # "go_mod_tidy" são exclusivos de pull_request e não existem num SHA de
+          # main/tag; exigi-los aqui tornava este gate impossível de satisfazer.
+          # O conteúdo do "PR gate" são os três deep gates já exigidos abaixo.
           REQUIRED=(
             "Preserve Class A+ surfaces"
-            "PR gate"
             "Go agentic and server gates"
             "PostgreSQL RLS, Redis DLQ and OTLP integration"
             "Web and mobile quality"
             "Generate SBOM"
-            "test (ubuntu-latest)"
-            "test (windows-latest)"
-            "test (macos-latest)"
-            "race (ubuntu-latest)"
-            "race (macos-latest)"
-            "go_mod_tidy"
           )
           gh api --paginate \
             "repos/${GITHUB_REPOSITORY}/commits/${SHA}/check-runs" \
@@ -858,7 +861,6 @@ jobs:
     needs: [release-gate, darwin-build, windows-app, docker-build-push, quality]
     concurrency:
       group: release-publish
-      queue: max
       cancel-in-progress: false
     permissions:
       contents: write
@@ -915,13 +917,7 @@ jobs:
             --arg version "${GITHUB_REF_NAME#v}" \
             '{repository: $repository, ref: $ref, commit: $commit, version: $version, checksum_manifest: "sha256sum.txt", sbom: "ollama-classe-a-plus-sbom.cdx.json", provenance: "GitHub Actions build provenance is emitted only when OLLAMA_ENABLE_ATTESTATIONS=true", artifact_signature: "sha256sum.txt.sig", artifact_signing_public_key: "release-signing-public.pem"}' \
             > dist/release-metadata.json
-      - name: Generate checksum file
-        run: find . -type f -not -name 'sha256sum.txt' -print0 | sort -z | xargs -0 sha256sum | tee sha256sum.txt
-        working-directory: dist
-      - name: Verify checksum file
-        run: sha256sum -c sha256sum.txt
-        working-directory: dist
-      - name: Sign release checksum manifest
+      - name: Derive release signing public key
         env:
           RELEASE_SIGNING_PRIVATE_KEY: ${{ secrets.RELEASE_SIGNING_PRIVATE_KEY }}
         run: |
@@ -931,7 +927,23 @@ jobs:
             exit 1
           fi
           printf '%s\n' "$RELEASE_SIGNING_PRIVATE_KEY" > release-signing-private.pem
-          openssl rsa -in release-signing-private.pem -pubout -out release-signing-public.pem
+          # A chave pública precisa existir ANTES do manifesto para ser hasheada
+          # nele. Caso contrário, trocar a chave pública publicada não é
+          # detectado pelo `sha256sum -c`.
+          openssl pkey -in release-signing-private.pem -pubout -out release-signing-public.pem
+        working-directory: dist
+      - name: Generate checksum file
+        run: find . -type f -not -name 'sha256sum.txt' -not -name 'release-signing-private.pem' -print0 | sort -z | xargs -0 sha256sum | tee sha256sum.txt
+        working-directory: dist
+      - name: Verify checksum file
+        run: sha256sum -c sha256sum.txt
+        working-directory: dist
+      - name: Sign release checksum manifest
+        run: |
+          umask 077
+          # O manifesto já cobre release-signing-public.pem (passo anterior), e a
+          # assinatura cobre o manifesto: a cadeia chave->manifesto->assinatura
+          # fica fechada.
           openssl dgst -sha256 -sign release-signing-private.pem -out sha256sum.txt.sig sha256sum.txt
           rm -f release-signing-private.pem
           ../scripts/verify-release-artifact.sh sha256sum.txt sha256sum.txt.sig release-signing-public.pem

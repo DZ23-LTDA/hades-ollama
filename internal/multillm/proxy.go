@@ -210,6 +210,10 @@ func (g *Gateway) executeCLI(c *gin.Context, provider Provider, model Model, env
 	defer cancel()
 	command := exec.CommandContext(ctx, provider.Executable, provider.Args...)
 	command.Stdin = strings.NewReader(prompt)
+	// O CLI de terceiro recebe um prompt controlado pelo requisitante. Ele leva
+	// só o ambiente mínimo mais a própria chave declarada em api_key_env, e não
+	// as credenciais dos outros providers nem as do banco.
+	command.Env = cliCommandEnv(provider)
 	var stdout, stderr limitedBuffer
 	stdout.limit = 16 << 20
 	stderr.limit = 64 << 10

@@ -6,7 +6,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"os"
 	"os/exec"
 	"strconv"
 	"strings"
@@ -50,7 +49,7 @@ func runDesktopOutput(ctx context.Context, name string, args ...string) (string,
 	deadline, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 	command := exec.CommandContext(deadline, name, args...)
-	command.Env = append(os.Environ(), "LC_ALL=C")
+	command.Env = minimalChildEnv("LC_ALL=C")
 	var stdout, stderr bytes.Buffer
 	command.Stdout = &limitedBuffer{Buffer: &stdout, Limit: 128 << 10}
 	command.Stderr = &limitedBuffer{Buffer: &stderr, Limit: 32 << 10}
@@ -64,7 +63,7 @@ func runDesktopWithInput(ctx context.Context, input, name string, args ...string
 	deadline, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 	command := exec.CommandContext(deadline, name, args...)
-	command.Env = append(os.Environ(), "LC_ALL=C")
+	command.Env = minimalChildEnv("LC_ALL=C")
 	command.Stdin = strings.NewReader(input)
 	return command.Run()
 }

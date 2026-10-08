@@ -875,6 +875,16 @@ func (r *Runtime) CreateMission(ctx context.Context, request CreateMissionReques
 	if err != nil {
 		return r.failMission(mission, err)
 	}
+	if mission.WorkspaceIsolated {
+		// project.test.run usa acesso por caminho e é bloqueado na execução de
+		// missão isolada; rejeitar já no planejamento evita aprovar uma missão
+		// que falharia depois de trabalho parcial (ex.: após workspace.write).
+		for index := range plan {
+			if plan[index].Kind == "project.test.run" {
+				return r.failMission(mission, fmt.Errorf("tool %q is not supported in isolated snapshots and cannot be planned", plan[index].Kind))
+			}
+		}
+	}
 	for index := range plan {
 		tool, ok := r.tools.Get(plan[index].Kind)
 		if !ok {
@@ -1057,7 +1067,11 @@ func (r *Runtime) MergeMissionWorktree(ctx context.Context, missionID string) (s
 	mission.GitMergeStatus = "merged"
 	mission.Version++
 	mission.UpdatedAt = time.Now().UTC()
-	_ = r.store.PutMissionIfVersion(mission, expectedVersion)
+	if err := r.store.PutMissionIfVersion(mission, expectedVersion); err != nil {
+		// O merge no origin já ocorreu; não persistir o estado "merged" deixa a
+		// missão divergir do repositório. Registre para investigação.
+		slog.Error("failed to persist merged mission state", "mission", mission.ID, "error", err)
+	}
 	_ = r.observeEvent(mission, "git.merge.succeeded", "", map[string]any{
 		"branch":       session.BranchName,
 		"merge_commit": mergeCommit,
@@ -1642,7 +1656,7 @@ func (r *Runtime) Run(ctx context.Context, id string) (runErr error) {
 		}
 		if mission.WorkspaceIsolated {
 			switch step.Kind {
-			case "terminal.exec", "sandbox.exec", "media.process":
+			case "terminal.exec", "sandbox.exec", "media.process", "project.test.run":
 				return r.failStep(mission, step, fmt.Errorf("tool %q uses pathname-based workspace access and is disabled for isolated snapshots", step.Kind))
 			}
 		}

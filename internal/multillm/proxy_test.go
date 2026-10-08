@@ -224,7 +224,7 @@ func TestCLIProviderRequiresExplicitExecutionAndReturnsCompletion(t *testing.T) 
 	gin.SetMode(gin.TestMode)
 	t.Setenv("DZ23_CLI_HELPER", "1")
 	r := &Registry{
-		providers: map[string]Provider{"codex": {Name: "codex", Type: "cli", Executable: os.Args[0], Args: []string{"-test.run=TestCLIHelperProcess"}, AllowExecution: true}},
+		providers: map[string]Provider{"codex": {Name: "codex", Type: "cli", Executable: os.Args[0], Args: []string{"-test.run=TestCLIHelperProcess"}, AllowExecution: true, PassthroughEnv: []string{"DZ23_CLI_HELPER"}}},
 		models:    map[string]Model{"codex/cli": {ID: "codex/cli", UpstreamID: "cli", Provider: "codex", Available: true}},
 	}
 	router := gin.New()
@@ -243,7 +243,7 @@ func TestCLIProviderAcceptsNativeGeneratePrompt(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	t.Setenv("DZ23_CLI_HELPER", "1")
 	r := &Registry{
-		providers: map[string]Provider{"cli": {Name: "cli", Type: ProviderTypeCLI, Executable: os.Args[0], Args: []string{"-test.run=TestCLIHelperProcess"}, AllowExecution: true}},
+		providers: map[string]Provider{"cli": {Name: "cli", Type: ProviderTypeCLI, Executable: os.Args[0], Args: []string{"-test.run=TestCLIHelperProcess"}, AllowExecution: true, PassthroughEnv: []string{"DZ23_CLI_HELPER"}}},
 		models:    map[string]Model{"cli/default": {ID: "cli/default", UpstreamID: "default", Provider: "cli", Available: true}},
 	}
 	router := gin.New()

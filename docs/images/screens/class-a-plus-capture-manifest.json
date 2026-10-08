@@ -2,7 +2,7 @@
   "schema": "class-a-plus.capture.v1",
   "capturedAtUTC": "2026-10-01",
   "source": {
-    "repository": "DZ23-LTDA/ollama-classe-a-plus",
+    "repository": "DZ23-LTDA/hades-ollama",
     "branch": "feat/marca-hades",
     "gitSHA": "6ba2138d",
     "baseURL": "http://127.0.0.1:5320",

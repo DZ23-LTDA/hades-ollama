@@ -472,8 +472,13 @@ func TestWhatsAppGatewayCommandBridgeCreatesMission(t *testing.T) {
 		t.Fatalf("expected status 'processed', got %+v", res)
 	}
 
-	if !strings.Contains(res[0].ReplySent, "Missão Iniciada via WhatsApp Bridge") {
+	// A ponte cria a missão, mas não a executa: o objetivo veio de texto
+	// externo e quem inicia é um operador autenticado.
+	if !strings.Contains(res[0].ReplySent, "Missão criada via WhatsApp Bridge") {
 		t.Fatalf("expected mission bridge response, got %s", res[0].ReplySent)
+	}
+	if !strings.Contains(res[0].ReplySent, "PENDENTE") {
+		t.Fatalf("mission created from an external message must not start by itself, got %s", res[0].ReplySent)
 	}
 
 	// Verify mission was created in runtime store
@@ -486,6 +491,20 @@ func TestWhatsAppGatewayCommandBridgeCreatesMission(t *testing.T) {
 	}
 	if missions[0].Objective != "auditar segurança da fábrica" {
 		t.Fatalf("expected objective 'auditar segurança da fábrica', got %s", missions[0].Objective)
+	}
+	// A missão criada por mensagem externa não pode ter começado sozinha: só um
+	// operador autenticado a inicia.
+	if missions[0].State == MissionRunning || missions[0].State == MissionCompleted {
+		t.Fatalf("mission from an external message must remain unstarted, got state %s", missions[0].State)
+	}
+	// Checar o estado não basta: uma missão enfileirada permanece READY. A ponte
+	// também não pode tê-la colocado na fila de execução.
+	for _, status := range []QueueStatus{QueuePending, QueueRunning} {
+		for _, job := range runtime.QueueJobs(status) {
+			if job.MissionID == missions[0].ID {
+				t.Fatalf("mission from an external message must not be enqueued, found %s job %s", status, job.ID)
+			}
+		}
 	}
 }
 

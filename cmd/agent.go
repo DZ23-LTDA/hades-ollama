@@ -119,16 +119,13 @@ func agentCommand() *cobra.Command {
 }
 
 func postgresTenantKeyVersionFromEnv() (int, error) {
-	raw := strings.TrimSpace(os.Getenv("OLLAMA_AGENT_TENANT_CONTEXT_KEY_VERSION"))
-	if raw == "" {
-		return 1, nil
-	}
-	version, err := strconv.Atoi(raw)
-	if err != nil || version < 1 || version > 999999999 {
-		return 0, errors.New("OLLAMA_AGENT_TENANT_CONTEXT_KEY_VERSION must be an integer between 1 and 999999999")
-	}
-	return version, nil
+	return agent.TenantContextKeyVersionFromEnv()
 }
+
+// agentCLIHTTPClient bounds CLI agent requests with an explicit timeout, so a
+// hung server cannot block the command indefinitely even if the caller's
+// context has no deadline.
+var agentCLIHTTPClient = &http.Client{Timeout: 2 * time.Minute}
 
 func runAgentRequest(ctx context.Context, method, path string, payload any) error {
 	base := envconfig.Host()
@@ -152,7 +149,7 @@ func runAgentRequest(ctx context.Context, method, path string, payload any) erro
 	if token := strings.TrimSpace(os.Getenv("OLLAMA_AGENT_TOKEN")); token != "" {
 		req.Header.Set("Authorization", "Bearer "+token)
 	}
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := agentCLIHTTPClient.Do(req)
 	if err != nil {
 		return err
 	}

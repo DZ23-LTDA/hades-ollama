@@ -1,0 +1,69 @@
+package agent
+
+import (
+	"errors"
+	"fmt"
+	"os"
+	"path/filepath"
+	"regexp"
+	"strings"
+)
+
+// versionedInterpreter casa nomes de interpretador seguidos de sufixo de versão
+// (python3.12, python3.12.exe, node20, ruby2.7), que não entram na lista exata
+// mas executam código arbitrário igual.
+var versionedInterpreter = regexp.MustCompile(`^(python|pypy|node|nodejs|deno|bun|ruby|perl|php|lua|tclsh|pwsh|powershell)[0-9]+(\.[0-9]+)*(\.exe)?$`)
+
+// genericInterpreters are executables whose whole purpose is to run whatever
+// they are handed. Registering one as an "MCP server" turns plugin
+// registration into arbitrary process execution on the host, so they are
+// rejected unless the operator opts in per command.
+var genericInterpreters = map[string]bool{
+	"sh": true, "bash": true, "dash": true, "zsh": true, "ksh": true, "csh": true,
+	"tcsh": true, "fish": true, "ash": true, "busybox": true,
+	"powershell": true, "powershell.exe": true, "pwsh": true, "pwsh.exe": true,
+	"cmd": true, "cmd.exe": true, "wscript.exe": true, "cscript.exe": true,
+	"env": true, "xargs": true, "nohup": true, "setsid": true, "timeout": true,
+	"sudo": true, "doas": true, "su": true, "nice": true, "stdbuf": true,
+	"perl": true, "ruby": true, "php": true, "lua": true, "tclsh": true,
+	"osascript": true, "expect": true,
+	// Runtimes de script: executam código arbitrário passado por argumento.
+	"python": true, "python2": true, "python3": true, "python.exe": true, "python3.exe": true, "pythonw.exe": true,
+	"node": true, "nodejs": true, "node.exe": true, "deno": true, "deno.exe": true, "bun": true, "bun.exe": true,
+}
+
+// ErrMCPInterpreterCommand is returned when an MCP registration points at a
+// generic interpreter instead of a real MCP server binary.
+var ErrMCPInterpreterCommand = errors.New("MCP command is a generic interpreter")
+
+// rejectGenericInterpreterCommand blocks shells and generic runners. The
+// operator can still allow a specific absolute path by listing it in
+// OLLAMA_AGENT_MCP_COMMAND_ALLOWLIST (comma separated), which keeps the escape
+// hatch explicit, auditable and per-path instead of blanket.
+func rejectGenericInterpreterCommand(command string) error {
+	base := strings.ToLower(filepath.Base(command))
+	if !genericInterpreters[base] && !versionedInterpreter.MatchString(base) {
+		return nil
+	}
+	if mcpCommandExplicitlyAllowed(command) {
+		return nil
+	}
+	return fmt.Errorf("%w: %q; register the MCP server binary itself or list this exact path in OLLAMA_AGENT_MCP_COMMAND_ALLOWLIST", ErrMCPInterpreterCommand, base)
+}
+
+func mcpCommandExplicitlyAllowed(command string) bool {
+	for _, entry := range strings.Split(mcpCommandAllowlistEnv(), ",") {
+		entry = strings.TrimSpace(entry)
+		if entry == "" {
+			continue
+		}
+		if entry == command {
+			return true
+		}
+	}
+	return false
+}
+
+func mcpCommandAllowlistEnv() string {
+	return os.Getenv("OLLAMA_AGENT_MCP_COMMAND_ALLOWLIST")
+}

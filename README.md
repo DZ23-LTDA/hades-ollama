@@ -46,8 +46,8 @@ Start building with open models.
 The public repository currently distributes source code, not a signed Hades installer, release binary, Docker image, or app-store package. Build the revision you have checked out so the executable and agentic runtime come from this fork:
 
 ```shell
-git clone https://github.com/DZ23-LTDA/ollama-classe-a-plus.git
-cd ollama-classe-a-plus
+git clone https://github.com/DZ23-LTDA/hades-ollama.git
+cd hades-ollama
 go version  # Go version required by go.mod
 mkdir -p bin
 go build -trimpath -o bin/ollama-full .
@@ -151,7 +151,7 @@ This fork can expose explicitly configured API and CLI providers beside local mo
 The fork now includes an agentic runtime with persistent missions, validated plans, approval-gated tools, workspace isolation, artifact manifests, event history, recovery-aware execution, a persistent queue with retries/dead-letter/replay, optional PostgreSQL persistence and Redis workers, SSE events, local and OTLP traces, a multiagent orchestrator with specialist roles and synthesis, deep research with citations/cache/robots policy/SSRF guard, Playwright Browser Operator, Linux/macOS/Windows Desktop companion pairing, TLS 1.3/mTLS WebSocket transport with reloadable server certificates, MCP stdio lifecycle, semantic memory, PDF/DOCX/XLSX ingestion, HTTP connectors, scheduler/webhooks, Prometheus metrics, MFA TOTP with recovery codes, OIDC discovery/userinfo provisioning, SAML SP metadata/AuthnRequest/ACS, optional encrypted OAuth credentials, organization/RBAC boundaries with forced PostgreSQL RLS, collaboration comments/presence, multimodal provider adapters, local OCR when Tesseract is installed, visual component canvas with bindings/events and persistent undo/redo, PDF/DOCX/PPTX exports, and builders for websites/apps/games/slides/dashboards. Deployment adapters for Vercel, Netlify and generic gateways are present with local fixtures and server-side approvals; real provider accounts, billing, health checks and rollback remain operator-owned and unhomologated. Configure `OLLAMA_AGENT_ROOT`, optionally set `OLLAMA_AGENT_STORE`, `OLLAMA_AGENT_DATABASE_URL`, `OLLAMA_AGENT_REDIS_URL`, `OLLAMA_AGENT_OTLP_ENDPOINT`, `OLLAMA_AGENT_MODEL`, `OLLAMA_AGENT_EMBED_MODEL`, `OLLAMA_AGENT_CONNECTORS`, `OLLAMA_AGENT_DEPLOYMENTS`, `OLLAMA_AGENT_MCP`, `OLLAMA_AGENT_AUTH_STORE`, `OLLAMA_AGENT_AUTH_REQUIRED`, `OLLAMA_AGENT_AUTH_SSO_PUBLIC`, `OLLAMA_AGENT_MEDIA_BASE_URL` and `OLLAMA_AGENT_MEDIA_API_KEY`, then use the API or the CLI:
 
 ```shell
-./bin/ollama-classe-a-plus agent create --objective "inspecionar o workspace" --auto-run
+./bin/ollama-full agent create --objective "inspecionar o workspace" --auto-run
 ```
 
 Read [the product tree](docs/agentic/PRODUCT_TREE.md), [the parity matrix](docs/agentic/PARITY_MATRIX.md), [the agentic architecture](docs/agentic/ARCHITECTURE.md), [the integrations guide](docs/agentic/INTEGRATIONS.md), [the executable roadmap](docs/agentic/ROADMAP.md), [the API guide](docs/agentic/API.md), the [phase 7 delivery note](docs/agentic/PHASE7_DELIVERY.md), the [phase 8 delivery note](docs/agentic/PHASE8_DELIVERY.md), and the [harness comparison synthesis](docs/agentic/HARNESS_COMPARISON_SYNTHESIS.md). The Web Agentic Console and an Expo mobile client are included as operator surfaces. Provider credentials, EAS signing, external OAuth/OIDC/SAML configuration, Tesseract installation and hosting credentials remain deployment responsibilities; the code does not execute an external publish without explicit approval.

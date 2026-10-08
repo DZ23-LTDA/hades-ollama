@@ -43,9 +43,12 @@ func (a *agentAPI) whatsappWebhook(c *gin.Context) {
 		return
 	}
 
-	body, err := io.ReadAll(c.Request.Body)
+	// A assinatura só é conferida depois de ler o corpo inteiro, então o limite
+	// precisa vir antes: sem ele, um POST não autenticado aloca o que quiser.
+	const maxWhatsAppWebhookBody = 1 << 20
+	body, err := io.ReadAll(http.MaxBytesReader(c.Writer, c.Request.Body, maxWhatsAppWebhookBody))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "failed to read request body"})
+		c.JSON(http.StatusRequestEntityTooLarge, gin.H{"error": "request body is too large or unreadable"})
 		return
 	}
 

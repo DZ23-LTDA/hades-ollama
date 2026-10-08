@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/hmac"
 	"crypto/sha256"
+	"crypto/subtle"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -617,19 +618,26 @@ func (a *agentAPI) authMiddleware(c *gin.Context) {
 }
 
 func agentOriginAllowed(c *gin.Context) bool {
-	if c == nil || c.Request == nil || c.Request.Method == http.MethodGet || c.Request.Method == http.MethodHead || c.Request.Method == http.MethodOptions || isPublicSSORoute(c) {
+	if c == nil || c.Request == nil || c.Request.Method == http.MethodOptions || isPublicSSORoute(c) {
 		return true
 	}
 	origin := strings.TrimSpace(c.GetHeader("Origin"))
 	if origin == "" {
+		// Cliente não-browser (CLI, SDK). O browser sempre envia Origin em
+		// request cross-origin, inclusive GET, então a ausência não é bypass.
 		return true
 	}
 	if strings.ContainsAny(origin, "\r\n") {
 		return false
 	}
+	// A superfície agêntica executa e administra; origens opacas herdadas da
+	// API de modelos (file://, app://, tauri://, vscode-*) não valem aqui.
+	if !isHTTPOrigin(origin) {
+		return false
+	}
 	for _, allowed := range envconfig.AllowedOrigins() {
 		allowed = strings.TrimRight(strings.TrimSpace(allowed), "/")
-		if allowed == "*" {
+		if allowed == "*" || !isHTTPOriginPattern(allowed) {
 			continue
 		}
 		if originMatchesAllowed(origin, allowed) {
@@ -637,6 +645,19 @@ func agentOriginAllowed(c *gin.Context) bool {
 		}
 	}
 	return false
+}
+
+func isHTTPOrigin(origin string) bool {
+	parsed, err := url.Parse(origin)
+	if err != nil {
+		return false
+	}
+	return strings.EqualFold(parsed.Scheme, "http") || strings.EqualFold(parsed.Scheme, "https")
+}
+
+func isHTTPOriginPattern(allowed string) bool {
+	lowered := strings.ToLower(strings.TrimSpace(allowed))
+	return strings.HasPrefix(lowered, "http://") || strings.HasPrefix(lowered, "https://")
 }
 
 func originMatchesAllowed(origin, allowed string) bool {
@@ -671,8 +692,77 @@ func isPublicSSORoute(c *gin.Context) bool {
 	return false
 }
 
+// devTokenSecretHeader carries the operator credential that gates dev-token
+// issuance.
+const devTokenSecretHeader = "X-Ollama-Agent-Dev-Secret"
+
 func isDevTokenRequestAllowed(c *gin.Context) bool {
-	return strings.EqualFold(strings.TrimSpace(os.Getenv("OLLAMA_AGENT_AUTH_DEV")), "true") && isLoopbackRemoteAddr(c.Request.RemoteAddr)
+	if !strings.EqualFold(strings.TrimSpace(os.Getenv("OLLAMA_AGENT_AUTH_DEV")), "true") {
+		return false
+	}
+	// Credencial de operador obrigatória. As checagens de loopback abaixo são
+	// defesa em profundidade, mas um proxy same-host que encaminha para
+	// 127.0.0.1 sem adicionar cabeçalhos passaria por elas; o segredo fecha esse
+	// caminho, pois o atacante remoto não o conhece. Sem segredo configurado, o
+	// endpoint é fail-closed.
+	secret := strings.TrimSpace(os.Getenv("OLLAMA_AGENT_AUTH_DEV_SECRET"))
+	if secret == "" {
+		return false
+	}
+	presented := strings.TrimSpace(c.GetHeader(devTokenSecretHeader))
+	if subtle.ConstantTimeCompare([]byte(presented), []byte(secret)) != 1 {
+		return false
+	}
+	// Se o servidor escuta fora de loopback, há um proxy ou acesso remoto na
+	// frente e o RemoteAddr loopback deixa de provar origem local. O token de
+	// dev só é emitido quando o próprio listener é loopback-only.
+	if !serverListensOnLoopback() {
+		return false
+	}
+	if !isLoopbackRemoteAddr(c.Request.RemoteAddr) {
+		return false
+	}
+	// Atrás de um reverse proxy no mesmo host, RemoteAddr é sempre loopback.
+	// A presença de cabeçalhos de encaminhamento prova que o request foi
+	// intermediado, então o loopback deixa de ser evidência de origem local.
+	return !hasForwardedHeaders(c.Request)
+}
+
+// globalProcessScopeAllowed autoriza superfícies de processo global (sem campo
+// de organização), como o buffer de egress e a config do supervisor. Um admin
+// de uma organização não deve enxergar nem alterar o estado global das demais:
+// o acesso exige modo local single-tenant ou um opt-in explícito do operador do
+// servidor.
+func (a *agentAPI) globalProcessScopeAllowed(c *gin.Context, surface string) bool {
+	if !a.authRequired {
+		return true
+	}
+	if strings.EqualFold(strings.TrimSpace(os.Getenv("OLLAMA_AGENT_ALLOW_GLOBAL_SCOPE")), "true") {
+		return a.requireOrganizationAdmin(c, surface)
+	}
+	c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": surface + " is process-global and not scoped to one organization; set OLLAMA_AGENT_ALLOW_GLOBAL_SCOPE=true to permit a server operator to access it"})
+	return false
+}
+
+func serverListensOnLoopback() bool {
+	host := envconfig.Host()
+	if host == nil {
+		return false
+	}
+	ip := net.ParseIP(host.Hostname())
+	return ip != nil && ip.IsLoopback()
+}
+
+func hasForwardedHeaders(request *http.Request) bool {
+	if request == nil {
+		return false
+	}
+	for _, header := range []string{"X-Forwarded-For", "X-Real-Ip", "Forwarded", "X-Forwarded-Host", "X-Client-Ip"} {
+		if strings.TrimSpace(request.Header.Get(header)) != "" {
+			return true
+		}
+	}
+	return false
 }
 
 func isLoopbackRemoteAddr(remoteAddr string) bool {
@@ -2859,6 +2949,21 @@ func (a *agentAPI) decideApproval(c *gin.Context) {
 	c.JSON(http.StatusOK, mission)
 }
 
+// requireOrganizationAdmin exige papel owner/admin para superfícies administrativas.
+// Em modo local (sem auth) o servidor já é single-tenant e loopback-only.
+func (a *agentAPI) requireOrganizationAdmin(c *gin.Context, surface string) bool {
+	if !a.authRequired {
+		return true
+	}
+	value, _ := c.Get("agent.membership")
+	membership, ok := value.(agent.Membership)
+	if !ok || (membership.Role != agent.RoleOwner && membership.Role != agent.RoleAdmin) {
+		c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": surface + " requires organization admin"})
+		return false
+	}
+	return true
+}
+
 func (a *agentAPI) requireApprovalApprover(c *gin.Context) bool {
 	if !a.authRequired {
 		return true
@@ -2958,13 +3063,5 @@ func statusForAgentError(err error) int {
 }
 
 func agentTenantContextKeyVersionFromEnv() (int, error) {
-	raw := strings.TrimSpace(os.Getenv("OLLAMA_AGENT_TENANT_CONTEXT_KEY_VERSION"))
-	if raw == "" {
-		return 1, nil
-	}
-	version, err := strconv.Atoi(raw)
-	if err != nil || version < 1 || version > 999999999 {
-		return 0, errors.New("OLLAMA_AGENT_TENANT_CONTEXT_KEY_VERSION must be an integer between 1 and 999999999")
-	}
-	return version, nil
+	return agent.TenantContextKeyVersionFromEnv()
 }
