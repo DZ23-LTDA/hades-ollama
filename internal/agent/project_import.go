@@ -436,6 +436,13 @@ func importedFileManifest(root string) []ProjectImportFile {
 		}
 		relative, relErr := filepath.Rel(root, path)
 		if relErr != nil {
+			// filepath.Rel only fails for a path on another volume. Keep the
+			// entry visible in the manifest instead of silently dropping it or
+			// aborting the whole import walk.
+			manifest = append(manifest, ProjectImportFile{
+				Path:   entry.Name(),
+				Reason: "Não foi possível calcular o caminho relativo do arquivo no projeto.",
+			})
 			return nil
 		}
 		file := ProjectImportFile{Path: filepath.ToSlash(relative)}

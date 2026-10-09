@@ -548,7 +548,7 @@ func TestCycleRequestsExternalIntegration(t *testing.T) {
 		},
 		{
 			name:  "free-text fallback detects connector when field empty",
-			cycle: CompanyCycle{Name: "sync", Objective: "disparar whatsapp_live para clientes"},
+			cycle: CompanyCycle{Name: "sync", Objective: "disparar whatsapp_live para os contatos"},
 			want:  true,
 		},
 		{

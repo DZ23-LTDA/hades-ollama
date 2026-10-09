@@ -12,7 +12,7 @@ func TestSAMLSweepRemovesExpiredRequests(t *testing.T) {
 	s := &SAMLService{requests: make(map[string]trackedSAMLRequest)}
 	now := time.Now().UTC()
 
-	for i := 0; i < 50; i++ {
+	for i := range 50 {
 		s.requests[fmt.Sprintf("expired-%d", i)] = trackedSAMLRequest{
 			RequestID: fmt.Sprintf("id-%d", i),
 			ExpiresAt: now.Add(-time.Minute),
@@ -41,7 +41,7 @@ func TestSAMLRequestQuotaBoundsGrowth(t *testing.T) {
 	// Insert far more live requests than the quota allows; none expire yet, so
 	// only the eviction path can keep the map bounded.
 	total := maxPendingSAMLRequests + 500
-	for i := 0; i < total; i++ {
+	for i := range total {
 		s.trackRequest(fmt.Sprintf("relay-%d", i), fmt.Sprintf("id-%d", i), "/", now)
 	}
 
@@ -57,7 +57,7 @@ func TestSAMLTrackRequestSweepsOnInsert(t *testing.T) {
 	s := &SAMLService{requests: make(map[string]trackedSAMLRequest)}
 	base := time.Now().UTC()
 
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		s.requests[fmt.Sprintf("old-%d", i)] = trackedSAMLRequest{ExpiresAt: base.Add(-time.Second)}
 	}
 
