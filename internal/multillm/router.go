@@ -45,7 +45,11 @@ type RouteDecision struct {
 
 var ErrNoRoute = errors.New("no provider route satisfies the requested constraints")
 
-func (r *Registry) Route(request RouteRequest) (RouteDecision, error) {
+// RouteCandidates devolve todos os candidatos elegíveis em ordem, do melhor
+// para o pior. Route usa o primeiro; o gateway usa a lista inteira para
+// rotacionar quando a primeira tentativa falha. Retorna ErrNoRoute quando
+// nenhum candidato satisfaz as restrições.
+func (r *Registry) RouteCandidates(request RouteRequest) ([]RouteDecision, error) {
 	candidates := make([]RouteDecision, 0, len(r.models))
 	models := r.Models()
 	if request.SelectableModels != nil {
@@ -107,7 +111,7 @@ func (r *Registry) Route(request RouteRequest) (RouteDecision, error) {
 		candidates = append(candidates, RouteDecision{Model: model, Score: score, Reason: routeReason(model, health, request)})
 	}
 	if len(candidates) == 0 {
-		return RouteDecision{}, ErrNoRoute
+		return nil, ErrNoRoute
 	}
 	sort.SliceStable(candidates, func(i, j int) bool {
 		if candidates[i].Score == candidates[j].Score {
@@ -115,6 +119,15 @@ func (r *Registry) Route(request RouteRequest) (RouteDecision, error) {
 		}
 		return candidates[i].Score > candidates[j].Score
 	})
+	return candidates, nil
+}
+
+// Route mantém o contrato histórico: o melhor candidato ou ErrNoRoute.
+func (r *Registry) Route(request RouteRequest) (RouteDecision, error) {
+	candidates, err := r.RouteCandidates(request)
+	if err != nil {
+		return RouteDecision{}, err
+	}
 	return candidates[0], nil
 }
 

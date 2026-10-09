@@ -137,65 +137,212 @@ func (g *Gateway) Middleware() gin.HandlerFunc {
 			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "provider does not support this API path"})
 			return
 		}
-		if provider.Type == ProviderTypeOpenAICompatible && model.HarnessID != "" {
-			if err := injectHarnessMetadata(envelope, model.HarnessID); err != nil {
-				c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "invalid request metadata"})
-				return
+		attempts := g.rotationAttempts(requested, c.Request.URL.Path, provider, model)
+		var lastErr error
+		for index, attempt := range attempts {
+			if index > 0 {
+				slog.Warn("DZ23 gateway rotating provider", "requested", requested, "from", attempts[index-1].model.ID, "to", attempt.model.ID, "attempt", index+1, "error", sanitizeErr(lastErr))
 			}
-		}
-		if provider.Type == ProviderTypeCLI {
-			if err := g.executeCLI(c, provider, model, envelope); err != nil {
-				slog.Warn("DZ23 CLI request failed", "provider", provider.Name, "error", sanitizeErr(err))
-				c.AbortWithStatusJSON(http.StatusBadGateway, gin.H{"error": "CLI execution failed"})
-			}
-			return
-		}
-		if c.Request.URL.Path == "/v1/messages" && provider.Type == ProviderTypeOpenAICompatible {
-			if err := g.forwardAnthropicToOpenAI(c, provider, model, envelope); err != nil {
-				slog.Warn("DZ23 Anthropic-to-OpenAI request failed", "provider", provider.Name, "error", sanitizeErr(err))
-				if !c.Writer.Written() {
-					c.AbortWithStatusJSON(http.StatusBadGateway, gin.H{"error": "provider request failed"})
-				}
-			}
-			c.Abort()
-			return
-		}
-		if provider.Type == ProviderTypeAnthropic {
-			if err := g.forwardAnthropic(c, provider, model, envelope); err != nil {
-				slog.Warn("DZ23 Anthropic request failed", "provider", provider.Name, "error", sanitizeErr(err))
-				if !c.Writer.Written() {
-					c.AbortWithStatusJSON(http.StatusBadGateway, gin.H{"error": "provider request failed"})
-				}
-			}
-			c.Abort()
-			return
-		}
-		if c.Request.URL.Path == "/api/chat" || c.Request.URL.Path == "/api/generate" {
-			if err := g.forwardNative(c, provider, model, envelope); err != nil {
-				slog.Warn("DZ23 native provider request failed", "provider", provider.Name, "error", sanitizeErr(err))
-				c.AbortWithStatusJSON(http.StatusBadGateway, gin.H{"error": "provider request failed"})
-			}
-			c.Abort()
-			return
-		}
-		upstreamModel, _ := json.Marshal(model.UpstreamID)
-		envelope["model"] = upstreamModel
-		forwardBody, err := json.Marshal(envelope)
-		if err != nil {
-			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "encode provider request"})
-			return
-		}
-		if err := g.forward(c, provider, forwardBody); err != nil {
-			slog.Warn("DZ23 provider request failed", "provider", provider.Name, "error", sanitizeErr(err))
-			if errors.Is(err, errResponseLimit) && c.Writer.Written() {
+			pristine := c.Writer.Header().Clone()
+			lastErr = g.dispatchProvider(c, attempt.provider, attempt.model, envelope)
+			if lastErr == nil {
 				c.Abort()
 				return
 			}
-			c.AbortWithStatusJSON(http.StatusBadGateway, gin.H{"error": "provider request failed"})
+			var rejected *requestInputError
+			if errors.As(lastErr, &rejected) {
+				c.AbortWithStatusJSON(rejected.status, gin.H{"error": rejected.message})
+				return
+			}
+			if errors.Is(lastErr, errCLIExecution) {
+				c.AbortWithStatusJSON(http.StatusBadGateway, gin.H{"error": "CLI execution failed"})
+				return
+			}
+			if c.Writer.Written() {
+				// A resposta já começou: reescrever agora corromperia o corpo que
+				// o cliente recebeu, então não há rotação possível.
+				slog.Warn("DZ23 provider request failed after response started", "provider", attempt.provider.Name, "error", sanitizeErr(lastErr))
+				c.Abort()
+				return
+			}
+			resetResponseHeaders(c.Writer, pristine)
+		}
+		var statusErr *providerStatusError
+		if errors.As(lastErr, &statusErr) {
+			// Todas as tentativas falharam do mesmo jeito: devolve ao cliente a
+			// resposta real do provedor, e não um 502 genérico.
+			replayProviderStatusError(c, statusErr)
+			c.Abort()
 			return
 		}
-		c.Abort()
+		slog.Warn("DZ23 provider request failed", "provider", attempts[len(attempts)-1].provider.Name, "error", sanitizeErr(lastErr))
+		c.AbortWithStatusJSON(http.StatusBadGateway, gin.H{"error": "provider request failed"})
 	}
+}
+
+// errCLIExecution marca falha de um provedor CLI, que mantém a mensagem de erro
+// histórica do gateway.
+var errCLIExecution = errors.New("CLI execution failed")
+
+// requestInputError marca falhas causadas pela própria requisição do cliente.
+// Rotacionar não ajudaria e o código HTTP original precisa ser preservado.
+type requestInputError struct {
+	status  int
+	message string
+}
+
+func (e *requestInputError) Error() string { return e.message }
+
+// providerStatusError guarda a recusa de um provedor (429/5xx) que ainda pode
+// ser rotacionada. Se nenhuma outra tentativa funcionar, a resposta original é
+// replicada, mantendo o comportamento de tentativa única.
+type providerStatusError struct {
+	status int
+	header http.Header
+	body   []byte
+}
+
+func (e *providerStatusError) Error() string {
+	return fmt.Sprintf("provider returned status %d", e.status)
+}
+
+// retryableProviderStatus lista os códigos em que outra tentativa tem chance
+// real de sucesso: limite de taxa, indisponibilidade e erros internos.
+func retryableProviderStatus(status int) bool {
+	switch status {
+	case http.StatusTooManyRequests, http.StatusInternalServerError, http.StatusBadGateway, http.StatusServiceUnavailable, http.StatusGatewayTimeout:
+		return true
+	default:
+		return false
+	}
+}
+
+func newProviderStatusError(resp *http.Response) error {
+	body, err := io.ReadAll(io.LimitReader(resp.Body, maxResponseBytes+1))
+	if err != nil {
+		return err
+	}
+	if len(body) > maxResponseBytes {
+		return errors.New("provider response exceeded limit")
+	}
+	return &providerStatusError{status: resp.StatusCode, header: resp.Header.Clone(), body: body}
+}
+
+func replayProviderStatusError(c *gin.Context, failure *providerStatusError) {
+	if c.Writer.Written() {
+		return
+	}
+	copyResponseHeaders(c.Writer.Header(), failure.header)
+	c.Status(failure.status)
+	if len(failure.body) > 0 {
+		_, _ = c.Writer.Write(failure.body)
+	}
+}
+
+// resetResponseHeaders restaura os cabeçalhos de antes da tentativa falha, para
+// que uma tentativa seguinte não herde cabeçalhos de um provedor que recusou.
+func resetResponseHeaders(writer gin.ResponseWriter, snapshot http.Header) {
+	header := writer.Header()
+	for key := range header {
+		delete(header, key)
+	}
+	for key, values := range snapshot {
+		header[key] = append([]string(nil), values...)
+	}
+}
+
+// routeAttempt é uma tentativa concreta do gateway: provedor e modelo resolvidos.
+type routeAttempt struct {
+	provider Provider
+	model    Model
+}
+
+// rotationAttempts monta a fila de tentativas. A primeira é sempre o provedor
+// escolhido pela política normal do gateway; as seguintes vêm do mesmo roteador
+// de pontuação (RouteCandidates) e só existem quando a rotação está ligada.
+//
+// Regras de segurança:
+//   - um provedor CLI nunca participa da rotação: executar um CLI tem efeitos
+//     colaterais e não pode ser disparado duas vezes;
+//   - a rotação não cruza a fronteira de privacidade: um candidato só substitui
+//     o escolhido se ambos permitem ou ambos proíbem endereço privado;
+//   - quando o cliente fixa o modelo (requested == model.ID) a troca de
+//     provedor exige rotation.cross_provider=true.
+func (g *Gateway) rotationAttempts(requested, path string, primary Provider, model Model) []routeAttempt {
+	attempts := []routeAttempt{{provider: primary, model: model}}
+	policy := g.registry.rotationPolicy()
+	if !policy.enabled || policy.maxAttempts <= 1 || primary.Type == ProviderTypeCLI {
+		return attempts
+	}
+	if requested == model.ID && !policy.crossProvider {
+		return attempts
+	}
+	candidates, err := g.registry.RouteCandidates(RouteRequest{
+		RequiredCapabilities: model.Capabilities,
+		Path:                 path,
+	})
+	if err != nil {
+		return attempts
+	}
+	for _, decision := range candidates {
+		if len(attempts) >= policy.maxAttempts {
+			break
+		}
+		if decision.Model.ID == model.ID {
+			continue
+		}
+		provider, ok := g.registry.Provider(decision.Model.Provider)
+		if !ok || provider.Type == ProviderTypeCLI {
+			continue
+		}
+		if provider.AllowPrivate != primary.AllowPrivate {
+			continue
+		}
+		attempts = append(attempts, routeAttempt{provider: provider, model: decision.Model})
+	}
+	return attempts
+}
+
+// dispatchProvider executa uma tentativa já resolvida e nunca aborta a
+// requisição: quem decide entre rotacionar, replicar a resposta ou devolver
+// erro é o chamador. O envelope é copiado por tentativa para que metadados
+// injetados em uma tentativa não vazem para a seguinte.
+func (g *Gateway) dispatchProvider(c *gin.Context, provider Provider, model Model, envelope map[string]json.RawMessage) error {
+	body := make(map[string]json.RawMessage, len(envelope)+1)
+	for key, value := range envelope {
+		body[key] = value
+	}
+	if !provider.SupportsPath(c.Request.URL.Path) {
+		return &requestInputError{status: http.StatusBadRequest, message: "provider does not support this API path"}
+	}
+	if provider.Type == ProviderTypeOpenAICompatible && model.HarnessID != "" {
+		if err := injectHarnessMetadata(body, model.HarnessID); err != nil {
+			return &requestInputError{status: http.StatusBadRequest, message: "invalid request metadata"}
+		}
+	}
+	if provider.Type == ProviderTypeCLI {
+		if err := g.executeCLI(c, provider, model, body); err != nil {
+			slog.Warn("DZ23 CLI request failed", "provider", provider.Name, "error", sanitizeErr(err))
+			return errCLIExecution
+		}
+		return nil
+	}
+	if c.Request.URL.Path == "/v1/messages" && provider.Type == ProviderTypeOpenAICompatible {
+		return g.forwardAnthropicToOpenAI(c, provider, model, body)
+	}
+	if provider.Type == ProviderTypeAnthropic {
+		return g.forwardAnthropic(c, provider, model, body)
+	}
+	if c.Request.URL.Path == "/api/chat" || c.Request.URL.Path == "/api/generate" {
+		return g.forwardNative(c, provider, model, body)
+	}
+	upstreamModel, _ := json.Marshal(model.UpstreamID)
+	body["model"] = upstreamModel
+	forwardBody, err := json.Marshal(body)
+	if err != nil {
+		return &requestInputError{status: http.StatusBadRequest, message: "encode provider request"}
+	}
+	return g.forward(c, provider, forwardBody)
 }
 
 func injectHarnessMetadata(envelope map[string]json.RawMessage, harnessID string) error {
@@ -712,6 +859,11 @@ func (g *Gateway) forward(c *gin.Context, provider Provider, body []byte) error 
 		return err
 	}
 	defer resp.Body.Close()
+	if retryableProviderStatus(resp.StatusCode) {
+		// Recusa que outra tentativa ainda pode resolver: nada foi escrito ao
+		// cliente, então o chamador pode rotacionar com segurança.
+		return newProviderStatusError(resp)
+	}
 	if strings.Contains(strings.ToLower(resp.Header.Get("Content-Type")), "text/event-stream") {
 		if resp.ContentLength > maxResponseBytes {
 			return errors.New("provider response exceeded limit")
@@ -724,6 +876,9 @@ func (g *Gateway) forward(c *gin.Context, provider Provider, body []byte) error 
 }
 
 func writeBufferedProviderResponse(c *gin.Context, resp *http.Response) error {
+	if retryableProviderStatus(resp.StatusCode) {
+		return newProviderStatusError(resp)
+	}
 	body, err := io.ReadAll(io.LimitReader(resp.Body, maxResponseBytes+1))
 	if err != nil {
 		return err
