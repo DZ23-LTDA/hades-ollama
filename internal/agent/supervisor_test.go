@@ -244,6 +244,48 @@ func TestSupervisorRiskyActionRequiresApproval(t *testing.T) {
 	}
 }
 
+func TestSupervisorRiskApprovalCannotBeDisabledByConfig(t *testing.T) {
+	runtime, compStore, _ := setupTestSupervisorRuntime(t)
+	config := runtime.Supervisor().Config()
+	config.RequireApprovalRisk = false
+	runtime.Supervisor().SetConfig(config)
+
+	company, err := compStore.Create(Company{Name: "Protected Corp", OrganizationID: LocalOrganizationID})
+	if err != nil {
+		t.Fatalf("create company: %v", err)
+	}
+	_, err = compStore.AddCycle(company.ID, CompanyCycle{
+		ID:              "cycle_explicit_risk",
+		Name:            "Ação externa",
+		Objective:       "executar ação autorizada pelo operador",
+		Risk:            RiskExternalSideEffect,
+		IntervalSeconds: 3600,
+		Enabled:         true,
+		NextRunAt:       time.Now().UTC().Add(-time.Minute),
+	})
+	if err != nil {
+		t.Fatalf("add cycle: %v", err)
+	}
+
+	result, err := runtime.Supervisor().Tick(context.Background(), time.Now().UTC())
+	if err != nil {
+		t.Fatalf("tick: %v", err)
+	}
+	if result.ApprovalsCreated != 1 {
+		t.Fatalf("approvals created = %d, want 1", result.ApprovalsCreated)
+	}
+	updated, err := compStore.Get(company.ID)
+	if err != nil {
+		t.Fatalf("get company: %v", err)
+	}
+	if len(updated.Approvals) != 1 || updated.Approvals[0].Status != CompanyApprovalPending {
+		t.Fatalf("approval ledger = %+v, want one pending approval", updated.Approvals)
+	}
+	if updated.Approvals[0].Nonce == "" || updated.Approvals[0].ExpiresAt == nil {
+		t.Fatalf("approval missing nonce or expiry: %+v", updated.Approvals[0])
+	}
+}
+
 // 4. TestSupervisorBlockedExternalActionHonesty verifies that actions depending on missing external credentials receive BLOCKED_EXTERNAL.
 func TestSupervisorBlockedExternalActionHonesty(t *testing.T) {
 	runtime, compStore, _ := setupTestSupervisorRuntime(t)
@@ -412,6 +454,41 @@ func TestSupervisorResumesPendingMissionsAfterRestart(t *testing.T) {
 	}
 }
 
+func TestSupervisorResumesObservingMissionAfterRestart(t *testing.T) {
+	runtime, _, _ := setupTestSupervisorRuntime(t)
+	ctx := context.Background()
+
+	// AutoRun is false, so the only reason this mission may resume is that it
+	// was persisted in the transient OBSERVING state before a crash (E3).
+	mission, err := runtime.CreateMission(ctx, CreateMissionRequest{
+		Objective:      "Missão interrompida enquanto observava",
+		Model:          "qwen2.5-coder:7b",
+		OrganizationID: LocalOrganizationID,
+		AutoRun:        false,
+	})
+	if err != nil {
+		t.Fatalf("create mission: %v", err)
+	}
+
+	stored, err := runtime.GetMission(mission.ID)
+	if err != nil {
+		t.Fatalf("get mission: %v", err)
+	}
+	stored.State = MissionObserving
+	stored.Version++
+	if err := runtime.store.PutMission(stored); err != nil {
+		t.Fatalf("persist observing mission: %v", err)
+	}
+
+	res, err := runtime.Supervisor().Tick(ctx, time.Now().UTC())
+	if err != nil {
+		t.Fatalf("tick failed: %v", err)
+	}
+	if res.MissionsResumed < 1 {
+		t.Fatalf("expected the OBSERVING mission to be re-enqueued on restart, resumed=%d", res.MissionsResumed)
+	}
+}
+
 // 8. TestSupervisorDaemonStartStop verifies that the background ticker runs ticks and stops cleanly.
 func TestSupervisorDaemonStartStop(t *testing.T) {
 	runtime, _, _ := setupTestSupervisorRuntime(t)
@@ -445,5 +522,46 @@ func TestSupervisorDaemonStartStop(t *testing.T) {
 
 	if sup.Status().Running {
 		t.Fatal("expected supervisor to report not running after Stop()")
+	}
+}
+
+func TestCycleRequestsExternalIntegration(t *testing.T) {
+	cases := []struct {
+		name  string
+		cycle CompanyCycle
+		want  bool
+	}{
+		{
+			name:  "structured field names an external connector",
+			cycle: CompanyCycle{Name: "campanha", Objective: "rodar anúncios", Integrations: []string{"meta_ads"}},
+			want:  true,
+		},
+		{
+			name:  "structured field is authoritative and names none external",
+			cycle: CompanyCycle{Name: "relatorio tiktok_shop", Objective: "ler vendas tiktok_shop", Integrations: []string{"internal_report"}},
+			want:  false,
+		},
+		{
+			name:  "structured match is case-insensitive and trims space",
+			cycle: CompanyCycle{Integrations: []string{"  Shopify_Sync "}},
+			want:  true,
+		},
+		{
+			name:  "free-text fallback detects connector when field empty",
+			cycle: CompanyCycle{Name: "sync", Objective: "disparar whatsapp_live para clientes"},
+			want:  true,
+		},
+		{
+			name:  "no integration declared and no connector mentioned",
+			cycle: CompanyCycle{Name: "resumo", Objective: "escrever relatório interno"},
+			want:  false,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := cycleRequestsExternalIntegration(tc.cycle); got != tc.want {
+				t.Fatalf("cycleRequestsExternalIntegration(%q) = %v, want %v", tc.name, got, tc.want)
+			}
+		})
 	}
 }

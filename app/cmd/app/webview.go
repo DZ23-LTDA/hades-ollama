@@ -2,6 +2,7 @@
 
 package main
 
+// #include <stdlib.h>
 // #include "menu.h"
 import "C"
 
@@ -21,6 +22,7 @@ import (
 	"unsafe"
 
 	"github.com/ollama/ollama/app/attachments"
+	"github.com/ollama/ollama/app/cmd/app/extlink"
 	"github.com/ollama/ollama/app/dialog"
 	"github.com/ollama/ollama/app/store"
 	"github.com/ollama/ollama/app/webview"
@@ -66,7 +68,7 @@ func (w *Webview) Run(path string) unsafe.Pointer {
 		wv := webview.New(debug)
 		// start the window hidden
 		hideWindow(wv.Window())
-		wv.SetTitle("Ollama")
+		wv.SetTitle("Hades")
 
 		// TODO (jmorganca): this isn't working yet since it needs to be set
 		// on the first page load, ideally in an interstitial page like `/token`
@@ -221,6 +223,19 @@ func (w *Webview) Run(path string) unsafe.Pointer {
 
 		wv.Bind("activateOllama", func() {
 			showWindow(wv.Window())
+		})
+
+		// openExternal lets the UI open a link in the system browser. The webview
+		// itself swallows window.open(...) (nothing happens), so every external
+		// link — OAuth connect/authorize URLs, docs, ollama.com — must route here.
+		// Only http(s) and the app's own scheme are allowed, never javascript:,
+		// data:, file: or other schemes the page could abuse.
+		wv.Bind("openExternal", func(target string) {
+			if url, ok := extlink.Allowed(target); ok {
+				openInBrowser(url)
+				return
+			}
+			slog.Warn("openExternal refused non-web URL")
 		})
 
 		bindClaudeDesktop(wv)
@@ -439,10 +454,28 @@ func (w *Webview) Run(path string) unsafe.Pointer {
 				pinner.Unpin()
 			}
 
+			// Free the C strings allocated for the previous menu before
+			// discarding them. pinner.Unpin() only releases Go pins and never
+			// calls free, so without this every context-menu rebuild leaks one
+			// malloc'd label per item.
+			for _, it := range menuItems {
+				if it.label != nil {
+					C.free(unsafe.Pointer(it.label))
+				}
+			}
+
 			menuItems = nil
 			for _, item := range items {
+				label, ok := item["label"].(string)
+				if !ok {
+					// A malformed item (missing or non-string label) must never
+					// reach C.CString via an unchecked type assertion: that
+					// would panic across the cgo boundary and crash the whole
+					// process. Skip it instead.
+					continue
+				}
 				menuItem := C.menuItem{
-					label:     C.CString(item["label"].(string)),
+					label:     C.CString(label),
 					enabled:   0,
 					separator: 0,
 				}
@@ -569,5 +602,21 @@ func menu_get_items() unsafe.Pointer {
 
 //export menu_handle_selection
 func menu_handle_selection(item *C.char) {
-	wv.webview.Eval(fmt.Sprintf("window.handleContextMenuResult('%s')", C.GoString(item)))
+	// Marshal the label as a JSON string literal instead of interpolating it
+	// inside single quotes: a label containing a quote (e.g. "What's this")
+	// would otherwise break out of the string, a same-origin injection vector.
+	payload, err := json.Marshal(C.GoString(item))
+	if err != nil {
+		return
+	}
+	// Snapshot the webview under the mutex and nil-check it. A selection can
+	// arrive after Close() has set w.webview = nil (Terminate/Destroy), which
+	// would nil-deref and panic on the UI thread.
+	wv.mutex.Lock()
+	view := wv.webview
+	wv.mutex.Unlock()
+	if view == nil {
+		return
+	}
+	view.Eval(fmt.Sprintf("window.handleContextMenuResult(%s)", payload))
 }

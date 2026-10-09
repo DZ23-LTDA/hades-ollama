@@ -153,7 +153,7 @@ grep -q 'pluginCatalog' server/plugin_routes.go
 grep -q 'npm test -- --run' .github/workflows/dz23-agentic-quality.yaml
 grep -q 'npm run build' .github/workflows/dz23-agentic-quality.yaml
 grep -q 'CGO_ENABLED=1 go vet ./...' .github/workflows/dz23-agentic-quality.yaml
-grep -q 'needs: \[release-gate, darwin-build, windows-app, docker-build-push, quality\]' .github/workflows/release.yaml
+grep -q 'needs: \[release-gate, darwin-build, windows-app, docker-merge-push, quality\]' .github/workflows/release.yaml
 grep -q 'ErrModelNotAllowed' internal/grok/client.go
 grep -q 'validateCatalogModel' internal/grok/client.go
 grep -q 'Grok streaming is not exposed' server/grok_routes.go
@@ -229,8 +229,14 @@ grep -q 'pg_promote' docs/agentic/POSTGRES_HA_FAILOVER_REHEARSAL.md
 grep -qi 'split[- ]brain' docs/agentic/POSTGRES_HA_FAILOVER_REHEARSAL.md
 grep -q 'restore_check' .github/workflows/dz23-agentic-quality.yaml
 grep -q 'cleanup-placeholder' .github/workflows/dz23-agentic-quality.yaml
-if sed -n '65,210p' .github/workflows/dz23-agentic-quality.yaml | grep -q 'GITHUB_ENV'; then
-  echo 'distributed integration secrets must remain step-local' >&2
+# Distributed-integration DB/Redis secrets must stay step-local shell exports
+# and never be promoted to $GITHUB_ENV (which persists them into every later
+# step). Anchoring on secret-shaped tokens keeps this robust to line drift,
+# unlike the previous hardcoded line range which missed the secrets entirely.
+github_env_writes="$(grep -nE '>>[[:space:]]*"?\$\{?GITHUB_ENV' .github/workflows/dz23-agentic-quality.yaml || true)"
+if printf '%s\n' "$github_env_writes" | grep -Eqi 'password|postgres://|redis://|tenant_key|_URL='; then
+  echo 'distributed integration secrets must remain step-local (never written to $GITHUB_ENV):' >&2
+  printf '%s\n' "$github_env_writes" | grep -Ei 'password|postgres://|redis://|tenant_key|_URL=' >&2
   exit 1
 fi
 if grep -Rqi 'change-me-local-only' deploy; then echo 'fixed development credential found'; exit 1; fi
@@ -243,8 +249,16 @@ grep -q 'provider != "ollama-local"' internal/agent/runtime.go
 		exit 1
 	fi
 grep -q 'TestRuntimeRejectsUnconfiguredMissionProvider' internal/agent/runtime_test.go
-	grep -q 'Empty release artifact' .github/workflows/release.yaml
-		grep -q 'actions/attest-build-provenance@96b4a1ef7235a096b17240c259729fdd70c83d45' .github/workflows/release.yaml
+		grep -q 'Empty release artifact' .github/workflows/release.yaml
+	grep -q '#define MyAppName "Hades"' app/ollama.iss
+	# The legacy name may ONLY appear in the migration code that removes an old
+	# "Ollama Classe A+" install; it must never return as the app's own branding
+	# (MyAppName / AppName / DefaultGroupName / OutputBaseFilename).
+	if grep -qE '(#define[[:space:]]+MyAppName|AppName=|DefaultGroupName=|OutputBaseFilename=)[^;]*Ollama Classe A\+' app/ollama.iss; then
+		echo 'legacy installer branding must not return' >&2
+		exit 1
+	fi
+			grep -q 'actions/attest-build-provenance@96b4a1ef7235a096b17240c259729fdd70c83d45' .github/workflows/release.yaml
 	grep -q 'OLLAMA_ENABLE_ATTESTATIONS' .github/workflows/release.yaml
 	grep -q 'ollama-classe-a-plus-sbom.cdx.json' .github/workflows/release.yaml
 	grep -q 'sha256sum -c sha256sum.txt' .github/workflows/release.yaml
@@ -299,6 +313,7 @@ if git ls-files | grep -E '(^|/)(\.env|.*\.key|.*\.pem|node_modules/)' >/dev/nul
 fi
 
 git diff --check
+node scripts/verify-design-system.mjs
 echo "Verifying frontend-backend contract matrix..."
 node scripts/verify-contracts.mjs
 

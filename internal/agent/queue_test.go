@@ -4,12 +4,55 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 )
+
+func TestNackAppliesJitteredBackoff(t *testing.T) {
+	queue, err := NewJobQueue("")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	const base = time.Second // attempt 1 -> 1<<0 seconds
+	delays := make([]time.Duration, 0, 24)
+	for i := range 24 {
+		if _, err := queue.Enqueue(fmt.Sprintf("mission-jitter-%d", i), 3); err != nil {
+			t.Fatal(err)
+		}
+		claimed, ok, err := queue.Claim("worker", time.Now().UTC())
+		if err != nil || !ok {
+			t.Fatalf("claim: ok=%v err=%v", ok, err)
+		}
+		t0 := time.Now().UTC()
+		retry, err := queue.Nack(claimed, errors.New("temporary"))
+		if err != nil {
+			t.Fatalf("nack: %v", err)
+		}
+		delay := retry.AvailableAt.Sub(t0)
+		// Equal jitter keeps the retry delay within [base/2, base].
+		if delay < base/2-50*time.Millisecond || delay > base+100*time.Millisecond {
+			t.Fatalf("iteration %d: backoff %v outside jitter window [%v, %v]", i, delay, base/2, base)
+		}
+		delays = append(delays, delay)
+	}
+
+	// Jitter must actually vary: a fixed backoff would make every delay identical.
+	allEqual := true
+	for _, d := range delays[1:] {
+		if d != delays[0] {
+			allEqual = false
+			break
+		}
+	}
+	if allEqual {
+		t.Fatalf("all %d backoffs were identical (%v); jitter not applied", len(delays), delays[0])
+	}
+}
 
 func TestRunQueueHandlerRecoversPanicAsNonRetryable(t *testing.T) {
 	err := runQueueHandler(context.Background(), QueueJob{ID: "job_panic_test"}, func(context.Context, QueueJob) error {
@@ -73,7 +116,11 @@ func TestJobQueueRetriesDeadLettersAndReplays(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if jobs := reloaded.List(QueuePending); len(jobs) != 1 {
+	jobs, err := reloaded.List(QueuePending)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(jobs) != 1 {
 		t.Fatalf("pending after reload = %+v", jobs)
 	}
 }
@@ -104,11 +151,17 @@ func TestJobQueueWorkerAcknowledgesJobs(t *testing.T) {
 	}
 	deadline := time.Now().Add(2 * time.Second)
 	for {
-		if status := queue.List(QueueSucceeded); len(status) == 1 {
+		status, err := queue.List(QueueSucceeded)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(status) == 1 {
 			break
 		}
 		if time.Now().After(deadline) {
-			t.Fatalf("worker returned but job was not acknowledged: pending=%+v running=%+v succeeded=%+v", queue.List(QueuePending), queue.List(QueueRunning), queue.List(QueueSucceeded))
+			pending, _ := queue.List(QueuePending)
+			running, _ := queue.List(QueueRunning)
+			t.Fatalf("worker returned but job was not acknowledged: pending=%+v running=%+v succeeded=%+v", pending, running, status)
 		}
 		time.Sleep(time.Millisecond)
 	}
@@ -222,7 +275,10 @@ func TestJobQueueReplayRequiresPersistedOrganizationOwner(t *testing.T) {
 	if !errors.Is(err, ErrQueueJobForbidden) {
 		t.Fatalf("ownerless replay error=%v, want forbidden", err)
 	}
-	legacyItems := legacyQueue.List(QueueDeadLetter)
+	legacyItems, err := legacyQueue.List(QueueDeadLetter)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if len(legacyItems) != 1 || legacyItems[0].ID != legacy.ID || legacyItems[0].OrganizationID != "" {
 		t.Fatalf("ownerless dead-letter changed after rejected replay: %+v", legacyItems)
 	}
@@ -241,7 +297,11 @@ func TestJobQueueEnqueueIsIdempotentByMission(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if second.ID != first.ID || len(queue.List("")) != 1 {
-		t.Fatalf("duplicate mission jobs: first=%+v second=%+v jobs=%+v", first, second, queue.List(""))
+	listed, err := queue.List("")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if second.ID != first.ID || len(listed) != 1 {
+		t.Fatalf("duplicate mission jobs: first=%+v second=%+v jobs=%+v", first, second, listed)
 	}
 }

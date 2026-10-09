@@ -1,6 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  createProvider,
   listProviders,
+  parseModelIds,
+  PROVIDER_PRESETS,
   saveProviderKey,
   sortProviders,
   staleModels,
@@ -66,6 +69,87 @@ describe("providers client", () => {
     await expect(saveProviderKey("openai", "   ")).rejects.toThrow(
       "Cole a chave",
     );
+  });
+});
+
+describe("createProvider", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("posts the provider and returns the created status", async () => {
+    const created: ProviderStatus = {
+      name: "openai",
+      type: "openai-compatible",
+      base_url: "https://api.openai.com/v1",
+      api_key_env: "OPENAI_API_KEY",
+      models: 2,
+      enabled: true,
+      configured: true,
+      needs_key: true,
+    };
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(
+        new Response(JSON.stringify(created), { status: 201 }),
+      );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await createProvider({
+      name: "openai",
+      base_url: "https://api.openai.com/v1",
+      models: ["gpt-4o", "gpt-4o-mini"],
+      api_key: "sk-secret",
+    });
+    expect(result).toEqual(created);
+
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toContain("/api/v1/providers");
+    expect(init.method).toBe("POST");
+    expect(JSON.parse(init.body as string)).toMatchObject({
+      name: "openai",
+      base_url: "https://api.openai.com/v1",
+      models: ["gpt-4o", "gpt-4o-mini"],
+      api_key: "sk-secret",
+    });
+  });
+
+  it("surfaces the server error message", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValue(
+          new Response(
+            JSON.stringify({ error: "já existe um provedor chamado \"openai\"" }),
+            { status: 409 },
+          ),
+        ),
+    );
+    await expect(
+      createProvider({
+        name: "openai",
+        base_url: "https://api.openai.com/v1",
+        models: ["gpt-4o"],
+      }),
+    ).rejects.toThrow("já existe um provedor");
+  });
+});
+
+describe("parseModelIds", () => {
+  it("splits on commas and newlines, trimming and de-duplicating", () => {
+    expect(parseModelIds("gpt-4o, gpt-4o-mini\n gpt-4o \n\n")).toEqual([
+      "gpt-4o",
+      "gpt-4o-mini",
+    ]);
+    expect(parseModelIds("   ")).toEqual([]);
+  });
+});
+
+describe("PROVIDER_PRESETS", () => {
+  it("includes known services and marks Anthropic's type", () => {
+    const byId = new Map(PROVIDER_PRESETS.map((p) => [p.id, p]));
+    expect(byId.get("openai")?.base_url).toBe("https://api.openai.com/v1");
+    expect(byId.get("anthropic")?.type).toBe("anthropic");
+    expect(byId.get("custom")?.base_url).toBe("");
   });
 });
 

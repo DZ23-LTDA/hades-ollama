@@ -263,6 +263,10 @@ func RunProjectTests(ctx context.Context, workspacePath string, options TestRunO
 	}
 	targetDir := workspacePath
 	if options.SubPath != "" {
+		// SEC-02: contain the subpath strictly within the workspace. The shared
+		// helper rejects absolute paths, ".." escapes and symlinked components
+		// (including the Windows 8.3 short-name case, because it resolves the
+		// root before comparing).
 		contained, err := safeWorkspacePath(workspacePath, options.SubPath)
 		if err != nil {
 			return TestRunResult{}, fmt.Errorf("sub_path invalid: %w", err)
@@ -530,11 +534,15 @@ type projectTestRunnerTool struct{}
 
 func (projectTestRunnerTool) Descriptor() ToolDescriptor {
 	return ToolDescriptor{
-		Name:             "project.test.run",
-		Version:          "2",
-		Description:      "Executar testes automatizados do projeto (Go, Node/npm, Python) após approval, contido no workspace e sem egress de rede",
-		Risk:             RiskWrite,
-		Scopes:           []string{"workspace:write"},
+		Name:    "project.test.run",
+		Version: "2",
+		// SEC-01: honest risk. This runs the project's own test command (go test,
+		// npm test, pytest or a custom command), which executes arbitrary project
+		// code on the host. It is NOT a real kernel sandbox, so it is treated as
+		// an external-side-effect action and requires explicit human approval.
+		Description:      "Executar os testes automatizados do projeto (Go, Node/npm, Python) após aprovação, contidos no workspace e sem egress de rede. Atenção: executa código do projeto no host.",
+		Risk:             RiskExternalSideEffect,
+		Scopes:           []string{"workspace:read", "sandbox:execute"},
 		RequiresApproval: true,
 	}
 }

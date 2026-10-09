@@ -387,27 +387,32 @@ func IsProcRunning(procName string) []uint32 {
 		if pid == 0 {
 			continue
 		}
-		hProcess, err := windows.OpenProcess(windows.PROCESS_QUERY_INFORMATION|windows.PROCESS_VM_READ, false, pid)
-		if err != nil {
-			continue
-		}
-		defer windows.CloseHandle(hProcess)
-		var module windows.Handle
-		var cbNeeded uint32
-		cb := uint32(unsafe.Sizeof(module))
-		if err := windows.EnumProcessModules(hProcess, &module, cb, &cbNeeded); err != nil {
-			continue
-		}
-		var sz uint32 = 1024 * 8
-		moduleName := make([]uint16, sz)
-		cb = uint32(len(moduleName)) * uint32(unsafe.Sizeof(uint16(0)))
-		if err := windows.GetModuleBaseName(hProcess, module, &moduleName[0], cb); err != nil && err != syscall.ERROR_INSUFFICIENT_BUFFER {
-			continue
-		}
-		exeFile := path.Base(strings.ToLower(syscall.UTF16ToString(moduleName)))
-		if strings.EqualFold(exeFile, procName) {
-			matches = append(matches, pid)
-		}
+		// Scope each process handle to one iteration via an inner func, so the
+		// deferred CloseHandle runs per PID. Deferring directly in the loop kept
+		// every opened handle (up to 2048) alive until the whole scan returned.
+		func() {
+			hProcess, err := windows.OpenProcess(windows.PROCESS_QUERY_INFORMATION|windows.PROCESS_VM_READ, false, pid)
+			if err != nil {
+				return
+			}
+			defer windows.CloseHandle(hProcess)
+			var module windows.Handle
+			var cbNeeded uint32
+			cb := uint32(unsafe.Sizeof(module))
+			if err := windows.EnumProcessModules(hProcess, &module, cb, &cbNeeded); err != nil {
+				return
+			}
+			var sz uint32 = 1024 * 8
+			moduleName := make([]uint16, sz)
+			cb = uint32(len(moduleName)) * uint32(unsafe.Sizeof(uint16(0)))
+			if err := windows.GetModuleBaseName(hProcess, module, &moduleName[0], cb); err != nil && err != syscall.ERROR_INSUFFICIENT_BUFFER {
+				return
+			}
+			exeFile := path.Base(strings.ToLower(syscall.UTF16ToString(moduleName)))
+			if strings.EqualFold(exeFile, procName) {
+				matches = append(matches, pid)
+			}
+		}()
 	}
 	return matches
 }

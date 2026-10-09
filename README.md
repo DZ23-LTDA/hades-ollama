@@ -20,6 +20,7 @@ As imagens acima foram recapturadas com Chromium contra o Vite dev e o servidor 
 
 | Recurso | Documento |
 |---|---|
+| **Guia rápido para quem não é técnico (instalar e usar)** | [`GUIA_RAPIDO_USUARIO.md`](docs/GUIA_RAPIDO_USUARIO.md) |
 | Instalação, configuração, telas e contribuição | [`CLASS_A_PLUS_GUIDE.md`](docs/CLASS_A_PLUS_GUIDE.md) |
 | Arquitetura do runtime | [`agentic/ARCHITECTURE.md`](docs/agentic/ARCHITECTURE.md) |
 | API e endpoints | [`agentic/API.md`](docs/agentic/API.md) |
@@ -56,20 +57,51 @@ OLLAMA_HOST=127.0.0.1:11434 ./bin/ollama-full serve
 
 The equivalent helpers are `scripts/install.sh` on Unix-like systems and `scripts/install.ps1` on Windows. They build the checked-out source locally and never download `ollama.com` installers or official upstream binaries. They require Go and do not install models or configure external providers.
 
-In a second terminal, run the web operator surface from source:
+### Code signing policy
+
+**Free code signing provided by SignPath.io, certificate by SignPath Foundation**
+
+The Windows installer is prepared for the SignPath Foundation program. Until the project is approved and the repository owner configures `SIGNPATH_API_TOKEN`, release builds remain explicitly **UNSIGNED**. The release workflow runs only on GitHub-hosted `windows-latest` runners and never prints signing credentials.
+
+- **Committers/Reviewers:** `@DZ23-LTDA`, `@LMPrado-DZ23`
+- **Approvers:** `@DZ23-LTDA` (owner/admin approval remains required by the repository policy)
+
+See [`docs/SIGNING.md`](docs/SIGNING.md) for the SignPath project identifiers, artifact ZIP flow, eligibility prerequisites and verification procedure.
+
+### Quickstart local de um comando
+
+Em uma árvore clonada, o caminho recomendado para o primeiro uso Unix-like é:
+
+```shell
+./scripts/hades-quickstart.sh
+```
+
+No Windows (PowerShell 5.1+ ou 7+), use o equivalente:
+
+```powershell
+./scripts/hades-quickstart.ps1
+```
+
+O script verifica Go/Node/npm, compila o backend, instala as dependências e compila a UI, inicia os dois processos e abre a UI em `http://127.0.0.1:5173`. Se nenhum modelo local existir, ele **pergunta antes** de baixar o modelo recomendado (`qwen2.5:0.5b`, pequeno e rápido para o primeiro uso); em execução não interativa apenas informa o comando, sem baixar nada silenciosamente. Para iniciar sem essa oferta, use `--no-model` (`./scripts/hades-quickstart.sh --no-model` ou `./scripts/hades-quickstart.ps1 -NoModel`). Chaves de provedores externos continuam opcionais e devem ser configuradas na tela **Configurações → Provedores de IA**; o motor local não exige chave.
+
+O quickstart é local-first e não é um instalador assinado: uma máquina limpa ainda precisa ter Go e Node.js/npm disponíveis (a versão `.sh` também requer `curl`; a `.ps1` usa o `Invoke-WebRequest` nativo do PowerShell). Para o usuário final sem ambiente de build, o caminho é o instalador Windows gerado pelo workflow `dz23-windows-installer`; `scripts/install.ps1` permanece como instalador alternativo.
+
+Em outro terminal, se preferir iniciar somente a interface web a partir do código-fonte:
 
 ```shell
 cd app/ui/app
 npm ci --no-audit --no-fund
 npm run build
-npx vite preview --host 0.0.0.0 --port 5173
+npx vite preview --host 127.0.0.1 --port 5173
 ```
 
-The web development proxy routes all API requests (`/api/*`, `/api/v1/*` and `/api/agent/v1/*`) seamlessly to the Hades backend at `http://127.0.0.1:11434`.
+O proxy web encaminha as requisições da API (`/api/*`, `/api/v1/*` e `/api/agent/v1/*`) para o backend Hades em `http://127.0.0.1:11434`.
 
-### Quality Gates and Automated Tests
+A interface web usa loopback por padrão. A exposição na rede local exige explicitamente `HADES_UI_HOST=<ip-da-lan>`, `HADES_UI_ALLOW_LAN=true` e `HADES_UI_AUTH_REQUIRED=true`; nunca exponha o proxy de desenvolvimento em uma rede compartilhada sem autenticação do backend.
 
-To verify the full stack on any clean workstation:
+### Gates de qualidade e testes automatizados
+
+Para verificar a stack completa em uma máquina limpa:
 
 ```shell
 # 1. Backend Go tests (runtime, agent routes, RLS isolation)

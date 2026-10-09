@@ -1,12 +1,16 @@
 import { useEffect, useRef, useState } from "react";
 import {
   createProject,
+  deleteProject,
   finalizeProjectUpload,
+  getProjectUpload,
   importGitHubProject,
   importZIPProject,
   startProjectUpload,
   uploadProjectChunk,
 } from "@/lib/agenticClient";
+import type { AgentProject } from "@/lib/agenticClient";
+import { describeImport } from "@/lib/importSummary";
 
 type ImportTab = "github" | "zip";
 
@@ -17,7 +21,7 @@ export function ImportProjectDialog({
 }: {
   open: boolean;
   onClose: () => void;
-  onImported?: () => void;
+  onImported?: (project: AgentProject) => void;
 }) {
   const [tab, setTab] = useState<ImportTab>("github");
   const [url, setURL] = useState("");
@@ -27,9 +31,13 @@ export function ImportProjectDialog({
   const [file, setFile] = useState<File | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const zipInputRef = useRef<HTMLInputElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
   const returnFocusRef = useRef<HTMLElement | null>(null);
+  // Projeto-casca criado para receber o upload. Mantido entre tentativas para
+  // não duplicar projetos a cada retry; limpo ao concluir ou ao falhar.
+  const shellProjectRef = useRef<AgentProject | null>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -63,17 +71,59 @@ export function ImportProjectDialog({
 
   if (!open) return null;
 
+  // Selecting the ZIP: a bare <input type="file"> does not reliably open a
+  // picker inside the desktop webview (WebView2), which left "Nenhum arquivo
+  // escolhido" and nothing to upload. Prefer the File System Access API
+  // (showOpenFilePicker), available in the webview's Chromium and in modern
+  // browsers, which returns a real File with the raw bytes the chunked upload
+  // needs. Fall back to the hidden <input> when the API is unavailable or the
+  // call fails for any reason other than the user cancelling.
+  const pickZip = async () => {
+    if (pending) return;
+    type FilePicker = (options?: {
+      multiple?: boolean;
+      excludeAcceptAllOption?: boolean;
+      types?: { description?: string; accept: Record<string, string[]> }[];
+    }) => Promise<{ getFile: () => Promise<File> }[]>;
+    const picker = (window as unknown as { showOpenFilePicker?: FilePicker })
+      .showOpenFilePicker;
+    if (typeof picker === "function") {
+      try {
+        const [handle] = await picker({
+          multiple: false,
+          types: [
+            {
+              description: "Arquivo ZIP",
+              accept: { "application/zip": [".zip"], "application/x-zip-compressed": [".zip"] },
+            },
+          ],
+        });
+        if (handle) {
+          const picked = await handle.getFile();
+          setFile(picked);
+          setStatus(null);
+        }
+        return;
+      } catch (cause) {
+        // User cancelled the native dialog: leave the current selection as-is.
+        if (cause instanceof DOMException && cause.name === "AbortError") return;
+        // Any other failure: fall through to the <input> fallback below.
+      }
+    }
+    zipInputRef.current?.click();
+  };
+
   const importGitHub = async () => {
     if (!url.trim() || pending) return;
     setPending(true);
     setStatus(null);
     try {
       const result = await importGitHubProject({ url: url.trim(), ref: ref.trim() || undefined, name: githubName.trim() || undefined });
-      setStatus(`Importado e indexado: ${result.indexed_files} arquivos e ${result.indexed_memories} trechos. Worktree ${result.branch}.`);
-      setURL("");
-      setRef("");
-      setGithubName("");
-      onImported?.();
+      setStatus(`Importado e indexado: ${describeImport(result)}. Worktree ${result.branch}.`);
+	      setURL("");
+	      setRef("");
+	      setGithubName("");
+	      onImported?.(result.project);
     } catch (cause) {
       setStatus(cause instanceof Error ? cause.message : "Não foi possível importar o repositório.");
     } finally {
@@ -88,22 +138,73 @@ export function ImportProjectDialog({
     }
     setPending(true);
     setStatus(null);
+    // Reaproveita o projeto-casca de uma tentativa anterior que falhou, em vez de
+    // criar um novo a cada clique (o que deixava órfãos e duplicava projetos).
+    const project = shellProjectRef.current ?? (await createProject(zipName.trim()).catch((cause) => {
+      setStatus(cause instanceof Error ? cause.message : "Não foi possível preparar o projeto para o ZIP.");
+      return null;
+    }));
+    if (!project) {
+      setPending(false);
+      return;
+    }
+    shellProjectRef.current = project;
     try {
-      const project = await createProject(zipName.trim());
       const chunkSize = 8 * 1024 * 1024;
       const upload = await startProjectUpload({ project_id: project.id, filename: file.name, total_size: file.size, chunk_size: chunkSize });
-      for (let offset = 0; offset < file.size; offset += chunkSize) {
-        const chunk = await file.slice(offset, Math.min(offset + chunkSize, file.size)).arrayBuffer();
-        await uploadProjectChunk(upload.id, offset, chunk);
-        setStatus(`Enviando ZIP: ${Math.min(file.size, offset + chunk.byteLength)} de ${file.size} bytes…`);
+      // Resilient chunked upload: the backend accepts chunks strictly in order
+      // from its current received_bytes, so on any transient failure (network
+      // blip, proxy hiccup) we back off, re-read the server's real offset and
+      // resume from there instead of aborting and leaving a partial upload.
+      const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+      let offset = 0;
+      let failures = 0;
+      const maxFailures = 6;
+      while (offset < file.size) {
+        const end = Math.min(offset + chunkSize, file.size);
+        try {
+          const chunk = await file.slice(offset, end).arrayBuffer();
+          await uploadProjectChunk(upload.id, offset, chunk);
+          offset = end;
+          failures = 0;
+          const pct = Math.round((offset / file.size) * 100);
+          setStatus(`Enviando ZIP: ${pct}% (${offset} de ${file.size} bytes)…`);
+        } catch (chunkError) {
+          failures += 1;
+          if (failures > maxFailures) {
+            throw chunkError instanceof Error
+              ? new Error(`Falha ao enviar o ZIP após várias tentativas: ${chunkError.message}`)
+              : chunkError;
+          }
+          setStatus(`Conexão instável, retomando o envio… (tentativa ${failures})`);
+          await sleep(Math.min(500 * failures, 3000));
+          // Re-sync with the server's truth so we resume from the exact byte it expects.
+          try {
+            const state = await getProjectUpload(upload.id);
+            if (Number.isFinite(state.received_bytes)) {
+              offset = Math.max(0, Math.min(state.received_bytes, file.size));
+            }
+          } catch {
+            // Keep the current offset and retry the same chunk.
+          }
+        }
       }
       await finalizeProjectUpload(upload.id);
       const result = await importZIPProject({ project_id: project.id, upload_id: upload.id, name: project.name });
-      setStatus(`ZIP importado e indexado: ${result.indexed_files} arquivos e ${result.indexed_memories} trechos.`);
-      setFile(null);
-      setZipName("");
-      onImported?.();
+      shellProjectRef.current = null;
+      setStatus(`ZIP importado e indexado: ${describeImport(result)}.`);
+	      setFile(null);
+	      setZipName("");
+	      onImported?.(result.project);
     } catch (cause) {
+      // Limpa o projeto-casca para não deixar órfão. Se a limpeza falhar,
+      // mantemos a referência para reaproveitá-lo na próxima tentativa.
+      try {
+        await deleteProject(project.id);
+        shellProjectRef.current = null;
+      } catch {
+        shellProjectRef.current = project;
+      }
       setStatus(cause instanceof Error ? cause.message : "Não foi possível importar o ZIP.");
     } finally {
       setPending(false);
@@ -129,14 +230,21 @@ export function ImportProjectDialog({
             <label className="block text-xs text-neutral-600 dark:text-neutral-300">URL pública ou privada<input value={url} onChange={(event) => setURL(event.target.value)} placeholder="https://github.com/owner/repository" className="mt-1 h-10 w-full rounded-xl border border-neutral-300 bg-transparent px-3 text-sm dark:border-neutral-700" /></label>
             <label className="block text-xs text-neutral-600 dark:text-neutral-300">Ref opcional<input value={ref} onChange={(event) => setRef(event.target.value)} placeholder="main ou tag" className="mt-1 h-10 w-full rounded-xl border border-neutral-300 bg-transparent px-3 text-sm dark:border-neutral-700" /></label>
             <label className="block text-xs text-neutral-600 dark:text-neutral-300">Nome do projeto<input value={githubName} onChange={(event) => setGithubName(event.target.value)} placeholder="Usa o nome do repositório se vazio" className="mt-1 h-10 w-full rounded-xl border border-neutral-300 bg-transparent px-3 text-sm dark:border-neutral-700" /></label>
-            <p className="text-[11px] text-neutral-500">Repositórios privados exigem autenticação GitHub configurada no servidor; sem ela o estado é NOT_CONFIGURED.</p>
+            <p className="text-[11px] text-neutral-500">Repositórios privados exigem autenticação GitHub configurada no servidor; sem ela o estado é “Ainda não configurado”.</p>
             <button type="button" onClick={() => void importGitHub()} disabled={!url.trim() || pending} className="rounded-xl bg-violet-700 px-4 py-2.5 text-xs font-medium text-white disabled:opacity-40">{pending ? "Importando…" : "Importar do GitHub"}</button>
           </div>
         ) : (
           <div className="mt-5 space-y-3">
             <label className="block text-xs text-neutral-600 dark:text-neutral-300">Nome do novo projeto<input value={zipName} onChange={(event) => setZipName(event.target.value)} placeholder="Nome do projeto" className="mt-1 h-10 w-full rounded-xl border border-neutral-300 bg-transparent px-3 text-sm dark:border-neutral-700" /></label>
-            <label className="block text-xs text-neutral-600 dark:text-neutral-300">Arquivo ZIP<input type="file" accept=".zip,application/zip" onChange={(event) => setFile(event.target.files?.[0] ?? null)} className="mt-1 block w-full text-sm" /></label>
-            <p className="text-[11px] text-neutral-500">O arquivo é enviado em chunks de 8 MiB. Limites e caminhos são verificados no servidor antes da indexação.</p>
+            <div className="block text-xs text-neutral-600 dark:text-neutral-300">
+              Arquivo ZIP
+              <div className="mt-1 flex items-center gap-3">
+                <button type="button" onClick={() => void pickZip()} disabled={pending} className="rounded-xl border border-neutral-300 px-3 py-2 text-xs font-medium disabled:opacity-40 dark:border-neutral-700">Escolher arquivo ZIP</button>
+                <span className="truncate text-xs text-neutral-500 dark:text-neutral-400">{file ? `${file.name} (${(file.size / (1024 * 1024)).toFixed(1)} MiB)` : "Nenhum arquivo escolhido"}</span>
+              </div>
+              <input ref={zipInputRef} type="file" accept=".zip,application/zip" onChange={(event) => { setFile(event.target.files?.[0] ?? null); setStatus(null); }} className="sr-only" tabIndex={-1} aria-hidden="true" />
+            </div>
+            <p className="text-[11px] text-neutral-500">O arquivo é enviado em partes de 8 MiB, com retomada automática se a conexão oscilar. Limites e caminhos são verificados no servidor antes da indexação.</p>
             <button type="button" onClick={() => void importZIP()} disabled={!file || !zipName.trim() || pending} className="rounded-xl bg-violet-700 px-4 py-2.5 text-xs font-medium text-white disabled:opacity-40">{pending ? "Enviando e indexando…" : "Importar ZIP"}</button>
           </div>
         )}

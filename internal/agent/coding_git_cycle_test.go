@@ -247,8 +247,15 @@ func TestMissionGitWorktreeCycle(t *testing.T) {
 		t.Fatalf("origin repo was prematurely modified before approval")
 	}
 
-	// Step 6: Approval granted -> Merge to origin
-	mergeCommit, err := runtime.MergeMissionWorktree(ctx, mission.ID)
+	// Step 6: Approval granted -> Merge to origin, bound to the reviewed diff (SEC-03).
+	// A stale/empty digest must be refused, and the exact approved digest must merge.
+	if _, err := runtime.MergeMissionWorktree(ctx, mission.ID, ""); err == nil {
+		t.Fatalf("merge without the approved diff digest must be rejected (SEC-03)")
+	}
+	if _, err := runtime.MergeMissionWorktree(ctx, mission.ID, "deadbeef"); err == nil {
+		t.Fatalf("merge with a mismatched diff digest must be rejected (SEC-03)")
+	}
+	mergeCommit, err := runtime.MergeMissionWorktree(ctx, mission.ID, diffApproval.DiffSHA256)
 	if err != nil {
 		t.Fatalf("MergeMissionWorktree failed: %v", err)
 	}

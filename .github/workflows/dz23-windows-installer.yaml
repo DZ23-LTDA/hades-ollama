@@ -19,44 +19,150 @@ on:
       - '.github/workflows/dz23-windows-installer.yaml'
 
 permissions:
+  actions: read
   contents: read
 
 jobs:
   installer:
-    runs-on: windows-latest
-    timeout-minutes: 90
+    # windows-2022 traz o Visual Studio 2022, suportado pelo CUDA 12.6 (o
+    # windows-latest migrou para o VS 18/2026, que o nvcc do CUDA 12 recusa).
+    runs-on: windows-2022
+    # 90 min estourava no compile CUDA; agora compilamos menos arquiteturas
+    # (build_windows.ps1: sm_75/80/86/89), mas deixamos margem p/ runner lento.
+    timeout-minutes: 150
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           fetch-depth: 0   # tags necessarios para git describe (versao derivada do build)
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
           go-version-file: go.mod
           cache: true
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
           cache: npm
           cache-dependency-path: app/ui/app/package-lock.json
-      - name: Build CPU runtime, Desktop, and installer
+      - name: Install CUDA Toolkit 12 (GPU backend)
+        # Compila o backend CUDA (ggml-cuda.dll) para o Hades usar a GPU NVIDIA
+        # localmente, em vez de rodar o modelo só na CPU. Rede + subpacotes
+        # mínimos para caber no disco/tempo do runner.
+        uses: Jimver/cuda-toolkit@v0.2.21
+        id: cuda-toolkit
+        with:
+          # 12.6.2 é a versão disponível no action e compila todas as
+          # arquiteturas até Hopper (inclui sm_89 / Ada da RTX 4060). O build
+          # força a lista de arquiteturas (sem sm_120/Blackwell, que exige 12.8+).
+          cuda: '12.6.2'
+          method: 'network'
+          sub-packages: '["nvcc", "cudart", "cublas", "cublas_dev", "nvtx", "visual_studio_integration"]'
+      - name: Build CPU+CUDA runtime, Desktop, and installer
         shell: pwsh
         # Sem VERSION hardcoded: build_windows.ps1 deriva de `git describe --tags`.
-        run: ./scripts/build_windows.ps1 cpu ollama app installer
+        # cuda12 adiciona ggml-cuda.dll (GPU) além do runtime de CPU.
+        run: ./scripts/build_windows.ps1 cpu cuda12 ollama app installer
+      - name: Detect SignPath signing configuration
+        id: signing
+        shell: pwsh
+        env:
+          SIGNPATH_API_TOKEN: ${{ secrets.SIGNPATH_API_TOKEN }}
+        run: |
+          $required = @{
+            SIGNPATH_API_TOKEN = $env:SIGNPATH_API_TOKEN
+            SIGNPATH_ORGANIZATION_ID = "${{ vars.SIGNPATH_ORGANIZATION_ID }}"
+            SIGNPATH_PROJECT_SLUG = "${{ vars.SIGNPATH_PROJECT_SLUG }}"
+            SIGNPATH_SIGNING_POLICY_SLUG = "${{ vars.SIGNPATH_SIGNING_POLICY_SLUG }}"
+            SIGNPATH_ARTIFACT_CONFIGURATION_SLUG = "${{ vars.SIGNPATH_ARTIFACT_CONFIGURATION_SLUG }}"
+          }
+          $missing = @($required.GetEnumerator() | Where-Object { [string]::IsNullOrWhiteSpace($_.Value) } | ForEach-Object { $_.Key })
+          if ($missing.Count -eq 0) {
+            "enabled=true" >> $env:GITHUB_OUTPUT
+            "artifact_suffix=signed" >> $env:GITHUB_OUTPUT
+            "SignPath token detected; signing request will run." >> $env:GITHUB_STEP_SUMMARY
+          } else {
+            "enabled=false" >> $env:GITHUB_OUTPUT
+            "artifact_suffix=unsigned" >> $env:GITHUB_OUTPUT
+            "SignPath configuration is incomplete; installer remains UNSIGNED." >> $env:GITHUB_STEP_SUMMARY
+            Write-Host "Signing disabled: missing $($missing -join ', ')."
+          }
+      - name: Upload unsigned installer for SignPath
+        id: upload-unsigned-installer
+        if: steps.signing.outputs.enabled == 'true'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: hades-signpath-input-${{ github.run_id }}
+          path: dist/HadesSetup.exe
+          if-no-files-found: error
+          retention-days: 2
+      - name: Submit installer to SignPath
+        if: steps.signing.outputs.enabled == 'true'
+        uses: signpath/github-action-submit-signing-request@f6d04783b4569d051e0c80105fe66e82819d0092 # v3
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG }}
+          signing-policy-slug: ${{ vars.SIGNPATH_SIGNING_POLICY_SLUG }}
+          artifact-configuration-slug: ${{ vars.SIGNPATH_ARTIFACT_CONFIGURATION_SLUG }}
+          github-artifact-id: ${{ steps.upload-unsigned-installer.outputs.artifact-id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          wait-for-completion: true
+          output-artifact-directory: dist/signpath-signed
+      - name: Replace installer with SignPath output
+        if: steps.signing.outputs.enabled == 'true'
+        shell: pwsh
+        run: |
+          $signed = Get-ChildItem -Path "dist/signpath-signed" -Recurse -Filter "HadesSetup.exe" | Select-Object -First 1
+          if ($null -eq $signed) {
+            throw "SignPath completed without returning HadesSetup.exe"
+          }
+          Copy-Item -Path $signed.FullName -Destination "dist/HadesSetup.exe" -Force
+      - name: Report installer signing state
+        shell: pwsh
+        env:
+          SIGNING_ENABLED: ${{ steps.signing.outputs.enabled }}
+        run: |
+          if ($env:SIGNING_ENABLED -eq "true") {
+            Write-Host "INSTALLER_SIGNING=SIGNED (SignPath Foundation)"
+            "### Installer signing`n`n**SIGNED** with SignPath Foundation." >> $env:GITHUB_STEP_SUMMARY
+          } else {
+            Write-Host "INSTALLER_SIGNING=UNSIGNED (SignPath token not configured)"
+            "### Installer signing`n`n**UNSIGNED** — SignPath token is not configured." >> $env:GITHUB_STEP_SUMMARY
+          }
       - name: Compute SHA-256 checksum
         shell: pwsh
-        # Formato "<hash>  <arquivo>" (dois espacos) compativel com `sha256sum -c`.
+        # O checksum é calculado depois da assinatura, quando habilitada.
         run: |
-          $exe = "dist/OllamaClasseAPlusSetup.exe"
+          $exe = "dist/HadesSetup.exe"
           $hash = (Get-FileHash -Algorithm SHA256 $exe).Hash.ToLower()
-          $line = "$hash  OllamaClasseAPlusSetup.exe"
+          $line = "$hash  HadesSetup.exe"
           Set-Content -Path "$exe.sha256" -Value $line -NoNewline -Encoding ascii
           Write-Host $line
-      - name: Upload unsigned installer + checksum
-        uses: actions/upload-artifact@v4
+      - name: Upload installer + checksum
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: OllamaClasseAPlusSetup-windows-amd64-unsigned
+          name: HadesSetup-windows-amd64-${{ steps.signing.outputs.artifact_suffix }}
           path: |
-            dist/OllamaClasseAPlusSetup.exe
-            dist/OllamaClasseAPlusSetup.exe.sha256
+            dist/HadesSetup.exe
+            dist/HadesSetup.exe.sha256
           if-no-files-found: error
+          retention-days: 30
+      # SBOM for the installer so even an UNSIGNED build is verifiable (supply
+      # chain), independent of signing. Isolated and non-fatal: a failure here
+      # must never break the installer build/upload above.
+      - name: Generate installer SBOM (CycloneDX)
+        id: installer-sbom
+        continue-on-error: true
+        uses: anchore/sbom-action@006b7ce8314066bdf1765b4500370d40fa6917a3 # v0.24.2
+        with:
+          path: .
+          format: cyclonedx-json
+          output-file: dist/HadesSetup-sbom.cdx.json
+      - name: Upload installer SBOM
+        if: always()
+        continue-on-error: true
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: HadesSetup-sbom-${{ steps.signing.outputs.artifact_suffix }}
+          path: dist/HadesSetup-sbom.cdx.json
+          if-no-files-found: warn
           retention-days: 30

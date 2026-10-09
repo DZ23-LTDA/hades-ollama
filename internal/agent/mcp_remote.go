@@ -83,15 +83,16 @@ var (
 )
 
 type RemoteMCPManager struct {
-	mu          sync.RWMutex
-	client      *http.Client
-	servers     map[string]RemoteMCPServerConfig
-	nextID      int64
-	persistPath string
-	oauthTokens map[string]remoteMCPOAuthToken
-	oauthStates map[string]remoteMCPAuthState
-	sessions    map[string]remoteMCPSession
-	pairings    map[string]remoteMCPPairing
+	mu                  sync.RWMutex
+	client              *http.Client
+	servers             map[string]RemoteMCPServerConfig
+	nextID              int64
+	persistPath         string
+	oauthTokens         map[string]remoteMCPOAuthToken
+	oauthStates         map[string]remoteMCPAuthState
+	sessions            map[string]remoteMCPSession
+	pairings            map[string]remoteMCPPairing
+	organizationSecrets map[string]map[string]string
 }
 
 func NewRemoteMCPManager() *RemoteMCPManager {
@@ -116,12 +117,43 @@ func NewRemoteMCPManager() *RemoteMCPManager {
 				return nil
 			},
 		},
-		servers:     map[string]RemoteMCPServerConfig{},
-		oauthTokens: map[string]remoteMCPOAuthToken{},
-		oauthStates: map[string]remoteMCPAuthState{},
-		sessions:    map[string]remoteMCPSession{},
-		pairings:    map[string]remoteMCPPairing{},
+		servers:             map[string]RemoteMCPServerConfig{},
+		oauthTokens:         map[string]remoteMCPOAuthToken{},
+		oauthStates:         map[string]remoteMCPAuthState{},
+		sessions:            map[string]remoteMCPSession{},
+		pairings:            make(map[string]remoteMCPPairing),
+		organizationSecrets: make(map[string]map[string]string),
 	}
+}
+
+// SetOrganizationSecret binds MCP token/header material to one tenant.
+func (m *RemoteMCPManager) SetOrganizationSecret(organizationID, name, value string) error {
+	organizationID = strings.TrimSpace(organizationID)
+	name = normalizeSecretName(name)
+	if organizationID == "" || name == "" || strings.TrimSpace(value) == "" {
+		return errors.New("organization, secret name and value are required")
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.organizationSecrets[organizationID] == nil {
+		m.organizationSecrets[organizationID] = make(map[string]string)
+	}
+	m.organizationSecrets[organizationID][name] = value
+	return nil
+}
+
+func (m *RemoteMCPManager) organizationSecret(organizationID, name string) string {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	return m.organizationSecrets[strings.TrimSpace(organizationID)][normalizeSecretName(name)]
+}
+
+func (m *RemoteMCPManager) resolveSecret(organizationID, name string, global bool) (string, bool) {
+	if global {
+		return os.LookupEnv(name)
+	}
+	value := m.organizationSecret(organizationID, name)
+	return value, strings.TrimSpace(value) != ""
 }
 
 func NewPersistentRemoteMCPManager(manifestPath string) (*RemoteMCPManager, error) {
@@ -601,7 +633,7 @@ func (m *RemoteMCPManager) call(ctx context.Context, organizationID, serverID, m
 	}
 	headerValues := make(map[string]string, len(config.HeadersEnv))
 	for header, envName := range config.HeadersEnv {
-		value, ok := os.LookupEnv(envName)
+		value, ok := m.resolveSecret(organizationID, envName, global)
 		if !ok || strings.TrimSpace(value) == "" {
 			return nil, fmt.Errorf("remote MCP header credential %q is unavailable", header)
 		}
@@ -618,7 +650,7 @@ func (m *RemoteMCPManager) call(ctx context.Context, organizationID, serverID, m
 	}
 	requestContext, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
-	token, tokenErr := m.accessToken(requestContext, serverID, config)
+	token, tokenErr := m.accessToken(requestContext, serverID, config, organizationID, global)
 	if tokenErr != nil {
 		return nil, tokenErr
 	}

@@ -90,27 +90,28 @@ func (s *Server) registerDesktopLocalRoutes(r *gin.Engine, agentAPI *agentAPI) {
 		c.JSON(http.StatusOK, gin.H{"integrations": []gin.H{}})
 	})
 
+	// servedByDesktopApp responde honestamente para rotas de escrita cujo
+	// handler real vive na webview do app desktop (app/ui/ui.go). O servidor
+	// local (porta 11434) não grava credenciais nem provedores, então em vez de
+	// fingir sucesso (204) e perder os dados em silêncio, devolvemos 501 com uma
+	// mensagem clara. O corpo {"error": ...} é o formato que a UI já interpreta.
+	servedByDesktopApp := func(c *gin.Context) {
+		c.JSON(http.StatusNotImplemented, gin.H{
+			"error": "Este endpoint é atendido pelo aplicativo desktop do Hades; o servidor local (porta 11434) não grava credenciais nem provedores. Use a janela do aplicativo para concluir esta ação.",
+		})
+	}
+
 	r.GET("/api/v1/providers", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"providers": []gin.H{}})
 	})
-	r.PUT("/api/v1/providers/:name/key", func(c *gin.Context) {
-		c.Status(http.StatusNoContent)
-	})
-	r.DELETE("/api/v1/providers/:name/key", func(c *gin.Context) {
-		c.Status(http.StatusNoContent)
-	})
+	r.PUT("/api/v1/providers/:name/key", servedByDesktopApp)
+	r.DELETE("/api/v1/providers/:name/key", servedByDesktopApp)
 	r.GET("/api/v1/providers/:name/models", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"models": []string{}})
 	})
-	r.PUT("/api/v1/providers/:name/models", func(c *gin.Context) {
-		c.Status(http.StatusNoContent)
-	})
-	r.PUT("/api/v1/connectors/:id/key", func(c *gin.Context) {
-		c.Status(http.StatusNoContent)
-	})
-	r.DELETE("/api/v1/connectors/:id/key", func(c *gin.Context) {
-		c.Status(http.StatusNoContent)
-	})
+	r.PUT("/api/v1/providers/:name/models", servedByDesktopApp)
+	r.PUT("/api/v1/connectors/:id/key", servedByDesktopApp)
+	r.DELETE("/api/v1/connectors/:id/key", servedByDesktopApp)
 
 	r.GET("/api/v1/inference-compute", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{

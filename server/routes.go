@@ -1948,10 +1948,14 @@ func (s *Server) GenerateRoutes() (http.Handler, error) {
 	if s.agentRuntime == nil {
 		runtime, err := newDefaultAgentRuntime()
 		if err != nil {
-			return nil, err
+			// Degrade gracefully: the agentic layer is optional. If it cannot
+			// initialize (misconfigured Redis/Postgres/OTLP/push, etc.), keep
+			// serving the core Ollama API instead of refusing to start.
+			slog.Error("agent runtime unavailable; serving core Ollama routes only", "error", err)
+		} else {
+			createdRuntime = runtime
+			s.agentRuntime = runtime
 		}
-		createdRuntime = runtime
-		s.agentRuntime = runtime
 	}
 	codexDesktopProxy, err := newCodexDesktopProxy()
 	if err != nil {
@@ -1991,7 +1995,9 @@ func (s *Server) GenerateRoutes() (http.Handler, error) {
 		cors.New(corsConfig),
 		allowedHostsMiddleware(s.addr),
 	)
-	s.agentRuntime.SetPlannerResolver(multiProviderPlannerResolver{client: api.NewClient(envconfig.ConnectableHost(), newServerEgressClient("server.planner.local", true))})
+	if s.agentRuntime != nil {
+		s.agentRuntime.SetPlannerResolver(multiProviderPlannerResolver{client: api.NewClient(envconfig.ConnectableHost(), newServerEgressClient("server.planner.local", true)), spend: newAgentSpendLedger()})
+	}
 	if configPath := strings.TrimSpace(os.Getenv("OLLAMA_DZ23_CONFIG")); configPath != "" {
 		registry, err := multillm.Load(configPath)
 		if err != nil {
@@ -2000,7 +2006,9 @@ func (s *Server) GenerateRoutes() (http.Handler, error) {
 		s.multiRegistry = registry
 		s.multiProvider = multillm.NewGateway(registry, nil)
 		r.Use(s.multiProvider.Middleware())
-		s.agentRuntime.SetPlannerResolver(multiProviderPlannerResolver{registry: registry, client: api.NewClient(envconfig.ConnectableHost(), newServerEgressClient("server.planner.local", true))})
+		if s.agentRuntime != nil {
+			s.agentRuntime.SetPlannerResolver(multiProviderPlannerResolver{registry: registry, client: api.NewClient(envconfig.ConnectableHost(), newServerEgressClient("server.planner.local", true)), spend: newAgentSpendLedger()})
+		}
 	}
 
 	// General
@@ -2012,11 +2020,20 @@ func (s *Server) GenerateRoutes() (http.Handler, error) {
 	r.GET("/api/dz23/cli-catalog", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"tools": multillm.DetectCLIs()})
 	})
-	agentAPI, err := newAgentAPI(s.agentRuntime)
-	if err != nil {
-		return nil, err
+	// The agentic layer degrades gracefully: a missing runtime (see above) or a
+	// failing auth store must not stop the core Ollama API from serving. The API
+	// is nil here whenever it could not be created, and
+	// registerDesktopLocalRoutes tolerates a nil API.
+	var agentAPI *agentAPI
+	if s.agentRuntime != nil {
+		var err error
+		agentAPI, err = newAgentAPI(s.agentRuntime)
+		if err != nil {
+			slog.Error("agent API unavailable; serving core Ollama routes only", "error", err)
+		} else {
+			agentAPI.register(r)
+		}
 	}
-	agentAPI.register(r)
 	s.registerDesktopLocalRoutes(r, agentAPI)
 	// Codex uses this existing Ollama listener for both native and Ollama
 	// models. The proxy selects the upstream per request.
@@ -2146,32 +2163,25 @@ func Serve(ln net.Listener) error {
 
 	http.Handle("/", h)
 
+	srvr := &http.Server{Handler: nil}
+	secureAgentServer, err := configureAgentTLS(srvr, ln.Addr())
+	if err != nil {
+		return err
+	}
+
 	ctx, done := context.WithCancel(context.Background())
 	defer done()
 	schedCtx, schedDone := context.WithCancel(ctx)
 	defer schedDone()
 	sched := InitScheduler(schedCtx)
 	s.sched = sched
-	s.agentRuntime.Start(ctx)
-	defer func() { _ = s.agentRuntime.Close(context.Background()) }()
+	if s.agentRuntime != nil {
+		s.agentRuntime.Start(ctx)
+		defer func() { _ = s.agentRuntime.Close(context.Background()) }()
+	}
 	s.modelCaches.Start(ctx)
 
 	slog.Info(fmt.Sprintf("Listening on %s (version %s)", ln.Addr(), version.Version))
-	srvr := &http.Server{
-		// Use http.DefaultServeMux so we get net/http/pprof for
-		// free.
-		//
-		// TODO(bmizerany): Decide if we want to make this
-		// configurable so it is not exposed by default, or allow
-		// users to bind it to a different port. This was a quick
-		// and easy way to get pprof, but it may not be the best
-		// way.
-		Handler: nil,
-	}
-	secureAgentServer, err := configureAgentTLS(srvr)
-	if err != nil {
-		return err
-	}
 
 	// listen for a ctrl+c and stop any loaded llm
 	signals := make(chan os.Signal, 1)

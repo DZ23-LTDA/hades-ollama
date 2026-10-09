@@ -79,9 +79,11 @@ func TestRemoteMCPOAuthRefreshAndSessionResumption(t *testing.T) {
 }
 
 func TestRemoteMCPPairingIsAuthenticatedOneShotAndBoundToChallenge(t *testing.T) {
-	t.Setenv("MCP_PAIRING_SECRET", "pair-secret")
 	manager := NewRemoteMCPManager()
 	if err := manager.RegisterForOrganization("org-a", RemoteMCPServerConfig{ID: "pair", URL: "https://mcp.example.test/mcp", AllowedMethods: []string{"ping"}, PairingTokenEnv: "MCP_PAIRING_SECRET"}); err != nil {
+		t.Fatal(err)
+	}
+	if err := manager.SetOrganizationSecret("org-a", "MCP_PAIRING_SECRET", "pair-secret"); err != nil {
 		t.Fatal(err)
 	}
 	_, err := manager.BeginPairing("pair", "org-a")

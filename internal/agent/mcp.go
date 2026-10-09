@@ -30,6 +30,11 @@ type MCPServerConfig struct {
 	Disabled        bool     `json:"disabled,omitempty"`
 }
 
+// ErrMCPStrictSandboxNotConfigured is returned instead of starting a
+// tenant-scoped local process when MCP stdio lacks a complete namespace,
+// network and seccomp launcher. A plain host process is not a tenant boundary.
+var ErrMCPStrictSandboxNotConfigured = errors.New("MCP local execution is BLOCKED_EXTERNAL: strict sandbox is not configured")
+
 type MCPManager struct {
 	mu          sync.RWMutex
 	servers     map[string]*MCPServer
@@ -320,7 +325,22 @@ func (m *MCPManager) CallForOrganization(ctx context.Context, organizationID, se
 	if organizationID == "" {
 		return nil, ErrPluginOrganizationScope
 	}
-	return m.callWithScope(ctx, organizationID, serverID, method, params, false)
+	m.mu.RLock()
+	server := m.servers[serverID]
+	m.mu.RUnlock()
+	if server == nil {
+		return nil, fmt.Errorf("MCP server %q is not registered", serverID)
+	}
+	server.mu.Lock()
+	serverOrganizationID := server.config.OrganizationID
+	server.mu.Unlock()
+	if !pluginOwnedByOrganization(serverOrganizationID, organizationID) {
+		return nil, ErrPluginOrganizationScope
+	}
+	// Do not silently downgrade a tenant call to an unsandboxed host process.
+	// CallGlobal remains available only for explicitly trusted single-user/local
+	// execution until MCP has a launcher equivalent to sandbox.exec.
+	return nil, ErrMCPStrictSandboxNotConfigured
 }
 
 // CallGlobal is reserved for explicitly trusted single-user/local execution.

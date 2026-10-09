@@ -84,18 +84,18 @@ describe("CodexDesktopRow", () => {
       />,
     );
 
-    expect(html).toContain("Connected to Ollama · 0 requests this session");
+    expect(html).toContain("Conectado ao Hades · 0 requisições nesta sessão");
     expect(html).not.toContain("Codex + Ollama");
     expect(html).not.toContain("3 Ollama models");
-    expect(html).toContain('aria-label="Remove Ollama models from ChatGPT"');
+    expect(html).toContain('aria-label="Remover os modelos do Hades do ChatGPT"');
     expect(html).toContain('aria-pressed="true"');
   });
 
   it.each([
-    { requests: 1, expected: "Connected to Ollama · 1 request this session" },
+    { requests: 1, expected: "Conectado ao Hades · 1 requisição nesta sessão" },
     {
       requests: 12,
-      expected: "Connected to Ollama · 12 requests this session",
+      expected: "Conectado ao Hades · 12 requisições nesta sessão",
     },
   ])(
     "matches Claude's connected copy for $requests requests",
@@ -249,7 +249,7 @@ describe("CodexDesktopRow", () => {
         );
       });
       const toggle = renderer!.root.findByProps({
-        "aria-label": "Add Ollama models to ChatGPT",
+        "aria-label": "Adicionar os modelos do Hades ao ChatGPT",
       });
       await act(async () => {
         await toggle.props.onClick();
@@ -262,11 +262,11 @@ describe("CodexDesktopRow", () => {
       expect(connect).toHaveBeenCalledWith(true, false);
       expect(
         renderer!.root.findByProps({
-          "aria-label": "Remove Ollama models from ChatGPT",
+          "aria-label": "Remover os modelos do Hades do ChatGPT",
         }).props["aria-pressed"],
       ).toBe(true);
       expect(renderer!.root.findByProps({ role: "status" }).children).toContain(
-        "Ollama models added alongside Codex models",
+        "Modelos do Hades adicionados ao lado dos modelos do Codex",
       );
     } finally {
       await act(async () => renderer?.unmount());
@@ -331,7 +331,7 @@ describe("CodexDesktopRow", () => {
         expect(toggle.props["aria-pressed"]).toBe(false);
         expect(
           renderer!.root.findByProps({ role: "alert" }).children,
-        ).toContain("ChatGPT installation wasn’t detected. Try again.");
+        ).toContain("A instalação do ChatGPT não foi detectada. Tente de novo.");
         expect(connect).not.toHaveBeenCalled();
 
         if (retry) {
@@ -344,7 +344,7 @@ describe("CodexDesktopRow", () => {
           );
           expect(
             renderer!.root.findByProps({ role: "status" }).children,
-          ).toContain("Finish installing…");
+          ).toContain("Conclua a instalação…");
 
           getStatus.mockResolvedValue(status());
           await act(async () => vi.advanceTimersByTimeAsync(1000));
@@ -398,7 +398,7 @@ describe("CodexDesktopRow", () => {
         expect(toggle.props.disabled).toBe(false);
         expect(
           renderer!.root.findByProps({ role: "alert" }).children,
-        ).toContain("Ollama could not finish connecting ChatGPT.");
+        ).toContain("O Hades não conseguiu concluir a conexão com o ChatGPT.");
       } finally {
         await act(async () => renderer?.unmount());
       }
@@ -438,7 +438,7 @@ describe("CodexDesktopRow", () => {
           );
         });
         const toggle = renderer!.root.findByProps({
-          "aria-label": "Add Ollama models to ChatGPT",
+          "aria-label": "Adicionar os modelos do Hades ao ChatGPT",
         });
         await act(async () => {
           await toggle.props.onClick();
@@ -453,7 +453,7 @@ describe("CodexDesktopRow", () => {
         expect(renderer!.root.findByProps({ role: "alert" })).toBeTruthy();
         expect(
           renderer!.root.findByProps({
-            "aria-label": "Add Ollama models to ChatGPT",
+            "aria-label": "Adicionar os modelos do Hades ao ChatGPT",
           }).props["aria-pressed"],
         ).toBe(false);
       } finally {
@@ -484,7 +484,7 @@ describe("CodexDesktopRow", () => {
         );
       });
       const toggle = renderer!.root.findByProps({
-        "aria-label": "Add Ollama models to ChatGPT",
+        "aria-label": "Adicionar os modelos do Hades ao ChatGPT",
       });
       await act(async () => {
         await toggle.props.onClick();
@@ -525,7 +525,7 @@ describe("CodexDesktopRow", () => {
         );
       });
       const toggle = renderer!.root.findByProps({
-        "aria-label": "Add Ollama models to ChatGPT",
+        "aria-label": "Adicionar os modelos do Hades ao ChatGPT",
       });
       await act(async () => {
         await toggle.props.onClick();
@@ -576,7 +576,7 @@ describe("CodexDesktopRow", () => {
         );
       });
       const toggle = renderer!.root.findByProps({
-        "aria-label": "Add Ollama models to ChatGPT",
+        "aria-label": "Adicionar os modelos do Hades ao ChatGPT",
       });
       await act(async () => {
         await toggle.props.onClick();
@@ -589,7 +589,7 @@ describe("CodexDesktopRow", () => {
       expect(connect).toHaveBeenNthCalledWith(2, true, true);
       expect(
         renderer!.root.findByProps({
-          "aria-label": "Remove Ollama models from ChatGPT",
+          "aria-label": "Remover os modelos do Hades do ChatGPT",
         }).props["aria-pressed"],
       ).toBe(true);
     } finally {
@@ -637,7 +637,7 @@ describe("CodexDesktopRow", () => {
         );
       });
       const toggle = renderer!.root.findByProps({
-        "aria-label": "Add Ollama models to ChatGPT",
+        "aria-label": "Adicionar os modelos do Hades ao ChatGPT",
       });
       await act(async () => {
         await toggle.props.onClick();
@@ -711,7 +711,7 @@ describe("CodexDesktopRow", () => {
       />,
     );
 
-    expect(html).toContain('aria-label="Remove Ollama models from ChatGPT"');
+    expect(html).toContain('aria-label="Remover os modelos do Hades do ChatGPT"');
     expect(html).not.toContain('disabled=""');
 
     const restore = vi.fn().mockResolvedValue({
@@ -736,7 +736,7 @@ describe("CodexDesktopRow", () => {
         );
       });
       const restoreButton = renderer!.root.findByProps({
-        "aria-label": "Remove Ollama models from ChatGPT",
+        "aria-label": "Remover os modelos do Hades do ChatGPT",
       });
       await act(async () => {
         await restoreButton.props.onClick();
@@ -925,8 +925,8 @@ it.each(["failed", "rejected", "save failed"])(
         outcome === "failed"
           ? "launch failed"
           : outcome === "save failed"
-            ? "Ollama couldn’t save your progress. Please try again."
-            : "Ollama could not add its models to ChatGPT.",
+            ? "O Hades não conseguiu salvar seu progresso. Tente de novo."
+            : "O Hades não conseguiu adicionar seus modelos ao ChatGPT.",
       );
       expect(save).toHaveBeenCalledTimes(outcome === "save failed" ? 1 : 0);
     } finally {
@@ -1184,7 +1184,7 @@ it("does not retry acknowledgment during a disconnect, or reconnect to save afte
       renderer!.root.findByType(CodexConnectedIntro).props.onDone(),
     );
     const retry = renderer!.root.findByProps({
-      "aria-label": "Retry saving progress",
+      "aria-label": "Tentar salvar o progresso de novo",
     });
     await act(async () => {
       toggle.props.onClick();
@@ -1199,7 +1199,7 @@ it("does not retry acknowledgment during a disconnect, or reconnect to save afte
     expect(save).toHaveBeenCalledTimes(2);
     expect(toggle.props["aria-pressed"]).toBe(false);
     expect(
-      renderer!.root.findAllByProps({ "aria-label": "Retry saving progress" }),
+      renderer!.root.findAllByProps({ "aria-label": "Tentar salvar o progresso de novo" }),
     ).toHaveLength(0);
   } finally {
     await act(async () => renderer?.unmount());
@@ -1249,10 +1249,10 @@ it.each(["returned", "rejected"])(
       getStatus.mockResolvedValue(connectedStatus);
       await act(async () => onFocus?.());
       expect(renderer!.root.findByProps({ role: "alert" }).children).toContain(
-        "Ollama couldn’t save your progress. Please try again.",
+        "O Hades não conseguiu salvar seu progresso. Tente de novo.",
       );
       const retryButton = renderer!.root.findByProps({
-        "aria-label": "Retry saving progress",
+        "aria-label": "Tentar salvar o progresso de novo",
       });
       const toggle = connectionButton(renderer!);
       await act(async () => {
@@ -1268,7 +1268,7 @@ it.each(["returned", "rejected"])(
       await act(async () => retry.resolve(""));
       expect(
         renderer!.root.findAllByProps({
-          "aria-label": "Retry saving progress",
+          "aria-label": "Tentar salvar o progresso de novo",
         }),
       ).toHaveLength(0);
       expect(renderer!.root.findAllByProps({ role: "alert" })).toHaveLength(0);
@@ -1342,7 +1342,7 @@ it.each([
       }
       expect(toggle.props.disabled).toBe(false);
       const retry = renderer!.root.findByProps({
-        "aria-label": "Retry saving progress",
+        "aria-label": "Tentar salvar o progresso de novo",
       });
       await act(async () => {
         retry.props.onClick();
@@ -1359,14 +1359,14 @@ it.each([
       expect(connectionButton(renderer!).props.disabled).toBe(true);
       await act(async () =>
         renderer!.root
-          .findByProps({ "aria-label": "Retry saving progress" })
+          .findByProps({ "aria-label": "Tentar salvar o progresso de novo" })
           .props.onClick(),
       );
       expect(save).toHaveBeenCalledTimes(2);
       await act(async () => retrySave.resolve(""));
       expect(
         renderer!.root.findAllByProps({
-          "aria-label": "Retry saving progress",
+          "aria-label": "Tentar salvar o progresso de novo",
         }),
       ).toHaveLength(0);
       expect(renderer!.root.findAllByProps({ role: "alert" })).toHaveLength(0);
@@ -1417,7 +1417,7 @@ it("refreshes connection status when Retry overtakes the returning page's status
     });
     await act(async () =>
       renderer!.root
-        .findByProps({ "aria-label": "Retry saving progress" })
+        .findByProps({ "aria-label": "Tentar salvar o progresso de novo" })
         .props.onClick(),
     );
     await act(async () => stale.resolve(connectedStatus));
@@ -1463,7 +1463,7 @@ it("observes a successful pending save after returning without saving again", as
     expect(connectionButton(renderer!).props.disabled).toBe(true);
     await act(async () => pendingSave.resolve(""));
     expect(
-      renderer!.root.findAllByProps({ "aria-label": "Retry saving progress" }),
+      renderer!.root.findAllByProps({ "aria-label": "Tentar salvar o progresso de novo" }),
     ).toHaveLength(0);
     expect(renderer!.root.findAllByType(CodexConnectedIntro)).toHaveLength(0);
     expect(connectionButton(renderer!).props.disabled).toBe(false);
@@ -1495,7 +1495,7 @@ it.each([false, true])(
       expect(save).not.toHaveBeenCalled();
       expect(
         renderer!.root.findAllByProps({
-          "aria-label": "Retry saving progress",
+          "aria-label": "Tentar salvar o progresso de novo",
         }),
       ).toHaveLength(0);
     } finally {
@@ -1549,10 +1549,10 @@ it.each(["resolved", "rejected"])(
       });
       expect(connectionButton(renderer!).props["aria-pressed"]).toBe(true);
       expect(renderer!.root.findByProps({ role: "alert" }).children).toContain(
-        "Ollama couldn’t save your progress. Please try again.",
+        "O Hades não conseguiu salvar seu progresso. Tente de novo.",
       );
       expect(
-        renderer!.root.findByProps({ "aria-label": "Retry saving progress" })
+        renderer!.root.findByProps({ "aria-label": "Tentar salvar o progresso de novo" })
           .props.disabled,
       ).toBe(false);
     } finally {

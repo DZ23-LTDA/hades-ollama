@@ -70,7 +70,7 @@ describe("modelGroup", () => {
 });
 
 describe("getModelCostTag", () => {
-  it("returns '0-assinatura' only when cli_subscription model has status PASS", () => {
+  it("returns the human pt-BR cost labels and only tags cli_subscription when PASS", () => {
     const activeSub = new Model({
       model: "claude-3-7-sonnet",
       kind: "cli_subscription",
@@ -89,16 +89,28 @@ describe("getModelCostTag", () => {
       available: false,
       status: "NOT_PRESENT",
     });
-    const standardModel = new Model({
+    const localFree = new Model({
       model: "llama3:8b",
+      kind: "local",
+      available: true,
+      status: "PASS",
+      cost_tag: "0-local",
+    });
+    const standardModel = new Model({
+      model: "qwen3:8b",
       kind: "local",
       available: true,
       status: "PASS",
     });
 
-    expect(getModelCostTag(activeSub)).toBe("0-assinatura");
+    // cli_subscription (PASS) is included in the subscription.
+    expect(getModelCostTag(activeSub)).toBe("Incluído na assinatura");
+    // A logged-out / missing subscription has no cost label.
     expect(getModelCostTag(loggedOutSub)).toBeUndefined();
     expect(getModelCostTag(missingSub)).toBeUndefined();
+    // Local models carrying the raw "0-local" tag read as "Grátis".
+    expect(getModelCostTag(localFree)).toBe("Grátis");
+    // A model without a cost_tag has no label.
     expect(getModelCostTag(standardModel)).toBeUndefined();
   });
 });

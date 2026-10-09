@@ -130,6 +130,7 @@ declare global {
     drag?: () => void;
     doubleClick?: () => void;
     activateOllama?: () => void;
+    openExternal?: (url: string) => Promise<void> | void;
     getClaudeDesktopStatus?: () => Promise<ClaudeDesktopStatus>;
     getClaudeDesktopConnectionSummary?: () => Promise<ClaudeDesktopStatus>;
     getClaudeDesktopRequestCount?: () => Promise<number>;

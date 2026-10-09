@@ -28,7 +28,9 @@ type PlannerResolution struct {
 }
 
 type RoutedPlannerResolver interface {
-	ResolvePlannerForMission(ctx context.Context, provider, model string, capabilities []string) (Planner, PlannerResolution, error)
+	// organizationID lets the resolver enforce per-organization policy (e.g. a
+	// spend cap) when auto-routing to a provider.
+	ResolvePlannerForMission(ctx context.Context, provider, model, organizationID string, capabilities []string) (Planner, PlannerResolution, error)
 }
 
 type plannerChatClient interface {
@@ -225,8 +227,11 @@ func normalizeSteps(steps []Step) ([]Step, error) {
 		"mcp.remote.call":   RiskExternalSideEffect,
 		"connector.http":    RiskExternalSideEffect,
 		"media.process":     RiskExternalSideEffect,
-		"project.test.run":  RiskWrite,
-		"git.merge.origin":  RiskWrite,
+		// SEC-01: this registry is the single source of truth for step risk, so it
+		// must declare the same class as the tool descriptor: project.test.run
+		// executes project code on the host (external side effect).
+		"project.test.run": RiskExternalSideEffect,
+		"git.merge.origin": RiskWrite,
 	}
 	for i := range steps {
 		if _, ok := allowed[steps[i].Kind]; !ok {

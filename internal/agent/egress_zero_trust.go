@@ -8,6 +8,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"net/url"
 	"strings"
 	"sync"
 	"time"
@@ -113,16 +114,45 @@ func ResolveAllPublicIPsWithResolver(ctx context.Context, host string, lookup fu
 
 // EgressDecision represents an audited egress access decision.
 type EgressDecision struct {
-	ID          string    `json:"id"`
-	Timestamp   time.Time `json:"timestamp"`
-	Callsite    string    `json:"callsite"`
-	Method      string    `json:"method"`
-	Destination string    `json:"destination"`
-	Host        string    `json:"host"`
-	ResolvedIPs []string  `json:"resolved_ips"`
-	Allowed     bool      `json:"allowed"`
-	Reason      string    `json:"reason"`
-	LatencyMS   int64     `json:"latency_ms"`
+	ID             string    `json:"id"`
+	Timestamp      time.Time `json:"timestamp"`
+	OrganizationID string    `json:"organization_id,omitempty"`
+	Callsite       string    `json:"callsite"`
+	Method         string    `json:"method"`
+	Destination    string    `json:"destination"`
+	Host           string    `json:"host"`
+	ResolvedIPs    []string  `json:"resolved_ips"`
+	Allowed        bool      `json:"allowed"`
+	Reason         string    `json:"reason"`
+	LatencyMS      int64     `json:"latency_ms"`
+}
+
+// egressRecordVisibleToOrganization reports whether an audit record owned by
+// owner may be read within organizationID's scope. It mirrors the tenant
+// ownership rule used elsewhere: the reserved local scope also sees ownerless
+// (legacy/untagged) records, while a tenant only ever sees its own records.
+func egressRecordVisibleToOrganization(owner, organizationID string) bool {
+	owner = strings.TrimSpace(owner)
+	organizationID = strings.TrimSpace(organizationID)
+	if organizationID == "" {
+		return false
+	}
+	if organizationID == LocalOrganizationID {
+		return owner == "" || owner == LocalOrganizationID
+	}
+	return owner == organizationID
+}
+
+// sanitizeEgressURL reduces a URL to scheme://host/path, dropping userinfo,
+// query and fragment so that credentials or sensitive query parameters are
+// never written to the audit log. An unparseable value yields an empty string.
+func sanitizeEgressURL(raw string) string {
+	parsed, err := url.Parse(strings.TrimSpace(raw))
+	if err != nil || parsed == nil {
+		return ""
+	}
+	sanitized := url.URL{Scheme: parsed.Scheme, Host: parsed.Host, Path: parsed.Path}
+	return sanitized.String()
 }
 
 // EgressAuditStore is a thread-safe ring buffer for egress decisions.
@@ -197,6 +227,56 @@ func (s *EgressAuditStore) Filter(callsite string, limit int) []EgressDecision {
 	return filtered
 }
 
+// ListForOrganization returns the latest n decisions visible to organizationID,
+// oldest first, so one tenant never observes another tenant's egress
+// destinations.
+func (s *EgressAuditStore) ListForOrganization(organizationID string, limit int) []EgressDecision {
+	if s == nil {
+		return nil
+	}
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	var result []EgressDecision
+	for i := len(s.entries) - 1; i >= 0; i-- {
+		if !egressRecordVisibleToOrganization(s.entries[i].OrganizationID, organizationID) {
+			continue
+		}
+		result = append(result, s.entries[i])
+		if limit > 0 && len(result) >= limit {
+			break
+		}
+	}
+	// Collected newest-first above; reverse to chronological order to match List.
+	for l, r := 0, len(result)-1; l < r; l, r = l+1, r-1 {
+		result[l], result[r] = result[r], result[l]
+	}
+	return result
+}
+
+// FilterForOrganization returns decisions matching a callsite that are visible
+// to organizationID, newest first.
+func (s *EgressAuditStore) FilterForOrganization(organizationID, callsite string, limit int) []EgressDecision {
+	if s == nil {
+		return nil
+	}
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	var filtered []EgressDecision
+	for i := len(s.entries) - 1; i >= 0; i-- {
+		if s.entries[i].Callsite != callsite {
+			continue
+		}
+		if !egressRecordVisibleToOrganization(s.entries[i].OrganizationID, organizationID) {
+			continue
+		}
+		filtered = append(filtered, s.entries[i])
+		if limit > 0 && len(filtered) >= limit {
+			break
+		}
+	}
+	return filtered
+}
+
 // Clear resets the audit buffer.
 func (s *EgressAuditStore) Clear() {
 	if s == nil {
@@ -212,11 +292,12 @@ var DefaultEgressAuditStore = NewEgressAuditStore(1000)
 
 // EgressOptions configures egress behavior.
 type EgressOptions struct {
-	Callsite      string
-	Timeout       time.Duration
-	AllowLoopback bool
-	MaxBodyBytes  int64
-	Lookup        func(context.Context, string) ([]net.IP, error)
+	Callsite       string
+	OrganizationID string
+	Timeout        time.Duration
+	AllowLoopback  bool
+	MaxBodyBytes   int64
+	Lookup         func(context.Context, string) ([]net.IP, error)
 }
 
 // NewEgressTransport returns an *http.Transport enforcing zero-trust egress:
@@ -240,11 +321,12 @@ func NewEgressTransport(opts EgressOptions) *http.Transport {
 		host, port, err := net.SplitHostPort(address)
 		if err != nil {
 			DefaultEgressAuditStore.Record(EgressDecision{
-				Timestamp:   start,
-				Callsite:    opts.Callsite,
-				Destination: address,
-				Allowed:     false,
-				Reason:      "invalid destination address: " + err.Error(),
+				Timestamp:      start,
+				OrganizationID: opts.OrganizationID,
+				Callsite:       opts.Callsite,
+				Destination:    address,
+				Allowed:        false,
+				Reason:         "invalid destination address: " + err.Error(),
 			})
 			return nil, err
 		}
@@ -263,12 +345,13 @@ func NewEgressTransport(opts EgressOptions) *http.Transport {
 			addrs, err := lookup(ctx, host)
 			if err != nil {
 				DefaultEgressAuditStore.Record(EgressDecision{
-					Timestamp:   start,
-					Callsite:    opts.Callsite,
-					Destination: address,
-					Host:        host,
-					Allowed:     false,
-					Reason:      "DNS lookup failed: " + err.Error(),
+					Timestamp:      start,
+					OrganizationID: opts.OrganizationID,
+					Callsite:       opts.Callsite,
+					Destination:    address,
+					Host:           host,
+					Allowed:        false,
+					Reason:         "DNS lookup failed: " + err.Error(),
 				})
 				return nil, err
 			}
@@ -277,12 +360,13 @@ func NewEgressTransport(opts EgressOptions) *http.Transport {
 
 		if len(ips) == 0 {
 			DefaultEgressAuditStore.Record(EgressDecision{
-				Timestamp:   start,
-				Callsite:    opts.Callsite,
-				Destination: address,
-				Host:        host,
-				Allowed:     false,
-				Reason:      "destination resolved to zero addresses",
+				Timestamp:      start,
+				OrganizationID: opts.OrganizationID,
+				Callsite:       opts.Callsite,
+				Destination:    address,
+				Host:           host,
+				Allowed:        false,
+				Reason:         "destination resolved to zero addresses",
 			})
 			return nil, errors.New("egress destination has no addresses")
 		}
@@ -296,13 +380,14 @@ func NewEgressTransport(opts EgressOptions) *http.Transport {
 					continue
 				}
 				DefaultEgressAuditStore.Record(EgressDecision{
-					Timestamp:   start,
-					Callsite:    opts.Callsite,
-					Destination: address,
-					Host:        host,
-					ResolvedIPs: ipStrings,
-					Allowed:     false,
-					Reason:      fmt.Sprintf("blocked restricted IP %s (%s)", ip.String(), reason),
+					Timestamp:      start,
+					OrganizationID: opts.OrganizationID,
+					Callsite:       opts.Callsite,
+					Destination:    address,
+					Host:           host,
+					ResolvedIPs:    ipStrings,
+					Allowed:        false,
+					Reason:         fmt.Sprintf("blocked restricted IP %s (%s)", ip.String(), reason),
 				})
 				return nil, fmt.Errorf("%w: %s (%s)", ErrEgressBlockedPrivateIP, ip.String(), reason)
 			}
@@ -318,26 +403,28 @@ func NewEgressTransport(opts EgressOptions) *http.Transport {
 					if blocked, reason := ClassifyEgressIP(remoteAddr.IP); blocked && !(opts.AllowLoopback && remoteAddr.IP.IsLoopback()) {
 						conn.Close()
 						DefaultEgressAuditStore.Record(EgressDecision{
-							Timestamp:   start,
-							Callsite:    opts.Callsite,
-							Destination: address,
-							Host:        host,
-							ResolvedIPs: ipStrings,
-							Allowed:     false,
-							Reason:      fmt.Sprintf("peer connection hijacked to restricted IP %s (%s)", remoteAddr.IP.String(), reason),
+							Timestamp:      start,
+							OrganizationID: opts.OrganizationID,
+							Callsite:       opts.Callsite,
+							Destination:    address,
+							Host:           host,
+							ResolvedIPs:    ipStrings,
+							Allowed:        false,
+							Reason:         fmt.Sprintf("peer connection hijacked to restricted IP %s (%s)", remoteAddr.IP.String(), reason),
 						})
 						return nil, fmt.Errorf("%w: connected peer %s is restricted", ErrEgressBlockedPrivateIP, remoteAddr.IP.String())
 					}
 				}
 				DefaultEgressAuditStore.Record(EgressDecision{
-					Timestamp:   start,
-					Callsite:    opts.Callsite,
-					Destination: address,
-					Host:        host,
-					ResolvedIPs: ipStrings,
-					Allowed:     true,
-					Reason:      "approved public destination",
-					LatencyMS:   time.Since(start).Milliseconds(),
+					Timestamp:      start,
+					OrganizationID: opts.OrganizationID,
+					Callsite:       opts.Callsite,
+					Destination:    address,
+					Host:           host,
+					ResolvedIPs:    ipStrings,
+					Allowed:        true,
+					Reason:         "approved public destination",
+					LatencyMS:      time.Since(start).Milliseconds(),
 				})
 				return conn, nil
 			}
@@ -375,12 +462,22 @@ func StripSensitiveEgressHeaders(req *http.Request) {
 // 3. Credential isolation: on any redirect, sensitive headers are stripped before dispatch.
 // 4. IP inspection of redirect target host.
 func NewEgressCheckRedirect(callsite string, allowLoopback bool) func(req *http.Request, via []*http.Request) error {
+	return newEgressCheckRedirect(callsite, "", allowLoopback)
+}
+
+// newEgressCheckRedirect is the organization-aware implementation. The exported
+// NewEgressCheckRedirect keeps its original signature for existing callers; the
+// hardened client (NewSafeEgressHTTPClient) passes the organization scope so
+// redirect audit records are tenant-attributable. Logged destinations are
+// sanitized to scheme://host/path to avoid leaking credentials or query strings.
+func newEgressCheckRedirect(callsite, organizationID string, allowLoopback bool) func(req *http.Request, via []*http.Request) error {
 	return func(req *http.Request, via []*http.Request) error {
 		if len(via) == 0 {
 			return nil
 		}
 		originHost := via[0].URL.Hostname()
 		targetHost := req.URL.Hostname()
+		destination := sanitizeEgressURL(req.URL.String())
 
 		// Credential isolation: strip sensitive headers on redirect attempt
 		StripSensitiveEgressHeaders(req)
@@ -388,13 +485,14 @@ func NewEgressCheckRedirect(callsite string, allowLoopback bool) func(req *http.
 		// 1. Host Pinning: reject cross-host redirects
 		if !strings.EqualFold(via[0].URL.Host, req.URL.Host) {
 			DefaultEgressAuditStore.Record(EgressDecision{
-				Timestamp:   time.Now(),
-				Callsite:    callsite,
-				Method:      req.Method,
-				Destination: req.URL.String(),
-				Host:        targetHost,
-				Allowed:     false,
-				Reason:      fmt.Sprintf("cross-host redirect from %q to unapproved host %q blocked", originHost, targetHost),
+				Timestamp:      time.Now(),
+				OrganizationID: organizationID,
+				Callsite:       callsite,
+				Method:         req.Method,
+				Destination:    destination,
+				Host:           targetHost,
+				Allowed:        false,
+				Reason:         fmt.Sprintf("cross-host redirect from %q to unapproved host %q blocked", originHost, targetHost),
 			})
 			return fmt.Errorf("%w: redirect from %s to %s", ErrEgressRedirectDisallowed, originHost, targetHost)
 		}
@@ -402,13 +500,14 @@ func NewEgressCheckRedirect(callsite string, allowLoopback bool) func(req *http.
 		// 2. HTTPS to HTTP downgrade prevention
 		if via[0].URL.Scheme == "https" && req.URL.Scheme == "http" {
 			DefaultEgressAuditStore.Record(EgressDecision{
-				Timestamp:   time.Now(),
-				Callsite:    callsite,
-				Method:      req.Method,
-				Destination: req.URL.String(),
-				Host:        targetHost,
-				Allowed:     false,
-				Reason:      "HTTPS to HTTP downgrade redirect blocked",
+				Timestamp:      time.Now(),
+				OrganizationID: organizationID,
+				Callsite:       callsite,
+				Method:         req.Method,
+				Destination:    destination,
+				Host:           targetHost,
+				Allowed:        false,
+				Reason:         "HTTPS to HTTP downgrade redirect blocked",
 			})
 			return errors.New("egress HTTPS to HTTP downgrade redirect is blocked")
 		}
@@ -421,13 +520,14 @@ func NewEgressCheckRedirect(callsite string, allowLoopback bool) func(req *http.
 			}
 			if !(allowLoopback && (strings.EqualFold(targetHost, "localhost") || loopbackTarget)) {
 				DefaultEgressAuditStore.Record(EgressDecision{
-					Timestamp:   time.Now(),
-					Callsite:    callsite,
-					Method:      req.Method,
-					Destination: req.URL.String(),
-					Host:        targetHost,
-					Allowed:     false,
-					Reason:      fmt.Sprintf("redirect target host %q resolves to restricted IP: %v", targetHost, err),
+					Timestamp:      time.Now(),
+					OrganizationID: organizationID,
+					Callsite:       callsite,
+					Method:         req.Method,
+					Destination:    destination,
+					Host:           targetHost,
+					Allowed:        false,
+					Reason:         fmt.Sprintf("redirect target host %q resolves to restricted IP: %v", targetHost, err),
 				})
 				return fmt.Errorf("redirect target resolves to restricted IP: %w", err)
 			}
@@ -447,7 +547,7 @@ func NewSafeEgressHTTPClient(opts EgressOptions) *http.Client {
 	return &http.Client{
 		Timeout:       timeout,
 		Transport:     transport,
-		CheckRedirect: NewEgressCheckRedirect(opts.Callsite, opts.AllowLoopback),
+		CheckRedirect: newEgressCheckRedirect(opts.Callsite, opts.OrganizationID, opts.AllowLoopback),
 	}
 }
 

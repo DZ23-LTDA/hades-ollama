@@ -1,7 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import { Link } from "@tanstack/react-router";
-import { type AgentMission, type AgentArtifact } from "@/lib/agenticClient";
-import { API_BASE } from "@/lib/config";
+import { type AgentMission, type AgentArtifact, listMissions, agentFetchBlob } from "@/lib/agenticClient";
 import { AppSidebar } from "@/components/AppSidebar";
 import { SidebarLayout } from "@/components/layout/layout";
 import {
@@ -29,34 +28,53 @@ interface ArtifactWithMission extends AgentArtifact {
   missionCreatedAt: string;
 }
 
-export function artifactDownloadPath(missionId: string, artifactId: string): string {
-  return `${API_BASE}/api/agent/v1/missions/${encodeURIComponent(missionId)}/artifacts/${encodeURIComponent(artifactId)}`;
-}
-
 export function LibraryPage() {
   const [missions, setMissions] = useState<AgentMission[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState<MediaCategory>("all");
   const [viewMode, setViewMode] = useState<"list" | "grid">("list");
+  const [downloadError, setDownloadError] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
-    fetch(`${API_BASE}/api/agent/v1/missions`)
-      .then((res) => (res.ok ? res.json() : { missions: [] }))
-      .then((data: { missions?: AgentMission[] }) => {
+    // Authenticated request: no modo exposto a biblioteca exige Bearer, então
+    // usamos o cliente autenticado (agentFetch) em vez de fetch cru que daria 401.
+    listMissions()
+      .then((data) => {
         if (active) {
           setMissions(data.missions || []);
           setLoading(false);
         }
       })
       .catch(() => {
-      if (active) setLoading(false);
-    });
+        if (active) setLoading(false);
+      });
     return () => {
       active = false;
     };
   }, []);
+
+  // Download autenticado: o endpoint de artefatos é protegido por Bearer, então
+  // um <a href download> daria 401. Buscamos o blob com agentFetchBlob e salvamos.
+  const handleDownload = async (missionId: string, artifactId: string, name: string) => {
+    setDownloadError(null);
+    try {
+      const blob = await agentFetchBlob(
+        `/api/agent/v1/missions/${encodeURIComponent(missionId)}/artifacts/${encodeURIComponent(artifactId)}`,
+      );
+      const objectURL = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = objectURL;
+      link.download = name;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.setTimeout(() => URL.revokeObjectURL(objectURL), 0);
+    } catch (err) {
+      setDownloadError(err instanceof Error ? err.message : "Falha ao baixar o arquivo.");
+    }
+  };
 
   // Coletar todos os artefatos de todas as missões
   const allArtifacts: ArtifactWithMission[] = useMemo(() => {
@@ -187,7 +205,7 @@ export function LibraryPage() {
 
         {/* Abas de Categorias */}
         <div className="border-b border-neutral-200 dark:border-neutral-800">
-          <nav className="flex space-x-2 overflow-x-auto pb-px">
+          <nav aria-label="Filtros da biblioteca" className="flex space-x-2 overflow-x-auto pb-px">
             {categories.map((cat) => {
               const active = activeCategory === cat.id;
               return (
@@ -206,6 +224,12 @@ export function LibraryPage() {
             })}
           </nav>
         </div>
+
+        {downloadError && (
+          <div role="alert" aria-live="assertive" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300">
+            {downloadError}
+          </div>
+        )}
 
         {/* Conteúdo da Biblioteca */}
         {loading ? (
@@ -264,14 +288,14 @@ export function LibraryPage() {
                     <EyeIcon className="h-3.5 w-3.5" />
                     Ver no Canvas
                   </Link>
-                  <a
-                    href={artifactDownloadPath(art.missionId, art.id)}
-                    download={art.name}
+                  <button
+                    type="button"
+                    onClick={() => void handleDownload(art.missionId, art.id, art.name)}
                     className="inline-flex items-center gap-1.5 rounded-lg bg-neutral-900 px-3 py-1.5 text-xs font-medium text-white hover:opacity-90 dark:bg-white dark:text-neutral-900"
                   >
                     <ArrowDownTrayIcon className="h-3.5 w-3.5" />
                     Baixar
-                  </a>
+                  </button>
                 </div>
               </div>
             ))}
@@ -313,14 +337,14 @@ export function LibraryPage() {
                     >
                       <EyeIcon className="h-4 w-4" />
                     </Link>
-                    <a
-                      href={artifactDownloadPath(art.missionId, art.id)}
-                      download={art.name}
+                    <button
+                      type="button"
+                      onClick={() => void handleDownload(art.missionId, art.id, art.name)}
                       className="rounded-lg p-1.5 text-neutral-900 hover:bg-neutral-100 dark:text-white dark:hover:bg-neutral-800"
                       title="Baixar artefato"
                     >
                       <ArrowDownTrayIcon className="h-4 w-4" />
-                    </a>
+                    </button>
                   </div>
                 </div>
               </div>

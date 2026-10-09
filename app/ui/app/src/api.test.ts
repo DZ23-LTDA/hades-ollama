@@ -150,7 +150,7 @@ describe("getIntegrationStatuses", () => {
       },
     ]);
     expect(fetch).toHaveBeenCalledWith(
-      "http://127.0.0.1:3001/api/v1/integrations",
+      "/api/v1/integrations",
     );
   });
 });
@@ -224,7 +224,7 @@ describe("getClaudeDesktopAvailableModels", () => {
       "gemma4:31b-cloud",
     ]);
     expect(fetch).toHaveBeenCalledWith(
-      "http://127.0.0.1:3001/api/v1/models/cloud",
+      "/api/v1/models/cloud",
     );
   });
 

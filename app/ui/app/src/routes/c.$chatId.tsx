@@ -67,7 +67,7 @@ function RouteComponent() {
   if (chatLoading) {
     return (
       <SidebarLayout sidebar={<ChatSidebar currentChatId={chatId} />}>
-        <div className="p-4">Loading chat...</div>
+        <div className="p-4">Carregando conversa...</div>
       </SidebarLayout>
     );
   }
@@ -75,7 +75,7 @@ function RouteComponent() {
   if (chatError) {
     return (
       <SidebarLayout sidebar={<ChatSidebar currentChatId={chatId} />}>
-        <div className="p-4 text-red-500">Error loading chat</div>
+        <div className="p-4 text-red-500">Erro ao carregar o chat</div>
       </SidebarLayout>
     );
   }
@@ -83,7 +83,7 @@ function RouteComponent() {
   if (!chatData) {
     return (
       <SidebarLayout sidebar={<ChatSidebar currentChatId={chatId} />}>
-        <div className="p-4">Chat not found</div>
+        <div className="p-4">Conversa não encontrada</div>
       </SidebarLayout>
     );
   }

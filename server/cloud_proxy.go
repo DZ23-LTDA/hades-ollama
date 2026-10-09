@@ -98,6 +98,11 @@ func cloudPassthroughMiddleware(disabledOperation string) gin.HandlerFunc {
 			defer reader.Close()
 			c.Request.Body = http.MaxBytesReader(c.Writer, io.NopCloser(reader), maxDecompressedBodySize)
 			c.Request.Header.Del("Content-Encoding")
+		} else if c.Request.Body != nil {
+			// Bound the plain (uncompressed) body too: the zstd path above was
+			// capped but this one was not, leaving uncompressed POSTs unbounded
+			// when buffered for model-field inspection.
+			c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, maxDecompressedBodySize)
 		}
 
 		// TODO(drifkin): Avoid full-body buffering here for model detection.

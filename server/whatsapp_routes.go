@@ -4,12 +4,23 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"os"
 	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/ollama/ollama/internal/agent"
 )
 
+// requireWhatsAppAdmin gates every sensitive WhatsApp operation (SEC-08). The
+// gateway is a single deployment-wide resource shared by all tenants, so these
+// handlers must never be reachable by an ordinary member, and in a multi-tenant
+// deployment they must not let one organization administer another's gateway.
+//
+// When OLLAMA_WHATSAPP_ORG is set, it pins the single organization that owns the
+// global gateway: only owners/admins of that organization may administer, read
+// the DLQ/allowlist, or send. When it is unset (the default single-tenant and
+// local setups) the check is role-based, as before. Pinning the org is the
+// supported way to keep the gateway isolated in a multi-tenant deployment.
 func (a *agentAPI) requireWhatsAppAdmin(c *gin.Context) bool {
 	if !a.authRequired {
 		return true
@@ -19,6 +30,12 @@ func (a *agentAPI) requireWhatsAppAdmin(c *gin.Context) bool {
 	if !ok || (membership.Role != agent.RoleOwner && membership.Role != agent.RoleAdmin) {
 		c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "WhatsApp administration requires organization owner or admin"})
 		return false
+	}
+	if pinned := strings.TrimSpace(os.Getenv("OLLAMA_WHATSAPP_ORG")); pinned != "" {
+		if strings.TrimSpace(membership.OrganizationID) != pinned {
+			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "WhatsApp gateway is owned by a different organization"})
+			return false
+		}
 	}
 	return true
 }
@@ -43,12 +60,20 @@ func (a *agentAPI) whatsappWebhook(c *gin.Context) {
 		return
 	}
 
-	// A assinatura só é conferida depois de ler o corpo inteiro, então o limite
-	// precisa vir antes: sem ele, um POST não autenticado aloca o que quiser.
-	const maxWhatsAppWebhookBody = 1 << 20
-	body, err := io.ReadAll(http.MaxBytesReader(c.Writer, c.Request.Body, maxWhatsAppWebhookBody))
+	// Bound the webhook body before buffering it: the HMAC signature is only
+	// verified inside ProcessWebhook (after the full read), so without a cap a
+	// multi-GB POST would be buffered into memory before being rejected. Webhook
+	// payloads are small JSON; mirror the agent JSON limit.
+	const maxWhatsAppWebhookBody = 4 << 20 // 4 MiB
+	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, maxWhatsAppWebhookBody)
+	body, err := io.ReadAll(c.Request.Body)
 	if err != nil {
-		c.JSON(http.StatusRequestEntityTooLarge, gin.H{"error": "request body is too large or unreadable"})
+		var maxErr *http.MaxBytesError
+		if errors.As(err, &maxErr) {
+			c.JSON(http.StatusRequestEntityTooLarge, gin.H{"error": "webhook body too large"})
+			return
+		}
+		c.JSON(http.StatusBadRequest, gin.H{"error": "failed to read request body"})
 		return
 	}
 
@@ -82,6 +107,9 @@ func (a *agentAPI) whatsappWebhook(c *gin.Context) {
 }
 
 func (a *agentAPI) whatsappStatus(c *gin.Context) {
+	if !a.requireWhatsAppAdmin(c) {
+		return
+	}
 	if a.runtime == nil || a.runtime.WhatsApp() == nil {
 		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "whatsapp gateway not available"})
 		return
@@ -92,6 +120,9 @@ func (a *agentAPI) whatsappStatus(c *gin.Context) {
 }
 
 func (a *agentAPI) whatsappSend(c *gin.Context) {
+	if !a.requireWhatsAppAdmin(c) {
+		return
+	}
 	if a.runtime == nil || a.runtime.WhatsApp() == nil {
 		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "whatsapp gateway not available"})
 		return
@@ -131,6 +162,9 @@ func (a *agentAPI) whatsappSend(c *gin.Context) {
 }
 
 func (a *agentAPI) whatsappDLQ(c *gin.Context) {
+	if !a.requireWhatsAppAdmin(c) {
+		return
+	}
 	if a.runtime == nil || a.runtime.WhatsApp() == nil {
 		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "whatsapp gateway not available"})
 		return
@@ -157,6 +191,9 @@ func (a *agentAPI) whatsappClearDLQ(c *gin.Context) {
 }
 
 func (a *agentAPI) whatsappAllowlist(c *gin.Context) {
+	if !a.requireWhatsAppAdmin(c) {
+		return
+	}
 	if a.runtime == nil || a.runtime.WhatsApp() == nil {
 		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "whatsapp gateway not available"})
 		return
@@ -229,10 +266,47 @@ func (a *agentAPI) whatsappConfig(c *gin.Context) {
 
 	var req struct {
 		ActiveBackend string `json:"active_backend,omitempty"`
+		Evolution     *struct {
+			BaseURL       string `json:"base_url"`
+			APIKey        string `json:"api_key"`
+			Instance      string `json:"instance"`
+			WebhookSecret string `json:"webhook_secret"`
+		} `json:"evolution,omitempty"`
+		CloudAPI *struct {
+			PhoneNumberID string `json:"phone_number_id"`
+			AccessToken   string `json:"access_token"`
+			VerifyToken   string `json:"verify_token"`
+			AppSecret     string `json:"app_secret"`
+		} `json:"cloud_api,omitempty"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid config body"})
 		return
+	}
+
+	// Apply (and persist, 0600) any provided credentials. Secrets are never
+	// logged or echoed back; the client only receives the masked status summary.
+	if req.Evolution != nil {
+		if err := a.runtime.WhatsApp().SetEvolutionConfig(agent.EvolutionConfig{
+			BaseURL:       strings.TrimSpace(req.Evolution.BaseURL),
+			APIKey:        strings.TrimSpace(req.Evolution.APIKey),
+			Instance:      strings.TrimSpace(req.Evolution.Instance),
+			WebhookSecret: strings.TrimSpace(req.Evolution.WebhookSecret),
+		}); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "não foi possível salvar a configuração do Evolution API"})
+			return
+		}
+	}
+	if req.CloudAPI != nil {
+		if err := a.runtime.WhatsApp().SetCloudAPIConfig(agent.CloudAPIConfig{
+			PhoneNumberID: strings.TrimSpace(req.CloudAPI.PhoneNumberID),
+			AccessToken:   strings.TrimSpace(req.CloudAPI.AccessToken),
+			VerifyToken:   strings.TrimSpace(req.CloudAPI.VerifyToken),
+			AppSecret:     strings.TrimSpace(req.CloudAPI.AppSecret),
+		}); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "não foi possível salvar a configuração do Cloud API"})
+			return
+		}
 	}
 
 	if req.ActiveBackend == string(agent.WhatsAppBackendCloudAPI) {

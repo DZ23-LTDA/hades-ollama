@@ -32,8 +32,11 @@ func TestAgentCatalogRoutesFilterPrivateResourcesByOrganization(t *testing.T) {
 		t.Fatal(err)
 	}
 	mcp := agent.NewMCPManager()
-	executable := filepath.Join(t.TempDir(), "mcp-server")
-	if err := os.WriteFile(executable, []byte("#!/bin/sh\nexit 0\n"), 0o700); err != nil {
+	// The running test binary is a real absolute executable on every OS, so the
+	// MCP command validation (absolute path + executable regular file) passes on
+	// Windows too, where an extensionless shell script would be rejected.
+	executable, err := os.Executable()
+	if err != nil {
 		t.Fatal(err)
 	}
 	if err := mcp.Register(agent.MCPServerConfig{ID: "private-mcp", OrganizationID: "org_b", Command: executable, AllowedMethods: []string{"tools/list"}}); err != nil {

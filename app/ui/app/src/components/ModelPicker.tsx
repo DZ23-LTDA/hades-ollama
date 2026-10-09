@@ -7,13 +7,13 @@ import {
   useImperativeHandle,
 } from "react";
 import { Model } from "@/gotypes";
-import { useSelectedModel } from "@/hooks/useSelectedModel";
+import { useSelectedModel, isChatModel } from "@/hooks/useSelectedModel";
 import { useCloudStatus } from "@/hooks/useCloudStatus";
 import { useQueryClient } from "@tanstack/react-query";
 import { getModelUpstreamInfo } from "@/api";
 import { ArrowDownTrayIcon } from "@heroicons/react/24/outline";
 import type { CloseableButtonHandle } from "@/types/imperative";
-import { isModelSelectable, modelGroup, sortModelsClean } from "./modelPickerUtils";
+import { getModelCostTag, isModelSelectable, modelGroup, sortModelsClean } from "./modelPickerUtils";
 
 const stalenessCheckCache = new Map<string, number>();
 
@@ -35,9 +35,13 @@ export const ModelPicker = forwardRef<
     onModelSelectModel?: (model: Model) => void;
     selectableOnly?: boolean;
     buttonLabel?: string;
+    // When true, hides DZ23 multi-provider router/remote models (auto/*, groq/…)
+    // that only work in the Agentic Console, keeping the plain chat to local and
+    // Ollama Cloud models.
+    hideMultiProvider?: boolean;
   }
 >(function ModelPicker(
-  { chatId, onModelSelect, onEscape, onDropdownToggle, isDisabled, selectedModelOverride, onModelSelectModel, selectableOnly = false, buttonLabel },
+  { chatId, onModelSelect, onEscape, onDropdownToggle, isDisabled, selectedModelOverride, onModelSelectModel, selectableOnly = false, buttonLabel, hideMultiProvider = false },
   ref,
 ): JSX.Element {
   const [isOpen, setIsOpen] = useState(false);
@@ -161,7 +165,7 @@ export const ModelPicker = forwardRef<
       <button
         ref={ref}
         type="button"
-        title="Select model"
+        title="Selecionar modelo de IA"
         aria-haspopup="listbox"
         aria-expanded={isOpen}
         onClick={() => {
@@ -184,7 +188,7 @@ export const ModelPicker = forwardRef<
         <div className="flex items-center gap-2">
           <span>
             {isDisabled
-              ? "Loading..."
+              ? "Carregando…"
               : buttonLabel || selectedModel?.model || "Selecionar modelo"}
           </span>
         </div>
@@ -211,7 +215,7 @@ export const ModelPicker = forwardRef<
               aria-label="Buscar modelos"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Find model..."
+              placeholder="Buscar modelo…"
               autoCorrect="off"
               className="w-full px-2 py-0.5 bg-transparent border-none border-neutral-200 rounded-md outline-none focus:border-neutral-400 dark:border-neutral-600 dark:focus:border-neutral-400"
             />
@@ -219,7 +223,11 @@ export const ModelPicker = forwardRef<
 
           <ModelList
             ref={modelListRef}
-            models={selectableOnly ? models.filter(isModelSelectable) : models}
+            models={(() => {
+              let list = selectableOnly ? models.filter(isModelSelectable) : models;
+              if (hideMultiProvider) list = list.filter(isChatModel);
+              return list;
+            })()}
             selectedModel={selectedModel}
             onModelSelect={handleModelSelect}
             cloudDisabled={cloudDisabled}
@@ -336,7 +344,7 @@ export const ModelList = forwardRef(function ModelList(
     >
       {sortedModels.length === 0 ? (
         <div className="px-3 py-2 text-neutral-500 dark:text-neutral-400">
-          No models found
+          Nenhum modelo encontrado
         </div>
       ) : (
         sortedModels.map((model, index) => {
@@ -367,7 +375,7 @@ export const ModelList = forwardRef(function ModelList(
                 onFocus={() => !unavailable && setHighlightedIndex(index)}
                 title={
                   unavailable
-                    ? model.reason || "Configure a credencial deste provedor para usar o modelo"
+                    ? model.reason || "Configure a conta deste provedor para usar o modelo"
                     : undefined
                 }
                 className={`flex w-full items-center gap-2 px-3 py-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500 ${
@@ -406,7 +414,7 @@ export const ModelList = forwardRef(function ModelList(
                       ? "bg-neutral-100 text-neutral-500 dark:bg-neutral-800 dark:text-neutral-400"
                       : "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300"
                   }`}>
-                    {unavailable ? "indisponível" : "0-assinatura"}
+                    {unavailable ? "indisponível" : (getModelCostTag(model) ?? "Assinatura")}
                   </span>
                 )}
                 {model.isCloud() && (

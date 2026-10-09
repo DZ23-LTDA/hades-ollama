@@ -358,6 +358,18 @@ func (b *blobDownload) downloadChunk(ctx context.Context, requestURL *url.URL, w
 		}
 		defer resp.Body.Close()
 
+		// Validate the response contract before copying any bytes into the blob.
+		// A ranged request must be answered with 206 Partial Content; a plain 200
+		// is only safe for the first byte of the blob (server ignored Range and is
+		// streaming from offset 0). Anything else (3xx/4xx/5xx or a 200 for a part
+		// that does not start at offset 0) would corrupt the blob, so fail loudly.
+		if resp.StatusCode != http.StatusPartialContent &&
+			!(resp.StatusCode == http.StatusOK && part.StartsAt() == 0) {
+			snippet, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
+			return fmt.Errorf("unexpected status %d downloading range %d-%d: %s",
+				resp.StatusCode, part.StartsAt(), part.StopsAt()-1, strings.TrimSpace(string(snippet)))
+		}
+
 		n, err := io.CopyN(w, io.TeeReader(resp.Body, part), part.Size-part.Completed.Load())
 		if err != nil && !errors.Is(err, context.Canceled) && !errors.Is(err, io.ErrUnexpectedEOF) {
 			// rollback progress

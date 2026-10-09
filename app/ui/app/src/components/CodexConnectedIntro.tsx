@@ -16,7 +16,7 @@ export function CodexConnectedIntro({ onDone }: { onDone: () => void }) {
         <DialogPanel className="claude-connected-dialog relative max-h-full w-full max-w-md overflow-y-auto rounded-2xl bg-white font-sans shadow-2xl ring-1 ring-black/10 dark:bg-neutral-800 dark:ring-white/10">
           <img
             src="/chatgpt-connected.png"
-            alt="Ollama models alongside OpenAI models in the ChatGPT Codex model picker"
+            alt="Modelos do Hades ao lado dos modelos da OpenAI no seletor de modelos do ChatGPT Codex"
             width={1172}
             height={1084}
             className="h-auto w-full object-contain"
@@ -24,11 +24,11 @@ export function CodexConnectedIntro({ onDone }: { onDone: () => void }) {
           />
           <div className="p-6">
             <DialogTitle className="font-rounded text-lg font-medium leading-6 text-neutral-950 dark:text-neutral-100">
-              Use Ollama models in ChatGPT
+              Use os modelos do Hades no ChatGPT
             </DialogTitle>
             <Description className="mt-2 text-[13px] leading-5 text-neutral-500 dark:text-neutral-400">
-              Click Continue to open ChatGPT. In Codex mode, choose an Ollama
-              model from the model picker for your task.
+              Clique em Continuar para abrir o ChatGPT. No modo Codex, escolha um
+              modelo do Hades no seletor de modelos para a sua tarefa.
             </Description>
             <div className="mt-5 flex justify-end">
               <button
@@ -37,7 +37,7 @@ export function CodexConnectedIntro({ onDone }: { onDone: () => void }) {
                 onClick={onDone}
                 className="rounded-full bg-neutral-100 px-6 py-2 text-sm font-normal text-neutral-950 transition-colors hover:bg-neutral-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-500 dark:bg-white dark:hover:bg-neutral-100"
               >
-                Continue
+                Continuar
               </button>
             </div>
           </div>

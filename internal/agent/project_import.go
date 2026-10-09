@@ -23,11 +23,19 @@ import (
 )
 
 const (
-	maxImportedArchiveBytes = 1 << 30
-	maxImportedFileBytes    = 256 << 20
-	maxImportedFiles        = 10000
-	maxImportedIndexBytes   = 64 << 20
+	maxImportedFileBytes  = 256 << 20
+	maxImportedFiles      = 10000
+	maxImportedIndexBytes = 64 << 20
+	// maxIndexedImportFileBytes is the per-file ceiling for indexing an imported
+	// text file; larger files are kept in the worktree but skipped by the
+	// indexer and reported in the per-file manifest.
+	maxIndexedImportFileBytes = 4 << 20
 )
+
+// maxImportedArchiveBytes is the aggregate on-disk budget for an imported
+// archive. It is a var (not a const) only so tests can lower it to exercise the
+// real-bytes aggregate enforcement without materializing a gigabyte on disk.
+var maxImportedArchiveBytes int64 = 1 << 30
 
 var (
 	ErrGitHubURLInvalid        = errors.New("GitHub repository URL must use https://github.com/owner/repository")
@@ -46,26 +54,39 @@ type ProjectImportRequest struct {
 }
 
 type ProjectImportResult struct {
-	Project       Project `json:"project"`
-	Source        string  `json:"source"`
-	RepositoryURL string  `json:"repository_url,omitempty"`
-	Ref           string  `json:"ref,omitempty"`
-	WorktreePath  string  `json:"worktree_path"`
-	Branch        string  `json:"branch"`
-	IndexedFiles  int     `json:"indexed_files"`
-	IndexedMemory int     `json:"indexed_memories"`
-	ArchiveSHA256 string  `json:"archive_sha256"`
-	State         string  `json:"state"`
-	Notice        string  `json:"notice"`
+	Project       Project             `json:"project"`
+	Source        string              `json:"source"`
+	RepositoryURL string              `json:"repository_url,omitempty"`
+	Ref           string              `json:"ref,omitempty"`
+	WorktreePath  string              `json:"worktree_path"`
+	Branch        string              `json:"branch"`
+	IndexedFiles  int                 `json:"indexed_files"`
+	IndexedMemory int                 `json:"indexed_memories"`
+	IgnoredFiles  int                 `json:"ignored_files"`
+	Files         []ProjectImportFile `json:"files"`
+	ArchiveSHA256 string              `json:"archive_sha256"`
+	State         string              `json:"state"`
+	Notice        string              `json:"notice"`
+}
+
+// ProjectImportFile is the per-file status of an import so the user can see
+// which files were indexed and, for the rest, why they were skipped — instead
+// of silently getting empty answers about a document that was never indexed.
+type ProjectImportFile struct {
+	Path      string `json:"path"`
+	Indexed   bool   `json:"indexed"`
+	Reason    string `json:"reason,omitempty"`
+	SizeBytes int64  `json:"size_bytes"`
 }
 
 type ProjectImporter struct {
-	WorkspaceRoot string
-	DataRoot      string
-	Context       *ContextStore
-	Ingestion     DocumentIngestor
-	HTTPClient    *http.Client
-	GitHubToken   func() string
+	WorkspaceRoot              string
+	DataRoot                   string
+	Context                    *ContextStore
+	Ingestion                  DocumentIngestor
+	HTTPClient                 *http.Client
+	GitHubToken                func() string
+	GitHubTokenForOrganization func(string) string
 }
 
 func NewProjectImporter(workspaceRoot, dataRoot string, store *ContextStore, ingestion DocumentIngestor) *ProjectImporter {
@@ -78,7 +99,9 @@ func (i *ProjectImporter) ImportGitHub(ctx context.Context, organizationID strin
 		return ProjectImportResult{}, err
 	}
 	token := ""
-	if i.GitHubToken != nil {
+	if i.GitHubTokenForOrganization != nil {
+		token = strings.TrimSpace(i.GitHubTokenForOrganization(strings.TrimSpace(organizationID)))
+	} else if i.GitHubToken != nil && strings.TrimSpace(organizationID) == LocalOrganizationID {
 		token = strings.TrimSpace(i.GitHubToken())
 	}
 	client := i.HTTPClient
@@ -240,12 +263,21 @@ func (i *ProjectImporter) importArchive(ctx context.Context, organizationID, exi
 		_ = os.RemoveAll(filepath.Dir(origin))
 		return ProjectImportResult{}, err
 	}
-	files := importedTextFiles(session.WorktreeDir)
+	manifest := importedFileManifest(session.WorktreeDir)
+	files := make([]string, 0, len(manifest))
+	ignored := 0
+	for _, file := range manifest {
+		if file.Indexed {
+			files = append(files, filepath.FromSlash(file.Path))
+		} else {
+			ignored++
+		}
+	}
 	memories, ingestErr := i.Ingestion.Ingest(ctx, DocumentIngestRequest{ProjectID: project.ID, Workspace: session.WorktreeDir, Paths: files, MaxBytes: maxImportedIndexBytes})
 	if ingestErr != nil {
 		return ProjectImportResult{}, fmt.Errorf("project imported but indexing failed: %w", ingestErr)
 	}
-	return ProjectImportResult{Project: project, Source: source, RepositoryURL: repositoryURL, Ref: ref, WorktreePath: session.WorktreeDir, Branch: session.BranchName, IndexedFiles: len(files), IndexedMemory: len(memories), ArchiveSHA256: digest, State: "IMPORTED_INDEXED", Notice: "Código importado apenas como contexto; nenhum arquivo foi executado. Testes/build exigem sandbox H1 e aprovação HITL."}, nil
+	return ProjectImportResult{Project: project, Source: source, RepositoryURL: repositoryURL, Ref: ref, WorktreePath: session.WorktreeDir, Branch: session.BranchName, IndexedFiles: len(files), IndexedMemory: len(memories), IgnoredFiles: ignored, Files: manifest, ArchiveSHA256: digest, State: "IMPORTED_INDEXED", Notice: "Código importado apenas como contexto; nenhum arquivo foi executado. Testes/build exigem sandbox H1 e aprovação HITL."}, nil
 }
 
 func parseGitHubRepositoryURL(raw string) (string, string, error) {
@@ -301,10 +333,12 @@ func extractProjectArchive(reader io.ReaderAt, size int64, destination string) e
 			}
 			continue
 		}
+		// ZIP header sizes are attacker-controlled; use them only as a cheap early
+		// reject, never as the real budget. The authoritative accounting happens
+		// after the copy, against the actual bytes written to disk.
 		if entry.UncompressedSize64 > maxImportedFileBytes || total+int64(entry.UncompressedSize64) > maxImportedArchiveBytes {
 			return ErrImportArchiveTooLarge
 		}
-		total += int64(entry.UncompressedSize64)
 		target := filepath.Join(destination, clean)
 		if !isWithin(destination, target) {
 			return ErrImportArchiveUnsafe
@@ -329,7 +363,14 @@ func extractProjectArchive(reader io.ReaderAt, size int64, destination string) e
 		if closeErr != nil {
 			return closeErr
 		}
-		if info, statErr := os.Stat(target); statErr != nil || info.Size() > maxImportedFileBytes {
+		info, statErr := os.Stat(target)
+		if statErr != nil || info.Size() > maxImportedFileBytes {
+			return ErrImportArchiveTooLarge
+		}
+		// Enforce the aggregate budget against real bytes written, so an archive
+		// that lies about per-entry sizes in its header cannot exhaust the disk.
+		total += info.Size()
+		if total > maxImportedArchiveBytes {
 			return ErrImportArchiveTooLarge
 		}
 	}
@@ -365,7 +406,21 @@ func initializeImportedRepository(ctx context.Context, root string) error {
 }
 
 func importedTextFiles(root string) []string {
-	var paths []string
+	manifest := importedFileManifest(root)
+	paths := make([]string, 0, len(manifest))
+	for _, file := range manifest {
+		if file.Indexed {
+			paths = append(paths, filepath.FromSlash(file.Path))
+		}
+	}
+	return paths
+}
+
+// importedFileManifest walks the imported worktree and classifies every regular
+// file as indexed or skipped (with a human-readable reason). The .git control
+// plane is never listed. Paths use forward slashes for a stable JSON contract.
+func importedFileManifest(root string) []ProjectImportFile {
+	var manifest []ProjectImportFile
 	_ = filepath.WalkDir(root, func(path string, entry os.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -379,27 +434,54 @@ func importedTextFiles(root string) []string {
 			}
 			return nil
 		}
-		if info, statErr := entry.Info(); statErr == nil && info.Size() <= 4<<20 && isLikelyTextImportFile(path) {
-			relative, relErr := filepath.Rel(root, path)
-			if relErr == nil {
-				paths = append(paths, relative)
-			}
+		relative, relErr := filepath.Rel(root, path)
+		if relErr != nil {
+			return nil
 		}
+		file := ProjectImportFile{Path: filepath.ToSlash(relative)}
+		info, statErr := entry.Info()
+		switch {
+		case statErr != nil:
+			file.Reason = "Não foi possível ler os metadados do arquivo."
+		case !isLikelyTextImportFile(path):
+			file.SizeBytes = info.Size()
+			file.Reason = "Formato não indexável (sem adaptador de leitura para este tipo)."
+		case info.Size() > maxIndexedImportFileBytes:
+			file.SizeBytes = info.Size()
+			file.Reason = "Arquivo acima de 4 MB; não indexado."
+		default:
+			file.SizeBytes = info.Size()
+			file.Indexed = true
+		}
+		manifest = append(manifest, file)
 		return nil
 	})
-	return paths
+	return manifest
+}
+
+// SupportedProjectDocumentFilename reports whether the document ingestion
+// pipeline can index a standalone project attachment. Images are intentionally
+// excluded until a vision/OCR adapter is configured.
+func SupportedProjectDocumentFilename(name string) bool {
+	if strings.TrimSpace(name) == "" || strings.ContainsAny(name, `/\`) || strings.Contains(name, "..") {
+		return false
+	}
+	switch strings.ToLower(filepath.Ext(name)) {
+	case ".pdf", ".docx", ".xlsx", ".txt", ".md", ".csv", ".json", ".xml", ".html", ".htm", ".css", ".sql",
+		".js", ".jsx", ".ts", ".tsx", ".py", ".java", ".cpp", ".c", ".cc", ".h", ".cs",
+		".php", ".rb", ".go", ".rs", ".swift", ".kt", ".scala", ".sh", ".bat", ".yaml",
+		".yml", ".toml", ".ini", ".cfg", ".conf", ".log":
+		return true
+	default:
+		return false
+	}
 }
 
 func isLikelyTextImportFile(path string) bool {
-	ext := strings.ToLower(filepath.Ext(path))
-	if ext == "" {
+	if filepath.Ext(path) == "" {
 		return true
 	}
-	switch ext {
-	case ".go", ".ts", ".tsx", ".js", ".jsx", ".json", ".md", ".txt", ".yaml", ".yml", ".toml", ".css", ".html", ".htm", ".sql", ".py", ".rs", ".java", ".sh", ".xml", ".csv":
-		return true
-	}
-	return false
+	return SupportedProjectDocumentFilename(filepath.Base(path))
 }
 
 func (r ProjectImportResult) MarshalJSON() ([]byte, error) {

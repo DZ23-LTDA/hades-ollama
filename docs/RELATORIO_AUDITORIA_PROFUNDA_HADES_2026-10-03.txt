@@ -1,0 +1,842 @@
+RELATÓRIO DE AUDITORIA PROFUNDA — HADES / HADES-OLLAMA
+=======================================================
+
+Data da auditoria: 03/10/2026 19:19 (America/Sao_Paulo)
+Repositório: https://github.com/DZ23-LTDA/hades-ollama
+Pasta auditada: D:\IA\Trabalhos\DZ23-LTDA\hades-ollama
+Branch auditada: recovery/ollama-full-snapshot
+Commit auditado: ef9c21d24e63f307654a2364eb6588b827799b12
+Comparação com origin/main: branch auditada 14 commits à frente e 1 commit atrás
+Escopo: produto, segurança, multi-tenant, autenticação, ferramentas agentic, CI/CD,
+release, dependências, testes, documentação, UX e acessibilidade.
+
+RESUMO EXECUTIVO
+================
+
+Veredito: o Hades é um produto real, amplo e tecnicamente promissor, com controles
+de segurança acima da média em várias áreas. Entretanto, o commit auditado NÃO está
+pronto para exposição multiempresa nem para release pública. Há caminhos confirmados
+de execução de código de projeto no host sem sandbox real, bypass do fluxo de aprovação
+de merge, vinculação insegura de identidade SSO, falhas de isolamento entre organizações
+e um gate de release que exige checks inexistentes.
+
+Classificação dos achados de segurança confirmados:
+
+- Críticos: 0
+- Altos: 8
+- Médios: 5
+- Baixos/de hardening mantidos para correção: 3
+
+Não foi encontrada prova de RCE pré-autenticação direta, segredo real commitado ou
+SSRF confirmado nos clientes principais revisados. A ausência de achado crítico não
+reduz a urgência dos itens altos: alguns permitem execução no host ou tomada de conta
+sob precondições plausíveis.
+
+Recomendação de decisão:
+
+- Uso local controlado para desenvolvimento: aceitável com cautela.
+- Piloto interno mono-organização: aceitável somente após desabilitar os caminhos P0.
+- Exposição na rede ou SaaS multi-tenant: bloqueada até correção e reteste dos P0/P1.
+- Release pública: bloqueada até corrigir o pipeline, nomes de artefatos e governança.
+
+METODOLOGIA E EVIDÊNCIAS
+=======================
+
+Foram usados:
+
+1. Codex Security Standard scan de todo o repositório, com modelagem de ameaça,
+   revisão especializada e validação manual source-to-sink. O Deep Scan determinístico
+   não pôde iniciar por ausência do perfil de filesystem gerenciado exigido pelo plugin;
+   o Standard scan compatível foi usado e essa limitação está registrada.
+2. Revisão CodeRabbit autenticada como DZ23-LTDA, no diff entre main e
+   recovery/ollama-full-snapshot. Resultado: 3 achados de portabilidade/documentação.
+3. Leitura direta dos fluxos de auth, OAuth, SAML, MFA, RBAC, tenants, ferramentas,
+   merge Git, WhatsApp, supervisor, egress, SSE/WebSocket e release.
+4. Testes reais de Go, TypeScript, Vitest, ESLint, Vite build, npm audit, go vet e
+   verificador de contratos frontend/backend.
+5. Inspeção visual das telas desktop/mobile já capturadas no próprio commit e abertura
+   da aplicação local em http://127.0.0.1:5173. O arquivo de evidência versionado
+   docs/evidencias/browser-console-audit.json registra 10 telas e zero erros HTTP/console
+   em 01/10/2026. Uma nova coleta detalhada de console perdeu a conexão CDP e não foi
+   usada como prova adicional.
+6. Capturas adicionais fornecidas pelo usuário em 03/10/2026 foram confrontadas
+   com o código-fonte: sidebar cortada, catálogo cloud sob o título "Modelos locais",
+   ausência percebida de IA local, CTA "Construir agora" abrindo o Mission Console e
+   tela "Computadores" composta por ações permanentemente desabilitadas.
+
+Limites honestos:
+
+- O repositório inventariado tem 2.061 arquivos; a cobertura foi dirigida por risco,
+  não uma leitura linha a linha de todos os arquivos.
+- Não foram provisionados IdPs reais, Postgres, Redis, MCPs remotos ou contas cloud para
+  exploração dinâmica.
+- Não foram executadas provas destrutivas nem enviados dados para serviços de produção.
+- O estado vivo do ruleset do GitHub não foi reconsultado nesta rodada. A divergência
+  registrada na auditoria local de 01/10/2026 deve ser confirmada no GitHub antes da release.
+
+MODELO DE AMEAÇA RESUMIDO
+========================
+
+Ativos principais:
+
+- modelos, blobs e inventário local;
+- workspaces e repositórios Git do usuário;
+- tokens SSO, credenciais de providers, conectores e MCPs;
+- dados, papéis e memberships de organizações;
+- aprovações de operações destrutivas;
+- instaladores, checksums, imagens e artefatos assinados.
+
+Fronteiras relevantes:
+
+- cliente remoto -> listener HTTP;
+- API Ollama tradicional -> API agentic autenticada;
+- organização -> stores/runtimes compartilhados;
+- modelo/planner -> ferramentas e subprocessos;
+- serviço -> rede externa, conectores e MCP;
+- CI -> assinatura e publicação de release.
+
+Observação arquitetural importante: a autenticação, o RBAC e o tenant scope cobrem
+principalmente /api/agent/v1. As rotas tradicionais Ollama e rotas desktop formam
+outras superfícies e não devem ser consideradas automaticamente protegidas pelo mesmo RBAC.
+
+ACHADOS DE SEGURANÇA CONFIRMADOS
+===============================
+
+SEC-01 — ALTA — Testes executam código não confiável diretamente no host
+--------------------------------------------------------------------------
+
+Evidência:
+
+- internal/agent/coding_git_cycle.go:259-384
+- internal/agent/coding_git_cycle.go:527-535
+
+RunProjectTests executa go test, npm test, pytest ou custom_command com
+exec.CommandContext no processo do serviço. O comentário diz "Strict sandbox environment:
+zero egress", mas o controle consiste apenas em variáveis como GOPROXY=off e proxies vazios.
+Isso não cria namespace, contêiner, seccomp, isolamento de filesystem ou bloqueio de socket.
+Além disso, a ferramenta é RiskRead, exige apenas workspace:read e RequiresApproval=false.
+
+Impacto: um package.json, teste Go/Python ou comando customizado malicioso pode ler arquivos,
+usar credenciais do processo, modificar o host, abrir rede diretamente e comprometer outros
+tenants sob a identidade do serviço.
+
+Correção:
+
+- marcar a ferramenta como execução/alto risco e exigir aprovação explícita;
+- executar somente em sandbox obrigatório e descartável, com filesystem mínimo e read-only,
+  rede bloqueada no kernel, limites de CPU/RAM/PIDs/tempo/saída e identidade sem privilégio;
+- remover custom_command da superfície remota ou usar allowlist declarativa;
+- não usar fallback para execução direta se o sandbox estiver indisponível.
+
+Teste de regressão: projeto de teste tenta ler arquivo fora da raiz, escrever no host e abrir
+socket; todos devem falhar. O mesmo teste benigno deve continuar passando.
+
+SEC-02 — ALTA — sub_path permite escapar do workspace
+-----------------------------------------------------
+
+Evidência: internal/agent/coding_git_cycle.go:264-267.
+
+targetDir = filepath.Join(workspacePath, options.SubPath) é usado sem filepath.IsLocal,
+filepath.Rel, EvalSymlinks ou validação posterior de contenção. Caminho absoluto, ".." ou
+symlink pode direcionar o runner para fora do workspace.
+
+Impacto: execução de testes/comandos em diretórios arbitrários acessíveis ao serviço e leitura
+ou alteração de outro projeto/tenant.
+
+Correção: rejeitar paths absolutos e não locais; canonicalizar raiz e destino; resolver
+symlinks; exigir que filepath.Rel não comece por ".."; revalidar imediatamente antes do exec.
+
+SEC-03 — ALTA — Endpoint de merge ignora o fluxo de aprovação
+-------------------------------------------------------------
+
+Evidência:
+
+- server/agent_routes.go:516 e 2889-2903
+- internal/agent/runtime.go:1036-1065
+- internal/agent/coding_git_cycle.go:224-256 e 576-582
+- internal/agent/auth.go:947-956
+
+POST /missions/:id/merge chama MergeMissionWorktree diretamente. Não há validação de uma
+aprovação one-shot, hash do diff, base/head, nonce, expiração ou separação entre solicitante e
+aprovador. Isso contradiz a própria ferramenta git.merge.origin, que declara
+RequiresApproval=true. O papel operator passa na autorização genérica execute/write.
+
+Impacto: alterações agentic podem ser mescladas no repositório original sem a aprovação humana
+que o produto promete.
+
+Correção: criar approval específica de merge, vinculada a organization_id, mission_id,
+repo_root, base/head, target branch e SHA-256 do diff; exigir segundo decisor quando aplicável;
+consumir uma única vez e invalidar quando o diff mudar.
+
+SEC-04 — ALTA — SSO vincula identidades somente por e-mail
+----------------------------------------------------------
+
+Evidência:
+
+- internal/agent/auth.go:169-188, 872-903 e 906-915
+- server/agent_routes.go:1115-1161 e 1272-1282
+- internal/agent/saml.go:180
+
+ProvisionOAuthUser usa e-mail como chave. CreateUser devolve a conta já existente com o mesmo
+e-mail e FirstOrganization escolhe sua primeira organização. Provider, issuer, subject/NameID
+e email_verified não fazem parte da vinculação persistente.
+
+Impacto: se um IdP configurado emitir um e-mail igual ao de outra conta, o atacante pode receber
+token local da vítima e herdar organizações/papéis. A explorabilidade depende das garantias do
+IdP, mas essas garantias não são impostas pelo código e provedores distintos colidem.
+
+Correção: persistir vínculo (protocol, provider_id, issuer/entityID, subject/NameID) -> user_id;
+usar e-mail apenas como perfil; nunca auto-vincular conta existente por e-mail; exigir vínculo
+autenticado ou aprovação administrativa e email_verified onde o e-mail for usado.
+
+SEC-05 — ALTA — Rate limit de MFA é contornado trocando a porta TCP
+------------------------------------------------------------------
+
+Evidência:
+
+- server/agent_routes.go:578-585
+- internal/agent/auth.go:332-384 e 479-484
+
+O bucket incorpora c.Request.RemoteAddr completo. Em Go isso normalmente é IP:porta; uma nova
+conexão TCP usa outra porta efêmera e recebe mais cinco tentativas.
+
+Impacto: quem já possui o bearer de primeiro fator pode ampliar tentativas TOTP/recovery e criar
+grande número de chaves persistidas, aumentando também I/O e disco.
+
+Correção: extrair somente o host com net.SplitHostPort; combinar limites por usuário, IP e global;
+expirar e limitar buckets; só confiar em forwarded IP a partir de proxies explicitamente permitidos.
+
+SEC-06 — ALTA — OAuth states públicos crescem sem coleta ou quota
+----------------------------------------------------------------
+
+Evidência: internal/agent/auth.go:598-636 e server/agent_routes.go:1082.
+
+Cada OAuth start público grava e persiste um state. O consumo apenas define ConsumedAt. Entradas
+consumidas ou expiradas nunca são removidas e não há limite por IP/provedor/global.
+
+Impacto: crescimento permanente de memória e disco; como o AuthStore completo é regravado, o
+custo de CPU/I/O aumenta progressivamente e pode indisponibilizar autenticação.
+
+Correção: delete atômico no consumo; sweep no load e antes do insert; armazenamento TTL com
+capacidade; rate limiting; métricas e alarme de cardinalidade.
+
+SEC-07 — MÉDIA — SAML requests expirados crescem em memória
+-----------------------------------------------------------
+
+Evidência: internal/agent/saml.go:110-148.
+
+O endpoint público cria request ID e RelayState em mapa em memória. ExpiresAt só é consultado
+quando chega callback daquele RelayState; pedidos abandonados não são coletados.
+
+Correção: cache TTL limitado, sweep periódico e rate limit por IP/provedor/global.
+
+SEC-08 — ALTA — Estado do WhatsApp é global entre organizações
+--------------------------------------------------------------
+
+Evidência:
+
+- server/whatsapp_routes.go:27-241
+- internal/agent/runtime.go:248-287 e 381-390
+- internal/agent/whatsapp_gateway.go
+
+As rotas usam a.runtime.WhatsApp(), não o runtime scoped por organização. Backend ativo,
+allowlist, políticas de contato e DLQ são globais e não carregam organization_id.
+
+Impacto: administrador de um tenant pode observar ou alterar a configuração/fila de outro,
+inclusive limpar DLQ ou mudar backend ativo. A falha de teste TestWhatsAppRoutesAllowlistCRUD
+também indica drift recente do contrato de autorização.
+
+Correção: particionar gateway, políticas e DLQ por organization_id; exigir admin/owner da mesma
+organização; migrar o estado existente; criar testes com dois tenants.
+
+SEC-09 — ALTA — Supervisor global pode ser alterado por operator de um tenant
+-----------------------------------------------------------------------------
+
+Evidência: server/supervisor_routes.go:11-57, internal/agent/runtime.go:253-307 e
+internal/agent/auth.go:947-956.
+
+As rotas de supervisor operam o objeto global. A permissão genérica execute/write inclui operator.
+A configuração pode alterar RequireApprovalRisk e o comportamento do serviço inteiro.
+
+Correção: tratar configuração global como administração do deployment, fora do RBAC de tenant,
+ou criar um supervisor por organização; adicionar permissão específica, trilha de auditoria e
+controle de concorrência/versionamento.
+
+SEC-10 — MÉDIA — Auditoria de egress vaza destinos entre tenants
+----------------------------------------------------------------
+
+Evidência: server/egress_routes.go:11-66 e internal/agent/egress_zero_trust.go:114-211,
+388-431.
+
+DefaultEgressAuditStore é global e não contém organization_id. Redirects registram req.URL.String(),
+incluindo query potencialmente sensível.
+
+Correção: incluir e filtrar por organization_id; registrar scheme/host/path sanitizado; remover
+userinfo, query e fragment; limitar retenção e acesso.
+
+SEC-11 — MÉDIA — X-Forwarded-Proto pode falsificar TLS do companion
+-------------------------------------------------------------------
+
+Evidência: server/companion_ws.go:30-45 e 80-81.
+
+companionSecureRequest aceita X-Forwarded-Proto:https de qualquer origem. Sem uma allowlist de
+proxies confiáveis, cliente direto pode contornar o requisito de transporte seguro.
+
+Correção: só aceitar forwarded headers quando RemoteAddr é proxy confiável; caso contrário exigir
+request.TLS; documentar a topologia suportada e testar acesso direto vs. proxy permitido.
+
+SEC-12 — MÉDIA — Corpo do webhook WhatsApp é ilimitado
+------------------------------------------------------
+
+Evidência: server/whatsapp_routes.go:40-61.
+
+io.ReadAll(c.Request.Body) ocorre antes da validação de assinatura e sem MaxBytesReader.
+
+Impacto: consumo de memória por requisição pública e pressão de GC.
+
+Correção: aplicar http.MaxBytesReader/LimitReader antes da leitura, responder 413, limitar
+concorrência e taxa, e validar Content-Type.
+
+SEC-13 — MÉDIA — SSE e WebSocket não limitam conexões persistentes
+------------------------------------------------------------------
+
+Evidência:
+
+- server/agent_routes.go:1685, 1780 e 1921
+- server/companion_ws.go:30-63
+- internal/agent/notifications.go:24
+
+Os SSE criam loop/ticker por conexão; notifications faz polling a cada 750 ms. O companion faz
+upgrade antes do hello autenticado, permite 30 s pré-auth e depois remove o deadline sem heartbeat
+ou quota por IP/dispositivo/organização.
+
+Correção: semáforos globais e por escopo; admissão antes do upgrade; uma ou poucas sessões por
+dispositivo; ping/pong e deadlines; fan-out por eventos em lugar de polling por conexão.
+
+ACHADOS DE HARDENING / BAIXA GRAVIDADE
+======================================
+
+SEC-H01 — project.test.run aceita TimeoutSeconds sem teto e acumula stdout/stderr inteiro em
+bytes.Buffer (coding_git_cycle.go:335-379). Limitar tempo e bytes de saída; truncar com indicação.
+
+SEC-H02 — safeConfig calcula presença de connectors/MCPs usando listas globais, revelando a um
+tenant se outro configurou alguma integração (server/agent_routes.go:811-833). Usar métodos
+ForOrganization quando authRequired.
+
+SEC-H03 — vários recursos retornam 403 para ID estrangeiro e 404 para inexistente, criando oráculo
+de existência cross-tenant (server/agent_routes.go:1615, 2942-2954 e stores associados). Uniformizar
+404, corpo e comportamento temporal na fronteira HTTP; manter detalhe apenas no log interno.
+
+ACHADOS DE CI/CD, RELEASE E SUPPLY CHAIN
+=======================================
+
+CI-01 — ALTA — release-gate exige checks que não existem no SHA de release
+----------------------------------------------------------------------------
+
+.github/workflows/release.yaml:822-835 exige "PR gate", matriz test/race e go_mod_tidy.
+.github/workflows/release-readiness.yaml:56-63 documenta que esses checks são exclusivos de PR e
+deliberadamente não devem ser exigidos em main/tag. O gate de release, portanto, tende a falhar
+fechado para sempre.
+
+Correção: centralizar a lista de checks numa fonte única; fazer release-gate consumir exatamente a
+mesma matriz do release-readiness; testar workflow_dispatch num dry-run sem publicar.
+
+CI-02 — ALTA — Nome do instalador é inconsistente
+-------------------------------------------------
+
+dz23-windows-installer.yaml produz dist/OllamaFullSetup.exe, mas release.yaml:529 e 885 ainda
+exigem dist/OllamaClasseAPlusSetup.exe.
+
+Correção: fixar o nome canônico Hades/OllamaFull em uma variável única e validar produtor/consumidor
+com teste automatizado de workflow.
+
+CI-03 — MÉDIA — Job release não depende de docker-merge-push
+------------------------------------------------------------
+
+release.yaml:858 depende de docker-build-push, não de docker-merge-push (linhas 767-775). A release
+pode publicar enquanto o manifest multi-arch falha ou está pendente.
+
+CI-04 — MÉDIA — Actions privilegiadas estão pinadas em tags mutáveis
+------------------------------------------------------------------------
+
+Exemplos: signpath/github-action-submit-signing-request@v3 e
+al-cheb/configure-pagefile-action@v1.5. Pinar ações de terceiros por SHA completo e usar atualização
+automatizada revisada.
+
+CI-05 — MÉDIA — Workflow de smoke injeta muitas chaves sem environment protegido
+--------------------------------------------------------------------------------
+
+dz23-provider-smoke.yaml injeta credenciais de múltiplos providers. Adicionar environment com
+reviewer obrigatório, timeout, concurrency, mínimo de permissions e orçamento/rate cap.
+
+CI-06 — MÉDIA — Proteção de branch declarada pode não corresponder ao ruleset vivo
+---------------------------------------------------------------------------------
+
+.github/rulesets/main-protection.json exige uma aprovação, last-push approval e resolução de threads,
+mas a auditoria de 01/10 registrou ruleset vivo com zero aprovação e CODEOWNERS não obrigatório.
+Reconsultar e aplicar o JSON com revisão humana antes da release.
+
+CI-07 — MÉDIA — main não contém o estado mais recente
+-----------------------------------------------------
+
+O branch auditado está 14 commits à frente e 1 atrás de origin/main. Quem clona a branch padrão não
+recebe todas as correções auditadas. Resolver a divergência por PR revisado, sem force push.
+
+CI-08 — MÉDIA — Cobertura de análise estática está enfraquecida
+----------------------------------------------------------------
+
+.golangci.yaml desabilita errcheck e govet/unusedresult. Em código que manipula filesystem,
+aprovações, egress e persistência, erros ignorados são risco material. Reativar gradualmente e criar
+baseline explícita, não desabilitação global.
+
+CI-09 — BAIXA/MÉDIA — Dívidas adicionais
+----------------------------------------
+
+- Node 20 e 22 misturados entre workflows;
+- test.yaml usa if: always() em caminho capaz de gerar falso negativo em cascata;
+- .dockerignore não cobre apps/ e **/node_modules;
+- package-lock.json e pnpm-lock.yaml convivem, embora CI use npm;
+- faltam dependency-review-action e scanner dedicado de segredos;
+- jobs longos precisam de timeout-minutes;
+- build reproduzível está incompleto fora do tarball Linux.
+
+DEPENDÊNCIAS E SUPPLY CHAIN
+===========================
+
+npm audit completo após npm ci:
+
+- 18 vulnerabilidades no total: 11 altas e 7 moderadas;
+- 0 vulnerabilidades em dependências de produção com npm audit --omit=dev;
+- alertas concentram-se em Vitest/Storybook/typescript-eslint/TanStack tooling e transitivos,
+  incluindo GHSA-82fw-gwwq-j7x9 e DoS em braces;
+- algumas correções exigem major upgrade para Vitest 5, portanto devem passar por branch e testes.
+
+Correção: atualizar primeiro patches/minors não quebradores; planejar upgrade coordenado de
+Vitest/Storybook; manter servidores de teste inacessíveis em rede não confiável; adicionar Renovate
+ou Dependabot e dependency review no PR.
+
+gitleaks e govulncheck não estavam instalados neste host; portanto não foi alegado que essas duas
+ferramentas passaram. A inspeção dirigida não encontrou segredo real, mas não substitui gitleaks
+no histórico completo. Adicionar ambos ao CI com versões pinadas.
+
+QUALIDADE DE CÓDIGO E ARQUITETURA
+================================
+
+Q-01 — Arquivos monolíticos dificultam revisão e ownership:
+
+- server/agent_routes.go ~101 KB;
+- server/routes.go ~99 KB;
+- internal/agent/runtime.go ~80 KB;
+- workspace_snapshot.go ~71 KB;
+- postgres_security.go ~63 KB;
+- sched.go ~59 KB.
+
+Separar por domínio/rota, criar interfaces pequenas, testes por pacote e CODEOWNERS por superfície.
+
+Q-02 — Existem duas políticas de egress com risco de divergência: agent e multillm possuem
+classificadores separados. O relatório anterior identificou default-allow no ClassifyProviderEgressIP
+para ranges especiais que a política agent bloqueia. Unificar em uma implementação e uma suíte
+matricial de IPs IPv4/IPv6/redirect/DNS rebinding.
+
+Q-03 — O supervisor decide aprovação por substring de objetivo/nome. Palavras equivalentes podem
+escapar. Usar RiskClass tipado e policy engine; nenhuma decisão financeira/publicação deve depender
+de texto livre.
+
+Q-04 — Backoff sem jitter pode causar thundering herd. Aplicar full jitter e métricas de retry.
+
+Q-05 — Documentação afirma SQLite/transacionalidade que não corresponde ao store JSON local.
+Documentar atomicidade real, limites e ausência de transação ACID entre missão/eventos.
+
+Q-06 — O verificador de contratos passou para 139 chamadas frontend contra 257 rotas backend, mas
+relatou 135 rotas sem caller estático. Isso não prova rotas mortas (podem ser API pública/CLI), mas
+exige inventário com owner, consumidor e status. O parser regex cai para GET quando não encontra
+método; trocar por AST para não mascarar mismatch.
+
+Q-07 — CodeRabbit confirmou 3 problemas:
+
+- app/ui/app/e2e/capture_studio_evidence.mjs:8 contém checkout hard-coded; derivar ROOT por import.meta.url;
+- audit/OLLAMA_FULL_HANDOFF_20260927.md:24 usa diretório diferente do criado pelo clone;
+- docs/CLASS_A_PLUS_GUIDE.md:50 usa cd ollama-classe-a-plus após clonar hades-ollama.
+
+Q-08 — go vet falhou com usos potenciais de reflect.SliceHeader/unsafe.Pointer e com build de teste
+mlx (undefined: gelu). Separar alertas herdados do upstream, documentar justificativas pontuais e
+fazer o gate funcionar por plataforma/build tag.
+
+Q-09 — O build Vite alerta que o bundle principal minificado tem aproximadamente 1,82 MB
+(~532 KB gzip), além de chunks de WASM/linguagens acima de 500 KB. Fazer code splitting por rota,
+lazy loading do syntax highlighter e análise de bundle; definir orçamento de performance no CI.
+
+Q-10 — ESLint passou com 2 warnings react-refresh/only-export-components em AppSidebar.tsx:56 e
+LibraryPage.tsx:32. Mover constantes/helpers para módulos separados.
+
+Q-11 — ALTA — suíte de testes contamina o catálogo real de modelos
+-------------------------------------------------------------------
+
+Evidência dinâmica confirmada após a execução da suíte:
+
+- `GET http://127.0.0.1:11434/api/tags` retornou 80 modelos;
+- 77 têm menos de 1 MB e nomes inequívocos de fixture, como `harmony-test-streaming`,
+  `parse-wedge-gen`, `test-qwen3.5-parser`, `test-chat-logprob-bytes` e `test-gemma4-parser`;
+- todos esses fixtures foram modificados entre 19:10:24 e 19:10:27 de 03/10/2026, no horário dos testes;
+- os três modelos reais permanecem presentes: `qwen3:8b`, `qwen2.5-coder:7b` e
+  `qwen2.5-coder:1.5b`;
+- o processo ativo é o Hades instalado (`C:\Users\DZ23\AppData\Local\Programs\Hades\ollama.exe
+  serve`) e herda `OLLAMA_MODELS=D:\IA\ollama\models`;
+- testes como server/routes_harmony_streaming_test.go:279-288,
+  server/routes_parse_error_test.go:83-90/112-128 e server/routes_generate_test.go:2377-2385 criam
+  modelos, mas esses caminhos não garantem isolamento global quando `OLLAMA_MODELS` já está definido.
+
+Impacto: rodar `go test` em uma máquina de usuário altera estado persistente fora do projeto, polui o
+seletor, faz modelos reais parecerem ausentes e torna qualquer auditoria/teste não hermético. Esta
+auditoria expôs o defeito; nenhum modelo foi apagado porque o store fica fora da pasta do projeto e a
+remoção é destrutiva.
+
+Correção: criar `TestMain` no pacote server que sempre substitui `OLLAMA_MODELS` por diretório temporário
+exclusivo antes de qualquer teste, recusa caminho real/conhecido e remove o diretório no final. Cada teste
+que cria manifesto deve usar cleanup explícito. No CI, definir um sentinel path temporário e falhar se
+qualquer escrita escapar. Antes de limpar a máquina afetada, gerar inventário/backup e excluir somente
+os 77 manifests confirmados por nome+digest+timestamp, com autorização explícita do proprietário — nunca
+apagar por prefixo genérico, pois pode existir modelo legítimo com nome semelhante.
+
+EXPERIÊNCIA DO USUÁRIO, DESIGN E ACESSIBILIDADE
+===============================================
+
+Pontos positivos observados:
+
+- Home visualmente limpa, hierarquia clara, ações rápidas e explicação local-first;
+- navegação lateral consistente e bom empty state;
+- layout mobile da Home se adapta a 390x844 sem overflow evidente;
+- tema claro/escuro/automático, aria-current e vários status/alertas acessíveis;
+- Agentic split-screen deixa execução, eventos, browser e artefatos visíveis;
+- o produto é honesto ao mostrar NOT_CONFIGURED/BLOCKED_EXTERNAL.
+
+UX-01 — ALTA — idioma do documento está incorreto
+-------------------------------------------------
+
+app/ui/app/index.html:2 usa <html lang="en"> em interface majoritariamente pt-BR. Leitores de tela
+usam pronúncia errada. Alterar para pt-BR e permitir atualização quando houver i18n real.
+
+UX-02 — ALTA — select-none impede copiar conteúdo
+--------------------------------------------------
+
+Chat.tsx:241/245 e Settings.tsx:430/451 aplicam select-none em grandes regiões. O usuário não
+consegue selecionar resposta, endereço ou configuração. Remover do conteúdo e aplicar somente em
+ícones/controles onde necessário.
+
+UX-03 — ALTA — botão principal do chat não tem nome acessível
+------------------------------------------------------------
+
+ChatForm.tsx:1013-1027 renderiza botão só com SVG e sem aria-label. O rótulo deve mudar entre
+"Enviar mensagem" e "Cancelar geração". O botão de anexo também deve ter aria-label, não apenas title.
+
+UX-04 — ALTA — modais da sidebar não têm semântica/foco
+------------------------------------------------------
+
+AppSidebar.tsx:518-568 cria overlays de atalhos e saída sem role=dialog, aria-modal, associação de
+título, foco inicial, focus trap, Escape e retorno de foco. A notificação usa role=status no contêiner
+interativo. Migrar para componente dialog acessível único.
+
+UX-05 — MÉDIA — interface mistura português e inglês
+-----------------------------------------------------
+
+Exemplos confirmados:
+
+- ChatForm: "Press ESC to cancel editing", "This model does not support images", "Send a message";
+- Settings: "Discard unapplied app model changes?", "Manage", "Sign out", "Cloud";
+- tela Agentic e Settings misturam nomes técnicos sem explicação.
+
+Definir glossário e catálogo de mensagens pt-BR; não espalhar strings nos componentes.
+
+UX-06 — MÉDIA — switch de memória é decorativo
+------------------------------------------------
+
+Settings.tsx:862 usa checked={true} sem persistência real. Um controle que parece ativo mas não
+altera comportamento quebra confiança. Conectar a configuração real ou apresentar como "Em breve"
+sem switch interativo.
+
+UX-07 — MÉDIA — nomes e onboarding estão quebrados por renomes
+---------------------------------------------------------------
+
+Convivem Hades, Ollama Full, Ollama Classe A+ e Ollama DZ23 Agentic Platform. README/guia/handoff
+usam binários e diretórios incompatíveis. docs/quickstart.mdx ainda ensina o Ollama upstream.
+
+Correção: escolher "Hades" como marca e um único nome técnico de binário/instalador; criar tabela
+de nomes legados; fazer teste de documentação que executa o quickstart em workspace limpo.
+
+UX-08 — MELHORIAS RECOMENDADAS
+------------------------------
+
+- Windows-first quickstart de 10 minutos, sem presumir experiência com terminal;
+- FAQ: RAM/VRAM, privacidade, nuvem, modelo local, portas e significado de "não configurado";
+- glossário MCP/RBAC/RLS/DLQ/OTLP/PKCE/CAS;
+- tabela "funciona hoje / exige configuração / experimental / futuro";
+- skip-link, landmarks e h1 consistente;
+- tabs e toggles com semântica ARIA correta;
+- modo escuro equivalente no mobile;
+- teste automatizado axe-core e navegação completa só por teclado;
+- orçamento de performance e lazy loading por rota.
+
+UX-09 — ALTA — menu lateral é cortado e disputa rolagem com o histórico
+--------------------------------------------------------------------------
+
+Evidência visual do usuário: em viewport de baixa altura, a sidebar ocupa mais que a tela; o perfil,
+o controle de tema e o histórico ficam espremidos, a barra de rolagem passa sobre controles e parte do
+menu deixa de ser alcançável com clareza.
+
+Causa confirmada no código:
+
+- AppSidebar.tsx:220 cria AppNavigation como coluna sem min-h-0, flex-1 ou região interna de rolagem;
+- AppSidebar.tsx:380 usa mt-auto no perfil, mas o contêiner cresce pela altura do conteúdo, portanto
+  esse "rodapé" não fica realmente fixo;
+- ChatSidebar.tsx:239-247 coloca todo AppNavigation em um header não limitado e depois cria um segundo
+  painel overflow-y-auto para o histórico. As duas regiões competem pela mesma altura;
+- AppSidebar.tsx:575 adiciona outro overflow-y-auto quando a mesma navegação é usada fora do chat.
+
+Correção recomendada: reorganizar a sidebar em grid com linhas `auto minmax(0,1fr) auto`: cabeçalho
+fixo, uma única região central rolável e perfil/ações fixos no rodapé. No ChatSidebar, retirar
+AppNavigation do header ilimitado e definir explicitamente quanto cabe ao menu e ao histórico, sem
+scroll aninhado. Traduzir também "Today", "This week" e "Older".
+
+Testes de aceite: 1366x768, 1280x720, 1024x768 e 390x844; todas as opções, perfil, tema e último chat
+devem ser alcançáveis por mouse, touch e teclado, sem sobreposição nem scrollbar em cima de botão.
+
+UX-10 — ALTA — modelos cloud aparecem como locais e a IA local parece ter sumido
+--------------------------------------------------------------------------------
+
+Evidência visual do usuário: o grupo "MODELOS LOCAIS" lista `glm-5.3-flash:cloud`, `glm-5.3:cloud`,
+`deepseek-v4.1-flash:cloud` e `gemma4:31b-cloud`, enquanto o seletor ativo usa
+`nemotron-3-super:cloud`. Isso torna impossível distinguir modelo instalado, modelo disponível para
+download e execução remota; para o usuário, a IA local desapareceu.
+
+Causa confirmada: modelPickerUtils.ts:3-8 só reconhece cloud/remoto quando `kind === "remote"`.
+Qualquer registro sem esse kind cai no retorno padrão "Modelos locais", mesmo que o nome termine em
+`:cloud` ou `-cloud`. ModelPicker.tsx:252 e 343-355 usa essa classificação diretamente. Os testes em
+ModelPicker.test.ts cobrem apenas os kinds ideais e não cobrem payload inconsistente/cloud por nome.
+
+Correção recomendada:
+
+1. Corrigir o contrato do catálogo no backend para sempre publicar `source` explícito (`local`,
+   `ollama_cloud`, `provider`, `cli`) e os estados separados `installed`, `pullable` e `available`.
+2. Como defesa no frontend, classificar `:cloud`/`-cloud` como "Ollama Cloud" quando o payload legado
+   vier sem kind correto; nunca usar "local" como fallback desconhecido.
+3. Mostrar somente modelos realmente instalados em "Modelos locais"; criar "Disponíveis para baixar"
+   para itens com ícone de download e um empty state "Nenhum modelo local instalado" com ação guiada.
+4. Se o modelo selecionado desaparecer do catálogo, avisar por toast e pedir escolha/fazer fallback
+   explícito — nunca trocar silenciosamente para cloud.
+5. Adicionar testes de contrato e unitários para os nomes da captura, catálogo vazio e modelo removido.
+
+UX-11 — ALTA — “Construir agora” envia parâmetros incompatíveis e abre console genérico
+----------------------------------------------------------------------------------------
+
+Evidência visual do usuário: os dois botões "Construir agora" de Criações abrem a página genérica
+"Mission Console", sem iniciar nem pré-preencher a construção esperada.
+
+Causa confirmada e reproduzível no código:
+
+- CreationsPage.tsx:111-118 e 159-166 navegam para `/agentic` com `auto_run` e `prompt`;
+- AgenticConsole.tsx:109-115 procura `autorun` e `objective`, nomes diferentes;
+- como `objective` não existe, AgenticConsole.tsx:119-130 carrega a última missão ou permanece no
+  formulário genérico. Portanto, o CTA não pode cumprir o que promete.
+
+Correção mínima: unificar o contrato de query (`objective` e `autorun`) com um schema tipado e teste de
+navegação end-to-end. Correção de produto preferível: levar "Construir agora" a `/studio` ou a uma rota
+dedicada `/builder/new`, com template e intenção preservados; reservar o Mission Console para a ação
+explicitamente nomeada "Criar missão avançada". Não iniciar uma missão com escrita automaticamente sem
+mostrar projeto, modelo, capacidades e confirmação.
+
+Teste de aceite: clicar nos dois CTAs deve abrir o construtor correto, exibir o prompt esperado, manter
+o contexto ao voltar e produzir uma criação visível em "Criações"; nenhum clique deve apenas mostrar o
+Mission Console vazio.
+
+UX-12 — ALTA — “Computadores” anuncia recursos que estão hardcoded como desabilitados
+-------------------------------------------------------------------------------------
+
+Evidência visual do usuário: "Criar computador na nuvem", "Conectar meu computador" e "Controlar pelo
+seu telefone" aparecem como "não configurado" e não executam nenhuma ação.
+
+Causa confirmada: EndpointPage.tsx:101-109, 157-167 e 201-218 define literalmente `disabled` nos quatro
+botões (incluindo "Acesso remoto"). Não existe checagem dinâmica de capacidade nem fluxo de setup; o
+estado não depende da configuração do usuário. A evidência versionada
+docs/evidencias/browser-console-audit-night-t2.json já registrava os mesmos botões desabilitados em
+desktop e mobile. Logo, não é falha temporária do computador do usuário: a versão auditada não
+implementa essas ações.
+
+Correção recomendada: até a função existir, remover CTAs primários e apresentar uma seção transparente
+"Ainda não disponível nesta versão", sem induzir tentativa. Se o recurso já tiver backend, substituir
+`disabled` por capability discovery real, disponibilizar assistente de pareamento/configuração, linkar
+documentação e exibir o requisito exato ausente. O botão "Configurações" precisa levar diretamente à
+configuração que desbloqueia a capacidade, não apenas a uma âncora informativa.
+
+Teste de aceite: cada CTA visível deve ou concluir um fluxo real ou abrir instruções acionáveis; testes
+E2E devem cobrir capability disponível, ausente e erro de pareamento em desktop e mobile.
+
+UX-13 — ALTA — Configurações sobrepõe conteúdo e corta ações horizontalmente
+----------------------------------------------------------------------------
+
+Evidência visual do usuário: na aba Geral, a camada "Modelos locais" cobre os cards "Motor de missões"
+e "Fila de execução" logo abaixo da barra de abas. A lista ocupa largura maior que a viewport e os botões
+"Usar" ficam cortados na borda direita. Isso impede leitura e operação normal da tela.
+
+Há também evidência de drift entre instalação e checkout: as strings da camada capturada não existem no
+commit auditado, e a API da instalação informa versão `0.2.0-rc.1-241-ge97a01a`, enquanto o checkout
+auditado está em `ef9c21d2`; o SHA `e97a01a` não existe no histórico local. Portanto, a correção precisa
+primeiro reproduzir no código-fonte exato usado para gerar o instalador, em vez de ajustar às cegas um
+componente diferente.
+
+Correção recomendada: tornar o seletor um dialog/section no fluxo com `max-width: 100%`, `min-width: 0`,
+`overflow-x: hidden` no contêiner e linhas responsivas (`grid-template-columns: minmax(0,1fr) auto`). Se
+for modal, usar backdrop, portal, z-index documentado, foco preso e rolagem própria com altura limitada;
+se for seção, remover position fixed/absolute/sticky que a retire do fluxo. A barra SettingsTabs deve
+ter uma única política sticky e o conteúdo precisa reservar exatamente sua altura. Botões devem quebrar
+para linha inferior em telas estreitas, nunca ficar fora da viewport.
+
+Teste de aceite: em 1920x1080, 1366x768, 1280x720 e 390x844, nenhum card pode ficar atrás da barra/camada,
+não pode haver overflow horizontal e todos os botões "Usar" devem estar inteiros e alcançáveis. Adicionar
+teste visual de regressão e assertivas de `scrollWidth <= clientWidth`.
+
+RESULTADOS DOS TESTES EXECUTADOS
+===============================
+
+PASSOU:
+
+- npx tsc -b: passou;
+- npx vitest run: 38 arquivos, 261 testes, 261 aprovados;
+- npm run lint: 0 erros, 2 warnings;
+- npm run build: passou;
+- node scripts/verify-contracts.mjs: passou para todas as chamadas frontend detectadas;
+- npm audit --omit=dev: 0 vulnerabilidades de produção;
+- git diff --check: sem erro de whitespace; apenas aviso de conversão LF/CRLF no MEMORIA.md existente.
+
+FALHOU OU FICOU PARCIAL:
+
+- go test ./internal/agent ./internal/multillm ./server: falhou;
+  * internal/agent: Playwright Python não instalado no ambiente do teste;
+  * internal/multillm: fixture DPAPI não carregou Microsoft.PowerShell.Security;
+  * server: falhas em catalog scope/MCP path, string Windows com escape e autorização WhatsApp;
+  * efeito colateral crítico: 77 fixtures foram persistidos no `OLLAMA_MODELS` real (ver Q-11);
+- go vet ./...: falhou com alertas unsafe/reflect e undefined: gelu em mlx/act_test.go;
+- npm audit completo: 18 alertas somente em dependências de desenvolvimento/teste;
+- gitleaks: não instalado;
+- govulncheck: não instalado;
+- nova leitura de console no navegador: conexão CDP expirou; a evidência versionada de 01/10 registra zero erros.
+
+Os erros de ambiente não devem ser confundidos com regressão, mas a suíte deve ser hermética e
+reproduzível no Windows suportado. Os quatro testes de server que falharam precisam de triagem real.
+
+CONTROLES FORTES QUE DEVEM SER PRESERVADOS
+==========================================
+
+- Egress agent com validação de IP, host pinning, bloqueio de downgrade e headers sensíveis removidos;
+- limites de corpo em vários caminhos e helper ReadBoundedBody;
+- RLS Postgres com FORCE RLS, tenant context HMAC e papéis NOBYPASSRLS;
+- approvals de deployment vinculadas a organização/builder/provider/target/hash/nonce/expiração;
+- sandbox Linux strict com namespaces/cgroup/seccomp/rlimits em sua ferramenta própria;
+- DLP/redaction e logs de decisão de egress;
+- archive/import com proteções de traversal/expansão nos caminhos revisados;
+- OAuth state/PKCE/nonce e assinatura SAML são validados; o defeito está na retenção/vinculação;
+- companion valida origin, token hasheado e DeviceID; o defeito está em TLS/proxy e limites;
+- front-end tem boa suíte unitária e contrato estático frontend/backend;
+- projeto documenta com honestidade recursos não configurados ou não prontos.
+
+PLANO DE CORREÇÃO PRIORIZADO
+============================
+
+P0 — 0 a 48 horas — bloquear exposição/release
+------------------------------------------------
+
+1. Desabilitar project.test.run e custom_command em builds expostos até existir sandbox obrigatório.
+2. Desabilitar POST /missions/:id/merge ou exigir approval vinculada ao diff.
+3. Desabilitar auto-provisionamento SSO por e-mail para contas existentes.
+4. Impedir multi-tenant no WhatsApp e Supervisor enquanto o estado for global.
+5. Corrigir release-gate e o nome do instalador; executar dry-run sem publicação.
+6. Aplicar limite de corpo no webhook WhatsApp.
+7. Não expor companion atrás de proxy não confiável; exigir TLS real.
+8. Isolar imediatamente `OLLAMA_MODELS` em toda suíte e impedir testes de escrever no store real.
+
+Critério de saída P0: testes negativos automatizados para cada bypass e revisão humana obrigatória.
+
+P1 — até 7 dias — identidade, tenants e disponibilidade
+--------------------------------------------------------
+
+1. Implementar tabela de identidades federadas e migração de colisões.
+2. Corrigir MFA throttling e quotas de OAuth/SAML states.
+3. Particionar WhatsApp, Supervisor e audit de egress por organização.
+4. Adicionar quotas e heartbeat para SSE/WebSocket.
+5. Corrigir 403/404 e safeConfig cross-tenant.
+6. Reativar errcheck/govet de forma incremental.
+7. Pinar Actions de terceiros por SHA e proteger provider-smoke com environment.
+8. Corrigir o contrato do CTA "Construir agora" e a classificação local/cloud do seletor de modelos.
+9. Reestruturar a sidebar para uma única rolagem controlada e validar viewports de baixa altura.
+10. Reproduzir UX-13 no código exato do instalador e corrigir sobreposição/overflow de Configurações.
+
+Critério de saída P1: matriz automatizada com dois tenants e testes de ID próprio/estrangeiro/inexistente.
+
+P2 — 8 a 30 dias — qualidade, adoção e arquitetura
+---------------------------------------------------
+
+1. Consolidar nome, quickstart Windows-first e documentação pt-BR.
+2. Corrigir acessibilidade crítica e adicionar axe/teclado ao CI.
+3. Atualizar dependências de desenvolvimento e adicionar dependency review/gitleaks/govulncheck.
+4. Modularizar arquivos monolíticos e unificar política de egress.
+5. Substituir heurísticas de substring do supervisor por policy/RiskClass.
+6. Code splitting e orçamento de performance.
+7. Tornar a suíte Go hermética no Windows e separar testes que exigem ferramentas externas.
+8. Resolver a divergência recovery/main por PR revisado e sincronizar ruleset real.
+9. Substituir placeholders desabilitados de "Computadores" por capability discovery + setup real ou
+   removê-los da interface até a funcionalidade existir.
+
+CHECKLIST DE ACEITE PARA PRODUÇÃO
+================================
+
+[ ] Nenhuma ferramenta executa código do projeto no host sem sandbox obrigatório.
+[ ] Merge agentic exige aprovação one-shot vinculada ao SHA do diff.
+[ ] Identidade federada é vinculada por issuer+subject, nunca somente por e-mail.
+[ ] Todos os stores e serviços mutáveis possuem organization_id e testes de dois tenants.
+[ ] Endpoints públicos têm limites de corpo, taxa, cardinalidade e concorrência.
+[ ] Forwarded headers só são aceitos de proxies confiáveis.
+[ ] Release dry-run gera e valida todos os artefatos com o mesmo nome.
+[ ] Release depende do manifest Docker multi-arch concluído.
+[ ] Branch principal exige revisão humana/CODEOWNERS e checks corretos.
+[ ] go test, go vet, lint, tipos, unit tests, build, govulncheck, gitleaks e audits passam.
+[ ] npm audit de produção continua zerado; dívida dev está aceita ou corrigida.
+[ ] Testes de acessibilidade e teclado passam em desktop e 390x844.
+[ ] Sidebar permanece integralmente navegável em 1280x720 e 390x844, sem controles sobrepostos.
+[ ] Seletor nunca rotula modelos `:cloud`/`-cloud` como locais e explica quando não há modelo instalado.
+[ ] "Construir agora" abre o construtor com intenção preservada, não um Mission Console vazio.
+[ ] Nenhum CTA primário é hardcoded como disabled sem setup acionável ou indicação de indisponibilidade.
+[ ] `go test` usa store temporário e deixa `D:\IA\ollama\models` byte a byte inalterado.
+[ ] Configurações não sobrepõe cards nem produz overflow horizontal em nenhuma viewport suportada.
+[ ] Documentação executável instala o Hades, não o Ollama upstream.
+[ ] Threat model e runbook de incidente/revogação de credenciais estão publicados.
+
+ORDEM SUGERIDA DE IMPLEMENTAÇÃO
+===============================
+
+Lote 1: SEC-01/02/03 + testes.
+Lote 2: SEC-04/05/06/07 + migração de identidade.
+Lote 3: SEC-08/09/10 + matriz multi-tenant.
+Lote 4: SEC-11/12/13 + carga/limites.
+Lote 5: CI-01/02/03/04/05 + dry-run de release.
+Lote 6: Q-11 + limpeza assistida do catálogo + teste de não mutação do store real.
+Lote 7: UX-09/10/11/12/13 + testes E2E de navegação, catálogo e viewports.
+Lote 8: UX-01/02/03/04/05/06 + axe/teclado/mobile.
+Lote 9: documentação/nomenclatura, arquitetura e dependências.
+
+Cada lote deve ser um PR separado, com rollback claro e sem misturar refatoração cosmética com
+correção de segurança. Depois dos lotes 1 a 4, executar nova auditoria de segurança e testes de
+isolamento em ambiente com dois tenants reais.
+
+CONCLUSÃO
+=========
+
+O Hades não é um protótipo vazio: há bastante engenharia boa, controles reais e uma interface
+coerente. O risco atual vem de algumas fronteiras onde a implementação não acompanha a promessa do
+produto: "sandbox" que é apenas ambiente, aprovação que a rota contorna, tenant scope que termina em
+serviços globais, identidade SSO reduzida a e-mail e testes que escrevem no store real. As capturas do
+usuário também revelaram caminhos centrais que não cumprem a ação prometida e um instalador diferente
+do checkout auditado. Essas correções são objetivas e testáveis.
+
+Nenhum código de produção foi alterado durante esta auditoria. Não houve push, deploy ou release.
+Contudo, a execução de testes herdou `OLLAMA_MODELS` e persistiu 77 fixtures no catálogo local real;
+isso é registrado como Q-11 e não foi ocultado nem limpo sem autorização. Este relatório foi criado no
+working tree local para orientar a recuperação, as correções e uma auditoria de reteste.

@@ -39,6 +39,14 @@ type Embedder interface {
 // but tenant-owned records must never be visible through the local scope.
 const LocalOrganizationID = "local"
 
+// LocalActorID is the synthetic actor the unauthenticated single-user API
+// attributes every request to (see agentActorID in the server package). In
+// this mode there is exactly one human, who is also the approver, so the
+// separation-of-duties rule that forbids a requester from approving their own
+// decision is relaxed for this actor only — a real, named actor (enterprise or
+// any authenticated user) is still held to separation of duties.
+const LocalActorID = "local"
+
 func scheduleOwnedByOrganization(owner, organizationID string) bool {
 	owner = strings.TrimSpace(owner)
 	organizationID = strings.TrimSpace(organizationID)
@@ -320,6 +328,68 @@ func (s *ContextStore) AddMemoryContext(ctx context.Context, memory Memory) (Mem
 func (s *ContextStore) SearchMemories(projectID, query string, limit int) []Memory {
 	result, _ := s.SearchMemoriesContext(context.Background(), projectID, query, limit)
 	return result
+}
+
+// ScoredMemory pairs a memory with its relevance score for a query. The Source
+// field of the memory carries the provenance (file/URL) used for citation.
+type ScoredMemory struct {
+	Memory Memory  `json:"memory"`
+	Score  float64 `json:"score"`
+}
+
+// RetrieveRelevant is the retrieval half of RAG: it returns the memories whose
+// semantic similarity to the query is at least minScore, most relevant first,
+// together with their scores. By gating on minScore, a query with no relevant
+// source yields no results, so the answer layer can honestly say it does not
+// know instead of hallucinating from weak matches. minScore <= 0 disables the
+// gate (returns the top matches regardless of score).
+func (s *ContextStore) RetrieveRelevant(ctx context.Context, projectID, query string, limit int, minScore float64) ([]ScoredMemory, error) {
+	query = strings.ToLower(strings.TrimSpace(query))
+	if limit <= 0 || limit > 100 {
+		limit = 20
+	}
+	s.mu.RLock()
+	embedder := s.embedder
+	memories := append([]Memory(nil), s.memories[projectID]...)
+	s.mu.RUnlock()
+
+	var queryVector []float32
+	var err error
+	if embedder != nil && query != "" {
+		queryVector, err = embedder.Embed(ctx, query)
+		if err != nil {
+			return nil, fmt.Errorf("embed query: %w", err)
+		}
+	}
+
+	scored := make([]ScoredMemory, 0, len(memories))
+	for _, memory := range memories {
+		var score float64
+		switch {
+		case len(queryVector) > 0 && len(memory.Embedding) > 0:
+			score = cosineSimilarity(queryVector, memory.Embedding)
+			if score < minScore {
+				continue
+			}
+		case query == "" || strings.Contains(strings.ToLower(memory.Content), query) || strings.Contains(strings.ToLower(memory.Kind), query):
+			// Exact textual match (or no query) is treated as fully relevant so
+			// retrieval still works before any embeddings are computed.
+			score = 1
+		default:
+			continue
+		}
+		scored = append(scored, ScoredMemory{Memory: memory, Score: score})
+	}
+	sort.SliceStable(scored, func(i, j int) bool {
+		if scored[i].Score == scored[j].Score {
+			return scored[i].Memory.CreatedAt.After(scored[j].Memory.CreatedAt)
+		}
+		return scored[i].Score > scored[j].Score
+	})
+	if len(scored) > limit {
+		scored = scored[:limit]
+	}
+	return scored, nil
 }
 
 func (s *ContextStore) SearchMemoriesContext(ctx context.Context, projectID, query string, limit int) ([]Memory, error) {
@@ -677,6 +747,9 @@ func (s *ContextStore) CreateSchedule(schedule Schedule) (Schedule, error) {
 	if schedule.ID == "" {
 		schedule.ID = "sch_" + uuid.NewString()
 	}
+	if !validSnapshotID(schedule.ID) {
+		return Schedule{}, errors.New("schedule id contains invalid path characters")
+	}
 	now := time.Now().UTC()
 	if schedule.NextRunAt.IsZero() || schedule.NextRunAt.Before(now) {
 		schedule.NextRunAt = now.Add(time.Duration(schedule.IntervalSeconds) * time.Second)
@@ -700,9 +773,13 @@ func (s *ContextStore) CreateSchedule(schedule Schedule) (Schedule, error) {
 }
 
 func (s *ContextStore) GetSchedule(id string) (Schedule, error) {
+	id = strings.TrimSpace(id)
+	if !validSnapshotID(id) {
+		return Schedule{}, os.ErrNotExist
+	}
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	schedule, ok := s.schedules[strings.TrimSpace(id)]
+	schedule, ok := s.schedules[id]
 	if !ok {
 		return Schedule{}, os.ErrNotExist
 	}
@@ -760,6 +837,9 @@ func (s *ContextStore) updateScheduleForOrganization(organizationID, id string, 
 	if id == "" {
 		return Schedule{}, errors.New("schedule id is required")
 	}
+	if !validSnapshotID(id) {
+		return Schedule{}, errors.New("schedule id contains invalid path characters")
+	}
 	if strings.TrimSpace(schedule.Objective) == "" {
 		return Schedule{}, errors.New("schedule objective is required")
 	}
@@ -805,6 +885,9 @@ func (s *ContextStore) deleteScheduleForOrganization(organizationID, id string, 
 	id = strings.TrimSpace(id)
 	if id == "" {
 		return errors.New("schedule id is required")
+	}
+	if !validSnapshotID(id) {
+		return errors.New("schedule id contains invalid path characters")
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()

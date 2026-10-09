@@ -95,6 +95,84 @@ func NewSupervisor(runtime *Runtime, config SupervisorConfig) *Supervisor {
 	}
 }
 
+// companyCycleRisk classifies the action a Company OS cycle intends to take.
+// Explicit risk is authoritative; recognized sensitive intents are conservative
+// by default and must pass the approval ledger before a mission is created.
+func companyCycleRisk(cycle CompanyCycle) RiskClass {
+	if cycle.Risk != "" {
+		return effectiveRisk(cycle.Risk)
+	}
+	intent := companyCycleIntentTokens(cycle)
+	if containsAnyCompanyIntent(intent, "spend", "budget", "buy", "purchase", "transfer", "transferir", "acquire", "adquirir", "comprar", "compras", "pagar", "pagamento", "investir", "contratar", "anuncios", "anúncios", "ads") {
+		return RiskDestructive
+	}
+	if containsAnyCompanyIntent(intent, "publish", "post", "deploy", "publicar", "postar", "lancar", "lançar", "lancar", "lançar", "send_external", "email_blast", "disparar", "enviar") {
+		return RiskExternalSideEffect
+	}
+	return RiskRead
+}
+
+func companyCycleIntentTokens(cycle CompanyCycle) map[string]struct{} {
+	combined := strings.ToLower(strings.TrimSpace(cycle.Name + " " + cycle.Objective))
+	for _, separator := range []string{"-", "_", "/", ":", ",", ".", "(", ")", "[", "]"} {
+		combined = strings.ReplaceAll(combined, separator, " ")
+	}
+	// Explicit tokens avoid substring matches such as "adsorption" or
+	// "deployment-notes" while retaining conservative coverage for commands.
+	result := make(map[string]struct{})
+	for _, token := range strings.Fields(combined) {
+		result[token] = struct{}{}
+	}
+	return result
+}
+
+func containsAnyCompanyIntent(tokens map[string]struct{}, values ...string) bool {
+	for _, value := range values {
+		if _, ok := tokens[value]; ok {
+			return true
+		}
+	}
+	return false
+}
+
+// externalIntegrationKeys are connector identifiers whose cycles require live
+// credentials and therefore must be blocked until the integration is actually
+// connected — an approval must never imply an unavailable integration is ready.
+var externalIntegrationKeys = []string{
+	"tiktok_shop",
+	"meta_ads",
+	"shopify_sync",
+	"whatsapp_live",
+}
+
+// cycleRequestsExternalIntegration reports whether a cycle intends to drive an
+// external connector. The structured Integrations field is authoritative; when
+// it is empty (cycles persisted before the field existed) it falls back to a
+// conservative scan of the free-text name/objective.
+func cycleRequestsExternalIntegration(cycle CompanyCycle) bool {
+	if len(cycle.Integrations) > 0 {
+		for _, declared := range cycle.Integrations {
+			normalized := strings.ToLower(strings.TrimSpace(declared))
+			for _, key := range externalIntegrationKeys {
+				if normalized == key {
+					return true
+				}
+			}
+		}
+		// A cycle that declared its integrations explicitly and named none of
+		// the external connectors is trusted: do not second-guess it with a
+		// fragile free-text scan.
+		return false
+	}
+	combined := strings.ToLower(strings.TrimSpace(cycle.Name + " " + cycle.Objective))
+	for _, key := range externalIntegrationKeys {
+		if strings.Contains(combined, key) {
+			return true
+		}
+	}
+	return false
+}
+
 func (s *Supervisor) Config() SupervisorConfig {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -268,22 +346,20 @@ func (s *Supervisor) Tick(ctx context.Context, now time.Time) (SupervisorTickRes
 				}
 
 				// FREIOS HITL OBRIGATÓRIOS: Check for risky actions before executing
-				objLower := strings.ToLower(cycle.Objective)
-				nameLower := strings.ToLower(cycle.Name)
-				combinedText := objLower + " " + nameLower
+				cycleRisk := companyCycleRisk(cycle)
 
-				// Risk Condition 1: Financial spend / budget allocation
-				isSpendRisk := strings.Contains(combinedText, "spend") ||
-					strings.Contains(combinedText, "budget") ||
-					strings.Contains(combinedText, "buy") ||
-					strings.Contains(combinedText, "comprar") ||
-					strings.Contains(combinedText, "pagar") ||
-					strings.Contains(combinedText, "investir") ||
-					strings.Contains(combinedText, "contratar") ||
-					strings.Contains(combinedText, "anúncios") ||
-					strings.Contains(combinedText, "ads")
+				// Missing credentials are blocked before approval: an approval
+				// must never imply that an unavailable integration is connected.
+				if cycleRequestsExternalIntegration(cycle) {
+					result.BlockedExternalActions++
+					nextRun := now.Add(time.Hour)
+					_, _ = s.runtime.company.UpdateCycleRun(company.ID, cycle.ID, now, nextRun)
+					continue
+				}
 
-				if isSpendRisk && s.config.RequireApprovalRisk {
+				// Approval is mandatory for every non-read risk. The config flag
+				// cannot disable this safety boundary.
+				if cycleRisk == RiskDestructive {
 					approval := CompanyApproval{
 						ID:             "appr_" + uuid.NewString()[:8],
 						CompanyID:      company.ID,
@@ -291,29 +367,22 @@ func (s *Supervisor) Tick(ctx context.Context, now time.Time) (SupervisorTickRes
 						ResourceType:   "cycle_action",
 						ResourceID:     cycle.ID,
 						Policy:         "budget_spend",
+						Nonce:          uuid.NewString(),
 						Status:         CompanyApprovalPending,
 						Reason:         fmt.Sprintf("Ação de gasto financeiro detectada pelo Supervisor (%s). Requer aprovação HITL prévia.", cycle.Name),
 						CreatedAt:      now,
 						UpdatedAt:      now,
 					}
+					expiresAt := now.Add(15 * time.Minute)
+					approval.ExpiresAt = &expiresAt
 					_, _ = s.runtime.company.AddApproval(company.ID, approval)
 					result.ApprovalsCreated++
-
-					// Postpone next cycle check so it does not loop infinitely
 					nextRun := now.Add(time.Hour)
 					_, _ = s.runtime.company.UpdateCycleRun(company.ID, cycle.ID, now, nextRun)
 					continue
 				}
 
-				// Risk Condition 2: External publishing / message blasting
-				isPublishRisk := strings.Contains(combinedText, "publish") ||
-					strings.Contains(combinedText, "deploy") ||
-					strings.Contains(combinedText, "publicar") ||
-					strings.Contains(combinedText, "send_external") ||
-					strings.Contains(combinedText, "email_blast") ||
-					strings.Contains(combinedText, "disparar")
-
-				if isPublishRisk && s.config.RequireApprovalRisk {
+				if cycleRisk == RiskExternalSideEffect {
 					approval := CompanyApproval{
 						ID:             "appr_" + uuid.NewString()[:8],
 						CompanyID:      company.ID,
@@ -321,28 +390,16 @@ func (s *Supervisor) Tick(ctx context.Context, now time.Time) (SupervisorTickRes
 						ResourceType:   "cycle_action",
 						ResourceID:     cycle.ID,
 						Policy:         "external_publish",
+						Nonce:          uuid.NewString(),
 						Status:         CompanyApprovalPending,
 						Reason:         fmt.Sprintf("Ação de publicação/envio externo detectada pelo Supervisor (%s). Requer aprovação HITL prévia.", cycle.Name),
 						CreatedAt:      now,
 						UpdatedAt:      now,
 					}
+					expiresAt := now.Add(15 * time.Minute)
+					approval.ExpiresAt = &expiresAt
 					_, _ = s.runtime.company.AddApproval(company.ID, approval)
 					result.ApprovalsCreated++
-
-					nextRun := now.Add(time.Hour)
-					_, _ = s.runtime.company.UpdateCycleRun(company.ID, cycle.ID, now, nextRun)
-					continue
-				}
-
-				// Honestidade: Missing external credentials -> BLOCKED_EXTERNAL
-				isExternalIntegration := strings.Contains(combinedText, "tiktok_shop") ||
-					strings.Contains(combinedText, "meta_ads") ||
-					strings.Contains(combinedText, "shopify_sync") ||
-					strings.Contains(combinedText, "whatsapp_live")
-
-				if isExternalIntegration {
-					// External credentials missing: mark honest status BLOCKED_EXTERNAL
-					result.BlockedExternalActions++
 					nextRun := now.Add(time.Hour)
 					_, _ = s.runtime.company.UpdateCycleRun(company.ID, cycle.ID, now, nextRun)
 					continue

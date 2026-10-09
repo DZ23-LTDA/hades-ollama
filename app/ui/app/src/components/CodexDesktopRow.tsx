@@ -1,4 +1,5 @@
 import { CodexConnectedIntro } from "./CodexConnectedIntro";
+import { confirmDialog } from "@/lib/confirmDialog";
 import type { IntegrationStatus } from "@/api";
 import { INTEGRATION_ICONS } from "@/lib/launchCommands";
 import type {
@@ -20,25 +21,25 @@ const acknowledgmentKey = ["codex-desktop-acknowledgment"];
 const connectionProgress = {
   idle: null,
   installing: {
-    label: "Downloading…",
-    description: "Ollama is downloading the ChatGPT installer…",
+    label: "Baixando…",
+    description: "O Hades está baixando o instalador do ChatGPT…",
   },
   "waiting-for-install": {
-    label: "Finish installing…",
+    label: "Conclua a instalação…",
     description:
-      "Finish installing ChatGPT. Ollama will connect it automatically.",
+      "Conclua a instalação do ChatGPT. O Hades vai conectá-lo automaticamente.",
   },
   connecting: {
-    label: "Connecting…",
-    description: "Connecting ChatGPT to Ollama…",
+    label: "Conectando…",
+    description: "Conectando o ChatGPT ao Hades…",
   },
   saving: {
-    label: "Saving…",
-    description: "Saving your progress…",
+    label: "Salvando…",
+    description: "Salvando seu progresso…",
   },
   disconnecting: {
-    label: "Disconnecting…",
-    description: "Restoring ChatGPT’s usual connection…",
+    label: "Desconectando…",
+    description: "Restaurando a conexão normal do ChatGPT…",
   },
 } as const;
 
@@ -81,7 +82,7 @@ function codexDesktopDescription(
 ): string {
   if (!status?.connected) return defaultDescription;
   const requestCount = status.requests ?? 0;
-  return `Connected to Ollama · ${requestCount} ${requestCount === 1 ? "request" : "requests"} this session`;
+  return `Conectado ao Hades · ${requestCount} ${requestCount === 1 ? "requisição" : "requisições"} nesta sessão`;
 }
 
 export function CodexDesktopRow({
@@ -186,7 +187,7 @@ export function CodexDesktopRow({
       setNotice(null);
     } catch {
       if (isCurrent())
-        setError("Ollama could not read the ChatGPT connection status.");
+        setError("O Hades não conseguiu ler o status da conexão com o ChatGPT.");
     }
   }, []);
 
@@ -255,7 +256,7 @@ export function CodexDesktopRow({
 
         if (next.running) {
           setError(
-            "ChatGPT is installed. Click Connect to restart it with Ollama models.",
+            "O ChatGPT está instalado. Clique em Conectar para reiniciá-lo com os modelos do Hades.",
           );
           return;
         }
@@ -271,19 +272,19 @@ export function CodexDesktopRow({
         setStatus(result.status);
         if (result.restartConfirmationRequired) {
           setError(
-            "ChatGPT is installed. Click Connect to restart it with Ollama models.",
+            "O ChatGPT está instalado. Clique em Conectar para reiniciá-lo com os modelos do Hades.",
           );
         } else if (result.error || !result.status.connected) {
           setError(
-            result.error || "Ollama could not add its models to ChatGPT.",
+            result.error || "O Hades não conseguiu adicionar seus modelos ao ChatGPT.",
           );
         } else {
-          setNotice("Ollama models added alongside Codex models");
+          setNotice("Modelos do Hades adicionados ao lado dos modelos do Codex");
         }
       } catch {
         if (!mounted.current || (!active && !completing)) return;
         setPhase("idle");
-        setError("Ollama could not finish connecting ChatGPT.");
+        setError("O Hades não conseguiu concluir a conexão com o ChatGPT.");
       } finally {
         checking = false;
         if (completing) finishOperation();
@@ -296,7 +297,7 @@ export function CodexDesktopRow({
       if (!active || completing) return;
       active = false;
       setPhase("idle");
-      setError("ChatGPT installation wasn’t detected. Try again.");
+      setError("A instalação do ChatGPT não foi detectada. Tente de novo.");
     }, CODEX_DESKTOP_INSTALL_TIMEOUT_MS);
     return () => {
       active = false;
@@ -321,7 +322,7 @@ export function CodexDesktopRow({
   const actionError =
     error ??
     (acknowledgmentFailed
-      ? "Ollama couldn’t save your progress. Please try again."
+      ? "O Hades não conseguiu salvar seu progresso. Tente de novo."
       : null);
   const description =
     actionError ??
@@ -330,8 +331,8 @@ export function CodexDesktopRow({
     codexDesktopDescription(
       status,
       installed
-        ? "Use Ollama models in Codex mode in ChatGPT."
-        : "We’ll download ChatGPT and connect it to Ollama.",
+        ? "Use os modelos do Hades no modo Codex do ChatGPT."
+        : "Vamos baixar o ChatGPT e conectá-lo ao Hades.",
     );
 
   const saveAcknowledgment = async (): Promise<boolean> => {
@@ -378,32 +379,33 @@ export function CodexDesktopRow({
     }
     try {
       if (!window.setCodexDesktopConnected) {
-        setError("The ChatGPT integration is unavailable.");
+        setError("A integração com o ChatGPT está indisponível.");
         return;
       }
       if (enabled && !installed) {
         if (!window.installCodexDesktop || !window.getCodexDesktopStatus) {
-          setError("Ollama could not install ChatGPT.");
+          setError("O Hades não conseguiu instalar o ChatGPT.");
           return;
         }
         const installResult = await window.installCodexDesktop();
         if (!mounted.current) return;
         if (installResult === "opened") finalPhase = "waiting-for-install";
         else if (installResult !== "cancelled")
-          setError("Ollama could not install ChatGPT.");
+          setError("O Hades não conseguiu instalar o ChatGPT.");
         return;
       }
       if (fromIntro || (enabled && !status?.used && !used.current)) {
         if (!window.getCodexDesktopStatus) {
-          setError("Ollama could not read the ChatGPT connection status.");
+          setError("O Hades não conseguiu ler o status da conexão com o ChatGPT.");
           return;
         }
         const liveStatus = await window.getCodexDesktopStatus();
         if (!mounted.current) return;
         setStatus(liveStatus);
         if (liveStatus.running && !restartConfirmed) {
-          restartConfirmed = window.confirm(
+          restartConfirmed = await confirmDialog(
             "Reiniciar ChatGPT para adicionar modelos Ollama? Qualquer tarefa em execução será interrompida.",
+            { confirmLabel: "Reiniciar" },
           );
           if (!restartConfirmed) return;
         }
@@ -424,11 +426,12 @@ export function CodexDesktopRow({
         // Keep focus-driven status refreshes from discarding this operation
         // while the native confirmation dialog temporarily owns focus.
         if (
-          !window.confirm(
+          !(await confirmDialog(
             enabled
               ? "Reiniciar ChatGPT para adicionar modelos Ollama? Qualquer tarefa em execução será interrompida."
               : "Reiniciar ChatGPT para remover modelos Ollama? Qualquer tarefa em execução será interrompida.",
-          ) ||
+            { confirmLabel: "Reiniciar" },
+          )) ||
           !mounted.current
         ) {
           return;
@@ -446,8 +449,8 @@ export function CodexDesktopRow({
       if (result.status.connected !== enabled) {
         setError(
           enabled
-            ? "Ollama could not add its models to ChatGPT."
-            : "Ollama could not remove its models from ChatGPT.",
+            ? "O Hades não conseguiu adicionar seus modelos ao ChatGPT."
+            : "O Hades não conseguiu remover seus modelos do ChatGPT.",
         );
         return;
       }
@@ -456,17 +459,17 @@ export function CodexDesktopRow({
         if (!(await saveAcknowledgment())) return;
       }
       if (enabled) {
-        setNotice("Ollama models added alongside Codex models");
+        setNotice("Modelos do Hades adicionados ao lado dos modelos do Codex");
       } else {
-        setNotice("Ollama models removed · Codex models remain available");
+        setNotice("Modelos do Hades removidos · os modelos do Codex continuam disponíveis");
       }
     } catch {
       setError(
         nextPhase === "installing"
-          ? "Ollama could not install ChatGPT."
+          ? "O Hades não conseguiu instalar o ChatGPT."
           : enabled
-            ? "Ollama could not add its models to ChatGPT."
-            : "Ollama could not remove its models from ChatGPT.",
+            ? "O Hades não conseguiu adicionar seus modelos ao ChatGPT."
+            : "O Hades não conseguiu remover seus modelos do ChatGPT.",
       );
     } finally {
       finishOperation(finalPhase);
@@ -496,12 +499,12 @@ export function CodexDesktopRow({
         {acknowledgmentFailed && (
           <button
             type="button"
-            aria-label="Retry saving progress"
+            aria-label="Tentar salvar o progresso de novo"
             disabled={pending}
             onClick={() => void retryAcknowledgment()}
             className="text-xs font-medium text-neutral-700 hover:underline disabled:cursor-wait disabled:opacity-50 dark:text-neutral-300"
           >
-            Retry
+            Tentar novamente
           </button>
         )}
         <IntegrationConnectButton
@@ -510,19 +513,19 @@ export function CodexDesktopRow({
           progress={statusLabel}
           label={
             showIntro
-              ? "Finish connecting ChatGPT"
+              ? "Concluir a conexão do ChatGPT"
               : connected
-                ? "Remove Ollama models from ChatGPT"
+                ? "Remover os modelos do Hades do ChatGPT"
                 : pending
-                  ? "Connecting ChatGPT"
-                  : "Add Ollama models to ChatGPT"
+                  ? "Conectando ChatGPT"
+                  : "Adicionar os modelos do Hades ao ChatGPT"
           }
           title={
             connected
-              ? "Remove Ollama models"
+              ? "Remover modelos do Hades"
               : installed
-                ? "Add Ollama models"
-                : "Install ChatGPT and add Ollama models"
+                ? "Adicionar modelos do Hades"
+                : "Instalar o ChatGPT e adicionar os modelos do Hades"
           }
           disabled={pending || showIntro}
           onClick={() => void toggleConnection()}

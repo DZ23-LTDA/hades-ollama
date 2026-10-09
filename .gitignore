@@ -3,6 +3,7 @@
 .env
 .venv
 .swp
+.tmp/
 dist
 build
 **/node_modules
@@ -28,3 +29,8 @@ app/ui/app/playwright-report/
 
 # Evidências externas de terceiros (nunca commitar telas do usuário)
 docs/evidencias/manus_*.png
+
+# Scratch local de agentes/IAs (não faz parte do código)
+.manus/
+.work/
+outputs/

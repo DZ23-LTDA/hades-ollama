@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { routeTree } from "./routeTree.gen";
 import { fetchUser } from "./api";
 import { StreamingProvider } from "./contexts/StreamingProvider";
+import { ConfirmHost } from "./lib/confirmDialog";
 import { bootstrapTheme } from "./lib/theme";
 
 // Aplica a preferência de tema salva (Claro/Escuro/Automático) antes do render.
@@ -49,6 +50,7 @@ if (!rootElement.innerHTML) {
       <QueryClientProvider client={queryClient}>
         <StreamingProvider>
           <RouterProvider router={router} />
+          <ConfirmHost />
         </StreamingProvider>
       </QueryClientProvider>
     </StrictMode>,

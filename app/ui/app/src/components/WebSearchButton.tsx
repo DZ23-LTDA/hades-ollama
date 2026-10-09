@@ -13,7 +13,7 @@ export const WebSearchButton = forwardRef<HTMLButtonElement, ButtonProps>(
     return (
       <button
         ref={ref}
-        title={isActive ? "Disable web search" : "Enable web search"}
+        title={isActive ? "Desativar busca na web" : "Ativar busca na web"}
         onClick={onToggle}
         className={`select-none flex items-center justify-center rounded-full h-9 w-9 bg-white dark:bg-neutral-700 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer transition-all whitespace-nowrap border border-transparent ${
           isActive

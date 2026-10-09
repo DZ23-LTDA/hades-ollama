@@ -20,10 +20,13 @@ var browserHelper []byte
 type browserOperatorTool struct{}
 
 func (browserOperatorTool) Descriptor() ToolDescriptor {
-	return ToolDescriptor{Name: "browser.operator", Version: "1", Description: "Operar um browser Playwright em sessão isolada", Risk: RiskExternalSideEffect, RequiresApproval: true, Scopes: []string{"browser:navigate", "browser:files", "browser:takeover"}}
+	return ToolDescriptor{Name: "browser.operator", Version: "1", Description: "Operar um browser Playwright local com destinos de rede validados", Risk: RiskExternalSideEffect, RequiresApproval: true, Scopes: []string{"browser:navigate", "browser:files", "browser:takeover"}}
 }
 
 func (browserOperatorTool) Execute(ctx context.Context, toolContext ToolContext, input map[string]any) (ToolResult, error) {
+	if toolContext.OrganizationID != LocalOrganizationID {
+		return ToolResult{}, errors.New("browser operator is restricted to the single-user local organization until a strict OS and network sandbox is configured")
+	}
 	action := strings.TrimSpace(stringInput(input, "action", ""))
 	if action == "" {
 		return ToolResult{}, errors.New("browser action is required")
@@ -113,16 +116,30 @@ func (browserOperatorTool) Execute(ctx context.Context, toolContext ToolContext,
 
 // browserChildEnv builds the environment for the Playwright helper. The helper
 // navigates hostile content, so inheriting the server environment would hand it
-// provider API keys and database passwords. It gets the minimal passthrough
-// plus the browser subsystem's own non-secret configuration.
+// provider API keys and database passwords. It gets the allowlist shared by
+// every child process (internal/procenv: PATH, Windows/macOS basics, DISPLAY,
+// Playwright cache locations) plus the browser subsystem's own non-secret
+// configuration.
 func browserChildEnv(workspace string) []string {
 	browserEnv := []string{"OLLAMA_AGENT_BROWSER_ROOT=" + filepath.Join(workspace, ".browser")}
-	for _, name := range []string{"OLLAMA_AGENT_BROWSER_ALLOW_PRIVATE", "OLLAMA_AGENT_BROWSER_EXECUTABLE"} {
+	for _, name := range []string{
+		"OLLAMA_AGENT_BROWSER_ALLOW_PRIVATE",
+		"OLLAMA_AGENT_BROWSER_EXECUTABLE",
+		"OLLAMA_AGENT_BROWSER_CDP_URL",
+		"OLLAMA_AGENT_BROWSER_HEADLESS",
+	} {
 		if value, ok := os.LookupEnv(name); ok && strings.TrimSpace(value) != "" {
 			browserEnv = append(browserEnv, name+"="+value)
 		}
 	}
 	return minimalChildEnv(browserEnv...)
+}
+
+// browserProcessEnvironment is the historical recovery-line name for the same
+// environment. It is kept as an alias so the browser environment regression
+// tests that pin either name keep proving one single behavior.
+func browserProcessEnvironment(workspace string) []string {
+	return browserChildEnv(workspace)
 }
 
 func browserPythonExecutable() (string, error) {

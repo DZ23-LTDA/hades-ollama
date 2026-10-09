@@ -23,9 +23,35 @@ import (
 
 func TestMain(m *testing.M) {
 	os.Setenv("OLLAMA_DEBUG", "1")
+	// Run the suite hermetically: clear ambient runtime-tuning variables so the
+	// package behaves the same on a developer box as in CI. A dev shell that
+	// pins e.g. OLLAMA_HOST=0.0.0.0 or OLLAMA_CONTEXT_LENGTH=16384 would
+	// otherwise flip auth on or inflate memory estimates and fail unrelated
+	// tests. Tests that need a specific value set it with t.Setenv. Part of E9.
+	for _, name := range []string{
+		"OLLAMA_HOST",
+		"OLLAMA_CONTEXT_LENGTH",
+		"OLLAMA_MAX_LOADED_MODELS",
+		"OLLAMA_NUM_PARALLEL",
+		"OLLAMA_KEEP_ALIVE",
+	} {
+		os.Unsetenv(name)
+	}
+	// Isolate the models directory (Q-11): several server tests create manifests
+	// via CreateModel/pull. If the suite inherited a real OLLAMA_MODELS (e.g. a
+	// developer's D:\IA\ollama\models) those fixtures would be persisted into the
+	// user's actual catalog and pollute the model picker. Always point it at a
+	// throwaway temp dir and remove it afterwards.
+	modelsDir, err := os.MkdirTemp("", "ollama-models-test-")
+	if err != nil {
+		panic("failed to create temp OLLAMA_MODELS for tests: " + err.Error())
+	}
+	os.Setenv("OLLAMA_MODELS", modelsDir)
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}))
 	slog.SetDefault(logger)
-	os.Exit(m.Run())
+	code := m.Run()
+	os.RemoveAll(modelsDir)
+	os.Exit(code)
 }
 
 func TestSchedInit(t *testing.T) {
@@ -294,7 +320,13 @@ func getSystemInfoFn() ml.SystemInfo {
 }
 
 func TestSchedRequestsSameModelSameRequest(t *testing.T) {
-	ctx, done := context.WithTimeout(t.Context(), 500*time.Millisecond)
+	// Clear any ambient OLLAMA_CONTEXT_LENGTH: a large value inflates the
+	// model's memory estimate past the mocked GPU, so the model never loads and
+	// the test times out (E9 determinism).
+	t.Setenv("OLLAMA_CONTEXT_LENGTH", "")
+	// Generous timeout so the test is not flaky under the race detector, which
+	// slows the mocked scheduler ~10x on loaded CI runners (R5).
+	ctx, done := context.WithTimeout(t.Context(), 10*time.Second)
 	defer done()
 	s := InitScheduler(ctx)
 	s.waitForRecovery = 10 * time.Millisecond
@@ -400,7 +432,15 @@ func TestSchedRequestsSimpleReloadSameModel(t *testing.T) {
 
 func TestSchedRequestsMultipleLoadedModels(t *testing.T) {
 	slog.Info("TestRequestsMultipleLoadedModels")
-	ctx, done := context.WithTimeout(t.Context(), 1000*time.Millisecond)
+	// This test intentionally loads several models at once. Pin the runner
+	// limits to auto so it is independent of an ambient OLLAMA_MAX_LOADED_MODELS
+	// / OLLAMA_NUM_PARALLEL (a dev box that caps these to 1 would otherwise make
+	// the scheduler refuse the extra models and the test time out). Part of E9.
+	t.Setenv("OLLAMA_MAX_LOADED_MODELS", "0")
+	t.Setenv("OLLAMA_NUM_PARALLEL", "0")
+	// Generous timeout so the test is not flaky under the race detector, which
+	// slows the mocked scheduler ~10x on loaded CI runners (R5).
+	ctx, done := context.WithTimeout(t.Context(), 10*time.Second)
 	defer done()
 	s := InitScheduler(ctx)
 	s.waitForRecovery = 10 * time.Millisecond

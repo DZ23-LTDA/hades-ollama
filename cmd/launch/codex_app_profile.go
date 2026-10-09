@@ -137,9 +137,12 @@ func (c *codexAppRequestCursor) scanLocked(root string, start time.Time, allowed
 	slices.Sort(paths)
 	for _, path := range paths {
 		info, err := os.Stat(path)
-		if err != nil || info.ModTime().Before(start) {
+		if err != nil {
 			continue
 		}
+		// Filesystem mtime precision can put a freshly-written session a few
+		// nanoseconds before the marker on CI. The per-record timestamp below is
+		// authoritative, so mtime must not discard the whole session file.
 		offset := c.files[path]
 		if info.Size() < offset {
 			c.start = start

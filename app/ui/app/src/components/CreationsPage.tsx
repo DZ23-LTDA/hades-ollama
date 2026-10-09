@@ -1,7 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import { Link } from "@tanstack/react-router";
-import { type AgentArtifact } from "@/lib/agenticClient";
-import { API_BASE } from "@/lib/config";
+import { type AgentArtifact, agentFetch, agentFetchBlob } from "@/lib/agenticClient";
 import { AppSidebar } from "@/components/AppSidebar";
 import { SidebarLayout } from "@/components/layout/layout";
 import {
@@ -31,33 +30,135 @@ interface CreationItem {
   artifact: AgentArtifact;
 }
 
+// CreationPreview carrega a prévia através do cliente autenticado. A URL do
+// artefato é protegida por Bearer, então um <iframe src=previewUrl> cru daria
+// 401; buscamos o blob e renderizamos via blob URL dentro de um sandbox restrito.
+function CreationPreview({ previewUrl, name }: { previewUrl: string; name: string }) {
+  const [src, setSrc] = useState<string | null>(null);
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    let objectURL: string | null = null;
+    setFailed(false);
+    setSrc(null);
+    void agentFetchBlob(previewUrl)
+      .then((blob) => {
+        if (cancelled) return;
+        objectURL = URL.createObjectURL(blob);
+        setSrc(objectURL);
+      })
+      .catch(() => {
+        if (!cancelled) setFailed(true);
+      });
+    return () => {
+      cancelled = true;
+      if (objectURL) URL.revokeObjectURL(objectURL);
+    };
+  }, [previewUrl]);
+
+  if (failed) {
+    return (
+      <div className="flex h-full w-full items-center justify-center px-3 text-center text-[11px] text-neutral-500 dark:text-neutral-400">
+        Prévia autenticada indisponível
+      </div>
+    );
+  }
+
+  return (
+    <iframe
+      src={src ?? undefined}
+      title={name}
+      sandbox="allow-scripts"
+      className="pointer-events-none h-full w-full border-0 opacity-90 transition-opacity group-hover:opacity-100"
+    />
+  );
+}
+
 export function CreationsPage() {
   const [creationsList, setCreationsList] = useState<CreationItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState("NOT_EXECUTED");
   const [statusReason, setStatusReason] = useState("");
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState<CreationCategory>("all");
+  const [openView, setOpenView] = useState<{ url: string; name: string } | null>(null);
+
+  useEffect(() => {
+    if (!openView) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpenView(null);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [openView]);
 
   useEffect(() => {
     let active = true;
-    fetch(`${API_BASE}/api/agent/v1/creations`)
-      .then((res) => (res.ok ? res.json() : { creations: [] }))
-      .then((data: { creations?: CreationItem[]; status?: string; reason?: string }) => {
-        if (active) {
-          setCreationsList(Array.isArray(data.creations) ? data.creations : []);
-          setStatus(data.status || "NOT_EXECUTED");
-          setStatusReason(data.reason || "");
-          setLoading(false);
-        }
+    // Requisição autenticada: no modo exposto /creations exige Bearer. Em 401 o
+    // agentFetch lança, e tratamos como falha de carregamento (não como
+    // "publicação indisponível", que é uma condição diferente).
+    agentFetch<{ creations?: CreationItem[]; status?: string; reason?: string }>("/api/agent/v1/creations")
+      .then((data) => {
+        if (!active) return;
+        setCreationsList(Array.isArray(data.creations) ? data.creations : []);
+        setStatus(data.status || "NOT_EXECUTED");
+        setStatusReason(data.reason || "");
+        setLoading(false);
       })
-      .catch(() => {
-        if (active) setLoading(false);
+      .catch((err) => {
+        if (!active) return;
+        setLoadError(err instanceof Error ? err.message : "Não foi possível carregar as criações.");
+        setLoading(false);
       });
     return () => {
       active = false;
     };
   }, []);
+
+  // "Abrir": o artefato é protegido por Bearer, então buscamos o blob autenticado
+  // e o exibimos num modal in-app (<iframe src=blob>). Evita window.open(blob:…),
+  // que o webview do app desktop não consegue abrir (cai em "Not Found").
+  const handleOpen = async (previewUrl: string, name: string) => {
+    setActionError(null);
+    try {
+      const blob = await agentFetchBlob(previewUrl);
+      const objectURL = URL.createObjectURL(blob);
+      setOpenView((prev) => {
+        if (prev) URL.revokeObjectURL(prev.url);
+        return { url: objectURL, name };
+      });
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Falha ao abrir a criação.");
+    }
+  };
+
+  const closeView = () => {
+    setOpenView((prev) => {
+      if (prev) URL.revokeObjectURL(prev.url);
+      return null;
+    });
+  };
+
+  // "Baixar código": download autenticado via blob em vez de <a href download>.
+  const handleDownloadCode = async (previewUrl: string, name: string) => {
+    setActionError(null);
+    try {
+      const blob = await agentFetchBlob(previewUrl);
+      const objectURL = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = objectURL;
+      link.download = name || "criacao";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.setTimeout(() => URL.revokeObjectURL(objectURL), 0);
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Falha ao baixar o código.");
+    }
+  };
 
   const filteredCreations = useMemo(() => {
     return creationsList.filter((item) => {
@@ -110,11 +211,10 @@ export function CreationsPage() {
           </Link>
           <Link
             to="/agentic"
-              search={{ auto_run: true, prompt: "Construir um aplicativo web interativo completo com interface moderna" }}
               className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-neutral-900 px-4 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90 dark:bg-white dark:text-neutral-900"
             >
               <SparklesIcon className="h-4 w-4" />
-              Construir agora
+              Abrir console de missões
             </Link>
           </div>
         </div>
@@ -142,6 +242,12 @@ export function CreationsPage() {
           </nav>
         </div>
 
+        {actionError && (
+          <div role="alert" aria-live="assertive" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300">
+            {actionError}
+          </div>
+        )}
+
         {/* Lista de Criações */}
         {loading ? (
           <div className="py-16 text-center text-sm text-neutral-500">
@@ -151,18 +257,23 @@ export function CreationsPage() {
           <div className="rounded-2xl border border-dashed border-neutral-300 p-16 text-center dark:border-neutral-700">
             <CodeBracketSquareIcon className="mx-auto h-12 w-12 text-neutral-300 dark:text-neutral-600" />
             <h3 className="mt-4 text-base font-semibold text-neutral-900 dark:text-white">
-              Nenhuma criação publicável
+              {loadError ? "Não foi possível carregar as criações" : "Nenhuma criação publicável"}
             </h3>
             <p className="mx-auto mt-2 max-w-md text-sm text-neutral-500 dark:text-neutral-400">
-              {status === "NOT_EXECUTED" ? (statusReason || "A publicação e o rollback ainda não estão disponíveis neste runtime.") : "Nenhum artefato corresponde aos filtros atuais."}
+              {loadError
+                ? loadError
+                : creationsList.length > 0
+                  ? "Nenhum artefato corresponde aos filtros atuais."
+                  : status === "NOT_EXECUTED" && statusReason
+                    ? statusReason
+                    : "Nenhuma criação ainda."}
             </p>
             <Link
               to="/agentic"
-              search={{ auto_run: true, prompt: "Construir uma aplicação interativa com HTML5 e visual moderno" }}
               className="mt-6 inline-flex items-center gap-2 rounded-xl bg-neutral-900 px-5 py-2.5 text-sm font-medium text-white transition-opacity hover:opacity-90 dark:bg-white dark:text-neutral-900"
             >
               <SparklesIcon className="h-4 w-4" />
-              Construir agora
+              Abrir console de missões
             </Link>
           </div>
         ) : (
@@ -174,12 +285,7 @@ export function CreationsPage() {
               >
                 {/* Preview iframe compacto */}
                 <div className="relative aspect-video w-full overflow-hidden bg-neutral-100 dark:bg-neutral-800">
-                  <iframe
-                    src={item.previewUrl}
-                    title={item.name}
-                    sandbox="allow-scripts"
-                    className="pointer-events-none h-full w-full border-0 opacity-90 transition-opacity group-hover:opacity-100"
-                  />
+                  <CreationPreview previewUrl={item.previewUrl} name={item.name} />
                   <div className="absolute inset-0 bg-transparent" />
                   <span className="absolute left-3 top-3 rounded-full bg-black/70 px-2.5 py-1 text-[11px] font-medium text-white backdrop-blur-sm">
                     {item.categoryLabel}
@@ -211,29 +317,62 @@ export function CreationsPage() {
                         <EyeIcon className="h-3.5 w-3.5" />
                         Canvas
                       </Link>
-                      <a
-                        href={item.previewUrl}
-                        target="_blank"
-                        rel="noreferrer"
+                      <button
+                        type="button"
+                        onClick={() => void handleOpen(item.previewUrl, item.name)}
                         className="inline-flex items-center gap-1 rounded-lg bg-neutral-900 px-2.5 py-1 text-xs font-medium text-white hover:opacity-90 dark:bg-white dark:text-neutral-900"
                         title="Abrir em Tela Cheia"
                       >
                         <ArrowTopRightOnSquareIcon className="h-3.5 w-3.5" />
                         Abrir
-                      </a>
-                      <a
-                        href={item.previewUrl}
-                        download={item.name}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void handleDownloadCode(item.previewUrl, item.name)}
                         className="rounded-lg p-1 text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800"
                         title="Baixar código"
                       >
                         <ArrowDownTrayIcon className="h-4 w-4" />
-                      </a>
+                      </button>
                     </div>
                   </div>
                 </div>
               </div>
             ))}
+          </div>
+        )}
+
+        {/* Abrir em tela cheia: modal in-app com iframe autenticado (funciona no app e no navegador) */}
+        {openView && (
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label={`Criação: ${openView.name}`}
+            className="fixed inset-0 z-50 flex flex-col bg-black/70 p-4"
+            onClick={closeView}
+          >
+            <div
+              className="mx-auto flex h-full w-full max-w-5xl flex-col overflow-hidden rounded-2xl bg-white shadow-xl dark:bg-neutral-900"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between border-b border-neutral-200 px-4 py-2 dark:border-neutral-800">
+                <span className="truncate text-sm font-semibold text-neutral-900 dark:text-white">{openView.name}</span>
+                <button
+                  type="button"
+                  onClick={closeView}
+                  aria-label="Fechar"
+                  className="rounded-lg px-3 py-1 text-xs font-medium text-neutral-600 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800"
+                >
+                  Fechar ✕
+                </button>
+              </div>
+              <iframe
+                title={openView.name}
+                src={openView.url}
+                sandbox="allow-scripts"
+                className="h-full w-full flex-1 border-0 bg-white"
+              />
+            </div>
           </div>
         )}
       </div>

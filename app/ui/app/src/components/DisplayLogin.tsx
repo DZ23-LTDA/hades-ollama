@@ -1,4 +1,5 @@
 import type { ErrorEvent } from "@/gotypes";
+import { openExternal } from "@/lib/openExternal";
 import { Display, type DisplayAction } from "@/components/ui/display";
 import { useUser } from "@/hooks/useUser";
 import { useEffect, useState } from "react";
@@ -50,7 +51,7 @@ export const DisplayLogin = ({
     try {
       const { data: connectUrl } = await fetchConnectUrl();
       if (connectUrl) {
-        window.open(connectUrl, "_blank");
+        openExternal(connectUrl);
         setIsAwaitingAuth(true);
       }
     } catch (error) {
@@ -59,13 +60,13 @@ export const DisplayLogin = ({
   };
 
   const action: DisplayAction = {
-    label: "Sign In",
+    label: "Entrar",
     onClick: handleSignIn,
   };
 
   return (
     <Display
-      message={message || "Cloud models require an Ollama account"}
+      message={message || "Modelos de nuvem exigem uma conta Ollama"}
       action={action}
       className={className}
       onDismiss={onDismiss}

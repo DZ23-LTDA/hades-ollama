@@ -48,7 +48,7 @@ var (
 	// this allowlist the updater would stage the official OllamaSetup.exe and
 	// replace the Classe A+ build on the next restart.
 	AllowedUpdateURLPrefixes = []string{
-		"https://github.com/DZ23-LTDA/ollama-classe-a-plus/releases/download/",
+		"https://github.com/DZ23-LTDA/hades-ollama/releases/download/",
 	}
 )
 

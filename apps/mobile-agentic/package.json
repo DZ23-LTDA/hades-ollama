@@ -30,7 +30,8 @@
   "overrides": {
     "image-size": "2.0.4",
     "postcss": "8.5.28",
-    "uuid": "11.1.1"
+    "uuid": "11.1.1",
+    "node-forge": "https://codeload.github.com/digitalbazaar/forge/tar.gz/529a5b4f004595c8f8a75697eca958efe1a2f70d"
   },
   "devDependencies": {
     "@types/react": "^19.0.0",

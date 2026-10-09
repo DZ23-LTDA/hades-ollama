@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -54,6 +55,10 @@ type Runtime struct {
 	mu                  *sync.Mutex
 	running             map[string]bool
 	activeCancels       map[string]context.CancelFunc
+	// cancelPollInterval is how often a running mission re-reads the durable
+	// store to detect a cancellation requested by ANOTHER instance and abort
+	// the in-flight step. Zero falls back to the default.
+	cancelPollInterval time.Duration
 }
 
 type RuntimeConfig struct {
@@ -224,7 +229,7 @@ func NewRuntime(config RuntimeConfig) (*Runtime, error) {
 			return nil, err
 		}
 	}
-	runtime := &Runtime{store: store, planner: planner, plannerResolver: config.PlannerResolver, tools: tools, capabilityPolicy: capabilityPolicy, workspaceRoot: root, dataRoot: dataRoot, context: contextStore, company: companyStore, remoteMCP: config.RemoteMCP, metrics: &RuntimeMetrics{}, connectors: config.Connectors, mcp: config.MCP, queue: queue, redisQueue: config.RedisQueue, traces: traces, telemetry: telemetry, media: config.Media, builder: builder, collaboration: collaboration, push: config.Push, pushOutbox: pushOutbox, deployments: config.Deployments, deploymentApprovals: deploymentApprovals, webhookReplay: webhookReplay, mu: &sync.Mutex{}, running: make(map[string]bool), activeCancels: make(map[string]context.CancelFunc)}
+	runtime := &Runtime{store: store, planner: planner, plannerResolver: config.PlannerResolver, tools: tools, capabilityPolicy: capabilityPolicy, workspaceRoot: root, dataRoot: dataRoot, context: contextStore, company: companyStore, remoteMCP: config.RemoteMCP, metrics: &RuntimeMetrics{}, connectors: config.Connectors, mcp: config.MCP, queue: queue, redisQueue: config.RedisQueue, traces: traces, telemetry: telemetry, media: config.Media, builder: builder, collaboration: collaboration, push: config.Push, pushOutbox: pushOutbox, deployments: config.Deployments, deploymentApprovals: deploymentApprovals, webhookReplay: webhookReplay, mu: &sync.Mutex{}, running: make(map[string]bool), activeCancels: make(map[string]context.CancelFunc), cancelPollInterval: durableCancelPollInterval()}
 	orchestrator, err := NewAgentOrchestrator(filepath.Join(dataRoot, ".agent-orchestrator"), runtime.SubagentRunner)
 	if err != nil {
 		return nil, err
@@ -249,6 +254,11 @@ func NewRuntime(config RuntimeConfig) (*Runtime, error) {
 		runtime.whatsapp = config.WhatsApp
 	} else {
 		runtime.whatsapp = NewWhatsAppGateway(WhatsAppGatewayConfig{}, runtime)
+		// Re-apply WhatsApp credentials saved by a previous session so the
+		// gateway keeps working across restarts.
+		if err := runtime.whatsapp.LoadPersistedConfig(); err != nil {
+			slog.Warn("failed to load persisted WhatsApp config", "error", err)
+		}
 	}
 	supCfg := DefaultSupervisorConfig()
 	if config.SupervisorConfig != nil {
@@ -416,6 +426,14 @@ func (r *Runtime) SetAuthStore(store *AuthStore) {
 	}
 }
 
+func (r *Runtime) OAuthAccessTokenForOrganization(organizationID, provider string) (string, error) {
+	if r.authStore == nil {
+		return "", os.ErrNotExist
+	}
+	token, _, err := r.authStore.OAuthAccessTokenForOrganization(organizationID, provider)
+	return token, err
+}
+
 func (r *Runtime) SetConnectorEnabled(id string, enabled bool) error {
 	if r.connectors == nil {
 		return errors.New("connector manager is unavailable")
@@ -442,6 +460,13 @@ func (r *Runtime) RegisterConnectorForOrganization(organizationID string, config
 		return errors.New("connector manager is unavailable")
 	}
 	return r.connectors.RegisterForOrganization(organizationID, config)
+}
+
+func (r *Runtime) SetConnectorOrganizationSecret(organizationID, name, value string) error {
+	if r.connectors == nil {
+		return errors.New("connector manager is unavailable")
+	}
+	return r.connectors.SetOrganizationSecret(organizationID, name, value)
 }
 
 func (r *Runtime) SetMCPEnabled(id string, enabled bool) error {
@@ -477,6 +502,13 @@ func (r *Runtime) RegisterRemoteMCP(config RemoteMCPServerConfig) error {
 		return errors.New("remote MCP manager is unavailable")
 	}
 	return r.remoteMCP.Register(config)
+}
+
+func (r *Runtime) SetRemoteMCPOrganizationSecret(organizationID, name, value string) error {
+	if r.remoteMCP == nil {
+		return errors.New("remote MCP manager is unavailable")
+	}
+	return r.remoteMCP.SetOrganizationSecret(organizationID, name, value)
 }
 
 func (r *Runtime) RemoveRemoteMCP(id string) error {
@@ -826,7 +858,7 @@ func (r *Runtime) CreateMission(ctx context.Context, request CreateMissionReques
 	planner := r.planner
 	if routed, ok := r.plannerResolver.(RoutedPlannerResolver); ok && (mission.Model == "" || strings.HasPrefix(mission.Model, "auto/") || mission.Model == "auto") {
 		var resolution PlannerResolution
-		planner, resolution, err = routed.ResolvePlannerForMission(ctx, mission.Provider, mission.Model, mission.Capabilities)
+		planner, resolution, err = routed.ResolvePlannerForMission(ctx, mission.Provider, mission.Model, mission.OrganizationID, mission.Capabilities)
 		if err != nil {
 			return r.failMission(mission, err)
 		}
@@ -966,7 +998,8 @@ func (r *Runtime) CreateMission(ctx context.Context, request CreateMissionReques
 			if hashErr != nil {
 				return r.failMission(mission, fmt.Errorf("hash approval payload: %w", hashErr))
 			}
-			mission.Approvals = append(mission.Approvals, Approval{ID: "apr_" + uuid.NewString(), MissionID: mission.ID, StepID: step.ID, OrganizationID: mission.OrganizationID, Policy: toolApprovalPolicy(descriptor.Descriptor(), step.Risk), PayloadSHA256: payloadHash, Nonce: uuid.NewString(), Status: ApprovalPending, ExpiresAt: &approvalExpiresAt, CreatedAt: now, UpdatedAt: now})
+			requester := strings.TrimSpace(request.ActorID)
+			mission.Approvals = append(mission.Approvals, Approval{ID: "apr_" + uuid.NewString(), MissionID: mission.ID, StepID: step.ID, OrganizationID: mission.OrganizationID, Policy: toolApprovalPolicy(descriptor.Descriptor(), step.Risk), PayloadSHA256: payloadHash, Nonce: uuid.NewString(), RequestedBy: requester, Status: ApprovalPending, ExpiresAt: &approvalExpiresAt, CreatedAt: now, UpdatedAt: now})
 		}
 	}
 	if len(mission.Approvals) > 0 {
@@ -1043,13 +1076,24 @@ func (r *Runtime) GetMissionWorktreeDiff(ctx context.Context, missionID string) 
 	return GetWorktreeDiff(ctx, session)
 }
 
-func (r *Runtime) MergeMissionWorktree(ctx context.Context, missionID string) (string, error) {
+// MergeMissionWorktree merges the mission's worktree branch into origin. The
+// human approval must be bound to the exact diff being merged (SEC-03):
+// approvedDiffSHA is the diff_sha256 the reviewer saw (from
+// GetMissionWorktreeDiff). The merge recomputes the current diff and refuses if
+// it no longer matches, so an agent that mutates the worktree after approval
+// cannot merge a different diff than the one that was reviewed ("approve A,
+// merge B"). An empty approvedDiffSHA is rejected: a merge is never unbound.
+func (r *Runtime) MergeMissionWorktree(ctx context.Context, missionID, approvedDiffSHA string) (string, error) {
 	mission, err := r.getMission(strings.TrimSpace(missionID))
 	if err != nil {
 		return "", err
 	}
 	if !mission.GitWorktreeActive || mission.GitWorktreePath == "" {
 		return "", errors.New("mission does not have an active git worktree")
+	}
+	approvedDiffSHA = strings.ToLower(strings.TrimSpace(approvedDiffSHA))
+	if approvedDiffSHA == "" {
+		return "", errors.New("merge requires the approved diff digest (approved_diff_sha256) from the reviewed diff")
 	}
 	session := &GitWorktreeSession{
 		MissionID:    mission.ID,
@@ -1058,6 +1102,20 @@ func (r *Runtime) MergeMissionWorktree(ctx context.Context, missionID string) (s
 		BranchName:   mission.GitBranch,
 		BaseCommit:   mission.GitBaseCommit,
 		TargetBranch: "main",
+	}
+	// Recompute the diff that is actually about to be merged and bind it to the
+	// approval the caller is presenting.
+	current, err := GetWorktreeDiff(ctx, session)
+	if err != nil {
+		return "", fmt.Errorf("inspect worktree before merge: %w", err)
+	}
+	if !strings.EqualFold(current.DiffSHA256, approvedDiffSHA) {
+		_ = r.observeEvent(mission, "git.merge.rejected", "", map[string]any{
+			"reason":       "diff_changed_since_approval",
+			"approved_sha": approvedDiffSHA,
+			"current_sha":  current.DiffSHA256,
+		})
+		return "", fmt.Errorf("the worktree changed since approval (approved %s, current %s); re-review the diff before merging", approvedDiffSHA, current.DiffSHA256)
 	}
 	mergeCommit, err := MergeWorktreeToOrigin(ctx, session)
 	if err != nil {
@@ -1075,6 +1133,7 @@ func (r *Runtime) MergeMissionWorktree(ctx context.Context, missionID string) (s
 	_ = r.observeEvent(mission, "git.merge.succeeded", "", map[string]any{
 		"branch":       session.BranchName,
 		"merge_commit": mergeCommit,
+		"approved_sha": approvedDiffSHA,
 	})
 	return mergeCommit, nil
 }
@@ -1102,6 +1161,26 @@ func (r *Runtime) getMission(id string) (Mission, error) {
 		return Mission{}, os.ErrNotExist
 	}
 	return mission, nil
+}
+
+// DeleteMission permanently removes a mission (and its event history) from the
+// store. A mission that is still active cannot be deleted — it must be cancelled
+// first — so a running task is never yanked out from under the runtime. The
+// lookup is organization-scoped, so a mission owned by another tenant is
+// reported as not-found.
+func (r *Runtime) DeleteMission(ctx context.Context, missionID string) error {
+	mission, err := r.getMission(strings.TrimSpace(missionID))
+	if err != nil {
+		return err
+	}
+	switch mission.State {
+	case "RUNNING", "OBSERVING", "RECOVERING", "PLANNING", "PENDING":
+		return fmt.Errorf("a tarefa está em andamento (%s); cancele-a antes de excluir", mission.State)
+	}
+	if err := r.store.DeleteMission(mission.ID); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (r *Runtime) runQueueJob(jobContext context.Context, job QueueJob) error {
@@ -1333,9 +1412,25 @@ func (r *Runtime) resumePending(ctx context.Context) error {
 				continue
 			}
 		}
-		resume := mission.State == MissionRunning || mission.State == MissionRecovering || (mission.State == MissionReady && mission.AutoRun)
+		// MissionObserving is a transient state persisted right before a tool or
+		// observation runs; a crash in that window must be re-enqueued too, or the
+		// mission is stranded forever. The execution entry point accepts it.
+		resume := mission.State == MissionRunning || mission.State == MissionRecovering || mission.State == MissionObserving || (mission.State == MissionReady && mission.AutoRun)
 		if !resume || !r.approvalsReady(mission) {
 			continue
+		}
+		// In-flight states (Running/Observing) are persisted mid-execution and are
+		// not directly enqueueable; move them to Recovering so the queue accepts the
+		// resume. Recovering and Ready+AutoRun already pass EnqueueMission's guard.
+		if mission.State == MissionRunning || mission.State == MissionObserving {
+			expectedVersion := mission.Version
+			mission.State = MissionRecovering
+			mission.Version++
+			mission.UpdatedAt = time.Now().UTC()
+			if err := r.store.PutMissionIfVersion(mission, expectedVersion); err != nil {
+				recoveryErrors = append(recoveryErrors, fmt.Errorf("mark mission %s recovering: %w", mission.ID, err))
+				continue
+			}
 		}
 		if r.queue != nil {
 			if err := r.queue.recoverStateForRestart(); err != nil {
@@ -1424,10 +1519,23 @@ func (r *Runtime) EnqueueMission(missionID string) (QueueJob, error) {
 	return r.queue.EnqueueForOrganization(mission.OrganizationID, mission.ID, 3)
 }
 
+// QueueJobs returns the jobs for a status on a best-effort basis: a backing
+// queue error yields an empty slice. Callers that must distinguish "no jobs"
+// from "queue dependency is down" (e.g. health) use QueueJobsWithError.
 func (r *Runtime) QueueJobs(status QueueStatus) []QueueJob {
-	jobs := r.queueJobsRaw(status)
+	jobs, _ := r.QueueJobsWithError(status)
+	return jobs
+}
+
+// QueueJobsWithError is like QueueJobs but surfaces a backing-queue failure
+// instead of masking it as an empty result.
+func (r *Runtime) QueueJobsWithError(status QueueStatus) ([]QueueJob, error) {
+	jobs, err := r.queueJobsRaw(status)
+	if err != nil {
+		return nil, err
+	}
 	if r.organizationScope == "" {
-		return jobs
+		return jobs, nil
 	}
 	filtered := make([]QueueJob, 0, len(jobs))
 	for _, job := range jobs {
@@ -1435,22 +1543,23 @@ func (r *Runtime) QueueJobs(status QueueStatus) []QueueJob {
 			filtered = append(filtered, job)
 		}
 	}
-	return filtered
+	return filtered, nil
 }
 
-func (r *Runtime) queueJobsRaw(status QueueStatus) []QueueJob {
-	var jobs []QueueJob
+func (r *Runtime) queueJobsRaw(status QueueStatus) ([]QueueJob, error) {
 	if r.redisQueue != nil {
-		jobs = r.redisQueue.List(status)
-	} else {
-		jobs = r.queue.List(status)
+		return r.redisQueue.List(status)
 	}
-	return jobs
+	return r.queue.List(status)
 }
 
 func (r *Runtime) ReplayJob(jobID string) (QueueJob, error) {
 	jobID = strings.TrimSpace(jobID)
-	for _, job := range r.queueJobsRaw(QueueDeadLetter) {
+	deadJobs, err := r.queueJobsRaw(QueueDeadLetter)
+	if err != nil {
+		return QueueJob{}, err
+	}
+	for _, job := range deadJobs {
 		if job.ID != jobID {
 			continue
 		}
@@ -1508,8 +1617,12 @@ func (r *Runtime) ReplayJobForOrganization(jobID, organizationID string) (QueueJ
 	if r.organizationScope != "" && organizationID != r.organizationScope {
 		return QueueJob{}, ErrQueueJobForbidden
 	}
+	allJobs, err := r.queueJobsRaw("")
+	if err != nil {
+		return QueueJob{}, err
+	}
 	if organizationID == "" {
-		for _, job := range r.queueJobsRaw("") {
+		for _, job := range allJobs {
 			if job.ID != strings.TrimSpace(jobID) {
 				continue
 			}
@@ -1524,7 +1637,7 @@ func (r *Runtime) ReplayJobForOrganization(jobID, organizationID string) (QueueJ
 		}
 		return QueueJob{}, os.ErrNotExist
 	}
-	for _, job := range r.queueJobsRaw("") {
+	for _, job := range allJobs {
 		if job.ID != strings.TrimSpace(jobID) {
 			continue
 		}
@@ -1564,7 +1677,13 @@ func (r *Runtime) Run(ctx context.Context, id string) (runErr error) {
 	r.running[id] = true
 	r.activeCancels[id] = cancel
 	r.mu.Unlock()
+	// Propagate a cancellation persisted by ANY instance to this run's context,
+	// so a long-running step here is aborted even when another instance served
+	// the Cancel() call and holds no in-memory cancel func for this mission.
+	cancelWatchDone := make(chan struct{})
+	go r.watchDurableCancellation(runCtx, id, cancel, cancelWatchDone)
 	defer func() {
+		close(cancelWatchDone)
 		cancel()
 		r.mu.Lock()
 		delete(r.running, id)
@@ -1876,6 +1995,17 @@ func (r *Runtime) decideApprovalForActor(missionID, approvalID string, approved 
 		if strings.TrimSpace(actorID) == "" {
 			return Mission{}, errors.New("approval actor is required")
 		}
+		// Separação de funções (SoD): o solicitante não pode aprovar a própria
+		// decisão. EXCETO no modo local de usuário único, em que todo request é
+		// atribuído ao ator sintético LocalActorID ("local"): ali existe apenas
+		// uma pessoa, que É o aprovador humano, então exigir um segundo aprovador
+		// tornaria qualquer missão de escrita impossível de aprovar no desktop.
+		// O gate humano continua existindo (a pessoa precisa aprovar cada passo);
+		// um ator real/nomeado (enterprise ou autenticado) segue sob SoD.
+		requestedBy := strings.TrimSpace(mission.Approvals[index].RequestedBy)
+		if approved && requestedBy != "" && requestedBy == strings.TrimSpace(actorID) && requestedBy != LocalActorID {
+			return Mission{}, errors.New("approval requester cannot approve the same decision")
+		}
 		reason = strings.TrimSpace(reason)
 		if reason == "" {
 			return Mission{}, errors.New("approval reason is required")
@@ -1933,6 +2063,54 @@ func (r *Runtime) decideApprovalForActor(missionID, approvalID string, approved 
 func (r *Runtime) missionCancelled(id string) bool {
 	mission, err := r.getMission(strings.TrimSpace(id))
 	return err == nil && mission.State == MissionCancelled
+}
+
+const defaultDurableCancelPollInterval = 2 * time.Second
+
+// durableCancelPollInterval reads OLLAMA_AGENT_CANCEL_POLL_MS (clamped to a sane
+// range) so operators can tune how quickly a running instance reacts to a
+// cancellation persisted by another instance. Defaults to 2s.
+func durableCancelPollInterval() time.Duration {
+	raw := strings.TrimSpace(os.Getenv("OLLAMA_AGENT_CANCEL_POLL_MS"))
+	if raw == "" {
+		return defaultDurableCancelPollInterval
+	}
+	ms, err := strconv.Atoi(raw)
+	if err != nil || ms < 50 {
+		return defaultDurableCancelPollInterval
+	}
+	if ms > 60000 {
+		ms = 60000
+	}
+	return time.Duration(ms) * time.Millisecond
+}
+
+// watchDurableCancellation bridges a durable cancellation (persisted in the
+// store, possibly by a DIFFERENT instance) to the local run context. The step
+// loop already re-reads the store between steps, but a long-running step on
+// this instance would otherwise keep going until it finishes, because only the
+// instance that served Cancel() holds the in-memory cancel func. Polling the
+// durable state here lets any instance's cancel abort the in-flight step.
+func (r *Runtime) watchDurableCancellation(ctx context.Context, id string, cancel context.CancelFunc, done <-chan struct{}) {
+	interval := r.cancelPollInterval
+	if interval <= 0 {
+		interval = defaultDurableCancelPollInterval
+	}
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-done:
+			return
+		case <-ticker.C:
+			if r.missionCancelled(id) {
+				cancel()
+				return
+			}
+		}
+	}
 }
 
 func (r *Runtime) Events(id string) ([]Event, error) {

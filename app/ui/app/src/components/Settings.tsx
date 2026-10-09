@@ -1,5 +1,8 @@
 import { useEffect, useState, useCallback, useRef } from "react";
+import { openExternal } from "@/lib/openExternal";
+import { confirmDialog } from "@/lib/confirmDialog";
 import { Switch } from "@/components/ui/switch";
+import { BrowserOperatorPanel } from "@/components/BrowserOperatorPanel";
 import { Text } from "@/components/ui/text";
 import { Input } from "@/components/ui/input";
 import { Field, Label, Description } from "@/components/ui/fieldset";
@@ -26,6 +29,7 @@ import {
   Squares2X2Icon,
 } from "@heroicons/react/20/solid";
 import { AgenticControlCenter } from "@/components/AgenticControlCenter";
+import { HealthCenter } from "@/components/HealthCenter";
 import { Settings as SettingsType } from "@/gotypes";
 import { isWindowsPlatform } from "@/lib/platform";
 import { settingsMutationScope } from "@/lib/settingsMutationScope";
@@ -42,6 +46,7 @@ import {
   fetchUser,
 } from "@/api";
 import { applySettingsDefaults } from "./settingsUtils";
+import { getStoredInterfaceMode, persistInterfaceMode, type InterfaceMode } from "@/lib/interfaceMode";
 
 function AnimatedDots() {
   return (
@@ -54,6 +59,23 @@ function AnimatedDots() {
         .
       </span>
     </span>
+  );
+}
+
+function InterfaceModeControl({ mode, onChange }: { mode: InterfaceMode; onChange: (mode: InterfaceMode) => void }) {
+  return (
+    <section aria-labelledby="interface-mode-heading" className="rounded-xl border border-blue-200 bg-blue-50 p-4 dark:border-blue-900/60 dark:bg-blue-950/20">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 id="interface-mode-heading" className="text-sm font-semibold text-blue-950 dark:text-blue-100">Modo da interface</h2>
+          <p className="mt-1 text-xs leading-5 text-blue-800 dark:text-blue-200">Simples mostra só o essencial. Avançado também mostra MCP, diagnósticos e detalhes técnicos.</p>
+        </div>
+        <div className="inline-flex rounded-lg border border-blue-200 bg-white p-1 dark:border-blue-800 dark:bg-neutral-900" role="group" aria-label="Modo da interface">
+          <button type="button" aria-pressed={mode === "simple"} onClick={() => onChange("simple")} className={`min-h-9 rounded-md px-3 text-xs font-medium ${mode === "simple" ? "bg-blue-700 text-white" : "text-blue-800 dark:text-blue-200"}`}>Simples</button>
+          <button type="button" aria-pressed={mode === "advanced"} onClick={() => onChange("advanced")} className={`min-h-9 rounded-md px-3 text-xs font-medium ${mode === "advanced" ? "bg-blue-700 text-white" : "text-blue-800 dark:text-blue-200"}`}>Avançado</button>
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -73,6 +95,10 @@ export default function Settings() {
   const [showAppsInMenuPending, setShowAppsInMenuPending] = useState(false);
   const [resettingToDefaults, setResettingToDefaults] = useState(false);
   const [resetError, setResetError] = useState<string | null>(null);
+  const [interfaceMode, setInterfaceMode] = useState<InterfaceMode>(() => {
+    if (typeof window === "undefined" || !window.localStorage) return "simple";
+    return getStoredInterfaceMode(window.localStorage);
+  });
   const [hasClaudeDraftChanges, setHasClaudeDraftChanges] = useState(false);
   const [hasCodexDraftChanges, setHasCodexDraftChanges] = useState(false);
   const claudeModelsSettingsRef =
@@ -80,8 +106,8 @@ export default function Settings() {
   const codexModelsSettingsRef = useRef<CodexDesktopModelsSettingsHandle>(null);
   const savedConfirmationTimeoutRef = useRef<number | null>(null);
   useBlocker({
-    shouldBlockFn: () =>
-      !window.confirm("Discard unapplied app model changes?"),
+    shouldBlockFn: async () =>
+      !(await confirmDialog("Descartar as alterações de modelos dos apps que ainda não foram aplicadas?", { confirmLabel: "Descartar" })),
     enableBeforeUnload: hasClaudeDraftChanges || hasCodexDraftChanges,
     disabled: !hasClaudeDraftChanges && !hasCodexDraftChanges,
   });
@@ -165,6 +191,11 @@ export default function Settings() {
   }, []);
 
   const defaultContextLength = inferenceComputeResponse?.defaultContextLength;
+
+  const changeInterfaceMode = useCallback((mode: InterfaceMode) => {
+    setInterfaceMode(mode);
+    persistInterfaceMode(mode, window.localStorage);
+  }, []);
 
   const updateSettingsMutation = useMutation({
     scope: settingsMutationScope,
@@ -373,7 +404,7 @@ export default function Settings() {
     } catch (error) {
       console.error("Failed to reset settings:", error);
       setResetError(
-        "Ollama could not reset every setting. Check the settings above and try again.",
+        "Não foi possível restaurar todas as configurações. Confira as opções acima e tente novamente.",
       );
     } finally {
       setResettingToDefaults(false);
@@ -393,7 +424,7 @@ export default function Settings() {
       if (!user || !user?.name) {
         const { data: connectUrl } = await fetchConnectUrl();
         if (connectUrl) {
-          window.open(connectUrl, "_blank");
+          openExternal(connectUrl);
           setIsAwaitingConnection(true);
           // Start polling every 5 seconds
           const interval = setInterval(() => {
@@ -427,10 +458,12 @@ export default function Settings() {
 
   if (loading || error || !settings) {
     return (
-      <main className="flex min-h-0 w-full flex-1 flex-col select-none dark:bg-neutral-900">
-        <div className="w-full flex-1 overflow-y-auto p-6 overscroll-contain">
+      <div className="w-full dark:bg-neutral-900">
+        <div className="w-full p-6">
           <div className="mx-auto max-w-4xl space-y-4">
-            <AgenticControlCenter />
+            <HealthCenter />
+            <InterfaceModeControl mode={interfaceMode} onChange={changeInterfaceMode} />
+            {interfaceMode === "advanced" && <AgenticControlCenter />}
             <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/20 dark:text-amber-200">
               <div className="font-medium">
                 {loading ? "Consultando configuração nativa…" : "Configuração nativa indisponível neste momento"}
@@ -441,21 +474,23 @@ export default function Settings() {
             </div>
           </div>
         </div>
-      </main>
+      </div>
     );
   }
 
   const isWindows = isWindowsPlatform();
 
   return (
-    <main className="flex min-h-0 w-full flex-1 flex-col select-none dark:bg-neutral-900">
-      <div className="w-full p-6 overflow-y-auto flex-1 overscroll-contain">
+    <div className="w-full dark:bg-neutral-900">
+      <div className="w-full p-6">
         <fieldset
           disabled={resettingToDefaults}
           aria-busy={resettingToDefaults}
           className="mx-auto max-w-4xl space-y-4 border-0 p-0"
         >
-          <AgenticControlCenter />
+          <HealthCenter />
+          <InterfaceModeControl mode={interfaceMode} onChange={changeInterfaceMode} />
+          {interfaceMode === "advanced" && <AgenticControlCenter />}
           {/* Connect Ollama Account */}
           <div className="overflow-hidden rounded-xl bg-white dark:bg-neutral-800">
             <div className="p-4">
@@ -469,7 +504,7 @@ export default function Settings() {
                     </div>
                     <div className="h-10 w-10 bg-neutral-200 dark:bg-neutral-700 rounded-full animate-pulse"></div>
                   </div>
-                ) : user && user.name ? (
+                ) : isAuthenticated && user && user.name ? (
                   <div className="flex items-center justify-between">
                     <div>
                       <div className="flex items-center space-x-2">
@@ -486,17 +521,12 @@ export default function Settings() {
                             type="button"
                             color="dark"
                             className="px-3 py-2 text-sm font-medium bg-black/90 backdrop-blur-sm text-white rounded-lg border border-white/10 shadow-2xl transition-all duration-300 ease-out relative overflow-hidden group"
-                            onClick={() =>
-                              window.open(
-                                "https://ollama.com/upgrade",
-                                "_blank",
-                              )
-                            }
+                            onClick={() => openExternal("https://ollama.com/upgrade")}
                           >
                             <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/20 via-purple-500/20 to-green-500/20 opacity-60 group-hover:opacity-80 transition-opacity duration-300"></div>
                             <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000 ease-out"></div>
                             <span className="relative z-10 flex items-center space-x-2">
-                              <span>Upgrade</span>
+                              <span>Fazer upgrade</span>
                             </span>
                           </Button>
                         )}
@@ -504,11 +534,9 @@ export default function Settings() {
                           type="button"
                           color="white"
                           className="px-3 py-2 text-sm"
-                          onClick={() =>
-                            window.open("https://ollama.com/settings", "_blank")
-                          }
+                          onClick={() => openExternal("https://ollama.com/settings")}
                         >
-                          Manage
+                          Gerenciar
                         </Button>
                         <Button
                           type="button"
@@ -516,7 +544,7 @@ export default function Settings() {
                           className="px-3 py-2 text-sm"
                           onClick={() => void handleDisconnectOllamaAccount()}
                         >
-                          Sign out
+                          Desconectar
                         </Button>
                       </div>
                     </div>
@@ -535,19 +563,21 @@ export default function Settings() {
                 ) : (
                   <div className="flex items-center justify-between">
                     <div>
-                      <Label>Ollama account</Label>
-                      <Description>Not connected</Description>
+                      <Label>Conta Ollama</Label>
+                      <Description>
+                        Não conectada · entre para usar modelos na nuvem e busca na web
+                      </Description>
                     </div>
                     <Button
                       type="button"
-                      color="white"
+                      color="dark"
                       onClick={handleConnectOllamaAccount}
                       disabled={isRefreshing || isAwaitingConnection}
                     >
                       {isRefreshing || isAwaitingConnection ? (
                         <AnimatedDots />
                       ) : (
-                        "Sign In"
+                        "Entrar"
                       )}
                     </Button>
                   </div>
@@ -570,11 +600,11 @@ export default function Settings() {
                   <div className="flex items-start space-x-3 flex-1">
                     <CloudIcon className="mt-1 h-5 w-5 flex-shrink-0 text-black dark:text-neutral-100" />
                     <div>
-                      <Label>Cloud</Label>
+                      <Label>Nuvem</Label>
                       <Description>
                         {cloudOverriddenByEnv
-                          ? "The OLLAMA_NO_CLOUD environment variable is currently forcing cloud off."
-                          : "Enable cloud models and web search."}
+                          ? "A variável de ambiente OLLAMA_NO_CLOUD está forçando a nuvem desligada."
+                          : "Ativar modelos na nuvem e busca na web."}
                       </Description>
                     </div>
                   </div>
@@ -599,9 +629,9 @@ export default function Settings() {
                     <div className="flex flex-1 items-start space-x-3">
                       <Squares2X2Icon className="mt-1 h-5 w-5 flex-shrink-0 text-black dark:text-neutral-100" />
                       <div>
-                        <Label>Show apps in menu</Label>
+                        <Label>Mostrar apps no menu</Label>
                         <Description>
-                          Show connected apps at the top of the Ollama menu.
+                          Exibir os apps conectados no topo do menu do Ollama.
                         </Description>
                       </div>
                     </div>
@@ -622,11 +652,11 @@ export default function Settings() {
                   <div className="flex items-start space-x-3 flex-1">
                     <ArrowDownTrayIcon className="mt-1 h-5 w-5 flex-shrink-0 text-black dark:text-neutral-100" />
                     <div>
-                      <Label>Auto-download updates</Label>
+                      <Label>Baixar atualizações automaticamente</Label>
                       <Description>
                         {settings.AutoUpdateEnabled
-                          ? "Automatically download updates when available."
-                          : "Updates will not be downloaded automatically."}
+                          ? "Baixar atualizações automaticamente quando disponíveis."
+                          : "As atualizações não serão baixadas automaticamente."}
                       </Description>
                     </div>
                   </div>
@@ -647,9 +677,9 @@ export default function Settings() {
                   <div className="flex items-start space-x-3 flex-1">
                     <WifiIcon className="mt-1 h-5 w-5 flex-shrink-0 text-black dark:text-neutral-100" />
                     <div>
-                      <Label>Expose Ollama to the network</Label>
+                      <Label>Expor o Hades na rede</Label>
                       <Description>
-                        Allow other devices or services to access Ollama.
+                        Permitir que outros dispositivos ou serviços acessem o Hades.
                       </Description>
                     </div>
                   </div>
@@ -711,8 +741,9 @@ export default function Settings() {
                   <div className="w-full">
                     <Label>Tamanho do contexto</Label>
                     <Description>
-                      Tamanho do contexto determines how much of your conversation
-                      local LLMs can remember and use to generate responses.
+                      O tamanho do contexto define quanto da conversa o modelo consegue
+                      lembrar e usar para gerar as respostas. Valores maiores mantêm mais
+                      histórico, mas consomem mais memória.
                     </Description>
                     <div className="mt-3">
                       <Slider
@@ -828,23 +859,30 @@ export default function Settings() {
             </div>
 
             <div className="mt-5 space-y-4">
+              <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-xs leading-5 text-emerald-900 dark:border-emerald-900/50 dark:bg-emerald-950/20 dark:text-emerald-200">
+                <strong className="font-semibold">Idioma:</strong> o Hades responde
+                sempre em <strong>português do Brasil</strong> por padrão (a menos que
+                você peça outro idioma na conversa). Isso já está ativo.
+              </div>
               <div>
                 <label className="block text-xs font-semibold text-neutral-800 dark:text-neutral-200">
-                  Instruções Personalizadas Permanentes
+                  Instruções personalizadas
                 </label>
                 <p className="mt-0.5 text-xs text-neutral-500">
-                  O que você gostaria que o Hades sempre soubesse sobre suas preferências e estilo de resposta?
+                  Anote preferências de estilo/resposta. Estas instruções são salvas
+                  neste computador e <strong>enviadas ao modelo em toda conversa</strong>,
+                  junto com o comportamento padrão do Hades.
                 </p>
                 <textarea
-                  rows={4}
-                  defaultValue={(typeof window !== "undefined" && typeof localStorage !== "undefined" ? localStorage.getItem("ollama_custom_instructions") : null) || "Sempre responder em português, priorizar arquitetura limpa, segurança rigorosa e entregar código testado de ponta a ponta."}
+                  rows={3}
+                  defaultValue={(typeof window !== "undefined" && typeof localStorage !== "undefined" ? localStorage.getItem("ollama_custom_instructions") : null) || ""}
                   onChange={(e) => {
                     if (typeof window !== "undefined" && typeof localStorage !== "undefined") {
                       localStorage.setItem("ollama_custom_instructions", e.target.value);
                     }
-                    showSalvoConfirmation();
                   }}
-                  placeholder="Digite suas diretrizes permanentes..."
+                  onBlur={() => showSalvoConfirmation()}
+                  placeholder="Ex.: respostas curtas e diretas; sempre com exemplos."
                   className="mt-2 w-full rounded-xl border border-neutral-300 bg-white p-3 text-xs leading-relaxed text-neutral-900 focus:border-neutral-900 focus:outline-none dark:border-neutral-700 dark:bg-neutral-900 dark:text-white"
                 />
               </div>
@@ -855,19 +893,21 @@ export default function Settings() {
                     Memória de Longo Prazo
                   </div>
                   <div className="text-[11px] text-neutral-500">
-                    Permitir que o agente consulte contexto de sessões e projetos anteriores.
+                    Consulta de contexto entre sessões ainda não está configurada neste ambiente.
                   </div>
                 </div>
-                <Switch
-                  checked={true}
-                  onChange={() => showSalvoConfirmation()}
-                />
+                <span
+                  className="rounded-full bg-neutral-100 px-2.5 py-1 text-[11px] font-medium text-neutral-500 dark:bg-neutral-800 dark:text-neutral-400"
+                  role="status"
+                >
+                  Indisponível
+                </span>
               </div>
             </div>
           </section>
 
           {/* Conta e Workspace */}
-          <section id="account" className="overflow-hidden rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm dark:border-neutral-800 dark:bg-neutral-950">
+          {interfaceMode === "advanced" && <section id="account" className="overflow-hidden rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm dark:border-neutral-800 dark:bg-neutral-950">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-600 font-bold text-white text-base">
                 {operatorProfile.name.charAt(0).toUpperCase()}
@@ -889,14 +929,17 @@ export default function Settings() {
               </div>
               <div className="flex items-center justify-between py-2.5">
                 <span className="text-neutral-500">Banco de Dados:</span>
-                <span className="text-neutral-800 dark:text-neutral-200">SQLite local-first + PostgreSQL RLS isolado</span>
+                <span className="text-neutral-800 dark:text-neutral-200">SQLite (armazenamento local)</span>
               </div>
               <div className="flex items-center justify-between py-2.5">
-                <span className="text-neutral-500">Contenção de Workspace:</span>
-                <span className="font-semibold text-emerald-600 dark:text-emerald-400">Ativa (Proteção contra traversals)</span>
+                <span className="text-neutral-500">Modo:</span>
+                <span className="font-semibold text-emerald-600 dark:text-emerald-400">Local-first (sem dependência de nuvem)</span>
               </div>
             </div>
-          </section>
+          </section>}
+
+          {/* Operador de navegador (plug-and-play) */}
+          <BrowserOperatorPanel />
 
           {/* Reset button */}
           <div className="flex items-center justify-between gap-4 px-4">
@@ -937,6 +980,6 @@ export default function Settings() {
           </div>
         )}
       </div>
-    </main>
+    </div>
   );
 }

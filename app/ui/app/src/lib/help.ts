@@ -5,7 +5,7 @@ export function newTaskShortcut(): string {
   return platform.includes("mac") ? "⌘K" : "Ctrl K";
 }
 
-const REPO = "https://github.com/DZ23-LTDA/ollama-classe-a-plus";
+const REPO = "https://github.com/DZ23-LTDA/hades-ollama";
 
 export const HELP_LINKS = [
   {

@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import { openExternal } from "@/lib/openExternal";
 import { useEffect, useState } from "react";
 import { ThemeSwitcher } from "@/components/ThemeSwitcher";
 import HadesEmblem from "@/components/HadesEmblem";
@@ -28,8 +29,10 @@ import { HelpDialog } from "@/components/HelpDialog";
 import { newTaskShortcut } from "@/lib/help";
 import { SETTINGS_SECTIONS } from "@/lib/settingsTabs";
 import { isTypingTarget } from "@/lib/search";
-import { disconnectUser, fetchAgentNotifications, fetchUser, type AgentNotification } from "@/api";
-import { clearAgentSession } from "@/lib/agenticClient";
+import { fetchAgentNotifications, fetchUser, type AgentNotification } from "@/api";
+import { performLogout } from "@/lib/logout";
+import { shouldStopSseReconnect } from "@/lib/sse";
+import { useUser } from "@/hooks/useUser";
 
 export type AppSection =
   | "apps"
@@ -52,11 +55,6 @@ export type AppSection =
 type Icon = React.ComponentType<{ className?: string }>;
 
 const iconClass = "h-[18px] w-[18px] shrink-0 stroke-[1.7]";
-
-export async function performLogout(): Promise<void> {
-  await disconnectUser();
-  clearAgentSession();
-}
 
 function itemClass(active: boolean, prominent = false) {
   return `group flex w-full items-center gap-3 rounded-lg px-2.5 py-2 text-left text-[13px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-400 ${
@@ -108,6 +106,8 @@ function TargetLink({
   );
 }
 export function AppNavigation({ current }: { current: AppSection }) {
+  // The full menu (all Manus-parity surfaces) is always shown — nothing in the
+  // navigation is hidden behind an interface mode.
   const [searchOpen, setSearchOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
@@ -119,6 +119,8 @@ export function AppNavigation({ current }: { current: AppSection }) {
   const [notifications, setNotifications] = useState<AgentNotification[]>([]);
   const [notificationsLoading, setNotificationsLoading] = useState(false);
   const [notificationsError, setNotificationsError] = useState<string | null>(null);
+  const { isAuthenticated, fetchConnectUrl } = useUser();
+  const [ollamaLoginPending, setOllamaLoginPending] = useState(false);
   const [userProfile, setUserProfile] = useState<{
     name: string;
     username: string;
@@ -128,8 +130,22 @@ export function AppNavigation({ current }: { current: AppSection }) {
     name: "Operador local",
     username: "local",
     email: "local@localhost",
-    plan: "Local-first",
+    plan: "Local",
   });
+
+  // Close the keyboard-shortcuts / sign-out dialogs with Escape (a11y: a modal
+  // dialog must be dismissable from the keyboard).
+  useEffect(() => {
+    if (!shortcutsOpen && !signOutOpen) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setShortcutsOpen(false);
+        if (!signOutPending) setSignOutOpen(false);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [shortcutsOpen, signOutOpen, signOutPending]);
 
   useEffect(() => {
     fetchUser()
@@ -139,7 +155,7 @@ export function AppNavigation({ current }: { current: AppSection }) {
             name: data.name || "Operador local",
             username: data.name || "local",
             email: data.email || "local@localhost",
-            plan: data.plan || "Local-first",
+            plan: data.plan || "Local",
           });
         }
       })
@@ -171,9 +187,19 @@ export function AppNavigation({ current }: { current: AppSection }) {
         setNotificationsError("O stream de notificações retornou dados inválidos.");
       }
     });
+    let consecutiveErrors = 0;
+    stream.onopen = () => {
+      consecutiveErrors = 0;
+    };
     stream.onerror = () => {
       if (active) {
         setNotificationsError("Atualização ao vivo indisponível; os eventos já carregados permanecem visíveis.");
+      }
+      consecutiveErrors += 1;
+      // Cap the native auto-reconnect so a down/404 stream endpoint does not
+      // become a reconnect storm.
+      if (shouldStopSseReconnect(consecutiveErrors)) {
+        stream.close();
       }
     };
     return () => {
@@ -193,6 +219,24 @@ export function AppNavigation({ current }: { current: AppSection }) {
       setSignOutError(error instanceof Error ? error.message : "Não foi possível encerrar a sessão.");
     } finally {
       setSignOutPending(false);
+    }
+  };
+
+  const handleOllamaLogin = async () => {
+    setOllamaLoginPending(true);
+    try {
+      const { data: connectUrl } = await fetchConnectUrl();
+      if (connectUrl) {
+        openExternal(connectUrl);
+      } else {
+        window.location.assign("/settings");
+      }
+    } catch {
+      // Fall back to the Settings page where the account block lives.
+      window.location.assign("/settings");
+    } finally {
+      setOllamaLoginPending(false);
+      setUserMenuOpen(false);
     }
   };
   useEffect(() => {
@@ -230,7 +274,7 @@ export function AppNavigation({ current }: { current: AppSection }) {
             Hades
           </div>
           <div className="truncate text-[10px] text-neutral-400">
-            Local-first workspace
+            Espaço de trabalho local
           </div>
         </div>
       </div>
@@ -259,27 +303,7 @@ export function AppNavigation({ current }: { current: AppSection }) {
         <span className="text-[10px] text-neutral-400">/</span>
       </button>
 
-      <NavLabel>Agentes</NavLabel>
-      <TargetLink
-        href="/endpoint"
-        label="Computadores"
-        current={current}
-        section="endpoint"
-        icon={ComputerDesktopIcon}
-      />
-      <Link
-        to="/agentic"
-        className={itemClass(current === "agentic")}
-        draggable={false}
-      >
-        <BoltIcon className={iconClass} />
-        <span className="min-w-0 flex-1 truncate">Agents</span>
-        <span className="rounded bg-neutral-200 px-1 py-0.5 text-[9px] font-semibold text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300">Cue!</span>
-        <span
-          className="h-1.5 w-1.5 rounded-full bg-emerald-500"
-          title="Runtime local"
-        />
-      </Link>
+      <NavLabel>Conteúdo</NavLabel>
       <TargetLink
         href="/library"
         label="Biblioteca"
@@ -294,51 +318,73 @@ export function AppNavigation({ current }: { current: AppSection }) {
         section="creations"
         icon={SparklesIcon}
       />
-      <TargetLink
-        href="/studio"
-        label="Studio"
-        current={current}
-        section="studio"
-        icon={PencilSquareIcon}
-      />
-      <TargetLink
-        href="/scheduled"
-        label="Automações"
-        current={current}
-        section="scheduled"
-        icon={ClockIcon}
-      />
-      <TargetLink
-        href="/connectors"
-        label="Plugins"
-        current={current}
-        section="connectors"
-        icon={LinkIcon}
-      />
 
-      <NavLabel>Ferramentas</NavLabel>
+      <NavLabel>Agentes</NavLabel>
       <TargetLink
-        href="/skills"
-        label="Habilidades"
+        href="/endpoint"
+        label="Computadores"
         current={current}
-        section="skills"
-        icon={BoltIcon}
+        section="endpoint"
+        icon={ComputerDesktopIcon}
       />
-      <TargetLink
-        href="/company"
-        label="Empresa"
-        current={current}
-        section="company"
-        icon={BuildingOffice2Icon}
-        badge="Novo"
-      />
-      <TargetLink
-        href="/tasks"
-        label="Tarefas"
-        current={current}
-        section="tasks"
-        icon={ArrowPathIcon}
-      />
+          <Link
+            to="/agentic"
+            className={itemClass(current === "agentic")}
+            draggable={false}
+          >
+            <BoltIcon className={iconClass} />
+            <span className="min-w-0 flex-1 truncate">Agentes</span>
+            <span className="rounded bg-violet-100 px-1 py-0.5 text-[9px] font-semibold text-violet-700 dark:bg-violet-950/60 dark:text-violet-300">Novo</span>
+            <span
+              className="h-1.5 w-1.5 rounded-full bg-emerald-500"
+              title="Runtime local"
+            />
+          </Link>
+          <TargetLink
+            href="/studio"
+            label="Studio"
+            current={current}
+            section="studio"
+            icon={PencilSquareIcon}
+          />
+          <TargetLink
+            href="/scheduled"
+            label="Automações"
+            current={current}
+            section="scheduled"
+            icon={ClockIcon}
+          />
+          <TargetLink
+            href="/connectors"
+            label="Plugins"
+            current={current}
+            section="connectors"
+            icon={LinkIcon}
+          />
+
+          <NavLabel>Ferramentas</NavLabel>
+          <TargetLink
+            href="/skills"
+            label="Habilidades"
+            current={current}
+            section="skills"
+            icon={BoltIcon}
+          />
+          <TargetLink
+            href="/company"
+            label="Empresa"
+            current={current}
+            section="company"
+            icon={BuildingOffice2Icon}
+            badge="Novo"
+          />
+          <TargetLink
+            href="/tasks"
+            label="Tarefas"
+            current={current}
+            section="tasks"
+            icon={ArrowPathIcon}
+          />
 
       <div className="mt-2 flex items-center justify-between px-2.5 pt-2">
         <NavLabel>Projetos</NavLabel>
@@ -402,6 +448,23 @@ export function AppNavigation({ current }: { current: AppSection }) {
                 <span className="font-semibold text-emerald-600 dark:text-emerald-400">Ilimitado (Local)</span>
               </div>
 
+              {!isAuthenticated && (
+                <div className="py-2 border-b border-neutral-100 dark:border-neutral-800">
+                  <button
+                    type="button"
+                    disabled={ollamaLoginPending}
+                    onClick={() => void handleOllamaLogin()}
+                    className="flex w-full items-center justify-center gap-2 rounded-lg bg-neutral-900 px-2 py-2 text-xs font-semibold text-white hover:bg-neutral-700 disabled:opacity-50 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-200"
+                  >
+                    <ArrowRightOnRectangleIcon className="h-4 w-4" />
+                    {ollamaLoginPending ? "Abrindo…" : "Entrar com conta Ollama"}
+                  </button>
+                  <p className="mt-1.5 px-1 text-[10px] leading-4 text-neutral-400">
+                    Opcional — só para modelos na nuvem e busca na web. Os modelos locais funcionam sem conta.
+                  </p>
+                </div>
+              )}
+
               <div className="py-2 space-y-1">
                 <a
                   href="/settings#account"
@@ -457,13 +520,13 @@ export function AppNavigation({ current }: { current: AppSection }) {
           )}
 
           {/* Barra de Perfil no Rodapé */}
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-2">
             <button
               type="button"
               onClick={() => setUserMenuOpen(!userMenuOpen)}
-              className="flex items-center gap-2 rounded-xl p-1 text-left transition-colors hover:bg-neutral-200/60 dark:hover:bg-neutral-800"
+              className="flex min-w-0 flex-1 items-center gap-2 rounded-xl p-1 text-left transition-colors hover:bg-neutral-200/60 dark:hover:bg-neutral-800"
             >
-              <div className="relative flex h-7 w-7 items-center justify-center rounded-full bg-emerald-600 font-bold text-white text-xs">
+              <div className="relative flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-emerald-600 font-bold text-white text-xs">
                 {userProfile.name.charAt(0).toUpperCase()}
                 <span className="absolute bottom-0 right-0 h-2 w-2 rounded-full bg-emerald-400 ring-2 ring-white dark:ring-neutral-900" />
               </div>
@@ -471,7 +534,7 @@ export function AppNavigation({ current }: { current: AppSection }) {
                 {userProfile.name}
               </span>
             </button>
-            <div className="flex items-center gap-1 text-neutral-400">
+            <div className="flex shrink-0 items-center gap-1 text-neutral-400">
               <button
                 type="button"
                 onClick={() => setNotificationsOpen((open) => !open)}
@@ -515,11 +578,20 @@ export function AppNavigation({ current }: { current: AppSection }) {
       )}
       {/* Modal de Atalhos de Teclado */}
       {shortcutsOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div className="w-full max-w-md rounded-2xl border border-neutral-200 bg-white p-6 shadow-2xl dark:border-neutral-800 dark:bg-neutral-900">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+          onClick={() => setShortcutsOpen(false)}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="shortcuts-title"
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-md rounded-2xl border border-neutral-200 bg-white p-6 shadow-2xl dark:border-neutral-800 dark:bg-neutral-900"
+          >
             <div className="flex items-center justify-between pb-3 border-b border-neutral-100 dark:border-neutral-800">
-              <h3 className="text-base font-bold text-neutral-900 dark:text-white">Atalhos de Teclado</h3>
-              <button onClick={() => setShortcutsOpen(false)} className="text-neutral-400 hover:text-neutral-600">✕</button>
+              <h3 id="shortcuts-title" className="text-base font-bold text-neutral-900 dark:text-white">Atalhos de Teclado</h3>
+              <button type="button" aria-label="Fechar" onClick={() => setShortcutsOpen(false)} className="text-neutral-400 hover:text-neutral-600">✕</button>
             </div>
             <div className="mt-4 space-y-3 text-xs">
               <div className="flex items-center justify-between">
@@ -550,9 +622,18 @@ export function AppNavigation({ current }: { current: AppSection }) {
 
       {/* Modal de Confirmação de Saída */}
       {signOutOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div className="w-full max-w-sm rounded-2xl border border-neutral-200 bg-white p-6 shadow-2xl dark:border-neutral-800 dark:bg-neutral-900 text-center">
-            <h3 className="text-base font-bold text-neutral-900 dark:text-white">Tem certeza de que deseja sair?</h3>
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+          onClick={() => { if (!signOutPending) setSignOutOpen(false); }}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="signout-title"
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-sm rounded-2xl border border-neutral-200 bg-white p-6 shadow-2xl dark:border-neutral-800 dark:bg-neutral-900 text-center"
+          >
+            <h3 id="signout-title" className="text-base font-bold text-neutral-900 dark:text-white">Tem certeza de que deseja sair?</h3>
             <p className="mt-2 text-xs text-neutral-500">Sair do Hades como {userProfile.email}?</p>
             {signOutError && <p role="alert" className="mt-3 text-xs text-red-600">{signOutError}</p>}
             <div className="mt-6 flex items-center justify-center gap-3">
@@ -572,7 +653,7 @@ export function AppNavigation({ current }: { current: AppSection }) {
 
 export function AppSidebar({ current }: { current: AppSection }) {
   return (
-    <nav className="flex flex-1 flex-col overflow-y-auto px-3 pb-4 select-none">
+    <nav aria-label="Navegação principal" className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain px-3 pb-4 select-none">
       <AppNavigation current={current} />
     </nav>
   );

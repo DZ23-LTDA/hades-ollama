@@ -233,6 +233,27 @@ func TestCloudPassthroughMiddleware_ZstdBodyTooLarge(t *testing.T) {
 	}
 }
 
+func TestCloudPassthroughMiddleware_PlainBodyTooLarge(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	// A plain (non-zstd) body over the 20MB cap must also be rejected: the zstd
+	// path was bounded but the uncompressed path was buffered without a limit.
+	oversized := bytes.Repeat([]byte("A"), maxDecompressedBodySize+1024)
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/responses", bytes.NewReader(oversized))
+	rec := httptest.NewRecorder()
+
+	r := gin.New()
+	r.POST("/v1/responses", cloudPassthroughMiddleware("test"), func(c *gin.Context) {
+		t.Fatal("handler should not be reached for oversized plain body")
+	})
+	r.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("expected status 400, got %d", rec.Code)
+	}
+}
+
 func TestBuildCloudSignatureChallengeOverwritesExistingTimestamp(t *testing.T) {
 	req, err := http.NewRequest(http.MethodPost, "https://ollama.com/v1/messages?beta=true&ts=999", nil)
 	if err != nil {

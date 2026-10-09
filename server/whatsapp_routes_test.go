@@ -22,6 +22,11 @@ func signWhatsAppBody(body, secret string) string {
 
 func setupWhatsAppTestServer(t *testing.T) (*gin.Engine, *agent.Runtime, *agent.WhatsAppGateway) {
 	gin.SetMode(gin.TestMode)
+	// Pin a loopback host so the agent API initializes in local (no-auth) mode
+	// deterministically. Without this the test inherits the ambient OLLAMA_HOST;
+	// a non-loopback value (e.g. 0.0.0.0) flips agentAuthRequired() to true and
+	// the admin write returns 403, making the test environment-dependent (E9).
+	t.Setenv("OLLAMA_HOST", "127.0.0.1:11434")
 	r := gin.New()
 
 	runtime, err := agent.NewRuntime(agent.RuntimeConfig{
@@ -99,6 +104,21 @@ func TestWhatsAppRoutesWebhookRejectsInvalidSignatureAndIdentity(t *testing.T) {
 	srv.ServeHTTP(w, req)
 	if w.Code != http.StatusBadRequest {
 		t.Fatalf("wrong object must return 400, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestWhatsAppRoutesWebhookRejectsOversizedBody(t *testing.T) {
+	srv, _, _ := setupWhatsAppTestServer(t)
+
+	// A body larger than the 4 MiB cap must be rejected before it is buffered
+	// (and before signature verification), not fully read into memory.
+	big := bytes.Repeat([]byte("a"), 5<<20)
+	req := httptest.NewRequest(http.MethodPost, "/api/agent/v1/whatsapp/webhook", bytes.NewReader(big))
+	w := httptest.NewRecorder()
+	srv.ServeHTTP(w, req)
+
+	if w.Code != http.StatusRequestEntityTooLarge {
+		t.Fatalf("oversized webhook body must return 413, got %d: %s", w.Code, w.Body.String())
 	}
 }
 

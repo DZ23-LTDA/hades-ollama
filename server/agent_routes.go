@@ -20,6 +20,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -33,11 +34,14 @@ type agentAPI struct {
 	runtime      *agent.Runtime
 	context      *agent.ContextStore
 	auth         *agent.AuthStore
+	oauthClients *agent.OAuthClientStore
 	authRequired bool
 	push         *agent.PushService
 	grok         *grok.Client
 	samlMu       sync.Mutex
 	samlServices map[string]*agent.SAMLService
+	// activeStreams bounds concurrent long-lived SSE/WS connections (SEC-13).
+	activeStreams atomic.Int64
 }
 
 var errAgentForbidden = errors.New("object is outside the active organization")
@@ -51,7 +55,17 @@ func newAgentAPI(runtime *agent.Runtime) (*agentAPI, error) {
 	if err != nil {
 		return nil, err
 	}
-	runtime.SetAuthStore(auth)
+	if runtime != nil {
+		runtime.SetAuthStore(auth)
+	}
+	oauthClientRoot := ""
+	if runtime != nil {
+		oauthClientRoot = runtime.DataRoot()
+	}
+	oauthClients, err := agent.NewOAuthClientStore(oauthClientRoot)
+	if err != nil {
+		return nil, err
+	}
 	required, err := agentAuthRequired()
 	if err != nil {
 		return nil, err
@@ -63,7 +77,7 @@ func newAgentAPI(runtime *agent.Runtime) (*agentAPI, error) {
 	if runtime != nil && runtime.RequiresOrganizationAuthentication() {
 		required = true
 	}
-	return &agentAPI{runtime: runtime, context: runtime.Context(), auth: auth, authRequired: required, push: runtime.Push(), grok: grokClient, samlServices: map[string]*agent.SAMLService{}}, nil
+	return &agentAPI{runtime: runtime, context: runtime.Context(), auth: auth, oauthClients: oauthClients, authRequired: required, push: runtime.Push(), grok: grokClient, samlServices: map[string]*agent.SAMLService{}}, nil
 }
 
 func newAgentGrokClient() (*grok.Client, error) {
@@ -368,6 +382,8 @@ func (a *agentAPI) register(r *gin.Engine) {
 	group.GET("/health", a.health)
 	group.GET("/grok/status", a.grokStatus)
 	group.GET("/config/safe", a.safeConfig)
+	group.GET("/diagnostics", a.diagnostics)
+	group.GET("/backup", a.downloadBackup)
 	group.GET("/auth/session", a.authSession)
 	group.POST("/auth/logout", a.authLogout)
 	group.POST("/auth/dev/token", a.devToken)
@@ -404,6 +420,7 @@ func (a *agentAPI) register(r *gin.Engine) {
 	group.GET("/metrics", a.metrics)
 	group.POST("/projects/import/github", a.importGitHubProject)
 	group.POST("/projects/import/zip", a.importZIPProject)
+	group.POST("/projects/import/attachments", a.importMissionAttachments)
 	group.POST("/projects/:id/ingest", a.ingestProject)
 	group.GET("/builders", a.builders)
 	group.GET("/builders/:id", a.getBuilder)
@@ -428,7 +445,13 @@ func (a *agentAPI) register(r *gin.Engine) {
 	group.POST("/connectors", a.registerConnector)
 	group.POST("/connectors/:id/enable", a.enableConnector)
 	group.POST("/connectors/:id/disable", a.disableConnector)
+	group.POST("/connectors/:id/oauth/start", a.connectorOAuthStart)
+	group.GET("/connectors/:id/oauth/callback", a.connectorOAuthCallback)
 	group.DELETE("/connectors/:id", a.removeConnector)
+	group.GET("/oauth-clients", a.listOAuthClients)
+	group.POST("/oauth-clients/:provider", a.saveOAuthClient)
+	group.GET("/browser/environment", a.browserEnvironment)
+	group.POST("/browser/environment/setup", a.browserEnvironmentSetup)
 	group.GET("/mcp", a.mcp)
 	group.POST("/mcp", a.registerMCP)
 	group.POST("/mcp/:id/enable", a.enableMCP)
@@ -496,6 +519,7 @@ func (a *agentAPI) register(r *gin.Engine) {
 	group.DELETE("/projects/:id", a.deleteProject)
 	group.POST("/projects/:id/memories", a.addMemory)
 	group.GET("/projects/:id/memories", a.searchMemories)
+	group.GET("/projects/:id/ask", a.askProjectDocuments)
 	group.GET("/collab/:project_id", a.collabSnapshot)
 	group.GET("/collab/:project_id/stream", a.collabStream)
 	group.POST("/collab/:project_id/comments", a.collabComment)
@@ -512,6 +536,7 @@ func (a *agentAPI) register(r *gin.Engine) {
 	group.GET("/missions/:id/artifacts/:artifact_id", a.artifact)
 	group.POST("/missions/:id/run", a.runMission)
 	group.POST("/missions/:id/cancel", a.cancelMission)
+	group.DELETE("/missions/:id", a.deleteMission)
 	group.POST("/missions/:id/approvals/:approval_id", a.decideApproval)
 	group.GET("/missions/:id/worktree", a.getMissionWorktree)
 	group.POST("/missions/:id/merge", a.mergeMissionWorktree)
@@ -581,9 +606,9 @@ func (a *agentAPI) authMiddleware(c *gin.Context) {
 		recoveryCode := strings.TrimSpace(c.GetHeader("X-Ollama-MFA-Recovery-Code"))
 		var mfaErr error
 		if recoveryCode != "" {
-			mfaErr = a.auth.VerifyRecoveryCodeWithThrottle(user.ID, recoveryCode, c.Request.RemoteAddr, time.Now().UTC())
+			mfaErr = a.auth.VerifyRecoveryCodeWithThrottle(user.ID, recoveryCode, throttleHostKey(c.Request.RemoteAddr), time.Now().UTC())
 		} else {
-			mfaErr = a.auth.VerifyMFAWithThrottle(user.ID, mfaCode, c.Request.RemoteAddr, time.Now().UTC())
+			mfaErr = a.auth.VerifyMFAWithThrottle(user.ID, mfaCode, throttleHostKey(c.Request.RemoteAddr), time.Now().UTC())
 		}
 		if mfaErr != nil {
 			var throttle *agent.MFAThrottleError
@@ -778,6 +803,22 @@ func isLoopbackRemoteAddr(remoteAddr string) bool {
 	return ip != nil && ip.IsLoopback()
 }
 
+// throttleHostKey returns the client host without the ephemeral TCP port so
+// rate limits key on the IP, not IP:port. Keying on the full RemoteAddr let a
+// caller reset an MFA/recovery throttle just by opening a new connection with a
+// fresh source port (SEC-05).
+func throttleHostKey(remoteAddr string) string {
+	remoteAddr = strings.TrimSpace(remoteAddr)
+	host, _, err := net.SplitHostPort(remoteAddr)
+	if err != nil {
+		host = strings.Trim(remoteAddr, "[]")
+	}
+	if host == "" {
+		return remoteAddr
+	}
+	return host
+}
+
 func (a *agentAPI) scopedRuntime(c *gin.Context) *agent.Runtime {
 	if value, ok := c.Get("agent.organization"); ok {
 		if organization, ok := value.(agent.Organization); ok {
@@ -800,16 +841,31 @@ func (a *agentAPI) organizationID(c *gin.Context) string {
 	return ""
 }
 
-func agentOrganizationID(c *gin.Context) string {
+// tenantOrganizationID devolve a organização explicitamente autenticada no
+// contexto da requisição. Diferente de agentOrganizationID, NÃO cai para a
+// organização local: string vazia significa "chamador sem locatário", que é
+// exatamente o caso em que uma superfície de escopo global precisa do opt-in
+// explícito do operador (OLLAMA_AGENT_ALLOW_GLOBAL_SCOPE).
+func tenantOrganizationID(c *gin.Context) string {
 	if value, ok := c.Get("agent.organization"); ok {
 		if organization, ok := value.(agent.Organization); ok {
-			return organization.ID
+			return strings.TrimSpace(organization.ID)
 		}
 	}
-	if c != nil && c.Request != nil {
-		if value := strings.TrimSpace(c.GetHeader("X-Ollama-Organization")); value != "" {
-			return value
-		}
+	return ""
+}
+
+func agentOrganizationID(c *gin.Context) string {
+	// The organization is trusted only from the request context, which the auth
+	// middleware populates from the verified bearer token (and fixes to the
+	// local organization in local mode). The client-supplied
+	// X-Ollama-Organization header is NEVER used to select the tenant: doing so
+	// would let any caller on an auth-exempt route (e.g. an OAuth callback) pick
+	// an arbitrary organization. The header is only ever cross-checked against
+	// the authenticated org in authMiddleware. Absent a context org, fail closed
+	// to the local organization.
+	if organizationID := tenantOrganizationID(c); organizationID != "" {
+		return organizationID
 	}
 	return agent.LocalOrganizationID
 }
@@ -882,7 +938,76 @@ func missionVersionMatches(c *gin.Context, mission agent.Mission) bool {
 }
 
 func (a *agentAPI) health(c *gin.Context) {
-	c.JSON(http.StatusOK, gin.H{"status": "ok", "runtime": "agent-v1"})
+	runtimeReady := a.runtime != nil
+	storeStatus := "local"
+	if strings.TrimSpace(os.Getenv("OLLAMA_AGENT_DATABASE_URL")) != "" {
+		storeStatus = "postgres-configured"
+	}
+	queueStatus := "local"
+	if strings.TrimSpace(os.Getenv("OLLAMA_AGENT_REDIS_URL")) != "" {
+		queueStatus = "redis-configured"
+	}
+	sandboxStatus := strings.ToLower(strings.TrimSpace(os.Getenv("OLLAMA_AGENT_SANDBOX_MODE")))
+	if sandboxStatus == "" {
+		sandboxStatus = "best-effort"
+	}
+	// Real queue depth instead of a static label: surface how much work is
+	// pending/running and whether anything has landed in the dead-letter queue.
+	pending, running, dead := 0, 0, 0
+	queueHealth := "ok"
+	var queueErr error
+	if a.runtime != nil {
+		for _, probe := range []struct {
+			status agent.QueueStatus
+			count  *int
+		}{
+			{agent.QueuePending, &pending},
+			{agent.QueueRunning, &running},
+			{agent.QueueDeadLetter, &dead},
+		} {
+			jobs, err := a.runtime.QueueJobsWithError(probe.status)
+			if err != nil {
+				queueErr = err
+				break
+			}
+			*probe.count = len(jobs)
+		}
+	}
+	status := "ok"
+	if !runtimeReady {
+		status = "degraded"
+	}
+	if queueErr != nil {
+		// The queue dependency is unreachable or returned an unexpected
+		// response. Report it as unavailable instead of masking the outage as
+		// a healthy, empty queue.
+		queueHealth = "unavailable"
+		status = "degraded"
+	} else if dead > 0 {
+		// Dead-lettered jobs are a real, actionable problem; reflect it.
+		queueHealth = "degraded"
+		if status == "ok" {
+			status = "degraded"
+		}
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"status":     status,
+		"runtime":    "agent-v1",
+		"checked_at": time.Now().UTC(),
+		"subsystems": gin.H{
+			"agent": gin.H{"status": map[bool]string{true: "ok", false: "degraded"}[runtimeReady], "detail": "Motor de missões"},
+			"store": gin.H{"status": storeStatus, "detail": "Persistência de missões e configurações"},
+			"queue": gin.H{
+				"status":      queueStatus,
+				"health":      queueHealth,
+				"detail":      "Fila de execução",
+				"pending":     pending,
+				"running":     running,
+				"dead_letter": dead,
+			},
+			"sandbox": gin.H{"status": sandboxStatus, "detail": "Execução isolada"},
+		},
+	})
 }
 
 func (a *agentAPI) safeConfig(c *gin.Context) {
@@ -1078,303 +1203,6 @@ func (a *agentAPI) devToken(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusCreated, gin.H{"access_token": raw, "token": token, "user": user.Public(), "organization": organization})
-}
-
-func oauthProviderFromEnv(name string) agent.OAuthProvider {
-	key := strings.ToUpper(strings.NewReplacer("-", "_", " ", "_").Replace(strings.TrimSpace(name)))
-	prefix := "OLLAMA_AGENT_OAUTH_" + key
-	redirects := make([]string, 0)
-	for _, value := range strings.FieldsFunc(os.Getenv(prefix+"_REDIRECT_URIS"), func(r rune) bool { return r == ',' || r == ';' || r == '\n' }) {
-		if value = strings.TrimSpace(value); value != "" {
-			redirects = append(redirects, value)
-		}
-	}
-	return agent.OAuthProvider{Name: name, AuthorizeURL: os.Getenv(prefix + "_AUTHORIZE_URL"), TokenURL: os.Getenv(prefix + "_TOKEN_URL"), RevocationURL: os.Getenv(prefix + "_REVOCATION_URL"), UserInfoURL: os.Getenv(prefix + "_USERINFO_URL"), IssuerURL: os.Getenv(prefix + "_ISSUER_URL"), Audience: os.Getenv(prefix + "_AUDIENCE"), ClientIDEnv: os.Getenv(prefix + "_CLIENT_ID_ENV"), SecretEnv: os.Getenv(prefix + "_SECRET_ENV"), RedirectURIs: redirects, AllowLoopbackRedirect: strings.EqualFold(os.Getenv(prefix+"_ALLOW_LOOPBACK_REDIRECT"), "true")}
-}
-
-func prepareOIDCProvider(ctx context.Context, provider agent.OAuthProvider) (agent.OAuthProvider, error) {
-	if strings.TrimSpace(provider.IssuerURL) == "" {
-		return provider, provider.Validate()
-	}
-	discovery, err := provider.Discover(ctx, newServerEgressClient("server.agent.provider_discovery", false))
-	if err != nil {
-		return agent.OAuthProvider{}, err
-	}
-	if provider.AuthorizeURL == "" {
-		provider.AuthorizeURL = discovery.AuthorizationEndpoint
-	}
-	if provider.TokenURL == "" {
-		provider.TokenURL = discovery.TokenEndpoint
-	}
-	if provider.UserInfoURL == "" {
-		provider.UserInfoURL = discovery.UserInfoEndpoint
-	}
-	return provider, provider.Validate()
-}
-
-func samlProviderFromEnv(name string) agent.SAMLProviderConfig {
-	key := strings.ToUpper(strings.NewReplacer("-", "_", " ", "_").Replace(strings.TrimSpace(name)))
-	prefix := "OLLAMA_AGENT_SAML_" + key
-	return agent.SAMLProviderConfig{
-		Name:               name,
-		EntityID:           os.Getenv(prefix + "_ENTITY_ID"),
-		IDPMetadataURL:     os.Getenv(prefix + "_IDP_METADATA_URL"),
-		MetadataURL:        os.Getenv(prefix + "_METADATA_URL"),
-		ACSURL:             os.Getenv(prefix + "_ACS_URL"),
-		SPPrivateKeyFile:   os.Getenv(prefix + "_SP_PRIVATE_KEY_FILE"),
-		SPCertificateFile:  os.Getenv(prefix + "_SP_CERTIFICATE_FILE"),
-		DefaultRedirectURI: os.Getenv(prefix + "_DEFAULT_REDIRECT_URI"),
-		AllowIDPInitiated:  strings.EqualFold(os.Getenv(prefix+"_ALLOW_IDP_INITIATED"), "true"),
-	}
-}
-
-func loadSAMLService(ctx context.Context, name string) (*agent.SAMLService, error) {
-	config := samlProviderFromEnv(name)
-	return agent.NewSAMLService(ctx, config, newServerEgressClient("server.agent.saml", false))
-}
-
-func (a *agentAPI) samlService(ctx context.Context, name string) (*agent.SAMLService, error) {
-	a.samlMu.Lock()
-	defer a.samlMu.Unlock()
-	if service, ok := a.samlServices[name]; ok {
-		return service, nil
-	}
-	service, err := loadSAMLService(ctx, name)
-	if err != nil {
-		return nil, err
-	}
-	a.samlServices[name] = service
-	return service, nil
-}
-
-func (a *agentAPI) oauthStart(c *gin.Context) {
-	provider, err := prepareOIDCProvider(c.Request.Context(), oauthProviderFromEnv(c.Param("provider")))
-	if err != nil {
-		writeAgentError(c, http.StatusBadRequest, err)
-		return
-	}
-	redirectURI, redirectErr := provider.NormalizeRedirectURI(c.Query("redirect_uri"))
-	verifier := strings.TrimSpace(c.Query("code_verifier"))
-	if redirectErr != nil || verifier == "" {
-		if redirectErr == nil {
-			redirectErr = errors.New("redirect_uri and PKCE code_verifier are required")
-		}
-		writeAgentError(c, http.StatusBadRequest, redirectErr)
-		return
-	}
-	userID := ""
-	if value, ok := c.Get("agent.user"); ok {
-		if user, ok := value.(agent.User); ok {
-			userID = user.ID
-		}
-	}
-	nonce := fmt.Sprintf("%x", sha256.Sum256([]byte(provider.Name+"|"+redirectURI+"|"+verifier+"|"+time.Now().UTC().String())))
-	state, _, err := a.auth.CreateOAuthStateWithNonce(provider.Name, redirectURI, verifier, nonce, userID, 5*time.Minute)
-	if err != nil {
-		writeAgentError(c, http.StatusBadRequest, err)
-		return
-	}
-	scopes := strings.Fields(c.Query("scope"))
-	if len(scopes) == 0 {
-		scopes = []string{"openid", "email"}
-	}
-	authorizationURL, err := provider.AuthorizationURLWithNonce(state, nonce, scopes)
-	if err != nil {
-		writeAgentError(c, http.StatusBadRequest, err)
-		return
-	}
-	c.JSON(http.StatusOK, gin.H{"provider": provider.Name, "authorization_url": authorizationURL, "state": state, "expires_in": 300})
-}
-
-func (a *agentAPI) oauthCallback(c *gin.Context) {
-	provider, err := prepareOIDCProvider(c.Request.Context(), oauthProviderFromEnv(c.Param("provider")))
-	if err != nil {
-		writeAgentError(c, http.StatusBadRequest, err)
-		return
-	}
-	redirectURI, redirectErr := provider.NormalizeRedirectURI(c.Query("redirect_uri"))
-	code := strings.TrimSpace(c.Query("code"))
-	stateValue := strings.TrimSpace(c.Query("state"))
-	if redirectErr != nil || code == "" || stateValue == "" {
-		if redirectErr == nil {
-			redirectErr = errors.New("code, state and redirect_uri are required")
-		}
-		writeAgentError(c, http.StatusBadRequest, redirectErr)
-		return
-	}
-	state, err := a.auth.ConsumeOAuthState(stateValue, provider.Name, redirectURI)
-	if err != nil {
-		writeAgentError(c, http.StatusBadRequest, err)
-		return
-	}
-	payload, err := provider.ExchangeCode(c.Request.Context(), newServerEgressClient("server.agent.oauth.exchange", false), code, redirectURI, state.CodeVerifier)
-	if err != nil {
-		writeAgentError(c, http.StatusBadGateway, err)
-		return
-	}
-	if provider.IssuerURL != "" {
-		idToken, _ := payload["id_token"].(string)
-		if idToken == "" {
-			writeAgentError(c, http.StatusBadGateway, errors.New("oidc token response has no id_token"))
-			return
-		}
-		claims, validationErr := provider.ValidateIDToken(c.Request.Context(), newServerEgressClient("server.agent.oauth.id_token", false), idToken, state.Nonce)
-		if validationErr != nil {
-			writeAgentError(c, http.StatusBadGateway, validationErr)
-			return
-		}
-		payload["id_token_claims"] = claims
-	}
-	userID := state.UserID
-	if userID == "" && (provider.UserInfoURL != "" || provider.IssuerURL != "") {
-		accessToken, _ := payload["access_token"].(string)
-		userinfo, userinfoErr := provider.FetchUserInfo(c.Request.Context(), newServerEgressClient("server.agent.oauth.userinfo", false), accessToken)
-		if userinfoErr != nil {
-			writeAgentError(c, http.StatusBadGateway, userinfoErr)
-			return
-		}
-		payload["userinfo"] = userinfo
-	}
-	if userID == "" {
-		user, _, _, provisionErr := a.auth.ProvisionOAuthUser(payload, provider.Name)
-		if provisionErr != nil {
-			writeAgentError(c, http.StatusBadRequest, provisionErr)
-			return
-		}
-		userID = user.ID
-	}
-	organization, _, err := a.auth.FirstOrganization(userID)
-	if err != nil {
-		writeAgentError(c, http.StatusBadRequest, errors.New("OAuth user has no organization"))
-		return
-	}
-	credential, err := a.auth.StoreOAuthCredential(provider.Name, userID, organization.ID, payload)
-	if err != nil {
-		writeAgentError(c, http.StatusInternalServerError, err)
-		return
-	}
-	localToken, session, err := a.auth.IssueToken(userID, organization.ID, 24*time.Hour)
-	if err != nil {
-		writeAgentError(c, http.StatusInternalServerError, err)
-		return
-	}
-	c.JSON(http.StatusOK, gin.H{"access_token": localToken, "token": session, "credential_id": credential.ID, "provider": provider.Name, "organization": organization, "expires_at": credential.ExpiresAt})
-}
-
-func oauthCredentialPublic(credential agent.OAuthCredential) gin.H {
-	return gin.H{
-		"credential_id": credential.ID,
-		"provider":      credential.Provider,
-		"expires_at":    credential.ExpiresAt,
-		"updated_at":    credential.UpdatedAt,
-		"revoked_at":    credential.RevokedAt,
-	}
-}
-
-func (a *agentAPI) oauthRefresh(c *gin.Context) {
-	provider, err := prepareOIDCProvider(c.Request.Context(), oauthProviderFromEnv(c.Param("provider")))
-	if err != nil {
-		writeAgentError(c, http.StatusBadRequest, err)
-		return
-	}
-	var request struct {
-		CredentialID string `json:"credential_id"`
-	}
-	if err := decodeJSON(c, &request); err != nil || strings.TrimSpace(request.CredentialID) == "" {
-		if err == nil {
-			err = errors.New("credential_id is required")
-		}
-		writeAgentError(c, http.StatusBadRequest, err)
-		return
-	}
-	credential, err := a.auth.RefreshOAuthCredentialForOrganization(c.Request.Context(), agentOrganizationID(c), provider, request.CredentialID, newServerEgressClient("server.agent.oauth.refresh", false))
-	if err != nil {
-		status := http.StatusBadGateway
-		if errors.Is(err, agent.ErrOAuthCredentialConflict) {
-			status = http.StatusConflict
-		} else if errors.Is(err, agent.ErrOAuthCredentialRevoked) || strings.Contains(err.Error(), "outside the active organization") {
-			status = http.StatusForbidden
-		}
-		writeAgentError(c, status, err)
-		return
-	}
-	c.JSON(http.StatusOK, oauthCredentialPublic(credential))
-}
-
-func (a *agentAPI) oauthRevoke(c *gin.Context) {
-	provider, err := prepareOIDCProvider(c.Request.Context(), oauthProviderFromEnv(c.Param("provider")))
-	if err != nil {
-		writeAgentError(c, http.StatusBadRequest, err)
-		return
-	}
-	var request struct {
-		CredentialID string `json:"credential_id"`
-	}
-	if err := decodeJSON(c, &request); err != nil || strings.TrimSpace(request.CredentialID) == "" {
-		if err == nil {
-			err = errors.New("credential_id is required")
-		}
-		writeAgentError(c, http.StatusBadRequest, err)
-		return
-	}
-	if err := a.auth.RevokeOAuthCredentialForOrganization(c.Request.Context(), agentOrganizationID(c), request.CredentialID, provider, newServerEgressClient("server.agent.oauth.revoke", false)); err != nil {
-		status := http.StatusBadGateway
-		if errors.Is(err, agent.ErrOAuthCredentialConflict) {
-			status = http.StatusConflict
-		} else if errors.Is(err, agent.ErrOAuthCredentialRevoked) || strings.Contains(err.Error(), "outside the active organization") {
-			status = http.StatusForbidden
-		}
-		writeAgentError(c, status, err)
-		return
-	}
-	c.Status(http.StatusNoContent)
-}
-
-func (a *agentAPI) samlStart(c *gin.Context) {
-	service, err := a.samlService(c.Request.Context(), c.Param("provider"))
-	if err != nil {
-		writeAgentError(c, http.StatusBadRequest, err)
-		return
-	}
-	redirect, relay, err := service.Start(c.Query("redirect_uri"))
-	if err != nil {
-		writeAgentError(c, http.StatusBadRequest, err)
-		return
-	}
-	c.JSON(http.StatusOK, gin.H{"provider": service.Provider.Name, "authorization_url": redirect, "relay_state": relay, "expires_in": 300})
-}
-
-func (a *agentAPI) samlMetadata(c *gin.Context) {
-	service, err := a.samlService(c.Request.Context(), c.Param("provider"))
-	if err != nil {
-		writeAgentError(c, http.StatusBadRequest, err)
-		return
-	}
-	service.Metadata(c.Writer, c.Request)
-}
-
-func (a *agentAPI) samlACS(c *gin.Context) {
-	service, err := a.samlService(c.Request.Context(), c.Param("provider"))
-	if err != nil {
-		writeAgentError(c, http.StatusBadRequest, err)
-		return
-	}
-	claims, err := service.ParseACS(c.Request)
-	if err != nil {
-		writeAgentError(c, http.StatusUnauthorized, err)
-		return
-	}
-	user, organization, _, err := a.auth.ProvisionOAuthUser(claims, service.Provider.Name)
-	if err != nil {
-		writeAgentError(c, http.StatusBadRequest, err)
-		return
-	}
-	localToken, session, err := a.auth.IssueToken(user.ID, organization.ID, 24*time.Hour)
-	if err != nil {
-		writeAgentError(c, http.StatusInternalServerError, err)
-		return
-	}
-	c.JSON(http.StatusOK, gin.H{"access_token": localToken, "token": session, "provider": service.Provider.Name, "organization": organization, "user": user.Public()})
 }
 
 func (a *agentAPI) metrics(c *gin.Context) {
@@ -1777,6 +1605,11 @@ func (a *agentAPI) collabStream(c *gin.Context) {
 		writeAgentError(c, statusForAgentError(err), err)
 		return
 	}
+	release, ok := a.acquireStreamSlot(c)
+	if !ok {
+		return
+	}
+	defer release()
 	c.Header("Content-Type", "text/event-stream")
 	c.Header("Cache-Control", "no-cache")
 	c.Header("Connection", "keep-alive")
@@ -1831,6 +1664,36 @@ func (a *agentAPI) searchMemories(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"project_id": c.Param("id"), "memories": memories})
 }
 
+// askProjectDocuments retrieves relevant excerpts from the project's indexed
+// documents (RAG, G1). It returns citations and snippets only; it does not
+// synthesize an answer or expose the internal prompt/context block to the UI.
+func (a *agentAPI) askProjectDocuments(c *gin.Context) {
+	if _, err := a.projectForRequest(c); err != nil {
+		writeAgentError(c, statusForAgentError(err), err)
+		return
+	}
+	query := strings.TrimSpace(c.Query("q"))
+	if query == "" {
+		writeAgentError(c, http.StatusBadRequest, errors.New("q (consulta) é obrigatório"))
+		return
+	}
+	const (
+		askLimit    = 8
+		askMinScore = 0.2 // relevance gate: unrelated queries return no sources
+	)
+	_, citations, err := a.context.GroundedAnswerContext(c.Request.Context(), c.Param("id"), query, askLimit, askMinScore)
+	if err != nil {
+		writeAgentError(c, http.StatusBadRequest, err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"project_id": c.Param("id"),
+		"query":      query,
+		"citations":  citations,
+		"grounded":   len(citations) > 0,
+	})
+}
+
 func (a *agentAPI) missions(c *gin.Context) {
 	missions, err := a.scopedRuntime(c).ListMissions()
 	if err != nil {
@@ -1868,6 +1731,11 @@ func (a *agentAPI) notifications(c *gin.Context) {
 }
 
 func (a *agentAPI) notificationStream(c *gin.Context) {
+	release, ok := a.acquireStreamSlot(c)
+	if !ok {
+		return
+	}
+	defer release()
 	c.Header("Content-Type", "text/event-stream")
 	c.Header("Cache-Control", "no-cache")
 	c.Header("Connection", "keep-alive")
@@ -1948,12 +1816,28 @@ func creationCategory(artifact agent.ArtifactManifest) (string, string) {
 	}
 }
 
+func validateAutoRunCapabilities(capabilities []string) error {
+	for _, capability := range capabilities {
+		if strings.TrimSpace(capability) != "" && strings.TrimSpace(capability) != "workspace:read" {
+			return errors.New("autorun accepts only workspace:read; create the mission without autorun for elevated capabilities")
+		}
+	}
+	return nil
+}
+
 func (a *agentAPI) createMission(c *gin.Context) {
 	var request agent.CreateMissionRequest
 	if err := decodeJSON(c, &request); err != nil {
 		writeAgentError(c, http.StatusBadRequest, err)
 		return
 	}
+	if request.AutoRun {
+		if err := validateAutoRunCapabilities(request.Capabilities); err != nil {
+			writeAgentError(c, http.StatusBadRequest, err)
+			return
+		}
+	}
+	request.ActorID = agentActorID(c)
 	if value, ok := c.Get("agent.organization"); ok {
 		if organization, ok := value.(agent.Organization); ok {
 			request.OrganizationID = organization.ID
@@ -2005,7 +1889,14 @@ func (a *agentAPI) events(c *gin.Context) {
 		writeAgentError(c, statusForAgentError(err), err)
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"mission_id": c.Param("id"), "events": events})
+	// Optional limit returns only the most recent N events so a long-running
+	// mission's history cannot force an unbounded response. total lets the
+	// client know how many exist. Without limit the behavior is unchanged.
+	total := len(events)
+	if limit, limitErr := strconv.Atoi(strings.TrimSpace(c.Query("limit"))); limitErr == nil && limit > 0 && limit < len(events) {
+		events = events[len(events)-limit:]
+	}
+	c.JSON(http.StatusOK, gin.H{"mission_id": c.Param("id"), "events": events, "total": total})
 }
 
 func (a *agentAPI) eventStream(c *gin.Context) {
@@ -2013,6 +1904,11 @@ func (a *agentAPI) eventStream(c *gin.Context) {
 		writeAgentError(c, statusForAgentError(err), err)
 		return
 	}
+	release, ok := a.acquireStreamSlot(c)
+	if !ok {
+		return
+	}
+	defer release()
 	c.Header("Content-Type", "text/event-stream")
 	c.Header("Cache-Control", "no-cache")
 	c.Header("Connection", "keep-alive")
@@ -2021,19 +1917,46 @@ func (a *agentAPI) eventStream(c *gin.Context) {
 		c.Status(http.StatusNotImplemented)
 		return
 	}
+	// Resume from the client's Last-Event-ID so a reconnect does not replay the
+	// entire history. EventSource sends this header automatically with the id:
+	// we emit below; other clients may send it explicitly.
 	lastCount := 0
+	if resume := strings.TrimSpace(c.GetHeader("Last-Event-ID")); resume != "" {
+		if parsed, parseErr := strconv.Atoi(resume); parseErr == nil && parsed >= 0 {
+			lastCount = parsed
+		}
+	}
 	ticker := time.NewTicker(750 * time.Millisecond)
 	defer ticker.Stop()
+	const heartbeatEveryTicks = 20 // ~15s with a 750ms tick
+	idleTicks := 0
 	for {
 		events, err := a.scopedRuntime(c).Events(c.Param("id"))
 		if err != nil {
 			return
 		}
+		// Guard against a cursor beyond the current log (e.g. a stale resume id
+		// or a reset log) so the slice below never panics.
+		if lastCount > len(events) {
+			lastCount = 0
+		}
 		if len(events) > lastCount {
 			payload, _ := json.Marshal(events[lastCount:])
-			_, _ = fmt.Fprintf(c.Writer, "event: mission\ndata: %s\n\n", payload)
+			// The id: lets the client resume from here on reconnect.
+			_, _ = fmt.Fprintf(c.Writer, "id: %d\nevent: mission\ndata: %s\n\n", len(events), payload)
 			flusher.Flush()
 			lastCount = len(events)
+			idleTicks = 0
+		} else {
+			// Periodic heartbeat comment keeps the connection (and any proxy)
+			// alive without emitting a data event. SSE comment lines start with
+			// ':' and are ignored by clients.
+			idleTicks++
+			if idleTicks >= heartbeatEveryTicks {
+				_, _ = fmt.Fprint(c.Writer, ": heartbeat\n\n")
+				flusher.Flush()
+				idleTicks = 0
+			}
 		}
 		select {
 		case <-c.Request.Context().Done():
@@ -2895,7 +2818,10 @@ func (a *agentAPI) runMission(c *gin.Context) {
 		writeAgentError(c, statusForAgentError(err), err)
 		return
 	}
-	c.JSON(http.StatusAccepted, gin.H{"mission_id": id, "state": agent.MissionRunning, "job": job})
+	// The mission is enqueued, not yet running: the transition to RUNNING only
+	// happens when a worker claims the job. Report the real mission state and
+	// the queued job instead of a premature RUNNING that misleads the client.
+	c.JSON(http.StatusAccepted, gin.H{"mission_id": id, "state": mission.State, "queued": true, "job": job})
 }
 
 func (a *agentAPI) cancelMission(c *gin.Context) {
@@ -2913,6 +2839,19 @@ func (a *agentAPI) cancelMission(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, mission)
+}
+
+func (a *agentAPI) deleteMission(c *gin.Context) {
+	id := strings.TrimSpace(c.Param("id"))
+	if id == "" {
+		writeAgentError(c, http.StatusBadRequest, errors.New("mission id is required"))
+		return
+	}
+	if err := a.scopedRuntime(c).DeleteMission(c.Request.Context(), id); err != nil {
+		writeAgentError(c, statusForAgentError(err), err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"status": "deleted", "id": id})
 }
 
 func (a *agentAPI) decideApproval(c *gin.Context) {
@@ -2997,7 +2936,19 @@ func (a *agentAPI) mergeMissionWorktree(c *gin.Context) {
 		writeAgentError(c, http.StatusBadRequest, errors.New("mission id is required"))
 		return
 	}
-	commitSHA, err := a.scopedRuntime(c).MergeMissionWorktree(c.Request.Context(), id)
+	// SEC-03: the merge must carry the diff digest the reviewer approved so the
+	// server can bind the approval to the exact diff being merged. Accept it from
+	// the JSON body or, as a convenience, a query parameter.
+	approvedDiffSHA := strings.TrimSpace(c.Query("approved_diff_sha256"))
+	if c.Request.Body != nil && c.Request.ContentLength != 0 {
+		var body struct {
+			ApprovedDiffSHA256 string `json:"approved_diff_sha256"`
+		}
+		if err := decodeJSON(c, &body); err == nil && strings.TrimSpace(body.ApprovedDiffSHA256) != "" {
+			approvedDiffSHA = strings.TrimSpace(body.ApprovedDiffSHA256)
+		}
+	}
+	commitSHA, err := a.scopedRuntime(c).MergeMissionWorktree(c.Request.Context(), id, approvedDiffSHA)
 	if err != nil {
 		writeAgentError(c, http.StatusBadRequest, err)
 		return

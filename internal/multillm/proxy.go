@@ -28,6 +28,29 @@ const (
 
 var errResponseLimit = errors.New("provider response exceeded limit")
 
+// sanitizeErr strips the query string (e.g. Google's ?key=<secret>) and any
+// fragment from a *url.Error wrapped in err, so provider credentials never
+// reach the logs. It mutates the wrapped *url.Error in place, preserving the
+// error chain so errors.Is/As still work on the returned value.
+func sanitizeErr(err error) error {
+	if err == nil {
+		return nil
+	}
+	var urlErr *url.Error
+	if errors.As(err, &urlErr) {
+		if u, perr := url.Parse(urlErr.URL); perr == nil {
+			if u.RawQuery != "" {
+				u.RawQuery = "[redacted]"
+			}
+			u.Fragment = ""
+			urlErr.URL = u.String()
+		} else {
+			urlErr.URL = "[redacted-url]"
+		}
+	}
+	return err
+}
+
 type Gateway struct {
 	registry *Registry
 	client   *http.Client
@@ -122,14 +145,14 @@ func (g *Gateway) Middleware() gin.HandlerFunc {
 		}
 		if provider.Type == ProviderTypeCLI {
 			if err := g.executeCLI(c, provider, model, envelope); err != nil {
-				slog.Warn("DZ23 CLI request failed", "provider", provider.Name, "error", err)
+				slog.Warn("DZ23 CLI request failed", "provider", provider.Name, "error", sanitizeErr(err))
 				c.AbortWithStatusJSON(http.StatusBadGateway, gin.H{"error": "CLI execution failed"})
 			}
 			return
 		}
 		if c.Request.URL.Path == "/v1/messages" && provider.Type == ProviderTypeOpenAICompatible {
 			if err := g.forwardAnthropicToOpenAI(c, provider, model, envelope); err != nil {
-				slog.Warn("DZ23 Anthropic-to-OpenAI request failed", "provider", provider.Name, "error", err)
+				slog.Warn("DZ23 Anthropic-to-OpenAI request failed", "provider", provider.Name, "error", sanitizeErr(err))
 				if !c.Writer.Written() {
 					c.AbortWithStatusJSON(http.StatusBadGateway, gin.H{"error": "provider request failed"})
 				}
@@ -139,7 +162,7 @@ func (g *Gateway) Middleware() gin.HandlerFunc {
 		}
 		if provider.Type == ProviderTypeAnthropic {
 			if err := g.forwardAnthropic(c, provider, model, envelope); err != nil {
-				slog.Warn("DZ23 Anthropic request failed", "provider", provider.Name, "error", err)
+				slog.Warn("DZ23 Anthropic request failed", "provider", provider.Name, "error", sanitizeErr(err))
 				if !c.Writer.Written() {
 					c.AbortWithStatusJSON(http.StatusBadGateway, gin.H{"error": "provider request failed"})
 				}
@@ -149,7 +172,7 @@ func (g *Gateway) Middleware() gin.HandlerFunc {
 		}
 		if c.Request.URL.Path == "/api/chat" || c.Request.URL.Path == "/api/generate" {
 			if err := g.forwardNative(c, provider, model, envelope); err != nil {
-				slog.Warn("DZ23 native provider request failed", "provider", provider.Name, "error", err)
+				slog.Warn("DZ23 native provider request failed", "provider", provider.Name, "error", sanitizeErr(err))
 				c.AbortWithStatusJSON(http.StatusBadGateway, gin.H{"error": "provider request failed"})
 			}
 			c.Abort()
@@ -163,7 +186,7 @@ func (g *Gateway) Middleware() gin.HandlerFunc {
 			return
 		}
 		if err := g.forward(c, provider, forwardBody); err != nil {
-			slog.Warn("DZ23 provider request failed", "provider", provider.Name, "error", err)
+			slog.Warn("DZ23 provider request failed", "provider", provider.Name, "error", sanitizeErr(err))
 			if errors.Is(err, errResponseLimit) && c.Writer.Written() {
 				c.Abort()
 				return

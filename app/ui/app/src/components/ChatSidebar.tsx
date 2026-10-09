@@ -7,6 +7,8 @@ import { Link } from "@/components/ui/link";
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { ChatsResponse } from "@/gotypes";
 import { AppNavigation } from "@/components/AppSidebar";
+import { PencilSquareIcon, TrashIcon } from "@heroicons/react/24/outline";
+import { confirmDialog } from "@/lib/confirmDialog";
 
 // there's a hidden debug feature to copy a chat's data to the clipboard by
 // holding shift and clicking this many times within this many seconds
@@ -26,6 +28,16 @@ export function ChatSidebar({ currentChatId }: ChatSidebarProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [shiftClicks, setShiftClicks] = useState<Record<string, number[]>>({});
   const [copiedChatId, setCopiedChatId] = useState<string | null>(null);
+  // In-app context menu. The native webview context menu is only implemented
+  // on macOS (window.menu never resolves on Windows, hanging the right-click
+  // "Renomear/Excluir" action), so we render our own menu, which works on
+  // every platform.
+  const [contextMenu, setContextMenu] = useState<{
+    chatId: string;
+    chatTitle: string;
+    x: number;
+    y: number;
+  } | null>(null);
 
   const handleMouseEnter = useCallback(
     (chatId: string) => {
@@ -154,16 +166,17 @@ export function ChatSidebar({ currentChatId }: ChatSidebarProps) {
 
   const chatGroups = useMemo(() => {
     return [
-      { name: "Today", chats: groupedChats.today },
-      { name: "This week", chats: groupedChats.thisWeek },
-      { name: "Older", chats: groupedChats.older },
+      { name: "Hoje", chats: groupedChats.today },
+      { name: "Esta semana", chats: groupedChats.thisWeek },
+      { name: "Mais antigas", chats: groupedChats.older },
     ].filter((group) => group.chats.length > 0);
   }, [groupedChats]);
 
   const handleDeleteChat = useCallback(
     async (chatId: string) => {
-      const confirmed = window.confirm(
-        `Are you sure you want to remove this chat?`,
+      const confirmed = await confirmDialog(
+        `Tem certeza de que deseja remover esta conversa?`,
+        { danger: true, confirmLabel: "Excluir" },
       );
 
       if (!confirmed) return;
@@ -221,33 +234,48 @@ export function ChatSidebar({ currentChatId }: ChatSidebarProps) {
   );
 
   const handleContextMenu = useCallback(
-    async (_: React.MouseEvent, chatId: string, chatTitle: string) => {
-      const selectedAction = await window.menu([
-        { label: "Rename", enabled: true },
-        { label: "Delete", enabled: true },
-      ]);
-
-      if (selectedAction === "Rename") {
-        startEditing(chatId, chatTitle);
-      } else if (selectedAction === "Delete") {
-        handleDeleteChat(chatId);
-      }
+    (e: React.MouseEvent, chatId: string, chatTitle: string) => {
+      e.preventDefault();
+      setContextMenu({ chatId, chatTitle, x: e.clientX, y: e.clientY });
     },
-    [startEditing, handleDeleteChat],
+    [],
   );
+
+  // Dismiss the context menu on outside click, Escape, scroll or resize.
+  useEffect(() => {
+    if (!contextMenu) return;
+    const close = () => setContextMenu(null);
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") close();
+    };
+    window.addEventListener("click", close);
+    window.addEventListener("resize", close);
+    window.addEventListener("keydown", onKey);
+    window.addEventListener("scroll", close, true);
+    return () => {
+      window.removeEventListener("click", close);
+      window.removeEventListener("resize", close);
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("scroll", close, true);
+    };
+  }, [contextMenu]);
 
   return (
     <nav
       aria-busy={isLoading || undefined}
       className="flex flex-1 flex-col min-h-0 select-none"
     >
-      <header className="flex flex-col gap-0.5 px-4 pb-2">
+      {/* Single scroll region: the navigation (with the profile) and the chat
+          history share one scrollable column so nothing is cut off on short
+          viewports (they used to compete for height). */}
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain scrollbar-gutter">
+      <div className="flex flex-col gap-0.5 px-4 pb-2">
         <AppNavigation current="chat" />
-      </header>
-      <div className="flex flex-1 flex-col px-4 py-1 overflow-y-auto overscroll-auto scrollbar-gutter">
+      </div>
+      <div className="flex flex-col px-4 py-1">
         {error ? (
           <div className="px-2 pt-4 text-sm text-red-500">
-            Error loading chats
+            Erro ao carregar as conversas
           </div>
         ) : (
           <div className="flex flex-col gap-3 pt-4">
@@ -259,7 +287,7 @@ export function ChatSidebar({ currentChatId }: ChatSidebarProps) {
                 {group.chats.map((chat) => (
                   <div
                     key={chat.id}
-                    className={`allow-context-menu flex items-center relative text-sm text-neutral-800 dark:text-neutral-400 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 ${
+                    className={`allow-context-menu group/chat flex items-center relative text-sm text-neutral-800 dark:text-neutral-400 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 ${
                       chat.id === currentChatId
                         ? "bg-neutral-100 text-black dark:bg-neutral-800"
                         : ""
@@ -319,10 +347,45 @@ export function ChatSidebar({ currentChatId }: ChatSidebarProps) {
                         </span>
                         {copiedChatId === chat.id && (
                           <span className="ml-2 text-xs text-green-600 dark:text-green-400">
-                            Copied!
+                            Copiado!
                           </span>
                         )}
                       </Link>
+                    )}
+                    {editingChatId !== chat.id && (
+                      <div className="absolute right-1 top-1/2 flex -translate-y-1/2 items-center gap-0.5 rounded-md bg-neutral-100/95 opacity-0 transition-opacity focus-within:opacity-100 group-hover/chat:opacity-100 dark:bg-neutral-800/95">
+                        <button
+                          type="button"
+                          aria-label="Renomear conversa"
+                          title="Renomear"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            startEditing(
+                              chat.id,
+                              chat.title ||
+                                chat.userExcerpt ||
+                                chat.createdAt.toLocaleString(),
+                            );
+                          }}
+                          className="rounded p-1 text-neutral-500 hover:bg-neutral-200 hover:text-neutral-900 dark:hover:bg-neutral-700 dark:hover:text-white"
+                        >
+                          <PencilSquareIcon className="h-4 w-4" />
+                        </button>
+                        <button
+                          type="button"
+                          aria-label="Excluir conversa"
+                          title="Excluir"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            handleDeleteChat(chat.id);
+                          }}
+                          className="rounded p-1 text-neutral-500 hover:bg-red-100 hover:text-red-700 dark:hover:bg-red-950/50 dark:hover:text-red-300"
+                        >
+                          <TrashIcon className="h-4 w-4" />
+                        </button>
+                      </div>
                     )}
                   </div>
                 ))}
@@ -331,6 +394,42 @@ export function ChatSidebar({ currentChatId }: ChatSidebarProps) {
           </div>
         )}
       </div>
+      </div>
+      {contextMenu && (
+        <div
+          role="menu"
+          aria-label="Ações da conversa"
+          className="fixed z-50 min-w-[160px] rounded-lg border border-neutral-200 bg-white py-1 shadow-lg dark:border-neutral-700 dark:bg-neutral-800"
+          style={{ top: contextMenu.y, left: contextMenu.x }}
+          onClick={(e) => e.stopPropagation()}
+          onContextMenu={(e) => e.preventDefault()}
+        >
+          <button
+            type="button"
+            role="menuitem"
+            className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm text-neutral-800 hover:bg-neutral-100 dark:text-neutral-200 dark:hover:bg-neutral-700"
+            onClick={() => {
+              startEditing(contextMenu.chatId, contextMenu.chatTitle);
+              setContextMenu(null);
+            }}
+          >
+            <PencilSquareIcon className="h-4 w-4" />
+            Renomear
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm text-red-600 hover:bg-neutral-100 dark:text-red-400 dark:hover:bg-neutral-700"
+            onClick={() => {
+              handleDeleteChat(contextMenu.chatId);
+              setContextMenu(null);
+            }}
+          >
+            <TrashIcon className="h-4 w-4" />
+            Excluir
+          </button>
+        </div>
+      )}
     </nav>
   );
 }

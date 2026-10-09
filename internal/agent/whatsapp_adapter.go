@@ -251,7 +251,10 @@ func (e *EvolutionAdapter) SendMessage(ctx context.Context, msg WhatsAppOutbound
 	}
 
 	var resMap map[string]any
-	_ = json.NewDecoder(resp.Body).Decode(&resMap)
+	// Bound the success body too (the error path already does): the client has no
+	// enforced body limit, so a huge 200 from a user-configured provider could OOM.
+	raw, _ := ReadBoundedBody(resp.Body, 1<<20)
+	_ = json.Unmarshal(raw, &resMap)
 
 	id := "evo_" + fmt.Sprintf("%d", time.Now().UnixNano())
 	if key, ok := resMap["key"].(map[string]any); ok {
@@ -525,7 +528,10 @@ func (c *CloudAPIAdapter) SendMessage(ctx context.Context, msg WhatsAppOutboundM
 			ID string `json:"id"`
 		} `json:"messages"`
 	}
-	_ = json.NewDecoder(resp.Body).Decode(&resMap)
+	// Bound the success body too (the error path already does): a huge 200 from a
+	// user-configured Cloud API endpoint could otherwise OOM the process.
+	raw, _ := ReadBoundedBody(resp.Body, 1<<20)
+	_ = json.Unmarshal(raw, &resMap)
 
 	id := "wamid_" + fmt.Sprintf("%d", time.Now().UnixNano())
 	if len(resMap.Messages) > 0 && resMap.Messages[0].ID != "" {

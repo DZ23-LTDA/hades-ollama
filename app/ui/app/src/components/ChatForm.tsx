@@ -90,6 +90,10 @@ interface ChatFormProps {
       errors: Array<{ filename: string; error: string }>,
     ) => void,
   ) => void;
+  // When set, fills the composer with this text (e.g. from a suggestion
+  // chip) and focuses it, without navigating away. The nonce lets the same
+  // text be re-applied when a chip is clicked again.
+  prefill?: { text: string; nonce: number } | null;
 }
 
 function ChatForm({
@@ -102,6 +106,7 @@ function ChatForm({
   editingMessage,
   onCancelEdit,
   onFilesReceived,
+  prefill,
 }: ChatFormProps) {
   const [message, setMessage] = useState<MessageInput>({
     content: "",
@@ -133,6 +138,7 @@ function ChatForm({
     null,
   );
   const [slashActiveIndex, setSlashActiveIndex] = useState(0);
+  const [slashHint, setSlashHint] = useState<string | null>(null);
 
   const handleThinkingLevelDropdownToggle = (isOpen: boolean) => {
     if (
@@ -331,6 +337,24 @@ function ChatForm({
     resetChatForm();
   }, [chatId]);
 
+  // Fill the composer when a suggestion chip is clicked, keeping the user on
+  // the chat screen instead of navigating to the agentic console.
+  useEffect(() => {
+    if (!prefill || !prefill.text) return;
+    setMessage((prev) => ({ ...prev, content: prefill.text }));
+    const timer = setTimeout(() => {
+      const el = textareaRef.current;
+      if (el) {
+        el.focus();
+        el.style.height = "auto";
+        el.style.height = Math.min(el.scrollHeight, 24 * 8) + "px";
+        el.setSelectionRange(el.value.length, el.value.length);
+      }
+    }, 0);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prefill?.nonce]);
+
   // Auto-focus textarea when autoFocus is true or when streaming completes (but not when editing)
   useEffect(() => {
     if ((autoFocus || !isStreaming) && textareaRef.current && !editingMessage) {
@@ -520,6 +544,16 @@ function ChatForm({
       return;
     }
 
+    // Known slash command typed with no objective (e.g. just "/goal"). Don't
+    // forward the raw "/goal" text to the model — it is a command, not a
+    // message. Ask the user for the objective instead.
+    if (parsedSlash && !parsedSlash.objective) {
+      setSlashHint(
+        `Descreva o objetivo após ${parsedSlash.command.label} (ex.: "${parsedSlash.command.label} revisar a tela de login").`,
+      );
+      return;
+    }
+
     if (cloudDisabled && selectedModel?.isCloud()) {
       return;
     }
@@ -669,18 +703,40 @@ function ChatForm({
     }, 10);
   };
 
-  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files) return;
-
-    Array.from(files).forEach((file) => {
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-    });
-
-    // Reset file input
+  const handleFileInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const fileList = e.target.files;
+    const files = fileList ? Array.from(fileList) : [];
+    // Reset the input up front so re-selecting the same file fires onChange again.
     if (e.target) {
       e.target.value = "";
+    }
+    if (files.length === 0) return;
+
+    try {
+      // Read and validate the selected files into the same {filename, data}
+      // shape the native webview path produces, then hand them to the shared
+      // receiver so the attachments actually show up and get sent.
+      const { validFiles, errors } = await processFiles(files, {
+        selectedModel,
+        hasVisionCapability,
+      });
+      if (validFiles.length > 0 || errors.length > 0) {
+        handleFilesReceived(validFiles, errors);
+      }
+    } catch (error) {
+      console.error("Error reading selected files:", error);
+      setFileUploadError(
+        new ErrorEvent({
+          eventName: "error" as const,
+          error:
+            error instanceof Error
+              ? error.message
+              : "Não foi possível ler os arquivos selecionados",
+          code: "file_selection_error",
+          details:
+            "Ocorreu um erro ao ler os arquivos selecionados. Tente novamente.",
+        }),
+      );
     }
   };
 
@@ -688,6 +744,7 @@ function ChatForm({
   const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setMessage((prev) => ({ ...prev, content: e.target.value }));
     setSlashActiveIndex(0);
+    if (slashHint) setSlashHint(null);
 
     // Reset height to auto to get the correct scrollHeight, then cap at 8 lines
     e.target.style.height = "auto";
@@ -698,7 +755,15 @@ function ChatForm({
     try {
       setFileUploadError(null);
 
-      const results = await window.webview?.selectMultipleFiles();
+      // Outside the native desktop shell (e.g. a plain browser) there is no
+      // webview file picker. Fall back to the hidden <input type="file"> so the
+      // "+" button still opens a real file selector instead of doing nothing.
+      if (typeof window.webview?.selectMultipleFiles !== "function") {
+        fileInputRef.current?.click();
+        return;
+      }
+
+      const results = await window.webview.selectMultipleFiles();
       if (results && results.length > 0) {
         // Convert native dialog results to File objects
         // Decode with the browser's native data: URL handling instead of a
@@ -731,10 +796,10 @@ function ChatForm({
       const errorEvent = new ErrorEvent({
         eventName: "error" as const,
         error:
-          error instanceof Error ? error.message : "Failed to select files",
+          error instanceof Error ? error.message : "Não foi possível selecionar os arquivos",
         code: "file_selection_error",
         details:
-          "An error occurred while trying to open the file selection dialog. Please try again.",
+          "Ocorreu um erro ao abrir a janela de seleção de arquivos. Tente novamente.",
       });
 
       setFileUploadError(errorEvent);
@@ -752,15 +817,15 @@ function ChatForm({
               eventName: "error",
               error:
                 activeFeatureForBanner === "webSearch"
-                  ? "Web search requires authentication"
-                  : "Cloud models require authentication",
+                  ? "A busca na web exige autenticação"
+                  : "Modelos de nuvem exigem autenticação",
               code: "cloud_unauthorized",
             })
           }
           message={
             activeFeatureForBanner === "webSearch"
-              ? "Web search requires an Ollama account"
-              : "Cloud models require an Ollama account"
+              ? "A busca na web exige uma conta Ollama"
+              : "Modelos de nuvem exigem uma conta Ollama"
           }
           className="mb-4"
           onDismiss={() => {
@@ -773,6 +838,16 @@ function ChatForm({
 
       {/* File upload error message */}
       {fileUploadError && <ErrorMessage error={fileUploadError} />}
+
+      {/* Slash command needs an objective */}
+      {slashHint && (
+        <p
+          role="alert"
+          className="mx-auto mb-2 w-full max-w-[768px] px-5 text-xs text-amber-600 dark:text-amber-400"
+        >
+          {slashHint}
+        </p>
+      )}
       <div
         className={`relative mx-auto flex bg-neutral-100 w-full max-w-[768px] flex-col items-center rounded-3xl pb-2 pt-4 dark:bg-neutral-800 dark:border-neutral-700 min-h-[88px] transition-opacity duration-200 ${isDisabled ? "opacity-50" : "opacity-100"}`}
       >
@@ -783,7 +858,7 @@ function ChatForm({
         {editingMessage && (
           <div className="w-full px-5 pb-2">
             <p className="text-xs text-neutral-500 dark:text-neutral-400">
-              Press ESC to cancel editing
+              Pressione ESC para cancelar a edição
             </p>
           </div>
         )}
@@ -830,15 +905,16 @@ function ChatForm({
                   </span>
                   {isUnsupportedImage && (
                     <span className="text-xs text-red-600 dark:text-red-400 opacity-75">
-                      This model does not support images
+                      Este modelo não suporta imagens
                     </span>
                   )}
                 </div>
                 <button
                   type="button"
                   onClick={() => removeFile(index)}
-                  className="opacity-0 group-hover:opacity-100 transition-opacity text-neutral-400 hover:text-neutral-600 dark:text-neutral-500 dark:hover:text-neutral-300 -mr-1 cursor-pointer"
-                  aria-label={`Remove ${attachment.filename}`}
+                  className="ml-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-neutral-200 text-neutral-500 transition-colors hover:bg-neutral-300 hover:text-neutral-800 dark:bg-neutral-600 dark:text-neutral-200 dark:hover:bg-neutral-500 dark:hover:text-white -mr-1 cursor-pointer"
+                  aria-label={`Remover ${attachment.filename}`}
+                  title="Remover anexo"
                 >
                   <svg
                     className="w-4 h-4"
@@ -884,8 +960,9 @@ function ChatForm({
                 <button
                   type="button"
                   onClick={() => removeFileError(index)}
-                  className="opacity-0 group-hover:opacity-100 transition-opacity text-red-400 hover:text-red-600 dark:text-red-500 dark:hover:text-red-300 -mr-1 ml-auto"
-                  aria-label={`Remove ${fileError.filename}`}
+                  className="ml-auto flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-red-100 text-red-500 transition-colors hover:bg-red-200 hover:text-red-700 dark:bg-red-900/40 dark:text-red-300 dark:hover:bg-red-900/70 -mr-1 cursor-pointer"
+                  aria-label={`Remover ${fileError.filename}`}
+                  title="Remover"
                 >
                   <svg
                     className="w-4 h-4"
@@ -910,9 +987,10 @@ function ChatForm({
           <div className="absolute inset-x-5 bottom-full mb-2"><SlashCommandMenu query={slashCommandQuery(message.content)} activeIndex={slashActiveIndex} onActiveIndexChange={setSlashActiveIndex} onSelect={(command: SlashCommand) => setMessage((current) => ({ ...current, content: `${command.label} ` }))} /></div>
           <textarea
             ref={textareaRef}
+            aria-label="Mensagem para o agente"
             value={message.content}
             onChange={handleTextareaChange}
-            placeholder="Send a message"
+            placeholder="Envie uma mensagem"
             disabled={isDisabled}
             className={`allow-context-menu w-full overflow-y-auto text-neutral-700 outline-none resize-none border-none bg-transparent dark:text-white placeholder:text-neutral-400 dark:placeholder:text-neutral-500 min-h-[24px] leading-6 transition-opacity duration-300 ${
               editingMessage ? "animate-fade-in" : ""
@@ -935,7 +1013,8 @@ function ChatForm({
                   type="button"
                   onClick={handleFilesUpload}
                   className="flex h-9 w-9 items-center justify-center rounded-full bg-white dark:bg-neutral-700 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer border border-transparent"
-                  title="Upload multiple files"
+                  aria-label="Anexar arquivos"
+                  title="Anexar arquivos"
                 >
                   <PlusIcon className="w-4.5 h-4.5 stroke-2 text-neutral-500 dark:text-neutral-400" />
                 </button>
@@ -1009,9 +1088,20 @@ function ChatForm({
               onEscape={focusChatFormInput}
               isDisabled={isDisabled}
               onDropdownToggle={handleModelPickerDropdownToggle}
+              hideMultiProvider
             />
             <button
               ref={submitButtonRef}
+              aria-label={
+                isStreaming || isDownloading
+                  ? "Cancelar geração"
+                  : "Enviar mensagem"
+              }
+              title={
+                isStreaming || isDownloading
+                  ? "Cancelar geração"
+                  : "Enviar mensagem"
+              }
               onClick={
                 isStreaming || isDownloading ? handleCancel : handleSubmit
               }

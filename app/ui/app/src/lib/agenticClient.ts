@@ -10,17 +10,26 @@ export type AgentProject = {
 };
 
 export type ProjectImportResult = {
-	project: AgentProject;
-	source: "github" | "zip";
+  project: AgentProject;
+  source: "github" | "zip" | "attachments";
 	repository_url?: string;
 	ref?: string;
 	worktree_path: string;
 	branch: string;
 	indexed_files: number;
 	indexed_memories: number;
+	ignored_files: number;
+	files: ProjectImportFile[];
 	archive_sha256: string;
 	state: string;
 	notice: string;
+};
+
+export type ProjectImportFile = {
+	path: string;
+	indexed: boolean;
+	reason?: string;
+	size_bytes: number;
 };
 
 export type AgentSchedule = {
@@ -174,6 +183,12 @@ export type CompanyProduct = { id: string; sku: string; name: string; supplier: 
 export type CompanyOrder = { id: string; product_id: string; customer_ref: string; quantity: number; total_cents: number; status: string; approved: boolean; tracking_code?: string };
 export type CompanyGrowthReport = { company: AgentCompany; campaigns_total: number; campaigns_active: number; affiliate_programs: number; affiliate_conversions: number; products: number; pending_orders: number; fulfilled_orders: number; revenue_cents: number };
 export type GrokStatus = { provider: string; model: string; state: string; authenticated: boolean; healthy: boolean; last_latency_ms?: number; last_error?: string; checked_at: string };
+export type AgentHealth = {
+  status: "ok" | "degraded";
+  runtime: string;
+  checked_at: string;
+  subsystems: Record<string, { status: string; detail: string }>;
+};
 
 type AgentSession = { token: string; organization?: string };
 let agentSession: AgentSession | null = null;
@@ -206,6 +221,27 @@ export async function logoutAgentSession(): Promise<void> {
 export const refreshOAuthCredential = (provider: string, credentialID: string) => agentFetch<{ credential_id: string; provider: string; expires_at?: string; updated_at: string; revoked_at?: string | null }>(`/api/agent/v1/auth/oauth/${encodeURIComponent(provider)}/refresh`, { method: "POST", body: JSON.stringify({ credential_id: credentialID }) });
 export const revokeOAuthCredential = (provider: string, credentialID: string) => agentFetch<void>(`/api/agent/v1/auth/oauth/${encodeURIComponent(provider)}/revoke`, { method: "POST", body: JSON.stringify({ credential_id: credentialID }) });
 
+export type OAuthClientStatus = { provider: string; configured: boolean; built_in: boolean };
+// saveOAuthClient stores the OAuth app client_id/secret for a provider (admin).
+export const saveOAuthClient = (provider: string, clientID: string, clientSecret: string) =>
+  agentFetch<{ status: string; provider: string; configured: boolean }>(
+    `/api/agent/v1/oauth-clients/${encodeURIComponent(provider)}`,
+    { method: "POST", body: JSON.stringify({ client_id: clientID, client_secret: clientSecret }) },
+  );
+// listOAuthClients lists which OAuth providers have an app credential (no secrets).
+export const listOAuthClients = async () => {
+  const result = await agentFetch<{ providers?: OAuthClientStatus[] | null }>("/api/agent/v1/oauth-clients");
+  return { providers: Array.isArray(result.providers) ? result.providers : [] };
+};
+// startConnectorOAuth begins an OAuth connect for a catalog connector and
+// returns the provider authorization URL to open in the browser.
+export const startConnectorOAuth = (connectorID: string, redirectURI: string, codeVerifier: string) =>
+  agentFetch<{ connector: string; provider: string; authorization_url: string; state: string; expires_in: number }>(
+    `/api/agent/v1/connectors/${encodeURIComponent(connectorID)}/oauth/start`,
+    { method: "POST", body: JSON.stringify({ redirect_uri: redirectURI, code_verifier: codeVerifier }) },
+  );
+export const fetchAgentHealth = () => agentFetch<AgentHealth>("/api/agent/v1/health");
+
 function agentHeaders(): Record<string, string> {
   if (!agentSession) return {};
   return { Authorization: `Bearer ${agentSession.token}`, ...(agentSession.organization ? { "X-Ollama-Organization": agentSession.organization } : {}) };
@@ -219,10 +255,11 @@ export async function agentFetch<T>(
   path: string,
   init: RequestInit = {},
 ): Promise<T> {
+  const multipart = typeof FormData !== "undefined" && init.body instanceof FormData;
   const response = await fetch(`${API_BASE}${path}`, {
     ...init,
     headers: {
-      "Content-Type": "application/json",
+      ...(multipart ? {} : { "Content-Type": "application/json" }),
       ...agentHeaders(),
       ...(init.headers ?? {}),
     },
@@ -269,17 +306,70 @@ export const listProjects = () => agentFetch<{ projects: AgentProject[] }>("/api
 export const createProject = (name: string, root = "") => agentFetch<AgentProject>("/api/agent/v1/projects", { method: "POST", body: JSON.stringify({ name, root }) });
 export const importGitHubProject = (payload: { url: string; ref?: string; name?: string }) => agentFetch<ProjectImportResult>("/api/agent/v1/projects/import/github", { method: "POST", body: JSON.stringify(payload) });
 export const importZIPProject = (payload: { project_id: string; upload_id: string; name?: string }) => agentFetch<ProjectImportResult>("/api/agent/v1/projects/import/zip", { method: "POST", body: JSON.stringify(payload) });
+export async function importMissionAttachments(files: Array<{ filename: string; data: Uint8Array; type?: string }>, name: string) {
+  const body = new FormData();
+  body.append("name", name);
+  for (const file of files) {
+    const bytes = file.data.slice();
+    const blob = new Blob([bytes.buffer as ArrayBuffer], { type: file.type || "application/octet-stream" });
+    body.append("files", blob, file.filename);
+  }
+  return agentFetch<ProjectImportResult>("/api/agent/v1/projects/import/attachments", { method: "POST", body });
+}
 export const startProjectUpload = (payload: { project_id: string; filename: string; total_size: number; chunk_size: number; sha256?: string }) => agentFetch<{ id: string } & Record<string, unknown>>("/api/agent/v1/uploads", { method: "POST", body: JSON.stringify(payload) });
 export const uploadProjectChunk = (uploadID: string, offset: number, data: ArrayBuffer) => agentFetch<Record<string, unknown>>(`/api/agent/v1/uploads/${encodeURIComponent(uploadID)}/chunk?offset=${offset}`, { method: "PUT", headers: { "Content-Type": "application/zip" }, body: data });
 export const finalizeProjectUpload = (uploadID: string) => agentFetch<Record<string, unknown>>(`/api/agent/v1/uploads/${encodeURIComponent(uploadID)}/finalize`, { method: "POST", body: "{}" });
+export const getProjectUpload = (uploadID: string) => agentFetch<{ id: string; received_bytes: number; total_size: number; state: string } & Record<string, unknown>>(`/api/agent/v1/uploads/${encodeURIComponent(uploadID)}`);
 export const updateProject = (id: string, name: string, root = "") => agentFetch<AgentProject>(`/api/agent/v1/projects/${encodeURIComponent(id)}`, { method: "PATCH", body: JSON.stringify({ name, root }) });
 export const deleteProject = (id: string) => agentFetch<void>(`/api/agent/v1/projects/${encodeURIComponent(id)}`, { method: "DELETE" });
+
+export interface AgentCitation {
+  index: number;
+  source: string;
+  score: number;
+  snippet?: string;
+}
+
+export interface AskDocumentsResult {
+  project_id: string;
+  query: string;
+  citations: AgentCitation[];
+  grounded: boolean;
+}
+
+// askProjectDocuments retrieves relevant, cited excerpts. It does not invoke a
+// language model, so callers must not display the prompt context as an answer.
+export const askProjectDocuments = (projectID: string, query: string) =>
+  agentFetch<AskDocumentsResult>(`/api/agent/v1/projects/${encodeURIComponent(projectID)}/ask?q=${encodeURIComponent(query)}`);
+
+// fetchDiagnostics returns a secret-safe support snapshot (A7) and
+// downloadBackupArchive streams a local-first backup of the data root (A6).
+export const fetchDiagnostics = () => agentFetch<Record<string, unknown>>("/api/agent/v1/diagnostics");
+export const downloadBackupArchive = () => agentFetchBlob("/api/agent/v1/backup");
 export const listMissions = () => agentFetch<{ missions: AgentMission[] }>("/api/agent/v1/missions");
 export const getMission = (id: string) => agentFetch<AgentMission>(`/api/agent/v1/missions/${encodeURIComponent(id)}`);
 export const listMissionEvents = (id: string) => agentFetch<{ events: AgentEvent[] }>(`/api/agent/v1/missions/${encodeURIComponent(id)}/events`);
 export const createMission = (payload: { objective: string; provider?: string; model?: string; project_id?: string; workspace?: string; isolate_workspace?: boolean; capabilities?: string[]; auto_run?: boolean }) => agentFetch<AgentMission>("/api/agent/v1/missions", { method: "POST", body: JSON.stringify(payload) });
 export const runMission = (id: string) => agentFetch<AgentMission>(`/api/agent/v1/missions/${encodeURIComponent(id)}/run`, { method: "POST", body: "{}" });
+export const deleteMission = (id: string) => agentFetch<{ status: string; id: string }>(`/api/agent/v1/missions/${encodeURIComponent(id)}`, { method: "DELETE" });
 export const decideMissionApproval = (missionID: string, approvalID: string, approved: boolean, nonce?: string) => agentFetch<AgentMission>(`/api/agent/v1/missions/${encodeURIComponent(missionID)}/approvals/${encodeURIComponent(approvalID)}`, { method: "POST", body: JSON.stringify({ decision: approved ? "approve" : "reject", nonce, reason: approved ? "Aprovado no Agentic Console" : "Rejeitado no Agentic Console" }) });
+export type BrowserEnvironmentStatus = {
+  python_path?: string;
+  python_ok: boolean;
+  playwright_ok: boolean;
+  playwright_version?: string;
+  chromium_ok: boolean;
+  ready: boolean;
+  guidance?: string[] | null;
+  can_auto_setup: boolean;
+};
+export type BrowserSetupResult = {
+  steps?: { description: string; ok: boolean; output?: string }[] | null;
+  status: BrowserEnvironmentStatus;
+};
+export const getBrowserEnvironment = () => agentFetch<BrowserEnvironmentStatus>("/api/agent/v1/browser/environment");
+export const setupBrowserEnvironment = () => agentFetch<BrowserSetupResult>("/api/agent/v1/browser/environment/setup", { method: "POST", body: "{}" });
+
 export const listSchedules = () => agentFetch<{ schedules: AgentSchedule[] }>("/api/agent/v1/schedules");
 export const createSchedule = (payload: Partial<AgentSchedule>) => agentFetch<AgentSchedule>("/api/agent/v1/schedules", { method: "POST", body: JSON.stringify(payload) });
 export const updateSchedule = (id: string, payload: Partial<AgentSchedule>) => agentFetch<AgentSchedule>(`/api/agent/v1/schedules/${encodeURIComponent(id)}`, { method: "PATCH", body: JSON.stringify(payload) });
@@ -366,6 +456,7 @@ export const getWhatsAppAllowlist = () => agentFetch<{ count: number; items: Wha
 export const setWhatsAppContactPolicy = (policy: WhatsAppContactPolicy) => agentFetch<{ status: string; policy: WhatsAppContactPolicy }>("/api/agent/v1/whatsapp/allowlist", { method: "POST", body: JSON.stringify(policy) });
 export const removeWhatsAppContactPolicy = (phone: string) => agentFetch<{ status: string; phone: string }>(`/api/agent/v1/whatsapp/allowlist/${encodeURIComponent(phone)}`, { method: "DELETE" });
 export const setWhatsAppActiveBackend = (active_backend: "evolution_api" | "cloud_api") => agentFetch<WhatsAppStatusSummary>("/api/agent/v1/whatsapp/config", { method: "POST", body: JSON.stringify({ active_backend }) });
+export const configureWhatsAppEvolution = (evolution: { base_url: string; api_key: string; instance: string; webhook_secret: string }, active_backend?: "evolution_api" | "cloud_api") => agentFetch<WhatsAppStatusSummary>("/api/agent/v1/whatsapp/config", { method: "POST", body: JSON.stringify({ evolution, active_backend: active_backend ?? "evolution_api" }) });
 export const getWhatsAppDLQ = () => agentFetch<{ count: number; items: unknown[] }>("/api/agent/v1/whatsapp/dlq");
 
 export type SupervisorStatus = {
