@@ -3,6 +3,7 @@ import ChatForm from "./ChatForm";
 import { FirstModelCard } from "./FirstModelCard";
 import { FileUpload } from "./FileUpload";
 import { ImportProjectDialog } from "./ImportProjectDialog";
+import { PromptLibraryPanel } from "./PromptLibraryPanel";
 import { DisplayUpgrade } from "./DisplayUpgrade";
 import { DisplayStale } from "./DisplayStale";
 import { DisplayLogin } from "./DisplayLogin";
@@ -53,6 +54,7 @@ export default function Chat({ chatId }: { chatId: string }) {
     null,
   );
   const [importOpen, setImportOpen] = useState(false);
+  const [promptLibraryOpen, setPromptLibraryOpen] = useState(false);
   const prevChatIdRef = useRef<string>(chatId);
 
   const chatFormCallbackRef = useRef<
@@ -253,7 +255,26 @@ export default function Chat({ chatId }: { chatId: string }) {
                 >
                   Modo missão (avançado)
                 </button>
+                <button
+                  type="button"
+                  aria-expanded={promptLibraryOpen}
+                  onClick={() => setPromptLibraryOpen((open) => !open)}
+                  className="rounded-full border border-neutral-200 bg-white px-4 py-2 font-medium text-neutral-600 transition hover:border-neutral-400 hover:text-neutral-900 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:border-neutral-600 dark:hover:text-white"
+                >
+                  Biblioteca de prompts
+                </button>
               </div>
+
+              {promptLibraryOpen && (
+                <div className="mt-4 text-left">
+                  <PromptLibraryPanel
+                    onUse={(text) => {
+                      setPrefill({ text, nonce: Date.now() });
+                      setPromptLibraryOpen(false);
+                    }}
+                  />
+                </div>
+              )}
 
               <div className="mt-8 text-left">
                 <div className="mb-3 flex items-center justify-between"><h2 className="text-sm font-semibold text-neutral-800 dark:text-neutral-200">Sugestões para começar</h2></div>
