@@ -90,6 +90,44 @@ func TestDescribeGatewayDefaultsToLoopbackAndTheStandardEnv(t *testing.T) {
 	if len(info.Protocols) != 4 {
 		t.Fatalf("Protocols = %d", len(info.Protocols))
 	}
+	if len(info.Aliases) != 4 || info.Aliases[3] != "local/private" {
+		t.Fatalf("Aliases = %v", info.Aliases)
+	}
+	if info.LocalModel != "" {
+		t.Fatalf("sem variavel nao ha modelo local: %q", info.LocalModel)
+	}
+}
+
+func TestDescribeGatewaySurfacesTheLocalModelOfTheAlias(t *testing.T) {
+	t.Setenv(LocalModelEnv, "  qwen3:8b  ")
+	info := DescribeGateway(Config{}, nil, "http://127.0.0.1:11434", "", false)
+	if info.LocalModel != "qwen3:8b" {
+		t.Fatalf("LocalModel = %q", info.LocalModel)
+	}
+
+	payload, err := json.Marshal(info)
+	if err != nil {
+		t.Fatalf("Marshal: %v", err)
+	}
+	if !strings.Contains(string(payload), `"local_model":"qwen3:8b"`) {
+		t.Fatalf("o modelo local precisa sair no JSON: %s", payload)
+	}
+	if !strings.Contains(string(payload), `"local/private"`) {
+		t.Fatalf("os aliases precisam sair no JSON: %s", payload)
+	}
+
+	t.Setenv(LocalModelEnv, "   ")
+	blank := DescribeGateway(Config{}, nil, "http://127.0.0.1:11434", "", false)
+	if blank.LocalModel != "" {
+		t.Fatalf("espaco em branco nao e modelo: %q", blank.LocalModel)
+	}
+	empty, err := json.Marshal(blank)
+	if err != nil {
+		t.Fatalf("Marshal: %v", err)
+	}
+	if strings.Contains(string(empty), "local_model") {
+		t.Fatalf("modelo local vazio deve ser omitido: %s", empty)
+	}
 }
 
 func TestGatewayInfoSerialisationOmitsTheKeyWhenAbsent(t *testing.T) {

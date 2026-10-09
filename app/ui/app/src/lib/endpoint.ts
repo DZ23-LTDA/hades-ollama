@@ -65,6 +65,8 @@ export type GatewayConnection = {
   gateway_key?: string;
   rotation: GatewayRotation;
   protocols: GatewayProtocol[];
+  aliases?: string[];
+  local_model?: string;
   loopback_only: boolean;
   providers: number;
   restart_required?: boolean;
@@ -144,6 +146,54 @@ export function gatewaySetups(
       title: "Teste rápido do gateway",
       description: "Confere a lista de modelos com a chave do gateway.",
       code: `curl -H "Authorization: Bearer ${key}" ${base}/v1/models`,
+    },
+  ];
+}
+
+// gatewayLocalLabel diz se o alias local/private tem um modelo local por trás
+// dele; sem a variável o alias responde 503 e só as APIs de terceiros atendem.
+export function gatewayLocalLabel(
+  connection: Pick<GatewayConnection, "local_model">,
+): string {
+  const model = connection.local_model?.trim();
+  return model
+    ? `Modelo local pelo gateway: ${model}`
+    : "Modelo local não configurado · defina OLLAMA_DZ23_LOCAL_MODEL";
+}
+
+// gatewayLocalSetups mostra que a IA local e a rotação automática usam o mesmo
+// endereço base e a mesma chave dos clientes de terceiros.
+export function gatewayLocalSetups(
+  connection: Pick<
+    GatewayConnection,
+    "base_url" | "gateway_key" | "gateway_key_env"
+  >,
+): ToolSetup[] {
+  const base = connection.base_url.replace(/\/+$/, "");
+  const key = connection.gateway_key ?? `<${connection.gateway_key_env}>`;
+  const auth = `-H "Authorization: Bearer ${key}"`;
+  return [
+    {
+      id: "gateway-local",
+      title: "IA local pelo mesmo endereço",
+      description:
+        "O alias local/private nunca sai deste computador, mesmo com a rotação ligada.",
+      code: [
+        `curl ${auth} ${base}/v1/chat/completions \\`,
+        `  -H "Content-Type: application/json" \\`,
+        `  -d '{"model":"local/private","messages":[{"role":"user","content":"ola"}]}'`,
+      ].join("\n"),
+    },
+    {
+      id: "gateway-auto",
+      title: "Roteamento automático",
+      description:
+        "Troque o modelo por auto/coding, auto/reasoning ou auto/vision e o gateway escolhe o melhor provedor disponível, trocando de provedor quando um falha.",
+      code: [
+        `curl ${auth} ${base}/v1/chat/completions \\`,
+        `  -H "Content-Type: application/json" \\`,
+        `  -d '{"model":"auto/coding","messages":[{"role":"user","content":"ola"}]}'`,
+      ].join("\n"),
     },
   ];
 }

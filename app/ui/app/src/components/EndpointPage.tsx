@@ -18,6 +18,8 @@ import { agentFetch } from "@/lib/agenticClient";
 import {
   endpointHealthLabel,
   fetchGatewayConnection,
+  gatewayLocalLabel,
+  gatewayLocalSetups,
   gatewayRotationLabel,
   gatewaySetups,
   rotateGatewayKey,
@@ -551,9 +553,32 @@ export function EndpointPage() {
               </ul>
             )}
 
+            {gateway && gateway.aliases && gateway.aliases.length > 0 && (
+              <div className="mt-4 text-left text-[11px] text-neutral-500">
+                <span className="mr-1">Apelidos aceitos no campo model:</span>
+                {gateway.aliases.map((alias) => (
+                  <code
+                    key={alias}
+                    className="mr-1 rounded bg-neutral-100 px-1.5 py-0.5 font-mono text-neutral-700 dark:bg-neutral-900 dark:text-neutral-300"
+                  >
+                    {alias}
+                  </code>
+                ))}
+              </div>
+            )}
+
+            {gateway && (
+              <p className="mt-2 text-left text-[11px] text-neutral-400">
+                {gatewayLocalLabel(gateway)}
+              </p>
+            )}
+
             {gateway && (
               <ul className="mt-4 space-y-3">
-                {gatewaySetups(gateway, model).map((setup) => (
+                {[
+                  ...gatewaySetups(gateway, model),
+                  ...gatewayLocalSetups(gateway),
+                ].map((setup) => (
                   <li
                     key={setup.id}
                     className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-950"

@@ -1,10 +1,18 @@
 package multillm
 
-import "strings"
+import (
+	"os"
+	"strings"
+)
 
 // DefaultGatewayKeyEnv é a variável usada para autorizar clientes remotos
 // quando o operador não escolhe outra em gateway_api_key_env.
 const DefaultGatewayKeyEnv = "OLLAMA_DZ23_GATEWAY_KEY"
+
+// LocalModelEnv é a variável que aponta o modelo local servido pelo alias
+// local/private. Sem ela o alias responde 503 e o mesmo endereço base continua
+// atendendo às APIs de terceiros.
+const LocalModelEnv = "OLLAMA_DZ23_LOCAL_MODEL"
 
 // GatewayRotation é a política efectiva da rotação automática já resolvida.
 type GatewayRotation struct {
@@ -86,6 +94,13 @@ func GatewayProtocols() []GatewayProtocol {
 	}
 }
 
+// GatewayAliases são os nomes virtuais aceitos no campo model. O gateway
+// escolhe o modelo de maior prioridade que atende a capacidade pedida, no
+// mesmo endereço base que também serve a IA local.
+func GatewayAliases() []string {
+	return []string{"auto/coding", "auto/reasoning", "auto/vision", "local/private"}
+}
+
 // GatewayInfo é o bloco de conexão mostrado em "Configurar inferência de
 // terceiros": endereço base, protocolos, rotação e chave do gateway.
 type GatewayInfo struct {
@@ -96,6 +111,8 @@ type GatewayInfo struct {
 	Key        string            `json:"gateway_key,omitempty"`
 	Rotation   GatewayRotation   `json:"rotation"`
 	Protocols  []GatewayProtocol `json:"protocols"`
+	Aliases    []string          `json:"aliases"`
+	LocalModel string            `json:"local_model,omitempty"`
 	Loopback   bool              `json:"loopback_only"`
 	Providers  int               `json:"providers"`
 }
@@ -115,6 +132,8 @@ func DescribeGateway(cfg Config, registry *Registry, baseURL, configPath string,
 		KeyPresent: CredentialValue(env) != "",
 		Rotation:   cfg.Rotation.Effective(),
 		Protocols:  GatewayProtocols(),
+		Aliases:    GatewayAliases(),
+		LocalModel: strings.TrimSpace(os.Getenv(LocalModelEnv)),
 		Loopback:   strings.TrimSpace(cfg.GatewayAPIKeyEnv) == "",
 		Providers:  len(cfg.Providers),
 	}

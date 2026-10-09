@@ -4,6 +4,8 @@ import { Route } from "@/routes/endpoint";
 import {
   endpointHealthLabel,
   endpoints,
+  gatewayLocalLabel,
+  gatewayLocalSetups,
   gatewayRotationLabel,
   gatewaySetups,
   toolSetups,
@@ -106,6 +108,33 @@ describe("gateway de inferência de terceiros", () => {
     );
     expect(setups.find((s) => s.id === "gateway-claude")?.code).toContain(
       'ANTHROPIC_AUTH_TOKEN = "<OLLAMA_DZ23_GATEWAY_KEY>"',
+    );
+  });
+
+  it("serves the local model and the automatic routing on the same address", () => {
+    const setups = gatewayLocalSetups({
+      base_url: "http://localhost:11434/",
+      gateway_key: "gw-secret",
+      gateway_key_env: "OLLAMA_DZ23_GATEWAY_KEY",
+    });
+    expect(setups.map((s) => s.id)).toEqual(["gateway-local", "gateway-auto"]);
+    expect(setups[0]?.code).toContain('"model":"local/private"');
+    expect(setups[0]?.code).toContain(
+      'Authorization: Bearer gw-secret" http://localhost:11434/v1/chat/completions',
+    );
+    expect(setups[1]?.code).toContain('"model":"auto/coding"');
+    expect(setups[1]?.description).toContain("escolhe o melhor provedor disponível");
+  });
+
+  it("reports whether the local model alias is ready", () => {
+    expect(gatewayLocalLabel({ local_model: "qwen3:8b" })).toBe(
+      "Modelo local pelo gateway: qwen3:8b",
+    );
+    expect(gatewayLocalLabel({})).toBe(
+      "Modelo local não configurado · defina OLLAMA_DZ23_LOCAL_MODEL",
+    );
+    expect(gatewayLocalLabel({ local_model: "   " })).toContain(
+      "Modelo local não configurado",
     );
   });
 });
