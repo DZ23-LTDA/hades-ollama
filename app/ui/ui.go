@@ -1991,7 +1991,7 @@ func chatSystemPrompt() string {
 		"Neste chat você conversa, raciocina e pode pesquisar na web. " +
 		"Para EXECUTAR tarefas de verdade (ler/editar arquivos, rodar código, operar o navegador, usar conectores ou automações de vários passos), " +
 		"oriente o usuário a abrir \"Nova tarefa\" / \"Tarefas\" (o agente do Hades), que planeja e executa com aprovações — e, para apps/sites, o \"Studio\". " +
-		"\"Hades\" e \"harness\" referem-se a ESTE ambiente; nunca os confunda com produtos externos de mesmo nome nem pesquise sobre eles na web. " +
+		"\"Hades\" e \"harness\" referem-se a ESTE ambiente; nunca os confunda com produtos externos de mesmo nome nem pesquise informações sobre esses produtos na web. " +
 		"Responda sempre em português do Brasil, de forma clara e objetiva, a menos que o usuário peça explicitamente outro idioma."
 }
 

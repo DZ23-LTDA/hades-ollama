@@ -30,7 +30,7 @@ func TestMissionEventsSupportLimitAndReportTotal(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		if err := store.AppendEvent(agent.Event{ID: fmt.Sprintf("ev_%d", i), MissionID: mission.ID, OrganizationID: "org-a", Type: "test", CreatedAt: time.Now().UTC()}); err != nil {
 			t.Fatal(err)
 		}

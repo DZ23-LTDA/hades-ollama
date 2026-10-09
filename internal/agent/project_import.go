@@ -435,32 +435,32 @@ func importedFileManifest(root string) []ProjectImportFile {
 			return nil
 		}
 		relative, relErr := filepath.Rel(root, path)
-		if relErr != nil {
-			// filepath.Rel only fails for a path on another volume. Keep the
-			// entry visible in the manifest instead of silently dropping it or
-			// aborting the whole import walk.
-			manifest = append(manifest, ProjectImportFile{
-				Path:   entry.Name(),
-				Reason: "Não foi possível calcular o caminho relativo do arquivo no projeto.",
-			})
+		if relErr == nil {
+			file := ProjectImportFile{Path: filepath.ToSlash(relative)}
+			info, statErr := entry.Info()
+			switch {
+			case statErr != nil:
+				file.Reason = "Não foi possível ler os metadados do arquivo."
+			case !isLikelyTextImportFile(path):
+				file.SizeBytes = info.Size()
+				file.Reason = "Formato não indexável (sem adaptador de leitura para este tipo)."
+			case info.Size() > maxIndexedImportFileBytes:
+				file.SizeBytes = info.Size()
+				file.Reason = "Arquivo acima de 4 MB; não indexado."
+			default:
+				file.SizeBytes = info.Size()
+				file.Indexed = true
+			}
+			manifest = append(manifest, file)
 			return nil
 		}
-		file := ProjectImportFile{Path: filepath.ToSlash(relative)}
-		info, statErr := entry.Info()
-		switch {
-		case statErr != nil:
-			file.Reason = "Não foi possível ler os metadados do arquivo."
-		case !isLikelyTextImportFile(path):
-			file.SizeBytes = info.Size()
-			file.Reason = "Formato não indexável (sem adaptador de leitura para este tipo)."
-		case info.Size() > maxIndexedImportFileBytes:
-			file.SizeBytes = info.Size()
-			file.Reason = "Arquivo acima de 4 MB; não indexado."
-		default:
-			file.SizeBytes = info.Size()
-			file.Indexed = true
-		}
-		manifest = append(manifest, file)
+		// filepath.Rel only fails for a path on another volume. Keep the entry
+		// visible in the manifest instead of silently dropping it or aborting
+		// the whole import walk.
+		manifest = append(manifest, ProjectImportFile{
+			Path:   entry.Name(),
+			Reason: "Não foi possível obter o caminho relativo do arquivo no projeto.",
+		})
 		return nil
 	})
 	return manifest
