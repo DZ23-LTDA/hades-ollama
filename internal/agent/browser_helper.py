@@ -96,12 +96,91 @@ def save_session_state(path, page):
         path.write_text(json.dumps({"url": page.url}, ensure_ascii=False), encoding="utf-8")
 
 
+def browsers_cache_root():
+    # Where Playwright keeps its downloaded browser revisions. The env var wins
+    # so a shared/custom cache keeps working, then each platform default.
+    configured = os.environ.get("PLAYWRIGHT_BROWSERS_PATH", "").strip()
+    if configured:
+        return pathlib.Path(configured).expanduser()
+    home = pathlib.Path(os.environ.get("HOME") or pathlib.Path.home())
+    if sys.platform == "darwin":
+        return home / "Library" / "Caches" / "ms-playwright"
+    if os.name == "nt":
+        local = os.environ.get("LOCALAPPDATA") or str(home / "AppData" / "Local")
+        return pathlib.Path(local) / "ms-playwright"
+    return home / ".cache" / "ms-playwright"
+
+
+def platform_candidates():
+    # System-wide installs, most specific first.
+    if sys.platform == "darwin":
+        return [
+            "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+            "/Applications/Chromium.app/Contents/MacOS/Chromium",
+            "/opt/homebrew/bin/chromium",
+            "/usr/local/bin/chromium",
+        ]
+    if os.name == "nt":
+        local = os.environ.get("LOCALAPPDATA", "")
+        program_files = os.environ.get("PROGRAMFILES", r"C:\Program Files")
+        program_files_x86 = os.environ.get("PROGRAMFILES(X86)", r"C:\Program Files (x86)")
+        return [
+            os.path.join(program_files, "Google", "Chrome", "Application", "chrome.exe"),
+            os.path.join(program_files_x86, "Google", "Chrome", "Application", "chrome.exe"),
+            os.path.join(local, "Google", "Chrome", "Application", "chrome.exe"),
+        ]
+    return [
+        "/usr/bin/chromium",
+        "/usr/bin/chromium-browser",
+        "/usr/bin/google-chrome",
+        "/usr/bin/google-chrome-stable",
+        "/snap/bin/chromium",
+    ]
+
+
+def managed_candidates():
+    # Read the Playwright cache directly instead of asking the driver: the
+    # driver cannot always start under the sandboxed child environment (that is
+    # how macOS CI ended up with a misleading "no Chromium executable"), while
+    # reading the cache needs no Node process at all.
+    root = browsers_cache_root()
+    patterns = [
+        "chromium-*/chrome-linux/chrome",
+        "chromium-*/chrome-linux64/chrome",
+        "chromium-*/chrome-mac/Chromium.app/Contents/MacOS/Chromium",
+        "chromium-*/chrome-mac-arm64/Chromium.app/Contents/MacOS/Chromium",
+        "chromium-*/chrome-mac-x64/Chromium.app/Contents/MacOS/Chromium",
+        "chromium-*/chrome-win/chrome.exe",
+        "chromium-*/chrome-win64/chrome.exe",
+        "chromium_headless_shell-*/chrome-linux/headless_shell",
+        "chromium_headless_shell-*/chrome-mac/headless_shell",
+        "chromium_headless_shell-*/chrome-win/headless_shell.exe",
+    ]
+    found = []
+    for pattern in patterns:
+        # Newest revision first: Playwright installs the revision its driver
+        # expects, but a stale cache must never win over a fresh one.
+        for match in sorted(root.glob(pattern), reverse=True):
+            if match.is_file():
+                found.append(str(match))
+    return found
+
+
 def browser_executable():
     configured = os.environ.get("OLLAMA_AGENT_BROWSER_EXECUTABLE", "").strip()
-    candidates = [configured, "/usr/bin/chromium", "/usr/bin/chromium-browser", "/usr/bin/google-chrome"]
-    for candidate in candidates:
+    if configured:
+        if pathlib.Path(configured).is_file():
+            return configured
+        fail(
+            "OLLAMA_AGENT_BROWSER_EXECUTABLE does not point to an existing file: "
+            + configured
+        )
+    # Playwright-managed browsers first: that is exactly what CI installs and
+    # what the driver expects; system installs are the fallback.
+    for candidate in managed_candidates() + platform_candidates():
         if candidate and pathlib.Path(candidate).is_file():
             return candidate
+    detail = ""
     try:
         from playwright.sync_api import sync_playwright
 
@@ -109,9 +188,16 @@ def browser_executable():
             managed = pathlib.Path(playwright.chromium.executable_path)
         if managed.is_file():
             return str(managed)
-    except Exception:
-        pass
-    fail("no Chromium executable is available; install Playwright Chromium or set OLLAMA_AGENT_BROWSER_EXECUTABLE")
+        detail = f" (Playwright reported {managed}, which is not a file)"
+    except Exception as exc:
+        # Surface the real reason instead of swallowing it: a bare
+        # "no Chromium executable" hides a broken driver or a wrong interpreter.
+        detail = f" ({type(exc).__name__}: {exc})"
+    fail(
+        "no Chromium executable is available; install Playwright Chromium with "
+        "'python -m playwright install chromium' or set OLLAMA_AGENT_BROWSER_EXECUTABLE"
+        + detail
+    )
 
 
 def page_result(session_id, page, state_path, **extra):

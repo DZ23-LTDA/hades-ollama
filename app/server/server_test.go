@@ -33,6 +33,12 @@ func TestServerCmd(t *testing.T) {
 	os.Unsetenv("OLLAMA_HOST")
 	os.Unsetenv("OLLAMA_ORIGINS")
 	os.Unsetenv("OLLAMA_MODELS")
+	// Agent TLS is the switch that lets a non-loopback OLLAMA_HOST survive the
+	// security downgrade applied by Server.cmd. Clear it here so the assertions
+	// below do not depend on the developer's (or runner's) environment; the
+	// "expose_with_agent_tls" case sets it explicitly.
+	os.Unsetenv("OLLAMA_AGENT_TLS_CERT_FILE")
+	os.Unsetenv("OLLAMA_AGENT_TLS_KEY_FILE")
 	var defaultModels string
 	home, err := os.UserHomeDir()
 	if err == nil {
@@ -44,6 +50,7 @@ func TestServerCmd(t *testing.T) {
 	tests := []struct {
 		name     string
 		settings store.Settings
+		env      map[string]string
 		want     []string
 		dont     []string
 	}{
@@ -54,10 +61,13 @@ func TestServerCmd(t *testing.T) {
 			dont:     []string{"OLLAMA_HOST=", "OLLAMA_ORIGINS="},
 		},
 		{
+			// "Expose" pede bind em todas as interfaces, mas sem agent TLS o
+			// servidor de agente falha fechado; cmd() rebaixa para loopback e
+			// avisa, em vez de deixar o app inteiro sem subir.
 			name:     "expose",
 			settings: store.Settings{Expose: true},
-			want:     []string{"OLLAMA_HOST=0.0.0.0", "OLLAMA_MODELS=" + defaultModels},
-			dont:     []string{"OLLAMA_ORIGINS="},
+			want:     []string{"OLLAMA_HOST=127.0.0.1", "OLLAMA_MODELS=" + defaultModels},
+			dont:     []string{"OLLAMA_HOST=0.0.0.0", "OLLAMA_ORIGINS="},
 		},
 		{
 			name:     "browser",
@@ -85,16 +95,31 @@ func TestServerCmd(t *testing.T) {
 				Models:  tmpModels,
 			},
 			want: []string{
-				"OLLAMA_HOST=0.0.0.0",
+				"OLLAMA_HOST=127.0.0.1",
 				"OLLAMA_ORIGINS=*",
 				"OLLAMA_MODELS=" + tmpModels,
 			},
-			dont: []string{},
+			dont: []string{"OLLAMA_HOST=0.0.0.0"},
+		},
+		{
+			// Caminho de escape documentado: com agent TLS configurado, o bind
+			// em todas as interfaces pedido pelo usuario e preservado.
+			name:     "expose_with_agent_tls",
+			settings: store.Settings{Expose: true},
+			env: map[string]string{
+				"OLLAMA_AGENT_TLS_CERT_FILE": filepath.Join(tmpModels, "agent.crt"),
+				"OLLAMA_AGENT_TLS_KEY_FILE":  filepath.Join(tmpModels, "agent.key"),
+			},
+			want: []string{"OLLAMA_HOST=0.0.0.0", "OLLAMA_MODELS=" + defaultModels},
+			dont: []string{"OLLAMA_HOST=127.0.0.1"},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			for k, v := range tt.env {
+				t.Setenv(k, v)
+			}
 			tmpDir := t.TempDir()
 			st := &store.Store{DBPath: filepath.Join(tmpDir, "db.sqlite")}
 			defer st.Close() // Ensure database is closed before cleanup

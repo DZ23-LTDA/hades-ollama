@@ -165,7 +165,7 @@ func (s *Server) createProvider(w http.ResponseWriter, r *http.Request) error {
 	path := providerConfigPath()
 	if path == "" {
 		w.WriteHeader(http.StatusInternalServerError)
-		return errors.New("OLLAMA_DZ23_CONFIG não está definido; reinstale o aplicativo ou defina essa variável para cadastrar provedores")
+		return errors.New("OLLAMA_DZ23_CONFIG não está definido; instale novamente o aplicativo ou defina essa variável para cadastrar provedores")
 	}
 
 	var body createProviderRequest

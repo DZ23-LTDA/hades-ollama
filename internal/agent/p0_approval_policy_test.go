@@ -49,7 +49,7 @@ func TestMissionApprovalRejectsRequesterSelfApproval(t *testing.T) {
 // No modo local de usuário único todo request é atribuído ao ator sintético
 // LocalActorID. Como há só uma pessoa (que é o aprovador humano), ela PRECISA
 // conseguir aprovar as missões de escrita do próprio agente — senão o agente
-// nunca executa nada com efeito colateral no desktop. A separação de funções
+// nunca executa nada com efeito secundário no desktop. A separação de funções
 // continua valendo para atores reais/nomeados (ver o teste acima).
 func TestMissionApprovalAllowsLocalSingleUserSelfApproval(t *testing.T) {
 	runtime, _, _ := setupTestSupervisorRuntime(t)
