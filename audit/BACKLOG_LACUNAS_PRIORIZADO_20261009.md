@@ -62,6 +62,15 @@ desabilitar teste, `nolint` novo ou exclusão de lint para obter verde.
 - Bloqueio: nenhum; depende de escolher a biblioteca (padrão do projeto: minimizar
   dependência nova).
 
+### P0-4 / P0-5 — Paridade de chat com o TypingMind (ver `COMPARATIVO_TYPINGMIND_20261009.md`)
+
+- P0-4: respostas **multi-modelo lado a lado** (backend já existe em
+  `internal/multillm/`). Aceite: E2E com 1 mensagem e 2 respostas distintas.
+- P0-5: **biblioteca de prompts** com variáveis, pastas e reuso; aceite: E2E de
+  criar/salvar/reusar com persistência local.
+- Ambos atacam a maior desvantagem medida do Hades frente ao TypingMind: tempo
+  até o primeiro valor. Nenhum depende de credencial externa.
+
 ### P1-4 — Harness de CLIs (Claude/Codex/Copilot) dentro do Hades
 
 - Lacuna: a ponte atual é reversa (Claude/Codex Desktop consumindo modelos do
