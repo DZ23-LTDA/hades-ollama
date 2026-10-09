@@ -34,3 +34,4 @@ docs/evidencias/manus_*.png
 .manus/
 .work/
 outputs/
+_tmp/

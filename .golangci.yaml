@@ -44,6 +44,10 @@ linters:
         - comandos
         - progresso
         - operacional
+        - cliente
+        - clientes
+        - protocolo
+        - protocolos
     depguard:
       rules:
         test-only-packages:

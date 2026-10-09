@@ -305,6 +305,10 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle("PUT /api/v1/providers/{name}/models", handle(s.setProviderModels))
 	mux.Handle("PUT /api/v1/connectors/{id}/key", handle(s.connectConnector))
 	mux.Handle("DELETE /api/v1/connectors/{id}/key", handle(s.disconnectConnector))
+	// Gateway de inferência de terceiros: endereço base, rotação automática e
+	// chave usada por clientes externos (Claude Code, Codex).
+	mux.Handle("GET /api/v1/gateway/connection", handle(s.getGatewayConnection))
+	mux.Handle("POST /api/v1/gateway/key", handle(s.rotateGatewayKey))
 
 	// Ollama proxy endpoints
 	ollamaProxy := s.ollamaProxy()

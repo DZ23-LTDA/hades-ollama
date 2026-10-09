@@ -191,26 +191,16 @@ func (r *Registry) Authorize(request *http.Request) bool {
 // padrão: rotação ligada, no máximo três tentativas e sem troca de provedor
 // quando o cliente fixou o modelo.
 func (r *Registry) rotationPolicy() rotationPolicy {
-	policy := rotationPolicy{enabled: true, maxAttempts: defaultRotationAttempts}
-	if r == nil || r.rotation == nil {
-		return policy
+	var declared *RotationConfig
+	if r != nil {
+		declared = r.rotation
 	}
-	if r.rotation.Enabled != nil {
-		policy.enabled = *r.rotation.Enabled
+	resolved := declared.Effective()
+	return rotationPolicy{
+		enabled:       resolved.Enabled,
+		maxAttempts:   resolved.MaxAttempts,
+		crossProvider: resolved.CrossProvider,
 	}
-	if r.rotation.CrossProvider != nil {
-		policy.crossProvider = *r.rotation.CrossProvider
-	}
-	if r.rotation.MaxAttempts > 0 {
-		policy.maxAttempts = r.rotation.MaxAttempts
-	}
-	if policy.maxAttempts < 1 {
-		policy.maxAttempts = 1
-	}
-	if policy.maxAttempts > maxRotationAttempts {
-		policy.maxAttempts = maxRotationAttempts
-	}
-	return policy
 }
 
 func validateProvider(p Provider) error {

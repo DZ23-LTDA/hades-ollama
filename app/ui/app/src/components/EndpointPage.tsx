@@ -15,7 +15,15 @@ import { SidebarLayout } from "@/components/layout/layout";
 import { SettingsTabs } from "@/components/SettingsTabs";
 import { API_BASE } from "@/lib/config";
 import { agentFetch } from "@/lib/agenticClient";
-import { endpointHealthLabel, type EndpointHealthStatus } from "@/lib/endpoint";
+import {
+  endpointHealthLabel,
+  fetchGatewayConnection,
+  gatewayRotationLabel,
+  gatewaySetups,
+  rotateGatewayKey,
+  type EndpointHealthStatus,
+  type GatewayConnection,
+} from "@/lib/endpoint";
 import { Link } from "@tanstack/react-router";
 
 // apiPort deriva a porta real a partir do endereço efetivo da API (API_BASE,
@@ -96,6 +104,34 @@ export function EndpointPage() {
     }
   };
 
+  // Gateway de terceiros: endereço base, chave e rotação automática.
+  const [gateway, setGateway] = useState<GatewayConnection | null>(null);
+  const [gatewayError, setGatewayError] = useState<string | null>(null);
+  const [gatewayBusy, setGatewayBusy] = useState(false);
+  const [showGatewayKey, setShowGatewayKey] = useState(false);
+
+  const rotateGateway = async () => {
+    setGatewayBusy(true);
+    setGatewayError(null);
+    try {
+      const updated = await rotateGatewayKey();
+      setGateway(updated);
+      setShowGatewayKey(true);
+    } catch (error) {
+      setGatewayError(
+        error instanceof Error
+          ? error.message
+          : "Não foi possível gerar a chave do gateway agora.",
+      );
+    } finally {
+      setGatewayBusy(false);
+    }
+  };
+
+  useEffect(() => {
+    void fetchGatewayConnection().then(setGateway);
+  }, []);
+
   useEffect(() => {
     fetch(`${API_BASE}/api/tags`)
       .then((response) => {
@@ -133,6 +169,15 @@ export function EndpointPage() {
       })
       .catch(() => {});
   }, []);
+
+  // Endereço base efetivo: o do gateway quando o endpoint responde, senão o
+  // endereço real da API (mesma origem nos builds de produção).
+  const gatewayBase = (
+    gateway?.base_url ||
+    API_BASE ||
+    (typeof window !== "undefined" ? window.location.origin : "")
+  ).replace(/\/+$/, "");
+  const gatewayKey = gateway?.gateway_key ?? "";
 
   return (
     <SidebarLayout
@@ -370,6 +415,180 @@ export function EndpointPage() {
                 <CopyButton text={API_BASE} label="compatível com Anthropic" />
               </li>
             </ul>
+          </section>
+
+          {/* Configurar inferência de terceiros */}
+          <section
+            id="gateway-section"
+            className="mt-8 rounded-2xl border border-neutral-200 bg-white p-6 dark:border-neutral-800 dark:bg-neutral-950"
+          >
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h3 className="text-base font-bold text-neutral-900 dark:text-white">
+                  Configurar inferência de terceiros
+                </h3>
+                <p className="mt-1 text-xs text-neutral-500">
+                  Um único endereço para os modelos locais e para as APIs de
+                  terceiros. Se um provedor recusar a chamada, o gateway
+                  tenta o próximo candidato sem trocar a configuração do
+                  Claude ou do Codex.
+                </p>
+              </div>
+              <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-medium text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
+                {gateway
+                  ? gatewayRotationLabel(gateway.rotation)
+                  : "Rotação padrão · 3 tentativas"}
+              </span>
+            </div>
+
+            <div className="mt-5 grid gap-3 lg:grid-cols-2">
+              <div className="rounded-xl bg-neutral-50 p-3.5 dark:bg-neutral-900">
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500">
+                  URL base do gateway
+                </p>
+                <code
+                  aria-label="URL base do gateway"
+                  className="mt-0.5 block break-all font-mono text-sm text-neutral-900 dark:text-neutral-100"
+                >
+                  {gatewayBase}
+                </code>
+                <p className="mt-0.5 text-[11px] text-neutral-400">
+                  /v1/messages (Claude), /v1/responses (Codex),
+                  /v1/chat/completions (SDKs)
+                </p>
+                <div className="mt-2 flex items-center">
+                  <CopyButton text={gatewayBase} label="URL base do gateway" />
+                </div>
+              </div>
+
+              <div className="rounded-xl bg-neutral-50 p-3.5 dark:bg-neutral-900">
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500">
+                  Chave de API do gateway
+                </p>
+                {gatewayKey ? (
+                  <>
+                    <code
+                      aria-label="Chave de API do gateway"
+                      className="mt-0.5 block break-all font-mono text-sm text-neutral-900 dark:text-neutral-100"
+                    >
+                      {showGatewayKey ? gatewayKey : "•".repeat(28)}
+                    </code>
+                    <p className="mt-0.5 text-[11px] text-neutral-400">
+                      Guardada fora do arquivo de configuração, na variável{" "}
+                      <span className="font-mono">
+                        {gateway?.gateway_key_env}
+                      </span>
+                      .
+                    </p>
+                    <div className="mt-2 flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setShowGatewayKey((current) => !current)}
+                        className="rounded-lg border border-neutral-300 bg-white px-2.5 py-1 text-[11px] font-medium text-neutral-700 hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:bg-neutral-800"
+                      >
+                        {showGatewayKey ? "Ocultar" : "Mostrar"}
+                      </button>
+                      <CopyButton text={gatewayKey} label="chave do gateway" />
+                    </div>
+                  </>
+                ) : (
+                  <p className="mt-1 text-xs text-neutral-500">
+                    Nenhuma chave ativa. Sem chave, o gateway aceita apenas
+                    pedidos deste computador — é o que mantém a inferência
+                    local privada.
+                  </p>
+                )}
+                <button
+                  type="button"
+                  onClick={() => void rotateGateway()}
+                  disabled={gatewayBusy}
+                  className="mt-3 inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-neutral-900 px-3 py-2 text-xs font-medium text-white hover:bg-neutral-800 disabled:opacity-50 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-200"
+                >
+                  <ArrowPathIcon className="h-3.5 w-3.5" />
+                  {gatewayBusy
+                    ? "Gerando…"
+                    : gatewayKey
+                      ? "Gerar nova chave"
+                      : "Gerar chave do gateway"}
+                </button>
+                {gatewayError && (
+                  <div
+                    role="alert"
+                    className="mt-2 rounded-lg border border-red-200 bg-red-50 p-2.5 text-left text-[11px] leading-5 text-red-800 dark:border-red-900/50 dark:bg-red-950/20 dark:text-red-200"
+                  >
+                    {gatewayError}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {gateway?.loopback_only && (
+              <div
+                role="status"
+                className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-left text-[11px] leading-5 text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/20 dark:text-amber-200"
+              >
+                O gateway está no modo <span className="font-semibold">somente este computador</span>:
+                clientes remotos recebem 401 até existir uma chave. Gere a chave
+                acima antes de apontar outro dispositivo para este endereço.
+              </div>
+            )}
+
+            {gateway && gateway.protocols.length > 0 && (
+              <ul className="mt-4 grid gap-2 sm:grid-cols-2">
+                {gateway.protocols.map((protocol) => (
+                  <li
+                    key={protocol.path}
+                    className="rounded-lg border border-neutral-200 px-3 py-2 text-[11px] dark:border-neutral-800"
+                  >
+                    <span className="font-mono text-neutral-900 dark:text-neutral-100">
+                      {protocol.path}
+                    </span>
+                    <span className="ml-2 text-neutral-500">
+                      {protocol.label}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            {gateway && (
+              <ul className="mt-4 space-y-3">
+                {gatewaySetups(gateway, model).map((setup) => (
+                  <li
+                    key={setup.id}
+                    className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-950"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <h4 className="text-sm font-bold text-neutral-900 dark:text-white">
+                          {setup.title}
+                        </h4>
+                        <p className="mt-0.5 text-xs text-neutral-500">
+                          {setup.description}
+                        </p>
+                      </div>
+                      <CopyButton text={setup.code} label={setup.title} />
+                    </div>
+                    <pre
+                      tabIndex={0}
+                      aria-label={`Comando de integração ${setup.title}`}
+                      className="mt-3 overflow-x-auto rounded-xl bg-neutral-900 p-3.5 font-mono text-xs leading-5 text-neutral-100 dark:bg-black"
+                    >
+                      {setup.code}
+                    </pre>
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            {gateway && (
+              <p className="mt-3 text-[11px] text-neutral-400">
+                {gateway.providers} provedor
+                {gateway.providers === 1 ? "" : "es"} declarado
+                {gateway.providers === 1 ? "" : "s"} em{" "}
+                <span className="font-mono">{gateway.config_path}</span>.
+              </p>
+            )}
           </section>
 
           {/* Configuração Rápida de Ferramentas */}
