@@ -98,8 +98,30 @@ const AUTH_DESCRIPTIONS: Record<string, string> = {
   connection_url: "uma URL de conexão (banco de dados)",
   bot_token: "um token de bot",
   bot_or_oauth: "um token de bot ou OAuth",
+  bot_token_or_webhook: "um token de bot ou um webhook",
   url_or_api_key: "URL e chave da sua instância",
 };
+
+// CONNECT_GUIDANCE carries the onboarding steps of the messaging channels,
+// mirroring the clear copy that the best connector UIs show before asking for
+// a credential: how to get the token, what breaks group replies, and which
+// account the integration is allowed to use. Keep it short and actionable.
+const CONNECT_GUIDANCE: Record<string, string[]> = {
+  telegram: [
+    "Crie um bot com o BotFather; desative o Group Privacy Mode para conversas em grupo.",
+  ],
+  lark: [
+    "Para mensagens diretas, colaboração em grupo e respostas avançadas de fluxo de trabalho.",
+    "Crie um app de bot no Lark/Feishu e informe o endereço do webhook com a credencial.",
+  ],
+  whatsapp: [
+    "Vincule uma conta de teste exclusiva; esta integração não pode acionar controles de risco.",
+  ],
+};
+
+export function connectGuidance(id: string): string[] {
+  return CONNECT_GUIDANCE[id] ?? [];
+}
 
 // connectHint explains, for services that cannot be connected with a pasted
 // key, what they need instead.
