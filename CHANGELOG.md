@@ -6,6 +6,16 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/). 
 
 ## [Unreleased]
 
+### governança de memória: exportar, apagar e retenção — 2026-10-10
+
+- Novo `internal/agent/context_memory_governance.go` completa o ciclo de vida da memória do projeto (estágio 15): o store já indexava e recuperava, mas não permitia apagar, exportar nem limitar retenção.
+- `RemoveMemory(projectID, memoryID)` — apaga uma memória do projeto com persistência atômica (`writeJSONAtomic`) e **rollback do estado em memória** quando a gravação falha; devolve `ErrMemoryNotFound` para memória inexistente ou de outro projeto.
+- `ExportMemories(projectID, includeEmbeddings)` — exporta em ordem cronológica estável com a proveniência preservada (`kind`, `source`, `confidence`, `created_at`); os vetores de embedding são **opt-in**, porque são dados derivados e volumosos.
+- `PruneMemories(projectID, olderThan)` — retenção por idade, com corte obrigatório; memória **sem data de criação é preservada** (apagar o que não se sabe quando foi criado seria destrutivo por suposição).
+- Rotas novas, todas atrás de `projectForRequest` e portanto com isolamento por organização: `GET /projects/:id/memories/export` (`?include_embeddings=true` opcional), `DELETE /projects/:id/memories/:memory_id` (404 para memória inexistente, 403 para projeto de outro locatário) e `POST /projects/:id/memories/prune` com `older_than_days` validado entre 1 e 3650.
+- Cobertura: 4 testes em `internal/agent/context_memory_governance_test.go` (proveniência/isolamento/embeddings opt-in, remoção com persistência e releitura do disco, **rollback quando a gravação falha**, retenção preservando recentes e sem data) e 4 testes em `server/project_memories_test.go` (exportação, 400 para janela inválida, 404 para memória ausente e 403 cross-tenant sem mutação).
+- Limite declarado: a retenção é aplicada por chamada explícita (rota ou operador); não há agendador automático de expurgo nem política de retenção por organização — isso segue no backlog do estágio 15.
+
 ### rodada de paridade observável
 
 - Árvore de produto completa em [`docs/agentic/PRODUCT_TREE.md`](docs/agentic/PRODUCT_TREE.md), separando superfície observável, estado atual e alvo unificado.
