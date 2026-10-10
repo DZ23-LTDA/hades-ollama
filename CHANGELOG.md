@@ -6,16 +6,6 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/). 
 
 ## [Unreleased]
 
-### pacote de plugin verificado por assinatura — 2026-10-10
-
-- Novo `internal/agent/plugin_bundle.go` fecha a segunda fatia do estágio 8: além de governar manifesto, confiança e rollback, o Hades passa a verificar o **conteúdo** do pacote.
-- `VerifyPluginBundle` confere **assinatura destacada ed25519 sobre o SHA-256 do arquivo**: chave precisa estar autorizada na política (`ErrPluginKeyUnauthorized`), arquivo alterado depois de assinado é recusado (`ErrPluginSignatureInvalid`), assinatura ausente tem erro explícito e arquivo inexistente/maior que 64 MiB é recusado como indisponível.
-- `ResolvePluginBundlePath` só aceita caminho **dentro do diretório permitido** pelo operador (`OLLAMA_AGENT_PLUGIN_BUNDLE_DIR`), resolvendo symlinks e recusando `..`; **sem essa configuração a rota falha fechada**, para que a API nunca vire leitura arbitrária de arquivo do host.
-- `InstallBundleForOrganization` verifica o pacote, instala o plugin e só então publica o conteúdo em `plugins/content/<org>/<id>-<versão>.zip`; falha em qualquer passo posterior **reverte a instalação** — nunca fica plugin "instalado" sem pacote.
-- `VerifyInstalledContent` recomputa o digest do arquivo guardado: alteração posterior à instalação é detectada.
-- Rota nova `POST /plugins/bundle` (`manifest` + `bundle_path` + `signature`), com a organização autenticada; 403 para pacote adulterado, chave não autorizada, caminho fora do diretório permitido ou allowlist ausente. Instalação de pacote **não** concede escopo: continua exigindo `promote`.
-- Cobertura: 4 testes em `internal/agent/plugin_bundle_test.go` (chave autorizada/arquivo intacto + adulteração + assinatura ausente + arquivo inexistente; allowlist com `..` e caminho externo recusados; instalação com conteúdo guardado e detecção de adulteração pós-instalação; rollback quando a cópia do conteúdo falha) e 2 testes de rota em `server/plugins_bundle_route_test.go` (201 com conteúdo verificado e sem concessão de escopo; 403 para pacote adulterado, publicador não autorizado, caminho externo e allowlist ausente).
-
 ### benchmarks reproduzíveis dos motores próprios — 2026-10-10
 
 - Novo `internal/agent/benchmark_test.go` mede o custo determinístico dos motores que o Hades controla: busca de memória em 500 memórias, ciclo instalar → atualizar → rollback → remover de plugin **com persistência**, promoção de plugin com assinatura ed25519 e montagem de contexto fundamentado com 32 fontes.
