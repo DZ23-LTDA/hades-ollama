@@ -2,7 +2,7 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-10T11:45:00-03:00",
+  "updated_at": "2026-10-10T12:10:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
@@ -20,7 +20,7 @@
     "capability_PENDENTE_DE_AUDITORIA": "extensao declarada; NAO e classificacao canonica e nao promove capacidade"
   },
   "pull_requests": {
-    "open_count": 36,
+    "open_count": 37,
     "merged_this_mission": [
       {
         "number": 54,
@@ -163,6 +163,12 @@
         "branch": "feat/plugins-governados",
         "sha": "3f2e06ba3",
         "tema": "gerenciador de plugins: manifesto versionado, confianca, atualizacao e rollback"
+      },
+      {
+        "number": 79,
+        "branch": "feat/benchmarks-reproduziveis",
+        "sha": "106287015",
+        "tema": "benchmarks reproduziveis dos motores proprios (empilhado em #78)"
       }
     ],
     "dependabot_open": {
@@ -180,11 +186,13 @@
       75,
       76,
       77,
-      78
+      78,
+      79
     ],
     "stacked_on_branch": {
       "76": "feat/context-bootstrap",
-      "73": "feat/e2e-primeira-execucao"
+      "73": "feat/e2e-primeira-execucao",
+      "79": "feat/plugins-governados"
     }
   },
   "stage_states": {
@@ -514,13 +522,14 @@
       "id": 21,
       "title": "Benchmarks e comparativo competitivo",
       "state": "IN_PROGRESS",
-      "auditoria": "PENDENTE",
+      "auditoria": "AUDITADO_PARCIAL",
       "capability": "PARCIAL",
       "evidence": [
-        "E-021"
+        "E-021",
+        "E-054"
       ],
       "blocker": null,
-      "next": "Trocar comparativo documental por metodologia reproduzivel e auditavel"
+      "next": "Comparativo competitivo real exige a mesma tarefa, a mesma maquina e licenca/conta de cada produto (B-05/B-07); benchmarks locais reproduziveis com metodologia publicada ja existem (PR #79) e nenhuma alegacao de superioridade e feita"
     },
     {
       "id": 22,
@@ -808,6 +817,8 @@
     "PR #77 (governanca de memoria) aberto e VERDE: 20/20 checks success, mergeable_state=clean; base main (independente)",
     "Estagio 15 avancou: RemoveMemory com rollback, ExportMemories com proveniencia e embeddings opt-in, PruneMemories por idade (preservando memoria sem data) e 3 rotas com isolamento por organizacao; 8 testes novos",
     "PR #78 (gerenciador de plugins) aberto e VERDE: 20/20 checks success, mergeable_state=clean; base main (independente)",
-    "Estagio 8 avancou: PluginRegistry com manifesto validado, escopo desconhecido recusado na instalacao, confianca exigindo assinatura ed25519 de chave autorizada (raiz em OLLAMA_AGENT_PLUGIN_TRUSTED_KEYS, falha fechada), atualizacao otimista com historico, rollback, isolamento por organizacao e persistencia com deteccao de estado adulterado; 10 testes novos"
+    "Estagio 8 avancou: PluginRegistry com manifesto validado, escopo desconhecido recusado na instalacao, confianca exigindo assinatura ed25519 de chave autorizada (raiz em OLLAMA_AGENT_PLUGIN_TRUSTED_KEYS, falha fechada), atualizacao otimista com historico, rollback, isolamento por organizacao e persistencia com deteccao de estado adulterado; 10 testes novos",
+    "PR #79 (benchmarks reproduziveis) aberto e VERDE: 20/20 checks success, mergeable_state=clean; empilhado em #78",
+    "Estagio 21 passou a ter medicao reproduzivel dos motores proprios (memoria, plugins, contexto fundamentado) com metodologia em docs/mission/HADES_BENCHMARK_METHOD.md; comparativo com concorrentes continua bloqueado por licenca/conta e inferencia real"
   ]
 }

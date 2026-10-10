@@ -234,5 +234,7 @@ repositório, fecharam a maior parte das superfícies que estavam
 
 12. **Lacuna do estágio 8 parcialmente fechada nesta rodada (PR #78).** Plugins passaram a ter manifesto versionado, escopo recusado quando desconhecido, confiança decidida por assinatura ed25519 de chave autorizada (falha fechada sem raiz configurada), atualização otimista com histórico, rollback, isolamento por organização e persistência que detecta estado adulterado — 10 testes novos e 20/20 checks verdes (E-053). Continua aberto: baixar e verificar o CONTEÚDO do pacote e expor o registro na interface.
 
+13. **Estágio 21 saiu do comparativo apenas documental (PR #79).** Passou a existir medição reproduzível dos motores próprios — busca de memória, ciclo de vida de plugin e montagem de contexto fundamentado — com metodologia publicada em `docs/mission/HADES_BENCHMARK_METHOD.md`, leitura honesta dos números (busca linear; benchmarks de plugin dominados por I/O) e a lista explícita do que falta para comparar com concorrentes. **Nenhuma alegação de superioridade** é feita; o comparativo real continua bloqueado por licença/conta e inferência real (B-05/B-07).
+
 Nada foi promovido a `COMPLETED_VERIFIED` nesta rodada. Estado agregado:
 0 `COMPLETED_VERIFIED`, 24 `IN_PROGRESS`, 14 `BLOCKED_BY_EXTERNAL_DEPENDENCY`.
