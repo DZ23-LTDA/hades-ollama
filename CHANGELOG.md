@@ -14,7 +14,8 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/). 
 - Isolamento e DLP: memórias só entram quando o projeto confere (sem projeto, nenhuma memória é injetada) e todo trecho passa por `RedactDLP`; o preâmbulo é limitado a 8 KiB e a 8 memórias, com truncamento explícito (`[contexto truncado pelo Hades]`).
 - Injeção real: o `OllamaPlanner` passa a enviar o preâmbulo como mensagem de sistema antes do objetivo quando a missão tem organização ou projeto (`internal/agent/planner.go`). Missão sem escopo de tenant mantém exatamente as duas mensagens originais.
 - Cobertura: 9 testes em `internal/agent/context_bootstrap_test.go` (escopo obrigatório, estados de permissão, determinismo, isolamento por projeto, ausência de projeto, redação de credencial, limites de memória, orçamento de bytes, `LOCAL_ONLY`/fontes não confiáveis, não vazamento de identificadores) e 3 testes de injeção no planejador.
-- Limite declarado: isto entrega a montagem e a injeção do contexto no planejador de missão; estender a injeção aos demais pontos de chamada de modelo e expor o documento por rota dedicada é o próximo passo do estágio 5.
+- Rota de leitura `GET /api/agent/v1/missions/:id/context` devolve o documento para a missão: identidade e versão do servidor, permissões declaradas, plano e memória do projeto (redigida e limitada). Reusa o isolamento por organização de `missionForRequest` e é somente leitura — nada ali concede capacidade. 3 testes em `server/mission_context_test.go`, incluindo o caso cross-tenant (404 sem ecoar identificador) e o caso de missão sem projeto (nenhuma memória).
+- Limite declarado: isto entrega a montagem, a injeção no planejador e a rota de leitura; estender a injeção aos demais pontos de chamada de modelo (chat e agentes) é o próximo passo do estágio 5.
 
 ### rodada de paridade observável
 

@@ -28,6 +28,7 @@ import (
 	"github.com/ollama/ollama/envconfig"
 	"github.com/ollama/ollama/internal/agent"
 	"github.com/ollama/ollama/internal/grok"
+	"github.com/ollama/ollama/version"
 )
 
 type agentAPI struct {
@@ -539,6 +540,7 @@ func (a *agentAPI) register(r *gin.Engine) {
 	group.DELETE("/missions/:id", a.deleteMission)
 	group.POST("/missions/:id/approvals/:approval_id", a.decideApproval)
 	group.GET("/missions/:id/worktree", a.getMissionWorktree)
+	group.GET("/missions/:id/context", a.missionContext)
 	group.POST("/missions/:id/merge", a.mergeMissionWorktree)
 	group.POST("/whatsapp/webhook", a.whatsappWebhook)
 	group.GET("/whatsapp/webhook", a.whatsappWebhookVerify)
@@ -1877,6 +1879,58 @@ func (a *agentAPI) getMission(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, mission)
+}
+
+// missionContext devolve o Hades Context Bootstrap canônico de uma missão
+// (estágio 5): identidade e versão do servidor, escopo autorizado, estado
+// declarado de cada permissão, plano registrado e memória do projeto.
+//
+// É somente leitura: nada aqui concede capacidade. A missão passa por
+// `missionForRequest`, que já aplica o isolamento por organização, e as
+// memórias vêm do `ContextStore` limitado ao projeto da missão. O documento
+// nunca carrega credencial: todo texto é redigido antes de sair.
+func (a *agentAPI) missionContext(c *gin.Context) {
+	mission, err := a.missionForRequest(c)
+	if err != nil {
+		writeAgentError(c, statusForAgentError(err), err)
+		return
+	}
+	memories := []agent.Memory{}
+	if a.context != nil && strings.TrimSpace(mission.ProjectID) != "" {
+		found, searchErr := a.context.SearchMemoriesContext(c.Request.Context(), mission.ProjectID, mission.Objective, agent.MaxContextBootstrapMemories)
+		if searchErr != nil {
+			writeAgentError(c, statusForAgentError(searchErr), searchErr)
+			return
+		}
+		memories = found
+	}
+	bootstrap, err := agent.BuildContextBootstrap(agent.ContextBootstrapInput{
+		Version:             version.Version,
+		OrganizationID:      mission.OrganizationID,
+		ProjectID:           mission.ProjectID,
+		MissionID:           mission.ID,
+		Workspace:           mission.Workspace,
+		Objective:           mission.Objective,
+		PlanTitles:          missionPlanTitles(mission.Plan),
+		Memories:            memories,
+		GrantedCapabilities: mission.Capabilities,
+		Policy:              agent.DefaultCapabilityPolicy(),
+	})
+	if err != nil {
+		writeAgentError(c, statusForAgentError(err), err)
+		return
+	}
+	c.JSON(http.StatusOK, bootstrap)
+}
+
+func missionPlanTitles(steps []agent.Step) []string {
+	titles := make([]string, 0, len(steps))
+	for _, step := range steps {
+		if title := strings.TrimSpace(step.Title); title != "" {
+			titles = append(titles, title)
+		}
+	}
+	return titles
 }
 
 func (a *agentAPI) events(c *gin.Context) {
