@@ -76,6 +76,8 @@
 | Chamadas e follow-up | — | AUSENTE | MEDIO | E-047 | sem motor de telefonia; Tel-Agent exige auditoria de licença e provedor (B-04) |
 | Browser operator / computer-use | testes de `internal/agent` | PARCIAL | ALTO | E-015 | falha ambiental (Python) |
 | Escopos de desktop/terminal/sandbox | `capability_policy.go` | PARCIAL | CRITICO | E-026 | declarados e governados; execução real não provada ponta a ponta |
+| Plugins: manifesto, assinatura, atualização e rollback | `plugin_registry.go`, `plugin_bundle.go` | IMPLEMENTADO_E_TESTADO | ALTO | E-053, E-055 | ciclo de vida com assinatura, digest e rollback testados; sem publisher externo homologado |
+| Plugins: **execução governada** | `plugin_runtime.go` (PR #114) | PARCIAL | ALTO | E-063 | oito portas fail-closed e delegação ao `sandbox.exec`; host não-Linux recusa explicitamente; faltam publisher real e UI de estado |
 | Rotação/fallback de modelos | `internal/multillm` (`registry.go`, `router.go`, `spend.go`, `egress_zero_trust.go`) | IMPLEMENTADO_NAO_HOMOLOGADO | ALTO | E-037, E-038 | router automático, descoberta, probe, orçamento e egress zero-trust reais; faltam presets guiados e chamada real; PR #60 (rotação) segue não inspecionado |
 
 ## 7. Plataforma, dados e distribuição
