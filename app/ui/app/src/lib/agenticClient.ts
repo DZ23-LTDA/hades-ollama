@@ -32,6 +32,15 @@ export type ProjectImportFile = {
 	size_bytes: number;
 };
 
+/** One persisted step of a schedule flow, as the backend stores it. */
+export type AgentScheduleStep = {
+  id: string;
+  kind: "trigger.interval" | "trigger.webhook" | "action.mission" | "condition.if";
+  depends_on?: string[];
+  objective?: string;
+  expect?: "succeeded" | "failed";
+};
+
 export type AgentSchedule = {
   id: string;
   objective: string;
@@ -42,6 +51,8 @@ export type AgentSchedule = {
   interval_seconds: number;
   enabled: boolean;
   webhook_secret_env?: string;
+  /** Persisted flow graph; absent on legacy single-objective schedules. */
+  steps?: AgentScheduleStep[];
   next_run_at: string;
   last_run_at?: string;
 };
