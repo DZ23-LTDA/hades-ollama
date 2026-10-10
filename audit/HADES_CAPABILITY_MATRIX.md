@@ -51,6 +51,8 @@
 | Grafo de fluxo e editor persistido | PRs #67/#68 | IMPLEMENTADO_NAO_HOMOLOGADO | MEDIO | E-020 | `action.http`/`connector` em aberto |
 | Condições (`condition.if` com `expect`) | — | AUSENTE | MEDIO | — | opcional no backlog |
 
+| Segurança: varredura cross-tenant nas superfícies novas | `server/tenant_sweep_test.go` (PR #129) | IMPLEMENTADO_NAO_HOMOLOGADO | ALTO | E-070 | 7 classes de ataque bloqueadas com 403/404; RLS em banco real e não inferência por timing pendentes |
+
 ## 5. Segurança, permissões e tenancy
 
 | Capacidade | Superfície | Classificação | Risco | Evidência | Lacuna |
