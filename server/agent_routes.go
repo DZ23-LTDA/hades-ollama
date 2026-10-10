@@ -158,6 +158,30 @@ func (a *agentAPI) rollbackPlugin(c *gin.Context) {
 
 // promotePlugin verifica a assinatura contra as chaves autorizadas e só então
 // concede os escopos pedidos pelo manifesto.
+// pluginStatuses devolve o estado canônico de cada plugin instalado (V2.1 §11.3):
+// a interface só pode oferecer "pronto para usar" quando houver execução real.
+func (a *agentAPI) pluginStatuses(c *gin.Context) {
+	organizationID := a.organizationID(c)
+	if organizationID == "" {
+		writeAgentError(c, http.StatusForbidden, errAgentForbidden)
+		return
+	}
+	policy, err := pluginCapabilityPolicy()
+	if err != nil {
+		writeAgentError(c, http.StatusInternalServerError, err)
+		return
+	}
+	statuses, err := agent.NewPluginRuntime(a.plugins, policy).StatusForOrganization(organizationID)
+	if err != nil {
+		writeAgentError(c, statusForPluginError(err), err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"organization_id": organizationID,
+		"plugins":         statuses,
+	})
+}
+
 func (a *agentAPI) promotePlugin(c *gin.Context) {
 	organizationID := a.organizationID(c)
 	if organizationID == "" {
@@ -747,6 +771,7 @@ func (a *agentAPI) register(r *gin.Engine) {
 	group.GET("/egress/logs", a.getEgressLogs)
 	group.GET("/egress/status", a.getEgressStatus)
 	group.GET("/plugins", a.listPlugins)
+	group.GET("/plugins/status", a.pluginStatuses)
 	group.POST("/plugins", a.installPlugin)
 	group.POST("/plugins/:plugin_id/promote", a.promotePlugin)
 	group.POST("/plugins/:plugin_id/rollback", a.rollbackPlugin)
