@@ -6,15 +6,14 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/). 
 
 ## [Unreleased]
 
-### conteúdo externo tratado como dado não confiável — 2026-10-10
+### registro canônico de comandos slash — 2026-10-10
 
-- Novo `internal/agent/untrusted.go` aplica a §11.6 ao prompt: material de terceiros (documentos indexados, páginas web, e-mails, respostas de MCP) entra no contexto **rotulado como DADOS**, cercado por `<<<DADOS-EXTERNOS>>>` … `<<<FIM-DADOS-EXTERNOS>>>`, com a instrução explícita de nunca obedecer comandos contidos ali.
-- `NeutralizeUntrusted` substitui por um marcador **visível** (`[trecho removido: possível instrução injetada]`) linhas de papel privilegiado (`system:`, `assistant:`, `developer:`, `tool:`, `function:`), ordens clássicas de sobreposição ("ignore previous instructions", "desconsidere as instruções anteriores", "you are now", "novas instruções") e tokens de controle de chat (`<|im_start|>`, `<<SYS>>`, `[INST]`, `### Assistant:`) — inclusive os próprios marcadores da cerca, para que o conteúdo não consiga **fechar** o bloco em que foi colocado.
-- **Sem falso positivo em conteúdo legítimo**: rótulos comuns de documento em pt-BR ("Usuário:", "Sistema:") **não** são redigidos, porque apagar informação real do arquivo seria defeito, não proteção. Há teste dedicado comparando texto de negócio intacto.
-- `WrapUntrustedData` limita o bloco (teto de 4000 runes) mantendo a cerca fechada após truncar e rotula a origem (URL/título também neutralizados, pois vêm de terceiros).
-- Integração real: `BuildGroundedContext` (documentos) e, por consequência, `BuildWebGroundedContext` (pesquisa na web) passaram a cercar cada trecho como dado e a neutralizar a citação mostrada ao humano.
-- Limite declarado: é **mitigação determinística**, não prova de imunidade. Nenhum sanitizador garante que um modelo ignore uma injeção; o que se garante é rótulo, cerca inquebrável e neutralização visível dos padrões clássicos.
-- Cobertura: 6 testes em `internal/agent/untrusted_test.go` (padrões de injeção neutralizados e tokens de controle ausentes; conteúdo legítimo preservado; tentativa de quebra da cerca mantendo exatamente uma abertura e um fechamento; teto de tamanho e rótulo de origem; RAG rotulando e neutralizando trechos sem perder a atribuição das fontes; pesquisa na web igualmente tratada).
+- Novo `internal/agent/slash_registry.go` implementa o registro exigido pela §6/§11.1: antes existia apenas `ParseSlashCommand` reconhecendo `/goal` e `/missao`; agora o registro cobre os **32 comandos da seção 6 mais `/cancel`, `/approve` e `/deny`** exigidos nominalmente pela §11.1 (35 no total).
+- **Regra de honestidade embutida na tabela:** um comando só é marcado como **disponível** quando o backend dele existe de fato, com caminho e método declarados (`POST /api/agent/v1/missions`, `GET /api/agent/v1/whatsapp/status`, …). Comando sem rota fica **indisponível COM o motivo** (`/research`, `/support`, `/telegram`, `/inbox`, `/crm`, `/handoff`) — a interface nunca mostra botão que não executa nada.
+- `ParseSlashInvocation` valida esquema: comando desconhecido (`ErrUnknownSlashCommand`), comando indisponível recusado **com o motivo** (`ErrSlashCommandUnavailable`), parâmetro obrigatório ausente ou inválido (`ErrSlashCommandArgsInvalid`), excesso de parâmetros recusado em vez de ignorado em silêncio, e validação por tipo (`id` como identificador, `url` apenas `http(s)`).
+- `SlashHelp` monta a ajuda em pt-BR **separando** o que existe do que não existe ("Comandos indisponíveis nesta versão (não executam nada)"), e `CompleteSlashCommand` alimenta autocomplete ordenado, com ou sem barra inicial.
+- **Prova de que o registro não mente:** testes no pacote `server` registram o roteador real e verificam que **todo** comando disponível aponta para um caminho efetivamente registrado — rota inventada faz o teste falhar. Um segundo teste garante os seis comandos nomeados pela §11.1.
+- Cobertura: 3 testes em `internal/agent/slash_registry_test.go` (cobertura da seção 6 + invariantes de honestidade + os seis da §11.1 disponíveis e os seis sem rota indisponíveis; validação de esquema, parâmetros e tipos; ajuda e autocomplete) e 2 testes de integração em `server/slash_registry_routes_test.go`.
 
 
 ### E2E de reordenação do Studio persistida no servidor — 2026-10-10
