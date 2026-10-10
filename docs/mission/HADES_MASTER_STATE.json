@@ -2,12 +2,12 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-10T21:45:00-03:00",
+  "updated_at": "2026-10-10T22:20:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
     "integration_branch": "main",
-    "main_sha": "1b59c3c4691f279b378dd9b5f9764478f29dde1a",
+    "main_sha": "391ce80282827c4986bdd975f05a8807aa85c746",
     "main_committed_at": "2026-10-09T10:24:45Z",
     "main_ci_state": "green (dz23-agentic-quality + class-a-plus-integrity = success nesse SHA)",
     "mission_branch": "docs/checkpoints-missao-v21",
@@ -491,10 +491,12 @@
       "evidence": [
         "E-019",
         "E-031",
-        "E-058"
+        "E-058",
+        "E-070"
       ],
       "blocker": null,
-      "next": "Prova de nao inferencia por timing e varredura ofensiva com usuario AUTENTICADO em banco real (RLS com papeis distintos); isolamento por organizacao e por usuario na memoria, DLP, e tratamento de conteudo externo como dado nao confiavel ja estao entregues (PRs #82 e #83)"
+      "next": "fechar o estagio com o que exige banco real: RLS em PostgreSQL com papeis distintos, contexto de tenant confiavel e prova de nao inferencia por timing; depois uploads maliciosos e prompt injection em laboratorio",
+      "done": "varredura ofensiva com ator AUTENTICADO nas superficies novas (plugins, skills, ativacoes e retencao): 7 classes de ataque, todas mitigadas, com motivo estrutural identificado; isolamento entre tenants tambem verificado por escopo em projetos, memorias, missoes, anexos e webhooks (testes previos)"
     },
     {
       "id": 19,
@@ -872,6 +874,8 @@
     "Estagio 8, fatia 7 ENTREGUE (PR #125): a interface consome o catalogo contextual (resolver por projeto/agente/modelo com orcamento, ativar e desativar por skill), exibe a selecao do servidor com o motivo de cada exclusao e BLOQUEIA ativacao de skill nao confiavel. lib/skillCatalog.ts replica a semantica de curinga do servidor para o botao nao mentir sobre o contexto. 11 testes novos; suite web passou de 78/526 para 80/537",
     "Defeito real corrigido no caminho (PR #125): o aviso de orcamento invalido so aparecia ao digitar; passou a ser DERIVADO do contexto, entao um valor invalido vindo de fora tambem e avisado",
     "Estagio 5 AVANCOU (PR #127): o preambulo canonico passa a acompanhar o chat da superficie Hades (POST /api/agent/v1/chat), reusando o MESMO ChatHandler e injetando por middleware - o /api/chat historico (CLI e clientes OpenAI-compatible) ficou intocado de proposito. Objetivo vem da ultima mensagem do usuario; escopos concedidos passam pela politica (escopo desconhecido falha alto); identificadores de tenant/projeto NAO entram no preambulo; injecao idempotente e sem mutar o slice; falha de contexto NAO bloqueia conversa legitima. 7 testes novos; capacidade segue PARCIAL porque a prova com dois modelos exige provider real (B-07)",
-    "Defeito real corrigido no caminho (PR #127): a idempotencia da injecao checava apenas o marcador do Hades, entao reinjetar o mesmo preambulo duplicava o contexto a cada turno; passou a considerar marcador OU preambulo identico, com teste fixando a regra"
+    "Defeito real corrigido no caminho (PR #127): a idempotencia da injecao checava apenas o marcador do Hades, entao reinjetar o mesmo preambulo duplicava o contexto a cada turno; passou a considerar marcador OU preambulo identico, com teste fixando a regra",
+    "Estagio 18 AVANCOU (PR #129): varredura ofensiva cross-tenant com organizacao A como vitima e B como atacante AUTENTICADO, cobrindo plugins, skills, ativacoes e retencao. Sete classes: leitura, mutacao, ativacao com o MESMO project_id, persistencia apos reabrir o store, rollback/promocao de plugin alheio, mass assignment de organization_id no corpo e recusa pelo roteador HTTP. Todas bloqueadas com 403/404 (nunca 200 com dado alheio). Nenhum achado CRITICO ou ALTO nestas superficies. Motivos estruturais registrados: PluginManifest nao expoe campo de organizacao; pluginOwnedByOrganization exige dono explicito; a organizacao vem por parametro, separada do corpo; retention/apply e chaveado pela sessao",
+    "Hipotese REFUTADA por teste (PR #129): eu levantei que o caminho 'global' de skills seria um registro morto (aceito no registro, impossivel de confiar depois). O teste mostrou que o registro SEM dono tambem e recusado na entrada, com erro explicito - fail-closed correto nos dois pontos. Em vez de documentar um achado inexistente, o teste TRAVA a propriedade para impedir regressao silenciosa"
   ]
 }
