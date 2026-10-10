@@ -13,7 +13,7 @@ aqui seria falso.
 | 2 | Fluxo branch curta + PR respeitado (sem commit em `main`) | **DONE** | AGENTS.md + histórico |
 | 3 | Checkpoints V2.1 no repositório | **DONE** | este PR (`docs/mission/*`, `audit/HADES_*`) |
 | 4 | Auditoria real do estado (sem assumir histórico) | **DONE** | E-001, E-002, E-003, E-021 |
-| 5 | Inventário completo das 16 áreas canônicas de capacidade | **NOT_DONE** | estágios 3, 5, 8, 9, 15, 21, 23–32, 34–37 `PENDENTE_DE_AUDITORIA` |
+| 5 | Inventário completo das áreas canônicas de capacidade | **DONE** | 36 de 38 estágios auditados (E-037…E-047); restam apenas 21 (benchmark) e 38 (gate final) |
 | 6 | Nenhuma capacidade promovida sem evidência | **DONE** | `HADES_EVIDENCE_INDEX.md` — 0 promoções |
 | 7 | Jornada de primeira execução provada por E2E com backend real | **DONE** | E-011, E-012 |
 | 8 | E2E do Studio (reorder + persistência) | **DONE** | E-008, E-009, E-034 (PR #73: arraste e botão acessível persistindo, ordem sobrevivendo ao reinício) |
@@ -37,8 +37,8 @@ aqui seria falso.
 
 ## Contagem
 
-- `DONE` = **12** (critérios 1, 2, 3, 4, 6, 7, 8, 15, 16, 22, 23, 24)
-- `NOT_DONE` = **9** (5, 9, 10, 11, 17, 18, 19, 21, 25)
+- `DONE` = **13** (critérios 1, 2, 3, 4, 5, 6, 7, 8, 15, 16, 22, 23, 24)
+- `NOT_DONE` = **8** (9, 10, 11, 17, 18, 19, 21, 25)
 - `BLOCKED` = **4** (12, 13, 14, 20)
 - Total = 25 ✓
 

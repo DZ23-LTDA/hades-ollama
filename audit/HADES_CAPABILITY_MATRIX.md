@@ -37,7 +37,7 @@
 | Merge de missão | `server/agent_routes.go:542` | PARCIAL | ALTO | E-027 | sem prova de conflito/rollback |
 | SSE de eventos de missão | `runtime.go:2356`; `store.go:459,909` | PARCIAL | ALTO | E-027 | sem helper genérico de emissão |
 | Aprovações de missão | limites `maxMissionApprovals` | PARCIAL | CRITICO | E-026 | fluxo de aprovação sem prova E2E |
-| Delegação a subagentes | — | PENDENTE_DE_AUDITORIA | ALTO | — | não auditado |
+| Orquestrador de agentes e subagentes | `swarm.go` (20 func / 10 type) | IMPLEMENTADO_NAO_HOMOLOGADO | ALTO | E-043 | papéis, orçamento, plano, run e cancel testados; sem missão real com modelo |
 | Harness CLI governado | `internal/agent/cli_harness_tool.go` | PARCIAL | CRITICO | E-025 | **branch-local** (PR #62), não em `main` |
 
 ## 4. Fluxos, schedules e automação
@@ -59,7 +59,7 @@
 | Concessão de capacidades na UI | PR #66 | IMPLEMENTADO_NAO_HOMOLOGADO | CRITICO | E-031 | PR aberto |
 | Store de clientes OAuth | `oauth_clients_test.go` | IMPLEMENTADO_E_TESTADO | ALTO | E-019 | — |
 | OAuth contra provedor real | `oauth_live_test.go` | BLOQUEADO_EXTERNAMENTE | ALTO | E-019 | exige `OLLAMA_TEST_OAUTH=1` (B-02/B-07) |
-| Isolamento por organização | — | PENDENTE_DE_AUDITORIA | CRITICO | — | sem evidência anexada |
+| Isolamento por organização (camada de store) | `store.go`, `plugin_scope.go`, `swarm.go` | PARCIAL | CRITICO | E-042, E-043, E-044 | escopo aplicado em store/plugin/orquestrador e tel-agent; RLS PostgreSQL segue desabilitado por decisão arquitetural |
 
 ## 6. Integrações, MCP e conectores
 
@@ -70,38 +70,45 @@
 | Conectores MCP catalogados | `Kind=mcp` (4) | APENAS_CATALOGO | ALTO | E-018 | chamada real não homologada |
 | Escopos de MCP (`mcp:call`, `mcp:remote:call`) | `capability_policy.go` | PARCIAL | ALTO | E-026 | enforcement de rota remota sem prova |
 | Canal Telegram | PR #63 | APENAS_ADAPTER | ALTO | E-030 | token real (B-03) |
-| Canal WhatsApp | — | PENDENTE_DE_AUDITORIA | ALTO | — | não auditado |
-| Inbox unificado omnicanal | — | PENDENTE_DE_AUDITORIA | ALTO | — | compartilha Omnichannel Runtime |
-| Voz e transcrição | — | PENDENTE_DE_AUDITORIA | MEDIO | — | B-04 |
-| Chamadas e follow-up | — | PENDENTE_DE_AUDITORIA | MEDIO | — | B-04 |
+| Canal WhatsApp | `whatsapp_adapter.go` (18 func), `whatsapp_gateway.go` (31 func), `whatsapp_media.go`, 4 testes | PARCIAL | ALTO | E-045 | adapter + gateway + mídia reais; homologação exige token (B-03) |
+| Inbox unificado omnicanal | — | AUSENTE | ALTO | E-047 | sem motor em `internal/agent`; deve nascer sobre o runtime compartilhado (sem duplicar adaptador) |
+| Voz e transcrição | — | AUSENTE | MEDIO | E-047 | sem STT/TTS implementados; provedor externo (B-04) |
+| Chamadas e follow-up | — | AUSENTE | MEDIO | E-047 | sem motor de telefonia; Tel-Agent exige auditoria de licença e provedor (B-04) |
 | Browser operator / computer-use | testes de `internal/agent` | PARCIAL | ALTO | E-015 | falha ambiental (Python) |
 | Escopos de desktop/terminal/sandbox | `capability_policy.go` | PARCIAL | CRITICO | E-026 | declarados e governados; execução real não provada ponta a ponta |
-| Gateway de modelo com rotação | PR #60 | PENDENTE_DE_AUDITORIA | ALTO | E-024 | diff não inspecionado nesta rodada |
+| Rotação/fallback de modelos | `internal/multillm` (`registry.go`, `router.go`, `spawn.go`→`spend.go`) | IMPLEMENTADO_NAO_HOMOLOGADO | ALTO | E-037, E-038 | router automático, descoberta, probe e orçamento reais; PR #60 (rotação) segue não inspecionado |
 
 ## 7. Plataforma, dados e distribuição
 
 | Capacidade | Superfície | Classificação | Risco | Evidência | Lacuna |
 | --- | --- | --- | --- | --- | --- |
-| Memória e RAG local | — | PENDENTE_DE_AUDITORIA | ALTO | — | não auditado |
-| Context Bootstrap de projeto | — | PENDENTE_DE_AUDITORIA | MEDIO | — | não auditado |
-| Plugins e Skills | — | PENDENTE_DE_AUDITORIA | MEDIO | — | não auditado |
+| Memória e RAG local | `ContextStore` (`context.go`), `embedding.go` | IMPLEMENTADO_NAO_HOMOLOGADO | ALTO | E-040 | `AddMemory`, `SearchMemories`, `RetrieveRelevant` com score mínimo e escopo por projeto; retenção/proveniência/exportação não evidenciadas |
+| Injeção de contexto em qualquer modelo | `ContextStore` + `capability_policy.go` | PARCIAL | ALTO | E-040 | nenhuma função de bootstrap/injeção localizada; a montagem do contexto não está evidenciada ponta a ponta |
+| Skills (manifesto, assinatura, não-confiança) | `types.go:207`, `context.go:512`, `supply_chain.go:26-62` | IMPLEMENTADO_NAO_HOMOLOGADO | ALTO | E-042 | ed25519 + testes; ativação por projeto/agente/modelo não evidenciada |
 | Workspace do agente (threads/artefatos) | PR #69 | IMPLEMENTADO_NAO_HOMOLOGADO | MEDIO | E-027 | PR aberto |
 | Saída de ferramenta visível no chat | PR #69 | IMPLEMENTADO_NAO_HOMOLOGADO | MEDIO | E-027 | render opcional do excerto |
 | Instaladores por SO | workflows `windows/macos/linux` | PARCIAL | ALTO | E-022 | smoke nativo real ausente |
 | Release assinado | `release.yaml` | AUSENTE | CRITICO | E-033 | B-06 |
 | Benchmarks competitivos | `audit/COMPARATIVO_TYPINGMIND_20261009.md` | PARCIAL | MEDIO | E-021 | documental, sem metodologia auditável |
-| Company Factory / CRM / commerce / marketplace / pagamentos / marketing / social / BI | — | PENDENTE_DE_AUDITORIA | ALTO | — | estágios 23–32 não auditados |
+| Company OS (Factory, campanhas, social, supervisor) | `company.go` (36 func), `company_growth.go`, `company_social.go`, `company_agents.go`, `supervisor.go` | IMPLEMENTADO_NAO_HOMOLOGADO | ALTO | E-044 | 11 arquivos de teste; aprovações, idempotência e isolamento cobertos |
+| CRM / Commerce / Marketplace / Pagamentos / Inbox / Telefonia | — | AUSENTE | CRITICO | E-047 | sem motor em `internal/agent`; apenas entradas de catálogo de conector |
 
 ## 8. Leitura da matriz
 
+- **Atualização da rodada 2 (2026-10-10):** as linhas antes marcadas
+  `PENDENTE_DE_AUDITORIA` receberam classificação canônica com base nos probes
+  E-037 a E-047. Restam sem auditoria apenas os estágios 21 (benchmark) e 38
+  (gate final), fora desta matriz.
 - **Classificações canônicas atribuídas:** `IMPLEMENTADO_E_TESTADO` em 12 linhas,
   `IMPLEMENTADO_NAO_HOMOLOGADO` em 8, `PARCIAL` em 10, `APENAS_ADAPTER` em 1,
   `APENAS_CATALOGO` em 3, `AUSENTE` em 2, `BLOQUEADO_EXTERNAMENTE` em 1.
   (Atualizado em 2026-10-10 após o PR #73: reorder por arraste, reorder por
   botão/teclado e persistência da ordem passaram a `IMPLEMENTADO_E_TESTADO` com
   E-034.)
-- **Sem auditoria:** 12 linhas `PENDENTE_DE_AUDITORIA` — **não contam** como
-  capacidade entregue nem como ausente.
+- **Sem auditoria:** 0 linhas nesta matriz após a rodada 2 (antes eram 12).
+- **Novos achados da rodada 2:** o Model Gateway cobre 7 famílias de provedor,
+  mas **não** vLLM/llama.cpp/LM Studio/Lemonade/OpenRouter (E-038); o Harness
+  Runtime está `AUSENTE` em `main` (E-041).
 - Nenhuma linha foi promovida a `COMPLETED_VERIFIED` (esse valor pertence ao
   eixo de estágio/release, não a esta matriz).
 - Um conector no catálogo **não** é um conector funcional: `APENAS_CATALOGO`

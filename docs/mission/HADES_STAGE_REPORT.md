@@ -22,48 +22,50 @@ estágio, e vários estágios (5, 8, 15) sequer foram inspecionados
 terceiros (token, conta, telefonia, certificado) ou de dados reais de estágios
 anteriores; o bloqueio **não** interrompe os independentes.
 
+**Cobertura de auditoria:** 36 de 38 estágios com diagnóstico (`auditoria != PENDENTE`); restam 21, 38.
+
 ## 2. Tabela completa
 
 | # | Estágio | Estado | Auditoria | Capacidade | Evidência | Bloqueio |
 | --- | --- | --- | --- | --- | --- | --- |
-| 1 | Auditoria total e inventário real | IN_PROGRESS | parcial | PARCIAL | E-001, E-002, E-021, E-023 | — |
-| 2 | Estabilização e consolidação da base | IN_PROGRESS | parcial | PARCIAL | E-011, E-013, E-014, E-015, E-016, E-017 | B-09 |
-| 3 | Arquitetura canônica dos componentes | IN_PROGRESS | PENDENTE | PENDENTE_DE_AUDITORIA | — | — |
-| 4 | Model Gateway (rotação, fallback, orçamento) | IN_PROGRESS | PENDENTE | PENDENTE_DE_AUDITORIA | E-024 | B-07 |
-| 5 | Context Bootstrap / contexto de projeto | BLOCKED_BY_EXTERNAL_DEPENDENCY | PENDENTE | PENDENTE_DE_AUDITORIA | — | B-07 |
-| 6 | Harness Runtime governado | IN_PROGRESS | parcial | PARCIAL | E-025 | — |
-| 7 | MCP Manager | IN_PROGRESS | parcial | APENAS_CATALOGO | E-018, E-019, E-026 | B-10 |
-| 8 | Plugins e Skills | BLOCKED_BY_EXTERNAL_DEPENDENCY | PENDENTE | PENDENTE_DE_AUDITORIA | — | B-07 |
-| 9 | Agentes e subagentes | IN_PROGRESS | PENDENTE | PENDENTE_DE_AUDITORIA | — | — |
-| 10 | Mission Control multiagente | IN_PROGRESS | parcial | PARCIAL | E-020, E-027 | — |
-| 11 | Paridade Codex/Claude | IN_PROGRESS | parcial | PARCIAL | E-025 | B-02 |
-| 12 | Studio / Builder visual | IN_PROGRESS | **AUDITADO** | IMPLEMENTADO_NAO_HOMOLOGADO | E-008, E-009, E-028, E-034, E-035 | — |
-| 13 | Workflow Engine | IN_PROGRESS | parcial | IMPLEMENTADO_NAO_HOMOLOGADO | E-020, E-029 | — |
+| 1 | Auditoria total e inventario real | IN_PROGRESS | parcial | PARCIAL | E-001, E-002, E-021, E-023, E-036 | — |
+| 2 | Estabilizacao e consolidacao da base | IN_PROGRESS | parcial | PARCIAL | E-011, E-013, E-014, E-015, E-016, E-017 | B-09 |
+| 3 | Arquitetura canonica dos componentes | IN_PROGRESS | parcial | PARCIAL | E-037, E-040, E-043, E-044, E-045 | — |
+| 4 | Model Gateway (roteamento, rotacao, fallback, orcamento) | IN_PROGRESS | **AUDITADO** | IMPLEMENTADO_NAO_HOMOLOGADO | E-024, E-037, E-038 | B-07 |
+| 5 | Context Bootstrap / contexto de projeto | BLOCKED_BY_EXTERNAL_DEPENDENCY | parcial | PARCIAL | E-040 | B-07 |
+| 6 | Harness Runtime (execucao governada) | IN_PROGRESS | **AUDITADO** | AUSENTE | E-041, E-025 | B-01 |
+| 7 | MCP Manager (servidores, ferramentas, escopos) | IN_PROGRESS | parcial | APENAS_CATALOGO | E-018, E-019, E-026 | B-10 |
+| 8 | Plugins e Skills | BLOCKED_BY_EXTERNAL_DEPENDENCY | **AUDITADO** | PARCIAL | E-042 | — |
+| 9 | Agentes e subagentes (delegacao) | IN_PROGRESS | **AUDITADO** | IMPLEMENTADO_NAO_HOMOLOGADO | E-043 | — |
+| 10 | Mission Control multiagente (missoes, eventos, SSE, artefatos) | IN_PROGRESS | parcial | PARCIAL | E-020, E-027 | — |
+| 11 | Paridade Codex/Claude (harnesses de codigo) | IN_PROGRESS | parcial | PARCIAL | E-025, E-046 | B-02 |
+| 12 | Studio / Builder visual | IN_PROGRESS | **AUDITADO** | IMPLEMENTADO_NAO_HOMOLOGADO | E-008, E-009, E-028, E-034, E-035, E-039 | — |
+| 13 | Workflow Engine (fluxos, schedules, condicoes) | IN_PROGRESS | parcial | IMPLEMENTADO_NAO_HOMOLOGADO | E-020, E-029 | — |
 | 14 | Browser Operator / computer-use | IN_PROGRESS | parcial | PARCIAL | E-015 | B-09 |
-| 15 | Memória e RAG local | BLOCKED_BY_EXTERNAL_DEPENDENCY | PENDENTE | PENDENTE_DE_AUDITORIA | — | B-07 |
-| 16 | Canais de IM | IN_PROGRESS | parcial | APENAS_ADAPTER | E-030 | B-03 |
-| 17 | Workspace do agente | IN_PROGRESS | parcial | PARCIAL | E-027 | — |
-| 18 | Segurança, permissões e multitenancy | IN_PROGRESS | parcial | PARCIAL | E-019, E-031 | — |
-| 19 | UX/onboarding e primeira execução | IN_PROGRESS | **AUDITADO** | IMPLEMENTADO_E_TESTADO | E-011, E-012, E-032 | — |
-| 20 | Distribuição e instaladores | IN_PROGRESS | parcial | PARCIAL | E-022 | B-06 |
-| 21 | Benchmarks e comparativo | IN_PROGRESS | PENDENTE | PARCIAL | E-021 | — |
-| 22 | Gate de engenharia intermediário | IN_PROGRESS | parcial | PARCIAL | E-005, E-006, E-007, E-013, E-014, E-017 | — |
-| 23 | Company Factory | BLOCKED_BY_EXTERNAL_DEPENDENCY | PENDENTE | PENDENTE_DE_AUDITORIA | — | B-07 |
-| 24 | CRM e pipeline de vendas | BLOCKED_BY_EXTERNAL_DEPENDENCY | PENDENTE | PENDENTE_DE_AUDITORIA | — | B-05 |
-| 25 | Commerce / loja e pedidos | BLOCKED_BY_EXTERNAL_DEPENDENCY | PENDENTE | PENDENTE_DE_AUDITORIA | — | B-05 |
-| 26 | Marketplace multi-vendedor | BLOCKED_BY_EXTERNAL_DEPENDENCY | PENDENTE | PENDENTE_DE_AUDITORIA | — | B-05 |
-| 27 | Pagamentos e faturamento | BLOCKED_BY_EXTERNAL_DEPENDENCY | PENDENTE | PENDENTE_DE_AUDITORIA | — | B-05 |
-| 28 | Atendimento e suporte | BLOCKED_BY_EXTERNAL_DEPENDENCY | PENDENTE | PENDENTE_DE_AUDITORIA | — | B-03 |
-| 29 | Telefonia e call center | BLOCKED_BY_EXTERNAL_DEPENDENCY | PENDENTE | PENDENTE_DE_AUDITORIA | — | B-04 |
-| 30 | Marketing e campanhas | BLOCKED_BY_EXTERNAL_DEPENDENCY | PENDENTE | PENDENTE_DE_AUDITORIA | — | B-05 |
-| 31 | Social e publicação | BLOCKED_BY_EXTERNAL_DEPENDENCY | PENDENTE | PENDENTE_DE_AUDITORIA | — | B-05 |
-| 32 | BI / business status | BLOCKED_BY_EXTERNAL_DEPENDENCY | PENDENTE | PENDENTE_DE_AUDITORIA | — | B-07 |
-| 33 | Canal Telegram | IN_PROGRESS | parcial | APENAS_ADAPTER | E-030 | B-03 |
-| 34 | Canal WhatsApp | IN_PROGRESS | PENDENTE | PENDENTE_DE_AUDITORIA | — | B-03 |
-| 35 | Inbox unificado omnicanal | IN_PROGRESS | PENDENTE | PENDENTE_DE_AUDITORIA | — | B-03 |
-| 36 | Voz e transcrição | IN_PROGRESS | PENDENTE | PENDENTE_DE_AUDITORIA | — | B-04 |
-| 37 | Chamadas e follow-up | IN_PROGRESS | PENDENTE | PENDENTE_DE_AUDITORIA | — | B-04 |
-| 38 | Gate final de release verificado | BLOCKED_BY_EXTERNAL_DEPENDENCY | PENDENTE | AUSENTE | E-033 | B-06 |
+| 15 | Memoria e RAG local | BLOCKED_BY_EXTERNAL_DEPENDENCY | **AUDITADO** | IMPLEMENTADO_NAO_HOMOLOGADO | E-040 | B-07 |
+| 16 | Canais de IM (WhatsApp/Telegram/inbox unificado) | IN_PROGRESS | parcial | APENAS_ADAPTER | E-030 | B-03 |
+| 17 | Workspace do agente (threads, artefatos, preview) | IN_PROGRESS | parcial | PARCIAL | E-027 | — |
+| 18 | Seguranca, permissoes e multitenancy | IN_PROGRESS | parcial | PARCIAL | E-019, E-031 | — |
+| 19 | UX/onboarding e jornada de primeira execucao | IN_PROGRESS | **AUDITADO** | IMPLEMENTADO_E_TESTADO | E-011, E-012, E-032 | — |
+| 20 | Distribuicao e instaladores (Windows/macOS/Linux) | IN_PROGRESS | parcial | PARCIAL | E-022 | B-06 |
+| 21 | Benchmarks e comparativo competitivo | IN_PROGRESS | PENDENTE | PARCIAL | E-021 | — |
+| 22 | Gate de engenharia intermediario | IN_PROGRESS | parcial | PARCIAL | E-005, E-006, E-007, E-013, E-014, E-017, E-034, E-036, E-048 | — |
+| 23 | Company Factory (empresa orquestrada) | BLOCKED_BY_EXTERNAL_DEPENDENCY | **AUDITADO** | PARCIAL | E-044 | B-07 |
+| 24 | CRM e pipeline de vendas | BLOCKED_BY_EXTERNAL_DEPENDENCY | **AUDITADO** | AUSENTE | E-047 | B-05 |
+| 25 | Commerce / loja e pedidos | BLOCKED_BY_EXTERNAL_DEPENDENCY | **AUDITADO** | AUSENTE | E-047 | B-05 |
+| 26 | Marketplace multi-vendedor | BLOCKED_BY_EXTERNAL_DEPENDENCY | **AUDITADO** | AUSENTE | E-047 | B-05 |
+| 27 | Pagamentos e faturamento | BLOCKED_BY_EXTERNAL_DEPENDENCY | **AUDITADO** | AUSENTE | E-047 | B-05 |
+| 28 | Atendimento e suporte (helpdesk) | BLOCKED_BY_EXTERNAL_DEPENDENCY | **AUDITADO** | AUSENTE | E-047 | B-03 |
+| 29 | Telefonia e call center | BLOCKED_BY_EXTERNAL_DEPENDENCY | **AUDITADO** | AUSENTE | E-047 | B-04 |
+| 30 | Marketing e campanhas | BLOCKED_BY_EXTERNAL_DEPENDENCY | parcial | PARCIAL | E-044 | B-05 |
+| 31 | Social e publicacao | BLOCKED_BY_EXTERNAL_DEPENDENCY | **AUDITADO** | IMPLEMENTADO_NAO_HOMOLOGADO | E-044 | B-05 |
+| 32 | BI / business status e metricas | BLOCKED_BY_EXTERNAL_DEPENDENCY | parcial | PARCIAL | E-044 | B-07 |
+| 33 | Canal Telegram | IN_PROGRESS | parcial | APENAS_ADAPTER | E-030, E-045 | B-03 |
+| 34 | Canal WhatsApp | IN_PROGRESS | **AUDITADO** | PARCIAL | E-045 | B-03 |
+| 35 | Inbox unificado omnicanal | IN_PROGRESS | **AUDITADO** | AUSENTE | E-047 | B-03 |
+| 36 | Voz e transcricao | IN_PROGRESS | **AUDITADO** | AUSENTE | E-047 | B-04 |
+| 37 | Chamadas e follow-up | IN_PROGRESS | **AUDITADO** | AUSENTE | E-047 | B-04 |
+| 38 | Gate final de release verificado | BLOCKED_BY_EXTERNAL_DEPENDENCY | PENDENTE | AUSENTE | E-033, E-048 | B-06 |
 
 ## 3. Detalhe dos estágios auditados
 
@@ -180,3 +182,41 @@ anteriores; o bloqueio **não** interrompe os independentes.
 classificação de capacidade canônica; todos estão marcados
 `PENDENTE_DE_AUDITORIA`. **Próximo passo obrigatório do Estágio 1:** inspecionar
 cada um com comando reproduzível antes de qualquer promoção.
+
+## 5. Rodada 2 — lacunas de auditoria fechadas (2026-10-10)
+
+Probes desta rodada (E-037 a E-047), todos reproduzíveis a partir do
+repositório, fecharam a maior parte das superfícies que estavam
+`PENDENTE_DE_AUDITORIA`. Achados que mudam decisão:
+
+1. **Harness Runtime (estágio 6) é `AUSENTE` em `main`.** `grep harness` em
+   `server/*.go` = 0 e em `internal/agent/*.go` = 1 (arquivo de teste). A
+   implementação governada está no PR #62, ainda não mergeado ⇒ depende de B-01.
+2. **Model Gateway (estágio 4) é real, mas incompleto na lista exigida.**
+   `internal/multillm` tem 26 arquivos Go (15 de teste) com registry, router
+   automático, descoberta, probe, orçamento (`spend.go`), credenciais por SO e
+   egress zero-trust. Cobre Anthropic/OpenAI/Grok-xAI/Gemini/Groq/DeepSeek/
+   Mistral; **não** cobre vLLM, llama.cpp, LM Studio, Lemonade nem OpenRouter.
+3. **Memória/contexto (estágios 5 e 15) tem motor real** (`ContextStore` com
+   `AddMemory`, `SearchMemories`, `RetrieveRelevant` com score mínimo,
+   `OllamaEmbedder`, escopo por organização testado), mas **nenhuma função de
+   bootstrap/injeção de contexto** foi localizada — a injeção em si não está
+   evidenciada.
+4. **Subagentes (estágio 9) têm orquestrador completo** (`swarm.go`: papéis,
+   orçamento, plano, execução, cancelamento, escopo por organização,
+   `SubagentRunner`) — o que falta é missão multiagente real com artefatos.
+5. **Plugins/Skills (estágio 8) são `PARCIAL`**: skills têm manifesto
+   versionado, assinatura ed25519 e testes de não-confiança; plugins só têm
+   escopo por organização — o gerenciador (instalar/atualizar/rollback) não foi
+   evidenciado.
+6. **Negócio (estágios 24–29 e 35) não tem motor em `main`**: `marketplace`,
+   `inbox` e `telephony` = 0 ocorrências; `crm`/`billing` só aparecem no
+   catálogo de conectores. Já **Company OS (23/30/31/32)** e **WhatsApp (34)**
+   têm código e testes substanciais (11 e 4 arquivos de teste).
+7. **Paridade Codex/Claude (estágio 11) é ponte reversa**, não execução:
+   `internal/proxy/claude_desktop*` e `codex_desktop*` expõem modelos locais aos
+   apps, e `cli_subscription.go` reconhece modelo de assinatura e custo — não há
+   execução do CLI oficial.
+
+Nada foi promovido a `COMPLETED_VERIFIED` nesta rodada. Estado agregado:
+0 `COMPLETED_VERIFIED`, 24 `IN_PROGRESS`, 14 `BLOCKED_BY_EXTERNAL_DEPENDENCY`.

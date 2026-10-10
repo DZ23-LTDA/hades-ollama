@@ -2,7 +2,7 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-10T09:12:00-03:00",
+  "updated_at": "2026-10-10T09:40:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
@@ -150,6 +150,7 @@
   },
   "stage_states": {
     "COMPLETED_VERIFIED": [],
+    "TESTING": [],
     "IN_PROGRESS": [
       1,
       2,
@@ -177,7 +178,6 @@
       37
     ],
     "NOT_STARTED": [],
-    "TESTING": [],
     "FAILED": [],
     "BLOCKED_BY_EXTERNAL_DEPENDENCY": [
       5,
@@ -234,45 +234,56 @@
       "id": 3,
       "title": "Arquitetura canonica dos componentes",
       "state": "IN_PROGRESS",
-      "auditoria": "PENDENTE",
-      "capability": "PENDENTE_DE_AUDITORIA",
-      "evidence": [],
+      "auditoria": "AUDITADO_PARCIAL",
+      "capability": "PARCIAL",
+      "evidence": [
+        "E-037",
+        "E-040",
+        "E-043",
+        "E-044",
+        "E-045"
+      ],
       "blocker": null,
-      "next": "Mapear os 16 componentes canonicos para pacotes reais com evidencia de arquivo:linha"
+      "next": "Definir e versionar os contratos por componente (hoje existem motores reais, mas sem registro de contrato versionado por modulo)"
     },
     {
       "id": 4,
       "title": "Model Gateway (roteamento, rotacao, fallback, orcamento)",
       "state": "IN_PROGRESS",
-      "auditoria": "PENDENTE",
-      "capability": "PENDENTE_DE_AUDITORIA",
+      "auditoria": "AUDITADO",
+      "capability": "IMPLEMENTADO_NAO_HOMOLOGADO",
       "evidence": [
-        "E-024"
+        "E-024",
+        "E-037",
+        "E-038"
       ],
       "blocker": "B-07",
-      "next": "Homologar rotacao/fallback com provedor real; PR #60 aberto"
+      "next": "Adicionar adaptadores ausentes (vLLM, llama.cpp, LM Studio, Lemonade, OpenRouter) e homologar uma chamada real por provedor"
     },
     {
       "id": 5,
       "title": "Context Bootstrap / contexto de projeto",
       "state": "BLOCKED_BY_EXTERNAL_DEPENDENCY",
-      "auditoria": "PENDENTE",
-      "capability": "PENDENTE_DE_AUDITORIA",
-      "evidence": [],
+      "auditoria": "AUDITADO_PARCIAL",
+      "capability": "PARCIAL",
+      "evidence": [
+        "E-040"
+      ],
       "blocker": "B-07",
-      "next": "Nenhuma acao sem primeiro provar se ha implementacao (grep por bootstrap/contexto de projeto)"
+      "next": "Provar injecao de contexto com dois modelos distintos preservando permissoes e historico (nenhuma funcao de bootstrap/injecao foi localizada por probe)"
     },
     {
       "id": 6,
       "title": "Harness Runtime (execucao governada)",
       "state": "IN_PROGRESS",
-      "auditoria": "AUDITADO_PARCIAL",
-      "capability": "PARCIAL",
+      "auditoria": "AUDITADO",
+      "capability": "AUSENTE",
       "evidence": [
+        "E-041",
         "E-025"
       ],
-      "blocker": null,
-      "next": "Merge/homologacao do harness.cli governado (PR #62) e prova de aprovacao obrigatoria"
+      "blocker": "B-01",
+      "next": "Merge do PR #62 (harness.cli governado) e prova de aprovacao obrigatoria; em main nao existe runtime de harness"
     },
     {
       "id": 7,
@@ -292,21 +303,25 @@
       "id": 8,
       "title": "Plugins e Skills",
       "state": "BLOCKED_BY_EXTERNAL_DEPENDENCY",
-      "auditoria": "PENDENTE",
-      "capability": "PENDENTE_DE_AUDITORIA",
-      "evidence": [],
-      "blocker": "B-07",
-      "next": "Auditar existencia antes de classificar"
+      "auditoria": "AUDITADO",
+      "capability": "PARCIAL",
+      "evidence": [
+        "E-042"
+      ],
+      "blocker": null,
+      "next": "Completar o gerenciador de plugins (instalar/atualizar/rollback) alem do escopo por organizacao ja testado"
     },
     {
       "id": 9,
       "title": "Agentes e subagentes (delegacao)",
       "state": "IN_PROGRESS",
-      "auditoria": "PENDENTE",
-      "capability": "PENDENTE_DE_AUDITORIA",
-      "evidence": [],
+      "auditoria": "AUDITADO",
+      "capability": "IMPLEMENTADO_NAO_HOMOLOGADO",
+      "evidence": [
+        "E-043"
+      ],
       "blocker": null,
-      "next": "Provar delegacao ponta a ponta com evidencia de teste"
+      "next": "Rodar missao multiagente real com artefatos consolidados e prova de isolamento de workspace"
     },
     {
       "id": 10,
@@ -328,10 +343,11 @@
       "auditoria": "AUDITADO_PARCIAL",
       "capability": "PARCIAL",
       "evidence": [
-        "E-025"
+        "E-025",
+        "E-046"
       ],
       "blocker": "B-02",
-      "next": "Validar com conta real logada (bloqueado externamente)"
+      "next": "Merge do harness CLI (PR #62) e prova de sessao real com conta logada"
     },
     {
       "id": 12,
@@ -344,7 +360,8 @@
         "E-009",
         "E-028",
         "E-034",
-        "E-035"
+        "E-035",
+        "E-039"
       ],
       "blocker": null,
       "next": "Cobertura E2E do reorder entregue no PR #73 (verde no CI); faltam preview/export, undo/redo e edicao de propriedades sob E2E"
@@ -378,11 +395,13 @@
       "id": 15,
       "title": "Memoria e RAG local",
       "state": "BLOCKED_BY_EXTERNAL_DEPENDENCY",
-      "auditoria": "PENDENTE",
-      "capability": "PENDENTE_DE_AUDITORIA",
-      "evidence": [],
+      "auditoria": "AUDITADO",
+      "capability": "IMPLEMENTADO_NAO_HOMOLOGADO",
+      "evidence": [
+        "E-040"
+      ],
       "blocker": "B-07",
-      "next": "Auditar existencia; memoria sem evidencia nao pode ser declarada"
+      "next": "Provar retencao, proveniencia, exportacao/exclusao e isolamento entre organizacoes na memoria"
     },
     {
       "id": 16,
@@ -473,110 +492,131 @@
         "E-014",
         "E-017",
         "E-034",
-        "E-036"
+        "E-036",
+        "E-048"
       ],
       "blocker": null,
-      "next": "Aprovar o gate com os 4 checks obrigatorios verdes no mesmo head SHA"
+      "next": "Gate intermediario com artefato docs/mission/HADES_ENGINEERING_GATE.md; aguarda estagios 23-38 para o gate final"
     },
     {
       "id": 23,
       "title": "Company Factory (empresa orquestrada)",
       "state": "BLOCKED_BY_EXTERNAL_DEPENDENCY",
-      "auditoria": "PENDENTE",
-      "capability": "PENDENTE_DE_AUDITORIA",
-      "evidence": [],
+      "auditoria": "AUDITADO",
+      "capability": "PARCIAL",
+      "evidence": [
+        "E-044"
+      ],
       "blocker": "B-07",
-      "next": "Reutilizar infra de agentes/modelos/seguranca; auditar antes de classificar"
+      "next": "Homologar a criacao de empresa com dados reais de operacao e documentos; hoje o nucleo e testado mas nao operado ponta a ponta"
     },
     {
       "id": 24,
       "title": "CRM e pipeline de vendas",
       "state": "BLOCKED_BY_EXTERNAL_DEPENDENCY",
-      "auditoria": "PENDENTE",
-      "capability": "PENDENTE_DE_AUDITORIA",
-      "evidence": [],
+      "auditoria": "AUDITADO",
+      "capability": "AUSENTE",
+      "evidence": [
+        "E-047"
+      ],
       "blocker": "B-05",
-      "next": "Somente adapter/catalogo ate haver conta real"
+      "next": "Implementar o motor de CRM (contatos/leads/oportunidades); hoje ha apenas entrada de catalogo de conector"
     },
     {
       "id": 25,
       "title": "Commerce / loja e pedidos",
       "state": "BLOCKED_BY_EXTERNAL_DEPENDENCY",
-      "auditoria": "PENDENTE",
-      "capability": "PENDENTE_DE_AUDITORIA",
-      "evidence": [],
+      "auditoria": "AUDITADO",
+      "capability": "AUSENTE",
+      "evidence": [
+        "E-047"
+      ],
       "blocker": "B-05",
-      "next": "Nao inventar loja funcional sem backend real"
+      "next": "Implementar o Commerce Engine (catalogo, estoque, checkout, pedidos); hoje existem pedidos apenas como recurso interno do Company OS"
     },
     {
       "id": 26,
       "title": "Marketplace multi-vendedor",
       "state": "BLOCKED_BY_EXTERNAL_DEPENDENCY",
-      "auditoria": "PENDENTE",
-      "capability": "PENDENTE_DE_AUDITORIA",
-      "evidence": [],
+      "auditoria": "AUDITADO",
+      "capability": "AUSENTE",
+      "evidence": [
+        "E-047"
+      ],
       "blocker": "B-05",
-      "next": "Requer decisao de produto + contas de marketplace"
+      "next": "Implementar conectores oficiais de marketplace sob API oficial e rate limit"
     },
     {
       "id": 27,
       "title": "Pagamentos e faturamento",
       "state": "BLOCKED_BY_EXTERNAL_DEPENDENCY",
-      "auditoria": "PENDENTE",
-      "capability": "PENDENTE_DE_AUDITORIA",
-      "evidence": [],
+      "auditoria": "AUDITADO",
+      "capability": "AUSENTE",
+      "evidence": [
+        "E-047"
+      ],
       "blocker": "B-05",
-      "next": "PROIBIDO simular pagamento; exige decisao humana explicita"
+      "next": "Implementar pagamentos/faturamento com idempotencia e conciliacao; nada de cartao sem conformidade"
     },
     {
       "id": 28,
       "title": "Atendimento e suporte (helpdesk)",
       "state": "BLOCKED_BY_EXTERNAL_DEPENDENCY",
-      "auditoria": "PENDENTE",
-      "capability": "PENDENTE_DE_AUDITORIA",
-      "evidence": [],
+      "auditoria": "AUDITADO",
+      "capability": "AUSENTE",
+      "evidence": [
+        "E-047"
+      ],
       "blocker": "B-03",
-      "next": "Compartilha Omnichannel Runtime; nao duplicar adaptadores"
+      "next": "Implementar atendimento/suporte sobre o Omnichannel Runtime compartilhado"
     },
     {
       "id": 29,
       "title": "Telefonia e call center",
       "state": "BLOCKED_BY_EXTERNAL_DEPENDENCY",
-      "auditoria": "PENDENTE",
-      "capability": "PENDENTE_DE_AUDITORIA",
-      "evidence": [],
+      "auditoria": "AUDITADO",
+      "capability": "AUSENTE",
+      "evidence": [
+        "E-047"
+      ],
       "blocker": "B-04",
-      "next": "Requer provedor de telefonia real + autorizacao"
+      "next": "Implementar telefonia/voz com provedor real; sem provedor, manter bloqueio externo"
     },
     {
       "id": 30,
       "title": "Marketing e campanhas",
       "state": "BLOCKED_BY_EXTERNAL_DEPENDENCY",
-      "auditoria": "PENDENTE",
-      "capability": "PENDENTE_DE_AUDITORIA",
-      "evidence": [],
+      "auditoria": "AUDITADO_PARCIAL",
+      "capability": "PARCIAL",
+      "evidence": [
+        "E-044"
+      ],
       "blocker": "B-05",
-      "next": "Proibido spam/engajamento artificial"
+      "next": "Homologar campanhas com conta real e aprovacao humana; hoje existe o fluxo de campanha dentro do Company OS"
     },
     {
       "id": 31,
       "title": "Social e publicacao",
       "state": "BLOCKED_BY_EXTERNAL_DEPENDENCY",
-      "auditoria": "PENDENTE",
-      "capability": "PENDENTE_DE_AUDITORIA",
-      "evidence": [],
+      "auditoria": "AUDITADO",
+      "capability": "IMPLEMENTADO_NAO_HOMOLOGADO",
+      "evidence": [
+        "E-044"
+      ],
       "blocker": "B-05",
-      "next": "Publicacao externa exige autorizacao"
+      "next": "Provar supervisao com limites, orcamento e recuperacao apos incidente"
     },
     {
       "id": 32,
       "title": "BI / business status e metricas",
       "state": "BLOCKED_BY_EXTERNAL_DEPENDENCY",
-      "auditoria": "PENDENTE",
-      "capability": "PENDENTE_DE_AUDITORIA",
-      "evidence": [],
+      "auditoria": "AUDITADO_PARCIAL",
+      "capability": "PARCIAL",
+      "evidence": [
+        "E-044"
+      ],
       "blocker": "B-07",
-      "next": "Depende de dados reais dos estagios 23-31"
+      "next": "Produzir business status com dados reais de operacao (hoje derivados do Company OS)"
     },
     {
       "id": 33,
@@ -585,7 +625,8 @@
       "auditoria": "AUDITADO_PARCIAL",
       "capability": "APENAS_ADAPTER",
       "evidence": [
-        "E-030"
+        "E-030",
+        "E-045"
       ],
       "blocker": "B-03",
       "next": "Homologar com bot token real"
@@ -594,41 +635,49 @@
       "id": 34,
       "title": "Canal WhatsApp",
       "state": "IN_PROGRESS",
-      "auditoria": "PENDENTE",
-      "capability": "PENDENTE_DE_AUDITORIA",
-      "evidence": [],
+      "auditoria": "AUDITADO",
+      "capability": "PARCIAL",
+      "evidence": [
+        "E-045"
+      ],
       "blocker": "B-03",
-      "next": "Auditar adapter existente antes de reimplementar"
+      "next": "Homologar envio/recebimento com token real; adaptador, gateway, midia e testes ja existem"
     },
     {
       "id": 35,
       "title": "Inbox unificado omnicanal",
       "state": "IN_PROGRESS",
-      "auditoria": "PENDENTE",
-      "capability": "PENDENTE_DE_AUDITORIA",
-      "evidence": [],
+      "auditoria": "AUDITADO",
+      "capability": "AUSENTE",
+      "evidence": [
+        "E-047"
+      ],
       "blocker": "B-03",
-      "next": "Unificar no Omnichannel Runtime, sem adaptadores duplicados"
+      "next": "Implementar o inbox unificado sobre o runtime compartilhado (sem duplicar adaptador)"
     },
     {
       "id": 36,
       "title": "Voz e transcricao",
       "state": "IN_PROGRESS",
-      "auditoria": "PENDENTE",
-      "capability": "PENDENTE_DE_AUDITORIA",
-      "evidence": [],
+      "auditoria": "AUDITADO",
+      "capability": "AUSENTE",
+      "evidence": [
+        "E-047"
+      ],
       "blocker": "B-04",
-      "next": "Requer modelo/engine de voz real"
+      "next": "Implementar voz/transcricao com provedor real"
     },
     {
       "id": 37,
       "title": "Chamadas e follow-up",
       "state": "IN_PROGRESS",
-      "auditoria": "PENDENTE",
-      "capability": "PENDENTE_DE_AUDITORIA",
-      "evidence": [],
+      "auditoria": "AUDITADO",
+      "capability": "AUSENTE",
+      "evidence": [
+        "E-047"
+      ],
       "blocker": "B-04",
-      "next": "Requer telefonia real"
+      "next": "Implementar telefonia com Tel-Agent apos auditar licenca do projeto de referencia"
     },
     {
       "id": 38,
@@ -637,7 +686,8 @@
       "auditoria": "PENDENTE",
       "capability": "AUSENTE",
       "evidence": [
-        "E-033"
+        "E-033",
+        "E-048"
       ],
       "blocker": "B-06",
       "next": "Somente apos 1-37 com evidencias validas; hoje NOT_RELEASE_READY"
@@ -698,6 +748,11 @@
     "PR #72 (checkpoints, docs-only) aberto e VERDE: 15/15 checks completed, 0 falhas, 0 pendentes",
     "PR #73 (E2E do Studio) aberto e VERDE: 23/23 checks success, mergeable_state=clean; 3 testes novos de reorder passaram no job 'Web E2E (shell smoke)' (10 passed)",
     "E-034/E-035/E-036 anexadas ao indice de evidencias nesta rodada",
-    "A pendencia P0-3 do backlog datado foi corrigida: o Studio JA tinha arraste real; a lacuna era falta de assercao E2E"
+    "A pendencia P0-3 do backlog datado foi corrigida: o Studio JA tinha arraste real; a lacuna era falta de assercao E2E",
+    "Rodada 2 (2026-10-10): 18 estagios antes PENDENTE_DE_AUDITORIA receberam classificacao com base em probe real (E-037..E-047)",
+    "Achado relevante: Harness Runtime (estagio 6) e AUSENTE em main - grep 'harness' em internal/agent = 1 ocorrencia (arquivo de teste) e 0 em server/",
+    "Achado relevante: Model Gateway cobre Anthropic/OpenAI/Grok-xAI/Gemini/Groq/DeepSeek/Mistral, mas NAO tem vLLM, llama.cpp, LM Studio, Lemonade nem OpenRouter",
+    "Achado relevante: CRM, Commerce, Marketplace, Payments, Inbox e Telefonia nao existem como motor em internal/agent (apenas entradas de catalogo de conector)",
+    "Artefato do gate intermediario criado: docs/mission/HADES_ENGINEERING_GATE.md (estagio 22)"
   ]
 }

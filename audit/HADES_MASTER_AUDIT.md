@@ -1,6 +1,6 @@
 # HADES — AUDITORIA MESTRA
 
-**Rodada:** 2026-10-10 · **Base:** `main@889750abe4006985b3bf9037bca2323d1e40cef0`
+**Rodada:** 2026-10-10 (rodadas 1 e 2) · **Base:** `main@889750abe4006985b3bf9037bca2323d1e40cef0`
 **Autor:** agente DSH (deepseek-v4.1-flash) · **Escopo:** estágio 1 (auditoria
 total) + reconferência dos estágios tocados nesta rodada.
 
@@ -40,6 +40,10 @@ total) + reconferência dos estágios tocados nesta rodada.
   operador, `SEM_SCOPES=0`, `Auth` sempre não-vazio (E-018, E-019).
 - **Política de capacidades** com 16 escopos e recusa por padrão de escopo
   elevado em auto-run (E-026).
+- **Rodada 2:** 18 estágios antes `PENDENTE_DE_AUDITORIA` receberam
+  classificação a partir de probe real, incluindo a confirmação de que o
+  Harness Runtime está ausente em `main` (E-041) e de que o Model Gateway não
+  cobre 5 dos provedores exigidos (E-038).
 
 ## 3. Correções de premissa (auditoria que se corrige)
 
@@ -81,16 +85,28 @@ foram **provadas pré-existentes em `main` limpo** (E-015, E-016). Registradas
 como bloqueio ambiental (B-09), **não** como defeito introduzido — e sem
 desativar nenhum teste.
 
-## 4. O que **não** foi auditado (honestidade explícita)
+## 4. Cobertura de auditoria após a rodada 2
 
-Superfícies sem qualquer probe nesta rodada: **Context Bootstrap (5), Plugins e
-Skills (8), Memória e RAG (15), WhatsApp (34), inbox unificado (35), voz (36),
-chamadas (37), Company Factory (23), CRM (24), commerce (25), marketplace (26),
-pagamentos (27), marketing (30), social (31), BI (32), arquitetura canônica dos
-componentes (3), gateway de modelo (4), subagentes (9)**.
+A rodada 1 deixou 12 superfícies sem probe. A rodada 2 (E-037…E-047) fechou
+quase todas: **36 dos 38 estágios têm diagnóstico**; restam apenas o estágio 21
+(benchmark, ainda documental) e o estágio 38 (gate final, que depende dos
+demais).
 
-Para todas vale a mesma frase: **a ausência de evidência aqui não é prova de
-ausência** — é fila de auditoria. Nenhuma delas recebeu classificação canônica.
+Achados que mudam decisão de produto:
+
+| Achado | Evidência | Consequência |
+| --- | --- | --- |
+| Harness Runtime **não existe em `main`** | `grep harness` = 0 em `server/`, 1 em `internal/agent` (teste) | estágio 6 é `AUSENTE`; rota é mergear o PR #62 (B-01) |
+| Model Gateway cobre 7 famílias, não 12 | `internal/multillm` (26 arquivos) + contagem por provedor | faltam vLLM, llama.cpp, LM Studio, Lemonade e OpenRouter |
+| Memória tem motor real, injeção de contexto não evidenciada | `ContextStore.RetrieveRelevant`, `OllamaEmbedder` | estágios 5 e 15 ficam `PARCIAL`/`IMPLEMENTADO_NAO_HOMOLOGADO` |
+| Subagentes têm orquestrador completo | `swarm.go` (papéis, orçamento, plano, run, cancel) | falta apenas missão real com artefatos |
+| Plugins/Skills são parciais | `plugin_scope.go` vs. manifesto assinado de skills | gerenciador de plugins não evidenciado |
+| CRM, Commerce, Marketplace, Pagamentos, Inbox, Telefonia **não têm motor** | `marketplace=0`, `inbox=0`, `telephony=0`; `crm`/`billing` só no catálogo | estágios 24–29 e 35 são `AUSENTE`, não "parciais" |
+| Company OS e WhatsApp são substanciais | 11 e 4 arquivos de teste, aprovações e idempotência | `IMPLEMENTADO_NAO_HOMOLOGADO`/`PARCIAL` com base real |
+
+Regra que continua valendo: **ausência de evidência não é prova de ausência** —
+mas, depois de probe negativo explícito com comando registrado, a classificação
+honesta passa a ser `AUSENTE`, e não `PENDENTE_DE_AUDITORIA`.
 
 ## 5. Qualidade da base (métrica bruta)
 

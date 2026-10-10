@@ -9,7 +9,9 @@
 5. `docs/mission/HADES_EVIDENCE_INDEX.md` — o que é prova e o que não é.
 6. `docs/mission/HADES_PENDING_WORK.md` — próximos passos priorizados.
 7. `docs/mission/HADES_NEXT_GOAL_READINESS.md` — critérios de aceite.
-8. `audit/HADES_MASTER_AUDIT.md`, `audit/HADES_CAPABILITY_MATRIX.md`,
+8. `docs/mission/HADES_ENGINEERING_GATE.md` — gate intermediário do
+   estágio 22 (relatório de 20 itens + suíte executada).
+9. `audit/HADES_MASTER_AUDIT.md`, `audit/HADES_CAPABILITY_MATRIX.md`,
    `audit/HADES_RELEASE_BLOCKERS.md`.
 9. Documentos históricos do repositório (pistas, não prova):
    `audit/CLAUDE_CODEX_RESUME_PROMPT_20260927.md`,
