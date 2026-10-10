@@ -1,4 +1,5 @@
 import { API_BASE } from "@/lib/config";
+import type { AgentPluginStatus } from "@/lib/pluginStatus";
 
 export type AgentProject = {
 	id: string;
@@ -386,6 +387,12 @@ export const createSchedule = (payload: Partial<AgentSchedule>) => agentFetch<Ag
 export const updateSchedule = (id: string, payload: Partial<AgentSchedule>) => agentFetch<AgentSchedule>(`/api/agent/v1/schedules/${encodeURIComponent(id)}`, { method: "PATCH", body: JSON.stringify(payload) });
 export const deleteSchedule = (id: string) => agentFetch<void>(`/api/agent/v1/schedules/${encodeURIComponent(id)}`, { method: "DELETE" });
 export const listSkills = async () => { const result = await agentFetch<{ skills?: AgentSkill[] | null }>("/api/agent/v1/skills"); return { skills: Array.isArray(result.skills) ? result.skills : [] }; };
+// Estado REAL de cada plugin instalado (V2.1 §11.3): só o servidor decide o que
+// está "pronto para usar", e só com execução comprovada.
+export const listPluginStatuses = async () => {
+  const result = await agentFetch<{ organization_id?: string; plugins?: AgentPluginStatus[] | null }>("/api/agent/v1/plugins/status");
+  return { organizationId: result.organization_id ?? "", statuses: Array.isArray(result.plugins) ? result.plugins : [] };
+};
 export const listConnectors = async () => { const result = await agentFetch<{ connectors?: AgentConnector[] | null }>("/api/agent/v1/connectors"); return { connectors: Array.isArray(result.connectors) ? result.connectors : [] }; };
 export const listConnectorCatalog = async () => { const result = await agentFetch<{ connectors?: AgentConnectorCatalogEntry[] | null }>("/api/agent/v1/connector-catalog"); return { connectors: Array.isArray(result.connectors) ? result.connectors : [] }; };
 export const listMCPServers = async () => { const result = await agentFetch<{ servers?: AgentMCPServer[] | null; remote_servers?: AgentMCPServer[] | null }>("/api/agent/v1/mcp"); return { servers: [...(Array.isArray(result.servers) ? result.servers : []), ...(Array.isArray(result.remote_servers) ? result.remote_servers.map((server) => ({ ...server, transport: "streamable-http" })) : [])] }; };
