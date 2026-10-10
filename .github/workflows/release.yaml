@@ -132,7 +132,7 @@ jobs:
       - name: Log build results
         run: |
           ls -l dist/
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: bundles-darwin
           path: |
@@ -377,7 +377,7 @@ jobs:
           do
             [ -f "$payload" ] || { echo "missing $payload"; exit 1; }
           done
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: depends-${{ matrix.os }}-${{ matrix.arch }}-${{ matrix.preset }}
           path: dist\*
@@ -441,7 +441,7 @@ jobs:
       - name: Log build results
         run: |
           gci -path .\dist -Recurse -File | ForEach-Object { get-filehash -path $_.FullName -Algorithm SHA256 } | format-list
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: build-windows-amd64
           path: |
@@ -524,7 +524,7 @@ jobs:
       - name: Log contents after build
         run: |
           gci -path .\dist -Recurse -File | ForEach-Object { get-filehash -path $_.FullName -Algorithm SHA256 } | format-list
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: bundles-windows
           path: |
@@ -706,7 +706,7 @@ jobs:
           mkdir -p ${{ matrix.os }}-${{ matrix.arch }}
           echo "${{ steps.build-push.outputs.digest }}" >${{ matrix.os }}-${{ matrix.arch }}-${{ matrix.suffix }}.txt
         working-directory: ${{ runner.temp }}
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: digest-${{ matrix.os }}-${{ matrix.arch }}-${{ matrix.suffix }}
           path: |
@@ -765,7 +765,7 @@ jobs:
             tar c -C dist/${{ matrix.os }}-${{ matrix.arch }} -T $ARCHIVE --owner 0 --group 0 | zstd -19 -T0 >$(basename ${ARCHIVE//.*/}.tar.zst) &
           done
           wait
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: bundles-${{ matrix.os }}-${{ matrix.arch }}${{ matrix.suffix }}
           path: |
