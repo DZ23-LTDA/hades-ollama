@@ -72,6 +72,13 @@ type PluginManifest struct {
 	SigningKeyID  string   `json:"signing_key_id,omitempty"`
 	ContentSHA256 string   `json:"content_sha256,omitempty"`
 	Signature     string   `json:"signature,omitempty"`
+	// Runtime e Entrypoint declaram COMO o plugin executa e QUAL arquivo, dentro
+	// do bundle, é o ponto de entrada. Ficam no manifesto para que a decisão de
+	// executar venha do conteúdo assinado — e não de um pedido em tempo de
+	// execução, que poderia apontar para qualquer arquivo. Ambos com `omitempty`
+	// para não alterar os bytes canônicos de manifestos já assinados.
+	Runtime    string `json:"runtime,omitempty"`
+	Entrypoint string `json:"entrypoint,omitempty"`
 }
 
 // PluginInstallation é o estado instalado de um plugin em uma organização.
