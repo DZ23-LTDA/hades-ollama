@@ -77,9 +77,56 @@ func TestListProvidersReportsStatusWithoutSecrets(t *testing.T) {
 	}
 }
 
+// The guided presets feed the desktop "add provider" form: they must expose
+// every required provider family and must never carry a credential value.
+func TestListProvidersExposesGuidedPresetsWithoutSecrets(t *testing.T) {
+	writeTestProviderConfig(t)
+	t.Setenv("DZ23_TEST_OPENAI_KEY", "sk-should-never-be-returned")
+
+	rr := providerRequest(t, http.MethodGet, "/api/v1/providers", "")
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status %d: %s", rr.Code, rr.Body.String())
+	}
+	if strings.Contains(rr.Body.String(), "sk-should-never-be-returned") {
+		t.Fatal("preset listing leaked a credential")
+	}
+	var got struct {
+		Presets []multillm.ProviderPreset `json:"presets"`
+	}
+	if err := json.Unmarshal(rr.Body.Bytes(), &got); err != nil {
+		t.Fatal(err)
+	}
+	if len(got.Presets) == 0 {
+		t.Fatal("no guided presets exposed")
+	}
+	seen := map[string]bool{}
+	for _, preset := range got.Presets {
+		seen[preset.ID] = true
+		if preset.ID == "" || preset.Type == "" || preset.BaseURL == "" {
+			t.Fatalf("incomplete preset %+v", preset)
+		}
+		if len(preset.Paths) == 0 {
+			t.Fatalf("preset %q has no protocol path", preset.ID)
+		}
+		if preset.Local && !strings.Contains(preset.BaseURL, "127.0.0.1") {
+			t.Fatalf("local preset %q must point at loopback, got %q", preset.ID, preset.BaseURL)
+		}
+		if !preset.Local && !strings.HasPrefix(preset.BaseURL, "https://") {
+			t.Fatalf("remote preset %q must use HTTPS, got %q", preset.ID, preset.BaseURL)
+		}
+	}
+	for _, want := range []string{
+		"ollama", "vllm", "llamacpp", "lmstudio",
+		"openai", "anthropic", "gemini", "deepseek", "groq", "mistral", "openrouter", "xai",
+	} {
+		if !seen[want] {
+			t.Errorf("missing guided preset %q", want)
+		}
+	}
+}
+
 func TestProviderKeyRejectsUnknownProviderAndBadKeys(t *testing.T) {
 	writeTestProviderConfig(t)
-
 	if rr := providerRequest(t, http.MethodPut, "/api/v1/providers/nope/key", `{"key":"x"}`); rr.Code != http.StatusNotFound {
 		t.Fatalf("unknown provider status = %d", rr.Code)
 	}
