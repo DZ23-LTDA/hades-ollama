@@ -29,7 +29,7 @@ func TestCompanyStoreLifecycleAndPersistence(t *testing.T) {
 	if _, err := store.AddRoadmap(company.ID, CompanyRoadmapItem{Title: "Validar MVP", OwnerDepartment: "product"}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := store.AddGoal(company.ID, CompanyGoal{Title: "Primeiros clientes", Metric: "clientes_pagos", Target: 10}); err != nil { //nolint:misspell // Portuguese product metric.
+	if _, err := store.AddGoal(company.ID, CompanyGoal{Title: "Primeiros clientes", Metric: "clientes_pagos", Target: 10}); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := store.AddBacklog(company.ID, CompanyBacklogItem{Title: "Landing page", Priority: 10}); err != nil {

@@ -290,8 +290,8 @@ func defaultCompanyDepartments() []CompanyDepartment {
 		{"engineering", "Engenharia", "Construir, testar, publicar e operar produtos digitais."},
 		{"marketing", "Marketing", "Pesquisa, posicionamento, conteúdo, campanhas e aquisição."},
 		{"sales", "Vendas", "Qualificar leads, conduzir pipeline e fechar oportunidades com aprovação."},
-		{"support", "Suporte", "Responder clientes, manter base de conhecimento e identificar riscos."}, //nolint:misspell // Portuguese product copy.
-		{"operations", "Operações", "Métricas, orçamento, processos, fornecedores e continuidade."},     //nolint:misspell // Portuguese product copy.
+		{"support", "Suporte", "Responder clientes, manter base de conhecimento e identificar riscos."},
+		{"operations", "Operações", "Métricas, orçamento, processos, fornecedores e continuidade."}, //nolint:misspell // Portuguese product copy.
 	}
 	result := make([]CompanyDepartment, 0, len(departments))
 	for _, item := range departments {

@@ -19,8 +19,39 @@ import (
 )
 
 type Config struct {
-	Providers        []Provider `json:"providers"`
-	GatewayAPIKeyEnv string     `json:"gateway_api_key_env,omitempty"`
+	Providers        []Provider      `json:"providers"`
+	GatewayAPIKeyEnv string          `json:"gateway_api_key_env,omitempty"`
+	Rotation         *RotationConfig `json:"rotation,omitempty"`
+}
+
+// RotationConfig liga a rotação automática entre provedores. Quando a tentativa
+// escolhida falha antes de qualquer byte chegar ao cliente (recusa de conexão,
+// timeout ou resposta 429/5xx), o gateway tenta o próximo candidato elegível em
+// vez de devolver 502 — é o comportamento de roteador pedido para Claude e Codex.
+//
+// Enabled ausente equivale a true; defina false para voltar à tentativa única.
+// CrossProvider ausente equivale a false: um modelo fixado explicitamente pelo
+// cliente (por exemplo "openai/gpt-x") só aceita rotação para outro provedor se
+// o operador autorizar, para não enviar o prompt a um fornecedor não escolhido.
+type RotationConfig struct {
+	Enabled       *bool `json:"enabled,omitempty"`
+	MaxAttempts   int   `json:"max_attempts,omitempty"`
+	CrossProvider *bool `json:"cross_provider,omitempty"`
+}
+
+const (
+	// defaultRotationAttempts é o total de tentativas quando o operador não
+	// informa max_attempts: uma escolha mais duas alternativas.
+	defaultRotationAttempts = 3
+	// maxRotationAttempts limita o custo de uma requisição que falha em série.
+	maxRotationAttempts = 5
+)
+
+// rotationPolicy são os limites já resolvidos da rotação automática.
+type rotationPolicy struct {
+	enabled       bool
+	maxAttempts   int
+	crossProvider bool
 }
 
 type Provider struct {
@@ -90,6 +121,7 @@ type Registry struct {
 	providers        map[string]Provider
 	models           map[string]Model
 	gatewayAPIKeyEnv string
+	rotation         *RotationConfig
 }
 
 func Load(path string) (*Registry, error) {
@@ -112,7 +144,7 @@ func LoadBytes(b []byte) (*Registry, error) {
 	if err := dec.Decode(&cfg); err != nil {
 		return nil, fmt.Errorf("decode DZ23 provider config: %w", err)
 	}
-	r := &Registry{providers: make(map[string]Provider), models: make(map[string]Model), gatewayAPIKeyEnv: cfg.GatewayAPIKeyEnv}
+	r := &Registry{providers: make(map[string]Provider), models: make(map[string]Model), gatewayAPIKeyEnv: cfg.GatewayAPIKeyEnv, rotation: cfg.Rotation}
 	for _, p := range cfg.Providers {
 		if err := validateProvider(p); err != nil {
 			return nil, err
@@ -152,6 +184,23 @@ func (r *Registry) Authorize(request *http.Request) bool {
 		return true
 	}
 	return false
+}
+
+// rotationPolicy traduz a configuração em limites concretos de tentativa.
+// Registries montados à mão (testes) não definem rotation e por isso recebem o
+// padrão: rotação ligada, no máximo três tentativas e sem troca de provedor
+// quando o cliente fixou o modelo.
+func (r *Registry) rotationPolicy() rotationPolicy {
+	var declared *RotationConfig
+	if r != nil {
+		declared = r.rotation
+	}
+	resolved := declared.Effective()
+	return rotationPolicy{
+		enabled:       resolved.Enabled,
+		maxAttempts:   resolved.MaxAttempts,
+		crossProvider: resolved.CrossProvider,
+	}
 }
 
 func validateProvider(p Provider) error {

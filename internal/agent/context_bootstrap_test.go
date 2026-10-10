@@ -32,7 +32,10 @@ func TestBuildContextBootstrapRequiresTenantScope(t *testing.T) {
 
 func TestBuildContextBootstrapDeclaresPermissionStates(t *testing.T) {
 	input := bootstrapInput()
-	input.GrantedCapabilities = append(input.GrantedCapabilities, "harness:cli")
+	// `harness:cli` é capacidade REAL da política (PR #62) e por isso, concedida,
+	// resolve para PODE_EXECUTAR. Um escopo concedido que a política NÃO conhece
+	// precisa resolver para INDISPONIVEL: não se ganha capacidade inexistente.
+	input.GrantedCapabilities = append(input.GrantedCapabilities, "harness:cli", "escopo:inexistente")
 	bootstrap, err := BuildContextBootstrap(input)
 	if err != nil {
 		t.Fatalf("build: %v", err)
@@ -43,7 +46,12 @@ func TestBuildContextBootstrapDeclaresPermissionStates(t *testing.T) {
 		"terminal:allowlisted": PermissionApproval,
 		"repo:read":            PermissionForbidden,
 		"mcp:call":             PermissionForbidden,
-		"harness:cli":          PermissionUnavailable,
+		// `harness:cli` passou a existir na política (PR #62, ScopeHarnessCLI) e
+		// está concedido neste input: a expectativa correta é PODE_EXECUTAR.
+		"harness:cli": PermissionExecute,
+		// O caminho "indisponível" segue verificado, agora com um escopo que a
+		// política realmente desconhece: capacidade inexistente nunca vira permissão.
+		"escopo:inexistente": PermissionUnavailable,
 	}
 	for scope, want := range expectations {
 		if got := bootstrap.Permissions[scope]; got != want {

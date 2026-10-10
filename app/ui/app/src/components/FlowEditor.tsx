@@ -211,9 +211,14 @@ export function FlowEditor({ storageKey = "hades.flow.draft", onPublished }: Flo
         result.unsupported.length > 0
           ? ` (ainda não executados: ${result.unsupported.join(", ")})`
           : "";
+      const persisted = result.schedule.steps
+        ? ` Grafo com ${result.schedule.steps.length} passo(s) persistido(s): o servidor executa na ordem e bloqueia os dependentes quando um passo falha.`
+        : result.stepsSkipped
+          ? ` Plano textual: ${result.stepsSkipped}`
+          : "";
       setPublishMsg({
         kind: "ok",
-        text: `Fluxo publicado como automação${warn}.`,
+        text: `Fluxo publicado como automação${warn}.${persisted}`,
       });
       onPublished?.();
     } catch (e) {

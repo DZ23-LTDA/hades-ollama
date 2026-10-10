@@ -8,6 +8,7 @@ import {
   startConnectorOAuth,
 } from "@/lib/agenticClient";
 import {
+  connectGuidance,
   connectHint,
   connectWithKey,
   disconnectConnector,
@@ -15,6 +16,24 @@ import {
 } from "@/lib/connectorConnect";
 import { generateCodeVerifier } from "@/lib/pkce";
 import { safeHttpUrl } from "@/lib/safeUrl";
+
+// ConnectGuidance shows the onboarding steps of a channel before the card
+// asks for a credential, so the operator does not have to hunt for the
+// BotFather, the group-privacy switch or the allowed account type.
+function ConnectGuidance({ id }: { id: string }) {
+  const steps = connectGuidance(id);
+  if (steps.length === 0) return null;
+  return (
+    <ul
+      data-testid="connector-guidance"
+      className="mb-2 list-disc space-y-1 pl-4 text-[11px] text-neutral-500 dark:text-neutral-400"
+    >
+      {steps.map((step) => (
+        <li key={step}>{step}</li>
+      ))}
+    </ul>
+  );
+}
 
 // ConnectorQuickConnect is shown inside a catalog card. Services that accept
 // an API key connect right here; OAuth-only services say plainly what is
@@ -59,6 +78,7 @@ export function ConnectorQuickConnect({
     }
     return (
       <div className="mt-4 rounded-xl bg-neutral-50 p-3 text-xs leading-5 text-neutral-600 dark:bg-neutral-900 dark:text-neutral-300">
+        <ConnectGuidance id={entry.id} />
         <p>{connectHint(entry.name, entry.auth)}</p>
         <p className="mt-2 text-[11px] text-neutral-500 dark:text-neutral-400">
           Para registrá-lo, use o botão “Criar Conector” no topo desta página,
@@ -71,6 +91,7 @@ export function ConnectorQuickConnect({
   const help = keyHelpURL(entry.id);
   return (
     <div className="mt-4 rounded-xl bg-neutral-50 p-3 text-xs leading-5 text-neutral-600 dark:bg-neutral-900 dark:text-neutral-300">
+      <ConnectGuidance id={entry.id} />
       {connected ? (
         <div className="flex flex-wrap items-center justify-between gap-2">
           <span>

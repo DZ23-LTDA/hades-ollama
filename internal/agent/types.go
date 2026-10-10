@@ -223,19 +223,23 @@ type SkillManifest struct {
 }
 
 type Schedule struct {
-	ID               string     `json:"id"`
-	Objective        string     `json:"objective"`
-	Model            string     `json:"model,omitempty"`
-	Workspace        string     `json:"workspace,omitempty"`
-	ProjectID        string     `json:"project_id,omitempty"`
-	OrganizationID   string     `json:"organization_id,omitempty"`
-	IntervalSeconds  int64      `json:"interval_seconds"`
-	Enabled          bool       `json:"enabled"`
-	WebhookSecretEnv string     `json:"webhook_secret_env,omitempty"`
-	NextRunAt        time.Time  `json:"next_run_at"`
-	LastRunAt        *time.Time `json:"last_run_at,omitempty"`
-	FailureCount     int        `json:"failure_count,omitempty"`
-	LastFailureCode  string     `json:"last_failure_code,omitempty"`
-	CreatedAt        time.Time  `json:"created_at"`
-	UpdatedAt        time.Time  `json:"updated_at"`
+	ID               string `json:"id"`
+	Objective        string `json:"objective"`
+	Model            string `json:"model,omitempty"`
+	Workspace        string `json:"workspace,omitempty"`
+	ProjectID        string `json:"project_id,omitempty"`
+	OrganizationID   string `json:"organization_id,omitempty"`
+	IntervalSeconds  int64  `json:"interval_seconds"`
+	Enabled          bool   `json:"enabled"`
+	WebhookSecretEnv string `json:"webhook_secret_env,omitempty"`
+	// Steps is the persisted flow graph. When empty the schedule keeps its
+	// historical behaviour of a single mission carrying Objective; when
+	// populated the supervisor executes the steps in dependency order.
+	Steps           []ScheduleStep `json:"steps,omitempty"`
+	NextRunAt       time.Time      `json:"next_run_at"`
+	LastRunAt       *time.Time     `json:"last_run_at,omitempty"`
+	FailureCount    int            `json:"failure_count,omitempty"`
+	LastFailureCode string         `json:"last_failure_code,omitempty"`
+	CreatedAt       time.Time      `json:"created_at"`
+	UpdatedAt       time.Time      `json:"updated_at"`
 }

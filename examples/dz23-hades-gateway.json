@@ -1,0 +1,64 @@
+{
+  "gateway_api_key_env": "OLLAMA_DZ23_GATEWAY_KEY",
+  "rotation": {
+    "enabled": true,
+    "max_attempts": 3,
+    "cross_provider": false
+  },
+  "providers": [
+    {
+      "name": "anthropic",
+      "type": "anthropic",
+      "base_url": "https://api.anthropic.com",
+      "api_key_env": "ANTHROPIC_API_KEY",
+      "auth_style": "anthropic",
+      "paths": ["/v1/messages"],
+      "priority": 80,
+      "models": [
+        {
+          "id": "claude-sonnet",
+          "capabilities": ["chat", "tools", "coding", "reasoning"],
+          "cost_per_1k_input_cents": 0,
+          "cost_per_1k_output_cents": 0,
+          "quality_score": 8
+        }
+      ]
+    },
+    {
+      "name": "openrouter",
+      "type": "openai-compatible",
+      "base_url": "https://openrouter.ai/api/v1",
+      "api_key_env": "OPENROUTER_API_KEY",
+      "auth_style": "bearer",
+      "paths": ["/v1/chat/completions", "/v1/responses"],
+      "priority": 60,
+      "models": [
+        {
+          "id": "coder",
+          "capabilities": ["chat", "tools", "coding"],
+          "cost_per_1k_input_cents": 1,
+          "cost_per_1k_output_cents": 2,
+          "quality_score": 7
+        }
+      ]
+    },
+    {
+      "name": "reserva",
+      "type": "openai-compatible",
+      "base_url": "https://api.groq.com/openai/v1",
+      "api_key_env": "GROQ_API_KEY",
+      "auth_style": "bearer",
+      "paths": ["/v1/chat/completions", "/v1/responses"],
+      "priority": 20,
+      "models": [
+        {
+          "id": "coder",
+          "capabilities": ["chat", "tools", "coding"],
+          "cost_per_1k_input_cents": 0,
+          "cost_per_1k_output_cents": 0,
+          "quality_score": 6
+        }
+      ]
+    }
+  ]
+}

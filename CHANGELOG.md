@@ -6,6 +6,15 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/). 
 
 ## [Unreleased]
 
+### Catálogo de conectores honesto e teste live de OAuth opt-in (P1-5) — 2026-10-10
+
+O catálogo de conectores passou a ter o vocabulário de `status` e `kind` fechado e verificado por teste: nenhuma entrada pode declarar estado desconhecido, `kind` fora de `app`/`custom_api`/`mcp`, ou ficar sem escopo. O teste também amarra os metadados de conexão rápida à flag derivada, então uma entrada não pode anunciar `APIBaseURL`, cabeçalho ou esquema de autenticação sem estar realmente exposta como conexão rápida — e toda conexão rápida precisa de base HTTPS ou modo auto-hospedado declarado.
+
+Foi adicionado o teste live opt-in de OAuth exigido pelo aceite P1-5: ele só roda com `OLLAMA_TEST_OAUTH=1` e todas as credenciais do provedor presentes, e é pulado (nunca falho) quando falta qualquer uma delas. Um teste unitário determinístico prova que o portão ausente ou a credencial incompleta resultam em pulo, sem rede e sem falha por ausência de credencial.
+
+Também ficou travada a regra de honestidade da promoção: um conector só pode estar `available` quando o harness entrega o caminho de autenticação. Conectores cujo `auth` sempre depende de material do operador (`api_key`, `api_key_or_certificate`, `bot_token`, `connection_url`) continuam em `operator_setup_required`, porque promover esses exigiria mentir sobre o que o produto entrega pronto.
+
+
 ### execução de comandos slash com autorização server-side — 2026-10-10
 
 - Novas rotas `GET /commands` (descoberta: registro, ajuda e autocomplete por `prefix`) e `POST /commands` (`{input}`), ligando o comando do registro canônico à **ação real** com a organização vinda da sessão.

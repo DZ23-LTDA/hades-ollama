@@ -63,7 +63,7 @@ jobs:
           ./scripts/build_darwin.sh build package
       - name: Log build results
         run: ls -l dist/
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: ollama-darwin.tgz
           path: dist/ollama-darwin.tgz
@@ -111,7 +111,7 @@ jobs:
             payload: cuda_jetpack6
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
       - uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
         with:
           context: .
@@ -131,7 +131,7 @@ jobs:
         run: |
           set -euo pipefail
           tar -C "${{ runner.temp }}/payload" -cf - . | zstd -9 -T0 >"${{ runner.temp }}/linux-payload-${{ matrix.arch }}-${{ matrix.payload }}.tar.zst"
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: linux-payload-${{ matrix.arch }}-${{ matrix.payload }}
           path: ${{ runner.temp }}/linux-payload-${{ matrix.arch }}-${{ matrix.payload }}.tar.zst
@@ -146,7 +146,7 @@ jobs:
         arch: [amd64, arm64]
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
       - uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
         with:
           context: .
@@ -166,7 +166,7 @@ jobs:
         run: |
           set -euo pipefail
           tar -C "${{ runner.temp }}/payload" -cf - . | zstd -9 -T0 >"${{ runner.temp }}/linux-payload-${{ matrix.arch }}-go.tar.zst"
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: linux-payload-${{ matrix.arch }}-go
           path: ${{ runner.temp }}/linux-payload-${{ matrix.arch }}-go.tar.zst
@@ -183,7 +183,7 @@ jobs:
         arch: [amd64, arm64]
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           pattern: linux-payload-${{ matrix.arch }}-*
           path: ${{ runner.temp }}/payloads
@@ -266,25 +266,25 @@ jobs:
             tar c -C dist/linux-${{ matrix.arch }} -T "${ARCHIVE}" --owner 0 --group 0 | zstd -19 -T0 >"$(basename "${ARCHIVE//.*/}.tar.zst")" &
           done
           wait
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: ollama-linux-${{ matrix.arch }}.tar.zst
           path: ollama-linux-${{ matrix.arch }}.tar.zst
           compression-level: 0
       - if: matrix.arch == 'amd64'
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: ollama-linux-amd64-rocm.tar.zst
           path: ollama-linux-amd64-rocm.tar.zst
           compression-level: 0
       - if: matrix.arch == 'arm64'
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: ollama-linux-arm64-jetpack5.tar.zst
           path: ollama-linux-arm64-jetpack5.tar.zst
           compression-level: 0
       - if: matrix.arch == 'arm64'
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: ollama-linux-arm64-jetpack6.tar.zst
           path: ollama-linux-arm64-jetpack6.tar.zst
@@ -470,7 +470,7 @@ jobs:
           do
             [ -f "$payload" ] || { echo "missing $payload"; exit 1; }
           done
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: depends-${{ matrix.os }}-${{ matrix.arch }}-${{ matrix.preset }}
           path: dist\*
@@ -533,7 +533,7 @@ jobs:
       - name: Log build results
         run: |
           gci -path .\dist -Recurse -File | ForEach-Object { get-filehash -path $_.FullName -Algorithm SHA256 } | format-list
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: build-windows-amd64
           path: dist\*
@@ -555,12 +555,12 @@ jobs:
             LLAMA_CPP_VERSION
             MLX_VERSION
             MLX_C_VERSION
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           pattern: depends-windows*
           path: dist
           merge-multiple: true
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           pattern: build-windows*
           path: dist
@@ -609,27 +609,27 @@ jobs:
           do
             [ -f "$payload" ] || { echo "missing $payload"; exit 1; }
           done
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: ollama-windows-amd64.zip
           path: dist/ollama-windows-amd64.zip
           compression-level: 0
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: ollama-windows-arm64.zip
           path: dist/ollama-windows-arm64.zip
           compression-level: 0
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: ollama-windows-amd64-rocm.zip
           path: dist/ollama-windows-amd64-rocm.zip
           compression-level: 0
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: OllamaSetup.exe
           path: dist/OllamaSetup.exe
           compression-level: 0
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: install.ps1
           path: dist/install.ps1

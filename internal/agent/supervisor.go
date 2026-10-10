@@ -299,17 +299,12 @@ func (s *Supervisor) Tick(ctx context.Context, now time.Time) (SupervisorTickRes
 				}
 			}
 
-			// Create mission from due schedule
-			_, err := s.runtime.CreateMission(ctx, CreateMissionRequest{
-				Objective:      sched.Objective,
-				Model:          sched.Model,
-				Workspace:      sched.Workspace,
-				ProjectID:      sched.ProjectID,
-				OrganizationID: sched.OrganizationID,
-				AutoRun:        true,
-			})
+			// Execute the persisted flow graph of the schedule, or the legacy
+			// single mission when the schedule carries no steps. Both dispatch
+			// sites share ExecuteScheduleFlow so semantics cannot diverge.
+			missions, err := s.runtime.ExecuteScheduleFlow(ctx, sched)
 			if err == nil {
-				result.SchedulesTriggered++
+				result.SchedulesTriggered += missions
 			}
 		}
 	}

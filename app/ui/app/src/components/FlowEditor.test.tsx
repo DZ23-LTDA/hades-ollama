@@ -136,7 +136,18 @@ describe("FlowEditor", () => {
     expect(createScheduleMock).toHaveBeenCalledWith({
       objective: "Rodar testes do repositório",
       interval_seconds: 3600,
+      steps: [
+        { id: "n1_trigger", kind: "trigger.interval" },
+        {
+          id: "n2_action",
+          kind: "action.mission",
+          depends_on: ["n1_trigger"],
+          objective: "Rodar testes do repositório",
+        },
+      ],
     });
+    const msg = r.root.find((n) => n.props?.["data-testid"] === "flow-publish-msg");
+    expect(textOf(msg)).toContain("2 passo(s) persistido(s)");
     act(() => r.unmount());
   });
 
