@@ -97,6 +97,10 @@ func (s *Server) listProviders(w http.ResponseWriter, r *http.Request) error {
 	return json.NewEncoder(w).Encode(map[string]any{
 		"config_path": providerConfigPath(),
 		"providers":   providerStatuses(cfg),
+		// Guided presets for the "add provider" form (stage 4). They carry the
+		// base URL, the credential variable NAME and the supported paths; never
+		// a credential value, which keeps the desktop UI free of secrets.
+		"presets": multillm.BuiltInProviderPresets(),
 	})
 }
 

@@ -1,0 +1,842 @@
+{
+  "schema": "hades.mission.state/v1",
+  "mission_id": "hades-universal-v21",
+  "repository": "https://github.com/DZ23-LTDA/hades-ollama",
+  "updated_at": "2026-10-10T16:05:00-03:00",
+  "updated_by": "dsh-agent (deepseek-v4.1-flash)",
+  "release_state": "NOT_RELEASE_READY",
+  "git": {
+    "integration_branch": "main",
+    "main_sha": "889750abe4006985b3bf9037bca2323d1e40cef0",
+    "main_committed_at": "2026-10-09T10:24:45Z",
+    "main_ci_state": "green (dz23-agentic-quality + class-a-plus-integrity = success nesse SHA)",
+    "mission_branch": "docs/checkpoints-missao-v21",
+    "mission_branch_base": "889750abe4006985b3bf9037bca2323d1e40cef0"
+  },
+  "honesty_conventions": {
+    "state_IN_PROGRESS": "conservador: nao comprovado como concluido; nao afirma trabalho executado",
+    "COMPLETED_VERIFIED": "exige evidencia reproduzivel em HADES_EVIDENCE_INDEX.md",
+    "auditoria_PENDENTE": "superficie nao inspecionada nesta rodada; ausencia de evidencia nao prova ausencia",
+    "capability_PENDENTE_DE_AUDITORIA": "extensao declarada; NAO e classificacao canonica e nao promove capacidade"
+  },
+  "pull_requests": {
+    "open_count": 14,
+    "merged_this_mission": [
+      {
+        "number": 54,
+        "merged_at": "2026-10-09T02:46:26Z"
+      },
+      {
+        "number": 55,
+        "merged_at": "2026-10-09T10:24:46Z"
+      },
+      {
+        "number": 71,
+        "via": "merge individual"
+      },
+      {
+        "number": 73,
+        "via": "merge individual"
+      },
+      {
+        "number": 72,
+        "via": "PR #86 (merge train das rodadas 6-13)"
+      },
+      {
+        "number": 74,
+        "via": "PR #86 (merge train das rodadas 6-13)"
+      },
+      {
+        "number": 75,
+        "via": "PR #86 (merge train das rodadas 6-13)"
+      },
+      {
+        "number": 76,
+        "via": "PR #86 (merge train das rodadas 6-13)"
+      },
+      {
+        "number": 77,
+        "via": "PR #86 (merge train das rodadas 6-13)"
+      },
+      {
+        "number": 78,
+        "via": "PR #86 (merge train das rodadas 6-13)"
+      },
+      {
+        "number": 79,
+        "via": "PR #86 (merge train das rodadas 6-13)"
+      },
+      {
+        "number": 80,
+        "via": "PR #86 (merge train das rodadas 6-13)"
+      },
+      {
+        "number": 81,
+        "via": "PR #86 (merge train das rodadas 6-13)"
+      },
+      {
+        "number": 82,
+        "via": "PR #86 (merge train das rodadas 6-13)"
+      },
+      {
+        "number": 83,
+        "via": "PR #86 (merge train das rodadas 6-13)"
+      },
+      {
+        "number": 84,
+        "via": "PR #86 (merge train das rodadas 6-13)"
+      },
+      {
+        "number": 85,
+        "via": "PR #86 (merge train das rodadas 6-13)"
+      },
+      {
+        "number": 86,
+        "via": "merge train",
+        "checks": "23/23 verdes"
+      }
+    ],
+    "mission_prs_open": [
+      {
+        "number": 56,
+        "branch": "feat/paridade-chat-typingmind",
+        "sha": "a7ce91701",
+        "tema": "paridade de chat TypingMind"
+      },
+      {
+        "number": 57,
+        "branch": "docs/comparativo-autoclaw-canais-im-20261009",
+        "sha": "6c0142955",
+        "tema": "comparativo AutoClaw / canais IM"
+      },
+      {
+        "number": 58,
+        "branch": "feat/biblioteca-de-prompts",
+        "sha": "27767836c",
+        "tema": "biblioteca de prompts"
+      },
+      {
+        "number": 59,
+        "branch": "fix/loop-modelo-padrao",
+        "sha": "5a15a0362",
+        "tema": "loop de modelo padrao"
+      },
+      {
+        "number": 60,
+        "branch": "feat/rotacao-automatica-gateway",
+        "sha": "99ba19fbb",
+        "tema": "rotacao automatica de gateway"
+      },
+      {
+        "number": 61,
+        "branch": "test/e2e-jornada-primeira-execucao",
+        "sha": "bb45d7944",
+        "tema": "E2E da jornada de primeira execucao (anterior)"
+      },
+      {
+        "number": 62,
+        "branch": "feat/harness-cli-governado",
+        "sha": "afea7e726",
+        "tema": "harness CLI governado"
+      },
+      {
+        "number": 63,
+        "branch": "feat/im-telegram-channel",
+        "sha": "c036836c7",
+        "tema": "canal Telegram"
+      },
+      {
+        "number": 65,
+        "branch": "feat/guia-conexao-canais-im",
+        "sha": "4fce4e5e4",
+        "tema": "guia de conexao de canais IM"
+      },
+      {
+        "number": 66,
+        "branch": "feat/concessao-capacidades-ui",
+        "sha": "360b81c45",
+        "tema": "concessao de capacidades na UI"
+      },
+      {
+        "number": 67,
+        "branch": "feat/fluxo-agendado-persistido",
+        "sha": "16d0d03a8",
+        "tema": "fluxo agendado persistido"
+      },
+      {
+        "number": 68,
+        "branch": "feat/editor-fluxo-persistido",
+        "sha": "a759683e7",
+        "tema": "editor de fluxo persistido"
+      },
+      {
+        "number": 69,
+        "branch": "feat/saida-ferramenta-no-chat",
+        "sha": "525856a75",
+        "tema": "saida de ferramenta no chat"
+      },
+      {
+        "number": 70,
+        "branch": "feat/catalogo-honesto-e-oauth-live",
+        "sha": "927895821",
+        "tema": "catalogo honesto + OAuth live"
+      }
+    ],
+    "dependabot_open": {
+      "range": "21-34 e 64",
+      "count": 15,
+      "aguardando": "decisao humana de merge (compativeis)"
+    },
+    "green_awaiting_merge_authorization": [
+      69,
+      70
+    ],
+    "stacked_on_branch": {
+      "73": "feat/e2e-primeira-execucao"
+    }
+  },
+  "stage_states": {
+    "COMPLETED_VERIFIED": [],
+    "TESTING": [],
+    "IN_PROGRESS": [
+      1,
+      2,
+      3,
+      4,
+      6,
+      7,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21,
+      22,
+      33,
+      34,
+      35,
+      36,
+      37
+    ],
+    "NOT_STARTED": [],
+    "FAILED": [],
+    "BLOCKED_BY_EXTERNAL_DEPENDENCY": [
+      5,
+      8,
+      15,
+      23,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      30,
+      31,
+      32,
+      38
+    ]
+  },
+  "stages": [
+    {
+      "id": 1,
+      "title": "Auditoria total e inventario real",
+      "state": "IN_PROGRESS",
+      "auditoria": "AUDITADO_PARCIAL",
+      "capability": "PARCIAL",
+      "evidence": [
+        "E-001",
+        "E-002",
+        "E-021",
+        "E-023",
+        "E-036"
+      ],
+      "blocker": null,
+      "next": "Complementar a matriz de capacidades com reconfirmacao dos 30 docs de audit/ datados"
+    },
+    {
+      "id": 2,
+      "title": "Estabilizacao e consolidacao da base",
+      "state": "IN_PROGRESS",
+      "auditoria": "AUDITADO_PARCIAL",
+      "capability": "PARCIAL",
+      "evidence": [
+        "E-011",
+        "E-013",
+        "E-014",
+        "E-015",
+        "E-016",
+        "E-017"
+      ],
+      "blocker": "B-09",
+      "next": "Eliminar as 4 falhas de teste ambientais (worktree/upload, browser operator, exec sh, filename longo)"
+    },
+    {
+      "id": 3,
+      "title": "Arquitetura canonica dos componentes",
+      "state": "IN_PROGRESS",
+      "auditoria": "AUDITADO_PARCIAL",
+      "capability": "PARCIAL",
+      "evidence": [
+        "E-037",
+        "E-040",
+        "E-043",
+        "E-044",
+        "E-045"
+      ],
+      "blocker": null,
+      "next": "Definir e versionar os contratos por componente (hoje existem motores reais, mas sem registro de contrato versionado por modulo)"
+    },
+    {
+      "id": 4,
+      "title": "Model Gateway (roteamento, rotacao, fallback, orcamento)",
+      "state": "IN_PROGRESS",
+      "auditoria": "AUDITADO",
+      "capability": "IMPLEMENTADO_NAO_HOMOLOGADO",
+      "evidence": [
+        "E-024",
+        "E-037",
+        "E-038",
+        "E-049"
+      ],
+      "blocker": "B-07",
+      "next": "Homologar uma chamada real por familia de provedor (B-07); os presets guiados (13, incluindo 4 servidores locais) foram entregues no PR #74"
+    },
+    {
+      "id": 5,
+      "title": "Context Bootstrap / contexto de projeto",
+      "state": "BLOCKED_BY_EXTERNAL_DEPENDENCY",
+      "auditoria": "AUDITADO_PARCIAL",
+      "capability": "PARCIAL",
+      "evidence": [
+        "E-040",
+        "E-050",
+        "E-051"
+      ],
+      "blocker": "B-07",
+      "next": "Injetar o bootstrap nos demais pontos de chamada (chat e agentes) e provar a MESMA missao com dois modelos distintos preservando permissoes; montagem, injecao no planejador (PR #75) e rota de leitura (PR #76) ja estao entregues"
+    },
+    {
+      "id": 6,
+      "title": "Harness Runtime (execucao governada)",
+      "state": "IN_PROGRESS",
+      "auditoria": "AUDITADO",
+      "capability": "AUSENTE",
+      "evidence": [
+        "E-041",
+        "E-025"
+      ],
+      "blocker": "B-01",
+      "next": "Merge do PR #62 (harness.cli governado) e prova de aprovacao obrigatoria; em main nao existe runtime de harness"
+    },
+    {
+      "id": 7,
+      "title": "MCP Manager (servidores, ferramentas, escopos)",
+      "state": "IN_PROGRESS",
+      "auditoria": "AUDITADO_PARCIAL",
+      "capability": "APENAS_CATALOGO",
+      "evidence": [
+        "E-018",
+        "E-019",
+        "E-026"
+      ],
+      "blocker": "B-10",
+      "next": "Promover catalogos mcp=4 para chamada real homologada"
+    },
+    {
+      "id": 8,
+      "title": "Plugins e Skills",
+      "state": "BLOCKED_BY_EXTERNAL_DEPENDENCY",
+      "auditoria": "AUDITADO",
+      "capability": "PARCIAL",
+      "evidence": [
+        "E-042",
+        "E-053",
+        "E-055"
+      ],
+      "blocker": null,
+      "next": "Expor o registro de plugins na interface e executar codigo de plugin em processo isolado (sandbox) antes de qualquer promocao; manifesto, confianca, atualizacao, rollback e verificacao de CONTEUDO do pacote ja estao entregues (PRs #78 e #80)"
+    },
+    {
+      "id": 9,
+      "title": "Agentes e subagentes (delegacao)",
+      "state": "IN_PROGRESS",
+      "auditoria": "AUDITADO",
+      "capability": "IMPLEMENTADO_NAO_HOMOLOGADO",
+      "evidence": [
+        "E-043"
+      ],
+      "blocker": null,
+      "next": "Rodar missao multiagente real com artefatos consolidados e prova de isolamento de workspace"
+    },
+    {
+      "id": 10,
+      "title": "Mission Control multiagente (missoes, eventos, SSE, artefatos)",
+      "state": "IN_PROGRESS",
+      "auditoria": "AUDITADO_PARCIAL",
+      "capability": "PARCIAL",
+      "evidence": [
+        "E-020",
+        "E-027"
+      ],
+      "blocker": null,
+      "next": "Cobrir orcamento/pausa/cancelamento por teste; PRs #67/#68/#69"
+    },
+    {
+      "id": 11,
+      "title": "Paridade Codex/Claude (harnesses de codigo)",
+      "state": "IN_PROGRESS",
+      "auditoria": "AUDITADO_PARCIAL",
+      "capability": "PARCIAL",
+      "evidence": [
+        "E-025",
+        "E-046"
+      ],
+      "blocker": "B-02",
+      "next": "Merge do harness CLI (PR #62) e prova de sessao real com conta logada"
+    },
+    {
+      "id": 12,
+      "title": "Studio / Builder visual",
+      "state": "IN_PROGRESS",
+      "auditoria": "AUDITADO",
+      "capability": "IMPLEMENTADO_NAO_HOMOLOGADO",
+      "evidence": [
+        "E-008",
+        "E-009",
+        "E-028",
+        "E-034",
+        "E-035",
+        "E-039"
+      ],
+      "blocker": null,
+      "next": "Cobertura E2E do reorder entregue no PR #73 (verde no CI); faltam preview/export, undo/redo e edicao de propriedades sob E2E"
+    },
+    {
+      "id": 13,
+      "title": "Workflow Engine (fluxos, schedules, condicoes)",
+      "state": "IN_PROGRESS",
+      "auditoria": "AUDITADO_PARCIAL",
+      "capability": "IMPLEMENTADO_NAO_HOMOLOGADO",
+      "evidence": [
+        "E-020",
+        "E-029"
+      ],
+      "blocker": null,
+      "next": "Provar execucao real de schedule persistido (nao so validacao) e cobrir action.http/connector"
+    },
+    {
+      "id": 14,
+      "title": "Browser Operator / computer-use",
+      "state": "IN_PROGRESS",
+      "auditoria": "AUDITADO_PARCIAL",
+      "capability": "PARCIAL",
+      "evidence": [
+        "E-015"
+      ],
+      "blocker": "B-09",
+      "next": "Suprir dependencia ambiental (Python) para o teste de navegacao passar"
+    },
+    {
+      "id": 15,
+      "title": "Memoria e RAG local",
+      "state": "BLOCKED_BY_EXTERNAL_DEPENDENCY",
+      "auditoria": "AUDITADO",
+      "capability": "IMPLEMENTADO_NAO_HOMOLOGADO",
+      "evidence": [
+        "E-040",
+        "E-052",
+        "E-056",
+        "E-057"
+      ],
+      "blocker": "B-07",
+      "next": "Ligacao da retencao a um agendador real quando existir executor persistente e prova de isolamento com usuario AUTENTICADO (token real) em vez de cabecalho local; escopos de organizacao, projeto e usuario, exportacao/exclusao, proveniencia e politica de retencao ja estao entregues (PRs #77, #81 e #82)"
+    },
+    {
+      "id": 16,
+      "title": "Canais de IM (WhatsApp/Telegram/inbox unificado)",
+      "state": "IN_PROGRESS",
+      "auditoria": "AUDITADO_PARCIAL",
+      "capability": "APENAS_ADAPTER",
+      "evidence": [
+        "E-030"
+      ],
+      "blocker": "B-03",
+      "next": "Homologar com token real (bloqueado externamente); PRs #63 e #65"
+    },
+    {
+      "id": 17,
+      "title": "Workspace do agente (threads, artefatos, preview)",
+      "state": "IN_PROGRESS",
+      "auditoria": "AUDITADO_PARCIAL",
+      "capability": "PARCIAL",
+      "evidence": [
+        "E-027"
+      ],
+      "blocker": null,
+      "next": "Expor saida de ferramenta na linha do tempo (PR #69)"
+    },
+    {
+      "id": 18,
+      "title": "Seguranca, permissoes e multitenancy",
+      "state": "IN_PROGRESS",
+      "auditoria": "AUDITADO_PARCIAL",
+      "capability": "PARCIAL",
+      "evidence": [
+        "E-019",
+        "E-031",
+        "E-058"
+      ],
+      "blocker": null,
+      "next": "Prova de nao inferencia por timing e varredura ofensiva com usuario AUTENTICADO em banco real (RLS com papeis distintos); isolamento por organizacao e por usuario na memoria, DLP, e tratamento de conteudo externo como dado nao confiavel ja estao entregues (PRs #82 e #83)"
+    },
+    {
+      "id": 19,
+      "title": "UX/onboarding e jornada de primeira execucao",
+      "state": "IN_PROGRESS",
+      "auditoria": "AUDITADO",
+      "capability": "IMPLEMENTADO_E_TESTADO",
+      "evidence": [
+        "E-011",
+        "E-012",
+        "E-032"
+      ],
+      "blocker": null,
+      "next": "Decidir se o fallback silencioso do gate quando GET /settings falha e defeito de produto"
+    },
+    {
+      "id": 20,
+      "title": "Distribuicao e instaladores (Windows/macOS/Linux)",
+      "state": "IN_PROGRESS",
+      "auditoria": "AUDITADO_PARCIAL",
+      "capability": "PARCIAL",
+      "evidence": [
+        "E-022"
+      ],
+      "blocker": "B-06",
+      "next": "Smoke nativo por SO + assinatura de release"
+    },
+    {
+      "id": 21,
+      "title": "Benchmarks e comparativo competitivo",
+      "state": "IN_PROGRESS",
+      "auditoria": "AUDITADO_PARCIAL",
+      "capability": "PARCIAL",
+      "evidence": [
+        "E-021",
+        "E-054"
+      ],
+      "blocker": null,
+      "next": "Comparativo competitivo real exige a mesma tarefa, a mesma maquina e licenca/conta de cada produto (B-05/B-07); benchmarks locais reproduziveis com metodologia publicada ja existem (PR #79) e nenhuma alegacao de superioridade e feita"
+    },
+    {
+      "id": 22,
+      "title": "Gate de engenharia intermediario",
+      "state": "IN_PROGRESS",
+      "auditoria": "AUDITADO_PARCIAL",
+      "capability": "PARCIAL",
+      "evidence": [
+        "E-005",
+        "E-006",
+        "E-007",
+        "E-013",
+        "E-014",
+        "E-017",
+        "E-034",
+        "E-036",
+        "E-048",
+        "E-059"
+      ],
+      "blocker": null,
+      "next": "Gate global final (docs/mission/HADES_FINAL_RELEASE_GATE.md e HADES_RELEASE_REPORT.md) apos os estagios 1-38; o gate intermediario ja esta emitido e o registro de comandos da secao 6 com verificacao de rota por comando ja esta entregue (PR #84)"
+    },
+    {
+      "id": 23,
+      "title": "Company Factory (empresa orquestrada)",
+      "state": "BLOCKED_BY_EXTERNAL_DEPENDENCY",
+      "auditoria": "AUDITADO",
+      "capability": "PARCIAL",
+      "evidence": [
+        "E-044"
+      ],
+      "blocker": "B-07",
+      "next": "Homologar a criacao de empresa com dados reais de operacao e documentos; hoje o nucleo e testado mas nao operado ponta a ponta"
+    },
+    {
+      "id": 24,
+      "title": "CRM e pipeline de vendas",
+      "state": "BLOCKED_BY_EXTERNAL_DEPENDENCY",
+      "auditoria": "AUDITADO",
+      "capability": "AUSENTE",
+      "evidence": [
+        "E-047"
+      ],
+      "blocker": "B-05",
+      "next": "Implementar o motor de CRM (contatos/leads/oportunidades); hoje ha apenas entrada de catalogo de conector"
+    },
+    {
+      "id": 25,
+      "title": "Commerce / loja e pedidos",
+      "state": "BLOCKED_BY_EXTERNAL_DEPENDENCY",
+      "auditoria": "AUDITADO",
+      "capability": "AUSENTE",
+      "evidence": [
+        "E-047"
+      ],
+      "blocker": "B-05",
+      "next": "Implementar o Commerce Engine (catalogo, estoque, checkout, pedidos); hoje existem pedidos apenas como recurso interno do Company OS"
+    },
+    {
+      "id": 26,
+      "title": "Marketplace multi-vendedor",
+      "state": "BLOCKED_BY_EXTERNAL_DEPENDENCY",
+      "auditoria": "AUDITADO",
+      "capability": "AUSENTE",
+      "evidence": [
+        "E-047"
+      ],
+      "blocker": "B-05",
+      "next": "Implementar conectores oficiais de marketplace sob API oficial e rate limit"
+    },
+    {
+      "id": 27,
+      "title": "Pagamentos e faturamento",
+      "state": "BLOCKED_BY_EXTERNAL_DEPENDENCY",
+      "auditoria": "AUDITADO",
+      "capability": "AUSENTE",
+      "evidence": [
+        "E-047"
+      ],
+      "blocker": "B-05",
+      "next": "Implementar pagamentos/faturamento com idempotencia e conciliacao; nada de cartao sem conformidade"
+    },
+    {
+      "id": 28,
+      "title": "Atendimento e suporte (helpdesk)",
+      "state": "BLOCKED_BY_EXTERNAL_DEPENDENCY",
+      "auditoria": "AUDITADO",
+      "capability": "AUSENTE",
+      "evidence": [
+        "E-047"
+      ],
+      "blocker": "B-03",
+      "next": "Implementar atendimento/suporte sobre o Omnichannel Runtime compartilhado"
+    },
+    {
+      "id": 29,
+      "title": "Telefonia e call center",
+      "state": "BLOCKED_BY_EXTERNAL_DEPENDENCY",
+      "auditoria": "AUDITADO",
+      "capability": "AUSENTE",
+      "evidence": [
+        "E-047"
+      ],
+      "blocker": "B-04",
+      "next": "Implementar telefonia/voz com provedor real; sem provedor, manter bloqueio externo"
+    },
+    {
+      "id": 30,
+      "title": "Marketing e campanhas",
+      "state": "BLOCKED_BY_EXTERNAL_DEPENDENCY",
+      "auditoria": "AUDITADO_PARCIAL",
+      "capability": "PARCIAL",
+      "evidence": [
+        "E-044"
+      ],
+      "blocker": "B-05",
+      "next": "Homologar campanhas com conta real e aprovacao humana; hoje existe o fluxo de campanha dentro do Company OS"
+    },
+    {
+      "id": 31,
+      "title": "Social e publicacao",
+      "state": "BLOCKED_BY_EXTERNAL_DEPENDENCY",
+      "auditoria": "AUDITADO",
+      "capability": "IMPLEMENTADO_NAO_HOMOLOGADO",
+      "evidence": [
+        "E-044"
+      ],
+      "blocker": "B-05",
+      "next": "Provar supervisao com limites, orcamento e recuperacao apos incidente"
+    },
+    {
+      "id": 32,
+      "title": "BI / business status e metricas",
+      "state": "BLOCKED_BY_EXTERNAL_DEPENDENCY",
+      "auditoria": "AUDITADO_PARCIAL",
+      "capability": "PARCIAL",
+      "evidence": [
+        "E-044"
+      ],
+      "blocker": "B-07",
+      "next": "Produzir business status com dados reais de operacao (hoje derivados do Company OS)"
+    },
+    {
+      "id": 33,
+      "title": "Canal Telegram",
+      "state": "IN_PROGRESS",
+      "auditoria": "AUDITADO_PARCIAL",
+      "capability": "APENAS_ADAPTER",
+      "evidence": [
+        "E-030",
+        "E-045"
+      ],
+      "blocker": "B-03",
+      "next": "Homologar com bot token real"
+    },
+    {
+      "id": 34,
+      "title": "Canal WhatsApp",
+      "state": "IN_PROGRESS",
+      "auditoria": "AUDITADO",
+      "capability": "PARCIAL",
+      "evidence": [
+        "E-045"
+      ],
+      "blocker": "B-03",
+      "next": "Homologar envio/recebimento com token real; adaptador, gateway, midia e testes ja existem"
+    },
+    {
+      "id": 35,
+      "title": "Inbox unificado omnicanal",
+      "state": "IN_PROGRESS",
+      "auditoria": "AUDITADO",
+      "capability": "AUSENTE",
+      "evidence": [
+        "E-047"
+      ],
+      "blocker": "B-03",
+      "next": "Implementar o inbox unificado sobre o runtime compartilhado (sem duplicar adaptador)"
+    },
+    {
+      "id": 36,
+      "title": "Voz e transcricao",
+      "state": "IN_PROGRESS",
+      "auditoria": "AUDITADO",
+      "capability": "AUSENTE",
+      "evidence": [
+        "E-047"
+      ],
+      "blocker": "B-04",
+      "next": "Implementar voz/transcricao com provedor real"
+    },
+    {
+      "id": 37,
+      "title": "Chamadas e follow-up",
+      "state": "IN_PROGRESS",
+      "auditoria": "AUDITADO",
+      "capability": "AUSENTE",
+      "evidence": [
+        "E-047"
+      ],
+      "blocker": "B-04",
+      "next": "Implementar telefonia com Tel-Agent apos auditar licenca do projeto de referencia"
+    },
+    {
+      "id": 38,
+      "title": "Gate final de release verificado",
+      "state": "BLOCKED_BY_EXTERNAL_DEPENDENCY",
+      "auditoria": "PENDENTE",
+      "capability": "AUSENTE",
+      "evidence": [
+        "E-033",
+        "E-048"
+      ],
+      "blocker": "B-06",
+      "next": "Somente apos 1-37 com evidencias validas; hoje NOT_RELEASE_READY"
+    }
+  ],
+  "blockers": [
+    {
+      "id": "B-01",
+      "tipo": "RESOLVIDO",
+      "descricao": "RESOLVIDO em 2026-10-10: o usuario concedeu autorizacao de merge ampla. #71 e #73 mesclados individualmente; os outros 13 PRs das rodadas 6-13 foram integrados pelo merge train do PR #86 (23/23 checks verdes, main limpa)"
+    },
+    {
+      "id": "B-02",
+      "tipo": "EXTERNO",
+      "descricao": "Conta real logada em Codex/Claude para homologar harnesses"
+    },
+    {
+      "id": "B-03",
+      "tipo": "EXTERNO",
+      "descricao": "Tokens reais de canais (Telegram bot token, WhatsApp)"
+    },
+    {
+      "id": "B-04",
+      "tipo": "EXTERNO",
+      "descricao": "Provedor de telefonia/voz real"
+    },
+    {
+      "id": "B-05",
+      "tipo": "EXTERNO",
+      "descricao": "Contas reais de marketplace/social/pagamento"
+    },
+    {
+      "id": "B-06",
+      "tipo": "EXTERNO",
+      "descricao": "Identidade de assinatura de release (certificado)"
+    },
+    {
+      "id": "B-07",
+      "tipo": "EXTERNO",
+      "descricao": "Chaves de provedor de modelo para homologacao de chamada real"
+    },
+    {
+      "id": "B-09",
+      "tipo": "AMBIENTAL",
+      "descricao": "Host sem Python/sh e limites de caminho: 4 testes falham por ambiente"
+    },
+    {
+      "id": "B-10",
+      "tipo": "PRODUTO",
+      "descricao": "Conectores: 104 de 122 exigem configuracao do operador (available=17)"
+    }
+  ],
+  "evidence_index": "docs/mission/HADES_EVIDENCE_INDEX.md",
+  "notes": [
+    "main_sha reconferido ao vivo em 2026-10-10T08:17-03:00 via gh api commits/main",
+    "29 PRs abertos no momento da coleta; dependabot nao foi fechado",
+    "Nenhuma capacidade foi promovida a COMPLETED_VERIFIED nesta rodada",
+    "PR #72 (checkpoints, docs-only) aberto e VERDE: 15/15 checks completed, 0 falhas, 0 pendentes",
+    "PR #73 (E2E do Studio) aberto e VERDE: 23/23 checks success, mergeable_state=clean; 3 testes novos de reorder passaram no job 'Web E2E (shell smoke)' (10 passed)",
+    "E-034/E-035/E-036 anexadas ao indice de evidencias nesta rodada",
+    "A pendencia P0-3 do backlog datado foi corrigida: o Studio JA tinha arraste real; a lacuna era falta de assercao E2E",
+    "Rodada 2 (2026-10-10): 18 estagios antes PENDENTE_DE_AUDITORIA receberam classificacao com base em probe real (E-037..E-047)",
+    "Achado relevante: Harness Runtime (estagio 6) e AUSENTE em main - grep 'harness' em internal/agent = 1 ocorrencia (arquivo de teste) e 0 em server/",
+    "Achado relevante (CORRIGIDO): Model Gateway e guiado por tipo de protocolo (openai-compatible/anthropic/cli) com provedores em config JSON; vLLM/LM Studio/llama.cpp/Lemonade sao configuraveis, faltam presets guiados e chamada real (B-07)",
+    "Achado relevante: CRM, Commerce, Marketplace, Payments, Inbox e Telefonia nao existem como motor em internal/agent (apenas entradas de catalogo de conector)",
+    "Artefato do gate intermediario criado: docs/mission/HADES_ENGINEERING_GATE.md (estagio 22)",
+    "PR #74 (presets guiados de provedor) aberto e VERDE: 23/23 checks success, mergeable_state=clean; inclui Web and mobile quality, Web E2E e Go agentic and server gates",
+    "Lacuna do estagio 4 parcialmente fechada: catalogo de presets no backend, exposto em GET /api/v1/providers e consumido pela tela de Provedores (14 testes novos, lint 0 issues, vitest 65/400)",
+    "PR #75 (Context Bootstrap) aberto e VERDE: 20/20 checks success, 0 falhas; inclui Go agentic and server gates, Go agentic Windows portability, PostgreSQL RLS/Redis DLQ/OTLP e Web and mobile quality",
+    "Estagio 5 avancou de PENDENTE_DE_AUDITORIA para AUDITADO_PARCIAL/PARCIAL: existe documento canonico de contexto com permissoes declaradas, isolamento por projeto, DLP e limite de 8 KiB, injetado no planejador; falta a prova com dois modelos e a injecao nos demais pontos de chamada",
+    "PR #76 (rota GET /api/agent/v1/missions/:id/context) aberto e VERDE: 20/20 checks success, mergeable_state=clean",
+    "PR #76 e EMPILHADO: base=feat/context-bootstrap (#75); retarget para main depois do merge de #75",
+    "Estagio 5: montagem canonica + injecao no planejador + rota de leitura entregues; falta injetar nos demais pontos de chamada e a prova com dois modelos reais (B-07)",
+    "PR #77 (governanca de memoria) aberto e VERDE: 20/20 checks success, mergeable_state=clean; base main (independente)",
+    "Estagio 15 avancou: RemoveMemory com rollback, ExportMemories com proveniencia e embeddings opt-in, PruneMemories por idade (preservando memoria sem data) e 3 rotas com isolamento por organizacao; 8 testes novos",
+    "PR #78 (gerenciador de plugins) aberto e VERDE: 20/20 checks success, mergeable_state=clean; base main (independente)",
+    "Estagio 8 avancou: PluginRegistry com manifesto validado, escopo desconhecido recusado na instalacao, confianca exigindo assinatura ed25519 de chave autorizada (raiz em OLLAMA_AGENT_PLUGIN_TRUSTED_KEYS, falha fechada), atualizacao otimista com historico, rollback, isolamento por organizacao e persistencia com deteccao de estado adulterado; 10 testes novos",
+    "PR #79 (benchmarks reproduziveis) aberto e VERDE: 20/20 checks success, mergeable_state=clean; empilhado em #78",
+    "Estagio 21 passou a ter medicao reproduzivel dos motores proprios (memoria, plugins, contexto fundamentado) com metodologia em docs/mission/HADES_BENCHMARK_METHOD.md; comparativo com concorrentes continua bloqueado por licenca/conta e inferencia real",
+    "PR #80 (pacote de plugin verificado) aberto e VERDE: 20/20 checks success, mergeable_state=clean; empilhado em #78",
+    "Estagio 8: conteudo do pacote passa a ser verificado por assinatura ed25519 sobre o SHA-256 (chave autorizada), copiado para plugins/content com digest registrado, com deteccao de adulteracao pos-instalacao e allowlist de diretorio (falha fechada sem OLLAMA_AGENT_PLUGIN_BUNDLE_DIR); instalar pacote NAO concede escopo",
+    "PR #81 (politica de retencao de memoria) aberto e VERDE: 20/20 checks success, mergeable_state=clean; empilhado em #77",
+    "Estagio 15: retencao deixou de ser indefinida por omissao - politica por organizacao validada, persistida com rollback, aplicacao explicita e idempotente que so varre projetos da propria organizacao, preserva memoria sem data e devolve contagens reais",
+    "PR #82 (isolamento de memoria por usuario) aberto e VERDE: 20/20 checks success, mergeable_state=clean; base main (independente)",
+    "Estagio 15: memoria privada de um usuario deixou de ser legivel por outro na MESMA organizacao e projeto; autoria vem da sessao (actor_id do corpo e ignorado), leitura restrita em busca, recuperacao e RAG, e modo local usa o ator sintetico 'local' (nao e autenticacao, registrado explicitamente)",
+    "PR #83 (conteudo externo nao confiavel) aberto e VERDE: 20/20 checks success, mergeable_state=clean; base main (independente)",
+    "Estagio 18: prompt injection passou a ter controle real - trechos de terceiros entram cercados e rotulados como DADOS, padroes classicos de instrucao e tokens de controle sao neutralizados de forma visivel, a cerca nao pode ser quebrada pelo conteudo e rotulos comuns de documento pt-BR ficam fora da regra (sem falso positivo). Declarado como mitigacao deterministica, nao prova de imunidade",
+    "PR #84 (registro de comandos slash) aberto e VERDE: 20/20 checks success, mergeable_state=clean; base main (independente)",
+    "Secao 6 / 11.1: dos comandos do mandato, apenas /goal existia antes; agora ha registro com 35 comandos, disponibilidade decidida pela rota REAL e teste que falha se um comando disponivel apontar para rota inexistente",
+    "B-01 RESOLVIDO: autorizacao de merge concedida pelo usuario em 2026-10-10; main passou de 889750abe para 8b3eda830",
+    "Merge train #86: ao mesclar #71/#73 primeiro, todos os demais PRs ficaram 'dirty' porque cada um insere secao na mesma ancora do CHANGELOG; a integracao foi feita localmente com resolvedor deterministico do CHANGELOG e merge de 3 vias POR DECLARACAO para server/agent_routes.go (imports e rotas por uniao; nenhum conflito real de codigo)",
+    "Verificacao do trem antes de publicar: gofmt/gofumpt limpos, golangci-lint 0 issues, go build ./... exit 0, suite de internal/agent apenas com as 3 falhas ambientais e suite de server apenas com a falha ambiental de nome de arquivo longo; CI do PR #86: 23/23 success (inclui Web E2E, que estava vermelho na main e foi corrigido pelo #71)"
+  ]
+}
