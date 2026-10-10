@@ -2,12 +2,12 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-10T16:05:00-03:00",
+  "updated_at": "2026-10-10T17:00:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
     "integration_branch": "main",
-    "main_sha": "889750abe4006985b3bf9037bca2323d1e40cef0",
+    "main_sha": "962fa13d3d28db84f0e8486469f2408e30f29c7b",
     "main_committed_at": "2026-10-09T10:24:45Z",
     "main_ci_state": "green (dz23-agentic-quality + class-a-plus-integrity = success nesse SHA)",
     "mission_branch": "docs/checkpoints-missao-v21",
@@ -20,7 +20,7 @@
     "capability_PENDENTE_DE_AUDITORIA": "extensao declarada; NAO e classificacao canonica e nao promove capacidade"
   },
   "pull_requests": {
-    "open_count": 14,
+    "open_count": 0,
     "merged_this_mission": [
       {
         "number": 54,
@@ -94,106 +94,97 @@
         "number": 86,
         "via": "merge train",
         "checks": "23/23 verdes"
-      }
-    ],
-    "mission_prs_open": [
+      },
       {
         "number": 56,
-        "branch": "feat/paridade-chat-typingmind",
-        "sha": "a7ce91701",
-        "tema": "paridade de chat TypingMind"
+        "via": "PR #88 (trem 2)"
       },
       {
         "number": 57,
-        "branch": "docs/comparativo-autoclaw-canais-im-20261009",
-        "sha": "6c0142955",
-        "tema": "comparativo AutoClaw / canais IM"
+        "via": "PR #88 (trem 2)"
       },
       {
         "number": 58,
-        "branch": "feat/biblioteca-de-prompts",
-        "sha": "27767836c",
-        "tema": "biblioteca de prompts"
+        "via": "PR #88 (trem 2)"
       },
       {
         "number": 59,
-        "branch": "fix/loop-modelo-padrao",
-        "sha": "5a15a0362",
-        "tema": "loop de modelo padrao"
+        "via": "PR #88 (trem 2)"
       },
       {
         "number": 60,
-        "branch": "feat/rotacao-automatica-gateway",
-        "sha": "99ba19fbb",
-        "tema": "rotacao automatica de gateway"
+        "via": "PR #88 (trem 2)"
       },
       {
         "number": 61,
-        "branch": "test/e2e-jornada-primeira-execucao",
-        "sha": "bb45d7944",
-        "tema": "E2E da jornada de primeira execucao (anterior)"
+        "via": "PR #88 (trem 2)"
       },
       {
         "number": 62,
-        "branch": "feat/harness-cli-governado",
-        "sha": "afea7e726",
-        "tema": "harness CLI governado"
+        "via": "PR #88 (trem 2)"
       },
       {
         "number": 63,
-        "branch": "feat/im-telegram-channel",
-        "sha": "c036836c7",
-        "tema": "canal Telegram"
+        "via": "PR #88 (trem 2)"
       },
       {
         "number": 65,
-        "branch": "feat/guia-conexao-canais-im",
-        "sha": "4fce4e5e4",
-        "tema": "guia de conexao de canais IM"
+        "via": "PR #88 (trem 2)"
       },
       {
         "number": 66,
-        "branch": "feat/concessao-capacidades-ui",
-        "sha": "360b81c45",
-        "tema": "concessao de capacidades na UI"
+        "via": "PR #88 (trem 2)"
       },
       {
         "number": 67,
-        "branch": "feat/fluxo-agendado-persistido",
-        "sha": "16d0d03a8",
-        "tema": "fluxo agendado persistido"
+        "via": "PR #88 (trem 2)"
       },
       {
         "number": 68,
-        "branch": "feat/editor-fluxo-persistido",
-        "sha": "a759683e7",
-        "tema": "editor de fluxo persistido"
+        "via": "PR #88 (trem 2)"
       },
       {
         "number": 69,
-        "branch": "feat/saida-ferramenta-no-chat",
-        "sha": "525856a75",
-        "tema": "saida de ferramenta no chat"
+        "via": "PR #88 (trem 2)"
       },
       {
         "number": 70,
-        "branch": "feat/catalogo-honesto-e-oauth-live",
-        "sha": "927895821",
-        "tema": "catalogo honesto + OAuth live"
+        "via": "PR #88 (trem 2)"
+      },
+      {
+        "number": 21,
+        "via": "PR #88 (trem 2, dependabot verde)"
+      },
+      {
+        "number": 23,
+        "via": "PR #88 (trem 2, dependabot verde)"
+      },
+      {
+        "number": 24,
+        "via": "PR #88 (trem 2, dependabot verde)"
+      },
+      {
+        "number": 25,
+        "via": "PR #88 (trem 2, dependabot verde)"
+      },
+      {
+        "number": 32,
+        "via": "PR #88 (trem 2, dependabot verde)"
+      },
+      {
+        "number": 64,
+        "via": "PR #88 (trem 2, dependabot verde)"
+      },
+      {
+        "number": 88,
+        "via": "merge train 2",
+        "checks": "23/23 verdes"
       }
     ],
-    "dependabot_open": {
-      "range": "21-34 e 64",
-      "count": 15,
-      "aguardando": "decisao humana de merge (compativeis)"
-    },
-    "green_awaiting_merge_authorization": [
-      69,
-      70
-    ],
-    "stacked_on_branch": {
-      "73": "feat/e2e-primeira-execucao"
-    }
+    "mission_prs_open": [],
+    "dependabot_open": 7,
+    "green_awaiting_merge_authorization": [],
+    "stacked_on_branch": {}
   },
   "stage_states": {
     "COMPLETED_VERIFIED": [],
@@ -796,6 +787,11 @@
       "id": "B-10",
       "tipo": "PRODUTO",
       "descricao": "Conectores: 104 de 122 exigem configuracao do operador (available=17)"
+    },
+    {
+      "id": "B-11",
+      "tipo": "AGUARDANDO_CORRECAO",
+      "descricao": "7 PRs do dependabot com CI VERMELHO e mantidos abertos como prova de incompatibilidade: #26, #27, #29, #30, #31, #33, #34. Desbloqueio: corrigir a incompatibilidade de cada bump (ou fechar o PR com justificativa). Nenhum foi mesclado: o CI deles falha hoje"
     }
   ],
   "evidence_index": "docs/mission/HADES_EVIDENCE_INDEX.md",
@@ -837,6 +833,10 @@
     "Secao 6 / 11.1: dos comandos do mandato, apenas /goal existia antes; agora ha registro com 35 comandos, disponibilidade decidida pela rota REAL e teste que falha se um comando disponivel apontar para rota inexistente",
     "B-01 RESOLVIDO: autorizacao de merge concedida pelo usuario em 2026-10-10; main passou de 889750abe para 8b3eda830",
     "Merge train #86: ao mesclar #71/#73 primeiro, todos os demais PRs ficaram 'dirty' porque cada um insere secao na mesma ancora do CHANGELOG; a integracao foi feita localmente com resolvedor deterministico do CHANGELOG e merge de 3 vias POR DECLARACAO para server/agent_routes.go (imports e rotas por uniao; nenhum conflito real de codigo)",
-    "Verificacao do trem antes de publicar: gofmt/gofumpt limpos, golangci-lint 0 issues, go build ./... exit 0, suite de internal/agent apenas com as 3 falhas ambientais e suite de server apenas com a falha ambiental de nome de arquivo longo; CI do PR #86: 23/23 success (inclui Web E2E, que estava vermelho na main e foi corrigido pelo #71)"
+    "Verificacao do trem antes de publicar: gofmt/gofumpt limpos, golangci-lint 0 issues, go build ./... exit 0, suite de internal/agent apenas com as 3 falhas ambientais e suite de server apenas com a falha ambiental de nome de arquivo longo; CI do PR #86: 23/23 success (inclui Web E2E, que estava vermelho na main e foi corrigido pelo #71)",
+    "Merge train 2 (#88): 14 PRs das rodadas 1-5 + 6 bumps de dependencia verdes integrados num unico ciclo de CI (23/23 checks success); main agora 962fa13d3",
+    "Descoberta de governanca: o ruleset main-protection tem strict=True, entao CADA merge invalida os demais PRs ('2 of 2 required status checks are expected'); a partir da segunda rodada a integracao precisa ser por merge train (ou update-branch serial por PR)",
+    "Conflito SEMANTICO encontrado no trem 2 e corrigido na raiz: #62 torna harness:cli uma capacidade real (ScopeHarnessCLI) enquanto o teste do #75 exigia INDISPONIVEL para esse escopo; a expectativa passou a PODE_EXECUTAR e a garantia de INDISPONIVEL continua provada com um escopo concedido que a politica desconhece. Capacidade nao foi revertida e teste nao foi desativado",
+    "Verificacao local do trem 2 antes de publicar: gofmt limpo, go build ./... exit 0 (com os bumps), go vet limpo, golangci-lint 0 issues, internal/agent apenas com as 3 falhas ambientais e server apenas com a falha ambiental conhecida"
   ]
 }
