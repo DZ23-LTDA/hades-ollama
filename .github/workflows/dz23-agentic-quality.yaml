@@ -503,6 +503,17 @@ jobs:
       - name: Screenshot provenance manifest
         working-directory: app/ui/app
         run: npm run screens:verify
+      - name: Web E2E — primeira execução
+        working-directory: app/ui/app
+        # Prova a jornada de primeira execução de ponta a ponta: o portão de
+        # onboarding lido do SERVIDOR (`GET /api/v1/settings`), a persistência de
+        # `OnboardingVersion`, o reinício, a atualização e o rollback. O backend é
+        # o fixture HTTP real de `e2e/first-run-backend.mjs`, iniciado como
+        # segundo `webServer` do Playwright, que também builda o shell e sobe o
+        # `vite preview` com proxy de `/api` para ele — nenhum servidor extra.
+        run: |
+          npx playwright install --with-deps chromium
+          npx playwright test --project=first-run
 
   sbom:
     name: Generate SBOM
