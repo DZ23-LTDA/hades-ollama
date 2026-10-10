@@ -28,7 +28,10 @@ type ContextStore struct {
 	skillPaths    map[string]string
 	schedules     map[string]Schedule
 	retention     map[string]MemoryRetentionPolicy
-	embedder      Embedder
+	// activations organiza, por organização, ONDE cada skill vale
+	// (projeto/agente/modelo) — estágio 8, catálogo com ativação contextual.
+	activations map[string]map[string]SkillActivation
+	embedder    Embedder
 }
 
 type Embedder interface {
@@ -62,7 +65,7 @@ func scheduleOwnedByOrganization(owner, organizationID string) bool {
 
 func NewContextStore(root string) (*ContextStore, error) {
 	if strings.TrimSpace(root) == "" {
-		return &ContextStore{projects: map[string]Project{}, memories: map[string][]Memory{}, skills: map[string]SkillManifest{}, skillPaths: map[string]string{}, schedules: map[string]Schedule{}, retention: map[string]MemoryRetentionPolicy{}}, nil
+		return &ContextStore{projects: map[string]Project{}, memories: map[string][]Memory{}, skills: map[string]SkillManifest{}, skillPaths: map[string]string{}, schedules: map[string]Schedule{}, retention: map[string]MemoryRetentionPolicy{}, activations: map[string]map[string]SkillActivation{}}, nil
 	}
 	if err := os.MkdirAll(filepath.Join(root, "projects"), 0o700); err != nil {
 		return nil, err
@@ -79,7 +82,10 @@ func NewContextStore(root string) (*ContextStore, error) {
 	if err := os.MkdirAll(filepath.Join(root, "retention"), 0o700); err != nil {
 		return nil, err
 	}
-	store := &ContextStore{root: root, projects: map[string]Project{}, memories: map[string][]Memory{}, skills: map[string]SkillManifest{}, skillPaths: map[string]string{}, schedules: map[string]Schedule{}, retention: map[string]MemoryRetentionPolicy{}}
+	if err := os.MkdirAll(filepath.Join(root, "skill-activations"), 0o700); err != nil {
+		return nil, err
+	}
+	store := &ContextStore{root: root, projects: map[string]Project{}, memories: map[string][]Memory{}, skills: map[string]SkillManifest{}, skillPaths: map[string]string{}, schedules: map[string]Schedule{}, retention: map[string]MemoryRetentionPolicy{}, activations: map[string]map[string]SkillActivation{}}
 	projectEntries, err := os.ReadDir(filepath.Join(root, "projects"))
 	if err != nil {
 		return nil, err
@@ -161,6 +167,9 @@ func NewContextStore(root string) (*ContextStore, error) {
 			return nil, fmt.Errorf("retention %s: %w", entry.Name(), err)
 		}
 		store.retention[validated.OrganizationID] = validated
+	}
+	if err := store.loadSkillActivations(root); err != nil {
+		return nil, err
 	}
 	return store, nil
 }

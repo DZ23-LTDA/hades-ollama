@@ -667,6 +667,9 @@ func (a *agentAPI) register(r *gin.Engine) {
 	group.GET("/jobs", a.jobs)
 	group.POST("/jobs/:id/replay", a.replayJob)
 	group.GET("/skills", a.skills)
+	group.GET("/skills/active", a.activeSkills)
+	group.POST("/skills/:id/activate", a.activateSkill)
+	group.POST("/skills/:id/deactivate", a.deactivateSkill)
 	group.POST("/skills", a.registerSkill)
 	group.POST("/skills/:id/enable", a.enableSkill)
 	group.POST("/skills/:id/disable", a.disableSkill)
@@ -1486,6 +1489,106 @@ func (a *agentAPI) skills(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"skills": a.context.SkillsForOrganization(organizationID)})
+}
+
+// activateSkill ativa uma skill para um contexto (projeto/agente/modelo). O
+// servidor recusa skill não confiável: catálogo não concede privilégio.
+func (a *agentAPI) activateSkill(c *gin.Context) {
+	organizationID, ok := a.requireContextOrganization(c)
+	if !ok {
+		return
+	}
+	var payload struct {
+		ProjectID string `json:"project_id"`
+		AgentID   string `json:"agent_id"`
+		Model     string `json:"model"`
+	}
+	if err := c.ShouldBindJSON(&payload); err != nil && !errors.Is(err, io.EOF) {
+		writeAgentError(c, http.StatusBadRequest, err)
+		return
+	}
+	activation, err := a.context.ActivateSkillForOrganization(organizationID, agent.SkillActivation{
+		SkillID:   c.Param("id"),
+		ProjectID: payload.ProjectID,
+		AgentID:   payload.AgentID,
+		Model:     payload.Model,
+	})
+	if err != nil {
+		writeAgentError(c, statusForSkillError(err), err)
+		return
+	}
+	c.JSON(http.StatusOK, activation)
+}
+
+// deactivateSkill remove a ativação do contexto informado.
+func (a *agentAPI) deactivateSkill(c *gin.Context) {
+	organizationID, ok := a.requireContextOrganization(c)
+	if !ok {
+		return
+	}
+	var payload struct {
+		ProjectID string `json:"project_id"`
+		AgentID   string `json:"agent_id"`
+		Model     string `json:"model"`
+	}
+	if err := c.ShouldBindJSON(&payload); err != nil && !errors.Is(err, io.EOF) {
+		writeAgentError(c, http.StatusBadRequest, err)
+		return
+	}
+	key := agent.SkillActivation{
+		SkillID:   c.Param("id"),
+		ProjectID: payload.ProjectID,
+		AgentID:   payload.AgentID,
+		Model:     payload.Model,
+	}.Key()
+	if err := a.context.DeactivateSkillForOrganization(organizationID, key); err != nil {
+		writeAgentError(c, statusForSkillError(err), err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"deactivated": key})
+}
+
+// activeSkills devolve a seleção real do catálogo para o contexto pedido, com o
+// orçamento de tokens aplicado e o motivo de cada exclusão.
+func (a *agentAPI) activeSkills(c *gin.Context) {
+	organizationID, ok := a.requireContextOrganization(c)
+	if !ok {
+		return
+	}
+	budget := 0
+	if raw := strings.TrimSpace(c.Query("token_budget")); raw != "" {
+		parsed, err := strconv.Atoi(raw)
+		if err != nil || parsed < 0 {
+			writeAgentError(c, http.StatusBadRequest, errors.New("token_budget precisa ser um inteiro não negativo"))
+			return
+		}
+		budget = parsed
+	}
+	selection, err := a.context.SelectSkillsForMission(organizationID, agent.SkillContext{
+		ProjectID: c.Query("project_id"),
+		AgentID:   c.Query("agent_id"),
+		Model:     c.Query("model"),
+	}, budget)
+	if err != nil {
+		writeAgentError(c, statusForSkillError(err), err)
+		return
+	}
+	c.JSON(http.StatusOK, selection)
+}
+
+// statusForSkillError mapeia recusas do catálogo para HTTP sem transformar
+// negação de segurança em 500.
+func statusForSkillError(err error) int {
+	switch {
+	case errors.Is(err, agent.ErrSkillNotTrusted):
+		return http.StatusForbidden
+	case errors.Is(err, agent.ErrSkillNotFound), errors.Is(err, agent.ErrSkillActivationNotFound):
+		return http.StatusNotFound
+	case errors.Is(err, agent.ErrSkillActivationInvalid), errors.Is(err, agent.ErrUnknownCapability):
+		return http.StatusBadRequest
+	default:
+		return http.StatusInternalServerError
+	}
 }
 
 func (a *agentAPI) schedules(c *gin.Context) {
