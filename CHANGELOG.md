@@ -6,6 +6,17 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/). 
 
 ## [Unreleased]
 
+### política de retenção de memória por organização — 2026-10-10
+
+- Novo `internal/agent/memory_retention.go` fecha a lacuna de "retenção indefinida" do estágio 15: existiam exclusão, exportação e retenção por chamada avulsa, mas **nenhuma política declarada**.
+- `MemoryRetentionPolicy` (idade máxima em dias, teto de memórias por projeto) por **organização**, com validação explícita (`ErrRetentionPolicyInvalid`): organização obrigatória, 1–3650 dias, teto 0–10 000.
+- Persistência atômica em `retention/<org>.json` com **rollback do estado em memória** quando a gravação falha; a política é relida na inicialização e **política inválida em disco é recusada** em vez de ignorada.
+- `ApplyRetentionForOrganization` varre **apenas os projetos da organização autenticada**, remove o que passou da idade máxima e corta o excedente **mantendo as mais recentes**, devolvendo números reais (`ProjectsScanned`, `RemovedByAge`, `RemovedByCount`). Chamar duas vezes é **idempotente** e memória **sem data é preservada** (não se apaga o que não se sabe quando foi criado).
+- A ausência de política é explícita (`ErrRetentionNotConfigured`): **nada é removido por omissão**.
+- Rotas novas com organização vinda da sessão (nunca do corpo): `GET /retention` (`configured: false` quando não há política), `PUT /retention` e `POST /retention/apply` (400 para política inválida, 404 ao aplicar sem política).
+- **Decisão de honestidade registrada:** a aplicação é **explícita**, não um laço de fundo. O ambiente atual não garante executor persistente, e prometer expurgo automático sem ele seria mentira; quem quiser periodicidade agenda a chamada (o runtime já tem schedules).
+- Cobertura: 5 testes em `internal/agent/memory_retention_test.go` (validação + persistência/releitura + isolamento entre organizações; remoção por idade e por contagem mantendo as mais novas + idempotência; preservação de memória sem data e de projetos de outra organização; aplicar sem política não remove nada; falha de gravação reverte a política anterior e não registra política nova) e 1 teste de rota em `server/retention_routes_test.go` (fluxo completo com contagens reais e sem vazamento de política entre organizações).
+
 ### governança de memória: exportar, apagar e retenção — 2026-10-10
 
 - Novo `internal/agent/context_memory_governance.go` completa o ciclo de vida da memória do projeto (estágio 15): o store já indexava e recuperava, mas não permitia apagar, exportar nem limitar retenção.

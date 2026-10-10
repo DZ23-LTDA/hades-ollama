@@ -526,6 +526,11 @@ func (a *agentAPI) register(r *gin.Engine) {
 	group.GET("/projects/:id/memories/export", a.exportProjectMemories)
 	group.DELETE("/projects/:id/memories/:memory_id", a.deleteProjectMemory)
 	group.POST("/projects/:id/memories/prune", a.pruneProjectMemories)
+	// Política de retenção por organização (estágio 15). A aplicação é
+	// EXPLÍCITA: não existe laço de fundo fingindo automação.
+	group.GET("/retention", a.retentionPolicy)
+	group.PUT("/retention", a.setRetentionPolicy)
+	group.POST("/retention/apply", a.applyRetentionPolicy)
 	group.GET("/projects/:id/ask", a.askProjectDocuments)
 	group.GET("/collab/:project_id", a.collabSnapshot)
 	group.GET("/collab/:project_id/stream", a.collabStream)
@@ -1748,6 +1753,82 @@ func (a *agentAPI) deleteProjectMemory(c *gin.Context) {
 		"project_id": c.Param("id"),
 		"memory_id":  c.Param("memory_id"),
 	})
+}
+
+// retentionPolicy mostra a política declarada da organização autenticada. A
+// ausência de política é resposta legítima (configured=false), não erro.
+func (a *agentAPI) retentionPolicy(c *gin.Context) {
+	organizationID := a.organizationID(c)
+	if organizationID == "" {
+		writeAgentError(c, http.StatusForbidden, errAgentForbidden)
+		return
+	}
+	policy, err := a.context.RetentionPolicyForOrganization(organizationID)
+	if err != nil {
+		if errors.Is(err, agent.ErrRetentionNotConfigured) {
+			c.JSON(http.StatusOK, gin.H{"organization_id": organizationID, "configured": false})
+			return
+		}
+		writeAgentError(c, statusForAgentError(err), err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"organization_id": organizationID, "configured": true, "policy": policy})
+}
+
+// setRetentionPolicy grava a política de retenção da organização autenticada. A
+// organização vem da sessão, nunca do corpo: uma organização não define política
+// para outra.
+func (a *agentAPI) setRetentionPolicy(c *gin.Context) {
+	organizationID := a.organizationID(c)
+	if organizationID == "" {
+		writeAgentError(c, http.StatusForbidden, errAgentForbidden)
+		return
+	}
+	var request struct {
+		MaxAgeDays            int `json:"max_age_days"`
+		MaxMemoriesPerProject int `json:"max_memories_per_project"`
+	}
+	if err := decodeJSON(c, &request); err != nil {
+		writeAgentError(c, http.StatusBadRequest, err)
+		return
+	}
+	policy, err := a.context.SetRetentionPolicyForOrganization(agent.MemoryRetentionPolicy{
+		OrganizationID:        organizationID,
+		MaxAgeDays:            request.MaxAgeDays,
+		MaxMemoriesPerProject: request.MaxMemoriesPerProject,
+	})
+	if err != nil {
+		writeAgentError(c, statusForRetentionError(err), err)
+		return
+	}
+	c.JSON(http.StatusOK, policy)
+}
+
+// applyRetentionPolicy aplica a política agora e devolve os números REAIS do
+// que foi removido. Aplicar duas vezes é idempotente.
+func (a *agentAPI) applyRetentionPolicy(c *gin.Context) {
+	organizationID := a.organizationID(c)
+	if organizationID == "" {
+		writeAgentError(c, http.StatusForbidden, errAgentForbidden)
+		return
+	}
+	result, err := a.context.ApplyRetentionForOrganization(organizationID, time.Now().UTC())
+	if err != nil {
+		writeAgentError(c, statusForRetentionError(err), err)
+		return
+	}
+	c.JSON(http.StatusOK, result)
+}
+
+func statusForRetentionError(err error) int {
+	switch {
+	case errors.Is(err, agent.ErrRetentionPolicyInvalid):
+		return http.StatusBadRequest
+	case errors.Is(err, agent.ErrRetentionNotConfigured):
+		return http.StatusNotFound
+	default:
+		return statusForAgentError(err)
+	}
 }
 
 // pruneProjectMemories aplica retenção por idade. O corte é obrigatório e
