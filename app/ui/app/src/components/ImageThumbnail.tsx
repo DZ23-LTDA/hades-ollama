@@ -68,7 +68,10 @@ export function ImageThumbnail({
         return "";
       }
 
-      const blob = new Blob([bytes], { type: mimeType });
+      // `bytes` pode vir de fontes com ArrayBufferLike (Buffer/base64), e o tipo
+      // de `BlobPart` exige um ArrayBuffer concreto. Copiar para um
+      // Uint8Array<ArrayBuffer> novo é explícito e estável entre versões de lib.
+      const blob = new Blob([new Uint8Array(bytes)], { type: mimeType });
       return URL.createObjectURL(blob);
     } catch (error) {
       console.error(
