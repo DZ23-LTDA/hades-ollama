@@ -2,12 +2,12 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-10T20:35:00-03:00",
+  "updated_at": "2026-10-10T21:05:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
     "integration_branch": "main",
-    "main_sha": "17da864f4e300cfc623deecd3ab8f44d9956dd8a",
+    "main_sha": "afc0d8a20a23e2ec3cc3d7adc5f2918537a85cac",
     "main_committed_at": "2026-10-09T10:24:45Z",
     "main_ci_state": "green (dz23-agentic-quality + class-a-plus-integrity = success nesse SHA)",
     "mission_branch": "docs/checkpoints-missao-v21",
@@ -354,11 +354,12 @@
         "E-063",
         "E-065",
         "E-066",
-        "E-067"
+        "E-067",
+        "E-068"
       ],
       "blocker": null,
-      "next": "expor o catalogo de skills na interface (ativar/desativar por contexto, mostrar categoria, proveniencia e orcamento consumido) e homologar com uma skill de terceiro real",
-      "done": "plugins: manifesto, assinatura/integridade, atualizacao, rollback, verificacao de conteudo, EXECUCAO GOVERNADA, status canonico por API e exibicao do estado real na interface (PRs #78, #80, #114, #119, #121); skills: manifesto assinado/nao-confianca, CATEGORIA, PROVENIENCIA, ATIVACAO POR PROJETO/AGENTE/MODELO, SELECAO DETERMINISTICA POR MISSAO COM ORCAMENTO DE TOKENS e persistencia por organizacao (PR #123)"
+      "next": "homologar com plugin/skill de TERCEIRO REAL (dependencia externa) e seguir para o estagio 5 (context bootstrap no chat) e o estagio 18 (varredura ofensiva com usuario autenticado)",
+      "done": "plugins: manifesto, assinatura/integridade, atualizacao, rollback, verificacao de conteudo, execucao governada, status canonico por API e exibicao do estado real (PRs #78, #80, #114, #119, #121); skills: manifesto assinado/nao-confianca, categoria, proveniencia, ativacao por projeto/agente/modelo, selecao deterministica com orcamento de tokens, persistencia por organizacao E EXIBICAO/OPERACAO DO CATALOGO NA INTERFACE (PRs #123, #125)"
     },
     {
       "id": 9,
@@ -865,6 +866,8 @@
     "Estagio 8, fatia 5 ENTREGUE (PR #121): a interface consome GET /plugins/status e mostra estado canonico, motivo da recusa, capacidades concedidas e ultima execucao. isReadyToUse exige ready_to_use=true E state=TESTED_LIVE, entao o selo 'Pronto para usar' nao pode ser inferido do catalogo nem de um estado isolado. 10 testes novos (5 de logica pura + 5 de componente); suite web passou de 76/516 para 78/526",
     "Nota de processo: os 5 testes de componente falharam na primeira execucao porque, em React 19, react-test-renderer so materializa a arvore dentro de act() (toJSON voltava null). O TESTE foi corrigido (padrao do proprio repo), nao o componente",
     "Estagio 8, fatia 6 ENTREGUE (PR #123): catalogo de skills com categoria, proveniencia (licenca/homepage/dependencias), ativacao por projeto/agente/modelo (campos vazios = curinga), selecao DETERMINISTICA por missao e orcamento de tokens. Skill nao confiavel nao pode ser ativada (ErrSkillNotTrusted) e a selecao nunca inclui skill desabilitada, registrando o MOTIVO de cada exclusao. Persistencia em skill-activations/<org>.json com rollback do estado em memoria em falha de escrita. Rotas POST /skills/:id/activate, POST /skills/:id/deactivate e GET /skills/active. 9 testes novos; nenhuma suite com regressao",
-    "Armadilha registrada para quem for escrever o proximo teste de skill: OrganizationID e Enabled entram nos bytes canonicos assinados, e o registro forca Enabled - assinar antes de definir esses campos invalida a assinatura (aconteceu comigo duas vezes nos fixtures, nunca no codigo)"
+    "Armadilha registrada para quem for escrever o proximo teste de skill: OrganizationID e Enabled entram nos bytes canonicos assinados, e o registro forca Enabled - assinar antes de definir esses campos invalida a assinatura (aconteceu comigo duas vezes nos fixtures, nunca no codigo)",
+    "Estagio 8, fatia 7 ENTREGUE (PR #125): a interface consome o catalogo contextual (resolver por projeto/agente/modelo com orcamento, ativar e desativar por skill), exibe a selecao do servidor com o motivo de cada exclusao e BLOQUEIA ativacao de skill nao confiavel. lib/skillCatalog.ts replica a semantica de curinga do servidor para o botao nao mentir sobre o contexto. 11 testes novos; suite web passou de 78/526 para 80/537",
+    "Defeito real corrigido no caminho (PR #125): o aviso de orcamento invalido so aparecia ao digitar; passou a ser DERIVADO do contexto, entao um valor invalido vindo de fora tambem e avisado"
   ]
 }
