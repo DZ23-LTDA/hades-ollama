@@ -26,6 +26,13 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/). 
 - Cobertura automatizada: validação, ordem topológica, execução de grafo de três nós, condição falsa bloqueando dependentes, rejeição antes da persistência e round-trip HTTP real em `POST`/`PUT`/`GET /api/agent/v1/schedules`.
 - Limites honestos desta fatia: o resultado registrado por um passo de ação é "a missão foi criada", não "a missão teve sucesso", então uma condição avalia o dispatch e não o desfecho do trabalho; não há status por passo nem streaming por passo; a ligação do editor visual do cliente a este contrato fica para a fatia 2.
 
+### fluxo agendado persistido (P0-2, fatia 2) — 2026-10-10
+
+- O editor visual de automações (`/scheduled`, aba `Editor visual (beta)`) passou a compilar o canvas em `steps` e a publicá-los junto do agendamento: `compileFlowSteps` mapeia `trigger.interval`, `trigger.webhook` e `action.mission` para `id`, `kind`, `depends_on` e `objective` em ordem topológica determinística.
+- O cliente valida antes de enviar tudo o que consegue derivar localmente (exatamente um gatilho sem dependência, toda ação com conexão de entrada e objetivo preenchido, no máximo 12 passos, sem ciclos), de modo que a interface nunca gera um `400`; a validação completa do grafo continua no servidor.
+- `condition.if`, `action.http` e `action.connector` seguem em fallback textual declarado (`stepsSkipped`), porque o servidor não aceita expressão livre em `condition.if` e ainda não há executor real para as duas ações — o motivo é exibido na própria interface.
+- Cobertura automatizada: `flowGraph.test.ts` (payload exato, ordem e fallback), `FlowEditor.test.tsx` (publicação pelo inspetor) e o E2E `e2e/scheduleFlow.spec.ts`, que monta na UI real um fluxo de três nós, confere `flow-valid`, publica e valida o corpo de `POST /api/agent/v1/schedules` com os três passos encadeados.
+
 ### fluxo vertical funcional e HarnessRouter — 2026-09-22
 
 - CRUD real tenant-aware de Projetos e Agendado, listagem de missões e artifacts na Biblioteca, com ações server-side e confirmação para exclusão.
