@@ -6,26 +6,36 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/). 
 
 ## [Unreleased]
 
-### política de retenção de memória por organização — 2026-10-10
+### pacote de plugin verificado por assinatura — 2026-10-10
 
-- Novo `internal/agent/memory_retention.go` fecha a lacuna de "retenção indefinida" do estágio 15: existiam exclusão, exportação e retenção por chamada avulsa, mas **nenhuma política declarada**.
-- `MemoryRetentionPolicy` (idade máxima em dias, teto de memórias por projeto) por **organização**, com validação explícita (`ErrRetentionPolicyInvalid`): organização obrigatória, 1–3650 dias, teto 0–10 000.
-- Persistência atômica em `retention/<org>.json` com **rollback do estado em memória** quando a gravação falha; a política é relida na inicialização e **política inválida em disco é recusada** em vez de ignorada.
-- `ApplyRetentionForOrganization` varre **apenas os projetos da organização autenticada**, remove o que passou da idade máxima e corta o excedente **mantendo as mais recentes**, devolvendo números reais (`ProjectsScanned`, `RemovedByAge`, `RemovedByCount`). Chamar duas vezes é **idempotente** e memória **sem data é preservada** (não se apaga o que não se sabe quando foi criado).
-- A ausência de política é explícita (`ErrRetentionNotConfigured`): **nada é removido por omissão**.
-- Rotas novas com organização vinda da sessão (nunca do corpo): `GET /retention` (`configured: false` quando não há política), `PUT /retention` e `POST /retention/apply` (400 para política inválida, 404 ao aplicar sem política).
-- **Decisão de honestidade registrada:** a aplicação é **explícita**, não um laço de fundo. O ambiente atual não garante executor persistente, e prometer expurgo automático sem ele seria mentira; quem quiser periodicidade agenda a chamada (o runtime já tem schedules).
-- Cobertura: 5 testes em `internal/agent/memory_retention_test.go` (validação + persistência/releitura + isolamento entre organizações; remoção por idade e por contagem mantendo as mais novas + idempotência; preservação de memória sem data e de projetos de outra organização; aplicar sem política não remove nada; falha de gravação reverte a política anterior e não registra política nova) e 1 teste de rota em `server/retention_routes_test.go` (fluxo completo com contagens reais e sem vazamento de política entre organizações).
+- Novo `internal/agent/plugin_bundle.go` fecha a segunda fatia do estágio 8: além de governar manifesto, confiança e rollback, o Hades passa a verificar o **conteúdo** do pacote.
+- `VerifyPluginBundle` confere **assinatura destacada ed25519 sobre o SHA-256 do arquivo**: chave precisa estar autorizada na política (`ErrPluginKeyUnauthorized`), arquivo alterado depois de assinado é recusado (`ErrPluginSignatureInvalid`), assinatura ausente tem erro explícito e arquivo inexistente/maior que 64 MiB é recusado como indisponível.
+- `ResolvePluginBundlePath` só aceita caminho **dentro do diretório permitido** pelo operador (`OLLAMA_AGENT_PLUGIN_BUNDLE_DIR`), resolvendo symlinks e recusando `..`; **sem essa configuração a rota falha fechada**, para que a API nunca vire leitura arbitrária de arquivo do host.
+- `InstallBundleForOrganization` verifica o pacote, instala o plugin e só então publica o conteúdo em `plugins/content/<org>/<id>-<versão>.zip`; falha em qualquer passo posterior **reverte a instalação** — nunca fica plugin "instalado" sem pacote.
+- `VerifyInstalledContent` recomputa o digest do arquivo guardado: alteração posterior à instalação é detectada.
+- Rota nova `POST /plugins/bundle` (`manifest` + `bundle_path` + `signature`), com a organização autenticada; 403 para pacote adulterado, chave não autorizada, caminho fora do diretório permitido ou allowlist ausente. Instalação de pacote **não** concede escopo: continua exigindo `promote`.
+- Cobertura: 4 testes em `internal/agent/plugin_bundle_test.go` (chave autorizada/arquivo intacto + adulteração + assinatura ausente + arquivo inexistente; allowlist com `..` e caminho externo recusados; instalação com conteúdo guardado e detecção de adulteração pós-instalação; rollback quando a cópia do conteúdo falha) e 2 testes de rota em `server/plugins_bundle_route_test.go` (201 com conteúdo verificado e sem concessão de escopo; 403 para pacote adulterado, publicador não autorizado, caminho externo e allowlist ausente).
 
-### governança de memória: exportar, apagar e retenção — 2026-10-10
+### benchmarks reproduzíveis dos motores próprios — 2026-10-10
 
-- Novo `internal/agent/context_memory_governance.go` completa o ciclo de vida da memória do projeto (estágio 15): o store já indexava e recuperava, mas não permitia apagar, exportar nem limitar retenção.
-- `RemoveMemory(projectID, memoryID)` — apaga uma memória do projeto com persistência atômica (`writeJSONAtomic`) e **rollback do estado em memória** quando a gravação falha; devolve `ErrMemoryNotFound` para memória inexistente ou de outro projeto.
-- `ExportMemories(projectID, includeEmbeddings)` — exporta em ordem cronológica estável com a proveniência preservada (`kind`, `source`, `confidence`, `created_at`); os vetores de embedding são **opt-in**, porque são dados derivados e volumosos.
-- `PruneMemories(projectID, olderThan)` — retenção por idade, com corte obrigatório; memória **sem data de criação é preservada** (apagar o que não se sabe quando foi criado seria destrutivo por suposição).
-- Rotas novas, todas atrás de `projectForRequest` e portanto com isolamento por organização: `GET /projects/:id/memories/export` (`?include_embeddings=true` opcional), `DELETE /projects/:id/memories/:memory_id` (404 para memória inexistente, 403 para projeto de outro locatário) e `POST /projects/:id/memories/prune` com `older_than_days` validado entre 1 e 3650.
-- Cobertura: 4 testes em `internal/agent/context_memory_governance_test.go` (proveniência/isolamento/embeddings opt-in, remoção com persistência e releitura do disco, **rollback quando a gravação falha**, retenção preservando recentes e sem data) e 4 testes em `server/project_memories_test.go` (exportação, 400 para janela inválida, 404 para memória ausente e 403 cross-tenant sem mutação).
-- Limite declarado: a retenção é aplicada por chamada explícita (rota ou operador); não há agendador automático de expurgo nem política de retenção por organização — isso segue no backlog do estágio 15.
+- Novo `internal/agent/benchmark_test.go` mede o custo determinístico dos motores que o Hades controla: busca de memória em 500 memórias, ciclo instalar → atualizar → rollback → remover de plugin **com persistência**, promoção de plugin com assinatura ed25519 e montagem de contexto fundamentado com 32 fontes.
+- Metodologia registrada em [`docs/mission/HADES_BENCHMARK_METHOD.md`](docs/mission/HADES_BENCHMARK_METHOD.md): comando reproduzível (`go test ./internal/agent/ -run '^$' -bench Benchmark -benchtime=300ms -count=1`), ambiente, o que cada benchmark mede **e o que não mede**, resultado desta medição, como invalidar e o que ainda falta.
+- Limite declarado de forma explícita: **não há comparação com produtos concorrentes** e nenhuma alegação de superioridade. Uma comparação honesta exige a mesma tarefa, a mesma máquina e a licença/conta de cada produto; as métricas de tarefa dependem de inferência real (**B-07**).
+- Leitura honesta publicada junto dos números: a busca de memória é varredura linear (candidata a índice/ANN conforme o volume crescer) e os dois benchmarks de plugin são dominados por I/O de diretório temporário — não devem ser citados como custo de CPU.
+- Os benchmarks são ignorados pela suíte normal (`go test` sem `-bench`), portanto não atrasam o CI.
+
+### gerenciador de plugins com atualização e rollback — 2026-10-10
+
+- Novo `internal/agent/plugin_registry.go` fecha a lacuna do estágio 8: conector, MCP e skills tinham registro/habilitação/remoção, mas **não existia plugin de primeira classe** com manifesto versionado, dependências, integridade, atualização e rollback.
+- `PluginManifest` com id, versão, nome, kind (`connector`/`mcp`/`remote-mcp`/`skill`/`bundle`), escopos, dependências, licença, homepage e campos de assinatura. Validação recusa id com separador, versão fora de formato, kind desconhecido, dependência vazia e **auto-dependência**.
+- **Catálogo não é permissão**: instalar registra; `GrantedScopes` só é preenchido após `PromoteTrustedForOrganization`, que exige assinatura ed25519 válida de uma chave autorizada. Plugin não confiável aparece com `GrantedScopes` vazio e `Trusted: false`.
+- **Escopo desconhecido é recusado na instalação** (`ErrUnknownCapability`) — nunca aceito "para depois".
+- **Atualização otimista com histórico**: `UpdateForOrganization` exige a versão corrente esperada, guarda a versão anterior (até 5) e **retira a confiança da versão nova**; `RollbackForOrganization` desfaz uma atualização por vez (`ErrPluginRollbackDisabled` quando não há histórico).
+- **Isolamento por organização**: o mesmo id não pode pertencer a duas organizações (`ErrPluginOrganizationScope`), e get/list/enable/remove de outro locatário devolvem `ErrPluginNotFound` sem tocar no registro alheio.
+- **Persistência atômica** por organização com rollback do estado em memória quando a gravação falha; `LoadOrganization` **recusa estado adulterado no disco** comparando manifesto × digest.
+- Rotas novas (organização autenticada): `GET /plugins`, `POST /plugins`, `POST /plugins/:plugin_id/rollback` e `POST /plugins/:plugin_id/promote`. A raiz de confiança vem do operador em `OLLAMA_AGENT_PLUGIN_TRUSTED_KEYS` (`key_id:base64url_ed25519_public_key`, separados por vírgula); **sem essa configuração nenhuma promoção é possível** (falha fechada), e configuração inválida devolve 500 explícito em vez de silenciar.
+- Cobertura: 7 testes em `internal/agent/plugin_registry_test.go` (instalação sem conceder escopo + cópia defensiva, manifesto inválido/escopo inventado, isolamento entre organizações, atualização com histórico e conflito de versão, rollback consumindo o histórico, promoção exigindo chave autorizada e recusando manifesto adulterado, persistência com releitura e rollback em falha de gravação) e 3 testes de rota em `server/plugins_routes_test.go` (instalar/listar sem conceder, 403 cross-tenant e rollback sem histórico, promoção fechada sem raiz de confiança e concedendo com chave autorizada).
+- Limite declarado: os presets/instalação de conteúdo de plugin (baixar pacote, verificar arquivos) não fazem parte desta fatia; o registro governa manifesto, confiança, ciclo de vida e rollback.
 
 
 ### E2E de reordenação do Studio persistida no servidor — 2026-10-10
