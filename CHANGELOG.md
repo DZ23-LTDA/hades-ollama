@@ -54,6 +54,14 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/). 
 - Menu lateral Hades aberto por padrão, com smoke test Chromium de rotas, links, ações primárias e estados vazios.
 - `UPSTREAM_BASE_COMMIT`, `UPSTREAM_POLICY.md`, guardrail de integridade e workflow CI para impedir perda silenciosa das superfícies agentic.
 
+### fluxo agendado persistido (P0-2, fatia 1) — 2026-10-10
+
+- `Schedule` passou a carregar um grafo de passos persistido em `steps`, com vocabulário fechado `trigger.interval`, `trigger.webhook`, `action.mission` e `condition.if`; agendamentos antigos, sem `steps`, preservam exatamente o comportamento anterior de missão única.
+- O grafo é validado na criação e na atualização com regras fail-closed: exatamente um gatilho, ação com objetivo e ao menos uma dependência, condição com uma única dependência e `expect` em `succeeded`/`failed`, IDs únicos, no máximo 12 passos, sem ciclos e sem tipo desconhecido — `action.http` e `action.connector` seguem rejeitados até existir executor real.
+- `ExecuteScheduleFlow` executa os passos em ordem topológica determinística e passa a ser o único caminho usado pelos dois loops de dispatch (supervisor e runtime), de modo que os dois não podem divergir; o caminho legado continua contando uma missão por execução.
+- Cobertura automatizada: validação, ordem topológica, execução de grafo de três nós, condição falsa bloqueando dependentes, rejeição antes da persistência e round-trip HTTP real em `POST`/`PUT`/`GET /api/agent/v1/schedules`.
+- Limites honestos desta fatia: o resultado registrado por um passo de ação é "a missão foi criada", não "a missão teve sucesso", então uma condição avalia o dispatch e não o desfecho do trabalho; não há status por passo nem streaming por passo; a ligação do editor visual do cliente a este contrato fica para a fatia 2.
+
 ### fluxo vertical funcional e HarnessRouter — 2026-09-22
 
 - CRUD real tenant-aware de Projetos e Agendado, listagem de missões e artifacts na Biblioteca, com ações server-side e confirmação para exclusão.
