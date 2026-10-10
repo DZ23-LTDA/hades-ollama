@@ -27,6 +27,11 @@
       "url": "https://cdn.brandfetch.io/idNOja6TDE/theme/dark/logo.svg?c=1bxqvuz3dohuyv1uab5pjdl0a3dq3pTmJni",
       "local": "connector-icons/brandfetch/fiscal-ai.svg"
     },
+    "lark": {
+      "domain": "larksuite.com",
+      "url": "https://cdn.brandfetch.io/larksuite.com/icon?c=1bxqvuz3dohuyv1uab5pjdl0a3dq3pTmJni",
+      "local": "connector-icons/brandfetch/lark.webp"
+    },
     "linkedin": {
       "domain": "linkedin.com",
       "url": "https://cdn.brandfetch.io/idJFz6sAsl/theme/light/logo.svg?c=1bxqvuz3dohuyv1uab5pjdl0a3dq3pTmJni",
