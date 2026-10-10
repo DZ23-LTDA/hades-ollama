@@ -262,6 +262,7 @@ export function ChatSidebar({ currentChatId }: ChatSidebarProps) {
 
   return (
     <nav
+      aria-label="Navegação principal"
       aria-busy={isLoading || undefined}
       className="flex flex-1 flex-col min-h-0 select-none"
     >

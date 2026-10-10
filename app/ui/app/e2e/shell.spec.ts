@@ -28,14 +28,16 @@ test.describe("Hades shell", () => {
     await expect(page.getByText("Ollama Classe A+", { exact: true })).toHaveCount(0);
     await expect(page.getByText("Ollama Full", { exact: true })).toHaveCount(0);
 
-    // Indicador de modo local-first na barra lateral: a navegacao principal
-    // (AppNavigation) e a superficie estavel que declara o modo local-first.
+    // Indicador de modo local-first na barra lateral: o landmark de navegacao
+    // nomeado ("Navegação principal") e a superficie estavel que declara o modo
+    // local-first. Na home o landmark e o <nav> do ChatSidebar, que embute o
+    // AppNavigation; o AppSidebar (mesmo rotulo) cobre as rotas de workspace.
     await expect(
       page.getByRole("navigation", { name: "Navegação principal" }),
     ).toBeVisible();
 
-    // Navegacao lateral principal presente.
-    for (const item of ["Agents", "Tarefas", "Empresa"]) {
+    // Itens da navegacao lateral principal, com os rotulos reais em pt-BR.
+    for (const item of ["Tarefas", "Empresa"]) {
       await expect(page.getByText(item, { exact: false }).first()).toBeVisible();
     }
   });

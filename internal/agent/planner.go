@@ -128,6 +128,47 @@ func (UnconfiguredPlanner) Plan(_ context.Context, _ Mission) ([]Step, error) {
 	return nil, errors.New("planner model is not configured")
 }
 
+// missionContextPreamble monta o preâmbulo do Context Bootstrap para uma missão.
+// Devolve string vazia quando a missão não tem escopo de organização/projeto:
+// nesse caso o planejador segue apenas com o prompt de sistema original.
+// Capacidade inválida NÃO vira permissão: quando a política recusa a lista, as
+// capacidades cruas continuam no preâmbulo e aparecem como INDISPONIVEL, o que
+// é mais honesto do que esconder o pedido.
+func missionContextPreamble(mission Mission) string {
+	if strings.TrimSpace(mission.OrganizationID) == "" && strings.TrimSpace(mission.ProjectID) == "" {
+		return ""
+	}
+	policy := DefaultCapabilityPolicy()
+	granted := mission.Capabilities
+	if validated, err := policy.ValidateMissionCapabilities(mission.Capabilities); err == nil {
+		granted = validated
+	}
+	bootstrap, err := BuildContextBootstrap(ContextBootstrapInput{
+		OrganizationID:      mission.OrganizationID,
+		ProjectID:           mission.ProjectID,
+		MissionID:           mission.ID,
+		Workspace:           mission.Workspace,
+		Objective:           mission.Objective,
+		GrantedCapabilities: granted,
+		Policy:              policy,
+		PlanTitles:          planTitles(mission.Plan),
+	})
+	if err != nil {
+		return ""
+	}
+	return bootstrap.SystemMessage()
+}
+
+func planTitles(steps []Step) []string {
+	titles := make([]string, 0, len(steps))
+	for _, step := range steps {
+		if title := strings.TrimSpace(step.Title); title != "" {
+			titles = append(titles, title)
+		}
+	}
+	return titles
+}
+
 type OllamaPlanner struct {
 	Client plannerChatClient
 	Model  string
@@ -146,14 +187,22 @@ func (p OllamaPlanner) Plan(ctx context.Context, mission Mission) ([]Step, error
 	}
 	stream := false
 	format := json.RawMessage(`"json"`)
+	// Context Bootstrap (estágio 5): quando a missão pertence a uma organização
+	// ou projeto, o contexto canônico do Hades entra como mensagem de sistema
+	// ANTES do objetivo, declarando identidade, escopo e permissões. Sem escopo
+	// de tenant nada é injetado — na dúvida, não se vaza contexto de outro dono.
+	messages := []api.Message{
+		{Role: "system", Content: "You are a mission planner. Return only JSON with a top-level steps array. Each step must have kind, title, risk, requires_approval, and input. Allowed kinds are workspace.list, workspace.read, git.repo.inspect, workspace.write, terminal.exec, sandbox.exec, browser.operator, desktop.companion, mcp.call, mcp.remote.call, connector.http, and media.process only when a media provider is configured. Never invent completed results. Use read risk for inspection, write risk for filesystem changes, external_side_effect for browser, desktop, MCP, connectors, and media provider actions, and require approval for write, terminal, sandbox, browser, desktop, MCP, connector, and media steps."},
+	}
+	if preamble := missionContextPreamble(mission); preamble != "" {
+		messages = append(messages, api.Message{Role: "system", Content: preamble})
+	}
+	messages = append(messages, api.Message{Role: "user", Content: fmt.Sprintf("Objective: %s", mission.Objective)})
 	request := &api.ChatRequest{
-		Model:  model,
-		Stream: &stream,
-		Format: format,
-		Messages: []api.Message{
-			{Role: "system", Content: "You are a mission planner. Return only JSON with a top-level steps array. Each step must have kind, title, risk, requires_approval, and input. Allowed kinds are workspace.list, workspace.read, git.repo.inspect, workspace.write, terminal.exec, sandbox.exec, browser.operator, desktop.companion, mcp.call, mcp.remote.call, connector.http, and media.process only when a media provider is configured. Never invent completed results. Use read risk for inspection, write risk for filesystem changes, external_side_effect for browser, desktop, MCP, connectors, and media provider actions, and require approval for write, terminal, sandbox, browser, desktop, MCP, connector, and media steps."},
-			{Role: "user", Content: fmt.Sprintf("Objective: %s", mission.Objective)},
-		},
+		Model:    model,
+		Stream:   &stream,
+		Format:   format,
+		Messages: messages,
 	}
 	var response string
 	err := p.Client.Chat(ctx, request, func(chatResponse api.ChatResponse) error {

@@ -223,6 +223,7 @@ const IMAGE_ICONS: Record<string, string> = {
   canva: "brandfetch/canva.svg",
   composio: "brandfetch/composio.svg",
   "fiscal-ai": "brandfetch/fiscal-ai.svg",
+  lark: "brandfetch/lark.webp",
   linkedin: "brandfetch/linkedin.svg",
   outlook: "brandfetch/outlook.png",
   pagarme: "brandfetch/pagarme.svg",

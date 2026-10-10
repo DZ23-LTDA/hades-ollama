@@ -54,7 +54,7 @@ func TestMaxConcurrentStreamsUnlimited(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	t.Setenv("OLLAMA_MAX_STREAMS", "0")
 	api := &agentAPI{}
-	for i := 0; i < 1000; i++ {
+	for i := range 1000 {
 		ctx, _ := gin.CreateTestContext(httptest.NewRecorder())
 		if _, ok := api.acquireStreamSlot(ctx); !ok {
 			t.Fatalf("stream %d rejected although the cap is disabled", i)
