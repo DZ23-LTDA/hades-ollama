@@ -6,6 +6,15 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/). 
 
 ## [Unreleased]
 
+### E2E de primeira execução com backend real — 2026-10-10
+
+- Spec novo `app/ui/app/e2e/firstRun.spec.ts` cobrindo instalação nova → onboarding → escolha local-first → primeiro modelo → `/connect` → reinício → atualização → rollback contra HTTP real, sem `page.route` e sem marcação local de estado.
+- Backend mínimo de teste `app/ui/app/e2e/first-run-backend.mjs` (sem dependências) servindo `GET/POST /api/v1/settings`, `GET /api/version`, `POST /api/me` e o stream NDJSON de `POST /api/v1/models/pull`; o `playwright.config.ts` sobe esse backend como segundo `webServer` e aponta o proxy `/api` do `vite preview` para ele.
+- O reinício passou a ser provado em aba nova: `goto`/`reload` na mesma URL mascarada (`app/ui/app/src/routes/index.tsx` usa `mask: { to: "/" }`) podem ser servidos pela memória do navegador e não reexecutam o portão do servidor — foi a causa de um falso positivo detectado durante a implementação.
+- Gate: novo passo `Web E2E — primeira execução` no job `web-and-mobile` de `.github/workflows/dz23-agentic-quality.yaml`; o workflow `dz23-e2e.yaml` continua rodando a suíte completa.
+- Limite declarado: o download do modelo é um stream stub (nenhum modelo real é baixado em CI); a asserção provada é o portão da UI — nenhum `Continuar` antes do fim do stream, `Continuar` depois. Missão, artefato, aprovação e cancelamento seguem cobertos pelo runtime em Go e por `app/ui/app/e2e/scheduleFlow.spec.ts`.
+- Verificações desta rodada: `npm run test:e2e` (7 testes, 1 worker) verde, `npm run lint`, `npm test -- --run` (65 arquivos, 396 testes), `npm run build` e `prettier --check` aprovados.
+
 ### rodada de paridade observável
 
 - Árvore de produto completa em [`docs/agentic/PRODUCT_TREE.md`](docs/agentic/PRODUCT_TREE.md), separando superfície observável, estado atual e alvo unificado.
