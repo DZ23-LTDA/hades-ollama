@@ -1380,7 +1380,9 @@ func (r *Runtime) resumePending(ctx context.Context) error {
 				continue
 			}
 		}
-		if _, err := r.CreateMission(ctx, CreateMissionRequest{Objective: schedule.Objective, Model: schedule.Model, Workspace: schedule.Workspace, ProjectID: schedule.ProjectID, OrganizationID: schedule.OrganizationID, AutoRun: true}); err != nil {
+		// ExecuteScheduleFlow runs the persisted flow graph, or the legacy single
+		// mission when the schedule carries no steps.
+		if _, err := r.ExecuteScheduleFlow(ctx, schedule); err != nil {
 			if _, recordErr := r.recordScheduleFailure(schedule); recordErr != nil {
 				recoveryErrors = append(recoveryErrors, fmt.Errorf("record schedule %s failure: %w", schedule.ID, recordErr))
 			}

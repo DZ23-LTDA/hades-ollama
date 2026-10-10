@@ -743,6 +743,11 @@ func (s *ContextStore) CreateSchedule(schedule Schedule) (Schedule, error) {
 	if schedule.IntervalSeconds < 1 || schedule.IntervalSeconds > 31*24*60*60 {
 		return Schedule{}, errors.New("schedule interval must be between 1 second and 31 days")
 	}
+	// A persisted flow graph is validated before it is stored, so a malformed
+	// graph is rejected at creation time instead of failing on every tick.
+	if err := ValidateScheduleSteps(schedule.Steps); err != nil {
+		return Schedule{}, err
+	}
 	schedule.ID = strings.TrimSpace(schedule.ID)
 	if schedule.ID == "" {
 		schedule.ID = "sch_" + uuid.NewString()
@@ -845,6 +850,11 @@ func (s *ContextStore) updateScheduleForOrganization(organizationID, id string, 
 	}
 	if schedule.IntervalSeconds < 1 || schedule.IntervalSeconds > 31*24*60*60 {
 		return Schedule{}, errors.New("schedule interval must be between 1 second and 31 days")
+	}
+	// Updating a schedule re-validates its graph with the same fail-closed rules
+	// used at creation time.
+	if err := ValidateScheduleSteps(schedule.Steps); err != nil {
+		return Schedule{}, err
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
