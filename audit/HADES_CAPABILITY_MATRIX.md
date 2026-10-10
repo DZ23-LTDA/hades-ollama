@@ -86,6 +86,7 @@
 | --- | --- | --- | --- | --- | --- |
 | Memória e RAG local | `ContextStore` (`context.go`), `embedding.go` | IMPLEMENTADO_NAO_HOMOLOGADO | ALTO | E-040 | `AddMemory`, `SearchMemories`, `RetrieveRelevant` com score mínimo e escopo por projeto; retenção/proveniência/exportação não evidenciadas |
 | Injeção de contexto em qualquer modelo | `ContextStore` + `capability_policy.go` | PARCIAL | ALTO | E-040 | nenhuma função de bootstrap/injeção localizada; a montagem do contexto não está evidenciada ponta a ponta |
+| Skills: catálogo com ativação por projeto/agente/modelo | `skill_activation.go`, rotas `/skills/:id/activate`, `/skills/active` (PR #123) | IMPLEMENTADO_NAO_HOMOLOGADO | ALTO | E-067 | seleção determinística com orçamento de tokens e motivo de exclusão; skill não confiável não ativa; falta expor na interface e homologar com skill de terceiro |
 | Skills (manifesto, assinatura, não-confiança) | `types.go:207`, `context.go:512`, `supply_chain.go:26-62` | IMPLEMENTADO_NAO_HOMOLOGADO | ALTO | E-042 | ed25519 + testes; ativação por projeto/agente/modelo não evidenciada |
 | Workspace do agente (threads/artefatos) | PR #69 | IMPLEMENTADO_NAO_HOMOLOGADO | MEDIO | E-027 | PR aberto |
 | Saída de ferramenta visível no chat | PR #69 | IMPLEMENTADO_NAO_HOMOLOGADO | MEDIO | E-027 | render opcional do excerto |
