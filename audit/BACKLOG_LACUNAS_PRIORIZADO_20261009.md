@@ -43,6 +43,14 @@ desabilitar teste, `nolint` novo ou exclusão de lint para obter verde.
 - Prova: `npx playwright test <spec>` local + job verde em PR.
 - Bloqueio: nenhum. **Começar por aqui** (não depende de credencial nem de
   hardware).
+- **Entregue** (branch `feat/e2e-primeira-execucao`, 2026-10-10): spec
+  `app/ui/app/e2e/firstRun.spec.ts` mais o backend real de teste
+  `app/ui/app/e2e/first-run-backend.mjs`, rodando como passo novo
+  `Web E2E — primeira execução` do job `Web and mobile quality`. Cobre
+  instalação → onboarding → persistência → reinício → atualização → rollback.
+  Escopo declarado: as etapas de missão/artefato/aprovação/cancelamento exigem
+  runtime de agente com modelo servido e continuam cobertas por `internal/agent/`
+  e `app/ui/app/e2e/scheduleFlow.spec.ts`, não por este E2E.
 
 ### P0-2 — Editor visual de automações (nós)
 
