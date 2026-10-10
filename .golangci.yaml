@@ -47,6 +47,10 @@ linters:
         # Vocabulário do fluxo agendado (P0-2): dependente, condicional.
         - dependente
         - condicional
+        - cliente
+        - clientes
+        - protocolo
+        - protocolos
     depguard:
       rules:
         test-only-packages:
