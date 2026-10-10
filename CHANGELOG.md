@@ -6,6 +6,25 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/). 
 
 ## [Unreleased]
 
+### execução de comandos slash com autorização server-side — 2026-10-10
+
+- Novas rotas `GET /commands` (descoberta: registro, ajuda e autocomplete por `prefix`) e `POST /commands` (`{input}`), ligando o comando do registro canônico à **ação real** com a organização vinda da sessão.
+- **Cinco comandos executam de verdade:** `/status` (estado real da missão), `/cancel` (cancela **apenas** a missão alvo, com a mesma guarda de concorrência otimista da rota e sem atravessar tenant), `/memory` (busca no projeto autorizado, reusando a checagem de organização da rota em vez de reimplementar autorização), `/mcp` e `/skills` (listagens por organização).
+- **Honestidade no resto:** comando reconhecido sem backend responde **501 com o motivo**; comando ligado a rota mas ainda não executado por esta camada responde `executed: false` com o **backend real** e uma dica explícita — nunca "sucesso" sem ação executada.
+- Erros claros: comando desconhecido e corpo inválido ⇒ 400; parâmetro obrigatório ausente ⇒ 400 citando o parâmetro; comando indisponível ⇒ 501.
+- Isolamento verificado nas rotas de comando: missão de outra organização ⇒ 404 sem vazar existência nem objetivo; projeto de outra organização ⇒ recusado; `/cancel` de outra organização **não** altera a missão alheia.
+- Cobertura: 5 testes em `server/command_routes_test.go` (descoberta + ajuda + filtro por prefixo; erros de parse/parâmetro/comando indisponível; `/status` executando e escondendo missão estrangeira; `/cancel` isolado por organização; `/mcp`, `/skills` e `/memory` executando com recusa cross-tenant, mais `executed:false` honesto para `/goal`) e verificação de que as rotas estão registradas.
+
+### registro canônico de comandos slash — 2026-10-10
+
+- Novo `internal/agent/slash_registry.go` implementa o registro exigido pela §6/§11.1: antes existia apenas `ParseSlashCommand` reconhecendo `/goal` e `/missao`; agora o registro cobre os **32 comandos da seção 6 mais `/cancel`, `/approve` e `/deny`** exigidos nominalmente pela §11.1 (35 no total).
+- **Regra de honestidade embutida na tabela:** um comando só é marcado como **disponível** quando o backend dele existe de fato, com caminho e método declarados (`POST /api/agent/v1/missions`, `GET /api/agent/v1/whatsapp/status`, …). Comando sem rota fica **indisponível COM o motivo** (`/research`, `/support`, `/telegram`, `/inbox`, `/crm`, `/handoff`) — a interface nunca mostra botão que não executa nada.
+- `ParseSlashInvocation` valida esquema: comando desconhecido (`ErrUnknownSlashCommand`), comando indisponível recusado **com o motivo** (`ErrSlashCommandUnavailable`), parâmetro obrigatório ausente ou inválido (`ErrSlashCommandArgsInvalid`), excesso de parâmetros recusado em vez de ignorado em silêncio, e validação por tipo (`id` como identificador, `url` apenas `http(s)`).
+- `SlashHelp` monta a ajuda em pt-BR **separando** o que existe do que não existe ("Comandos indisponíveis nesta versão (não executam nada)"), e `CompleteSlashCommand` alimenta autocomplete ordenado, com ou sem barra inicial.
+- **Prova de que o registro não mente:** testes no pacote `server` registram o roteador real e verificam que **todo** comando disponível aponta para um caminho efetivamente registrado — rota inventada faz o teste falhar. Um segundo teste garante os seis comandos nomeados pela §11.1.
+- Cobertura: 3 testes em `internal/agent/slash_registry_test.go` (cobertura da seção 6 + invariantes de honestidade + os seis da §11.1 disponíveis e os seis sem rota indisponíveis; validação de esquema, parâmetros e tipos; ajuda e autocomplete) e 2 testes de integração em `server/slash_registry_routes_test.go`.
+
+
 ### E2E de reordenação do Studio persistida no servidor — 2026-10-10
 
 - Spec novo `app/ui/app/e2e/studioReorder.spec.ts` provando que a reordenação do canvas do Studio sobrevive ao recarregamento: a ordem inicial é lida de `GET /api/agent/v1/builders/{id}`, o arraste grava via `updateBuilderVisual` (`POST /api/agent/v1/builders/{id}/visual`) e o botão acessível "Mover para baixo" grava a mesma coisa pela via de teclado/leitor de tela.
