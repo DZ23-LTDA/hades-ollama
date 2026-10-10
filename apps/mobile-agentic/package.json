@@ -23,9 +23,9 @@
     "expo-secure-store": "^14.2.3",
     "expo-status-bar": "^2.2.3",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "react-native": "^0.79.0",
-    "react-native-web": "^0.20.0"
+    "react-dom": "^19.3.0",
+    "react-native": "^0.87.1",
+    "react-native-web": "^0.21.3"
   },
   "overrides": {
     "image-size": "2.0.4",
