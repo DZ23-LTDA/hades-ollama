@@ -1376,7 +1376,12 @@ func TestListHandler(t *testing.T) {
 				{Name: "model1", Digest: "sha256:abc123", Size: 1024, ModifiedAt: time.Now().Add(-24 * time.Hour)},
 				{Name: "model2", Digest: "sha256:def456", Size: 2048, ModifiedAt: time.Now().Add(-48 * time.Hour)},
 			},
-			expectedOutput: "NAME      ID              SIZE      MODIFIED     \n" +
+			// NOTA: a partir da tablewriter v1.1.5 o cabeçalho recebe 3 espaços de
+			// preenchimento a mais na última coluna (a v1 trata o padding da última
+			// célula do cabeçalho de forma diferente da v0). As LINHAS de dados são
+			// idênticas às de antes; só o espaço em branco final do cabeçalho mudou.
+			// A asserção continua comparando a saída completa, linha a linha.
+			expectedOutput: "NAME      ID              SIZE      MODIFIED        \n" +
 				"model1    sha256:abc12    1.0 KB    24 hours ago    \n" +
 				"model2    sha256:def45    2.0 KB    2 days ago      \n",
 		},
@@ -1387,7 +1392,7 @@ func TestListHandler(t *testing.T) {
 				{Name: "model1", Digest: "sha256:abc123", Size: 1024, ModifiedAt: time.Now().Add(-24 * time.Hour)},
 				{Name: "model2", Digest: "sha256:def456", Size: 2048, ModifiedAt: time.Now().Add(-24 * time.Hour)},
 			},
-			expectedOutput: "NAME      ID              SIZE      MODIFIED     \n" +
+			expectedOutput: "NAME      ID              SIZE      MODIFIED        \n" +
 				"model1    sha256:abc12    1.0 KB    24 hours ago    \n",
 		},
 		{
