@@ -10,6 +10,9 @@ import {
   listMCPServers,
   listMissions,
   listPluginStatuses,
+  listActiveSkills,
+  activateSkill,
+  deactivateSkill,
   listProjects,
 			listSkills,
 	registerConnector,
@@ -26,7 +29,15 @@ import {
 } from "@/lib/agenticClient";
 import type { AgentConnector, AgentConnectorCatalogEntry, AgentMCPServer, AgentMission, AgentProject, AgentSkill } from "@/lib/agenticClient";
 import type { AgentPluginStatus } from "@/lib/pluginStatus";
+import {
+  emptySkillContext,
+  parseTokenBudget,
+  type AgentSkillActivation,
+  type AgentSkillSelection,
+  type SkillContextInput,
+} from "@/lib/skillCatalog";
 import { PluginStatusList } from "@/components/PluginStatusList";
+import { SkillCatalogPanel } from "@/components/SkillCatalogPanel";
 import {
   ArrowRightIcon,
   CheckCircleIcon,
@@ -66,6 +77,15 @@ function ResourceRow({ children, onDelete, deleteLabel = "Excluir recurso", dele
 	  return <div className="flex items-center justify-between gap-3 rounded-xl border border-neutral-200/80 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900"><div className="min-w-0 flex-1">{children}</div>{onDelete && <button type="button" onClick={onDelete} disabled={deleteDisabled} className="rounded-lg p-2 text-neutral-400 hover:bg-red-50 hover:text-red-600 disabled:cursor-wait disabled:opacity-40 dark:hover:bg-red-950/30" aria-label={deleteLabel} title={deleteLabel}><TrashIcon className="h-4 w-4" /></button>}</div>;
 }
 
+function skillActivationsFromSelection(selection: AgentSkillSelection | null): AgentSkillActivation[] {
+  // O painel é por contexto: as duas listas do servidor (selecionadas e
+  // excluídas) são exatamente as skills ATIVADas para aquele contexto — as
+  // excluídas saíram por orçamento/estado, não por falta de ativação.
+  if (!selection) return [];
+  const ids = [...selection.selected.map((skill) => skill.id), ...(selection.skipped ?? []).map((skip) => skip.id)];
+  return [...new Set(ids)].map((id) => ({ skill_id: id }));
+}
+
 export function ProductWorkspacePage({ kind }: { kind: ProductPageKind }) {
   const copy = pageCopy[kind];
   const current = kind as AppSection;
@@ -101,6 +121,9 @@ export function ProductWorkspacePage({ kind }: { kind: ProductPageKind }) {
 	const [newSkillScopes, setNewSkillScopes] = useState("");
 	const [newSkillTools, setNewSkillTools] = useState("");
   const [mcpServers, setMcpServers] = useState<AgentMCPServer[]>([]);
+  const [skillContext, setSkillContext] = useState<SkillContextInput>(emptySkillContext);
+  const [skillSelection, setSkillSelection] = useState<AgentSkillSelection | null>(null);
+  const [skillPanelError, setSkillPanelError] = useState<string | null>(null);
   const [pluginStatuses, setPluginStatuses] = useState<AgentPluginStatus[]>([]);
   const [pluginStatusError, setPluginStatusError] = useState<string | null>(null);
   const [cliCount, setCliCount] = useState(0);
@@ -135,6 +158,18 @@ export function ProductWorkspacePage({ kind }: { kind: ProductPageKind }) {
           setPluginStatusError(statusCause instanceof Error ? statusCause.message : "Não foi possível ler o estado dos plugins.");
         }
       }
+      if (kind === "skills") {
+        // Resolve o catálogo para o contexto inicial (vazio = só curingas).
+        // Falha aqui aparece no painel; nunca é mascarada como "nenhuma skill".
+        try {
+          const result = await listActiveSkills({ projectId: "", agentId: "", model: "", tokenBudget: null });
+          setSkillSelection(result);
+          setSkillPanelError(null);
+        } catch (cause) {
+          setSkillSelection(null);
+          setSkillPanelError(cause instanceof Error ? cause.message : "Não foi possível resolver o catálogo de skills.");
+        }
+      }
     } catch (cause) {
       const message = cause instanceof Error ? cause.message : "Não foi possível carregar os dados persistidos.";
       setLoadError(message);
@@ -145,6 +180,61 @@ export function ProductWorkspacePage({ kind }: { kind: ProductPageKind }) {
   }, [kind]);
 
   useEffect(() => { void refresh(); }, [refresh]);
+
+  // Resolve o catálogo de skills para o contexto informado na tela.
+  const resolveSkillCatalog = useCallback(async () => {
+    const parsed = parseTokenBudget(skillContext.tokenBudget);
+    if (parsed.error) {
+      setSkillPanelError(parsed.error);
+      return;
+    }
+    setPendingActions((current) => ({ ...current, "skill-catalog": true }));
+    try {
+      const result = await listActiveSkills({
+        projectId: skillContext.projectId,
+        agentId: skillContext.agentId,
+        model: skillContext.model,
+        tokenBudget: parsed.value,
+      });
+      setSkillSelection(result);
+      setSkillPanelError(null);
+    } catch (cause) {
+      setSkillSelection(null);
+      setSkillPanelError(cause instanceof Error ? cause.message : "Não foi possível resolver o catálogo de skills.");
+    } finally {
+      setPendingActions((current) => {
+        const next = { ...current };
+        delete next["skill-catalog"];
+        return next;
+      });
+    }
+  }, [skillContext]);
+
+  const activateSkillForContext = useCallback(
+    async (id: string, context: SkillContextInput) => {
+      try {
+        await activateSkill(id, { projectId: context.projectId, agentId: context.agentId, model: context.model });
+        await resolveSkillCatalog();
+      } catch (cause) {
+        // Recusa do servidor (skill não confiável, por exemplo) é mostrada como
+        // está — a interface não promove a skill por conta própria.
+        setSkillPanelError(cause instanceof Error ? cause.message : "Não foi possível ativar a skill.");
+      }
+    },
+    [resolveSkillCatalog],
+  );
+
+  const deactivateSkillForContext = useCallback(
+    async (id: string, context: SkillContextInput) => {
+      try {
+        await deactivateSkill(id, { projectId: context.projectId, agentId: context.agentId, model: context.model });
+        await resolveSkillCatalog();
+      } catch (cause) {
+        setSkillPanelError(cause instanceof Error ? cause.message : "Não foi possível desativar a skill.");
+      }
+    },
+    [resolveSkillCatalog],
+  );
 
   const setPending = (key: string, pending: boolean) => {
     setPendingActions((current) => {
@@ -297,7 +387,21 @@ export function ProductWorkspacePage({ kind }: { kind: ProductPageKind }) {
 	    if (loadError) return <div role="alert" aria-live="assertive" className="rounded-xl border border-red-200 bg-red-50 px-6 py-8 text-center text-sm text-red-700 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300"><p>{loadError}</p><button type="button" onClick={() => void refresh()} className="mt-4 rounded-lg border border-red-300 px-3 py-2 text-xs font-medium dark:border-red-800">Tentar novamente</button></div>;
     if (kind === "projects") return <div className="space-y-3">{projects.length ? projects.map((project) => <ResourceRow key={project.id} onDelete={() => void removeProject(project)}><div className="flex flex-wrap items-center justify-between gap-2"><div><p className="font-medium text-neutral-900 dark:text-white">{editingProject === project.id ? <input autoFocus value={editingProjectName} onChange={(event) => setEditingProjectName(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") void saveProject(project); if (event.key === "Escape") setEditingProject(null); }} className="h-8 rounded-lg border border-neutral-300 bg-transparent px-2 text-sm dark:border-neutral-700" /> : project.name}</p><p className="mt-1 text-xs text-neutral-500">{project.root || "workspace local gerenciado"} · atualizado {new Date(project.updated_at).toLocaleString()}</p></div>{editingProject === project.id ? <button onClick={() => void saveProject(project)} className="rounded-lg bg-neutral-900 px-3 py-2 text-xs text-white dark:bg-white dark:text-neutral-900">Salvar</button> : <button onClick={() => { setEditingProject(project.id); setEditingProjectName(project.name); }} className="rounded-lg border border-neutral-200 px-3 py-2 text-xs dark:border-neutral-700">Editar</button>}</div></ResourceRow>) : <EmptyState message="Crie um projeto para manter instruções, arquivos e contexto entre missões." action="Criar projeto" onAction={() => document.getElementById("new-project-name")?.focus()} />}</div>;
     if (kind === "tasks") return missions.length ? <div className="space-y-3">{missions.map((mission) => { const missionActive = ["RUNNING", "OBSERVING", "RECOVERING", "PLANNING", "PENDING"].includes(mission.state); return (<ResourceRow key={mission.id} onDelete={() => void removeMission(mission)} deleteDisabled={missionActive} deleteLabel={missionActive ? "Cancele a tarefa antes de excluir" : "Excluir tarefa"}><Link to="/agentic" className="block"><div className="flex flex-wrap items-center justify-between gap-2"><p className="font-medium text-neutral-900 dark:text-white">{mission.objective}</p><span className="rounded-full bg-neutral-100 px-2 py-1 text-[10px] font-medium dark:bg-neutral-800">{missionStateLabel(mission.state)}</span></div><p className="mt-1 text-xs text-neutral-500">{mission.id} · {mission.plan?.length ?? 0} passos · {mission.artifacts?.length ?? 0} artefatos · {mission.model || "modelo padrão"}</p></Link></ResourceRow>); })}</div> : <EmptyState message="As missões criadas no Agentic Console aparecerão aqui com timeline e artifacts." action="Nova tarefa" onAction={() => void navigate({ to: "/agentic" })} />;
-			if (kind === "skills") return skills.length ? <div className="space-y-3">{skills.map((skill) => <ResourceRow key={skill.id} onDelete={() => void removePlugin("skill", skill.id)}><div className="flex items-start justify-between gap-3"><div><p className="font-medium text-neutral-900 dark:text-white">{skill.id} <span className="text-xs text-neutral-400">v{skill.version}</span></p><p className="mt-1 text-xs text-neutral-500">{skill.description}</p><p className="mt-1 text-[10px] text-neutral-400">{skill.tools?.length ?? 0} tools · {skill.trusted ? "confiável" : "requer revisão"}</p></div><button type="button" onClick={() => void togglePlugin("skill", skill.id, !skill.enabled)} className="rounded-lg border border-neutral-200 px-2 py-1 text-[10px] dark:border-neutral-700">{skill.enabled ? "Desabilitar" : "Habilitar"}</button></div></ResourceRow>)}</div> : <EmptyState message="Nenhuma skill foi carregada pelo runtime. Instale um manifesto revisado no diretório de skills do servidor." action="Abrir configuração" onAction={() => void navigate({ to: "/settings", hash: "agentic" })} />;
+			if (kind === "skills") return <div className="space-y-5"><section className="rounded-2xl border border-neutral-200/80 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
+				<div><h3 className="text-sm font-semibold text-neutral-900 dark:text-white">Catálogo por contexto</h3><p className="mt-1 text-xs leading-5 text-neutral-500 dark:text-neutral-400">Ative skills por projeto, agente ou modelo e veja o que o servidor selecionou para o orçamento informado. A ordem e as exclusões vêm do servidor; a tela não decide sozinha.</p></div>
+				<div className="mt-4"><SkillCatalogPanel
+					skills={skills}
+					activations={skillActivationsFromSelection(skillSelection)}
+					selection={skillSelection}
+					context={skillContext}
+					onContextChange={setSkillContext}
+					onResolve={() => void resolveSkillCatalog()}
+					onActivate={(id, context) => void activateSkillForContext(id, context)}
+					onDeactivate={(id, context) => void deactivateSkillForContext(id, context)}
+					pending={Boolean(pendingActions["skill-catalog"])}
+					error={skillPanelError}
+				/></div>
+			</section>{skills.length ? <div className="space-y-3">{skills.map((skill) => <ResourceRow key={skill.id} onDelete={() => void removePlugin("skill", skill.id)}><div className="flex items-start justify-between gap-3"><div><p className="font-medium text-neutral-900 dark:text-white">{skill.id} <span className="text-xs text-neutral-400">v{skill.version}</span></p><p className="mt-1 text-xs text-neutral-500">{skill.description}</p><p className="mt-1 text-[10px] text-neutral-400">{skill.tools?.length ?? 0} tools · {skill.trusted ? "confiável" : "requer revisão"}</p></div><button type="button" onClick={() => void togglePlugin("skill", skill.id, !skill.enabled)} className="rounded-lg border border-neutral-200 px-2 py-1 text-[10px] dark:border-neutral-700">{skill.enabled ? "Desabilitar" : "Habilitar"}</button></div></ResourceRow>)}</div> : <EmptyState message="Nenhuma skill foi carregada pelo runtime. Instale um manifesto revisado no diretório de skills do servidor." action="Abrir configuração" onAction={() => void navigate({ to: "/settings", hash: "agentic" })} />}</div>;
 			return <div className="space-y-5"><section className="rounded-2xl border border-neutral-200/80 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
 				<div><h3 className="text-sm font-semibold text-neutral-900 dark:text-white">Plugins instalados — estado real</h3><p className="mt-1 text-xs leading-5 text-neutral-500 dark:text-neutral-400">O servidor informa o estado de cada plugin a partir de dados verificáveis. “Pronto para usar” só aparece quando existe execução real comprovada; catálogo não é integração.</p></div>
 				<div className="mt-4"><PluginStatusList statuses={pluginStatuses} error={pluginStatusError} /></div>

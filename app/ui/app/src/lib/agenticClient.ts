@@ -1,5 +1,6 @@
 import { API_BASE } from "@/lib/config";
 import type { AgentPluginStatus } from "@/lib/pluginStatus";
+import type { AgentSkillActivation, AgentSkillSelection } from "@/lib/skillCatalog";
 
 export type AgentProject = {
 	id: string;
@@ -155,6 +156,12 @@ export type AgentSkill = {
   tools?: string[];
   trusted: boolean;
   enabled: boolean;
+  // Campos do catálogo (estágio 8): categoria, proveniência e custo declarado.
+  category?: string;
+  license?: string;
+  homepage?: string;
+  dependencies?: string[];
+  token_budget?: number;
 };
 export type AgentCLIStatus = {
   id: string;
@@ -407,6 +414,42 @@ export const setMCPEnabled = (id: string, enabled: boolean, remote = false) => a
 export const removeMCP = (id: string, remote = false) => agentFetch(`/api/agent/v1/${remote ? "remote-mcp" : "mcp"}/${encodeURIComponent(id)}`, { method: "DELETE" });
 export const setSkillEnabled = (id: string, enabled: boolean) => agentFetch(`/api/agent/v1/skills/${encodeURIComponent(id)}/${enabled ? "enable" : "disable"}`, { method: "POST", body: "{}" });
 export const removeSkill = (id: string) => agentFetch(`/api/agent/v1/skills/${encodeURIComponent(id)}`, { method: "DELETE" });
+
+// Catálogo contextual de skills (estágio 8): o servidor decide o que entra para
+// o contexto e com qual orçamento; a interface só mostra e pede autorização.
+const skillContextBody = (context: { projectId: string; agentId: string; model: string }) =>
+  JSON.stringify({
+    project_id: context.projectId.trim(),
+    agent_id: context.agentId.trim(),
+    model: context.model.trim(),
+  });
+
+export const activateSkill = (id: string, context: { projectId: string; agentId: string; model: string }) =>
+  agentFetch<AgentSkillActivation>(`/api/agent/v1/skills/${encodeURIComponent(id)}/activate`, {
+    method: "POST",
+    body: skillContextBody(context),
+  });
+
+export const deactivateSkill = (id: string, context: { projectId: string; agentId: string; model: string }) =>
+  agentFetch<{ deactivated: string }>(`/api/agent/v1/skills/${encodeURIComponent(id)}/deactivate`, {
+    method: "POST",
+    body: skillContextBody(context),
+  });
+
+export const listActiveSkills = async (params: {
+  projectId?: string;
+  agentId?: string;
+  model?: string;
+  tokenBudget?: number | null;
+}) => {
+  const query = new URLSearchParams();
+  if (params.projectId?.trim()) query.set("project_id", params.projectId.trim());
+  if (params.agentId?.trim()) query.set("agent_id", params.agentId.trim());
+  if (params.model?.trim()) query.set("model", params.model.trim());
+  if (typeof params.tokenBudget === "number") query.set("token_budget", String(params.tokenBudget));
+  const suffix = query.toString();
+  return agentFetch<AgentSkillSelection>(`/api/agent/v1/skills/active${suffix ? `?${suffix}` : ""}`);
+};
 
 export const listCompanies = () => agentFetch<{ companies: AgentCompany[] }>("/api/agent/v1/companies");
 export const createCompany = (payload: Record<string, unknown>) => agentFetch<AgentCompany>("/api/agent/v1/companies", { method: "POST", body: JSON.stringify(payload) });
