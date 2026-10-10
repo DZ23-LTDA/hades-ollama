@@ -2,7 +2,7 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-10T12:10:00-03:00",
+  "updated_at": "2026-10-10T12:35:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
@@ -20,7 +20,7 @@
     "capability_PENDENTE_DE_AUDITORIA": "extensao declarada; NAO e classificacao canonica e nao promove capacidade"
   },
   "pull_requests": {
-    "open_count": 37,
+    "open_count": 38,
     "merged_this_mission": [
       {
         "number": 54,
@@ -169,6 +169,12 @@
         "branch": "feat/benchmarks-reproduziveis",
         "sha": "106287015",
         "tema": "benchmarks reproduziveis dos motores proprios (empilhado em #78)"
+      },
+      {
+        "number": 80,
+        "branch": "feat/plugin-bundle-verificado",
+        "sha": "788404ef2",
+        "tema": "pacote de plugin verificado por assinatura, com conteudo guardado e digest (empilhado em #78)"
       }
     ],
     "dependabot_open": {
@@ -187,12 +193,14 @@
       76,
       77,
       78,
-      79
+      79,
+      80
     ],
     "stacked_on_branch": {
       "76": "feat/context-bootstrap",
       "73": "feat/e2e-primeira-execucao",
-      "79": "feat/plugins-governados"
+      "79": "feat/plugins-governados",
+      "80": "feat/plugins-governados"
     }
   },
   "stage_states": {
@@ -357,10 +365,11 @@
       "capability": "PARCIAL",
       "evidence": [
         "E-042",
-        "E-053"
+        "E-053",
+        "E-055"
       ],
       "blocker": null,
-      "next": "Baixar e verificar CONTEUDO de pacote de plugin (arquivos e assinatura do artefato) e expor o registro na UI; manifesto, confianca, atualizacao com historico e rollback ja estao entregues (PR #78)"
+      "next": "Expor o registro de plugins na interface e executar codigo de plugin em processo isolado (sandbox) antes de qualquer promocao; manifesto, confianca, atualizacao, rollback e verificacao de CONTEUDO do pacote ja estao entregues (PRs #78 e #80)"
     },
     {
       "id": 9,
@@ -819,6 +828,8 @@
     "PR #78 (gerenciador de plugins) aberto e VERDE: 20/20 checks success, mergeable_state=clean; base main (independente)",
     "Estagio 8 avancou: PluginRegistry com manifesto validado, escopo desconhecido recusado na instalacao, confianca exigindo assinatura ed25519 de chave autorizada (raiz em OLLAMA_AGENT_PLUGIN_TRUSTED_KEYS, falha fechada), atualizacao otimista com historico, rollback, isolamento por organizacao e persistencia com deteccao de estado adulterado; 10 testes novos",
     "PR #79 (benchmarks reproduziveis) aberto e VERDE: 20/20 checks success, mergeable_state=clean; empilhado em #78",
-    "Estagio 21 passou a ter medicao reproduzivel dos motores proprios (memoria, plugins, contexto fundamentado) com metodologia em docs/mission/HADES_BENCHMARK_METHOD.md; comparativo com concorrentes continua bloqueado por licenca/conta e inferencia real"
+    "Estagio 21 passou a ter medicao reproduzivel dos motores proprios (memoria, plugins, contexto fundamentado) com metodologia em docs/mission/HADES_BENCHMARK_METHOD.md; comparativo com concorrentes continua bloqueado por licenca/conta e inferencia real",
+    "PR #80 (pacote de plugin verificado) aberto e VERDE: 20/20 checks success, mergeable_state=clean; empilhado em #78",
+    "Estagio 8: conteudo do pacote passa a ser verificado por assinatura ed25519 sobre o SHA-256 (chave autorizada), copiado para plugins/content com digest registrado, com deteccao de adulteracao pos-instalacao e allowlist de diretorio (falha fechada sem OLLAMA_AGENT_PLUGIN_BUNDLE_DIR); instalar pacote NAO concede escopo"
   ]
 }

@@ -236,5 +236,7 @@ repositório, fecharam a maior parte das superfícies que estavam
 
 13. **Estágio 21 saiu do comparativo apenas documental (PR #79).** Passou a existir medição reproduzível dos motores próprios — busca de memória, ciclo de vida de plugin e montagem de contexto fundamentado — com metodologia publicada em `docs/mission/HADES_BENCHMARK_METHOD.md`, leitura honesta dos números (busca linear; benchmarks de plugin dominados por I/O) e a lista explícita do que falta para comparar com concorrentes. **Nenhuma alegação de superioridade** é feita; o comparativo real continua bloqueado por licença/conta e inferência real (B-05/B-07).
 
+14. **Conteúdo de plugin verificado (PR #80), segunda fatia do estágio 8.** O pacote passa a ser assinado (ed25519 sobre o SHA-256 do arquivo), só entra de diretório permitido pelo operador (falha fechada sem allowlist), é copiado com digest registrado — com rollback da instalação se a cópia falhar — e o digest é recomputado depois para detectar adulteração. Instalar pacote **não** concede escopo: `promote` continua obrigatório. 6 testes novos e 20/20 checks verdes (E-055). Continua aberto: executar código de plugin em processo isolado (sandbox) e expor o registro na UI.
+
 Nada foi promovido a `COMPLETED_VERIFIED` nesta rodada. Estado agregado:
 0 `COMPLETED_VERIFIED`, 24 `IN_PROGRESS`, 14 `BLOCKED_BY_EXTERNAL_DEPENDENCY`.
