@@ -2,7 +2,7 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-10T14:22:00-03:00",
+  "updated_at": "2026-10-10T16:05:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
@@ -20,7 +20,7 @@
     "capability_PENDENTE_DE_AUDITORIA": "extensao declarada; NAO e classificacao canonica e nao promove capacidade"
   },
   "pull_requests": {
-    "open_count": 42,
+    "open_count": 14,
     "merged_this_mission": [
       {
         "number": 54,
@@ -29,6 +29,71 @@
       {
         "number": 55,
         "merged_at": "2026-10-09T10:24:46Z"
+      },
+      {
+        "number": 71,
+        "via": "merge individual"
+      },
+      {
+        "number": 73,
+        "via": "merge individual"
+      },
+      {
+        "number": 72,
+        "via": "PR #86 (merge train das rodadas 6-13)"
+      },
+      {
+        "number": 74,
+        "via": "PR #86 (merge train das rodadas 6-13)"
+      },
+      {
+        "number": 75,
+        "via": "PR #86 (merge train das rodadas 6-13)"
+      },
+      {
+        "number": 76,
+        "via": "PR #86 (merge train das rodadas 6-13)"
+      },
+      {
+        "number": 77,
+        "via": "PR #86 (merge train das rodadas 6-13)"
+      },
+      {
+        "number": 78,
+        "via": "PR #86 (merge train das rodadas 6-13)"
+      },
+      {
+        "number": 79,
+        "via": "PR #86 (merge train das rodadas 6-13)"
+      },
+      {
+        "number": 80,
+        "via": "PR #86 (merge train das rodadas 6-13)"
+      },
+      {
+        "number": 81,
+        "via": "PR #86 (merge train das rodadas 6-13)"
+      },
+      {
+        "number": 82,
+        "via": "PR #86 (merge train das rodadas 6-13)"
+      },
+      {
+        "number": 83,
+        "via": "PR #86 (merge train das rodadas 6-13)"
+      },
+      {
+        "number": 84,
+        "via": "PR #86 (merge train das rodadas 6-13)"
+      },
+      {
+        "number": 85,
+        "via": "PR #86 (merge train das rodadas 6-13)"
+      },
+      {
+        "number": 86,
+        "via": "merge train",
+        "checks": "23/23 verdes"
       }
     ],
     "mission_prs_open": [
@@ -115,90 +180,6 @@
         "branch": "feat/catalogo-honesto-e-oauth-live",
         "sha": "927895821",
         "tema": "catalogo honesto + OAuth live"
-      },
-      {
-        "number": 71,
-        "branch": "feat/e2e-primeira-execucao",
-        "sha": "3b5459ef5",
-        "tema": "E2E de primeira execucao com backend real (gate CI)"
-      },
-      {
-        "number": 72,
-        "branch": "docs/checkpoints-missao-v21",
-        "sha": "d64a47ef3",
-        "tema": "checkpoints canonicos da missao V2.1 (11 artefatos docs-only)"
-      },
-      {
-        "number": 73,
-        "branch": "feat/e2e-studio-reorder",
-        "sha": "6465e88f7",
-        "tema": "E2E de reordenacao do Studio persistida no servidor (P0-3)"
-      },
-      {
-        "number": 74,
-        "branch": "feat/presets-provedores-guiados",
-        "sha": "6c2c9cb70",
-        "tema": "presets guiados de provedor (backend + API + tela de Provedores)"
-      },
-      {
-        "number": 75,
-        "branch": "feat/context-bootstrap",
-        "sha": "c722657fe",
-        "tema": "Context Bootstrap canonico injetado no planejador de missao"
-      },
-      {
-        "number": 76,
-        "branch": "feat/context-bootstrap-api",
-        "sha": "349be06a0",
-        "tema": "rota de leitura do Context Bootstrap por missao (empilhada em #75)"
-      },
-      {
-        "number": 77,
-        "branch": "feat/memoria-governanca",
-        "sha": "d6eede138",
-        "tema": "governanca de memoria: exportacao, exclusao e retencao por projeto"
-      },
-      {
-        "number": 78,
-        "branch": "feat/plugins-governados",
-        "sha": "3f2e06ba3",
-        "tema": "gerenciador de plugins: manifesto versionado, confianca, atualizacao e rollback"
-      },
-      {
-        "number": 79,
-        "branch": "feat/benchmarks-reproduziveis",
-        "sha": "106287015",
-        "tema": "benchmarks reproduziveis dos motores proprios (empilhado em #78)"
-      },
-      {
-        "number": 80,
-        "branch": "feat/plugin-bundle-verificado",
-        "sha": "788404ef2",
-        "tema": "pacote de plugin verificado por assinatura, com conteudo guardado e digest (empilhado em #78)"
-      },
-      {
-        "number": 81,
-        "branch": "feat/retencao-memoria",
-        "sha": "e397bc5c2",
-        "tema": "politica de retencao por organizacao com aplicacao explicita (empilhado em #77)"
-      },
-      {
-        "number": 82,
-        "branch": "feat/isolamento-memoria-usuario",
-        "sha": "28476fb63",
-        "tema": "isolamento de memoria privada por usuario dentro da mesma organizacao (base main)"
-      },
-      {
-        "number": 83,
-        "branch": "feat/conteudo-nao-confiavel",
-        "sha": "458c24a9d",
-        "tema": "conteudo externo tratado como dado nao confiavel no contexto do modelo (base main)"
-      },
-      {
-        "number": 84,
-        "branch": "feat/registro-comandos-slash",
-        "sha": "1f067f93a",
-        "tema": "registro canonico de slash commands com backend verificado (base main)"
       }
     ],
     "dependabot_open": {
@@ -208,28 +189,10 @@
     },
     "green_awaiting_merge_authorization": [
       69,
-      70,
-      71,
-      72,
-      73,
-      74,
-      75,
-      76,
-      77,
-      78,
-      79,
-      80,
-      81,
-      82,
-      83,
-      84
+      70
     ],
     "stacked_on_branch": {
-      "76": "feat/context-bootstrap",
-      "73": "feat/e2e-primeira-execucao",
-      "79": "feat/plugins-governados",
-      "80": "feat/plugins-governados",
-      "81": "feat/memoria-governanca"
+      "73": "feat/e2e-primeira-execucao"
     }
   },
   "stage_states": {
@@ -791,8 +754,8 @@
   "blockers": [
     {
       "id": "B-01",
-      "tipo": "AGUARDANDO_DECISAO_HUMANA",
-      "descricao": "Autorizacao de merge para PRs #56-#71 (apenas #54/#55 mergeados)"
+      "tipo": "RESOLVIDO",
+      "descricao": "RESOLVIDO em 2026-10-10: o usuario concedeu autorizacao de merge ampla. #71 e #73 mesclados individualmente; os outros 13 PRs das rodadas 6-13 foram integrados pelo merge train do PR #86 (23/23 checks verdes, main limpa)"
     },
     {
       "id": "B-02",
@@ -871,6 +834,9 @@
     "PR #83 (conteudo externo nao confiavel) aberto e VERDE: 20/20 checks success, mergeable_state=clean; base main (independente)",
     "Estagio 18: prompt injection passou a ter controle real - trechos de terceiros entram cercados e rotulados como DADOS, padroes classicos de instrucao e tokens de controle sao neutralizados de forma visivel, a cerca nao pode ser quebrada pelo conteudo e rotulos comuns de documento pt-BR ficam fora da regra (sem falso positivo). Declarado como mitigacao deterministica, nao prova de imunidade",
     "PR #84 (registro de comandos slash) aberto e VERDE: 20/20 checks success, mergeable_state=clean; base main (independente)",
-    "Secao 6 / 11.1: dos comandos do mandato, apenas /goal existia antes; agora ha registro com 35 comandos, disponibilidade decidida pela rota REAL e teste que falha se um comando disponivel apontar para rota inexistente"
+    "Secao 6 / 11.1: dos comandos do mandato, apenas /goal existia antes; agora ha registro com 35 comandos, disponibilidade decidida pela rota REAL e teste que falha se um comando disponivel apontar para rota inexistente",
+    "B-01 RESOLVIDO: autorizacao de merge concedida pelo usuario em 2026-10-10; main passou de 889750abe para 8b3eda830",
+    "Merge train #86: ao mesclar #71/#73 primeiro, todos os demais PRs ficaram 'dirty' porque cada um insere secao na mesma ancora do CHANGELOG; a integracao foi feita localmente com resolvedor deterministico do CHANGELOG e merge de 3 vias POR DECLARACAO para server/agent_routes.go (imports e rotas por uniao; nenhum conflito real de codigo)",
+    "Verificacao do trem antes de publicar: gofmt/gofumpt limpos, golangci-lint 0 issues, go build ./... exit 0, suite de internal/agent apenas com as 3 falhas ambientais e suite de server apenas com a falha ambiental de nome de arquivo longo; CI do PR #86: 23/23 success (inclui Web E2E, que estava vermelho na main e foi corrigido pelo #71)"
   ]
 }
