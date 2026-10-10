@@ -22,10 +22,10 @@
 
 | Capacidade | Superfície | Classificação | Risco | Evidência | Lacuna |
 | --- | --- | --- | --- | --- | --- |
-| Canvas de construção visual | `StudioCanvasPage.tsx` | IMPLEMENTADO_NAO_HOMOLOGADO | ALTO | E-008 | sem E2E de asserção |
-| Reordenação por arraste | `StudioCanvasPage.tsx:975-988` | IMPLEMENTADO_NAO_HOMOLOGADO | MEDIO | E-008 | **premissa anterior estava errada** |
-| Reordenação por botão/teclado | `StudioCanvasPage.tsx:1012,1024` | IMPLEMENTADO_NAO_HOMOLOGADO | MEDIO | E-008 | sem E2E de paridade |
-| Persistência da ordem no servidor | `:337-340` → `updateBuilderVisual` | IMPLEMENTADO_NAO_HOMOLOGADO | ALTO | E-008, E-009 | sem prova pós-reload em E2E |
+| Canvas de construção visual | `StudioCanvasPage.tsx` | IMPLEMENTADO_NAO_HOMOLOGADO | ALTO | E-008 | E2E cobre o reorder; preview/export e undo/redo ainda não |
+| Reordenação por arraste | `StudioCanvasPage.tsx:975-988` | IMPLEMENTADO_E_TESTADO | MEDIO | E-008, E-034 | premissa anterior ("ausente") estava errada |
+| Reordenação por botão/teclado | `StudioCanvasPage.tsx:1012,1024` | IMPLEMENTADO_E_TESTADO | MEDIO | E-008, E-034 | paridade provada em E2E |
+| Persistência da ordem no servidor | `:337-340` → `updateBuilderVisual` | IMPLEMENTADO_E_TESTADO | ALTO | E-008, E-009, E-034 | ordem lida do servidor após reinício em aba nova |
 | Helper puro de reordenação | `lib/studioReorder.ts` | IMPLEMENTADO_E_TESTADO | BAIXO | E-009 | unitário apenas |
 | Auxiliares de IA/HTML do Studio | `studioAI.test.ts`, `studioHtml.test.ts` | IMPLEMENTADO_E_TESTADO | MEDIO | E-028 | — |
 
@@ -94,9 +94,12 @@
 
 ## 8. Leitura da matriz
 
-- **Classificações canônicas atribuídas:** `IMPLEMENTADO_E_TESTADO` em 9 linhas,
-  `IMPLEMENTADO_NAO_HOMOLOGADO` em 11, `PARCIAL` em 10, `APENAS_ADAPTER` em 1,
+- **Classificações canônicas atribuídas:** `IMPLEMENTADO_E_TESTADO` em 12 linhas,
+  `IMPLEMENTADO_NAO_HOMOLOGADO` em 8, `PARCIAL` em 10, `APENAS_ADAPTER` em 1,
   `APENAS_CATALOGO` em 3, `AUSENTE` em 2, `BLOQUEADO_EXTERNAMENTE` em 1.
+  (Atualizado em 2026-10-10 após o PR #73: reorder por arraste, reorder por
+  botão/teclado e persistência da ordem passaram a `IMPLEMENTADO_E_TESTADO` com
+  E-034.)
 - **Sem auditoria:** 12 linhas `PENDENTE_DE_AUDITORIA` — **não contam** como
   capacidade entregue nem como ausente.
 - Nenhuma linha foi promovida a `COMPLETED_VERIFIED` (esse valor pertence ao

@@ -37,7 +37,7 @@ anteriores; o bloqueio **não** interrompe os independentes.
 | 9 | Agentes e subagentes | IN_PROGRESS | PENDENTE | PENDENTE_DE_AUDITORIA | — | — |
 | 10 | Mission Control multiagente | IN_PROGRESS | parcial | PARCIAL | E-020, E-027 | — |
 | 11 | Paridade Codex/Claude | IN_PROGRESS | parcial | PARCIAL | E-025 | B-02 |
-| 12 | Studio / Builder visual | IN_PROGRESS | **AUDITADO** | IMPLEMENTADO_NAO_HOMOLOGADO | E-008, E-009, E-028 | — |
+| 12 | Studio / Builder visual | IN_PROGRESS | **AUDITADO** | IMPLEMENTADO_NAO_HOMOLOGADO | E-008, E-009, E-028, E-034, E-035 | — |
 | 13 | Workflow Engine | IN_PROGRESS | parcial | IMPLEMENTADO_NAO_HOMOLOGADO | E-020, E-029 | — |
 | 14 | Browser Operator / computer-use | IN_PROGRESS | parcial | PARCIAL | E-015 | B-09 |
 | 15 | Memória e RAG local | BLOCKED_BY_EXTERNAL_DEPENDENCY | PENDENTE | PENDENTE_DE_AUDITORIA | — | B-07 |
@@ -127,9 +127,15 @@ anteriores; o bloqueio **não** interrompe os independentes.
   acessibilidade `ArrowUpIcon`/`ArrowDownIcon` (1012/1024); ambos os caminhos
   chamam `syncComponents` ⇒ `updateBuilderVisual` (persistência). O arraste usa
   o helper puro `reorderById`, com **5 testes unitários** próprios.
-- **Gap real:** falta **cobertura E2E de asserção** (spec Playwright) do canvas;
-  os 14 scripts `.mjs` de `e2e/` são captura de evidência, não asserção.
-- **Próxima ação:** escrever spec de reorder (arraste + botão + persistência).
+- **Gap real (fechado depois desta primeira redação):** faltava **cobertura E2E de
+  asserção** (spec Playwright) do canvas; os 14 scripts `.mjs` de `e2e/` são
+  captura de evidência, não asserção. **Entregue no PR #73**
+  (`e2e/studioReorder.spec.ts` + `e2e/studio-builder-fixture.mjs`), verde no CI
+  (E-034): ordem inicial vinda do servidor, arraste persistindo via
+  `POST .../visual`, paridade pelo botão acessível e ordem sobrevivendo ao
+  reinício em aba nova.
+- **Próxima ação:** cobrir sob E2E o restante do Studio (preview/export,
+  undo/redo, edição de propriedades) antes de promover a capacidade.
 
 ### Estágio 13 — Workflow Engine
 
@@ -163,8 +169,9 @@ anteriores; o bloqueio **não** interrompe os independentes.
 
 - **Feito:** `pr-gate.yaml` roda em **todo** PR e pula o poll profundo quando o
   classificador retorna `DOCS_ONLY`/`require_agentic_gates=false`; PR docs-only
-  #57 ficou `PR gate | success` com os gates profundos `skipped`. O head de #71
-  tem **23/23 checks verdes**.
+  #57 e #72 ficaram `PR gate | success` com os gates profundos `skipped` quando
+  devidos. Os heads de #71 e #73 têm **23/23 checks verdes** (E-011, E-034); o
+  head de #72 (docs-only) tem 15/15 sem falhas (E-036).
 - **Limitação:** é gate **intermediário**; não substitui o gate final (38).
 
 ## 4. Estágios sem auditoria nesta rodada

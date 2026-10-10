@@ -44,9 +44,15 @@ Python 3.12. Datas relativas a `2026-10-10T08:17-03:00`.
 | E-031 | pr/ui | PR #66 `feat/concessao-capacidades-ui` (`360b81c45`) | UI de concessão de capacidades aberta | — |
 | E-032 | ci/cadeia de gate | `pr-gate.yaml:48-79` + `:59`; `release-readiness.yaml:72`; `release.yaml:836` | o nome literal `Web and mobile quality` é exigido; inserir passo **dentro** do job inalterado gateia o E2E sem editar branch protection | — |
 | E-033 | release | `release.yaml`, `release-readiness.yaml`, `dz23-windows-installer.yaml`, `dz23-macos-build.yaml`, `dz23-linux-package.yaml` | pipelines existem; **nenhum artefato assinado publicado**; sem certificado de assinatura | B-06 |
+| E-034 | ci/PR #73 | `gh api .../commits/6465e88f7.../check-runs` + log do job `Web E2E (shell smoke)` (run `38050086918`, job `114207287767`) | **23/23 checks `success`**, 0 pendentes, `mergeable_state=clean`; `Running 10 tests using 1 worker` · `10 passed (53.5s)`, com os 3 testes de `e2e/studioReorder.spec.ts` verdes (`✓ 6`, `✓ 7`, `✓ 8`) | — |
+| E-035 | e2e/local | `npx playwright test` · `npx vitest run` · `npm run lint` · `npm run build` · `prettier --check` | 10 passed (7 anteriores + 3 novos); 65 arquivos / 396 testes; lint 0 erros (1 warning pré-existente); build ok; prettier ok | o **estado** do backend é fixture rotulada; o caminho exercitado é real |
+| E-036 | ci/PR #72 | `gh api .../commits/d64a47ef3.../check-runs` | **15/15 checks completed, 0 falhas, 0 pendentes** em PR docs-only; `linux`/`go_license`/`windows` `skipped` por desenho | — |
 
 ## Limitações declaradas deste índice
 
+0. E-034/E-035/E-036 foram coletadas **depois** da primeira versão deste
+   checkpoint, quando os PRs #72 (checkpoints) e #73 (E2E do Studio) ficaram
+   verdes; são as evidências mais recentes do conjunto.
 1. E-011/E-012/E-013/E-014/E-015/E-016/E-017/E-018/E-019/E-020 vêm da sessão de
    trabalho já registrada (histórico desta missão), com os comandos e saídas
    citados; não foram re-executados após a criação deste checkpoint.

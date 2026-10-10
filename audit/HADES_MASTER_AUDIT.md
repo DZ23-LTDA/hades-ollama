@@ -57,9 +57,15 @@ mostra o contrário:
 | 5 testes unitários do helper | `lib/studioReorder.test.ts` |
 
 ⇒ A classificação correta é **`IMPLEMENTADO_NAO_HOMOLOGADO`**: existe e tem
-teste unitário, mas **não tem asserção E2E**. O gap passou a ser "falta de
+teste unitário, mas **não tinha asserção E2E**. O gap passou a ser "falta de
 spec Playwright", não "falta de funcionalidade". Esta correção é a prova de que
 a regra "probe antes de afirmar" está sendo aplicada de fato.
+
+**Fechamento posterior (2026-10-10):** o gap de E2E foi fechado no PR #73 —
+`e2e/studioReorder.spec.ts` prova a persistência do arraste e a paridade pelo
+botão acessível, com a ordem relida do servidor após reinício em aba nova; verde
+no CI com **23/23 checks** (E-034). O backlog datado foi corrigido (E-036
+registra a saúde do PR dos checkpoints).
 
 ### 3.2 Duplicação de jornada de primeira execução
 

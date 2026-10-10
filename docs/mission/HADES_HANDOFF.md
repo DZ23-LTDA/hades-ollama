@@ -90,7 +90,14 @@ para `go run modulo@versao`.
 - PRs de missão abertos: #56–#63, #65–#71 (ver lista completa no JSON).
 - Mergeados: **#54** e **#55**, somente.
 - Dependabot abertos: #21–#34 e #64 (15 PRs).
-- Precedente de PR docs-only: #57 (passou sem esperar gates profundos).
+- Precedente de PR docs-only: #57 e **#72** (passaram sem esperar gates profundos;
+  #72 com 15/15 checks sem falha — E-036).
+- **PRs abertos criados por esta missão:** #72 `docs/checkpoints-missao-v21`
+  (`d64a47ef3`, checkpoints canônicos, docs-only) e #73 `feat/e2e-studio-reorder`
+  (`6465e88f7`, E2E do reorder do Studio, **empilhado em #71**). Ambos verdes
+  (E-034, E-036) e aguardando **autorização de merge**.
+- **#73 é empilhado:** base = `feat/e2e-primeira-execucao` (#71); depois do merge
+  de #71 ele deve ser retargetado para `main`.
 
 ## 6. Primeiro passo ao retomar
 

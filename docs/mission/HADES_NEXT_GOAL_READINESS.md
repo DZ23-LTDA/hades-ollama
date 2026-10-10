@@ -16,7 +16,7 @@ aqui seria falso.
 | 5 | Inventário completo das 16 áreas canônicas de capacidade | **NOT_DONE** | estágios 3, 5, 8, 9, 15, 21, 23–32, 34–37 `PENDENTE_DE_AUDITORIA` |
 | 6 | Nenhuma capacidade promovida sem evidência | **DONE** | `HADES_EVIDENCE_INDEX.md` — 0 promoções |
 | 7 | Jornada de primeira execução provada por E2E com backend real | **DONE** | E-011, E-012 |
-| 8 | E2E do Studio (reorder + persistência) | **NOT_DONE** | E-008, E-009 (funcionalidade existe; falta asserção E2E) |
+| 8 | E2E do Studio (reorder + persistência) | **DONE** | E-008, E-009, E-034 (PR #73: arraste e botão acessível persistindo, ordem sobrevivendo ao reinício) |
 | 9 | Workflow Engine com schedule provado ponta a ponta | **NOT_DONE** | E-029 (validação provada; execução real não) |
 | 10 | Harness CLI governado em `main` com aprovação obrigatória | **NOT_DONE** | E-025 (branch-local, PR #62) |
 | 11 | Mission Control com orçamento/pausa/cancelamento testados | **NOT_DONE** | E-020, E-027 (parcial) |
@@ -37,10 +37,14 @@ aqui seria falso.
 
 ## Contagem
 
-- `DONE` = **11** (critérios 1, 2, 3, 4, 6, 7, 15, 16, 22, 23, 24)
-- `NOT_DONE` = **10** (5, 8, 9, 10, 11, 17, 18, 19, 21, 25)
+- `DONE` = **12** (critérios 1, 2, 3, 4, 6, 7, 8, 15, 16, 22, 23, 24)
+- `NOT_DONE` = **9** (5, 9, 10, 11, 17, 18, 19, 21, 25)
 - `BLOCKED` = **4** (12, 13, 14, 20)
 - Total = 25 ✓
+
+Atualização de 2026-10-10 (pós-PR #73): o critério 8 saiu de `NOT_DONE` para
+`DONE` com a cobertura E2E do reorder do Studio (E-034). O critério 24 também
+melhorou: o backlog datado foi corrigido (P0-3 entregue).
 
 Nota de honestidade: vários `DONE` são **parciais por escopo** (ex.: critério 7
 prova o gate de UI, não o download de modelo real). Eles valem como "satisfeito

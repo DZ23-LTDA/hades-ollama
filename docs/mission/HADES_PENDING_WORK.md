@@ -5,25 +5,29 @@
 
 ## P0 — bloqueia o release e a honestidade do produto
 
-### P0-1 · Checkpoints da missão V2.1 (este PR)
+### P0-1 · Checkpoints da missão V2.1 (PR #72)
 - **Pronto quando:** os 11 artefatos existem, o JSON é válido, `PR gate` verde.
-- **Estado:** em andamento nesta rodada (branch `docs/checkpoints-missao-v21`).
+- **Estado:** **ENTREGUE** — PR #72 aberto com os 11 artefatos e **15/15 checks
+  sem falha** (E-036); JSON válido (`stages=38`, `blockers=9`). Falta autorização
+  de merge.
 
-### P0-2 · Cobertura E2E do Studio (**premissa corrigida**)
+### P0-2 · Cobertura E2E do Studio — **ENTREGUE (PR #73)**
 - **Correção:** o drag-and-drop do Studio **existe** (reorder por arraste em
   `StudioCanvasPage.tsx:975-988` e por botão/teclado `1012/1024`, ambos
   persistindo via `updateBuilderVisual`, com 5 testes unitários de
-  `reorderById`). O gap real é **falta de spec Playwright que assegure o
+  `reorderById`). O gap real era **falta de spec Playwright que assegure o
   comportamento**, não falta de funcionalidade. Nunca reafirmar "DnD ausente".
-- **Critério de pronto:** spec em `app/ui/app/e2e/` que (a) arrasta um
-  componente e verifica a nova ordem **após recarregar/refetch** do servidor,
-  (b) faz o mesmo pelo caminho botão/teclado, (c) falha se a persistência não
-  ocorrer. `npm run test:e2e` verde.
+- **Entregue:** `e2e/studioReorder.spec.ts` (3 testes) + `e2e/studio-builder-fixture.mjs`,
+  provando ordem vinda do servidor, persistência do arraste, paridade pelo botão
+  acessível e sobrevivência ao reinício. Verde no CI: **23/23 checks**, com os 3
+  testes passando no job `Web E2E (shell smoke)` (E-034, E-035).
+- **Restante do escopo:** preview/export, undo/redo e edição de propriedades sob
+  E2E — em backlog (P1/P2).
 
-### P0-3 · Corrigir o backlog histórico
-- `audit/BACKLOG_LACUNAS_PRIORIZADO_20261009.md` e o checkpoint scratch
-  `_tmp/CHECKPOINT_P0-1_PR71.md` afirmam "drag-and-drop ausente" para o Studio.
-  Reescrever para "cobertura E2E ausente" citando a evidência E-008/E-009.
+### P0-3 · Corrigir o backlog histórico — **ENTREGUE (PR #73)**
+- `audit/BACKLOG_LACUNAS_PRIORIZADO_20261009.md` afirmava "arraste real
+  inexistente" no Studio. Corrigido com a evidência do probe (E-008/E-009), mais
+  a contagem honesta dos 6 itens do roadmap e a ordem recomendada.
 
 ### P0-4 · Decidir o gate de onboarding quando `GET /settings` falha
 - **Situação:** `routes/index.tsx` engole o erro de `getSettings` e cai no shell

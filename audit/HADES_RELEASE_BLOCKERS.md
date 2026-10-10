@@ -21,14 +21,14 @@ depende de terceiros.
 
 | ID | Bloqueio | Impacto no release | Saída |
 | --- | --- | --- | --- |
-| R-01 | E2E do Studio (reorder + persistência) ausente | regressão silenciosa no builder | escrever spec Playwright (P0-2) |
+| R-01 | ~~E2E do Studio (reorder + persistência) ausente~~ **RESOLVIDO no PR #73** | regressão silenciosa no builder | entregue: `e2e/studioReorder.spec.ts` + fixture, verde no CI (E-034) |
 | R-02 | Decisão pendente: falha de `GET /settings` cai no shell | onboarding pode ser pulado | decidir + fixar com teste (P0-4) |
 | R-03 | Jornada E2E duplicada (#61 × #71) | manutenção divergente | triagem com autorização (P0-5) |
 | R-04 | 12 superfícies sem auditoria | não se sabe o que existe | auditar com comando reproduzível |
 | R-05 | 4 falhas ambientais de teste (B-09) | cobertura local incompleta | sanear host sem desativar teste |
 | R-06 | Instaladores sem smoke nativo | release pode quebrar no usuário final | smoke por SO em runner nativo |
 | R-07 | Benchmarks apenas documentais | afirmação competitiva sem prova | benchmark reproduzível (P3-3) |
-| R-08 | Backlog datado com premissa errada do Studio | decisão de produto baseada em dado falso | corrigir `audit/BACKLOG_*` (P0-3) |
+| R-08 | ~~Backlog datado com premissa errada do Studio~~ **RESOLVIDO no PR #73** | decisão de produto baseada em dado falso | `audit/BACKLOG_LACUNAS_PRIORIZADO_20261009.md` corrigido (P0-3) |
 
 ## 3. Bloqueios externos (dependem de terceiros)
 
