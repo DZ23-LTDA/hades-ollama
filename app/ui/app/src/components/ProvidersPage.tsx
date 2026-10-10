@@ -1,5 +1,9 @@
 import { type FormEvent, useCallback, useEffect, useId, useState } from "react";
-import { CheckCircleIcon, KeyIcon, PlusIcon } from "@heroicons/react/24/outline";
+import {
+  CheckCircleIcon,
+  KeyIcon,
+  PlusIcon,
+} from "@heroicons/react/24/outline";
 import { AppSidebar } from "@/components/AppSidebar";
 import { SidebarLayout } from "@/components/layout/layout";
 import { SettingsTabs } from "@/components/SettingsTabs";
@@ -8,6 +12,7 @@ import {
   createProvider,
   listProviderModels,
   listProviders,
+  mergeProviderPresets,
   parseModelIds,
   PROVIDER_PRESETS,
   removeProviderKey,
@@ -16,6 +21,7 @@ import {
   sortProviders,
   staleModels,
   type ProviderModels,
+  type ProviderPreset,
   type ProviderStatus,
 } from "@/lib/providers";
 
@@ -48,7 +54,14 @@ function ModelPicker({
           ),
         );
       })
-      .catch((err) => setError(humanizeApiError(err, "Não foi possível consultar os modelos deste provedor.").message));
+      .catch((err) =>
+        setError(
+          humanizeApiError(
+            err,
+            "Não foi possível consultar os modelos deste provedor.",
+          ).message,
+        ),
+      );
   }, [name]);
 
   if (!models && !error) {
@@ -123,7 +136,12 @@ function ModelPicker({
               await saveProviderModels(name, [...selected]);
               onSaved();
             } catch (err) {
-              setError(humanizeApiError(err, "Não foi possível salvar os modelos selecionados.").message);
+              setError(
+                humanizeApiError(
+                  err,
+                  "Não foi possível salvar os modelos selecionados.",
+                ).message,
+              );
             } finally {
               setBusy(false);
             }
@@ -289,16 +307,21 @@ function ProviderCard({
 }
 
 function AddProviderForm({
+  presets,
   onCreated,
   onCancel,
 }: {
+  presets: ProviderPreset[];
   onCreated: (name: string) => void;
   onCancel: () => void;
 }) {
-  const [presetId, setPresetId] = useState("openai");
-  const [name, setName] = useState("openai");
-  const [baseUrl, setBaseUrl] = useState("https://api.openai.com/v1");
-  const [type, setType] = useState<string | undefined>(undefined);
+  const options = presets.length > 0 ? presets : PROVIDER_PRESETS;
+  const initial =
+    options.find((preset) => preset.id === "openai") ?? options[0];
+  const [presetId, setPresetId] = useState(initial?.id ?? "custom");
+  const [name, setName] = useState(initial?.name ?? "openai");
+  const [baseUrl, setBaseUrl] = useState(initial?.base_url ?? "");
+  const [type, setType] = useState<string | undefined>(initial?.type);
   const [modelsText, setModelsText] = useState("");
   const [apiKey, setApiKey] = useState("");
   const [busy, setBusy] = useState(false);
@@ -306,10 +329,12 @@ function AddProviderForm({
 
   const ids = useId();
 
+  const selected = options.find((preset) => preset.id === presetId);
+
   const applyPreset = (id: string) => {
     setPresetId(id);
     setError(null);
-    const preset = PROVIDER_PRESETS.find((p) => p.id === id);
+    const preset = options.find((p) => p.id === id);
     if (!preset) return;
     setName(preset.name);
     setBaseUrl(preset.base_url);
@@ -367,9 +392,9 @@ function AddProviderForm({
         Adicionar provedor
       </h3>
       <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
-        Escolha um modelo de serviço compatível ou use &quot;Personalizado&quot;.
-        O preço e a cota dependem sempre do provedor escolhido; o cadastro aqui
-        não torna o serviço gratuito.
+        Escolha um modelo de serviço compatível ou use
+        &quot;Personalizado&quot;. O preço e a cota dependem sempre do provedor
+        escolhido; o cadastro aqui não torna o serviço gratuito.
       </p>
 
       <div className="mt-4 grid gap-4 sm:grid-cols-2">
@@ -383,12 +408,15 @@ function AddProviderForm({
             onChange={(event) => applyPreset(event.target.value)}
             className={field}
           >
-            {PROVIDER_PRESETS.map((preset) => (
+            {options.map((preset) => (
               <option key={preset.id} value={preset.id}>
                 {preset.label}
               </option>
             ))}
           </select>
+          {selected?.hint ? (
+            <p className="mt-1 text-[11px] text-neutral-400">{selected.hint}</p>
+          ) : null}
         </div>
         <div>
           <label htmlFor={`${ids}-name`} className={labelClass}>
@@ -498,6 +526,9 @@ export function ProvidersPage() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
+  // Canonical guided presets come from the server (stage 4); PROVIDER_PRESETS
+  // stays as the offline fallback for an older server.
+  const [presets, setPresets] = useState<ProviderPreset[]>(PROVIDER_PRESETS);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -506,6 +537,7 @@ export function ProvidersPage() {
       const result = await listProviders();
       setProviders(sortProviders(result.providers));
       setConfigPath(result.configPath);
+      setPresets(mergeProviderPresets(result.presets));
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -550,6 +582,7 @@ export function ProvidersPage() {
           )}
           {adding && (
             <AddProviderForm
+              presets={presets}
               onCancel={() => setAdding(false)}
               onCreated={(name) => {
                 setAdding(false);

@@ -2,9 +2,11 @@ package server
 
 import (
 	"context"
+	"crypto/ed25519"
 	"crypto/hmac"
 	"crypto/sha256"
 	"crypto/subtle"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -28,11 +30,178 @@ import (
 	"github.com/ollama/ollama/envconfig"
 	"github.com/ollama/ollama/internal/agent"
 	"github.com/ollama/ollama/internal/grok"
+	"github.com/ollama/ollama/version"
 )
+
+// PluginTrustedKeysEnv autoriza chaves de assinatura de plugin no formato
+// `key_id:base64url_ed25519_public_key`, separadas por vírgula. Sem essa
+// configuração o conjunto fica VAZIO e nenhuma promoção de confiança é
+// possível: falha fechada, como o resto da política de capacidades.
+const PluginTrustedKeysEnv = "OLLAMA_AGENT_PLUGIN_TRUSTED_KEYS"
+
+func pluginCapabilityPolicy() (agent.CapabilityPolicy, error) {
+	policy := agent.DefaultCapabilityPolicy()
+	raw := strings.TrimSpace(os.Getenv(PluginTrustedKeysEnv))
+	if raw == "" {
+		return policy, nil
+	}
+	for _, entry := range strings.Split(raw, ",") {
+		entry = strings.TrimSpace(entry)
+		if entry == "" {
+			continue
+		}
+		keyID, encoded, ok := strings.Cut(entry, ":")
+		if !ok || strings.TrimSpace(keyID) == "" {
+			return policy, fmt.Errorf("%s: entry %q must be key_id:base64_key", PluginTrustedKeysEnv, entry)
+		}
+		key, err := base64.RawStdEncoding.DecodeString(strings.TrimSpace(encoded))
+		if err != nil || len(key) != ed25519.PublicKeySize {
+			return policy, fmt.Errorf("%s: key %q is not a base64url ed25519 public key", PluginTrustedKeysEnv, keyID)
+		}
+		policy = policy.WithTrustedSkillKey(strings.TrimSpace(keyID), ed25519.PublicKey(key))
+	}
+	return policy, nil
+}
+
+// listPlugins devolve as instalações da organização autenticada, sem qualquer
+// valor de credencial. Escopo concedido aparece separado do escopo PEDIDO: a
+// interface precisa poder mostrar "instalado mas ainda não autorizado".
+func (a *agentAPI) listPlugins(c *gin.Context) {
+	organizationID := a.organizationID(c)
+	if organizationID == "" {
+		writeAgentError(c, http.StatusForbidden, errAgentForbidden)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"organization_id": organizationID,
+		"plugins":         a.plugins.ListForOrganization(organizationID),
+	})
+}
+
+// installPlugin registra um plugin na organização autenticada. Escopo
+// desconhecido da política é recusado; nada é concedido nesta chamada.
+func (a *agentAPI) installPlugin(c *gin.Context) {
+	organizationID := a.organizationID(c)
+	if organizationID == "" {
+		writeAgentError(c, http.StatusForbidden, errAgentForbidden)
+		return
+	}
+	var manifest agent.PluginManifest
+	if err := decodeJSON(c, &manifest); err != nil {
+		writeAgentError(c, http.StatusBadRequest, err)
+		return
+	}
+	policy, err := pluginCapabilityPolicy()
+	if err != nil {
+		writeAgentError(c, http.StatusInternalServerError, err)
+		return
+	}
+	installation, err := a.plugins.InstallForOrganization(organizationID, manifest, policy)
+	if err != nil {
+		writeAgentError(c, statusForPluginError(err), err)
+		return
+	}
+	c.JSON(http.StatusCreated, installation)
+}
+
+// installPluginBundle instala o plugin a partir de um PACOTE assinado. O
+// caminho só é aceito dentro do diretório permitido pelo operador
+// (OLLAMA_AGENT_PLUGIN_BUNDLE_DIR); sem essa configuração a rota falha fechada,
+// para que a API nunca vire leitura arbitrária de arquivo do host.
+func (a *agentAPI) installPluginBundle(c *gin.Context) {
+	organizationID := a.organizationID(c)
+	if organizationID == "" {
+		writeAgentError(c, http.StatusForbidden, errAgentForbidden)
+		return
+	}
+	var request struct {
+		Manifest   agent.PluginManifest `json:"manifest"`
+		BundlePath string               `json:"bundle_path"`
+		Signature  agent.SignedArtifact `json:"signature"`
+	}
+	if err := decodeJSON(c, &request); err != nil {
+		writeAgentError(c, http.StatusBadRequest, err)
+		return
+	}
+	bundlePath, err := agent.ResolvePluginBundlePath(strings.TrimSpace(os.Getenv(agent.PluginBundleDirEnv)), request.BundlePath)
+	if err != nil {
+		writeAgentError(c, http.StatusForbidden, err)
+		return
+	}
+	policy, err := pluginCapabilityPolicy()
+	if err != nil {
+		writeAgentError(c, http.StatusInternalServerError, err)
+		return
+	}
+	installation, err := a.plugins.InstallBundleForOrganization(organizationID, request.Manifest, bundlePath, request.Signature, policy)
+	if err != nil {
+		writeAgentError(c, statusForPluginError(err), err)
+		return
+	}
+	c.JSON(http.StatusCreated, installation)
+}
+
+// rollbackPlugin desfaz a última atualização registrada do plugin.
+func (a *agentAPI) rollbackPlugin(c *gin.Context) {
+	organizationID := a.organizationID(c)
+	if organizationID == "" {
+		writeAgentError(c, http.StatusForbidden, errAgentForbidden)
+		return
+	}
+	installation, err := a.plugins.RollbackForOrganization(organizationID, c.Param("plugin_id"))
+	if err != nil {
+		writeAgentError(c, statusForPluginError(err), err)
+		return
+	}
+	c.JSON(http.StatusOK, installation)
+}
+
+// promotePlugin verifica a assinatura contra as chaves autorizadas e só então
+// concede os escopos pedidos pelo manifesto.
+func (a *agentAPI) promotePlugin(c *gin.Context) {
+	organizationID := a.organizationID(c)
+	if organizationID == "" {
+		writeAgentError(c, http.StatusForbidden, errAgentForbidden)
+		return
+	}
+	policy, err := pluginCapabilityPolicy()
+	if err != nil {
+		writeAgentError(c, http.StatusInternalServerError, err)
+		return
+	}
+	installation, err := a.plugins.PromoteTrustedForOrganization(organizationID, c.Param("plugin_id"), policy)
+	if err != nil {
+		writeAgentError(c, statusForPluginError(err), err)
+		return
+	}
+	c.JSON(http.StatusOK, installation)
+}
+
+// statusForPluginError mapeia os erros do registro de plugins para HTTP sem
+// transformar recusa de segurança em 500.
+func statusForPluginError(err error) int {
+	switch {
+	case errors.Is(err, agent.ErrUnknownCapability), errors.Is(err, agent.ErrPluginManifestInvalid):
+		return http.StatusBadRequest
+	case errors.Is(err, agent.ErrPluginVersionConflict):
+		return http.StatusConflict
+	case errors.Is(err, agent.ErrPluginNotFound):
+		return http.StatusNotFound
+	case errors.Is(err, agent.ErrPluginOrganizationScope), errors.Is(err, agent.ErrPluginKeyUnauthorized),
+		errors.Is(err, agent.ErrPluginSignatureReq), errors.Is(err, agent.ErrPluginSignatureInvalid),
+		errors.Is(err, agent.ErrPluginBundleUnavailable):
+		return http.StatusForbidden
+	case errors.Is(err, agent.ErrPluginRollbackDisabled):
+		return http.StatusConflict
+	default:
+		return http.StatusInternalServerError
+	}
+}
 
 type agentAPI struct {
 	runtime      *agent.Runtime
 	context      *agent.ContextStore
+	plugins      *agent.PluginRegistry
 	auth         *agent.AuthStore
 	oauthClients *agent.OAuthClientStore
 	authRequired bool
@@ -77,7 +246,14 @@ func newAgentAPI(runtime *agent.Runtime) (*agentAPI, error) {
 	if runtime != nil && runtime.RequiresOrganizationAuthentication() {
 		required = true
 	}
-	return &agentAPI{runtime: runtime, context: runtime.Context(), auth: auth, oauthClients: oauthClients, authRequired: required, push: runtime.Push(), grok: grokClient, samlServices: map[string]*agent.SAMLService{}}, nil
+	// Registro de plugins (estágio 8): manifesto versionado, atualização
+	// otimista e rollback. A confiança continua sendo decidida pelo servidor,
+	// pela chave autorizada em OLLAMA_AGENT_PLUGIN_TRUSTED_KEYS.
+	pluginRegistry, err := agent.NewPluginRegistry(storeRoot)
+	if err != nil {
+		return nil, err
+	}
+	return &agentAPI{runtime: runtime, context: runtime.Context(), plugins: pluginRegistry, auth: auth, oauthClients: oauthClients, authRequired: required, push: runtime.Push(), grok: grokClient, samlServices: map[string]*agent.SAMLService{}}, nil
 }
 
 func newAgentGrokClient() (*grok.Client, error) {
@@ -380,6 +556,9 @@ func (a *agentAPI) register(r *gin.Engine) {
 	group := r.Group("/api/agent/v1")
 	group.Use(a.authMiddleware)
 	group.GET("/health", a.health)
+	// Comandos slash (§6/§11.1): descoberta e execução pelo registro canônico.
+	group.GET("/commands", a.commandDiscovery)
+	group.POST("/commands", a.runCommand)
 	group.GET("/grok/status", a.grokStatus)
 	group.GET("/config/safe", a.safeConfig)
 	group.GET("/diagnostics", a.diagnostics)
@@ -519,6 +698,17 @@ func (a *agentAPI) register(r *gin.Engine) {
 	group.DELETE("/projects/:id", a.deleteProject)
 	group.POST("/projects/:id/memories", a.addMemory)
 	group.GET("/projects/:id/memories", a.searchMemories)
+	// Governança de memória (estágio 15): exportar, apagar e aplicar retenção.
+	// Todas passam por `projectForRequest`, então herdam o isolamento por
+	// organização do projeto.
+	group.GET("/projects/:id/memories/export", a.exportProjectMemories)
+	group.DELETE("/projects/:id/memories/:memory_id", a.deleteProjectMemory)
+	group.POST("/projects/:id/memories/prune", a.pruneProjectMemories)
+	// Política de retenção por organização (estágio 15). A aplicação é
+	// EXPLÍCITA: não existe laço de fundo fingindo automação.
+	group.GET("/retention", a.retentionPolicy)
+	group.PUT("/retention", a.setRetentionPolicy)
+	group.POST("/retention/apply", a.applyRetentionPolicy)
 	group.GET("/projects/:id/ask", a.askProjectDocuments)
 	group.GET("/collab/:project_id", a.collabSnapshot)
 	group.GET("/collab/:project_id/stream", a.collabStream)
@@ -539,6 +729,7 @@ func (a *agentAPI) register(r *gin.Engine) {
 	group.DELETE("/missions/:id", a.deleteMission)
 	group.POST("/missions/:id/approvals/:approval_id", a.decideApproval)
 	group.GET("/missions/:id/worktree", a.getMissionWorktree)
+	group.GET("/missions/:id/context", a.missionContext)
 	group.POST("/missions/:id/merge", a.mergeMissionWorktree)
 	group.POST("/whatsapp/webhook", a.whatsappWebhook)
 	group.GET("/whatsapp/webhook", a.whatsappWebhookVerify)
@@ -555,6 +746,11 @@ func (a *agentAPI) register(r *gin.Engine) {
 	group.POST("/supervisor/tick", a.supervisorTick)
 	group.GET("/egress/logs", a.getEgressLogs)
 	group.GET("/egress/status", a.getEgressStatus)
+	group.GET("/plugins", a.listPlugins)
+	group.POST("/plugins", a.installPlugin)
+	group.POST("/plugins/:plugin_id/promote", a.promotePlugin)
+	group.POST("/plugins/:plugin_id/rollback", a.rollbackPlugin)
+	group.POST("/plugins/bundle", a.installPluginBundle)
 }
 
 func (a *agentAPI) authMiddleware(c *gin.Context) {
@@ -1643,9 +1839,11 @@ func (a *agentAPI) addMemory(c *gin.Context) {
 		return
 	}
 	memory.ProjectID = c.Param("id")
-	created, err := a.context.AddMemoryContext(c.Request.Context(), memory)
+	// O ator vem da sessão: o corpo da requisição não escolhe a autoria de uma
+	// memória privada (isolamento por usuário, estágio 15).
+	created, err := a.context.AddMemoryForActor(c.Request.Context(), memory, agentActorID(c))
 	if err != nil {
-		writeAgentError(c, http.StatusBadRequest, err)
+		writeAgentError(c, statusForAgentError(err), err)
 		return
 	}
 	c.JSON(http.StatusCreated, created)
@@ -1656,7 +1854,7 @@ func (a *agentAPI) searchMemories(c *gin.Context) {
 		writeAgentError(c, statusForAgentError(err), err)
 		return
 	}
-	memories, err := a.context.SearchMemoriesContext(c.Request.Context(), c.Param("id"), c.Query("q"), 20)
+	memories, err := a.context.SearchMemoriesForActor(c.Request.Context(), c.Param("id"), agentActorID(c), c.Query("q"), 20)
 	if err != nil {
 		writeAgentError(c, http.StatusBadRequest, err)
 		return
@@ -1681,7 +1879,9 @@ func (a *agentAPI) askProjectDocuments(c *gin.Context) {
 		askLimit    = 8
 		askMinScore = 0.2 // relevance gate: unrelated queries return no sources
 	)
-	_, citations, err := a.context.GroundedAnswerContext(c.Request.Context(), c.Param("id"), query, askLimit, askMinScore)
+	// O RAG também respeita o isolamento por usuário: memória privada de outro
+	// ator não entra no contexto nem nas citações.
+	_, citations, err := a.context.GroundedAnswerForActor(c.Request.Context(), c.Param("id"), agentActorID(c), query, askLimit, askMinScore)
 	if err != nil {
 		writeAgentError(c, http.StatusBadRequest, err)
 		return
@@ -1691,6 +1891,161 @@ func (a *agentAPI) askProjectDocuments(c *gin.Context) {
 		"query":      query,
 		"citations":  citations,
 		"grounded":   len(citations) > 0,
+	})
+}
+
+// exportProjectMemories devolve as memórias do projeto em ordem cronológica,
+// com proveniência (kind, source, confidence, created_at) e SEM os vetores de
+// embedding por padrão. `?include_embeddings=true` inclui os vetores.
+func (a *agentAPI) exportProjectMemories(c *gin.Context) {
+	if _, err := a.projectForRequest(c); err != nil {
+		writeAgentError(c, statusForAgentError(err), err)
+		return
+	}
+	includeEmbeddings := false
+	if raw := strings.TrimSpace(c.Query("include_embeddings")); raw != "" {
+		parsed, parseErr := strconv.ParseBool(raw)
+		if parseErr != nil {
+			writeAgentError(c, http.StatusBadRequest, errors.New("include_embeddings deve ser booleano"))
+			return
+		}
+		includeEmbeddings = parsed
+	}
+	memories := a.context.ExportMemories(c.Param("id"), includeEmbeddings)
+	c.JSON(http.StatusOK, gin.H{
+		"project_id":         c.Param("id"),
+		"count":              len(memories),
+		"include_embeddings": includeEmbeddings,
+		"memories":           memories,
+	})
+}
+
+// deleteProjectMemory apaga uma memória específica do projeto. Memória de outro
+// projeto devolve 404: o escopo é o projeto autenticado, não o id enviado.
+func (a *agentAPI) deleteProjectMemory(c *gin.Context) {
+	if _, err := a.projectForRequest(c); err != nil {
+		writeAgentError(c, statusForAgentError(err), err)
+		return
+	}
+	if err := a.context.RemoveMemory(c.Param("id"), c.Param("memory_id")); err != nil {
+		if errors.Is(err, agent.ErrMemoryNotFound) {
+			writeAgentError(c, http.StatusNotFound, err)
+			return
+		}
+		writeAgentError(c, http.StatusInternalServerError, err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"status":     "deleted",
+		"project_id": c.Param("id"),
+		"memory_id":  c.Param("memory_id"),
+	})
+}
+
+// retentionPolicy mostra a política declarada da organização autenticada. A
+// ausência de política é resposta legítima (configured=false), não erro.
+func (a *agentAPI) retentionPolicy(c *gin.Context) {
+	organizationID := a.organizationID(c)
+	if organizationID == "" {
+		writeAgentError(c, http.StatusForbidden, errAgentForbidden)
+		return
+	}
+	policy, err := a.context.RetentionPolicyForOrganization(organizationID)
+	if err != nil {
+		if errors.Is(err, agent.ErrRetentionNotConfigured) {
+			c.JSON(http.StatusOK, gin.H{"organization_id": organizationID, "configured": false})
+			return
+		}
+		writeAgentError(c, statusForAgentError(err), err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"organization_id": organizationID, "configured": true, "policy": policy})
+}
+
+// setRetentionPolicy grava a política de retenção da organização autenticada. A
+// organização vem da sessão, nunca do corpo: uma organização não define política
+// para outra.
+func (a *agentAPI) setRetentionPolicy(c *gin.Context) {
+	organizationID := a.organizationID(c)
+	if organizationID == "" {
+		writeAgentError(c, http.StatusForbidden, errAgentForbidden)
+		return
+	}
+	var request struct {
+		MaxAgeDays            int `json:"max_age_days"`
+		MaxMemoriesPerProject int `json:"max_memories_per_project"`
+	}
+	if err := decodeJSON(c, &request); err != nil {
+		writeAgentError(c, http.StatusBadRequest, err)
+		return
+	}
+	policy, err := a.context.SetRetentionPolicyForOrganization(agent.MemoryRetentionPolicy{
+		OrganizationID:        organizationID,
+		MaxAgeDays:            request.MaxAgeDays,
+		MaxMemoriesPerProject: request.MaxMemoriesPerProject,
+	})
+	if err != nil {
+		writeAgentError(c, statusForRetentionError(err), err)
+		return
+	}
+	c.JSON(http.StatusOK, policy)
+}
+
+// applyRetentionPolicy aplica a política agora e devolve os números REAIS do
+// que foi removido. Aplicar duas vezes é idempotente.
+func (a *agentAPI) applyRetentionPolicy(c *gin.Context) {
+	organizationID := a.organizationID(c)
+	if organizationID == "" {
+		writeAgentError(c, http.StatusForbidden, errAgentForbidden)
+		return
+	}
+	result, err := a.context.ApplyRetentionForOrganization(organizationID, time.Now().UTC())
+	if err != nil {
+		writeAgentError(c, statusForRetentionError(err), err)
+		return
+	}
+	c.JSON(http.StatusOK, result)
+}
+
+func statusForRetentionError(err error) int {
+	switch {
+	case errors.Is(err, agent.ErrRetentionPolicyInvalid):
+		return http.StatusBadRequest
+	case errors.Is(err, agent.ErrRetentionNotConfigured):
+		return http.StatusNotFound
+	default:
+		return statusForAgentError(err)
+	}
+}
+
+// pruneProjectMemories aplica retenção por idade. O corte é obrigatório e
+// limitado para que um pedido não apague o histórico inteiro por acidente.
+func (a *agentAPI) pruneProjectMemories(c *gin.Context) {
+	if _, err := a.projectForRequest(c); err != nil {
+		writeAgentError(c, statusForAgentError(err), err)
+		return
+	}
+	var request struct {
+		OlderThanDays int `json:"older_than_days"`
+	}
+	if err := decodeJSON(c, &request); err != nil {
+		writeAgentError(c, http.StatusBadRequest, err)
+		return
+	}
+	if request.OlderThanDays < 1 || request.OlderThanDays > 3650 {
+		writeAgentError(c, http.StatusBadRequest, errors.New("older_than_days deve estar entre 1 e 3650"))
+		return
+	}
+	cutoff := time.Now().UTC().AddDate(0, 0, -request.OlderThanDays)
+	removed, err := a.context.PruneMemories(c.Param("id"), cutoff)
+	if err != nil {
+		writeAgentError(c, http.StatusInternalServerError, err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"project_id":      c.Param("id"),
+		"removed":         removed,
+		"older_than_days": request.OlderThanDays,
 	})
 }
 
@@ -1877,6 +2232,58 @@ func (a *agentAPI) getMission(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, mission)
+}
+
+// missionContext devolve o Hades Context Bootstrap canônico de uma missão
+// (estágio 5): identidade e versão do servidor, escopo autorizado, estado
+// declarado de cada permissão, plano registrado e memória do projeto.
+//
+// É somente leitura: nada aqui concede capacidade. A missão passa por
+// `missionForRequest`, que já aplica o isolamento por organização, e as
+// memórias vêm do `ContextStore` limitado ao projeto da missão. O documento
+// nunca carrega credencial: todo texto é redigido antes de sair.
+func (a *agentAPI) missionContext(c *gin.Context) {
+	mission, err := a.missionForRequest(c)
+	if err != nil {
+		writeAgentError(c, statusForAgentError(err), err)
+		return
+	}
+	memories := []agent.Memory{}
+	if a.context != nil && strings.TrimSpace(mission.ProjectID) != "" {
+		found, searchErr := a.context.SearchMemoriesContext(c.Request.Context(), mission.ProjectID, mission.Objective, agent.MaxContextBootstrapMemories)
+		if searchErr != nil {
+			writeAgentError(c, statusForAgentError(searchErr), searchErr)
+			return
+		}
+		memories = found
+	}
+	bootstrap, err := agent.BuildContextBootstrap(agent.ContextBootstrapInput{
+		Version:             version.Version,
+		OrganizationID:      mission.OrganizationID,
+		ProjectID:           mission.ProjectID,
+		MissionID:           mission.ID,
+		Workspace:           mission.Workspace,
+		Objective:           mission.Objective,
+		PlanTitles:          missionPlanTitles(mission.Plan),
+		Memories:            memories,
+		GrantedCapabilities: mission.Capabilities,
+		Policy:              agent.DefaultCapabilityPolicy(),
+	})
+	if err != nil {
+		writeAgentError(c, statusForAgentError(err), err)
+		return
+	}
+	c.JSON(http.StatusOK, bootstrap)
+}
+
+func missionPlanTitles(steps []agent.Step) []string {
+	titles := make([]string, 0, len(steps))
+	for _, step := range steps {
+		if title := strings.TrimSpace(step.Title); title != "" {
+			titles = append(titles, title)
+		}
+	}
+	return titles
 }
 
 func (a *agentAPI) events(c *gin.Context) {

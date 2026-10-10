@@ -236,10 +236,113 @@ export function validateFlow(graph: FlowGraph): string[] {
   return problems;
 }
 
+/**
+ * Step kinds the server executes today. Mirrors the closed vocabulary of
+ * internal/agent/schedule_flow.go: an unknown kind invalidates the whole
+ * payload, so the client only emits what the server provably runs.
+ */
+export type ScheduleStepKind = "trigger.interval" | "trigger.webhook" | "action.mission";
+
+/** One persisted step of a schedule flow, exactly as the server decodes it. */
+export interface ScheduleStepPayload {
+  id: string;
+  kind: ScheduleStepKind;
+  /** Steps that must have succeeded before this one runs. */
+  depends_on?: string[];
+  /** Mission objective; required for action.mission. */
+  objective?: string;
+}
+
+/** Upper bound the server enforces for one persisted flow graph. */
+export const MAX_SCHEDULE_FLOW_STEPS = 12;
+
+/** Node types with a lossless 1:1 mapping to a persisted step. */
+const STRUCTURAL_STEP_KINDS: Record<string, ScheduleStepKind> = {
+  "trigger.interval": "trigger.interval",
+  "trigger.webhook": "trigger.webhook",
+  "action.mission": "action.mission",
+};
+
+export interface CompiledSteps {
+  /** Persisted graph, or null when the flow cannot be stored structurally. */
+  steps: ScheduleStepPayload[] | null;
+  /** pt-BR reason when steps is null: the flow keeps its textual plan. */
+  skipped: string | null;
+}
+
+/**
+ * Compiles the graph into the persisted step structure the server executes:
+ * every action.mission becomes one mission gated on the success of the steps
+ * connected to it. Only node types with a lossless mapping are accepted —
+ * HTTP, connector and condition nodes return null so the caller keeps the
+ * textual plan instead of storing a graph that silently drops those nodes.
+ */
+export function compileFlowSteps(graph: FlowGraph): CompiledSteps {
+  if (graph.nodes.length === 0) {
+    return { steps: null, skipped: "O fluxo está vazio: nada a persistir como grafo de passos." };
+  }
+  if (graph.nodes.filter((n) => n.kind === "trigger").length !== 1) {
+    return { steps: null, skipped: "O grafo de passos exige exatamente um gatilho." };
+  }
+  for (const node of graph.nodes) {
+    if (!(node.type in STRUCTURAL_STEP_KINDS)) {
+      return {
+        steps: null,
+        skipped: `O nó "${node.label}" (${node.type}) ainda não roda como passo persistido; o fluxo segue como plano textual.`,
+      };
+    }
+  }
+  if (graph.nodes.length > MAX_SCHEDULE_FLOW_STEPS) {
+    return {
+      steps: null,
+      skipped: `O grafo de passos aceita no máximo ${MAX_SCHEDULE_FLOW_STEPS} passos.`,
+    };
+  }
+  const order = topologicalOrder(graph);
+  if (!order) {
+    return { steps: null, skipped: "O fluxo tem um ciclo e não pode ser persistido." };
+  }
+  const incoming = new Map<string, string[]>();
+  for (const edge of graph.edges) {
+    const sources = incoming.get(edge.to) ?? [];
+    if (!sources.includes(edge.from)) {
+      sources.push(edge.from);
+    }
+    incoming.set(edge.to, sources);
+  }
+  const steps: ScheduleStepPayload[] = [];
+  for (const node of order) {
+    const kind = STRUCTURAL_STEP_KINDS[node.type];
+    const deps = (incoming.get(node.id) ?? []).slice().sort();
+    if (kind !== "action.mission") {
+      if (deps.length > 0) {
+        return { steps: null, skipped: `O gatilho "${node.label}" não pode depender de outro passo.` };
+      }
+      steps.push({ id: node.id, kind });
+      continue;
+    }
+    if (deps.length === 0) {
+      return { steps: null, skipped: `A ação "${node.label}" precisa de uma conexão de entrada.` };
+    }
+    const objective = String(node.config.objective ?? "").trim();
+    if (!objective) {
+      return { steps: null, skipped: `Preencha o objetivo da ação "${node.label}".` };
+    }
+    steps.push({ id: node.id, kind, depends_on: deps, objective });
+  }
+  return { steps, skipped: null };
+}
+
 export interface CompiledSchedule {
   objective: string;
   interval_seconds?: number;
   webhook_secret_env?: string;
+  /**
+   * Persisted flow graph. Only these four fields may appear here: the server
+   * decodes the schedule body with DisallowUnknownFields, so any extra key
+   * (including client-only notes) makes the request fail with HTTP 400.
+   */
+  steps?: ScheduleStepPayload[];
 }
 
 export interface CompileResult {
@@ -249,6 +352,12 @@ export interface CompileResult {
   errors: string[];
   /** Node types not recognized by the compiler (normally empty). */
   unsupported: string[];
+  /**
+   * pt-BR note when the flow runs as a textual plan instead of a persisted
+   * step graph. Deliberately outside CompiledSchedule: it must never reach the
+   * request body.
+   */
+  stepsSkipped?: string;
 }
 
 interface StepResult {
@@ -302,6 +411,11 @@ function describeFlowStep(node: FlowNode): StepResult {
  * objective; a multi-node flow compiles to an ordered, numbered plan the agent
  * executes step by step with its real tools (HTTP, connectors). Nothing is
  * faked: every valid node becomes a real instruction.
+ *
+ * When every node maps onto the vocabulary the server persists, the schedule
+ * also carries `steps`, and the server enforces the order and the dependencies
+ * instead of trusting the agent to follow a text plan. Otherwise the schedule
+ * stays textual and `stepsSkipped` states the reason.
  */
 export function compileFlow(graph: FlowGraph): CompileResult {
   const errors = validateFlow(graph);
@@ -352,6 +466,10 @@ export function compileFlow(graph: FlowGraph): CompileResult {
   const unsupported: string[] = [];
 
   const schedule: CompiledSchedule = { objective };
+  const compiled = compileFlowSteps(graph);
+  if (compiled.steps) {
+    schedule.steps = compiled.steps;
+  }
   if (trigger.type === "trigger.interval") {
     const seconds = Number(trigger.config.seconds);
     schedule.interval_seconds = Number.isFinite(seconds) && seconds > 0 ? Math.floor(seconds) : 3600;
@@ -367,5 +485,9 @@ export function compileFlow(graph: FlowGraph): CompileResult {
     schedule.webhook_secret_env = secretEnv;
     schedule.interval_seconds = 0;
   }
-  return { schedule, errors: [], unsupported };
+  const result: CompileResult = { schedule, errors: [], unsupported };
+  if (!compiled.steps && compiled.skipped) {
+    result.stepsSkipped = compiled.skipped;
+  }
+  return result;
 }

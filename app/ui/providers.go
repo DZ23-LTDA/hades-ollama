@@ -97,6 +97,10 @@ func (s *Server) listProviders(w http.ResponseWriter, r *http.Request) error {
 	return json.NewEncoder(w).Encode(map[string]any{
 		"config_path": providerConfigPath(),
 		"providers":   providerStatuses(cfg),
+		// Guided presets for the "add provider" form (stage 4). They carry the
+		// base URL, the credential variable NAME and the supported paths; never
+		// a credential value, which keeps the desktop UI free of secrets.
+		"presets": multillm.BuiltInProviderPresets(),
 	})
 }
 
@@ -165,7 +169,7 @@ func (s *Server) createProvider(w http.ResponseWriter, r *http.Request) error {
 	path := providerConfigPath()
 	if path == "" {
 		w.WriteHeader(http.StatusInternalServerError)
-		return errors.New("OLLAMA_DZ23_CONFIG não está definido; reinstale o aplicativo ou defina essa variável para cadastrar provedores")
+		return errors.New("OLLAMA_DZ23_CONFIG não está definido; instale novamente o aplicativo ou defina essa variável para cadastrar provedores")
 	}
 
 	var body createProviderRequest

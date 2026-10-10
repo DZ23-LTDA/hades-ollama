@@ -11,6 +11,7 @@ import {
   topologicalOrder,
   validateFlow,
   compileFlow,
+  MAX_SCHEDULE_FLOW_STEPS,
   type FlowGraph,
   type FlowNode,
 } from "./flowGraph";
@@ -228,7 +229,14 @@ describe("compileFlow", () => {
     g = connect(g, "t", "m").graph;
     const r = compileFlow(g);
     expect(r.errors).toEqual([]);
-    expect(r.schedule).toEqual({ objective: "Rodar testes", interval_seconds: 7200 });
+    expect(r.schedule).toEqual({
+      objective: "Rodar testes",
+      interval_seconds: 7200,
+      steps: [
+        { id: "t", kind: "trigger.interval" },
+        { id: "m", kind: "action.mission", depends_on: ["t"], objective: "Rodar testes" },
+      ],
+    });
   });
 
   it("compiles webhook trigger + mission with secret env", () => {
@@ -241,6 +249,10 @@ describe("compileFlow", () => {
       objective: "Processar faturas",
       webhook_secret_env: "MY_SECRET",
       interval_seconds: 0,
+      steps: [
+        { id: "t", kind: "trigger.webhook" },
+        { id: "m", kind: "action.mission", depends_on: ["t"], objective: "Processar faturas" },
+      ],
     });
   });
 
@@ -330,5 +342,78 @@ describe("compileFlow", () => {
     const r = compileFlow(emptyFlow("f", "x"));
     expect(r.schedule).toBeNull();
     expect(r.errors.length).toBeGreaterThan(0);
+  });
+
+  it("persists a mission-only flow as a step graph with real dependencies", () => {
+    let g = emptyFlow("f", "x");
+    g = addNode(g, interval("t", 3600));
+    g = addNode(g, mission("m1", "Preparar"));
+    g = addNode(g, mission("m2", "Publicar"));
+    g = connect(g, "t", "m1").graph;
+    g = connect(g, "m1", "m2").graph;
+    const r = compileFlow(g);
+    expect(r.errors).toEqual([]);
+    expect(r.stepsSkipped).toBeUndefined();
+    expect(r.schedule?.steps).toEqual([
+      { id: "t", kind: "trigger.interval" },
+      { id: "m1", kind: "action.mission", depends_on: ["t"], objective: "Preparar" },
+      { id: "m2", kind: "action.mission", depends_on: ["m1"], objective: "Publicar" },
+    ]);
+  });
+
+  it("persists parallel missions as steps depending on the trigger", () => {
+    let g = emptyFlow("f", "x");
+    g = addNode(g, webhook("w", "SEGREDO_HOOK"));
+    g = addNode(g, mission("a", "Coletar"));
+    g = addNode(g, mission("b", "Relatar"));
+    g = connect(g, "w", "b").graph;
+    g = connect(g, "w", "a").graph;
+    const r = compileFlow(g);
+    expect(r.stepsSkipped).toBeUndefined();
+    expect(r.schedule?.webhook_secret_env).toBe("SEGREDO_HOOK");
+    const steps = r.schedule?.steps ?? [];
+    expect(steps).toHaveLength(3);
+    expect(steps.find((s) => s.id === "a")?.depends_on).toEqual(["w"]);
+    expect(steps.find((s) => s.id === "b")?.depends_on).toEqual(["w"]);
+    expect(steps.find((s) => s.id === "w")?.kind).toBe("trigger.webhook");
+  });
+
+  it("keeps the textual plan when a node has no persisted step kind", () => {
+    let g = emptyFlow("f", "x");
+    g = addNode(g, interval("t", 3600));
+    g = addNode(g, mission("m", "Rodar testes"));
+    g = addNode(g, {
+      id: "c",
+      kind: "action",
+      type: "action.connector",
+      label: "Chamar conector",
+      x: 0,
+      y: 0,
+      config: { connectorId: "slack", operation: "postMessage" },
+    });
+    g = connect(g, "t", "m").graph;
+    g = connect(g, "m", "c").graph;
+    const r = compileFlow(g);
+    expect(r.errors).toEqual([]);
+    expect(r.schedule?.steps).toBeUndefined();
+    expect(r.stepsSkipped).toMatch(/action\.connector/);
+    expect(r.schedule?.objective).toContain("1. Rodar missão: Rodar testes");
+    expect(r.schedule?.objective).toContain('2. Chamar o conector "slack"');
+  });
+
+  it("refuses to persist more steps than the server accepts", () => {
+    let g = emptyFlow("f", "x");
+    g = addNode(g, interval("t", 3600));
+    let previous = "t";
+    for (let i = 0; i < MAX_SCHEDULE_FLOW_STEPS; i += 1) {
+      const id = `m${i}`;
+      g = addNode(g, mission(id, `Passo ${i}`));
+      g = connect(g, previous, id).graph;
+      previous = id;
+    }
+    const r = compileFlow(g);
+    expect(r.errors).toEqual([]);
+    expect(r.schedule?.steps).toBeUndefined();
+    expect(r.stepsSkipped).toMatch(new RegExp(String(MAX_SCHEDULE_FLOW_STEPS)));
   });
 });

@@ -141,6 +141,30 @@ func TestResolveNeverFallsBackForLocalOnly(t *testing.T) {
 	}
 }
 
+// O exemplo publicado precisa continuar carregavel: se um campo for renomeado
+// ou removido, o operador que copiar examples/dz23-hades-gateway.json descobre
+// o problema aqui, nao no servidor dele.
+func TestShippedGatewayExampleLoadsAndEnablesRotation(t *testing.T) {
+	path := filepath.Join("..", "..", "examples", "dz23-hades-gateway.json")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	r, err := LoadBytes(data)
+	if err != nil {
+		t.Fatalf("LoadBytes: %v", err)
+	}
+	if !r.rotationPolicy().enabled {
+		t.Fatal("o exemplo publica rotacao desligada")
+	}
+	if got := r.rotationPolicy().maxAttempts; got != 3 {
+		t.Fatalf("maxAttempts=%d", got)
+	}
+	if len(r.Models()) == 0 {
+		t.Fatal("o exemplo nao registra nenhum modelo")
+	}
+}
+
 func contains(s, needle string) bool {
 	for i := 0; i+len(needle) <= len(s); i++ {
 		if s[i:i+len(needle)] == needle {

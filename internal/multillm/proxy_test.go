@@ -479,3 +479,282 @@ func TestProxyTranslatesOpenAIStreamingSession(t *testing.T) {
 		t.Fatalf("translated stream missing expected chunks: %s", rec.Body.String())
 	}
 }
+
+func rotationBool(value bool) *bool { return &value }
+
+// rotationRegistry registra dois provedores com a mesma pontuação, então o
+// provedor vencedor é escolhido pelo ID (alpha antes de backup).
+func rotationRegistry(t *testing.T, primaryURL, backupURL string, rotation *RotationConfig) *Registry {
+	t.Helper()
+	return &Registry{
+		providers: map[string]Provider{
+			"alpha": {
+				Name: "alpha", Type: ProviderTypeOpenAICompatible, BaseURL: primaryURL + "/v1",
+				APIKeyEnv: "ROTATION_PRIMARY_KEY", AllowPrivate: true, AllowInsecureLoopback: true,
+				Paths: []string{"/v1/chat/completions"},
+			},
+			"backup": {
+				Name: "backup", Type: ProviderTypeOpenAICompatible, BaseURL: backupURL + "/v1",
+				APIKeyEnv: "ROTATION_BACKUP_KEY", AllowPrivate: true, AllowInsecureLoopback: true,
+				Paths: []string{"/v1/chat/completions"},
+			},
+		},
+		models: map[string]Model{
+			"alpha/model":  {ID: "alpha/model", UpstreamID: "alpha-model", Provider: "alpha", Available: true},
+			"backup/model": {ID: "backup/model", UpstreamID: "backup-model", Provider: "backup", Available: true},
+		},
+		rotation: rotation,
+	}
+}
+
+func rotationRouter(registry *Registry) *gin.Engine {
+	router := gin.New()
+	router.Use(NewGateway(registry, nil).Middleware())
+	return router
+}
+
+func rotationRequest(body string) *http.Request {
+	req := httptest.NewRequest(http.MethodPost, "/v1/chat/completions", strings.NewReader(body))
+	req.RemoteAddr = "127.0.0.1:12345"
+	return req
+}
+
+func TestGatewayRotatesToHealthyProviderOnRetryableStatus(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	t.Setenv("ROTATION_PRIMARY_KEY", "primary-secret")
+	t.Setenv("ROTATION_BACKUP_KEY", "backup-secret")
+
+	var primaryHits, backupHits int
+	primary := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		primaryHits++
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Retry-After", "7")
+		w.WriteHeader(http.StatusServiceUnavailable)
+		_, _ = io.WriteString(w, `{"error":"upstream busy"}`)
+	}))
+	defer primary.Close()
+
+	var backupAuthorization, backupModel string
+	backup := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		backupHits++
+		backupAuthorization = r.Header.Get("Authorization")
+		var body map[string]any
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			t.Fatal(err)
+		}
+		backupModel, _ = body["model"].(string)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = io.WriteString(w, `{"id":"backup-ok","choices":[{"message":{"role":"assistant","content":"resposta reserva"},"finish_reason":"stop"}]}`)
+	}))
+	defer backup.Close()
+
+	router := rotationRouter(rotationRegistry(t, primary.URL, backup.URL, nil))
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, rotationRequest(`{"model":"auto","messages":[]}`))
+
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), "resposta reserva") {
+		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
+	}
+	if primaryHits != 1 || backupHits != 1 {
+		t.Fatalf("primary hits=%d backup hits=%d", primaryHits, backupHits)
+	}
+	if backupAuthorization != "Bearer backup-secret" || backupModel != "backup-model" {
+		t.Fatalf("authorization=%q model=%q", backupAuthorization, backupModel)
+	}
+	if value := rec.Header().Get("Retry-After"); value != "" {
+		t.Fatalf("failed attempt leaked headers into the rotated response: %q", value)
+	}
+}
+
+func TestGatewayReplaysLastProviderFailureWhenRotationIsExhausted(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	t.Setenv("ROTATION_PRIMARY_KEY", "primary-secret")
+	t.Setenv("ROTATION_BACKUP_KEY", "backup-secret")
+
+	reject := func(status int, message string) *httptest.Server {
+		return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(status)
+			_, _ = io.WriteString(w, message)
+		}))
+	}
+	primary := reject(http.StatusServiceUnavailable, `{"error":"alpha down"}`)
+	defer primary.Close()
+	backup := reject(http.StatusTooManyRequests, `{"error":"backup busy"}`)
+	defer backup.Close()
+
+	router := rotationRouter(rotationRegistry(t, primary.URL, backup.URL, nil))
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, rotationRequest(`{"model":"auto","messages":[]}`))
+
+	if rec.Code != http.StatusTooManyRequests || !strings.Contains(rec.Body.String(), "backup busy") {
+		t.Fatalf("expected the last upstream failure to be replayed, got status=%d body=%s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestGatewayDoesNotRotateWhenTheClientPinsTheProvider(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	t.Setenv("ROTATION_PRIMARY_KEY", "primary-secret")
+	t.Setenv("ROTATION_BACKUP_KEY", "backup-secret")
+
+	var backupHits int
+	primary := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Retry-After", "7")
+		w.WriteHeader(http.StatusServiceUnavailable)
+		_, _ = io.WriteString(w, `{"error":"upstream busy"}`)
+	}))
+	defer primary.Close()
+	backup := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		backupHits++
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = io.WriteString(w, `{"id":"backup-ok"}`)
+	}))
+	defer backup.Close()
+
+	router := rotationRouter(rotationRegistry(t, primary.URL, backup.URL, nil))
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, rotationRequest(`{"model":"alpha/model","messages":[]}`))
+
+	if rec.Code != http.StatusServiceUnavailable || !strings.Contains(rec.Body.String(), "upstream busy") {
+		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
+	}
+	if backupHits != 0 {
+		t.Fatalf("pinned provider rotated without cross_provider: backup hits=%d", backupHits)
+	}
+}
+
+func TestGatewayRotationHonoursCrossProviderOptIn(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	t.Setenv("ROTATION_PRIMARY_KEY", "primary-secret")
+	t.Setenv("ROTATION_BACKUP_KEY", "backup-secret")
+
+	primary := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadGateway)
+		_, _ = io.WriteString(w, `{"error":"upstream busy"}`)
+	}))
+	defer primary.Close()
+	var backupHits int
+	backup := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		backupHits++
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = io.WriteString(w, `{"id":"backup-ok","choices":[{"message":{"role":"assistant","content":"reserva"},"finish_reason":"stop"}]}`)
+	}))
+	defer backup.Close()
+
+	rotation := &RotationConfig{CrossProvider: rotationBool(true)}
+	router := rotationRouter(rotationRegistry(t, primary.URL, backup.URL, rotation))
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, rotationRequest(`{"model":"alpha/model","messages":[]}`))
+
+	if rec.Code != http.StatusOK || backupHits != 1 || !strings.Contains(rec.Body.String(), "reserva") {
+		t.Fatalf("status=%d backup hits=%d body=%s", rec.Code, backupHits, rec.Body.String())
+	}
+}
+
+func TestGatewayRotationStopsAfterRotationIsDisabled(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	t.Setenv("ROTATION_PRIMARY_KEY", "primary-secret")
+	t.Setenv("ROTATION_BACKUP_KEY", "backup-secret")
+
+	primary := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusServiceUnavailable)
+		_, _ = io.WriteString(w, `{"error":"upstream busy"}`)
+	}))
+	defer primary.Close()
+	var backupHits int
+	backup := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		backupHits++
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = io.WriteString(w, `{"id":"backup-ok"}`)
+	}))
+	defer backup.Close()
+
+	rotation := &RotationConfig{Enabled: rotationBool(false)}
+	router := rotationRouter(rotationRegistry(t, primary.URL, backup.URL, rotation))
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, rotationRequest(`{"model":"auto","messages":[]}`))
+
+	if rec.Code != http.StatusServiceUnavailable || backupHits != 0 {
+		t.Fatalf("status=%d backup hits=%d body=%s", rec.Code, backupHits, rec.Body.String())
+	}
+}
+
+func TestGatewayStopsRetryingOnceTheResponseHasStarted(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	t.Setenv("ROTATION_PRIMARY_KEY", "primary-secret")
+	t.Setenv("ROTATION_BACKUP_KEY", "backup-secret")
+
+	var backupHits int
+	primary := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		hijacker, ok := w.(http.Hijacker)
+		if !ok {
+			t.Error("test server does not support hijacking")
+			return
+		}
+		conn, buffer, err := hijacker.Hijack()
+		if err != nil {
+			t.Error(err)
+			return
+		}
+		defer conn.Close()
+		// Anuncia mais bytes do que envia: o cliente aceita os cabeçalhos, lê
+		// um pedaço e falha no meio, depois da resposta já ter começado.
+		_, _ = buffer.WriteString("HTTP/1.1 200 OK\r\nContent-Type: text/event-stream\r\nContent-Length: 4096\r\n\r\n")
+		_, _ = buffer.WriteString("data: {\"choices\":[{\"delta\":{\"content\":\"parcial\"}}]}\n\n")
+		_ = buffer.Flush()
+	}))
+	defer primary.Close()
+	backup := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		backupHits++
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = io.WriteString(w, `{"id":"backup-ok"}`)
+	}))
+	defer backup.Close()
+
+	router := rotationRouter(rotationRegistry(t, primary.URL, backup.URL, nil))
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, rotationRequest(`{"model":"auto","messages":[]}`))
+
+	if backupHits != 0 {
+		t.Fatalf("rotated after the response had already started: backup hits=%d", backupHits)
+	}
+	if !strings.Contains(rec.Body.String(), "parcial") {
+		t.Fatalf("partial stream was not delivered to the client: %q", rec.Body.String())
+	}
+}
+
+func TestRetryableProviderStatusCoversRateLimitsAndServerErrors(t *testing.T) {
+	for _, status := range []int{http.StatusTooManyRequests, http.StatusInternalServerError, http.StatusBadGateway, http.StatusServiceUnavailable, http.StatusGatewayTimeout} {
+		if !retryableProviderStatus(status) {
+			t.Fatalf("status %d should be retryable", status)
+		}
+	}
+	for _, status := range []int{http.StatusOK, http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound, http.StatusUnprocessableEntity} {
+		if retryableProviderStatus(status) {
+			t.Fatalf("status %d must not be retryable", status)
+		}
+	}
+}
+
+func TestResetResponseHeadersDropsFailedAttemptHeaders(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	context, _ := gin.CreateTestContext(httptest.NewRecorder())
+	writer := context.Writer
+	writer.Header().Set("Retry-After", "7")
+	writer.Header().Set("X-Upstream", "alpha")
+	pristine := writer.Header().Clone()
+
+	writer.Header().Set("Retry-After", "99")
+	writer.Header().Set("X-Upstream", "backup")
+	resetResponseHeaders(writer, pristine)
+
+	if value := writer.Header().Get("Retry-After"); value != "7" {
+		t.Fatalf("Retry-After=%q", value)
+	}
+	if value := writer.Header().Get("X-Upstream"); value != "alpha" {
+		t.Fatalf("X-Upstream=%q", value)
+	}
+}
