@@ -6,6 +6,15 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/). 
 
 ## [Unreleased]
 
+### registro canônico de comandos slash — 2026-10-10
+
+- Novo `internal/agent/slash_registry.go` implementa o registro exigido pela §6/§11.1: antes existia apenas `ParseSlashCommand` reconhecendo `/goal` e `/missao`; agora o registro cobre os **32 comandos da seção 6 mais `/cancel`, `/approve` e `/deny`** exigidos nominalmente pela §11.1 (35 no total).
+- **Regra de honestidade embutida na tabela:** um comando só é marcado como **disponível** quando o backend dele existe de fato, com caminho e método declarados (`POST /api/agent/v1/missions`, `GET /api/agent/v1/whatsapp/status`, …). Comando sem rota fica **indisponível COM o motivo** (`/research`, `/support`, `/telegram`, `/inbox`, `/crm`, `/handoff`) — a interface nunca mostra botão que não executa nada.
+- `ParseSlashInvocation` valida esquema: comando desconhecido (`ErrUnknownSlashCommand`), comando indisponível recusado **com o motivo** (`ErrSlashCommandUnavailable`), parâmetro obrigatório ausente ou inválido (`ErrSlashCommandArgsInvalid`), excesso de parâmetros recusado em vez de ignorado em silêncio, e validação por tipo (`id` como identificador, `url` apenas `http(s)`).
+- `SlashHelp` monta a ajuda em pt-BR **separando** o que existe do que não existe ("Comandos indisponíveis nesta versão (não executam nada)"), e `CompleteSlashCommand` alimenta autocomplete ordenado, com ou sem barra inicial.
+- **Prova de que o registro não mente:** testes no pacote `server` registram o roteador real e verificam que **todo** comando disponível aponta para um caminho efetivamente registrado — rota inventada faz o teste falhar. Um segundo teste garante os seis comandos nomeados pela §11.1.
+- Cobertura: 3 testes em `internal/agent/slash_registry_test.go` (cobertura da seção 6 + invariantes de honestidade + os seis da §11.1 disponíveis e os seis sem rota indisponíveis; validação de esquema, parâmetros e tipos; ajuda e autocomplete) e 2 testes de integração em `server/slash_registry_routes_test.go`.
+
 ### rodada de paridade observável
 
 - Árvore de produto completa em [`docs/agentic/PRODUCT_TREE.md`](docs/agentic/PRODUCT_TREE.md), separando superfície observável, estado atual e alvo unificado.
