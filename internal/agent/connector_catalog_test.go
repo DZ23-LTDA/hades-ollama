@@ -55,7 +55,7 @@ func TestConnectorCatalogIDsAreUniqueAndSetupIsExplicit(t *testing.T) {
 			t.Fatalf("connector %q is missing name, description or auth", entry.ID)
 		}
 	}
-	for _, id := range []string{"pinterest", "youtube", "linkedin", "telegram", "gmail", "mercado-pago", "resend", "twilio", "firebase", "sentry", "aws"} {
+	for _, id := range []string{"pinterest", "youtube", "linkedin", "telegram", "lark", "gmail", "mercado-pago", "resend", "twilio", "firebase", "sentry", "aws"} {
 		if !seen[id] {
 			t.Errorf("catalog is missing %q", id)
 		}

@@ -44,6 +44,8 @@ func NewRegistry() *Registry {
 	registry.Register(projectTestRunnerTool{})
 	registry.Register(gitMergeOriginTool{})
 	registry.Register(cliHarnessTool{})
+	registry.Register(imTelegramSendTool{})
+	registry.Register(imTelegramVerifyTool{})
 	return registry
 }
 
