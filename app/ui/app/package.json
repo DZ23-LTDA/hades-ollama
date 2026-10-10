@@ -37,7 +37,7 @@
     "rehype-raw": "^7.0.0",
     "remark-gfm": "^4.0.1",
     "remark-math": "^6.0.0",
-    "shiki": "^3.14.0",
+    "shiki": "^4.5.0",
     "simple-icons": "^16.32.0",
     "streamdown": "^2.6.0",
     "unist-builder": "^4.0.0",
