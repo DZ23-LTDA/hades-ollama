@@ -240,5 +240,7 @@ repositório, fecharam a maior parte das superfícies que estavam
 
 15. **Retenção deixou de ser indefinida (PR #81).** Passou a existir política declarada por organização (idade máxima e teto por projeto), persistida com rollback e recusando política inválida em disco, com aplicação **explícita e idempotente** que varre apenas os projetos da própria organização, preserva memória sem data e devolve contagens reais; sem política, nada é removido. A decisão de não fingir automação contínua está registrada no código e no CHANGELOG. 6 testes novos e 20/20 checks verdes (E-056). Continua aberto: prova de isolamento entre **usuários** e ligação a um agendador real quando existir executor persistente.
 
+16. **Isolamento de memória por USUÁRIO (PR #82).** Duas pessoas da mesma organização e do mesmo projeto deixaram de conseguir ler a memória privada uma da outra: a visibilidade passou a ser `organization` (padrão, sem migração) ou `private`, a autoria vem da sessão (o `actor_id` do corpo é ignorado) e a filtragem acontece na busca, na recuperação e no RAG **antes** das citações. O modo local usa o ator sintético `local` — explicitamente **não** é autenticação e nada aqui é apresentado como se fosse. 7 testes novos e 20/20 checks verdes (E-057). Continua aberto: prova com usuário autenticado de verdade (token) e ligação da retenção a um agendador real.
+
 Nada foi promovido a `COMPLETED_VERIFIED` nesta rodada. Estado agregado:
 0 `COMPLETED_VERIFIED`, 24 `IN_PROGRESS`, 14 `BLOCKED_BY_EXTERNAL_DEPENDENCY`.

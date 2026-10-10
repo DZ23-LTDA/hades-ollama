@@ -2,7 +2,7 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-10T13:03:00-03:00",
+  "updated_at": "2026-10-10T13:28:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
@@ -20,7 +20,7 @@
     "capability_PENDENTE_DE_AUDITORIA": "extensao declarada; NAO e classificacao canonica e nao promove capacidade"
   },
   "pull_requests": {
-    "open_count": 39,
+    "open_count": 40,
     "merged_this_mission": [
       {
         "number": 54,
@@ -181,6 +181,12 @@
         "branch": "feat/retencao-memoria",
         "sha": "e397bc5c2",
         "tema": "politica de retencao por organizacao com aplicacao explicita (empilhado em #77)"
+      },
+      {
+        "number": 82,
+        "branch": "feat/isolamento-memoria-usuario",
+        "sha": "28476fb63",
+        "tema": "isolamento de memoria privada por usuario dentro da mesma organizacao (base main)"
       }
     ],
     "dependabot_open": {
@@ -201,7 +207,8 @@
       78,
       79,
       80,
-      81
+      81,
+      82
     ],
     "stacked_on_branch": {
       "76": "feat/context-bootstrap",
@@ -468,10 +475,11 @@
       "evidence": [
         "E-040",
         "E-052",
-        "E-056"
+        "E-056",
+        "E-057"
       ],
       "blocker": "B-07",
-      "next": "Prova de isolamento entre USUARIOS (nao so organizacoes) e ligacao da retencao a um agendador real quando existir executor persistente; diretoria de retencao por organizacao, exportacao/exclusao e proveniencia ja estao entregues (PRs #77 e #81)"
+      "next": "Ligacao da retencao a um agendador real quando existir executor persistente e prova de isolamento com usuario AUTENTICADO (token real) em vez de cabecalho local; escopos de organizacao, projeto e usuario, exportacao/exclusao, proveniencia e politica de retencao ja estao entregues (PRs #77, #81 e #82)"
     },
     {
       "id": 16,
@@ -841,6 +849,8 @@
     "PR #80 (pacote de plugin verificado) aberto e VERDE: 20/20 checks success, mergeable_state=clean; empilhado em #78",
     "Estagio 8: conteudo do pacote passa a ser verificado por assinatura ed25519 sobre o SHA-256 (chave autorizada), copiado para plugins/content com digest registrado, com deteccao de adulteracao pos-instalacao e allowlist de diretorio (falha fechada sem OLLAMA_AGENT_PLUGIN_BUNDLE_DIR); instalar pacote NAO concede escopo",
     "PR #81 (politica de retencao de memoria) aberto e VERDE: 20/20 checks success, mergeable_state=clean; empilhado em #77",
-    "Estagio 15: retencao deixou de ser indefinida por omissao - politica por organizacao validada, persistida com rollback, aplicacao explicita e idempotente que so varre projetos da propria organizacao, preserva memoria sem data e devolve contagens reais"
+    "Estagio 15: retencao deixou de ser indefinida por omissao - politica por organizacao validada, persistida com rollback, aplicacao explicita e idempotente que so varre projetos da propria organizacao, preserva memoria sem data e devolve contagens reais",
+    "PR #82 (isolamento de memoria por usuario) aberto e VERDE: 20/20 checks success, mergeable_state=clean; base main (independente)",
+    "Estagio 15: memoria privada de um usuario deixou de ser legivel por outro na MESMA organizacao e projeto; autoria vem da sessao (actor_id do corpo e ignorado), leitura restrita em busca, recuperacao e RAG, e modo local usa o ator sintetico 'local' (nao e autenticacao, registrado explicitamente)"
   ]
 }
