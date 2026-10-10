@@ -6,6 +6,15 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/). 
 
 ## [Unreleased]
 
+### execução de comandos slash com autorização server-side — 2026-10-10
+
+- Novas rotas `GET /commands` (descoberta: registro, ajuda e autocomplete por `prefix`) e `POST /commands` (`{input}`), ligando o comando do registro canônico à **ação real** com a organização vinda da sessão.
+- **Cinco comandos executam de verdade:** `/status` (estado real da missão), `/cancel` (cancela **apenas** a missão alvo, com a mesma guarda de concorrência otimista da rota e sem atravessar tenant), `/memory` (busca no projeto autorizado, reusando a checagem de organização da rota em vez de reimplementar autorização), `/mcp` e `/skills` (listagens por organização).
+- **Honestidade no resto:** comando reconhecido sem backend responde **501 com o motivo**; comando ligado a rota mas ainda não executado por esta camada responde `executed: false` com o **backend real** e uma dica explícita — nunca "sucesso" sem ação executada.
+- Erros claros: comando desconhecido e corpo inválido ⇒ 400; parâmetro obrigatório ausente ⇒ 400 citando o parâmetro; comando indisponível ⇒ 501.
+- Isolamento verificado nas rotas de comando: missão de outra organização ⇒ 404 sem vazar existência nem objetivo; projeto de outra organização ⇒ recusado; `/cancel` de outra organização **não** altera a missão alheia.
+- Cobertura: 5 testes em `server/command_routes_test.go` (descoberta + ajuda + filtro por prefixo; erros de parse/parâmetro/comando indisponível; `/status` executando e escondendo missão estrangeira; `/cancel` isolado por organização; `/mcp`, `/skills` e `/memory` executando com recusa cross-tenant, mais `executed:false` honesto para `/goal`) e verificação de que as rotas estão registradas.
+
 ### registro canônico de comandos slash — 2026-10-10
 
 - Novo `internal/agent/slash_registry.go` implementa o registro exigido pela §6/§11.1: antes existia apenas `ParseSlashCommand` reconhecendo `/goal` e `/missao`; agora o registro cobre os **32 comandos da seção 6 mais `/cancel`, `/approve` e `/deny`** exigidos nominalmente pela §11.1 (35 no total).
