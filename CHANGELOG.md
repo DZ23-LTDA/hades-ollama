@@ -6,6 +6,15 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/). 
 
 ## [Unreleased]
 
+### Catálogo de conectores honesto e teste live de OAuth opt-in (P1-5) — 2026-10-10
+
+O catálogo de conectores passou a ter o vocabulário de `status` e `kind` fechado e verificado por teste: nenhuma entrada pode declarar estado desconhecido, `kind` fora de `app`/`custom_api`/`mcp`, ou ficar sem escopo. O teste também amarra os metadados de conexão rápida à flag derivada, então uma entrada não pode anunciar `APIBaseURL`, cabeçalho ou esquema de autenticação sem estar realmente exposta como conexão rápida — e toda conexão rápida precisa de base HTTPS ou modo auto-hospedado declarado.
+
+Foi adicionado o teste live opt-in de OAuth exigido pelo aceite P1-5: ele só roda com `OLLAMA_TEST_OAUTH=1` e todas as credenciais do provedor presentes, e é pulado (nunca falho) quando falta qualquer uma delas. Um teste unitário determinístico prova que o portão ausente ou a credencial incompleta resultam em pulo, sem rede e sem falha por ausência de credencial.
+
+Também ficou travada a regra de honestidade da promoção: um conector só pode estar `available` quando o harness entrega o caminho de autenticação. Conectores cujo `auth` sempre depende de material do operador (`api_key`, `api_key_or_certificate`, `bot_token`, `connection_url`) continuam em `operator_setup_required`, porque promover esses exigiria mentir sobre o que o produto entrega pronto.
+
+
 ### execução de comandos slash com autorização server-side — 2026-10-10
 
 - Novas rotas `GET /commands` (descoberta: registro, ajuda e autocomplete por `prefix`) e `POST /commands` (`{input}`), ligando o comando do registro canônico à **ação real** com a organização vinda da sessão.
@@ -53,21 +62,6 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/). 
 - Screenshots reais das novas rotas capturadas com Chromium e notas de proveniência atualizadas.
 - Menu lateral Hades aberto por padrão, com smoke test Chromium de rotas, links, ações primárias e estados vazios.
 - `UPSTREAM_BASE_COMMIT`, `UPSTREAM_POLICY.md`, guardrail de integridade e workflow CI para impedir perda silenciosa das superfícies agentic.
-
-### fluxo agendado persistido (P0-2, fatia 1) — 2026-10-10
-
-- `Schedule` passou a carregar um grafo de passos persistido em `steps`, com vocabulário fechado `trigger.interval`, `trigger.webhook`, `action.mission` e `condition.if`; agendamentos antigos, sem `steps`, preservam exatamente o comportamento anterior de missão única.
-- O grafo é validado na criação e na atualização com regras fail-closed: exatamente um gatilho, ação com objetivo e ao menos uma dependência, condição com uma única dependência e `expect` em `succeeded`/`failed`, IDs únicos, no máximo 12 passos, sem ciclos e sem tipo desconhecido — `action.http` e `action.connector` seguem rejeitados até existir executor real.
-- `ExecuteScheduleFlow` executa os passos em ordem topológica determinística e passa a ser o único caminho usado pelos dois loops de dispatch (supervisor e runtime), de modo que os dois não podem divergir; o caminho legado continua contando uma missão por execução.
-- Cobertura automatizada: validação, ordem topológica, execução de grafo de três nós, condição falsa bloqueando dependentes, rejeição antes da persistência e round-trip HTTP real em `POST`/`PUT`/`GET /api/agent/v1/schedules`.
-- Limites honestos desta fatia: o resultado registrado por um passo de ação é "a missão foi criada", não "a missão teve sucesso", então uma condição avalia o dispatch e não o desfecho do trabalho; não há status por passo nem streaming por passo; a ligação do editor visual do cliente a este contrato fica para a fatia 2.
-
-### fluxo agendado persistido (P0-2, fatia 2) — 2026-10-10
-
-- O editor visual de automações (`/scheduled`, aba `Editor visual (beta)`) passou a compilar o canvas em `steps` e a publicá-los junto do agendamento: `compileFlowSteps` mapeia `trigger.interval`, `trigger.webhook` e `action.mission` para `id`, `kind`, `depends_on` e `objective` em ordem topológica determinística.
-- O cliente valida antes de enviar tudo o que consegue derivar localmente (exatamente um gatilho sem dependência, toda ação com conexão de entrada e objetivo preenchido, no máximo 12 passos, sem ciclos), de modo que a interface nunca gera um `400`; a validação completa do grafo continua no servidor.
-- `condition.if`, `action.http` e `action.connector` seguem em fallback textual declarado (`stepsSkipped`), porque o servidor não aceita expressão livre em `condition.if` e ainda não há executor real para as duas ações — o motivo é exibido na própria interface.
-- Cobertura automatizada: `flowGraph.test.ts` (payload exato, ordem e fallback), `FlowEditor.test.tsx` (publicação pelo inspetor) e o E2E `e2e/scheduleFlow.spec.ts`, que monta na UI real um fluxo de três nós, confere `flow-valid`, publica e valida o corpo de `POST /api/agent/v1/schedules` com os três passos encadeados.
 
 ### fluxo vertical funcional e HarnessRouter — 2026-09-22
 
@@ -298,14 +292,6 @@ O commit `b1aaebfd` restaura jobs delayed quando `moveDue` não consegue complet
 ### Settings screenshot capture guard — 2026-09-23
 
 O alias histórico `docs/images/screens/settings.png` foi atualizado para a captura funcional de Settings. O capturador agora rejeita páginas com conteúdo insuficiente e screenshots PNG anormalmente pequenos, evitando evidência visual branca ou incompleta.
-
-### saída de ferramenta visível na trilha de execução (P1-4, aceite b) — 2026-10-10
-
-- O evento `step.succeeded` passou a publicar um trecho textual limitado do resultado da ferramenta (`output`), além da contagem de `artifacts`: a saída de uma CLI governada ou de um comando de terminal fica visível na trilha de execução do chat sem transporte novo, porque o cliente já assina `GET /api/agent/v1/missions/:id/events` e `/events/stream`.
-- O trecho é extraído apenas de campos textuais conhecidos (`stdout`, `stderr`, `output`, `message`, `summary`, `text`, `result`), em ordem fixa, para que a mesma execução produza o mesmo payload; saídas puramente estruturadas (por exemplo `screenshot` em base64) não geram trecho e não poluem a trilha.
-- O corte é feito por runas, com teto de 2000 e marcador explícito `[saída truncada]`, ordens de grandeza abaixo do orçamento de payload do event store (1 MiB), e a interface já apresenta o payload do evento como JSON legível.
-- A redação por DLP é preservada nas duas camadas: o trecho vem de `step.Result`, que já passou por `RedactValue`, e o próprio evento aplica `RedactValue` novamente antes de persistir.
-- Cobertura automatizada em `internal/agent/step_output_test.go`: extração por prioridade fixa, valor sem chave textual, limite exato, corte por runas multibyte e ausência de credencial no evento persistido.
 
 ## [0.1.0] — Preview público
 
