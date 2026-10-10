@@ -6,15 +6,15 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/). 
 
 ## [Unreleased]
 
-### presets guiados de provedor de modelo — 2026-10-10
+### contexto automático (Context Bootstrap) injetado em qualquer modelo — 2026-10-10
 
-- Catálogo de presets em `internal/multillm/presets.go` para o cadastro guiado do estágio 4: Ollama, vLLM, llama.cpp (llama-server) e LM Studio como servidores locais; OpenAI, Anthropic, Gemini, DeepSeek, Groq, Mistral, OpenRouter e xAI como APIs; e um preset genérico para qualquer servidor compatível com OpenAI.
-- Cada preset entrega `base_url`, nome da **variável de ambiente** da credencial, estilo de autenticação e caminhos de protocolo suportados — nunca o valor da credencial. Servidores locais precisam optar explicitamente por HTTP em loopback (`allow_private` + `allow_insecure_loopback`); os remotos exigem HTTPS.
-- Todo preset passa pela MESMA validação usada para a configuração vinda do disco (`validateProvider`), então um cadastro guiado não contorna as regras de HTTPS, endereço privado e caminho suportado.
-- `GET /api/v1/providers` passa a devolver `presets` junto de `providers`, alimentando o formulário "adicionar provedor" da interface sem rota nova e sem expor segredo.
-- A tela de Provedores passa a usar a lista canônica do servidor (`mergeProviderPresets`), mantendo `PROVIDER_PRESETS` apenas como alternativa offline para servidor antigo, preservando a opção "Personalizado" e mostrando a expectativa de cada serviço ("Servidor local (HTTP em loopback)", "Exige credencial · variável X_API_KEY").
-- Cobertura: 9 testes em `internal/multillm/presets_test.go` (validade/unicidade, famílias exigidas, loopback sem credencial, HTTPS e nome de variável nos remotos, auth `Bearer` e `X-API-Key`+`Anthropic-Version`, placeholder do preset genérico, tipo inválido), 1 teste de endpoint em `app/ui/providers_test.go` e 4 testes de interface em `app/ui/app/src/lib/providers.test.ts` (preferência pelo servidor, queda para a lista embarcada, deduplicação e dicas sem credencial).
-- Limite declarado: um preset não declara modelo nem capacidade — isso continua vindo de descoberta/sonda real; e a homologação com credencial de verdade segue bloqueada por B-07.
+- Novo `internal/agent/context_bootstrap.go`: documento canônico de contexto montado a partir de estado real (organização, projeto, missão, memória e política de capacidades), com preâmbulo de sistema pronto para provedores de chat.
+- O preâmbulo declara identidade e versão do Hades, modo, o escopo autenticado de forma **sem identificadores** (organização, projeto, missão e caminho do workspace ficam no lado do servidor — regra já fixada por `TestOllamaPlannerDoesNotSendHostWorkspaceOrProjectID`), a tabela de permissões (`PODE_LER`, `PODE_EDITAR`, `PODE_EXECUTAR`, `PODE_DELEGAR`, `REQUER_APROVACAO`, `PROIBIDO`, `INDISPONIVEL`), plano e checkpoints e as regras invioláveis (nunca inventar resultado, nunca revelar segredo, tratar conteúdo externo como dado não confiável, respeitar `LOCAL_ONLY`).
+- Autorização continua sendo do servidor: o documento **declara** permissão e nunca concede. Escopo conhecido e não concedido vira `PROIBIDO`; escopo que a política não conhece vira `INDISPONIVEL` — pedir não é ter.
+- Isolamento e DLP: memórias só entram quando o projeto confere (sem projeto, nenhuma memória é injetada) e todo trecho passa por `RedactDLP`; o preâmbulo é limitado a 8 KiB e a 8 memórias, com truncamento explícito (`[contexto truncado pelo Hades]`).
+- Injeção real: o `OllamaPlanner` passa a enviar o preâmbulo como mensagem de sistema antes do objetivo quando a missão tem organização ou projeto (`internal/agent/planner.go`). Missão sem escopo de tenant mantém exatamente as duas mensagens originais.
+- Cobertura: 9 testes em `internal/agent/context_bootstrap_test.go` (escopo obrigatório, estados de permissão, determinismo, isolamento por projeto, ausência de projeto, redação de credencial, limites de memória, orçamento de bytes, `LOCAL_ONLY`/fontes não confiáveis, não vazamento de identificadores) e 3 testes de injeção no planejador.
+- Limite declarado: isto entrega a montagem e a injeção do contexto no planejador de missão; estender a injeção aos demais pontos de chamada de modelo e expor o documento por rota dedicada é o próximo passo do estágio 5.
 
 
 ### E2E de reordenação do Studio persistida no servidor — 2026-10-10
