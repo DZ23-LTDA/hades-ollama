@@ -33,7 +33,15 @@ expect.extend({
   },
 });
 
-const routes = ["/", "/connect", "/endpoint", "/library", "/settings", "/agentic"];
+const routes = [
+  "/",
+  "/connect",
+  "/endpoint",
+  "/library",
+  "/settings",
+  "/agentic",
+  "/compare",
+];
 const viewports = [
   { name: "desktop", width: 1440, height: 900 },
   { name: "mobile", width: 390, height: 844 },

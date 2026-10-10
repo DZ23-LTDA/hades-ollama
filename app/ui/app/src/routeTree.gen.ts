@@ -25,6 +25,7 @@ import { Route as EndpointImport } from './routes/endpoint'
 import { Route as CreationsImport } from './routes/creations'
 import { Route as ConnectorsImport } from './routes/connectors'
 import { Route as ConnectImport } from './routes/connect'
+import { Route as CompareImport } from './routes/compare'
 import { Route as CompanyImport } from './routes/company'
 import { Route as AgenticImport } from './routes/agentic'
 import { Route as IndexImport } from './routes/index'
@@ -116,6 +117,12 @@ const ConnectRoute = ConnectImport.update({
   getParentRoute: () => rootRoute,
 } as any)
 
+const CompareRoute = CompareImport.update({
+  id: '/compare',
+  path: '/compare',
+  getParentRoute: () => rootRoute,
+} as any)
+
 const CompanyRoute = CompanyImport.update({
   id: '/company',
   path: '/company',
@@ -163,6 +170,13 @@ declare module '@tanstack/react-router' {
       path: '/company'
       fullPath: '/company'
       preLoaderRoute: typeof CompanyImport
+      parentRoute: typeof rootRoute
+    }
+    '/compare': {
+      id: '/compare'
+      path: '/compare'
+      fullPath: '/compare'
+      preLoaderRoute: typeof CompareImport
       parentRoute: typeof rootRoute
     }
     '/connect': {
@@ -279,6 +293,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/agentic': typeof AgenticRoute
   '/company': typeof CompanyRoute
+  '/compare': typeof CompareRoute
   '/connect': typeof ConnectRoute
   '/connectors': typeof ConnectorsRoute
   '/creations': typeof CreationsRoute
@@ -300,6 +315,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/agentic': typeof AgenticRoute
   '/company': typeof CompanyRoute
+  '/compare': typeof CompareRoute
   '/connect': typeof ConnectRoute
   '/connectors': typeof ConnectorsRoute
   '/creations': typeof CreationsRoute
@@ -322,6 +338,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/agentic': typeof AgenticRoute
   '/company': typeof CompanyRoute
+  '/compare': typeof CompareRoute
   '/connect': typeof ConnectRoute
   '/connectors': typeof ConnectorsRoute
   '/creations': typeof CreationsRoute
@@ -345,6 +362,7 @@ export interface FileRouteTypes {
     | '/'
     | '/agentic'
     | '/company'
+    | '/compare'
     | '/connect'
     | '/connectors'
     | '/creations'
@@ -365,6 +383,7 @@ export interface FileRouteTypes {
     | '/'
     | '/agentic'
     | '/company'
+    | '/compare'
     | '/connect'
     | '/connectors'
     | '/creations'
@@ -385,6 +404,7 @@ export interface FileRouteTypes {
     | '/'
     | '/agentic'
     | '/company'
+    | '/compare'
     | '/connect'
     | '/connectors'
     | '/creations'
@@ -407,6 +427,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AgenticRoute: typeof AgenticRoute
   CompanyRoute: typeof CompanyRoute
+  CompareRoute: typeof CompareRoute
   ConnectRoute: typeof ConnectRoute
   ConnectorsRoute: typeof ConnectorsRoute
   CreationsRoute: typeof CreationsRoute
@@ -428,6 +449,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AgenticRoute: AgenticRoute,
   CompanyRoute: CompanyRoute,
+  CompareRoute: CompareRoute,
   ConnectRoute: ConnectRoute,
   ConnectorsRoute: ConnectorsRoute,
   CreationsRoute: CreationsRoute,
@@ -458,6 +480,7 @@ export const routeTree = rootRoute
         "/",
         "/agentic",
         "/company",
+        "/compare",
         "/connect",
         "/connectors",
         "/creations",
@@ -483,6 +506,9 @@ export const routeTree = rootRoute
     },
     "/company": {
       "filePath": "company.tsx"
+    },
+    "/compare": {
+      "filePath": "compare.tsx"
     },
     "/connect": {
       "filePath": "connect.tsx"

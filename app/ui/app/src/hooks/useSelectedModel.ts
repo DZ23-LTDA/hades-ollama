@@ -64,6 +64,35 @@ export function pickChatDefault(
   );
 }
 
+// defaultModelRequest decide se o chat deve pedir ao backend para gravar um
+// modelo padrão. Pure, para teste: a decisão tem quatro regras distintas
+// (seleção válida, seleção desconhecida, modelo de provider, nada selecionado)
+// que antes só existiam inline dentro de um efeito.
+//
+// A repetição da mesma escrita quando o backend não a reflete é barrada em
+// useSettings (shouldSkipSettingsWrite), não aqui.
+export function defaultModelRequest(params: {
+  isLoading: boolean;
+  modelCount: number;
+  selectedModel: string;
+  current: Model | null | undefined;
+  defaultModel: Model | null;
+}): string | null {
+  const { isLoading, modelCount, selectedModel, current, defaultModel } = params;
+
+  if (isLoading || modelCount === 0) return null;
+
+  // A valid chat selection stays as-is.
+  if (current && isChatModel(current)) return null;
+  // An unknown selection (e.g. a cloud name synthesized on the fly that is not
+  // in the local list yet) is left alone; only known router/remote is reset.
+  if (selectedModel && !current) return null;
+
+  if (!defaultModel || defaultModel.model === selectedModel) return null;
+
+  return defaultModel.model;
+}
+
 export function useSelectedModel(currentChatId?: string, searchQuery?: string) {
   const { settings, setSettings } = useSettings();
   const { data: models = [], isLoading } = useModels(searchQuery || "");
@@ -227,22 +256,24 @@ export function useSelectedModel(currentChatId?: string, searchQuery?: string) {
   // leftover multi-provider router/remote selection (e.g. "auto/coding") that
   // the plain chat cannot use.
   useEffect(() => {
-    if (isLoading || models.length === 0) return;
-
-    const current = settings.selectedModel
+    const currentModel = settings.selectedModel
       ? models.find((m) => m.model === settings.selectedModel)
       : null;
 
     // A valid chat selection stays as-is.
-    if (current && isChatModel(current)) return;
-    // An unknown selection (e.g. a cloud name synthesized on the fly that is not
-    // in the local list yet) is left alone; only known router/remote is reset.
-    if (settings.selectedModel && !current) return;
+    if (currentModel && isChatModel(currentModel)) return;
 
-    const defaultModel = pickChatDefault(models, recommendedModel, cloudDisabled);
-    if (defaultModel && defaultModel.model !== settings.selectedModel) {
-      setSettings({ SelectedModel: defaultModel.model });
-    }
+    const requested = defaultModelRequest({
+      isLoading,
+      modelCount: models.length,
+      selectedModel: settings.selectedModel,
+      current: currentModel,
+      defaultModel: pickChatDefault(models, recommendedModel, cloudDisabled),
+    });
+
+    if (!requested) return;
+
+    setSettings({ SelectedModel: requested });
   }, [
     isLoading,
     models,

@@ -305,6 +305,10 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle("PUT /api/v1/providers/{name}/models", handle(s.setProviderModels))
 	mux.Handle("PUT /api/v1/connectors/{id}/key", handle(s.connectConnector))
 	mux.Handle("DELETE /api/v1/connectors/{id}/key", handle(s.disconnectConnector))
+	// Gateway de inferência de terceiros: endereço base, rotação automática e
+	// chave usada por clientes externos (Claude Code, Codex).
+	mux.Handle("GET /api/v1/gateway/connection", handle(s.getGatewayConnection))
+	mux.Handle("POST /api/v1/gateway/key", handle(s.rotateGatewayKey))
 
 	// Ollama proxy endpoints
 	ollamaProxy := s.ollamaProxy()
@@ -1991,7 +1995,7 @@ func chatSystemPrompt() string {
 		"Neste chat você conversa, raciocina e pode pesquisar na web. " +
 		"Para EXECUTAR tarefas de verdade (ler/editar arquivos, rodar código, operar o navegador, usar conectores ou automações de vários passos), " +
 		"oriente o usuário a abrir \"Nova tarefa\" / \"Tarefas\" (o agente do Hades), que planeja e executa com aprovações — e, para apps/sites, o \"Studio\". " +
-		"\"Hades\" e \"harness\" referem-se a ESTE ambiente; nunca os confunda com produtos externos de mesmo nome nem pesquise sobre eles na web. " +
+		"\"Hades\" e \"harness\" referem-se a ESTE ambiente; nunca os confunda com produtos externos de mesmo nome nem pesquise informações sobre esses produtos na web. " +
 		"Responda sempre em português do Brasil, de forma clara e objetiva, a menos que o usuário peça explicitamente outro idioma."
 }
 

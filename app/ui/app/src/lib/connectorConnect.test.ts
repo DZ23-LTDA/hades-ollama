@@ -1,6 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { clearAgentSession, setAgentSession } from "./agenticClient";
-import { connectHint, connectWithKey, keyHelpURL } from "./connectorConnect";
+import {
+  connectGuidance,
+  connectHint,
+  connectWithKey,
+  keyHelpURL,
+} from "./connectorConnect";
 
 describe("connector quick connect client", () => {
   afterEach(() => {
@@ -70,6 +75,31 @@ describe("connectHint", () => {
       "URL de conexão",
     );
     expect(connectHint("PostgreSQL", "connection_url")).not.toContain("OAuth");
+  });
+});
+
+describe("connectGuidance", () => {
+  it("tells the operator how to get a Telegram bot token for group chats", () => {
+    const steps = connectGuidance("telegram").join(" ");
+    expect(steps).toContain("BotFather");
+    expect(steps).toContain("Group Privacy Mode");
+  });
+
+  it("describes what Lark/Feishu covers and what it needs", () => {
+    const steps = connectGuidance("lark").join(" ");
+    expect(steps).toContain("fluxo de trabalho");
+    expect(steps).toContain("webhook");
+  });
+
+  it("keeps WhatsApp on a dedicated test account that cannot move money", () => {
+    expect(connectGuidance("whatsapp").join(" ")).toContain(
+      "conta de teste exclusiva",
+    );
+  });
+
+  it("stays empty for services without extra instructions", () => {
+    expect(connectGuidance("stripe")).toEqual([]);
+    expect(connectGuidance("nao-existe")).toEqual([]);
   });
 });
 
