@@ -8,286 +8,122 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-// Import Routes
+import { Route as rootRouteImport } from './routes/__root'
+import { Route as IndexRouteImport } from './routes/index'
+import { Route as AgenticRouteImport } from './routes/agentic'
+import { Route as CompanyRouteImport } from './routes/company'
+import { Route as CompareRouteImport } from './routes/compare'
+import { Route as ConnectRouteImport } from './routes/connect'
+import { Route as ConnectorsRouteImport } from './routes/connectors'
+import { Route as CreationsRouteImport } from './routes/creations'
+import { Route as EndpointRouteImport } from './routes/endpoint'
+import { Route as LibraryRouteImport } from './routes/library'
+import { Route as OnboardingRouteImport } from './routes/onboarding'
+import { Route as PluginsRouteImport } from './routes/plugins'
+import { Route as ProjectsRouteImport } from './routes/projects'
+import { Route as ProvidersRouteImport } from './routes/providers'
+import { Route as ScheduledRouteImport } from './routes/scheduled'
+import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as SkillsRouteImport } from './routes/skills'
+import { Route as StudioRouteImport } from './routes/studio'
+import { Route as TasksRouteImport } from './routes/tasks'
+import { Route as CChatIdRouteImport } from './routes/c.$chatId'
 
-import { Route as rootRoute } from './routes/__root'
-import { Route as TasksImport } from './routes/tasks'
-import { Route as StudioImport } from './routes/studio'
-import { Route as SkillsImport } from './routes/skills'
-import { Route as SettingsImport } from './routes/settings'
-import { Route as ScheduledImport } from './routes/scheduled'
-import { Route as ProvidersImport } from './routes/providers'
-import { Route as ProjectsImport } from './routes/projects'
-import { Route as PluginsImport } from './routes/plugins'
-import { Route as OnboardingImport } from './routes/onboarding'
-import { Route as LibraryImport } from './routes/library'
-import { Route as EndpointImport } from './routes/endpoint'
-import { Route as CreationsImport } from './routes/creations'
-import { Route as ConnectorsImport } from './routes/connectors'
-import { Route as ConnectImport } from './routes/connect'
-import { Route as CompareImport } from './routes/compare'
-import { Route as CompanyImport } from './routes/company'
-import { Route as AgenticImport } from './routes/agentic'
-import { Route as IndexImport } from './routes/index'
-import { Route as CChatIdImport } from './routes/c.$chatId'
-
-// Create/Update Routes
-
-const TasksRoute = TasksImport.update({
-  id: '/tasks',
-  path: '/tasks',
-  getParentRoute: () => rootRoute,
-} as any)
-
-const StudioRoute = StudioImport.update({
-  id: '/studio',
-  path: '/studio',
-  getParentRoute: () => rootRoute,
-} as any)
-
-const SkillsRoute = SkillsImport.update({
-  id: '/skills',
-  path: '/skills',
-  getParentRoute: () => rootRoute,
-} as any)
-
-const SettingsRoute = SettingsImport.update({
-  id: '/settings',
-  path: '/settings',
-  getParentRoute: () => rootRoute,
-} as any)
-
-const ScheduledRoute = ScheduledImport.update({
-  id: '/scheduled',
-  path: '/scheduled',
-  getParentRoute: () => rootRoute,
-} as any)
-
-const ProvidersRoute = ProvidersImport.update({
-  id: '/providers',
-  path: '/providers',
-  getParentRoute: () => rootRoute,
-} as any)
-
-const ProjectsRoute = ProjectsImport.update({
-  id: '/projects',
-  path: '/projects',
-  getParentRoute: () => rootRoute,
-} as any)
-
-const PluginsRoute = PluginsImport.update({
-  id: '/plugins',
-  path: '/plugins',
-  getParentRoute: () => rootRoute,
-} as any)
-
-const OnboardingRoute = OnboardingImport.update({
-  id: '/onboarding',
-  path: '/onboarding',
-  getParentRoute: () => rootRoute,
-} as any)
-
-const LibraryRoute = LibraryImport.update({
-  id: '/library',
-  path: '/library',
-  getParentRoute: () => rootRoute,
-} as any)
-
-const EndpointRoute = EndpointImport.update({
-  id: '/endpoint',
-  path: '/endpoint',
-  getParentRoute: () => rootRoute,
-} as any)
-
-const CreationsRoute = CreationsImport.update({
-  id: '/creations',
-  path: '/creations',
-  getParentRoute: () => rootRoute,
-} as any)
-
-const ConnectorsRoute = ConnectorsImport.update({
-  id: '/connectors',
-  path: '/connectors',
-  getParentRoute: () => rootRoute,
-} as any)
-
-const ConnectRoute = ConnectImport.update({
-  id: '/connect',
-  path: '/connect',
-  getParentRoute: () => rootRoute,
-} as any)
-
-const CompareRoute = CompareImport.update({
-  id: '/compare',
-  path: '/compare',
-  getParentRoute: () => rootRoute,
-} as any)
-
-const CompanyRoute = CompanyImport.update({
-  id: '/company',
-  path: '/company',
-  getParentRoute: () => rootRoute,
-} as any)
-
-const AgenticRoute = AgenticImport.update({
-  id: '/agentic',
-  path: '/agentic',
-  getParentRoute: () => rootRoute,
-} as any)
-
-const IndexRoute = IndexImport.update({
+const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
-const CChatIdRoute = CChatIdImport.update({
+const AgenticRoute = AgenticRouteImport.update({
+  id: '/agentic',
+  path: '/agentic',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CompanyRoute = CompanyRouteImport.update({
+  id: '/company',
+  path: '/company',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CompareRoute = CompareRouteImport.update({
+  id: '/compare',
+  path: '/compare',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ConnectRoute = ConnectRouteImport.update({
+  id: '/connect',
+  path: '/connect',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ConnectorsRoute = ConnectorsRouteImport.update({
+  id: '/connectors',
+  path: '/connectors',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CreationsRoute = CreationsRouteImport.update({
+  id: '/creations',
+  path: '/creations',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EndpointRoute = EndpointRouteImport.update({
+  id: '/endpoint',
+  path: '/endpoint',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LibraryRoute = LibraryRouteImport.update({
+  id: '/library',
+  path: '/library',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OnboardingRoute = OnboardingRouteImport.update({
+  id: '/onboarding',
+  path: '/onboarding',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PluginsRoute = PluginsRouteImport.update({
+  id: '/plugins',
+  path: '/plugins',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProjectsRoute = ProjectsRouteImport.update({
+  id: '/projects',
+  path: '/projects',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProvidersRoute = ProvidersRouteImport.update({
+  id: '/providers',
+  path: '/providers',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ScheduledRoute = ScheduledRouteImport.update({
+  id: '/scheduled',
+  path: '/scheduled',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SkillsRoute = SkillsRouteImport.update({
+  id: '/skills',
+  path: '/skills',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const StudioRoute = StudioRouteImport.update({
+  id: '/studio',
+  path: '/studio',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TasksRoute = TasksRouteImport.update({
+  id: '/tasks',
+  path: '/tasks',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CChatIdRoute = CChatIdRouteImport.update({
   id: '/c/$chatId',
   path: '/c/$chatId',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
-// Populate the FileRoutesByPath interface
-
-declare module '@tanstack/react-router' {
-  interface FileRoutesByPath {
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexImport
-      parentRoute: typeof rootRoute
-    }
-    '/agentic': {
-      id: '/agentic'
-      path: '/agentic'
-      fullPath: '/agentic'
-      preLoaderRoute: typeof AgenticImport
-      parentRoute: typeof rootRoute
-    }
-    '/company': {
-      id: '/company'
-      path: '/company'
-      fullPath: '/company'
-      preLoaderRoute: typeof CompanyImport
-      parentRoute: typeof rootRoute
-    }
-    '/compare': {
-      id: '/compare'
-      path: '/compare'
-      fullPath: '/compare'
-      preLoaderRoute: typeof CompareImport
-      parentRoute: typeof rootRoute
-    }
-    '/connect': {
-      id: '/connect'
-      path: '/connect'
-      fullPath: '/connect'
-      preLoaderRoute: typeof ConnectImport
-      parentRoute: typeof rootRoute
-    }
-    '/connectors': {
-      id: '/connectors'
-      path: '/connectors'
-      fullPath: '/connectors'
-      preLoaderRoute: typeof ConnectorsImport
-      parentRoute: typeof rootRoute
-    }
-    '/creations': {
-      id: '/creations'
-      path: '/creations'
-      fullPath: '/creations'
-      preLoaderRoute: typeof CreationsImport
-      parentRoute: typeof rootRoute
-    }
-    '/endpoint': {
-      id: '/endpoint'
-      path: '/endpoint'
-      fullPath: '/endpoint'
-      preLoaderRoute: typeof EndpointImport
-      parentRoute: typeof rootRoute
-    }
-    '/library': {
-      id: '/library'
-      path: '/library'
-      fullPath: '/library'
-      preLoaderRoute: typeof LibraryImport
-      parentRoute: typeof rootRoute
-    }
-    '/onboarding': {
-      id: '/onboarding'
-      path: '/onboarding'
-      fullPath: '/onboarding'
-      preLoaderRoute: typeof OnboardingImport
-      parentRoute: typeof rootRoute
-    }
-    '/plugins': {
-      id: '/plugins'
-      path: '/plugins'
-      fullPath: '/plugins'
-      preLoaderRoute: typeof PluginsImport
-      parentRoute: typeof rootRoute
-    }
-    '/projects': {
-      id: '/projects'
-      path: '/projects'
-      fullPath: '/projects'
-      preLoaderRoute: typeof ProjectsImport
-      parentRoute: typeof rootRoute
-    }
-    '/providers': {
-      id: '/providers'
-      path: '/providers'
-      fullPath: '/providers'
-      preLoaderRoute: typeof ProvidersImport
-      parentRoute: typeof rootRoute
-    }
-    '/scheduled': {
-      id: '/scheduled'
-      path: '/scheduled'
-      fullPath: '/scheduled'
-      preLoaderRoute: typeof ScheduledImport
-      parentRoute: typeof rootRoute
-    }
-    '/settings': {
-      id: '/settings'
-      path: '/settings'
-      fullPath: '/settings'
-      preLoaderRoute: typeof SettingsImport
-      parentRoute: typeof rootRoute
-    }
-    '/skills': {
-      id: '/skills'
-      path: '/skills'
-      fullPath: '/skills'
-      preLoaderRoute: typeof SkillsImport
-      parentRoute: typeof rootRoute
-    }
-    '/studio': {
-      id: '/studio'
-      path: '/studio'
-      fullPath: '/studio'
-      preLoaderRoute: typeof StudioImport
-      parentRoute: typeof rootRoute
-    }
-    '/tasks': {
-      id: '/tasks'
-      path: '/tasks'
-      fullPath: '/tasks'
-      preLoaderRoute: typeof TasksImport
-      parentRoute: typeof rootRoute
-    }
-    '/c/$chatId': {
-      id: '/c/$chatId'
-      path: '/c/$chatId'
-      fullPath: '/c/$chatId'
-      preLoaderRoute: typeof CChatIdImport
-      parentRoute: typeof rootRoute
-    }
-  }
-}
-
-// Create and export the route tree
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -310,7 +146,6 @@ export interface FileRoutesByFullPath {
   '/tasks': typeof TasksRoute
   '/c/$chatId': typeof CChatIdRoute
 }
-
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/agentic': typeof AgenticRoute
@@ -332,9 +167,8 @@ export interface FileRoutesByTo {
   '/tasks': typeof TasksRoute
   '/c/$chatId': typeof CChatIdRoute
 }
-
 export interface FileRoutesById {
-  __root__: typeof rootRoute
+  __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/agentic': typeof AgenticRoute
   '/company': typeof CompanyRoute
@@ -355,7 +189,6 @@ export interface FileRoutesById {
   '/tasks': typeof TasksRoute
   '/c/$chatId': typeof CChatIdRoute
 }
-
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
@@ -422,7 +255,6 @@ export interface FileRouteTypes {
     | '/c/$chatId'
   fileRoutesById: FileRoutesById
 }
-
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AgenticRoute: typeof AgenticRoute
@@ -443,6 +275,144 @@ export interface RootRouteChildren {
   StudioRoute: typeof StudioRoute
   TasksRoute: typeof TasksRoute
   CChatIdRoute: typeof CChatIdRoute
+}
+
+declare module '@tanstack/react-router' {
+  interface FileRoutesByPath {
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/agentic': {
+      id: '/agentic'
+      path: '/agentic'
+      fullPath: '/agentic'
+      preLoaderRoute: typeof AgenticRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/company': {
+      id: '/company'
+      path: '/company'
+      fullPath: '/company'
+      preLoaderRoute: typeof CompanyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/compare': {
+      id: '/compare'
+      path: '/compare'
+      fullPath: '/compare'
+      preLoaderRoute: typeof CompareRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/connect': {
+      id: '/connect'
+      path: '/connect'
+      fullPath: '/connect'
+      preLoaderRoute: typeof ConnectRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/connectors': {
+      id: '/connectors'
+      path: '/connectors'
+      fullPath: '/connectors'
+      preLoaderRoute: typeof ConnectorsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/creations': {
+      id: '/creations'
+      path: '/creations'
+      fullPath: '/creations'
+      preLoaderRoute: typeof CreationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/endpoint': {
+      id: '/endpoint'
+      path: '/endpoint'
+      fullPath: '/endpoint'
+      preLoaderRoute: typeof EndpointRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/library': {
+      id: '/library'
+      path: '/library'
+      fullPath: '/library'
+      preLoaderRoute: typeof LibraryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/onboarding': {
+      id: '/onboarding'
+      path: '/onboarding'
+      fullPath: '/onboarding'
+      preLoaderRoute: typeof OnboardingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/plugins': {
+      id: '/plugins'
+      path: '/plugins'
+      fullPath: '/plugins'
+      preLoaderRoute: typeof PluginsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/projects': {
+      id: '/projects'
+      path: '/projects'
+      fullPath: '/projects'
+      preLoaderRoute: typeof ProjectsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/providers': {
+      id: '/providers'
+      path: '/providers'
+      fullPath: '/providers'
+      preLoaderRoute: typeof ProvidersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/scheduled': {
+      id: '/scheduled'
+      path: '/scheduled'
+      fullPath: '/scheduled'
+      preLoaderRoute: typeof ScheduledRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/skills': {
+      id: '/skills'
+      path: '/skills'
+      fullPath: '/skills'
+      preLoaderRoute: typeof SkillsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/studio': {
+      id: '/studio'
+      path: '/studio'
+      fullPath: '/studio'
+      preLoaderRoute: typeof StudioRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/tasks': {
+      id: '/tasks'
+      path: '/tasks'
+      fullPath: '/tasks'
+      preLoaderRoute: typeof TasksRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/c/$chatId': {
+      id: '/c/$chatId'
+      path: '/c/$chatId'
+      fullPath: '/c/$chatId'
+      preLoaderRoute: typeof CChatIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+  }
 }
 
 const rootRouteChildren: RootRouteChildren = {
@@ -466,95 +436,6 @@ const rootRouteChildren: RootRouteChildren = {
   TasksRoute: TasksRoute,
   CChatIdRoute: CChatIdRoute,
 }
-
-export const routeTree = rootRoute
+export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-/* ROUTE_MANIFEST_START
-{
-  "routes": {
-    "__root__": {
-      "filePath": "__root.tsx",
-      "children": [
-        "/",
-        "/agentic",
-        "/company",
-        "/compare",
-        "/connect",
-        "/connectors",
-        "/creations",
-        "/endpoint",
-        "/library",
-        "/onboarding",
-        "/plugins",
-        "/projects",
-        "/providers",
-        "/scheduled",
-        "/settings",
-        "/skills",
-        "/studio",
-        "/tasks",
-        "/c/$chatId"
-      ]
-    },
-    "/": {
-      "filePath": "index.tsx"
-    },
-    "/agentic": {
-      "filePath": "agentic.tsx"
-    },
-    "/company": {
-      "filePath": "company.tsx"
-    },
-    "/compare": {
-      "filePath": "compare.tsx"
-    },
-    "/connect": {
-      "filePath": "connect.tsx"
-    },
-    "/connectors": {
-      "filePath": "connectors.tsx"
-    },
-    "/creations": {
-      "filePath": "creations.tsx"
-    },
-    "/endpoint": {
-      "filePath": "endpoint.tsx"
-    },
-    "/library": {
-      "filePath": "library.tsx"
-    },
-    "/onboarding": {
-      "filePath": "onboarding.tsx"
-    },
-    "/plugins": {
-      "filePath": "plugins.tsx"
-    },
-    "/projects": {
-      "filePath": "projects.tsx"
-    },
-    "/providers": {
-      "filePath": "providers.tsx"
-    },
-    "/scheduled": {
-      "filePath": "scheduled.tsx"
-    },
-    "/settings": {
-      "filePath": "settings.tsx"
-    },
-    "/skills": {
-      "filePath": "skills.tsx"
-    },
-    "/studio": {
-      "filePath": "studio.tsx"
-    },
-    "/tasks": {
-      "filePath": "tasks.tsx"
-    },
-    "/c/$chatId": {
-      "filePath": "c.$chatId.tsx"
-    }
-  }
-}
-ROUTE_MANIFEST_END */
