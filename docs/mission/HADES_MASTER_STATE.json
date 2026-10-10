@@ -2,7 +2,7 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-10T12:35:00-03:00",
+  "updated_at": "2026-10-10T13:03:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
@@ -20,7 +20,7 @@
     "capability_PENDENTE_DE_AUDITORIA": "extensao declarada; NAO e classificacao canonica e nao promove capacidade"
   },
   "pull_requests": {
-    "open_count": 38,
+    "open_count": 39,
     "merged_this_mission": [
       {
         "number": 54,
@@ -175,6 +175,12 @@
         "branch": "feat/plugin-bundle-verificado",
         "sha": "788404ef2",
         "tema": "pacote de plugin verificado por assinatura, com conteudo guardado e digest (empilhado em #78)"
+      },
+      {
+        "number": 81,
+        "branch": "feat/retencao-memoria",
+        "sha": "e397bc5c2",
+        "tema": "politica de retencao por organizacao com aplicacao explicita (empilhado em #77)"
       }
     ],
     "dependabot_open": {
@@ -194,13 +200,15 @@
       77,
       78,
       79,
-      80
+      80,
+      81
     ],
     "stacked_on_branch": {
       "76": "feat/context-bootstrap",
       "73": "feat/e2e-primeira-execucao",
       "79": "feat/plugins-governados",
-      "80": "feat/plugins-governados"
+      "80": "feat/plugins-governados",
+      "81": "feat/memoria-governanca"
     }
   },
   "stage_states": {
@@ -459,10 +467,11 @@
       "capability": "IMPLEMENTADO_NAO_HOMOLOGADO",
       "evidence": [
         "E-040",
-        "E-052"
+        "E-052",
+        "E-056"
       ],
       "blocker": "B-07",
-      "next": "Agendar expurgo automatico por politica de organizacao e provar troca de modelo, reinicio e isolamento entre usuarios; exclusao, exportacao com proveniencia e retencao por chamada explicita ja estao entregues (PR #77)"
+      "next": "Prova de isolamento entre USUARIOS (nao so organizacoes) e ligacao da retencao a um agendador real quando existir executor persistente; diretoria de retencao por organizacao, exportacao/exclusao e proveniencia ja estao entregues (PRs #77 e #81)"
     },
     {
       "id": 16,
@@ -830,6 +839,8 @@
     "PR #79 (benchmarks reproduziveis) aberto e VERDE: 20/20 checks success, mergeable_state=clean; empilhado em #78",
     "Estagio 21 passou a ter medicao reproduzivel dos motores proprios (memoria, plugins, contexto fundamentado) com metodologia em docs/mission/HADES_BENCHMARK_METHOD.md; comparativo com concorrentes continua bloqueado por licenca/conta e inferencia real",
     "PR #80 (pacote de plugin verificado) aberto e VERDE: 20/20 checks success, mergeable_state=clean; empilhado em #78",
-    "Estagio 8: conteudo do pacote passa a ser verificado por assinatura ed25519 sobre o SHA-256 (chave autorizada), copiado para plugins/content com digest registrado, com deteccao de adulteracao pos-instalacao e allowlist de diretorio (falha fechada sem OLLAMA_AGENT_PLUGIN_BUNDLE_DIR); instalar pacote NAO concede escopo"
+    "Estagio 8: conteudo do pacote passa a ser verificado por assinatura ed25519 sobre o SHA-256 (chave autorizada), copiado para plugins/content com digest registrado, com deteccao de adulteracao pos-instalacao e allowlist de diretorio (falha fechada sem OLLAMA_AGENT_PLUGIN_BUNDLE_DIR); instalar pacote NAO concede escopo",
+    "PR #81 (politica de retencao de memoria) aberto e VERDE: 20/20 checks success, mergeable_state=clean; empilhado em #77",
+    "Estagio 15: retencao deixou de ser indefinida por omissao - politica por organizacao validada, persistida com rollback, aplicacao explicita e idempotente que so varre projetos da propria organizacao, preserva memoria sem data e devolve contagens reais"
   ]
 }

@@ -238,5 +238,7 @@ repositório, fecharam a maior parte das superfícies que estavam
 
 14. **Conteúdo de plugin verificado (PR #80), segunda fatia do estágio 8.** O pacote passa a ser assinado (ed25519 sobre o SHA-256 do arquivo), só entra de diretório permitido pelo operador (falha fechada sem allowlist), é copiado com digest registrado — com rollback da instalação se a cópia falhar — e o digest é recomputado depois para detectar adulteração. Instalar pacote **não** concede escopo: `promote` continua obrigatório. 6 testes novos e 20/20 checks verdes (E-055). Continua aberto: executar código de plugin em processo isolado (sandbox) e expor o registro na UI.
 
+15. **Retenção deixou de ser indefinida (PR #81).** Passou a existir política declarada por organização (idade máxima e teto por projeto), persistida com rollback e recusando política inválida em disco, com aplicação **explícita e idempotente** que varre apenas os projetos da própria organização, preserva memória sem data e devolve contagens reais; sem política, nada é removido. A decisão de não fingir automação contínua está registrada no código e no CHANGELOG. 6 testes novos e 20/20 checks verdes (E-056). Continua aberto: prova de isolamento entre **usuários** e ligação a um agendador real quando existir executor persistente.
+
 Nada foi promovido a `COMPLETED_VERIFIED` nesta rodada. Estado agregado:
 0 `COMPLETED_VERIFIED`, 24 `IN_PROGRESS`, 14 `BLOCKED_BY_EXTERNAL_DEPENDENCY`.
