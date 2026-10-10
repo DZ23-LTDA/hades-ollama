@@ -37,6 +37,7 @@ func DefaultCapabilityPolicy() CapabilityPolicy {
 		"desktop:input",
 		"desktop:clipboard",
 		"desktop:process",
+		ScopeHarnessCLI,
 		"mcp:call",
 		"mcp:remote:call",
 		"connector:external",

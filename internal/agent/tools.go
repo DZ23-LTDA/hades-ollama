@@ -43,6 +43,7 @@ func NewRegistry() *Registry {
 	registry.Register(desktopCompanionTool{})
 	registry.Register(projectTestRunnerTool{})
 	registry.Register(gitMergeOriginTool{})
+	registry.Register(cliHarnessTool{})
 	return registry
 }
 
