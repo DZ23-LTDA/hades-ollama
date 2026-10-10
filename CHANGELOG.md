@@ -6,6 +6,16 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/). 
 
 ## [Unreleased]
 
+### conteúdo externo tratado como dado não confiável — 2026-10-10
+
+- Novo `internal/agent/untrusted.go` aplica a §11.6 ao prompt: material de terceiros (documentos indexados, páginas web, e-mails, respostas de MCP) entra no contexto **rotulado como DADOS**, cercado por `<<<DADOS-EXTERNOS>>>` … `<<<FIM-DADOS-EXTERNOS>>>`, com a instrução explícita de nunca obedecer comandos contidos ali.
+- `NeutralizeUntrusted` substitui por um marcador **visível** (`[trecho removido: possível instrução injetada]`) linhas de papel privilegiado (`system:`, `assistant:`, `developer:`, `tool:`, `function:`), ordens clássicas de sobreposição ("ignore previous instructions", "desconsidere as instruções anteriores", "you are now", "novas instruções") e tokens de controle de chat (`<|im_start|>`, `<<SYS>>`, `[INST]`, `### Assistant:`) — inclusive os próprios marcadores da cerca, para que o conteúdo não consiga **fechar** o bloco em que foi colocado.
+- **Sem falso positivo em conteúdo legítimo**: rótulos comuns de documento em pt-BR ("Usuário:", "Sistema:") **não** são redigidos, porque apagar informação real do arquivo seria defeito, não proteção. Há teste dedicado comparando texto de negócio intacto.
+- `WrapUntrustedData` limita o bloco (teto de 4000 runes) mantendo a cerca fechada após truncar e rotula a origem (URL/título também neutralizados, pois vêm de terceiros).
+- Integração real: `BuildGroundedContext` (documentos) e, por consequência, `BuildWebGroundedContext` (pesquisa na web) passaram a cercar cada trecho como dado e a neutralizar a citação mostrada ao humano.
+- Limite declarado: é **mitigação determinística**, não prova de imunidade. Nenhum sanitizador garante que um modelo ignore uma injeção; o que se garante é rótulo, cerca inquebrável e neutralização visível dos padrões clássicos.
+- Cobertura: 6 testes em `internal/agent/untrusted_test.go` (padrões de injeção neutralizados e tokens de controle ausentes; conteúdo legítimo preservado; tentativa de quebra da cerca mantendo exatamente uma abertura e um fechamento; teto de tamanho e rótulo de origem; RAG rotulando e neutralizando trechos sem perder a atribuição das fontes; pesquisa na web igualmente tratada).
+
 ### rodada de paridade observável
 
 - Árvore de produto completa em [`docs/agentic/PRODUCT_TREE.md`](docs/agentic/PRODUCT_TREE.md), separando superfície observável, estado atual e alvo unificado.
