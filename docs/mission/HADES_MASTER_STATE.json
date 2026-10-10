@@ -2,12 +2,12 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-10T18:45:00-03:00",
+  "updated_at": "2026-10-10T19:40:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
     "integration_branch": "main",
-    "main_sha": "560258507a836e669582b8afe915dbfb6d7930d2",
+    "main_sha": "d941b3f7f04973a98d0543d8b457ade949a8d2f7",
     "main_committed_at": "2026-10-09T10:24:45Z",
     "main_ci_state": "green (dz23-agentic-quality + class-a-plus-integrity = success nesse SHA)",
     "mission_branch": "docs/checkpoints-missao-v21",
@@ -344,16 +344,18 @@
     {
       "id": 8,
       "title": "Plugins e Skills",
-      "state": "BLOCKED_BY_EXTERNAL_DEPENDENCY",
+      "state": "IN_PROGRESS",
       "auditoria": "AUDITADO",
       "capability": "PARCIAL",
       "evidence": [
         "E-042",
         "E-053",
-        "E-055"
+        "E-055",
+        "E-063"
       ],
       "blocker": null,
-      "next": "Expor o registro de plugins na interface e executar codigo de plugin em processo isolado (sandbox) antes de qualquer promocao; manifesto, confianca, atualizacao, rollback e verificacao de CONTEUDO do pacote ja estao entregues (PRs #78 e #80)"
+      "next": "expor o estado real na interface (INSTALLED/CONNECTED/CONFIG_REQUIRED/UNAUTHORIZED/UNHEALTHY/UNSUPPORTED/TESTED_LIVE/CAPABILITIES) e catalogo de skills com ativacao por projeto/agente/modelo; homologacao com publisher externo real exige terceiro (externo)",
+      "done": "manifesto versionado, assinatura/integridade, atualizacao, rollback, verificacao de conteudo E EXECUCAO GOVERNADA entregues (PRs #78, #80, #114)"
     },
     {
       "id": 9,
@@ -850,6 +852,10 @@
     "Correcao do tablewriter por migracao real (PR #90): v0 -> v1 com helper unico newTableWriter, erros de Bulk/Render deixaram de ser ignorados e o golden do `ollama list` foi atualizado com o diff byte-exato documentado (apenas espaco final do cabecalho)",
     "Achado B-09: os testes de cmd/launch que usam SQLite falham em ambiente local com CGO_ENABLED=0 ('go-sqlite3 requires cgo... This is a stub') — e ambiente, nao defeito: o CI tem cgo. Provado em worktree limpo da main pura",
     "Politica de majors no .github/dependabot.yml: minor/patch entram por PR automatico; MAJOR de aplicacao (gomod, app/ui/app, apps/mobile-agentic) nao e mais proposto pelo bot porque bump de major isolado nasce vermelho e exige migracao manual — o debito fica no checkpoint, nao na pagina de Actions. github-actions continua aceitando majors (validados pelo CI, desejaveis para supply chain)",
-    "Ciclo de dependencias fechado: #26/#34 integrados (#91), #30 corrigido por migracao (#90), #27/#29/#33 fechados com ignore justificado, #31 corrigido de verdade (#92), 13 PRs novos do lote semanal avaliados sob a politica nova"
+    "Ciclo de dependencias fechado: #26/#34 integrados (#91), #30 corrigido por migracao (#90), #27/#29/#33 fechados com ignore justificado, #31 corrigido de verdade (#92), 13 PRs novos do lote semanal avaliados sob a politica nova",
+    "Estagio 8, fatia 3 ENTREGUE (PR #114): PluginRuntime executa um plugin instalado DENTRO do executor governado que ja existia (sandbox.exec), sem caminho paralelo de processo. Portas fail-closed: instalado, habilitado, confiavel, conteudo verificado E reverificado no disco a cada execucao, entrypoint vindo do MANIFESTO ASSINADO (campos Runtime/Entrypoint com omitempty), caminho relativo validado e leitura por nome exato no zip (recusa traversal, nada extraido), escopos concedidos cobrindo sandbox:execute pela politica, e modo de sandbox aprovado (best-effort exige aviso). Host nao-Linux ou sandbox ausente = erro explicito, nunca execucao simulada. 10 testes, golangci-lint 0 issues",
+    "Defeito latente corrigido (PR #115): o CI do #113 falhava com 76 suites PASSANDO e apenas o typecheck quebrando — 'ImageThumbnail.tsx(71,30): TS2322: Uint8Array<ArrayBufferLike> is not assignable to BlobPart'. Reproduzido localmente com os tipos novos (tsc -b exit 2), corrigido construindo o Blob de um Uint8Array novo (sem 'as' e sem ts-ignore) e revalidado (exit 0, build 0, 516 testes)",
+    "#116 (grupo web-dev-tooling, 10 checks vermelhos) provou-se HEAD DEFASADO, nao defeito: depois de update-branch, changed_files=0 e diff vazio contra a main — os bumps ja tinham entrado nos trens #111/#115. Licao registrada: PR do dependabot aberto antes de um trem precisa ser reavaliado por diff, nao por CI antigo",
+    "Trens de dependencia 3 (#111: 7 bumps) e 4 (#117: 4 bumps minor) concluidos; 0 PR aberto com CI vermelho; a partir do #106 o dependabot nao propoe mais majors de aplicacao (o debito fica no checkpoint) e a familia React move sempre junta"
   ]
 }
