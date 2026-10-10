@@ -2,12 +2,12 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-10T20:20:00-03:00",
+  "updated_at": "2026-10-10T20:35:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
     "integration_branch": "main",
-    "main_sha": "5f437b9000702e6de6cb07e025c8659d7879a631",
+    "main_sha": "17da864f4e300cfc623deecd3ab8f44d9956dd8a",
     "main_committed_at": "2026-10-09T10:24:45Z",
     "main_ci_state": "green (dz23-agentic-quality + class-a-plus-integrity = success nesse SHA)",
     "mission_branch": "docs/checkpoints-missao-v21",
@@ -353,11 +353,12 @@
         "E-055",
         "E-063",
         "E-065",
-        "E-066"
+        "E-066",
+        "E-067"
       ],
       "blocker": null,
-      "next": "catalogo de skills com descoberta, categoria e ativacao por projeto/agente/modelo, com selecao dinamica por missao e orcamento de tokens; homologacao com publisher externo real exige terceiro",
-      "done": "manifesto versionado, assinatura/integridade, atualizacao, rollback, verificacao de conteudo, EXECUCAO GOVERNADA, status canonico por API E EXIBICAO DO ESTADO REAL NA INTERFACE (PRs #78, #80, #114, #119, #121)"
+      "next": "expor o catalogo de skills na interface (ativar/desativar por contexto, mostrar categoria, proveniencia e orcamento consumido) e homologar com uma skill de terceiro real",
+      "done": "plugins: manifesto, assinatura/integridade, atualizacao, rollback, verificacao de conteudo, EXECUCAO GOVERNADA, status canonico por API e exibicao do estado real na interface (PRs #78, #80, #114, #119, #121); skills: manifesto assinado/nao-confianca, CATEGORIA, PROVENIENCIA, ATIVACAO POR PROJETO/AGENTE/MODELO, SELECAO DETERMINISTICA POR MISSAO COM ORCAMENTO DE TOKENS e persistencia por organizacao (PR #123)"
     },
     {
       "id": 9,
@@ -862,6 +863,8 @@
     "Estagio 8, fatia 4 ENTREGUE (PR #119): status canonico de plugin derivado de dados reais (registro, digest no disco, politica e trilha de auditoria) e exposto em GET /plugins/status. TESTED_LIVE exige execucao bem-sucedida registrada; INSTALLED sai com ready_to_use=false; CONNECTED fica RESERVADO e nunca e produzido porque nao existe sonda de vinculo real (ha teste garantindo). PluginExecutionRecord ganhou Succeeded, distinguindo execucao comprovada de tentativa recusada",
     "7 testes novos (4 do resolvedor + 3 de rota, incluindo isolamento do escopo local). Dois testes meus estavam errados e foram corrigidos - nao o codigo: LoadOrganization recarrega do disco; e sem organizacao o modo local usa o escopo fixo 'local' (comportamento intencional), o que virou um teste melhor de isolamento",
     "Estagio 8, fatia 5 ENTREGUE (PR #121): a interface consome GET /plugins/status e mostra estado canonico, motivo da recusa, capacidades concedidas e ultima execucao. isReadyToUse exige ready_to_use=true E state=TESTED_LIVE, entao o selo 'Pronto para usar' nao pode ser inferido do catalogo nem de um estado isolado. 10 testes novos (5 de logica pura + 5 de componente); suite web passou de 76/516 para 78/526",
-    "Nota de processo: os 5 testes de componente falharam na primeira execucao porque, em React 19, react-test-renderer so materializa a arvore dentro de act() (toJSON voltava null). O TESTE foi corrigido (padrao do proprio repo), nao o componente"
+    "Nota de processo: os 5 testes de componente falharam na primeira execucao porque, em React 19, react-test-renderer so materializa a arvore dentro de act() (toJSON voltava null). O TESTE foi corrigido (padrao do proprio repo), nao o componente",
+    "Estagio 8, fatia 6 ENTREGUE (PR #123): catalogo de skills com categoria, proveniencia (licenca/homepage/dependencias), ativacao por projeto/agente/modelo (campos vazios = curinga), selecao DETERMINISTICA por missao e orcamento de tokens. Skill nao confiavel nao pode ser ativada (ErrSkillNotTrusted) e a selecao nunca inclui skill desabilitada, registrando o MOTIVO de cada exclusao. Persistencia em skill-activations/<org>.json com rollback do estado em memoria em falha de escrita. Rotas POST /skills/:id/activate, POST /skills/:id/deactivate e GET /skills/active. 9 testes novos; nenhuma suite com regressao",
+    "Armadilha registrada para quem for escrever o proximo teste de skill: OrganizationID e Enabled entram nos bytes canonicos assinados, e o registro forca Enabled - assinar antes de definir esses campos invalida a assinatura (aconteceu comigo duas vezes nos fixtures, nunca no codigo)"
   ]
 }
