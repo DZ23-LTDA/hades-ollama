@@ -2,16 +2,17 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-10T17:00:00-03:00",
+  "updated_at": "2026-10-10T18:20:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
     "integration_branch": "main",
-    "main_sha": "962fa13d3d28db84f0e8486469f2408e30f29c7b",
+    "main_sha": "9e62fc256171c50303b46c34a8fae5db4ab3b0f6",
     "main_committed_at": "2026-10-09T10:24:45Z",
     "main_ci_state": "green (dz23-agentic-quality + class-a-plus-integrity = success nesse SHA)",
     "mission_branch": "docs/checkpoints-missao-v21",
-    "mission_branch_base": "889750abe4006985b3bf9037bca2323d1e40cef0"
+    "mission_branch_base": "889750abe4006985b3bf9037bca2323d1e40cef0",
+    "main_sha_convention": "main no momento da redacao: o proprio PR deste checkpoint avanca a main em um merge commit, entao a referencia fica exatamente um commit atras apos o merge"
   },
   "honesty_conventions": {
     "state_IN_PROGRESS": "conservador: nao comprovado como concluido; nao afirma trabalho executado",
@@ -790,8 +791,15 @@
     },
     {
       "id": "B-11",
+      "tipo": "RESOLVIDO",
+      "descricao": "7 PRs do dependabot com CI vermelho, tratados um a um SEM merge cego: #26 (mobile-tooling: react-dom/react-native/react-native-web) e #34 (eslint-plugin-storybook 10) estavam VERDES apos rebase na main atual e foram integrados; #30 (tablewriter 1.1.5) foi CORRIGIDO por migracao de codigo (PR #90, 20/20 checks); #27 (typescript 7), #29 (expo-notifications 58) e #33 (eslint-plugin-react-hooks 7) sao majors que exigem migracao propria e ganharam regra de ignore no .github/dependabot.yml, com os PRs fechados e justificados; #31 (grupo web-dev-tooling, minor/patch) revelou falha REAL e virou B-12. Nenhum PR foi mesclado com check vermelho"
+    },
+    {
+      "id": "B-12",
       "tipo": "AGUARDANDO_CORRECAO",
-      "descricao": "7 PRs do dependabot com CI VERMELHO e mantidos abertos como prova de incompatibilidade: #26, #27, #29, #30, #31, #33, #34. Desbloqueio: corrigir a incompatibilidade de cada bump (ou fechar o PR com justificativa). Nenhum foi mesclado: o CI deles falha hoje"
+      "severidade": "MEDIO",
+      "descricao": "PR #31 (grupo web-dev-tooling, 9 atualizacoes minor/patch: @tailwindcss/vite 4.1.11->4.3.3, @tanstack/router-plugin 1.120.20->1.168.42, @tailwindcss/typography e outros) quebra 'Web and mobile quality', 'test (ubuntu-latest)' e 'Web E2E (shell smoke)'. Por ser minor/patch NAO foi ignorado: e sinal de defeito real (ou de fragilidade da suite web) e precisa de diagnostico proprio",
+      "desbloqueio": "rodar a suite web com as versoes propostas, achar a causa e corrigir codigo/config"
     }
   ],
   "evidence_index": "docs/mission/HADES_EVIDENCE_INDEX.md",
@@ -837,6 +845,9 @@
     "Merge train 2 (#88): 14 PRs das rodadas 1-5 + 6 bumps de dependencia verdes integrados num unico ciclo de CI (23/23 checks success); main agora 962fa13d3",
     "Descoberta de governanca: o ruleset main-protection tem strict=True, entao CADA merge invalida os demais PRs ('2 of 2 required status checks are expected'); a partir da segunda rodada a integracao precisa ser por merge train (ou update-branch serial por PR)",
     "Conflito SEMANTICO encontrado no trem 2 e corrigido na raiz: #62 torna harness:cli uma capacidade real (ScopeHarnessCLI) enquanto o teste do #75 exigia INDISPONIVEL para esse escopo; a expectativa passou a PODE_EXECUTAR e a garantia de INDISPONIVEL continua provada com um escopo concedido que a politica desconhece. Capacidade nao foi revertida e teste nao foi desativado",
-    "Verificacao local do trem 2 antes de publicar: gofmt limpo, go build ./... exit 0 (com os bumps), go vet limpo, golangci-lint 0 issues, internal/agent apenas com as 3 falhas ambientais e server apenas com a falha ambiental conhecida"
+    "Verificacao local do trem 2 antes de publicar: gofmt limpo, go build ./... exit 0 (com os bumps), go vet limpo, golangci-lint 0 issues, internal/agent apenas com as 3 falhas ambientais e server apenas com a falha ambiental conhecida",
+    "Higiene de dependencias: dependabot nao deve mais abrir PR que ja nasce vermelho para majors sem plano (ignore no .github/dependabot.yml) — o registro fica no bloqueio, nao num PR semanal falhando",
+    "Correcao do tablewriter por migracao real (PR #90): v0 -> v1 com helper unico newTableWriter, erros de Bulk/Render deixaram de ser ignorados e o golden do `ollama list` foi atualizado com o diff byte-exato documentado (apenas espaco final do cabecalho)",
+    "Achado B-09: os testes de cmd/launch que usam SQLite falham em ambiente local com CGO_ENABLED=0 ('go-sqlite3 requires cgo... This is a stub') — e ambiente, nao defeito: o CI tem cgo. Provado em worktree limpo da main pura"
   ]
 }

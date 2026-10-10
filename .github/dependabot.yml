@@ -26,6 +26,13 @@ updates:
       web-prod:
         dependency-type: "production"
         update-types: ["patch"]
+    ignore:
+      # eslint-plugin-react-hooks 7.x muda regras de lint o suficiente para exigir
+      # migração própria (ver B-12 em docs/mission/HADES_MASTER_STATE.json).
+      # Enquanto não houver essa migração, o bot não deve abrir PR que já nasce
+      # vermelho: o registro fica no bloqueio, não num PR semanal falhando.
+      - dependency-name: "eslint-plugin-react-hooks"
+        versions: [">=7.0.0"]
 
   # Mobile companion (Expo)
   - package-ecosystem: "npm"
@@ -36,6 +43,15 @@ updates:
     groups:
       mobile-tooling:
         update-types: ["minor", "patch"]
+    ignore:
+      # TypeScript 7 é major com breaking changes: exige migração planejada (B-12).
+      - dependency-name: "typescript"
+        versions: [">=7.0.0"]
+      # expo-notifications é versionado ALINHADO ao SDK do Expo. O upgrade correto
+      # é `npx expo install expo-notifications` junto com a subida de SDK, nunca um
+      # bump isolado — por isso o bot não propõe mais este pacote.
+      - dependency-name: "expo-notifications"
+        versions: [">=0.32.0"]
 
   # GitHub Actions (supply chain) — favorece pinagem/atualização controlada
   - package-ecosystem: "github-actions"
