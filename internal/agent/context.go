@@ -27,6 +27,7 @@ type ContextStore struct {
 	skills        map[string]SkillManifest
 	skillPaths    map[string]string
 	schedules     map[string]Schedule
+	retention     map[string]MemoryRetentionPolicy
 	embedder      Embedder
 }
 
@@ -61,7 +62,7 @@ func scheduleOwnedByOrganization(owner, organizationID string) bool {
 
 func NewContextStore(root string) (*ContextStore, error) {
 	if strings.TrimSpace(root) == "" {
-		return &ContextStore{projects: map[string]Project{}, memories: map[string][]Memory{}, skills: map[string]SkillManifest{}, skillPaths: map[string]string{}, schedules: map[string]Schedule{}}, nil
+		return &ContextStore{projects: map[string]Project{}, memories: map[string][]Memory{}, skills: map[string]SkillManifest{}, skillPaths: map[string]string{}, schedules: map[string]Schedule{}, retention: map[string]MemoryRetentionPolicy{}}, nil
 	}
 	if err := os.MkdirAll(filepath.Join(root, "projects"), 0o700); err != nil {
 		return nil, err
@@ -75,7 +76,10 @@ func NewContextStore(root string) (*ContextStore, error) {
 	if err := os.MkdirAll(filepath.Join(root, "skills"), 0o700); err != nil {
 		return nil, err
 	}
-	store := &ContextStore{root: root, projects: map[string]Project{}, memories: map[string][]Memory{}, skills: map[string]SkillManifest{}, skillPaths: map[string]string{}, schedules: map[string]Schedule{}}
+	if err := os.MkdirAll(filepath.Join(root, "retention"), 0o700); err != nil {
+		return nil, err
+	}
+	store := &ContextStore{root: root, projects: map[string]Project{}, memories: map[string][]Memory{}, skills: map[string]SkillManifest{}, skillPaths: map[string]string{}, schedules: map[string]Schedule{}, retention: map[string]MemoryRetentionPolicy{}}
 	projectEntries, err := os.ReadDir(filepath.Join(root, "projects"))
 	if err != nil {
 		return nil, err
@@ -137,6 +141,26 @@ func NewContextStore(root string) (*ContextStore, error) {
 		manifest.Trusted = false
 		store.skills[manifest.ID] = manifest
 		store.skillPaths[manifest.ID] = filepath.Join(root, "skills", entry.Name())
+	}
+	// Políticas de retenção persistem por organização; política inválida em
+	// disco é recusada em vez de ser silenciosamente ignorada.
+	retentionEntries, err := os.ReadDir(filepath.Join(root, "retention"))
+	if err != nil {
+		return nil, err
+	}
+	for _, entry := range retentionEntries {
+		if entry.IsDir() || filepath.Ext(entry.Name()) != ".json" {
+			continue
+		}
+		var policy MemoryRetentionPolicy
+		if err := readJSON(filepath.Join(root, "retention", entry.Name()), &policy); err != nil {
+			return nil, err
+		}
+		validated, err := validateRetentionPolicy(policy)
+		if err != nil {
+			return nil, fmt.Errorf("retention %s: %w", entry.Name(), err)
+		}
+		store.retention[validated.OrganizationID] = validated
 	}
 	return store, nil
 }

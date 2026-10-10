@@ -6,6 +6,42 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/). 
 
 ## [Unreleased]
 
+### execução de comandos slash com autorização server-side — 2026-10-10
+
+- Novas rotas `GET /commands` (descoberta: registro, ajuda e autocomplete por `prefix`) e `POST /commands` (`{input}`), ligando o comando do registro canônico à **ação real** com a organização vinda da sessão.
+- **Cinco comandos executam de verdade:** `/status` (estado real da missão), `/cancel` (cancela **apenas** a missão alvo, com a mesma guarda de concorrência otimista da rota e sem atravessar tenant), `/memory` (busca no projeto autorizado, reusando a checagem de organização da rota em vez de reimplementar autorização), `/mcp` e `/skills` (listagens por organização).
+- **Honestidade no resto:** comando reconhecido sem backend responde **501 com o motivo**; comando ligado a rota mas ainda não executado por esta camada responde `executed: false` com o **backend real** e uma dica explícita — nunca "sucesso" sem ação executada.
+- Erros claros: comando desconhecido e corpo inválido ⇒ 400; parâmetro obrigatório ausente ⇒ 400 citando o parâmetro; comando indisponível ⇒ 501.
+- Isolamento verificado nas rotas de comando: missão de outra organização ⇒ 404 sem vazar existência nem objetivo; projeto de outra organização ⇒ recusado; `/cancel` de outra organização **não** altera a missão alheia.
+- Cobertura: 5 testes em `server/command_routes_test.go` (descoberta + ajuda + filtro por prefixo; erros de parse/parâmetro/comando indisponível; `/status` executando e escondendo missão estrangeira; `/cancel` isolado por organização; `/mcp`, `/skills` e `/memory` executando com recusa cross-tenant, mais `executed:false` honesto para `/goal`) e verificação de que as rotas estão registradas.
+
+### registro canônico de comandos slash — 2026-10-10
+
+- Novo `internal/agent/slash_registry.go` implementa o registro exigido pela §6/§11.1: antes existia apenas `ParseSlashCommand` reconhecendo `/goal` e `/missao`; agora o registro cobre os **32 comandos da seção 6 mais `/cancel`, `/approve` e `/deny`** exigidos nominalmente pela §11.1 (35 no total).
+- **Regra de honestidade embutida na tabela:** um comando só é marcado como **disponível** quando o backend dele existe de fato, com caminho e método declarados (`POST /api/agent/v1/missions`, `GET /api/agent/v1/whatsapp/status`, …). Comando sem rota fica **indisponível COM o motivo** (`/research`, `/support`, `/telegram`, `/inbox`, `/crm`, `/handoff`) — a interface nunca mostra botão que não executa nada.
+- `ParseSlashInvocation` valida esquema: comando desconhecido (`ErrUnknownSlashCommand`), comando indisponível recusado **com o motivo** (`ErrSlashCommandUnavailable`), parâmetro obrigatório ausente ou inválido (`ErrSlashCommandArgsInvalid`), excesso de parâmetros recusado em vez de ignorado em silêncio, e validação por tipo (`id` como identificador, `url` apenas `http(s)`).
+- `SlashHelp` monta a ajuda em pt-BR **separando** o que existe do que não existe ("Comandos indisponíveis nesta versão (não executam nada)"), e `CompleteSlashCommand` alimenta autocomplete ordenado, com ou sem barra inicial.
+- **Prova de que o registro não mente:** testes no pacote `server` registram o roteador real e verificam que **todo** comando disponível aponta para um caminho efetivamente registrado — rota inventada faz o teste falhar. Um segundo teste garante os seis comandos nomeados pela §11.1.
+- Cobertura: 3 testes em `internal/agent/slash_registry_test.go` (cobertura da seção 6 + invariantes de honestidade + os seis da §11.1 disponíveis e os seis sem rota indisponíveis; validação de esquema, parâmetros e tipos; ajuda e autocomplete) e 2 testes de integração em `server/slash_registry_routes_test.go`.
+
+
+### E2E de reordenação do Studio persistida no servidor — 2026-10-10
+
+- Spec novo `app/ui/app/e2e/studioReorder.spec.ts` provando que a reordenação do canvas do Studio sobrevive ao recarregamento: a ordem inicial é lida de `GET /api/agent/v1/builders/{id}`, o arraste grava via `updateBuilderVisual` (`POST /api/agent/v1/builders/{id}/visual`) e o botão acessível "Mover para baixo" grava a mesma coisa pela via de teclado/leitor de tela.
+- Contrato do builder isolado em `app/ui/app/e2e/studio-builder-fixture.mjs` (sem dependências), delegado pelo mesmo backend HTTP real da jornada de primeira execução; nada de `page.route` e os endpoints de controle ficam em `/api/__e2e/studio/*` apenas para atravessarem o proxy do preview.
+- O reinício é provado em aba nova (fechar e abrir), não com `reload`: só assim a ordem exibida vem obrigatoriamente da leitura do servidor.
+- Correção de premissa registrada: o Studio **já tinha** arraste real (`StudioCanvasPage.tsx:975-988`) e paridade por botão (`:1012-1024`), ambos persistindo; a lacuna era a ausência de asserção E2E, não de funcionalidade. O backlog datado que afirmava o contrário foi corrigido.
+- Verificações desta rodada: `npx playwright test` (10 testes, 1 worker) verde — 7 anteriores + 3 novos —, `npm run lint`, `npx vitest run` (65 arquivos, 396 testes), `npm run build` e `prettier --check` aprovados.
+
+### E2E de primeira execução com backend real — 2026-10-10
+
+- Spec novo `app/ui/app/e2e/firstRun.spec.ts` cobrindo instalação nova → onboarding → escolha local-first → primeiro modelo → `/connect` → reinício → atualização → rollback contra HTTP real, sem `page.route` e sem marcação local de estado.
+- Backend mínimo de teste `app/ui/app/e2e/first-run-backend.mjs` (sem dependências) servindo `GET/POST /api/v1/settings`, `GET /api/version`, `POST /api/me` e o stream NDJSON de `POST /api/v1/models/pull`; o `playwright.config.ts` sobe esse backend como segundo `webServer` e aponta o proxy `/api` do `vite preview` para ele.
+- O reinício passou a ser provado em aba nova: `goto`/`reload` na mesma URL mascarada (`app/ui/app/src/routes/index.tsx` usa `mask: { to: "/" }`) podem ser servidos pela memória do navegador e não reexecutam o portão do servidor — foi a causa de um falso positivo detectado durante a implementação.
+- Gate: novo passo `Web E2E — primeira execução` no job `web-and-mobile` de `.github/workflows/dz23-agentic-quality.yaml`; o workflow `dz23-e2e.yaml` continua rodando a suíte completa.
+- Limite declarado: o download do modelo é um stream stub (nenhum modelo real é baixado em CI); a asserção provada é o portão da UI — nenhum `Continuar` antes do fim do stream, `Continuar` depois. Missão, artefato, aprovação e cancelamento seguem cobertos pelo runtime em Go e por `app/ui/app/e2e/scheduleFlow.spec.ts`.
+- Verificações desta rodada: `npm run test:e2e` (7 testes, 1 worker) verde, `npm run lint`, `npm test -- --run` (65 arquivos, 396 testes), `npm run build` e `prettier --check` aprovados.
+
 ### rodada de paridade observável
 
 - Árvore de produto completa em [`docs/agentic/PRODUCT_TREE.md`](docs/agentic/PRODUCT_TREE.md), separando superfície observável, estado atual e alvo unificado.
