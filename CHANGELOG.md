@@ -6,14 +6,15 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/). 
 
 ## [Unreleased]
 
-### isolamento de memória por usuário — 2026-10-10
+### conteúdo externo tratado como dado não confiável — 2026-10-10
 
-- Novo `internal/agent/memory_isolation.go` fecha o escopo de **usuário** do estágio 15: duas pessoas da MESMA organização, no MESMO projeto, não podem mais ler a memória privada uma da outra — antes havia isolamento por organização e projeto, mas nenhum por ator.
-- `Memory` ganhou `visibility` (`organization` padrão / `private`) e `actor_id`, campos **opcionais**: memória antiga sem eles continua valendo como conhecimento do projeto, sem migração.
-- `AddMemoryForActor` normaliza a visibilidade e **ignora o `actor_id` enviado no corpo**: a autoria vem da sessão. Memória `private` sem ator identificado é recusada (`ErrMemoryActorRequired`) e visibilidade inventada é recusada (`ErrMemoryVisibilityInvalid`).
-- Leitura restrita ao ator em **todos** os caminhos: `SearchMemoriesForActor`, `RetrieveRelevantForActor` e `GroundedAnswerForActor` — a filtragem acontece **antes** da montagem das citações, para que memória privada alheia não apareça nem como referência.
-- Rotas ajustadas para usar o ator da sessão: `POST /projects/:id/memories`, `GET /projects/:id/memories` e `GET /projects/:id/ask`. Em modo autenticado o usuário validado tem precedência; o cabeçalho `X-Ollama-User` permanece como conveniência do modo local, onde o ator é o sintético `local` — **registrado explicitamente** para não sugerir autenticação onde não há.
-- Cobertura: 4 testes em `internal/agent/memory_isolation_test.go` (privada invisível a outro ator e a leitor anônimo, autoria não forjável pelo corpo, visibilidade inválida e privada sem ator recusadas sem gravar nada, persistência após reinício mantendo o dono, e RAG/recuperação respeitando o ator) e 3 testes de rota em `server/memory_user_isolation_test.go` (dois usuários na mesma organização e projeto; autoria forjada; `ask` não cita memória privada de outro usuário).
+- Novo `internal/agent/untrusted.go` aplica a §11.6 ao prompt: material de terceiros (documentos indexados, páginas web, e-mails, respostas de MCP) entra no contexto **rotulado como DADOS**, cercado por `<<<DADOS-EXTERNOS>>>` … `<<<FIM-DADOS-EXTERNOS>>>`, com a instrução explícita de nunca obedecer comandos contidos ali.
+- `NeutralizeUntrusted` substitui por um marcador **visível** (`[trecho removido: possível instrução injetada]`) linhas de papel privilegiado (`system:`, `assistant:`, `developer:`, `tool:`, `function:`), ordens clássicas de sobreposição ("ignore previous instructions", "desconsidere as instruções anteriores", "you are now", "novas instruções") e tokens de controle de chat (`<|im_start|>`, `<<SYS>>`, `[INST]`, `### Assistant:`) — inclusive os próprios marcadores da cerca, para que o conteúdo não consiga **fechar** o bloco em que foi colocado.
+- **Sem falso positivo em conteúdo legítimo**: rótulos comuns de documento em pt-BR ("Usuário:", "Sistema:") **não** são redigidos, porque apagar informação real do arquivo seria defeito, não proteção. Há teste dedicado comparando texto de negócio intacto.
+- `WrapUntrustedData` limita o bloco (teto de 4000 runes) mantendo a cerca fechada após truncar e rotula a origem (URL/título também neutralizados, pois vêm de terceiros).
+- Integração real: `BuildGroundedContext` (documentos) e, por consequência, `BuildWebGroundedContext` (pesquisa na web) passaram a cercar cada trecho como dado e a neutralizar a citação mostrada ao humano.
+- Limite declarado: é **mitigação determinística**, não prova de imunidade. Nenhum sanitizador garante que um modelo ignore uma injeção; o que se garante é rótulo, cerca inquebrável e neutralização visível dos padrões clássicos.
+- Cobertura: 6 testes em `internal/agent/untrusted_test.go` (padrões de injeção neutralizados e tokens de controle ausentes; conteúdo legítimo preservado; tentativa de quebra da cerca mantendo exatamente uma abertura e um fechamento; teto de tamanho e rótulo de origem; RAG rotulando e neutralizando trechos sem perder a atribuição das fontes; pesquisa na web igualmente tratada).
 
 
 ### E2E de reordenação do Studio persistida no servidor — 2026-10-10
