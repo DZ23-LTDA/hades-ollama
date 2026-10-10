@@ -2,7 +2,7 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-10T10:50:00-03:00",
+  "updated_at": "2026-10-10T11:15:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
@@ -20,7 +20,7 @@
     "capability_PENDENTE_DE_AUDITORIA": "extensao declarada; NAO e classificacao canonica e nao promove capacidade"
   },
   "pull_requests": {
-    "open_count": 34,
+    "open_count": 35,
     "merged_this_mission": [
       {
         "number": 54,
@@ -151,6 +151,12 @@
         "branch": "feat/context-bootstrap-api",
         "sha": "349be06a0",
         "tema": "rota de leitura do Context Bootstrap por missao (empilhada em #75)"
+      },
+      {
+        "number": 77,
+        "branch": "feat/memoria-governanca",
+        "sha": "d6eede138",
+        "tema": "governanca de memoria: exportacao, exclusao e retencao por projeto"
       }
     ],
     "dependabot_open": {
@@ -166,7 +172,8 @@
       73,
       74,
       75,
-      76
+      76,
+      77
     ],
     "stacked_on_branch": {
       "76": "feat/context-bootstrap",
@@ -426,10 +433,11 @@
       "auditoria": "AUDITADO",
       "capability": "IMPLEMENTADO_NAO_HOMOLOGADO",
       "evidence": [
-        "E-040"
+        "E-040",
+        "E-052"
       ],
       "blocker": "B-07",
-      "next": "Provar retencao, proveniencia, exportacao/exclusao e isolamento entre organizacoes na memoria"
+      "next": "Agendar expurgo automatico por politica de organizacao e provar troca de modelo, reinicio e isolamento entre usuarios; exclusao, exportacao com proveniencia e retencao por chamada explicita ja estao entregues (PR #77)"
     },
     {
       "id": 16,
@@ -788,6 +796,8 @@
     "Estagio 5 avancou de PENDENTE_DE_AUDITORIA para AUDITADO_PARCIAL/PARCIAL: existe documento canonico de contexto com permissoes declaradas, isolamento por projeto, DLP e limite de 8 KiB, injetado no planejador; falta a prova com dois modelos e a injecao nos demais pontos de chamada",
     "PR #76 (rota GET /api/agent/v1/missions/:id/context) aberto e VERDE: 20/20 checks success, mergeable_state=clean",
     "PR #76 e EMPILHADO: base=feat/context-bootstrap (#75); retarget para main depois do merge de #75",
-    "Estagio 5: montagem canonica + injecao no planejador + rota de leitura entregues; falta injetar nos demais pontos de chamada e a prova com dois modelos reais (B-07)"
+    "Estagio 5: montagem canonica + injecao no planejador + rota de leitura entregues; falta injetar nos demais pontos de chamada e a prova com dois modelos reais (B-07)",
+    "PR #77 (governanca de memoria) aberto e VERDE: 20/20 checks success, mergeable_state=clean; base main (independente)",
+    "Estagio 15 avancou: RemoveMemory com rollback, ExportMemories com proveniencia e embeddings opt-in, PruneMemories por idade (preservando memoria sem data) e 3 rotas com isolamento por organizacao; 8 testes novos"
   ]
 }
