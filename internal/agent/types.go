@@ -220,6 +220,16 @@ type SkillManifest struct {
 	SigningKeyID   string   `json:"signing_key_id,omitempty"`
 	ContentSHA256  string   `json:"content_sha256,omitempty"`
 	Signature      string   `json:"signature,omitempty"`
+	// Campos do estágio 8 (catálogo estruturado). Todos com `omitempty` para não
+	// alterar os bytes canônicos de manifestos já assinados.
+	Category     string   `json:"category,omitempty"`
+	License      string   `json:"license,omitempty"`
+	Homepage     string   `json:"homepage,omitempty"`
+	Dependencies []string `json:"dependencies,omitempty"`
+	// TokenBudget é o custo declarado da skill no orçamento de contexto. Zero
+	// significa "não declarado" e não consome orçamento — nunca é tratado como
+	// custo zero real por conveniência.
+	TokenBudget int `json:"token_budget,omitempty"`
 }
 
 type Schedule struct {
