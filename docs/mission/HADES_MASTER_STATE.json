@@ -2,7 +2,7 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-10T10:20:00-03:00",
+  "updated_at": "2026-10-10T10:50:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
@@ -20,7 +20,7 @@
     "capability_PENDENTE_DE_AUDITORIA": "extensao declarada; NAO e classificacao canonica e nao promove capacidade"
   },
   "pull_requests": {
-    "open_count": 33,
+    "open_count": 34,
     "merged_this_mission": [
       {
         "number": 54,
@@ -145,6 +145,12 @@
         "branch": "feat/context-bootstrap",
         "sha": "c722657fe",
         "tema": "Context Bootstrap canonico injetado no planejador de missao"
+      },
+      {
+        "number": 76,
+        "branch": "feat/context-bootstrap-api",
+        "sha": "349be06a0",
+        "tema": "rota de leitura do Context Bootstrap por missao (empilhada em #75)"
       }
     ],
     "dependabot_open": {
@@ -159,8 +165,13 @@
       72,
       73,
       74,
-      75
-    ]
+      75,
+      76
+    ],
+    "stacked_on_branch": {
+      "76": "feat/context-bootstrap",
+      "73": "feat/e2e-primeira-execucao"
+    }
   },
   "stage_states": {
     "COMPLETED_VERIFIED": [],
@@ -283,10 +294,11 @@
       "capability": "PARCIAL",
       "evidence": [
         "E-040",
-        "E-050"
+        "E-050",
+        "E-051"
       ],
       "blocker": "B-07",
-      "next": "Injetar o bootstrap nos demais pontos de chamada de modelo e provar a MESMA missao com dois modelos distintos preservando permissoes (E-050 entregou a montagem canonica e a injecao no planejador)"
+      "next": "Injetar o bootstrap nos demais pontos de chamada (chat e agentes) e provar a MESMA missao com dois modelos distintos preservando permissoes; montagem, injecao no planejador (PR #75) e rota de leitura (PR #76) ja estao entregues"
     },
     {
       "id": 6,
@@ -773,6 +785,9 @@
     "PR #74 (presets guiados de provedor) aberto e VERDE: 23/23 checks success, mergeable_state=clean; inclui Web and mobile quality, Web E2E e Go agentic and server gates",
     "Lacuna do estagio 4 parcialmente fechada: catalogo de presets no backend, exposto em GET /api/v1/providers e consumido pela tela de Provedores (14 testes novos, lint 0 issues, vitest 65/400)",
     "PR #75 (Context Bootstrap) aberto e VERDE: 20/20 checks success, 0 falhas; inclui Go agentic and server gates, Go agentic Windows portability, PostgreSQL RLS/Redis DLQ/OTLP e Web and mobile quality",
-    "Estagio 5 avancou de PENDENTE_DE_AUDITORIA para AUDITADO_PARCIAL/PARCIAL: existe documento canonico de contexto com permissoes declaradas, isolamento por projeto, DLP e limite de 8 KiB, injetado no planejador; falta a prova com dois modelos e a injecao nos demais pontos de chamada"
+    "Estagio 5 avancou de PENDENTE_DE_AUDITORIA para AUDITADO_PARCIAL/PARCIAL: existe documento canonico de contexto com permissoes declaradas, isolamento por projeto, DLP e limite de 8 KiB, injetado no planejador; falta a prova com dois modelos e a injecao nos demais pontos de chamada",
+    "PR #76 (rota GET /api/agent/v1/missions/:id/context) aberto e VERDE: 20/20 checks success, mergeable_state=clean",
+    "PR #76 e EMPILHADO: base=feat/context-bootstrap (#75); retarget para main depois do merge de #75",
+    "Estagio 5: montagem canonica + injecao no planejador + rota de leitura entregues; falta injetar nos demais pontos de chamada e a prova com dois modelos reais (B-07)"
   ]
 }

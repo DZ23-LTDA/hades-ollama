@@ -228,5 +228,7 @@ repositório, fecharam a maior parte das superfícies que estavam
 
 9. **Lacuna do estágio 5 parcialmente fechada nesta rodada.** Não existia injeção de contexto em nenhum ponto de chamada de modelo. O PR #75 entregou o **Context Bootstrap** canônico (`internal/agent/context_bootstrap.go`): permissões declaradas e nunca concedidas (escopo desconhecido vira `INDISPONIVEL`), identificadores de tenant/projeto/workspace fora do prompt, memória apenas do projeto com `RedactDLP`, limite de 8 KiB e 8 memórias com truncamento explícito, e injeção como mensagem de sistema no planejador de missão — 12 testes novos e 20/20 checks verdes (E-050). Continua aberto: injetar nos demais pontos de chamada e provar a mesma missão com dois modelos distintos, bloqueado por B-07.
 
+10. **Estágio 5, segunda fatia entregue (PR #76).** Além da montagem e da injeção no planejador (PR #75), a rota `GET /api/agent/v1/missions/:id/context` devolve o documento para qualquer cliente autorizado, herdando o isolamento por organização e mantendo o caráter somente leitura — 3 testes, 20/20 checks verdes (E-051). Continua aberto: injetar nos demais pontos de chamada (chat e agentes) e provar dois modelos distintos (B-07).
+
 Nada foi promovido a `COMPLETED_VERIFIED` nesta rodada. Estado agregado:
 0 `COMPLETED_VERIFIED`, 24 `IN_PROGRESS`, 14 `BLOCKED_BY_EXTERNAL_DEPENDENCY`.
