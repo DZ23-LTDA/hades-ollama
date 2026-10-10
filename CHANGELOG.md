@@ -6,6 +6,15 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/). 
 
 ## [Unreleased]
 
+### presets guiados de provedor de modelo — 2026-10-10
+
+- Catálogo de presets em `internal/multillm/presets.go` para o cadastro guiado do estágio 4: Ollama, vLLM, llama.cpp (llama-server) e LM Studio como servidores locais; OpenAI, Anthropic, Gemini, DeepSeek, Groq, Mistral, OpenRouter e xAI como APIs; e um preset genérico para qualquer servidor compatível com OpenAI.
+- Cada preset entrega `base_url`, nome da **variável de ambiente** da credencial, estilo de autenticação e caminhos de protocolo suportados — nunca o valor da credencial. Servidores locais precisam optar explicitamente por HTTP em loopback (`allow_private` + `allow_insecure_loopback`); os remotos exigem HTTPS.
+- Todo preset passa pela MESMA validação usada para a configuração vinda do disco (`validateProvider`), então um cadastro guiado não contorna as regras de HTTPS, endereço privado e caminho suportado.
+- `GET /api/v1/providers` passa a devolver `presets` junto de `providers`, alimentando o formulário "adicionar provedor" da interface sem rota nova e sem expor segredo.
+- Cobertura: 9 testes em `internal/multillm/presets_test.go` (validade/unicidade, famílias exigidas, loopback sem credencial, HTTPS e nome de variável nos remotos, auth `Bearer` e `X-API-Key`+`Anthropic-Version`, placeholder do preset genérico, tipo inválido) e 1 teste de endpoint em `app/ui/providers_test.go`.
+- Limite declarado: um preset não declara modelo nem capacidade — isso continua vindo de descoberta/sonda real; e a homologação com credencial de verdade segue bloqueada por B-07.
+
 ### rodada de paridade observável
 
 - Árvore de produto completa em [`docs/agentic/PRODUCT_TREE.md`](docs/agentic/PRODUCT_TREE.md), separando superfície observável, estado atual e alvo unificado.
