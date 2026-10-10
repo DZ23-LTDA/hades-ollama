@@ -84,6 +84,9 @@ type PluginExecutionRecord struct {
 	GrantedScopes []string  `json:"granted_scopes"`
 	ExecutedAt    time.Time `json:"executed_at"`
 	Isolation     string    `json:"isolation"`
+	// Succeeded distingue execução comprovada de tentativa recusada: é o que
+	// permite ao status do plugin exigir execução real antes de dizer "pronto".
+	Succeeded bool `json:"succeeded"`
 }
 
 // PluginExecutionResult devolve o registro auditável e a saída do executor.
@@ -225,6 +228,7 @@ func (r *PluginRuntime) Execute(ctx context.Context, request PluginExecutionRequ
 		GrantedScopes: append([]string(nil), installation.GrantedScopes...),
 		ExecutedAt:    time.Now().UTC(),
 		Isolation:     "sandbox.exec",
+		Succeeded:     execErr == nil,
 	}
 	r.record(record)
 	if execErr != nil {
