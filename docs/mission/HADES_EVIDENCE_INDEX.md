@@ -60,6 +60,7 @@ Python 3.12. Datas relativas a `2026-10-10T08:17-03:00`.
 | E-047 | probe de ausência (negócio) | `Select-String` sobre `internal/agent/*.go` para `marketplace`, `inbox`, `telephony`, `crm`, `billing`, `commerce`, `payment` | `marketplace=0`, `inbox=0`, `telephony=0`; `crm` e `billing` aparecem **apenas** em `connector_catalog.go`; `commerce`/`payment` só em catálogo, gate_status e supervisor | estágios 24–29 e 35: sem motor implementado |
 | E-048 | artefato de gate | `docs/mission/HADES_ENGINEERING_GATE.md` | gate intermediário (estágio 22) com relatório de 20 itens, suíte executada e veredito **APROVADO COM RESSALVAS** (engenharia verde; produto `NOT_RELEASE_READY`) | não substitui o gate final (38) |
 
+| E-049 | código + testes + CI | `go test ./internal/multillm/` · `npx vitest run` · `gh api .../commits/6c2c9cb70.../check-runs` | presets guiados entregues: 13 presets (Ollama, vLLM, llama.cpp, LM Studio locais; OpenAI, Anthropic, Gemini, DeepSeek, Groq, Mistral, OpenRouter, xAI remotos; genérico), expostos em `GET /api/v1/providers` e consumidos por `ProvidersPage`; 14 testes novos; `golangci-lint` 0 issues; vitest 65 arquivos/400 testes; build ok; PR #74 com **23/23 checks success** e `mergeable_state=clean` | homologação com credencial real segue em B-07 |
 ## Limitações declaradas deste índice
 
 0. E-034/E-035/E-036 foram coletadas **depois** da primeira versão deste

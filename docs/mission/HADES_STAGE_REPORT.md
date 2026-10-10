@@ -224,5 +224,7 @@ repositório, fecharam a maior parte das superfícies que estavam
    apps, e `cli_subscription.go` reconhece modelo de assinatura e custo — não há
    execução do CLI oficial.
 
+8. **Lacuna do estágio 4 parcialmente fechada nesta rodada.** Os *presets guiados* que faltavam foram entregues no PR #74: catálogo canônico em `internal/multillm/presets.go` (4 servidores locais + 8 APIs + genérico), exposto em `GET /api/v1/providers` e consumido pela tela de Provedores, com 14 testes novos e 23/23 checks verdes (E-049). O que continua aberto é a homologação com credencial real, bloqueada por B-07.
+
 Nada foi promovido a `COMPLETED_VERIFIED` nesta rodada. Estado agregado:
 0 `COMPLETED_VERIFIED`, 24 `IN_PROGRESS`, 14 `BLOCKED_BY_EXTERNAL_DEPENDENCY`.

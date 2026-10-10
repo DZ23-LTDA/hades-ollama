@@ -2,7 +2,7 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-10T09:40:00-03:00",
+  "updated_at": "2026-10-10T09:50:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
@@ -20,7 +20,7 @@
     "capability_PENDENTE_DE_AUDITORIA": "extensao declarada; NAO e classificacao canonica e nao promove capacidade"
   },
   "pull_requests": {
-    "open_count": 31,
+    "open_count": 32,
     "merged_this_mission": [
       {
         "number": 54,
@@ -133,6 +133,12 @@
         "branch": "feat/e2e-studio-reorder",
         "sha": "6465e88f7",
         "tema": "E2E de reordenacao do Studio persistida no servidor (P0-3)"
+      },
+      {
+        "number": 74,
+        "branch": "feat/presets-provedores-guiados",
+        "sha": "6c2c9cb70",
+        "tema": "presets guiados de provedor (backend + API + tela de Provedores)"
       }
     ],
     "dependabot_open": {
@@ -145,7 +151,8 @@
       70,
       71,
       72,
-      73
+      73,
+      74
     ]
   },
   "stage_states": {
@@ -255,10 +262,11 @@
       "evidence": [
         "E-024",
         "E-037",
-        "E-038"
+        "E-038",
+        "E-049"
       ],
       "blocker": "B-07",
-      "next": "Criar presets guiados (vLLM, LM Studio, llama.cpp, Lemonade, OpenRouter) sobre o tipo openai-compatible e homologar uma chamada real por familia (B-07)"
+      "next": "Homologar uma chamada real por familia de provedor (B-07); os presets guiados (13, incluindo 4 servidores locais) foram entregues no PR #74"
     },
     {
       "id": 5,
@@ -753,6 +761,8 @@
     "Achado relevante: Harness Runtime (estagio 6) e AUSENTE em main - grep 'harness' em internal/agent = 1 ocorrencia (arquivo de teste) e 0 em server/",
     "Achado relevante (CORRIGIDO): Model Gateway e guiado por tipo de protocolo (openai-compatible/anthropic/cli) com provedores em config JSON; vLLM/LM Studio/llama.cpp/Lemonade sao configuraveis, faltam presets guiados e chamada real (B-07)",
     "Achado relevante: CRM, Commerce, Marketplace, Payments, Inbox e Telefonia nao existem como motor em internal/agent (apenas entradas de catalogo de conector)",
-    "Artefato do gate intermediario criado: docs/mission/HADES_ENGINEERING_GATE.md (estagio 22)"
+    "Artefato do gate intermediario criado: docs/mission/HADES_ENGINEERING_GATE.md (estagio 22)",
+    "PR #74 (presets guiados de provedor) aberto e VERDE: 23/23 checks success, mergeable_state=clean; inclui Web and mobile quality, Web E2E e Go agentic and server gates",
+    "Lacuna do estagio 4 parcialmente fechada: catalogo de presets no backend, exposto em GET /api/v1/providers e consumido pela tela de Provedores (14 testes novos, lint 0 issues, vitest 65/400)"
   ]
 }
