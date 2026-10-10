@@ -40,6 +40,8 @@
 | Orquestrador de agentes e subagentes | `swarm.go` (20 func / 10 type) | IMPLEMENTADO_NAO_HOMOLOGADO | ALTO | E-043 | papéis, orçamento, plano, run e cancel testados; sem missão real com modelo |
 | Harness CLI governado | `internal/agent/cli_harness_tool.go` | PARCIAL | CRITICO | E-025 | **branch-local** (PR #62), não em `main` |
 
+| Context Bootstrap no chat da superfície Hades | `server/chat_context.go`, rota `/api/agent/v1/chat` (PR #127) | IMPLEMENTADO_NAO_HOMOLOGADO | ALTO | E-069 | injeção verificada e idempotente; prova com dois modelos reais depende de provider (B-07) |
+
 ## 4. Fluxos, schedules e automação
 
 | Capacidade | Superfície | Classificação | Risco | Evidência | Lacuna |
