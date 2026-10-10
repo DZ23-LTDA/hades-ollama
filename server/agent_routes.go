@@ -520,6 +520,12 @@ func (a *agentAPI) register(r *gin.Engine) {
 	group.DELETE("/projects/:id", a.deleteProject)
 	group.POST("/projects/:id/memories", a.addMemory)
 	group.GET("/projects/:id/memories", a.searchMemories)
+	// Governança de memória (estágio 15): exportar, apagar e aplicar retenção.
+	// Todas passam por `projectForRequest`, então herdam o isolamento por
+	// organização do projeto.
+	group.GET("/projects/:id/memories/export", a.exportProjectMemories)
+	group.DELETE("/projects/:id/memories/:memory_id", a.deleteProjectMemory)
+	group.POST("/projects/:id/memories/prune", a.pruneProjectMemories)
 	group.GET("/projects/:id/ask", a.askProjectDocuments)
 	group.GET("/collab/:project_id", a.collabSnapshot)
 	group.GET("/collab/:project_id/stream", a.collabStream)
@@ -1693,6 +1699,85 @@ func (a *agentAPI) askProjectDocuments(c *gin.Context) {
 		"query":      query,
 		"citations":  citations,
 		"grounded":   len(citations) > 0,
+	})
+}
+
+// exportProjectMemories devolve as memórias do projeto em ordem cronológica,
+// com proveniência (kind, source, confidence, created_at) e SEM os vetores de
+// embedding por padrão. `?include_embeddings=true` inclui os vetores.
+func (a *agentAPI) exportProjectMemories(c *gin.Context) {
+	if _, err := a.projectForRequest(c); err != nil {
+		writeAgentError(c, statusForAgentError(err), err)
+		return
+	}
+	includeEmbeddings := false
+	if raw := strings.TrimSpace(c.Query("include_embeddings")); raw != "" {
+		parsed, parseErr := strconv.ParseBool(raw)
+		if parseErr != nil {
+			writeAgentError(c, http.StatusBadRequest, errors.New("include_embeddings deve ser booleano"))
+			return
+		}
+		includeEmbeddings = parsed
+	}
+	memories := a.context.ExportMemories(c.Param("id"), includeEmbeddings)
+	c.JSON(http.StatusOK, gin.H{
+		"project_id":         c.Param("id"),
+		"count":              len(memories),
+		"include_embeddings": includeEmbeddings,
+		"memories":           memories,
+	})
+}
+
+// deleteProjectMemory apaga uma memória específica do projeto. Memória de outro
+// projeto devolve 404: o escopo é o projeto autenticado, não o id enviado.
+func (a *agentAPI) deleteProjectMemory(c *gin.Context) {
+	if _, err := a.projectForRequest(c); err != nil {
+		writeAgentError(c, statusForAgentError(err), err)
+		return
+	}
+	if err := a.context.RemoveMemory(c.Param("id"), c.Param("memory_id")); err != nil {
+		if errors.Is(err, agent.ErrMemoryNotFound) {
+			writeAgentError(c, http.StatusNotFound, err)
+			return
+		}
+		writeAgentError(c, http.StatusInternalServerError, err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"status":     "deleted",
+		"project_id": c.Param("id"),
+		"memory_id":  c.Param("memory_id"),
+	})
+}
+
+// pruneProjectMemories aplica retenção por idade. O corte é obrigatório e
+// limitado para que um pedido não apague o histórico inteiro por acidente.
+func (a *agentAPI) pruneProjectMemories(c *gin.Context) {
+	if _, err := a.projectForRequest(c); err != nil {
+		writeAgentError(c, statusForAgentError(err), err)
+		return
+	}
+	var request struct {
+		OlderThanDays int `json:"older_than_days"`
+	}
+	if err := decodeJSON(c, &request); err != nil {
+		writeAgentError(c, http.StatusBadRequest, err)
+		return
+	}
+	if request.OlderThanDays < 1 || request.OlderThanDays > 3650 {
+		writeAgentError(c, http.StatusBadRequest, errors.New("older_than_days deve estar entre 1 e 3650"))
+		return
+	}
+	cutoff := time.Now().UTC().AddDate(0, 0, -request.OlderThanDays)
+	removed, err := a.context.PruneMemories(c.Param("id"), cutoff)
+	if err != nil {
+		writeAgentError(c, http.StatusInternalServerError, err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"project_id":      c.Param("id"),
+		"removed":         removed,
+		"older_than_days": request.OlderThanDays,
 	})
 }
 

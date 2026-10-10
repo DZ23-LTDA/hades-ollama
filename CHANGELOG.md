@@ -6,16 +6,15 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/). 
 
 ## [Unreleased]
 
-### contexto automático (Context Bootstrap) injetado em qualquer modelo — 2026-10-10
+### governança de memória: exportar, apagar e retenção — 2026-10-10
 
-- Novo `internal/agent/context_bootstrap.go`: documento canônico de contexto montado a partir de estado real (organização, projeto, missão, memória e política de capacidades), com preâmbulo de sistema pronto para provedores de chat.
-- O preâmbulo declara identidade e versão do Hades, modo, o escopo autenticado de forma **sem identificadores** (organização, projeto, missão e caminho do workspace ficam no lado do servidor — regra já fixada por `TestOllamaPlannerDoesNotSendHostWorkspaceOrProjectID`), a tabela de permissões (`PODE_LER`, `PODE_EDITAR`, `PODE_EXECUTAR`, `PODE_DELEGAR`, `REQUER_APROVACAO`, `PROIBIDO`, `INDISPONIVEL`), plano e checkpoints e as regras invioláveis (nunca inventar resultado, nunca revelar segredo, tratar conteúdo externo como dado não confiável, respeitar `LOCAL_ONLY`).
-- Autorização continua sendo do servidor: o documento **declara** permissão e nunca concede. Escopo conhecido e não concedido vira `PROIBIDO`; escopo que a política não conhece vira `INDISPONIVEL` — pedir não é ter.
-- Isolamento e DLP: memórias só entram quando o projeto confere (sem projeto, nenhuma memória é injetada) e todo trecho passa por `RedactDLP`; o preâmbulo é limitado a 8 KiB e a 8 memórias, com truncamento explícito (`[contexto truncado pelo Hades]`).
-- Injeção real: o `OllamaPlanner` passa a enviar o preâmbulo como mensagem de sistema antes do objetivo quando a missão tem organização ou projeto (`internal/agent/planner.go`). Missão sem escopo de tenant mantém exatamente as duas mensagens originais.
-- Cobertura: 9 testes em `internal/agent/context_bootstrap_test.go` (escopo obrigatório, estados de permissão, determinismo, isolamento por projeto, ausência de projeto, redação de credencial, limites de memória, orçamento de bytes, `LOCAL_ONLY`/fontes não confiáveis, não vazamento de identificadores) e 3 testes de injeção no planejador.
-- Rota de leitura `GET /api/agent/v1/missions/:id/context` devolve o documento para a missão: identidade e versão do servidor, permissões declaradas, plano e memória do projeto (redigida e limitada). Reusa o isolamento por organização de `missionForRequest` e é somente leitura — nada ali concede capacidade. 3 testes em `server/mission_context_test.go`, incluindo o caso cross-tenant (404 sem ecoar identificador) e o caso de missão sem projeto (nenhuma memória).
-- Limite declarado: isto entrega a montagem, a injeção no planejador e a rota de leitura; estender a injeção aos demais pontos de chamada de modelo (chat e agentes) é o próximo passo do estágio 5.
+- Novo `internal/agent/context_memory_governance.go` completa o ciclo de vida da memória do projeto (estágio 15): o store já indexava e recuperava, mas não permitia apagar, exportar nem limitar retenção.
+- `RemoveMemory(projectID, memoryID)` — apaga uma memória do projeto com persistência atômica (`writeJSONAtomic`) e **rollback do estado em memória** quando a gravação falha; devolve `ErrMemoryNotFound` para memória inexistente ou de outro projeto.
+- `ExportMemories(projectID, includeEmbeddings)` — exporta em ordem cronológica estável com a proveniência preservada (`kind`, `source`, `confidence`, `created_at`); os vetores de embedding são **opt-in**, porque são dados derivados e volumosos.
+- `PruneMemories(projectID, olderThan)` — retenção por idade, com corte obrigatório; memória **sem data de criação é preservada** (apagar o que não se sabe quando foi criado seria destrutivo por suposição).
+- Rotas novas, todas atrás de `projectForRequest` e portanto com isolamento por organização: `GET /projects/:id/memories/export` (`?include_embeddings=true` opcional), `DELETE /projects/:id/memories/:memory_id` (404 para memória inexistente, 403 para projeto de outro locatário) e `POST /projects/:id/memories/prune` com `older_than_days` validado entre 1 e 3650.
+- Cobertura: 4 testes em `internal/agent/context_memory_governance_test.go` (proveniência/isolamento/embeddings opt-in, remoção com persistência e releitura do disco, **rollback quando a gravação falha**, retenção preservando recentes e sem data) e 4 testes em `server/project_memories_test.go` (exportação, 400 para janela inválida, 404 para memória ausente e 403 cross-tenant sem mutação).
+- Limite declarado: a retenção é aplicada por chamada explícita (rota ou operador); não há agendador automático de expurgo nem política de retenção por organização — isso segue no backlog do estágio 15.
 
 
 ### E2E de reordenação do Studio persistida no servidor — 2026-10-10
