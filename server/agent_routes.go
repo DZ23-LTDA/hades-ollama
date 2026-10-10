@@ -380,6 +380,9 @@ func (a *agentAPI) register(r *gin.Engine) {
 	group := r.Group("/api/agent/v1")
 	group.Use(a.authMiddleware)
 	group.GET("/health", a.health)
+	// Comandos slash (§6/§11.1): descoberta e execução pelo registro canônico.
+	group.GET("/commands", a.commandDiscovery)
+	group.POST("/commands", a.runCommand)
 	group.GET("/grok/status", a.grokStatus)
 	group.GET("/config/safe", a.safeConfig)
 	group.GET("/diagnostics", a.diagnostics)
