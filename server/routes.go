@@ -2031,6 +2031,9 @@ func (s *Server) GenerateRoutes() (http.Handler, error) {
 		if err != nil {
 			slog.Error("agent API unavailable; serving core Ollama routes only", "error", err)
 		} else {
+			// Reaproveita o caminho de inferência para o chat Hades (estágio 5):
+			// o preâmbulo de contexto é injetado antes por middleware.
+			agentAPI.chatHandlers = s.withInferenceRequestLogging("/api/agent/v1/chat", s.ChatHandler)
 			agentAPI.register(r)
 		}
 	}

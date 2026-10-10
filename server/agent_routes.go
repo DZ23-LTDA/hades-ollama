@@ -233,6 +233,10 @@ type agentAPI struct {
 	grok         *grok.Client
 	samlMu       sync.Mutex
 	samlServices map[string]*agent.SAMLService
+	// chatHandlers é o caminho de inferência reaproveitado pela rota agentic de
+	// chat (estágio 5): a injeção do contexto acontece antes dele, sem duplicar
+	// a inferência.
+	chatHandlers []gin.HandlerFunc
 	// activeStreams bounds concurrent long-lived SSE/WS connections (SEC-13).
 	activeStreams atomic.Int64
 }
@@ -580,6 +584,13 @@ func (a *agentAPI) register(r *gin.Engine) {
 	group := r.Group("/api/agent/v1")
 	group.Use(a.authMiddleware)
 	group.GET("/health", a.health)
+	// Chat da superfície Hades: mesmo caminho de inferência do /api/chat, com o
+	// contexto canônico injetado pelo middleware (estágio 5). O /api/chat de
+	// sempre permanece intocado para CLI e clientes compatíveis.
+	if len(a.chatHandlers) > 0 {
+		chatRoute := append([]gin.HandlerFunc{withAgentChatContext()}, a.chatHandlers...)
+		group.POST("/chat", chatRoute...)
+	}
 	// Comandos slash (§6/§11.1): descoberta e execução pelo registro canônico.
 	group.GET("/commands", a.commandDiscovery)
 	group.POST("/commands", a.runCommand)
