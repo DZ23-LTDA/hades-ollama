@@ -44,6 +44,9 @@ linters:
         - comandos
         - progresso
         - operacional
+        # Vocabulário do fluxo agendado (P0-2): dependente, condicional.
+        - dependente
+        - condicional
     depguard:
       rules:
         test-only-packages:
