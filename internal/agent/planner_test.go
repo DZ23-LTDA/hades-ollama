@@ -126,3 +126,75 @@ func TestParsePlanAcceptsStringInput(t *testing.T) {
 		t.Fatal("non-array steps must still be rejected")
 	}
 }
+
+func TestOllamaPlannerInjectsContextBootstrapForScopedMissions(t *testing.T) {
+	stub := &plannerChatStub{response: `{"steps":[{"kind":"workspace.read","title":"inspect","risk":"read","input":{"path":"."}}]}`}
+	planner := OllamaPlanner{Client: stub, Model: "default-model"}
+	_, err := planner.Plan(context.Background(), Mission{
+		ID:             "mission-1",
+		Objective:      "corrigir o bug",
+		OrganizationID: "org-a",
+		ProjectID:      "proj-1",
+		Workspace:      "/srv/privado/repo",
+		Capabilities:   []string{"workspace:read"},
+		Plan:           []Step{{Title: "Inspecionar"}, {Title: "Corrigir"}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(stub.messages) != 3 {
+		t.Fatalf("expected system + bootstrap + user, got %d messages", len(stub.messages))
+	}
+	preamble := stub.messages[1]
+	if preamble.Role != "system" {
+		t.Fatalf("bootstrap must be a system message, got %q", preamble.Role)
+	}
+	for _, want := range []string{"Hades", "Permissões declaradas", "workspace:read", "Nunca invente resultados"} {
+		if !strings.Contains(preamble.Content, want) {
+			t.Errorf("bootstrap preamble missing %q", want)
+		}
+	}
+	for _, secret := range []string{"/srv/privado/repo", "proj-1", "mission-1", "org-a"} {
+		if strings.Contains(preamble.Content, secret) {
+			t.Errorf("bootstrap preamble leaked %q", secret)
+		}
+	}
+	if stub.messages[2].Role != "user" || !strings.Contains(stub.messages[2].Content, "corrigir o bug") {
+		t.Fatalf("objective must remain the last user message: %+v", stub.messages[2])
+	}
+}
+
+func TestOllamaPlannerSkipsContextBootstrapWithoutTenantScope(t *testing.T) {
+	stub := &plannerChatStub{response: `{"steps":[{"kind":"workspace.read","title":"inspect","risk":"read","input":{"path":"."}}]}`}
+	planner := OllamaPlanner{Client: stub, Model: "default-model"}
+	if _, err := planner.Plan(context.Background(), Mission{Objective: "sem escopo"}); err != nil {
+		t.Fatal(err)
+	}
+	if len(stub.messages) != 2 {
+		t.Fatalf("unscoped mission must keep the original two messages, got %d", len(stub.messages))
+	}
+}
+
+func TestOllamaPlannerTreatsInvalidCapabilitiesAsNoPermission(t *testing.T) {
+	stub := &plannerChatStub{response: `{"steps":[{"kind":"workspace.read","title":"inspect","risk":"read","input":{"path":"."}}]}`}
+	planner := OllamaPlanner{Client: stub, Model: "default-model"}
+	_, err := planner.Plan(context.Background(), Mission{
+		ID:             "mission-1",
+		Objective:      "escopo com capacidade inválida",
+		OrganizationID: "org-a",
+		Capabilities:   []string{"root:tudo"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(stub.messages) != 3 {
+		t.Fatalf("expected the bootstrap message, got %d", len(stub.messages))
+	}
+	preamble := stub.messages[1].Content
+	if !strings.Contains(preamble, "root:tudo: INDISPONIVEL") {
+		t.Fatalf("invalid capability must be declared unavailable, got %q", preamble)
+	}
+	if strings.Contains(preamble, "root:tudo: PODE") {
+		t.Fatal("invalid capability must never be granted")
+	}
+}
