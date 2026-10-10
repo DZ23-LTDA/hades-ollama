@@ -226,5 +226,7 @@ repositório, fecharam a maior parte das superfícies que estavam
 
 8. **Lacuna do estágio 4 parcialmente fechada nesta rodada.** Os *presets guiados* que faltavam foram entregues no PR #74: catálogo canônico em `internal/multillm/presets.go` (4 servidores locais + 8 APIs + genérico), exposto em `GET /api/v1/providers` e consumido pela tela de Provedores, com 14 testes novos e 23/23 checks verdes (E-049). O que continua aberto é a homologação com credencial real, bloqueada por B-07.
 
+9. **Lacuna do estágio 5 parcialmente fechada nesta rodada.** Não existia injeção de contexto em nenhum ponto de chamada de modelo. O PR #75 entregou o **Context Bootstrap** canônico (`internal/agent/context_bootstrap.go`): permissões declaradas e nunca concedidas (escopo desconhecido vira `INDISPONIVEL`), identificadores de tenant/projeto/workspace fora do prompt, memória apenas do projeto com `RedactDLP`, limite de 8 KiB e 8 memórias com truncamento explícito, e injeção como mensagem de sistema no planejador de missão — 12 testes novos e 20/20 checks verdes (E-050). Continua aberto: injetar nos demais pontos de chamada e provar a mesma missão com dois modelos distintos, bloqueado por B-07.
+
 Nada foi promovido a `COMPLETED_VERIFIED` nesta rodada. Estado agregado:
 0 `COMPLETED_VERIFIED`, 24 `IN_PROGRESS`, 14 `BLOCKED_BY_EXTERNAL_DEPENDENCY`.

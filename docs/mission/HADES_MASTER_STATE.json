@@ -2,7 +2,7 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-10T09:50:00-03:00",
+  "updated_at": "2026-10-10T10:20:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
@@ -20,7 +20,7 @@
     "capability_PENDENTE_DE_AUDITORIA": "extensao declarada; NAO e classificacao canonica e nao promove capacidade"
   },
   "pull_requests": {
-    "open_count": 32,
+    "open_count": 33,
     "merged_this_mission": [
       {
         "number": 54,
@@ -139,6 +139,12 @@
         "branch": "feat/presets-provedores-guiados",
         "sha": "6c2c9cb70",
         "tema": "presets guiados de provedor (backend + API + tela de Provedores)"
+      },
+      {
+        "number": 75,
+        "branch": "feat/context-bootstrap",
+        "sha": "c722657fe",
+        "tema": "Context Bootstrap canonico injetado no planejador de missao"
       }
     ],
     "dependabot_open": {
@@ -152,7 +158,8 @@
       71,
       72,
       73,
-      74
+      74,
+      75
     ]
   },
   "stage_states": {
@@ -275,10 +282,11 @@
       "auditoria": "AUDITADO_PARCIAL",
       "capability": "PARCIAL",
       "evidence": [
-        "E-040"
+        "E-040",
+        "E-050"
       ],
       "blocker": "B-07",
-      "next": "Provar injecao de contexto com dois modelos distintos preservando permissoes e historico (nenhuma funcao de bootstrap/injecao foi localizada por probe)"
+      "next": "Injetar o bootstrap nos demais pontos de chamada de modelo e provar a MESMA missao com dois modelos distintos preservando permissoes (E-050 entregou a montagem canonica e a injecao no planejador)"
     },
     {
       "id": 6,
@@ -763,6 +771,8 @@
     "Achado relevante: CRM, Commerce, Marketplace, Payments, Inbox e Telefonia nao existem como motor em internal/agent (apenas entradas de catalogo de conector)",
     "Artefato do gate intermediario criado: docs/mission/HADES_ENGINEERING_GATE.md (estagio 22)",
     "PR #74 (presets guiados de provedor) aberto e VERDE: 23/23 checks success, mergeable_state=clean; inclui Web and mobile quality, Web E2E e Go agentic and server gates",
-    "Lacuna do estagio 4 parcialmente fechada: catalogo de presets no backend, exposto em GET /api/v1/providers e consumido pela tela de Provedores (14 testes novos, lint 0 issues, vitest 65/400)"
+    "Lacuna do estagio 4 parcialmente fechada: catalogo de presets no backend, exposto em GET /api/v1/providers e consumido pela tela de Provedores (14 testes novos, lint 0 issues, vitest 65/400)",
+    "PR #75 (Context Bootstrap) aberto e VERDE: 20/20 checks success, 0 falhas; inclui Go agentic and server gates, Go agentic Windows portability, PostgreSQL RLS/Redis DLQ/OTLP e Web and mobile quality",
+    "Estagio 5 avancou de PENDENTE_DE_AUDITORIA para AUDITADO_PARCIAL/PARCIAL: existe documento canonico de contexto com permissoes declaradas, isolamento por projeto, DLP e limite de 8 KiB, injetado no planejador; falta a prova com dois modelos e a injecao nos demais pontos de chamada"
   ]
 }
