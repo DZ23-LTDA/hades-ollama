@@ -6,26 +6,14 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/). 
 
 ## [Unreleased]
 
-### benchmarks reproduzíveis dos motores próprios — 2026-10-10
+### isolamento de memória por usuário — 2026-10-10
 
-- Novo `internal/agent/benchmark_test.go` mede o custo determinístico dos motores que o Hades controla: busca de memória em 500 memórias, ciclo instalar → atualizar → rollback → remover de plugin **com persistência**, promoção de plugin com assinatura ed25519 e montagem de contexto fundamentado com 32 fontes.
-- Metodologia registrada em [`docs/mission/HADES_BENCHMARK_METHOD.md`](docs/mission/HADES_BENCHMARK_METHOD.md): comando reproduzível (`go test ./internal/agent/ -run '^$' -bench Benchmark -benchtime=300ms -count=1`), ambiente, o que cada benchmark mede **e o que não mede**, resultado desta medição, como invalidar e o que ainda falta.
-- Limite declarado de forma explícita: **não há comparação com produtos concorrentes** e nenhuma alegação de superioridade. Uma comparação honesta exige a mesma tarefa, a mesma máquina e a licença/conta de cada produto; as métricas de tarefa dependem de inferência real (**B-07**).
-- Leitura honesta publicada junto dos números: a busca de memória é varredura linear (candidata a índice/ANN conforme o volume crescer) e os dois benchmarks de plugin são dominados por I/O de diretório temporário — não devem ser citados como custo de CPU.
-- Os benchmarks são ignorados pela suíte normal (`go test` sem `-bench`), portanto não atrasam o CI.
-
-### gerenciador de plugins com atualização e rollback — 2026-10-10
-
-- Novo `internal/agent/plugin_registry.go` fecha a lacuna do estágio 8: conector, MCP e skills tinham registro/habilitação/remoção, mas **não existia plugin de primeira classe** com manifesto versionado, dependências, integridade, atualização e rollback.
-- `PluginManifest` com id, versão, nome, kind (`connector`/`mcp`/`remote-mcp`/`skill`/`bundle`), escopos, dependências, licença, homepage e campos de assinatura. Validação recusa id com separador, versão fora de formato, kind desconhecido, dependência vazia e **auto-dependência**.
-- **Catálogo não é permissão**: instalar registra; `GrantedScopes` só é preenchido após `PromoteTrustedForOrganization`, que exige assinatura ed25519 válida de uma chave autorizada. Plugin não confiável aparece com `GrantedScopes` vazio e `Trusted: false`.
-- **Escopo desconhecido é recusado na instalação** (`ErrUnknownCapability`) — nunca aceito "para depois".
-- **Atualização otimista com histórico**: `UpdateForOrganization` exige a versão corrente esperada, guarda a versão anterior (até 5) e **retira a confiança da versão nova**; `RollbackForOrganization` desfaz uma atualização por vez (`ErrPluginRollbackDisabled` quando não há histórico).
-- **Isolamento por organização**: o mesmo id não pode pertencer a duas organizações (`ErrPluginOrganizationScope`), e get/list/enable/remove de outro locatário devolvem `ErrPluginNotFound` sem tocar no registro alheio.
-- **Persistência atômica** por organização com rollback do estado em memória quando a gravação falha; `LoadOrganization` **recusa estado adulterado no disco** comparando manifesto × digest.
-- Rotas novas (organização autenticada): `GET /plugins`, `POST /plugins`, `POST /plugins/:plugin_id/rollback` e `POST /plugins/:plugin_id/promote`. A raiz de confiança vem do operador em `OLLAMA_AGENT_PLUGIN_TRUSTED_KEYS` (`key_id:base64url_ed25519_public_key`, separados por vírgula); **sem essa configuração nenhuma promoção é possível** (falha fechada), e configuração inválida devolve 500 explícito em vez de silenciar.
-- Cobertura: 7 testes em `internal/agent/plugin_registry_test.go` (instalação sem conceder escopo + cópia defensiva, manifesto inválido/escopo inventado, isolamento entre organizações, atualização com histórico e conflito de versão, rollback consumindo o histórico, promoção exigindo chave autorizada e recusando manifesto adulterado, persistência com releitura e rollback em falha de gravação) e 3 testes de rota em `server/plugins_routes_test.go` (instalar/listar sem conceder, 403 cross-tenant e rollback sem histórico, promoção fechada sem raiz de confiança e concedendo com chave autorizada).
-- Limite declarado: os presets/instalação de conteúdo de plugin (baixar pacote, verificar arquivos) não fazem parte desta fatia; o registro governa manifesto, confiança, ciclo de vida e rollback.
+- Novo `internal/agent/memory_isolation.go` fecha o escopo de **usuário** do estágio 15: duas pessoas da MESMA organização, no MESMO projeto, não podem mais ler a memória privada uma da outra — antes havia isolamento por organização e projeto, mas nenhum por ator.
+- `Memory` ganhou `visibility` (`organization` padrão / `private`) e `actor_id`, campos **opcionais**: memória antiga sem eles continua valendo como conhecimento do projeto, sem migração.
+- `AddMemoryForActor` normaliza a visibilidade e **ignora o `actor_id` enviado no corpo**: a autoria vem da sessão. Memória `private` sem ator identificado é recusada (`ErrMemoryActorRequired`) e visibilidade inventada é recusada (`ErrMemoryVisibilityInvalid`).
+- Leitura restrita ao ator em **todos** os caminhos: `SearchMemoriesForActor`, `RetrieveRelevantForActor` e `GroundedAnswerForActor` — a filtragem acontece **antes** da montagem das citações, para que memória privada alheia não apareça nem como referência.
+- Rotas ajustadas para usar o ator da sessão: `POST /projects/:id/memories`, `GET /projects/:id/memories` e `GET /projects/:id/ask`. Em modo autenticado o usuário validado tem precedência; o cabeçalho `X-Ollama-User` permanece como conveniência do modo local, onde o ator é o sintético `local` — **registrado explicitamente** para não sugerir autenticação onde não há.
+- Cobertura: 4 testes em `internal/agent/memory_isolation_test.go` (privada invisível a outro ator e a leitor anônimo, autoria não forjável pelo corpo, visibilidade inválida e privada sem ator recusadas sem gravar nada, persistência após reinício mantendo o dono, e RAG/recuperação respeitando o ator) e 3 testes de rota em `server/memory_user_isolation_test.go` (dois usuários na mesma organização e projeto; autoria forjada; `ask` não cita memória privada de outro usuário).
 
 
 ### E2E de reordenação do Studio persistida no servidor — 2026-10-10
