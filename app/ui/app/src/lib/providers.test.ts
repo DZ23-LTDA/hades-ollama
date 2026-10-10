@@ -2,12 +2,15 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   createProvider,
   listProviders,
+  mergeProviderPresets,
   parseModelIds,
+  providerPresetHint,
   PROVIDER_PRESETS,
   saveProviderKey,
   sortProviders,
   staleModels,
   type ProviderStatus,
+  type ServerProviderPreset,
 } from "./providers";
 
 const provider = (name: string, configured: boolean): ProviderStatus => ({
@@ -44,6 +47,7 @@ describe("providers client", () => {
     await expect(listProviders()).resolves.toEqual({
       configPath: "",
       providers: [],
+      presets: [],
     });
   });
 
@@ -69,6 +73,89 @@ describe("providers client", () => {
     await expect(saveProviderKey("openai", "   ")).rejects.toThrow(
       "Cole a chave",
     );
+  });
+});
+
+describe("guided presets", () => {
+  const serverPreset = (
+    overrides: Partial<ServerProviderPreset>,
+  ): ServerProviderPreset => ({
+    id: "openai",
+    name: "OpenAI",
+    type: "openai-compatible",
+    base_url: "https://api.openai.com/v1",
+    paths: ["/v1/chat/completions"],
+    requires_key: true,
+    ...overrides,
+  });
+
+  it("prefers the canonical server presets and keeps Personalizado", () => {
+    const options = mergeProviderPresets([
+      serverPreset({
+        id: "ollama",
+        name: "Ollama (local)",
+        base_url: "http://127.0.0.1:11434",
+        local: true,
+        requires_key: false,
+      }),
+      serverPreset({
+        id: "vllm",
+        name: "vLLM (local)",
+        base_url: "http://127.0.0.1:8000/v1",
+        local: true,
+        requires_key: false,
+      }),
+    ]);
+    expect(options.map((preset) => preset.id)).toEqual([
+      "ollama",
+      "vllm",
+      "custom",
+    ]);
+    expect(options[0]).toMatchObject({
+      label: "Ollama (local)",
+      name: "ollama",
+      base_url: "http://127.0.0.1:11434",
+      local: true,
+      requires_key: false,
+    });
+    expect(options[0].hint).toContain("Servidor local");
+    expect(options.at(-1)?.id).toBe("custom");
+  });
+
+  it("falls back to the bundled list when the server exposes nothing", () => {
+    for (const empty of [undefined, null, []]) {
+      const options = mergeProviderPresets(empty);
+      expect(options).toEqual(PROVIDER_PRESETS);
+    }
+  });
+
+  it("drops duplicates and nameless entries from the server list", () => {
+    const options = mergeProviderPresets([
+      serverPreset({ id: "openai" }),
+      serverPreset({ id: "openai", name: "Duplicado" }),
+      serverPreset({ id: "  " }),
+    ]);
+    expect(options.map((preset) => preset.id)).toEqual(["openai", "custom"]);
+  });
+
+  it("explains credential and local expectations without exposing a key", () => {
+    expect(
+      providerPresetHint(serverPreset({ api_key_env: "OPENAI_API_KEY" })),
+    ).toBe("Exige credencial · variável OPENAI_API_KEY");
+    expect(
+      providerPresetHint(
+        serverPreset({
+          id: "lmstudio",
+          local: true,
+          requires_key: false,
+          api_key_env: undefined,
+          notes: "Porta padrão.",
+        }),
+      ),
+    ).toBe("Servidor local (HTTP em loopback) · Porta padrão.");
+    expect(
+      providerPresetHint(serverPreset({ requires_key: false })),
+    ).toBeUndefined();
   });
 });
 
@@ -119,7 +206,7 @@ describe("createProvider", () => {
         .fn()
         .mockResolvedValue(
           new Response(
-            JSON.stringify({ error: "já existe um provedor chamado \"openai\"" }),
+            JSON.stringify({ error: 'já existe um provedor chamado "openai"' }),
             { status: 409 },
           ),
         ),
