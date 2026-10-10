@@ -27,6 +27,8 @@
 
 import { createServer } from "node:http";
 
+import { createStudioBuilderFixture } from "./studio-builder-fixture.mjs";
+
 const PORT = Number(process.env.E2E_BACKEND_PORT || 43117);
 const HOST = "127.0.0.1";
 
@@ -56,6 +58,14 @@ function defaultSettings() {
 }
 
 let settings = defaultSettings();
+
+// Contrato do Studio (builder visual) fica em módulo próprio para manter este
+// processo como o ÚNICO backend real da suíte: a spec de reordenação precisa
+// de HTTP de verdade, não de `page.route`.
+const handleStudioBuilderRequest = createStudioBuilderFixture({
+  sendJSON,
+  readBody,
+});
 
 function sendJSON(response, status, payload) {
   const body = Buffer.from(JSON.stringify(payload));
@@ -158,7 +168,16 @@ const server = createServer(async (request, response) => {
     status = 401;
     sendJSON(response, status, {});
   } else {
-    sendJSON(response, status, { error: "not found" });
+    const studioStatus = await handleStudioBuilderRequest({
+      route,
+      request,
+      response,
+    });
+    if (studioStatus === null) {
+      sendJSON(response, status, { error: "not found" });
+    } else {
+      status = studioStatus;
+    }
   }
 
   process.stdout.write(`[e2e-backend] ${route} -> ${status}\n`);

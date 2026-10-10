@@ -6,6 +6,14 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/). 
 
 ## [Unreleased]
 
+### E2E de reordenação do Studio persistida no servidor — 2026-10-10
+
+- Spec novo `app/ui/app/e2e/studioReorder.spec.ts` provando que a reordenação do canvas do Studio sobrevive ao recarregamento: a ordem inicial é lida de `GET /api/agent/v1/builders/{id}`, o arraste grava via `updateBuilderVisual` (`POST /api/agent/v1/builders/{id}/visual`) e o botão acessível "Mover para baixo" grava a mesma coisa pela via de teclado/leitor de tela.
+- Contrato do builder isolado em `app/ui/app/e2e/studio-builder-fixture.mjs` (sem dependências), delegado pelo mesmo backend HTTP real da jornada de primeira execução; nada de `page.route` e os endpoints de controle ficam em `/api/__e2e/studio/*` apenas para atravessarem o proxy do preview.
+- O reinício é provado em aba nova (fechar e abrir), não com `reload`: só assim a ordem exibida vem obrigatoriamente da leitura do servidor.
+- Correção de premissa registrada: o Studio **já tinha** arraste real (`StudioCanvasPage.tsx:975-988`) e paridade por botão (`:1012-1024`), ambos persistindo; a lacuna era a ausência de asserção E2E, não de funcionalidade. O backlog datado que afirmava o contrário foi corrigido.
+- Verificações desta rodada: `npx playwright test` (10 testes, 1 worker) verde — 7 anteriores + 3 novos —, `npm run lint`, `npx vitest run` (65 arquivos, 396 testes), `npm run build` e `prettier --check` aprovados.
+
 ### E2E de primeira execução com backend real — 2026-10-10
 
 - Spec novo `app/ui/app/e2e/firstRun.spec.ts` cobrindo instalação nova → onboarding → escolha local-first → primeiro modelo → `/connect` → reinício → atualização → rollback contra HTTP real, sem `page.route` e sem marcação local de estado.
