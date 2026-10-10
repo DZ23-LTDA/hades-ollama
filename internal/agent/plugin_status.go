@@ -95,7 +95,7 @@ func (r *PluginRuntime) statusFor(organizationID string, installation PluginInst
 	case installation.ContentVerified && strings.TrimSpace(installation.ContentSHA256) != "" &&
 		r.Registry.VerifyInstalledContent(organizationID, installation.Manifest.ID) != nil:
 		status.State = PluginStateUnhealthy
-		status.Reasons = append(status.Reasons, "conteúdo no disco difere do digest verificado: reinstale antes de executar")
+		status.Reasons = append(status.Reasons, "conteúdo no disco difere do digest verificado: é preciso instalar o pacote de novo antes de executar")
 	case !installation.ContentVerified || strings.TrimSpace(installation.ContentSHA256) == "":
 		status.State = PluginStateUnsupported
 		status.Reasons = append(status.Reasons, "conteúdo do pacote não verificado: execução indisponível")
