@@ -88,6 +88,10 @@ type PluginInstallation struct {
 	InstalledAt     time.Time        `json:"installed_at"`
 	UpdatedAt       time.Time        `json:"updated_at"`
 	History         []PluginManifest `json:"history,omitempty"`
+	// Conteúdo verificado do pacote (segunda fatia do estágio 8).
+	ContentSHA256   string `json:"content_sha256,omitempty"`
+	ContentPath     string `json:"content_path,omitempty"`
+	ContentVerified bool   `json:"content_verified"`
 }
 
 // PluginManifestSignatureBytes é a representação canônica assinada. Os campos

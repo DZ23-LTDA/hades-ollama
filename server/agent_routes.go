@@ -522,6 +522,7 @@ func (a *agentAPI) register(r *gin.Engine) {
 	// AUTENTICADA; a promoção de confiança exige assinatura válida.
 	group.GET("/plugins", a.listPlugins)
 	group.POST("/plugins", a.installPlugin)
+	group.POST("/plugins/bundle", a.installPluginBundle)
 	group.POST("/plugins/:plugin_id/rollback", a.rollbackPlugin)
 	group.POST("/plugins/:plugin_id/promote", a.promotePlugin)
 	group.POST("/schedules", a.createSchedule)
@@ -1781,6 +1782,43 @@ func (a *agentAPI) installPlugin(c *gin.Context) {
 	c.JSON(http.StatusCreated, installation)
 }
 
+// installPluginBundle instala o plugin a partir de um PACOTE assinado. O
+// caminho só é aceito dentro do diretório permitido pelo operador
+// (OLLAMA_AGENT_PLUGIN_BUNDLE_DIR); sem essa configuração a rota falha fechada,
+// para que a API nunca vire leitura arbitrária de arquivo do host.
+func (a *agentAPI) installPluginBundle(c *gin.Context) {
+	organizationID := a.organizationID(c)
+	if organizationID == "" {
+		writeAgentError(c, http.StatusForbidden, errAgentForbidden)
+		return
+	}
+	var request struct {
+		Manifest   agent.PluginManifest `json:"manifest"`
+		BundlePath string               `json:"bundle_path"`
+		Signature  agent.SignedArtifact `json:"signature"`
+	}
+	if err := decodeJSON(c, &request); err != nil {
+		writeAgentError(c, http.StatusBadRequest, err)
+		return
+	}
+	bundlePath, err := agent.ResolvePluginBundlePath(strings.TrimSpace(os.Getenv(agent.PluginBundleDirEnv)), request.BundlePath)
+	if err != nil {
+		writeAgentError(c, http.StatusForbidden, err)
+		return
+	}
+	policy, err := pluginCapabilityPolicy()
+	if err != nil {
+		writeAgentError(c, http.StatusInternalServerError, err)
+		return
+	}
+	installation, err := a.plugins.InstallBundleForOrganization(organizationID, request.Manifest, bundlePath, request.Signature, policy)
+	if err != nil {
+		writeAgentError(c, statusForPluginError(err), err)
+		return
+	}
+	c.JSON(http.StatusCreated, installation)
+}
+
 // rollbackPlugin desfaz a última atualização registrada do plugin.
 func (a *agentAPI) rollbackPlugin(c *gin.Context) {
 	organizationID := a.organizationID(c)
@@ -1828,7 +1866,8 @@ func statusForPluginError(err error) int {
 	case errors.Is(err, agent.ErrPluginNotFound):
 		return http.StatusNotFound
 	case errors.Is(err, agent.ErrPluginOrganizationScope), errors.Is(err, agent.ErrPluginKeyUnauthorized),
-		errors.Is(err, agent.ErrPluginSignatureReq), errors.Is(err, agent.ErrPluginSignatureInvalid):
+		errors.Is(err, agent.ErrPluginSignatureReq), errors.Is(err, agent.ErrPluginSignatureInvalid),
+		errors.Is(err, agent.ErrPluginBundleUnavailable):
 		return http.StatusForbidden
 	case errors.Is(err, agent.ErrPluginRollbackDisabled):
 		return http.StatusConflict
