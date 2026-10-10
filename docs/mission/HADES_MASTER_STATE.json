@@ -2,7 +2,7 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-10T11:15:00-03:00",
+  "updated_at": "2026-10-10T11:45:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
@@ -20,7 +20,7 @@
     "capability_PENDENTE_DE_AUDITORIA": "extensao declarada; NAO e classificacao canonica e nao promove capacidade"
   },
   "pull_requests": {
-    "open_count": 35,
+    "open_count": 36,
     "merged_this_mission": [
       {
         "number": 54,
@@ -157,6 +157,12 @@
         "branch": "feat/memoria-governanca",
         "sha": "d6eede138",
         "tema": "governanca de memoria: exportacao, exclusao e retencao por projeto"
+      },
+      {
+        "number": 78,
+        "branch": "feat/plugins-governados",
+        "sha": "3f2e06ba3",
+        "tema": "gerenciador de plugins: manifesto versionado, confianca, atualizacao e rollback"
       }
     ],
     "dependabot_open": {
@@ -173,7 +179,8 @@
       74,
       75,
       76,
-      77
+      77,
+      78
     ],
     "stacked_on_branch": {
       "76": "feat/context-bootstrap",
@@ -341,10 +348,11 @@
       "auditoria": "AUDITADO",
       "capability": "PARCIAL",
       "evidence": [
-        "E-042"
+        "E-042",
+        "E-053"
       ],
       "blocker": null,
-      "next": "Completar o gerenciador de plugins (instalar/atualizar/rollback) alem do escopo por organizacao ja testado"
+      "next": "Baixar e verificar CONTEUDO de pacote de plugin (arquivos e assinatura do artefato) e expor o registro na UI; manifesto, confianca, atualizacao com historico e rollback ja estao entregues (PR #78)"
     },
     {
       "id": 9,
@@ -798,6 +806,8 @@
     "PR #76 e EMPILHADO: base=feat/context-bootstrap (#75); retarget para main depois do merge de #75",
     "Estagio 5: montagem canonica + injecao no planejador + rota de leitura entregues; falta injetar nos demais pontos de chamada e a prova com dois modelos reais (B-07)",
     "PR #77 (governanca de memoria) aberto e VERDE: 20/20 checks success, mergeable_state=clean; base main (independente)",
-    "Estagio 15 avancou: RemoveMemory com rollback, ExportMemories com proveniencia e embeddings opt-in, PruneMemories por idade (preservando memoria sem data) e 3 rotas com isolamento por organizacao; 8 testes novos"
+    "Estagio 15 avancou: RemoveMemory com rollback, ExportMemories com proveniencia e embeddings opt-in, PruneMemories por idade (preservando memoria sem data) e 3 rotas com isolamento por organizacao; 8 testes novos",
+    "PR #78 (gerenciador de plugins) aberto e VERDE: 20/20 checks success, mergeable_state=clean; base main (independente)",
+    "Estagio 8 avancou: PluginRegistry com manifesto validado, escopo desconhecido recusado na instalacao, confianca exigindo assinatura ed25519 de chave autorizada (raiz em OLLAMA_AGENT_PLUGIN_TRUSTED_KEYS, falha fechada), atualizacao otimista com historico, rollback, isolamento por organizacao e persistencia com deteccao de estado adulterado; 10 testes novos"
   ]
 }

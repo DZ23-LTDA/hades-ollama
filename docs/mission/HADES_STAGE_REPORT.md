@@ -232,5 +232,7 @@ repositório, fecharam a maior parte das superfícies que estavam
 
 11. **Lacuna do estágio 15 parcialmente fechada nesta rodada (PR #77).** O motor de memória já existia, mas sem ciclo de vida. Foram entregues exclusão com rollback, exportação com proveniência (embeddings opt-in) e retenção por idade preservando memória sem data, expostas em três rotas com isolamento por organização — 8 testes novos e 20/20 checks verdes (E-052). Continua aberto: expurgo automático por política de organização e prova de isolamento entre usuários.
 
+12. **Lacuna do estágio 8 parcialmente fechada nesta rodada (PR #78).** Plugins passaram a ter manifesto versionado, escopo recusado quando desconhecido, confiança decidida por assinatura ed25519 de chave autorizada (falha fechada sem raiz configurada), atualização otimista com histórico, rollback, isolamento por organização e persistência que detecta estado adulterado — 10 testes novos e 20/20 checks verdes (E-053). Continua aberto: baixar e verificar o CONTEÚDO do pacote e expor o registro na interface.
+
 Nada foi promovido a `COMPLETED_VERIFIED` nesta rodada. Estado agregado:
 0 `COMPLETED_VERIFIED`, 24 `IN_PROGRESS`, 14 `BLOCKED_BY_EXTERNAL_DEPENDENCY`.
