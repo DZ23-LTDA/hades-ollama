@@ -34,4 +34,5 @@ docs/evidencias/manus_*.png
 .manus/
 .work/
 outputs/
+# Toolchain Go e caches locais de verificação dos agentes (nunca commitar)
 _tmp/
