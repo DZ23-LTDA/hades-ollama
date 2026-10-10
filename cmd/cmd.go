@@ -32,6 +32,8 @@ import (
 	"github.com/containerd/console"
 	"github.com/mattn/go-runewidth"
 	"github.com/olekukonko/tablewriter"
+	"github.com/olekukonko/tablewriter/renderer"
+	"github.com/olekukonko/tablewriter/tw"
 	"github.com/pkg/browser"
 	"github.com/spf13/cobra"
 	"golang.org/x/crypto/ssh"
@@ -1183,16 +1185,13 @@ func ListHandler(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	table := tablewriter.NewWriter(os.Stdout)
-	table.SetHeader([]string{"NAME", "ID", "SIZE", "MODIFIED"})
-	table.SetHeaderAlignment(tablewriter.ALIGN_LEFT)
-	table.SetAlignment(tablewriter.ALIGN_LEFT)
-	table.SetHeaderLine(false)
-	table.SetBorder(false)
-	table.SetNoWhiteSpace(true)
-	table.SetTablePadding("    ")
-	table.AppendBulk(data)
-	table.Render()
+	table := newTableWriter(os.Stdout, []string{"NAME", "ID", "SIZE", "MODIFIED"})
+	if err := table.Bulk(data); err != nil {
+		return err
+	}
+	if err := table.Render(); err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -1238,16 +1237,13 @@ func ListRunningHandler(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	table := tablewriter.NewWriter(os.Stdout)
-	table.SetHeader([]string{"NAME", "ID", "SIZE", "PROCESSOR", "CONTEXT", "UNTIL"})
-	table.SetHeaderAlignment(tablewriter.ALIGN_LEFT)
-	table.SetAlignment(tablewriter.ALIGN_LEFT)
-	table.SetHeaderLine(false)
-	table.SetBorder(false)
-	table.SetNoWhiteSpace(true)
-	table.SetTablePadding("    ")
-	table.AppendBulk(data)
-	table.Render()
+	table := newTableWriter(os.Stdout, []string{"NAME", "ID", "SIZE", "PROCESSOR", "CONTEXT", "UNTIL"})
+	if err := table.Bulk(data); err != nil {
+		return err
+	}
+	if err := table.Render(); err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -1358,22 +1354,49 @@ func ShowHandler(cmd *cobra.Command, args []string) error {
 	return showInfo(resp, verbose, os.Stdout)
 }
 
-func showInfo(resp *api.ShowResponse, verbose bool, w io.Writer) error {
-	tableRender := func(header string, rows func() [][]string) {
-		fmt.Fprintln(w, " ", header)
-		table := tablewriter.NewWriter(w)
-		table.SetAlignment(tablewriter.ALIGN_LEFT)
-		table.SetBorder(false)
-		table.SetNoWhiteSpace(true)
-		table.SetTablePadding("    ")
+// newTableWriter emite as tabelas do CLI com o mesmo desenho de sempre (colunas
+// alinhadas à esquerda, sem bordas, sem separadores e sem espaço extra nas
+// células). Existe para concentrar a configuração da tablewriter v1, que passou a
+// usar opções/rendition em vez dos setters da v0.
+func newTableWriter(w io.Writer, header []string, options ...tablewriter.Option) *tablewriter.Table {
+	base := []tablewriter.Option{
+		tablewriter.WithRenderer(renderer.NewBlueprint(tw.Rendition{
+			Borders:  tw.BorderNone,
+			Symbols:  tw.NewSymbols(tw.StyleNone),
+			Settings: tw.Settings{Separators: tw.SeparatorsNone, Lines: tw.LinesNone},
+		})),
+		tablewriter.WithHeaderAlignment(tw.AlignLeft),
+		tablewriter.WithRowAlignment(tw.AlignLeft),
+		tablewriter.WithPadding(tw.Padding{Right: "    "}),
+	}
+	if header != nil {
+		base = append(base, tablewriter.WithHeader(header))
+	}
+	return tablewriter.NewTable(w, append(base, options...)...)
+}
 
+func showInfo(resp *api.ShowResponse, verbose bool, w io.Writer) error {
+	var renderErr error
+	tableRender := func(header string, rows func() [][]string) {
+		if renderErr != nil {
+			return
+		}
+		fmt.Fprintln(w, " ", header)
+		options := []tablewriter.Option{}
 		switch header {
 		case "Template", "System", "License":
-			table.SetColWidth(100)
+			options = append(options, tablewriter.WithColumnMax(100))
 		}
+		table := newTableWriter(w, nil, options...)
 
-		table.AppendBulk(rows())
-		table.Render()
+		if err := table.Bulk(rows()); err != nil {
+			renderErr = err
+			return
+		}
+		if err := table.Render(); err != nil {
+			renderErr = err
+			return
+		}
 		fmt.Fprintln(w)
 	}
 
