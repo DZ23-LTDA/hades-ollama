@@ -6,6 +6,14 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/). 
 
 ## [Unreleased]
 
+### benchmarks reproduzíveis dos motores próprios — 2026-10-10
+
+- Novo `internal/agent/benchmark_test.go` mede o custo determinístico dos motores que o Hades controla: busca de memória em 500 memórias, ciclo instalar → atualizar → rollback → remover de plugin **com persistência**, promoção de plugin com assinatura ed25519 e montagem de contexto fundamentado com 32 fontes.
+- Metodologia registrada em [`docs/mission/HADES_BENCHMARK_METHOD.md`](docs/mission/HADES_BENCHMARK_METHOD.md): comando reproduzível (`go test ./internal/agent/ -run '^$' -bench Benchmark -benchtime=300ms -count=1`), ambiente, o que cada benchmark mede **e o que não mede**, resultado desta medição, como invalidar e o que ainda falta.
+- Limite declarado de forma explícita: **não há comparação com produtos concorrentes** e nenhuma alegação de superioridade. Uma comparação honesta exige a mesma tarefa, a mesma máquina e a licença/conta de cada produto; as métricas de tarefa dependem de inferência real (**B-07**).
+- Leitura honesta publicada junto dos números: a busca de memória é varredura linear (candidata a índice/ANN conforme o volume crescer) e os dois benchmarks de plugin são dominados por I/O de diretório temporário — não devem ser citados como custo de CPU.
+- Os benchmarks são ignorados pela suíte normal (`go test` sem `-bench`), portanto não atrasam o CI.
+
 ### gerenciador de plugins com atualização e rollback — 2026-10-10
 
 - Novo `internal/agent/plugin_registry.go` fecha a lacuna do estágio 8: conector, MCP e skills tinham registro/habilitação/remoção, mas **não existia plugin de primeira classe** com manifesto versionado, dependências, integridade, atualização e rollback.
