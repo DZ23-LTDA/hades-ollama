@@ -2,9 +2,11 @@ package server
 
 import (
 	"context"
+	"crypto/ed25519"
 	"crypto/hmac"
 	"crypto/sha256"
 	"crypto/subtle"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -23,8 +25,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"crypto/ed25519"
-	"encoding/base64"
 	"github.com/gin-gonic/gin"
 	"github.com/ollama/ollama/api"
 	"github.com/ollama/ollama/envconfig"
