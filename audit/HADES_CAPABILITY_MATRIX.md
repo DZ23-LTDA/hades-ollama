@@ -106,9 +106,11 @@
   botão/teclado e persistência da ordem passaram a `IMPLEMENTADO_E_TESTADO` com
   E-034.)
 - **Sem auditoria:** 0 linhas nesta matriz após a rodada 2 (antes eram 12).
-- **Novos achados da rodada 2:** o Model Gateway cobre 7 famílias de provedor,
-  mas **não** vLLM/llama.cpp/LM Studio/Lemonade/OpenRouter (E-038); o Harness
-  Runtime está `AUSENTE` em `main` (E-041).
+- **Novos achados da rodada 2:** o Model Gateway é guiado por **tipo de
+  protocolo** (`openai-compatible`, `anthropic`, `cli`) com provedores vindos de
+  configuração — logo servidores OpenAI-compatible são suportados; falta preset
+  guiado e chamada real (E-038). O Harness Runtime está `AUSENTE` em `main`
+  (E-041).
 - Nenhuma linha foi promovida a `COMPLETED_VERIFIED` (esse valor pertence ao
   eixo de estágio/release, não a esta matriz).
 - Um conector no catálogo **não** é um conector funcional: `APENAS_CATALOGO`

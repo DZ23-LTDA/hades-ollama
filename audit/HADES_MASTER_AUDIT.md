@@ -42,8 +42,9 @@ total) + reconferência dos estágios tocados nesta rodada.
   elevado em auto-run (E-026).
 - **Rodada 2:** 18 estágios antes `PENDENTE_DE_AUDITORIA` receberam
   classificação a partir de probe real, incluindo a confirmação de que o
-  Harness Runtime está ausente em `main` (E-041) e de que o Model Gateway não
-  cobre 5 dos provedores exigidos (E-038).
+  Harness Runtime está ausente em `main` (E-041) e de que o Model Gateway é
+  guiado por tipo de protocolo (E-038, com correção de uma leitura inicial
+  imprecisa baseada em contagem de palavras).
 
 ## 3. Correções de premissa (auditoria que se corrige)
 
@@ -97,7 +98,7 @@ Achados que mudam decisão de produto:
 | Achado | Evidência | Consequência |
 | --- | --- | --- |
 | Harness Runtime **não existe em `main`** | `grep harness` = 0 em `server/`, 1 em `internal/agent` (teste) | estágio 6 é `AUSENTE`; rota é mergear o PR #62 (B-01) |
-| Model Gateway cobre 7 famílias, não 12 | `internal/multillm` (26 arquivos) + contagem por provedor | faltam vLLM, llama.cpp, LM Studio, Lemonade e OpenRouter |
+| Model Gateway é type-based (3 tipos), config-driven | `internal/multillm` (26 arquivos) + `registry.go:49-51` | vLLM, LM Studio, llama.cpp e Lemonade entram por configuração `openai-compatible`; faltam presets guiados e chamada real |
 | Memória tem motor real, injeção de contexto não evidenciada | `ContextStore.RetrieveRelevant`, `OllamaEmbedder` | estágios 5 e 15 ficam `PARCIAL`/`IMPLEMENTADO_NAO_HOMOLOGADO` |
 | Subagentes têm orquestrador completo | `swarm.go` (papéis, orçamento, plano, run, cancel) | falta apenas missão real com artefatos |
 | Plugins/Skills são parciais | `plugin_scope.go` vs. manifesto assinado de skills | gerenciador de plugins não evidenciado |

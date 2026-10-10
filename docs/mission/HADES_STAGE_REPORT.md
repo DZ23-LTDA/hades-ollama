@@ -192,11 +192,17 @@ repositório, fecharam a maior parte das superfícies que estavam
 1. **Harness Runtime (estágio 6) é `AUSENTE` em `main`.** `grep harness` em
    `server/*.go` = 0 e em `internal/agent/*.go` = 1 (arquivo de teste). A
    implementação governada está no PR #62, ainda não mergeado ⇒ depende de B-01.
-2. **Model Gateway (estágio 4) é real, mas incompleto na lista exigida.**
-   `internal/multillm` tem 26 arquivos Go (15 de teste) com registry, router
-   automático, descoberta, probe, orçamento (`spend.go`), credenciais por SO e
-   egress zero-trust. Cobre Anthropic/OpenAI/Grok-xAI/Gemini/Groq/DeepSeek/
-   Mistral; **não** cobre vLLM, llama.cpp, LM Studio, Lemonade nem OpenRouter.
+2. **Model Gateway (estágio 4) é real e é guiado por TIPO de protocolo, não
+   por fornecedor.** `internal/multillm` tem 26 arquivos Go (15 de teste) com
+   registry, router automático, descoberta, probe, orçamento (`spend.go`),
+   credenciais por SO e egress zero-trust. `registry.go:49-51` define três
+   tipos — `openai-compatible`, `anthropic`, `cli` — e os provedores vêm de
+   config JSON (`base_url`, HTTPS obrigatório fora de loopback, `allow_private`
+   explícito, validação de IP privado). Portanto vLLM, LM Studio, llama.cpp e
+   Lemonade (servidores OpenAI-compatible) são **configuráveis**; o que falta é
+   **preset guiado** para eles e homologação com credencial real (B-07).
+   Correção registrada: uma primeira leitura por contagem de palavras sugeria
+   "5 provedores ausentes" — era imprecisa.
 3. **Memória/contexto (estágios 5 e 15) tem motor real** (`ContextStore` com
    `AddMemory`, `SearchMemories`, `RetrieveRelevant` com score mínimo,
    `OllamaEmbedder`, escopo por organização testado), mas **nenhuma função de

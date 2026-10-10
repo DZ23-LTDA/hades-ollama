@@ -258,7 +258,7 @@
         "E-038"
       ],
       "blocker": "B-07",
-      "next": "Adicionar adaptadores ausentes (vLLM, llama.cpp, LM Studio, Lemonade, OpenRouter) e homologar uma chamada real por provedor"
+      "next": "Criar presets guiados (vLLM, LM Studio, llama.cpp, Lemonade, OpenRouter) sobre o tipo openai-compatible e homologar uma chamada real por familia (B-07)"
     },
     {
       "id": 5,
@@ -751,7 +751,7 @@
     "A pendencia P0-3 do backlog datado foi corrigida: o Studio JA tinha arraste real; a lacuna era falta de assercao E2E",
     "Rodada 2 (2026-10-10): 18 estagios antes PENDENTE_DE_AUDITORIA receberam classificacao com base em probe real (E-037..E-047)",
     "Achado relevante: Harness Runtime (estagio 6) e AUSENTE em main - grep 'harness' em internal/agent = 1 ocorrencia (arquivo de teste) e 0 em server/",
-    "Achado relevante: Model Gateway cobre Anthropic/OpenAI/Grok-xAI/Gemini/Groq/DeepSeek/Mistral, mas NAO tem vLLM, llama.cpp, LM Studio, Lemonade nem OpenRouter",
+    "Achado relevante (CORRIGIDO): Model Gateway e guiado por tipo de protocolo (openai-compatible/anthropic/cli) com provedores em config JSON; vLLM/LM Studio/llama.cpp/Lemonade sao configuraveis, faltam presets guiados e chamada real (B-07)",
     "Achado relevante: CRM, Commerce, Marketplace, Payments, Inbox e Telefonia nao existem como motor em internal/agent (apenas entradas de catalogo de conector)",
     "Artefato do gate intermediario criado: docs/mission/HADES_ENGINEERING_GATE.md (estagio 22)"
   ]
