@@ -136,6 +136,78 @@ func TestQuickConnectOperationsReturnsDefensiveCopy(t *testing.T) {
 	}
 }
 
+func TestCatalogStatusAndKindVocabularyIsClosed(t *testing.T) {
+	knownStatus := map[string]bool{
+		"available":                   true,
+		"operator_setup_required":     true,
+		"provider_selection_required": true,
+	}
+	knownKind := map[string]bool{"app": true, "custom_api": true, "mcp": true}
+	counted := 0
+	for _, entry := range ConnectorCatalog() {
+		counted++
+		if !knownStatus[entry.Status] {
+			t.Errorf("%s has unknown status %q", entry.ID, entry.Status)
+		}
+		if !knownKind[entry.Kind] {
+			t.Errorf("%s has unknown kind %q", entry.ID, entry.Kind)
+		}
+		if len(entry.Scopes) == 0 {
+			t.Errorf("%s declares no scope, so the UI cannot describe the grant", entry.ID)
+		}
+	}
+	if counted == 0 {
+		t.Fatal("connector catalog is empty")
+	}
+}
+
+func TestCatalogQuickConnectMetadataMatchesDerivedFlags(t *testing.T) {
+	for _, entry := range ConnectorCatalog() {
+		if !entry.QuickConnect {
+			if entry.APIBaseURL != "" || entry.APIAuthHeader != "" || entry.APIAuthScheme != "" || entry.APISelfHosted {
+				t.Errorf("%s exposes quick-connect metadata without the quick-connect flag", entry.ID)
+			}
+			continue
+		}
+		if entry.APIBaseURL == "" && !entry.APISelfHosted {
+			t.Errorf("%s is quick-connect but declares no base URL and is not self-hosted", entry.ID)
+		}
+		if entry.APIBaseURL != "" && !strings.HasPrefix(entry.APIBaseURL, "https://") {
+			t.Errorf("%s quick-connect base %q must be https", entry.ID, entry.APIBaseURL)
+		}
+		if entry.APIAuthHeader != "" && !validAuthHeader(entry.APIAuthHeader) {
+			t.Errorf("%s quick-connect header %q is not accepted by connector validation", entry.ID, entry.APIAuthHeader)
+		}
+		if entry.APIAuthScheme != "" && !validAuthScheme(entry.APIAuthScheme) {
+			t.Errorf("%s quick-connect scheme %q is not accepted", entry.ID, entry.APIAuthScheme)
+		}
+		if len(QuickConnectOperations(entry.ID)) == 0 {
+			t.Errorf("%s is exposed as quick-connect without a read policy", entry.ID)
+		}
+	}
+}
+
+func TestCatalogAvailabilityRequiresAShippedAuthPath(t *testing.T) {
+	// Promover um conector a "available" só é honesto quando o harness entrega o
+	// caminho de autenticação. Estes modos sempre dependem de material que só o
+	// operador possui (chave, certificado, bot token, URL de instância própria),
+	// então continuam exigindo configuração explícita.
+	operatorSupplied := map[string]bool{
+		"api_key":                true,
+		"api_key_or_certificate": true,
+		"bot_token":              true,
+		"connection_url":         true,
+	}
+	for _, entry := range ConnectorCatalog() {
+		if entry.Status != "available" {
+			continue
+		}
+		if operatorSupplied[entry.Auth] {
+			t.Errorf("%s is available but auth %q always requires operator-provisioned material", entry.ID, entry.Auth)
+		}
+	}
+}
+
 func TestConnectorAuthHeader(t *testing.T) {
 	for _, tc := range []struct {
 		header, scheme, wantHeader, wantValue string
