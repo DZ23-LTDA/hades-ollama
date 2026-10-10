@@ -5,6 +5,7 @@ import { ThemeSwitcher } from "@/components/ThemeSwitcher";
 import HadesEmblem from "@/components/HadesEmblem";
 import {
   ArrowPathIcon,
+  ArrowsRightLeftIcon,
   BookOpenIcon,
   BuildingOffice2Icon,
   BoltIcon,
@@ -50,6 +51,7 @@ export type AppSection =
   | "providers"
   | "endpoint"
   | "tasks"
+  | "compare"
   | "company";
 
 type Icon = React.ComponentType<{ className?: string }>;
@@ -384,6 +386,14 @@ export function AppNavigation({ current }: { current: AppSection }) {
             current={current}
             section="tasks"
             icon={ArrowPathIcon}
+          />
+          <TargetLink
+            href="/compare"
+            label="Comparar modelos"
+            current={current}
+            section="compare"
+            icon={ArrowsRightLeftIcon}
+            badge="Novo"
           />
 
       <div className="mt-2 flex items-center justify-between px-2.5 pt-2">
