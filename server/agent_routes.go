@@ -2,9 +2,11 @@ package server
 
 import (
 	"context"
+	"crypto/ed25519"
 	"crypto/hmac"
 	"crypto/sha256"
 	"crypto/subtle"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -33,6 +35,7 @@ import (
 type agentAPI struct {
 	runtime      *agent.Runtime
 	context      *agent.ContextStore
+	plugins      *agent.PluginRegistry
 	auth         *agent.AuthStore
 	oauthClients *agent.OAuthClientStore
 	authRequired bool
@@ -77,7 +80,14 @@ func newAgentAPI(runtime *agent.Runtime) (*agentAPI, error) {
 	if runtime != nil && runtime.RequiresOrganizationAuthentication() {
 		required = true
 	}
-	return &agentAPI{runtime: runtime, context: runtime.Context(), auth: auth, oauthClients: oauthClients, authRequired: required, push: runtime.Push(), grok: grokClient, samlServices: map[string]*agent.SAMLService{}}, nil
+	// Registro de plugins (estágio 8): manifesto versionado, atualização
+	// otimista e rollback. A confiança continua sendo decidida pelo servidor,
+	// pela chave autorizada em OLLAMA_AGENT_PLUGIN_TRUSTED_KEYS.
+	pluginRegistry, err := agent.NewPluginRegistry(storeRoot)
+	if err != nil {
+		return nil, err
+	}
+	return &agentAPI{runtime: runtime, context: runtime.Context(), plugins: pluginRegistry, auth: auth, oauthClients: oauthClients, authRequired: required, push: runtime.Push(), grok: grokClient, samlServices: map[string]*agent.SAMLService{}}, nil
 }
 
 func newAgentGrokClient() (*grok.Client, error) {
@@ -508,6 +518,12 @@ func (a *agentAPI) register(r *gin.Engine) {
 	group.POST("/companies/:id/agents/:agent_id/resume", a.resumeCompanyAgent)
 	group.POST("/companies/:id/agents/:agent_id/spend", a.recordCompanyAgentSpend)
 	group.GET("/schedules", a.schedules)
+	// Gerenciador de plugins (estágio 8). Todas as rotas usam a organização
+	// AUTENTICADA; a promoção de confiança exige assinatura válida.
+	group.GET("/plugins", a.listPlugins)
+	group.POST("/plugins", a.installPlugin)
+	group.POST("/plugins/:plugin_id/rollback", a.rollbackPlugin)
+	group.POST("/plugins/:plugin_id/promote", a.promotePlugin)
 	group.POST("/schedules", a.createSchedule)
 	group.PATCH("/schedules/:id", a.updateSchedule)
 	group.DELETE("/schedules/:id", a.deleteSchedule)
@@ -1692,6 +1708,133 @@ func (a *agentAPI) askProjectDocuments(c *gin.Context) {
 		"citations":  citations,
 		"grounded":   len(citations) > 0,
 	})
+}
+
+// PluginTrustedKeysEnv autoriza chaves de assinatura de plugin no formato
+// `key_id:base64url_ed25519_public_key`, separadas por vírgula. Sem essa
+// configuração o conjunto fica VAZIO e nenhuma promoção de confiança é
+// possível: falha fechada, como o resto da política de capacidades.
+const PluginTrustedKeysEnv = "OLLAMA_AGENT_PLUGIN_TRUSTED_KEYS"
+
+func pluginCapabilityPolicy() (agent.CapabilityPolicy, error) {
+	policy := agent.DefaultCapabilityPolicy()
+	raw := strings.TrimSpace(os.Getenv(PluginTrustedKeysEnv))
+	if raw == "" {
+		return policy, nil
+	}
+	for _, entry := range strings.Split(raw, ",") {
+		entry = strings.TrimSpace(entry)
+		if entry == "" {
+			continue
+		}
+		keyID, encoded, ok := strings.Cut(entry, ":")
+		if !ok || strings.TrimSpace(keyID) == "" {
+			return policy, fmt.Errorf("%s: entry %q must be key_id:base64_key", PluginTrustedKeysEnv, entry)
+		}
+		key, err := base64.RawStdEncoding.DecodeString(strings.TrimSpace(encoded))
+		if err != nil || len(key) != ed25519.PublicKeySize {
+			return policy, fmt.Errorf("%s: key %q is not a base64url ed25519 public key", PluginTrustedKeysEnv, keyID)
+		}
+		policy = policy.WithTrustedSkillKey(strings.TrimSpace(keyID), ed25519.PublicKey(key))
+	}
+	return policy, nil
+}
+
+// listPlugins devolve as instalações da organização autenticada, sem qualquer
+// valor de credencial. Escopo concedido aparece separado do escopo PEDIDO: a
+// interface precisa poder mostrar "instalado mas ainda não autorizado".
+func (a *agentAPI) listPlugins(c *gin.Context) {
+	organizationID := a.organizationID(c)
+	if organizationID == "" {
+		writeAgentError(c, http.StatusForbidden, errAgentForbidden)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"organization_id": organizationID,
+		"plugins":         a.plugins.ListForOrganization(organizationID),
+	})
+}
+
+// installPlugin registra um plugin na organização autenticada. Escopo
+// desconhecido da política é recusado; nada é concedido nesta chamada.
+func (a *agentAPI) installPlugin(c *gin.Context) {
+	organizationID := a.organizationID(c)
+	if organizationID == "" {
+		writeAgentError(c, http.StatusForbidden, errAgentForbidden)
+		return
+	}
+	var manifest agent.PluginManifest
+	if err := decodeJSON(c, &manifest); err != nil {
+		writeAgentError(c, http.StatusBadRequest, err)
+		return
+	}
+	policy, err := pluginCapabilityPolicy()
+	if err != nil {
+		writeAgentError(c, http.StatusInternalServerError, err)
+		return
+	}
+	installation, err := a.plugins.InstallForOrganization(organizationID, manifest, policy)
+	if err != nil {
+		writeAgentError(c, statusForPluginError(err), err)
+		return
+	}
+	c.JSON(http.StatusCreated, installation)
+}
+
+// rollbackPlugin desfaz a última atualização registrada do plugin.
+func (a *agentAPI) rollbackPlugin(c *gin.Context) {
+	organizationID := a.organizationID(c)
+	if organizationID == "" {
+		writeAgentError(c, http.StatusForbidden, errAgentForbidden)
+		return
+	}
+	installation, err := a.plugins.RollbackForOrganization(organizationID, c.Param("plugin_id"))
+	if err != nil {
+		writeAgentError(c, statusForPluginError(err), err)
+		return
+	}
+	c.JSON(http.StatusOK, installation)
+}
+
+// promotePlugin verifica a assinatura contra as chaves autorizadas e só então
+// concede os escopos pedidos pelo manifesto.
+func (a *agentAPI) promotePlugin(c *gin.Context) {
+	organizationID := a.organizationID(c)
+	if organizationID == "" {
+		writeAgentError(c, http.StatusForbidden, errAgentForbidden)
+		return
+	}
+	policy, err := pluginCapabilityPolicy()
+	if err != nil {
+		writeAgentError(c, http.StatusInternalServerError, err)
+		return
+	}
+	installation, err := a.plugins.PromoteTrustedForOrganization(organizationID, c.Param("plugin_id"), policy)
+	if err != nil {
+		writeAgentError(c, statusForPluginError(err), err)
+		return
+	}
+	c.JSON(http.StatusOK, installation)
+}
+
+// statusForPluginError mapeia os erros do registro de plugins para HTTP sem
+// transformar recusa de segurança em 500.
+func statusForPluginError(err error) int {
+	switch {
+	case errors.Is(err, agent.ErrUnknownCapability), errors.Is(err, agent.ErrPluginManifestInvalid):
+		return http.StatusBadRequest
+	case errors.Is(err, agent.ErrPluginVersionConflict):
+		return http.StatusConflict
+	case errors.Is(err, agent.ErrPluginNotFound):
+		return http.StatusNotFound
+	case errors.Is(err, agent.ErrPluginOrganizationScope), errors.Is(err, agent.ErrPluginKeyUnauthorized),
+		errors.Is(err, agent.ErrPluginSignatureReq), errors.Is(err, agent.ErrPluginSignatureInvalid):
+		return http.StatusForbidden
+	case errors.Is(err, agent.ErrPluginRollbackDisabled):
+		return http.StatusConflict
+	default:
+		return http.StatusInternalServerError
+	}
 }
 
 func (a *agentAPI) missions(c *gin.Context) {

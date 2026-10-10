@@ -6,6 +6,19 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/). 
 
 ## [Unreleased]
 
+### gerenciador de plugins com atualização e rollback — 2026-10-10
+
+- Novo `internal/agent/plugin_registry.go` fecha a lacuna do estágio 8: conector, MCP e skills tinham registro/habilitação/remoção, mas **não existia plugin de primeira classe** com manifesto versionado, dependências, integridade, atualização e rollback.
+- `PluginManifest` com id, versão, nome, kind (`connector`/`mcp`/`remote-mcp`/`skill`/`bundle`), escopos, dependências, licença, homepage e campos de assinatura. Validação recusa id com separador, versão fora de formato, kind desconhecido, dependência vazia e **auto-dependência**.
+- **Catálogo não é permissão**: instalar registra; `GrantedScopes` só é preenchido após `PromoteTrustedForOrganization`, que exige assinatura ed25519 válida de uma chave autorizada. Plugin não confiável aparece com `GrantedScopes` vazio e `Trusted: false`.
+- **Escopo desconhecido é recusado na instalação** (`ErrUnknownCapability`) — nunca aceito "para depois".
+- **Atualização otimista com histórico**: `UpdateForOrganization` exige a versão corrente esperada, guarda a versão anterior (até 5) e **retira a confiança da versão nova**; `RollbackForOrganization` desfaz uma atualização por vez (`ErrPluginRollbackDisabled` quando não há histórico).
+- **Isolamento por organização**: o mesmo id não pode pertencer a duas organizações (`ErrPluginOrganizationScope`), e get/list/enable/remove de outro locatário devolvem `ErrPluginNotFound` sem tocar no registro alheio.
+- **Persistência atômica** por organização com rollback do estado em memória quando a gravação falha; `LoadOrganization` **recusa estado adulterado no disco** comparando manifesto × digest.
+- Rotas novas (organização autenticada): `GET /plugins`, `POST /plugins`, `POST /plugins/:plugin_id/rollback` e `POST /plugins/:plugin_id/promote`. A raiz de confiança vem do operador em `OLLAMA_AGENT_PLUGIN_TRUSTED_KEYS` (`key_id:base64url_ed25519_public_key`, separados por vírgula); **sem essa configuração nenhuma promoção é possível** (falha fechada), e configuração inválida devolve 500 explícito em vez de silenciar.
+- Cobertura: 7 testes em `internal/agent/plugin_registry_test.go` (instalação sem conceder escopo + cópia defensiva, manifesto inválido/escopo inventado, isolamento entre organizações, atualização com histórico e conflito de versão, rollback consumindo o histórico, promoção exigindo chave autorizada e recusando manifesto adulterado, persistência com releitura e rollback em falha de gravação) e 3 testes de rota em `server/plugins_routes_test.go` (instalar/listar sem conceder, 403 cross-tenant e rollback sem histórico, promoção fechada sem raiz de confiança e concedendo com chave autorizada).
+- Limite declarado: os presets/instalação de conteúdo de plugin (baixar pacote, verificar arquivos) não fazem parte desta fatia; o registro governa manifesto, confiança, ciclo de vida e rollback.
+
 ### rodada de paridade observável
 
 - Árvore de produto completa em [`docs/agentic/PRODUCT_TREE.md`](docs/agentic/PRODUCT_TREE.md), separando superfície observável, estado atual e alvo unificado.
