@@ -299,6 +299,14 @@ O commit `b1aaebfd` restaura jobs delayed quando `moveDue` não consegue complet
 
 O alias histórico `docs/images/screens/settings.png` foi atualizado para a captura funcional de Settings. O capturador agora rejeita páginas com conteúdo insuficiente e screenshots PNG anormalmente pequenos, evitando evidência visual branca ou incompleta.
 
+### saída de ferramenta visível na trilha de execução (P1-4, aceite b) — 2026-10-10
+
+- O evento `step.succeeded` passou a publicar um trecho textual limitado do resultado da ferramenta (`output`), além da contagem de `artifacts`: a saída de uma CLI governada ou de um comando de terminal fica visível na trilha de execução do chat sem transporte novo, porque o cliente já assina `GET /api/agent/v1/missions/:id/events` e `/events/stream`.
+- O trecho é extraído apenas de campos textuais conhecidos (`stdout`, `stderr`, `output`, `message`, `summary`, `text`, `result`), em ordem fixa, para que a mesma execução produza o mesmo payload; saídas puramente estruturadas (por exemplo `screenshot` em base64) não geram trecho e não poluem a trilha.
+- O corte é feito por runas, com teto de 2000 e marcador explícito `[saída truncada]`, ordens de grandeza abaixo do orçamento de payload do event store (1 MiB), e a interface já apresenta o payload do evento como JSON legível.
+- A redação por DLP é preservada nas duas camadas: o trecho vem de `step.Result`, que já passou por `RedactValue`, e o próprio evento aplica `RedactValue` novamente antes de persistir.
+- Cobertura automatizada em `internal/agent/step_output_test.go`: extração por prioridade fixa, valor sem chave textual, limite exato, corte por runas multibyte e ausência de credencial no evento persistido.
+
 ## [0.1.0] — Preview público
 
 ### Incluído

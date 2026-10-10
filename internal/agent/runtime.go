@@ -1890,7 +1890,14 @@ func (r *Runtime) Run(ctx context.Context, id string) (runErr error) {
 				})
 			}
 		}
-		if err := r.observeEvent(mission, "step.succeeded", step.ID, map[string]any{"artifacts": len(result.Artifacts)}); err != nil {
+		succeededPayload := map[string]any{"artifacts": len(result.Artifacts)}
+		// step.Result ja passou por RedactValue, e o evento aplica RedactValue de
+		// novo: publicar o trecho da saida nao expoe conteudo que ainda nao esteja
+		// persistido de forma redigida na propria missao.
+		if output := stepOutputExcerpt(step.Result); output != "" {
+			succeededPayload["output"] = output
+		}
+		if err := r.observeEvent(mission, "step.succeeded", step.ID, succeededPayload); err != nil {
 			return err
 		}
 	}
