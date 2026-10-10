@@ -2,7 +2,7 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-10T13:28:00-03:00",
+  "updated_at": "2026-10-10T13:55:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
@@ -20,7 +20,7 @@
     "capability_PENDENTE_DE_AUDITORIA": "extensao declarada; NAO e classificacao canonica e nao promove capacidade"
   },
   "pull_requests": {
-    "open_count": 40,
+    "open_count": 41,
     "merged_this_mission": [
       {
         "number": 54,
@@ -187,6 +187,12 @@
         "branch": "feat/isolamento-memoria-usuario",
         "sha": "28476fb63",
         "tema": "isolamento de memoria privada por usuario dentro da mesma organizacao (base main)"
+      },
+      {
+        "number": 83,
+        "branch": "feat/conteudo-nao-confiavel",
+        "sha": "458c24a9d",
+        "tema": "conteudo externo tratado como dado nao confiavel no contexto do modelo (base main)"
       }
     ],
     "dependabot_open": {
@@ -208,7 +214,8 @@
       79,
       80,
       81,
-      82
+      82,
+      83
     ],
     "stacked_on_branch": {
       "76": "feat/context-bootstrap",
@@ -513,10 +520,11 @@
       "capability": "PARCIAL",
       "evidence": [
         "E-019",
-        "E-031"
+        "E-031",
+        "E-058"
       ],
       "blocker": null,
-      "next": "Provar isolamento por organizacao e recusa de escopo elevado por teste reproduzivel"
+      "next": "Prova de nao inferencia por timing e varredura ofensiva com usuario AUTENTICADO em banco real (RLS com papeis distintos); isolamento por organizacao e por usuario na memoria, DLP, e tratamento de conteudo externo como dado nao confiavel ja estao entregues (PRs #82 e #83)"
     },
     {
       "id": 19,
@@ -851,6 +859,8 @@
     "PR #81 (politica de retencao de memoria) aberto e VERDE: 20/20 checks success, mergeable_state=clean; empilhado em #77",
     "Estagio 15: retencao deixou de ser indefinida por omissao - politica por organizacao validada, persistida com rollback, aplicacao explicita e idempotente que so varre projetos da propria organizacao, preserva memoria sem data e devolve contagens reais",
     "PR #82 (isolamento de memoria por usuario) aberto e VERDE: 20/20 checks success, mergeable_state=clean; base main (independente)",
-    "Estagio 15: memoria privada de um usuario deixou de ser legivel por outro na MESMA organizacao e projeto; autoria vem da sessao (actor_id do corpo e ignorado), leitura restrita em busca, recuperacao e RAG, e modo local usa o ator sintetico 'local' (nao e autenticacao, registrado explicitamente)"
+    "Estagio 15: memoria privada de um usuario deixou de ser legivel por outro na MESMA organizacao e projeto; autoria vem da sessao (actor_id do corpo e ignorado), leitura restrita em busca, recuperacao e RAG, e modo local usa o ator sintetico 'local' (nao e autenticacao, registrado explicitamente)",
+    "PR #83 (conteudo externo nao confiavel) aberto e VERDE: 20/20 checks success, mergeable_state=clean; base main (independente)",
+    "Estagio 18: prompt injection passou a ter controle real - trechos de terceiros entram cercados e rotulados como DADOS, padroes classicos de instrucao e tokens de controle sao neutralizados de forma visivel, a cerca nao pode ser quebrada pelo conteudo e rotulos comuns de documento pt-BR ficam fora da regra (sem falso positivo). Declarado como mitigacao deterministica, nao prova de imunidade"
   ]
 }

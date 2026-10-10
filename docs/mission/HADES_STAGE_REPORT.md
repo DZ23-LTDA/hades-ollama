@@ -242,5 +242,7 @@ repositório, fecharam a maior parte das superfícies que estavam
 
 16. **Isolamento de memória por USUÁRIO (PR #82).** Duas pessoas da mesma organização e do mesmo projeto deixaram de conseguir ler a memória privada uma da outra: a visibilidade passou a ser `organization` (padrão, sem migração) ou `private`, a autoria vem da sessão (o `actor_id` do corpo é ignorado) e a filtragem acontece na busca, na recuperação e no RAG **antes** das citações. O modo local usa o ator sintético `local` — explicitamente **não** é autenticação e nada aqui é apresentado como se fosse. 7 testes novos e 20/20 checks verdes (E-057). Continua aberto: prova com usuário autenticado de verdade (token) e ligação da retenção a um agendador real.
 
+17. **Prompt injection deixou de ser só recomendação (PR #83).** Documentos, páginas web, e-mails e respostas de MCP que entram no contexto fundamentado agora aparecem cercados e rotulados como DADOS, com padrões clássicos de instrução e tokens de controle neutralizados de forma visível; a cerca não pode ser quebrada pelo próprio conteúdo. O sanitizador **não** redige rótulos comuns de documento em pt-BR, para não apagar conteúdo real — há teste que falha se isso acontecer. Declarado como mitigação determinística, **não** prova de imunidade. 6 testes novos e 20/20 checks verdes (E-058). Continua aberto: prova de não inferência por timing e RLS com banco real.
+
 Nada foi promovido a `COMPLETED_VERIFIED` nesta rodada. Estado agregado:
 0 `COMPLETED_VERIFIED`, 24 `IN_PROGRESS`, 14 `BLOCKED_BY_EXTERNAL_DEPENDENCY`.
