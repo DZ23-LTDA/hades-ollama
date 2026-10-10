@@ -244,5 +244,7 @@ repositório, fecharam a maior parte das superfícies que estavam
 
 17. **Prompt injection deixou de ser só recomendação (PR #83).** Documentos, páginas web, e-mails e respostas de MCP que entram no contexto fundamentado agora aparecem cercados e rotulados como DADOS, com padrões clássicos de instrução e tokens de controle neutralizados de forma visível; a cerca não pode ser quebrada pelo próprio conteúdo. O sanitizador **não** redige rótulos comuns de documento em pt-BR, para não apagar conteúdo real — há teste que falha se isso acontecer. Declarado como mitigação determinística, **não** prova de imunidade. 6 testes novos e 20/20 checks verdes (E-058). Continua aberto: prova de não inferência por timing e RLS com banco real.
 
+18. **§11.1 cumprida no que é verificável: registro de comandos com backend conferido (PR #84).** Dos 32 comandos da seção 6, apenas `/goal` era reconhecido antes. Agora há registro de 35 comandos (incluindo `/cancel`, `/approve` e `/deny`), com **disponibilidade decidida pela rota real** — os seis sem backend (`/research`, `/support`, `/telegram`, `/inbox`, `/crm`, `/handoff`) aparecem como indisponíveis com motivo específico e a ajuda diz que não executam nada. Um teste no pacote `server` compara cada comando disponível com o roteador registrado: **rota inventada faz o teste falhar**. 5 testes novos e 20/20 checks verdes (E-059).
+
 Nada foi promovido a `COMPLETED_VERIFIED` nesta rodada. Estado agregado:
 0 `COMPLETED_VERIFIED`, 24 `IN_PROGRESS`, 14 `BLOCKED_BY_EXTERNAL_DEPENDENCY`.

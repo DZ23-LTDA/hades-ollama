@@ -2,7 +2,7 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-10T13:55:00-03:00",
+  "updated_at": "2026-10-10T14:22:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
@@ -20,7 +20,7 @@
     "capability_PENDENTE_DE_AUDITORIA": "extensao declarada; NAO e classificacao canonica e nao promove capacidade"
   },
   "pull_requests": {
-    "open_count": 41,
+    "open_count": 42,
     "merged_this_mission": [
       {
         "number": 54,
@@ -193,6 +193,12 @@
         "branch": "feat/conteudo-nao-confiavel",
         "sha": "458c24a9d",
         "tema": "conteudo externo tratado como dado nao confiavel no contexto do modelo (base main)"
+      },
+      {
+        "number": 84,
+        "branch": "feat/registro-comandos-slash",
+        "sha": "1f067f93a",
+        "tema": "registro canonico de slash commands com backend verificado (base main)"
       }
     ],
     "dependabot_open": {
@@ -215,7 +221,8 @@
       80,
       81,
       82,
-      83
+      83,
+      84
     ],
     "stacked_on_branch": {
       "76": "feat/context-bootstrap",
@@ -580,10 +587,11 @@
         "E-017",
         "E-034",
         "E-036",
-        "E-048"
+        "E-048",
+        "E-059"
       ],
       "blocker": null,
-      "next": "Gate intermediario com artefato docs/mission/HADES_ENGINEERING_GATE.md; aguarda estagios 23-38 para o gate final"
+      "next": "Gate global final (docs/mission/HADES_FINAL_RELEASE_GATE.md e HADES_RELEASE_REPORT.md) apos os estagios 1-38; o gate intermediario ja esta emitido e o registro de comandos da secao 6 com verificacao de rota por comando ja esta entregue (PR #84)"
     },
     {
       "id": 23,
@@ -861,6 +869,8 @@
     "PR #82 (isolamento de memoria por usuario) aberto e VERDE: 20/20 checks success, mergeable_state=clean; base main (independente)",
     "Estagio 15: memoria privada de um usuario deixou de ser legivel por outro na MESMA organizacao e projeto; autoria vem da sessao (actor_id do corpo e ignorado), leitura restrita em busca, recuperacao e RAG, e modo local usa o ator sintetico 'local' (nao e autenticacao, registrado explicitamente)",
     "PR #83 (conteudo externo nao confiavel) aberto e VERDE: 20/20 checks success, mergeable_state=clean; base main (independente)",
-    "Estagio 18: prompt injection passou a ter controle real - trechos de terceiros entram cercados e rotulados como DADOS, padroes classicos de instrucao e tokens de controle sao neutralizados de forma visivel, a cerca nao pode ser quebrada pelo conteudo e rotulos comuns de documento pt-BR ficam fora da regra (sem falso positivo). Declarado como mitigacao deterministica, nao prova de imunidade"
+    "Estagio 18: prompt injection passou a ter controle real - trechos de terceiros entram cercados e rotulados como DADOS, padroes classicos de instrucao e tokens de controle sao neutralizados de forma visivel, a cerca nao pode ser quebrada pelo conteudo e rotulos comuns de documento pt-BR ficam fora da regra (sem falso positivo). Declarado como mitigacao deterministica, nao prova de imunidade",
+    "PR #84 (registro de comandos slash) aberto e VERDE: 20/20 checks success, mergeable_state=clean; base main (independente)",
+    "Secao 6 / 11.1: dos comandos do mandato, apenas /goal existia antes; agora ha registro com 35 comandos, disponibilidade decidida pela rota REAL e teste que falha se um comando disponivel apontar para rota inexistente"
   ]
 }
