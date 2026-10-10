@@ -16,6 +16,24 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/). 
 - Cobertura: 4 testes em `internal/agent/context_memory_governance_test.go` (proveniência/isolamento/embeddings opt-in, remoção com persistência e releitura do disco, **rollback quando a gravação falha**, retenção preservando recentes e sem data) e 4 testes em `server/project_memories_test.go` (exportação, 400 para janela inválida, 404 para memória ausente e 403 cross-tenant sem mutação).
 - Limite declarado: a retenção é aplicada por chamada explícita (rota ou operador); não há agendador automático de expurgo nem política de retenção por organização — isso segue no backlog do estágio 15.
 
+
+### E2E de reordenação do Studio persistida no servidor — 2026-10-10
+
+- Spec novo `app/ui/app/e2e/studioReorder.spec.ts` provando que a reordenação do canvas do Studio sobrevive ao recarregamento: a ordem inicial é lida de `GET /api/agent/v1/builders/{id}`, o arraste grava via `updateBuilderVisual` (`POST /api/agent/v1/builders/{id}/visual`) e o botão acessível "Mover para baixo" grava a mesma coisa pela via de teclado/leitor de tela.
+- Contrato do builder isolado em `app/ui/app/e2e/studio-builder-fixture.mjs` (sem dependências), delegado pelo mesmo backend HTTP real da jornada de primeira execução; nada de `page.route` e os endpoints de controle ficam em `/api/__e2e/studio/*` apenas para atravessarem o proxy do preview.
+- O reinício é provado em aba nova (fechar e abrir), não com `reload`: só assim a ordem exibida vem obrigatoriamente da leitura do servidor.
+- Correção de premissa registrada: o Studio **já tinha** arraste real (`StudioCanvasPage.tsx:975-988`) e paridade por botão (`:1012-1024`), ambos persistindo; a lacuna era a ausência de asserção E2E, não de funcionalidade. O backlog datado que afirmava o contrário foi corrigido.
+- Verificações desta rodada: `npx playwright test` (10 testes, 1 worker) verde — 7 anteriores + 3 novos —, `npm run lint`, `npx vitest run` (65 arquivos, 396 testes), `npm run build` e `prettier --check` aprovados.
+
+### E2E de primeira execução com backend real — 2026-10-10
+
+- Spec novo `app/ui/app/e2e/firstRun.spec.ts` cobrindo instalação nova → onboarding → escolha local-first → primeiro modelo → `/connect` → reinício → atualização → rollback contra HTTP real, sem `page.route` e sem marcação local de estado.
+- Backend mínimo de teste `app/ui/app/e2e/first-run-backend.mjs` (sem dependências) servindo `GET/POST /api/v1/settings`, `GET /api/version`, `POST /api/me` e o stream NDJSON de `POST /api/v1/models/pull`; o `playwright.config.ts` sobe esse backend como segundo `webServer` e aponta o proxy `/api` do `vite preview` para ele.
+- O reinício passou a ser provado em aba nova: `goto`/`reload` na mesma URL mascarada (`app/ui/app/src/routes/index.tsx` usa `mask: { to: "/" }`) podem ser servidos pela memória do navegador e não reexecutam o portão do servidor — foi a causa de um falso positivo detectado durante a implementação.
+- Gate: novo passo `Web E2E — primeira execução` no job `web-and-mobile` de `.github/workflows/dz23-agentic-quality.yaml`; o workflow `dz23-e2e.yaml` continua rodando a suíte completa.
+- Limite declarado: o download do modelo é um stream stub (nenhum modelo real é baixado em CI); a asserção provada é o portão da UI — nenhum `Continuar` antes do fim do stream, `Continuar` depois. Missão, artefato, aprovação e cancelamento seguem cobertos pelo runtime em Go e por `app/ui/app/e2e/scheduleFlow.spec.ts`.
+- Verificações desta rodada: `npm run test:e2e` (7 testes, 1 worker) verde, `npm run lint`, `npm test -- --run` (65 arquivos, 396 testes), `npm run build` e `prettier --check` aprovados.
+
 ### rodada de paridade observável
 
 - Árvore de produto completa em [`docs/agentic/PRODUCT_TREE.md`](docs/agentic/PRODUCT_TREE.md), separando superfície observável, estado atual e alvo unificado.
