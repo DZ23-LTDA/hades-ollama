@@ -36,6 +36,21 @@ updates:
       interval: "weekly"
     open-pull-requests-limit: 5
     groups:
+      # A família React anda JUNTA: `react` e `react-dom` precisam ter
+      # exatamente a mesma versão (o React aborta se divergirem) e
+      # `react-test-renderer` é pinado para casar com os dois. Agrupar evita
+      # PRs separados que resolvem react 19.3.0 com react-dom 19.1.0 — foi
+      # exatamente o defeito corrigido no PR #92 (B-12). Este grupo vem
+      # primeiro para capturar os pacotes antes dos grupos por tipo.
+      react-family:
+        patterns:
+          - "react"
+          - "react-dom"
+          - "react-test-renderer"
+          - "@types/react"
+          - "@types/react-dom"
+          - "@types/react-test-renderer"
+        update-types: ["minor", "patch"]
       web-dev-tooling:
         dependency-type: "development"
         update-types: ["minor", "patch"]
