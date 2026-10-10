@@ -1,6 +1,19 @@
 # Dependabot — Ollama Classe A+ (fork DZ23)
 # Mantém dependências e GitHub Actions atualizadas com PRs revisáveis.
 # Não faz upgrade automático em produção: cada PR passa pelos gates de CI.
+#
+# POLÍTICA DE MAJORS (decisão registrada, ver B-11/B-12 em
+# docs/mission/HADES_MASTER_STATE.json):
+#   - minor e patch: entram por PR automático, validados pelos gates de CI;
+#   - MAJOR: exige PR manual com migração de código. Bump de major isolado vira
+#     PR que já nasce vermelho — foi o caso do tablewriter 0.0.5 -> 1.1.5 (código
+#     migrado no PR #90), do typescript 5 -> 7 e do react/react-dom desalinhados
+#     (corrigido no PR #92). Em vez de encher a página de Actions de vermelho toda
+#     semana, o bot não propõe majors nos ecossistemas de aplicação; o débito fica
+#     registrado no checkpoint da missão.
+#   - Exceção: `github-actions` continua aceitando majors, porque cada bump de
+#     action é validado pelo próprio CI e manter actions atualizadas é desejável
+#     para supply chain.
 version: 2
 updates:
   # Backend Go
@@ -12,6 +25,9 @@ updates:
     groups:
       go-minor-patch:
         update-types: ["minor", "patch"]
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
 
   # Frontend web (Vite/React)
   - package-ecosystem: "npm"
@@ -27,10 +43,12 @@ updates:
         dependency-type: "production"
         update-types: ["patch"]
     ignore:
+      # Major de qualquer pacote exige migração própria (política acima).
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
       # eslint-plugin-react-hooks 7.x muda regras de lint o suficiente para exigir
-      # migração própria (ver B-12 em docs/mission/HADES_MASTER_STATE.json).
-      # Enquanto não houver essa migração, o bot não deve abrir PR que já nasce
-      # vermelho: o registro fica no bloqueio, não num PR semanal falhando.
+      # migração própria. Enquanto não houver essa migração, o bot não deve abrir
+      # PR que já nasce vermelho.
       - dependency-name: "eslint-plugin-react-hooks"
         versions: [">=7.0.0"]
 
@@ -44,16 +62,20 @@ updates:
       mobile-tooling:
         update-types: ["minor", "patch"]
     ignore:
-      # TypeScript 7 é major com breaking changes: exige migração planejada (B-12).
+      # Major de qualquer pacote exige migração própria (política acima). Cobre
+      # expo 54+, expo-status-bar 3+ e afins.
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+      # TypeScript major (6 e 7) tem breaking changes: exige migração planejada.
       - dependency-name: "typescript"
-        versions: [">=7.0.0"]
+        versions: [">=6.0.0"]
       # expo-notifications é versionado ALINHADO ao SDK do Expo. O upgrade correto
       # é `npx expo install expo-notifications` junto com a subida de SDK, nunca um
       # bump isolado — por isso o bot não propõe mais este pacote.
       - dependency-name: "expo-notifications"
         versions: [">=0.32.0"]
 
-  # GitHub Actions (supply chain) — favorece pinagem/atualização controlada
+  # GitHub Actions (supply chain) — aceita majors: cada bump é validado pelo CI.
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
