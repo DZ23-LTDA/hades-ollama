@@ -6,6 +6,15 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/). 
 
 ## [Unreleased]
 
+### isolamento de memória por usuário — 2026-10-10
+
+- Novo `internal/agent/memory_isolation.go` fecha o escopo de **usuário** do estágio 15: duas pessoas da MESMA organização, no MESMO projeto, não podem mais ler a memória privada uma da outra — antes havia isolamento por organização e projeto, mas nenhum por ator.
+- `Memory` ganhou `visibility` (`organization` padrão / `private`) e `actor_id`, campos **opcionais**: memória antiga sem eles continua valendo como conhecimento do projeto, sem migração.
+- `AddMemoryForActor` normaliza a visibilidade e **ignora o `actor_id` enviado no corpo**: a autoria vem da sessão. Memória `private` sem ator identificado é recusada (`ErrMemoryActorRequired`) e visibilidade inventada é recusada (`ErrMemoryVisibilityInvalid`).
+- Leitura restrita ao ator em **todos** os caminhos: `SearchMemoriesForActor`, `RetrieveRelevantForActor` e `GroundedAnswerForActor` — a filtragem acontece **antes** da montagem das citações, para que memória privada alheia não apareça nem como referência.
+- Rotas ajustadas para usar o ator da sessão: `POST /projects/:id/memories`, `GET /projects/:id/memories` e `GET /projects/:id/ask`. Em modo autenticado o usuário validado tem precedência; o cabeçalho `X-Ollama-User` permanece como conveniência do modo local, onde o ator é o sintético `local` — **registrado explicitamente** para não sugerir autenticação onde não há.
+- Cobertura: 4 testes em `internal/agent/memory_isolation_test.go` (privada invisível a outro ator e a leitor anônimo, autoria não forjável pelo corpo, visibilidade inválida e privada sem ator recusadas sem gravar nada, persistência após reinício mantendo o dono, e RAG/recuperação respeitando o ator) e 3 testes de rota em `server/memory_user_isolation_test.go` (dois usuários na mesma organização e projeto; autoria forjada; `ask` não cita memória privada de outro usuário).
+
 ### rodada de paridade observável
 
 - Árvore de produto completa em [`docs/agentic/PRODUCT_TREE.md`](docs/agentic/PRODUCT_TREE.md), separando superfície observável, estado atual e alvo unificado.

@@ -1643,9 +1643,11 @@ func (a *agentAPI) addMemory(c *gin.Context) {
 		return
 	}
 	memory.ProjectID = c.Param("id")
-	created, err := a.context.AddMemoryContext(c.Request.Context(), memory)
+	// O ator vem da sessão: o corpo da requisição não escolhe a autoria de uma
+	// memória privada (isolamento por usuário, estágio 15).
+	created, err := a.context.AddMemoryForActor(c.Request.Context(), memory, agentActorID(c))
 	if err != nil {
-		writeAgentError(c, http.StatusBadRequest, err)
+		writeAgentError(c, statusForAgentError(err), err)
 		return
 	}
 	c.JSON(http.StatusCreated, created)
@@ -1656,7 +1658,7 @@ func (a *agentAPI) searchMemories(c *gin.Context) {
 		writeAgentError(c, statusForAgentError(err), err)
 		return
 	}
-	memories, err := a.context.SearchMemoriesContext(c.Request.Context(), c.Param("id"), c.Query("q"), 20)
+	memories, err := a.context.SearchMemoriesForActor(c.Request.Context(), c.Param("id"), agentActorID(c), c.Query("q"), 20)
 	if err != nil {
 		writeAgentError(c, http.StatusBadRequest, err)
 		return
@@ -1681,7 +1683,9 @@ func (a *agentAPI) askProjectDocuments(c *gin.Context) {
 		askLimit    = 8
 		askMinScore = 0.2 // relevance gate: unrelated queries return no sources
 	)
-	_, citations, err := a.context.GroundedAnswerContext(c.Request.Context(), c.Param("id"), query, askLimit, askMinScore)
+	// O RAG também respeita o isolamento por usuário: memória privada de outro
+	// ator não entra no contexto nem nas citações.
+	_, citations, err := a.context.GroundedAnswerForActor(c.Request.Context(), c.Param("id"), agentActorID(c), query, askLimit, askMinScore)
 	if err != nil {
 		writeAgentError(c, http.StatusBadRequest, err)
 		return
