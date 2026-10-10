@@ -202,6 +202,10 @@ type Memory struct {
 	Confidence float64   `json:"confidence,omitempty"`
 	Embedding  []float32 `json:"embedding,omitempty"`
 	CreatedAt  time.Time `json:"created_at"`
+	// Isolamento por usuário (estágio 15): vazio significa conhecimento do
+	// projeto (`organization`), preservando dados anteriores.
+	Visibility string `json:"visibility,omitempty"`
+	ActorID    string `json:"actor_id,omitempty"`
 }
 
 type SkillManifest struct {
