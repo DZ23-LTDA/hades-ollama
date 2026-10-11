@@ -216,6 +216,9 @@ type Memory struct {
 	// real; `Versions` guarda o conteúdo anterior com quem alterou, data e motivo.
 	Revision int             `json:"revision,omitempty"`
 	Versions []MemoryVersion `json:"versions,omitempty"`
+	// `EncryptedContent` existe SÓ no disco: com chave configurada, `Content` sai
+	// vazio do arquivo e o cifrado fica aqui. Em memória ele nunca é usado.
+	EncryptedContent string `json:"encrypted_content,omitempty"`
 }
 
 type SkillManifest struct {

@@ -2,7 +2,6 @@ package agent
 
 import (
 	"errors"
-	"path/filepath"
 	"sort"
 	"strings"
 	"time"
@@ -54,7 +53,7 @@ func (s *ContextStore) RemoveMemory(projectID, memoryID string) error {
 		s.memories[projectID] = remaining
 	}
 	if s.root != "" {
-		if err := writeJSONAtomic(filepath.Join(s.root, "memories", projectID+".json"), remaining); err != nil {
+		if err := s.writeMemoriesFile(projectID, remaining); err != nil {
 			if previous == nil {
 				delete(s.memories, projectID)
 			} else {
@@ -122,7 +121,7 @@ func (s *ContextStore) PruneMemories(projectID string, olderThan time.Time) (int
 		s.memories[projectID] = kept
 	}
 	if s.root != "" {
-		if err := writeJSONAtomic(filepath.Join(s.root, "memories", projectID+".json"), kept); err != nil {
+		if err := s.writeMemoriesFile(projectID, kept); err != nil {
 			if previous == nil {
 				delete(s.memories, projectID)
 			} else {

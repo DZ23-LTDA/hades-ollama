@@ -3,7 +3,6 @@ package agent
 import (
 	"context"
 	"errors"
-	"path/filepath"
 	"strings"
 	"time"
 )
@@ -32,6 +31,9 @@ type MemoryVersion struct {
 	ActorID   string    `json:"actor_id,omitempty"`
 	Reason    string    `json:"reason,omitempty"`
 	UpdatedAt time.Time `json:"updated_at"`
+	// `EncryptedContent` existe SÓ no disco, como no registro principal: o
+	// histórico também guarda texto do usuário e não pode vazar em claro.
+	EncryptedContent string `json:"encrypted_content,omitempty"`
 }
 
 // MaxMemoryVersions limita o histórico por memória. O mais antigo é descartado
@@ -104,7 +106,7 @@ func (s *ContextStore) UpdateMemoryForActor(ctx context.Context, projectID, memo
 	replaced = append(replaced, stored[index+1:]...)
 	s.memories[projectID] = replaced
 	if s.root != "" {
-		if err := writeJSONAtomic(filepath.Join(s.root, "memories", projectID+".json"), replaced); err != nil {
+		if err := s.writeMemoriesFile(projectID, replaced); err != nil {
 			s.memories[projectID] = previous
 			return Memory{}, err
 		}

@@ -113,6 +113,8 @@
 
 | Memória: versionamento com histórico | `memory_version.go`, `PATCH /memories/:memory_id`, `GET .../history` (E-093) | IMPLEMENTADO_E_TESTADO | BAIXO | E-093 | histórico com conteúdo anterior, quem alterou, data e motivo; teto de 20 revisões; recusa uniforme; vetor antigo invalidado |
 
+| Memória: criptografia em repouso | `memory_encryption.go`, `writeMemoriesFile`, `MemoryEncryption()` (E-094) | IMPLEMENTADO_E_TESTADO | MÉDIO | E-094 | AES-256-GCM do primitivo existente, opt-in, fail-closed sem chave; funil único de escrita; histórico também cifrado |
+
 ## 6. Integrações, MCP e conectores
 
 | Capacidade | Superfície | Classificação | Risco | Evidência | Lacuna |
