@@ -241,6 +241,81 @@ func (s *ServiceAgentRuntime) RunTool(spec ServiceAgentSpec, declared []string, 
 	return call
 }
 
+// serviceAgentCommerceTools são as ferramentas de comércio — e elas só EXISTEM quando o store é ligado.
+//
+// Antes, `commerce.order.read` e `commerce.stock.read` constavam como disponíveis num mapa digitado à mão,
+// sem executor algum. Aqui a disponibilidade volta a ser consequência: sem store ligado não há executor, e a
+// ferramenta aparece como indisponível — que é a verdade.
+func serviceAgentCommerceTools(commerce *CommerceStore) map[string]ServiceAgentTool {
+	tools := map[string]ServiceAgentTool{}
+	if commerce == nil {
+		return tools
+	}
+	add := func(name string, run func(request ServiceAgentToolRequest) (string, error)) {
+		tools[name] = serviceAgentToolFunc{name: name, effect: ServiceAgentEffectRead, run: run}
+	}
+
+	add("catalog.read", func(request ServiceAgentToolRequest) (string, error) {
+		products := commerce.Products(request.OrganizationID)
+		if len(products) == 0 {
+			// Honestidade: organização sem catálogo DIZ que não tem, em vez de inventar oferta.
+			return "nenhum produto cadastrado para esta organização", nil
+		}
+		parts := make([]string, 0, 3)
+		for _, product := range products {
+			if len(parts) == 3 {
+				break
+			}
+			parts = append(parts, fmt.Sprintf("%s (%s) por %d centavos", product.Name, product.SKU, product.PriceCents))
+		}
+		return fmt.Sprintf("%d produto(s) ativos: %s", len(products), strings.Join(parts, "; ")), nil
+	})
+
+	add("commerce.stock.read", func(request ServiceAgentToolRequest) (string, error) {
+		summary := commerce.Summary(request.OrganizationID)
+		low := "nenhum"
+		if len(summary.LowStockSKUs) > 0 {
+			low = strings.Join(summary.LowStockSKUs, ", ")
+		}
+		return fmt.Sprintf("catálogo com %d produto(s); estoque baixo: %s", summary.Products, low), nil
+	})
+
+	add("commerce.order.read", func(request ServiceAgentToolRequest) (string, error) {
+		summary := commerce.Summary(request.OrganizationID)
+		return fmt.Sprintf("%d pedido(s): %d pendente(s), %d pago(s), %d entregue(s), %d cancelado(s); receita %d centavos",
+			summary.Orders, summary.Pending, summary.Paid, summary.Fulfilled, summary.Cancelled, summary.RevenueCents), nil
+	})
+
+	return tools
+}
+
+// serviceAgentCompanyTools são as ferramentas de empresa — também condicionadas ao store ligado.
+func serviceAgentCompanyTools(companies *CompanyStore) map[string]ServiceAgentTool {
+	tools := map[string]ServiceAgentTool{}
+	if companies == nil {
+		return tools
+	}
+	tools["company.report.read"] = serviceAgentToolFunc{
+		name:   "company.report.read",
+		effect: ServiceAgentEffectRead,
+		run: func(request ServiceAgentToolRequest) (string, error) {
+			list := companies.List(request.OrganizationID)
+			if len(list) == 0 {
+				return "nenhuma empresa cadastrada para esta organização", nil
+			}
+			names := make([]string, 0, 3)
+			for _, company := range list {
+				if len(names) == 3 {
+					break
+				}
+				names = append(names, fmt.Sprintf("%s (%s)", company.Name, company.Currency))
+			}
+			return fmt.Sprintf("%d empresa(s): %s", len(list), strings.Join(names, "; ")), nil
+		},
+	}
+	return tools
+}
+
 // resolveServiceAgentContact acha o contato a partir do que a CONVERSA carrega.
 //
 // A conversa guarda o TELEFONE (identidade), não o ID interno do CRM — então procurar só por ID falharia
