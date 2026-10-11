@@ -197,7 +197,7 @@ func (s *ContextStore) trimMemoriesToLimit(projectID string, limit int, now time
 		s.memories[projectID] = kept
 	}
 	if s.root != "" {
-		if err := writeJSONAtomic(filepath.Join(s.root, "memories", projectID+".json"), kept); err != nil {
+		if err := s.writeMemoriesFile(projectID, kept); err != nil {
 			if previous == nil {
 				delete(s.memories, projectID)
 			} else {

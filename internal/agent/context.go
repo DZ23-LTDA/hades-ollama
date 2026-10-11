@@ -108,9 +108,15 @@ func NewContextStore(root string) (*ContextStore, error) {
 		if entry.IsDir() || filepath.Ext(entry.Name()) != ".json" {
 			continue
 		}
-		var memories []Memory
-		if err := readJSON(filepath.Join(root, "memories", entry.Name()), &memories); err != nil {
+		var stored []Memory
+		if err := readJSON(filepath.Join(root, "memories", entry.Name()), &stored); err != nil {
 			return nil, err
+		}
+		// Decifra o que estiver cifrado. Registro cifrado sem chave FALHA aqui, em
+		// vez de voltar vazio: memória vazia em silêncio seria perda de dado.
+		memories, err := memoriesFromDisk(stored)
+		if err != nil {
+			return nil, fmt.Errorf("load memories from %s: %w", entry.Name(), err)
 		}
 		projectID := strings.TrimSuffix(entry.Name(), ".json")
 		store.memories[projectID] = memories
@@ -361,7 +367,7 @@ func (s *ContextStore) AddMemoryContext(ctx context.Context, memory Memory) (Mem
 	previous := append([]Memory(nil), s.memories[memory.ProjectID]...)
 	s.memories[memory.ProjectID] = append(s.memories[memory.ProjectID], memory)
 	if s.root != "" {
-		if err := writeJSONAtomic(filepath.Join(s.root, "memories", memory.ProjectID+".json"), s.memories[memory.ProjectID]); err != nil {
+		if err := s.writeMemoriesFile(memory.ProjectID, s.memories[memory.ProjectID]); err != nil {
 			if previous == nil {
 				delete(s.memories, memory.ProjectID)
 			} else {

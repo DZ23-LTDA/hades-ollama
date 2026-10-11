@@ -2,12 +2,12 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-11T21:00:00-03:00",
+  "updated_at": "2026-10-11T22:20:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
     "integration_branch": "main",
-    "main_sha": "2743cf65942ae32cf2ec9a6b13760e9a4fcca27f",
+    "main_sha": "02d3153d4403eb39a45c7ba3191372b91f1cbc6f",
     "main_committed_at": "2026-10-09T10:24:45Z",
     "main_ci_state": "green (dz23-agentic-quality + class-a-plus-integrity = success nesse SHA)",
     "mission_branch": "docs/checkpoints-missao-v21",
@@ -476,12 +476,13 @@
         "E-089",
         "E-090",
         "E-092",
-        "E-093"
+        "E-093",
+        "E-094"
       ],
       "blocker": "B-07",
-      "next": "ATIVIDADES AINDA AUSENTES: resumos, criptografia em repouso e escopos de missao/agente/equipe no tipo Memory. O estagio NAO foi promovido porque ainda faltam tres atividades",
+      "next": "ATIVIDADES AINDA AUSENTES: resumos e escopos de missao/agente/equipe no tipo Memory. O estagio NAO foi promovido porque ainda faltam duas atividades",
       "blocked_reason": "",
-      "done": "CRITERIO CUMPRIDO E MEDIDO, evidencia obrigatoria coberta, familia de caminhos irmaos fechada, DEDUPLICACAO implementada (E-092) e VERSIONAMENTO implementado com rotas alcancaveis pelo produto (PATCH de memoria e GET de historico), historico limitado, recusa uniforme para memoria privada alheia e invalidacao do vetor do texto antigo"
+      "done": "CRITERIO CUMPRIDO E MEDIDO, evidencia obrigatoria coberta, familia de caminhos irmaos fechada, DEDUPLICACAO (E-092), VERSIONAMENTO (E-093) e CRIPTOGRAFIA EM REPOUSO com o primitivo existente (AES-256-GCM da chave de credenciais), funil unico de escrita, leitura fail-closed e status honesto quando nao ha chave"
     },
     {
       "id": 16,
@@ -999,7 +1000,9 @@
     "DEDUPLICACAO DE MEMORIA (E-092): primeira das quatro atividades ausentes do estagio 15 foi fechada. Regra CONSERVADORA: so e a mesma memoria quando coincidem conteudo, tipo, visibilidade/ator E origem - kind diferente e conhecimento diferente, ator/visibilidade sao fronteira de privacidade e source e proveniencia. Fundir o que nao e identico perderia informacao, e perder memoria e pior que guardar uma linha repetida. A duplicata devolve a memoria ORIGINAL; a checagem roda ANTES do embedding (nao gasta vetor em duplicata) e e repetida SOB O LOCK para duas gravacoes concorrentes nao passarem juntas",
     "DEDUPLICACAO - EFEITO NAS FIXTURES E ERRO CORRIGIDO (E-092): a dedup quebrou TRES testes de retencao. Diagnostico medido: as fixtures inseriam N memorias com conteudo IDENTICO em laco para testar retencao por CONTAGEM - artefato da fixture, nao expectativa de produto. Corrigidas para dar origem propria a cada memoria, com o motivo escrito no codigo. ERRO NA PRIMEIRA TENTATIVA: usei Source 'seed-<indice>', que COLIDE entre duas chamadas de seed com o mesmo conteudo, entao a dedup fundiu as memorias novas com as antigas e o teste acusou 'removed by count = 0, want 2'. Conserto: incluir o PREFIXO na origem (prefixo-indice). O erro apareceu porque o teste mediu o efeito, nao porque o codigo foi relido",
     "VERSIONAMENTO DE MEMORIA (E-093): segunda das quatro atividades ausentes do estagio 15 foi fechada. Antes disto a memoria era so append + delete: corrigir uma anotacao exigia apagar e recriar e o que foi corrigido SE PERDIA - sem historico nao ha como auditar quem reescreveu o conhecimento nem desfazer uma alteracao errada. Decisoes deliberadas: o historico guarda o conteudo ANTERIOR com quem alterou, data e motivo; o historico e LIMITADO (MaxMemoryVersions=20, descartando o mais antigo) porque sem teto uma memoria muito editada viraria arquivo sem fim; a alteracao passa pela MESMA checagem de visibilidade da exclusao (memoria privada alheia recusada com erro de INEXISTENTE, para a rota nao ser oraculo); o vetor de embedding do texto antigo e INVALIDADO (manter vetor de texto que nao existe mais faria a busca devolver a memoria errada); reedicao com o MESMO conteudo nao cria revisao; e a persistencia tem rollback",
-    "VERSIONAMENTO ALCANCAVEL PELO PRODUTO (E-093): a capacidade nao ficou so na API Go. Foram adicionadas PATCH /projects/:id/memories/:memory_id e GET /projects/:id/memories/:memory_id/history, ambas escopadas por ator (o quarto irmao foi exatamente um caminho que esqueceu o ator) e com 404 UNIFORME para memoria inexistente e para memoria privada alheia. Verificado por 4 testes de motor e 2 de rota, incluindo um teste que confere que as rotas estao REGISTRADAS no roteador - nao basta a funcao existir. Erros meus encontrados pelo proprio teste: consulta com espaco em helper que nao codifica URL e nome errado do registrador de rotas"
+    "VERSIONAMENTO ALCANCAVEL PELO PRODUTO (E-093): a capacidade nao ficou so na API Go. Foram adicionadas PATCH /projects/:id/memories/:memory_id e GET /projects/:id/memories/:memory_id/history, ambas escopadas por ator (o quarto irmao foi exatamente um caminho que esqueceu o ator) e com 404 UNIFORME para memoria inexistente e para memoria privada alheia. Verificado por 4 testes de motor e 2 de rota, incluindo um teste que confere que as rotas estao REGISTRADAS no roteador - nao basta a funcao existir. Erros meus encontrados pelo proprio teste: consulta com espaco em helper que nao codifica URL e nome errado do registrador de rotas",
+    "CRIPTOGRAFIA DA MEMORIA EM REPOUSO (E-094): terceira das quatro atividades ausentes do estagio 15 foi fechada. PRINCIPIO: nenhuma criptografia caseira - o primitivo e o MESMO ja usado para credenciais de conector (AES-256-GCM com chave derivada por SHA-256 de OLLAMA_AGENT_CREDENTIAL_KEY), porque um segundo esquema criaria DUAS VERDADES SOBRE A MESMA CHAVE. Decisoes: e OPT-IN (exigir chave quebraria instalacoes existentes); com chave, o TEXTO CLARO NAO VAI AO DISCO (Content sai vazio e o cifrado fica em encrypted_content); a leitura e FAIL-CLOSED (registro cifrado sem chave FALHA com erro explicito, porque devolver vazio em silencio seria perda de dado disfarcada de memoria vazia); TODAS as escritas passam por writeMemoriesFile (eram CINCO pontos gravando o mesmo arquivo e proteger quatro deixaria um salvando texto claro); e MemoryEncryption() diz a verdade quando nao ha chave",
+    "CRIPTOGRAFIA - O DEFEITO QUE O PROPRIO TESTE ENCONTROU (E-094): o teste que verifica TODOS os caminhos de escrita falhou no primeiro deles - ATUALIZAR deixava o texto claro no disco, porque o caminho de versionamento grava o conteudo anterior em Versions[].Content e eu havia cifrado apenas o registro principal. O HISTORICO e texto do usuario e vazava em claro. Corrigido: MemoryVersion ganhou encrypted_content e o funil de disco cifra e decifra as revisoes. Segundo caso na semana em que o teste que mede o efeito, e nao a releitura do codigo, encontrou o irmao esquecido"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
