@@ -77,6 +77,8 @@
 
 | Missão: criação idempotente por chave | `internal/agent/runtime.go` (`idempotentMissionID`, `missionScopeMatches`), `schedule_flow.go` (PR #141) | IMPLEMENTADO_E_TESTADO | MÉDIO | E-076 | repetir criação não duplica e não cruza tenant; habilita retry por nó com segurança |
 
+| Workflow: retry por nó com tentativas registradas | `internal/agent/schedule_flow.go` (`runWithRetry`, `max_attempts`), `ScheduleStepOutcome.Attempts` (PR #143) | IMPLEMENTADO_NAO_HOMOLOGADO | MÉDIO | E-077 | recupera de falha transitória, limitado e com erro da última tentativa; mesma chave de idempotência impede duplicar |
+
 ## 6. Integrações, MCP e conectores
 
 | Capacidade | Superfície | Classificação | Risco | Evidência | Lacuna |
