@@ -33,24 +33,54 @@ const (
 	probePlaywrightVersion = "import playwright,sys;sys.stdout.write(getattr(playwright,'__version__',''))"
 	probeChromiumPath      = "from playwright.sync_api import sync_playwright\nimport os,sys\n" +
 		"with sync_playwright() as p:\n    sys.stdout.write('ok' if os.path.exists(p.chromium.executable_path) else 'missing')"
+	// probeInterpreterAlive valida que o candidato REALMENTE executa. No Windows,
+	// o atalho da Microsoft Store responde por "python"/"python3" no PATH e falha
+	// (exit 9009) sem imprimir nada — existir no PATH não é o mesmo que executar.
+	probeInterpreterAlive = "import sys;sys.stdout.write(str(sys.version_info[0]))"
 )
+
+// pythonInterpreterCandidates é a ordem de busca. "python3" primeiro em Unix,
+// "py" como último recurso no Windows.
+var pythonInterpreterCandidates = []string{"python3", "python", "py"}
+
+// resolvePythonInterpreter devolve o primeiro candidato que REALMENTE executa.
+//
+// A diferença para "existe no PATH" é o ponto: escolher por existência fazia o
+// operador adotar o atalho da Microsoft Store no Windows, e o status reportava
+// PythonOK=true para um atalho que não roda nada — orientação errada ("instale o
+// Playwright") para um problema que era de interpretador.
+func resolvePythonInterpreter(lookPath func(string) (string, error), probe pythonProbe) (string, bool) {
+	for _, candidate := range pythonInterpreterCandidates {
+		path, err := lookPath(candidate)
+		if err != nil || strings.TrimSpace(path) == "" {
+			continue
+		}
+		if _, probeErr := probe(path, probeInterpreterAlive); probeErr != nil {
+			continue
+		}
+		return path, true
+	}
+	return "", false
+}
+
+// pythonGuidanceWhenMissing explica o que fazer quando nenhum candidato executa,
+// incluindo o caso específico do atalho da Microsoft Store.
+func pythonGuidanceWhenMissing() []string {
+	return []string{
+		"Instale o Python 3 (python.org) e marque \"Add to PATH\".",
+		"No Windows, desative o atalho da Microsoft Store: Configurações → Aplicativos → " +
+			"Aliases de execução de aplicativo → desligue python.exe/python3.exe.",
+	}
+}
 
 // checkBrowserEnvironment is the pure core: given a way to locate python and a
 // probe runner, it derives the readiness status and guidance.
 func checkBrowserEnvironment(lookPath func(string) (string, error), probe pythonProbe) BrowserEnvironmentStatus {
 	status := BrowserEnvironmentStatus{}
 
-	var pythonPath string
-	for _, candidate := range []string{"python3", "python"} {
-		if p, err := lookPath(candidate); err == nil && p != "" {
-			pythonPath = p
-			break
-		}
-	}
-	if pythonPath == "" {
-		status.Guidance = []string{
-			"Instale o Python 3 (python.org ou a loja do sistema) e marque \"Add to PATH\".",
-		}
+	pythonPath, ok := resolvePythonInterpreter(lookPath, probe)
+	if !ok {
+		status.Guidance = pythonGuidanceWhenMissing()
 		return status
 	}
 	status.PythonPath = pythonPath
