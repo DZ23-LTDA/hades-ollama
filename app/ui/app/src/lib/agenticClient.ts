@@ -529,6 +529,12 @@ export type BusinessCampaignStatus = { total: number; draft: number; approved: n
 export type BusinessSalesStatus = { proposals: number; proposals_by_state?: Record<string, number>; follow_ups: number; follow_ups_overdue: number };
 export type BusinessInboxStatus = { conversations: number; open: number; closed: number; sla_violations: number };
 export type BusinessStatusReport = { organization_id: string; generated_at: string; companies: number; commerce: BusinessCommerceStatus; finance: BusinessFinanceStatus; campaigns: BusinessCampaignStatus; sales: BusinessSalesStatus; inbox: BusinessInboxStatus; marketplace_channels_incompletos: number; sources: BusinessMetricSource[]; nao_medido: string[]; sandbox: boolean };
+// Série temporal do BI (estágio 32). `sem_base` é declarado quando não há duas amostras: a interface
+// mostra o MOTIVO em vez de exibir delta zero, que significaria "não mudou".
+export type BusinessSnapshot = { id: string; organization_id: string; taken_at: string; window: string; report: BusinessStatusReport };
+export type BusinessTrendDelta = { metric: string; from: number; to: number; delta: number };
+export type BusinessTrend = { organization_id: string; snapshots: number; first?: string; last?: string; intervalo?: string; sem_base: boolean; motivo?: string; deltas?: BusinessTrendDelta[]; history: BusinessSnapshot[]; amostras_descartadas: number; retencao_maxima: number };
+export type BusinessSnapshotRecord = { created: boolean; snapshot: BusinessSnapshot; trend: BusinessTrend };
 
 export const getCompanyGrowthReport = (id: string) => agentFetch<CompanyGrowthReport>(`/api/agent/v1/companies/${encodeURIComponent(id)}/growth/report`);
 export const getGrokStatus = () => agentFetch<GrokStatus>("/api/agent/v1/grok/status");
@@ -554,6 +560,10 @@ export const getCompanyCampaignReport = (id: string) => agentFetch<CompanyCampai
 // Marketplace (estagio 25): catalogo com estado REAL, sincronizacao contra o duble de sandbox e
 // espelho remoto. Nada aqui publica em plataforma externa.
 // Painel de BI (estágio 32): somente leitura. A organização vem da empresa da sessão no servidor.
+// Série temporal (estágio 32): registrar é idempotente por janela de hora no servidor, e a resposta
+// diz `created` — a interface usa isso para não afirmar "novo dado" quando a hora já tinha amostra.
+export const getBusinessTrend = (id: string) => agentFetch<BusinessTrend>(`/api/agent/v1/companies/${encodeURIComponent(id)}/business-snapshots`);
+export const recordBusinessSnapshot = (id: string) => agentFetch<BusinessSnapshotRecord>(`/api/agent/v1/companies/${encodeURIComponent(id)}/business-snapshots`, { method: "POST", body: "{}" });
 export const getBusinessStatus = (id: string) => agentFetch<BusinessStatusReport>(`/api/agent/v1/companies/${encodeURIComponent(id)}/business-status`);
 export const getMarketplaceChannels = (id: string) => agentFetch<{ channels: MarketplaceChannel[] }>(`/api/agent/v1/companies/${encodeURIComponent(id)}/marketplace/channels`);
 export const syncMarketplace = (id: string, payload: { channel_id: string; direction?: string; items: MarketplaceSyncItem[] }) => agentFetch<MarketplaceSyncReport>(`/api/agent/v1/companies/${encodeURIComponent(id)}/marketplace/sync`, { method: "POST", body: JSON.stringify(payload) });
