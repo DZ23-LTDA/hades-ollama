@@ -139,6 +139,12 @@ type OmnichannelRuntime struct {
 	// inbox é o ÚNICO destino das mensagens: reusar evita um segundo caminho de
 	// mensagem que poderia divergir do primeiro.
 	inbox *InboxStore
+	// dlq persiste a fila de mortos; nil mantém o comportamento em memória (com erro declarado).
+	dlq *OmnichannelDLQStore
+	// loadedOrgs marca quais organizações já tiveram a fila persistida carregada.
+	loadedOrgs map[string]bool
+	// dlqError guarda a última falha de persistência para ser REPORTADA, nunca escondida.
+	dlqError string
 	// now permite testar a janela de replay sem esperar.
 	now func() time.Time
 }
@@ -150,9 +156,55 @@ func NewOmnichannelRuntime(inbox *InboxStore) *OmnichannelRuntime {
 		eventsByKey: map[string]OmnichannelEvent{},
 		buckets:     map[string]omnichannelBucket{},
 		rateLimit:   OmnichannelDefaultRateLimit,
+		loadedOrgs:  map[string]bool{},
 		inbox:       inbox,
 		now:         func() time.Time { return time.Now().UTC() },
 	}
+}
+
+// SetDLQStore liga a persistência da fila de mortos. Sem store, a fila continua em memória e o estado
+// diz isso (`Persisted=false`) em vez de fingir durabilidade.
+func (r *OmnichannelRuntime) SetDLQStore(store *OmnichannelDLQStore) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.dlq = store
+	r.loadedOrgs = map[string]bool{}
+	r.dlqError = ""
+}
+
+// OmnichannelDLQStatus é o estado REAL da fila de mortos de uma organização.
+type OmnichannelDLQStatus struct {
+	OrganizationID string `json:"organization_id"`
+	// Persisted diz se há store configurado — durabilidade não se presume.
+	Persisted bool `json:"persisted"`
+	// Storage é o diretório usado quando há persistência.
+	Storage string `json:"storage,omitempty"`
+	// Entries é quantas entradas a organização tem agora.
+	Entries int `json:"entries"`
+	// PerOrganization é o teto aplicado a ESTA organização.
+	PerOrganization int `json:"per_organization"`
+	// Error é a última falha de persistência, quando houve.
+	Error string `json:"error,omitempty"`
+}
+
+// OmnichannelDLQStatus reporta o estado da fila de mortos da organização.
+func (r *OmnichannelRuntime) OmnichannelDLQStatus(organizationID string) (OmnichannelDLQStatus, error) {
+	organizationID = consentScope(organizationID)
+	entries := r.DeadLetters(organizationID)
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	status := OmnichannelDLQStatus{
+		OrganizationID:  organizationID,
+		Entries:         len(entries),
+		PerOrganization: OmnichannelMaxDLQ,
+		Error:           r.dlqError,
+	}
+	if r.dlq != nil {
+		status.Persisted = true
+		status.Storage = r.dlq.Root()
+		status.PerOrganization = r.dlq.MaxPerOrganization
+	}
+	return status, nil
 }
 
 // SetRateLimit ajusta o teto por janela (0 mantém o padrão).
@@ -343,16 +395,99 @@ func (r *OmnichannelRuntime) deadLetter(event OmnichannelEvent, channel, reason 
 		CreatedAt:      now,
 		LastAttemptAt:  now,
 	})
-	if len(r.deadLetters) > OmnichannelMaxDLQ {
-		r.deadLetters = r.deadLetters[len(r.deadLetters)-OmnichannelMaxDLQ:]
+	r.trimDeadLettersLocked(event.OrganizationID)
+	r.persistDeadLettersLocked(event.OrganizationID)
+}
+
+// trimDeadLettersLocked aplica o teto POR ORGANIZAÇÃO.
+//
+// O teto global anterior tinha um defeito de isolamento: o volume de um tenant expulsava as entradas
+// de outro, ou seja, um tenant conseguia apagar evidência alheia apenas publicando muito.
+func (r *OmnichannelRuntime) trimDeadLettersLocked(organizationID string) {
+	limit := OmnichannelMaxDLQ
+	if r.dlq != nil && r.dlq.MaxPerOrganization > 0 {
+		limit = r.dlq.MaxPerOrganization
+	}
+	count := 0
+	for _, entry := range r.deadLetters {
+		if entry.OrganizationID == organizationID {
+			count++
+		}
+	}
+	if count <= limit {
+		return
+	}
+	// Remove as MAIS ANTIGAS daquela organização, preservando todas as outras.
+	excess := count - limit
+	kept := make([]OmnichannelDeadLetter, 0, len(r.deadLetters))
+	for _, entry := range r.deadLetters {
+		if entry.OrganizationID == organizationID && excess > 0 {
+			excess--
+			continue
+		}
+		kept = append(kept, entry)
+	}
+	r.deadLetters = kept
+}
+
+// persistDeadLettersLocked grava a fila da organização, guardando o erro para ser reportado.
+func (r *OmnichannelRuntime) persistDeadLettersLocked(organizationID string) {
+	if r.dlq == nil {
+		return
+	}
+	entries := make([]OmnichannelDeadLetter, 0)
+	for _, entry := range r.deadLetters {
+		if entry.OrganizationID == organizationID {
+			entries = append(entries, entry)
+		}
+	}
+	if err := r.dlq.Save(organizationID, entries); err != nil {
+		// Falha NÃO apaga da memória: perder a entrada em silêncio é o defeito que estamos corrigindo.
+		r.dlqError = err.Error()
+		return
+	}
+	r.dlqError = ""
+}
+
+// ensureDeadLettersLoadedLocked carrega, uma vez por organização, a fila persistida.
+func (r *OmnichannelRuntime) ensureDeadLettersLoadedLocked(organizationID string) {
+	if r.dlq == nil || r.loadedOrgs[organizationID] {
+		return
+	}
+	r.loadedOrgs[organizationID] = true
+	persisted, err := r.dlq.Load(organizationID)
+	if err != nil {
+		r.dlqError = err.Error()
+		return
+	}
+	if len(persisted) == 0 {
+		return
+	}
+	known := make(map[string]bool, len(r.deadLetters))
+	for _, entry := range r.deadLetters {
+		known[entry.ID] = true
+	}
+	for _, entry := range persisted {
+		// Idempotência da carga: o que já está em memória não entra duas vezes.
+		if known[entry.ID] {
+			continue
+		}
+		if entry.OrganizationID != organizationID {
+			// Arquivo de outra organização não contamina este escopo.
+			continue
+		}
+		r.deadLetters = append(r.deadLetters, entry)
 	}
 }
 
-// DeadLetters lista a fila de mortos de uma organização.
+// DeadLetters lista a fila de mortos de uma organização, juntando o que está em memória com o que foi
+// persistido (a fila sobrevive ao reinício; sem store, é só memória — e `OmnichannelDLQStatus` declara
+// isso, junto com a última falha de persistência).
 func (r *OmnichannelRuntime) DeadLetters(organizationID string) []OmnichannelDeadLetter {
 	organizationID = consentScope(organizationID)
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	r.ensureDeadLettersLoadedLocked(organizationID)
 	out := make([]OmnichannelDeadLetter, 0)
 	for _, entry := range r.deadLetters {
 		if entry.OrganizationID != organizationID {
@@ -360,6 +495,7 @@ func (r *OmnichannelRuntime) DeadLetters(organizationID string) []OmnichannelDea
 		}
 		out = append(out, entry)
 	}
+	sort.SliceStable(out, func(i, j int) bool { return out[i].CreatedAt.Before(out[j].CreatedAt) })
 	return out
 }
 
@@ -368,6 +504,8 @@ func (r *OmnichannelRuntime) DeadLetters(organizationID string) []OmnichannelDea
 func (r *OmnichannelRuntime) RetryDeadLetter(organizationID, id string, now time.Time) (OmnichannelDeadLetter, error) {
 	organizationID = consentScope(organizationID)
 	r.mu.Lock()
+	// Retomar uma entrada que só existe no disco (depois de um reinício) precisa carregá-la antes.
+	r.ensureDeadLettersLoadedLocked(organizationID)
 	index := -1
 	for position, entry := range r.deadLetters {
 		if entry.ID == id && entry.OrganizationID == organizationID {
@@ -396,6 +534,33 @@ func (r *OmnichannelRuntime) RetryDeadLetter(organizationID, id string, now time
 	if index < len(r.deadLetters) {
 		r.deadLetters = append(r.deadLetters[:index], r.deadLetters[index+1:]...)
 	}
+	// A remoção precisa chegar ao disco: senão o reinício ressuscita um evento já processado.
+	r.persistDeadLettersLocked(organizationID)
+	return entry, nil
+}
+
+// DiscardDeadLetter remove uma entrada sem reprocessar, com decisão explícita de quem opera.
+//
+// Existe porque a alternativa — deixar a entrada apodrecendo na fila até o teto expulsá-la — esconde a
+// decisão: alguém escolheu abandonar aquele evento, e a escolha fica registrada como remoção.
+func (r *OmnichannelRuntime) DiscardDeadLetter(organizationID, id string) (OmnichannelDeadLetter, error) {
+	organizationID = consentScope(organizationID)
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.ensureDeadLettersLoadedLocked(organizationID)
+	index := -1
+	for position, entry := range r.deadLetters {
+		if entry.ID == id && entry.OrganizationID == organizationID {
+			index = position
+			break
+		}
+	}
+	if index < 0 {
+		return OmnichannelDeadLetter{}, fmt.Errorf("%w: %s", ErrOmnichannelDLQNotFound, id)
+	}
+	entry := r.deadLetters[index]
+	r.deadLetters = append(r.deadLetters[:index], r.deadLetters[index+1:]...)
+	r.persistDeadLettersLocked(organizationID)
 	return entry, nil
 }
 
@@ -406,6 +571,8 @@ func (r *OmnichannelRuntime) bumpDeadLetter(index int, reason string, now time.T
 		r.deadLetters[index].Attempts++
 		r.deadLetters[index].Reason = reason
 		r.deadLetters[index].LastAttemptAt = now
+		// A tentativa e o motivo novo são o histórico do incidente: precisam sobreviver ao reinício.
+		r.persistDeadLettersLocked(r.deadLetters[index].OrganizationID)
 	}
 }
 

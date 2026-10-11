@@ -2,12 +2,12 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-12T00:55:00-03:00",
+  "updated_at": "2026-10-12T02:15:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
     "integration_branch": "main",
-    "main_sha": "2edee049093ea53117afcbd4ceeebd819265ec0a",
+    "main_sha": "10f18f4d8c320e38a1c2b8036aa0f2a92ce835a6",
     "main_committed_at": "2026-10-09T10:24:45Z",
     "main_ci_state": "green (dz23-agentic-quality + class-a-plus-integrity = success nesse SHA)",
     "mission_branch": "docs/checkpoints-missao-v21",
@@ -819,11 +819,12 @@
       "capability": "PARCIAL",
       "evidence": [
         "E-045",
-        "E-105"
+        "E-105",
+        "E-141"
       ],
       "blocker": "B-03",
-      "next": "LIMITES: sem entrega de saida ao provedor (depende de credencial), rate limit em memoria (nao distribuido), DLQ em memoria (persistencia e trabalho futuro), sem download/armazenamento de midia e sem rotacao de segredo (vem do ambiente)",
-      "done": "CONTRATO CANONICO DE MENSAGENS implementado: OmnichannelEvent com tenant, canal, conector, external_message_id, contato, remetente/destinatario, tipo, referencia de conteudo, anexos, carimbo, estado de entrega, correlacao, idempotencia, agente, consentimento e metadados de auditoria. Ingestao com O TENANT VINDO DO CONECTOR (nunca do payload), assinatura HMAC-SHA256 comparada em TEMPO CONSTANTE e FALHA FECHADA sem segredo, anti-replay por janela de +/-5 minutos, deduplicacao por external_message_id, rate limit por organizacao e canal, DLQ com motivo e reprocessamento explicito, e a mensagem entra pela MESMA caixa de entrada"
+      "next": "LIMITES: RATE LIMIT segue em memoria (nao distribuido entre processos); RETRY segue EXPLICITO (sem agendador que reprocesse a fila sozinho); sem DOWNLOAD/ARMAZENAMENTO de midia e sem ROTACAO DE SEGREDO do conector; e a ENTREGA DE SAIDA ao provedor continua BLOCKED_BY_EXTERNAL_DEPENDENCY - a DLQ guarda o que falhou NA ENTRADA",
+      "done": "CONTRATO CANONICO DE MENSAGENS implementado: OmnichannelEvent com tenant, canal, conector, external_message_id, contato, remetente/destinatario, tipo, referencia de conteudo, anexos, carimbo, estado de entrega, correlacao, idempotencia, agente, consentimento e metadados de auditoria. Ingestao com O TENANT VINDO DO CONECTOR (nunca do payload), assinatura HMAC-SHA256 comparada em TEMPO CONSTANTE e FALHA FECHADA sem segredo, anti-replay por janela de +/-5 minutos, deduplicacao por external_message_id, rate limit por organizacao e canal, DLQ com motivo e reprocessamento explicito, e a mensagem entra pela MESMA caixa de entrada | DLQ PERSISTENTE (E-141): OmnichannelDLQStore grava um arquivo por organizacao (<dataRoot>/.agent-omnichannel-dlq/<org>.json) com escrita atomica e esta LIGADO ao Runtime (SetDLQStore), senao seria codigo morto. DEFEITO DE ISOLAMENTO CORRIGIDO: o teto era GLOBAL e o volume de um tenant podia EXPULSAR a evidencia de outro; agora o teto e POR ORGANIZACAO (teste enche org_a com o teto + 20 e exige que org_b continue intacta). DiscardDeadLetter registra o abandono como decisao; tentativas e motivo sao persistidos; OmnichannelDLQStatus expoe Persisted/Storage/Entries/PerOrganization/Error e a rota devolve storage. QUATRO REGRAS TRAVADAS POR TESTE: falha de persistencia NAO apaga da memoria (aparece em status.Error); sem store Persisted=false (durabilidade nao se presume); arquivo corrompido e REPORTADO e nao tratado como fila vazia; isolamento conferido no DISCO. 8/8 PASS, suites ok (agente 61,813s, servidor 21,294s), lint 0 issues e LINUX PARITY OK"
     },
     {
       "id": 35,
@@ -1233,7 +1234,12 @@
     "PYTHON NO WINDOWS GRAVOU CRLF E O GOFMT PEGOU (E-140): o script que inseriu as tags nos 12 testes do mlx gravou os arquivos em CRLF (o modo texto do Python no Windows traduz \\n para os.linesep) e o gofmt -l acusou os 12 arquivos. Corrigido com escrita em newline=''. Lembrete institucionalizado: formatador nao e ritual, e detector - foi ele que pegou o artefato que eu mesmo introduzi",
     "E2E - 17 FALHAS QUE ERAM MINHAS (E-140): a primeira execucao de npx playwright test deu 17 falhas por 'Executable doesn't exist em ..._tmp\\localappdata\\ms-playwright\\chromium_headless_shell-1248'. A causa NAO e o produto: eu redirecionei LOCALAPPDATA para _tmp (bloco de ambiente) e o Chromium estava instalado no perfil real. Com PLAYWRIGHT_BROWSERS_PATH apontado para C:\\Users\\...\\AppData\\Local\\ms-playwright: 18 passed. Sem conferir, eu teria registrado '17 testes E2E quebrados'",
     "PRETTIER:CHECK NAO E GATE DE CI (E-140): npm run prettier:check acusa 3 arquivos (src/api.errors.test.ts, src/components/ErrorMessage.tsx, src/components/RootErrorBoundary.test.tsx) e o git grep de prettier em .github/workflows nao encontra nenhuma referencia (so playwright). Declarado como desvio medido: reformatar arquivos fora do escopo sem gate que exija e churn; se o projeto quiser a regua, ela deve virar gate",
-    "LIMITES DO GATE REEXECUTADO (E-140): instaladores de pacote ASSINADOS e assinatura digital seguem BLOCKED_BY_EXTERNAL_DEPENDENCY (certificado); instalacao em macOS/Linux REAIS e dispositivo real NAO MEDIDOS; desktop/computer-use nativo AUSENTE; APIs externas com credenciais reais BLOCKED_BY_EXTERNAL_DEPENDENCY; e restam 2 achados 'unused' na configuracao SEM cgo em arquivos de stub do mlx (dynamic_other.go, stub_nocgo.go) que o CI, lintando com cgo, nao ve"
+    "LIMITES DO GATE REEXECUTADO (E-140): instaladores de pacote ASSINADOS e assinatura digital seguem BLOCKED_BY_EXTERNAL_DEPENDENCY (certificado); instalacao em macOS/Linux REAIS e dispositivo real NAO MEDIDOS; desktop/computer-use nativo AUSENTE; APIs externas com credenciais reais BLOCKED_BY_EXTERNAL_DEPENDENCY; e restam 2 achados 'unused' na configuracao SEM cgo em arquivos de stub do mlx (dynamic_other.go, stub_nocgo.go) que o CI, lintando com cgo, nao ve",
+    "DLQ PERSISTENTE DO OMNICHANNEL (E-141): o estado declarava 'DLQ em memoria (persistencia e trabalho futuro)'. Fila de mortos em memoria perde o evento no reinicio, e o que se perde nao e um numero - e a mensagem de um cliente que ninguem vai reprocessar porque ninguem sabe que existiu. Entreguei OmnichannelDLQStore (arquivo por organizacao, escrita atomica) LIGADO ao Runtime, DiscardDeadLetter, persistencia de tentativas/motivo e OmnichannelDLQStatus. Verificado com 8/8 PASS, suites ok e paridade Linux OK",
+    "DLQ - DEFEITO DE ISOLAMENTO NO TETO (E-141): o teto era GLOBAL (len(r.deadLetters) > OmnichannelMaxDLQ), entao o volume de um tenant EXPULSAVA as entradas de outro - um tenant conseguia apagar evidencia alheia apenas publicando muito. Teto agora e POR ORGANIZACAO, com teste que enche org_a com o teto + 20 entradas e exige que a entrada de org_b continue intacta",
+    "DLQ - O NILERR PEGOU UM ERRO MEU (E-141): minha primeira versao de Load devolvia nil, nil para QUALQUER erro de leitura, tratando arquivo corrompido, permissao ou disco com problema como 'fila vazia' - uma DLQ corrompida passaria a parecer LIMPA, apagando a evidencia de mensagens nao processadas. A correcao separa errors.Is(err, os.ErrNotExist) (normal) do resto (REPORTADO), com teste que grava JSON invalido e exige o aviso no estado",
+    "DLQ - HONESTIDADE DA DURABILIDADE (E-141): falha de persistencia NAO apaga da memoria e aparece em status.Error; sem store, Persisted=false (durabilidade nao se presume - fila 'em memoria' que se apresenta como duravel e pior que a ausencia dela); e o isolamento e conferido LENDO O ARQUIVO, nao apenas a API",
+    "LIMITES DA DLQ (E-141): rate limit segue em memoria (nao distribuido); retry segue explicito (sem agendador); sem download/armazenamento de midia; sem rotacao de segredo; e entrega de saida ao provedor segue BLOCKED_BY_EXTERNAL_DEPENDENCY (a DLQ guarda o que falhou na entrada)"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",

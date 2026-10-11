@@ -256,6 +256,10 @@ func NewRuntime(config RuntimeConfig) (*Runtime, error) {
 	// O runtime de canais reusa a MESMA caixa de entrada: um segundo caminho de
 	// mensagem poderia divergir do primeiro.
 	omnichannelRuntime := NewOmnichannelRuntime(inboxStore)
+	// A fila de mortos PERSISTE um arquivo por organização (estágio 34): sem isso, o evento que falhou
+	// desaparece no reinício — e o que se perde não é um número, é a mensagem de um cliente que ninguém
+	// vai reprocessar porque ninguém sabe que existiu.
+	omnichannelRuntime.SetDLQStore(NewOmnichannelDLQStore(omnichannelDLQRoot(dataRoot)))
 	// Os agentes de atendimento usam as MESMAS peças (CRM, inbox e consentimento).
 	serviceAgentRuntime := NewServiceAgentRuntime(crmStore, inboxStore, consentRegistry, DefaultServiceAgentTools())
 	// O motor de comércio guarda catálogo, estoque e pedidos (estágio 24) e PERSISTE
