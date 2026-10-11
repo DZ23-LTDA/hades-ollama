@@ -52,6 +52,7 @@ type Runtime struct {
 	context             *ContextStore
 	company             *CompanyStore
 	consent             *ConsentRegistry
+	crm                 *CRMStore
 	remoteMCP           *RemoteMCPManager
 	metrics             *RuntimeMetrics
 	connectors          *ConnectorManager
@@ -96,6 +97,7 @@ type RuntimeConfig struct {
 	Context             *ContextStore
 	Company             *CompanyStore
 	Consent             *ConsentRegistry
+	CRM                 *CRMStore
 	RemoteMCP           *RemoteMCPManager
 	Connectors          *ConnectorManager
 	MCP                 *MCPManager
@@ -227,6 +229,13 @@ func NewRuntime(config RuntimeConfig) (*Runtime, error) {
 			return nil, err
 		}
 	}
+	crmStore := config.CRM
+	if crmStore == nil {
+		crmStore, err = NewCRMStore(filepath.Join(dataRoot, ".agent-crm"))
+		if err != nil {
+			return nil, err
+		}
+	}
 	queue := config.Queue
 	if queue == nil {
 		queue, err = NewJobQueue(filepath.Join(dataRoot, ".agent-queue"))
@@ -262,7 +271,7 @@ func NewRuntime(config RuntimeConfig) (*Runtime, error) {
 			return nil, err
 		}
 	}
-	runtime := &Runtime{store: store, planner: planner, plannerResolver: config.PlannerResolver, tools: tools, capabilityPolicy: capabilityPolicy, workspaceRoot: root, dataRoot: dataRoot, context: contextStore, company: companyStore, consent: consentRegistry, remoteMCP: config.RemoteMCP, metrics: &RuntimeMetrics{}, connectors: config.Connectors, mcp: config.MCP, queue: queue, redisQueue: config.RedisQueue, traces: traces, telemetry: telemetry, media: config.Media, builder: builder, collaboration: collaboration, push: config.Push, pushOutbox: pushOutbox, deployments: config.Deployments, deploymentApprovals: deploymentApprovals, webhookReplay: webhookReplay, mu: &sync.Mutex{}, running: make(map[string]bool), activeCancels: make(map[string]context.CancelFunc), cancelPollInterval: durableCancelPollInterval()}
+	runtime := &Runtime{store: store, planner: planner, plannerResolver: config.PlannerResolver, tools: tools, capabilityPolicy: capabilityPolicy, workspaceRoot: root, dataRoot: dataRoot, context: contextStore, company: companyStore, consent: consentRegistry, crm: crmStore, remoteMCP: config.RemoteMCP, metrics: &RuntimeMetrics{}, connectors: config.Connectors, mcp: config.MCP, queue: queue, redisQueue: config.RedisQueue, traces: traces, telemetry: telemetry, media: config.Media, builder: builder, collaboration: collaboration, push: config.Push, pushOutbox: pushOutbox, deployments: config.Deployments, deploymentApprovals: deploymentApprovals, webhookReplay: webhookReplay, mu: &sync.Mutex{}, running: make(map[string]bool), activeCancels: make(map[string]context.CancelFunc), cancelPollInterval: durableCancelPollInterval()}
 	orchestrator, err := NewAgentOrchestrator(filepath.Join(dataRoot, ".agent-orchestrator"), runtime.SubagentRunner)
 	if err != nil {
 		return nil, err
@@ -346,6 +355,14 @@ func (r *Runtime) Consent() *ConsentRegistry {
 		return nil
 	}
 	return r.consent
+}
+
+// CRM devolve o CRM de contatos e oportunidades (estágios 27 e 35).
+func (r *Runtime) CRM() *CRMStore {
+	if r == nil {
+		return nil
+	}
+	return r.crm
 }
 
 func (r *Runtime) Supervisor() *Supervisor {

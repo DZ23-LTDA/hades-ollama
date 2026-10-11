@@ -64,10 +64,20 @@ func TestSlashRegistryCoversSection6AndIsHonest(t *testing.T) {
 		}
 	}
 	// E o registro não pode mentir sobre o que não existe.
-	for _, name := range []string{"/research", "/support", "/telegram", "/inbox", "/crm", "/handoff"} {
+	for _, name := range []string{"/research", "/support", "/telegram", "/inbox", "/handoff"} {
 		if byName[name].Available {
 			t.Fatalf("command %s must be marked unavailable while it has no route", name)
 		}
+	}
+	// /crm SAIU desta lista porque o CRM passou a existir: enquanto não havia rota,
+	// ele era marcado indisponível — e era honesto. Agora precisa estar DISPONÍVEL e
+	// apontar para a rota real de contatos (a rota é verificada nos testes de servidor).
+	crm := byName["/crm"]
+	if !crm.Available {
+		t.Fatalf("/crm precisa estar disponível agora que o CRM existe: %+v", crm)
+	}
+	if !strings.Contains(crm.Backend, "/crm/contacts") {
+		t.Fatalf("/crm precisa apontar para a rota real de contatos, veio %q", crm.Backend)
 	}
 }
 
