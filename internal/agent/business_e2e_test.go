@@ -61,7 +61,7 @@ func TestBusinessE2ECertifiesTheSandboxCompany(t *testing.T) {
 		"mensagem_recebida", "agente_respondeu", "oportunidade_criada", "pedido_criado",
 		"estoque_reservado", "pagamento_sandbox", "receita_lancada", "conciliacao",
 		"pedido_atendido", "sla_medido", "financeiro_consistente", "recuperacao_idempotente",
-		"isolamento_provado",
+		"isolamento_provado", "supervisor_ciclo", "aprovacao_humana", "supervisor_isolamento",
 	}
 	seen := map[string]BusinessJourneyStep{}
 	for _, step := range report.Steps {
@@ -99,10 +99,31 @@ func TestBusinessE2ECertifiesTheSandboxCompany(t *testing.T) {
 	if !report.RecoveryProven {
 		t.Fatal("a idempotência da jornada precisa estar provada")
 	}
-	// O estado final da empresa é coerente: um pedido atendido, receita conciliada.
-	if orders := runtime.Commerce().Orders(input.OrganizationID); len(orders) != 1 {
-		t.Fatalf("a jornada precisa deixar um pedido: %d", len(orders))
+	// O CICLO DE SUPERVISÃO faz parte da certificação: ele observa, deixa o estorno
+	// aguardando humano e a decisão de uma pessoa produz efeito real no livro.
+	if report.Supervisor.Signals == 0 || report.Supervisor.AwaitingApproval == 0 {
+		t.Fatalf("o ciclo do supervisor precisa observar e aguardar decisão: %+v", report.Supervisor)
 	}
+	if report.Supervisor.HumanDecided != "estornar_pagamento" || report.Supervisor.DecidedBy != "gerente-certificacao" {
+		t.Fatalf("a decisão humana precisa estar registrada: %+v", report.Supervisor)
+	}
+	if report.Supervisor.LedgerEffect == "" {
+		t.Fatalf("a aprovação precisa declarar o efeito no livro: %+v", report.Supervisor)
+	}
+	// O estado final é coerente: DOIS pedidos (um atendido e um cancelado com estorno
+	// aprovado), estoque de volta pela liberação do cancelamento e financeiro fechado.
+	orders := runtime.Commerce().Orders(input.OrganizationID)
+	if len(orders) != 2 {
+		t.Fatalf("a jornada precisa deixar dois pedidos (atendido e estornado): %d", len(orders))
+	}
+	statuses := map[string]int{}
+	for _, order := range orders {
+		statuses[order.Status]++
+	}
+	if statuses[CommerceOrderFulfilled] != 1 || statuses[CommerceOrderCancelled] != 1 {
+		t.Fatalf("estados dos pedidos incorretos: %+v", statuses)
+	}
+	// O cancelamento LIBERA a reserva, então só a venda atendida sai do físico.
 	balance := runtime.Commerce().Stock(input.OrganizationID, input.SKU)
 	if balance.OnHand != input.InitialStock-input.Quantity || balance.Reserved != 0 {
 		t.Fatalf("estoque final incorreto: %+v", balance)
@@ -111,8 +132,36 @@ func TestBusinessE2ECertifiesTheSandboxCompany(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if finance.Ledger.IncomeCents != input.PriceCents*input.Quantity || len(finance.Divergences) != 0 {
-		t.Fatalf("financeiro final incorreto: %+v", finance)
+	// Receita das DUAS vendas registradas; estorno da cancelada; nada pendente.
+	if finance.Ledger.IncomeCents != input.PriceCents*input.Quantity+input.PriceCents {
+		t.Fatalf("receita final incorreta: %+v", finance.Ledger)
+	}
+	if finance.RefundDue != 0 || len(finance.Divergences) != 0 {
+		t.Fatalf("o estorno aprovado precisa LIQUIDAR a pendência: %+v", finance)
+	}
+	entries, err := runtime.CompanyStore().ListLedgerEntries(runtime.CompanyStore().List(input.OrganizationID)[0].ID, time.Time{}, time.Time{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	refunds := 0
+	for _, entry := range entries {
+		if entry.Category == "estorno" {
+			refunds++
+		}
+	}
+	if refunds != 1 {
+		t.Fatalf("um estorno registrado: %d", refunds)
+	}
+	// Um novo ciclo NÃO repropõe a decisão já tomada: a pendência está liquidada.
+	next, err := runtime.BusinessSupervisor().BusinessTick(input.OrganizationID, now.Add(time.Minute))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if next.AwaitingApproval != 0 {
+		t.Fatalf("o estorno liquidado não pode voltar a pedir aprovação: %+v", next.Actions)
+	}
+	if pending := runtime.BusinessSupervisor().PendingActions(input.OrganizationID); len(pending) != 0 {
+		t.Fatalf("pendências após a decisão: %+v", pending)
 	}
 }
 
@@ -131,11 +180,28 @@ func TestBusinessE2ESurvivesRealRestartWithoutDuplicating(t *testing.T) {
 		t.Fatalf("primeira jornada não aprovada: %+v", report.Steps)
 	}
 	orders := runtime.Commerce().Orders(input.OrganizationID)
-	if len(orders) != 1 {
-		t.Fatalf("um pedido após a jornada: %d", len(orders))
+	if len(orders) != 2 {
+		t.Fatalf("dois pedidos após a jornada: %d", len(orders))
 	}
-	originalOrder := orders[0]
-	originalEntry := report.Steps[10].Evidence
+	// O pedido ATENDIDO é o que sobrevive no ciclo de idempotência.
+	var originalOrder CommerceOrder
+	for _, order := range orders {
+		if order.Status == CommerceOrderFulfilled {
+			originalOrder = order
+		}
+	}
+	if originalOrder.ID == "" {
+		t.Fatal("esperava um pedido atendido")
+	}
+	originalEntry := ""
+	for _, step := range report.Steps {
+		if step.Step == "receita_lancada" {
+			originalEntry = step.Evidence
+		}
+	}
+	if originalEntry == "" {
+		t.Fatal("a evidência da receita precisa estar no relatório")
+	}
 
 	// REINÍCIO: novo runtime sobre o MESMO diretório de dados.
 	restarted, err := NewRuntime(RuntimeConfig{
@@ -164,11 +230,18 @@ func TestBusinessE2ESurvivesRealRestartWithoutDuplicating(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if finance.Ledger.IncomeCents != input.PriceCents*input.Quantity {
+	if finance.Ledger.IncomeCents != input.PriceCents*input.Quantity+input.PriceCents {
 		t.Fatalf("receita após reinício: %+v", finance.Ledger)
 	}
 	if finance.Ledger.ReconciledCount != 1 {
 		t.Fatalf("a conciliação precisa sobreviver: %+v", finance.Ledger)
+	}
+	// O estorno aprovado antes do reinício continua registrado e a pendência não volta.
+	if finance.RefundDue != 0 || len(finance.Divergences) != 0 {
+		t.Fatalf("o estorno liquidado precisa sobreviver: %+v", finance)
+	}
+	if pending := restarted.BusinessSupervisor().PendingActions(input.OrganizationID); len(pending) != 0 {
+		t.Fatalf("a decisão precisa sobreviver ao reinício: %+v", pending)
 	}
 	// E refazer o checkout idempotente depois do reinício NÃO cria um segundo pedido.
 	repeated, err := restarted.Commerce().CreateOrder(CommerceOrderRequest{
@@ -182,8 +255,8 @@ func TestBusinessE2ESurvivesRealRestartWithoutDuplicating(t *testing.T) {
 	if repeated.ID != originalOrder.ID || !repeated.Duplicated {
 		t.Fatalf("refazer após reinício precisa devolver o MESMO pedido: %+v", repeated)
 	}
-	if after := restarted.Commerce().Orders(input.OrganizationID); len(after) != 1 {
-		t.Fatalf("um pedido apenas após reinício: %d", len(after))
+	if after := restarted.Commerce().Orders(input.OrganizationID); len(after) != 2 {
+		t.Fatalf("dois pedidos após o reinício: %d", len(after))
 	}
 	// Repostar a receita depois do reinício também não duplica.
 	posting, err := restarted.Finance().PostOrderRevenue(input.OrganizationID, originalOrder.ID, "certificacao", now)
@@ -197,7 +270,7 @@ func TestBusinessE2ESurvivesRealRestartWithoutDuplicating(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if finance.Ledger.IncomeCents != input.PriceCents*input.Quantity {
+	if finance.Ledger.IncomeCents != input.PriceCents*input.Quantity+input.PriceCents {
 		t.Fatalf("receita duplicada após reinício: %+v", finance.Ledger)
 	}
 	// O consentimento também sobrevive: responder continua autorizado.

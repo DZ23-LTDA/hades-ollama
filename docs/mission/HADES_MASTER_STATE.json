@@ -2,12 +2,12 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-12T15:55:00-03:00",
+  "updated_at": "2026-10-12T16:55:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
     "integration_branch": "main",
-    "main_sha": "a1f2fbabf42492e61dd9564bbaa3b7e293ebfb42",
+    "main_sha": "820bae2a2e38ad2997048db26eadf25319ad2841",
     "main_committed_at": "2026-10-09T10:24:45Z",
     "main_ci_state": "green (dz23-agentic-quality + class-a-plus-integrity = success nesse SHA)",
     "mission_branch": "docs/checkpoints-missao-v21",
@@ -721,13 +721,14 @@
         "E-044",
         "E-087",
         "E-100",
-        "E-108"
+        "E-108",
+        "E-112"
       ],
       "blocker": "B-05",
       "next": "LIMITES: sem integracao bancaria (OFX/CNAB/API) nem importacao de extrato, sem fiscal (NF-e/impostos) nem contabil, sem emissao de Pix/boleto nem PSP (nada e transferido), sem rateio por centro de custo e sem orcamento por area, e o estorno e apenas SINALIZADO (executar exige autorizacao humana)",
       "blocked_reason": "",
       "external_dependency": "integracao fiscal autorizada exige certificado/credencial; o razao financeiro em sandbox e local",
-      "done": "FINANCE & OPERATIONS ligado ao comercio: receita derivada de pedido PAGO lancada no livro financeiro que ja existia (sem criar um segundo razao), idempotente por pedido, com pedido NAO PAGO recusado (receita ficticia evitada), contas a receber, conciliacao cruzada que grava a referencia do extrato no proprio lancamento, e DIVERGENCIAS MEDIDAS (receita nao lancada, receita sem conciliacao e estorno devido em pedido cancelado, com o lancamento PRESERVADO). Nenhum dinheiro se move: apenas registro e sinalizacao. O COMERCIO passou a PERSISTIR um arquivo por organizacao (catalogo, estoque, pedidos, chaves de idempotencia e numeracao)"
+      "done": "FINANCE & OPERATIONS ligado ao comercio: receita derivada de pedido PAGO lancada no livro financeiro que ja existia (sem criar um segundo razao), idempotente por pedido, com pedido NAO PAGO recusado (receita ficticia evitada), contas a receber, conciliacao cruzada que grava a referencia do extrato no proprio lancamento, e DIVERGENCIAS MEDIDAS (receita nao lancada, receita sem conciliacao e estorno devido em pedido cancelado, com o lancamento PRESERVADO). Nenhum dinheiro se move: apenas registro e sinalizacao. O COMERCIO passou a PERSISTIR um arquivo por organizacao (catalogo, estoque, pedidos, chaves de idempotencia e numeracao). CORRECAO E-112: o relatorio financeiro passou a reconhecer o ESTORNO JA REGISTRADO (idempotencia refund:<pedido>) e a tratar o pedido cancelado como LIQUIDADO - antes, depois de o estorno ser APROVADO, o pedido continuava aparecendo como estorno DEVIDO e o supervisor reproporia a mesma decisao em TODO ciclo, para sempre (a acao que nao fecha o que abriu)"
     },
     {
       "id": 31,
@@ -840,13 +841,14 @@
         "E-033",
         "E-048",
         "E-087",
-        "E-109"
+        "E-109",
+        "E-112"
       ],
       "blocker": "B-06",
-      "next": "LIMITES DECLARADOS NO PROPRIO RELATORIO: marketplace e redes sociais (conta autorizada e scopes), telefonia e voz (numero e provedor real), pagamento real (sem PSP nem transferencia), fiscal (NF-e e impostos) e canais externos (credencial do provedor). O veredito e SANDBOX_APROVADO e NAO autoriza chamar o resultado de producao",
+      "next": "LIMITES: marketplace e redes sociais (conta e scopes), telefonia e voz (numero e provedor), pagamento real (sem PSP), fiscal (NF-e e impostos) e canais externos (credencial). O estorno aprovado e registro CONTABIL sem transferencia de dinheiro, e o veredito segue SANDBOX_APROVADO e nao release",
       "blocked_reason": "",
       "external_dependency": "idem 32: integracoes ao vivo; a jornada em sandbox e local",
-      "done": "CERTIFICACAO E2E EM SANDBOX implementada com 18 etapas, CADA UMA CARREGANDO A EVIDENCIA do identificador produzido: empresa, produto e estoque, contato no CRM, consentimento, mensagem recebida, resposta do agente com procedencia declarada, oportunidade, pedido, reserva, pagamento sandbox por referencia, receita lancada, conciliacao, atendimento, SLA medido, financeiro consistente, recuperacao idempotente, isolamento provado e externo pendente DECLARADO. A PROVA DE ISOLAMENTO e parte do relatorio (cada recurso lido como a outra organizacao precisa falhar) e ha teste de REINICIO REAL com novo runtime sobre o mesmo diretorio de dados. Superficie real: POST /business/certify"
+      "done": "CERTIFICACAO E2E EM SANDBOX com 21 etapas, agora INCLUINDO O SUPERVISOR NO LACO: um segundo pedido e pago, tem receita lancada e e cancelado, gerando ESTORNO DEVIDO que por politica EXIGE DECISAO HUMANA; o ciclo do supervisor observa os dominios, a pendencia e consultavel, a aprovacao de gerente-certificacao EXECUTA o efeito real no livro, e a pendencia NAO VAZA para outra organizacao. O relatorio carrega um bloco supervisor com sinais, pendencias, bloqueios por orcamento, quem decidiu e o efeito no livro"
     }
   ],
   "blockers": [
@@ -1091,7 +1093,10 @@
     "RECUPERACAO PERSISTENTE DO SUPERVISOR DE NEGOCIO (E-111): eu havia DECLARADO no meu proprio relatorio anterior o limite 'aprovacoes e historico do ciclo ficam em memoria'. Isso significava que, apos um reinicio, uma DECISAO PENDENTE desapareceria e uma acao irreversivel que esperava aprovacao humana SUMIRIA DO RADAR DO OPERADOR - ou voltaria a ser proposta como se nunca tivesse sido vista. Fui corrigir exatamente isso",
     "RECUPERACAO DO SUPERVISOR - O QUE PERSISTE E POR QUE (E-111): gravamos em arquivo unico as ACOES E SUAS DECISOES (a pendencia precisa sobreviver e a recusa nao pode voltar a pendente), a POLITICA VIGENTE (limites nao se perdem), o ORCAMENTO CONSUMIDO (sem isso o supervisor GASTARIA DUAS VEZES) e a CONTAGEM DE CICLOS. A gravacao acontece nos pontos que mudam estado - registrar pendencia, bloquear por orcamento, executar acao autonoma, decidir e trocar politica - e a pendencia e gravada ANTES DE SAIR do ciclo",
     "RECUPERACAO DO SUPERVISOR - VERIFICACAO COM REINICIO REAL (E-111): tres testes sobem um NOVO runtime sobre o MESMO diretorio de dados e provam que a pendencia continua a MESMA (ID e tipo) e pode ser decidida depois com efeito real; que a recusa registrada NAO volta a pendente e que decidir de novo e idempotente com a decisao ORIGINAL prevalecendo (aprovar depois de recusar NAO executa); e que o segundo ciclo e o numero 2 com orcamento gasto 35000 e restante 65000 preservados. Os 6 testes anteriores seguem verdes",
-    "RECUPERACAO DO SUPERVISOR - LIMITE QUE CONTINUA (E-111): o HISTORICO dos ciclos segue em MEMORIA, porque ele e a trilha analitica do supervisor e nao a decisao. Pendencia, decisao, politica e orcamento, que sao o que MUDA O MUNDO, agora sao persistentes. Capacidade IMPLEMENTADO_NAO_HOMOLOGADO"
+    "RECUPERACAO DO SUPERVISOR - LIMITE QUE CONTINUA (E-111): o HISTORICO dos ciclos segue em MEMORIA, porque ele e a trilha analitica do supervisor e nao a decisao. Pendencia, decisao, politica e orcamento, que sao o que MUDA O MUNDO, agora sao persistentes. Capacidade IMPLEMENTADO_NAO_HOMOLOGADO",
+    "SUPERVISOR NO LACO DA CERTIFICACAO (E-112): a certificacao E2E deixou de terminar no financeiro e passou a EXERCER O SUPERVISOR DENTRO DA PROPRIA JORNADA. Um segundo pedido e pago, tem receita lancada e e cancelado, gerando ESTORNO DEVIDO que por politica EXIGE DECISAO HUMANA para mexer em dinheiro; o ciclo observa, a pendencia e consultavel, a aprovacao EXECUTA o efeito real no livro e a pendencia nao vaza para outra organizacao. Sao 21 etapas, com o relatorio ganhando um bloco supervisor",
+    "DEFEITO REAL EXPOSO PELA EXTENSAO DA JORNADA (E-112): depois de o estorno ser APROVADO, o relatorio financeiro CONTINUAVA marcando o pedido como estorno devido, porque so considerava a receita lancada e NAO RECONHECIA O ESTORNO JA REGISTRADO. O efeito seria grave e silencioso: o supervisor proporia A MESMA DECISAO EM TODO CICLO, PARA SEMPRE, mesmo depois de uma pessoa ter aprovado. Corrigido em FinanceOps.Report, que agora coleta os lancamentos com idempotencia refund:<pedido> e trata o pedido cancelado como LIQUIDADO - e a jornada verifica, num ciclo seguinte, que AwaitingApproval volta a ZERO e a fila fica VAZIA. E o defeito classico que o proprio estagio aponta: a acao que nao fecha o que abriu",
+    "ERRO MEU NO TESTE (E-112): eu errei a aritmetica da assercao escrevendo preco x quantidade x 2, mas o pedido estornado tem UMA unidade e nao 'quantidade'. A receita correta e a do pedido atendido mais UMA unidade - era a ASSERCAO que estava errada, nao o motor. Corrigi a assercao, em vez de mexer no codigo"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",

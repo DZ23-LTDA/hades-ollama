@@ -145,6 +145,8 @@
 
 | Supervisor de negócio: recuperação persistente | `business_supervisor.go` + `.agent-business-supervisor` (E-111) | IMPLEMENTADO_NAO_HOMOLOGADO | BAIXO | E-111 | pendências, decisões, política, orçamento e contagem de ciclos sobrevivem ao reinício real; histórico de ciclos em memória |
 
+| Certificação E2E com supervisor no laço | `business_e2e.go` + `finance_ops.go` (E-112) | PARCIAL | BAIXO | E-112 | 21 etapas; estorno aguarda humano, aprovação executa efeito real e não vaza; financeiro reconhece estorno já registrado (a ação fecha o que abriu) |
+
 ## 6. Integrações, MCP e conectores
 
 | Capacidade | Superfície | Classificação | Risco | Evidência | Lacuna |
