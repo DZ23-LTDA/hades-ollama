@@ -2,12 +2,12 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-11T16:40:00-03:00",
+  "updated_at": "2026-10-11T17:50:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
     "integration_branch": "main",
-    "main_sha": "4dfa4709effb528602ae71b0a58aedb6120b9e6b",
+    "main_sha": "e1d53865d52c662a4df0d767adeef2f3895af7f5",
     "main_committed_at": "2026-10-09T10:24:45Z",
     "main_ci_state": "green (dz23-agentic-quality + class-a-plus-integrity = success nesse SHA)",
     "mission_branch": "docs/checkpoints-missao-v21",
@@ -473,12 +473,13 @@
         "E-057",
         "E-087",
         "E-088",
-        "E-089"
+        "E-089",
+        "E-090"
       ],
       "blocker": "B-07",
-      "next": "ATIVIDADES AINDA AUSENTES, medidas em vez de supostas: deduplicacao de memoria, versionamento, resumos, criptografia em repouso e escopos de missao/agente/equipe no tipo Memory. O estagio NAO foi promovido porque a lista de atividades nao esta coberta - mesmo padrao aplicado ao estagio 13",
+      "next": "implementar as atividades ausentes medidas (deduplicacao, versionamento, resumos, criptografia em repouso e escopos de missao/agente/equipe). O invariante da familia (zero leitura de memoria sem ator no servidor) esta verificado por comando",
       "blocked_reason": "",
-      "done": "CRITERIO CUMPRIDO E MEDIDO: isolamento (organizacao/projeto/usuario), reinicio, retomada e TROCA DE MODELO provada AO VIVO com dois modelos locais reais (qwen2.5:7b e llama3.2:3b, 9,91s) com contexto byte-identico; exportacao/exclusao escopadas por ator (E-088); busca semantica com embeddings, proveniencia e retencao existentes. Terceiro caminho da familia corrigido: o CONTEXTO injetado no modelo filtrava memoria so por projeto e levava memoria private de outro usuario ao preambulo de sistema, que vai para o modelo"
+      "done": "CRITERIO CUMPRIDO E MEDIDO (troca de modelo AO VIVO, reinicio, retomada, isolamento) e evidencia obrigatoria coberta (isolamento, proveniencia, exportacao/exclusao). A varredura transversal fechou a familia de caminhos irmaos: rota de busca, exportacao, exclusao, contexto do modelo e comando /memory. Atividades ainda ausentes e medididas: deduplicacao, versionamento, resumos, criptografia em repouso e escopos finos"
     },
     {
       "id": 16,
@@ -989,7 +990,9 @@
     "ESTAGIO 15 - SEM PROMOCAO (E-088): isolamento, reinicio e exportacao/exclusao estao cobertos, mas o criterio do estagio tambem exige troca de modelo preservando contexto e retomada, que seguem PENDENTES. O estagio permanece IN_PROGRESS com capacidade IMPLEMENTADO_NAO_HOMOLOGADO. Promover agora repetiria o erro corrigido em E-087: fechar estagio com parte do criterio sem prova",
     "ESTAGIO 15 - CONTEXTO DO MODELO, TERCEIRO IRMAO DA MESMA FAMILIA (E-089): depois de corrigir export e delete (E-088), faltava o caminho que leva o dado MAIS LONGE - o contexto injetado no modelo. A rota montava o contexto com SearchMemoriesContext (busca SEM ator) e BuildContextBootstrap filtrava memoria apenas por ProjectID, ignorando Visibility e ActorID: memoria private de outro usuario entrava no preambulo de sistema, que VAI PARA O MODELO - com modelo externo, a anotacao privada de um colega sairia da maquina. Correcao fail-closed em duas camadas: ContextBootstrapInput ganhou ActorID e o builder recusa memoria que o ator nao pode ler (nem com lista crua do projeto), e a rota passou a usar SearchMemoriesForActor informando o ator",
     "ESTAGIO 15 - CRITERIO PROVADO AO VIVO (E-089): o Ollama local desta maquina esta ativo com 8 modelos, entao a troca de modelo NAO foi simulada: teste real entre qwen2.5:7b e llama3.2:3b (9,91s) provou que os dois modelos chegam ao provedor, que o contexto injetado fica byte-identico na troca, que a memoria privada de outro usuario NAO vai ao modelo e que o conhecimento do time vai, e que reinicio do store devolve o mesmo contexto. Sem Ollama local o teste e PULADO com causa declarada, nunca aprovado por omissao",
-    "ESTAGIO 15 - SEM PROMOCAO, COM O QUE FALTA MEDIDO (E-089): o criterio e a evidencia obrigatoria estao cumpridos, mas quatro atividades seguem AUSENTES por medicao (nao por suposicao): deduplicacao de memoria (os dedup do repositorio sao de fila/webhook/workspace), versionamento, resumos e criptografia em repouso, alem dos escopos de missao/agente/equipe no tipo Memory. Permanece IN_PROGRESS pelo mesmo padrao aplicado ao estagio 13"
+    "ESTAGIO 15 - SEM PROMOCAO, COM O QUE FALTA MEDIDO (E-089): o criterio e a evidencia obrigatoria estao cumpridos, mas quatro atividades seguem AUSENTES por medicao (nao por suposicao): deduplicacao de memoria (os dedup do repositorio sao de fila/webhook/workspace), versionamento, resumos e criptografia em repouso, alem dos escopos de missao/agente/equipe no tipo Memory. Permanece IN_PROGRESS pelo mesmo padrao aplicado ao estagio 13",
+    "VARREDURA DA FAMILIA DE CAMINHOS IRMAOS (E-090): tres rodadas seguidas encontraram o MESMO tipo de defeito - dado com escopo por ator cujo filtro existia em um caminho e faltava no irmao. Esta rodada varreu TODOS os leitores de cada recurso escopado em vez de corrigir caso a caso. Quarto irmao encontrado e corrigido: o comando /memory (da lista obrigatoria da secao 6) chamava SearchMemoriesContext e devolvia a memoria private de OUTRO usuario do mesmo projeto no corpo da resposta; validava organizacao e projeto, mas nao o ator. Corrigido para SearchMemoriesForActor. Medicao do invariante: chamadas de memoria SEM ator no servidor cairam de 3 para ZERO (SearchMemoriesContext, ExportMemories e RemoveMemory), e a unica ocorrencia restante de SearchMemories( e a DEFINICAO do handler, verificada linha a linha. Familias verificadas como corretas: aprovacoes de missao (DecideApprovalForActorCAS), aprovacoes de empresa (organizationID e agentActorID ao store, com requireApprovalApprover) e /skills e /mcp (listam por organizacao, sem conceito privado por usuario)",
+    "REGRA QUE FICA (E-090): recurso com escopo por ator so esta protegido quando TODOS os caminhos que leem o dado aplicam o filtro. A existencia de uma funcao escopada NAO e prova de uso, e o irmao esquecido e o caminho mais provavel do vazamento. O invariante ficou verificavel por comando e documentado em docs/mission/HADES_SIBLING_PATHS_AUDIT.md"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -1016,5 +1019,17 @@
       "38:BLOCKED_BY_EXTERNAL_DEPENDENCY->NOT_STARTED"
     ],
     "metodo": "medicao por conteudo (grep) e por tamanho de arquivo, nao por nome"
+  },
+  "sibling_paths_audit": {
+    "documento": "docs/mission/HADES_SIBLING_PATHS_AUDIT.md",
+    "quarto_irmao": "comando /memory (SearchMemoriesContext -> SearchMemoriesForActor)",
+    "leituras_sem_ator_antes": 3,
+    "leituras_sem_ator_depois": 0,
+    "familias_verificadas_corretas": [
+      "aprovacoes de missao",
+      "aprovacoes de empresa",
+      "/skills",
+      "/mcp"
+    ]
   }
 }

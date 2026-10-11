@@ -105,7 +105,10 @@ func (a *agentAPI) executeCommand(c *gin.Context, invocation agent.SlashInvocati
 		if _, err := a.projectForRequest(c); err != nil {
 			return nil, false, statusForAgentError(err), err
 		}
-		memories, err := a.context.SearchMemoriesContext(c.Request.Context(), projectID, invocation.Args["consulta"], 20)
+		// Escopado por ATOR: o comando devolvia a memória privada de OUTRO usuário
+		// do mesmo projeto no corpo da resposta. Era o quarto caminho da mesma
+		// família — a rota de busca já filtrava e o comando não.
+		memories, err := a.context.SearchMemoriesForActor(c.Request.Context(), projectID, agentActorID(c), invocation.Args["consulta"], 20)
 		if err != nil {
 			return nil, false, http.StatusBadRequest, err
 		}
