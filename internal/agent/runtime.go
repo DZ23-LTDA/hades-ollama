@@ -272,6 +272,9 @@ func NewRuntime(config RuntimeConfig) (*Runtime, error) {
 	// Sem este store, as ferramentas de ESCRITA dos agentes de atendimento são RECUSADAS: efeito no CRM ou na
 	// caixa de entrada não acontece por conta de uma frase do cliente.
 	serviceAgentRuntime.SetApprovalStore(NewServiceAgentApprovalStore(serviceAgentApprovalRoot(dataRoot)))
+	// A base de conhecimento é a MESMA memória governada (estágio 15): a busca percorre só projetos da
+	// organização da sessão, e projeto sem organização fica FORA.
+	serviceAgentRuntime.SetKnowledge(contextStore)
 	// O motor de comércio guarda catálogo, estoque e pedidos (estágio 24) e PERSISTE
 	// um arquivo por organização: sem persistência, um reinício apagaria pedidos.
 	commerceStore, err := NewCommerceStoreAt(filepath.Join(dataRoot, ".agent-commerce"))

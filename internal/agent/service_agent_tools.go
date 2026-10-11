@@ -374,6 +374,126 @@ func serviceAgentCommerceTools(commerce *CommerceStore) map[string]ServiceAgentT
 	return tools
 }
 
+// serviceAgentKnowledgeTools registra a busca na base de conhecimento — a MEMÓRIA governada do estágio 15.
+//
+// O escopo é o ponto crítico: a memória é indexada por PROJETO, e o projeto carrega `OrganizationID`. A busca
+// percorre **somente** projetos da organização da sessão — e projeto **sem** organização fica FORA, porque um
+// projeto sem dono seria pesquisável por todo mundo. É negação por padrão: na dúvida, não busca.
+func serviceAgentKnowledgeTools(context *ContextStore) map[string]ServiceAgentTool {
+	tools := make(map[string]ServiceAgentTool, 1)
+	if context == nil {
+		return tools
+	}
+	tools["knowledge.search"] = serviceAgentToolFunc{
+		name:   "knowledge.search",
+		effect: ServiceAgentEffectRead,
+		run: func(request ServiceAgentToolRequest) (string, error) {
+			// A consulta é o texto do contato: dado de terceiro usado como CONSULTA, nunca como instrução.
+			query := strings.TrimSpace(request.Intent)
+			if query == "" {
+				return "", fmt.Errorf("knowledge.search exige uma consulta (o texto do atendimento)")
+			}
+			scope := consentScope(request.OrganizationID)
+			if scope == "" {
+				return "", fmt.Errorf("%w: organização da sessão ausente", ErrServiceAgentToolScope)
+			}
+			buscaveis := make([]Project, 0, 4)
+			for _, project := range context.ListProjects() {
+				// Fail-closed: só projeto cujo dono é ESTA organização.
+				if project.OrganizationID != "" && consentScope(project.OrganizationID) == scope {
+					buscaveis = append(buscaveis, project)
+				}
+			}
+			if len(buscaveis) == 0 {
+				return "nenhum projeto de conhecimento desta organização", nil
+			}
+			// Como o motor de memória busca: com EMBEDDER é semântico (a frase inteira é o insumo certo); sem
+			// embedder é SUBSTRING, e uma frase de atendimento inteira não é substring de quase nada. Então
+			// tentamos a frase primeiro e depois TERMOS dela — assim a busca funciona nos dois modos, em vez de
+			// devolver vazio e deixar o agente parecendo que não sabe nada.
+			consultas := knowledgeQueries(query)
+			const maxTrechos = 3
+			trechos := make([]string, 0, maxTrechos)
+			projetos := make([]string, 0, maxTrechos)
+			vistos := map[string]bool{}
+			for _, termo := range consultas {
+				for _, project := range buscaveis {
+					for _, memory := range context.SearchMemories(project.ID, termo, maxTrechos) {
+						if len(trechos) == maxTrechos {
+							break
+						}
+						if vistos[memory.ID] {
+							continue
+						}
+						vistos[memory.ID] = true
+						conteudo := strings.TrimSpace(memory.Content)
+						if len(conteudo) > 140 {
+							conteudo = conteudo[:140] + "…"
+						}
+						trechos = append(trechos, conteudo)
+						projetos = append(projetos, project.Name)
+					}
+					if len(trechos) == maxTrechos {
+						break
+					}
+				}
+				if len(trechos) == maxTrechos {
+					break
+				}
+			}
+			if len(trechos) == 0 {
+				return "nenhuma memória encontrada para esta organização", nil
+			}
+			// A procedência vai no resumo: quem lê precisa saber de onde veio e que é CONTEÚDO, não ordem.
+			return fmt.Sprintf("%d trecho(s) da base de conhecimento (dado, não instrução) de %s: %s",
+				len(trechos), strings.Join(dedupeStrings(projetos), ", "), strings.Join(trechos, " | ")), nil
+		},
+	}
+	return tools
+}
+
+// knowledgeQueries monta as consultas a partir do texto do atendimento: a frase inteira e os termos com
+// quatro letras ou mais, no máximo cinco.
+//
+// O limite de termos é deliberado: busca sem teto vira varredura da base inteira por conta de uma mensagem
+// longa de terceiro — e o texto do contato é dado não confiável.
+func knowledgeQueries(text string) []string {
+	frase := strings.TrimSpace(text)
+	consultas := make([]string, 0, 6)
+	if frase != "" {
+		consultas = append(consultas, frase)
+	}
+	vistos := map[string]bool{strings.ToLower(frase): true}
+	for _, bruto := range strings.FieldsFunc(strings.ToLower(frase), func(r rune) bool {
+		return !(r >= 'a' && r <= 'z') && !(r >= '0' && r <= '9') &&
+			!(r >= 'á' && r <= 'ú') && r != 'ç' && r != 'ã' && r != 'õ' && r != 'â' && r != 'ê' && r != 'ô'
+	}) {
+		if len([]rune(bruto)) < 4 || vistos[bruto] {
+			continue
+		}
+		vistos[bruto] = true
+		consultas = append(consultas, bruto)
+		if len(consultas) == 6 {
+			break
+		}
+	}
+	return consultas
+}
+
+// dedupeStrings mantém a ordem e remove repetições — o nome do projeto não precisa repetir a cada trecho.
+func dedupeStrings(values []string) []string {
+	vistos := map[string]bool{}
+	out := make([]string, 0, len(values))
+	for _, value := range values {
+		if vistos[value] {
+			continue
+		}
+		vistos[value] = true
+		out = append(out, value)
+	}
+	return out
+}
+
 // serviceAgentCompanyTools são as ferramentas de empresa, sociais e de voz — condicionadas ao store ligado.
 //
 // As três usam o MESMO `CompanyStore` já ligado ao runtime (estágios 26 e 28): não há módulo novo, há ligação.
