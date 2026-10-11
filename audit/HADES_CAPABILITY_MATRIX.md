@@ -102,6 +102,9 @@
 
 | Memória: exportação e exclusão escopadas por ator | `ExportMemoriesForActor`, `DeleteMemoryForActor` (E-088) | IMPLEMENTADO_E_TESTADO | ALTO (corrigido) | E-088 | o export **vazava** memória privada de outro usuário e o delete permitia apagar memória alheia; recusa agora indistinguível de inexistente |
 
+| Memória: contexto do modelo escopado por ator | `ContextBootstrapInput.ActorID`, filtro em `BuildContextBootstrap`, `SearchMemoriesForActor` na rota (E-089) | IMPLEMENTADO_E_TESTADO | ALTO (corrigido) | E-089 | o preâmbulo de sistema levava memória privada de outro usuário ao modelo; filtro fail-closed |
+| Memória: troca de modelo preservando contexto (ao vivo) | `TestLiveModelSwitchKeepsTheSameContext` — `qwen2.5:7b` ↔ `llama3.2:3b` (E-089) | IMPLEMENTADO_E_TESTADO | — | E-089 | dois modelos reais, contexto byte-idêntico na troca, reinício incluído |
+
 ## 6. Integrações, MCP e conectores
 
 | Capacidade | Superfície | Classificação | Risco | Evidência | Lacuna |
