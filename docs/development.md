@@ -185,3 +185,16 @@ Ollama looks for native helper binaries and acceleration libraries in installed 
 * `build/lib/ollama` and `dist/<platform>/lib/ollama` for local development builds
 
 If the libraries are not found, Ollama will not run with any acceleration libraries.
+
+### Validar o gate em Linux sem sair do Windows
+
+O job do CI roda no Linux e algumas diferenças de sistema de arquivos só aparecem lá. Para conferir
+antes de abrir o PR:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify-linux-parity.ps1
+```
+
+O script roda `go vet` e `go test` de `./internal/agent/` e `./server/` dentro de um contêiner
+`golang:1.26.9`, reaproveitando o cache de módulos local. Exige o Docker Desktop ativo e falha alto
+se o daemon não responder. Registro completo em `docs/mission/HADES_LINUX_PARITY.md`.
