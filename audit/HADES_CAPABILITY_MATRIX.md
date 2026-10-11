@@ -85,6 +85,9 @@
 
 | Workflow: DLQ por nó | `internal/agent/schedule_flow.go` (`ScheduleStepDeadLetter`, `mergeScheduleDeadLetters`), `Schedule.DeadLetters`, `ScheduleRunReportCard` (PR #149) | IMPLEMENTADO_NAO_HOMOLOGADO | MÉDIO | E-080 | falha ganha registro próprio com motivo, limitado e limpo quando o passo se recupera |
 
+| Workflow: versão do fluxo executada | `Schedule.FlowVersion`, `ScheduleRunReport.FlowVersion`, `scheduleStepsEqual` (PR #151) | IMPLEMENTADO_E_TESTADO | BAIXO | E-081 | versão sobe só com mudança de grafo e o relatório guarda o que rodou |
+| Workflow: homologação com falha simulada, retry e reinício | `internal/agent/schedule_homologation_test.go` (PR #151) | IMPLEMENTADO_E_TESTADO | MÉDIO | E-081 | critério do estágio provado no caminho real, com store em disco e reinício de worker sem duplicata |
+
 ## 6. Integrações, MCP e conectores
 
 | Capacidade | Superfície | Classificação | Risco | Evidência | Lacuna |
