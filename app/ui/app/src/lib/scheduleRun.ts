@@ -6,7 +6,7 @@
  * ignorado ou falho.
  */
 
-export type ScheduleStepStatus = "succeeded" | "skipped" | "failed";
+export type ScheduleStepStatus = "succeeded" | "skipped" | "failed" | "pending";
 
 export type AgentScheduleStepOutcome = {
   id: string;
@@ -40,6 +40,7 @@ export type AgentScheduleRunReport = {
   run_key?: string;
   dead_letters?: AgentScheduleDeadLetter[] | null;
   flow_version?: number;
+  pending_approvals?: { step_id: string; run_key: string; objective?: string; requested_at?: string }[] | null;
 };
 
 /** Versão do fluxo executada, quando o servidor informa. */
@@ -64,6 +65,8 @@ export function scheduleStepStatusLabel(status: string): string {
       return "ignorado";
     case "failed":
       return "falhou";
+    case "pending":
+      return "aguardando aprovação";
     default:
       return "desconhecido";
   }
@@ -77,6 +80,8 @@ export function scheduleStepStatusTone(status: string): string {
       return "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300";
     case "failed":
       return "bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300";
+    case "pending":
+      return "bg-sky-50 text-sky-700 dark:bg-sky-950/40 dark:text-sky-300";
     default:
       return "bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300";
   }
@@ -90,8 +95,25 @@ export function scheduleRunVerdict(run: AgentScheduleRunReport | null | undefine
   if (!run) return "unknown";
   const steps = run.steps ?? [];
   if (steps.some((step) => step.status === "failed")) return "failed";
+  // Pendente é fluxo PARADO esperando decisão humana: nunca sucesso, e nunca
+  // "falhou" — não houve falha técnica.
+  if (steps.some((step) => step.status === "pending")) return "partial";
   if (steps.some((step) => step.status === "skipped")) return "partial";
   return "success";
+}
+
+/** Pendências de aprovação do relatório, sempre em lista. */
+export function schedulePendingApprovals(
+  run: AgentScheduleRunReport | null | undefined,
+): { step_id: string; run_key: string; objective?: string }[] {
+  const entries = run?.pending_approvals;
+  return Array.isArray(entries) ? entries.filter((entry) => entry && entry.step_id) : [];
+}
+
+/** Texto curto da pendência: o que o operador precisa decidir e para qual execução. */
+export function schedulePendingApprovalLabel(entry: { step_id: string; objective?: string }): string {
+  const objective = (entry.objective ?? "").trim();
+  return objective ? `${entry.step_id}: ${objective}` : entry.step_id;
 }
 
 export function scheduleRunVerdictLabel(verdict: ScheduleRunVerdict): string {

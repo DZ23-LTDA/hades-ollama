@@ -5,6 +5,7 @@ import {
   createSchedule,
   runScheduleNow,
   reprocessSchedule,
+  decideScheduleApproval,
   updateSchedule,
   deleteSchedule,
   type AgentSchedule,
@@ -13,7 +14,7 @@ import { AppSidebar } from "@/components/AppSidebar";
 import { SidebarLayout } from "@/components/layout/layout";
 import { FlowEditor } from "@/components/FlowEditor";
 import { ScheduleRunReportCard } from "@/components/ScheduleRunReportCard";
-import { scheduleRunConcerns, scheduleRunSummary, scheduleRunVerdict, scheduleRunVerdictLabel } from "@/lib/scheduleRun";
+import { scheduleRunConcerns, schedulePendingApprovals, scheduleRunSummary, scheduleRunVerdict, scheduleRunVerdictLabel } from "@/lib/scheduleRun";
 import { humanizeApiError } from "@/lib/userFacingError";
 import { confirmDialog } from "@/lib/confirmDialog";
 import {
@@ -109,6 +110,21 @@ export function AutomationsPage() {
       setErrorMsg(humanizeApiError(e, "Não foi possível criar a automação.").message);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleApproval = async (sch: AgentSchedule, stepId: string, runKey: string, approved: boolean) => {
+    setErrorMsg(null);
+    try {
+      const result = await decideScheduleApproval(sch.id, stepId, approved, approved ? "" : "recusado na interface", runKey);
+      setSchedules((previous) => previous.map((item) => (item.id === sch.id ? result.schedule : item)));
+      setSuccessMsg(
+        approved
+          ? `Aprovação registrada em "${stepId}". Use "Reprocessar pendentes" para retomar o fluxo.`
+          : `Recusa registrada em "${stepId}". O fluxo não seguirá por esse caminho.`,
+      );
+    } catch (e) {
+      setErrorMsg(humanizeApiError(e, "Não foi possível registrar a decisão.").message);
     }
   };
 
@@ -619,6 +635,27 @@ export function AutomationsPage() {
                         Reprocessar pendentes
                       </button>
                     )}
+                    {schedulePendingApprovals(sch.last_run ?? null).map((pending) => (
+                      <span key={`${pending.step_id}-${pending.run_key}`} className="inline-flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => handleApproval(sch, pending.step_id, pending.run_key, true)}
+                          className="inline-flex items-center gap-1.5 rounded-xl bg-sky-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-sky-700"
+                          title={`Aprovar "${pending.step_id}" para esta execução`}
+                        >
+                          <CheckCircleIcon className="h-3.5 w-3.5" />
+                          Aprovar {pending.step_id}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleApproval(sch, pending.step_id, pending.run_key, false)}
+                          className="inline-flex items-center gap-1.5 rounded-xl border border-neutral-300 px-3 py-1.5 text-xs font-semibold text-neutral-700 hover:bg-neutral-100 dark:border-neutral-600 dark:text-neutral-200 dark:hover:bg-neutral-800"
+                          title={`Recusar "${pending.step_id}" para esta execução`}
+                        >
+                          Recusar
+                        </button>
+                      </span>
+                    ))}
                     <button
                       type="button"
                       onClick={() => handleToggle(sch)}

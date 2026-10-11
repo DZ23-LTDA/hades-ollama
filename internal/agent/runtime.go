@@ -1532,6 +1532,51 @@ func (r *Runtime) recordScheduleSuccess(schedule Schedule) (Schedule, error) {
 	return r.context.UpdateScheduleForOrganization(r.organizationScope, schedule.ID, schedule)
 }
 
+// DecideScheduleApproval registra uma decisão HUMANA sobre um passo
+// approval.request e devolve o schedule atualizado.
+//
+// A decisão é guardada com a execução (RunKey) informada, e quem retoma o fluxo é
+// uma nova execução daquele mesmo runKey (o reprocessamento reusa a chave). Isso é
+// deliberado: aprovar uma etapa durante uma pausa NÃO autoriza a mesma etapa numa
+// execução futura, e a decisão carrega ator e motivo para trilha de auditoria.
+func (r *Runtime) DecideScheduleApproval(schedule Schedule, stepID, runKey string, approved bool, actorID, reason string) (Schedule, error) {
+	if r.context == nil {
+		return Schedule{}, errors.New("context store is required for schedule approval")
+	}
+	stepID = strings.TrimSpace(stepID)
+	if stepID == "" {
+		return Schedule{}, errors.New("approval step id is required")
+	}
+	runKey = strings.TrimSpace(runKey)
+	if runKey == "" {
+		return Schedule{}, errors.New("approval run key is required")
+	}
+	scope := strings.TrimSpace(schedule.OrganizationID)
+	if scope == "" {
+		scope = r.organizationScope
+	}
+	decision := ScheduleApproval{
+		StepID:    stepID,
+		RunKey:    runKey,
+		Approved:  approved,
+		ActorID:   strings.TrimSpace(actorID),
+		Reason:    strings.TrimSpace(reason),
+		DecidedAt: time.Now().UTC(),
+	}
+	updated := schedule
+	updated.Approvals = mergeScheduleApprovals(schedule.Approvals, []ScheduleApproval{decision})
+	// A pendência daquele passo deixa de existir: houve decisão.
+	remaining := make([]SchedulePendingApproval, 0, len(schedule.PendingApprovals))
+	for _, pending := range schedule.PendingApprovals {
+		if pending.StepID == stepID && pending.RunKey == runKey {
+			continue
+		}
+		remaining = append(remaining, pending)
+	}
+	updated.PendingApprovals = remaining
+	return r.context.UpdateScheduleForOrganization(scope, schedule.ID, updated)
+}
+
 // RecordScheduleRun é a porta pública do registro de execução de um schedule.
 // Existe para que a execução MANUAL (rota HTTP) use exatamente a mesma política e
 // o mesmo formato de evidência que o despacho automático — antes, o botão de
@@ -1571,6 +1616,18 @@ func (r *Runtime) recordScheduleRun(schedule Schedule, report ScheduleRunReport,
 		}
 	}
 	schedule.DeadLetters = mergeScheduleDeadLetters(schedule.DeadLetters, report.DeadLetters, succeeded)
+	// Espera por aprovação: as pendências desta execução são as do relatório, e o
+	// passo que JÁ tem decisão sai da lista (a pausa acabou).
+	schedule.PendingApprovals = nil
+	for _, pending := range report.PendingApprovals {
+		if _, decided := scheduleApprovalFor(schedule, pending.StepID, pending.RunKey); decided {
+			continue
+		}
+		schedule.PendingApprovals = append(schedule.PendingApprovals, pending)
+	}
+	if len(schedule.PendingApprovals) > maxScheduleApprovals {
+		schedule.PendingApprovals = schedule.PendingApprovals[:maxScheduleApprovals]
+	}
 	if runErr == nil {
 		schedule.FailureCount = 0
 		schedule.LastFailureCode = ""

@@ -268,7 +268,12 @@ type Schedule struct {
 	// FlowVersion é a versão do GRAFO. Sobe quando os passos MUDAM (não em
 	// qualquer edição), e cada execução guarda a versão que rodou: sem isso,
 	// comparar execuções de grafos diferentes seria comparação inválida.
-	FlowVersion int       `json:"flow_version,omitempty"`
-	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
+	FlowVersion int `json:"flow_version,omitempty"`
+	// Approvals é o histórico de decisões humanas sobre passos approval.request e
+	// PendingApprovals é o que está PARADO esperando decisão. Ambos vivem no
+	// schedule (e não só no processo) porque a espera atravessa execuções.
+	Approvals        []ScheduleApproval        `json:"approvals,omitempty"`
+	PendingApprovals []SchedulePendingApproval `json:"pending_approvals,omitempty"`
+	CreatedAt        time.Time                 `json:"created_at"`
+	UpdatedAt        time.Time                 `json:"updated_at"`
 }

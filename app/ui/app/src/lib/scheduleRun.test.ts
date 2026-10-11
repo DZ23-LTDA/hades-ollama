@@ -10,6 +10,8 @@ import {
   scheduleDeadLetterLabel,
   scheduleDeadLetters,
   scheduleFlowVersionLabel,
+  schedulePendingApprovalLabel,
+  schedulePendingApprovals,
   scheduleStepStatusLabel,
   type AgentScheduleRunReport,
 } from "./scheduleRun";
@@ -135,5 +137,28 @@ describe("relatório de execução de automação", () => {
     expect(scheduleStepKindLabel("logic.loop")).toBe("laço limitado");
     // Tipo desconhecido não vira texto vazio: o operador precisa ver o valor real.
     expect(scheduleStepKindLabel("kind.desconhecido")).toBe("kind.desconhecido");
+  });
+
+  it("trata aprovação pendente como fluxo parado, nunca como sucesso", () => {
+    const run = {
+      finished_at: "2026-10-11T12:00:00Z",
+      missions: 0,
+      steps: [
+        { id: "gatilho", kind: "trigger.interval", status: "succeeded" as const },
+        { id: "liberar", kind: "approval.request", status: "pending" as const },
+        { id: "enviar", kind: "action.mission", status: "skipped" as const },
+      ],
+      pending_approvals: [{ step_id: "liberar", run_key: "sched@run", objective: "liberar o envio" }],
+    };
+    expect(scheduleRunVerdict(run)).toBe("partial");
+    expect(scheduleStepStatusLabel("pending")).toBe("aguardando aprovação");
+    // O painel mostra o que decidir e para qual execução.
+    expect(schedulePendingApprovals(run)).toHaveLength(1);
+    expect(schedulePendingApprovalLabel({ step_id: "liberar", objective: "liberar o envio" })).toBe(
+      "liberar: liberar o envio",
+    );
+    // Sem pendência o painel não aparece.
+    expect(schedulePendingApprovals(null)).toEqual([]);
+    expect(schedulePendingApprovals({ finished_at: "2026-10-11T12:00:00Z", missions: 0 })).toEqual([]);
   });
 });
