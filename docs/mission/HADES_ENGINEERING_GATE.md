@@ -109,13 +109,26 @@ O CI passa e a suíte de engenharia está verde, mas o estágio exige também **
 
 | Pendência do gate | Natureza |
 | --- | --- |
-| Instalação/upgrade/rollback de pacote executados de verdade | **NÃO MEDIDO** (automação existe: workflows de instalador Linux/Windows/macOS) |
+| Instalação/upgrade/rollback executados de verdade | **EXECUTADO do código-fonte (E-113)**: instalação, atualização com backup, rollback reversível e desinstalação com binário rodando. **Instaladores de pacote assinados e macOS/Linux reais seguem NÃO MEDIDOS** |
 | Performance medida | **MEDIDA E APROVADA** (E-099) |
 | Acessibilidade medida (WCAG 2.2 AA) | **MEDIDA E APROVADA** (E-099) |
 | Desktop/computer-use nativo homologado | **AUSENTE** |
 | APIs externas com credenciais reais | **BLOCKED_BY_EXTERNAL_DEPENDENCY** |
 | Homologação por plataforma em dispositivo real (Windows/macOS) | **NÃO MEDIDO** |
 
+
+## 7.1 Instalação, atualização, rollback e desinstalação (E-113)
+
+`scripts/install.ps1` ganhou **backup**, **rollback** e **desinstalação**, e o ciclo foi
+**executado** num diretório descartável: instalação (`SHA-256 ADCA65F8…`), execução real do
+binário (`ollama version is 0.40.1`), **atualização** entregando artefato **diferente**
+(`D27C2249…`, com o anterior preservado), **rollback** restaurando exatamente o hash
+original (**restaurado == original: True**) e **desinstalação** removendo binário, backup e
+manifesto **sem tocar nos dados do usuário**. Detalhes e transcrito em
+`docs/mission/HADES_GATE_22_INSTALL_CYCLE.md`.
+
+**O que isso NÃO cobre**: instaladores de pacote **assinados** e instalação em **macOS e
+Linux reais**. Anunciar homologação de pacote sem artefato assinado seria invenção.
 
 ## 8. Performance e acessibilidade: medidos nesta rodada (E-099)
 
