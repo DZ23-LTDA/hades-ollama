@@ -100,6 +100,8 @@
 | Browser: resolução de interpretador e status honesto | `resolvePythonInterpreter`, `BrowserEnvironment`, `browserPythonExecutable` (E-086) | IMPLEMENTADO_E_TESTADO | MÉDIO | E-086 | candidato validado por execução (não por existência no PATH); status e operador compartilham a escolha |
 | Browser: E2E de navegador real (Windows) | `internal/agent/browser_helper.py` + Playwright | BLOQUEADO_EXTERNAMENTE | ALTO | E-086 | Playwright/Chromium ausentes; desbloqueio em 2 comandos |
 
+| Memória: exportação e exclusão escopadas por ator | `ExportMemoriesForActor`, `DeleteMemoryForActor` (E-088) | IMPLEMENTADO_E_TESTADO | ALTO (corrigido) | E-088 | o export **vazava** memória privada de outro usuário e o delete permitia apagar memória alheia; recusa agora indistinguível de inexistente |
+
 ## 6. Integrações, MCP e conectores
 
 | Capacidade | Superfície | Classificação | Risco | Evidência | Lacuna |

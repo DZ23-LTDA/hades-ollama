@@ -2,12 +2,12 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-11T14:30:00-03:00",
+  "updated_at": "2026-10-11T15:30:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
     "integration_branch": "main",
-    "main_sha": "ab3e70e17a80bfcc771686ec993f719c8438d942",
+    "main_sha": "82187878cb73c5fcc04da88a00dbf44fd3b62c0e",
     "main_committed_at": "2026-10-09T10:24:45Z",
     "main_ci_state": "green (dz23-agentic-quality + class-a-plus-integrity = success nesse SHA)",
     "mission_branch": "docs/checkpoints-missao-v21",
@@ -471,12 +471,13 @@
         "E-052",
         "E-056",
         "E-057",
-        "E-087"
+        "E-087",
+        "E-088"
       ],
       "blocker": "B-07",
-      "next": "completar o criterio do estagio com teste local: troca de modelo preservando contexto, reinicio e retomada alem do isolamento entre organizacoes que ja tem teste",
+      "next": "faltam dois itens do criterio: troca de modelo preservando contexto e retomada. O estagio NAO foi promovido por isso",
       "blocked_reason": "",
-      "done": "classificacao corrigida pela auditoria de bloqueios: o bloqueio externo em bloco escondia trabalho implementavel. Evidencia medida registrada em docs/mission/HADES_BLOCKED_AUDIT.md"
+      "done": "isolamento por usuario nas leituras (E-015) e agora tambem na EXPORTACAO e na EXCLUSAO, que era a evidencia obrigatoria que faltava. Defeito ALTO corrigido: o export vazava memoria privada de outro usuario da mesma organizacao e o delete permitia apagar memoria alheia. Isolamento e reinicio cobertos por teste; documentos em docs/mission/HADES_STAGE_15_MEMORY_EXPORT.md"
     },
     {
       "id": 16,
@@ -982,7 +983,9 @@
     "ESTAGIO 14 - DIAGNOSTICO E CORRECAO (E-086): o teste de navegador estava em B-09 como falha ambiental e a causa NAO era a esperada. O operador escolhia o interpretador Python por EXISTENCIA no PATH (python3 -> python); no Windows esses nomes respondem pelo ATALHO DA MICROSOFT STORE, que existe e falha ao executar (exit 9009). Efeitos: o operador adotava o atalho, o status reportava PythonOK=true para algo que nao roda nada, a orientacao era ERRADA ('instale o Playwright') e o E2E falhava com erro criptico. Correcao: resolvePythonInterpreter VALIDA cada candidato EXECUTANDO (probe import sys) e e COMPARTILHADA entre status e operador, para nao divergirem. Medido na maquina real: python_path passa a ser C:\\Program Files\\Python312\\python.exe (o Python 3.12.10 real) e o E2E de navegador sai de FAIL para SKIP com causa legivel ('No module named playwright'). 3 testes novos + 1 teste existente corrigido (ele codificava o contrato defeituoso 'existe no PATH => Python OK', com probe que falhava sempre)",
     "ESTAGIO 14 - STATUS POR PLATAFORMA (docs/mission/HADES_STAGE_14_PLATFORM_STATUS.md): Windows neste host = BLOQUEADO_EXTERNAMENTE para o E2E de navegador (Python OK, Playwright/Chromium ausentes) e NAO_VERIFICADO para desktop/computer-use; Linux e macOS NAO_VERIFICADOS, sem nenhuma medicao - nada declarado homologado por compilacao cruzada. Ja coberto sem navegador: ambiente filho SEM segredos, recusa de escopo sem sandbox estrita, eventos de frame, logica de setup e resolucao de interpretador. Desbloqueio exato: 'python -m pip install playwright' e 'python -m playwright install chromium' (~150MB), que o produto expoe em SetupBrowserEnvironment e que este trabalho NAO executou por ser mudanca de maquina com custo relevante",
     "AUDITORIA DE BLOQUEIOS (E-087): a rodada anterior mediu 13 estagios com BLOCKED_BY_EXTERNAL_DEPENDENCY e 12 SEM blocked_reason. A auditoria (docs/mission/HADES_BLOCKED_AUDIT.md) mediu por CONTEUDO e mostrou que o carimbo em bloco CONFUNDIA duas coisas: estagio nao implementado (NOT_STARTED/AUSENTE) e homologacao ao vivo que exige conta/credencial. Uma primeira medicao por NOME de arquivo concluiu 'AUSENTE' errado para 26 e 28 - company_social.go e tel_agent.go existem com 228 e 412 linhas mais testes. Os 12 estagios foram reclassificados por evidencia: 15, 23, 26, 28 e 31 para IN_PROGRESS (memoria 308 linhas, empresa 1.760 linhas e 7 arquivos de teste, tel-agent 412 linhas e 5 testes, supervisor 432 linhas e 493 de teste); 24, 25, 27, 29, 30, 32 e 38 para NOT_STARTED/AUSENTE. Cada um ganhou o campo external_dependency SEPARADO (com desbloqueio escrito) apenas onde a validacao real depende de conta/credencial, e blocked_reason vazio porque nao ha bloqueio de execucao",
-    "CONSEQUENCIA DA AUDITORIA (E-087): o carimbo escondia trabalho implementavel. Voltam a ser elegiveis sem nenhuma conta externa: 15 (memoria, criterio testavel localmente), 31 (supervisor) e as partes de sandbox de 23, 24, 26, 27, 29 e 30 (empresa, comercio, social em rascunho, CRM, inbox e financeiro). Dependencias externas reais e especificas: pagamento (24), conta de vendedor (25), APIs de redes (26), provedor de telefonia (28), canais reais (27, 29), integracao fiscal (30) e integracoes ao vivo em 32/38"
+    "CONSEQUENCIA DA AUDITORIA (E-087): o carimbo escondia trabalho implementavel. Voltam a ser elegiveis sem nenhuma conta externa: 15 (memoria, criterio testavel localmente), 31 (supervisor) e as partes de sandbox de 23, 24, 26, 27, 29 e 30 (empresa, comercio, social em rascunho, CRM, inbox e financeiro). Dependencias externas reais e especificas: pagamento (24), conta de vendedor (25), APIs de redes (26), provedor de telefonia (28), canais reais (27, 29), integracao fiscal (30) e integracoes ao vivo em 32/38",
+    "ESTAGIO 15 - EXPORTACAO E EXCLUSAO (E-088): a evidencia obrigatoria do estagio faltava. Ao implementa-la, encontrei um defeito ALTO: a BUSCA de memoria era escopada por ator, mas os caminhos IRMAOS nao eram - o GET /projects/:id/memories/export chamava ExportMemories (sem ator) e VAZAVA memoria private de outro usuario da MESMA organizacao, e o DELETE /projects/:id/memories/:memory_id chamava RemoveMemory, deixando qualquer usuario autenticado apagar a memoria privada de outro. Mesmo dado, duas respostas: a busca escondia e o export entregava. Corrigido com ExportMemoriesForActor e DeleteMemoryForActor: export escopado por ator (com actor_id e generated_at para auditoria) e exclusao recusada com o MESMO ErrMemoryNotFound de um ID inexistente, para a rota nao virar oraculo de existencia de dado privado. A persistencia nao foi reimplementada: DeleteMemoryForActor reusa RemoveMemory. O compilador pegou uma duplicacao minha (segundo ErrMemoryNotFound) e o sentinela existente foi reaproveitado",
+    "ESTAGIO 15 - SEM PROMOCAO (E-088): isolamento, reinicio e exportacao/exclusao estao cobertos, mas o criterio do estagio tambem exige troca de modelo preservando contexto e retomada, que seguem PENDENTES. O estagio permanece IN_PROGRESS com capacidade IMPLEMENTADO_NAO_HOMOLOGADO. Promover agora repetiria o erro corrigido em E-087: fechar estagio com parte do criterio sem prova"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",

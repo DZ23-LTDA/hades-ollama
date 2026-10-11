@@ -2187,9 +2187,14 @@ func (a *agentAPI) askProjectDocuments(c *gin.Context) {
 	})
 }
 
-// exportProjectMemories devolve as memórias do projeto em ordem cronológica,
-// com proveniência (kind, source, confidence, created_at) e SEM os vetores de
-// embedding por padrão. `?include_embeddings=true` inclui os vetores.
+// exportProjectMemories devolve a memória do projeto visível ao ATOR autenticado,
+// em ordem cronológica, com proveniência (kind, source, confidence, created_at) e
+// SEM os vetores de embedding por padrão. `?include_embeddings=true` inclui os
+// vetores.
+//
+// A exportação é escopada por ator de propósito: o caminho anterior exportava o
+// projeto INTEIRO, então a busca escondia a memória privada de um colega e o
+// export a entregava — mesmo dado, duas respostas.
 func (a *agentAPI) exportProjectMemories(c *gin.Context) {
 	if _, err := a.projectForRequest(c); err != nil {
 		writeAgentError(c, statusForAgentError(err), err)
@@ -2204,23 +2209,31 @@ func (a *agentAPI) exportProjectMemories(c *gin.Context) {
 		}
 		includeEmbeddings = parsed
 	}
-	memories := a.context.ExportMemories(c.Param("id"), includeEmbeddings)
+	export, err := a.context.ExportMemoriesForActor(c.Param("id"), agentActorID(c), includeEmbeddings)
+	if err != nil {
+		writeAgentError(c, statusForAgentError(err), err)
+		return
+	}
 	c.JSON(http.StatusOK, gin.H{
-		"project_id":         c.Param("id"),
-		"count":              len(memories),
+		"project_id":         export.ProjectID,
+		"actor_id":           export.ActorID,
+		"generated_at":       export.GeneratedAt,
+		"count":              export.Count,
 		"include_embeddings": includeEmbeddings,
-		"memories":           memories,
+		"memories":           export.Memories,
 	})
 }
 
-// deleteProjectMemory apaga uma memória específica do projeto. Memória de outro
-// projeto devolve 404: o escopo é o projeto autenticado, não o id enviado.
+// deleteProjectMemory apaga uma memória específica do projeto QUANDO o ator
+// autenticado pode lê-la. Memória de outro projeto — ou memória privada de outro
+// ator — devolve 404: a resposta não serve de oráculo sobre a existência de dado
+// privado alheio.
 func (a *agentAPI) deleteProjectMemory(c *gin.Context) {
 	if _, err := a.projectForRequest(c); err != nil {
 		writeAgentError(c, statusForAgentError(err), err)
 		return
 	}
-	if err := a.context.RemoveMemory(c.Param("id"), c.Param("memory_id")); err != nil {
+	if err := a.context.DeleteMemoryForActor(c.Param("id"), c.Param("memory_id"), agentActorID(c)); err != nil {
 		if errors.Is(err, agent.ErrMemoryNotFound) {
 			writeAgentError(c, http.StatusNotFound, err)
 			return
