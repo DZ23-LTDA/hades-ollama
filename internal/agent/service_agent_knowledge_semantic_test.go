@@ -24,7 +24,13 @@ import (
 type stubEmbedder struct {
 	vetores map[string][]float32
 	err     error
+	// modelo identifica o ESPAÇO VETORIAL. Vazio significa "não se identifica": os vetores saem SEM carimbo
+	// e a busca recusa compará-los, porque não há como saber de que espaço são.
+	modelo string
 }
+
+// EmbeddingModel diz o espaço vetorial deste embedder.
+func (s stubEmbedder) EmbeddingModel() string { return s.modelo }
 
 func (s stubEmbedder) Embed(_ context.Context, text string) ([]float32, error) {
 	if s.err != nil {
@@ -53,7 +59,7 @@ func semanticKnowledgeFixture(t *testing.T, embedder Embedder) (*ServiceAgentRun
 func TestServiceAgentKnowledgeSearchIsSemanticWhenEmbedderIsConfigured(t *testing.T) {
 	// A memória fala de "troca"; a consulta fala de "prazo"/"devolver". NENHUMA palavra em comum: se a
 	// resposta trouxer a memória, foi o vetor — busca literal não teria como encontrar.
-	embedder := stubEmbedder{vetores: map[string][]float32{
+	embedder := stubEmbedder{modelo: "modelo-troca-v1", vetores: map[string][]float32{
 		"troca":    {1, 0, 0},
 		"prazo":    {1, 0, 0},
 		"devolver": {1, 0, 0},
