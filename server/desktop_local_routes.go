@@ -125,29 +125,33 @@ func (s *Server) registerDesktopLocalRoutes(r *gin.Engine, agentAPI *agentAPI) {
 	})
 	r.POST("/api/v1/models/pull", s.PullHandler)
 
-	// Endpoint para Personalização do Agente. Vive sob /api/agent/v1, logo
-	// precisa do mesmo middleware de autenticação e origem do grupo agêntico.
-	personalization := r.Group("/api/agent/v1")
-	if agentAPI != nil {
-		personalization.Use(agentAPI.authMiddleware)
+	// Endpoint de personalização do desktop.
+	//
+	// Este caminho NÃO implementa persistência e antes mentia: o POST respondia
+	// {"status":"updated"} sem gravar nada, e o GET devolvia instruções, tom e
+	// memória FABRICADOS no código. Um cliente recebia sucesso e conteúdo
+	// inventado — exatamente o "controle que finge funcionar" que a missão
+	// proíbe. As instruções personalizadas de verdade vivem no cliente
+	// (Configurações → localStorage) e são aplicadas a cada turno pelo servidor
+	// do chat via `composeSystemPrompt`.
+	//
+	// Sem o middleware de autenticação/origem não existe forma segura de expor
+	// nada sob /api/agent/v1, então a rota simplesmente não é registrada.
+	if agentAPI == nil {
+		return
 	}
-	personalization.GET("/personalization", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{
-			"custom_instructions": "Sempre responder em português, priorizar arquitetura limpa, segurança rigorosa e entregar código testado de ponta a ponta.",
-			"memory_enabled":      true,
-			"tone":                "professional_engineer",
-		})
-	})
+	personalization := r.Group("/api/agent/v1")
+	personalization.Use(agentAPI.authMiddleware)
+	personalization.GET("/personalization", notImplementedPersonalization)
+	personalization.POST("/personalization", notImplementedPersonalization)
+}
 
-	personalization.POST("/personalization", func(c *gin.Context) {
-		var body map[string]any
-		if err := c.ShouldBindJSON(&body); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
-			return
-		}
-		c.JSON(http.StatusOK, gin.H{
-			"status": "updated",
-			"data":   body,
-		})
+// notImplementedPersonalization responde a verdade: este servidor não guarda
+// personalização. Sem dado inventado e sem falso sucesso.
+func notImplementedPersonalization(c *gin.Context) {
+	c.JSON(http.StatusNotImplemented, gin.H{
+		"error": "personalization endpoint is not implemented on this server",
+		"detail": "as instruções personalizadas são enviadas pelo chat a cada turno " +
+			"(campo custom_instructions, aplicado no system prompt) e configuradas em Configurações na interface",
 	})
 }
