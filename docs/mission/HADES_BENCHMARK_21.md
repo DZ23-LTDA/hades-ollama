@@ -13,6 +13,7 @@ metodologia independente"*. Esta rodada entrega o que é **honestamente mensurá
 | **O que é medido** | caminhos determinísticos do próprio Hades: turno de atendimento com plano por regras, busca literal, busca semântica e re-embed |
 | **Como** | `go test -bench` (`internal/agent/platform_benchmark_test.go`), dados fixos criados por iteração, **sem rede** |
 | **Ambiente** | Windows 11 · `go1.26.9` · `GOARCH=amd64` · Intel Core i9-13900HX (13ª ger.) · `benchtime=50x/100x`, `-count=2..3` |
+| **Ambiente Linux (E-161)** | mesma máquina, dentro de `golang:1.26.9` via `scripts/verify-linux-benchmark.ps1` — compara **runtime**, não hardware |
 | **Comando** | `go test ./internal/agent/ -run '^$' -bench 'BenchmarkServiceAgentTurn\|BenchmarkMemorySearchLiteral\|BenchmarkMemorySearchSemantic\|BenchmarkMemoryReembed' -benchtime=100x -count=3` |
 | **Isolamento** | cada iteração usa diretório temporário próprio; a criação do cenário fica **fora** do cronômetro onde indicado |
 | **Verdade do dado** | o benchmark **falha** se a busca não encontrar a memória plantada ou se o re-embed não recalcular todas — número sem verificação não entra |
@@ -25,6 +26,8 @@ metodologia independente"*. Esta rodada entrega o que é **honestamente mensurá
 | `BenchmarkMemorySearchLiteral` | **0,27–0,52 ms** | 1.000 memórias, alvo no meio da varredura |
 | `BenchmarkMemorySearchSemantic` | **0,68–1,36 ms** | mesmo volume, caminho vetorial (`cosineSimilarity`) |
 | `BenchmarkMemoryReembed` | **1,95–2,07 ms** para 200 memórias | ≈ **10 µs por memória** |
+
+**Linux (E-161, mesma máquina em contêiner)**: turno **2,62–2,70 ms** · literal **0,29 ms** · semântica **0,62–0,65 ms** · re-embed **2,81–2,90 ms**. A busca é equivalente entre plataformas; turno e re-embed ficam ~40% mais lentos no Linux e com **mais alocações** (turno 206 vs 180, re-embed 429 vs 231). **Causa não medida** — hipótese de diferença de I/O/caminho, registrada como pergunta aberta, não como conclusão.
 
 Leitura honesta dos números: a busca **semântica** custa ~2× a literal no mesmo volume — coerente com comparar
 cosseno em vez de substring; o turno é dominado por I/O (arquivos de auditoria/aprovação), não por cálculo.
@@ -72,8 +75,8 @@ mesmo comando e ambiente; (5) registrar no índice com a data. Sem (1)–(3), `E
 
 - **Sem comparação externa**: nenhum concorrente foi executado (`NAO_EXECUTADA`), com procedimento de
   desbloqueio explícito.
-- **Medição de máquina única**: um host Windows; o gate Linux mede o mesmo código, mas com números próprios que
-  **não** foram coletados aqui.
+- **Duas plataformas, UMA máquina**: os números Linux vêm de contêiner na MESMA máquina física — mede
+  runtime/sistema de arquivos, **não** hardware distinto, e a causa da diferença **não** foi investigada.
 - **`benchtime` fixo em 50–100 iterações**: serve para comparação interna entre caminhos, não para
   percentis de cauda (p95/p99) nem para carga concorrente.
 - **Cenários sintéticos**: 1.000 memórias e 200 memórias por re-embed não representam a maior base real.
