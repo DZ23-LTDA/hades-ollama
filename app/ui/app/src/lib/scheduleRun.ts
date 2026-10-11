@@ -13,6 +13,8 @@ export type AgentScheduleStepOutcome = {
   kind: string;
   status: ScheduleStepStatus;
   reason?: string;
+  /** Tentativas consumidas pelo passo (retry por nó); 0/ausente = não se aplica. */
+  attempts?: number;
 };
 
 export type AgentScheduleRunReport = {
@@ -105,6 +107,16 @@ export function scheduleRunSummary(run: AgentScheduleRunReport | null | undefine
 export function scheduleRunConcerns(run: AgentScheduleRunReport | null | undefined): AgentScheduleStepOutcome[] {
   if (!run) return [];
   return (run.steps ?? []).filter((step) => step.status === "skipped" || step.status === "failed");
+}
+
+/**
+ * Tentativas consumidas pelo passo. Retorna vazio quando não houve repetição
+ * (ou quando o passo não tenta de novo): só mostramos o que é informação.
+ */
+export function scheduleStepAttemptsLabel(step: AgentScheduleStepOutcome): string {
+  const attempts = step.attempts ?? 0;
+  if (attempts <= 1) return "";
+  return `${attempts} tentativas`;
 }
 
 /** Nome legível do tipo de passo, na mesma linguagem do editor de fluxo. */
