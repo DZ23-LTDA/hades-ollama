@@ -7,6 +7,8 @@ import {
   scheduleDeadLetterLabel,
   scheduleDeadLetters,
   scheduleFlowVersionLabel,
+  schedulePendingApprovalLabel,
+  schedulePendingApprovals,
   scheduleStepAttemptsLabel,
   scheduleStepKindLabel,
   scheduleStepStatusLabel,
@@ -69,6 +71,20 @@ export function ScheduleRunReportCard({ run, lastFailureCode, lastRunAt }: Sched
           ))}
         </ul>
       ) : null}
+      {schedulePendingApprovals(run).length > 0 && (
+        <div className="mt-3 rounded-lg border border-sky-200 bg-sky-50 p-2 dark:border-sky-900 dark:bg-sky-950/30">
+          <p className="text-xs font-semibold text-sky-800 dark:text-sky-300">
+            Aguardando aprovação ({schedulePendingApprovals(run).length}) — o fluxo está parado
+          </p>
+          <ul className="mt-1 space-y-0.5">
+            {schedulePendingApprovals(run).map((entry) => (
+              <li key={`${entry.step_id}-${entry.run_key}`} className="text-xs text-sky-800 dark:text-sky-200">
+                {schedulePendingApprovalLabel(entry)}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       {scheduleDeadLetters(run).length > 0 && (
         <div className="mt-3 rounded-lg border border-red-200 bg-red-50 p-2 dark:border-red-900 dark:bg-red-950/30">
           <p className="text-xs font-semibold text-red-800 dark:text-red-300">

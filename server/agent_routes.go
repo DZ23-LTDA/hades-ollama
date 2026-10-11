@@ -728,6 +728,7 @@ func (a *agentAPI) register(r *gin.Engine) {
 	group.POST("/schedules", a.createSchedule)
 	group.POST("/schedules/:id/run", a.runScheduleNow)
 	group.POST("/schedules/:id/reprocess", a.reprocessScheduleNow)
+	group.POST("/schedules/:id/approvals", a.decideScheduleApproval)
 	group.PATCH("/schedules/:id", a.updateSchedule)
 	group.DELETE("/schedules/:id", a.deleteSchedule)
 	group.POST("/webhooks/:schedule_id", a.webhook)
@@ -1610,6 +1611,65 @@ func (a *agentAPI) schedules(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"schedules": a.context.ListSchedulesForOrganization(organizationID)})
+}
+
+// decideScheduleApproval registra a decisão HUMANA sobre um passo approval.request.
+// A decisão fica vinculada ao passo e à execução: aprovar durante uma pausa não
+// autoriza a mesma etapa numa execução futura. A retomada acontece no
+// reprocessamento, que reusa a mesma execução.
+func (a *agentAPI) decideScheduleApproval(c *gin.Context) {
+	organizationID, ok := a.requireContextOrganization(c)
+	if !ok {
+		return
+	}
+	if a.runtime == nil {
+		writeAgentError(c, http.StatusServiceUnavailable, errors.New("agent runtime is not configured"))
+		return
+	}
+	var body struct {
+		StepID  string `json:"step_id"`
+		RunKey  string `json:"run_key"`
+		Approve bool   `json:"approved"`
+		Reason  string `json:"reason"`
+	}
+	if err := c.ShouldBindJSON(&body); err != nil {
+		writeAgentError(c, http.StatusBadRequest, err)
+		return
+	}
+	if strings.TrimSpace(body.StepID) == "" {
+		writeAgentError(c, http.StatusBadRequest, errors.New("step_id is required"))
+		return
+	}
+	schedule, err := a.context.GetScheduleForOrganization(c.Param("id"), organizationID)
+	if err != nil {
+		writeAgentError(c, statusForAgentError(err), err)
+		return
+	}
+	runKey := strings.TrimSpace(body.RunKey)
+	if runKey == "" {
+		// Sem chave explícita, a decisão se aplica à execução que está PARADA.
+		if len(schedule.PendingApprovals) == 0 {
+			writeAgentError(c, http.StatusConflict, errors.New("schedule has no pending approval"))
+			return
+		}
+		for _, pending := range schedule.PendingApprovals {
+			if pending.StepID == strings.TrimSpace(body.StepID) {
+				runKey = pending.RunKey
+				break
+			}
+		}
+		if runKey == "" {
+			writeAgentError(c, http.StatusConflict, errors.New("step is not waiting for approval"))
+			return
+		}
+	}
+	runtime := a.runtime.WithOrganizationContext(c.Request.Context(), organizationID)
+	updated, err := runtime.DecideScheduleApproval(schedule, body.StepID, runKey, body.Approve, agentActorID(c), body.Reason)
+	if err != nil {
+		writeAgentError(c, statusForAgentError(err), err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"schedule": updated, "approved": body.Approve})
 }
 
 // reprocessScheduleNow reexecuta SOMENTE os passos que ficaram ignorados ou

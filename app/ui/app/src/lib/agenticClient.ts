@@ -423,6 +423,23 @@ export const reprocessSchedule = (id: string) =>
     body: "{}",
   });
 
+// Decisão humana sobre um passo approval.request. Sem run_key o servidor aplica a
+// decisão à execução que está PARADA, que é o caso normal do operador.
+export const decideScheduleApproval = (
+  id: string,
+  stepId: string,
+  approved: boolean,
+  reason: string,
+  runKey?: string,
+) =>
+  agentFetch<{ schedule: AgentSchedule; approved: boolean }>(
+    `/api/agent/v1/schedules/${encodeURIComponent(id)}/approvals`,
+    {
+      method: "POST",
+      body: JSON.stringify({ step_id: stepId, approved, reason, run_key: runKey ?? "" }),
+    },
+  );
+
 export const listSkills = async () => { const result = await agentFetch<{ skills?: AgentSkill[] | null }>("/api/agent/v1/skills"); return { skills: Array.isArray(result.skills) ? result.skills : [] }; };
 // Estado REAL de cada plugin instalado (V2.1 §11.3): só o servidor decide o que
 // está "pronto para usar", e só com execução comprovada.

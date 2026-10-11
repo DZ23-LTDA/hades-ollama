@@ -39,6 +39,10 @@ const (
 	// Cada iteração tem chave de idempotência própria, então repetir a execução
 	// não duplica as missões do laço.
 	ScheduleStepLogicLoop ScheduleStepKind = "logic.loop"
+	// ScheduleStepApprovalRequest pausa o fluxo até uma decisão HUMANA registrada
+	// para (passo, execução). Sem decisão o passo fica pendente e os dependentes
+	// não rodam — o fluxo espera, não adivinha.
+	ScheduleStepApprovalRequest ScheduleStepKind = "approval.request"
 )
 
 // Limites do escopo de variáveis e do laço. Um motor que roda a cada tick precisa
@@ -272,6 +276,25 @@ func validateScheduleStepShape(step ScheduleStep) error {
 				return fmt.Errorf("schedule loop %q item %d exceeds %d characters", id, index+1, maxScheduleVariableSize)
 			}
 		}
+	case ScheduleStepApprovalRequest:
+		if len(step.DependsOn) == 0 {
+			return fmt.Errorf("schedule approval %q requires at least one dependency", id)
+		}
+		if strings.TrimSpace(step.Objective) == "" {
+			return fmt.Errorf("schedule approval %q requires an objective describing the decision", id)
+		}
+		if strings.TrimSpace(step.Expect) != "" {
+			return fmt.Errorf("schedule approval %q cannot carry an expectation", id)
+		}
+		if step.MaxAttempts != 0 {
+			return fmt.Errorf("schedule approval %q cannot declare attempts", id)
+		}
+		if len(step.Items) != 0 {
+			return fmt.Errorf("schedule approval %q cannot carry loop items", id)
+		}
+		if strings.TrimSpace(step.Source) != "" || strings.TrimSpace(step.Target) != "" {
+			return fmt.Errorf("schedule approval %q cannot carry a transform source or target", id)
+		}
 	case ScheduleStepConditionIf:
 		if len(step.DependsOn) != 1 {
 			return fmt.Errorf("schedule condition %q requires exactly one dependency, got %d", id, len(step.DependsOn))
@@ -342,14 +365,38 @@ func orderScheduleSteps(steps []ScheduleStep) ([]ScheduleStep, error) {
 	return order, nil
 }
 
-// Status possíveis de um passo em uma execução. "skipped" existe para que um nó
-// que não rodou (condição falsa, dependência que não teve sucesso) apareça no
-// relatório: o estágio 13 proíbe declarar sucesso com nó ignorado.
+// ScheduleStepSucceeded/Skipped/Failed classificam o passo. "pending" existe para
+// a espera por decisão humana: um passo aguardando aprovação não é sucesso nem
+// falha, e tratar como qualquer um dos dois mentiria sobre o estado do fluxo.
 const (
 	ScheduleStepSucceeded = "succeeded"
 	ScheduleStepSkipped   = "skipped"
 	ScheduleStepFailed    = "failed"
+	ScheduleStepPending   = "pending"
 )
+
+// ScheduleApproval é uma decisão humana sobre UM passo de UMA execução. A chave
+// inclui a execução (RunKey) de propósito: uma aprovação concedida durante uma
+// pausa NÃO autoriza a mesma etapa numa execução futura.
+type ScheduleApproval struct {
+	StepID    string    `json:"step_id"`
+	RunKey    string    `json:"run_key"`
+	Approved  bool      `json:"approved"`
+	ActorID   string    `json:"actor_id,omitempty"`
+	Reason    string    `json:"reason,omitempty"`
+	DecidedAt time.Time `json:"decided_at"`
+}
+
+// SchedulePendingApproval registra que a execução está PARADA esperando decisão.
+type SchedulePendingApproval struct {
+	StepID      string    `json:"step_id"`
+	RunKey      string    `json:"run_key"`
+	Objective   string    `json:"objective,omitempty"`
+	RequestedAt time.Time `json:"requested_at"`
+}
+
+// maxScheduleApprovals limita o histórico de decisões e a lista de pendências.
+const maxScheduleApprovals = 20
 
 // ScheduleStepOutcome é o resultado de UM passo da execução.
 type ScheduleStepOutcome struct {
@@ -382,6 +429,9 @@ type ScheduleRunReport struct {
 	// FlowVersion é a versão do grafo que ESTA execução rodou. Sem ela, comparar
 	// execuções de grafos diferentes seria comparação inválida.
 	FlowVersion int `json:"flow_version,omitempty"`
+	// PendingApprovals são os passos que PARARAM esta execução esperando decisão
+	// humana. O gravador persiste no schedule para que a pausa sobreviva ao tick.
+	PendingApprovals []SchedulePendingApproval `json:"pending_approvals,omitempty"`
 }
 
 // SkippedSteps devolve os identificadores ignorados na execução. Vazio significa
@@ -672,6 +722,62 @@ func (r *Runtime) executeScheduleFlow(ctx context.Context, schedule Schedule, ru
 			loopOutcome.Reason = fmt.Sprintf("%d itens processados", len(step.Items))
 			outcomes[id] = true
 			report.Steps = append(report.Steps, loopOutcome)
+		case ScheduleStepApprovalRequest:
+			// Espera por decisão humana. Sem decisão o passo fica PENDENTE e os
+			// dependentes não rodam: o fluxo para, em vez de adivinhar. A decisão é
+			// buscada por (passo, execução), então uma aprovação não vaza para uma
+			// execução futura.
+			objective, expandErr := expandScheduleTemplate(step.Objective, vars)
+			if expandErr != nil {
+				outcomes[id] = false
+				report.FinishedAt = time.Now().UTC()
+				report.Steps = append(report.Steps, ScheduleStepOutcome{
+					ID:     id,
+					Kind:   string(step.Kind),
+					Status: ScheduleStepFailed,
+					Reason: expandErr.Error(),
+				})
+				return report, fmt.Errorf("schedule step %q: %w", id, expandErr)
+			}
+			approval, decided := scheduleApprovalFor(schedule, id, runKey)
+			switch {
+			case !decided:
+				outcomes[id] = false
+				report.PendingApprovals = append(report.PendingApprovals, SchedulePendingApproval{
+					StepID:      id,
+					RunKey:      runKey,
+					Objective:   strings.TrimSpace(objective),
+					RequestedAt: time.Now().UTC(),
+				})
+				report.Steps = append(report.Steps, ScheduleStepOutcome{
+					ID:     id,
+					Kind:   string(step.Kind),
+					Status: ScheduleStepPending,
+					Reason: "aguardando aprovação humana para esta execução",
+				})
+			case approval.Approved:
+				outcomes[id] = true
+				report.Steps = append(report.Steps, ScheduleStepOutcome{
+					ID:     id,
+					Kind:   string(step.Kind),
+					Status: ScheduleStepSucceeded,
+					Reason: "aprovado" + approvalActorSuffix(approval),
+				})
+			default:
+				// Negativa é decisão humana, não falha técnica: não entra na fila
+				// morta, mas também não libera o dependente.
+				outcomes[id] = false
+				reason := "aprovação negada" + approvalActorSuffix(approval)
+				if strings.TrimSpace(approval.Reason) != "" {
+					reason = reason + ": " + strings.TrimSpace(approval.Reason)
+				}
+				report.Steps = append(report.Steps, ScheduleStepOutcome{
+					ID:     id,
+					Kind:   string(step.Kind),
+					Status: ScheduleStepSkipped,
+					Reason: reason,
+				})
+			}
 		case ScheduleStepConditionIf:
 			matched := scheduleConditionMatches(step, outcomes)
 			outcomes[id] = matched
@@ -819,6 +925,65 @@ func scheduleBuiltinVariables(schedule Schedule, runKey string) map[string]strin
 		"schedule.objective": schedule.Objective,
 		"run.key":            runKey,
 	}
+}
+
+// approvalActorSuffix mostra QUEM decidiu. A trilha importa: uma aprovação sem
+// identidade de quem decidiu não serve de auditoria.
+func approvalActorSuffix(approval ScheduleApproval) string {
+	actor := strings.TrimSpace(approval.ActorID)
+	if actor == "" {
+		return ""
+	}
+	return " por " + actor
+}
+
+// scheduleApprovalFor procura a decisão humana de UM passo em UMA execução. A
+// busca é por (passo, execução) de propósito: aprovação de uma execução não
+// autoriza a mesma etapa numa execução futura.
+func scheduleApprovalFor(schedule Schedule, stepID, runKey string) (ScheduleApproval, bool) {
+	stepID = strings.TrimSpace(stepID)
+	for index := len(schedule.Approvals) - 1; index >= 0; index-- {
+		approval := schedule.Approvals[index]
+		if strings.TrimSpace(approval.StepID) == stepID && strings.TrimSpace(approval.RunKey) == strings.TrimSpace(runKey) {
+			return approval, true
+		}
+	}
+	return ScheduleApproval{}, false
+}
+
+// mergeScheduleApprovals acrescenta decisões novas (mais recentes primeiro) e
+// aplica o teto, para o histórico não crescer sem fim.
+func mergeScheduleApprovals(existing, added []ScheduleApproval) []ScheduleApproval {
+	merged := make([]ScheduleApproval, 0, len(existing)+len(added))
+	for _, entry := range added {
+		replaced := false
+		for i, current := range merged {
+			if current.StepID == entry.StepID && current.RunKey == entry.RunKey {
+				merged[i] = entry
+				replaced = true
+				break
+			}
+		}
+		if !replaced {
+			merged = append(merged, entry)
+		}
+	}
+	for _, entry := range existing {
+		duplicate := false
+		for _, current := range merged {
+			if current.StepID == entry.StepID && current.RunKey == entry.RunKey {
+				duplicate = true
+				break
+			}
+		}
+		if !duplicate {
+			merged = append(merged, entry)
+		}
+	}
+	if len(merged) > maxScheduleApprovals {
+		merged = merged[:maxScheduleApprovals]
+	}
+	return merged
 }
 
 // scheduleStepsEqual compara grafos por conteúdo. A ordem importa: o grafo é
