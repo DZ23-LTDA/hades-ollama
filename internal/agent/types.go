@@ -260,7 +260,11 @@ type Schedule struct {
 	// execução parcial (nó condicional falso, passo bloqueado) nunca apareça
 	// como sucesso limpo: o operador vê quais passos rodaram, quais foram
 	// ignorados e qual falhou.
-	LastRun   *ScheduleRunReport `json:"last_run,omitempty"`
-	CreatedAt time.Time          `json:"created_at"`
-	UpdatedAt time.Time          `json:"updated_at"`
+	LastRun *ScheduleRunReport `json:"last_run,omitempty"`
+	// DeadLetters é a DLQ por nó deste schedule: passos que esgotaram as
+	// tentativas. Entra na falha e SAI quando o passo volta a ter sucesso
+	// (inclusive via reprocessamento). Limitada por maxScheduleDeadLetters.
+	DeadLetters []ScheduleStepDeadLetter `json:"dead_letters,omitempty"`
+	CreatedAt   time.Time                `json:"created_at"`
+	UpdatedAt   time.Time                `json:"updated_at"`
 }

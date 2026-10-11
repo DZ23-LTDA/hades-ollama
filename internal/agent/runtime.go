@@ -1562,6 +1562,15 @@ func (r *Runtime) recordScheduleRun(schedule Schedule, report ScheduleRunReport,
 	schedule.LastRunAt = &now
 	stored := report
 	schedule.LastRun = &stored
+	// DLQ por nó: as falhas desta execução entram e os passos que tiveram sucesso
+	// SAEM — um passo recuperado não pode continuar listado como morto.
+	succeeded := make(map[string]bool, len(report.Steps))
+	for _, step := range report.Steps {
+		if step.Status == ScheduleStepSucceeded {
+			succeeded[step.ID] = true
+		}
+	}
+	schedule.DeadLetters = mergeScheduleDeadLetters(schedule.DeadLetters, report.DeadLetters, succeeded)
 	if runErr == nil {
 		schedule.FailureCount = 0
 		schedule.LastFailureCode = ""

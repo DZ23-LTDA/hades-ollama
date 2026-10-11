@@ -17,11 +17,35 @@ export type AgentScheduleStepOutcome = {
   attempts?: number;
 };
 
+/** Entrada da DLQ por nó: passo que esgotou as tentativas. */
+export type AgentScheduleDeadLetter = {
+  step_id: string;
+  kind: string;
+  reason: string;
+  attempts?: number;
+  objective?: string;
+  failed_at: string;
+};
+
+/** Rótulo curto de uma entrada da DLQ, com o motivo de verdade do servidor. */
+export function scheduleDeadLetterLabel(entry: AgentScheduleDeadLetter): string {
+  const attempts = entry.attempts && entry.attempts > 1 ? ` após ${entry.attempts} tentativas` : "";
+  return `${entry.step_id}${attempts} — ${entry.reason}`;
+}
+
 export type AgentScheduleRunReport = {
   finished_at: string;
   missions: number;
   steps?: AgentScheduleStepOutcome[] | null;
+  run_key?: string;
+  dead_letters?: AgentScheduleDeadLetter[] | null;
 };
+
+/** Entradas da DLQ do relatório, sempre em lista (o servidor pode omitir). */
+export function scheduleDeadLetters(report: AgentScheduleRunReport | null | undefined): AgentScheduleDeadLetter[] {
+  const entries = report?.dead_letters;
+  return Array.isArray(entries) ? entries.filter((entry) => entry && entry.step_id) : [];
+}
 
 export type ScheduleRunVerdict = "success" | "partial" | "failed" | "unknown";
 

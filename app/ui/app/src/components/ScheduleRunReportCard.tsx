@@ -4,6 +4,8 @@ import {
   scheduleRunVerdict,
   scheduleRunVerdictLabel,
   scheduleRunVerdictTone,
+  scheduleDeadLetterLabel,
+  scheduleDeadLetters,
   scheduleStepAttemptsLabel,
   scheduleStepKindLabel,
   scheduleStepStatusLabel,
@@ -63,6 +65,20 @@ export function ScheduleRunReportCard({ run, lastFailureCode, lastRunAt }: Sched
           ))}
         </ul>
       ) : null}
+      {scheduleDeadLetters(run).length > 0 && (
+        <div className="mt-3 rounded-lg border border-red-200 bg-red-50 p-2 dark:border-red-900 dark:bg-red-950/30">
+          <p className="text-xs font-semibold text-red-800 dark:text-red-300">
+            Fila morta ({scheduleDeadLetters(run).length}) — passos que esgotaram as tentativas
+          </p>
+          <ul className="mt-1 space-y-0.5">
+            {scheduleDeadLetters(run).map((entry) => (
+              <li key={`${entry.step_id}-${entry.failed_at}`} className="text-xs text-red-800 dark:text-red-200">
+                {scheduleDeadLetterLabel(entry)}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }

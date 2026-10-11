@@ -7,6 +7,8 @@ import {
   scheduleRunVerdictLabel,
   scheduleStepKindLabel,
   scheduleStepAttemptsLabel,
+  scheduleDeadLetterLabel,
+  scheduleDeadLetters,
   scheduleStepStatusLabel,
   type AgentScheduleRunReport,
 } from "./scheduleRun";
@@ -99,5 +101,23 @@ describe("relatório de execução de automação", () => {
     expect(scheduleStepAttemptsLabel({ id: "a", kind: "action.mission", status: "failed", attempts: 5 })).toBe(
       "5 tentativas",
     );
+  });
+
+  it("expõe a fila morta sem inventar entrada", () => {
+    expect(scheduleDeadLetters(null)).toEqual([]);
+    expect(scheduleDeadLetters({ finished_at: "2026-10-11T06:00:00Z", missions: 0 })).toEqual([]);
+    const entry = {
+      step_id: "acao",
+      kind: "action.mission",
+      reason: "projeto ausente",
+      attempts: 3,
+      failed_at: "2026-10-11T06:00:00Z",
+    };
+    expect(scheduleDeadLetters({ finished_at: "2026-10-11T06:00:00Z", missions: 0, dead_letters: [entry] })).toEqual([
+      entry,
+    ]);
+    // O rótulo carrega o motivo REAL do servidor e as tentativas quando houve retry.
+    expect(scheduleDeadLetterLabel(entry)).toBe("acao após 3 tentativas — projeto ausente");
+    expect(scheduleDeadLetterLabel({ ...entry, attempts: 1 })).toBe("acao — projeto ausente");
   });
 });
