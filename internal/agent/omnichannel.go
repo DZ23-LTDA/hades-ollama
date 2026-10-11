@@ -155,19 +155,30 @@ type OmnichannelRuntime struct {
 	// apagar o registro de que a LEITURA falhou (foi o que o teste do arquivo corrompido mostrou).
 	rateLimitLoadError string
 	rateLimitSaveError string
+	// connectorStore persiste o REGISTRO dos conectores (E-171). Sem ele, um reinício perde o canal e o
+	// `Ingest` recusa todo webhook legítimo com "not configured".
+	connectorStore *OmnichannelConnectorStore
+	// loadedConnectorOrgs marca quais organizações já tiveram os conectores carregados do disco.
+	loadedConnectorOrgs map[string]bool
+	// allConnectorsLoaded marca se a carga COMPLETA já foi feita (buscas por ID não sabem a organização).
+	allConnectorsLoaded bool
+	// Erros de leitura e gravação SEPARADOS, pela mesma razão da janela de rate limit.
+	connectorLoadError string
+	connectorSaveError string
 }
 
 // NewOmnichannelRuntime cria o runtime ligado à caixa de entrada existente.
 func NewOmnichannelRuntime(inbox *InboxStore) *OmnichannelRuntime {
 	return &OmnichannelRuntime{
-		connectors:     map[string]OmnichannelConnector{},
-		eventsByKey:    map[string]OmnichannelEvent{},
-		buckets:        map[string]omnichannelBucket{},
-		rateLimit:      OmnichannelDefaultRateLimit,
-		loadedOrgs:     map[string]bool{},
-		loadedRateOrgs: map[string]bool{},
-		inbox:          inbox,
-		now:            func() time.Time { return time.Now().UTC() },
+		connectors:          map[string]OmnichannelConnector{},
+		eventsByKey:         map[string]OmnichannelEvent{},
+		buckets:             map[string]omnichannelBucket{},
+		rateLimit:           OmnichannelDefaultRateLimit,
+		loadedOrgs:          map[string]bool{},
+		loadedRateOrgs:      map[string]bool{},
+		loadedConnectorOrgs: map[string]bool{},
+		inbox:               inbox,
+		now:                 func() time.Time { return time.Now().UTC() },
 	}
 }
 
@@ -244,7 +255,114 @@ func (r *OmnichannelRuntime) RegisterConnector(connector OmnichannelConnector, n
 	}
 	connector.CreatedAt = now
 	r.connectors[connector.ID] = connector
+	// E-171: cadastrar sem persistir deixaria o canal vivo só até o próximo reinício.
+	r.persistConnectorsLocked(connector.OrganizationID)
 	return connector, nil
+}
+
+// SetConnectorStore liga a persistência dos conectores. Sem store, o registro continua em memória e o estado DIZ
+// isso (`ConnectorPersisted()`), em vez de fingir durabilidade.
+func (r *OmnichannelRuntime) SetConnectorStore(store *OmnichannelConnectorStore) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.connectorStore = store
+	r.loadedConnectorOrgs = map[string]bool{}
+	r.allConnectorsLoaded = false
+}
+
+// ConnectorPersisted diz se o registro de conectores está sendo persistido.
+func (r *OmnichannelRuntime) ConnectorPersisted() bool {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return r.connectorStore != nil && r.connectorStore.Root() != ""
+}
+
+// ConnectorRoot devolve a raiz onde os conectores são persistidos (vazio = sem persistência).
+func (r *OmnichannelRuntime) ConnectorRoot() string {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.connectorStore == nil {
+		return ""
+	}
+	return r.connectorStore.Root()
+}
+
+// LastConnectorError devolve a última falha de persistência dos conectores (leitura e gravação, separadas).
+func (r *OmnichannelRuntime) LastConnectorError() string {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	switch {
+	case r.connectorLoadError != "" && r.connectorSaveError != "":
+		return r.connectorLoadError + "; " + r.connectorSaveError
+	default:
+		return r.connectorLoadError + r.connectorSaveError
+	}
+}
+
+// restoreConnectorsLocked carrega os conectores da organização UMA vez.
+func (r *OmnichannelRuntime) restoreConnectorsLocked(organizationID string) {
+	if r.connectorStore == nil || r.connectorStore.Root() == "" {
+		return
+	}
+	if r.loadedConnectorOrgs == nil {
+		r.loadedConnectorOrgs = map[string]bool{}
+	}
+	if r.loadedConnectorOrgs[organizationID] {
+		return
+	}
+	r.loadedConnectorOrgs[organizationID] = true
+	conectores, err := r.connectorStore.Load(organizationID)
+	if err != nil {
+		// Não poder ler o registro é um canal que vai recusar mensagens legítimas: isso vai para o estado.
+		r.connectorLoadError = "carregar conectores: " + err.Error()
+		return
+	}
+	r.connectorLoadError = ""
+	for _, connector := range conectores {
+		// Só preenche o que não está em memória: o registro VIVO do processo tem precedência.
+		if _, existe := r.connectors[connector.ID]; !existe {
+			r.connectors[connector.ID] = connector
+		}
+	}
+}
+
+// restoreAllConnectorsLocked carrega os conectores de TODAS as organizações UMA vez.
+//
+// É o que atende as buscas por ID (assinatura de webhook), que não sabem a organização antes de carregar.
+func (r *OmnichannelRuntime) restoreAllConnectorsLocked() {
+	if r.connectorStore == nil || r.connectorStore.Root() == "" || r.allConnectorsLoaded {
+		return
+	}
+	r.allConnectorsLoaded = true
+	conectores, err := r.connectorStore.LoadAll()
+	if err != nil {
+		r.connectorLoadError = "carregar conectores: " + err.Error()
+		return
+	}
+	for _, connector := range conectores {
+		if _, existe := r.connectors[connector.ID]; !existe {
+			r.connectors[connector.ID] = connector
+		}
+	}
+}
+
+// persistConnectorsLocked grava os conectores da organização (registro, nunca o valor do segredo).
+func (r *OmnichannelRuntime) persistConnectorsLocked(organizationID string) {
+	if r.connectorStore == nil || r.connectorStore.Root() == "" {
+		return
+	}
+	conectores := make([]OmnichannelConnector, 0, len(r.connectors))
+	for _, connector := range r.connectors {
+		if connector.OrganizationID != organizationID {
+			continue
+		}
+		conectores = append(conectores, connector)
+	}
+	if err := r.connectorStore.Save(organizationID, conectores); err != nil {
+		r.connectorSaveError = "persistir conectores: " + err.Error()
+		return
+	}
+	r.connectorSaveError = ""
 }
 
 // Connectors lista os conectores de uma organização (sem segredo).
@@ -269,6 +387,8 @@ func (r *OmnichannelRuntime) connectorFor(organizationID, channel string) (Omnic
 	channel = normalizeInboxChannel(channel)
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	// E-171: o conector pode ter sido cadastrado ANTES do reinício — o disco é a memória do canal.
+	r.restoreConnectorsLocked(organizationID)
 	for _, connector := range r.connectors {
 		if connector.OrganizationID == organizationID && connector.Channel == channel && connector.Enabled {
 			return connector, nil
@@ -291,6 +411,12 @@ func omnichannelSignature(secret string, timestamp int64, body []byte) string {
 func (r *OmnichannelRuntime) SignWebhook(connectorID string, timestamp int64, body []byte) (string, error) {
 	r.mu.Lock()
 	connector, ok := r.connectors[connectorID]
+	if !ok {
+		// E-171: a busca por ID também precisa do disco — um conector cadastrado antes do reinício continua
+		// valendo, em vez de a assinatura ser recusada como se o canal nunca tivesse existido.
+		r.restoreAllConnectorsLocked()
+		connector, ok = r.connectors[connectorID]
+	}
 	r.mu.Unlock()
 	if !ok {
 		return "", fmt.Errorf("%w: %s", ErrOmnichannelNotConfigured, connectorID)
