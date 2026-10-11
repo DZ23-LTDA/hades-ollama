@@ -452,6 +452,24 @@ func (s *ServiceAgentRuntime) SetAuditStore(store *ServiceAgentAuditStore) {
 	s.auditError = ""
 }
 
+// SetApprovalStore liga o store de APROVAÇÃO HUMANA das ferramentas de escrita.
+//
+// Sem ele a escrita é RECUSADA (não liberada): um runtime que não sabe pedir aprovação não pode executar
+// efeito. Ligado, a ferramenta de escrita passa a exigir autorização de uso único, amarrada aos parâmetros
+// da ação.
+func (s *ServiceAgentRuntime) SetApprovalStore(store *ServiceAgentApprovalStore) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.approvals = store
+}
+
+// ApprovalStore devolve o store de aprovações (para listar e decidir fora do turno).
+func (s *ServiceAgentRuntime) ApprovalStore() *ServiceAgentApprovalStore {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.approvals
+}
+
 // recordAudit grava as chamadas do turno na trilha durável e devolve o erro, quando houver.
 func (s *ServiceAgentRuntime) recordAudit(organizationID, agentID, conversationID, modelID string, calls []ServiceAgentToolCall, now time.Time) string {
 	if len(calls) == 0 {
@@ -580,6 +598,8 @@ type ServiceAgentRuntime struct {
 	audit *ServiceAgentAuditStore
 	// auditError guarda a última falha de gravação da trilha, para ser REPORTADA nunca escondida.
 	auditError string
+	// approvals é o store de aprovação humana das ferramentas de escrita. Sem ele, escrita é RECUSADA.
+	approvals *ServiceAgentApprovalStore
 	// executors são as ferramentas REALMENTE executáveis. A disponibilidade é DERIVADA daqui: um mapa
 	// digitado à mão não pode afirmar capacidade que ninguém implementou.
 	executors map[string]ServiceAgentTool

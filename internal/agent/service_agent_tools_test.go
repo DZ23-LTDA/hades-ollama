@@ -25,16 +25,19 @@ func callByName(calls []ServiceAgentToolCall, name string) *ServiceAgentToolCall
 }
 
 func TestServiceAgentToolExecutesAgainstRealStore(t *testing.T) {
-	runtime, _, _, _, conversationID := serviceAgentRuntime(t, true)
+	runtime, _, crm, _, conversationID := serviceAgentRuntime(t, true)
 	now := time.Now().UTC()
 
-	// `crm.opportunity.write` é declarada pelo agente de VENDAS.
-	turn, err := runtime.RunTurn(ServiceAgentTurnRequest{
+	// `crm.opportunity.write` é declarada pelo agente de VENDAS — e é EFEITO: exige aprovação humana.
+	pedido := ServiceAgentTurnRequest{
 		OrganizationID: "org-a", AgentID: ServiceAgentSales, ConversationID: conversationID,
 		Intent: "quero o plano avançado", ModelID: "modelo-local",
 		RequestedTools: []string{"crm.contact.read", "crm.opportunity.write"},
 		ToolArguments:  ServiceAgentToolRequest{Title: "Plano avançado — turno", ValueCents: 79900, OwnerID: "ana"},
-	}, now)
+	}
+	oportunidadesAntes := len(crm.ListOpportunities("org-a", ""))
+
+	turn, err := runtime.RunTurn(pedido, now)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -46,15 +49,36 @@ func TestServiceAgentToolExecutesAgainstRealStore(t *testing.T) {
 	if !strings.Contains(read.Summary, "Ana Souza") {
 		t.Fatalf("o resumo precisa vir do store, não de texto genérico: %q", read.Summary)
 	}
+	// LEITURA executa; ESCRITA aguarda decisão humana — e NADA foi gravado enquanto isso.
 	write := callByName(turn.ToolCalls, "crm.opportunity.write")
+	if write == nil || write.Status != ServiceAgentToolApprovalRequired {
+		t.Fatalf("escrita sem aprovação precisa ficar PENDENTE: %+v", turn.ToolCalls)
+	}
+	if write.ApprovalID == "" {
+		t.Fatal("o pedido de aprovação precisa ser identificável")
+	}
+	if write.Effect != ServiceAgentEffectWrite {
+		t.Fatalf("o efeito da ferramenta precisa ser declarado: %q", write.Effect)
+	}
+	if depois := len(crm.ListOpportunities("org-a", "")); depois != oportunidadesAntes {
+		t.Fatalf("nada pode ser escrito antes da aprovação: antes=%d depois=%d", oportunidadesAntes, depois)
+	}
+
+	// Decisão humana e repetição do MESMO turno: agora executa e o resumo declara o que foi criado.
+	approvePendingForTool(t, runtime, "org-a", "crm.opportunity.write", "ana")
+	turn, err = runtime.RunTurn(pedido, now.Add(time.Minute))
+	if err != nil {
+		t.Fatal(err)
+	}
+	write = callByName(turn.ToolCalls, "crm.opportunity.write")
 	if write == nil || write.Status != ServiceAgentToolExecuted {
-		t.Fatalf("crm.opportunity.write precisa executar: %+v", turn.ToolCalls)
+		t.Fatalf("com aprovação, crm.opportunity.write precisa executar: %+v", turn.ToolCalls)
 	}
 	if !strings.Contains(write.Summary, "oportunidade") || !strings.Contains(write.Summary, "79900") {
 		t.Fatalf("o resumo da escrita precisa declarar o que foi criado: %q", write.Summary)
 	}
-	if write.Effect != ServiceAgentEffectWrite {
-		t.Fatalf("o efeito da ferramenta precisa ser declarado: %q", write.Effect)
+	if depois := len(crm.ListOpportunities("org-a", "")); depois != oportunidadesAntes+1 {
+		t.Fatalf("a oportunidade aprovada precisa existir no CRM: antes=%d depois=%d", oportunidadesAntes, depois)
 	}
 }
 
@@ -82,19 +106,30 @@ func TestServiceAgentTurnBlockedToolNotDeclaredByAgent(t *testing.T) {
 	if !strings.Contains(call.Reason, "não declara") {
 		t.Fatalf("o motivo precisa dizer que o agente não declara: %q", call.Reason)
 	}
-	// E o supervisor, que DECLARA a mesma ferramenta, executa.
+	// E o supervisor, que DECLARA a mesma ferramenta, executa — depois da aprovação humana, porque
+	// atribuição de conversa é EFEITO.
 	supervisor, _, _, _, supervisorConversation := serviceAgentRuntime(t, true)
-	supervisorTurn, err := supervisor.RunTurn(ServiceAgentTurnRequest{
+	pedidoSupervisor := ServiceAgentTurnRequest{
 		OrganizationID: "org-a", AgentID: ServiceAgentSupervisor, ConversationID: supervisorConversation,
 		Intent: "organizar a fila", RequestedTools: []string{"inbox.assign"},
 		ToolArguments: ServiceAgentToolRequest{Assignee: "equipe-vendas"},
-	}, now)
+	}
+	supervisorTurn, err := supervisor.RunTurn(pedidoSupervisor, now)
 	if err != nil {
 		t.Fatal(err)
 	}
 	supervisorCall := callByName(supervisorTurn.ToolCalls, "inbox.assign")
+	if supervisorCall == nil || supervisorCall.Status != ServiceAgentToolApprovalRequired {
+		t.Fatalf("o supervisor declara inbox.assign, mas atribuir exige aprovação: %+v", supervisorTurn.ToolCalls)
+	}
+	approvePendingForTool(t, supervisor, "org-a", "inbox.assign", "supervisora-humana")
+	supervisorTurn, err = supervisor.RunTurn(pedidoSupervisor, now.Add(time.Minute))
+	if err != nil {
+		t.Fatal(err)
+	}
+	supervisorCall = callByName(supervisorTurn.ToolCalls, "inbox.assign")
 	if supervisorCall == nil || supervisorCall.Status != ServiceAgentToolExecuted {
-		t.Fatalf("o supervisor declara inbox.assign e precisa executar: %+v", supervisorTurn.ToolCalls)
+		t.Fatalf("com aprovação, o supervisor precisa executar: %+v", supervisorTurn.ToolCalls)
 	}
 }
 
@@ -178,12 +213,23 @@ func TestServiceAgentToolFailureIsRecordedWithRealError(t *testing.T) {
 	runtime, _, _, _, conversationID := serviceAgentRuntime(t, true)
 	now := time.Now().UTC()
 
-	// `crm.opportunity.write` sem título: o executor recusa. O turno precisa registrar a FALHA com o
-	// motivo real, em vez de tratar como sucesso.
-	turn, err := runtime.RunTurn(ServiceAgentTurnRequest{
+	// `crm.opportunity.write` sem título: o executor recusa. Com a aprovação humana no caminho, primeiro o
+	// pedido fica PENDENTE; depois de aprovado, o executor roda e FALHA — e a falha precisa aparecer com o
+	// motivo real, em vez de ser tratada como sucesso.
+	pedido := ServiceAgentTurnRequest{
 		OrganizationID: "org-a", AgentID: ServiceAgentSales, ConversationID: conversationID,
 		Intent: "quero comprar", RequestedTools: []string{"crm.opportunity.write"},
-	}, now)
+	}
+	turn, err := runtime.RunTurn(pedido, now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if call := callByName(turn.ToolCalls, "crm.opportunity.write"); call == nil || call.Status != ServiceAgentToolApprovalRequired {
+		t.Fatalf("sem aprovação a escrita precisa ficar pendente: %+v", turn.ToolCalls)
+	}
+	approvePendingForTool(t, runtime, "org-a", "crm.opportunity.write", "ana")
+
+	turn, err = runtime.RunTurn(pedido, now.Add(time.Minute))
 	if err != nil {
 		t.Fatal(err)
 	}

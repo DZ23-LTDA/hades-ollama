@@ -3,6 +3,7 @@ package server
 import (
 	"errors"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -11,7 +12,11 @@ import (
 
 // Agentes de atendimento e vendas (estágio 35). As rotas expõem o catálogo e o turno.
 // O turno SEMPRE declara a procedência do texto e o motivo de eventual escalada.
-var errServiceAgentsAuditUnavailable = errors.New("trilha de auditoria durável não está configurada")
+var (
+	errServiceAgentsAuditUnavailable     = errors.New("trilha de auditoria durável não está configurada")
+	errServiceAgentsApprovalsUnavailable = errors.New("store de aprovação humana não está configurado")
+	errServiceAgentApprovalStatusInvalid = errors.New("status de aprovação inválido")
+)
 
 func (a *agentAPI) serviceAgents() *agent.ServiceAgentRuntime {
 	if a.runtime == nil {
@@ -51,6 +56,81 @@ func (a *agentAPI) serviceAgentAudit(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"entries": entries, "count": len(entries), "storage": status})
+}
+
+// serviceAgentApprovals lista os pedidos de aprovação da organização da sessão.
+//
+// O filtro `status` é validado: um valor desconhecido é ERRO, não uma lista vazia que pareceria "nada
+// pendente" — em aprovação, mostrar vazio quando há pendências é o pior desfecho.
+func (a *agentAPI) serviceAgentApprovals(c *gin.Context) {
+	runtime := a.serviceAgents()
+	if runtime == nil {
+		writeAgentError(c, http.StatusServiceUnavailable, errServiceAgentsUnavailable)
+		return
+	}
+	store := runtime.ApprovalStore()
+	if store == nil {
+		writeAgentError(c, http.StatusServiceUnavailable, errServiceAgentsApprovalsUnavailable)
+		return
+	}
+	status := strings.TrimSpace(c.Query("status"))
+	switch status {
+	case "", agent.ServiceAgentApprovalPending, agent.ServiceAgentApprovalApproved,
+		agent.ServiceAgentApprovalDenied, agent.ServiceAgentApprovalConsumed:
+	default:
+		writeAgentError(c, http.StatusBadRequest, errServiceAgentApprovalStatusInvalid)
+		return
+	}
+	approvals, err := store.ListApprovals(agentOrganizationID(c), status)
+	if err != nil {
+		writeAgentError(c, statusForAgentError(err), err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"approvals": approvals, "count": len(approvals)})
+}
+
+// serviceAgentDecideApproval registra a DECISÃO HUMANA sobre um pedido de escrita.
+//
+// Decidir exige ator identificado: aprovação anônima não é aprovação. A decisão fica no store durável para
+// o próximo turno poder executar — ou ser bloqueado, quando negada.
+func (a *agentAPI) serviceAgentDecideApproval(c *gin.Context) {
+	runtime := a.serviceAgents()
+	if runtime == nil {
+		writeAgentError(c, http.StatusServiceUnavailable, errServiceAgentsUnavailable)
+		return
+	}
+	store := runtime.ApprovalStore()
+	if store == nil {
+		writeAgentError(c, http.StatusServiceUnavailable, errServiceAgentsApprovalsUnavailable)
+		return
+	}
+	var input struct {
+		Approved bool   `json:"approved"`
+		ActorID  string `json:"actor_id"`
+		Reason   string `json:"reason"`
+	}
+	if err := c.ShouldBindJSON(&input); err != nil {
+		writeAgentError(c, http.StatusBadRequest, err)
+		return
+	}
+	approvalID := strings.TrimSpace(c.Param("id"))
+	if approvalID == "" {
+		writeAgentError(c, http.StatusBadRequest, errServiceAgentApprovalStatusInvalid)
+		return
+	}
+	decided, err := store.Decide(agentOrganizationID(c), approvalID, input.Approved, input.ActorID, input.Reason, time.Now().UTC())
+	if err != nil {
+		switch {
+		case errors.Is(err, agent.ErrServiceAgentApprovalNotFound):
+			writeAgentError(c, http.StatusNotFound, err)
+		case errors.Is(err, agent.ErrServiceAgentApprovalConflict):
+			writeAgentError(c, http.StatusConflict, err)
+		default:
+			writeAgentError(c, http.StatusBadRequest, err)
+		}
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"approval": decided})
 }
 
 // serviceAgentTurn executa um turno do agente sobre uma conversa da caixa de entrada.

@@ -80,16 +80,29 @@ func TestServiceAgentAuditRecordsUnavailableAndFailed(t *testing.T) {
 	runtime, _, conversationID, now := auditFixture(t)
 
 	// VENDAS: `commerce.stock.read` é do agente de COMÉRCIO — para vendas ela é BLOQUEADA (privilégio);
-	// e `crm.opportunity.write` sem título FALHA no executor.
-	sales, err := runtime.RunTurn(ServiceAgentTurnRequest{
+	// e `crm.opportunity.write` sem título é ESCRITA: fica PENDENTE de aprovação e nada roda.
+	pedido := ServiceAgentTurnRequest{
 		OrganizationID: "org-a", AgentID: ServiceAgentSales, ConversationID: conversationID,
 		Intent: "quero o plano", RequestedTools: []string{"commerce.stock.read", "crm.opportunity.write"},
-	}, now)
+	}
+	sales, err := runtime.RunTurn(pedido, now)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if sales.AuditError != "" {
 		t.Fatalf("gravação da trilha falhou: %s", sales.AuditError)
+	}
+	if call := callByName(sales.ToolCalls, "crm.opportunity.write"); call == nil || call.Status != ServiceAgentToolApprovalRequired {
+		t.Fatalf("escrita precisa ficar pendente de aprovação: %+v", sales.ToolCalls)
+	}
+	// Aprovado o pedido, o executor roda — e FALHA por falta de título. Os dois estados ficam na trilha.
+	approvePendingForTool(t, runtime, "org-a", "crm.opportunity.write", "ana")
+	sales, err = runtime.RunTurn(pedido, now.Add(time.Minute))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if call := callByName(sales.ToolCalls, "crm.opportunity.write"); call == nil || call.Status != ServiceAgentToolFailed {
+		t.Fatalf("com aprovação e sem título, a escrita precisa FALHAR: %+v", sales.ToolCalls)
 	}
 
 	// COMÉRCIO: declara `commerce.stock.read`, mas o store não está ligado — INDISPONÍVEL.
@@ -112,19 +125,24 @@ func TestServiceAgentAuditRecordsUnavailableAndFailed(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(trail) != 3 {
-		t.Fatalf("as três tentativas precisam estar na trilha: %d", len(trail))
+	// 5 tentativas: 2 no primeiro turno de vendas (leitura de comércio bloqueada + escrita pendente),
+	// 2 no turno repetido (bloqueada de novo + escrita que falhou) e 1 no turno do comércio.
+	if len(trail) != 5 {
+		t.Fatalf("as cinco tentativas precisam estar na trilha: %d", len(trail))
 	}
 	statuses := map[string][]string{}
 	for _, entry := range trail {
 		statuses[entry.ToolName] = append(statuses[entry.ToolName], entry.Status)
 	}
-	// Bloqueado, indisponível e falho: os três estados são EVIDÊNCIA, não ruído.
+	// Bloqueado, indisponível, pendente de aprovação e falho: TODOS são EVIDÊNCIA, não ruído.
 	if !containsString(statuses["commerce.stock.read"], ServiceAgentToolBlocked) {
 		t.Fatalf("a tentativa bloqueada precisa constar: %+v", statuses)
 	}
 	if !containsString(statuses["commerce.stock.read"], ServiceAgentToolUnavailable) {
 		t.Fatalf("a indisponibilidade precisa constar: %+v", statuses)
+	}
+	if !containsString(statuses["crm.opportunity.write"], ServiceAgentToolApprovalRequired) {
+		t.Fatalf("a espera por aprovação precisa constar na auditoria: %+v", statuses)
 	}
 	if !containsString(statuses["crm.opportunity.write"], ServiceAgentToolFailed) {
 		t.Fatalf("a falha precisa constar: %+v", statuses)

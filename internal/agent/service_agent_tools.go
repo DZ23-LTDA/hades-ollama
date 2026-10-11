@@ -41,6 +41,9 @@ const (
 	ServiceAgentToolUnavailable = "unavailable"
 	// ServiceAgentToolFailed: o executor falhou; o erro real é preservado.
 	ServiceAgentToolFailed = "failed"
+	// ServiceAgentToolApprovalRequired: a escrita NÃO rodou — aguarda decisão humana. É distinto de
+	// `blocked` (privilégio/política): aqui o caminho existe e o que falta é autorização.
+	ServiceAgentToolApprovalRequired = "approval_required"
 )
 
 // ServiceAgentToolRequest é o insumo de uma execução.
@@ -69,6 +72,8 @@ type ServiceAgentToolCall struct {
 	Summary    string    `json:"summary,omitempty"`
 	Reason     string    `json:"reason,omitempty"`
 	ExecutedAt time.Time `json:"executed_at"`
+	// ApprovalID identifica a aprovação humana que autorizou a escrita — ou a que ainda falta.
+	ApprovalID string `json:"approval_id,omitempty"`
 }
 
 // ServiceAgentTool é uma ferramenta executável de verdade.
@@ -207,7 +212,8 @@ func serviceAgentTools(crm *CRMStore, inbox *InboxStore, consent *ConsentRegistr
 //  1. o agente declara a ferramenta? (senão: bloqueada — privilégio não sobe por a ferramenta existir);
 //  2. existe executor registrado? (senão: indisponível — e a resposta é esta, não um sucesso inventado);
 //  3. a política permite o efeito? (saída exige consentimento concedido);
-//  4. executa; falha vira FALHA com o erro real.
+//  4. EFEITO exige APROVAÇÃO HUMANA: sem aprovação válida, o pedido é registrado e NADA é executado;
+//  5. executa; falha vira FALHA com o erro real.
 func (s *ServiceAgentRuntime) RunTool(spec ServiceAgentSpec, declared []string, effectOutboundAllowed bool, toolName string, request ServiceAgentToolRequest) ServiceAgentToolCall {
 	name := strings.TrimSpace(toolName)
 	call := ServiceAgentToolCall{Name: name, ExecutedAt: request.Now}
@@ -229,10 +235,81 @@ func (s *ServiceAgentRuntime) RunTool(spec ServiceAgentSpec, declared []string, 
 		call.Reason = "ferramenta de saída exige consentimento concedido"
 		return call
 	}
+	// Passo 4: ESCRITA não acontece por conta de uma frase do cliente.
+	if tool.Effect() == ServiceAgentEffectWrite {
+		return s.authorizeWrite(call, request, name)
+	}
 	summary, err := tool.Execute(request)
 	if err != nil {
 		call.Status = ServiceAgentToolFailed
-		// O erro REAL é preservado: quem for investigar precisa do motivo, não de um "erro genérico".
+		// O erro REAL é preservado: quem for investigar precisa do motivo, não de "erro genérico".
+		call.Reason = err.Error()
+		return call
+	}
+	call.Status = ServiceAgentToolExecuted
+	call.Summary = summary
+	return call
+}
+
+// authorizeWrite aplica a aprovação humana às ferramentas de efeito.
+//
+// Sem store de aprovações configurado, a escrita é RECUSADA — não liberada. O padrão seguro é negar: um
+// runtime que não sabe pedir aprovação não pode executar efeito.
+func (s *ServiceAgentRuntime) authorizeWrite(call ServiceAgentToolCall, request ServiceAgentToolRequest, toolName string) ServiceAgentToolCall {
+	s.mu.Lock()
+	store := s.approvals
+	s.mu.Unlock()
+	if store == nil {
+		call.Status = ServiceAgentToolBlocked
+		call.Reason = "escrita exige aprovação humana e este runtime não tem store de aprovações"
+		return call
+	}
+	scope := consentScope(request.OrganizationID)
+	fingerprint := serviceAgentApprovalFingerprint(request, toolName)
+
+	// Já negado por um humano? Então a resposta é a recusa, com quem negou — e não um novo pedido.
+	if denied, found, err := store.FindDenied(scope, fingerprint); err == nil && found {
+		call.Status = ServiceAgentToolBlocked
+		call.Reason = fmt.Sprintf("aprovação %s NEGADA por %s: %s", denied.ID, denied.DecidedBy, denied.Reason)
+		return call
+	}
+	approved, found, err := store.FindApproved(scope, fingerprint)
+	if err != nil {
+		call.Status = ServiceAgentToolFailed
+		call.Reason = err.Error()
+		return call
+	}
+	if !found {
+		pending, err := store.Request(scope, ServiceAgentApproval{
+			OrganizationID: scope,
+			AgentID:        request.AgentID,
+			ConversationID: request.ConversationID,
+			ToolName:       toolName,
+			Fingerprint:    fingerprint,
+			RequestedAt:    request.Now.UTC(),
+			RequestedBy:    "agente:" + request.AgentID,
+		})
+		if err != nil {
+			call.Status = ServiceAgentToolFailed
+			call.Reason = err.Error()
+			return call
+		}
+		call.Status = ServiceAgentToolApprovalRequired
+		call.ApprovalID = pending.ID
+		call.Reason = fmt.Sprintf("escrita exige aprovação humana: pedido %s aguardando decisão", pending.ID)
+		return call
+	}
+	// Uso ÚNICO: consumir ANTES de executar. Consumir depois deixaria a janela em que duas execuções usam
+	// a mesma aprovação — e uma autorização pontual viraria permanente por acidente.
+	if _, err := store.Consume(scope, approved.ID, request.Now); err != nil {
+		call.Status = ServiceAgentToolFailed
+		call.Reason = err.Error()
+		return call
+	}
+	call.ApprovalID = approved.ID
+	summary, err := s.executors[toolName].Execute(request)
+	if err != nil {
+		call.Status = ServiceAgentToolFailed
 		call.Reason = err.Error()
 		return call
 	}

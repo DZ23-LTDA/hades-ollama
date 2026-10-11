@@ -269,6 +269,9 @@ func NewRuntime(config RuntimeConfig) (*Runtime, error) {
 	// A trilha de execução de ferramentas PERSISTE um arquivo por organização: sem isso, a pergunta que se faz
 	// depois de um incidente ("o que aquele agente executou ontem?") não teria resposta.
 	serviceAgentRuntime.SetAuditStore(NewServiceAgentAuditStore(serviceAgentAuditRoot(dataRoot)))
+	// Sem este store, as ferramentas de ESCRITA dos agentes de atendimento são RECUSADAS: efeito no CRM ou na
+	// caixa de entrada não acontece por conta de uma frase do cliente.
+	serviceAgentRuntime.SetApprovalStore(NewServiceAgentApprovalStore(serviceAgentApprovalRoot(dataRoot)))
 	// O motor de comércio guarda catálogo, estoque e pedidos (estágio 24) e PERSISTE
 	// um arquivo por organização: sem persistência, um reinício apagaria pedidos.
 	commerceStore, err := NewCommerceStoreAt(filepath.Join(dataRoot, ".agent-commerce"))
