@@ -814,6 +814,12 @@ func (a *agentAPI) register(r *gin.Engine) {
 	group.POST("/inbox/conversations/:id/handoff", a.handoffInboxConversation)
 	group.POST("/inbox/conversations/:id/close", a.closeInboxConversation)
 	group.GET("/inbox/metrics", a.inboxMetrics)
+	group.POST("/omnichannel/connectors", a.registerOmnichannelConnector)
+	group.GET("/omnichannel/connectors", a.listOmnichannelConnectors)
+	group.POST("/omnichannel/webhooks/:channel", a.ingestOmnichannelWebhook)
+	group.GET("/omnichannel/events", a.listOmnichannelEvents)
+	group.GET("/omnichannel/dlq", a.listOmnichannelDeadLetters)
+	group.POST("/omnichannel/dlq/:id/retry", a.retryOmnichannelDeadLetter)
 	group.GET("/egress/logs", a.getEgressLogs)
 	group.GET("/egress/status", a.getEgressStatus)
 	group.GET("/plugins", a.listPlugins)
@@ -3833,6 +3839,22 @@ func statusForAgentError(err error) int {
 		return http.StatusGone
 	}
 	if errors.Is(err, agent.ErrDeploymentApprovalNotFound) || errors.Is(err, agent.ErrDeploymentApprovalOrganization) || errors.Is(err, agent.ErrDeploymentProviderNotFound) {
+		return http.StatusNotFound
+	}
+	// Omnichannel (estágio 34): cada recusa tem o código que o provedor precisa ver.
+	// Assinatura inválida é 401 (o provedor precisa corrigir a assinatura); carimbo
+	// fora da janela é 409 (a assinatura confere, mas o evento não é aceitável agora) —
+	// separar os dois evita mandar o provedor depurar a coisa errada.
+	if errors.Is(err, agent.ErrOmnichannelSignature) {
+		return http.StatusUnauthorized
+	}
+	if errors.Is(err, agent.ErrOmnichannelReplay) {
+		return http.StatusConflict
+	}
+	if errors.Is(err, agent.ErrOmnichannelRateLimited) {
+		return http.StatusTooManyRequests
+	}
+	if errors.Is(err, agent.ErrOmnichannelNotConfigured) || errors.Is(err, agent.ErrOmnichannelDLQNotFound) {
 		return http.StatusNotFound
 	}
 	if errors.Is(err, os.ErrNotExist) {

@@ -2,12 +2,12 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-12T08:05:00-03:00",
+  "updated_at": "2026-10-12T09:10:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
     "integration_branch": "main",
-    "main_sha": "1f1183d2641bc762529329a55926e0b52c7b5ca9",
+    "main_sha": "128873a24dd25b978d9c11a74ee3a95fff1b4865",
     "main_committed_at": "2026-10-09T10:24:45Z",
     "main_ci_state": "green (dz23-agentic-quality + class-a-plus-integrity = success nesse SHA)",
     "mission_branch": "docs/checkpoints-missao-v21",
@@ -781,10 +781,12 @@
       "auditoria": "AUDITADO",
       "capability": "PARCIAL",
       "evidence": [
-        "E-045"
+        "E-045",
+        "E-105"
       ],
       "blocker": "B-03",
-      "next": "Homologar envio/recebimento com token real; adaptador, gateway, midia e testes ja existem"
+      "next": "LIMITES: sem entrega de saida ao provedor (depende de credencial), rate limit em memoria (nao distribuido), DLQ em memoria (persistencia e trabalho futuro), sem download/armazenamento de midia e sem rotacao de segredo (vem do ambiente)",
+      "done": "CONTRATO CANONICO DE MENSAGENS implementado: OmnichannelEvent com tenant, canal, conector, external_message_id, contato, remetente/destinatario, tipo, referencia de conteudo, anexos, carimbo, estado de entrega, correlacao, idempotencia, agente, consentimento e metadados de auditoria. Ingestao com O TENANT VINDO DO CONECTOR (nunca do payload), assinatura HMAC-SHA256 comparada em TEMPO CONSTANTE e FALHA FECHADA sem segredo, anti-replay por janela de +/-5 minutos, deduplicacao por external_message_id, rate limit por organizacao e canal, DLQ com motivo e reprocessamento explicito, e a mensagem entra pela MESMA caixa de entrada"
     },
     {
       "id": 35,
@@ -1051,7 +1053,11 @@
     "CAIXA DE ENTRADA UNIFICADA E OS TRES COMANDOS DESTRAVADOS (E-104): /inbox, /handoff e /support estavam indisponiveis com o motivo 'a caixa de entrada unificada ainda nao existe nesta versao' - honesto, e era exatamente o que faltava. Com a caixa implementada os tres ganharam rota real e a LISTA DE COMANDOS INDISPONIVEIS FICOU VAZIA: todos os 35 comandos do catalogo tem rota verificada pela guarda do 11.1",
     "INBOX - DECISOES DELIBERADAS (E-104): UMA CONVERSA POR CONTATO E CANAL, porque criar uma conversa por mensagem destruiria historico e contexto; DEDUPLICACAO DE ENTRADA POR ExternalID com checagem e insercao sob o mesmo lock, entao webhook reentregue nao duplica mensagem nem sob CONCORRENCIA (dez entregas simultaneas do mesmo evento geram UMA mensagem); SLA MEDIDO contra a primeira resposta real, nunca presumido; HANDOFF E ESTADO com motivo obrigatorio, responsavel registrado e a passagem gravada na propria conversa; CONSENTIMENTO CONSULTADO NO ENVIO, de modo que responder quem pediu opt-out e RECUSADO - a caixa de entrada nao e porta dos fundos para contatar quem nao autorizou; e conversa encerrada NAO e reaproveitada, para o historico encerrado nao ser reaberto por acidente",
     "INBOX - MEUS ERROS CORRIGIDOS PELOS TESTES (E-104): (1) o motivo declarado do /support era outro, e minha substituicao nao casou - ajustei ao texto REAL em vez de presumir; (2) TRES TESTES codificavam a verdade antiga (existir comando indisponivel): o do registro de comandos, o de ParseSlashInvocation e o de runCommand, que exigia 501 para /inbox. Atualizei os tres para a NOVA verdade sem remover cobertura: o caminho 501 passou a ser exercitado por um spec SINTETICO via checkSlashCommandAvailable - e extrai a checagem para um PONTO UNICO em vez de criar API so para o teste -, e /inbox passou a ser verificado como EXECUTANDO (200)",
-    "INBOX - LIMITES DECLARADOS (E-104): canais reais nao conectados (dependem de credencial), sem webhook publico com validacao de assinatura (trabalho do estagio 34), sem base de conhecimento nem resposta automatica por IA dentro da conversa, sem anexos ou audio, e SLA apenas de primeira resposta (sem SLA de resolucao). Capacidade PARCIAL"
+    "INBOX - LIMITES DECLARADOS (E-104): canais reais nao conectados (dependem de credencial), sem webhook publico com validacao de assinatura (trabalho do estagio 34), sem base de conhecimento nem resposta automatica por IA dentro da conversa, sem anexos ou audio, e SLA apenas de primeira resposta (sem SLA de resolucao). Capacidade PARCIAL",
+    "OMNICHANNEL RUNTIME - CONTRATO CANONICO DE MENSAGENS (E-105): havia canais, caixa de entrada e CRM, mas nenhuma PORTA DE ENTRADA para eventos externos. Implementado OmnichannelEvent completo e a ingestao com esta ordem deliberada: conector (tenant) -> assinatura -> janela de replay -> rate limit -> dedupe -> inbox",
+    "OMNICHANNEL - DECISOES DE SEGURANCA (E-105): O TENANT VEM DO CONECTOR AUTENTICADO, NUNCA DO PAYLOAD - um campo tenant_id no corpo e dado de terceiro e nao pode escolher onde a mensagem entra, e e isso que impede cruzamento entre empresas (ha teste em que o payload diz org-b e o evento entra em org-a, com a outra organizacao nao vendo nada). ASSINATURA HMAC-SHA256 COMPARADA EM TEMPO CONSTANTE (hmac.Equal), porque comparar com == vaza informacao pelo tempo de resposta. SEM SEGREDO CONFIGURADO O WEBHOOK E RECUSADO (falha fechada): aceitar nao assinado 'porque nao ha chave' transformaria o endpoint em porta aberta. ANTI-REPLAY POR JANELA DE +/-5 MINUTOS **e** DEDUPLICACAO POR external_message_id: uma protecao NAO cobre a outra, porque replay e sobre QUANDO e dedupe e sobre O QUE. DLQ COM MOTIVO E TENTATIVAS, com reprocessamento explicito, e a mensagem entra pela MESMA caixa de entrada (um segundo caminho de mensagem poderia divergir do primeiro)",
+    "OMNICHANNEL - ERRO MEU CORRIGIDO PELO TESTE (E-105): eu tinha mapeado REPLAY e ASSINATURA para o MESMO 401. O teste exigia 409 para replay, e ele estava certo: assinatura invalida pede ao provedor CORRIGIR A ASSINATURA, enquanto carimbo fora da janela pede REVER RELOGIO/RETENTATIVA - juntar os dois mandaria o provedor depurar a coisa errada. Separei os codigos EM VEZ DE AJUSTAR O TESTE",
+    "OMNICHANNEL - LIMITES DECLARADOS (E-105): sem entrega de saida ao provedor (depende de credencial), rate limit em memoria e nao distribuido entre instancias, DLQ em memoria (persistencia e trabalho futuro), sem download/armazenamento de midia e sem rotacao de segredo (vem do ambiente). Capacidade PARCIAL"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
