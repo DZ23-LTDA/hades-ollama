@@ -119,6 +119,8 @@
 
 | Memória: resumos com digest fiel | `memory_summary.go`, `DigestSummarizer`, rota `/memories/summary` (E-096) | IMPLEMENTADO_E_TESTADO | BAIXO | E-096 | digest determinístico copia trechos com referência; contrato para resumidor injetado; motor declarado |
 
+| Supervisor: incidente, recuperação e logs | `supervisor_incidents.go`, `supervisor_journal.go`, rotas `/supervisor/incidents` e `/supervisor/ticks` (E-097) | IMPLEMENTADO_E_TESTADO | MÉDIO | E-097 | registro idempotente com estado e recuperação observada; diário de ticks persistido com erros; falha de retomada antes engolida agora vira incidente |
+
 ## 6. Integrações, MCP e conectores
 
 | Capacidade | Superfície | Classificação | Risco | Evidência | Lacuna |

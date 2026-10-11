@@ -1,6 +1,7 @@
 package server
 
 import (
+	"errors"
 	"net/http"
 	"os"
 	"strings"
@@ -9,6 +10,11 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/ollama/ollama/internal/agent"
 )
+
+// errSupervisorUnavailable é o erro explícito quando o runtime não tem supervisor:
+// melhor dizer que não está disponível do que devolver lista vazia como se não
+// houvesse incidente.
+var errSupervisorUnavailable = errors.New("supervisor não está disponível no runtime")
 
 // requireSupervisorAdmin gates the deployment-wide supervisor (SEC-09). The
 // supervisor is a single global runtime component, so reconfiguring it or
@@ -35,6 +41,85 @@ func (a *agentAPI) requireSupervisorAdmin(c *gin.Context) bool {
 	return true
 }
 
+// supervisorIncidents lista o registro de incidente com estado e recuperação.
+// A guarda é a MESMA do supervisor (SEC-09): incidente operacional é assunto de
+// administrador da organização, não de membro comum.
+func (a *agentAPI) supervisorIncidents(c *gin.Context) {
+	if !a.requireSupervisorAdmin(c) {
+		return
+	}
+	if a.runtime == nil || a.runtime.Supervisor() == nil {
+		c.JSON(http.StatusOK, gin.H{"incidents": []agent.SupervisorIncident{}, "count": 0})
+		return
+	}
+	incidents := a.runtime.Supervisor().Incidents()
+	c.JSON(http.StatusOK, gin.H{"incidents": incidents, "count": len(incidents)})
+}
+
+// supervisorAcknowledgeIncident registra CIÊNCIA humana sem declarar resolução.
+func (a *agentAPI) supervisorAcknowledgeIncident(c *gin.Context) {
+	if !a.requireSupervisorAdmin(c) {
+		return
+	}
+	if a.runtime == nil || a.runtime.Supervisor() == nil {
+		writeAgentError(c, http.StatusServiceUnavailable, errSupervisorUnavailable)
+		return
+	}
+	updated, err := a.runtime.Supervisor().AcknowledgeIncident(c.Param("id"), agentActorID(c), time.Now().UTC())
+	if err != nil {
+		if errors.Is(err, agent.ErrSupervisorIncidentNotFound) {
+			writeAgentError(c, http.StatusNotFound, err)
+			return
+		}
+		writeAgentError(c, http.StatusBadRequest, err)
+		return
+	}
+	c.JSON(http.StatusOK, updated)
+}
+
+// supervisorResolveIncident fecha o incidente por decisão humana, com motivo.
+func (a *agentAPI) supervisorResolveIncident(c *gin.Context) {
+	if !a.requireSupervisorAdmin(c) {
+		return
+	}
+	if a.runtime == nil || a.runtime.Supervisor() == nil {
+		writeAgentError(c, http.StatusServiceUnavailable, errSupervisorUnavailable)
+		return
+	}
+	var request struct {
+		Resolution string `json:"resolution"`
+	}
+	if err := decodeJSON(c, &request); err != nil {
+		writeAgentError(c, http.StatusBadRequest, err)
+		return
+	}
+	updated, err := a.runtime.Supervisor().ResolveIncident(c.Param("id"), agentActorID(c), request.Resolution, time.Now().UTC())
+	if err != nil {
+		if errors.Is(err, agent.ErrSupervisorIncidentNotFound) {
+			writeAgentError(c, http.StatusNotFound, err)
+			return
+		}
+		writeAgentError(c, http.StatusBadRequest, err)
+		return
+	}
+	c.JSON(http.StatusOK, updated)
+}
+
+// supervisorTicks devolve o diário dos últimos ticks (evidência "logs de
+// supervisão"), incluindo os erros de cada tick.
+func (a *agentAPI) supervisorTicks(c *gin.Context) {
+	if !a.requireSupervisorAdmin(c) {
+		return
+	}
+	if a.runtime == nil || a.runtime.Supervisor() == nil {
+		c.JSON(http.StatusOK, gin.H{"ticks": []agent.SupervisorTickRecord{}, "count": 0})
+		return
+	}
+	journal := a.runtime.Supervisor().TickJournal()
+	c.JSON(http.StatusOK, gin.H{"ticks": journal, "count": len(journal)})
+}
+
+// supervisorStatus mostra o estado do supervisor (SEC-09).
 func (a *agentAPI) supervisorStatus(c *gin.Context) {
 	if !a.requireSupervisorAdmin(c) {
 		return
