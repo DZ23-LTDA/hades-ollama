@@ -729,6 +729,7 @@ func (a *agentAPI) register(r *gin.Engine) {
 	group.GET("/companies/:id/business-status", a.businessStatus)
 	group.GET("/companies/:id/business-snapshots", a.businessSnapshots)
 	group.POST("/companies/:id/business-snapshots", a.recordBusinessSnapshot)
+	group.GET("/companies/:id/business-export", a.businessExport)
 	group.POST("/companies/:id/pause", a.pauseCompany)
 	group.POST("/companies/:id/resume", a.resumeCompany)
 	group.POST("/companies/:id/anomalies", a.recordCompanyAnomaly)
@@ -3985,6 +3986,10 @@ func statusForAgentError(err error) int {
 	}
 	// Série temporal do BI (estágio 32): escopo ausente é erro do cliente.
 	if errors.Is(err, agent.ErrBusinessSnapshotScopeRequired) {
+		return http.StatusBadRequest
+	}
+	// Exportação do BI (estágio 32): escopo ausente é erro do cliente.
+	if errors.Is(err, agent.ErrBusinessExportScope) {
 		return http.StatusBadRequest
 	}
 	if errors.Is(err, os.ErrNotExist) {
