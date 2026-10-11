@@ -82,6 +82,16 @@ Write-Host "Linux parity: imagens=$($Image -join ', ')"
 Write-Host "Linux parity: raiz=${repositoryRoot}"
 Write-Host "Linux parity: comando=${shellCommand}"
 
+# A saida e SEMPRE gravada: uma falha de paridade nao se reproduz necessariamente na proxima execucao, e
+# perder o nome do teste que falhou (como aconteceu em E-154) deixa o defeito sem causa. O log fica em
+# _tmp\linux-parity-last.log e a execucao corrente tambem e preservada com carimbo de tempo.
+$logDir = Join-Path $repositoryRoot '_tmp'
+if (-not (Test-Path $logDir)) {
+    New-Item -ItemType Directory -Path $logDir -Force | Out-Null
+}
+$logAtual = Join-Path $logDir 'linux-parity-last.log'
+$logHistorico = Join-Path $logDir ("linux-parity-" + (Get-Date -Format 'yyyyMMdd-HHmmss') + ".log")
+
 $lastOutput = ''
 foreach ($candidate in $Image) {
     Write-Host ""
@@ -101,10 +111,13 @@ foreach ($candidate in $Image) {
     $exit = $LASTEXITCODE
     $output | ForEach-Object { $_ }
     $lastOutput = ($output | Out-String)
+    $lastOutput | Set-Content -Path $logAtual -Encoding UTF8
+    $lastOutput | Set-Content -Path $logHistorico -Encoding UTF8
 
     if ($exit -eq 0) {
         Write-Host ""
         Write-Host "LINUX PARITY: OK com $candidate (exit 0)"
+        Write-Host "LINUX PARITY: saida completa em ${logAtual}"
         exit 0
     }
     # Falha de imagem inexistente nao e falha de teste: tenta a proxima.
@@ -114,6 +127,15 @@ foreach ($candidate in $Image) {
     }
     Write-Host ""
     Write-Host "LINUX PARITY: FALHOU com $candidate (exit $exit) - as mensagens acima sao do Linux, nao do host."
+    # Os NOMES dos testes que falharam vao para a tela: sem eles o defeito fica sem causa.
+    $nomes = @($lastOutput -split "`n" | Where-Object { $_ -match '^\s*--- FAIL: (\S+)' } | ForEach-Object { $_.Trim() })
+    if ($nomes.Count -gt 0) {
+        Write-Host "LINUX PARITY: testes que falharam:"
+        $nomes | ForEach-Object { Write-Host "  $_" }
+    } else {
+        Write-Host "LINUX PARITY: nenhum '--- FAIL:' na saida; a falha foi de compilacao, vet ou imagem."
+    }
+    Write-Host "LINUX PARITY: saida completa em ${logAtual} (copia: ${logHistorico})"
     exit $exit
 }
 

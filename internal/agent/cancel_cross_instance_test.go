@@ -45,7 +45,7 @@ func TestWatchDurableCancellationPropagatesAcrossInstances(t *testing.T) {
 	select {
 	case <-runCtx.Done():
 		// Success: the durable cancellation propagated to the local context.
-	case <-time.After(3 * time.Second):
+	case <-time.After(waitBudget(t)):
 		t.Fatal("durable cancellation from another instance did not abort the running context")
 	}
 }

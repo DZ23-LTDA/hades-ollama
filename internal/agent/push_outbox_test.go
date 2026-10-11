@@ -676,7 +676,7 @@ func TestPushOutboxCanceledCleanupIsNotBlockedByLocalFileLockWaiter(t *testing.T
 		if err != nil {
 			t.Fatalf("in-process file-lock waiter: %v", err)
 		}
-	case <-time.After(2 * time.Second):
+	case <-time.After(waitBudget(t)):
 		t.Fatal("in-process file-lock waiter remained blocked after file-lock release")
 	}
 	if err := outbox.FailContext(context.Background(), claimed.ID, claimed.LeaseToken, errors.New("delivery failed")); err != nil {
