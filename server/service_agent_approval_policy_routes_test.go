@@ -81,4 +81,28 @@ func TestServiceAgentApprovalRoutesEnforceRoleAndListExpired(t *testing.T) {
 	if expiradas.Code != http.StatusOK {
 		t.Fatalf("filtro `expired` precisa ser aceito, veio %d: %s", expiradas.Code, expiradas.Body.String())
 	}
+
+	// 6. A DECISÃO humana entrou na trilha durável (§11.1: `/approve` e `/deny` com trilha de auditoria), e a
+	//    resposta declara que o registro aconteceu.
+	if !strings.Contains(decidido.Body.String(), `"audit_recorded":true`) {
+		t.Fatalf("a decisão precisa declarar que foi auditada: %s", decidido.Body.String())
+	}
+	trilha := httptest.NewRecorder()
+	engine.ServeHTTP(trilha, httptest.NewRequest(http.MethodGet, "/api/agent/v1/service-agents/audit", nil))
+	if !strings.Contains(trilha.Body.String(), "approval.decide") {
+		t.Fatalf("o ato humano precisa constar na trilha: %s", trilha.Body.String())
+	}
+	if !strings.Contains(trilha.Body.String(), "ana") {
+		t.Fatalf("quem decidiu precisa constar na trilha: %s", trilha.Body.String())
+	}
+
+	// 7. A mudança de QUEM aprova também é ato de política e entra na trilha.
+	if !strings.Contains(config.Body.String(), `"audit_recorded":true`) {
+		t.Fatalf("a configuração precisa declarar que foi auditada: %s", config.Body.String())
+	}
+	trilha = httptest.NewRecorder()
+	engine.ServeHTTP(trilha, httptest.NewRequest(http.MethodGet, "/api/agent/v1/service-agents/audit", nil))
+	if !strings.Contains(trilha.Body.String(), "policy.approvers.set") {
+		t.Fatalf("a mudança de política precisa constar na trilha: %s", trilha.Body.String())
+	}
 }

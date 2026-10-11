@@ -257,6 +257,10 @@ func (s *ServiceAgentAuditStore) Append(organizationID string, entries []Service
 // ErrServiceAgentAuditChainBroken marca tentativa de estender trilha cuja cadeia não confere.
 var ErrServiceAgentAuditChainBroken = errors.New("service agent audit chain is broken")
 
+// ErrServiceAgentAuditUnavailable: a trilha durável não está configurada, então um ato de política NÃO pode
+// ser registrado — e isso precisa ser dito, não silenciado.
+var ErrServiceAgentAuditUnavailable = errors.New("service agent audit trail is unavailable")
+
 // serviceAgentAuditRoot devolve o diretório da trilha dentro da raiz de dados.
 func serviceAgentAuditRoot(dataRoot string) string {
 	dataRoot = strings.TrimSpace(dataRoot)

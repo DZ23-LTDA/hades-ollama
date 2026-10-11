@@ -135,7 +135,19 @@ func (a *agentAPI) serviceAgentDecideApproval(c *gin.Context) {
 		}
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"approval": decided})
+	// O ATO humano entra na trilha durável. A decisão não é desfeita se a trilha não puder ser gravada — mas
+	// a resposta DECLARA a ausência do registro, porque auditoria que falta em silêncio parece existir.
+	auditRecorded := true
+	auditReason := ""
+	if err := runtime.RecordApprovalDecision(decided, input.ActorID, input.Reason, time.Now().UTC()); err != nil {
+		auditRecorded = false
+		auditReason = err.Error()
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"approval":       decided,
+		"audit_recorded": auditRecorded,
+		"audit_reason":   auditReason,
+	})
 }
 
 // serviceAgentApprovalApprovers define QUEM pode aprovar nesta organização.
@@ -175,12 +187,22 @@ func (a *agentAPI) serviceAgentApprovalApprovers(c *gin.Context) {
 		writeAgentError(c, statusForAgentError(err), err)
 		return
 	}
+	// A mudança de QUEM aprova entra na trilha: é ato de política, e sem registro ela seria invisível para
+	// quem audita. Se a trilha não puder gravar, a resposta DECLARA isso.
+	auditRecorded := true
+	auditReason := ""
+	if err := runtime.RecordApproversChange(organizationID, input.ActorID, approvers, time.Now().UTC()); err != nil {
+		auditRecorded = false
+		auditReason = err.Error()
+	}
 	// A resposta diz o estado REAL: lista vazia significa que a decisão não passará por checagem de papel.
 	c.JSON(http.StatusOK, gin.H{
-		"approvers":    approvers,
-		"count":        len(approvers),
-		"role_checked": len(approvers) > 0,
-		"changed_by":   strings.TrimSpace(input.ActorID),
+		"approvers":      approvers,
+		"count":          len(approvers),
+		"role_checked":   len(approvers) > 0,
+		"changed_by":     strings.TrimSpace(input.ActorID),
+		"audit_recorded": auditRecorded,
+		"audit_reason":   auditReason,
 	})
 }
 
