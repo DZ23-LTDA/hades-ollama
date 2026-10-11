@@ -52,6 +52,7 @@ func setupServiceAgentAPI(t *testing.T, grantConsent bool) (*gin.Engine, *agent.
 	group := engine.Group("/api/agent/v1")
 	group.GET("/service-agents", api.listServiceAgents)
 	group.POST("/service-agents/:id/turn", api.serviceAgentTurn)
+	group.GET("/service-agents/audit", api.serviceAgentAudit)
 	return engine, runtime, conversation.ID
 }
 

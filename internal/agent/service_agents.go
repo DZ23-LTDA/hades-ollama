@@ -5,7 +5,10 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"sync"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 // Agentes de atendimento e vendas (estágio 35).
@@ -162,7 +165,10 @@ type ServiceAgentTurn struct {
 	Message     *InboxMessage       `json:"message,omitempty"`
 	// ToolCalls é a trilha de execução: o que foi tentado, o que rodou e por que o resto não rodou.
 	ToolCalls []ServiceAgentToolCall `json:"tool_calls,omitempty"`
-	DecidedAt time.Time              `json:"decided_at"`
+	// AuditError declara que a trilha DURÁVEL não pôde ser gravada. A ausência de auditoria precisa ser
+	// visível: perder registro em silêncio é o pior desfecho para quem investiga um incidente.
+	AuditError string    `json:"audit_error,omitempty"`
+	DecidedAt  time.Time `json:"decided_at"`
 }
 
 // ServiceAgentTurnRequest é a entrada do turno: quem fala, onde, o que o contato
@@ -228,6 +234,9 @@ func (s *ServiceAgentRuntime) RunTurn(request ServiceAgentTurnRequest, now time.
 	// para que transferência e atribuição funcionem também quando o turno termina em escalada.
 	// Contato e canal vêm da CONVERSA resolvida: é o escopo da sessão, não o que o pedido mandou.
 	turn.ToolCalls = s.runRequestedTools(request, conversation.ContactID, conversation.Channel, consentState == ConsentGranted, now)
+	// A trilha DURÁVEL é gravada AQUI, num único ponto: qualquer caminho de saída do turno (escalada,
+	// resposta, falha) já passou por este registro — auditoria não pode depender de qual caminho seguiu.
+	turn.AuditError = s.recordAudit(organizationID, spec.ID, conversation.ID, request.ModelID, turn.ToolCalls, now)
 
 	// 3. O contato pediu humano? Escalar é a resposta CORRETA, não responder.
 	if asksForHuman(request.Intent) {
@@ -434,11 +443,135 @@ func asksForHuman(intent string) bool {
 	return false
 }
 
+// SetAuditStore liga a trilha DURÁVEL. Sem store, a trilha continua vindo na resposta do turno (por turno)
+// e `AuditError` não é preenchido — durabilidade não se presume.
+func (s *ServiceAgentRuntime) SetAuditStore(store *ServiceAgentAuditStore) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.audit = store
+	s.auditError = ""
+}
+
+// recordAudit grava as chamadas do turno na trilha durável e devolve o erro, quando houver.
+func (s *ServiceAgentRuntime) recordAudit(organizationID, agentID, conversationID, modelID string, calls []ServiceAgentToolCall, now time.Time) string {
+	if len(calls) == 0 {
+		return ""
+	}
+	s.mu.Lock()
+	store := s.audit
+	s.mu.Unlock()
+	if store == nil {
+		return ""
+	}
+	entries := make([]ServiceAgentAuditEntry, 0, len(calls))
+	for _, call := range calls {
+		entries = append(entries, ServiceAgentAuditEntry{
+			ID:             "aud_" + uuid.NewString()[:12],
+			OrganizationID: organizationID,
+			AgentID:        agentID,
+			ConversationID: conversationID,
+			ToolName:       call.Name,
+			Effect:         call.Effect,
+			Status:         call.Status,
+			Summary:        call.Summary,
+			Reason:         call.Reason,
+			ModelID:        modelID,
+			DecidedAt:      call.ExecutedAt,
+			RecordedAt:     now,
+		})
+	}
+	if _, err := store.Append(organizationID, entries); err != nil {
+		s.mu.Lock()
+		s.auditError = err.Error()
+		s.mu.Unlock()
+		return err.Error()
+	}
+	return ""
+}
+
+// AuditTrail devolve a trilha durável da organização, mais recentes primeiro, com limite.
+//
+// Lê do DISCO a cada chamada: a trilha vem de fora do processo, e uma leitura que dependesse de cache em
+// memória poderia mostrar menos do que foi registrado — em auditoria, mostrar menos é pior que demorar.
+func (s *ServiceAgentRuntime) AuditTrail(organizationID string, limit int) ([]ServiceAgentAuditEntry, error) {
+	organizationID = consentScope(organizationID)
+	s.mu.Lock()
+	store := s.audit
+	s.mu.Unlock()
+	if store == nil {
+		return nil, fmt.Errorf("%w: trilha durável não configurada", ErrServiceAgentTurnInvalid)
+	}
+	entries, err := store.Load(organizationID)
+	if err != nil {
+		return nil, err
+	}
+	// Isolamento também na leitura: arquivo de outra organização não contamina este escopo.
+	own := make([]ServiceAgentAuditEntry, 0, len(entries))
+	for _, entry := range entries {
+		if entry.OrganizationID == organizationID {
+			own = append(own, entry)
+		}
+	}
+	sort.SliceStable(own, func(i, j int) bool { return own[i].RecordedAt.After(own[j].RecordedAt) })
+	if limit > 0 && len(own) > limit {
+		own = own[:limit]
+	}
+	return own, nil
+}
+
+// AuditStatus é o estado real da trilha durável de uma organização.
+type ServiceAgentAuditStatus struct {
+	OrganizationID string `json:"organization_id"`
+	// Persisted diz se há store configurado — durabilidade não se presume.
+	Persisted bool `json:"persisted"`
+	// Storage é o diretório usado quando há persistência.
+	Storage string `json:"storage,omitempty"`
+	// Entries é quantos registros a organização tem agora.
+	Entries int `json:"entries"`
+	// PerOrganization é o teto aplicado a ESTA organização.
+	PerOrganization int `json:"per_organization"`
+	// Error é a última falha de persistência, quando houve.
+	Error string `json:"error,omitempty"`
+}
+
+// AuditStatus reporta o estado da trilha durável.
+func (s *ServiceAgentRuntime) AuditStatus(organizationID string) (ServiceAgentAuditStatus, error) {
+	organizationID = consentScope(organizationID)
+	s.mu.Lock()
+	store := s.audit
+	errMessage := s.auditError
+	s.mu.Unlock()
+	status := ServiceAgentAuditStatus{OrganizationID: organizationID, Error: errMessage}
+	if store == nil {
+		return status, nil
+	}
+	entries, err := store.Load(organizationID)
+	if err != nil {
+		// Arquivo ilegível NÃO vira "sem registros": o erro sobe para quem audita, porque uma trilha
+		// corrompida apresentada como vazia apagaria a evidência de que existiam execuções.
+		return ServiceAgentAuditStatus{}, err
+	}
+	status.Persisted = true
+	status.Storage = store.Root()
+	status.PerOrganization = store.MaxPerOrganization
+	for _, entry := range entries {
+		if entry.OrganizationID == organizationID {
+			status.Entries++
+		}
+	}
+	return status, nil
+}
+
 // ServiceAgentRuntime liga os agentes aos recursos existentes.
 type ServiceAgentRuntime struct {
+	mu      sync.Mutex
 	crm     *CRMStore
 	inbox   *InboxStore
 	consent *ConsentRegistry
+	// audit é a trilha durável de execução de ferramentas; nil mantém a trilha apenas por turno.
+	audit *ServiceAgentAuditStore
+	// auditError guarda a última falha de gravação da trilha, para ser REPORTADA nunca escondida.
+	auditError string
 	// executors são as ferramentas REALMENTE executáveis. A disponibilidade é DERIVADA daqui: um mapa
 	// digitado à mão não pode afirmar capacidade que ninguém implementou.
 	executors map[string]ServiceAgentTool

@@ -266,6 +266,9 @@ func NewRuntime(config RuntimeConfig) (*Runtime, error) {
 	// `catalog.read`, `commerce.*` e `company.report.read` ficavam INDISPONÍVEIS — e é assim que deve ser,
 	// porque disponibilidade é consequência de ter executor, não de constar numa lista.
 	serviceAgentRuntime.SetCompanies(companyStore)
+	// A trilha de execução de ferramentas PERSISTE um arquivo por organização: sem isso, a pergunta que se faz
+	// depois de um incidente ("o que aquele agente executou ontem?") não teria resposta.
+	serviceAgentRuntime.SetAuditStore(NewServiceAgentAuditStore(serviceAgentAuditRoot(dataRoot)))
 	// O motor de comércio guarda catálogo, estoque e pedidos (estágio 24) e PERSISTE
 	// um arquivo por organização: sem persistência, um reinício apagaria pedidos.
 	commerceStore, err := NewCommerceStoreAt(filepath.Join(dataRoot, ".agent-commerce"))

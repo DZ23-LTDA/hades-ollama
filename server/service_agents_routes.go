@@ -1,6 +1,7 @@
 package server
 
 import (
+	"errors"
 	"net/http"
 	"time"
 
@@ -10,6 +11,8 @@ import (
 
 // Agentes de atendimento e vendas (estágio 35). As rotas expõem o catálogo e o turno.
 // O turno SEMPRE declara a procedência do texto e o motivo de eventual escalada.
+var errServiceAgentsAuditUnavailable = errors.New("trilha de auditoria durável não está configurada")
+
 func (a *agentAPI) serviceAgents() *agent.ServiceAgentRuntime {
 	if a.runtime == nil {
 		return nil
@@ -19,6 +22,35 @@ func (a *agentAPI) serviceAgents() *agent.ServiceAgentRuntime {
 
 func (a *agentAPI) listServiceAgents(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"agents": agent.ServiceAgentCatalog(), "count": len(agent.ServiceAgentCatalog())})
+}
+
+// serviceAgentAudit expõe a TRILHA DURÁVEL de execução de ferramentas da organização da sessão.
+//
+// A trilha vem com o ESTADO junto: durabilidade não se presume, e falha de gravação precisa aparecer para
+// quem audita — uma trilha "em memória" apresentada como durável seria pior que a ausência dela.
+func (a *agentAPI) serviceAgentAudit(c *gin.Context) {
+	runtime := a.serviceAgents()
+	if runtime == nil {
+		writeAgentError(c, http.StatusServiceUnavailable, errServiceAgentsUnavailable)
+		return
+	}
+	organizationID := agentOrganizationID(c)
+	status, err := runtime.AuditStatus(organizationID)
+	if err != nil {
+		writeAgentError(c, statusForAgentError(err), err)
+		return
+	}
+	if !status.Persisted {
+		// Sem trilha durável a leitura é recusa declarada, não lista vazia: vazio pareceria "nada aconteceu".
+		writeAgentError(c, http.StatusServiceUnavailable, errServiceAgentsAuditUnavailable)
+		return
+	}
+	entries, err := runtime.AuditTrail(organizationID, 0)
+	if err != nil {
+		writeAgentError(c, statusForAgentError(err), err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"entries": entries, "count": len(entries), "storage": status})
 }
 
 // serviceAgentTurn executa um turno do agente sobre uma conversa da caixa de entrada.
