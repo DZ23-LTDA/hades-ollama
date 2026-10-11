@@ -153,6 +153,8 @@
 
 | Benchmark comparável (próprio produto) | `benchmark_suite.go`, executor `TestBenchmarkSuiteMeasuresHermeticTasks` (E-117) | PARCIAL | MÉDIO | E-117 | 5 tarefas herméticas medidas (5/5, 102 ms) com isolamento e retomada provados; **comparação externa NÃO executada** por falta de credenciais |
 
+| Opt-out automático de consentimento | `consent_optout.go` (E-118) | PARCIAL | MÉDIO | E-118 | revoga por canal+contato com a frase como evidência, idempotente, dupla negação tratada; heurística não cobre todas as formas de dizer "pare" |
+
 ## 6. Integrações, MCP e conectores
 
 | Capacidade | Superfície | Classificação | Risco | Evidência | Lacuna |

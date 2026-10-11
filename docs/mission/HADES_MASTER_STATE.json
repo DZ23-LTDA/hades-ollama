@@ -2,12 +2,12 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-12T22:55:00-03:00",
+  "updated_at": "2026-10-13T00:10:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
     "integration_branch": "main",
-    "main_sha": "0f34a7cad806c3d3c430202f2b12af80fdf1e825",
+    "main_sha": "166c2f730ff6f8a4549020fdf6cfc146c070d55e",
     "main_committed_at": "2026-10-09T10:24:45Z",
     "main_ci_state": "green (dz23-agentic-quality + class-a-plus-integrity = success nesse SHA)",
     "mission_branch": "docs/checkpoints-missao-v21",
@@ -679,13 +679,14 @@
         "E-047",
         "E-087",
         "E-101",
-        "E-102"
+        "E-102",
+        "E-118"
       ],
       "blocker": "B-05",
-      "next": "LIMITES RESTANTES: sem integracao com CRM externo (HubSpot/Salesforce seguem apenas catalogo, exigem conta e credencial), sem historico de conversa por contato (depende do estagio 29), sem agentes comerciais (consultor, qualificador, propostas, pos-venda) e sem proposta em PDF ou follow-up automatico",
+      "next": "LIMITES: a lista de frases cobre pt-BR e ingles comuns, nao todas as formas de dizer 'pare', entao a capacidade e PARCIAL; a revogacao e por canal+contato; propostas comerciais, pos-venda e CRM externo seguem pendentes",
       "blocked_reason": "",
       "external_dependency": "canais reais exigem contas; o CRM e a continuidade em sandbox sao locais",
-      "done": "CONSENTIMENTO E OPT-OUT com falha fechada nos DOIS caminhos de envio (E-101) e agora CRM REAL de contatos e oportunidades (E-102): deduplicacao por identidade normalizada incluindo o nono digito do celular brasileiro, recusa de contato sem identidade, funil com indicadores, fase terminal imutavel, consentimento LIDO do registro (nunca copiado) e rotas HTTP de concessao/revogacao que fecham o limite declarado em E-101. O comando /crm deixou de ser indisponivel e aponta para rota real"
+      "done": "CONSENTIMENTO E OPT-OUT com falha fechada nos DOIS caminhos de envio (E-101) e agora CRM REAL de contatos e oportunidades (E-102): deduplicacao por identidade normalizada incluindo o nono digito do celular brasileiro, recusa de contato sem identidade, funil com indicadores, fase terminal imutavel, consentimento LIDO do registro (nunca copiado) e rotas HTTP de concessao/revogacao que fecham o limite declarado em E-101. O comando /crm deixou de ser indisponivel e aponta para rota real | OPT-OUT AUTOMATICO (E-118): pedido de descadastro no texto RECEBIDO revoga o consentimento com a FRASE detectada como evidencia, o envio passa a ser recusado, pedir de novo e IDEMPOTENTE, mensagens comuns nao revogam e a DUPLA NEGACAO ('nao quero parar de receber') NAO revoga. A heuristica e ASSIMETRICA de proposito: so REVOGA, nunca concede, porque falso positivo bloqueia (barato e reversivel) e falso negativo continuaria enviando para quem pediu para parar (caro e irreversivel)"
     },
     {
       "id": 28,
@@ -1124,7 +1125,11 @@
     "SUITES LOCAIS 100 POR CENTO VERDES (E-116): go test ./internal/agent/ ok (54,9 s) e go test ./server/ ok (20,6 s), golangci-lint 0 issues. Pela PRIMEIRA VEZ neste workspace as duas suites passam inteiras, sem nenhuma falha ambiental. Nenhum teste foi desativado, nenhum t.Skip foi usado para ficar verde e nenhum //nolint foi aplicado. Os bloqueadores B-09 e R-05 foram corrigidos para a verdade atual; permanece apenas o teste de browser que exige Python instalado",
     "BENCHMARK COM METRICAS MEDIDAS, E A REIVINDICACAO QUE NAO E FEITA (E-117): o estagio 21 pede benchmark contra Manus, Claude Code, Codex, Devin, Cursor, Lovable, n8n, Dify, CrewAI e LangGraph. Executa-los exigiria contas, credenciais e custo que este ambiente nao tem, e comparar sem executar seria INVENCAO - entao implementei uma suite executavel de 5 tarefas hermeticas e declarei a COMPARACAO EXTERNA como NAO_EXECUTADA, com o motivo dentro do proprio relatorio: nunca 'somos melhores'",
     "BENCHMARK - O QUE FOI MEDIDO DE VERDADE (E-117): veredito MEDIDO, 5/5 tarefas, 102 ms no total. Jornada de empresa em sandbox: 21 passos, 41 ms, isolamento e recuperacao provados e 1 APROVACAO HUMANA exigida (a decisao de risco nao e automatica). Pedido idempotente: mesma chave devolve o MESMO pedido, referencia parecida com cartao RECUSADA, 1 pedido e 1 pago. Atendimento: resposta dentro do SLA nao gera violacao e fora do SLA a violacao E MEDIDA (sla_breached = 1); transferencia sem motivo RECUSADA e com motivo passa a pending_human. Isolamento entre organizacoes: 0 produtos, 0 conversas e 0 metricas vazando. Retomada apos reinicio: runtime novo do mesmo diretorio enxerga o estado e repetir a chave devolve o MESMO pedido, sem duplicar o efeito",
-    "BENCHMARK - O EXECUTOR E A HONESTIDADE DOS LIMITES (E-117): o teste TestBenchmarkSuiteMeasuresHermeticTasks e o EXECUTOR: exige que TODAS as tarefas concluam e FALHA NOMEANDO a tarefa se uma capacidade regredir - e o que da sentido a acompanhar numeros em vez de narrar desempenho. O relatorio NAO afirma superioridade sobre concorrentes (nao executados), NAO estima custo de tokens nem latencia externa (exigiria credenciais) e NAO cobre qualidade de geracao de texto (as duracoes sao de execucao local hermetica, medindo o MOTOR). Acessibilidade e usabilidade seguem com evidencia propria (E-099)"
+    "BENCHMARK - O EXECUTOR E A HONESTIDADE DOS LIMITES (E-117): o teste TestBenchmarkSuiteMeasuresHermeticTasks e o EXECUTOR: exige que TODAS as tarefas concluam e FALHA NOMEANDO a tarefa se uma capacidade regredir - e o que da sentido a acompanhar numeros em vez de narrar desempenho. O relatorio NAO afirma superioridade sobre concorrentes (nao executados), NAO estima custo de tokens nem latencia externa (exigiria credenciais) e NAO cobre qualidade de geracao de texto (as duracoes sao de execucao local hermetica, medindo o MOTOR). Acessibilidade e usabilidade seguem com evidencia propria (E-099)",
+    "OPT-OUT AUTOMATICO COM DIRECAO SEGURA (E-118): o checkpoint declarava que o consentimento NAO tinha captura automatica de opt-out - revogar dependia de um humano a mao, entao quem escrevesse 'nao quero mais receber' CONTINUARIA recebendo. A captura agora e deterministica e registra a FRASE detectada como evidencia da revogacao, entao a decisao e explicavel",
+    "OPT-OUT - A DECISAO DE PROJETO MAIS IMPORTANTE (E-118): a heuristica e ASSIMETRICA DE PROPOSITO, porque so serve para REVOGAR e nunca para conceder. Um falso positivo bloqueia uma mensagem (barato e reversivel pelo operador); um falso negativo CONTINUARIA ENVIANDO para quem pediu para parar (caro e irreversivel). Nenhum modelo participa da decisao",
+    "OPT-OUT - DUPLA NEGACAO E ESCOPO EXPLICITO (E-118): 'nao quero PARAR de receber' contem 'parar de receber' e significa o OPOSTO, entao frases negadas sao descartadas ANTES de revogar (4 formas testadas). E um achado do MEU PROPRIO TESTE virou correcao de produto: a primeira versao validava a organizacao DEPOIS da normalizacao e consentScope('') mapeia vazio para a organizacao local, engolindo o escopo ausente - a revogacao acontecia em silencio. Passou a validar a ENTRADA CRUA",
+    "INTERMITENCIA OBSERVADA E DECLARADA, NAO CORRIGIDA (E-118): durante a verificacao, UMA execucao das suites completas reportou falha (TestStudioDeployRejectsWithoutCredentialsHonestGateStatus no servidor e a suite do agente sem nome visivel na saida filtrada). O teste do servidor PASSA ISOLADO e, nas 5 execucoes completas seguintes (servidor x3, agente x2), as duas suites passaram INTEIRAS - a falha NAO reproduziu. Fica declarada como intermitencia sob carga, NAO como corrigida: nenhum teste foi alterado e nenhum t.Skip foi adicionado para contorna-la"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
