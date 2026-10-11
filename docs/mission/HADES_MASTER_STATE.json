@@ -2,12 +2,12 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-12T04:20:00-03:00",
+  "updated_at": "2026-10-12T05:10:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
     "integration_branch": "main",
-    "main_sha": "3f3aafb82f447c59f3f1d722d9916b2c722c6d39",
+    "main_sha": "444a8b31f5d761f5a6f16dc5e1f354c497683ec4",
     "main_committed_at": "2026-10-09T10:24:45Z",
     "main_ci_state": "green (dz23-agentic-quality + class-a-plus-integrity = success nesse SHA)",
     "mission_branch": "docs/checkpoints-missao-v21",
@@ -661,18 +661,19 @@
     {
       "id": 27,
       "title": "Pagamentos e faturamento",
-      "state": "NOT_STARTED",
+      "state": "IN_PROGRESS",
       "auditoria": "AUDITADO",
-      "capability": "AUSENTE",
+      "capability": "PARCIAL",
       "evidence": [
         "E-047",
-        "E-087"
+        "E-087",
+        "E-101"
       ],
       "blocker": "B-05",
-      "next": "implementar CRM e agentes comerciais em sandbox com consentimento, opt-out e historico",
+      "next": "LIMITES DECLARADOS: sem rotas HTTP de concessao/revogacao de consentimento nesta rodada, sem captura automatica de opt-out a partir de mensagem recebida (dado externo nao altera consentimento), sem CRM nem historico de conversa, sem agentes comerciais (consultor, qualificador, propostas, pos-venda) e sem retencao/anonimizacao de dado pessoal ligada ao consentimento",
       "blocked_reason": "",
       "external_dependency": "canais reais exigem contas; o CRM e a continuidade em sandbox sao locais",
-      "done": "classificacao corrigida pela auditoria de bloqueios: o bloqueio externo em bloco escondia trabalho implementavel. Evidencia medida registrada em docs/mission/HADES_BLOCKED_AUDIT.md"
+      "done": "CONSENTIMENTO E OPT-OUT implementados com FALHA FECHADA (contato desconhecido nao e contatavel e registro ausente NEGA o envio), opt-out com motivo obrigatorio e trilha de auditoria, prazo de validade, escopo por organizacao E por canal, persistencia e normalizacao de escopo. ENFORCEMENT NOS DOIS CAMINHOS: o Telegram nao tinha NENHUMA checagem de autorizacao de contato (so DLP) e o WhatsApp tinha allowlist e aprovacao por mensagem, mas nenhum dos dois registrava opt-out nem prazo"
     },
     {
       "id": 28,
@@ -1029,7 +1030,11 @@
     "ESTAGIO 30 - O RAZAO NAO MEXE NO ORCAMENTO (E-100): decisao deliberada. SpentCents e POLITICA DE GASTO e ja e incrementada por RecordSpendRequest; somar o razao ali DUPLICARIA o consumo do limite. Sao eixos diferentes - o razao registra o fato financeiro, o orcamento aplica a politica - e o codigo diz isso, com teste que verifica SpentCents igual a zero depois de um lancamento",
     "ESTAGIO 30 - BUG REAL ACHADO PELO TESTE DE CONCORRENCIA (E-100): o primeiro teste (12 goroutines com a MESMA chave de idempotencia) derrubou o processo com 'panic: assignment to entry in nil map'. O mapa do razao ficava nil quando a empresa ainda NAO tinha arquivo, e a primeira gravacao escrevia num mapa inexistente. Corrigido inicializando o mapa ANTES de qualquer leitura. E o valor do teste: o caminho 'primeira escrita concorrente' nao aparecia em uso sequencial",
     "ESTAGIO 30 - CARACTERES INVISIVEIS REMOVIDOS DO PROPRIO TESTE (E-100): o staticcheck apontou ST1018 em TRES linhas do teste que eu escrevi - o texto tinha hifen suave (U+00AD, invisivel) dentro de palavras como 'liquido', 'periodo' e 'reinicio'. Removi as 10 ocorrencias do arquivo em vez de silenciar a regra, e conferi zero caracteres invisiveis nos quatro arquivos novos",
-    "ESTAGIO 30 - LIMITES DECLARADOS (E-100): sem integracao bancaria real (a conciliacao recebe a referencia informada; importar extrato OFX/CNAB/API do banco depende de credencial e contrato), sem fiscal (notas, impostos, retencoes), sem cobranca (boleto/Pix/link), sem execucao de pagamento - e por decisao de seguranca nao deve haver sem autorizacao explicita - e sem rateio por centro de custo nem conciliacao automatica por valor/data. O estagio continua IN_PROGRESS com capacidade PARCIAL"
+    "ESTAGIO 30 - LIMITES DECLARADOS (E-100): sem integracao bancaria real (a conciliacao recebe a referencia informada; importar extrato OFX/CNAB/API do banco depende de credencial e contrato), sem fiscal (notas, impostos, retencoes), sem cobranca (boleto/Pix/link), sem execucao de pagamento - e por decisao de seguranca nao deve haver sem autorizacao explicita - e sem rateio por centro de custo nem conciliacao automatica por valor/data. O estagio continua IN_PROGRESS com capacidade PARCIAL",
+    "ESTAGIO 27 - CONSENTIMENTO, OPT-OUT E ENFORCEMENT NOS DOIS CAMINHOS (E-101): o buraco era real e assimetrico. O WhatsApp tinha allowlist por numero, aprovacao humana por mensagem e DLP; o TELEGRAM tinha SO DLP e NENHUMA checagem de autorizacao de contato. E nenhum dos dois registrava OPT-OUT nem PRAZO - allowlist autoriza o numero e aprovacao autoriza a mensagem, mas nenhuma das duas diz 'este contato pediu para nao ser procurado'. Implementado registro de consentimento com FALHA FECHADA (contato desconhecido NAO e contatavel e registro ausente NEGA o envio - caminho nao instrumentado nao pode virar caminho livre), opt-out com motivo obrigatorio e trilha de auditoria, prazo de validade, escopo por organizacao E por canal, persistencia e a MESMA funcao de decisao usada pelos dois caminhos",
+    "ESTAGIO 27 - DOIS BUGS MEUS ACHADOS PELOS PROPRIOS TESTES (E-101): (1) ESCOPO VAZIO TORNAVA O WHATSAPP INUTILIZAVEL: o gateway checava o consentimento sob runtime.organizationScope, que e VAZIO no modo local, enquanto o registro era gravado sob outra chave - as chaves nunca casariam, ou casariam por acidente. Corrigido com consentScope, que normaliza vazio para a organizacao LOCAL, a mesma convencao do HTTP e do supervisor; (2) SENTINELA EMBRULHADO: AuthorizeContact devolvia fmt.Errorf com %w, e o codigo dos canais compara erros por identidade (==), entao o bloqueio apareceria como erro desconhecido. Passou a devolver o sentinela PURO",
+    "ESTAGIO 27 - EXPECTATIVA MINHA CORRIGIDA PELO TESTE (E-101): eu esperava que conceder consentimento com organizacao VAZIA fosse invalido. Com a normalizacao (que e a correta), vazio significa a organizacao local e o registro e aceito. Corrigi o TESTE, nao o codigo - e o teste novo afirma as duas coisas: escopo vazio normaliza, mas canal e contato continuam OBRIGATORIOS",
+    "ESTAGIO 27 - LIMITES DECLARADOS (E-101): sem rotas HTTP de concessao/revogacao nesta rodada; sem captura automatica de opt-out a partir de mensagem recebida (decisao deliberada: dado externo NAO e instrucao privilegiada e nao pode alterar consentimento sozinho); sem CRM nem historico de conversa; sem agentes comerciais (consultor, qualificador, propostas, pos-venda); sem retencao/anonimizacao de dado pessoal ligada ao consentimento. O estagio continua IN_PROGRESS com capacidade PARCIAL"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",

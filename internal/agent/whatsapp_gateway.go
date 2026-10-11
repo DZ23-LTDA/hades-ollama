@@ -302,7 +302,22 @@ func (g *WhatsAppGateway) SendMessage(ctx context.Context, msg WhatsAppOutboundM
 	if msg.ApprovalID == "" || !approved || approval.Status != "APPROVED" || approval.OutboundTo != cleanWhatsAppNumber(msg.To) {
 		return WhatsAppSendResult{}, ErrWhatsAppOutboundApproval
 	}
+	// CONSENTIMENTO: a allowlist autoriza o NÚMERO e a aprovação autoriza a
+	// MENSAGEM; nenhuma das duas registra opt-out nem prazo. O consentimento é o
+	// terceiro controle, e vale para os DOIS caminhos de envio.
+	if err := g.authorizeOutboundContact(msg.To); err != nil {
+		return WhatsAppSendResult{}, err
+	}
 	return adapter.SendMessage(ctx, msg)
+}
+
+// authorizeOutboundContact aplica o registro de consentimento ao número de destino.
+// Sem runtime (uso isolado do gateway em teste) o envio é NEGADO: fail-closed.
+func (g *WhatsAppGateway) authorizeOutboundContact(to string) error {
+	if g.runtime == nil {
+		return ErrConsentMissing
+	}
+	return authorizedContact(g.runtime.Consent(), g.runtime.organizationScope, ConsentChannelWhatsApp, cleanWhatsAppNumber(to), time.Now().UTC())
 }
 
 // Status returns the honest GateStatus of the active backend.

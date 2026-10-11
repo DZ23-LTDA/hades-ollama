@@ -51,6 +51,7 @@ type Runtime struct {
 	organizationScope   string
 	context             *ContextStore
 	company             *CompanyStore
+	consent             *ConsentRegistry
 	remoteMCP           *RemoteMCPManager
 	metrics             *RuntimeMetrics
 	connectors          *ConnectorManager
@@ -94,6 +95,7 @@ type RuntimeConfig struct {
 	DataRoot            string
 	Context             *ContextStore
 	Company             *CompanyStore
+	Consent             *ConsentRegistry
 	RemoteMCP           *RemoteMCPManager
 	Connectors          *ConnectorManager
 	MCP                 *MCPManager
@@ -218,6 +220,13 @@ func NewRuntime(config RuntimeConfig) (*Runtime, error) {
 			return nil, err
 		}
 	}
+	consentRegistry := config.Consent
+	if consentRegistry == nil {
+		consentRegistry, err = NewConsentRegistry(filepath.Join(dataRoot, ".agent-consent"))
+		if err != nil {
+			return nil, err
+		}
+	}
 	queue := config.Queue
 	if queue == nil {
 		queue, err = NewJobQueue(filepath.Join(dataRoot, ".agent-queue"))
@@ -253,7 +262,7 @@ func NewRuntime(config RuntimeConfig) (*Runtime, error) {
 			return nil, err
 		}
 	}
-	runtime := &Runtime{store: store, planner: planner, plannerResolver: config.PlannerResolver, tools: tools, capabilityPolicy: capabilityPolicy, workspaceRoot: root, dataRoot: dataRoot, context: contextStore, company: companyStore, remoteMCP: config.RemoteMCP, metrics: &RuntimeMetrics{}, connectors: config.Connectors, mcp: config.MCP, queue: queue, redisQueue: config.RedisQueue, traces: traces, telemetry: telemetry, media: config.Media, builder: builder, collaboration: collaboration, push: config.Push, pushOutbox: pushOutbox, deployments: config.Deployments, deploymentApprovals: deploymentApprovals, webhookReplay: webhookReplay, mu: &sync.Mutex{}, running: make(map[string]bool), activeCancels: make(map[string]context.CancelFunc), cancelPollInterval: durableCancelPollInterval()}
+	runtime := &Runtime{store: store, planner: planner, plannerResolver: config.PlannerResolver, tools: tools, capabilityPolicy: capabilityPolicy, workspaceRoot: root, dataRoot: dataRoot, context: contextStore, company: companyStore, consent: consentRegistry, remoteMCP: config.RemoteMCP, metrics: &RuntimeMetrics{}, connectors: config.Connectors, mcp: config.MCP, queue: queue, redisQueue: config.RedisQueue, traces: traces, telemetry: telemetry, media: config.Media, builder: builder, collaboration: collaboration, push: config.Push, pushOutbox: pushOutbox, deployments: config.Deployments, deploymentApprovals: deploymentApprovals, webhookReplay: webhookReplay, mu: &sync.Mutex{}, running: make(map[string]bool), activeCancels: make(map[string]context.CancelFunc), cancelPollInterval: durableCancelPollInterval()}
 	orchestrator, err := NewAgentOrchestrator(filepath.Join(dataRoot, ".agent-orchestrator"), runtime.SubagentRunner)
 	if err != nil {
 		return nil, err
@@ -329,6 +338,14 @@ func (r *Runtime) SetPlannerResolver(resolver PlannerResolver) {
 
 func (r *Runtime) Context() *ContextStore {
 	return r.context
+}
+
+// Consent devolve o registro de consentimento e opt-out (estágio 27).
+func (r *Runtime) Consent() *ConsentRegistry {
+	if r == nil {
+		return nil
+	}
+	return r.consent
 }
 
 func (r *Runtime) Supervisor() *Supervisor {
@@ -2003,7 +2020,7 @@ func (r *Runtime) Run(ctx context.Context, id string) (runErr error) {
 			return err
 		}
 		toolSpan := r.traces.StartForOrganization(mission.OrganizationID, "tr_"+mission.ID, missionSpan.ID(), "tool."+step.Kind, map[string]any{"mission_id": mission.ID, "step_id": step.ID, "tool": step.Kind})
-		toolContext := ToolContext{MissionID: mission.ID, StepID: step.ID, Workspace: mission.Workspace, WorkspaceRoot: workspaceRoot, OrganizationID: mission.OrganizationID, ToolConfigSHA256: step.ToolConfigSHA256}
+		toolContext := ToolContext{MissionID: mission.ID, StepID: step.ID, Workspace: mission.Workspace, WorkspaceRoot: workspaceRoot, OrganizationID: mission.OrganizationID, ToolConfigSHA256: step.ToolConfigSHA256, Consent: r.consent}
 		if step.Kind == "git.repo.inspect" && mission.WorkspaceIsolated {
 			toolContext.WorkspaceSnapshotManifest = snapshotManifest
 			toolContext.WorkspaceSnapshotPrefix = snapshotPrefix

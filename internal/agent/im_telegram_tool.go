@@ -31,6 +31,7 @@ func (imTelegramSendTool) Execute(ctx context.Context, toolContext ToolContext, 
 	text := stringInput(input, "text", "")
 	channel := newTelegramChannel()
 	channel.organizationID = strings.TrimSpace(toolContext.OrganizationID)
+	channel.consent = toolContext.Consent
 	result, err := channel.sendMessage(ctx, chatID, text)
 	if err != nil {
 		return ToolResult{}, err

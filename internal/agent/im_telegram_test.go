@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"path/filepath"
 	"strings"
 	"sync"
 	"testing"
@@ -70,6 +71,19 @@ func newTelegramTestChannel(t *testing.T, server *httptest.Server, token string)
 		}
 		return token
 	}
+	// Consentimento CONCEDIDO para o chat de teste: estes testes exercitam o envio
+	// já autorizado (credencial, host, DLP, resposta). A NEGATIVA por consentimento
+	// tem teste próprio em consent_enforcement_test.go.
+	registry, err := NewConsentRegistry(filepath.Join(t.TempDir(), "consent"))
+	if err != nil {
+		t.Fatalf("create consent registry: %v", err)
+	}
+	granted := time.Now().Add(time.Hour)
+	if _, err := registry.GrantConsent("org-teste", ConsentChannelTelegram, testTelegramChat, "teste", "suite de testes", "suite", &granted, time.Now().UTC()); err != nil {
+		t.Fatalf("grant consent: %v", err)
+	}
+	channel.organizationID = "org-teste"
+	channel.consent = registry
 	return channel
 }
 
