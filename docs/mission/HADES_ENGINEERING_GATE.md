@@ -1,6 +1,6 @@
 # Estágio 22 — Gate de Engenharia (Release Readiness Intermediário)
 
-**SHA avaliado:** `8e3feb663a5bbe290842c0b8320681d402dff382` (`main`)
+**SHA avaliado (avaliação original):** `8e3feb663a5bbe290842c0b8320681d402dff382` · **reexecutado em:** `2edee0490` (`main`) — ver §8
 **Data:** 2026-10-11 · **Host local:** Windows · **CI:** ubuntu-latest (GitHub Actions)
 **Regra deste documento:** cada item tem comando reproduzível e resultado observado.
 Nada aqui é estimado; o que não foi medido está escrito como **não medido**.
@@ -180,3 +180,130 @@ telas; e **não** houve teste com leitor de tela real (NVDA/JAWS/VoiceOver).
   produzidos no CI (médio); (b) homologação em dispositivo real Windows/macOS (médio, depende de
   máquina); (c) desktop/computer-use nativo (implementação); (d) APIs externas com credenciais
   reais (dependência externa).
+
+---
+
+## 8. Reexecução do gate em `2edee0490` (E-140)
+
+**Ambiente medido:** Windows · `go 1.26.9` · **`CGO_ENABLED=0`** · **sem `gcc`/`cc` no PATH** ·
+Node 24 · Docker disponível para a paridade Linux.
+
+### 8.1 Frente Go (todo comando abaixo foi executado)
+
+| Verificação | Comando | Resultado |
+| --- | --- | --- |
+| Formatação | `gofmt -l .` (excl. `_tmp`) | **sem saída** |
+| Build | `go build ./...` | **exit 0** |
+| Vet | `go vet ./internal/agent/ ./server/` | **exit 0** |
+| Lint | `golangci-lint run ./internal/agent/... ./server/...` | **0 issues** |
+| Testes do agente | `go test ./internal/agent/ -count=1` | **ok 64,700s** |
+| Testes do servidor | `go test ./server/ -count=1` | **ok 44,509s** |
+| Módulo inteiro | `go test ./... -count=1` | **116 pacotes ok · 8 falham** (todas por cgo/sqlite — ver §8.2) |
+| Módulos | `go mod verify` | **all modules verified** |
+| CGO-free | `CGO_ENABLED=0 go build ./...` | **exit 0** |
+| Benchmarks (`-benchtime=10x`) | `go test ./internal/agent/ -bench ...` | busca de contexto **1.900 ns/op** · instalação+rollback de plugin **5,83 ms/op** · contexto grounded **92,3 µs/op** · upload **354,10 MB/s** |
+
+### 8.2 As 8 falhas do módulo, classificadas por CAUSA medida (não presumida)
+
+**Causa raiz medida:** `go env CGO_ENABLED` → **0**, e `gcc`/`cc` **ausentes do PATH**. Os pacotes que
+dependem de `go-sqlite3` falham em tempo de execução com *"Binary was compiled with 'CGO_ENABLED=0',
+go-sqlite3 requires cgo to work. This is a stub"* (**86 ocorrências** da mensagem no log):
+
+`app/server` · `app/store` · `app/ui` · `app/updater` · `cmd/launch` · `create` ·
+`mlxrunner/model/qwen3_5` · `parser`
+
+**É limitação do host, não defeito do produto** — o CI roda com `CGO_ENABLED=1` e toolchain C, e a
+suíte completa passa lá. O que **não** se deve fazer é chamar isso de "ambiental" sem medir: a medição
+acima (CGO=0 + ausência de compilador) é o que sustenta a classificação.
+
+**Correção de um número meu:** na primeira extração eu reportei **17 pacotes** falhando. Estava
+**errado**: eu contei as linhas `FAIL` de resumo além das linhas `FAIL <pacote>`. O número correto era
+**9** (incluindo `mlx`) e é **8** depois da correção de §8.3. Instrumento que conta linha de resumo como
+item é instrumento que infla relatório.
+
+### 8.3 Defeito real corrigido: testes do `mlx` sem gating de cgo
+
+Os **23** arquivos de implementação do `mlx` são gated com `//go:build cgo`; os **12** arquivos de teste
+**não tinham tag nenhuma**. Sem cgo, o pacote compila **apenas os testes** e quebra:
+
+```
+mlx/act_test.go:27:13: undefined: gelu
+mlx/compile_test.go:145:16: undefined: currentScope
+mlx/scope_test.go:25:17: returned.valid undefined (type *Array has no field or method valid)
+```
+
+Ou seja: `go test ./mlx` era **impossível** em qualquer ambiente sem compilador C — inconsistência do
+repositório, não limitação de plataforma. **Correção:** os 12 arquivos de teste passaram a declarar
+`//go:build cgo`, espelhando o que a implementação já declarava.
+
+| Antes | Depois |
+| --- | --- |
+| `go vet ./mlx` → **build failed** | `go vet ./mlx` → **exit 0** |
+| `go test ./mlx` → **build failed** | `go test ./mlx` → **`[no test files]`** (ignorado honestamente, sem cgo) |
+| `golangci-lint run ./mlx/...` → **typechecking error, exit 7** | completa e reporta **2 `unused`** |
+| `go test ./...` → **9 pacotes** falhando | **8 pacotes** (só cgo/sqlite) |
+
+Os **2 `unused`** estão em `mlx/dynamic_other.go:5` (`macOSMajorVersion`) e `mlx/stub_nocgo.go:78`
+(`unavailableN`) — **arquivos que não estão no meu diff** (o diff toca somente `*_test.go`), e são
+achados legítimos da configuração **sem cgo**; provado por `git stash` do meu diff: antes, o lint nem
+chegava a reportá-los, porque **abortava no erro de compilação**. Ficam **declarados**: o CI linta com
+cgo habilitado, onde esses arquivos de stub nem entram no build.
+
+**Erro meu no caminho, registrado:** o script que inseriu as tags gravou os arquivos em **CRLF** (o modo
+texto do Python no Windows traduz `\n` para `os.linesep`), e o **`gofmt -l` acusou os 12 arquivos**.
+Corrigido com escrita em `newline=""`; o `gofmt` sem saída é a prova. Fica como lembrete: formatador não
+é ritual, é detector.
+
+### 8.4 Frente Web, contratos e acessibilidade
+
+| Verificação | Comando | Resultado |
+| --- | --- | --- |
+| Contratos | `node scripts/verify-contracts.mjs` | **CONTRACT VERIFICATION PASSED** (217 rotas sem chamador estático — aviso pré-existente) |
+| Design system | `node scripts/verify-design-system.mjs` | **DESIGN SYSTEM VERIFICATION PASSED** |
+| Typecheck | `npx tsc -b` | **exit 0** |
+| Lint | `npm run lint` | **0 erros**, 12 avisos |
+| Testes | `npx vitest run` | **580 testes PASS** (era 551 neste documento) |
+| Build + orçamento | `npm run build:check` | **✓ built in 14,69s** · **BUNDLE_BUDGET=PASS** |
+| Capturas | `npm run screens:verify` | **PASS (10 arquivos)** |
+| E2E de navegador real | `npx playwright test` | **18 passed (1,1m)** |
+
+**Duas medições que eu mesmo estraguei e consertei — registradas porque o engano importa:**
+
+1. **E2E: 17 falhas que eram minhas.** A primeira execução deu *"Executable doesn't exist at
+   `..._tmp\localappdata\ms-playwright\chromium_headless_shell-1248`"*. A causa **não** é o produto: eu
+   redirecionei `LOCALAPPDATA` para `_tmp` (bloco de ambiente), e o Chromium estava instalado no perfil
+   real. Apontando `PLAYWRIGHT_BROWSERS_PATH` para `C:\Users\...\AppData\Local\ms-playwright`:
+   **18 passed**. Sem essa checagem, eu teria registrado "17 testes E2E quebrados".
+2. **`prettier:check` acusa 3 arquivos** (`src/api.errors.test.ts`, `src/components/ErrorMessage.tsx`,
+   `src/components/RootErrorBoundary.test.tsx`). **Não é gate de CI** — `git grep prettier
+   .github/workflows` não encontra nenhuma referência (só `playwright`). Fica **declarado como desvio
+   medido** e não "corrigido" às cegas, porque reformatar arquivos fora do escopo sem gate que exija é
+   churn; se o projeto quiser a régua, ela deve virar gate — e aí a correção passa a ter sentido.
+
+### 8.5 Itens do estágio que mudaram nesta reexecução
+
+| # | Item | Antes | Agora |
+| --- | --- | --- | --- |
+| 12 | Testes | 551 testes web | **580 testes web**; `mlx` deixa de ser pacote quebrado sem cgo |
+| 18 | Commits/PRs | PRs #159–#171 | **PRs #159–#212** |
+| 19 | Evidências | 98 linhas | **140 linhas** em `HADES_EVIDENCE_INDEX.md` |
+| 20 | Status real | `NOT_RELEASE_READY` | **`NOT_RELEASE_READY`** (inalterado, e é o correto) |
+
+### 8.6 Veredito deste gate (inalterado no essencial)
+
+**Gate intermediário: aprovado como conjunto de engenharia** — build, formato, lint, vet, módulos,
+suítes do agente e do servidor, contratos, design system, typecheck, bundle, capturas e E2E de navegador
+real estão **medidos e verdes**, e agora com **um defeito real a menos** (o `mlx`).
+
+**O que continua impedindo o release global** (nada disso mudou, e não vou apresentar como resolvido):
+
+| Pendência | Natureza |
+| --- | --- |
+| Instaladores de pacote **assinados** (`deb`/`rpm`/`dmg`/`msi`) e assinatura digital | **BLOCKED_BY_EXTERNAL_DEPENDENCY** (certificado) |
+| Instalação em **macOS e Linux reais** | **NÃO MEDIDO** (o CI cobre build; instalação real exige máquina) |
+| Desktop/computer-use **nativo** homologado | **AUSENTE** |
+| APIs externas com **credenciais reais** | **BLOCKED_BY_EXTERNAL_DEPENDENCY** |
+| Homologação em **dispositivo real** (Windows/macOS) | **NÃO MEDIDO** |
+| 36 dos 38 estágios sem `COMPLETED_VERIFIED` | **PARCIAL** (2 de 38) |
+
+**Release global: `NOT_RELEASE_READY`.**

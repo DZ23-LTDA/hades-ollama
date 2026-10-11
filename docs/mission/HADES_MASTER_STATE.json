@@ -2,12 +2,12 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-13T23:35:00-03:00",
+  "updated_at": "2026-10-12T00:55:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
     "integration_branch": "main",
-    "main_sha": "b6ae819c4891b5bdd1b6e228d562839840c58325",
+    "main_sha": "2edee049093ea53117afcbd4ceeebd819265ec0a",
     "main_committed_at": "2026-10-09T10:24:45Z",
     "main_ci_state": "green (dz23-agentic-quality + class-a-plus-integrity = success nesse SHA)",
     "mission_branch": "docs/checkpoints-missao-v21",
@@ -605,11 +605,12 @@
         "E-059",
         "E-098",
         "E-099",
-        "E-113"
+        "E-113",
+        "E-140"
       ],
       "blocker": null,
       "next": "FALTA para o gate intermediario: instaladores de pacote ASSINADOS (deb/rpm/dmg/msi) e instalacao em macOS/Linux reais, desktop/computer-use nativo homologado e APIs externas com credenciais reais. Instalacao/atualizacao/rollback/desinstalacao do codigo-fonte, performance e acessibilidade foram EXECUTADOS e medidos (E-113, E-099)",
-      "done": "GATE AVALIADO EM DUAS RODADAS: a suite completa foi executada e relatada, e agora PERFORMANCE e ACESSIBILIDADE tambem estao MEDIDAS - benchmarks reais (busca de memoria 699,3 ns/op, construcao de contexto fundamentado 110,7 us/op, instalacao/rollback de plugin 5,20 ms/op, download 442,83 MB/s), budget de bundle PASS (1.443,91 kB cru e 396,66 kB gzip contra 2.000.000 e 600.000) e gate axe WCAG com 3 de 3 passando (desktop sem violacao, mobile sem violacao e teclado sem armadilha)"
+      "done": "GATE AVALIADO EM DUAS RODADAS: a suite completa foi executada e relatada, e agora PERFORMANCE e ACESSIBILIDADE tambem estao MEDIDAS - benchmarks reais (busca de memoria 699,3 ns/op, construcao de contexto fundamentado 110,7 us/op, instalacao/rollback de plugin 5,20 ms/op, download 442,83 MB/s), budget de bundle PASS (1.443,91 kB cru e 396,66 kB gzip contra 2.000.000 e 600.000) e gate axe WCAG com 3 de 3 passando (desktop sem violacao, mobile sem violacao e teclado sem armadilha) | GATE REEXECUTADO EM 2edee0490 (E-140): gofmt sem saida; go build 0; go vet 0; golangci-lint 0 issues; go test ./internal/agent/ ok 64,700s; go test ./server/ ok 44,509s; go test ./... 116 pacotes ok; go mod verify limpo; CGO_ENABLED=0 go build 0; benchmarks 1.900 ns/op / 5,83 ms/op / 92,3 us/op / 354,10 MB/s; contratos PASSED; design system PASSED; tsc 0; eslint 0 erros; 580 testes web PASS; BUNDLE_BUDGET=PASS; capturas PASS (10); E2E de navegador real 18 passed. DEFEITO REAL CORRIGIDO: os 12 arquivos de teste do mlx nao tinham //go:build cgo (a implementacao tem, em 23 arquivos), o que tornava go test ./mlx IMPOSSIVEL sem compilador C (undefined: gelu, currentScope, returned.valid) - corrigido espelhando o gating: vet passou de build failed para exit 0, test para [no test files], lint do pacote de typechecking error (exit 7) para completar, e as falhas do modulo cairam de 9 para 8 pacotes (as 8 sao go-sqlite3 exigindo cgo, com causa MEDIDA: CGO_ENABLED=0 e gcc/cc ausentes)"
     },
     {
       "id": 23,
@@ -1224,7 +1225,15 @@
     "GRAFICO ACESSIVEL DA SERIE SEM DEPENDENCIA NOVA (E-139): a decisao foi NAO adicionar biblioteca - onze pontos cabem num <polyline> de SVG, o que elimina licenca, peso de pacote e o risco de grafico que so existe no navegador. Curva com nome acessivel e TABELA EQUIVALENTE SEMPRE VISIVEL: grafico sozinho exclui quem usa leitor de tela e quem precisa do numero exato, e esconder a tabela atras de um botao a tornaria inutil para quem mais precisa. Suite web com 580 testes (569 + 11, contagem conferida)",
     "GRAFICO - QUATRO RISCOS TRAVADOS POR TESTE (E-139): (a) NaN quando todos os valores sao iguais (amplitude zero = divisao por zero; um polyline com NaN nao desenha e NAO AVISA); (b) curva fora de ordem, que parece oscilacao real do negocio; (c) grafico sem alternativa acessivel; (d) 'tendencia' desenhada com UMA amostra. Ha teste tambem para valores NEGATIVOS (o liquido financeiro pode ser negativo) e para serie vazia",
     "BUG LATENTE QUE SO O TSC PEGOU (E-139): a metrica 'Lancamentos em aberto' lia finance.unreconciled e o campo real e unreconciled_entries. O npx tsc -b acusou (TS2339) mas TODOS OS TESTES PASSAVAM, porque o pick e uma LAMBDA: so executa quando aquela metrica e ESCOLHIDA, e nenhum teste a escolhia - em producao a opcao mostraria undefined. Corrigi o campo E adicionei teste que PERCORRE A LISTA INTEIRA exigindo valor finito e formatacao sem undefined/NaN para CADA metrica. PRINCIPIO: typecheck NAO e redundante com teste, e lista de opcoes e DADO - cada item precisa ser verificado por varredura, nao por lembranca",
-    "LIMITES DO GRAFICO (E-139): sem zoom/tooltip/selecao de intervalo; uma metrica por vez (comparar duas series no mesmo eixo e decisao de produto e de escala); e eixo Y sem marcacoes numericas (os valores exatos estao na tabela equivalente)"
+    "LIMITES DO GRAFICO (E-139): sem zoom/tooltip/selecao de intervalo; uma metrica por vez (comparar duas series no mesmo eixo e decisao de produto e de escala); e eixo Y sem marcacoes numericas (os valores exatos estao na tabela equivalente)",
+    "GATE DO ESTAGIO 22 REEXECUTADO (E-140): o gate estava avaliado no SHA 8e3feb663 (E-113); a bateria inteira foi reexecutada em 2edee0490. Frente Go toda verde (gofmt, build, vet, lint 0 issues, agent ok 64,700s, server ok 44,509s, go mod verify, CGO_ENABLED=0 build) e frente web toda verde (contratos, design system, tsc, eslint 0 erros, 580 testes, BUNDLE_BUDGET=PASS, capturas, E2E 18 passed)",
+    "DEFEITO REAL ENCONTRADO NA REEXECUCAO DO GATE - MLX SEM GATING NOS TESTES (E-140): os 23 arquivos de implementacao do mlx sao gated com //go:build cgo e os 12 de teste NAO tinham tag alguma. Sem cgo o pacote compilava apenas os testes e quebrava (undefined: gelu, currentScope, returned.valid), tornando go test ./mlx IMPOSSIVEL em qualquer ambiente sem compilador C - inconsistencia do REPOSITORIO, nao limitacao de plataforma. Corrigido espelhando o gating: vet de build failed para exit 0, test para [no test files], lint do pacote de typechecking error (exit 7) para completar, e falhas do modulo de 9 para 8 pacotes",
+    "CLASSIFICAR FALHA DE HOST POR CAUSA MEDIDA (E-140): as 8 falhas restantes de go test ./... dependem de go-sqlite3, que exige cgo. A classificacao NAO foi presumida: go env CGO_ENABLED = 0 e gcc/cc ausentes do PATH, com 86 ocorrencias da mensagem 'requires cgo' no log. E o que sustenta chamar de limitacao do host (o CI roda com CGO_ENABLED=1 e a suite completa passa la)",
+    "INSTRUMENTO QUE INFLA RELATORIO - 17 vs 9 PACOTES (E-140): na primeira extracao reportei 17 pacotes falhando; o numero correto era 9, porque eu contei as linhas 'FAIL' de resumo alem das linhas 'FAIL <pacote>'. Depois da correcao do mlx ficaram 8. Registrado como defeito de instrumento: contar linha de resumo como item infla o relatorio e assusta sem base",
+    "PYTHON NO WINDOWS GRAVOU CRLF E O GOFMT PEGOU (E-140): o script que inseriu as tags nos 12 testes do mlx gravou os arquivos em CRLF (o modo texto do Python no Windows traduz \\n para os.linesep) e o gofmt -l acusou os 12 arquivos. Corrigido com escrita em newline=''. Lembrete institucionalizado: formatador nao e ritual, e detector - foi ele que pegou o artefato que eu mesmo introduzi",
+    "E2E - 17 FALHAS QUE ERAM MINHAS (E-140): a primeira execucao de npx playwright test deu 17 falhas por 'Executable doesn't exist em ..._tmp\\localappdata\\ms-playwright\\chromium_headless_shell-1248'. A causa NAO e o produto: eu redirecionei LOCALAPPDATA para _tmp (bloco de ambiente) e o Chromium estava instalado no perfil real. Com PLAYWRIGHT_BROWSERS_PATH apontado para C:\\Users\\...\\AppData\\Local\\ms-playwright: 18 passed. Sem conferir, eu teria registrado '17 testes E2E quebrados'",
+    "PRETTIER:CHECK NAO E GATE DE CI (E-140): npm run prettier:check acusa 3 arquivos (src/api.errors.test.ts, src/components/ErrorMessage.tsx, src/components/RootErrorBoundary.test.tsx) e o git grep de prettier em .github/workflows nao encontra nenhuma referencia (so playwright). Declarado como desvio medido: reformatar arquivos fora do escopo sem gate que exija e churn; se o projeto quiser a regua, ela deve virar gate",
+    "LIMITES DO GATE REEXECUTADO (E-140): instaladores de pacote ASSINADOS e assinatura digital seguem BLOCKED_BY_EXTERNAL_DEPENDENCY (certificado); instalacao em macOS/Linux REAIS e dispositivo real NAO MEDIDOS; desktop/computer-use nativo AUSENTE; APIs externas com credenciais reais BLOCKED_BY_EXTERNAL_DEPENDENCY; e restam 2 achados 'unused' na configuracao SEM cgo em arquivos de stub do mlx (dynamic_other.go, stub_nocgo.go) que o CI, lintando com cgo, nao ve"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
