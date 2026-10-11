@@ -7,9 +7,15 @@ vi.mock("@/lib/agenticClient", () => ({
   getBusinessStatus: vi.fn(),
   getBusinessTrend: vi.fn(),
   recordBusinessSnapshot: vi.fn(),
+  downloadBusinessExport: vi.fn(),
 }));
 
-import { getBusinessStatus, getBusinessTrend, recordBusinessSnapshot } from "@/lib/agenticClient";
+// O helper de download manipula DOM (indisponivel no ambiente de teste): aqui ele e substituido, e o
+// comportamento dele e testado em src/lib/download.test.ts.
+vi.mock("@/lib/download", () => ({ triggerDownload: vi.fn() }));
+
+import { downloadBusinessExport, getBusinessStatus, getBusinessTrend, recordBusinessSnapshot } from "@/lib/agenticClient";
+import { triggerDownload } from "@/lib/download";
 
 function textContent(node: ReactTestInstance): string {
   return node.children
@@ -215,5 +221,42 @@ describe("BusinessStatusPanel", () => {
       buttonWithText(root, "Registrar amostra agora")?.props.onClick();
     });
     expect(textContent(root.root)).toContain("série indisponível: falha simulada");
+  });
+
+  it("exporta CSV declarando que o arquivo leva as lacunas e a origem", async () => {
+    const blob = new Blob(["secao,chave,valor,observacao\n"], { type: "text/csv" });
+    vi.mocked(downloadBusinessExport).mockResolvedValue(blob as never);
+    let root!: ReactTestRenderer;
+    await act(async () => {
+      root = create(<BusinessStatusPanel companyId="cmp_1" />);
+    });
+    // A nota ligada ao botão (aria-describedby) diz o que o arquivo carrega.
+    const rendered = textContent(root.root);
+    expect(rendered).toContain("A exportação é CSV com esquema único");
+    expect(rendered).toContain("leva as lacunas");
+    expect(rendered).toContain("origem de cada número");
+
+    await act(async () => {
+      buttonWithText(root, "Exportar CSV")?.props.onClick();
+    });
+    expect(downloadBusinessExport).toHaveBeenCalledWith("cmp_1");
+    expect(vi.mocked(triggerDownload)).toHaveBeenCalledWith(blob, "hades-business-status.csv");
+    expect(textContent(root.root)).toContain("hades-business-status.csv gerado");
+    expect(textContent(root.root)).toContain("inclui o que NÃO é medido");
+  });
+
+  it("falha na exportação aparece como falha, sem dizer que exportou", async () => {
+    vi.mocked(downloadBusinessExport).mockRejectedValue(new Error("exportação indisponível: falha simulada"));
+    let root!: ReactTestRenderer;
+    await act(async () => {
+      root = create(<BusinessStatusPanel companyId="cmp_1" />);
+    });
+    await act(async () => {
+      buttonWithText(root, "Exportar CSV")?.props.onClick();
+    });
+    const rendered = textContent(root.root);
+    expect(rendered).toContain("exportação indisponível: falha simulada");
+    expect(vi.mocked(triggerDownload)).not.toHaveBeenCalled();
+    expect(rendered).not.toContain("gerado");
   });
 });
