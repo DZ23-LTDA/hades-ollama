@@ -67,6 +67,8 @@
 
 | Egresso: bloqueio de IPv4 embutido em prefixos de transição | `internal/egresspolicy/policy.go`, `EmbeddedIPv4` (PR #131) | IMPLEMENTADO_NAO_HOMOLOGADO | ALTO | E-071 | NAT64/6to4 para metadata, loopback e rede privada agora recusados, com destino público embutido ainda permitido; catálogo de prefixos de transição precisa de revisão contínua |
 
+| Prompt injection: conteúdo externo marcado pela proveniência | `internal/agent/context_bootstrap.go` (`untrustedMemoryKindSource`, `canonicalUntrustedSources`) (PR #133) | IMPLEMENTADO_NAO_HOMOLOGADO | ALTO | E-072 | documento/web/canal ingeridos entram marcados como dado, não instrução; defesa é de contexto, não impede o modelo de ser persuadido por conteúdo malicioso |
+
 ## 6. Integrações, MCP e conectores
 
 | Capacidade | Superfície | Classificação | Risco | Evidência | Lacuna |
