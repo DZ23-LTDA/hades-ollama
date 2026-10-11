@@ -520,6 +520,16 @@ export const resumeCompany = (id: string) => agentFetch<AgentCompany>(`/api/agen
 export const recordCompanyAnomaly = (id: string, severity: string, reason: string) => agentFetch<AgentCompany>(`/api/agent/v1/companies/${encodeURIComponent(id)}/anomalies`, { method: "POST", body: JSON.stringify({ severity, reason }) });
 export const recordCompanySpend = (id: string, category: string, amount_cents: number) => agentFetch<AgentCompany>(`/api/agent/v1/companies/${encodeURIComponent(id)}/spend`, { method: "POST", body: JSON.stringify({ category, amount_cents }) });
 export const decideCompanyApproval = (id: string, approvalID: string, approved: boolean, nonce: string) => agentFetch<AgentCompany>(`/api/agent/v1/companies/${encodeURIComponent(id)}/approvals/${encodeURIComponent(approvalID)}/decide`, { method: "POST", body: JSON.stringify({ decision: approved ? "approve" : "reject", nonce, reason: approved ? "Aprovado no Company OS" : "Rejeitado no Company OS" }) });
+// BI / status de negócio (estágio 32). A resposta traz a PROVENIÊNCIA de cada bloco e a lista do que
+// NÃO é medido: a interface usa os dois para não apresentar zero como se fosse resposta.
+export type BusinessMetricSource = { metric: string; source: string };
+export type BusinessCommerceStatus = { products: number; orders: number; paid: number; fulfilled: number; cancelled: number; revenue_cents: number; low_stock_skus?: string[] };
+export type BusinessFinanceStatus = { entries: number; income_cents: number; expense_cents: number; net_cents: number; reconciled_cents: number; unreconciled_entries: number };
+export type BusinessCampaignStatus = { total: number; draft: number; approved: number; scheduled: number; active: number; impressions: number; clicks: number; conversions: number; spend_cents: number; publicacao_externa: string };
+export type BusinessSalesStatus = { proposals: number; proposals_by_state?: Record<string, number>; follow_ups: number; follow_ups_overdue: number };
+export type BusinessInboxStatus = { conversations: number; open: number; closed: number; sla_violations: number };
+export type BusinessStatusReport = { organization_id: string; generated_at: string; companies: number; commerce: BusinessCommerceStatus; finance: BusinessFinanceStatus; campaigns: BusinessCampaignStatus; sales: BusinessSalesStatus; inbox: BusinessInboxStatus; marketplace_channels_incompletos: number; sources: BusinessMetricSource[]; nao_medido: string[]; sandbox: boolean };
+
 export const getCompanyGrowthReport = (id: string) => agentFetch<CompanyGrowthReport>(`/api/agent/v1/companies/${encodeURIComponent(id)}/growth/report`);
 export const getGrokStatus = () => agentFetch<GrokStatus>("/api/agent/v1/grok/status");
 export const listCompanyAgents = (id: string) => agentFetch<{ agents: CompanyAgent[] }>(`/api/agent/v1/companies/${encodeURIComponent(id)}/agents`);
@@ -543,6 +553,8 @@ export const recordCompanyCampaignMetrics = (id: string, campaignID: string, pay
 export const getCompanyCampaignReport = (id: string) => agentFetch<CompanyCampaignReport>(`/api/agent/v1/companies/${encodeURIComponent(id)}/campaigns/report`);
 // Marketplace (estagio 25): catalogo com estado REAL, sincronizacao contra o duble de sandbox e
 // espelho remoto. Nada aqui publica em plataforma externa.
+// Painel de BI (estágio 32): somente leitura. A organização vem da empresa da sessão no servidor.
+export const getBusinessStatus = (id: string) => agentFetch<BusinessStatusReport>(`/api/agent/v1/companies/${encodeURIComponent(id)}/business-status`);
 export const getMarketplaceChannels = (id: string) => agentFetch<{ channels: MarketplaceChannel[] }>(`/api/agent/v1/companies/${encodeURIComponent(id)}/marketplace/channels`);
 export const syncMarketplace = (id: string, payload: { channel_id: string; direction?: string; items: MarketplaceSyncItem[] }) => agentFetch<MarketplaceSyncReport>(`/api/agent/v1/companies/${encodeURIComponent(id)}/marketplace/sync`, { method: "POST", body: JSON.stringify(payload) });
 export const addCompanyAffiliateProgram = (id: string, payload: Record<string, unknown>) => agentFetch<AgentCompany>(`/api/agent/v1/companies/${encodeURIComponent(id)}/affiliate-programs`, { method: "POST", body: JSON.stringify(payload) });

@@ -2,12 +2,12 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-13T14:55:00-03:00",
+  "updated_at": "2026-10-13T16:05:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
     "integration_branch": "main",
-    "main_sha": "2fb5b63914397d7e527d0063ca31870ec13286e5",
+    "main_sha": "73031b45f8e1a39c0c7ee8cc300cc053e27da4c8",
     "main_committed_at": "2026-10-09T10:24:45Z",
     "main_ci_state": "green (dz23-agentic-quality + class-a-plus-integrity = success nesse SHA)",
     "mission_branch": "docs/checkpoints-missao-v21",
@@ -778,13 +778,14 @@
       "evidence": [
         "E-044",
         "E-087",
-        "E-132"
+        "E-132",
+        "E-133"
       ],
       "blocker": "B-07",
-      "next": "LIMITES: sem SERIE TEMPORAL (e uma fotografia, sem tendencia nem comparacao entre periodos), SEM TELA DEDICADA (a superficie entregue e a HTTP - ligar o painel na interface e trabalho da frente de UX) e sem EXPORTACAO (CSV/PDF) nem agendamento de relatorio. Fiscal, bancario, custo de tokens, publicacao externa e telefonia seguem em nao_medido (BLOCKED_BY_EXTERNAL_DEPENDENCY onde aplicavel)",
+      "next": "LIMITES: continua sendo uma FOTOGRAFIA (sem serie temporal, tendencia ou comparacao entre periodos); sem EXPORTACAO (CSV/PDF); sem GRAFICO (sao cartoes numericos, porque a serie temporal ainda nao existe); sem e2e Playwright da jornada nesta rodada",
       "blocked_reason": "",
       "external_dependency": "parte do E2E depende de integracoes ao vivo; o nucleo em sandbox e local",
-      "done": "classificacao corrigida pela auditoria de bloqueios: o bloqueio externo em bloco escondia trabalho implementavel. Evidencia medida registrada em docs/mission/HADES_BLOCKED_AUDIT.md | BI / STATUS DE NEGOCIO (E-132): Runtime.BusinessStatus + rota GET /companies/:id/business-status agregando comercio, financeiro, campanhas, vendas, atendimento e canais de marketplace a partir dos stores REAIS. TRES DECISOES: CADA NUMERO TEM PROVENIENCIA (a resposta liga cada bloco ao store de origem, porque numero sem origem e indistinguivel de numero inventado); O QUE NAO E MEDIDO E DECLARADO COM MOTIVO (fiscal, bancario, tokens, publicacao externa, telefonia, preco negociado - mostrar zero onde nao ha medicao e PIOR que um painel vazio, porque zero parece resposta); ESCOPO VEM DA SESSAO, nunca da query. Verificado: 4/4 PASS no agregador com ISOLAMENTO entre organizacoes, PASS na rota, lint 0 issues e gate em Linux"
+      "done": "classificacao corrigida pela auditoria de bloqueios: o bloqueio externo em bloco escondia trabalho implementavel. Evidencia medida registrada em docs/mission/HADES_BLOCKED_AUDIT.md | BI / STATUS DE NEGOCIO (E-132): Runtime.BusinessStatus + rota GET /companies/:id/business-status agregando comercio, financeiro, campanhas, vendas, atendimento e canais de marketplace a partir dos stores REAIS. TRES DECISOES: CADA NUMERO TEM PROVENIENCIA (a resposta liga cada bloco ao store de origem, porque numero sem origem e indistinguivel de numero inventado); O QUE NAO E MEDIDO E DECLARADO COM MOTIVO (fiscal, bancario, tokens, publicacao externa, telefonia, preco negociado - mostrar zero onde nao ha medicao e PIOR que um painel vazio, porque zero parece resposta); ESCOPO VEM DA SESSAO, nunca da query. Verificado: 4/4 PASS no agregador com ISOLAMENTO entre organizacoes, PASS na rota, lint 0 issues e gate em Linux | PAINEL DE BI NA INTERFACE (E-133): BusinessStatusPanel montado no workspace da empresa com 17 indicadores, PROVENIENCIA bloco a bloco e a lista 'o que este painel NAO mede' renderizada INTEIRA, com motivo. TRES REGRAS TRAVADAS POR TESTE: sem dado a tela DIZ que nao ha dado (zero sem medicao nao e resposta); as lacunas nunca sao escondidas nem trocadas por selo verde; e FALHA APAGA O NUMERO ANTIGO (dado velho apresentado como atual e pior que nenhum). O unico controle refaz a consulta de verdade (1 -> 2 chamadas), sem botao decorativo. Contrato verificado: [PASS] GET .../business-status"
     },
     {
       "id": 33,
@@ -1185,7 +1186,11 @@
     "BI / STATUS DE NEGOCIO (E-132): o estagio 32 estava NOT_STARTED / AUSENTE ('BI / business status e metricas') e e o capstone natural sobre a cadeia empresarial, alem de ser implementavel SEM CREDENCIAL EXTERNA porque agrega o que os modulos internos ja registram. Entregue Runtime.BusinessStatus e a rota GET /companies/:id/business-status cobrindo comercio, financeiro, campanhas, vendas, atendimento e canais de marketplace. Verificado com 4/4 PASS no agregador (incluindo isolamento entre organizacoes e o caso vazio) e PASS na rota",
     "BI - TRES DECISOES (E-132): (a) CADA NUMERO TEM PROVENIENCIA - a resposta liga cada bloco ao store de origem, porque numero sem origem num produto enterprise e indistinguivel de numero inventado; (b) O QUE NAO E MEDIDO E DECLARADO COM MOTIVO (fiscal, bancario, custo de tokens, publicacao externa, telefonia, preco negociado), porque MOSTRAR ZERO ONDE NAO HA MEDICAO E PIOR QUE UM PAINEL VAZIO - zero parece resposta; (c) ESCOPO VEM DA SESSAO via companyForRequest, nunca da query, pois um painel e exatamente onde um parametro de organizacao vindo do cliente viraria vazamento",
     "BI - UM TESTE MEU ESTAVA ERRADO E O CODIGO CERTO (E-132): eu havia ASSUMIDO que 9 unidades de estoque gerariam 'estoque baixo'; o teste falhou e o limiar real e disponivel <= 0. A fixture passou a PRODUZIR DE FATO o SKU zerado (BI-LOW) e as assercoes foram corrigidas para o valor real, em vez de afrouxar a verificacao",
-    "LIMITES DO BI (E-132): sem SERIE TEMPORAL (fotografia, sem tendencia nem comparacao entre periodos), sem TELA DEDICADA (superficie e a HTTP) e sem EXPORTACAO nem agendamento de relatorio"
+    "LIMITES DO BI (E-132): sem SERIE TEMPORAL (fotografia, sem tendencia nem comparacao entre periodos), sem TELA DEDICADA (superficie e a HTTP) e sem EXPORTACAO nem agendamento de relatorio",
+    "PAINEL DE BI NA INTERFACE (E-133): na rodada anterior o BI foi entregue no backend com o limite declarado 'sem tela dedicada - a superficie entregue e a HTTP'. Um painel que so existe como JSON nao e um painel: criei o BusinessStatusPanel no workspace da empresa com 17 indicadores, proveniencia bloco a bloco e a lista de lacunas. Verificado com 4/4 PASS, suite web com 562 testes e contrato PASS",
+    "BI NA TELA - TRES REGRAS (E-133): (a) SEM DADO A TELA DIZ QUE NAO HA DADO - exibir 0 com aparencia de resposta e o erro mais facil de cometer num dashboard; (b) AS LACUNAS FICAM NA TELA e nenhum selo verde e exibido, porque esconder a lista faria o painel parecer completo; (c) FALHA APAGA O NUMERO ANTIGO - o teste forca erro e exige que o valor anterior (35.00) DESAPARECA, porque dado velho apresentado como atual e pior que nenhum",
+    "BI NA TELA - O UNICO CONTROLE FAZ ALGO (E-133): 'Atualizar painel' realmente refaz a consulta e o teste confirma 1 -> 2 chamadas. Nao ha botao decorativo, que e o que o estagio 19 proibe",
+    "LIMITES DO BI NA TELA (E-133): continua sendo FOTOGRAFIA (sem serie temporal, tendencia ou comparacao entre periodos); sem EXPORTACAO (CSV/PDF); sem GRAFICO (cartoes numericos, porque a serie temporal ainda nao existe); e sem e2e Playwright da jornada nesta rodada"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
