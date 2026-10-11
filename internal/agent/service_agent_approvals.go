@@ -80,6 +80,46 @@ type ServiceAgentApproval struct {
 	// configurada o sistema exige ator identificado, mas NÃO verifica se ele pode aprovar — e isso precisa
 	// aparecer no registro, em vez de virar confiança implícita.
 	RoleChecked bool `json:"role_checked"`
+	// ValueCents é o valor da ação aprovada (0 quando a ferramenta não lida com valor). Ele existe para o
+	// QUÓRUM: acima do limite configurado, uma decisão não basta.
+	ValueCents int64 `json:"value_cents,omitempty"`
+	// RequiredApprovals é quantas decisões FAVORÁVEIS de atores DISTINTOS são exigidas. Fica gravado no
+	// pedido: mudar a configuração depois não altera o que já foi exigido de quem pediu.
+	RequiredApprovals int `json:"required_approvals"`
+	// Decisions guarda CADA decisão tomada — com autor e instante. É o que permite exigir atores distintos
+	// e provar quem aprovou o quê.
+	Decisions []ServiceAgentApprovalDecision `json:"decisions,omitempty"`
+}
+
+// ServiceAgentApprovalDecision é uma decisão individual sobre o pedido.
+type ServiceAgentApprovalDecision struct {
+	ActorID   string    `json:"actor_id"`
+	Approved  bool      `json:"approved"`
+	Reason    string    `json:"reason,omitempty"`
+	DecidedAt time.Time `json:"decided_at"`
+}
+
+// Approvers é a lista de atores DISTINTOS que aprovaram.
+func (a ServiceAgentApproval) Approvers() []string {
+	vistos := map[string]bool{}
+	out := make([]string, 0, len(a.Decisions))
+	for _, decisao := range a.Decisions {
+		if !decisao.Approved || vistos[decisao.ActorID] {
+			continue
+		}
+		vistos[decisao.ActorID] = true
+		out = append(out, decisao.ActorID)
+	}
+	return out
+}
+
+// QuorumMet diz se o pedido já tem aprovações suficientes.
+func (a ServiceAgentApproval) QuorumMet() bool {
+	required := a.RequiredApprovals
+	if required <= 0 {
+		required = 1
+	}
+	return len(a.Approvers()) >= required
 }
 
 // ServiceAgentApprovalStore persiste as aprovações por organização.
@@ -89,7 +129,20 @@ type ServiceAgentApprovalStore struct {
 	MaxPerOrganization int
 	// ApprovalTTL é o prazo de vigência depois da decisão; zero significa SEM prazo.
 	ApprovalTTL time.Duration
+	// QuorumAboveCents ativa o QUÓRUM acima deste valor: uma decisão deixa de bastar. Zero desliga.
+	QuorumAboveCents int64
+	// QuorumApprovals é quantas decisões de atores DISTINTOS o quórum exige.
+	QuorumApprovals int
 }
+
+// DefaultServiceAgentQuorumAboveCents é o limite a partir do qual UMA decisão não basta.
+//
+// R$ 1.000 (em centavos): alto o bastante para merecer dois olhares e baixo o bastante para o controle
+// existir de fato na operação. Configurável, e `0` desliga — declarado, não implícito.
+const DefaultServiceAgentQuorumAboveCents int64 = 100000
+
+// DefaultServiceAgentQuorumApprovals é quantas decisões de atores distintos o quórum exige.
+const DefaultServiceAgentQuorumApprovals = 2
 
 type serviceAgentApprovalFile struct {
 	Approvals []ServiceAgentApproval `json:"approvals"`
@@ -104,7 +157,22 @@ func NewServiceAgentApprovalStore(root string) *ServiceAgentApprovalStore {
 		root:               strings.TrimSpace(root),
 		MaxPerOrganization: DefaultServiceAgentApprovalRetention,
 		ApprovalTTL:        DefaultServiceAgentApprovalTTL,
+		// O quórum vem LIGADO por padrão para valores altos: proteção que precisa ser lembrada de ligar não
+		// protege. Desligar é uma escolha explícita (`QuorumAboveCents = 0`).
+		QuorumAboveCents: DefaultServiceAgentQuorumAboveCents,
+		QuorumApprovals:  DefaultServiceAgentQuorumApprovals,
 	}
+}
+
+// RequiredApprovalsFor diz quantas decisões distintas o valor exige.
+func (s *ServiceAgentApprovalStore) RequiredApprovalsFor(valueCents int64) int {
+	if s == nil || s.QuorumAboveCents <= 0 || valueCents <= s.QuorumAboveCents {
+		return 1
+	}
+	if s.QuorumApprovals <= 1 {
+		return 1
+	}
+	return s.QuorumApprovals
 }
 
 // Root devolve o diretório usado (vazio quando não há persistência).
@@ -282,6 +350,10 @@ func (s *ServiceAgentApprovalStore) Request(organizationID string, request Servi
 		request.ID = "apr_" + uuid.NewString()[:12]
 	}
 	request.Status = ServiceAgentApprovalPending
+	if request.RequiredApprovals <= 0 {
+		// O quórum fica GRAVADO no pedido: mudar a configuração depois não altera o que já foi exigido.
+		request.RequiredApprovals = s.RequiredApprovalsFor(request.ValueCents)
+	}
 	if request.RequestedAt.IsZero() {
 		request.RequestedAt = time.Now().UTC()
 	}
@@ -330,19 +402,29 @@ func (s *ServiceAgentApprovalStore) Decide(organizationID, approvalID string, ap
 			return ServiceAgentApproval{}, fmt.Errorf("%w: aprovação já consumida", ErrServiceAgentApprovalConflict)
 		}
 		decidedAt := now.UTC()
-		approvals[index].DecidedAt = &decidedAt
 		approvals[index].DecidedBy = actorID
 		approvals[index].Reason = strings.TrimSpace(reason)
 		approvals[index].RoleChecked = roleChecked
 		approvals[index].ExpiresAt = nil
-		if approved {
+		// CADA decisão é registrada. É o que permite exigir atores DISTINTOS e provar quem aprovou o quê —
+		// sobrescrever a decisão anterior faria o segundo "sim" apagar o primeiro.
+		approvals[index].Decisions = append(approvals[index].Decisions, ServiceAgentApprovalDecision{
+			ActorID: actorID, Approved: approved, Reason: strings.TrimSpace(reason), DecidedAt: decidedAt,
+		})
+		if !approved {
+			// Uma recusa encerra o pedido: quórum existe para somar cuidados, não para superar objeção.
+			approvals[index].DecidedAt = &decidedAt
+			approvals[index].Status = ServiceAgentApprovalDenied
+		} else if approvals[index].QuorumMet() {
+			approvals[index].DecidedAt = &decidedAt
 			approvals[index].Status = ServiceAgentApprovalApproved
 			if ttl := s.ttl(); ttl > 0 {
 				expiresAt := decidedAt.Add(ttl)
 				approvals[index].ExpiresAt = &expiresAt
 			}
 		} else {
-			approvals[index].Status = ServiceAgentApprovalDenied
+			// Quórum incompleto: segue PENDENTE, e o pedido carrega o progresso (n de m).
+			approvals[index].Status = ServiceAgentApprovalPending
 		}
 		file.Approvals = approvals
 		if err := s.saveFile(organizationID, file); err != nil {

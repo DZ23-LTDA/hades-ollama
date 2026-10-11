@@ -294,8 +294,10 @@ func (s *ServiceAgentRuntime) authorizeWrite(call ServiceAgentToolCall, request 
 			ConversationID: request.ConversationID,
 			ToolName:       toolName,
 			Fingerprint:    fingerprint,
-			RequestedAt:    request.Now.UTC(),
-			RequestedBy:    "agente:" + request.AgentID,
+			// O VALOR entra no pedido: é o que decide se este caso exige quórum.
+			ValueCents:  request.ValueCents,
+			RequestedAt: request.Now.UTC(),
+			RequestedBy: "agente:" + request.AgentID,
 		})
 		if err != nil {
 			call.Status = ServiceAgentToolFailed
@@ -304,7 +306,13 @@ func (s *ServiceAgentRuntime) authorizeWrite(call ServiceAgentToolCall, request 
 		}
 		call.Status = ServiceAgentToolApprovalRequired
 		call.ApprovalID = pending.ID
-		call.Reason = fmt.Sprintf("escrita exige aprovação humana: pedido %s aguardando decisão", pending.ID)
+		// O motivo diz o PROGRESSO quando há quórum: quem lê precisa saber se falta uma decisão ou duas.
+		if pending.RequiredApprovals > 1 {
+			call.Reason = fmt.Sprintf("escrita de valor alto exige %d aprovações de pessoas distintas: pedido %s com %d de %d decisões",
+				pending.RequiredApprovals, pending.ID, len(pending.Approvers()), pending.RequiredApprovals)
+		} else {
+			call.Reason = fmt.Sprintf("escrita exige aprovação humana: pedido %s aguardando decisão", pending.ID)
+		}
 		return call
 	}
 	// Uso ÚNICO: consumir ANTES de executar. Consumir depois deixaria a janela em que duas execuções usam
