@@ -75,15 +75,21 @@ func TestBusinessTrendRequiresTwoSamplesAndComputesRealDeltas(t *testing.T) {
 }
 
 func TestBusinessSnapshotIsIdempotentPerWindow(t *testing.T) {
-	runtime, now := businessStatusFixture(t)
+	runtime, _ := businessStatusFixture(t)
 	organization := LocalOrganizationID
 
-	first, created, _, err := runtime.BusinessSnapshot(organization, now)
+	// RELÓGIO FIXO — e o motivo é um defeito real que apareceu no CI: usando o relógio de parede,
+	// `now.Add(time.Minute)` pode CRUZAR A VIRADA DE HORA, e aí a segunda chamada cria legitimamente
+	// uma nova janela. O teste falhava sozinho (CI, 13:59:57 UTC) sem que houvesse nada errado no
+	// produto. O teste de ROTA já tinha esse cuidado (E-134); este tinha ficado refém do relógio real.
+	base := time.Date(2026, 10, 12, 10, 0, 0, 0, time.UTC)
+
+	first, created, _, err := runtime.BusinessSnapshot(organization, base)
 	if err != nil || !created {
 		t.Fatalf("primeira: created=%v err=%v", created, err)
 	}
 	// MESMA janela: não cria outra amostra e devolve a existente.
-	again, createdAgain, trend, err := runtime.BusinessSnapshot(organization, now.Add(time.Minute))
+	again, createdAgain, trend, err := runtime.BusinessSnapshot(organization, base.Add(time.Minute))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -96,9 +102,18 @@ func TestBusinessSnapshotIsIdempotentPerWindow(t *testing.T) {
 	if trend.Snapshots != 1 {
 		t.Fatalf("a série precisa continuar com 1 amostra: %d", trend.Snapshots)
 	}
-	// Janela seguinte cria de novo.
-	if _, createdNext, _, err := runtime.BusinessSnapshot(organization, now.Add(time.Hour)); err != nil || !createdNext {
+	// A JANELA É DE HORA — e isto agora é exercitado DE PROPÓSITO, em vez de depender de onde o relógio
+	// estava: 10:59 ainda é a mesma janela de 10:00...
+	if _, createdLate, _, err := runtime.BusinessSnapshot(organization, time.Date(2026, 10, 12, 10, 59, 30, 0, time.UTC)); err != nil || createdLate {
+		t.Fatalf("10:59 pertence à janela de 10:00: created=%v err=%v", createdLate, err)
+	}
+	// ...e 11:00 é a janela seguinte, que cria — comportamento deliberado, não acidente.
+	if _, createdNext, _, err := runtime.BusinessSnapshot(organization, time.Date(2026, 10, 12, 11, 0, 30, 0, time.UTC)); err != nil || !createdNext {
 		t.Fatalf("nova janela precisa criar: created=%v err=%v", createdNext, err)
+	}
+	// E registrar de novo DENTRO da hora 11 continua idempotente.
+	if _, createdRepeat, _, err := runtime.BusinessSnapshot(organization, time.Date(2026, 10, 12, 11, 45, 0, 0, time.UTC)); err != nil || createdRepeat {
+		t.Fatalf("repetir na hora 11 não pode criar: created=%v err=%v", createdRepeat, err)
 	}
 }
 

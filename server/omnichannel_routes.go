@@ -161,7 +161,15 @@ func (a *agentAPI) listOmnichannelDeadLetters(c *gin.Context) {
 		return
 	}
 	entries := runtime.DeadLetters(agentOrganizationID(c))
-	c.JSON(http.StatusOK, gin.H{"dead_letters": entries, "count": len(entries)})
+	// O ESTADO acompanha a lista: durabilidade não se presume, e falha de persistência precisa ser
+	// visível para quem opera — uma fila "em memória" que se apresenta como durável é pior que a
+	// ausência dela.
+	status, err := runtime.OmnichannelDLQStatus(agentOrganizationID(c))
+	if err != nil {
+		writeAgentError(c, statusForAgentError(err), err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"dead_letters": entries, "count": len(entries), "storage": status})
 }
 
 // retryOmnichannelDeadLetter reprocessa explicitamente um evento da fila de mortos.
