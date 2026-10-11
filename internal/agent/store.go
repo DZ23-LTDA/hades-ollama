@@ -960,6 +960,12 @@ func writeJSONAtomicBounded(path string, value any, maxBytes int, label string) 
 	if maxBytes > 0 && len(data) > maxBytes {
 		return fmt.Errorf("%s exceeds persistence limit", label)
 	}
+	// O diretório é criado AQUI, e não em cada store: dois stores já falharam na PRIMEIRA
+	// gravação com "caminho não encontrado" porque a escrita atômica exigia um diretório que
+	// ninguém criava. Corrigir na raiz evita a terceira repetição do mesmo defeito.
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+		return err
+	}
 	tmp, err := os.CreateTemp(filepath.Dir(path), ".agent-*.tmp")
 	if err != nil {
 		return err

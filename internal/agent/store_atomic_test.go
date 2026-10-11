@@ -22,7 +22,7 @@ func TestJSONStoreRollsBackMissionMutationWhenPersistenceFails(t *testing.T) {
 	if err := store.PutMission(original); err != nil {
 		t.Fatal(err)
 	}
-	store.root = filepath.Join(root, "missing-parent", "store")
+	store.root = unwritableStoreRoot(t, root, "store")
 	updated := original
 	updated.Version = 2
 	updated.Objective = "must not remain in memory"
@@ -50,6 +50,11 @@ func TestJSONStoreRollsBackMissionMutationWhenPersistenceFails(t *testing.T) {
 	if err := store.PutMission(newMission); err == nil {
 		t.Fatal("new mission write unexpectedly succeeded")
 	}
+	// A raiz VOLTA a ser válida antes da leitura: com uma raiz bloqueada por ARQUIVO, ler o
+	// caminho devolve ENOTDIR no Linux (e "não encontrado" no Windows), e o teste passaria a
+	// medir o sistema de arquivos em vez de medir a ausência da missão. Restaurando a raiz, a
+	// asserção verifica as DUAS coisas de forma portátil: nada em memória e nada no disco.
+	store.root = root
 	if _, err := store.GetMission(newMission.ID); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("failed new mission remained in memory: %v", err)
 	}
@@ -68,7 +73,7 @@ func TestJSONStoreRollsBackEventsWhenPersistenceFails(t *testing.T) {
 	if err := store.AppendEvent(first); err != nil {
 		t.Fatal(err)
 	}
-	store.root = filepath.Join(root, "missing-parent", "store")
+	store.root = unwritableStoreRoot(t, root, "store")
 	second := Event{ID: "evt_second", MissionID: first.MissionID, OrganizationID: first.OrganizationID, Type: "second", CreatedAt: time.Now().UTC()}
 	if err := store.AppendEvent(second); err == nil {
 		t.Fatal("event write unexpectedly succeeded")

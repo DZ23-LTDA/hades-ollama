@@ -32,7 +32,7 @@ func TestContextStoreRollsBackMutationsWhenPersistenceFails(t *testing.T) {
 	if _, err := store.AddMemory(Memory{ID: "mem_original", ProjectID: project.ID, Kind: "note", Content: "original", Confidence: 1, CreatedAt: time.Now().UTC()}); err != nil {
 		t.Fatal(err)
 	}
-	store.root = filepath.Join(root, "missing-parent", "store")
+	store.root = unwritableStoreRoot(t, root, "store")
 	if _, err := store.UpdateProject(project.ID, "Changed", projectRoot); err == nil {
 		t.Fatal("project update unexpectedly succeeded")
 	}
