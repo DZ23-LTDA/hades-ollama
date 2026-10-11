@@ -1,10 +1,12 @@
 package agent
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
-	"sort"
 	"strings"
 	"time"
 )
@@ -44,7 +46,17 @@ type ServiceAgentAuditEntry struct {
 	ModelID        string    `json:"model_id,omitempty"`
 	DecidedAt      time.Time `json:"decided_at"`
 	RecordedAt     time.Time `json:"recorded_at"`
+	// PreviousHash e Hash formam a CADEIA: cada registro carrega o hash do anterior.
+	//
+	// Isto dá **detecção** de adulteração, não prevenção: quem tem acesso ao disco pode reescrever a trilha
+	// inteira e recalcular a cadeia. Detectar já é a diferença entre "a trilha pode ter sido editada sem
+	// deixar rastro" e "a edição aparece na verificação" — e a assinatura com chave é o passo seguinte.
+	PreviousHash string `json:"previous_hash,omitempty"`
+	Hash         string `json:"hash,omitempty"`
 }
+
+// ServiceAgentAuditGenesis é o elo anterior do primeiro registro da cadeia.
+const ServiceAgentAuditGenesis = "genesis"
 
 // ServiceAgentAuditStore persiste a trilha de execução por organização.
 type ServiceAgentAuditStore struct {
@@ -115,7 +127,92 @@ func (s *ServiceAgentAuditStore) Save(organizationID string, entries []ServiceAg
 	return writeJSONAtomic(path, serviceAgentAuditFile{Entries: entries})
 }
 
-// Append acrescenta entradas à trilha da organização e devolve o total gravado.
+// auditEntryHash calcula o hash de um registro, encadeado ao anterior.
+//
+// Os campos entram em ordem FIXA e separados por um delimitador que não aparece nos valores usuais: hash
+// que depende de ordem de mapa ou de formatação instável acusaria adulteração onde não houve.
+func auditEntryHash(entry ServiceAgentAuditEntry) string {
+	partes := []string{
+		entry.PreviousHash,
+		entry.ID,
+		entry.OrganizationID,
+		entry.AgentID,
+		entry.ConversationID,
+		entry.ToolName,
+		entry.Effect,
+		entry.Status,
+		entry.Summary,
+		entry.Reason,
+		entry.ModelID,
+		entry.DecidedAt.UTC().Format(time.RFC3339Nano),
+		entry.RecordedAt.UTC().Format(time.RFC3339Nano),
+	}
+	soma := sha256.Sum256([]byte(strings.Join(partes, "\x1f")))
+	return hex.EncodeToString(soma[:])
+}
+
+// ServiceAgentAuditVerification é o resultado da verificação da cadeia.
+type ServiceAgentAuditVerification struct {
+	OrganizationID string `json:"organization_id"`
+	// Valid diz se a cadeia inteira confere.
+	Valid bool `json:"valid"`
+	// Broken diz se há EVIDÊNCIA DE ADULTERAÇÃO (hash que não confere ou elo quebrado). É diferente de uma
+	// trilha com registros antigos não verificáveis: ali não há evidência de edição, só de idade.
+	Broken bool `json:"broken"`
+	// Entries é quantos registros foram percorridos.
+	Entries int `json:"entries"`
+	// Legacy é quantos registros existem ANTES da cadeia (sem hash), que não podem ser verificados.
+	Legacy int `json:"legacy,omitempty"`
+	// FirstDivergence é o ID do primeiro registro que não confere.
+	FirstDivergence string `json:"first_divergence,omitempty"`
+	// Reason explica a divergência em pt-BR.
+	Reason string `json:"reason,omitempty"`
+}
+
+// VerifyTrail percorre a cadeia e diz onde ela quebra, se quebrar.
+func (s *ServiceAgentAuditStore) VerifyTrail(organizationID string) (ServiceAgentAuditVerification, error) {
+	result := ServiceAgentAuditVerification{OrganizationID: organizationID, Valid: true}
+	entries, err := s.Load(organizationID)
+	if err != nil {
+		return result, err
+	}
+	result.Entries = len(entries)
+	expectedPrevious := ServiceAgentAuditGenesis
+	for index, entry := range entries {
+		if entry.Hash == "" {
+			// Registro anterior à cadeia: não é verificável, e isso é DITO — sem acusar adulteração que não
+			// há, e sem declarar válido o que não pode ser conferido.
+			result.Legacy++
+			result.Valid = false
+			if result.FirstDivergence == "" {
+				result.FirstDivergence = entry.ID
+				result.Reason = "registro anterior à cadeia de hashes (não verificável); não há evidência de adulteração"
+			}
+			continue
+		}
+		if entry.PreviousHash != expectedPrevious {
+			result.Valid = false
+			result.Broken = true
+			result.FirstDivergence = entry.ID
+			result.Reason = fmt.Sprintf("elo quebrado na posição %d: o registro aponta para outro anterior", index)
+			return result, nil
+		}
+		if auditEntryHash(entry) != entry.Hash {
+			result.Valid = false
+			result.Broken = true
+			result.FirstDivergence = entry.ID
+			result.Reason = fmt.Sprintf("conteúdo adulterado na posição %d: o hash não confere", index)
+			return result, nil
+		}
+		expectedPrevious = entry.Hash
+	}
+	return result, nil
+}
+
+// Append acrescenta entradas à trilha da organização, ENCADEANDO cada uma ao hash anterior.
+//
+// A cadeia existente é verificada ANTES de estender: gravar sobre uma trilha já adulterada produziria um
+// documento que parece íntegro a partir dali, escondendo a adulteração anterior.
 func (s *ServiceAgentAuditStore) Append(organizationID string, entries []ServiceAgentAuditEntry) (int, error) {
 	if len(entries) == 0 {
 		return 0, nil
@@ -124,16 +221,41 @@ func (s *ServiceAgentAuditStore) Append(organizationID string, entries []Service
 	if err != nil {
 		return 0, err
 	}
+	verification, err := s.VerifyTrail(organizationID)
+	if err != nil {
+		return 0, err
+	}
+	// Recusa só diante de EVIDÊNCIA DE ADULTERAÇÃO. Trilha com registros antigos não verificáveis (idade)
+	// não pode congelar a auditoria para sempre — a limitação é declarada, não transformada em bloqueio.
+	if verification.Broken {
+		return 0, fmt.Errorf("%w: %s", ErrServiceAgentAuditChainBroken, verification.Reason)
+	}
+	previous := ServiceAgentAuditGenesis
+	if len(existing) > 0 {
+		previous = existing[len(existing)-1].Hash
+		if previous == "" {
+			// A trilha anterior não tem cadeia: começar uma nova é aceitável, mas a quebra fica declarada
+			// pela verificação (contagem `Legacy`), em vez de silenciada.
+			previous = ServiceAgentAuditGenesis
+		}
+	}
+	for index := range entries {
+		entries[index].PreviousHash = previous
+		entries[index].Hash = auditEntryHash(entries[index])
+		previous = entries[index].Hash
+	}
 	existing = append(existing, entries...)
 	if err := s.Save(organizationID, existing); err != nil {
 		return 0, err
 	}
-	sort.SliceStable(existing, func(i, j int) bool { return existing[i].RecordedAt.Before(existing[j].RecordedAt) })
 	if len(existing) > s.MaxPerOrganization {
 		return s.MaxPerOrganization, nil
 	}
 	return len(existing), nil
 }
+
+// ErrServiceAgentAuditChainBroken marca tentativa de estender trilha cuja cadeia não confere.
+var ErrServiceAgentAuditChainBroken = errors.New("service agent audit chain is broken")
 
 // serviceAgentAuditRoot devolve o diretório da trilha dentro da raiz de dados.
 func serviceAgentAuditRoot(dataRoot string) string {
