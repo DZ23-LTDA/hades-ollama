@@ -588,6 +588,9 @@ func (r *Runtime) executeScheduleFlow(ctx context.Context, schedule Schedule, ru
 	// conhece (todos derivados do schedule autenticado) e cresce com os passos
 	// action.transform e logic.loop.
 	vars := scheduleBuiltinVariables(schedule, runKey)
+	// pendingSteps distingue "concluiu sem sucesso" de "aguarda decisão humana":
+	// só o primeiro satisfaz um ramo alternativo (condition.if com expect failed).
+	pendingSteps := make(map[string]bool, len(order))
 	for _, step := range order {
 		id := strings.TrimSpace(step.ID)
 		if execute != nil && !execute[id] {
@@ -607,8 +610,13 @@ func (r *Runtime) executeScheduleFlow(ctx context.Context, schedule Schedule, ru
 			}
 			continue
 		}
-		if !scheduleDependenciesSatisfied(step, outcomes) {
+		if !scheduleStepDependenciesReady(step, outcomes, pendingSteps) {
 			outcomes[id] = false
+			// Um passo barrado por dependência PENDENTE também fica pendente: não
+			// concluiu nada, e o ramo alternativo não pode tratá-lo como falha.
+			if stepHasPendingDependency(step, pendingSteps) {
+				pendingSteps[id] = true
+			}
 			report.Steps = append(report.Steps, ScheduleStepOutcome{
 				ID:     id,
 				Kind:   string(step.Kind),
@@ -808,6 +816,7 @@ func (r *Runtime) executeScheduleFlow(ctx context.Context, schedule Schedule, ru
 			switch {
 			case !decided:
 				outcomes[id] = false
+				pendingSteps[id] = true
 				report.PendingApprovals = append(report.PendingApprovals, SchedulePendingApproval{
 					StepID:      id,
 					RunKey:      runKey,
@@ -867,6 +876,7 @@ func (r *Runtime) executeScheduleFlow(ctx context.Context, schedule Schedule, ru
 				approval, decided := scheduleApprovalFor(schedule, id, runKey)
 				if !decided {
 					outcomes[id] = false
+					pendingSteps[id] = true
 					report.PendingApprovals = append(report.PendingApprovals, SchedulePendingApproval{
 						StepID:      id,
 						RunKey:      runKey,
@@ -1297,6 +1307,43 @@ func scheduleDependenciesSatisfied(step ScheduleStep, outcomes map[string]bool) 
 		}
 	}
 	return true
+}
+
+// stepHasPendingDependency informa se algum dependente ainda aguarda decisão
+// humana. Nesse caso o passo não "concluiu sem sucesso": ele nem começou.
+func stepHasPendingDependency(step ScheduleStep, pending map[string]bool) bool {
+	for _, dependency := range step.DependsOn {
+		if pending[strings.TrimSpace(dependency)] {
+			return true
+		}
+	}
+	return false
+}
+
+// scheduleStepDependenciesReady decide se um passo pode ser AVALIADO agora.
+//
+// O que muda frente a scheduleDependenciesSatisfied é o ramo alternativo: um
+// condition.if que espera FALHA observa uma dependência que CONCLUIU sem sucesso.
+// Exigir sucesso dela incondicionalmente — como era antes — tornava o ramo
+// alternativo inalcançável, porque a checagem barrava o passo antes de a condição
+// ser avaliada.
+//
+// O conjunto `pending` existe porque "não teve sucesso" tem DUAS causas distintas:
+// concluiu sem sucesso (o ramo alternativo deve rodar) e aguarda decisão humana (o
+// ramo alternativo NÃO pode rodar: ninguém decidiu nada ainda).
+func scheduleStepDependenciesReady(step ScheduleStep, outcomes map[string]bool, pending map[string]bool) bool {
+	if step.Kind == ScheduleStepConditionIf && strings.TrimSpace(step.Expect) == ScheduleExpectFailed {
+		if len(step.DependsOn) != 1 {
+			return false
+		}
+		dependency := strings.TrimSpace(step.DependsOn[0])
+		if pending[dependency] {
+			return false
+		}
+		outcome, ran := outcomes[dependency]
+		return ran && !outcome
+	}
+	return scheduleDependenciesSatisfied(step, outcomes)
 }
 
 // scheduleConditionMatches evaluates a condition.if step against the recorded

@@ -95,6 +95,8 @@
 
 | Workflow: nó de conector (caminho real) | `action.connector`, `ConnectorManager.CallForOrganization` (PR #157) | IMPLEMENTADO_E_TESTADO | ALTO | E-084 | escrita exige aprovação e nenhuma chamada sai sem ela; conector ausente ou de outro tenant falha em vez de ser pulado |
 
+| Workflow Automation Engine: ramos if/else | `scheduleStepDependenciesReady`, `pendingSteps` em `schedule_flow.go` (E-085) | IMPLEMENTADO_E_TESTADO | ALTO | E-085 | `condition.if` irmãos com `Expect` opostos formam if/else; ramo alternativo inalcançável e pendente-como-falha foram corrigidos |
+
 ## 6. Integrações, MCP e conectores
 
 | Capacidade | Superfície | Classificação | Risco | Evidência | Lacuna |

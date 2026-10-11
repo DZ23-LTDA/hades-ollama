@@ -2,12 +2,12 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-11T11:05:00-03:00",
+  "updated_at": "2026-10-11T12:20:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
     "integration_branch": "main",
-    "main_sha": "9e98eda2cd2cfe3f44c950673a87cd3c0a796473",
+    "main_sha": "bbb03cf8903cd09eec6fe8e639955d22a2333439",
     "main_committed_at": "2026-10-09T10:24:45Z",
     "main_ci_state": "green (dz23-agentic-quality + class-a-plus-integrity = success nesse SHA)",
     "mission_branch": "docs/checkpoints-missao-v21",
@@ -421,9 +421,9 @@
     {
       "id": 13,
       "title": "Workflow Engine (fluxos, schedules, condicoes)",
-      "state": "IN_PROGRESS",
+      "state": "COMPLETED_VERIFIED",
       "auditoria": "AUDITADO_PARCIAL",
-      "capability": "PARCIAL",
+      "capability": "IMPLEMENTADO_E_TESTADO",
       "evidence": [
         "E-020",
         "E-029",
@@ -437,11 +437,13 @@
         "E-081",
         "E-082",
         "E-083",
-        "E-084"
+        "E-084",
+        "E-085"
       ],
       "blocker": null,
-      "next": "REAVALIAR A PROMOCAO do estagio: com atividades e criterio cobertos, a promocao precisa de verificacao independente do conjunto (reler a lista de atividades contra codigo e evidencias), nao de conveniencia de fim de lista",
-      "done": "CRITERIO DEMONSTRADO EM TESTE PONTA A PONTA (falha simulada, retry, reinicio de worker, retomada, evidencia por no e sem duplicata) e LISTA DE ATIVIDADES COBERTA: idempotencia, retry por no, resultado por no persistido e visivel, execucao manual real, reprocessamento, DLQ por no, versao do fluxo e os oito tipos de no (gatilhos, condicao, acao de missao, transformacao com variaveis, laco limitado, aprovacao com espera entre execucoes e CONECTOR pelo caminho real com aprovacao obrigatoria para escrita)"
+      "next": "estagio verificado; proximo trabalho segue para os estagios elegiveis das ondas seguintes (14 browser/desktop/computer-use, 15 memoria, 16 canais, 17 workspace visual, 18 seguranca e 22 gate de engenharia), sem reabrir o 13 a menos que um defeito novo apareca",
+      "done": "VERIFICADO ATIVIDADE POR ATIVIDADE em HADES_STAGE_13_VERIFICATION.md: criterio de conclusao cumprido (falha simulada, retry, reinicio de worker e retomada, com evidencia por no e sem duplicata) e lista de atividades coberta - gatilhos, condicoes, acoes, conectores, webhooks, schedules, variaveis, transformacoes, branches (corrigido nesta rodada), loops limitados, aprovacoes, filas, retry, DLQ, idempotencia, reprocessamento, persistencia, logs por no, versionamento, testes, execucao manual e programada",
+      "limits": "LIMITES DECLARADOS (nao sao cobertura): conector homologado contra servidor HTTPS controlado, com credenciais de SaaS de terceiros ainda BLOCKED_BY_EXTERNAL_DEPENDENCY (estagios 25/33/36); falha de passo com efeito ABORTA o fluxo em vez de desviar para o ramo alternativo; execucao do fluxo por tick do supervisor, com a fila de jobs cobrindo as missoes criadas pelos nos"
     },
     {
       "id": 14,
@@ -923,6 +925,14 @@
     "VOCABULARIO DO ESTAGIO 13 APOS ESTA RODADA: trigger.interval, trigger.webhook, condition.if, action.mission, action.transform, logic.loop e approval.request. Falta CONECTORES como no para a lista de atividades ficar integralmente coberta. O misspell acusou 3 falsos positivos em pt-BR (correspondente, autor) e o texto foi reescrito em vez de silenciar a regra",
     "ENTREGA (PR #157, estagio 13): NO DE CONECTOR pelo caminho REAL (ConnectorManager.CallForOrganization, com credencial do tenant, politica de egress e escopo de organizacao). Metodo que ESCREVE (POST/PUT/PATCH/DELETE) so sai com aprovacao humana APROVADA para a MESMA execucao: sem decisao o passo fica pendente e NENHUMA chamada e feita (teste prova calls==0), negado mantem barrado sem fila morta. Fail-closed: conector nao registrado FALHA com motivo e entra na fila morta (nunca pulado), conector de outra organizacao e recusado pelo proprio gerenciador, e HTTP 5xx do outro lado NAO e sucesso do nosso no. Testado contra servidor HTTPS real (TLS efemero), nao contra duble. 6 testes novos",
     "VOCABULARIO DO ESTAGIO 13 COMPLETO: trigger.interval, trigger.webhook, condition.if, action.mission, action.transform, logic.loop, approval.request e action.connector - oito tipos de no. Com isso a LISTA DE ATIVIDADES do estagio esta coberta, alem do criterio de conclusao ja demonstrado em teste ponta a ponta (E-081)",
-    "PROXIMO PASSO DO ESTAGIO 13: reavaliar a PROMOCAO do estagio, agora que atividades e criterio estao cobertos. A promocao exige verificacao independente do conjunto (reler a lista de atividades contra o codigo e as evidencias), nao conveniencia de fim de lista. Duas correcoes de processo registradas nesta rodada: o registrador de conectores exigir HTTPS e um controle CORRETO do produto, entao o ajuste foi no TESTE; e o misspell marcou 'Eles' como erro em pt-BR, com o comentario reescrito em vez de silenciar a regra"
-  ]
+    "PROXIMO PASSO DO ESTAGIO 13: reavaliar a PROMOCAO do estagio, agora que atividades e criterio estao cobertos. A promocao exige verificacao independente do conjunto (reler a lista de atividades contra o codigo e as evidencias), nao conveniencia de fim de lista. Duas correcoes de processo registradas nesta rodada: o registrador de conectores exigir HTTPS e um controle CORRETO do produto, entao o ajuste foi no TESTE; e o misspell marcou 'Eles' como erro em pt-BR, com o comentario reescrito em vez de silenciar a regra",
+    "VERIFICACAO DO ESTAGIO 13 (PR desta rodada, E-085): releitura da lista de atividades contra o codigo, atividade por atividade, em docs/mission/HADES_STAGE_13_VERIFICATION.md. A verificacao REFUTOU a suposicao de que 'branches' ja funcionava e encontrou DOIS defeitos reais: (1) condition.if com Expect=failed era barrado por scheduleDependenciesSatisfied, que exigia sucesso do dependente antes de avaliar a condicao, tornando o ramo alternativo INALCANCAVEL - if/else existia so no nome; corrigido com scheduleStepDependenciesReady. (2) Depois da primeira correcao, aprovacao PENDENTE passou a satisfazer o ramo alternativo, disparando o caminho de recusa ANTES de qualquer decisao humana; corrigido com o conjunto pendingSteps, porque 'nao teve sucesso' e 'aguarda decisao' sao estados distintos. Ambos encontrados por TESTE QUE MEDE O EFEITO, travados em schedule_branch_test.go",
+    "PROMOCAO DO ESTAGIO 13 (E-085): criterio de conclusao CUMPRIDO (E-081) e lista de atividades COBERTA com as correcoes desta rodada, entao a execucao vai para COMPLETED_VERIFIED e a capacidade do Workflow Automation Engine para IMPLEMENTADO_E_TESTADO. LIMITES DECLARADOS, que NAO sao cobertura: conector homologado contra servidor HTTPS controlado (credenciais de SaaS de terceiros seguem BLOCKED_BY_EXTERNAL_DEPENDENCY e pertencem aos estagios 25/33/36); falha de passo com efeito ABORTA o fluxo em vez de desviar para o ramo alternativo (o ramo cobre 'concluiu sem sucesso', nao falha de execucao); e a execucao do fluxo e por tick do supervisor, com a fila de jobs cobrindo as missoes criadas pelos nos. RELEASE GLOBAL PERMANECE NOT_RELEASE_READY - este e um dos 38 estagios"
+  ],
+  "verification": {
+    "estagio_13": "COMPLETED_VERIFIED",
+    "metodo": "releitura da lista de atividades contra codigo e evidencias, com teste medindo o efeito",
+    "defeitos_encontrados": 2,
+    "documento": "docs/mission/HADES_STAGE_13_VERIFICATION.md"
+  }
 }
