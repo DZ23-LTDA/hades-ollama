@@ -26,7 +26,7 @@ func financeFixture(t *testing.T) (*CommerceStore, *CompanyStore, *FinanceOps, s
 	if err != nil {
 		t.Fatal(err)
 	}
-	now := time.Now().UTC()
+	now := businessFixtureClock
 	company, err := companies.Create(Company{ID: "emp-1", OrganizationID: "org-a", Name: "Loja da Ana", Currency: "BRL"})
 	if err != nil {
 		t.Fatal(err)
