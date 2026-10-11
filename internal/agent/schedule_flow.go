@@ -292,6 +292,9 @@ type ScheduleRunReport struct {
 	// reprocessar depois SEM adivinhar: o reprocessamento reusa a mesma chave, e
 	// assim os passos que já criaram missão continuam apontando para ela.
 	RunKey string `json:"run_key,omitempty"`
+	// DeadLetters são os passos que esgotaram as tentativas NESTA execução. O
+	// relatório é quem sabe quais falharam; o gravador persiste no schedule.
+	DeadLetters []ScheduleStepDeadLetter `json:"dead_letters,omitempty"`
 }
 
 // SkippedSteps devolve os identificadores ignorados na execução. Vazio significa
@@ -434,6 +437,16 @@ func (r *Runtime) executeScheduleFlow(ctx context.Context, schedule Schedule, ru
 					Reason:   err.Error(),
 					Attempts: attempts,
 				})
+				// DLQ por nó: o passo que esgotou as tentativas é registrado com o
+				// motivo final, para não desaparecer no próximo tick.
+				report.DeadLetters = append(report.DeadLetters, ScheduleStepDeadLetter{
+					StepID:    id,
+					Kind:      string(step.Kind),
+					Reason:    err.Error(),
+					Attempts:  attempts,
+					Objective: strings.TrimSpace(step.Objective),
+					FailedAt:  report.FinishedAt,
+				})
 				return report, fmt.Errorf("schedule step %q: %w", id, err)
 			}
 			outcome := ScheduleStepOutcome{ID: id, Kind: string(step.Kind), Status: ScheduleStepSucceeded, Attempts: attempts}
@@ -461,6 +474,68 @@ func (r *Runtime) executeScheduleFlow(ctx context.Context, schedule Schedule, ru
 	}
 	report.FinishedAt = time.Now().UTC()
 	return report, nil
+}
+
+// ScheduleStepDeadLetter é a entrada de DLQ de UM passo que esgotou as
+// tentativas. Fica no relatório (motor) e é persistida no schedule (gravador),
+// para que uma falha não desapareça no próximo tick e o operador possa
+// reprocessar exatamente aquele passo.
+type ScheduleStepDeadLetter struct {
+	StepID    string    `json:"step_id"`
+	Kind      string    `json:"kind"`
+	Reason    string    `json:"reason"`
+	Attempts  int       `json:"attempts,omitempty"`
+	Objective string    `json:"objective,omitempty"`
+	FailedAt  time.Time `json:"failed_at"`
+}
+
+// maxScheduleDeadLetters limita a DLQ por schedule: sem teto, um fluxo que falha
+// a cada tick cresceria sem fim no arquivo de estado.
+const maxScheduleDeadLetters = 20
+
+// mergeScheduleDeadLetters acrescenta as novas falhas e REMOVE as entradas dos
+// passos que tiveram sucesso nesta execução: um passo recuperado não pode
+// continuar listado como morto.
+func mergeScheduleDeadLetters(existing, added []ScheduleStepDeadLetter, succeeded map[string]bool) []ScheduleStepDeadLetter {
+	// Mais recentes primeiro: a última falha do passo é a que importa para agir.
+	merged := make([]ScheduleStepDeadLetter, 0, len(existing)+len(added))
+	for _, entry := range added {
+		if succeeded[entry.StepID] {
+			continue
+		}
+		replaced := false
+		for i, current := range merged {
+			if current.StepID == entry.StepID {
+				merged[i] = entry
+				replaced = true
+				break
+			}
+		}
+		if !replaced {
+			merged = append(merged, entry)
+		}
+	}
+	for _, entry := range existing {
+		// Passo recuperado sai da DLQ; passo ainda falho mantém a entrada antiga
+		// somente se não houver entrada nova mais recente para ele.
+		if succeeded[entry.StepID] {
+			continue
+		}
+		duplicate := false
+		for _, current := range merged {
+			if current.StepID == entry.StepID {
+				duplicate = true
+				break
+			}
+		}
+		if !duplicate {
+			merged = append(merged, entry)
+		}
+	}
+	if len(merged) > maxScheduleDeadLetters {
+		merged = merged[:maxScheduleDeadLetters]
+	}
+	return merged
 }
 
 // ErrScheduleReprocessUnavailable recusa o reprocessamento quando não há execução
