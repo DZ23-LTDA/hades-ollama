@@ -2,12 +2,12 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-13T09:05:00-03:00",
+  "updated_at": "2026-10-13T10:20:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
     "integration_branch": "main",
-    "main_sha": "64bb19f4505729ccfa4b6081c52e4741ec0ca65b",
+    "main_sha": "ae540eff0df32b1b59d48c9b992e6f80dc6c225f",
     "main_committed_at": "2026-10-09T10:24:45Z",
     "main_ci_state": "green (dz23-agentic-quality + class-a-plus-integrity = success nesse SHA)",
     "mission_branch": "docs/checkpoints-missao-v21",
@@ -649,13 +649,14 @@
       "evidence": [
         "E-047",
         "E-087",
-        "E-126"
+        "E-126",
+        "E-128"
       ],
       "blocker": "B-05",
-      "next": "LIMITES: pull de PEDIDOS declarado mas NAO exercitado (depende da API real), teto de operacoes GLOBAL e nao o limite real de cada canal, sem rotas HTTP e sem interface visual. Homologacao live BLOCKED_BY_EXTERNAL_DEPENDENCY: procedimento = definir a variavel de credencial do canal e executar teste de conexao real com evidencia de handshake",
+      "next": "LIMITES: homologacao live BLOCKED_BY_EXTERNAL_DEPENDENCY (desbloqueio: definir a variavel de credencial do canal e executar teste de conexao real com evidencia de handshake); pull de pedidos nao exercitado; teto GLOBAL e nao o limite de cada plataforma; SEM INTERFACE VISUAL (a tela fica para a frente de UX)",
       "blocked_reason": "",
       "external_dependency": "conta de vendedor e credenciais oficiais de Mercado Livre/Amazon/Shopee",
-      "done": "classificacao corrigida pela auditoria de bloqueios: o bloqueio externo em bloco escondia trabalho implementavel. Evidencia medida registrada em docs/mission/HADES_BLOCKED_AUDIT.md | CONTRATO DE MARKETPLACE CONTRA DUBLE DE SANDBOX (E-126): entregue exatamente o que o estagio pede e NADA ALEM - contrato de sincronizacao (produtos, precos, estoque, pedidos) exercitado contra um duble em processo, com ZERO chamadas a plataforma real. Catalogar nao e habilitar: sem credencial o canal e CONFIG_REQUIRED com procedimento, com credencial e sem handshake e UNAUTHORIZED e LiveTested false (credencial NAO vira CONNECTED). Teto de operacoes por execucao recusado ANTES de qualquer efeito; idempotencia por versao; CONFLITO de estoque nao e sobrescrito; relatorio declara homologacao_live BLOCKED_BY_EXTERNAL_DEPENDENCY com motivo e procedimento. 4/4 testes PASS"
+      "done": "classificacao corrigida pela auditoria de bloqueios: o bloqueio externo em bloco escondia trabalho implementavel. Evidencia medida registrada em docs/mission/HADES_BLOCKED_AUDIT.md | CONTRATO DE MARKETPLACE CONTRA DUBLE DE SANDBOX (E-126): entregue exatamente o que o estagio pede e NADA ALEM - contrato de sincronizacao (produtos, precos, estoque, pedidos) exercitado contra um duble em processo, com ZERO chamadas a plataforma real. Catalogar nao e habilitar: sem credencial o canal e CONFIG_REQUIRED com procedimento, com credencial e sem handshake e UNAUTHORIZED e LiveTested false (credencial NAO vira CONNECTED). Teto de operacoes por execucao recusado ANTES de qualquer efeito; idempotencia por versao; CONFLITO de estoque nao e sobrescrito; relatorio declara homologacao_live BLOCKED_BY_EXTERNAL_DEPENDENCY com motivo e procedimento. 4/4 testes PASS | SUPERFICIE HTTP DO MARKETPLACE (E-128): catalogo (200), sincronizacao (200, 400 pedido invalido, 404 canal desconhecido, 429 teto excedido) e espelho do duble (200). DECISAO: 429 e NAO 400 no teto, porque exceder o volume e limitacao de taxa e nao erro do pedido; a recusa por teto NAO aplica efeito (comprovado no duble). O catalogo deriva o estado apenas da EXISTENCIA da variavel de credencial - os VALORES nunca sao lidos - e credencial presente NAO vira CONNECTED. Todas as rotas sao escopadas por companyForRequest, entao a organizacao vem da sessao e NUNCA do corpo da requisicao"
     },
     {
       "id": 26,
@@ -1162,7 +1163,10 @@
     "MARKETPLACE - TETO, IDEMPOTENCIA E CONFLITO (E-126): o teto de operacoes por execucao e recusado ANTES de qualquer efeito, porque conector sem teto e o caminho mais rapido para violar rate limit; a idempotencia e por VERSAO (reexecutar ignora, versao nova aplica); e CONFLITO de estoque NAO e sobrescrito - vira conflito com detalhe, porque sobrescrever esconderia divergencia e produziria venda sem produto. O relatorio traz homologacao_live BLOCKED_BY_EXTERNAL_DEPENDENCY com motivo e procedimento",
     "DEFEITO CORRIGIDO NA RAIZ - WRITEJSONATOMIC CRIA O DIRETORIO (E-127): a falha de 'primeira gravacao' (writeJSONAtomic exigindo um diretorio que ninguem criava) apareceu na forca de vendas (E-119) e DE NOVO no marketplace (E-126). Na segunda vez ficou claro que o lugar certo era a RAIZ: writeJSONAtomicBounded agora cria o diretorio e as duas correcoes locais redundantes foram removidas. Guarda de regressao TestWriteJSONAtomicCreatesParentDirectory criada",
     "A CORRECAO DE RAIZ QUEBROU QUATRO TESTES DE ROLLBACK - E ELES FORAM PRESERVADOS (E-127): CompanyStore, ContextStore, AgentOrchestrator e CollaborationStore injetavam falha de persistencia apontando o store para um DIRETORIO INEXISTENTE; com a escrita criando o diretorio, a falha sumia e o rollback deixava de ser exercitado. NAO revertemos a causa raiz nem apagamos teste: a injecao passou a ser um ARQUIVO no lugar da raiz (faz MkdirAll falhar de forma portatil em Linux, macOS e Windows), com as assercoes originais intactas. LICAO INSTITUCIONALIZADA: corrigir causa raiz pode DESARMAR SILENCIOSAMENTE testes que usam o defeito como injecao; procurar 'quem depende deste erro' faz parte da correcao - e so apareceu porque a SUITE INTEIRA foi rodada, nao apenas os testes novos",
-    "DOIS ERROS MEUS NO PROCESSO, REGISTRADOS (E-127): (a) ao reescrever as injecoes por script perdi o 'store.root = ' da atribuicao, e os quatro testes passaram a NAO FALHAR POR NAO INJETAR NADA - situacao que se parece com sucesso, e o sintoma foi o que denunciou; (b) deixei aspas escapadas em tres arquivos, recusadas pelo compilador. Ambos corrigidos de forma canonica e verificados linha a linha, nenhum escondido. Tambem: a guarda nova revelou limitacao do MEU teste - no Windows o Chmod de arquivo reporta 0666, entao a assercao de permissao vale so onde ha semantica POSIX"
+    "DOIS ERROS MEUS NO PROCESSO, REGISTRADOS (E-127): (a) ao reescrever as injecoes por script perdi o 'store.root = ' da atribuicao, e os quatro testes passaram a NAO FALHAR POR NAO INJETAR NADA - situacao que se parece com sucesso, e o sintoma foi o que denunciou; (b) deixei aspas escapadas em tres arquivos, recusadas pelo compilador. Ambos corrigidos de forma canonica e verificados linha a linha, nenhum escondido. Tambem: a guarda nova revelou limitacao do MEU teste - no Windows o Chmod de arquivo reporta 0666, entao a assercao de permissao vale so onde ha semantica POSIX",
+    "SUPERFICIE HTTP DO MARKETPLACE (E-128): no documento anterior do estagio 25 eu registrei entre os limites 'sem rotas HTTP e sem interface visual'. Esta rodada entregou as rotas: catalogo (200), sincronizacao (200, 400 pedido invalido, 404 canal desconhecido, 429 teto excedido) e espelho do duble (200)",
+    "MARKETPLACE - 429 E NAO 400 NO TETO (E-128): exceder o teto de operacoes por execucao e LIMITACAO DE TAXA (o pedido esta bem formado, o volume e que nao cabe); devolver 400 esconderia a natureza do problema e sugeriria erro do cliente. A recusa por teto NAO aplica efeito, e o teste comprova isso consultando o duble",
+    "MARKETPLACE - CREDENCIAL NAO E OPERACAO NA ROTA (E-128): o catalogo deriva o estado do canal apenas da EXISTENCIA da variavel de credencial; os VALORES nunca sao lidos para exibicao, resposta ou registro. Credencial presente NAO vira CONNECTED - segue UNAUTHORIZED ate handshake real. E todas as rotas sao escopadas por companyForRequest: a organizacao vem da SESSAO, nunca do corpo da requisicao"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",

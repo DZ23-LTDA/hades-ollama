@@ -723,6 +723,9 @@ func (a *agentAPI) register(r *gin.Engine) {
 	group.POST("/companies/:id/social/drafts/:draft_id/approve", a.approveCompanySocialDraft)
 	group.POST("/companies/:id/social/drafts/:draft_id/publish", a.publishCompanySocialDraft)
 	group.POST("/companies/:id/social/metrics", a.recordCompanySocialMetric)
+	group.GET("/companies/:id/marketplace/channels", a.marketplaceChannels)
+	group.POST("/companies/:id/marketplace/sync", a.marketplaceSync)
+	group.GET("/companies/:id/marketplace/mirror/:channel_id/:sku", a.marketplaceMirror)
 	group.POST("/companies/:id/pause", a.pauseCompany)
 	group.POST("/companies/:id/resume", a.resumeCompany)
 	group.POST("/companies/:id/anomalies", a.recordCompanyAnomaly)
@@ -3961,6 +3964,17 @@ func statusForAgentError(err error) int {
 	}
 	if errors.Is(err, agent.ErrCampaignBudgetExceeded) || errors.Is(err, agent.ErrCampaignStateInvalid) {
 		return http.StatusConflict
+	}
+	// Marketplace (estágio 25): 429 quando o teto de operações por execução é excedido (é limitação
+	// de taxa, não erro do pedido), 404 para canal desconhecido e 400 para pedido inválido.
+	if errors.Is(err, agent.ErrMarketplaceRateLimited) {
+		return http.StatusTooManyRequests
+	}
+	if errors.Is(err, agent.ErrMarketplaceChannelUnknown) {
+		return http.StatusNotFound
+	}
+	if errors.Is(err, agent.ErrMarketplaceSyncInvalid) {
+		return http.StatusBadRequest
 	}
 	if errors.Is(err, os.ErrNotExist) {
 		return http.StatusNotFound
