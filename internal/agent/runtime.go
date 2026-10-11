@@ -152,6 +152,33 @@ func (r *Runtime) WriteDurabilityMode() string {
 	return r.writeDurability
 }
 
+// RateLimitPersisted diz se a JANELA de rate limit do canal está sendo persistida (E-170).
+//
+// Existe para a persistência ser VERIFICÁVEL de fora: sem isso, "a janela é durável" seria uma afirmação sobre
+// código que ninguém consegue conferir em execução.
+func (r *Runtime) RateLimitPersisted() bool {
+	if r == nil || r.omnichannel == nil {
+		return false
+	}
+	return r.omnichannel.RateLimitPersisted()
+}
+
+// RateLimitRoot devolve a raiz onde a janela de rate limit é persistida (vazio = sem persistência).
+func (r *Runtime) RateLimitRoot() string {
+	if r == nil || r.omnichannel == nil {
+		return ""
+	}
+	return r.omnichannel.RateLimitRoot()
+}
+
+// RateLimitError devolve a última falha de persistência da janela de rate limit (vazio quando não houve).
+func (r *Runtime) RateLimitError() string {
+	if r == nil || r.omnichannel == nil {
+		return ""
+	}
+	return r.omnichannel.LastRateLimitError()
+}
+
 func NewRuntime(config RuntimeConfig) (*Runtime, error) {
 	// E-168: a política de durabilidade da escrita vem do ambiente e é aplicada na CRIAÇÃO do runtime, para o
 	// modo efetivo valer desde a primeira escrita. O padrão é o seguro; um valor inválido cai para o seguro, e o
@@ -283,6 +310,9 @@ func NewRuntime(config RuntimeConfig) (*Runtime, error) {
 	// desaparece no reinício — e o que se perde não é um número, é a mensagem de um cliente que ninguém
 	// vai reprocessar porque ninguém sabe que existiu.
 	omnichannelRuntime.SetDLQStore(NewOmnichannelDLQStore(omnichannelDLQRoot(dataRoot)))
+	// E-170: a JANELA DE RATE LIMIT também persiste. Sem isso, um reinício do processo ZERA a cota — a proteção
+	// desaparece exatamente quando alguém a ataca (reiniciando o serviço). Um arquivo por organização, como a DLQ.
+	omnichannelRuntime.SetRateLimitStore(NewOmnichannelRateLimitStore(omnichannelRateLimitRoot(dataRoot)))
 	// Os agentes de atendimento usam as MESMAS peças (CRM, inbox e consentimento).
 	serviceAgentRuntime := NewServiceAgentRuntime(crmStore, inboxStore, consentRegistry, DefaultServiceAgentTools())
 	// Comércio e empresas são ligados logo abaixo, quando os stores existem: enquanto não fossem ligados,

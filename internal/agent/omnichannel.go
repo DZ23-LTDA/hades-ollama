@@ -147,18 +147,27 @@ type OmnichannelRuntime struct {
 	dlqError string
 	// now permite testar a janela de replay sem esperar.
 	now func() time.Time
+	// rateLimitStore persiste a JANELA de rate limit (E-170): sem ele, um reinício ZERA a cota.
+	rateLimitStore *OmnichannelRateLimitStore
+	// loadedRateOrgs marca quais organizações já tiveram a janela carregada do disco.
+	loadedRateOrgs map[string]bool
+	// rateLimitLoadError e rateLimitSaveError são SEPARADOS de propósito: uma gravação bem-sucedida não pode
+	// apagar o registro de que a LEITURA falhou (foi o que o teste do arquivo corrompido mostrou).
+	rateLimitLoadError string
+	rateLimitSaveError string
 }
 
 // NewOmnichannelRuntime cria o runtime ligado à caixa de entrada existente.
 func NewOmnichannelRuntime(inbox *InboxStore) *OmnichannelRuntime {
 	return &OmnichannelRuntime{
-		connectors:  map[string]OmnichannelConnector{},
-		eventsByKey: map[string]OmnichannelEvent{},
-		buckets:     map[string]omnichannelBucket{},
-		rateLimit:   OmnichannelDefaultRateLimit,
-		loadedOrgs:  map[string]bool{},
-		inbox:       inbox,
-		now:         func() time.Time { return time.Now().UTC() },
+		connectors:     map[string]OmnichannelConnector{},
+		eventsByKey:    map[string]OmnichannelEvent{},
+		buckets:        map[string]omnichannelBucket{},
+		rateLimit:      OmnichannelDefaultRateLimit,
+		loadedOrgs:     map[string]bool{},
+		loadedRateOrgs: map[string]bool{},
+		inbox:          inbox,
+		now:            func() time.Time { return time.Now().UTC() },
 	}
 }
 
@@ -295,18 +304,115 @@ func (r *OmnichannelRuntime) SignWebhook(connectorID string, timestamp int64, bo
 
 // rateLimitedLocked aplica o limitador por organização e canal.
 func (r *OmnichannelRuntime) rateLimitedLocked(organizationID, channel string, now time.Time) bool {
+	r.restoreRateLimitLocked(organizationID, now)
 	key := organizationID + "|" + channel
 	bucket, ok := r.buckets[key]
 	if !ok || now.Sub(bucket.windowStart) >= OmnichannelRateWindow {
 		r.buckets[key] = omnichannelBucket{windowStart: now, count: 1}
+		r.persistRateLimitLocked(organizationID)
 		return false
 	}
 	if bucket.count >= r.rateLimit {
+		// A recusa TAMBÉM é persistida: senão a contagem não sobrevive e a janela reinicia sozinha.
+		r.persistRateLimitLocked(organizationID)
 		return true
 	}
 	bucket.count++
 	r.buckets[key] = bucket
+	r.persistRateLimitLocked(organizationID)
 	return false
+}
+
+// SetRateLimitStore liga a persistência da janela. Sem store, a janela continua em memória e o estado DIZ isso
+// (`RateLimitPersisted()`), em vez de fingir durabilidade — mesmo padrão do DLQ.
+func (r *OmnichannelRuntime) SetRateLimitStore(store *OmnichannelRateLimitStore) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.rateLimitStore = store
+	// Organizações já carregadas precisam ser relidas do store novo.
+	r.loadedRateOrgs = map[string]bool{}
+}
+
+// RateLimitPersisted diz se a janela está sendo persistida.
+func (r *OmnichannelRuntime) RateLimitPersisted() bool {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return r.rateLimitStore != nil && r.rateLimitStore.Root() != ""
+}
+
+// RateLimitRoot devolve a raiz onde a janela é persistida (vazio = sem persistência).
+func (r *OmnichannelRuntime) RateLimitRoot() string {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.rateLimitStore == nil {
+		return ""
+	}
+	return r.rateLimitStore.Root()
+}
+
+// LastRateLimitError devolve a última falha de persistência da janela (vazio quando não houve).
+//
+// Leitura e gravação são relatadas SEPARADAMENTE na origem e combinadas aqui: uma gravação que funciona não
+// apaga a notícia de que a janela anterior não pôde ser lida.
+func (r *OmnichannelRuntime) LastRateLimitError() string {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	switch {
+	case r.rateLimitLoadError != "" && r.rateLimitSaveError != "":
+		return r.rateLimitLoadError + "; " + r.rateLimitSaveError
+	default:
+		return r.rateLimitLoadError + r.rateLimitSaveError
+	}
+}
+
+// restoreRateLimitLocked carrega a janela da organização UMA vez, descartando janelas já vencidas.
+func (r *OmnichannelRuntime) restoreRateLimitLocked(organizationID string, now time.Time) {
+	if r.rateLimitStore == nil || r.rateLimitStore.Root() == "" {
+		return
+	}
+	if r.loadedRateOrgs == nil {
+		r.loadedRateOrgs = map[string]bool{}
+	}
+	if r.loadedRateOrgs[organizationID] {
+		return
+	}
+	r.loadedRateOrgs[organizationID] = true
+	janelas, err := r.rateLimitStore.Load(organizationID)
+	if err != nil {
+		// Uma janela que não pôde ser lida é uma proteção que NÃO existe: isso vai para o estado.
+		r.rateLimitLoadError = "carregar janela de rate limit: " + err.Error()
+		return
+	}
+	r.rateLimitLoadError = ""
+	for canal, janela := range janelas {
+		if !janelaDeRateValida(janela.WindowStart, now) {
+			continue
+		}
+		r.buckets[organizationID+"|"+canal] = omnichannelBucket{windowStart: janela.WindowStart, count: janela.Count}
+	}
+}
+
+// persistRateLimitLocked grava a janela da organização. A falha é REGISTRADA, não engolida.
+func (r *OmnichannelRuntime) persistRateLimitLocked(organizationID string) {
+	if r.rateLimitStore == nil || r.rateLimitStore.Root() == "" {
+		return
+	}
+	janelas := map[string]omnichannelRateLimitBucket{}
+	prefixo := organizationID + "|"
+	for chave, bucket := range r.buckets {
+		if !strings.HasPrefix(chave, prefixo) {
+			continue
+		}
+		janelas[strings.TrimPrefix(chave, prefixo)] = omnichannelRateLimitBucket{
+			WindowStart: bucket.windowStart,
+			Count:       bucket.count,
+		}
+	}
+	if err := r.rateLimitStore.Save(organizationID, janelas); err != nil {
+		r.rateLimitSaveError = "persistir janela de rate limit: " + err.Error()
+		return
+	}
+	r.rateLimitSaveError = ""
 }
 
 // Ingest é a ÚNICA porta de entrada de eventos externos. A ordem é deliberada:
