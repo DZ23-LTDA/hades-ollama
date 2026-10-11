@@ -88,6 +88,9 @@
 | Workflow: versão do fluxo executada | `Schedule.FlowVersion`, `ScheduleRunReport.FlowVersion`, `scheduleStepsEqual` (PR #151) | IMPLEMENTADO_E_TESTADO | BAIXO | E-081 | versão sobe só com mudança de grafo e o relatório guarda o que rodou |
 | Workflow: homologação com falha simulada, retry e reinício | `internal/agent/schedule_homologation_test.go` (PR #151) | IMPLEMENTADO_E_TESTADO | MÉDIO | E-081 | critério do estágio provado no caminho real, com store em disco e reinício de worker sem duplicata |
 
+| Workflow: variáveis e transformações | `internal/agent/schedule_flow.go` (`action.transform`, `expandScheduleTemplate`, `setScheduleVariable`) (PR #153) | IMPLEMENTADO_E_TESTADO | MÉDIO | E-082 | template puro com limites e variável desconhecida como erro; alimenta o objetivo da missão |
+| Workflow: laço limitado | `logic.loop`, `maxScheduleLoopItems`, `maxScheduleMissionsPerRun`, `ScheduleStepOutcome.Children` (PR #153) | IMPLEMENTADO_E_TESTADO | MÉDIO | E-082 | uma missão por item com evidência por iteração e idempotência; teto conferido antes de criar |
+
 ## 6. Integrações, MCP e conectores
 
 | Capacidade | Superfície | Classificação | Risco | Evidência | Lacuna |
