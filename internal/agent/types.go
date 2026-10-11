@@ -219,6 +219,12 @@ type Memory struct {
 	// `EncryptedContent` existe SÓ no disco: com chave configurada, `Content` sai
 	// vazio do arquivo e o cifrado fica aqui. Em memória ele nunca é usado.
 	EncryptedContent string `json:"encrypted_content,omitempty"`
+	// Escopos (estágio 15): vazio significa "vale para o projeto". Preenchido
+	// restringe a DIVULGAÇÃO àquela missão/agente/equipe; a PROPRIEDADE continua
+	// sendo do ator, que segue podendo corrigir e apagar.
+	MissionID string `json:"mission_id,omitempty"`
+	AgentID   string `json:"agent_id,omitempty"`
+	TeamID    string `json:"team_id,omitempty"`
 }
 
 type SkillManifest struct {

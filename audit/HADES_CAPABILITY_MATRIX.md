@@ -115,6 +115,8 @@
 
 | Memória: criptografia em repouso | `memory_encryption.go`, `writeMemoriesFile`, `MemoryEncryption()` (E-094) | IMPLEMENTADO_E_TESTADO | MÉDIO | E-094 | AES-256-GCM do primitivo existente, opt-in, fail-closed sem chave; funil único de escrita; histórico também cifrado |
 
+| Memória: escopos de missão, agente e equipe | `memory_scope.go`, `MemoryScope`, leitores `InScope` (E-095) | IMPLEMENTADO_E_TESTADO | BAIXO | E-095 | propriedade (ator) separada de divulgação (propriedade + escopo); escopo vazio = projeto; regra antiga removida |
+
 ## 6. Integrações, MCP e conectores
 
 | Capacidade | Superfície | Classificação | Risco | Evidência | Lacuna |

@@ -37,6 +37,12 @@ type MemoryExport struct {
 // decide se os vetores saem no resultado — exportar vetor por padrão incharia o
 // arquivo sem servir ao usuário.
 func (s *ContextStore) ExportMemoriesForActor(projectID, actorID string, includeEmbeddings bool) (MemoryExport, error) {
+	return s.ExportMemoriesInScope(projectID, MemoryScope{ActorID: actorID}, includeEmbeddings)
+}
+
+// ExportMemoriesInScope exporta o que o escopo pode DIVULGAR. O escopo vazio continua
+// valendo para o projeto inteiro, preservando o comportamento anterior.
+func (s *ContextStore) ExportMemoriesInScope(projectID string, scope MemoryScope, includeEmbeddings bool) (MemoryExport, error) {
 	projectID = strings.TrimSpace(projectID)
 	if projectID == "" {
 		return MemoryExport{}, errors.New("memory export requires a project")
@@ -44,7 +50,7 @@ func (s *ContextStore) ExportMemoriesForActor(projectID, actorID string, include
 	s.mu.RLock()
 	stored := append([]Memory(nil), s.memories[projectID]...)
 	s.mu.RUnlock()
-	visible := filterMemoriesForActor(stored, actorID)
+	visible := filterMemoriesInScope(stored, scope)
 	if !includeEmbeddings {
 		// Cópia sem vetores: o export não deve devolver o embedding por acidente.
 		stripped := make([]Memory, 0, len(visible))
@@ -56,7 +62,7 @@ func (s *ContextStore) ExportMemoriesForActor(projectID, actorID string, include
 	}
 	return MemoryExport{
 		ProjectID:   projectID,
-		ActorID:     strings.TrimSpace(actorID),
+		ActorID:     strings.TrimSpace(scope.ActorID),
 		GeneratedAt: time.Now().UTC(),
 		Count:       len(visible),
 		Memories:    visible,
