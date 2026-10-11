@@ -454,6 +454,8 @@ func (s *ServiceAgentApprovalStore) ListApprovals(organizationID, status string,
 
 // Erros dedicados das aprovações.
 var (
+	// ErrServiceAgentToolScope: o pedido não identifica (ou identifica algo fora) o escopo da sessão.
+	ErrServiceAgentToolScope        = errors.New("service agent tool scope is invalid")
 	ErrServiceAgentApprovalInvalid  = errors.New("service agent approval request is invalid")
 	ErrServiceAgentApprovalNotFound = errors.New("service agent approval not found")
 	ErrServiceAgentApprovalConflict = errors.New("service agent approval state conflict")
@@ -478,6 +480,10 @@ func serviceAgentApprovalFingerprint(request ServiceAgentToolRequest, toolName s
 		fmt.Sprintf("value=%d", request.ValueCents),
 		"owner=" + strings.TrimSpace(request.OwnerID),
 		"assignee=" + strings.TrimSpace(request.Assignee),
+		"company=" + strings.TrimSpace(request.CompanyID),
+		"session=" + strings.TrimSpace(request.SessionID),
+		"provider=" + strings.TrimSpace(request.Provider),
+		"body=" + strings.TrimSpace(request.Body),
 	}
 	soma := sha256.Sum256([]byte(strings.Join(partes, "\x1f")))
 	return hex.EncodeToString(soma[:])

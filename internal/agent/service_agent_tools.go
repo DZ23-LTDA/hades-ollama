@@ -61,7 +61,15 @@ type ServiceAgentToolRequest struct {
 	OwnerID    string
 	Assignee   string
 	Reason     string
-	Now        time.Time
+	// CompanyID/SessionID/Provider/Body alimentam as ferramentas de empresa, social e voz.
+	//
+	// CompanyID e SessionID são EXPLÍCITOS porque a autorização também é: uma aprovação para uma sessão de voz
+	// não pode valer para outra, e a impressão digital inclui os dois.
+	CompanyID string
+	SessionID string
+	Provider  string
+	Body      string
+	Now       time.Time
 }
 
 // ServiceAgentToolCall é o REGISTRO de uma chamada no turno: o que foi tentado, o que aconteceu e por quê.
@@ -366,12 +374,40 @@ func serviceAgentCommerceTools(commerce *CommerceStore) map[string]ServiceAgentT
 	return tools
 }
 
-// serviceAgentCompanyTools são as ferramentas de empresa — também condicionadas ao store ligado.
+// serviceAgentCompanyTools são as ferramentas de empresa, sociais e de voz — condicionadas ao store ligado.
+//
+// As três usam o MESMO `CompanyStore` já ligado ao runtime (estágios 26 e 28): não há módulo novo, há ligação.
+// `knowledge.search` NÃO entra aqui: não existe mapeamento organização→projeto no runtime, e inventar um
+// escopo para a busca seria pior que declarar a ferramenta indisponível.
 func serviceAgentCompanyTools(companies *CompanyStore) map[string]ServiceAgentTool {
 	tools := map[string]ServiceAgentTool{}
 	if companies == nil {
 		return tools
 	}
+	resolveEmpresa := func(request ServiceAgentToolRequest) (Company, error) {
+		if id := strings.TrimSpace(request.CompanyID); id != "" {
+			company, err := companies.Get(id)
+			if err != nil {
+				return Company{}, err
+			}
+			// Escopo: a empresa pedida precisa ser DA organização da sessão.
+			if consentScope(company.OrganizationID) != consentScope(request.OrganizationID) {
+				return Company{}, fmt.Errorf("%w: empresa de outra organização", ErrServiceAgentToolScope)
+			}
+			return company, nil
+		}
+		list := companies.List(request.OrganizationID)
+		switch len(list) {
+		case 1:
+			return list[0], nil
+		case 0:
+			return Company{}, fmt.Errorf("%w: a organização não tem empresa cadastrada", ErrServiceAgentToolScope)
+		default:
+			// Mais de uma empresa: escolher por conta própria seria decidir pelo humano. O pedido precisa dizer qual.
+			return Company{}, fmt.Errorf("%w: há %d empresas; informe company_id", ErrServiceAgentToolScope, len(list))
+		}
+	}
+
 	tools["company.report.read"] = serviceAgentToolFunc{
 		name:   "company.report.read",
 		effect: ServiceAgentEffectRead,
@@ -388,6 +424,51 @@ func serviceAgentCompanyTools(companies *CompanyStore) map[string]ServiceAgentTo
 				names = append(names, fmt.Sprintf("%s (%s)", company.Name, company.Currency))
 			}
 			return fmt.Sprintf("%d empresa(s): %s", len(list), strings.Join(names, "; ")), nil
+		},
+	}
+
+	tools["social.draft"] = serviceAgentToolFunc{
+		name:   "social.draft",
+		effect: ServiceAgentEffectWrite,
+		run: func(request ServiceAgentToolRequest) (string, error) {
+			company, err := resolveEmpresa(request)
+			if err != nil {
+				return "", err
+			}
+			_, err = companies.CreateSocialDraft(company.ID, CompanySocialDraft{
+				Provider: request.Provider,
+				Title:    request.Title,
+				Body:     request.Body,
+				// Modo sandbox: publicar em rede social exige conta autorizada e fluxo live, que não existem aqui.
+				Mode: "sandbox",
+			})
+			if err != nil {
+				return "", err
+			}
+			// O rascunho NASCE exigindo aprovação da própria empresa (queueCompanyApproval) e não é publicado.
+			return fmt.Sprintf("rascunho social criado para %s (provider %s), aguardando aprovação da empresa e sem publicação",
+				company.Name, strings.ToLower(strings.TrimSpace(request.Provider))), nil
+		},
+	}
+
+	tools["voice.transfer"] = serviceAgentToolFunc{
+		name:   "voice.transfer",
+		effect: ServiceAgentEffectWrite,
+		run: func(request ServiceAgentToolRequest) (string, error) {
+			sessionID := strings.TrimSpace(request.SessionID)
+			if sessionID == "" {
+				return "", fmt.Errorf("voice.transfer exige session_id da sessão de voz")
+			}
+			company, err := resolveEmpresa(request)
+			if err != nil {
+				return "", err
+			}
+			_, session, err := companies.RequestTelAgentHandoff(company.ID, request.OrganizationID, sessionID)
+			if err != nil {
+				return "", err
+			}
+			return fmt.Sprintf("transferência humana pedida na sessão %s (estado %s, dono humano %q)",
+				session.ID, session.State, session.HumanOwner), nil
 		},
 	}
 	return tools
