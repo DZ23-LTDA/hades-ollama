@@ -448,21 +448,37 @@ func (s *ContextStore) RetrieveRelevant(ctx context.Context, projectID, query st
 
 func (s *ContextStore) SearchMemoriesContext(ctx context.Context, projectID, query string, limit int) ([]Memory, error) {
 	query = strings.ToLower(strings.TrimSpace(query))
+	s.mu.RLock()
+	embedder := s.embedder
+	s.mu.RUnlock()
+	var queryVector []float32
+	if embedder != nil && query != "" {
+		vetor, err := embedder.Embed(ctx, query)
+		if err != nil {
+			// O erro sobe com a classe: quem chama decide entre falhar (configuração inválida) e cair na
+			// reserva literal DECLARADA (transporte indisponível).
+			return nil, fmt.Errorf("embed query: %w", err)
+		}
+		queryVector = vetor
+	}
+	return s.scoreMemories(projectID, query, limit, queryVector), nil
+}
+
+func (s *ContextStore) SearchMemoriesLexical(projectID, query string, limit int) []Memory {
+	return s.scoreMemories(projectID, strings.ToLower(strings.TrimSpace(query)), limit, nil)
+}
+
+// scoreMemories pontua as memórias do projeto e devolve as melhores.
+//
+// Com vetor de consulta, a pontuação é similaridade de cosseno; sem ele, correspondência literal em conteúdo
+// ou tipo. É a MESMA pontuação usada pela busca normal — duas implementações divergiriam com o tempo.
+func (s *ContextStore) scoreMemories(projectID, query string, limit int, queryVector []float32) []Memory {
 	if limit <= 0 || limit > 100 {
 		limit = 20
 	}
 	s.mu.RLock()
-	embedder := s.embedder
 	memories := append([]Memory(nil), s.memories[projectID]...)
 	s.mu.RUnlock()
-	var queryVector []float32
-	var err error
-	if embedder != nil && query != "" {
-		queryVector, err = embedder.Embed(ctx, query)
-		if err != nil {
-			return nil, fmt.Errorf("embed query: %w", err)
-		}
-	}
 	type scoredMemory struct {
 		memory Memory
 		score  float64
@@ -492,7 +508,7 @@ func (s *ContextStore) SearchMemoriesContext(ctx context.Context, projectID, que
 	if len(matches) > limit {
 		matches = matches[:limit]
 	}
-	return matches, nil
+	return matches
 }
 
 func cosineSimilarity(a, b []float32) float64 {
