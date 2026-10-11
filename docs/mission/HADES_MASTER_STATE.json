@@ -2,12 +2,12 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-11T13:20:00-03:00",
+  "updated_at": "2026-10-11T14:30:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
     "integration_branch": "main",
-    "main_sha": "56116feb449831ab40440a01c20f1213d4ede006",
+    "main_sha": "ab3e70e17a80bfcc771686ec993f719c8438d942",
     "main_committed_at": "2026-10-09T10:24:45Z",
     "main_ci_state": "green (dz23-agentic-quality + class-a-plus-integrity = success nesse SHA)",
     "mission_branch": "docs/checkpoints-missao-v21",
@@ -463,17 +463,20 @@
     {
       "id": 15,
       "title": "Memoria e RAG local",
-      "state": "BLOCKED_BY_EXTERNAL_DEPENDENCY",
+      "state": "IN_PROGRESS",
       "auditoria": "AUDITADO",
       "capability": "IMPLEMENTADO_NAO_HOMOLOGADO",
       "evidence": [
         "E-040",
         "E-052",
         "E-056",
-        "E-057"
+        "E-057",
+        "E-087"
       ],
       "blocker": "B-07",
-      "next": "Ligacao da retencao a um agendador real quando existir executor persistente e prova de isolamento com usuario AUTENTICADO (token real) em vez de cabecalho local; escopos de organizacao, projeto e usuario, exportacao/exclusao, proveniencia e politica de retencao ja estao entregues (PRs #77, #81 e #82)"
+      "next": "completar o criterio do estagio com teste local: troca de modelo preservando contexto, reinicio e retomada alem do isolamento entre organizacoes que ja tem teste",
+      "blocked_reason": "",
+      "done": "classificacao corrigida pela auditoria de bloqueios: o bloqueio externo em bloco escondia trabalho implementavel. Evidencia medida registrada em docs/mission/HADES_BLOCKED_AUDIT.md"
     },
     {
       "id": 16,
@@ -581,122 +584,161 @@
     {
       "id": 23,
       "title": "Company Factory (empresa orquestrada)",
-      "state": "BLOCKED_BY_EXTERNAL_DEPENDENCY",
+      "state": "IN_PROGRESS",
       "auditoria": "AUDITADO",
       "capability": "PARCIAL",
       "evidence": [
-        "E-044"
+        "E-044",
+        "E-087"
       ],
       "blocker": "B-07",
-      "next": "Homologar a criacao de empresa com dados reais de operacao e documentos; hoje o nucleo e testado mas nao operado ponta a ponta"
+      "next": "completar a jornada de empresa em sandbox com artefatos e evidencias por etapa",
+      "blocked_reason": "",
+      "external_dependency": "registro legal real (CNPJ, contratos) exige dados e autoridade do usuario; a operacao em sandbox e local",
+      "done": "classificacao corrigida pela auditoria de bloqueios: o bloqueio externo em bloco escondia trabalho implementavel. Evidencia medida registrada em docs/mission/HADES_BLOCKED_AUDIT.md"
     },
     {
       "id": 24,
       "title": "CRM e pipeline de vendas",
-      "state": "BLOCKED_BY_EXTERNAL_DEPENDENCY",
+      "state": "NOT_STARTED",
       "auditoria": "AUDITADO",
       "capability": "AUSENTE",
       "evidence": [
-        "E-047"
+        "E-047",
+        "E-087"
       ],
       "blocker": "B-05",
-      "next": "Implementar o motor de CRM (contatos/leads/oportunidades); hoje ha apenas entrada de catalogo de conector"
+      "next": "implementar comercio em sandbox: produto, variacao, estoque, carrinho, pedido, idempotencia e conciliacao, sem processar cartao",
+      "blocked_reason": "",
+      "external_dependency": "meios de pagamento reais exigem conta e conformidade; o fluxo de comercio em sandbox e implementavel localmente",
+      "done": "classificacao corrigida pela auditoria de bloqueios: o bloqueio externo em bloco escondia trabalho implementavel. Evidencia medida registrada em docs/mission/HADES_BLOCKED_AUDIT.md"
     },
     {
       "id": 25,
       "title": "Commerce / loja e pedidos",
-      "state": "BLOCKED_BY_EXTERNAL_DEPENDENCY",
+      "state": "NOT_STARTED",
       "auditoria": "AUDITADO",
       "capability": "AUSENTE",
       "evidence": [
-        "E-047"
+        "E-047",
+        "E-087"
       ],
       "blocker": "B-05",
-      "next": "Implementar o Commerce Engine (catalogo, estoque, checkout, pedidos); hoje existem pedidos apenas como recurso interno do Company OS"
+      "next": "implementar contrato de sincronizacao com sandbox/duble oficial e marcar a homologacao live como BLOCKED_BY_EXTERNAL_DEPENDENCY por fornecedor",
+      "blocked_reason": "",
+      "external_dependency": "conta de vendedor e credenciais oficiais de Mercado Livre/Amazon/Shopee",
+      "done": "classificacao corrigida pela auditoria de bloqueios: o bloqueio externo em bloco escondia trabalho implementavel. Evidencia medida registrada em docs/mission/HADES_BLOCKED_AUDIT.md"
     },
     {
       "id": 26,
       "title": "Marketplace multi-vendedor",
-      "state": "BLOCKED_BY_EXTERNAL_DEPENDENCY",
+      "state": "IN_PROGRESS",
       "auditoria": "AUDITADO",
-      "capability": "AUSENTE",
+      "capability": "APENAS_ADAPTER",
       "evidence": [
-        "E-047"
+        "E-047",
+        "E-087"
       ],
       "blocker": "B-05",
-      "next": "Implementar conectores oficiais de marketplace sob API oficial e rate limit"
+      "next": "completar aprovacao/agendamento/metricas em sandbox sobre o rascunho que ja existe, sem publicar",
+      "blocked_reason": "",
+      "external_dependency": "contas e APIs oficiais das redes sociais para publicar de verdade",
+      "done": "classificacao corrigida pela auditoria de bloqueios: o bloqueio externo em bloco escondia trabalho implementavel. Evidencia medida registrada em docs/mission/HADES_BLOCKED_AUDIT.md"
     },
     {
       "id": 27,
       "title": "Pagamentos e faturamento",
-      "state": "BLOCKED_BY_EXTERNAL_DEPENDENCY",
+      "state": "NOT_STARTED",
       "auditoria": "AUDITADO",
       "capability": "AUSENTE",
       "evidence": [
-        "E-047"
+        "E-047",
+        "E-087"
       ],
       "blocker": "B-05",
-      "next": "Implementar pagamentos/faturamento com idempotencia e conciliacao; nada de cartao sem conformidade"
+      "next": "implementar CRM e agentes comerciais em sandbox com consentimento, opt-out e historico",
+      "blocked_reason": "",
+      "external_dependency": "canais reais exigem contas; o CRM e a continuidade em sandbox sao locais",
+      "done": "classificacao corrigida pela auditoria de bloqueios: o bloqueio externo em bloco escondia trabalho implementavel. Evidencia medida registrada em docs/mission/HADES_BLOCKED_AUDIT.md"
     },
     {
       "id": 28,
       "title": "Atendimento e suporte (helpdesk)",
-      "state": "BLOCKED_BY_EXTERNAL_DEPENDENCY",
+      "state": "IN_PROGRESS",
       "auditoria": "AUDITADO",
-      "capability": "AUSENTE",
+      "capability": "IMPLEMENTADO_NAO_HOMOLOGADO",
       "evidence": [
-        "E-047"
+        "E-047",
+        "E-087"
       ],
       "blocker": "B-03",
-      "next": "Implementar atendimento/suporte sobre o Omnichannel Runtime compartilhado"
+      "next": "completar STT/TTS e latencia em sandbox e testar com provedor real quando houver credencial",
+      "blocked_reason": "",
+      "external_dependency": "provedor de telefonia e numero real para chamada ao vivo",
+      "done": "classificacao corrigida pela auditoria de bloqueios: o bloqueio externo em bloco escondia trabalho implementavel. Evidencia medida registrada em docs/mission/HADES_BLOCKED_AUDIT.md"
     },
     {
       "id": 29,
       "title": "Telefonia e call center",
-      "state": "BLOCKED_BY_EXTERNAL_DEPENDENCY",
+      "state": "NOT_STARTED",
       "auditoria": "AUDITADO",
       "capability": "AUSENTE",
       "evidence": [
-        "E-047"
+        "E-047",
+        "E-087"
       ],
       "blocker": "B-04",
-      "next": "Implementar telefonia/voz com provedor real; sem provedor, manter bloqueio externo"
+      "next": "implementar inbox unificada com filas, SLA, tickets e isolamento por organizacao em sandbox",
+      "blocked_reason": "",
+      "external_dependency": "canais reais exigem contas; a inbox unificada em sandbox e local",
+      "done": "classificacao corrigida pela auditoria de bloqueios: o bloqueio externo em bloco escondia trabalho implementavel. Evidencia medida registrada em docs/mission/HADES_BLOCKED_AUDIT.md"
     },
     {
       "id": 30,
       "title": "Marketing e campanhas",
-      "state": "BLOCKED_BY_EXTERNAL_DEPENDENCY",
+      "state": "NOT_STARTED",
       "auditoria": "AUDITADO_PARCIAL",
-      "capability": "PARCIAL",
+      "capability": "AUSENTE",
       "evidence": [
-        "E-044"
+        "E-044",
+        "E-087"
       ],
       "blocker": "B-05",
-      "next": "Homologar campanhas com conta real e aprovacao humana; hoje existe o fluxo de campanha dentro do Company OS"
+      "next": "implementar contas a pagar/receber, conciliacao e autorizacao em sandbox",
+      "blocked_reason": "",
+      "external_dependency": "integracao fiscal autorizada exige certificado/credencial; o razao financeiro em sandbox e local",
+      "done": "classificacao corrigida pela auditoria de bloqueios: o bloqueio externo em bloco escondia trabalho implementavel. Evidencia medida registrada em docs/mission/HADES_BLOCKED_AUDIT.md"
     },
     {
       "id": 31,
       "title": "Social e publicacao",
-      "state": "BLOCKED_BY_EXTERNAL_DEPENDENCY",
+      "state": "IN_PROGRESS",
       "auditoria": "AUDITADO",
       "capability": "IMPLEMENTADO_NAO_HOMOLOGADO",
       "evidence": [
-        "E-044"
+        "E-044",
+        "E-087"
       ],
       "blocker": "B-05",
-      "next": "Provar supervisao com limites, orcamento e recuperacao apos incidente"
+      "next": "completar limites, orcamento, incidentes e recuperacao com evidencia de supervisao em sandbox",
+      "blocked_reason": "",
+      "done": "classificacao corrigida pela auditoria de bloqueios: o bloqueio externo em bloco escondia trabalho implementavel. Evidencia medida registrada em docs/mission/HADES_BLOCKED_AUDIT.md"
     },
     {
       "id": 32,
       "title": "BI / business status e metricas",
-      "state": "BLOCKED_BY_EXTERNAL_DEPENDENCY",
+      "state": "NOT_STARTED",
       "auditoria": "AUDITADO_PARCIAL",
-      "capability": "PARCIAL",
+      "capability": "AUSENTE",
       "evidence": [
-        "E-044"
+        "E-044",
+        "E-087"
       ],
       "blocker": "B-07",
-      "next": "Produzir business status com dados reais de operacao (hoje derivados do Company OS)"
+      "next": "executar a jornada completa em sandbox quando os estagios 23-31 tiverem os fluxos de sandbox prontos",
+      "blocked_reason": "",
+      "external_dependency": "parte do E2E depende de integracoes ao vivo; o nucleo em sandbox e local",
+      "done": "classificacao corrigida pela auditoria de bloqueios: o bloqueio externo em bloco escondia trabalho implementavel. Evidencia medida registrada em docs/mission/HADES_BLOCKED_AUDIT.md"
     },
     {
       "id": 33,
@@ -762,15 +804,19 @@
     {
       "id": 38,
       "title": "Gate final de release verificado",
-      "state": "BLOCKED_BY_EXTERNAL_DEPENDENCY",
+      "state": "NOT_STARTED",
       "auditoria": "PENDENTE",
       "capability": "AUSENTE",
       "evidence": [
         "E-033",
-        "E-048"
+        "E-048",
+        "E-087"
       ],
       "blocker": "B-06",
-      "next": "Somente apos 1-37 com evidencias validas; hoje NOT_RELEASE_READY"
+      "next": "rodar a homologacao de empresa autonoma em sandbox com provas de isolamento e recuperacao",
+      "blocked_reason": "",
+      "external_dependency": "idem 32: integracoes ao vivo; a jornada em sandbox e local",
+      "done": "classificacao corrigida pela auditoria de bloqueios: o bloqueio externo em bloco escondia trabalho implementavel. Evidencia medida registrada em docs/mission/HADES_BLOCKED_AUDIT.md"
     }
   ],
   "blockers": [
@@ -934,12 +980,34 @@
     "VERIFICACAO DO ESTAGIO 13 (PR desta rodada, E-085): releitura da lista de atividades contra o codigo, atividade por atividade, em docs/mission/HADES_STAGE_13_VERIFICATION.md. A verificacao REFUTOU a suposicao de que 'branches' ja funcionava e encontrou DOIS defeitos reais: (1) condition.if com Expect=failed era barrado por scheduleDependenciesSatisfied, que exigia sucesso do dependente antes de avaliar a condicao, tornando o ramo alternativo INALCANCAVEL - if/else existia so no nome; corrigido com scheduleStepDependenciesReady. (2) Depois da primeira correcao, aprovacao PENDENTE passou a satisfazer o ramo alternativo, disparando o caminho de recusa ANTES de qualquer decisao humana; corrigido com o conjunto pendingSteps, porque 'nao teve sucesso' e 'aguarda decisao' sao estados distintos. Ambos encontrados por TESTE QUE MEDE O EFEITO, travados em schedule_branch_test.go",
     "PROMOCAO DO ESTAGIO 13 (E-085): criterio de conclusao CUMPRIDO (E-081) e lista de atividades COBERTA com as correcoes desta rodada, entao a execucao vai para COMPLETED_VERIFIED e a capacidade do Workflow Automation Engine para IMPLEMENTADO_E_TESTADO. LIMITES DECLARADOS, que NAO sao cobertura: conector homologado contra servidor HTTPS controlado (credenciais de SaaS de terceiros seguem BLOCKED_BY_EXTERNAL_DEPENDENCY e pertencem aos estagios 25/33/36); falha de passo com efeito ABORTA o fluxo em vez de desviar para o ramo alternativo (o ramo cobre 'concluiu sem sucesso', nao falha de execucao); e a execucao do fluxo e por tick do supervisor, com a fila de jobs cobrindo as missoes criadas pelos nos. RELEASE GLOBAL PERMANECE NOT_RELEASE_READY - este e um dos 38 estagios",
     "ESTAGIO 14 - DIAGNOSTICO E CORRECAO (E-086): o teste de navegador estava em B-09 como falha ambiental e a causa NAO era a esperada. O operador escolhia o interpretador Python por EXISTENCIA no PATH (python3 -> python); no Windows esses nomes respondem pelo ATALHO DA MICROSOFT STORE, que existe e falha ao executar (exit 9009). Efeitos: o operador adotava o atalho, o status reportava PythonOK=true para algo que nao roda nada, a orientacao era ERRADA ('instale o Playwright') e o E2E falhava com erro criptico. Correcao: resolvePythonInterpreter VALIDA cada candidato EXECUTANDO (probe import sys) e e COMPARTILHADA entre status e operador, para nao divergirem. Medido na maquina real: python_path passa a ser C:\\Program Files\\Python312\\python.exe (o Python 3.12.10 real) e o E2E de navegador sai de FAIL para SKIP com causa legivel ('No module named playwright'). 3 testes novos + 1 teste existente corrigido (ele codificava o contrato defeituoso 'existe no PATH => Python OK', com probe que falhava sempre)",
-    "ESTAGIO 14 - STATUS POR PLATAFORMA (docs/mission/HADES_STAGE_14_PLATFORM_STATUS.md): Windows neste host = BLOQUEADO_EXTERNAMENTE para o E2E de navegador (Python OK, Playwright/Chromium ausentes) e NAO_VERIFICADO para desktop/computer-use; Linux e macOS NAO_VERIFICADOS, sem nenhuma medicao - nada declarado homologado por compilacao cruzada. Ja coberto sem navegador: ambiente filho SEM segredos, recusa de escopo sem sandbox estrita, eventos de frame, logica de setup e resolucao de interpretador. Desbloqueio exato: 'python -m pip install playwright' e 'python -m playwright install chromium' (~150MB), que o produto expoe em SetupBrowserEnvironment e que este trabalho NAO executou por ser mudanca de maquina com custo relevante"
+    "ESTAGIO 14 - STATUS POR PLATAFORMA (docs/mission/HADES_STAGE_14_PLATFORM_STATUS.md): Windows neste host = BLOQUEADO_EXTERNAMENTE para o E2E de navegador (Python OK, Playwright/Chromium ausentes) e NAO_VERIFICADO para desktop/computer-use; Linux e macOS NAO_VERIFICADOS, sem nenhuma medicao - nada declarado homologado por compilacao cruzada. Ja coberto sem navegador: ambiente filho SEM segredos, recusa de escopo sem sandbox estrita, eventos de frame, logica de setup e resolucao de interpretador. Desbloqueio exato: 'python -m pip install playwright' e 'python -m playwright install chromium' (~150MB), que o produto expoe em SetupBrowserEnvironment e que este trabalho NAO executou por ser mudanca de maquina com custo relevante",
+    "AUDITORIA DE BLOQUEIOS (E-087): a rodada anterior mediu 13 estagios com BLOCKED_BY_EXTERNAL_DEPENDENCY e 12 SEM blocked_reason. A auditoria (docs/mission/HADES_BLOCKED_AUDIT.md) mediu por CONTEUDO e mostrou que o carimbo em bloco CONFUNDIA duas coisas: estagio nao implementado (NOT_STARTED/AUSENTE) e homologacao ao vivo que exige conta/credencial. Uma primeira medicao por NOME de arquivo concluiu 'AUSENTE' errado para 26 e 28 - company_social.go e tel_agent.go existem com 228 e 412 linhas mais testes. Os 12 estagios foram reclassificados por evidencia: 15, 23, 26, 28 e 31 para IN_PROGRESS (memoria 308 linhas, empresa 1.760 linhas e 7 arquivos de teste, tel-agent 412 linhas e 5 testes, supervisor 432 linhas e 493 de teste); 24, 25, 27, 29, 30, 32 e 38 para NOT_STARTED/AUSENTE. Cada um ganhou o campo external_dependency SEPARADO (com desbloqueio escrito) apenas onde a validacao real depende de conta/credencial, e blocked_reason vazio porque nao ha bloqueio de execucao",
+    "CONSEQUENCIA DA AUDITORIA (E-087): o carimbo escondia trabalho implementavel. Voltam a ser elegiveis sem nenhuma conta externa: 15 (memoria, criterio testavel localmente), 31 (supervisor) e as partes de sandbox de 23, 24, 26, 27, 29 e 30 (empresa, comercio, social em rascunho, CRM, inbox e financeiro). Dependencias externas reais e especificas: pagamento (24), conta de vendedor (25), APIs de redes (26), provedor de telefonia (28), canais reais (27, 29), integracao fiscal (30) e integracoes ao vivo em 32/38"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
     "metodo": "releitura da lista de atividades contra codigo e evidencias, com teste medindo o efeito",
     "defeitos_encontrados": 2,
     "documento": "docs/mission/HADES_STAGE_13_VERIFICATION.md"
+  },
+  "blocked_audit": {
+    "documento": "docs/mission/HADES_BLOCKED_AUDIT.md",
+    "estagios_auditados": 12,
+    "com_reason_vazio_antes": 12,
+    "reclassificados": [
+      "15:BLOCKED_BY_EXTERNAL_DEPENDENCY->IN_PROGRESS",
+      "23:BLOCKED_BY_EXTERNAL_DEPENDENCY->IN_PROGRESS",
+      "24:BLOCKED_BY_EXTERNAL_DEPENDENCY->NOT_STARTED",
+      "25:BLOCKED_BY_EXTERNAL_DEPENDENCY->NOT_STARTED",
+      "26:BLOCKED_BY_EXTERNAL_DEPENDENCY->IN_PROGRESS",
+      "27:BLOCKED_BY_EXTERNAL_DEPENDENCY->NOT_STARTED",
+      "28:BLOCKED_BY_EXTERNAL_DEPENDENCY->IN_PROGRESS",
+      "29:BLOCKED_BY_EXTERNAL_DEPENDENCY->NOT_STARTED",
+      "30:BLOCKED_BY_EXTERNAL_DEPENDENCY->NOT_STARTED",
+      "31:BLOCKED_BY_EXTERNAL_DEPENDENCY->IN_PROGRESS",
+      "32:BLOCKED_BY_EXTERNAL_DEPENDENCY->NOT_STARTED",
+      "38:BLOCKED_BY_EXTERNAL_DEPENDENCY->NOT_STARTED"
+    ],
+    "metodo": "medicao por conteudo (grep) e por tamanho de arquivo, nao por nome"
   }
 }
