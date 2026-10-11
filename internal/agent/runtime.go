@@ -1380,16 +1380,15 @@ func (r *Runtime) resumePending(ctx context.Context) error {
 				continue
 			}
 		}
-		// ExecuteScheduleFlow runs the persisted flow graph, or the legacy single
-		// mission when the schedule carries no steps.
-		if _, err := r.ExecuteScheduleFlow(ctx, schedule); err != nil {
-			if _, recordErr := r.recordScheduleFailure(schedule); recordErr != nil {
-				recoveryErrors = append(recoveryErrors, fmt.Errorf("record schedule %s failure: %w", schedule.ID, recordErr))
-			}
-			continue
+		// ExecuteScheduleFlowReport runs the persisted flow graph, or the legacy
+		// single mission when the schedule carries no steps, and returns the
+		// per-step outcome so a partial run is never recorded as clean success.
+		report, runErr := r.ExecuteScheduleFlowReport(ctx, schedule)
+		if _, recordErr := r.recordScheduleRun(schedule, report, runErr); recordErr != nil {
+			recoveryErrors = append(recoveryErrors, fmt.Errorf("record schedule %s run: %w", schedule.ID, recordErr))
 		}
-		if _, err := r.recordScheduleSuccess(schedule); err != nil {
-			recoveryErrors = append(recoveryErrors, fmt.Errorf("record schedule %s success: %w", schedule.ID, err))
+		if runErr != nil {
+			continue
 		}
 	}
 	missions, err := r.ListMissions()
@@ -1487,6 +1486,54 @@ func (r *Runtime) recordScheduleSuccess(schedule Schedule) (Schedule, error) {
 	schedule.FailureCount = 0
 	schedule.LastFailureCode = ""
 	return r.context.UpdateScheduleForOrganization(r.organizationScope, schedule.ID, schedule)
+}
+
+// recordScheduleRun persiste o resultado da execução de um schedule e aplica a
+// política de falha quando houve erro.
+//
+// Duas correções de visibilidade comparadas ao caminho anterior:
+//  1. SUCESSO também é persistido. Antes, `recordScheduleSuccess` saía cedo
+//     quando não havia falha acumulada, então uma execução bem-sucedida não
+//     deixava `last_run_at` nem qualquer rastro.
+//  2. O relatório POR NÓ (`LastRun`) é gravado em sucesso e em falha, e o código
+//     de falha passa a nomear o passo (`mission_creation_failed:<step>`): um
+//     fluxo com nó ignorado ou bloqueado deixa de parecer execução limpa.
+func (r *Runtime) recordScheduleRun(schedule Schedule, report ScheduleRunReport, runErr error) (Schedule, error) {
+	if r.context == nil {
+		return Schedule{}, errors.New("context store is required for schedule run")
+	}
+	scope := strings.TrimSpace(schedule.OrganizationID)
+	if scope == "" {
+		scope = r.organizationScope
+	}
+	now := time.Now().UTC()
+	schedule.LastRunAt = &now
+	stored := report
+	schedule.LastRun = &stored
+	if runErr == nil {
+		schedule.FailureCount = 0
+		schedule.LastFailureCode = ""
+		return r.context.UpdateScheduleForOrganization(scope, schedule.ID, schedule)
+	}
+	schedule.FailureCount++
+	// O código nomeia o passo somente quando existe grafo: no caminho legado
+	// (sem Steps) não há passo a nomear, e o contrato histórico do código
+	// `mission_creation_failed` é preservado.
+	if step := report.FailedStep(); step != "" && len(schedule.Steps) > 0 {
+		schedule.LastFailureCode = "mission_creation_failed:" + step
+	} else {
+		schedule.LastFailureCode = "mission_creation_failed"
+	}
+	if schedule.FailureCount >= maxScheduleFailures {
+		schedule.Enabled = false
+	} else {
+		retryDelay := time.Duration(schedule.FailureCount*5) * time.Second
+		if retryDelay > 5*time.Minute {
+			retryDelay = 5 * time.Minute
+		}
+		schedule.NextRunAt = now.Add(retryDelay)
+	}
+	return r.context.UpdateScheduleForOrganization(scope, schedule.ID, schedule)
 }
 
 func companyIDFromWorkspace(workspace string) string {

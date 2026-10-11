@@ -250,6 +250,11 @@ type Schedule struct {
 	LastRunAt       *time.Time     `json:"last_run_at,omitempty"`
 	FailureCount    int            `json:"failure_count,omitempty"`
 	LastFailureCode string         `json:"last_failure_code,omitempty"`
-	CreatedAt       time.Time      `json:"created_at"`
-	UpdatedAt       time.Time      `json:"updated_at"`
+	// LastRun é o resultado POR NÓ da última execução. Existe para que uma
+	// execução parcial (nó condicional falso, passo bloqueado) nunca apareça
+	// como sucesso limpo: o operador vê quais passos rodaram, quais foram
+	// ignorados e qual falhou.
+	LastRun   *ScheduleRunReport `json:"last_run,omitempty"`
+	CreatedAt time.Time          `json:"created_at"`
+	UpdatedAt time.Time          `json:"updated_at"`
 }
