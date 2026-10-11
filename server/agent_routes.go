@@ -839,6 +839,9 @@ func (a *agentAPI) register(r *gin.Engine) {
 	group.POST("/finance/orders/:id/reconcile", a.reconcileOrderWithStatement)
 	group.GET("/finance/report", a.financeReport)
 	group.POST("/business/certify", a.certifyBusiness)
+	group.POST("/business/tick", a.businessSupervisorTick)
+	group.GET("/business/actions", a.listBusinessActions)
+	group.POST("/business/actions/:id/decide", a.decideBusinessAction)
 	group.GET("/egress/logs", a.getEgressLogs)
 	group.GET("/egress/status", a.getEgressStatus)
 	group.GET("/plugins", a.listPlugins)
@@ -3896,6 +3899,17 @@ func statusForAgentError(err error) int {
 	}
 	if errors.Is(err, agent.ErrFinanceOrderMissing) || errors.Is(err, agent.ErrFinanceCompanyMissing) {
 		return http.StatusNotFound
+	}
+	// Supervisor de negócio (estágio 31): ação inexistente é 404, tipo não executável é
+	// 422 (a requisição é inaceitável) e orçamento estourado é 409.
+	if errors.Is(err, agent.ErrBusinessActionNotFound) {
+		return http.StatusNotFound
+	}
+	if errors.Is(err, agent.ErrBusinessActionUnknown) {
+		return http.StatusUnprocessableEntity
+	}
+	if errors.Is(err, agent.ErrBusinessBudgetExceeded) || errors.Is(err, agent.ErrBusinessActionDecided) {
+		return http.StatusConflict
 	}
 	if errors.Is(err, os.ErrNotExist) {
 		return http.StatusNotFound

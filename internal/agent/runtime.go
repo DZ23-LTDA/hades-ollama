@@ -58,6 +58,7 @@ type Runtime struct {
 	serviceAgents       *ServiceAgentRuntime
 	commerce            *CommerceStore
 	finance             *FinanceOps
+	businessSupervisor  *BusinessSupervisor
 	remoteMCP           *RemoteMCPManager
 	metrics             *RuntimeMetrics
 	connectors          *ConnectorManager
@@ -262,6 +263,9 @@ func NewRuntime(config RuntimeConfig) (*Runtime, error) {
 	}
 	// O financeiro deriva lançamentos do comércio no livro que já existe (estágio 30).
 	financeOps := NewFinanceOps(commerceStore, companyStore)
+	// O supervisor de negócio coordena os domínios sob limites, orçamento e aprovação
+	// humana (estágio 31). Ele reusa os ocorrências do supervisor de missões.
+	businessSupervisor := NewBusinessSupervisor(nil, DefaultSupervisorPolicy())
 	queue := config.Queue
 	if queue == nil {
 		queue, err = NewJobQueue(filepath.Join(dataRoot, ".agent-queue"))
@@ -297,7 +301,7 @@ func NewRuntime(config RuntimeConfig) (*Runtime, error) {
 			return nil, err
 		}
 	}
-	runtime := &Runtime{store: store, planner: planner, plannerResolver: config.PlannerResolver, tools: tools, capabilityPolicy: capabilityPolicy, workspaceRoot: root, dataRoot: dataRoot, context: contextStore, company: companyStore, consent: consentRegistry, crm: crmStore, inbox: inboxStore, omnichannel: omnichannelRuntime, serviceAgents: serviceAgentRuntime, commerce: commerceStore, finance: financeOps, remoteMCP: config.RemoteMCP, metrics: &RuntimeMetrics{}, connectors: config.Connectors, mcp: config.MCP, queue: queue, redisQueue: config.RedisQueue, traces: traces, telemetry: telemetry, media: config.Media, builder: builder, collaboration: collaboration, push: config.Push, pushOutbox: pushOutbox, deployments: config.Deployments, deploymentApprovals: deploymentApprovals, webhookReplay: webhookReplay, mu: &sync.Mutex{}, running: make(map[string]bool), activeCancels: make(map[string]context.CancelFunc), cancelPollInterval: durableCancelPollInterval()}
+	runtime := &Runtime{store: store, planner: planner, plannerResolver: config.PlannerResolver, tools: tools, capabilityPolicy: capabilityPolicy, workspaceRoot: root, dataRoot: dataRoot, context: contextStore, company: companyStore, consent: consentRegistry, crm: crmStore, inbox: inboxStore, omnichannel: omnichannelRuntime, serviceAgents: serviceAgentRuntime, commerce: commerceStore, finance: financeOps, businessSupervisor: businessSupervisor, remoteMCP: config.RemoteMCP, metrics: &RuntimeMetrics{}, connectors: config.Connectors, mcp: config.MCP, queue: queue, redisQueue: config.RedisQueue, traces: traces, telemetry: telemetry, media: config.Media, builder: builder, collaboration: collaboration, push: config.Push, pushOutbox: pushOutbox, deployments: config.Deployments, deploymentApprovals: deploymentApprovals, webhookReplay: webhookReplay, mu: &sync.Mutex{}, running: make(map[string]bool), activeCancels: make(map[string]context.CancelFunc), cancelPollInterval: durableCancelPollInterval()}
 	orchestrator, err := NewAgentOrchestrator(filepath.Join(dataRoot, ".agent-orchestrator"), runtime.SubagentRunner)
 	if err != nil {
 		return nil, err
@@ -429,6 +433,17 @@ func (r *Runtime) Finance() *FinanceOps {
 		return nil
 	}
 	return r.finance
+}
+
+// BusinessSupervisor devolve o supervisor de negócio (estágio 31).
+func (r *Runtime) BusinessSupervisor() *BusinessSupervisor {
+	if r == nil {
+		return nil
+	}
+	if r.businessSupervisor != nil {
+		r.businessSupervisor.runtime = r
+	}
+	return r.businessSupervisor
 }
 
 func (r *Runtime) Supervisor() *Supervisor {
