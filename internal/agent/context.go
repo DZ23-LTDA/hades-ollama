@@ -566,6 +566,9 @@ func (s *ContextStore) ReembedMemories(ctx context.Context, projectID string, li
 	}
 	modelo := s.currentEmbeddingModel()
 	alteradas := make([]Memory, 0, len(memories))
+	// vetoresPorID é o que a gravação TRAVADA vai aplicar no conteúdo RELIDO do arquivo: aplicar por ID é o que
+	// preserva o que outro processo escreveu no meio do caminho.
+	vetoresPorID := make(map[string][]float32, len(memories))
 	for _, memory := range memories {
 		if len(memory.Embedding) > 0 && memory.EmbeddingModel == modelo {
 			resultado.Skipped++
@@ -586,20 +589,38 @@ func (s *ContextStore) ReembedMemories(ctx context.Context, projectID string, li
 		}
 		memory.Embedding = vetor
 		memory.EmbeddingModel = modelo
+		vetoresPorID[memory.ID] = vetor
 		resultado.Reembedded++
 		alteradas = append(alteradas, memory)
 	}
 	s.mu.Lock()
 	anterior := append([]Memory(nil), s.memories[projectID]...)
 	s.memories[projectID] = alteradas
+	s.mu.Unlock()
 	if s.root != "" {
-		if err := s.writeMemoriesFile(projectID, alteradas); err != nil {
+		// Grava com a MESMA trava de processo e RELENDO o arquivo: outro processo pode ter escrito no meio do
+		// caminho, e sobrescrever com a nossa cópia apagaria o trabalho dele em silêncio. Foi o que o teste
+		// `TestReembedDoesNotEraseWhatAnotherProcessWrote` mostrou neste caminho SÍNCRONO.
+		if err := s.updateMemoriesFileLocked(ctx, projectID, func(atual []Memory) []Memory {
+			for indice := range atual {
+				if len(atual[indice].Embedding) > 0 && atual[indice].EmbeddingModel == modelo {
+					continue
+				}
+				vetor, ok := vetoresPorID[atual[indice].ID]
+				if !ok {
+					continue
+				}
+				atual[indice].Embedding = vetor
+				atual[indice].EmbeddingModel = modelo
+			}
+			return atual
+		}); err != nil {
+			s.mu.Lock()
 			s.memories[projectID] = anterior
 			s.mu.Unlock()
 			return ReembedResult{}, err
 		}
 	}
-	s.mu.Unlock()
 	return resultado, nil
 }
 
