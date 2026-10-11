@@ -2,12 +2,12 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-13T16:05:00-03:00",
+  "updated_at": "2026-10-13T17:25:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
     "integration_branch": "main",
-    "main_sha": "73031b45f8e1a39c0c7ee8cc300cc053e27da4c8",
+    "main_sha": "655eec34cfe55ac9c17121b7da4820311ad30e4c",
     "main_committed_at": "2026-10-09T10:24:45Z",
     "main_ci_state": "green (dz23-agentic-quality + class-a-plus-integrity = success nesse SHA)",
     "mission_branch": "docs/checkpoints-missao-v21",
@@ -779,13 +779,14 @@
         "E-044",
         "E-087",
         "E-132",
-        "E-133"
+        "E-133",
+        "E-134"
       ],
       "blocker": "B-07",
-      "next": "LIMITES: continua sendo uma FOTOGRAFIA (sem serie temporal, tendencia ou comparacao entre periodos); sem EXPORTACAO (CSV/PDF); sem GRAFICO (sao cartoes numericos, porque a serie temporal ainda nao existe); sem e2e Playwright da jornada nesta rodada",
+      "next": "LIMITES: sem AGENDADOR (nada registra amostra sozinho - quem chama o POST e o operador, a interface ou um agendador externo; prometer coleta automatica sem executor persistente seria mentira); sem AGREGACAO por periodo (diaria/semanal); sem GRAFICO; sem EXPORTACAO da serie; e a tendencia compara EXTREMOS do periodo, nao medias",
       "blocked_reason": "",
       "external_dependency": "parte do E2E depende de integracoes ao vivo; o nucleo em sandbox e local",
-      "done": "classificacao corrigida pela auditoria de bloqueios: o bloqueio externo em bloco escondia trabalho implementavel. Evidencia medida registrada em docs/mission/HADES_BLOCKED_AUDIT.md | BI / STATUS DE NEGOCIO (E-132): Runtime.BusinessStatus + rota GET /companies/:id/business-status agregando comercio, financeiro, campanhas, vendas, atendimento e canais de marketplace a partir dos stores REAIS. TRES DECISOES: CADA NUMERO TEM PROVENIENCIA (a resposta liga cada bloco ao store de origem, porque numero sem origem e indistinguivel de numero inventado); O QUE NAO E MEDIDO E DECLARADO COM MOTIVO (fiscal, bancario, tokens, publicacao externa, telefonia, preco negociado - mostrar zero onde nao ha medicao e PIOR que um painel vazio, porque zero parece resposta); ESCOPO VEM DA SESSAO, nunca da query. Verificado: 4/4 PASS no agregador com ISOLAMENTO entre organizacoes, PASS na rota, lint 0 issues e gate em Linux | PAINEL DE BI NA INTERFACE (E-133): BusinessStatusPanel montado no workspace da empresa com 17 indicadores, PROVENIENCIA bloco a bloco e a lista 'o que este painel NAO mede' renderizada INTEIRA, com motivo. TRES REGRAS TRAVADAS POR TESTE: sem dado a tela DIZ que nao ha dado (zero sem medicao nao e resposta); as lacunas nunca sao escondidas nem trocadas por selo verde; e FALHA APAGA O NUMERO ANTIGO (dado velho apresentado como atual e pior que nenhum). O unico controle refaz a consulta de verdade (1 -> 2 chamadas), sem botao decorativo. Contrato verificado: [PASS] GET .../business-status"
+      "done": "classificacao corrigida pela auditoria de bloqueios: o bloqueio externo em bloco escondia trabalho implementavel. Evidencia medida registrada em docs/mission/HADES_BLOCKED_AUDIT.md | BI / STATUS DE NEGOCIO (E-132): Runtime.BusinessStatus + rota GET /companies/:id/business-status agregando comercio, financeiro, campanhas, vendas, atendimento e canais de marketplace a partir dos stores REAIS. TRES DECISOES: CADA NUMERO TEM PROVENIENCIA (a resposta liga cada bloco ao store de origem, porque numero sem origem e indistinguivel de numero inventado); O QUE NAO E MEDIDO E DECLARADO COM MOTIVO (fiscal, bancario, tokens, publicacao externa, telefonia, preco negociado - mostrar zero onde nao ha medicao e PIOR que um painel vazio, porque zero parece resposta); ESCOPO VEM DA SESSAO, nunca da query. Verificado: 4/4 PASS no agregador com ISOLAMENTO entre organizacoes, PASS na rota, lint 0 issues e gate em Linux | PAINEL DE BI NA INTERFACE (E-133): BusinessStatusPanel montado no workspace da empresa com 17 indicadores, PROVENIENCIA bloco a bloco e a lista 'o que este painel NAO mede' renderizada INTEIRA, com motivo. TRES REGRAS TRAVADAS POR TESTE: sem dado a tela DIZ que nao ha dado (zero sem medicao nao e resposta); as lacunas nunca sao escondidas nem trocadas por selo verde; e FALHA APAGA O NUMERO ANTIGO (dado velho apresentado como atual e pior que nenhum). O unico controle refaz a consulta de verdade (1 -> 2 chamadas), sem botao decorativo. Contrato verificado: [PASS] GET .../business-status | SERIE TEMPORAL DO BI (E-134): amostras datadas com POST/GET /companies/:id/business-snapshots e tendencia com 11 deltas e o INTERVALO exato comparado. QUATRO DECISOES: UMA AMOSTRA POR JANELA DE HORA (registrar em laco criaria uma 'tendencia' feita de repeticoes do mesmo instante - ruido com aparencia de serie); SEM DUAS AMOSTRAS A TENDENCIA DECLARA AUSENCIA DE BASE, porque delta zero significaria 'nao mudou' e isso e diferente de 'nao ha com o que comparar'; RETENCAO COM TETO DECLARADO e descarte relatado (Retention/Discarded), porque historico que finge ser infinito e promessa que o disco nao cumpre; e O INTERVALO E EXPLICITO. 4/4 PASS no store e PASS na rota"
     },
     {
       "id": 33,
@@ -1190,7 +1191,11 @@
     "PAINEL DE BI NA INTERFACE (E-133): na rodada anterior o BI foi entregue no backend com o limite declarado 'sem tela dedicada - a superficie entregue e a HTTP'. Um painel que so existe como JSON nao e um painel: criei o BusinessStatusPanel no workspace da empresa com 17 indicadores, proveniencia bloco a bloco e a lista de lacunas. Verificado com 4/4 PASS, suite web com 562 testes e contrato PASS",
     "BI NA TELA - TRES REGRAS (E-133): (a) SEM DADO A TELA DIZ QUE NAO HA DADO - exibir 0 com aparencia de resposta e o erro mais facil de cometer num dashboard; (b) AS LACUNAS FICAM NA TELA e nenhum selo verde e exibido, porque esconder a lista faria o painel parecer completo; (c) FALHA APAGA O NUMERO ANTIGO - o teste forca erro e exige que o valor anterior (35.00) DESAPARECA, porque dado velho apresentado como atual e pior que nenhum",
     "BI NA TELA - O UNICO CONTROLE FAZ ALGO (E-133): 'Atualizar painel' realmente refaz a consulta e o teste confirma 1 -> 2 chamadas. Nao ha botao decorativo, que e o que o estagio 19 proibe",
-    "LIMITES DO BI NA TELA (E-133): continua sendo FOTOGRAFIA (sem serie temporal, tendencia ou comparacao entre periodos); sem EXPORTACAO (CSV/PDF); sem GRAFICO (cartoes numericos, porque a serie temporal ainda nao existe); e sem e2e Playwright da jornada nesta rodada"
+    "LIMITES DO BI NA TELA (E-133): continua sendo FOTOGRAFIA (sem serie temporal, tendencia ou comparacao entre periodos); sem EXPORTACAO (CSV/PDF); sem GRAFICO (cartoes numericos, porque a serie temporal ainda nao existe); e sem e2e Playwright da jornada nesta rodada",
+    "SERIE TEMPORAL DO BI (E-134): o BI das rodadas anteriores era uma FOTOGRAFIA (cada chamada calculava o agora). Entreguei amostras datadas com POST/GET /companies/:id/business-snapshots, tendencia com 11 deltas e o intervalo exato comparado. Verificado com 4/4 PASS no store (idempotencia por janela, retencao e isolamento) e PASS na rota",
+    "SERIE TEMPORAL - QUATRO DECISOES (E-134): (a) UMA AMOSTRA POR JANELA DE HORA, porque registrar em laco criaria uma 'tendencia' feita de repeticoes do mesmo instante - ruido com aparencia de serie; (b) SEM DUAS AMOSTRAS A TENDENCIA DECLARA AUSENCIA DE BASE, porque delta zero significaria 'nao mudou' e isso e diferente de 'nao ha com o que comparar'; (c) RETENCAO COM TETO DECLARADO e descarte relatado, porque historico que finge ser infinito e promessa que o disco nao cumpre; (d) O INTERVALO E EXPLICITO, para o numero nao ser lido como de outro periodo",
+    "SERIE TEMPORAL - DECISAO DE TESTE CONTRA FLAKE (E-134): o handler usa o relogio REAL, entao a segunda chamada pode cair na hora seguinte se o teste cruzar a virada de hora - e ai created=true e legitimamente correto. Em vez de escrever uma assercao que falha as vezes, o teste de ROTA afirma o que e SEMPRE verdade (codigo coerente com created e serie refletindo a resposta) e a semantica de JANELA e verificada no STORE, com o instante injetado. Escrever teste dependente de virada de hora seria criar flake",
+    "LIMITES DA SERIE TEMPORAL (E-134): sem AGENDADOR (nada registra amostra sozinho - prometer coleta automatica sem executor persistente seria mentira); sem AGREGACAO por periodo; sem GRAFICO; sem EXPORTACAO da serie; e a tendencia compara EXTREMOS do periodo, nao medias"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",

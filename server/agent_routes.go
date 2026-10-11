@@ -727,6 +727,8 @@ func (a *agentAPI) register(r *gin.Engine) {
 	group.POST("/companies/:id/marketplace/sync", a.marketplaceSync)
 	group.GET("/companies/:id/marketplace/mirror/:channel_id/:sku", a.marketplaceMirror)
 	group.GET("/companies/:id/business-status", a.businessStatus)
+	group.GET("/companies/:id/business-snapshots", a.businessSnapshots)
+	group.POST("/companies/:id/business-snapshots", a.recordBusinessSnapshot)
 	group.POST("/companies/:id/pause", a.pauseCompany)
 	group.POST("/companies/:id/resume", a.resumeCompany)
 	group.POST("/companies/:id/anomalies", a.recordCompanyAnomaly)
@@ -3979,6 +3981,10 @@ func statusForAgentError(err error) int {
 	}
 	// BI / status de negócio (estágio 32): painel pedido sem organização é erro do cliente.
 	if errors.Is(err, agent.ErrBusinessStatusScopeRequired) {
+		return http.StatusBadRequest
+	}
+	// Série temporal do BI (estágio 32): escopo ausente é erro do cliente.
+	if errors.Is(err, agent.ErrBusinessSnapshotScopeRequired) {
 		return http.StatusBadRequest
 	}
 	if errors.Is(err, os.ErrNotExist) {
