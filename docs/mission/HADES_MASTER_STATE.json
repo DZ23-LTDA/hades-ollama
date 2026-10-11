@@ -2,12 +2,12 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-11T00:45:00-03:00",
+  "updated_at": "2026-10-11T01:40:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
     "integration_branch": "main",
-    "main_sha": "43cd5aff0691c7a708f8a4b37148a5a94ab85f72",
+    "main_sha": "7be97b75507dcf71a1b8deeff42a186c799a37ab",
     "main_committed_at": "2026-10-09T10:24:45Z",
     "main_ci_state": "green (dz23-agentic-quality + class-a-plus-integrity = success nesse SHA)",
     "mission_branch": "docs/checkpoints-missao-v21",
@@ -423,13 +423,15 @@
       "title": "Workflow Engine (fluxos, schedules, condicoes)",
       "state": "IN_PROGRESS",
       "auditoria": "AUDITADO_PARCIAL",
-      "capability": "IMPLEMENTADO_NAO_HOMOLOGADO",
+      "capability": "PARCIAL",
       "evidence": [
         "E-020",
-        "E-029"
+        "E-029",
+        "E-074"
       ],
       "blocker": null,
-      "next": "Provar execucao real de schedule persistido (nao so validacao) e cobrir action.http/connector"
+      "next": "retry/DLQ por NO (hoje retry e DLQ existem no nivel da fila de jobs), reprocessamento explicito do que ficou skipped, e exibir Schedule.LastRun na interface (o dado ja e persistido e trafega na API)",
+      "done": "vocabulario FECHADO de passos (trigger.interval, trigger.webhook, action.mission, condition.if) validado de forma fail-closed (tipo desconhecido, id duplicado, ciclo, multiplicidade de gatilho e passo inalcancavel sao recusados antes de persistir); execucao em ordem de dependencia com bloqueio de dependente quando o passo anterior nao teve sucesso; RESULTADO POR NO com motivo, persistido em sucesso e em falha, e reportado no tick do supervisor"
     },
     {
       "id": 14,
@@ -886,6 +888,8 @@
     "NEGATIVO VERIFICADO (PR #133, estagio 18): auditei o bloco de uploads maliciosos e NAO encontrei achado. extractProjectArchive rejeita nome vazio/NUL/absoluto, traversal via filepath.Clean, .git (plano de controle), symlink e prefixo __; usa O_EXCL e contabiliza bytes REAIS pos-copia (o tamanho do cabecalho e apenas rejeicao antecipada, com comentario honesto no codigo); readLimitedReader recusa limite negativo; SafeExtractZip tem limites de arquivos, tamanho por arquivo, total e RAZAO (zip bomb) com testes proprios em archive_test.go. Nao inventei achado: registrei o negativo e fui ao bloco menos coberto",
     "ACHADO CORRIGIDO (PR #135, estagio 18, integridade de produto): /api/agent/v1/personalization respondia status 'updated' no POST SEM gravar nada e devolvia no GET instrucoes, tom e memoria FIXOS no codigo - sucesso e conteudo fabricados. Pior: o grupo era registrado mesmo com agentAPI == nil, ficando sem middleware de autenticacao e origem (rota aberta no modo degradado). Correcao: 501 com o caminho real das instrucoes (campo custom_instructions aplicado por composeSystemPrompt a cada turno) e rota NAO registrada sem middleware (404). 2 testes novos",
     "NEGATIVOS VERIFICADOS (PR #135, estagio 18): (a) XSS - nenhum dangerouslySetInnerHTML nem HTML cru no app, React escapa por padrao, os dois usos de innerHTML sao benignos (elemento raiz e clipboard); (b) CSRF - a checagem de Origin vive no middleware do GRUPO /api/agent/v1, cobrindo leituras e mutacoes, e e fail-closed (wildcard ignorado, allowlist vazia recusa, origem opaca recusada, CRLF recusado); (c) plugins maliciosos - assinatura/tamper/path do bundle, escopo e posse por organizacao no registry, 11 testes de recusa no runtime governado. Registrados para nao repetir a auditoria",
-    "Quase registrei um achado FALSO (PR #135): a UI afirma que as instrucoes personalizadas sao enviadas ao modelo em toda conversa e eu suspeitei de promessa vazia, porque o servidor em server/ so tinha o stub. Seguindo a evidencia, o servidor real e app/ui/ui.go: o campo custom_instructions e enviado por turno, limitado a 4000 caracteres e composto no system prompt por composeSystemPrompt, com teste proprio. A promessa era verdadeira; o defeito estava no outro endpoint"
+    "Quase registrei um achado FALSO (PR #135): a UI afirma que as instrucoes personalizadas sao enviadas ao modelo em toda conversa e eu suspeitei de promessa vazia, porque o servidor em server/ so tinha o stub. Seguindo a evidencia, o servidor real e app/ui/ui.go: o campo custom_instructions e enviado por turno, limitado a 4000 caracteres e composto no system prompt por composeSystemPrompt, com teste proprio. A promessa era verdadeira; o defeito estava no outro endpoint",
+    "ACHADO CORRIGIDO (PR #137, estagio 13): ExecuteScheduleFlow devolvia apenas a CONTAGEM de missoes, entao (1) fluxo com condicional falso ou passo bloqueado reportava SUCESSO sem registrar nos ignorados; (2) execucao bem-sucedida nao era persistida (recordScheduleSuccess saia cedo sem gravar last_run_at); (3) no supervisor, o outro ponto de disparo, NADA era registrado e uma falha de fluxo desaparecia; (4) o codigo de falha era generico e nao dizia qual passo falhou. Correcao: ScheduleRunReport/ScheduleStepOutcome com succeeded/skipped/failed e motivo, ExecuteScheduleFlowReport autoritativo (wrapper preserva a contagem), Schedule.LastRun persistido em sucesso E falha, codigo de falha nomeando o passo quando ha grafo, e supervisor expondo falhas e ignorados no proprio tick. 4 testes novos",
+    "Processo (PR #137): duas falhas apareceram e eram MINHAS, nao do codigo - rodei um comando sem APPDATA/LOCALAPPDATA (o runtime tentou escrever no %APPDATA% real e deu acesso negado, o que eu quase confundi com regressao) e dois fixtures de teste esqueceram o Objective obrigatorio do schedule. Corrigi o comando e os fixtures; um teste EXISTENTE tambem me obrigou a preservar o codigo de falha historico no caminho legado sem grafo"
   ]
 }
