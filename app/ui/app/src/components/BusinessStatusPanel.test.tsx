@@ -259,4 +259,59 @@ describe("BusinessStatusPanel", () => {
     expect(vi.mocked(triggerDownload)).not.toHaveBeenCalled();
     expect(rendered).not.toContain("gerado");
   });
+
+  it("com amostras, mostra o gráfico com tabela equivalente e permite trocar a métrica", async () => {
+    vi.mocked(getBusinessTrend).mockResolvedValue({
+      organization_id: "local",
+      snapshots: 2,
+      intervalo: "2026-10-13T10 → 2026-10-13T11",
+      sem_base: false,
+      deltas: [{ metric: "pedidos", from: 1, to: 3, delta: 2 }],
+      history: [
+        { id: "bsn_a", organization_id: "local", taken_at: "2026-10-13T10:00:00Z", window: "2026-10-13T10", report: reportWith() },
+        { id: "bsn_b", organization_id: "local", taken_at: "2026-10-13T11:00:00Z", window: "2026-10-13T11", report: reportWith() },
+      ],
+      amostras_descartadas: 0,
+      retencao_maxima: 96,
+    } as never);
+    let root!: ReactTestRenderer;
+    await act(async () => {
+      root = create(<BusinessStatusPanel companyId="cmp_1" />);
+    });
+    const rendered = textContent(root.root);
+    expect(rendered).toContain("Gráfico da série");
+    expect(rendered).toContain("Métrica do gráfico");
+    // A curva tem nome acessível e a tabela equivalente está visível.
+    expect(rendered).toContain("Receita (pedidos): 2 amostra(s)");
+    expect(rendered).toContain("Janela");
+    expect(rendered).not.toContain("NaN");
+
+    // Trocar a métrica muda o NOME acessível — o gráfico não fica "mudo" ao mudar de série.
+    const select = root.root.findAll((node) => node.type === "select")[0];
+    await act(async () => {
+      select.props.onChange({ target: { value: "pedidos" } });
+    });
+    const depois = textContent(root.root);
+    expect(depois).toContain("Pedidos: 2 amostra(s)");
+    expect(depois).not.toContain("Receita (pedidos): 2 amostra(s)");
+  });
+
+  it("sem amostras, NÃO inventa gráfico", async () => {
+    vi.mocked(getBusinessTrend).mockResolvedValue({
+      organization_id: "local",
+      snapshots: 0,
+      sem_base: true,
+      motivo: "nenhuma amostra registrada",
+      history: [],
+      amostras_descartadas: 0,
+      retencao_maxima: 96,
+    } as never);
+    let root!: ReactTestRenderer;
+    await act(async () => {
+      root = create(<BusinessStatusPanel companyId="cmp_1" />);
+    });
+    const rendered = textContent(root.root);
+    expect(rendered).toContain("Sem tendência: nenhuma amostra registrada");
+    expect(rendered).not.toContain("Gráfico da série");
+  });
 });
