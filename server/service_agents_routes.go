@@ -96,7 +96,18 @@ func (a *agentAPI) serviceAgentApprovals(c *gin.Context) {
 		writeAgentError(c, statusForAgentError(err), err)
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"approvals": approvals, "count": len(approvals), "queue": queue})
+	c.JSON(http.StatusOK, gin.H{
+		"approvals": approvals,
+		"count":     len(approvals),
+		"queue":     queue,
+		// O estado do AVISO aparece junto: se o destino do webhook estiver fora do ar, quem opera precisa
+		// saber que a fila existe mas ninguém foi avisado. A falha vai por CLASSE, sem URL e sem segredo.
+		"notification": gin.H{
+			"configurado": store.Notifier != nil,
+			"entregues":   store.NotificationsSent(),
+			"ultimo_erro": store.LastNotificationError(),
+		},
+	})
 }
 
 // serviceAgentDecideApproval registra a DECISÃO HUMANA sobre um pedido de escrita.
