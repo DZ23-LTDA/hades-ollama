@@ -160,7 +160,9 @@ type ServiceAgentTurn struct {
 	Escalation  string              `json:"escalation_reason,omitempty"`
 	Context     ServiceAgentContext `json:"context"`
 	Message     *InboxMessage       `json:"message,omitempty"`
-	DecidedAt   time.Time           `json:"decided_at"`
+	// ToolCalls é a trilha de execução: o que foi tentado, o que rodou e por que o resto não rodou.
+	ToolCalls []ServiceAgentToolCall `json:"tool_calls,omitempty"`
+	DecidedAt time.Time              `json:"decided_at"`
 }
 
 // ServiceAgentTurnRequest é a entrada do turno: quem fala, onde, o que o contato
@@ -173,6 +175,12 @@ type ServiceAgentTurnRequest struct {
 	Intent string
 	// ModelID é o modelo escolhido; trocar de modelo NÃO altera as políticas.
 	ModelID string
+	// RequestedTools são as ferramentas que o agente PEDE para este turno. Pedir não é poder: o runtime
+	// confere declaração, executor e política. Sem pedido explícito, nenhuma ferramenta de ESCRITA ou
+	// SAÍDA roda — efeito secundário não acontece por acidente.
+	RequestedTools []string
+	// ToolArguments alimenta as ferramentas de escrita (título, valor, responsável…).
+	ToolArguments ServiceAgentToolRequest
 }
 
 // RunTurn executa o turno do agente: monta contexto, verifica política, decide e —
@@ -210,18 +218,26 @@ func (s *ServiceAgentRuntime) RunTurn(request ServiceAgentTurnRequest, now time.
 		turn.Context.Opportunities = s.opportunitiesFor(organizationID, turn.Context.Contact.ID)
 	}
 
-	// 1. O contato pediu humano? Escalar é a resposta CORRETA, não responder.
+	// 1. Consentimento é calculado UMA vez e cedo: ele governa tanto a escalada quanto as ferramentas de
+	// saída. Calculá-lo antes das decisões evita que o mesmo estado seja lido com regras diferentes.
+	consentState := s.consentState(organizationID, conversation.Channel, conversation.ContactID, now)
+	turn.Context.ConsentState = consentState
+
+	// 2. FERRAMENTAS PEDIDAS: pedir não é poder. O runtime confere declaração, executor e política, e
+	// registra TUDO na trilha do turno — inclusive o que não rodou e por quê. Roda antes das decisões
+	// para que transferência e atribuição funcionem também quando o turno termina em escalada.
+	// Contato e canal vêm da CONVERSA resolvida: é o escopo da sessão, não o que o pedido mandou.
+	turn.ToolCalls = s.runRequestedTools(request, conversation.ContactID, conversation.Channel, consentState == ConsentGranted, now)
+
+	// 3. O contato pediu humano? Escalar é a resposta CORRETA, não responder.
 	if asksForHuman(request.Intent) {
 		turn.Decision = "escalar"
 		turn.Escalated = true
 		turn.Escalation = ServiceAgentEscalateHuman
-		turn.Context.ConsentState = s.consentState(organizationID, conversation.Channel, conversation.ContactID, now)
 		return turn, nil
 	}
 
-	// 2. Consentimento: sem ele o agente NÃO responde — escala.
-	consentState := s.consentState(organizationID, conversation.Channel, conversation.ContactID, now)
-	turn.Context.ConsentState = consentState
+	// 4. Consentimento: sem ele o agente NÃO responde — escala.
 	if consentState != ConsentGranted {
 		turn.Decision = "escalar"
 		turn.Escalated = true
@@ -229,7 +245,7 @@ func (s *ServiceAgentRuntime) RunTurn(request ServiceAgentTurnRequest, now time.
 		return turn, nil
 	}
 
-	// 3. DLP: conteúdo bloqueado não sai, e o motivo é declarado. A pergunta é de
+	// 5. DLP: conteúdo bloqueado não sai, e o motivo é declarado. A pergunta é de
 	// POLÍTICA ("este texto pode sair?"), por isso a resposta é booleana: bloquear não
 	// é falha do servidor, é decisão que vira escalada.
 	reply := s.composeReply(spec, turn.Context)
@@ -240,7 +256,7 @@ func (s *ServiceAgentRuntime) RunTurn(request ServiceAgentTurnRequest, now time.
 		return turn, nil
 	}
 
-	// 4. Responder: a mensagem entra pela MESMA caixa de entrada, que revalida o
+	// 6. Responder: a mensagem entra pela MESMA caixa de entrada, que revalida o
 	// consentimento — a política não depende do caminho.
 	_, message, err := s.inbox.AppendOutbound(organizationID, conversation.ID, "agent", spec.ID, reply, s.consent, now)
 	if err != nil {
@@ -256,6 +272,61 @@ func (s *ServiceAgentRuntime) RunTurn(request ServiceAgentTurnRequest, now time.
 	turn.Reply = reply
 	turn.Message = &message
 	return turn, nil
+}
+
+// runRequestedTools executa as ferramentas PEDIDAS, registrando cada tentativa.
+//
+// Decisões:
+//   - **O ESCOPO VEM DA SESSÃO**: organização, agente, conversa, contato e canal são copiados do turno.
+//     `ToolArguments` só fornece dados de domínio (título, valor, responsável, motivo) — assim o pedido
+//     não consegue escolher outra organização;
+//   - **`inbox.reply` é recusado aqui**, com motivo: a resposta do turno já sai pelo caminho único de
+//     resposta, e permitir a ferramenta criaria uma SEGUNDA mensagem para o mesmo turno;
+//   - **pedido repetido não duplica execução**: executar o efeito duas vezes por engano é pior que
+//     ignorar a repetição.
+func (s *ServiceAgentRuntime) runRequestedTools(request ServiceAgentTurnRequest, contactID, channel string, consentGranted bool, now time.Time) []ServiceAgentToolCall {
+	if len(request.RequestedTools) == 0 {
+		return nil
+	}
+	spec, ok := ServiceAgentSpecByID(request.AgentID)
+	if !ok {
+		return nil
+	}
+	organizationID := consentScope(request.OrganizationID)
+	seen := map[string]bool{}
+	calls := make([]ServiceAgentToolCall, 0, len(request.RequestedTools))
+	for _, name := range request.RequestedTools {
+		name = strings.TrimSpace(name)
+		if name == "" || seen[name] {
+			continue
+		}
+		seen[name] = true
+		if name == "inbox.reply" {
+			calls = append(calls, ServiceAgentToolCall{
+				Name:       name,
+				Effect:     ServiceAgentEffectOutbound,
+				Status:     ServiceAgentToolBlocked,
+				Reason:     "a resposta do turno já é enviada pelo caminho único de resposta",
+				ExecutedAt: now,
+			})
+			continue
+		}
+		arguments := request.ToolArguments
+		// Escopo da sessão sobrepõe o que veio no pedido — organização, agente, conversa, CONTATO e canal
+		// são do turno resolvido, nunca do corpo do pedido.
+		arguments.OrganizationID = organizationID
+		arguments.AgentID = spec.ID
+		arguments.ConversationID = strings.TrimSpace(request.ConversationID)
+		arguments.ContactID = contactID
+		arguments.Channel = channel
+		arguments.Intent = request.Intent
+		arguments.Now = now
+		// `declared` é nil DE PROPÓSITO: quem declara ferramenta é a ESPECIFICAÇÃO do agente, não o pedido.
+		// Passar `request.RequestedTools` aqui tornaria o pedido a própria autorização — e aí pedir seria
+		// poder, exatamente o que esta função existe para impedir.
+		calls = append(calls, s.RunTool(spec, nil, consentGranted, name, arguments))
+	}
+	return calls
 }
 
 // classifyServiceAgentTools separa as ferramentas que o agente PODE usar das que o
@@ -368,34 +439,102 @@ type ServiceAgentRuntime struct {
 	crm     *CRMStore
 	inbox   *InboxStore
 	consent *ConsentRegistry
-	// tools são as ferramentas REALMENTE registradas. Ferramenta que o agente lista e
-	// o runtime não tem aparece como bloqueada, em vez de ser ignorada.
-	tools map[string]bool
+	// executors são as ferramentas REALMENTE executáveis. A disponibilidade é DERIVADA daqui: um mapa
+	// digitado à mão não pode afirmar capacidade que ninguém implementou.
+	executors map[string]ServiceAgentTool
+	// declared guarda o que foi declarado pelo chamador, para o relatório de indisponíveis.
+	declared map[string]bool
 }
 
 // NewServiceAgentRuntime liga os agentes ao CRM, à caixa de entrada e ao consentimento.
-func NewServiceAgentRuntime(crm *CRMStore, inbox *InboxStore, consent *ConsentRegistry, tools map[string]bool) *ServiceAgentRuntime {
-	if tools == nil {
-		tools = map[string]bool{}
+//
+// `declaredTools` é o que os agentes PODEM declarar; a disponibilidade real vem dos executores
+// registrados. Ferramenta declarada e sem executor aparece como **indisponível, com motivo**.
+func NewServiceAgentRuntime(crm *CRMStore, inbox *InboxStore, consent *ConsentRegistry, declaredTools map[string]bool) *ServiceAgentRuntime {
+	if declaredTools == nil {
+		declaredTools = map[string]bool{}
 	}
-	return &ServiceAgentRuntime{crm: crm, inbox: inbox, consent: consent, tools: tools}
+	runtime := &ServiceAgentRuntime{
+		crm:       crm,
+		inbox:     inbox,
+		consent:   consent,
+		declared:  declaredTools,
+		executors: serviceAgentTools(crm, inbox, consent),
+	}
+	// Os executores registrados por padrão também passam a constar como declarados: sem isso, uma
+	// ferramenta executável ficaria invisível para os agentes.
+	for name := range runtime.executors {
+		runtime.declared[name] = true
+	}
+	return runtime
 }
 
+// availableTools devolve a INTERSECÇÃO entre o que foi declarado e o que tem executor.
 func (s *ServiceAgentRuntime) availableTools() map[string]bool {
-	return s.tools
-}
-
-// RegisterTool registra uma ferramenta disponível para os agentes.
-func (s *ServiceAgentRuntime) RegisterTool(name string) {
-	if s.tools == nil {
-		s.tools = map[string]bool{}
+	out := map[string]bool{}
+	for name := range s.executors {
+		if s.declared[name] {
+			out[name] = true
+		}
 	}
-	s.tools[strings.TrimSpace(name)] = true
+	return out
 }
 
-// DefaultServiceAgentTools lista as ferramentas REALMENTE implementadas hoje. As que
-// os agentes declaram e não estão aqui aparecem como **bloqueadas** no contexto do
-// turno — informação honesta, em vez de fingir capacidade.
+// RegisterTool declara uma ferramenta como permitida aos agentes.
+//
+// Atenção: declarar NÃO a torna disponível — quem faz isso é `RegisterExecutor`. A separação existe para
+// que "o agente pode pedir" e "o runtime consegue executar" sejam coisas distintas e verificáveis.
+func (s *ServiceAgentRuntime) RegisterTool(name string) {
+	if s.declared == nil {
+		s.declared = map[string]bool{}
+	}
+	s.declared[strings.TrimSpace(name)] = true
+}
+
+// RegisterExecutor registra um executor de verdade, tornando a ferramenta disponível.
+func (s *ServiceAgentRuntime) RegisterExecutor(tool ServiceAgentTool) {
+	if tool == nil {
+		return
+	}
+	if s.executors == nil {
+		s.executors = map[string]ServiceAgentTool{}
+	}
+	if s.declared == nil {
+		s.declared = map[string]bool{}
+	}
+	name := strings.TrimSpace(tool.Name())
+	s.executors[name] = tool
+	s.declared[name] = true
+}
+
+// ToolExecutors lista as ferramentas com executor registrado (a disponibilidade real).
+func (s *ServiceAgentRuntime) ToolExecutors() []string {
+	out := make([]string, 0, len(s.executors))
+	for name := range s.executors {
+		out = append(out, name)
+	}
+	sort.Strings(out)
+	return out
+}
+
+// UnavailableTools lista o que os agentes declaram e o runtime NÃO consegue executar.
+func (s *ServiceAgentRuntime) UnavailableTools() []string {
+	out := make([]string, 0)
+	for name := range s.declared {
+		if _, ok := s.executors[name]; !ok {
+			out = append(out, name)
+		}
+	}
+	sort.Strings(out)
+	return out
+}
+
+// DefaultServiceAgentTools lista as ferramentas que os agentes PODEM declarar por catálogo.
+//
+// A versão anterior deste comentário dizia que eram as "REALMENTE implementadas hoje" — o que era falso
+// para `commerce.order.read`, `commerce.stock.read` e `company.report.read`: eram booleanos sem executor.
+// Agora a disponibilidade é derivada dos executores registrados e o que não tem executor aparece como
+// **indisponível**, com motivo (`UnavailableTools`).
 func DefaultServiceAgentTools() map[string]bool {
 	return map[string]bool{
 		"crm.contact.read":        true,
@@ -405,9 +544,10 @@ func DefaultServiceAgentTools() map[string]bool {
 		"inbox.handoff":           true,
 		"inbox.metrics.read":      true,
 		"inbox.assign":            true,
-		"company.report.read":     true,
-		// O motor de comércio existe (estágio 24): estas ferramentas deixam de ser
-		// bloqueadas e passam a ser declaradas como disponíveis de verdade.
+		// SEM executor neste runtime: dependem dos módulos de comércio e de empresa, que não são
+		// entregues a este serviço. Ficam declaradas de propósito, para aparecerem como
+		// INDISPONÍVEIS no turno — visível é melhor que silencioso.
+		"company.report.read": true,
 		"commerce.order.read": true,
 		"commerce.stock.read": true,
 	}
