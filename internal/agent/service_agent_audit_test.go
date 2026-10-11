@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -176,22 +177,62 @@ func TestServiceAgentAuditIsolationHoldsOnDisk(t *testing.T) {
 		t.Fatal(err)
 	}
 	if _, err := store.Append("org-b", []ServiceAgentAuditEntry{{
-		ID: "aud_b", OrganizationID: "org-b", ToolName: "catalog.read", Status: ServiceAgentToolExecuted,
+		ID: "aud_org_b_unico", OrganizationID: "org-b", ToolName: "catalog.read", Status: ServiceAgentToolExecuted,
 	}}); err != nil {
 		t.Fatal(err)
 	}
 
-	arquivoA := filepath.Join(store.Root(), sanitizeIDComponent("org-a")+".json")
-	conteudo, err := os.ReadFile(arquivoA)
-	if err != nil {
-		t.Fatalf("arquivo da organização A ausente: %v", err)
+	// A conferência é ESTRUTURAL: lê o arquivo e examina as ENTRADAS.
+	//
+	// A primeira versão procurava a substring "aud_b" no texto do arquivo e falhava ~1 vez a cada 16
+	// execuções, porque o ID gerado é `aud_` + os primeiros 12 caracteres de um UUID — quando o primeiro
+	// caractere sorteado é `b`, o ID legítimo de org-a contém "aud_b". Procurar substring em identificador
+	// aleatório é armadilha; comparar o CAMPO é o que a pergunta realmente faz.
+	lerEntradas := func(organizacao string) []ServiceAgentAuditEntry {
+		t.Helper()
+		arquivo := filepath.Join(store.Root(), sanitizeIDComponent(organizacao)+".json")
+		conteudo, err := os.ReadFile(arquivo)
+		if err != nil {
+			t.Fatalf("arquivo da organização %s ausente: %v", organizacao, err)
+		}
+		var file serviceAgentAuditFile
+		if err := json.Unmarshal(conteudo, &file); err != nil {
+			t.Fatalf("arquivo da organização %s ilegível: %v", organizacao, err)
+		}
+		return file.Entries
 	}
-	if strings.Contains(string(conteudo), "aud_b") || strings.Contains(string(conteudo), "catalog.read") {
-		t.Fatal("o arquivo da organização A contém registro da organização B")
+
+	entradasA := lerEntradas("org-a")
+	if len(entradasA) == 0 {
+		t.Fatal("a trilha de org-a precisa conter o registro do turno")
 	}
-	if !strings.Contains(string(conteudo), "crm.contact.read") {
-		t.Fatal("o arquivo da organização A precisa conter o próprio registro")
+	for _, entry := range entradasA {
+		if entry.OrganizationID != "org-a" {
+			t.Fatalf("o arquivo de org-a contém registro de %q: %+v", entry.OrganizationID, entry)
+		}
+		if entry.ToolName == "catalog.read" {
+			t.Fatalf("ferramenta de outra organização no arquivo de org-a: %+v", entry)
+		}
 	}
+	if !containsString(auditToolNames(entradasA), "crm.contact.read") {
+		t.Fatalf("o arquivo de org-a precisa conter a própria execução: %+v", entradasA)
+	}
+
+	entradasB := lerEntradas("org-b")
+	if len(entradasB) != 1 || entradasB[0].OrganizationID != "org-b" {
+		t.Fatalf("o arquivo de org-b precisa conter só o registro dela: %+v", entradasB)
+	}
+	if containsString(auditToolNames(entradasB), "crm.contact.read") {
+		t.Fatalf("a execução de org-a vazou para o arquivo de org-b: %+v", entradasB)
+	}
+}
+
+func auditToolNames(entries []ServiceAgentAuditEntry) []string {
+	names := make([]string, 0, len(entries))
+	for _, entry := range entries {
+		names = append(names, entry.ToolName)
+	}
+	return names
 }
 
 func TestServiceAgentAuditReportsPersistenceFailure(t *testing.T) {

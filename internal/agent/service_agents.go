@@ -532,6 +532,8 @@ type ServiceAgentAuditStatus struct {
 	PerOrganization int `json:"per_organization"`
 	// Error é a última falha de persistência, quando houve.
 	Error string `json:"error,omitempty"`
+	// Verification é o resultado da CADEIA de hashes: adulteração aparece aqui, em vez de passar silenciosa.
+	Verification *ServiceAgentAuditVerification `json:"verification,omitempty"`
 }
 
 // AuditStatus reporta o estado da trilha durável.
@@ -559,6 +561,12 @@ func (s *ServiceAgentRuntime) AuditStatus(organizationID string) (ServiceAgentAu
 			status.Entries++
 		}
 	}
+	// A verificação acompanha o estado: quem audita precisa saber se a trilha é ÍNTEGRA, não só se existe.
+	verification, err := store.VerifyTrail(organizationID)
+	if err != nil {
+		return ServiceAgentAuditStatus{}, err
+	}
+	status.Verification = &verification
 	return status, nil
 }
 
