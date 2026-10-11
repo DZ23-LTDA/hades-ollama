@@ -2,12 +2,12 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-13T05:55:00-03:00",
+  "updated_at": "2026-10-13T07:10:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
     "integration_branch": "main",
-    "main_sha": "8f93ef8eb382a522ef505707fb7857d0c23a18e5",
+    "main_sha": "d465be7f5f71f956eddeb587bebd943ee917f8c0",
     "main_committed_at": "2026-10-09T10:24:45Z",
     "main_ci_state": "green (dz23-agentic-quality + class-a-plus-integrity = success nesse SHA)",
     "mission_branch": "docs/checkpoints-missao-v21",
@@ -661,16 +661,17 @@
       "title": "Marketplace multi-vendedor",
       "state": "IN_PROGRESS",
       "auditoria": "AUDITADO",
-      "capability": "APENAS_ADAPTER",
+      "capability": "IMPLEMENTADO_NAO_HOMOLOGADO",
       "evidence": [
         "E-047",
-        "E-087"
+        "E-087",
+        "E-124"
       ],
       "blocker": "B-05",
-      "next": "completar aprovacao/agendamento/metricas em sandbox sobre o rascunho que ja existe, sem publicar",
+      "next": "LIMITES: sem ingestao automatica de metrica (exigiria a API da plataforma), sem segmentacao/criativo/leilao e SEM ROTAS HTTP para agendamento e metricas - a capacidade esta no runtime e testada; a superficie HTTP fica para a proxima rodada. A publicacao externa permanece BLOCKED_BY_EXTERNAL_DEPENDENCY",
       "blocked_reason": "",
       "external_dependency": "contas e APIs oficiais das redes sociais para publicar de verdade",
-      "done": "classificacao corrigida pela auditoria de bloqueios: o bloqueio externo em bloco escondia trabalho implementavel. Evidencia medida registrada em docs/mission/HADES_BLOCKED_AUDIT.md"
+      "done": "classificacao corrigida pela auditoria de bloqueios: o bloqueio externo em bloco escondia trabalho implementavel. Evidencia medida registrada em docs/mission/HADES_BLOCKED_AUDIT.md | CAMPANHA EM SANDBOX COM AGENDAMENTO E METRICAS (E-124): agendar EXIGE APROVACAO (senao seria um caminho paralelo para executar sem aprovacao humana) e inicio no FUTURO; METRICA so em campanha que EXECUTOU (medir rascunho seria inventar resultado); contadores SO SOMAM (negativo recusado, porque subtrair apagaria historico de desempenho); ORCAMENTO diario LIMITA o incremento de gasto; CTR com base zero e 0.00 por cento e nao NaN; e NUNCA PUBLICA - o resultado traz PublicadoExternamente false e o painel declara a publicacao externa como BLOCKED_BY_EXTERNAL_DEPENDENCY com motivo"
     },
     {
       "id": 27,
@@ -1148,7 +1149,10 @@
     "ROBUSTEZ A MELHORAR NO TESTE, NAO NO PRODUTO (E-122): o teste de contrato legado residual FALHA quando a fixture nao existe, em vez de PULAR declarando o pre-requisito, diferente dos outros testes de integracao que checam o ambiente antes. Fica anotado como melhoria de teste. Senhas da pilha local foram efemeras e NAO versionadas, e a pilha foi DERRUBADA (conteineres e volumes removidos)",
     "CICLO LEGADO EXIGE ORDEM - CRIAR O PAPEL PIOROU O RESULTADO (E-123): li o teste de contrato legado por dentro e ele cria a PROPRIA fixture (ollama_agent_legacy_fixture, GRANT, ALTER ROLE ollama_agent CREATEDB) usando so os DSNs de runtime e admin, entao o unico pre-requisito externo era o papel ollama_agent existir. Criei o papel como o CI faz e a suite CAIU de 28 PASS / 1 FAIL para 25 PASS / 5 FAIL, com os TESTES DE RLS falhando junto. A suite NAO e um conjunto de testes independentes contra estado arbitrario: depende do ciclo de vida ORDENADO que o CI executa (ACL fresco -> papel legado -> migracao -> retirada), e por isso o job tem passos EXPLICITOS para o legado",
     "ESTADO LOCAL RESTAURADO E REMEDIDO (E-123): removi a fixture (DROP ROLE ollama_agent) e rodei a suite distribuida completa de novo: PASS=29, FAIL=1, SKIP=2. A falha restante e ...ForResidualLegacyContract e os dois skips sao ...ForStaleLegacySession e ...CannotConnectOutsideApplicationDatabase, que exigem DSNs adicionais que so o CI prove. Procedimento exato de desbloqueio declarado: seguir os passos do CI NA MESMA ORDEM, com a RETIRADA do papel legado depois da migracao",
-    "CORRECAO DE DIAGNOSTICO MEU (E-123): numa checagem intermediaria o teste de RLS apareceu falhando com 'MIGRATOR_URL ... required' quando a causa era EU TER OMITIDO esse DSN naquela execucao. Registro o comportamento: o teste FALHA (em vez de pular) quando parte dos DSNs esta presente - mesma observacao de robustez de E-122, melhoria NO TESTE e nao no produto"
+    "CORRECAO DE DIAGNOSTICO MEU (E-123): numa checagem intermediaria o teste de RLS apareceu falhando com 'MIGRATOR_URL ... required' quando a causa era EU TER OMITIDO esse DSN naquela execucao. Registro o comportamento: o teste FALHA (em vez de pular) quando parte dos DSNs esta presente - mesma observacao de robustez de E-122, melhoria NO TESTE e nao no produto",
+    "CAMPANHA EM SANDBOX COM AGENDAMENTO E METRICAS (E-124): o estagio 26 estava APENAS_ADAPTER - a campanha nascia em sandbox, exigia aprovacao e recusava execucao fora do sandbox, mas NAO havia agendamento nem registro de metrica, entao os campos de impressao/clique/conversao/gasto ficavam ZERADOS PARA SEMPRE e 'metricas' era so intencao",
+    "AS DECISOES DA CAMPANHA EM SANDBOX (E-124): agendar EXIGE APROVACAO, senao o agendamento viraria um CAMINHO PARALELO para executar sem passar pela aprovacao humana; inicio tem de ser no FUTURO; METRICA so em campanha que EXECUTOU, porque medir rascunho seria INVENTAR RESULTADO; contadores SO SOMAM, porque subtrair APAGARIA HISTORICO DE DESEMPENHO; o ORCAMENTO diario limita o incremento de gasto, porque orcamento que nao limita nao e orcamento; NUNCA PUBLICA - o resultado traz PublicadoExternamente false e o painel declara a publicacao externa como BLOCKED_BY_EXTERNAL_DEPENDENCY com o motivo, para ninguem confundir simulacao com campanha no ar. CTR com base zero e 0.00 por cento e nao NaN",
+    "LIMITES DECLARADOS DA CAMPANHA (E-124): sem ingestao automatica de metrica (exigiria a API da plataforma), sem segmentacao/criativo/leilao e SEM ROTAS HTTP para agendamento e metricas - a capacidade esta no runtime e testada com 3/3 PASS, e a superficie fica declarada para a proxima rodada"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
