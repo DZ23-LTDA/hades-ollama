@@ -77,6 +77,13 @@ type Supervisor struct {
 	stopCh  chan struct{}
 	doneCh  chan struct{}
 	status  SupervisorStatus
+	// Registro de incidente (estágio 31): estado, tentativas e recuperação
+	// observada. Mutex próprio para não acoplar ao lock do ciclo de vida.
+	incidentsMu sync.Mutex
+	incidents   []SupervisorIncident
+	// Diário de ticks (evidência "logs de supervisão"): contadores por tick,
+	// limitado e persistido, incluindo os erros de cada tick.
+	tickJournal []SupervisorTickRecord
 }
 
 func NewSupervisor(runtime *Runtime, config SupervisorConfig) *Supervisor {
@@ -89,7 +96,7 @@ func NewSupervisor(runtime *Runtime, config SupervisorConfig) *Supervisor {
 	if config.LeaseDuration <= 0 {
 		config.LeaseDuration = 30 * time.Second
 	}
-	return &Supervisor{
+	supervisor := &Supervisor{
 		runtime: runtime,
 		config:  config,
 		status: SupervisorStatus{
@@ -97,6 +104,11 @@ func NewSupervisor(runtime *Runtime, config SupervisorConfig) *Supervisor {
 			WorkerID: config.WorkerID,
 		},
 	}
+	// O registro precisa sobreviver ao reinício: ocorrência que desaparece na
+	// reinicialização não serve para operação.
+	_ = supervisor.loadIncidents()
+	_ = supervisor.loadTickJournal()
+	return supervisor
 }
 
 // companyCycleRisk classifies the action a Company OS cycle intends to take.
@@ -314,25 +326,49 @@ func (s *Supervisor) Tick(ctx context.Context, now time.Time) (SupervisorTickRes
 			}
 			if err != nil {
 				result.ScheduleRunErrors = append(result.ScheduleRunErrors, "run "+sched.ID+": "+err.Error())
+				if incidentErr := s.recordIncident(SupervisorIncidentScheduleFailure, sched.ID, err.Error(), now); incidentErr != nil {
+					result.ScheduleRunErrors = append(result.ScheduleRunErrors, "incidente "+sched.ID+": "+incidentErr.Error())
+				}
 				continue
+			}
+			// SUCESSO OBSERVADO: se havia incidente aberto deste schedule, a
+			// recuperação aconteceu de fato e é registrada com data.
+			if _, resolveErr := s.resolveIncident(SupervisorIncidentScheduleFailure, sched.ID, "execução concluída com sucesso em tick posterior", now); resolveErr != nil {
+				result.ScheduleRunErrors = append(result.ScheduleRunErrors, "resolver incidente "+sched.ID+": "+resolveErr.Error())
 			}
 			result.SchedulesTriggered += report.Missions
 			if skipped := report.SkippedSteps(); len(skipped) > 0 {
 				result.ScheduleRunErrors = append(result.ScheduleRunErrors,
 					"run "+sched.ID+": passos ignorados: "+strings.Join(skipped, ", "))
+				if incidentErr := s.recordIncident(SupervisorIncidentScheduleFailure, sched.ID,
+					"passos ignorados: "+strings.Join(skipped, ", "), now); incidentErr != nil {
+					result.ScheduleRunErrors = append(result.ScheduleRunErrors, "incidente "+sched.ID+": "+incidentErr.Error())
+				}
 			}
 		}
 	}
 
 	// 2. Resumable & Long-running: Recover and resume pending missions and leases
 	if s.runtime != nil {
-		if err := s.runtime.resumePending(ctx); err == nil {
-			result.MissionsResumed++
-		} else if retryErr := s.runtime.resumePending(ctx); retryErr == nil {
+		resumeErr := s.runtime.resumePending(ctx)
+		if resumeErr != nil {
 			// Recovery is idempotent. Retry once when a temporary filesystem
-			// race interrupts the first scan, while persistent errors remain
-			// observable through the existing recovery path.
+			// race interrupts the first scan.
+			resumeErr = s.runtime.resumePending(ctx)
+		}
+		if resumeErr == nil {
 			result.MissionsResumed++
+			if _, resolveErr := s.resolveIncident(SupervisorIncidentRecoveryFailure, "missions",
+				"retomada de missões pendentes voltou a funcionar", now); resolveErr != nil {
+				result.ScheduleRunErrors = append(result.ScheduleRunErrors, "resolver incidente de retomada: "+resolveErr.Error())
+			}
+		} else {
+			// Falha PERSISTENTE de retomada era engolida em silêncio: o operador
+			// não tinha como saber que missões pendentes pararam de ser retomadas.
+			result.ScheduleRunErrors = append(result.ScheduleRunErrors, "resume: "+resumeErr.Error())
+			if incidentErr := s.recordIncident(SupervisorIncidentRecoveryFailure, "missions", resumeErr.Error(), now); incidentErr != nil {
+				result.ScheduleRunErrors = append(result.ScheduleRunErrors, "incidente de retomada: "+incidentErr.Error())
+			}
 		}
 	}
 
@@ -347,7 +383,18 @@ func (s *Supervisor) Tick(ctx context.Context, now time.Time) (SupervisorTickRes
 			// Check company risk / pause state (Pausa por risco para o loop)
 			if company.Status == CompanyPaused || company.Risk.Paused {
 				result.RiskPausedCompanies = append(result.RiskPausedCompanies, company.ID)
+				// Pausa por risco não é detalhe de log: é incidente que exige
+				// ciência humana, porque o trabalho autônomo da empresa parou.
+				if incidentErr := s.recordIncident(SupervisorIncidentRiskPause, company.ID,
+					"empresa pausada por risco; o trabalho autônomo está parado", now); incidentErr != nil {
+					result.ScheduleRunErrors = append(result.ScheduleRunErrors, "incidente "+company.ID+": "+incidentErr.Error())
+				}
 				continue
+			}
+			// Empresa que voltou a operar: a recuperação é observada e registrada.
+			if _, resolveErr := s.resolveIncident(SupervisorIncidentRiskPause, company.ID,
+				"empresa voltou a operar sem pausa por risco", now); resolveErr != nil {
+				result.ScheduleRunErrors = append(result.ScheduleRunErrors, "resolver incidente "+company.ID+": "+resolveErr.Error())
 			}
 
 			for _, cycle := range company.Cycles {
@@ -470,6 +517,9 @@ func (s *Supervisor) Tick(ctx context.Context, now time.Time) (SupervisorTickRes
 	s.status.BlockedExternalActions += result.BlockedExternalActions
 	s.status.PendingApprovalsCount += result.ApprovalsCreated
 	s.mu.Unlock()
+
+	// Diário do tick, incluindo os erros: é a evidência de "logs de supervisão".
+	s.recordTick(result)
 
 	return result, nil
 }

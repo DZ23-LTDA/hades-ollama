@@ -2,12 +2,12 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-12T01:10:00-03:00",
+  "updated_at": "2026-10-12T02:30:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
     "integration_branch": "main",
-    "main_sha": "939d358a3a74c5577a33f324be3bf4e5e2fb6b6a",
+    "main_sha": "6de5edf5bc012e0953d206367780b2603c1de2f6",
     "main_committed_at": "2026-10-09T10:24:45Z",
     "main_ci_state": "green (dz23-agentic-quality + class-a-plus-integrity = success nesse SHA)",
     "mission_branch": "docs/checkpoints-missao-v21",
@@ -726,12 +726,13 @@
       "capability": "IMPLEMENTADO_NAO_HOMOLOGADO",
       "evidence": [
         "E-044",
-        "E-087"
+        "E-087",
+        "E-097"
       ],
       "blocker": "B-05",
-      "next": "completar limites, orcamento, incidentes e recuperacao com evidencia de supervisao em sandbox",
+      "next": "ATIVIDADES AINDA AUSENTES: coordenacao dos dominios de negocio (marketing, vendas, atendimento, estoque, pedidos, financas, operacoes, conteudo, tecnologia e qualidade), que depende dos estagios 24-30 AUSENTES; orcamento de tokens/custo de modelo (o existente e o de gasto da empresa); e o fato de o supervisor ser componente GLOBAL da implantacao, com pino opcional por organizacao. O estagio NAO foi promovido por isso",
       "blocked_reason": "",
-      "done": "classificacao corrigida pela auditoria de bloqueios: o bloqueio externo em bloco escondia trabalho implementavel. Evidencia medida registrada em docs/mission/HADES_BLOCKED_AUDIT.md"
+      "done": "coordenacao (schedules, retomada de missoes e ciclos de empresa), limites (pausa por risco, aprovacao obrigatoria para risco nao-leitura e CompanyBudget no gasto) e autorizacao (limiar de aprovacao por valor) ja existiam. Nesta rodada foram fechadas duas evidencias obrigatorias: INCIDENTES com estado, tentativas e recuperacao OBSERVADA, e LOGS DE SUPERVISAO com diario de ticks limitado e persistido. Defeito corrigido: falha persistente de retomada era engolida em silencio"
     },
     {
       "id": 32,
@@ -1010,7 +1011,10 @@
     "ESCOPOS - UM SO LUGAR DECIDE (E-095): havia NOVE pontos decidindo visibilidade. Em vez de acrescentar uma segunda regra ao lado, os LEITORES passaram a usar MemoryScope: SearchMemoriesForActor, RetrieveRelevantForActor, GroundedAnswerForActor (que NAO chama mais RetrieveRelevantForActor, para nao pular a camada de escopo) e ExportMemoriesForActor delegam para as versoes InScope. filterMemoriesForActor ficou SEM USO e foi REMOVIDA - a prova de que nenhum caminho ficou na regra antiga, porque regra duplicada e convite a divergir. As rotas de busca e export aceitam mission_id, agent_id e team_id, com o ator vindo SEMPRE da sessao: escopo errado ESCONDE dado, nunca revela",
     "ESCOPOS - ERRO MEU CORRIGIDO PELO TESTE (E-095): meu primeiro teste esperava que um terceiro nao pudesse alterar a memoria presa ao agente, mas ela era 'organization' (conhecimento COMPARTILHADO, alteravel por ator autorizado - comportamento ja travado em E-088). O TESTE estava errado, nao o codigo: corrigi o caso para PRIVADA + com escopo, que e onde a combinacao das duas regras realmente importa",
     "VERIFICACAO DO ESTAGIO 15 E PROMOCAO (E-096): releitura da lista de atividades contra o codigo, atividade por atividade, em docs/mission/HADES_STAGE_15_VERIFICATION.md - mesmo metodo que no estagio 13 REFUTOU a suposicao de cobertura. Criterio CUMPRIDO com a troca de modelo PROVADA AO VIVO (qwen2.5:7b e llama3.2:3b, contexto byte-identico), reinicio, retomada e isolamento; evidencia obrigatoria COBERTA. A unica atividade sem implementacao e 'integracao opcional externa via contrato', que o PROPRIO ESTAGIO marca como opcional - fica declarada como LIMITE, nao como cobertura. Execucao vai para COMPLETED_VERIFIED e a capacidade do Memory and Context Engine para IMPLEMENTADO_E_TESTADO. RELEASE GLOBAL PERMANECE NOT_RELEASE_READY: este e o SEGUNDO dos 38 estagios",
-    "ESTAGIO 15 - LIMITES DECLARADOS NA PROMOCAO (E-096): resumo padrao e digest DETERMINISTICO e nao texto de modelo (o contrato aceita resumidor injetado e o resultado DECLARA qual foi usado, mas nao ha resumo por modelo homologado); escopo de workspace e DERIVADO do projeto e nao campo proprio da memoria; integracao externa opcional ausente; criptografia e OPT-IN com gestao da chave pelo operador, de modo que chave perdida significa memoria cifrada IRRECUPERAVEL (e o erro diz isso); e a busca semantica depende do embedder configurado, sem o qual a comparacao e por texto e o sistema nao finge semantica"
+    "ESTAGIO 15 - LIMITES DECLARADOS NA PROMOCAO (E-096): resumo padrao e digest DETERMINISTICO e nao texto de modelo (o contrato aceita resumidor injetado e o resultado DECLARA qual foi usado, mas nao ha resumo por modelo homologado); escopo de workspace e DERIVADO do projeto e nao campo proprio da memoria; integracao externa opcional ausente; criptografia e OPT-IN com gestao da chave pelo operador, de modo que chave perdida significa memoria cifrada IRRECUPERAVEL (e o erro diz isso); e a busca semantica depende do embedder configurado, sem o qual a comparacao e por texto e o sistema nao finge semantica",
+    "ESTAGIO 31 - INCIDENTES, RECUPERACAO E LOGS DE SUPERVISAO (E-097): duas evidencias obrigatorias do estagio foram fechadas. INCIDENTES: o supervisor tinha contadores e uma lista de erros no resultado do tick, mas nao um registro com estado. Agora ha registro IDEMPOTENTE POR (TIPO, SUJEITO) - a mesma falha repetida soma tentativas em vez de criar ocorrencia nova -, com RECUPERACAO OBSERVADA (sucesso posterior resolve com data, sem ninguem precisar marcar), REABERTURA quando o sujeito volta a falhar, ciencia humana que EXIGE ATOR e NAO e resolucao, teto de 50 e persistencia no diretorio de dados. LOGS DE SUPERVISAO: os contadores viviam so em memoria e reiniciar apagava 'o que o supervisor fez'; agora ha diario de ticks limitado e persistido, INCLUINDO os erros de cada tick",
+    "ESTAGIO 31 - DEFEITO CORRIGIDO: FALHA DE RETOMADA ENGOLIDA (E-097): no passo de retomada o codigo fazia 'if err := resumePending(); err == nil {...} else if retryErr := resumePending(); retryErr == nil {...}'. Se AS DUAS tentativas falhassem, NADA acontecia: sem log, sem contador, sem incidente - missoes pendentes paravam de ser retomadas e o operador nao tinha como saber. Corrigido: a falha persistente entra no resultado do tick E vira incidente do tipo recovery_failure, e a recuperacao, quando ocorre, e registrada",
+    "ESTAGIO 31 - SEM PROMOCAO, COM O QUE FALTA NOMEADO (E-097): o criterio esta coberto e duas evidencias obrigatorias foram fechadas, mas a LISTA DE ATIVIDADES nao esta: coordenar marketing, vendas, atendimento, estoque, pedidos, financas, operacoes, conteudo, tecnologia e qualidade depende dos estagios 24-30, que estao AUSENTES. Tambem faltam orcamento de tokens/custo de modelo (o existente e o de gasto da empresa) e o supervisor por organizacao (hoje e componente GLOBAL com pino opcional via OLLAMA_SUPERVISOR_ORG). Permanece IN_PROGRESS"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
