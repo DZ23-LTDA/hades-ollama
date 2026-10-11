@@ -63,11 +63,14 @@ func TestSlashRegistryCoversSection6AndIsHonest(t *testing.T) {
 			t.Fatalf("command %s is required by §11.1 and must be available", name)
 		}
 	}
-	// E o registro não pode mentir sobre o que não existe.
-	for _, name := range []string{"/support", "/inbox", "/handoff"} {
-		if byName[name].Available {
-			t.Fatalf("command %s must be marked unavailable while it has no route", name)
+	// E o registro não pode mentir sobre o que não existe: TODO comando do catálogo
+	// tem rota real agora. A lista de indisponíveis ficou VAZIA nesta rodada, depois
+	// que a caixa de entrada unificada destravou /inbox, /handoff e /support.
+	for _, spec := range registry {
+		if spec.Available {
+			continue
 		}
+		t.Fatalf("nenhum comando deveria seguir indisponível; %s declarou: %s", spec.Name, spec.UnavailableReason)
 	}
 	// /crm, /telegram e /research SAÍRAM desta lista porque ganharam rota real:
 	// enquanto não havia rota (ou, no caso da pesquisa, enquanto o comando escondia um
@@ -78,6 +81,9 @@ func TestSlashRegistryCoversSection6AndIsHonest(t *testing.T) {
 		"/crm":      "/crm/contacts",
 		"/telegram": "/telegram/status",
 		"/research": "/research",
+		"/inbox":    "/inbox/",
+		"/handoff":  "/inbox/",
+		"/support":  "/inbox/",
 	}
 	for name, trecho := range disponiveis {
 		spec := byName[name]
@@ -119,12 +125,14 @@ func TestParseSlashInvocationValidatesArguments(t *testing.T) {
 	if _, err := ParseSlashInvocation("/nao-existe x"); !errors.Is(err, ErrUnknownSlashCommand) {
 		t.Fatalf("unknown command error = %v", err)
 	}
-	// Comando indisponível: recusado COM o motivo, nunca executado.
-	_, err = ParseSlashInvocation("/inbox")
-	if !errors.Is(err, ErrSlashCommandUnavailable) {
+	// Comando indisponível: recusado COM o motivo, nunca executado. Hoje NENHUM
+	// comando do catálogo está indisponível, então o caminho é exercitado com um
+	// spec sintético — o comportamento continua sendo contrato, e testá-lo com um
+	// comando real só funcionaria enquanto ele estivesse sem rota.
+	synthetic := SlashCommandSpec{Name: "/sintetico", Summary: "teste", Available: false, UnavailableReason: "recurso pendente"}
+	if err := checkSlashCommandAvailable(synthetic); !errors.Is(err, ErrSlashCommandUnavailable) {
 		t.Fatalf("unavailable command error = %v", err)
-	}
-	if !strings.Contains(err.Error(), "caixa de entrada") {
+	} else if !strings.Contains(err.Error(), "recurso pendente") {
 		t.Fatalf("unavailable error must carry the reason: %v", err)
 	}
 }

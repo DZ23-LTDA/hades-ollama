@@ -129,6 +129,8 @@
 
 | Comandos nativos: contrato com rotas reais | guarda `TestEveryAvailableCommandMapsToARegisteredRoute`, porta do Telegram, `/research` corrigido (E-103) | IMPLEMENTADO_E_TESTADO | MÉDIO | E-103 | 32 de 35 comandos com rota existente; 3 indisponíveis **com motivo**; guarda impede regressão |
 
+| Inbox unificado: conversas, SLA e handoff | `inbox.go`, rotas `/inbox/*`, comandos `/inbox`, `/handoff` e `/support` (E-104) | PARCIAL | MÉDIO | E-104 | uma conversa por contato/canal, dedupe de webhook por ExternalID (inclusive concorrente), SLA medido, handoff com motivo, resposta sujeita ao consentimento |
+
 ## 6. Integrações, MCP e conectores
 
 | Capacidade | Superfície | Classificação | Risco | Evidência | Lacuna |

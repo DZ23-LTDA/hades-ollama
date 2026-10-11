@@ -150,8 +150,9 @@ func DefaultSlashRegistry() []SlashCommandSpec {
 		slashSpec("/calls", "Consulta o histórico de chamadas autorizadas", "28,37",
 			"GET /api/agent/v1/companies/:id/tel-agent/history", "",
 			required("empresa", "id da empresa", SlashArgID)),
-		slashSpec("/support", "Atendimento e suporte ao cliente", "29,35", "",
-			"a caixa de entrada unificada ainda não existe: sem rota de atendimento nesta versão"),
+		slashSpec("/support", "Atendimento e suporte ao cliente", "29,35",
+			"GET /api/agent/v1/inbox/conversations", "",
+			optional("status", "filtro de status do atendimento", SlashArgText)),
 		slashSpec("/agents", "Coordena agentes e subagentes especializados", "9",
 			"POST /api/agent/v1/orchestration/jobs", "",
 			required("objetivo", "objetivo da coordenação", SlashArgText),
@@ -178,8 +179,9 @@ func DefaultSlashRegistry() []SlashCommandSpec {
 			"GET /api/agent/v1/telegram/status", "",
 			optional("chat", "chat id de destino no envio", SlashArgText),
 			optional("mensagem", "texto a enviar (exige consentimento registrado)", SlashArgText)),
-		slashSpec("/inbox", "Abre a central de atendimento unificada", "29", "",
-			"a caixa de entrada unificada ainda não existe nesta versão"),
+		slashSpec("/inbox", "Abre a central de atendimento unificada", "29",
+			"GET /api/agent/v1/inbox/conversations", "",
+			optional("status", "filtro de status (open, pending_human, closed)", SlashArgText)),
 		slashSpec("/channels", "Lista e configura os canais disponíveis", "34",
 			"GET /api/agent/v1/whatsapp/status", ""),
 		slashSpec("/crm", "Administra contatos, leads e oportunidades", "27,35",
@@ -190,8 +192,10 @@ func DefaultSlashRegistry() []SlashCommandSpec {
 			"POST /api/agent/v1/companies/:id/orders", "",
 			required("empresa", "id da empresa", SlashArgID),
 			required("pedido", "descrição do pedido", SlashArgText)),
-		slashSpec("/handoff", "Encaminha o atendimento para uma pessoa", "29,35", "",
-			"sem caixa de entrada não há transferência humano/IA para registrar"),
+		slashSpec("/handoff", "Encaminha o atendimento para uma pessoa", "29,35",
+			"POST /api/agent/v1/inbox/conversations/:id/handoff", "",
+			required("conversa", "id da conversa", SlashArgID),
+			required("motivo", "motivo da transferência", SlashArgText)),
 		slashSpec("/campaign", "Cria e acompanha campanhas aprovadas", "26,36",
 			"POST /api/agent/v1/companies/:id/campaigns", "",
 			required("empresa", "id da empresa", SlashArgID),
@@ -234,8 +238,8 @@ func ParseSlashInvocation(input string) (SlashInvocation, error) {
 	if !ok {
 		return SlashInvocation{}, fmt.Errorf("%w: %s", ErrUnknownSlashCommand, fields[0])
 	}
-	if !spec.Available {
-		return SlashInvocation{}, fmt.Errorf("%w: %s — %s", ErrSlashCommandUnavailable, spec.Name, spec.UnavailableReason)
+	if err := checkSlashCommandAvailable(spec); err != nil {
+		return SlashInvocation{}, err
 	}
 	provided := fields[1:]
 	var requiredCount int
@@ -261,6 +265,16 @@ func ParseSlashInvocation(input string) (SlashInvocation, error) {
 		args[arg.Name] = value
 	}
 	return SlashInvocation{Spec: spec, Args: args, Raw: trimmed}, nil
+}
+
+// checkSlashCommandAvailable recusa comando sem rota declarada, sempre COM o motivo.
+// É o ponto único dessa decisão: o parser chama esta função, e o teste consegue
+// exercitar o caminho sem depender de existir um comando indisponível no catálogo.
+func checkSlashCommandAvailable(spec SlashCommandSpec) error {
+	if spec.Available {
+		return nil
+	}
+	return fmt.Errorf("%w: %s — %s", ErrSlashCommandUnavailable, spec.Name, spec.UnavailableReason)
 }
 
 func validateSlashArg(arg SlashArg, value string) error {
