@@ -295,6 +295,9 @@ type ScheduleRunReport struct {
 	// DeadLetters são os passos que esgotaram as tentativas NESTA execução. O
 	// relatório é quem sabe quais falharam; o gravador persiste no schedule.
 	DeadLetters []ScheduleStepDeadLetter `json:"dead_letters,omitempty"`
+	// FlowVersion é a versão do grafo que ESTA execução rodou. Sem ela, comparar
+	// execuções de grafos diferentes seria comparação inválida.
+	FlowVersion int `json:"flow_version,omitempty"`
 }
 
 // SkippedSteps devolve os identificadores ignorados na execução. Vazio significa
@@ -350,7 +353,7 @@ func (r *Runtime) ExecuteScheduleFlowReport(ctx context.Context, schedule Schedu
 //   - carryOver preserva no relatório novo o resultado dos passos pulados;
 //   - execute limita quais passos rodam agora (nil = todos).
 func (r *Runtime) executeScheduleFlow(ctx context.Context, schedule Schedule, runKey string, seedOutcomes map[string]bool, carryOver map[string]ScheduleStepOutcome, execute map[string]bool) (ScheduleRunReport, error) {
-	report := ScheduleRunReport{Steps: make([]ScheduleStepOutcome, 0, len(schedule.Steps)), RunKey: runKey}
+	report := ScheduleRunReport{Steps: make([]ScheduleStepOutcome, 0, len(schedule.Steps)), RunKey: runKey, FlowVersion: schedule.FlowVersion}
 	if len(schedule.Steps) == 0 {
 		if _, err := r.createScheduledMission(ctx, schedule, schedule.Objective); err != nil {
 			report.FinishedAt = time.Now().UTC()
@@ -536,6 +539,31 @@ func mergeScheduleDeadLetters(existing, added []ScheduleStepDeadLetter, succeede
 		merged = merged[:maxScheduleDeadLetters]
 	}
 	return merged
+}
+
+// scheduleStepsEqual compara grafos por conteúdo. A ordem importa: o grafo é
+// executado na ordem de dependência declarada, e reordenar os passos é mudança de
+// fluxo.
+func scheduleStepsEqual(a, b []ScheduleStep) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i].ID != b[i].ID ||
+			a[i].Kind != b[i].Kind ||
+			a[i].Objective != b[i].Objective ||
+			a[i].Expect != b[i].Expect ||
+			a[i].MaxAttempts != b[i].MaxAttempts ||
+			len(a[i].DependsOn) != len(b[i].DependsOn) {
+			return false
+		}
+		for j := range a[i].DependsOn {
+			if a[i].DependsOn[j] != b[i].DependsOn[j] {
+				return false
+			}
+		}
+	}
+	return true
 }
 
 // ErrScheduleReprocessUnavailable recusa o reprocessamento quando não há execução

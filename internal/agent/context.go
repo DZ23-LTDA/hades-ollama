@@ -793,6 +793,11 @@ func (s *ContextStore) CreateSchedule(schedule Schedule) (Schedule, error) {
 		schedule.NextRunAt = now.Add(time.Duration(schedule.IntervalSeconds) * time.Second)
 	}
 	schedule.Enabled = true
+	// Primeira versão do grafo: um schedule nasce com versão 1 (mesmo sem passos,
+	// porque o comportamento legado também é uma definição executável).
+	if schedule.FlowVersion < 1 {
+		schedule.FlowVersion = 1
+	}
 	schedule.CreatedAt = now
 	schedule.UpdatedAt = now
 	s.mu.Lock()
@@ -902,6 +907,19 @@ func (s *ContextStore) updateScheduleForOrganization(organizationID, id string, 
 	schedule.ID = id
 	schedule.OrganizationID = current.OrganizationID
 	schedule.CreatedAt = current.CreatedAt
+	// Versão do GRAFO: sobe SOMENTE quando os passos mudam. Editar objetivo,
+	// intervalo ou habilitar/pausar não é mudança de fluxo, e tratar isso como
+	// versão nova tornaria impossível comparar execuções equivalentes.
+	schedule.FlowVersion = current.FlowVersion
+	if schedule.FlowVersion < 1 {
+		schedule.FlowVersion = 1
+	}
+	if !scheduleStepsEqual(current.Steps, schedule.Steps) {
+		schedule.FlowVersion = current.FlowVersion + 1
+		if schedule.FlowVersion < 2 {
+			schedule.FlowVersion = 2
+		}
+	}
 	schedule.UpdatedAt = time.Now().UTC()
 	if schedule.NextRunAt.IsZero() {
 		schedule.NextRunAt = time.Now().UTC().Add(time.Duration(schedule.IntervalSeconds) * time.Second)

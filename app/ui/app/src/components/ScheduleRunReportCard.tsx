@@ -6,6 +6,7 @@ import {
   scheduleRunVerdictTone,
   scheduleDeadLetterLabel,
   scheduleDeadLetters,
+  scheduleFlowVersionLabel,
   scheduleStepAttemptsLabel,
   scheduleStepKindLabel,
   scheduleStepStatusLabel,
@@ -42,6 +43,9 @@ export function ScheduleRunReportCard({ run, lastFailureCode, lastRunAt }: Sched
           <span className="text-[10px] text-neutral-400">
             última execução: {new Date(lastRunAt).toLocaleString("pt-BR")}
           </span>
+        ) : null}
+        {scheduleFlowVersionLabel(run) ? (
+          <span className="text-[10px] text-neutral-400">{scheduleFlowVersionLabel(run)}</span>
         ) : null}
       </div>
 
