@@ -135,6 +135,8 @@
 
 | Agentes de atendimento e vendas | `service_agents.go`, rotas `/service-agents` (E-106) | PARCIAL | MÉDIO | E-106 | sete agentes, contexto real (CRM + histórico + consentimento), procedência do texto declarada, escalada sem consentimento e políticas preservadas em qualquer modelo; sem geração por modelo |
 
+| Comércio: catálogo, estoque, pedidos e conciliação | `commerce.go`, rotas `/commerce/*` (E-107) | PARCIAL | MÉDIO | E-107 | estoque como livro de movimentos, checkout idempotente, não vende o que não existe, preço do catálogo, zero dado de cartão; sem fiscal, sem PSP e persistência em memória |
+
 ## 6. Integrações, MCP e conectores
 
 | Capacidade | Superfície | Classificação | Risco | Evidência | Lacuna |
