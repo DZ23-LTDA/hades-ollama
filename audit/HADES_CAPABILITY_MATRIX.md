@@ -65,6 +65,8 @@
 | OAuth contra provedor real | `oauth_live_test.go` | BLOQUEADO_EXTERNAMENTE | ALTO | E-019 | exige `OLLAMA_TEST_OAUTH=1` (B-02/B-07) |
 | Isolamento por organização (camada de store) | `store.go`, `plugin_scope.go`, `swarm.go` | PARCIAL | CRITICO | E-042, E-043, E-044 | escopo aplicado em store/plugin/orquestrador e tel-agent; RLS PostgreSQL segue desabilitado por decisão arquitetural |
 
+| Egresso: bloqueio de IPv4 embutido em prefixos de transição | `internal/egresspolicy/policy.go`, `EmbeddedIPv4` (PR #131) | IMPLEMENTADO_NAO_HOMOLOGADO | ALTO | E-071 | NAT64/6to4 para metadata, loopback e rede privada agora recusados, com destino público embutido ainda permitido; catálogo de prefixos de transição precisa de revisão contínua |
+
 ## 6. Integrações, MCP e conectores
 
 | Capacidade | Superfície | Classificação | Risco | Evidência | Lacuna |

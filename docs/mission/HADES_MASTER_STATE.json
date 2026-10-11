@@ -2,12 +2,12 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-10T22:20:00-03:00",
+  "updated_at": "2026-10-10T23:05:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
     "integration_branch": "main",
-    "main_sha": "391ce80282827c4986bdd975f05a8807aa85c746",
+    "main_sha": "285346bc964f403c2298a8f1ac9aee07e73ef1e6",
     "main_committed_at": "2026-10-09T10:24:45Z",
     "main_ci_state": "green (dz23-agentic-quality + class-a-plus-integrity = success nesse SHA)",
     "mission_branch": "docs/checkpoints-missao-v21",
@@ -492,11 +492,12 @@
         "E-019",
         "E-031",
         "E-058",
-        "E-070"
+        "E-070",
+        "E-071"
       ],
       "blocker": null,
-      "next": "fechar o estagio com o que exige banco real: RLS em PostgreSQL com papeis distintos, contexto de tenant confiavel e prova de nao inferencia por timing; depois uploads maliciosos e prompt injection em laboratorio",
-      "done": "varredura ofensiva com ator AUTENTICADO nas superficies novas (plugins, skills, ativacoes e retencao): 7 classes de ataque, todas mitigadas, com motivo estrutural identificado; isolamento entre tenants tambem verificado por escopo em projetos, memorias, missoes, anexos e webhooks (testes previos)"
+      "next": "fechar o estagio com o que exige banco real: RLS em PostgreSQL com papeis distintos, contexto de tenant confiavel e prova de nao inferencia por timing; depois uploads maliciosos (path traversal e zip bomb) e prompt injection/exfiltracao em laboratorio",
+      "done": "varredura ofensiva com ator autenticado nas superficies novas (plugins, skills, ativacoes, retencao) com 7 classes mitigadas; SSRF de egresso auditado e UM ACHADO ALTO CORRIGIDO (IPv4 embutido em NAT64/6to4 alcancava metadata de nuvem, loopback e rede privada), com prova na politica pura e no dial real do remote MCP"
     },
     {
       "id": 19,
@@ -876,6 +877,8 @@
     "Estagio 5 AVANCOU (PR #127): o preambulo canonico passa a acompanhar o chat da superficie Hades (POST /api/agent/v1/chat), reusando o MESMO ChatHandler e injetando por middleware - o /api/chat historico (CLI e clientes OpenAI-compatible) ficou intocado de proposito. Objetivo vem da ultima mensagem do usuario; escopos concedidos passam pela politica (escopo desconhecido falha alto); identificadores de tenant/projeto NAO entram no preambulo; injecao idempotente e sem mutar o slice; falha de contexto NAO bloqueia conversa legitima. 7 testes novos; capacidade segue PARCIAL porque a prova com dois modelos exige provider real (B-07)",
     "Defeito real corrigido no caminho (PR #127): a idempotencia da injecao checava apenas o marcador do Hades, entao reinjetar o mesmo preambulo duplicava o contexto a cada turno; passou a considerar marcador OU preambulo identico, com teste fixando a regra",
     "Estagio 18 AVANCOU (PR #129): varredura ofensiva cross-tenant com organizacao A como vitima e B como atacante AUTENTICADO, cobrindo plugins, skills, ativacoes e retencao. Sete classes: leitura, mutacao, ativacao com o MESMO project_id, persistencia apos reabrir o store, rollback/promocao de plugin alheio, mass assignment de organization_id no corpo e recusa pelo roteador HTTP. Todas bloqueadas com 403/404 (nunca 200 com dado alheio). Nenhum achado CRITICO ou ALTO nestas superficies. Motivos estruturais registrados: PluginManifest nao expoe campo de organizacao; pluginOwnedByOrganization exige dono explicito; a organizacao vem por parametro, separada do corpo; retention/apply e chaveado pela sessao",
-    "Hipotese REFUTADA por teste (PR #129): eu levantei que o caminho 'global' de skills seria um registro morto (aceito no registro, impossivel de confiar depois). O teste mostrou que o registro SEM dono tambem e recusado na entrada, com erro explicito - fail-closed correto nos dois pontos. Em vez de documentar um achado inexistente, o teste TRAVA a propriedade para impedir regressao silenciosa"
+    "Hipotese REFUTADA por teste (PR #129): eu levantei que o caminho 'global' de skills seria um registro morto (aceito no registro, impossivel de confiar depois). O teste mostrou que o registro SEM dono tambem e recusado na entrada, com erro explicito - fail-closed correto nos dois pontos. Em vez de documentar um achado inexistente, o teste TRAVA a propriedade para impedir regressao silenciosa",
+    "ACHADO ALTO CORRIGIDO (PR #131, estagio 18): a politica de egresso bloqueava 169.254.169.254, 127.0.0.1, 10.0.0.0/8 e ::ffff:169.254.169.254, mas PERMITIA os mesmos destinos como literal NAT64 (64:ff9b::a9fe:a9fe) ou 6to4 (2002:a9fe:a9fe::1). Como remote MCP, conectores, OAuth, Telegram, WhatsApp, SAML, research e project import decidem abrir o socket por essa classificacao, o tunel era atalho para metadata de nuvem, loopback e rede privada. Encontrado por MEDICAO de uma tabela de enderecos que encapsulam IPv4, nao por suposicao",
+    "Correcao na causa raiz (PR #131): novo EmbeddedIPv4 extrai o IPv4 de 6to4 (2002::/16), NAT64 well-known (64:ff9b::/96) e NAT64 local-use (64:ff9b:1::/48), e o endereco embutido passa pela MESMA politica. Deliberadamente NAO bloqueei o prefixo inteiro: NAT64 legitimo (DNS64 para host publico) e trafego valido e bloquea-lo quebraria egress em rede IPv6-only - a ausencia de over-blocking esta travada por teste. Prova em duas camadas: politica pura (3 testes) e DIAL real do remote MCP (2 testes)"
   ]
 }
