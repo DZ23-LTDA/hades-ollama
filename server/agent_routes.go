@@ -726,6 +726,7 @@ func (a *agentAPI) register(r *gin.Engine) {
 	group.POST("/companies/:id/agents/:agent_id/spend", a.recordCompanyAgentSpend)
 	group.GET("/schedules", a.schedules)
 	group.POST("/schedules", a.createSchedule)
+	group.POST("/schedules/:id/run", a.runScheduleNow)
 	group.PATCH("/schedules/:id", a.updateSchedule)
 	group.DELETE("/schedules/:id", a.deleteSchedule)
 	group.POST("/webhooks/:schedule_id", a.webhook)
@@ -1608,6 +1609,52 @@ func (a *agentAPI) schedules(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"schedules": a.context.ListSchedulesForOrganization(organizationID)})
+}
+
+// runScheduleNow executa o GRAFO persistido do schedule, e não uma missão avulsa.
+//
+// O botão de execução imediata da interface criava uma missão com o objetivo do
+// schedule e ignorava os passos: um fluxo com condição e várias ações era
+// executado como uma única missão. Aqui a execução manual passa pelo MESMO
+// caminho do despacho automático (ExecuteScheduleFlowReport) e registra o
+// resultado por nó, para que a evidência não divirja entre manual e agendado.
+func (a *agentAPI) runScheduleNow(c *gin.Context) {
+	organizationID, ok := a.requireContextOrganization(c)
+	if !ok {
+		return
+	}
+	if a.runtime == nil {
+		writeAgentError(c, http.StatusServiceUnavailable, errors.New("agent runtime is not configured"))
+		return
+	}
+	schedule, err := a.context.GetScheduleForOrganization(c.Param("id"), organizationID)
+	if err != nil {
+		writeAgentError(c, statusForAgentError(err), err)
+		return
+	}
+	runtime := a.runtime.WithOrganizationContext(c.Request.Context(), organizationID)
+	report, runErr := runtime.ExecuteScheduleFlowReport(c.Request.Context(), schedule)
+	updated := schedule
+	recordWarning := ""
+	if recorded, recordErr := runtime.RecordScheduleRun(schedule, report, runErr); recordErr == nil {
+		updated = recorded
+	} else {
+		recordWarning = recordErr.Error()
+	}
+	payload := gin.H{
+		"schedule":  updated,
+		"report":    report,
+		"succeeded": runErr == nil,
+	}
+	if runErr != nil {
+		// O relatório vai junto: uma execução que falhou precisa chegar ao
+		// operador com o passo culpado, não como erro genérico.
+		payload["error"] = runErr.Error()
+	}
+	if recordWarning != "" {
+		payload["record_warning"] = recordWarning
+	}
+	c.JSON(http.StatusOK, payload)
 }
 
 func (a *agentAPI) createSchedule(c *gin.Context) {

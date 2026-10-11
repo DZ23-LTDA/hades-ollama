@@ -288,6 +288,10 @@ type ScheduleRunReport struct {
 	FinishedAt time.Time             `json:"finished_at"`
 	Missions   int                   `json:"missions"`
 	Steps      []ScheduleStepOutcome `json:"steps,omitempty"`
+	// RunKey identifica a execução que produziu este relatório. É o que permite
+	// reprocessar depois SEM adivinhar: o reprocessamento reusa a mesma chave, e
+	// assim os passos que já criaram missão continuam apontando para ela.
+	RunKey string `json:"run_key,omitempty"`
 }
 
 // SkippedSteps devolve os identificadores ignorados na execução. Vazio significa
@@ -332,7 +336,7 @@ func (r *Runtime) ExecuteScheduleFlow(ctx context.Context, schedule Schedule) (i
 // rodaram e quais foram ignorados. Erro continua sendo erro: o relatório não
 // transforma falha em sucesso.
 func (r *Runtime) ExecuteScheduleFlowReport(ctx context.Context, schedule Schedule) (ScheduleRunReport, error) {
-	report := ScheduleRunReport{Steps: make([]ScheduleStepOutcome, 0, len(schedule.Steps))}
+	report := ScheduleRunReport{Steps: make([]ScheduleStepOutcome, 0, len(schedule.Steps)), RunKey: ScheduleFlowRunKey(schedule)}
 	if len(schedule.Steps) == 0 {
 		if _, err := r.createScheduledMission(ctx, schedule, schedule.Objective); err != nil {
 			report.FinishedAt = time.Now().UTC()
@@ -361,7 +365,7 @@ func (r *Runtime) ExecuteScheduleFlowReport(ctx context.Context, schedule Schedu
 		return report, err
 	}
 	outcomes := make(map[string]bool, len(order))
-	runKey := ScheduleFlowRunKey(schedule)
+	runKey := report.RunKey
 	for _, step := range order {
 		id := strings.TrimSpace(step.ID)
 		if !scheduleDependenciesSatisfied(step, outcomes) {
