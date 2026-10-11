@@ -11,6 +11,7 @@ import {
 import { AppSidebar } from "@/components/AppSidebar";
 import { SidebarLayout } from "@/components/layout/layout";
 import { FlowEditor } from "@/components/FlowEditor";
+import { ScheduleRunReportCard } from "@/components/ScheduleRunReportCard";
 import { humanizeApiError } from "@/lib/userFacingError";
 import { confirmDialog } from "@/lib/confirmDialog";
 import {
@@ -549,6 +550,13 @@ export function AutomationsPage() {
                         ? "Acionada por webhook (não roda por tempo)"
                         : `${formatInterval(sch.interval_seconds)} • Próxima execução: ${new Date(sch.next_run_at).toLocaleString("pt-BR")}`}
                     </p>
+                    {/* Resultado por nó da última execução: uma rotina com passo
+                        ignorado NÃO aparece como sucesso limpo. */}
+                    <ScheduleRunReportCard
+                      run={sch.last_run ?? null}
+                      lastFailureCode={sch.last_failure_code ?? null}
+                      lastRunAt={sch.last_run_at ?? null}
+                    />
                   </div>
 
                   <div className="flex items-center gap-2">

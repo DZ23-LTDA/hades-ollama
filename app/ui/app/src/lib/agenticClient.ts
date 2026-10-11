@@ -1,5 +1,6 @@
 import { API_BASE } from "@/lib/config";
 import type { AgentPluginStatus } from "@/lib/pluginStatus";
+import type { AgentScheduleRunReport } from "@/lib/scheduleRun";
 import type { AgentSkillActivation, AgentSkillSelection } from "@/lib/skillCatalog";
 
 export type AgentProject = {
@@ -57,6 +58,10 @@ export type AgentSchedule = {
   steps?: AgentScheduleStep[];
   next_run_at: string;
   last_run_at?: string;
+  failure_count?: number;
+  last_failure_code?: string;
+  /** Resultado POR NÓ da última execução, quando o servidor já registrou. */
+  last_run?: AgentScheduleRunReport | null;
 };
 
 export type AgentArtifact = { id: string; name: string; sha256: string; size: number; media_type?: string };
