@@ -62,6 +62,7 @@ linters:
         - confidencial
         - transfere
         - essencial
+        - candidatas
         - corporativo
     depguard:
       rules:
