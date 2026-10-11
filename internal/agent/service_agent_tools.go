@@ -273,7 +273,7 @@ func (s *ServiceAgentRuntime) authorizeWrite(call ServiceAgentToolCall, request 
 		call.Reason = fmt.Sprintf("aprovação %s NEGADA por %s: %s", denied.ID, denied.DecidedBy, denied.Reason)
 		return call
 	}
-	approved, found, err := store.FindApproved(scope, fingerprint)
+	approved, found, err := store.FindApproved(scope, fingerprint, request.Now)
 	if err != nil {
 		call.Status = ServiceAgentToolFailed
 		call.Reason = err.Error()

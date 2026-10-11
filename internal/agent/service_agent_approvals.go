@@ -32,17 +32,31 @@ import (
 //  4. **PERSISTE por organização**: aprovação que desaparece no reinício obriga o humano a decidir de novo —
 //     e quem não entende por quê aprova no automático.
 //  5. **NEGADO é decidido, não ignorado**: a tentativa seguinte é BLOQUEADA com o motivo e quem recusou.
+//  6. **A aprovação VENCE**: passado o prazo (`ApprovalTTL`), ela deixa de valer e o turno exige decisão nova.
+//     Sem prazo, uma autorização esquecida continua valendo indefinidamente — que é o oposto de "pontual".
+//  7. **Quem aprova é conferido** quando existe lista de aprovadores da organização; sem lista, a decisão é
+//     registrada com `RoleChecked = false`, para que a ausência de verificação seja DADO, não suposição.
 
-// Estados de uma aprovação.
+// DefaultServiceAgentApprovalRetention é o teto de aprovações guardadas por organização.
+const DefaultServiceAgentApprovalRetention = 500
+
+// DefaultServiceAgentApprovalTTL é o prazo padrão de vigência de uma aprovação depois da decisão.
+//
+// Trinta minutos: tempo suficiente para o turno ser repetido por quem pediu, e curto o bastante para que uma
+// autorização esquecida não continue valendo no dia seguinte. `ApprovalTTL = 0` desliga o prazo — e desligar
+// é uma escolha EXPLÍCITA, registrada no estado (`TTLSeconds = 0`), não um esquecimento.
+const DefaultServiceAgentApprovalTTL = 30 * time.Minute
+
+// Estados e resultados de decisão.
 const (
 	ServiceAgentApprovalPending  = "pending"
 	ServiceAgentApprovalApproved = "approved"
 	ServiceAgentApprovalDenied   = "denied"
 	ServiceAgentApprovalConsumed = "consumed"
+	// ServiceAgentApprovalExpired: aprovada, mas o prazo passou antes de ser usada. É evidência de que a
+	// autorização venceu — não um pedido que sumiu.
+	ServiceAgentApprovalExpired = "expired"
 )
-
-// DefaultServiceAgentApprovalRetention é o teto de aprovações guardadas por organização.
-const DefaultServiceAgentApprovalRetention = 500
 
 // ServiceAgentApproval é um pedido de autorização para uma ferramenta de efeito.
 type ServiceAgentApproval struct {
@@ -60,6 +74,12 @@ type ServiceAgentApproval struct {
 	DecidedBy   string     `json:"decided_by,omitempty"`
 	Reason      string     `json:"reason,omitempty"`
 	ConsumedAt  *time.Time `json:"consumed_at,omitempty"`
+	// ExpiresAt é o instante em que a aprovação deixa de valer (DecidedAt + TTL). Ausente quando não há prazo.
+	ExpiresAt *time.Time `json:"expires_at,omitempty"`
+	// RoleChecked diz se a decisão passou por LISTA DE APROVADORES. `false` é declarado: sem lista
+	// configurada o sistema exige ator identificado, mas NÃO verifica se ele pode aprovar — e isso precisa
+	// aparecer no registro, em vez de virar confiança implícita.
+	RoleChecked bool `json:"role_checked"`
 }
 
 // ServiceAgentApprovalStore persiste as aprovações por organização.
@@ -67,10 +87,15 @@ type ServiceAgentApprovalStore struct {
 	root string
 	// MaxPerOrganization limita quantas aprovações cada organização guarda.
 	MaxPerOrganization int
+	// ApprovalTTL é o prazo de vigência depois da decisão; zero significa SEM prazo.
+	ApprovalTTL time.Duration
 }
 
 type serviceAgentApprovalFile struct {
 	Approvals []ServiceAgentApproval `json:"approvals"`
+	// Approvers é a lista de quem PODE aprovar nesta organização. Vazia significa "qualquer ator
+	// identificado", e as decisões nesse modo saem com RoleChecked = false.
+	Approvers []string `json:"approvers,omitempty"`
 }
 
 // NewServiceAgentApprovalStore cria o store de aprovações.
@@ -78,6 +103,7 @@ func NewServiceAgentApprovalStore(root string) *ServiceAgentApprovalStore {
 	return &ServiceAgentApprovalStore{
 		root:               strings.TrimSpace(root),
 		MaxPerOrganization: DefaultServiceAgentApprovalRetention,
+		ApprovalTTL:        DefaultServiceAgentApprovalTTL,
 	}
 }
 
@@ -98,28 +124,82 @@ func (s *ServiceAgentApprovalStore) path(organizationID string) string {
 
 // Load devolve as aprovações da organização.
 func (s *ServiceAgentApprovalStore) Load(organizationID string) ([]ServiceAgentApproval, error) {
-	path := s.path(organizationID)
-	if path == "" {
-		return nil, nil
-	}
-	var file serviceAgentApprovalFile
-	err := readJSON(path, &file)
+	file, err := s.loadFile(organizationID)
 	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			return nil, nil
-		}
-		// Arquivo ilegível é REPORTADO: tratar como "sem aprovações" esconderia pedidos pendentes.
 		return nil, err
 	}
 	return file.Approvals, nil
 }
 
-// Save grava as aprovações respeitando o teto da organização.
+// loadFile devolve o arquivo inteiro (aprovações + lista de aprovadores).
+func (s *ServiceAgentApprovalStore) loadFile(organizationID string) (serviceAgentApprovalFile, error) {
+	path := s.path(organizationID)
+	if path == "" {
+		return serviceAgentApprovalFile{}, nil
+	}
+	var file serviceAgentApprovalFile
+	err := readJSON(path, &file)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return serviceAgentApprovalFile{}, nil
+		}
+		// Arquivo ilegível é REPORTADO: tratar como "sem aprovações" esconderia pedidos pendentes.
+		return serviceAgentApprovalFile{}, err
+	}
+	return file, nil
+}
+
+// ttl devolve o prazo efetivo (zero significa SEM prazo, escolha explícita).
+func (s *ServiceAgentApprovalStore) ttl() time.Duration {
+	if s == nil || s.ApprovalTTL <= 0 {
+		return 0
+	}
+	return s.ApprovalTTL
+}
+
+// SetApprovers define QUEM pode aprovar nesta organização. Lista vazia desliga a checagem de papel — e as
+// decisões passam a ser registradas com `RoleChecked = false`, para a ausência de verificação ser visível.
+func (s *ServiceAgentApprovalStore) SetApprovers(organizationID string, approvers []string) error {
+	file, err := s.loadFile(organizationID)
+	if err != nil {
+		return err
+	}
+	limpos := make([]string, 0, len(approvers))
+	for _, approver := range approvers {
+		if nome := strings.TrimSpace(approver); nome != "" {
+			limpos = append(limpos, nome)
+		}
+	}
+	file.Approvers = limpos
+	return s.saveFile(organizationID, file)
+}
+
+// Approvers devolve a lista de aprovadores da organização (vazia significa sem checagem de papel).
+func (s *ServiceAgentApprovalStore) Approvers(organizationID string) ([]string, error) {
+	file, err := s.loadFile(organizationID)
+	if err != nil {
+		return nil, err
+	}
+	return file.Approvers, nil
+}
+
+// Save grava as aprovações respeitando o teto e PRESERVANDO a lista de aprovadores da organização.
 func (s *ServiceAgentApprovalStore) Save(organizationID string, approvals []ServiceAgentApproval) error {
+	file, err := s.loadFile(organizationID)
+	if err != nil {
+		return err
+	}
+	file.Approvals = approvals
+	return s.saveFile(organizationID, file)
+}
+
+// saveFile grava o arquivo aplicando o teto por organização.
+func (s *ServiceAgentApprovalStore) saveFile(organizationID string, file serviceAgentApprovalFile) error {
 	path := s.path(organizationID)
 	if path == "" {
 		return nil
 	}
+	approvals := file.Approvals
 	limit := s.MaxPerOrganization
 	if limit <= 0 {
 		limit = DefaultServiceAgentApprovalRetention
@@ -146,7 +226,38 @@ func (s *ServiceAgentApprovalStore) Save(organizationID string, approvals []Serv
 		approvals = append(pendentes, decididas...)
 		sort.SliceStable(approvals, func(i, j int) bool { return approvals[i].RequestedAt.Before(approvals[j].RequestedAt) })
 	}
-	return writeJSONAtomic(path, serviceAgentApprovalFile{Approvals: approvals})
+	file.Approvals = approvals
+	return writeJSONAtomic(path, file)
+}
+
+// expireStale marca como EXPIRADAS as aprovações cujo prazo passou depois da decisão.
+//
+// Marcar (em vez de apenas ignorar) é o que transforma "autorização vencida" em EVIDÊNCIA: quem audita
+// precisa ver que houve aprovação e que ela venceu, não um registro que simplesmente deixou de valer.
+func (s *ServiceAgentApprovalStore) expireStale(organizationID string, now time.Time) error {
+	ttl := s.ttl()
+	if ttl <= 0 {
+		return nil
+	}
+	file, err := s.loadFile(organizationID)
+	if err != nil {
+		return err
+	}
+	mudou := false
+	for index := range file.Approvals {
+		approval := &file.Approvals[index]
+		if approval.Status != ServiceAgentApprovalApproved || approval.DecidedAt == nil {
+			continue
+		}
+		if now.UTC().After(approval.DecidedAt.UTC().Add(ttl)) {
+			approval.Status = ServiceAgentApprovalExpired
+			mudou = true
+		}
+	}
+	if !mudou {
+		return nil
+	}
+	return s.saveFile(organizationID, file)
 }
 
 // Request registra um pedido pendente, REUSANDO o pedido já pendente para a mesma impressão digital.
@@ -182,15 +293,34 @@ func (s *ServiceAgentApprovalStore) Request(organizationID string, request Servi
 }
 
 // Decide registra a decisão humana. Sem ator identificado não há aprovação: não se decide no anonimato.
+//
+// Com LISTA DE APROVADORES configurada para a organização, quem não está nela é RECUSADO — e a recusa é
+// erro declarado, não um registro silencioso. Sem lista, a decisão é aceita e gravada com
+// `RoleChecked = false`: a ausência de verificação vira DADO em vez de confiança implícita.
 func (s *ServiceAgentApprovalStore) Decide(organizationID, approvalID string, approved bool, actorID, reason string, now time.Time) (ServiceAgentApproval, error) {
 	actorID = strings.TrimSpace(actorID)
 	if actorID == "" {
 		return ServiceAgentApproval{}, fmt.Errorf("%w: decidir aprovação exige o ator humano", ErrServiceAgentApprovalInvalid)
 	}
-	approvals, err := s.Load(organizationID)
+	file, err := s.loadFile(organizationID)
 	if err != nil {
 		return ServiceAgentApproval{}, err
 	}
+	roleChecked := false
+	if len(file.Approvers) > 0 {
+		permitido := false
+		for _, approver := range file.Approvers {
+			if approver == actorID {
+				permitido = true
+				break
+			}
+		}
+		if !permitido {
+			return ServiceAgentApproval{}, fmt.Errorf("%w: %q não está na lista de aprovadores desta organização", ErrServiceAgentApprovalNotAllowed, actorID)
+		}
+		roleChecked = true
+	}
+	approvals := file.Approvals
 	for index := range approvals {
 		if approvals[index].ID != approvalID {
 			continue
@@ -203,12 +333,19 @@ func (s *ServiceAgentApprovalStore) Decide(organizationID, approvalID string, ap
 		approvals[index].DecidedAt = &decidedAt
 		approvals[index].DecidedBy = actorID
 		approvals[index].Reason = strings.TrimSpace(reason)
+		approvals[index].RoleChecked = roleChecked
+		approvals[index].ExpiresAt = nil
 		if approved {
 			approvals[index].Status = ServiceAgentApprovalApproved
+			if ttl := s.ttl(); ttl > 0 {
+				expiresAt := decidedAt.Add(ttl)
+				approvals[index].ExpiresAt = &expiresAt
+			}
 		} else {
 			approvals[index].Status = ServiceAgentApprovalDenied
 		}
-		if err := s.Save(organizationID, approvals); err != nil {
+		file.Approvals = approvals
+		if err := s.saveFile(organizationID, file); err != nil {
 			return ServiceAgentApproval{}, err
 		}
 		return approvals[index], nil
@@ -216,8 +353,13 @@ func (s *ServiceAgentApprovalStore) Decide(organizationID, approvalID string, ap
 	return ServiceAgentApproval{}, fmt.Errorf("%w: aprovação %q não existe nesta organização", ErrServiceAgentApprovalNotFound, approvalID)
 }
 
-// FindApproved devolve a aprovação APROVADA mais antiga para a impressão digital, se houver.
-func (s *ServiceAgentApprovalStore) FindApproved(organizationID, fingerprint string) (ServiceAgentApproval, bool, error) {
+// FindApproved devolve a aprovação APROVADA e VÁLIDA mais antiga para a impressão digital, se houver.
+func (s *ServiceAgentApprovalStore) FindApproved(organizationID, fingerprint string, now time.Time) (ServiceAgentApproval, bool, error) {
+	// Aprovação vencida é marcada antes da busca: assim o estado registrado conta a verdade, e o turno pede
+	// decisão nova em vez de executar com autorização que já não valia.
+	if err := s.expireStale(organizationID, now); err != nil {
+		return ServiceAgentApproval{}, false, err
+	}
 	approvals, err := s.Load(organizationID)
 	if err != nil {
 		return ServiceAgentApproval{}, false, err
@@ -245,11 +387,15 @@ func (s *ServiceAgentApprovalStore) FindDenied(organizationID, fingerprint strin
 }
 
 // Consume marca a aprovação como USADA e devolve o registro. É o que impede reutilização.
+//
+// A checagem de PRAZO acontece AQUI também, além da busca: entre a decisão e o consumo pode ter passado
+// tempo suficiente para a autorização vencer, e um caminho que consome sem conferir anularia o prazo.
 func (s *ServiceAgentApprovalStore) Consume(organizationID, approvalID string, now time.Time) (ServiceAgentApproval, error) {
-	approvals, err := s.Load(organizationID)
+	file, err := s.loadFile(organizationID)
 	if err != nil {
 		return ServiceAgentApproval{}, err
 	}
+	approvals := file.Approvals
 	for index := range approvals {
 		if approvals[index].ID != approvalID {
 			continue
@@ -258,10 +404,21 @@ func (s *ServiceAgentApprovalStore) Consume(organizationID, approvalID string, n
 			// Sem esta checagem, duas execuções simultâneas consumiriam a mesma aprovação.
 			return ServiceAgentApproval{}, fmt.Errorf("%w: aprovação não está aprovada", ErrServiceAgentApprovalConflict)
 		}
+		if ttl := s.ttl(); ttl > 0 && approvals[index].DecidedAt != nil &&
+			now.UTC().After(approvals[index].DecidedAt.UTC().Add(ttl)) {
+			// Vencida: marca e RECUSA. Aprovação fora do prazo não autoriza nada.
+			approvals[index].Status = ServiceAgentApprovalExpired
+			file.Approvals = approvals
+			if err := s.saveFile(organizationID, file); err != nil {
+				return ServiceAgentApproval{}, err
+			}
+			return ServiceAgentApproval{}, fmt.Errorf("%w: aprovação venceu antes de ser usada", ErrServiceAgentApprovalExpired)
+		}
 		consumedAt := now.UTC()
 		approvals[index].Status = ServiceAgentApprovalConsumed
 		approvals[index].ConsumedAt = &consumedAt
-		if err := s.Save(organizationID, approvals); err != nil {
+		file.Approvals = approvals
+		if err := s.saveFile(organizationID, file); err != nil {
 			return ServiceAgentApproval{}, err
 		}
 		return approvals[index], nil
@@ -270,7 +427,12 @@ func (s *ServiceAgentApprovalStore) Consume(organizationID, approvalID string, n
 }
 
 // ListApprovals lista as aprovações da organização por estado (vazio lista todas), mais recentes primeiro.
-func (s *ServiceAgentApprovalStore) ListApprovals(organizationID, status string) ([]ServiceAgentApproval, error) {
+func (s *ServiceAgentApprovalStore) ListApprovals(organizationID, status string, now time.Time) ([]ServiceAgentApproval, error) {
+	// Marca vencidas antes de listar: a listagem é o que um humano olha para decidir, e mostrar como
+	// "aprovada" o que já venceu seria mentir para quem confia na tela.
+	if err := s.expireStale(organizationID, now); err != nil {
+		return nil, err
+	}
 	approvals, err := s.Load(organizationID)
 	if err != nil {
 		return nil, err
@@ -295,6 +457,10 @@ var (
 	ErrServiceAgentApprovalInvalid  = errors.New("service agent approval request is invalid")
 	ErrServiceAgentApprovalNotFound = errors.New("service agent approval not found")
 	ErrServiceAgentApprovalConflict = errors.New("service agent approval state conflict")
+	// ErrServiceAgentApprovalNotAllowed: o ator não está na lista de aprovadores da organização.
+	ErrServiceAgentApprovalNotAllowed = errors.New("service agent approval actor is not allowed")
+	// ErrServiceAgentApprovalExpired: a aprovação venceu antes de ser usada.
+	ErrServiceAgentApprovalExpired = errors.New("service agent approval expired")
 )
 
 // serviceAgentApprovalFingerprint amarra a aprovação a FERRAMENTA + ESCOPO + PARÂMETROS.

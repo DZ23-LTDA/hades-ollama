@@ -16,6 +16,8 @@ var (
 	errServiceAgentsAuditUnavailable     = errors.New("trilha de auditoria durável não está configurada")
 	errServiceAgentsApprovalsUnavailable = errors.New("store de aprovação humana não está configurado")
 	errServiceAgentApprovalStatusInvalid = errors.New("status de aprovação inválido")
+	// errServiceAgentApproversActorRequired: mudar QUEM aprova exige ator identificado — é decisão de risco.
+	errServiceAgentApproversActorRequired = errors.New("definir aprovadores exige ator identificado")
 )
 
 func (a *agentAPI) serviceAgents() *agent.ServiceAgentRuntime {
@@ -76,12 +78,12 @@ func (a *agentAPI) serviceAgentApprovals(c *gin.Context) {
 	status := strings.TrimSpace(c.Query("status"))
 	switch status {
 	case "", agent.ServiceAgentApprovalPending, agent.ServiceAgentApprovalApproved,
-		agent.ServiceAgentApprovalDenied, agent.ServiceAgentApprovalConsumed:
+		agent.ServiceAgentApprovalDenied, agent.ServiceAgentApprovalConsumed, agent.ServiceAgentApprovalExpired:
 	default:
 		writeAgentError(c, http.StatusBadRequest, errServiceAgentApprovalStatusInvalid)
 		return
 	}
-	approvals, err := store.ListApprovals(agentOrganizationID(c), status)
+	approvals, err := store.ListApprovals(agentOrganizationID(c), status, time.Now().UTC())
 	if err != nil {
 		writeAgentError(c, statusForAgentError(err), err)
 		return
@@ -123,7 +125,10 @@ func (a *agentAPI) serviceAgentDecideApproval(c *gin.Context) {
 		switch {
 		case errors.Is(err, agent.ErrServiceAgentApprovalNotFound):
 			writeAgentError(c, http.StatusNotFound, err)
-		case errors.Is(err, agent.ErrServiceAgentApprovalConflict):
+		case errors.Is(err, agent.ErrServiceAgentApprovalNotAllowed):
+			// Ator fora da lista de aprovadores: PROIBIDO, não "pedido inválido".
+			writeAgentError(c, http.StatusForbidden, err)
+		case errors.Is(err, agent.ErrServiceAgentApprovalConflict), errors.Is(err, agent.ErrServiceAgentApprovalExpired):
 			writeAgentError(c, http.StatusConflict, err)
 		default:
 			writeAgentError(c, http.StatusBadRequest, err)
@@ -131,6 +136,52 @@ func (a *agentAPI) serviceAgentDecideApproval(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"approval": decided})
+}
+
+// serviceAgentApprovalApprovers define QUEM pode aprovar nesta organização.
+//
+// A configuração exige ator identificado e é uma decisão de risco em si: definir quem aprova é definir o
+// alcance da autorização. Sem `actor_id`, a alteração é recusada.
+func (a *agentAPI) serviceAgentApprovalApprovers(c *gin.Context) {
+	runtime := a.serviceAgents()
+	if runtime == nil {
+		writeAgentError(c, http.StatusServiceUnavailable, errServiceAgentsUnavailable)
+		return
+	}
+	store := runtime.ApprovalStore()
+	if store == nil {
+		writeAgentError(c, http.StatusServiceUnavailable, errServiceAgentsApprovalsUnavailable)
+		return
+	}
+	var input struct {
+		ActorID   string   `json:"actor_id"`
+		Approvers []string `json:"approvers"`
+	}
+	if err := c.ShouldBindJSON(&input); err != nil {
+		writeAgentError(c, http.StatusBadRequest, err)
+		return
+	}
+	if strings.TrimSpace(input.ActorID) == "" {
+		writeAgentError(c, http.StatusBadRequest, errServiceAgentApproversActorRequired)
+		return
+	}
+	organizationID := agentOrganizationID(c)
+	if err := store.SetApprovers(organizationID, input.Approvers); err != nil {
+		writeAgentError(c, statusForAgentError(err), err)
+		return
+	}
+	approvers, err := store.Approvers(organizationID)
+	if err != nil {
+		writeAgentError(c, statusForAgentError(err), err)
+		return
+	}
+	// A resposta diz o estado REAL: lista vazia significa que a decisão não passará por checagem de papel.
+	c.JSON(http.StatusOK, gin.H{
+		"approvers":    approvers,
+		"count":        len(approvers),
+		"role_checked": len(approvers) > 0,
+		"changed_by":   strings.TrimSpace(input.ActorID),
+	})
 }
 
 // serviceAgentTurn executa um turno do agente sobre uma conversa da caixa de entrada.
