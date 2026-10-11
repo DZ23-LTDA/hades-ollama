@@ -141,6 +141,8 @@
 
 | Certificação E2E de empresa em sandbox | `business_e2e.go`, rota `/business/certify` (E-109) | PARCIAL | MÉDIO | E-109 | 18 etapas com evidência por etapa, prova de isolamento, idempotência e reinício real, pendências externas declaradas; jornada em sandbox |
 
+| Supervisor de negócio: limites, orçamento e aprovação | `business_supervisor.go`, rotas `/business/tick` e `/business/actions` (E-110) | PARCIAL | MÉDIO | E-110 | ação irreversível aguarda humano, ação reversível é autônoma com efeito real, orçamento bloqueia sem consumir, decisão idempotente com ator; pendências em memória |
+
 ## 6. Integrações, MCP e conectores
 
 | Capacidade | Superfície | Classificação | Risco | Evidência | Lacuna |
