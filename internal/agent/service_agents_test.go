@@ -19,7 +19,10 @@ import (
 //  6. **trocar de modelo NÃO remove política** (consentimento e DLP continuam valendo);
 //  7. ferramenta que o agente lista e o runtime não tem aparece como BLOQUEADA;
 //  8. escopo por organização.
-func serviceAgentRuntime(t *testing.T, grantConsent bool) (*ServiceAgentRuntime, *InboxStore, *CRMStore, *ConsentRegistry, string) {
+//
+// Recebe `testing.TB` (e não `*testing.T`) para servir também aos BENCHMARKS do estágio 21: duplicar esta
+// montagem num arquivo de benchmark seria a mesma dívida que eu já paguei ao escrever um embedder duplicado.
+func serviceAgentRuntime(t testing.TB, grantConsent bool) (*ServiceAgentRuntime, *InboxStore, *CRMStore, *ConsentRegistry, string) {
 	t.Helper()
 	root := t.TempDir()
 	inbox, err := NewInboxStore(filepath.Join(root, "inbox"))
