@@ -451,7 +451,7 @@ func TestPushProviderRequestDoesNotHoldSubscriptionLock(t *testing.T) {
 	go func() { notifyDone <- push.NotifyOrganization(context.Background(), "org_lock", "title", "body", nil) }()
 	select {
 	case <-started:
-	case <-time.After(3 * time.Second):
+	case <-time.After(waitBudget(t)):
 		close(release)
 		t.Fatal("provider request did not start")
 	}
@@ -463,7 +463,7 @@ func TestPushProviderRequestDoesNotHoldSubscriptionLock(t *testing.T) {
 			close(release)
 			t.Fatalf("revoke while provider request was blocked: %v", err)
 		}
-	case <-time.After(2 * time.Second):
+	case <-time.After(waitBudget(t)):
 		close(release)
 		t.Fatal("provider network I/O blocked subscription revocation")
 	}
@@ -473,7 +473,7 @@ func TestPushProviderRequestDoesNotHoldSubscriptionLock(t *testing.T) {
 		if err != nil {
 			t.Fatalf("notify result: %v", err)
 		}
-	case <-time.After(3 * time.Second):
+	case <-time.After(waitBudget(t)):
 		t.Fatal("notification did not finish after provider was released")
 	}
 }

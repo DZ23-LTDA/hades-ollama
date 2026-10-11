@@ -104,7 +104,7 @@ func TestAgentOrchestratorCancelsRunningJob(t *testing.T) {
 
 	select {
 	case <-started:
-	case <-time.After(3 * time.Second):
+	case <-time.After(waitBudget(t)):
 		t.Fatal("runner did not start")
 	}
 
@@ -121,7 +121,7 @@ func TestAgentOrchestratorCancelsRunningJob(t *testing.T) {
 		if result.State != OrchestrationCancelled {
 			t.Fatalf("Run final state = %v, want %v", result.State, OrchestrationCancelled)
 		}
-	case <-time.After(3 * time.Second):
+	case <-time.After(waitBudget(t)):
 		t.Fatal("Run did not return after cancellation (job was not interrupted)")
 	}
 }

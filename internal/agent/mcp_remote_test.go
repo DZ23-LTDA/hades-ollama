@@ -170,13 +170,17 @@ func TestRemoteMCPSSESupportsMultilineDataAndNotifications(t *testing.T) {
 
 func TestRemoteMCPSSEReturnsCorrelatedErrorBeforeEOF(t *testing.T) {
 	const sentinel = "remote-mcp-provider-message-sentinel"
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/event-stream")
 		_, _ = w.Write([]byte("data: {\"jsonrpc\":\"2.0\",\"id\":1,\"error\":{\"code\":-32000,\"message\":\"" + sentinel + "\"}}\n\n"))
 		if flusher, ok := w.(http.Flusher); ok {
 			flusher.Flush()
 		}
-		<-time.After(2 * time.Second)
+		// O handler fica com o stream ABERTO até o cliente desconectar: é isso que prova que o erro
+		// correlacionado chegou ANTES do EOF. Esperar o fim da requisição é determinístico — um sono
+		// arbitrário aqui era só a fixture segurando a conexão (e virava 30 s de teste quando o orçamento
+		// de espera cresceu).
+		<-r.Context().Done()
 	}))
 	defer server.Close()
 	manager := NewRemoteMCPManager()

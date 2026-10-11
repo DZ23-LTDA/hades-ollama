@@ -770,7 +770,7 @@ func TestRuntimeCancelInterruptsActiveToolAndPreventsNextStep(t *testing.T) {
 	go func() { runDone <- runtime.Run(context.Background(), mission.ID) }()
 	select {
 	case <-probe.started:
-	case <-time.After(2 * time.Second):
+	case <-time.After(waitBudget(t)):
 		t.Fatal("tool did not start")
 	}
 	if _, err := runtime.Cancel(mission.ID); err != nil {
@@ -782,7 +782,7 @@ func TestRuntimeCancelInterruptsActiveToolAndPreventsNextStep(t *testing.T) {
 		if err != nil {
 			t.Fatalf("cancelled run returned error: %v", err)
 		}
-	case <-time.After(2 * time.Second):
+	case <-time.After(waitBudget(t)):
 		t.Fatal("cancelled tool did not stop")
 	}
 	cancelled, err := runtime.GetMission(mission.ID)

@@ -146,10 +146,10 @@ func TestJobQueueWorkerAcknowledgesJobs(t *testing.T) {
 	})
 	select {
 	case <-done:
-	case <-time.After(2 * time.Second):
+	case <-time.After(waitBudget(t)):
 		t.Fatal("worker did not claim job")
 	}
-	deadline := time.Now().Add(2 * time.Second)
+	deadline := time.Now().Add(waitBudget(t))
 	for {
 		status, err := queue.List(QueueSucceeded)
 		if err != nil {
