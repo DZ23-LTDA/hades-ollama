@@ -83,12 +83,20 @@ func (a *agentAPI) serviceAgentApprovals(c *gin.Context) {
 		writeAgentError(c, http.StatusBadRequest, errServiceAgentApprovalStatusInvalid)
 		return
 	}
-	approvals, err := store.ListApprovals(agentOrganizationID(c), status, time.Now().UTC())
+	organizationID := agentOrganizationID(c)
+	approvals, err := store.ListApprovals(organizationID, status, time.Now().UTC())
 	if err != nil {
 		writeAgentError(c, statusForAgentError(err), err)
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"approvals": approvals, "count": len(approvals)})
+	// A FILA acompanha a listagem com idade e atraso: é o que diz a quem opera o que está esperando demais.
+	// Não há push/e-mail — o que existe é uma fila que não esconde o tempo de espera.
+	queue, err := store.ApprovalQueue(organizationID, time.Now().UTC())
+	if err != nil {
+		writeAgentError(c, statusForAgentError(err), err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"approvals": approvals, "count": len(approvals), "queue": queue})
 }
 
 // serviceAgentDecideApproval registra a DECISÃO HUMANA sobre um pedido de escrita.
