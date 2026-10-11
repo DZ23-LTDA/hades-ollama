@@ -107,6 +107,8 @@
 
 | Comandos slash: `/memory` escopado por ator | `command_routes.go` + `SearchMemoriesForActor` (E-090) | IMPLEMENTADO_E_TESTADO | ALTO (corrigido) | E-090 | o comando devolvia memória privada de outro usuário; invariante de zero leitura de memória sem ator no servidor |
 
+| Segurança: guarda de tenant em handlers HTTP | `scripts/audit_tenant_guards.py` (E-091) | IMPLEMENTADO_E_TESTADO | BAIXO | E-091 | 136 handlers com guarda; 14 exceções nomeadas e explicadas; zero defeito novo |
+
 ## 6. Integrações, MCP e conectores
 
 | Capacidade | Superfície | Classificação | Risco | Evidência | Lacuna |
