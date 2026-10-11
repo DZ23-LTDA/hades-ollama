@@ -62,7 +62,10 @@ var (
 	ErrProposalConsentRequired = errors.New("sales proposal requires contact consent")
 	ErrProposalStateInvalid    = errors.New("sales proposal state does not allow this action")
 	ErrFollowUpInvalid         = errors.New("post-sale follow-up invalid")
-	ErrFollowUpNotFound        = errors.New("post-sale follow-up not found")
+	// ErrFollowUpStateInvalid é separado do erro de ENTRADA: motivo/escopo ausentes são
+	// erro do cliente (400); concluir algo já concluído é conflito de estado (409).
+	ErrFollowUpStateInvalid = errors.New("post-sale follow-up state does not allow this action")
+	ErrFollowUpNotFound     = errors.New("post-sale follow-up not found")
 )
 
 // SalesProposalRequest é o pedido de proposta. O cliente informa SKU e quantidade; o PREÇO
@@ -421,7 +424,7 @@ func (s *SalesWorkforceStore) CompleteFollowUp(organizationID, followUpID, actor
 			continue
 		}
 		if followUp.Status != SalesFollowUpScheduled {
-			return SalesFollowUp{}, fmt.Errorf("%w: acompanhamento em %q não pode ser concluído", ErrFollowUpInvalid, followUp.Status)
+			return SalesFollowUp{}, fmt.Errorf("%w: acompanhamento em %q não pode ser concluído", ErrFollowUpStateInvalid, followUp.Status)
 		}
 		status := SalesFollowUpDone
 		if strings.EqualFold(strings.TrimSpace(outcome), "dispensar") {

@@ -840,6 +840,15 @@ func (a *agentAPI) register(r *gin.Engine) {
 	group.GET("/finance/report", a.financeReport)
 	group.POST("/business/certify", a.certifyBusiness)
 	group.POST("/company/factory/launch", a.launchCompanyFactory)
+	// Propostas comerciais e pos-venda (estagio 27).
+	group.POST("/sales/proposals", a.createSalesProposal)
+	group.GET("/sales/proposals", a.listSalesProposals)
+	group.GET("/sales/proposals/:id", a.getSalesProposal)
+	group.POST("/sales/proposals/:id/send", a.sendSalesProposal)
+	group.POST("/sales/proposals/:id/decide", a.decideSalesProposal)
+	group.POST("/sales/follow-ups", a.createSalesFollowUp)
+	group.GET("/sales/follow-ups", a.listSalesFollowUps)
+	group.POST("/sales/follow-ups/:id/complete", a.completeSalesFollowUp)
 	group.GET("/company/factory/report/:id", a.companyFactoryReport)
 	group.POST("/business/tick", a.businessSupervisorTick)
 	group.GET("/business/actions", a.listBusinessActions)
@@ -3920,6 +3929,27 @@ func statusForAgentError(err error) int {
 	}
 	if errors.Is(err, agent.ErrCompanyNotFound) {
 		return http.StatusNotFound
+	}
+	// Força de vendas (estágio 27): SKU fora do catálogo e pedido inválido são erro de
+	// cliente (422/400); proposta ou acompanhamento inexistente é 404; proposta sem
+	// consentimento é 403; estado que não permite a ação ou vigência vencida é 409.
+	if errors.Is(err, agent.ErrProposalConsentRequired) {
+		return http.StatusForbidden
+	}
+	if errors.Is(err, agent.ErrProposalNotFound) || errors.Is(err, agent.ErrFollowUpNotFound) {
+		return http.StatusNotFound
+	}
+	if errors.Is(err, agent.ErrProposalStateInvalid) || errors.Is(err, agent.ErrProposalExpired) || errors.Is(err, agent.ErrFollowUpStateInvalid) {
+		return http.StatusConflict
+	}
+	if errors.Is(err, agent.ErrFollowUpInvalid) {
+		return http.StatusBadRequest
+	}
+	if errors.Is(err, agent.ErrProposalUnknownSKU) {
+		return http.StatusUnprocessableEntity
+	}
+	if errors.Is(err, agent.ErrProposalInvalid) {
+		return http.StatusBadRequest
 	}
 	if errors.Is(err, os.ErrNotExist) {
 		return http.StatusNotFound
