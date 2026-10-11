@@ -987,8 +987,19 @@ func writeJSONAtomicBounded(path string, value any, maxBytes int, label string) 
 	}
 	// A POLÍTICA de durabilidade decide se há `fsync` (E-168). Padrão é sincronizar; `relaxed` pula — e quem
 	// opera sabe, porque o modo efetivo é consultável e a troca é explícita por configuração.
+	// E-168/E-169: três modos de durabilidade, decididos por configuração.
+	// durable: sincroniza TODA escrita (arquivo e diretório) logo abaixo.
+	// batched: grava agora e sincroniza no máximo uma vez por janela — a perda possível fica limitada à janela.
+	// relaxed: não sincroniza nunca.
 	durable := durableWriteAtivo()
-	if durable {
+	sincronizarAgora := durable
+	if !durable && WriteDurability() == WriteDurabilityBatched {
+		// No modo em lote a decisão é da JANELA: fora dela sincroniza agora, dentro dela a escrita fica
+		// registrada como pendente (visível em PendingDurableWrites e em /health).
+		sincronizarAgora = needsImmediateSync(path)
+	}
+	if sincronizarAgora {
+		// Sincroniza o PRÓPRIO handle de escrita: reabrir o arquivo para sincronizar é negado no Windows.
 		if err := tmp.Sync(); err != nil {
 			_ = tmp.Close()
 			return err
@@ -1002,7 +1013,13 @@ func writeJSONAtomicBounded(path string, value any, maxBytes int, label string) 
 	}
 	// Durability: after the atomic content rename, fsync the parent directory so
 	// the rename entry itself survives a crash, not just the file's data.
-	if durable {
+	switch {
+	case durable:
+		syncParentDir(path)
+	case sincronizarAgora:
+		// A troca atômica já aconteceu e o conteúdo foi sincronizado no handle de escrita; falta o diretório,
+		// para a entrada do rename sobreviver a uma queda. Quando a escrita fica PENDENTE (dentro da janela),
+		// nem o diretório é sincronizado: é o flush que fecha o lote.
 		syncParentDir(path)
 	}
 	return nil

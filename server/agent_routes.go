@@ -1334,15 +1334,18 @@ func (a *agentAPI) health(c *gin.Context) {
 				"dead_letter": dead,
 			},
 			"sandbox": gin.H{"status": sandboxStatus, "detail": "Execução isolada"},
-			// E-168: a POLÍTICA DE DURABILIDADE fica VISÍVEL. Trocar `fsync` por velocidade é uma decisão sobre
-			// perder escritas numa queda abrupta — quem opera precisa ver em qual modo o sistema está, em vez de
-			// descobrir isso por um arquivo perdido.
+			// E-168/E-169: a POLÍTICA DE DURABILIDADE fica VISÍVEL. Trocar `fsync` por velocidade é uma decisão
+			// sobre perder escritas numa queda abrupta — quem opera precisa ver em qual modo o sistema está e
+			// quantas escritas ainda NÃO estão sincronizadas, em vez de descobrir por um arquivo perdido.
 			"escrita": gin.H{
 				"status": agent.WriteDurability(),
 				"detail": map[string]string{
 					agent.WriteDurabilityDurable: "Grava e sincroniza arquivo e diretório (sobrevive a queda abrupta)",
+					agent.WriteDurabilityBatched: "Grava agora e sincroniza no máximo uma vez por janela de 2s: a perda possível fica limitada à janela",
 					agent.WriteDurabilityRelaxed: "Grava sem sincronizar: mais rápido, o último lote pode ser perdido numa queda abrupta",
 				}[agent.WriteDurability()],
+				// A janela em aberto é medida, não prometida.
+				"pendentes": agent.PendingDurableWrites(),
 			},
 		},
 	})
