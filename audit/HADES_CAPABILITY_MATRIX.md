@@ -147,6 +147,8 @@
 
 | Certificação E2E com supervisor no laço | `business_e2e.go` + `finance_ops.go` (E-112) | PARCIAL | BAIXO | E-112 | 21 etapas; estorno aguarda humano, aprovação executa efeito real e não vaza; financeiro reconhece estorno já registrado (a ação fecha o que abriu) |
 
+| Instalação, atualização, rollback e desinstalação | `scripts/install.ps1`, guarda `TestInstallScript` (E-113) | PARCIAL | MÉDIO | E-113 | ciclo executado do código-fonte com manifesto e SHA-256, rollback reversível e desinstalação que preserva dados; sem pacote assinado nem macOS/Linux reais |
+
 ## 6. Integrações, MCP e conectores
 
 | Capacidade | Superfície | Classificação | Risco | Evidência | Lacuna |

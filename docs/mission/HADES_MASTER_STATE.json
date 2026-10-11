@@ -2,12 +2,12 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-12T16:55:00-03:00",
+  "updated_at": "2026-10-12T18:05:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
     "integration_branch": "main",
-    "main_sha": "820bae2a2e38ad2997048db26eadf25319ad2841",
+    "main_sha": "22ce5b49f36d357b40b5b53fa155b02d45b221d7",
     "main_committed_at": "2026-10-09T10:24:45Z",
     "main_ci_state": "green (dz23-agentic-quality + class-a-plus-integrity = success nesse SHA)",
     "mission_branch": "docs/checkpoints-missao-v21",
@@ -553,10 +553,12 @@
       "auditoria": "AUDITADO_PARCIAL",
       "capability": "PARCIAL",
       "evidence": [
-        "E-022"
+        "E-022",
+        "E-113"
       ],
       "blocker": "B-06",
-      "next": "Smoke nativo por SO + assinatura de release"
+      "next": "LIMITES: instaladores de pacote ASSINADOS (deb/rpm/dmg/msi) e assinatura digital nao produzidos, instalacao em macOS e Linux reais nao medida neste host (o CI cobre build), e desktop/computer-use nativo ausente",
+      "done": "scripts/install.ps1 passou a entregar INSTALACAO (build do codigo com -Ldflags opcional e manifesto com acao, commit, data e SHA-256), ATUALIZACAO (preserva o binario anterior em <binario>.previous), ROLLBACK (restaura o anterior e preserva o substituido em <binario>.rolledback, entao e reversivel) e DESINSTALACAO (remove binario, backup e manifesto e PRESERVA os dados do usuario). O ciclo foi EXECUTADO de verdade num diretorio descartavel, com o binario RODANDO (ollama version is 0.40.1), atualizacao entregando artefato de hash DIFERENTE e rollback restaurando exatamente o hash original"
     },
     {
       "id": 21,
@@ -589,10 +591,11 @@
         "E-048",
         "E-059",
         "E-098",
-        "E-099"
+        "E-099",
+        "E-113"
       ],
       "blocker": null,
-      "next": "PENDENCIAS RESTANTES: instalacao/upgrade/rollback de pacote executados de verdade, homologacao por plataforma em dispositivo real, desktop/computer-use nativo e APIs externas com credenciais reais (bloqueio externo). O gate segue NAO APROVADO por elas",
+      "next": "FALTA para o gate intermediario: instaladores de pacote ASSINADOS (deb/rpm/dmg/msi) e instalacao em macOS/Linux reais, desktop/computer-use nativo homologado e APIs externas com credenciais reais. Instalacao/atualizacao/rollback/desinstalacao do codigo-fonte, performance e acessibilidade foram EXECUTADOS e medidos (E-113, E-099)",
       "done": "GATE AVALIADO EM DUAS RODADAS: a suite completa foi executada e relatada, e agora PERFORMANCE e ACESSIBILIDADE tambem estao MEDIDAS - benchmarks reais (busca de memoria 699,3 ns/op, construcao de contexto fundamentado 110,7 us/op, instalacao/rollback de plugin 5,20 ms/op, download 442,83 MB/s), budget de bundle PASS (1.443,91 kB cru e 396,66 kB gzip contra 2.000.000 e 600.000) e gate axe WCAG com 3 de 3 passando (desktop sem violacao, mobile sem violacao e teclado sem armadilha)"
     },
     {
@@ -1096,7 +1099,12 @@
     "RECUPERACAO DO SUPERVISOR - LIMITE QUE CONTINUA (E-111): o HISTORICO dos ciclos segue em MEMORIA, porque ele e a trilha analitica do supervisor e nao a decisao. Pendencia, decisao, politica e orcamento, que sao o que MUDA O MUNDO, agora sao persistentes. Capacidade IMPLEMENTADO_NAO_HOMOLOGADO",
     "SUPERVISOR NO LACO DA CERTIFICACAO (E-112): a certificacao E2E deixou de terminar no financeiro e passou a EXERCER O SUPERVISOR DENTRO DA PROPRIA JORNADA. Um segundo pedido e pago, tem receita lancada e e cancelado, gerando ESTORNO DEVIDO que por politica EXIGE DECISAO HUMANA para mexer em dinheiro; o ciclo observa, a pendencia e consultavel, a aprovacao EXECUTA o efeito real no livro e a pendencia nao vaza para outra organizacao. Sao 21 etapas, com o relatorio ganhando um bloco supervisor",
     "DEFEITO REAL EXPOSO PELA EXTENSAO DA JORNADA (E-112): depois de o estorno ser APROVADO, o relatorio financeiro CONTINUAVA marcando o pedido como estorno devido, porque so considerava a receita lancada e NAO RECONHECIA O ESTORNO JA REGISTRADO. O efeito seria grave e silencioso: o supervisor proporia A MESMA DECISAO EM TODO CICLO, PARA SEMPRE, mesmo depois de uma pessoa ter aprovado. Corrigido em FinanceOps.Report, que agora coleta os lancamentos com idempotencia refund:<pedido> e trata o pedido cancelado como LIQUIDADO - e a jornada verifica, num ciclo seguinte, que AwaitingApproval volta a ZERO e a fila fica VAZIA. E o defeito classico que o proprio estagio aponta: a acao que nao fecha o que abriu",
-    "ERRO MEU NO TESTE (E-112): eu errei a aritmetica da assercao escrevendo preco x quantidade x 2, mas o pedido estornado tem UMA unidade e nao 'quantidade'. A receita correta e a do pedido atendido mais UMA unidade - era a ASSERCAO que estava errada, nao o motor. Corrigi a assercao, em vez de mexer no codigo"
+    "ERRO MEU NO TESTE (E-112): eu errei a aritmetica da assercao escrevendo preco x quantidade x 2, mas o pedido estornado tem UMA unidade e nao 'quantidade'. A receita correta e a do pedido atendido mais UMA unidade - era a ASSERCAO que estava errada, nao o motor. Corrigi a assercao, em vez de mexer no codigo",
+    "GATE 22 - INSTALACAO, ATUALIZACAO, ROLLBACK E DESINSTALACAO EXECUTADOS (E-113): o gate registrava 'instalacao/upgrade/rollback de pacote executados de verdade: NAO MEDIDO'. O scripts/install.ps1 compilava e copIAVA o binario, mas NAO tinha backup, rollback nem desinstalacao - ou seja, ATUALIZAR ERA UMA OPERACAO SEM VOLTA, exatamente o que o estagio proibe. Implementei os quatro caminhos com manifesto auditavel",
+    "GATE 22 - O CICLO EXECUTADO DE VERDADE (E-113): em diretorio descartavel fora do Git, a INSTALACAO gerou SHA-256 ADCA65F8... com manifesto action=INSTALL e commit e443e9b19; o binario RODA (ollama version is 0.40.1); a ATUALIZACAO com -Ldflags entregou artefato de hash DIFERENTE (D27C2249...) preservando o anterior; o ROLLBACK restaurou EXATAMENTE o hash original (restaurado == original: True) preservando o binario substituido em .rolledback, entao o rollback e REVERSIVEL; e a DESINSTALACAO removeu binario, backup e manifesto PRESERVANDO os dados do usuario, porque apagar modelos seria perda de dados e nao limpeza",
+    "GATE 22 - NOTA DE HONESTIDADE (E-113): o -Ldflags mudou o HASH do binario (prova de que a atualizacao entregou artefato diferente), mas a saida de --version continuou mostrando 'client version is 0.0.0' nas duas builds - a variavel injetada NAO e a que essa mensagem imprime. A prova de conteudo diferente e o HASH, e e assim que esta registrado: nao afirmo que a string de versao mudou",
+    "GATE 22 - O QUE CONTINUA NAO MEDIDO (E-113): instaladores de PACOTE ASSINADOS (deb/rpm/dmg/msi) e assinatura digital nao sao produzidos neste ambiente, instalacao em macOS e Linux reais nao e medida neste host (o CI cobre build), desktop/computer-use nativo e ausente e APIs externas com credenciais reais seguem BLOCKED_BY_EXTERNAL_DEPENDENCY. O gate intermediario continua NAO_APROVADO, agora por UM MOTIVO A MENOS. O campo motivo do gate foi CORRIGIDO, porque ainda listava performance e acessibilidade como nao medidas apesar de E-099",
+    "GATE 22 - GUARDA DE CONTRATO (E-113): go test . -run TestInstallScript impede que uma edicao futura remova rollback, backup, manifesto, hash ou a declaracao de que a desinstalacao PRESERVA os dados do usuario. A guarda e ESTATICA de proposito: verifica o contrato do script, nao substitui a execucao, que esta registrada como evidencia"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -1158,7 +1166,7 @@
     "suites_local": "build/vet/lint/testes (agente e servidor) + web 551 testes, typecheck, lint, build",
     "gates_ci": "7 checks verdes na main",
     "gate_intermediario": "NAO_APROVADO",
-    "motivo": "install/upgrade/rollback, performance e acessibilidade nao medidos; desktop nativo ausente; APIs externas sem credenciais",
+    "motivo": "Instalacao/atualizacao/rollback/desinstalacao do codigo-fonte EXECUTADOS (E-113), com performance (E-099) e acessibilidade (E-099) medidas e aprovadas. Seguem pendentes: instaladores de pacote ASSINADOS e instalacao em macOS/Linux reais (nao medidos), desktop/computer-use nativo (ausente) e APIs externas com credenciais reais (BLOCKED_BY_EXTERNAL_DEPENDENCY)",
     "release_global": "NOT_RELEASE_READY",
     "estagios_verified": "2 de 38"
   },
