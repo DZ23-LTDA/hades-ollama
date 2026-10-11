@@ -985,9 +985,14 @@ func writeJSONAtomicBounded(path string, value any, maxBytes int, label string) 
 		_ = tmp.Close()
 		return err
 	}
-	if err := tmp.Sync(); err != nil {
-		_ = tmp.Close()
-		return err
+	// A POLÍTICA de durabilidade decide se há `fsync` (E-168). Padrão é sincronizar; `relaxed` pula — e quem
+	// opera sabe, porque o modo efetivo é consultável e a troca é explícita por configuração.
+	durable := durableWriteAtivo()
+	if durable {
+		if err := tmp.Sync(); err != nil {
+			_ = tmp.Close()
+			return err
+		}
 	}
 	if err := tmp.Close(); err != nil {
 		return err
@@ -997,7 +1002,9 @@ func writeJSONAtomicBounded(path string, value any, maxBytes int, label string) 
 	}
 	// Durability: after the atomic content rename, fsync the parent directory so
 	// the rename entry itself survives a crash, not just the file's data.
-	syncParentDir(path)
+	if durable {
+		syncParentDir(path)
+	}
 	return nil
 }
 

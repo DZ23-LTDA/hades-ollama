@@ -138,8 +138,25 @@ func BenchmarkServiceAgentPlan(b *testing.B) {
 }
 
 // BenchmarkMemoryFileWrite mede a ESCRITA ATÔMICA do arquivo de memórias — o custo de sistema de arquivos que o
-// turno e o re-embed pagam.
+// turno e o re-embed pagam (no modo PADRÃO, com `fsync`).
 func BenchmarkMemoryFileWrite(b *testing.B) {
+	benchmarkMemoryFileWrite(b)
+}
+
+// BenchmarkMemoryFileWriteRelaxed mede a MESMA escrita no modo `relaxed` (sem `fsync`): é a evidência de quanto
+// custa a garantia de durabilidade — o número que sustenta a política de E-168 sem inventar ganho.
+func BenchmarkMemoryFileWriteRelaxed(b *testing.B) {
+	anterior := WriteDurability()
+	defer func() { _, _ = SetWriteDurability(anterior) }()
+	if _, err := SetWriteDurability(WriteDurabilityRelaxed); err != nil {
+		b.Fatal(err)
+	}
+	b.Logf("modo efetivo deste benchmark: %s", WriteDurability())
+	benchmarkMemoryFileWrite(b)
+}
+
+func benchmarkMemoryFileWrite(b *testing.B) {
+	b.Helper()
 	store, err := NewContextStore(b.TempDir() + "-write")
 	if err != nil {
 		b.Fatal(err)
