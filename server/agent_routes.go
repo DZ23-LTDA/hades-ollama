@@ -838,6 +838,7 @@ func (a *agentAPI) register(r *gin.Engine) {
 	group.POST("/finance/orders/:id/cost", a.postOrderCost)
 	group.POST("/finance/orders/:id/reconcile", a.reconcileOrderWithStatement)
 	group.GET("/finance/report", a.financeReport)
+	group.POST("/business/certify", a.certifyBusiness)
 	group.GET("/egress/logs", a.getEgressLogs)
 	group.GET("/egress/status", a.getEgressStatus)
 	group.GET("/plugins", a.listPlugins)
