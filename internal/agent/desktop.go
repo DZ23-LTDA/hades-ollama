@@ -11,7 +11,7 @@ import (
 type desktopCompanionTool struct{}
 
 func (desktopCompanionTool) Descriptor() ToolDescriptor {
-	return ToolDescriptor{Name: "desktop.companion", Version: "1", Description: "Operações controladas de tela, mouse, teclado, clipboard e processos no Desktop local", Risk: RiskExternalSideEffect, RequiresApproval: true, Scopes: []string{"desktop:screen", "desktop:input", "desktop:clipboard", "desktop:process"}} //nolint:misspell // Portuguese product copy.
+	return ToolDescriptor{Name: "desktop.companion", Version: "1", Description: "Operações controladas de tela, mouse, teclado, clipboard e processos no Desktop local", Risk: RiskExternalSideEffect, RequiresApproval: true, Scopes: []string{"desktop:screen", "desktop:input", "desktop:clipboard", "desktop:process"}}
 }
 
 func (desktopCompanionTool) Execute(ctx context.Context, toolContext ToolContext, input map[string]any) (ToolResult, error) {

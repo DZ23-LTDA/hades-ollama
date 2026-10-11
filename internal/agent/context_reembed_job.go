@@ -252,10 +252,38 @@ func (s *ContextStore) applyReembedVectors(projectID, modelo string, vetores map
 	}
 	s.memories[projectID] = memorias
 	if s.root != "" && aplicados > 0 {
-		// Gravar por lote: um processo morto no meio não perde o que já foi feito.
-		_ = s.writeMemoriesFile(projectID, memorias)
+		// Gravação por lote SOB A TRAVA e com LEITURA NOVA do arquivo: outro processo pode ter escrito no meio
+		// do caminho, e sobrescrever com a nossa cópia antiga apagaria o trabalho dele em silêncio (E-162).
+		if err := s.updateMemoriesFileLocked(context.Background(), projectID, func(atual []Memory) []Memory {
+			for indice := range atual {
+				vetor, ok := vetores[atual[indice].ID]
+				if !ok {
+					continue
+				}
+				atual[indice].Embedding = vetor
+				atual[indice].EmbeddingModel = modelo
+			}
+			return atual
+		}); err != nil {
+			// A falha é DECLARADA no estado do job em vez de sumir: perder a gravação de um lote sem avisar
+			// seria pior que relatar o problema.
+			s.registrarErroDeGravacao(projectID, err)
+			return 0
+		}
 	}
 	return aplicados
+}
+
+// registrarErroDeGravacao guarda a falha de gravação do lote no job ativo do projeto (para DECLARAR, não
+// engolir).
+func (s *ContextStore) registrarErroDeGravacao(projectID string, err error) {
+	s.reembedMu.Lock()
+	defer s.reembedMu.Unlock()
+	for _, entrada := range s.reembedJobs {
+		if entrada.job.ProjectID == projectID && entrada.job.State == ReembedJobRunning {
+			entrada.job.LastError = err.Error()
+		}
+	}
 }
 
 func (s *ContextStore) advanceReembedJob(jobID string, aplicados, falhas, restantes int) {

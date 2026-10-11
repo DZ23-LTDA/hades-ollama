@@ -63,6 +63,7 @@ linters:
         - transfere
         - essencial
         - candidatas
+        - processos
         - corporativo
     depguard:
       rules:
