@@ -161,6 +161,10 @@ export function scheduleStepKindLabel(kind: string): string {
       return "ação: criar missão";
     case "condition.if":
       return "condição";
+    case "action.transform":
+      return "transformação (variável)";
+    case "logic.loop":
+      return "laço limitado";
     default:
       return kind || "passo";
   }

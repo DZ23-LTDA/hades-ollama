@@ -129,4 +129,11 @@ describe("relatório de execução de automação", () => {
       "fluxo v3",
     );
   });
+
+  it("nomeia os nós novos do vocabulário", () => {
+    expect(scheduleStepKindLabel("action.transform")).toBe("transformação (variável)");
+    expect(scheduleStepKindLabel("logic.loop")).toBe("laço limitado");
+    // Tipo desconhecido não vira texto vazio: o operador precisa ver o valor real.
+    expect(scheduleStepKindLabel("kind.desconhecido")).toBe("kind.desconhecido");
+  });
 });

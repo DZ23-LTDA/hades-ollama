@@ -4,7 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -29,6 +31,26 @@ const (
 	// ScheduleStepConditionIf gates its dependents on the recorded outcome of
 	// one dependency, without any expression language to evaluate.
 	ScheduleStepConditionIf ScheduleStepKind = "condition.if"
+	// ScheduleStepActionTransform publica um valor no escopo da execução a partir
+	// de um template com variáveis. É determinístico e puro: não fala com o mundo
+	// externo, só transforma texto já disponível.
+	ScheduleStepActionTransform ScheduleStepKind = "action.transform"
+	// ScheduleStepLogicLoop instancia UMA missão por item de uma lista LIMITADA.
+	// Cada iteração tem chave de idempotência própria, então repetir a execução
+	// não duplica as missões do laço.
+	ScheduleStepLogicLoop ScheduleStepKind = "logic.loop"
+)
+
+// Limites do escopo de variáveis e do laço. Um motor que roda a cada tick precisa
+// de teto explícito: laço sem limite é gerador de missões, e valor sem limite é
+// memória de estado sem fim.
+const (
+	maxScheduleVariables    = 32
+	maxScheduleVariableSize = 4096
+	maxScheduleLoopItems    = 10
+	// maxScheduleMissionsPerRun impede que a combinação de passos de um grafo
+	// crie missões sem controle numa única execução.
+	maxScheduleMissionsPerRun = 24
 )
 
 // Outcomes a condition.if step can expect from its single dependency.
@@ -115,6 +137,16 @@ type ScheduleStep struct {
 	// o teto ScheduleStepMaxAttempts é validado antes de persistir. Retry é seguro
 	// porque a criação da missão é idempotente: repetir não duplica.
 	MaxAttempts int `json:"max_attempts,omitempty"`
+	// Source é o valor de entrada de action.transform, já com variáveis
+	// ({{nome}}). Target é o NOME da variável que o passo publica no escopo da
+	// execução; nomes válidos são limitados e um valor grande demais é recusado em
+	// vez de truncado em silêncio.
+	Source string `json:"source,omitempty"`
+	Target string `json:"target,omitempty"`
+	// Items é a lista de logic.loop. Cada item roda UMA vez, com chave de
+	// idempotência própria, e a lista é limitada por maxScheduleLoopItems: um
+	// laço sem teto num motor que roda em tick é um gerador de missões.
+	Items []string `json:"items,omitempty"`
 }
 
 // ValidateScheduleSteps accepts an empty graph (legacy single-objective
@@ -190,6 +222,55 @@ func validateScheduleStepShape(step ScheduleStep) error {
 		}
 		if step.MaxAttempts < 0 || step.MaxAttempts > ScheduleStepMaxAttempts {
 			return fmt.Errorf("schedule action %q accepts at most %d attempts, got %d", id, ScheduleStepMaxAttempts, step.MaxAttempts)
+		}
+	case ScheduleStepActionTransform:
+		if len(step.DependsOn) == 0 {
+			return fmt.Errorf("schedule transform %q requires at least one dependency", id)
+		}
+		if strings.TrimSpace(step.Source) == "" {
+			return fmt.Errorf("schedule transform %q requires a source", id)
+		}
+		if !validScheduleVariableName(strings.TrimSpace(step.Target)) {
+			return fmt.Errorf("schedule transform %q requires a valid target variable name", id)
+		}
+		if len(step.Source) > maxScheduleVariableSize {
+			return fmt.Errorf("schedule transform %q source exceeds %d characters", id, maxScheduleVariableSize)
+		}
+		if strings.TrimSpace(step.Objective) != "" || strings.TrimSpace(step.Expect) != "" {
+			return fmt.Errorf("schedule transform %q cannot carry an objective or an expectation", id)
+		}
+		if step.MaxAttempts != 0 {
+			return fmt.Errorf("schedule transform %q cannot declare attempts", id)
+		}
+		if len(step.Items) != 0 {
+			return fmt.Errorf("schedule transform %q cannot carry loop items", id)
+		}
+	case ScheduleStepLogicLoop:
+		if len(step.DependsOn) == 0 {
+			return fmt.Errorf("schedule loop %q requires at least one dependency", id)
+		}
+		if len(step.Items) == 0 {
+			return fmt.Errorf("schedule loop %q requires at least one item", id)
+		}
+		if len(step.Items) > maxScheduleLoopItems {
+			return fmt.Errorf("schedule loop %q accepts at most %d items, got %d", id, maxScheduleLoopItems, len(step.Items))
+		}
+		if strings.TrimSpace(step.Objective) == "" {
+			return fmt.Errorf("schedule loop %q requires an objective template", id)
+		}
+		if strings.TrimSpace(step.Expect) != "" {
+			return fmt.Errorf("schedule loop %q cannot carry an expectation", id)
+		}
+		if step.MaxAttempts != 0 {
+			return fmt.Errorf("schedule loop %q cannot declare attempts", id)
+		}
+		for index, item := range step.Items {
+			if strings.TrimSpace(item) == "" {
+				return fmt.Errorf("schedule loop %q item %d is empty", id, index+1)
+			}
+			if len(item) > maxScheduleVariableSize {
+				return fmt.Errorf("schedule loop %q item %d exceeds %d characters", id, index+1, maxScheduleVariableSize)
+			}
 		}
 	case ScheduleStepConditionIf:
 		if len(step.DependsOn) != 1 {
@@ -279,6 +360,9 @@ type ScheduleStepOutcome struct {
 	// Attempts é quantas tentativas o passo consumiu (retry por nó). 0 significa
 	// "não se aplica" (gatilho/condição, que não tentam de novo).
 	Attempts int `json:"attempts,omitempty"`
+	// Children detalha as iterações de logic.loop: cada item é uma unidade de
+	// evidência própria, e não um contador agregado.
+	Children []ScheduleStepOutcome `json:"children,omitempty"`
 }
 
 // ScheduleRunReport é o resultado auditável de uma execução de fluxo. Ele é
@@ -385,6 +469,10 @@ func (r *Runtime) executeScheduleFlow(ctx context.Context, schedule Schedule, ru
 	for id, result := range seedOutcomes {
 		outcomes[id] = result
 	}
+	// Escopo de variáveis da execução: começa com os valores que o servidor
+	// conhece (todos derivados do schedule autenticado) e cresce com os passos
+	// action.transform e logic.loop.
+	vars := scheduleBuiltinVariables(schedule, runKey)
 	for _, step := range order {
 		id := strings.TrimSpace(step.ID)
 		if execute != nil && !execute[id] {
@@ -419,12 +507,32 @@ func (r *Runtime) executeScheduleFlow(ctx context.Context, schedule Schedule, ru
 			outcomes[id] = true
 			report.Steps = append(report.Steps, ScheduleStepOutcome{ID: id, Kind: string(step.Kind), Status: ScheduleStepSucceeded})
 		case ScheduleStepActionMission:
+			// O objetivo também usa o escopo de variáveis: um objetivo com
+			// {{nome}} não resolvido seria missão pedindo algo que ninguém definiu.
+			objective, expandErr := expandScheduleTemplate(step.Objective, vars)
+			if expandErr != nil {
+				outcomes[id] = false
+				report.FinishedAt = time.Now().UTC()
+				report.Steps = append(report.Steps, ScheduleStepOutcome{
+					ID:     id,
+					Kind:   string(step.Kind),
+					Status: ScheduleStepFailed,
+					Reason: expandErr.Error(),
+				})
+				report.DeadLetters = append(report.DeadLetters, ScheduleStepDeadLetter{
+					StepID:   id,
+					Kind:     string(step.Kind),
+					Reason:   expandErr.Error(),
+					FailedAt: report.FinishedAt,
+				})
+				return report, fmt.Errorf("schedule step %q: %w", id, expandErr)
+			}
 			// Retry por nó: a chave de idempotência é a MESMA em todas as
 			// tentativas, então uma repetição que encontra a missão já criada não
 			// duplica nem conta como missão nova.
 			created := false
 			attempts, err := runWithRetry(scheduleStepAttempts(step), func() error {
-				_, wasCreated, createErr := r.createScheduledMissionIdempotent(ctx, schedule, strings.TrimSpace(step.Objective), scheduleStepIdempotencyKey(runKey, id))
+				_, wasCreated, createErr := r.createScheduledMissionIdempotent(ctx, schedule, strings.TrimSpace(objective), scheduleStepIdempotencyKey(runKey, id))
 				if createErr == nil {
 					created = wasCreated
 				}
@@ -462,6 +570,108 @@ func (r *Runtime) executeScheduleFlow(ctx context.Context, schedule Schedule, ru
 			}
 			outcomes[id] = true
 			report.Steps = append(report.Steps, outcome)
+		case ScheduleStepActionTransform:
+			// Puro e determinístico: expande o template e publica a variável. Falha
+			// de variável desconhecida ou de limite é ERRO, não valor vazio.
+			expanded, expandErr := expandScheduleTemplate(step.Source, vars)
+			if expandErr == nil {
+				expandErr = setScheduleVariable(vars, strings.TrimSpace(step.Target), expanded)
+			}
+			if expandErr != nil {
+				outcomes[id] = false
+				report.FinishedAt = time.Now().UTC()
+				report.Steps = append(report.Steps, ScheduleStepOutcome{
+					ID:     id,
+					Kind:   string(step.Kind),
+					Status: ScheduleStepFailed,
+					Reason: expandErr.Error(),
+				})
+				report.DeadLetters = append(report.DeadLetters, ScheduleStepDeadLetter{
+					StepID:   id,
+					Kind:     string(step.Kind),
+					Reason:   expandErr.Error(),
+					FailedAt: report.FinishedAt,
+				})
+				return report, fmt.Errorf("schedule step %q: %w", id, expandErr)
+			}
+			outcomes[id] = true
+			report.Steps = append(report.Steps, ScheduleStepOutcome{
+				ID:     id,
+				Kind:   string(step.Kind),
+				Status: ScheduleStepSucceeded,
+				Reason: fmt.Sprintf("variável %q publicada", strings.TrimSpace(step.Target)),
+			})
+		case ScheduleStepLogicLoop:
+			// Laço LIMITADO: uma missão por item, com chave de idempotência que
+			// inclui o índice. O teto por execução é conferido ANTES de criar
+			// qualquer missão, para não deixar trabalho pela metade.
+			if report.Missions+len(step.Items) > maxScheduleMissionsPerRun {
+				outcomes[id] = false
+				report.FinishedAt = time.Now().UTC()
+				report.Steps = append(report.Steps, ScheduleStepOutcome{
+					ID:     id,
+					Kind:   string(step.Kind),
+					Status: ScheduleStepFailed,
+					Reason: fmt.Sprintf("o laço criaria %d missões e excede o teto de %d por execução", report.Missions+len(step.Items), maxScheduleMissionsPerRun),
+				})
+				return report, fmt.Errorf("schedule step %q: mission budget exceeded", id)
+			}
+			loopOutcome := ScheduleStepOutcome{ID: id, Kind: string(step.Kind), Status: ScheduleStepSucceeded}
+			for index, item := range step.Items {
+				iterationVars := make(map[string]string, len(vars)+2)
+				for name, value := range vars {
+					iterationVars[name] = value
+				}
+				iterationVars["item"] = item
+				iterationVars["index"] = strconv.Itoa(index)
+				objective, expandErr := expandScheduleTemplate(step.Objective, iterationVars)
+				child := ScheduleStepOutcome{
+					ID:     fmt.Sprintf("%s[%d]", id, index),
+					Kind:   string(step.Kind),
+					Status: ScheduleStepSucceeded,
+				}
+				if expandErr != nil {
+					child.Status = ScheduleStepFailed
+					child.Reason = expandErr.Error()
+					loopOutcome.Children = append(loopOutcome.Children, child)
+					loopOutcome.Status = ScheduleStepFailed
+					loopOutcome.Reason = expandErr.Error()
+					outcomes[id] = false
+					report.FinishedAt = time.Now().UTC()
+					report.Steps = append(report.Steps, loopOutcome)
+					return report, fmt.Errorf("schedule step %q: %w", id, expandErr)
+				}
+				key := fmt.Sprintf("%s/%s#%d", scheduleStepIdempotencyKey(runKey, id), item, index)
+				_, wasCreated, createErr := r.createScheduledMissionIdempotent(ctx, schedule, strings.TrimSpace(objective), key)
+				if createErr != nil {
+					child.Status = ScheduleStepFailed
+					child.Reason = createErr.Error()
+					loopOutcome.Children = append(loopOutcome.Children, child)
+					loopOutcome.Status = ScheduleStepFailed
+					loopOutcome.Reason = createErr.Error()
+					outcomes[id] = false
+					report.FinishedAt = time.Now().UTC()
+					report.Steps = append(report.Steps, loopOutcome)
+					report.DeadLetters = append(report.DeadLetters, ScheduleStepDeadLetter{
+						StepID:    id,
+						Kind:      string(step.Kind),
+						Reason:    createErr.Error(),
+						Objective: strings.TrimSpace(objective),
+						FailedAt:  report.FinishedAt,
+					})
+					return report, fmt.Errorf("schedule step %q: %w", id, createErr)
+				}
+				if wasCreated {
+					report.Missions++
+					child.Reason = "missão criada"
+				} else {
+					child.Reason = "missão já existia (idempotente)"
+				}
+				loopOutcome.Children = append(loopOutcome.Children, child)
+			}
+			loopOutcome.Reason = fmt.Sprintf("%d itens processados", len(step.Items))
+			outcomes[id] = true
+			report.Steps = append(report.Steps, loopOutcome)
 		case ScheduleStepConditionIf:
 			matched := scheduleConditionMatches(step, outcomes)
 			outcomes[id] = matched
@@ -541,6 +751,76 @@ func mergeScheduleDeadLetters(existing, added []ScheduleStepDeadLetter, succeede
 	return merged
 }
 
+// scheduleVariablePattern casa {{nome}} nos templates de passo. O conjunto de
+// caracteres é restrito para que o template não vire uma linguagem de expressão.
+var scheduleVariablePattern = regexp.MustCompile(`\{\{([a-zA-Z0-9_.-]{1,64})\}\}`)
+
+// validScheduleVariableName aceita apenas nomes simples: sem espaço, sem barra,
+// sem cifrão.
+func validScheduleVariableName(name string) bool {
+	if name == "" || len(name) > 64 {
+		return false
+	}
+	for _, char := range name {
+		if (char >= 'a' && char <= 'z') || (char >= 'A' && char <= 'Z') ||
+			(char >= '0' && char <= '9') || char == '_' || char == '.' || char == '-' {
+			continue
+		}
+		return false
+	}
+	return true
+}
+
+// expandScheduleTemplate substitui {{nome}} pelo valor da variável. Variável
+// DESCONHECIDA é erro, não string vazia: um objetivo de missão que perde o valor
+// por causa de um nome errado seria pior do que uma falha explícita.
+func expandScheduleTemplate(text string, vars map[string]string) (string, error) {
+	var failure error
+	expanded := scheduleVariablePattern.ReplaceAllStringFunc(text, func(match string) string {
+		name := strings.TrimSpace(match[2 : len(match)-2])
+		value, ok := vars[name]
+		if !ok {
+			if failure == nil {
+				failure = fmt.Errorf("variável %q não definida no escopo da execução", name)
+			}
+			return match
+		}
+		return value
+	})
+	if failure != nil {
+		return "", failure
+	}
+	return expanded, nil
+}
+
+// setScheduleVariable publica um valor no escopo respeitando os limites: nome
+// inválido, valor grande demais ou escopo cheio são ERROS, nunca truncamento
+// silencioso.
+func setScheduleVariable(vars map[string]string, name, value string) error {
+	if !validScheduleVariableName(name) {
+		return fmt.Errorf("nome de variável inválido: %q", name)
+	}
+	if len(value) > maxScheduleVariableSize {
+		return fmt.Errorf("variável %q excede %d caracteres", name, maxScheduleVariableSize)
+	}
+	if _, exists := vars[name]; !exists && len(vars) >= maxScheduleVariables {
+		return fmt.Errorf("escopo de variáveis excede %d entradas", maxScheduleVariables)
+	}
+	vars[name] = value
+	return nil
+}
+
+// scheduleBuiltinVariables são os valores que o servidor conhece sem depender do
+// conteúdo dos passos. Tudo aqui vem do schedule autenticado, nunca de texto
+// externo não confiável.
+func scheduleBuiltinVariables(schedule Schedule, runKey string) map[string]string {
+	return map[string]string{
+		"schedule.id":        schedule.ID,
+		"schedule.objective": schedule.Objective,
+		"run.key":            runKey,
+	}
+}
+
 // scheduleStepsEqual compara grafos por conteúdo. A ordem importa: o grafo é
 // executado na ordem de dependência declarada, e reordenar os passos é mudança de
 // fluxo.
@@ -554,8 +834,16 @@ func scheduleStepsEqual(a, b []ScheduleStep) bool {
 			a[i].Objective != b[i].Objective ||
 			a[i].Expect != b[i].Expect ||
 			a[i].MaxAttempts != b[i].MaxAttempts ||
+			a[i].Source != b[i].Source ||
+			a[i].Target != b[i].Target ||
+			len(a[i].Items) != len(b[i].Items) ||
 			len(a[i].DependsOn) != len(b[i].DependsOn) {
 			return false
+		}
+		for j := range a[i].Items {
+			if a[i].Items[j] != b[i].Items[j] {
+				return false
+			}
 		}
 		for j := range a[i].DependsOn {
 			if a[i].DependsOn[j] != b[i].DependsOn[j] {
