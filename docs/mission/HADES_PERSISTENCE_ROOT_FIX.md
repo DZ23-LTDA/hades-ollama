@@ -43,3 +43,26 @@ testes passaram a **não falhar por não injetar nada** — situação que se pa
 sintoma (`company update unexpectedly succeeded`) foi o que denunciou. Também deixei aspas
 escapadas (`\"`) em três arquivos, que o compilador recusou. Nenhum dos dois foi escondido: as
 linhas foram reescritas de forma canônica e verificadas uma a uma.
+
+## 6. A injeção por ARQUIVO não é equivalente entre sistemas — e o CI provou isso
+
+O PR foi **recusado pelo CI** em `TestJSONStoreRollsBackMissionMutationWhenPersistenceFails`:
+
+```
+store_atomic_test.go:54: failed new mission remained in memory:
+lstat /tmp/.../not-a-directory/store: not a directory
+```
+
+**Causa medida, não suposta**: com a raiz bloqueada por um **arquivo**, ler um caminho sob ele
+devolve **ENOTDIR** no Linux — e o teste esperava `os.ErrNotExist`. No Windows o mesmo acesso mapeia
+para "não encontrado", então o teste passava **aqui** e falhava **lá**. A injeção não era
+equivalente entre sistemas, e o teste passou a medir o **sistema de arquivos** em vez de medir a
+ausência da missão.
+
+**Correção**: a raiz volta a ser válida **antes** da leitura, o que verifica as **duas** coisas de
+forma portátil — nada em memória **e** nada no disco. A asserção original foi preservada, nenhum
+teste foi removido e a correção de raiz (`writeJSONAtomic` criando o diretório) permanece.
+
+**Lição**: uma injeção de falha trocada precisa ser validada **no sistema onde o gate roda**, não
+apenas onde se desenvolve. Rodar a suíte inteira localmente **não bastou**, porque a divergência era
+do sistema de arquivos, não do código.
