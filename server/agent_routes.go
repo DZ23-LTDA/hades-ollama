@@ -839,6 +839,8 @@ func (a *agentAPI) register(r *gin.Engine) {
 	group.POST("/finance/orders/:id/reconcile", a.reconcileOrderWithStatement)
 	group.GET("/finance/report", a.financeReport)
 	group.POST("/business/certify", a.certifyBusiness)
+	group.POST("/company/factory/launch", a.launchCompanyFactory)
+	group.GET("/company/factory/report/:id", a.companyFactoryReport)
 	group.POST("/business/tick", a.businessSupervisorTick)
 	group.GET("/business/actions", a.listBusinessActions)
 	group.POST("/business/actions/:id/decide", a.decideBusinessAction)
@@ -3910,6 +3912,14 @@ func statusForAgentError(err error) int {
 	}
 	if errors.Is(err, agent.ErrBusinessBudgetExceeded) || errors.Is(err, agent.ErrBusinessActionDecided) {
 		return http.StatusConflict
+	}
+	// Fábrica de empresa (estágio 23): margem/custo inválidos são erro do cliente (400);
+	// empresa de outra organização não é acessível (404).
+	if errors.Is(err, agent.ErrCompanyPricingInvalid) || errors.Is(err, agent.ErrCompanyFactoryInvalid) {
+		return http.StatusBadRequest
+	}
+	if errors.Is(err, agent.ErrCompanyNotFound) {
+		return http.StatusNotFound
 	}
 	if errors.Is(err, os.ErrNotExist) {
 		return http.StatusNotFound
