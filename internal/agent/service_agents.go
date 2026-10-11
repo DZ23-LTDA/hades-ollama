@@ -588,6 +588,61 @@ func (s *ServiceAgentRuntime) AuditStatus(organizationID string) (ServiceAgentAu
 	return status, nil
 }
 
+// recordPolicyAudit grava na trilha durável uma DECISÃO de política — aprovar/negar uma escrita ou definir
+// quem pode aprovar.
+//
+// Por que isto existe: a trilha de ferramentas cobre o que o AGENTE executou. Aprovar, negar e mudar quem
+// aprova são atos HUMANOS de risco, e a diretriz da missão pede trilha de auditoria exatamente para esses
+// atos (`/approve` e `/deny`). Sem isto, o registro da decisão viveria apenas no store de aprovações — que
+// guarda estado, não a história do ato.
+//
+// Devolve o erro de gravação quando houver: auditoria que falha em silêncio é pior que auditoria ausente,
+// porque parece existir.
+func (s *ServiceAgentRuntime) recordPolicyAudit(organizationID, actorID, action, detail, status, reason string, now time.Time) error {
+	s.mu.Lock()
+	store := s.audit
+	s.mu.Unlock()
+	if store == nil {
+		return fmt.Errorf("%w: trilha de auditoria não configurada", ErrServiceAgentAuditUnavailable)
+	}
+	entry := ServiceAgentAuditEntry{
+		ID:             "aud_" + uuid.NewString()[:12],
+		OrganizationID: consentScope(organizationID),
+		AgentID:        "policy",
+		ToolName:       action,
+		Effect:         ServiceAgentEffectWrite,
+		Status:         status,
+		Summary:        detail,
+		Reason:         "por " + strings.TrimSpace(actorID) + ": " + strings.TrimSpace(reason),
+		DecidedAt:      now.UTC(),
+		RecordedAt:     now.UTC(),
+	}
+	if _, err := store.Append(entry.OrganizationID, []ServiceAgentAuditEntry{entry}); err != nil {
+		s.mu.Lock()
+		s.auditError = err.Error()
+		s.mu.Unlock()
+		return err
+	}
+	return nil
+}
+
+// RecordApprovalDecision registra na trilha a decisão humana sobre um pedido de escrita.
+func (s *ServiceAgentRuntime) RecordApprovalDecision(approval ServiceAgentApproval, actorID, reason string, now time.Time) error {
+	status := ServiceAgentToolExecuted
+	if approval.Status == ServiceAgentApprovalDenied {
+		// Negar é decisão tomada, e `blocked` na trilha diz exatamente isso.
+		status = ServiceAgentToolBlocked
+	}
+	detail := fmt.Sprintf("aprovação %s da ferramenta %s", approval.ID, approval.ToolName)
+	return s.recordPolicyAudit(approval.OrganizationID, actorID, "approval.decide", detail, status, reason, now)
+}
+
+// RecordApproversChange registra na trilha a mudança de QUEM pode aprovar nesta organização.
+func (s *ServiceAgentRuntime) RecordApproversChange(organizationID, actorID string, approvers []string, now time.Time) error {
+	detail := fmt.Sprintf("%d aprovador(es) definido(s)", len(approvers))
+	return s.recordPolicyAudit(organizationID, actorID, "policy.approvers.set", detail, ServiceAgentToolExecuted, "", now)
+}
+
 // ServiceAgentRuntime liga os agentes aos recursos existentes.
 type ServiceAgentRuntime struct {
 	mu      sync.Mutex
