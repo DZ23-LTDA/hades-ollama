@@ -62,16 +62,6 @@ func memoryVisibleTo(memory Memory, actorID string) bool {
 	return true
 }
 
-func filterMemoriesForActor(memories []Memory, actorID string) []Memory {
-	visible := make([]Memory, 0, len(memories))
-	for _, memory := range memories {
-		if memoryVisibleTo(memory, actorID) {
-			visible = append(visible, memory)
-		}
-	}
-	return visible
-}
-
 // AddMemoryForActor grava a memória já associada ao ator autenticado. Memória
 // privada de outro ator não pode ser forjada pelo corpo da requisição.
 func (s *ContextStore) AddMemoryForActor(ctx context.Context, memory Memory, actorID string) (Memory, error) {
@@ -84,25 +74,39 @@ func (s *ContextStore) AddMemoryForActor(ctx context.Context, memory Memory, act
 
 // SearchMemoriesForActor busca por relevância e devolve apenas o que o ator
 // autenticado pode ler: a memória do projeto mais a memória privada dele.
+//
+// Passa pelo ESCOPO (`MemoryScope{ActorID: actorID}`) em vez de filtrar só por
+// ator: assim uma memória presa a uma missão não vaza para uma busca sem missão.
+// Ter uma segunda regra de leitura seria o "irmão esquecido" de novo.
 func (s *ContextStore) SearchMemoriesForActor(ctx context.Context, projectID, actorID, query string, limit int) ([]Memory, error) {
+	return s.SearchMemoriesInScope(ctx, projectID, MemoryScope{ActorID: actorID}, query, limit)
+}
+
+// SearchMemoriesInScope é a busca com escopo explícito de missão/agente/equipe.
+func (s *ContextStore) SearchMemoriesInScope(ctx context.Context, projectID string, scope MemoryScope, query string, limit int) ([]Memory, error) {
 	memories, err := s.SearchMemoriesContext(ctx, projectID, query, limit)
 	if err != nil {
 		return nil, err
 	}
-	return filterMemoriesForActor(memories, actorID), nil
+	return filterMemoriesInScope(memories, scope), nil
 }
 
 // RetrieveRelevantForActor é o mesmo que RetrieveRelevant, restrito ao que o ator
 // pode ler. A filtragem acontece ANTES da formatação de citações, para que uma
 // memória privada alheia não apareça nem como referência.
 func (s *ContextStore) RetrieveRelevantForActor(ctx context.Context, projectID, actorID, query string, limit int, minScore float64) ([]ScoredMemory, error) {
+	return s.RetrieveRelevantInScope(ctx, projectID, MemoryScope{ActorID: actorID}, query, limit, minScore)
+}
+
+// RetrieveRelevantInScope é o RAG restrito por escopo.
+func (s *ContextStore) RetrieveRelevantInScope(ctx context.Context, projectID string, scope MemoryScope, query string, limit int, minScore float64) ([]ScoredMemory, error) {
 	hits, err := s.RetrieveRelevant(ctx, projectID, query, limit, minScore)
 	if err != nil {
 		return nil, err
 	}
 	visible := make([]ScoredMemory, 0, len(hits))
 	for _, hit := range hits {
-		if memoryVisibleTo(hit.Memory, actorID) {
+		if memoryInScope(hit.Memory, scope) {
 			visible = append(visible, hit)
 		}
 	}
@@ -113,7 +117,12 @@ func (s *ContextStore) RetrieveRelevantForActor(ctx context.Context, projectID, 
 // memória privada de outro ator não entra no contexto fundamentado nem nas
 // citações.
 func (s *ContextStore) GroundedAnswerForActor(ctx context.Context, projectID, actorID, query string, limit int, minScore float64) (string, []Citation, error) {
-	hits, err := s.RetrieveRelevantForActor(ctx, projectID, actorID, query, limit, minScore)
+	return s.GroundedAnswerInScope(ctx, projectID, MemoryScope{ActorID: actorID}, query, limit, minScore)
+}
+
+// GroundedAnswerInScope é o RAG fundamentado restrito por escopo.
+func (s *ContextStore) GroundedAnswerInScope(ctx context.Context, projectID string, scope MemoryScope, query string, limit int, minScore float64) (string, []Citation, error) {
+	hits, err := s.RetrieveRelevantInScope(ctx, projectID, scope, query, limit, minScore)
 	if err != nil {
 		return "", nil, err
 	}

@@ -2175,6 +2175,18 @@ func (a *agentAPI) memoryHistory(c *gin.Context) {
 	})
 }
 
+// agentMemoryScope monta o escopo de leitura a partir da requisição. O ATOR vem
+// sempre da sessão; missão, agente e equipe vêm de parâmetro de consulta e apenas
+// RESTRINGEM a divulgação (um valor errado esconde, nunca revela).
+func agentMemoryScope(c *gin.Context) agent.MemoryScope {
+	return agent.MemoryScope{
+		ActorID:   agentActorID(c),
+		MissionID: strings.TrimSpace(c.Query("mission_id")),
+		AgentID:   strings.TrimSpace(c.Query("agent_id")),
+		TeamID:    strings.TrimSpace(c.Query("team_id")),
+	}
+}
+
 func (a *agentAPI) addMemory(c *gin.Context) {
 	if _, err := a.projectForRequest(c); err != nil {
 		writeAgentError(c, statusForAgentError(err), err)
@@ -2201,7 +2213,9 @@ func (a *agentAPI) searchMemories(c *gin.Context) {
 		writeAgentError(c, statusForAgentError(err), err)
 		return
 	}
-	memories, err := a.context.SearchMemoriesForActor(c.Request.Context(), c.Param("id"), agentActorID(c), c.Query("q"), 20)
+	// O escopo vem da requisição (missão/agente/equipe) e restringe a DIVULGAÇÃO:
+	// memória presa a uma missão não aparece em busca sem essa missão.
+	memories, err := a.context.SearchMemoriesInScope(c.Request.Context(), c.Param("id"), agentMemoryScope(c), c.Query("q"), 20)
 	if err != nil {
 		writeAgentError(c, http.StatusBadRequest, err)
 		return
@@ -2263,7 +2277,7 @@ func (a *agentAPI) exportProjectMemories(c *gin.Context) {
 		}
 		includeEmbeddings = parsed
 	}
-	export, err := a.context.ExportMemoriesForActor(c.Param("id"), agentActorID(c), includeEmbeddings)
+	export, err := a.context.ExportMemoriesInScope(c.Param("id"), agentMemoryScope(c), includeEmbeddings)
 	if err != nil {
 		writeAgentError(c, statusForAgentError(err), err)
 		return

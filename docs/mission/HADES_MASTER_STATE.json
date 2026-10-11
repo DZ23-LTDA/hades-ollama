@@ -2,12 +2,12 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-11T22:20:00-03:00",
+  "updated_at": "2026-10-11T23:40:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
     "integration_branch": "main",
-    "main_sha": "02d3153d4403eb39a45c7ba3191372b91f1cbc6f",
+    "main_sha": "306b34ba12c0141f1f47974f4b9c0094f4d96553",
     "main_committed_at": "2026-10-09T10:24:45Z",
     "main_ci_state": "green (dz23-agentic-quality + class-a-plus-integrity = success nesse SHA)",
     "mission_branch": "docs/checkpoints-missao-v21",
@@ -477,12 +477,13 @@
         "E-090",
         "E-092",
         "E-093",
-        "E-094"
+        "E-094",
+        "E-095"
       ],
       "blocker": "B-07",
-      "next": "ATIVIDADES AINDA AUSENTES: resumos e escopos de missao/agente/equipe no tipo Memory. O estagio NAO foi promovido porque ainda faltam duas atividades",
+      "next": "FALTA UMA ATIVIDADE: resumos. O estagio NAO foi promovido por isso",
       "blocked_reason": "",
-      "done": "CRITERIO CUMPRIDO E MEDIDO, evidencia obrigatoria coberta, familia de caminhos irmaos fechada, DEDUPLICACAO (E-092), VERSIONAMENTO (E-093) e CRIPTOGRAFIA EM REPOUSO com o primitivo existente (AES-256-GCM da chave de credenciais), funil unico de escrita, leitura fail-closed e status honesto quando nao ha chave"
+      "done": "CRITERIO CUMPRIDO E MEDIDO, evidencia obrigatoria coberta, familia de caminhos irmaos fechada, DEDUPLICACAO (E-092), VERSIONAMENTO (E-093), CRIPTOGRAFIA EM REPOUSO (E-094) e ESCOPOS de missao/agente/equipe com a distincao explicita entre PROPRIEDADE (ator) e DIVULGACAO (escopo), alcancaveis pelas rotas de busca e export"
     },
     {
       "id": 16,
@@ -1002,7 +1003,10 @@
     "VERSIONAMENTO DE MEMORIA (E-093): segunda das quatro atividades ausentes do estagio 15 foi fechada. Antes disto a memoria era so append + delete: corrigir uma anotacao exigia apagar e recriar e o que foi corrigido SE PERDIA - sem historico nao ha como auditar quem reescreveu o conhecimento nem desfazer uma alteracao errada. Decisoes deliberadas: o historico guarda o conteudo ANTERIOR com quem alterou, data e motivo; o historico e LIMITADO (MaxMemoryVersions=20, descartando o mais antigo) porque sem teto uma memoria muito editada viraria arquivo sem fim; a alteracao passa pela MESMA checagem de visibilidade da exclusao (memoria privada alheia recusada com erro de INEXISTENTE, para a rota nao ser oraculo); o vetor de embedding do texto antigo e INVALIDADO (manter vetor de texto que nao existe mais faria a busca devolver a memoria errada); reedicao com o MESMO conteudo nao cria revisao; e a persistencia tem rollback",
     "VERSIONAMENTO ALCANCAVEL PELO PRODUTO (E-093): a capacidade nao ficou so na API Go. Foram adicionadas PATCH /projects/:id/memories/:memory_id e GET /projects/:id/memories/:memory_id/history, ambas escopadas por ator (o quarto irmao foi exatamente um caminho que esqueceu o ator) e com 404 UNIFORME para memoria inexistente e para memoria privada alheia. Verificado por 4 testes de motor e 2 de rota, incluindo um teste que confere que as rotas estao REGISTRADAS no roteador - nao basta a funcao existir. Erros meus encontrados pelo proprio teste: consulta com espaco em helper que nao codifica URL e nome errado do registrador de rotas",
     "CRIPTOGRAFIA DA MEMORIA EM REPOUSO (E-094): terceira das quatro atividades ausentes do estagio 15 foi fechada. PRINCIPIO: nenhuma criptografia caseira - o primitivo e o MESMO ja usado para credenciais de conector (AES-256-GCM com chave derivada por SHA-256 de OLLAMA_AGENT_CREDENTIAL_KEY), porque um segundo esquema criaria DUAS VERDADES SOBRE A MESMA CHAVE. Decisoes: e OPT-IN (exigir chave quebraria instalacoes existentes); com chave, o TEXTO CLARO NAO VAI AO DISCO (Content sai vazio e o cifrado fica em encrypted_content); a leitura e FAIL-CLOSED (registro cifrado sem chave FALHA com erro explicito, porque devolver vazio em silencio seria perda de dado disfarcada de memoria vazia); TODAS as escritas passam por writeMemoriesFile (eram CINCO pontos gravando o mesmo arquivo e proteger quatro deixaria um salvando texto claro); e MemoryEncryption() diz a verdade quando nao ha chave",
-    "CRIPTOGRAFIA - O DEFEITO QUE O PROPRIO TESTE ENCONTROU (E-094): o teste que verifica TODOS os caminhos de escrita falhou no primeiro deles - ATUALIZAR deixava o texto claro no disco, porque o caminho de versionamento grava o conteudo anterior em Versions[].Content e eu havia cifrado apenas o registro principal. O HISTORICO e texto do usuario e vazava em claro. Corrigido: MemoryVersion ganhou encrypted_content e o funil de disco cifra e decifra as revisoes. Segundo caso na semana em que o teste que mede o efeito, e nao a releitura do codigo, encontrou o irmao esquecido"
+    "CRIPTOGRAFIA - O DEFEITO QUE O PROPRIO TESTE ENCONTROU (E-094): o teste que verifica TODOS os caminhos de escrita falhou no primeiro deles - ATUALIZAR deixava o texto claro no disco, porque o caminho de versionamento grava o conteudo anterior em Versions[].Content e eu havia cifrado apenas o registro principal. O HISTORICO e texto do usuario e vazava em claro. Corrigido: MemoryVersion ganhou encrypted_content e o funil de disco cifra e decifra as revisoes. Segundo caso na semana em que o teste que mede o efeito, e nao a releitura do codigo, encontrou o irmao esquecido",
+    "ESCOPOS DE MEMORIA - MISSAO, AGENTE E EQUIPE (E-095): quarta atividade (na pratica, a que faltava alem dos resumos) foi fechada. O estagio pede escopos de usuario, organizacao, projeto, workspace, missao, agente e equipe; organizacao e projeto sempre estiveram na chave do store e o escopo de usuario veio com o isolamento por ator. A DISTINCAO QUE EVITA O ERRO CLASSICO: PROPRIEDADE (quem pode alterar/apagar) segue a regra por ATOR - o dono continua corrigindo e removendo a propria memoria mesmo presa a uma missao antiga, porque negar isso criaria memoria ORFA E IMORTAL, o oposto da exclusao e da retencao que o estagio pede; DIVULGACAO (quem pode ver) e propriedade MAIS escopo. Escopo vazio significa 'vale para o projeto' e preserva todo o comportamento anterior",
+    "ESCOPOS - UM SO LUGAR DECIDE (E-095): havia NOVE pontos decidindo visibilidade. Em vez de acrescentar uma segunda regra ao lado, os LEITORES passaram a usar MemoryScope: SearchMemoriesForActor, RetrieveRelevantForActor, GroundedAnswerForActor (que NAO chama mais RetrieveRelevantForActor, para nao pular a camada de escopo) e ExportMemoriesForActor delegam para as versoes InScope. filterMemoriesForActor ficou SEM USO e foi REMOVIDA - a prova de que nenhum caminho ficou na regra antiga, porque regra duplicada e convite a divergir. As rotas de busca e export aceitam mission_id, agent_id e team_id, com o ator vindo SEMPRE da sessao: escopo errado ESCONDE dado, nunca revela",
+    "ESCOPOS - ERRO MEU CORRIGIDO PELO TESTE (E-095): meu primeiro teste esperava que um terceiro nao pudesse alterar a memoria presa ao agente, mas ela era 'organization' (conhecimento COMPARTILHADO, alteravel por ator autorizado - comportamento ja travado em E-088). O TESTE estava errado, nao o codigo: corrigi o caso para PRIVADA + com escopo, que e onde a combinacao das duas regras realmente importa"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
