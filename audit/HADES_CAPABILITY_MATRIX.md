@@ -155,6 +155,8 @@
 
 | Opt-out automático de consentimento | `consent_optout.go` (E-118) | PARCIAL | MÉDIO | E-118 | revoga por canal+contato com a frase como evidência, idempotente, dupla negação tratada; heurística não cobre todas as formas de dizer "pare" |
 
+| Propostas comerciais e pós-venda | `sales_workforce.go` (E-119) | PARCIAL | MÉDIO | E-119 | preço do catálogo recalculado no servidor, envio exige consentimento, vigência e decisão terminal; pós-venda medido com atraso contável; sem entrega por provedor externo e sem desconto negociado |
+
 ## 6. Integrações, MCP e conectores
 
 | Capacidade | Superfície | Classificação | Risco | Evidência | Lacuna |

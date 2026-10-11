@@ -57,6 +57,7 @@ type Runtime struct {
 	omnichannel         *OmnichannelRuntime
 	serviceAgents       *ServiceAgentRuntime
 	commerce            *CommerceStore
+	salesWorkforce      *SalesWorkforceStore
 	finance             *FinanceOps
 	businessSupervisor  *BusinessSupervisor
 	remoteMCP           *RemoteMCPManager
@@ -261,6 +262,8 @@ func NewRuntime(config RuntimeConfig) (*Runtime, error) {
 	if err != nil {
 		return nil, err
 	}
+	// Forca de vendas (estagio 27): propostas com preco do catalogo e pos-venda com prazo.
+	salesWorkforceStore := NewSalesWorkforceStore(filepath.Join(dataRoot, ".agent-sales"), commerceStore, consentRegistry)
 	// O financeiro deriva lançamentos do comércio no livro que já existe (estágio 30).
 	financeOps := NewFinanceOps(commerceStore, companyStore)
 	// O supervisor de negócio coordena os domínios sob limites, orçamento e aprovação
@@ -306,7 +309,10 @@ func NewRuntime(config RuntimeConfig) (*Runtime, error) {
 			return nil, err
 		}
 	}
-	runtime := &Runtime{store: store, planner: planner, plannerResolver: config.PlannerResolver, tools: tools, capabilityPolicy: capabilityPolicy, workspaceRoot: root, dataRoot: dataRoot, context: contextStore, company: companyStore, consent: consentRegistry, crm: crmStore, inbox: inboxStore, omnichannel: omnichannelRuntime, serviceAgents: serviceAgentRuntime, commerce: commerceStore, finance: financeOps, businessSupervisor: businessSupervisor, remoteMCP: config.RemoteMCP, metrics: &RuntimeMetrics{}, connectors: config.Connectors, mcp: config.MCP, queue: queue, redisQueue: config.RedisQueue, traces: traces, telemetry: telemetry, media: config.Media, builder: builder, collaboration: collaboration, push: config.Push, pushOutbox: pushOutbox, deployments: config.Deployments, deploymentApprovals: deploymentApprovals, webhookReplay: webhookReplay, mu: &sync.Mutex{}, running: make(map[string]bool), activeCancels: make(map[string]context.CancelFunc), cancelPollInterval: durableCancelPollInterval()}
+	runtime := &Runtime{
+		store: store, planner: planner, plannerResolver: config.PlannerResolver, tools: tools, capabilityPolicy: capabilityPolicy, workspaceRoot: root, dataRoot: dataRoot, context: contextStore, company: companyStore, consent: consentRegistry, crm: crmStore, inbox: inboxStore, omnichannel: omnichannelRuntime, serviceAgents: serviceAgentRuntime, commerce: commerceStore,
+		salesWorkforce: salesWorkforceStore, finance: financeOps, businessSupervisor: businessSupervisor, remoteMCP: config.RemoteMCP, metrics: &RuntimeMetrics{}, connectors: config.Connectors, mcp: config.MCP, queue: queue, redisQueue: config.RedisQueue, traces: traces, telemetry: telemetry, media: config.Media, builder: builder, collaboration: collaboration, push: config.Push, pushOutbox: pushOutbox, deployments: config.Deployments, deploymentApprovals: deploymentApprovals, webhookReplay: webhookReplay, mu: &sync.Mutex{}, running: make(map[string]bool), activeCancels: make(map[string]context.CancelFunc), cancelPollInterval: durableCancelPollInterval(),
+	}
 	orchestrator, err := NewAgentOrchestrator(filepath.Join(dataRoot, ".agent-orchestrator"), runtime.SubagentRunner)
 	if err != nil {
 		return nil, err
@@ -430,6 +436,14 @@ func (r *Runtime) Commerce() *CommerceStore {
 		return nil
 	}
 	return r.commerce
+}
+
+// SalesWorkforce devolve a forca de vendas (propostas e pos-venda) do runtime.
+func (r *Runtime) SalesWorkforce() *SalesWorkforceStore {
+	if r == nil {
+		return nil
+	}
+	return r.salesWorkforce
 }
 
 // Finance devolve o módulo financeiro (estágio 30).
