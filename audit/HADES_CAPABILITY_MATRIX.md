@@ -111,6 +111,8 @@
 
 | Memória: deduplicação | `memory_dedup.go`, `AddMemoryContext` (E-092) | IMPLEMENTADO_E_TESTADO | BAIXO | E-092 | regra conservadora (conteúdo+tipo+visibilidade/ator+origem); duplicata devolve a original; sobrevive ao reinício |
 
+| Memória: versionamento com histórico | `memory_version.go`, `PATCH /memories/:memory_id`, `GET .../history` (E-093) | IMPLEMENTADO_E_TESTADO | BAIXO | E-093 | histórico com conteúdo anterior, quem alterou, data e motivo; teto de 20 revisões; recusa uniforme; vetor antigo invalidado |
+
 ## 6. Integrações, MCP e conectores
 
 | Capacidade | Superfície | Classificação | Risco | Evidência | Lacuna |
