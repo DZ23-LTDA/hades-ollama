@@ -135,6 +135,8 @@ describe("relatório de execução de automação", () => {
   it("nomeia os nós novos do vocabulário", () => {
     expect(scheduleStepKindLabel("action.transform")).toBe("transformação (variável)");
     expect(scheduleStepKindLabel("logic.loop")).toBe("laço limitado");
+    expect(scheduleStepKindLabel("approval.request")).toBe("aprovação humana");
+    expect(scheduleStepKindLabel("action.connector")).toBe("ação: conector");
     // Tipo desconhecido não vira texto vazio: o operador precisa ver o valor real.
     expect(scheduleStepKindLabel("kind.desconhecido")).toBe("kind.desconhecido");
   });
