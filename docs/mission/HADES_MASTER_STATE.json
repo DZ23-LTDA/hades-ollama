@@ -2,12 +2,12 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-11T08:15:00-03:00",
+  "updated_at": "2026-10-11T09:10:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
     "integration_branch": "main",
-    "main_sha": "421da5b999d382334c4b10ad58de547510f56ad5",
+    "main_sha": "1c82d48648af4b23a81456989c8f692f875af2f8",
     "main_committed_at": "2026-10-09T10:24:45Z",
     "main_ci_state": "green (dz23-agentic-quality + class-a-plus-integrity = success nesse SHA)",
     "mission_branch": "docs/checkpoints-missao-v21",
@@ -434,11 +434,12 @@
         "E-078",
         "E-079",
         "E-080",
-        "E-081"
+        "E-081",
+        "E-082"
       ],
       "blocker": null,
-      "next": "ampliar o vocabulario de nos do proprio estagio, que e o que falta para a lista de atividades: CONECTORES, VARIAVEIS, TRANSFORMACOES, LOOPS LIMITADOS e APROVACOES como passos, cada um com validacao fail-closed e evidencia por no",
-      "done": "CRITERIO DEMONSTRADO EM TESTE PONTA A PONTA (falha simulada, retry, reinicio de worker e retomada, com evidencia por no e sem duplicata) e implementacao completa dos itens de execucao: idempotencia, retry por no, resultado por no persistido e visivel, execucao manual real, reprocessamento, DLQ por no e versao do fluxo. ATIVIDADES DO ESTAGIO AINDA INCOMPLETAS: o vocabulario de nos so cobre trigger.interval, trigger.webhook, action.mission e condition.if"
+      "next": "conectores e APROVACOES como nos: aprovacao exige pausar o fluxo ate decisao humana e retomar depois, com trilha de auditoria. E o ultimo item da lista de atividades do estagio",
+      "done": "CRITERIO DEMONSTRADO EM TESTE PONTA A PONTA (falha simulada, retry, reinicio de worker e retomada, com evidencia por no e sem duplicata) e itens de execucao completos: idempotencia, retry por no, resultado por no persistido e visivel, execucao manual real, reprocessamento, DLQ por no, versao do fluxo e o vocabulario de nos com gatilhos, condicao, acao, TRANSFORMACAO com variaveis e LACO LIMITADO. AINDA FALTAM: conectores e aprovacoes como nos (aprovacao exige estado de espera entre execucoes)"
     },
     {
       "id": 14,
@@ -912,6 +913,9 @@
     "ESTAGIO 13 - IMPLEMENTACAO COMPLETA: idempotencia da criacao de missao (#141), retry por no (#143), execucao manual rodando o grafo (#145), reprocessamento reusando a execucao (#147) e DLQ por no (#149). O que falta e a HOMOLOGACAO do criterio do estagio: fluxo real ponta a ponta com falha simulada, retry e retomada, com evidencia por no. Ate essa prova o estagio permanece PARCIAL",
     "ENTREGA (PR #151, estagio 13): VERSAO DO FLUXO + HOMOLOGACAO DO CRITERIO. Schedule.FlowVersion nasce em 1 e sobe APENAS quando os passos mudam (id, kind, objective, expect, max_attempts, dependencias); editar objetivo/intervalo/estado NAO cria versao nova. ScheduleRunReport.FlowVersion registra a versao que aquela execucao rodou, para nao comparar execucoes de grafos diferentes. A interface mostra 'fluxo vN'. Isso fecha a evidencia obrigatoria 'versao do workflow'",
     "HOMOLOGACAO PROVADA (PR #151): teste ponta a ponta no caminho REAL - ContextStore e JSONStore em DISCO, store de missoes que falha de forma TRANSITORIA (falha simulada) e um SEGUNDO runtime sobre os MESMOS diretorios simulando REINICIO do worker. Prova em sequencia: retry absorve a falha com 3 tentativas registradas e passo recuperado fora da fila morta; evidencia por no persistida em disco; estado sobrevive ao reinicio; retomada reusa a execucao, cria ZERO missao nova e termina com todos os passos bem-sucedidos; store real com exatamente 2 missoes (sem duplicata); versao sobe ao mudar o grafo e nao sobe em edicao que nao muda o grafo. O criterio de conclusao do estagio esta DEMONSTRADO",
-    "LIMITE DECLARADO (estagio 13 continua PARCIAL): o criterio de conclusao esta demonstrado, mas as ATIVIDADES do proprio estagio tem itens em aberto - o vocabulario de nos cobre trigger.interval, trigger.webhook, action.mission e condition.if, e ainda faltam CONECTORES, VARIAVEIS, TRANSFORMACOES, LOOPS LIMITADOS e APROVACOES como nos. Cumprir uma frase do criterio nao fecha a lista de atividades; por isso nao ha promocao a COMPLETED_VERIFIED. Proximo passo: ampliar o vocabulario de nos"
+    "LIMITE DECLARADO (estagio 13 continua PARCIAL): o criterio de conclusao esta demonstrado, mas as ATIVIDADES do proprio estagio tem itens em aberto - o vocabulario de nos cobre trigger.interval, trigger.webhook, action.mission e condition.if, e ainda faltam CONECTORES, VARIAVEIS, TRANSFORMACOES, LOOPS LIMITADOS e APROVACOES como nos. Cumprir uma frase do criterio nao fecha a lista de atividades; por isso nao ha promocao a COMPLETED_VERIFIED. Proximo passo: ampliar o vocabulario de nos",
+    "ENTREGA (PR #153, estagio 13): VOCABULARIO DE NOS AMPLIADO com action.transform (variaveis/transformacoes) e logic.loop (lacos LIMITADOS). action.transform publica um valor a partir de um template {{variavel}} e e puro (nao fala com o mundo externo); o objetivo de action.mission e o de logic.loop tambem expandem variaveis. logic.loop cria uma missao por item, com chave de idempotencia que inclui item e indice e evidencia POR ITERACAO em Children; reprocessar nao recria itens. FAIL-CLOSED: variavel desconhecida e ERRO (nunca string vazia), nome invalido/valor acima de 4096/escopo acima de 32 sao recusados sem truncamento, laco sem item/item vazio/acima de 10 itens e recusado na validacao antes de persistir, e o teto de 24 missoes por execucao e conferido ANTES de criar qualquer missao do laco. 7 testes novos + 1 caso de interface",
+    "BUG ENCONTRADO PELO PROPRIO TESTE (PR #153): o objetivo de action.mission nao estava sendo expandido, entao a missao era criada com o texto literal 'missao com {{resumo}}'. O teste exigiu a expansao real e a correcao foi no CODIGO, nao na expectativa - o teste conferiu o objetivo REAL da missao persistida, nao apenas o relatorio",
+    "VOCABULARIO DO ESTAGIO 13 - O QUE FALTA: conectores e APROVACOES como nos. Aprovacao exige estado de espera ENTRE execucoes (pausar o fluxo ate decisao humana) e nao cabe numa fatia junto com os outros; fica registrada como proximo passo, nao declarada pronta"
   ]
 }
