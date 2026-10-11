@@ -2,12 +2,12 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-12T02:40:00-03:00",
+  "updated_at": "2026-10-12T03:05:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
     "integration_branch": "main",
-    "main_sha": "10f18f4d8c320e38a1c2b8036aa0f2a92ce835a6",
+    "main_sha": "dc520bf28d555c50fed5ff5b9ee964a5b03a18d7",
     "main_committed_at": "2026-10-09T10:24:45Z",
     "main_ci_state": "green (dz23-agentic-quality + class-a-plus-integrity = success nesse SHA)",
     "mission_branch": "docs/checkpoints-missao-v21",
@@ -267,7 +267,8 @@
         "E-017",
         "E-116",
         "E-138",
-        "E-142"
+        "E-142",
+        "E-143"
       ],
       "blocker": "B-09",
       "next": "LIMITES: a INTERMITENCIA segue NAO REPRODUZIDA (5 rodadas paralelas + 40 execucoes); restam 12 ocorrencias de ', _ :=' na preparacao de testes do proprio builder_studio_routes_test.go (varredura mecanica pendente, de baixo risco); e o instrumento da campanha tinha ExitCode vazio - o resultado foi aceito pelos ARTEFATOS (ok nas saidas e PASS=10 nos quatro arquivos), nao pelo codigo de saida",
@@ -790,7 +791,8 @@
         "E-136",
         "E-137",
         "E-139",
-        "E-142"
+        "E-142",
+        "E-143"
       ],
       "blocker": "B-07",
       "next": "LIMITES: sem ZOOM, sem TOOLTIP e sem selecao de intervalo (a curva mostra o recorte retido inteiro); UMA METRICA por vez (comparar duas series no mesmo eixo e decisao de produto e de escala, nao improviso); e EIXO Y SEM MARCACOES NUMERICAS (os valores exatos estao na tabela equivalente, que e a fonte acessivel)",
@@ -1244,7 +1246,10 @@
     "LIMITES DA DLQ (E-141): rate limit segue em memoria (nao distribuido); retry segue explicito (sem agendador); sem download/armazenamento de midia; sem rotacao de segredo; e entrega de saida ao provedor segue BLOCKED_BY_EXTERNAL_DEPENDENCY (a DLQ guarda o que falhou na entrada)",
     "FLAKE DA VIRADA DE HORA - CI VERMELHO DO PR #214 (E-142): o job 'Go agentic and server gates' falhou em TestBusinessSnapshotIsIdempotentPerWindow as 13:59:57 UTC - tres segundos antes da virada de hora. O teste usava o relogio de parede do fixture e now.Add(time.Minute) podia CRUZAR a hora; como a janela da serie e de hora (2006-01-02T15), a segunda chamada criava amostra legitimamente e a assercao de idempotencia falhava SOZINHA - um teste que so passava em 59 dos 60 minutos. Corrigido com relogio FIXO e com a virada exercitada DE PROPOSITO (10:59 pertence a hora 10; 11:00 cria)",
     "FLAKE - A LICAO APLICADA EM UM LUGAR E NAO NO VIZINHO (E-142): em E-134 eu tratei exatamente esse risco no teste de ROTA ('o handler usa o relogio REAL... em vez de escrever uma assercao que falha as vezes') e deixei o teste de UNIDADE refem do relogio real. O CI cobrou a diferenca. Registrado como padrao: quando um risco de teste e identificado, a varredura deve cobrir os testes VIZINHOS que usam o mesmo fixture - consertar um e deixar o irmao e o mesmo defeito esperando a hora certa",
-    "FLAKE - DETERMINISMO E ESTRUTURAL, NAO ESTATISTICO (E-142): com relogio fixo, o teste NAO PODE depender de onde o ponteiro estava; as 50 execucoes (-count=50) sao confirmacao, nao a garantia. E o teste passou a AFIRMAR a semantica da janela (10:59 na hora 10, 11:00 nova hora) em vez de depender de onde o calendario estava no momento da execucao"
+    "FLAKE - DETERMINISMO E ESTRUTURAL, NAO ESTATISTICO (E-142): com relogio fixo, o teste NAO PODE depender de onde o ponteiro estava; as 50 execucoes (-count=50) sao confirmacao, nao a garantia. E o teste passou a AFIRMAR a semantica da janela (10:59 na hora 10, 11:00 nova hora) em vez de depender de onde o calendario estava no momento da execucao",
+    "FIXTURES COM RELOGIO FIXO - RAIZ DA FAMILIA (E-143): depois do CI vermelho de E-142, corrigir o teste era o sintoma; a RAIZ era o fixture com relogio de parede. Auditoria medida: 51 arquivos de teste usam time.Now(), 18 deles com deslocamento pequeno (Add(Second|Minute)) e 2 fixtures entregam relogio real (businessStatusFixture, usado por 3 arquivos, e financeFixture). Os dois fixtures passaram a usar um instante FIXO compartilhado (businessFixtureClock) e a suite INTEIRA foi reexecutada, porque trocar o relogio pode quebrar assercoes relativas a data (vencimentos, SLA, retencao)",
+    "GUARDA CONTRA A VOLTA DO RELOGIO DE PAREDE (E-143): TestBusinessFixtureClockIsNotTheWallClock NAO fixa a data (isso deixaria o teste rigido a mudancas legitimas) - verifica a PROPRIEDADE que importa: o instante do fixture nao pode estar a menos de um minuto do instante atual, e precisa ser ESTAVEL entre chamadas. Se alguem voltar a escrever time.Now(), falha ali e nao numa terca-feira as 13:59 no CI",
+    "LIMITES DO RELOGIO FIXO (E-143): 18 arquivos ainda combinam time.Now() com deslocamento pequeno - a maioria mede intervalos onde a fronteira nao e hora (janelas de replay em segundos), mas varrer todos em bloco e arriscado e fica DECLARADO com o numero; e a guarda cobre os FIXTURES, que eram a origem do flake real, nao os 18 arquivos"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",

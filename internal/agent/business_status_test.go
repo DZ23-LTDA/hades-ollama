@@ -14,10 +14,19 @@ import (
 //  3. o que NÃO é medido é DECLARADO com motivo — zero sem medição não é resposta;
 //  4. ISOLAMENTO: o relatório de uma organização não contém dados de outra;
 //  5. organização ausente é erro declarado.
+//
+// businessFixtureClock é o relógio FIXO dos fixtures de negócio do pacote.
+//
+// Existe por causa de um defeito real: os fixtures usavam `time.Now().UTC()` e um teste que somava
+// `time.Minute` podia CRUZAR A VIRADA DE HORA — como a janela da série é de hora, a asserção de
+// idempotência falhava SOZINHA (o CI ficou vermelho às 13:59:57 UTC). Com um instante fixo, os testes
+// deixam de depender de onde o ponteiro estava: o determinismo passa a ser **estrutural**.
+var businessFixtureClock = time.Date(2026, 10, 12, 10, 0, 0, 0, time.UTC)
+
 func businessStatusFixture(t *testing.T) (*Runtime, time.Time) {
 	t.Helper()
 	runtime := marketplaceRuntime(t)
-	now := time.Now().UTC()
+	now := businessFixtureClock
 	organization := LocalOrganizationID
 
 	company, err := runtime.CompanyStore().Create(Company{
@@ -271,9 +280,27 @@ func TestBusinessStatusIsScopedByOrganization(t *testing.T) {
 
 // O agregador não pode criar dado: sem nada cadastrado, o relatório é zero E continua declarando o
 // que não mede. Um painel vazio precisa continuar dizendo o que ele não cobre.
+// Os fixtures de negócio NÃO podem voltar a usar o relógio de parede.
+//
+// A guarda não fixa a data (isso deixaria o teste rígido a mudanças legítimas): ela verifica a
+// PROPRIEDADE que importa — o instante do fixture **não** pode ser o instante atual. Se alguém voltar a
+// escrever `time.Now()`, este teste falha aqui, e não numa terça-feira às 13:59 no CI.
+func TestBusinessFixtureClockIsNotTheWallClock(t *testing.T) {
+	_, now := businessStatusFixture(t)
+	if delta := time.Since(now); delta < time.Minute && delta > -time.Minute {
+		t.Fatalf("o fixture de negócio está usando o relógio de parede (%s): "+
+			"isso reintroduz o flake da virada de hora; use businessFixtureClock", now)
+	}
+	// E o mesmo instante precisa valer para todos os usos dentro de uma execução.
+	_, again := businessStatusFixture(t)
+	if !again.Equal(now) {
+		t.Fatalf("o instante do fixture precisa ser estável: %s vs %s", now, again)
+	}
+}
+
 func TestBusinessStatusOnEmptyOrganizationStillDeclaresGaps(t *testing.T) {
 	runtime := marketplaceRuntime(t)
-	report, err := runtime.BusinessStatus(LocalOrganizationID, time.Now().UTC())
+	report, err := runtime.BusinessStatus(LocalOrganizationID, businessFixtureClock)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -82,7 +82,8 @@ func TestBusinessSnapshotIsIdempotentPerWindow(t *testing.T) {
 	// `now.Add(time.Minute)` pode CRUZAR A VIRADA DE HORA, e aí a segunda chamada cria legitimamente
 	// uma nova janela. O teste falhava sozinho (CI, 13:59:57 UTC) sem que houvesse nada errado no
 	// produto. O teste de ROTA já tinha esse cuidado (E-134); este tinha ficado refém do relógio real.
-	base := time.Date(2026, 10, 12, 10, 0, 0, 0, time.UTC)
+	// Agora o instante vem do fixture, que usa `businessFixtureClock`.
+	base := businessFixtureClock
 
 	first, created, _, err := runtime.BusinessSnapshot(organization, base)
 	if err != nil || !created {
