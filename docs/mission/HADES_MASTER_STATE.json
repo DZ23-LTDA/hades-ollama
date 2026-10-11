@@ -2,12 +2,12 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-13T00:10:00-03:00",
+  "updated_at": "2026-10-13T01:20:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
     "integration_branch": "main",
-    "main_sha": "166c2f730ff6f8a4549020fdf6cfc146c070d55e",
+    "main_sha": "6090cb6c29addc5a5e3d998f8b768accde78d604",
     "main_committed_at": "2026-10-09T10:24:45Z",
     "main_ci_state": "green (dz23-agentic-quality + class-a-plus-integrity = success nesse SHA)",
     "mission_branch": "docs/checkpoints-missao-v21",
@@ -680,13 +680,14 @@
         "E-087",
         "E-101",
         "E-102",
-        "E-118"
+        "E-118",
+        "E-119"
       ],
       "blocker": "B-05",
-      "next": "LIMITES: a lista de frases cobre pt-BR e ingles comuns, nao todas as formas de dizer 'pare', entao a capacidade e PARCIAL; a revogacao e por canal+contato; propostas comerciais, pos-venda e CRM externo seguem pendentes",
+      "next": "LIMITES: proposta nao e entregue por provedor externo (depende de canal configurado no estagio 33, com credencial), nao ha desconto negociado (exigiria politica de aprovacao propria), nada de imposto/frete/parcelamento e o pos-venda e acompanhamento com prazo e nao pesquisa de satisfacao",
       "blocked_reason": "",
       "external_dependency": "canais reais exigem contas; o CRM e a continuidade em sandbox sao locais",
-      "done": "CONSENTIMENTO E OPT-OUT com falha fechada nos DOIS caminhos de envio (E-101) e agora CRM REAL de contatos e oportunidades (E-102): deduplicacao por identidade normalizada incluindo o nono digito do celular brasileiro, recusa de contato sem identidade, funil com indicadores, fase terminal imutavel, consentimento LIDO do registro (nunca copiado) e rotas HTTP de concessao/revogacao que fecham o limite declarado em E-101. O comando /crm deixou de ser indisponivel e aponta para rota real | OPT-OUT AUTOMATICO (E-118): pedido de descadastro no texto RECEBIDO revoga o consentimento com a FRASE detectada como evidencia, o envio passa a ser recusado, pedir de novo e IDEMPOTENTE, mensagens comuns nao revogam e a DUPLA NEGACAO ('nao quero parar de receber') NAO revoga. A heuristica e ASSIMETRICA de proposito: so REVOGA, nunca concede, porque falso positivo bloqueia (barato e reversivel) e falso negativo continuaria enviando para quem pediu para parar (caro e irreversivel)"
+      "done": "CONSENTIMENTO E OPT-OUT com falha fechada nos DOIS caminhos de envio (E-101) e agora CRM REAL de contatos e oportunidades (E-102): deduplicacao por identidade normalizada incluindo o nono digito do celular brasileiro, recusa de contato sem identidade, funil com indicadores, fase terminal imutavel, consentimento LIDO do registro (nunca copiado) e rotas HTTP de concessao/revogacao que fecham o limite declarado em E-101. O comando /crm deixou de ser indisponivel e aponta para rota real | OPT-OUT AUTOMATICO (E-118): pedido de descadastro no texto RECEBIDO revoga o consentimento com a FRASE detectada como evidencia, o envio passa a ser recusado, pedir de novo e IDEMPOTENTE, mensagens comuns nao revogam e a DUPLA NEGACAO ('nao quero parar de receber') NAO revoga. A heuristica e ASSIMETRICA de proposito: so REVOGA, nunca concede, porque falso positivo bloqueia (barato e reversivel) e falso negativo continuaria enviando para quem pediu para parar (caro e irreversivel) | PROPOSTAS E POS-VENDA (E-119): proposta comercial com PRECO DO CATALOGO (total recalculado no servidor; SKU desconhecido e quantidade invalida sao erros), envio que EXIGE CONSENTIMENTO (quem fez opt-out nao recebe proposta), VIGENCIA respeitada, DECISAO TERMINAL e escrita com DESFAZIMENTO quando a persistencia falha; pos-venda com prazo padrao de 72h, IDEMPOTENTE por pedido e ATRASO CONTavel. Achado corrigido: writeJSONAtomic nao cria o diretorio, entao a primeira gravacao falhava e a proposta nunca era persistida"
     },
     {
       "id": 28,
@@ -1129,7 +1130,10 @@
     "OPT-OUT AUTOMATICO COM DIRECAO SEGURA (E-118): o checkpoint declarava que o consentimento NAO tinha captura automatica de opt-out - revogar dependia de um humano a mao, entao quem escrevesse 'nao quero mais receber' CONTINUARIA recebendo. A captura agora e deterministica e registra a FRASE detectada como evidencia da revogacao, entao a decisao e explicavel",
     "OPT-OUT - A DECISAO DE PROJETO MAIS IMPORTANTE (E-118): a heuristica e ASSIMETRICA DE PROPOSITO, porque so serve para REVOGAR e nunca para conceder. Um falso positivo bloqueia uma mensagem (barato e reversivel pelo operador); um falso negativo CONTINUARIA ENVIANDO para quem pediu para parar (caro e irreversivel). Nenhum modelo participa da decisao",
     "OPT-OUT - DUPLA NEGACAO E ESCOPO EXPLICITO (E-118): 'nao quero PARAR de receber' contem 'parar de receber' e significa o OPOSTO, entao frases negadas sao descartadas ANTES de revogar (4 formas testadas). E um achado do MEU PROPRIO TESTE virou correcao de produto: a primeira versao validava a organizacao DEPOIS da normalizacao e consentScope('') mapeia vazio para a organizacao local, engolindo o escopo ausente - a revogacao acontecia em silencio. Passou a validar a ENTRADA CRUA",
-    "INTERMITENCIA OBSERVADA E DECLARADA, NAO CORRIGIDA (E-118): durante a verificacao, UMA execucao das suites completas reportou falha (TestStudioDeployRejectsWithoutCredentialsHonestGateStatus no servidor e a suite do agente sem nome visivel na saida filtrada). O teste do servidor PASSA ISOLADO e, nas 5 execucoes completas seguintes (servidor x3, agente x2), as duas suites passaram INTEIRAS - a falha NAO reproduziu. Fica declarada como intermitencia sob carga, NAO como corrigida: nenhum teste foi alterado e nenhum t.Skip foi adicionado para contorna-la"
+    "INTERMITENCIA OBSERVADA E DECLARADA, NAO CORRIGIDA (E-118): durante a verificacao, UMA execucao das suites completas reportou falha (TestStudioDeployRejectsWithoutCredentialsHonestGateStatus no servidor e a suite do agente sem nome visivel na saida filtrada). O teste do servidor PASSA ISOLADO e, nas 5 execucoes completas seguintes (servidor x3, agente x2), as duas suites passaram INTEIRAS - a falha NAO reproduziu. Fica declarada como intermitencia sob carga, NAO como corrigida: nenhum teste foi alterado e nenhum t.Skip foi adicionado para contorna-la",
+    "PROPOSTAS COMERCIAIS E POS-VENDA (E-119): o AI Sales Workforce tinha agentes, CRM e catalogo, mas NAO tinha proposta (o documento com itens e preco que o vendedor envia) nem pos-venda. Implementados com teste 4/4 no pacote",
+    "PROPOSTA - PRECO VEM DO CATALOGO, NUNCA DE QUEM CHAMA (E-119): a proposta recebe apenas SKU e quantidade e o total e RECALCULADO no servidor. Aceitar preco enviado por quem chama a API permitiria proposta com valor inventado e desconto forjado; SKU fora do catalogo e ERRO, nao linha com preco zero. ENVIAR EXIGE CONSENTIMENTO, entao quem pediu opt-out NAO recebe proposta - a mesma politica do resto do sistema, sem caminho alternativo. A VIGENCIA e respeitada (aceitar proposta vencida e recusado) e a DECISAO e TERMINAL",
+    "POS-VENDA MEDIDO E ACHADO DA PERSISTENCIA (E-119): o pos-venda tem prazo padrao de 72h, e IDEMPOTENTE por pedido (agendar duas vezes o mesmo pedido nao duplica) e o ATRASO e CONTavel - pos-venda que ninguem mede nao e operacao, e intencao. A escrita DESFAZ o estado em memoria quando a persistencia falha, para nao relatar sucesso que nao existe no disco. ACHADO durante a implementacao: a primeira gravacao falhava com 'caminho nao encontrado' porque writeJSONAtomic NAO CRIA O DIRETORIO - a proposta nunca seria persistida; corrigido com MkdirAll, como os outros stores fazem"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
