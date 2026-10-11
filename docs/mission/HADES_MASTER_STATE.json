@@ -2,12 +2,12 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-13T12:40:00-03:00",
+  "updated_at": "2026-10-13T13:45:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
     "integration_branch": "main",
-    "main_sha": "149b7c7e4dd32dd99a9560e1405a5a95ab5c9161",
+    "main_sha": "e50c4a1dd04b176ba2a35be683c10a9bd02053bb",
     "main_committed_at": "2026-10-09T10:24:45Z",
     "main_ci_state": "green (dz23-agentic-quality + class-a-plus-integrity = success nesse SHA)",
     "mission_branch": "docs/checkpoints-missao-v21",
@@ -1176,7 +1176,11 @@
     "LIMITES DA PARIDADE LINUX (E-129): nao substitui o CI (nao instala Playwright nem servicos de apoio), nao cobre macOS e NAO roda a suite de integracao, que continua dependendo do compose das evidencias E-122 e E-123",
     "CAMPANHAS E MARKETPLACES VISIVEIS NA INTERFACE (E-130): nas rodadas 84-87 as capacidades foram entregues no backend sempre com o limite 'sem interface visual'. Capacidade sem superficie e capacidade que o usuario nao tem: criei o CompanyCampaignSchedulingPanel, ligado ao Growth OS, com agendamento, registro de metricas, painel de totais e catalogo de marketplaces. Verificado com 5/5 PASS no componente, suite web completa (83 arquivos, 556 testes) e CONTRACT VERIFICATION PASSED",
     "INTERFACE - TRES REGRAS DE HONESTIDADE TRAVADAS POR TESTE (E-130): (a) NADA E EXIBIDO COMO PUBLICADO - a faixa de topo mostra BLOCKED_BY_EXTERNAL_DEPENDENCY COM O MOTIVO vindo do servidor e o teste exige que a palavra 'no ar' NAO apareca; (b) CONTROLE SO APARECE QUANDO A ACAO E POSSIVEL - Agendar so para campanha aprovada e ainda nao agendada, Registrar metricas so para campanha que EXECUTOU, porque medir rascunho seria inventar resultado e botao que sempre falha e o controle decorativo proibido pelo estagio 19; (c) FALHA DO SERVIDOR APARECE COMO FALHA - o teste forca erro de agendamento e exige a mensagem real SEM a mensagem de sucesso",
-    "LIMITES DA INTERFACE DE CAMPANHA (E-130): sincronizar catalogo envia ZERO ITENS nesta tela (o servidor recusa com 400 e a interface mostra o motivo - montar itens sozinha seria inventar catalogo); sem e2e Playwright novo da jornada nesta rodada; sem segmentacao/criativo; e a publicacao externa permanece BLOCKED_BY_EXTERNAL_DEPENDENCY"
+    "LIMITES DA INTERFACE DE CAMPANHA (E-130): sincronizar catalogo envia ZERO ITENS nesta tela (o servidor recusa com 400 e a interface mostra o motivo - montar itens sozinha seria inventar catalogo); sem e2e Playwright novo da jornada nesta rodada; sem segmentacao/criativo; e a publicacao externa permanece BLOCKED_BY_EXTERNAL_DEPENDENCY",
+    "SINCRONIZACAO DE MARKETPLACE ENVIA ITENS REAIS (E-131): na rodada anterior a tela enviava ZERO ITENS e o servidor recusava com 400; botao que so produz erro e controle pela metade. Entreguei o SELETOR DE ITENS: SKU vindo do catalogo real da empresa, quantidade de estoque, lista dos itens montados com versao, contagem no proprio botao e relatorio com aplicados/ignorados/conflitos. Verificado com 7/7 PASS, suite web com 558 testes e CONTRACT VERIFICATION PASSED",
+    "MARKETPLACE - A VERSAO INCREMENTA PORQUE O SERVIDOR E IDEMPOTENTE (E-131): o servidor e idempotente POR VERSAO, entao reenviar a mesma versao e (corretamente) ignorado. Se a tela nao incrementasse, o operador veria '0 aplicados, 2 ignorados' e concluiria que a sincronizacao esta quebrada - por isso cada item adicionado recebe versao nova",
+    "MARKETPLACE - CONFLITO E IGNORADO PERMANECEM NA FILA (E-131): item APLICADO sai da fila; item em CONFLITO ou IGNORADO PERMANECE visivel com o detalhe, porque ainda precisa de decisao humana. Limpar a fila daria a impressao de sincronizacao completa - o 'status simulado' que o estagio 10 proibe. Botao desabilitado sem item, com o motivo escrito, porque botao que sempre falha e o controle decorativo proibido pelo estagio 19",
+    "LIMITES DA SINCRONIZACAO COM ITENS (E-131): sem publicacao real (BLOCKED_BY_EXTERNAL_DEPENDENCY); conflito NAO e resolvido automaticamente (decisao humana, porque resolucao automatica esconderia divergencia de estoque); sem pull de pedidos; sem e2e Playwright da jornada nesta rodada; e sem envio automatico do catalogo inteiro - o operador escolhe item por item"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
