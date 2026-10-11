@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
-import { getBusinessStatus } from "@/lib/agenticClient";
-import type { BusinessStatusReport } from "@/lib/agenticClient";
+import { getBusinessStatus, getBusinessTrend, recordBusinessSnapshot } from "@/lib/agenticClient";
+import type { BusinessStatusReport, BusinessTrend } from "@/lib/agenticClient";
 
 // Painel de BI / status de negócio (estágio 32).
 //
-// É uma superfície de LEITURA, e as três regras que a guiam vêm do próprio desenho do servidor:
+// É uma superfície de LEITURA, e as regras que a guiam vêm do próprio desenho do servidor:
 //
 //  1. **NADA É INVENTADO**: os números vêm do relatório; quando não há dado, a tela DIZ que não há
 //     dado em vez de exibir zero com aparência de resposta;
@@ -12,11 +12,15 @@ import type { BusinessStatusReport } from "@/lib/agenticClient";
 //     motivo. Esconder essa lista faria o painel parecer completo — que é a mentira mais fácil de
 //     cometer num dashboard;
 //  3. **A PROVENIÊNCIA APARECE**: cada bloco diz de qual store veio, para o número poder ser
-//     conferido por quem desconfia dele (e deveria desconfiar).
-//
-// O único controle é "Atualizar painel", que realmente refaz a consulta. Não há botão decorativo.
+//     conferido por quem desconfia dele (e deveria desconfiar);
+//  4. **A SÉRIE NÃO VIRA DELTA ZERO**: quando não há duas amostras, a tela mostra o MOTIVO em vez de
+//     uma variação de zero — "não mudou" e "não há com o que comparar" são coisas diferentes;
+//  5. **REGISTRAR AMOSTRA DIZ A VERDADE**: o servidor é idempotente por janela de hora, então a tela
+//     informa "já havia amostra nesta hora" quando `created=false`, em vez de comemorar um dado novo
+//     que não existe.
 export function BusinessStatusPanel({ companyId }: { companyId: string }) {
   const [report, setReport] = useState<BusinessStatusReport | null>(null);
+  const [trend, setTrend] = useState<BusinessTrend | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -29,6 +33,12 @@ export function BusinessStatusPanel({ companyId }: { companyId: string }) {
       // Falha aparece como falha e o relatório anterior NÃO é mantido como se fosse atual.
       setReport(null);
       setNotice(error instanceof Error ? error.message : "Painel de negócio indisponível.");
+    }
+    try {
+      setTrend(await getBusinessTrend(companyId));
+    } catch (error) {
+      setTrend(null);
+      setNotice(error instanceof Error ? error.message : "Série temporal indisponível.");
     } finally {
       setLoading(false);
     }
@@ -36,6 +46,23 @@ export function BusinessStatusPanel({ companyId }: { companyId: string }) {
   useEffect(() => {
     void refresh();
   }, [refresh]);
+
+  const record = useCallback(async () => {
+    setLoading(true);
+    try {
+      const record_ = await recordBusinessSnapshot(companyId);
+      setTrend(record_.trend);
+      setNotice(
+        record_.created
+          ? "Amostra registrada agora."
+          : "Já havia amostra nesta hora: a série usa uma por janela e não duplica o mesmo instante.",
+      );
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "Não foi possível registrar a amostra.");
+    } finally {
+      setLoading(false);
+    }
+  }, [companyId]);
 
   const money = (cents: number) => (cents / 100).toFixed(2);
   const hasData = report
@@ -111,6 +138,46 @@ export function BusinessStatusPanel({ companyId }: { companyId: string }) {
           ))}
         </div>
       )}
+
+      <div className="mt-4 rounded-xl border border-sky-200 bg-white p-4 dark:border-sky-900/60 dark:bg-neutral-900">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h3 className="text-sm font-semibold">Série temporal</h3>
+          <button
+            type="button"
+            className="rounded-xl border border-sky-300 px-3 py-1.5 text-xs dark:border-sky-800"
+            disabled={loading}
+            onClick={() => void record()}
+          >
+            Registrar amostra agora
+          </button>
+        </div>
+        {!trend && <p className="mt-2 text-xs text-neutral-500">Série indisponível.</p>}
+        {trend && (
+          <>
+            <p className="mt-2 text-xs text-neutral-600 dark:text-neutral-400">
+              {trend.snapshots} amostra(s) · retenção máxima {trend.retencao_maxima}
+              {trend.amostras_descartadas > 0 ? ` · ${trend.amostras_descartadas} fora do recorte` : ""}
+            </p>
+            {trend.sem_base ? (
+              // SEM DUAS AMOSTRAS NÃO HÁ TENDÊNCIA: o motivo aparece em vez de uma variação de zero.
+              <p role="status" aria-live="polite" className="mt-2 rounded-lg border border-neutral-200 px-3 py-2 text-xs text-neutral-600 dark:border-neutral-800 dark:text-neutral-400">
+                Sem tendência: {trend.motivo}
+              </p>
+            ) : (
+              <>
+                <p className="mt-1 text-xs text-neutral-500">Intervalo comparado: {trend.intervalo}</p>
+                <ul className="mt-2 grid gap-1 text-xs text-neutral-700 sm:grid-cols-2 dark:text-neutral-300">
+                  {(trend.deltas ?? []).map((delta) => (
+                    <li key={delta.metric}>
+                      {delta.metric}: {delta.delta > 0 ? `+${delta.delta}` : delta.delta} ({delta.from} → {delta.to})
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+          </>
+        )}
+      </div>
 
       <div className="mt-4 grid gap-4 xl:grid-cols-2">
         <div className="rounded-xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">

@@ -5,9 +5,11 @@ import type { BusinessStatusReport } from "@/lib/agenticClient";
 
 vi.mock("@/lib/agenticClient", () => ({
   getBusinessStatus: vi.fn(),
+  getBusinessTrend: vi.fn(),
+  recordBusinessSnapshot: vi.fn(),
 }));
 
-import { getBusinessStatus } from "@/lib/agenticClient";
+import { getBusinessStatus, getBusinessTrend, recordBusinessSnapshot } from "@/lib/agenticClient";
 
 function textContent(node: ReactTestInstance): string {
   return node.children
@@ -55,6 +57,11 @@ describe("BusinessStatusPanel", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+    // Padrão: série com uma amostra (sem base). Cada teste sobrescreve quando precisa de tendência.
+    vi.mocked(getBusinessTrend).mockResolvedValue({
+      organization_id: "local", snapshots: 1, sem_base: true, motivo: "apenas uma amostra",
+      history: [], amostras_descartadas: 0, retencao_maxima: 96,
+    } as never);
   });
 
   it("mostra os indicadores reais, a origem de cada número e a lacuna declarada", async () => {
@@ -122,5 +129,91 @@ describe("BusinessStatusPanel", () => {
       buttonWithText(root, "Atualizar painel")?.props.onClick();
     });
     expect(vi.mocked(getBusinessStatus).mock.calls.length).toBe(2);
+  });
+
+  it("sem duas amostras, mostra o MOTIVO em vez de uma variação de zero", async () => {
+    vi.mocked(getBusinessTrend).mockResolvedValue({
+      organization_id: "local", snapshots: 1, sem_base: true,
+      motivo: "apenas uma amostra no período: sem duas medições não há tendência",
+      history: [], amostras_descartadas: 0, retencao_maxima: 96,
+    } as never);
+    let root!: ReactTestRenderer;
+    await act(async () => {
+      root = create(<BusinessStatusPanel companyId="cmp_1" />);
+    });
+    const rendered = textContent(root.root);
+    expect(rendered).toContain("Sem tendência: apenas uma amostra no período");
+    expect(rendered).toContain("retenção máxima 96");
+    // "não mudou" e "não há com o que comparar" são coisas diferentes: nenhum delta é exibido.
+    expect(rendered).not.toContain("Intervalo comparado");
+  });
+
+  it("com duas amostras, mostra o intervalo e os deltas com sinal", async () => {
+    vi.mocked(getBusinessTrend).mockResolvedValue({
+      organization_id: "local", snapshots: 2, intervalo: "2026-10-13T12:00:00Z → 2026-10-13T14:00:00Z",
+      sem_base: false,
+      deltas: [
+        { metric: "pedidos", from: 3, to: 4, delta: 1 },
+        { metric: "liquido_cents", from: 1500, to: 500, delta: -1000 },
+        { metric: "violacoes_sla", from: 1, to: 0, delta: -1 },
+      ],
+      history: [], amostras_descartadas: 2, retencao_maxima: 96,
+    } as never);
+    let root!: ReactTestRenderer;
+    await act(async () => {
+      root = create(<BusinessStatusPanel companyId="cmp_1" />);
+    });
+    const rendered = textContent(root.root);
+    expect(rendered).toContain("Intervalo comparado: 2026-10-13T12:00:00Z → 2026-10-13T14:00:00Z");
+    // Sinal explícito: alta e queda são distinguíveis de relance.
+    expect(rendered).toContain("pedidos: +1 (3 → 4)");
+    expect(rendered).toContain("liquido_cents: -1000 (1500 → 500)");
+    expect(rendered).toContain("violacoes_sla: -1 (1 → 0)");
+    // E o que ficou fora do recorte é declarado.
+    expect(rendered).toContain("2 fora do recorte");
+  });
+
+  it("registrar amostra diz a VERDADE quando a janela já tinha amostra", async () => {
+    let root!: ReactTestRenderer;
+    await act(async () => {
+      root = create(<BusinessStatusPanel companyId="cmp_1" />);
+    });
+
+    // Primeiro: amostra realmente nova.
+    vi.mocked(recordBusinessSnapshot).mockResolvedValue({
+      created: true,
+      snapshot: { id: "bsn_1", organization_id: "local", taken_at: "2026-10-13T12:00:00Z", window: "2026-10-13T12", report: reportWith() },
+      trend: { organization_id: "local", snapshots: 1, sem_base: true, motivo: "apenas uma amostra", history: [], amostras_descartadas: 0, retencao_maxima: 96 },
+    } as never);
+    await act(async () => {
+      buttonWithText(root, "Registrar amostra agora")?.props.onClick();
+    });
+    expect(textContent(root.root)).toContain("Amostra registrada agora.");
+
+    // Depois: a MESMA hora já tinha amostra — o servidor é idempotente por janela e a tela diz isso,
+    // em vez de comemorar um dado novo que não existe.
+    vi.mocked(recordBusinessSnapshot).mockResolvedValue({
+      created: false,
+      snapshot: { id: "bsn_1", organization_id: "local", taken_at: "2026-10-13T12:00:00Z", window: "2026-10-13T12", report: reportWith() },
+      trend: { organization_id: "local", snapshots: 1, sem_base: true, motivo: "apenas uma amostra", history: [], amostras_descartadas: 0, retencao_maxima: 96 },
+    } as never);
+    await act(async () => {
+      buttonWithText(root, "Registrar amostra agora")?.props.onClick();
+    });
+    const rendered = textContent(root.root);
+    expect(rendered).toContain("havia amostra nesta hora");
+    expect(rendered).not.toContain("Amostra registrada agora.");
+  });
+
+  it("falha ao registrar amostra aparece como falha", async () => {
+    vi.mocked(recordBusinessSnapshot).mockRejectedValue(new Error("série indisponível: falha simulada"));
+    let root!: ReactTestRenderer;
+    await act(async () => {
+      root = create(<BusinessStatusPanel companyId="cmp_1" />);
+    });
+    await act(async () => {
+      buttonWithText(root, "Registrar amostra agora")?.props.onClick();
+    });
+    expect(textContent(root.root)).toContain("série indisponível: falha simulada");
   });
 });
