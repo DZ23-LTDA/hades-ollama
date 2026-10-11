@@ -51,6 +51,17 @@ linters:
         - clientes
         - protocolo
         - protocolos
+        # Vocabulário dos agentes de atendimento (estágio 35) e das aprovações humanas: são palavras
+        # portuguesas corretas que o dicionário inglês do misspell sugere trocar por um cognato.
+        # O misspell segue LIGADO: ignore-rules declara IDIOMA, não esconde erro de digitação em inglês.
+        - argumentos
+        - autor
+        - eles
+        - validade
+        - correspondente
+        - confidencial
+        - transfere
+        - corporativo
     depguard:
       rules:
         test-only-packages:
