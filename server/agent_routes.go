@@ -707,6 +707,9 @@ func (a *agentAPI) register(r *gin.Engine) {
 	group.POST("/companies/:id/campaigns/:campaign_id/approve", a.approveCompanyCampaign)
 	group.POST("/companies/:id/campaigns/:campaign_id/launch", a.launchCompanyCampaign)
 	group.POST("/companies/:id/campaigns/:campaign_id/pause", a.pauseCompanyCampaign)
+	group.POST("/companies/:id/campaigns/:campaign_id/schedule", a.scheduleCompanyCampaign)
+	group.POST("/companies/:id/campaigns/:campaign_id/metrics", a.recordCompanyCampaignMetrics)
+	group.GET("/companies/:id/campaigns/report", a.companyCampaignReport)
 	group.POST("/companies/:id/affiliate-programs", a.addCompanyAffiliateProgram)
 	group.POST("/companies/:id/affiliate-programs/:program_id/approve", a.approveCompanyAffiliateProgram)
 	group.POST("/companies/:id/affiliate-links", a.addCompanyAffiliateLink)
@@ -3950,6 +3953,14 @@ func statusForAgentError(err error) int {
 	}
 	if errors.Is(err, agent.ErrProposalInvalid) {
 		return http.StatusBadRequest
+	}
+	// Campanha em sandbox (estágio 26): agendamento e métrica inválidos são erro de cliente
+	// (400); estado que não permite a ação e orçamento estourado são conflito (409).
+	if errors.Is(err, agent.ErrCampaignScheduleInvalid) || errors.Is(err, agent.ErrCampaignMetricsInvalid) {
+		return http.StatusBadRequest
+	}
+	if errors.Is(err, agent.ErrCampaignBudgetExceeded) || errors.Is(err, agent.ErrCampaignStateInvalid) {
+		return http.StatusConflict
 	}
 	if errors.Is(err, os.ErrNotExist) {
 		return http.StatusNotFound
