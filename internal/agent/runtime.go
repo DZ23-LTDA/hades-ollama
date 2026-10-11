@@ -2,6 +2,8 @@ package agent
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -15,6 +17,28 @@ import (
 
 	"github.com/google/uuid"
 )
+
+// idempotentMissionID deriva um ID estável de (organização, chave) para que a
+// mesma criação repetida aponte para a MESMA missão. A organização entra no hash
+// de propósito: duas organizações podem usar a mesma chave sem colidir, e uma
+// chave repetida nunca alcança missão de outro tenant.
+func idempotentMissionID(organizationID, key string) string {
+	sum := sha256.Sum256([]byte(strings.TrimSpace(organizationID) + "\x00" + strings.TrimSpace(key)))
+	return "mis_" + hex.EncodeToString(sum[:16])
+}
+
+// missionScopeMatches confere se a missão encontrada pertence ao escopo ativo
+// antes de devolvê-la numa criação idempotente.
+func missionScopeMatches(mission Mission, requestedOrganization, runtimeScope string) bool {
+	scope := strings.TrimSpace(runtimeScope)
+	if scope == "" {
+		scope = strings.TrimSpace(requestedOrganization)
+	}
+	if scope == "" {
+		return true
+	}
+	return organizationOwnsRecord(mission.OrganizationID, scope)
+}
 
 type Runtime struct {
 	store               Store
@@ -739,7 +763,14 @@ func (r *Runtime) CreateMission(ctx context.Context, request CreateMissionReques
 	}
 	missionID := strings.TrimSpace(request.MissionID)
 	if missionID == "" {
-		missionID = "mis_" + uuid.NewString()
+		if key := strings.TrimSpace(request.IdempotencyKey); key != "" {
+			// ID derivado da chave: repetir a criação com a mesma chave aponta para
+			// o MESMO id, e o store recusa duplicata (ErrMissionAlreadyExists), o
+			// que o chamador converte em "já existe" em vez de missão nova.
+			missionID = idempotentMissionID(request.OrganizationID, key)
+		} else {
+			missionID = "mis_" + uuid.NewString()
+		}
 	} else if !validSnapshotID(missionID) {
 		return Mission{}, errors.New("internal mission id is invalid")
 	}
@@ -831,6 +862,19 @@ func (r *Runtime) CreateMission(ctx context.Context, request CreateMissionReques
 	now := time.Now().UTC()
 	mission := Mission{ID: missionID, Version: 1, Objective: objective, Provider: provider, Model: strings.TrimSpace(request.Model), Workspace: workspace, WorkspaceIdentity: workspaceIdentity, WorkspaceIsolated: request.IsolateWorkspace, WorkspaceSnapshotID: workspaceSnapshotID, WorkspaceSnapshotSHA256: workspaceSnapshotSHA256, GitRepoRoot: gitRepoRoot, GitBranch: gitBranch, GitWorktreePath: gitWorktreePath, GitBaseCommit: gitBaseCommit, GitMergeStatus: gitMergeStatus, GitWorktreeActive: gitWorktreeActive, AutoRepair: request.AutoRepair, MaxRepairTries: request.MaxRepairTries, ProjectID: projectID, OrganizationID: organizationID, Capabilities: capabilities, AutoRun: request.AutoRun, State: MissionPlanning, CreatedAt: now, UpdatedAt: now}
 	if err := r.store.CreateMission(mission); err != nil {
+		// Criação idempotente: a chave já produziu esta missão antes. Devolvemos a
+		// existente — mas SÓ se ela pertencer ao mesmo escopo, para que uma chave
+		// repetida nunca exponha missão de outra organização.
+		if errors.Is(err, ErrMissionAlreadyExists) && strings.TrimSpace(request.IdempotencyKey) != "" {
+			existing, loadErr := r.getMission(missionID)
+			if loadErr != nil {
+				return Mission{}, loadErr
+			}
+			if !missionScopeMatches(existing, request.OrganizationID, r.organizationScope) {
+				return Mission{}, errors.New("idempotent mission is outside the active organization")
+			}
+			return existing, nil
+		}
 		// The store may have committed before a connection/timeout error reached
 		// this caller. Preserve the snapshot; an orphan sweep can reclaim it only
 		// after checking durable mission references.

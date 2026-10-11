@@ -49,8 +49,14 @@ const (
 )
 
 type CreateMissionRequest struct {
-	MissionID        string   `json:"-"`
-	ActorID          string   `json:"-"`
+	MissionID string `json:"-"`
+	ActorID   string `json:"-"`
+	// IdempotencyKey torna a criação repetível sem duplicar missão. Quando
+	// presente, o ID é DERIVADO da chave (organização + chave), então repetir a
+	// mesma criação devolve a missão já existente em vez de criar outra. É o
+	// pré-requisito para retry de automação: sem isso, repetir um passo que falhou
+	// depois de persistir geraria missões fantasma.
+	IdempotencyKey   string   `json:"-"`
 	Objective        string   `json:"objective"`
 	Provider         string   `json:"provider,omitempty"`
 	Model            string   `json:"model,omitempty"`

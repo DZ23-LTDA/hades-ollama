@@ -300,6 +300,7 @@ func (r *Runtime) ExecuteScheduleFlowReport(ctx context.Context, schedule Schedu
 		return report, err
 	}
 	outcomes := make(map[string]bool, len(order))
+	runKey := ScheduleFlowRunKey(schedule)
 	for _, step := range order {
 		id := strings.TrimSpace(step.ID)
 		if !scheduleDependenciesSatisfied(step, outcomes) {
@@ -317,7 +318,8 @@ func (r *Runtime) ExecuteScheduleFlowReport(ctx context.Context, schedule Schedu
 			outcomes[id] = true
 			report.Steps = append(report.Steps, ScheduleStepOutcome{ID: id, Kind: string(step.Kind), Status: ScheduleStepSucceeded})
 		case ScheduleStepActionMission:
-			if _, err := r.createScheduledMission(ctx, schedule, strings.TrimSpace(step.Objective)); err != nil {
+			_, created, err := r.createScheduledMissionIdempotent(ctx, schedule, strings.TrimSpace(step.Objective), scheduleStepIdempotencyKey(runKey, id))
+			if err != nil {
 				outcomes[id] = false
 				report.FinishedAt = time.Now().UTC()
 				report.Steps = append(report.Steps, ScheduleStepOutcome{
@@ -328,9 +330,16 @@ func (r *Runtime) ExecuteScheduleFlowReport(ctx context.Context, schedule Schedu
 				})
 				return report, fmt.Errorf("schedule step %q: %w", id, err)
 			}
-			report.Missions++
+			outcome := ScheduleStepOutcome{ID: id, Kind: string(step.Kind), Status: ScheduleStepSucceeded}
+			if created {
+				report.Missions++
+			} else {
+				// Repetição idempotente: nada foi criado agora e o relatório diz
+				// isso, em vez de contar uma missão que já existia.
+				outcome.Reason = "missão já existia para esta execução (idempotente)"
+			}
 			outcomes[id] = true
-			report.Steps = append(report.Steps, ScheduleStepOutcome{ID: id, Kind: string(step.Kind), Status: ScheduleStepSucceeded})
+			report.Steps = append(report.Steps, outcome)
 		case ScheduleStepConditionIf:
 			matched := scheduleConditionMatches(step, outcomes)
 			outcomes[id] = matched
@@ -386,4 +395,42 @@ func (r *Runtime) createScheduledMission(ctx context.Context, schedule Schedule,
 		OrganizationID: schedule.OrganizationID,
 		AutoRun:        true,
 	})
+}
+
+// ScheduleFlowRunKey identifica UMA execução do fluxo. Ele é estável durante a
+// execução (o NextRunAt só é reescrito depois, ao registrar o resultado) e muda
+// entre execuções — é o que permite repetir um passo com segurança: a chave de
+// idempotência do passo é derivada daqui, então uma repetição DENTRO da mesma
+// execução aponta para a mesma missão em vez de criar outra.
+func ScheduleFlowRunKey(schedule Schedule) string {
+	return strings.TrimSpace(schedule.ID) + "@" + schedule.NextRunAt.UTC().Format(time.RFC3339Nano)
+}
+
+// scheduleStepIdempotencyKey isola cada passo dentro da execução.
+func scheduleStepIdempotencyKey(runKey, stepID string) string {
+	return runKey + "/" + strings.TrimSpace(stepID)
+}
+
+// createScheduledMissionIdempotent cria a missão do passo sem duplicar quando a
+// mesma execução rodar de novo. Devolve created=false quando a missão já existia,
+// para o relatório não afirmar que criou o que não criou.
+func (r *Runtime) createScheduledMissionIdempotent(ctx context.Context, schedule Schedule, objective, key string) (Mission, bool, error) {
+	if existing, err := r.getMission(idempotentMissionID(schedule.OrganizationID, key)); err == nil {
+		if missionScopeMatches(existing, schedule.OrganizationID, r.organizationScope) {
+			return existing, false, nil
+		}
+	}
+	mission, err := r.CreateMission(ctx, CreateMissionRequest{
+		Objective:      objective,
+		Model:          schedule.Model,
+		Workspace:      schedule.Workspace,
+		ProjectID:      schedule.ProjectID,
+		OrganizationID: schedule.OrganizationID,
+		AutoRun:        true,
+		IdempotencyKey: key,
+	})
+	if err != nil {
+		return Mission{}, false, err
+	}
+	return mission, true, nil
 }
