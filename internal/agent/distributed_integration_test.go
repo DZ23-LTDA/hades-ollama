@@ -1408,7 +1408,7 @@ func TestDistributedRedisStartCancellationDominatesNilHandler(t *testing.T) {
 	})
 	select {
 	case <-started:
-	case <-time.After(5 * time.Second):
+	case <-time.After(waitBudget(t)):
 		t.Fatal("Redis queue Start did not dispatch the test job")
 	}
 	cancelWorker()
@@ -2745,7 +2745,7 @@ func TestDistributedPostgresRuntimeRejectsRLSDrift(t *testing.T) {
 			if err != nil {
 				t.Fatalf("migration did not proceed after runtime transaction ended: %v", err)
 			}
-		case <-time.After(10 * time.Second):
+		case <-time.After(waitBudget(t)):
 			t.Fatal("migration remained blocked after runtime transaction released its security lock")
 		}
 	})
