@@ -44,7 +44,13 @@ func TestCollaborationRollsBackMemoryOnPersistenceFailure(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	// Falha de persistência de forma PORTÁTIL: em vez de um diretório ausente (que a escrita
+	// atômica agora cria), um ARQUIVO ocupa o lugar da raiz, e `MkdirAll` falha em Linux,
+	// macOS e Windows.
 	if err := os.RemoveAll(root); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(root, []byte("arquivo, não diretório"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := store.AddComment("project-1", "user-a", "must not remain"); err == nil {

@@ -22,7 +22,7 @@ func TestJSONStoreRollsBackMissionMutationWhenPersistenceFails(t *testing.T) {
 	if err := store.PutMission(original); err != nil {
 		t.Fatal(err)
 	}
-	store.root = filepath.Join(root, "missing-parent", "store")
+	store.root = unwritableStoreRoot(t, root, "store")
 	updated := original
 	updated.Version = 2
 	updated.Objective = "must not remain in memory"
@@ -68,7 +68,7 @@ func TestJSONStoreRollsBackEventsWhenPersistenceFails(t *testing.T) {
 	if err := store.AppendEvent(first); err != nil {
 		t.Fatal(err)
 	}
-	store.root = filepath.Join(root, "missing-parent", "store")
+	store.root = unwritableStoreRoot(t, root, "store")
 	second := Event{ID: "evt_second", MissionID: first.MissionID, OrganizationID: first.OrganizationID, Type: "second", CreatedAt: time.Now().UTC()}
 	if err := store.AppendEvent(second); err == nil {
 		t.Fatal("event write unexpectedly succeeded")

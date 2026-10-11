@@ -58,6 +58,7 @@ type Runtime struct {
 	serviceAgents       *ServiceAgentRuntime
 	commerce            *CommerceStore
 	salesWorkforce      *SalesWorkforceStore
+	marketplace         *MarketplaceSyncStore
 	finance             *FinanceOps
 	businessSupervisor  *BusinessSupervisor
 	remoteMCP           *RemoteMCPManager
@@ -264,6 +265,8 @@ func NewRuntime(config RuntimeConfig) (*Runtime, error) {
 	}
 	// Forca de vendas (estagio 27): propostas com preco do catalogo e pos-venda com prazo.
 	salesWorkforceStore := NewSalesWorkforceStore(filepath.Join(dataRoot, ".agent-sales"), commerceStore, consentRegistry)
+	// Marketplace (estagio 25): contrato de sincronizacao exercitado contra um DUBLE de sandbox.
+	marketplaceSyncStore := NewMarketplaceSyncStore(filepath.Join(dataRoot, ".agent-marketplace"), commerceStore)
 	// O financeiro deriva lançamentos do comércio no livro que já existe (estágio 30).
 	financeOps := NewFinanceOps(commerceStore, companyStore)
 	// O supervisor de negócio coordena os domínios sob limites, orçamento e aprovação
@@ -311,7 +314,8 @@ func NewRuntime(config RuntimeConfig) (*Runtime, error) {
 	}
 	runtime := &Runtime{
 		store: store, planner: planner, plannerResolver: config.PlannerResolver, tools: tools, capabilityPolicy: capabilityPolicy, workspaceRoot: root, dataRoot: dataRoot, context: contextStore, company: companyStore, consent: consentRegistry, crm: crmStore, inbox: inboxStore, omnichannel: omnichannelRuntime, serviceAgents: serviceAgentRuntime, commerce: commerceStore,
-		salesWorkforce: salesWorkforceStore, finance: financeOps, businessSupervisor: businessSupervisor, remoteMCP: config.RemoteMCP, metrics: &RuntimeMetrics{}, connectors: config.Connectors, mcp: config.MCP, queue: queue, redisQueue: config.RedisQueue, traces: traces, telemetry: telemetry, media: config.Media, builder: builder, collaboration: collaboration, push: config.Push, pushOutbox: pushOutbox, deployments: config.Deployments, deploymentApprovals: deploymentApprovals, webhookReplay: webhookReplay, mu: &sync.Mutex{}, running: make(map[string]bool), activeCancels: make(map[string]context.CancelFunc), cancelPollInterval: durableCancelPollInterval(),
+		salesWorkforce: salesWorkforceStore,
+		marketplace:    marketplaceSyncStore, finance: financeOps, businessSupervisor: businessSupervisor, remoteMCP: config.RemoteMCP, metrics: &RuntimeMetrics{}, connectors: config.Connectors, mcp: config.MCP, queue: queue, redisQueue: config.RedisQueue, traces: traces, telemetry: telemetry, media: config.Media, builder: builder, collaboration: collaboration, push: config.Push, pushOutbox: pushOutbox, deployments: config.Deployments, deploymentApprovals: deploymentApprovals, webhookReplay: webhookReplay, mu: &sync.Mutex{}, running: make(map[string]bool), activeCancels: make(map[string]context.CancelFunc), cancelPollInterval: durableCancelPollInterval(),
 	}
 	orchestrator, err := NewAgentOrchestrator(filepath.Join(dataRoot, ".agent-orchestrator"), runtime.SubagentRunner)
 	if err != nil {
@@ -444,6 +448,14 @@ func (r *Runtime) SalesWorkforce() *SalesWorkforceStore {
 		return nil
 	}
 	return r.salesWorkforce
+}
+
+// Marketplace devolve o executor de sincronizacao de marketplace (duble de sandbox).
+func (r *Runtime) Marketplace() *MarketplaceSyncStore {
+	if r == nil {
+		return nil
+	}
+	return r.marketplace
 }
 
 // Finance devolve o módulo financeiro (estágio 30).

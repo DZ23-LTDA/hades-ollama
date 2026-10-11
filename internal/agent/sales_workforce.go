@@ -3,7 +3,6 @@ package agent
 import (
 	"errors"
 	"fmt"
-	"os"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -185,11 +184,6 @@ func (s *SalesWorkforceStore) persistOrganizationLocked(organizationID string) e
 	path := s.organizationPath(organizationID)
 	if path == "" {
 		return nil
-	}
-	// O diretório precisa existir antes da escrita atômica; sem isto a PRIMEIRA gravação
-	// falha com "caminho não encontrado" e nada é persistido.
-	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
-		return err
 	}
 	file := salesWorkforceFile{Proposals: s.proposals[organizationID], FollowUps: s.followUps[organizationID]}
 	return writeJSONAtomic(path, file)

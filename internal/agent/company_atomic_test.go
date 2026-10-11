@@ -20,7 +20,7 @@ func TestCompanyStoreRollsBackMutationsWhenPersistenceFails(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	store.root = filepath.Join(root, "missing-parent", "companies")
+	store.root = unwritableStoreRoot(t, root, "companies")
 	if _, err := store.Update(company.ID, CompanyUpdate{Name: "Changed"}); err == nil {
 		t.Fatal("company update unexpectedly succeeded")
 	}
