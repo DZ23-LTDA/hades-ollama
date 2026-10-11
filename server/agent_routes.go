@@ -804,6 +804,8 @@ func (a *agentAPI) register(r *gin.Engine) {
 	group.POST("/crm/contacts/:id/consent/revoke", a.revokeCRMContactConsent)
 	group.POST("/crm/opportunities/:id/stage", a.setCRMOpportunityStage)
 	group.GET("/crm/pipeline", a.crmPipeline)
+	group.GET("/telegram/status", a.telegramStatus)
+	group.POST("/telegram/send", a.telegramSend)
 	group.GET("/egress/logs", a.getEgressLogs)
 	group.GET("/egress/status", a.getEgressStatus)
 	group.GET("/plugins", a.listPlugins)

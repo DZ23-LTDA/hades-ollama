@@ -127,6 +127,8 @@
 
 | CRM: contatos, oportunidades e funil | `crm.go`, rotas `/crm/*`, comando `/crm` disponível (E-102) | PARCIAL | MÉDIO | E-102 | dedupe por identidade com nono dígito, sem identidade recusa, fase terminal imutável, consentimento lido do registro; sem CRM externo nem histórico de conversa |
 
+| Comandos nativos: contrato com rotas reais | guarda `TestEveryAvailableCommandMapsToARegisteredRoute`, porta do Telegram, `/research` corrigido (E-103) | IMPLEMENTADO_E_TESTADO | MÉDIO | E-103 | 32 de 35 comandos com rota existente; 3 indisponíveis **com motivo**; guarda impede regressão |
+
 ## 6. Integrações, MCP e conectores
 
 | Capacidade | Superfície | Classificação | Risco | Evidência | Lacuna |
