@@ -19,6 +19,7 @@ import { AppSidebar } from "@/components/AppSidebar";
 import { SidebarLayout } from "@/components/layout/layout";
 import { CompanyGrowthPanel } from "@/components/CompanyGrowthPanel";
 import { CompanyOperationsPanel } from "@/components/CompanyOperationsPanel";
+import { BusinessStatusPanel } from "@/components/BusinessStatusPanel";
 import { CompanyApprovalQueue } from "@/components/CompanyApprovalQueue";
 import { CompanySupervisorPanel } from "@/components/CompanySupervisorPanel";
 import { ArrowPathIcon, BuildingOffice2Icon, CheckCircleIcon, PauseCircleIcon, PlayCircleIcon, PlusIcon, ShieldCheckIcon } from "@heroicons/react/24/outline";
@@ -144,6 +145,7 @@ export function CompanyWorkspacePage() {
 		      <CompanyGrowthPanel company={company} onCompanyChange={setCompany} />
 		      <CompanyOperationsPanel company={company} onCompanyChange={setCompany} />
 		      <CompanyApprovalQueue company={company} onCompanyChange={setCompany} />
+		      <BusinessStatusPanel companyId={company.id} />
 	      <div className="mt-7 flex flex-wrap items-center gap-2 rounded-2xl border border-neutral-200/80 bg-white p-3 dark:border-neutral-800 dark:bg-neutral-900">{companies.map((item) => <button key={item.id} type="button" onClick={() => void refresh(item.id)} className={`rounded-xl px-3 py-2 text-xs font-medium ${item.id === company.id ? "bg-neutral-950 text-white dark:bg-white dark:text-neutral-950" : "text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800"}`}>{item.name}</button>)}<span className="ml-auto text-[11px] text-neutral-400">tenant {company.organization_id}</span></div>
       <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-6"><Stat label="Estado" value={statusLabel} tone={company.status === "paused" ? "amber" : "green"} /><Stat label="Backlog aberto" value={String(report?.open_backlog ?? backlog.length)} /><Stat label="Metas em dia" value={String(report?.goals_on_track ?? 0)} tone="green" /><Stat label="Ciclos ativos" value={String(report?.enabled_cycles ?? cycles.length)} /><Stat label="Orçamento usado" value={`${budgetPct.toFixed(1)}%`} tone={budgetPct > 80 ? "amber" : "neutral"} /><Stat label="Anomalias" value={String(company.risk.anomaly_count)} tone={company.risk.anomaly_count ? "amber" : "green"} /></div>
       <div className="mt-5 grid gap-5 xl:grid-cols-[1.25fr_0.75fr]"><div className="space-y-5">
