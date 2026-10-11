@@ -2,12 +2,12 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-12T14:45:00-03:00",
+  "updated_at": "2026-10-12T15:55:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
     "integration_branch": "main",
-    "main_sha": "26213959f84174fe680ffd57c0662a4afcd4bd3f",
+    "main_sha": "a1f2fbabf42492e61dd9564bbaa3b7e293ebfb42",
     "main_committed_at": "2026-10-09T10:24:45Z",
     "main_ci_state": "green (dz23-agentic-quality + class-a-plus-integrity = success nesse SHA)",
     "mission_branch": "docs/checkpoints-missao-v21",
@@ -734,17 +734,18 @@
       "title": "Social e publicacao",
       "state": "IN_PROGRESS",
       "auditoria": "AUDITADO",
-      "capability": "PARCIAL",
+      "capability": "IMPLEMENTADO_NAO_HOMOLOGADO",
       "evidence": [
         "E-044",
         "E-087",
         "E-097",
-        "E-110"
+        "E-110",
+        "E-111"
       ],
       "blocker": "B-05",
-      "next": "LIMITES: aprovacoes e historico do ciclo ficam EM MEMORIA (as ocorrencias e o journal de missoes sao persistentes, mas pendencias de decisao nao sobrevivem a reinicio nesta rodada), o ciclo NAO roda sozinho (acionado por rota ou pelo agendador existente, sem loop proprio com lease), o estorno e registro CONTABIL sem transferencia real de dinheiro, sem precificacao dinamica nem promocoes, e sem coordenar marketplaces e redes sociais (conta autorizada)",
+      "next": "LIMITES: o HISTORICO dos ciclos segue em memoria (ele e a trilha analitica, nao a decisao), o ciclo e acionado por rota ou pelo agendador existente (sem loop proprio com lease), o estorno e registro CONTABIL sem transferencia real de dinheiro, nao ha precificacao dinamica nem promocoes, e marketplaces e redes sociais nao sao coordenados (conta autorizada)",
       "blocked_reason": "",
-      "done": "SUPERVISOR AUTONOMO DE NEGOCIO implementado: observa atendimento (SLA e fila humana), comercio (estoque e pedidos) e financeiro (receita nao lancada, estorno devido, divergencias) sob POLITICA DECLARADA de limites e orcamento, registrando os achados altos nos MESMOS registros de ocorrencia do supervisor existente, com recuperacao observada resolvendo-os. ACOES REVERSIVEIS/CONTABEIS SAO AUTONOMAS com efeito real registrado (lancar receita de pedido pago, repor estoque como movimento no livro, atribuir fila humana) e ACOES IRREVERSIVEIS (estorno de dinheiro, cancelamento de venda) ficam AGUARDANDO APROVACAO HUMANA com motivo e custo. ORCAMENTO e limite duro: estourar nao executa, nao consome e vira BLOQUEADA_ORCAMENTO com motivo. A decisao exige ator, e idempotente e aprovar executa o efeito real"
+      "done": "SUPERVISOR AUTONOMO DE NEGOCIO com recuperacao PERSISTENTE: acoes e decisoes, politica vigente, orcamento consumido e contagem de ciclos sobrevivem a um REINICIO REAL (novo runtime sobre o mesmo diretorio de dados). A pendencia de aprovacao continua a MESMA e pode ser decidida depois do reinicio com efeito real; recusa registrada NAO volta a pendente e a decisao original prevalece; o orcamento gasto nao e devolvido (sem gastar duas vezes) e a numeracao dos ciclos continua. Diagnostico de dominios, acoes autonomas com efeito real, bloqueio por orcamento sem consumir e aprovacao humana exigindo ator seguem como antes"
     },
     {
       "id": 32,
@@ -1086,7 +1087,11 @@
     "SUPERVISOR AUTONOMO DE NEGOCIO (E-110): o supervisor de MISSOES ja existia (tick, journal, ocorrencias, aprovacao de risco); este e o supervisor de NEGOCIO, que observa o que os outros modulos ja produzem - atendimento (SLA e fila humana), comercio (estoque e pedidos) e financeiro (receita nao lancada, estorno devido, divergencias) - e age sob POLITICA DECLARADA. Ele NAO duplica o journal: achados altos entram nos MESMOS registros de ocorrencia que o operador ja consulta, e a recuperacao os resolve",
     "SUPERVISOR DE NEGOCIO - AUTONOMIA DELIMITADA (E-110): ACAO IRREVERSIVEL NAO EXECUTA SOZINHA - estorno (mexe em dinheiro) e cancelamento de pedido (desfaz uma venda) ficam AGUARDANDO APROVACAO HUMANA com motivo e custo a vista. ACAO REVERSIVEL E CONTABIL E AUTONOMA: lancar receita de pedido JA PAGO e registro IDEMPOTENTE que NAO move dinheiro, repor estoque e AJUSTE com movimento no livro auditavel, e atribuir fila humana e reversivel. ORCAMENTO E LIMITE, NAO SUGESTAO: custo acima do restante NAO executa, NAO consome e vira BLOQUEADA_ORCAMENTO com motivo. A decisao exige ATOR identificado (sem ator nao ha trilha de auditoria) e e IDEMPOTENTE: aprovar de novo devolve a mesma acao sem repetir o efeito externo",
     "SUPERVISOR DE NEGOCIO - DOIS DEFEITOS MEUS CORRIGIDOS PELOS TESTES (E-110): (1) eu comparava o estoque com o limiar do Summary do proprio comercio (que so marca saldo ZERADO), entao a politica MinAvailableUnits=2 NUNCA disparava - passei a comparar com o limite DA PROPRIA POLITICA, porque depender do limiar de outro modulo faria a politica ser decorativa; (2) organizacao SEM empresa derrubava o CICLO INTEIRO com erro no dominio financeiro - agora a falha e DECLARADA em errors e a supervisao dos outros dominios CONTINUA, porque derrubar tudo esconderia os achados que ja existiam",
-    "SUPERVISOR DE NEGOCIO - LIMITES DECLARADOS (E-110): aprovacoes e historico do ciclo ficam EM MEMORIA (ocorrencias e journal de missoes sao persistentes, mas pendencias de decisao nao sobrevivem a reinicio nesta rodada), o ciclo NAO roda sozinho (acionado por rota ou pelo agendador existente, sem loop proprio com lease), o estorno e registro CONTABIL sem transferencia real de dinheiro, nao ha precificacao dinamica nem promocoes, e marketplaces/redes sociais nao sao coordenados (conta autorizada). Capacidade PARCIAL"
+    "SUPERVISOR DE NEGOCIO - LIMITES DECLARADOS (E-110): aprovacoes e historico do ciclo ficam EM MEMORIA (ocorrencias e journal de missoes sao persistentes, mas pendencias de decisao nao sobrevivem a reinicio nesta rodada), o ciclo NAO roda sozinho (acionado por rota ou pelo agendador existente, sem loop proprio com lease), o estorno e registro CONTABIL sem transferencia real de dinheiro, nao ha precificacao dinamica nem promocoes, e marketplaces/redes sociais nao sao coordenados (conta autorizada). Capacidade PARCIAL",
+    "RECUPERACAO PERSISTENTE DO SUPERVISOR DE NEGOCIO (E-111): eu havia DECLARADO no meu proprio relatorio anterior o limite 'aprovacoes e historico do ciclo ficam em memoria'. Isso significava que, apos um reinicio, uma DECISAO PENDENTE desapareceria e uma acao irreversivel que esperava aprovacao humana SUMIRIA DO RADAR DO OPERADOR - ou voltaria a ser proposta como se nunca tivesse sido vista. Fui corrigir exatamente isso",
+    "RECUPERACAO DO SUPERVISOR - O QUE PERSISTE E POR QUE (E-111): gravamos em arquivo unico as ACOES E SUAS DECISOES (a pendencia precisa sobreviver e a recusa nao pode voltar a pendente), a POLITICA VIGENTE (limites nao se perdem), o ORCAMENTO CONSUMIDO (sem isso o supervisor GASTARIA DUAS VEZES) e a CONTAGEM DE CICLOS. A gravacao acontece nos pontos que mudam estado - registrar pendencia, bloquear por orcamento, executar acao autonoma, decidir e trocar politica - e a pendencia e gravada ANTES DE SAIR do ciclo",
+    "RECUPERACAO DO SUPERVISOR - VERIFICACAO COM REINICIO REAL (E-111): tres testes sobem um NOVO runtime sobre o MESMO diretorio de dados e provam que a pendencia continua a MESMA (ID e tipo) e pode ser decidida depois com efeito real; que a recusa registrada NAO volta a pendente e que decidir de novo e idempotente com a decisao ORIGINAL prevalecendo (aprovar depois de recusar NAO executa); e que o segundo ciclo e o numero 2 com orcamento gasto 35000 e restante 65000 preservados. Os 6 testes anteriores seguem verdes",
+    "RECUPERACAO DO SUPERVISOR - LIMITE QUE CONTINUA (E-111): o HISTORICO dos ciclos segue em MEMORIA, porque ele e a trilha analitica do supervisor e nao a decisao. Pendencia, decisao, politica e orcamento, que sao o que MUDA O MUNDO, agora sao persistentes. Capacidade IMPLEMENTADO_NAO_HOMOLOGADO"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",

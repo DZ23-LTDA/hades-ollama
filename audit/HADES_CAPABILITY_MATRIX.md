@@ -143,6 +143,8 @@
 
 | Supervisor de negócio: limites, orçamento e aprovação | `business_supervisor.go`, rotas `/business/tick` e `/business/actions` (E-110) | PARCIAL | MÉDIO | E-110 | ação irreversível aguarda humano, ação reversível é autônoma com efeito real, orçamento bloqueia sem consumir, decisão idempotente com ator; pendências em memória |
 
+| Supervisor de negócio: recuperação persistente | `business_supervisor.go` + `.agent-business-supervisor` (E-111) | IMPLEMENTADO_NAO_HOMOLOGADO | BAIXO | E-111 | pendências, decisões, política, orçamento e contagem de ciclos sobrevivem ao reinício real; histórico de ciclos em memória |
+
 ## 6. Integrações, MCP e conectores
 
 | Capacidade | Superfície | Classificação | Risco | Evidência | Lacuna |
