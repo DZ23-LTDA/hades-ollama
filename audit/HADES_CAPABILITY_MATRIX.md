@@ -91,6 +91,8 @@
 | Workflow: variáveis e transformações | `internal/agent/schedule_flow.go` (`action.transform`, `expandScheduleTemplate`, `setScheduleVariable`) (PR #153) | IMPLEMENTADO_E_TESTADO | MÉDIO | E-082 | template puro com limites e variável desconhecida como erro; alimenta o objetivo da missão |
 | Workflow: laço limitado | `logic.loop`, `maxScheduleLoopItems`, `maxScheduleMissionsPerRun`, `ScheduleStepOutcome.Children` (PR #153) | IMPLEMENTADO_E_TESTADO | MÉDIO | E-082 | uma missão por item com evidência por iteração e idempotência; teto conferido antes de criar |
 
+| Workflow: aprovação com espera entre execuções | `approval.request`, `Schedule.Approvals`, `Schedule.PendingApprovals`, `DecideScheduleApproval`, `POST /schedules/:id/approvals` (PR #155) | IMPLEMENTADO_E_TESTADO | ALTO | E-083 | pausa o fluxo até decisão humana auditável; negativa não vira falha técnica; aprovação não vaza para execução futura |
+
 ## 6. Integrações, MCP e conectores
 
 | Capacidade | Superfície | Classificação | Risco | Evidência | Lacuna |
