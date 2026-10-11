@@ -62,6 +62,10 @@ type SupervisorTickResult struct {
 	RiskPausedCompanies    []string  `json:"risk_paused_companies,omitempty"`
 	BlockedExternalActions int       `json:"blocked_external_actions"`
 	ApprovalsCreated       int       `json:"approvals_created"`
+	// ScheduleRunErrors expõe falhas de execução de schedule no próprio tick.
+	// Antes, uma falha de fluxo neste caminho não era nem registrada nem
+	// reportada: desaparecia.
+	ScheduleRunErrors []string `json:"schedule_run_errors,omitempty"`
 }
 
 // Supervisor implements the always-on autonomous loop for the Agent and Company OS.
@@ -301,10 +305,21 @@ func (s *Supervisor) Tick(ctx context.Context, now time.Time) (SupervisorTickRes
 
 			// Execute the persisted flow graph of the schedule, or the legacy
 			// single mission when the schedule carries no steps. Both dispatch
-			// sites share ExecuteScheduleFlow so semantics cannot diverge.
-			missions, err := s.runtime.ExecuteScheduleFlow(ctx, sched)
-			if err == nil {
-				result.SchedulesTriggered += missions
+			// sites share ExecuteScheduleFlowReport so semantics cannot diverge,
+			// e ambos registram o resultado: antes o supervisor não gravava nada
+			// e uma falha de fluxo desaparecia sem rastro.
+			report, err := s.runtime.ExecuteScheduleFlowReport(ctx, sched)
+			if _, recordErr := s.runtime.recordScheduleRun(sched, report, err); recordErr != nil {
+				result.ScheduleRunErrors = append(result.ScheduleRunErrors, "record "+sched.ID+": "+recordErr.Error())
+			}
+			if err != nil {
+				result.ScheduleRunErrors = append(result.ScheduleRunErrors, "run "+sched.ID+": "+err.Error())
+				continue
+			}
+			result.SchedulesTriggered += report.Missions
+			if skipped := report.SkippedSteps(); len(skipped) > 0 {
+				result.ScheduleRunErrors = append(result.ScheduleRunErrors,
+					"run "+sched.ID+": passos ignorados: "+strings.Join(skipped, ", "))
 			}
 		}
 	}

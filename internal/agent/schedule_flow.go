@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"time"
 )
 
 // ScheduleStepKind is the closed vocabulary of steps a persisted schedule flow
@@ -202,6 +203,55 @@ func orderScheduleSteps(steps []ScheduleStep) ([]ScheduleStep, error) {
 	return order, nil
 }
 
+// Status possíveis de um passo em uma execução. "skipped" existe para que um nó
+// que não rodou (condição falsa, dependência que não teve sucesso) apareça no
+// relatório: o estágio 13 proíbe declarar sucesso com nó ignorado.
+const (
+	ScheduleStepSucceeded = "succeeded"
+	ScheduleStepSkipped   = "skipped"
+	ScheduleStepFailed    = "failed"
+)
+
+// ScheduleStepOutcome é o resultado de UM passo da execução.
+type ScheduleStepOutcome struct {
+	ID     string `json:"id"`
+	Kind   string `json:"kind"`
+	Status string `json:"status"`
+	Reason string `json:"reason,omitempty"`
+}
+
+// ScheduleRunReport é o resultado auditável de uma execução de fluxo. Ele é
+// persistido junto do schedule (Schedule.LastRun) tanto em sucesso quanto em
+// falha, para que uma execução parcial seja visível.
+type ScheduleRunReport struct {
+	FinishedAt time.Time             `json:"finished_at"`
+	Missions   int                   `json:"missions"`
+	Steps      []ScheduleStepOutcome `json:"steps,omitempty"`
+}
+
+// SkippedSteps devolve os identificadores ignorados na execução. Vazio significa
+// que todo passo do grafo executou.
+func (r ScheduleRunReport) SkippedSteps() []string {
+	skipped := make([]string, 0)
+	for _, step := range r.Steps {
+		if step.Status == ScheduleStepSkipped {
+			skipped = append(skipped, step.ID)
+		}
+	}
+	sort.Strings(skipped)
+	return skipped
+}
+
+// FailedStep devolve o identificador do passo que falhou, se houve.
+func (r ScheduleRunReport) FailedStep() string {
+	for _, step := range r.Steps {
+		if step.Status == ScheduleStepFailed {
+			return step.ID
+		}
+	}
+	return ""
+}
+
 // ExecuteScheduleFlow runs a persisted schedule flow and returns how many
 // missions it created. An empty graph keeps the legacy behaviour of a single
 // mission carrying the schedule objective.
@@ -212,44 +262,90 @@ func orderScheduleSteps(steps []ScheduleStep) ([]ScheduleStep, error) {
 // stops at the first action that cannot create its mission and reports that
 // error so the caller can record the schedule failure.
 func (r *Runtime) ExecuteScheduleFlow(ctx context.Context, schedule Schedule) (int, error) {
+	report, err := r.ExecuteScheduleFlowReport(ctx, schedule)
+	return report.Missions, err
+}
+
+// ExecuteScheduleFlowReport executa o grafo e devolve o resultado POR NÓ, mesmo
+// quando falha — o relatório parcial é o que permite registrar quais passos
+// rodaram e quais foram ignorados. Erro continua sendo erro: o relatório não
+// transforma falha em sucesso.
+func (r *Runtime) ExecuteScheduleFlowReport(ctx context.Context, schedule Schedule) (ScheduleRunReport, error) {
+	report := ScheduleRunReport{Steps: make([]ScheduleStepOutcome, 0, len(schedule.Steps))}
 	if len(schedule.Steps) == 0 {
 		if _, err := r.createScheduledMission(ctx, schedule, schedule.Objective); err != nil {
-			return 0, err
+			report.FinishedAt = time.Now().UTC()
+			report.Steps = append(report.Steps, ScheduleStepOutcome{
+				ID:     "legacy-objective",
+				Kind:   string(ScheduleStepActionMission),
+				Status: ScheduleStepFailed,
+				Reason: err.Error(),
+			})
+			return report, err
 		}
-		return 1, nil
+		report.Missions = 1
+		report.FinishedAt = time.Now().UTC()
+		report.Steps = append(report.Steps, ScheduleStepOutcome{
+			ID:     "legacy-objective",
+			Kind:   string(ScheduleStepActionMission),
+			Status: ScheduleStepSucceeded,
+		})
+		return report, nil
 	}
 	if err := ValidateScheduleSteps(schedule.Steps); err != nil {
-		return 0, err
+		return report, err
 	}
 	order, err := orderScheduleSteps(schedule.Steps)
 	if err != nil {
-		return 0, err
+		return report, err
 	}
 	outcomes := make(map[string]bool, len(order))
-	missions := 0
 	for _, step := range order {
 		id := strings.TrimSpace(step.ID)
 		if !scheduleDependenciesSatisfied(step, outcomes) {
 			outcomes[id] = false
+			report.Steps = append(report.Steps, ScheduleStepOutcome{
+				ID:     id,
+				Kind:   string(step.Kind),
+				Status: ScheduleStepSkipped,
+				Reason: "dependência não teve sucesso",
+			})
 			continue
 		}
 		switch step.Kind {
 		case ScheduleStepTriggerInterval, ScheduleStepTriggerWebhook:
 			outcomes[id] = true
+			report.Steps = append(report.Steps, ScheduleStepOutcome{ID: id, Kind: string(step.Kind), Status: ScheduleStepSucceeded})
 		case ScheduleStepActionMission:
 			if _, err := r.createScheduledMission(ctx, schedule, strings.TrimSpace(step.Objective)); err != nil {
 				outcomes[id] = false
-				return missions, fmt.Errorf("schedule step %q: %w", id, err)
+				report.FinishedAt = time.Now().UTC()
+				report.Steps = append(report.Steps, ScheduleStepOutcome{
+					ID:     id,
+					Kind:   string(step.Kind),
+					Status: ScheduleStepFailed,
+					Reason: err.Error(),
+				})
+				return report, fmt.Errorf("schedule step %q: %w", id, err)
 			}
-			missions++
+			report.Missions++
 			outcomes[id] = true
+			report.Steps = append(report.Steps, ScheduleStepOutcome{ID: id, Kind: string(step.Kind), Status: ScheduleStepSucceeded})
 		case ScheduleStepConditionIf:
-			outcomes[id] = scheduleConditionMatches(step, outcomes)
+			matched := scheduleConditionMatches(step, outcomes)
+			outcomes[id] = matched
+			outcome := ScheduleStepOutcome{ID: id, Kind: string(step.Kind), Status: ScheduleStepSucceeded}
+			if !matched {
+				outcome.Status = ScheduleStepSkipped
+				outcome.Reason = "condição não satisfeita pelos dependentes"
+			}
+			report.Steps = append(report.Steps, outcome)
 		default:
-			return missions, fmt.Errorf("%w: %s", ErrUnknownScheduleStep, step.Kind)
+			return report, fmt.Errorf("%w: %s", ErrUnknownScheduleStep, step.Kind)
 		}
 	}
-	return missions, nil
+	report.FinishedAt = time.Now().UTC()
+	return report, nil
 }
 
 // scheduleDependenciesSatisfied reports whether every dependency already ran and
