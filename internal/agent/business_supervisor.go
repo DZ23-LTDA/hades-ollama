@@ -3,6 +3,8 @@ package agent
 import (
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 	"sync"
@@ -143,6 +145,15 @@ type BusinessTickResult struct {
 	Errors            []string         `json:"errors,omitempty"`
 }
 
+// businessSupervisorFile é o que sobrevive ao reinício: decisões pendentes, política,
+// orçamento consumido e a contagem de ciclos.
+type businessSupervisorFile struct {
+	Policy  SupervisorPolicy          `json:"policy"`
+	Ticks   int64                     `json:"ticks"`
+	Actions map[string]BusinessAction `json:"actions"`
+	Spent   map[string]int64          `json:"spent"`
+}
+
 // BusinessSupervisor coordena os domínios sob política.
 type BusinessSupervisor struct {
 	mu      sync.Mutex
@@ -152,9 +163,11 @@ type BusinessSupervisor struct {
 	actions map[string]BusinessAction
 	history []BusinessTickResult
 	spent   map[string]int64
+	// root vazio mantém o supervisor em memória.
+	root string
 }
 
-// NewBusinessSupervisor cria o supervisor de negócio.
+// NewBusinessSupervisor cria o supervisor de negócio EM MEMÓRIA.
 func NewBusinessSupervisor(runtime *Runtime, policy SupervisorPolicy) *BusinessSupervisor {
 	return &BusinessSupervisor{
 		runtime: runtime,
@@ -162,6 +175,71 @@ func NewBusinessSupervisor(runtime *Runtime, policy SupervisorPolicy) *BusinessS
 		actions: map[string]BusinessAction{},
 		spent:   map[string]int64{},
 	}
+}
+
+// NewBusinessSupervisorAt cria o supervisor PERSISTENTE e carrega o que já existe.
+//
+// Sem persistência, um reinício perderia a **decisão pendente** — e uma ação
+// irreversível que esperava aprovação humana voltaria a ser proposta como se nunca
+// tivesse sido vista, ou pior, sumiria do radar do operador.
+func NewBusinessSupervisorAt(root string, runtime *Runtime, policy SupervisorPolicy) (*BusinessSupervisor, error) {
+	supervisor := NewBusinessSupervisor(runtime, policy)
+	supervisor.root = strings.TrimSpace(root)
+	if supervisor.root == "" {
+		return supervisor, nil
+	}
+	if err := os.MkdirAll(supervisor.root, 0o700); err != nil {
+		return nil, err
+	}
+	stored := businessSupervisorFile{}
+	if err := readJSON(supervisor.path(), &stored); err != nil {
+		if !errors.Is(err, os.ErrNotExist) {
+			return nil, fmt.Errorf("load business supervisor: %w", err)
+		}
+		return supervisor, nil
+	}
+	// A política persistida é a vigente: limites não se perdem no reinício.
+	if stored.Policy.BudgetCents != 0 || stored.Policy.MinAvailableUnits != 0 {
+		supervisor.policy = stored.Policy
+	}
+	supervisor.ticks = stored.Ticks
+	for id, action := range stored.Actions {
+		supervisor.actions[id] = action
+	}
+	for organizationID, value := range stored.Spent {
+		supervisor.spent[organizationID] = value
+	}
+	return supervisor, nil
+}
+
+// path é o arquivo único do supervisor: as decisões são poucas e a leitura é sempre
+// completa, então um arquivo basta e mantém a auditoria num lugar só.
+func (b *BusinessSupervisor) path() string {
+	if b.root == "" {
+		return ""
+	}
+	return filepath.Join(b.root, "business-supervisor.json")
+}
+
+// persistLocked grava política, decisões, orçamento e contagem de ciclos.
+func (b *BusinessSupervisor) persistLocked() error {
+	path := b.path()
+	if path == "" {
+		return nil
+	}
+	payload := businessSupervisorFile{
+		Policy:  b.policy,
+		Ticks:   b.ticks,
+		Actions: map[string]BusinessAction{},
+		Spent:   map[string]int64{},
+	}
+	for id, action := range b.actions {
+		payload.Actions[id] = action
+	}
+	for organizationID, value := range b.spent {
+		payload.Spent[organizationID] = value
+	}
+	return writeJSONAtomic(path, payload)
 }
 
 // Policy devolve os limites vigentes.
@@ -180,6 +258,7 @@ func (b *BusinessSupervisor) SetPolicy(policy SupervisorPolicy) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	b.policy = policy
+	_ = b.persistLocked()
 }
 
 // PendingActions lista as ações aguardando decisão humana.
@@ -214,6 +293,9 @@ func (b *BusinessSupervisor) BusinessTick(organizationID string, now time.Time) 
 	b.mu.Lock()
 	b.ticks++
 	result.TickNumber = b.ticks
+	if err := b.persistLocked(); err != nil {
+		result.Errors = append(result.Errors, "persistencia: "+err.Error())
+	}
 	b.mu.Unlock()
 
 	// 1. SINAIS: o supervisor observa o que os módulos já produzem.
@@ -320,6 +402,11 @@ func (b *BusinessSupervisor) BusinessTick(organizationID string, now time.Time) 
 		if risk == BusinessActionApproval {
 			b.mu.Lock()
 			b.actions[action.ID] = action
+			// A PENDÊNCIA é gravada antes de sair: uma decisão que espera humano não pode
+			// desaparecer num reinício.
+			if err := b.persistLocked(); err != nil {
+				result.Errors = append(result.Errors, "persistencia: "+err.Error())
+			}
 			b.mu.Unlock()
 			result.Actions = append(result.Actions, action)
 			result.AwaitingApproval++
@@ -331,6 +418,9 @@ func (b *BusinessSupervisor) BusinessTick(organizationID string, now time.Time) 
 			action.Effect = fmt.Sprintf("custo %d excede o orçamento restante %d", cost, result.BudgetLeftCents)
 			b.mu.Lock()
 			b.actions[action.ID] = action
+			if err := b.persistLocked(); err != nil {
+				result.Errors = append(result.Errors, "persistencia: "+err.Error())
+			}
 			b.mu.Unlock()
 			result.Actions = append(result.Actions, action)
 			result.BlockedByBudget++
@@ -361,6 +451,9 @@ func (b *BusinessSupervisor) BusinessTick(organizationID string, now time.Time) 
 		}
 		b.mu.Lock()
 		b.actions[action.ID] = action
+		if err := b.persistLocked(); err != nil {
+			result.Errors = append(result.Errors, "persistencia: "+err.Error())
+		}
 		b.mu.Unlock()
 		result.Actions = append(result.Actions, action)
 		result.AutonomousCount++
@@ -506,6 +599,11 @@ func (b *BusinessSupervisor) Decide(organizationID, actionID, decision, actorID,
 
 	b.mu.Lock()
 	b.actions[action.ID] = action
+	// A DECISÃO é gravada: aprovado/recusado não pode voltar a "pendente" num reinício.
+	if err := b.persistLocked(); err != nil {
+		b.mu.Unlock()
+		return BusinessAction{}, err
+	}
 	b.mu.Unlock()
 	return action, nil
 }

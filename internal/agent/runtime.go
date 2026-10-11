@@ -265,7 +265,12 @@ func NewRuntime(config RuntimeConfig) (*Runtime, error) {
 	financeOps := NewFinanceOps(commerceStore, companyStore)
 	// O supervisor de negócio coordena os domínios sob limites, orçamento e aprovação
 	// humana (estágio 31). Ele reusa os ocorrências do supervisor de missões.
-	businessSupervisor := NewBusinessSupervisor(nil, DefaultSupervisorPolicy())
+	// O supervisor de negocio PERSISTE as decisoes: uma aprovacao pendente nao pode
+	// desaparecer num reinicio (estagio 31).
+	businessSupervisor, err := NewBusinessSupervisorAt(filepath.Join(dataRoot, ".agent-business-supervisor"), nil, DefaultSupervisorPolicy())
+	if err != nil {
+		return nil, err
+	}
 	queue := config.Queue
 	if queue == nil {
 		queue, err = NewJobQueue(filepath.Join(dataRoot, ".agent-queue"))
