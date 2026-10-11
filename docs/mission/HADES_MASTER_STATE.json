@@ -2,12 +2,12 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-11T07:20:00-03:00",
+  "updated_at": "2026-10-11T08:15:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
     "integration_branch": "main",
-    "main_sha": "883a466b4aeca2128ac90614085fe3493c450206",
+    "main_sha": "421da5b999d382334c4b10ad58de547510f56ad5",
     "main_committed_at": "2026-10-09T10:24:45Z",
     "main_ci_state": "green (dz23-agentic-quality + class-a-plus-integrity = success nesse SHA)",
     "mission_branch": "docs/checkpoints-missao-v21",
@@ -433,11 +433,12 @@
         "E-077",
         "E-078",
         "E-079",
-        "E-080"
+        "E-080",
+        "E-081"
       ],
       "blocker": null,
-      "next": "HOMOLOGACAO do criterio do estagio: fluxo real ponta a ponta com falha simulada, retry e retomada (inclusive reinicio de worker), com evidencia por no, retry e fila morta. So depois disso o estagio pode sair de PARCIAL",
-      "done": "vocabulario fechado de passos com validacao fail-closed (incluindo faixa de tentativas); ordem de dependencia com bloqueio de dependente; retry por no com backoff e tentativas registradas; idempotencia da criacao de missao; resultado por no persistido em sucesso e falha, visivel na interface; supervisor reportando no tick; execucao manual rodando o grafo; reprocessamento reusando a execucao; e DLQ por no com motivo final, limite e limpeza na recuperacao"
+      "next": "ampliar o vocabulario de nos do proprio estagio, que e o que falta para a lista de atividades: CONECTORES, VARIAVEIS, TRANSFORMACOES, LOOPS LIMITADOS e APROVACOES como passos, cada um com validacao fail-closed e evidencia por no",
+      "done": "CRITERIO DEMONSTRADO EM TESTE PONTA A PONTA (falha simulada, retry, reinicio de worker e retomada, com evidencia por no e sem duplicata) e implementacao completa dos itens de execucao: idempotencia, retry por no, resultado por no persistido e visivel, execucao manual real, reprocessamento, DLQ por no e versao do fluxo. ATIVIDADES DO ESTAGIO AINDA INCOMPLETAS: o vocabulario de nos so cobre trigger.interval, trigger.webhook, action.mission e condition.if"
     },
     {
       "id": 14,
@@ -908,6 +909,9 @@
     "ENTREGA (PR #147, estagio 13): reprocessamento. executeScheduleFlow virou o nucleo COMPARTILHADO entre execucao normal, manual e reprocessamento (runKey explicita, seed de resultados conhecidos, carry-over do que nao roda e conjunto de passos a executar), para as tres nao divergirem. ReprocessScheduleFlow reexecuta SOMENTE o que ficou skipped ou falhou; os passos bem-sucedidos sao preservados com o resultado original e continuam satisfazendo dependentes, SEM criar missao nova (idempotencia). Passo novo no grafo tambem roda. Sem execucao anterior a recusa e explicita (ErrScheduleReprocessUnavailable -> HTTP 409), porque adivinhar a chave poderia duplicar missao. Rota POST /schedules/:id/reprocess e botao 'Reprocessar pendentes' na interface (aparece so quando ha passo ignorado ou falho). 3 testes de motor + 3 de rota",
     "ESTAGIO 13 - SEQUENCIA COMPLETA EM 4 RODADAS: #141 idempotencia (pre-requisito, porque retry sem ela criaria missoes fantasma); #143 retry por no EM CIMA da garantia; #145 execucao manual passando a rodar o grafo (era um controle que fingia funcionar); #147 reprocessamento reusando a execucao. O que resta: DLQ por NO (a DLQ da fila de jobs ja existe) e a HOMOLOGACAO do criterio do estagio - fluxo real ponta a ponta com falha simulada, retry e retomada, com evidencia por no",
     "ENTREGA (PR #149, estagio 13): DLQ por no. ScheduleStepDeadLetter {step_id, kind, reason, attempts, objective, failed_at} e registrado pelo MOTOR no relatorio (ScheduleRunReport.DeadLetters) e persistido pelo gravador em Schedule.DeadLetters (sucesso e falha). A entrada SAI quando o passo volta a ter sucesso, inclusive via reprocessamento - sem isso a DLQ mentiria listando como morto um passo recuperado. Limitada a maxScheduleDeadLetters (20), mais recentes primeiro, para um fluxo que falha a cada tick nao crescer sem fim. Interface mostra 'Fila morta (N)' com o motivo real e as tentativas. 3 testes de motor + 1 caso de interface. O lint pegou 3 intrange nos lacos novos e eu corrigi os lacos, nao a regra",
-    "ESTAGIO 13 - IMPLEMENTACAO COMPLETA: idempotencia da criacao de missao (#141), retry por no (#143), execucao manual rodando o grafo (#145), reprocessamento reusando a execucao (#147) e DLQ por no (#149). O que falta e a HOMOLOGACAO do criterio do estagio: fluxo real ponta a ponta com falha simulada, retry e retomada, com evidencia por no. Ate essa prova o estagio permanece PARCIAL"
+    "ESTAGIO 13 - IMPLEMENTACAO COMPLETA: idempotencia da criacao de missao (#141), retry por no (#143), execucao manual rodando o grafo (#145), reprocessamento reusando a execucao (#147) e DLQ por no (#149). O que falta e a HOMOLOGACAO do criterio do estagio: fluxo real ponta a ponta com falha simulada, retry e retomada, com evidencia por no. Ate essa prova o estagio permanece PARCIAL",
+    "ENTREGA (PR #151, estagio 13): VERSAO DO FLUXO + HOMOLOGACAO DO CRITERIO. Schedule.FlowVersion nasce em 1 e sobe APENAS quando os passos mudam (id, kind, objective, expect, max_attempts, dependencias); editar objetivo/intervalo/estado NAO cria versao nova. ScheduleRunReport.FlowVersion registra a versao que aquela execucao rodou, para nao comparar execucoes de grafos diferentes. A interface mostra 'fluxo vN'. Isso fecha a evidencia obrigatoria 'versao do workflow'",
+    "HOMOLOGACAO PROVADA (PR #151): teste ponta a ponta no caminho REAL - ContextStore e JSONStore em DISCO, store de missoes que falha de forma TRANSITORIA (falha simulada) e um SEGUNDO runtime sobre os MESMOS diretorios simulando REINICIO do worker. Prova em sequencia: retry absorve a falha com 3 tentativas registradas e passo recuperado fora da fila morta; evidencia por no persistida em disco; estado sobrevive ao reinicio; retomada reusa a execucao, cria ZERO missao nova e termina com todos os passos bem-sucedidos; store real com exatamente 2 missoes (sem duplicata); versao sobe ao mudar o grafo e nao sobe em edicao que nao muda o grafo. O criterio de conclusao do estagio esta DEMONSTRADO",
+    "LIMITE DECLARADO (estagio 13 continua PARCIAL): o criterio de conclusao esta demonstrado, mas as ATIVIDADES do proprio estagio tem itens em aberto - o vocabulario de nos cobre trigger.interval, trigger.webhook, action.mission e condition.if, e ainda faltam CONECTORES, VARIAVEIS, TRANSFORMACOES, LOOPS LIMITADOS e APROVACOES como nos. Cumprir uma frase do criterio nao fecha a lista de atividades; por isso nao ha promocao a COMPLETED_VERIFIED. Proximo passo: ampliar o vocabulario de nos"
   ]
 }
