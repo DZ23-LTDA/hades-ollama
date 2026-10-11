@@ -155,6 +155,18 @@ func BenchmarkMemoryFileWriteRelaxed(b *testing.B) {
 	benchmarkMemoryFileWrite(b)
 }
 
+// BenchmarkMemoryFileWriteBatched mede a escrita no modo `batched` (E-169): o meio-termo — a perda possível fica
+// limitada à janela de 2 s, em vez de "tudo desde a última sincronização".
+func BenchmarkMemoryFileWriteBatched(b *testing.B) {
+	anterior := WriteDurability()
+	defer func() { _, _ = SetWriteDurability(anterior) }()
+	if _, err := SetWriteDurability(WriteDurabilityBatched); err != nil {
+		b.Fatal(err)
+	}
+	b.Logf("modo efetivo deste benchmark: %s", WriteDurability())
+	benchmarkMemoryFileWrite(b)
+}
+
 func benchmarkMemoryFileWrite(b *testing.B) {
 	b.Helper()
 	store, err := NewContextStore(b.TempDir() + "-write")
