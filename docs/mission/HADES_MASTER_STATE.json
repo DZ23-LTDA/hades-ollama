@@ -2,12 +2,12 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-12T19:00:00-03:00",
+  "updated_at": "2026-10-12T20:00:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
     "integration_branch": "main",
-    "main_sha": "7b9e6cfdc8d31b677955bf63a5cd293ec5492a36",
+    "main_sha": "b27bd07b1e6c4e0095024ec03c8e28c8a8331c09",
     "main_committed_at": "2026-10-09T10:24:45Z",
     "main_ci_state": "green (dz23-agentic-quality + class-a-plus-integrity = success nesse SHA)",
     "mission_branch": "docs/checkpoints-missao-v21",
@@ -584,11 +584,12 @@
         "E-054",
         "E-117",
         "E-160",
-        "E-161"
+        "E-161",
+        "E-164"
       ],
       "blocker": null,
       "next": "ExternalComparison permanece NAO_EXECUTADA: nenhum concorrente foi instalado, autenticado e executado com as mesmas tarefas. Desbloqueio: instalar a ferramenta, configurar credencial, rodar a MESMA lista de tarefas com criterio objetivo, medir com este comando e registrar com data",
-      "done": "BENCHMARK COMPARAVEL com metricas MEDIDAS (E-117): suite executavel de 5 tarefas hermeticas no proprio Hades medindo conclusao, passos de API, duracao real, aprovacoes humanas exigidas, prova de isolamento entre organizacoes e prova de retomada/recuperacao. Medido: veredito MEDIDO, 5/5 tarefas, 102 ms no total - jornada de empresa em sandbox (21 passos, 1 aprovacao humana, isolamento e recuperacao provados), pedido idempotente (mesma chave = mesmo pedido, referencia parecida com cartao recusada), atendimento com SLA (violacao medida) e transferencia (sem motivo recusada), isolamento entre organizacoes (0 vazamentos) e retomada apos reinicio (runtime novo enxerga o estado e NAO duplica o efeito). O teste e o EXECUTOR do benchmark: se uma capacidade regredir, ele falha nomeando a tarefa | BENCHMARK COM METODOLOGIA REGISTRADA (E-160): 4 benchmarks internos (turno 1,69-1,90ms; busca literal 0,27-0,52ms e semantica 0,68-1,36ms em 1.000 memorias; re-embed de 200 ~10us/memoria), com host, comando e limite declarados. ExternalComparison segue NAO_EXECUTADA com procedimento de desbloqueio em 5 passos | BENCHMARK TAMBEM NO LINUX (E-161): scripts/verify-linux-benchmark.ps1 roda os mesmos 4 benchmarks no conteiner (mede, nao gate) - turno 2,62-2,70ms, literal 0,29ms, semantica 0,62-0,65ms, re-embed 2,81-2,90ms, com mais alocacoes que no Windows (206 vs 180; 429 vs 231). Mesma maquina fisica, entao mede runtime/sistema de arquivos, NAO hardware; causa nao instrumentada",
+      "done": "BENCHMARK COMPARAVEL com metricas MEDIDAS (E-117): suite executavel de 5 tarefas hermeticas no proprio Hades medindo conclusao, passos de API, duracao real, aprovacoes humanas exigidas, prova de isolamento entre organizacoes e prova de retomada/recuperacao. Medido: veredito MEDIDO, 5/5 tarefas, 102 ms no total - jornada de empresa em sandbox (21 passos, 1 aprovacao humana, isolamento e recuperacao provados), pedido idempotente (mesma chave = mesmo pedido, referencia parecida com cartao recusada), atendimento com SLA (violacao medida) e transferencia (sem motivo recusada), isolamento entre organizacoes (0 vazamentos) e retomada apos reinicio (runtime novo enxerga o estado e NAO duplica o efeito). O teste e o EXECUTOR do benchmark: se uma capacidade regredir, ele falha nomeando a tarefa | BENCHMARK COM METODOLOGIA REGISTRADA (E-160): 4 benchmarks internos (turno 1,69-1,90ms; busca literal 0,27-0,52ms e semantica 0,68-1,36ms em 1.000 memorias; re-embed de 200 ~10us/memoria), com host, comando e limite declarados. ExternalComparison segue NAO_EXECUTADA com procedimento de desbloqueio em 5 passos | BENCHMARK TAMBEM NO LINUX (E-161): scripts/verify-linux-benchmark.ps1 roda os mesmos 4 benchmarks no conteiner (mede, nao gate) - turno 2,62-2,70ms, literal 0,29ms, semantica 0,62-0,65ms, re-embed 2,81-2,90ms, com mais alocacoes que no Windows (206 vs 180; 429 vs 231). Mesma maquina fisica, entao mede runtime/sistema de arquivos, NAO hardware; causa nao instrumentada | DIAGNOSTICO DO TURNO NO LINUX (E-164): controle separa computacao de I/O. Planejador puro ~0,4us nas DUAS plataformas e busca em memoria igual; escrita atomica de 200 memorias vai de 1,66-1,76ms (25 allocs) no Windows para 2,51-2,70ms (224-226 allocs) no conteiner. As TRES operacoes mais lentas sao exatamente as que escrevem arquivo (turno 1,8x, re-embed 1,9x, escrita 1,6x) => a diferenca esta no CAMINHO DE ESCRITA, nao em CPU/GC. Mecanismo NAO isolado; conteiner usa FS em camadas (nao e 'Linux mais lento'). Derivado: reduzir as ~225 allocs da escrita",
       "execution": "IN_PROGRESS"
     },
     {
@@ -1373,7 +1374,11 @@
     "LER-MODIFICAR-GRAVAR SOB A TRAVA (E-163): updateMemoriesFileLocked rele o arquivo, altera por ID e grava dentro da trava; ErrStoreLocked DECLARA a disputa; MemoryFileLockTimeout = 10s. O re-embed sincrono e o job por lote passaram a usar a atualizacao travada por ID",
     "O TESTE ACHOU DEFEITO REAL NA TRILHA NAO CORRIGIDA (E-163): o job por lote passou e o re-embed SINCRONO continuava apagando a memoria que outro processo gravou - corrigido com a mesma atualizacao por ID. Se eu tivesse testado so o caminho que acabei de escrever, o defeito iria para a main com teste verde: licao de E-158 repetida no dia seguinte",
     "HIGIENE NO MESMO PASSO (E-163): removi writeMemoriesFileLocked (unused: 1) em vez de silenciar; e removi DUAS diretivas //nolint:misspell que ficaram SEM USO em company.go e desktop.go depois que o ignore-rules cobriu as palavras portuguesas - duas supressoes a MENOS, nenhuma nova; 'processos' entrou no ignore-rules (idioma, nao permissao)",
-    "LIMITES DA TRAVA (E-163): cobre o arquivo de MEMORIAS; fusao por ID e por campo de VETOR (alteracao de texto da mesma memoria entre leitura e gravacao prevalece do arquivo); espera de 10s SEM roubo de trava; sem FILA de escritas (quem perde recebe erro); e a trava e ADVISORY"
+    "LIMITES DA TRAVA (E-163): cobre o arquivo de MEMORIAS; fusao por ID e por campo de VETOR (alteracao de texto da mesma memoria entre leitura e gravacao prevalece do arquivo); espera de 10s SEM roubo de trava; sem FILA de escritas (quem perde recebe erro); e a trava e ADVISORY",
+    "DIAGNOSTICO DO TURNO NO LINUX (E-164): a pergunta aberta de E-161 (turno ~40% mais lento) virou medicao COM CONTROLE, via dois benchmarks novos: BenchmarkServiceAgentPlan (computacao pura, sem I/O) e BenchmarkMemoryFileWrite (escrita atomica de 200 memorias). Planejador puro: 0,37-0,47us no Windows e 0,38-0,57us no Linux (~1x). Escrita: 1,66-1,76ms/25 allocs no Windows contra 2,51-2,70ms/224-226 allocs no conteiner. As TRES operacoes mais lentas sao exatamente as que ESCREVEM arquivo (turno 1,8x, re-embed 1,9x, escrita 1,6x) => a diferenca esta no CAMINHO DE ESCRITA, nao em CPU/GC/runtime",
+    "O QUE A MEDICAO NAO PROVA (E-164): NAO prova que 'Linux e mais lento' - o conteiner usa SISTEMA DE ARQUIVOS EM CAMADAS sobre a MESMA maquina Windows, entao o que se mediu e 'neste conteiner, neste host'. E o MECANISMO dentro da escrita (fsync, rename atomico, resolucao de caminho, overlayfs) NAO foi isolado: a correlacao esta medida, o mecanismo especifico segue NAO PROVADO",
+    "TRABALHO ACIONAVEL DERIVADO DA MEDICAO (E-164): a escrita de 200 memorias alocar ~225 vezes no Linux contra 25 no Windows e alvo claro de otimizacao que BENEFICIA AS DUAS PLATAFORMAS (serializacao dupla e criacao de caminho/temporario a cada chamada sao candidatos). Registrado como PENDENTE, nao feito",
+    "BENCHMARK LINUX AMPLIADO (E-164): scripts/verify-linux-benchmark.ps1 agora roda 6 benchmarks (os 4 do estagio 21 + os 2 controles do diagnostico), sempre gravando _tmp/linux-benchmark-last.log"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
