@@ -69,6 +69,8 @@
 
 | Prompt injection: conteúdo externo marcado pela proveniência | `internal/agent/context_bootstrap.go` (`untrustedMemoryKindSource`, `canonicalUntrustedSources`) (PR #133) | IMPLEMENTADO_NAO_HOMOLOGADO | ALTO | E-072 | documento/web/canal ingeridos entram marcados como dado, não instrução; defesa é de contexto, não impede o modelo de ser persuadido por conteúdo malicioso |
 
+| Integridade da interface: nenhum controle finge funcionar | `server/desktop_local_routes.go` (501 + rota ausente sem middleware) (PR #135) | IMPLEMENTADO_NAO_HOMOLOGADO | MÉDIO | E-073 | endpoint de personalização deixou de simular persistência; falta varredura semelhante nas demais telas |
+
 ## 6. Integrações, MCP e conectores
 
 | Capacidade | Superfície | Classificação | Risco | Evidência | Lacuna |
