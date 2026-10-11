@@ -2,12 +2,12 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-11T10:05:00-03:00",
+  "updated_at": "2026-10-11T11:05:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
     "integration_branch": "main",
-    "main_sha": "ad77ffa40b97f9341619f3519740e4f5630883a1",
+    "main_sha": "9e98eda2cd2cfe3f44c950673a87cd3c0a796473",
     "main_committed_at": "2026-10-09T10:24:45Z",
     "main_ci_state": "green (dz23-agentic-quality + class-a-plus-integrity = success nesse SHA)",
     "mission_branch": "docs/checkpoints-missao-v21",
@@ -436,11 +436,12 @@
         "E-080",
         "E-081",
         "E-082",
-        "E-083"
+        "E-083",
+        "E-084"
       ],
       "blocker": null,
-      "next": "conectores como no: e o ultimo item da lista de atividades do estagio. Depois disso, reavaliar a promocao do estagio com a lista de atividades integralmente coberta",
-      "done": "CRITERIO DEMONSTRADO EM TESTE PONTA A PONTA (falha simulada, retry, reinicio de worker e retomada, com evidencia por no e sem duplicata) e itens de execucao completos: idempotencia, retry por no, resultado por no persistido e visivel, execucao manual real, reprocessamento, DLQ por no, versao do fluxo, variaveis/transformacoes, laco limitado e APROVACAO com espera entre execucoes. FALTA: conectores como no"
+      "next": "REAVALIAR A PROMOCAO do estagio: com atividades e criterio cobertos, a promocao precisa de verificacao independente do conjunto (reler a lista de atividades contra codigo e evidencias), nao de conveniencia de fim de lista",
+      "done": "CRITERIO DEMONSTRADO EM TESTE PONTA A PONTA (falha simulada, retry, reinicio de worker, retomada, evidencia por no e sem duplicata) e LISTA DE ATIVIDADES COBERTA: idempotencia, retry por no, resultado por no persistido e visivel, execucao manual real, reprocessamento, DLQ por no, versao do fluxo e os oito tipos de no (gatilhos, condicao, acao de missao, transformacao com variaveis, laco limitado, aprovacao com espera entre execucoes e CONECTOR pelo caminho real com aprovacao obrigatoria para escrita)"
     },
     {
       "id": 14,
@@ -919,6 +920,9 @@
     "BUG ENCONTRADO PELO PROPRIO TESTE (PR #153): o objetivo de action.mission nao estava sendo expandido, entao a missao era criada com o texto literal 'missao com {{resumo}}'. O teste exigiu a expansao real e a correcao foi no CODIGO, nao na expectativa - o teste conferiu o objetivo REAL da missao persistida, nao apenas o relatorio",
     "VOCABULARIO DO ESTAGIO 13 - O QUE FALTA: conectores e APROVACOES como nos. Aprovacao exige estado de espera ENTRE execucoes (pausar o fluxo ate decisao humana) e nao cabe numa fatia junto com os outros; fica registrada como proximo passo, nao declarada pronta",
     "ENTREGA (PR #155, estagio 13): NO DE APROVACAO com estado de espera ENTRE execucoes. Aprovacao nao e no comum: ela pausa o fluxo, e a espera atravessa execucoes, entao o estado vive no schedule. Sem decisao para (passo, execucao) o passo fica PENDENTE e os dependentes nao rodam (o fluxo espera, nao adivinha); aprovado libera; negado mantem o caminho barrado. Negativa e decisao HUMANA e nao entra na fila morta; o motivo carrega quem decidiu e por que. A decisao e chaveada por (StepID, RunKey) DE PROPOSITO: aprovar durante uma pausa nao autoriza a mesma etapa numa execucao futura, e a retomada acontece pelo reprocessamento, que reusa a mesma execucao. Schedule.Approvals (historico auditavel, teto 20) e Schedule.PendingApprovals persistidos. Rota POST /schedules/:id/approvals (409 sem espera, escopo da organizacao) e interface com status 'aguardando aprovacao', veredito PARCIAL (nunca sucesso) e botoes Aprovar/Recusar. 4 testes de motor + 3 de rota + 1 de interface",
-    "VOCABULARIO DO ESTAGIO 13 APOS ESTA RODADA: trigger.interval, trigger.webhook, condition.if, action.mission, action.transform, logic.loop e approval.request. Falta CONECTORES como no para a lista de atividades ficar integralmente coberta. O misspell acusou 3 falsos positivos em pt-BR (correspondente, autor) e o texto foi reescrito em vez de silenciar a regra"
+    "VOCABULARIO DO ESTAGIO 13 APOS ESTA RODADA: trigger.interval, trigger.webhook, condition.if, action.mission, action.transform, logic.loop e approval.request. Falta CONECTORES como no para a lista de atividades ficar integralmente coberta. O misspell acusou 3 falsos positivos em pt-BR (correspondente, autor) e o texto foi reescrito em vez de silenciar a regra",
+    "ENTREGA (PR #157, estagio 13): NO DE CONECTOR pelo caminho REAL (ConnectorManager.CallForOrganization, com credencial do tenant, politica de egress e escopo de organizacao). Metodo que ESCREVE (POST/PUT/PATCH/DELETE) so sai com aprovacao humana APROVADA para a MESMA execucao: sem decisao o passo fica pendente e NENHUMA chamada e feita (teste prova calls==0), negado mantem barrado sem fila morta. Fail-closed: conector nao registrado FALHA com motivo e entra na fila morta (nunca pulado), conector de outra organizacao e recusado pelo proprio gerenciador, e HTTP 5xx do outro lado NAO e sucesso do nosso no. Testado contra servidor HTTPS real (TLS efemero), nao contra duble. 6 testes novos",
+    "VOCABULARIO DO ESTAGIO 13 COMPLETO: trigger.interval, trigger.webhook, condition.if, action.mission, action.transform, logic.loop, approval.request e action.connector - oito tipos de no. Com isso a LISTA DE ATIVIDADES do estagio esta coberta, alem do criterio de conclusao ja demonstrado em teste ponta a ponta (E-081)",
+    "PROXIMO PASSO DO ESTAGIO 13: reavaliar a PROMOCAO do estagio, agora que atividades e criterio estao cobertos. A promocao exige verificacao independente do conjunto (reler a lista de atividades contra o codigo e as evidencias), nao conveniencia de fim de lista. Duas correcoes de processo registradas nesta rodada: o registrador de conectores exigir HTTPS e um controle CORRETO do produto, entao o ajuste foi no TESTE; e o misspell marcou 'Eles' como erro em pt-BR, com o comentario reescrito em vez de silenciar a regra"
   ]
 }
