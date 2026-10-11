@@ -2,12 +2,12 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-12T03:40:00-03:00",
+  "updated_at": "2026-10-12T04:20:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
     "integration_branch": "main",
-    "main_sha": "edc90f9301aaaa301ab3708d067af4b00f79bc0a",
+    "main_sha": "3f3aafb82f447c59f3f1d722d9916b2c722c6d39",
     "main_committed_at": "2026-10-09T10:24:45Z",
     "main_ci_state": "green (dz23-agentic-quality + class-a-plus-integrity = success nesse SHA)",
     "mission_branch": "docs/checkpoints-missao-v21",
@@ -709,18 +709,19 @@
     {
       "id": 30,
       "title": "Marketing e campanhas",
-      "state": "NOT_STARTED",
+      "state": "IN_PROGRESS",
       "auditoria": "AUDITADO_PARCIAL",
-      "capability": "AUSENTE",
+      "capability": "PARCIAL",
       "evidence": [
         "E-044",
-        "E-087"
+        "E-087",
+        "E-100"
       ],
       "blocker": "B-05",
-      "next": "implementar contas a pagar/receber, conciliacao e autorizacao em sandbox",
+      "next": "LIMITES DECLARADOS: sem integracao bancaria real (a conciliacao recebe a referencia informada; importar extrato OFX/CNAB/API depende de credencial), sem fiscal (notas, impostos, retencoes), sem cobranca (boleto/Pix/link), sem execucao de pagamento e sem rateio por centro de custo nem conciliacao automatica por valor/data",
       "blocked_reason": "",
       "external_dependency": "integracao fiscal autorizada exige certificado/credencial; o razao financeiro em sandbox e local",
-      "done": "classificacao corrigida pela auditoria de bloqueios: o bloqueio externo em bloco escondia trabalho implementavel. Evidencia medida registrada em docs/mission/HADES_BLOCKED_AUDIT.md"
+      "done": "RAZAO FINANCEIRO E CONCILIACAO implementados: LedgerEntry (receita/despesa), idempotencia por chave POR EMPRESA valida tambem sob CONCORRENCIA, conciliacao com referencia externa (idempotente com a mesma referencia, CONFLITO com outra), resumo de fluxo de caixa com cobertura de conciliacao e fila do que nao conciliou, persistencia e isolamento por organizacao. O razao NAO mexe no orcamento: SpentCents e politica de gasto ja contabilizada por RecordSpendRequest"
     },
     {
       "id": 31,
@@ -1023,7 +1024,12 @@
     "CORRECAO HONESTA A PARTIR DO LOG DO CI (E-098): eu havia registrado que o E2E de navegador estava impedido por ausencia de Playwright e que TRES TESTES falhavam por limitacao de ambiente. O log real do gate na main mostra que o CI instala Playwright 1.63.0 e Chromium 153, define OLLAMA_AGENT_BROWSER_EXECUTABLE para um Chromium real, roda browser_helper_test.py com 9 testes OK e passa CGO_ENABLED=0 go test ./internal/agent (ok), CGO_ENABLED=1 go test ./server (ok) e go test ./... inteiro. As tres falhas sao ESPECIFICAS DESTE HOST WINDOWS, nao defeitos do produto, e o NAVEGADOR REAL ESTA HOMOLOGADO EM CI/LINUX. O estagio 14 foi corrigido para nao declarar bloqueio inexistente",
     "FALHA DE BUILD QUE ERA DE AMBIENTE (E-098): npm run build falhou com 'vite:esbuild-transpile remove AppData/Local/Temp/esbuild-...: Acesso negado'. Causa: o esbuild nao conseguiu remover seu temporario no %TEMP% do host. Procedimento: apontar TEMP/TMP para diretorio gravavel do workspace antes do build, com o que o build passa em 9.44s. Nao e defeito do produto e o CI nao e afetado. Tambem registrado: govulncheck no CI reporta ZERO vulnerabilidades no codigo (1 em modulo requerido nao chamado), go mod verify limpo, gofmt limpo, e o verificador de contrato confere 298 rotas de backend contra 155 chamadas do frontend com DESIGN SYSTEM VERIFICATION PASSED",
     "PERFORMANCE E ACESSIBILIDADE MEDIDAS (E-099): os dois itens que o gate registrava como NAO MEDIDO agora tem numeros reais, porque a infraestrutura JA EXISTIA no repositorio (7 benchmarks Go, e2e/accessibility.spec.ts com axe e scripts/check-bundle-budget.mjs) e bastou executa-la. PERFORMANCE: BenchmarkMemorySearchContext 699,3 ns/op com 888 B/op e 4 allocs/op; BenchmarkGroundedContextBuild 110,7 us/op; BenchmarkPluginInstallUpdateRollback 5,20 ms/op; BenchmarkDownloadChunkCompletion 2,37 ms/op com 442,83 MB/s; budget de bundle PASS com o maior chunk em 1.443,91 kB cru e 396,66 kB gzip contra os tetos de 2.000.000 e 600.000. ACESSIBILIDADE: npx playwright test e2e/accessibility.spec.ts com 3 de 3 passando em 44,3s - axe WCAG desktop sem violacao, axe WCAG mobile sem violacao e shell mobile operavel por teclado sem armadilha",
-    "MEDICAO DE ACESSIBILIDADE - O QUE FOI PRECISO (E-099): a primeira execucao FALHOU por ausencia do build de Chromium exigido pela versao do Playwright do repositorio (chromium_headless_shell-1248, enquanto o instalado era o 1243). Era dependencia de ambiente, NAO violacao de acessibilidade. Instalado o build exigido (download local, reversivel, sem custo), o gate passou 3 de 3. A suite tambem roda no CI pelo workflow dz23-e2e.yaml via npm run test:e2e. LIMITES: a medicao cobre as rotas criticas definidas pelo spec e nao todas as telas, e nao houve teste com leitor de tela real (NVDA/JAWS/VoiceOver); a performance mede caminhos internos e bundle, e NAO mede latencia de inferencia real nem carga concorrente"
+    "MEDICAO DE ACESSIBILIDADE - O QUE FOI PRECISO (E-099): a primeira execucao FALHOU por ausencia do build de Chromium exigido pela versao do Playwright do repositorio (chromium_headless_shell-1248, enquanto o instalado era o 1243). Era dependencia de ambiente, NAO violacao de acessibilidade. Instalado o build exigido (download local, reversivel, sem custo), o gate passou 3 de 3. A suite tambem roda no CI pelo workflow dz23-e2e.yaml via npm run test:e2e. LIMITES: a medicao cobre as rotas criticas definidas pelo spec e nao todas as telas, e nao houve teste com leitor de tela real (NVDA/JAWS/VoiceOver); a performance mede caminhos internos e bundle, e NAO mede latencia de inferencia real nem carga concorrente",
+    "ESTAGIO 30 - RAZAO FINANCEIRO E CONCILIACAO (E-100): o que JA existia era a politica de gasto (CompanyBudget com limite mensal, limiar de aprovacao e moeda) e RecordSpendRequestWithIdempotency - por isso NAO dupliquei nada disso. O que faltava era o outro lado da operacao financeira: registrar o FATO financeiro (receita/despesa), CONCILIAR contra referencia externa e medir o que NAO conciliou, que sao dois itens explicitos do estagio (conciliacao e fluxo de caixa). Implementado LedgerEntry com idempotencia por chave POR EMPRESA, conciliacao idempotente com a mesma referencia e CONFLITO com outra, resumo de fluxo de caixa com cobertura e fila de pendencias, persistencia em disco e rotas sob a guarda de organizacao",
+    "ESTAGIO 30 - O RAZAO NAO MEXE NO ORCAMENTO (E-100): decisao deliberada. SpentCents e POLITICA DE GASTO e ja e incrementada por RecordSpendRequest; somar o razao ali DUPLICARIA o consumo do limite. Sao eixos diferentes - o razao registra o fato financeiro, o orcamento aplica a politica - e o codigo diz isso, com teste que verifica SpentCents igual a zero depois de um lancamento",
+    "ESTAGIO 30 - BUG REAL ACHADO PELO TESTE DE CONCORRENCIA (E-100): o primeiro teste (12 goroutines com a MESMA chave de idempotencia) derrubou o processo com 'panic: assignment to entry in nil map'. O mapa do razao ficava nil quando a empresa ainda NAO tinha arquivo, e a primeira gravacao escrevia num mapa inexistente. Corrigido inicializando o mapa ANTES de qualquer leitura. E o valor do teste: o caminho 'primeira escrita concorrente' nao aparecia em uso sequencial",
+    "ESTAGIO 30 - CARACTERES INVISIVEIS REMOVIDOS DO PROPRIO TESTE (E-100): o staticcheck apontou ST1018 em TRES linhas do teste que eu escrevi - o texto tinha hifen suave (U+00AD, invisivel) dentro de palavras como 'liquido', 'periodo' e 'reinicio'. Removi as 10 ocorrencias do arquivo em vez de silenciar a regra, e conferi zero caracteres invisiveis nos quatro arquivos novos",
+    "ESTAGIO 30 - LIMITES DECLARADOS (E-100): sem integracao bancaria real (a conciliacao recebe a referencia informada; importar extrato OFX/CNAB/API do banco depende de credencial e contrato), sem fiscal (notas, impostos, retencoes), sem cobranca (boleto/Pix/link), sem execucao de pagamento - e por decisao de seguranca nao deve haver sem autorizacao explicita - e sem rateio por centro de custo nem conciliacao automatica por valor/data. O estagio continua IN_PROGRESS com capacidade PARCIAL"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
