@@ -200,12 +200,19 @@ export type AgentCompany = {
   created_at: string; updated_at: string;
 };
 export type AgentCompanyReport = { company: AgentCompany; open_backlog: number; completed_backlog: number; goals_on_track: number; goals_at_risk: number; enabled_cycles: number; budget_utilization_pct: number };
-export type CompanyCampaign = { id: string; name: string; channel: string; objective: string; status: string; daily_budget_cents: number; approval_required: boolean; approved: boolean; conversions: number; spend_cents: number };
+export type CompanyCampaign = { id: string; name: string; channel: string; objective: string; status: string; daily_budget_cents: number; approval_required: boolean; approved: boolean; conversions: number; spend_cents: number; scheduled_at?: string; impressions?: number; clicks?: number };
 export type CompanyAffiliateProgram = { id: string; name: string; network: string; status: string; commission_bps: number; approval_required: boolean; approved: boolean };
 export type CompanyAffiliateLink = { id: string; program_id: string; product_id?: string; destination: string; conversions: number; revenue_cents: number };
 export type CompanyProduct = { id: string; sku: string; name: string; supplier: string; cost_cents: number; price_cents: number; inventory: number; status: string };
 export type CompanyOrder = { id: string; product_id: string; customer_ref: string; quantity: number; total_cents: number; status: string; approved: boolean; tracking_code?: string };
 export type CompanyGrowthReport = { company: AgentCompany; campaigns_total: number; campaigns_active: number; affiliate_programs: number; affiliate_conversions: number; products: number; pending_orders: number; fulfilled_orders: number; revenue_cents: number };
+// Campanha em sandbox (estagios 25/26): o registro de metricas e o painel DECLARAM que nada foi
+// publicado externamente. A interface usa esses campos para nao sugerir campanha no ar.
+export type CompanyCampaignMetrics = { campaign_id: string; status: string; mode: string; impressions: number; clicks: number; conversions: number; spend_cents: number; click_rate: string; conversion_rate: string; publicado_externamente: boolean; publicacao_externa: string };
+export type CompanyCampaignReport = { company_id: string; campaigns: CompanyCampaign[]; total: CompanyCampaignMetrics; sandbox: boolean; publicacao_externa: string; motivo: string };
+export type MarketplaceChannel = { id: string; name: string; credential_env: string; state: string; capabilities: string[]; live_tested: boolean; unblock_procedure?: string };
+export type MarketplaceSyncItem = { entity: string; sku: string; version: number; quantity?: number; price_cents?: number };
+export type MarketplaceSyncReport = { channel_id: string; direction: string; sandbox: boolean; homologacao_live: string; motivo: string; applied: number; skipped: number; conflicts: number; operations_used: number; operation_limit: number; outcomes?: Array<{ entity: string; sku: string; version: number; result: string; detail?: string }> };
 export type GrokStatus = { provider: string; model: string; state: string; authenticated: boolean; healthy: boolean; last_latency_ms?: number; last_error?: string; checked_at: string };
 export type AgentHealth = {
   status: "ok" | "degraded";
@@ -529,6 +536,15 @@ export const addCompanyCampaign = (id: string, payload: Record<string, unknown>)
 export const approveCompanyCampaign = (id: string, campaignID: string, nonce: string) => agentFetch<AgentCompany>(`/api/agent/v1/companies/${encodeURIComponent(id)}/campaigns/${encodeURIComponent(campaignID)}/approve`, { method: "POST", body: JSON.stringify({ decision: "approve", nonce, reason: "Aprovado no Company OS" }) });
 export const launchCompanyCampaign = (id: string, campaignID: string) => agentFetch<AgentCompany>(`/api/agent/v1/companies/${encodeURIComponent(id)}/campaigns/${encodeURIComponent(campaignID)}/launch`, { method: "POST", body: "{}" });
 export const pauseCompanyCampaign = (id: string, campaignID: string) => agentFetch<AgentCompany>(`/api/agent/v1/companies/${encodeURIComponent(id)}/campaigns/${encodeURIComponent(campaignID)}/pause`, { method: "POST", body: "{}" });
+// Agendamento e metricas de campanha (estagio 26). O agendamento passa pelo mesmo dominio do
+// servidor, que exige aprovacao: a interface nao cria atalho para executar campanha sem aprovacao.
+export const scheduleCompanyCampaign = (id: string, campaignID: string, startInHours: number) => agentFetch<AgentCompany>(`/api/agent/v1/companies/${encodeURIComponent(id)}/campaigns/${encodeURIComponent(campaignID)}/schedule`, { method: "POST", body: JSON.stringify({ start_in_hours: startInHours }) });
+export const recordCompanyCampaignMetrics = (id: string, campaignID: string, payload: { impressions: number; clicks: number; conversions: number; spend_cents: number }) => agentFetch<CompanyCampaignMetrics>(`/api/agent/v1/companies/${encodeURIComponent(id)}/campaigns/${encodeURIComponent(campaignID)}/metrics`, { method: "POST", body: JSON.stringify(payload) });
+export const getCompanyCampaignReport = (id: string) => agentFetch<CompanyCampaignReport>(`/api/agent/v1/companies/${encodeURIComponent(id)}/campaigns/report`);
+// Marketplace (estagio 25): catalogo com estado REAL, sincronizacao contra o duble de sandbox e
+// espelho remoto. Nada aqui publica em plataforma externa.
+export const getMarketplaceChannels = (id: string) => agentFetch<{ channels: MarketplaceChannel[] }>(`/api/agent/v1/companies/${encodeURIComponent(id)}/marketplace/channels`);
+export const syncMarketplace = (id: string, payload: { channel_id: string; direction?: string; items: MarketplaceSyncItem[] }) => agentFetch<MarketplaceSyncReport>(`/api/agent/v1/companies/${encodeURIComponent(id)}/marketplace/sync`, { method: "POST", body: JSON.stringify(payload) });
 export const addCompanyAffiliateProgram = (id: string, payload: Record<string, unknown>) => agentFetch<AgentCompany>(`/api/agent/v1/companies/${encodeURIComponent(id)}/affiliate-programs`, { method: "POST", body: JSON.stringify(payload) });
 export const approveCompanyAffiliateProgram = (id: string, programID: string, nonce: string) => agentFetch<AgentCompany>(`/api/agent/v1/companies/${encodeURIComponent(id)}/affiliate-programs/${encodeURIComponent(programID)}/approve`, { method: "POST", body: JSON.stringify({ decision: "approve", nonce, reason: "Aprovado no Company OS" }) });
 export const addCompanyAffiliateLink = (id: string, payload: Record<string, unknown>) => agentFetch<AgentCompany>(`/api/agent/v1/companies/${encodeURIComponent(id)}/affiliate-links`, { method: "POST", body: JSON.stringify(payload) });

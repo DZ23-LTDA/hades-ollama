@@ -2,12 +2,12 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-13T11:35:00-03:00",
+  "updated_at": "2026-10-13T12:40:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
     "integration_branch": "main",
-    "main_sha": "ac88d2931ccb6127cccd0bddb54faa0a2628e33d",
+    "main_sha": "149b7c7e4dd32dd99a9560e1405a5a95ab5c9161",
     "main_committed_at": "2026-10-09T10:24:45Z",
     "main_ci_state": "green (dz23-agentic-quality + class-a-plus-integrity = success nesse SHA)",
     "mission_branch": "docs/checkpoints-missao-v21",
@@ -547,10 +547,12 @@
       "evidence": [
         "E-011",
         "E-012",
-        "E-032"
+        "E-032",
+        "E-130"
       ],
       "blocker": null,
-      "next": "Decidir se o fallback silencioso do gate quando GET /settings falha e defeito de produto"
+      "next": "LIMITES: sincronizar catalogo envia ZERO ITENS nesta tela (o servidor recusa com 400 e a interface mostra o motivo - montar itens sozinha seria inventar catalogo), sem e2e Playwright novo da jornada, sem segmentacao/criativo e sem publicacao real (BLOCKED_BY_EXTERNAL_DEPENDENCY)",
+      "done": " | CAMPANHAS E MARKETPLACES VISIVEIS NA INTERFACE (E-130): CompanyCampaignSchedulingPanel ligado ao Growth OS com tres regras de honestidade travadas por teste: NADA e exibido como publicado (a faixa mostra BLOCKED_BY_EXTERNAL_DEPENDENCY COM O MOTIVO, e a palavra 'no ar' nao aparece); CONTROLE SO APARECE QUANDO A ACAO E POSSIVEL (Agendar so para campanha aprovada e ainda nao agendada; Registrar metricas so para campanha que EXECUTOU, porque medir rascunho seria inventar resultado); e FALHA DO SERVIDOR APARECE COMO FALHA. O catalogo de marketplaces mostra o estado REAL (CONFIG_REQUIRED), Testado ao vivo: nao e o procedimento de desbloqueio. Verificado: 5/5 PASS no componente, suite web completa 83 arquivos / 556 testes PASS, tsc -b exit 0, eslint 0 erros e CONTRACT VERIFICATION PASSED"
     },
     {
       "id": 20,
@@ -1171,7 +1173,10 @@
     "PARIDADE LINUX - DECISOES DO SCRIPT (E-129): RECUSA RODAR SEM DAEMON, porque um conteiner que falha por Docker ausente seria um falso 'a suite passou'; DISTINGUE imagem indisponivel de falha de teste, tentando a proxima imagem em vez de reportar erro falso; e devolve o CODIGO DE SAIDA DO LINUX, dizendo que as mensagens vem de la",
     "PARIDADE LINUX - GANHOS ALEM DA PARIDADE (E-129): COBERTURA MAIOR, porque testes de symlink que PULAM no Windows EXECUTAM no conteiner; e ciclo de 24 s contra ~78 s no Windows, o que torna viavel rodar a validacao a cada mudanca de risco",
     "PARIDADE LINUX - TRES ERROS MEUS ENCONTRADOS POR EXECUTAR O SCRIPT (E-129): (a) '$repositoryRoot:' foi interpretado como UNIDADE de variavel, corrigido com ${repositoryRoot}; (b) acentos em .ps1 quebram o parser do Windows PowerShell 5.1, que le o arquivo como ANSI - o script passou a ser SEM ACENTOS com o motivo registrado no cabecalho; (c) ErrorActionPreference=Stop transformava o STDERR normal do docker ('Unable to find image ...') em erro TERMINANTE, abortando antes de tentar a proxima imagem - corrigido para Continue com throw/exit explicitos",
-    "LIMITES DA PARIDADE LINUX (E-129): nao substitui o CI (nao instala Playwright nem servicos de apoio), nao cobre macOS e NAO roda a suite de integracao, que continua dependendo do compose das evidencias E-122 e E-123"
+    "LIMITES DA PARIDADE LINUX (E-129): nao substitui o CI (nao instala Playwright nem servicos de apoio), nao cobre macOS e NAO roda a suite de integracao, que continua dependendo do compose das evidencias E-122 e E-123",
+    "CAMPANHAS E MARKETPLACES VISIVEIS NA INTERFACE (E-130): nas rodadas 84-87 as capacidades foram entregues no backend sempre com o limite 'sem interface visual'. Capacidade sem superficie e capacidade que o usuario nao tem: criei o CompanyCampaignSchedulingPanel, ligado ao Growth OS, com agendamento, registro de metricas, painel de totais e catalogo de marketplaces. Verificado com 5/5 PASS no componente, suite web completa (83 arquivos, 556 testes) e CONTRACT VERIFICATION PASSED",
+    "INTERFACE - TRES REGRAS DE HONESTIDADE TRAVADAS POR TESTE (E-130): (a) NADA E EXIBIDO COMO PUBLICADO - a faixa de topo mostra BLOCKED_BY_EXTERNAL_DEPENDENCY COM O MOTIVO vindo do servidor e o teste exige que a palavra 'no ar' NAO apareca; (b) CONTROLE SO APARECE QUANDO A ACAO E POSSIVEL - Agendar so para campanha aprovada e ainda nao agendada, Registrar metricas so para campanha que EXECUTOU, porque medir rascunho seria inventar resultado e botao que sempre falha e o controle decorativo proibido pelo estagio 19; (c) FALHA DO SERVIDOR APARECE COMO FALHA - o teste forca erro de agendamento e exige a mensagem real SEM a mensagem de sucesso",
+    "LIMITES DA INTERFACE DE CAMPANHA (E-130): sincronizar catalogo envia ZERO ITENS nesta tela (o servidor recusa com 400 e a interface mostra o motivo - montar itens sozinha seria inventar catalogo); sem e2e Playwright novo da jornada nesta rodada; sem segmentacao/criativo; e a publicacao externa permanece BLOCKED_BY_EXTERNAL_DEPENDENCY"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
