@@ -41,6 +41,56 @@ const (
 // reviewable and a dispatch tick keeps a predictable cost.
 const maxScheduleFlowSteps = 12
 
+// Retry por passo. O padrão é 2 (uma repetição) porque a criação da missão é
+// idempotente — repetir não cria missão duplicada — e uma falha transitória não
+// deve abortar o fluxo inteiro. O teto impede laço longo num motor que roda a
+// cada tick.
+const (
+	ScheduleStepDefaultAttempts = 2
+	ScheduleStepMaxAttempts     = 5
+	// scheduleStepRetryBaseDelay é o atraso base entre tentativas (linear e
+	// limitado): o motor é local e roda em tick, então esperas longas travariam
+	// o despacho.
+	scheduleStepRetryBaseDelay = 50 * time.Millisecond
+	scheduleStepRetryMaxDelay  = 500 * time.Millisecond
+)
+
+// scheduleStepAttempts resolve o número de tentativas declarado, aplicando o
+// padrão e o teto. Valor acima do teto é recusado na validação, não silenciado.
+func scheduleStepAttempts(step ScheduleStep) int {
+	if step.MaxAttempts <= 0 {
+		return ScheduleStepDefaultAttempts
+	}
+	if step.MaxAttempts > ScheduleStepMaxAttempts {
+		return ScheduleStepMaxAttempts
+	}
+	return step.MaxAttempts
+}
+
+// runWithRetry executa a ação até maxAttempts e devolve quantas tentativas fez.
+// O erro devolvido é o da ÚLTIMA tentativa: o relatório mostra o motivo real da
+// falha final, e não o primeiro erro de uma sequência que se recuperou.
+func runWithRetry(maxAttempts int, attempt func() error) (int, error) {
+	if maxAttempts < 1 {
+		maxAttempts = 1
+	}
+	var err error
+	for try := 1; try <= maxAttempts; try++ {
+		err = attempt()
+		if err == nil {
+			return try, nil
+		}
+		if try < maxAttempts {
+			delay := time.Duration(try) * scheduleStepRetryBaseDelay
+			if delay > scheduleStepRetryMaxDelay {
+				delay = scheduleStepRetryMaxDelay
+			}
+			time.Sleep(delay)
+		}
+	}
+	return maxAttempts, err
+}
+
 // ErrUnknownScheduleStep reports a step kind outside the closed vocabulary. It
 // is fail-closed: an unrecognised node never executes.
 var ErrUnknownScheduleStep = errors.New("unknown schedule step kind")
@@ -60,6 +110,11 @@ type ScheduleStep struct {
 	// Expect is the required dependency outcome for kind condition.if, either
 	// ScheduleExpectSucceeded or ScheduleExpectFailed.
 	Expect string `json:"expect,omitempty"`
+	// MaxAttempts é quantas vezes um passo action.mission pode tentar antes de
+	// falhar o fluxo. Vazio/0 usa o padrão do motor (ScheduleStepDefaultAttempts);
+	// o teto ScheduleStepMaxAttempts é validado antes de persistir. Retry é seguro
+	// porque a criação da missão é idempotente: repetir não duplica.
+	MaxAttempts int `json:"max_attempts,omitempty"`
 }
 
 // ValidateScheduleSteps accepts an empty graph (legacy single-objective
@@ -132,6 +187,9 @@ func validateScheduleStepShape(step ScheduleStep) error {
 		}
 		if strings.TrimSpace(step.Expect) != "" {
 			return fmt.Errorf("schedule action %q cannot carry an expectation", id)
+		}
+		if step.MaxAttempts < 0 || step.MaxAttempts > ScheduleStepMaxAttempts {
+			return fmt.Errorf("schedule action %q accepts at most %d attempts, got %d", id, ScheduleStepMaxAttempts, step.MaxAttempts)
 		}
 	case ScheduleStepConditionIf:
 		if len(step.DependsOn) != 1 {
@@ -218,6 +276,9 @@ type ScheduleStepOutcome struct {
 	Kind   string `json:"kind"`
 	Status string `json:"status"`
 	Reason string `json:"reason,omitempty"`
+	// Attempts é quantas tentativas o passo consumiu (retry por nó). 0 significa
+	// "não se aplica" (gatilho/condição, que não tentam de novo).
+	Attempts int `json:"attempts,omitempty"`
 }
 
 // ScheduleRunReport é o resultado auditável de uma execução de fluxo. Ele é
@@ -318,19 +379,30 @@ func (r *Runtime) ExecuteScheduleFlowReport(ctx context.Context, schedule Schedu
 			outcomes[id] = true
 			report.Steps = append(report.Steps, ScheduleStepOutcome{ID: id, Kind: string(step.Kind), Status: ScheduleStepSucceeded})
 		case ScheduleStepActionMission:
-			_, created, err := r.createScheduledMissionIdempotent(ctx, schedule, strings.TrimSpace(step.Objective), scheduleStepIdempotencyKey(runKey, id))
+			// Retry por nó: a chave de idempotência é a MESMA em todas as
+			// tentativas, então uma repetição que encontra a missão já criada não
+			// duplica nem conta como missão nova.
+			created := false
+			attempts, err := runWithRetry(scheduleStepAttempts(step), func() error {
+				_, wasCreated, createErr := r.createScheduledMissionIdempotent(ctx, schedule, strings.TrimSpace(step.Objective), scheduleStepIdempotencyKey(runKey, id))
+				if createErr == nil {
+					created = wasCreated
+				}
+				return createErr
+			})
 			if err != nil {
 				outcomes[id] = false
 				report.FinishedAt = time.Now().UTC()
 				report.Steps = append(report.Steps, ScheduleStepOutcome{
-					ID:     id,
-					Kind:   string(step.Kind),
-					Status: ScheduleStepFailed,
-					Reason: err.Error(),
+					ID:       id,
+					Kind:     string(step.Kind),
+					Status:   ScheduleStepFailed,
+					Reason:   err.Error(),
+					Attempts: attempts,
 				})
 				return report, fmt.Errorf("schedule step %q: %w", id, err)
 			}
-			outcome := ScheduleStepOutcome{ID: id, Kind: string(step.Kind), Status: ScheduleStepSucceeded}
+			outcome := ScheduleStepOutcome{ID: id, Kind: string(step.Kind), Status: ScheduleStepSucceeded, Attempts: attempts}
 			if created {
 				report.Missions++
 			} else {

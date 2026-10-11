@@ -4,6 +4,7 @@ import {
   scheduleRunVerdict,
   scheduleRunVerdictLabel,
   scheduleRunVerdictTone,
+  scheduleStepAttemptsLabel,
   scheduleStepKindLabel,
   scheduleStepStatusLabel,
   scheduleStepStatusTone,
@@ -54,6 +55,9 @@ export function ScheduleRunReportCard({ run, lastFailureCode, lastRunAt }: Sched
                 {scheduleStepStatusLabel(step.status)}
               </span>
               {step.id} <span className="text-neutral-400">({scheduleStepKindLabel(step.kind)})</span>
+              {scheduleStepAttemptsLabel(step) ? (
+                <span className="ml-1 text-neutral-400">· {scheduleStepAttemptsLabel(step)}</span>
+              ) : null}
               {step.reason ? <span className="text-amber-700 dark:text-amber-300"> — {step.reason}</span> : null}
             </li>
           ))}

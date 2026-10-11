@@ -6,6 +6,7 @@ import {
   scheduleRunVerdict,
   scheduleRunVerdictLabel,
   scheduleStepKindLabel,
+  scheduleStepAttemptsLabel,
   scheduleStepStatusLabel,
   type AgentScheduleRunReport,
 } from "./scheduleRun";
@@ -86,6 +87,17 @@ describe("relatório de execução de automação", () => {
     expect(scheduleRunVerdict({ finished_at: "2026-10-10T20:00:00Z", missions: 1 })).toBe("success");
     expect(scheduleRunSummary({ finished_at: "2026-10-10T20:00:00Z", missions: 1 })).toBe(
       "0 executado(s) · 1 missão criada",
+    );
+  });
+
+  it("só mostra tentativas quando houve repetição", () => {
+    expect(scheduleStepAttemptsLabel({ id: "a", kind: "action.mission", status: "succeeded", attempts: 1 })).toBe("");
+    expect(scheduleStepAttemptsLabel({ id: "a", kind: "action.mission", status: "succeeded" })).toBe("");
+    expect(scheduleStepAttemptsLabel({ id: "a", kind: "action.mission", status: "succeeded", attempts: 3 })).toBe(
+      "3 tentativas",
+    );
+    expect(scheduleStepAttemptsLabel({ id: "a", kind: "action.mission", status: "failed", attempts: 5 })).toBe(
+      "5 tentativas",
     );
   });
 });
