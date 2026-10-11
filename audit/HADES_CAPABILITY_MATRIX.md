@@ -109,6 +109,8 @@
 
 | Segurança: guarda de tenant em handlers HTTP | `scripts/audit_tenant_guards.py` (E-091) | IMPLEMENTADO_E_TESTADO | BAIXO | E-091 | 136 handlers com guarda; 14 exceções nomeadas e explicadas; zero defeito novo |
 
+| Memória: deduplicação | `memory_dedup.go`, `AddMemoryContext` (E-092) | IMPLEMENTADO_E_TESTADO | BAIXO | E-092 | regra conservadora (conteúdo+tipo+visibilidade/ator+origem); duplicata devolve a original; sobrevive ao reinício |
+
 ## 6. Integrações, MCP e conectores
 
 | Capacidade | Superfície | Classificação | Risco | Evidência | Lacuna |

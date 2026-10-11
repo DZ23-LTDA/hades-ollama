@@ -328,6 +328,18 @@ func (s *ContextStore) AddMemoryContext(ctx context.Context, memory Memory) (Mem
 	if memory.Confidence < 0 || memory.Confidence > 1 {
 		return Memory{}, errors.New("memory confidence must be between 0 and 1")
 	}
+	// Deduplicação (estágio 15). Regra conservadora: só é a MESMA memória quando
+	// mudam nem o conteúdo, nem o tipo, nem a visibilidade/ator, nem a origem.
+	// `kind` diferente é conhecimento diferente; ator ou visibilidade diferentes
+	// são fronteiras de privacidade; `source` diferente é proveniência diferente.
+	// Conservador de propósito: fundir o que não é idêntico perderia informação, e
+	// perder memória é pior que guardar uma linha repetida.
+	//
+	// A checagem acontece ANTES do embedding para não gastar vetor em duplicata, e
+	// é repetida sob o lock para não deixar duas gravações concorrentes passarem.
+	if existing, found := s.duplicateMemory(memory); found {
+		return existing, nil
+	}
 	s.mu.RLock()
 	embedder := s.embedder
 	s.mu.RUnlock()
@@ -343,6 +355,9 @@ func (s *ContextStore) AddMemoryContext(ctx context.Context, memory Memory) (Mem
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if existing, found := s.duplicateMemoryLocked(memory); found {
+		return existing, nil
+	}
 	previous := append([]Memory(nil), s.memories[memory.ProjectID]...)
 	s.memories[memory.ProjectID] = append(s.memories[memory.ProjectID], memory)
 	if s.root != "" {

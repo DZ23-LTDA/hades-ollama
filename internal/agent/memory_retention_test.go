@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strconv"
 	"testing"
 	"time"
 )
@@ -24,11 +25,15 @@ func newRetentionStore(t *testing.T) (*ContextStore, Project) {
 func seedRetentionMemories(t *testing.T, store *ContextStore, projectID, prefix string, count int, age time.Duration) {
 	t.Helper()
 	for index := range count {
+		// A DEDUPLICAÇÃO do estágio 15 funde memórias de conteúdo idêntico, então a
+		// fixture precisa de N memórias DISTINTAS: cada uma recebe origem própria.
+		// Sem isso o teste mediria a dedup, não a retenção.
 		if _, err := store.AddMemory(Memory{
 			ID:        prefix + "_" + time.Unix(int64(index), 0).UTC().Format("150405"),
 			ProjectID: projectID,
 			Kind:      "fact",
 			Content:   "memória de retenção",
+			Source:    prefix + "-" + strconv.Itoa(index),
 			CreatedAt: time.Now().UTC().Add(-age - time.Duration(index)*time.Minute),
 		}); err != nil {
 			t.Fatal(err)
