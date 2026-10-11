@@ -27,6 +27,8 @@ metodologia independente"*. Esta rodada entrega o que é **honestamente mensurá
 | `BenchmarkMemorySearchSemantic` | **0,68–1,36 ms** | mesmo volume, caminho vetorial (`cosineSimilarity`) |
 | `BenchmarkMemoryReembed` | **1,95–2,07 ms** para 200 memórias | ≈ **10 µs por memória** |
 
+**Diagnóstico do turno no Linux (E-164)**: o controle separa computação de I/O — planejador puro **≈0,4 µs nas duas plataformas** e busca em memória **igual**, enquanto a **escrita atômica** de 200 memórias vai de **1,66–1,76 ms (25 allocs)** no Windows para **2,51–2,70 ms (224–226 allocs)** no contêiner. As três operações mais lentas são **exatamente** as que escrevem arquivo ⇒ a diferença está no **caminho de escrita**, não na computação; o mecanismo específico **não** foi isolado e o contêiner usa sistema de arquivos em camadas (não é "Linux mais lento").
+
 **Linux (E-161, mesma máquina em contêiner)**: turno **2,62–2,70 ms** · literal **0,29 ms** · semântica **0,62–0,65 ms** · re-embed **2,81–2,90 ms**. A busca é equivalente entre plataformas; turno e re-embed ficam ~40% mais lentos no Linux e com **mais alocações** (turno 206 vs 180, re-embed 429 vs 231). **Causa não medida** — hipótese de diferença de I/O/caminho, registrada como pergunta aberta, não como conclusão.
 
 Leitura honesta dos números: a busca **semântica** custa ~2× a literal no mesmo volume — coerente com comparar

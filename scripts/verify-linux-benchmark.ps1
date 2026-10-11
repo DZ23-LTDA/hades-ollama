@@ -52,8 +52,9 @@ if ($LASTEXITCODE -ne 0) {
 $moduleCache = Join-Path $repositoryRoot '_tmp\gomodcache'
 if (-not (Test-Path $moduleCache)) { New-Item -ItemType Directory -Path $moduleCache -Force | Out-Null }
 
-# Os mesmos quatro benchmarks do estagio 21; `-run '^$'` garante que NENHUM teste rode aqui.
-$filtro = 'BenchmarkServiceAgentTurn|BenchmarkMemorySearchLiteral|BenchmarkMemorySearchSemantic|BenchmarkMemoryReembed'
+# Os benchmarks do estagio 21 + os CONTROLES do experimento de E-164 (planejador puro e escrita de arquivo).
+# `-run '^$'` garante que NENHUM teste rode aqui.
+$filtro = 'BenchmarkServiceAgentTurn|BenchmarkMemorySearchLiteral|BenchmarkMemorySearchSemantic|BenchmarkMemoryReembed|BenchmarkServiceAgentPlan|BenchmarkMemoryFileWrite'
 $shellCommand = "go test ./internal/agent/ -run '^$' -bench '$filtro' -benchtime=$BenchTime -count=$Count -timeout ${TimeoutMinutes}m"
 
 $logDir = Join-Path $repositoryRoot '_tmp'

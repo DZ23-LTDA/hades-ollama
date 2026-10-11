@@ -120,6 +120,50 @@ func BenchmarkMemoryReembed(b *testing.B) {
 	}
 }
 
+// BenchmarkServiceAgentPlan mede SÓ o planejador: sem ferramenta, sem persistência e sem I/O.
+//
+// É o CONTROLE do experimento de E-164: se o planejador custa o mesmo nas duas plataformas e o turno completo
+// custa ~40% mais no Linux, a diferença está no que o turno faz ALÉM de planejar (ferramenta, trilha, arquivos).
+func BenchmarkServiceAgentPlan(b *testing.B) {
+	planner := RulePlanner{}
+	missao := Mission{ID: "mis_bench", Objective: "quero saber os preços do catálogo"}
+	ctx := context.Background()
+	b.ReportAllocs()
+	b.ResetTimer()
+	for range b.N {
+		if _, err := planner.Plan(ctx, missao); err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
+// BenchmarkMemoryFileWrite mede a ESCRITA ATÔMICA do arquivo de memórias — o custo de sistema de arquivos que o
+// turno e o re-embed pagam.
+func BenchmarkMemoryFileWrite(b *testing.B) {
+	store, err := NewContextStore(b.TempDir() + "-write")
+	if err != nil {
+		b.Fatal(err)
+	}
+	project, err := store.CreateProject("Base de escrita", b.TempDir(), "org-write")
+	if err != nil {
+		b.Fatal(err)
+	}
+	memorias := make([]Memory, 0, 200)
+	for i := range 200 {
+		memorias = append(memorias, Memory{
+			ID: fmt.Sprintf("mem_%d", i), ProjectID: project.ID, Kind: "fact",
+			Content: fmt.Sprintf("memória %d", i), Source: "manual",
+		})
+	}
+	b.ReportAllocs()
+	b.ResetTimer()
+	for range b.N {
+		if err := store.writeMemoriesFile(project.ID, memorias); err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
 // benchmarkMemoryStore cria um projeto com `total` memórias (uma delas é o alvo da busca).
 func benchmarkMemoryStore(b *testing.B, total int, embedder Embedder) (*ContextStore, Project) {
 	b.Helper()
