@@ -259,7 +259,15 @@ func (f *FinanceOps) Report(companyID string, from, to time.Time, now time.Time)
 		return FinanceReport{}, err
 	}
 	incomeByOrder := map[string]LedgerEntry{}
+	refundedOrders := map[string]LedgerEntry{}
 	for _, entry := range entries {
+		// O ESTORNO registrado precisa ser reconhecido: sem isso o estorno continuaria
+		// aparecendo como DEVIDO e o supervisor proporia a mesma ação a cada ciclo,
+		// para sempre — o defeito clássico de uma ação que não fecha o que abriu.
+		if strings.HasPrefix(entry.Idempotency, "refund:") {
+			refundedOrders[strings.TrimPrefix(entry.Idempotency, "refund:")] = entry
+			continue
+		}
 		if entry.Kind != LedgerKindIncome {
 			continue
 		}
@@ -289,13 +297,20 @@ func (f *FinanceOps) Report(companyID string, from, to time.Time, now time.Time)
 		if order.Status == CommerceOrderCancelled {
 			// Cancelado com receita lançada: existe estorno DEVIDO. O lançamento NÃO é
 			// apagado, porque dinheiro que entrou e foi devolvido tem história.
-			if posted {
-				report.RefundDue += order.TotalCents
-				report.Divergences = append(report.Divergences, FinanceDivergence{
-					OrderID: order.ID, OrderNumber: order.Number, Kind: FinanceDivergenceRefund,
-					AmountCents: order.TotalCents, Detail: "pedido cancelado com receita lançada (lançamento " + entry.ID + ")",
-				})
+			if !posted {
+				continue
 			}
+			// Se o estorno JÁ foi registrado, a pendência está LIQUIDADA: continuar
+			// marcando como devido faria o supervisor repropor a mesma decisão em todo
+			// ciclo, mesmo depois de a pessoa ter aprovado.
+			if _, settled := refundedOrders[order.ID]; settled {
+				continue
+			}
+			report.RefundDue += order.TotalCents
+			report.Divergences = append(report.Divergences, FinanceDivergence{
+				OrderID: order.ID, OrderNumber: order.Number, Kind: FinanceDivergenceRefund,
+				AmountCents: order.TotalCents, Detail: "pedido cancelado com receita lançada (lançamento " + entry.ID + ")",
+			})
 			continue
 		}
 		if !posted {

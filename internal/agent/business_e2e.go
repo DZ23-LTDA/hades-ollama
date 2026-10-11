@@ -65,6 +65,21 @@ type BusinessJourneyReport struct {
 	RecoveryProven bool `json:"recovery_proven"`
 	// NotDone declara o que depende de conta, credencial ou provedor externo.
 	NotDone []string `json:"not_done"`
+	// Supervisor registra o ciclo de supervisão executado dentro da jornada: quantos
+	// sinais foram observados, quantas ações aguardaram humano e qual foi decidido.
+	Supervisor BusinessSupervisionEvidence `json:"supervisor"`
+}
+
+// BusinessSupervisionEvidence é a evidência do ciclo de supervisão dentro da jornada.
+type BusinessSupervisionEvidence struct {
+	Signals          int      `json:"signals"`
+	AwaitingApproval int      `json:"awaiting_approval"`
+	BlockedByBudget  int      `json:"blocked_by_budget"`
+	HumanDecided     string   `json:"human_decided,omitempty"`
+	DecidedBy        string   `json:"decided_by,omitempty"`
+	LedgerEffect     string   `json:"ledger_effect,omitempty"`
+	AutonomousEffect string   `json:"autonomous_effect,omitempty"`
+	Pending          []string `json:"pending_kinds,omitempty"`
 }
 
 // BusinessJourneyInput reúne o que o passo a passo precisa criar.
@@ -336,7 +351,91 @@ func (r *Runtime) CertifyBusinessJourney(input BusinessJourneyInput, now time.Ti
 	step("isolamento_provado", BusinessStepOK, fmt.Sprintf("verificacoes=%d", len(report.Isolation)),
 		"nenhum recurso visível para a outra organização")
 
-	// 18. Declaração do que NÃO foi feito (dependência externa).
+	// 18. CICLO DO SUPERVISOR: um segundo pedido é pago, tem receita lançada e é
+	// cancelado — o que gera ESTORNO DEVIDO, que por política EXIGE humano.
+	refundOrder, err := r.Commerce().CreateOrder(CommerceOrderRequest{
+		OrganizationID: input.OrganizationID, ContactID: contact.ID,
+		IdempotencyKey: input.CheckoutKey + "-estorno",
+		Items:          []CommerceOrderItem{{SKU: input.SKU, Quantity: 1}},
+	}, now)
+	if err != nil {
+		return fail("supervisor_ciclo", err)
+	}
+	if _, err := r.Commerce().ConfirmPayment(input.OrganizationID, refundOrder.ID, CommercePayment{
+		Method: CommercePaymentSandbox, Reference: "sandbox-ref-estorno",
+	}, "certificacao", now); err != nil {
+		return fail("supervisor_ciclo", err)
+	}
+	if _, err := r.Finance().PostOrderRevenue(input.OrganizationID, refundOrder.ID, "certificacao", now); err != nil {
+		return fail("supervisor_ciclo", err)
+	}
+	if _, err := r.Commerce().Cancel(input.OrganizationID, refundOrder.ID, "cliente desistiu", now); err != nil {
+		return fail("supervisor_ciclo", err)
+	}
+	tick, err := r.BusinessSupervisor().BusinessTick(input.OrganizationID, now)
+	if err != nil {
+		return fail("supervisor_ciclo", err)
+	}
+	if tick.AwaitingApproval == 0 {
+		return fail("supervisor_ciclo", fmt.Errorf("o estorno devido precisava aguardar decisão humana: %+v", tick.Actions))
+	}
+	report.Supervisor = BusinessSupervisionEvidence{
+		Signals:          len(tick.Signals),
+		AwaitingApproval: tick.AwaitingApproval,
+		BlockedByBudget:  tick.BlockedByBudget,
+	}
+	pending := r.BusinessSupervisor().PendingActions(input.OrganizationID)
+	if len(pending) == 0 {
+		return fail("supervisor_ciclo", fmt.Errorf("a pendência precisa ser consultável"))
+	}
+	for _, action := range pending {
+		report.Supervisor.Pending = append(report.Supervisor.Pending, action.Kind)
+	}
+	step("supervisor_ciclo", BusinessStepOK, fmt.Sprintf("tick=%d", tick.TickNumber),
+		fmt.Sprintf("%d sinais, %d aguardando humano, %d bloqueadas por orçamento",
+			len(tick.Signals), tick.AwaitingApproval, tick.BlockedByBudget))
+
+	// 19. APROVAÇÃO HUMANA: a decisão de uma pessoa produz o efeito real no livro.
+	var refundAction BusinessAction
+	for _, action := range pending {
+		if action.Kind == BusinessActionRefund {
+			refundAction = action
+		}
+	}
+	if refundAction.ID == "" {
+		return fail("aprovacao_humana", fmt.Errorf("esperava ação de estorno: %+v", pending))
+	}
+	decided, err := r.BusinessSupervisor().Decide(input.OrganizationID, refundAction.ID, "APROVAR", "gerente-certificacao", "cliente pediu a devolução", now)
+	if err != nil {
+		return fail("aprovacao_humana", err)
+	}
+	if decided.Status != BusinessActionExecuted || decided.DecidedBy != "gerente-certificacao" {
+		return fail("aprovacao_humana", fmt.Errorf("a aprovação precisa executar e registrar o ator: %+v", decided))
+	}
+	report.Supervisor.HumanDecided = refundAction.Kind
+	report.Supervisor.DecidedBy = decided.DecidedBy
+	report.Supervisor.LedgerEffect = decided.Effect
+	step("aprovacao_humana", BusinessStepOK, "action="+refundAction.ID,
+		"decisão de gerente-certificacao: "+decided.Effect)
+
+	// 20. ISOLAMENTO DO SUPERVISOR: a outra organização não vê a pendência.
+	if pendingOther := r.BusinessSupervisor().PendingActions(other); len(pendingOther) != 0 {
+		checkIsolation("supervisor_pendencia", true, "a outra organização viu a pendência de decisão")
+	} else {
+		checkIsolation("supervisor_pendencia", false, "recusado")
+	}
+	for _, check := range report.Isolation {
+		if check.VisibleToOtherTenant {
+			report.IsolationProven = false
+		}
+	}
+	if !report.IsolationProven {
+		return fail("supervisor_isolamento", fmt.Errorf("isolamento violado: %+v", report.Isolation))
+	}
+	step("supervisor_isolamento", BusinessStepOK, fmt.Sprintf("verificacoes=%d", len(report.Isolation)),
+		"a pendência de decisão não vaza entre organizações")
+
+	// 21. Declaração do que NÃO foi feito (dependência externa).
 	step("externo_pendente_declarado", BusinessStepExternal, fmt.Sprintf("itens=%d", len(report.NotDone)),
 		"marketplace, redes sociais, telefonia, PSP real, fiscal e canais externos")
 
