@@ -73,6 +73,8 @@
 
 | Workflow: grafo validado + resultado por nó persistido | `internal/agent/schedule_flow.go`, `Schedule.LastRun`, `SupervisorTickResult.ScheduleRunErrors` (PR #137) | IMPLEMENTADO_NAO_HOMOLOGADO | MÉDIO | E-074 | nós ignorados e falhas deixam de ser invisíveis; retry/DLQ por nó ainda não existem |
 
+| Workflow: resultado por nó visível na interface | `app/ui/app/src/lib/scheduleRun.ts`, `ScheduleRunReportCard.tsx`, `AutomationsPage.tsx` (PR #139) | IMPLEMENTADO_NAO_HOMOLOGADO | MÉDIO | E-075 | veredito parcial distinto de sucesso; retry depende de idempotência na criação de missão |
+
 ## 6. Integrações, MCP e conectores
 
 | Capacidade | Superfície | Classificação | Risco | Evidência | Lacuna |
