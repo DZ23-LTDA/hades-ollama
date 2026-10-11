@@ -18,6 +18,7 @@ import {
   getMarketplaceChannels,
   recordCompanyCampaignMetrics,
   scheduleCompanyCampaign,
+  syncMarketplace,
 } from "@/lib/agenticClient";
 
 function textContent(node: ReactTestInstance): string {
@@ -154,5 +155,80 @@ describe("CompanyCampaignSchedulingPanel", () => {
     const rendered = textContent(root.root);
     expect(rendered).toContain("precisa de aprovação antes do agendamento");
     expect(rendered).not.toContain("Campanha agendada no sandbox.");
+  });
+
+  it("monta itens com versões crescentes e envia EXATAMENTE o que o operador montou", async () => {
+    vi.mocked(syncMarketplace).mockResolvedValue({
+      channel_id: "mercado_livre", direction: "push", sandbox: true, homologacao_live: "BLOCKED_BY_EXTERNAL_DEPENDENCY",
+      motivo: "sem credencial", applied: 2, skipped: 0, conflicts: 0, operations_used: 2, operation_limit: 50,
+      outcomes: [
+        { entity: "estoque", sku: "SKU-1", version: 1, result: "aplicado" },
+        { entity: "estoque", sku: "SKU-1", version: 2, result: "aplicado" },
+      ],
+    } as never);
+    const withProduct = { ...companyWith([]), products: [{ id: "prd_1", sku: "SKU-1", name: "Produto" }] } as AgentCompany;
+
+    let root!: ReactTestRenderer;
+    await act(async () => {
+      root = create(<CompanyCampaignSchedulingPanel company={withProduct} onCompanyChange={() => {}} />);
+    });
+    // Sem item montado o botão fica DESABILITADO: sincronizar sem item é recusado pelo servidor.
+    expect(buttonsWithText(root, "Sincronizar")[0].props.disabled).toBe(true);
+
+    await act(async () => {
+      buttonsWithText(root, "Adicionar item")[0].props.onClick();
+    });
+    await act(async () => {
+      buttonsWithText(root, "Adicionar item")[0].props.onClick();
+    });
+    // A VERSÃO incrementa: o servidor é idempotente por versão e reenviar a mesma seria ignorado.
+    const rendered = textContent(root.root);
+    expect(rendered).toContain("versão 1");
+    expect(rendered).toContain("versão 2");
+    expect(buttonsWithText(root, "Sincronizar")[0].props.disabled).not.toBe(true);
+
+    await act(async () => {
+      buttonsWithText(root, "Sincronizar")[0].props.onClick();
+    });
+    expect(syncMarketplace).toHaveBeenCalledWith("cmp_1", {
+      channel_id: "mercado_livre",
+      direction: "push",
+      items: [
+        { entity: "estoque", sku: "SKU-1", version: 1, quantity: 1 },
+        { entity: "estoque", sku: "SKU-1", version: 2, quantity: 1 },
+      ],
+    });
+    // Aplicados saem da fila; o relatório mostra os números reais.
+    expect(textContent(root.root)).toContain("2 aplicados");
+    expect(textContent(root.root)).not.toContain("versão 1");
+  });
+
+  it("mantém conflito e ignorado VISÍVEIS, sem dar a impressão de sincronização completa", async () => {
+    vi.mocked(syncMarketplace).mockResolvedValue({
+      channel_id: "amazon", direction: "push", sandbox: true, homologacao_live: "BLOCKED_BY_EXTERNAL_DEPENDENCY",
+      motivo: "sem credencial", applied: 0, skipped: 1, conflicts: 1, operations_used: 0, operation_limit: 50,
+      outcomes: [
+        { entity: "estoque", sku: "SKU-1", version: 1, result: "ignorado", detail: "versão já aplicada" },
+        { entity: "estoque", sku: "SKU-1", version: 2, result: "conflito", detail: "remoto=10 local=5 desejado=5: divergência não é sobrescrita" },
+      ],
+    } as never);
+    const withProduct = { ...companyWith([]), products: [{ id: "prd_1", sku: "SKU-1", name: "Produto" }] } as AgentCompany;
+
+    let root!: ReactTestRenderer;
+    await act(async () => {
+      root = create(<CompanyCampaignSchedulingPanel company={withProduct} onCompanyChange={() => {}} />);
+    });
+    await act(async () => {
+      buttonsWithText(root, "Adicionar item")[0].props.onClick();
+    });
+    await act(async () => {
+      buttonsWithText(root, "Sincronizar")[0].props.onClick();
+    });
+    const rendered = textContent(root.root);
+    expect(rendered).toContain("conflito: SKU-1 v2");
+    expect(rendered).toContain("divergência não é sobrescrita");
+    expect(rendered).toContain("ignorado: SKU-1 v1");
+    // Nada foi aplicado, então o item CONTINUA na fila — esconder isso seria mentir.
+    expect(rendered).toContain("versão 1");
   });
 });
