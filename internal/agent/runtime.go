@@ -313,6 +313,9 @@ func NewRuntime(config RuntimeConfig) (*Runtime, error) {
 	// E-170: a JANELA DE RATE LIMIT também persiste. Sem isso, um reinício do processo ZERA a cota — a proteção
 	// desaparece exatamente quando alguém a ataca (reiniciando o serviço). Um arquivo por organização, como a DLQ.
 	omnichannelRuntime.SetRateLimitStore(NewOmnichannelRateLimitStore(omnichannelRateLimitRoot(dataRoot)))
+	// E-171: os CONECTORES também persistem. Sem isso, um reinício perde o canal e o `Ingest` recusa
+	// TODO webhook legítimo com "not configured" — o canal para sem que ninguém tenha mexido nele.
+	omnichannelRuntime.SetConnectorStore(NewOmnichannelConnectorStore(omnichannelConnectorRoot(dataRoot)))
 	// Os agentes de atendimento usam as MESMAS peças (CRM, inbox e consentimento).
 	serviceAgentRuntime := NewServiceAgentRuntime(crmStore, inboxStore, consentRegistry, DefaultServiceAgentTools())
 	// Comércio e empresas são ligados logo abaixo, quando os stores existem: enquanto não fossem ligados,
