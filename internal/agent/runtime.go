@@ -41,6 +41,9 @@ func missionScopeMatches(mission Mission, requestedOrganization, runtimeScope st
 }
 
 type Runtime struct {
+	// writeDurability é o modo EFETIVO de durabilidade da escrita (E-168): "durable" (padrão) ou
+	// "relaxed". Fica no runtime para poder ser relatado, não para ser inferido do ambiente.
+	writeDurability     string
 	store               Store
 	planner             Planner
 	plannerResolver     PlannerResolver
@@ -138,7 +141,27 @@ var (
 	ErrMissionNotRunnable      = errors.New("mission is not in a runnable state")
 )
 
+// WriteDurabilityMode devolve o modo de durabilidade EFETIVO deste runtime (E-168).
+//
+// Existe para o modo ser consultável por quem opera: sem isso, uma troca de garantia de durabilidade só seria
+// descoberta por um arquivo perdido.
+func (r *Runtime) WriteDurabilityMode() string {
+	if r == nil || r.writeDurability == "" {
+		return WriteDurabilityDurable
+	}
+	return r.writeDurability
+}
+
 func NewRuntime(config RuntimeConfig) (*Runtime, error) {
+	// E-168: a política de durabilidade da escrita vem do ambiente e é aplicada na CRIAÇÃO do runtime, para o
+	// modo efetivo valer desde a primeira escrita. O padrão é o seguro; um valor inválido cai para o seguro, e o
+	// runtime guarda o que efetivamente ficou para poder DECLARAR a divergência (nada de degradação silenciosa).
+	durabilidade, errDurabilidade := ConfigureWriteDurabilityFromEnv()
+	if errDurabilidade != nil {
+		// Falha ALTA: configuração inválida não pode virar "segui no modo seguro e ninguém soube". Quem
+		// escreveu `HADES_WRITE_DURABILITY` errado precisa corrigir, não descobrir depois.
+		return nil, errDurabilidade
+	}
 	store := config.Store
 	if store == nil {
 		store = NewMemoryStore()
@@ -344,7 +367,8 @@ func NewRuntime(config RuntimeConfig) (*Runtime, error) {
 		}
 	}
 	runtime := &Runtime{
-		store: store, planner: planner, plannerResolver: config.PlannerResolver, tools: tools, capabilityPolicy: capabilityPolicy, workspaceRoot: root, dataRoot: dataRoot, context: contextStore, company: companyStore, consent: consentRegistry, crm: crmStore, inbox: inboxStore, omnichannel: omnichannelRuntime, serviceAgents: serviceAgentRuntime, commerce: commerceStore,
+		writeDurability: durabilidade,
+		store:           store, planner: planner, plannerResolver: config.PlannerResolver, tools: tools, capabilityPolicy: capabilityPolicy, workspaceRoot: root, dataRoot: dataRoot, context: contextStore, company: companyStore, consent: consentRegistry, crm: crmStore, inbox: inboxStore, omnichannel: omnichannelRuntime, serviceAgents: serviceAgentRuntime, commerce: commerceStore,
 		salesWorkforce:    salesWorkforceStore,
 		marketplace:       marketplaceSyncStore,
 		businessSnapshots: businessSnapshotStore, finance: financeOps, businessSupervisor: businessSupervisor, remoteMCP: config.RemoteMCP, metrics: &RuntimeMetrics{}, connectors: config.Connectors, mcp: config.MCP, queue: queue, redisQueue: config.RedisQueue, traces: traces, telemetry: telemetry, media: config.Media, builder: builder, collaboration: collaboration, push: config.Push, pushOutbox: pushOutbox, deployments: config.Deployments, deploymentApprovals: deploymentApprovals, webhookReplay: webhookReplay, mu: &sync.Mutex{}, running: make(map[string]bool), activeCancels: make(map[string]context.CancelFunc), cancelPollInterval: durableCancelPollInterval(),
