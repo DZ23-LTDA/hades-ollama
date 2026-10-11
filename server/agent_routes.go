@@ -765,6 +765,11 @@ func (a *agentAPI) register(r *gin.Engine) {
 	// Re-embed: o gatilho de operador para trazer ao espaço vetorial atual o conhecimento que ficou para trás
 	// quando o modelo de embedding mudou.
 	group.POST("/projects/:id/memories/reembed", a.reembedProjectMemories)
+	// Re-embed ASSÍNCRONO: estimativa antes, job com progresso e cancelamento pelo operador.
+	group.GET("/projects/:id/memories/reembed/estimate", a.reembedEstimate)
+	group.POST("/projects/:id/memories/reembed/jobs", a.startReembedJob)
+	group.GET("/projects/:id/memories/reembed/jobs/:job_id", a.reembedJobStatus)
+	group.POST("/projects/:id/memories/reembed/jobs/:job_id/cancel", a.cancelReembedJob)
 	// Política de retenção por organização (estágio 15). A aplicação é
 	// EXPLÍCITA: não existe laço de fundo fingindo automação.
 	group.GET("/retention", a.retentionPolicy)
@@ -2348,6 +2353,77 @@ func (a *agentAPI) reembedProjectMemories(c *gin.Context) {
 // maxReembedPerRequest limita quantas memórias uma chamada de re-embed recalcula.
 const maxReembedPerRequest = 200
 
+// startReembedJob dispara o re-embed ASSÍNCRONO do projeto.
+//
+// A rota síncrona continua existindo para volumes pequenos; esta existe porque uma base grande não pode ser
+// operada por tentativa e erro: o job devolve id e a estimativa, e o progresso é consultável.
+func (a *agentAPI) startReembedJob(c *gin.Context) {
+	if _, err := a.projectForRequest(c); err != nil {
+		writeAgentError(c, statusForAgentError(err), err)
+		return
+	}
+	job, err := a.context.StartReembedJob(c.Param("id"))
+	if err != nil {
+		writeAgentError(c, statusForAgentError(err), err)
+		return
+	}
+	c.JSON(http.StatusAccepted, job)
+}
+
+// reembedJobStatus devolve o progresso do job.
+func (a *agentAPI) reembedJobStatus(c *gin.Context) {
+	if _, err := a.projectForRequest(c); err != nil {
+		writeAgentError(c, statusForAgentError(err), err)
+		return
+	}
+	job, err := a.context.ReembedJobStatus(c.Param("job_id"))
+	if err != nil {
+		writeAgentError(c, statusForAgentError(err), err)
+		return
+	}
+	// O job é do PROJETO: consultar por outro projeto não pode revelar andamento alheio.
+	if job.ProjectID != c.Param("id") {
+		writeAgentError(c, http.StatusNotFound, errors.New("job não pertence a este projeto"))
+		return
+	}
+	c.JSON(http.StatusOK, job)
+}
+
+// cancelReembedJob pede o cancelamento, sem prometer que nada mais será processado.
+func (a *agentAPI) cancelReembedJob(c *gin.Context) {
+	if _, err := a.projectForRequest(c); err != nil {
+		writeAgentError(c, statusForAgentError(err), err)
+		return
+	}
+	job, err := a.context.ReembedJobStatus(c.Param("job_id"))
+	if err != nil {
+		writeAgentError(c, statusForAgentError(err), err)
+		return
+	}
+	if job.ProjectID != c.Param("id") {
+		writeAgentError(c, http.StatusNotFound, errors.New("job não pertence a este projeto"))
+		return
+	}
+	// Cancelar é PEDIDO: o job verifica entre lotes e termina com o que já fez contabilizado.
+	aceito := a.context.CancelReembedJob(job.ID)
+	c.JSON(http.StatusOK, gin.H{"job_id": job.ID, "cancel_requested": aceito})
+}
+
+// reembedEstimate diz quanto trabalho existe ANTES de começar (a estimativa que faltava em E-159).
+func (a *agentAPI) reembedEstimate(c *gin.Context) {
+	if _, err := a.projectForRequest(c); err != nil {
+		writeAgentError(c, statusForAgentError(err), err)
+		return
+	}
+	projectID := c.Param("id")
+	c.JSON(http.StatusOK, gin.H{
+		"project_id": projectID,
+		"pendentes":  a.context.EstimateReembed(projectID),
+		// O espaço de destino vai junto: "faltam 300" sem dizer PARA QUAL modelo é um número solto.
+		"modelo_atual": a.context.CurrentEmbeddingModel(),
+	})
+}
+
 func (a *agentAPI) searchMemories(c *gin.Context) {
 	if _, err := a.projectForRequest(c); err != nil {
 		writeAgentError(c, statusForAgentError(err), err)
@@ -3923,8 +3999,12 @@ func statusForAgentError(err error) int {
 	if errors.Is(err, errAgentForbidden) || errors.Is(err, agent.ErrPluginOrganizationScope) || errors.Is(err, agent.ErrBuilderForbidden) || errors.Is(err, agent.ErrOrchestrationForbidden) || errors.Is(err, agent.ErrDeviceForbidden) || errors.Is(err, agent.ErrQueueJobForbidden) {
 		return http.StatusForbidden
 	}
-	if errors.Is(err, agent.ErrApprovalVersionConflict) || errors.Is(err, agent.ErrBuilderVersionConflict) || errors.Is(err, agent.ErrDeploymentApprovalNonce) || errors.Is(err, agent.ErrDeploymentApprovalConflict) || errors.Is(err, agent.ErrDeploymentApprovalExpired) {
+	if errors.Is(err, agent.ErrApprovalVersionConflict) || errors.Is(err, agent.ErrBuilderVersionConflict) || errors.Is(err, agent.ErrDeploymentApprovalNonce) || errors.Is(err, agent.ErrDeploymentApprovalConflict) || errors.Is(err, agent.ErrDeploymentApprovalExpired) || errors.Is(err, agent.ErrReembedJobRunning) {
 		return http.StatusConflict
+	}
+	// Job de re-embed desconhecido é 404: o recurso não existe (ou se perdeu com o reinício do processo).
+	if errors.Is(err, agent.ErrReembedJobNotFound) {
+		return http.StatusNotFound
 	}
 	if errors.Is(err, agent.ErrBuilderExportExpired) {
 		return http.StatusGone

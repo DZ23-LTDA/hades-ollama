@@ -32,6 +32,10 @@ type ContextStore struct {
 	// (projeto/agente/modelo) — estágio 8, catálogo com ativação contextual.
 	activations map[string]map[string]SkillActivation
 	embedder    Embedder
+	// reembedMu protege o registro de JOBS de re-embed (estágio 35). É separado do `mu` de propósito: gerar
+	// vetor é lento e não pode segurar o store enquanto o operador consulta o progresso.
+	reembedMu   sync.Mutex
+	reembedJobs map[string]*reembedJobEntry
 }
 
 type Embedder interface {
@@ -56,6 +60,12 @@ func (s *ContextStore) currentEmbeddingModel() string {
 	}
 	return ""
 }
+
+// CurrentEmbeddingModel expõe o espaço vetorial ATUAL para quem opera.
+//
+// Uma contagem de pendências sem dizer o modelo de destino seria um número solto: "faltam 300" não diz
+// faltam 300 PARA ONDE.
+func (s *ContextStore) CurrentEmbeddingModel() string { return s.currentEmbeddingModel() }
 
 // LocalOrganizationID is reserved for the unauthenticated single-user API.
 // Ownerless records are accepted for backwards compatibility with local data,
