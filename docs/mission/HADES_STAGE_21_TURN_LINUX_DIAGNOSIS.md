@@ -54,8 +54,8 @@ chamada são candidatos. Fica registrado como **trabalho derivado desta mediçã
 | --- | --- |
 | `scripts/verify-linux-benchmark.ps1` (6 benchmarks agora) | **OK** — log em `_tmp/linux-benchmark-last.log` |
 | `go test ./internal/agent/ ./server/ -run '...'` | **106/106 PASS** |
-| `go test ./internal/agent/ -count=1` | **ok** (ver documento do PR) |
-| `go test ./server/ -count=1` | **ok** (ver documento do PR) |
+| `go test ./internal/agent/ -count=1` | **ok 70,298s** |
+| `go test ./server/ -count=1` | **ok 23,241s** |
 | `golangci-lint run ./internal/agent/... ./server/...` | **0 issues** |
 | `node scripts/verify-contracts.mjs` | **CONTRACT VERIFICATION PASSED** |
 | `scripts/verify-linux-parity.ps1` | **LINUX PARITY OK** |
