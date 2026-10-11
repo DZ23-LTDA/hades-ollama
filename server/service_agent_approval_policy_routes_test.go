@@ -131,4 +131,11 @@ func TestServiceAgentApprovalQueueIsVisibleThroughTheRoute(t *testing.T) {
 			t.Fatalf("a fila precisa trazer %s: %s", campo, texto)
 		}
 	}
+	// E o estado do AVISO: sem destino configurado, quem opera vê que a fila existe mas ninguém é avisado —
+	// em vez de supor que o aviso funcionou.
+	for _, campo := range []string{`"notification"`, `"configurado":false`, `"entregues":0`} {
+		if !strings.Contains(texto, campo) {
+			t.Fatalf("o estado do aviso precisa constar (%s): %s", campo, texto)
+		}
+	}
 }

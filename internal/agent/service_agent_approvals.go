@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
@@ -9,6 +10,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -139,6 +141,55 @@ type ServiceAgentApprovalStore struct {
 	QuorumAboveCents int64
 	// QuorumApprovals é quantas decisões de atores DISTINTOS o quórum exige.
 	QuorumApprovals int
+	// Notifier avisa que existe pedido esperando decisão. Nil significa SEM aviso (padrão).
+	Notifier ServiceAgentNotifier
+
+	notifyMu          sync.Mutex
+	notificationsSent int
+	lastNotifyError   string
+}
+
+// NotificationsSent diz quantos avisos foram ENTREGUES (prova em teste e visão de operação).
+func (s *ServiceAgentApprovalStore) NotificationsSent() int {
+	s.notifyMu.Lock()
+	defer s.notifyMu.Unlock()
+	return s.notificationsSent
+}
+
+// LastNotificationError devolve a falha do último aviso — sem URL e sem segredo.
+func (s *ServiceAgentApprovalStore) LastNotificationError() string {
+	s.notifyMu.Lock()
+	defer s.notifyMu.Unlock()
+	return s.lastNotifyError
+}
+
+// notifyPending avisa que um pedido NOVO está esperando — e NUNCA falha o pedido por causa do aviso.
+//
+// O controle é a aprovação humana; o aviso é conveniência. Um destino fora do ar que travasse a escrita
+// seria trocar um problema de operação por um incidente.
+func (s *ServiceAgentApprovalStore) notifyPending(approval ServiceAgentApproval) {
+	if s == nil || s.Notifier == nil {
+		return
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), DefaultServiceAgentNotifyTimeout)
+	defer cancel()
+	err := s.Notifier.NotifyPendingApproval(ctx, ServiceAgentApprovalNotification{
+		Event:             "approval.pending",
+		ApprovalID:        approval.ID,
+		OrganizationID:    approval.OrganizationID,
+		ToolName:          approval.ToolName,
+		ValueCents:        approval.ValueCents,
+		RequiredApprovals: approval.RequiredApprovals,
+		RequestedAt:       approval.RequestedAt,
+	})
+	s.notifyMu.Lock()
+	defer s.notifyMu.Unlock()
+	if err != nil {
+		s.lastNotifyError = err.Error()
+		return
+	}
+	s.notificationsSent++
+	s.lastNotifyError = ""
 }
 
 // DefaultServiceAgentQuorumAboveCents é o limite a partir do qual UMA decisão não basta.
@@ -487,6 +538,8 @@ func (s *ServiceAgentApprovalStore) Request(organizationID string, request Servi
 	if err := s.Save(organizationID, approvals); err != nil {
 		return ServiceAgentApproval{}, err
 	}
+	// Aviso DEPOIS de persistir: avisar sobre pedido que não ficou gravado seria alarme falso.
+	s.notifyPending(request)
 	return request, nil
 }
 

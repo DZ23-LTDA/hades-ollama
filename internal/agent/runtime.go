@@ -271,7 +271,16 @@ func NewRuntime(config RuntimeConfig) (*Runtime, error) {
 	serviceAgentRuntime.SetAuditStore(NewServiceAgentAuditStore(serviceAgentAuditRoot(dataRoot)))
 	// Sem este store, as ferramentas de ESCRITA dos agentes de atendimento são RECUSADAS: efeito no CRM ou na
 	// caixa de entrada não acontece por conta de uma frase do cliente.
-	serviceAgentRuntime.SetApprovalStore(NewServiceAgentApprovalStore(serviceAgentApprovalRoot(dataRoot)))
+	approvalStore := NewServiceAgentApprovalStore(serviceAgentApprovalRoot(dataRoot))
+	// AVISO do pedido pendente: OPT-IN por ambiente. Sem destino configurado nada sai da máquina — e o
+	// segredo do webhook nunca é registrado nem devolvido em erro.
+	if destino := strings.TrimSpace(os.Getenv("HADES_APPROVAL_WEBHOOK_URL")); destino != "" {
+		approvalStore.Notifier = &ServiceAgentWebhookNotifier{
+			URL:    destino,
+			Secret: os.Getenv("HADES_APPROVAL_WEBHOOK_SECRET"),
+		}
+	}
+	serviceAgentRuntime.SetApprovalStore(approvalStore)
 	// A base de conhecimento é a MESMA memória governada (estágio 15): a busca percorre só projetos da
 	// organização da sessão, e projeto sem organização fica FORA.
 	serviceAgentRuntime.SetKnowledge(contextStore)
