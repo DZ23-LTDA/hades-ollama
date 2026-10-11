@@ -2,12 +2,12 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-11T04:25:00-03:00",
+  "updated_at": "2026-10-11T05:20:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
     "integration_branch": "main",
-    "main_sha": "a6a1bb3f7601791565c02a88a36a3599d399cab6",
+    "main_sha": "ebeea2601148cb8203e3c27869658801fd156237",
     "main_committed_at": "2026-10-09T10:24:45Z",
     "main_ci_state": "green (dz23-agentic-quality + class-a-plus-integrity = success nesse SHA)",
     "mission_branch": "docs/checkpoints-missao-v21",
@@ -430,11 +430,12 @@
         "E-074",
         "E-075",
         "E-076",
-        "E-077"
+        "E-077",
+        "E-078"
       ],
       "blocker": null,
-      "next": "reprocessamento explicito do que ficou skipped; DLQ por NO (a DLQ da fila de jobs ja existe); e a homologacao do criterio do estagio: fluxo real ponta a ponta com falha simulada, retry e retomada, com evidencia por no",
-      "done": "vocabulario fechado de passos com validacao fail-closed, incluindo faixa de tentativas; ordem de dependencia com bloqueio de dependente; RETRY POR NO com backoff limitado e tentativas registradas; idempotencia da criacao de missao (base que torna o retry seguro); resultado por no persistido em sucesso e falha, visivel na interface; supervisor reportando no tick"
+      "next": "reprocessamento explicito dos passos skipped/falhados reusando a run_key (a idempotencia impede duplicar o que ja foi criado); DLQ por NO; e a homologacao do criterio do estagio: fluxo real ponta a ponta com falha simulada, retry e retomada, com evidencia por no",
+      "done": "vocabulario fechado de passos com validacao fail-closed (incluindo faixa de tentativas); ordem de dependencia com bloqueio de dependente; retry por no com backoff e tentativas registradas; idempotencia da criacao de missao; resultado por no persistido em sucesso e falha, visivel na interface; supervisor reportando no tick; e EXECUCAO MANUAL que roda o grafo pelo mesmo caminho do automatico, com run_key persistida para permitir reprocessamento"
     },
     {
       "id": 14,
@@ -899,6 +900,8 @@
     "PRE-REQUISITO FECHADO (PR #141, estagio 13): idempotencia na criacao de missao. CreateMissionRequest ganhou IdempotencyKey (interno); o id da missao e derivado de sha256(organizacao + chave), entao repetir a mesma criacao aponta para o MESMO id e o store recusa duplicata - em vez de propagar ErrMissionAlreadyExists, a criacao devolve a missao existente. A missao so e devolvida se pertencer ao escopo ativo (missionScopeMatches) e a organizacao entra no hash: chave repetida nunca expoe missao de outro tenant. Sem chave, o comportamento historico permanece intacto. No fluxo, ScheduleFlowRunKey identifica UMA execucao (estavel durante, diferente entre execucoes) e cada passo deriva sua chave; o relatorio conta APENAS o que foi criado e marca o repetido como 'missao ja existia para esta execucao (idempotente)'. 5 testes novos",
     "PROXIMO PASSO DESTRAVADO (estagio 13): com a idempotencia provada por teste no nivel do fluxo (execucao repetida cria ZERO missao nova), o retry por no passa a ser seguro. Sequencia: retry por no com backoff e tentativas registradas no relatorio, depois reprocessamento explicito do que ficou skipped, depois DLQ por no",
     "ENTREGA (PR #143, estagio 13): retry por no. ScheduleStep ganhou max_attempts (padrao do motor = 2, teto 5 recusado na validacao antes de persistir); runWithRetry executa ate o limite, devolve quantas tentativas fez e relata o erro da ULTIMA tentativa (nao o primeiro de uma sequencia que se recuperou); backoff linear e limitado (50ms por tentativa, teto 500ms) porque o motor roda em tick de despacho. A chave de idempotencia e a MESMA em todas as tentativas, entao repetir que encontra a missao criada nem duplica nem conta missao nova. ScheduleStepOutcome ganhou attempts e a interface mostra 'N tentativas' somente quando houve repeticao. 7 testes Go novos + 1 caso de interface",
-    "ENCADEAMENTO (estagio 13): retry entrou EM CIMA da idempotencia, nao em vez dela - na rodada 36 eu recusei implementar retry justamente porque repetir sem idempotencia criaria missoes fantasma; na 37 provei por teste que execucao repetida cria ZERO missao; agora o retry usa essa garantia. O que resta no estagio: reprocessamento explicito do que ficou skipped, DLQ por no (a DLQ da fila de jobs ja existe) e a homologacao de um fluxo real ponta a ponta com falha simulada"
+    "ENCADEAMENTO (estagio 13): retry entrou EM CIMA da idempotencia, nao em vez dela - na rodada 36 eu recusei implementar retry justamente porque repetir sem idempotencia criaria missoes fantasma; na 37 provei por teste que execucao repetida cria ZERO missao; agora o retry usa essa garantia. O que resta no estagio: reprocessamento explicito do que ficou skipped, DLQ por no (a DLQ da fila de jobs ja existe) e a homologacao de um fluxo real ponta a ponta com falha simulada",
+    "ACHADO CORRIGIDO (PR #145, estagio 13, integridade de produto): o botao 'Executar imediatamente' NAO executava o fluxo - chamava createMission com o objetivo do schedule e ignorava os passos persistidos, entao um fluxo com condicao e varias acoes rodava como UMA missao avulsa, sem evidencia por no e sem registrar resultado no schedule. Mesma familia do endpoint de personalizacao: o controle aparentava fazer uma coisa e fazia outra. Correcao: rota POST /api/agent/v1/schedules/:id/run executa o GRAFO pelo MESMO caminho do despacho automatico, registra com a mesma politica (RecordScheduleRun) e devolve o relatorio por no junto do schedule atualizado; falha devolve o RELATORIO com o passo culpado, nao erro generico. 3 testes de rota novos, incluindo isolamento por organizacao sem deixar evidencia",
+    "FUNDACAO PARA REPROCESSAMENTO (PR #145): ScheduleRunReport ganhou run_key, persistida em Schedule.LastRun. Sem ela o reprocessamento futuro teria que adivinhar a execucao; com ela, o reprocessamento reusa a MESMA chave e os passos que ja criaram missao continuam apontando para ela (a idempotencia faz o resto). Proximo passo do estagio 13: reexecutar apenas os passos skipped/falhados; depois DLQ por no; depois a homologacao ponta a ponta com falha simulada, retry e retomada"
   ]
 }

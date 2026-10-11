@@ -79,6 +79,8 @@
 
 | Workflow: retry por nó com tentativas registradas | `internal/agent/schedule_flow.go` (`runWithRetry`, `max_attempts`), `ScheduleStepOutcome.Attempts` (PR #143) | IMPLEMENTADO_NAO_HOMOLOGADO | MÉDIO | E-077 | recupera de falha transitória, limitado e com erro da última tentativa; mesma chave de idempotência impede duplicar |
 
+| Workflow: execução manual do grafo persistido | `server/agent_routes.go` (`runScheduleNow`), `ScheduleRunReport.RunKey` (PR #145) | IMPLEMENTADO_NAO_HOMOLOGADO | MÉDIO | E-078 | disparo manual executa o fluxo real e registra evidência; `run_key` habilita reprocessamento |
+
 ## 6. Integrações, MCP e conectores
 
 | Capacidade | Superfície | Classificação | Risco | Evidência | Lacuna |
