@@ -2,12 +2,12 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-11T23:40:00-03:00",
+  "updated_at": "2026-10-12T01:10:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
     "integration_branch": "main",
-    "main_sha": "306b34ba12c0141f1f47974f4b9c0094f4d96553",
+    "main_sha": "939d358a3a74c5577a33f324be3bf4e5e2fb6b6a",
     "main_committed_at": "2026-10-09T10:24:45Z",
     "main_ci_state": "green (dz23-agentic-quality + class-a-plus-integrity = success nesse SHA)",
     "mission_branch": "docs/checkpoints-missao-v21",
@@ -463,9 +463,9 @@
     {
       "id": 15,
       "title": "Memoria e RAG local",
-      "state": "IN_PROGRESS",
+      "state": "COMPLETED_VERIFIED",
       "auditoria": "AUDITADO",
-      "capability": "IMPLEMENTADO_NAO_HOMOLOGADO",
+      "capability": "IMPLEMENTADO_E_TESTADO",
       "evidence": [
         "E-040",
         "E-052",
@@ -478,12 +478,14 @@
         "E-092",
         "E-093",
         "E-094",
-        "E-095"
+        "E-095",
+        "E-096"
       ],
       "blocker": "B-07",
-      "next": "FALTA UMA ATIVIDADE: resumos. O estagio NAO foi promovido por isso",
+      "next": "estagio verificado; proximo trabalho segue para os estagios elegiveis (31 supervisor, 22 gate de engenharia e as partes de sandbox dos estagios de negocio), sem reabrir o 15 a menos que um defeito novo apareca",
       "blocked_reason": "",
-      "done": "CRITERIO CUMPRIDO E MEDIDO, evidencia obrigatoria coberta, familia de caminhos irmaos fechada, DEDUPLICACAO (E-092), VERSIONAMENTO (E-093), CRIPTOGRAFIA EM REPOUSO (E-094) e ESCOPOS de missao/agente/equipe com a distincao explicita entre PROPRIEDADE (ator) e DIVULGACAO (escopo), alcancaveis pelas rotas de busca e export"
+      "done": "VERIFICADO ATIVIDADE POR ATIVIDADE em HADES_STAGE_15_VERIFICATION.md: criterio cumprido (troca de modelo provada AO VIVO entre qwen2.5:7b e llama3.2:3b, reinicio, retomada e isolamento), evidencia obrigatoria coberta (isolamento, proveniencia, exportacao/exclusao), lista de atividades coberta. Quatro defeitos ALTO da mesma familia corrigidos: exportacao, exclusao, contexto do modelo e comando /memory",
+      "limits": "LIMITES DECLARADOS (nao sao cobertura): resumo padrao e digest deterministico, nao texto de modelo - o contrato aceita resumidor injetado e o resultado declara qual foi usado, mas nao ha resumo por modelo homologado; escopo de workspace e DERIVADO do projeto, nao campo proprio; integracao externa opcional ausente (o proprio estagio a marca como opcional); criptografia e OPT-IN e a gestao da chave e do operador, com chave perdida significando memoria cifrada irrecuperavel; e a busca semantica depende do embedder configurado, sem o qual a comparacao e por texto e o sistema nao finge semantica"
     },
     {
       "id": 16,
@@ -1006,7 +1008,9 @@
     "CRIPTOGRAFIA - O DEFEITO QUE O PROPRIO TESTE ENCONTROU (E-094): o teste que verifica TODOS os caminhos de escrita falhou no primeiro deles - ATUALIZAR deixava o texto claro no disco, porque o caminho de versionamento grava o conteudo anterior em Versions[].Content e eu havia cifrado apenas o registro principal. O HISTORICO e texto do usuario e vazava em claro. Corrigido: MemoryVersion ganhou encrypted_content e o funil de disco cifra e decifra as revisoes. Segundo caso na semana em que o teste que mede o efeito, e nao a releitura do codigo, encontrou o irmao esquecido",
     "ESCOPOS DE MEMORIA - MISSAO, AGENTE E EQUIPE (E-095): quarta atividade (na pratica, a que faltava alem dos resumos) foi fechada. O estagio pede escopos de usuario, organizacao, projeto, workspace, missao, agente e equipe; organizacao e projeto sempre estiveram na chave do store e o escopo de usuario veio com o isolamento por ator. A DISTINCAO QUE EVITA O ERRO CLASSICO: PROPRIEDADE (quem pode alterar/apagar) segue a regra por ATOR - o dono continua corrigindo e removendo a propria memoria mesmo presa a uma missao antiga, porque negar isso criaria memoria ORFA E IMORTAL, o oposto da exclusao e da retencao que o estagio pede; DIVULGACAO (quem pode ver) e propriedade MAIS escopo. Escopo vazio significa 'vale para o projeto' e preserva todo o comportamento anterior",
     "ESCOPOS - UM SO LUGAR DECIDE (E-095): havia NOVE pontos decidindo visibilidade. Em vez de acrescentar uma segunda regra ao lado, os LEITORES passaram a usar MemoryScope: SearchMemoriesForActor, RetrieveRelevantForActor, GroundedAnswerForActor (que NAO chama mais RetrieveRelevantForActor, para nao pular a camada de escopo) e ExportMemoriesForActor delegam para as versoes InScope. filterMemoriesForActor ficou SEM USO e foi REMOVIDA - a prova de que nenhum caminho ficou na regra antiga, porque regra duplicada e convite a divergir. As rotas de busca e export aceitam mission_id, agent_id e team_id, com o ator vindo SEMPRE da sessao: escopo errado ESCONDE dado, nunca revela",
-    "ESCOPOS - ERRO MEU CORRIGIDO PELO TESTE (E-095): meu primeiro teste esperava que um terceiro nao pudesse alterar a memoria presa ao agente, mas ela era 'organization' (conhecimento COMPARTILHADO, alteravel por ator autorizado - comportamento ja travado em E-088). O TESTE estava errado, nao o codigo: corrigi o caso para PRIVADA + com escopo, que e onde a combinacao das duas regras realmente importa"
+    "ESCOPOS - ERRO MEU CORRIGIDO PELO TESTE (E-095): meu primeiro teste esperava que um terceiro nao pudesse alterar a memoria presa ao agente, mas ela era 'organization' (conhecimento COMPARTILHADO, alteravel por ator autorizado - comportamento ja travado em E-088). O TESTE estava errado, nao o codigo: corrigi o caso para PRIVADA + com escopo, que e onde a combinacao das duas regras realmente importa",
+    "VERIFICACAO DO ESTAGIO 15 E PROMOCAO (E-096): releitura da lista de atividades contra o codigo, atividade por atividade, em docs/mission/HADES_STAGE_15_VERIFICATION.md - mesmo metodo que no estagio 13 REFUTOU a suposicao de cobertura. Criterio CUMPRIDO com a troca de modelo PROVADA AO VIVO (qwen2.5:7b e llama3.2:3b, contexto byte-identico), reinicio, retomada e isolamento; evidencia obrigatoria COBERTA. A unica atividade sem implementacao e 'integracao opcional externa via contrato', que o PROPRIO ESTAGIO marca como opcional - fica declarada como LIMITE, nao como cobertura. Execucao vai para COMPLETED_VERIFIED e a capacidade do Memory and Context Engine para IMPLEMENTADO_E_TESTADO. RELEASE GLOBAL PERMANECE NOT_RELEASE_READY: este e o SEGUNDO dos 38 estagios",
+    "ESTAGIO 15 - LIMITES DECLARADOS NA PROMOCAO (E-096): resumo padrao e digest DETERMINISTICO e nao texto de modelo (o contrato aceita resumidor injetado e o resultado DECLARA qual foi usado, mas nao ha resumo por modelo homologado); escopo de workspace e DERIVADO do projeto e nao campo proprio da memoria; integracao externa opcional ausente; criptografia e OPT-IN com gestao da chave pelo operador, de modo que chave perdida significa memoria cifrada IRRECUPERAVEL (e o erro diz isso); e a busca semantica depende do embedder configurado, sem o qual a comparacao e por texto e o sistema nao finge semantica"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -1054,5 +1058,14 @@
     "explicados": 14,
     "defeitos_novos": 0,
     "calibracao": "49 falsos positivos na primeira versao do detector"
+  },
+  "verification_stage_15": {
+    "estagio_15": "COMPLETED_VERIFIED",
+    "metodo": "releitura da lista de atividades contra codigo e evidencias, com teste medindo o efeito",
+    "documento": "docs/mission/HADES_STAGE_15_VERIFICATION.md",
+    "defeitos_alto_corrigidos": 4,
+    "atividades_ausentes": [
+      "integracao opcional externa via contrato (opcional pelo proprio estagio)"
+    ]
   }
 }

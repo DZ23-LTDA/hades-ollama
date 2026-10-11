@@ -743,6 +743,7 @@ func (a *agentAPI) register(r *gin.Engine) {
 	// Todas passam por `projectForRequest`, então herdam o isolamento por
 	// organização do projeto.
 	group.GET("/projects/:id/memories/export", a.exportProjectMemories)
+	group.GET("/projects/:id/memories/summary", a.memorySummary)
 	group.DELETE("/projects/:id/memories/:memory_id", a.deleteProjectMemory)
 	group.PATCH("/projects/:id/memories/:memory_id", a.updateProjectMemory)
 	group.GET("/projects/:id/memories/:memory_id/history", a.memoryHistory)
@@ -2185,6 +2186,22 @@ func agentMemoryScope(c *gin.Context) agent.MemoryScope {
 		AgentID:   strings.TrimSpace(c.Query("agent_id")),
 		TeamID:    strings.TrimSpace(c.Query("team_id")),
 	}
+}
+
+// memorySummary resume a memória visível ao escopo, DECLARANDO qual resumidor foi
+// usado. O padrão é o digest determinístico: o texto copia trechos com referência em
+// vez de gerar afirmações novas.
+func (a *agentAPI) memorySummary(c *gin.Context) {
+	if _, err := a.projectForRequest(c); err != nil {
+		writeAgentError(c, statusForAgentError(err), err)
+		return
+	}
+	summary, err := a.context.SummarizeMemoriesInScope(c.Request.Context(), c.Param("id"), agentMemoryScope(c), c.Query("q"), agent.DefaultMemorySummarySources, 0, nil)
+	if err != nil {
+		writeAgentError(c, statusForAgentError(err), err)
+		return
+	}
+	c.JSON(http.StatusOK, summary)
 }
 
 func (a *agentAPI) addMemory(c *gin.Context) {

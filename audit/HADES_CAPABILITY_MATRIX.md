@@ -117,6 +117,8 @@
 
 | Memória: escopos de missão, agente e equipe | `memory_scope.go`, `MemoryScope`, leitores `InScope` (E-095) | IMPLEMENTADO_E_TESTADO | BAIXO | E-095 | propriedade (ator) separada de divulgação (propriedade + escopo); escopo vazio = projeto; regra antiga removida |
 
+| Memória: resumos com digest fiel | `memory_summary.go`, `DigestSummarizer`, rota `/memories/summary` (E-096) | IMPLEMENTADO_E_TESTADO | BAIXO | E-096 | digest determinístico copia trechos com referência; contrato para resumidor injetado; motor declarado |
+
 ## 6. Integrações, MCP e conectores
 
 | Capacidade | Superfície | Classificação | Risco | Evidência | Lacuna |
