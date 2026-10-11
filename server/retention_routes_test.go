@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -44,11 +45,14 @@ func retentionRequest(t *testing.T, method, path, body, organization string) (*g
 func seedRetentionMemoriesForRoute(t *testing.T, store *agent.ContextStore, projectID, prefix string, count int, age time.Duration) {
 	t.Helper()
 	for index := range count {
+		// A DEDUPLICAÇÃO do estágio 15 funde memórias de conteúdo idêntico, então a
+		// fixture precisa de N memórias DISTINTAS: cada uma recebe origem própria.
 		if _, err := store.AddMemory(agent.Memory{
 			ID:        prefix + "_" + time.Unix(int64(index), 0).UTC().Format("150405"),
 			ProjectID: projectID,
 			Kind:      "fact",
 			Content:   "memória de retenção por rota",
+			Source:    prefix + "-" + strconv.Itoa(index),
 			CreatedAt: time.Now().UTC().Add(-age - time.Duration(index)*time.Minute),
 		}); err != nil {
 			t.Fatal(err)
