@@ -76,7 +76,7 @@ func approvePendingForTool(t *testing.T, runtime *ServiceAgentRuntime, organizat
 	if store == nil {
 		t.Fatal("o runtime precisa ter store de aprovações para este caminho")
 	}
-	pending, err := store.ListApprovals(organizationID, ServiceAgentApprovalPending)
+	pending, err := store.ListApprovals(organizationID, ServiceAgentApprovalPending, time.Now().UTC())
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -835,6 +835,7 @@ func (a *agentAPI) register(r *gin.Engine) {
 	group.GET("/service-agents/audit", a.serviceAgentAudit)
 	group.GET("/service-agents/approvals", a.serviceAgentApprovals)
 	group.POST("/service-agents/approvals/:id/decide", a.serviceAgentDecideApproval)
+	group.PUT("/service-agents/approval-approvers", a.serviceAgentApprovalApprovers)
 	group.POST("/commerce/products", a.upsertCommerceProduct)
 	group.GET("/commerce/products", a.listCommerceProducts)
 	group.POST("/commerce/stock", a.recordCommerceStock)

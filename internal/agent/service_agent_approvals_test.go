@@ -51,7 +51,7 @@ func TestServiceAgentWriteRequiresApprovalAndWritesNothing(t *testing.T) {
 		t.Fatalf("NADA pode ser gravado antes da aprovação: antes=%d depois=%d", antes, depois)
 	}
 	// E o pedido está registrado para o humano decidir.
-	pending, err := runtime.ApprovalStore().ListApprovals("org-a", ServiceAgentApprovalPending)
+	pending, err := runtime.ApprovalStore().ListApprovals("org-a", ServiceAgentApprovalPending, time.Now().UTC())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -77,7 +77,7 @@ func TestServiceAgentPendingApprovalIsNotDuplicated(t *testing.T) {
 	if callByName(primeiro.ToolCalls, "crm.opportunity.write").ApprovalID != callByName(segundo.ToolCalls, "crm.opportunity.write").ApprovalID {
 		t.Fatal("o mesmo pedido precisa ser reusado, não duplicado")
 	}
-	pending, err := runtime.ApprovalStore().ListApprovals("org-a", ServiceAgentApprovalPending)
+	pending, err := runtime.ApprovalStore().ListApprovals("org-a", ServiceAgentApprovalPending, time.Now().UTC())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -152,7 +152,7 @@ func TestServiceAgentDeniedWriteIsBlockedWithActor(t *testing.T) {
 		t.Fatal(err)
 	}
 	store := runtime.ApprovalStore()
-	pending, err := store.ListApprovals("org-a", ServiceAgentApprovalPending)
+	pending, err := store.ListApprovals("org-a", ServiceAgentApprovalPending, time.Now().UTC())
 	if err != nil || len(pending) != 1 {
 		t.Fatalf("pedido pendente ausente: %+v (%v)", pending, err)
 	}
@@ -183,7 +183,7 @@ func TestServiceAgentApprovalDecideRequiresHumanActor(t *testing.T) {
 		t.Fatal(err)
 	}
 	store := runtime.ApprovalStore()
-	pending, err := store.ListApprovals("org-a", ServiceAgentApprovalPending)
+	pending, err := store.ListApprovals("org-a", ServiceAgentApprovalPending, time.Now().UTC())
 	if err != nil || len(pending) != 1 {
 		t.Fatalf("pedido pendente ausente: %+v (%v)", pending, err)
 	}
@@ -212,7 +212,7 @@ func TestServiceAgentApprovalSurvivesRestartAndIsScoped(t *testing.T) {
 	depois.SetApprovalStore(NewServiceAgentApprovalStore(root))
 	store := depois.ApprovalStore()
 
-	approved, err := store.ListApprovals("org-a", ServiceAgentApprovalApproved)
+	approved, err := store.ListApprovals("org-a", ServiceAgentApprovalApproved, time.Now().UTC())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -220,7 +220,7 @@ func TestServiceAgentApprovalSurvivesRestartAndIsScoped(t *testing.T) {
 		t.Fatalf("a aprovação precisa sobreviver ao reinício: %+v", approved)
 	}
 	// Isolamento: a organização B não vê a aprovação de A.
-	outra, err := store.ListApprovals("org-b", "")
+	outra, err := store.ListApprovals("org-b", "", time.Now().UTC())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -285,14 +285,14 @@ func TestServiceAgentApprovalCapKeepsPendingDecisions(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	pending, err := store.ListApprovals("org-a", ServiceAgentApprovalPending)
+	pending, err := store.ListApprovals("org-a", ServiceAgentApprovalPending, time.Now().UTC())
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(pending) != 2 {
 		t.Fatalf("os pedidos pendentes precisam sobreviver ao teto: %+v", pending)
 	}
-	todas, err := store.ListApprovals("org-a", "")
+	todas, err := store.ListApprovals("org-a", "", time.Now().UTC())
 	if err != nil {
 		t.Fatal(err)
 	}
