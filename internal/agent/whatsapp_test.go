@@ -153,8 +153,37 @@ func TestWhatsAppOutboundRequiresAllowlistAndApproval(t *testing.T) {
 		t.Fatalf("approve outbound: %v", err)
 	}
 	msg.ApprovalID = approvalID
+
+	// TERCEIRO CONTROLE (estágio 27): allowlist autoriza o NÚMERO e a aprovação
+	// autoriza a MENSAGEM, mas nenhuma das duas registra opt-out nem prazo. Sem
+	// consentimento registrado o envio é NEGADO — e o mock não pode ser chamado.
+	runtime, err := NewRuntime(RuntimeConfig{
+		Store:         NewMemoryStore(),
+		Planner:       RulePlanner{},
+		WorkspaceRoot: t.TempDir() + "-ws",
+		DataRoot:      t.TempDir() + "-data",
+	})
+	if err != nil {
+		t.Fatalf("create runtime: %v", err)
+	}
+	gw.runtime = runtime
+	contact := cleanWhatsAppNumber("5511888888888")
+	if _, err := gw.SendMessage(context.Background(), msg); err != ErrConsentMissing {
+		t.Fatalf("sem consentimento registrado o envio precisa ser negado, veio %v", err)
+	}
+	granted := time.Now().Add(time.Hour)
+	if _, err := runtime.Consent().GrantConsent(runtime.organizationScope, ConsentChannelWhatsApp, contact, "teste", "suite", "suite", &granted, time.Now().UTC()); err != nil {
+		t.Fatalf("grant consent: %v", err)
+	}
 	if _, err := gw.SendMessage(context.Background(), msg); err != nil {
-		t.Fatalf("approved allowlisted outbound rejected: %v", err)
+		t.Fatalf("approved allowlisted consented outbound rejected: %v", err)
+	}
+	// Opt-out volta a bloquear, mesmo com allowlist e aprovação válidas.
+	if _, err := runtime.Consent().RevokeConsent(runtime.organizationScope, ConsentChannelWhatsApp, contact, "pedido do titular", "suite", time.Now().UTC()); err != nil {
+		t.Fatalf("revoke consent: %v", err)
+	}
+	if _, err := gw.SendMessage(context.Background(), msg); err != ErrConsentRevoked {
+		t.Fatalf("após opt-out o envio precisa ser negado, veio %v", err)
 	}
 }
 

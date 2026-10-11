@@ -123,6 +123,8 @@
 
 | Financeiro: razão e conciliação | `company_ledger.go`, rotas `/companies/:id/ledger` (E-100) | PARCIAL | MÉDIO | E-100 | idempotência por chave por empresa (inclusive concorrente), conciliação com referência externa, fluxo de caixa e fila de pendências; sem integração bancária, fiscal, cobrança ou pagamento |
 
+| Contato: consentimento e opt-out | `consent_registry.go`, enforcement em `im_telegram.go` e `whatsapp_gateway.go` (E-101) | PARCIAL | MÉDIO | E-101 | falha fechada, opt-out com motivo, prazo, escopo por organização e canal, mesma decisão nos dois caminhos; sem UI, CRM ou agentes comerciais |
+
 ## 6. Integrações, MCP e conectores
 
 | Capacidade | Superfície | Classificação | Risco | Evidência | Lacuna |

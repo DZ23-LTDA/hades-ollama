@@ -68,6 +68,10 @@ type telegramChannel struct {
 	client         *http.Client
 	organizationID string
 	timeout        time.Duration
+	// consent é o registro de consentimento/opt-out. Este caminho não tinha
+	// NENHUMA checagem de autorização de contato: só DLP. Registro ausente NEGA o
+	// envio — caminho não instrumentado não pode virar caminho livre.
+	consent *ConsentRegistry
 }
 
 func newTelegramChannel() *telegramChannel {
@@ -264,6 +268,12 @@ func (c *telegramChannel) sendMessage(ctx context.Context, chatID, text string) 
 	}
 	if err := validateOutboundPayloadWithLimit(map[string]any{"text": text}, telegramMaxPayloadBytes); err != nil {
 		return telegramSendResult{}, ErrTelegramMessageBlocked
+	}
+	// CONSENTIMENTO antes do egress: contato sem consentimento registrado, com
+	// opt-out ou com consentimento vencido NÃO é procurado. A checagem vem depois
+	// do DLP e antes de qualquer chamada de rede.
+	if err := authorizedContact(c.consent, c.organizationID, ConsentChannelTelegram, chat, time.Now().UTC()); err != nil {
+		return telegramSendResult{}, err
 	}
 	token, err := c.token()
 	if err != nil {

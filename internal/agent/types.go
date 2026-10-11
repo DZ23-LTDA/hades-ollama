@@ -169,11 +169,14 @@ type ToolDescriptor struct {
 }
 
 type ToolContext struct {
-	MissionID                 string
-	StepID                    string
-	Workspace                 string
-	WorkspaceRoot             *os.Root
-	OrganizationID            string
+	MissionID      string
+	StepID         string
+	Workspace      string
+	WorkspaceRoot  *os.Root
+	OrganizationID string
+	// Consent é o registro de consentimento/opt-out aplicado pelas ferramentas que
+	// falam com terceiros (estágio 27). Ausente significa NEGAR o contato.
+	Consent                   *ConsentRegistry
 	ToolConfigSHA256          string
 	WorkspaceSnapshotManifest *WorkspaceSnapshotManifest
 	WorkspaceSnapshotPrefix   string
