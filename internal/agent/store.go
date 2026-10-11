@@ -951,6 +951,11 @@ func writeJSONAtomic(path string, value any) error {
 	return writeJSONAtomicBounded(path, value, 0, "JSON file")
 }
 
+// E-165 (resultado NEGATIVO, medido): a escrita deste arquivo foi tentada de duas outras formas e NENHUMA
+// melhorou — (1) json.Encoder direto no arquivo, sem buffer, ficou PIOR (2,13-2,56 ms contra 1,66-1,76 ms de
+// base) porque faz centenas de escritas pequenas; (2) json.Encoder com ufio de 64 KB empatou em tempo
+// (1,79-2,63 ms) e gastou MAIS memória por chamada (157-165 KB contra 102-106 KB). O MarshalIndent + um unico
+// Write abaixo e o melhor medido para esta carga — nao repetir a tentativa sem nova medicao.
 func writeJSONAtomicBounded(path string, value any, maxBytes int, label string) error {
 	data, err := json.MarshalIndent(value, "", "  ")
 	if err != nil {
