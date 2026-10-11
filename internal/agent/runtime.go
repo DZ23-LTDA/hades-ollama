@@ -262,12 +262,18 @@ func NewRuntime(config RuntimeConfig) (*Runtime, error) {
 	omnichannelRuntime.SetDLQStore(NewOmnichannelDLQStore(omnichannelDLQRoot(dataRoot)))
 	// Os agentes de atendimento usam as MESMAS peças (CRM, inbox e consentimento).
 	serviceAgentRuntime := NewServiceAgentRuntime(crmStore, inboxStore, consentRegistry, DefaultServiceAgentTools())
+	// Comércio e empresas são ligados logo abaixo, quando os stores existem: enquanto não fossem ligados,
+	// `catalog.read`, `commerce.*` e `company.report.read` ficavam INDISPONÍVEIS — e é assim que deve ser,
+	// porque disponibilidade é consequência de ter executor, não de constar numa lista.
+	serviceAgentRuntime.SetCompanies(companyStore)
 	// O motor de comércio guarda catálogo, estoque e pedidos (estágio 24) e PERSISTE
 	// um arquivo por organização: sem persistência, um reinício apagaria pedidos.
 	commerceStore, err := NewCommerceStoreAt(filepath.Join(dataRoot, ".agent-commerce"))
 	if err != nil {
 		return nil, err
 	}
+	// O motor de comércio existe: as ferramentas de catálogo/estoque/pedidos deixam de ser promessa.
+	serviceAgentRuntime.SetCommerce(commerceStore)
 	// Forca de vendas (estagio 27): propostas com preco do catalogo e pos-venda com prazo.
 	salesWorkforceStore := NewSalesWorkforceStore(filepath.Join(dataRoot, ".agent-sales"), commerceStore, consentRegistry)
 	// Marketplace (estagio 25): contrato de sincronizacao exercitado contra um DUBLE de sandbox.

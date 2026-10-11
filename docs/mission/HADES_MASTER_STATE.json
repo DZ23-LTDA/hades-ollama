@@ -2,12 +2,12 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-12T03:45:00-03:00",
+  "updated_at": "2026-10-12T04:20:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
     "integration_branch": "main",
-    "main_sha": "256c9bb6075d72b673248a585f76561f8a2a3969",
+    "main_sha": "24611adb56009cf8e190b1208dd83da4d17a629a",
     "main_committed_at": "2026-10-09T10:24:45Z",
     "main_ci_state": "green (dz23-agentic-quality + class-a-plus-integrity = success nesse SHA)",
     "mission_branch": "docs/checkpoints-missao-v21",
@@ -839,11 +839,12 @@
       "evidence": [
         "E-047",
         "E-106",
-        "E-144"
+        "E-144",
+        "E-145"
       ],
       "blocker": "B-03",
-      "next": "LIMITES: 7 ferramentas seguem INDISPONIVEIS com motivo visivel (commerce.order.read, commerce.stock.read, company.report.read, catalog.read, knowledge.search, social.draft, voice.transfer - dependem de modulos nao ligados a este runtime); a TRILHA e POR TURNO e nao auditoria DURAVEL; NAO HA selecao de ferramenta por MODELO (quem pede e o chamador); e a escrita (oportunidade) NAO passa por aprovacao humana",
-      "done": "SETE AGENTES ESPECIALIZADOS implementados (recepcionista, vendas, suporte, redes sociais, voz, comercio e supervisor) com objetivo, canais, ferramentas e regras de escalada. O turno monta CONTEXTO REAL (contato e oportunidade do CRM, historico da conversa, consentimento, ferramentas permitidas e bloqueadas, politicas aplicadas), DECLARA A PROCEDENCIA do texto (template deterministico quando nao ha modelo, nunca fingindo IA), ESCALA sem consentimento e ao pedido de humano (com motivo), e mantem as politicas em QUALQUER modelo | EXECUCAO REAL DE FERRAMENTAS (E-144): a disponibilidade deixou de ser um BOOLEANO ESCRITO A MAO - DefaultServiceAgentTools anunciava 11 ferramentas 'REALMENTE implementadas' e TRES delas nao tinham executor (commerce.order.read, commerce.stock.read, company.report.read). Agora ela e DERIVADA do registro de executores (declarado INTERSECCAO executavel), com 7 executores reais ligados ao CRM e a caixa de entrada, trilha por turno (ServiceAgentToolCall com nome, efeito, status, resumo, motivo) e rota aceitando requested_tools/tool_arguments. CINCO REGRAS TRAVADAS POR TESTE: pedir NAO e poder (a especificacao do agente decide), sem executor = INDISPONIVEL com motivo, sucesso traz DADO DO STORE, falha e registrada com o ERRO REAL, e o ESCOPO vem da sessao (ToolArguments.OrganizationID e ignorado). Mais: saida exige consentimento, inbox.reply recusado como ferramenta (evita segunda mensagem) e pedido repetido nao duplica efeito. 14/14 PASS (7 novos)"
+      "next": "LIMITES: seguem INDISPONIVEIS knowledge.search, social.draft e voice.transfer (modulos de conhecimento, social e voz nao ligados a este runtime); a TRILHA de ferramentas e POR TURNO e nao auditoria DURAVEL; NAO HA selecao de ferramenta por MODELO; e a escrita segue SEM APROVACAO HUMANA",
+      "done": "SETE AGENTES ESPECIALIZADOS implementados (recepcionista, vendas, suporte, redes sociais, voz, comercio e supervisor) com objetivo, canais, ferramentas e regras de escalada. O turno monta CONTEXTO REAL (contato e oportunidade do CRM, historico da conversa, consentimento, ferramentas permitidas e bloqueadas, politicas aplicadas), DECLARA A PROCEDENCIA do texto (template deterministico quando nao ha modelo, nunca fingindo IA), ESCALA sem consentimento e ao pedido de humano (com motivo), e mantem as politicas em QUALQUER modelo | EXECUCAO REAL DE FERRAMENTAS (E-144): a disponibilidade deixou de ser um BOOLEANO ESCRITO A MAO - DefaultServiceAgentTools anunciava 11 ferramentas 'REALMENTE implementadas' e TRES delas nao tinham executor (commerce.order.read, commerce.stock.read, company.report.read). Agora ela e DERIVADA do registro de executores (declarado INTERSECCAO executavel), com 7 executores reais ligados ao CRM e a caixa de entrada, trilha por turno (ServiceAgentToolCall com nome, efeito, status, resumo, motivo) e rota aceitando requested_tools/tool_arguments. CINCO REGRAS TRAVADAS POR TESTE: pedir NAO e poder (a especificacao do agente decide), sem executor = INDISPONIVEL com motivo, sucesso traz DADO DO STORE, falha e registrada com o ERRO REAL, e o ESCOPO vem da sessao (ToolArguments.OrganizationID e ignorado). Mais: saida exige consentimento, inbox.reply recusado como ferramenta (evita segunda mensagem) e pedido repetido nao duplica efeito. 14/14 PASS (7 novos) | COMERCIO E EMPRESA LIGADOS AS FERRAMENTAS (E-145): SetCommerce/SetCompanies REGISTRAM executores, entao catalog.read, commerce.stock.read, commerce.order.read e company.report.read deixam de ser indisponiveis SEM afrouxar a regra - um teste roda o MESMO agente SEM a ligacao e exige unavailable. Regras de honestidade: catalogo vazio DIZ que esta vazio, zero pedido e dito como zero, estoque baixo aponta o SKU REAL (BON-002) e o catalogo de outra organizacao NAO aparece. 17/17 PASS (3 novos), suites ok, lint 0 issues e paridade Linux OK"
     },
     {
       "id": 36,
@@ -1255,7 +1256,11 @@
     "FERRAMENTAS - PEDIR NAO E PODER (E-144): quem declara a ferramenta e a ESPECIFICACAO DO AGENTE, nao o pedido. Eu havia passado RequestedTools como 'declarado' no RunTool - o que faria do PEDIDO a propria AUTORIZACAO - e percebi ao escrever o teste do bloqueio: agora declared e nil e pedir inbox.assign no recepcionista e BLOQUEADO, enquanto o supervisor que a declara EXECUTA. Registrado como o erro mais perigoso da rodada: um furo de privilegio que passaria em teste feliz",
     "FERRAMENTAS - O QUE A CONVERSA CARREGA (E-144): ao passar o contato ao executor, apareceu o detalhe real do dominio: a conversa carrega o TELEFONE (identidade), NAO o ID interno do CRM - procurar so por ID falharia em todo atendimento real. A resolucao agora repete a mesma regra do turno, para contexto e ferramenta nao discordarem sobre quem e o contato",
     "FERRAMENTAS - ERROS MEUS DE EDICAO (E-144): inventei campos de struct (CRMContact.Channel, InboxMetrics.Conversations/Open/SLAViolations) e o COMPILADOR pegou; e dois edits meus COLARAM uma linha 'func' dentro de um comentario (erro de sintaxe), um deles deixando tambem um 'if' inutil. Registrado: gofmt e compilador foram o detector, e edits 'pequenos' ainda precisam de verificacao",
-    "LIMITES DAS FERRAMENTAS (E-144): 7 ferramentas seguem INDISPONIVEIS com motivo visivel; a trilha e POR TURNO e nao auditoria duravel; nao ha selecao de ferramenta por MODELO; e a escrita (oportunidade) nao passa por aprovacao humana - efeitos de maior risco seguem fora deste caminho"
+    "LIMITES DAS FERRAMENTAS (E-144): 7 ferramentas seguem INDISPONIVEIS com motivo visivel; a trilha e POR TURNO e nao auditoria duravel; nao ha selecao de ferramenta por MODELO; e a escrita (oportunidade) nao passa por aprovacao humana - efeitos de maior risco seguem fora deste caminho",
+    "COMERCIO E EMPRESA LIGADOS AS FERRAMENTAS (E-145): depois de E-144 a disponibilidade passou a ser derivada do registro de executores e 7 ferramentas ficaram INDISPONIVEIS - quatro delas dependiam apenas de ligar stores que JA EXISTEM no runtime (catalog.read, commerce.stock.read, commerce.order.read, company.report.read). SetCommerce/SetCompanies REGISTRAM executores, e um teste roda o mesmo agente SEM a ligacao exigindo unavailable: o caminho desligado nao vira 'disponivel' so porque o codigo existe. Ligacao por SETTER porque comercio e empresas nascem DEPOIS dos agentes de atendimento no Runtime",
+    "FERRAMENTAS DE COMERCIO - HONESTIDADE DO DADO (E-145): catalogo vazio DIZ que esta vazio (em vez de inventar oferta); zero pedido e dito como ZERO; estoque baixo aponta o SKU REAL (BON-002, o que ficou sem saldo); e o catalogo de outra organizacao NAO aparece - isolamento conferido por teste",
+    "TERCEIRO CASO DA FAMILIA 'EDICAO POR SUBSTITUICAO PRECISA DE VERIFICACAO' (E-145): a substituicao que inseriu SetCommerce/SetCompanies deixou SetCompanies SEM a chave de fechamento, e o compilador pegou (expected operand, found ']'). Somando os casos anteriores (linha 'func' colada em comentario, campos de struct inventados), a pratica institucionalizada e: depois de qualquer substituicao de texto, compilar e formatar ANTES de seguir",
+    "LIMITES DAS FERRAMENTAS APOS A LIGACAO (E-145): seguem indisponiveis knowledge.search, social.draft e voice.transfer; a trilha e por turno e nao duravel; sem selecao por modelo; e escrita sem aprovacao humana"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",

@@ -507,6 +507,23 @@ func (s *ServiceAgentRuntime) RegisterExecutor(tool ServiceAgentTool) {
 	s.declared[name] = true
 }
 
+// SetCommerce liga o motor de comércio e passa a registrar as ferramentas dele.
+//
+// Sem esta ligação, `catalog.read`, `commerce.stock.read` e `commerce.order.read` aparecem como
+// INDISPONÍVEIS — a disponibilidade continua sendo consequência do registro, não de uma lista digitada.
+func (s *ServiceAgentRuntime) SetCommerce(commerce *CommerceStore) {
+	for _, tool := range serviceAgentCommerceTools(commerce) {
+		s.RegisterExecutor(tool)
+	}
+}
+
+// SetCompanies liga o cadastro de empresas e registra `company.report.read`.
+func (s *ServiceAgentRuntime) SetCompanies(companies *CompanyStore) {
+	for _, tool := range serviceAgentCompanyTools(companies) {
+		s.RegisterExecutor(tool)
+	}
+}
+
 // ToolExecutors lista as ferramentas com executor registrado (a disponibilidade real).
 func (s *ServiceAgentRuntime) ToolExecutors() []string {
 	out := make([]string, 0, len(s.executors))
