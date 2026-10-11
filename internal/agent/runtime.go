@@ -53,6 +53,7 @@ type Runtime struct {
 	company             *CompanyStore
 	consent             *ConsentRegistry
 	crm                 *CRMStore
+	inbox               *InboxStore
 	remoteMCP           *RemoteMCPManager
 	metrics             *RuntimeMetrics
 	connectors          *ConnectorManager
@@ -98,6 +99,7 @@ type RuntimeConfig struct {
 	Company             *CompanyStore
 	Consent             *ConsentRegistry
 	CRM                 *CRMStore
+	Inbox               *InboxStore
 	RemoteMCP           *RemoteMCPManager
 	Connectors          *ConnectorManager
 	MCP                 *MCPManager
@@ -236,6 +238,13 @@ func NewRuntime(config RuntimeConfig) (*Runtime, error) {
 			return nil, err
 		}
 	}
+	inboxStore := config.Inbox
+	if inboxStore == nil {
+		inboxStore, err = NewInboxStore(filepath.Join(dataRoot, ".agent-inbox"))
+		if err != nil {
+			return nil, err
+		}
+	}
 	queue := config.Queue
 	if queue == nil {
 		queue, err = NewJobQueue(filepath.Join(dataRoot, ".agent-queue"))
@@ -271,7 +280,7 @@ func NewRuntime(config RuntimeConfig) (*Runtime, error) {
 			return nil, err
 		}
 	}
-	runtime := &Runtime{store: store, planner: planner, plannerResolver: config.PlannerResolver, tools: tools, capabilityPolicy: capabilityPolicy, workspaceRoot: root, dataRoot: dataRoot, context: contextStore, company: companyStore, consent: consentRegistry, crm: crmStore, remoteMCP: config.RemoteMCP, metrics: &RuntimeMetrics{}, connectors: config.Connectors, mcp: config.MCP, queue: queue, redisQueue: config.RedisQueue, traces: traces, telemetry: telemetry, media: config.Media, builder: builder, collaboration: collaboration, push: config.Push, pushOutbox: pushOutbox, deployments: config.Deployments, deploymentApprovals: deploymentApprovals, webhookReplay: webhookReplay, mu: &sync.Mutex{}, running: make(map[string]bool), activeCancels: make(map[string]context.CancelFunc), cancelPollInterval: durableCancelPollInterval()}
+	runtime := &Runtime{store: store, planner: planner, plannerResolver: config.PlannerResolver, tools: tools, capabilityPolicy: capabilityPolicy, workspaceRoot: root, dataRoot: dataRoot, context: contextStore, company: companyStore, consent: consentRegistry, crm: crmStore, inbox: inboxStore, remoteMCP: config.RemoteMCP, metrics: &RuntimeMetrics{}, connectors: config.Connectors, mcp: config.MCP, queue: queue, redisQueue: config.RedisQueue, traces: traces, telemetry: telemetry, media: config.Media, builder: builder, collaboration: collaboration, push: config.Push, pushOutbox: pushOutbox, deployments: config.Deployments, deploymentApprovals: deploymentApprovals, webhookReplay: webhookReplay, mu: &sync.Mutex{}, running: make(map[string]bool), activeCancels: make(map[string]context.CancelFunc), cancelPollInterval: durableCancelPollInterval()}
 	orchestrator, err := NewAgentOrchestrator(filepath.Join(dataRoot, ".agent-orchestrator"), runtime.SubagentRunner)
 	if err != nil {
 		return nil, err
@@ -363,6 +372,14 @@ func (r *Runtime) CRM() *CRMStore {
 		return nil
 	}
 	return r.crm
+}
+
+// Inbox devolve a caixa de entrada unificada (estágio 29).
+func (r *Runtime) Inbox() *InboxStore {
+	if r == nil {
+		return nil
+	}
+	return r.inbox
 }
 
 func (r *Runtime) Supervisor() *Supervisor {

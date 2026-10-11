@@ -102,7 +102,7 @@ func TestCommandDiscoveryListsRegistryAndHelp(t *testing.T) {
 	}
 }
 
-func TestRunCommandReportsParseErrorsAndUnavailableCommands(t *testing.T) {
+func TestRunCommandReportsParseErrorsAndRunsAvailableCommands(t *testing.T) {
 	api, _, _ := newCommandAPI(t)
 
 	// Comando desconhecido: 400.
@@ -119,14 +119,18 @@ func TestRunCommandReportsParseErrorsAndUnavailableCommands(t *testing.T) {
 		t.Fatalf("missing argument status=%d body=%s", recorder2.Code, recorder2.Body.String())
 	}
 
-	// Comando reconhecido sem capacidade: 501 com o motivo, nunca 200 fingindo.
+	// Comando reconhecido COM capacidade precisa EXECUTAR. `/inbox` era 501 com o
+	// motivo "a caixa de entrada ainda não existe"; agora a caixa existe, então o
+	// comando executa. O caminho 501 continua sendo contrato e é exercitado no teste
+	// do registro (`checkSlashCommandAvailable`), que usa um spec indisponível
+	// sintético — assim ele não depende de existir um comando sem rota no catálogo.
 	ctx3, recorder3 := commandRequest(t, http.MethodPost, `{"input":"/inbox"}`, "org-a")
 	api.runCommand(ctx3)
-	if recorder3.Code != http.StatusNotImplemented {
-		t.Fatalf("unavailable command status=%d body=%s", recorder3.Code, recorder3.Body.String())
+	if recorder3.Code == http.StatusNotImplemented {
+		t.Fatalf("/inbox tem rota real e não pode responder 501: %s", recorder3.Body.String())
 	}
-	if !strings.Contains(recorder3.Body.String(), "caixa de entrada") {
-		t.Fatalf("unavailable response must carry the reason: %s", recorder3.Body.String())
+	if recorder3.Code != http.StatusOK {
+		t.Fatalf("/inbox precisa executar com 200, veio %d body=%s", recorder3.Code, recorder3.Body.String())
 	}
 
 	// Corpo inválido: 400.

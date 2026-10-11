@@ -2,12 +2,12 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-12T07:00:00-03:00",
+  "updated_at": "2026-10-12T08:05:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
     "integration_branch": "main",
-    "main_sha": "b64f793a027f731f02ff6eb69bb42ffc0b9f1431",
+    "main_sha": "1f1183d2641bc762529329a55926e0b52c7b5ca9",
     "main_committed_at": "2026-10-09T10:24:45Z",
     "main_ci_state": "green (dz23-agentic-quality + class-a-plus-integrity = success nesse SHA)",
     "mission_branch": "docs/checkpoints-missao-v21",
@@ -696,18 +696,19 @@
     {
       "id": 29,
       "title": "Telefonia e call center",
-      "state": "NOT_STARTED",
+      "state": "IN_PROGRESS",
       "auditoria": "AUDITADO",
-      "capability": "AUSENTE",
+      "capability": "PARCIAL",
       "evidence": [
         "E-047",
-        "E-087"
+        "E-087",
+        "E-104"
       ],
       "blocker": "B-04",
-      "next": "implementar inbox unificada com filas, SLA, tickets e isolamento por organizacao em sandbox",
+      "next": "LIMITES: canais reais nao conectados (dependem de credencial), sem webhook publico com validacao de assinatura (estagio 34), sem base de conhecimento nem resposta automatica por IA na conversa, sem anexos ou audio, e SLA apenas de primeira resposta",
       "blocked_reason": "",
       "external_dependency": "canais reais exigem contas; a inbox unificada em sandbox e local",
-      "done": "classificacao corrigida pela auditoria de bloqueios: o bloqueio externo em bloco escondia trabalho implementavel. Evidencia medida registrada em docs/mission/HADES_BLOCKED_AUDIT.md"
+      "done": "CAIXA DE ENTRADA UNIFICADA implementada: uma conversa por contato e canal (mensagem nova reaproveita a conversa aberta), DEDUPLICACAO de webhook por ExternalID inclusive sob concorrencia, SLA de primeira resposta MEDIDO contra a resposta real, handoff como estado com motivo e responsavel registrados, resposta que respeita o CONSENTIMENTO do contato, indicadores (SLA violado, fila humana, volumes), isolamento por organizacao e persistencia. Os comandos /inbox, /handoff e /support deixaram de ser indisponiveis: a lista de comandos sem rota ficou VAZIA (35 de 35)"
     },
     {
       "id": 30,
@@ -1046,7 +1047,11 @@
     "AUDITORIA DOS COMANDOS NATIVOS (E-103): o catalogo tem 35 comandos: 32 com rota declarada E EXISTENTE e 3 indisponiveis COM MOTIVO (/support, /inbox, /handoff, que dependem da caixa de entrada unificada do estagio 29). Duas correcoes mudaram o quadro e eram defeitos reais em DIRECOES OPOSTAS. (1) /research ESCONDIA CAPACIDADE REAL: a rota POST /api/agent/v1/research existia com ResearchEngine completo (busca, fetch SSRF-safe, citacoes, conflitos) e mesmo assim o comando estava marcado indisponivel com o motivo 'pesquisa nao implementada' - o INVERSO do problema do /crm, que prometia rota inexistente. (2) /telegram FALTAVA INTEGRAR: o canal existia com DLP, verificacao de identidade, allowlist e redacao de token, e as ferramentas im.telegram.send/verify tambem, mas nao havia rota",
     "AUDITORIA DOS COMANDOS - NENHUM CLIENTE DUPLICADO (E-103): para o Telegram eu NAO escrevi um cliente HTTP novo, o que DUPLICARIA token, DLP e consentimento. Criei uma PORTA EXPORTADA FINA sobre o MESMO canal (SendTelegramMessage e VerifyTelegramBot) e as rotas GET /telegram/status e POST /telegram/send. O status e honesto: sem credencial devolve configured=false, gate_status=NOT_CONFIGURED e o motivo real, nunca 'pronto para usar'. O envio mantem a ordem validacao -> credencial -> DLP -> CONSENTIMENTO -> egress, e o teste de rota verifica que sem credencial e sem consentimento NAO ha sucesso e que a resposta de erro nao contem credencial nem message_id (nao parece envio)",
     "AUDITORIA DOS COMANDOS - A GUARDA DO 11.1 (E-103): auditar a mao uma vez nao impede regressao, entao criei TestEveryAvailableCommandMapsToARegisteredRoute, que registra o roteador real, extrai metodo e caminho do Backend de CADA comando disponivel e confere contra as rotas efetivamente registradas comparando pelo FORMATO (nomes de parametro normalizados, para :id e :approval_id nao gerarem falso negativo), e exige MOTIVO DECLARADO para cada comando indisponivel - um comando mudo e escondido e pior do que um comando ausente. Este teste teria pego, sozinho, os dois defeitos desta rodada",
-    "AUDITORIA DOS COMANDOS - LIMITES (E-103): /support, /inbox e /handoff seguem indisponiveis por dependerem da caixa de entrada unificada (estagio 29); o Telegram real NAO esta homologado (sem credencial de bot o canal fica NOT_CONFIGURED, e homologar com bot real e dependencia externa); a pesquisa depende de URLs explicitas quando nao ha provedor de busca configurado, devolvendo erro honesto em vez de fingir resultado; e a guarda cobre a EXISTENCIA da rota, nao a semantica completa do comando"
+    "AUDITORIA DOS COMANDOS - LIMITES (E-103): /support, /inbox e /handoff seguem indisponiveis por dependerem da caixa de entrada unificada (estagio 29); o Telegram real NAO esta homologado (sem credencial de bot o canal fica NOT_CONFIGURED, e homologar com bot real e dependencia externa); a pesquisa depende de URLs explicitas quando nao ha provedor de busca configurado, devolvendo erro honesto em vez de fingir resultado; e a guarda cobre a EXISTENCIA da rota, nao a semantica completa do comando",
+    "CAIXA DE ENTRADA UNIFICADA E OS TRES COMANDOS DESTRAVADOS (E-104): /inbox, /handoff e /support estavam indisponiveis com o motivo 'a caixa de entrada unificada ainda nao existe nesta versao' - honesto, e era exatamente o que faltava. Com a caixa implementada os tres ganharam rota real e a LISTA DE COMANDOS INDISPONIVEIS FICOU VAZIA: todos os 35 comandos do catalogo tem rota verificada pela guarda do 11.1",
+    "INBOX - DECISOES DELIBERADAS (E-104): UMA CONVERSA POR CONTATO E CANAL, porque criar uma conversa por mensagem destruiria historico e contexto; DEDUPLICACAO DE ENTRADA POR ExternalID com checagem e insercao sob o mesmo lock, entao webhook reentregue nao duplica mensagem nem sob CONCORRENCIA (dez entregas simultaneas do mesmo evento geram UMA mensagem); SLA MEDIDO contra a primeira resposta real, nunca presumido; HANDOFF E ESTADO com motivo obrigatorio, responsavel registrado e a passagem gravada na propria conversa; CONSENTIMENTO CONSULTADO NO ENVIO, de modo que responder quem pediu opt-out e RECUSADO - a caixa de entrada nao e porta dos fundos para contatar quem nao autorizou; e conversa encerrada NAO e reaproveitada, para o historico encerrado nao ser reaberto por acidente",
+    "INBOX - MEUS ERROS CORRIGIDOS PELOS TESTES (E-104): (1) o motivo declarado do /support era outro, e minha substituicao nao casou - ajustei ao texto REAL em vez de presumir; (2) TRES TESTES codificavam a verdade antiga (existir comando indisponivel): o do registro de comandos, o de ParseSlashInvocation e o de runCommand, que exigia 501 para /inbox. Atualizei os tres para a NOVA verdade sem remover cobertura: o caminho 501 passou a ser exercitado por um spec SINTETICO via checkSlashCommandAvailable - e extrai a checagem para um PONTO UNICO em vez de criar API so para o teste -, e /inbox passou a ser verificado como EXECUTANDO (200)",
+    "INBOX - LIMITES DECLARADOS (E-104): canais reais nao conectados (dependem de credencial), sem webhook publico com validacao de assinatura (trabalho do estagio 34), sem base de conhecimento nem resposta automatica por IA dentro da conversa, sem anexos ou audio, e SLA apenas de primeira resposta (sem SLA de resolucao). Capacidade PARCIAL"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -1114,15 +1119,13 @@
   },
   "slash_command_audit": {
     "total": 35,
-    "disponiveis": 32,
-    "indisponiveis_com_motivo": [
-      "/support",
-      "/inbox",
-      "/handoff"
-    ],
+    "disponiveis": 35,
+    "indisponiveis_com_motivo": [],
     "correcoes": [
       "/research escondia motor real",
-      "/telegram ganhou rota reusando o canal"
+      "/telegram ganhou rota reusando o canal",
+      "/crm ganhou CRM real",
+      "/inbox, /handoff e /support destravados pela caixa de entrada unificada"
     ],
     "guarda": "TestEveryAvailableCommandMapsToARegisteredRoute"
   }
