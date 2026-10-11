@@ -2,12 +2,12 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-12T02:30:00-03:00",
+  "updated_at": "2026-10-12T03:05:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
     "integration_branch": "main",
-    "main_sha": "6de5edf5bc012e0953d206367780b2603c1de2f6",
+    "main_sha": "8e3feb663a5bbe290842c0b8320681d402dff382",
     "main_committed_at": "2026-10-09T10:24:45Z",
     "main_ci_state": "green (dz23-agentic-quality + class-a-plus-integrity = success nesse SHA)",
     "mission_branch": "docs/checkpoints-missao-v21",
@@ -456,9 +456,10 @@
         "E-086"
       ],
       "blocker": "B-09",
-      "next": "com o desbloqueio autorizado, rodar o E2E de navegador real e completar a classificacao por SO; desktop/computer-use segue NAO_VERIFICADO em todas as plataformas",
+      "next": "reavaliar o estado a luz da evidencia do CI: o E2E de navegador esta homologado em CI/Linux; falta a classificacao por plataforma (Windows/macOS desktop) e o desktop nativo",
       "done": "resolucao de interpretador corrigida e compartilhada entre status e operador; status honesto de prontidao com orientacao acionavel; coberto sem navegador: ambiente filho sem segredos, recusa de escopo sem sandbox estrita, eventos de frame e logica de setup. O E2E de navegador real sai de FAIL para SKIP com causa legivel",
-      "blocked_reason": "Playwright e Chromium ausentes neste host (python_ok=true, playwright_ok=false, chromium_ok=false). Desbloqueio: python -m pip install playwright && python -m playwright install chromium (~150MB), disponivel no produto em SetupBrowserEnvironment e nao executado por ser mudanca de maquina com custo relevante"
+      "blocked_reason": "Playwright e Chromium ausentes neste host (python_ok=true, playwright_ok=false, chromium_ok=false). Desbloqueio: python -m pip install playwright && python -m playwright install chromium (~150MB), disponivel no produto em SetupBrowserEnvironment e nao executado por ser mudanca de maquina com custo relevante",
+      "external_dependency": "desktop/computer-use NATIVO nao homologado e execucao neste host Windows sem Playwright. O NAVEGADOR REAL NAO ESTA BLOQUEADO: o CI instala Playwright 1.63.0 e Chromium 153, aponta OLLAMA_AGENT_BROWSER_EXECUTABLE para um Chromium real e roda browser_helper_test.py com 9 testes OK, com a suite do agente verde na main (E-098)"
     },
     {
       "id": 15,
@@ -574,7 +575,7 @@
       "title": "Gate de engenharia intermediario",
       "state": "IN_PROGRESS",
       "auditoria": "AUDITADO_PARCIAL",
-      "capability": "PARCIAL",
+      "capability": "IMPLEMENTADO_NAO_HOMOLOGADO",
       "evidence": [
         "E-005",
         "E-006",
@@ -585,10 +586,12 @@
         "E-034",
         "E-036",
         "E-048",
-        "E-059"
+        "E-059",
+        "E-098"
       ],
       "blocker": null,
-      "next": "Gate global final (docs/mission/HADES_FINAL_RELEASE_GATE.md e HADES_RELEASE_REPORT.md) apos os estagios 1-38; o gate intermediario ja esta emitido e o registro de comandos da secao 6 com verificacao de rota por comando ja esta entregue (PR #84)"
+      "next": "PENDENCIAS QUE IMPEDEM A APROVACAO DO GATE: instalacao/upgrade/rollback de pacote executados de verdade (a automacao existe nos workflows de instalador), performance medida, acessibilidade WCAG 2.2 AA medida, desktop/computer-use nativo homologado, APIs externas com credenciais reais (bloqueio externo) e homologacao por plataforma em dispositivo real",
+      "done": "PRIMEIRA AVALIACAO COMPLETA DO GATE em docs/mission/HADES_ENGINEERING_GATE.md: suite de engenharia APROVADA (7 checks do CI verdes na main, build/vet/lint/testes ok, web 551 testes, typecheck, lint, build) e os 20 itens do estagio relatados um a um com DONE, PARTIAL, NOT_DONE ou BLOCKED"
     },
     {
       "id": 23,
@@ -1014,7 +1017,10 @@
     "ESTAGIO 15 - LIMITES DECLARADOS NA PROMOCAO (E-096): resumo padrao e digest DETERMINISTICO e nao texto de modelo (o contrato aceita resumidor injetado e o resultado DECLARA qual foi usado, mas nao ha resumo por modelo homologado); escopo de workspace e DERIVADO do projeto e nao campo proprio da memoria; integracao externa opcional ausente; criptografia e OPT-IN com gestao da chave pelo operador, de modo que chave perdida significa memoria cifrada IRRECUPERAVEL (e o erro diz isso); e a busca semantica depende do embedder configurado, sem o qual a comparacao e por texto e o sistema nao finge semantica",
     "ESTAGIO 31 - INCIDENTES, RECUPERACAO E LOGS DE SUPERVISAO (E-097): duas evidencias obrigatorias do estagio foram fechadas. INCIDENTES: o supervisor tinha contadores e uma lista de erros no resultado do tick, mas nao um registro com estado. Agora ha registro IDEMPOTENTE POR (TIPO, SUJEITO) - a mesma falha repetida soma tentativas em vez de criar ocorrencia nova -, com RECUPERACAO OBSERVADA (sucesso posterior resolve com data, sem ninguem precisar marcar), REABERTURA quando o sujeito volta a falhar, ciencia humana que EXIGE ATOR e NAO e resolucao, teto de 50 e persistencia no diretorio de dados. LOGS DE SUPERVISAO: os contadores viviam so em memoria e reiniciar apagava 'o que o supervisor fez'; agora ha diario de ticks limitado e persistido, INCLUINDO os erros de cada tick",
     "ESTAGIO 31 - DEFEITO CORRIGIDO: FALHA DE RETOMADA ENGOLIDA (E-097): no passo de retomada o codigo fazia 'if err := resumePending(); err == nil {...} else if retryErr := resumePending(); retryErr == nil {...}'. Se AS DUAS tentativas falhassem, NADA acontecia: sem log, sem contador, sem incidente - missoes pendentes paravam de ser retomadas e o operador nao tinha como saber. Corrigido: a falha persistente entra no resultado do tick E vira incidente do tipo recovery_failure, e a recuperacao, quando ocorre, e registrada",
-    "ESTAGIO 31 - SEM PROMOCAO, COM O QUE FALTA NOMEADO (E-097): o criterio esta coberto e duas evidencias obrigatorias foram fechadas, mas a LISTA DE ATIVIDADES nao esta: coordenar marketing, vendas, atendimento, estoque, pedidos, financas, operacoes, conteudo, tecnologia e qualidade depende dos estagios 24-30, que estao AUSENTES. Tambem faltam orcamento de tokens/custo de modelo (o existente e o de gasto da empresa) e o supervisor por organizacao (hoje e componente GLOBAL com pino opcional via OLLAMA_SUPERVISOR_ORG). Permanece IN_PROGRESS"
+    "ESTAGIO 31 - SEM PROMOCAO, COM O QUE FALTA NOMEADO (E-097): o criterio esta coberto e duas evidencias obrigatorias foram fechadas, mas a LISTA DE ATIVIDADES nao esta: coordenar marketing, vendas, atendimento, estoque, pedidos, financas, operacoes, conteudo, tecnologia e qualidade depende dos estagios 24-30, que estao AUSENTES. Tambem faltam orcamento de tokens/custo de modelo (o existente e o de gasto da empresa) e o supervisor por organizacao (hoje e componente GLOBAL com pino opcional via OLLAMA_SUPERVISOR_ORG). Permanece IN_PROGRESS",
+    "GATE 22 - PRIMEIRA AVALIACAO COMPLETA (E-098): docs/mission/HADES_ENGINEERING_GATE.md relata os 20 itens do estagio com evidencia medida. SUITE DE ENGENHARIA APROVADA: 7 checks do CI verdes na main (Go agentic and server gates, Go agentic Windows portability, PostgreSQL RLS/Redis DLQ/OTLP, Web and mobile quality, CGO-free and Windows build gate, Generate SBOM, Preserve Class A+ surfaces); no host, build exit 0, vet exit 0, golangci-lint 0 issues, web com 82 arquivos e 551 testes passando, tsc exit 0, lint 0 erros e build OK. GATE INTERMEDIARIO NAO APROVADO: install/upgrade/rollback de pacote, performance e acessibilidade nao foram medidos, desktop nativo nao esta homologado e APIs externas seguem sem credenciais reais. Release global permanece NOT_RELEASE_READY",
+    "CORRECAO HONESTA A PARTIR DO LOG DO CI (E-098): eu havia registrado que o E2E de navegador estava impedido por ausencia de Playwright e que TRES TESTES falhavam por limitacao de ambiente. O log real do gate na main mostra que o CI instala Playwright 1.63.0 e Chromium 153, define OLLAMA_AGENT_BROWSER_EXECUTABLE para um Chromium real, roda browser_helper_test.py com 9 testes OK e passa CGO_ENABLED=0 go test ./internal/agent (ok), CGO_ENABLED=1 go test ./server (ok) e go test ./... inteiro. As tres falhas sao ESPECIFICAS DESTE HOST WINDOWS, nao defeitos do produto, e o NAVEGADOR REAL ESTA HOMOLOGADO EM CI/LINUX. O estagio 14 foi corrigido para nao declarar bloqueio inexistente",
+    "FALHA DE BUILD QUE ERA DE AMBIENTE (E-098): npm run build falhou com 'vite:esbuild-transpile remove AppData/Local/Temp/esbuild-...: Acesso negado'. Causa: o esbuild nao conseguiu remover seu temporario no %TEMP% do host. Procedimento: apontar TEMP/TMP para diretorio gravavel do workspace antes do build, com o que o build passa em 9.44s. Nao e defeito do produto e o CI nao e afetado. Tambem registrado: govulncheck no CI reporta ZERO vulnerabilidades no codigo (1 em modulo requerido nao chamado), go mod verify limpo, gofmt limpo, e o verificador de contrato confere 298 rotas de backend contra 155 chamadas do frontend com DESIGN SYSTEM VERIFICATION PASSED"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -1071,5 +1077,13 @@
     "atividades_ausentes": [
       "integracao opcional externa via contrato (opcional pelo proprio estagio)"
     ]
+  },
+  "engineering_gate_22": {
+    "suites_local": "build/vet/lint/testes (agente e servidor) + web 551 testes, typecheck, lint, build",
+    "gates_ci": "7 checks verdes na main",
+    "gate_intermediario": "NAO_APROVADO",
+    "motivo": "install/upgrade/rollback, performance e acessibilidade nao medidos; desktop nativo ausente; APIs externas sem credenciais",
+    "release_global": "NOT_RELEASE_READY",
+    "estagios_verified": "2 de 38"
   }
 }

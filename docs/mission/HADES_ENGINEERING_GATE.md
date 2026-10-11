@@ -1,62 +1,127 @@
-# HADES — GATE DE ENGENHARIA INTERMEDIÁRIO (ESTÁGIO 22)
+# Estágio 22 — Gate de Engenharia (Release Readiness Intermediário)
 
-> Artefato obrigatório do estágio 22. **Este NÃO é o release final**: os
-> estágios 23–38 seguem pendentes/bloqueados. O gate final (estágio 38) exige
-> `docs/mission/HADES_FINAL_RELEASE_GATE.md` e `HADES_RELEASE_REPORT.md`.
->
-> Rodada: 2026-10-10 · Base: `main@889750abe` · Branch: `docs/checkpoints-missao-v21`
-> Veredito deste gate: **APROVADO COM RESSALVAS** (engenharia verde; produto
-> `NOT_RELEASE_READY`).
+**SHA avaliado:** `8e3feb663a5bbe290842c0b8320681d402dff382` (`main`)
+**Data:** 2026-10-11 · **Host local:** Windows · **CI:** ubuntu-latest (GitHub Actions)
+**Regra deste documento:** cada item tem comando reproduzível e resultado observado.
+Nada aqui é estimado; o que não foi medido está escrito como **não medido**.
 
-## 1. Relatório de 20 itens
+---
 
-| # | Item | Estado | Base |
-| --- | --- | --- | --- |
-| 1 | Funcionalidades implementadas (contagem honesta) | DONE | 12 capacidades `IMPLEMENTADO_E_TESTADO`, 11 `IMPLEMENTADO_NAO_HOMOLOGADO`, 10 `PARCIAL` em `audit/HADES_CAPABILITY_MATRIX.md` |
-| 2 | Funcionalidades homologadas ponta a ponta | NOT_DONE | 0 estágios `COMPLETED_VERIFIED` |
-| 3 | Plugins | PARTIAL | `plugin_scope.go` (escopo por organização) + `plugin_lifecycle_test.go`, `plugin_persistence_test.go` |
-| 4 | MCPs | PARTIAL | catálogo + escopos `mcp:call`/`mcp:remote:call`; execução real não homologada (B-10) |
-| 5 | Skills | PARTIAL | `SkillManifest`, `validateSkillManifest`, assinatura ed25519 e testes de não-confiança |
-| 6 | Agentes | PARTIAL | `swarm.go` (`AgentOrchestrator` com papéis, orçamento, plano, run, cancel) |
-| 7 | Subagentes | PARTIAL | `SubagentRunner` + testes; sem missão multiagente real contra modelo |
-| 8 | Modelos locais | PARTIAL | Ollama como padrão + `OllamaEmbedder`; descoberta real sem chamada live (B-07) |
-| 9 | APIs externas | BLOCKED | adaptadores Anthropic/OpenAI/xAI-Grok/Gemini/Groq/DeepSeek/Mistral; **sem** vLLM, llama.cpp, LM Studio, Lemonade, OpenRouter; homologação exige chave (B-07) |
-| 10 | Harnesses | AUSENTE (em `main`) | `harness` não existe no código de `main`; implementação está no PR #62 (branch-local) |
-| 11 | Plataformas | PARTIAL | CI multi-SO verde; smoke nativo e instalador assinado não homologados (B-06) |
-| 12 | Testes | DONE | Go: `internal/agent` 102 arquivos/583 testes, `server` 83/434; Web: 65 arquivos/396 testes; E2E: 10 testes |
-| 13 | Defeitos corrigidos | DONE | misspell (PR #67), `flowGraph` 31/31 (PR #68), E2E primeira execução (PR #71), E2E Studio (PR #73) |
-| 14 | Riscos residuais | DONE (documentados) | `audit/HADES_RELEASE_BLOCKERS.md` R-02…R-08 |
-| 15 | Dependências externas | DONE (documentadas) | `docs/mission/HADES_BLOCKERS.md` B-01…B-10 |
-| 16 | Artefatos | PARTIAL | SBOM gerado no CI; pacotes por SO sem assinatura |
-| 17 | Instruções | DONE | `docs/mission/HADES_HANDOFF.md` (ordem de leitura, ambiente, comandos) |
-| 18 | Commits/PRs | DONE | checkpoints (#72) e E2E do Studio (#73) verdes; #56–#71 abertos |
-| 19 | Evidências | DONE | `docs/mission/HADES_EVIDENCE_INDEX.md` E-001…E-047 |
-| 20 | Status real | DONE | `NOT_RELEASE_READY` — declarado, não maquiado |
+## 1. Descoberta que corrige uma conclusão anterior (importante)
 
-## 2. Suíte executada neste gate
+Eu havia registrado que o **E2E de navegador** estava impedido por ausência de Playwright, e
+que **3 testes** falhavam por limitação do ambiente. A verificação do **log real do CI** na
+`main` mostra outra coisa:
 
-| Suíte | Comando | Resultado |
+| Fato medido no log do gate `Go agentic and server gates` | Evidência |
+| --- | --- |
+| O CI **instala Playwright 1.63.0 + Chromium 153** e aponta `OLLAMA_AGENT_BROWSER_EXECUTABLE` para um Chromium real | `python3 -m playwright install --with-deps chromium` |
+| `python3 internal/agent/browser_helper_test.py` → **9 testes OK** | `Ran 9 tests ... OK` |
+| `CGO_ENABLED=0 go test ./internal/agent` → **ok 23.6s** | as "falhas locais" **passam no CI** |
+| `CGO_ENABLED=1 go test ./server` → **ok 3.8s** | idem para o servidor |
+| `CGO_ENABLED=1 go test ./...` → **todos os pacotes ok** | 60+ pacotes |
+| `go vet ./...`, `go build -o dist/ollama-agentic .` | limpos |
+| `go mod verify` | `all modules verified` |
+| `govulncheck@v1.8.0` | **No vulnerabilities found** (1 em módulo requerido **não chamado**) |
+| `gofmt -l` | sem saída (formatado) |
+| `check-class-a-plus-integrity.sh` | **DESIGN SYSTEM VERIFICATION PASSED** e **CONTRACT VERIFICATION PASSED** (298 rotas de backend × 155 chamadas do frontend) |
+| Upload de artefato | `ollama-agentic-linux` 34.778.626 bytes · SHA256 `789ce377afea29c476545a4f0dbd7f99cd44f71d5d55905d6cdc35a169497c4d` |
+
+**Correção honesta:** as três falhas são **específicas deste host Windows**, não defeitos do
+produto — o mesmo código **passa** no CI. E o **navegador real** está homologado **em CI/Linux**,
+não bloqueado. O que continua **não homologado** é o **desktop/computer-use nativo** e a
+execução **neste host**.
+
+---
+
+## 2. Suíte executada neste host (evidência local)
+
+| Verificação | Comando | Resultado |
 | --- | --- | --- |
-| Go vet/build | `go vet ./internal/agent/` · `go build ./...` | exit 0 · exit 0 |
-| Go lint/format | `golangci-lint run` · `gofmt -l` · gofumpt | `0 issues.` · vazio · exit 0 |
-| Go testes | `go test ./internal/agent/` | 3 falhas **ambientais pré-existentes** (B-09) |
-| Web lint | `npm run lint` | exit 0 (1 warning pré-existente) |
-| Web unit | `npx vitest run` | 65 arquivos / 396 testes |
-| Web build | `npm run build` | ok |
-| E2E | `npx playwright test` | 10 passed (1 worker) |
-| Classificador CI | `python scripts/classify-ci-surfaces*.py` | 13/13 testes; `PR gate` verde nos PRs #71/#72/#73 |
+| Build | `go build ./...` | **exit 0** |
+| Vet | `go vet ./internal/agent/ ./server/` | **exit 0** |
+| Lint | `golangci-lint run ./internal/agent/... ./server/...` | **0 issues** |
+| Testes do agente | `go test ./internal/agent/` | 2 falhas **de host** (passam no CI) |
+| Testes do servidor | `go test ./server/` | 1 falha **de host** (passa no CI) |
+| Web: testes | `npx vitest run` | **82 arquivos / 551 testes passando** |
+| Web: typecheck | `npx tsc -b` | **exit 0** |
+| Web: lint | `npm run lint` | **0 erros**, 8 avisos pré-existentes |
+| Web: build | `npm run build` | **✓ built in 9.44s** — exige `TEMP` gravável; ver §3 |
 
-## 3. Critério do gate
+## 3. Falha de build que era de ambiente (com procedimento)
 
-- **Aprovado** o que é engenharia: base estável, gates verdes, CI multi-SO,
-  suíte relevante existente, causa raiz corrigida nos defeitos tratados.
-- **Reprovado** o que é produto: homologação ponta a ponta, canais reais,
-  provedores reais, assinatura de release, isolamento multitenant provado.
-- Este gate **não** promove nenhum estágio a `COMPLETED_VERIFIED`.
+Na primeira execução, `npm run build` falhou com
+`[vite:esbuild-transpile] remove C:\Users\...\AppData\Local\Temp\esbuild-...: Acesso negado`.
+**Causa:** o esbuild não conseguiu remover seu arquivo temporário em `%TEMP%` do host.
+**Procedimento que resolve:** apontar `TEMP`/`TMP` para um diretório gravável do workspace antes
+do build. Com isso: `✓ built in 9.44s`, exit 0. **Não é defeito do produto** e o CI não é afetado.
 
-## 4. Próximo gate
+## 4. Gates obrigatórios no CI (todos verdes na `main`)
 
-O gate final (estágio 38) exige, além deste: empresa fictícia operada de ponta a
-ponta em sandbox, isolamento por organização provado, smoke nativo por SO e
-release assinado. Enquanto qualquer requisito obrigatório estiver sem evidência
-real, o estado global permanece `NOT_RELEASE_READY`.
+| Check | Conclusão |
+| --- | --- |
+| `Go agentic and server gates` | **success** |
+| `Go agentic Windows portability` | **success** |
+| `PostgreSQL RLS, Redis DLQ and OTLP integration` | **success** |
+| `Web and mobile quality` | **success** |
+| `CGO-free and Windows build gate` | **success** |
+| `Generate SBOM` | **success** |
+| `Preserve Class A+ surfaces` | **success** |
+
+## 5. Os 20 itens exigidos pelo estágio
+
+| # | Item | Situação | Evidência / motivo |
+| --- | --- | --- | --- |
+| 1 | Funcionalidades implementadas | **DONE** | inventário em `HADES_CAPABILITY_MATRIX.md` |
+| 2 | Funcionalidades **homologadas** | **PARTIAL** | **2 de 38** estágios `COMPLETED_VERIFIED` (13, 15) |
+| 3 | Plugins | **DONE** (código) / homologação de terceiros externa | manifesto, integridade, rollback (E-0xx) |
+| 4 | MCPs | **DONE** (código) | local/stdio/remoto, permissões por ferramenta, revogação |
+| 5 | Skills | **DONE** | ativação por projeto/agente/modelo, proveniência |
+| 6 | Agentes | **DONE** | agentes-base e complementares com testes |
+| 7 | Subagentes | **DONE** | delegação com cotas, profundidade e isolamento |
+| 8 | Modelos locais | **DONE e provado ao vivo** | troca `qwen2.5:7b` ↔ `llama3.2:3b`, contexto byte-idêntico (E-089) |
+| 9 | APIs externas | **NOT_DONE / BLOCKED_BY_EXTERNAL_DEPENDENCY** | sem credenciais reais; contratos e testes existem |
+| 10 | Harnesses | **PARTIAL** | contrato de sessão + detecção; sessão real sem login do CLI é dependência externa |
+| 11 | Plataformas | **PARTIAL** | Linux homologado em CI; **desktop/computer-use nativo não homologado**; instaladores exigem execução real |
+| 12 | Testes | **DONE** | CI verde + suíte local; falhas de host declaradas |
+| 13 | Defeitos corrigidos | **DONE** | ver §6 |
+| 14 | Riscos residuais | **DONE** | B-01…B-09 em `HADES_BLOCKERS.md` |
+| 15 | Dependências externas | **DONE** | nomeadas com procedimento de desbloqueio |
+| 16 | Artefatos | **DONE** | `ollama-agentic-linux` (SHA256 acima), SBOM gerado no CI |
+| 17 | Instruções | **DONE** | `AGENTS.md`, `docs/mission/*`, handoff |
+| 18 | Commits/PRs | **DONE** | PRs #159–#171 |
+| 19 | Evidências | **DONE** | 98 linhas em `HADES_EVIDENCE_INDEX.md` |
+| 20 | Status real | **DONE** | release global **`NOT_RELEASE_READY`** |
+
+## 6. Defeitos corrigidos que este gate deve registrar
+
+1. **Exportação de memória** vazava dado privado de outro usuário (E-088);
+2. **Exclusão de memória** permitia apagar dado privado alheio (E-088);
+3. **Contexto do modelo** levava memória privada alheia ao preâmbulo de sistema (E-089);
+4. **Comando `/memory`** devolvia memória privada alheia (E-090);
+5. **Caminho de resumo** não existia e foi criado sem inventar conteúdo (E-096);
+6. **Falha persistente de retomada** do supervisor era **engolida em silêncio** (E-097);
+7. **Escopos de memória** ausentes, fechados com separação entre propriedade e divulgação (E-095).
+
+## 7. O que impede a aprovação deste gate
+
+O CI passa e a suíte de engenharia está verde, mas o estágio exige também **install/aprimoramento/rollback de pacote, performance e acessibilidade medidos**, e o item 11 acima:
+
+| Pendência do gate | Natureza |
+| --- | --- |
+| Instalação/upgrade/rollback de pacote executados de verdade | **NÃO MEDIDO** (automação existe: workflows de instalador Linux/Windows/macOS) |
+| Performance medida | **NÃO MEDIDO** |
+| Acessibilidade medida (WCAG 2.2 AA) | **NÃO MEDIDO** |
+| Desktop/computer-use nativo homologado | **AUSENTE** |
+| APIs externas com credenciais reais | **BLOCKED_BY_EXTERNAL_DEPENDENCY** |
+| Homologação por plataforma em dispositivo real (Windows/macOS) | **NÃO MEDIDO** |
+
+## 8. Veredito
+
+- **Suíte de engenharia:** **APROVADA** (CI verde nos 7 checks; build, vet, lint e testes ok).
+- **Gate intermediário do estágio 22:** **NÃO APROVADO** — as pendências do §7 são exigidas
+  pelo próprio estágio e não têm medição. Aprovar sem elas seria declarar o que não foi medido.
+- **Release global:** permanece **`NOT_RELEASE_READY`**.
+- **Próximos desbloqueios, em ordem de custo:** (a) rodar performance e acessibilidade
+  (barato, local); (b) executar instalação/rollback dos pacotes do CI (médio); (c) homologar
+  APIs externas com credenciais reais (dependência externa).
