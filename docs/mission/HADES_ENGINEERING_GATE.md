@@ -110,18 +110,60 @@ O CI passa e a suíte de engenharia está verde, mas o estágio exige também **
 | Pendência do gate | Natureza |
 | --- | --- |
 | Instalação/upgrade/rollback de pacote executados de verdade | **NÃO MEDIDO** (automação existe: workflows de instalador Linux/Windows/macOS) |
-| Performance medida | **NÃO MEDIDO** |
-| Acessibilidade medida (WCAG 2.2 AA) | **NÃO MEDIDO** |
+| Performance medida | **MEDIDA E APROVADA** (E-099) |
+| Acessibilidade medida (WCAG 2.2 AA) | **MEDIDA E APROVADA** (E-099) |
 | Desktop/computer-use nativo homologado | **AUSENTE** |
 | APIs externas com credenciais reais | **BLOCKED_BY_EXTERNAL_DEPENDENCY** |
 | Homologação por plataforma em dispositivo real (Windows/macOS) | **NÃO MEDIDO** |
 
-## 8. Veredito
+
+## 8. Performance e acessibilidade: medidos nesta rodada (E-099)
+
+Estes dois itens estavam registrados como **NÃO MEDIDO**. A infraestrutura já existia no
+repositório — 7 benchmarks Go, `e2e/accessibility.spec.ts` com axe e um budget de bundle — e
+bastou **executá-la** para obter números reais.
+
+### Performance (benchmarks reais, 32 núcleos)
+
+| Caminho medido | Resultado | Alocação |
+| --- | --- | --- |
+| `BenchmarkMemorySearchContext` | **699,3 ns/op** (473.030 iterações) | 888 B/op · 4 allocs/op |
+| `BenchmarkGroundedContextBuild` | **110,7 µs/op** | 45.110 B/op · 302 allocs/op |
+| `BenchmarkPluginInstallUpdateRollback` | **5,20 ms/op** | 28.030 B/op · 173 allocs/op |
+| `BenchmarkDownloadChunkCompletion` | **2,37 ms/op** → **442,83 MB/s** | 39.663 B/op · 232 allocs/op |
+
+**Budget de bundle (gate que quebra o build se estourar):** `HADES_BUNDLE_MAX_JS_BYTES=2.000.000`,
+`HADES_BUNDLE_MAX_JS_GZIP_BYTES=600.000` → maior chunk `index-UMxVpmOA.js` com **1.443,91 kB
+cru / 396,66 kB gzip**: **PASS** (exit 0).
+
+**Limites declarados:** isto mede caminhos internos e o tamanho do bundle. **Não** mede latência
+de inferência real (depende de modelo e hardware) nem comportamento sob carga concorrente.
+
+### Acessibilidade (axe WCAG, medida de verdade)
+
+`npx playwright test e2e/accessibility.spec.ts` → **3 passaram em 44,3s**:
+
+1. `axe WCAG gate — desktop` · **nenhuma violação**;
+2. `axe WCAG gate — mobile` · **nenhuma violação**;
+3. `mobile shell is operable by keyboard without a trap` · **passou**.
+
+O mesmo arquivo roda no CI pelo workflow `dz23-e2e.yaml` (`npm run test:e2e`). Para medir
+localmente foi necessário instalar o build de Chromium exigido pela versão do Playwright do
+repositório (`chromium_headless_shell-1248`); a execução anterior falhou por **ausência do
+navegador**, não por violação de acessibilidade.
+
+**Limites declarados:** a medição cobre as **rotas críticas definidas pelo spec**, não todas as
+telas; e **não** houve teste com leitor de tela real (NVDA/JAWS/VoiceOver).
+
+## 9. Veredito
 
 - **Suíte de engenharia:** **APROVADA** (CI verde nos 7 checks; build, vet, lint e testes ok).
-- **Gate intermediário do estágio 22:** **NÃO APROVADO** — as pendências do §7 são exigidas
-  pelo próprio estágio e não têm medição. Aprovar sem elas seria declarar o que não foi medido.
+- **Gate intermediário do estágio 22:** **AINDA NÃO APROVADO**, mas com **duas pendências a menos**:
+  performance e acessibilidade passaram a estar **medidas** nesta rodada. Continuam pendentes
+  instalação/upgrade/rollback executados, desktop nativo homologado, homologação em dispositivo
+  real e APIs externas com credenciais. Aprovar sem elas seria declarar o que não foi medido.
 - **Release global:** permanece **`NOT_RELEASE_READY`**.
-- **Próximos desbloqueios, em ordem de custo:** (a) rodar performance e acessibilidade
-  (barato, local); (b) executar instalação/rollback dos pacotes do CI (médio); (c) homologar
-  APIs externas com credenciais reais (dependência externa).
+- **Próximos desbloqueios, em ordem de custo:** (a) executar instalação/rollback dos pacotes
+  produzidos no CI (médio); (b) homologação em dispositivo real Windows/macOS (médio, depende de
+  máquina); (c) desktop/computer-use nativo (implementação); (d) APIs externas com credenciais
+  reais (dependência externa).
