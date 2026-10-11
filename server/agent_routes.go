@@ -726,6 +726,7 @@ func (a *agentAPI) register(r *gin.Engine) {
 	group.GET("/companies/:id/marketplace/channels", a.marketplaceChannels)
 	group.POST("/companies/:id/marketplace/sync", a.marketplaceSync)
 	group.GET("/companies/:id/marketplace/mirror/:channel_id/:sku", a.marketplaceMirror)
+	group.GET("/companies/:id/business-status", a.businessStatus)
 	group.POST("/companies/:id/pause", a.pauseCompany)
 	group.POST("/companies/:id/resume", a.resumeCompany)
 	group.POST("/companies/:id/anomalies", a.recordCompanyAnomaly)
@@ -3974,6 +3975,10 @@ func statusForAgentError(err error) int {
 		return http.StatusNotFound
 	}
 	if errors.Is(err, agent.ErrMarketplaceSyncInvalid) {
+		return http.StatusBadRequest
+	}
+	// BI / status de negócio (estágio 32): painel pedido sem organização é erro do cliente.
+	if errors.Is(err, agent.ErrBusinessStatusScopeRequired) {
 		return http.StatusBadRequest
 	}
 	if errors.Is(err, os.ErrNotExist) {
