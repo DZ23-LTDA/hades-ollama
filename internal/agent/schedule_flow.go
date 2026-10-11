@@ -336,7 +336,18 @@ func (r *Runtime) ExecuteScheduleFlow(ctx context.Context, schedule Schedule) (i
 // rodaram e quais foram ignorados. Erro continua sendo erro: o relatório não
 // transforma falha em sucesso.
 func (r *Runtime) ExecuteScheduleFlowReport(ctx context.Context, schedule Schedule) (ScheduleRunReport, error) {
-	report := ScheduleRunReport{Steps: make([]ScheduleStepOutcome, 0, len(schedule.Steps)), RunKey: ScheduleFlowRunKey(schedule)}
+	return r.executeScheduleFlow(ctx, schedule, ScheduleFlowRunKey(schedule), nil, nil, nil)
+}
+
+// executeScheduleFlow é o núcleo compartilhado entre execução normal, execução
+// manual e reprocessamento. Existe para as três não divergirem:
+//   - runKey identifica a execução (reprocessamento reusa a chave anterior);
+//   - seedOutcomes entra com o resultado já conhecido dos passos que NÃO serão
+//     reexecutados, para que as dependências deles continuem satisfeitas;
+//   - carryOver preserva no relatório novo o resultado dos passos pulados;
+//   - execute limita quais passos rodam agora (nil = todos).
+func (r *Runtime) executeScheduleFlow(ctx context.Context, schedule Schedule, runKey string, seedOutcomes map[string]bool, carryOver map[string]ScheduleStepOutcome, execute map[string]bool) (ScheduleRunReport, error) {
+	report := ScheduleRunReport{Steps: make([]ScheduleStepOutcome, 0, len(schedule.Steps)), RunKey: runKey}
 	if len(schedule.Steps) == 0 {
 		if _, err := r.createScheduledMission(ctx, schedule, schedule.Objective); err != nil {
 			report.FinishedAt = time.Now().UTC()
@@ -365,9 +376,28 @@ func (r *Runtime) ExecuteScheduleFlowReport(ctx context.Context, schedule Schedu
 		return report, err
 	}
 	outcomes := make(map[string]bool, len(order))
-	runKey := report.RunKey
+	for id, result := range seedOutcomes {
+		outcomes[id] = result
+	}
 	for _, step := range order {
 		id := strings.TrimSpace(step.ID)
+		if execute != nil && !execute[id] {
+			// Passo preservado: não roda de novo, mas o resultado anterior entra no
+			// relatório e nas dependências (senão o dependente ficaria bloqueado).
+			if previous, ok := carryOver[id]; ok {
+				report.Steps = append(report.Steps, previous)
+				outcomes[id] = previous.Status == ScheduleStepSucceeded
+			} else {
+				report.Steps = append(report.Steps, ScheduleStepOutcome{
+					ID:     id,
+					Kind:   string(step.Kind),
+					Status: ScheduleStepSkipped,
+					Reason: "passo não incluído neste reprocessamento",
+				})
+				outcomes[id] = false
+			}
+			continue
+		}
 		if !scheduleDependenciesSatisfied(step, outcomes) {
 			outcomes[id] = false
 			report.Steps = append(report.Steps, ScheduleStepOutcome{
@@ -431,6 +461,80 @@ func (r *Runtime) ExecuteScheduleFlowReport(ctx context.Context, schedule Schedu
 	}
 	report.FinishedAt = time.Now().UTC()
 	return report, nil
+}
+
+// ErrScheduleReprocessUnavailable recusa o reprocessamento quando não há execução
+// anterior registrada: sem a chave da execução não é possível reusar a mesma
+// identidade, e adivinhar criaria missão duplicada.
+var ErrScheduleReprocessUnavailable = errors.New("schedule has no previous run to reprocess")
+
+// ReprocessScheduleFlow reexecuta SOMENTE os passos que ficaram ignorados ou
+// falharam, reusando a chave da execução anterior. Os passos que já tiveram
+// sucesso são preservados com o resultado original e não criam missão nova — a
+// idempotência da criação é o que garante isso, mesmo se um deles for reexecutado
+// depois de ter criado a missão.
+func (r *Runtime) ReprocessScheduleFlow(ctx context.Context, schedule Schedule) (ScheduleRunReport, error) {
+	previous := schedule.LastRun
+	if previous == nil || strings.TrimSpace(previous.RunKey) == "" {
+		return ScheduleRunReport{}, ErrScheduleReprocessUnavailable
+	}
+	if len(schedule.Steps) == 0 {
+		// Fluxo legado (uma missão com o objetivo): reprocessar é reexecutar o
+		// objetivo, e a linha de base é o próprio passo sintético.
+		if _, err := r.createScheduledMission(ctx, schedule, schedule.Objective); err != nil {
+			return ScheduleRunReport{
+				RunKey:     previous.RunKey,
+				FinishedAt: time.Now().UTC(),
+				Steps: []ScheduleStepOutcome{{
+					ID:     "legacy-objective",
+					Kind:   string(ScheduleStepActionMission),
+					Status: ScheduleStepFailed,
+					Reason: err.Error(),
+				}},
+			}, err
+		}
+		return ScheduleRunReport{
+			RunKey:     previous.RunKey,
+			FinishedAt: time.Now().UTC(),
+			Missions:   1,
+			Steps: []ScheduleStepOutcome{{
+				ID:       "legacy-objective",
+				Kind:     string(ScheduleStepActionMission),
+				Status:   ScheduleStepSucceeded,
+				Attempts: 1,
+			}},
+		}, nil
+	}
+
+	execute := make(map[string]bool, len(schedule.Steps))
+	seed := make(map[string]bool, len(schedule.Steps))
+	carry := make(map[string]ScheduleStepOutcome, len(schedule.Steps))
+	for _, outcome := range previous.Steps {
+		switch outcome.Status {
+		case ScheduleStepSucceeded:
+			// Preservado: não roda de novo e continua satisfazendo dependentes.
+			carry[outcome.ID] = outcome
+			seed[outcome.ID] = true
+		default:
+			// Skipped ou failed: é exatamente o que o reprocessamento existe para
+			// tentar de novo.
+			execute[outcome.ID] = true
+			seed[outcome.ID] = false
+		}
+	}
+	// Passo NOVO no grafo (adicionado depois da execução anterior) também roda:
+	// não tem resultado anterior para preservar.
+	for _, step := range schedule.Steps {
+		id := strings.TrimSpace(step.ID)
+		if _, known := carry[id]; known {
+			continue
+		}
+		if _, known := execute[id]; known {
+			continue
+		}
+		execute[id] = true
+	}
+	return r.executeScheduleFlow(ctx, schedule, previous.RunKey, seed, carry, execute)
 }
 
 // scheduleDependenciesSatisfied reports whether every dependency already ran and
