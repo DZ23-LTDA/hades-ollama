@@ -60,7 +60,37 @@ func serviceAgentRuntime(t *testing.T, grantConsent bool) (*ServiceAgentRuntime,
 		"crm.contact.read": true, "crm.opportunity.write": true, "catalog.read": true,
 		"inbox.reply": true, "inbox.handoff": true, "inbox.conversation.read": true,
 	})
+	// O store de APROVAÇÃO HUMANA entra no fixture porque escrever sem aprovação é RECUSADO — os testes de
+	// escrita precisam do caminho real: pedir, decidir e só então executar.
+	runtime.SetApprovalStore(NewServiceAgentApprovalStore(filepath.Join(root, "approvals")))
 	return runtime, inbox, crm, consent, conversation.ID
+}
+
+// approvePendingForTool aprova o pedido PENDENTE da ferramenta indicada, como faria um humano.
+//
+// Devolve a aprovação decidida. Falha o teste se não houver pedido pendente — pedir antes de decidir é a
+// ordem que o sistema impõe, e o teste não deve contorná-la.
+func approvePendingForTool(t *testing.T, runtime *ServiceAgentRuntime, organizationID, toolName, actor string) ServiceAgentApproval {
+	t.Helper()
+	store := runtime.ApprovalStore()
+	if store == nil {
+		t.Fatal("o runtime precisa ter store de aprovações para este caminho")
+	}
+	pending, err := store.ListApprovals(organizationID, ServiceAgentApprovalPending)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, approval := range pending {
+		if approval.ToolName == toolName {
+			decided, err := store.Decide(organizationID, approval.ID, true, actor, "aprovado no teste", time.Now().UTC())
+			if err != nil {
+				t.Fatal(err)
+			}
+			return decided
+		}
+	}
+	t.Fatalf("não há pedido pendente para %s: %+v", toolName, pending)
+	return ServiceAgentApproval{}
 }
 
 func TestServiceAgentCatalogCoversTheStageAndDeclaresTools(t *testing.T) {
