@@ -131,6 +131,8 @@
 
 | Inbox unificado: conversas, SLA e handoff | `inbox.go`, rotas `/inbox/*`, comandos `/inbox`, `/handoff` e `/support` (E-104) | PARCIAL | MÉDIO | E-104 | uma conversa por contato/canal, dedupe de webhook por ExternalID (inclusive concorrente), SLA medido, handoff com motivo, resposta sujeita ao consentimento |
 
+| Omnichannel: contrato, webhook assinado e DLQ | `omnichannel.go`, rotas `/omnichannel/*` (E-105) | PARCIAL | MÉDIO | E-105 | tenant vindo do conector, HMAC-SHA256 em tempo constante com falha fechada, anti-replay, dedupe, rate limit e DLQ com motivo; DLQ e limitador em memória |
+
 ## 6. Integrações, MCP e conectores
 
 | Capacidade | Superfície | Classificação | Risco | Evidência | Lacuna |
