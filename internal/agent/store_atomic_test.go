@@ -50,6 +50,11 @@ func TestJSONStoreRollsBackMissionMutationWhenPersistenceFails(t *testing.T) {
 	if err := store.PutMission(newMission); err == nil {
 		t.Fatal("new mission write unexpectedly succeeded")
 	}
+	// A raiz VOLTA a ser válida antes da leitura: com uma raiz bloqueada por ARQUIVO, ler o
+	// caminho devolve ENOTDIR no Linux (e "não encontrado" no Windows), e o teste passaria a
+	// medir o sistema de arquivos em vez de medir a ausência da missão. Restaurando a raiz, a
+	// asserção verifica as DUAS coisas de forma portátil: nada em memória e nada no disco.
+	store.root = root
 	if _, err := store.GetMission(newMission.ID); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("failed new mission remained in memory: %v", err)
 	}
