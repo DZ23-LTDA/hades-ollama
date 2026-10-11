@@ -2,12 +2,12 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-11T06:25:00-03:00",
+  "updated_at": "2026-10-11T07:20:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
     "integration_branch": "main",
-    "main_sha": "49043a770f34f1caa54b559716f62e0235c33a67",
+    "main_sha": "883a466b4aeca2128ac90614085fe3493c450206",
     "main_committed_at": "2026-10-09T10:24:45Z",
     "main_ci_state": "green (dz23-agentic-quality + class-a-plus-integrity = success nesse SHA)",
     "mission_branch": "docs/checkpoints-missao-v21",
@@ -432,11 +432,12 @@
         "E-076",
         "E-077",
         "E-078",
-        "E-079"
+        "E-079",
+        "E-080"
       ],
       "blocker": null,
-      "next": "DLQ por NO (a DLQ da fila de jobs ja existe); e a HOMOLOGACAO do criterio do estagio: fluxo real ponta a ponta com falha simulada, retry e retomada, com evidencia por no",
-      "done": "vocabulario fechado de passos com validacao fail-closed (incluindo faixa de tentativas); ordem de dependencia com bloqueio de dependente; retry por no com backoff e tentativas registradas; idempotencia da criacao de missao; resultado por no persistido em sucesso e falha, visivel na interface; supervisor reportando no tick; execucao manual rodando o grafo; e REPROCESSAMENTO que reusa a execucao e reexecuta apenas skipped/falhados, preservando o que ja teve sucesso"
+      "next": "HOMOLOGACAO do criterio do estagio: fluxo real ponta a ponta com falha simulada, retry e retomada (inclusive reinicio de worker), com evidencia por no, retry e fila morta. So depois disso o estagio pode sair de PARCIAL",
+      "done": "vocabulario fechado de passos com validacao fail-closed (incluindo faixa de tentativas); ordem de dependencia com bloqueio de dependente; retry por no com backoff e tentativas registradas; idempotencia da criacao de missao; resultado por no persistido em sucesso e falha, visivel na interface; supervisor reportando no tick; execucao manual rodando o grafo; reprocessamento reusando a execucao; e DLQ por no com motivo final, limite e limpeza na recuperacao"
     },
     {
       "id": 14,
@@ -905,6 +906,8 @@
     "ACHADO CORRIGIDO (PR #145, estagio 13, integridade de produto): o botao 'Executar imediatamente' NAO executava o fluxo - chamava createMission com o objetivo do schedule e ignorava os passos persistidos, entao um fluxo com condicao e varias acoes rodava como UMA missao avulsa, sem evidencia por no e sem registrar resultado no schedule. Mesma familia do endpoint de personalizacao: o controle aparentava fazer uma coisa e fazia outra. Correcao: rota POST /api/agent/v1/schedules/:id/run executa o GRAFO pelo MESMO caminho do despacho automatico, registra com a mesma politica (RecordScheduleRun) e devolve o relatorio por no junto do schedule atualizado; falha devolve o RELATORIO com o passo culpado, nao erro generico. 3 testes de rota novos, incluindo isolamento por organizacao sem deixar evidencia",
     "FUNDACAO PARA REPROCESSAMENTO (PR #145): ScheduleRunReport ganhou run_key, persistida em Schedule.LastRun. Sem ela o reprocessamento futuro teria que adivinhar a execucao; com ela, o reprocessamento reusa a MESMA chave e os passos que ja criaram missao continuam apontando para ela (a idempotencia faz o resto). Proximo passo do estagio 13: reexecutar apenas os passos skipped/falhados; depois DLQ por no; depois a homologacao ponta a ponta com falha simulada, retry e retomada",
     "ENTREGA (PR #147, estagio 13): reprocessamento. executeScheduleFlow virou o nucleo COMPARTILHADO entre execucao normal, manual e reprocessamento (runKey explicita, seed de resultados conhecidos, carry-over do que nao roda e conjunto de passos a executar), para as tres nao divergirem. ReprocessScheduleFlow reexecuta SOMENTE o que ficou skipped ou falhou; os passos bem-sucedidos sao preservados com o resultado original e continuam satisfazendo dependentes, SEM criar missao nova (idempotencia). Passo novo no grafo tambem roda. Sem execucao anterior a recusa e explicita (ErrScheduleReprocessUnavailable -> HTTP 409), porque adivinhar a chave poderia duplicar missao. Rota POST /schedules/:id/reprocess e botao 'Reprocessar pendentes' na interface (aparece so quando ha passo ignorado ou falho). 3 testes de motor + 3 de rota",
-    "ESTAGIO 13 - SEQUENCIA COMPLETA EM 4 RODADAS: #141 idempotencia (pre-requisito, porque retry sem ela criaria missoes fantasma); #143 retry por no EM CIMA da garantia; #145 execucao manual passando a rodar o grafo (era um controle que fingia funcionar); #147 reprocessamento reusando a execucao. O que resta: DLQ por NO (a DLQ da fila de jobs ja existe) e a HOMOLOGACAO do criterio do estagio - fluxo real ponta a ponta com falha simulada, retry e retomada, com evidencia por no"
+    "ESTAGIO 13 - SEQUENCIA COMPLETA EM 4 RODADAS: #141 idempotencia (pre-requisito, porque retry sem ela criaria missoes fantasma); #143 retry por no EM CIMA da garantia; #145 execucao manual passando a rodar o grafo (era um controle que fingia funcionar); #147 reprocessamento reusando a execucao. O que resta: DLQ por NO (a DLQ da fila de jobs ja existe) e a HOMOLOGACAO do criterio do estagio - fluxo real ponta a ponta com falha simulada, retry e retomada, com evidencia por no",
+    "ENTREGA (PR #149, estagio 13): DLQ por no. ScheduleStepDeadLetter {step_id, kind, reason, attempts, objective, failed_at} e registrado pelo MOTOR no relatorio (ScheduleRunReport.DeadLetters) e persistido pelo gravador em Schedule.DeadLetters (sucesso e falha). A entrada SAI quando o passo volta a ter sucesso, inclusive via reprocessamento - sem isso a DLQ mentiria listando como morto um passo recuperado. Limitada a maxScheduleDeadLetters (20), mais recentes primeiro, para um fluxo que falha a cada tick nao crescer sem fim. Interface mostra 'Fila morta (N)' com o motivo real e as tentativas. 3 testes de motor + 1 caso de interface. O lint pegou 3 intrange nos lacos novos e eu corrigi os lacos, nao a regra",
+    "ESTAGIO 13 - IMPLEMENTACAO COMPLETA: idempotencia da criacao de missao (#141), retry por no (#143), execucao manual rodando o grafo (#145), reprocessamento reusando a execucao (#147) e DLQ por no (#149). O que falta e a HOMOLOGACAO do criterio do estagio: fluxo real ponta a ponta com falha simulada, retry e retomada, com evidencia por no. Ate essa prova o estagio permanece PARCIAL"
   ]
 }

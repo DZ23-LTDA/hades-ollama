@@ -83,6 +83,8 @@
 
 | Workflow: reprocessamento reusando a execução | `internal/agent/schedule_flow.go` (`ReprocessScheduleFlow`, `executeScheduleFlow`), `POST /schedules/:id/reprocess` (PR #147) | IMPLEMENTADO_NAO_HOMOLOGADO | MÉDIO | E-079 | reexecuta só pendentes sem duplicar missão; recusa explícita sem execução anterior |
 
+| Workflow: DLQ por nó | `internal/agent/schedule_flow.go` (`ScheduleStepDeadLetter`, `mergeScheduleDeadLetters`), `Schedule.DeadLetters`, `ScheduleRunReportCard` (PR #149) | IMPLEMENTADO_NAO_HOMOLOGADO | MÉDIO | E-080 | falha ganha registro próprio com motivo, limitado e limpo quando o passo se recupera |
+
 ## 6. Integrações, MCP e conectores
 
 | Capacidade | Superfície | Classificação | Risco | Evidência | Lacuna |
