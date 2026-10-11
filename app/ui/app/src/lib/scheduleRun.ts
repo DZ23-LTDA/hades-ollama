@@ -39,7 +39,14 @@ export type AgentScheduleRunReport = {
   steps?: AgentScheduleStepOutcome[] | null;
   run_key?: string;
   dead_letters?: AgentScheduleDeadLetter[] | null;
+  flow_version?: number;
 };
+
+/** Versão do fluxo executada, quando o servidor informa. */
+export function scheduleFlowVersionLabel(report: AgentScheduleRunReport | null | undefined): string {
+  const version = report?.flow_version ?? 0;
+  return version > 0 ? `fluxo v${version}` : "";
+}
 
 /** Entradas da DLQ do relatório, sempre em lista (o servidor pode omitir). */
 export function scheduleDeadLetters(report: AgentScheduleRunReport | null | undefined): AgentScheduleDeadLetter[] {

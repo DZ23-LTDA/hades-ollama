@@ -9,6 +9,7 @@ import {
   scheduleStepAttemptsLabel,
   scheduleDeadLetterLabel,
   scheduleDeadLetters,
+  scheduleFlowVersionLabel,
   scheduleStepStatusLabel,
   type AgentScheduleRunReport,
 } from "./scheduleRun";
@@ -119,5 +120,13 @@ describe("relatório de execução de automação", () => {
     // O rótulo carrega o motivo REAL do servidor e as tentativas quando houve retry.
     expect(scheduleDeadLetterLabel(entry)).toBe("acao após 3 tentativas — projeto ausente");
     expect(scheduleDeadLetterLabel({ ...entry, attempts: 1 })).toBe("acao — projeto ausente");
+  });
+
+  it("mostra a versão do fluxo só quando o servidor informa", () => {
+    expect(scheduleFlowVersionLabel(null)).toBe("");
+    expect(scheduleFlowVersionLabel({ finished_at: "2026-10-11T07:00:00Z", missions: 0 })).toBe("");
+    expect(scheduleFlowVersionLabel({ finished_at: "2026-10-11T07:00:00Z", missions: 0, flow_version: 3 })).toBe(
+      "fluxo v3",
+    );
   });
 });

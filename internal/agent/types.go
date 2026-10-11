@@ -265,6 +265,10 @@ type Schedule struct {
 	// tentativas. Entra na falha e SAI quando o passo volta a ter sucesso
 	// (inclusive via reprocessamento). Limitada por maxScheduleDeadLetters.
 	DeadLetters []ScheduleStepDeadLetter `json:"dead_letters,omitempty"`
-	CreatedAt   time.Time                `json:"created_at"`
-	UpdatedAt   time.Time                `json:"updated_at"`
+	// FlowVersion é a versão do GRAFO. Sobe quando os passos MUDAM (não em
+	// qualquer edição), e cada execução guarda a versão que rodou: sem isso,
+	// comparar execuções de grafos diferentes seria comparação inválida.
+	FlowVersion int       `json:"flow_version,omitempty"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
 }
