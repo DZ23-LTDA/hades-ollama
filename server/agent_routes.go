@@ -832,6 +832,7 @@ func (a *agentAPI) register(r *gin.Engine) {
 	group.POST("/omnichannel/dlq/:id/retry", a.retryOmnichannelDeadLetter)
 	group.GET("/service-agents", a.listServiceAgents)
 	group.POST("/service-agents/:id/turn", a.serviceAgentTurn)
+	group.GET("/service-agents/audit", a.serviceAgentAudit)
 	group.POST("/commerce/products", a.upsertCommerceProduct)
 	group.GET("/commerce/products", a.listCommerceProducts)
 	group.POST("/commerce/stock", a.recordCommerceStock)
