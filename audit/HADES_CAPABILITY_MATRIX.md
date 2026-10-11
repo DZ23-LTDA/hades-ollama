@@ -81,6 +81,8 @@
 
 | Workflow: execução manual do grafo persistido | `server/agent_routes.go` (`runScheduleNow`), `ScheduleRunReport.RunKey` (PR #145) | IMPLEMENTADO_NAO_HOMOLOGADO | MÉDIO | E-078 | disparo manual executa o fluxo real e registra evidência; `run_key` habilita reprocessamento |
 
+| Workflow: reprocessamento reusando a execução | `internal/agent/schedule_flow.go` (`ReprocessScheduleFlow`, `executeScheduleFlow`), `POST /schedules/:id/reprocess` (PR #147) | IMPLEMENTADO_NAO_HOMOLOGADO | MÉDIO | E-079 | reexecuta só pendentes sem duplicar missão; recusa explícita sem execução anterior |
+
 ## 6. Integrações, MCP e conectores
 
 | Capacidade | Superfície | Classificação | Risco | Evidência | Lacuna |
