@@ -2,12 +2,12 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-11T17:50:00-03:00",
+  "updated_at": "2026-10-11T18:50:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
     "integration_branch": "main",
-    "main_sha": "e1d53865d52c662a4df0d767adeef2f3895af7f5",
+    "main_sha": "8a762227527d02984e6e9d10326517f5d1c1d63f",
     "main_committed_at": "2026-10-09T10:24:45Z",
     "main_ci_state": "green (dz23-agentic-quality + class-a-plus-integrity = success nesse SHA)",
     "mission_branch": "docs/checkpoints-missao-v21",
@@ -992,7 +992,8 @@
     "ESTAGIO 15 - CRITERIO PROVADO AO VIVO (E-089): o Ollama local desta maquina esta ativo com 8 modelos, entao a troca de modelo NAO foi simulada: teste real entre qwen2.5:7b e llama3.2:3b (9,91s) provou que os dois modelos chegam ao provedor, que o contexto injetado fica byte-identico na troca, que a memoria privada de outro usuario NAO vai ao modelo e que o conhecimento do time vai, e que reinicio do store devolve o mesmo contexto. Sem Ollama local o teste e PULADO com causa declarada, nunca aprovado por omissao",
     "ESTAGIO 15 - SEM PROMOCAO, COM O QUE FALTA MEDIDO (E-089): o criterio e a evidencia obrigatoria estao cumpridos, mas quatro atividades seguem AUSENTES por medicao (nao por suposicao): deduplicacao de memoria (os dedup do repositorio sao de fila/webhook/workspace), versionamento, resumos e criptografia em repouso, alem dos escopos de missao/agente/equipe no tipo Memory. Permanece IN_PROGRESS pelo mesmo padrao aplicado ao estagio 13",
     "VARREDURA DA FAMILIA DE CAMINHOS IRMAOS (E-090): tres rodadas seguidas encontraram o MESMO tipo de defeito - dado com escopo por ator cujo filtro existia em um caminho e faltava no irmao. Esta rodada varreu TODOS os leitores de cada recurso escopado em vez de corrigir caso a caso. Quarto irmao encontrado e corrigido: o comando /memory (da lista obrigatoria da secao 6) chamava SearchMemoriesContext e devolvia a memoria private de OUTRO usuario do mesmo projeto no corpo da resposta; validava organizacao e projeto, mas nao o ator. Corrigido para SearchMemoriesForActor. Medicao do invariante: chamadas de memoria SEM ator no servidor cairam de 3 para ZERO (SearchMemoriesContext, ExportMemories e RemoveMemory), e a unica ocorrencia restante de SearchMemories( e a DEFINICAO do handler, verificada linha a linha. Familias verificadas como corretas: aprovacoes de missao (DecideApprovalForActorCAS), aprovacoes de empresa (organizationID e agentActorID ao store, com requireApprovalApprover) e /skills e /mcp (listam por organizacao, sem conceito privado por usuario)",
-    "REGRA QUE FICA (E-090): recurso com escopo por ator so esta protegido quando TODOS os caminhos que leem o dado aplicam o filtro. A existencia de uma funcao escopada NAO e prova de uso, e o irmao esquecido e o caminho mais provavel do vazamento. O invariante ficou verificavel por comando e documentado em docs/mission/HADES_SIBLING_PATHS_AUDIT.md"
+    "REGRA QUE FICA (E-090): recurso com escopo por ator so esta protegido quando TODOS os caminhos que leem o dado aplicam o filtro. A existencia de uma funcao escopada NAO e prova de uso, e o irmao esquecido e o caminho mais provavel do vazamento. O invariante ficou verificavel por comando e documentado em docs/mission/HADES_SIBLING_PATHS_AUDIT.md",
+    "AUDITORIA DE GUARDA DE TENANT (E-091): o metodo da familia de caminhos irmaos foi aplicado ao outro eixo - escopo por ORGANIZACAO. Script reexecutavel em scripts/audit_tenant_guards.py lista handlers que tocam o store sem guarda reconhecida. CALIBRACAO REGISTRADA: a primeira versao, com seis guardas, acusou 49 handlers e quase tudo era falso positivo porque o codigo usa helpers que o detector nao conhecia (requireSupervisorAdmin, requireWhatsAppAdmin, companyOrganizationID, guarda manual if a.authRequired). Depois de calibrar e ler cada caso: 136 handlers com guarda, 14 sem guarda de helper e TODOS os 14 explicados no codigo - diagnostico (health, metrics, prometheus), lista estatica (tools), pareamento de dispositivo, superficies de midia do runtime unico, downloadBackup RECUSADO em modo autenticado com 403 e webhooks publicos autenticados por assinatura HMAC. NENHUM DEFEITO NOVO nesta dimensao: resultado negativo e medido, nao presumido. Licao de metodo: um detector ingenuo produziu 49 falsos positivos, e um detector que omite guarda por nao conhece-la produz silencio parecendo seguranca"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -1031,5 +1032,14 @@
       "/skills",
       "/mcp"
     ]
+  },
+  "tenant_guard_audit": {
+    "ferramenta": "scripts/audit_tenant_guards.py",
+    "documento": "docs/mission/HADES_TENANT_GUARD_AUDIT.md",
+    "handlers_com_guarda": 136,
+    "candidatos_sem_guarda": 14,
+    "explicados": 14,
+    "defeitos_novos": 0,
+    "calibracao": "49 falsos positivos na primeira versao do detector"
   }
 }
