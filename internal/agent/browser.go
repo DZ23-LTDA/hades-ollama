@@ -142,11 +142,23 @@ func browserProcessEnvironment(workspace string) []string {
 	return browserChildEnv(workspace)
 }
 
+// browserPythonExecutable resolve o interpretador do operador de browser.
+//
+// Passa pela MESMA validação do status (`resolvePythonInterpreter`): escolher por
+// "existe no PATH" fazia o operador adotar o atalho da Microsoft Store no Windows
+// e falhar com exit 9009 mesmo com um Python real instalado. Status e execução
+// compartilham a resolução para não divergirem.
 func browserPythonExecutable() (string, error) {
-	for _, candidate := range []string{"python3", "python"} {
-		if executable, err := exec.LookPath(candidate); err == nil {
-			return executable, nil
-		}
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	probe := func(pythonPath, code string) (string, error) {
+		probeCtx, probeCancel := context.WithTimeout(ctx, 5*time.Second)
+		defer probeCancel()
+		out, err := exec.CommandContext(probeCtx, pythonPath, "-c", code).Output()
+		return string(out), err
 	}
-	return "", errors.New("browser operator requires python3 or python on PATH")
+	if executable, ok := resolvePythonInterpreter(exec.LookPath, probe); ok {
+		return executable, nil
+	}
+	return "", errors.New("browser operator requires a working python3, python or py on PATH")
 }

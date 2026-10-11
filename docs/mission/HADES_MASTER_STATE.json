@@ -2,12 +2,12 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-11T12:20:00-03:00",
+  "updated_at": "2026-10-11T13:20:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
     "integration_branch": "main",
-    "main_sha": "bbb03cf8903cd09eec6fe8e639955d22a2333439",
+    "main_sha": "56116feb449831ab40440a01c20f1213d4ede006",
     "main_committed_at": "2026-10-09T10:24:45Z",
     "main_ci_state": "green (dz23-agentic-quality + class-a-plus-integrity = success nesse SHA)",
     "mission_branch": "docs/checkpoints-missao-v21",
@@ -448,14 +448,17 @@
     {
       "id": 14,
       "title": "Browser Operator / computer-use",
-      "state": "IN_PROGRESS",
+      "state": "BLOCKED_BY_EXTERNAL_DEPENDENCY",
       "auditoria": "AUDITADO_PARCIAL",
       "capability": "PARCIAL",
       "evidence": [
-        "E-015"
+        "E-015",
+        "E-086"
       ],
       "blocker": "B-09",
-      "next": "Suprir dependencia ambiental (Python) para o teste de navegacao passar"
+      "next": "com o desbloqueio autorizado, rodar o E2E de navegador real e completar a classificacao por SO; desktop/computer-use segue NAO_VERIFICADO em todas as plataformas",
+      "done": "resolucao de interpretador corrigida e compartilhada entre status e operador; status honesto de prontidao com orientacao acionavel; coberto sem navegador: ambiente filho sem segredos, recusa de escopo sem sandbox estrita, eventos de frame e logica de setup. O E2E de navegador real sai de FAIL para SKIP com causa legivel",
+      "blocked_reason": "Playwright e Chromium ausentes neste host (python_ok=true, playwright_ok=false, chromium_ok=false). Desbloqueio: python -m pip install playwright && python -m playwright install chromium (~150MB), disponivel no produto em SetupBrowserEnvironment e nao executado por ser mudanca de maquina com custo relevante"
     },
     {
       "id": 15,
@@ -809,7 +812,9 @@
     {
       "id": "B-09",
       "tipo": "AMBIENTAL",
-      "descricao": "Host sem Python/sh e limites de caminho: 4 testes falham por ambiente"
+      "descricao": "Host sem Python/sh e limites de caminho: 4 testes falham por ambiente",
+      "status": "PARCIALMENTE RESOLVIDO",
+      "detail": "o item de navegador deixa de FALHAR: a causa era a escolha do interpretador Python pelo atalho da Microsoft Store, corrigida; resta dependencia externa declarada (Playwright/Chromium ausentes) que produz SKIP legivel em vez de falha opaca. Permanecem ambientais: import de projeto grande e kill de grupo de processos"
     },
     {
       "id": "B-10",
@@ -927,7 +932,9 @@
     "VOCABULARIO DO ESTAGIO 13 COMPLETO: trigger.interval, trigger.webhook, condition.if, action.mission, action.transform, logic.loop, approval.request e action.connector - oito tipos de no. Com isso a LISTA DE ATIVIDADES do estagio esta coberta, alem do criterio de conclusao ja demonstrado em teste ponta a ponta (E-081)",
     "PROXIMO PASSO DO ESTAGIO 13: reavaliar a PROMOCAO do estagio, agora que atividades e criterio estao cobertos. A promocao exige verificacao independente do conjunto (reler a lista de atividades contra o codigo e as evidencias), nao conveniencia de fim de lista. Duas correcoes de processo registradas nesta rodada: o registrador de conectores exigir HTTPS e um controle CORRETO do produto, entao o ajuste foi no TESTE; e o misspell marcou 'Eles' como erro em pt-BR, com o comentario reescrito em vez de silenciar a regra",
     "VERIFICACAO DO ESTAGIO 13 (PR desta rodada, E-085): releitura da lista de atividades contra o codigo, atividade por atividade, em docs/mission/HADES_STAGE_13_VERIFICATION.md. A verificacao REFUTOU a suposicao de que 'branches' ja funcionava e encontrou DOIS defeitos reais: (1) condition.if com Expect=failed era barrado por scheduleDependenciesSatisfied, que exigia sucesso do dependente antes de avaliar a condicao, tornando o ramo alternativo INALCANCAVEL - if/else existia so no nome; corrigido com scheduleStepDependenciesReady. (2) Depois da primeira correcao, aprovacao PENDENTE passou a satisfazer o ramo alternativo, disparando o caminho de recusa ANTES de qualquer decisao humana; corrigido com o conjunto pendingSteps, porque 'nao teve sucesso' e 'aguarda decisao' sao estados distintos. Ambos encontrados por TESTE QUE MEDE O EFEITO, travados em schedule_branch_test.go",
-    "PROMOCAO DO ESTAGIO 13 (E-085): criterio de conclusao CUMPRIDO (E-081) e lista de atividades COBERTA com as correcoes desta rodada, entao a execucao vai para COMPLETED_VERIFIED e a capacidade do Workflow Automation Engine para IMPLEMENTADO_E_TESTADO. LIMITES DECLARADOS, que NAO sao cobertura: conector homologado contra servidor HTTPS controlado (credenciais de SaaS de terceiros seguem BLOCKED_BY_EXTERNAL_DEPENDENCY e pertencem aos estagios 25/33/36); falha de passo com efeito ABORTA o fluxo em vez de desviar para o ramo alternativo (o ramo cobre 'concluiu sem sucesso', nao falha de execucao); e a execucao do fluxo e por tick do supervisor, com a fila de jobs cobrindo as missoes criadas pelos nos. RELEASE GLOBAL PERMANECE NOT_RELEASE_READY - este e um dos 38 estagios"
+    "PROMOCAO DO ESTAGIO 13 (E-085): criterio de conclusao CUMPRIDO (E-081) e lista de atividades COBERTA com as correcoes desta rodada, entao a execucao vai para COMPLETED_VERIFIED e a capacidade do Workflow Automation Engine para IMPLEMENTADO_E_TESTADO. LIMITES DECLARADOS, que NAO sao cobertura: conector homologado contra servidor HTTPS controlado (credenciais de SaaS de terceiros seguem BLOCKED_BY_EXTERNAL_DEPENDENCY e pertencem aos estagios 25/33/36); falha de passo com efeito ABORTA o fluxo em vez de desviar para o ramo alternativo (o ramo cobre 'concluiu sem sucesso', nao falha de execucao); e a execucao do fluxo e por tick do supervisor, com a fila de jobs cobrindo as missoes criadas pelos nos. RELEASE GLOBAL PERMANECE NOT_RELEASE_READY - este e um dos 38 estagios",
+    "ESTAGIO 14 - DIAGNOSTICO E CORRECAO (E-086): o teste de navegador estava em B-09 como falha ambiental e a causa NAO era a esperada. O operador escolhia o interpretador Python por EXISTENCIA no PATH (python3 -> python); no Windows esses nomes respondem pelo ATALHO DA MICROSOFT STORE, que existe e falha ao executar (exit 9009). Efeitos: o operador adotava o atalho, o status reportava PythonOK=true para algo que nao roda nada, a orientacao era ERRADA ('instale o Playwright') e o E2E falhava com erro criptico. Correcao: resolvePythonInterpreter VALIDA cada candidato EXECUTANDO (probe import sys) e e COMPARTILHADA entre status e operador, para nao divergirem. Medido na maquina real: python_path passa a ser C:\\Program Files\\Python312\\python.exe (o Python 3.12.10 real) e o E2E de navegador sai de FAIL para SKIP com causa legivel ('No module named playwright'). 3 testes novos + 1 teste existente corrigido (ele codificava o contrato defeituoso 'existe no PATH => Python OK', com probe que falhava sempre)",
+    "ESTAGIO 14 - STATUS POR PLATAFORMA (docs/mission/HADES_STAGE_14_PLATFORM_STATUS.md): Windows neste host = BLOQUEADO_EXTERNAMENTE para o E2E de navegador (Python OK, Playwright/Chromium ausentes) e NAO_VERIFICADO para desktop/computer-use; Linux e macOS NAO_VERIFICADOS, sem nenhuma medicao - nada declarado homologado por compilacao cruzada. Ja coberto sem navegador: ambiente filho SEM segredos, recusa de escopo sem sandbox estrita, eventos de frame, logica de setup e resolucao de interpretador. Desbloqueio exato: 'python -m pip install playwright' e 'python -m playwright install chromium' (~150MB), que o produto expoe em SetupBrowserEnvironment e que este trabalho NAO executou por ser mudanca de maquina com custo relevante"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",

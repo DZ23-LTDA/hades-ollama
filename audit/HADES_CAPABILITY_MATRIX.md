@@ -97,6 +97,9 @@
 
 | Workflow Automation Engine: ramos if/else | `scheduleStepDependenciesReady`, `pendingSteps` em `schedule_flow.go` (E-085) | IMPLEMENTADO_E_TESTADO | ALTO | E-085 | `condition.if` irmãos com `Expect` opostos formam if/else; ramo alternativo inalcançável e pendente-como-falha foram corrigidos |
 
+| Browser: resolução de interpretador e status honesto | `resolvePythonInterpreter`, `BrowserEnvironment`, `browserPythonExecutable` (E-086) | IMPLEMENTADO_E_TESTADO | MÉDIO | E-086 | candidato validado por execução (não por existência no PATH); status e operador compartilham a escolha |
+| Browser: E2E de navegador real (Windows) | `internal/agent/browser_helper.py` + Playwright | BLOQUEADO_EXTERNAMENTE | ALTO | E-086 | Playwright/Chromium ausentes; desbloqueio em 2 comandos |
+
 ## 6. Integrações, MCP e conectores
 
 | Capacidade | Superfície | Classificação | Risco | Evidência | Lacuna |

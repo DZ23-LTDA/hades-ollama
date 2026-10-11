@@ -61,7 +61,12 @@ func TestCheckBrowserEnvironmentPythonOnly(t *testing.T) {
 		return "", errNoBinary
 	}
 	probe := func(_, code string) (string, error) {
-		return "", errNoBinary // playwright import fails
+		// O interpretador RESPONDE (senão não é interpretador), mas o import do
+		// playwright falha — que é o caso deste teste.
+		if strings.Contains(code, "version_info") {
+			return "3", nil
+		}
+		return "", errNoBinary
 	}
 	st := checkBrowserEnvironment(lookPath, probe)
 	if !st.PythonOK || !st.CanAutoSetup {
@@ -72,6 +77,83 @@ func TestCheckBrowserEnvironmentPythonOnly(t *testing.T) {
 	}
 	if !containsSubstr(st.Guidance, "pip install playwright") {
 		t.Fatalf("expected pip guidance, got %+v", st.Guidance)
+	}
+}
+
+// O defeito que estes testes travam: no Windows, "python3"/"python" respondem pelo
+// atalho da Microsoft Store, que EXISTE no PATH e falha ao executar (exit 9009).
+// Escolher por existência fazia o operador adotar o atalho e o status reportar
+// PythonOK=true para algo que não roda nada.
+func TestResolvePythonInterpreterSkipsStoreAliasStub(t *testing.T) {
+	lookPath := func(name string) (string, error) {
+		switch name {
+		case "python3":
+			return `C:\Users\x\AppData\Local\Microsoft\WindowsApps\python3.exe`, nil
+		case "python":
+			return `C:\Program Files\Python312\python.exe`, nil
+		}
+		return "", errNoBinary
+	}
+	probe := func(path, code string) (string, error) {
+		if strings.Contains(path, "WindowsApps") {
+			return "", errors.New("exit status 9009") // atalho que não executa
+		}
+		if strings.Contains(code, "version_info") {
+			return "3", nil
+		}
+		return "", nil
+	}
+	resolved, ok := resolvePythonInterpreter(lookPath, probe)
+	if !ok {
+		t.Fatal("um interpretador real deveria ser aceito mesmo com o atalho primeiro no PATH")
+	}
+	if strings.Contains(resolved, "WindowsApps") {
+		t.Fatalf("o atalho da Microsoft Store não pode ser escolhido: %q", resolved)
+	}
+	if !strings.Contains(resolved, "Python312") {
+		t.Fatalf("esperava o Python real: %q", resolved)
+	}
+}
+
+func TestCheckBrowserEnvironmentRejectsStubOnlyAndExplainsWhy(t *testing.T) {
+	lookPath := func(name string) (string, error) {
+		if name == "python3" || name == "python" {
+			return `C:\Users\x\AppData\Local\Microsoft\WindowsApps\` + name + ".exe", nil
+		}
+		return "", errNoBinary
+	}
+	probe := func(string, string) (string, error) {
+		return "", errors.New("exit status 9009")
+	}
+	st := checkBrowserEnvironment(lookPath, probe)
+	if st.PythonOK || st.CanAutoSetup || st.PythonPath != "" {
+		t.Fatalf("um atalho que não executa não pode contar como Python: %+v", st)
+	}
+	joined := strings.Join(st.Guidance, " | ")
+	if !strings.Contains(joined, "Microsoft Store") {
+		t.Fatalf("a orientação precisa nomear o atalho da Microsoft Store: %+v", st.Guidance)
+	}
+	if strings.Contains(joined, "pip install playwright") {
+		t.Fatal("não se orienta instalar Playwright quando o problema é o interpretador")
+	}
+}
+
+func TestResolvePythonInterpreterAcceptsPyLauncherAsLastResort(t *testing.T) {
+	lookPath := func(name string) (string, error) {
+		if name == "py" {
+			return `C:\Windows\py.exe`, nil
+		}
+		return "", errNoBinary
+	}
+	probe := func(_, code string) (string, error) {
+		if strings.Contains(code, "version_info") {
+			return "3", nil
+		}
+		return "", nil
+	}
+	resolved, ok := resolvePythonInterpreter(lookPath, probe)
+	if !ok || resolved != `C:\Windows\py.exe` {
+		t.Fatalf("o lançador py deveria servir de último recurso: %q %v", resolved, ok)
 	}
 }
 
