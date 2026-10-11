@@ -2556,7 +2556,10 @@ func (a *agentAPI) missionContext(c *gin.Context) {
 	}
 	memories := []agent.Memory{}
 	if a.context != nil && strings.TrimSpace(mission.ProjectID) != "" {
-		found, searchErr := a.context.SearchMemoriesContext(c.Request.Context(), mission.ProjectID, mission.Objective, agent.MaxContextBootstrapMemories)
+		// Busca escopada por ATOR: a memória privada de outro usuário do mesmo
+		// projeto não pode entrar no contexto entregue ao modelo. O bootstrap
+		// também filtra (fail-closed), mas não se entrega o que não se deve ler.
+		found, searchErr := a.context.SearchMemoriesForActor(c.Request.Context(), mission.ProjectID, agentActorID(c), mission.Objective, agent.MaxContextBootstrapMemories)
 		if searchErr != nil {
 			writeAgentError(c, statusForAgentError(searchErr), searchErr)
 			return
@@ -2568,6 +2571,7 @@ func (a *agentAPI) missionContext(c *gin.Context) {
 		OrganizationID:      mission.OrganizationID,
 		ProjectID:           mission.ProjectID,
 		MissionID:           mission.ID,
+		ActorID:             agentActorID(c),
 		Workspace:           mission.Workspace,
 		Objective:           mission.Objective,
 		PlanTitles:          missionPlanTitles(mission.Plan),

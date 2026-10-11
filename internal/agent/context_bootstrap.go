@@ -80,11 +80,15 @@ var readScopes = map[string]struct{}{
 // ContextBootstrapInput é a entrada do bootstrap. Tudo aqui vem do servidor:
 // o chamador não pode fabricar permissão nem identidade.
 type ContextBootstrapInput struct {
-	Version             string
-	Mode                string
-	OrganizationID      string
-	ProjectID           string
-	MissionID           string
+	Version        string
+	Mode           string
+	OrganizationID string
+	ProjectID      string
+	MissionID      string
+	// ActorID é o usuário autenticado. Ele é OBRIGATÓRIO para que memória
+	// `private` de OUTRO ator não entre no contexto entregue ao modelo: o filtro
+	// por projeto sozinho bastava para separar projetos e não separava pessoas.
+	ActorID             string
 	Workspace           string
 	Objective           string
 	PlanTitles          []string
@@ -227,13 +231,22 @@ func BuildContextBootstrap(input ContextBootstrapInput) (ContextBootstrap, error
 	}
 	bootstrap.UntrustedSources = boundedList(input.UntrustedSources, 0)
 
-	// Isolamento: só memórias do MESMO projeto entram no contexto. Sem projeto
-	// declarado, nenhuma memória é injetada — na dúvida, não vaza.
+	// Isolamento em DUAS camadas: só memórias do MESMO projeto entram no contexto
+	// E, dentro do projeto, memória `private` de OUTRO ator nunca entra. Sem
+	// projeto declarado, nenhuma memória é injetada — na dúvida, não vaza.
+	//
+	// A camada por ator é fail-closed de propósito: o filtro por projeto sozinho
+	// deixava a memória privada de um colega entrar no preâmbulo de sistema — e o
+	// preâmbulo vai para o modelo, que pode ser externo. Filtrar aqui garante que
+	// nem um chamador que entregue a lista crua consiga vazar.
 	considered := 0
 	if project != "" {
 		candidates := make([]Memory, 0, len(input.Memories))
 		for _, memory := range input.Memories {
 			if strings.TrimSpace(memory.ProjectID) != project {
+				continue
+			}
+			if !memoryVisibleTo(memory, input.ActorID) {
 				continue
 			}
 			candidates = append(candidates, memory)
