@@ -71,6 +71,8 @@
 
 | Integridade da interface: nenhum controle finge funcionar | `server/desktop_local_routes.go` (501 + rota ausente sem middleware) (PR #135) | IMPLEMENTADO_NAO_HOMOLOGADO | MÉDIO | E-073 | endpoint de personalização deixou de simular persistência; falta varredura semelhante nas demais telas |
 
+| Workflow: grafo validado + resultado por nó persistido | `internal/agent/schedule_flow.go`, `Schedule.LastRun`, `SupervisorTickResult.ScheduleRunErrors` (PR #137) | IMPLEMENTADO_NAO_HOMOLOGADO | MÉDIO | E-074 | nós ignorados e falhas deixam de ser invisíveis; retry/DLQ por nó ainda não existem |
+
 ## 6. Integrações, MCP e conectores
 
 | Capacidade | Superfície | Classificação | Risco | Evidência | Lacuna |
