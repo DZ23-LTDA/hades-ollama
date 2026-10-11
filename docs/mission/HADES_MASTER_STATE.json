@@ -2,12 +2,12 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-12T10:15:00-03:00",
+  "updated_at": "2026-10-12T11:20:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
     "integration_branch": "main",
-    "main_sha": "ee316db5e1bad353a4a5c1ab5cc6af2d9a2e08b6",
+    "main_sha": "6ab6fae96c1c4c6d72615cd579abb0d471ed48fc",
     "main_committed_at": "2026-10-09T10:24:45Z",
     "main_ci_state": "green (dz23-agentic-quality + class-a-plus-integrity = success nesse SHA)",
     "mission_branch": "docs/checkpoints-missao-v21",
@@ -614,18 +614,19 @@
     {
       "id": 24,
       "title": "CRM e pipeline de vendas",
-      "state": "NOT_STARTED",
+      "state": "IN_PROGRESS",
       "auditoria": "AUDITADO",
-      "capability": "AUSENTE",
+      "capability": "PARCIAL",
       "evidence": [
         "E-047",
-        "E-087"
+        "E-087",
+        "E-107"
       ],
       "blocker": "B-05",
-      "next": "implementar comercio em sandbox: produto, variacao, estoque, carrinho, pedido, idempotencia e conciliacao, sem processar cartao",
+      "next": "LIMITES: sem emissao fiscal (NF-e) nem integracao contabil, sem cobranca real (Pix/boleto sao apenas REFERENCIAS registradas, sem PSP nem transferencia), sem carrinho persistente, sem frete/entrega/devolucao, sem sincronizacao com marketplace/ERP e persistencia em memoria nesta rodada",
       "blocked_reason": "",
       "external_dependency": "meios de pagamento reais exigem conta e conformidade; o fluxo de comercio em sandbox e implementavel localmente",
-      "done": "classificacao corrigida pela auditoria de bloqueios: o bloqueio externo em bloco escondia trabalho implementavel. Evidencia medida registrada em docs/mission/HADES_BLOCKED_AUDIT.md"
+      "done": "COMMERCE ENGINE implementado: catalogo de produtos, ESTOQUE COMO LIVRO DE MOVIMENTOS (saldo derivado, entrada/reserva/liberacao/saida/ajuste), pedidos com CHECKOUT IDEMPOTENTE por chave sob o mesmo lock, RESERVA de estoque que impede vender o que nao existe, preco vindo do CATALOGO (o pedido nao escolhe quanto paga), quitacao por REFERENCIA sem dado de cartao (PAN recusado), conferencia de valor, conciliacao idempotente, atendimento que consome o fisico, cancelamento que devolve o estoque e resumo com receita. As ferramentas commerce.order.read e commerce.stock.read deixaram de ser bloqueadas para o agente de comercio"
     },
     {
       "id": 25,
@@ -1063,7 +1064,12 @@
     "AGENTES DE ATENDIMENTO E VENDAS (E-106): os SETE agentes do estagio (recepcionista, vendas, suporte, redes sociais, voz, comercio e supervisor) foram implementados como catalogo reutilizavel que USA o que ja existe: CRM, caixa de entrada, registro de consentimento/DLP e catalogo de ferramentas. O turno monta CONTEXTO REAL e verificavel (contato e oportunidade do CRM, historico da conversa para continuidade, estado de consentimento, ferramentas permitidas e bloqueadas, e as politicas aplicadas)",
     "AGENTES DE ATENDIMENTO - DECISOES DELIBERADAS (E-106): A PROCEDENCIA DO TEXTO E DECLARADA em reply_source - sem modelo conectado o agente usa um modelo deterministico E DIZ ISSO, porque apresentar template como 'resposta da IA' seria mentir para o usuario. A POLITICA E VERIFICADA ANTES DO TEXTO E VALE EM QUALQUER MODELO: trocar de modelo NAO pode remover consentimento nem DLP (ha teste em tres modelos, incluindo um externo, e depois do opt-out o agente escala em QUALQUER modelo). SEM CONSENTIMENTO O AGENTE ESCALA, porque a decisao correta nao e 'manda mesmo assim' e sim passar para uma pessoa, com o motivo registrado. FERRAMENTA QUE O RUNTIME NAO TEM APARECE BLOQUEADA em blocked_tools, em vez de ser ignorada em silencio. E a resposta entra pela MESMA caixa de entrada, que revalida o consentimento: a politica nao depende do caminho",
     "AGENTES DE ATENDIMENTO - AJUSTE DE FORMA PEDIDO PELO LINTER (E-106): o nilerr apontou o retorno nil no bloqueio de DLP. Em vez de silenciar a regra ou propagar um erro que ninguem consumiria, MUDEI A FORMA: a politica responde SIM/NAO (outboundTextAllowed), porque bloquear nao e falha do servidor e sim decisao que vira escalada. O codigo ficou mais claro E o linter ficou limpo",
-    "AGENTES DE ATENDIMENTO - LIMITES DECLARADOS (E-106): sem geracao por modelo (o texto e deterministico e declarado como tal, e a procedencia existe justamente para permitir ligar um modelo depois), ferramentas apenas DECLARADAS (a execucao real depende dos modulos de comercio, voz e conhecimento), sem base de conhecimento, sem filas de distribuicao por especialidade e sem metricas de qualidade por agente. Capacidade PARCIAL"
+    "AGENTES DE ATENDIMENTO - LIMITES DECLARADOS (E-106): sem geracao por modelo (o texto e deterministico e declarado como tal, e a procedencia existe justamente para permitir ligar um modelo depois), ferramentas apenas DECLARADAS (a execucao real depende dos modulos de comercio, voz e conhecimento), sem base de conhecimento, sem filas de distribuicao por especialidade e sem metricas de qualidade por agente. Capacidade PARCIAL",
+    "MOTOR DE COMERCIO (E-107): implementados catalogo, estoque, pedidos, quitacao por referencia e conciliacao. ESTOQUE E UM LIVRO DE MOVIMENTOS, NAO UM CONTADOR: o saldo e DERIVADO dos lancamentos, porque um contador mutavel perde atualizacao sob concorrencia e nao permite auditar quem mexeu. IDEMPOTENCIA DE CHECKOUT POR CHAVE SOB O MESMO LOCK: reenviar o mesmo checkout NAO cria dois pedidos - em comercio essa e a diferenca entre cobrar uma vez e cobrar duas - e sem chave o pedido e RECUSADO, porque sem chave nao ha como garantir unicidade e um retry viraria venda duplicada. O estoque RESERVA na criacao, entao NAO SE VENDE O QUE NAO EXISTE. O PRECO VEM DO CATALOGO, NUNCA DO PEDIDO: o cliente nao escolhe quanto paga",
+    "MOTOR DE COMERCIO - ERRO MEU ENCONTRADO ANTES DO TESTE (E-107): ao derivar o saldo, eu havia somado o delta da RESERVA no estoque FISICO, o que faria o fisico cair no momento da reserva e MENTIR SOBRE O DEPOSITO (a mercadoria continua na prateleira). Corrigi a modelagem para disponivel = fisico - reservado, e o teste passou a travar exatamente isso: reservar 4 de 4 deixa fisico=4, reservado=4 e disponivel=0",
+    "MOTOR DE COMERCIO - ZERO DADO DE CARTAO (E-107): os metodos aceitos sao REFERENCIAS (sandbox, Pix, boleto, manual) e referencia com aparencia de numero de cartao e RECUSADA em tres formatos testados. O estagio proibe processar cartao sem infraestrutura e conformidade, entao o sistema nao guarda PAN nem por acidente. Ha tambem conferencia de valor (pagamento divergente do pedido e erro) e conciliacao idempotente (mesma referencia e no-op, outra e conflito)",
+    "MOTOR DE COMERCIO - EFEITO NOS AGENTES (E-107): as ferramentas commerce.order.read e commerce.stock.read DEIXARAM DE SER BLOQUEADAS para o agente de comercio, porque agora existem de verdade, e ha teste verificando que o catalogo nao as lista mais como bloqueadas",
+    "MOTOR DE COMERCIO - LIMITES DECLARADOS (E-107): sem emissao fiscal (NF-e) nem integracao contabil, sem cobranca real (Pix/boleto sao apenas REFERENCIAS registradas, sem PSP nem transferencia de dinheiro), sem carrinho persistente, sem frete/entrega/devolucao, sem sincronizacao com marketplace/ERP e persistencia em memoria nesta rodada. Capacidade PARCIAL"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",

@@ -822,6 +822,18 @@ func (a *agentAPI) register(r *gin.Engine) {
 	group.POST("/omnichannel/dlq/:id/retry", a.retryOmnichannelDeadLetter)
 	group.GET("/service-agents", a.listServiceAgents)
 	group.POST("/service-agents/:id/turn", a.serviceAgentTurn)
+	group.POST("/commerce/products", a.upsertCommerceProduct)
+	group.GET("/commerce/products", a.listCommerceProducts)
+	group.POST("/commerce/stock", a.recordCommerceStock)
+	group.GET("/commerce/stock/:sku", a.commerceStock)
+	group.POST("/commerce/orders", a.createCommerceOrder)
+	group.GET("/commerce/orders", a.listCommerceOrders)
+	group.GET("/commerce/orders/:id", a.getCommerceOrder)
+	group.POST("/commerce/orders/:id/payment", a.confirmCommercePayment)
+	group.POST("/commerce/orders/:id/reconcile", a.reconcileCommerceOrder)
+	group.POST("/commerce/orders/:id/fulfill", a.fulfillCommerceOrder)
+	group.POST("/commerce/orders/:id/cancel", a.cancelCommerceOrder)
+	group.GET("/commerce/summary", a.commerceSummary)
 	group.GET("/egress/logs", a.getEgressLogs)
 	group.GET("/egress/status", a.getEgressStatus)
 	group.GET("/plugins", a.listPlugins)
@@ -3858,6 +3870,18 @@ func statusForAgentError(err error) int {
 	}
 	if errors.Is(err, agent.ErrOmnichannelNotConfigured) || errors.Is(err, agent.ErrOmnichannelDLQNotFound) {
 		return http.StatusNotFound
+	}
+	// Comércio (estágio 24): estoque insuficiente é 409 (o pedido não cabe no saldo),
+	// dado de cartão é 422 (a requisição é inaceitável por política) e conflito de
+	// estado/conciliação é 409.
+	if errors.Is(err, agent.ErrCommerceProductMissing) || errors.Is(err, agent.ErrCommerceOrderMissing) {
+		return http.StatusNotFound
+	}
+	if errors.Is(err, agent.ErrCommerceCardDataRefused) {
+		return http.StatusUnprocessableEntity
+	}
+	if errors.Is(err, agent.ErrCommerceInsufficient) || errors.Is(err, agent.ErrCommerceOrderState) || errors.Is(err, agent.ErrCommerceReconcileConflict) {
+		return http.StatusConflict
 	}
 	if errors.Is(err, os.ErrNotExist) {
 		return http.StatusNotFound

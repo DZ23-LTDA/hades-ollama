@@ -406,5 +406,9 @@ func DefaultServiceAgentTools() map[string]bool {
 		"inbox.metrics.read":      true,
 		"inbox.assign":            true,
 		"company.report.read":     true,
+		// O motor de comércio existe (estágio 24): estas ferramentas deixam de ser
+		// bloqueadas e passam a ser declaradas como disponíveis de verdade.
+		"commerce.order.read": true,
+		"commerce.stock.read": true,
 	}
 }
