@@ -151,6 +151,8 @@
 
 | Fábrica de empresa com artefatos | `company_factory.go`, rotas `/company/factory/*` (E-114) | PARCIAL | MÉDIO | E-114 | artefatos reais em disco, preço derivado de custo e margem, CRM não inventado, checklist com bloqueios e procedimento; nada legal emitido |
 
+| Benchmark comparável (próprio produto) | `benchmark_suite.go`, executor `TestBenchmarkSuiteMeasuresHermeticTasks` (E-117) | PARCIAL | MÉDIO | E-117 | 5 tarefas herméticas medidas (5/5, 102 ms) com isolamento e retomada provados; **comparação externa NÃO executada** por falta de credenciais |
+
 ## 6. Integrações, MCP e conectores
 
 | Capacidade | Superfície | Classificação | Risco | Evidência | Lacuna |
