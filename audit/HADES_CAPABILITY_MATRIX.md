@@ -93,6 +93,8 @@
 
 | Workflow: aprovação com espera entre execuções | `approval.request`, `Schedule.Approvals`, `Schedule.PendingApprovals`, `DecideScheduleApproval`, `POST /schedules/:id/approvals` (PR #155) | IMPLEMENTADO_E_TESTADO | ALTO | E-083 | pausa o fluxo até decisão humana auditável; negativa não vira falha técnica; aprovação não vaza para execução futura |
 
+| Workflow: nó de conector (caminho real) | `action.connector`, `ConnectorManager.CallForOrganization` (PR #157) | IMPLEMENTADO_E_TESTADO | ALTO | E-084 | escrita exige aprovação e nenhuma chamada sai sem ela; conector ausente ou de outro tenant falha em vez de ser pulado |
+
 ## 6. Integrações, MCP e conectores
 
 | Capacidade | Superfície | Classificação | Risco | Evidência | Lacuna |
