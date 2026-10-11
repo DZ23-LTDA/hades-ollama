@@ -2,12 +2,12 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-12T12:30:00-03:00",
+  "updated_at": "2026-10-12T13:40:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
     "integration_branch": "main",
-    "main_sha": "88cb5b2fa3ffd2103fe3d684cded315591355272",
+    "main_sha": "04fd234cdbfebe48fadd1d347ad17fb503b44524",
     "main_committed_at": "2026-10-09T10:24:45Z",
     "main_ci_state": "green (dz23-agentic-quality + class-a-plus-integrity = success nesse SHA)",
     "mission_branch": "docs/checkpoints-missao-v21",
@@ -831,19 +831,20 @@
     {
       "id": 38,
       "title": "Gate final de release verificado",
-      "state": "NOT_STARTED",
+      "state": "IN_PROGRESS",
       "auditoria": "PENDENTE",
-      "capability": "AUSENTE",
+      "capability": "PARCIAL",
       "evidence": [
         "E-033",
         "E-048",
-        "E-087"
+        "E-087",
+        "E-109"
       ],
       "blocker": "B-06",
-      "next": "rodar a homologacao de empresa autonoma em sandbox com provas de isolamento e recuperacao",
+      "next": "LIMITES DECLARADOS NO PROPRIO RELATORIO: marketplace e redes sociais (conta autorizada e scopes), telefonia e voz (numero e provedor real), pagamento real (sem PSP nem transferencia), fiscal (NF-e e impostos) e canais externos (credencial do provedor). O veredito e SANDBOX_APROVADO e NAO autoriza chamar o resultado de producao",
       "blocked_reason": "",
       "external_dependency": "idem 32: integracoes ao vivo; a jornada em sandbox e local",
-      "done": "classificacao corrigida pela auditoria de bloqueios: o bloqueio externo em bloco escondia trabalho implementavel. Evidencia medida registrada em docs/mission/HADES_BLOCKED_AUDIT.md"
+      "done": "CERTIFICACAO E2E EM SANDBOX implementada com 18 etapas, CADA UMA CARREGANDO A EVIDENCIA do identificador produzido: empresa, produto e estoque, contato no CRM, consentimento, mensagem recebida, resposta do agente com procedencia declarada, oportunidade, pedido, reserva, pagamento sandbox por referencia, receita lancada, conciliacao, atendimento, SLA medido, financeiro consistente, recuperacao idempotente, isolamento provado e externo pendente DECLARADO. A PROVA DE ISOLAMENTO e parte do relatorio (cada recurso lido como a outra organizacao precisa falhar) e ha teste de REINICIO REAL com novo runtime sobre o mesmo diretorio de dados. Superficie real: POST /business/certify"
     }
   ],
   "blockers": [
@@ -1076,7 +1077,11 @@
     "FINANCEIRO - RAZAO POR EMPRESA E COMERCIO POR ORGANIZACAO (E-108): a resolucao organizacao -> empresa e explicita e, sem empresa criada, o lancamento e RECUSADO em vez de ir para o vazio. NENHUM DINHEIRO SE MOVE: nao ha pagamento, transferencia nem estorno automatico, apenas registro e sinalizacao - mover dinheiro exige autorizacao",
     "FINANCEIRO - ERROS MEUS CORRIGIDOS PELOS TESTES (E-108): (1) o company_id do RECIBO carregava a ORGANIZACAO, e a conciliacao entao procurava uma empresa com o ID da organizacao e falhava com 'company not found: org-a' - o campo significa EMPRESA, e corrigi o valor em vez de afrouxar a busca; (2) a empresa recebe ID PROPRIO na criacao e eu havia fixado 'emp-1' nos testes - passei a usar o ID DEVOLVIDO pela criacao; (3) conflito de conciliacao respondia 400 e e 409",
     "COMERCIO PERSISTENTE (E-108): fecha o limite mais fragil declarado na rodada anterior. Um arquivo por organizacao com catalogo, livro de estoque, pedidos, chaves de idempotencia e numeracao, entao o isolamento fica no ARMAZENAMENTO e nao so na consulta. Ha teste de reinicio que recupera pedido com pagamento, estoque fisico e reservado, catalogo E a chave de idempotencia - reenviar o mesmo checkout apos o reinicio devolve o MESMO pedido, sem criar um segundo",
-    "FINANCEIRO - LIMITES DECLARADOS (E-108): sem integracao bancaria (OFX/CNAB/API) nem importacao de extrato, sem fiscal (NF-e/impostos) nem contabil, sem emissao de Pix/boleto nem PSP (nada e transferido), sem rateio por centro de custo e sem orcamento por area, e o estorno e apenas SINALIZADO. Capacidade PARCIAL"
+    "FINANCEIRO - LIMITES DECLARADOS (E-108): sem integracao bancaria (OFX/CNAB/API) nem importacao de extrato, sem fiscal (NF-e/impostos) nem contabil, sem emissao de Pix/boleto nem PSP (nada e transferido), sem rateio por centro de custo e sem orcamento por area, e o estorno e apenas SINALIZADO. Capacidade PARCIAL",
+    "CERTIFICACAO E2E DE EMPRESA EM SANDBOX (E-109): a jornada completa passou a ser executavel e auditavel ponta a ponta em 18 etapas, e CADA ETAPA CARREGA A EVIDENCIA do identificador que produziu. O relatorio nao diz 'passou': diz QUAL identificador foi criado e conferido, porque um OK sem evidencia seria AFIRMACAO SEM LASTRO",
+    "CERTIFICACAO E2E - PROVA DE ISOLAMENTO NO RELATORIO (E-109): cada recurso criado para a organizacao (conversa, pedido, livro financeiro e contato) e LIDO COMO A OUTRA ORGANIZACAO e a tentativa precisa falhar. O veredito so e aprovado se NENHUM vazamento aparecer, e se aparecer a etapa isolamento_provado falha e a jornada termina em FALHOU",
+    "CERTIFICACAO E2E - O QUE NAO FOI FEITO E DECLARADO (E-109): marketplace, redes sociais, telefonia, PSP real, fiscal e canais externos aparecem como SKIPPED_EXTERNAL com motivo. DECLARAR E DIFERENTE DE OMITIR, e simulacao NUNCA e chamada de producao: o veredito e SANDBOX_APROVADO, nao release. Etapa que falha vira FALHOU com o motivo e a rota devolve 422 COM O RELATORIO, para o operador ver qual etapa quebrou",
+    "CERTIFICACAO E2E - RECUPERACAO COM REINICIO REAL (E-109): ha teste que sobe um NOVO runtime sobre o MESMO diretorio de dados e confirma que pedido atendido, estoque, receita lancada UMA vez, conciliacao, idempotencia do checkout e consentimento sobreviveram - e que repostar a receita nao cria um segundo lancamento. Sem essa prova, certificar duas vezes cobraria duas vezes. Capacidade PARCIAL"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",

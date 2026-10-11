@@ -139,6 +139,8 @@
 
 | Financeiro: receita do comércio e conciliação | `finance_ops.go`, rotas `/finance/*` (E-108) | PARCIAL | MÉDIO | E-108 | receita só de pedido pago, idempotente por pedido, lacuna medida, estorno devido sinalizado, conciliação cruzada; sem banco/fiscal/PSP e nenhum dinheiro movimentado |
 
+| Certificação E2E de empresa em sandbox | `business_e2e.go`, rota `/business/certify` (E-109) | PARCIAL | MÉDIO | E-109 | 18 etapas com evidência por etapa, prova de isolamento, idempotência e reinício real, pendências externas declaradas; jornada em sandbox |
+
 ## 6. Integrações, MCP e conectores
 
 | Capacidade | Superfície | Classificação | Risco | Evidência | Lacuna |
