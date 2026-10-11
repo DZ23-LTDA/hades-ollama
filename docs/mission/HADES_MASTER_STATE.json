@@ -2,12 +2,12 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-11T19:50:00-03:00",
+  "updated_at": "2026-10-11T21:00:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
     "integration_branch": "main",
-    "main_sha": "2d563d61a38afdbfa1159245ab8e0426cb51d133",
+    "main_sha": "2743cf65942ae32cf2ec9a6b13760e9a4fcca27f",
     "main_committed_at": "2026-10-09T10:24:45Z",
     "main_ci_state": "green (dz23-agentic-quality + class-a-plus-integrity = success nesse SHA)",
     "mission_branch": "docs/checkpoints-missao-v21",
@@ -475,12 +475,13 @@
         "E-088",
         "E-089",
         "E-090",
-        "E-092"
+        "E-092",
+        "E-093"
       ],
       "blocker": "B-07",
-      "next": "ATIVIDADES AINDA AUSENTES: versionamento, resumos, criptografia em repouso e escopos de missao/agente/equipe no tipo Memory. O estagio NAO foi promovido porque a lista de atividades nao esta completa",
+      "next": "ATIVIDADES AINDA AUSENTES: resumos, criptografia em repouso e escopos de missao/agente/equipe no tipo Memory. O estagio NAO foi promovido porque ainda faltam tres atividades",
       "blocked_reason": "",
-      "done": "CRITERIO CUMPRIDO E MEDIDO (troca de modelo AO VIVO, reinicio, retomada, isolamento), evidencia obrigatoria coberta (isolamento, proveniencia, exportacao/exclusao), familia de caminhos irmaos fechada (rota de busca, exportacao, exclusao, contexto do modelo e comando /memory) e DEDUPLICACAO implementada com regra conservadora (conteudo, tipo, visibilidade/ator e origem), antes do embedding e re-checada sob o lock"
+      "done": "CRITERIO CUMPRIDO E MEDIDO, evidencia obrigatoria coberta, familia de caminhos irmaos fechada, DEDUPLICACAO implementada (E-092) e VERSIONAMENTO implementado com rotas alcancaveis pelo produto (PATCH de memoria e GET de historico), historico limitado, recusa uniforme para memoria privada alheia e invalidacao do vetor do texto antigo"
     },
     {
       "id": 16,
@@ -996,7 +997,9 @@
     "REGRA QUE FICA (E-090): recurso com escopo por ator so esta protegido quando TODOS os caminhos que leem o dado aplicam o filtro. A existencia de uma funcao escopada NAO e prova de uso, e o irmao esquecido e o caminho mais provavel do vazamento. O invariante ficou verificavel por comando e documentado em docs/mission/HADES_SIBLING_PATHS_AUDIT.md",
     "AUDITORIA DE GUARDA DE TENANT (E-091): o metodo da familia de caminhos irmaos foi aplicado ao outro eixo - escopo por ORGANIZACAO. Script reexecutavel em scripts/audit_tenant_guards.py lista handlers que tocam o store sem guarda reconhecida. CALIBRACAO REGISTRADA: a primeira versao, com seis guardas, acusou 49 handlers e quase tudo era falso positivo porque o codigo usa helpers que o detector nao conhecia (requireSupervisorAdmin, requireWhatsAppAdmin, companyOrganizationID, guarda manual if a.authRequired). Depois de calibrar e ler cada caso: 136 handlers com guarda, 14 sem guarda de helper e TODOS os 14 explicados no codigo - diagnostico (health, metrics, prometheus), lista estatica (tools), pareamento de dispositivo, superficies de midia do runtime unico, downloadBackup RECUSADO em modo autenticado com 403 e webhooks publicos autenticados por assinatura HMAC. NENHUM DEFEITO NOVO nesta dimensao: resultado negativo e medido, nao presumido. Licao de metodo: um detector ingenuo produziu 49 falsos positivos, e um detector que omite guarda por nao conhece-la produz silencio parecendo seguranca",
     "DEDUPLICACAO DE MEMORIA (E-092): primeira das quatro atividades ausentes do estagio 15 foi fechada. Regra CONSERVADORA: so e a mesma memoria quando coincidem conteudo, tipo, visibilidade/ator E origem - kind diferente e conhecimento diferente, ator/visibilidade sao fronteira de privacidade e source e proveniencia. Fundir o que nao e identico perderia informacao, e perder memoria e pior que guardar uma linha repetida. A duplicata devolve a memoria ORIGINAL; a checagem roda ANTES do embedding (nao gasta vetor em duplicata) e e repetida SOB O LOCK para duas gravacoes concorrentes nao passarem juntas",
-    "DEDUPLICACAO - EFEITO NAS FIXTURES E ERRO CORRIGIDO (E-092): a dedup quebrou TRES testes de retencao. Diagnostico medido: as fixtures inseriam N memorias com conteudo IDENTICO em laco para testar retencao por CONTAGEM - artefato da fixture, nao expectativa de produto. Corrigidas para dar origem propria a cada memoria, com o motivo escrito no codigo. ERRO NA PRIMEIRA TENTATIVA: usei Source 'seed-<indice>', que COLIDE entre duas chamadas de seed com o mesmo conteudo, entao a dedup fundiu as memorias novas com as antigas e o teste acusou 'removed by count = 0, want 2'. Conserto: incluir o PREFIXO na origem (prefixo-indice). O erro apareceu porque o teste mediu o efeito, nao porque o codigo foi relido"
+    "DEDUPLICACAO - EFEITO NAS FIXTURES E ERRO CORRIGIDO (E-092): a dedup quebrou TRES testes de retencao. Diagnostico medido: as fixtures inseriam N memorias com conteudo IDENTICO em laco para testar retencao por CONTAGEM - artefato da fixture, nao expectativa de produto. Corrigidas para dar origem propria a cada memoria, com o motivo escrito no codigo. ERRO NA PRIMEIRA TENTATIVA: usei Source 'seed-<indice>', que COLIDE entre duas chamadas de seed com o mesmo conteudo, entao a dedup fundiu as memorias novas com as antigas e o teste acusou 'removed by count = 0, want 2'. Conserto: incluir o PREFIXO na origem (prefixo-indice). O erro apareceu porque o teste mediu o efeito, nao porque o codigo foi relido",
+    "VERSIONAMENTO DE MEMORIA (E-093): segunda das quatro atividades ausentes do estagio 15 foi fechada. Antes disto a memoria era so append + delete: corrigir uma anotacao exigia apagar e recriar e o que foi corrigido SE PERDIA - sem historico nao ha como auditar quem reescreveu o conhecimento nem desfazer uma alteracao errada. Decisoes deliberadas: o historico guarda o conteudo ANTERIOR com quem alterou, data e motivo; o historico e LIMITADO (MaxMemoryVersions=20, descartando o mais antigo) porque sem teto uma memoria muito editada viraria arquivo sem fim; a alteracao passa pela MESMA checagem de visibilidade da exclusao (memoria privada alheia recusada com erro de INEXISTENTE, para a rota nao ser oraculo); o vetor de embedding do texto antigo e INVALIDADO (manter vetor de texto que nao existe mais faria a busca devolver a memoria errada); reedicao com o MESMO conteudo nao cria revisao; e a persistencia tem rollback",
+    "VERSIONAMENTO ALCANCAVEL PELO PRODUTO (E-093): a capacidade nao ficou so na API Go. Foram adicionadas PATCH /projects/:id/memories/:memory_id e GET /projects/:id/memories/:memory_id/history, ambas escopadas por ator (o quarto irmao foi exatamente um caminho que esqueceu o ator) e com 404 UNIFORME para memoria inexistente e para memoria privada alheia. Verificado por 4 testes de motor e 2 de rota, incluindo um teste que confere que as rotas estao REGISTRADAS no roteador - nao basta a funcao existir. Erros meus encontrados pelo proprio teste: consulta com espaco em helper que nao codifica URL e nome errado do registrador de rotas"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",

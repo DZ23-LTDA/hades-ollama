@@ -744,6 +744,8 @@ func (a *agentAPI) register(r *gin.Engine) {
 	// organização do projeto.
 	group.GET("/projects/:id/memories/export", a.exportProjectMemories)
 	group.DELETE("/projects/:id/memories/:memory_id", a.deleteProjectMemory)
+	group.PATCH("/projects/:id/memories/:memory_id", a.updateProjectMemory)
+	group.GET("/projects/:id/memories/:memory_id/history", a.memoryHistory)
 	group.POST("/projects/:id/memories/prune", a.pruneProjectMemories)
 	// Política de retenção por organização (estágio 15). A aplicação é
 	// EXPLÍCITA: não existe laço de fundo fingindo automação.
@@ -2119,6 +2121,58 @@ func (a *agentAPI) collabStream(c *gin.Context) {
 		case <-ticker.C:
 		}
 	}
+}
+
+// updateProjectMemory altera o conteúdo de uma memória visível ao ator e preserva
+// a revisão anterior no histórico (versionamento, estágio 15).
+func (a *agentAPI) updateProjectMemory(c *gin.Context) {
+	if _, err := a.projectForRequest(c); err != nil {
+		writeAgentError(c, statusForAgentError(err), err)
+		return
+	}
+	var request struct {
+		Content string `json:"content"`
+		Reason  string `json:"reason"`
+	}
+	if err := decodeJSON(c, &request); err != nil {
+		writeAgentError(c, http.StatusBadRequest, err)
+		return
+	}
+	updated, err := a.context.UpdateMemoryForActor(c.Request.Context(), c.Param("id"), c.Param("memory_id"), agentActorID(c), request.Content, request.Reason)
+	if err != nil {
+		if errors.Is(err, agent.ErrMemoryNotFound) {
+			// Mesmo 404 para memória inexistente e para memória privada alheia: a
+			// resposta não revela a existência de dado privado.
+			writeAgentError(c, http.StatusNotFound, err)
+			return
+		}
+		writeAgentError(c, statusForAgentError(err), err)
+		return
+	}
+	c.JSON(http.StatusOK, updated)
+}
+
+// memoryHistory devolve as revisões anteriores de uma memória visível ao ator.
+func (a *agentAPI) memoryHistory(c *gin.Context) {
+	if _, err := a.projectForRequest(c); err != nil {
+		writeAgentError(c, statusForAgentError(err), err)
+		return
+	}
+	history, err := a.context.MemoryHistoryForActor(c.Param("id"), c.Param("memory_id"), agentActorID(c))
+	if err != nil {
+		if errors.Is(err, agent.ErrMemoryNotFound) {
+			writeAgentError(c, http.StatusNotFound, err)
+			return
+		}
+		writeAgentError(c, statusForAgentError(err), err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"project_id": c.Param("id"),
+		"memory_id":  c.Param("memory_id"),
+		"count":      len(history),
+		"versions":   history,
+	})
 }
 
 func (a *agentAPI) addMemory(c *gin.Context) {

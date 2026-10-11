@@ -212,6 +212,10 @@ type Memory struct {
 	// projeto (`organization`), preservando dados anteriores.
 	Visibility string `json:"visibility,omitempty"`
 	ActorID    string `json:"actor_id,omitempty"`
+	// Versionamento (estágio 15): `Revision` começa em 0 e sobe a cada alteração
+	// real; `Versions` guarda o conteúdo anterior com quem alterou, data e motivo.
+	Revision int             `json:"revision,omitempty"`
+	Versions []MemoryVersion `json:"versions,omitempty"`
 }
 
 type SkillManifest struct {
