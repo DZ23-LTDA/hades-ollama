@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { downloadBusinessExport, getBusinessStatus, getBusinessTrend, recordBusinessSnapshot } from "@/lib/agenticClient";
 import { triggerDownload } from "@/lib/download";
+import { BusinessTrendChart, TREND_METRICS } from "@/components/BusinessTrendChart";
 import type { BusinessStatusReport, BusinessTrend } from "@/lib/agenticClient";
 
 export const BUSINESS_EXPORT_FILENAME = "hades-business-status.csv";
@@ -25,6 +26,7 @@ export const BUSINESS_EXPORT_ERROR_MESSAGE = "Não foi possível gerar a exporta
 export function BusinessStatusPanel({ companyId }: { companyId: string }) {
   const [report, setReport] = useState<BusinessStatusReport | null>(null);
   const [trend, setTrend] = useState<BusinessTrend | null>(null);
+  const [metricId, setMetricId] = useState<string>(TREND_METRICS[0].id);
   const [notice, setNotice] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -97,6 +99,9 @@ export function BusinessStatusPanel({ companyId }: { companyId: string }) {
       ]
     : [];
 
+  // Métrica do gráfico: escolhida por quem usa, com o rótulo em pt-BR; o padrão é a receita de pedidos.
+  const selectedMetric = TREND_METRICS.find((metric) => metric.id === metricId) ?? TREND_METRICS[0];
+
   // Exportar é uma ação de LEITURA que sai do produto: o arquivo é aberto numa planilha, longe da
   // tela. Por isso o aviso diz explicitamente que ele leva as lacunas e a origem de cada número — e
   // a falha aparece como falha, nunca como "exportado" silencioso.
@@ -114,8 +119,7 @@ export function BusinessStatusPanel({ companyId }: { companyId: string }) {
   }, [companyId]);
 
   return (
-    <section className="mt-5 rounded-2xl border border-sky-200/80 bg-sky-50/40 p-5 dark:border-sky-900/60 dark:bg-sky-950/10">
-      <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+    <section className="mt-5 rounded-2xl border border-sky-200/80 bg-sky-50/40 p-5 dark:border-sky-900/60 dark:bg-sky-950/10">      <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
         <div>
           <div className="text-xs font-medium uppercase tracking-[0.14em] text-sky-700 dark:text-sky-300">BI e status de negócio</div>
           <h2 className="mt-1 text-lg font-semibold text-neutral-950 dark:text-white">Indicadores reais, com origem e lacunas declaradas</h2>
@@ -208,6 +212,29 @@ export function BusinessStatusPanel({ companyId }: { companyId: string }) {
                   ))}
                 </ul>
               </>
+            )}
+            {trend.history.length > 0 && (
+              <div className="mt-3 rounded-lg border border-neutral-200 p-3 dark:border-neutral-800">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <h4 className="text-xs font-semibold">Gráfico da série</h4>
+                  <label className="text-[11px] text-neutral-500 dark:text-neutral-400">
+                    Métrica do gráfico
+                    <select
+                      className="ml-2 rounded-lg border border-neutral-300 bg-white px-2 py-1 text-xs dark:border-neutral-700 dark:bg-neutral-900"
+                      value={metricId}
+                      onChange={(event) => setMetricId(event.target.value)}
+                    >
+                      {TREND_METRICS.map((metric) => (
+                        <option key={metric.id} value={metric.id}>
+                          {metric.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+                {/* Curva em SVG sem dependência nova, com a tabela equivalente sempre visível. */}
+                <BusinessTrendChart history={trend.history} metric={selectedMetric} />
+              </div>
             )}
           </>
         )}
