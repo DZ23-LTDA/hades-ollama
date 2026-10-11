@@ -137,6 +137,8 @@
 
 | Comércio: catálogo, estoque, pedidos e conciliação | `commerce.go`, rotas `/commerce/*` (E-107) | PARCIAL | MÉDIO | E-107 | estoque como livro de movimentos, checkout idempotente, não vende o que não existe, preço do catálogo, zero dado de cartão; sem fiscal, sem PSP e persistência em memória |
 
+| Financeiro: receita do comércio e conciliação | `finance_ops.go`, rotas `/finance/*` (E-108) | PARCIAL | MÉDIO | E-108 | receita só de pedido pago, idempotente por pedido, lacuna medida, estorno devido sinalizado, conciliação cruzada; sem banco/fiscal/PSP e nenhum dinheiro movimentado |
+
 ## 6. Integrações, MCP e conectores
 
 | Capacidade | Superfície | Classificação | Risco | Evidência | Lacuna |
