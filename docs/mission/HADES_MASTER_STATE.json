@@ -2,12 +2,12 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-13T10:20:00-03:00",
+  "updated_at": "2026-10-13T11:35:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
     "integration_branch": "main",
-    "main_sha": "ae540eff0df32b1b59d48c9b992e6f80dc6c225f",
+    "main_sha": "ac88d2931ccb6127cccd0bddb54faa0a2628e33d",
     "main_committed_at": "2026-10-09T10:24:45Z",
     "main_ci_state": "green (dz23-agentic-quality + class-a-plus-integrity = success nesse SHA)",
     "mission_branch": "docs/checkpoints-missao-v21",
@@ -1166,7 +1166,12 @@
     "DOIS ERROS MEUS NO PROCESSO, REGISTRADOS (E-127): (a) ao reescrever as injecoes por script perdi o 'store.root = ' da atribuicao, e os quatro testes passaram a NAO FALHAR POR NAO INJETAR NADA - situacao que se parece com sucesso, e o sintoma foi o que denunciou; (b) deixei aspas escapadas em tres arquivos, recusadas pelo compilador. Ambos corrigidos de forma canonica e verificados linha a linha, nenhum escondido. Tambem: a guarda nova revelou limitacao do MEU teste - no Windows o Chmod de arquivo reporta 0666, entao a assercao de permissao vale so onde ha semantica POSIX",
     "SUPERFICIE HTTP DO MARKETPLACE (E-128): no documento anterior do estagio 25 eu registrei entre os limites 'sem rotas HTTP e sem interface visual'. Esta rodada entregou as rotas: catalogo (200), sincronizacao (200, 400 pedido invalido, 404 canal desconhecido, 429 teto excedido) e espelho do duble (200)",
     "MARKETPLACE - 429 E NAO 400 NO TETO (E-128): exceder o teto de operacoes por execucao e LIMITACAO DE TAXA (o pedido esta bem formado, o volume e que nao cabe); devolver 400 esconderia a natureza do problema e sugeriria erro do cliente. A recusa por teto NAO aplica efeito, e o teste comprova isso consultando o duble",
-    "MARKETPLACE - CREDENCIAL NAO E OPERACAO NA ROTA (E-128): o catalogo deriva o estado do canal apenas da EXISTENCIA da variavel de credencial; os VALORES nunca sao lidos para exibicao, resposta ou registro. Credencial presente NAO vira CONNECTED - segue UNAUTHORIZED ate handshake real. E todas as rotas sao escopadas por companyForRequest: a organizacao vem da SESSAO, nunca do corpo da requisicao"
+    "MARKETPLACE - CREDENCIAL NAO E OPERACAO NA ROTA (E-128): o catalogo deriva o estado do canal apenas da EXISTENCIA da variavel de credencial; os VALORES nunca sao lidos para exibicao, resposta ou registro. Credencial presente NAO vira CONNECTED - segue UNAUTHORIZED ate handshake real. E todas as rotas sao escopadas por companyForRequest: a organizacao vem da SESSAO, nunca do corpo da requisicao",
+    "PARIDADE LINUX LOCAL (E-129): a licao da rodada 86 (uma falha que passava no Windows derrubou o gate porque ler um caminho sob um ARQUIVO devolve ENOTDIR no Linux) foi transformada em CAPACIDADE: scripts/verify-linux-parity.ps1 roda go vet + go test de ./internal/agent/ e ./server/ dentro de um conteiner Linux, montando o repositorio e o cache de modulos local. Medido: agent ok 18.071s e server ok 5.963s com golang:1.26.9",
+    "PARIDADE LINUX - DECISOES DO SCRIPT (E-129): RECUSA RODAR SEM DAEMON, porque um conteiner que falha por Docker ausente seria um falso 'a suite passou'; DISTINGUE imagem indisponivel de falha de teste, tentando a proxima imagem em vez de reportar erro falso; e devolve o CODIGO DE SAIDA DO LINUX, dizendo que as mensagens vem de la",
+    "PARIDADE LINUX - GANHOS ALEM DA PARIDADE (E-129): COBERTURA MAIOR, porque testes de symlink que PULAM no Windows EXECUTAM no conteiner; e ciclo de 24 s contra ~78 s no Windows, o que torna viavel rodar a validacao a cada mudanca de risco",
+    "PARIDADE LINUX - TRES ERROS MEUS ENCONTRADOS POR EXECUTAR O SCRIPT (E-129): (a) '$repositoryRoot:' foi interpretado como UNIDADE de variavel, corrigido com ${repositoryRoot}; (b) acentos em .ps1 quebram o parser do Windows PowerShell 5.1, que le o arquivo como ANSI - o script passou a ser SEM ACENTOS com o motivo registrado no cabecalho; (c) ErrorActionPreference=Stop transformava o STDERR normal do docker ('Unable to find image ...') em erro TERMINANTE, abortando antes de tentar a proxima imagem - corrigido para Continue com throw/exit explicitos",
+    "LIMITES DA PARIDADE LINUX (E-129): nao substitui o CI (nao instala Playwright nem servicos de apoio), nao cobre macOS e NAO roda a suite de integracao, que continua dependendo do compose das evidencias E-122 e E-123"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",

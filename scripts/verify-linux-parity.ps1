@@ -1,0 +1,122 @@
+<#
+.SYNOPSIS
+    Valida a suite Go no LINUX local, antes de empurrar para o CI.
+
+.DESCRIPTION
+    A licao que originou este script: uma injecao de falha "portatil" se comportou de forma
+    diferente no Linux do CI (ENOTDIR ao ler um caminho sob um arquivo) e a suite passou no Windows
+    e falhou la. Rodar a suite inteira localmente NAO bastou, porque a divergencia era do sistema de
+    arquivos, nao do codigo.
+
+    Este script roda os mesmos comandos do gate do CI dentro de um conteiner Linux, montando o cache
+    de modulos local para nao rebaixar dependencias. Nada e publicado e nenhum servico externo e
+    contatado.
+
+    O arquivo evita acentos de proposito: o Windows PowerShell 5.1 le .ps1 como ANSI e os caracteres
+    multibyte quebravam o parser.
+
+.PARAMETER Image
+    Imagem Go a usar. Se a primeira falhar, as alternativas sao tentadas na ordem.
+
+.PARAMETER Packages
+    Pacotes Go a testar. Padrao: ./internal/agent/ ./server/
+
+.PARAMETER TestFilter
+    Filtro opcional de teste (-run). Vazio roda a suite inteira.
+
+.PARAMETER TimeoutMinutes
+    Tempo maximo por execucao, em minutos.
+
+.EXAMPLE
+    powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify-linux-parity.ps1
+    powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify-linux-parity.ps1 -TestFilter TestJSONStoreRollsBack
+#>
+[CmdletBinding()]
+param(
+    [string[]]$Image = @('golang:1.26.9', 'golang:1.26', 'golang:latest'),
+    [string[]]$Packages = @('./internal/agent/', './server/'),
+    [string]$TestFilter = '',
+    [int]$TimeoutMinutes = 30
+)
+
+# Erro explicito e sempre com throw/exit: a preferencia fica em Continue porque, no Windows
+# PowerShell 5.1, qualquer mensagem que o docker escreve em STDERR ("Unable to find image ...")
+# viraria erro TERMINANTE com Stop, e o script abortaria antes de conseguir tentar a proxima
+# imagem ou interpretar o resultado do teste.
+$ErrorActionPreference = 'Continue'
+
+function Resolve-DockerExecutable {
+    $candidates = @(
+        (Get-Command docker -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source -ErrorAction SilentlyContinue),
+        'C:\Users\DZ23\AppData\Local\Programs\DockerDesktop\resources\bin\docker.exe',
+        "$env:ProgramFiles\Docker\Docker\resources\bin\docker.exe"
+    ) | Where-Object { $_ -and (Test-Path $_) }
+    if (-not $candidates) {
+        throw 'docker nao encontrado: instale o Docker ou ajuste o caminho neste script.'
+    }
+    return $candidates[0]
+}
+
+$docker = Resolve-DockerExecutable
+$repositoryRoot = Split-Path -Parent $PSScriptRoot
+if (-not (Test-Path (Join-Path $repositoryRoot 'go.mod'))) {
+    throw "go.mod nao encontrado em ${repositoryRoot}: rode o script de dentro do repositorio."
+}
+
+# O daemon precisa responder: um conteiner que falha por daemon ausente seria um falso "a suite passou".
+$serverVersion = & $docker info --format '{{.ServerVersion}}' 2>&1
+if ($LASTEXITCODE -ne 0) {
+    throw "daemon do Docker nao respondeu (${serverVersion}): inicie o Docker Desktop e rode de novo (nada foi executado)."
+}
+
+$moduleCache = Join-Path $repositoryRoot '_tmp\gomodcache'
+if (-not (Test-Path $moduleCache)) {
+    New-Item -ItemType Directory -Path $moduleCache -Force | Out-Null
+}
+
+$testArgs = ($Packages -join ' ')
+$runClause = if ($TestFilter) { "-run '$TestFilter' " } else { '' }
+$shellCommand = "go vet $testArgs && go test $testArgs -count=1 $runClause-timeout ${TimeoutMinutes}m"
+
+Write-Host "Linux parity: imagens=$($Image -join ', ')"
+Write-Host "Linux parity: raiz=${repositoryRoot}"
+Write-Host "Linux parity: comando=${shellCommand}"
+
+$lastOutput = ''
+foreach ($candidate in $Image) {
+    Write-Host ""
+    Write-Host "=== tentando imagem $candidate ==="
+    $output = & $docker run --rm `
+        --volume "${repositoryRoot}:/src" `
+        --volume "${moduleCache}:/gomodcache" `
+        --workdir /src `
+        --env GOFLAGS=-mod=mod `
+        --env GOTOOLCHAIN=local `
+        --env GOPATH=/gopath `
+        --env GOMODCACHE=/gomodcache `
+        --env GOCACHE=/tmp/gocache `
+        --env TMPDIR=/tmp `
+        --env CGO_ENABLED=0 `
+        $candidate sh -c $shellCommand 2>&1
+    $exit = $LASTEXITCODE
+    $output | ForEach-Object { $_ }
+    $lastOutput = ($output | Out-String)
+
+    if ($exit -eq 0) {
+        Write-Host ""
+        Write-Host "LINUX PARITY: OK com $candidate (exit 0)"
+        exit 0
+    }
+    # Falha de imagem inexistente nao e falha de teste: tenta a proxima.
+    if ($lastOutput -match 'manifest unknown|not found|No such image|pull access denied') {
+        Write-Host "imagem $candidate indisponivel; tentando a proxima"
+        continue
+    }
+    Write-Host ""
+    Write-Host "LINUX PARITY: FALHOU com $candidate (exit $exit) - as mensagens acima sao do Linux, nao do host."
+    exit $exit
+}
+
+Write-Host ""
+Write-Host "LINUX PARITY: nenhuma imagem disponivel ($($Image -join ', '))"
+exit 2
