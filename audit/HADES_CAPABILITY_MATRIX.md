@@ -121,6 +121,8 @@
 
 | Supervisor: incidente, recuperação e logs | `supervisor_incidents.go`, `supervisor_journal.go`, rotas `/supervisor/incidents` e `/supervisor/ticks` (E-097) | IMPLEMENTADO_E_TESTADO | MÉDIO | E-097 | registro idempotente com estado e recuperação observada; diário de ticks persistido com erros; falha de retomada antes engolida agora vira incidente |
 
+| Financeiro: razão e conciliação | `company_ledger.go`, rotas `/companies/:id/ledger` (E-100) | PARCIAL | MÉDIO | E-100 | idempotência por chave por empresa (inclusive concorrente), conciliação com referência externa, fluxo de caixa e fila de pendências; sem integração bancária, fiscal, cobrança ou pagamento |
+
 ## 6. Integrações, MCP e conectores
 
 | Capacidade | Superfície | Classificação | Risco | Evidência | Lacuna |

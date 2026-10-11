@@ -253,6 +253,9 @@ type CompanyStore struct {
 	mu        sync.RWMutex
 	root      string
 	companies map[string]Company
+	// Razão financeiro por empresa (estágio 30): carregado sob demanda do disco.
+	ledger       map[string][]LedgerEntry
+	ledgerLoaded map[string]bool
 }
 
 func NewCompanyStore(root string) (*CompanyStore, error) {
