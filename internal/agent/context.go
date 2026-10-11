@@ -501,10 +501,11 @@ func comparableVector(modeloAtual, carimbo string) bool {
 	return carimbo == modeloAtual
 }
 
-// CountMemoriesOutsideVectorSpace conta memórias cujo vetor foi gerado por OUTRO modelo identificado.
+// CountMemoriesOutsideVectorSpace conta o conhecimento que o caminho SEMÂNTICO não consegue alcançar:
+// memória sem vetor (gravada antes de existir embedder) ou com vetor de OUTRO modelo identificado.
 //
-// É a contagem acionável do re-embed. Quando o embedder atual não se identifica (ou o vetor não tem carimbo)
-// não há o que contar: não há como distinguir espaços — e isso é declarado, não escondido.
+// A contagem é acionável: é o que o re-embed resolve. Quando o embedder atual não se identifica não há o que
+// contar — não há como distinguir espaços — e isso é declarado, não escondido.
 func (s *ContextStore) CountMemoriesOutsideVectorSpace(projectID string) int {
 	modelo := s.currentEmbeddingModel()
 	if modelo == "" {
@@ -514,18 +515,22 @@ func (s *ContextStore) CountMemoriesOutsideVectorSpace(projectID string) int {
 	defer s.mu.RUnlock()
 	total := 0
 	for _, memory := range s.memories[projectID] {
-		if len(memory.Embedding) > 0 && memory.EmbeddingModel != "" && memory.EmbeddingModel != modelo {
+		if len(memory.Embedding) == 0 || memory.EmbeddingModel != modelo {
 			total++
 		}
 	}
 	return total
 }
 
-// ReembedResult resume um re-embed: quantas memórias voltaram ao espaço atual e quantas falharam.
+// ReembedResult resume um re-embed: quantas memórias voltaram ao espaço atual, quantas falharam e quantas
+// ainda faltam quando a chamada é limitada.
 type ReembedResult struct {
 	Reembedded int `json:"reembedded"`
 	Failed     int `json:"failed"`
 	Skipped    int `json:"skipped"`
+	// Remaining é o que ficou para a próxima chamada. Não é enfeite: uma operação limitada que não informa o
+	// resto esconde trabalho pela metade de quem operou.
+	Remaining int `json:"remaining"`
 }
 
 // ReembedMemories recalcula os vetores do projeto que estão em outro espaço (ou sem carimbo).
@@ -534,9 +539,13 @@ type ReembedResult struct {
 // vetores de espaços diferentes não podem ser comparados. Sem esta operação, o único caminho honesto seria
 // declarar para sempre que parte do conhecimento ficou fora do alcance da busca semântica.
 //
+// `limit` limita quantas memórias são recalculadas nesta chamada (0 = todas) e `Remaining` diz o que ficou
+// para a próxima: reagir a um projeto grande com uma chamada ilimitada transformaria manutenção numa
+// requisição que ninguém consegue terminar.
+//
 // Falha de embedding em uma memória conta em `Failed` e NÃO interrompe as demais: um texto problemático não
 // pode impedir a recuperação dos outros.
-func (s *ContextStore) ReembedMemories(ctx context.Context, projectID string) (ReembedResult, error) {
+func (s *ContextStore) ReembedMemories(ctx context.Context, projectID string, limit int) (ReembedResult, error) {
 	s.mu.RLock()
 	embedder := s.embedder
 	memories := append([]Memory(nil), s.memories[projectID]...)
@@ -550,6 +559,12 @@ func (s *ContextStore) ReembedMemories(ctx context.Context, projectID string) (R
 	for _, memory := range memories {
 		if len(memory.Embedding) > 0 && memory.EmbeddingModel == modelo {
 			resultado.Skipped++
+			alteradas = append(alteradas, memory)
+			continue
+		}
+		if limit > 0 && resultado.Reembedded+resultado.Failed >= limit {
+			// Acabou o orçamento desta chamada: o que sobra vai para `Remaining`, sem tocar no vetor antigo.
+			resultado.Remaining++
 			alteradas = append(alteradas, memory)
 			continue
 		}
