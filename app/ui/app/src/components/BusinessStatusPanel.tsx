@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
-import { getBusinessStatus, getBusinessTrend, recordBusinessSnapshot } from "@/lib/agenticClient";
+import { downloadBusinessExport, getBusinessStatus, getBusinessTrend, recordBusinessSnapshot } from "@/lib/agenticClient";
+import { triggerDownload } from "@/lib/download";
 import type { BusinessStatusReport, BusinessTrend } from "@/lib/agenticClient";
+
+export const BUSINESS_EXPORT_FILENAME = "hades-business-status.csv";
+export const BUSINESS_EXPORT_ERROR_MESSAGE = "Não foi possível gerar a exportação agora. Tente novamente.";
 
 // Painel de BI / status de negócio (estágio 32).
 //
@@ -64,8 +68,7 @@ export function BusinessStatusPanel({ companyId }: { companyId: string }) {
     }
   }, [companyId]);
 
-  const money = (cents: number) => (cents / 100).toFixed(2);
-  const hasData = report
+  const money = (cents: number) => (cents / 100).toFixed(2);  const hasData = report
     ? report.commerce.orders > 0 ||
       report.finance.entries > 0 ||
       report.campaigns.total > 0 ||
@@ -94,6 +97,22 @@ export function BusinessStatusPanel({ companyId }: { companyId: string }) {
       ]
     : [];
 
+  // Exportar é uma ação de LEITURA que sai do produto: o arquivo é aberto numa planilha, longe da
+  // tela. Por isso o aviso diz explicitamente que ele leva as lacunas e a origem de cada número — e
+  // a falha aparece como falha, nunca como "exportado" silencioso.
+  const exportCSV = useCallback(async () => {
+    setLoading(true);
+    try {
+      const blob = await downloadBusinessExport(companyId);
+      triggerDownload(blob, BUSINESS_EXPORT_FILENAME);
+      setNotice(`${BUSINESS_EXPORT_FILENAME} gerado: o arquivo inclui o que NÃO é medido e a origem de cada número.`);
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : BUSINESS_EXPORT_ERROR_MESSAGE);
+    } finally {
+      setLoading(false);
+    }
+  }, [companyId]);
+
   return (
     <section className="mt-5 rounded-2xl border border-sky-200/80 bg-sky-50/40 p-5 dark:border-sky-900/60 dark:bg-sky-950/10">
       <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
@@ -105,15 +124,30 @@ export function BusinessStatusPanel({ companyId }: { companyId: string }) {
             logo abaixo, com o motivo: zero sem medição não é resposta.
           </p>
         </div>
-        <button
-          type="button"
-          className="rounded-xl border border-sky-300 px-3 py-2 text-xs dark:border-sky-800"
-          disabled={loading}
-          onClick={() => void refresh()}
-        >
-          {loading ? "Atualizando…" : "Atualizar painel"}
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            className="rounded-xl border border-sky-300 px-3 py-2 text-xs dark:border-sky-800"
+            disabled={loading}
+            aria-describedby="business-export-note"
+            onClick={() => void exportCSV()}
+          >
+            Exportar CSV
+          </button>
+          <button
+            type="button"
+            className="rounded-xl border border-sky-300 px-3 py-2 text-xs dark:border-sky-800"
+            disabled={loading}
+            onClick={() => void refresh()}
+          >
+            {loading ? "Atualizando…" : "Atualizar painel"}
+          </button>
+        </div>
       </div>
+      <p id="business-export-note" className="mt-2 text-[11px] leading-4 text-neutral-500 dark:text-neutral-400">
+        A exportação é CSV com esquema único (<code>secao,chave,valor,observacao</code>) e leva <strong>as lacunas</strong> e a{" "}
+        <strong>origem de cada número</strong>: fora do produto a tela não vai junto.
+      </p>
 
       {notice && (
         <div role="status" aria-live="polite" className="mt-3 rounded-xl border border-amber-300 bg-white px-3 py-2 text-xs text-amber-900 dark:border-amber-900 dark:bg-neutral-900 dark:text-amber-200">

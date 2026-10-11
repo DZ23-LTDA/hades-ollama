@@ -562,6 +562,8 @@ export const getCompanyCampaignReport = (id: string) => agentFetch<CompanyCampai
 // Painel de BI (estágio 32): somente leitura. A organização vem da empresa da sessão no servidor.
 // Série temporal (estágio 32): registrar é idempotente por janela de hora no servidor, e a resposta
 // diz `created` — a interface usa isso para não afirmar "novo dado" quando a hora já tinha amostra.
+// Exportação do painel de BI (estágio 32): o arquivo traz as lacunas e a origem de cada número.
+export const downloadBusinessExport = (id: string) => agentFetchBlob(`/api/agent/v1/companies/${encodeURIComponent(id)}/business-export`);
 export const getBusinessTrend = (id: string) => agentFetch<BusinessTrend>(`/api/agent/v1/companies/${encodeURIComponent(id)}/business-snapshots`);
 export const recordBusinessSnapshot = (id: string) => agentFetch<BusinessSnapshotRecord>(`/api/agent/v1/companies/${encodeURIComponent(id)}/business-snapshots`, { method: "POST", body: "{}" });
 export const getBusinessStatus = (id: string) => agentFetch<BusinessStatusReport>(`/api/agent/v1/companies/${encodeURIComponent(id)}/business-status`);
