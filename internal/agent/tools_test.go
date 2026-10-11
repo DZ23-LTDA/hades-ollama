@@ -108,18 +108,46 @@ func TestTerminalFailsClosedWithoutPinnedWorkspace(t *testing.T) {
 	}
 }
 
+// sleepHelperEnv ativa o processo auxiliar usado pelo teste de cancelamento.
+const sleepHelperEnv = "HADES_TEST_SLEEP_HELPER"
+
+// TestSleepHelperProcess NÃO testa nada por si: quando a variável de ambiente está
+// definida, ele dorme 10 segundos para servir de processo-alvo do teste de
+// cancelamento. Sem a variável, ele é ignorado.
+//
+// O teste de cancelamento antes dependia do `sh` do sistema, o que o tornava
+// **impossível de verificar nesta máquina** (sem `sh` no PATH) e diferente entre host e
+// CI. Usar o PRÓPRIO binário de teste como alvo deixa o teste portátil e verificável.
+func TestSleepHelperProcess(t *testing.T) {
+	if os.Getenv(sleepHelperEnv) != "1" {
+		t.Skip("processo auxiliar do teste de cancelamento")
+	}
+	time.Sleep(10 * time.Second)
+}
+
 func TestRunToolCommandKillsProcessGroupOnCancellation(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
 	defer cancel()
-	command := exec.Command("sh", "-c", "sleep 10")
+	// O alvo é o binário de teste em modo auxiliar: portátil em qualquer sistema, sem
+	// depender de `sh`, `sleep` ou de utilitários do host.
+	command := exec.Command(os.Args[0], "-test.run=TestSleepHelperProcess")
+	command.Env = append(os.Environ(), sleepHelperEnv+"=1")
 	configureToolProcess(command)
 	started := time.Now()
 	err := runToolCommand(ctx, command)
 	if err == nil || !strings.Contains(err.Error(), "deadline exceeded") {
 		t.Fatalf("runToolCommand error = %v", err)
 	}
-	if elapsed := time.Since(started); elapsed > 2*time.Second {
-		t.Fatalf("cancellation took too long: %s", elapsed)
+	// A PROPRIEDADE é o cancelamento ser EFETIVO: o processo de 10 segundos precisa ser
+	// morto bem antes de terminar sozinho. O limite é metade do próprio sono, então
+	// continua reprovando qualquer cancelamento que apenas "espere" o processo.
+	//
+	// O limite era 2s e o runner Windows de CI o excedeu (2,37s em
+	// `dz23-agentic-quality`, run 38125950314): derrubar o grupo de tarefas no Windows
+	// depende do sistema e custa mais sob carga. Ligar o limite à propriedade medida
+	// mantém a verificação e remove um número que media a carga da máquina.
+	if elapsed := time.Since(started); elapsed > 5*time.Second {
+		t.Fatalf("cancellation took too long (o processo de 10s deveria ter sido morto bem antes): %s", elapsed)
 	}
 }
 
