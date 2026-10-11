@@ -25,7 +25,7 @@ depende de terceiros.
 | R-02 | Decisão pendente: falha de `GET /settings` cai no shell | onboarding pode ser pulado | decidir + fixar com teste (P0-4) |
 | R-03 | Jornada E2E duplicada (#61 × #71) | manutenção divergente | triagem com autorização (P0-5) |
 | R-04 | ~~12 superfícies sem auditoria~~ **RESOLVIDO na rodada 2** (36/38 estágios auditados) | não se sabe o que existe | restam 21 (benchmark) e 38 (gate final); matriz sem linhas pendentes |
-| R-05 | 4 falhas ambientais de teste (B-09) | cobertura local incompleta | sanear host sem desativar teste |
+| R-05 | **2** falhas ambientais de teste (B-09) | cobertura local incompleta | sanear host sem desativar teste — a falha de kill de grupo de processos foi **CORRIGIDA** (E-115): dependia de `sh` e de um limite de 2s frágil |
 | R-06 | Instaladores sem smoke nativo | release pode quebrar no usuário final | smoke por SO em runner nativo |
 | R-07 | Benchmarks apenas documentais | afirmação competitiva sem prova | benchmark reproduzível (P3-3) |
 | R-08 | ~~Backlog datado com premissa errada do Studio~~ **RESOLVIDO no PR #73** | decisão de produto baseada em dado falso | `audit/BACKLOG_LACUNAS_PRIORIZADO_20261009.md` corrigido (P0-3) |
