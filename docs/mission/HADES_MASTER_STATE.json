@@ -2,12 +2,12 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-13T21:05:00-03:00",
+  "updated_at": "2026-10-13T22:20:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
     "integration_branch": "main",
-    "main_sha": "b9ef21873194a28068554709878adcd9838637ec",
+    "main_sha": "a52795593e3f48063ed1511d4aed20e7a446cb68",
     "main_committed_at": "2026-10-09T10:24:45Z",
     "main_ci_state": "green (dz23-agentic-quality + class-a-plus-integrity = success nesse SHA)",
     "mission_branch": "docs/checkpoints-missao-v21",
@@ -265,10 +265,12 @@
         "E-015",
         "E-016",
         "E-017",
-        "E-116"
+        "E-116",
+        "E-138"
       ],
       "blocker": "B-09",
-      "next": "LIMITES: resta o teste de browser que exige Python instalado no host; as duas suites locais (agente e servidor) passam INTEIRAS sem falhas ambientais desde E-116"
+      "next": "LIMITES: a INTERMITENCIA segue NAO REPRODUZIDA (5 rodadas paralelas + 40 execucoes); restam 12 ocorrencias de ', _ :=' na preparacao de testes do proprio builder_studio_routes_test.go (varredura mecanica pendente, de baixo risco); e o instrumento da campanha tinha ExitCode vazio - o resultado foi aceito pelos ARTEFATOS (ok nas saidas e PASS=10 nos quatro arquivos), nao pelo codigo de saida",
+      "done": " | INTERMITENCIA DE E-118: CAMPANHA SOB CARGA E CAUSA ENDURECIDA (E-138): 5 rodadas das suites completas de internal/agent e server EM PARALELO (0 falhas; 57,9s a 108,4s por rodada) e 4 instancias simultaneas de -count=10 no teste especifico (40 execucoes, 0 falhas). A FALHA NAO FOI REPRODUZIDA. Endurecimento da causa do relato opaco: o teste ENGOLLA os erros de preparacao (builder, project, runtime) e um setup falho sob pressao virava PANIC - falha sem causa legivel; agora cada erro tem t.Fatalf. Assercoes endurecidas: antes aceitava QUALQUER codigo != 200 (inclusive 404/500); agora exige 501 EXATO e o motivo declarado. HIPOTESE REFUTADA POR SONDA TEMPORARIA: com ID vazio a rota responde 501 de qualquer forma (o handler recusa antes de consultar o projeto), entao o risco NAO era 'teste que nao testa nada' - o comentario foi corrigido para dizer a verdade"
     },
     {
       "id": 3,
@@ -1211,7 +1213,12 @@
     "EXPORTACAO ACESSIVEL NA TELA (E-137): na rodada anterior a rota de exportacao existia e eu registrei que faltava o botao. Entreguei o botao 'Exportar CSV' com aria-describedby para a nota que explica o conteudo do arquivo, e movi o helper triggerDownload para src/lib/download.ts com GUARDA (sem DOM o erro e explicito, em vez de ReferenceError cru). Verificado com 11/11 PASS nos testes focados e 569 testes na suite web",
     "UM SINAL QUE EU QUASE IGNOREI - CONTAGEM DE TESTES (E-137): ao injetar a chamada nova por script, o here-string do PowerShell interpolou ${encodeURIComponent(id)} e comeu as crases, gerando SINTAXE INVALIDA no cliente. O detalhe importante: a suite web caiu de 566 para 523 testes e AINDA ASSIM 'passou' sem falhas - CONTAGEM MENOR DE TESTES E ARQUIVO QUE NEM CARREGOU, e um relatorio que olhasse so '0 falhas' teria aceitado um resultado pior. Depois da correcao a contagem voltou a 569. PRATICA INSTITUCIONALIZADA: comparar a CONTAGEM de testes com a rodada anterior, nao apenas olhar falhas",
     "EXPORTACAO NA TELA - FALHA NAO DIZ 'GERADO' (E-137): o teste forca erro de exportacao e exige a mensagem real, triggerDownload NAO chamado e a palavra 'gerado' AUSENTE. Exportacao silenciosa que nao aconteceu e o pior desfecho possivel numa acao que sai do produto",
-    "LIMITES DA EXPORTACAO NA TELA (E-137): CSV sem BOM; helper triggerDownload ainda duplicado em DataToolsPanel.tsx; e sem escolha de periodo/colunas nem download agendado"
+    "LIMITES DA EXPORTACAO NA TELA (E-137): CSV sem BOM; helper triggerDownload ainda duplicado em DataToolsPanel.tsx; e sem escolha de periodo/colunas nem download agendado",
+    "INTERMITENCIA DE E-118 ATACADA (E-138): vinha declarando ha ~20 rodadas que UMA execucao das suites havia falhado em TestStudioDeployRejectsWithoutCredentialsHonestGateStatus. Declarado nao e resolvido. Campanha sob carga: 5 rodadas das suites completas de internal/agent e server EM PARALELO (0 falhas) e 4 instancias simultaneas de -count=10 no teste (40 execucoes, 0 falhas). A FALHA NAO FOI REPRODUZIDA",
+    "E-118 - CAUSA DO RELATO OPACO ENDURECIDA (E-138): o teste engolia TODOS os erros de preparacao (builder, _ := / project, _ := / runtime, _ :=); um setup falho sob pressao virava PANIC, que e falha SEM CAUSA LEGIVEL - exatamente o formato opaco relatado em E-118. Agora cada erro tem t.Fatalf com o motivo. E as assercoes passaram a exigir 501 EXATO e o motivo declarado, em vez de 'qualquer codigo diferente de 200' (que nao distingue 'recusou honestamente' de 'nao achou a rota' nem de 'quebrou')",
+    "HIPOTESE REFUTADA POR SONDA - REGISTRADO (E-138): escrevi que o risco era 'com ID vazio a rota nao casa e o teste passaria sem exercitar o portao'. Uma sonda temporaria (executada e REMOVIDA) mediu a rota com ID vazio: resposta 501 de qualquer forma, porque o handler recusa ANTES de consultar o projeto. Hipótese PLAUSIVEL E ERRADA; o comentario no codigo foi corrigido. A sonda falhar foi o resultado util: custou minutos e evitou registrar uma conclusao bonita e falsa",
+    "DEFEITO NO MEU PROPRIO INSTRUMENTO (E-138): os ExitCode do script de campanha sairam VAZIOS. O resultado foi aceito pelos ARTEFATOS (saidas contendo 'ok' e '--- PASS' dez vezes em cada arquivo do martelo), nao pelo codigo de saida. Um campo vazio teria virado 'sucesso' se eu nao tivesse ido conferir o arquivo - registrar como pratica: verificar o artefato, nao o resumo do instrumento",
+    "LIMITES DA INTERMITENCIA (E-138): segue NAO REPRODUZIDA; restam 12 ocorrencias de ', _ :=' na preparacao de testes de builder_studio_routes_test.go (varredura mecanica pendente)"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",

@@ -181,17 +181,39 @@ func TestStudioBuilderRoutesInteractiveAndTraceableExport(t *testing.T) {
 func TestStudioDeployRejectsWithoutCredentialsHonestGateStatus(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	tmpDir := t.TempDir()
-	builder, _ := agent.NewBuilderService(tmpDir)
-	project, _ := builder.Create(context.Background(), agent.BuilderSpec{
+	// Os erros de preparação NÃO podem ser engolidos. Este teste observou UMA falha intermitente sob
+	// carga (E-118) e o motivo de o relato ser opaco é este: com o setup falhando em silêncio, um runtime
+	// inválido produz panic (falha sem causa legível) em vez de falha explicada.
+	//
+	// Atenção ao que uma SONDA TEMPORÁRIA mostrou (e que derrubou a primeira hipótese): o ID vazio NÃO
+	// faz a rota deixar de casar — a resposta é 501 de qualquer forma, porque o handler recusa antes de
+	// consultar o projeto. O risco, portanto, não era "teste que não testa nada"; era falha silenciosa
+	// virando panic. As asserções abaixo foram endurecidas por outro motivo, também real: aceitar
+	// qualquer código diferente de 200 não distingue "recusou honestamente" de "não achou a rota" nem de
+	// "quebrou".
+	builder, err := agent.NewBuilderService(tmpDir)
+	if err != nil {
+		t.Fatalf("preparar o builder: %v", err)
+	}
+	project, err := builder.Create(context.Background(), agent.BuilderSpec{
 		Name: "Deploy Test",
 		Kind: agent.BuilderWebsite,
 	})
+	if err != nil {
+		t.Fatalf("criar o projeto: %v", err)
+	}
+	if project.ID == "" {
+		t.Fatal("projeto criado sem ID: a rota não casaria e o teste passaria sem exercitar o portão")
+	}
 
-	runtime, _ := agent.NewRuntime(agent.RuntimeConfig{
+	runtime, err := agent.NewRuntime(agent.RuntimeConfig{
 		WorkspaceRoot: tmpDir,
 		Builder:       builder,
 		// No deployment manager configured -> honest fail-closed
 	})
+	if err != nil {
+		t.Fatalf("preparar o runtime: %v", err)
+	}
 
 	api := &agentAPI{runtime: runtime}
 	router := gin.New()
@@ -203,8 +225,17 @@ func TestStudioDeployRejectsWithoutCredentialsHonestGateStatus(t *testing.T) {
 	router.ServeHTTP(rec, req)
 
 	// Must fail honestly (501 or 400), NEVER 200 OK pretending to be published!
-	if rec.Code == http.StatusOK {
-		t.Fatalf("HONEST GATE VIOLATION: deploy succeeded without credentials!")
+	if rec.Code == http.StatusOK || rec.Code == http.StatusAccepted {
+		t.Fatalf("HONEST GATE VIOLATION: deploy succeeded without credentials! (%d)", rec.Code)
+	}
+	// Sem provedor de deploy configurado a recusa é 501, e o teste passa a EXIGIR isso: antes aceitava
+	// QUALQUER código diferente de 200 (inclusive 404 ou 500), o que não distingue "recusou honestamente"
+	// de "não achou a rota" nem de "quebrou". O motivo declarado do 501 continua sendo exigido abaixo.
+	if rec.Code != http.StatusNotImplemented {
+		t.Fatalf("esperado 501 sem provedor de deploy configurado, veio %d: %s", rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), "no deployment providers are configured") {
+		t.Fatalf("a recusa precisa dizer o motivo real, sem inventar provedor: %s", rec.Body.String())
 	}
 }
 
