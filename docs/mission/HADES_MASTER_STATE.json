@@ -2,12 +2,12 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-11T02:35:00-03:00",
+  "updated_at": "2026-10-11T03:30:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
     "integration_branch": "main",
-    "main_sha": "5f4dce784ee338a1d6ac7d4bc4f6b41227582d81",
+    "main_sha": "cfd0ecc9c9682a2ccff7808620e447b99cf179fa",
     "main_committed_at": "2026-10-09T10:24:45Z",
     "main_ci_state": "green (dz23-agentic-quality + class-a-plus-integrity = success nesse SHA)",
     "mission_branch": "docs/checkpoints-missao-v21",
@@ -428,11 +428,12 @@
         "E-020",
         "E-029",
         "E-074",
-        "E-075"
+        "E-075",
+        "E-076"
       ],
       "blocker": null,
-      "next": "ORDEM OBRIGATORIA: (1) idempotencia na criacao de missao (chave derivada de schedule + passo + execucao), porque CreateMission nao tem chave e retry hoje duplicaria missoes; (2) retry por NO; (3) reprocessamento explicito do que ficou skipped; (4) DLQ por no",
-      "done": "vocabulario fechado de passos com validacao fail-closed; execucao em ordem de dependencia com bloqueio de dependente; RESULTADO POR NO com motivo, persistido em sucesso e falha; supervisor reportando falhas e ignorados no tick; e o resultado por no VISIVEL na interface (veredito parcial distinto de sucesso)"
+      "next": "retry por NO com backoff e tentativas no relatorio (agora seguro, porque a chave de idempotencia impede duplicar); depois reprocessamento explicito do que ficou skipped; depois DLQ por no",
+      "done": "vocabulario fechado de passos com validacao fail-closed; ordem de dependencia com bloqueio de dependente; RESULTADO POR NO persistido em sucesso e falha e visivel na interface; supervisor reportando no tick; e IDEMPOTENCIA na criacao de missao por chave derivada, provada no nivel do fluxo (execucao repetida nao cria missao nova)"
     },
     {
       "id": 14,
@@ -893,6 +894,8 @@
     "ACHADO CORRIGIDO (PR #137, estagio 13): ExecuteScheduleFlow devolvia apenas a CONTAGEM de missoes, entao (1) fluxo com condicional falso ou passo bloqueado reportava SUCESSO sem registrar nos ignorados; (2) execucao bem-sucedida nao era persistida (recordScheduleSuccess saia cedo sem gravar last_run_at); (3) no supervisor, o outro ponto de disparo, NADA era registrado e uma falha de fluxo desaparecia; (4) o codigo de falha era generico e nao dizia qual passo falhou. Correcao: ScheduleRunReport/ScheduleStepOutcome com succeeded/skipped/failed e motivo, ExecuteScheduleFlowReport autoritativo (wrapper preserva a contagem), Schedule.LastRun persistido em sucesso E falha, codigo de falha nomeando o passo quando ha grafo, e supervisor expondo falhas e ignorados no proprio tick. 4 testes novos",
     "Processo (PR #137): duas falhas apareceram e eram MINHAS, nao do codigo - rodei um comando sem APPDATA/LOCALAPPDATA (o runtime tentou escrever no %APPDATA% real e deu acesso negado, o que eu quase confundi com regressao) e dois fixtures de teste esqueceram o Objective obrigatorio do schedule. Corrigi o comando e os fixtures; um teste EXISTENTE tambem me obrigou a preservar o codigo de falha historico no caminho legado sem grafo",
     "ENTREGA (PR #139, estagio 13): o resultado por no passou a ser VISIVEL na interface. AutomationsPage mostra veredito (Sucesso / Parcial - houve passo ignorado / Falhou / Sem execucao registrada), resumo (executados, ignorados, missoes), data, codigo de falha e a lista de passos que exigem atencao com o motivo declarado pelo servidor. Uma execucao com passo ignorado nunca aparece como Sucesso. 9 testes novos; suite web 82 arquivos/546 testes",
-    "RESTRICAO DE ENGENHARIA identificada por leitura de codigo (PR #139): retry por NO foi deliberadamente NAO implementado. CreateMission nao tem chave de idempotencia, entao repetir um passo action.mission que falhou DEPOIS de persistir criaria missoes duplicadas. A ordem correta para o proximo passo do estagio 13 e: idempotencia na criacao de missao (chave derivada de schedule + passo + execucao) PRIMEIRO, retry por no DEPOIS, e por ultimo reprocessamento explicito do que ficou skipped. Retry sem idempotencia trocaria 'fluxo abortado' por 'missoes fantasma', que e pior"
+    "RESTRICAO DE ENGENHARIA identificada por leitura de codigo (PR #139): retry por NO foi deliberadamente NAO implementado. CreateMission nao tem chave de idempotencia, entao repetir um passo action.mission que falhou DEPOIS de persistir criaria missoes duplicadas. A ordem correta para o proximo passo do estagio 13 e: idempotencia na criacao de missao (chave derivada de schedule + passo + execucao) PRIMEIRO, retry por no DEPOIS, e por ultimo reprocessamento explicito do que ficou skipped. Retry sem idempotencia trocaria 'fluxo abortado' por 'missoes fantasma', que e pior",
+    "PRE-REQUISITO FECHADO (PR #141, estagio 13): idempotencia na criacao de missao. CreateMissionRequest ganhou IdempotencyKey (interno); o id da missao e derivado de sha256(organizacao + chave), entao repetir a mesma criacao aponta para o MESMO id e o store recusa duplicata - em vez de propagar ErrMissionAlreadyExists, a criacao devolve a missao existente. A missao so e devolvida se pertencer ao escopo ativo (missionScopeMatches) e a organizacao entra no hash: chave repetida nunca expoe missao de outro tenant. Sem chave, o comportamento historico permanece intacto. No fluxo, ScheduleFlowRunKey identifica UMA execucao (estavel durante, diferente entre execucoes) e cada passo deriva sua chave; o relatorio conta APENAS o que foi criado e marca o repetido como 'missao ja existia para esta execucao (idempotente)'. 5 testes novos",
+    "PROXIMO PASSO DESTRAVADO (estagio 13): com a idempotencia provada por teste no nivel do fluxo (execucao repetida cria ZERO missao nova), o retry por no passa a ser seguro. Sequencia: retry por no com backoff e tentativas registradas no relatorio, depois reprocessamento explicito do que ficou skipped, depois DLQ por no"
   ]
 }

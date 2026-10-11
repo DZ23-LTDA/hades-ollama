@@ -75,6 +75,8 @@
 
 | Workflow: resultado por nó visível na interface | `app/ui/app/src/lib/scheduleRun.ts`, `ScheduleRunReportCard.tsx`, `AutomationsPage.tsx` (PR #139) | IMPLEMENTADO_NAO_HOMOLOGADO | MÉDIO | E-075 | veredito parcial distinto de sucesso; retry depende de idempotência na criação de missão |
 
+| Missão: criação idempotente por chave | `internal/agent/runtime.go` (`idempotentMissionID`, `missionScopeMatches`), `schedule_flow.go` (PR #141) | IMPLEMENTADO_E_TESTADO | MÉDIO | E-076 | repetir criação não duplica e não cruza tenant; habilita retry por nó com segurança |
+
 ## 6. Integrações, MCP e conectores
 
 | Capacidade | Superfície | Classificação | Risco | Evidência | Lacuna |
