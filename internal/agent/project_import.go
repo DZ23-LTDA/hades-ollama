@@ -16,6 +16,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strings"
 	"time"
 
@@ -377,15 +378,79 @@ func extractProjectArchive(reader io.ReaderAt, size int64, destination string) e
 	return nil
 }
 
+// ErrImportPathTooLong indica que o caminho do projeto importado excede o limite do
+// sistema de arquivos. No Windows, `git` falha com `Filename too long` (exit 128) quando o
+// caminho passa de MAX_PATH: sem um erro TIPADO, o usuario (e o operador) recebia apenas
+// `exit status 128` e nao tinha como saber que o problema era o tamanho do caminho.
+var ErrImportPathTooLong = errors.New("imported project path exceeds the filesystem limit")
+
+// windowsMaxPath é o limite clássico de caminho do Windows (MAX_PATH).
+const windowsMaxPath = 260
+
+// importPathTooLong reconhece a falha de limite de caminho pela saída do git ou pelo
+// próprio tamanho do caminho. Reconhecer os DOIS sinais cobre tanto o caso em que o git
+// explica o motivo quanto o caso em que ele falha sem detalhe útil.
+func importPathTooLong(detail, root string) bool {
+	lower := strings.ToLower(detail)
+	if strings.Contains(lower, "filename too long") || strings.Contains(lower, "name too long") {
+		return true
+	}
+	return runtime.GOOS == "windows" && len(root) >= windowsMaxPath
+}
+
+// importedRepositoryHasPendingChanges informa se o repositório importado tem alterações
+// que ainda não foram commitadas. A saída vazia de `git status --porcelain` é o sinal de
+// árvore limpa; é isso que torna a inicialização IDEMPOTENTE em vez de exigir um commit
+// que não existe.
+func importedRepositoryHasPendingChanges(ctx context.Context, root string) (bool, error) {
+	status := exec.CommandContext(ctx, "git", "-C", root, "status", "--porcelain")
+	status.Env = append(os.Environ(), "GIT_CONFIG_NOSYSTEM=1", "GIT_CONFIG_GLOBAL=", "GIT_TERMINAL_PROMPT=0", "GIT_OPTIONAL_LOCKS=0")
+	output, err := status.Output()
+	if err != nil {
+		return false, fmt.Errorf("inspect imported repository state: %w", err)
+	}
+	return strings.TrimSpace(string(output)) != "", nil
+}
+
 func initializeImportedRepository(ctx context.Context, root string) error {
-	commands := [][]string{{"init", root}, {"-C", root, "config", "user.email", "hades@localhost"}, {"-C", root, "config", "user.name", "Hades Import"}, {"-C", root, "config", "core.hooksPath", ""}, {"-C", root, "config", "core.worktree", root}, {"-C", root, "add", "--all"}, {"-C", root, "commit", "--no-verify", "-m", "Imported project snapshot"}}
+	// IDEMPOTÊNCIA: reimportar o mesmo projeto (ou retomar uma importação interrompida)
+	// NÃO pode falhar. Antes, o passo de commit exigia exit 0 e o git retorna 1 com
+	// "nothing to commit" quando o snapshot já estava commitado — então a segunda
+	// chamada quebrava a importação, que é exatamente o caminho de RETOMADA.
+	commands := [][]string{{"init", root}, {"-C", root, "config", "user.email", "hades@localhost"}, {"-C", root, "config", "user.name", "Hades Import"}, {"-C", root, "config", "core.hooksPath", ""}, {"-C", root, "config", "core.worktree", root}, {"-C", root, "add", "--all"}}
 	for _, args := range commands {
 		command := exec.CommandContext(ctx, "git", args...)
 		command.Env = append(os.Environ(), "GIT_CONFIG_NOSYSTEM=1", "GIT_CONFIG_GLOBAL=", "GIT_TERMINAL_PROMPT=0", "GIT_OPTIONAL_LOCKS=0")
 		if output, err := command.CombinedOutput(); err != nil {
-			return fmt.Errorf("initialize imported repository: %s: %w", RedactDLP(strings.TrimSpace(string(output))), err)
+			detail := RedactDLP(strings.TrimSpace(string(output)))
+			if importPathTooLong(detail, root) {
+				return fmt.Errorf("%w: %s (caminho com %d caracteres; no Windows o limite é %d — use um diretório mais curto ou habilite caminhos longos com LongPathsEnabled): %s",
+					ErrImportPathTooLong, root, len(root), windowsMaxPath, detail)
+			}
+			return fmt.Errorf("initialize imported repository: %s: %w", detail, err)
 		}
 	}
+	// O commit só é necessário quando HÁ mudanças pendentes. Sem mudanças, o snapshot já
+	// está commitado e a inicialização está concluída — pular é o comportamento correto.
+	pending, err := importedRepositoryHasPendingChanges(ctx, root)
+	if err != nil {
+		return err
+	}
+	if pending {
+		commit := exec.CommandContext(ctx, "git", "-C", root, "commit", "--no-verify", "-m", "Imported project snapshot")
+		commit.Env = append(os.Environ(), "GIT_CONFIG_NOSYSTEM=1", "GIT_CONFIG_GLOBAL=", "GIT_TERMINAL_PROMPT=0", "GIT_OPTIONAL_LOCKS=0")
+		if output, err := commit.CombinedOutput(); err != nil {
+			detail := RedactDLP(strings.TrimSpace(string(output)))
+			return fmt.Errorf("initialize imported repository: %s: %w", detail, err)
+		}
+	}
+	// Prova de que o snapshot está commitado: sem HEAD válido a importação não terminou.
+	head := exec.CommandContext(ctx, "git", "-C", root, "rev-parse", "--verify", "HEAD")
+	head.Env = append(os.Environ(), "GIT_CONFIG_NOSYSTEM=1", "GIT_CONFIG_GLOBAL=", "GIT_TERMINAL_PROMPT=0")
+	if output, err := head.Output(); err != nil || strings.TrimSpace(string(output)) == "" {
+		return fmt.Errorf("imported repository has no committed snapshot: %w", ErrImportArchiveUnsafe)
+	}
+
 	check := exec.CommandContext(ctx, "git", "-C", root, "rev-parse", "--is-inside-work-tree")
 	check.Env = append(os.Environ(), "GIT_CONFIG_NOSYSTEM=1", "GIT_CONFIG_GLOBAL=", "GIT_TERMINAL_PROMPT=0")
 	output, err := check.Output()

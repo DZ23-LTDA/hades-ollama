@@ -14,7 +14,7 @@
 | B-05 | EXTERNO | contas de marketplace/social/pagamento | 24, 25, 26, 27, 30, 31 | usuário |
 | B-06 | EXTERNO | certificado de assinatura de release | 20, 38 | usuário |
 | B-07 | EXTERNO | chaves de provedor de modelo | 4, 5, 8, 15, 23, 32 | usuário |
-| B-09 | AMBIENTAL | Python/`sh` ausentes e limite de caminho | 2, 14 | ambiente de teste |
+| B-09 | RESOLVIDO (E-116) | Falhas de teste: 1 **defeito real** de idempotência na importação + MAX_PATH do Windows | 2, 11, 14 | resta apenas Python ausente para o teste de browser |
 | B-10 | PRODUTO | 104/122 conectores exigem operador | 7, 16, 18 | decisão de produto + credenciais |
 
 ## B-01 — Autorização de merge (decisão humana)
@@ -78,14 +78,21 @@
 
 ## B-09 — Limitações ambientais de teste (host Windows)
 
-- **Situação:** 4 testes falham por ambiente, **provados pré-existentes** em
-  `main` limpo: import de upload/worktree (exit 128), browser operator (Python
-  ausente, exit 9009), kill de process group (`sh` ausente), e
-  `TestImportMissionAttachmentsCreatesIndexedOrgProject` (`Filename too long`).
-- **Como desbloquear:** instalar Python e um `sh` utilizável no host, ou reduzir
-  o comprimento do caminho do workspace; alternativamente rodar esses testes no
-  runner Linux (onde passam).
-- **Proibido:** desativar, `t.Skip` ou mascarar os testes para "ficar verde".
+- **Situação ATUAL (E-116): as suítes locais passam INTEIRAS.**
+  `go test ./internal/agent/` e `go test ./server/` terminam **ok**, sem nenhuma falha.
+- **O que o rótulo "ambiental" escondia:** ao investigar em vez de repetir a explicação, o
+  teste de import de upload/worktree era **DEFEITO REAL** — `initializeImportedRepository`
+  exigia `exit 0` do `git commit` e falhava com `nothing to commit` quando o snapshot já
+  estava commitado, quebrando **reimportação e retomada**. Corrigido com idempotência
+  (só commita quando há mudanças e valida `HEAD`).
+- **MAX_PATH do Windows:** o caminho interno do git
+  (`<raiz>/.git/objects/xx/<38 caracteres>`) passa de 260 quando a raiz é funda. O produto
+  agora devolve `ErrImportPathTooLong` com mensagem **acionável**, e os testes usam raiz
+  **curta sem o nome do teste** (`short_root_test.go`).
+- **Pendência real restante:** o teste de browser operator exige **Python instalado** no
+  host; é dependência declarada, não defeito.
+- **Proibido (mantido):** desativar, `t.Skip` ou mascarar testes para "ficar verde". Nesta
+  correção **nenhum** teste foi desativado e nenhum `//nolint` foi usado.
 
 ## B-10 — Conectores que exigem operador
 

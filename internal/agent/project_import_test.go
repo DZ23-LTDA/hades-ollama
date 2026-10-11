@@ -35,7 +35,9 @@ func projectImportZIP(t *testing.T, files map[string]string) []byte {
 
 func newProjectImporterFixture(t *testing.T) (*ProjectImporter, *UploadManager, string) {
 	t.Helper()
-	root := t.TempDir()
+	// Raiz CURTA: o caminho interno do git (.git/objects) é longo e o `t.TempDir()`
+	// acrescenta o nome do teste; ver short_root_test.go.
+	root := shortTestRoot(t)
 	contextStore, err := NewContextStore("")
 	if err != nil {
 		t.Fatal(err)

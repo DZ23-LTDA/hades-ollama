@@ -41,8 +41,10 @@ func attachmentRequest(t *testing.T, files map[string]string, organizationID str
 
 func TestImportMissionAttachmentsCreatesIndexedOrgProject(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	workspace := t.TempDir()
-	runtime, err := agent.NewRuntime(agent.RuntimeConfig{WorkspaceRoot: workspace, DataRoot: t.TempDir()})
+	// Raiz CURTA: o git falha com `Filename too long` (MAX_PATH do Windows) no caminho
+	// interno do repositório; ver internal/agent/short_root_test.go.
+	workspace := shortServerRoot(t)
+	runtime, err := agent.NewRuntime(agent.RuntimeConfig{WorkspaceRoot: workspace, DataRoot: shortServerRoot(t)})
 	if err != nil {
 		t.Fatal(err)
 	}
