@@ -38,6 +38,25 @@ type Embedder interface {
 	Embed(ctx context.Context, text string) ([]float32, error)
 }
 
+// embeddingIdentifier é implementado por embedders que sabem DIZER qual modelo são.
+//
+// É opcional de propósito: um embedder sem identidade continua funcionando, mas os vetores dele saem SEM
+// carimbo — e vetor sem carimbo não é comparado semanticamente, porque não há como saber o espaço dele.
+type embeddingIdentifier interface {
+	EmbeddingModel() string
+}
+
+// currentEmbeddingModel devolve o nome do modelo do embedder ativo (vazio quando ele não se identifica).
+func (s *ContextStore) currentEmbeddingModel() string {
+	s.mu.RLock()
+	embedder := s.embedder
+	s.mu.RUnlock()
+	if identificavel, ok := embedder.(embeddingIdentifier); ok {
+		return strings.TrimSpace(identificavel.EmbeddingModel())
+	}
+	return ""
+}
+
 // LocalOrganizationID is reserved for the unauthenticated single-user API.
 // Ownerless records are accepted for backwards compatibility with local data,
 // but tenant-owned records must never be visible through the local scope.
@@ -358,6 +377,8 @@ func (s *ContextStore) AddMemoryContext(ctx context.Context, memory Memory) (Mem
 			return Memory{}, errors.New("embedder returned an invalid vector")
 		}
 		memory.Embedding = embedding
+		// Carimba o modelo: é o que permite saber, depois, se este vetor é comparável com a consulta atual.
+		memory.EmbeddingModel = s.currentEmbeddingModel()
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -468,13 +489,114 @@ func (s *ContextStore) SearchMemoriesLexical(projectID, query string, limit int)
 	return s.scoreMemories(projectID, strings.ToLower(strings.TrimSpace(query)), limit, nil)
 }
 
+// comparableVector diz se o vetor da memória pode ser comparado com a consulta atual.
+//
+// A única recusa é o caso PERIGOSO: o embedder atual se identifica e o vetor carrega OUTRO modelo — espaços
+// diferentes. Carimbo ausente com embedder identificado é dado anterior ao carimbo, gravado pelo mesmo
+// embedder configurado; recusá-lo quebraria busca semântica que já funcionava.
+func comparableVector(modeloAtual, carimbo string) bool {
+	if modeloAtual == "" || carimbo == "" {
+		return true
+	}
+	return carimbo == modeloAtual
+}
+
+// CountMemoriesOutsideVectorSpace conta memórias cujo vetor foi gerado por OUTRO modelo identificado.
+//
+// É a contagem acionável do re-embed. Quando o embedder atual não se identifica (ou o vetor não tem carimbo)
+// não há o que contar: não há como distinguir espaços — e isso é declarado, não escondido.
+func (s *ContextStore) CountMemoriesOutsideVectorSpace(projectID string) int {
+	modelo := s.currentEmbeddingModel()
+	if modelo == "" {
+		return 0
+	}
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	total := 0
+	for _, memory := range s.memories[projectID] {
+		if len(memory.Embedding) > 0 && memory.EmbeddingModel != "" && memory.EmbeddingModel != modelo {
+			total++
+		}
+	}
+	return total
+}
+
+// ReembedResult resume um re-embed: quantas memórias voltaram ao espaço atual e quantas falharam.
+type ReembedResult struct {
+	Reembedded int `json:"reembedded"`
+	Failed     int `json:"failed"`
+	Skipped    int `json:"skipped"`
+}
+
+// ReembedMemories recalcula os vetores do projeto que estão em outro espaço (ou sem carimbo).
+//
+// É a remediação da armadilha declarada: trocar o modelo de embedding NÃO re-embeda o histórico sozinho, e
+// vetores de espaços diferentes não podem ser comparados. Sem esta operação, o único caminho honesto seria
+// declarar para sempre que parte do conhecimento ficou fora do alcance da busca semântica.
+//
+// Falha de embedding em uma memória conta em `Failed` e NÃO interrompe as demais: um texto problemático não
+// pode impedir a recuperação dos outros.
+func (s *ContextStore) ReembedMemories(ctx context.Context, projectID string) (ReembedResult, error) {
+	s.mu.RLock()
+	embedder := s.embedder
+	memories := append([]Memory(nil), s.memories[projectID]...)
+	s.mu.RUnlock()
+	resultado := ReembedResult{}
+	if embedder == nil {
+		return resultado, fmt.Errorf("%w: não há embedder configurado para recalcular vetores", ErrEmbedderInvalid)
+	}
+	modelo := s.currentEmbeddingModel()
+	alteradas := make([]Memory, 0, len(memories))
+	for _, memory := range memories {
+		if len(memory.Embedding) > 0 && memory.EmbeddingModel == modelo {
+			resultado.Skipped++
+			alteradas = append(alteradas, memory)
+			continue
+		}
+		vetor, err := embedder.Embed(ctx, memory.Content)
+		if err != nil || len(vetor) == 0 {
+			resultado.Failed++
+			alteradas = append(alteradas, memory)
+			continue
+		}
+		memory.Embedding = vetor
+		memory.EmbeddingModel = modelo
+		resultado.Reembedded++
+		alteradas = append(alteradas, memory)
+	}
+	s.mu.Lock()
+	anterior := append([]Memory(nil), s.memories[projectID]...)
+	s.memories[projectID] = alteradas
+	if s.root != "" {
+		if err := s.writeMemoriesFile(projectID, alteradas); err != nil {
+			s.memories[projectID] = anterior
+			s.mu.Unlock()
+			return ReembedResult{}, err
+		}
+	}
+	s.mu.Unlock()
+	return resultado, nil
+}
+
 // scoreMemories pontua as memórias do projeto e devolve as melhores.
 //
-// Com vetor de consulta, a pontuação é similaridade de cosseno; sem ele, correspondência literal em conteúdo
-// ou tipo. É a MESMA pontuação usada pela busca normal — duas implementações divergiriam com o tempo.
+// Regra de comparabilidade entre vetores (e o motivo de cada linha):
+//
+//	| modelo atual identificado | carimbo do vetor | compara? | por quê |
+//	| sim  | igual    | SIM | mesmo espaço |
+//	| sim  | diferente| NÃO | espaços distintos: cosseno vira ruído que PARECE resultado |
+//	| sim  | ausente  | SIM | dado anterior ao carimbo, gravado pelo MESMO embedder configurado |
+//	| não  | qualquer | SIM | sem identidade não há como distinguir espaços — declarado, não escondido |
+//
+// A regra estrita (recusar carimbo ausente) quebrava busca semântica de embedder que não se identifica — e
+// quebrar em silêncio é pior que comparar o que não dá para distinguir.
 func (s *ContextStore) scoreMemories(projectID, query string, limit int, queryVector []float32) []Memory {
 	if limit <= 0 || limit > 100 {
 		limit = 20
+	}
+	modelo := ""
+	if len(queryVector) > 0 {
+		modelo = s.currentEmbeddingModel()
 	}
 	s.mu.RLock()
 	memories := append([]Memory(nil), s.memories[projectID]...)
@@ -486,7 +608,7 @@ func (s *ContextStore) scoreMemories(projectID, query string, limit int, queryVe
 	scored := make([]scoredMemory, 0, len(memories))
 	for _, memory := range memories {
 		var score float64
-		if len(queryVector) > 0 && len(memory.Embedding) > 0 {
+		if len(queryVector) > 0 && len(memory.Embedding) > 0 && comparableVector(modelo, memory.EmbeddingModel) {
 			score = cosineSimilarity(queryVector, memory.Embedding)
 		} else if query == "" || strings.Contains(strings.ToLower(memory.Content), query) || strings.Contains(strings.ToLower(memory.Kind), query) {
 			score = 1

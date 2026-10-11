@@ -210,7 +210,14 @@ type Memory struct {
 	Source     string    `json:"source,omitempty"`
 	Confidence float64   `json:"confidence,omitempty"`
 	Embedding  []float32 `json:"embedding,omitempty"`
-	CreatedAt  time.Time `json:"created_at"`
+	// EmbeddingModel diz QUAL modelo gerou o vetor acima.
+	//
+	// Sem este carimbo, trocar o modelo de embedding deixaria vetores de espaços diferentes sendo comparados
+	// por cosseno — e a similaridade entre espaços distintos é ruído que PARECE resultado. Com o carimbo, a
+	// busca sabe que aquele vetor não é comparável com a consulta atual, cai para correspondência literal e
+	// DECLARA o fato, em vez de devolver lixo plausível.
+	EmbeddingModel string    `json:"embedding_model,omitempty"`
+	CreatedAt      time.Time `json:"created_at"`
 	// Isolamento por usuário (estágio 15): vazio significa conhecimento do
 	// projeto (`organization`), preservando dados anteriores.
 	Visibility string `json:"visibility,omitempty"`

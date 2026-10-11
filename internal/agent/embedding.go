@@ -42,3 +42,9 @@ func (e OllamaEmbedder) Embed(ctx context.Context, text string) ([]float32, erro
 }
 
 func boolPointer(value bool) *bool { return &value }
+
+// EmbeddingModel identifica o ESPAÇO VETORIAL deste embedder.
+//
+// É o que permite carimbar cada vetor e recusar comparação entre modelos diferentes: cosseno entre espaços
+// distintos é ruído que parece resultado.
+func (e OllamaEmbedder) EmbeddingModel() string { return strings.TrimSpace(e.Model) }

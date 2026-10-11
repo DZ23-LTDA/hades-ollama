@@ -61,6 +61,7 @@ linters:
         - correspondente
         - confidencial
         - transfere
+        - essencial
         - corporativo
     depguard:
       rules:
