@@ -129,6 +129,12 @@ type ServiceAgentApprovalStore struct {
 	MaxPerOrganization int
 	// ApprovalTTL é o prazo de vigência depois da decisão; zero significa SEM prazo.
 	ApprovalTTL time.Duration
+	// PendingTTL é o prazo máximo de um pedido PENDENTE (mesmo com aprovação parcial). Zero desliga.
+	//
+	// Sem isto, um pedido com uma assinatura fica pendente para sempre — e a segunda assinatura, semanas
+	// depois, se somaria a um primeiro olhar que já não corresponde ao mesmo contexto. Quórum com assinatura
+	// velha não é quórum: é carimbo.
+	PendingTTL time.Duration
 	// QuorumAboveCents ativa o QUÓRUM acima deste valor: uma decisão deixa de bastar. Zero desliga.
 	QuorumAboveCents int64
 	// QuorumApprovals é quantas decisões de atores DISTINTOS o quórum exige.
@@ -144,6 +150,18 @@ const DefaultServiceAgentQuorumAboveCents int64 = 100000
 // DefaultServiceAgentQuorumApprovals é quantas decisões de atores distintos o quórum exige.
 const DefaultServiceAgentQuorumApprovals = 2
 
+// DefaultServiceAgentPendingTTL é quanto um pedido pode esperar por decisão (24 horas).
+//
+// Um dia: tempo de sobra para uma pessoa decidir em horário comercial, e curto o bastante para uma
+// autorização parcialmente assinada não atravessar a semana acumulando contexto que ninguém revisou.
+const DefaultServiceAgentPendingTTL = 24 * time.Hour
+
+// OverduePendingThreshold é a partir de quanto tempo um pedido pendente é marcado como ATRASADO na fila.
+//
+// A marcação não decide nada: ela diz a quem olha a fila que aquele pedido está esperando demais — sem isso,
+// "pendente" e "esquecido" ficam indistinguíveis na tela.
+const OverduePendingThreshold = 4 * time.Hour
+
 type serviceAgentApprovalFile struct {
 	Approvals []ServiceAgentApproval `json:"approvals"`
 	// Approvers é a lista de quem PODE aprovar nesta organização. Vazia significa "qualquer ator
@@ -157,6 +175,7 @@ func NewServiceAgentApprovalStore(root string) *ServiceAgentApprovalStore {
 		root:               strings.TrimSpace(root),
 		MaxPerOrganization: DefaultServiceAgentApprovalRetention,
 		ApprovalTTL:        DefaultServiceAgentApprovalTTL,
+		PendingTTL:         DefaultServiceAgentPendingTTL,
 		// O quórum vem LIGADO por padrão para valores altos: proteção que precisa ser lembrada de ligar não
 		// protege. Desligar é uma escolha explícita (`QuorumAboveCents = 0`).
 		QuorumAboveCents: DefaultServiceAgentQuorumAboveCents,
@@ -298,13 +317,18 @@ func (s *ServiceAgentApprovalStore) saveFile(organizationID string, file service
 	return writeJSONAtomic(path, file)
 }
 
-// expireStale marca como EXPIRADAS as aprovações cujo prazo passou depois da decisão.
+// expireStale marca como EXPIRADAS as aprovações cujo prazo passou — depois da decisão (`ApprovalTTL`) ou
+// ainda PENDENTES (`PendingTTL`, com ou sem assinatura parcial).
 //
 // Marcar (em vez de apenas ignorar) é o que transforma "autorização vencida" em EVIDÊNCIA: quem audita
-// precisa ver que houve aprovação e que ela venceu, não um registro que simplesmente deixou de valer.
+// precisa ver que houve pedido/aprovação e que venceu, não um registro que simplesmente deixou de valer.
+//
+// A expiração do PENDENTE é o que impede o desfecho pior do quórum: uma primeira assinatura esquecida que,
+// semanas depois, se somaria a um segundo olhar sobre um contexto que ninguém revisou junto.
 func (s *ServiceAgentApprovalStore) expireStale(organizationID string, now time.Time) error {
 	ttl := s.ttl()
-	if ttl <= 0 {
+	pendingTTL := s.pendingTTL()
+	if ttl <= 0 && pendingTTL <= 0 {
 		return nil
 	}
 	file, err := s.loadFile(organizationID)
@@ -314,18 +338,120 @@ func (s *ServiceAgentApprovalStore) expireStale(organizationID string, now time.
 	mudou := false
 	for index := range file.Approvals {
 		approval := &file.Approvals[index]
-		if approval.Status != ServiceAgentApprovalApproved || approval.DecidedAt == nil {
-			continue
-		}
-		if now.UTC().After(approval.DecidedAt.UTC().Add(ttl)) {
-			approval.Status = ServiceAgentApprovalExpired
-			mudou = true
+		switch approval.Status {
+		case ServiceAgentApprovalApproved:
+			if approval.DecidedAt == nil || ttl <= 0 {
+				continue
+			}
+			if now.UTC().After(approval.DecidedAt.UTC().Add(ttl)) {
+				approval.Status = ServiceAgentApprovalExpired
+				mudou = true
+			}
+		case ServiceAgentApprovalPending:
+			if pendingTTL <= 0 {
+				continue
+			}
+			if now.UTC().After(approval.RequestedAt.UTC().Add(pendingTTL)) {
+				approval.Status = ServiceAgentApprovalExpired
+				mudou = true
+			}
 		}
 	}
 	if !mudou {
 		return nil
 	}
 	return s.saveFile(organizationID, file)
+}
+
+// pendingTTL devolve o prazo efetivo do pedido pendente (zero significa SEM prazo).
+func (s *ServiceAgentApprovalStore) pendingTTL() time.Duration {
+	if s == nil || s.PendingTTL <= 0 {
+		return 0
+	}
+	return s.PendingTTL
+}
+
+// ServiceAgentApprovalQueueItem é o que quem espera precisa ver: o que falta e há quanto tempo.
+type ServiceAgentApprovalQueueItem struct {
+	ID              string `json:"id"`
+	ToolName        string `json:"tool_name"`
+	ConversationID  string `json:"conversation_id,omitempty"`
+	ApprovalsGiven  int    `json:"approvals_given"`
+	ApprovalsNeeded int    `json:"approvals_needed"`
+	AgeSeconds      int64  `json:"age_seconds"`
+	// Overdue diz que o pedido passou do limiar de atenção — sem isto, "pendente" e "esquecido" ficam
+	// indistinguíveis para quem olha a fila.
+	Overdue bool `json:"overdue"`
+}
+
+// ServiceAgentApprovalQueue é o resumo da fila de aprovações de uma organização.
+type ServiceAgentApprovalQueue struct {
+	OrganizationID string                          `json:"organization_id"`
+	Pending        int                             `json:"pending"`
+	Overdue        int                             `json:"overdue"`
+	OldestSeconds  int64                           `json:"oldest_seconds"`
+	PendingTTL     int64                           `json:"pending_ttl_seconds"`
+	ExpiresCount   int                             `json:"expired"`
+	Items          []ServiceAgentApprovalQueueItem `json:"items"`
+}
+
+// ApprovalQueue monta a fila de aprovações com idade e atraso de cada pedido.
+//
+// É a forma HONESTA de "notificar": não há push, e-mail nem webhook — o que existe é uma fila que diz o que
+// falta, há quanto tempo e o que já passou do limiar de atenção.
+func (s *ServiceAgentApprovalStore) ApprovalQueue(organizationID string, now time.Time) (ServiceAgentApprovalQueue, error) {
+	if err := s.expireStale(organizationID, now); err != nil {
+		return ServiceAgentApprovalQueue{}, err
+	}
+	approvals, err := s.Load(organizationID)
+	if err != nil {
+		return ServiceAgentApprovalQueue{}, err
+	}
+	queue := ServiceAgentApprovalQueue{
+		OrganizationID: organizationID,
+		PendingTTL:     int64(s.pendingTTL().Seconds()),
+		Items:          make([]ServiceAgentApprovalQueueItem, 0, 4),
+	}
+	for _, approval := range approvals {
+		if approval.OrganizationID != organizationID {
+			continue
+		}
+		if approval.Status == ServiceAgentApprovalExpired {
+			queue.ExpiresCount++
+			continue
+		}
+		if approval.Status != ServiceAgentApprovalPending {
+			continue
+		}
+		idade := now.UTC().Sub(approval.RequestedAt.UTC())
+		if idade < 0 {
+			idade = 0
+		}
+		needed := approval.RequiredApprovals
+		if needed <= 0 {
+			needed = 1
+		}
+		item := ServiceAgentApprovalQueueItem{
+			ID:              approval.ID,
+			ToolName:        approval.ToolName,
+			ConversationID:  approval.ConversationID,
+			ApprovalsGiven:  len(approval.Approvers()),
+			ApprovalsNeeded: needed,
+			AgeSeconds:      int64(idade.Seconds()),
+			Overdue:         idade >= OverduePendingThreshold,
+		}
+		if item.Overdue {
+			queue.Overdue++
+		}
+		if item.AgeSeconds > queue.OldestSeconds {
+			queue.OldestSeconds = item.AgeSeconds
+		}
+		queue.Items = append(queue.Items, item)
+	}
+	queue.Pending = len(queue.Items)
+	// Mais antigos primeiro: a fila existe para atacar o que está esperando há mais tempo.
+	sort.SliceStable(queue.Items, func(i, j int) bool { return queue.Items[i].AgeSeconds > queue.Items[j].AgeSeconds })
+	return queue, nil
 }
 
 // Request registra um pedido pendente, REUSANDO o pedido já pendente para a mesma impressão digital.
@@ -400,6 +526,11 @@ func (s *ServiceAgentApprovalStore) Decide(organizationID, approvalID string, ap
 		if approvals[index].Status == ServiceAgentApprovalConsumed {
 			// Decidir sobre aprovação já usada reabriria uma autorização que o sistema consumiu.
 			return ServiceAgentApproval{}, fmt.Errorf("%w: aprovação já consumida", ErrServiceAgentApprovalConflict)
+		}
+		if approvals[index].Status == ServiceAgentApprovalExpired {
+			// Pedido VENCIDO não aceita decisão: aceitar reabriria um contexto que ninguém revisou a tempo —
+			// e é justamente isso que o prazo do pendente existe para impedir.
+			return ServiceAgentApproval{}, fmt.Errorf("%w: pedido vencido; é preciso um pedido novo", ErrServiceAgentApprovalExpired)
 		}
 		decidedAt := now.UTC()
 		approvals[index].DecidedBy = actorID

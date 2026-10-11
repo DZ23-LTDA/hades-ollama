@@ -106,3 +106,29 @@ func TestServiceAgentApprovalRoutesEnforceRoleAndListExpired(t *testing.T) {
 		t.Fatalf("a mudança de política precisa constar na trilha: %s", trilha.Body.String())
 	}
 }
+
+// A FILA de aprovações precisa ser ALCANÇÁVEL: quem opera tem de ver o que falta e há quanto tempo.
+func TestServiceAgentApprovalQueueIsVisibleThroughTheRoute(t *testing.T) {
+	engine, _, conversationID := setupServiceAgentAPI(t, true)
+
+	// Um pedido de escrita fica pendente.
+	pedido := `{"conversation_id":"` + conversationID + `","intent":"quero o plano",` +
+		`"requested_tools":["crm.opportunity.write"],` +
+		`"tool_arguments":{"title":"Plano avançado","value_cents":79900,"owner_id":"ana"}}`
+	if turn := serviceAgentRequest(engine, "/api/agent/v1/service-agents/sales/turn", pedido); turn.Code != http.StatusOK {
+		t.Fatalf("turno precisa responder 200, veio %d: %s", turn.Code, turn.Body.String())
+	}
+
+	lista := httptest.NewRecorder()
+	engine.ServeHTTP(lista, httptest.NewRequest(http.MethodGet, "/api/agent/v1/service-agents/approvals?status=pending", nil))
+	if lista.Code != http.StatusOK {
+		t.Fatalf("listagem precisa responder 200, veio %d: %s", lista.Code, lista.Body.String())
+	}
+	texto := lista.Body.String()
+	// A fila vai junto, com o que falta, a idade e o prazo vigente — sem depender de push que não existe.
+	for _, campo := range []string{`"queue"`, `"pending":1`, `"age_seconds"`, `"approvals_needed"`, `"pending_ttl_seconds"`, `"overdue"`} {
+		if !strings.Contains(texto, campo) {
+			t.Fatalf("a fila precisa trazer %s: %s", campo, texto)
+		}
+	}
+}
