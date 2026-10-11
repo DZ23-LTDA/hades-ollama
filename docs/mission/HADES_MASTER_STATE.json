@@ -2,12 +2,12 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-12T03:05:00-03:00",
+  "updated_at": "2026-10-12T03:40:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
     "integration_branch": "main",
-    "main_sha": "8e3feb663a5bbe290842c0b8320681d402dff382",
+    "main_sha": "edc90f9301aaaa301ab3708d067af4b00f79bc0a",
     "main_committed_at": "2026-10-09T10:24:45Z",
     "main_ci_state": "green (dz23-agentic-quality + class-a-plus-integrity = success nesse SHA)",
     "mission_branch": "docs/checkpoints-missao-v21",
@@ -587,11 +587,12 @@
         "E-036",
         "E-048",
         "E-059",
-        "E-098"
+        "E-098",
+        "E-099"
       ],
       "blocker": null,
-      "next": "PENDENCIAS QUE IMPEDEM A APROVACAO DO GATE: instalacao/upgrade/rollback de pacote executados de verdade (a automacao existe nos workflows de instalador), performance medida, acessibilidade WCAG 2.2 AA medida, desktop/computer-use nativo homologado, APIs externas com credenciais reais (bloqueio externo) e homologacao por plataforma em dispositivo real",
-      "done": "PRIMEIRA AVALIACAO COMPLETA DO GATE em docs/mission/HADES_ENGINEERING_GATE.md: suite de engenharia APROVADA (7 checks do CI verdes na main, build/vet/lint/testes ok, web 551 testes, typecheck, lint, build) e os 20 itens do estagio relatados um a um com DONE, PARTIAL, NOT_DONE ou BLOCKED"
+      "next": "PENDENCIAS RESTANTES: instalacao/upgrade/rollback de pacote executados de verdade, homologacao por plataforma em dispositivo real, desktop/computer-use nativo e APIs externas com credenciais reais (bloqueio externo). O gate segue NAO APROVADO por elas",
+      "done": "GATE AVALIADO EM DUAS RODADAS: a suite completa foi executada e relatada, e agora PERFORMANCE e ACESSIBILIDADE tambem estao MEDIDAS - benchmarks reais (busca de memoria 699,3 ns/op, construcao de contexto fundamentado 110,7 us/op, instalacao/rollback de plugin 5,20 ms/op, download 442,83 MB/s), budget de bundle PASS (1.443,91 kB cru e 396,66 kB gzip contra 2.000.000 e 600.000) e gate axe WCAG com 3 de 3 passando (desktop sem violacao, mobile sem violacao e teclado sem armadilha)"
     },
     {
       "id": 23,
@@ -1020,7 +1021,9 @@
     "ESTAGIO 31 - SEM PROMOCAO, COM O QUE FALTA NOMEADO (E-097): o criterio esta coberto e duas evidencias obrigatorias foram fechadas, mas a LISTA DE ATIVIDADES nao esta: coordenar marketing, vendas, atendimento, estoque, pedidos, financas, operacoes, conteudo, tecnologia e qualidade depende dos estagios 24-30, que estao AUSENTES. Tambem faltam orcamento de tokens/custo de modelo (o existente e o de gasto da empresa) e o supervisor por organizacao (hoje e componente GLOBAL com pino opcional via OLLAMA_SUPERVISOR_ORG). Permanece IN_PROGRESS",
     "GATE 22 - PRIMEIRA AVALIACAO COMPLETA (E-098): docs/mission/HADES_ENGINEERING_GATE.md relata os 20 itens do estagio com evidencia medida. SUITE DE ENGENHARIA APROVADA: 7 checks do CI verdes na main (Go agentic and server gates, Go agentic Windows portability, PostgreSQL RLS/Redis DLQ/OTLP, Web and mobile quality, CGO-free and Windows build gate, Generate SBOM, Preserve Class A+ surfaces); no host, build exit 0, vet exit 0, golangci-lint 0 issues, web com 82 arquivos e 551 testes passando, tsc exit 0, lint 0 erros e build OK. GATE INTERMEDIARIO NAO APROVADO: install/upgrade/rollback de pacote, performance e acessibilidade nao foram medidos, desktop nativo nao esta homologado e APIs externas seguem sem credenciais reais. Release global permanece NOT_RELEASE_READY",
     "CORRECAO HONESTA A PARTIR DO LOG DO CI (E-098): eu havia registrado que o E2E de navegador estava impedido por ausencia de Playwright e que TRES TESTES falhavam por limitacao de ambiente. O log real do gate na main mostra que o CI instala Playwright 1.63.0 e Chromium 153, define OLLAMA_AGENT_BROWSER_EXECUTABLE para um Chromium real, roda browser_helper_test.py com 9 testes OK e passa CGO_ENABLED=0 go test ./internal/agent (ok), CGO_ENABLED=1 go test ./server (ok) e go test ./... inteiro. As tres falhas sao ESPECIFICAS DESTE HOST WINDOWS, nao defeitos do produto, e o NAVEGADOR REAL ESTA HOMOLOGADO EM CI/LINUX. O estagio 14 foi corrigido para nao declarar bloqueio inexistente",
-    "FALHA DE BUILD QUE ERA DE AMBIENTE (E-098): npm run build falhou com 'vite:esbuild-transpile remove AppData/Local/Temp/esbuild-...: Acesso negado'. Causa: o esbuild nao conseguiu remover seu temporario no %TEMP% do host. Procedimento: apontar TEMP/TMP para diretorio gravavel do workspace antes do build, com o que o build passa em 9.44s. Nao e defeito do produto e o CI nao e afetado. Tambem registrado: govulncheck no CI reporta ZERO vulnerabilidades no codigo (1 em modulo requerido nao chamado), go mod verify limpo, gofmt limpo, e o verificador de contrato confere 298 rotas de backend contra 155 chamadas do frontend com DESIGN SYSTEM VERIFICATION PASSED"
+    "FALHA DE BUILD QUE ERA DE AMBIENTE (E-098): npm run build falhou com 'vite:esbuild-transpile remove AppData/Local/Temp/esbuild-...: Acesso negado'. Causa: o esbuild nao conseguiu remover seu temporario no %TEMP% do host. Procedimento: apontar TEMP/TMP para diretorio gravavel do workspace antes do build, com o que o build passa em 9.44s. Nao e defeito do produto e o CI nao e afetado. Tambem registrado: govulncheck no CI reporta ZERO vulnerabilidades no codigo (1 em modulo requerido nao chamado), go mod verify limpo, gofmt limpo, e o verificador de contrato confere 298 rotas de backend contra 155 chamadas do frontend com DESIGN SYSTEM VERIFICATION PASSED",
+    "PERFORMANCE E ACESSIBILIDADE MEDIDAS (E-099): os dois itens que o gate registrava como NAO MEDIDO agora tem numeros reais, porque a infraestrutura JA EXISTIA no repositorio (7 benchmarks Go, e2e/accessibility.spec.ts com axe e scripts/check-bundle-budget.mjs) e bastou executa-la. PERFORMANCE: BenchmarkMemorySearchContext 699,3 ns/op com 888 B/op e 4 allocs/op; BenchmarkGroundedContextBuild 110,7 us/op; BenchmarkPluginInstallUpdateRollback 5,20 ms/op; BenchmarkDownloadChunkCompletion 2,37 ms/op com 442,83 MB/s; budget de bundle PASS com o maior chunk em 1.443,91 kB cru e 396,66 kB gzip contra os tetos de 2.000.000 e 600.000. ACESSIBILIDADE: npx playwright test e2e/accessibility.spec.ts com 3 de 3 passando em 44,3s - axe WCAG desktop sem violacao, axe WCAG mobile sem violacao e shell mobile operavel por teclado sem armadilha",
+    "MEDICAO DE ACESSIBILIDADE - O QUE FOI PRECISO (E-099): a primeira execucao FALHOU por ausencia do build de Chromium exigido pela versao do Playwright do repositorio (chromium_headless_shell-1248, enquanto o instalado era o 1243). Era dependencia de ambiente, NAO violacao de acessibilidade. Instalado o build exigido (download local, reversivel, sem custo), o gate passou 3 de 3. A suite tambem roda no CI pelo workflow dz23-e2e.yaml via npm run test:e2e. LIMITES: a medicao cobre as rotas criticas definidas pelo spec e nao todas as telas, e nao houve teste com leitor de tela real (NVDA/JAWS/VoiceOver); a performance mede caminhos internos e bundle, e NAO mede latencia de inferencia real nem carga concorrente"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
