@@ -398,6 +398,23 @@ export const listSchedules = () => agentFetch<{ schedules: AgentSchedule[] }>("/
 export const createSchedule = (payload: Partial<AgentSchedule>) => agentFetch<AgentSchedule>("/api/agent/v1/schedules", { method: "POST", body: JSON.stringify(payload) });
 export const updateSchedule = (id: string, payload: Partial<AgentSchedule>) => agentFetch<AgentSchedule>(`/api/agent/v1/schedules/${encodeURIComponent(id)}`, { method: "PATCH", body: JSON.stringify(payload) });
 export const deleteSchedule = (id: string) => agentFetch<void>(`/api/agent/v1/schedules/${encodeURIComponent(id)}`, { method: "DELETE" });
+
+export type AgentScheduleRunResponse = {
+  schedule: AgentSchedule;
+  report: AgentScheduleRunReport;
+  succeeded: boolean;
+  error?: string;
+  record_warning?: string;
+};
+
+// Execução manual da rotina: roda o GRAFO persistido (não uma missão avulsa) e
+// devolve o resultado por nó, já registrado no schedule.
+export const runScheduleNow = (id: string) =>
+  agentFetch<AgentScheduleRunResponse>(`/api/agent/v1/schedules/${encodeURIComponent(id)}/run`, {
+    method: "POST",
+    body: "{}",
+  });
+
 export const listSkills = async () => { const result = await agentFetch<{ skills?: AgentSkill[] | null }>("/api/agent/v1/skills"); return { skills: Array.isArray(result.skills) ? result.skills : [] }; };
 // Estado REAL de cada plugin instalado (V2.1 §11.3): só o servidor decide o que
 // está "pronto para usar", e só com execução comprovada.

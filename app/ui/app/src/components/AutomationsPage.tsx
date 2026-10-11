@@ -3,7 +3,7 @@ import { Link } from "@tanstack/react-router";
 import {
   listSchedules,
   createSchedule,
-  createMission,
+  runScheduleNow,
   updateSchedule,
   deleteSchedule,
   type AgentSchedule,
@@ -12,6 +12,7 @@ import { AppSidebar } from "@/components/AppSidebar";
 import { SidebarLayout } from "@/components/layout/layout";
 import { FlowEditor } from "@/components/FlowEditor";
 import { ScheduleRunReportCard } from "@/components/ScheduleRunReportCard";
+import { scheduleRunSummary, scheduleRunVerdict, scheduleRunVerdictLabel } from "@/lib/scheduleRun";
 import { humanizeApiError } from "@/lib/userFacingError";
 import { confirmDialog } from "@/lib/confirmDialog";
 import {
@@ -112,12 +113,25 @@ export function AutomationsPage() {
   const handleTriggerNow = async (sch: AgentSchedule) => {
     setErrorMsg(null);
     try {
-      const mission = await createMission({
-        objective: `[Execução Manual] ${sch.objective}`,
-        auto_run: true,
-      });
-      setSuccessMsg(`Missão disparada: ${sch.objective}`);
-      setTriggeredMission({ id: mission.id, objective: sch.objective });
+      // Executa o GRAFO persistido da rotina, não uma missão avulsa: um fluxo com
+      // condição e várias ações precisa rodar como fluxo também no disparo manual.
+      const result = await runScheduleNow(sch.id);
+      setSchedules((previous) => previous.map((item) => (item.id === sch.id ? result.schedule : item)));
+      const verdict = scheduleRunVerdict(result.report);
+      if (!result.succeeded) {
+        setSuccessMsg(null);
+        setTriggeredMission(null);
+        setErrorMsg(
+          `Execução da rotina falhou (${scheduleRunVerdictLabel(verdict)}): ${result.error ?? "erro não informado"}`,
+        );
+        return;
+      }
+      if (verdict === "partial") {
+        setSuccessMsg(`Rotina executada parcialmente: ${scheduleRunSummary(result.report)}`);
+      } else {
+        setSuccessMsg(`Rotina executada: ${scheduleRunSummary(result.report)}`);
+      }
+      setTriggeredMission({ id: sch.id, objective: sch.objective });
     } catch (e) {
       setErrorMsg(humanizeApiError(e, "Não foi possível executar a automação.").message);
     }

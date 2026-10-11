@@ -1532,6 +1532,14 @@ func (r *Runtime) recordScheduleSuccess(schedule Schedule) (Schedule, error) {
 	return r.context.UpdateScheduleForOrganization(r.organizationScope, schedule.ID, schedule)
 }
 
+// RecordScheduleRun é a porta pública do registro de execução de um schedule.
+// Existe para que a execução MANUAL (rota HTTP) use exatamente a mesma política e
+// o mesmo formato de evidência que o despacho automático — antes, o botão de
+// execução imediata criava uma missão avulsa e ignorava o grafo persistido.
+func (r *Runtime) RecordScheduleRun(schedule Schedule, report ScheduleRunReport, runErr error) (Schedule, error) {
+	return r.recordScheduleRun(schedule, report, runErr)
+}
+
 // recordScheduleRun persiste o resultado da execução de um schedule e aplica a
 // política de falha quando houve erro.
 //
