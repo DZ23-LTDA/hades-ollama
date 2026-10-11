@@ -2,12 +2,12 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-12T11:20:00-03:00",
+  "updated_at": "2026-10-12T12:30:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
     "integration_branch": "main",
-    "main_sha": "6ab6fae96c1c4c6d72615cd579abb0d471ed48fc",
+    "main_sha": "88cb5b2fa3ffd2103fe3d684cded315591355272",
     "main_committed_at": "2026-10-09T10:24:45Z",
     "main_ci_state": "green (dz23-agentic-quality + class-a-plus-integrity = success nesse SHA)",
     "mission_branch": "docs/checkpoints-missao-v21",
@@ -720,13 +720,14 @@
       "evidence": [
         "E-044",
         "E-087",
-        "E-100"
+        "E-100",
+        "E-108"
       ],
       "blocker": "B-05",
-      "next": "LIMITES DECLARADOS: sem integracao bancaria real (a conciliacao recebe a referencia informada; importar extrato OFX/CNAB/API depende de credencial), sem fiscal (notas, impostos, retencoes), sem cobranca (boleto/Pix/link), sem execucao de pagamento e sem rateio por centro de custo nem conciliacao automatica por valor/data",
+      "next": "LIMITES: sem integracao bancaria (OFX/CNAB/API) nem importacao de extrato, sem fiscal (NF-e/impostos) nem contabil, sem emissao de Pix/boleto nem PSP (nada e transferido), sem rateio por centro de custo e sem orcamento por area, e o estorno e apenas SINALIZADO (executar exige autorizacao humana)",
       "blocked_reason": "",
       "external_dependency": "integracao fiscal autorizada exige certificado/credencial; o razao financeiro em sandbox e local",
-      "done": "RAZAO FINANCEIRO E CONCILIACAO implementados: LedgerEntry (receita/despesa), idempotencia por chave POR EMPRESA valida tambem sob CONCORRENCIA, conciliacao com referencia externa (idempotente com a mesma referencia, CONFLITO com outra), resumo de fluxo de caixa com cobertura de conciliacao e fila do que nao conciliou, persistencia e isolamento por organizacao. O razao NAO mexe no orcamento: SpentCents e politica de gasto ja contabilizada por RecordSpendRequest"
+      "done": "FINANCE & OPERATIONS ligado ao comercio: receita derivada de pedido PAGO lancada no livro financeiro que ja existia (sem criar um segundo razao), idempotente por pedido, com pedido NAO PAGO recusado (receita ficticia evitada), contas a receber, conciliacao cruzada que grava a referencia do extrato no proprio lancamento, e DIVERGENCIAS MEDIDAS (receita nao lancada, receita sem conciliacao e estorno devido em pedido cancelado, com o lancamento PRESERVADO). Nenhum dinheiro se move: apenas registro e sinalizacao. O COMERCIO passou a PERSISTIR um arquivo por organizacao (catalogo, estoque, pedidos, chaves de idempotencia e numeracao)"
     },
     {
       "id": 31,
@@ -1069,7 +1070,13 @@
     "MOTOR DE COMERCIO - ERRO MEU ENCONTRADO ANTES DO TESTE (E-107): ao derivar o saldo, eu havia somado o delta da RESERVA no estoque FISICO, o que faria o fisico cair no momento da reserva e MENTIR SOBRE O DEPOSITO (a mercadoria continua na prateleira). Corrigi a modelagem para disponivel = fisico - reservado, e o teste passou a travar exatamente isso: reservar 4 de 4 deixa fisico=4, reservado=4 e disponivel=0",
     "MOTOR DE COMERCIO - ZERO DADO DE CARTAO (E-107): os metodos aceitos sao REFERENCIAS (sandbox, Pix, boleto, manual) e referencia com aparencia de numero de cartao e RECUSADA em tres formatos testados. O estagio proibe processar cartao sem infraestrutura e conformidade, entao o sistema nao guarda PAN nem por acidente. Ha tambem conferencia de valor (pagamento divergente do pedido e erro) e conciliacao idempotente (mesma referencia e no-op, outra e conflito)",
     "MOTOR DE COMERCIO - EFEITO NOS AGENTES (E-107): as ferramentas commerce.order.read e commerce.stock.read DEIXARAM DE SER BLOQUEADAS para o agente de comercio, porque agora existem de verdade, e ha teste verificando que o catalogo nao as lista mais como bloqueadas",
-    "MOTOR DE COMERCIO - LIMITES DECLARADOS (E-107): sem emissao fiscal (NF-e) nem integracao contabil, sem cobranca real (Pix/boleto sao apenas REFERENCIAS registradas, sem PSP nem transferencia de dinheiro), sem carrinho persistente, sem frete/entrega/devolucao, sem sincronizacao com marketplace/ERP e persistencia em memoria nesta rodada. Capacidade PARCIAL"
+    "MOTOR DE COMERCIO - LIMITES DECLARADOS (E-107): sem emissao fiscal (NF-e) nem integracao contabil, sem cobranca real (Pix/boleto sao apenas REFERENCIAS registradas, sem PSP nem transferencia de dinheiro), sem carrinho persistente, sem frete/entrega/devolucao, sem sincronizacao com marketplace/ERP e persistencia em memoria nesta rodada. Capacidade PARCIAL",
+    "FINANCE & OPERATIONS LIGADO AO COMERCIO (E-108): a receita e DERIVADA do comercio no LIVRO FINANCEIRO QUE JA EXISTIA - nao criei um segundo razao, porque duplicar o livro criaria duas verdades sobre o dinheiro. PEDIDO NAO PAGO NAO E RECEITA: lancar receita de pedido aguardando pagamento criaria RECEITA FICTICIA, e ha teste conferindo razao ZERADO com pedido pendente. IDEMPOTENCIA POR PEDIDO: a chave e o proprio pedido, entao postar duas vezes nao duplica receita",
+    "FINANCEIRO - LACUNA MEDIDA E DIVERGENCIA DECLARADA (E-108): pedido pago sem lancamento aparece em unposted_revenue_cents - e o detector de receita que 'sumiu' entre comercio e financeiro. E pedido cancelado que ja tem receita vira ESTORNO DEVIDO, com o lancamento PRESERVADO, porque dinheiro que entrou e foi devolvido tem historia e apagar esconderia a devolucao. A conciliacao e CRUZADA: a referencia do extrato e gravada no PROPRIO lancamento, ligando comercio e banco pelo mesmo documento, e referencia divergente e 409",
+    "FINANCEIRO - RAZAO POR EMPRESA E COMERCIO POR ORGANIZACAO (E-108): a resolucao organizacao -> empresa e explicita e, sem empresa criada, o lancamento e RECUSADO em vez de ir para o vazio. NENHUM DINHEIRO SE MOVE: nao ha pagamento, transferencia nem estorno automatico, apenas registro e sinalizacao - mover dinheiro exige autorizacao",
+    "FINANCEIRO - ERROS MEUS CORRIGIDOS PELOS TESTES (E-108): (1) o company_id do RECIBO carregava a ORGANIZACAO, e a conciliacao entao procurava uma empresa com o ID da organizacao e falhava com 'company not found: org-a' - o campo significa EMPRESA, e corrigi o valor em vez de afrouxar a busca; (2) a empresa recebe ID PROPRIO na criacao e eu havia fixado 'emp-1' nos testes - passei a usar o ID DEVOLVIDO pela criacao; (3) conflito de conciliacao respondia 400 e e 409",
+    "COMERCIO PERSISTENTE (E-108): fecha o limite mais fragil declarado na rodada anterior. Um arquivo por organizacao com catalogo, livro de estoque, pedidos, chaves de idempotencia e numeracao, entao o isolamento fica no ARMAZENAMENTO e nao so na consulta. Ha teste de reinicio que recupera pedido com pagamento, estoque fisico e reservado, catalogo E a chave de idempotencia - reenviar o mesmo checkout apos o reinicio devolve o MESMO pedido, sem criar um segundo",
+    "FINANCEIRO - LIMITES DECLARADOS (E-108): sem integracao bancaria (OFX/CNAB/API) nem importacao de extrato, sem fiscal (NF-e/impostos) nem contabil, sem emissao de Pix/boleto nem PSP (nada e transferido), sem rateio por centro de custo e sem orcamento por area, e o estorno e apenas SINALIZADO. Capacidade PARCIAL"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",

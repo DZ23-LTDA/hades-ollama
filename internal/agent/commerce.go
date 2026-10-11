@@ -3,6 +3,8 @@ package agent
 import (
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 	"sync"
@@ -152,6 +154,16 @@ type CommerceOrderRequest struct {
 	IdempotencyKey string
 }
 
+// commerceFile é o formato em disco de UMA organização. Guardar por organização
+// mantém o isolamento no próprio armazenamento, e não só na consulta.
+type commerceFile struct {
+	Products    []CommerceProduct                  `json:"products"`
+	Stock       map[string][]CommerceStockMovement `json:"stock"`
+	Orders      []CommerceOrder                    `json:"orders"`
+	Idempotency map[string]string                  `json:"idempotency"`
+	Sequence    int64                              `json:"sequence"`
+}
+
 // CommerceStore guarda catálogo, estoque e pedidos por organização.
 type CommerceStore struct {
 	mu            sync.RWMutex
@@ -160,9 +172,11 @@ type CommerceStore struct {
 	orders        map[string]CommerceOrder
 	idempotency   map[string]string
 	orderSequence map[string]int64
+	// root vazio mantém o motor em memória (usado em testes e cenários efêmeros).
+	root string
 }
 
-// NewCommerceStore cria o motor de comércio.
+// NewCommerceStore cria o motor de comércio EM MEMÓRIA.
 func NewCommerceStore() *CommerceStore {
 	return &CommerceStore{
 		products:      map[string]CommerceProduct{},
@@ -171,6 +185,102 @@ func NewCommerceStore() *CommerceStore {
 		idempotency:   map[string]string{},
 		orderSequence: map[string]int64{},
 	}
+}
+
+// NewCommerceStoreAt cria o motor de comércio com PERSISTÊNCIA, um arquivo por
+// organização, e carrega o que já existe. Raiz vazia devolve o motor em memória.
+func NewCommerceStoreAt(root string) (*CommerceStore, error) {
+	store := NewCommerceStore()
+	store.root = strings.TrimSpace(root)
+	if store.root == "" {
+		return store, nil
+	}
+	if err := os.MkdirAll(store.root, 0o700); err != nil {
+		return nil, err
+	}
+	entries, err := os.ReadDir(store.root)
+	if err != nil {
+		return nil, err
+	}
+	for _, entry := range entries {
+		if entry.IsDir() || filepath.Ext(entry.Name()) != ".json" {
+			continue
+		}
+		var stored commerceFile
+		if err := readJSON(filepath.Join(store.root, entry.Name()), &stored); err != nil {
+			return nil, fmt.Errorf("load commerce from %s: %w", entry.Name(), err)
+		}
+		for _, product := range stored.Products {
+			store.products[product.ID] = product
+			if stored.Sequence > store.orderSequence[consentScope(product.OrganizationID)] {
+				store.orderSequence[consentScope(product.OrganizationID)] = stored.Sequence
+			}
+		}
+		for orgKey, movements := range stored.Stock {
+			store.stock[orgKey] = append(store.stock[orgKey], movements...)
+		}
+		for _, order := range stored.Orders {
+			store.orders[order.ID] = order
+			if order.IdempotencyKey != "" {
+				store.idempotency[commerceKey(order.OrganizationID, order.IdempotencyKey)] = order.ID
+			}
+			if stored.Sequence > store.orderSequence[consentScope(order.OrganizationID)] {
+				store.orderSequence[consentScope(order.OrganizationID)] = stored.Sequence
+			}
+		}
+		for key, orderID := range stored.Idempotency {
+			store.idempotency[key] = orderID
+		}
+	}
+	return store, nil
+}
+
+// commercePath devolve o arquivo da organização. O nome é sanitizado, então uma
+// organização não consegue escrever no arquivo de outra nem escapar da raiz.
+func (s *CommerceStore) commercePath(organizationID string) string {
+	if s.root == "" {
+		return ""
+	}
+	return filepath.Join(s.root, sanitizeIDComponent(consentScope(organizationID))+".json")
+}
+
+// persistLocked grava SOMENTE a organização indicada.
+func (s *CommerceStore) persistLocked(organizationID string) error {
+	path := s.commercePath(organizationID)
+	if path == "" {
+		return nil
+	}
+	organizationID = consentScope(organizationID)
+	payload := commerceFile{
+		Products:    []CommerceProduct{},
+		Stock:       map[string][]CommerceStockMovement{},
+		Orders:      []CommerceOrder{},
+		Idempotency: map[string]string{},
+		Sequence:    s.orderSequence[organizationID],
+	}
+	for _, product := range s.products {
+		if product.OrganizationID == organizationID {
+			payload.Products = append(payload.Products, product)
+		}
+	}
+	for key, movements := range s.stock {
+		if strings.HasPrefix(key, organizationID+"|") {
+			payload.Stock[key] = movements
+		}
+	}
+	for _, order := range s.orders {
+		if order.OrganizationID == organizationID {
+			payload.Orders = append(payload.Orders, order)
+		}
+	}
+	for key, orderID := range s.idempotency {
+		if strings.HasPrefix(key, organizationID+"|") {
+			payload.Idempotency[key] = orderID
+		}
+	}
+	sort.SliceStable(payload.Products, func(i, j int) bool { return payload.Products[i].ID < payload.Products[j].ID })
+	sort.SliceStable(payload.Orders, func(i, j int) bool { return payload.Orders[i].ID < payload.Orders[j].ID })
+	return writeJSONAtomic(path, payload)
 }
 
 func commerceKey(organizationID, value string) string {
@@ -212,6 +322,9 @@ func (s *CommerceStore) UpsertProduct(product CommerceProduct, now time.Time) (C
 				product.CreatedAt = existing.CreatedAt
 			}
 			s.products[id] = product
+			if err := s.persistLocked(product.OrganizationID); err != nil {
+				return CommerceProduct{}, err
+			}
 			return product, nil
 		}
 	}
@@ -220,6 +333,9 @@ func (s *CommerceStore) UpsertProduct(product CommerceProduct, now time.Time) (C
 	}
 	product.CreatedAt = now
 	s.products[product.ID] = product
+	if err := s.persistLocked(product.OrganizationID); err != nil {
+		return CommerceProduct{}, err
+	}
 	return product, nil
 }
 
@@ -279,6 +395,10 @@ func (s *CommerceStore) RecordStock(organizationID, sku string, delta int64, kin
 		CreatedAt:      now,
 	}
 	s.stock[key] = append(s.stock[key], movement)
+	if err := s.persistLocked(organizationID); err != nil {
+		s.stock[key] = s.stock[key][:len(s.stock[key])-1]
+		return CommerceStockMovement{}, err
+	}
 	return movement, nil
 }
 
@@ -420,6 +540,19 @@ func (s *CommerceStore) CreateOrder(request CommerceOrderRequest, now time.Time)
 	}
 	s.orders[order.ID] = order
 	s.idempotency[idempotencyKey] = order.ID
+	if err := s.persistLocked(organizationID); err != nil {
+		// Sem gravação o pedido não existe: desfaz pedido, reservas e chave para não
+		// deixar memória e disco discordando.
+		delete(s.orders, order.ID)
+		delete(s.idempotency, idempotencyKey)
+		for _, movement := range reservations {
+			key := commerceKey(organizationID, movement.SKU)
+			if len(s.stock[key]) > 0 {
+				s.stock[key] = s.stock[key][:len(s.stock[key])-1]
+			}
+		}
+		return CommerceOrder{}, err
+	}
 	return order, nil
 }
 
@@ -483,6 +616,9 @@ func (s *CommerceStore) ConfirmPayment(organizationID, orderID string, payment C
 	order.Status = CommerceOrderPaid
 	order.UpdatedAt = now
 	s.orders[order.ID] = order
+	if err := s.persistLocked(organizationID); err != nil {
+		return CommerceOrder{}, err
+	}
 	return order, nil
 }
 
@@ -508,6 +644,9 @@ func (s *CommerceStore) Reconcile(organizationID, orderID, reference string, now
 	order.ReconciledRef = reference
 	order.UpdatedAt = now
 	s.orders[order.ID] = order
+	if err := s.persistLocked(organizationID); err != nil {
+		return CommerceOrder{}, err
+	}
 	return order, nil
 }
 
@@ -537,9 +676,14 @@ func (s *CommerceStore) Fulfill(organizationID, orderID string, now time.Time) (
 			},
 		)
 	}
+	// Os dois movimentos por linha vão juntos para o disco: o saldo em memória e o do
+	// arquivo não podem divergir.
 	order.Status = CommerceOrderFulfilled
 	order.UpdatedAt = now
 	s.orders[order.ID] = order
+	if err := s.persistLocked(organizationID); err != nil {
+		return CommerceOrder{}, err
+	}
 	return order, nil
 }
 
@@ -565,11 +709,15 @@ func (s *CommerceStore) Cancel(organizationID, orderID, reason string, now time.
 			Delta: line.Quantity, Kind: CommerceMovementRelease, Reference: order.ID + ":" + strings.TrimSpace(reason), CreatedAt: now,
 		})
 	}
+	// A liberação acompanha o cancelamento: os dois vão para o disco juntos.
 	cancelled := now
 	order.Status = CommerceOrderCancelled
 	order.CancelledAt = &cancelled
 	order.UpdatedAt = now
 	s.orders[order.ID] = order
+	if err := s.persistLocked(organizationID); err != nil {
+		return CommerceOrder{}, err
+	}
 	return order, nil
 }
 

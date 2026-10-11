@@ -834,6 +834,10 @@ func (a *agentAPI) register(r *gin.Engine) {
 	group.POST("/commerce/orders/:id/fulfill", a.fulfillCommerceOrder)
 	group.POST("/commerce/orders/:id/cancel", a.cancelCommerceOrder)
 	group.GET("/commerce/summary", a.commerceSummary)
+	group.POST("/finance/orders/:id/revenue", a.postOrderRevenue)
+	group.POST("/finance/orders/:id/cost", a.postOrderCost)
+	group.POST("/finance/orders/:id/reconcile", a.reconcileOrderWithStatement)
+	group.GET("/finance/report", a.financeReport)
 	group.GET("/egress/logs", a.getEgressLogs)
 	group.GET("/egress/status", a.getEgressStatus)
 	group.GET("/plugins", a.listPlugins)
@@ -3882,6 +3886,15 @@ func statusForAgentError(err error) int {
 	}
 	if errors.Is(err, agent.ErrCommerceInsufficient) || errors.Is(err, agent.ErrCommerceOrderState) || errors.Is(err, agent.ErrCommerceReconcileConflict) {
 		return http.StatusConflict
+	}
+	// Financeiro (estágio 30): lançar receita de pedido NÃO PAGO é 409 (o estado não
+	// permite), conciliar com referência divergente é 409 (conflito) e
+	// organização/pedido ausente é 404.
+	if errors.Is(err, agent.ErrFinanceOrderNotPayable) || errors.Is(err, agent.ErrLedgerAlreadyReconciled) {
+		return http.StatusConflict
+	}
+	if errors.Is(err, agent.ErrFinanceOrderMissing) || errors.Is(err, agent.ErrFinanceCompanyMissing) {
+		return http.StatusNotFound
 	}
 	if errors.Is(err, os.ErrNotExist) {
 		return http.StatusNotFound
