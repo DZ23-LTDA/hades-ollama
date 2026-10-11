@@ -2,12 +2,12 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-12T18:05:00-03:00",
+  "updated_at": "2026-10-12T19:15:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
     "integration_branch": "main",
-    "main_sha": "22ce5b49f36d357b40b5b53fa155b02d45b221d7",
+    "main_sha": "84a01d2728a21cc2314daa902100e57733754d38",
     "main_committed_at": "2026-10-09T10:24:45Z",
     "main_ci_state": "green (dz23-agentic-quality + class-a-plus-integrity = success nesse SHA)",
     "mission_branch": "docs/checkpoints-missao-v21",
@@ -606,13 +606,14 @@
       "capability": "PARCIAL",
       "evidence": [
         "E-044",
-        "E-087"
+        "E-087",
+        "E-114"
       ],
       "blocker": "B-07",
-      "next": "completar a jornada de empresa em sandbox com artefatos e evidencias por etapa",
+      "next": "LIMITES: nada legal e emitido (sem CNPJ, contrato, contabilidade ou dado fiscal - depende de dados reais, autoridade e terceiros), sem site publicado (o artefato e HTML local), sem campanhas nem redes sociais (conta autorizada), sem clientes/pedidos/receita iniciais (a fabrica prepara a operacao e os dados vem do uso real) e paleta/tagline sao declaradas pelo operador, porque a fabrica nao inventa identidade visual sozinha",
       "blocked_reason": "",
       "external_dependency": "registro legal real (CNPJ, contratos) exige dados e autoridade do usuario; a operacao em sandbox e local",
-      "done": "classificacao corrigida pela auditoria de bloqueios: o bloqueio externo em bloco escondia trabalho implementavel. Evidencia medida registrada em docs/mission/HADES_BLOCKED_AUDIT.md"
+      "done": "COMPANY FACTORY implementada com LANÇAMENTO que materializa artefatos REAIS em disco (plano-inicial.md, marca.md, precificacao.md e index.html, com escrita atomica e caminho e tamanho medidos no relatorio) e catalogo com PRECO DERIVADO de custo e margem (formula declarada, margem >= 100%% recusada) mais entrada de estoque como movimento auditavel. A FABRICA NAO INVENTA CLIENTE (o CRM fica VAZIO e o relatorio declara customers_created = 0) e o CHECKLIST separa o que foi FEITO do que depende de terceiros, com o PROCEDIMENTO de desbloqueio para CNPJ, contrato social, contabilidade e dominio. Relatorio reconstruivel do estado real em GET /company/factory/report/:id"
     },
     {
       "id": 24,
@@ -1104,7 +1105,11 @@
     "GATE 22 - O CICLO EXECUTADO DE VERDADE (E-113): em diretorio descartavel fora do Git, a INSTALACAO gerou SHA-256 ADCA65F8... com manifesto action=INSTALL e commit e443e9b19; o binario RODA (ollama version is 0.40.1); a ATUALIZACAO com -Ldflags entregou artefato de hash DIFERENTE (D27C2249...) preservando o anterior; o ROLLBACK restaurou EXATAMENTE o hash original (restaurado == original: True) preservando o binario substituido em .rolledback, entao o rollback e REVERSIVEL; e a DESINSTALACAO removeu binario, backup e manifesto PRESERVANDO os dados do usuario, porque apagar modelos seria perda de dados e nao limpeza",
     "GATE 22 - NOTA DE HONESTIDADE (E-113): o -Ldflags mudou o HASH do binario (prova de que a atualizacao entregou artefato diferente), mas a saida de --version continuou mostrando 'client version is 0.0.0' nas duas builds - a variavel injetada NAO e a que essa mensagem imprime. A prova de conteudo diferente e o HASH, e e assim que esta registrado: nao afirmo que a string de versao mudou",
     "GATE 22 - O QUE CONTINUA NAO MEDIDO (E-113): instaladores de PACOTE ASSINADOS (deb/rpm/dmg/msi) e assinatura digital nao sao produzidos neste ambiente, instalacao em macOS e Linux reais nao e medida neste host (o CI cobre build), desktop/computer-use nativo e ausente e APIs externas com credenciais reais seguem BLOCKED_BY_EXTERNAL_DEPENDENCY. O gate intermediario continua NAO_APROVADO, agora por UM MOTIVO A MENOS. O campo motivo do gate foi CORRIGIDO, porque ainda listava performance e acessibilidade como nao medidas apesar de E-099",
-    "GATE 22 - GUARDA DE CONTRATO (E-113): go test . -run TestInstallScript impede que uma edicao futura remova rollback, backup, manifesto, hash ou a declaracao de que a desinstalacao PRESERVA os dados do usuario. A guarda e ESTATICA de proposito: verifica o contrato do script, nao substitui a execucao, que esta registrada como evidencia"
+    "GATE 22 - GUARDA DE CONTRATO (E-113): go test . -run TestInstallScript impede que uma edicao futura remova rollback, backup, manifesto, hash ou a declaracao de que a desinstalacao PRESERVA os dados do usuario. A guarda e ESTATICA de proposito: verifica o contrato do script, nao substitui a execucao, que esta registrada como evidencia",
+    "COMPANY FACTORY COM ARTEFATOS REAIS (E-114): o CreateRequest criava apenas o REGISTRO da empresa. O estagio pede artefatos e operacao inicial verificavel, entao implementei o lancamento que MATERIALIZA plano inicial, marca, precificacao e site como ARQUIVOS REAIS em disco (escrita atomica: temporario + rename), com caminho e tamanho MEDIDOS no relatorio - um artefato que so existe na memoria nao e entregavel",
+    "FABRICA - A EMPRESA NAO INVENTA CLIENTE (E-114): a fabrica cria catalogo, marca, site, plano e checklist, mas NAO cria contatos no CRM. Popular o CRM com clientes ficticios seria exatamente os DADOS FALSOS que o estagio proibe. Ha teste travando CRM VAZIO apos o lancamento, o relatorio declara customers_created = 0 e o proprio checklist registra 'clientes cadastrados: 0 (a fabrica nao inventa clientes; o CRM fica vazio ate existir contato real)'",
+    "FABRICA - PRECO DERIVADO E LIMITES DE AUTORIDADE (E-114): preco = custo x (1 + margem/100), arredondado UMA UNICA VEZ, com a formula declarada no artefato de precificacao para o operador conferir. Margem de 100% ou mais e RECUSADA (nao ha preco finito frente a margem) e custo negativo e erro. O que depende de AUTORIDADE e DECLARADO BLOQUEADO com o PROCEDIMENTO EXATO de desbloqueio: CNPJ e registro legal, contrato social, contabilidade e obrigacoes fiscais, e dominio com certificado - a fabrica NAO emite registro legal nem dado fiscal",
+    "FABRICA - RELATORIO RECONSTRUIVEL E LINT (E-114): GET /company/factory/report/:id remonta o relatorio do ESTADO REAL (empresa, catalogo e arquivos em disco) em vez de guardar copia que poderia divergir. O linter apontou tres achados legitimos: um staticcheck pedindo append com spread em vez de laco (corrigido), um wastedassign de variavel que eu nao usava depois (removida) e um falso positivo do misspell (reescrito, nao silenciado). Capacidade PARCIAL"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",

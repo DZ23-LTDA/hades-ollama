@@ -149,6 +149,8 @@
 
 | Instalação, atualização, rollback e desinstalação | `scripts/install.ps1`, guarda `TestInstallScript` (E-113) | PARCIAL | MÉDIO | E-113 | ciclo executado do código-fonte com manifesto e SHA-256, rollback reversível e desinstalação que preserva dados; sem pacote assinado nem macOS/Linux reais |
 
+| Fábrica de empresa com artefatos | `company_factory.go`, rotas `/company/factory/*` (E-114) | PARCIAL | MÉDIO | E-114 | artefatos reais em disco, preço derivado de custo e margem, CRM não inventado, checklist com bloqueios e procedimento; nada legal emitido |
+
 ## 6. Integrações, MCP e conectores
 
 | Capacidade | Superfície | Classificação | Risco | Evidência | Lacuna |
