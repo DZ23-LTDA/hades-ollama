@@ -463,6 +463,16 @@ func (s *ServiceAgentRuntime) SetApprovalStore(store *ServiceAgentApprovalStore)
 	s.approvals = store
 }
 
+// SetKnowledge liga a base de conhecimento (memória governada, estágio 15) e registra `knowledge.search`.
+//
+// A busca só percorre projetos DA organização da sessão, e projeto sem organização fica fora: sem esta
+// ligação a ferramenta permanece indisponível, que é o padrão seguro.
+func (s *ServiceAgentRuntime) SetKnowledge(context *ContextStore) {
+	for _, tool := range serviceAgentKnowledgeTools(context) {
+		s.RegisterExecutor(tool)
+	}
+}
+
 // ApprovalStore devolve o store de aprovações (para listar e decidir fora do turno).
 func (s *ServiceAgentRuntime) ApprovalStore() *ServiceAgentApprovalStore {
 	s.mu.Lock()
