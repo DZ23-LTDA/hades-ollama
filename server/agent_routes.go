@@ -762,6 +762,9 @@ func (a *agentAPI) register(r *gin.Engine) {
 	group.PATCH("/projects/:id/memories/:memory_id", a.updateProjectMemory)
 	group.GET("/projects/:id/memories/:memory_id/history", a.memoryHistory)
 	group.POST("/projects/:id/memories/prune", a.pruneProjectMemories)
+	// Re-embed: o gatilho de operador para trazer ao espaço vetorial atual o conhecimento que ficou para trás
+	// quando o modelo de embedding mudou.
+	group.POST("/projects/:id/memories/reembed", a.reembedProjectMemories)
 	// Política de retenção por organização (estágio 15). A aplicação é
 	// EXPLÍCITA: não existe laço de fundo fingindo automação.
 	group.GET("/retention", a.retentionPolicy)
@@ -2303,6 +2306,47 @@ func (a *agentAPI) addMemory(c *gin.Context) {
 	}
 	c.JSON(http.StatusCreated, created)
 }
+
+// reembedProjectMemories recalcula os vetores do projeto no espaço do embedder ATUAL.
+//
+// A rota existe porque a detecção sem re-embed só sabe DECLARAR que parte do conhecimento ficou fora do
+// alcance semântico; sem um gatilho de operador, a declaração vira promessa sem remédio. O escopo é o do
+// projeto (mesma checagem das outras rotas de memória) e o `limit` evita transformar manutenção em uma
+// requisição que ninguém consegue terminar — o que sobrar volta em `remaining`.
+func (a *agentAPI) reembedProjectMemories(c *gin.Context) {
+	if _, err := a.projectForRequest(c); err != nil {
+		writeAgentError(c, statusForAgentError(err), err)
+		return
+	}
+	limit := maxReembedPerRequest
+	if bruto := strings.TrimSpace(c.Query("limit")); bruto != "" {
+		valor, err := strconv.Atoi(bruto)
+		if err != nil || valor < 0 {
+			writeAgentError(c, http.StatusBadRequest, errors.New("limit precisa ser um inteiro não negativo"))
+			return
+		}
+		if valor < limit {
+			limit = valor
+		}
+	}
+	resultado, err := a.context.ReembedMemories(c.Request.Context(), c.Param("id"), limit)
+	if err != nil {
+		writeAgentError(c, statusForAgentError(err), err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"project_id": c.Param("id"),
+		"reembedded": resultado.Reembedded,
+		"failed":     resultado.Failed,
+		"skipped":    resultado.Skipped,
+		"remaining":  resultado.Remaining,
+		// O limite vigente vai na resposta: sem ele, `remaining` seria um número sem referência.
+		"limit": limit,
+	})
+}
+
+// maxReembedPerRequest limita quantas memórias uma chamada de re-embed recalcula.
+const maxReembedPerRequest = 200
 
 func (a *agentAPI) searchMemories(c *gin.Context) {
 	if _, err := a.projectForRequest(c); err != nil {

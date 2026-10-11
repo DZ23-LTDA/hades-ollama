@@ -64,7 +64,7 @@ func TestServiceAgentKnowledgeReembedBringsMemoriesBack(t *testing.T) {
 		"devolver": {1, 0, 0},
 	}}
 	store.SetEmbedder(novo)
-	resultado, err := store.ReembedMemories(context.Background(), project.ID)
+	resultado, err := store.ReembedMemories(context.Background(), project.ID, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -147,7 +147,7 @@ func TestServiceAgentReembedKeepsGoingWhenOneMemoryFails(t *testing.T) {
 	// Embedder que falha só no texto problemático.
 	parcial := stubParcialEmbedder{}
 	store.SetEmbedder(parcial)
-	resultado, err := store.ReembedMemories(context.Background(), project.ID)
+	resultado, err := store.ReembedMemories(context.Background(), project.ID, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
