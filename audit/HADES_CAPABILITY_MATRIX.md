@@ -125,6 +125,8 @@
 
 | Contato: consentimento e opt-out | `consent_registry.go`, enforcement em `im_telegram.go` e `whatsapp_gateway.go` (E-101) | PARCIAL | MÉDIO | E-101 | falha fechada, opt-out com motivo, prazo, escopo por organização e canal, mesma decisão nos dois caminhos; sem UI, CRM ou agentes comerciais |
 
+| CRM: contatos, oportunidades e funil | `crm.go`, rotas `/crm/*`, comando `/crm` disponível (E-102) | PARCIAL | MÉDIO | E-102 | dedupe por identidade com nono dígito, sem identidade recusa, fase terminal imutável, consentimento lido do registro; sem CRM externo nem histórico de conversa |
+
 ## 6. Integrações, MCP e conectores
 
 | Capacidade | Superfície | Classificação | Risco | Evidência | Lacuna |

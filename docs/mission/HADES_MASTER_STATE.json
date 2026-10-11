@@ -2,12 +2,12 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-12T05:10:00-03:00",
+  "updated_at": "2026-10-12T06:05:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
     "integration_branch": "main",
-    "main_sha": "444a8b31f5d761f5a6f16dc5e1f354c497683ec4",
+    "main_sha": "5dda0ffb6384872b726d62eaf5c028384a6a5536",
     "main_committed_at": "2026-10-09T10:24:45Z",
     "main_ci_state": "green (dz23-agentic-quality + class-a-plus-integrity = success nesse SHA)",
     "mission_branch": "docs/checkpoints-missao-v21",
@@ -667,13 +667,14 @@
       "evidence": [
         "E-047",
         "E-087",
-        "E-101"
+        "E-101",
+        "E-102"
       ],
       "blocker": "B-05",
-      "next": "LIMITES DECLARADOS: sem rotas HTTP de concessao/revogacao de consentimento nesta rodada, sem captura automatica de opt-out a partir de mensagem recebida (dado externo nao altera consentimento), sem CRM nem historico de conversa, sem agentes comerciais (consultor, qualificador, propostas, pos-venda) e sem retencao/anonimizacao de dado pessoal ligada ao consentimento",
+      "next": "LIMITES RESTANTES: sem integracao com CRM externo (HubSpot/Salesforce seguem apenas catalogo, exigem conta e credencial), sem historico de conversa por contato (depende do estagio 29), sem agentes comerciais (consultor, qualificador, propostas, pos-venda) e sem proposta em PDF ou follow-up automatico",
       "blocked_reason": "",
       "external_dependency": "canais reais exigem contas; o CRM e a continuidade em sandbox sao locais",
-      "done": "CONSENTIMENTO E OPT-OUT implementados com FALHA FECHADA (contato desconhecido nao e contatavel e registro ausente NEGA o envio), opt-out com motivo obrigatorio e trilha de auditoria, prazo de validade, escopo por organizacao E por canal, persistencia e normalizacao de escopo. ENFORCEMENT NOS DOIS CAMINHOS: o Telegram nao tinha NENHUMA checagem de autorizacao de contato (so DLP) e o WhatsApp tinha allowlist e aprovacao por mensagem, mas nenhum dos dois registrava opt-out nem prazo"
+      "done": "CONSENTIMENTO E OPT-OUT com falha fechada nos DOIS caminhos de envio (E-101) e agora CRM REAL de contatos e oportunidades (E-102): deduplicacao por identidade normalizada incluindo o nono digito do celular brasileiro, recusa de contato sem identidade, funil com indicadores, fase terminal imutavel, consentimento LIDO do registro (nunca copiado) e rotas HTTP de concessao/revogacao que fecham o limite declarado em E-101. O comando /crm deixou de ser indisponivel e aponta para rota real"
     },
     {
       "id": 28,
@@ -1034,7 +1035,11 @@
     "ESTAGIO 27 - CONSENTIMENTO, OPT-OUT E ENFORCEMENT NOS DOIS CAMINHOS (E-101): o buraco era real e assimetrico. O WhatsApp tinha allowlist por numero, aprovacao humana por mensagem e DLP; o TELEGRAM tinha SO DLP e NENHUMA checagem de autorizacao de contato. E nenhum dos dois registrava OPT-OUT nem PRAZO - allowlist autoriza o numero e aprovacao autoriza a mensagem, mas nenhuma das duas diz 'este contato pediu para nao ser procurado'. Implementado registro de consentimento com FALHA FECHADA (contato desconhecido NAO e contatavel e registro ausente NEGA o envio - caminho nao instrumentado nao pode virar caminho livre), opt-out com motivo obrigatorio e trilha de auditoria, prazo de validade, escopo por organizacao E por canal, persistencia e a MESMA funcao de decisao usada pelos dois caminhos",
     "ESTAGIO 27 - DOIS BUGS MEUS ACHADOS PELOS PROPRIOS TESTES (E-101): (1) ESCOPO VAZIO TORNAVA O WHATSAPP INUTILIZAVEL: o gateway checava o consentimento sob runtime.organizationScope, que e VAZIO no modo local, enquanto o registro era gravado sob outra chave - as chaves nunca casariam, ou casariam por acidente. Corrigido com consentScope, que normaliza vazio para a organizacao LOCAL, a mesma convencao do HTTP e do supervisor; (2) SENTINELA EMBRULHADO: AuthorizeContact devolvia fmt.Errorf com %w, e o codigo dos canais compara erros por identidade (==), entao o bloqueio apareceria como erro desconhecido. Passou a devolver o sentinela PURO",
     "ESTAGIO 27 - EXPECTATIVA MINHA CORRIGIDA PELO TESTE (E-101): eu esperava que conceder consentimento com organizacao VAZIA fosse invalido. Com a normalizacao (que e a correta), vazio significa a organizacao local e o registro e aceito. Corrigi o TESTE, nao o codigo - e o teste novo afirma as duas coisas: escopo vazio normaliza, mas canal e contato continuam OBRIGATORIOS",
-    "ESTAGIO 27 - LIMITES DECLARADOS (E-101): sem rotas HTTP de concessao/revogacao nesta rodada; sem captura automatica de opt-out a partir de mensagem recebida (decisao deliberada: dado externo NAO e instrucao privilegiada e nao pode alterar consentimento sozinho); sem CRM nem historico de conversa; sem agentes comerciais (consultor, qualificador, propostas, pos-venda); sem retencao/anonimizacao de dado pessoal ligada ao consentimento. O estagio continua IN_PROGRESS com capacidade PARCIAL"
+    "ESTAGIO 27 - LIMITES DECLARADOS (E-101): sem rotas HTTP de concessao/revogacao nesta rodada; sem captura automatica de opt-out a partir de mensagem recebida (decisao deliberada: dado externo NAO e instrucao privilegiada e nao pode alterar consentimento sozinho); sem CRM nem historico de conversa; sem agentes comerciais (consultor, qualificador, propostas, pos-venda); sem retencao/anonimizacao de dado pessoal ligada ao consentimento. O estagio continua IN_PROGRESS com capacidade PARCIAL",
+    "ESTAGIO 27/35 - CRM REAL E COMANDO /crm (E-102): o comando /crm estava registrado como INDISPONIVEL com o motivo 'nao existe CRM nesta versao', o que era honesto e era exatamente o problema - a secao 11.1 exige que todo comando do catalogo mapeie para rota real com testes. Implementados CRMContact, CRMOpportunity, funil por fase e CRMStore persistido por organizacao, com rotas GET/POST /crm/contacts, GET /crm/contacts/:id, POST /crm/contacts/:id/opportunities, POST /crm/opportunities/:id/stage, GET /crm/pipeline e concessao/revogacao de consentimento. /crm passou a apontar para GET /api/agent/v1/crm/contacts",
+    "CRM - DECISOES DELIBERADAS (E-102): DEDUPLICACAO POR IDENTIDADE NORMALIZADA, porque o mesmo cliente entrando por canais diferentes nao pode virar tres contatos (isso quebra historico, consentimento e cobranca); NONO DIGITO DO CELULAR BRASILEIRO normalizado, porque bases legadas guardam 551188887777 e 5511988887777 para o MESMO numero - a regra vale so para celular (apos o DDD iniciando em 6-9) e FIXO nao e mesclado; CONTATO SEM TELEFONE E SEM E-MAIL e recusado, porque sem identidade nao ha como reconhecer a pessoa nem respeitar o opt-out; CONSENTIMENTO NAO E COPIADO para o contato, vem do ConsentRegistry que e a fonte unica (duas verdades sobre consentimento seriam pior do que nenhuma); FASE TERMINAL E TERMINAL (won/lost nao voltam atras, com data de fechamento gravada, e reafirmar a mesma fase e permitido); ESCOPO POR ORGANIZACAO em toda leitura e escrita",
+    "CRM - LIMITE DECLARADO EM E-101 FOI FECHADO (E-102): naquela rodada o consentimento existia mas NAO tinha rota, e o limite ficou declarado. Aqui conceder e revogar consentimento passaram a ter rota pelo proprio CRM, com revogacao exigindo motivo e com verificacao de que o opt-out registrado pelo CRM BLOQUEIA o envio pelo gateway - a mesma verdade, sem sincronizacao entre copias",
+    "CRM - MEUS ERROS CORRIGIDOS PELOS TESTES (E-102): (1) NONO DIGITO: meu teste exigia que 551188887777 e 5511988887777 fossem o mesmo contato e o codigo nao normalizava - o TESTE estava certo e o CODIGO errado, entao implementei a normalizacao restrita a celular; (2) CONTAGEM DESATUALIZADA: depois de incluir o telefone fixo, a assercao que esperava 2 contatos passou a estar errada (sao 3: celular, fixo e e-mail), e ajustei a expectativa mantendo a verificacao de que fixo NAO e mesclado; (3) TESTE DO REGISTRO DE COMANDOS codificava a verdade antiga (/crm indisponivel) e passou a afirmar a NOVA verdade - disponivel E apontando para a rota real - em vez de ter a verificacao removida"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
