@@ -217,7 +217,7 @@ func TestFollowUpIsIdempotentPerOrderAndOverdueIsMeasurable(t *testing.T) {
 	if done.Status != SalesFollowUpDone || done.CompletedAt == nil {
 		t.Fatalf("acompanhamento precisa ficar concluído: %+v", done)
 	}
-	if _, err := runtime.SalesWorkforce().CompleteFollowUp(organization, followUp.ID, "pos-venda", "", now.Add(90*time.Hour)); !errors.Is(err, ErrFollowUpInvalid) {
+	if _, err := runtime.SalesWorkforce().CompleteFollowUp(organization, followUp.ID, "pos-venda", "", now.Add(90*time.Hour)); !errors.Is(err, ErrFollowUpStateInvalid) {
 		t.Fatalf("concluir duas vezes precisa falhar, veio %v", err)
 	}
 	// Concluído não conta mais como atraso.
