@@ -187,6 +187,10 @@ export function scheduleStepKindLabel(kind: string): string {
       return "transformação (variável)";
     case "logic.loop":
       return "laço limitado";
+    case "approval.request":
+      return "aprovação humana";
+    case "action.connector":
+      return "ação: conector";
     default:
       return kind || "passo";
   }

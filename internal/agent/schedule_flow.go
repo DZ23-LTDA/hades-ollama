@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
 	"regexp"
 	"sort"
 	"strconv"
@@ -43,6 +44,28 @@ const (
 	// para (passo, execução). Sem decisão o passo fica pendente e os dependentes
 	// não rodam — o fluxo espera, não adivinha.
 	ScheduleStepApprovalRequest ScheduleStepKind = "approval.request"
+	// ScheduleStepActionConnector chama um conector CONFIGURADO pelo caminho real
+	// (ConnectorManager.CallForOrganization): credencial do tenant, política de
+	// egress e escopo de organização. Método que ESCREVE exige decisão humana
+	// aprovada para a mesma execução antes de sair.
+	ScheduleStepActionConnector ScheduleStepKind = "action.connector"
+)
+
+// Métodos de conector que MUDAM estado. Chamada de escrita não sai por conta
+// própria: depende de aprovação registrada para a mesma execução.
+var scheduleConnectorWriteMethods = map[string]bool{
+	http.MethodPost:   true,
+	http.MethodPut:    true,
+	http.MethodPatch:  true,
+	http.MethodDelete: true,
+}
+
+// maxScheduleConnectorBody limita o corpo enviado e o trecho guardado como
+// evidência: um conector não deve transformar o estado do motor em depósito de
+// payload alheio.
+const (
+	maxScheduleConnectorBody       = 16 << 10
+	maxScheduleConnectorBodyInVars = 2000
 )
 
 // Limites do escopo de variáveis e do laço. Um motor que roda a cada tick precisa
@@ -151,6 +174,14 @@ type ScheduleStep struct {
 	// idempotência própria, e a lista é limitada por maxScheduleLoopItems: um
 	// laço sem teto num motor que roda em tick é um gerador de missões.
 	Items []string `json:"items,omitempty"`
+	// Connector identifica o conector REGISTRADO, Operation o nome declarado na
+	// configuração, Method e Path a chamada. Body aceita variáveis. Nada aqui
+	// inventa acesso: sem conector configurado para a organização, o passo falha.
+	Connector          string `json:"connector,omitempty"`
+	ConnectorOperation string `json:"connector_operation,omitempty"`
+	ConnectorMethod    string `json:"connector_method,omitempty"`
+	ConnectorPath      string `json:"connector_path,omitempty"`
+	Body               string `json:"body,omitempty"`
 }
 
 // ValidateScheduleSteps accepts an empty graph (legacy single-objective
@@ -294,6 +325,40 @@ func validateScheduleStepShape(step ScheduleStep) error {
 		}
 		if strings.TrimSpace(step.Source) != "" || strings.TrimSpace(step.Target) != "" {
 			return fmt.Errorf("schedule approval %q cannot carry a transform source or target", id)
+		}
+	case ScheduleStepActionConnector:
+		if len(step.DependsOn) == 0 {
+			return fmt.Errorf("schedule connector %q requires at least one dependency", id)
+		}
+		if strings.TrimSpace(step.Connector) == "" {
+			return fmt.Errorf("schedule connector %q requires a connector id", id)
+		}
+		if strings.TrimSpace(step.ConnectorOperation) == "" {
+			return fmt.Errorf("schedule connector %q requires an operation name", id)
+		}
+		method := strings.ToUpper(strings.TrimSpace(step.ConnectorMethod))
+		switch method {
+		case http.MethodGet, http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete:
+		default:
+			return fmt.Errorf("schedule connector %q requires a supported HTTP method, got %q", id, step.ConnectorMethod)
+		}
+		if !strings.HasPrefix(strings.TrimSpace(step.ConnectorPath), "/") {
+			return fmt.Errorf("schedule connector %q requires a path starting with /", id)
+		}
+		if len(step.Body) > maxScheduleConnectorBody {
+			return fmt.Errorf("schedule connector %q body exceeds %d bytes", id, maxScheduleConnectorBody)
+		}
+		if strings.TrimSpace(step.Expect) != "" {
+			return fmt.Errorf("schedule connector %q cannot carry an expectation", id)
+		}
+		if step.MaxAttempts < 0 || step.MaxAttempts > ScheduleStepMaxAttempts {
+			return fmt.Errorf("schedule connector %q accepts at most %d attempts, got %d", id, ScheduleStepMaxAttempts, step.MaxAttempts)
+		}
+		if len(step.Items) != 0 {
+			return fmt.Errorf("schedule connector %q cannot carry loop items", id)
+		}
+		if strings.TrimSpace(step.Objective) != "" {
+			return fmt.Errorf("schedule connector %q cannot carry an objective", id)
 		}
 	case ScheduleStepConditionIf:
 		if len(step.DependsOn) != 1 {
@@ -778,6 +843,134 @@ func (r *Runtime) executeScheduleFlow(ctx context.Context, schedule Schedule, ru
 					Reason: reason,
 				})
 			}
+		case ScheduleStepActionConnector:
+			// Conector REAL: a chamada passa por CallForOrganization, com
+			// credencial do tenant, política de egress e escopo de organização. Sem
+			// conector configurado o passo FALHA — nunca é silenciosamente pulado.
+			method := strings.ToUpper(strings.TrimSpace(step.ConnectorMethod))
+			body, expandErr := expandScheduleTemplate(step.Body, vars)
+			if expandErr != nil {
+				outcomes[id] = false
+				report.FinishedAt = time.Now().UTC()
+				report.Steps = append(report.Steps, ScheduleStepOutcome{
+					ID:     id,
+					Kind:   string(step.Kind),
+					Status: ScheduleStepFailed,
+					Reason: expandErr.Error(),
+				})
+				return report, fmt.Errorf("schedule step %q: %w", id, expandErr)
+			}
+			if scheduleConnectorWriteMethods[method] {
+				// Método que ESCREVE exige decisão humana aprovada para esta
+				// execução. Sem isso, o passo fica pendente como o nó de aprovação:
+				// o motor não dispara efeito externo por conta própria.
+				approval, decided := scheduleApprovalFor(schedule, id, runKey)
+				if !decided {
+					outcomes[id] = false
+					report.PendingApprovals = append(report.PendingApprovals, SchedulePendingApproval{
+						StepID:      id,
+						RunKey:      runKey,
+						Objective:   fmt.Sprintf("%s %s (conector %s)", method, strings.TrimSpace(step.ConnectorPath), strings.TrimSpace(step.Connector)),
+						RequestedAt: time.Now().UTC(),
+					})
+					report.Steps = append(report.Steps, ScheduleStepOutcome{
+						ID:     id,
+						Kind:   string(step.Kind),
+						Status: ScheduleStepPending,
+						Reason: fmt.Sprintf("método %s altera estado e exige aprovação humana para esta execução", method),
+					})
+					continue
+				}
+				if !approval.Approved {
+					outcomes[id] = false
+					reason := fmt.Sprintf("%s não autorizado%s", method, approvalActorSuffix(approval))
+					if strings.TrimSpace(approval.Reason) != "" {
+						reason = reason + ": " + strings.TrimSpace(approval.Reason)
+					}
+					report.Steps = append(report.Steps, ScheduleStepOutcome{
+						ID:     id,
+						Kind:   string(step.Kind),
+						Status: ScheduleStepSkipped,
+						Reason: reason,
+					})
+					continue
+				}
+			}
+			if r.connectors == nil {
+				outcomes[id] = false
+				report.FinishedAt = time.Now().UTC()
+				report.Steps = append(report.Steps, ScheduleStepOutcome{
+					ID:     id,
+					Kind:   string(step.Kind),
+					Status: ScheduleStepFailed,
+					Reason: "nenhum gerenciador de conectores configurado no runtime",
+				})
+				return report, fmt.Errorf("schedule step %q: connector manager is not configured", id)
+			}
+			scope := strings.TrimSpace(schedule.OrganizationID)
+			if scope == "" {
+				scope = strings.TrimSpace(r.organizationScope)
+			}
+			status, response, callErr := r.connectors.CallForOrganization(
+				ctx, scope, strings.TrimSpace(step.Connector), strings.TrimSpace(step.ConnectorOperation),
+				method, strings.TrimSpace(step.ConnectorPath), []byte(body),
+			)
+			if callErr != nil {
+				outcomes[id] = false
+				report.FinishedAt = time.Now().UTC()
+				report.Steps = append(report.Steps, ScheduleStepOutcome{
+					ID:     id,
+					Kind:   string(step.Kind),
+					Status: ScheduleStepFailed,
+					Reason: callErr.Error(),
+				})
+				report.DeadLetters = append(report.DeadLetters, ScheduleStepDeadLetter{
+					StepID:   id,
+					Kind:     string(step.Kind),
+					Reason:   callErr.Error(),
+					FailedAt: report.FinishedAt,
+				})
+				return report, fmt.Errorf("schedule step %q: %w", id, callErr)
+			}
+			outcome := ScheduleStepOutcome{
+				ID:     id,
+				Kind:   string(step.Kind),
+				Status: ScheduleStepSucceeded,
+				Reason: fmt.Sprintf("%s HTTP %d", method, status),
+			}
+			if status >= http.StatusBadRequest {
+				// Resposta de erro do outro lado não é sucesso do nosso nó.
+				outcome.Status = ScheduleStepFailed
+				outcome.Reason = fmt.Sprintf("%s HTTP %d", method, status)
+				outcomes[id] = false
+				report.FinishedAt = time.Now().UTC()
+				report.Steps = append(report.Steps, outcome)
+				report.DeadLetters = append(report.DeadLetters, ScheduleStepDeadLetter{
+					StepID:   id,
+					Kind:     string(step.Kind),
+					Reason:   outcome.Reason,
+					FailedAt: report.FinishedAt,
+				})
+				return report, fmt.Errorf("schedule step %q: connector returned HTTP %d", id, status)
+			}
+			if target := strings.TrimSpace(step.Target); target != "" {
+				value := response
+				if len(value) > maxScheduleConnectorBodyInVars {
+					value = value[:maxScheduleConnectorBodyInVars]
+				}
+				if setErr := setScheduleVariable(vars, target, value); setErr != nil {
+					outcomEsReason := setErr.Error()
+					outcome.Status = ScheduleStepFailed
+					outcome.Reason = outcomEsReason
+					outcomes[id] = false
+					report.FinishedAt = time.Now().UTC()
+					report.Steps = append(report.Steps, outcome)
+					return report, fmt.Errorf("schedule step %q: %w", id, setErr)
+				}
+				outcome.Reason = outcome.Reason + fmt.Sprintf(" · resposta publicada em %q", target)
+			}
+			outcomes[id] = true
+			report.Steps = append(report.Steps, outcome)
 		case ScheduleStepConditionIf:
 			matched := scheduleConditionMatches(step, outcomes)
 			outcomes[id] = matched
