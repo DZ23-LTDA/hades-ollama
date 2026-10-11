@@ -165,6 +165,17 @@ type OmnichannelRuntime struct {
 	// Erros de leitura e gravação SEPARADOS, pela mesma razão da janela de rate limit.
 	connectorLoadError string
 	connectorSaveError string
+	// dedupeStore persiste o ÍNDICE DE DEDUPE (E-172): sem ele, um reinício esquece o que já entrou e a entrega
+	// repetida volta a ser processada.
+	dedupeStore *OmnichannelDedupeStore
+	// dedupeEntries é o índice PERSISTÍVEL (chave → registro mínimo), separado de `eventsByKey`, que guarda o
+	// evento completo enquanto o processo vive.
+	dedupeEntries map[string]OmnichannelDedupeEntry
+	// loadedDedupeOrgs marca quais organizações já tiveram o índice carregado.
+	loadedDedupeOrgs map[string]bool
+	// Erros de leitura e gravação SEPARADOS.
+	dedupeLoadError string
+	dedupeSaveError string
 }
 
 // NewOmnichannelRuntime cria o runtime ligado à caixa de entrada existente.
@@ -177,6 +188,8 @@ func NewOmnichannelRuntime(inbox *InboxStore) *OmnichannelRuntime {
 		loadedOrgs:          map[string]bool{},
 		loadedRateOrgs:      map[string]bool{},
 		loadedConnectorOrgs: map[string]bool{},
+		dedupeEntries:       map[string]OmnichannelDedupeEntry{},
+		loadedDedupeOrgs:    map[string]bool{},
 		inbox:               inbox,
 		now:                 func() time.Time { return time.Now().UTC() },
 	}
@@ -583,6 +596,25 @@ func (r *OmnichannelRuntime) Ingest(organizationID, channel string, signature st
 		r.mu.Unlock()
 		return existing, nil
 	}
+	// E-172: a dedupe também olha o ÍNDICE PERSISTIDO. Sem isto, reiniciar o processo "esquecia" o que já
+	// entrou, e a mesma entrega voltava a ser processada.
+	r.restoreDedupeLocked(connector.OrganizationID)
+	if entrada, visto := r.dedupeEntries[dedupeKey]; visto {
+		// O registro persistido é MENOR que o evento: devolvemos o que se sabe dele e DIZEMOS que é duplicata.
+		duplicado := OmnichannelEvent{
+			OrganizationID:    connector.OrganizationID,
+			ChannelID:         connector.Channel,
+			ConnectorID:       connector.ID,
+			ExternalMessageID: entrada.ExternalMessageID,
+			ContactID:         entrada.ContactID,
+			MessageType:       entrada.MessageType,
+			IngestedAt:        entrada.IngestedAt,
+			DeliveryState:     "duplicate",
+			Deduplicated:      true,
+		}
+		r.mu.Unlock()
+		return duplicado, nil
+	}
 	event.IngestedAt = now
 	if event.Timestamp.IsZero() {
 		event.Timestamp = eventTime
@@ -610,8 +642,121 @@ func (r *OmnichannelRuntime) Ingest(organizationID, channel string, signature st
 
 	r.mu.Lock()
 	r.eventsByKey[dedupeKey] = event
+	r.registrarDedupeLocked(dedupeKey, event, now)
 	r.mu.Unlock()
 	return event, nil
+}
+
+// SetDedupeStore liga a persistência do índice de dedupe. Sem store, o índice continua em memória e o estado DIZ
+// isso (`DedupePersisted()`), em vez de fingir durabilidade.
+func (r *OmnichannelRuntime) SetDedupeStore(store *OmnichannelDedupeStore) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.dedupeStore = store
+	r.loadedDedupeOrgs = map[string]bool{}
+}
+
+// DedupePersisted diz se o índice de dedupe está sendo persistido.
+func (r *OmnichannelRuntime) DedupePersisted() bool {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return r.dedupeStore != nil && r.dedupeStore.Root() != ""
+}
+
+// DedupeRoot devolve a raiz do índice de dedupe (vazio = sem persistência).
+func (r *OmnichannelRuntime) DedupeRoot() string {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.dedupeStore == nil {
+		return ""
+	}
+	return r.dedupeStore.Root()
+}
+
+// DedupeCount diz quantas chaves de dedupe a organização tem no índice (para o teto ser VERIFICÁVEL).
+func (r *OmnichannelRuntime) DedupeCount(organizationID string) int {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	total := 0
+	for chave := range r.dedupeEntries {
+		if strings.HasPrefix(chave, organizationID+"|") {
+			total++
+		}
+	}
+	return total
+}
+
+// LastDedupeError devolve a última falha de persistência do índice (leitura e gravação, separadas).
+func (r *OmnichannelRuntime) LastDedupeError() string {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	switch {
+	case r.dedupeLoadError != "" && r.dedupeSaveError != "":
+		return r.dedupeLoadError + "; " + r.dedupeSaveError
+	default:
+		return r.dedupeLoadError + r.dedupeSaveError
+	}
+}
+
+// restoreDedupeLocked carrega o índice da organização UMA vez, já podado.
+func (r *OmnichannelRuntime) restoreDedupeLocked(organizationID string) {
+	if r.dedupeStore == nil || r.dedupeStore.Root() == "" {
+		return
+	}
+	if r.loadedDedupeOrgs == nil {
+		r.loadedDedupeOrgs = map[string]bool{}
+	}
+	if r.loadedDedupeOrgs[organizationID] {
+		return
+	}
+	r.loadedDedupeOrgs[organizationID] = true
+	entradas, err := r.dedupeStore.Load(organizationID)
+	if err != nil {
+		// Um índice ilegível significa que a dedupe NÃO está protegendo: isso vai para o estado.
+		r.dedupeLoadError = "carregar índice de dedupe: " + err.Error()
+		return
+	}
+	r.dedupeLoadError = ""
+	if r.dedupeEntries == nil {
+		r.dedupeEntries = map[string]OmnichannelDedupeEntry{}
+	}
+	for chave, entrada := range entradas {
+		r.dedupeEntries[chave] = entrada
+	}
+	// PODA NA CARGA: sem isto, uma entrada VENCIDA que está no disco continuaria bloqueando uma mensagem nova
+	// — foi exatamente o que o teste `TestOmnichannelDedupeDoesNotHonourExpiredEntries` mostrou.
+	r.dedupeEntries = podarDedupe(r.dedupeEntries, time.Now().UTC(), OmnichannelMaxDedupePerOrg)
+}
+
+// registrarDedupeLocked grava a chave no índice, PODA (retenção + teto) e persiste.
+func (r *OmnichannelRuntime) registrarDedupeLocked(chave string, event OmnichannelEvent, now time.Time) {
+	if r.dedupeEntries == nil {
+		r.dedupeEntries = map[string]OmnichannelDedupeEntry{}
+	}
+	r.dedupeEntries[chave] = OmnichannelDedupeEntry{
+		ExternalMessageID: event.ExternalMessageID,
+		Channel:           event.ChannelID,
+		ContactID:         event.ContactID,
+		MessageType:       event.MessageType,
+		IngestedAt:        now,
+	}
+	// PODA em memória e em disco: sem isto o índice cresceria sem limite (defeito encontrado nesta rodada).
+	r.dedupeEntries = podarDedupe(r.dedupeEntries, now, OmnichannelMaxDedupePerOrg)
+	if r.dedupeStore == nil || r.dedupeStore.Root() == "" {
+		return
+	}
+	daOrganizacao := map[string]OmnichannelDedupeEntry{}
+	prefixo := event.OrganizationID + "|"
+	for k, entrada := range r.dedupeEntries {
+		if strings.HasPrefix(k, prefixo) {
+			daOrganizacao[k] = entrada
+		}
+	}
+	if err := r.dedupeStore.Save(event.OrganizationID, daOrganizacao); err != nil {
+		r.dedupeSaveError = "persistir índice de dedupe: " + err.Error()
+		return
+	}
+	r.dedupeSaveError = ""
 }
 
 func (r *OmnichannelRuntime) deadLetter(event OmnichannelEvent, channel, reason string, now time.Time) {

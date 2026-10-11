@@ -316,6 +316,9 @@ func NewRuntime(config RuntimeConfig) (*Runtime, error) {
 	// E-171: os CONECTORES também persistem. Sem isso, um reinício perde o canal e o `Ingest` recusa
 	// TODO webhook legítimo com "not configured" — o canal para sem que ninguém tenha mexido nele.
 	omnichannelRuntime.SetConnectorStore(NewOmnichannelConnectorStore(omnichannelConnectorRoot(dataRoot)))
+	// E-172: o ÍNDICE DE DEDUPE também persiste e tem TETO. Sem persistência, um reinício esquecia o que
+	// já entrou; sem teto, o mapa crescia sem limite num processo de longa duração.
+	omnichannelRuntime.SetDedupeStore(NewOmnichannelDedupeStore(omnichannelDedupeRoot(dataRoot)))
 	// Os agentes de atendimento usam as MESMAS peças (CRM, inbox e consentimento).
 	serviceAgentRuntime := NewServiceAgentRuntime(crmStore, inboxStore, consentRegistry, DefaultServiceAgentTools())
 	// Comércio e empresas são ligados logo abaixo, quando os stores existem: enquanto não fossem ligados,
