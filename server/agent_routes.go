@@ -820,6 +820,8 @@ func (a *agentAPI) register(r *gin.Engine) {
 	group.GET("/omnichannel/events", a.listOmnichannelEvents)
 	group.GET("/omnichannel/dlq", a.listOmnichannelDeadLetters)
 	group.POST("/omnichannel/dlq/:id/retry", a.retryOmnichannelDeadLetter)
+	group.GET("/service-agents", a.listServiceAgents)
+	group.POST("/service-agents/:id/turn", a.serviceAgentTurn)
 	group.GET("/egress/logs", a.getEgressLogs)
 	group.GET("/egress/status", a.getEgressStatus)
 	group.GET("/plugins", a.listPlugins)

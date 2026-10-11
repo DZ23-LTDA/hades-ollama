@@ -55,6 +55,7 @@ type Runtime struct {
 	crm                 *CRMStore
 	inbox               *InboxStore
 	omnichannel         *OmnichannelRuntime
+	serviceAgents       *ServiceAgentRuntime
 	remoteMCP           *RemoteMCPManager
 	metrics             *RuntimeMetrics
 	connectors          *ConnectorManager
@@ -249,6 +250,8 @@ func NewRuntime(config RuntimeConfig) (*Runtime, error) {
 	// O runtime de canais reusa a MESMA caixa de entrada: um segundo caminho de
 	// mensagem poderia divergir do primeiro.
 	omnichannelRuntime := NewOmnichannelRuntime(inboxStore)
+	// Os agentes de atendimento usam as MESMAS peças (CRM, inbox e consentimento).
+	serviceAgentRuntime := NewServiceAgentRuntime(crmStore, inboxStore, consentRegistry, DefaultServiceAgentTools())
 	queue := config.Queue
 	if queue == nil {
 		queue, err = NewJobQueue(filepath.Join(dataRoot, ".agent-queue"))
@@ -284,7 +287,7 @@ func NewRuntime(config RuntimeConfig) (*Runtime, error) {
 			return nil, err
 		}
 	}
-	runtime := &Runtime{store: store, planner: planner, plannerResolver: config.PlannerResolver, tools: tools, capabilityPolicy: capabilityPolicy, workspaceRoot: root, dataRoot: dataRoot, context: contextStore, company: companyStore, consent: consentRegistry, crm: crmStore, inbox: inboxStore, omnichannel: omnichannelRuntime, remoteMCP: config.RemoteMCP, metrics: &RuntimeMetrics{}, connectors: config.Connectors, mcp: config.MCP, queue: queue, redisQueue: config.RedisQueue, traces: traces, telemetry: telemetry, media: config.Media, builder: builder, collaboration: collaboration, push: config.Push, pushOutbox: pushOutbox, deployments: config.Deployments, deploymentApprovals: deploymentApprovals, webhookReplay: webhookReplay, mu: &sync.Mutex{}, running: make(map[string]bool), activeCancels: make(map[string]context.CancelFunc), cancelPollInterval: durableCancelPollInterval()}
+	runtime := &Runtime{store: store, planner: planner, plannerResolver: config.PlannerResolver, tools: tools, capabilityPolicy: capabilityPolicy, workspaceRoot: root, dataRoot: dataRoot, context: contextStore, company: companyStore, consent: consentRegistry, crm: crmStore, inbox: inboxStore, omnichannel: omnichannelRuntime, serviceAgents: serviceAgentRuntime, remoteMCP: config.RemoteMCP, metrics: &RuntimeMetrics{}, connectors: config.Connectors, mcp: config.MCP, queue: queue, redisQueue: config.RedisQueue, traces: traces, telemetry: telemetry, media: config.Media, builder: builder, collaboration: collaboration, push: config.Push, pushOutbox: pushOutbox, deployments: config.Deployments, deploymentApprovals: deploymentApprovals, webhookReplay: webhookReplay, mu: &sync.Mutex{}, running: make(map[string]bool), activeCancels: make(map[string]context.CancelFunc), cancelPollInterval: durableCancelPollInterval()}
 	orchestrator, err := NewAgentOrchestrator(filepath.Join(dataRoot, ".agent-orchestrator"), runtime.SubagentRunner)
 	if err != nil {
 		return nil, err
@@ -392,6 +395,14 @@ func (r *Runtime) Omnichannel() *OmnichannelRuntime {
 		return nil
 	}
 	return r.omnichannel
+}
+
+// ServiceAgents devolve os agentes de atendimento e vendas (estágio 35).
+func (r *Runtime) ServiceAgents() *ServiceAgentRuntime {
+	if r == nil {
+		return nil
+	}
+	return r.serviceAgents
 }
 
 func (r *Runtime) Supervisor() *Supervisor {
