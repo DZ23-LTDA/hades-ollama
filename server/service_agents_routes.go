@@ -32,6 +32,18 @@ func (a *agentAPI) serviceAgentTurn(c *gin.Context) {
 		ConversationID string `json:"conversation_id"`
 		Intent         string `json:"intent"`
 		ModelID        string `json:"model_id"`
+		// RequestedTools é o que o agente PEDE para este turno. Pedir não é poder: o runtime confere
+		// declaração do agente, executor registrado e política antes de qualquer efeito.
+		RequestedTools []string `json:"requested_tools,omitempty"`
+		// ToolArguments alimenta as ferramentas de escrita (título, valor, responsável, motivo). O ESCOPO
+		// (organização, contato, conversa) vem da sessão e da conversa resolvida, nunca daqui.
+		ToolArguments struct {
+			Title      string `json:"title,omitempty"`
+			ValueCents int64  `json:"value_cents,omitempty"`
+			OwnerID    string `json:"owner_id,omitempty"`
+			Assignee   string `json:"assignee,omitempty"`
+			Reason     string `json:"reason,omitempty"`
+		} `json:"tool_arguments,omitempty"`
 	}
 	if err := decodeJSON(c, &input); err != nil {
 		writeAgentError(c, http.StatusBadRequest, err)
@@ -43,6 +55,14 @@ func (a *agentAPI) serviceAgentTurn(c *gin.Context) {
 		ConversationID: input.ConversationID,
 		Intent:         input.Intent,
 		ModelID:        input.ModelID,
+		RequestedTools: input.RequestedTools,
+		ToolArguments: agent.ServiceAgentToolRequest{
+			Title:      input.ToolArguments.Title,
+			ValueCents: input.ToolArguments.ValueCents,
+			OwnerID:    input.ToolArguments.OwnerID,
+			Assignee:   input.ToolArguments.Assignee,
+			Reason:     input.ToolArguments.Reason,
+		},
 	}, time.Now().UTC())
 	if err != nil {
 		writeAgentError(c, statusForAgentError(err), err)
