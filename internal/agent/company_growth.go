@@ -28,6 +28,8 @@ type CompanyCampaign struct {
 	SpendCents       int64     `json:"spend_cents"`
 	CreatedAt        time.Time `json:"created_at"`
 	UpdatedAt        time.Time `json:"updated_at"`
+	// ScheduledAt é preenchido pelo agendamento aprovado (estágio 26).
+	ScheduledAt *time.Time `json:"scheduled_at,omitempty"`
 }
 
 type CompanyAffiliateProgram struct {

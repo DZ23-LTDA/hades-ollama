@@ -159,6 +159,8 @@
 
 | RLS e não-inferência em PostgreSQL real | `postgres_security.go`, testes `TestDistributedPostgres*` (E-121) | IMPLEMENTADO_NAO_HOMOLOGADO | MÉDIO | E-121 | verificado **localmente** contra PostgreSQL 16.15 com `ENABLE` + `FORCE` RLS, papel `NOBYPASSRLS` e contexto assinado; não-inferência por contagem, colisão e referência cruzada; sem prova por timing |
 
+| Campanha em sandbox (agendamento e métricas) | `company_marketplace.go` (E-124) | IMPLEMENTADO_NAO_HOMOLOGADO | MÉDIO | E-124 | agendar exige aprovação e início futuro; métrica só após execução e só somando; orçamento limita; **publicação externa declarada** `BLOCKED_BY_EXTERNAL_DEPENDENCY`; sem rotas HTTP ainda |
+
 ## 6. Integrações, MCP e conectores
 
 | Capacidade | Superfície | Classificação | Risco | Evidência | Lacuna |
