@@ -415,6 +415,14 @@ export const runScheduleNow = (id: string) =>
     body: "{}",
   });
 
+// Reprocessa apenas o que ficou ignorado ou falhou na última execução, reusando a
+// mesma execução: o que já criou missão não é duplicado.
+export const reprocessSchedule = (id: string) =>
+  agentFetch<AgentScheduleRunResponse>(`/api/agent/v1/schedules/${encodeURIComponent(id)}/reprocess`, {
+    method: "POST",
+    body: "{}",
+  });
+
 export const listSkills = async () => { const result = await agentFetch<{ skills?: AgentSkill[] | null }>("/api/agent/v1/skills"); return { skills: Array.isArray(result.skills) ? result.skills : [] }; };
 // Estado REAL de cada plugin instalado (V2.1 §11.3): só o servidor decide o que
 // está "pronto para usar", e só com execução comprovada.

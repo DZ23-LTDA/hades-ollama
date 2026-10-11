@@ -4,6 +4,7 @@ import {
   listSchedules,
   createSchedule,
   runScheduleNow,
+  reprocessSchedule,
   updateSchedule,
   deleteSchedule,
   type AgentSchedule,
@@ -12,7 +13,7 @@ import { AppSidebar } from "@/components/AppSidebar";
 import { SidebarLayout } from "@/components/layout/layout";
 import { FlowEditor } from "@/components/FlowEditor";
 import { ScheduleRunReportCard } from "@/components/ScheduleRunReportCard";
-import { scheduleRunSummary, scheduleRunVerdict, scheduleRunVerdictLabel } from "@/lib/scheduleRun";
+import { scheduleRunConcerns, scheduleRunSummary, scheduleRunVerdict, scheduleRunVerdictLabel } from "@/lib/scheduleRun";
 import { humanizeApiError } from "@/lib/userFacingError";
 import { confirmDialog } from "@/lib/confirmDialog";
 import {
@@ -25,6 +26,7 @@ import {
   ClockIcon,
   CheckCircleIcon,
   PauseIcon,
+  ArrowPathIcon,
 } from "@heroicons/react/24/outline";
 
 export function AutomationsPage() {
@@ -107,6 +109,29 @@ export function AutomationsPage() {
       setErrorMsg(humanizeApiError(e, "Não foi possível criar a automação.").message);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleReprocess = async (sch: AgentSchedule) => {
+    setErrorMsg(null);
+    try {
+      // Reprocessa apenas o que ficou pendente, reusando a execução anterior: o
+      // que já criou missão não é duplicado.
+      const result = await reprocessSchedule(sch.id);
+      setSchedules((previous) => previous.map((item) => (item.id === sch.id ? result.schedule : item)));
+      if (!result.succeeded) {
+        setSuccessMsg(null);
+        setErrorMsg(`Reprocessamento falhou: ${result.error ?? "erro não informado"}`);
+        return;
+      }
+      const pending = scheduleRunConcerns(result.report).length;
+      setSuccessMsg(
+        pending === 0
+          ? `Reprocessamento concluído sem pendências: ${scheduleRunSummary(result.report)}`
+          : `Reprocessamento concluído, ainda com ${pending} passo(s) pendente(s): ${scheduleRunSummary(result.report)}`,
+      );
+    } catch (e) {
+      setErrorMsg(humanizeApiError(e, "Não foi possível reprocessar a automação.").message);
     }
   };
 
@@ -583,6 +608,17 @@ export function AutomationsPage() {
                       <PlayIcon className="h-3.5 w-3.5" />
                       Executar agora
                     </button>
+                    {scheduleRunConcerns(sch.last_run ?? null).length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => handleReprocess(sch)}
+                        className="inline-flex items-center gap-1.5 rounded-xl border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-800 hover:bg-amber-100 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-200"
+                        title="Reprocessar apenas os passos ignorados ou que falharam"
+                      >
+                        <ArrowPathIcon className="h-3.5 w-3.5" />
+                        Reprocessar pendentes
+                      </button>
+                    )}
                     <button
                       type="button"
                       onClick={() => handleToggle(sch)}

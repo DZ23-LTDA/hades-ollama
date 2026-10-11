@@ -727,6 +727,7 @@ func (a *agentAPI) register(r *gin.Engine) {
 	group.GET("/schedules", a.schedules)
 	group.POST("/schedules", a.createSchedule)
 	group.POST("/schedules/:id/run", a.runScheduleNow)
+	group.POST("/schedules/:id/reprocess", a.reprocessScheduleNow)
 	group.PATCH("/schedules/:id", a.updateSchedule)
 	group.DELETE("/schedules/:id", a.deleteSchedule)
 	group.POST("/webhooks/:schedule_id", a.webhook)
@@ -1609,6 +1610,52 @@ func (a *agentAPI) schedules(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"schedules": a.context.ListSchedulesForOrganization(organizationID)})
+}
+
+// reprocessScheduleNow reexecuta SOMENTE os passos que ficaram ignorados ou
+// falharam na última execução, reusando a chave daquela execução. Os passos que já
+// tiveram sucesso são preservados e não geram missão nova (idempotência).
+func (a *agentAPI) reprocessScheduleNow(c *gin.Context) {
+	organizationID, ok := a.requireContextOrganization(c)
+	if !ok {
+		return
+	}
+	if a.runtime == nil {
+		writeAgentError(c, http.StatusServiceUnavailable, errors.New("agent runtime is not configured"))
+		return
+	}
+	schedule, err := a.context.GetScheduleForOrganization(c.Param("id"), organizationID)
+	if err != nil {
+		writeAgentError(c, statusForAgentError(err), err)
+		return
+	}
+	runtime := a.runtime.WithOrganizationContext(c.Request.Context(), organizationID)
+	report, runErr := runtime.ReprocessScheduleFlow(c.Request.Context(), schedule)
+	if errors.Is(runErr, agent.ErrScheduleReprocessUnavailable) {
+		// Reprocessar sem execução anterior exigiria adivinhar a chave da execução,
+		// e adivinhar poderia criar missão duplicada. Recusa explícita.
+		writeAgentError(c, http.StatusConflict, runErr)
+		return
+	}
+	updated := schedule
+	recordWarning := ""
+	if recorded, recordErr := runtime.RecordScheduleRun(schedule, report, runErr); recordErr == nil {
+		updated = recorded
+	} else {
+		recordWarning = recordErr.Error()
+	}
+	payload := gin.H{
+		"schedule":  updated,
+		"report":    report,
+		"succeeded": runErr == nil,
+	}
+	if runErr != nil {
+		payload["error"] = runErr.Error()
+	}
+	if recordWarning != "" {
+		payload["record_warning"] = recordWarning
+	}
+	c.JSON(http.StatusOK, payload)
 }
 
 // runScheduleNow executa o GRAFO persistido do schedule, e não uma missão avulsa.

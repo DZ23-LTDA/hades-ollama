@@ -3,6 +3,7 @@ package server
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/ollama/ollama/internal/agent"
@@ -148,5 +149,66 @@ func TestRunScheduleNowReportsFailureWithTheStepNamed(t *testing.T) {
 	}
 	if stored.LastFailureCode != "mission_creation_failed:acao" {
 		t.Fatalf("código de falha deveria nomear o passo, veio %q", stored.LastFailureCode)
+	}
+}
+
+// Reprocessamento pela rota: reexecuta o que ficou pendente reusando a execução
+// anterior, e recusa explicitamente quando não há execução para reprocessar.
+func TestReprocessScheduleNowRefusesWithoutPreviousRun(t *testing.T) {
+	api, schedule := manualRunAPI(t)
+	ctx, recorder := skillRequest(t, http.MethodPost, "/api/agent/v1/schedules/"+schedule.ID+"/reprocess", "{}", schedule.ID, "org-a")
+	api.reprocessScheduleNow(ctx)
+	if recorder.Code != http.StatusConflict {
+		t.Fatalf("sem execução anterior deveria ser 409, veio %d (%s)", recorder.Code, recorder.Body.String())
+	}
+	if !strings.Contains(recorder.Body.String(), "no previous run") {
+		t.Fatalf("a recusa precisa explicar o motivo: %s", recorder.Body.String())
+	}
+}
+
+func TestReprocessScheduleNowAfterRunPreservesMissions(t *testing.T) {
+	api, schedule := manualRunAPI(t)
+	// 1) executa uma vez (registra a execução e cria a missão)
+	runCtx, runRecorder := skillRequest(t, http.MethodPost, "/api/agent/v1/schedules/"+schedule.ID+"/run", "{}", schedule.ID, "org-a")
+	api.runScheduleNow(runCtx)
+	if runRecorder.Code != http.StatusOK {
+		t.Fatalf("execução inicial: %d %s", runRecorder.Code, runRecorder.Body.String())
+	}
+
+	// 2) reprocessa: nada pendente, então não cria missão nova
+	reprocessCtx, reprocessRecorder := skillRequest(t, http.MethodPost, "/api/agent/v1/schedules/"+schedule.ID+"/reprocess", "{}", schedule.ID, "org-a")
+	api.reprocessScheduleNow(reprocessCtx)
+	if reprocessRecorder.Code != http.StatusOK {
+		t.Fatalf("reprocessamento: %d %s", reprocessRecorder.Code, reprocessRecorder.Body.String())
+	}
+	var payload struct {
+		Succeeded bool                    `json:"succeeded"`
+		Report    agent.ScheduleRunReport `json:"report"`
+	}
+	if err := json.Unmarshal(reprocessRecorder.Body.Bytes(), &payload); err != nil {
+		t.Fatal(err)
+	}
+	if !payload.Succeeded {
+		t.Fatalf("reprocessamento sem pendências deveria ter sucesso: %s", reprocessRecorder.Body.String())
+	}
+	if payload.Report.Missions != 0 {
+		t.Fatalf("passos já bem-sucedidos não podem criar missão no reprocessamento, veio %d", payload.Report.Missions)
+	}
+	if payload.Report.RunKey == "" {
+		t.Fatal("o reprocessamento precisa manter a chave da execução")
+	}
+}
+
+func TestReprocessScheduleNowIsScopedToTheActiveOrganization(t *testing.T) {
+	api, schedule := manualRunAPI(t)
+	runCtx, runRecorder := skillRequest(t, http.MethodPost, "/api/agent/v1/schedules/"+schedule.ID+"/run", "{}", schedule.ID, "org-a")
+	api.runScheduleNow(runCtx)
+	if runRecorder.Code != http.StatusOK {
+		t.Fatalf("execução inicial: %d", runRecorder.Code)
+	}
+	ctx, recorder := skillRequest(t, http.MethodPost, "/api/agent/v1/schedules/"+schedule.ID+"/reprocess", "{}", schedule.ID, "org-b")
+	api.reprocessScheduleNow(ctx)
+	if recorder.Code == http.StatusOK {
+		t.Fatalf("outra organização não pode reprocessar o schedule alheio: %s", recorder.Body.String())
 	}
 }
