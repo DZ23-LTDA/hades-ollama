@@ -2,12 +2,12 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-12T21:40:00-03:00",
+  "updated_at": "2026-10-12T22:55:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
     "integration_branch": "main",
-    "main_sha": "8559be32a156139c317ac4e122031bf148c5090b",
+    "main_sha": "0f34a7cad806c3d3c430202f2b12af80fdf1e825",
     "main_committed_at": "2026-10-09T10:24:45Z",
     "main_ci_state": "green (dz23-agentic-quality + class-a-plus-integrity = success nesse SHA)",
     "mission_branch": "docs/checkpoints-missao-v21",
@@ -571,10 +571,12 @@
       "capability": "PARCIAL",
       "evidence": [
         "E-021",
-        "E-054"
+        "E-054",
+        "E-117"
       ],
       "blocker": null,
-      "next": "Comparativo competitivo real exige a mesma tarefa, a mesma maquina e licenca/conta de cada produto (B-05/B-07); benchmarks locais reproduziveis com metodologia publicada ja existem (PR #79) e nenhuma alegacao de superioridade e feita"
+      "next": "LIMITES: COMPARACAO EXTERNA NAO EXECUTADA (Manus, Claude Code, Codex, Devin, Cursor, Lovable, n8n, Dify, CrewAI e LangGraph exigiriam contas, credenciais e custo - comparar sem executar seria invencao), sem custo de tokens nem latencia de modelos externos pelas mesmas razoes, e sem qualidade de geracao de texto (as duracoes sao de execucao local hermetica, medindo o MOTOR e nao o modelo). Acessibilidade e usabilidade seguem com evidencia propria (E-099), nao com metrica desta suite",
+      "done": "BENCHMARK COMPARAVEL com metricas MEDIDAS (E-117): suite executavel de 5 tarefas hermeticas no proprio Hades medindo conclusao, passos de API, duracao real, aprovacoes humanas exigidas, prova de isolamento entre organizacoes e prova de retomada/recuperacao. Medido: veredito MEDIDO, 5/5 tarefas, 102 ms no total - jornada de empresa em sandbox (21 passos, 1 aprovacao humana, isolamento e recuperacao provados), pedido idempotente (mesma chave = mesmo pedido, referencia parecida com cartao recusada), atendimento com SLA (violacao medida) e transferencia (sem motivo recusada), isolamento entre organizacoes (0 vazamentos) e retomada apos reinicio (runtime novo enxerga o estado e NAO duplica o efeito). O teste e o EXECUTOR do benchmark: se uma capacidade regredir, ele falha nomeando a tarefa"
     },
     {
       "id": 22,
@@ -1119,7 +1121,10 @@
     "FALHAS 'AMBIENTAIS' INVESTIGADAS ATE O FIM: 1 DEFEITO REAL + MAX_PATH (E-116): eu vinha declarando 3 falhas ambientais e repetindo que 'passam no CI'. Depois de uma delas se revelar defeito (E-115), investiguei as restantes em vez de repetir o rotulo - e o rotulo NAO se sustentou",
     "DEFEITO REAL DE IDEMPOTENCIA NA IMPORTACAO (E-116): initializeImportedRepository exigia exit 0 do passo 'git commit', mas o git retorna 1 com 'nothing to commit' quando o snapshot JA estava commitado. A PRIMEIRA chamada passava e a SEGUNDA falhava ('On branch master / nothing to commit'). Na pratica, REIMPORTAR o mesmo projeto ou RETOMAR uma importacao interrompida QUEBRAVA - exatamente o caminho de RETOMADA exigido pelos estagios 10/11. Corrigido: so commita quando ha mudancas pendentes e valida HEAD ao final; guarda em TestInitializeImportedRepositoryIsIdempotent",
     "MAX_PATH DO WINDOWS NO CAMINHO INTERNO DO GIT (E-116): o erro tipado que eu tinha acabado de escrever REVELOU a segunda causa - 'unable to write file .git/objects/62/9ada...: Filename too long'. Com raiz de 211 caracteres, o caminho interno do git (<raiz>/.agent-imports/<id>/origin/.git/objects/xx/<38>) passa de MAX_PATH = 260, e o t.TempDir() ainda acrescenta o NOME DO TESTE. O produto agora devolve ErrImportPathTooLong com mensagem ACIONAVEL (limite, caminho e o que fazer: diretorio mais curto ou LongPathsEnabled) em vez de 'exit status 128', e os testes usam raiz CURTA sem o nome do teste (short_root_test.go)",
-    "SUITES LOCAIS 100 POR CENTO VERDES (E-116): go test ./internal/agent/ ok (54,9 s) e go test ./server/ ok (20,6 s), golangci-lint 0 issues. Pela PRIMEIRA VEZ neste workspace as duas suites passam inteiras, sem nenhuma falha ambiental. Nenhum teste foi desativado, nenhum t.Skip foi usado para ficar verde e nenhum //nolint foi aplicado. Os bloqueadores B-09 e R-05 foram corrigidos para a verdade atual; permanece apenas o teste de browser que exige Python instalado"
+    "SUITES LOCAIS 100 POR CENTO VERDES (E-116): go test ./internal/agent/ ok (54,9 s) e go test ./server/ ok (20,6 s), golangci-lint 0 issues. Pela PRIMEIRA VEZ neste workspace as duas suites passam inteiras, sem nenhuma falha ambiental. Nenhum teste foi desativado, nenhum t.Skip foi usado para ficar verde e nenhum //nolint foi aplicado. Os bloqueadores B-09 e R-05 foram corrigidos para a verdade atual; permanece apenas o teste de browser que exige Python instalado",
+    "BENCHMARK COM METRICAS MEDIDAS, E A REIVINDICACAO QUE NAO E FEITA (E-117): o estagio 21 pede benchmark contra Manus, Claude Code, Codex, Devin, Cursor, Lovable, n8n, Dify, CrewAI e LangGraph. Executa-los exigiria contas, credenciais e custo que este ambiente nao tem, e comparar sem executar seria INVENCAO - entao implementei uma suite executavel de 5 tarefas hermeticas e declarei a COMPARACAO EXTERNA como NAO_EXECUTADA, com o motivo dentro do proprio relatorio: nunca 'somos melhores'",
+    "BENCHMARK - O QUE FOI MEDIDO DE VERDADE (E-117): veredito MEDIDO, 5/5 tarefas, 102 ms no total. Jornada de empresa em sandbox: 21 passos, 41 ms, isolamento e recuperacao provados e 1 APROVACAO HUMANA exigida (a decisao de risco nao e automatica). Pedido idempotente: mesma chave devolve o MESMO pedido, referencia parecida com cartao RECUSADA, 1 pedido e 1 pago. Atendimento: resposta dentro do SLA nao gera violacao e fora do SLA a violacao E MEDIDA (sla_breached = 1); transferencia sem motivo RECUSADA e com motivo passa a pending_human. Isolamento entre organizacoes: 0 produtos, 0 conversas e 0 metricas vazando. Retomada apos reinicio: runtime novo do mesmo diretorio enxerga o estado e repetir a chave devolve o MESMO pedido, sem duplicar o efeito",
+    "BENCHMARK - O EXECUTOR E A HONESTIDADE DOS LIMITES (E-117): o teste TestBenchmarkSuiteMeasuresHermeticTasks e o EXECUTOR: exige que TODAS as tarefas concluam e FALHA NOMEANDO a tarefa se uma capacidade regredir - e o que da sentido a acompanhar numeros em vez de narrar desempenho. O relatorio NAO afirma superioridade sobre concorrentes (nao executados), NAO estima custo de tokens nem latencia externa (exigiria credenciais) e NAO cobre qualidade de geracao de texto (as duracoes sao de execucao local hermetica, medindo o MOTOR). Acessibilidade e usabilidade seguem com evidencia propria (E-099)"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
