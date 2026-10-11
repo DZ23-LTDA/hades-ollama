@@ -157,6 +157,8 @@
 
 | Propostas comerciais e pós-venda | `sales_workforce.go` (E-119) | PARCIAL | MÉDIO | E-119 | preço do catálogo recalculado no servidor, envio exige consentimento, vigência e decisão terminal; pós-venda medido com atraso contável; sem entrega por provedor externo e sem desconto negociado |
 
+| RLS e não-inferência em PostgreSQL real | `postgres_security.go`, testes `TestDistributedPostgres*` (E-121) | IMPLEMENTADO_NAO_HOMOLOGADO | MÉDIO | E-121 | verificado **localmente** contra PostgreSQL 16.15 com `ENABLE` + `FORCE` RLS, papel `NOBYPASSRLS` e contexto assinado; não-inferência por contagem, colisão e referência cruzada; sem prova por timing |
+
 ## 6. Integrações, MCP e conectores
 
 | Capacidade | Superfície | Classificação | Risco | Evidência | Lacuna |

@@ -2,12 +2,12 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-13T02:30:00-03:00",
+  "updated_at": "2026-10-13T03:40:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
     "integration_branch": "main",
-    "main_sha": "d76fccd0647c3a8b6c3311efa1fea772beadaba9",
+    "main_sha": "d411f84147f0ffaf4b15d0246d3d0147be3427a2",
     "main_committed_at": "2026-10-09T10:24:45Z",
     "main_ci_state": "green (dz23-agentic-quality + class-a-plus-integrity = success nesse SHA)",
     "mission_branch": "docs/checkpoints-missao-v21",
@@ -521,7 +521,7 @@
       "title": "Seguranca, permissoes e multitenancy",
       "state": "IN_PROGRESS",
       "auditoria": "AUDITADO_PARCIAL",
-      "capability": "PARCIAL",
+      "capability": "IMPLEMENTADO_NAO_HOMOLOGADO",
       "evidence": [
         "E-019",
         "E-031",
@@ -529,11 +529,12 @@
         "E-070",
         "E-071",
         "E-072",
-        "E-073"
+        "E-073",
+        "E-121"
       ],
       "blocker": null,
-      "next": "fechar com o que exige banco real: RLS em PostgreSQL com papeis distintos, contexto de tenant confiavel e prova de nao inferencia por timing; depois retomar os estagios de produto (12, 13, 14) e o gate intermediario 22",
-      "done": "7 classes de ataque autenticado mitigadas (plugins, skills, ativacoes, retencao); SSRF de egresso com ACHADO ALTO CORRIGIDO (IPv4 embutido em NAT64/6to4); prompt injection CORRIGIDO (marca de conteudo externo derivada da proveniencia); integridade de produto CORRIGIDA (endpoint de personalizacao que fingia funcionar e ficava aberto sem middleware); uploads maliciosos, XSS, CSRF e plugins maliciosos auditados SEM achado"
+      "next": "LIMITES: nao ha prova de nao-inferencia por TIMING (exigiria repeticao estatistica em ambiente controlado) e o trecho dependente de Redis foi pulado na execucao local, ficando com a evidencia do CI",
+      "done": "7 classes de ataque autenticado mitigadas (plugins, skills, ativacoes, retencao); SSRF de egresso com ACHADO ALTO CORRIGIDO (IPv4 embutido em NAT64/6to4); prompt injection CORRIGIDO (marca de conteudo externo derivada da proveniencia); integridade de produto CORRIGIDA (endpoint de personalizacao que fingia funcionar e ficava aberto sem middleware); uploads maliciosos, XSS, CSRF e plugins maliciosos auditados SEM achado | RLS E NAO-INFERENCIA MEDIDOS CONTRA POSTGRESQL REAL (E-121): mesma pilha do CI (docker-compose.agentic.yml com PostgreSQL 16.15, Redis 7 e OTel) subida LOCALMENTE e tres testes de integracao com -tags integration PASSANDO - TestDistributedPostgresRLSAndEvents (4,43 s), TestDistributedPostgresRuntimeRejectsRLSDrift (7,68 s) e TestDistributedPostgresTenantKeyRotation (1,64 s). A prova de NAO-INFERENCIA e por CONTAGEM (COUNT(*) da missao alheia = 0 em transacao crua), por COLISAO (gravar sobre missao de outro tenant e recusado sem confirmar existencia) e por REFERENCIA CRUZADA (evento para missao de outro tenant e rejeitado); politica com ENABLE + FORCE RLS, papel NOBYPASSRLS e contexto de tenant ASSINADO"
     },
     {
       "id": 19,
@@ -1136,7 +1137,10 @@
     "PROPOSTA - PRECO VEM DO CATALOGO, NUNCA DE QUEM CHAMA (E-119): a proposta recebe apenas SKU e quantidade e o total e RECALCULADO no servidor. Aceitar preco enviado por quem chama a API permitiria proposta com valor inventado e desconto forjado; SKU fora do catalogo e ERRO, nao linha com preco zero. ENVIAR EXIGE CONSENTIMENTO, entao quem pediu opt-out NAO recebe proposta - a mesma politica do resto do sistema, sem caminho alternativo. A VIGENCIA e respeitada (aceitar proposta vencida e recusado) e a DECISAO e TERMINAL",
     "POS-VENDA MEDIDO E ACHADO DA PERSISTENCIA (E-119): o pos-venda tem prazo padrao de 72h, e IDEMPOTENTE por pedido (agendar duas vezes o mesmo pedido nao duplica) e o ATRASO e CONTavel - pos-venda que ninguem mede nao e operacao, e intencao. A escrita DESFAZ o estado em memoria quando a persistencia falha, para nao relatar sucesso que nao existe no disco. ACHADO durante a implementacao: a primeira gravacao falhava com 'caminho nao encontrado' porque writeJSONAtomic NAO CRIA O DIRETORIO - a proposta nunca seria persistida; corrigido com MkdirAll, como os outros stores fazem",
     "SUPERFICIE HTTP DE VENDAS E DEFEITO DE API CORRIGIDO (E-120): propostas e pos-venda existiam SO no runtime - capacidade real, mas NAO ALCANCAVEL pela API nem pela interface. Entreguei 8 rotas em /sales/* com o ciclo completo. A rota de criacao ACEITA o campo unit_price_cents apenas para IGNO RA-LO: o preco e sempre o do catalogo, e o teste envia 1 centavo para provar que o total continua 3 x 4200 = 12600",
-    "DEFEITO DE API ENCONTRADO PORQUE A ASSERCAO ESTAVA FROUXA (E-120): ErrFollowUpInvalid cobria ao mesmo tempo erro de ENTRADA (motivo ausente) e CONFLITO DE ESTADO (concluir algo ja concluido), devolvendo 409 para um corpo invalido. O que me fez ver isso foi a minha propria assercao ter ficado FROUXA ('nao pode criar em silencio') - assercao frouxa e cheiro de mapeamento errado. Separei em ErrFollowUpInvalid (400) e ErrFollowUpStateInvalid (409) e tornei a assercao EXATA"
+    "DEFEITO DE API ENCONTRADO PORQUE A ASSERCAO ESTAVA FROUXA (E-120): ErrFollowUpInvalid cobria ao mesmo tempo erro de ENTRADA (motivo ausente) e CONFLITO DE ESTADO (concluir algo ja concluido), devolvendo 409 para um corpo invalido. O que me fez ver isso foi a minha propria assercao ter ficado FROUXA ('nao pode criar em silencio') - assercao frouxa e cheiro de mapeamento errado. Separei em ErrFollowUpInvalid (400) e ErrFollowUpStateInvalid (409) e tornei a assercao EXATA",
+    "RLS E NAO-INFERENCIA MEDIDOS CONTRA POSTGRESQL REAL (E-121): eu vinha registrando o estagio 18 como pendente por falta de banco real, mas DOCKER ESTAVA DISPONIVEL nesta maquina - entao parei de esperar o CI e MEDI. Subi a MESMA pilha do CI (deploy/docker-compose.agentic.yml: PostgreSQL 16.15, Redis 7 e coletor OTLP, com os papeis ollama_agent_admin/migrator/runtime e a politica de HBA do repositorio) e rodei os testes com -tags integration: TestDistributedPostgresRLSAndEvents PASS (4,43 s), TestDistributedPostgresRuntimeRejectsRLSDrift PASS (7,68 s) e TestDistributedPostgresTenantKeyRotation PASS (1,64 s) - ok em 17,6 s",
+    "NAO-INFERENCIA: O QUE O TESTE REALMENTE PROVA (E-121): o COUNT(*) da missao de OUTRO tenant devolve 0 (a contagem nao revela a linha alheia); uma tentativa de COLISAO sobre missao de outro tenant e RECUSADA sem confirmar que a identidade existe; o banco NAO ACEITA evento apontando para missao de outro tenant; e o papel de runtime NAO consegue contar tudo. A politica usa ENABLE e FORCE ROW LEVEL SECURITY, o papel e NOBYPASSRLS e o contexto do tenant e ASSINADO, entao a politica nao depende de um SET que o chamador escolheria",
+    "LIMITES DECLARADOS DA MEDICAO LOCAL (E-121): NAO ha prova de nao-inferencia por TIMING (exigiria repeticao estatistica em ambiente controlado) e o trecho dependente de REDIS foi pulado na execucao local, ficando com a evidencia do CI. A pilha local usou senhas efemeras NAO versionadas e foi DERRUBADA depois da medicao"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
