@@ -3,7 +3,7 @@
 > Gerado por `python scripts/hades_baseline_report.py` a partir de `HADES_MASTER_STATE.json`: um bloqueio que
 > existe no estado aparece aqui, e um que sai do estado sai daqui. O `--check` no CI detecta divergência.
 
-Total: **17** — 11 em aberto · 6 resolvidos.
+Total: **17** — 10 em aberto · 7 resolvidos.
 
 ## 1. Em aberto
 
@@ -18,7 +18,6 @@ Total: **17** — 11 em aberto · 6 resolvidos.
 | B-09 | AMBIENTAL | Host sem Python/sh e limites de caminho: 4 testes falham por ambiente |
 | B-10 | PRODUTO | Conectores: 104 de 122 exigem configuracao do operador (available=17) |
 | B-14 | AMBIENTE (DIAGNOSTICO RESOLVIDO) | LIMITE (E-184): a execucao de plugin exige PRIVILEGIO DE MONTAGEM - mesmo o modo best-effort faz mount/chroot (mount --make-rprivate, mount --bind, tmpfs e chroot/unshare em tools.go). Onde nao ha esse privilegio (Windows, container nao privilegiado, runner padrao de CI) a execucao nao acontece e o sintoma e 'exit status 1' com stdout e stderr VAZIOS - falha |
-| B-17 | PRODUTO (SEGURANCA) - CANDIDATO NAO VERIFICADO | CANDIDATO A ORACULO NAO VERIFICADO (E-192): internal/agent/mcp_remote.go:606 (`call`) devolve 'remote MCP server ... is not registered' ANTES do portao de organizacao, que devolve ErrPluginOrganizationScope - a mesma forma do B-15/B-16 (existencia distinguivel da negativa). NAO foi verificado com teste que compare as duas recusas, e a metodologia declarada e |
 | B-18 | PRODUTO (PRIVACIDADE/DLP) - FALHA INTERMITENTE NAO REPRODUZIDA | FALHA INTERMITENTE NA CI DA MAIN (E-193): TestServiceAgentAuditKeepsContactTextOut (DLP: conteudo do contato nao pode entrar na trilha de auditoria) falhou uma vez no passo 'CGO_ENABLED=1 go test ./... -count=1' do job dz23-agentic-quality, em bc3c708f6. NAO reproduzida em SEIS condicoes medidas: 10x isolado (Windows), 20x isolado sob CGO=1 (Linux/golang:1.2 |
 
 ## 2. Resolvidos
@@ -31,6 +30,7 @@ Total: **17** — 11 em aberto · 6 resolvidos.
 | B-13 | DEFEITO (E-183): a execucao de plugin falha no layout real de instalacao - plugin_runtime.go:215 passa Workspace = installation.ContentPath, e ContentPath e o ARQUIVO plugins/content/<org>/<id>-<versao>.zip (plugin_bundle.go:113); o executor trata Workspace como diretorio e falha com 'not a directory'. Instalacao e verificacao de conteudo funcionam; execucao | resolvido, com teste contra regressão onde aplicável |
 | B-15 | ORACULO DE ENUMERACAO EM TODA A SUPERFICIE DE EMPRESA (E-189): o guarda compartilhado `companyForRequest` (server/company_routes.go), usado por ~55 pontos em 11 arquivos, devolve 404 para empresa INEXISTENTE e 403 para empresa de OUTRO tenant - a diferenca de status revela a existencia do ID a qualquer tenant autenticado, sem acessar dado nenhum. O vazamento | resolvido, com teste contra regressão onde aplicável |
 | B-16 | MESMA CLASSE DE ORACULO DO B-15 EM OUTROS QUATRO MODULOS (E-191, scanner calibrado): methods GetForOrganization de builder (internal/agent/builder.go:352), devices (devices.go:210) e swarm (swarm.go:218), e TelAgentSessionForOrganization (tel_agent_session.go:181), devolvem o erro CRU da busca quando o recurso nao existe e um erro PROPRIO quando e de outro t | resolvido, com teste contra regressão onde aplicável |
+| B-17 | CANDIDATO A ORACULO NAO VERIFICADO (E-192): internal/agent/mcp_remote.go:606 (`call`) devolve 'remote MCP server ... is not registered' ANTES do portao de organizacao, que devolve ErrPluginOrganizationScope - a mesma forma do B-15/B-16 (existencia distinguivel da negativa). NAO foi verificado com teste que compare as duas recusas, e a metodologia declarada e | resolvido, com teste contra regressão onde aplicável |
 
 ## 3. Limites declarados
 

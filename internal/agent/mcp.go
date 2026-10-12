@@ -260,7 +260,8 @@ func (m *MCPManager) SetEnabledForOrganization(organizationID, id string, enable
 	defer m.mu.Unlock()
 	server, ok := m.servers[strings.TrimSpace(id)]
 	if !ok {
-		return ErrPluginNotFound
+		// NÃO INFERÊNCIA (E-194): mesma recusa do ramo de outro tenant.
+		return ErrPluginOrganizationScope
 	}
 	if !pluginOwnedByOrganization(server.config.OrganizationID, strings.TrimSpace(organizationID)) {
 		return ErrPluginOrganizationScope
@@ -302,7 +303,8 @@ func (m *MCPManager) RemoveForOrganization(organizationID, id string) error {
 	id = strings.TrimSpace(id)
 	server, ok := m.servers[id]
 	if !ok {
-		return ErrPluginNotFound
+		// NÃO INFERÊNCIA (E-194): mesma recusa do ramo de outro tenant.
+		return ErrPluginOrganizationScope
 	}
 	if !pluginOwnedByOrganization(server.config.OrganizationID, strings.TrimSpace(organizationID)) {
 		return ErrPluginOrganizationScope
