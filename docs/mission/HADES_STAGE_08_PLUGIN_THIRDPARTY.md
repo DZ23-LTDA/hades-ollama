@@ -79,3 +79,11 @@ produto: o checkout no Windows converte **LF → CRLF**, então o **sha256** que
 Correção em duas pontas: `.gitattributes` marca `internal/agent/testdata/thirdparty/**` como `-text` (preserva o
 byte publicado) **e** o teste normaliza `\r\n` → `\n` antes de hashear — um teste que depende da configuração de
 git de quem roda não prova o byte publicado, prova a configuração.
+
+
+## 8. Terceiro pré-requisito ambiental (medido no CI, job `test (ubuntu-latest)`)
+
+Com `node` presente no runner, o sandbox respondeu **`sandbox interpreter unavailable for node`** — ou seja, além de
+ser Linux-only e de o `strict` exigir `CGROUP_ROOT`, o sandbox **só executa interpretadores de uma lista
+permitida**, e o `node` do runner não está nela. Consequência para o teste: ele **pula** com o motivo em vez de
+falhar, e só falha se a execução passar (armadilha que obriga a fechar B-13) ou se o erro for **inesperado**.
