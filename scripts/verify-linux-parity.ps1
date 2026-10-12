@@ -31,14 +31,16 @@
     Pula o detector de corrida. Use apenas quando o motivo for declarado.
 
 .PARAMETER RacePackages
-    Pacotes do detector de corrida. Padrao: ./internal/agent/
+    Pacotes do detector de corrida. Padrao: ./internal/agent/ ./server/
 
 .PARAMETER RaceFilter
-    Filtro (-run) do detector de corrida. Padrao: TestOmnichannel
+    Filtro (-run) do detector de corrida. Vazio roda a suite INTEIRA (padrao): a corrida nao aparece so onde se
+    procura, e a suite completa sob -race levou ~91s no container (agent ~80s + server ~11s).
 
 .EXAMPLE
     powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify-linux-parity.ps1
     powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify-linux-parity.ps1 -TestFilter TestJSONStoreRollsBack
+    powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify-linux-parity.ps1 -SkipRace
 #>
 [CmdletBinding()]
 param(
@@ -47,8 +49,8 @@ param(
     [string]$TestFilter = '',
     [int]$TimeoutMinutes = 30,
     [switch]$SkipRace,
-    [string[]]$RacePackages = @('./internal/agent/'),
-    [string]$RaceFilter = 'TestOmnichannel'
+    [string[]]$RacePackages = @('./internal/agent/', './server/'),
+    [string]$RaceFilter = ''
 )
 
 # Erro explicito e sempre com throw/exit: a preferencia fica em Continue porque, no Windows
@@ -124,12 +126,15 @@ foreach ($candidate in $Image) {
     $output | ForEach-Object { $_ }
     $lastOutput = ($output | Out-String)
 
-    # DETECTOR DE CORRIDA (E-176). O gate acima roda com CGO_ENABLED=0, e `-race` EXIGE cgo - por isso nenhuma
-    # execucao de CI jamais usou deteccao de corrida. O host tambem nao tem gcc, mas a imagem golang TEM, entao o
-    # detector roda aqui. Cobre os testes de concorrencia do omnichannel (onde a corrida importa).
+    # DETECTOR DE CORRIDA (E-176/E-177). O gate acima roda com CGO_ENABLED=0, e `-race` EXIGE cgo - por isso
+    # nenhuma execucao de CI jamais usou deteccao de corrida. O host tambem nao tem gcc, mas a imagem golang TEM,
+    # entao o detector roda aqui. A suite INTEIRA roda sob -race (nao so onde se procura a corrida): no container
+    # isso custou ~91s (agent ~80s + server ~11s), sem DATA RACE.
     if ($exit -eq 0 -and -not $SkipRace) {
+        $raceClause = if ($RaceFilter) { "-run '$RaceFilter' " } else { '' }
+        $rotulo = if ($RaceFilter) { $RaceFilter } else { 'suite inteira' }
         Write-Host ""
-        Write-Host "=== detector de corrida: $RaceFilter (CGO_ENABLED=1) ==="
+        Write-Host "=== detector de corrida: $rotulo (CGO_ENABLED=1) ==="
         $raceOutput = & $docker run --rm `
             --volume "${repositoryRoot}:/src" `
             --volume "${moduleCache}:/gomodcache" `
@@ -141,7 +146,7 @@ foreach ($candidate in $Image) {
             --env GOCACHE=/tmp/gocache-race `
             --env TMPDIR=/tmp `
             --env CGO_ENABLED=1 `
-            $candidate sh -c "/usr/local/go/bin/go test -race $($RacePackages -join ' ') -run '$RaceFilter' -count=1 -timeout ${TimeoutMinutes}m" 2>&1
+            $candidate sh -c "/usr/local/go/bin/go test -race $($RacePackages -join ' ') -count=1 $raceClause-timeout ${TimeoutMinutes}m" 2>&1
         $raceExit = $LASTEXITCODE
         $raceOutput | ForEach-Object { $_ }
         $lastOutput = $lastOutput + ($raceOutput | Out-String)
