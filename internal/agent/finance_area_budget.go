@@ -30,6 +30,7 @@ type AreaBudget struct {
 // AreaBudgetStatus e' o orcamento com o gasto acumulado.
 type AreaBudgetStatus struct {
 	Area           string `json:"area"`
+	Periodo        string `json:"periodo"`
 	LimitCents     int64  `json:"limit_cents"`
 	SpentCents     int64  `json:"spent_cents"`
 	RemainingCents int64  `json:"remaining_cents"`
@@ -38,6 +39,18 @@ type AreaBudgetStatus struct {
 
 type areaBudgetFile struct {
 	Budgets []AreaBudget `json:"budgets"`
+}
+
+// janelaMensal devolve o intervalo [inicio, fim) do mes de `now`, em UTC.
+func janelaMensal(now time.Time) (time.Time, time.Time) {
+	base := now.UTC()
+	inicio := time.Date(base.Year(), base.Month(), 1, 0, 0, 0, 0, time.UTC)
+	return inicio, inicio.AddDate(0, 1, 0)
+}
+
+// PeriodoMensal formata o mes como AAAA-MM (rotulo estavel para relatorio e idempotencia).
+func PeriodoMensal(now time.Time) string {
+	return now.UTC().Format("2006-01")
 }
 
 // budgetPath devolve o arquivo de orcamentos da empresa. O arquivo do razao NAO e' tocado: orcamento e' politica,
@@ -106,9 +119,11 @@ func (f *FinanceOps) SetAreaBudget(companyID, area string, limitCents int64, now
 	return novo, nil
 }
 
-// areaSpentCents soma os CUSTOS lancados na area (despesa; receita nao consome orcamento).
-func (f *FinanceOps) areaSpentCents(companyID, area string) (int64, error) {
-	lancamentos, err := f.companies.ListLedgerEntries(companyID, time.Time{}, time.Time{})
+// areaSpentCents soma os CUSTOS da area DENTRO da janela (despesa; receita nao consome orcamento).
+//
+// O orcamento e MENSAL: sem a janela, o gasto de um mes consumiria o limite de todos os meses seguintes.
+func (f *FinanceOps) areaSpentCents(companyID, area string, inicio, fim time.Time) (int64, error) {
+	lancamentos, err := f.companies.ListLedgerEntries(companyID, inicio, fim)
 	if err != nil {
 		return 0, err
 	}
@@ -122,20 +137,22 @@ func (f *FinanceOps) areaSpentCents(companyID, area string) (int64, error) {
 	return total, nil
 }
 
-// AreaBudgetStatus devolve o orcamento de cada area com o gasto acumulado.
-func (f *FinanceOps) AreaBudgetStatus(companyID string) ([]AreaBudgetStatus, error) {
+// AreaBudgetStatus devolve o orcamento de cada area com o gasto DO MES informado.
+func (f *FinanceOps) AreaBudgetStatus(companyID string, periodo time.Time) ([]AreaBudgetStatus, error) {
 	orcamentos, err := f.loadAreaBudgets(companyID)
 	if err != nil {
 		return nil, err
 	}
+	inicio, fim := janelaMensal(periodo)
 	resultado := make([]AreaBudgetStatus, 0, len(orcamentos))
 	for _, orcamento := range orcamentos {
-		gasto, err := f.areaSpentCents(companyID, orcamento.Area)
+		gasto, err := f.areaSpentCents(companyID, orcamento.Area, inicio, fim)
 		if err != nil {
 			return nil, err
 		}
 		resultado = append(resultado, AreaBudgetStatus{
 			Area:           orcamento.Area,
+			Periodo:        PeriodoMensal(periodo),
 			LimitCents:     orcamento.LimitCents,
 			SpentCents:     gasto,
 			RemainingCents: orcamento.LimitCents - gasto,
@@ -158,7 +175,9 @@ func (f *FinanceOps) PostAreaCost(companyID, area, reference, description string
 	// A IDEMPOTENCIA VEM ANTES DA POLITICA. Se este custo JA foi lancado, a retentativa nao gasta orcamento novo:
 	// checar o orcamento primeiro recusava a retentativa de um custo ACEITO - e pior, somava o valor ja lancado,
 	// produzindo uma recusa aritmeticamente correta sobre semantica errada.
-	identidade := "area:" + companyID + "|" + area + "|" + strings.TrimSpace(reference)
+	// O PERIODO entra na chave: a mesma nota em outro mes e OUTRO custo. Sem isso, a cobranca de fevereiro seria
+	// engolida como "ja lancado" por causa da nota de janeiro.
+	identidade := "area:" + companyID + "|" + area + "|" + PeriodoMensal(now) + "|" + strings.TrimSpace(reference)
 	if strings.TrimSpace(reference) != "" {
 		existentes, err := f.companies.ListLedgerEntries(companyID, time.Time{}, time.Time{})
 		if err != nil {
@@ -183,7 +202,8 @@ func (f *FinanceOps) PostAreaCost(companyID, area, reference, description string
 		}
 	}
 	if temOrcamento {
-		gasto, err := f.areaSpentCents(companyID, area)
+		inicio, fim := janelaMensal(now)
+		gasto, err := f.areaSpentCents(companyID, area, inicio, fim)
 		if err != nil {
 			return LedgerEntry{}, err
 		}
