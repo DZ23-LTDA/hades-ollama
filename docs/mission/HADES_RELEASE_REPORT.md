@@ -9,7 +9,7 @@
 | Número | Valor |
 | --- | --- |
 | Estágios | 38 |
-| Linhas de evidência no índice | 192 |
+| Linhas de evidência no índice | 193 |
 | `COMPLETED_VERIFIED` | 2 |
 | `IN_PROGRESS` | 15 |
 | `BLOCKED_BY_EXTERNAL_DEPENDENCY` | 21 |
@@ -47,7 +47,7 @@ relatório **declara a ausência** em vez de preencher com suposição.
 | 12 | Studio / Builder visual | IMPLEMENTADO_NAO_HOMOLOGADO | IN_PROGRESS | — | E-008, E-009, E-028, E-034, E-035, E-039, E-178 |
 | 14 | Browser Operator / computer-use | PARCIAL | IN_PROGRESS | B-09 | E-015, E-086 |
 | 17 | Workspace do agente (threads, artefatos, preview) | PARCIAL | IN_PROGRESS | — | E-027 |
-| 18 | Seguranca, permissoes e multitenancy | IMPLEMENTADO_NAO_HOMOLOGADO | IN_PROGRESS | B-17 | E-019, E-031, E-058, E-070, E-071, E-072, E-073, E-121, E-122, E-123, E-189, E-190, E-191, E-192 |
+| 18 | Seguranca, permissoes e multitenancy | IMPLEMENTADO_NAO_HOMOLOGADO | IN_PROGRESS | B-17 | E-019, E-031, E-058, E-070, E-071, E-072, E-073, E-121, E-122, E-123, E-189, E-190, E-191, E-192, E-193 |
 | 19 | UX/onboarding e jornada de primeira execucao | IMPLEMENTADO_E_TESTADO | IN_PROGRESS | — | E-011, E-012, E-032, E-130, E-139, E-182 |
 | 21 | Benchmarks e comparativo competitivo | PARCIAL | IN_PROGRESS | — | E-021, E-054, E-117, E-160, E-161, E-164, E-165, E-166, E-167, E-168, E-169 |
 | 22 | Gate de engenharia intermediario | IMPLEMENTADO_NAO_HOMOLOGADO | IN_PROGRESS | — | E-005, E-006, E-007, E-013, E-014, E-017, E-034, E-036, E-048, E-059, E-098, E-099, E-113, E-140, E-179, E-180, E-181 |
@@ -90,7 +90,7 @@ possível sem ele**.
 
 ## Referências
 
-- Índice de evidências: [`HADES_EVIDENCE_INDEX.md`](HADES_EVIDENCE_INDEX.md) (192 linhas).
+- Índice de evidências: [`HADES_EVIDENCE_INDEX.md`](HADES_EVIDENCE_INDEX.md) (193 linhas).
 - Estado da missão: [`HADES_MASTER_STATE.json`](HADES_MASTER_STATE.json).
 - Gate global: [`HADES_FINAL_RELEASE_GATE.md`](HADES_FINAL_RELEASE_GATE.md).
 - Gate intermediário de engenharia (estágio 22): [`HADES_ENGINEERING_GATE.md`](HADES_ENGINEERING_GATE.md).
