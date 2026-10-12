@@ -2,7 +2,7 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-16T04:20:00-03:00",
+  "updated_at": "2026-10-16T05:30:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
@@ -588,12 +588,13 @@
       "capability": "PARCIAL",
       "evidence": [
         "E-027",
-        "E-215"
+        "E-215",
+        "E-242"
       ],
       "blocker": null,
-      "next": "Expor saida de ferramenta na linha do tempo (PR #69)",
+      "next": "Exposicao da saida por etapa FECHADA (E-242). Restam como limites declarados: o bloco e recolhido por padrao (nao ha preferencia persistida do usuario) e a saida e exibida integralmente ate 4000 caracteres, sem renderizacao estruturada por tipo de ferramenta",
       "execution": "IN_PROGRESS",
-      "done": "WORKSPACE E LINHA DO TEMPO (E-215): estado de missao, workspace isolado, aprovacoes e eventos persistidos que alimentam notificacoes. MEDIDO: 29 testes PASS no filtro 'Timeline|Workspace|MissionTimeline'. LACUNA DECLARADA: expor a saida de ferramenta por etapa na linha do tempo da interface."
+      "done": "WORKSPACE E LINHA DO TEMPO (E-215): estado de missao, workspace isolado, aprovacoes e eventos persistidos que alimentam notificacoes. MEDIDO: 29 testes PASS no filtro 'Timeline|Workspace|MissionTimeline'. LACUNA DECLARADA: expor a saida de ferramenta por etapa na linha do tempo da interface. SAIDA DE FERRAMENTA POR ETAPA EXPOSTA NA LINHA DO TEMPO (E-242): a interface mostrava o ERRO da etapa mas NAO o RESULTADO, entao uma etapa que produziu saida parecia nao ter produzido nada. Agora cada etapa com resultado ganha um bloco acessivel 'Saida da ferramenta' (details/summary, nativo de teclado e leitor de tela). Decisoes: saida vazia/nula NAO rende bloco (caixa vazia sugeriria execucao sem resultado) e saida longa e TRUNCADA COM AVISO explicito e tamanho original (truncar em silencio faria o usuario acreditar que viu tudo). MEDIDO: 5 testes novos PASS e suite COMPLETA da UI com 87 arquivos / 585 testes PASS, sem regressao."
     },
     {
       "id": 18,
@@ -1797,7 +1798,10 @@
     "QUESTAO ABERTA RESOLVIDA IMPLEMENTANDO, NAO REESCREVENDO A ALEGACAO (E-240): em E-239 eu medi que os agentes compartilhavam UM workspace e registrei a duvida (isolamento por agente ou por job?). A resposta correta era IMPLEMENTAR o isolamento por agente, que e o que o estagio 9 pede ('workspaces isolados'): cada agente passou a receber o proprio subdiretorio. Medido: workspaces_ISOLADOS=3 e o artefato de um agente nao aparece no workspace do outro",
     "A LICAO DE E-239 VIROU CODIGO (E-240): a contencao na raiz do orquestrador foi DELIBERADAMENTE omitida, porque quebraria uso legitimo (workspace de job fora da raiz). O isolamento vem do SUBDIRETORIO por agente, e o id e higienizado para nao virar travessia. Derivacao idempotente: um reprocessamento nao aninha o caminho de novo",
     "CUSTO POR ETAPA NAO E ATRIBUIVEL, E ISSO E UMA MEDICAO (E-241): eu ia implementar 'consumo por etapa' no estagio 10. Ao auditar, medi que existe UM unico ponto injetando SetPlanUsageSink (runtime.go:1189), dentro da chamada de PLANEJAMENTO que gera todos os passos de uma vez. Repartir esse valor por etapa seria escolher um criterio inventado e apresentar como custo real. A resposta honesta e declarar o limite e propor expor a ORIGEM 'planejamento' na linha do tempo - nao fabricar um numero por etapa",
-    "AUDITORIA EVITOU TRABALHO INUTIL (E-241): o item pendente do estagio 10 estava formulado como 'falta custo por etapa', o que sugere implementacao simples. A medicao mostrou que a atribuicao exigiria mudanca de arquitetura (chamada de modelo por etapa) ou rateio arbitrario. Registrar isso evita que a proxima sessao gaste uma rodada tentando dividir um numero indivisivel"
+    "AUDITORIA EVITOU TRABALHO INUTIL (E-241): o item pendente do estagio 10 estava formulado como 'falta custo por etapa', o que sugere implementacao simples. A medicao mostrou que a atribuicao exigiria mudanca de arquitetura (chamada de modelo por etapa) ou rateio arbitrario. Registrar isso evita que a proxima sessao gaste uma rodada tentando dividir um numero indivisivel",
+    "DEFEITO DE INTERFACE ENCONTRADO POR LEITURA DIRIGIDA (E-242): o tipo MissionStep JA declarava 'result' e o componente JA renderizava 'error', mas NINGUEM renderizava 'result' - o dado viajava do backend ate a interface e morria ali. Etapa com saida parecia etapa vazia. Nenhum teste pegava porque faltava o caso 'etapa COM resultado'",
+    "TRUNCAMENTO DECLARADO, NUNCA SILENCIOSO (E-242): saida maior que 4000 caracteres e cortada COM aviso e com o numero de caracteres nao exibidos. Cortar em silencio faria o usuario acreditar que viu a saida inteira - o mesmo principio de 'declarar o limite' aplicado a interface",
+    "UI VALIDADA COM A SUITE INTEIRA (E-242): rodar apenas o teste novo nao bastaria; a suite completa da interface (87 arquivos, 585 testes) foi executada e passou, provando que expor a saida nao quebrou a timeline existente"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",

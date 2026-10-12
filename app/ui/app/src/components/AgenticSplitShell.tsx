@@ -48,6 +48,35 @@ export interface MissionData {
   last_error?: string;
 }
 
+/**
+ * Texto da SAÍDA DA FERRAMENTA de uma etapa. `result` chega como `unknown`: string vira o próprio texto,
+ * número/booleano viram texto e objeto vira JSON indentado. Vazio/nulo NÃO rende bloco — caixa vazia na
+ * timeline sugeriria execução sem resultado.
+ *
+ * Saída muito longa é TRUNCADA COM AVISO EXPLÍCITO (e o tamanho original informado): truncar em silêncio
+ * faria o usuário acreditar que viu tudo.
+ */
+export const STEP_RESULT_MAX_CHARS = 4000;
+
+export function formatStepResult(result: unknown): string {
+  if (result === null || result === undefined) return "";
+  let texto: string;
+  if (typeof result === "string") {
+    texto = result.trim();
+  } else if (typeof result === "number" || typeof result === "boolean") {
+    texto = String(result);
+  } else {
+    try {
+      texto = JSON.stringify(result, null, 2) ?? "";
+    } catch {
+      return "";
+    }
+  }
+  if (texto.length <= STEP_RESULT_MAX_CHARS) return texto;
+  const resto = texto.length - STEP_RESULT_MAX_CHARS;
+  return `${texto.slice(0, STEP_RESULT_MAX_CHARS)}\n… (saída truncada: ${resto} caracteres não exibidos)`;
+}
+
 interface AgenticSplitShellProps {
   mission: MissionData | null;
   onRefreshMission?: () => Promise<void>;
@@ -306,6 +335,19 @@ export function AgenticSplitShell({
                             <p className="mt-1 text-xs text-red-600 dark:text-red-400 font-mono">
                               {step.error}
                             </p>
+                          )}
+
+                          {/* SAÍDA DA FERRAMENTA POR ETAPA: sem isto o resultado real de cada passo ficava
+                              invisível na timeline, e a etapa parecia não ter produzido nada. */}
+                          {formatStepResult(step.result) && (
+                            <details className="mt-2 rounded-md border border-neutral-200 bg-neutral-50 px-2 py-1 dark:border-neutral-800 dark:bg-neutral-900/60">
+                              <summary className="cursor-pointer text-[11px] font-medium text-neutral-700 dark:text-neutral-300">
+                                Saída da ferramenta
+                              </summary>
+                              <pre className="mt-1 max-h-48 overflow-auto whitespace-pre-wrap break-words font-mono text-[11px] text-neutral-700 dark:text-neutral-300">
+                                {formatStepResult(step.result)}
+                              </pre>
+                            </details>
                           )}
 
                           {/* CARD DE APROVAÇÃO IN-LINE NA TIMELINE */}
