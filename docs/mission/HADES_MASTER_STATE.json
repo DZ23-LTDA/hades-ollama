@@ -2,7 +2,7 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-15T23:40:00-03:00",
+  "updated_at": "2026-10-16T00:45:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
@@ -508,10 +508,11 @@
         "E-084",
         "E-085",
         "E-236",
-        "E-237"
+        "E-237",
+        "E-238"
       ],
       "blocker": null,
-      "next": "COMPENSACAO FECHADA (E-237): a lacuna do §11.7 medida em E-236 foi IMPLEMENTADA e exercitada - passo com CompensateWith e desfeito em ORDEM INVERSA quando um passo posterior falha de forma definitiva, com registro POR NO (compensated / compensation_failed) e incidente em dead letter quando a compensacao nao roda. Medido: ordem=compensa-b -> compensa-a, falha=failed, missoes_de_compensacao=2. LIMITE DECLARADO: os passos de compensacao pertencem ao MESMO grafo (o validador exige alcancabilidade), entao tambem executam no passe normal enquanto nao houver marcacao de 'somente compensacao' - proxima rodada deve exclui-los da ordenacao normal, sem quebrar o validador",
+      "next": "LIMITE DE E-237 FECHADO (E-238): existe marcacao 'somente compensacao' e o validador permanece FAIL-CLOSED - gatilho marcado, passo marcado sem quem o use e dependencia num passo marcado sao RECUSADOS (3 casos testados). Medido: passe_normal=\"passo somente de compensacao: roda apenas no desfazer\" e missoes_de_desfazer=1 (antes o desfazer rodava DUAS vezes: no passe normal e no desfazer). Proximo trabalho segue nos estagios elegiveis das ondas seguintes",
       "done": "VERIFICADO ATIVIDADE POR ATIVIDADE em HADES_STAGE_13_VERIFICATION.md: criterio de conclusao cumprido (falha simulada, retry, reinicio de worker e retomada, com evidencia por no e sem duplicata) e lista de atividades coberta - gatilhos, condicoes, acoes, conectores, webhooks, schedules, variaveis, transformacoes, branches (corrigido nesta rodada), loops limitados, aprovacoes, filas, retry, DLQ, idempotencia, reprocessamento, persistencia, logs por no, versionamento, testes, execucao manual e programada",
       "limits": "LIMITES DECLARADOS (nao sao cobertura): conector homologado contra servidor HTTPS controlado, com credenciais de SaaS de terceiros ainda BLOCKED_BY_EXTERNAL_DEPENDENCY (estagios 25/33/36); falha de passo com efeito ABORTA o fluxo em vez de desviar para o ramo alternativo; execucao do fluxo por tick do supervisor, com a fila de jobs cobrindo as missoes criadas pelos nos",
       "execution": "COMPLETED_VERIFIED"
@@ -1784,7 +1785,9 @@
     "DISTRIBUICAO VERIFICADA - SEM SUPERESTIMACAO (E-236): o §11.7 pede instalacao limpa, atualizacao, rollback e desinstalacao em SOs testados. Existem docs/mission/HADES_GATE_22_INSTALL_CYCLE.md, job de SBOM no CI (anchore/sbom-action), scripts/install.ps1 e scripts/install.sh, e o workflow cita reinicio/atualizacao/rollback. O que segue externo e a NOTARIZACAO Apple (certificado), nao o ciclo de instalacao",
     "COMPENSACAO (SAGA) IMPLEMENTADA E MEDIDA (E-237): o motor desfaz em ORDEM INVERSA o efeito dos passos que tiveram sucesso e declararam CompensateWith, quando um passo posterior falha definitivamente. A falha NAO e mascarada (erro continua erro), cada compensacao vira linha propria no relatorio por no, e compensacao que nao consegue rodar vira INCIDENTE em dead letter em vez de silencio. Medido: ordem=compensa-b -> compensa-a, falha=failed, missoes_de_compensacao=2",
     "DOIS DEFEITOS MEUS PEGOS PELO PROPRIO TESTE ANTES DE SUBIR (E-237): (1) a ancora do patch usava um espaco onde o arquivo tem TAB + alinhamento - o script ABORTOU sem escrever nada (bom: patch atomico), o que evitou um arquivo pela metade; (2) eu zerava DependsOn do passo de compensacao para 'roda sozinho', mas o VALIDADOR exige que todo passo de ACAO tenha ao menos uma dependencia - a compensacao passou a depender do GATILHO, que conclui sem efeito. O teste falhou com o motivo exato ('requires at least one dependency'), nao com silencio",
-    "DESCOBERTA SOBRE O MOTOR (E-237): passos de compensacao precisam ser ALCANCAVEIS para passar na validacao, logo tambem executam no passe normal enquanto nao houver marcacao de 'somente compensacao'. Alternativa considerada e rejeitada nesta rodada: afrouxar a validacao para aceitar passos inalcancaveis, o que abriria excecao num validador que hoje e fail-closed - trocar garantia por conveniencia nao e progresso"
+    "DESCOBERTA SOBRE O MOTOR (E-237): passos de compensacao precisam ser ALCANCAVEIS para passar na validacao, logo tambem executam no passe normal enquanto nao houver marcacao de 'somente compensacao'. Alternativa considerada e rejeitada nesta rodada: afrouxar a validacao para aceitar passos inalcancaveis, o que abriria excecao num validador que hoje e fail-closed - trocar garantia por conveniencia nao e progresso",
+    "LIMITE DE E-237 FECHADO COM VALIDACAO QUE NAO AFROUXOU NADA (E-238): a marca 'somente compensacao' resolve o passo que rodava duas vezes (no fluxo normal e no desfazer). Em vez de aceitar passos inalcancaveis - o que abriria excecao num validador fail-closed - a marca ganhou TRES invariantes: gatilho nao pode ser somente compensacao, passo marcado precisa ser REALMENTE referenciado por algum CompensateWith, e ninguem pode depender dele. Medido: 3 casos recusados e missoes_de_desfazer=1",
+    "QUINTO DEFEITO MEU PEGO PELO PROPRIO BUILD (E-238): o padrao de ancoragem 'return nil }' casou com o FIM DA FUNCAO ERRADA (validateScheduleStepShape, que recebe 'step' e nao 'steps'), e a chamada foi parar fora do escopo. O compilador apontou 'undefined: steps' e eu localizei a funcao real em vez de adivinhar. Licao: ancorar por trecho generico em arquivo de 1500 linhas e frágil; ancorar por ASSINATURA de funcao quando possivel"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
