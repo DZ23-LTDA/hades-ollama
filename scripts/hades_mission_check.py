@@ -334,6 +334,28 @@ def verificar_bloqueios(bloqueios_path: Path, ids_do_estado: set[str]) -> tuple[
     return problemas, {"no_documento": len(no_documento), "no_estado": len(ids_do_estado)}
 
 
+MARCADORES_DE_CONFLITO = ("<<<<<<<", ">>>>>>>")
+
+
+def verificar_sem_marcadores_de_conflito(caminhos: list[Path]) -> list[str]:
+    """Reprova documento da missão que contenha marcador de merge não resolvido.
+
+    MOTIVO (E-201): eu commitei um `HADES_MASTER_STATE.json` com marcadores de conflito e quem pegou foi o CI, por
+    acidente — o `json.loads` estourou. O checker **passava**, porque ele valida estrutura, numeração e citações, não o
+    texto bruto: um índice com `<<<<<<<` era considerado "consistente". Marcador de conflito é falha dura: significa
+    que duas versões da escrituração foram misturadas sem decisão.
+    """
+    problemas: list[str] = []
+    for caminho in caminhos:
+        if not caminho.exists():
+            continue
+        texto = caminho.read_text(encoding="utf-8", errors="replace")
+        encontrados = [m for m in MARCADORES_DE_CONFLITO if m in texto]
+        if encontrados:
+            problemas.append(f"{caminho.name} tem marcador de conflito de merge não resolvido: {' '.join(encontrados)}")
+    return problemas
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Confere a escrituração da missão.")
     parser.add_argument("--state", type=Path, default=ESTADO_PADRAO)
@@ -357,6 +379,21 @@ def main() -> int:
     ids_do_estado = {b.get("id") for b in estado.get("blockers", [])}
     problemas_bloqueios, resumo_bloqueios = verificar_bloqueios(args.blockers, ids_do_estado)
     problemas += problemas_bloqueios
+
+    # 9. Nenhum documento da escrituração (nem os gerados) pode conter marcador de merge não resolvido.
+    problemas += verificar_sem_marcadores_de_conflito(
+        [
+            args.state,
+            args.index,
+            args.report,
+            args.blockers,
+            RAIZ / "docs/mission" / "HADES_FINAL_RELEASE_GATE.md",
+            RAIZ / "docs/mission" / "HADES_RELEASE_REPORT.md",
+            RAIZ / "docs/mission" / "HADES_BASELINE_REPORT.md",
+            RAIZ / "docs/mission" / "HADES_FAILURE_INDEX.md",
+            RAIZ / "docs/mission" / "HADES_STAGE_MAP.md",
+        ]
+    )
 
     print(f"índice: {resumo['evidencias']} evidências (E-001..E-{resumo['ultimo_id']:03d})")
     print(f"estágios: {resumo['estagios']} · bloqueios declarados: {resumo['bloqueios']}")
