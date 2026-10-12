@@ -9,7 +9,7 @@
 | Número | Valor |
 | --- | --- |
 | Estágios | 38 |
-| Linhas de evidência no índice | 247 |
+| Linhas de evidência no índice | 248 |
 | `COMPLETED_VERIFIED` | 2 |
 | `IN_PROGRESS` | 15 |
 | `BLOCKED_BY_EXTERNAL_DEPENDENCY` | 21 |
@@ -44,7 +44,7 @@ relatório **declara a ausência** em vez de preencher com suposição.
 | 8 | Plugins e Skills | PARCIAL | IN_PROGRESS | B-14 | E-042, E-053, E-055, E-063, E-065, E-066, E-067, E-068, E-183, E-184, E-185, E-200 |
 | 9 | Agentes e subagentes (delegacao) | IMPLEMENTADO_NAO_HOMOLOGADO | IN_PROGRESS | — | E-043, E-215, E-239, E-240 |
 | 10 | Mission Control multiagente (missoes, eventos, SSE, artefatos) | PARCIAL | IN_PROGRESS | — | E-020, E-027, E-103, E-214, E-216, E-217, E-218, E-219, E-241, E-243, E-244, E-245 |
-| 12 | Studio / Builder visual | IMPLEMENTADO_NAO_HOMOLOGADO | IN_PROGRESS | — | E-008, E-009, E-028, E-034, E-035, E-039, E-178, E-246, E-247 |
+| 12 | Studio / Builder visual | IMPLEMENTADO_NAO_HOMOLOGADO | IN_PROGRESS | — | E-008, E-009, E-028, E-034, E-035, E-039, E-178, E-246, E-247, E-248 |
 | 14 | Browser Operator / computer-use | PARCIAL | IN_PROGRESS | B-09 | E-015, E-086 |
 | 17 | Workspace do agente (threads, artefatos, preview) | PARCIAL | IN_PROGRESS | — | E-027, E-215, E-242 |
 | 18 | Seguranca, permissoes e multitenancy | IMPLEMENTADO_NAO_HOMOLOGADO | IN_PROGRESS | — | E-019, E-031, E-058, E-070, E-071, E-072, E-073, E-121, E-122, E-123, E-189, E-190, E-191, E-192, E-193, E-194, E-195, E… |
@@ -90,7 +90,7 @@ possível sem ele**.
 
 ## Referências
 
-- Índice de evidências: [`HADES_EVIDENCE_INDEX.md`](HADES_EVIDENCE_INDEX.md) (247 linhas).
+- Índice de evidências: [`HADES_EVIDENCE_INDEX.md`](HADES_EVIDENCE_INDEX.md) (248 linhas).
 - Estado da missão: [`HADES_MASTER_STATE.json`](HADES_MASTER_STATE.json).
 - Gate global: [`HADES_FINAL_RELEASE_GATE.md`](HADES_FINAL_RELEASE_GATE.md).
 - Gate intermediário de engenharia (estágio 22): [`HADES_ENGINEERING_GATE.md`](HADES_ENGINEERING_GATE.md).
