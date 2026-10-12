@@ -24,7 +24,7 @@ PROVIDERS = [
     ("ollama-cloud", "OLLAMA_API_KEY", "https://ollama.com/v1", "gpt-oss:20b"),
     ("hyperbolic", "HYPERBOLIC_API_KEY", "https://api.hyperbolic.xyz/v1", "meta-llama/Meta-Llama-3.1-8B-Instruct"),
     ("alibaba", "ALIBABA_API_KEY", os.getenv("ALIBABA_BASE_URL", "https://dashscope-intl.aliyuncs.com/compatible-mode/v1"), "qwen-turbo"),
-    ("gemini", "GEMINI_API_KEY", "https://generativelanguage.googleapis.com/v1beta/openai", os.getenv("GEMINI_MODEL", "gemini-2.5-flash")),
+    ("gemini", "GEMINI_API_KEY", "https://generativelanguage.googleapis.com/v1beta/openai", os.getenv("GEMINI_MODEL", "gemini-3.8-flash")),
     ("huggingface", "HUGGINGFACE_TOKEN", "https://router.huggingface.co/v1", os.getenv("HUGGINGFACE_MODEL", "deepseek-ai/DeepSeek-R1:fastest")),
 ]
 
