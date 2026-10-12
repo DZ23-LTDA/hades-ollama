@@ -38,6 +38,11 @@ func TestGovernedCLIHelperProcess(t *testing.T) {
 	case helperCLIHasArg(args, "--env-probe"):
 		_, _ = fmt.Fprintf(os.Stdout, "probe_segredos=%d\nprobe_path_len=%d\n", helperCLISecretCount(), len(os.Getenv("PATH")))
 		helperCLIExitOK()
+	case helperCLIHasArg(args, "--temp-probe"):
+		// MOSTRA ONDE O FILHO FOI MANDADO ESCREVER (E-208): o TEMP do operador pode ser somente leitura em ambiente
+		// confinado, então o runner precisa entregar um diretório gravável da própria sessão.
+		_, _ = fmt.Fprintf(os.Stdout, "TEMP=%s|TMP=%s|TMPDIR=%s", os.Getenv("TEMP"), os.Getenv("TMP"), os.Getenv("TMPDIR"))
+		helperCLIExitOK()
 	default:
 		_, _ = fmt.Fprintf(os.Stdout, "HARNESS_OK|%s", args[len(args)-1])
 		helperCLIExitOK()
