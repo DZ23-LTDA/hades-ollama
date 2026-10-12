@@ -183,7 +183,9 @@ func (s *CompanyStore) TelAgentSessionForOrganization(id, organizationID, sessio
 	sessionID = strings.TrimSpace(sessionID)
 	company, err := s.Get(id)
 	if err != nil {
-		return TelAgentSession{}, err
+		// NÃO INFERÊNCIA (E-192, fechamento de B-16): mesma correção do B-15 — a sessão de outro tenant e a sessão de
+		// empresa inexistente precisam devolver a MESMA recusa.
+		return TelAgentSession{}, ErrTelAgentOrganizationMismatch
 	}
 	if strings.TrimSpace(company.OrganizationID) != organizationID {
 		return TelAgentSession{}, ErrTelAgentOrganizationMismatch
