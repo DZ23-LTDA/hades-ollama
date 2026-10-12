@@ -2,7 +2,7 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-15T15:20:00-03:00",
+  "updated_at": "2026-10-15T15:55:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
@@ -1758,7 +1758,8 @@
     "O SMOKE DE PROVEDORES DO PRODUTO AGORA FECHA testado=5 failed=0 exit=0 com chaves reais (openrouter, deepseek, groq, mistral, gemini). E o caminho do CI, nao um instrumento meu - e por isso vale como evidencia de estagio 4",
     "INCIDENTE DE PROCESSO NA E-229 (autoinfligido, detectado por verificacao): encadeei 'git checkout main' com 'git reset --hard origin/main'. O checkout ABORTOU porque havia alteracoes nao commitadas no script de smoke, e o reset rodou em seguida - descartando as duas correcoes de codigo do E-229. O commit de docs foi criado e o indice passou a AFIRMAR um codigo que nao existia. Detectado ao conferir 'git show --stat' e procurar a correcao no arquivo. Reaplicado e REVALIDADO (tested=5 failed=0 exit=0) no mesmo PR. REGRA: nunca encadear reset --hard depois de um checkout que pode falhar; conferir $LASTEXITCODE a cada passo; e depois de escrever evidencia de correcao, PROVAR que o arquivo contem a correcao",
     "ESTADO QUE SUBESTIMAVA A COBERTURA (E-230): o registro do estagio 34 afirmava que 'pacotes fora de internal/agent e server seguem sem detector'. E FALSO: .github/workflows/test.yaml, job 'race' (matriz ubuntu-latest + macos-latest, CGO_ENABLED=1), termina em 'go test -race -count=1 ./...' - TODOS os pacotes. Subestimar o proprio produto e tao ruim quanto superestimar: as duas coisas sao registro falso",
-    "LIMITE LOCAL x LACUNA DO REPO (E-230): -race NAO roda nesta maquina (CGO_ENABLED=0 e sem gcc/cc). Isso e limitacao do AMBIENTE, nao lacuna de cobertura do repositorio. Passar a distinguir explicitamente 'nao consegui executar aqui' de 'o projeto nao cobre' evita registrar lacuna onde so falta ferramenta local"
+    "LIMITE LOCAL x LACUNA DO REPO (E-230): -race NAO roda nesta maquina (CGO_ENABLED=0 e sem gcc/cc). Isso e limitacao do AMBIENTE, nao lacuna de cobertura do repositorio. Passar a distinguir explicitamente 'nao consegui executar aqui' de 'o projeto nao cobre' evita registrar lacuna onde so falta ferramenta local",
+    "PENDENCIA DECLARADA - EVIDENCIAS SEM VINCULO DE ESTAGIO (13 de 230): o mestre exige, para cada evidencia, 'estagio e tarefa associados'. Medido: E-003, E-004, E-010, E-060, E-061, E-062, E-064, E-091, E-115, E-127, E-129, E-131, E-173 existem no indice mas NENHUM estagio as cita. Apenas tres sao inequivocamente atribuiveis pelo proprio texto (E-091 -> 18, E-129 -> 20, E-173 -> 22); as outras exigiriam julgamento. NAO VINCULEI POR CHUTE: inventar vinculo seria criar rastro falso. Fica como tarefa de passada dedicada"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
