@@ -452,7 +452,9 @@ func (q *JobQueue) ReplayForOrganization(organizationID, jobID string) (QueueJob
 	err := q.withFileStateLocked(func() error {
 		job, ok := q.jobs[jobID]
 		if !ok {
-			return os.ErrNotExist
+			// NÃO INFERÊNCIA (E-195): a recusa precisa ser a MESMA do ramo de organização (que vinha depois), senão o
+			// tenant distingue "job inexistente" de "job de outro tenant".
+			return ErrQueueJobForbidden
 		}
 		if job.Status != QueueDeadLetter {
 			return fmt.Errorf("job %s is not replayable", jobID)

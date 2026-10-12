@@ -113,21 +113,24 @@ class CalibracaoDoScanner(unittest.TestCase):
         ):
             self.assertNotIn(metodo, suspeitos, f"método já corrigido voltou a ser suspeito: {metodo}")
 
-    def test_o_candidato_restante_esta_declarado_e_verificado(self) -> None:
-        # O scanner deixa UM candidato: o `call` do MCP remoto. Ele foi VERIFICADO em E-194 com teste que compara as
-        # duas recusas (`TestRemoteMCPTenantOperationsDoNotRevealExistence`): no caminho de TENANT as duas são a mesma
-        # (`ErrPluginOrganizationScope`), e o scanner o aponta porque o caminho GLOBAL mantém, de propósito, a mensagem
-        # informativa — ali não há tenant de quem inferir.
+    def test_o_conjunto_de_candidatos_e_exatamente_o_esperado(self) -> None:
+        # A lista precisa ser CURTA E EXPLICADA. Cada candidato abaixo foi olhado; os dois são falsos positivos
+        # conhecidos do heurístico, e o motivo fica escrito aqui — não escondido:
         #
-        # A regra continua valendo: apontar não é provar, e silenciar a lista para ficar bonita seria o oposto de
-        # auditar. Por isso o candidato precisa CONTINUAR VISÍVEL, e este teste é o registro de que ele foi olhado.
-        suspeitos = {(achado["arquivo"], achado["metodo"]) for achado in scanner.varrer()}
-        self.assertIn(
+        # - `mcp_remote.go::call`: o caminho de TENANT devolve a mesma recusa (E-194). O scanner o aponta porque o
+        #   caminho GLOBAL mantém, de propósito, a mensagem "não registrado" — ali não há tenant de quem inferir.
+        # - `auth.go::refreshOAuthCredential`: o caminho de TENANT devolve a MESMA mensagem de "fora da organização"
+        #   (E-195). O scanner compara o texto dos dois ramos e não enxerga a condicional `organizationID != ""`; sem
+        #   tenant não existe o ramo de organização, então não há assimetria para um tenant.
+        #
+        # Exigir o conjunto EXATO (e não apenas "contém") é o que transforma a lista num instrumento: um candidato
+        # novo aparece aqui como falha de calibração, e um candidato que sumir avisa que o scanner ficou cego.
+        esperado = {
+            ("internal/agent/auth.go", "refreshOAuthCredential"),
             ("internal/agent/mcp_remote.go", "call"),
-            suspeitos,
-            "o candidato verificado (tenant) e intencional (global) precisa continuar visível: se sumir, o scanner ficou cego",
-        )
-
+        }
+        obtido = {(achado["arquivo"], achado["metodo"]) for achado in scanner.varrer()}
+        self.assertEqual(esperado, obtido, f"conjunto de candidatos mudou: {sorted(obtido)}")
 
 if __name__ == "__main__":
     unittest.main()

@@ -885,7 +885,9 @@ func (s *ContextStore) SetSkillEnabledForOrganization(organizationID, id string,
 	id = strings.TrimSpace(id)
 	skill, ok := s.skills[id]
 	if !ok {
-		return fmt.Errorf("skill %q is not registered", id)
+		// NÃO INFERÊNCIA (E-195): "skill não registrada" e "skill de outro tenant" devolviam recusas diferentes,
+		// e a diferença revela a existência do ID. A recusa passa a ser a MESMA.
+		return ErrPluginOrganizationScope
 	}
 	if !pluginOwnedByOrganization(skill.OrganizationID, strings.TrimSpace(organizationID)) {
 		return ErrPluginOrganizationScope
@@ -910,7 +912,9 @@ func (s *ContextStore) PromoteSkillTrustedForOrganization(organizationID, id str
 	organizationID = strings.TrimSpace(organizationID)
 	skill, ok := s.skills[id]
 	if !ok {
-		return fmt.Errorf("skill %q is not registered", id)
+		// NÃO INFERÊNCIA (E-195): "skill não registrada" e "skill de outro tenant" devolviam recusas diferentes,
+		// e a diferença revela a existência do ID. A recusa passa a ser a MESMA.
+		return ErrPluginOrganizationScope
 	}
 	if !pluginOwnedByOrganization(skill.OrganizationID, organizationID) {
 		return ErrPluginOrganizationScope
@@ -956,7 +960,9 @@ func (s *ContextStore) RemoveSkillForOrganization(organizationID, id string) err
 	id = strings.TrimSpace(id)
 	skill, ok := s.skills[id]
 	if !ok {
-		return fmt.Errorf("skill %q is not registered", id)
+		// NÃO INFERÊNCIA (E-195): "skill não registrada" e "skill de outro tenant" devolviam recusas diferentes,
+		// e a diferença revela a existência do ID. A recusa passa a ser a MESMA.
+		return ErrPluginOrganizationScope
 	}
 	if !pluginOwnedByOrganization(skill.OrganizationID, strings.TrimSpace(organizationID)) {
 		return ErrPluginOrganizationScope
