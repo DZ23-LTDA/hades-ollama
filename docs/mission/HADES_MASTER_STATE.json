@@ -2,7 +2,7 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-14T23:00:00-03:00",
+  "updated_at": "2026-10-15T00:20:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
@@ -294,11 +294,13 @@
         "E-040",
         "E-043",
         "E-044",
-        "E-045"
+        "E-045",
+        "E-215"
       ],
       "blocker": null,
       "next": "Definir e versionar os contratos por componente (hoje existem motores reais, mas sem registro de contrato versionado por modulo)",
-      "execution": "IN_PROGRESS"
+      "execution": "IN_PROGRESS",
+      "done": "ARQUITETURA E CONTRATOS (E-215): os componentes canonicos tem motor real no nucleo agentico (runtime, mission control, gateway de modelos, harness, orquestrador, ferramentas, MCP, plugins, skills, memoria, builder, workflows, politica, artefatos e observabilidade). MEDIDO: 16 testes PASS no filtro 'Contract|Catalogo|Catalog|Component'. LACUNA DECLARADA: contrato VERSIONADO por modulo ainda nao registrado."
     },
     {
       "id": 4,
@@ -312,11 +314,13 @@
         "E-038",
         "E-049",
         "E-209",
-        "E-210"
+        "E-210",
+        "E-215"
       ],
       "blocker": "B-07",
       "next": "Chamada real opt-in via internal/multillm (free-tier primeiro: groq/cerebras) para verificar inferencia por provedor; rotacionar as 3 chaves com authentication_failed",
-      "execution": "BLOCKED_BY_EXTERNAL_DEPENDENCY"
+      "execution": "BLOCKED_BY_EXTERNAL_DEPENDENCY",
+      "done": "MODEL GATEWAY UNIVERSAL (E-215): o pacote internal/multillm esta completo - presets de provedor, registry, roteamento (RouteCandidates/Route), descoberta de modelos, probe de provedor, egress zero-trust e ledger de custo. MEDIDO: 77 testes PASS na suite do pacote. LACUNA DECLARADA: a verificacao de INFERENCIA por provedor de nuvem (B-07) - o instrumento opt-in existe (E-210) e roda quando a credencial estiver no ambiente."
     },
     {
       "id": 5,
@@ -348,11 +352,13 @@
         "E-205",
         "E-206",
         "E-207",
-        "E-208"
+        "E-208",
+        "E-215"
       ],
       "blocker": "B-01",
       "next": "Sessao real de CLI: 5 hipoteses eliminadas (E-207). Candidato restante, NAO testado: contexto de criacao do processo (token/integridade/console) do filho do runner. Nao chamar de causa sem medir",
-      "execution": "IN_PROGRESS"
+      "execution": "IN_PROGRESS",
+      "done": "HARNESS RUNTIME UNIVERSAL (E-215): catalogo governado de CLI (claude, codex, gemini, copilot), resolvedor que RECUSA interpretadores genericos (protecao contra shell injection), ambiente em allowlist SEM credenciais, DLP na entrada e na saida, timeout e limite de saida, e TEMP gravavel por sessao (E-208). MEDIDO: 13 testes PASS no filtro 'GovernedCLI|Harness'. LACUNA DECLARADA: sessao real de CLI (E-207) bloqueada no bootstrap da propria CLI dentro do contexto nao-interativo."
     },
     {
       "id": 7,
@@ -363,11 +369,13 @@
       "evidence": [
         "E-018",
         "E-019",
-        "E-026"
+        "E-026",
+        "E-215"
       ],
       "blocker": "B-10",
       "next": "Promover catalogos mcp=4 para chamada real homologada",
-      "execution": "IN_PROGRESS"
+      "execution": "IN_PROGRESS",
+      "done": "MCP MANAGER (E-215): servidores MCP locais e remotos com descoberta, sessao, permissoes por servidor e ferramenta, health check, timeout, retry, logs sanitizados e auditoria. MEDIDO: 44 testes PASS no filtro 'MCP|Mcp'. LACUNA DECLARADA: promover os catalogos a CHAMADA REAL homologada (hoje ha contrato e execucao governada, nao homologacao externa)."
     },
     {
       "id": 8,
@@ -401,11 +409,13 @@
       "auditoria": "AUDITADO",
       "capability": "IMPLEMENTADO_NAO_HOMOLOGADO",
       "evidence": [
-        "E-043"
+        "E-043",
+        "E-215"
       ],
       "blocker": null,
       "next": "Rodar missao multiagente real com artefatos consolidados e prova de isolamento de workspace",
-      "execution": "IN_PROGRESS"
+      "execution": "IN_PROGRESS",
+      "done": "AGENTES E SUBAGENTES ESPECIALIZADOS (E-215): agentes de servico e de empresa com contrato canonico (ServiceAgentSpec), orquestrador com delegacao, cotas, profundidade, isolamento de workspace e aprovacoes com quorum. MEDIDO: 94 testes PASS no filtro 'ServiceAgent|CompanyAgent|Delegat|Orchestrator'. LACUNA DECLARADA: missao MULTIAGENTE real com artefatos consolidados e prova de isolamento de workspace."
     },
     {
       "id": 10,
@@ -540,11 +550,13 @@
       "auditoria": "AUDITADO_PARCIAL",
       "capability": "APENAS_ADAPTER",
       "evidence": [
-        "E-030"
+        "E-030",
+        "E-215"
       ],
       "blocker": "B-03",
       "next": "Homologar com token real (bloqueado externamente); PRs #63 e #65",
-      "execution": "BLOCKED_BY_EXTERNAL_DEPENDENCY"
+      "execution": "BLOCKED_BY_EXTERNAL_DEPENDENCY",
+      "done": "CANAIS (E-215): runtime de canais com ingestao normalizada, deduplicacao, anti-replay, rate limit por organizacao e canal, DLQ persistente e WhatsApp/Telegram existentes reaproveitados (sem cliente duplicado). MEDIDO: 68 testes PASS no filtro 'Omnichannel|Telegram|Whatsapp|WhatsApp|Channel'. LACUNA DECLARADA: homologacao com token real - BLOCKED_BY_EXTERNAL_DEPENDENCY (B-03)."
     },
     {
       "id": 17,
@@ -553,11 +565,13 @@
       "auditoria": "AUDITADO_PARCIAL",
       "capability": "PARCIAL",
       "evidence": [
-        "E-027"
+        "E-027",
+        "E-215"
       ],
       "blocker": null,
       "next": "Expor saida de ferramenta na linha do tempo (PR #69)",
-      "execution": "IN_PROGRESS"
+      "execution": "IN_PROGRESS",
+      "done": "WORKSPACE E LINHA DO TEMPO (E-215): estado de missao, workspace isolado, aprovacoes e eventos persistidos que alimentam notificacoes. MEDIDO: 29 testes PASS no filtro 'Timeline|Workspace|MissionTimeline'. LACUNA DECLARADA: expor a saida de ferramenta por etapa na linha do tempo da interface."
     },
     {
       "id": 18,
@@ -963,11 +977,13 @@
       "auditoria": "AUDITADO",
       "capability": "AUSENTE",
       "evidence": [
-        "E-047"
+        "E-047",
+        "E-215"
       ],
       "blocker": "B-04",
       "next": "Implementar voz/transcricao com provedor real",
-      "execution": "BLOCKED_BY_EXTERNAL_DEPENDENCY"
+      "execution": "BLOCKED_BY_EXTERNAL_DEPENDENCY",
+      "done": "SOCIAL E MARKETPLACE OPERACIONAL (E-215): contas sociais, rascunhos com APROVACAO, publicacao autorizada, metricas idempotentes, campanhas com agendamento e sincronizacao de marketplace. MEDIDO: 9 testes PASS no filtro 'CompanySocial|Campaign|Marketplace' (mesmos modulos medidos na E-213). LACUNA DECLARADA: provedor real de rede social e alertas."
     },
     {
       "id": 37,
@@ -976,11 +992,13 @@
       "auditoria": "AUDITADO",
       "capability": "AUSENTE",
       "evidence": [
-        "E-047"
+        "E-047",
+        "E-215"
       ],
       "blocker": "B-04",
       "next": "Implementar telefonia com Tel-Agent apos auditar licenca do projeto de referencia",
-      "execution": "BLOCKED_BY_EXTERNAL_DEPENDENCY"
+      "execution": "BLOCKED_BY_EXTERNAL_DEPENDENCY",
+      "done": "VOZ E TELEFONIA (E-215): sessao de tel-agent e contrato de voz no nucleo. MEDIDO: 13 testes PASS no filtro 'TelAgent|Voice'. LACUNA DECLARADA: telefonia com provedor real e auditoria de licenca do Tel-Agent - BLOCKED_BY_EXTERNAL_DEPENDENCY (B-04)."
     },
     {
       "id": 38,
@@ -1670,7 +1688,10 @@
     "METODO QUE JA PAGOU DUAS VEZES (E-212/E-213): antes de declarar ausencia, procurar o modulo no codigo. Tres das cinco lacunas declaradas (35, 30 e 36) eram de ATRIBUICAO, nao de implementacao",
     "LACUNA DO MASTER 10 FECHADA COM EVIDENCIA (E-214): o ciclo de missao tem prova real - teste conclui um ciclo com git worktree e MERGE COMMIT, e 42 testes PASS no subconjunto de missao/timeline/cancelamento com ambiente gravavel. O estagio 10 do estado estava com `done` VAZIO; agora carrega a atribuicao",
     "COBERTURA PARCIAL DECLARADA (E-214): a linha do tempo por etapa (agente, ferramenta, evidencia, retentativa e CUSTO) e uma missao autonoma com MODELO REAL nao estao evidenciadas. O master 10 pede mais do que o ciclo comprovado, e isso ficou escrito",
-    "ARMADILHA DE MEDICAO (E-214): 15 testes de missao FALHARAM em subconjunto com 'mkdir C:\\Users\\DZ23\\AppData\\Roaming\\ollama-agent: Acesso negado' - o APPDATA do operador tambem e SOMENTE LEITURA aqui (mesma classe da E-208). Com APPDATA redirecionado para dentro do workspace: 42 PASS, 0 FAIL. Rodar subconjunto sem o ambiente correto produz falha FALSA - nao reportar como defeito de produto"
+    "ARMADILHA DE MEDICAO (E-214): 15 testes de missao FALHARAM em subconjunto com 'mkdir C:\\Users\\DZ23\\AppData\\Roaming\\ollama-agent: Acesso negado' - o APPDATA do operador tambem e SOMENTE LEITURA aqui (mesma classe da E-208). Com APPDATA redirecionado para dentro do workspace: 42 PASS, 0 FAIL. Rodar subconjunto sem o ambiente correto produz falha FALSA - nao reportar como defeito de produto",
+    "NOVE `done` VAZIOS PREENCHIDOS COM ATRIBUICAO MEDIDA (E-215): 3, 4, 6, 7, 9, 16, 17, 36 e 37 tinham IDs de evidencia mas NENHUMA descricao do que foi entregue - e o prompt exige, por estagio, 'tarefas concluidas, testes executados, resultados'. Agora cada um carrega o modulo, a medicao e a lacuna declarada",
+    "MEDICAO DOS NOVE ESTAGIOS (E-215), ambiente gravavel: 3=16 PASS, 4=77 (pacote multillm inteiro), 6=13, 7=44, 9=94, 16=68, 17=29, 36=9, 37=13 - TOTAL 363 PASS e ZERO FAIL nos filtros usados",
+    "ATRIBUICAO NAO E PROMOCAO DE COBERTURA (E-215): preencher `done` descreve o que existe e MANTEM o campo `next` com a lacuna. Nenhuma capacidade foi promovida de classificacao por causa do texto"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
