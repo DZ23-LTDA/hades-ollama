@@ -2,7 +2,7 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-16T02:10:00-03:00",
+  "updated_at": "2026-10-16T03:20:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
@@ -423,12 +423,13 @@
       "evidence": [
         "E-043",
         "E-215",
-        "E-239"
+        "E-239",
+        "E-240"
       ],
       "blocker": null,
-      "next": "QUESTAO ABERTA (nao e achado): os 3 agentes compartilham UM caminho de workspace (caminhos_de_workspace=1). A alegacao de 'isolamento de workspace' em E-215 precisa ser confirmada antes de mudar comportamento: se a intencao era isolamento POR AGENTE, falta o subdiretorio proprio; se era isolamento por JOB, o comportamento atual ja cumpre e a alegacao deve ser reescrita. Registrado como medicao, nao como conclusao",
+      "next": "Isolamento por agente FECHADO (E-240). Restam como limites declarados: subagente nao herda elevacao (coberto por testes de aprovacao/quorum) e a missao multiagente real com MODELO ainda depende de credencial/opt-in para o planejador de nuvem (o runner de teste e deterministico)",
       "execution": "IN_PROGRESS",
-      "done": "AGENTES E SUBAGENTES ESPECIALIZADOS (E-215): agentes de servico e de empresa com contrato canonico (ServiceAgentSpec), orquestrador com delegacao, cotas, profundidade, isolamento de workspace e aprovacoes com quorum. MEDIDO: 94 testes PASS no filtro 'ServiceAgent|CompanyAgent|Delegat|Orchestrator'. LACUNA DECLARADA: missao MULTIAGENTE real com artefatos consolidados e prova de isolamento de workspace. ARTEFATOS REAIS DE MULTIAGENTE (E-239): teste com runner REAL provou 3 artefatos escritos em disco e conferidos por SHA-256, travessia de caminho RECUSADA e caminho relativo aceito. DEFEITO CORRIGIDO: o orquestrador atribuia o workspace do agente e NAO criava o diretorio, entao o primeiro WriteFile do agente falhava com 'no such file or directory' e a missao multiagente nunca chegava a artefato consolidado. MEDIDO: agentes=3 artefatos_reais=3 caminhos_de_workspace=1 travessia=recusada."
+      "done": "AGENTES E SUBAGENTES ESPECIALIZADOS (E-215): agentes de servico e de empresa com contrato canonico (ServiceAgentSpec), orquestrador com delegacao, cotas, profundidade, isolamento de workspace e aprovacoes com quorum. MEDIDO: 94 testes PASS no filtro 'ServiceAgent|CompanyAgent|Delegat|Orchestrator'. LACUNA DECLARADA: missao MULTIAGENTE real com artefatos consolidados e prova de isolamento de workspace. ARTEFATOS REAIS DE MULTIAGENTE (E-239): teste com runner REAL provou 3 artefatos escritos em disco e conferidos por SHA-256, travessia de caminho RECUSADA e caminho relativo aceito. DEFEITO CORRIGIDO: o orquestrador atribuia o workspace do agente e NAO criava o diretorio, entao o primeiro WriteFile do agente falhava com 'no such file or directory' e a missao multiagente nunca chegava a artefato consolidado. MEDIDO: agentes=3 artefatos_reais=3 caminhos_de_workspace=1 travessia=recusada. ISOLAMENTO DE WORKSPACE POR AGENTE IMPLEMENTADO E MEDIDO (E-240): a questao aberta de E-239 foi resolvida IMPLEMENTANDO, nao reescrevendo a alegacao - cada agente recebe o PROPRIO subdiretorio (derivado do id, higienizado contra travessia e IDEMPOTENTE para nao aninhar em reprocessamento), o caminho derivado e o que o runner ve E o que fica persistido, e o artefato de um agente nao aparece no workspace do outro. SEM contencao na raiz: o workspace do job e escolhido por quem chama e pode ficar fora da raiz do orquestrador (a contencao foi o erro de E-239). MEDIDO: agentes=3 artefatos_reais=3 workspaces_ISOLADOS=3 travessia=recusada, com os 5 testes de orquestrador existentes verdes."
     },
     {
       "id": 10,
@@ -1791,7 +1792,9 @@
     "QUINTO DEFEITO MEU PEGO PELO PROPRIO BUILD (E-238): o padrao de ancoragem 'return nil }' casou com o FIM DA FUNCAO ERRADA (validateScheduleStepShape, que recebe 'step' e nao 'steps'), e a chamada foi parar fora do escopo. O compilador apontou 'undefined: steps' e eu localizei a funcao real em vez de adivinhar. Licao: ancorar por trecho generico em arquivo de 1500 linhas e frágil; ancorar por ASSINATURA de funcao quando possivel",
     "DEFEITO REAL NO ORQUESTRADOR, ENCONTRADO POR TESTE COM RUNNER DE VERDADE (E-239): o teste existente usava runner SINTETICO e por isso nunca tocou o disco. Ao escrever um runner que ESCREVE no workspace do agente, o defeito apareceu na hora: o caminho era atribuido e o diretorio nao existia, logo o primeiro WriteFile falhava. Corrigido com MkdirAll antes do despacho",
     "SEXTO ERRO MEU, E O MAIS INSTRUTIVO (E-239): ao corrigir, acrescentei 'defesa em profundidade' exigindo que o workspace do agente ficasse DENTRO da raiz do orquestrador. Isso quebrou um uso LEGITIMO - o teste existente passa um workspace de job FORA da raiz - e derrubou um teste que estava verde. Em vez de ajustar o teste alheio, reverti minha mudanca, rodei o teste em main limpo (PASSOU), confirmei que a regressao era MINHA e removi a contencao. Licao: quando um teste verde quebra, a primeira hipotese e a propria mudanca, nao o teste",
-    "POWERPOINT DO SHELL DE NOVO, AGORA COM git apply (E-239): 'git diff > _tmp/meu.diff' no PowerShell 5.1 grava UTF-16, e 'git apply' recusa o arquivo ('No valid patches in input'). Alem disso o 'git checkout --' ja tinha descartado a mudanca, e eu quase relatei um estado que nao existia. Para diff/apply, usar git diff --output=... ou conferir o arquivo antes de reverter"
+    "POWERPOINT DO SHELL DE NOVO, AGORA COM git apply (E-239): 'git diff > _tmp/meu.diff' no PowerShell 5.1 grava UTF-16, e 'git apply' recusa o arquivo ('No valid patches in input'). Alem disso o 'git checkout --' ja tinha descartado a mudanca, e eu quase relatei um estado que nao existia. Para diff/apply, usar git diff --output=... ou conferir o arquivo antes de reverter",
+    "QUESTAO ABERTA RESOLVIDA IMPLEMENTANDO, NAO REESCREVENDO A ALEGACAO (E-240): em E-239 eu medi que os agentes compartilhavam UM workspace e registrei a duvida (isolamento por agente ou por job?). A resposta correta era IMPLEMENTAR o isolamento por agente, que e o que o estagio 9 pede ('workspaces isolados'): cada agente passou a receber o proprio subdiretorio. Medido: workspaces_ISOLADOS=3 e o artefato de um agente nao aparece no workspace do outro",
+    "A LICAO DE E-239 VIROU CODIGO (E-240): a contencao na raiz do orquestrador foi DELIBERADAMENTE omitida, porque quebraria uso legitimo (workspace de job fora da raiz). O isolamento vem do SUBDIRETORIO por agente, e o id e higienizado para nao virar travessia. Derivacao idempotente: um reprocessamento nao aninha o caminho de novo"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
