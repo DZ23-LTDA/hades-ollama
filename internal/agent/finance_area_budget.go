@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 // ORCAMENTO POR AREA (E-262). O limite declarado do estagio 30 dizia "sem rateio por centro de custo e sem
@@ -211,6 +213,13 @@ func (f *FinanceOps) PostAreaCost(companyID, area, reference, description string
 			return LedgerEntry{}, fmt.Errorf("%w: area %q gastaria %d de %d", ErrAreaBudgetExceeded, area, gasto+amountCents, limite)
 		}
 	}
+	return f.recordAreaCost(companyID, area, reference, description, amountCents, actor, now, identidade)
+}
+
+// recordAreaCost grava o custo na area SEM checar orcamento. Existe separado porque o caminho AUTORIZADO por um
+// humano (aprovacao) precisa lancar acima do limite - e precisa ser explicito que a checagem foi dispensada de
+// proposito, nao esquecida.
+func (f *FinanceOps) recordAreaCost(companyID, area, reference, description string, amountCents int64, actor string, now time.Time, identidade string) (LedgerEntry, error) {
 	lancamento, _, err := f.companies.RecordLedgerEntry(LedgerEntry{
 		CompanyID:   companyID,
 		Kind:        LedgerKindExpense,
@@ -227,4 +236,201 @@ func (f *FinanceOps) PostAreaCost(companyID, area, reference, description string
 		return LedgerEntry{}, err
 	}
 	return lancamento, nil
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// APROVACAO DE GASTO ACIMA DO ORCAMENTO (E-264)
+// ---------------------------------------------------------------------------------------------------------------
+
+// Status da aprovacao de custo por area.
+const (
+	AreaCostPending  = "pendente"
+	AreaCostApproved = "aprovado"
+	AreaCostRejected = "recusado"
+)
+
+var (
+	// ErrAreaCostApprovalInvalid cobre pedido sem empresa/area/valor ou pedido inexistente.
+	ErrAreaCostApprovalInvalid = errors.New("area cost approval invalid")
+	// ErrAreaCostApprovalDecided diz que a aprovacao JA foi decidida: decidir de novo lancaria duas vezes.
+	ErrAreaCostApprovalDecided = errors.New("area cost approval already decided")
+	// ErrAreaCostSelfApproval diz que QUEM PEDE NAO APROVA. Sem isso a "aprovacao" seria o proprio gasto.
+	ErrAreaCostSelfApproval = errors.New("area cost approval requires a different approver")
+)
+
+// AreaCostApproval e' o pedido de gasto acima do orcamento de uma area.
+type AreaCostApproval struct {
+	ID            string     `json:"id"`
+	CompanyID     string     `json:"company_id"`
+	Area          string     `json:"area"`
+	Reference     string     `json:"reference"`
+	Description   string     `json:"description,omitempty"`
+	AmountCents   int64      `json:"amount_cents"`
+	RequestedBy   string     `json:"requested_by"`
+	Status        string     `json:"status"`
+	DecidedBy     string     `json:"decided_by,omitempty"`
+	DecidedAt     *time.Time `json:"decided_at,omitempty"`
+	CostEntryID   string     `json:"cost_entry_id,omitempty"`
+	RequestedAt   time.Time  `json:"requested_at"`
+	BudgetCents   int64      `json:"budget_cents"`
+	SpentAtPedido int64      `json:"spent_cents_at_request"`
+}
+
+type areaCostApprovalFile struct {
+	Approvals []AreaCostApproval `json:"approvals"`
+}
+
+func (f *FinanceOps) approvalPath(companyID string) string {
+	if f == nil || f.companies == nil {
+		return ""
+	}
+	root := strings.TrimSpace(f.companies.Root())
+	if root == "" {
+		return ""
+	}
+	seguro := strings.NewReplacer("/", "_", "\\", "_", "..", "_").Replace(strings.TrimSpace(companyID))
+	if seguro == "" {
+		return ""
+	}
+	return filepath.Join(root, "area_cost_approvals_"+seguro+".json")
+}
+
+func (f *FinanceOps) loadAreaCostApprovals(companyID string) ([]AreaCostApproval, error) {
+	caminho := f.approvalPath(companyID)
+	if caminho == "" {
+		return nil, nil
+	}
+	stored := areaCostApprovalFile{}
+	if err := readJSON(caminho, &stored); err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("ler aprovacoes de custo: %w", err)
+	}
+	return stored.Approvals, nil
+}
+
+func (f *FinanceOps) saveAreaCostApprovals(companyID string, aprovacoes []AreaCostApproval) error {
+	caminho := f.approvalPath(companyID)
+	if caminho == "" {
+		return nil
+	}
+	return writeJSONAtomic(caminho, areaCostApprovalFile{Approvals: aprovacoes})
+}
+
+// AreaCostApprovals lista os pedidos da empresa.
+func (f *FinanceOps) AreaCostApprovals(companyID string) ([]AreaCostApproval, error) {
+	return f.loadAreaCostApprovals(companyID)
+}
+
+// RequestAreaCostApproval PEDE autorizacao para um gasto que passa do orcamento. NAO lanca nada: pedir nao e gastar.
+func (f *FinanceOps) RequestAreaCostApproval(companyID, area, reference, description string, amountCents int64, actor string, now time.Time) (AreaCostApproval, error) {
+	companyID = strings.TrimSpace(companyID)
+	area = strings.TrimSpace(area)
+	actor = strings.TrimSpace(actor)
+	if companyID == "" || area == "" || amountCents <= 0 || actor == "" {
+		return AreaCostApproval{}, fmt.Errorf("%w: empresa=%q area=%q valor=%d solicitante=%q", ErrAreaCostApprovalInvalid, companyID, area, amountCents, actor)
+	}
+	orcamentos, err := f.loadAreaBudgets(companyID)
+	if err != nil {
+		return AreaCostApproval{}, err
+	}
+	limite, gasto := int64(0), int64(0)
+	temOrcamento := false
+	for _, orcamento := range orcamentos {
+		if orcamento.Area == area {
+			limite, temOrcamento = orcamento.LimitCents, true
+			break
+		}
+	}
+	if temOrcamento {
+		inicio, fim := janelaMensal(now)
+		if gasto, err = f.areaSpentCents(companyID, area, inicio, fim); err != nil {
+			return AreaCostApproval{}, err
+		}
+		if gasto+amountCents <= limite {
+			// O gasto CABE no orcamento: pedir aprovacao seria burocracia sem sentido.
+			return AreaCostApproval{}, fmt.Errorf("%w: o valor cabe no orcamento (%d de %d)", ErrAreaCostApprovalInvalid, gasto+amountCents, limite)
+		}
+	}
+	pedido := AreaCostApproval{
+		ID:            "aca_" + uuid.NewString(),
+		CompanyID:     companyID,
+		Area:          area,
+		Reference:     strings.TrimSpace(reference),
+		Description:   strings.TrimSpace(description),
+		AmountCents:   amountCents,
+		RequestedBy:   actor,
+		Status:        AreaCostPending,
+		RequestedAt:   now.UTC(),
+		BudgetCents:   limite,
+		SpentAtPedido: gasto,
+	}
+	aprovacoes, err := f.loadAreaCostApprovals(companyID)
+	if err != nil {
+		return AreaCostApproval{}, err
+	}
+	aprovacoes = append(aprovacoes, pedido)
+	if err := f.saveAreaCostApprovals(companyID, aprovacoes); err != nil {
+		return AreaCostApproval{}, err
+	}
+	return pedido, nil
+}
+
+// DecideAreaCostApproval decide o pedido. QUEM PEDE NAO APROVA (segregacao de funcoes) e decidir duas vezes e
+// recusado - sem isso um gasto poderia entrar duas vezes no livro.
+//
+// Aprovado: o custo E lancado ACIMA do limite, porque houve autorizacao HUMANA explicita.
+func (f *FinanceOps) DecideAreaCostApproval(companyID, approvalID, approver string, aprovar bool, now time.Time) (AreaCostApproval, error) {
+	companyID = strings.TrimSpace(companyID)
+	approvalID = strings.TrimSpace(approvalID)
+	approver = strings.TrimSpace(approver)
+	if companyID == "" || approvalID == "" || approver == "" {
+		return AreaCostApproval{}, fmt.Errorf("%w: empresa=%q pedido=%q aprovador=%q", ErrAreaCostApprovalInvalid, companyID, approvalID, approver)
+	}
+	aprovacoes, err := f.loadAreaCostApprovals(companyID)
+	if err != nil {
+		return AreaCostApproval{}, err
+	}
+	indice := -1
+	for i := range aprovacoes {
+		if aprovacoes[i].ID == approvalID {
+			indice = i
+			break
+		}
+	}
+	if indice < 0 {
+		return AreaCostApproval{}, fmt.Errorf("%w: pedido %s", ErrAreaCostApprovalInvalid, approvalID)
+	}
+	pedido := aprovacoes[indice]
+	if pedido.Status != AreaCostPending {
+		return pedido, fmt.Errorf("%w: pedido %s esta %s", ErrAreaCostApprovalDecided, pedido.ID, pedido.Status)
+	}
+	if pedido.RequestedBy == approver {
+		return pedido, fmt.Errorf("%w: %s pediu e tentou aprovar", ErrAreaCostSelfApproval, approver)
+	}
+	decidido := now.UTC()
+	pedido.DecidedBy = approver
+	pedido.DecidedAt = &decidido
+	if !aprovar {
+		pedido.Status = AreaCostRejected
+		aprovacoes[indice] = pedido
+		if err := f.saveAreaCostApprovals(companyID, aprovacoes); err != nil {
+			return AreaCostApproval{}, err
+		}
+		return pedido, nil
+	}
+	// AUTORIZADO: aqui a checagem de orcamento e' dispensada DE PROPOSITO (ver recordAreaCost).
+	identidade := "area:" + companyID + "|" + pedido.Area + "|" + PeriodoMensal(now) + "|" + pedido.Reference
+	lancamento, err := f.recordAreaCost(companyID, pedido.Area, pedido.Reference, pedido.Description, pedido.AmountCents, approver, now, identidade)
+	if err != nil {
+		return pedido, err
+	}
+	pedido.Status = AreaCostApproved
+	pedido.CostEntryID = lancamento.ID
+	aprovacoes[indice] = pedido
+	if err := f.saveAreaCostApprovals(companyID, aprovacoes); err != nil {
+		return pedido, fmt.Errorf("custo %s lancado, mas a aprovacao nao foi gravada: %w", lancamento.ID, err)
+	}
+	return pedido, nil
 }
