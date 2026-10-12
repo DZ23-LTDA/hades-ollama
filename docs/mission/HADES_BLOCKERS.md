@@ -16,6 +16,8 @@
 | B-07 | EXTERNO | chaves de provedor de modelo | 4, 5, 8, 15, 23, 32 | usuário |
 | B-09 | RESOLVIDO (E-116) | Falhas de teste: 1 **defeito real** de idempotência na importação + MAX_PATH do Windows | 2, 11, 14 | resta apenas Python ausente para o teste de browser |
 | B-10 | PRODUTO | 104/122 conectores exigem operador | 7, 16, 18 | decisão de produto + credenciais |
+| B-11 | RESOLVIDO | 7 PRs do dependabot com CI vermelho, tratados um a um **sem merge cego** (#26 e #34 entre eles, com a causa raiz provada no log) | vários | RESOLVIDO no próprio tratamento |
+| B-12 | RESOLVIDO | PR #31 (grupo web-dev-tooling) quebrava `Web and mobile quality`, `test (ubuntu-latest)` e `Web E2E` — causa raiz provada no log do CI e corrigida | vários | RESOLVIDO no próprio tratamento |
 
 ## B-01 — Autorização de merge (decisão humana)
 

@@ -10,6 +10,7 @@ bloqueio órfão, `execution` ausente e veredito otimista com pendência. Segue 
 from __future__ import annotations
 
 import json
+import re
 import shutil
 import sys
 import tempfile
@@ -115,6 +116,93 @@ class EscrituracaoTest(unittest.TestCase):
         problemas, _, resumo = verificador.verificar(ESTADO_REAL, INDICE_REAL, conferir_gate=False)
         self.assertEqual(problemas, [], f"escrituração real inconsistente: {problemas}")
         self.assertGreaterEqual(resumo["evidencias"], 100)
+
+
+class RelatorioTest(unittest.TestCase):
+    """Numeração do relatório e evidências que ele cita (E-181)."""
+
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp())
+        self.relatorio = self.tmp / "HADES_STAGE_REPORT.md"
+        self.ids = {"E-001", "E-002", "E-003"}
+
+    def tearDown(self) -> None:
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def escrever(self, texto: str) -> None:
+        self.relatorio.write_text(texto, encoding="utf-8")
+
+    def problemas(self, ids: set[str] | None = None) -> list[str]:
+        problemas, _ = verificador.verificar_relatorio(self.relatorio, ids if ids is not None else self.ids)
+        return problemas
+
+    def test_numeracao_contigua_passa(self) -> None:
+        self.escrever("1. **primeiro (E-001).** texto\n2. **segundo (E-002).** texto\n")
+        self.assertEqual(self.problemas(), [])
+
+    def test_item_duplicado_e_encontrado(self) -> None:
+        self.escrever("1. **um (E-001).**\n2. **dois (E-002).**\n2. **outro dois (E-003).**\n")
+        problemas = self.problemas()
+        self.assertTrue(any("DUPLICADOS" in p for p in problemas), problemas)
+
+    def test_buraco_no_relatorio_e_encontrado(self) -> None:
+        self.escrever("1. **um (E-001).**\n3. **tres (E-002).**\n")
+        self.assertTrue(any("buracos" in p for p in self.problemas()), self.problemas())
+
+    def test_evidencia_fantasma_em_texto_normal_e_encontrada(self) -> None:
+        self.escrever("1. **um (E-777).**\n")
+        self.assertTrue(any("E-777" in p for p in self.problemas()), self.problemas())
+
+    def test_identificador_entre_crases_e_mencao_e_nao_falso_positivo(self) -> None:
+        # A regra declarada: ID entre crases é MENÇÃO (exemplo/identificador), não citação.
+        crase = chr(96)
+        self.escrever(f"1. **um (E-001) e o verificador pega {crase}E-999{crase} como exemplo.**\n")
+        self.assertEqual(self.problemas(), [], "menção entre crases não pode virar problema")
+
+    def test_relatorio_sem_itens_e_acusado(self) -> None:
+        self.escrever("# relatório sem itens numerados\n")
+        self.assertTrue(any("sem nenhum item numerado" in p for p in self.problemas()), self.problemas())
+
+
+class BloqueiosTest(unittest.TestCase):
+    """Paridade entre o documento de bloqueios e o estado, nos DOIS sentidos (E-181)."""
+
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp())
+        self.bloqueios = self.tmp / "HADES_BLOCKERS.md"
+
+    def tearDown(self) -> None:
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def escrever(self, texto: str) -> None:
+        self.bloqueios.write_text(texto, encoding="utf-8")
+
+    def problemas(self, ids: set[str]) -> list[str]:
+        problemas, _ = verificador.verificar_bloqueios(self.bloqueios, ids)
+        return problemas
+
+    def test_paridade_perfeita_passa(self) -> None:
+        self.escrever("| B-01 | EXTERNO |\n| B-02 | RESOLVIDO |\n")
+        self.assertEqual(self.problemas({"B-01", "B-02"}), [])
+
+    def test_bloqueio_no_estado_ausente_do_documento_e_encontrado(self) -> None:
+        self.escrever("| B-01 | EXTERNO |\n")
+        self.assertTrue(any("B-02" in p and "AUSENTES" in p for p in self.problemas({"B-01", "B-02"})))
+
+    def test_bloqueio_no_documento_ausente_do_estado_e_encontrado(self) -> None:
+        self.escrever("| B-01 | EXTERNO |\n| B-77 | FANTASMA |\n")
+        self.assertTrue(any("B-77" in p and "INEXISTENTES" in p for p in self.problemas({"B-01"})))
+
+    def test_documentos_reais_do_repositorio_sao_consistentes(self) -> None:
+        estado = json.loads(ESTADO_REAL.read_text(encoding="utf-8"))
+        ids = {b.get("id") for b in estado.get("blockers", [])}
+        relatorio, _ = verificador.verificar_relatorio(
+            RAIZ / "docs/mission/HADES_STAGE_REPORT.md",
+            set(re.findall(r"^\|\s*(E-\d+)\s*\|", INDICE_REAL.read_text(encoding="utf-8"), re.M)),
+        )
+        bloqueios, _ = verificador.verificar_bloqueios(RAIZ / "docs/mission/HADES_BLOCKERS.md", ids)
+        self.assertEqual(relatorio, [], f"relatório real inconsistente: {relatorio}")
+        self.assertEqual(bloqueios, [], f"bloqueios reais inconsistentes: {bloqueios}")
 
 
 if __name__ == "__main__":
