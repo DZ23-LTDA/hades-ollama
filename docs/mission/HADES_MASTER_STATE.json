@@ -2,7 +2,7 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-16T00:45:00-03:00",
+  "updated_at": "2026-10-16T02:10:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
@@ -422,12 +422,13 @@
       "capability": "IMPLEMENTADO_NAO_HOMOLOGADO",
       "evidence": [
         "E-043",
-        "E-215"
+        "E-215",
+        "E-239"
       ],
       "blocker": null,
-      "next": "Rodar missao multiagente real com artefatos consolidados e prova de isolamento de workspace",
+      "next": "QUESTAO ABERTA (nao e achado): os 3 agentes compartilham UM caminho de workspace (caminhos_de_workspace=1). A alegacao de 'isolamento de workspace' em E-215 precisa ser confirmada antes de mudar comportamento: se a intencao era isolamento POR AGENTE, falta o subdiretorio proprio; se era isolamento por JOB, o comportamento atual ja cumpre e a alegacao deve ser reescrita. Registrado como medicao, nao como conclusao",
       "execution": "IN_PROGRESS",
-      "done": "AGENTES E SUBAGENTES ESPECIALIZADOS (E-215): agentes de servico e de empresa com contrato canonico (ServiceAgentSpec), orquestrador com delegacao, cotas, profundidade, isolamento de workspace e aprovacoes com quorum. MEDIDO: 94 testes PASS no filtro 'ServiceAgent|CompanyAgent|Delegat|Orchestrator'. LACUNA DECLARADA: missao MULTIAGENTE real com artefatos consolidados e prova de isolamento de workspace."
+      "done": "AGENTES E SUBAGENTES ESPECIALIZADOS (E-215): agentes de servico e de empresa com contrato canonico (ServiceAgentSpec), orquestrador com delegacao, cotas, profundidade, isolamento de workspace e aprovacoes com quorum. MEDIDO: 94 testes PASS no filtro 'ServiceAgent|CompanyAgent|Delegat|Orchestrator'. LACUNA DECLARADA: missao MULTIAGENTE real com artefatos consolidados e prova de isolamento de workspace. ARTEFATOS REAIS DE MULTIAGENTE (E-239): teste com runner REAL provou 3 artefatos escritos em disco e conferidos por SHA-256, travessia de caminho RECUSADA e caminho relativo aceito. DEFEITO CORRIGIDO: o orquestrador atribuia o workspace do agente e NAO criava o diretorio, entao o primeiro WriteFile do agente falhava com 'no such file or directory' e a missao multiagente nunca chegava a artefato consolidado. MEDIDO: agentes=3 artefatos_reais=3 caminhos_de_workspace=1 travessia=recusada."
     },
     {
       "id": 10,
@@ -1787,7 +1788,10 @@
     "DOIS DEFEITOS MEUS PEGOS PELO PROPRIO TESTE ANTES DE SUBIR (E-237): (1) a ancora do patch usava um espaco onde o arquivo tem TAB + alinhamento - o script ABORTOU sem escrever nada (bom: patch atomico), o que evitou um arquivo pela metade; (2) eu zerava DependsOn do passo de compensacao para 'roda sozinho', mas o VALIDADOR exige que todo passo de ACAO tenha ao menos uma dependencia - a compensacao passou a depender do GATILHO, que conclui sem efeito. O teste falhou com o motivo exato ('requires at least one dependency'), nao com silencio",
     "DESCOBERTA SOBRE O MOTOR (E-237): passos de compensacao precisam ser ALCANCAVEIS para passar na validacao, logo tambem executam no passe normal enquanto nao houver marcacao de 'somente compensacao'. Alternativa considerada e rejeitada nesta rodada: afrouxar a validacao para aceitar passos inalcancaveis, o que abriria excecao num validador que hoje e fail-closed - trocar garantia por conveniencia nao e progresso",
     "LIMITE DE E-237 FECHADO COM VALIDACAO QUE NAO AFROUXOU NADA (E-238): a marca 'somente compensacao' resolve o passo que rodava duas vezes (no fluxo normal e no desfazer). Em vez de aceitar passos inalcancaveis - o que abriria excecao num validador fail-closed - a marca ganhou TRES invariantes: gatilho nao pode ser somente compensacao, passo marcado precisa ser REALMENTE referenciado por algum CompensateWith, e ninguem pode depender dele. Medido: 3 casos recusados e missoes_de_desfazer=1",
-    "QUINTO DEFEITO MEU PEGO PELO PROPRIO BUILD (E-238): o padrao de ancoragem 'return nil }' casou com o FIM DA FUNCAO ERRADA (validateScheduleStepShape, que recebe 'step' e nao 'steps'), e a chamada foi parar fora do escopo. O compilador apontou 'undefined: steps' e eu localizei a funcao real em vez de adivinhar. Licao: ancorar por trecho generico em arquivo de 1500 linhas e frágil; ancorar por ASSINATURA de funcao quando possivel"
+    "QUINTO DEFEITO MEU PEGO PELO PROPRIO BUILD (E-238): o padrao de ancoragem 'return nil }' casou com o FIM DA FUNCAO ERRADA (validateScheduleStepShape, que recebe 'step' e nao 'steps'), e a chamada foi parar fora do escopo. O compilador apontou 'undefined: steps' e eu localizei a funcao real em vez de adivinhar. Licao: ancorar por trecho generico em arquivo de 1500 linhas e frágil; ancorar por ASSINATURA de funcao quando possivel",
+    "DEFEITO REAL NO ORQUESTRADOR, ENCONTRADO POR TESTE COM RUNNER DE VERDADE (E-239): o teste existente usava runner SINTETICO e por isso nunca tocou o disco. Ao escrever um runner que ESCREVE no workspace do agente, o defeito apareceu na hora: o caminho era atribuido e o diretorio nao existia, logo o primeiro WriteFile falhava. Corrigido com MkdirAll antes do despacho",
+    "SEXTO ERRO MEU, E O MAIS INSTRUTIVO (E-239): ao corrigir, acrescentei 'defesa em profundidade' exigindo que o workspace do agente ficasse DENTRO da raiz do orquestrador. Isso quebrou um uso LEGITIMO - o teste existente passa um workspace de job FORA da raiz - e derrubou um teste que estava verde. Em vez de ajustar o teste alheio, reverti minha mudanca, rodei o teste em main limpo (PASSOU), confirmei que a regressao era MINHA e removi a contencao. Licao: quando um teste verde quebra, a primeira hipotese e a propria mudanca, nao o teste",
+    "POWERPOINT DO SHELL DE NOVO, AGORA COM git apply (E-239): 'git diff > _tmp/meu.diff' no PowerShell 5.1 grava UTF-16, e 'git apply' recusa o arquivo ('No valid patches in input'). Alem disso o 'git checkout --' ja tinha descartado a mudanca, e eu quase relatei um estado que nao existia. Para diff/apply, usar git diff --output=... ou conferir o arquivo antes de reverter"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
