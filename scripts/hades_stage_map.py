@@ -178,6 +178,20 @@ def mestres_cobertos_mais_de_uma_vez() -> dict[int, int]:
     return {m: c for m, c in sorted(contagem.items()) if c > 1}
 
 
+def decisoes_faltando() -> list[int]:
+    """Linhas divergentes/sem par cuja observacao NAO registra uma decisao de governanca.
+
+    O `--check` ja garantia que o DOCUMENTO bate com a tabela; ele NAO garantia que a tabela registra uma DECISAO
+    para cada divergencia. Assim, uma divergencia nova entrava em SILENCIO: o mapa seguia "consistente" porque
+    consistente com uma tabela que nao decidia nada (E-255).
+    """
+    return [
+        ident
+        for ident, _, _, situacao, observacao in MAPA
+        if situacao in (ESCOPO_DIVERGENTE, SEM_PAR_NO_MESTRE) and not observacao.strip().startswith("DECISAO_")
+    ]
+
+
 def gerar() -> str:
     contagem = situacoes()
     duplicados = mestres_cobertos_mais_de_uma_vez()
@@ -248,6 +262,11 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Gera o mapa estado × prompt master")
     parser.add_argument("--check", action="store_true", help="falha se o disco divergir da tabela")
     args = parser.parse_args()
+    faltando = decisoes_faltando()
+    if faltando:
+        print(f"GOVERNANCA INCOMPLETA: linhas divergentes sem DECISAO registrada: {faltando}")
+        print("Cada linha ESCOPO_DIVERGENTE/SEM_PAR_NO_MESTRE precisa de uma DECISAO_A/B justificada (E-255).")
+        return 1
     conteudo = gerar()
     if args.check:
         atual = DESTINO.read_text(encoding="utf-8") if DESTINO.is_file() else ""

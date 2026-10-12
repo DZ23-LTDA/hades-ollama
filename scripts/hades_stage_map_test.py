@@ -6,11 +6,14 @@ completa e que a dívida de governança é REPORTADA sem fingir que não existe.
 
 from __future__ import annotations
 
+import contextlib
+import io
 import json
 import shutil
 import sys
 import tempfile
 import unittest
+import unittest.mock
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -92,6 +95,46 @@ class MapaDeEstagiosTest(unittest.TestCase):
             self.assertIn("estagios_com_escopo_divergente", resumo)
         finally:
             shutil.rmtree(tmp, ignore_errors=True)
+
+
+class GuardaDeGovernancaTest(unittest.TestCase):
+    """E-255: o `--check` garantia que o DOCUMENTO bate com a tabela, nao que cada divergencia tem DECISAO.
+
+    Sem este guard, uma linha `ESCOPO_DIVERGENTE` nova entrava em silencio e o mapa continuava "consistente" —
+    consistente com uma tabela que nao decidia nada.
+    """
+
+    def test_tabela_real_nao_tem_decisao_faltando(self) -> None:
+        self.assertEqual(
+            [],
+            mapa.decisoes_faltando(),
+            "as 16 linhas de escopo divergente precisam ter DECISAO registrada",
+        )
+        self.assertEqual(16, mapa.situacoes().get(mapa.ESCOPO_DIVERGENTE, 0), "o numero de divergentes mudou")
+
+    def test_divergente_sem_decisao_e_acusada(self) -> None:
+        inventada = (99, "Estagio inventado", (1,), mapa.ESCOPO_DIVERGENTE, "sem decisao registrada")
+        with unittest.mock.patch.object(mapa, "MAPA", mapa.MAPA + (inventada,)):
+            self.assertEqual([99], mapa.decisoes_faltando())
+
+    def test_equivalente_nao_precisa_de_decisao(self) -> None:
+        linha = (99, "Equivalente", (1,), mapa.EQUIVALENTE, "titulo igual")
+        with unittest.mock.patch.object(mapa, "MAPA", (linha,)):
+            self.assertEqual([], mapa.decisoes_faltando())
+
+    def test_main_falha_quando_falta_decisao(self) -> None:
+        # Prova que o guard esta LIGADO no main, e nao apenas que a funcao existe.
+        inventada = (99, "Estagio inventado", (1,), mapa.ESCOPO_DIVERGENTE, "")
+        argv = sys.argv
+        with unittest.mock.patch.object(mapa, "MAPA", mapa.MAPA + (inventada,)):
+            sys.argv = ["hades_stage_map.py", "--check"]
+            try:
+                with contextlib.redirect_stdout(io.StringIO()) as saida:
+                    codigo = mapa.main()
+            finally:
+                sys.argv = argv
+        self.assertEqual(1, codigo, "o --check precisa FALHAR quando falta decisao de governanca")
+        self.assertIn("GOVERNANCA INCOMPLETA", saida.getvalue())
 
 
 if __name__ == "__main__":
