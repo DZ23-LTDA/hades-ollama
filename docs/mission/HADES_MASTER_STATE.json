@@ -2,7 +2,7 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-13T18:30:00-03:00",
+  "updated_at": "2026-10-13T19:30:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
@@ -247,11 +247,13 @@
         "E-002",
         "E-021",
         "E-023",
-        "E-036"
+        "E-036",
+        "E-187"
       ],
       "blocker": null,
       "next": "Complementar a matriz de capacidades com reconfirmacao dos 30 docs de audit/ datados",
-      "execution": "IN_PROGRESS"
+      "execution": "IN_PROGRESS",
+      "done": " | MAPA DE ESTAGIOS (E-187): a comparacao dos titulos com a secao 5 do prompt master mostrou 37 de 38 divergentes e, do 24 em diante, escopo DESLOCADO. O pareamento virou tabela declarada (scripts/hades_stage_map.py), documento gerado com --check e checagem propria: problema para mapa incompleto, aviso para a divida (4 estagios do master sem cobertura e 4 cobertos em dobro). Renumerar NAO foi feito: muda o significado das evidencias acumuladas"
     },
     {
       "id": 2,
@@ -1540,7 +1542,11 @@
     "DOCUMENTOS OBRIGATORIOS DA SECAO 5 VIRARAM CHECAGEM (E-186): o verificador ganhou a tabela DOCUMENTOS_OBRIGATORIOS_POR_ESTAGIO (estagio 1, 2 e 22) e a exigencia de pelo menos uma evidencia por estagio. Contra o repositorio REAL, acusou DOIS documentos ausentes exigidos pelo estagio 2: docs/mission/HADES_BASELINE_REPORT.md e docs/mission/HADES_FAILURE_INDEX.md",
     "BASELINE E INDICE DE FALHAS GERADOS, NAO ESCRITOS A MAO (E-186): scripts/hades_baseline_report.py gera os dois a partir de fatos verificaveis (suites com comando reproduzivel e resultado observado; falhas derivadas de HADES_MASTER_STATE.json), com --check no CI como o gate de release. Escrever a mao seria decoracao e voltaria a divergir",
     "ERRO MEU NO GERADOR, PEGO NA HORA (E-186): a primeira versao classificava bloqueio resolvido por SUBSTRING e B-14 (tipo 'AMBIENTE (DIAGNOSTICO RESOLVIDO)') caiu como RESOLVIDO. Trocado por regra explicita (startswith), porque limite PARCIALMENTE resolvido nao e limite fechado - esconder isso seria o defeito que o indice evita",
-    "TESTES DA REGRA NOVA (E-186): 6 testes em scripts/hades_mission_check_docs_test.py, com caso de FALHA e de SUCESSO (raiz vazia acusa; fixture completa passa; diretorio com nome de documento e recusado; repositorio real cumpre; estagio sem evidencia e problema; raiz ausente nao quebra os 19 testes antigos)"
+    "TESTES DA REGRA NOVA (E-186): 6 testes em scripts/hades_mission_check_docs_test.py, com caso de FALHA e de SUCESSO (raiz vazia acusa; fixture completa passa; diretorio com nome de documento e recusado; repositorio real cumpre; estagio sem evidencia e problema; raiz ausente nao quebra os 19 testes antigos)",
+    "AUDITORIA DE COBERTURA - ESTAGIO 24 TINHA DOIS SIGNIFICADOS (E-187): 37 dos 38 titulos de estagio divergem das definicoes da secao 5 do prompt master, e do 24 em diante o ESCopo esta DESLOCADO (o estado chama de 24 o CRM e pipeline, que no master e o 27; o master 24 e o COMMERCE ENGINE, que o estado registra no 25). Nenhuma tabela de cobertura por estagio podia ser lida como cobertura do documento da missao",
+    "DIVIDA DE COBERTURA MEDIDA (E-187): 1 equivalente, 20 com titulo diferente (escopo equivalente), 16 com escopo divergente, 1 sem par no master; 4 estagios do master SEM NENHUMA cobertura (32 BUSINESS E2E CERTIFICATION, 34 HADES OMNICHANNEL RUNTIME, 35 AGENTES DE ATENDIMENTO E VENDAS, 36 SOCIAL MEDIA E MARKETPLACE OPERACIONAL) e 4 cobertos DUAS vezes (26, 29, 33, 37)",
+    "MAPA DE ESTAGIOS DECLARADO, GERADO E CONFERIDO (E-187): scripts/hades_stage_map.py declara o pareamento com situacao e observacao; gera docs/mission/HADES_STAGE_MAP.md com --check no CI e virou documento obrigatorio do estagio 1; o verificador ganhou verificar_mapa_de_estagios (problema para mapa incompleto; aviso para a divida). 7 testes proprios",
+    "RENUMERAR FOI RECUSADO DE PROPOSITO (E-187): renumerar 38 estagios muda o significado de TODAS as evidencias acumuladas e nao e decisao reversivel de baixo risco; forcar pareamento 1:1 onde o escopo diverge seria falsificar cobertura. O procedimento de reconciliacao ficou escrito no mapa"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",

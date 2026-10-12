@@ -60,6 +60,7 @@ DOCUMENTOS_OBRIGATORIOS_POR_ESTAGIO: dict[int, tuple[str, ...]] = {
         "audit/HADES_MASTER_AUDIT.md",
         "audit/HADES_CAPABILITY_MATRIX.md",
         "audit/HADES_RELEASE_BLOCKERS.md",
+        "docs/mission/HADES_STAGE_MAP.md",
     ),
     2: (
         "docs/mission/HADES_BASELINE_REPORT.md",
@@ -85,6 +86,63 @@ def verificar_documentos_obrigatorios(raiz: Path) -> tuple[list[str], dict]:
                     f"evidencia OBRIGATORIA da secao 5 ausente: estagio {estagio} exige `{caminho}`"
                 )
     return problemas, {"documentos_obrigatorios_conferidos": conferidos}
+
+
+def verificar_mapa_de_estagios(estado: dict) -> tuple[list[str], list[str], dict]:
+    """Confere o mapa entre os estágios TRACKADOS e os estágios do prompt master (E-187).
+
+    Duas naturezas de achado, de propósito:
+
+    - **problema** (falha o build): o mapa está MECANICAMENTE incompleto — estágio do estado sem linha, linha para
+      estágio que não existe. Isso é erro de escrituração e tem conserto objetivo.
+    - **aviso** (aparece, não falha): dívida de GOVERNANÇA — estágio do master sem cobertura, coberto duas vezes, ou
+      com escopo divergente. Aqui falhar não conserta nada: reconciliar exige decidir se o estado muda de numeração,
+      e renumerar 38 estágios muda o significado das evidências acumuladas. Esconder também não: por isso o número
+      aparece no resumo e no documento gerado.
+    """
+    problemas: list[str] = []
+    avisos: list[str] = []
+    resumo: dict = {}
+    try:
+        import hades_stage_map as mapa
+    except ImportError as erro:
+        return [], [f"mapa de estágios indisponível para conferência: {erro}"], {}
+
+    ids_do_estado = {e.get("id") for e in estado.get("stages", [])}
+    ids_do_mapa = {linha[0] for linha in mapa.MAPA}
+    for ident in sorted(ids_do_estado - ids_do_mapa):
+        problemas.append(f"estágio {ident} do estado NÃO tem linha no mapa de estágios (scripts/hades_stage_map.py)")
+    # O sentido inverso (linha no mapa sem estágio no estado) NÃO é problema: o mapa é uma tabela estática que
+    # cobre 1..38 por construção, e fixtures de teste usam subconjuntos do estado. A garantia de que o mapa cobre
+    # exatamente 1..38 pertence ao TESTE do próprio mapa, não a uma checagem que roda contra qualquer estado.
+    if ids_do_mapa != set(range(1, 39)):
+        problemas.append(
+            "mapa de estágios precisa cobrir exatamente 1..38; cobre "
+            + f"{len(ids_do_mapa)} estágios"
+        )
+
+    contagem = mapa.situacoes()
+    sem_cobertura = mapa.mestres_nao_cobertos()
+    duplicados = mapa.mestres_cobertos_mais_de_uma_vez()
+    divergentes = contagem.get(mapa.ESCOPO_DIVERGENTE, 0) + contagem.get(mapa.SEM_PAR_NO_MESTRE, 0)
+    if sem_cobertura:
+        avisos.append(
+            "estágios do MASTER sem nenhum estágio do estado apontando: "
+            + ", ".join(str(i) for i in sem_cobertura)
+        )
+    if duplicados:
+        avisos.append(
+            "estágios do master apontados por MAIS DE UM estágio do estado: "
+            + ", ".join(f"{i} (x{c})" for i, c in duplicados.items())
+        )
+    if divergentes:
+        avisos.append(f"{divergentes} estágios do estado têm escopo divergente do master (dívida de governança declarada)")
+    resumo = {
+        "estagios_sem_cobertura_no_master": len(sem_cobertura),
+        "estagios_master_com_cobertura_dupla": len(duplicados),
+        "estagios_com_escopo_divergente": divergentes,
+    }
+    return problemas, avisos, resumo
 
 
 def verificar(
@@ -155,6 +213,11 @@ def verificar(
     else:
         resumo_documentos = {"documentos_obrigatorios_conferidos": 0}
 
+    # 4d. Mapa entre os estágios trackados e os estágios do prompt master (E-187).
+    problemas_mapa, avisos_mapa, resumo_mapa = verificar_mapa_de_estagios(estado)
+    problemas.extend(problemas_mapa)
+    avisos.extend(avisos_mapa)
+
     # 5. Veredito coerente com o estado.
     veredito = estado.get("release_state")
     if veredito not in VEREDITOS_PERMITIDOS:
@@ -194,6 +257,7 @@ def verificar(
         "bloqueios": len(ids_de_bloqueio),
         "veredito": veredito,
         **resumo_documentos,
+    **resumo_mapa,
 }
     return problemas, avisos, resumo
 
