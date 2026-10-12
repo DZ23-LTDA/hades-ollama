@@ -185,6 +185,7 @@ func osRun(shutdown func(), hasCompletedFirstRun, startHidden, showOnboarding bo
 	go func() {
 		<-signals
 		slog.Debug("shutting down due to signal")
+		flushDurableWritesOnShutdown()
 		app.t.Quit()
 		wv.Terminate()
 	}()

@@ -144,6 +144,18 @@ func FlushDurableWrites() error {
 	return primeiroErro
 }
 
+// FlushDurableWritesOnShutdown é o GANCHO DE ENCERRAMENTO do modo em lote.
+//
+// Devolve quantos itens estavam pendentes e o erro de sincronização, se houver: um encerramento que falha em
+// SILÊNCIO deixaria a perda de dados invisível para o operador.
+func FlushDurableWritesOnShutdown() (int, error) {
+	pendentes := PendingDurableWrites()
+	if pendentes == 0 {
+		return 0, nil
+	}
+	return pendentes, FlushDurableWrites()
+}
+
 // WriteDurabilityFromEnv lê a configuração do ambiente sem aplicar.
 func WriteDurabilityFromEnv() string {
 	return strings.TrimSpace(os.Getenv("HADES_WRITE_DURABILITY"))
