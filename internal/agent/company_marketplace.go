@@ -3,6 +3,8 @@ package agent
 import (
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 )
@@ -212,4 +214,119 @@ func (s *CompanyStore) CampaignReport(id string) (CampaignReport, error) {
 	report.Total.ClickRate = campaignRate(report.Total.Clicks, report.Total.Impressions)
 	report.Total.ConversionRate = campaignRate(report.Total.Conversions, report.Total.Clicks)
 	return report, nil
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// INGESTAO DE METRICA DE CAMPANHA (E-267)
+// ---------------------------------------------------------------------------------------------------------------
+
+// Limite de sanidade por entrega. Dado externo e' NAO CONFIAVEL: um provedor com bug (ou um payload forjado) nao
+// pode inflar o painel com um numero absurdo.
+const CampaignMetricIngestCeiling = int64(1_000_000_000)
+
+var (
+	// ErrCampaignMetricDeliveryInvalid cobre entrega sem SourceID/canal ou com contador acima do teto de sanidade.
+	ErrCampaignMetricDeliveryInvalid = errors.New("campaign metric delivery invalid")
+)
+
+// CampaignMetricDelivery e' uma entrega externa de metrica (webhook, exportacao do provedor).
+type CampaignMetricDelivery struct {
+	// SourceID e' a chave de idempotencia do provedor. Sem ela, uma reentrega contaria duas vezes.
+	SourceID string               `json:"source_id"`
+	Channel  string               `json:"channel"`
+	Metrics  CampaignMetricsInput `json:"metrics"`
+}
+
+// CampaignMetricIngestResult diz o que a ingestao fez, sem esconder reentrega.
+type CampaignMetricIngestResult struct {
+	Metrics   CampaignMetrics `json:"metrics"`
+	SourceID  string          `json:"source_id"`
+	Channel   string          `json:"channel"`
+	Duplicate bool            `json:"duplicate"`
+}
+
+type campaignIngestFile struct {
+	Seen []string `json:"seen"`
+}
+
+func (s *CompanyStore) campaignIngestPath(companyID string) string {
+	if s == nil || strings.TrimSpace(s.root) == "" {
+		return ""
+	}
+	seguro := strings.NewReplacer("/", "_", "\\", "_", "..", "_").Replace(strings.TrimSpace(companyID))
+	if seguro == "" {
+		return ""
+	}
+	return filepath.Join(s.root, "campaign_ingest_"+seguro+".json")
+}
+
+func (s *CompanyStore) loadCampaignIngest(companyID string) ([]string, error) {
+	caminho := s.campaignIngestPath(companyID)
+	if caminho == "" {
+		return nil, nil
+	}
+	stored := campaignIngestFile{}
+	if err := readJSON(caminho, &stored); err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("ler marcas de ingestao: %w", err)
+	}
+	return stored.Seen, nil
+}
+
+func (s *CompanyStore) markCampaignIngest(companyID, chave string) error {
+	vistas, err := s.loadCampaignIngest(companyID)
+	if err != nil {
+		return err
+	}
+	vistas = append(vistas, chave)
+	caminho := s.campaignIngestPath(companyID)
+	if caminho == "" {
+		return nil
+	}
+	return writeJSONAtomic(caminho, campaignIngestFile{Seen: vistas})
+}
+
+// IngestCampaignMetrics ingere uma entrega externa de metrica com IDEMPOTENCIA.
+//
+// Reentrega da MESMA (canal + SourceID) devolve os totais ATUAIS com Duplicate=true e NAO soma de novo. SourceID
+// repetido em canal DIFERENTE e' outra entrega: dois provedores podem usar o mesmo identificador.
+func (s *CompanyStore) IngestCampaignMetrics(companyID, campaignID string, delivery CampaignMetricDelivery, now time.Time) (CampaignMetricIngestResult, error) {
+	companyID = strings.TrimSpace(companyID)
+	campaignID = strings.TrimSpace(campaignID)
+	sourceID := strings.TrimSpace(delivery.SourceID)
+	channel := strings.TrimSpace(delivery.Channel)
+	if sourceID == "" || channel == "" {
+		return CampaignMetricIngestResult{}, fmt.Errorf("%w: canal e SourceID sao obrigatorios (canal=%q source=%q)", ErrCampaignMetricDeliveryInvalid, channel, sourceID)
+	}
+	pontos := delivery.Metrics
+	if pontos.Impressions > CampaignMetricIngestCeiling || pontos.Clicks > CampaignMetricIngestCeiling ||
+		pontos.Conversions > CampaignMetricIngestCeiling || pontos.SpendCents > CampaignMetricIngestCeiling {
+		return CampaignMetricIngestResult{}, fmt.Errorf("%w: contador acima do teto de sanidade (%d)", ErrCampaignMetricDeliveryInvalid, CampaignMetricIngestCeiling)
+	}
+	chave := channel + "|" + sourceID
+	vistas, err := s.loadCampaignIngest(companyID)
+	if err != nil {
+		return CampaignMetricIngestResult{}, err
+	}
+	for _, vista := range vistas {
+		if vista == chave {
+			// REENTREGA: le os totais atuais e NAO soma. Somar de novo dobraria o painel por um evento ja contado.
+			atual, err := s.RecordCampaignMetrics(companyID, campaignID, CampaignMetricsInput{}, now)
+			if err != nil {
+				return CampaignMetricIngestResult{}, err
+			}
+			return CampaignMetricIngestResult{Metrics: atual, SourceID: sourceID, Channel: channel, Duplicate: true}, nil
+		}
+	}
+	atual, err := s.RecordCampaignMetrics(companyID, campaignID, pontos, now)
+	if err != nil {
+		return CampaignMetricIngestResult{}, err
+	}
+	// A marca entra DEPOIS do sucesso: entrega recusada (payload ruim ou orcamento) precisa continuar RETENTAVEL.
+	if err := s.markCampaignIngest(companyID, chave); err != nil {
+		return CampaignMetricIngestResult{}, err
+	}
+	return CampaignMetricIngestResult{Metrics: atual, SourceID: sourceID, Channel: channel, Duplicate: false}, nil
 }
