@@ -653,3 +653,95 @@ func (b *BusinessSupervisor) executeApproved(action BusinessAction) (string, err
 		return "", fmt.Errorf("%w: %s", ErrBusinessActionUnknown, action.Kind)
 	}
 }
+
+// ErrSupervisorLeaseHeld diz que OUTRA instancia detem o lease: o ciclo NAO roda.
+var ErrSupervisorLeaseHeld = errors.New("business supervisor lease is held by another instance")
+
+// SupervisorLeaseTTLPadrao e' a validade do lease quando o chamador nao informa uma.
+const SupervisorLeaseTTLPadrao = 30 * time.Second
+
+// businessSupervisorLease e' o conteudo do arquivo de lease.
+type businessSupervisorLease struct {
+	Holder    string    `json:"holder"`
+	ExpiresAt time.Time `json:"expires_at"`
+}
+
+// leasePath devolve o caminho do lease (vazio quando o supervisor esta em memoria).
+func (b *BusinessSupervisor) leasePath() string {
+	if strings.TrimSpace(b.root) == "" {
+		return ""
+	}
+	return filepath.Join(b.root, "supervisor.lease")
+}
+
+// AcquireSupervisorLease tenta tomar o lease para `holder`. Devolve true quando o titular SOMOS nos.
+//
+// Tres situacoes concedem o lease: (1) nao existe lease; (2) o lease EXPIROU (assuncao - a instancia anterior pode
+// ter morrido: negar para sempre travaria a operacao); (3) o lease ja e' NOSSO (renovacao). Enquanto outra
+// instancia tiver lease vivo, a resposta e' `false` e o ciclo NAO roda.
+func (b *BusinessSupervisor) AcquireSupervisorLease(holder string, now time.Time, ttl time.Duration) (bool, error) {
+	holder = strings.TrimSpace(holder)
+	if holder == "" {
+		return false, errors.New("supervisor lease requires a holder")
+	}
+	caminho := b.leasePath()
+	if caminho == "" {
+		// Modo em memoria: um unico processo, um unico supervisor. Declarado, nao fingido.
+		return true, nil
+	}
+	if ttl <= 0 {
+		ttl = SupervisorLeaseTTLPadrao
+	}
+	atual := businessSupervisorLease{}
+	err := readJSON(caminho, &atual)
+	switch {
+	case err == nil:
+		vivo := atual.ExpiresAt.After(now.UTC())
+		if vivo && strings.TrimSpace(atual.Holder) != holder {
+			return false, nil
+		}
+	case errors.Is(err, os.ErrNotExist):
+		// sem lease: pode tomar
+	default:
+		return false, fmt.Errorf("ler lease do supervisor: %w", err)
+	}
+	novo := businessSupervisorLease{Holder: holder, ExpiresAt: now.UTC().Add(ttl)}
+	if err := writeJSONAtomic(caminho, novo); err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+// ReleaseSupervisorLease remove o lease SOMENTE se ele for do titular informado. Quem nao e' titular nao libera.
+func (b *BusinessSupervisor) ReleaseSupervisorLease(holder string) error {
+	caminho := b.leasePath()
+	if caminho == "" {
+		return nil
+	}
+	atual := businessSupervisorLease{}
+	if err := readJSON(caminho, &atual); err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return nil
+		}
+		return err
+	}
+	if strings.TrimSpace(atual.Holder) != strings.TrimSpace(holder) {
+		return nil
+	}
+	if err := os.Remove(caminho); err != nil && !errors.Is(err, os.ErrNotExist) {
+		return err
+	}
+	return nil
+}
+
+// RunSupervisedTick roda o ciclo SOMENTE com o lease. Sem lease, o ciclo NAO acontece e o erro diz por que.
+func (b *BusinessSupervisor) RunSupervisedTick(holder, organizationID string, now time.Time, ttl time.Duration) (BusinessTickResult, error) {
+	obtido, err := b.AcquireSupervisorLease(holder, now, ttl)
+	if err != nil {
+		return BusinessTickResult{}, err
+	}
+	if !obtido {
+		return BusinessTickResult{}, ErrSupervisorLeaseHeld
+	}
+	return b.BusinessTick(organizationID, now)
+}

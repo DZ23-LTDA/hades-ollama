@@ -2,7 +2,7 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-17T02:20:00-03:00",
+  "updated_at": "2026-10-17T03:30:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
@@ -920,12 +920,13 @@
         "E-110",
         "E-111",
         "E-213",
-        "E-258"
+        "E-258",
+        "E-261"
       ],
       "blocker": "B-05",
-      "next": "LIMITES: o HISTORICO dos ciclos segue em memoria (ele e a trilha analitica, nao a decisao), o ciclo e acionado por rota ou pelo agendador existente (sem loop proprio com lease), o estorno e registro CONTABIL sem transferencia real de dinheiro, nao ha precificacao dinamica nem promocoes, e marketplaces e redes sociais nao sao coordenados (conta autorizada)",
+      "next": "LIMITES QUE SEGUEM DECLARADOS: o LOOP com agendador proprio continua ausente (o lease existe e o ciclo supervisionado existe, mas o acionamento segue por rota/agendador existente); o HISTORICO dos ciclos segue em memoria (E-258 tentou fechar e foi revertida por instabilidade da suite); o estorno e registro CONTABIL sem transferencia real de dinheiro; nao ha precificacao dinamica nem promocoes; marketplaces e redes sociais nao sao coordenados (exigem conta autorizada). Proximo: estagios 25-30 e 32-38",
       "blocked_reason": "",
-      "done": "ATRIBUICAO CORRIGIDA (E-213): a operacao de redes do master 36 tem modulo proprio - company_social.go (contas, rascunhos, APROVACAO, publicacao autorizada, metricas idempotentes e relatorio), company_marketplace.go (campanhas com agendamento e metricas) e marketplace_sync.go (sincronizacao de canais e estoque remoto); rotas /companies/:id/social/* e /companies/:id/campaigns/*. LACUNAS INTERNAS DECLARADAS: respostas por IA em redes e alertas nao evidenciados. | SUPERVISOR AUTONOMO DE NEGOCIO com recuperacao PERSISTENTE: acoes e decisoes, politica vigente, orcamento consumido e contagem de ciclos sobrevivem a um REINICIO REAL (novo runtime sobre o mesmo diretorio de dados). A pendencia de aprovacao continua a MESMA e pode ser decidida depois do reinicio com efeito real; recusa registrada NAO volta a pendente e a decisao original prevalece; o orcamento gasto nao e devolvido (sem gastar duas vezes) e a numeracao dos ciclos continua. Diagnostico de dominios, acoes autonomas com efeito real, bloqueio por orcamento sem consumir e aprovacao humana exigindo ator seguem como antes",
+      "done": "ATRIBUICAO CORRIGIDA (E-213): a operacao de redes do master 36 tem modulo proprio - company_social.go (contas, rascunhos, APROVACAO, publicacao autorizada, metricas idempotentes e relatorio), company_marketplace.go (campanhas com agendamento e metricas) e marketplace_sync.go (sincronizacao de canais e estoque remoto); rotas /companies/:id/social/* e /companies/:id/campaigns/*. LACUNAS INTERNAS DECLARADAS: respostas por IA em redes e alertas nao evidenciados. | SUPERVISOR AUTONOMO DE NEGOCIO com recuperacao PERSISTENTE: acoes e decisoes, politica vigente, orcamento consumido e contagem de ciclos sobrevivem a um REINICIO REAL (novo runtime sobre o mesmo diretorio de dados). A pendencia de aprovacao continua a MESMA e pode ser decidida depois do reinicio com efeito real; recusa registrada NAO volta a pendente e a decisao original prevalece; o orcamento gasto nao e devolvido (sem gastar duas vezes) e a numeracao dos ciclos continua. Diagnostico de dominios, acoes autonomas com efeito real, bloqueio por orcamento sem consumir e aprovacao humana exigindo ator seguem como antes LEASE DO SUPERVISOR (E-261): o limite declarado 'sem loop proprio com lease' perdeu a parte de LEASE. Por que e SEGURANCA e nao conveniencia: o supervisor executa acoes com EFEITO REAL (reposicao de estoque, cancelamento de pedido), e duas instancias rodando o ciclo ao mesmo tempo podem agir DUAS VEZES sobre o mesmo estado. AcquireSupervisorLease concede em tres casos - sem lease, lease EXPIRADO (assuncao: instancia morta nao pode travar a operacao para sempre) e o MESMO titular (renovacao) - e, com lease vivo de outro, o ciclo NAO roda (ErrSupervisorLeaseHeld). ReleaseSupervisorLease so remove para o titular; o modo em memoria DECLARA que o lease e no-op (um unico processo). ENQUADRAMENTO PRECISO: o LEASE e o CICLO SUPERVISIONADO existem; o LOOP com agendador proprio continua AUSENTE - o acionamento segue por rota ou pelo agendador existente. MEDIDO: 2 testes PASS (titular roda, segunda instancia recusada, renovacao, ASSUNCAO apos o TTL, nao-titular nao libera, titular libera, modo em memoria e titular vazio recusado) e suite completa ok 108,5 s",
       "execution": "BLOCKED_BY_EXTERNAL_DEPENDENCY"
     },
     {
@@ -1879,7 +1880,10 @@
     "DINHEIRO NAO SE MOVE E ISSO E DECLARADO NO DADO (E-259): a devolucao devolve estoque e REGISTRA o reembolso devido, mas o proprio registro carrega FinancialSignal='reembolso_devido_requer_aprovacao_humana'. O dado diz o que aconteceu, em vez de sugerir que houve transferencia",
     "TENTATIVA REVERTIDA REGISTRADA COMO EVIDENCIA (E-258): a trilha do supervisor foi implementada, os 14 testes de supervisor passaram, mas a SUITE COMPLETA ficou instavel (4 falhas na 1a execucao, 1 falha diferente na 2a) e o MAIN LIMPO passou (107,9 s). Causa: eu adicionei persistLocked POR CICLO, duplicando gravacao ja existente. Revertido; suite verde de novo (112,7 s). O ID E-258 tambem fecha o buraco de numeracao do indice",
     "TERCEIRO LIMITE FECHADO NO MESMO MOTOR, AGORA DE PRIMEIRA (E-260): devolucao (E-259) e carrinho (E-260) sairam verdes na primeira execucao. As licoes aplicadas: gravar em caminho RARO e humano, seguir a ORDEM correta (efeito antes da marcacao) e UMA gravacao por mutacao. O custo de ter medido em E-258/E-259 foi pago aqui",
-    "CARRINHO NAO VENDE O QUE A LOJA NAO VENDE (E-260): o SKU precisa existir no catalogo para entrar no carrinho, e quantidade ZERO remove a linha - remover pelo mesmo caminho de adicionar evita uma segunda API para a mesma intencao"
+    "CARRINHO NAO VENDE O QUE A LOJA NAO VENDE (E-260): o SKU precisa existir no catalogo para entrar no carrinho, e quantidade ZERO remove a linha - remover pelo mesmo caminho de adicionar evita uma segunda API para a mesma intencao",
+    "LEASE E SEGURANCA, NAO CONVENIENCIA (E-261): o supervisor executa acoes com efeito real. Duas instancias rodando o ciclo ao mesmo tempo podem agir duas vezes sobre o mesmo estado. O lease garante UM titular por vez, e a ASSUNCAO apos expiracao mantem a recuperacao - negar para sempre travaria a operacao por causa de uma instancia morta",
+    "ENQUADRAMENTO PRECISO EM VEZ DE 'FECHADO' (E-261): entreguei o LEASE e o CICLO SUPERVISIONADO, mas o LOOP com agendador proprio continua ausente. Declarar 'limite fechado' seria falso - o limite era o loop COM lease: a parte do lease esta feita, a do loop nao",
+    "ERRO MEU PEGO PELO COMPILADOR (E-261): chamei RunSupervisedTick sem o argumento de organizacao. Barato de corrigir porque o Go recusou a compilar - o mesmo tipo de erro que, em linguagem sem tipos, viraria um teste silenciosamente errado"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
