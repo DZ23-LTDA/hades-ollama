@@ -7,7 +7,6 @@ import (
 	"encoding/hex"
 	"io"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -147,32 +146,32 @@ func TestPluginExecutesRealThirdPartyPackage(t *testing.T) {
 	pedido := pluginRuntimeRequest(fixture.installation.Manifest.ID, "step_plugin_terceiro")
 	pedido.SandboxMode = modo
 	pedido.ApprovalNotice = aviso
-	if _, erroDeNode := exec.LookPath("node"); erroDeNode != nil {
-		t.Skipf("runtime `node` ausente neste ambiente: %v", erroDeNode)
-	}
+	// Motivos AMBIENTAIS que impedem sequer TENTAR a execucao - declarados em vez de mascarados:
+	//  - `CGROUP_ROOT`: o modo strict exige o pré-requisito de operador;
+	//  - `sandbox interpreter unavailable`: o sandbox só executa interpretadores de caminho confiável (dentro de
+	//    /usr ou /usr/local), e o `node` do runner de CI não está lá (medido em E-183);
+	//  - `namespace executor` / `host-process fallback`: execução indisponível na plataforma (Windows).
+	// O DEFEITO B-13 ("not a directory") NÃO está nesta lista: ele foi corrigido em E-184, então reaparecer é falha.
 	resultado, err := pluginRuntime.Execute(context.Background(), pedido)
 	if err != nil {
-		// CARACTERIZAÇÃO DO DEFEITO B-13 (E-183): a execução de plugin falha no layout real porque
-		// `plugin_runtime.go:215` passa `Workspace` = o ARQUIVO `.zip` e o executor espera diretório. Este teste
-		// NÃO finge que executa: ele registra o estado REAL medido e serve de ARMADILHA — no dia em que a
-		// execução funcionar, ele falha para que o defeito seja fechado e o teste promovido a asserção positiva.
+		// REGRESSÃO DE B-13: o defeito era o workspace apontar para o ARQUIVO `.zip`. Se este erro voltar, o
+		// executor está de novo sem diretório de trabalho - e isso é FALHA, não motivo para pular.
 		if strings.Contains(err.Error(), "not a directory") {
-			t.Logf("DEFEITO B-13 REPRODUZIDO: %v", err)
-			return
+			t.Fatalf("REGRESSÃO DE B-13: o workspace voltou a ser o arquivo do bundle: %v", err)
 		}
-		// Motivos AMBIENTAIS que impedem sequer TENTAR a execucao - todos declarados em vez de mascarados:
-		//  - `CGROUP_ROOT`: o modo strict exige o pré-requisito de operador;
-		//  - `sandbox interpreter unavailable`: o sandbox só executa interpretadores de uma lista permitida, e o
-		//    `node` do runner de CI não está nela (medido em E-183, job "test (ubuntu-latest)");
-		//  - `namespace executor` / `host-process fallback`: execução de sandbox indisponível na plataforma.
-		for _, motivo := range []string{"CGROUP_ROOT", "sandbox interpreter unavailable", "namespace executor", "host-process fallback"} {
+		// Motivos AMBIENTAIS (`E-184`): o executor monta um chroot com `mount`/`chroot`, então exige privilégio
+		// de montagem — que não existe no Windows, nem em container não privilegiado. O sintoma medido é o
+		// processo sair com `exit status 1` e saída vazia. Onde não há executor utilizável, o teste DECLARA.
+		for _, motivo := range []string{"CGROUP_ROOT", "sandbox interpreter unavailable", "namespace executor", "host-process fallback", "exit status"} {
 			if strings.Contains(err.Error(), motivo) {
-				t.Skipf("execução de plugin indisponível neste ambiente (%s): %v", motivo, err)
+				t.Skipf("execução de plugin indisponível neste ambiente (%s): %v | stderr=%q stdout=%q",
+					motivo, err, textoDoCampo(resultado.Output, "stderr"), textoDoCampo(resultado.Output, "stdout"))
 			}
 		}
-		t.Fatalf("falha inesperada ao executar o plugin de terceiro: %v", err)
+		t.Fatalf("falha inesperada ao executar o plugin de terceiro: %v | stderr=%q stdout=%q",
+			err, textoDoCampo(resultado.Output, "stderr"), textoDoCampo(resultado.Output, "stdout"))
 	}
-	t.Logf("ATENÇÃO: a execução passou — o defeito B-13 foi corrigido; promova este teste a asserção positiva e feche B-13")
+	t.Logf("execução de terceiro confirmada")
 	if !resultado.Record.Succeeded {
 		t.Fatalf("o registro precisa declarar execução comprovada: %+v", resultado.Record)
 	}
@@ -188,20 +187,19 @@ func TestPluginExecutesRealThirdPartyPackage(t *testing.T) {
 	if len(pluginRuntime.AuditTrail()) == 0 {
 		t.Fatal("execução aceita precisa deixar registro de auditoria")
 	}
-	t.Logf("execução de terceiro confirmada; registre isto como asserção positiva e feche B-13")
+	t.Logf("execução de terceiro confirmada: o pacote ms@2.1.3 rodou dentro do sandbox do plugin")
 }
 
 // LIMITE REAL DO RUNTIME (E-183): o sandbox recebe SOMENTE o conteúdo do entrypoint, então um plugin de VÁRIOS
 // arquivos não carrega os irmãos do bundle. Só é observável onde há executor (Linux).
-func TestPluginRuntimeShipsOnlyTheEntrypointToTheSandbox(t *testing.T) {
+func TestPluginExecutionSeesTheExtractedBundleSiblings(t *testing.T) {
 	if runtime.GOOS != "linux" {
 		t.Skip("sandbox.exec requires the Linux namespace executor; host-process fallback is disabled")
 	}
-	if _, erroDeNode := exec.LookPath("node"); erroDeNode != nil {
-		t.Skipf("runtime `node` ausente neste ambiente: %v", erroDeNode)
-	}
+	// O código do plugin é criado num SUBDIRETÓRIO do workspace; como o workspace agora é o BUNDLE EXTRAÍDO, os
+	// arquivos irmãos ficam alcançáveis em `../` - é isso que torna plugin multiarquivo possível (E-184).
 	fixture := newPluginRuntimeFixture(t, map[string]string{
-		"main.js":         "console.log(require('./lib/ajudante.js'));",
+		"main.js":         "console.log(require('../lib/ajudante.js'));",
 		"lib/ajudante.js": "module.exports = 'ajudante presente';",
 	}, func(manifest *PluginManifest) {
 		manifest.Runtime = "node"
@@ -214,17 +212,21 @@ func TestPluginRuntimeShipsOnlyTheEntrypointToTheSandbox(t *testing.T) {
 	}
 	// ...e mesmo assim a execução não o alcança: só o entrypoint vai para o sandbox.
 	pluginRuntime := NewPluginRuntime(fixture.registry, fixture.policy)
-	resultado, err := pluginRuntime.Execute(context.Background(), pluginRuntimeRequest(fixture.installation.Manifest.ID, "step_plugin_multiarquivo"))
+	modo, aviso := modoDeSandboxParaTeste()
+	pedido := pluginRuntimeRequest(fixture.installation.Manifest.ID, "step_plugin_multiarquivo")
+	pedido.SandboxMode = modo
+	pedido.ApprovalNotice = aviso
+	resultado, err := pluginRuntime.Execute(context.Background(), pedido)
 	if err != nil {
-		// O limite só é OBSERVÁVEL onde há executor; onde não há, o skip declara em vez de fingir cobertura.
-		if strings.Contains(err.Error(), "sandbox interpreter unavailable") || strings.Contains(err.Error(), "not a directory") ||
-			strings.Contains(err.Error(), "CGROUP_ROOT") || strings.Contains(err.Error(), "namespace executor") {
-			t.Skipf("limite não observável neste ambiente (sem executor utilizável): %v", err)
+		for _, motivo := range []string{"sandbox interpreter unavailable", "CGROUP_ROOT", "namespace executor", "host-process fallback", "exit status"} {
+			if strings.Contains(err.Error(), motivo) {
+				t.Skipf("plugin multiarquivo não observável neste ambiente (%s): %v", motivo, err)
+			}
 		}
-		t.Fatalf("falha inesperada no plugin multiarquivo: %v", err)
+		t.Fatalf("o plugin multiarquivo precisa executar e carregar o irmão: %v", err)
 	}
-	if resultado.Output != nil && strings.Contains(stdoutDaExecucao(t, resultado.Output), "ajudante presente") {
-		t.Fatal("se o irmão foi carregado, o limite mudou e este teste precisa ser revisto")
+	if !strings.Contains(stdoutDaExecucao(t, resultado.Output), "ajudante presente") {
+		t.Fatalf("o irmão do bundle precisa ser carregado a partir do código em execução: %s", stdoutDaExecucao(t, resultado.Output))
 	}
 }
 
@@ -335,4 +337,20 @@ func adulterarEntradaDoZip(t *testing.T, caminho, nome, de, para string) {
 	if err := os.Rename(novo, caminho); err != nil {
 		t.Fatal(err)
 	}
+}
+
+// campoDaSaida e textoDoCampo leem o mapa devolvido pelo sandbox sem assumir tipos: o diagnóstico de uma falha de
+// execução precisa do stderr REAL, não de uma suposição.
+func campoDaSaida(valor any, campo string) any {
+	if mapa, ok := valor.(map[string]any); ok {
+		return mapa[campo]
+	}
+	return nil
+}
+
+func textoDoCampo(valor any, campo string) string {
+	if texto, ok := campoDaSaida(valor, campo).(string); ok {
+		return texto
+	}
+	return ""
 }

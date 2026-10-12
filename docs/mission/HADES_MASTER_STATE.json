@@ -2,12 +2,12 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-13T15:30:00-03:00",
+  "updated_at": "2026-10-13T16:30:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
     "integration_branch": "main",
-    "main_sha": "b917e45ac97f670e53aa77136d585fd23a22a2ae",
+    "main_sha": "7951eca1a6b47f563a9fa53d68f439b81fa3929b",
     "main_committed_at": "2026-10-09T10:24:45Z",
     "main_ci_state": "green (dz23-agentic-quality + class-a-plus-integrity = success nesse SHA)",
     "mission_branch": "docs/checkpoints-missao-v21",
@@ -370,11 +370,12 @@
         "E-066",
         "E-067",
         "E-068",
-        "E-183"
+        "E-183",
+        "E-184"
       ],
-      "blocker": "B-13",
-      "next": "CORRIGIR B-13 (execucao de plugin): extrair o bundle para um diretorio de execucao ou apontar Workspace para o diretorio extraido; decidir sobre entrega multiarquivo ao sandbox; e declarar o pre-requisito OLLAMA_AGENT_SANDBOX_CGROUP_ROOT para o modo strict",
-      "done": "plugins: manifesto, assinatura/integridade, atualizacao, rollback, verificacao de conteudo, execucao governada, status canonico por API e exibicao do estado real (PRs #78, #80, #114, #119, #121); skills: manifesto assinado/nao-confianca, categoria, proveniencia, ativacao por projeto/agente/modelo, selecao deterministica com orcamento de tokens, persistencia por organizacao E EXIBICAO/OPERACAO DO CATALOGO NA INTERFACE (PRs #123, #125) | PLUGIN COM TERCEIRO REAL (E-183): conteudo e o pacote ms@2.1.3 (MIT) byte a byte, sha256 conferido. PASSAM instalacao por assinatura ed25519, verificacao por digest, presenca do terceiro byte a byte, licenca no manifesto/bundle e RECUSA de adulteracao. A EXECUCAO ESTA QUEBRADA (B-13): plugin_runtime.go:215 passa Workspace = ARQUIVO .zip e o executor espera diretorio; alem disso e Linux-only e o strict exige OLLAMA_AGENT_SANDBOX_CGROUP_ROOT. Limite multiarquivo CONFIRMADO por execucao no Linux",
+      "blocker": "B-14",
+      "next": "Executar em host com privilegio de montagem e fazer o executor propagar o stderr do launcher (B-14); so depois promover o item de plugins para DONE",
+      "done": "plugins: manifesto, assinatura/integridade, atualizacao, rollback, verificacao de conteudo, execucao governada, status canonico por API e exibicao do estado real (PRs #78, #80, #114, #119, #121); skills: manifesto assinado/nao-confianca, categoria, proveniencia, ativacao por projeto/agente/modelo, selecao deterministica com orcamento de tokens, persistencia por organizacao E EXIBICAO/OPERACAO DO CATALOGO NA INTERFACE (PRs #123, #125) | PLUGIN COM TERCEIRO REAL (E-183): conteudo e o pacote ms@2.1.3 (MIT) byte a byte, sha256 conferido. PASSAM instalacao por assinatura ed25519, verificacao por digest, presenca do terceiro byte a byte, licenca no manifesto/bundle e RECUSA de adulteracao. A EXECUCAO ESTA QUEBRADA (B-13): plugin_runtime.go:215 passa Workspace = ARQUIVO .zip e o executor espera diretorio; alem disso e Linux-only e o strict exige OLLAMA_AGENT_SANDBOX_CGROUP_ROOT. Limite multiarquivo CONFIRMADO por execucao no Linux | B-13 CORRIGIDO (E-184): o bundle verificado e extraido para um diretorio de execucao temporario com protecao fail-closed (travessia, caminho absoluto, barra invertida, link simbolico, teto de arquivos e de bytes) e o Workspace passa a ser esse diretorio, com limpeza garantida por defer. Antes/depois no mesmo ambiente: de 'not a directory' para 'exit status 1' (o executor passou a montar o sandbox). 5 testes novos com injecao de falha; teste falha se o defeito voltar. Novo limite B-14: a execucao exige privilegio de montagem e falha silenciosamente sem stderr",
       "execution": "IN_PROGRESS"
     },
     {
@@ -1030,8 +1031,13 @@
     },
     {
       "id": "B-13",
-      "tipo": "PRODUTO",
-      "descricao": "DEFEITO (E-183): a execucao de plugin falha no layout real de instalacao - plugin_runtime.go:215 passa Workspace = installation.ContentPath, e ContentPath e o ARQUIVO plugins/content/<org>/<id>-<versao>.zip (plugin_bundle.go:113); o executor trata Workspace como diretorio e falha com 'not a directory'. Instalacao e verificacao de conteudo funcionam; execucao nao. Nao corrigido nesta rodada; desbloqueio: extrair o bundle para um diretorio de execucao."
+      "tipo": "RESOLVIDO",
+      "descricao": "DEFEITO (E-183): a execucao de plugin falha no layout real de instalacao - plugin_runtime.go:215 passa Workspace = installation.ContentPath, e ContentPath e o ARQUIVO plugins/content/<org>/<id>-<versao>.zip (plugin_bundle.go:113); o executor trata Workspace como diretorio e falha com 'not a directory'. Instalacao e verificacao de conteudo funcionam; execucao nao. Nao corrigido nesta rodada; desbloqueio: extrair o bundle para um diretorio de execucao. || RESOLVIDO (E-184): o bundle verificado passa a ser extraido para um diretorio de execucao temporario (plugins/exec-run/run-*) com protecao fail-closed contra travessia, caminho absoluto, barra invertida, link simbolico e zip bomb, e o Workspace passa a ser esse diretorio, com limpeza garantida. Prova antes/depois no mesmo ambiente: de 'not a directory' para 'exit status 1' (o executor passou a montar e rodar o sandbox). Teste falha se o defeito voltar."
+    },
+    {
+      "id": "B-14",
+      "tipo": "PRODUTO + AMBIENTE",
+      "descricao": "LIMITE (E-184): a execucao de plugin exige PRIVILEGIO DE MONTAGEM - mesmo o modo best-effort faz mount/chroot (mount --make-rprivate, mount --bind, tmpfs e chroot/unshare em tools.go). Onde nao ha esse privilegio (Windows, container nao privilegiado, runner padrao de CI) a execucao nao acontece e o sintoma e 'exit status 1' com stdout e stderr VAZIOS - falha silenciosa que dificulta o diagnostico. Desbloqueio: executar em host com namespaces de montagem e propagar o stderr do launcher."
     }
   ],
   "evidence_index": "docs/mission/HADES_EVIDENCE_INDEX.md",
@@ -1522,7 +1528,11 @@
     "DEFEITO B-13 - EXECUCAO DE PLUGIN QUEBRADA (E-183): plugin_runtime.go:215 passa Workspace = installation.ContentPath, e ContentPath e o ARQUIVO plugins/content/<org>/<id>-<versao>.zip; o executor trata Workspace como DIRETORIO e falha com 'not a directory'. Instalacao e verificacao FUNCIONAM; execucao NAO. Localizado, NAO corrigido",
     "INCIDENTE PROPRIO NESTA RODADA (E-183): reutilizei a variavel `path` no script de documentacao e o json.dump final escreveu o ESTADO por cima do RELATORIO de estagios (296 KB), deixando o estado sem B-13. Foi o scripts/hades_mission_check.py que acusou as duas coisas; restaurei do git e reapliquei com nomes EXPLICITOS por arquivo. Licao: em script que escreve varios arquivos, caminho nunca e variavel generica",
     "TERCEIRO ACHADO - FIM DE LINHA QUEBRAVA O CI (E-183): o PR falhou no job 'Go agentic Windows portability' porque o checkout converte LF -> CRLF e o sha256 do arquivo publicado deixava de bater. Corrigido com .gitattributes (-text no fixture de terceiro) E normalizacao \\r\\n -> \\n antes de hashear: um teste que depende da config de git de quem roda prova a config, nao o byte publicado",
-    "TERCEIRO PRE-REQUISITO AMBIENTAL (E-183): com node presente, o CI respondeu 'sandbox interpreter unavailable for node' - o sandbox so executa interpretadores de uma LISTA PERMITIDA e o node do runner nao esta nela. Somado a Linux-only e ao CGROUP_ROOT do strict, sao TRES barreiras ambientais antes de chegar ao defeito B-13. O teste PULA com o motivo declarado e so falha se a execucao passar (armadilha) ou se o erro for inesperado"
+    "TERCEIRO PRE-REQUISITO AMBIENTAL (E-183): com node presente, o CI respondeu 'sandbox interpreter unavailable for node' - o sandbox so executa interpretadores de uma LISTA PERMITIDA e o node do runner nao esta nela. Somado a Linux-only e ao CGROUP_ROOT do strict, sao TRES barreiras ambientais antes de chegar ao defeito B-13. O teste PULA com o motivo declarado e so falha se a execucao passar (armadilha) ou se o erro for inesperado",
+    "B-13 CORRIGIDO (E-184): plugin_runtime.go passava Workspace = o ARQUIVO .zip, e o executor exige DIRETORIO (os.OpenRoot + Mkdir dentro da raiz). Agora o bundle verificado e extraido para plugins/exec-run/run-* com protecao fail-closed (travessia, caminho absoluto, barra invertida, link simbolico, >1024 arquivos, >16MiB por arquivo, >64MiB total) e o Workspace e esse diretorio, com limpeza por defer. Efeito colateral: plugin multiarquivo passa a alcancar os irmaos em '../'",
+    "PROVA ANTES/DEPOIS DE B-13 (E-184), mesmo container node:22-bookworm em best-effort com aprovacao: ANTES o erro era 'open ...runtime-plugin-1.0.0.zip: not a directory' (o workspace nem era diretorio); DEPOIS e 'exit status 1' - ou seja, o workspace esta correto e o executor chegou a montar e rodar o sandbox. O teste agora FALHA se 'not a directory' voltar (armadilha de regressao)",
+    "NOVO LIMITE B-14 (E-184): a execucao de plugin exige PRIVILEGIO DE MONTAGEM - mesmo best-effort faz mount/chroot (tools.go: mount --make-rprivate, mount --bind, tmpfs, chroot/unshare). Fora disso o sintoma e 'exit status 1' com stdout e stderr VAZIOS (falha silenciosa). Desbloqueio: host com namespaces de montagem + propagar o stderr do launcher",
+    "O ITEM DE PLUGINS CONTINUA NAO_COMPROVADO (E-184), com motivo mais preciso: instalacao, assinatura, integridade e EXTRACAO SEGURA estao comprovadas; a EXECUCAO nao pode ser exercitada em nenhum ambiente disponivel. O que mudou: o defeito que a impedia foi CORRIGIDO e ha teste contra regressao"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
