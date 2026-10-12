@@ -38,6 +38,10 @@ INDICE_PADRAO = RAIZ / "docs/mission/HADES_EVIDENCE_INDEX.md"
 RELATORIO_PADRAO = RAIZ / "docs/mission/HADES_STAGE_REPORT.md"
 BLOQUEIOS_PADRAO = RAIZ / "docs/mission/HADES_BLOCKERS.md"
 
+# Declaracao explicita de que o vinculo de estagio NAO foi registrado (linhas legadas do indice).
+# Sem ela, a linha precisa ser citada por algum estagio: evidencia orfa silenciosa e registro falso.
+MARCADOR_SEM_VINCULO = "VINCULO_NAO_DECLARADO"
+
 EXECUCOES_PERMITIDAS = {
     "NOT_STARTED",
     "IN_PROGRESS",
@@ -207,6 +211,25 @@ def verificar(
         bloqueio = estagio.get("blocker")
         if bloqueio and bloqueio not in ids_de_bloqueio:
             problemas.append(f"estágio {ident} cita bloqueio que NÃO está declarado: {bloqueio}")
+
+
+    # 5. Vínculo de estágio (o mestre exige "estágio e tarefa associados" em cada evidência).
+    citadas_por_estagio = {e for st in estado["stages"] for e in (st.get("evidence") or [])}
+    sem_vinculo: list[str] = []
+    for linha in indice.splitlines():
+        casamento = re.match(r"^\|\s*(E-\d+)\s*\|", linha)
+        if not casamento:
+            continue
+        ident = casamento.group(1)
+        if ident not in citadas_por_estagio and MARCADOR_SEM_VINCULO not in linha:
+            sem_vinculo.append(ident)
+    if sem_vinculo:
+        problemas.append(
+            "evidências SEM vínculo de estágio e SEM a declaração "
+            f"{MARCADOR_SEM_VINCULO}: "
+            + ", ".join(sem_vinculo[:12])
+            + ("..." if len(sem_vinculo) > 12 else "")
+        )
 
     # 4. Campos de execução/estado.
     for estagio in estado["stages"]:
