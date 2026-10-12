@@ -2,7 +2,7 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-14T10:40:00-03:00",
+  "updated_at": "2026-10-14T11:30:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
@@ -607,10 +607,12 @@
       "capability": "PARCIAL",
       "evidence": [
         "E-022",
-        "E-113"
+        "E-113",
+        "E-199",
+        "E-201"
       ],
       "blocker": "B-06",
-      "next": "LIMITES: instaladores de pacote ASSINADOS (deb/rpm/dmg/msi) e assinatura digital nao produzidos, instalacao em macOS e Linux reais nao medida neste host (o CI cobre build), e desktop/computer-use nativo ausente",
+      "next": "Notarizacao macOS por chave de API (E-199) implementada e testada na logica; FALTA o ISSUER ID (UUID) do App Store Connect, que nao vem no arquivo .p8, e provisionar os segredos no GitHub (requer credencial). Sem isso, a homologacao da notarizacao real segue BLOCKED_BY_EXTERNAL_DEPENDENCY",
       "done": "scripts/install.ps1 passou a entregar INSTALACAO (build do codigo com -Ldflags opcional e manifesto com acao, commit, data e SHA-256), ATUALIZACAO (preserva o binario anterior em <binario>.previous), ROLLBACK (restaura o anterior e preserva o substituido em <binario>.rolledback, entao e reversivel) e DESINSTALACAO (remove binario, backup e manifesto e PRESERVA os dados do usuario). O ciclo foi EXECUTADO de verdade num diretorio descartavel, com o binario RODANDO (ollama version is 0.40.1), atualizacao entregando artefato de hash DIFERENTE e rollback restaurando exatamente o hash original",
       "execution": "BLOCKED_BY_EXTERNAL_DEPENDENCY"
     },
@@ -1014,7 +1016,7 @@
     {
       "id": "B-06",
       "tipo": "EXTERNO",
-      "descricao": "Identidade de assinatura de release (certificado)"
+      "descricao": "Identidade de assinatura de release (certificado). ESTADO MEDIDO (E-201): a autenticacao de NOTARIZACAO foi PROVADA com a chave de API do App Store Connect (JWT ES256, HTTP 200 em /v1/apps) - o que faltava ali esta resolvido no codigo (E-199) e provado na credencial. O que ainda falta e o certificado de ASSINATURA: a leitura de /v1/certificates com essa chave mostra 1 certificado DISTRIBUTION ('leandro prado', expira 2027-08-13) e NENHUM DEVELOPER_ID_APPLICATION. DESBLOQUEIO: o Account Holder/Admin cria um certificado 'Developer ID Application' no portal (exige CSR), exporta o .p12 e configura MACOS_SIGNING_KEY + MACOS_SIGNING_KEY_PASSWORD + APPLE_IDENTITY como segredos do repositorio; depois disso a notarizacao por chave de API ja implementada pode rodar em runner macOS."
     },
     {
       "id": "B-07",
@@ -1031,7 +1033,7 @@
     {
       "id": "B-10",
       "tipo": "RESOLVIDO",
-      "descricao": "Conectores: 104 de 122 exigem configuracao do operador (available=17) || RESOLVIDO (E-200): verificado por leitura E por teste. O catalogo declara 123 entradas com vocabulario FECHADO (available 17, operator_setup_required 105, provider_selection_required 1) e `available` exige caminho de auth publicado - ja guardado em internal/agent. O que faltava era o guarda de SUPERFICIE: a rota podia devolver entrada sem status e o cliente perderia o sinal de 'exige configuracao'. Teste novo cobre isso sem fixar numero. Residual declarado: operar cada conector exige credencial do operador (segue sob B-03/B-05)."
+      "descricao": "Conectores: 104 de 122 exigem configuracao do operador (available=17) || RESOLVIDO (E-200): verificado por leitura E por teste. O catalogo declara 123 entradas com vocabulario FECHADO (available 17, operator_setup_required 105, provider_selection_required 1) e `available` exige caminho de auth publicado - ja guardado em internal/agent. O que faltava era o guarda de SUPERFICIE: a rota podia devolver entrada sem status e o cliente perderia o sinal de 'exige configuracao'. Teste novo cobre isso sem fixar numero. Residual declarado: operar cada conector exige credencial do operador (segue sob B-03/B-05). || RESOLVIDO (E-200): verificado por leitura E por teste. O catalogo declara 123 entradas com vocabulario FECHADO (available 17, operator_setup_required 105, provider_selection_required 1) e `available` exige caminho de auth publicado - ja guardado em internal/agent. O que faltava era o guarda de SUPERFICIE: a rota podia devolver entrada sem status e o cliente perderia o sinal de 'exige configuracao'. Teste novo cobre isso sem fixar numero. Residual declarado: operar cada conector exige credencial do operador (segue sob B-03/B-05)."
     },
     {
       "id": "B-11",
@@ -1611,8 +1613,14 @@
     "INVENTARIO DE FLAKINESS (E-197): o que eu chamei de 'flake do race (macos-latest)' por tres rodadas era o relogio (E-196, resolvido); o flake do ./server e NOVO, tem 1 ocorrencia e esta registrado com o comando exato. Registro separado evita somar causas diferentes no mesmo nome",
     "RESIDUAL DECLARADO E FECHADO (E-198): em E-195 eu declarei que auth e queue tinham a correcao coberta apenas pelas suites, sem teste de comparacao. Fechado com 4 testes novos (2 de nao inferencia + 2 de controle positivo). Residual declarado que nao e fechado vira divida esquecida",
     "O CAMINHO ENSINA: ao escrever o teste de auth, o StoreOAuthCredential recusou por 'user is not a member of organization' e depois por falta de OLLAMA_AGENT_CREDENTIAL_KEY - eu estava a um passo de medir a recusa ERRADA. As duas falhas apareceram no caminho e estao documentadas no teste",
+    "NOTARIZACAO macOS POR CHAVE DE API IMPLEMENTADA (E-199): helper fonteavel escolhe entre chave de API (--key/--key-id/--issuer) e Apple ID; a CHAVE PRIVADA NAO ENTRA NO REPOSITORIO - circula o CAMINHO, e o CI materializa o arquivo com umask 077 e mascara no log",
+    "PENDENCIA EXTERNA DA NOTARIZACAO (E-199): o ISSUER ID (UUID) nao vem no arquivo .p8; sem ele o fluxo por chave nao autentica. A chave autentica a SUBMISSAO, mas NAO assina - assinar exige o certificado Developer ID",
+    "DUAS ARMADILHAS DE AMBIENTE MEDIDAS (E-199): (a) o checkout Windows aplica CRLF e quebra o bash - a sintaxe tem de ser conferida no conteudo normalizado em LF; (b) o redirecionamento '>' do PowerShell grava UTF-16, o que fez o bash recusar os arquivos como 'binary file'. Verificacao passou a rodar DENTRO do container",
     "B-10 VERIFICADO E RECLASSIFICADO (E-200): o catalogo JA declarava a verdade - 123 entradas, 17 available, 105 operator_setup_required, 1 provider_selection_required - com vocabulario fechado e 'available' exigindo caminho de auth publicado. Eu fui verificar em vez de presumir defeito",
-    "LACUNA DE SUPERFICIE FECHADA (E-200): o vocabulario fechado era garantido no pacote internal/agent, mas a ROTA podia devolver entrada sem status e o cliente perderia o sinal de 'exige configuracao'. O teste novo NAO fixa numero: a invariante e que o catalogo continue declarando que parte dele exige configuracao"
+    "LACUNA DE SUPERFICIE FECHADA (E-200): o vocabulario fechado era garantido no pacote internal/agent, mas a ROTA podia devolver entrada sem status e o cliente perderia o sinal de 'exige configuracao'. O teste novo NAO fixa numero: a invariante e que o catalogo continue declarando que parte dele exige configuracao",
+    "CREDENCIAL DE NOTARIZACAO PROVADA (E-201): JWT ES256 assinado com a chave .p8 (Key ID WBH66TWV84, Issuer 2debc10b-4b47-4ed1-b637-da7c3127195e) devolveu HTTP 200 na API do App Store Connect - em vez de esperar runner macOS, provei a autenticacao que o notarytool exige. O token nunca foi impresso",
+    "B-06 MEDIDO, NAO SUPOSTO (E-201): /v1/certificates devolve 1 certificado DISTRIBUTION (expira 2027-08-13) e NENHUM DEVELOPER_ID_APPLICATION. Notarizar esta desbloqueado (codigo + credencial provada); ASSINAR continua bloqueado, e o Developer ID Application nao se cria por API com papel Developer",
+    "MEDICAO QUE EU QUASE REPORTEI ERRADA (E-201): o alpine NAO tem openssl, entao 'openssl pkey | sha256sum' hasheou a string VAZIA e as tres impressoes digitais sairam iguais. Nao reportei 'chaves identicas' porque o hash de string vazia e reconhecivel; refeito no golang:1.26.9, as tres chaves sao distintas"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",

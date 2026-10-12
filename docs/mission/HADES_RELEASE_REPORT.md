@@ -9,7 +9,7 @@
 | Número | Valor |
 | --- | --- |
 | Estágios | 38 |
-| Linhas de evidência no índice | 199 |
+| Linhas de evidência no índice | 201 |
 | `COMPLETED_VERIFIED` | 2 |
 | `IN_PROGRESS` | 15 |
 | `BLOCKED_BY_EXTERNAL_DEPENDENCY` | 21 |
@@ -60,7 +60,7 @@ relatório **declara a ausência** em vez de preencher com suposição.
 | 5 | Context Bootstrap / contexto de projeto | PARCIAL | BLOCKED_BY_EXTERNAL_DEPENDENCY | B-07 | E-040, E-050, E-051, E-069 |
 | 11 | Paridade Codex/Claude (harnesses de codigo) | PARCIAL | BLOCKED_BY_EXTERNAL_DEPENDENCY | B-02 | E-025, E-046, E-116 |
 | 16 | Canais de IM (WhatsApp/Telegram/inbox unificado) | APENAS_ADAPTER | BLOCKED_BY_EXTERNAL_DEPENDENCY | B-03 | E-030 |
-| 20 | Distribuicao e instaladores (Windows/macOS/Linux) | PARCIAL | BLOCKED_BY_EXTERNAL_DEPENDENCY | B-06 | E-022, E-113 |
+| 20 | Distribuicao e instaladores (Windows/macOS/Linux) | PARCIAL | BLOCKED_BY_EXTERNAL_DEPENDENCY | B-06 | E-022, E-113, E-199, E-201 |
 | 23 | Company Factory (empresa orquestrada) | PARCIAL | BLOCKED_BY_EXTERNAL_DEPENDENCY | B-07 | E-044, E-087, E-114 |
 | 24 | CRM e pipeline de vendas | PARCIAL | BLOCKED_BY_EXTERNAL_DEPENDENCY | B-05 | E-047, E-087, E-107 |
 | 25 | Commerce / loja e pedidos | IMPLEMENTADO_NAO_HOMOLOGADO | BLOCKED_BY_EXTERNAL_DEPENDENCY | B-05 | E-047, E-087, E-126, E-128 |
@@ -90,7 +90,7 @@ possível sem ele**.
 
 ## Referências
 
-- Índice de evidências: [`HADES_EVIDENCE_INDEX.md`](HADES_EVIDENCE_INDEX.md) (199 linhas).
+- Índice de evidências: [`HADES_EVIDENCE_INDEX.md`](HADES_EVIDENCE_INDEX.md) (201 linhas).
 - Estado da missão: [`HADES_MASTER_STATE.json`](HADES_MASTER_STATE.json).
 - Gate global: [`HADES_FINAL_RELEASE_GATE.md`](HADES_FINAL_RELEASE_GATE.md).
 - Gate intermediário de engenharia (estágio 22): [`HADES_ENGINEERING_GATE.md`](HADES_ENGINEERING_GATE.md).

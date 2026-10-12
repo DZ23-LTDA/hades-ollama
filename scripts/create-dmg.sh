@@ -617,7 +617,18 @@ if [[ -n "${SIGNATURE}" && "${SIGNATURE}" != "-null-" ]]; then
 	fi
 fi
 
-if [[ -n "${NOTARIZE}" && "${NOTARIZE}" != "-null-" ]]; then
+# Autenticação do notarytool: chave de API (.p8) quando configurada, senão o perfil de keychain (comportamento antigo).
+# A chave privada NUNCA entra no repositório — só o CAMINHO vem por variável. Ver scripts/notarytool-auth.sh.
+if [ -f "$(dirname "$0")/notarytool-auth.sh" ]; then
+	# shellcheck source=scripts/notarytool-auth.sh
+	. "$(dirname "$0")/notarytool-auth.sh"
+fi
+
+if [ "$(notarytool_auth_mode 2>/dev/null || echo apple-id)" = "api-key" ]; then
+	echo "Notarization started (chave de API do App Store Connect)"
+	# shellcheck disable=SC2086  # os argumentos vêm do helper, um por linha
+	xcrun notarytool submit "${DMG_DIR}/${DMG_NAME}" $(notarytool_auth_args) --wait
+elif [[ -n "${NOTARIZE}" && "${NOTARIZE}" != "-null-" ]]; then
 	echo "Notarization started"
 	xcrun notarytool submit "${DMG_DIR}/${DMG_NAME}" --keychain-profile "${NOTARIZE}" --wait
 	echo "Stapling the notarization ticket"

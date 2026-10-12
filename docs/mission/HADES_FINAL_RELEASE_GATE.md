@@ -58,7 +58,7 @@ Resumo: BLOCKED_BY_EXTERNAL_DEPENDENCY: 3 · DONE: 17 · IN_PROGRESS: 1 · NAO_C
 | B-03 | Tokens reais de canais (Telegram bot token, WhatsApp) | ver HADES_BLOCKERS.md |
 | B-04 | Provedor de telefonia/voz real | ver HADES_BLOCKERS.md |
 | B-05 | Contas reais de marketplace/social/pagamento | ver HADES_BLOCKERS.md |
-| B-06 | Identidade de assinatura de release (certificado) | ver HADES_BLOCKERS.md |
+| B-06 | Identidade de assinatura de release (certificado). ESTADO MEDIDO (E-201): a autenticacao de NOTARIZACAO foi PROVADA com a chave de API do App Store Connect (JWT | ver HADES_BLOCKERS.md |
 | B-07 | Chaves de provedor de modelo para homologacao de chamada real | ver HADES_BLOCKERS.md |
 
 ## O que faria o veredito mudar
