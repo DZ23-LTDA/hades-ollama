@@ -218,7 +218,8 @@ func (o *AgentOrchestrator) Get(id string) (OrchestrationJob, error) {
 func (o *AgentOrchestrator) GetForOrganization(id, organizationID string) (OrchestrationJob, error) {
 	job, err := o.Get(id)
 	if err != nil {
-		return OrchestrationJob{}, err
+		// NÃO INFERÊNCIA (E-192, fechamento de B-16): mesma correção do B-15.
+		return OrchestrationJob{}, ErrOrchestrationForbidden
 	}
 	if normalizedOrganizationID(job.OrganizationID) != normalizedOrganizationID(organizationID) {
 		return OrchestrationJob{}, ErrOrchestrationForbidden

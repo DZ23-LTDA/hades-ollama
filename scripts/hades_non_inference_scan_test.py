@@ -102,10 +102,27 @@ class CalibracaoDoScanner(unittest.TestCase):
             self.assertIn("motivo", achado)
 
     def test_os_metodos_ja_corrigidos_nao_aparecem(self) -> None:
-        # E-190 corrigiu estes dois; se voltarem a aparecer, é regressão da correção OU falso positivo do scanner.
+        # E-190 corrigiu os dois primeiros; E-192 corrigiu os quatro que o scanner apontou depois. Se algum voltar a
+        # aparecer, é REGRESSÃO da correção (ou falso positivo do scanner) — as duas hipóteses exigem olhar.
         suspeitos = {achado["metodo"] for achado in scanner.varrer()}
-        self.assertNotIn("TelAgentHistoryForOrganization", suspeitos, "método corrigido em E-190 voltou a ser suspeito")
-        self.assertNotIn("CompanyFactoryReportFor", suspeitos, "método corrigido em E-190 voltou a ser suspeito")
+        for metodo in (
+            "TelAgentHistoryForOrganization",
+            "CompanyFactoryReportFor",
+            "GetForOrganization",
+            "TelAgentSessionForOrganization",
+        ):
+            self.assertNotIn(metodo, suspeitos, f"método já corrigido voltou a ser suspeito: {metodo}")
+
+    def test_o_candidato_restante_esta_declarado(self) -> None:
+        # O scanner deixa UM candidato (o `call` do MCP remoto). Ele não foi verificado, e a metodologia declarada diz
+        # que apontar não é provar: o teste exige que ele CONTINUE VISÍVEL em vez de ser silenciado para a lista ficar
+        # bonita. Se ele sumir, é porque alguém o corrigiu (então atualize este teste) ou o scanner ficou cego.
+        suspeitos = {(achado["arquivo"], achado["metodo"]) for achado in scanner.varrer()}
+        self.assertIn(
+            ("internal/agent/mcp_remote.go", "call"),
+            suspeitos,
+            "o candidato não verificado do MCP remoto precisa continuar visível (B-17)",
+        )
 
 
 if __name__ == "__main__":

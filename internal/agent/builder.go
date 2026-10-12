@@ -352,7 +352,11 @@ func normalizedBuilderOrganization(id string) string {
 func (b *BuilderService) GetForOrganization(id, organizationID string) (BuilderProject, error) {
 	project, err := b.Get(id)
 	if err != nil {
-		return BuilderProject{}, err
+		// NÃO INFERÊNCIA (E-192, fechamento de B-16): o scanner calibrado (E-191) apontou este método como a mesma
+		// forma do B-15 — "não existe" devolvia o erro cru da busca (404) e "é de outro tenant" devolvia
+		// ErrBuilderForbidden (403), e a diferença revela a existência do ID. As duas recusas passam a ser a MESMA; o
+		// motivo real fica no log de quem opera.
+		return BuilderProject{}, ErrBuilderForbidden
 	}
 	if normalizedBuilderOrganization(project.OrganizationID) != normalizedBuilderOrganization(organizationID) {
 		return BuilderProject{}, ErrBuilderForbidden

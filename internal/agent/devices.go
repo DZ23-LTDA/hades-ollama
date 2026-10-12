@@ -210,7 +210,9 @@ func (s *DeviceStore) Get(deviceID string) (Device, error) {
 func (s *DeviceStore) GetForOrganization(deviceID, organizationID string) (Device, error) {
 	device, err := s.Get(deviceID)
 	if err != nil {
-		return Device{}, err
+		// NÃO INFERÊNCIA (E-192, fechamento de B-16): mesma correção do B-15 — "não existe" e "de outro tenant"
+		// devolvem a MESMA recusa, para a resposta não revelar a existência do ID.
+		return Device{}, ErrDeviceForbidden
 	}
 	if normalizedOrganizationID(device.OrganizationID) != normalizedOrganizationID(organizationID) {
 		return Device{}, ErrDeviceForbidden
