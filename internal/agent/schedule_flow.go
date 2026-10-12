@@ -185,6 +185,9 @@ type ScheduleStep struct {
 	// CompensateWith é o id do passo que DESFAZ o efeito deste, executado em ORDEM INVERSA
 	// quando um passo posterior falha de forma definitiva. Sem este campo, nada muda.
 	CompensateWith string `json:"compensate_with,omitempty"`
+	// CompensationOnly marca um passo que NÃO roda no fluxo normal: ele existe apenas para DESFAZER
+	// outro passo. Sem a marca, um passo de compensação também executaria no passe normal.
+	CompensationOnly bool `json:"compensation_only,omitempty"`
 }
 
 // ValidateScheduleSteps accepts an empty graph (legacy single-objective
@@ -231,6 +234,9 @@ func ValidateScheduleSteps(steps []ScheduleStep) error {
 				return fmt.Errorf("schedule step %q depends on unknown step %q", strings.TrimSpace(step.ID), dep)
 			}
 		}
+	}
+	if err := validateCompensationOnlySteps(steps); err != nil {
+		return err
 	}
 	if _, err := orderScheduleSteps(steps); err != nil {
 		return err
@@ -377,6 +383,38 @@ func validateScheduleStepShape(step ScheduleStep) error {
 		}
 	default:
 		return fmt.Errorf("%w: %s", ErrUnknownScheduleStep, step.Kind)
+	}
+	return nil
+}
+
+// validateCompensationOnlySteps mantém a validação FAIL-CLOSED ao introduzir a marca de "somente
+// compensação": um passo assim não pode ser gatilho, precisa ser REALMENTE referenciado por algum
+// CompensateWith (senão nunca rodaria) e ninguém pode depender dele (ele não existe no fluxo normal).
+func validateCompensationOnlySteps(steps []ScheduleStep) error {
+	referenciados := make(map[string]bool, len(steps))
+	marcados := make(map[string]bool, len(steps))
+	for _, passo := range steps {
+		if alvo := strings.TrimSpace(passo.CompensateWith); alvo != "" {
+			referenciados[alvo] = true
+		}
+		if passo.CompensationOnly {
+			id := strings.TrimSpace(passo.ID)
+			if isScheduleTrigger(passo.Kind) {
+				return fmt.Errorf("schedule trigger %q cannot be compensation-only", id)
+			}
+			marcados[id] = true
+		}
+	}
+	for _, passo := range steps {
+		id := strings.TrimSpace(passo.ID)
+		if marcados[id] && !referenciados[id] {
+			return fmt.Errorf("schedule step %q is compensation-only but no step compensates with it", id)
+		}
+		for _, dependencia := range passo.DependsOn {
+			if marcados[strings.TrimSpace(dependencia)] {
+				return fmt.Errorf("schedule step %q cannot depend on compensation-only step %q", id, strings.TrimSpace(dependencia))
+			}
+		}
 	}
 	return nil
 }
@@ -604,6 +642,8 @@ func (r *Runtime) compensateScheduleFlow(ctx context.Context, schedule Schedule,
 			sub.Steps = append(sub.Steps, ScheduleStep{ID: dependencia, Kind: ScheduleStepTriggerInterval})
 		}
 		passo.DependsOn = []string{dependencia}
+		// A marca vale para o FLUXO NORMAL; aqui o passo é executado de propósito.
+		passo.CompensationOnly = false
 		sub.Steps = append(sub.Steps, passo)
 
 		resultado, err := r.executeScheduleFlowInner(ctx, sub, runKey+":comp:"+alvo, nil, nil, nil)
@@ -695,6 +735,18 @@ func (r *Runtime) executeScheduleFlowInner(ctx context.Context, schedule Schedul
 	pendingSteps := make(map[string]bool, len(order))
 	for _, step := range order {
 		id := strings.TrimSpace(step.ID)
+		if step.CompensationOnly {
+			// Passo SOMENTE de compensação: não faz parte do fluxo normal. Ele não executa aqui — existe
+			// para desfazer outro passo — mas o resultado é registrado por nó, sem sumir do relatório.
+			outcomes[id] = false
+			report.Steps = append(report.Steps, ScheduleStepOutcome{
+				ID:     id,
+				Kind:   string(step.Kind),
+				Status: ScheduleStepSkipped,
+				Reason: "passo somente de compensação: roda apenas no desfazer",
+			})
+			continue
+		}
 		if execute != nil && !execute[id] {
 			// Passo preservado: não roda de novo, mas o resultado anterior entra no
 			// relatório e nas dependências (senão o dependente ficaria bloqueado).
