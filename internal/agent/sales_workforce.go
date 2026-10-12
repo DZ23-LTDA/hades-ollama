@@ -3,6 +3,7 @@ package agent
 import (
 	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -54,13 +55,16 @@ const (
 )
 
 var (
-	ErrProposalInvalid         = errors.New("sales proposal invalid")
-	ErrProposalUnknownSKU      = errors.New("sales proposal references unknown sku")
-	ErrProposalNotFound        = errors.New("sales proposal not found")
-	ErrProposalExpired         = errors.New("sales proposal expired")
-	ErrProposalConsentRequired = errors.New("sales proposal requires contact consent")
-	ErrProposalStateInvalid    = errors.New("sales proposal state does not allow this action")
-	ErrFollowUpInvalid         = errors.New("post-sale follow-up invalid")
+	ErrProposalInvalid = errors.New("sales proposal invalid")
+	// PRECIFICACAO (E-269): percentual fora de faixa, frete negativo e desconto acima do teto autorizado.
+	ErrProposalPricingInvalid   = errors.New("proposal pricing invalid")
+	ErrProposalDiscountExceeded = errors.New("proposal discount exceeds the authorized ceiling")
+	ErrProposalUnknownSKU       = errors.New("sales proposal references unknown sku")
+	ErrProposalNotFound         = errors.New("sales proposal not found")
+	ErrProposalExpired          = errors.New("sales proposal expired")
+	ErrProposalConsentRequired  = errors.New("sales proposal requires contact consent")
+	ErrProposalStateInvalid     = errors.New("sales proposal state does not allow this action")
+	ErrFollowUpInvalid          = errors.New("post-sale follow-up invalid")
 	// ErrFollowUpStateInvalid é separado do erro de ENTRADA: motivo/escopo ausentes são
 	// erro do cliente (400); concluir algo já concluído é conflito de estado (409).
 	ErrFollowUpStateInvalid = errors.New("post-sale follow-up state does not allow this action")
@@ -77,6 +81,10 @@ type SalesProposalRequest struct {
 	Notes          string
 	Validity       time.Duration
 	Items          []SalesProposalItemRequest
+	// PRECIFICACAO (E-269). Percentuais em BASIS POINTS (1500 = 15,00%): dinheiro em inteiro, sem float.
+	DiscountBasisPoints int64 `json:"discount_basis_points,omitempty"`
+	TaxBasisPoints      int64 `json:"tax_basis_points,omitempty"`
+	ShippingCents       int64 `json:"shipping_cents,omitempty"`
 }
 
 // SalesProposalItemRequest é uma linha pedida.
@@ -102,15 +110,25 @@ type SalesProposal struct {
 	OpportunityID  string              `json:"opportunity_id,omitempty"`
 	Currency       string              `json:"currency"`
 	Items          []SalesProposalItem `json:"items"`
-	TotalCents     int64               `json:"total_cents"`
-	Status         string              `json:"status"`
-	ValidUntil     time.Time           `json:"valid_until"`
-	Notes          string              `json:"notes,omitempty"`
-	CreatedAt      time.Time           `json:"created_at"`
-	UpdatedAt      time.Time           `json:"updated_at"`
-	SentAt         *time.Time          `json:"sent_at,omitempty"`
-	DecidedAt      *time.Time          `json:"decided_at,omitempty"`
-	DecidedBy      string              `json:"decided_by,omitempty"`
+	// PRECIFICACAO (E-269): a conta fica ABERTA na proposta. Um total unico esconderia quanto foi
+	// desconto, quanto foi imposto e quanto foi frete.
+	SubtotalCents       int64 `json:"subtotal_cents"`
+	DiscountBasisPoints int64 `json:"discount_basis_points"`
+	DiscountCents       int64 `json:"discount_cents"`
+	TaxBasisPoints      int64 `json:"tax_basis_points"`
+	TaxCents            int64 `json:"tax_cents"`
+	ShippingCents       int64 `json:"shipping_cents"`
+	// ShippingDeclared diz se o frete foi INFORMADO. Zero nao informado nao e zero cobrado.
+	ShippingDeclared bool       `json:"shipping_declared"`
+	TotalCents       int64      `json:"total_cents"`
+	Status           string     `json:"status"`
+	ValidUntil       time.Time  `json:"valid_until"`
+	Notes            string     `json:"notes,omitempty"`
+	CreatedAt        time.Time  `json:"created_at"`
+	UpdatedAt        time.Time  `json:"updated_at"`
+	SentAt           *time.Time `json:"sent_at,omitempty"`
+	DecidedAt        *time.Time `json:"decided_at,omitempty"`
+	DecidedBy        string     `json:"decided_by,omitempty"`
 }
 
 // SalesFollowUp é o acompanhamento de pós-venda.
@@ -149,6 +167,56 @@ func NewSalesWorkforceStore(root string, commerce *CommerceStore, consent *Conse
 		consent:    consent,
 		loadedOrgs: map[string]bool{},
 	}
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// POLITICA DE DESCONTO (E-269)
+// ---------------------------------------------------------------------------------------------------------------
+
+// proposalPolicyFile guarda o teto de desconto autorizado da organizacao.
+type proposalPolicyFile struct {
+	MaxDiscountBasisPoints int64 `json:"max_discount_basis_points"`
+}
+
+// SetDiscountPolicy define o teto de desconto autorizado (basis points). Zero REMOVE a politica e volta ao padrao
+// SEGURO: sem politica, desconto nenhum.
+func (s *SalesWorkforceStore) SetDiscountPolicy(organizationID string, maxDiscountBasisPoints int64) error {
+	organizationID = strings.TrimSpace(organizationID)
+	if organizationID == "" {
+		return fmt.Errorf("%w: organizacao e obrigatoria", ErrProposalPricingInvalid)
+	}
+	if maxDiscountBasisPoints < 0 || maxDiscountBasisPoints > 10000 {
+		return fmt.Errorf("%w: teto %d fora de 0..10000", ErrProposalPricingInvalid, maxDiscountBasisPoints)
+	}
+	caminho := s.policyPath(organizationID)
+	if caminho == "" {
+		// Modo em memoria: o teto vale nesta execucao. Declarado, nao fingido.
+		return nil
+	}
+	return writeJSONAtomic(caminho, proposalPolicyFile{MaxDiscountBasisPoints: maxDiscountBasisPoints})
+}
+
+// discountCeiling devolve o teto autorizado. SEM POLITICA O TETO E ZERO: vendedor nao da desconto sem autorizacao.
+func (s *SalesWorkforceStore) discountCeiling(organizationID string) (int64, error) {
+	caminho := s.policyPath(organizationID)
+	if caminho == "" {
+		return 0, nil
+	}
+	stored := proposalPolicyFile{}
+	if err := readJSON(caminho, &stored); err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return 0, nil
+		}
+		return 0, fmt.Errorf("ler politica de desconto: %w", err)
+	}
+	return stored.MaxDiscountBasisPoints, nil
+}
+
+func (s *SalesWorkforceStore) policyPath(organizationID string) string {
+	if s == nil || strings.TrimSpace(s.root) == "" {
+		return ""
+	}
+	return filepath.Join(s.root, "sales", "policy_"+sanitizeIDComponent(organizationID)+".json")
 }
 
 type salesWorkforceFile struct {
@@ -241,12 +309,40 @@ func (s *SalesWorkforceStore) CreateProposal(request SalesProposalRequest, now t
 			UnitPriceCents: product.PriceCents, TotalCents: product.PriceCents * item.Quantity,
 		}
 		proposal.Items = append(proposal.Items, line)
-		proposal.TotalCents += line.TotalCents
+		proposal.SubtotalCents += line.TotalCents
 	}
 	if currency == "" {
 		currency = "BRL"
 	}
 	proposal.Currency = currency
+
+	// PRECIFICACAO (E-269). Validacoes ANTES de gravar: nada e persistido com preco invalido.
+	if request.DiscountBasisPoints < 0 || request.DiscountBasisPoints > 10000 {
+		return SalesProposal{}, fmt.Errorf("%w: desconto %d fora de 0..10000", ErrProposalPricingInvalid, request.DiscountBasisPoints)
+	}
+	if request.TaxBasisPoints < 0 || request.TaxBasisPoints > 10000 {
+		return SalesProposal{}, fmt.Errorf("%w: imposto %d fora de 0..10000", ErrProposalPricingInvalid, request.TaxBasisPoints)
+	}
+	if request.ShippingCents < 0 {
+		return SalesProposal{}, fmt.Errorf("%w: frete negativo (%d)", ErrProposalPricingInvalid, request.ShippingCents)
+	}
+	teto, err := s.discountCeiling(organizationID)
+	if err != nil {
+		return SalesProposal{}, err
+	}
+	if request.DiscountBasisPoints > teto {
+		return SalesProposal{}, fmt.Errorf("%w: pedido %d bp, autorizado %d bp", ErrProposalDiscountExceeded, request.DiscountBasisPoints, teto)
+	}
+	proposal.DiscountBasisPoints = request.DiscountBasisPoints
+	// Arredondamento PARA BAIXO: nunca cobrar a mais do cliente nem registrar desconto nao concedido.
+	proposal.DiscountCents = proposal.SubtotalCents * request.DiscountBasisPoints / 10000
+	base := proposal.SubtotalCents - proposal.DiscountCents
+	proposal.TaxBasisPoints = request.TaxBasisPoints
+	// Imposto sobre a BASE COM DESCONTO: tributar o valor cheio cobraria imposto de dinheiro que nao entrou.
+	proposal.TaxCents = base * request.TaxBasisPoints / 10000
+	proposal.ShippingCents = request.ShippingCents
+	proposal.ShippingDeclared = request.ShippingCents > 0
+	proposal.TotalCents = base + proposal.TaxCents + proposal.ShippingCents
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
