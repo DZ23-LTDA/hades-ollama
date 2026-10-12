@@ -780,11 +780,15 @@ func (s *AuthStore) refreshOAuthCredential(ctx context.Context, organizationID s
 		}
 		return OAuthCredential{}, os.ErrNotExist
 	}
-	if credential.Provider != provider.Name {
-		return OAuthCredential{}, errors.New("oauth credential provider mismatch")
-	}
+	// NAO INFERENCIA (E-252): a checagem de TENANT vem ANTES da de provider. Na ordem anterior, um intruso com
+	// provider ERRADO distinguia "este ID existe em outro tenant" (provider mismatch) de "este ID nao existe"
+	// (outside the active organization) e assim enumerava credenciais de OUTRA organizacao. E a mesma familia de
+	// defeito que E-198 corrigiu na fila (checagem de organizacao depois da de status).
 	if organizationID != "" && credential.OrganizationID != organizationID {
 		return OAuthCredential{}, errors.New("oauth credential is outside the active organization")
+	}
+	if credential.Provider != provider.Name {
+		return OAuthCredential{}, errors.New("oauth credential provider mismatch")
 	}
 	if credential.RevokedAt != nil {
 		return OAuthCredential{}, ErrOAuthCredentialRevoked
