@@ -160,6 +160,7 @@ type commerceFile struct {
 	Products    []CommerceProduct                  `json:"products"`
 	Stock       map[string][]CommerceStockMovement `json:"stock"`
 	Orders      []CommerceOrder                    `json:"orders"`
+	Returns     []CommerceReturn                   `json:"returns,omitempty"`
 	Idempotency map[string]string                  `json:"idempotency"`
 	Sequence    int64                              `json:"sequence"`
 }
@@ -167,6 +168,7 @@ type commerceFile struct {
 // CommerceStore guarda catálogo, estoque e pedidos por organização.
 type CommerceStore struct {
 	mu            sync.RWMutex
+	returns       map[string]CommerceReturn
 	products      map[string]CommerceProduct
 	stock         map[string][]CommerceStockMovement
 	orders        map[string]CommerceOrder
@@ -228,6 +230,12 @@ func NewCommerceStoreAt(root string) (*CommerceStore, error) {
 				store.orderSequence[consentScope(order.OrganizationID)] = stored.Sequence
 			}
 		}
+		for _, devolucao := range stored.Returns {
+			if store.returns == nil {
+				store.returns = map[string]CommerceReturn{}
+			}
+			store.returns[devolucao.ID] = devolucao
+		}
 		for key, orderID := range stored.Idempotency {
 			store.idempotency[key] = orderID
 		}
@@ -253,6 +261,7 @@ func (s *CommerceStore) persistLocked(organizationID string) error {
 	organizationID = consentScope(organizationID)
 	payload := commerceFile{
 		Products:    []CommerceProduct{},
+		Returns:     []CommerceReturn{},
 		Stock:       map[string][]CommerceStockMovement{},
 		Orders:      []CommerceOrder{},
 		Idempotency: map[string]string{},
@@ -261,6 +270,11 @@ func (s *CommerceStore) persistLocked(organizationID string) error {
 	for _, product := range s.products {
 		if product.OrganizationID == organizationID {
 			payload.Products = append(payload.Products, product)
+		}
+	}
+	for _, devolucao := range s.returns {
+		if consentScope(devolucao.OrganizationID) == organizationID {
+			payload.Returns = append(payload.Returns, devolucao)
 		}
 	}
 	for key, movements := range s.stock {
@@ -770,4 +784,141 @@ func (s *CommerceStore) Summary(organizationID string) CommerceSummary {
 		}
 	}
 	return summary
+}
+
+// ErrCommerceReturnQuantity cobre devolucao de SKU ausente no pedido, quantidade invalida ou acima do comprado.
+var ErrCommerceReturnQuantity = errors.New("return quantity is not allowed for this order")
+
+// CommerceReturnRequest descreve uma devolucao pedida pelo operador.
+type CommerceReturnRequest struct {
+	OrganizationID string `json:"organization_id"`
+	OrderID        string `json:"order_id"`
+	SKU            string `json:"sku"`
+	Quantity       int64  `json:"quantity"`
+	Reason         string `json:"reason"`
+	ActorID        string `json:"actor_id"`
+}
+
+// CommerceReturn e o REGISTRO de uma devolucao. O campo FinancialSignal diz explicitamente que o dinheiro NAO se
+// moveu: reembolso exige aprovacao humana, e prometer o contrario seria mentir.
+type CommerceReturn struct {
+	ID              string    `json:"id"`
+	OrganizationID  string    `json:"organization_id"`
+	OrderID         string    `json:"order_id"`
+	OrderNumber     string    `json:"order_number"`
+	SKU             string    `json:"sku"`
+	Quantity        int64     `json:"quantity"`
+	Reason          string    `json:"reason"`
+	ActorID         string    `json:"actor_id"`
+	MovementID      string    `json:"movement_id"`
+	RefundCents     int64     `json:"refund_cents"`
+	FinancialSignal string    `json:"financial_signal"`
+	CreatedAt       time.Time `json:"created_at"`
+}
+
+// RecordReturn registra a devolucao de itens de um pedido PAGO, devolve o estoque e sinaliza o reembolso devido.
+//
+// Propriedades travadas por teste: o pedido precisa ser do MESMO tenant (recusa identica a de inexistente),
+// so pedido pago/atendido pode devolver, a quantidade nao pode passar do comprado menos o ja devolvido, e repetir
+// a MESMA devolucao e IDEMPOTENTE (nao devolve estoque duas vezes).
+func (s *CommerceStore) RecordReturn(request CommerceReturnRequest, now time.Time) (CommerceReturn, error) {
+	organizationID := consentScope(request.OrganizationID)
+	order, err := s.Order(organizationID, strings.TrimSpace(request.OrderID))
+	if err != nil {
+		return CommerceReturn{}, err
+	}
+	if order.Status != CommerceOrderPaid && order.Status != CommerceOrderFulfilled {
+		return CommerceReturn{}, fmt.Errorf("%w: pedido em %q nao pode ser devolvido", ErrCommerceOrderState, order.Status)
+	}
+	sku := strings.TrimSpace(request.SKU)
+	if request.Quantity <= 0 {
+		return CommerceReturn{}, fmt.Errorf("%w: quantidade %d", ErrCommerceReturnQuantity, request.Quantity)
+	}
+	comprado := int64(0)
+	var unitario int64
+	for _, item := range order.Items {
+		if item.SKU != sku {
+			continue
+		}
+		comprado += item.Quantity
+	}
+	if comprado == 0 {
+		return CommerceReturn{}, fmt.Errorf("%w: sku %q nao pertence ao pedido %s", ErrCommerceReturnQuantity, sku, order.Number)
+	}
+	for _, product := range s.Products(organizationID) {
+		if product.SKU == sku {
+			unitario = product.PriceCents
+			break
+		}
+	}
+	jaDevolvido := int64(0)
+	s.mu.RLock()
+	for _, existente := range s.returns {
+		if existente.OrderID != order.ID || existente.SKU != sku {
+			continue
+		}
+		// IDEMPOTENCIA: repetir a MESMA devolucao devolve o registro existente, sem novo movimento.
+		if existente.Quantity == request.Quantity && existente.Reason == strings.TrimSpace(request.Reason) {
+			s.mu.RUnlock()
+			return existente, nil
+		}
+		jaDevolvido += existente.Quantity
+	}
+	s.mu.RUnlock()
+	if request.Quantity > comprado-jaDevolvido {
+		return CommerceReturn{}, fmt.Errorf("%w: %d excede o devolvivel (%d de %d)", ErrCommerceReturnQuantity, request.Quantity, comprado-jaDevolvido, comprado)
+	}
+	devolucao := CommerceReturn{
+		ID:              "ret_" + uuid.NewString(),
+		OrganizationID:  organizationID,
+		OrderID:         order.ID,
+		OrderNumber:     order.Number,
+		SKU:             sku,
+		Quantity:        request.Quantity,
+		Reason:          strings.TrimSpace(request.Reason),
+		ActorID:         strings.TrimSpace(request.ActorID),
+		RefundCents:     unitario * request.Quantity,
+		FinancialSignal: "reembolso_devido_requer_aprovacao_humana",
+		CreatedAt:       now,
+	}
+	// ORDEM CORRETA (e a licao de E-258 aplicada com criterio): primeiro o MOVIMENTO de estoque, depois o registro
+	// COMPLETO e UMA gravacao. Inserir o registro antes do movimento fazia o estado duravel sair sem MovementID -
+	// devolucao sem vinculo auditavel. Devolucao e acao RARA e humana, nao hot path: uma gravacao explicita aqui e'
+	// barata, diferente da gravacao por CICLO que instabilizou a suite.
+	movement, err := s.RecordStock(organizationID, sku, request.Quantity, CommerceMovementEntry, "devolucao:"+order.Number, now)
+	if err != nil {
+		return CommerceReturn{}, err
+	}
+	devolucao.MovementID = movement.ID
+	s.mu.Lock()
+	if s.returns == nil {
+		s.returns = map[string]CommerceReturn{}
+	}
+	s.returns[devolucao.ID] = devolucao
+	persistErr := s.persistLocked(organizationID)
+	if persistErr != nil {
+		// O estoque JA voltou (movimento duravel). O registro nao gravou: devolver o erro e dizer o que aconteceu,
+		// em vez de deixar a devolucao invisivel.
+		delete(s.returns, devolucao.ID)
+	}
+	s.mu.Unlock()
+	if persistErr != nil {
+		return CommerceReturn{}, fmt.Errorf("movimento %s registrado, mas a devolucao nao foi gravada: %w", movement.ID, persistErr)
+	}
+	return devolucao, nil
+}
+
+// Returns devolve as devolucoes registradas da organizacao (copia).
+func (s *CommerceStore) Returns(organizationID string) []CommerceReturn {
+	organizationID = consentScope(organizationID)
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	resultado := []CommerceReturn{}
+	for _, devolucao := range s.returns {
+		if consentScope(devolucao.OrganizationID) == organizationID {
+			resultado = append(resultado, devolucao)
+		}
+	}
+	sort.Slice(resultado, func(i, j int) bool { return resultado[i].CreatedAt.Before(resultado[j].CreatedAt) })
+	return resultado
 }
