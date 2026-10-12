@@ -2,7 +2,7 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-14T15:25:00-03:00",
+  "updated_at": "2026-10-14T16:05:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
@@ -344,7 +344,8 @@
         "E-204",
         "E-205",
         "E-206",
-        "E-207"
+        "E-207",
+        "E-208"
       ],
       "blocker": "B-01",
       "next": "Sessao real de CLI: 5 hipoteses eliminadas (E-207). Candidato restante, NAO testado: contexto de criacao do processo (token/integridade/console) do filho do runner. Nao chamar de causa sem medir",
@@ -1640,7 +1641,10 @@
     "CINCO HIPOTESES ELIMINADAS NA SESSAO REAL (E-207): nao e o binario, nem a build do plugin, nem a allowlist de ambiente (ambiente completo falha igual), nem o stdin nulo, nem o shim .cmd - e nao ha sandbox de arquivos no produto (configureToolProcess e no-op no Windows). O mesmo comando funciona quando o shell o cria e falha quando o runner governado o cria; a falha esta no bootstrap da propria CLI (arg0/app-server) com 'Acesso negado'",
     "DISCIPLINA DE DIAGNOSTICO (E-207): havia uma explicacao conveniente a mao (o stdin nulo, o ambiente reduzido) e eu NAO a adotei como causa raiz: testei e falsifiquei cada uma. O candidato restante (contexto de criacao do processo: token/integridade/console) ficou DECLARADO como nao testado, em vez de virar conclusao",
     "NENHUM EXPERIMENTO FOI COMMITADO (E-207): os patches de stdin e de ambiente foram revertidos; a arvore ficou limpa e apenas a evidencia ficou registrada",
-    "LICAO OPERACIONAL (E-207): commit com aspas/acentos no corpo DEVE usar `git commit -F arquivo`; o padrao `-m \"...\"` no PowerShell mangled a citacao e o commit FALHOU EM SILENCIO porque eu tambem canalizei a saida. Alem disso, checar o exit code do commit e obrigatorio: eu li HEAD igual ao anterior e so assim percebi. Regra: escrever a mensagem em _tmp/*.txt, commitar com -F e conferir o SHA depois."
+    "LICAO OPERACIONAL (E-207): commit com aspas/acentos no corpo DEVE usar `git commit -F arquivo`; o padrao `-m \"...\"` no PowerShell mangled a citacao e o commit FALHOU EM SILENCIO porque eu tambem canalizei a saida. Alem disso, checar o exit code do commit e obrigatorio: eu li HEAD igual ao anterior e so assim percebi. Regra: escrever a mensagem em _tmp/*.txt, commitar com -F e conferir o SHA depois.",
+    "DEFEITO REAL DE AMBIENTE ACHADO PELO PROPRIO TOOLCHAIN (E-208): o TEMP do operador e SOMENTE LEITURA neste ambiente - quem provou foi o `go test`, que nao conseguiu escrever o arquivo de resposta em AppData\\Local\\Temp. Passar esse TEMP a um CLI filho e defeito real, e o runner agora cria um diretorio por sessao e aponta TEMP/TMP/TMPDIR do filho para ele (removido ao final)",
+    "NAO CONFUNDIR CONSERTO COM DESBLOQUEIO (E-208): o conserto do TEMP gravavel NAO resolve a sessao real da CLI - testei com ele aplicado e o erro em ~/.codex/tmp/arg0 permanece. Registrei o conserto pelo merito proprio e mantive o bloqueio da sessao separado, em vez de vender o conserto como solucao",
+    "DESCOBERTA DE SEGURANCA (E-208): o resolvedor RECUSA interpretadores genericos (cmd.exe, sh) com 'binario da CLI nao e executavel direto' - protecao contra shell injection que atrapalhou meu primeiro experimento, sinal de que ela funciona"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",

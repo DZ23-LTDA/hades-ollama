@@ -369,6 +369,41 @@ func validateGovernedCLIArguments(args []string) error {
 // limitada e redação por DLP. Sai com erro apenas quando nada foi executado
 // (harness desconhecido, binário inválido, DLP, limite): código de saída
 // diferente de zero é resultado, não falha de infraestrutura.
+// caminhoDeTrabalho devolve o diretório onde o processo filho será criado.
+func caminhoDeTrabalho(pedido string) string {
+	if trimmed := strings.TrimSpace(pedido); trimmed != "" {
+		return trimmed
+	}
+	if atual, err := os.Getwd(); err == nil {
+		return atual
+	}
+	return "."
+}
+
+// ambienteComTempGravavel aponta TEMP/TMP/TMPDIR do filho para um diretório que sabemos ser gravável.
+//
+// MOTIVO (E-208): o TEMP herdado do operador pode estar em local somente leitura (ambiente confinado). Sem isso, o
+// CLI filho falha no próprio bootstrap com "Acesso negado" ao criar seus artefatos temporários.
+func ambienteComTempGravavel(env []string, dir string) []string {
+	alvos := map[string]bool{"TEMP": false, "TMP": false, "TMPDIR": false}
+	resultado := make([]string, 0, len(env)+len(alvos))
+	for _, item := range env {
+		nome, _, achou := strings.Cut(item, "=")
+		if achou && alvos[strings.ToUpper(nome)] {
+			alvos[strings.ToUpper(nome)] = true
+			resultado = append(resultado, nome+"="+dir)
+			continue
+		}
+		resultado = append(resultado, item)
+	}
+	for nome, feito := range alvos {
+		if !feito {
+			resultado = append(resultado, nome+"="+dir)
+		}
+	}
+	return resultado
+}
+
 func runGovernedCLI(ctx context.Context, request GovernedCLIRequest) (GovernedCLIResult, error) {
 	result := GovernedCLIResult{
 		ExitCode:       -1,
@@ -441,6 +476,16 @@ func runGovernedCLI(ctx context.Context, request GovernedCLIRequest) (GovernedCL
 	env := request.Env
 	if len(env) == 0 {
 		env = governedCLIEnv(os.Getenv)
+	}
+
+	// O CLI precisa de um diretório temporário GRAVÁVEL para os próprios artefatos (aliases de PATH, arquivos de
+	// resposta). Em ambiente confinado o TEMP do operador pode ser SOMENTE LEITURA — medido em E-208, quando o
+	// próprio `go test` falhou com "open ...\Temp\args1454007406: Acesso negado" — e o CLI morre no bootstrap com
+	// o mesmo erro. Em vez de repassar o TEMP alheio e torcer, damos ao filho um diretório por sessão dentro do
+	// diretório de trabalho e o removemos ao final.
+	if sessionTemp, tempErr := os.MkdirTemp(caminhoDeTrabalho(request.Workdir), ".hades-cli-tmp-"); tempErr == nil {
+		defer os.RemoveAll(sessionTemp)
+		env = ambienteComTempGravavel(env, sessionTemp)
 	}
 	stdout := &cliOutputBuffer{limit: limit}
 	stderr := &cliOutputBuffer{limit: limit}
