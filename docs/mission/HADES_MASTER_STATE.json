@@ -2,7 +2,7 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-15T00:20:00-03:00",
+  "updated_at": "2026-10-15T01:10:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
@@ -427,12 +427,13 @@
         "E-020",
         "E-027",
         "E-103",
-        "E-214"
+        "E-214",
+        "E-216"
       ],
       "blocker": null,
-      "next": "Evidenciar a linha do tempo por etapa (agente/ferramenta/evidencia/retentativa/custo) e uma missao autonoma com modelo real; o ciclo basico ja tem teste",
+      "next": "IMPLEMENTAR custo/tokens na linha do tempo (implementavel, nao depende de credencial): (1) adicionar PromptTokens, CompletionTokens e CostCents a Step; (2) propagar a partir do ponto de chamada unico em planner.go usando a tabela de precos de multillm; (3) preservar o baseline de contratos (node scripts/verify-contracts.mjs) e a compatibilidade de persistencia (campos novos com omitempty); (4) teste tabelado do calculo + teste de que a etapa registra os contadores. Evidencia como campo de primeira classe na linha do tempo tambem falta (hoje a evidencia e o ArtifactManifest por StepID)",
       "execution": "IN_PROGRESS",
-      "done": "ATRIBUICAO MEDIDA (E-214): o ciclo de missao ponta a ponta existe e e exercitado. Evidencia: ciclo REAL de missao com git worktree e MERGE COMMIT (teste registra 'Mission git worktree cycle completed successfully: merge commit eac8ee9d3068c317d08e25055d8eaee6eb414046'); 42 testes PASS no subconjunto de missao/timeline/cancelamento (ok 14.407s) cobrindo cancelamento que domina entre instancias, idempotencia de criacao de missao, fail-closed quando a persistencia da fila falha, falha de provedor persistindo estado FAILED e notificacoes a partir de eventos persistidos. LACUNAS INTERNAS DECLARADAS: a linha do tempo por etapa (agente, ferramenta, evidencia, retentativa e CUSTO) e uma missao autonoma conduzida por modelo real NAO estao evidenciadas. O master pede mais do que o ciclo hoje comprovado."
+      "done": "CICLO DE MISSAO E LINHA DO TEMPO POR ETAPA (E-214 + E-216): o ciclo tem prova real (worktree + merge commit; 42 PASS) e a linha do tempo por etapa EXISTE nos tipos - Step{Kind, Title, Input, Risk, RequiresApproval, ToolDescriptorSHA256, ToolConfigSHA256, State, Attempts, Result, Error}, Event{MissionID, Type, StepID, Payload} e ArtifactManifest{MissionID, StepID, SHA256}, com Mission carregando Objective, State, Plan, Approvals, Artifacts, GitMergeStatus, LastError e timestamps. MEDIDO: 5 testes PASS cobrem aprovacao antes de escrever + artefato por etapa, cancelamento por etapa, redacao DLP de resultados/eventos/traces, evento de falha do outbox e evento de frame do browser. LACUNA REAL REMANESCENTE (medida): CUSTO/TOKENS nao tem caminho ate a missao - zero ocorrencias de Cost/Tokens/Usage em types.go e runtime.go - embora a tabela de precos exista em multillm (CostPer1KInputCents/CostPer1KOutputCents) e os contadores existam em api/types.go (PromptEvalCount/EvalCount). Ponto de chamada do modelo identificado: planner.go e o UNICO do pacote. ACOES DECLARADAS NO `next`."
     },
     {
       "id": 11,
@@ -1691,7 +1692,11 @@
     "ARMADILHA DE MEDICAO (E-214): 15 testes de missao FALHARAM em subconjunto com 'mkdir C:\\Users\\DZ23\\AppData\\Roaming\\ollama-agent: Acesso negado' - o APPDATA do operador tambem e SOMENTE LEITURA aqui (mesma classe da E-208). Com APPDATA redirecionado para dentro do workspace: 42 PASS, 0 FAIL. Rodar subconjunto sem o ambiente correto produz falha FALSA - nao reportar como defeito de produto",
     "NOVE `done` VAZIOS PREENCHIDOS COM ATRIBUICAO MEDIDA (E-215): 3, 4, 6, 7, 9, 16, 17, 36 e 37 tinham IDs de evidencia mas NENHUMA descricao do que foi entregue - e o prompt exige, por estagio, 'tarefas concluidas, testes executados, resultados'. Agora cada um carrega o modulo, a medicao e a lacuna declarada",
     "MEDICAO DOS NOVE ESTAGIOS (E-215), ambiente gravavel: 3=16 PASS, 4=77 (pacote multillm inteiro), 6=13, 7=44, 9=94, 16=68, 17=29, 36=9, 37=13 - TOTAL 363 PASS e ZERO FAIL nos filtros usados",
-    "ATRIBUICAO NAO E PROMOCAO DE COBERTURA (E-215): preencher `done` descreve o que existe e MANTEM o campo `next` com a lacuna. Nenhuma capacidade foi promovida de classificacao por causa do texto"
+    "ATRIBUICAO NAO E PROMOCAO DE COBERTURA (E-215): preencher `done` descreve o que existe e MANTEM o campo `next` com a lacuna. Nenhuma capacidade foi promovida de classificacao por causa do texto",
+    "LACUNA INTERNA DO MASTER 10 DECOMPOSTA COM MEDICAO (E-216): a linha do tempo por etapa EXISTE e e testada - Step com Kind/Title/Risk/RequiresApproval/ToolDescriptorSHA256/State/Attempts/Result/Error, Event com StepID e ArtifactManifest ligado ao StepID; 5 testes PASS medidos (aprovacao+artefato, cancelamento por etapa, redacao DLP, evento de outbox, frame de browser). O que falta de verdade e CUSTO/TOKENS",
+    "QUARTA VEZ QUE A LACUNA ERA PARCIALMENTE DE ATRIBUICAO (E-216): 35, 30, 36 e agora a linha do tempo do master 10 - em todas o modulo existia. A diferenca desta vez: a sobra e trabalho REAL de produto, e nao registro",
+    "CUSTO/TOKENS E IMPLEMENTAVEL E NAO DEPENDE DE CREDENCIAL (E-216): tabela de precos em multillm (CostPer1KInputCents/CostPer1KOutputCents), contadores em api/types.go (PromptEvalCount/EvalCount) e ponto de chamada UNICO em internal/agent/planner.go. Risco de blast radius: baseline de contratos (scripts/verify-contracts.mjs) e persistencia do plano",
+    "DECISAO DE ESCOPO (E-216): NAO iniciei a implementacao de custo/tokens nesta rodada de proposito - o ciclo de CI e de ~10 min e o blast radius (contratos + persistencia) nao converge no orcamento restante. Iniciar e deixar pela metade seria pior que declarar com precisao. Primeira acao da proxima rodada"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
