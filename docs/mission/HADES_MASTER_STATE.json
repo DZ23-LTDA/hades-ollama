@@ -2,7 +2,7 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-15T01:10:00-03:00",
+  "updated_at": "2026-10-15T02:30:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
@@ -315,12 +315,13 @@
         "E-049",
         "E-209",
         "E-210",
-        "E-215"
+        "E-215",
+        "E-217"
       ],
       "blocker": "B-07",
       "next": "Chamada real opt-in via internal/multillm (free-tier primeiro: groq/cerebras) para verificar inferencia por provedor; rotacionar as 3 chaves com authentication_failed",
       "execution": "BLOCKED_BY_EXTERNAL_DEPENDENCY",
-      "done": "MODEL GATEWAY UNIVERSAL (E-215): o pacote internal/multillm esta completo - presets de provedor, registry, roteamento (RouteCandidates/Route), descoberta de modelos, probe de provedor, egress zero-trust e ledger de custo. MEDIDO: 77 testes PASS na suite do pacote. LACUNA DECLARADA: a verificacao de INFERENCIA por provedor de nuvem (B-07) - o instrumento opt-in existe (E-210) e roda quando a credencial estiver no ambiente."
+      "done": "MODEL GATEWAY UNIVERSAL (E-215): o pacote internal/multillm esta completo - presets de provedor, registry, roteamento (RouteCandidates/Route), descoberta de modelos, probe de provedor, egress zero-trust e ledger de custo. MEDIDO: 77 testes PASS na suite do pacote. LACUNA DECLARADA: a verificacao de INFERENCIA por provedor de nuvem (B-07) - o instrumento opt-in existe (E-210) e roda quando a credencial estiver no ambiente. CONSUMO E CUSTO (E-217): o planejador agora reporta tokens e custo por missao e o preco e fiado a partir do catalogo do provedor - modelo local e zero CONHECIDO e catalogo sem preco e DESCONHECIDO, nunca zero."
     },
     {
       "id": 5,
@@ -428,12 +429,13 @@
         "E-027",
         "E-103",
         "E-214",
-        "E-216"
+        "E-216",
+        "E-217"
       ],
       "blocker": null,
-      "next": "IMPLEMENTAR custo/tokens na linha do tempo (implementavel, nao depende de credencial): (1) adicionar PromptTokens, CompletionTokens e CostCents a Step; (2) propagar a partir do ponto de chamada unico em planner.go usando a tabela de precos de multillm; (3) preservar o baseline de contratos (node scripts/verify-contracts.mjs) e a compatibilidade de persistencia (campos novos com omitempty); (4) teste tabelado do calculo + teste de que a etapa registra os contadores. Evidencia como campo de primeira classe na linha do tempo tambem falta (hoje a evidencia e o ArtifactManifest por StepID)",
+      "next": "Custo POR ETAPA (hoje e por missao, na chamada de planejamento); missao autonoma conduzida por MODELO REAL; o ciclo e a linha do tempo ja tem evidencia",
       "execution": "IN_PROGRESS",
-      "done": "CICLO DE MISSAO E LINHA DO TEMPO POR ETAPA (E-214 + E-216): o ciclo tem prova real (worktree + merge commit; 42 PASS) e a linha do tempo por etapa EXISTE nos tipos - Step{Kind, Title, Input, Risk, RequiresApproval, ToolDescriptorSHA256, ToolConfigSHA256, State, Attempts, Result, Error}, Event{MissionID, Type, StepID, Payload} e ArtifactManifest{MissionID, StepID, SHA256}, com Mission carregando Objective, State, Plan, Approvals, Artifacts, GitMergeStatus, LastError e timestamps. MEDIDO: 5 testes PASS cobrem aprovacao antes de escrever + artefato por etapa, cancelamento por etapa, redacao DLP de resultados/eventos/traces, evento de falha do outbox e evento de frame do browser. LACUNA REAL REMANESCENTE (medida): CUSTO/TOKENS nao tem caminho ate a missao - zero ocorrencias de Cost/Tokens/Usage em types.go e runtime.go - embora a tabela de precos exista em multillm (CostPer1KInputCents/CostPer1KOutputCents) e os contadores existam em api/types.go (PromptEvalCount/EvalCount). Ponto de chamada do modelo identificado: planner.go e o UNICO do pacote. ACOES DECLARADAS NO `next`."
+      "done": "CICLO DE MISSAO E LINHA DO TEMPO POR ETAPA (E-214 + E-216): o ciclo tem prova real (worktree + merge commit; 42 PASS) e a linha do tempo por etapa EXISTE nos tipos - Step{Kind, Title, Input, Risk, RequiresApproval, ToolDescriptorSHA256, ToolConfigSHA256, State, Attempts, Result, Error}, Event{MissionID, Type, StepID, Payload} e ArtifactManifest{MissionID, StepID, SHA256}, com Mission carregando Objective, State, Plan, Approvals, Artifacts, GitMergeStatus, LastError e timestamps. MEDIDO: 5 testes PASS cobrem aprovacao antes de escrever + artefato por etapa, cancelamento por etapa, redacao DLP de resultados/eventos/traces, evento de falha do outbox e evento de frame do browser. CUSTO/TOKENS FECHADO COM EVIDENCIA (E-217): o consumo de modelo passou a entrar no registro da missao - Mission.Usage carrega tokens, custo, CostKnown, provedor e modelo; o planejador captura PromptEvalCount/EvalCount da resposta e publica no destino injetado pelo runtime; o preco vem do catalogo (modelo local = zero CONHECIDO por construcao; catalogo sem tarifa e sem etiqueta = preco DESCONHECIDO, nunca zero). 9 testes PASS. O que ainda NAO esta feito: custo POR ETAPA (hoje o consumo e por missao, atribuido a chamada de planejamento)."
     },
     {
       "id": 11,
@@ -1696,7 +1698,11 @@
     "LACUNA INTERNA DO MASTER 10 DECOMPOSTA COM MEDICAO (E-216): a linha do tempo por etapa EXISTE e e testada - Step com Kind/Title/Risk/RequiresApproval/ToolDescriptorSHA256/State/Attempts/Result/Error, Event com StepID e ArtifactManifest ligado ao StepID; 5 testes PASS medidos (aprovacao+artefato, cancelamento por etapa, redacao DLP, evento de outbox, frame de browser). O que falta de verdade e CUSTO/TOKENS",
     "QUARTA VEZ QUE A LACUNA ERA PARCIALMENTE DE ATRIBUICAO (E-216): 35, 30, 36 e agora a linha do tempo do master 10 - em todas o modulo existia. A diferenca desta vez: a sobra e trabalho REAL de produto, e nao registro",
     "CUSTO/TOKENS E IMPLEMENTAVEL E NAO DEPENDE DE CREDENCIAL (E-216): tabela de precos em multillm (CostPer1KInputCents/CostPer1KOutputCents), contadores em api/types.go (PromptEvalCount/EvalCount) e ponto de chamada UNICO em internal/agent/planner.go. Risco de blast radius: baseline de contratos (scripts/verify-contracts.mjs) e persistencia do plano",
-    "DECISAO DE ESCOPO (E-216): NAO iniciei a implementacao de custo/tokens nesta rodada de proposito - o ciclo de CI e de ~10 min e o blast radius (contratos + persistencia) nao converge no orcamento restante. Iniciar e deixar pela metade seria pior que declarar com precisao. Primeira acao da proxima rodada"
+    "DECISAO DE ESCOPO (E-216): NAO iniciei a implementacao de custo/tokens nesta rodada de proposito - o ciclo de CI e de ~10 min e o blast radius (contratos + persistencia) nao converge no orcamento restante. Iniciar e deixar pela metade seria pior que declarar com precisao. Primeira acao da proxima rodada",
+    "CUSTO/TOKENS NO REGISTRO DA MISSAO (E-217, PR #285): Mission.Usage carrega tokens, custo, CostKnown, provedor e modelo; o runtime injeta o destino ANTES de planner.Plan e anexa o consumo depois, no ponto em que o plano ja vai ser persistido. 9 testes PASS, incluindo a PROVA de que o consumo sobrevive a releitura do store e de que planejador que nao reporta NAO produz custo inventado",
+    "REGRA DE PRECO QUE EVITA MENTIR PARA BAIXO (E-217): modelo local e zero CONHECIDO por construcao; catalogo SEM tarifa e SEM etiqueta devolve Known=false (preco DESCONHECIDO). Tratar ausencia de preco como zero faria o orcamento parecer mais barato do que e",
+    "AINDA FALTA CUSTO POR ETAPA (E-217): o consumo hoje e por missao, atribuido a chamada de PLANEJAMENTO. Etapas que chamarem modelo por conta propria ainda nao reportam consumo proprio",
+    "ESTADO CORRIGIDO PARA NAO MENTIR PARA BAIXO (E-217): o `done` do estagio 10 afirmava que custo/tokens 'nao tem caminho ate a missao'. Depois do PR #285 isso ficou falso, e um estado que subestima o que existe e tao ruim quanto um que superestima"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
