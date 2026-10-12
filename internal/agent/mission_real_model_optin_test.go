@@ -115,6 +115,9 @@ func TestMissaoRealComModeloLocalPlanejaERegistraConsumo(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Logf("estado final da missao real: %s", final.State)
+	if final.State != MissionCompleted {
+		t.Fatalf("missao real com modelo local nao concluiu: %s", final.State)
+	}
 	if final.Usage == nil || final.Usage.PromptTokens <= 0 {
 		t.Fatalf("consumo real nao sobreviveu: %+v", final.Usage)
 	}

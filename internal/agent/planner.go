@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/ollama/ollama/api"
@@ -189,6 +190,9 @@ type OllamaPlanner struct {
 	// Price é o preço declarado do modelo. Sem preço, os tokens continuam sendo registrados e
 	// o custo fica declarado como DESCONHECIDO — nunca como zero.
 	Price ModelPrice
+	// Tools é o contrato REAL das ferramentas registradas, injetado pelo runtime. Vazio
+	// significa prompt sem contrato (comportamento anterior à correção).
+	Tools []ToolDescriptor
 }
 
 // SetPlanUsageSink registra o destino do consumo. Receiver por ponteiro de propósito: sem
@@ -203,6 +207,43 @@ func (p OllamaPlanner) LastPlanUsage() (ModelUsage, bool) {
 		return ModelUsage{}, false
 	}
 	return *p.Usage, true
+}
+
+// PlanToolContractSink permite que o runtime entregue ao planejador o contrato REAL das
+// ferramentas registradas.
+//
+// Por que existe: o prompt de sistema só listava os kinds permitidos, sem dizer quais campos
+// de input cada um exige. Um modelo local (qwen2.5:7b) devolveu então `workspace.read` com
+// input VAZIO — plano sintaticamente válido e inutilizável. Repetir a lista à mão no prompt
+// divergiria do código; aqui o prompt é gerado dos próprios descritores.
+type PlanToolContractSink interface {
+	SetPlanToolContract([]ToolDescriptor)
+}
+
+func (p *OllamaPlanner) SetPlanToolContract(descriptors []ToolDescriptor) {
+	p.Tools = descriptors
+}
+
+// PlanningToolContract renderiza o contrato das ferramentas a partir dos descritores reais.
+// Ordena por nome para o prompt ser determinístico (o registro não garante ordem estável).
+func PlanningToolContract(descriptors []ToolDescriptor) string {
+	if len(descriptors) == 0 {
+		return ""
+	}
+	linhas := make([]string, 0, len(descriptors))
+	for _, descritor := range descriptors {
+		exigidos := "nenhum"
+		if len(descritor.RequiredInputs) > 0 {
+			exigidos = strings.Join(descritor.RequiredInputs, ", ")
+		}
+		aprovacao := "nao"
+		if descritor.RequiresApproval {
+			aprovacao = "sim"
+		}
+		linhas = append(linhas, fmt.Sprintf("- %s (risco %s, aprovacao %s) exige input: %s", descritor.Name, descritor.Risk, aprovacao, exigidos))
+	}
+	sort.Strings(linhas)
+	return "Contrato das ferramentas registradas. O input de cada passo DEVE trazer os campos exigidos; passo sem campo exigido e recusado antes de executar:\n" + strings.Join(linhas, "\n")
 }
 
 func (p OllamaPlanner) Plan(ctx context.Context, mission Mission) ([]Step, error) {
@@ -222,8 +263,14 @@ func (p OllamaPlanner) Plan(ctx context.Context, mission Mission) ([]Step, error
 	// ou projeto, o contexto canônico do Hades entra como mensagem de sistema
 	// ANTES do objetivo, declarando identidade, escopo e permissões. Sem escopo
 	// de tenant nada é injetado — na dúvida, não se vaza contexto de outro dono.
+	instrucaoSistema := "You are a mission planner. Return only JSON with a top-level steps array. Each step must have kind, title, risk, requires_approval, and input. Allowed kinds are workspace.list, workspace.read, git.repo.inspect, workspace.write, terminal.exec, sandbox.exec, browser.operator, desktop.companion, mcp.call, mcp.remote.call, connector.http, and media.process only when a media provider is configured. Never invent completed results. Use read risk for inspection, write risk for filesystem changes, external_side_effect for browser, desktop, MCP, connectors, and media provider actions, and require approval for write, terminal, sandbox, browser, desktop, MCP, connector, and media steps. Use workspace.list to inspect a DIRECTORY and workspace.read to read a specific FILE: never use workspace.read to inspect a directory. Workspace paths MUST be RELATIVE to the workspace root (for example \"README.md\" or \"cmd/app\" or \".\" for the root directory): an absolute path such as \"/\" is refused before execution."
+	// O contrato vem dos DESCRITORES reais: dizer só os kinds permitidos deixava o modelo
+	// devolver passos sem os campos exigidos.
+	if contrato := PlanningToolContract(p.Tools); contrato != "" {
+		instrucaoSistema += "\n" + contrato
+	}
 	messages := []api.Message{
-		{Role: "system", Content: "You are a mission planner. Return only JSON with a top-level steps array. Each step must have kind, title, risk, requires_approval, and input. Allowed kinds are workspace.list, workspace.read, git.repo.inspect, workspace.write, terminal.exec, sandbox.exec, browser.operator, desktop.companion, mcp.call, mcp.remote.call, connector.http, and media.process only when a media provider is configured. Never invent completed results. Use read risk for inspection, write risk for filesystem changes, external_side_effect for browser, desktop, MCP, connectors, and media provider actions, and require approval for write, terminal, sandbox, browser, desktop, MCP, connector, and media steps."},
+		{Role: "system", Content: instrucaoSistema},
 	}
 	if preamble := missionContextPreamble(mission); preamble != "" {
 		messages = append(messages, api.Message{Role: "system", Content: preamble})
