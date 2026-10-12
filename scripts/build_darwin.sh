@@ -25,6 +25,10 @@ usage() {
     exit 1
 }
 
+# Autenticação do notarytool: chave de API (.p8) do App Store Connect quando configurada, senão Apple ID.
+# A chave privada NUNCA entra no repositório — só o CAMINHO vem por variável. Ver scripts/notarytool-auth.sh.
+. "$(dirname "$0")/notarytool-auth.sh"
+
 mkdir -p dist
 
 ARCHS="arm64 amd64"
@@ -178,7 +182,9 @@ _sign_darwin() {
         # create a temporary zip for notarization
         TEMP=$(mktemp -u).zip
         ditto -c -k --keepParent dist/darwin/ollama "$TEMP"
-        xcrun notarytool submit "$TEMP" --wait --timeout 20m --apple-id $APPLE_ID --password $APPLE_PASSWORD --team-id $APPLE_TEAM_ID
+        notary_args=$(notarytool_auth_args)
+        # shellcheck disable=SC2086  # os argumentos vêm do helper, um por linha
+        xcrun notarytool submit "$TEMP" --wait --timeout 20m $notary_args
         rm -f "$TEMP"
     fi
 
@@ -260,7 +266,9 @@ _build_macapp() {
 
     # Notarize and Staple
     if [ -n "$APPLE_IDENTITY" ]; then
-        $(xcrun -f notarytool) submit dist/Ollama-darwin.zip --wait --timeout 20m --apple-id "$APPLE_ID" --password "$APPLE_PASSWORD" --team-id "$APPLE_TEAM_ID"
+        notary_args=$(notarytool_auth_args)
+        # shellcheck disable=SC2086  # os argumentos vêm do helper, um por linha
+        $(xcrun -f notarytool) submit dist/Ollama-darwin.zip --wait --timeout 20m $notary_args
         rm -f dist/Ollama-darwin.zip
         $(xcrun -f stapler) staple dist/Ollama.app
         ditto -c -k --norsrc --keepParent dist/Ollama.app dist/Ollama-darwin.zip
@@ -284,7 +292,9 @@ _build_macapp() {
         rm -f dist/rw*.dmg
 
         codesign -f --timestamp -s "$APPLE_IDENTITY" --identifier ai.ollama.ollama --options=runtime dist/Ollama.dmg
-        $(xcrun -f notarytool) submit dist/Ollama.dmg --wait --timeout 20m --apple-id "$APPLE_ID" --password "$APPLE_PASSWORD" --team-id "$APPLE_TEAM_ID"
+        notary_args=$(notarytool_auth_args)
+        # shellcheck disable=SC2086  # os argumentos vêm do helper, um por linha
+        $(xcrun -f notarytool) submit dist/Ollama.dmg --wait --timeout 20m $notary_args
         $(xcrun -f stapler) staple dist/Ollama.dmg
     else
         echo "WARNING: Code signing disabled, this bundle will not work for upgrade testing"

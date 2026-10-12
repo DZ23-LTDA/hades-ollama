@@ -32,6 +32,20 @@ jobs:
       VERSION: ${{ steps.goflags.outputs.VERSION }}
       vendorsha: ${{ steps.goflags.outputs.vendorsha }}
     steps:
+      - name: Preparar chave de API do App Store Connect (notarização)
+        env:
+          APPLE_API_KEY_P8: ${{ secrets.APPLE_API_KEY_P8 }}
+        run: |
+          if [ -z "$APPLE_API_KEY_P8" ]; then
+            echo "Chave de API do App Store Connect não configurada: a notarização usará Apple ID."
+            exit 0
+          fi
+          umask 077
+          key_path="$RUNNER_TEMP/AuthKey_${APPLE_API_KEY_ID:-key}.p8"
+          printf '%s' "$APPLE_API_KEY_P8" > "$key_path"
+          echo "::add-mask::$APPLE_API_KEY_P8"
+          echo "APPLE_API_KEY=$key_path" >> "$GITHUB_ENV"
+
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - name: Set environment
         id: goflags
@@ -88,6 +102,10 @@ jobs:
       APPLE_ID: ${{ vars.APPLE_ID }}
       MACOS_SIGNING_KEY: ${{ secrets.MACOS_SIGNING_KEY }}
       MACOS_SIGNING_KEY_PASSWORD: ${{ secrets.MACOS_SIGNING_KEY_PASSWORD }}
+      # Notarização por chave de API do App Store Connect (.p8). O CONTEÚDO só existe como segredo e é
+      # materializado em arquivo temporário no passo abaixo; o repositório guarda apenas o CAMINHO.
+      APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+      APPLE_API_ISSUER: ${{ vars.APPLE_API_ISSUER }}
       DEVELOPER_DIR: /Applications/Xcode_26.4.1.app/Contents/Developer
       CGO_CFLAGS: '-mmacosx-version-min=14.0 -O3'
       CGO_CXXFLAGS: '-mmacosx-version-min=14.0 -O3'
