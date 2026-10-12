@@ -2,7 +2,7 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-17T14:25:00-03:00",
+  "updated_at": "2026-10-17T15:40:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
@@ -863,13 +863,14 @@
       "capability": "IMPLEMENTADO_NAO_HOMOLOGADO",
       "evidence": [
         "E-047",
-        "E-087"
+        "E-087",
+        "E-271"
       ],
       "blocker": "B-03",
-      "next": "completar STT/TTS e latencia em sandbox e testar com provedor real quando houver credencial",
+      "next": "LIMITES REAIS (atualizados por E-271): o AUDIO REAL (STT/TTS) segue externo - a camada entrega o CONTRATO do turno com latencia medida pelo adaptador, sem provedor real; nao ha gravacao de audio (apenas o consentimento exigido); nao ha deteccao de interrupcao (barge-in) nem transferencia humana medida; custo por minuto nao e apurado. Proximo: estagios 32-38",
       "blocked_reason": "",
       "external_dependency": "provedor de telefonia e numero real para chamada ao vivo",
-      "done": "classificacao corrigida pela auditoria de bloqueios: o bloqueio externo em bloco escondia trabalho implementavel. Evidencia medida registrada em docs/mission/HADES_BLOCKED_AUDIT.md",
+      "done": "classificacao corrigida pela auditoria de bloqueios: o bloqueio externo em bloco escondia trabalho implementavel. Evidencia medida registrada em docs/mission/HADES_BLOCKED_AUDIT.md TURNO DE VOZ COM LATENCIA MEDIDA, ORCAMENTO E CONSENTIMENTO (E-271): o limite declarado 'completar STT/TTS e latencia em sandbox' foi FECHADO COMO CONTRATO, com enquadramento honesto - o AUDIO REAL continua BLOCKED_BY_EXTERNAL_DEPENDENCY e NAO ha transcricao nem sintese simulada (isso seria apresentar um botao que finge funcionar). O que entrou: o turno registra a latencia MEDIDA por estagio (STT, agente, TTS) que o adaptador informa; o total e a soma, e um total MAIOR informado pelo adaptador prevalece (fila e rede tambem sao latencia do cliente); orcamento por organizacao com padrao DECLARADO e FLAG+CONTAGEM dos turnos estourados (latencia que nao e medida nao e gerenciada); relatorio com media e pico por estagio; GRAVACAO SEM CONSENTIMENTO E RECUSADA (LGPD) e a recusa nao registra turno; duracao negativa ou turno sem latencia sao invalidos; isolamento entre organizacoes (metricas E orcamento) e persistencia no reinicio. MEDIDO: teste de propriedades PASS (3 turnos, 1 estourado, media stt 640 e total 2030, reinicio preserva turnos e orcamento) e suite completa ok 114,8 s",
       "execution": "BLOCKED_BY_EXTERNAL_DEPENDENCY"
     },
     {
@@ -1920,7 +1921,10 @@
     "ORDEM AGRUPADA, NAO ORDEM POR ITEM (E-270): um pedido do canal com varios SKUs e UM pedido. Criar N ordens locais faz o cliente aparecer com N pedidos e a logistica com N embarques - e a contabilidade somaria frete varias vezes",
     "PEDIDO PARCIAL E' PIOR DO QUE NENHUM (E-270): quando uma linha nao entra (SKU desconhecido, estoque), o pedido inteiro e recusado e o motivo aparece em CADA linha. Aceitar metade deixaria mercadoria faltando sem ninguem perceber",
     "DEFEITO DE ISOLAMENTO ENCONTRADO PELO PROPRIO TESTE (E-270): o indice de idempotencia do canal nao tinha a organizacao na chave, entao a org-b PERDEU o pedido por causa da importacao da org-a. E' a MESMA CLASSE dos oraculos de E-198/E-252/E-253: estado sem o tenant na chave. O teste de isolamento entrou por ultimo e achou o defeito mais grave da rodada",
-    "MIGRACAO DECLARADA, NAO ESCONDIDA (E-270): chaves antigas sem o prefixo da organizacao deixam de casar e podem ser reaplicadas uma vez. Declarar isso e obrigatorio; e a direcao e a SEGURA - duplicata e visivel, pedido sumido nao e"
+    "MIGRACAO DECLARADA, NAO ESCONDIDA (E-270): chaves antigas sem o prefixo da organizacao deixam de casar e podem ser reaplicadas uma vez. Declarar isso e obrigatorio; e a direcao e a SEGURA - duplicata e visivel, pedido sumido nao e",
+    "MEDIR E' O QUE FALTA, NAO SIMULAR (E-271): o audio real e externo, mas a LATENCIA do turno pode ser medida agora. Entregar o contrato com numero e' honesto; entregar 'voz funcionando' sem provedor seria mentira",
+    "GRAVACAO SEM CONSENTIMENTO E RECUSADA, NAO ANOTADA (E-271): a diferenca importa. Anotar 'gravou sem consentimento' seria registrar a violacao depois de consumada; recusar impede a violacao",
+    "TURNO SEM LATENCIA NAO E' TURNO (E-271): zero milissegundos nos tres estagios significa que nada foi medido - aceitar isso encheria o relatorio de zeros e esconderia a ausencia de instrumentacao"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
