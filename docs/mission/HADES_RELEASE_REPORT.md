@@ -9,7 +9,7 @@
 | Número | Valor |
 | --- | --- |
 | Estágios | 38 |
-| Linhas de evidência no índice | 264 |
+| Linhas de evidência no índice | 265 |
 | `COMPLETED_VERIFIED` | 2 |
 | `IN_PROGRESS` | 15 |
 | `BLOCKED_BY_EXTERNAL_DEPENDENCY` | 21 |
@@ -67,7 +67,7 @@ relatório **declara a ausência** em vez de preencher com suposição.
 | 26 | Marketplace multi-vendedor | IMPLEMENTADO_NAO_HOMOLOGADO | BLOCKED_BY_EXTERNAL_DEPENDENCY | B-05 | E-047, E-087, E-124, E-125 |
 | 27 | Pagamentos e faturamento | PARCIAL | BLOCKED_BY_EXTERNAL_DEPENDENCY | B-05 | E-047, E-087, E-101, E-102, E-118, E-119, E-120, E-213 |
 | 28 | Atendimento e suporte (helpdesk) | IMPLEMENTADO_NAO_HOMOLOGADO | BLOCKED_BY_EXTERNAL_DEPENDENCY | B-03 | E-047, E-087 |
-| 29 | Telefonia e call center | PARCIAL | BLOCKED_BY_EXTERNAL_DEPENDENCY | B-04 | E-047, E-087, E-104, E-234 |
+| 29 | Telefonia e call center | PARCIAL | BLOCKED_BY_EXTERNAL_DEPENDENCY | B-04 | E-047, E-087, E-104, E-234, E-265 |
 | 30 | Marketing e campanhas | PARCIAL | BLOCKED_BY_EXTERNAL_DEPENDENCY | B-05 | E-044, E-087, E-100, E-108, E-112, E-262, E-263, E-264 |
 | 31 | Social e publicacao | IMPLEMENTADO_NAO_HOMOLOGADO | BLOCKED_BY_EXTERNAL_DEPENDENCY | B-05 | E-044, E-087, E-097, E-110, E-111, E-213, E-258, E-261 |
 | 32 | BI / business status e metricas | IMPLEMENTADO_E_TESTADO | BLOCKED_BY_EXTERNAL_DEPENDENCY | B-07 | E-044, E-087, E-132, E-133, E-134, E-135, E-136, E-137, E-139, E-142, E-143 |
@@ -90,7 +90,7 @@ possível sem ele**.
 
 ## Referências
 
-- Índice de evidências: [`HADES_EVIDENCE_INDEX.md`](HADES_EVIDENCE_INDEX.md) (264 linhas).
+- Índice de evidências: [`HADES_EVIDENCE_INDEX.md`](HADES_EVIDENCE_INDEX.md) (265 linhas).
 - Estado da missão: [`HADES_MASTER_STATE.json`](HADES_MASTER_STATE.json).
 - Gate global: [`HADES_FINAL_RELEASE_GATE.md`](HADES_FINAL_RELEASE_GATE.md).
 - Gate intermediário de engenharia (estágio 22): [`HADES_ENGINEERING_GATE.md`](HADES_ENGINEERING_GATE.md).
