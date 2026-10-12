@@ -93,6 +93,26 @@ class EscrituracaoTest(unittest.TestCase):
             f"declarar a ausência do vínculo não pode ser acusado: {problemas}",
         )
 
+    def test_documento_com_mojibake_e_encontrado(self) -> None:
+        """Texto duplamente codificado torna o documento ilegivel: precisa ser acusado."""
+        alvo = self.tmp / "docs" / "mission"
+        alvo.mkdir(parents=True, exist_ok=True)
+        (alvo / "COM_DEFEITO.md").write_text("objetivo: integrar com seguranÃ§a e sem Ã¢nimo", encoding="utf-8")
+        problemas, resumo = verificador.verificar_mojibake(self.tmp)
+        self.assertTrue(
+            any("TEXTO CORROMPIDO" in p and "COM_DEFEITO.md" in p for p in problemas),
+            f"esperava acusar o mojibake, veio: {problemas}",
+        )
+        self.assertGreaterEqual(resumo["documentos_varridos"], 1)
+
+    def test_documento_correto_nao_e_acusado(self) -> None:
+        """Português acentuado LEGÍTIMO não pode ser confundido com corrupção."""
+        alvo = self.tmp / "docs" / "mission"
+        alvo.mkdir(parents=True, exist_ok=True)
+        (alvo / "CORRETO.md").write_text("objetivo: integrar com segurança e sem ânimo — pronto", encoding="utf-8")
+        problemas, _ = verificador.verificar_mojibake(self.tmp)
+        self.assertEqual(problemas, [], f"texto correto não pode ser acusado: {problemas}")
+
     def test_evidencia_fantasma_e_encontrada(self) -> None:
         estado = self.ler_estado()
         estado["stages"][0]["evidence"] = ["E-999"]
