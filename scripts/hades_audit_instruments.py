@@ -35,8 +35,12 @@ BASELINE_ORACULO = (
     "internal/agent/redis_queue.go::EnqueueForOrganization",
 )
 
-# Teto medido: 35 residuais de 181 rotas, com motivo declarado em E-254 (limite do instrumento + rota publica).
-TETO_ROTAS = 35
+# Teto medido: 28 residuais de 181 rotas. Era 35 em E-254; a LEITURA HUMANA dos residuais (E-257) mostrou que os
+# quatro `approveCompany*` delegam a `decideCompanyApproval`, que chama `companyForRequest` (organizacao + recusa
+# igualada por E-190) e exige papel de aprovador ANTES de decidir. Ensinada a delegacao ao instrumento, 35 -> 28.
+# O restante segue declarado: limite do proprio instrumento (corpo do handler nao localizado) e rota publica por
+# desenho (blobs, signout, callbacks OAuth/SAML, desktop-only).
+TETO_ROTAS = 28
 
 LINHA_CANDIDATO = re.compile(r"^\s*(\S+?)\s*::\s*([A-Za-z0-9_]+)\s*\(")
 LINHA_RESIDUAL = re.compile(r"handlers SEM escopo[^\d]*(\d+)")
