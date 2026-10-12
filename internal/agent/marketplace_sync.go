@@ -10,28 +10,28 @@ import (
 	"time"
 )
 
-// EstÃ¡gio 25 â€” MARKETPLACE: contrato de sincronizaÃ§Ã£o com duble de sandbox.
+// Estágio 25 — MARKETPLACE: contrato de sincronização com duble de sandbox.
 //
-// O estÃ¡gio pedia "conectores oficiais operando em sandbox com evidÃªncias" e a homologaÃ§Ã£o
-// live declarada bloqueada por fornecedor. O que existe aqui Ã© **exatamente isso, e nada alÃ©m**:
-// um **contrato** de sincronizaÃ§Ã£o (produtos, preÃ§os, estoque e pedidos) exercitado contra um
+// O estágio pedia "conectores oficiais operando em sandbox com evidências" e a homologação
+// live declarada bloqueada por fornecedor. O que existe aqui é **exatamente isso, e nada além**:
+// um **contrato** de sincronização (produtos, preços, estoque e pedidos) exercitado contra um
 // **duble de sandbox** em processo. Nenhuma chamada a Mercado Livre, Amazon, Shopee ou qualquer
-// plataforma acontece â€” e o relatÃ³rio **declara** isso em cada execuÃ§Ã£o.
+// plataforma acontece — e o relatório **declara** isso em cada execução.
 //
-// DecisÃµes deliberadas:
+// Decisões deliberadas:
 //
-//   - **CATALOGAR NÃƒO Ã‰ HABILITAR** (Â§11.3): o canal expÃµe estado real. Sem credencial
-//     configurada ele Ã© `CONFIG_REQUIRED`; com credencial mas sem teste, `UNAUTHORIZED`; e o
-//     `CONNECTED` sÃ³ vale para o **duble de sandbox**, porque nÃ£o houve handshake real;
-//   - **LIMITE DE OPERAÃ‡Ã•ES POR EXECUÃ‡ÃƒO**: um conector que "sincroniza tudo" sem teto Ã© a forma
-//     mais rÃ¡pida de violar rate limit de plataforma. O teto Ã© explÃ­cito e a violaÃ§Ã£o Ã© recusada
+//   - **CATALOGAR NÃO É HABILITAR** (§11.3): o canal expõe estado real. Sem credencial
+//     configurada ele é `CONFIG_REQUIRED`; com credencial mas sem teste, `UNAUTHORIZED`; e o
+//     `CONNECTED` só vale para o **duble de sandbox**, porque não houve handshake real;
+//   - **LIMITE DE OPERAÇÕES POR EXECUÇÃO**: um conector que "sincroniza tudo" sem teto é a forma
+//     mais rápida de violar rate limit de plataforma. O teto é explícito e a violação é recusada
 //     **antes** de aplicar qualquer efeito;
-//   - **IDEMPOTÃŠNCIA POR VERSÃƒO**: reexecutar a mesma sincronizaÃ§Ã£o **nÃ£o** reaplica o que jÃ¡ foi
-//     aplicado; o item aparece como `ignorado`, nÃ£o como sucesso novo;
-//   - **CONFLITO NÃƒO Ã‰ SOBRESCRITA SILENCIOSA**: quando o estoque remoto diverge do local, o item
-//     Ã© registrado como **conflito** e **nÃ£o** Ã© aplicado. Sobrescrever esconderia divergÃªncia de
-//     estoque â€” exatamente o erro que causa venda sem produto;
-//   - **SEM PUBLICAÃ‡ÃƒO EXTERNA**: o relatÃ³rio traz `HomologacaoLive` como
+//   - **IDEMPOTÊNCIA POR VERSÃO**: reexecutar a mesma sincronização **não** reaplica o que já foi
+//     aplicado; o item aparece como `ignorado`, não como sucesso novo;
+//   - **CONFLITO NÃO É SOBRESCRITA SILENCIOSA**: quando o estoque remoto diverge do local, o item
+//     é registrado como **conflito** e **não** é aplicado. Sobrescrever esconderia divergência de
+//     estoque — exatamente o erro que causa venda sem produto;
+//   - **SEM PUBLICAÇÃO EXTERNA**: o relatório traz `HomologacaoLive` como
 //     `BLOCKED_BY_EXTERNAL_DEPENDENCY` com o motivo e o procedimento de desbloqueio.
 
 const (
@@ -39,21 +39,21 @@ const (
 	MarketplaceStateConfigRequired = "CONFIG_REQUIRED"
 	// MarketplaceStateUnauthorized indica credencial presente sem teste aprovado.
 	MarketplaceStateUnauthorized = "UNAUTHORIZED"
-	// MarketplaceStateConnected indica canal operante â€” no caso, contra o duble de sandbox.
+	// MarketplaceStateConnected indica canal operante — no caso, contra o duble de sandbox.
 	MarketplaceStateConnected = "CONNECTED"
 	// MarketplaceStateUnsupported indica canal fora do escopo.
 	MarketplaceStateUnsupported = "UNSUPPORTED"
 
-	// MarketplaceLiveStatus Ã© o estado declarado da homologaÃ§Ã£o live.
+	// MarketplaceLiveStatus é o estado declarado da homologação live.
 	MarketplaceLiveStatus = "BLOCKED_BY_EXTERNAL_DEPENDENCY"
-	// MarketplaceLiveReason explica o desbloqueio da homologaÃ§Ã£o live.
-	MarketplaceLiveReason = "sincronizar com marketplace real exige conta autorizada, aplicaÃ§Ã£o registrada e " +
-		"scopes vÃ¡lidos da plataforma; sem credencial, a sincronizaÃ§Ã£o roda apenas contra o duble de sandbox"
+	// MarketplaceLiveReason explica o desbloqueio da homologação live.
+	MarketplaceLiveReason = "sincronizar com marketplace real exige conta autorizada, aplicação registrada e " +
+		"scopes válidos da plataforma; sem credencial, a sincronização roda apenas contra o duble de sandbox"
 
-	// MarketplaceMaxOperationsPerRun Ã© o teto de operaÃ§Ãµes por execuÃ§Ã£o.
+	// MarketplaceMaxOperationsPerRun é o teto de operações por execução.
 	MarketplaceMaxOperationsPerRun = 50
 
-	// Entidades suportadas pelo contrato de sincronizaÃ§Ã£o.
+	// Entidades suportadas pelo contrato de sincronização.
 	MarketplaceEntityProducts = "produtos"
 	MarketplaceEntityPrices   = "precos"
 	MarketplaceEntityStock    = "estoque"
@@ -66,25 +66,25 @@ var (
 	ErrMarketplaceSyncInvalid    = errors.New("marketplace sync request invalid")
 )
 
-// MarketplaceChannelSpec descreve um canal no catÃ¡logo, com estado REAL e capacidades.
+// MarketplaceChannelSpec descreve um canal no catálogo, com estado REAL e capacidades.
 type MarketplaceChannelSpec struct {
 	ID   string `json:"id"`
 	Name string `json:"name"`
-	// CredentialEnv Ã© o NOME da variÃ¡vel de ambiente que carrega a credencial. O valor nunca Ã©
+	// CredentialEnv é o NOME da variável de ambiente que carrega a credencial. O valor nunca é
 	// lido nem exibido.
 	CredentialEnv string   `json:"credential_env"`
 	State         string   `json:"state"`
 	Capabilities  []string `json:"capabilities"`
-	// LiveTested Ã© false enquanto nÃ£o houve handshake real: Ã© o que separa o catÃ¡logo da operaÃ§Ã£o.
+	// LiveTested é false enquanto não houve handshake real: é o que separa o catálogo da operação.
 	LiveTested bool `json:"live_tested"`
 	// Unblock descreve o que falta para habilitar de verdade.
 	Unblock string `json:"unblock_procedure,omitempty"`
 }
 
-// MarketplaceChannels devolve o catÃ¡logo com o estado declarado por canal.
+// MarketplaceChannels devolve o catálogo com o estado declarado por canal.
 //
-// `configuredEnv` informa quais variÃ¡veis de credencial existem no ambiente do operador â€” apenas
-// os NOMES sÃ£o considerados, nunca os valores.
+// `configuredEnv` informa quais variáveis de credencial existem no ambiente do operador — apenas
+// os NOMES são considerados, nunca os valores.
 func MarketplaceChannels(configuredEnv map[string]bool) []MarketplaceChannelSpec {
 	specs := []MarketplaceChannelSpec{
 		{
@@ -104,31 +104,31 @@ func MarketplaceChannels(configuredEnv map[string]bool) []MarketplaceChannelSpec
 		spec := &specs[index]
 		if !configuredEnv[spec.CredentialEnv] {
 			spec.State = MarketplaceStateConfigRequired
-			spec.Unblock = "definir a variÃ¡vel " + spec.CredentialEnv + " e executar um teste de conexÃ£o real"
+			spec.Unblock = "definir a variável " + spec.CredentialEnv + " e executar um teste de conexão real"
 			continue
 		}
-		// Credencial presente NÃƒO Ã© operaÃ§Ã£o: sem handshake real o estado Ã© UNAUTHORIZED.
+		// Credencial presente NÃO é operação: sem handshake real o estado é UNAUTHORIZED.
 		spec.State = MarketplaceStateUnauthorized
-		spec.Unblock = "executar teste de conexÃ£o real e registrar a evidÃªncia de handshake"
+		spec.Unblock = "executar teste de conexão real e registrar a evidência de handshake"
 	}
 	return specs
 }
 
-// MarketplaceSyncItem Ã© um item do espelho local que serÃ¡ enviado ao canal.
+// MarketplaceSyncItem é um item do espelho local que será enviado ao canal.
 type MarketplaceSyncItem struct {
 	Entity string `json:"entity"`
 	SKU    string `json:"sku"`
-	// ExternalID Ã© o identificador do item NA PLATAFORMA (ex.: id do pedido no canal). Ã‰ a chave de
-	// idempotÃªncia do pull de pedidos: o mesmo pedido nÃ£o pode entrar duas vezes.
+	// ExternalID é o identificador do item NA PLATAFORMA (ex.: id do pedido no canal). É a chave de
+	// idempotência do pull de pedidos: o mesmo pedido não pode entrar duas vezes.
 	ExternalID string `json:"external_id,omitempty"`
-	// Version permite idempotÃªncia: a mesma versÃ£o nÃ£o Ã© aplicada duas vezes.
+	// Version permite idempotência: a mesma versão não é aplicada duas vezes.
 	Version int64 `json:"version"`
-	// Quantity Ã© usado para estoque; PriceCents para preÃ§o.
+	// Quantity é usado para estoque; PriceCents para preço.
 	Quantity   int64 `json:"quantity,omitempty"`
 	PriceCents int64 `json:"price_cents,omitempty"`
 }
 
-// MarketplaceSyncRequest Ã© o pedido de sincronizaÃ§Ã£o.
+// MarketplaceSyncRequest é o pedido de sincronização.
 type MarketplaceSyncRequest struct {
 	OrganizationID string
 	ChannelID      string
@@ -136,7 +136,7 @@ type MarketplaceSyncRequest struct {
 	Items          []MarketplaceSyncItem
 }
 
-// MarketplaceSyncOutcome Ã© o resultado por item.
+// MarketplaceSyncOutcome é o resultado por item.
 type MarketplaceSyncOutcome struct {
 	Entity  string `json:"entity"`
 	SKU     string `json:"sku"`
@@ -146,13 +146,13 @@ type MarketplaceSyncOutcome struct {
 }
 
 const (
-	// Resultados possÃ­veis por item.
+	// Resultados possíveis por item.
 	MarketplaceResultApplied  = "aplicado"
 	MarketplaceResultSkipped  = "ignorado"
 	MarketplaceResultConflict = "conflito"
 )
 
-// MarketplaceSyncReport Ã© o relatÃ³rio da execuÃ§Ã£o.
+// MarketplaceSyncReport é o relatório da execução.
 type MarketplaceSyncReport struct {
 	ChannelID      string                   `json:"channel_id"`
 	Direction      string                   `json:"direction"`
@@ -167,12 +167,12 @@ type MarketplaceSyncReport struct {
 	OperationLimit int                      `json:"operation_limit"`
 }
 
-// marketplaceRemote Ã© o DUBLE de sandbox: guarda o espelho remoto em memÃ³ria.
+// marketplaceRemote é o DUBLE de sandbox: guarda o espelho remoto em memória.
 type marketplaceRemote struct {
 	stock map[string]int64
 }
 
-// MarketplaceSyncStore executa a sincronizaÃ§Ã£o contra o duble e registra a idempotÃªncia.
+// MarketplaceSyncStore executa a sincronização contra o duble e registra a idempotência.
 type MarketplaceSyncStore struct {
 	mu         sync.Mutex
 	remote     *marketplaceRemote
@@ -182,7 +182,7 @@ type MarketplaceSyncStore struct {
 	loadedOrgs map[string]bool
 }
 
-// NewMarketplaceSyncStore cria o executor de sincronizaÃ§Ã£o.
+// NewMarketplaceSyncStore cria o executor de sincronização.
 func NewMarketplaceSyncStore(root string, commerce *CommerceStore) *MarketplaceSyncStore {
 	return &MarketplaceSyncStore{
 		remote:     &marketplaceRemote{stock: map[string]int64{}},
@@ -235,15 +235,15 @@ func (s *MarketplaceSyncStore) persistLocked(organizationID string) error {
 	return writeJSONAtomic(path, marketplaceSyncFile{Applied: keys})
 }
 
-// Sync executa a sincronizaÃ§Ã£o contra o DUBLE de sandbox.
+// Sync executa a sincronização contra o DUBLE de sandbox.
 //
-// O teto de operaÃ§Ãµes Ã© verificado ANTES de qualquer efeito: um conector que aplica tudo e sÃ³
-// depois reclama jÃ¡ teria violado o limite da plataforma.
+// O teto de operações é verificado ANTES de qualquer efeito: um conector que aplica tudo e só
+// depois reclama já teria violado o limite da plataforma.
 func (s *MarketplaceSyncStore) Sync(request MarketplaceSyncRequest, now time.Time) (MarketplaceSyncReport, error) {
 	organizationID := strings.TrimSpace(request.OrganizationID)
 	channelID := strings.TrimSpace(request.ChannelID)
 	if organizationID == "" || channelID == "" {
-		return MarketplaceSyncReport{}, fmt.Errorf("%w: organizaÃ§Ã£o e canal sÃ£o obrigatÃ³rios", ErrMarketplaceSyncInvalid)
+		return MarketplaceSyncReport{}, fmt.Errorf("%w: organização e canal são obrigatórios", ErrMarketplaceSyncInvalid)
 	}
 	if len(request.Items) == 0 {
 		return MarketplaceSyncReport{}, fmt.Errorf("%w: nada a sincronizar", ErrMarketplaceSyncInvalid)
@@ -267,7 +267,7 @@ func (s *MarketplaceSyncStore) Sync(request MarketplaceSyncRequest, now time.Tim
 		direction = "push"
 	}
 	if direction != "push" && direction != "pull" {
-		return MarketplaceSyncReport{}, fmt.Errorf("%w: direÃ§Ã£o %q desconhecida", ErrMarketplaceSyncInvalid, request.Direction)
+		return MarketplaceSyncReport{}, fmt.Errorf("%w: direção %q desconhecida", ErrMarketplaceSyncInvalid, request.Direction)
 	}
 
 	report := MarketplaceSyncReport{
@@ -290,33 +290,33 @@ func (s *MarketplaceSyncStore) Sync(request MarketplaceSyncRequest, now time.Tim
 			return MarketplaceSyncReport{}, fmt.Errorf("%w: item precisa de entidade e SKU", ErrMarketplaceSyncInvalid)
 		}
 		key := fmt.Sprintf("%s|%s|%s|%d", channelID, entity, sku, item.Version)
-		// IDEMPOTÃŠNCIA: a mesma versÃ£o nÃ£o Ã© aplicada duas vezes.
+		// IDEMPOTÊNCIA: a mesma versão não é aplicada duas vezes.
 		if s.applied[key] {
 			report.Skipped++
 			report.Outcomes = append(report.Outcomes, MarketplaceSyncOutcome{
 				Entity: entity, SKU: sku, Version: item.Version,
-				Result: MarketplaceResultSkipped, Detail: "versÃ£o jÃ¡ aplicada",
+				Result: MarketplaceResultSkipped, Detail: "versão já aplicada",
 			})
 			continue
 		}
 		if entity == MarketplaceEntityOrders {
 			if direction != "pull" {
-				return MarketplaceSyncReport{}, fmt.Errorf("%w: pedido de canal entra por pull, nÃ£o por push", ErrMarketplaceSyncInvalid)
+				return MarketplaceSyncReport{}, fmt.Errorf("%w: pedido de canal entra por pull, não por push", ErrMarketplaceSyncInvalid)
 			}
 			externalID := strings.TrimSpace(item.ExternalID)
 			if externalID == "" {
 				return MarketplaceSyncReport{}, fmt.Errorf("%w: pedido do canal precisa do id externo", ErrMarketplaceSyncInvalid)
 			}
 			if s.commerce == nil {
-				return MarketplaceSyncReport{}, fmt.Errorf("%w: sem motor de comÃ©rcio nÃ£o hÃ¡ como registrar o pedido", ErrMarketplaceSyncInvalid)
+				return MarketplaceSyncReport{}, fmt.Errorf("%w: sem motor de comércio não há como registrar o pedido", ErrMarketplaceSyncInvalid)
 			}
-			// IDEMPOTÃŠNCIA POR ID EXTERNO (nÃ£o por versÃ£o): o mesmo pedido do canal entra UMA vez.
+			// IDEMPOTÊNCIA POR ID EXTERNO (não por versão): o mesmo pedido do canal entra UMA vez.
 			orderKey := fmt.Sprintf("%s|%s|%s", channelID, entity, externalID)
 			if s.applied[orderKey] {
 				report.Skipped++
 				report.Outcomes = append(report.Outcomes, MarketplaceSyncOutcome{
 					Entity: entity, SKU: sku, Version: item.Version,
-					Result: MarketplaceResultSkipped, Detail: "pedido jÃ¡ importado do canal",
+					Result: MarketplaceResultSkipped, Detail: "pedido já importado do canal",
 				})
 				continue
 			}
@@ -344,14 +344,14 @@ func (s *MarketplaceSyncStore) Sync(request MarketplaceSyncRequest, now time.Tim
 				local = s.commerce.Stock(organizationID, sku).Available
 			}
 			remote, seen := s.remote.stock[channelID+"|"+sku]
-			// CONFLITO: o remoto jÃ¡ tem uma quantidade diferente da que queremos publicar, e ela
-			// nÃ£o veio deste espelho. Aplicar por cima esconderia divergÃªncia de estoque.
+			// CONFLITO: o remoto já tem uma quantidade diferente da que queremos publicar, e ela
+			// não veio deste espelho. Aplicar por cima esconderia divergência de estoque.
 			if seen && remote != local && remote != item.Quantity {
 				report.Conflicts++
 				report.Outcomes = append(report.Outcomes, MarketplaceSyncOutcome{
 					Entity: entity, SKU: sku, Version: item.Version,
 					Result: MarketplaceResultConflict,
-					Detail: fmt.Sprintf("remoto=%d local=%d desejado=%d: divergÃªncia nÃ£o Ã© sobrescrita", remote, local, item.Quantity),
+					Detail: fmt.Sprintf("remoto=%d local=%d desejado=%d: divergência não é sobrescrita", remote, local, item.Quantity),
 				})
 				continue
 			}
@@ -371,7 +371,7 @@ func (s *MarketplaceSyncStore) Sync(request MarketplaceSyncRequest, now time.Tim
 	return report, nil
 }
 
-// RemoteStock devolve o espelho remoto do duble, para inspeÃ§Ã£o e verificaÃ§Ã£o em teste.
+// RemoteStock devolve o espelho remoto do duble, para inspeção e verificação em teste.
 func (s *MarketplaceSyncStore) RemoteStock(channelID, sku string) (int64, bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
