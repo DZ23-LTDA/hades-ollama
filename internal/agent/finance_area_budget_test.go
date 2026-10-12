@@ -44,7 +44,7 @@ func TestAreaBudgetLimitaCustoEProtegeContraCobrancaDupla(t *testing.T) {
 	if _, err := financas.PostAreaCost(empresa.ID, "logistica", "ref-3", "frete 3", 5000, "ana", now); !errors.Is(err, ErrAreaBudgetExceeded) {
 		t.Fatalf("custo que estoura o orcamento precisa ser recusado: %v", err)
 	}
-	status, err := financas.AreaBudgetStatus(empresa.ID)
+	status, err := financas.AreaBudgetStatus(empresa.ID, now)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -58,7 +58,7 @@ func TestAreaBudgetLimitaCustoEProtegeContraCobrancaDupla(t *testing.T) {
 	if _, err := financas.PostAreaCost(empresa.ID, "logistica", "ref-2", "frete 2", 6000, "ana", now); err != nil {
 		t.Fatalf("repetir o mesmo custo nao pode falhar: %v", err)
 	}
-	status, err = financas.AreaBudgetStatus(empresa.ID)
+	status, err = financas.AreaBudgetStatus(empresa.ID, now)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -71,7 +71,7 @@ func TestAreaBudgetLimitaCustoEProtegeContraCobrancaDupla(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	statusOutra, err := financas.AreaBudgetStatus(outra.ID)
+	statusOutra, err := financas.AreaBudgetStatus(outra.ID, now)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -86,7 +86,7 @@ func TestAreaBudgetLimitaCustoEProtegeContraCobrancaDupla(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	statusReaberto, err := reaberto.Finance().AreaBudgetStatus(empresa.ID)
+	statusReaberto, err := reaberto.Finance().AreaBudgetStatus(empresa.ID, now)
 	if err != nil {
 		t.Fatal(err)
 	}
