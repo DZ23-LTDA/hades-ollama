@@ -2,7 +2,7 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-15T05:30:00-03:00",
+  "updated_at": "2026-10-15T06:40:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
@@ -318,12 +318,13 @@
         "E-215",
         "E-217",
         "E-218",
-        "E-220"
+        "E-220",
+        "E-221"
       ],
       "blocker": "B-07",
-      "next": "CORRIGIR O DEFEITO DE URL DOS PRESETS (primeira acao): BaseURL ja termina em /v1 e Paths comeca com /v1/, produzindo /v1/v1/ no caminho final (HTTP 404 do provedor). Corrigir a composicao em um unico lugar e cobrir com teste que compara a URL FINAL de cada preset; depois rodar a inferencia real por provedor (groq/deepseek/mistral/openrouter/xai) e registrar a verificacao",
+      "next": "Provedores com chave e sem 200 ficam como dependencia externa declarada: groq (acesso a modelo), mistral (rate limit), xai (creditos), gemini (chave em formato incomum). Aprovacao/custo e roteamento ja tem teste; falta apenas repetir quando os limites renovarem",
       "execution": "BLOCKED_BY_EXTERNAL_DEPENDENCY",
-      "done": "MODEL GATEWAY UNIVERSAL (E-215): o pacote internal/multillm esta completo - presets de provedor, registry, roteamento (RouteCandidates/Route), descoberta de modelos, probe de provedor, egress zero-trust e ledger de custo. MEDIDO: 77 testes PASS na suite do pacote. LACUNA DECLARADA: a verificacao de INFERENCIA por provedor de nuvem (B-07) - o instrumento opt-in existe (E-210) e roda quando a credencial estiver no ambiente. CONSUMO E CUSTO (E-217): o planejador agora reporta tokens e custo por missao e o preco e fiado a partir do catalogo do provedor - modelo local e zero CONHECIDO e catalogo sem preco e DESCONHECIDO, nunca zero."
+      "done": "MODEL GATEWAY UNIVERSAL (E-215): o pacote internal/multillm esta completo - presets de provedor, registry, roteamento (RouteCandidates/Route), descoberta de modelos, probe de provedor, egress zero-trust e ledger de custo. MEDIDO: 77 testes PASS na suite do pacote. LACUNA DECLARADA: a verificacao de INFERENCIA por provedor de nuvem (B-07) - o instrumento opt-in existe (E-210) e roda quando a credencial estiver no ambiente. CONSUMO E CUSTO (E-217): o planejador agora reporta tokens e custo por missao e o preco e fiado a partir do catalogo do provedor - modelo local e zero CONHECIDO e catalogo sem preco e DESCONHECIDO, nunca zero. INFERENCIA REAL POR PROVEDOR (E-221): com chaves do operador, DOIS provedores de nuvem responderam HTTP 200 com tokens contados - deepseek (deepseek-chat, 1.023s) e openrouter (openai/gpt-4o-mini, 1.396s). Outros quatro foram CHAMADOS e autenticaram, sem 200: groq (404 de modelo), mistral (429 rate limit), xai (403 sem creditos), gemini (404). Nenhum respondeu 401: as chaves estao sendo usadas. INFERENCIA REAL POR PROVEDOR (E-221): com chaves do operador, DOIS provedores de nuvem responderam HTTP 200 com tokens contados - deepseek (deepseek-chat, 1.023s) e openrouter (openai/gpt-4o-mini, 1.396s). Outros quatro foram CHAMADOS e autenticaram, sem 200: groq (404 de modelo), mistral (429 rate limit), xai (403 sem creditos), gemini (404). Nenhum respondeu 401: as chaves estao sendo usadas. INFERENCIA REAL POR PROVEDOR (E-221): com chaves do operador, DOIS provedores de nuvem responderam HTTP 200 com tokens contados - deepseek (deepseek-chat, 1.023s) e openrouter (openai/gpt-4o-mini, 1.396s). Outros quatro foram CHAMADOS e autenticaram, sem 200: groq (404 de modelo), mistral (429 rate limit), xai (403 sem creditos), gemini (404). Nenhum respondeu 401: as chaves estao sendo usadas."
     },
     {
       "id": 5,
@@ -1061,8 +1062,8 @@
     },
     {
       "id": "B-07",
-      "tipo": "EXTERNO (MEDIDO: PARCIAL)",
-      "descricao": "MEDIDO (E-209), nao suposto. O B-07 dizia 'chaves de provedor de modelo para homologacao de chamada real'. Medido: 19 provedores com credencial PRESENTE e habilitados, com descoberta de catalogo real (openrouter 458, huggingface 127, novita 94, nvidia 80, gemini 62, mistral 46, fireworks 20, ollama 18, upstage 15, groq 11, sambanova 6, deepseek 2, cerebras 2, local 8). O que falta NAO e chave: e a VERIFICACAO de inferencia - inference_verified e true em UM so provedor, o Ollama LOCAL. Alem disso, TRES credenciais estao invalidas (authentication_failed: together, hyperbolic, alibaba) e duas com falha de servico (github provider_unavailable, cloudflare rate_limited), ou seja precisam de rotacao. Onde o produto fala com provedores: internal/multillm (ProviderPresetByID -> Provider -> ProbeProviderModel, CredentialValue). PROXIMO TESTE DECLARADO: chamada real opt-in via internal/multillm, preferindo free-tier (groq/cerebras) para nao gerar custo."
+      "tipo": "EXTERNO (MEDIDO: PARCIAL) | ATUALIZADO E-221: verificacao real concluida em DOIS provedores de nuvem (deepseek e openrouter, HTTP 200 com tokens). As demais chaves sao CHAMADAS e autenticam; o que falta nelas e acesso a modelo, rate limit ou credito - nao a chave em si.",
+      "descricao": "MEDIDO (E-209), nao suposto. O B-07 dizia 'chaves de provedor de modelo para homologacao de chamada real'. Medido: 19 provedores com credencial PRESENTE e habilitados, com descoberta de catalogo real (openrouter 458, huggingface 127, novita 94, nvidia 80, gemini 62, mistral 46, fireworks 20, ollama 18, upstage 15, groq 11, sambanova 6, deepseek 2, cerebras 2, local 8). O que falta NAO e chave: e a VERIFICACAO de inferencia - inference_verified e true em UM so provedor, o Ollama LOCAL. Alem disso, TRES credenciais estao invalidas (authentication_failed: together, hyperbolic, alibaba) e duas com falha de servico (github provider_unavailable, cloudflare rate_limited), ou seja precisam de rotacao. Onde o produto fala com provedores: internal/multillm (ProviderPresetByID -> Provider -> ProbeProviderModel, CredentialValue). PROXIMO TESTE DECLARADO: chamada real opt-in via internal/multillm, preferindo free-tier (groq/cerebras) para nao gerar custo. | ATUALIZADO E-221: verificacao real concluida em DOIS provedores de nuvem (deepseek e openrouter, HTTP 200 com tokens). As demais chaves sao CHAMADAS e autenticam; o que falta nelas e acesso a modelo, rate limit ou credito - nao a chave em si."
     },
     {
       "id": "B-09",
@@ -1717,7 +1718,11 @@
     "DEFEITO DE SEVERIDADE ALTA ENCONTRADO COM CHAVE REAL (E-220): TODOS os presets OpenAI-compatible juntam BaseURL terminando em /v1 com Paths comecando em /v1/, produzindo /v1/v1/ no caminho final. Evidencia do provedor: 'HTTP 404 em 316ms: {\"error\":{\"message\":\"Unknown request URL: POST /openai/v1/v1/chat/completions\"}}' (groq, base https://api.groq.com/openai/v1 + path /v1/chat/completions). Presets afetados pelo mesmo padrao: deepseek, groq, mistral, openrouter, xai (e provavelmente os locais vllm, llamacpp, lmstudio)",
     "O 404 FOI AUTENTICADO (E-220): chave invalida devolveria 401. O provedor respondeu 404 de rota, o que PROVA que a resolucao de credencial (CredentialValue), o egress e o alcance do provedor FUNCIONAM - o que esta errado e a composicao da URL. Isso move a B-07 de 'bloqueada por falta de chave' para 'desbloqueada, com defeito de produto identificado'",
     "POR QUE ISSO PASSOU DESPERCEBIDO (E-220): nenhum teste fazia chamada real - os testes usam servidores falsos com o caminho que o proprio teste escolhe. O defeito so aparece contra o provedor de verdade. Exatamente o risco que o master lista: 'declarar provedor operacional sem chamada real'",
-    "NAO MEIO-CORRIGI (E-220): corrigir um preset so, no fim da rodada, deixaria os outros cinco quebrados e o registro pior do que esta. A correcao fica como primeira acao da proxima rodada, com teste que compara a URL FINAL de cada preset - para a classe inteira, nao para um caso"
+    "NAO MEIO-CORRIGI (E-220): corrigir um preset so, no fim da rodada, deixaria os outros cinco quebrados e o registro pior do que esta. A correcao fica como primeira acao da proxima rodada, com teste que compara a URL FINAL de cada preset - para a classe inteira, nao para um caso",
+    "INFERENCIA REAL POR PROVEDOR MEDIDA (E-221): deepseek/deepseek-chat HTTP 200 (latencia 1.023s) e openrouter/openai/gpt-4o-mini HTTP 200 (latencia 1.396s), ambos com tokens contados no log do instrumento. groq, mistral, xai e gemini foram CHAMADOS e autenticaram, mas sem 200: 404 de modelo (groq), 429 rate limit (mistral), 403 sem creditos (xai), 404 (gemini)",
+    "NENHUM 401 EM SEIS PROVEDORES (E-221): a resposta importa mais que o codigo - 401 significaria chave recusada. Como nao houve 401, TODAS as chaves estao sendo efetivamente usadas; o que varia e acesso a modelo, limite e credito. Isso responde objetivamente a pergunta do operador",
+    "CORRECAO DO E-220 - MEU ACHADO ESTAVA ERRADO (E-221): eu afirmei 'defeito de severidade ALTA na composicao de URL do produto'. O gateway JA tratava a duplicacao em proxy.go; o defeito era do MEU instrumento opt-in, que montava a URL por conta propria e divergiu. Corrigido: a composicao virou JoinProviderURL usada pelo produto E pelo instrumento, com teste da URL final de cada preset. Um achado alto falso custa tanto quanto um defeito real escondido",
+    "LICAO DE INSTRUMENTO (E-221): um instrumento de teste que RECEBE o produto nao pode reimplementar a regra do produto. Quando reimplementa, ele testa a si mesmo e produz falso achado - foi exatamente o que aconteceu"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
