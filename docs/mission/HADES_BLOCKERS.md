@@ -18,6 +18,7 @@
 | B-10 | PRODUTO | 104/122 conectores exigem operador | 7, 16, 18 | decisão de produto + credenciais |
 | B-11 | RESOLVIDO | 7 PRs do dependabot com CI vermelho, tratados um a um **sem merge cego** (#26 e #34 entre eles, com a causa raiz provada no log) | vários | RESOLVIDO no próprio tratamento |
 | B-12 | RESOLVIDO | PR #31 (grupo web-dev-tooling) quebrava `Web and mobile quality`, `test (ubuntu-latest)` e `Web E2E` — causa raiz provada no log do CI e corrigida | vários | RESOLVIDO no próprio tratamento |
+| B-13 | PRODUTO (DEFEITO ABERTO) | execucao de plugin quebra no layout real: `Workspace` aponta para o **arquivo** `.zip` (`plugin_runtime.go:215`) e o executor espera diretorio => `not a directory` (E-183) | 8 | corrigir o ponto de execucao (extrair o bundle ou apontar o diretorio extraido) |
 
 ## B-01 — Autorização de merge (decisão humana)
 
