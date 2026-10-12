@@ -2,6 +2,7 @@ package server
 
 import (
 	"errors"
+	"log/slog"
 	"net/http"
 	"strings"
 
@@ -17,11 +18,20 @@ func companyOrganizationID(c *gin.Context) string {
 }
 
 func (a *agentAPI) companyForRequest(c *gin.Context) (agent.Company, error) {
+	// NÃO INFERÊNCIA (E-190, fechamento de B-15). Este guarda é compartilhado por dezenas de rotas de empresa e
+	// distinguia "empresa inexistente" (erro do store -> 404) de "empresa de outro tenant" (errAgentForbidden ->
+	// 403). A diferença de status é um ORÁCULO DE ENUMERAÇÃO: qualquer tenant autenticado descobre, sem acessar dado
+	// nenhum, quais IDs de empresa existem. Aqui as duas recusas passam a ser a MESMA.
+	//
+	// O detalhe real NÃO se perde: vai para o log do servidor, onde só o operador lê — observabilidade é do
+	// operador, não da resposta ao tenant.
 	company, err := a.runtime.CompanyStore().Get(c.Param("id"))
 	if err != nil {
-		return agent.Company{}, err
+		slog.Warn("acesso a empresa recusado", "company", c.Param("id"), "organization", companyOrganizationID(c), "motivo", err)
+		return agent.Company{}, errAgentForbidden
 	}
 	if organizationID := companyOrganizationID(c); company.OrganizationID != organizationID {
+		slog.Warn("acesso a empresa recusado", "company", c.Param("id"), "organization", organizationID, "motivo", "organização diferente")
 		return agent.Company{}, errAgentForbidden
 	}
 	return company, nil

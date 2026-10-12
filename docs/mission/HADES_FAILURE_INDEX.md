@@ -3,7 +3,7 @@
 > Gerado por `python scripts/hades_baseline_report.py` a partir de `HADES_MASTER_STATE.json`: um bloqueio que
 > existe no estado aparece aqui, e um que sai do estado sai daqui. O `--check` no CI detecta divergência.
 
-Total: **14** — 10 em aberto · 4 resolvidos.
+Total: **14** — 9 em aberto · 5 resolvidos.
 
 ## 1. Em aberto
 
@@ -18,7 +18,6 @@ Total: **14** — 10 em aberto · 4 resolvidos.
 | B-09 | AMBIENTAL | Host sem Python/sh e limites de caminho: 4 testes falham por ambiente |
 | B-10 | PRODUTO | Conectores: 104 de 122 exigem configuracao do operador (available=17) |
 | B-14 | AMBIENTE (DIAGNOSTICO RESOLVIDO) | LIMITE (E-184): a execucao de plugin exige PRIVILEGIO DE MONTAGEM - mesmo o modo best-effort faz mount/chroot (mount --make-rprivate, mount --bind, tmpfs e chroot/unshare em tools.go). Onde nao ha esse privilegio (Windows, container nao privilegiado, runner padrao de CI) a execucao nao acontece e o sintoma e 'exit status 1' com stdout e stderr VAZIOS - falha |
-| B-15 | PRODUTO (SEGURANCA) | ORACULO DE ENUMERACAO EM TODA A SUPERFICIE DE EMPRESA (E-189): o guarda compartilhado `companyForRequest` (server/company_routes.go), usado por ~55 pontos em 11 arquivos, devolve 404 para empresa INEXISTENTE e 403 para empresa de OUTRO tenant - a diferenca de status revela a existencia do ID a qualquer tenant autenticado, sem acessar dado nenhum. O vazamento |
 
 ## 2. Resolvidos
 
@@ -28,6 +27,7 @@ Total: **14** — 10 em aberto · 4 resolvidos.
 | B-11 | 7 PRs do dependabot com CI vermelho, tratados um a um SEM merge cego: #26 (mobile-tooling: react-dom/react-native/react-native-web) e #34 (eslint-plugin-storybook 10) estavam VERDES apos rebase na main atual e foram integrados; #30 (tablewriter 1.1.5) foi CORRIGIDO por migracao de codigo (PR #90, 20/20 checks); #27 (typescript 7), #29 (expo-notifications 58) | resolvido, com teste contra regressão onde aplicável |
 | B-12 | PR #31 (grupo web-dev-tooling) quebrava 'Web and mobile quality', 'test (ubuntu-latest)' e 'Web E2E': causa raiz provada no log do CI — o grupo subia react-test-renderer para 19.3.0 enquanto react/react-dom ficavam em 19.1.0, e o lockfile resolvia react=19.3.0 com react-dom=19.1.0 (React exige versoes EXATAS iguais). Corrigido no PR #92 alinhando react/react | resolvido, com teste contra regressão onde aplicável |
 | B-13 | DEFEITO (E-183): a execucao de plugin falha no layout real de instalacao - plugin_runtime.go:215 passa Workspace = installation.ContentPath, e ContentPath e o ARQUIVO plugins/content/<org>/<id>-<versao>.zip (plugin_bundle.go:113); o executor trata Workspace como diretorio e falha com 'not a directory'. Instalacao e verificacao de conteudo funcionam; execucao | resolvido, com teste contra regressão onde aplicável |
+| B-15 | ORACULO DE ENUMERACAO EM TODA A SUPERFICIE DE EMPRESA (E-189): o guarda compartilhado `companyForRequest` (server/company_routes.go), usado por ~55 pontos em 11 arquivos, devolve 404 para empresa INEXISTENTE e 403 para empresa de OUTRO tenant - a diferenca de status revela a existencia do ID a qualquer tenant autenticado, sem acessar dado nenhum. O vazamento | resolvido, com teste contra regressão onde aplicável |
 
 ## 3. Limites declarados
 

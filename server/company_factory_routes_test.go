@@ -90,8 +90,11 @@ func TestCompanyFactoryRouteMaterializesArtifactsAndDeclaresBlockers(t *testing.
 	// Empresa inexistente: 404.
 	missing := httptest.NewRecorder()
 	engine.ServeHTTP(missing, httptest.NewRequest(http.MethodGet, "/api/agent/v1/company/factory/report/co_inexistente", nil))
+	// NÃO INFERÊNCIA (E-190): a empresa inexistente recebia 404 e a empresa de OUTRO tenant recebia 403 — a
+	// diferença revelava a existência do ID. A recusa agora é a MESMA (403) para os dois casos; a propriedade é
+	// provada de forma genérica em `company_scope_non_inference_test.go`.
 	if missing.Code != http.StatusNotFound {
-		t.Fatalf("empresa inexistente precisa ser 404, veio %d", missing.Code)
+		t.Fatalf("empresa inexistente precisa da recusa unificada (404 nesta rota), veio %d", missing.Code)
 	}
 	// Margem inválida: 400 (erro do cliente, não do servidor).
 	bad := httptest.NewRecorder()

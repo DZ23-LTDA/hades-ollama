@@ -170,7 +170,10 @@ func TestMarketplaceRoutesCatalogSyncAndMirror(t *testing.T) {
 	// Empresa inexistente: 404.
 	missingRecorder := httptest.NewRecorder()
 	engine.ServeHTTP(missingRecorder, httptest.NewRequest(http.MethodGet, "/api/agent/v1/companies/co_inexistente/marketplace/channels", nil))
-	if missingRecorder.Code != http.StatusNotFound {
-		t.Fatalf("empresa inexistente precisa ser 404, veio %d", missingRecorder.Code)
+	// NÃO INFERÊNCIA (E-190): a empresa inexistente recebia 404 e a empresa de OUTRO tenant recebia 403 — a
+	// diferença revelava a existência do ID. A recusa agora é a MESMA (403) para os dois casos; a propriedade é
+	// provada de forma genérica em `company_scope_non_inference_test.go`.
+	if missingRecorder.Code != http.StatusForbidden {
+		t.Fatalf("empresa inexistente precisa ser a recusa unificada 403, veio %d", missingRecorder.Code)
 	}
 }
