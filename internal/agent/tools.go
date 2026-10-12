@@ -779,7 +779,14 @@ exec "$7" "$ROOT" /bin/sh -c 'cd /workspace && exec /usr/bin/node "$@"' sandbox 
 			isolation = "strict-linux-user-mount-pid-net-seccomp-cgroupv2"
 			limits = "cgroup-v2-cpu-memory-pids-swap-timeout-output-bounded"
 		}
-		return ToolResult{Value: map[string]any{"stdout": RedactDLP(stdout.String()), "stderr": RedactDLP(stderr.String()), "execution_isolation": isolation, "resource_limits": limits}}, err
+		// O caminho de falha também devolve o CÓDIGO DE SAÍDA quando o processo chegou a rodar (E-185, B-14): o
+		// diagnóstico de uma falha de sandbox não pode depender de o operador adivinhar o motivo.
+		failureValue := map[string]any{"stdout": RedactDLP(stdout.String()), "stderr": RedactDLP(stderr.String()), "execution_isolation": isolation, "resource_limits": limits}
+		var exitError *exec.ExitError
+		if errors.As(err, &exitError) {
+			failureValue["exit_code"] = exitError.ExitCode()
+		}
+		return ToolResult{Value: failureValue}, err
 	}
 	isolation := "best-effort-unshare"
 	limits := "ulimit-context-timeout-output-bounded"

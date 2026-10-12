@@ -244,7 +244,11 @@ func (r *PluginRuntime) Execute(ctx context.Context, request PluginExecutionRequ
 		// A falha do executor é propagada como falha de execução de plugin: nunca
 		// como sucesso parcial. Onde não há executor (host não Linux) ou o sandbox
 		// estrito não está configurado, o plugin simplesmente não roda.
-		return PluginExecutionResult{Record: record}, fmt.Errorf("%w: %v", ErrPluginExecutionSandbox, execErr)
+		//
+		// O `Output` do executor é PROPAGADO também na falha (correção B-14, E-185): o sandbox captura `stdout` e
+		// `stderr` do processo, e descartá-los aqui transformava qualquer falha em "exit status 1" sem mensagem —
+		// operador sem diagnóstico. O diagnóstico pertence a quem opera, não ao acaso.
+		return PluginExecutionResult{Record: record, Output: result.Value, Artifacts: result.Artifacts}, fmt.Errorf("%w: %v", ErrPluginExecutionSandbox, execErr)
 	}
 	return PluginExecutionResult{Record: record, Output: result.Value, Artifacts: result.Artifacts}, nil
 }

@@ -2,7 +2,7 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-13T16:30:00-03:00",
+  "updated_at": "2026-10-13T17:30:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
@@ -371,11 +371,12 @@
         "E-067",
         "E-068",
         "E-183",
-        "E-184"
+        "E-184",
+        "E-185"
       ],
       "blocker": "B-14",
-      "next": "Executar em host com privilegio de montagem e fazer o executor propagar o stderr do launcher (B-14); so depois promover o item de plugins para DONE",
-      "done": "plugins: manifesto, assinatura/integridade, atualizacao, rollback, verificacao de conteudo, execucao governada, status canonico por API e exibicao do estado real (PRs #78, #80, #114, #119, #121); skills: manifesto assinado/nao-confianca, categoria, proveniencia, ativacao por projeto/agente/modelo, selecao deterministica com orcamento de tokens, persistencia por organizacao E EXIBICAO/OPERACAO DO CATALOGO NA INTERFACE (PRs #123, #125) | PLUGIN COM TERCEIRO REAL (E-183): conteudo e o pacote ms@2.1.3 (MIT) byte a byte, sha256 conferido. PASSAM instalacao por assinatura ed25519, verificacao por digest, presenca do terceiro byte a byte, licenca no manifesto/bundle e RECUSA de adulteracao. A EXECUCAO ESTA QUEBRADA (B-13): plugin_runtime.go:215 passa Workspace = ARQUIVO .zip e o executor espera diretorio; alem disso e Linux-only e o strict exige OLLAMA_AGENT_SANDBOX_CGROUP_ROOT. Limite multiarquivo CONFIRMADO por execucao no Linux | B-13 CORRIGIDO (E-184): o bundle verificado e extraido para um diretorio de execucao temporario com protecao fail-closed (travessia, caminho absoluto, barra invertida, link simbolico, teto de arquivos e de bytes) e o Workspace passa a ser esse diretorio, com limpeza garantida por defer. Antes/depois no mesmo ambiente: de 'not a directory' para 'exit status 1' (o executor passou a montar o sandbox). 5 testes novos com injecao de falha; teste falha se o defeito voltar. Novo limite B-14: a execucao exige privilegio de montagem e falha silenciosamente sem stderr",
+      "next": "B-14 tem o DIAGNOSTICO corrigido (E-185); falta o pre-requisito de host (namespaces de montagem) para observar execucao bem-sucedida",
+      "done": "plugins: manifesto, assinatura/integridade, atualizacao, rollback, verificacao de conteudo, execucao governada, status canonico por API e exibicao do estado real (PRs #78, #80, #114, #119, #121); skills: manifesto assinado/nao-confianca, categoria, proveniencia, ativacao por projeto/agente/modelo, selecao deterministica com orcamento de tokens, persistencia por organizacao E EXIBICAO/OPERACAO DO CATALOGO NA INTERFACE (PRs #123, #125) | PLUGIN COM TERCEIRO REAL (E-183): conteudo e o pacote ms@2.1.3 (MIT) byte a byte, sha256 conferido. PASSAM instalacao por assinatura ed25519, verificacao por digest, presenca do terceiro byte a byte, licenca no manifesto/bundle e RECUSA de adulteracao. A EXECUCAO ESTA QUEBRADA (B-13): plugin_runtime.go:215 passa Workspace = ARQUIVO .zip e o executor espera diretorio; alem disso e Linux-only e o strict exige OLLAMA_AGENT_SANDBOX_CGROUP_ROOT. Limite multiarquivo CONFIRMADO por execucao no Linux | B-13 CORRIGIDO (E-184): o bundle verificado e extraido para um diretorio de execucao temporario com protecao fail-closed (travessia, caminho absoluto, barra invertida, link simbolico, teto de arquivos e de bytes) e o Workspace passa a ser esse diretorio, com limpeza garantida por defer. Antes/depois no mesmo ambiente: de 'not a directory' para 'exit status 1' (o executor passou a montar o sandbox). 5 testes novos com injecao de falha; teste falha se o defeito voltar. Novo limite B-14: a execucao exige privilegio de montagem e falha silenciosamente sem stderr | DIAGNOSTICO CORRIGIDO (E-185): a falha silenciosa de execucao era o runtime de plugin descartando o Output do sandbox. Agora a falha propaga stdout/stderr e o sandbox publica exit_code; medido no container, exit_code=1 com stderr 'unshare: unshare failed: Operation not permitted'. Teste proprio trava o comportamento",
       "execution": "IN_PROGRESS"
     },
     {
@@ -1036,8 +1037,8 @@
     },
     {
       "id": "B-14",
-      "tipo": "PRODUTO + AMBIENTE",
-      "descricao": "LIMITE (E-184): a execucao de plugin exige PRIVILEGIO DE MONTAGEM - mesmo o modo best-effort faz mount/chroot (mount --make-rprivate, mount --bind, tmpfs e chroot/unshare em tools.go). Onde nao ha esse privilegio (Windows, container nao privilegiado, runner padrao de CI) a execucao nao acontece e o sintoma e 'exit status 1' com stdout e stderr VAZIOS - falha silenciosa que dificulta o diagnostico. Desbloqueio: executar em host com namespaces de montagem e propagar o stderr do launcher."
+      "tipo": "AMBIENTE (DIAGNOSTICO RESOLVIDO)",
+      "descricao": "LIMITE (E-184): a execucao de plugin exige PRIVILEGIO DE MONTAGEM - mesmo o modo best-effort faz mount/chroot (mount --make-rprivate, mount --bind, tmpfs e chroot/unshare em tools.go). Onde nao ha esse privilegio (Windows, container nao privilegiado, runner padrao de CI) a execucao nao acontece e o sintoma e 'exit status 1' com stdout e stderr VAZIOS - falha silenciosa que dificulta o diagnostico. Desbloqueio: executar em host com namespaces de montagem e propagar o stderr do launcher. || DIAGNOSTICO CORRIGIDO (E-185): a falha silenciosa era do runtime de plugin, que descartava o Output do sandbox; agora a falha propaga stdout/stderr e o sandbox publica exit_code no caminho de erro. Medido em container: exit_code=1 stderr='unshare: unshare failed: Operation not permitted'. CONTINUA ABERTO o pre-requisito de host (namespaces de montagem)."
     }
   ],
   "evidence_index": "docs/mission/HADES_EVIDENCE_INDEX.md",
@@ -1532,7 +1533,9 @@
     "B-13 CORRIGIDO (E-184): plugin_runtime.go passava Workspace = o ARQUIVO .zip, e o executor exige DIRETORIO (os.OpenRoot + Mkdir dentro da raiz). Agora o bundle verificado e extraido para plugins/exec-run/run-* com protecao fail-closed (travessia, caminho absoluto, barra invertida, link simbolico, >1024 arquivos, >16MiB por arquivo, >64MiB total) e o Workspace e esse diretorio, com limpeza por defer. Efeito colateral: plugin multiarquivo passa a alcancar os irmaos em '../'",
     "PROVA ANTES/DEPOIS DE B-13 (E-184), mesmo container node:22-bookworm em best-effort com aprovacao: ANTES o erro era 'open ...runtime-plugin-1.0.0.zip: not a directory' (o workspace nem era diretorio); DEPOIS e 'exit status 1' - ou seja, o workspace esta correto e o executor chegou a montar e rodar o sandbox. O teste agora FALHA se 'not a directory' voltar (armadilha de regressao)",
     "NOVO LIMITE B-14 (E-184): a execucao de plugin exige PRIVILEGIO DE MONTAGEM - mesmo best-effort faz mount/chroot (tools.go: mount --make-rprivate, mount --bind, tmpfs, chroot/unshare). Fora disso o sintoma e 'exit status 1' com stdout e stderr VAZIOS (falha silenciosa). Desbloqueio: host com namespaces de montagem + propagar o stderr do launcher",
-    "O ITEM DE PLUGINS CONTINUA NAO_COMPROVADO (E-184), com motivo mais preciso: instalacao, assinatura, integridade e EXTRACAO SEGURA estao comprovadas; a EXECUCAO nao pode ser exercitada em nenhum ambiente disponivel. O que mudou: o defeito que a impedia foi CORRIGIDO e ha teste contra regressao"
+    "O ITEM DE PLUGINS CONTINUA NAO_COMPROVADO (E-184), com motivo mais preciso: instalacao, assinatura, integridade e EXTRACAO SEGURA estao comprovadas; a EXECUCAO nao pode ser exercitada em nenhum ambiente disponivel. O que mudou: o defeito que a impedia foi CORRIGIDO e ha teste contra regressao",
+    "DIAGNOSTICO DE FALHA DE PLUGIN CORRIGIDO (E-185, B-14): a 'falha silenciosa' nao era do sandbox - o executor sempre devolveu stderr no Value, mas o RUNTIME DE PLUGIN descartava o Output no caminho de erro. Agora a falha propaga stdout/stderr e o sandbox publica exit_code (via exec.ExitError). Medido no container: exit_code=1 stderr='unshare: unshare failed: Operation not permitted'. O pre-requisito de host (namespaces de montagem) CONTINUA aberto",
+    "TESTE QUE TRAVA O DIAGNOSTICO (E-185): TestPluginExecutionFailureCarriesSandboxDiagnostics usa process.exit(3) e exige registro de auditoria sem sucesso, erro, diagnostico com stderr (ou exit_code) e trilha de auditoria; imprime o stderr no log para o CI mostrar a razao. PASS no Linux, SKIP declarado no Windows"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
