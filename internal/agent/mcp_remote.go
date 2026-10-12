@@ -531,7 +531,8 @@ func (m *RemoteMCPManager) SetEnabledForOrganization(organizationID, id string, 
 	id = strings.TrimSpace(id)
 	config, ok := m.servers[id]
 	if !ok {
-		return ErrPluginNotFound
+		// NÃO INFERÊNCIA (E-194): mesma recusa do ramo de outro tenant.
+		return ErrPluginOrganizationScope
 	}
 	if !pluginOwnedByOrganization(config.OrganizationID, strings.TrimSpace(organizationID)) {
 		return ErrPluginOrganizationScope
@@ -571,7 +572,8 @@ func (m *RemoteMCPManager) RemoveForOrganization(organizationID, id string) erro
 	id = strings.TrimSpace(id)
 	config, ok := m.servers[id]
 	if !ok {
-		return ErrPluginNotFound
+		// NÃO INFERÊNCIA (E-194): mesma recusa do ramo de outro tenant.
+		return ErrPluginOrganizationScope
 	}
 	if !pluginOwnedByOrganization(config.OrganizationID, strings.TrimSpace(organizationID)) {
 		return ErrPluginOrganizationScope
@@ -609,7 +611,14 @@ func (m *RemoteMCPManager) call(ctx context.Context, organizationID, serverID, m
 	client := m.client
 	m.mu.RUnlock()
 	if !ok {
-		return nil, fmt.Errorf("remote MCP server %q is not registered", serverID)
+		// NÃO INFERÊNCIA (E-194, fechamento de B-17): no caminho de TENANT a recusa precisa ser a MESMA do ramo de
+		// outro tenant — a mensagem antiga ecoava o ID pedido e só existia para o servidor inexistente, o que
+		// distingue "não existe" de "é de outro tenant". O caminho global é de operação (sem tenant de quem inferir)
+		// e mantém a mensagem informativa.
+		if global {
+			return nil, fmt.Errorf("remote MCP server %q is not registered", serverID)
+		}
+		return nil, ErrPluginOrganizationScope
 	}
 	if global {
 		if strings.TrimSpace(config.OrganizationID) != "" {

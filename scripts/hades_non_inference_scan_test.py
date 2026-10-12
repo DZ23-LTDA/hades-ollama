@@ -113,15 +113,19 @@ class CalibracaoDoScanner(unittest.TestCase):
         ):
             self.assertNotIn(metodo, suspeitos, f"método já corrigido voltou a ser suspeito: {metodo}")
 
-    def test_o_candidato_restante_esta_declarado(self) -> None:
-        # O scanner deixa UM candidato (o `call` do MCP remoto). Ele não foi verificado, e a metodologia declarada diz
-        # que apontar não é provar: o teste exige que ele CONTINUE VISÍVEL em vez de ser silenciado para a lista ficar
-        # bonita. Se ele sumir, é porque alguém o corrigiu (então atualize este teste) ou o scanner ficou cego.
+    def test_o_candidato_restante_esta_declarado_e_verificado(self) -> None:
+        # O scanner deixa UM candidato: o `call` do MCP remoto. Ele foi VERIFICADO em E-194 com teste que compara as
+        # duas recusas (`TestRemoteMCPTenantOperationsDoNotRevealExistence`): no caminho de TENANT as duas são a mesma
+        # (`ErrPluginOrganizationScope`), e o scanner o aponta porque o caminho GLOBAL mantém, de propósito, a mensagem
+        # informativa — ali não há tenant de quem inferir.
+        #
+        # A regra continua valendo: apontar não é provar, e silenciar a lista para ficar bonita seria o oposto de
+        # auditar. Por isso o candidato precisa CONTINUAR VISÍVEL, e este teste é o registro de que ele foi olhado.
         suspeitos = {(achado["arquivo"], achado["metodo"]) for achado in scanner.varrer()}
         self.assertIn(
             ("internal/agent/mcp_remote.go", "call"),
             suspeitos,
-            "o candidato não verificado do MCP remoto precisa continuar visível (B-17)",
+            "o candidato verificado (tenant) e intencional (global) precisa continuar visível: se sumir, o scanner ficou cego",
         )
 
 

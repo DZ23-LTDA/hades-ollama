@@ -403,7 +403,10 @@ func (m *ConnectorManager) SetEnabledForOrganization(organizationID, id string, 
 	defer m.mu.Unlock()
 	connector, ok := m.connectors[strings.TrimSpace(id)]
 	if !ok {
-		return ErrPluginNotFound
+		// NÃO INFERÊNCIA (E-194, fechamento de B-17): "não existe" devolvia ErrPluginNotFound e "é de outro tenant"
+		// devolvia ErrPluginOrganizationScope — recusas DIFERENTES para a mesma pergunta do tenant, e a diferença
+		// revela a existência do ID. Aqui as duas passam a ser a MESMA.
+		return ErrPluginOrganizationScope
 	}
 	if !pluginOwnedByOrganization(connector.OrganizationID, strings.TrimSpace(organizationID)) {
 		return ErrPluginOrganizationScope
@@ -443,7 +446,8 @@ func (m *ConnectorManager) RemoveForOrganization(organizationID, id string) erro
 	id = strings.TrimSpace(id)
 	connector, ok := m.connectors[id]
 	if !ok {
-		return ErrPluginNotFound
+		// NÃO INFERÊNCIA (E-194): mesma recusa do ramo de outro tenant.
+		return ErrPluginOrganizationScope
 	}
 	if !pluginOwnedByOrganization(connector.OrganizationID, strings.TrimSpace(organizationID)) {
 		return ErrPluginOrganizationScope
