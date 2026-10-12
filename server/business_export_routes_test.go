@@ -79,7 +79,10 @@ func TestBusinessExportRouteDownloadsValidCSV(t *testing.T) {
 	// Empresa inexistente: 404, sem exportar dado de outra organização.
 	missing := httptest.NewRecorder()
 	engine.ServeHTTP(missing, httptest.NewRequest(http.MethodGet, "/api/agent/v1/companies/co_inexistente/business-export", nil))
-	if missing.Code != http.StatusNotFound {
-		t.Fatalf("empresa inexistente precisa ser 404, veio %d", missing.Code)
+	// NÃO INFERÊNCIA (E-190): a empresa inexistente recebia 404 e a empresa de OUTRO tenant recebia 403 — a
+	// diferença revelava a existência do ID. A recusa agora é a MESMA (403) para os dois casos; a propriedade é
+	// provada de forma genérica em `company_scope_non_inference_test.go`.
+	if missing.Code != http.StatusForbidden {
+		t.Fatalf("empresa inexistente precisa ser a recusa unificada 403, veio %d", missing.Code)
 	}
 }

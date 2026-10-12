@@ -324,7 +324,11 @@ func (r *Runtime) CompanyFactoryReportFor(organizationID, companyID string) (Com
 		return report, err
 	}
 	if consentScope(company.OrganizationID) != consentScope(organizationID) {
-		return report, fmt.Errorf("%w: %s", ErrCompanyNotFound, companyID)
+		// NÃO INFERÊNCIA (E-190): devolver `ErrCompanyNotFound` COM o ID só aqui criava assimetria observável — a
+		// recusa de um ID inexistente era `"company not found"` e a de uma empresa EXISTENTE de outro tenant era
+		// `"company not found: <id>"`. Ecoar o ID apenas no caso que existe entrega a existência. O chamador já sabe
+		// o ID que perguntou, então a mensagem não precisa carregá-lo.
+		return report, ErrCompanyNotFound
 	}
 	report.CompanyID = company.ID
 	report.Company = company
