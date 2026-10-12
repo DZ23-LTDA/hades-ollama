@@ -577,13 +577,13 @@ func templateFiles(kind BuilderKind, name string) map[string]string {
 	title := htmlEscape(name)
 	switch kind {
 	case BuilderGame:
-		return map[string]string{"index.html": "<!doctype html><html><head><meta charset=\"utf-8\"><title>" + title + "</title></head><body><main id=\"game\"></main><script type=\"module\" src=\"game.ts\"></script></body></html>", "game.ts": "// Babylon.js game entrypoint. Add GameCanvas integration here.\nconst root = document.querySelector('#game'); if (root) root.textContent = 'Game preview ready';"}
+		return map[string]string{"index.html": "<!doctype html><html><head><meta charset=\"utf-8\"><link rel=\"icon\" href=\"data:,\"><title>" + title + "</title></head><body><main id=\"game\"></main><script type=\"module\" src=\"game.ts\"></script></body></html>", "game.ts": "// Babylon.js game entrypoint. Add GameCanvas integration here.\nconst root = document.querySelector('#game'); if (root) root.textContent = 'Game preview ready';"}
 	case BuilderSlides:
-		return map[string]string{"index.html": "<!doctype html><html><head><meta charset=\"utf-8\"><title>" + title + " slides</title></head><body><section data-slide=\"1\"><h1>" + title + "</h1><p>Slide preview</p></section></body></html>"}
+		return map[string]string{"index.html": "<!doctype html><html><head><meta charset=\"utf-8\"><link rel=\"icon\" href=\"data:,\"><title>" + title + " slides</title></head><body><section data-slide=\"1\"><h1>" + title + "</h1><p>Slide preview</p></section></body></html>"}
 	case BuilderDashboard:
-		return map[string]string{"index.html": "<!doctype html><html><head><meta charset=\"utf-8\"><title>" + title + " dashboard</title></head><body><main><h1>" + title + "</h1><section aria-label=\"Dashboard\"><article data-metric=\"one\">Metric ready</article></section></main></body></html>"}
+		return map[string]string{"index.html": "<!doctype html><html><head><meta charset=\"utf-8\"><link rel=\"icon\" href=\"data:,\"><title>" + title + " dashboard</title></head><body><main><h1>" + title + "</h1><section aria-label=\"Dashboard\"><article data-metric=\"one\">Metric ready</article></section></main></body></html>"}
 	default:
-		return map[string]string{"index.html": "<!doctype html><html><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>" + title + "</title></head><body><main><h1>" + title + "</h1><p>Builder preview ready.</p></main></body></html>"}
+		return map[string]string{"index.html": "<!doctype html><html><head><meta charset=\"utf-8\"><link rel=\"icon\" href=\"data:,\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>" + title + "</title></head><body><main><h1>" + title + "</h1><p>Builder preview ready.</p></main></body></html>"}
 	}
 }
 
@@ -594,7 +594,7 @@ func mustJSON(value any) string {
 
 func renderVisualHTML(name string, components []VisualComponent) string {
 	data := mustJSON(components)
-	return "<!doctype html><html><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>" + htmlEscape(name) + "</title><style>body{font-family:system-ui;margin:0;padding:24px} [data-dz23-component]{border:1px dashed #bbb;padding:12px;margin:8px;border-radius:8px}</style></head><body><main id=\"dz23-canvas\"></main><script type=\"application/json\" id=\"dz23-visual\">" + scriptEscape(data) + "</script><script>const tree=JSON.parse(document.querySelector('#dz23-visual').textContent); const render=(nodes,parent)=>nodes.forEach(n=>{const el=document.createElement('section');el.dataset.dz23Component=n.type;el.textContent=(n.props&&n.props.text)||n.type;Object.assign(el.style,{position:n.x||n.y?'absolute':'static',left:(n.x||0)+'px',top:(n.y||0)+'px',width:n.width?(n.width+'px'):'auto',height:n.height?(n.height+'px'):'auto'});parent.appendChild(el);render(n.children||[],el)});render(tree,document.querySelector('#dz23-canvas'));</script></body></html>"
+	return "<!doctype html><html><head><meta charset=\"utf-8\"><link rel=\"icon\" href=\"data:,\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>" + htmlEscape(name) + "</title><style>body{font-family:system-ui;margin:0;padding:24px} [data-dz23-component]{border:1px dashed #bbb;padding:12px;margin:8px;border-radius:8px}</style></head><body><main id=\"dz23-canvas\"></main><script type=\"application/json\" id=\"dz23-visual\">" + scriptEscape(data) + "</script><script>const tree=JSON.parse(document.querySelector('#dz23-visual').textContent); const render=(nodes,parent)=>nodes.forEach(n=>{const el=document.createElement('section');el.dataset.dz23Component=n.type;el.textContent=(n.props&&n.props.text)||n.type;Object.assign(el.style,{position:n.x||n.y?'absolute':'static',left:(n.x||0)+'px',top:(n.y||0)+'px',width:n.width?(n.width+'px'):'auto',height:n.height?(n.height+'px'):'auto'});parent.appendChild(el);render(n.children||[],el)});render(tree,document.querySelector('#dz23-canvas'));</script></body></html>"
 }
 
 func validateVisualComponents(components []VisualComponent, depth int) error {
