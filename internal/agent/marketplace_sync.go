@@ -118,6 +118,9 @@ func MarketplaceChannels(configuredEnv map[string]bool) []MarketplaceChannelSpec
 type MarketplaceSyncItem struct {
 	Entity string `json:"entity"`
 	SKU    string `json:"sku"`
+	// ExternalID é o identificador do item NA PLATAFORMA (ex.: id do pedido no canal). É a chave de
+	// idempotência do pull de pedidos: o mesmo pedido não pode entrar duas vezes.
+	ExternalID string `json:"external_id,omitempty"`
 	// Version permite idempotência: a mesma versão não é aplicada duas vezes.
 	Version int64 `json:"version"`
 	// Quantity é usado para estoque; PriceCents para preço.
@@ -293,6 +296,45 @@ func (s *MarketplaceSyncStore) Sync(request MarketplaceSyncRequest, now time.Tim
 			report.Outcomes = append(report.Outcomes, MarketplaceSyncOutcome{
 				Entity: entity, SKU: sku, Version: item.Version,
 				Result: MarketplaceResultSkipped, Detail: "versão já aplicada",
+			})
+			continue
+		}
+		if entity == MarketplaceEntityOrders {
+			if direction != "pull" {
+				return MarketplaceSyncReport{}, fmt.Errorf("%w: pedido de canal entra por pull, não por push", ErrMarketplaceSyncInvalid)
+			}
+			externalID := strings.TrimSpace(item.ExternalID)
+			if externalID == "" {
+				return MarketplaceSyncReport{}, fmt.Errorf("%w: pedido do canal precisa do id externo", ErrMarketplaceSyncInvalid)
+			}
+			if s.commerce == nil {
+				return MarketplaceSyncReport{}, fmt.Errorf("%w: sem motor de comércio não há como registrar o pedido", ErrMarketplaceSyncInvalid)
+			}
+			// IDEMPOTÊNCIA POR ID EXTERNO (não por versão): o mesmo pedido do canal entra UMA vez.
+			orderKey := fmt.Sprintf("%s|%s|%s", channelID, entity, externalID)
+			if s.applied[orderKey] {
+				report.Skipped++
+				report.Outcomes = append(report.Outcomes, MarketplaceSyncOutcome{
+					Entity: entity, SKU: sku, Version: item.Version,
+					Result: MarketplaceResultSkipped, Detail: "pedido já importado do canal",
+				})
+				continue
+			}
+			pedido, err := s.commerce.CreateOrder(CommerceOrderRequest{
+				OrganizationID: organizationID,
+				Items:          []CommerceOrderItem{{SKU: sku, Quantity: item.Quantity}},
+				Currency:       "BRL",
+				IdempotencyKey: fmt.Sprintf("canal:%s:%s", channelID, externalID),
+			}, now)
+			if err != nil {
+				return MarketplaceSyncReport{}, fmt.Errorf("importar pedido %s do canal %s: %w", externalID, channelID, err)
+			}
+			s.applied[orderKey] = true
+			report.Applied++
+			report.OperationsUsed++
+			report.Outcomes = append(report.Outcomes, MarketplaceSyncOutcome{
+				Entity: entity, SKU: sku, Version: item.Version,
+				Result: MarketplaceResultApplied, Detail: "pedido local " + pedido.ID,
 			})
 			continue
 		}
