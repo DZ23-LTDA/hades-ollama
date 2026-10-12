@@ -13,3 +13,7 @@ llama/build-info.cpp linguist-generated
 
 * text=auto
 *.go text eol=lf
+# Fixture de TERCEIRO: preservar o byte publicado (o teste confere o sha256 do pacote real).
+# Sem esta regra, o checkout no Windows converte LF -> CRLF e o hash deixa de bater - foi o que o job
+# "Go agentic Windows portability" pegou (E-183).
+internal/agent/testdata/thirdparty/** -text

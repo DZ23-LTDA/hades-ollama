@@ -49,11 +49,17 @@ func lerTerceiro(t *testing.T) string {
 	if err != nil {
 		t.Fatalf("o fixture do pacote de terceiro precisa existir: %v", err)
 	}
-	soma := sha256.Sum256(dados)
+	// O arquivo publicado e LF. Um checkout no Windows pode converter para CRLF (foi o que quebrou o job
+	// "Go agentic Windows portability" em E-183), entao a conferencia normaliza o fim de linha ANTES de hashear -
+	// e o `.gitattributes` mantem o fixture sem conversao (-text). Sem isso, o hash depende da config de git de
+	// quem roda, e um teste que depende do ambiente nao prova o byte publicado.
+	normalizado := strings.ReplaceAll(string(dados), "\r\n", "\n")
+	soma := sha256.Sum256([]byte(normalizado))
 	if hex.EncodeToString(soma[:]) != hashDoMsPublicado {
 		t.Fatalf("o `index.js` de terceiro mudou (sha256 %s): o executado precisa ser o byte publicado",
 			hex.EncodeToString(soma[:])[:16])
 	}
+	return normalizado
 	return string(dados)
 }
 

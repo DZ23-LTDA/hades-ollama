@@ -68,3 +68,14 @@ operador'**. Promover este item a `DONE` seria exatamente o tipo de mentira que 
 - A execução foi tentada no modo **`best-effort`** (isolamento mais fraco, permitido apenas com aviso de aprovação
   explícito); o modo **`strict`** não pôde ser exercitado por falta de `OLLAMA_AGENT_SANDBOX_CGROUP_ROOT`.
 - O defeito B-13 foi **identificado e localizado**, **não corrigido** nesta rodada.
+
+
+## 7. Um terceiro achado: o teste quebrava no CI por FIM DE LINHA (e o job certo pegou)
+
+O PR desta rodada **falhou no CI**, no job **"Go agentic Windows portability"** — e o motivo era meu, não do
+produto: o checkout no Windows converte **LF → CRLF**, então o **sha256** que eu confiro contra o arquivo publicado
+**deixava de bater**. O job existe exatamente para pegar isso, e pegou.
+
+Correção em duas pontas: `.gitattributes` marca `internal/agent/testdata/thirdparty/**` como `-text` (preserva o
+byte publicado) **e** o teste normaliza `\r\n` → `\n` antes de hashear — um teste que depende da configuração de
+git de quem roda não prova o byte publicado, prova a configuração.
