@@ -9,7 +9,7 @@
 | Número | Valor |
 | --- | --- |
 | Estágios | 38 |
-| Linhas de evidência no índice | 224 |
+| Linhas de evidência no índice | 225 |
 | `COMPLETED_VERIFIED` | 2 |
 | `IN_PROGRESS` | 15 |
 | `BLOCKED_BY_EXTERNAL_DEPENDENCY` | 21 |
@@ -56,7 +56,7 @@ relatório **declara a ausência** em vez de preencher com suposição.
 
 | # | Estágio | Capacidade | Execução | Bloqueio | Evidências |
 | --- | --- | --- | --- | --- | --- |
-| 4 | Model Gateway (roteamento, rotacao, fallback, orcamento) | IMPLEMENTADO_NAO_HOMOLOGADO | BLOCKED_BY_EXTERNAL_DEPENDENCY | B-07 | E-024, E-037, E-038, E-049, E-209, E-210, E-215, E-217, E-218, E-220, E-221, E-222, E-223, E-224 |
+| 4 | Model Gateway (roteamento, rotacao, fallback, orcamento) | IMPLEMENTADO_NAO_HOMOLOGADO | BLOCKED_BY_EXTERNAL_DEPENDENCY | B-07 | E-024, E-037, E-038, E-049, E-209, E-210, E-215, E-217, E-218, E-220, E-221, E-222, E-223, E-224, E-225 |
 | 5 | Context Bootstrap / contexto de projeto | PARCIAL | BLOCKED_BY_EXTERNAL_DEPENDENCY | B-07 | E-040, E-050, E-051, E-069 |
 | 11 | Paridade Codex/Claude (harnesses de codigo) | PARCIAL | BLOCKED_BY_EXTERNAL_DEPENDENCY | B-02 | E-025, E-046, E-116 |
 | 16 | Canais de IM (WhatsApp/Telegram/inbox unificado) | APENAS_ADAPTER | BLOCKED_BY_EXTERNAL_DEPENDENCY | B-03 | E-030, E-215 |
@@ -90,7 +90,7 @@ possível sem ele**.
 
 ## Referências
 
-- Índice de evidências: [`HADES_EVIDENCE_INDEX.md`](HADES_EVIDENCE_INDEX.md) (224 linhas).
+- Índice de evidências: [`HADES_EVIDENCE_INDEX.md`](HADES_EVIDENCE_INDEX.md) (225 linhas).
 - Estado da missão: [`HADES_MASTER_STATE.json`](HADES_MASTER_STATE.json).
 - Gate global: [`HADES_FINAL_RELEASE_GATE.md`](HADES_FINAL_RELEASE_GATE.md).
 - Gate intermediário de engenharia (estágio 22): [`HADES_ENGINEERING_GATE.md`](HADES_ENGINEERING_GATE.md).
