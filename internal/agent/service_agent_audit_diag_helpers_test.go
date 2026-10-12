@@ -27,9 +27,20 @@ func campoDaTrilhaComTexto(conteudo, texto string) string {
 		return ""
 	}
 	for indice, entrada := range arquivo.Entries {
-		campos := []struct{ nome, valor string }{
+		// TEXTO LIVRE: é onde conteúdo de terceiro poderia entrar, então vale a busca pelo texto completo E pelo
+		// fragmento do cartão.
+		livres := []struct{ nome, valor string }{
 			{"summary", entrada.Summary},
 			{"reason", entrada.Reason},
+		}
+		for _, campo := range livres {
+			if contemTexto(campo.valor, texto) {
+				return fmt.Sprintf("entries[%d].%s", indice, campo.nome)
+			}
+		}
+		// IDENTIFICADORES: aqui só o texto COMPLETO conta. Procurar um fragmento de 4 dígitos num UUID acusa por
+		// acaso (e o relógio também tem dígitos: `decided_at` com `.411114Z` foi o falso positivo medido em E-196).
+		identificadores := []struct{ nome, valor string }{
 			{"tool_name", entrada.ToolName},
 			{"effect", entrada.Effect},
 			{"status", entrada.Status},
@@ -37,8 +48,8 @@ func campoDaTrilhaComTexto(conteudo, texto string) string {
 			{"conversation_id", entrada.ConversationID},
 			{"model_id", entrada.ModelID},
 		}
-		for _, campo := range campos {
-			if contemTexto(campo.valor, texto) {
+		for _, campo := range identificadores {
+			if strings.Contains(campo.valor, texto) {
 				return fmt.Sprintf("entries[%d].%s", indice, campo.nome)
 			}
 		}
@@ -47,7 +58,8 @@ func campoDaTrilhaComTexto(conteudo, texto string) string {
 }
 
 // contemTexto cobre o texto completo E o prefixo de cartão usado nos fixtures: a invariante é "conteúdo de terceiro
-// não entra", e o número de cartão é o caso concreto que os testes exercitam.
+// não entra", e o número de cartão é o caso concreto que os testes exercitam. Só vale para campos de TEXTO LIVRE —
+// um fragmento de dígitos em identificador ou timestamp acusa por acaso (E-196).
 func contemTexto(valor, texto string) bool {
 	return strings.Contains(valor, texto) || strings.Contains(valor, "4111")
 }
