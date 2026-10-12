@@ -2,7 +2,7 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-17T00:55:00-03:00",
+  "updated_at": "2026-10-17T01:10:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
@@ -918,7 +918,8 @@
         "E-097",
         "E-110",
         "E-111",
-        "E-213"
+        "E-213",
+        "E-258"
       ],
       "blocker": "B-05",
       "next": "LIMITES: o HISTORICO dos ciclos segue em memoria (ele e a trilha analitica, nao a decisao), o ciclo e acionado por rota ou pelo agendador existente (sem loop proprio com lease), o estorno e registro CONTABIL sem transferencia real de dinheiro, nao ha precificacao dinamica nem promocoes, e marketplaces e redes sociais nao sao coordenados (conta autorizada)",
@@ -1874,7 +1875,8 @@
     "O QUE RESTA E' LIMITE DECLARADO, NAO ACHADO (E-257): os 28 residuais de rota sao, por leitura, limite do proprio instrumento (corpo do handler nao localizado: '?', 'func', servedByDesktopApp) e rota publica por desenho (blobs, signout, callbacks OAuth/SAML, desktop-only). Continuam contados e declarados, nunca promovidos a vulnerabilidade",
     "DEFEITO ENCONTRADO PELO PROPRIO TESTE - ORDEM DE ESCRITA (E-259): eu inseria a devolucao no mapa ANTES do movimento de estoque, para 'nao ter escrita extra'. Resultado: o estado DURAVEL saia SEM MovementID - registro sem vinculo auditavel. Corrigido com a ordem certa (movimento primeiro, registro completo, UMA gravacao). A licao de E-258 nao e 'nunca gravar duas vezes': e 'nao adicionar gravacao em HOT PATH sem medir' - devolucao e acao rara e humana",
     "MINHA ASERCAO ERA O INSTRUMENTO ERRADO (E-259): comparei o texto INTEGRAL do erro entre tenants e acusei um oraculo que nao existe - a mensagem embute o ID PEDIDO, que e do proprio chamador. A propriedade real e o SENTINELA (errors.Is) mais o PREFIXO da mensagem. Segunda vez na missao em que o defeito estava no instrumento de medicao, nao no codigo",
-    "DINHEIRO NAO SE MOVE E ISSO E DECLARADO NO DADO (E-259): a devolucao devolve estoque e REGISTRA o reembolso devido, mas o proprio registro carrega FinancialSignal='reembolso_devido_requer_aprovacao_humana'. O dado diz o que aconteceu, em vez de sugerir que houve transferencia"
+    "DINHEIRO NAO SE MOVE E ISSO E DECLARADO NO DADO (E-259): a devolucao devolve estoque e REGISTRA o reembolso devido, mas o proprio registro carrega FinancialSignal='reembolso_devido_requer_aprovacao_humana'. O dado diz o que aconteceu, em vez de sugerir que houve transferencia",
+    "TENTATIVA REVERTIDA REGISTRADA COMO EVIDENCIA (E-258): a trilha do supervisor foi implementada, os 14 testes de supervisor passaram, mas a SUITE COMPLETA ficou instavel (4 falhas na 1a execucao, 1 falha diferente na 2a) e o MAIN LIMPO passou (107,9 s). Causa: eu adicionei persistLocked POR CICLO, duplicando gravacao ja existente. Revertido; suite verde de novo (112,7 s). O ID E-258 tambem fecha o buraco de numeracao do indice"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
