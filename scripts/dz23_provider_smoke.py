@@ -40,12 +40,25 @@ def request(url, key, payload=None):
         return response.status, json.loads(response.read(1_000_000))
 
 
+def normalizar_modelo(nome):
+    """Compara modelos ignorando o prefixo que alguns provedores usam no catalogo.
+
+    O Google, por exemplo, devolve "models/gemini-3.8-flash" enquanto o operador declara
+    "gemini-3.8-flash". Sem esta normalizacao o modelo DECLARADO era descartado.
+    """
+    return (nome or "").strip().lower().split("/")[-1]
+
+
 def select_model(base_url, key, fallback):
     try:
         _, body = request(base_url.rstrip("/") + "/models", key)
         ids = [item.get("id") for item in body.get("data", []) if isinstance(item, dict) and item.get("id")]
-        if fallback in ids or not ids:
+        if not ids:
             return fallback
+        alvo = normalizar_modelo(fallback)
+        for identificador in ids:
+            if normalizar_modelo(identificador) == alvo:
+                return fallback  # o modelo declarado existe no catalogo: ele tem prioridade
         candidates = [model for model in ids if not any(word in model.lower() for word in ("embed", "image", "audio", "moderation", "rerank"))]
         return candidates[0] if candidates else fallback
     except Exception:
@@ -70,12 +83,19 @@ def main():
             print(f"{name}\tNOT_CONFIGURED\t-")
             continue
         tested += 1
-        model = select_model(base_url, key, fallback)
-        payload = {"model": model, "messages": [{"role": "user", "content": "Reply only OK"}], "max_tokens": 3, "temperature": 0}
+        # O operador pode FIXAR o modelo: <PROVEDOR>_MODEL (ex.: GROQ_MODEL, GEMINI_MODEL,
+        # OPENROUTER_MODEL). Sem isto, o fallback do script envelhece e o seletor pode escolher um modelo
+        # que a conta nao acessa - o que aparecia como FORBIDDEN/INVALID_RESPONSE, parecendo falha de credencial.
+        override = os.getenv(f"{name.upper().replace('-', '_')}_MODEL", "").strip()
+        model = override if override else select_model(base_url, key, fallback)
+        payload = {"model": model, "messages": [{"role": "user", "content": "Reply only OK"}], "max_tokens": 64, "temperature": 0}
         try:
             status, body = request(base_url.rstrip("/") + "/chat/completions", key, payload)
             choices = body.get("choices", []) if isinstance(body, dict) else []
-            result = "PASS" if status == 200 and choices else "INVALID_RESPONSE"
+            conteudo = ((choices[0].get("message") or {}).get("content") or "").strip() if choices else ""
+            # "200" nao e prova: modelos de raciocinio podem devolver 200 SEM conteudo quando o orcamento
+            # de saida acaba no reasoning. PASS exige conteudo nao vazio.
+            result = "PASS" if status == 200 and choices and conteudo else "INVALID_RESPONSE"
             failed += result != "PASS"
             print(f"{name}\t{result}\t{status}")
         except Exception as exc:
