@@ -87,7 +87,9 @@ func TestInferenciaRealPorProvedorEhOptIn(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	url := strings.TrimRight(preset.BaseURL, "/") + caminho
+	// A composição usa a MESMA função do produto. Antes este instrumento montava a URL por conta
+	// própria, divergiu da regra do gateway e produziu um 404 que parecia defeito do produto.
+	url := JoinProviderURL(preset.BaseURL, caminho)
 	ctx, cancelar := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancelar()
 

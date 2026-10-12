@@ -550,10 +550,9 @@ func (g *Gateway) doProviderRequest(c *gin.Context, provider Provider, path stri
 	if err != nil {
 		return nil, err
 	}
-	if strings.HasSuffix(base.Path, "/v1") && strings.HasPrefix(path, "/v1/") {
-		path = strings.TrimPrefix(path, "/v1")
-	}
-	base.Path = strings.TrimRight(base.Path, "/") + "/" + strings.TrimLeft(path, "/")
+	// A composição vive em joinProviderPath para o produto e os instrumentos não divergirem:
+	// quando o BaseURL já termina no segmento de versão, a rota repetida é removida.
+	base = joinProviderPath(base, path)
 	req, err := http.NewRequestWithContext(c.Request.Context(), http.MethodPost, base.String(), bytes.NewReader(body))
 	if err != nil {
 		return nil, err
