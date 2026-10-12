@@ -3,7 +3,7 @@
 > Gerado por `python scripts/hades_baseline_report.py` a partir de `HADES_MASTER_STATE.json`: um bloqueio que
 > existe no estado aparece aqui, e um que sai do estado sai daqui. O `--check` no CI detecta divergência.
 
-Total: **13** — 9 em aberto · 4 resolvidos.
+Total: **14** — 10 em aberto · 4 resolvidos.
 
 ## 1. Em aberto
 
@@ -18,6 +18,7 @@ Total: **13** — 9 em aberto · 4 resolvidos.
 | B-09 | AMBIENTAL | Host sem Python/sh e limites de caminho: 4 testes falham por ambiente |
 | B-10 | PRODUTO | Conectores: 104 de 122 exigem configuracao do operador (available=17) |
 | B-14 | AMBIENTE (DIAGNOSTICO RESOLVIDO) | LIMITE (E-184): a execucao de plugin exige PRIVILEGIO DE MONTAGEM - mesmo o modo best-effort faz mount/chroot (mount --make-rprivate, mount --bind, tmpfs e chroot/unshare em tools.go). Onde nao ha esse privilegio (Windows, container nao privilegiado, runner padrao de CI) a execucao nao acontece e o sintoma e 'exit status 1' com stdout e stderr VAZIOS - falha |
+| B-15 | PRODUTO (SEGURANCA) | ORACULO DE ENUMERACAO EM TODA A SUPERFICIE DE EMPRESA (E-189): o guarda compartilhado `companyForRequest` (server/company_routes.go), usado por ~55 pontos em 11 arquivos, devolve 404 para empresa INEXISTENTE e 403 para empresa de OUTRO tenant - a diferenca de status revela a existencia do ID a qualquer tenant autenticado, sem acessar dado nenhum. O vazamento |
 
 ## 2. Resolvidos
 

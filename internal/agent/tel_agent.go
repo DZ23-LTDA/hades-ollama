@@ -224,9 +224,14 @@ func (s *CompanyStore) ExecuteTelAgent(id, organizationID, actorID string, reque
 }
 
 func (s *CompanyStore) TelAgentHistoryForOrganization(id, organizationID string, limit int) ([]TelAgentExchange, error) {
+	// NÃO INFERÊNCIA (E-189, achado B-15): "recurso de outro tenant" e "recurso inexistente" precisam devolver a
+	// MESMA negação. Antes, o primeiro dava `ErrTelAgentOrganizationMismatch` e o segundo o erro de "não
+	// encontrado" — a diferença é um ORÁCULO DE ENUMERAÇÃO: quem não é dono distingue, pela resposta, se o ID
+	// existe em algum lugar, sem acessar dado nenhum. A razão real continua disponível no LOG do servidor (onde só o
+	// operador lê), não na resposta ao tenant.
 	company, err := s.Get(id)
 	if err != nil {
-		return nil, err
+		return nil, ErrTelAgentOrganizationMismatch
 	}
 	if strings.TrimSpace(company.OrganizationID) != strings.TrimSpace(organizationID) {
 		return nil, ErrTelAgentOrganizationMismatch
