@@ -2,7 +2,7 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-13T14:00:00-03:00",
+  "updated_at": "2026-10-13T15:30:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
@@ -369,11 +369,12 @@
         "E-065",
         "E-066",
         "E-067",
-        "E-068"
+        "E-068",
+        "E-183"
       ],
-      "blocker": null,
-      "next": "homologar com plugin/skill de TERCEIRO REAL (dependencia externa) e seguir para o estagio 5 (context bootstrap no chat) e o estagio 18 (varredura ofensiva com usuario autenticado)",
-      "done": "plugins: manifesto, assinatura/integridade, atualizacao, rollback, verificacao de conteudo, execucao governada, status canonico por API e exibicao do estado real (PRs #78, #80, #114, #119, #121); skills: manifesto assinado/nao-confianca, categoria, proveniencia, ativacao por projeto/agente/modelo, selecao deterministica com orcamento de tokens, persistencia por organizacao E EXIBICAO/OPERACAO DO CATALOGO NA INTERFACE (PRs #123, #125)",
+      "blocker": "B-13",
+      "next": "CORRIGIR B-13 (execucao de plugin): extrair o bundle para um diretorio de execucao ou apontar Workspace para o diretorio extraido; decidir sobre entrega multiarquivo ao sandbox; e declarar o pre-requisito OLLAMA_AGENT_SANDBOX_CGROUP_ROOT para o modo strict",
+      "done": "plugins: manifesto, assinatura/integridade, atualizacao, rollback, verificacao de conteudo, execucao governada, status canonico por API e exibicao do estado real (PRs #78, #80, #114, #119, #121); skills: manifesto assinado/nao-confianca, categoria, proveniencia, ativacao por projeto/agente/modelo, selecao deterministica com orcamento de tokens, persistencia por organizacao E EXIBICAO/OPERACAO DO CATALOGO NA INTERFACE (PRs #123, #125) | PLUGIN COM TERCEIRO REAL (E-183): conteudo e o pacote ms@2.1.3 (MIT) byte a byte, sha256 conferido. PASSAM instalacao por assinatura ed25519, verificacao por digest, presenca do terceiro byte a byte, licenca no manifesto/bundle e RECUSA de adulteracao. A EXECUCAO ESTA QUEBRADA (B-13): plugin_runtime.go:215 passa Workspace = ARQUIVO .zip e o executor espera diretorio; alem disso e Linux-only e o strict exige OLLAMA_AGENT_SANDBOX_CGROUP_ROOT. Limite multiarquivo CONFIRMADO por execucao no Linux",
       "execution": "IN_PROGRESS"
     },
     {
@@ -1026,6 +1027,11 @@
       "severidade": "MEDIO",
       "descricao": "PR #31 (grupo web-dev-tooling) quebrava 'Web and mobile quality', 'test (ubuntu-latest)' e 'Web E2E': causa raiz provada no log do CI — o grupo subia react-test-renderer para 19.3.0 enquanto react/react-dom ficavam em 19.1.0, e o lockfile resolvia react=19.3.0 com react-dom=19.1.0 (React exige versoes EXATAS iguais). Corrigido no PR #92 alinhando react/react-dom em ^19.3.0 e regenerando o lockfile com npm install; as demais atualizacoes do grupo foram mantidas. Verificado: vitest 76 arquivos/516 testes, lint 0 erros, build exit 0, CI 23/23",
       "desbloqueio": "rodar a suite web com as versoes propostas, achar a causa e corrigir codigo/config"
+    },
+    {
+      "id": "B-13",
+      "tipo": "PRODUTO",
+      "descricao": "DEFEITO (E-183): a execucao de plugin falha no layout real de instalacao - plugin_runtime.go:215 passa Workspace = installation.ContentPath, e ContentPath e o ARQUIVO plugins/content/<org>/<id>-<versao>.zip (plugin_bundle.go:113); o executor trata Workspace como diretorio e falha com 'not a directory'. Instalacao e verificacao de conteudo funcionam; execucao nao. Nao corrigido nesta rodada; desbloqueio: extrair o bundle para um diretorio de execucao."
     }
   ],
   "evidence_index": "docs/mission/HADES_EVIDENCE_INDEX.md",
@@ -1512,7 +1518,9 @@
     "ONBOARDING EXECUTADO EM NAVEGADOR REAL (E-182): npx playwright test --project=first-run -> 2 passed (26,0s), incluindo 'instalacao, onboarding, persistencia, reinicio, atualizacao e rollback' (1,9s), com o backend registrando GET/POST /api/v1/settings -> 200, POST /api/me -> 401 e GET /api/version -> 200",
     "PRE-REQUISITO DE AMBIENTE REGISTRADO (E-182): a primeira tentativa falhou NO BUILD, nao no teste - [vite:esbuild-transpile] remove ...\\Temp\\esbuild-...: Acesso negado - porque o TEMP do host nega remocao ao esbuild. Apontar TMP/TEMP/TMPDIR para um diretorio do WORKSPACE resolve. E o mesmo tipo de obstaculo ja conhecido do lado Go (golangci-lint precisa de TMP/TEMP e APPDATA/LOCALAPPDATA no workspace)",
     "MATRIZ DO GATE CORRIGIDA (E-182): item 3 (onboarding) passou de NAO_COMPROVADO para DONE com a evidencia E-182, e o --check passou a manter isso. Resumo: 17 DONE, 1 IN_PROGRESS, 3 BLOCKED_BY_EXTERNAL_DEPENDENCY e 3 NAO_COMPROVADO. Veredito global INALTERADO em NOT_RELEASE_READY",
-    "LIMITES DO ONBOARDING COMPROVADO (E-182): a jornada roda contra um backend de CONTRATO MINIMO, nao contra o binario completo servindo modelos - prova o portao de onboarding, a persistencia, o reinicio, a atualizacao e o rollback, NAO a instalacao de um pacote assinado nem o uso com modelo real; o 'usuario' e automatizado (Playwright), sem teste com pessoa real nem sessao de usabilidade observada; cobre a UI do shell, nao CLI nem desktop empacotado; e o pre-requisito de TEMP gravavel e do ambiente desta maquina"
+    "LIMITES DO ONBOARDING COMPROVADO (E-182): a jornada roda contra um backend de CONTRATO MINIMO, nao contra o binario completo servindo modelos - prova o portao de onboarding, a persistencia, o reinicio, a atualizacao e o rollback, NAO a instalacao de um pacote assinado nem o uso com modelo real; o 'usuario' e automatizado (Playwright), sem teste com pessoa real nem sessao de usabilidade observada; cobre a UI do shell, nao CLI nem desktop empacotado; e o pre-requisito de TEMP gravavel e do ambiente desta maquina",
+    "DEFEITO B-13 - EXECUCAO DE PLUGIN QUEBRADA (E-183): plugin_runtime.go:215 passa Workspace = installation.ContentPath, e ContentPath e o ARQUIVO plugins/content/<org>/<id>-<versao>.zip; o executor trata Workspace como DIRETORIO e falha com 'not a directory'. Instalacao e verificacao FUNCIONAM; execucao NAO. Localizado, NAO corrigido",
+    "INCIDENTE PROPRIO NESTA RODADA (E-183): reutilizei a variavel `path` no script de documentacao e o json.dump final escreveu o ESTADO por cima do RELATORIO de estagios (296 KB), deixando o estado sem B-13. Foi o scripts/hades_mission_check.py que acusou as duas coisas; restaurei do git e reapliquei com nomes EXPLICITOS por arquivo. Licao: em script que escreve varios arquivos, caminho nunca e variavel generica"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
