@@ -115,6 +115,22 @@ func TestIngestaoDeMetricaDeCampanhaNaoContaDuasVezes(t *testing.T) {
 		t.Fatalf("campanha de outra empresa precisa responder como inexistente: %v", errAlheia)
 	}
 
+	// VISIBILIDADE (E-268): o relatorio mostra o que foi CONTADO, e a entrega recusada NAO aparece.
+	relatorioFinal, err := store.CampaignReport(empresa.ID)
+	if err != nil {
+		t.Fatalf("relatorio: %v", err)
+	}
+	aceitas := map[string]bool{}
+	for _, entrega := range relatorioFinal.Ingestoes {
+		aceitas[entrega] = true
+	}
+	if !aceitas["instagram|evt-1"] || !aceitas["facebook|evt-1"] || !aceitas["instagram|evt-forjado"] {
+		t.Fatalf("as entregas aceitas precisam aparecer no relatorio: %+v", relatorioFinal.Ingestoes)
+	}
+	if len(relatorioFinal.Ingestoes) != 3 {
+		t.Fatalf("a entrega recusada nao pode contar como aceita: %+v", relatorioFinal.Ingestoes)
+	}
+
 	// PERSISTENCIA: a marca de idempotencia sobrevive ao reinicio.
 	reaberto, err := NewCompanyStore(root)
 	if err != nil {

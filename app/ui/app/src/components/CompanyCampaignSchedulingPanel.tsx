@@ -217,6 +217,25 @@ export function CompanyCampaignSchedulingPanel({
             <div className="mt-3 rounded-lg border border-neutral-200 p-3 text-xs dark:border-neutral-800">
               Total medido: {report.total.impressions} impressões · {report.total.clicks} cliques · CTR {report.total.click_rate} ·
               conversão {report.total.conversion_rate} · gasto {(report.total.spend_cents / 100).toFixed(2)}
+              {/*
+                VISIBILIDADE DA INGESTAO (E-268): sem esta linha o operador nao distingue "o provedor nao mandou"
+                de "recebemos e IGNORAMOS por duplicidade" - e a segunda e' justamente a prova de que o total e'
+                confiavel. Os numeros acima vem de registro manual OU de entrega automatica; a tela diz qual.
+              */}
+              {report.ingestoes && report.ingestoes.length > 0 ? (
+                <div className="mt-2 text-neutral-500">
+                  Entregas aceitas (idempotência): {report.ingestoes.length} — reentrega com a mesma chave <strong>não soma</strong>.
+                  <ul className="mt-1 list-disc pl-4">
+                    {report.ingestoes.map((entrega) => (
+                      <li key={entrega}>{entrega.replace("|", " · ")}</li>
+                    ))}
+                  </ul>
+                </div>
+              ) : (
+                <div className="mt-2 text-neutral-500">
+                  Nenhuma entrega automática registrada: os números acima vêm de <strong>registro manual</strong>.
+                </div>
+              )}
             </div>
           )}
         </div>
