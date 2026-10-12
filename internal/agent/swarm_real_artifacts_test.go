@@ -94,9 +94,19 @@ func TestMissaoMultiagenteProduzArtefatosReais(t *testing.T) {
 	if artefatos != 3 {
 		t.Fatalf("esperava 3 artefatos reais verificados por SHA-256, veio %d", artefatos)
 	}
+	// ISOLAMENTO MEDIDO: o artefato de um agente NÃO está no workspace do outro.
 	for papel, caminho := range escritos {
 		if _, err := os.Stat(caminho); err != nil {
 			t.Fatalf("artefato de %s desapareceu: %v", papel, err)
+		}
+		for _, tarefa := range concluida.Tasks {
+			if tarefa.Role == papel {
+				continue
+			}
+			intruso := filepath.Join(tarefa.Workspace, string(papel)+".txt")
+			if _, err := os.Stat(intruso); err == nil {
+				t.Fatalf("artefato de %s apareceu no workspace de %s: %s", papel, tarefa.Role, intruso)
+			}
 		}
 	}
 
@@ -113,6 +123,6 @@ func TestMissaoMultiagenteProduzArtefatosReais(t *testing.T) {
 		t.Fatalf("caminho relativo legítimo foi recusado: %v", err)
 	}
 
-	t.Logf("MULTIAGENTE: agentes=%d artefatos_reais=%d caminhos_de_workspace=%d travessia=recusada",
+	t.Logf("MULTIAGENTE: agentes=%d artefatos_reais=%d workspaces_ISOLADOS=%d travessia=recusada",
 		len(concluida.Tasks), artefatos, len(caminhos))
 }

@@ -140,12 +140,38 @@ type AgentOrchestrator struct {
 // prepareAgentWorkspace garante que o workspace do agente EXISTA antes do despacho. Sem isso, o agente que
 // escreve o próprio artefato falha ao abrir o arquivo — e o defeito aparece como erro obscuro de execução, não como
 // workspace ausente. Não impõe contenção na raiz: quem chama escolhe o workspace do job, inclusive fora dela.
-func (o *AgentOrchestrator) prepareAgentWorkspace(task AgentTask) error {
+func (o *AgentOrchestrator) prepareAgentWorkspace(task *AgentTask) error {
 	caminho := strings.TrimSpace(task.Workspace)
 	if caminho == "" {
 		return nil
 	}
-	return os.MkdirAll(caminho, 0o700)
+	// ISOLAMENTO POR AGENTE: o workspace do job é compartilhado, então cada agente recebe o PRÓPRIO
+	// subdiretório — sem isso, dois agentes escrevem no mesmo lugar e um sobrescreve (ou lê) o artefato do
+	// outro. O identificador é higienizado para não virar travessia, e a derivação é IDEMPOTENTE (reprocessar
+	// a mesma tarefa não aninha o caminho de novo).
+	identificador := sanitizeAgentWorkspaceID(task.ID)
+	if identificador == "" {
+		return fmt.Errorf("tarefa sem identificador não recebe workspace isolado")
+	}
+	if filepath.Base(filepath.Clean(caminho)) != identificador {
+		caminho = filepath.Join(caminho, identificador)
+	}
+	if err := os.MkdirAll(caminho, 0o700); err != nil {
+		return err
+	}
+	task.Workspace = caminho
+	return nil
+}
+
+// sanitizeAgentWorkspaceID reduz o identificador da tarefa a um nome de diretório seguro: sem separadores e sem
+// "..", para que um id hostil não escape do workspace.
+func sanitizeAgentWorkspaceID(id string) string {
+	limpo := strings.TrimSpace(id)
+	limpo = strings.NewReplacer("/", "_", "\\", "_", "..", "_").Replace(limpo)
+	if limpo == "." || limpo == "" {
+		return ""
+	}
+	return limpo
 }
 
 var ErrOrchestrationForbidden = errors.New("orchestration job is outside the active organization")
@@ -314,7 +340,7 @@ func (o *AgentOrchestrator) Run(ctx context.Context, id string) (OrchestrationJo
 				// criava o diretório, então o primeiro WriteFile do agente falhava com "no such file or directory" e a
 				// missão multiagente nunca chegava a artefato consolidado. A criação NÃO impõe contenção: o workspace do
 				// job é escolhido por quem chama (a API aceita caminho fora da raiz do orquestrador).
-				if err := o.prepareAgentWorkspace(*task); err != nil {
+				if err := o.prepareAgentWorkspace(task); err != nil {
 					runErr = err
 				} else {
 					result, runErr = o.runner(ctx, *task)
