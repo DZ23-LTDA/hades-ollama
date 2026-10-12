@@ -15,7 +15,7 @@ Total: **17** — 8 em aberto · 9 resolvidos.
 | B-05 | EXTERNO | Contas reais de marketplace/social/pagamento |
 | B-06 | EXTERNO | Identidade de assinatura de release (certificado). ESTADO MEDIDO (E-201): a autenticacao de NOTARIZACAO foi PROVADA com a chave de API do App Store Connect (JWT ES256, HTTP 200 em /v1/apps) - o que faltava ali esta resolvido no codigo (E-199) e provado na credencial. O que ainda falta e o certificado de ASSINATURA: a leitura de /v1/certificates com essa chav |
 | B-07 | EXTERNO | Chaves de provedor de modelo para homologacao de chamada real |
-| B-09 | AMBIENTAL | Host sem Python/sh e limites de caminho: 4 testes falham por ambiente |
+| B-09 | AMBIENTAL (MEDIDO E CORRIGIDO, COM PROCEDIMENTO) | CORRIGIDO POR MEDICAO (E-202). A descricao anterior ('Host sem Python/sh: 4 testes falham por ambiente') estava errada em duas frentes: Python EXISTE no host (3.12.10) e bash esta no PATH (so `sh` nao); e o numero real e 45 funcoes de teste, nao 4. Causa raiz unica e medida: o host NAO TEM COMPILADOR C (gcc/cc ausentes) => CGO_ENABLED=0 => go-sqlite3 devolve |
 | B-14 | AMBIENTE (DIAGNOSTICO RESOLVIDO) | LIMITE (E-184): a execucao de plugin exige PRIVILEGIO DE MONTAGEM - mesmo o modo best-effort faz mount/chroot (mount --make-rprivate, mount --bind, tmpfs e chroot/unshare em tools.go). Onde nao ha esse privilegio (Windows, container nao privilegiado, runner padrao de CI) a execucao nao acontece e o sintoma e 'exit status 1' com stdout e stderr VAZIOS - falha |
 
 ## 2. Resolvidos
