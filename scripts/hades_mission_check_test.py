@@ -42,7 +42,7 @@ class EscrituracaoTest(unittest.TestCase):
         estado = json.loads(self.estado.read_text(encoding="utf-8"))
         estado["stages"] = [
             {"id": 1, "title": "um", "execution": "IN_PROGRESS", "evidence": ["E-001"], "blocker": "B-01", "state": "IN_PROGRESS"},
-            {"id": 2, "title": "dois", "execution": "NOT_STARTED", "evidence": ["E-002"], "state": "IN_PROGRESS"},
+            {"id": 2, "title": "dois", "execution": "NOT_STARTED", "evidence": ["E-002", "E-003"], "state": "IN_PROGRESS"},
         ]
         estado["blockers"] = [{"id": "B-01", "tipo": "EXTERNO", "descricao": "externo"}]
         estado["release_state"] = "NOT_RELEASE_READY"
@@ -63,6 +63,35 @@ class EscrituracaoTest(unittest.TestCase):
 
     def test_fixture_saudavel_passa(self) -> None:
         self.assertEqual(self.problemas(), [], "o fixture sem defeito precisa passar")
+
+    def test_evidencia_sem_vinculo_e_encontrada(self) -> None:
+        """Linha que nenhum estágio cita e que não declara a ausência vira problema: órfã silenciosa não passa."""
+        estado = self.ler_estado()
+        estado["stages"][1]["evidence"] = ["E-002"]
+        self.escrever_estado(estado)
+        problemas = self.problemas()
+        self.assertTrue(
+            any("SEM vínculo de estágio" in p and "E-003" in p for p in problemas),
+            f"esperava problema de vínculo para E-003, veio: {problemas}",
+        )
+
+    def test_evidencia_sem_vinculo_declarado_passa(self) -> None:
+        """Declarar a ausência do vínculo (linha legada) é registro honesto e NÃO pode ser acusado."""
+        estado = self.ler_estado()
+        estado["stages"][1]["evidence"] = ["E-002"]
+        self.escrever_estado(estado)
+        self.indice.write_text(
+            self.indice.read_text(encoding="utf-8").replace(
+                "| E-003 | TEST_RESULT |",
+                "| E-003 | TEST_RESULT | VINCULO_NAO_DECLARADO |",
+            ),
+            encoding="utf-8",
+        )
+        problemas = self.problemas()
+        self.assertFalse(
+            any("SEM vínculo de estágio" in p for p in problemas),
+            f"declarar a ausência do vínculo não pode ser acusado: {problemas}",
+        )
 
     def test_evidencia_fantasma_e_encontrada(self) -> None:
         estado = self.ler_estado()
@@ -203,6 +232,7 @@ class BloqueiosTest(unittest.TestCase):
         bloqueios, _ = verificador.verificar_bloqueios(RAIZ / "docs/mission/HADES_BLOCKERS.md", ids)
         self.assertEqual(relatorio, [], f"relatório real inconsistente: {relatorio}")
         self.assertEqual(bloqueios, [], f"bloqueios reais inconsistentes: {bloqueios}")
+
 
 
 if __name__ == "__main__":
