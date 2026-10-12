@@ -2,7 +2,7 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-17T09:15:00-03:00",
+  "updated_at": "2026-10-17T10:30:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
@@ -819,13 +819,14 @@
         "E-047",
         "E-087",
         "E-124",
-        "E-125"
+        "E-125",
+        "E-267"
       ],
       "blocker": "B-05",
-      "next": "LIMITES: sem publicacao externa (BLOCKED_BY_EXTERNAL_DEPENDENCY: exige conta autorizada e scopes validos), sem ingestao automatica de metrica (registro explicito), sem segmentacao/criativo/leilao e SEM INTERFACE VISUAL de campanha - a superficie entregue e a HTTP e a tela fica para a frente de UX",
+      "next": "LIMITES REAIS (atualizados por E-267): sem PUBLICACAO externa (BLOCKED_BY_EXTERNAL_DEPENDENCY: exige conta autorizada e scopes validos); a ingestao existe como CONTRATO com idempotencia, mas nao ha assinatura de webhook nem chamada real ao provedor; sem segmentacao/criativo/leilao; e SEM INTERFACE VISUAL de campanha - a superficie entregue e HTTP. Proximo: tela de campanha e estagios 25, 27-28 e 32-38",
       "blocked_reason": "",
       "external_dependency": "contas e APIs oficiais das redes sociais para publicar de verdade",
-      "done": "classificacao corrigida pela auditoria de bloqueios: o bloqueio externo em bloco escondia trabalho implementavel. Evidencia medida registrada em docs/mission/HADES_BLOCKED_AUDIT.md | CAMPANHA EM SANDBOX COM AGENDAMENTO E METRICAS (E-124): agendar EXIGE APROVACAO (senao seria um caminho paralelo para executar sem aprovacao humana) e inicio no FUTURO; METRICA so em campanha que EXECUTOU (medir rascunho seria inventar resultado); contadores SO SOMAM (negativo recusado, porque subtrair apagaria historico de desempenho); ORCAMENTO diario LIMITA o incremento de gasto; CTR com base zero e 0.00 por cento e nao NaN; e NUNCA PUBLICA - o resultado traz PublicadoExternamente false e o painel declara a publicacao externa como BLOCKED_BY_EXTERNAL_DEPENDENCY com motivo | SUPERFICIE HTTP DE CAMPANHA (E-125): POST .../campaigns/:campaign_id/schedule (200, 400 data invalida, 409 sem aprovacao ou estado), POST .../campaigns/:campaign_id/metrics (200, 400 contador negativo, 409 sem execucao ou orcamento estourado) e GET .../campaigns/report (200, 404). O agendamento aceita start_at em RFC 3339 ou start_in_hours e passa pelo MESMO dominio, sem caminho alternativo para executar campanha sem aprovacao; o painel declara sandbox e publicacao externa bloqueada com motivo",
+      "done": "classificacao corrigida pela auditoria de bloqueios: o bloqueio externo em bloco escondia trabalho implementavel. Evidencia medida registrada em docs/mission/HADES_BLOCKED_AUDIT.md | CAMPANHA EM SANDBOX COM AGENDAMENTO E METRICAS (E-124): agendar EXIGE APROVACAO (senao seria um caminho paralelo para executar sem aprovacao humana) e inicio no FUTURO; METRICA so em campanha que EXECUTOU (medir rascunho seria inventar resultado); contadores SO SOMAM (negativo recusado, porque subtrair apagaria historico de desempenho); ORCAMENTO diario LIMITA o incremento de gasto; CTR com base zero e 0.00 por cento e nao NaN; e NUNCA PUBLICA - o resultado traz PublicadoExternamente false e o painel declara a publicacao externa como BLOCKED_BY_EXTERNAL_DEPENDENCY com motivo | SUPERFICIE HTTP DE CAMPANHA (E-125): POST .../campaigns/:campaign_id/schedule (200, 400 data invalida, 409 sem aprovacao ou estado), POST .../campaigns/:campaign_id/metrics (200, 400 contador negativo, 409 sem execucao ou orcamento estourado) e GET .../campaigns/report (200, 404). O agendamento aceita start_at em RFC 3339 ou start_in_hours e passa pelo MESMO dominio, sem caminho alternativo para executar campanha sem aprovacao; o painel declara sandbox e publicacao externa bloqueada com motivo INGESTAO DE METRICA COM IDEMPOTENCIA (E-267): o limite declarado 'sem ingestao automatica de metrica (registro explicito)' foi FECHADO. O defeito real que isso fecha: RecordCampaignMetrics SOMA e nao tinha idempotencia, entao uma reentrega automatica (webhook/exportacao do provedor) DOBRARIA o painel. Regras: SourceID e OBRIGATORIO (sem chave nao ha reentrega segura); replay devolve os totais atuais com Duplicate=true e NAO soma; o MESMO SourceID em CANAL DIFERENTE e outra entrega (dois provedores podem colidir identificadores); payload externo e NAO CONFIAVEL, com teto de sanidade por entrega; e a marca de 'ja visto' entra SO DEPOIS DO SUCESSO - entrega recusada (payload ruim ou orcamento) continua RETENTAVEL, senao a reentrega legitima seria engolida. MEDIDO: 1000 -> replay 1000 -> outro canal 1500 -> entrega corrigida 1510, e apos REINICIO o replay continua 1510 com Duplicate=true; isolamento entre empresas (campanha alheia responde como inexistente); suite completa ok 107,1 s",
       "execution": "BLOCKED_BY_EXTERNAL_DEPENDENCY"
     },
     {
@@ -1902,7 +1903,10 @@
     "SEM CORRESPONDENCIA, Found=false (E-265): nao se inventa resposta. O caminho vazio e um resultado valido e explicito, nao um erro nem um texto generico de enfeite",
     "MEDIR A RESOLUCAO NAO PODE AFROUXAR A PRIMEIRA RESPOSTA (E-266): o teste asserta as duas metricas nas MESMAS conversas. Adicionar indicador novo e o momento classico de afrouxar o antigo - travar os dois lado a lado e o que impede a regressao silenciosa",
     "ABERTA-VENCIDA E' ATRASO, NAO 'EM ANDAMENTO' (E-266): ResolutionOverdue conta conversas AINDA ABERTAS cuja janela ja venceu. Se o indicador olhasse so as fechadas, o cliente esperando AGORA seria invisivel pela metrica - exatamente o caso que o SLA existe para pegar",
-    "CALCULAR ANTES DO DESVIO (E-266): a resolucao e apurada antes do continue de primeira resposta. Conversa fechada sem primeira resposta registrada continuaria fora da conta se o codigo tivesse sido inserido depois"
+    "CALCULAR ANTES DO DESVIO (E-266): a resolucao e apurada antes do continue de primeira resposta. Conversa fechada sem primeira resposta registrada continuaria fora da conta se o codigo tivesse sido inserido depois",
+    "REENTREGA NAO PODE CONTAR DUAS VEZES (E-267): registro manual tolera repeticao; INGESTAO automatica nao. O mesmo evento entregue de novo (webhook reenviado, exportacao reprocessada) dobraria o painel. A chave de idempotencia nao e enfeite: e o que separa metrica de ficcao",
+    "A MARCA DE 'JA VISTO' ENTRA DEPOIS DO SUCESSO (E-267): marcar antes faz a entrega RECUSADA (payload ruim, orcamento estourado) parecer ja processada - e a reentrega CORRIGIDA seria engolida em silencio. A ordem aqui e a diferenca entre perder dado e registrar dado",
+    "OS ERROS DO PROPRIO CODIGO GUIARAM O TESTE (E-267): 'campaign name and objective are required' e 'campanha em draft nao executou, entao nao ha desempenho a medir' dizem exatamente o que falta. Mensagem de erro boa e' documentacao executavel - e economizou tres rodadas de tentativa"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
