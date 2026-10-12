@@ -169,6 +169,32 @@ def verificar_mapa_de_estagios(estado: dict) -> tuple[list[str], list[str], dict
     return problemas, avisos, resumo
 
 
+
+# Marcas de texto DUPLA-Codificado (UTF-8 lido como ANSI e regravado como UTF-8). Portugues acentuado vira
+# "Ã©", "Ã§"..., e travessao vira "â€". Documento assim e ilegivel e nao corresponde ao produto.
+MOJIBAKE = re.compile(r"Ã[©¡³§µºª¢­‰°¼½¾]|â€|Ãƒ")
+
+
+def verificar_mojibake(raiz: Path) -> tuple[list[str], dict]:
+    """Acusa documento com texto duplamente codificado. Devolve (problemas, resumo)."""
+    problemas: list[str] = []
+    alvos = sorted((raiz / "docs" / "mission").glob("*.md")) + sorted((raiz / "audit").glob("*.md"))
+    varridos = 0
+    for caminho in alvos:
+        try:
+            conteudo = caminho.read_text(encoding="utf-8")
+        except (UnicodeDecodeError, OSError):
+            problemas.append(f"documento ilegivel em UTF-8: {caminho.relative_to(raiz)}")
+            continue
+        varridos += 1
+        achados = MOJIBAKE.findall(conteudo)
+        if achados:
+            problemas.append(
+                f"documento com TEXTO CORROMPIDO (dupla codificacao): {caminho.relative_to(raiz)} "
+                f"({len(achados)} ocorrencias, ex.: {achados[0]!r})"
+            )
+    return problemas, {"documentos_varridos": varridos}
+
 def verificar(
     estado_path: Path,
     indice_path: Path,
@@ -415,6 +441,9 @@ def main() -> int:
     estado = json.loads(args.state.read_text(encoding="utf-8"))
     indice = args.index.read_text(encoding="utf-8")
     conjunto_ids = set(re.findall(r"^\|\s*(E-\d+)\s*\|", indice, re.M))
+    problemas_mojibake, resumo_mojibake = verificar_mojibake(RAIZ)
+    problemas += problemas_mojibake
+    resumo.update(resumo_mojibake)
     problemas_relatorio, resumo_relatorio = verificar_relatorio(args.report, conjunto_ids)
     problemas += problemas_relatorio
 
