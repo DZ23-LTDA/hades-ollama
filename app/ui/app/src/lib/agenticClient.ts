@@ -219,6 +219,8 @@ export type AgentHealth = {
   runtime: string;
   checked_at: string;
   subsystems: Record<string, { status: string; detail: string }>;
+  /** Entregas ACEITAS de metrica (canal|SourceID): o que foi contado. */
+  ingestoes?: string[];
 };
 
 type AgentSession = { token: string; organization?: string };

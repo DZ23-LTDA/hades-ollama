@@ -78,6 +78,9 @@ type CampaignReport struct {
 	CompanyID string            `json:"company_id"`
 	Campaigns []CompanyCampaign `json:"campaigns"`
 	Total     CampaignMetrics   `json:"total"`
+	// INGESTOES lista as entregas ACEITAS de metrica (canal|SourceID). Visibilidade importa: sem isto o
+	// operador nao consegue distinguir "o provedor nao mandou" de "nos recusamos por duplicidade" (E-268).
+	Ingestoes []string `json:"ingestoes,omitempty"`
 	// Sandbox declara que tudo aqui é simulação, não campanha no ar.
 	Sandbox           bool   `json:"sandbox"`
 	PublicacaoExterna string `json:"publicacao_externa"`
@@ -213,6 +216,12 @@ func (s *CompanyStore) CampaignReport(id string) (CampaignReport, error) {
 	report.Total.PublicacaoExterna = CampaignExternalPublication
 	report.Total.ClickRate = campaignRate(report.Total.Clicks, report.Total.Impressions)
 	report.Total.ConversionRate = campaignRate(report.Total.Conversions, report.Total.Clicks)
+	// Entregas aceitas: o que foi CONTADO. Reentrega nao entra aqui porque nao soma - e o operador precisa ver isso.
+	ingestoes, err := s.loadCampaignIngest(company.ID)
+	if err != nil {
+		return CampaignReport{}, err
+	}
+	report.Ingestoes = ingestoes
 	return report, nil
 }
 
