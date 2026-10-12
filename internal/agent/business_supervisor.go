@@ -152,6 +152,9 @@ type businessSupervisorFile struct {
 	Ticks   int64                     `json:"ticks"`
 	Actions map[string]BusinessAction `json:"actions"`
 	Spent   map[string]int64          `json:"spent"`
+	// History e' o DIARIO dos ciclos (E-275). Entra no MESMO arquivo de estado: o diario nao e' um cidadao de
+	// segunda classe que ganha arquivo proprio e pode ficar fora de sincronia com o resto.
+	History []BusinessTickResult `json:"history,omitempty"`
 }
 
 // BusinessSupervisor coordena os domínios sob política.
@@ -203,6 +206,12 @@ func NewBusinessSupervisorAt(root string, runtime *Runtime, policy SupervisorPol
 		supervisor.policy = stored.Policy
 	}
 	supervisor.ticks = stored.Ticks
+	// O diario volta TRUNCADO pelo cap, mantendo os MAIS RECENTES: guardar os mais ANTIGOS
+	// esconderia justamente o que aconteceu por ultimo.
+	supervisor.history = append([]BusinessTickResult(nil), stored.History...)
+	if len(supervisor.history) > MaxSupervisorTickJournal {
+		supervisor.history = supervisor.history[len(supervisor.history)-MaxSupervisorTickJournal:]
+	}
 	for id, action := range stored.Actions {
 		supervisor.actions[id] = action
 	}
@@ -239,6 +248,7 @@ func (b *BusinessSupervisor) persistLocked() error {
 	for organizationID, value := range b.spent {
 		payload.Spent[organizationID] = value
 	}
+	payload.History = append([]BusinessTickResult(nil), b.history...)
 	return writeJSONAtomic(path, payload)
 }
 
@@ -527,7 +537,13 @@ func (b *BusinessSupervisor) BusinessTick(organizationID string, now time.Time) 
 	if len(b.history) > MaxSupervisorTickJournal {
 		b.history = b.history[len(b.history)-MaxSupervisorTickJournal:]
 	}
+	// DIARIO DURAVEL (E-275): sem esta escrita, um ciclo que nao propoe acao nao deixava rastro nenhum - o diario
+	// so existia em memoria. Um trade-off e' declarado: ciclo COM acao pode escrever duas vezes (acao + diario).
+	persistErr := b.persistLocked()
 	b.mu.Unlock()
+	if persistErr != nil {
+		return result, persistErr
+	}
 	return result, nil
 }
 
