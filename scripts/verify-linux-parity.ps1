@@ -27,6 +27,15 @@
 .PARAMETER TimeoutMinutes
     Tempo maximo por execucao, em minutos.
 
+.PARAMETER SkipRace
+    Pula o detector de corrida. Use apenas quando o motivo for declarado.
+
+.PARAMETER RacePackages
+    Pacotes do detector de corrida. Padrao: ./internal/agent/
+
+.PARAMETER RaceFilter
+    Filtro (-run) do detector de corrida. Padrao: TestOmnichannel
+
 .EXAMPLE
     powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify-linux-parity.ps1
     powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify-linux-parity.ps1 -TestFilter TestJSONStoreRollsBack
@@ -36,7 +45,10 @@ param(
     [string[]]$Image = @('golang:1.26.9', 'golang:1.26', 'golang:latest'),
     [string[]]$Packages = @('./internal/agent/', './server/'),
     [string]$TestFilter = '',
-    [int]$TimeoutMinutes = 30
+    [int]$TimeoutMinutes = 30,
+    [switch]$SkipRace,
+    [string[]]$RacePackages = @('./internal/agent/'),
+    [string]$RaceFilter = 'TestOmnichannel'
 )
 
 # Erro explicito e sempre com throw/exit: a preferencia fica em Continue porque, no Windows
@@ -111,6 +123,43 @@ foreach ($candidate in $Image) {
     $exit = $LASTEXITCODE
     $output | ForEach-Object { $_ }
     $lastOutput = ($output | Out-String)
+
+    # DETECTOR DE CORRIDA (E-176). O gate acima roda com CGO_ENABLED=0, e `-race` EXIGE cgo - por isso nenhuma
+    # execucao de CI jamais usou deteccao de corrida. O host tambem nao tem gcc, mas a imagem golang TEM, entao o
+    # detector roda aqui. Cobre os testes de concorrencia do omnichannel (onde a corrida importa).
+    if ($exit -eq 0 -and -not $SkipRace) {
+        Write-Host ""
+        Write-Host "=== detector de corrida: $RaceFilter (CGO_ENABLED=1) ==="
+        $raceOutput = & $docker run --rm `
+            --volume "${repositoryRoot}:/src" `
+            --volume "${moduleCache}:/gomodcache" `
+            --workdir /src `
+            --env GOFLAGS=-mod=mod `
+            --env GOTOOLCHAIN=local `
+            --env GOPATH=/gopath `
+            --env GOMODCACHE=/gomodcache `
+            --env GOCACHE=/tmp/gocache-race `
+            --env TMPDIR=/tmp `
+            --env CGO_ENABLED=1 `
+            $candidate sh -c "/usr/local/go/bin/go test -race $($RacePackages -join ' ') -run '$RaceFilter' -count=1 -timeout ${TimeoutMinutes}m" 2>&1
+        $raceExit = $LASTEXITCODE
+        $raceOutput | ForEach-Object { $_ }
+        $lastOutput = $lastOutput + ($raceOutput | Out-String)
+
+        if ($raceExit -ne 0 -or ($raceOutput | Out-String) -match 'DATA RACE') {
+            $lastOutput | Set-Content -Path $logAtual -Encoding UTF8
+            $lastOutput | Set-Content -Path $logHistorico -Encoding UTF8
+            Write-Host ""
+            Write-Host "LINUX PARITY: FALHOU no detector de corrida (exit $raceExit)"
+            if (($raceOutput | Out-String) -match 'DATA RACE') {
+                Write-Host "LINUX PARITY: DATA RACE detectada - a saida acima traz o rastro."
+            }
+            Write-Host "LINUX PARITY: saida completa em ${logAtual} (copia: ${logHistorico})"
+            exit 1
+        }
+        Write-Host "LINUX PARITY: detector de corrida OK (sem DATA RACE)"
+    }
+
     $lastOutput | Set-Content -Path $logAtual -Encoding UTF8
     $lastOutput | Set-Content -Path $logHistorico -Encoding UTF8
 
