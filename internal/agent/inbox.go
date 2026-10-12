@@ -9,6 +9,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode"
 
 	"github.com/google/uuid"
 )
@@ -130,6 +131,8 @@ type InboxStore struct {
 	// externalIndex evita duplicar mensagem já recebida do provedor.
 	externalIndex map[string]string
 	firstSLAByOrg map[string]time.Duration
+	// knowledge guarda a base de conhecimento carregada (E-265).
+	knowledge map[string]InboxKnowledgeArticle
 }
 
 // NewInboxStore carrega a caixa de entrada do diretório informado.
@@ -573,4 +576,260 @@ func (s *InboxStore) Metrics(organizationID string, now time.Time) InboxMetrics 
 		metrics.FirstResponseAvgSecs = firstResponseTotal.Seconds() / float64(firstResponseCount)
 	}
 	return metrics
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// BASE DE CONHECIMENTO DO INBOX (E-265)
+// ---------------------------------------------------------------------------------------------------------------
+//
+// O que isto E: artigos por organizacao, busca DETERMINISTICA por palavras, e uma SUGESTAO de resposta a partir da
+// ultima mensagem recebida. O que isto NAO E: envio automatico. Sugerir e leitura pura - quem responde e um humano
+// ou um agente sob politica. A busca nao finge ser semantica: e palavra-chave, e o nome diz isso.
+
+var (
+	// ErrInboxKnowledgeInvalid cobre artigo sem organizacao/titulo/conteudo.
+	ErrInboxKnowledgeInvalid = errors.New("inbox knowledge article invalid")
+	// ErrInboxKnowledgeMissing cobre artigo inexistente NA organizacao do chamador.
+	ErrInboxKnowledgeMissing = errors.New("inbox knowledge article not found")
+)
+
+// InboxKnowledgeArticle e' um artigo da base de conhecimento de uma organizacao.
+type InboxKnowledgeArticle struct {
+	ID             string    `json:"id"`
+	OrganizationID string    `json:"organization_id"`
+	Title          string    `json:"title"`
+	Content        string    `json:"content"`
+	Tags           []string  `json:"tags,omitempty"`
+	UpdatedAt      time.Time `json:"updated_at"`
+}
+
+// InboxKnowledgeHit e' um artigo encontrado, com a pontuacao da busca por palavra-chave.
+type InboxKnowledgeHit struct {
+	Article InboxKnowledgeArticle `json:"article"`
+	Score   int                   `json:"score"`
+}
+
+// InboxSuggestion e' uma SUGESTAO de resposta. Found=false quando nada casa - nao se inventa resposta.
+type InboxSuggestion struct {
+	Found      bool   `json:"found"`
+	ArticleID  string `json:"article_id,omitempty"`
+	Title      string `json:"title,omitempty"`
+	Suggestion string `json:"suggestion,omitempty"`
+	Score      int    `json:"score,omitempty"`
+}
+
+type inboxKnowledgeFile struct {
+	Articles []InboxKnowledgeArticle `json:"articles"`
+}
+
+func (s *InboxStore) knowledgePath(organizationID string) string {
+	if s == nil || strings.TrimSpace(s.root) == "" {
+		return ""
+	}
+	seguro := strings.NewReplacer("/", "_", "\\", "_", "..", "_").Replace(consentScope(organizationID))
+	if seguro == "" {
+		return ""
+	}
+	return filepath.Join(s.root, "inbox_knowledge_"+seguro+".json")
+}
+
+func (s *InboxStore) loadKnowledge(organizationID string) ([]InboxKnowledgeArticle, error) {
+	caminho := s.knowledgePath(organizationID)
+	if caminho == "" {
+		return nil, nil
+	}
+	stored := inboxKnowledgeFile{}
+	if err := readJSON(caminho, &stored); err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("ler base de conhecimento: %w", err)
+	}
+	return stored.Articles, nil
+}
+
+// UpsertKnowledgeArticle cria (ID vazio) ou atualiza (mesmo ID) um artigo. Devolve o artigo gravado.
+func (s *InboxStore) UpsertKnowledgeArticle(article InboxKnowledgeArticle, now time.Time) (InboxKnowledgeArticle, error) {
+	organizationID := consentScope(article.OrganizationID)
+	if organizationID == "" || strings.TrimSpace(article.Title) == "" || strings.TrimSpace(article.Content) == "" {
+		return InboxKnowledgeArticle{}, fmt.Errorf("%w: organizacao=%q titulo=%q", ErrInboxKnowledgeInvalid, organizationID, article.Title)
+	}
+	artigos, err := s.loadKnowledge(organizationID)
+	if err != nil {
+		return InboxKnowledgeArticle{}, err
+	}
+	gravado := article
+	gravado.OrganizationID = organizationID
+	gravado.Title = strings.TrimSpace(article.Title)
+	gravado.Content = strings.TrimSpace(article.Content)
+	gravado.UpdatedAt = now.UTC()
+	tags := make([]string, 0, len(article.Tags))
+	for _, tag := range article.Tags {
+		if limpa := strings.TrimSpace(tag); limpa != "" {
+			tags = append(tags, limpa)
+		}
+	}
+	gravado.Tags = tags
+	substituido := false
+	if strings.TrimSpace(gravado.ID) == "" {
+		gravado.ID = "kb_" + uuid.NewString()
+	} else {
+		for i := range artigos {
+			if artigos[i].ID == gravado.ID {
+				artigos[i] = gravado
+				substituido = true
+				break
+			}
+		}
+	}
+	if !substituido {
+		artigos = append(artigos, gravado)
+	}
+	caminho := s.knowledgePath(organizationID)
+	if caminho == "" {
+		// Modo em memoria: o artigo vale nesta execucao. Declarado, nao fingido.
+		return gravado, nil
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.knowledge == nil {
+		s.knowledge = map[string]InboxKnowledgeArticle{}
+	}
+	s.knowledge[organizationID+"|"+gravado.ID] = gravado
+	if err := writeJSONAtomic(caminho, inboxKnowledgeFile{Articles: artigos}); err != nil {
+		delete(s.knowledge, organizationID+"|"+gravado.ID)
+		return InboxKnowledgeArticle{}, err
+	}
+	return gravado, nil
+}
+
+// KnowledgeArticles lista os artigos da organizacao (copia).
+func (s *InboxStore) KnowledgeArticles(organizationID string) ([]InboxKnowledgeArticle, error) {
+	artigos, err := s.loadKnowledge(organizationID)
+	if err != nil {
+		return nil, err
+	}
+	resultado := append([]InboxKnowledgeArticle(nil), artigos...)
+	sort.Slice(resultado, func(i, j int) bool {
+		if resultado[i].Title == resultado[j].Title {
+			return resultado[i].ID < resultado[j].ID
+		}
+		return resultado[i].Title < resultado[j].Title
+	})
+	return resultado, nil
+}
+
+// DeleteKnowledgeArticle remove um artigo. Artigo de OUTRA organizacao responde como inexistente.
+func (s *InboxStore) DeleteKnowledgeArticle(organizationID, articleID string) error {
+	organizationID = consentScope(organizationID)
+	artigos, err := s.loadKnowledge(organizationID)
+	if err != nil {
+		return err
+	}
+	restantes := make([]InboxKnowledgeArticle, 0, len(artigos))
+	removido := false
+	for _, artigo := range artigos {
+		if artigo.ID == strings.TrimSpace(articleID) {
+			removido = true
+			continue
+		}
+		restantes = append(restantes, artigo)
+	}
+	if !removido {
+		return fmt.Errorf("%w: artigo %s", ErrInboxKnowledgeMissing, strings.TrimSpace(articleID))
+	}
+	caminho := s.knowledgePath(organizationID)
+	if caminho == "" {
+		return nil
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	delete(s.knowledge, organizationID+"|"+strings.TrimSpace(articleID))
+	return writeJSONAtomic(caminho, inboxKnowledgeFile{Articles: restantes})
+}
+
+// palavras separa o texto em palavras minusculas (busca por PALAVRA-CHAVE, nao semantica).
+func palavras(texto string) []string {
+	campos := strings.FieldsFunc(strings.ToLower(texto), func(r rune) bool {
+		return !unicode.IsLetter(r) && !unicode.IsDigit(r)
+	})
+	unicas := make([]string, 0, len(campos))
+	vistas := map[string]bool{}
+	for _, campo := range campos {
+		if len(campo) < 3 || vistas[campo] {
+			continue
+		}
+		vistas[campo] = true
+		unicas = append(unicas, campo)
+	}
+	return unicas
+}
+
+// SearchKnowledge busca por palavras. Titulo pesa 3, tag pesa 2, conteudo pesa 1.
+func (s *InboxStore) SearchKnowledge(organizationID, consulta string, limite int) ([]InboxKnowledgeHit, error) {
+	organizacao := consentScope(organizationID)
+	termos := palavras(consulta)
+	if len(termos) == 0 {
+		return nil, nil
+	}
+	artigos, err := s.loadKnowledge(organizacao)
+	if err != nil {
+		return nil, err
+	}
+	buscaveis := make([]string, len(artigos))
+	for i, artigo := range artigos {
+		buscaveis[i] = strings.ToLower(artigo.Title + " " + strings.Join(artigo.Tags, " ") + " " + artigo.Content)
+	}
+	hits := make([]InboxKnowledgeHit, 0, len(artigos))
+	for i, artigo := range artigos {
+		titulo := strings.ToLower(artigo.Title)
+		conteudo := strings.ToLower(artigo.Content)
+		tags := strings.ToLower(strings.Join(artigo.Tags, " "))
+		pontos := 0
+		for _, termo := range termos {
+			if strings.Contains(titulo, termo) {
+				pontos += 3
+			}
+			if strings.Contains(tags, termo) {
+				pontos += 2
+			}
+			if strings.Contains(conteudo, termo) {
+				pontos++
+			}
+		}
+		_ = buscaveis[i]
+		if pontos > 0 {
+			hits = append(hits, InboxKnowledgeHit{Article: artigo, Score: pontos})
+		}
+	}
+	sort.Slice(hits, func(i, j int) bool {
+		if hits[i].Score == hits[j].Score {
+			return hits[i].Article.Title < hits[j].Article.Title
+		}
+		return hits[i].Score > hits[j].Score
+	})
+	if limite > 0 && len(hits) > limite {
+		hits = hits[:limite]
+	}
+	return hits, nil
+}
+
+// SuggestReply monta uma SUGESTAO a partir da ultima mensagem recebida. NAO envia, NAO grava, NAO altera conversa:
+// sugerir e LEITURA PURA. Sem correspondencia, Found=false - nao se inventa resposta.
+func (s *InboxStore) SuggestReply(organizationID, ultimaMensagem string, limite int) (InboxSuggestion, error) {
+	hits, err := s.SearchKnowledge(organizationID, ultimaMensagem, limite)
+	if err != nil {
+		return InboxSuggestion{}, err
+	}
+	if len(hits) == 0 {
+		return InboxSuggestion{Found: false}, nil
+	}
+	melhor := hits[0]
+	return InboxSuggestion{
+		Found:      true,
+		ArticleID:  melhor.Article.ID,
+		Title:      melhor.Article.Title,
+		Suggestion: melhor.Article.Content,
+		Score:      melhor.Score,
+	}, nil
 }

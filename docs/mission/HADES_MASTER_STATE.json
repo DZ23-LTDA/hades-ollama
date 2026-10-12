@@ -2,7 +2,7 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-17T06:55:00-03:00",
+  "updated_at": "2026-10-17T08:05:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
@@ -878,13 +878,14 @@
         "E-047",
         "E-087",
         "E-104",
-        "E-234"
+        "E-234",
+        "E-265"
       ],
       "blocker": "B-04",
-      "next": "LIMITES: canais reais nao conectados (dependem de credencial), sem webhook publico com validacao de assinatura (estagio 34), sem base de conhecimento nem resposta automatica por IA na conversa, sem anexos ou audio, e SLA apenas de primeira resposta",
+      "next": "LIMITES REAIS (atualizados por E-265): a resposta automatica por IA NAO existe - a base SUGERE e um humano ou agente sob politica responde (decisao explicita, nao esquecimento); a busca e por PALAVRA-CHAVE, nao semantica; sem anexos nem audio; SLA apenas de primeira resposta; canais reais seguem dependentes de credencial (BLOCKED_BY_EXTERNAL_DEPENDENCY). Proximo: SLA de resolucao e estagios 25-28 e 32-38",
       "blocked_reason": "",
       "external_dependency": "canais reais exigem contas; a inbox unificada em sandbox e local",
-      "done": "CAIXA DE ENTRADA UNIFICADA implementada: uma conversa por contato e canal (mensagem nova reaproveita a conversa aberta), DEDUPLICACAO de webhook por ExternalID inclusive sob concorrencia, SLA de primeira resposta MEDIDO contra a resposta real, handoff como estado com motivo e responsavel registrados, resposta que respeita o CONSENTIMENTO do contato, indicadores (SLA violado, fila humana, volumes), isolamento por organizacao e persistencia. Os comandos /inbox, /handoff e /support deixaram de ser indisponiveis: a lista de comandos sem rota ficou VAZIA (35 de 35) ISOLAMENTO PROVADO NO LADO NEGATIVO (E-234): o teste existente cobria LEITURA cruzada, listagem e reinicio; faltavam as ACOES cruzadas, o dedupe entre organizacoes e a nao-inferencia. Medido: atribuir/transferir/fechar a conversa de outra organizacao e RECUSADO e o estado dela fica INTACTO (status=open, responsavel vazio, 1 mensagem); o MESMO id externo em organizacoes diferentes gera conversas DISTINTAS (mensagem legitima nao e engolida como repetida) e a repeticao DENTRO da mesma organizacao continua deduplicada; as metricas contam apenas a propria organizacao (orgA=3 orgB=1).",
+      "done": "CAIXA DE ENTRADA UNIFICADA implementada: uma conversa por contato e canal (mensagem nova reaproveita a conversa aberta), DEDUPLICACAO de webhook por ExternalID inclusive sob concorrencia, SLA de primeira resposta MEDIDO contra a resposta real, handoff como estado com motivo e responsavel registrados, resposta que respeita o CONSENTIMENTO do contato, indicadores (SLA violado, fila humana, volumes), isolamento por organizacao e persistencia. Os comandos /inbox, /handoff e /support deixaram de ser indisponiveis: a lista de comandos sem rota ficou VAZIA (35 de 35) ISOLAMENTO PROVADO NO LADO NEGATIVO (E-234): o teste existente cobria LEITURA cruzada, listagem e reinicio; faltavam as ACOES cruzadas, o dedupe entre organizacoes e a nao-inferencia. Medido: atribuir/transferir/fechar a conversa de outra organizacao e RECUSADO e o estado dela fica INTACTO (status=open, responsavel vazio, 1 mensagem); o MESMO id externo em organizacoes diferentes gera conversas DISTINTAS (mensagem legitima nao e engolida como repetida) e a repeticao DENTRO da mesma organizacao continua deduplicada; as metricas contam apenas a propria organizacao (orgA=3 orgB=1). BASE DE CONHECIMENTO DO INBOX (E-265): o limite declarado 'sem base de conhecimento nem resposta automatica por IA na conversa' foi FECHADO NA PARTE DE BASE/SUGESTAO - o ENVIO automatico NAO entrou, e isso e enquadramento, nao omissao. Artigos por organizacao com upsert que mantem o ID (sem duplicar), busca DETERMINISTICA por palavra (titulo=3, tag=2, conteudo=1) e SuggestReply a partir da ultima mensagem recebida. A PROPRIEDADE CENTRAL: sugerir e LEITURA PURA - o teste prova que a base fica inalterada (contagem, conteudo e UpdatedAt) depois de sugerir. Consulta vazia nao retorna artigo e mensagem sem correspondencia devolve Found=false: nao se inventa resposta. Isolamento entre organizacoes (nao ve, nao busca, e apagar artigo alheio responde como INEXISTENTE) e persistencia verificada em reinicio real, inclusive do apagamento. MEDIDO: teste de propriedades PASS e suite completa ok 114,8 s",
       "execution": "BLOCKED_BY_EXTERNAL_DEPENDENCY"
     },
     {
@@ -1894,7 +1895,10 @@
     "MUDANCA DE ASSINATURA NO MESMO COMMIT (E-263): AreaBudgetStatus passou a exigir o periodo e o teste antigo foi atualizado junto. go build ./... confirmou que nao havia outro chamador - a API era de um round anterior, minha, e o repositorio inteiro compilou",
     "QUEM PEDE NAO APROVA (E-264): o controle central do fluxo de aprovacao e a SEGREGACAO DE FUNCOES. Sem ela, a 'aprovacao' seria o proprio gasto com um carimbo - e o orcamento viraria decoracao por outro caminho",
     "O CAMINHO AUTORIZADO E EXPLICITO, NAO SILENCIOSO (E-264): extrai recordAreaCost para o caminho aprovado dispensar a checagem de orcamento. Se a dispensa ficasse escondida dentro de um if, o proximo leitor nao saberia se ela foi decidida ou esquecida",
-    "ERRO MEU PEGO PELO COMPILADOR, DE NOVO (E-264): faltou o import do uuid. Barato porque o Go recusou compilar - terceiro erro meu nesta serie de rounds capturado pela compilacao, e todos os tres seriam silenciosos em linguagem sem tipos"
+    "ERRO MEU PEGO PELO COMPILADOR, DE NOVO (E-264): faltou o import do uuid. Barato porque o Go recusou compilar - terceiro erro meu nesta serie de rounds capturado pela compilacao, e todos os tres seriam silenciosos em linguagem sem tipos",
+    "SUGERIR E LEITURA PURA (E-265): a base de conhecimento sugere e o teste prova que sugerir NAO escreve nada. A resposta automatica ficou DE FORA como decisao declarada - um sistema que responde sozinho ao cliente precisa de politica e aprovacao, nao de um atalho",
+    "A BUSCA NAO FINGE SER SEMANTICA (E-265): e busca por PALAVRA, com pesos (titulo 3, tag 2, conteudo 1) e o nome diz isso. Chamar palavra-chave de 'busca inteligente' seria a mesma mentira que chamar catalogo de integracao",
+    "SEM CORRESPONDENCIA, Found=false (E-265): nao se inventa resposta. O caminho vazio e um resultado valido e explicito, nao um erro nem um texto generico de enfeite"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
