@@ -2,7 +2,7 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-16T08:55:00-03:00",
+  "updated_at": "2026-10-16T10:05:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
@@ -485,12 +485,13 @@
         "E-034",
         "E-035",
         "E-039",
-        "E-178"
+        "E-178",
+        "E-246"
       ],
       "blocker": null,
-      "next": "ABERTO: o app navegado e de DEMONSTRACAO (heading/table/button), NAO uma aplicacao full-stack com banco/auth/CRUD; servidor estatico local sem deploy em staging nem rollback; um unico tamanho de janela (sem responsividade nem acessibilidade); passo de navegador INTERATIVO, nao automatizado no CI; e o icone data:, e vazio",
+      "next": "LIMITES DECLARADOS: a persistencia e ARQUIVO com escrita atomica, NAO um SGBD relacional; o token vive em memoria (reiniciar invalida sessoes, os dados ficam); o app gerado e servido pelo proprio processo (PublishLocal continua apenas copiando arquivos); falta deploy em STAGING e o template nao foi testado com leitor de tela. Proximo: promover o app gerado a staging com rollback e ligar o preview do Studio ao processo gerado",
       "execution": "IN_PROGRESS",
-      "done": " | BUILDER NAVEGADO POR NAVEGADOR REAL (E-178): projeto criado pelo Builder real, 3 componentes visuais aplicados, PUBLICADO (PublishLocal), SERVIDO por HTTP (200) e aberto em navegador REAL, que renderizou os 3 componentes no canvas com 0 erros de console. O PASSO DE NAVEGADOR ENCONTROU UM DEFEITO que nenhum teste hermetico veria: GET /favicon.ico -> 404 em TODA app publicada; corrigido no template com <link rel=icon href=data:,> e revalidado com 0 erros"
+      "done": " | BUILDER NAVEGADO POR NAVEGADOR REAL (E-178): projeto criado pelo Builder real, 3 componentes visuais aplicados, PUBLICADO (PublishLocal), SERVIDO por HTTP (200) e aberto em navegador REAL, que renderizou os 3 componentes no canvas com 0 erros de console. O PASSO DE NAVEGADOR ENCONTROU UM DEFEITO que nenhum teste hermetico veria: GET /favicon.ico -> 404 em TODA app publicada; corrigido no template com <link rel=icon href=data:,> e revalidado com 0 erros APP FULL-STACK GERADO E EXERCITADO (E-246): novo kind 'fullstack' gera uma aplicacao de gestao REAL (main.go stdlib-only + index.html + README) com login por token, CRUD de itens, validacao de entrada, persistencia em disco com escrita ATOMICA e RECUSA de subir sem APP_ADMIN_PASSWORD (nenhuma credencial padrao). O teste NAO confia em afirmacao: COMPILA o app gerado, sobe o processo, fala HTTP real, reinicia e confere. MEDIDO: compila - login=200 - sem_token=401 - senha_errada=401 - criados=2 - apos_reinicio=2 - apos_delete=1."
     },
     {
       "id": 13,
@@ -1811,7 +1812,10 @@
     "OPCAO (a) DE E-241 IMPLEMENTADA (E-244): em vez de ratear um custo indivisivel por etapa, o registro declara a ORIGEM do consumo (campo usage_origin = 'planning'). A decisao anterior de NAO inventar rateio virou recurso: o usuario ve o custo real e sabe de onde ele veio, em vez de um numero distribuido sem medicao",
     "ORIGEM TAMBEM TEM DOIS SENTIDOS (E-244): o teste cobre com consumo (origem declarada e persistida) e SEM consumo (origem vazia, Usage nil). Declarar origem para custo inexistente seria o mesmo defeito de antes, ao contrario - por isso o caso negativo tambem esta no teste",
     "ESTAGIO 12 AUDITADO E NAO INICIADO POR DECISAO (E-245): o app publicado e um site ESTATICO - PublishLocal apenas copia arquivos para published/id/vN e devolve o caminho; NAO existe backend. Um gerador full-stack com banco, auth e CRUD e feature de MAIS DE UMA RODADA; comecar com orcamento parcial entregaria algo que 'parece funcionar' - exatamente o que a missao proibe. Ficou registrado o diagnostico medido (nao um palpite) e a decisao de fazer a peca LIMITADA e verificavel nesta rodada",
-    "CUSTO DESCONHECIDO NUNCA VIRA ZERO NA INTERFACE (E-245): o backend ja distinguia 'zero porque e local/gratuito' de 'desconhecido porque nao ha preco' (cost_known). A interface passou a respeitar isso: mostra 'custo desconhecido' e o teste AFIRMA que a palavra 'R$' nao aparece nesse caso. Exibir R$ 0,00 afirmaria gratuidade que ninguem mediu"
+    "CUSTO DESCONHECIDO NUNCA VIRA ZERO NA INTERFACE (E-245): o backend ja distinguia 'zero porque e local/gratuito' de 'desconhecido porque nao ha preco' (cost_known). A interface passou a respeitar isso: mostra 'custo desconhecido' e o teste AFIRMA que a palavra 'R$' nao aparece nesse caso. Exibir R$ 0,00 afirmaria gratuidade que ninguem mediu",
+    "ESTAGIO 12 DEIXOU DE SER DEMONSTRACAO (E-246): o app publicado era estatico (heading/table/button). Agora o kind 'fullstack' gera aplicacao de gestao com login, CRUD, validacao, persistencia atomica e recusa de subir sem senha. O teste COMPILA e EXECUTA o app gerado e conversa HTTP com ele - nao ha afirmacao sem execucao",
+    "NENHUMA CREDENCIAL PADRAO (E-246): a aplicacao gerada NAO sobe sem APP_ADMIN_PASSWORD e o teste AFIRMA isso. Template com senha default e a forma mais rapida de transformar uma demo bonita em produto inseguro",
+    "TRES DEFEITOS MEUS ANTES DO TESTE VERDE (E-246): (1) embuti o codigo gerado em literal cru do Go, mas ele usa crases nas tags json - virou string interpretada com json.dumps; (2) ancora de patch com espaco onde o arquivo tem TAB (o script abortou sem escrever nada, patch atomico); (3) no Windows 'go build -o X' grava X.exe, e eu executava X. Cada um foi medido pelo erro real (compilador e exec), nao por suposicao"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
