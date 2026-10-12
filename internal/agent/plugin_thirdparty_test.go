@@ -60,7 +60,6 @@ func lerTerceiro(t *testing.T) string {
 			hex.EncodeToString(soma[:])[:16])
 	}
 	return normalizado
-	return string(dados)
 }
 
 // bundleDoTerceiro monta os arquivos do bundle: entrypoint com o terceiro byte a byte + rodapé, e a licença.
