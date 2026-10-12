@@ -52,10 +52,12 @@ var (
 
 // LedgerEntry é um lançamento financeiro imutável.
 type LedgerEntry struct {
-	ID           string     `json:"id"`
-	CompanyID    string     `json:"company_id"`
-	Kind         string     `json:"kind"`
-	Category     string     `json:"category,omitempty"`
+	ID        string `json:"id"`
+	CompanyID string `json:"company_id"`
+	Kind      string `json:"kind"`
+	Category  string `json:"category,omitempty"`
+	// Area e o centro de custo do lancamento (E-262): permite rateio e orcamento por area.
+	Area         string     `json:"area,omitempty"`
 	AmountCents  int64      `json:"amount_cents"`
 	Currency     string     `json:"currency"`
 	Description  string     `json:"description,omitempty"`
