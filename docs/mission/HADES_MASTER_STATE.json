@@ -2,12 +2,12 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-13T09:00:00-03:00",
+  "updated_at": "2026-10-13T10:00:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
     "integration_branch": "main",
-    "main_sha": "614b54c63a5656a0fcf4a47a36d395a00736ce06",
+    "main_sha": "c94830091e465e892798b3c5562e05366a7a88c1",
     "main_committed_at": "2026-10-09T10:24:45Z",
     "main_ci_state": "green (dz23-agentic-quality + class-a-plus-integrity = success nesse SHA)",
     "mission_branch": "docs/checkpoints-missao-v21",
@@ -432,11 +432,13 @@
         "E-028",
         "E-034",
         "E-035",
-        "E-039"
+        "E-039",
+        "E-178"
       ],
       "blocker": null,
-      "next": "Cobertura E2E do reorder entregue no PR #73 (verde no CI); faltam preview/export, undo/redo e edicao de propriedades sob E2E",
-      "execution": "IN_PROGRESS"
+      "next": "ABERTO: o app navegado e de DEMONSTRACAO (heading/table/button), NAO uma aplicacao full-stack com banco/auth/CRUD; servidor estatico local sem deploy em staging nem rollback; um unico tamanho de janela (sem responsividade nem acessibilidade); passo de navegador INTERATIVO, nao automatizado no CI; e o icone data:, e vazio",
+      "execution": "IN_PROGRESS",
+      "done": " | BUILDER NAVEGADO POR NAVEGADOR REAL (E-178): projeto criado pelo Builder real, 3 componentes visuais aplicados, PUBLICADO (PublishLocal), SERVIDO por HTTP (200) e aberto em navegador REAL, que renderizou os 3 componentes no canvas com 0 erros de console. O PASSO DE NAVEGADOR ENCONTROU UM DEFEITO que nenhum teste hermetico veria: GET /favicon.ico -> 404 em TODA app publicada; corrigido no template com <link rel=icon href=data:,> e revalidado com 0 erros"
     },
     {
       "id": 13,
@@ -1484,7 +1486,11 @@
     "LIMITES DA CONCORRENCIA (E-176): medicao de UM caminho so (sem caixa de entrada real - r.inbox e nil nos testes -, sem concorrencia entre canais, sem caminho de saida); b.RunParallel NAO e carga com taxa fixa nem mede saturacao ou GC sob pressao continua; e o -race cobre apenas TestOmnichannel*",
     "-RACE NA SUITE INTEIRA (E-177): E-176 trouxe o detector para o CI com escopo ESTREITO e declarado (TestOmnichannel*) por causa do custo, mas corrida NAO aparece so onde se procura - o runtime tem concorrencia na memoria, no store, no re-embed, no supervisor e no health. A suite INTEIRA rodou sob -race no container golang:1.26.9 com CGO_ENABLED=1: agent 80,458s + server 10,959s, NENHUMA DATA RACE",
     "ESCOPO ESTREITO NAO SE JUSTIFICAVA POR PRECO (E-177): o detector na suite completa custou ~91s. O gate de paridade Linux passou a rodar a suite INTEIRA sob -race (RaceFilter vazio), mantendo -SkipRace para quando o motivo for declarado e -RaceFilter para estreitar numa investigacao",
-    "LIMITES DO DETECTOR DE CORRIDA (E-177): -race e deteccao DINAMICA, nao prova de ausencia - so encontra o que o teste exercita; rodou com -count=1, entao uma corrida rara pode escapar de uma unica execucao; o gate ficou ~91s mais lento (troca aceita e DITA); e pacotes fora de internal/agent e server seguem sem detector"
+    "LIMITES DO DETECTOR DE CORRIDA (E-177): -race e deteccao DINAMICA, nao prova de ausencia - so encontra o que o teste exercita; rodou com -count=1, entao uma corrida rara pode escapar de uma unica execucao; o gate ficou ~91s mais lento (troca aceita e DITA); e pacotes fora de internal/agent e server seguem sem detector",
+    "BUILDER NAVEGADO POR NAVEGADOR REAL (E-178): o item da matriz \"O Builder entrega aplicacoes utilizaveis\" estava NAO_COMPROVADO. Fechado com execucao real: projeto criado pelo Builder real, 3 componentes visuais (heading/table/button), PUBLICADO (PublishLocal), SERVIDO por HTTP (GET /index.html 200, 1237 bytes) e aberto em navegador REAL, que renderizou os 3 componentes no canvas com titulo correto e 0 erros de console; captura em docs/mission/evidence/",
+    "O NAVEGADOR ENCONTROU O QUE NENHUM TESTE HERMETICO VIRIA (E-178): GET /favicon.ico -> 404 - nenhum teste pede o favicon, O NAVEGADOR PEDE - e a consequencia nao era cosmetica: TODA aplicacao publicada pelo Builder poluia o console de quem a abria. Corrigido no template com <link rel=icon href=data:,> (sem ativo binario, sem requisicao de rede) e revalidado com 0 erros",
+    "TESTE E NAVEGADOR FALAM DO MESMO ARTEFATO (E-178): o teste hermetico builder_published_e2e_test.go cobre criacao -> publicacao -> servico, e com HADES_BUILDER_E2E_ROOT publica num diretorio ESTAVEL, permitindo ao navegador abrir A MESMA aplicacao que o teste verificou (antes o t.TempDir era apagado e o navegador via 404)",
+    "LIMITES DO E2E DO BUILDER (E-178): o app navegado e de DEMONSTRACAO (heading/table/button), NAO uma aplicacao full-stack com banco, autenticacao e CRUD; servidor ESTATICO LOCAL, sem deploy em staging nem rollback de publicacao; um UNICO tamanho de janela, sem validacao responsiva nem de acessibilidade; o passo de navegador e INTERATIVO, nao automatizado no CI; e o icone data:, e VAZIO (o app continua sem identidade visual)"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
