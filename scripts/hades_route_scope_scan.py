@@ -28,6 +28,12 @@ SINAIS_ESCOPO = re.compile(
     r"tenantID|LocalOrganizationID|ForRequest|scopedRuntime|RuntimeForOrganization|scopedCompany",
 )
 CHAMADA_HELPER = re.compile(r"\.([A-Za-z0-9_]+ForRequest)\(")
+# DELEGACAO A HELPER COMPARTILHADO (E-257): a LEITURA HUMANA mostrou que quatro rotas `approveCompany*` delegam a
+# `decideCompanyApproval`, que por sua vez chama `companyForRequest` (organizacao + recusa igualada por E-190) e
+# exige papel de aprovador ANTES de decidir. Sem seguir essa delegacao, o instrumento acusava 4 falsos positivos.
+# O salto passa a valer para qualquer metodo de `a.`, com profundidade limitada para nao girar em falso.
+CHAMADA_METODO = re.compile(r"\ba\.([A-Za-z0-9_]+)\(")
+PROFUNDIDADE_MAX = 3
 
 
 def funcoes(texto: str):
@@ -67,15 +73,19 @@ for caminho in sorted(RAIZ.rglob("*.go")):
         rotas.add((m.group(1), m.group(2).split(".")[-1]))
 
 
-def escopado(nome: str, visitados: set) -> bool:
-    if nome in visitados:
+def escopado(nome: str, visitados: set, profundidade: int = 0) -> bool:
+    if nome in visitados or profundidade > PROFUNDIDADE_MAX:
         return False
     visitados.add(nome)
     arquivo, corpo = corpos.get(nome, ("", ""))
     if SINAIS_ESCOPO.search(corpo):
         return True
     for m in CHAMADA_HELPER.finditer(corpo):
-        if escopado(m.group(1), visitados):
+        if escopado(m.group(1), visitados, profundidade + 1):
+            return True
+    # Segue a delegacao a helper compartilhado: `a.decideCompanyApproval(c, ...)` e' o caso medido em E-257.
+    for m in CHAMADA_METODO.finditer(corpo):
+        if escopado(m.group(1), visitados, profundidade + 1):
             return True
     return False
 
