@@ -2,7 +2,7 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-15T21:20:00-03:00",
+  "updated_at": "2026-10-15T22:30:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
@@ -506,10 +506,11 @@
         "E-082",
         "E-083",
         "E-084",
-        "E-085"
+        "E-085",
+        "E-236"
       ],
       "blocker": null,
-      "next": "estagio verificado; proximo trabalho segue para os estagios elegiveis das ondas seguintes (14 browser/desktop/computer-use, 15 memoria, 16 canais, 17 workspace visual, 18 seguranca e 22 gate de engenharia), sem reabrir o 13 a menos que um defeito novo apareca",
+      "next": "LACUNA MEDIDA NO §11.7 (compensacao) - declarada, nao maquiada: o motor de fluxo (internal/agent/schedule_flow.go) tem DLQ, retry, reprocessamento, bloqueio por condicao e rollback em falha de PERSISTENCIA, mas NAO tem COMPENSACAO de efeitos ja executados quando um no posterior falha. As atividades declaradas DESTE estagio seguem cobertas (por isso o estado nao muda); a exigencia de compensacao do §11.7 fica ABERTA com plano pronto: campo opcional de compensacao por passo + execucao em ORDEM INVERSA dos passos ja bem-sucedidos apos falha definitiva + registro por no no relatorio + falha de compensacao vira incidente. Cartao de risco: o motor tem 1412 linhas e 20+ testes; a mudanca pede rodada dedicada com a suite inteira, em vez de alteracao apressada num estagio COMPLETED_VERIFIED",
       "done": "VERIFICADO ATIVIDADE POR ATIVIDADE em HADES_STAGE_13_VERIFICATION.md: criterio de conclusao cumprido (falha simulada, retry, reinicio de worker e retomada, com evidencia por no e sem duplicata) e lista de atividades coberta - gatilhos, condicoes, acoes, conectores, webhooks, schedules, variaveis, transformacoes, branches (corrigido nesta rodada), loops limitados, aprovacoes, filas, retry, DLQ, idempotencia, reprocessamento, persistencia, logs por no, versionamento, testes, execucao manual e programada",
       "limits": "LIMITES DECLARADOS (nao sao cobertura): conector homologado contra servidor HTTPS controlado, com credenciais de SaaS de terceiros ainda BLOCKED_BY_EXTERNAL_DEPENDENCY (estagios 25/33/36); falha de passo com efeito ABORTA o fluxo em vez de desviar para o ramo alternativo; execucao do fluxo por tick do supervisor, com a fila de jobs cobrindo as missoes criadas pelos nos",
       "execution": "COMPLETED_VERIFIED"
@@ -1776,7 +1777,10 @@
     "'NEM INFERE' E UM REQUISITO PROPRIO (E-234): o master pede que o tenant A nao acesse NEM INFIRA o tenant B. Testei isso onde a inferencia de fato aconteceria: nas METRICAS. Indicadores globais vazariam volume de conversas e carga de trabalho alheios; medido: orgA=3, orgB=1, sem cruzamento",
     "QUARTA VEZ QUE O MEU INSTRUMENTO PRODUZIU FALSO ACHADO (E-235): ao ler o comparativo de concorrentes eu vi 'Hades Ã— concorrentes' e 'jÃ¡ funciona' e conclui que a documentacao estava corrompida. MEDI: 0 de 217 arquivos .md tem mojibake. O 'Ã—' era o MEU shell - Get-Content no PowerShell 5.1 le UTF-8 como ANSI e MOSTRA corrompido sem que o arquivo esteja. Regra pratica: para SUSPEITAR de arquivo, medir por script Python (UTF-8), nunca pelos olhos do shell. As tres anteriores foram URL reimplementada (E-220), max_tokens=8 (E-223) e shell comendo aspas (E-226)",
     "A CORRUPCAO DE UTF-8 E RISCO REAL, MESMO SENDO FALSO AQUI (E-235): eu mesmo CORROMPI internal/agent/marketplace_sync.go na rodada anterior com Get-Content -Raw + WriteAllText. Como a classe e real e recorrente para qualquer agente no PowerShell 5.1, virou guarda no checker: documento com texto duplamente codificado vira PROBLEMA, com teste nos dois sentidos (acusa o corrompido e aceita portugues acentuado legitimo)",
-    "AUDITORIA DO COMPARATIVO DE CONCORRENTES (E-235): o documento declara explicitamente que NAO alega superioridade sem prova e marca cada item como funciona/parcial/falta. Spot-check das alegacoes verificaveis: geracao por IA local e export HTML tem teste de UI; o Builder tem testes de traversal, cross-tenant, symlink e escaping. Documentacao e produto batem NESSES pontos"
+    "AUDITORIA DO COMPARATIVO DE CONCORRENTES (E-235): o documento declara explicitamente que NAO alega superioridade sem prova e marca cada item como funciona/parcial/falta. Spot-check das alegacoes verificaveis: geracao por IA local e export HTML tem teste de UI; o Builder tem testes de traversal, cross-tenant, symlink e escaping. Documentacao e produto batem NESSES pontos",
+    "COMPENSACAO AUSENTE NO MOTOR DE FLUXO (E-236, medido): grep por compensat/Compensat/desfaz em internal/agent nao encontra o conceito; o que existe e retry, DLQ (com recuperacao), reprocessamento, bloqueio por condicao e rollback em falha de PERSISTENCIA (context_schedule_rollback_test.go). Compensar efeito ja executado quando um no posterior falha (saga) e OUTRA coisa, exigida pelo §11.7",
+    "ESCOLHA DELIBERADA DE NAO IMPLEMENTAR NESTA RODADA (E-236): o motor e COMPLETED_VERIFIED, tem 1412 linhas e mais de 20 testes de fluxo. Alterar esquema validado e laco de execucao no fim da rodada, sem orcamento para rodar a suite inteira e corrigir, trocaria 'lacuna declarada' por 'regressao possivel'. A missao proibe quebrar o que funciona; o plano ficou registrado com criterio de aceite",
+    "DISTRIBUICAO VERIFICADA - SEM SUPERESTIMACAO (E-236): o §11.7 pede instalacao limpa, atualizacao, rollback e desinstalacao em SOs testados. Existem docs/mission/HADES_GATE_22_INSTALL_CYCLE.md, job de SBOM no CI (anchore/sbom-action), scripts/install.ps1 e scripts/install.sh, e o workflow cita reinicio/atualizacao/rollback. O que segue externo e a NOTARIZACAO Apple (certificado), nao o ciclo de instalacao"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
