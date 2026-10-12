@@ -2,7 +2,7 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-14T08:40:00-03:00",
+  "updated_at": "2026-10-14T09:20:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
@@ -606,10 +606,11 @@
       "capability": "PARCIAL",
       "evidence": [
         "E-022",
-        "E-113"
+        "E-113",
+        "E-199"
       ],
       "blocker": "B-06",
-      "next": "LIMITES: instaladores de pacote ASSINADOS (deb/rpm/dmg/msi) e assinatura digital nao produzidos, instalacao em macOS e Linux reais nao medida neste host (o CI cobre build), e desktop/computer-use nativo ausente",
+      "next": "Notarizacao macOS por chave de API (E-199) implementada e testada na logica; FALTA o ISSUER ID (UUID) do App Store Connect, que nao vem no arquivo .p8, e provisionar os segredos no GitHub (requer credencial). Sem isso, a homologacao da notarizacao real segue BLOCKED_BY_EXTERNAL_DEPENDENCY",
       "done": "scripts/install.ps1 passou a entregar INSTALACAO (build do codigo com -Ldflags opcional e manifesto com acao, commit, data e SHA-256), ATUALIZACAO (preserva o binario anterior em <binario>.previous), ROLLBACK (restaura o anterior e preserva o substituido em <binario>.rolledback, entao e reversivel) e DESINSTALACAO (remove binario, backup e manifesto e PRESERVA os dados do usuario). O ciclo foi EXECUTADO de verdade num diretorio descartavel, com o binario RODANDO (ollama version is 0.40.1), atualizacao entregando artefato de hash DIFERENTE e rollback restaurando exatamente o hash original",
       "execution": "BLOCKED_BY_EXTERNAL_DEPENDENCY"
     },
@@ -1609,7 +1610,10 @@
     "PISTAS MEDIDAS DO FLAKE DO macOS (E-197): o MESMO pacote ./server passa com -race no macOS (job 'race (macos-latest)'), passa no Windows (ok 29,2s) e passa no Linux com CGO=1 (ok 5,4s); o job que falha e o UNICO da matriz que roda com -bench=. -benchtime=1x, o que e uma pista concreta para a proxima investigacao",
     "INVENTARIO DE FLAKINESS (E-197): o que eu chamei de 'flake do race (macos-latest)' por tres rodadas era o relogio (E-196, resolvido); o flake do ./server e NOVO, tem 1 ocorrencia e esta registrado com o comando exato. Registro separado evita somar causas diferentes no mesmo nome",
     "RESIDUAL DECLARADO E FECHADO (E-198): em E-195 eu declarei que auth e queue tinham a correcao coberta apenas pelas suites, sem teste de comparacao. Fechado com 4 testes novos (2 de nao inferencia + 2 de controle positivo). Residual declarado que nao e fechado vira divida esquecida",
-    "O CAMINHO ENSINA: ao escrever o teste de auth, o StoreOAuthCredential recusou por 'user is not a member of organization' e depois por falta de OLLAMA_AGENT_CREDENTIAL_KEY - eu estava a um passo de medir a recusa ERRADA. As duas falhas apareceram no caminho e estao documentadas no teste"
+    "O CAMINHO ENSINA: ao escrever o teste de auth, o StoreOAuthCredential recusou por 'user is not a member of organization' e depois por falta de OLLAMA_AGENT_CREDENTIAL_KEY - eu estava a um passo de medir a recusa ERRADA. As duas falhas apareceram no caminho e estao documentadas no teste",
+    "NOTARIZACAO macOS POR CHAVE DE API IMPLEMENTADA (E-199): helper fonteavel escolhe entre chave de API (--key/--key-id/--issuer) e Apple ID; a CHAVE PRIVADA NAO ENTRA NO REPOSITORIO - circula o CAMINHO, e o CI materializa o arquivo com umask 077 e mascara no log",
+    "PENDENCIA EXTERNA DA NOTARIZACAO (E-199): o ISSUER ID (UUID) nao vem no arquivo .p8; sem ele o fluxo por chave nao autentica. A chave autentica a SUBMISSAO, mas NAO assina - assinar exige o certificado Developer ID",
+    "DUAS ARMADILHAS DE AMBIENTE MEDIDAS (E-199): (a) o checkout Windows aplica CRLF e quebra o bash - a sintaxe tem de ser conferida no conteudo normalizado em LF; (b) o redirecionamento '>' do PowerShell grava UTF-16, o que fez o bash recusar os arquivos como 'binary file'. Verificacao passou a rodar DENTRO do container"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
