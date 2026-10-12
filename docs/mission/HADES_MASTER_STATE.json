@@ -2,7 +2,7 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-14T14:20:00-03:00",
+  "updated_at": "2026-10-14T15:25:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
@@ -343,10 +343,11 @@
         "E-041",
         "E-204",
         "E-205",
-        "E-206"
+        "E-206",
+        "E-207"
       ],
       "blocker": "B-01",
-      "next": "Sessao real governada localizada (E-206): falta dar stdin ao filho ou usar modo do codex sem app-server; a CLI standalone ja esta instalada e funciona direto",
+      "next": "Sessao real de CLI: 5 hipoteses eliminadas (E-207). Candidato restante, NAO testado: contexto de criacao do processo (token/integridade/console) do filho do runner. Nao chamar de causa sem medir",
       "execution": "IN_PROGRESS"
     },
     {
@@ -1635,7 +1636,11 @@
     "ERRO QUE EU QUASE COMETI (E-205): o teste usava t.TempDir() e eu ia culpar o adaptador; a execucao DIRETA do binario mostrou a mensagem verdadeira ('Not inside a trusted directory'). Corrigi criando um repositorio git de verdade em vez de afrouxar a verificacao do CLI com --skip-git-repo-check",
     "SESSAO REAL DE CLI LOCALIZADA (E-206): nao e a CLI nem sandbox de arquivos. Com a CLI standalone (0.162.1) a sessao governada AINDA falha; a MESMA CLI invocada direto abre sessao real; configureToolProcess e NO-OP no Windows; e a allowlist inclui tudo que a CLI precisa para achar seu estado, excluindo apenas credenciais. Sobram como diferenca medida: command.Stdin = nil e o ambiente reduzido - a falha esta no bootstrap da propria CLI (aliases de PATH em ~/.codex/tmp/arg0 e app-server in-process) dentro do contexto nao-interativo",
     "ACAO DE AMBIENTE REVERSIVEL (E-206): instalei a CLI standalone do Codex com 'npm install -g @openai/codex' (codex-cli 0.162.1). Desfaz com 'npm uninstall -g @openai/codex'. Nao e dependencia do repositorio: o teste opt-in apenas a utiliza quando existe",
-    "PROXIMO TESTE DECLARADO (E-206), NAO EXECUTADO: dar stdin ao filho (leitor vazio em vez de nil) OU usar um modo do codex que nao suba o app-server - sem afrouxar a allowlist de credenciais"
+    "PROXIMO TESTE DECLARADO (E-206), NAO EXECUTADO: dar stdin ao filho (leitor vazio em vez de nil) OU usar um modo do codex que nao suba o app-server - sem afrouxar a allowlist de credenciais",
+    "CINCO HIPOTESES ELIMINADAS NA SESSAO REAL (E-207): nao e o binario, nem a build do plugin, nem a allowlist de ambiente (ambiente completo falha igual), nem o stdin nulo, nem o shim .cmd - e nao ha sandbox de arquivos no produto (configureToolProcess e no-op no Windows). O mesmo comando funciona quando o shell o cria e falha quando o runner governado o cria; a falha esta no bootstrap da propria CLI (arg0/app-server) com 'Acesso negado'",
+    "DISCIPLINA DE DIAGNOSTICO (E-207): havia uma explicacao conveniente a mao (o stdin nulo, o ambiente reduzido) e eu NAO a adotei como causa raiz: testei e falsifiquei cada uma. O candidato restante (contexto de criacao do processo: token/integridade/console) ficou DECLARADO como nao testado, em vez de virar conclusao",
+    "NENHUM EXPERIMENTO FOI COMMITADO (E-207): os patches de stdin e de ambiente foram revertidos; a arvore ficou limpa e apenas a evidencia ficou registrada",
+    "LICAO OPERACIONAL (E-207): commit com aspas/acentos no corpo DEVE usar `git commit -F arquivo`; o padrao `-m \"...\"` no PowerShell mangled a citacao e o commit FALHOU EM SILENCIO porque eu tambem canalizei a saida. Alem disso, checar o exit code do commit e obrigatorio: eu li HEAD igual ao anterior e so assim percebi. Regra: escrever a mensagem em _tmp/*.txt, commitar com -F e conferir o SHA depois."
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
