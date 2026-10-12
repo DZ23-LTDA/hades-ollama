@@ -62,7 +62,7 @@ func benchmarkIngestao(b *testing.B, cacheCheio bool) {
 	}
 
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for i := range b.N {
 		enviar("wamid-medido-" + strconv.Itoa(i))
 	}
 }
@@ -133,7 +133,7 @@ func BenchmarkOmnichannelIngestMapaGrandeDeOutraOrg(b *testing.B) {
 	}
 
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for i := range b.N {
 		enviar("org-bench-eventos", medida.ID, "wamid-controle-"+strconv.Itoa(i))
 	}
 }
