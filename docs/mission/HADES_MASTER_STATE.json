@@ -2,7 +2,7 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-17T16:55:00-03:00",
+  "updated_at": "2026-10-17T18:05:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
@@ -975,11 +975,12 @@
       "evidence": [
         "E-030",
         "E-045",
-        "E-103"
+        "E-103",
+        "E-273"
       ],
       "blocker": "B-03",
-      "next": "LIMITES: homologacao com bot real depende de credencial (BLOCKED_BY_EXTERNAL_DEPENDENCY); /support, /inbox e /handoff continuam indisponiveis por dependerem da caixa de entrada unificada do estagio 29",
-      "done": "canal Telegram e WhatsApp existentes foram CONSOLIDADOS e ganharam rota: GET /telegram/status (honesto, NOT_CONFIGURED sem credencial) e POST /telegram/send reusando o MESMO canal com a ordem validacao -> credencial -> DLP -> consentimento -> egress. Nenhum cliente duplicado",
+      "next": "LIMITES REAIS (corrigidos por E-273): homologacao com BOT REAL depende de credencial (BLOCKED_BY_EXTERNAL_DEPENDENCY: token do bot e webhook publico); os comandos /support, /inbox e /handoff ESTAO disponiveis e mapeados a rotas registradas, com teste; webhook com assinatura validada e anti-replay pertencem ao estagio 34. Proximo: estagios 34-38",
+      "done": "canal Telegram e WhatsApp existentes foram CONSOLIDADOS e ganharam rota: GET /telegram/status (honesto, NOT_CONFIGURED sem credencial) e POST /telegram/send reusando o MESMO canal com a ordem validacao -> credencial -> DLP -> consentimento -> egress. Nenhum cliente duplicado LIMITE DECLARADO DESATUALIZADO CORRIGIDO (E-273): o estado afirmava que '/support, /inbox e /handoff continuam indisponiveis por dependerem da caixa de entrada unificada'. E FALSO e foi medido: as tres rotas existem em server/agent_routes.go (GET /inbox/conversations, GET /inbox/metrics, POST /inbox/conversations/:id/handoff) e os comandos estao declarados DISPONIVEIS no registro, com 11 testes do servidor PASS - incluindo TestInboxBackedCommandsAreAvailable, TestEveryAvailableCommandMapsToARegisteredRoute, TestSlashRegistryBackendsAreActuallyRegistered e TestSlashCommandRoutesExistForSection11MandatoryCommands - e 6 testes do agente PASS. Declarar INDISPONIVEL o que funciona e' tao falso quanto declarar pronto o que nao funciona: o estado da missao e' a fonte de verdade do proximo round",
       "execution": "BLOCKED_BY_EXTERNAL_DEPENDENCY"
     },
     {
@@ -1929,7 +1930,10 @@
     "EIXO EM HTML, NAO EM SVG (E-272): com preserveAspectRatio=none o texto dentro do SVG sai ESTICADO. Marcacao de eixo ilegivel e pior do que nao ter marcacao: da a impressao de precisao que ninguem consegue ler",
     "MESMO VALOR NO MOUSE E NO TECLADO (E-272): o tooltip existe nos dois. Se o teclado mostrasse numero diferente do mouse, seria bug de acessibilidade - duas verdades para o mesmo dado",
     "CURVA E TABELA SAEM DA MESMA LISTA (E-272): ao filtrar o intervalo, a tabela e a curva encolhem juntas. Filtrar so a curva faria a fonte acessivel MENTIR sobre o que o grafico mostra",
-    "O TYPECHECK DO GATE RODADO ANTES DE PUBLICAR (E-272): tsc -b (e nao tsc --noEmit) mais a suite web completa foram executados ANTES do push. A licao de E-268 virou rotina: o comando local tem de ser o comando do gate"
+    "O TYPECHECK DO GATE RODADO ANTES DE PUBLICAR (E-272): tsc -b (e nao tsc --noEmit) mais a suite web completa foram executados ANTES do push. A licao de E-268 virou rotina: o comando local tem de ser o comando do gate",
+    "LIMITE DECLARADO TAMBEM PRECISA DE TESTE (E-273): o estado afirmava que /support, /inbox e /handoff estavam indisponiveis, e 17 testes provaram o contrario. Um limite declarado e' uma AFIRMACAO e precisa ser falseavel - senao a lista de 'bloqueados' vira folclore e o proximo round planeja em cima de ficcao",
+    "DECLARAR INDISPONIVEL O QUE FUNCIONA E' TAMBEM UMA FALSIDADE (E-273): a regra de nao apresentar botao que finge funcionar tem a volta: nao declarar quebrado o que funciona. As duas direcoes mentem para quem le",
+    "TERCEIRO LIMITE DESATUALIZADO ENCONTRADO (E-273): antes foram a tela de campanha (E-268) e agora os comandos de atendimento. O padrao sugere VARREDURA periodica: limite declarado sem comando reproduzivel ao lado deve ser tratado como suspeito ate ser medido"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
