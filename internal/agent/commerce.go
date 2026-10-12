@@ -161,6 +161,7 @@ type commerceFile struct {
 	Stock       map[string][]CommerceStockMovement `json:"stock"`
 	Orders      []CommerceOrder                    `json:"orders"`
 	Returns     []CommerceReturn                   `json:"returns,omitempty"`
+	Carts       []CommerceCart                     `json:"carts,omitempty"`
 	Idempotency map[string]string                  `json:"idempotency"`
 	Sequence    int64                              `json:"sequence"`
 }
@@ -169,6 +170,7 @@ type commerceFile struct {
 type CommerceStore struct {
 	mu            sync.RWMutex
 	returns       map[string]CommerceReturn
+	carts         map[string]CommerceCart
 	products      map[string]CommerceProduct
 	stock         map[string][]CommerceStockMovement
 	orders        map[string]CommerceOrder
@@ -230,6 +232,12 @@ func NewCommerceStoreAt(root string) (*CommerceStore, error) {
 				store.orderSequence[consentScope(order.OrganizationID)] = stored.Sequence
 			}
 		}
+		for _, carrinho := range stored.Carts {
+			if store.carts == nil {
+				store.carts = map[string]CommerceCart{}
+			}
+			store.carts[carrinho.ID] = carrinho
+		}
 		for _, devolucao := range stored.Returns {
 			if store.returns == nil {
 				store.returns = map[string]CommerceReturn{}
@@ -262,6 +270,7 @@ func (s *CommerceStore) persistLocked(organizationID string) error {
 	payload := commerceFile{
 		Products:    []CommerceProduct{},
 		Returns:     []CommerceReturn{},
+		Carts:       []CommerceCart{},
 		Stock:       map[string][]CommerceStockMovement{},
 		Orders:      []CommerceOrder{},
 		Idempotency: map[string]string{},
@@ -275,6 +284,11 @@ func (s *CommerceStore) persistLocked(organizationID string) error {
 	for _, devolucao := range s.returns {
 		if consentScope(devolucao.OrganizationID) == organizationID {
 			payload.Returns = append(payload.Returns, devolucao)
+		}
+	}
+	for _, carrinho := range s.carts {
+		if consentScope(carrinho.OrganizationID) == organizationID {
+			payload.Carts = append(payload.Carts, carrinho)
 		}
 	}
 	for key, movements := range s.stock {
@@ -787,6 +801,8 @@ func (s *CommerceStore) Summary(organizationID string) CommerceSummary {
 }
 
 // ErrCommerceReturnQuantity cobre devolucao de SKU ausente no pedido, quantidade invalida ou acima do comprado.
+var ErrCommerceCartMissing = errors.New("commerce cart not found")
+
 var ErrCommerceReturnQuantity = errors.New("return quantity is not allowed for this order")
 
 // CommerceReturnRequest descreve uma devolucao pedida pelo operador.
@@ -921,4 +937,179 @@ func (s *CommerceStore) Returns(organizationID string) []CommerceReturn {
 	}
 	sort.Slice(resultado, func(i, j int) bool { return resultado[i].CreatedAt.Before(resultado[j].CreatedAt) })
 	return resultado
+}
+
+// Status do carrinho. Um carrinho convertido NAO aceita mais item: aceitar seria vender duas vezes o mesmo carrinho.
+const (
+	CommerceCartOpen      = "aberto"
+	CommerceCartConverted = "convertido"
+)
+
+// ErrCommerceCartClosed cobre mutacao de carrinho ja convertido.
+var ErrCommerceCartClosed = errors.New("commerce cart is not open")
+
+// CommerceCartItem e uma linha do carrinho, com o PRECO DO MOMENTO em que foi adicionado.
+type CommerceCartItem struct {
+	SKU            string `json:"sku"`
+	Quantity       int64  `json:"quantity"`
+	UnitPriceCents int64  `json:"unit_price_cents"`
+}
+
+// CommerceCart e o carrinho persistido de uma organizacao.
+type CommerceCart struct {
+	ID             string             `json:"id"`
+	OrganizationID string             `json:"organization_id"`
+	Status         string             `json:"status"`
+	Items          []CommerceCartItem `json:"items"`
+	OrderID        string             `json:"order_id,omitempty"`
+	CreatedAt      time.Time          `json:"created_at"`
+	UpdatedAt      time.Time          `json:"updated_at"`
+}
+
+// Cart devolve o carrinho da organizacao (recusa identica a de inexistente para outro tenant).
+func (s *CommerceStore) Cart(organizationID, cartID string) (CommerceCart, error) {
+	organizationID = consentScope(organizationID)
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	carrinho, ok := s.carts[strings.TrimSpace(cartID)]
+	if !ok || consentScope(carrinho.OrganizationID) != organizationID {
+		return CommerceCart{}, fmt.Errorf("%w: carrinho %s", ErrCommerceCartMissing, strings.TrimSpace(cartID))
+	}
+	return carrinho, nil
+}
+
+// Carts lista os carrinhos da organizacao (copia).
+func (s *CommerceStore) Carts(organizationID string) []CommerceCart {
+	organizationID = consentScope(organizationID)
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	resultado := []CommerceCart{}
+	for _, carrinho := range s.carts {
+		if consentScope(carrinho.OrganizationID) == organizationID {
+			resultado = append(resultado, carrinho)
+		}
+	}
+	sort.Slice(resultado, func(i, j int) bool { return resultado[i].CreatedAt.Before(resultado[j].CreatedAt) })
+	return resultado
+}
+
+// UpsertCartItem adiciona/atualiza um item do carrinho e cria o carrinho quando o ID vem vazio.
+//
+// Quantidade ZERO remove o item - remover com o mesmo caminho de adicionar evita uma segunda API para a mesma
+// intencao. O SKU precisa existir no catalogo e estar ATIVO: carrinho nao vende o que a loja nao vende.
+func (s *CommerceStore) UpsertCartItem(organizationID, cartID, sku string, quantity int64, now time.Time) (CommerceCart, error) {
+	organizationID = consentScope(organizationID)
+	sku = strings.TrimSpace(sku)
+	if quantity < 0 {
+		return CommerceCart{}, fmt.Errorf("%w: quantidade negativa (%d)", ErrCommerceReturnQuantity, quantity)
+	}
+	var unitario int64
+	encontrado := false
+	for _, product := range s.Products(organizationID) {
+		if product.SKU == sku {
+			unitario, encontrado = product.PriceCents, true
+			break
+		}
+	}
+	if !encontrado {
+		return CommerceCart{}, fmt.Errorf("%w: sku %q", ErrCommerceProductMissing, sku)
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.carts == nil {
+		s.carts = map[string]CommerceCart{}
+	}
+	carrinho, ok := s.carts[strings.TrimSpace(cartID)]
+	if !ok {
+		if strings.TrimSpace(cartID) != "" {
+			// ID pedido que nao existe NESTA organizacao: mesma recusa de inexistente.
+			return CommerceCart{}, fmt.Errorf("%w: carrinho %s", ErrCommerceCartMissing, strings.TrimSpace(cartID))
+		}
+		carrinho = CommerceCart{ID: "cart_" + uuid.NewString(), OrganizationID: organizationID, Status: CommerceCartOpen, CreatedAt: now}
+	}
+	if consentScope(carrinho.OrganizationID) != organizationID {
+		return CommerceCart{}, fmt.Errorf("%w: carrinho %s", ErrCommerceCartMissing, strings.TrimSpace(cartID))
+	}
+	if carrinho.Status != CommerceCartOpen {
+		return CommerceCart{}, fmt.Errorf("%w: carrinho %s esta %s", ErrCommerceCartClosed, carrinho.ID, carrinho.Status)
+	}
+	atualizado := false
+	itens := make([]CommerceCartItem, 0, len(carrinho.Items)+1)
+	for _, item := range carrinho.Items {
+		if item.SKU != sku {
+			itens = append(itens, item)
+			continue
+		}
+		atualizado = true
+		if quantity > 0 {
+			itens = append(itens, CommerceCartItem{SKU: sku, Quantity: quantity, UnitPriceCents: unitario})
+		}
+	}
+	if !atualizado && quantity > 0 {
+		itens = append(itens, CommerceCartItem{SKU: sku, Quantity: quantity, UnitPriceCents: unitario})
+	}
+	carrinho.Items = itens
+	carrinho.UpdatedAt = now
+	s.carts[carrinho.ID] = carrinho
+	if err := s.persistLocked(organizationID); err != nil {
+		delete(s.carts, carrinho.ID)
+		return CommerceCart{}, err
+	}
+	return carrinho, nil
+}
+
+// CartTotalCents soma o carrinho.
+func (s *CommerceStore) CartTotalCents(organizationID, cartID string) int64 {
+	carrinho, err := s.Cart(organizationID, cartID)
+	if err != nil {
+		return 0
+	}
+	var total int64
+	for _, item := range carrinho.Items {
+		total += item.UnitPriceCents * item.Quantity
+	}
+	return total
+}
+
+// ConvertCart transforma o carrinho em pedido com CHECKOUT IDEMPOTENTE pela chave informada.
+//
+// A ordem importa: o PEDIDO e criado primeiro (efeito, com a idempotencia do proprio checkout) e o carrinho so
+// entao e marcado convertido. Se a marcacao falhar, repetir a conversao com a MESMA chave devolve o pedido
+// existente em vez de criar um segundo.
+func (s *CommerceStore) ConvertCart(organizationID, cartID, idempotencyKey string, now time.Time) (CommerceOrder, CommerceCart, error) {
+	carrinho, err := s.Cart(organizationID, cartID)
+	if err != nil {
+		return CommerceOrder{}, CommerceCart{}, err
+	}
+	if carrinho.Status != CommerceCartOpen {
+		return CommerceOrder{}, carrinho, fmt.Errorf("%w: carrinho %s esta %s", ErrCommerceCartClosed, carrinho.ID, carrinho.Status)
+	}
+	if len(carrinho.Items) == 0 {
+		return CommerceOrder{}, carrinho, fmt.Errorf("%w: carrinho %s esta vazio", ErrCommerceOrderState, carrinho.ID)
+	}
+	if strings.TrimSpace(idempotencyKey) == "" {
+		return CommerceOrder{}, carrinho, fmt.Errorf("%w: conversao de carrinho exige chave de idempotencia", ErrCommerceOrderState)
+	}
+	itens := make([]CommerceOrderItem, 0, len(carrinho.Items))
+	for _, item := range carrinho.Items {
+		itens = append(itens, CommerceOrderItem{SKU: item.SKU, Quantity: item.Quantity})
+	}
+	pedido, err := s.CreateOrder(CommerceOrderRequest{
+		OrganizationID: consentScope(organizationID), IdempotencyKey: idempotencyKey, Items: itens,
+	}, now)
+	if err != nil {
+		return CommerceOrder{}, carrinho, err
+	}
+	s.mu.Lock()
+	carrinho.Status = CommerceCartConverted
+	carrinho.OrderID = pedido.ID
+	carrinho.UpdatedAt = now
+	s.carts[carrinho.ID] = carrinho
+	persistErr := s.persistLocked(organizationID)
+	s.mu.Unlock()
+	if persistErr != nil {
+		// O pedido EXISTE (efeito real). Devolver o erro dizendo isso e' melhor do que fingir que nada aconteceu.
+		return pedido, carrinho, fmt.Errorf("pedido %s criado, mas o carrinho nao foi marcado convertido: %w", pedido.Number, persistErr)
+	}
+	return pedido, carrinho, nil
 }
