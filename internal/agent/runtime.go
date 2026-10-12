@@ -2412,6 +2412,14 @@ func (r *Runtime) decideApprovalForActor(missionID, approvalID string, approved 
 	if err != nil {
 		return Mission{}, err
 	}
+	// NAO INFERENCIA (E-253): a organizacao e checada ANTES de qualquer estado do recurso, e a recusa e a MESMA de
+	// "nao encontrado". Na ordem anterior, um ator de OUTRA organizacao distinguia "existe e pendente"
+	// ("approval organization mismatch") e "existe e expirada" ("approval has expired") de "nao existe"
+	// ("approval not found or already decided"), e assim enumerava aprovacoes alheias. Mesma familia de E-198 (fila)
+	// e E-252 (refresh de OAuth): ORDEM de checagem em caminho multi-tenant nao e detalhe de estilo.
+	if mission.OrganizationID != "" && strings.TrimSpace(organizationID) != mission.OrganizationID {
+		return Mission{}, errors.New("approval not found or already decided")
+	}
 	if err := r.validateMissionApprovalBindings(mission); err != nil {
 		return Mission{}, ErrApprovalPayloadChanged
 	}
@@ -2429,9 +2437,8 @@ func (r *Runtime) decideApprovalForActor(missionID, approvalID string, approved 
 		if mission.Approvals[index].ExpiresAt != nil && time.Now().UTC().After(*mission.Approvals[index].ExpiresAt) {
 			return Mission{}, errors.New("approval has expired")
 		}
-		if mission.OrganizationID != "" && strings.TrimSpace(organizationID) != mission.OrganizationID {
-			return Mission{}, errors.New("approval organization mismatch")
-		}
+		// A checagem de organizacao foi MOVIDA para antes do laco (E-253): dentro do laco ela vinha depois das
+		// checagens de estado e virava oraculo de existencia entre tenants.
 		if strings.TrimSpace(actorID) == "" {
 			return Mission{}, errors.New("approval actor is required")
 		}
