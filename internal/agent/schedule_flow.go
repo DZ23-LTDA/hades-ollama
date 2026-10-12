@@ -182,6 +182,9 @@ type ScheduleStep struct {
 	ConnectorMethod    string `json:"connector_method,omitempty"`
 	ConnectorPath      string `json:"connector_path,omitempty"`
 	Body               string `json:"body,omitempty"`
+	// CompensateWith é o id do passo que DESFAZ o efeito deste, executado em ORDEM INVERSA
+	// quando um passo posterior falha de forma definitiva. Sem este campo, nada muda.
+	CompensateWith string `json:"compensate_with,omitempty"`
 }
 
 // ValidateScheduleSteps accepts an empty graph (legacy single-objective
@@ -438,6 +441,10 @@ const (
 	ScheduleStepSkipped   = "skipped"
 	ScheduleStepFailed    = "failed"
 	ScheduleStepPending   = "pending"
+	// Compensação (saga): o passo DESFEZ o próprio efeito, ou a tentativa de desfazer falhou.
+	// Os dois estados são registrados por nó — compensar em silêncio esconderia dano residual.
+	ScheduleStepCompensated        = "compensated"
+	ScheduleStepCompensationFailed = "compensation_failed"
 )
 
 // ScheduleApproval é uma decisão humana sobre UM passo de UMA execução. A chave
@@ -531,6 +538,101 @@ func (r ScheduleRunReport) FailedStep() string {
 // scope, matching the autorun restriction enforced by the HTTP layer. The flow
 // stops at the first action that cannot create its mission and reports that
 // error so the caller can record the schedule failure.
+// executeScheduleFlow mantém o nome histórico e passa a ter uma responsabilidade a mais: quando a execução
+// falha de forma DEFINITIVA, os passos que já tiveram efeito são COMPENSADOS em ordem inversa. A falha continua
+// sendo falha — o relatório ganha as linhas de compensação, mas o erro não é mascarado.
+func (r *Runtime) executeScheduleFlow(ctx context.Context, schedule Schedule, runKey string, seedOutcomes map[string]bool, carryOver map[string]ScheduleStepOutcome, execute map[string]bool) (ScheduleRunReport, error) {
+	report, err := r.executeScheduleFlowInner(ctx, schedule, runKey, seedOutcomes, carryOver, execute)
+	if err != nil {
+		report = r.compensateScheduleFlow(ctx, schedule, report, runKey)
+	}
+	return report, err
+}
+
+// compensateScheduleFlow desfaz, em ORDEM INVERSA de execução, o efeito dos passos que tiveram sucesso e
+// declaram CompensateWith. Cada tentativa vira uma linha no relatório; compensação que FALHA vira incidente
+// (dead letter), porque dano residual precisa aparecer, não sumir.
+func (r *Runtime) compensateScheduleFlow(ctx context.Context, schedule Schedule, report ScheduleRunReport, runKey string) ScheduleRunReport {
+	porID := make(map[string]ScheduleStep, len(schedule.Steps))
+	var gatilho *ScheduleStep
+	for i := range schedule.Steps {
+		passo := schedule.Steps[i]
+		porID[strings.TrimSpace(passo.ID)] = passo
+		if gatilho == nil && (passo.Kind == ScheduleStepTriggerInterval || passo.Kind == ScheduleStepTriggerWebhook) {
+			copia := passo
+			gatilho = &copia
+		}
+	}
+	executados := make([]string, 0, len(report.Steps))
+	for _, resultado := range report.Steps {
+		if resultado.Status == ScheduleStepSucceeded {
+			executados = append(executados, resultado.ID)
+		}
+	}
+	for i := len(executados) - 1; i >= 0; i-- {
+		origem := porID[executados[i]]
+		alvo := strings.TrimSpace(origem.CompensateWith)
+		if alvo == "" {
+			continue
+		}
+		passo, existe := porID[alvo]
+		if !existe {
+			report.Steps = append(report.Steps, ScheduleStepOutcome{
+				ID:     alvo,
+				Status: ScheduleStepCompensationFailed,
+				Reason: "compensação declarada em " + executados[i] + " aponta para passo inexistente",
+			})
+			report.DeadLetters = append(report.DeadLetters, ScheduleStepDeadLetter{
+				StepID:   alvo,
+				Reason:   "compensação ausente: referência inválida declarada por " + executados[i],
+				FailedAt: time.Now().UTC(),
+			})
+			continue
+		}
+		// A compensação roda sozinha: sem DependsOn (ela não depende do grafo normal) e com o gatilho do
+		// fluxo junto, para passar pela MESMA validação de qualquer execução.
+		// A compensação roda sozinha, mas o validador exige que todo passo de AÇÃO tenha ao menos uma
+		// dependência: ela depende do GATILHO (que conclui sem efeito), não do grafo normal. Sem gatilho no
+		// fluxo, um gatilho próprio é criado para a execução da compensação.
+		sub := schedule
+		sub.Steps = make([]ScheduleStep, 0, 2)
+		dependencia := "compensacao-gatilho"
+		if gatilho != nil {
+			dependencia = strings.TrimSpace(gatilho.ID)
+			sub.Steps = append(sub.Steps, *gatilho)
+		} else {
+			sub.Steps = append(sub.Steps, ScheduleStep{ID: dependencia, Kind: ScheduleStepTriggerInterval})
+		}
+		passo.DependsOn = []string{dependencia}
+		sub.Steps = append(sub.Steps, passo)
+
+		resultado, err := r.executeScheduleFlowInner(ctx, sub, runKey+":comp:"+alvo, nil, nil, nil)
+		if err != nil {
+			report.Steps = append(report.Steps, ScheduleStepOutcome{
+				ID:     alvo,
+				Kind:   string(passo.Kind),
+				Status: ScheduleStepCompensationFailed,
+				Reason: err.Error(),
+			})
+			report.DeadLetters = append(report.DeadLetters, ScheduleStepDeadLetter{
+				StepID:   alvo,
+				Kind:     string(passo.Kind),
+				Reason:   "falha ao compensar " + executados[i] + ": " + err.Error(),
+				FailedAt: time.Now().UTC(),
+			})
+			continue
+		}
+		report.Steps = append(report.Steps, ScheduleStepOutcome{
+			ID:     alvo,
+			Kind:   string(passo.Kind),
+			Status: ScheduleStepCompensated,
+			Reason: "compensação de " + executados[i] + " aplicada",
+		})
+		report.Missions += resultado.Missions
+	}
+	return report
+}
+
 func (r *Runtime) ExecuteScheduleFlow(ctx context.Context, schedule Schedule) (int, error) {
 	report, err := r.ExecuteScheduleFlowReport(ctx, schedule)
 	return report.Missions, err
@@ -551,7 +653,7 @@ func (r *Runtime) ExecuteScheduleFlowReport(ctx context.Context, schedule Schedu
 //     reexecutados, para que as dependências deles continuem satisfeitas;
 //   - carryOver preserva no relatório novo o resultado dos passos pulados;
 //   - execute limita quais passos rodam agora (nil = todos).
-func (r *Runtime) executeScheduleFlow(ctx context.Context, schedule Schedule, runKey string, seedOutcomes map[string]bool, carryOver map[string]ScheduleStepOutcome, execute map[string]bool) (ScheduleRunReport, error) {
+func (r *Runtime) executeScheduleFlowInner(ctx context.Context, schedule Schedule, runKey string, seedOutcomes map[string]bool, carryOver map[string]ScheduleStepOutcome, execute map[string]bool) (ScheduleRunReport, error) {
 	report := ScheduleRunReport{Steps: make([]ScheduleStepOutcome, 0, len(schedule.Steps)), RunKey: runKey, FlowVersion: schedule.FlowVersion}
 	if len(schedule.Steps) == 0 {
 		if _, err := r.createScheduledMission(ctx, schedule, schedule.Objective); err != nil {
