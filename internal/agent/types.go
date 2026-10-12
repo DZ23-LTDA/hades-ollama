@@ -103,10 +103,15 @@ type Mission struct {
 	// Usage leva o consumo real de modelo (tokens e custo) para dentro do registro da
 	// missão. Sem isto, o custo ficava só no catálogo de provedores e a linha do tempo
 	// não conseguia responder "quanto custou esta missão".
-	Usage       *ModelUsage `json:"usage,omitempty"`
-	CreatedAt   time.Time   `json:"created_at"`
-	UpdatedAt   time.Time   `json:"updated_at"`
-	CompletedAt *time.Time  `json:"completed_at,omitempty"`
+	Usage *ModelUsage `json:"usage,omitempty"`
+	// UsageOrigin diz DE ONDE veio o consumo registrado em Usage. Hoje só existe a origem
+	// "planning": a chamada de planejamento produz o plano INTEIRO e não há chamada de modelo por
+	// etapa. Sem esta marca, um custo único poderia ser lido como se estivesse distribuído por
+	// etapa — rateio que ninguém mediu.
+	UsageOrigin string     `json:"usage_origin,omitempty"`
+	CreatedAt   time.Time  `json:"created_at"`
+	UpdatedAt   time.Time  `json:"updated_at"`
+	CompletedAt *time.Time `json:"completed_at,omitempty"`
 }
 
 type Step struct {

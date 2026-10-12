@@ -57,6 +57,10 @@ func centavosArredondadosParaCima(tokens int, centsPer1K int64) int64 {
 // AddModelUsage acumula dois consumos. O custo só é declarado conhecido quando os DOIS
 // lados são conhecidos: somar um custo conhecido com um desconhecido produziria um total
 // que mente sobre a própria exatidão.
+// UsageOriginPlanning é a ÚNICA origem de consumo que existe hoje: a chamada de planejamento, que produz o plano
+// inteiro de uma vez. Declarar a origem evita que um custo único seja lido como custo POR ETAPA.
+const UsageOriginPlanning = "planning"
+
 func AddModelUsage(a, b ModelUsage) ModelUsage {
 	soma := ModelUsage{
 		Provider:         a.Provider,

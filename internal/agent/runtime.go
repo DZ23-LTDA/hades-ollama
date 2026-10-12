@@ -1198,6 +1198,8 @@ func (r *Runtime) CreateMission(ctx context.Context, request CreateMissionReques
 		return r.failMission(mission, err)
 	}
 	if consumoDePlanejamento.Calls > 0 {
+		// A origem acompanha o consumo: um custo sem origem declarada parece distribuído por etapa.
+		mission.UsageOrigin = UsageOriginPlanning
 		if mission.Usage == nil {
 			mission.Usage = &consumoDePlanejamento
 		} else {
