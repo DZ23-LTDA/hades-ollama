@@ -2,7 +2,7 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-15T17:10:00-03:00",
+  "updated_at": "2026-10-15T18:05:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
@@ -741,13 +741,14 @@
       "evidence": [
         "E-047",
         "E-087",
-        "E-107"
+        "E-107",
+        "E-232"
       ],
       "blocker": "B-05",
-      "next": "LIMITES: sem emissao fiscal (NF-e) nem integracao contabil, sem cobranca real (Pix/boleto sao apenas REFERENCIAS registradas, sem PSP nem transferencia), sem carrinho persistente, sem frete/entrega/devolucao, sem sincronizacao com marketplace/ERP e persistencia em memoria nesta rodada",
+      "next": "LIMITES REAIS (corrigidos na E-232): sem emissao fiscal (NF-e) nem integracao contabil, sem cobranca real (Pix/boleto sao apenas REFERENCIAS registradas, sem PSP nem transferencia), sem carrinho persistente, sem frete/entrega/devolucao e sem sincronizacao com marketplace/ERP. O item anterior 'persistencia em memoria nesta rodada' estava ERRADO: o motor persiste por organizacao (NewCommerceStoreAt + persistLocked) e o runtime usa o store persistente; ha teste de reinicio",
       "blocked_reason": "",
       "external_dependency": "meios de pagamento reais exigem conta e conformidade; o fluxo de comercio em sandbox e implementavel localmente",
-      "done": "COMMERCE ENGINE implementado: catalogo de produtos, ESTOQUE COMO LIVRO DE MOVIMENTOS (saldo derivado, entrada/reserva/liberacao/saida/ajuste), pedidos com CHECKOUT IDEMPOTENTE por chave sob o mesmo lock, RESERVA de estoque que impede vender o que nao existe, preco vindo do CATALOGO (o pedido nao escolhe quanto paga), quitacao por REFERENCIA sem dado de cartao (PAN recusado), conferencia de valor, conciliacao idempotente, atendimento que consome o fisico, cancelamento que devolve o estoque e resumo com receita. As ferramentas commerce.order.read e commerce.stock.read deixaram de ser bloqueadas para o agente de comercio",
+      "done": "COMMERCE ENGINE implementado: catalogo de produtos, ESTOQUE COMO LIVRO DE MOVIMENTOS (saldo derivado, entrada/reserva/liberacao/saida/ajuste), pedidos com CHECKOUT IDEMPOTENTE por chave sob o mesmo lock, RESERVA de estoque que impede vender o que nao existe, preco vindo do CATALOGO (o pedido nao escolhe quanto paga), quitacao por REFERENCIA sem dado de cartao (PAN recusado), conferencia de valor, conciliacao idempotente, atendimento que consome o fisico, cancelamento que devolve o estoque e resumo com receita. As ferramentas commerce.order.read e commerce.stock.read deixaram de ser bloqueadas para o agente de comercio IDEMPOTENCIA E CONCILIACAO SOBREVIVEM AO REINICIO (E-232): teste hermetico com TRES reinicios reais (novo CommerceStore sobre o mesmo diretorio) prova que o pedido persiste, que a MESMA chave de idempotencia devolve o MESMO pedido SEM duplicar a venda, que o livro de estoque fica identico (OnHand 10, Reserved 2, Available 8, 2 movimentos) e que quitacao e conciliacao continuam registradas e idempotentes.",
       "execution": "BLOCKED_BY_EXTERNAL_DEPENDENCY"
     },
     {
@@ -1763,7 +1764,9 @@
     "PENDENCIA DECLARADA - EVIDENCIAS SEM VINCULO DE ESTAGIO (13 de 230): o mestre exige, para cada evidencia, 'estagio e tarefa associados'. Medido: E-003, E-004, E-010, E-060, E-061, E-062, E-064, E-091, E-115, E-127, E-129, E-131, E-173 existem no indice mas NENHUM estagio as cita. Apenas tres sao inequivocamente atribuiveis pelo proprio texto (E-091 -> 18, E-129 -> 20, E-173 -> 22); as outras exigiriam julgamento. NAO VINCULEI POR CHUTE: inventar vinculo seria criar rastro falso. Fica como tarefa de passada dedicada",
     "VINCULO DE ESTAGIO VIROU INVARIANTE VERIFICADA (E-231): o mestre exige 'estagio e tarefa associados' em cada evidencia, e o checker NAO verificava isso - 13 linhas legadas ficaram orfas em silencio. Agora: linha sem vinculo E sem declaracao explicita vira PROBLEMA. A declaracao VINCULO_NAO_DECLARADO e o caminho honesto para o legado: registra a ausencia em vez de inventar um estagio. Dois testes provam os DOIS sentidos (acusa a orfa; aceita a declarada)",
     "O FIXTURE 'SAUDAVEL' DO PROPRIO CHECKER TINHA UMA LINHA ORFA (E-231): a evidencia E-003 existia no indice do fixture e nenhum estagio do fixture a citava. Ou seja, o teste que garantia 'fixture sem defeito passa' validava um caso que, pela regra nova, TEM defeito. Fortalecer o fixture (citar E-003) foi corrigir o teste, nao afrouxa-lo",
-    "TENTEI VINCULAR AS 13 LINHAS LEGADAS POR INFERENCIA E RECUSEI (E-231): os textos sugerem estagio 2 para boa parte (merge trains, dependabot, tipagem), mas o 'done' dos estagios NAO menciona esses artefatos - ou seja, nao ha prova do vinculo no estado. Reconstruir por plausibilidade seria inventar rastro. Ficaram DECLARADAS como sem vinculo, com a pendencia registrada"
+    "TENTEI VINCULAR AS 13 LINHAS LEGADAS POR INFERENCIA E RECUSEI (E-231): os textos sugerem estagio 2 para boa parte (merge trains, dependabot, tipagem), mas o 'done' dos estagios NAO menciona esses artefatos - ou seja, nao ha prova do vinculo no estado. Reconstruir por plausibilidade seria inventar rastro. Ficaram DECLARADAS como sem vinculo, com a pendencia registrada",
+    "IDEMPOTENCIA SO ATRAVES DO REINICIO PROVA ALGO (E-232): o motor de comercio tinha idempotencia por chave sob lock e teste de reinicio em outro fluxo (finance_ops), mas FALTAVA o caso critico do proprio checkout: reenviar a MESMA chave DEPOIS de reiniciar. Em memoria isso pareceria pedido novo e geraria cobranca e reserva duplicadas. Medido agora com TRES reinicios reais: mesmo pedido, sem duplicata, livro de estoque identico, quitacao e conciliacao preservadas",
+    "SEGUNDA SUBESTIMACAO DO PROPRIO ESTADO NO MESMO DIA (E-232): o 'next' do estagio 24 declarava 'persistencia em memoria nesta rodada', mas o codigo persiste por organizacao (NewCommerceStoreAt + persistLocked), o runtime usa o store persistente e ja havia teste de reinicio. Igual a E-230 (-race): o estado piorava o produto. Declarar limite inexistente tambem e registro falso"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
