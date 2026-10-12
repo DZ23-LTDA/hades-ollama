@@ -2,7 +2,7 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-14T20:30:00-03:00",
+  "updated_at": "2026-10-14T21:40:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
@@ -768,13 +768,14 @@
         "E-102",
         "E-118",
         "E-119",
-        "E-120"
+        "E-120",
+        "E-213"
       ],
       "blocker": "B-05",
       "next": "LIMITES: as rotas registram o envio e aplicam a politica, mas NAO entregam a proposta por provedor externo (depende do estagio 33, com credencial); sem desconto negociado, sem imposto/frete e pos-venda e acompanhamento com prazo",
       "blocked_reason": "",
       "external_dependency": "canais reais exigem contas; o CRM e a continuidade em sandbox sao locais",
-      "done": "CONSENTIMENTO E OPT-OUT com falha fechada nos DOIS caminhos de envio (E-101) e agora CRM REAL de contatos e oportunidades (E-102): deduplicacao por identidade normalizada incluindo o nono digito do celular brasileiro, recusa de contato sem identidade, funil com indicadores, fase terminal imutavel, consentimento LIDO do registro (nunca copiado) e rotas HTTP de concessao/revogacao que fecham o limite declarado em E-101. O comando /crm deixou de ser indisponivel e aponta para rota real | OPT-OUT AUTOMATICO (E-118): pedido de descadastro no texto RECEBIDO revoga o consentimento com a FRASE detectada como evidencia, o envio passa a ser recusado, pedir de novo e IDEMPOTENTE, mensagens comuns nao revogam e a DUPLA NEGACAO ('nao quero parar de receber') NAO revoga. A heuristica e ASSIMETRICA de proposito: so REVOGA, nunca concede, porque falso positivo bloqueia (barato e reversivel) e falso negativo continuaria enviando para quem pediu para parar (caro e irreversivel) | PROPOSTAS E POS-VENDA (E-119): proposta comercial com PRECO DO CATALOGO (total recalculado no servidor; SKU desconhecido e quantidade invalida sao erros), envio que EXIGE CONSENTIMENTO (quem fez opt-out nao recebe proposta), VIGENCIA respeitada, DECISAO TERMINAL e escrita com DESFAZIMENTO quando a persistencia falha; pos-venda com prazo padrao de 72h, IDEMPOTENTE por pedido e ATRASO CONTavel. Achado corrigido: writeJSONAtomic nao cria o diretorio, entao a primeira gravacao falhava e a proposta nunca era persistida | SUPERFICIE HTTP (E-120): 8 rotas em /sales/* com ciclo completo - criacao 201 (preco do catalogo, IGNORANDO unit_price_cents do corpo), envio 403 sem consentimento e 200 com consentimento, decisao 400 para valor desconhecido e 409 para repeticao ou vigencia vencida, SKU desconhecido 422, e pos-venda 201/400/409/404 com ATRASO CONSULTAVEL por ?overdue=true. DEFEITO DE API CORRIGIDO: ErrFollowUpInvalid misturava erro de ENTRADA e conflito de ESTADO e devolvia 409 para corpo invalido; separado em ErrFollowUpInvalid (400) e ErrFollowUpStateInvalid (409)",
+      "done": "ATRIBUICAO CORRIGIDA (E-213): o escopo FINANCE & OPERATIONS (master 30) tem modulo proprio - finance_ops.go e company_ledger.go (contas a receber, lancamento de receita/custo por pedido, livro-caixa, conciliacao com extrato, divergencias, relatorios e resumo; rotas /companies/:id/ledger*, /finance/orders/:id/revenue|cost; 11 funcoes de teste). LACUNAS INTERNAS DECLARADAS: cobrancas, orcamentos e integracoes fiscais nao evidenciados. | CONSENTIMENTO E OPT-OUT com falha fechada nos DOIS caminhos de envio (E-101) e agora CRM REAL de contatos e oportunidades (E-102): deduplicacao por identidade normalizada incluindo o nono digito do celular brasileiro, recusa de contato sem identidade, funil com indicadores, fase terminal imutavel, consentimento LIDO do registro (nunca copiado) e rotas HTTP de concessao/revogacao que fecham o limite declarado em E-101. O comando /crm deixou de ser indisponivel e aponta para rota real | OPT-OUT AUTOMATICO (E-118): pedido de descadastro no texto RECEBIDO revoga o consentimento com a FRASE detectada como evidencia, o envio passa a ser recusado, pedir de novo e IDEMPOTENTE, mensagens comuns nao revogam e a DUPLA NEGACAO ('nao quero parar de receber') NAO revoga. A heuristica e ASSIMETRICA de proposito: so REVOGA, nunca concede, porque falso positivo bloqueia (barato e reversivel) e falso negativo continuaria enviando para quem pediu para parar (caro e irreversivel) | PROPOSTAS E POS-VENDA (E-119): proposta comercial com PRECO DO CATALOGO (total recalculado no servidor; SKU desconhecido e quantidade invalida sao erros), envio que EXIGE CONSENTIMENTO (quem fez opt-out nao recebe proposta), VIGENCIA respeitada, DECISAO TERMINAL e escrita com DESFAZIMENTO quando a persistencia falha; pos-venda com prazo padrao de 72h, IDEMPOTENTE por pedido e ATRASO CONTavel. Achado corrigido: writeJSONAtomic nao cria o diretorio, entao a primeira gravacao falhava e a proposta nunca era persistida | SUPERFICIE HTTP (E-120): 8 rotas em /sales/* com ciclo completo - criacao 201 (preco do catalogo, IGNORANDO unit_price_cents do corpo), envio 403 sem consentimento e 200 com consentimento, decisao 400 para valor desconhecido e 409 para repeticao ou vigencia vencida, SKU desconhecido 422, e pos-venda 201/400/409/404 com ATRASO CONSULTAVEL por ?overdue=true. DEFEITO DE API CORRIGIDO: ErrFollowUpInvalid misturava erro de ENTRADA e conflito de ESTADO e devolvia 409 para corpo invalido; separado em ErrFollowUpInvalid (400) e ErrFollowUpStateInvalid (409)",
       "execution": "BLOCKED_BY_EXTERNAL_DEPENDENCY"
     },
     {
@@ -843,12 +844,13 @@
         "E-087",
         "E-097",
         "E-110",
-        "E-111"
+        "E-111",
+        "E-213"
       ],
       "blocker": "B-05",
       "next": "LIMITES: o HISTORICO dos ciclos segue em memoria (ele e a trilha analitica, nao a decisao), o ciclo e acionado por rota ou pelo agendador existente (sem loop proprio com lease), o estorno e registro CONTABIL sem transferencia real de dinheiro, nao ha precificacao dinamica nem promocoes, e marketplaces e redes sociais nao sao coordenados (conta autorizada)",
       "blocked_reason": "",
-      "done": "SUPERVISOR AUTONOMO DE NEGOCIO com recuperacao PERSISTENTE: acoes e decisoes, politica vigente, orcamento consumido e contagem de ciclos sobrevivem a um REINICIO REAL (novo runtime sobre o mesmo diretorio de dados). A pendencia de aprovacao continua a MESMA e pode ser decidida depois do reinicio com efeito real; recusa registrada NAO volta a pendente e a decisao original prevalece; o orcamento gasto nao e devolvido (sem gastar duas vezes) e a numeracao dos ciclos continua. Diagnostico de dominios, acoes autonomas com efeito real, bloqueio por orcamento sem consumir e aprovacao humana exigindo ator seguem como antes",
+      "done": "ATRIBUICAO CORRIGIDA (E-213): a operacao de redes do master 36 tem modulo proprio - company_social.go (contas, rascunhos, APROVACAO, publicacao autorizada, metricas idempotentes e relatorio), company_marketplace.go (campanhas com agendamento e metricas) e marketplace_sync.go (sincronizacao de canais e estoque remoto); rotas /companies/:id/social/* e /companies/:id/campaigns/*. LACUNAS INTERNAS DECLARADAS: respostas por IA em redes e alertas nao evidenciados. | SUPERVISOR AUTONOMO DE NEGOCIO com recuperacao PERSISTENTE: acoes e decisoes, politica vigente, orcamento consumido e contagem de ciclos sobrevivem a um REINICIO REAL (novo runtime sobre o mesmo diretorio de dados). A pendencia de aprovacao continua a MESMA e pode ser decidida depois do reinicio com efeito real; recusa registrada NAO volta a pendente e a decisao original prevalece; o orcamento gasto nao e devolvido (sem gastar duas vezes) e a numeracao dos ciclos continua. Diagnostico de dominios, acoes autonomas com efeito real, bloqueio por orcamento sem consumir e aprovacao humana exigindo ator seguem como antes",
       "execution": "BLOCKED_BY_EXTERNAL_DEPENDENCY"
     },
     {
@@ -1660,7 +1662,10 @@
     "QUATRO PAREAMENTOS NAO CORRESPONDIAM AO CONTEUDO REAL (E-211): lendo o campo done de cada estagio, o 29 diz Telefonia mas entrega a CAIXA DE ENTRADA; o 31 diz Social mas entrega o SUPERVISOR AUTONOMO; o 35 e o inbox, nao os agentes de atendimento; o 27 e CRM/vendas, nao financas. Declarei LACUNA em vez de cobrir com decisao conveniente",
     "CINCO ESCOPOS DO MASTER SEM DONO (E-211), agora nomeados: 10 (paridade operacional ponta a ponta), 28 (VOICE & CALL CENTER), 30 (FINANCE & OPERATIONS), 35 (AGENTES DE ATENDIMENTO E VENDAS) e 36 (SOCIAL MEDIA E MARKETPLACE OPERACIONAL, na parte de redes). A colisao do master 37 virou DIVISAO DECLARADA (dois estagios do estado)",
     "LACUNA DO MASTER 35 FECHADA COM EVIDENCIA (E-212): a declaracao de lacuna estava certa quanto ao REGISTRO e errada quanto ao PRODUTO - o escopo AGENTES DE ATENDIMENTO E VENDAS esta implementado em internal/agent/service_agent*.go (ServiceAgentCatalog, RunTurn, aprovacoes com quorum, auditoria encadeada, conhecimento, ferramentas de comercio/empresa) com 85 testes PASS. A lacuna era de ATRIBUICAO",
-    "LICAO DE AUDITORIA (E-212): 'sem dono declarado' nao significa 'nao implementado'. Antes de abrir trabalho novo, procurar o modulo no codigo - o estado pode nao estar atribuindo codigo que existe"
+    "LICAO DE AUDITORIA (E-212): 'sem dono declarado' nao significa 'nao implementado'. Antes de abrir trabalho novo, procurar o modulo no codigo - o estado pode nao estar atribuindo codigo que existe",
+    "DUAS LACUNAS FECHADAS COM EVIDENCIA (E-213): master 30 (FINANCE & OPERATIONS) por finance_ops.go + company_ledger.go (contas a receber, livro-caixa, conciliacao, divergencias e relatorios) e master 36 (SOCIAL MEDIA E MARKETPLACE OPERACIONAL) por company_social.go + company_marketplace.go + marketplace_sync.go (publicacao SO com aprovacao, metricas idempotentes, campanhas e sincronizacao de marketplace). 18 testes PASS no filtro usado",
+    "COBERTURA PARCIAL DECLARADA, NAO TOTAL (E-213): fechar a lacuna NAO virou afirmar cobertura completa. Dentro do master 30 ficam declarados sem evidencia: cobrancas, orcamentos e integracoes fiscais. Dentro do master 36: respostas por IA em redes e alertas. O escopo do master e maior que o modulo",
+    "METODO QUE JA PAGOU DUAS VEZES (E-212/E-213): antes de declarar ausencia, procurar o modulo no codigo. Tres das cinco lacunas declaradas (35, 30 e 36) eram de ATRIBUICAO, nao de implementacao"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
