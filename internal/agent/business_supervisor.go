@@ -152,6 +152,9 @@ type businessSupervisorFile struct {
 	Ticks   int64                     `json:"ticks"`
 	Actions map[string]BusinessAction `json:"actions"`
 	Spent   map[string]int64          `json:"spent"`
+	// History e' a TRILHA ANALITICA dos ciclos (E-258). Ficava so em memoria e sumia no reinicio: um historico que
+	// nao sobrevive nao serve para recuperacao nem para o operador entender o que o supervisor decidiu.
+	History []BusinessTickResult `json:"history,omitempty"`
 }
 
 // BusinessSupervisor coordena os domínios sob política.
@@ -202,6 +205,12 @@ func NewBusinessSupervisorAt(root string, runtime *Runtime, policy SupervisorPol
 	if stored.Policy.BudgetCents != 0 || stored.Policy.MinAvailableUnits != 0 {
 		supervisor.policy = stored.Policy
 	}
+	// A trilha volta do disco com o MESMO teto do journal: carregar sem limite faria a memoria crescer sem controle.
+	if len(stored.History) > MaxSupervisorTickJournal {
+		supervisor.history = append([]BusinessTickResult(nil), stored.History[len(stored.History)-MaxSupervisorTickJournal:]...)
+	} else {
+		supervisor.history = append([]BusinessTickResult(nil), stored.History...)
+	}
 	supervisor.ticks = stored.Ticks
 	for id, action := range stored.Actions {
 		supervisor.actions[id] = action
@@ -232,6 +241,7 @@ func (b *BusinessSupervisor) persistLocked() error {
 		Ticks:   b.ticks,
 		Actions: map[string]BusinessAction{},
 		Spent:   map[string]int64{},
+		History: append([]BusinessTickResult(nil), b.history...),
 	}
 	for id, action := range b.actions {
 		payload.Actions[id] = action
@@ -527,7 +537,13 @@ func (b *BusinessSupervisor) BusinessTick(organizationID string, now time.Time) 
 	if len(b.history) > MaxSupervisorTickJournal {
 		b.history = b.history[len(b.history)-MaxSupervisorTickJournal:]
 	}
+	// E-258: a trilha precisa SOBREVIVER ao reinicio. O ciclo JA executou, entao o resultado e' devolvido junto com
+	// o erro: uma trilha que nao grava tem de ser VISIVEL, nunca silenciosa.
+	persistErr := b.persistLocked()
 	b.mu.Unlock()
+	if persistErr != nil {
+		return result, persistErr
+	}
 	return result, nil
 }
 
