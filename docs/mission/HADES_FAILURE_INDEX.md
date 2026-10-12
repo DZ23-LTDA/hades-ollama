@@ -9,7 +9,7 @@ Total: **17** — 8 em aberto · 9 resolvidos.
 
 | ID | Tipo | O que é |
 | --- | --- | --- |
-| B-02 | EXTERNO | Conta real logada em Codex/Claude para homologar harnesses |
+| B-02 | EXTERNO (MEDIDO: PARCIAL) | MEDIDO (E-204/E-205), nao suposto. O que o B-02 dizia ('conta real logada em Codex/Claude') esta parcialmente vencido: o CODEX esta INSTALADO e LOGADO (metodo chatgpt, tier account), o Gemini esta instalado SEM login, o OpenCode esta instalado com verificacao de login falhando, e Claude Code, Qwen Code, Copilot CLI e Cursor Agent estao AUSENTES. O que barra  |
 | B-03 | EXTERNO | Tokens reais de canais (Telegram bot token, WhatsApp) |
 | B-04 | EXTERNO | Provedor de telefonia/voz real |
 | B-05 | EXTERNO | Contas reais de marketplace/social/pagamento |
