@@ -2,12 +2,12 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-13T13:00:00-03:00",
+  "updated_at": "2026-10-13T14:00:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
     "integration_branch": "main",
-    "main_sha": "98ef63c22683bf82a22a3b9b46e6ddd69ca4e1c4",
+    "main_sha": "b917e45ac97f670e53aa77136d585fd23a22a2ae",
     "main_committed_at": "2026-10-09T10:24:45Z",
     "main_ci_state": "green (dz23-agentic-quality + class-a-plus-integrity = success nesse SHA)",
     "mission_branch": "docs/checkpoints-missao-v21",
@@ -573,11 +573,12 @@
         "E-012",
         "E-032",
         "E-130",
-        "E-139"
+        "E-139",
+        "E-182"
       ],
       "blocker": null,
-      "next": "LIMITES: sincronizar catalogo envia ZERO ITENS nesta tela (o servidor recusa com 400 e a interface mostra o motivo - montar itens sozinha seria inventar catalogo), sem e2e Playwright novo da jornada, sem segmentacao/criativo e sem publicacao real (BLOCKED_BY_EXTERNAL_DEPENDENCY)",
-      "done": " | CAMPANHAS E MARKETPLACES VISIVEIS NA INTERFACE (E-130): CompanyCampaignSchedulingPanel ligado ao Growth OS com tres regras de honestidade travadas por teste: NADA e exibido como publicado (a faixa mostra BLOCKED_BY_EXTERNAL_DEPENDENCY COM O MOTIVO, e a palavra 'no ar' nao aparece); CONTROLE SO APARECE QUANDO A ACAO E POSSIVEL (Agendar so para campanha aprovada e ainda nao agendada; Registrar metricas so para campanha que EXECUTOU, porque medir rascunho seria inventar resultado); e FALHA DO SERVIDOR APARECE COMO FALHA. O catalogo de marketplaces mostra o estado REAL (CONFIG_REQUIRED), Testado ao vivo: nao e o procedimento de desbloqueio. Verificado: 5/5 PASS no componente, suite web completa 83 arquivos / 556 testes PASS, tsc -b exit 0, eslint 0 erros e CONTRACT VERIFICATION PASSED",
+      "next": "ABERTO: a jornada roda contra backend de CONTRATO MINIMO, nao o binario completo servindo modelos; usuario automatizado (sem teste com pessoa real nem sessao de usabilidade observada); cobre a UI do shell, nao CLI nem desktop empacotado; e o pre-requisito de TEMP gravavel e do ambiente desta maquina",
+      "done": " | CAMPANHAS E MARKETPLACES VISIVEIS NA INTERFACE (E-130): CompanyCampaignSchedulingPanel ligado ao Growth OS com tres regras de honestidade travadas por teste: NADA e exibido como publicado (a faixa mostra BLOCKED_BY_EXTERNAL_DEPENDENCY COM O MOTIVO, e a palavra 'no ar' nao aparece); CONTROLE SO APARECE QUANDO A ACAO E POSSIVEL (Agendar so para campanha aprovada e ainda nao agendada; Registrar metricas so para campanha que EXECUTOU, porque medir rascunho seria inventar resultado); e FALHA DO SERVIDOR APARECE COMO FALHA. O catalogo de marketplaces mostra o estado REAL (CONFIG_REQUIRED), Testado ao vivo: nao e o procedimento de desbloqueio. Verificado: 5/5 PASS no componente, suite web completa 83 arquivos / 556 testes PASS, tsc -b exit 0, eslint 0 erros e CONTRACT VERIFICATION PASSED | ONBOARDING COMPROVADO (E-182): a lacuna era de CONSOLIDACAO, nao de capacidade - o repo JA tinha a jornada de 7 etapas (firstRun.spec.ts), um backend HTTP REAL do contrato do portao de onboarding e config que sobe o build real via vite preview com proxy de /api (SEM page.route), e o CI JA executava isso (passo Web E2E - primeira execucao). Executado localmente em navegador real: 2 passed (26,0s) com instalacao -> onboarding -> persistencia -> reinicio -> atualizacao -> rollback. Pre-requisito descoberto: TEMP do host nega remocao ao esbuild; apontar TMP/TEMP/TMPDIR para o workspace resolve. Matriz do gate corrigida: item 3 para DONE",
       "execution": "IN_PROGRESS"
     },
     {
@@ -1506,7 +1507,12 @@
     "RELATORIO E BLOQUEIOS NA CHECAGEM - DOIS PROBLEMAS REAIS (E-181): a extensao da checagem a HADES_STAGE_REPORT.md e HADES_BLOCKERS.md nao foi formalidade. (1) O relatorio tinha o item 127 DUPLICADO: 139 itens numerados para numeros 1..138, com o mesmo item da E-169 inserido duas vezes - numeracao AMBIGUA. (2) B-11 e B-12 estavam declarados no estado e AUSENTES do documento de bloqueios - impedimento que NINGUEM LE. Corrigidos: 138 itens (1..138, sem duplicata) e 11 bloqueios nos dois lados",
     "FALSO POSITIVO MEU, MEDIDO ANTES DE AJUSTAR (E-181): a primeira execucao acusou E-999 como evidencia fantasma, mas E-999 aparecia no texto do MEU proprio item da E-180 como EXEMPLO. Medicao: 1 ID entre crases (o exemplo) contra 110 entre parenteses (citacoes reais). Regra declarada: ID entre crases e MENCAO, nao CITACAO - texto entre crases e removido antes da varredura, e o custo fica dito (citacao real em crases escaparia)",
     "VERIFICADOR DE 9 PARA 19 TESTES (E-181): fixtures com item duplicado, buraco na numeracao, evidencia fantasma em texto normal, mencao entre crases que NAO pode virar problema, relatorio sem itens, paridade de bloqueios nos dois sentidos, e os documentos REAIS consistentes",
-    "LIMITES DA CHECAGEM DE DOCUMENTOS (E-181): confere NUMERACAO e CITACOES, nao CONTEUDO - item mal escrito, repetido em substancia ou descrevendo algo nao feito PASSA; a remocao do item duplicado foi decidida por TAMANHO (julgamento, nao medicao); a regra da crase e uma ESCOLHA; e o TEXTO de cada bloqueio (o procedimento de desbloqueio) continua MANUAL e nao validado"
+    "LIMITES DA CHECAGEM DE DOCUMENTOS (E-181): confere NUMERACAO e CITACOES, nao CONTEUDO - item mal escrito, repetido em substancia ou descrevendo algo nao feito PASSA; a remocao do item duplicado foi decidida por TAMANHO (julgamento, nao medicao); a regra da crase e uma ESCOLHA; e o TEXTO de cada bloqueio (o procedimento de desbloqueio) continua MANUAL e nao validado",
+    "ONBOARDING COMPROVADO - A LACUNA ERA DE CONSOLIDACAO (E-182): a matriz dizia NAO_COMPROVADO, mas verificar antes de construir mostrou que o repo JA tinha a jornada de 7 etapas (firstRun.spec.ts), um backend HTTP REAL do contrato do portao de onboarding (first-run-backend.mjs) e config que sobe o build real via vite preview com proxy de /api - SEM page.route, requisicao HTTP de verdade - e o CI JA rodava isso no passo 'Web E2E - primeira execucao'",
+    "ONBOARDING EXECUTADO EM NAVEGADOR REAL (E-182): npx playwright test --project=first-run -> 2 passed (26,0s), incluindo 'instalacao, onboarding, persistencia, reinicio, atualizacao e rollback' (1,9s), com o backend registrando GET/POST /api/v1/settings -> 200, POST /api/me -> 401 e GET /api/version -> 200",
+    "PRE-REQUISITO DE AMBIENTE REGISTRADO (E-182): a primeira tentativa falhou NO BUILD, nao no teste - [vite:esbuild-transpile] remove ...\\Temp\\esbuild-...: Acesso negado - porque o TEMP do host nega remocao ao esbuild. Apontar TMP/TEMP/TMPDIR para um diretorio do WORKSPACE resolve. E o mesmo tipo de obstaculo ja conhecido do lado Go (golangci-lint precisa de TMP/TEMP e APPDATA/LOCALAPPDATA no workspace)",
+    "MATRIZ DO GATE CORRIGIDA (E-182): item 3 (onboarding) passou de NAO_COMPROVADO para DONE com a evidencia E-182, e o --check passou a manter isso. Resumo: 17 DONE, 1 IN_PROGRESS, 3 BLOCKED_BY_EXTERNAL_DEPENDENCY e 3 NAO_COMPROVADO. Veredito global INALTERADO em NOT_RELEASE_READY",
+    "LIMITES DO ONBOARDING COMPROVADO (E-182): a jornada roda contra um backend de CONTRATO MINIMO, nao contra o binario completo servindo modelos - prova o portao de onboarding, a persistencia, o reinicio, a atualizacao e o rollback, NAO a instalacao de um pacote assinado nem o uso com modelo real; o 'usuario' e automatizado (Playwright), sem teste com pessoa real nem sessao de usabilidade observada; cobre a UI do shell, nao CLI nem desktop empacotado; e o pre-requisito de TEMP gravavel e do ambiente desta maquina"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",

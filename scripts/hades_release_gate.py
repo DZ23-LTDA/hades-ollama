@@ -41,7 +41,7 @@ RELATORIO = RAIZ / "docs/mission/HADES_RELEASE_REPORT.md"
 MATRIZ_ACEITE = [
     ("O Hades inicia corretamente", "DONE", "Suítes de runtime e inicialização verdes; nenhuma falha de startup pendente", "—"),
     ("A interface funciona", "DONE", "Contrato de frontend verificado por `scripts/verify-contracts.mjs` (job obrigatório do CI)", "—"),
-    ("O onboarding está validado", "NAO_COMPROVADO", "Não há teste de jornada de primeiro uso com usuário", "Executar a jornada de onboarding com evidência (estágio 19)"),
+    ("O onboarding está validado", "DONE", "E-182: jornada de primeira execução (instalação → onboarding → persistência → reinício → atualização → rollback) executada em **navegador real** sobre o SPA real com backend HTTP real (`npx playwright test --project=first-run` → **2 passed**), e o **CI já a roda** no passo `Web E2E — primeira execução`", "—"),
     ("Modelos locais são descobertos e usados", "DONE", "Descoberta e uso local com evidências no índice (estágio 4)", "—"),
     ("APIs externas configuradas são testadas e usadas", "BLOCKED_BY_EXTERNAL_DEPENDENCY", "B-07: chaves de provedor", "Credencial de provedor (estágio 4)"),
     ("A troca de modelo preserva contexto autorizado", "DONE", "Bootstrap de contexto reconstruído por modelo, com teste (estágio 5)", "—"),
