@@ -773,6 +773,11 @@ func (s *AuthStore) refreshOAuthCredential(ctx context.Context, organizationID s
 	credential, ok := s.credentials[credentialID]
 	s.mu.RUnlock()
 	if !ok {
+		// NÃO INFERÊNCIA (E-195): no caminho de TENANT a recusa de "não existe" precisa ser a mesma de "fora da
+		// organização"; sem tenant (chamada de sistema) não há de quem inferir e os.ErrNotExist permanece.
+		if organizationID != "" {
+			return OAuthCredential{}, errors.New("oauth credential is outside the active organization")
+		}
 		return OAuthCredential{}, os.ErrNotExist
 	}
 	if credential.Provider != provider.Name {
@@ -855,7 +860,8 @@ func (s *AuthStore) RevokeOAuthCredentialForOrganization(ctx context.Context, or
 	credential, ok := s.credentials[credentialID]
 	s.mu.RUnlock()
 	if !ok {
-		return os.ErrNotExist
+		// NÃO INFERÊNCIA (E-195): mesma recusa do ramo de organização.
+		return errors.New("oauth credential is outside the active organization")
 	}
 	if credential.OrganizationID != organizationID || credential.Provider != provider.Name {
 		return errors.New("oauth credential is outside the active organization")

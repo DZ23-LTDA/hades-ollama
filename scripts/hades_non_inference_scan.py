@@ -141,6 +141,85 @@ def detectar(nome: str, params: str, corpo: str) -> dict | None:
     return None
 
 
+# --------------------------------------------------------------------------------------------------------------
+# SEGUNDA FORMA: busca por MAPA (E-195).
+#
+# O detector acima procura um GETTER cujo erro é repassado cru. Ao verificar o único candidato que ele achava
+# (E-194), apareceu que a MESMA classe se repetia em SEIS métodos `*ForOrganization` — e o scanner era CEGO a eles
+# porque eles não chamam getter nenhum: fazem `x, ok := m.mapa[id]`. Uma lacuna de cobertura MEDIDA: o instrumento
+# achava 1 de 7 instâncias, o que dá falsa confiança.
+#
+# A forma procurada aqui é a assinatura do oráculo: o método tem DOIS portões ("não achei no mapa" e "não é da minha
+# organização") e cada portão devolve um erro DIFERENTE. Não importa qual erro é qual: recusas diferentes para a mesma
+# pergunta do tenant já entregam a existência do ID.
+# --------------------------------------------------------------------------------------------------------------
+IF_NOT_OK = re.compile(r"if\s+!\s*ok\s*\{")
+RETORNO_ERRO = re.compile(r"return\b[^\n]*?((?:Err|err)\w*[^\n,)]*)")
+COMPARA_ORG_METODO = re.compile(
+    r"pluginOwnedByOrganization\(|normalizedOrganizationID\(|consentScope\(|organizationID\s*!=|!=\s*organizationID"
+)
+
+
+def _erros_do_bloco(bloco: str) -> set[str]:
+    """Erros devolvidos por um bloco, normalizados (só o identificador/símbolo do erro)."""
+    erros: set[str] = set()
+    for linha in bloco.splitlines():
+        if "return" not in linha:
+            continue
+        pedaco = linha.split("return", 1)[1]
+        for simbolo in re.findall(r"(?:Err|err)\w*", pedaco):
+            erros.add(simbolo)
+        if not re.search(r"(?:Err|err)\w*", pedaco):
+            # `return nil, nil` ou `return` puro: registra para não confundir com "devolveu erro".
+            erros.add(pedaco.strip()[:24])
+    return erros
+
+
+def detectar_por_mapa_ok(corpo: str) -> dict | None:
+    """Detecta o oráculo em métodos cujo primeiro portão é uma busca por mapa (`if !ok`)."""
+    if not COMPARA_ORG_METODO.search(corpo):
+        return None
+    portao_mapa: set[str] | None = None
+    for porta in IF_NOT_OK.finditer(corpo):
+        chave = corpo.find("{", porta.end() - 1)
+        if chave < 0:
+            continue
+        bloco, _ = _bloco(corpo, chave)
+        erros = _erros_do_bloco(bloco)
+        if erros:
+            portao_mapa = erros
+            break
+    if not portao_mapa:
+        return None
+
+    # Segundo portão: o ramo que compara organização, LOGO DEPOIS do portão de mapa.
+    #
+    # A PROXIMIDADE E A ORDEM importam, e isso foi medido: sem elas o detector acusou `CreateOrder` e `CreateMission`,
+    # que são funções LONGAS com um `if !ok` de validação de um lado e uma comparação de organização legítima do
+    # outro. Acusar função longa por vizinhança textual é falso positivo — e falso positivo em ferramenta de auditoria
+    # custa a confiança que ela existe para dar.
+    posicao_mapa = corpo.find("if !ok")
+    for comparacao in COMPARA_ORG_METODO.finditer(corpo):
+        if comparacao.start() < posicao_mapa:
+            continue
+        if comparacao.start() - posicao_mapa > 600:
+            continue
+        chave = corpo.find("{", comparacao.end())
+        if chave < 0 or chave - comparacao.end() > 200:
+            continue
+        bloco, _ = _bloco(corpo, chave)
+        erros_org = _erros_do_bloco(bloco)
+        if not erros_org:
+            continue
+        if erros_org != portao_mapa:
+            return {
+                "motivo": "portões de mapa e de organização devolvem recusas DIFERENTES",
+                "ramo": f"mapa={sorted(portao_mapa)} organização={sorted(erros_org)}",
+            }
+        return None
+    return None
+
+
 def metodos_suspeitos(texto: str, arquivo: str) -> list[dict]:
     suspeitos: list[dict] = []
     for assinatura in ASSINATURA.finditer(texto):
@@ -148,6 +227,9 @@ def metodos_suspeitos(texto: str, arquivo: str) -> list[dict]:
         if not corpo:
             continue
         detalhe = detectar(assinatura.group("nome"), assinatura.group("params"), corpo)
+        if detalhe is None:
+            # Segunda forma (E-195): busca por mapa, que o primeiro detector não modela.
+            detalhe = detectar_por_mapa_ok(corpo)
         if detalhe is None:
             continue
         suspeitos.append(
