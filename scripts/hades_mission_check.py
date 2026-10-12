@@ -137,6 +137,26 @@ def verificar_mapa_de_estagios(estado: dict) -> tuple[list[str], list[str], dict
         )
     if divergentes:
         avisos.append(f"{divergentes} estágios do estado têm escopo divergente do master (dívida de governança declarada)")
+    # Quantas dessas divergências já têm DECISÃO registrada (o procedimento do mapa exige decisão por estágio)?
+    # A dívida continua VISÍVEL (o aviso acima permanece); o que se acrescenta é o placar do que falta decidir.
+    def _obs(linha: object) -> str:
+        try:
+            return str(linha[4])  # (id, titulo, masters, situacao, observacao)
+        except (TypeError, IndexError):
+            return ""
+
+    divergentes_do_mapa = [linha for linha in mapa.MAPA if _obs(linha).startswith("DECISAO_")]
+    cobertos = sum(1 for linha in divergentes_do_mapa if _obs(linha).startswith("DECISAO_A"))
+    lacunas = sum(1 for linha in divergentes_do_mapa if _obs(linha).startswith("DECISAO_B"))
+    sem_decisao = divergentes - len(divergentes_do_mapa)
+    avisos.append(
+        f"decisões por estágio divergente: {cobertos} cobertos (DECISAO_A), {lacunas} lacunas declaradas "
+        f"(DECISAO_B), {sem_decisao} SEM decisão — de {divergentes} divergências"
+    )
+    if lacunas:
+        avisos.append(
+            f"lacunas declaradas (escopo do master SEM dono no estado): {lacunas} — ver HADES_STAGE_MAP.md seção do mapa"
+        )
     resumo = {
         "estagios_sem_cobertura_no_master": len(sem_cobertura),
         "estagios_master_com_cobertura_dupla": len(duplicados),
