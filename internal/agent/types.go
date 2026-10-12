@@ -100,9 +100,13 @@ type Mission struct {
 	AutoRepair              bool               `json:"auto_repair,omitempty"`
 	MaxRepairTries          int                `json:"max_repair_tries,omitempty"`
 	LastError               string             `json:"last_error,omitempty"`
-	CreatedAt               time.Time          `json:"created_at"`
-	UpdatedAt               time.Time          `json:"updated_at"`
-	CompletedAt             *time.Time         `json:"completed_at,omitempty"`
+	// Usage leva o consumo real de modelo (tokens e custo) para dentro do registro da
+	// missão. Sem isto, o custo ficava só no catálogo de provedores e a linha do tempo
+	// não conseguia responder "quanto custou esta missão".
+	Usage       *ModelUsage `json:"usage,omitempty"`
+	CreatedAt   time.Time   `json:"created_at"`
+	UpdatedAt   time.Time   `json:"updated_at"`
+	CompletedAt *time.Time  `json:"completed_at,omitempty"`
 }
 
 type Step struct {

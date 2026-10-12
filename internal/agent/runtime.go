@@ -1181,9 +1181,24 @@ func (r *Runtime) CreateMission(ctx context.Context, request CreateMissionReques
 	if planner == nil {
 		return r.failMission(mission, errors.New("planner is not configured"))
 	}
+	// Consumo do planejamento: o destino é injetado ANTES da chamada e o resultado é
+	// anexado à missão logo depois, para que o custo/tokens entrem no registro que já
+	// vai ser persistido junto com o plano. Planejador que não reporta consumo não quebra.
+	var consumoDePlanejamento ModelUsage
+	if destino, ok := planner.(PlanUsageSink); ok {
+		destino.SetPlanUsageSink(&consumoDePlanejamento)
+	}
 	plan, err := planner.Plan(ctx, mission)
 	if err != nil {
 		return r.failMission(mission, err)
+	}
+	if consumoDePlanejamento.Calls > 0 {
+		if mission.Usage == nil {
+			mission.Usage = &consumoDePlanejamento
+		} else {
+			acumulado := AddModelUsage(*mission.Usage, consumoDePlanejamento)
+			mission.Usage = &acumulado
+		}
 	}
 	plan, err = normalizeSteps(plan)
 	if err != nil {

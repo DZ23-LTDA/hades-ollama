@@ -430,9 +430,10 @@ func newDefaultAgentRuntime() (*agent.Runtime, error) {
 	}
 	var planner agent.Planner = agent.RulePlanner{}
 	if model := strings.TrimSpace(os.Getenv("OLLAMA_AGENT_MODEL")); model != "" {
-		planner = agent.OllamaPlanner{
+		planner = &agent.OllamaPlanner{
 			Client: api.NewClient(envconfig.ConnectableHost(), newServerEgressClient("server.agent.ollama_local", true)),
 			Model:  model,
+			Price:  agent.LocalModelPrice(),
 		}
 	}
 	runtime, err := agent.NewRuntime(agent.RuntimeConfig{Store: store, Context: contextStore, Company: companyStore, Planner: planner, WorkspaceRoot: workspaceRoot, DataRoot: storeRoot, Connectors: connectors, MCP: mcp, RemoteMCP: remoteMCP, Media: media, RedisQueue: redisQueue, Telemetry: telemetry, Push: push, Deployments: deployments})
