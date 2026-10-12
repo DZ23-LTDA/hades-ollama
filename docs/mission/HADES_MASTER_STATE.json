@@ -2,7 +2,7 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-13T17:30:00-03:00",
+  "updated_at": "2026-10-13T18:30:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
@@ -269,11 +269,12 @@
         "E-116",
         "E-138",
         "E-142",
-        "E-143"
+        "E-143",
+        "E-186"
       ],
       "blocker": "B-09",
       "next": "LIMITES: a INTERMITENCIA segue NAO REPRODUZIDA (5 rodadas paralelas + 40 execucoes); restam 12 ocorrencias de ', _ :=' na preparacao de testes do proprio builder_studio_routes_test.go (varredura mecanica pendente, de baixo risco); e o instrumento da campanha tinha ExitCode vazio - o resultado foi aceito pelos ARTEFATOS (ok nas saidas e PASS=10 nos quatro arquivos), nao pelo codigo de saida",
-      "done": " | INTERMITENCIA DE E-118: CAMPANHA SOB CARGA E CAUSA ENDURECIDA (E-138): 5 rodadas das suites completas de internal/agent e server EM PARALELO (0 falhas; 57,9s a 108,4s por rodada) e 4 instancias simultaneas de -count=10 no teste especifico (40 execucoes, 0 falhas). A FALHA NAO FOI REPRODUZIDA. Endurecimento da causa do relato opaco: o teste ENGOLLA os erros de preparacao (builder, project, runtime) e um setup falho sob pressao virava PANIC - falha sem causa legivel; agora cada erro tem t.Fatalf. Assercoes endurecidas: antes aceitava QUALQUER codigo != 200 (inclusive 404/500); agora exige 501 EXATO e o motivo declarado. HIPOTESE REFUTADA POR SONDA TEMPORARIA: com ID vazio a rota responde 501 de qualquer forma (o handler recusa antes de consultar o projeto), entao o risco NAO era 'teste que nao testa nada' - o comentario foi corrigido para dizer a verdade",
+      "done": " | INTERMITENCIA DE E-118: CAMPANHA SOB CARGA E CAUSA ENDURECIDA (E-138): 5 rodadas das suites completas de internal/agent e server EM PARALELO (0 falhas; 57,9s a 108,4s por rodada) e 4 instancias simultaneas de -count=10 no teste especifico (40 execucoes, 0 falhas). A FALHA NAO FOI REPRODUZIDA. Endurecimento da causa do relato opaco: o teste ENGOLLA os erros de preparacao (builder, project, runtime) e um setup falho sob pressao virava PANIC - falha sem causa legivel; agora cada erro tem t.Fatalf. Assercoes endurecidas: antes aceitava QUALQUER codigo != 200 (inclusive 404/500); agora exige 501 EXATO e o motivo declarado. HIPOTESE REFUTADA POR SONDA TEMPORARIA: com ID vazio a rota responde 501 de qualquer forma (o handler recusa antes de consultar o projeto), entao o risco NAO era 'teste que nao testa nada' - o comentario foi corrigido para dizer a verdade | DOCUMENTOS OBRIGATORIOS DA SECAO 5 (E-186): a checagem passou a exigir os documentos que a secao 5 nomeia, e acusou DOIS ausentes neste estagio (HADES_BASELINE_REPORT.md e HADES_FAILURE_INDEX.md). Ambos passaram a ser GERADOS por scripts/hades_baseline_report.py a partir de fatos verificaveis (suites com comando reproduzivel; falhas derivadas do estado), com --check no CI para nao envelhecer",
       "execution": "IN_PROGRESS"
     },
     {
@@ -1535,7 +1536,11 @@
     "NOVO LIMITE B-14 (E-184): a execucao de plugin exige PRIVILEGIO DE MONTAGEM - mesmo best-effort faz mount/chroot (tools.go: mount --make-rprivate, mount --bind, tmpfs, chroot/unshare). Fora disso o sintoma e 'exit status 1' com stdout e stderr VAZIOS (falha silenciosa). Desbloqueio: host com namespaces de montagem + propagar o stderr do launcher",
     "O ITEM DE PLUGINS CONTINUA NAO_COMPROVADO (E-184), com motivo mais preciso: instalacao, assinatura, integridade e EXTRACAO SEGURA estao comprovadas; a EXECUCAO nao pode ser exercitada em nenhum ambiente disponivel. O que mudou: o defeito que a impedia foi CORRIGIDO e ha teste contra regressao",
     "DIAGNOSTICO DE FALHA DE PLUGIN CORRIGIDO (E-185, B-14): a 'falha silenciosa' nao era do sandbox - o executor sempre devolveu stderr no Value, mas o RUNTIME DE PLUGIN descartava o Output no caminho de erro. Agora a falha propaga stdout/stderr e o sandbox publica exit_code (via exec.ExitError). Medido no container: exit_code=1 stderr='unshare: unshare failed: Operation not permitted'. O pre-requisito de host (namespaces de montagem) CONTINUA aberto",
-    "TESTE QUE TRAVA O DIAGNOSTICO (E-185): TestPluginExecutionFailureCarriesSandboxDiagnostics usa process.exit(3) e exige registro de auditoria sem sucesso, erro, diagnostico com stderr (ou exit_code) e trilha de auditoria; imprime o stderr no log para o CI mostrar a razao. PASS no Linux, SKIP declarado no Windows"
+    "TESTE QUE TRAVA O DIAGNOSTICO (E-185): TestPluginExecutionFailureCarriesSandboxDiagnostics usa process.exit(3) e exige registro de auditoria sem sucesso, erro, diagnostico com stderr (ou exit_code) e trilha de auditoria; imprime o stderr no log para o CI mostrar a razao. PASS no Linux, SKIP declarado no Windows",
+    "DOCUMENTOS OBRIGATORIOS DA SECAO 5 VIRARAM CHECAGEM (E-186): o verificador ganhou a tabela DOCUMENTOS_OBRIGATORIOS_POR_ESTAGIO (estagio 1, 2 e 22) e a exigencia de pelo menos uma evidencia por estagio. Contra o repositorio REAL, acusou DOIS documentos ausentes exigidos pelo estagio 2: docs/mission/HADES_BASELINE_REPORT.md e docs/mission/HADES_FAILURE_INDEX.md",
+    "BASELINE E INDICE DE FALHAS GERADOS, NAO ESCRITOS A MAO (E-186): scripts/hades_baseline_report.py gera os dois a partir de fatos verificaveis (suites com comando reproduzivel e resultado observado; falhas derivadas de HADES_MASTER_STATE.json), com --check no CI como o gate de release. Escrever a mao seria decoracao e voltaria a divergir",
+    "ERRO MEU NO GERADOR, PEGO NA HORA (E-186): a primeira versao classificava bloqueio resolvido por SUBSTRING e B-14 (tipo 'AMBIENTE (DIAGNOSTICO RESOLVIDO)') caiu como RESOLVIDO. Trocado por regra explicita (startswith), porque limite PARCIALMENTE resolvido nao e limite fechado - esconder isso seria o defeito que o indice evita",
+    "TESTES DA REGRA NOVA (E-186): 6 testes em scripts/hades_mission_check_docs_test.py, com caso de FALHA e de SUCESSO (raiz vazia acusa; fixture completa passa; diretorio com nome de documento e recusado; repositorio real cumpre; estagio sem evidencia e problema; raiz ausente nao quebra os 19 testes antigos)"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
