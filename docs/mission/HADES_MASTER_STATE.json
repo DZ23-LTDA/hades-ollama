@@ -2,7 +2,7 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-14T12:50:00-03:00",
+  "updated_at": "2026-10-14T13:40:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
@@ -339,8 +339,10 @@
       "auditoria": "AUDITADO",
       "capability": "AUSENTE",
       "evidence": [
+        "E-025",
         "E-041",
-        "E-025"
+        "E-204",
+        "E-205"
       ],
       "blocker": "B-01",
       "next": "Merge do PR #62 (harness.cli governado) e prova de aprovacao obrigatoria; em main nao existe runtime de harness",
@@ -997,8 +999,8 @@
     },
     {
       "id": "B-02",
-      "tipo": "EXTERNO",
-      "descricao": "Conta real logada em Codex/Claude para homologar harnesses"
+      "tipo": "EXTERNO (MEDIDO: PARCIAL)",
+      "descricao": "MEDIDO (E-204/E-205), nao suposto. O que o B-02 dizia ('conta real logada em Codex/Claude') esta parcialmente vencido: o CODEX esta INSTALADO e LOGADO (metodo chatgpt, tier account), o Gemini esta instalado SEM login, o OpenCode esta instalado com verificacao de login falhando, e Claude Code, Qwen Code, Copilot CLI e Cursor Agent estao AUSENTES. O que barra a sessao real nao e a conta: (a) o executavel NAO esta no PATH (o adaptador resolve por LookPath) e o unico binario e a build do plugin app-server (codex-cli 0.162.0-alpha.17.2); (b) quando autorizado, o caminho governado EXECUTA `codex.exe exec <prompt>` com ambiente allowlist-without-credentials e dlp=0, mas a CLI real falha com 'Acesso negado (os error 5)' ao criar os proprios aliases de PATH em ~/.codex/tmp/arg0 e inicializar o app-server in-process. DESBLOQUEIO (barato, node/npm presentes): npm install -g @openai/codex para ter a CLI no PATH e repetir com OLLAMA_AGENT_REAL_CLI=codex. Instrumento pronto: internal/agent/cli_harness_real_session_test.go (opt-in; pula por padrao para nao quebrar o CI)."
     },
     {
       "id": "B-03",
@@ -1626,7 +1628,10 @@
     "B-09 CORRIGIDO POR MEDICAO (E-202): a descricao declarava '4 testes' com premissa de 'host sem Python/sh'. Medido: Python 3.12.10 EXISTE, bash esta no PATH, e o numero real e 45 funcoes de teste - onze vezes o declarado. O defeito era de FIDELIDADE do registro, e era grande",
     "CAUSA RAIZ DO B-09 (E-202): host sem compilador C => CGO_ENABLED=0 => go-sqlite3 stub. Nao e defeito de produto: app/server e app/store sao //go:build windows || darwin, entao o CONTAINER LINUX NAO E PROCEDIMENTO VALIDO (ele exclui o pacote) e o CI com compilador C passa. Procedimento local: mingw-w64 + CGO_ENABLED=1",
     "K8G36CUP3S RESOLVIDO POR MEDICAO (E-203): e o TEAM ID - aparece como UID, OU e no CN do certificado 'Apple Distribution: leandro prado (K8G36CUP3S)', e o Issuer ID.txt confirma 'APPLE_TEAM_ID = K8G36CUP3S'. Eu havia levantado a hipotese (Key ID ou Team ID); a medicao decidiu",
-    "CERTIFICADO IDENTIFICADO E LIMITADO (E-203): distribution.cer e 'Apple Distribution' (EKU Code Signing, ate 2027-08-13) e NAO contem chave privada. Serve para App Store/TestFlight; notarizar DMG fora da loja exige Developer ID Application. A CI precisa de um .p12 (cert + chave) exportado do Keychain"
+    "CERTIFICADO IDENTIFICADO E LIMITADO (E-203): distribution.cer e 'Apple Distribution' (EKU Code Signing, ate 2027-08-13) e NAO contem chave privada. Serve para App Store/TestFlight; notarizar DMG fora da loja exige Developer ID Application. A CI precisa de um .p12 (cert + chave) exportado do Keychain",
+    "B-02 MEDIDO (E-204): nao era 'falta login'. O Codex esta instalado E LOGADO (chatgpt/account); Gemini instalado sem login; OpenCode com verificacao de login falhando; Claude Code, Qwen, Copilot e Cursor ausentes. O que barra e o binario: nao esta no PATH e o unico existente e a build do plugin app-server",
+    "SESSAO REAL DE CLI GANHOU INSTRUMENTO OPT-IN (E-205): sem OLLAMA_AGENT_REAL_CLI o teste PULA (CI hermetico); autorizado, ele exercita o caminho governado. O governador executa 'codex.exe exec <prompt>' com ambiente allowlist-without-credentials e dlp=0, mas a CLI real falha com 'Acesso negado (os error 5)' no bootstrap dela - duas causas candidatas declaradas, nenhuma defeito do Hades",
+    "ERRO QUE EU QUASE COMETI (E-205): o teste usava t.TempDir() e eu ia culpar o adaptador; a execucao DIRETA do binario mostrou a mensagem verdadeira ('Not inside a trusted directory'). Corrigi criando um repositorio git de verdade em vez de afrouxar a verificacao do CLI com --skip-git-repo-check"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",

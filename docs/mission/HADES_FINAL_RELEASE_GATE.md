@@ -54,7 +54,7 @@ Resumo: BLOCKED_BY_EXTERNAL_DEPENDENCY: 3 · DONE: 17 · IN_PROGRESS: 1 · NAO_C
 
 | ID | Descrição | Detalhe |
 | --- | --- | --- |
-| B-02 | Conta real logada em Codex/Claude para homologar harnesses | ver HADES_BLOCKERS.md |
+| B-02 | MEDIDO (E-204/E-205), nao suposto. O que o B-02 dizia ('conta real logada em Codex/Claude') esta parcialmente vencido: o CODEX esta INSTALADO e LOGADO (metodo c | ver HADES_BLOCKERS.md |
 | B-03 | Tokens reais de canais (Telegram bot token, WhatsApp) | ver HADES_BLOCKERS.md |
 | B-04 | Provedor de telefonia/voz real | ver HADES_BLOCKERS.md |
 | B-05 | Contas reais de marketplace/social/pagamento | ver HADES_BLOCKERS.md |
