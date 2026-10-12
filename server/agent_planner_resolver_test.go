@@ -28,6 +28,11 @@ func TestMultiProviderPlannerResolverSelectsRegisteredModel(t *testing.T) {
 	if !ok {
 		t.Fatalf("planner type = %T, want *agent.OllamaPlanner", planner)
 	}
+	// O ponteiro existe para o runtime injetar o destino do consumo. Se o planejador deixar
+	// de aceitar o destino, o custo/tokens voltam a se perder sem nenhum erro visivel.
+	if _, ok := planner.(agent.PlanUsageSink); !ok {
+		t.Fatalf("planner %T nao aceita destino de consumo (PlanUsageSink)", planner)
+	}
 	if selected.Model != "anthropic/claude-sonnet-4-5" {
 		t.Fatalf("planner model = %q", selected.Model)
 	}
