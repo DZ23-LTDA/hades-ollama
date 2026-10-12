@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -76,10 +77,20 @@ func TestInferenciaRealPorProvedorEhOptIn(t *testing.T) {
 		modelo = "llama-3.1-8b-instant" // modelo pequeno e barato, adequado a um teste de caminho
 	}
 
+	// Orçamento de saída configurável. O padrão era 8, o que fazia MODELOS DE RACIOCÍNIO
+	// (ex.: gpt-oss no Groq) gastarem tudo no reasoning e devolverem content vazio — o teste
+	// então acusava "200 sem conteúdo" como se fosse falha do provedor. Era falha do instrumento.
+	limiteDeSaida := 64
+	if configurado := strings.TrimSpace(os.Getenv("OLLAMA_AGENT_REAL_MAX_TOKENS")); configurado != "" {
+		if valor, err := strconv.Atoi(configurado); err == nil && valor > 0 {
+			limiteDeSaida = valor
+		}
+	}
+
 	corpo := map[string]any{
 		"model":      modelo,
 		"messages":   []map[string]string{{"role": "user", "content": "Responda apenas: OK"}},
-		"max_tokens": 8,
+		"max_tokens": limiteDeSaida,
 		"stream":     false,
 	}
 	bruto, err := json.Marshal(corpo)
