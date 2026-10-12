@@ -283,13 +283,100 @@ func (s *MarketplaceSyncStore) Sync(request MarketplaceSyncRequest, now time.Tim
 	defer s.mu.Unlock()
 	s.loadLocked(organizationID)
 
+	// -----------------------------------------------------------------------------------------------------------
+	// PULL DE PEDIDO AGRUPADO POR ID EXTERNO (E-270)
+	// -----------------------------------------------------------------------------------------------------------
+	//
+	// Um pedido do canal com varios SKUs e UM pedido, nao N. Antes, cada item criava uma ordem local separada: o
+	// cliente apareceria com dois pedidos e a logistica teria dois embarques. O grupo e persistido como um bloco:
+	// ou o pedido inteiro entra, ou nada dele entra.
+	pulados := map[string]bool{}
+	if direction == "pull" {
+		grupos := map[string][]MarketplaceSyncItem{}
+		ordem := []string{}
+		for _, item := range request.Items {
+			if !strings.EqualFold(strings.TrimSpace(item.Entity), MarketplaceEntityOrders) {
+				continue
+			}
+			externalID := strings.TrimSpace(item.ExternalID)
+			if externalID == "" {
+				return MarketplaceSyncReport{}, fmt.Errorf("%w: pedido do canal precisa do id externo", ErrMarketplaceSyncInvalid)
+			}
+			if _, visto := grupos[externalID]; !visto {
+				ordem = append(ordem, externalID)
+			}
+			grupos[externalID] = append(grupos[externalID], item)
+			pulados[fmt.Sprintf("%s|%d|%s", strings.TrimSpace(item.SKU), item.Version, externalID)] = true
+		}
+		if s.commerce == nil && len(ordem) > 0 {
+			return MarketplaceSyncReport{}, fmt.Errorf("%w: sem motor de comercio nao ha como registrar o pedido", ErrMarketplaceSyncInvalid)
+		}
+		for _, externalID := range ordem {
+			grupo := grupos[externalID]
+			orderKey := fmt.Sprintf("%s|%s|%s|%s", organizationID, channelID, MarketplaceEntityOrders, externalID)
+			if s.applied[orderKey] {
+				// IDEMPOTENCIA POR ID EXTERNO: o mesmo pedido do canal entra UMA vez, com TODAS as suas linhas.
+				for _, item := range grupo {
+					report.Skipped++
+					report.OperationsUsed++
+					report.Outcomes = append(report.Outcomes, MarketplaceSyncOutcome{
+						Entity: MarketplaceEntityOrders, SKU: strings.TrimSpace(item.SKU), Version: item.Version,
+						Result: MarketplaceResultSkipped, Detail: "pedido ja importado do canal",
+					})
+				}
+				continue
+			}
+			linhas := make([]CommerceOrderItem, 0, len(grupo))
+			for _, item := range grupo {
+				linhas = append(linhas, CommerceOrderItem{SKU: strings.TrimSpace(item.SKU), Quantity: item.Quantity})
+			}
+			pedido, err := s.commerce.CreateOrder(CommerceOrderRequest{
+				OrganizationID: organizationID,
+				Items:          linhas,
+				Currency:       "BRL",
+				IdempotencyKey: fmt.Sprintf("canal:%s:%s", channelID, externalID),
+			}, now)
+			if err != nil {
+				// BLOCO: se o pedido nao entra inteiro, o relatorio diz por que em CADA linha. Um pedido local
+				// parcial seria pior do que nenhum - faltaria mercadoria sem ninguem perceber.
+				for _, item := range grupo {
+					report.OperationsUsed++
+					report.Outcomes = append(report.Outcomes, MarketplaceSyncOutcome{
+						Entity: MarketplaceEntityOrders, SKU: strings.TrimSpace(item.SKU), Version: item.Version,
+						Result: MarketplaceResultConflict, Detail: "pedido do canal recusado: " + err.Error(),
+					})
+				}
+				report.Conflicts++
+				continue
+			}
+			s.applied[orderKey] = true
+			for _, item := range grupo {
+				report.Applied++
+				report.OperationsUsed++
+				report.Outcomes = append(report.Outcomes, MarketplaceSyncOutcome{
+					Entity: MarketplaceEntityOrders, SKU: strings.TrimSpace(item.SKU), Version: item.Version,
+					Result: MarketplaceResultApplied, Detail: "pedido local " + pedido.ID,
+				})
+			}
+		}
+	}
+
 	for _, item := range request.Items {
 		entity := strings.ToLower(strings.TrimSpace(item.Entity))
 		sku := strings.TrimSpace(item.SKU)
 		if sku == "" || entity == "" {
 			return MarketplaceSyncReport{}, fmt.Errorf("%w: item precisa de entidade e SKU", ErrMarketplaceSyncInvalid)
 		}
-		key := fmt.Sprintf("%s|%s|%s|%d", channelID, entity, sku, item.Version)
+		if entity == MarketplaceEntityOrders {
+			// JA TRATADO no agrupamento por id externo (E-270): repetir aqui criaria o pedido duas vezes.
+			if pulados[fmt.Sprintf("%s|%d|%s", sku, item.Version, strings.TrimSpace(item.ExternalID))] {
+				continue
+			}
+			return MarketplaceSyncReport{}, fmt.Errorf("%w: pedido do canal so entra por pull", ErrMarketplaceSyncInvalid)
+		}
+		// A ORGANIZACAO entra na chave: o indice de idempotencia NAO pode ser compartilhado entre tenants, senao
+		// o pedido de um cliente sumiria porque OUTRA empresa ja importou a mesma identificacao externa.
+		key := fmt.Sprintf("%s|%s|%s|%s|%d", organizationID, channelID, entity, sku, item.Version)
 		// IDEMPOTÊNCIA: a mesma versão não é aplicada duas vezes.
 		if s.applied[key] {
 			report.Skipped++
@@ -311,7 +398,7 @@ func (s *MarketplaceSyncStore) Sync(request MarketplaceSyncRequest, now time.Tim
 				return MarketplaceSyncReport{}, fmt.Errorf("%w: sem motor de comércio não há como registrar o pedido", ErrMarketplaceSyncInvalid)
 			}
 			// IDEMPOTÊNCIA POR ID EXTERNO (não por versão): o mesmo pedido do canal entra UMA vez.
-			orderKey := fmt.Sprintf("%s|%s|%s", channelID, entity, externalID)
+			orderKey := fmt.Sprintf("%s|%s|%s|%s", organizationID, channelID, entity, externalID)
 			if s.applied[orderKey] {
 				report.Skipped++
 				report.Outcomes = append(report.Outcomes, MarketplaceSyncOutcome{
