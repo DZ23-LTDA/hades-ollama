@@ -188,7 +188,7 @@ func safeAnchoredWorkspaceRelative(root *os.Root, raw string, allowRoot bool) (s
 }
 
 func (workspaceReadTool) Descriptor() ToolDescriptor {
-	return ToolDescriptor{Name: "workspace.read", Version: "1", Description: "Ler um arquivo do workspace autorizado", Risk: RiskRead, Scopes: []string{"workspace:read"}}
+	return ToolDescriptor{Name: "workspace.read", Version: "1", Description: "Ler um arquivo do workspace autorizado", Risk: RiskRead, Scopes: []string{"workspace:read"}, RequiredInputs: []string{"path"}}
 }
 
 func (workspaceReadTool) Execute(_ context.Context, toolContext ToolContext, input map[string]any) (ToolResult, error) {
@@ -218,7 +218,7 @@ func (workspaceReadTool) Execute(_ context.Context, toolContext ToolContext, inp
 type workspaceWriteTool struct{}
 
 func (workspaceWriteTool) Descriptor() ToolDescriptor {
-	return ToolDescriptor{Name: "workspace.write", Version: "2", Description: "Criar ou atualizar atomicamente arquivo do workspace após approval; overwrite exige SHA-256 observado e produz backup", Risk: RiskWrite, RequiresApproval: true, Scopes: []string{"workspace:write"}}
+	return ToolDescriptor{Name: "workspace.write", Version: "2", Description: "Criar ou atualizar atomicamente arquivo do workspace após approval; overwrite exige SHA-256 observado e produz backup", Risk: RiskWrite, RequiresApproval: true, Scopes: []string{"workspace:write"}, RequiredInputs: []string{"path"}}
 }
 
 func (workspaceWriteTool) Execute(_ context.Context, toolContext ToolContext, input map[string]any) (ToolResult, error) {

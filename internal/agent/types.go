@@ -170,6 +170,11 @@ type ToolDescriptor struct {
 	Risk             RiskClass `json:"risk"`
 	Scopes           []string  `json:"scopes,omitempty"`
 	RequiresApproval bool      `json:"requires_approval"`
+	// RequiredInputs declara os campos de input SEM os quais a etapa não executa. O runtime
+	// recusa no PLANEJAMENTO, nomeando etapa e campo, em vez de deixar o operador descobrir na
+	// execução (ex.: "anchored workspace path is required" não diz qual etapa nem qual campo
+	// faltou). Descritor sem RequiredInputs continua válido: zero valor = nenhuma exigência.
+	RequiredInputs []string `json:"required_inputs,omitempty"`
 }
 
 type ToolContext struct {

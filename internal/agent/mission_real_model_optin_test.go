@@ -74,7 +74,16 @@ func TestMissaoRealComModeloLocalPlanejaERegistraConsumo(t *testing.T) {
 		Workspace: root,
 	})
 	if err != nil {
-		t.Fatalf("missao real nao foi criada: %v", err)
+		// O modelo real pode devolver um plano plausível e inútil (já observado: `workspace.read`
+		// com input vazio). O comportamento CORRETO é recusar NO PLANEJAMENTO com erro que nomeie
+		// etapa, ferramenta e campo — nunca um erro obscuro na execução.
+		for _, exigido := range []string{"plano invalido", "workspace.read", "path"} {
+			if !strings.Contains(err.Error(), exigido) {
+				t.Fatalf("plano do modelo real foi recusado, mas o erro nao nomeia %q: %v", exigido, err)
+			}
+		}
+		t.Logf("plano do modelo real (%s) RECUSADO no planejamento com erro preciso: %v", modelo, err)
+		return
 	}
 	if len(missao.Plan) == 0 {
 		t.Fatal("modelo real nao produziu plano")
@@ -89,6 +98,9 @@ func TestMissaoRealComModeloLocalPlanejaERegistraConsumo(t *testing.T) {
 		t.Fatalf("modelo local deve ter custo zero CONHECIDO: %+v", missao.Usage)
 	}
 	t.Logf("plano do modelo real (%s): %d etapa(s); consumo: %+v", modelo, len(missao.Plan), *missao.Usage)
+	for _, etapa := range missao.Plan {
+		t.Logf("etapa planejada pelo modelo: kind=%q requer_aprovacao=%v input=%+v", etapa.Kind, etapa.RequiresApproval, etapa.Input)
+	}
 
 	// EXECUÇÃO NÃO HOMOLOGADA — declarada, não escondida. Com modelo real o planejamento passa e o
 	// consumo é registrado, mas a execução do plano devolve "anchored workspace path is required".

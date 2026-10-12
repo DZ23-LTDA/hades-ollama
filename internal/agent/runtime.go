@@ -1223,6 +1223,12 @@ func (r *Runtime) CreateMission(ctx context.Context, request CreateMissionReques
 		if err := r.capabilityPolicy.ValidateToolDescriptor(descriptor); err != nil {
 			return r.failMission(mission, err)
 		}
+		// Um plano que não traz os campos obrigatórios da ferramenta é recusado AQUI, com a
+		// etapa e o campo nomeados. Sem isto, o modelo devolve um plano plausível e o operador
+		// só descobre o problema na execução, com erro que não aponta a causa.
+		if err := ValidatePlanStepInputs(plan[index], descriptor); err != nil {
+			return r.failMission(mission, err)
+		}
 		plan[index].ToolDescriptorSHA256, err = toolDescriptorSHA256(descriptor)
 		if err != nil {
 			return r.failMission(mission, fmt.Errorf("fingerprint tool descriptor: %w", err))
