@@ -9,7 +9,7 @@
 | Número | Valor |
 | --- | --- |
 | Estágios | 38 |
-| Linhas de evidência no índice | 214 |
+| Linhas de evidência no índice | 215 |
 | `COMPLETED_VERIFIED` | 2 |
 | `IN_PROGRESS` | 15 |
 | `BLOCKED_BY_EXTERNAL_DEPENDENCY` | 21 |
@@ -38,15 +38,15 @@ relatório **declara a ausência** em vez de preencher com suposição.
 | --- | --- | --- | --- | --- | --- |
 | 1 | Auditoria total e inventario real | PARCIAL | IN_PROGRESS | — | E-001, E-002, E-021, E-023, E-036, E-187, E-188, E-211 |
 | 2 | Estabilizacao e consolidacao da base | PARCIAL | IN_PROGRESS | B-09 | E-011, E-013, E-014, E-015, E-016, E-017, E-116, E-138, E-142, E-143, E-186, E-197, E-202 |
-| 3 | Arquitetura canonica dos componentes | PARCIAL | IN_PROGRESS | — | E-037, E-040, E-043, E-044, E-045 |
-| 6 | Harness Runtime (execucao governada) | AUSENTE | IN_PROGRESS | B-01 | E-025, E-041, E-204, E-205, E-206, E-207, E-208 |
-| 7 | MCP Manager (servidores, ferramentas, escopos) | APENAS_CATALOGO | IN_PROGRESS | B-10 | E-018, E-019, E-026 |
+| 3 | Arquitetura canonica dos componentes | PARCIAL | IN_PROGRESS | — | E-037, E-040, E-043, E-044, E-045, E-215 |
+| 6 | Harness Runtime (execucao governada) | AUSENTE | IN_PROGRESS | B-01 | E-025, E-041, E-204, E-205, E-206, E-207, E-208, E-215 |
+| 7 | MCP Manager (servidores, ferramentas, escopos) | APENAS_CATALOGO | IN_PROGRESS | B-10 | E-018, E-019, E-026, E-215 |
 | 8 | Plugins e Skills | PARCIAL | IN_PROGRESS | B-14 | E-042, E-053, E-055, E-063, E-065, E-066, E-067, E-068, E-183, E-184, E-185, E-200 |
-| 9 | Agentes e subagentes (delegacao) | IMPLEMENTADO_NAO_HOMOLOGADO | IN_PROGRESS | — | E-043 |
+| 9 | Agentes e subagentes (delegacao) | IMPLEMENTADO_NAO_HOMOLOGADO | IN_PROGRESS | — | E-043, E-215 |
 | 10 | Mission Control multiagente (missoes, eventos, SSE, artefatos) | PARCIAL | IN_PROGRESS | — | E-020, E-027, E-103, E-214 |
 | 12 | Studio / Builder visual | IMPLEMENTADO_NAO_HOMOLOGADO | IN_PROGRESS | — | E-008, E-009, E-028, E-034, E-035, E-039, E-178 |
 | 14 | Browser Operator / computer-use | PARCIAL | IN_PROGRESS | B-09 | E-015, E-086 |
-| 17 | Workspace do agente (threads, artefatos, preview) | PARCIAL | IN_PROGRESS | — | E-027 |
+| 17 | Workspace do agente (threads, artefatos, preview) | PARCIAL | IN_PROGRESS | — | E-027, E-215 |
 | 18 | Seguranca, permissoes e multitenancy | IMPLEMENTADO_NAO_HOMOLOGADO | IN_PROGRESS | — | E-019, E-031, E-058, E-070, E-071, E-072, E-073, E-121, E-122, E-123, E-189, E-190, E-191, E-192, E-193, E-194, E-195, E… |
 | 19 | UX/onboarding e jornada de primeira execucao | IMPLEMENTADO_E_TESTADO | IN_PROGRESS | — | E-011, E-012, E-032, E-130, E-139, E-182 |
 | 21 | Benchmarks e comparativo competitivo | PARCIAL | IN_PROGRESS | — | E-021, E-054, E-117, E-160, E-161, E-164, E-165, E-166, E-167, E-168, E-169 |
@@ -56,10 +56,10 @@ relatório **declara a ausência** em vez de preencher com suposição.
 
 | # | Estágio | Capacidade | Execução | Bloqueio | Evidências |
 | --- | --- | --- | --- | --- | --- |
-| 4 | Model Gateway (roteamento, rotacao, fallback, orcamento) | IMPLEMENTADO_NAO_HOMOLOGADO | BLOCKED_BY_EXTERNAL_DEPENDENCY | B-07 | E-024, E-037, E-038, E-049, E-209, E-210 |
+| 4 | Model Gateway (roteamento, rotacao, fallback, orcamento) | IMPLEMENTADO_NAO_HOMOLOGADO | BLOCKED_BY_EXTERNAL_DEPENDENCY | B-07 | E-024, E-037, E-038, E-049, E-209, E-210, E-215 |
 | 5 | Context Bootstrap / contexto de projeto | PARCIAL | BLOCKED_BY_EXTERNAL_DEPENDENCY | B-07 | E-040, E-050, E-051, E-069 |
 | 11 | Paridade Codex/Claude (harnesses de codigo) | PARCIAL | BLOCKED_BY_EXTERNAL_DEPENDENCY | B-02 | E-025, E-046, E-116 |
-| 16 | Canais de IM (WhatsApp/Telegram/inbox unificado) | APENAS_ADAPTER | BLOCKED_BY_EXTERNAL_DEPENDENCY | B-03 | E-030 |
+| 16 | Canais de IM (WhatsApp/Telegram/inbox unificado) | APENAS_ADAPTER | BLOCKED_BY_EXTERNAL_DEPENDENCY | B-03 | E-030, E-215 |
 | 20 | Distribuicao e instaladores (Windows/macOS/Linux) | PARCIAL | BLOCKED_BY_EXTERNAL_DEPENDENCY | B-06 | E-022, E-113, E-199, E-201, E-203 |
 | 23 | Company Factory (empresa orquestrada) | PARCIAL | BLOCKED_BY_EXTERNAL_DEPENDENCY | B-07 | E-044, E-087, E-114 |
 | 24 | CRM e pipeline de vendas | PARCIAL | BLOCKED_BY_EXTERNAL_DEPENDENCY | B-05 | E-047, E-087, E-107 |
@@ -74,8 +74,8 @@ relatório **declara a ausência** em vez de preencher com suposição.
 | 33 | Canal Telegram | APENAS_ADAPTER | BLOCKED_BY_EXTERNAL_DEPENDENCY | B-03 | E-030, E-045, E-103 |
 | 34 | Canal WhatsApp | PARCIAL | BLOCKED_BY_EXTERNAL_DEPENDENCY | B-03 | E-045, E-105, E-141, E-170, E-171, E-172, E-174, E-175, E-176, E-177 |
 | 35 | Inbox unificado omnicanal | PARCIAL | BLOCKED_BY_EXTERNAL_DEPENDENCY | B-03 | E-047, E-106, E-144, E-145, E-146, E-147, E-148, E-149, E-150, E-151, E-152, E-153, E-154, E-155, E-156, E-157, E-158, E… |
-| 36 | Voz e transcricao | AUSENTE | BLOCKED_BY_EXTERNAL_DEPENDENCY | B-04 | E-047 |
-| 37 | Chamadas e follow-up | AUSENTE | BLOCKED_BY_EXTERNAL_DEPENDENCY | B-04 | E-047 |
+| 36 | Voz e transcricao | AUSENTE | BLOCKED_BY_EXTERNAL_DEPENDENCY | B-04 | E-047, E-215 |
+| 37 | Chamadas e follow-up | AUSENTE | BLOCKED_BY_EXTERNAL_DEPENDENCY | B-04 | E-047, E-215 |
 | 38 | Gate final de release verificado | PARCIAL | BLOCKED_BY_EXTERNAL_DEPENDENCY | B-06 | E-033, E-048, E-087, E-109, E-112 |
 
 Procedimento de desbloqueio de cada bloqueio externo está em
@@ -90,7 +90,7 @@ possível sem ele**.
 
 ## Referências
 
-- Índice de evidências: [`HADES_EVIDENCE_INDEX.md`](HADES_EVIDENCE_INDEX.md) (214 linhas).
+- Índice de evidências: [`HADES_EVIDENCE_INDEX.md`](HADES_EVIDENCE_INDEX.md) (215 linhas).
 - Estado da missão: [`HADES_MASTER_STATE.json`](HADES_MASTER_STATE.json).
 - Gate global: [`HADES_FINAL_RELEASE_GATE.md`](HADES_FINAL_RELEASE_GATE.md).
 - Gate intermediário de engenharia (estágio 22): [`HADES_ENGINEERING_GATE.md`](HADES_ENGINEERING_GATE.md).
