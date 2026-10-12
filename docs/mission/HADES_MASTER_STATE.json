@@ -2,7 +2,7 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-16T23:45:00-03:00",
+  "updated_at": "2026-10-16T22:35:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
@@ -917,13 +917,12 @@
         "E-097",
         "E-110",
         "E-111",
-        "E-213",
-        "E-258"
+        "E-213"
       ],
       "blocker": "B-05",
-      "next": "LIMITES QUE SEGUEM DECLARADOS: o ciclo e acionado por rota ou pelo agendador existente (sem loop proprio com lease), o estorno e registro CONTABIL sem transferencia real de dinheiro, nao ha precificacao dinamica nem promocoes, e marketplaces e redes sociais nao sao coordenados (exigem conta autorizada). Proximo: estagios 23-30 e 32-38 (os externamente dependentes seguem BLOCKED_BY_EXTERNAL_DEPENDENCY)",
+      "next": "LIMITES: o HISTORICO dos ciclos segue em memoria (ele e a trilha analitica, nao a decisao), o ciclo e acionado por rota ou pelo agendador existente (sem loop proprio com lease), o estorno e registro CONTABIL sem transferencia real de dinheiro, nao ha precificacao dinamica nem promocoes, e marketplaces e redes sociais nao sao coordenados (conta autorizada)",
       "blocked_reason": "",
-      "done": "ATRIBUICAO CORRIGIDA (E-213): a operacao de redes do master 36 tem modulo proprio - company_social.go (contas, rascunhos, APROVACAO, publicacao autorizada, metricas idempotentes e relatorio), company_marketplace.go (campanhas com agendamento e metricas) e marketplace_sync.go (sincronizacao de canais e estoque remoto); rotas /companies/:id/social/* e /companies/:id/campaigns/*. LACUNAS INTERNAS DECLARADAS: respostas por IA em redes e alertas nao evidenciados. | SUPERVISOR AUTONOMO DE NEGOCIO com recuperacao PERSISTENTE: acoes e decisoes, politica vigente, orcamento consumido e contagem de ciclos sobrevivem a um REINICIO REAL (novo runtime sobre o mesmo diretorio de dados). A pendencia de aprovacao continua a MESMA e pode ser decidida depois do reinicio com efeito real; recusa registrada NAO volta a pendente e a decisao original prevalece; o orcamento gasto nao e devolvido (sem gastar duas vezes) e a numeracao dos ciclos continua. Diagnostico de dominios, acoes autonomas com efeito real, bloqueio por orcamento sem consumir e aprovacao humana exigindo ator seguem como antes TRILHA ANALITICA PERSISTIDA (E-258): o limite declarado 'o HISTORICO dos ciclos segue em memoria' foi FECHADO. Havia persistencia (businessSupervisorFile com Policy/Ticks/Actions/Spent), mas o campo history NAO estava no arquivo - a trilha sumia no reinicio. Agora history entra no arquivo, e carregada respeitando o MESMO teto do journal (carregar sem limite faria a memoria crescer sem controle) e gravada ao fim de cada ciclo. O erro de gravacao e DEVOLVIDO junto do resultado: o ciclo JA executou, entao uma trilha que nao grava tem de ser VISIVEL, nunca silenciosa. MEDIDO: teste de REINICIO REAL sobre o mesmo diretorio (trilha sobrevive e continua crescendo) + modo em memoria segue funcionando; 14 testes do supervisor PASSAM (2 novos + 12 existentes, sem regressao)",
+      "done": "ATRIBUICAO CORRIGIDA (E-213): a operacao de redes do master 36 tem modulo proprio - company_social.go (contas, rascunhos, APROVACAO, publicacao autorizada, metricas idempotentes e relatorio), company_marketplace.go (campanhas com agendamento e metricas) e marketplace_sync.go (sincronizacao de canais e estoque remoto); rotas /companies/:id/social/* e /companies/:id/campaigns/*. LACUNAS INTERNAS DECLARADAS: respostas por IA em redes e alertas nao evidenciados. | SUPERVISOR AUTONOMO DE NEGOCIO com recuperacao PERSISTENTE: acoes e decisoes, politica vigente, orcamento consumido e contagem de ciclos sobrevivem a um REINICIO REAL (novo runtime sobre o mesmo diretorio de dados). A pendencia de aprovacao continua a MESMA e pode ser decidida depois do reinicio com efeito real; recusa registrada NAO volta a pendente e a decisao original prevalece; o orcamento gasto nao e devolvido (sem gastar duas vezes) e a numeracao dos ciclos continua. Diagnostico de dominios, acoes autonomas com efeito real, bloqueio por orcamento sem consumir e aprovacao humana exigindo ator seguem como antes",
       "execution": "BLOCKED_BY_EXTERNAL_DEPENDENCY"
     },
     {
@@ -1871,9 +1870,7 @@
     "TETO DECLARADO EM VEZ DE 'ZERO' (E-256): o escopo por rota falha se os residuais CRESCEREM acima de 35. Exigir zero seria mentir: os residuais sao majoritariamente limite do proprio instrumento (corpo do handler nao localizado) e rota legitimamente publica",
     "A LEITURA HUMANA MELHOROU O INSTRUMENTO (E-257): ler os quatro approveCompany* revelou que eles delegam a um helper compartilhado (decideCompanyApproval) que escopa E exige papel. O scanner so seguia *ForRequest, entao acusava 4 falsos positivos. Ensinada a delegacao (profundidade <= 3), os residuais caem de 35 para 28 - ler o codigo e' o que calibra a ferramenta, nao o contrario",
     "CLASSIFICACAO VERIFICADA, NAO DEDUZIDA (E-257): em E-253 os 4 candidatos do oraculo foram declarados falsos positivos a partir da MENSAGEM de erro. Nesta rodada li os quatro trechos: sao validacao da entrada do proprio chamador (id/command/caminho, URL/SSRF, tamanho do org id pedido, mission id ausente) e nao consultam estado de outro tenant. A conclusao nao mudou; a EVIDENCIA sim - deducao virou leitura",
-    "O QUE RESTA E' LIMITE DECLARADO, NAO ACHADO (E-257): os 28 residuais de rota sao, por leitura, limite do proprio instrumento (corpo do handler nao localizado: '?', 'func', servedByDesktopApp) e rota publica por desenho (blobs, signout, callbacks OAuth/SAML, desktop-only). Continuam contados e declarados, nunca promovidos a vulnerabilidade",
-    "LIMITE DECLARADO FECHADO COM TESTE DE REINICIO REAL (E-258): o supervisor ja persistia politica, ticks, acoes e gasto - mas NAO o history. A trilha analitica sumia no reinicio. Agora ela entra no arquivo, volta com o mesmo teto do journal e e gravada ao fim do ciclo",
-    "ERRO DE GRAVACAO VISIVEL, NAO ENGOLIDO (E-258): o ciclo JA executou quando a trilha falha ao gravar. Devolver o resultado JUNTO com o erro e a unica opcao honesta - engolir o erro faria a trilha parecer intacta; descartar o resultado esconderia que a acao aconteceu"
+    "O QUE RESTA E' LIMITE DECLARADO, NAO ACHADO (E-257): os 28 residuais de rota sao, por leitura, limite do proprio instrumento (corpo do handler nao localizado: '?', 'func', servedByDesktopApp) e rota publica por desenho (blobs, signout, callbacks OAuth/SAML, desktop-only). Continuam contados e declarados, nunca promovidos a vulnerabilidade"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
