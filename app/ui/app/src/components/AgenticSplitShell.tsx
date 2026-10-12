@@ -45,6 +45,16 @@ export interface MissionData {
   plan?: MissionStep[];
   approvals?: MissionApproval[];
   artifacts?: Array<{ id: string; name: string; sha256: string; size: number }>;
+  usage?: {
+    calls?: number;
+    prompt_tokens?: number;
+    completion_tokens?: number;
+    cost_cents?: number;
+    cost_known?: boolean;
+  } | null;
+  /** Origem do consumo registrado. Hoje só existe "planning": a chamada de planejamento produz o
+   *  plano inteiro, então o custo NÃO é distribuído por etapa. */
+  usage_origin?: string;
   last_error?: string;
 }
 
@@ -57,6 +67,26 @@ export interface MissionData {
  * faria o usuário acreditar que viu tudo.
  */
 export const STEP_RESULT_MAX_CHARS = 4000;
+
+/**
+ * Texto do CONSUMO da missão. Regra que não pode ser quebrada: custo DESCONHECIDO nunca vira "R$ 0,00" — isso
+ * afirmaria gratuidade que ninguém mediu. O backend já distingue os dois casos em `cost_known`.
+ */
+export function formatMissionCost(usage: MissionData["usage"]): string {
+  if (!usage) return "";
+  const partes: string[] = [];
+  const chamadas = usage.calls ?? 0;
+  if (chamadas > 0) partes.push(`${chamadas} ${chamadas === 1 ? "chamada" : "chamadas"}`);
+  const tokens = (usage.prompt_tokens ?? 0) + (usage.completion_tokens ?? 0);
+  if (tokens > 0) partes.push(`${tokens} tokens`);
+  if (usage.cost_known) {
+    const centavos = usage.cost_cents ?? 0;
+    partes.push((centavos / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" }));
+  } else {
+    partes.push("custo desconhecido");
+  }
+  return partes.join(" · ");
+}
 
 export function formatStepResult(result: unknown): string {
   if (result === null || result === undefined) return "";
@@ -284,6 +314,14 @@ export function AgenticSplitShell({
                 Plano de Execução ({mission.plan.filter((s) => s.state.toUpperCase() === "DONE" || s.state.toUpperCase() === "COMPLETED").length}/{mission.plan.length})
               </h3>
               <div className="space-y-3">
+                {/* CONSUMO DA MISSÃO: sem isto o custo real e a sua ORIGEM ficavam só no registro. */}
+                {formatMissionCost(mission.usage) && (
+                  <p className="mb-2 text-[11px] text-neutral-600 dark:text-neutral-400">
+                    Consumo: {formatMissionCost(mission.usage)}
+                    {mission.usage_origin ? ` · origem: ${mission.usage_origin}` : ""}
+                  </p>
+                )}
+
                 {mission.plan.map((step, idx) => {
                   const state = step.state.toUpperCase();
                   const isDone = state === "DONE" || state === "COMPLETED" || state === "SUCCEEDED";
