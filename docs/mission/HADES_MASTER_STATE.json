@@ -2,7 +2,7 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-15T19:10:00-03:00",
+  "updated_at": "2026-10-15T20:15:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
@@ -839,13 +839,14 @@
       "evidence": [
         "E-047",
         "E-087",
-        "E-104"
+        "E-104",
+        "E-234"
       ],
       "blocker": "B-04",
       "next": "LIMITES: canais reais nao conectados (dependem de credencial), sem webhook publico com validacao de assinatura (estagio 34), sem base de conhecimento nem resposta automatica por IA na conversa, sem anexos ou audio, e SLA apenas de primeira resposta",
       "blocked_reason": "",
       "external_dependency": "canais reais exigem contas; a inbox unificada em sandbox e local",
-      "done": "CAIXA DE ENTRADA UNIFICADA implementada: uma conversa por contato e canal (mensagem nova reaproveita a conversa aberta), DEDUPLICACAO de webhook por ExternalID inclusive sob concorrencia, SLA de primeira resposta MEDIDO contra a resposta real, handoff como estado com motivo e responsavel registrados, resposta que respeita o CONSENTIMENTO do contato, indicadores (SLA violado, fila humana, volumes), isolamento por organizacao e persistencia. Os comandos /inbox, /handoff e /support deixaram de ser indisponiveis: a lista de comandos sem rota ficou VAZIA (35 de 35)",
+      "done": "CAIXA DE ENTRADA UNIFICADA implementada: uma conversa por contato e canal (mensagem nova reaproveita a conversa aberta), DEDUPLICACAO de webhook por ExternalID inclusive sob concorrencia, SLA de primeira resposta MEDIDO contra a resposta real, handoff como estado com motivo e responsavel registrados, resposta que respeita o CONSENTIMENTO do contato, indicadores (SLA violado, fila humana, volumes), isolamento por organizacao e persistencia. Os comandos /inbox, /handoff e /support deixaram de ser indisponiveis: a lista de comandos sem rota ficou VAZIA (35 de 35) ISOLAMENTO PROVADO NO LADO NEGATIVO (E-234): o teste existente cobria LEITURA cruzada, listagem e reinicio; faltavam as ACOES cruzadas, o dedupe entre organizacoes e a nao-inferencia. Medido: atribuir/transferir/fechar a conversa de outra organizacao e RECUSADO e o estado dela fica INTACTO (status=open, responsavel vazio, 1 mensagem); o MESMO id externo em organizacoes diferentes gera conversas DISTINTAS (mensagem legitima nao e engolida como repetida) e a repeticao DENTRO da mesma organizacao continua deduplicada; as metricas contam apenas a propria organizacao (orgA=3 orgB=1).",
       "execution": "BLOCKED_BY_EXTERNAL_DEPENDENCY"
     },
     {
@@ -1769,7 +1770,9 @@
     "IDEMPOTENCIA SO ATRAVES DO REINICIO PROVA ALGO (E-232): o motor de comercio tinha idempotencia por chave sob lock e teste de reinicio em outro fluxo (finance_ops), mas FALTAVA o caso critico do proprio checkout: reenviar a MESMA chave DEPOIS de reiniciar. Em memoria isso pareceria pedido novo e geraria cobranca e reserva duplicadas. Medido agora com TRES reinicios reais: mesmo pedido, sem duplicata, livro de estoque identico, quitacao e conciliacao preservadas",
     "SEGUNDA SUBESTIMACAO DO PROPRIO ESTADO NO MESMO DIA (E-232): o 'next' do estagio 24 declarava 'persistencia em memoria nesta rodada', mas o codigo persiste por organizacao (NewCommerceStoreAt + persistLocked), o runtime usa o store persistente e ja havia teste de reinicio. Igual a E-230 (-race): o estado piorava o produto. Declarar limite inexistente tambem e registro falso",
     "PULL DE PEDIDOS: A LACUNA DECLARADA VIROU FUNCIONALIDADE MEDIDA (E-233): o estagio 25 declarava 'pull de pedidos nao exercitado'. Agora o pedido do canal entra pelo Hub, vira pedido LOCAL no motor de comercio (preco do catalogo, estoque reservado) e a idempotencia e POR ID EXTERNO - reenviar o mesmo pedido mesmo com VERSAO DIFERENTE nao duplica. Push de pedido, pedido sem id externo e excesso de operacoes sao RECUSADOS",
-    "GUARD POR SUBSTRING FALHOU E EU PEGUEI (E-233): usei 'if MarketplaceEntityOrder not in arquivo' para decidir se criava a constante, mas o arquivo JA tinha MarketplaceEntityOrders (plural) - a substring batia e a constante nunca era criada, quebrando o build. A correcao foi MELHOR que a intencao original: reusar a constante existente ('pedidos', ja declarada como capacidade de canal) em vez de criar outra. Licao: guard de presenca por substring mente quando existem plurais/prefixos"
+    "GUARD POR SUBSTRING FALHOU E EU PEGUEI (E-233): usei 'if MarketplaceEntityOrder not in arquivo' para decidir se criava a constante, mas o arquivo JA tinha MarketplaceEntityOrders (plural) - a substring batia e a constante nunca era criada, quebrando o build. A correcao foi MELHOR que a intencao original: reusar a constante existente ('pedidos', ja declarada como capacidade de canal) em vez de criar outra. Licao: guard de presenca por substring mente quando existem plurais/prefixos",
+    "ISOLAMENTO PRECISA DE TESTE NEGATIVO, NAO SO DE LEITURA (E-234): o inbox ja recusava LER a conversa de outra organizacao, mas nada provava que ATRIBUIR, TRANSFERIR e FECHAR tambem eram recusados - nem que o estado alheio ficava intacto. Faltava ainda o caso do DEDUPE entre tenants: o mesmo id externo em duas organizacoes precisa gerar conversas DISTINTAS, senao uma mensagem legitima de outro cliente e engolida como repetida (perda de mensagem disfarcada de idempotencia). Agora os tres lados estao medidos",
+    "'NEM INFERE' E UM REQUISITO PROPRIO (E-234): o master pede que o tenant A nao acesse NEM INFIRA o tenant B. Testei isso onde a inferencia de fato aconteceria: nas METRICAS. Indicadores globais vazariam volume de conversas e carga de trabalho alheios; medido: orgA=3, orgB=1, sem cruzamento"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
