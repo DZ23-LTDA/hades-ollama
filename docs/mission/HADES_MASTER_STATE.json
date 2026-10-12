@@ -2,7 +2,7 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-13T19:30:00-03:00",
+  "updated_at": "2026-10-13T20:30:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
@@ -248,7 +248,8 @@
         "E-021",
         "E-023",
         "E-036",
-        "E-187"
+        "E-187",
+        "E-188"
       ],
       "blocker": null,
       "next": "Complementar a matriz de capacidades com reconfirmacao dos 30 docs de audit/ datados",
@@ -1546,7 +1547,10 @@
     "AUDITORIA DE COBERTURA - ESTAGIO 24 TINHA DOIS SIGNIFICADOS (E-187): 37 dos 38 titulos de estagio divergem das definicoes da secao 5 do prompt master, e do 24 em diante o ESCopo esta DESLOCADO (o estado chama de 24 o CRM e pipeline, que no master e o 27; o master 24 e o COMMERCE ENGINE, que o estado registra no 25). Nenhuma tabela de cobertura por estagio podia ser lida como cobertura do documento da missao",
     "DIVIDA DE COBERTURA MEDIDA (E-187): 1 equivalente, 20 com titulo diferente (escopo equivalente), 16 com escopo divergente, 1 sem par no master; 4 estagios do master SEM NENHUMA cobertura (32 BUSINESS E2E CERTIFICATION, 34 HADES OMNICHANNEL RUNTIME, 35 AGENTES DE ATENDIMENTO E VENDAS, 36 SOCIAL MEDIA E MARKETPLACE OPERACIONAL) e 4 cobertos DUAS vezes (26, 29, 33, 37)",
     "MAPA DE ESTAGIOS DECLARADO, GERADO E CONFERIDO (E-187): scripts/hades_stage_map.py declara o pareamento com situacao e observacao; gera docs/mission/HADES_STAGE_MAP.md com --check no CI e virou documento obrigatorio do estagio 1; o verificador ganhou verificar_mapa_de_estagios (problema para mapa incompleto; aviso para a divida). 7 testes proprios",
-    "RENUMERAR FOI RECUSADO DE PROPOSITO (E-187): renumerar 38 estagios muda o significado de TODAS as evidencias acumuladas e nao e decisao reversivel de baixo risco; forcar pareamento 1:1 onde o escopo diverge seria falsificar cobertura. O procedimento de reconciliacao ficou escrito no mapa"
+    "RENUMERAR FOI RECUSADO DE PROPOSITO (E-187): renumerar 38 estagios muda o significado de TODAS as evidencias acumuladas e nao e decisao reversivel de baixo risco; forcar pareamento 1:1 onde o escopo diverge seria falsificar cobertura. O procedimento de reconciliacao ficou escrito no mapa",
+    "DIVIDA DE COBERTURA RECONCILIADA COM EVIDENCIA (E-188): de 4 estagios do master sem cobertura e 4 cobertos em dobro (E-187) para ZERO sem cobertura e UM duplicado. A causa era PARECAMENTO MEU ERRADO, nao lacuna de produto: E-105/E-141/E-170..E-177 mostram que o estado #34 e o HADES OMNICHANNEL RUNTIME (master 34); E-106/E-144..E-156 mostram que o estado #35 sao os AGENTES DE ATENDIMENTO E VENDAS (master 35); E-109/E-112 (TestBusinessE2E, 21 etapas) mostram que o estado #38 cobre BUSINESS E2E CERTIFICATION (master 32) e a HOMOLOGACAO final (master 38)",
+    "MODELO DO MAPA CORRIGIDO (E-188): um estagio do estado pode cobrir MAIS DE UM estagio do master, entao o terceiro campo do mapa passou a ser TUPLA. Forcar um-para-um produzia lacuna FALSA - foi o que aconteceu ao mover o estado 38 para o master 32 e o master 38 aparecer como descoberto",
+    "COBERTURA FINAL MEDIDA (E-188): 0 mestres sem cobertura; 1 cobertura dupla (37, voz e telefonia divididas em dois estagios do estado - divisao real, declarada); 16 escopos divergentes declarados; 21 com titulo diferente e escopo equivalente; 1 equivalente"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",

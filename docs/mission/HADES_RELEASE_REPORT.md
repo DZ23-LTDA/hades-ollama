@@ -9,7 +9,7 @@
 | Número | Valor |
 | --- | --- |
 | Estágios | 38 |
-| Linhas de evidência no índice | 187 |
+| Linhas de evidência no índice | 188 |
 | `COMPLETED_VERIFIED` | 2 |
 | `IN_PROGRESS` | 15 |
 | `BLOCKED_BY_EXTERNAL_DEPENDENCY` | 21 |
@@ -36,7 +36,7 @@ relatório **declara a ausência** em vez de preencher com suposição.
 
 | # | Estágio | Capacidade | Execução | Bloqueio | Evidências |
 | --- | --- | --- | --- | --- | --- |
-| 1 | Auditoria total e inventario real | PARCIAL | IN_PROGRESS | — | E-001, E-002, E-021, E-023, E-036, E-187 |
+| 1 | Auditoria total e inventario real | PARCIAL | IN_PROGRESS | — | E-001, E-002, E-021, E-023, E-036, E-187, E-188 |
 | 2 | Estabilizacao e consolidacao da base | PARCIAL | IN_PROGRESS | B-09 | E-011, E-013, E-014, E-015, E-016, E-017, E-116, E-138, E-142, E-143, E-186 |
 | 3 | Arquitetura canonica dos componentes | PARCIAL | IN_PROGRESS | — | E-037, E-040, E-043, E-044, E-045 |
 | 6 | Harness Runtime (execucao governada) | AUSENTE | IN_PROGRESS | B-01 | E-041, E-025 |
@@ -90,7 +90,7 @@ possível sem ele**.
 
 ## Referências
 
-- Índice de evidências: [`HADES_EVIDENCE_INDEX.md`](HADES_EVIDENCE_INDEX.md) (187 linhas).
+- Índice de evidências: [`HADES_EVIDENCE_INDEX.md`](HADES_EVIDENCE_INDEX.md) (188 linhas).
 - Estado da missão: [`HADES_MASTER_STATE.json`](HADES_MASTER_STATE.json).
 - Gate global: [`HADES_FINAL_RELEASE_GATE.md`](HADES_FINAL_RELEASE_GATE.md).
 - Gate intermediário de engenharia (estágio 22): [`HADES_ENGINEERING_GATE.md`](HADES_ENGINEERING_GATE.md).

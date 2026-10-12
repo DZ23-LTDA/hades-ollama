@@ -91,60 +91,66 @@ TITULOS_MESTRES: dict[int, str] = {
     38: "HOMOLOGAÇÃO DE UMA EMPRESA AUTÔNOMA",
 }
 
-# (id_do_estado, título_no_estado, id_mestre_correspondente_ou_None, situacao, observacao)
-MAPA: tuple[tuple[int, str, int | None, str, str], ...] = (
-    (1, "Auditoria total e inventario real", 1, TITULO_DIFERENTE, "mesmo escopo: auditoria do repositório"),
-    (2, "Estabilizacao e consolidacao da base", 2, TITULO_DIFERENTE, "mesmo escopo: baseline e falhas"),
-    (3, "Arquitetura canonica dos componentes", 3, TITULO_DIFERENTE, "mesmo escopo: 16 componentes"),
-    (4, "Model Gateway (roteamento, rotacao, fallback)", 4, TITULO_DIFERENTE, "mesmo escopo"),
-    (5, "Context Bootstrap / contexto de projeto", 5, TITULO_DIFERENTE, "mesmo escopo"),
-    (6, "Harness Runtime (execucao governada)", 6, TITULO_DIFERENTE, "mesmo escopo"),
-    (7, "MCP Manager (servidores, ferramentas, escopo)", 7, TITULO_DIFERENTE, "mesmo escopo"),
-    (8, "Plugins e Skills", 8, EQUIVALENTE, "título e escopo coincidem"),
-    (9, "Agentes e subagentes (delegacao)", 9, TITULO_DIFERENTE, "mesmo escopo"),
-    (10, "Mission Control multiagente (missoes, eventos)", 10, ESCOPO_DIVERGENTE,
+# (id_do_estado, título_no_estado, IDs do master correspondentes, situacao, observacao)
+#
+# O terceiro campo é uma TUPLA porque um estágio do estado pode cobrir MAIS DE UM estágio do prompt master: o
+# master separa 32 (BUSINESS E2E CERTIFICATION) de 38 (HOMOLOGAÇÃO DE UMA EMPRESA AUTÔNOMA) e o estado tem um só
+# estágio final que carrega os dois. Forçar um-para-um ali produziria uma lacuna FALSA - o tipo tem que caber no
+# que os documentos dizem.
+MAPA: tuple[tuple[int, str, tuple[int, ...], str, str], ...] = (
+    (1, "Auditoria total e inventario real", (1,), TITULO_DIFERENTE, "mesmo escopo: auditoria do repositório"),
+    (2, "Estabilizacao e consolidacao da base", (2,), TITULO_DIFERENTE, "mesmo escopo: baseline e falhas"),
+    (3, "Arquitetura canonica dos componentes", (3,), TITULO_DIFERENTE, "mesmo escopo: 16 componentes"),
+    (4, "Model Gateway (roteamento, rotacao, fallback)", (4,), TITULO_DIFERENTE, "mesmo escopo"),
+    (5, "Context Bootstrap / contexto de projeto", (5,), TITULO_DIFERENTE, "mesmo escopo"),
+    (6, "Harness Runtime (execucao governada)", (6,), TITULO_DIFERENTE, "mesmo escopo"),
+    (7, "MCP Manager (servidores, ferramentas, escopo)", (7,), TITULO_DIFERENTE, "mesmo escopo"),
+    (8, "Plugins e Skills", (8,), EQUIVALENTE, "título e escopo coincidem"),
+    (9, "Agentes e subagentes (delegacao)", (9,), TITULO_DIFERENTE, "mesmo escopo"),
+    (10, "Mission Control multiagente (missoes, eventos)", (10,), ESCOPO_DIVERGENTE,
      "o estado descreve o COMPONENTE Mission Control; o master pede PARIDADE OPERACIONAL COM MANUS (missão autônoma ponta a ponta)"),
-    (11, "Paridade Codex/Claude (harnesses de codigo)", 11, TITULO_DIFERENTE, "mesmo escopo"),
-    (12, "Studio / Builder visual", 12, TITULO_DIFERENTE, "mesmo escopo"),
-    (13, "Workflow Engine (fluxos, schedules, condicoes)", 13, TITULO_DIFERENTE, "mesmo escopo"),
-    (14, "Browser Operator / computer-use", 14, TITULO_DIFERENTE, "mesmo escopo"),
-    (15, "Memoria e RAG local", 15, TITULO_DIFERENTE, "mesmo escopo"),
-    (16, "Canais de IM (WhatsApp/Telegram/inbox unificado)", 16, ESCOPO_DIVERGENTE,
+    (11, "Paridade Codex/Claude (harnesses de codigo)", (11,), TITULO_DIFERENTE, "mesmo escopo"),
+    (12, "Studio / Builder visual", (12,), TITULO_DIFERENTE, "mesmo escopo"),
+    (13, "Workflow Engine (fluxos, schedules, condicoes)", (13,), TITULO_DIFERENTE, "mesmo escopo"),
+    (14, "Browser Operator / computer-use", (14,), TITULO_DIFERENTE, "mesmo escopo"),
+    (15, "Memoria e RAG local", (15,), TITULO_DIFERENTE, "mesmo escopo"),
+    (16, "Canais de IM (WhatsApp/Telegram/inbox unificado)", (16,), ESCOPO_DIVERGENTE,
      "o master inclui VOZ e TEL-AGENT neste estágio; no estado, voz/telefonia aparecem adiante"),
-    (17, "Workspace do agente (threads, artefatos, presenca)", 17, TITULO_DIFERENTE, "mesmo escopo (frigg-like)"),
-    (18, "Seguranca, permissoes e multitenancy", 18, TITULO_DIFERENTE, "mesmo escopo"),
-    (19, "UX/onboarding e jornada de primeira execucao", 19, TITULO_DIFERENTE, "mesmo escopo"),
-    (20, "Distribuicao e instaladores (Windows/macOS/Linux)", 20, TITULO_DIFERENTE, "mesmo escopo"),
-    (21, "Benchmarks e comparativo competitivo", 21, TITULO_DIFERENTE, "mesmo escopo"),
-    (22, "Gate de engenharia intermediario", 22, TITULO_DIFERENTE, "mesmo escopo"),
-    (23, "Company Factory (empresa orquestrada)", 23, TITULO_DIFERENTE, "mesmo escopo"),
-    (24, "CRM e pipeline de vendas", 27, ESCOPO_DIVERGENTE,
+    (17, "Workspace do agente (threads, artefatos, presenca)", (17,), TITULO_DIFERENTE, "mesmo escopo (frigg-like)"),
+    (18, "Seguranca, permissoes e multitenancy", (18,), TITULO_DIFERENTE, "mesmo escopo"),
+    (19, "UX/onboarding e jornada de primeira execucao", (19,), TITULO_DIFERENTE, "mesmo escopo"),
+    (20, "Distribuicao e instaladores (Windows/macOS/Linux)", (20,), TITULO_DIFERENTE, "mesmo escopo"),
+    (21, "Benchmarks e comparativo competitivo", (21,), TITULO_DIFERENTE, "mesmo escopo"),
+    (22, "Gate de engenharia intermediario", (22,), TITULO_DIFERENTE, "mesmo escopo"),
+    (23, "Company Factory (empresa orquestrada)", (23,), TITULO_DIFERENTE, "mesmo escopo"),
+    (24, "CRM e pipeline de vendas", (27,), ESCOPO_DIVERGENTE,
      "DESLOCAMENTO: o master chama de 24 o COMMERCE ENGINE; CRM/pipeline corresponde ao master 27 (AI SALES WORKFORCE)"),
-    (25, "Commerce / loja e pedidos", 24, ESCOPO_DIVERGENTE,
+    (25, "Commerce / loja e pedidos", (24,), ESCOPO_DIVERGENTE,
      "DESLOCAMENTO: é o COMMERCE ENGINE do master (24)"),
-    (26, "Marketplace multi-vendedor", 25, ESCOPO_DIVERGENTE,
+    (26, "Marketplace multi-vendedor", (25,), ESCOPO_DIVERGENTE,
      "DESLOCAMENTO: é o MARKETPLACE HUB do master (25)"),
-    (27, "Pagamentos e faturamento", 30, ESCOPO_DIVERGENTE,
+    (27, "Pagamentos e faturamento", (30,), ESCOPO_DIVERGENTE,
      "o master trata pagamentos dentro de COMMERCE ENGINE (24) e FINANCE & OPERATIONS (30); no estado estão isolados"),
-    (28, "Atendimento e suporte (helpdesk)", 29, ESCOPO_DIVERGENTE,
+    (28, "Atendimento e suporte (helpdesk)", (29,), ESCOPO_DIVERGENTE,
      "é o OMNICHANNEL INBOX do master (29); o master 28 é VOICE & CALL CENTER, que o estado trata no 29"),
-    (29, "Telefonia e call center", 28, ESCOPO_DIVERGENTE, "é o VOICE & CALL CENTER do master (28)"),
-    (30, "Marketing e campanhas", 26, ESCOPO_DIVERGENTE,
-     "cobre parte do SOCIAL MEDIA OS do master (26) e do 36 (SOCIAL MEDIA E MARKETPLACE OPERACIONAL)"),
-    (31, "Social e publicacao", 26, ESCOPO_DIVERGENTE,
-     "também cobre o SOCIAL MEDIA OS do master (26) - dois estágios do estado cobrem o mesmo do master"),
-    (32, "BI / business status e metricas", 31, ESCOPO_DIVERGENTE,
+    (29, "Telefonia e call center", (28,), ESCOPO_DIVERGENTE, "é o VOICE & CALL CENTER do master (28)"),
+    (30, "Marketing e campanhas", (26,), TITULO_DIFERENTE,
+     "é o SOCIAL MEDIA OS do master (26): campanhas, calendário e conteúdo sob aprovação"),
+    (31, "Social e publicacao", (36,), ESCOPO_DIVERGENTE,
+     "operação de redes com publicação autorizada e métricas corresponde ao master 36 (SOCIAL MEDIA E MARKETPLACE OPERACIONAL); a parte de MARKETPLACE do master 36 é coberta pelo estado 26"),
+    (32, "BI / business status e metricas", (31,), ESCOPO_DIVERGENTE,
      "dashboards/indicadores correspondem ao AUTONOMOUS BUSINESS SUPERVISOR do master (31)"),
-    (33, "Canal Telegram", 33, ESCOPO_DIVERGENTE,
+    (33, "Canal Telegram", (33,), ESCOPO_DIVERGENTE,
      "o master junta WhatsApp E Telegram em UM estágio (33); o estado separa em 33 e 34"),
-    (34, "Canal WhatsApp", 33, ESCOPO_DIVERGENTE, "mesma razão: segundo estágio do estado para o mesmo estágio do master"),
-    (35, "Inbox unificado omnicanal", 29, ESCOPO_DIVERGENTE,
-     "o OMNICHANNEL INBOX do master (29) já é apontado pelo estado 28 - cobertura repetida"),
-    (36, "Voz e transcricao", 37, ESCOPO_DIVERGENTE,
+    (34, "Canal WhatsApp", (34,), ESCOPO_DIVERGENTE,
+     "CORRIGIDO COM EVIDENCIA (E-188): este estágio carrega o RUNTIME OMNICHANNEL do master 34 - E-105 aponta `docs/mission/HADES_STAGE_34_OMNICHANNEL.md` e E-141/E-170..E-177 medem dead letter, rate limit, conectores, cache de eventos, reserva em voo e -race. O canal do master 33 é coberto pelo estado 33"),
+    (35, "Inbox unificado omnicanal", (35,), ESCOPO_DIVERGENTE,
+     "CORRIGIDO COM EVIDENCIA (E-188): este estágio carrega os AGENTES DE ATENDIMENTO E VENDAS do master 35 - E-106 aponta `docs/mission/HADES_STAGE_35_SERVICE_AGENT...` e E-144..E-156 medem `TestServiceAgent` (política, auditoria, aprovação). O OMNICHANNEL INBOX do master 29 é coberto pelo estado 28"),
+    (36, "Voz e transcricao", (37,), ESCOPO_DIVERGENTE,
      "VOZ E TELEFONIA COM TEL-AGENT do master (37)"),
-    (37, "Chamadas e follow-up", 37, ESCOPO_DIVERGENTE, "segundo estágio do estado para o mesmo do master (37)"),
-    (38, "Gate final de release verificado", 38, SEM_PAR_NO_MESTRE,
-     "o master 38 é HOMOLOGAÇÃO DE UMA EMPRESA AUTÔNOMA; o gate final do estado NÃO tem estágio correspondente no master (o gate global está descrito na seção 11.8)"),
+    (37, "Chamadas e follow-up", (37,), ESCOPO_DIVERGENTE, "segundo estágio do estado para o mesmo do master (37)"),
+    (38, "Gate final de release verificado", (32, 38), ESCOPO_DIVERGENTE,
+     "CORRIGIDO COM EVIDENCIA (E-188): este estágio carrega a HOMOLOGAÇÃO DE EMPRESA do master 32 - E-109 e E-112 medem `TestBusinessE2E` (2/2, 21 etapas, com reinício real sobre o mesmo diretório) e `TestBusinessCertification`. O GATE de release global NÃO é um estágio do master: é o requisito transversal da seção 11.8, e por isso não aparece como par"),
 )
 
 
@@ -156,7 +162,7 @@ def situacoes() -> dict[str, int]:
 
 
 def estagios_mestres_cobertos() -> list[int]:
-    return sorted({mestre for _, _, mestre, _, _ in MAPA if mestre is not None})
+    return sorted({mestre for _, _, mestres, _, _ in MAPA for mestre in mestres})
 
 
 def mestres_nao_cobertos() -> list[int]:
@@ -166,8 +172,8 @@ def mestres_nao_cobertos() -> list[int]:
 
 def mestres_cobertos_mais_de_uma_vez() -> dict[int, int]:
     contagem: dict[int, int] = {}
-    for _, _, mestre, _, _ in MAPA:
-        if mestre is not None:
+    for _, _, mestres, _, _ in MAPA:
+        for mestre in mestres:
             contagem[mestre] = contagem.get(mestre, 0) + 1
     return {m: c for m, c in sorted(contagem.items()) if c > 1}
 
@@ -205,9 +211,9 @@ def gerar() -> str:
         "| Estado | Título no estado | Mestre | Título no master | Situação | Observação |",
         "| --- | --- | --- | --- | --- | --- |",
     ]
-    for ident, titulo, mestre, situacao, observacao in MAPA:
-        alvo = f"{mestre}" if mestre is not None else "—"
-        titulo_mestre = TITULOS_MESTRES.get(mestre, "—") if mestre is not None else "—"
+    for ident, titulo, mestres, situacao, observacao in MAPA:
+        alvo = ", ".join(str(m) for m in mestres) if mestres else "—"
+        titulo_mestre = " + ".join(TITULOS_MESTRES.get(m, "—") for m in mestres) if mestres else "—"
         linhas.append(f"| {ident} | {titulo} | {alvo} | {titulo_mestre} | **{situacao}** | {observacao} |")
     linhas += [
         "",
