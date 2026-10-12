@@ -2,7 +2,7 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-14T16:05:00-03:00",
+  "updated_at": "2026-10-14T17:15:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
@@ -309,10 +309,11 @@
         "E-024",
         "E-037",
         "E-038",
-        "E-049"
+        "E-049",
+        "E-209"
       ],
       "blocker": "B-07",
-      "next": "Homologar uma chamada real por familia de provedor (B-07); os presets guiados (13, incluindo 4 servidores locais) foram entregues no PR #74",
+      "next": "Chamada real opt-in via internal/multillm (free-tier primeiro: groq/cerebras) para verificar inferencia por provedor; rotacionar as 3 chaves com authentication_failed",
       "execution": "BLOCKED_BY_EXTERNAL_DEPENDENCY"
     },
     {
@@ -1027,8 +1028,8 @@
     },
     {
       "id": "B-07",
-      "tipo": "EXTERNO",
-      "descricao": "Chaves de provedor de modelo para homologacao de chamada real"
+      "tipo": "EXTERNO (MEDIDO: PARCIAL)",
+      "descricao": "MEDIDO (E-209), nao suposto. O B-07 dizia 'chaves de provedor de modelo para homologacao de chamada real'. Medido: 19 provedores com credencial PRESENTE e habilitados, com descoberta de catalogo real (openrouter 458, huggingface 127, novita 94, nvidia 80, gemini 62, mistral 46, fireworks 20, ollama 18, upstage 15, groq 11, sambanova 6, deepseek 2, cerebras 2, local 8). O que falta NAO e chave: e a VERIFICACAO de inferencia - inference_verified e true em UM so provedor, o Ollama LOCAL. Alem disso, TRES credenciais estao invalidas (authentication_failed: together, hyperbolic, alibaba) e duas com falha de servico (github provider_unavailable, cloudflare rate_limited), ou seja precisam de rotacao. Onde o produto fala com provedores: internal/multillm (ProviderPresetByID -> Provider -> ProbeProviderModel, CredentialValue). PROXIMO TESTE DECLARADO: chamada real opt-in via internal/multillm, preferindo free-tier (groq/cerebras) para nao gerar custo."
     },
     {
       "id": "B-09",
@@ -1644,7 +1645,10 @@
     "LICAO OPERACIONAL (E-207): commit com aspas/acentos no corpo DEVE usar `git commit -F arquivo`; o padrao `-m \"...\"` no PowerShell mangled a citacao e o commit FALHOU EM SILENCIO porque eu tambem canalizei a saida. Alem disso, checar o exit code do commit e obrigatorio: eu li HEAD igual ao anterior e so assim percebi. Regra: escrever a mensagem em _tmp/*.txt, commitar com -F e conferir o SHA depois.",
     "DEFEITO REAL DE AMBIENTE ACHADO PELO PROPRIO TOOLCHAIN (E-208): o TEMP do operador e SOMENTE LEITURA neste ambiente - quem provou foi o `go test`, que nao conseguiu escrever o arquivo de resposta em AppData\\Local\\Temp. Passar esse TEMP a um CLI filho e defeito real, e o runner agora cria um diretorio por sessao e aponta TEMP/TMP/TMPDIR do filho para ele (removido ao final)",
     "NAO CONFUNDIR CONSERTO COM DESBLOQUEIO (E-208): o conserto do TEMP gravavel NAO resolve a sessao real da CLI - testei com ele aplicado e o erro em ~/.codex/tmp/arg0 permanece. Registrei o conserto pelo merito proprio e mantive o bloqueio da sessao separado, em vez de vender o conserto como solucao",
-    "DESCOBERTA DE SEGURANCA (E-208): o resolvedor RECUSA interpretadores genericos (cmd.exe, sh) com 'binario da CLI nao e executavel direto' - protecao contra shell injection que atrapalhou meu primeiro experimento, sinal de que ela funciona"
+    "DESCOBERTA DE SEGURANCA (E-208): o resolvedor RECUSA interpretadores genericos (cmd.exe, sh) com 'binario da CLI nao e executavel direto' - protecao contra shell injection que atrapalhou meu primeiro experimento, sinal de que ela funciona",
+    "B-07 MEDIDO (E-209): a premissa 'faltam chaves' estava ERRADA - ha 19 provedores com credencial presente e habilitada, com catalogo descoberto de verdade. O que falta e a VERIFICACAO de inferencia: inference_verified e true apenas no Ollama LOCAL",
+    "TRES CHAVES PRECISAM DE ROTACAO (E-209): together, hyperbolic e alibaba responderam authentication_failed; github esta provider_unavailable e cloudflare rate_limited. Registrado como acao concreta, nao como 'falta chave'",
+    "MODEL GATEWAY LOCALIZADO (E-209): o produto fala com provedores por internal/multillm - ProviderPresetByID, Provider(models), ProbeProviderModel(ctx, provider, modelID, client), CredentialValue(envName), ListUpstreamModels, RouteCandidates e SpendLedger. A porta para converter 'catalogado' em 'verificado' existe"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
