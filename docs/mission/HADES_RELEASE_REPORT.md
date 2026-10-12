@@ -9,7 +9,7 @@
 | Número | Valor |
 | --- | --- |
 | Estágios | 38 |
-| Linhas de evidência no índice | 272 |
+| Linhas de evidência no índice | 273 |
 | `COMPLETED_VERIFIED` | 2 |
 | `IN_PROGRESS` | 15 |
 | `BLOCKED_BY_EXTERNAL_DEPENDENCY` | 21 |
@@ -71,7 +71,7 @@ relatório **declara a ausência** em vez de preencher com suposição.
 | 30 | Marketing e campanhas | PARCIAL | BLOCKED_BY_EXTERNAL_DEPENDENCY | B-05 | E-044, E-087, E-100, E-108, E-112, E-262, E-263, E-264 |
 | 31 | Social e publicacao | IMPLEMENTADO_NAO_HOMOLOGADO | BLOCKED_BY_EXTERNAL_DEPENDENCY | B-05 | E-044, E-087, E-097, E-110, E-111, E-213, E-258, E-261 |
 | 32 | BI / business status e metricas | IMPLEMENTADO_E_TESTADO | BLOCKED_BY_EXTERNAL_DEPENDENCY | B-07 | E-044, E-087, E-132, E-133, E-134, E-135, E-136, E-137, E-139, E-142, E-143, E-272 |
-| 33 | Canal Telegram | APENAS_ADAPTER | BLOCKED_BY_EXTERNAL_DEPENDENCY | B-03 | E-030, E-045, E-103 |
+| 33 | Canal Telegram | APENAS_ADAPTER | BLOCKED_BY_EXTERNAL_DEPENDENCY | B-03 | E-030, E-045, E-103, E-273 |
 | 34 | Canal WhatsApp | PARCIAL | BLOCKED_BY_EXTERNAL_DEPENDENCY | B-03 | E-045, E-105, E-141, E-170, E-171, E-172, E-174, E-175, E-176, E-177, E-230 |
 | 35 | Inbox unificado omnicanal | PARCIAL | BLOCKED_BY_EXTERNAL_DEPENDENCY | B-03 | E-047, E-106, E-144, E-145, E-146, E-147, E-148, E-149, E-150, E-151, E-152, E-153, E-154, E-155, E-156, E-157, E-158, E… |
 | 36 | Voz e transcricao | AUSENTE | BLOCKED_BY_EXTERNAL_DEPENDENCY | B-04 | E-047, E-215 |
@@ -90,7 +90,7 @@ possível sem ele**.
 
 ## Referências
 
-- Índice de evidências: [`HADES_EVIDENCE_INDEX.md`](HADES_EVIDENCE_INDEX.md) (272 linhas).
+- Índice de evidências: [`HADES_EVIDENCE_INDEX.md`](HADES_EVIDENCE_INDEX.md) (273 linhas).
 - Estado da missão: [`HADES_MASTER_STATE.json`](HADES_MASTER_STATE.json).
 - Gate global: [`HADES_FINAL_RELEASE_GATE.md`](HADES_FINAL_RELEASE_GATE.md).
 - Gate intermediário de engenharia (estágio 22): [`HADES_ENGINEERING_GATE.md`](HADES_ENGINEERING_GATE.md).
