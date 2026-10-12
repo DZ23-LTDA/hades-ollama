@@ -36,7 +36,7 @@ jobs:
       ALIBABA_API_KEY: ${{ secrets.ALIBABA_API_KEY }}
       ALIBABA_BASE_URL: https://dashscope-intl.aliyuncs.com/compatible-mode/v1
       GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-      GEMINI_MODEL: gemini-2.5-flash
+      GEMINI_MODEL: gemini-3.8-flash
       HUGGINGFACE_TOKEN: ${{ secrets.HUGGINGFACE_TOKEN }}
       HUGGINGFACE_MODEL: deepseek-ai/DeepSeek-R1:fastest
     steps:
