@@ -305,8 +305,13 @@ func TestServiceAgentAuditKeepsContactTextOut(t *testing.T) {
 		t.Fatal(err)
 	}
 	// O que o cliente escreveu NÃO entra na trilha: conteúdo de terceiro fica fora da auditoria.
-	if strings.Contains(string(conteudo), "4111") || strings.Contains(string(conteudo), segredo) {
-		t.Fatal("o texto do contato não pode ser gravado na trilha de auditoria")
+	//
+	// DIAGNÓSTICO (E-193): este teste falhou UMA vez na CI e a mensagem antiga ("o texto não pode ser gravado") não
+	// dizia QUAL campo carregava o texto — e sem isso não há como investigar sem reproduzir. Agora a falha nomeia o
+	// campo e mostra um trecho MASCARADO, para o log do CI já entregar o mecanismo.
+	if campo := campoDaTrilhaComTexto(string(conteudo), segredo); campo != "" {
+		t.Fatalf("o texto do contato não pode ser gravado na trilha de auditoria (campo %q, trecho mascarado %q)",
+			campo, mascararTexto(segredo))
 	}
 	if !strings.Contains(string(conteudo), "crm.contact.read") {
 		t.Fatal("a trilha precisa registrar a ferramenta executada")
