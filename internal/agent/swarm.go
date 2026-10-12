@@ -137,6 +137,17 @@ type AgentOrchestrator struct {
 	cancels map[string]context.CancelFunc
 }
 
+// prepareAgentWorkspace garante que o workspace do agente EXISTA antes do despacho. Sem isso, o agente que
+// escreve o próprio artefato falha ao abrir o arquivo — e o defeito aparece como erro obscuro de execução, não como
+// workspace ausente. Não impõe contenção na raiz: quem chama escolhe o workspace do job, inclusive fora dela.
+func (o *AgentOrchestrator) prepareAgentWorkspace(task AgentTask) error {
+	caminho := strings.TrimSpace(task.Workspace)
+	if caminho == "" {
+		return nil
+	}
+	return os.MkdirAll(caminho, 0o700)
+}
+
 var ErrOrchestrationForbidden = errors.New("orchestration job is outside the active organization")
 
 func NewAgentOrchestrator(root string, runner SubagentRunner) (*AgentOrchestrator, error) {
@@ -299,7 +310,15 @@ func (o *AgentOrchestrator) Run(ctx context.Context, id string) (OrchestrationJo
 				taskMu.Lock()
 				task.Attempts = attempt
 				taskMu.Unlock()
-				result, runErr = o.runner(ctx, *task)
+				// O workspace do agente precisa EXISTIR antes do despacho: o orquestrador atribuía o caminho e não
+				// criava o diretório, então o primeiro WriteFile do agente falhava com "no such file or directory" e a
+				// missão multiagente nunca chegava a artefato consolidado. A criação NÃO impõe contenção: o workspace do
+				// job é escolhido por quem chama (a API aceita caminho fora da raiz do orquestrador).
+				if err := o.prepareAgentWorkspace(*task); err != nil {
+					runErr = err
+				} else {
+					result, runErr = o.runner(ctx, *task)
+				}
 				if runErr == nil {
 					break
 				}
