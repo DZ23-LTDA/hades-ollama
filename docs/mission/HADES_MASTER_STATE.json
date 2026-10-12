@@ -2,7 +2,7 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-14T18:10:00-03:00",
+  "updated_at": "2026-10-14T19:20:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
@@ -249,7 +249,8 @@
         "E-023",
         "E-036",
         "E-187",
-        "E-188"
+        "E-188",
+        "E-211"
       ],
       "blocker": null,
       "next": "Complementar a matriz de capacidades com reconfirmacao dos 30 docs de audit/ datados",
@@ -672,7 +673,8 @@
         "E-140",
         "E-179",
         "E-180",
-        "E-181"
+        "E-181",
+        "E-211"
       ],
       "blocker": null,
       "next": "ABERTO: a checagem confere numeracao e citacoes, NAO conteudo (item mal escrito ou nao feito passa); a remocao do item duplicado foi decidida por TAMANHO (julgamento, nao medicao); a regra da crase e uma ESCOLHA; e o TEXTO de cada bloqueio segue manual",
@@ -1652,7 +1654,10 @@
     "MODEL GATEWAY LOCALIZADO (E-209): o produto fala com provedores por internal/multillm - ProviderPresetByID, Provider(models), ProbeProviderModel(ctx, provider, modelID, client), CredentialValue(envName), ListUpstreamModels, RouteCandidates e SpendLedger. A porta para converter 'catalogado' em 'verificado' existe",
     "INSTRUMENTO DE INFERENCIA REAL CRIADO (E-210): internal/multillm/real_inference_optin_test.go e opt-in (OLLAMA_AGENT_REAL_PROVIDER), usa o preset do produto + CredentialValue + Paths do preset, faz uma completude de chat real e RECUSA contar HTTP 200 sem conteudo como inferencia verificada",
     "BLOQUEIO DA CHAMADA DE NUVEM LOCALIZADO (E-210): as chaves de provedor NAO estao no ambiente do shell (6 nomes conferidos: nenhuma) nem em .env da arvore, mas EXISTEM no ambiente do servidor MCP (E-209: 19 provedores com credencial presente). Desbloqueio: disponibilizar a variavel no ambiente/segredo de quem roda o teste - nada novo precisa ser implementado no produto",
-    "LIMITE DECLARADO DO INSTRUMENTO (E-210): o teste exercita preset + credencial + caminho de chat, mas NAO o proxy HTTP completo do Gateway (exigiria subir o servidor). Nao confundir 'inferencia real com o preset do produto' com 'inferencia atraves de todo o proxy'"
+    "LIMITE DECLARADO DO INSTRUMENTO (E-210): o teste exercita preset + credencial + caminho de chat, mas NAO o proxy HTTP completo do Gateway (exigiria subir o servidor). Nao confundir 'inferencia real com o preset do produto' com 'inferencia atraves de todo o proxy'",
+    "DIVIDA DE GOVERNANCA VIRADA EM METRICA (E-211): as 16 divergencias do mapa receberam decisao explicita - 11 DECISAO_A (cobertas, inclusive por uniao como 16+29 e 33+34) e 5 DECISAO_B (lacuna declarada). O placar agora aparece no checker: 0 SEM decisao",
+    "QUATRO PAREAMENTOS NAO CORRESPONDIAM AO CONTEUDO REAL (E-211): lendo o campo done de cada estagio, o 29 diz Telefonia mas entrega a CAIXA DE ENTRADA; o 31 diz Social mas entrega o SUPERVISOR AUTONOMO; o 35 e o inbox, nao os agentes de atendimento; o 27 e CRM/vendas, nao financas. Declarei LACUNA em vez de cobrir com decisao conveniente",
+    "CINCO ESCOPOS DO MASTER SEM DONO (E-211), agora nomeados: 10 (paridade operacional ponta a ponta), 28 (VOICE & CALL CENTER), 30 (FINANCE & OPERATIONS), 35 (AGENTES DE ATENDIMENTO E VENDAS) e 36 (SOCIAL MEDIA E MARKETPLACE OPERACIONAL, na parte de redes). A colisao do master 37 virou DIVISAO DECLARADA (dois estagios do estado)"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
