@@ -1,0 +1,101 @@
+# HADES — RELATÓRIO DE RELEASE (DONE / NOT_DONE / BLOCKED)
+
+> Exigido pela seção **11.8** das diretrizes V2.1. Este documento **não** usa percentuais arbitrários: cada
+> estágio aparece com o seu estado de **capacidade**, o seu estado de **execução**, o bloqueio associado e as
+> evidências que o sustentam. Nada aqui é promessa: é o que o índice de evidências registra.
+
+**Veredito global: `NOT_RELEASE_READY`.**
+
+| Número | Valor |
+| --- | --- |
+| Estágios | 38 |
+| Linhas de evidência no índice | 172 |
+| `COMPLETED_VERIFIED` | 2 |
+| `IN_PROGRESS` | 15 |
+| `BLOCKED_BY_EXTERNAL_DEPENDENCY` | 21 |
+| `NOT_STARTED` | 0 |
+| Bloqueios externos em aberto | 6 |
+| Bloqueios já resolvidos | 3 |
+
+## Como `execution` foi atribuído
+
+Derivado por regra explicita (nada inventado por estagio): (a) estagios 13 e 15 sao COMPLETED_VERIFIED porque o relatorio de estagios ja os declara assim; (b) estagio cujo blocker aponta para um bloqueio de tipo EXTERNO e nao resolvido vira BLOCKED_BY_EXTERNAL_DEPENDENCY; (c) estagio com pelo menos uma linha de evidencia no indice vira IN_PROGRESS; (d) os demais ficam NOT_STARTED.
+
+O campo é **derivado**, e a regra fica gravada no próprio `HADES_MASTER_STATE.json` (`execution_rule`) para não
+virar um número sem origem. Onde a seção 7 pede campos que o projeto **não** registra por estágio (commit
+inicial/final por estágio, PR por estágio), este relatório **declara a ausência** em vez de preencher com
+suposição: os vínculos disponíveis são o índice de evidências (que cita PRs e commits por evidência) e o campo
+`pull_requests` do estado.
+
+## DONE (concluído e verificado)
+
+| # | Estágio | Capacidade | Execução | Bloqueio | Evidências |
+| --- | --- | --- | --- | --- | --- |
+| 13 | Workflow Engine (fluxos, schedules, condicoes) | IMPLEMENTADO_E_TESTADO | COMPLETED_VERIFIED | — | E-020, E-029, E-074, E-075, E-076, E-077, E-078, E-079, E-080, E-081, E-082, E-083, E-084, E-085 |
+| 15 | Memoria e RAG local | IMPLEMENTADO_E_TESTADO | COMPLETED_VERIFIED | B-07 | E-040, E-052, E-056, E-057, E-087, E-088, E-089, E-090, E-092, E-093, E-094, E-095, E-096 |
+
+## IN_PROGRESS (trabalho real, com limites declarados)
+
+| # | Estágio | Capacidade | Execução | Bloqueio | Evidências |
+| --- | --- | --- | --- | --- | --- |
+| 1 | Auditoria total e inventario real | PARCIAL | IN_PROGRESS | — | E-001, E-002, E-021, E-023, E-036 |
+| 2 | Estabilizacao e consolidacao da base | PARCIAL | IN_PROGRESS | B-09 | E-011, E-013, E-014, E-015, E-016, E-017, E-116, E-138, E-142, E-143 |
+| 3 | Arquitetura canonica dos componentes | PARCIAL | IN_PROGRESS | — | E-037, E-040, E-043, E-044, E-045 |
+| 6 | Harness Runtime (execucao governada) | AUSENTE | IN_PROGRESS | B-01 | E-041, E-025 |
+| 7 | MCP Manager (servidores, ferramentas, escopos) | APENAS_CATALOGO | IN_PROGRESS | B-10 | E-018, E-019, E-026 |
+| 8 | Plugins e Skills | PARCIAL | IN_PROGRESS | — | E-042, E-053, E-055, E-063, E-065, E-066, E-067, E-068 |
+| 9 | Agentes e subagentes (delegacao) | IMPLEMENTADO_NAO_HOMOLOGADO | IN_PROGRESS | — | E-043 |
+| 10 | Mission Control multiagente (missoes, eventos, SSE, artefatos) | PARCIAL | IN_PROGRESS | — | E-020, E-027, E-103 |
+| 12 | Studio / Builder visual | IMPLEMENTADO_NAO_HOMOLOGADO | IN_PROGRESS | — | E-008, E-009, E-028, E-034, E-035, E-039 |
+| 14 | Browser Operator / computer-use | PARCIAL | IN_PROGRESS | B-09 | E-015, E-086 |
+| 17 | Workspace do agente (threads, artefatos, preview) | PARCIAL | IN_PROGRESS | — | E-027 |
+| 18 | Seguranca, permissoes e multitenancy | IMPLEMENTADO_NAO_HOMOLOGADO | IN_PROGRESS | — | E-019, E-031, E-058, E-070, E-071, E-072, E-073, E-121, E-122, E-123 |
+| 19 | UX/onboarding e jornada de primeira execucao | IMPLEMENTADO_E_TESTADO | IN_PROGRESS | — | E-011, E-012, E-032, E-130, E-139 |
+| 21 | Benchmarks e comparativo competitivo | PARCIAL | IN_PROGRESS | — | E-021, E-054, E-117, E-160, E-161, E-164, E-165, E-166, E-167, E-168, E-169 |
+| 22 | Gate de engenharia intermediario | IMPLEMENTADO_NAO_HOMOLOGADO | IN_PROGRESS | — | E-005, E-006, E-007, E-013, E-014, E-017, E-034, E-036, E-048, E-059, E-098, E-099, E-113, E-140 |
+
+## BLOCKED (impedimento externo, com procedimento de desbloqueio)
+
+| # | Estágio | Capacidade | Execução | Bloqueio | Evidências |
+| --- | --- | --- | --- | --- | --- |
+| 4 | Model Gateway (roteamento, rotacao, fallback, orcamento) | IMPLEMENTADO_NAO_HOMOLOGADO | BLOCKED_BY_EXTERNAL_DEPENDENCY | B-07 | E-024, E-037, E-038, E-049 |
+| 5 | Context Bootstrap / contexto de projeto | PARCIAL | BLOCKED_BY_EXTERNAL_DEPENDENCY | B-07 | E-040, E-050, E-051, E-069 |
+| 11 | Paridade Codex/Claude (harnesses de codigo) | PARCIAL | BLOCKED_BY_EXTERNAL_DEPENDENCY | B-02 | E-025, E-046, E-116 |
+| 16 | Canais de IM (WhatsApp/Telegram/inbox unificado) | APENAS_ADAPTER | BLOCKED_BY_EXTERNAL_DEPENDENCY | B-03 | E-030 |
+| 20 | Distribuicao e instaladores (Windows/macOS/Linux) | PARCIAL | BLOCKED_BY_EXTERNAL_DEPENDENCY | B-06 | E-022, E-113 |
+| 23 | Company Factory (empresa orquestrada) | PARCIAL | BLOCKED_BY_EXTERNAL_DEPENDENCY | B-07 | E-044, E-087, E-114 |
+| 24 | CRM e pipeline de vendas | PARCIAL | BLOCKED_BY_EXTERNAL_DEPENDENCY | B-05 | E-047, E-087, E-107 |
+| 25 | Commerce / loja e pedidos | IMPLEMENTADO_NAO_HOMOLOGADO | BLOCKED_BY_EXTERNAL_DEPENDENCY | B-05 | E-047, E-087, E-126, E-128 |
+| 26 | Marketplace multi-vendedor | IMPLEMENTADO_NAO_HOMOLOGADO | BLOCKED_BY_EXTERNAL_DEPENDENCY | B-05 | E-047, E-087, E-124, E-125 |
+| 27 | Pagamentos e faturamento | PARCIAL | BLOCKED_BY_EXTERNAL_DEPENDENCY | B-05 | E-047, E-087, E-101, E-102, E-118, E-119, E-120 |
+| 28 | Atendimento e suporte (helpdesk) | IMPLEMENTADO_NAO_HOMOLOGADO | BLOCKED_BY_EXTERNAL_DEPENDENCY | B-03 | E-047, E-087 |
+| 29 | Telefonia e call center | PARCIAL | BLOCKED_BY_EXTERNAL_DEPENDENCY | B-04 | E-047, E-087, E-104 |
+| 30 | Marketing e campanhas | PARCIAL | BLOCKED_BY_EXTERNAL_DEPENDENCY | B-05 | E-044, E-087, E-100, E-108, E-112 |
+| 31 | Social e publicacao | IMPLEMENTADO_NAO_HOMOLOGADO | BLOCKED_BY_EXTERNAL_DEPENDENCY | B-05 | E-044, E-087, E-097, E-110, E-111 |
+| 32 | BI / business status e metricas | IMPLEMENTADO_E_TESTADO | BLOCKED_BY_EXTERNAL_DEPENDENCY | B-07 | E-044, E-087, E-132, E-133, E-134, E-135, E-136, E-137, E-139, E-142, E-143 |
+| 33 | Canal Telegram | APENAS_ADAPTER | BLOCKED_BY_EXTERNAL_DEPENDENCY | B-03 | E-030, E-045, E-103 |
+| 34 | Canal WhatsApp | PARCIAL | BLOCKED_BY_EXTERNAL_DEPENDENCY | B-03 | E-045, E-105, E-141, E-170, E-171, E-172 |
+| 35 | Inbox unificado omnicanal | PARCIAL | BLOCKED_BY_EXTERNAL_DEPENDENCY | B-03 | E-047, E-106, E-144, E-145, E-146, E-147, E-148, E-149, E-150, E-151, E-152, E-153, E-154, E-155, E-156, E-157, E-158, E… |
+| 36 | Voz e transcricao | AUSENTE | BLOCKED_BY_EXTERNAL_DEPENDENCY | B-04 | E-047 |
+| 37 | Chamadas e follow-up | AUSENTE | BLOCKED_BY_EXTERNAL_DEPENDENCY | B-04 | E-047 |
+| 38 | Gate final de release verificado | PARCIAL | BLOCKED_BY_EXTERNAL_DEPENDENCY | B-06 | E-033, E-048, E-087, E-109, E-112 |
+
+Procedimento de desbloqueio de cada bloqueio externo está em
+[`HADES_BLOCKERS.md`](HADES_BLOCKERS.md): cada item traz o que falta, quem desbloqueia e **o que continua
+possível sem ele**.
+
+## NOT_DONE / NOT_STARTED (declarado, sem trabalho iniciado)
+
+| # | Estágio | Capacidade | Execução | Bloqueio | Evidências |
+| --- | --- | --- | --- | --- | --- |
+
+
+## Referências
+
+- Índice de evidências: [`HADES_EVIDENCE_INDEX.md`](HADES_EVIDENCE_INDEX.md) (172 linhas).
+- Estado da missão: [`HADES_MASTER_STATE.json`](HADES_MASTER_STATE.json).
+- Gate global: [`HADES_FINAL_RELEASE_GATE.md`](HADES_FINAL_RELEASE_GATE.md).
+- Gate intermediário de engenharia (estágio 22): [`HADES_ENGINEERING_GATE.md`](HADES_ENGINEERING_GATE.md).
+
+> **Honestidade de release**: `NOT_RELEASE_READY` significa que **requisito obrigatório não
+> comprovado** ainda existe. Nenhum item deste relatório pode ser promovido sem evidência anexada ao índice.
