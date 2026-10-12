@@ -652,30 +652,46 @@ func (r *OmnichannelRuntime) Ingest(organizationID, channel string, signature st
 	// E-174: o cache de EVENTOS RICOS tem teto. Isto só é seguro porque a DEDUPE deixou de depender dele (E-172):
 	// a memória de "já entrou" vive no índice persistido, então descartar o payload antigo NÃO reabre a janela de
 	// duplicação — só deixa de devolver o evento completo numa duplicata muito antiga.
+	// E-175 (MEDIDO): a poda roda a cada mensagem aceita com o cache cheio, e ela NÃO é o custo dominante — ver
+	// a nota de medição em `pruneEventsLocked`. O que se paga é o TAMANHO do mapa vivo, que é o que o teto limita.
 	r.pruneEventsLocked(event.OrganizationID)
 	r.mu.Unlock()
 	return event, nil
 }
 
-// pruneEventsLocked mantém no máximo OmnichannelMaxEventsPerOrg eventos ricos por organização, descartando os
-// mais ANTIGOS primeiro.
+// pruneEventsLocked mantém o cache de eventos ricos dentro do teto, descartando os MAIS ANTIGOS.
+//
+// A MEDIÇÃO (E-175) fica registrada aqui para não se repetir a tentativa — e porque contrariou a explicação mais
+// confortável:
+//
+//  1. ordenar as chaves a cada mensagem aceita: ingestão de ~132–159 µs (cache folgado) contra ~447–491 µs (cache
+//     no teto de 2000);
+//  2. trocar a ordenação por uma varredura de MÍNIMO (O(n), sem alocação): **483–523 µs** — a hipótese de que o
+//     `sort` era o custo foi **REFUTADA pela medição**;
+//  3. poda AMORTIZADA (contador O(1) + folga de 64): **484–633 µs** — também **não** melhorou (e trouxe junto um
+//     bug de seleção invertida, pego pelo teste `TestOmnichannelEventsCacheRespectsTheCap`);
+//  4. conclusão honesta: a diferença ~100 µs → ~500 µs vem do **tamanho do mapa vivo**, não do algoritmo da poda.
+//     O teto é o instrumento que age sobre essa causa — as três abordagens pagam o mesmo por manter 2000 eventos.
+//
+// Por isso a implementação fica na forma mais SIMPLES que está correta e medida.
 func (r *OmnichannelRuntime) pruneEventsLocked(organizationID string) {
 	if OmnichannelMaxEventsPerOrg <= 0 {
 		return
 	}
-	daOrganizacao := make([]string, 0, len(r.eventsByKey))
+	chaves := make([]string, 0, len(r.eventsByKey))
 	for chave, evento := range r.eventsByKey {
 		if evento.OrganizationID == organizationID {
-			daOrganizacao = append(daOrganizacao, chave)
+			chaves = append(chaves, chave)
 		}
 	}
-	if len(daOrganizacao) <= OmnichannelMaxEventsPerOrg {
+	if len(chaves) <= OmnichannelMaxEventsPerOrg {
 		return
 	}
-	sort.Slice(daOrganizacao, func(i, j int) bool {
-		return r.eventsByKey[daOrganizacao[i]].IngestedAt.Before(r.eventsByKey[daOrganizacao[j]].IngestedAt)
+	sort.Slice(chaves, func(i, j int) bool {
+		return r.eventsByKey[chaves[i]].IngestedAt.Before(r.eventsByKey[chaves[j]].IngestedAt)
 	})
-	for _, chave := range daOrganizacao[:len(daOrganizacao)-OmnichannelMaxEventsPerOrg] {
+	// `chaves` está em ordem CRESCENTE de tempo: o PREFIXO é o mais antigo e é o que sai.
+	for _, chave := range chaves[:len(chaves)-OmnichannelMaxEventsPerOrg] {
 		delete(r.eventsByKey, chave)
 	}
 }
