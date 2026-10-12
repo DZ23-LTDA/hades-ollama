@@ -12,13 +12,13 @@ subjetiva.
 
 ## Matriz de aceite (seção 9 das diretrizes)
 
-Resumo: BLOCKED_BY_EXTERNAL_DEPENDENCY: 3 · DONE: 16 · IN_PROGRESS: 1 · NAO_COMPROVADO: 4
+Resumo: BLOCKED_BY_EXTERNAL_DEPENDENCY: 3 · DONE: 17 · IN_PROGRESS: 1 · NAO_COMPROVADO: 3
 
 | # | Requisito | Status | Evidência / limite | O que destrava |
 | --- | --- | --- | --- | --- |
 | 1 | O Hades inicia corretamente | **DONE** | Suítes de runtime e inicialização verdes; nenhuma falha de startup pendente | — |
 | 2 | A interface funciona | **DONE** | Contrato de frontend verificado por `scripts/verify-contracts.mjs` (job obrigatório do CI) | — |
-| 3 | O onboarding está validado | **NAO_COMPROVADO** | Não há teste de jornada de primeiro uso com usuário | Executar a jornada de onboarding com evidência (estágio 19) |
+| 3 | O onboarding está validado | **DONE** | E-182: jornada de primeira execução (instalação → onboarding → persistência → reinício → atualização → rollback) executada em **navegador real** sobre o SPA real com backend HTTP real (`npx playwright test --project=first-run` → **2 passed**), e o **CI já a roda** no passo `Web E2E — primeira execução` | — |
 | 4 | Modelos locais são descobertos e usados | **DONE** | Descoberta e uso local com evidências no índice (estágio 4) | — |
 | 5 | APIs externas configuradas são testadas e usadas | **BLOCKED_BY_EXTERNAL_DEPENDENCY** | B-07: chaves de provedor | Credencial de provedor (estágio 4) |
 | 6 | A troca de modelo preserva contexto autorizado | **DONE** | Bootstrap de contexto reconstruído por modelo, com teste (estágio 5) | — |
