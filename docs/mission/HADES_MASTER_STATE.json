@@ -2,7 +2,7 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-15T02:30:00-03:00",
+  "updated_at": "2026-10-15T04:15:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
@@ -316,7 +316,8 @@
         "E-209",
         "E-210",
         "E-215",
-        "E-217"
+        "E-217",
+        "E-218"
       ],
       "blocker": "B-07",
       "next": "Chamada real opt-in via internal/multillm (free-tier primeiro: groq/cerebras) para verificar inferencia por provedor; rotacionar as 3 chaves com authentication_failed",
@@ -430,12 +431,14 @@
         "E-103",
         "E-214",
         "E-216",
-        "E-217"
+        "E-217",
+        "E-218",
+        "E-219"
       ],
       "blocker": null,
-      "next": "Custo POR ETAPA (hoje e por missao, na chamada de planejamento); missao autonoma conduzida por MODELO REAL; o ciclo e a linha do tempo ja tem evidencia",
+      "next": "Missao real com mais de uma etapa de ESCRITA; custo POR ETAPA (hoje o consumo e por missao, na chamada de planejamento)",
       "execution": "IN_PROGRESS",
-      "done": "CICLO DE MISSAO E LINHA DO TEMPO POR ETAPA (E-214 + E-216): o ciclo tem prova real (worktree + merge commit; 42 PASS) e a linha do tempo por etapa EXISTE nos tipos - Step{Kind, Title, Input, Risk, RequiresApproval, ToolDescriptorSHA256, ToolConfigSHA256, State, Attempts, Result, Error}, Event{MissionID, Type, StepID, Payload} e ArtifactManifest{MissionID, StepID, SHA256}, com Mission carregando Objective, State, Plan, Approvals, Artifacts, GitMergeStatus, LastError e timestamps. MEDIDO: 5 testes PASS cobrem aprovacao antes de escrever + artefato por etapa, cancelamento por etapa, redacao DLP de resultados/eventos/traces, evento de falha do outbox e evento de frame do browser. CUSTO/TOKENS FECHADO COM EVIDENCIA (E-217): o consumo de modelo passou a entrar no registro da missao - Mission.Usage carrega tokens, custo, CostKnown, provedor e modelo; o planejador captura PromptEvalCount/EvalCount da resposta e publica no destino injetado pelo runtime; o preco vem do catalogo (modelo local = zero CONHECIDO por construcao; catalogo sem tarifa e sem etiqueta = preco DESCONHECIDO, nunca zero). 9 testes PASS. O que ainda NAO esta feito: custo POR ETAPA (hoje o consumo e por missao, atribuido a chamada de planejamento)."
+      "done": "CICLO DE MISSAO E LINHA DO TEMPO POR ETAPA (E-214 + E-216): o ciclo tem prova real (worktree + merge commit; 42 PASS) e a linha do tempo por etapa EXISTE nos tipos - Step{Kind, Title, Input, Risk, RequiresApproval, ToolDescriptorSHA256, ToolConfigSHA256, State, Attempts, Result, Error}, Event{MissionID, Type, StepID, Payload} e ArtifactManifest{MissionID, StepID, SHA256}, com Mission carregando Objective, State, Plan, Approvals, Artifacts, GitMergeStatus, LastError e timestamps. MEDIDO: 5 testes PASS cobrem aprovacao antes de escrever + artefato por etapa, cancelamento por etapa, redacao DLP de resultados/eventos/traces, evento de falha do outbox e evento de frame do browser. CUSTO/TOKENS FECHADO COM EVIDENCIA (E-217): o consumo de modelo passou a entrar no registro da missao - Mission.Usage carrega tokens, custo, CostKnown, provedor e modelo; o planejador captura PromptEvalCount/EvalCount da resposta e publica no destino injetado pelo runtime; o preco vem do catalogo (modelo local = zero CONHECIDO por construcao; catalogo sem tarifa e sem etiqueta = preco DESCONHECIDO, nunca zero). 9 testes PASS. MISSAO REAL COM MODELO LOCAL EXECUTA PONTA A PONTA (E-218): com qwen2.5:7b o modelo REAL planejou a missao (kind=workspace.list, 1 etapa), o runtime executou e a missao terminou em COMPLETED, com consumo real registrado (PromptTokens=557, CompletionTokens=53, CostCents=0, CostKnown=true). A cadeia de causas corrigidas, cada uma com teste proprio: (1) consumo/custo nao chegava ao registro da missao -> Mission.Usage; (2) plano sem campo obrigatorio virava erro obscuro NA EXECUCAO -> RequiredInputs e recusa NO PLANEJAMENTO nomeando etapa, ferramenta e campo; (3) o prompt so listava kinds permitidos, sem exigir campos -> contrato REAL das ferramentas injetado no prompt a partir de Registry.Descriptors (sem lista duplicada para divergir do codigo); (4) o prompt nao dizia que caminho e relativo nem qual kind inspeciona diretorio -> regras explicitas. ARTEFATO REAL COM MODELO LOCAL (E-219): o modelo planejou kind=workspace.write com aprovacao obrigatoria (input path=relatorio.md e content preenchidos), o gate humano foi exercitado (aprovar e retomar) e a missao terminou COMPLETED com 1 artefato verificado por SHA-256 e 8 bytes no disco. MEDIDO: artefato relatorio.md, sha256=8e1d6a7dee84c844762c468bb636b6153055ff68707bed83dea188675bbed6a5. O que ainda NAO esta feito: missao real com MAIS de uma etapa de escrita e custo POR ETAPA."
     },
     {
       "id": 11,
@@ -1702,7 +1705,14 @@
     "CUSTO/TOKENS NO REGISTRO DA MISSAO (E-217, PR #285): Mission.Usage carrega tokens, custo, CostKnown, provedor e modelo; o runtime injeta o destino ANTES de planner.Plan e anexa o consumo depois, no ponto em que o plano ja vai ser persistido. 9 testes PASS, incluindo a PROVA de que o consumo sobrevive a releitura do store e de que planejador que nao reporta NAO produz custo inventado",
     "REGRA DE PRECO QUE EVITA MENTIR PARA BAIXO (E-217): modelo local e zero CONHECIDO por construcao; catalogo SEM tarifa e SEM etiqueta devolve Known=false (preco DESCONHECIDO). Tratar ausencia de preco como zero faria o orcamento parecer mais barato do que e",
     "AINDA FALTA CUSTO POR ETAPA (E-217): o consumo hoje e por missao, atribuido a chamada de PLANEJAMENTO. Etapas que chamarem modelo por conta propria ainda nao reportam consumo proprio",
-    "ESTADO CORRIGIDO PARA NAO MENTIR PARA BAIXO (E-217): o `done` do estagio 10 afirmava que custo/tokens 'nao tem caminho ate a missao'. Depois do PR #285 isso ficou falso, e um estado que subestima o que existe e tao ruim quanto um que superestima"
+    "ESTADO CORRIGIDO PARA NAO MENTIR PARA BAIXO (E-217): o `done` do estagio 10 afirmava que custo/tokens 'nao tem caminho ate a missao'. Depois do PR #285 isso ficou falso, e um estado que subestima o que existe e tao ruim quanto um que superestima",
+    "MISSAO AUTONOMA COM MODELO REAL EXECUTOU (E-218, PR #287): com o modelo LOCAL qwen2.5:7b a missao terminou em COMPLETED com consumo real (557 tokens de entrada, 53 de saida, custo zero CONHECIDO). A lacuna do master 10 saiu de 'ausente' para 'executada e medida'",
+    "O QUE FEZ A MISSAO REAL FUNCIONAR (E-218): nao foi afrouxar validacao. Foram tres correcoes que AUMENTARAM o rigor - custo registrado, plano invalido recusado no planejamento com erro acionavel, e contrato REAL das ferramentas injetado no prompt (gerado dos descritores, sem lista duplicada). O modelo passou a receber a informacao que faltava em vez de o runtime aceitar plano incompleto",
+    "ESCOPO HONESTO DA E-218: a prova real tem 1 etapa de LEITURA. Missao real com multiplas etapas e ARTEFATO (escrita com aprovacao) continua NAO evidenciada, e isso ficou no campo `next`",
+    "TRES ITERACOES MEDIDAS COM O MODELO REAL (E-218), todas declaradas: input vazio -> 'anchored workspace path is required'; input com path=\"/\" -> 'tool path must be relative to workspace'; kind=workspace.list -> COMPLETED. Nenhuma foi suposta: cada uma foi vista na saida do teste opt-in",
+    "ARTEFATO REAL PRODUZIDO POR MISSAO COM MODELO LOCAL (E-219): o modelo planejou workspace.write com aprovacao obrigatoria e o gate humano foi exercitado de verdade (DecideApproval -> Run). Missao COMPLETED com 1 artefato verificado por SHA-256 e 8 bytes no disco. O criterio do master 'artefatos utilizaveis' deixou de ser lacuna no caminho real",
+    "ERRO MEU NO PRIMEIRO TESTE DE ARTEFATO (E-219): eu li ArtifactManifest.Path como caminho absoluto, mas o manifesto guarda caminho RELATIVO ao workspace. Corrigi o TESTE (resolver contra a raiz), nao o produto",
+    "OPT-IN CONTINUA OPT-IN (E-219): sem OLLAMA_AGENT_REAL_LOCAL_MODEL os dois testes de missao real fazem SKIP e a suite segue hermtica - verificado nos dois modos"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
