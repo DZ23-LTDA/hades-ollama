@@ -66,7 +66,7 @@ func (r multiProviderPlannerResolver) ResolvePlanner(provider, model string) (ag
 		if client == nil {
 			client = api.NewClient(envconfig.ConnectableHost(), plannerEgressClient())
 		}
-		return &agent.OllamaPlanner{Client: client, Model: model}, nil
+		return &agent.OllamaPlanner{Client: client, Model: model, Price: agent.LocalModelPrice()}, nil
 	}
 	if r.registry == nil {
 		return nil, fmt.Errorf("provider %q is not configured", provider)
@@ -86,7 +86,7 @@ func (r multiProviderPlannerResolver) ResolvePlanner(provider, model string) (ag
 	if client == nil {
 		client = api.NewClient(envconfig.ConnectableHost(), plannerEgressClient())
 	}
-	return &agent.OllamaPlanner{Client: client, Model: resolved.ID}, nil
+	return &agent.OllamaPlanner{Client: client, Model: resolved.ID, Price: agent.ModelPriceFromCatalog(resolved.CostPer1KInputCents, resolved.CostPer1KOutputCents, resolved.CostTag)}, nil
 }
 
 func (r multiProviderPlannerResolver) ResolvePlannerForMission(ctx context.Context, provider, model, organizationID string, capabilities []string) (agent.Planner, agent.PlannerResolution, error) {
@@ -142,7 +142,7 @@ func (r multiProviderPlannerResolver) ResolvePlannerForMission(ctx context.Conte
 		if client == nil {
 			client = api.NewClient(envconfig.ConnectableHost(), plannerEgressClient())
 		}
-		return &agent.OllamaPlanner{Client: client, Model: localModel}, agent.PlannerResolution{Provider: "ollama-local", Model: localModel, Reason: "fallback local-first: nenhuma rota remota PASS elegível" + capNote, CostTag: "0-local"}, nil
+		return &agent.OllamaPlanner{Client: client, Model: localModel, Price: agent.LocalModelPrice()}, agent.PlannerResolution{Provider: "ollama-local", Model: localModel, Reason: "fallback local-first: nenhuma rota remota PASS elegível" + capNote, CostTag: "0-local"}, nil
 	}
 	return agent.RulePlanner{}, agent.PlannerResolution{Provider: "ollama-local", Reason: "fallback local-first: planner de regras local sem modelo remoto elegível" + capNote, CostTag: "0-local"}, nil
 }

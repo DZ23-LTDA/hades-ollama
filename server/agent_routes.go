@@ -433,6 +433,7 @@ func newDefaultAgentRuntime() (*agent.Runtime, error) {
 		planner = &agent.OllamaPlanner{
 			Client: api.NewClient(envconfig.ConnectableHost(), newServerEgressClient("server.agent.ollama_local", true)),
 			Model:  model,
+			Price:  agent.LocalModelPrice(),
 		}
 	}
 	runtime, err := agent.NewRuntime(agent.RuntimeConfig{Store: store, Context: contextStore, Company: companyStore, Planner: planner, WorkspaceRoot: workspaceRoot, DataRoot: storeRoot, Connectors: connectors, MCP: mcp, RemoteMCP: remoteMCP, Media: media, RedisQueue: redisQueue, Telemetry: telemetry, Push: push, Deployments: deployments})
