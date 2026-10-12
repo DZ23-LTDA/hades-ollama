@@ -209,10 +209,19 @@ func (r *PluginRuntime) Execute(ctx context.Context, request PluginExecutionRequ
 		input["sandbox_gate_status"] = string(GateStatusNotConfigured)
 		input["sandbox_approval_notice"] = strings.TrimSpace(request.ApprovalNotice)
 	}
+	// O workspace de execução precisa ser um DIRETÓRIO: o sandbox faz `os.OpenRoot(Workspace)` e cria o arquivo do
+	// plugin DENTRO dessa raiz. Passar o caminho do `.zip` era o defeito B-13 ("not a directory", medido em E-183).
+	// O bundle verificado é extraído para um diretório temporário (com proteção contra travessia, link simbólico e
+	// zip bomb) e a execução roda ali; o diretório é removido ao final, inclusive em caso de erro.
+	workspace, cleanupWorkspace, err := preparePluginWorkspace(installation.ContentPath, r.Registry.root)
+	if err != nil {
+		return PluginExecutionResult{}, err
+	}
+	defer cleanupWorkspace()
 	toolContext := ToolContext{
 		MissionID:      strings.TrimSpace(request.MissionID),
 		StepID:         strings.TrimSpace(request.StepID),
-		Workspace:      installation.ContentPath,
+		Workspace:      workspace,
 		OrganizationID: organizationID,
 	}
 	result, execErr := (sandboxExecTool{}).Execute(ctx, toolContext, input)
