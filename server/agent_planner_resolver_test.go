@@ -24,9 +24,9 @@ func TestMultiProviderPlannerResolverSelectsRegisteredModel(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	selected, ok := planner.(agent.OllamaPlanner)
+	selected, ok := planner.(*agent.OllamaPlanner)
 	if !ok {
-		t.Fatalf("planner type = %T, want agent.OllamaPlanner", planner)
+		t.Fatalf("planner type = %T, want *agent.OllamaPlanner", planner)
 	}
 	if selected.Model != "anthropic/claude-sonnet-4-5" {
 		t.Fatalf("planner model = %q", selected.Model)
