@@ -3,7 +3,7 @@
 > Gerado por `python scripts/hades_baseline_report.py` a partir de `HADES_MASTER_STATE.json`: um bloqueio que
 > existe no estado aparece aqui, e um que sai do estado sai daqui. O `--check` no CI detecta divergência.
 
-Total: **14** — 9 em aberto · 5 resolvidos.
+Total: **15** — 10 em aberto · 5 resolvidos.
 
 ## 1. Em aberto
 
@@ -18,6 +18,7 @@ Total: **14** — 9 em aberto · 5 resolvidos.
 | B-09 | AMBIENTAL | Host sem Python/sh e limites de caminho: 4 testes falham por ambiente |
 | B-10 | PRODUTO | Conectores: 104 de 122 exigem configuracao do operador (available=17) |
 | B-14 | AMBIENTE (DIAGNOSTICO RESOLVIDO) | LIMITE (E-184): a execucao de plugin exige PRIVILEGIO DE MONTAGEM - mesmo o modo best-effort faz mount/chroot (mount --make-rprivate, mount --bind, tmpfs e chroot/unshare em tools.go). Onde nao ha esse privilegio (Windows, container nao privilegiado, runner padrao de CI) a execucao nao acontece e o sintoma e 'exit status 1' com stdout e stderr VAZIOS - falha |
+| B-16 | PRODUTO (SEGURANCA) | MESMA CLASSE DE ORACULO DO B-15 EM OUTROS QUATRO MODULOS (E-191, scanner calibrado): methods GetForOrganization de builder (internal/agent/builder.go:352), devices (devices.go:210) e swarm (swarm.go:218), e TelAgentSessionForOrganization (tel_agent_session.go:181), devolvem o erro CRU da busca quando o recurso nao existe e um erro PROPRIO quando e de outro t |
 
 ## 2. Resolvidos
 
