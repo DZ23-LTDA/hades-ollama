@@ -2,7 +2,7 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-14T21:40:00-03:00",
+  "updated_at": "2026-10-14T23:00:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
@@ -416,11 +416,13 @@
       "evidence": [
         "E-020",
         "E-027",
-        "E-103"
+        "E-103",
+        "E-214"
       ],
       "blocker": null,
-      "next": "Cobrir orcamento/pausa/cancelamento por teste; PRs #67/#68/#69",
-      "execution": "IN_PROGRESS"
+      "next": "Evidenciar a linha do tempo por etapa (agente/ferramenta/evidencia/retentativa/custo) e uma missao autonoma com modelo real; o ciclo basico ja tem teste",
+      "execution": "IN_PROGRESS",
+      "done": "ATRIBUICAO MEDIDA (E-214): o ciclo de missao ponta a ponta existe e e exercitado. Evidencia: ciclo REAL de missao com git worktree e MERGE COMMIT (teste registra 'Mission git worktree cycle completed successfully: merge commit eac8ee9d3068c317d08e25055d8eaee6eb414046'); 42 testes PASS no subconjunto de missao/timeline/cancelamento (ok 14.407s) cobrindo cancelamento que domina entre instancias, idempotencia de criacao de missao, fail-closed quando a persistencia da fila falha, falha de provedor persistindo estado FAILED e notificacoes a partir de eventos persistidos. LACUNAS INTERNAS DECLARADAS: a linha do tempo por etapa (agente, ferramenta, evidencia, retentativa e CUSTO) e uma missao autonoma conduzida por modelo real NAO estao evidenciadas. O master pede mais do que o ciclo hoje comprovado."
     },
     {
       "id": 11,
@@ -1665,7 +1667,10 @@
     "LICAO DE AUDITORIA (E-212): 'sem dono declarado' nao significa 'nao implementado'. Antes de abrir trabalho novo, procurar o modulo no codigo - o estado pode nao estar atribuindo codigo que existe",
     "DUAS LACUNAS FECHADAS COM EVIDENCIA (E-213): master 30 (FINANCE & OPERATIONS) por finance_ops.go + company_ledger.go (contas a receber, livro-caixa, conciliacao, divergencias e relatorios) e master 36 (SOCIAL MEDIA E MARKETPLACE OPERACIONAL) por company_social.go + company_marketplace.go + marketplace_sync.go (publicacao SO com aprovacao, metricas idempotentes, campanhas e sincronizacao de marketplace). 18 testes PASS no filtro usado",
     "COBERTURA PARCIAL DECLARADA, NAO TOTAL (E-213): fechar a lacuna NAO virou afirmar cobertura completa. Dentro do master 30 ficam declarados sem evidencia: cobrancas, orcamentos e integracoes fiscais. Dentro do master 36: respostas por IA em redes e alertas. O escopo do master e maior que o modulo",
-    "METODO QUE JA PAGOU DUAS VEZES (E-212/E-213): antes de declarar ausencia, procurar o modulo no codigo. Tres das cinco lacunas declaradas (35, 30 e 36) eram de ATRIBUICAO, nao de implementacao"
+    "METODO QUE JA PAGOU DUAS VEZES (E-212/E-213): antes de declarar ausencia, procurar o modulo no codigo. Tres das cinco lacunas declaradas (35, 30 e 36) eram de ATRIBUICAO, nao de implementacao",
+    "LACUNA DO MASTER 10 FECHADA COM EVIDENCIA (E-214): o ciclo de missao tem prova real - teste conclui um ciclo com git worktree e MERGE COMMIT, e 42 testes PASS no subconjunto de missao/timeline/cancelamento com ambiente gravavel. O estagio 10 do estado estava com `done` VAZIO; agora carrega a atribuicao",
+    "COBERTURA PARCIAL DECLARADA (E-214): a linha do tempo por etapa (agente, ferramenta, evidencia, retentativa e CUSTO) e uma missao autonoma com MODELO REAL nao estao evidenciadas. O master 10 pede mais do que o ciclo comprovado, e isso ficou escrito",
+    "ARMADILHA DE MEDICAO (E-214): 15 testes de missao FALHARAM em subconjunto com 'mkdir C:\\Users\\DZ23\\AppData\\Roaming\\ollama-agent: Acesso negado' - o APPDATA do operador tambem e SOMENTE LEITURA aqui (mesma classe da E-208). Com APPDATA redirecionado para dentro do workspace: 42 PASS, 0 FAIL. Rodar subconjunto sem o ambiente correto produz falha FALSA - nao reportar como defeito de produto"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
