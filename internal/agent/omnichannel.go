@@ -58,6 +58,12 @@ const (
 	OmnichannelMaxDLQ = 200
 )
 
+// OmnichannelMaxEventsPerOrg limita o CACHE DE EVENTOS RICOS por organização (E-174).
+//
+// É `var` (e não `const`) por um motivo prático e declarado: o teste precisa exercitar a PODA sem fazer milhares
+// de ingestões. O valor de produção é este e não muda em tempo de execução fora de teste.
+var OmnichannelMaxEventsPerOrg = 2000
+
 var (
 	ErrOmnichannelNotConfigured = errors.New("omnichannel connector is not configured")
 	ErrOmnichannelSignature     = errors.New("webhook signature is missing or invalid")
@@ -643,8 +649,35 @@ func (r *OmnichannelRuntime) Ingest(organizationID, channel string, signature st
 	r.mu.Lock()
 	r.eventsByKey[dedupeKey] = event
 	r.registrarDedupeLocked(dedupeKey, event, now)
+	// E-174: o cache de EVENTOS RICOS tem teto. Isto só é seguro porque a DEDUPE deixou de depender dele (E-172):
+	// a memória de "já entrou" vive no índice persistido, então descartar o payload antigo NÃO reabre a janela de
+	// duplicação — só deixa de devolver o evento completo numa duplicata muito antiga.
+	r.pruneEventsLocked(event.OrganizationID)
 	r.mu.Unlock()
 	return event, nil
+}
+
+// pruneEventsLocked mantém no máximo OmnichannelMaxEventsPerOrg eventos ricos por organização, descartando os
+// mais ANTIGOS primeiro.
+func (r *OmnichannelRuntime) pruneEventsLocked(organizationID string) {
+	if OmnichannelMaxEventsPerOrg <= 0 {
+		return
+	}
+	daOrganizacao := make([]string, 0, len(r.eventsByKey))
+	for chave, evento := range r.eventsByKey {
+		if evento.OrganizationID == organizationID {
+			daOrganizacao = append(daOrganizacao, chave)
+		}
+	}
+	if len(daOrganizacao) <= OmnichannelMaxEventsPerOrg {
+		return
+	}
+	sort.Slice(daOrganizacao, func(i, j int) bool {
+		return r.eventsByKey[daOrganizacao[i]].IngestedAt.Before(r.eventsByKey[daOrganizacao[j]].IngestedAt)
+	})
+	for _, chave := range daOrganizacao[:len(daOrganizacao)-OmnichannelMaxEventsPerOrg] {
+		delete(r.eventsByKey, chave)
+	}
 }
 
 // SetDedupeStore liga a persistência do índice de dedupe. Sem store, o índice continua em memória e o estado DIZ
