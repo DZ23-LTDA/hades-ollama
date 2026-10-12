@@ -2,7 +2,6 @@ package agent
 
 import (
 	"context"
-	"runtime"
 	"strings"
 	"testing"
 )
@@ -43,8 +42,14 @@ func TestPluginExecutionFailureCarriesSandboxDiagnostics(t *testing.T) {
 	}
 	// O diagnóstico do sandbox precisa chegar junto da falha.
 	if resultado.Output == nil {
-		if runtime.GOOS != "linux" || strings.Contains(err.Error(), "namespace executor") {
-			t.Skipf("executor de sandbox indisponível neste ambiente, sem diagnóstico a propagar: %v", err)
+		// O executor RECUSA antes de rodar quando falta plataforma, privilégio de montagem, interpretador confiável
+		// ou cgroup: nesses casos não existe diagnóstico de processo para propagar, e o teste DECLARA em vez de
+		// acusar um defeito que não existe. Medido em CI: `sandbox interpreter unavailable for node` acontece
+		// ANTES de qualquer processo.
+		for _, motivo := range []string{"namespace executor", "host-process fallback", "sandbox interpreter unavailable", "CGROUP_ROOT", "unshare", "Operation not permitted"} {
+			if strings.Contains(err.Error(), motivo) {
+				t.Skipf("executor de sandbox indisponível neste ambiente, sem diagnóstico a propagar (%s): %v", motivo, err)
+			}
 		}
 		t.Fatalf("a falha precisa carregar o diagnóstico do sandbox (`stdout`/`stderr`/`exit_code`), veio Output nulo: %v", err)
 	}
