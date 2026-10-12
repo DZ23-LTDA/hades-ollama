@@ -1188,6 +1188,11 @@ func (r *Runtime) CreateMission(ctx context.Context, request CreateMissionReques
 	if destino, ok := planner.(PlanUsageSink); ok {
 		destino.SetPlanUsageSink(&consumoDePlanejamento)
 	}
+	// O planejador recebe o contrato REAL das ferramentas registradas, para o prompt exigir os
+	// campos certos. Sem isto, o modelo pode devolver passos sem os campos obrigatórios.
+	if contrato, ok := planner.(PlanToolContractSink); ok {
+		contrato.SetPlanToolContract(r.tools.Descriptors())
+	}
 	plan, err := planner.Plan(ctx, mission)
 	if err != nil {
 		return r.failMission(mission, err)
@@ -1221,6 +1226,12 @@ func (r *Runtime) CreateMission(ctx context.Context, request CreateMissionReques
 		}
 		descriptor := tool.Descriptor()
 		if err := r.capabilityPolicy.ValidateToolDescriptor(descriptor); err != nil {
+			return r.failMission(mission, err)
+		}
+		// Um plano que não traz os campos obrigatórios da ferramenta é recusado AQUI, com a
+		// etapa e o campo nomeados. Sem isto, o modelo devolve um plano plausível e o operador
+		// só descobre o problema na execução, com erro que não aponta a causa.
+		if err := ValidatePlanStepInputs(plan[index], descriptor); err != nil {
 			return r.failMission(mission, err)
 		}
 		plan[index].ToolDescriptorSHA256, err = toolDescriptorSHA256(descriptor)
