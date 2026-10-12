@@ -2,7 +2,7 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-16T10:05:00-03:00",
+  "updated_at": "2026-10-16T11:20:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
@@ -486,12 +486,13 @@
         "E-035",
         "E-039",
         "E-178",
-        "E-246"
+        "E-246",
+        "E-247"
       ],
       "blocker": null,
       "next": "LIMITES DECLARADOS: a persistencia e ARQUIVO com escrita atomica, NAO um SGBD relacional; o token vive em memoria (reiniciar invalida sessoes, os dados ficam); o app gerado e servido pelo proprio processo (PublishLocal continua apenas copiando arquivos); falta deploy em STAGING e o template nao foi testado com leitor de tela. Proximo: promover o app gerado a staging com rollback e ligar o preview do Studio ao processo gerado",
       "execution": "IN_PROGRESS",
-      "done": " | BUILDER NAVEGADO POR NAVEGADOR REAL (E-178): projeto criado pelo Builder real, 3 componentes visuais aplicados, PUBLICADO (PublishLocal), SERVIDO por HTTP (200) e aberto em navegador REAL, que renderizou os 3 componentes no canvas com 0 erros de console. O PASSO DE NAVEGADOR ENCONTROU UM DEFEITO que nenhum teste hermetico veria: GET /favicon.ico -> 404 em TODA app publicada; corrigido no template com <link rel=icon href=data:,> e revalidado com 0 erros APP FULL-STACK GERADO E EXERCITADO (E-246): novo kind 'fullstack' gera uma aplicacao de gestao REAL (main.go stdlib-only + index.html + README) com login por token, CRUD de itens, validacao de entrada, persistencia em disco com escrita ATOMICA e RECUSA de subir sem APP_ADMIN_PASSWORD (nenhuma credencial padrao). O teste NAO confia em afirmacao: COMPILA o app gerado, sobe o processo, fala HTTP real, reinicia e confere. MEDIDO: compila - login=200 - sem_token=401 - senha_errada=401 - criados=2 - apos_reinicio=2 - apos_delete=1."
+      "done": " | BUILDER NAVEGADO POR NAVEGADOR REAL (E-178): projeto criado pelo Builder real, 3 componentes visuais aplicados, PUBLICADO (PublishLocal), SERVIDO por HTTP (200) e aberto em navegador REAL, que renderizou os 3 componentes no canvas com 0 erros de console. O PASSO DE NAVEGADOR ENCONTROU UM DEFEITO que nenhum teste hermetico veria: GET /favicon.ico -> 404 em TODA app publicada; corrigido no template com <link rel=icon href=data:,> e revalidado com 0 erros APP FULL-STACK GERADO E EXERCITADO (E-246): novo kind 'fullstack' gera uma aplicacao de gestao REAL (main.go stdlib-only + index.html + README) com login por token, CRUD de itens, validacao de entrada, persistencia em disco com escrita ATOMICA e RECUSA de subir sem APP_ADMIN_PASSWORD (nenhuma credencial padrao). O teste NAO confia em afirmacao: COMPILA o app gerado, sobe o processo, fala HTTP real, reinicia e confere. MEDIDO: compila - login=200 - sem_token=401 - senha_errada=401 - criados=2 - apos_reinicio=2 - apos_delete=1. CI VERMELHO CORRIGIDO NA RAIZ (E-247): o app gerado NAO tinha go.mod proprio e o build so passava porque o diretorio temporario caia DENTRO do modulo do Hades. No CI (temp fora do repo) o build falhou com 'go.mod file not found' e derrubou o gate. Corrigido no PRODUTO: o app gerado agora e um modulo Go autossuficiente. Verificado reproduzindo a CONDICAO DO CI - compilar fora de qualquer modulo: build exit 0 e binario gerado."
     },
     {
       "id": 13,
@@ -1815,7 +1816,10 @@
     "CUSTO DESCONHECIDO NUNCA VIRA ZERO NA INTERFACE (E-245): o backend ja distinguia 'zero porque e local/gratuito' de 'desconhecido porque nao ha preco' (cost_known). A interface passou a respeitar isso: mostra 'custo desconhecido' e o teste AFIRMA que a palavra 'R$' nao aparece nesse caso. Exibir R$ 0,00 afirmaria gratuidade que ninguem mediu",
     "ESTAGIO 12 DEIXOU DE SER DEMONSTRACAO (E-246): o app publicado era estatico (heading/table/button). Agora o kind 'fullstack' gera aplicacao de gestao com login, CRUD, validacao, persistencia atomica e recusa de subir sem senha. O teste COMPILA e EXECUTA o app gerado e conversa HTTP com ele - nao ha afirmacao sem execucao",
     "NENHUMA CREDENCIAL PADRAO (E-246): a aplicacao gerada NAO sobe sem APP_ADMIN_PASSWORD e o teste AFIRMA isso. Template com senha default e a forma mais rapida de transformar uma demo bonita em produto inseguro",
-    "TRES DEFEITOS MEUS ANTES DO TESTE VERDE (E-246): (1) embuti o codigo gerado em literal cru do Go, mas ele usa crases nas tags json - virou string interpretada com json.dumps; (2) ancora de patch com espaco onde o arquivo tem TAB (o script abortou sem escrever nada, patch atomico); (3) no Windows 'go build -o X' grava X.exe, e eu executava X. Cada um foi medido pelo erro real (compilador e exec), nao por suposicao"
+    "TRES DEFEITOS MEUS ANTES DO TESTE VERDE (E-246): (1) embuti o codigo gerado em literal cru do Go, mas ele usa crases nas tags json - virou string interpretada com json.dumps; (2) ancora de patch com espaco onde o arquivo tem TAB (o script abortou sem escrever nada, patch atomico); (3) no Windows 'go build -o X' grava X.exe, e eu executava X. Cada um foi medido pelo erro real (compilador e exec), nao por suposicao",
+    "MEU ENVELOPE DE VERIFICACAO MASCAROU UM DEFEITO (E-247, oitavo erro meu): o teste do app full-stack compilava o app gerado em t.TempDir(), que no MEU ambiente fica dentro do repo (que tem go.mod) - entao o build achava o modulo do Hades e passava. No CI o diretorio fica fora e o build falhou: 'go.mod file not found'. O defeito era REAL (app gerado sem go.mod) e o CI estava certo. Licao: teste que compila codigo gerado precisa de condicao EQUIVALENTE a do CI (fora do modulo), nao da minha maquina",
+    "VERIFICAR A CONDICAO DO CI, NAO SO O RESULTADO LOCAL (E-247): depois de corrigir, reproduzi explicitamente o ambiente do CI - extrai os arquivos do template para um diretorio FORA do repo, confirmei que nenhum go.mod existe nos ancestrais e rodei go build: exit 0 e binario gerado. Sem esse passo eu estaria apenas torcendo para o CI concordar comigo",
+    "LIDO O LOG DO CI EM VEZ DE ADIVINHAR (E-247): o 'PR gate' e agregador e so dizia 'gate profundo falhou'. Fui ao workflow dz23-agentic-quality e ao log do job 'Go agentic and server gates' e li a causa exata: 'builder_fullstack_e2e_test.go:54: app gerado NAO compila: go: go.mod file not found'. Duas chamadas de log custaram menos que qualquer tentativa por tentativa"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",

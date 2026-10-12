@@ -36,7 +36,9 @@ func TestAppFullstackGeradoSobeComLoginCRUDEpersistencia(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, nome := range []string{"main.go", "index.html", "README.md"} {
+	// go.mod e OBRIGATORIO: sem ele o build so passava porque o diretorio temporario caia dentro de outro
+	// modulo. O CI (temp fora do repo) expos o defeito: "go.mod file not found".
+	for _, nome := range []string{"go.mod", "main.go", "index.html", "README.md"} {
 		if _, err := os.Stat(filepath.Join(publicado, nome)); err != nil {
 			t.Fatalf("app gerado sem %s: %v", nome, err)
 		}
