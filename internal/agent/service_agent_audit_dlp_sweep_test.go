@@ -57,11 +57,19 @@ func TestServiceAgentAuditNeverStoresContactTextForAnyTool(t *testing.T) {
 					return
 				}
 				texto := string(conteudo)
-				if strings.Contains(texto, "4111") || strings.Contains(texto, segredo) {
+				// O CAMPO, não o arquivo inteiro.
+				//
+				// A primeira versão procurava o fragmento "4111" no texto todo — e o RELÓGIO tem microssegundos. Quando
+				// `decided_at` caía em algo como `.411114Z`, o teste acusava VAZAMENTO DE DLP sem vazamento nenhum.
+				// Isso foi MEDIDO na CI (E-196): o log do job trouxe o JSON da entrada acusada e o único "4111" estava
+				// no timestamp. Falso positivo de privacidade é o pior tipo para um instrumento: ou faz alguém
+				// "corrigir" o que não está quebrado, ou ensina a ignorar o alerta.
+				if campo := campoDaTrilhaComTexto(texto, segredo); campo != "" {
 					t.Fatalf(
-						"VAZAMENTO DE DLP: a ferramenta %q gravou o texto do contato na trilha de auditoria.\n"+
-							"Trilha gravada:\n%s", ferramenta, texto)
+						"VAZAMENTO DE DLP: a ferramenta %q gravou o texto do contato na trilha de auditoria (campo %q).\n"+
+							"Trilha gravada:\n%s", ferramenta, campo, texto)
 				}
+				_ = texto
 			})
 			ferramentasExercitadas++
 		}
