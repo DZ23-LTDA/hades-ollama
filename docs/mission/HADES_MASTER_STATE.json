@@ -2,7 +2,7 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-15T04:15:00-03:00",
+  "updated_at": "2026-10-15T05:30:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
@@ -317,10 +317,11 @@
         "E-210",
         "E-215",
         "E-217",
-        "E-218"
+        "E-218",
+        "E-220"
       ],
       "blocker": "B-07",
-      "next": "Chamada real opt-in via internal/multillm (free-tier primeiro: groq/cerebras) para verificar inferencia por provedor; rotacionar as 3 chaves com authentication_failed",
+      "next": "CORRIGIR O DEFEITO DE URL DOS PRESETS (primeira acao): BaseURL ja termina em /v1 e Paths comeca com /v1/, produzindo /v1/v1/ no caminho final (HTTP 404 do provedor). Corrigir a composicao em um unico lugar e cobrir com teste que compara a URL FINAL de cada preset; depois rodar a inferencia real por provedor (groq/deepseek/mistral/openrouter/xai) e registrar a verificacao",
       "execution": "BLOCKED_BY_EXTERNAL_DEPENDENCY",
       "done": "MODEL GATEWAY UNIVERSAL (E-215): o pacote internal/multillm esta completo - presets de provedor, registry, roteamento (RouteCandidates/Route), descoberta de modelos, probe de provedor, egress zero-trust e ledger de custo. MEDIDO: 77 testes PASS na suite do pacote. LACUNA DECLARADA: a verificacao de INFERENCIA por provedor de nuvem (B-07) - o instrumento opt-in existe (E-210) e roda quando a credencial estiver no ambiente. CONSUMO E CUSTO (E-217): o planejador agora reporta tokens e custo por missao e o preco e fiado a partir do catalogo do provedor - modelo local e zero CONHECIDO e catalogo sem preco e DESCONHECIDO, nunca zero."
     },
@@ -1712,7 +1713,11 @@
     "TRES ITERACOES MEDIDAS COM O MODELO REAL (E-218), todas declaradas: input vazio -> 'anchored workspace path is required'; input com path=\"/\" -> 'tool path must be relative to workspace'; kind=workspace.list -> COMPLETED. Nenhuma foi suposta: cada uma foi vista na saida do teste opt-in",
     "ARTEFATO REAL PRODUZIDO POR MISSAO COM MODELO LOCAL (E-219): o modelo planejou workspace.write com aprovacao obrigatoria e o gate humano foi exercitado de verdade (DecideApproval -> Run). Missao COMPLETED com 1 artefato verificado por SHA-256 e 8 bytes no disco. O criterio do master 'artefatos utilizaveis' deixou de ser lacuna no caminho real",
     "ERRO MEU NO PRIMEIRO TESTE DE ARTEFATO (E-219): eu li ArtifactManifest.Path como caminho absoluto, mas o manifesto guarda caminho RELATIVO ao workspace. Corrigi o TESTE (resolver contra a raiz), nao o produto",
-    "OPT-IN CONTINUA OPT-IN (E-219): sem OLLAMA_AGENT_REAL_LOCAL_MODEL os dois testes de missao real fazem SKIP e a suite segue hermtica - verificado nos dois modos"
+    "OPT-IN CONTINUA OPT-IN (E-219): sem OLLAMA_AGENT_REAL_LOCAL_MODEL os dois testes de missao real fazem SKIP e a suite segue hermtica - verificado nos dois modos",
+    "DEFEITO DE SEVERIDADE ALTA ENCONTRADO COM CHAVE REAL (E-220): TODOS os presets OpenAI-compatible juntam BaseURL terminando em /v1 com Paths comecando em /v1/, produzindo /v1/v1/ no caminho final. Evidencia do provedor: 'HTTP 404 em 316ms: {\"error\":{\"message\":\"Unknown request URL: POST /openai/v1/v1/chat/completions\"}}' (groq, base https://api.groq.com/openai/v1 + path /v1/chat/completions). Presets afetados pelo mesmo padrao: deepseek, groq, mistral, openrouter, xai (e provavelmente os locais vllm, llamacpp, lmstudio)",
+    "O 404 FOI AUTENTICADO (E-220): chave invalida devolveria 401. O provedor respondeu 404 de rota, o que PROVA que a resolucao de credencial (CredentialValue), o egress e o alcance do provedor FUNCIONAM - o que esta errado e a composicao da URL. Isso move a B-07 de 'bloqueada por falta de chave' para 'desbloqueada, com defeito de produto identificado'",
+    "POR QUE ISSO PASSOU DESPERCEBIDO (E-220): nenhum teste fazia chamada real - os testes usam servidores falsos com o caminho que o proprio teste escolhe. O defeito so aparece contra o provedor de verdade. Exatamente o risco que o master lista: 'declarar provedor operacional sem chamada real'",
+    "NAO MEIO-CORRIGI (E-220): corrigir um preset so, no fim da rodada, deixaria os outros cinco quebrados e o registro pior do que esta. A correcao fica como primeira acao da proxima rodada, com teste que compara a URL FINAL de cada preset - para a classe inteira, nao para um caso"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
