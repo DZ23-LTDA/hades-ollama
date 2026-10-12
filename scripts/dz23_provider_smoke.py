@@ -30,7 +30,13 @@ PROVIDERS = [
 
 
 def request(url, key, payload=None):
-    headers = {"Authorization": f"Bearer {key}", "Accept": "application/json"}
+    headers = {
+        "Authorization": f"Bearer {key}",
+        "Accept": "application/json",
+        # Provedores atras de Cloudflare bloqueiam o User-Agent padrao do urllib ("error code: 1010"),
+        # o que era classificado como FORBIDDEN - parecendo falta de permissao. Identificar-se resolve.
+        "User-Agent": "dz23-provider-smoke/1.0",
+    }
     data = None
     if payload is not None:
         headers["Content-Type"] = "application/json"
@@ -95,6 +101,13 @@ def main():
             conteudo = ((choices[0].get("message") or {}).get("content") or "").strip() if choices else ""
             # "200" nao e prova: modelos de raciocinio podem devolver 200 SEM conteudo quando o orcamento
             # de saida acaba no reasoning. PASS exige conteudo nao vazio.
+            if status == 200 and choices and not conteudo:
+                # Modelo de raciocinio pode gastar todo o orcamento no reasoning e devolver conteudo vazio.
+                # Uma segunda tentativa com orcamento maior evita reprovar o provedor por causa do nosso limite.
+                ampliado = dict(payload, max_tokens=512)
+                status, body = request(base_url.rstrip("/") + "/chat/completions", key, ampliado)
+                choices = body.get("choices", []) if isinstance(body, dict) else []
+                conteudo = ((choices[0].get("message") or {}).get("content") or "").strip() if choices else ""
             result = "PASS" if status == 200 and choices and conteudo else "INVALID_RESPONSE"
             failed += result != "PASS"
             print(f"{name}\t{result}\t{status}")
