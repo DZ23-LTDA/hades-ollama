@@ -9,13 +9,13 @@
 | Número | Valor |
 | --- | --- |
 | Estágios | 38 |
-| Linhas de evidência no índice | 198 |
+| Linhas de evidência no índice | 199 |
 | `COMPLETED_VERIFIED` | 2 |
 | `IN_PROGRESS` | 15 |
 | `BLOCKED_BY_EXTERNAL_DEPENDENCY` | 21 |
 | `NOT_STARTED` | 0 |
 | Bloqueios externos em aberto | 6 |
-| Bloqueios já resolvidos | 9 |
+| Bloqueios já resolvidos | 10 |
 
 ## Como `execution` foi atribuído
 
@@ -41,7 +41,7 @@ relatório **declara a ausência** em vez de preencher com suposição.
 | 3 | Arquitetura canonica dos componentes | PARCIAL | IN_PROGRESS | — | E-037, E-040, E-043, E-044, E-045 |
 | 6 | Harness Runtime (execucao governada) | AUSENTE | IN_PROGRESS | B-01 | E-041, E-025 |
 | 7 | MCP Manager (servidores, ferramentas, escopos) | APENAS_CATALOGO | IN_PROGRESS | B-10 | E-018, E-019, E-026 |
-| 8 | Plugins e Skills | PARCIAL | IN_PROGRESS | B-14 | E-042, E-053, E-055, E-063, E-065, E-066, E-067, E-068, E-183, E-184, E-185 |
+| 8 | Plugins e Skills | PARCIAL | IN_PROGRESS | B-14 | E-042, E-053, E-055, E-063, E-065, E-066, E-067, E-068, E-183, E-184, E-185, E-200 |
 | 9 | Agentes e subagentes (delegacao) | IMPLEMENTADO_NAO_HOMOLOGADO | IN_PROGRESS | — | E-043 |
 | 10 | Mission Control multiagente (missoes, eventos, SSE, artefatos) | PARCIAL | IN_PROGRESS | — | E-020, E-027, E-103 |
 | 12 | Studio / Builder visual | IMPLEMENTADO_NAO_HOMOLOGADO | IN_PROGRESS | — | E-008, E-009, E-028, E-034, E-035, E-039, E-178 |
@@ -90,7 +90,7 @@ possível sem ele**.
 
 ## Referências
 
-- Índice de evidências: [`HADES_EVIDENCE_INDEX.md`](HADES_EVIDENCE_INDEX.md) (198 linhas).
+- Índice de evidências: [`HADES_EVIDENCE_INDEX.md`](HADES_EVIDENCE_INDEX.md) (199 linhas).
 - Estado da missão: [`HADES_MASTER_STATE.json`](HADES_MASTER_STATE.json).
 - Gate global: [`HADES_FINAL_RELEASE_GATE.md`](HADES_FINAL_RELEASE_GATE.md).
 - Gate intermediário de engenharia (estágio 22): [`HADES_ENGINEERING_GATE.md`](HADES_ENGINEERING_GATE.md).

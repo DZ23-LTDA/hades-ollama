@@ -2,7 +2,7 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-14T08:40:00-03:00",
+  "updated_at": "2026-10-14T10:40:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
@@ -377,7 +377,8 @@
         "E-068",
         "E-183",
         "E-184",
-        "E-185"
+        "E-185",
+        "E-200"
       ],
       "blocker": "B-14",
       "next": "B-14 tem o DIAGNOSTICO corrigido (E-185); falta o pre-requisito de host (namespaces de montagem) para observar execucao bem-sucedida",
@@ -1029,8 +1030,8 @@
     },
     {
       "id": "B-10",
-      "tipo": "PRODUTO",
-      "descricao": "Conectores: 104 de 122 exigem configuracao do operador (available=17)"
+      "tipo": "RESOLVIDO",
+      "descricao": "Conectores: 104 de 122 exigem configuracao do operador (available=17) || RESOLVIDO (E-200): verificado por leitura E por teste. O catalogo declara 123 entradas com vocabulario FECHADO (available 17, operator_setup_required 105, provider_selection_required 1) e `available` exige caminho de auth publicado - ja guardado em internal/agent. O que faltava era o guarda de SUPERFICIE: a rota podia devolver entrada sem status e o cliente perderia o sinal de 'exige configuracao'. Teste novo cobre isso sem fixar numero. Residual declarado: operar cada conector exige credencial do operador (segue sob B-03/B-05)."
     },
     {
       "id": "B-11",
@@ -1609,7 +1610,9 @@
     "PISTAS MEDIDAS DO FLAKE DO macOS (E-197): o MESMO pacote ./server passa com -race no macOS (job 'race (macos-latest)'), passa no Windows (ok 29,2s) e passa no Linux com CGO=1 (ok 5,4s); o job que falha e o UNICO da matriz que roda com -bench=. -benchtime=1x, o que e uma pista concreta para a proxima investigacao",
     "INVENTARIO DE FLAKINESS (E-197): o que eu chamei de 'flake do race (macos-latest)' por tres rodadas era o relogio (E-196, resolvido); o flake do ./server e NOVO, tem 1 ocorrencia e esta registrado com o comando exato. Registro separado evita somar causas diferentes no mesmo nome",
     "RESIDUAL DECLARADO E FECHADO (E-198): em E-195 eu declarei que auth e queue tinham a correcao coberta apenas pelas suites, sem teste de comparacao. Fechado com 4 testes novos (2 de nao inferencia + 2 de controle positivo). Residual declarado que nao e fechado vira divida esquecida",
-    "O CAMINHO ENSINA: ao escrever o teste de auth, o StoreOAuthCredential recusou por 'user is not a member of organization' e depois por falta de OLLAMA_AGENT_CREDENTIAL_KEY - eu estava a um passo de medir a recusa ERRADA. As duas falhas apareceram no caminho e estao documentadas no teste"
+    "O CAMINHO ENSINA: ao escrever o teste de auth, o StoreOAuthCredential recusou por 'user is not a member of organization' e depois por falta de OLLAMA_AGENT_CREDENTIAL_KEY - eu estava a um passo de medir a recusa ERRADA. As duas falhas apareceram no caminho e estao documentadas no teste",
+    "B-10 VERIFICADO E RECLASSIFICADO (E-200): o catalogo JA declarava a verdade - 123 entradas, 17 available, 105 operator_setup_required, 1 provider_selection_required - com vocabulario fechado e 'available' exigindo caminho de auth publicado. Eu fui verificar em vez de presumir defeito",
+    "LACUNA DE SUPERFICIE FECHADA (E-200): o vocabulario fechado era garantido no pacote internal/agent, mas a ROTA podia devolver entrada sem status e o cliente perderia o sinal de 'exige configuracao'. O teste novo NAO fixa numero: a invariante e que o catalogo continue declarando que parte dele exige configuracao"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
