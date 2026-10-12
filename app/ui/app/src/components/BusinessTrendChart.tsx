@@ -11,6 +11,7 @@
 //     `NaN` no `polyline` — um gráfico com coordenadas `NaN` simplesmente não desenha e não avisa;
 //  4. **DADO INSUFICIENTE É DITO**: com menos de duas amostras não existe curva, e o componente diz
 //     isso em vez de desenhar um ponto fingindo tendência.
+import { useState } from "react";
 import type { BusinessSnapshot } from "@/lib/agenticClient";
 
 // Métricas plotáveis, com rótulo em pt-BR e unidade. `dinheiro` divide por 100 na exibição.
@@ -69,14 +70,50 @@ export function trendCoordinates(points: TrendPoint[]): Array<{ x: number; y: nu
   });
 }
 
+// Rótulos do eixo Y (ordem de grandeza). Os VALORES EXATOS seguem na tabela: o eixo orienta, a tabela prova.
+export function trendAxisLabels(points: TrendPoint[], metric: TrendMetric): { max: string; mid: string; min: string } {
+  if (points.length === 0) {
+    return { max: "", mid: "", min: "" };
+  }
+  const valores = points.map((point) => point.value);
+  const maximo = Math.max(...valores);
+  const minimo = Math.min(...valores);
+  // Meio ARREDONDADO para inteiro: meio de 3 centavos nao existe e exibir 1.5 centavo seria precisao falsa.
+  const meio = Math.round(minimo + (maximo - minimo) / 2);
+  return {
+    max: formatTrendValue(maximo, metric),
+    mid: formatTrendValue(meio, metric),
+    min: formatTrendValue(minimo, metric),
+  };
+}
+
+// Seleção de intervalo: 0 significa "tudo". Fatia os ÚLTIMOS N pontos, que é o recorte que interessa na operação.
+export function filterTrendPoints(history: BusinessSnapshot[], metric: TrendMetric, limite: number): TrendPoint[] {
+  const pontos = trendPoints(history, metric);
+  if (limite <= 0 || limite >= pontos.length) {
+    return pontos;
+  }
+  return pontos.slice(pontos.length - limite);
+}
+
 export function formatTrendValue(value: number, metric: TrendMetric): string {
   return metric.money ? (value / 100).toFixed(2) : String(value);
 }
 
-export function BusinessTrendChart({ history, metric }: { history: BusinessSnapshot[]; metric: TrendMetric }) {
-  const points = trendPoints(history, metric);
+export function BusinessTrendChart({
+  history,
+  metric,
+  rangeLimits = [5, 10, 0],
+}: {
+  history: BusinessSnapshot[];
+  metric: TrendMetric;
+  rangeLimits?: number[];
+}) {
+  const [limite, setLimite] = useState(0);
+  const points = filterTrendPoints(history, metric, limite);
   const coordinates = trendCoordinates(points);
   const label = `${metric.label}: ${points.length} amostra(s)`;
+  const [amostraVisivel, setAmostraVisivel] = useState<number | null>(null);
 
   if (points.length < 2) {
     return (
@@ -97,8 +134,34 @@ export function BusinessTrendChart({ history, metric }: { history: BusinessSnaps
   const flat = Math.min(...values) === Math.max(...values);
   const polyline = coordinates.map((coordinate) => `${coordinate.x},${coordinate.y}`).join(" ");
 
+  const eixo = trendAxisLabels(points, metric);
+
   return (
     <div className="mt-2">
+      {rangeLimits.length > 1 && (
+        <div className="flex flex-wrap items-center gap-1 text-[11px] text-neutral-500 dark:text-neutral-400">
+          <span>Intervalo:</span>
+          {rangeLimits.map((opcao) => (
+            <button
+              key={opcao}
+              type="button"
+              aria-pressed={limite === opcao}
+              className="rounded border border-neutral-300 px-2 py-0.5 disabled:opacity-40 dark:border-neutral-700"
+              // Opcao maior que a serie nao filtra nada: oferecer "ultimas 90" com 6 amostras seria enganoso.
+              disabled={opcao > 0 && opcao > history.length}
+              onClick={() => setLimite(opcao)}
+            >
+              {opcao === 0 ? "Tudo" : `Últimas ${opcao}`}
+            </button>
+          ))}
+        </div>
+      )}
+      {/* Marcações do eixo em HTML: texto dentro de SVG com preserveAspectRatio="none" sai distorcido. */}
+      <div className="mt-1 flex justify-between text-[10px] tabular-nums text-neutral-500 dark:text-neutral-400">
+        <span>máx {eixo.max}</span>
+        <span>méd {eixo.mid}</span>
+        <span>mín {eixo.min}</span>
+      </div>
       <svg
         role="img"
         aria-label={label}
@@ -107,7 +170,28 @@ export function BusinessTrendChart({ history, metric }: { history: BusinessSnaps
         preserveAspectRatio="none"
       >
         <polyline points={polyline} fill="none" stroke="currentColor" strokeWidth="2" className="text-sky-600 dark:text-sky-400" />
+        {coordinates.map((coordinate, index) => (
+          // FOCO, não só hover: dica que só existe no mouse exclui quem usa teclado ou leitor de tela.
+          <circle
+            key={points[index].window}
+            cx={coordinate.x}
+            cy={coordinate.y}
+            r={3}
+            tabIndex={0}
+            className="fill-sky-700 outline-none dark:fill-sky-300"
+            aria-label={`${points[index].window}: ${formatTrendValue(points[index].value, metric)}`}
+            onMouseEnter={() => setAmostraVisivel(index)}
+            onMouseLeave={() => setAmostraVisivel(null)}
+            onFocus={() => setAmostraVisivel(index)}
+            onBlur={() => setAmostraVisivel(null)}
+          />
+        ))}
       </svg>
+      {amostraVisivel !== null && points[amostraVisivel] && (
+        <p role="status" aria-live="polite" className="mt-1 text-[11px] text-neutral-600 dark:text-neutral-300">
+          {points[amostraVisivel].window}: {formatTrendValue(points[amostraVisivel].value, metric)}
+        </p>
+      )}
       {flat && (
         // "Todos iguais" é uma informação, não um gráfico bonito: o eixo não tem amplitude.
         <p role="status" aria-live="polite" className="mt-1 text-[11px] text-neutral-500 dark:text-neutral-400">
