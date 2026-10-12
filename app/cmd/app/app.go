@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/ollama/ollama/internal/agent"
 	"io"
 	"log/slog"
 	"net"
@@ -56,6 +57,21 @@ const (
 	PermissionDenied
 	MoveError
 )
+
+// flushDurableWritesOnShutdown fecha a janela do modo em LOTE antes de sair.
+//
+// Sem este gancho, um processo que escreve uma vez e encerra deixa o último lote GRAVADO mas não sincronizado —
+// o item aberto desde E-169 ("não há hook de encerramento ligado ao flush").
+func flushDurableWritesOnShutdown() {
+	pendentes, err := agent.FlushDurableWritesOnShutdown()
+	if err != nil {
+		slog.Error("falha ao sincronizar escritas pendentes no encerramento", "itens", pendentes, "error", err)
+		return
+	}
+	if pendentes > 0 {
+		slog.Info("escritas pendentes sincronizadas no encerramento", "itens", pendentes)
+	}
+}
 
 func main() {
 	startHidden := false
@@ -326,6 +342,7 @@ func main() {
 	go func() {
 		<-signals
 		slog.Info("received SIGINT or SIGTERM signal, shutting down")
+		flushDurableWritesOnShutdown()
 		quit()
 	}()
 
