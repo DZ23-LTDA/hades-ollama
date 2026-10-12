@@ -171,6 +171,13 @@ type OmnichannelRuntime struct {
 	// Erros de leitura e gravação SEPARADOS, pela mesma razão da janela de rate limit.
 	connectorLoadError string
 	connectorSaveError string
+	// eventosEmVoo reserva a chave de uma entrega que está SENDO processada (E-176).
+	//
+	// A checagem de dedupe e a gravação do evento não acontecem no mesmo instante (no meio há o append na caixa
+	// de entrada), então duas entregas idênticas em paralelo podiam passar pela checagem antes de qualquer uma
+	// gravar. O teste de concorrência não reproduziu a janela, mas uma garantia que depende de sorte não é
+	// garantia: a chave é RESERVADA sob o mesmo lock, e a reserva é LIBERADA ao final (sucesso ou erro).
+	eventosEmVoo map[string]bool
 	// dedupeStore persiste o ÍNDICE DE DEDUPE (E-172): sem ele, um reinício esquece o que já entrou e a entrega
 	// repetida volta a ser processada.
 	dedupeStore *OmnichannelDedupeStore
@@ -194,6 +201,7 @@ func NewOmnichannelRuntime(inbox *InboxStore) *OmnichannelRuntime {
 		loadedOrgs:          map[string]bool{},
 		loadedRateOrgs:      map[string]bool{},
 		loadedConnectorOrgs: map[string]bool{},
+		eventosEmVoo:        map[string]bool{},
 		dedupeEntries:       map[string]OmnichannelDedupeEntry{},
 		loadedDedupeOrgs:    map[string]bool{},
 		inbox:               inbox,
@@ -621,6 +629,25 @@ func (r *OmnichannelRuntime) Ingest(organizationID, channel string, signature st
 		r.mu.Unlock()
 		return duplicado, nil
 	}
+	if r.eventosEmVoo == nil {
+		r.eventosEmVoo = map[string]bool{}
+	}
+	if r.eventosEmVoo[dedupeKey] {
+		// Uma entrega IDÊNTICA já está sendo processada agora: responder como duplicata é o comportamento correto
+		// (o provedor reentregou enquanto a primeira ainda estava em andamento).
+		r.mu.Unlock()
+		return OmnichannelEvent{
+			OrganizationID:    connector.OrganizationID,
+			ChannelID:         connector.Channel,
+			ConnectorID:       connector.ID,
+			ExternalMessageID: event.ExternalMessageID,
+			ContactID:         event.ContactID,
+			MessageType:       event.MessageType,
+			DeliveryState:     "duplicate",
+			Deduplicated:      true,
+		}, nil
+	}
+	r.eventosEmVoo[dedupeKey] = true
 	event.IngestedAt = now
 	if event.Timestamp.IsZero() {
 		event.Timestamp = eventTime
@@ -637,6 +664,9 @@ func (r *OmnichannelRuntime) Ingest(organizationID, channel string, signature st
 	if r.inbox != nil {
 		conversation, message, err := r.inbox.AppendInbound(event.OrganizationID, event.ChannelID, event.ContactID, "", event.Preview, event.ExternalMessageID, now)
 		if err != nil {
+			r.mu.Lock()
+			delete(r.eventosEmVoo, dedupeKey)
+			r.mu.Unlock()
 			r.deadLetter(event, connector.Channel, fmt.Sprintf("inbox: %v", err), now)
 			return OmnichannelEvent{}, err
 		}
@@ -648,6 +678,7 @@ func (r *OmnichannelRuntime) Ingest(organizationID, channel string, signature st
 
 	r.mu.Lock()
 	r.eventsByKey[dedupeKey] = event
+	delete(r.eventosEmVoo, dedupeKey)
 	r.registrarDedupeLocked(dedupeKey, event, now)
 	// E-174: o cache de EVENTOS RICOS tem teto. Isto só é seguro porque a DEDUPE deixou de depender dele (E-172):
 	// a memória de "já entrou" vive no índice persistido, então descartar o payload antigo NÃO reabre a janela de
