@@ -37,6 +37,17 @@ type plannerChatClient interface {
 	Chat(ctx context.Context, request *api.ChatRequest, callback api.ChatResponseFunc) error
 }
 
+// PlanUsageSink permite que o runtime injete o destino do consumo do modelo. Fica em uma
+// interface separada de Planner para não quebrar planejadores que não reportam consumo.
+type PlanUsageSink interface {
+	SetPlanUsageSink(*ModelUsage)
+}
+
+// PlanUsageReporter expõe o consumo da última chamada de planejamento.
+type PlanUsageReporter interface {
+	LastPlanUsage() (ModelUsage, bool)
+}
+
 type RulePlanner struct{}
 
 func (RulePlanner) Plan(_ context.Context, mission Mission) ([]Step, error) {
@@ -172,6 +183,26 @@ func planTitles(steps []Step) []string {
 type OllamaPlanner struct {
 	Client plannerChatClient
 	Model  string
+	// Usage, quando não nulo, recebe o consumo da última chamada de planejamento. O runtime
+	// injeta o destino via SetPlanUsageSink.
+	Usage *ModelUsage
+	// Price é o preço declarado do modelo. Sem preço, os tokens continuam sendo registrados e
+	// o custo fica declarado como DESCONHECIDO — nunca como zero.
+	Price ModelPrice
+}
+
+// SetPlanUsageSink registra o destino do consumo. Receiver por ponteiro de propósito: sem
+// ponteiro o campo não seria gravável e o consumo se perderia.
+func (p *OllamaPlanner) SetPlanUsageSink(sink *ModelUsage) {
+	p.Usage = sink
+}
+
+// LastPlanUsage devolve o consumo acumulado, se houve alguma chamada.
+func (p OllamaPlanner) LastPlanUsage() (ModelUsage, bool) {
+	if p.Usage == nil || p.Usage.Calls <= 0 {
+		return ModelUsage{}, false
+	}
+	return *p.Usage, true
 }
 
 func (p OllamaPlanner) Plan(ctx context.Context, mission Mission) ([]Step, error) {
@@ -205,12 +236,26 @@ func (p OllamaPlanner) Plan(ctx context.Context, mission Mission) ([]Step, error
 		Messages: messages,
 	}
 	var response string
+	var consumo ModelUsage
 	err := p.Client.Chat(ctx, request, func(chatResponse api.ChatResponse) error {
 		response = chatResponse.Message.Content
+		// Em streaming os contadores chegam no último pedaço: guardar o MAIOR valor visto
+		// evita contar o mesmo consumo mais de uma vez.
+		if atual := UsageFromMetrics(chatResponse.Metrics, mission.Provider, model, p.Price); atual.PromptTokens+atual.CompletionTokens > consumo.PromptTokens+consumo.CompletionTokens {
+			consumo = atual
+		}
 		return nil
 	})
 	if err != nil {
 		return nil, fmt.Errorf("planner provider request failed: %w", err)
+	}
+	if consumo.Calls == 0 {
+		// A chamada ACONTECEU, mesmo sem contadores: registrar uma chamada sem tokens é mais
+		// honesto do que esconder que houve consumo não medido.
+		consumo = UsageFromMetrics(api.Metrics{}, mission.Provider, model, p.Price)
+	}
+	if p.Usage != nil {
+		*p.Usage = consumo
 	}
 	steps, err := parsePlan(response)
 	if err != nil {
