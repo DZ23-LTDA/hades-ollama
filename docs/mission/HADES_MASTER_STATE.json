@@ -2,7 +2,7 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-16T22:35:00-03:00",
+  "updated_at": "2026-10-17T00:55:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
@@ -778,13 +778,14 @@
         "E-047",
         "E-087",
         "E-107",
-        "E-232"
+        "E-232",
+        "E-259"
       ],
       "blocker": "B-05",
-      "next": "LIMITES REAIS (corrigidos na E-232): sem emissao fiscal (NF-e) nem integracao contabil, sem cobranca real (Pix/boleto sao apenas REFERENCIAS registradas, sem PSP nem transferencia), sem carrinho persistente, sem frete/entrega/devolucao e sem sincronizacao com marketplace/ERP. O item anterior 'persistencia em memoria nesta rodada' estava ERRADO: o motor persiste por organizacao (NewCommerceStoreAt + persistLocked) e o runtime usa o store persistente; ha teste de reinicio",
+      "next": "LIMITES REAIS (atualizados por E-259): sem emissao fiscal (NF-e) nem integracao contabil; sem cobranca real (Pix/boleto sao REFERENCIAS registradas, sem PSP nem transferencia); sem carrinho persistente; a DEVOLUCAO existe mas sem logistica (frete/entrega/coleta); sem sincronizacao com marketplace/ERP. O motor persiste por organizacao (NewCommerceStoreAt + persistLocked). Proximo: carrinho persistente e estagios 25-38",
       "blocked_reason": "",
       "external_dependency": "meios de pagamento reais exigem conta e conformidade; o fluxo de comercio em sandbox e implementavel localmente",
-      "done": "COMMERCE ENGINE implementado: catalogo de produtos, ESTOQUE COMO LIVRO DE MOVIMENTOS (saldo derivado, entrada/reserva/liberacao/saida/ajuste), pedidos com CHECKOUT IDEMPOTENTE por chave sob o mesmo lock, RESERVA de estoque que impede vender o que nao existe, preco vindo do CATALOGO (o pedido nao escolhe quanto paga), quitacao por REFERENCIA sem dado de cartao (PAN recusado), conferencia de valor, conciliacao idempotente, atendimento que consome o fisico, cancelamento que devolve o estoque e resumo com receita. As ferramentas commerce.order.read e commerce.stock.read deixaram de ser bloqueadas para o agente de comercio IDEMPOTENCIA E CONCILIACAO SOBREVIVEM AO REINICIO (E-232): teste hermetico com TRES reinicios reais (novo CommerceStore sobre o mesmo diretorio) prova que o pedido persiste, que a MESMA chave de idempotencia devolve o MESMO pedido SEM duplicar a venda, que o livro de estoque fica identico (OnHand 10, Reserved 2, Available 8, 2 movimentos) e que quitacao e conciliacao continuam registradas e idempotentes.",
+      "done": "COMMERCE ENGINE implementado: catalogo de produtos, ESTOQUE COMO LIVRO DE MOVIMENTOS (saldo derivado, entrada/reserva/liberacao/saida/ajuste), pedidos com CHECKOUT IDEMPOTENTE por chave sob o mesmo lock, RESERVA de estoque que impede vender o que nao existe, preco vindo do CATALOGO (o pedido nao escolhe quanto paga), quitacao por REFERENCIA sem dado de cartao (PAN recusado), conferencia de valor, conciliacao idempotente, atendimento que consome o fisico, cancelamento que devolve o estoque e resumo com receita. As ferramentas commerce.order.read e commerce.stock.read deixaram de ser bloqueadas para o agente de comercio IDEMPOTENCIA E CONCILIACAO SOBREVIVEM AO REINICIO (E-232): teste hermetico com TRES reinicios reais (novo CommerceStore sobre o mesmo diretorio) prova que o pedido persiste, que a MESMA chave de idempotencia devolve o MESMO pedido SEM duplicar a venda, que o livro de estoque fica identico (OnHand 10, Reserved 2, Available 8, 2 movimentos) e que quitacao e conciliacao continuam registradas e idempotentes. DEVOLUCAO IMPLEMENTADA (E-259): o limite declarado 'sem frete/entrega/devolucao' perdeu a parte de DEVOLUCAO. RecordReturn aceita devolucao de pedido PAGO/ATENDIDO, devolve o ESTOQUE por movimento auditavel e registra o reembolso devido, com idempotencia (repetir a mesma devolucao devolve o MESMO registro sem devolver estoque duas vezes), persistencia por organizacao e recusa entre tenants igual a de pedido inexistente. O DINHEIRO NAO SE MOVE: o registro carrega FinancialSignal dizendo que reembolso exige aprovacao humana. MEDIDO: teste de propriedades PASS + reinicio real sobre o mesmo diretorio; suite completa de internal/agent ok 111,4 s",
       "execution": "BLOCKED_BY_EXTERNAL_DEPENDENCY"
     },
     {
@@ -1870,7 +1871,10 @@
     "TETO DECLARADO EM VEZ DE 'ZERO' (E-256): o escopo por rota falha se os residuais CRESCEREM acima de 35. Exigir zero seria mentir: os residuais sao majoritariamente limite do proprio instrumento (corpo do handler nao localizado) e rota legitimamente publica",
     "A LEITURA HUMANA MELHOROU O INSTRUMENTO (E-257): ler os quatro approveCompany* revelou que eles delegam a um helper compartilhado (decideCompanyApproval) que escopa E exige papel. O scanner so seguia *ForRequest, entao acusava 4 falsos positivos. Ensinada a delegacao (profundidade <= 3), os residuais caem de 35 para 28 - ler o codigo e' o que calibra a ferramenta, nao o contrario",
     "CLASSIFICACAO VERIFICADA, NAO DEDUZIDA (E-257): em E-253 os 4 candidatos do oraculo foram declarados falsos positivos a partir da MENSAGEM de erro. Nesta rodada li os quatro trechos: sao validacao da entrada do proprio chamador (id/command/caminho, URL/SSRF, tamanho do org id pedido, mission id ausente) e nao consultam estado de outro tenant. A conclusao nao mudou; a EVIDENCIA sim - deducao virou leitura",
-    "O QUE RESTA E' LIMITE DECLARADO, NAO ACHADO (E-257): os 28 residuais de rota sao, por leitura, limite do proprio instrumento (corpo do handler nao localizado: '?', 'func', servedByDesktopApp) e rota publica por desenho (blobs, signout, callbacks OAuth/SAML, desktop-only). Continuam contados e declarados, nunca promovidos a vulnerabilidade"
+    "O QUE RESTA E' LIMITE DECLARADO, NAO ACHADO (E-257): os 28 residuais de rota sao, por leitura, limite do proprio instrumento (corpo do handler nao localizado: '?', 'func', servedByDesktopApp) e rota publica por desenho (blobs, signout, callbacks OAuth/SAML, desktop-only). Continuam contados e declarados, nunca promovidos a vulnerabilidade",
+    "DEFEITO ENCONTRADO PELO PROPRIO TESTE - ORDEM DE ESCRITA (E-259): eu inseria a devolucao no mapa ANTES do movimento de estoque, para 'nao ter escrita extra'. Resultado: o estado DURAVEL saia SEM MovementID - registro sem vinculo auditavel. Corrigido com a ordem certa (movimento primeiro, registro completo, UMA gravacao). A licao de E-258 nao e 'nunca gravar duas vezes': e 'nao adicionar gravacao em HOT PATH sem medir' - devolucao e acao rara e humana",
+    "MINHA ASERCAO ERA O INSTRUMENTO ERRADO (E-259): comparei o texto INTEGRAL do erro entre tenants e acusei um oraculo que nao existe - a mensagem embute o ID PEDIDO, que e do proprio chamador. A propriedade real e o SENTINELA (errors.Is) mais o PREFIXO da mensagem. Segunda vez na missao em que o defeito estava no instrumento de medicao, nao no codigo",
+    "DINHEIRO NAO SE MOVE E ISSO E DECLARADO NO DADO (E-259): a devolucao devolve estoque e REGISTRA o reembolso devido, mas o proprio registro carrega FinancialSignal='reembolso_devido_requer_aprovacao_humana'. O dado diz o que aconteceu, em vez de sugerir que houve transferencia"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
