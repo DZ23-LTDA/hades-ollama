@@ -2,7 +2,7 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-15T13:40:00-03:00",
+  "updated_at": "2026-10-15T14:05:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
@@ -1754,7 +1754,8 @@
     "DISCREPANCIA ABERTA NO GROQ (E-228): o script do produto reporta FORBIDDEN 403 para groq, mas duas sondas diretas - uma com a URL e o payload EXATOS do script e outra com o payload do instrumento Go - retornaram HTTP 200 com conteudo 'OK' para openai/gpt-oss-20b. Nao ha conclusao: fica declarado como questao aberta com os dois lados da evidencia em vez de escolher o resultado que agrada",
     "'FORBIDDEN 403' ERA O CLOUDFLARE, NAO PERMISSAO (E-229): o script de smoke da casa enviava o User-Agent padrao do urllib; provedores atras de Cloudflare respondem 403 com corpo 'error code: 1010'. Medido lado a lado: com UA Python-urllib/3.12 -> 403; com UA identificado -> 200. O script classificava como FORBIDDEN, o que sugere falta de permissao e manda o operador investigar credencial ERRADA. Diagnostico errado custa tempo e confianca",
     "ORCAMENTO FIXO REPROVAVA MODELO DE RACIOCINIO - TERCEIRA VEZ NA MESMA FAMILIA (E-229): depois de E-223 (groq 200 sem conteudo) e E-228 (PASS sem exigir conteudo), o gemini caiu para INVALID_RESPONSE com 200 e conteudo vazio porque o reasoning consumiu todo o max_tokens. A correcao nao foi afrouxar a prova (conteudo continua obrigatorio), e sim dar espaco: segunda tentativa com orcamento ampliado",
-    "O SMOKE DE PROVEDORES DO PRODUTO AGORA FECHA testado=5 failed=0 exit=0 com chaves reais (openrouter, deepseek, groq, mistral, gemini). E o caminho do CI, nao um instrumento meu - e por isso vale como evidencia de estagio 4"
+    "O SMOKE DE PROVEDORES DO PRODUTO AGORA FECHA testado=5 failed=0 exit=0 com chaves reais (openrouter, deepseek, groq, mistral, gemini). E o caminho do CI, nao um instrumento meu - e por isso vale como evidencia de estagio 4",
+    "INCIDENTE DE PROCESSO NA E-229 (autoinfligido, detectado por verificacao): encadeei 'git checkout main' com 'git reset --hard origin/main'. O checkout ABORTOU porque havia alteracoes nao commitadas no script de smoke, e o reset rodou em seguida - descartando as duas correcoes de codigo do E-229. O commit de docs foi criado e o indice passou a AFIRMAR um codigo que nao existia. Detectado ao conferir 'git show --stat' e procurar a correcao no arquivo. Reaplicado e REVALIDADO (tested=5 failed=0 exit=0) no mesmo PR. REGRA: nunca encadear reset --hard depois de um checkout que pode falhar; conferir $LASTEXITCODE a cada passo; e depois de escrever evidencia de correcao, PROVAR que o arquivo contem a correcao"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
