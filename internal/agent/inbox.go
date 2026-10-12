@@ -55,6 +55,8 @@ const (
 
 	// DefaultInboxFirstResponseSLA é o prazo padrão da primeira resposta.
 	DefaultInboxFirstResponseSLA = 15 * time.Minute
+	// DefaultInboxResolutionSLA e' a janela de RESOLUCAO quando a organizacao nao define uma (E-266).
+	DefaultInboxResolutionSLA = 24 * time.Hour
 )
 
 var (
@@ -113,8 +115,12 @@ type InboxMetrics struct {
 	SLABreached          int     `json:"sla_breached"`
 	AwaitingFirstReply   int     `json:"awaiting_first_reply"`
 	FirstResponseAvgSecs float64 `json:"first_response_avg_seconds"`
-	MessagesInbound      int     `json:"messages_inbound"`
-	MessagesOutbound     int     `json:"messages_outbound"`
+	// RESOLUCAO (E-266): o SLA de primeira resposta nao diz se o cliente foi ATENDIDO ate o fim.
+	ResolutionSLABreached int     `json:"resolution_sla_breached"`
+	ResolutionOverdue     int     `json:"resolution_overdue"`
+	ResolutionAvgSecs     float64 `json:"resolution_avg_seconds"`
+	MessagesInbound       int     `json:"messages_inbound"`
+	MessagesOutbound      int     `json:"messages_outbound"`
 }
 
 type inboxFile struct {
@@ -131,6 +137,8 @@ type InboxStore struct {
 	// externalIndex evita duplicar mensagem já recebida do provedor.
 	externalIndex map[string]string
 	firstSLAByOrg map[string]time.Duration
+	// resolutionSLAByOrg guarda a janela de RESOLUCAO por organizacao (E-266).
+	resolutionSLAByOrg map[string]time.Duration
 	// knowledge guarda a base de conhecimento carregada (E-265).
 	knowledge map[string]InboxKnowledgeArticle
 }
@@ -138,11 +146,12 @@ type InboxStore struct {
 // NewInboxStore carrega a caixa de entrada do diretório informado.
 func NewInboxStore(root string) (*InboxStore, error) {
 	store := &InboxStore{
-		root:          strings.TrimSpace(root),
-		conversations: map[string]InboxConversation{},
-		messages:      map[string][]InboxMessage{},
-		externalIndex: map[string]string{},
-		firstSLAByOrg: map[string]time.Duration{},
+		root:               strings.TrimSpace(root),
+		conversations:      map[string]InboxConversation{},
+		messages:           map[string][]InboxMessage{},
+		externalIndex:      map[string]string{},
+		firstSLAByOrg:      map[string]time.Duration{},
+		resolutionSLAByOrg: map[string]time.Duration{},
 	}
 	if store.root == "" {
 		return store, nil
@@ -243,6 +252,27 @@ func (s *InboxStore) SetFirstResponseSLA(organizationID string, window time.Dura
 		return
 	}
 	s.firstSLAByOrg[consentScope(organizationID)] = window
+}
+
+// SetResolutionSLA define a janela de RESOLUCAO da organizacao. Zero remove a janela e volta ao padrao DECLARADO.
+func (s *InboxStore) SetResolutionSLA(organizationID string, window time.Duration) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.resolutionSLAByOrg == nil {
+		s.resolutionSLAByOrg = map[string]time.Duration{}
+	}
+	if window <= 0 {
+		delete(s.resolutionSLAByOrg, consentScope(organizationID))
+		return
+	}
+	s.resolutionSLAByOrg[consentScope(organizationID)] = window
+}
+
+func (s *InboxStore) resolutionSLA(organizationID string) time.Duration {
+	if window, ok := s.resolutionSLAByOrg[consentScope(organizationID)]; ok && window > 0 {
+		return window
+	}
+	return DefaultInboxResolutionSLA
 }
 
 func (s *InboxStore) firstResponseSLA(organizationID string) time.Duration {
@@ -538,6 +568,8 @@ func (s *InboxStore) Metrics(organizationID string, now time.Time) InboxMetrics 
 	metrics := InboxMetrics{OrganizationID: organizationID}
 	var firstResponseTotal time.Duration
 	var firstResponseCount int
+	var resolutionTotal time.Duration
+	var resolutionCount int
 	for _, conversation := range s.conversations {
 		if conversation.OrganizationID != organizationID {
 			continue
@@ -558,6 +590,22 @@ func (s *InboxStore) Metrics(organizationID string, now time.Time) InboxMetrics 
 		default:
 			metrics.OpenConversations++
 		}
+		// RESOLUCAO (E-266): calculada ANTES do desvio de primeira resposta - uma conversa fechada sem primeira
+		// resposta registrada continua contando para a resolucao.
+		if !conversation.FirstInboundAt.IsZero() {
+			janela := s.resolutionSLA(organizationID)
+			if conversation.ClosedAt != nil {
+				decorrido := conversation.ClosedAt.Sub(conversation.FirstInboundAt)
+				resolutionTotal += decorrido
+				resolutionCount++
+				if decorrido > janela {
+					metrics.ResolutionSLABreached++
+				}
+			} else if now.Sub(conversation.FirstInboundAt) > janela {
+				// Ainda aberta e a janela JA venceu: e' atraso, nao "em andamento".
+				metrics.ResolutionOverdue++
+			}
+		}
 		if conversation.FirstReplyAt == nil {
 			if !conversation.FirstInboundAt.IsZero() {
 				metrics.AwaitingFirstReply++
@@ -574,6 +622,9 @@ func (s *InboxStore) Metrics(organizationID string, now time.Time) InboxMetrics 
 	}
 	if firstResponseCount > 0 {
 		metrics.FirstResponseAvgSecs = firstResponseTotal.Seconds() / float64(firstResponseCount)
+	}
+	if resolutionCount > 0 {
+		metrics.ResolutionAvgSecs = resolutionTotal.Seconds() / float64(resolutionCount)
 	}
 	return metrics
 }
