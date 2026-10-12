@@ -209,7 +209,7 @@ export type CompanyGrowthReport = { company: AgentCompany; campaigns_total: numb
 // Campanha em sandbox (estagios 25/26): o registro de metricas e o painel DECLARAM que nada foi
 // publicado externamente. A interface usa esses campos para nao sugerir campanha no ar.
 export type CompanyCampaignMetrics = { campaign_id: string; status: string; mode: string; impressions: number; clicks: number; conversions: number; spend_cents: number; click_rate: string; conversion_rate: string; publicado_externamente: boolean; publicacao_externa: string };
-export type CompanyCampaignReport = { company_id: string; campaigns: CompanyCampaign[]; total: CompanyCampaignMetrics; sandbox: boolean; publicacao_externa: string; motivo: string };
+export type CompanyCampaignReport = { company_id: string; campaigns: CompanyCampaign[]; total: CompanyCampaignMetrics; sandbox: boolean; publicacao_externa: string; motivo: string; /** Entregas ACEITAS de metrica (canal|SourceID): o que foi contado. */ ingestoes?: string[] };
 export type MarketplaceChannel = { id: string; name: string; credential_env: string; state: string; capabilities: string[]; live_tested: boolean; unblock_procedure?: string };
 export type MarketplaceSyncItem = { entity: string; sku: string; version: number; quantity?: number; price_cents?: number };
 export type MarketplaceSyncReport = { channel_id: string; direction: string; sandbox: boolean; homologacao_live: string; motivo: string; applied: number; skipped: number; conflicts: number; operations_used: number; operation_limit: number; outcomes?: Array<{ entity: string; sku: string; version: number; result: string; detail?: string }> };
@@ -220,7 +220,6 @@ export type AgentHealth = {
   checked_at: string;
   subsystems: Record<string, { status: string; detail: string }>;
   /** Entregas ACEITAS de metrica (canal|SourceID): o que foi contado. */
-  ingestoes?: string[];
 };
 
 type AgentSession = { token: string; organization?: string };
