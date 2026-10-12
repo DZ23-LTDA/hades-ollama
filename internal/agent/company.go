@@ -303,6 +303,11 @@ func defaultCompanyDepartments() []CompanyDepartment {
 	return result
 }
 
+// Root devolve o diretorio de dados do store (vazio quando esta em memoria).
+func (s *CompanyStore) Root() string {
+	return s.root
+}
+
 func (s *CompanyStore) persistLocked(company Company) error {
 	if s.root == "" {
 		return nil
