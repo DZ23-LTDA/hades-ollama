@@ -2,7 +2,7 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-14T06:20:00-03:00",
+  "updated_at": "2026-10-14T07:40:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
@@ -273,10 +273,11 @@
         "E-138",
         "E-142",
         "E-143",
-        "E-186"
+        "E-186",
+        "E-197"
       ],
       "blocker": "B-09",
-      "next": "LIMITES: a INTERMITENCIA segue NAO REPRODUZIDA (5 rodadas paralelas + 40 execucoes); restam 12 ocorrencias de ', _ :=' na preparacao de testes do proprio builder_studio_routes_test.go (varredura mecanica pendente, de baixo risco); e o instrumento da campanha tinha ExitCode vazio - o resultado foi aceito pelos ARTEFATOS (ok nas saidas e PASS=10 nos quatro arquivos), nao pelo codigo de saida",
+      "next": "Flake do macOS em ./server (E-197): obter o NOME do teste que falhou (o log do MCP trunca) e verificar a pista de que o job roda com -bench=. -benchtime=1x",
       "done": " | INTERMITENCIA DE E-118: CAMPANHA SOB CARGA E CAUSA ENDURECIDA (E-138): 5 rodadas das suites completas de internal/agent e server EM PARALELO (0 falhas; 57,9s a 108,4s por rodada) e 4 instancias simultaneas de -count=10 no teste especifico (40 execucoes, 0 falhas). A FALHA NAO FOI REPRODUZIDA. Endurecimento da causa do relato opaco: o teste ENGOLLA os erros de preparacao (builder, project, runtime) e um setup falho sob pressao virava PANIC - falha sem causa legivel; agora cada erro tem t.Fatalf. Assercoes endurecidas: antes aceitava QUALQUER codigo != 200 (inclusive 404/500); agora exige 501 EXATO e o motivo declarado. HIPOTESE REFUTADA POR SONDA TEMPORARIA: com ID vazio a rota responde 501 de qualquer forma (o handler recusa antes de consultar o projeto), entao o risco NAO era 'teste que nao testa nada' - o comentario foi corrigido para dizer a verdade | DOCUMENTOS OBRIGATORIOS DA SECAO 5 (E-186): a checagem passou a exigir os documentos que a secao 5 nomeia, e acusou DOIS ausentes neste estagio (HADES_BASELINE_REPORT.md e HADES_FAILURE_INDEX.md). Ambos passaram a ser GERADOS por scripts/hades_baseline_report.py a partir de fatos verificaveis (suites com comando reproduzivel; falhas derivadas do estado), com --check no CI para nao envelhecer",
       "execution": "IN_PROGRESS"
     },
@@ -1602,7 +1603,10 @@
     "CALIBRACAO COM CONJUNTO EXATO (E-195): a lista de candidatos tem exatamente 2 entradas, ambas explicadas como falso positivo conhecido. Candidato novo vira falha de calibracao; candidato que sumir avisa que o scanner ficou cego. A lista e declarada, nao escondida",
     "B-18 FECHADO (E-196) - A LICAO MAIS FORTE DA SESSAO: o 'vazamento intermitente de DLP' e as TRES falhas do race (macos-latest) eram o MESMO bug do MEU teste. A checagem procurava o fragmento '4111' no ARQUIVO INTEIRO e decided_at pode conter '.411114Z'. O log do CI mostrou a entrada acusada SEM conteudo de terceiro, e isso fechou o caso que seis tentativas de reproducao local nao fecharam",
     "LOG DE CI VALE MAIS QUE REPETICAO LOCAL (E-196): eu chamei aquilo de 'flake nao reproduzida' em tres rodadas; o que resolveu foi LER o log do job que falhou, nao repetir o teste na minha maquina",
-    "FALSO POSITIVO DE PRIVACIDADE E O PIOR DEFEITO DE INSTRUMENTO (E-196): ou faz alguem corrigir o que nao esta quebrado, ou ensina a ignorar o alerta. A checagem agora distingue TEXTO LIVRE (summary/reason, busca o texto e o fragmento do cartao) de IDENTIFICADOR (tool_name/status/UUID: so o texto completo conta)"
+    "FALSO POSITIVO DE PRIVACIDADE E O PIOR DEFEITO DE INSTRUMENTO (E-196): ou faz alguem corrigir o que nao esta quebrado, ou ensina a ignorar o alerta. A checagem agora distingue TEXTO LIVRE (summary/reason, busca o texto e o fragmento do cartao) de IDENTIFICADOR (tool_name/status/UUID: so o texto completo conta)",
+    "FLAKE DO macOS EM ./server REGISTRADO (E-197), CAUSA NAO DEMONSTRADA: test (macos-latest) falhou uma vez em ./server (exit status 1, 7,1s, comando 'go test -count=1 -bench=. -benchtime=1x ./...') e PASSOU na re-execucao do MESMO SHA. Nao e o relogio (isso era E-196/B-18) e nao ha causa demonstrada. O log disponivel nao trouxe o NOME do teste - e eu nao invento qual seria",
+    "PISTAS MEDIDAS DO FLAKE DO macOS (E-197): o MESMO pacote ./server passa com -race no macOS (job 'race (macos-latest)'), passa no Windows (ok 29,2s) e passa no Linux com CGO=1 (ok 5,4s); o job que falha e o UNICO da matriz que roda com -bench=. -benchtime=1x, o que e uma pista concreta para a proxima investigacao",
+    "INVENTARIO DE FLAKINESS (E-197): o que eu chamei de 'flake do race (macos-latest)' por tres rodadas era o relogio (E-196, resolvido); o flake do ./server e NOVO, tem 1 ocorrencia e esta registrado com o comando exato. Registro separado evita somar causas diferentes no mesmo nome"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
