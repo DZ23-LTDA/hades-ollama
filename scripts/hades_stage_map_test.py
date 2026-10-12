@@ -48,17 +48,27 @@ class MapaDeEstagiosTest(unittest.TestCase):
         self.assertIn("estagios_sem_cobertura_no_master", resumo)
         self.assertIn("estagios_com_escopo_divergente", resumo)
         self.assertTrue(avisos, "com escopo divergente declarado precisa haver aviso")
+        # Depois da reconciliação por evidência (E-188) NÃO existe mais estágio do master sem cobertura; o aviso que
+        # precisa aparecer é o da cobertura dupla (voz e telefonia divididas em dois estágios do estado). A asserção
+        # antiga exigia o aviso de "sem cobertura" - ela ficou obsoleta justamente porque a dívida caiu a zero.
         self.assertTrue(
+            any("MAIS DE UM estágio do estado" in a for a in avisos),
+            f"a cobertura dupla declarada precisa aparecer: {avisos}",
+        )
+        self.assertFalse(
             any("sem nenhum estágio do estado apontando" in a for a in avisos),
-            f"os estágios do master sem cobertura precisam aparecer: {avisos}",
+            f"não há mais estágio do master sem cobertura: {avisos}",
         )
 
     def test_repositorio_real_acusa_a_divida_medida(self) -> None:
-        # Números MEDIDOS em E-187: sem cobertura no master = 32, 34, 35 e 36; cobertura dupla = 26, 29, 33, 37.
+        # Números MEDIDOS em E-188, DEPOIS de corrigir o pareamento com EVIDÊNCIA: ZERO estágios do master sem cobertura
+        # e UMA cobertura dupla (37, voz e telefonia divididas em dois estágios do estado). Em E-187 eram 4 e 4; a
+        # correção veio das evidências: E-105/E-141/E-170..E-177 (runtime omnichannel = estado 34), E-106/E-144..E-156
+        # (agentes de atendimento = estado 35), E-109/E-112 (TestBusinessE2E, 21 etapas = estado 38).
         sem_cobertura = mapa.mestres_nao_cobertos()
-        self.assertEqual(sem_cobertura, [32, 34, 35, 36], "a lista de estágios do master sem cobertura mudou")
+        self.assertEqual(sem_cobertura, [], "todo estágio do master precisa ter cobertura declarada")
         duplicados = mapa.mestres_cobertos_mais_de_uma_vez()
-        self.assertEqual(sorted(duplicados), [26, 29, 33, 37], "a lista de cobertura dupla mudou")
+        self.assertEqual(sorted(duplicados), [37], "a lista de cobertura dupla mudou")
         self.assertGreaterEqual(mapa.situacoes().get(mapa.ESCOPO_DIVERGENTE, 0), 10, "escopo divergente precisa estar declarado")
 
     def test_documento_gerado_bate_com_a_tabela(self) -> None:

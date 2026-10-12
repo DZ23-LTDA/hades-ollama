@@ -11,11 +11,11 @@ A seção 5 do prompt master define os 38 estágios. O estado da missão foi con
 | Situação | Quantos |
 | --- | --- |
 | EQUIVALENTE | 1 |
-| TITULO_DIFERENTE | 20 |
+| TITULO_DIFERENTE | 21 |
 | ESCOPO_DIVERGENTE | 16 |
-| SEM_PAR_NO_MESTRE | 1 |
+| SEM_PAR_NO_MESTRE | 0 |
 
-**Dívida de governança declarada:** 16 estágios com escopo divergente e 1 sem par no master.
+**Dívida de governança declarada:** 16 estágios com escopo divergente e 0 sem par no master.
 
 ## 3. O mapa
 
@@ -50,21 +50,21 @@ A seção 5 do prompt master define os 38 estágios. O estado da missão foi con
 | 27 | Pagamentos e faturamento | 30 | FINANCE & OPERATIONS | **ESCOPO_DIVERGENTE** | o master trata pagamentos dentro de COMMERCE ENGINE (24) e FINANCE & OPERATIONS (30); no estado estão isolados |
 | 28 | Atendimento e suporte (helpdesk) | 29 | OMNICHANNEL INBOX | **ESCOPO_DIVERGENTE** | é o OMNICHANNEL INBOX do master (29); o master 28 é VOICE & CALL CENTER, que o estado trata no 29 |
 | 29 | Telefonia e call center | 28 | VOICE & CALL CENTER | **ESCOPO_DIVERGENTE** | é o VOICE & CALL CENTER do master (28) |
-| 30 | Marketing e campanhas | 26 | SOCIAL MEDIA OS | **ESCOPO_DIVERGENTE** | cobre parte do SOCIAL MEDIA OS do master (26) e do 36 (SOCIAL MEDIA E MARKETPLACE OPERACIONAL) |
-| 31 | Social e publicacao | 26 | SOCIAL MEDIA OS | **ESCOPO_DIVERGENTE** | também cobre o SOCIAL MEDIA OS do master (26) - dois estágios do estado cobrem o mesmo do master |
+| 30 | Marketing e campanhas | 26 | SOCIAL MEDIA OS | **TITULO_DIFERENTE** | é o SOCIAL MEDIA OS do master (26): campanhas, calendário e conteúdo sob aprovação |
+| 31 | Social e publicacao | 36 | SOCIAL MEDIA E MARKETPLACE OPERACIONAL | **ESCOPO_DIVERGENTE** | operação de redes com publicação autorizada e métricas corresponde ao master 36 (SOCIAL MEDIA E MARKETPLACE OPERACIONAL); a parte de MARKETPLACE do master 36 é coberta pelo estado 26 |
 | 32 | BI / business status e metricas | 31 | AUTONOMOUS BUSINESS SUPERVISOR | **ESCOPO_DIVERGENTE** | dashboards/indicadores correspondem ao AUTONOMOUS BUSINESS SUPERVISOR do master (31) |
 | 33 | Canal Telegram | 33 | CONSOLIDAR WHATSAPP E TELEGRAM EXISTENTES | **ESCOPO_DIVERGENTE** | o master junta WhatsApp E Telegram em UM estágio (33); o estado separa em 33 e 34 |
-| 34 | Canal WhatsApp | 33 | CONSOLIDAR WHATSAPP E TELEGRAM EXISTENTES | **ESCOPO_DIVERGENTE** | mesma razão: segundo estágio do estado para o mesmo estágio do master |
-| 35 | Inbox unificado omnicanal | 29 | OMNICHANNEL INBOX | **ESCOPO_DIVERGENTE** | o OMNICHANNEL INBOX do master (29) já é apontado pelo estado 28 - cobertura repetida |
+| 34 | Canal WhatsApp | 34 | HADES OMNICHANNEL RUNTIME | **ESCOPO_DIVERGENTE** | CORRIGIDO COM EVIDENCIA (E-188): este estágio carrega o RUNTIME OMNICHANNEL do master 34 - E-105 aponta `docs/mission/HADES_STAGE_34_OMNICHANNEL.md` e E-141/E-170..E-177 medem dead letter, rate limit, conectores, cache de eventos, reserva em voo e -race. O canal do master 33 é coberto pelo estado 33 |
+| 35 | Inbox unificado omnicanal | 35 | AGENTES DE ATENDIMENTO E VENDAS | **ESCOPO_DIVERGENTE** | CORRIGIDO COM EVIDENCIA (E-188): este estágio carrega os AGENTES DE ATENDIMENTO E VENDAS do master 35 - E-106 aponta `docs/mission/HADES_STAGE_35_SERVICE_AGENT...` e E-144..E-156 medem `TestServiceAgent` (política, auditoria, aprovação). O OMNICHANNEL INBOX do master 29 é coberto pelo estado 28 |
 | 36 | Voz e transcricao | 37 | VOZ E TELEFONIA COM TEL-AGENT | **ESCOPO_DIVERGENTE** | VOZ E TELEFONIA COM TEL-AGENT do master (37) |
 | 37 | Chamadas e follow-up | 37 | VOZ E TELEFONIA COM TEL-AGENT | **ESCOPO_DIVERGENTE** | segundo estágio do estado para o mesmo do master (37) |
-| 38 | Gate final de release verificado | 38 | HOMOLOGAÇÃO DE UMA EMPRESA AUTÔNOMA | **SEM_PAR_NO_MESTRE** | o master 38 é HOMOLOGAÇÃO DE UMA EMPRESA AUTÔNOMA; o gate final do estado NÃO tem estágio correspondente no master (o gate global está descrito na seção 11.8) |
+| 38 | Gate final de release verificado | 32, 38 | BUSINESS E2E CERTIFICATION + HOMOLOGAÇÃO DE UMA EMPRESA AUTÔNOMA | **ESCOPO_DIVERGENTE** | CORRIGIDO COM EVIDENCIA (E-188): este estágio carrega a HOMOLOGAÇÃO DE EMPRESA do master 32 - E-109 e E-112 medem `TestBusinessE2E` (2/2, 21 etapas, com reinício real sobre o mesmo diretório) e `TestBusinessCertification`. O GATE de release global NÃO é um estágio do master: é o requisito transversal da seção 11.8, e por isso não aparece como par |
 
 ## 4. Cobertura dos estágios do master
 
-- estágios do master **cobertos** pelo estado: 34 de 38
-- estágios do master **sem nenhum** estágio do estado apontando: [32, 34, 35, 36]
-- estágios do master apontados por **mais de um** estágio do estado: {26: 2, 29: 2, 33: 2, 37: 2}
+- estágios do master **cobertos** pelo estado: 38 de 38
+- estágios do master **sem nenhum** estágio do estado apontando: nenhum
+- estágios do master apontados por **mais de um** estágio do estado: {37: 2}
 
 ## 5. O que este mapa NÃO faz
 
