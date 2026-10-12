@@ -49,7 +49,50 @@ EXECUCOES_PERMITIDAS = {
 VEREDITOS_PERMITIDOS = {"NOT_RELEASE_READY", "RELEASE_CANDIDATE", "COMPLETED_VERIFIED"}
 
 
-def verificar(estado_path: Path, indice_path: Path, conferir_gate: bool = True) -> tuple[list[str], list[str], dict]:
+# EVIDENCIAS OBRIGATORIAS DA SECAO 5 QUE NOMEIAM DOCUMENTO (E-186).
+#
+# A secao 5 lista, por estagio, "Evidencias obrigatorias". Varias descrevem CATEGORIAS (logs, testes, metricas) e nao
+# tem caminho fixo; as que NOMEIAM um documento entram aqui, porque um documento nomeado e um artefato que pode
+# existir ou nao - e enquanto ninguem confere, "obrigatorio" e decoracao. Esta tabela e a parte da secao 5 que a
+# checagem consegue provar.
+DOCUMENTOS_OBRIGATORIOS_POR_ESTAGIO: dict[int, tuple[str, ...]] = {
+    1: (
+        "audit/HADES_MASTER_AUDIT.md",
+        "audit/HADES_CAPABILITY_MATRIX.md",
+        "audit/HADES_RELEASE_BLOCKERS.md",
+    ),
+    2: (
+        "docs/mission/HADES_BASELINE_REPORT.md",
+        "docs/mission/HADES_FAILURE_INDEX.md",
+    ),
+    22: ("docs/mission/HADES_ENGINEERING_GATE.md",),
+}
+
+
+def verificar_documentos_obrigatorios(raiz: Path) -> tuple[list[str], dict]:
+    """Confere os documentos que a secao 5 nomeia como evidencia OBRIGATORIA de cada estagio.
+
+    Recebe `raiz` para ser TESTAVEL com fixture: um diretorio temporario prova o caminho de falha sem depender do
+    repositorio real.
+    """
+    problemas: list[str] = []
+    conferidos = 0
+    for estagio, caminhos in sorted(DOCUMENTOS_OBRIGATORIOS_POR_ESTAGIO.items()):
+        for caminho in caminhos:
+            conferidos += 1
+            if not (raiz / caminho).is_file():
+                problemas.append(
+                    f"evidencia OBRIGATORIA da secao 5 ausente: estagio {estagio} exige `{caminho}`"
+                )
+    return problemas, {"documentos_obrigatorios_conferidos": conferidos}
+
+
+def verificar(
+    estado_path: Path,
+    indice_path: Path,
+    conferir_gate: bool = True,
+    raiz: Path | None = None,
+) -> tuple[list[str], list[str], dict]:
     """Devolve (problemas, avisos, resumo). Aceita caminhos para ser TESTÁVEL com fixtures."""
     problemas: list[str] = []
     avisos: list[str] = []
@@ -98,6 +141,20 @@ def verificar(estado_path: Path, indice_path: Path, conferir_gate: bool = True) 
         if not estagio.get("state"):
             avisos.append(f"estágio {ident} sem `state` legível")
 
+    # 4b. Pelo menos uma evidencia por estagio: "Evidencias obrigatorias" sem nenhuma evidencia nao e cobertura.
+    for estagio in estado["stages"]:
+        if not (estagio.get("evidence") or []):
+            problemas.append(
+                f"estágio {estagio.get('id')} nao declara NENHUMA evidencia (a seção 5 exige evidências obrigatórias)"
+            )
+
+    # 4c. Documentos que a seção 5 nomeia como evidência obrigatória.
+    if raiz is not None:
+        problemas_documentos, resumo_documentos = verificar_documentos_obrigatorios(raiz)
+        problemas.extend(problemas_documentos)
+    else:
+        resumo_documentos = {"documentos_obrigatorios_conferidos": 0}
+
     # 5. Veredito coerente com o estado.
     veredito = estado.get("release_state")
     if veredito not in VEREDITOS_PERMITIDOS:
@@ -136,7 +193,8 @@ def verificar(estado_path: Path, indice_path: Path, conferir_gate: bool = True) 
         "estagios": len(estado["stages"]),
         "bloqueios": len(ids_de_bloqueio),
         "veredito": veredito,
-    }
+        **resumo_documentos,
+}
     return problemas, avisos, resumo
 
 
@@ -221,7 +279,8 @@ def main() -> int:
     parser.add_argument("--no-gate-check", action="store_true", help="não confere o gate gerado")
     args = parser.parse_args()
 
-    problemas, avisos, resumo = verificar(args.state, args.index, conferir_gate=not args.no_gate_check)
+    raiz_do_repositorio = Path(__file__).resolve().parent.parent
+    problemas, avisos, resumo = verificar(args.state, args.index, conferir_gate=not args.no_gate_check, raiz=raiz_do_repositorio)
 
     # 7. Relatório de estágios (numeração + evidências citadas).
     estado = json.loads(args.state.read_text(encoding="utf-8"))
