@@ -2,7 +2,7 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-16T14:50:00-03:00",
+  "updated_at": "2026-10-16T15:55:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
@@ -245,6 +245,7 @@
       "evidence": [
         "E-001",
         "E-002",
+        "E-010",
         "E-021",
         "E-023",
         "E-036",
@@ -264,13 +265,21 @@
       "auditoria": "AUDITADO_PARCIAL",
       "capability": "PARCIAL",
       "evidence": [
+        "E-003",
+        "E-004",
         "E-011",
         "E-013",
         "E-014",
         "E-015",
         "E-016",
         "E-017",
+        "E-060",
+        "E-061",
+        "E-062",
+        "E-064",
+        "E-115",
         "E-116",
+        "E-129",
         "E-138",
         "E-142",
         "E-143",
@@ -617,6 +626,7 @@
         "E-071",
         "E-072",
         "E-073",
+        "E-091",
         "E-121",
         "E-122",
         "E-123",
@@ -646,6 +656,7 @@
         "E-012",
         "E-032",
         "E-130",
+        "E-131",
         "E-139",
         "E-182"
       ],
@@ -682,6 +693,7 @@
         "E-021",
         "E-054",
         "E-117",
+        "E-127",
         "E-160",
         "E-161",
         "E-164",
@@ -718,16 +730,18 @@
         "E-099",
         "E-113",
         "E-140",
+        "E-173",
         "E-179",
         "E-180",
         "E-181",
         "E-211",
         "E-231",
-        "E-235"
+        "E-235",
+        "E-251"
       ],
       "blocker": null,
-      "next": "Pendencia remanescente: as 13 linhas legadas seguem SEM vinculo (declarado, nao inventado); reconstrui-lo exige ler o contexto de cada rodada historica. Demais itens: ExternalComparison NAO_EXECUTADA e os estagios 23-38 em IN_PROGRESS",
-      "done": "GATE AVALIADO EM DUAS RODADAS: a suite completa foi executada e relatada, e agora PERFORMANCE e ACESSIBILIDADE tambem estao MEDIDAS - benchmarks reais (busca de memoria 699,3 ns/op, construcao de contexto fundamentado 110,7 us/op, instalacao/rollback de plugin 5,20 ms/op, download 442,83 MB/s), budget de bundle PASS (1.443,91 kB cru e 396,66 kB gzip contra 2.000.000 e 600.000) e gate axe WCAG com 3 de 3 passando (desktop sem violacao, mobile sem violacao e teclado sem armadilha) | GATE REEXECUTADO EM 2edee0490 (E-140): gofmt sem saida; go build 0; go vet 0; golangci-lint 0 issues; go test ./internal/agent/ ok 64,700s; go test ./server/ ok 44,509s; go test ./... 116 pacotes ok; go mod verify limpo; CGO_ENABLED=0 go build 0; benchmarks 1.900 ns/op / 5,83 ms/op / 92,3 us/op / 354,10 MB/s; contratos PASSED; design system PASSED; tsc 0; eslint 0 erros; 580 testes web PASS; BUNDLE_BUDGET=PASS; capturas PASS (10); E2E de navegador real 18 passed. DEFEITO REAL CORRIGIDO: os 12 arquivos de teste do mlx nao tinham //go:build cgo (a implementacao tem, em 23 arquivos), o que tornava go test ./mlx IMPOSSIVEL sem compilador C (undefined: gelu, currentScope, returned.valid) - corrigido espelhando o gating: vet passou de build failed para exit 0, test para [no test files], lint do pacote de typechecking error (exit 7) para completar, e as falhas do modulo cairam de 9 para 8 pacotes (as 8 sao go-sqlite3 exigindo cgo, com causa MEDIDA: CGO_ENABLED=0 e gcc/cc ausentes) | GATE GLOBAL GERADO E CONFERIDO PELO CI (E-179): HADES_FINAL_RELEASE_GATE.md e HADES_RELEASE_REPORT.md eram escritos A MAO e o gerador vivia so em _tmp - os artefatos NAO eram reproduziveis e nada impedia a matriz dizer DONE enquanto o indice dizia outra coisa. Agora scripts/hades_release_gate.py GERA os dois a partir do estado, com --check que FALHA em divergencia, e o passo entrou no job Preserve Class A+ surfaces. Item 14 (Builder) saiu de NAO_COMPROVADO para DONE com limite declarado; resumo 15->16 DONE e 5->4 NAO_COMPROVADO; veredito INALTERADO | ESCRITURACAO CONFERIDA POR MAQUINA (E-180): scripts/hades_mission_check.py confere IDs unicos e sem buracos, evidencia citada que existe, blocker declarado, execution presente e valido, e release_state COERENTE (COMPLETED_VERIFIED com pendencia FALHA). O proprio verificador tem testes que INJETAM defeitos em fixtures (9 testes ok) - um verificador que sempre passa nao vale nada. Dois passos novos no CI | RELATORIO E BLOQUEIOS NA CHECAGEM (E-181): a extensao encontrou DOIS PROBLEMAS REAIS - o item 127 DUPLICADO no relatorio (139 itens para numeros 1..138, a E-169 inserida duas vezes) e B-11/B-12 declarados no estado e AUSENTES do documento de bloqueios. Corrigidos: 138 itens 1..138 sem duplicata e 11 bloqueios nos dois lados. A regra 'ID entre crases e MENCAO, nao CITACAO' resolveu um falso positivo meu (E-999 citado como exemplo); verificador de 9 para 19 testes VINCULO DE ESTAGIO VIROU INVARIANTE (E-231): o checker passa a acusar evidencia SEM vinculo de estagio e SEM declaracao explicita; as 13 linhas legadas (formato antigo, sem coluna de estagio) receberam a declaracao VINCULO_NAO_DECLARADO em vez de um vinculo inventado. 21 testes do checker OK. DOCUMENTACAO CORRESPONDE AO PRODUTO + GUARDA DE CODIFICACAO (E-235): o checker passa a varrer docs/mission/*.md e audit/*.md acusando TEXTO DUPLAMENTE CODIFICADO (mojibake). Auditoria das alegacoes do comparativo de concorrentes: Studio com geracao por IA local (studioAI.test.ts), export HTML (studioHtml.test.ts) e Builder com rejeicao de traversal, cross-tenant, symlink e escaping - todas com codigo e teste. Nenhuma superestimacao encontrada. 23 testes do checker OK.",
+      "next": "Pendencia remanescente do gate: ExternalComparison NAO_EXECUTADA (exige comparacao com concorrentes) e os estagios 23-38 em IN_PROGRESS. O vinculo das 13 linhas legadas foi FECHADO (E-251): 13 -> 0 sem vinculo. Proximo: estagio 18 (governanca dos 16 escopos divergentes) e retomada dos estagios de negocio",
+      "done": "GATE AVALIADO EM DUAS RODADAS: a suite completa foi executada e relatada, e agora PERFORMANCE e ACESSIBILIDADE tambem estao MEDIDAS - benchmarks reais (busca de memoria 699,3 ns/op, construcao de contexto fundamentado 110,7 us/op, instalacao/rollback de plugin 5,20 ms/op, download 442,83 MB/s), budget de bundle PASS (1.443,91 kB cru e 396,66 kB gzip contra 2.000.000 e 600.000) e gate axe WCAG com 3 de 3 passando (desktop sem violacao, mobile sem violacao e teclado sem armadilha) | GATE REEXECUTADO EM 2edee0490 (E-140): gofmt sem saida; go build 0; go vet 0; golangci-lint 0 issues; go test ./internal/agent/ ok 64,700s; go test ./server/ ok 44,509s; go test ./... 116 pacotes ok; go mod verify limpo; CGO_ENABLED=0 go build 0; benchmarks 1.900 ns/op / 5,83 ms/op / 92,3 us/op / 354,10 MB/s; contratos PASSED; design system PASSED; tsc 0; eslint 0 erros; 580 testes web PASS; BUNDLE_BUDGET=PASS; capturas PASS (10); E2E de navegador real 18 passed. DEFEITO REAL CORRIGIDO: os 12 arquivos de teste do mlx nao tinham //go:build cgo (a implementacao tem, em 23 arquivos), o que tornava go test ./mlx IMPOSSIVEL sem compilador C (undefined: gelu, currentScope, returned.valid) - corrigido espelhando o gating: vet passou de build failed para exit 0, test para [no test files], lint do pacote de typechecking error (exit 7) para completar, e as falhas do modulo cairam de 9 para 8 pacotes (as 8 sao go-sqlite3 exigindo cgo, com causa MEDIDA: CGO_ENABLED=0 e gcc/cc ausentes) | GATE GLOBAL GERADO E CONFERIDO PELO CI (E-179): HADES_FINAL_RELEASE_GATE.md e HADES_RELEASE_REPORT.md eram escritos A MAO e o gerador vivia so em _tmp - os artefatos NAO eram reproduziveis e nada impedia a matriz dizer DONE enquanto o indice dizia outra coisa. Agora scripts/hades_release_gate.py GERA os dois a partir do estado, com --check que FALHA em divergencia, e o passo entrou no job Preserve Class A+ surfaces. Item 14 (Builder) saiu de NAO_COMPROVADO para DONE com limite declarado; resumo 15->16 DONE e 5->4 NAO_COMPROVADO; veredito INALTERADO | ESCRITURACAO CONFERIDA POR MAQUINA (E-180): scripts/hades_mission_check.py confere IDs unicos e sem buracos, evidencia citada que existe, blocker declarado, execution presente e valido, e release_state COERENTE (COMPLETED_VERIFIED com pendencia FALHA). O proprio verificador tem testes que INJETAM defeitos em fixtures (9 testes ok) - um verificador que sempre passa nao vale nada. Dois passos novos no CI | RELATORIO E BLOQUEIOS NA CHECAGEM (E-181): a extensao encontrou DOIS PROBLEMAS REAIS - o item 127 DUPLICADO no relatorio (139 itens para numeros 1..138, a E-169 inserida duas vezes) e B-11/B-12 declarados no estado e AUSENTES do documento de bloqueios. Corrigidos: 138 itens 1..138 sem duplicata e 11 bloqueios nos dois lados. A regra 'ID entre crases e MENCAO, nao CITACAO' resolveu um falso positivo meu (E-999 citado como exemplo); verificador de 9 para 19 testes VINCULO DE ESTAGIO VIROU INVARIANTE (E-231): o checker passa a acusar evidencia SEM vinculo de estagio e SEM declaracao explicita; as 13 linhas legadas (formato antigo, sem coluna de estagio) receberam a declaracao VINCULO_NAO_DECLARADO em vez de um vinculo inventado. 21 testes do checker OK. DOCUMENTACAO CORRESPONDE AO PRODUTO + GUARDA DE CODIFICACAO (E-235): o checker passa a varrer docs/mission/*.md e audit/*.md acusando TEXTO DUPLAMENTE CODIFICADO (mojibake). Auditoria das alegacoes do comparativo de concorrentes: Studio com geracao por IA local (studioAI.test.ts), export HTML (studioHtml.test.ts) e Builder com rejeicao de traversal, cross-tenant, symlink e escaping - todas com codigo e teste. Nenhuma superestimacao encontrada. 23 testes do checker OK. VINCULO DAS 13 LINHAS LEGADAS RECONSTRUIDO (E-251): a pendencia declarada do gate foi fechada por ASSUNTO PRIMARIO de cada linha do indice - inventario do repositorio (1), integracao/CI/gate/testes/dependencias (2), guarda de tenant (18), honestidade de controles na interface (19), contrato de escrita (21) e artefato do proprio gate (22). MEDIDO: linhas sem vinculo 13 -> 0. Onde o assunto atravessa estagios, a escolha foi pelo assunto PRIMARIO e ficou registrada - nao houve vinculo inventado para zerar contador",
       "execution": "IN_PROGRESS"
     },
     {
@@ -1829,7 +1843,9 @@
     "ACESSIBILIDADE PRECISA DE CONTRATO, NAO DE BOA INTENCAO (E-249): o template tinha viewport, labels e landmarks, mas nada impedia a regressao. O contrato passa a ser checado no HTML SERVIDO pelo app em staging, com parse de verdade - e o teste inverso garante que a verificacao ACUSA HTML quebrado (8 problemas)",
     "LIMITE DECLARADO EM VEZ DE 'ACESSIVEL' GENERICO (E-249): o contrato mede estrutura (lang, viewport, rotulos, nome de botao, h1 unico, caption/scope, foco visivel). NAO mede contraste, ordem de foco real nem leitor de tela - e isso fica dito, em vez de sugerir conformidade WCAG que nao foi medida",
     "DURABILIDADE COM GANCHO REAL (E-250): o modo em lote tinha FlushDurableWrites e NENHUM chamador em producao - a nota de E-169 dizia isso e o item seguia aberto. Agora o encerramento por SIGINT/SIGTERM chama o flush nos DOIS handlers (app.go e app_windows.go) e o gancho DEVOLVE quantos itens sincronizou, para uma falha de sincronizacao nao passar em silencio",
-    "DECIMO ERRO MEU (E-250): inseri o helper de encerramento DENTRO do corpo da funcao que registra o sinal, o que quebrou a sintaxe do pacote (o compilador acusou 'unexpected name'). O teste do modulo ja passava, mas o pacote do produto nao compilava: teste verde de unidade NAO substitui build do produto"
+    "DECIMO ERRO MEU (E-250): inseri o helper de encerramento DENTRO do corpo da funcao que registra o sinal, o que quebrou a sintaxe do pacote (o compilador acusou 'unexpected name'). O teste do modulo ja passava, mas o pacote do produto nao compilava: teste verde de unidade NAO substitui build do produto",
+    "VINCULO DE EVIDENCIA E BOOKKEEPING, NAO CAPACIDADE (E-251): as 13 linhas legadas nao tinham vinculo de estagio. Reconstrui por ASSUNTO PRIMARIO da propria linha (inventario, integracao/CI, tenant, interface, escrita, artefato do gate) e deixei a regra declarada. Zerar contador sem criterio seria pior que manter a pendencia aberta",
+    "LINHAS AMBIGUAS DECLARADAS (E-251): E-127 (escrita atomica, citando tambem vendas/marketplace) e E-129 (paridade Linux, citando gate e sistema) atravessam estagios. Vinculei pelo assunto PRIMARIO - contrato de escrita e gate/integracao - em vez de escolher o estagio que deixaria o numero mais bonito"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
