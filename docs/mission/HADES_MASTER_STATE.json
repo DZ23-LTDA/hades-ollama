@@ -2380,7 +2380,12 @@
     "O ROLLBACK GRAVA POR LINHA (ADV-57/5): n=500 => desfazer = 1000 gravacoes em 2,72s. A minha propria tese 'API rapida que ninguem usa nao acelera nada' se aplica ao desfazer, e nenhuma prova cobre isso",
     "TESTE QUE SO' LOGA NAO E' PROVA (ADV-57/3): commerce_budget mede 5000 chamadas e nao afirma nada; dobrar o laco deixa a suite verde",
     "O '211x' NAO SE REPRODUZ (ADV-57/7): as contagens 300 vs 1 sao exatas; o tempo e o multiplicador medidos pelo auditor deram ~196x",
-    "O AUDITOR LIMPOU O QUE CRIOU (E-388): as 4 arquivos temporarios que ele usou para medir foram removidos - o git status voltou limpo, e a minha suspeita inicial de violacao de leitura foi corrigida pela medicao"
+    "O AUDITOR LIMPOU O QUE CRIOU (E-388): as 4 arquivos temporarios que ele usou para medir foram removidos - o git status voltou limpo, e a minha suspeita inicial de violacao de leitura foi corrigida pela medicao",
+    "A MINHA PROPRIA TESE SE APLICAVA AO DESFAZER (E-390/ADV-57/5): o RollbackCompanyOnboarding gravava POR LINHA - 1000 gravacoes em 2,72s para desfazer 500. Corrigido: lote + remocao do intermediario => 500 gravacoes em 1,37s, com restantes = 0",
+    "GRAVAR ESTADO INTERMEDIARIO INVISIVEL E' CUSTO SEM EFEITO (E-390): o UpsertProduct(atual) marcava Active=false e persistia o arquivo inteiro para um estado que o RemoveProduct logo apaga",
+    "ROLLBACK QUE FALHA EM SILENCIO DEIXA O OPERADOR ACHANDO QUE DESFEZ (E-390): os dois lacos ignoravam o erro; agora devolvem",
+    "REMOCAO POR SKU DOMINA O CUSTO DO DESFAZER (E-390): sobram 500 gravacoes porque a API nao tem lote de remocao - a correcao seguinte e' a API, nao um teste mais frouxo",
+    "MEDICAO TEMPORARIA NAO E' PROVA PERMANENTE (E-390): o teste de medicao foi removido depois de usado; o certo e' uma assercao estrutural"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -3037,16 +3042,16 @@
           "severidade": "ALTA (a prova da alegacao mais publicada e' vacuosa)",
           "descricao": "4a auditoria independente (subagente) nas provas de desempenho. CONFIRMOU SOLIDO o nucleo (persistLocked caminho unico, gravacoes++ antes do writeJSONAtomic, prova de disco do lote de produtos falha quando deve, onboarding_budget mede estado real). ACHADOS: (1) a assercao 'Gravacoes() <= 10' e' VACUOSA - desligar RecordStocks deixa 1 gravacao e 1 > 10 e' falso, entao o teste ainda passa; a prova de disco so' conta products e nunca le' stock. (2) '> 10' nao distingue 1 lote de N lotes (fatias de 250 => 4 gravacoes => passa). (3) commerce_budget_test so' LOGA (5000 chamadas, nenhuma assercao). (4) context.WithTimeout de 5 min e' codigo MORTO. (5) RollbackCompanyOnboarding grava POR LINHA: n=500 => desfazer = 1000 gravacoes em 2,72s. (6) leitura de disco nao enderecada (arquivos[0]). (7) o '211x' do ADV-44 nao se reproduz (medido ~196x); as contagens 300 vs 1 sao exatas",
           "descoberto_por": "4a revisao adversarial independente (subagente, contexto fresco) com experimento de falsificacao",
-          "estado": "REGISTRADO, NAO CORRIGIDO",
+          "estado": "/1, /2, /5 e /6 CORRIGIDOS e medidos. Restam declarados: /3 (teste que so' loga), /4 (guarda morta) e /7 (o '211x' sem teste; falta a API de remocao em lote)",
           "evidencia": "E-388"
         }
       ],
       "proximos_ataques": [
-        "ADV-57/1: limiar EXATO e prova do ESTOQUE em disco (hoje so' products) - a alegacao '2 gravacoes' precisa de assercao",
-        "ADV-57/5: rollback em lote (hoje 1000 gravacoes para desfazer 500 linhas)",
+        "ADV-57/5b: criar RemoveProducts (lote de remocao) - hoje o desfazer ainda faz 1 gravacao por SKU",
         "ADV-57/4: remover ou LIGAR a guarda morta de 5 minutos",
         "ADV-57/3: assercao de escala no commerce_budget (hoje so' log)",
-        "ADV-57/7: teste proprio para o ganho do lote (o '211x' nao se reproduz; medido ~196x)"
+        "ADV-57/7: teste proprio para o ganho do lote (o '211x' nao se reproduz)",
+        "transformar a medicao temporaria do rollback numa assercao estrutural permanente"
       ]
     },
     "estagio_42": {
@@ -3438,6 +3443,8 @@
     "E-385": "ADV-55 fechado, ADV-56/8 e vacuidade do classificador; vinculo declarado",
     "E-386": "ADV-55 fechado, ADV-56/8 e vacuidade do classificador; vinculo declarado",
     "E-387": "contraprova determinista entre processos (barreira com Gosched); vinculo declarado",
-    "E-388": "4a auditoria independente: a prova da alegacao mais publicada e' vacuosa; vinculo declarado"
+    "E-388": "4a auditoria independente: a prova da alegacao mais publicada e' vacuosa; vinculo declarado",
+    "E-390": "rollback em lote: 1000 -> 500 gravacoes; comportamento preservado",
+    "E-389": "limiar exato + prova do estoque em disco, contraprovado"
   }
 }
