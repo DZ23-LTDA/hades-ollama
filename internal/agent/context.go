@@ -1196,6 +1196,21 @@ func (s *ContextStore) ClaimDueSchedulesForOrganization(organizationID string, n
 		if !scheduleOwnedByOrganization(schedule.OrganizationID, organizationID) || !schedule.Enabled || schedule.NextRunAt.After(now) {
 			continue
 		}
+		// FRESCOR (E-291): a cópia em memória pode estar VELHA — outro processo sobre a mesma pasta de dados pode já
+		// ter reivindicado este agendamento. Decidir pela cópia velha dispara o MESMO efeito externo duas vezes, que é
+		// exatamente o que o §11.7 proíbe. Reler o disco antes de reivindicar; se o disco avançou, não reivindica.
+		if s.root != "" {
+			if dados, err := os.ReadFile(filepath.Join(s.root, "schedules", id+".json")); err == nil && len(dados) > 0 {
+				var doDisco Schedule
+				if json.Unmarshal(dados, &doDisco) == nil && doDisco.ID != "" {
+					schedule = doDisco
+					s.schedules[id] = doDisco
+					if !schedule.Enabled || schedule.NextRunAt.After(now) {
+						continue
+					}
+				}
+			}
+		}
 		previous := schedule
 		last := now
 		schedule.LastRunAt = &last
