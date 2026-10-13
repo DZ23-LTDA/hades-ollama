@@ -2160,7 +2160,11 @@
     "AUDITORIA ACHOU UM TRAVAMENTO (E-330): workflow com Next ciclico girava PARA SEMPRE. O teste com timeout provou o defeito antes da correcao - um motor que nao termina nao e' automacao, e' travamento",
     "TESTE ANTES DA CORRECAO (E-330): o achado virou teste que FALHOU primeiro, provando o defeito. Relatorio sem reproducao nao distingue defeito de opiniao",
     "DEFESA EM PROFUNDIDADE NO LIMITE (E-330): detectar o ciclo de imediato E ter backstop de passos. Depender so do limite faria o usuario esperar 64 passos para descobrir um ciclo",
-    "AUDITORIA TAMBEM CONFIRMA AUSENCIA DE DEFEITO (E-330): o achado 2 foi investigado e NAO havia defeito (Book recusa por sobreposicao). Registrar isso evita 'auditar' de novo o mesmo ponto"
+    "AUDITORIA TAMBEM CONFIRMA AUSENCIA DE DEFEITO (E-330): o achado 2 foi investigado e NAO havia defeito (Book recusa por sobreposicao). Registrar isso evita 'auditar' de novo o mesmo ponto",
+    "ESTAGIO 42 ANEXADO, NAO REINICIADO (E-331): o complemento de live commerce entrou no plano e no estado sem criar missao nova e sem revogar controles de seguranca",
+    "EXTENSAO CHROME NAO PROVA PERMISSAO DE API (E-331): a referencia e' uma extensao; a auditoria de APIs oficiais (elegibilidade, escopos, quotas, Termos) e' a primeira fatia. Nao se assume que a API permita a mesma acao",
+    "DIANTE DE AVISO DA PLATAFORMA, PAUSAR E ESCALAR (E-331): o complemento proibe mecanismo de evasao. O Hades encerra/pausa, registra evidencia e chama humano",
+    "NADA DE LIVE INFINITA (E-331): o material de referencia mostra preparacao, nao prova 24/7 nem conformidade. Benchmarks proprios obrigatorios e supervisao humana recomendada pelo proprio apresentador"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -2432,6 +2436,32 @@
         "onboarding com volume grande (limites de recurso)",
         "revisao cruzada de permissao e isolamento nos modulos novos"
       ]
+    },
+    "estagio_42": {
+      "titulo": "HADES LIVE COMMERCE & AI SHOPPING AGENTS",
+      "estado": "NOT_STARTED (registrado)",
+      "anexado_ao_v22": true,
+      "missao_nova_criada": false,
+      "artefato_exigido": "docs/mission/HADES_STAGE_42_LIVE_COMMERCE.md",
+      "fases": [
+        "42.0 auditoria e contratos",
+        "42.1 central de producao audiovisual",
+        "42.2 planejador e controle de live",
+        "42.3 live commerce real",
+        "42.4 agentes especializados",
+        "42.5 UI/UX",
+        "42.6 testes reproduziveis",
+        "42.7 entregas e checkpoints"
+      ],
+      "proibicoes_registradas": [
+        "spam, engajamento simulado, falsa escassez, falsa compra, perfil falso, personificacao",
+        "evasao de fiscalizacao: diante de aviso de plataforma, PAUSAR/ENCERRAR, registrar e escalar para humano",
+        "injecao de codigo no Chrome ou burla de protecao; camera virtual so por componente desktop explicito",
+        "promessa de transmissao oficial sem conector homologado (sem conector: plano e checklist assistido)",
+        "prometer 'live infinita' ou operacao sem supervisao",
+        "expor PII de comprador sem necessidade"
+      ],
+      "primeira_fatia": "42.0: inventario dos modulos reais + matriz por requisito + auditoria das APIs oficiais do TikTok Shop/LIVE + especificacao canonica versionada"
     }
   },
   "unlinked_evidence": {
@@ -2452,6 +2482,7 @@
     "E-327": "onboarding de empresa existente (P1-B do adendo); vinculo declarado",
     "E-328": "fatia 5 do INCREMENTO I do V2.2 (intervalos no turno e virada de meia-noite); vinculo declarado",
     "E-329": "fatia 6 do INCREMENTO I do V2.2 (fila de espera, lembretes e no-show); vinculo declarado",
-    "E-330": "auditoria adversarial (V2.2 secao 12): achado de travamento corrigido + propriedade verificada; vinculo declarado"
+    "E-330": "auditoria adversarial (V2.2 secao 12): achado de travamento corrigido + propriedade verificada; vinculo declarado",
+    "E-331": "registro do COMPLEMENTO ESTAGIO 42 (live commerce) anexado ao V2.2; vinculo declarado"
   }
 }
