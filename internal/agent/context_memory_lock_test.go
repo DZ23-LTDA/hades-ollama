@@ -146,7 +146,9 @@ func TestMemoryWriteLockIsDeclaredWhenAnotherOwnerHoldsIt(t *testing.T) {
 	<-segurou
 	defer close(liberar)
 
-	curto, cancelar := context.WithTimeout(context.Background(), 300*time.Millisecond)
+	// E-362: a janela era de 300ms e o teste ESCAPAVA com t.Skip quando a trava não bloqueava a tempo — ou seja,
+	// uma máquina lenta silenciava a propriedade. *Skip precisa significar "sem semântica de flock", não "lento".*
+	curto, cancelar := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancelar()
 	err = store.updateMemoriesFileLocked(curto, projeto.ID, func(atual []Memory) []Memory { return atual })
 	if err == nil {

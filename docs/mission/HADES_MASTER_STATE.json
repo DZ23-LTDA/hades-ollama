@@ -2292,7 +2292,11 @@
     "DOCKER LOCAL INDISPONIVEL (E-361): BLOCKED_BY_EXTERNAL_DEPENDENCY. Nao reproduzi o teste Postgres; a verificacao desta correcao vem do job de CI, que e' o unico ambiente com Postgres",
     "PATCHER INSPECIONADO PONTO A PONTO (E-361): 3 substituicoes mecanicas foram lidas uma a uma antes de aceitar (transacao ativa, FOR UPDATE, advisory lock) - todas a mesma classe semantica",
     "E-361 HOMOLOGADA PELO CI (rodada 47): o job PostgreSQL RLS/Redis/OTLP passou na PRIMEIRA tentativa do PR #418, sem re-execucao - a causa era a corrida do orcamento de 150ms contra o fencing, e alargar removeu a instabilidade",
-    "PRIMEIRA TENTATIVA E' PROVA (E-361): quando a correcao de uma instabilidade passa de primeira, isso e' evidencia; quando precisa de re-run, e' sintoma mascarado"
+    "PRIMEIRA TENTATIVA E' PROVA (E-361): quando a correcao de uma instabilidade passa de primeira, isso e' evidencia; quando precisa de re-run, e' sintoma mascarado",
+    "NOMEAR A CLASSE, MEDIR A CLASSE E PARAR QUANDO ELA ACABA (E-362): a varredura inicial ERROU o alvo e marcou 5-45s como curtos; a classe correta e' sub-segundo, e nela nao resta nada nos arquivos de integracao",
+    "LICAO JA ESCRITA NO REPOSITORIO (E-362): tools_test.go traz o comentario de quem corrigiu a MESMA classe antes (limite de 2s excedido por runner Windows) e a regra: ligar o limite a propriedade medida. Ler o comentario do vizinho custa menos que redescobrir o defeito",
+    "SKIP NAO PODE SIGNIFICAR 'MAQUINA LENTA' (E-362): context_memory_lock escapava com t.Skip quando a trava nao bloqueava em 300ms; com 5s o skip volta a significar 'sem semantica de flock'",
+    "ORCAMENTO CURTO LEGITIMO (E-362): 3 sitios testam cancelamento de proposito (contexto ja expirado, MCP cancelado, processo de 10s morto) - dispensados COM MOTIVO MEDIDO, nao por conveniencia"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -2810,12 +2814,26 @@
           "descricao": "asserção sobre MENSAGEM combinada com orçamento de 150ms: sob carga o timeout vence o fencing e o teste falha por motivo errado",
           "estado": "CORRIGIDO (3 pontos) e HOMOLOGADO pelo job de integracao do CI",
           "evidencia": "E-361"
+        },
+        {
+          "id": "ADV-39",
+          "severidade": "MEDIA (teste)",
+          "descricao": "context_memory_lock_test usava janela de 300ms e ESCAPAVA com t.Skip quando a trava nao bloqueava a tempo: maquina lenta silenciava a propriedade",
+          "estado": "CORRIGIDO (janela 5s); Skip volta a significar 'sem semantica de flock'",
+          "evidencia": "E-362"
+        },
+        {
+          "id": "ADV-40",
+          "severidade": "INFORMATIVO (instrumento)",
+          "descricao": "catraca da classe de orcamento: primeira varredura ERROU o alvo (marcou 5-45s como curtos); a classe correta e' sub-segundo",
+          "estado": "CORRIGIDA e testada (5 testes); 5 dispensas declaradas com motivo medido",
+          "evidencia": "E-362"
         }
       ],
       "proximos_ataques": [
-        "varrer o restante do arquivo por orcamentos curtos que corram contra a logica (33 testes nao varridos)",
         "indice O(1) por (organizacao, SKU) no CommerceStore (10,03 ms por produto hoje)",
-        "retomar a fila P0-A/T1 e P0-C/T3 (dependencia externa onde faltar alvo)"
+        "retomar a fila P0-A/T1 e P0-C/T3 (dependencia externa onde faltar alvo)",
+        "checkpoint remedido apos o proximo marco"
       ]
     },
     "estagio_42": {
@@ -3138,6 +3156,7 @@
     "E-358": "estagio 42 com processos reais, medido e contraprovado; vinculo declarado",
     "E-359": "orcamento acumulado de onboarding contra o estado real; vinculo declarado",
     "E-360": "orcamento no caminho direto, com volume medido e contraprova; vinculo declarado",
-    "E-361": "causa da instabilidade de CI (orcamento x fencing); vinculo declarado"
+    "E-361": "causa da instabilidade de CI (orcamento x fencing); vinculo declarado",
+    "E-362": "catraca da classe de orcamento sub-segundo; vinculo declarado"
   }
 }
