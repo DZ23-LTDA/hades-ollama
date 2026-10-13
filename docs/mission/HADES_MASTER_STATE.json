@@ -2345,7 +2345,11 @@
     "ASSERCAO QUE NAO DISPARA NO MODO DE FALHA PROMETIDO (ADV-54): no teste de corrida do live commerce, aviso PERDIDO da' HumanReview=false => a conjuncao 'HumanReview && LiveLive' fica FALSA => verde com a seguranca desligada",
     "A EVIDENCIA DOCUMENTADA SUPERESTIMA O MEDIDO (ADV-54): o E-356 registra 'invalidacao de cache + contrapova medida', mas a invalidacao e' enfeite e a contrapova entre processos e' probabilistica",
     "AUDITORIA INDEPENDENTE NAO E' LUXO (ADV-53/ADV-54): duas linhas auditadas por subagentes de contexto fresco, DUAS vezes a mesma classe de defeito encontrada",
-    "O CONTROLE TEM DE ATRAVESSAR A PRODUCAO (ADV-53): chamar a ferramenta direto nao fecha o buraco real, que e' 'o motor nunca chega ate' ela'. O novo controle passa pelo Runtime.Run e produz o arquivo"
+    "O CONTROLE TEM DE ATRAVESSAR A PRODUCAO (ADV-53): chamar a ferramenta direto nao fecha o buraco real, que e' 'o motor nunca chega ate' ela'. O novo controle passa pelo Runtime.Run e produz o arquivo",
+    "TESTE DO TESTE E CONTROLE (E-375/ADV-54): injetei violacoes nos checkers. O (c) PARECIA nao pegar nem o literal - mas meu rascunho era .go e o checker faz rglob('*_test.go'). O CONTROLE mostrou que ele pega. Sem o controle eu teria registrado um defeito inexistente",
+    "DEFEITO REAL MEDIDO NO (c) (E-375): orcamento em VARIAVEL ou decimal escapa da regex; a janela +/-8/+25 dispensa por mencao textual a cancelled",
+    "DEFEITO REAL MEDIDO NO (b) (E-375): arquivo com requireOrganization( SO EM COMENTARIO e' aprovado; 7 dispensas por NOME de arquivo; 23 de 519 .go varridos",
+    "AUDITAR O PROPRIO INSTRUMENTO (E-375): um checker que nao acusa uma violacao injetada nao protege nada - e o controle e' obrigatorio antes de acusar"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -2982,10 +2986,10 @@
         }
       ],
       "proximos_ataques": [
-        "ADV-54: corrigir a assercao do teste de corrida (deve FALHAR quando o aviso e' perdido) e remover/documentar a invalidacao morta",
-        "ADV-54: endurecer a barreira da contraprova entre processos (poll 5ms vs janela ~1,7ms)",
-        "ADV-54: levar a triagem (b)/(c) a experimento - DISPENSAS por nome de arquivo e regex que so' casa literal inline",
-        "rebaixar no registro as conclusoes de E-356/E-357 que os testes nao sustentam"
+        "(c) cobrir orcamento em variavel/decimal e restringir a janela textual que dispensa por mencao a 'cancelled'",
+        "(b) exigir guarda REAL (nao mencao em comentario), tirar dispensas por NOME de arquivo e varrer subdiretorios",
+        "medir se existe arquivo de armazenamento em subdiretorio hoje (consequencia do glob nao recursivo)",
+        "endurecer a barreira da contraprova entre processos (poll 5ms vs janela ~1,7ms)"
       ]
     },
     "estagio_42": {
@@ -3365,6 +3369,7 @@
     "E-371": "ADV-44 medido: N chamadas 1,05s/500 gravacoes x lote 0,000s/1 gravacao; vinculo declarado",
     "E-372": "efeito externo real (arquivo) apos reinicio + RecordStock medido; vinculo declarado",
     "E-373": "efeito duplicado demonstrado + retificacao de E-370/E-372; vinculo declarado",
-    "E-374": "ADV-54: mesma classe no live commerce; vinculo declarado"
+    "E-374": "ADV-54: mesma classe no live commerce; vinculo declarado",
+    "E-375": "teste do teste dos checkers (b)/(c) com controle; vinculo declarado"
   }
 }
