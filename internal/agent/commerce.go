@@ -547,10 +547,6 @@ func (s *CommerceStore) recordStockLocked(organizationID, sku string, delta int6
 		CreatedAt:      now,
 	}
 	s.stock[key] = append(s.stock[key], movement)
-	if err := s.persistLocked(organizationID); err != nil {
-		s.stock[key] = s.stock[key][:len(s.stock[key])-1]
-		return CommerceStockMovement{}, err
-	}
 	return movement, nil
 }
 
