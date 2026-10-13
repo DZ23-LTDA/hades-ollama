@@ -2129,7 +2129,10 @@
     "CONTEUDO HOSTIL CONTINUA SENDO DADO (E-321): a pagina que tenta instruir o agente aparece SINALIZADA e no resumo, mas nao e' obedecida. Um detector que prometesse cobrir todo ataque seria a mesma mentira que um teste que sempre passa",
     "PROIBICAO VIRA TESTE (E-322): o adendo proibe prometer ranking ou recomendacao por IA. Agora essa promessa reprova o CI - inclusive '100% pronto', que o proprio V2.2 proibe",
     "GUARDA SEM METRICA NAO INVENTA METRICA (E-322): o instrumento nao mede ranqueamento nem 'GEO'. Nao existe metrica honesta de posicao sem consulta externa real, e inventar uma seria o que o adendo proibe",
-    "OS TESTES DO INSTRUMENTO ACHARAM 3 DEFEITOS NELE (E-322): regex que nao pegava 'Seremos', sitemap lido so com namespace oficial, e fixture que criava sitemap/xml. Um guarda precisa dos proprios testes negativos"
+    "OS TESTES DO INSTRUMENTO ACHARAM 3 DEFEITOS NELE (E-322): regex que nao pegava 'Seremos', sitemap lido so com namespace oficial, e fixture que criava sitemap/xml. Um guarda precisa dos proprios testes negativos",
+    "LOCK SEM RELEITURA NAO BASTA (E-323): proteger contra escrita simultanea nao protege contra decisao tomada com dado velho. O estado e' recarregado do disco DEPOIS de obter a trava",
+    "NOVA INSTANCIA, NAO O CACHE DE QUEM ESCREVEU (E-323): a prova de persistencia vem de um store novo. Cache nao e' evidencia",
+    "REUSAR O PRIMITIVO EXISTENTE (E-323): withFileLock ja existia com implementacao Windows e Unix. Minha primeira leitura da assinatura estava errada (era func() error nas duas) - medir a assinatura evitou inventar um lock novo"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -2280,10 +2283,11 @@
         "auditoria de remarcacao (historico de tentativas)",
         "lista de espera, lembretes e no-show",
         "sync Google Calendar / Microsoft 365 (BLOCKED_BY_EXTERNAL_DEPENDENCY ate credencial)",
-        "lock no banco para concorrencia entre PROCESSOS"
+        "disponibilidade em tempo real entre instancias (decisao de arquitetura: lock por consulta ou banco)"
       ],
       "fatia_2": "expediente (turnos), fechamentos por data e fuso da organizacao (E-314)",
-      "fatia_3": "remarcacao atomica (E-319): tudo-ou-nada, expediente valido, vizinho intocado, lista de remarcacao"
+      "fatia_3": "remarcacao atomica (E-319): tudo-ou-nada, expediente valido, vizinho intocado, lista de remarcacao",
+      "fatia_4": "correcao entre processos (E-323): trava de arquivo por organizacao + RELEITURA sob a trava; ordem arquivo->mutex consistente; leitura eventualmente consistente declarada como limite"
     },
     "addendum_parity": {
       "registrado_em_evidencia": "E-315",
@@ -2379,6 +2383,7 @@
     "E-319": "fatia 3 do INCREMENTO I do V2.2 (remarcacao atomica); vinculo declarado",
     "E-320": "teste T4 do ADENDO DE PARIDADE (gate P0-E: multiagente em worktrees isolados); vinculo declarado",
     "E-321": "integridade das fontes de pesquisa (P1-G/T1 do adendo de paridade); vinculo declarado",
-    "E-322": "descoberta honesta (P1-H / estagio 39): guarda que reprova promessa de ranking e valida metadados; vinculo declarado"
+    "E-322": "descoberta honesta (P1-H / estagio 39): guarda que reprova promessa de ranking e valida metadados; vinculo declarado",
+    "E-323": "fatia 4 do INCREMENTO I do V2.2 (agendamento entre processos); vinculo declarado"
   }
 }

@@ -257,7 +257,7 @@ type BookRequest struct {
 // O ponto crítico é a CONCORRÊNCIA: dois agentes (voz e WhatsApp, por exemplo) disputando o último horário devem
 // resultar em **um** agendamento e **uma recusa explícita** — nunca em dois. Por isso a checagem e a gravação
 // acontecem sob o MESMO lock, e a disponibilidade sai dos agendamentos persistidos (fonte da verdade).
-func (s *SchedulingStore) Book(request BookRequest) (SchedulingAppointment, error) {
+func (s *SchedulingStore) bookLocked(request BookRequest) (SchedulingAppointment, error) {
 	if s == nil {
 		return SchedulingAppointment{}, ErrSchedulingInvalid
 	}
@@ -336,7 +336,7 @@ func (s *SchedulingStore) Book(request BookRequest) (SchedulingAppointment, erro
 }
 
 // Cancel libera o horário (o agendamento fica no histórico, cancelado).
-func (s *SchedulingStore) Cancel(organizationID, appointmentID, reason string) (SchedulingAppointment, error) {
+func (s *SchedulingStore) cancelLocked(organizationID, appointmentID, reason string) (SchedulingAppointment, error) {
 	if s == nil {
 		return SchedulingAppointment{}, ErrSchedulingInvalid
 	}

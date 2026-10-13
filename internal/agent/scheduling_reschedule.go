@@ -27,7 +27,7 @@ import (
 // Reschedule move um agendamento para outro horário, recusando quando o novo horário não serve.
 //
 // Em QUALQUER recusa o agendamento ORIGINAL permanece íntegro: horário, buffer e status não mudam.
-func (s *SchedulingStore) Reschedule(organizationID, appointmentID string, newStart time.Time) (SchedulingAppointment, error) {
+func (s *SchedulingStore) rescheduleLocked(organizationID, appointmentID string, newStart time.Time) (SchedulingAppointment, error) {
 	if s == nil {
 		return SchedulingAppointment{}, ErrSchedulingInvalid
 	}
