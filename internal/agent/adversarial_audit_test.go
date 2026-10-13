@@ -19,11 +19,13 @@ func TestAuditoriaWorkflowCiclicoNaoGiraParaSempre(t *testing.T) {
 		return "ok", nil
 	})
 	// A -> B -> A: ciclo explícito.
-	ciclo, err := motor.Register(WorkflowDefinition{OrganizationID: "org-a", Name: "ciclo", StartNode: "a",
+	ciclo, err := motor.Register(WorkflowDefinition{
+		OrganizationID: "org-a", Name: "ciclo", StartNode: "a",
 		Nodes: []WorkflowNode{
 			{ID: "a", Kind: WorkflowNodeTrigger, Next: "b"},
 			{ID: "b", Kind: WorkflowNodeAction, Next: "a", Config: map[string]string{"action": "x"}},
-		}})
+		},
+	})
 	if err != nil {
 		t.Fatalf("registrar ciclo (a validação de forma não precisa recusar, mas a execução tem de limitar): %v", err)
 	}
@@ -66,19 +68,23 @@ func TestAuditoriaFilaNaoOfereceHorarioQueNaoCabeNoServicoPedido(t *testing.T) {
 	}
 	slot := time.Date(2026, 12, 14, 9, 0, 0, 0, loc)
 
-	// O recurso já tem um agendamento que deixa apenas 30min livres antes do próximo compromisso.
+	// O recurso já tem um agendamento que deixa apenas 30min livres antes do próximo compromises.
 	curto, err := store.AddService(SchedulingService{OrganizationID: org, Name: "Corte", DurationMinutes: 30})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := store.Book(BookRequest{OrganizationID: org, ResourceID: recurso, ServiceID: curto.ID,
-		StartsAt: slot.Add(30 * time.Minute), Channel: "voice", IdempotencyKey: "ocupado-1"}); err != nil {
+	if _, err := store.Book(BookRequest{
+		OrganizationID: org, ResourceID: recurso, ServiceID: curto.ID,
+		StartsAt: slot.Add(30 * time.Minute), Channel: "voice", IdempotencyKey: "ocupado-1",
+	}); err != nil {
 		t.Fatal(err)
 	}
 
-	entrada, err := store.AddToWaitlist(SchedulingWaitlistEntry{OrganizationID: org, ResourceID: recurso,
+	entrada, err := store.AddToWaitlist(SchedulingWaitlistEntry{
+		OrganizationID: org, ResourceID: recurso,
 		ServiceID: longo.ID, ContactID: "+5511900000001", Channel: "whatsapp",
-		From: slot.Add(-time.Hour), To: slot.Add(6 * time.Hour)})
+		From: slot.Add(-time.Hour), To: slot.Add(6 * time.Hour),
+	})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -74,8 +74,10 @@ func TestOnboardingRecusaOrganizacaoAusente(t *testing.T) {
 	if errComercio != nil {
 		t.Fatal(errComercio)
 	}
-	plano, err := PlanCompanyOnboarding(comercio, CompanyOnboardingPlan{OrganizationID: "",
-		Rows: []CompanyOnboardingRow{{SKU: "SKU-1", Name: "Produto", PriceCents: 100}}})
+	plano, err := PlanCompanyOnboarding(comercio, CompanyOnboardingPlan{
+		OrganizationID: "",
+		Rows:           []CompanyOnboardingRow{{SKU: "SKU-1", Name: "Produto", PriceCents: 100}},
+	})
 	if err == nil {
 		t.Fatalf("ARMADILHA: plano de onboarding sem organização foi aceito (id derivaria de escopo vazio): %+v", plano)
 	}

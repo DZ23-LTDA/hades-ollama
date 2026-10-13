@@ -328,7 +328,6 @@ func TestPluginRuntimeAfirmaODesfechoRealDaExecucao(t *testing.T) {
 	fixture := newPluginRuntimeFixture(t, map[string]string{"main.py": "print('plugin ok')"}, nil)
 	pluginRuntime := NewPluginRuntime(fixture.registry, fixture.policy)
 	result, err := pluginRuntime.Execute(context.Background(), pluginRuntimeRequest(fixture.installation.Manifest.ID, "step_plugin_run"))
-
 	if err != nil {
 		// Recusa: governada, explicada e SEM sucesso implícito.
 		if !errors.Is(err, ErrPluginExecutionSandbox) {

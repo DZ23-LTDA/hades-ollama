@@ -25,8 +25,10 @@ func onboardingFixture(t *testing.T) (*CommerceStore, string) {
 func TestPreviewNaoEscreveNadaNoCatalogo(t *testing.T) {
 	comercio, org := onboardingFixture(t)
 	// Empresa que JÁ opera: um produto existe antes de qualquer importação.
-	if _, err := comercio.UpsertProduct(CommerceProduct{OrganizationID: org, SKU: "SKU-1", Name: "Produto antigo",
-		PriceCents: 1000, Currency: "BRL"}, time.Now().UTC()); err != nil {
+	if _, err := comercio.UpsertProduct(CommerceProduct{
+		OrganizationID: org, SKU: "SKU-1", Name: "Produto antigo",
+		PriceCents: 1000, Currency: "BRL",
+	}, time.Now().UTC()); err != nil {
 		t.Fatal(err)
 	}
 
@@ -52,8 +54,10 @@ func TestPreviewNaoEscreveNadaNoCatalogo(t *testing.T) {
 
 func TestConflitoDePrecoNaoEhSobrescritoEmSilencio(t *testing.T) {
 	comercio, org := onboardingFixture(t)
-	if _, err := comercio.UpsertProduct(CommerceProduct{OrganizationID: org, SKU: "SKU-1", Name: "Produto",
-		PriceCents: 1000, Currency: "BRL"}, time.Now().UTC()); err != nil {
+	if _, err := comercio.UpsertProduct(CommerceProduct{
+		OrganizationID: org, SKU: "SKU-1", Name: "Produto",
+		PriceCents: 1000, Currency: "BRL",
+	}, time.Now().UTC()); err != nil {
 		t.Fatal(err)
 	}
 	plano := CompanyOnboardingPlan{OrganizationID: org, Origin: "erp-x", Rows: []CompanyOnboardingRow{
@@ -143,8 +147,10 @@ func TestEstoqueInicialNaoInflaNaReaplicacao(t *testing.T) {
 
 func TestRollbackRestauraEstadoAnteriorExato(t *testing.T) {
 	comercio, org := onboardingFixture(t)
-	if _, err := comercio.UpsertProduct(CommerceProduct{OrganizationID: org, SKU: "SKU-1", Name: "Antigo",
-		PriceCents: 1000, Currency: "BRL"}, time.Now().UTC()); err != nil {
+	if _, err := comercio.UpsertProduct(CommerceProduct{
+		OrganizationID: org, SKU: "SKU-1", Name: "Antigo",
+		PriceCents: 1000, Currency: "BRL",
+	}, time.Now().UTC()); err != nil {
 		t.Fatal(err)
 	}
 	antes := comercio.Products(org)

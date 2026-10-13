@@ -525,7 +525,7 @@ func inferAgentRoles(objective string) []AgentRole {
 }
 
 func roleObjective(role AgentRole, objective string) string {
-	return fmt.Sprintf("Você é o subagente %s. Trabalhe de forma independente sobre o objetivo abaixo, registre evidências verificáveis, não invente resultados e entregue uma saída curta para síntese.\n\nObjetivo: %s", role, objective) //nolint:misspell // Portuguese orchestration prompt.
+	return fmt.Sprintf("Você é o subagente %s. Trabalhe de forma independente sobre o objetivo abaixo, registre evidências verificáveis, não invente resultados e entregue uma saída curta para síntese.\n\nObjetivo: %s", role, objective)
 }
 
 func defaultAgentReducer(_ context.Context, job OrchestrationJob) (string, []string, error) {

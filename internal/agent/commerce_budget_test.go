@@ -28,7 +28,7 @@ func TestUpsertDiretoRespeitaOrcamentoEDeixaAtualizarNoTeto(t *testing.T) {
 	// Enche o acervo ATÉ o teto pelo caminho DIRETO — e o tempo disso é medido, porque o custo do caminho direto é
 	// informação de operação, não detalhe de teste.
 	inicio := time.Now()
-	for i := 0; i < limite; i++ {
+	for i := range limite {
 		produto := produtoDeTeste(fmt.Sprintf("SKU-%06d", i))
 		if _, err := comercio.UpsertProduct(produto, agora); err != nil {
 			t.Fatalf("produto %d dentro do teto precisa ser aceito: %v", i, err)

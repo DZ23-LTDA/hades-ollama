@@ -550,7 +550,7 @@ func (g *Gateway) doProviderRequest(c *gin.Context, provider Provider, path stri
 	if err != nil {
 		return nil, err
 	}
-	// A composição vive em joinProviderPath para o produto e os instrumentos não divergirem:
+	// A composição vive em joinProviderPath para o produto e os instruments não divergirem:
 	// quando o BaseURL já termina no segmento de versão, a rota repetida é removida.
 	base = joinProviderPath(base, path)
 	req, err := http.NewRequestWithContext(c.Request.Context(), http.MethodPost, base.String(), bytes.NewReader(body))

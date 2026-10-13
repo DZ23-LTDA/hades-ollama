@@ -162,7 +162,7 @@ func TestMissaoRealComPlanejadorDeNuvemEhOptIn(t *testing.T) {
 	}
 
 	// O modelo de nuvem decide o plano; se exigir aprovaÃƒÂ§ÃƒÂ£o, o instrumento aprova e continua.
-	for tentativa := 0; tentativa < 5; tentativa++ {
+	for tentativa := range 5 {
 		if err := runtime.Run(ctx, missao.ID); err != nil {
 			t.Fatalf("executar missÃƒÂ£o (tentativa %d): %v", tentativa+1, err)
 		}
@@ -196,7 +196,7 @@ func TestMissaoRealComPlanejadorDeNuvemEhOptIn(t *testing.T) {
 		t.Fatal("missÃƒÂ£o concluiu sem registrar consumo: tokens reais do provedor se perderam")
 	}
 	if missao.Usage.Provider != provedor || missao.Usage.Model != modelo {
-		t.Fatalf("consumo atribuÃƒÂ­do a provedor/modelo errado: %+v", *missao.Usage)
+		t.Fatalf("consumo atribuÃƒÂdo a provedor/modelo errado: %+v", *missao.Usage)
 	}
 	if missao.Usage.PromptTokens <= 0 || missao.Usage.CompletionTokens <= 0 {
 		t.Fatalf("consumo sem tokens reais: %+v", *missao.Usage)

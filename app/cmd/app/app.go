@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/ollama/ollama/internal/agent"
 	"io"
 	"log/slog"
 	"net"
@@ -21,6 +20,8 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/ollama/ollama/internal/agent"
 
 	"github.com/google/uuid"
 	"github.com/ollama/ollama/app/auth"

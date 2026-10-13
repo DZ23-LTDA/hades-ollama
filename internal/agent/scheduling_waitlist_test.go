@@ -26,16 +26,20 @@ func TestOfertaDaFilaOfereceMasNaoAgenda(t *testing.T) {
 	slot := time.Date(2026, 12, 14, 10, 0, 0, 0, loc) // segunda-feira
 	janela := [2]time.Time{slot.Add(-2 * time.Hour), slot.Add(4 * time.Hour)}
 
-	primeiro, err := store.AddToWaitlist(SchedulingWaitlistEntry{OrganizationID: org, ResourceID: recurso,
+	primeiro, err := store.AddToWaitlist(SchedulingWaitlistEntry{
+		OrganizationID: org, ResourceID: recurso,
 		ServiceID: servico, ContactID: "+5511900000001", Channel: "whatsapp", From: janela[0], To: janela[1],
-		CreatedAt: time.Now().UTC().Add(-2 * time.Hour)})
+		CreatedAt: time.Now().UTC().Add(-2 * time.Hour),
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
 	// Entrada mais NOVA na mesma janela: a FIFO precisa escolher a primeira.
-	if _, err := store.AddToWaitlist(SchedulingWaitlistEntry{OrganizationID: org, ResourceID: recurso,
+	if _, err := store.AddToWaitlist(SchedulingWaitlistEntry{
+		OrganizationID: org, ResourceID: recurso,
 		ServiceID: servico, ContactID: "+5511900000002", Channel: "voice", From: janela[0], To: janela[1],
-		CreatedAt: time.Now().UTC()}); err != nil {
+		CreatedAt: time.Now().UTC(),
+	}); err != nil {
 		t.Fatal(err)
 	}
 
@@ -63,16 +67,20 @@ func TestFilaRespeitaJanelaDesejada(t *testing.T) {
 	store, org, recurso, servico, loc := waitlistFixture(t)
 	slot := time.Date(2026, 12, 14, 18, 0, 0, 0, loc)
 	// Janela que NÃO contém o horário oferecido.
-	if _, err := store.AddToWaitlist(SchedulingWaitlistEntry{OrganizationID: org, ResourceID: recurso,
-		ServiceID: servico, From: slot.Add(-8 * time.Hour), To: slot.Add(-4 * time.Hour)}); err != nil {
+	if _, err := store.AddToWaitlist(SchedulingWaitlistEntry{
+		OrganizationID: org, ResourceID: recurso,
+		ServiceID: servico, From: slot.Add(-8 * time.Hour), To: slot.Add(-4 * time.Hour),
+	}); err != nil {
 		t.Fatal(err)
 	}
 	if _, achou, err := store.OfferNextFromWaitlist(org, recurso, slot, time.Now().UTC()); err != nil || achou {
 		t.Fatalf("janela que não contém o horário NÃO pode receber oferta: achou=%v err=%v", achou, err)
 	}
 	// Janela que contém.
-	if _, err := store.AddToWaitlist(SchedulingWaitlistEntry{OrganizationID: org, ResourceID: recurso,
-		ServiceID: servico, From: slot.Add(-time.Hour), To: slot.Add(time.Hour)}); err != nil {
+	if _, err := store.AddToWaitlist(SchedulingWaitlistEntry{
+		OrganizationID: org, ResourceID: recurso,
+		ServiceID: servico, From: slot.Add(-time.Hour), To: slot.Add(time.Hour),
+	}); err != nil {
 		t.Fatal(err)
 	}
 	if _, achou, err := store.OfferNextFromWaitlist(org, recurso, slot, time.Now().UTC()); err != nil || !achou {
@@ -83,9 +91,11 @@ func TestFilaRespeitaJanelaDesejada(t *testing.T) {
 func TestConfirmacaoReconfereDisponibilidadeEExpira(t *testing.T) {
 	store, org, recurso, servico, loc := waitlistFixture(t)
 	slot := time.Date(2026, 12, 14, 11, 0, 0, 0, loc)
-	entrada, err := store.AddToWaitlist(SchedulingWaitlistEntry{OrganizationID: org, ResourceID: recurso,
+	entrada, err := store.AddToWaitlist(SchedulingWaitlistEntry{
+		OrganizationID: org, ResourceID: recurso,
 		ServiceID: servico, ContactID: "+5511900000003", Channel: "web",
-		From: slot.Add(-time.Hour), To: slot.Add(time.Hour)})
+		From: slot.Add(-time.Hour), To: slot.Add(time.Hour),
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -94,8 +104,10 @@ func TestConfirmacaoReconfereDisponibilidadeEExpira(t *testing.T) {
 		t.Fatalf("oferta: achou=%v err=%v", achou, err)
 	}
 	// Alguém agenda o MESMO horário por outro canal antes da confirmação.
-	if _, err := store.Book(BookRequest{OrganizationID: org, ResourceID: recurso, ServiceID: servico,
-		ContactID: "+5511900000004", Channel: "voice", StartsAt: slot, IdempotencyKey: "corrida-1"}); err != nil {
+	if _, err := store.Book(BookRequest{
+		OrganizationID: org, ResourceID: recurso, ServiceID: servico,
+		ContactID: "+5511900000004", Channel: "voice", StartsAt: slot, IdempotencyKey: "corrida-1",
+	}); err != nil {
 		t.Fatal(err)
 	}
 	// ARMADILHA: confirmar precisa passar pelo portão e ser RECUSADO.
@@ -105,9 +117,11 @@ func TestConfirmacaoReconfereDisponibilidadeEExpira(t *testing.T) {
 
 	// Oferta VENCIDA: recusa explícita e o expirado NÃO volta para a fila.
 	outroSlot := time.Date(2026, 12, 14, 15, 0, 0, 0, loc)
-	segunda, err := store.AddToWaitlist(SchedulingWaitlistEntry{OrganizationID: org, ResourceID: recurso,
+	segunda, err := store.AddToWaitlist(SchedulingWaitlistEntry{
+		OrganizationID: org, ResourceID: recurso,
 		ServiceID: servico, ContactID: "+5511900000005", Channel: "web",
-		From: outroSlot.Add(-time.Hour), To: outroSlot.Add(time.Hour)})
+		From: outroSlot.Add(-time.Hour), To: outroSlot.Add(time.Hour),
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -135,9 +149,11 @@ func TestConfirmacaoReconfereDisponibilidadeEExpira(t *testing.T) {
 func TestConfirmacaoBemSucedidaCriaAgendamentoEChamaDeNovoNaoDuplica(t *testing.T) {
 	store, org, recurso, servico, loc := waitlistFixture(t)
 	slot := time.Date(2026, 12, 14, 16, 0, 0, 0, loc)
-	entrada, err := store.AddToWaitlist(SchedulingWaitlistEntry{OrganizationID: org, ResourceID: recurso,
+	entrada, err := store.AddToWaitlist(SchedulingWaitlistEntry{
+		OrganizationID: org, ResourceID: recurso,
 		ServiceID: servico, ContactID: "+5511900000006", Channel: "whatsapp",
-		From: slot.Add(-time.Hour), To: slot.Add(time.Hour)})
+		From: slot.Add(-time.Hour), To: slot.Add(time.Hour),
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -170,8 +186,10 @@ func TestLembreteNaoSaiDuasVezes(t *testing.T) {
 	store, org, recurso, servico, _ := waitlistFixture(t)
 	agora := time.Now().UTC()
 	marcado := agora.Add(90 * time.Minute)
-	agendamento, err := store.Book(BookRequest{OrganizationID: org, ResourceID: recurso, ServiceID: servico,
-		ContactID: "+5511900000007", Channel: "voice", StartsAt: marcado, IdempotencyKey: "lembrete-1"})
+	agendamento, err := store.Book(BookRequest{
+		OrganizationID: org, ResourceID: recurso, ServiceID: servico,
+		ContactID: "+5511900000007", Channel: "voice", StartsAt: marcado, IdempotencyKey: "lembrete-1",
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -209,9 +227,11 @@ func TestLembreteNaoSaiDuasVezes(t *testing.T) {
 
 func TestNoShowEhRegistradoEEstadoMuda(t *testing.T) {
 	store, org, recurso, servico, loc := waitlistFixture(t)
-	agendamento, err := store.Book(BookRequest{OrganizationID: org, ResourceID: recurso, ServiceID: servico,
+	agendamento, err := store.Book(BookRequest{
+		OrganizationID: org, ResourceID: recurso, ServiceID: servico,
 		ContactID: "+5511900000008", Channel: "voice",
-		StartsAt: time.Date(2026, 12, 14, 9, 0, 0, 0, loc), IdempotencyKey: "falta-1"})
+		StartsAt: time.Date(2026, 12, 14, 9, 0, 0, 0, loc), IdempotencyKey: "falta-1",
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -236,8 +256,10 @@ func TestNoShowEhRegistradoEEstadoMuda(t *testing.T) {
 func TestFilaNaoMisturaOrganizacoes(t *testing.T) {
 	store, org, recurso, servico, loc := waitlistFixture(t)
 	slot := time.Date(2026, 12, 14, 17, 0, 0, 0, loc)
-	if _, err := store.AddToWaitlist(SchedulingWaitlistEntry{OrganizationID: org, ResourceID: recurso,
-		ServiceID: servico, From: slot.Add(-time.Hour), To: slot.Add(time.Hour)}); err != nil {
+	if _, err := store.AddToWaitlist(SchedulingWaitlistEntry{
+		OrganizationID: org, ResourceID: recurso,
+		ServiceID: servico, From: slot.Add(-time.Hour), To: slot.Add(time.Hour),
+	}); err != nil {
 		t.Fatal(err)
 	}
 	vizinha, err := store.Waitlist("org-vizinha")

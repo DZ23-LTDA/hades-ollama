@@ -29,7 +29,7 @@ func verificarAcessibilidade(documento string) []string {
 		totalH1     int
 		totalTabela int
 		rotulos     = map[string]bool{}
-		controles   []*html.Node
+		controls    []*html.Node
 		elementos   []*html.Node
 	)
 	var percorrer func(*html.Node)
@@ -42,7 +42,7 @@ func verificarAcessibilidade(documento string) []string {
 					problemas = append(problemas, "<html> sem atributo lang")
 				}
 			case "input":
-				controles = append(controles, no)
+				controls = append(controls, no)
 			case "button":
 				if textoDoNo(no) == "" && atributo(no, "aria-label") == "" {
 					problemas = append(problemas, "<button> sem texto e sem aria-label")
@@ -64,7 +64,7 @@ func verificarAcessibilidade(documento string) []string {
 	percorrer(raiz)
 
 	// Cada campo precisa de rotulo associado (label[for=id]) ou nome acessivel explicito.
-	for _, controle := range controles {
+	for _, controle := range controls {
 		id := atributo(controle, "id")
 		if id != "" && rotulos[id] {
 			continue

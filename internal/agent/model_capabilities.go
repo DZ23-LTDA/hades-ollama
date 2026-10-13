@@ -78,16 +78,26 @@ type ModelCapabilityRegistry struct {
 // calls nativos — usá-los como agente sem avisar é o "tool call fingido" que o V2.2 proíbe.
 func DefaultModelCapabilityRegistry() *ModelCapabilityRegistry {
 	medidos := []ModelCapabilities{
-		{Model: "qwen2.5:7b", ToolCalling: true, StructuredOutput: true, Source: CapabilitySourceMeasured,
-			Note: "tool calls nativos funcionam com este modelo (medido no ambiente do operador)."},
-		{Model: "llama3.1:8b", ToolCalling: true, StructuredOutput: true, Source: CapabilitySourceMeasured,
-			Note: "tool calls nativos funcionam com este modelo (medido no ambiente do operador)."},
-		{Model: "llama3.2:3b", ToolCalling: true, StructuredOutput: true, Source: CapabilitySourceMeasured,
-			Note: "tool calls nativos funcionam com este modelo (medido no ambiente do operador)."},
-		{Model: "qwen2.5-coder:7b", ToolCalling: false, StructuredOutput: true, Source: CapabilitySourceMeasured,
-			Note: "não emite tool calls nativos: use em modo compatível (texto) ou escolha um modelo com ferramentas."},
-		{Model: "deepseek-r1:8b", ToolCalling: false, StructuredOutput: false, Source: CapabilitySourceMeasured,
-			Note: "não emite tool calls nativos: use em modo compatível (texto) ou escolha um modelo com ferramentas."},
+		{
+			Model: "qwen2.5:7b", ToolCalling: true, StructuredOutput: true, Source: CapabilitySourceMeasured,
+			Note: "tool calls nativos funcionam com este modelo (medido no ambiente do operador).",
+		},
+		{
+			Model: "llama3.1:8b", ToolCalling: true, StructuredOutput: true, Source: CapabilitySourceMeasured,
+			Note: "tool calls nativos funcionam com este modelo (medido no ambiente do operador).",
+		},
+		{
+			Model: "llama3.2:3b", ToolCalling: true, StructuredOutput: true, Source: CapabilitySourceMeasured,
+			Note: "tool calls nativos funcionam com este modelo (medido no ambiente do operador).",
+		},
+		{
+			Model: "qwen2.5-coder:7b", ToolCalling: false, StructuredOutput: true, Source: CapabilitySourceMeasured,
+			Note: "não emite tool calls nativos: use em modo compatível (texto) ou escolha um modelo com ferramentas.",
+		},
+		{
+			Model: "deepseek-r1:8b", ToolCalling: false, StructuredOutput: false, Source: CapabilitySourceMeasured,
+			Note: "não emite tool calls nativos: use em modo compatível (texto) ou escolha um modelo com ferramentas.",
+		},
 	}
 	registro := &ModelCapabilityRegistry{conhecidos: map[string]ModelCapabilities{}}
 	for _, capacidades := range medidos {

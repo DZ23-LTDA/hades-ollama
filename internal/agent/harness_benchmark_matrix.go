@@ -208,16 +208,20 @@ func RunT2Matrix(ctx context.Context, harnesses []HarnessProposer, tasks []Harne
 		for _, task := range tasks {
 			if ctx.Err() != nil {
 				// Cancelou: NÃO inventa resultado para o que não rodou.
-				resultados = append(resultados, HarnessBenchmarkResult{Task: task.Name, Harness: harness.Name(),
-					Model: harness.Model(), GreenExit: -1, Verdict: "NAO_MEDIDO", Reason: "contexto cancelado"})
+				resultados = append(resultados, HarnessBenchmarkResult{
+					Task: task.Name, Harness: harness.Name(),
+					Model: harness.Model(), GreenExit: -1, Verdict: "NAO_MEDIDO", Reason: "contexto cancelado",
+				})
 				continue
 			}
 			inicio := time.Now()
 			resultado, err := RunHarnessBenchmark(ctx, harness, task, tentativas)
 			if err != nil {
-				resultado = HarnessBenchmarkResult{Task: task.Name, Harness: harness.Name(),
+				resultado = HarnessBenchmarkResult{
+					Task: task.Name, Harness: harness.Name(),
 					Model: harness.Model(), GreenExit: -1, Verdict: "NAO_MEDIDO", Reason: err.Error(),
-					DurationSeconds: time.Since(inicio).Seconds()}
+					DurationSeconds: time.Since(inicio).Seconds(),
+				}
 			}
 			resultados = append(resultados, resultado)
 		}
@@ -233,7 +237,8 @@ func RunT2Matrix(ctx context.Context, harnesses []HarnessProposer, tasks []Harne
 func EscreverArtefatoDaMatrizT2(t interface {
 	Logf(string, ...any)
 	Fatalf(string, ...any)
-}, resultados []HarnessBenchmarkResult, resumo T2MatrixSummary) {
+}, resultados []HarnessBenchmarkResult, resumo T2MatrixSummary,
+) {
 	raiz, achou := raizDoRepositorioParaArtefato()
 	if !achou {
 		t.Logf("artefato da matriz NÃO gravado: docs/parity não encontrado a partir do arquivo-fonte")
@@ -273,7 +278,7 @@ func raizDoRepositorioParaArtefato() (string, bool) {
 		return "", false
 	}
 	dir := filepath.Dir(arquivo)
-	for i := 0; i < 6; i++ {
+	for range 6 {
 		candidato := filepath.Join(dir, "docs", "parity")
 		if info, err := os.Stat(candidato); err == nil && info.IsDir() {
 			return candidato, true

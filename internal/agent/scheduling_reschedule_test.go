@@ -19,13 +19,17 @@ func TestRemarcacaoEhAtomicaENaoDeixaBuraco(t *testing.T) {
 	}
 	base := time.Date(2026, 11, 2, 9, 0, 0, 0, loc) // segunda-feira, 09:00 local
 
-	original, err := store.Book(BookRequest{OrganizationID: org, ResourceID: recurso, ServiceID: servico,
-		ContactID: "+5511900000001", Channel: "voice", StartsAt: base, IdempotencyKey: "orig-1"})
+	original, err := store.Book(BookRequest{
+		OrganizationID: org, ResourceID: recurso, ServiceID: servico,
+		ContactID: "+5511900000001", Channel: "voice", StartsAt: base, IdempotencyKey: "orig-1",
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	vizinho, err := store.Book(BookRequest{OrganizationID: org, ResourceID: recurso, ServiceID: servico,
-		ContactID: "+5511900000002", Channel: "whatsapp", StartsAt: base.Add(time.Hour), IdempotencyKey: "viz-1"})
+	vizinho, err := store.Book(BookRequest{
+		OrganizationID: org, ResourceID: recurso, ServiceID: servico,
+		ContactID: "+5511900000002", Channel: "whatsapp", StartsAt: base.Add(time.Hour), IdempotencyKey: "viz-1",
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -80,8 +84,10 @@ func TestRemarcacaoEhAtomicaENaoDeixaBuraco(t *testing.T) {
 		t.Fatal("o agendamento vizinho não pode ser tocado pela remarcação de outro")
 	}
 	// O horário ANTIGO volta a ser agendável (não ficou "buraco" nem vaga fantasma).
-	if _, err := store.Book(BookRequest{OrganizationID: org, ResourceID: recurso, ServiceID: servico,
-		ContactID: "+5511900000003", Channel: "web", StartsAt: base, IdempotencyKey: "novo-no-antigo"}); err != nil {
+	if _, err := store.Book(BookRequest{
+		OrganizationID: org, ResourceID: recurso, ServiceID: servico,
+		ContactID: "+5511900000003", Channel: "web", StartsAt: base, IdempotencyKey: "novo-no-antigo",
+	}); err != nil {
 		t.Fatalf("o horário liberado precisa voltar a ser agendável: %v", err)
 	}
 

@@ -165,8 +165,10 @@ func aplicarSemOrcamento(commerce *CommerceStore, plan CompanyOnboardingPlan, no
 	}
 
 	antes := commerce.Products(plan.OrganizationID)
-	token := CompanyOnboardingRollback{OrganizationID: plan.OrganizationID, Origin: plan.Origin,
-		Before: append([]CommerceProduct(nil), antes...), AppliedAt: now.UTC()}
+	token := CompanyOnboardingRollback{
+		OrganizationID: plan.OrganizationID, Origin: plan.Origin,
+		Before: append([]CommerceProduct(nil), antes...), AppliedAt: now.UTC(),
+	}
 
 	vistos := map[string]bool{}
 	aplicados := map[string]bool{}
@@ -230,8 +232,10 @@ func aplicarSemOrcamento(commerce *CommerceStore, plan CompanyOnboardingPlan, no
 	if len(estoques) > 0 {
 		movimentos := make([]MovimentoDeEstoque, 0, len(estoques))
 		for _, estoque := range estoques {
-			movimentos = append(movimentos, MovimentoDeEstoque{SKU: estoque.sku, Delta: estoque.quantidade,
-				Kind: "carga inicial de empresa existente", Reference: plan.Origin})
+			movimentos = append(movimentos, MovimentoDeEstoque{
+				SKU: estoque.sku, Delta: estoque.quantidade,
+				Kind: "carga inicial de empresa existente", Reference: plan.Origin,
+			})
 		}
 		if _, err := commerce.RecordStocks(plan.OrganizationID, movimentos, now); err != nil {
 			return preview, token, fmt.Errorf("%w: falha ao gravar o estoque inicial: %v", ErrOnboardingInvalid, err)

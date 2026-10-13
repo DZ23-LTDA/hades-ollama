@@ -56,13 +56,17 @@ func TestAgendamentoImpedeDoubleBookingSobConcorrencia(t *testing.T) {
 	}
 
 	// BUFFER: o serviço tem 30min + 10min de preparo. Um atendimento que comece dentro do preparo é recusado.
-	if _, err := store.Book(BookRequest{OrganizationID: org, ResourceID: recurso, ServiceID: servico,
-		ContactID: "+5511955556666", Channel: "web", StartsAt: agora.Add(15 * time.Minute)}); !errors.Is(err, ErrSchedulingSlotTaken) {
+	if _, err := store.Book(BookRequest{
+		OrganizationID: org, ResourceID: recurso, ServiceID: servico,
+		ContactID: "+5511955556666", Channel: "web", StartsAt: agora.Add(15 * time.Minute),
+	}); !errors.Is(err, ErrSchedulingSlotTaken) {
 		t.Fatalf("início dentro do buffer precisa ser recusado: %v", err)
 	}
 	// Depois do buffer, o recurso volta a aceitar.
-	if _, err := store.Book(BookRequest{OrganizationID: org, ResourceID: recurso, ServiceID: servico,
-		ContactID: "+5511955556666", Channel: "web", StartsAt: agora.Add(40 * time.Minute)}); err != nil {
+	if _, err := store.Book(BookRequest{
+		OrganizationID: org, ResourceID: recurso, ServiceID: servico,
+		ContactID: "+5511955556666", Channel: "web", StartsAt: agora.Add(40 * time.Minute),
+	}); err != nil {
 		t.Fatalf("depois do buffer o horário precisa estar livre: %v", err)
 	}
 
@@ -70,8 +74,10 @@ func TestAgendamentoImpedeDoubleBookingSobConcorrencia(t *testing.T) {
 	// MEDIDO: o vencedor da corrida é NÃO-DETERMINÍSTICO por desenho — então a idempotência é provada num horário
 	// próprio, para a asserção medir a propriedade e não a sorte do escalonador.
 	livre := agora.Add(90 * time.Minute)
-	repetivel := BookRequest{OrganizationID: org, ResourceID: recurso, ServiceID: servico,
-		ContactID: "+5511900001111", Channel: "whatsapp", StartsAt: livre, IdempotencyKey: "replay-1"}
+	repetivel := BookRequest{
+		OrganizationID: org, ResourceID: recurso, ServiceID: servico,
+		ContactID: "+5511900001111", Channel: "whatsapp", StartsAt: livre, IdempotencyKey: "replay-1",
+	}
 	if _, err := store.Book(repetivel); err != nil {
 		t.Fatalf("agendamento base para o teste de idempotência: %v", err)
 	}
@@ -87,8 +93,10 @@ func TestAgendamentoImpedeDoubleBookingSobConcorrencia(t *testing.T) {
 	if cancelado.Status != SchedulingAppointmentCancelled {
 		t.Fatalf("o cancelamento precisa ficar registrado: %+v", cancelado)
 	}
-	if _, err := store.Book(BookRequest{OrganizationID: org, ResourceID: recurso, ServiceID: servico,
-		ContactID: "+5511977778888", Channel: "voice", StartsAt: agora}); err != nil {
+	if _, err := store.Book(BookRequest{
+		OrganizationID: org, ResourceID: recurso, ServiceID: servico,
+		ContactID: "+5511977778888", Channel: "voice", StartsAt: agora,
+	}); err != nil {
 		t.Fatalf("horário cancelado precisa voltar a ser agendável: %v", err)
 	}
 
@@ -117,8 +125,10 @@ func TestAgendamentoImpedeDoubleBookingSobConcorrencia(t *testing.T) {
 		t.Fatal("a disponibilidade precisa derivar dos agendamentos persistidos")
 	}
 	outraOrg := "org-b"
-	if _, err := store.Book(BookRequest{OrganizationID: outraOrg, ResourceID: recurso, ServiceID: servico,
-		StartsAt: agora, Channel: "web"}); err == nil {
+	if _, err := store.Book(BookRequest{
+		OrganizationID: outraOrg, ResourceID: recurso, ServiceID: servico,
+		StartsAt: agora, Channel: "web",
+	}); err == nil {
 		t.Fatal("outra organização não pode agendar no recurso de quem não é dela")
 	}
 	daOutra, err := store.Appointments(outraOrg)
@@ -147,7 +157,7 @@ func schedulingFixture(t *testing.T) (*SchedulingStore, string, string, string) 
 	// EXPEDIENTE 24/7 CONFIGURADO DE PROPÓSITO (E-314): sem turno, o motor agora RECUSA tudo — "não se inventa
 	// horário" (antes, a disponibilidade oferecia 03:00 de domingo). Este teste é sobre CONCORRÊNCIA, então ele
 	// declara um expediente que cobre a semana inteira, para isolar a propriedade que está medindo.
-	for dia := 0; dia <= 6; dia++ {
+	for dia := range 7 {
 		if _, err := store.AddShift(SchedulingShift{OrganizationID: org, Weekday: dia, OpensAt: 0, ClosesAt: 24 * 60}); err != nil {
 			t.Fatal(err)
 		}

@@ -23,8 +23,10 @@ import (
 func TestDecisaoDeAprovacaoNaoRevelaExistenciaEntreTenants(t *testing.T) {
 	root := t.TempDir()
 	planner := fixedPlanner{steps: []Step{
-		{ID: "step_1", Kind: "workspace.write", Title: "escrever a.txt", Risk: RiskWrite, RequiresApproval: true, State: StepPending,
-			Input: map[string]any{"path": "a.txt", "content": "conteudo\n"}},
+		{
+			ID: "step_1", Kind: "workspace.write", Title: "escrever a.txt", Risk: RiskWrite, RequiresApproval: true, State: StepPending,
+			Input: map[string]any{"path": "a.txt", "content": "conteudo\n"},
+		},
 	}}
 	runtime, err := NewRuntime(RuntimeConfig{Store: NewMemoryStore(), Planner: planner, WorkspaceRoot: root})
 	if err != nil {
@@ -94,8 +96,10 @@ func TestDecisaoDeAprovacaoNaoRevelaExistenciaEntreTenants(t *testing.T) {
 func TestDonoAindaDecideAPropriaAprovacao(t *testing.T) {
 	root := t.TempDir()
 	planner := fixedPlanner{steps: []Step{
-		{ID: "step_1", Kind: "workspace.write", Title: "escrever a.txt", Risk: RiskWrite, RequiresApproval: true, State: StepPending,
-			Input: map[string]any{"path": "a.txt", "content": "conteudo\n"}},
+		{
+			ID: "step_1", Kind: "workspace.write", Title: "escrever a.txt", Risk: RiskWrite, RequiresApproval: true, State: StepPending,
+			Input: map[string]any{"path": "a.txt", "content": "conteudo\n"},
+		},
 	}}
 	runtime, err := NewRuntime(RuntimeConfig{Store: NewMemoryStore(), Planner: planner, WorkspaceRoot: root})
 	if err != nil {

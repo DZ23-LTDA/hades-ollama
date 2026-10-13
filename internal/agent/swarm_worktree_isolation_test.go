@@ -182,8 +182,10 @@ func gitFixture(t *testing.T, ctx context.Context, dir string, args ...string) {
 }
 
 func gitSaida(ctx context.Context, dir string, args ...string) (string, error) {
-	completo := append([]string{"-c", "user.email=teste@hades.local", "-c", "user.name=Teste Hades",
-		"-c", "commit.gpgsign=false", "-c", "init.defaultBranch=main"}, args...)
+	completo := append([]string{
+		"-c", "user.email=teste@hades.local", "-c", "user.name=Teste Hades",
+		"-c", "commit.gpgsign=false", "-c", "init.defaultBranch=main",
+	}, args...)
 	cmd := exec.CommandContext(ctx, "git", completo...)
 	cmd.Dir = dir
 	saida, err := cmd.CombinedOutput()

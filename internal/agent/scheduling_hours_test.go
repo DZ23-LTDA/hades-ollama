@@ -65,20 +65,26 @@ func TestAgendamentoRespeitaExpedienteFechamentoEFuso(t *testing.T) {
 	if len(slotsFechado) != 0 {
 		t.Fatalf("dia fechado não pode oferecer horário: %+v", slotsFechado)
 	}
-	if _, err := store.Book(BookRequest{OrganizationID: org, ResourceID: recurso, ServiceID: servico,
-		StartsAt: time.Date(2026, 10, 19, 10, 0, 0, 0, loc), Channel: "voice"}); !errors.Is(err, ErrSchedulingClosed) {
+	if _, err := store.Book(BookRequest{
+		OrganizationID: org, ResourceID: recurso, ServiceID: servico,
+		StartsAt: time.Date(2026, 10, 19, 10, 0, 0, 0, loc), Channel: "voice",
+	}); !errors.Is(err, ErrSchedulingClosed) {
 		t.Fatalf("agendar em dia fechado precisa ser recusado: %v", err)
 	}
 
 	// 4. FUSO: o mesmo "10:00" é 13:00Z em São Paulo. Um pedido às 03:00 LOCAIS é recusado por expediente — mesmo que
 	//    em UTC ele pareça "06:00". É a hora LOCAL que decide, e é isto que o teste prova.
 	outroDia := segunda.AddDate(0, 0, 7) // segunda seguinte, sem fechamento
-	if _, err := store.Book(BookRequest{OrganizationID: org, ResourceID: recurso, ServiceID: servico,
-		StartsAt: time.Date(2026, 10, 26, 3, 0, 0, 0, loc), Channel: "voice"}); !errors.Is(err, ErrSchedulingOutsideHours) {
+	if _, err := store.Book(BookRequest{
+		OrganizationID: org, ResourceID: recurso, ServiceID: servico,
+		StartsAt: time.Date(2026, 10, 26, 3, 0, 0, 0, loc), Channel: "voice",
+	}); !errors.Is(err, ErrSchedulingOutsideHours) {
 		t.Fatalf("03:00 locais precisam ser recusados por expediente: %v", err)
 	}
-	agendado, err := store.Book(BookRequest{OrganizationID: org, ResourceID: recurso, ServiceID: servico,
-		StartsAt: time.Date(2026, 10, 26, 10, 0, 0, 0, loc), Channel: "voice", IdempotencyKey: "fuso-1"})
+	agendado, err := store.Book(BookRequest{
+		OrganizationID: org, ResourceID: recurso, ServiceID: servico,
+		StartsAt: time.Date(2026, 10, 26, 10, 0, 0, 0, loc), Channel: "voice", IdempotencyKey: "fuso-1",
+	})
 	if err != nil {
 		t.Fatalf("10:00 locais precisam ser aceitos: %v", err)
 	}
@@ -87,8 +93,10 @@ func TestAgendamentoRespeitaExpedienteFechamentoEFuso(t *testing.T) {
 	}
 
 	// 5. A ocupação continua valendo dentro do turno (fatia 1 + fatia 2 juntas).
-	if _, err := store.Book(BookRequest{OrganizationID: org, ResourceID: recurso, ServiceID: servico,
-		StartsAt: time.Date(2026, 10, 26, 10, 15, 0, 0, loc), Channel: "whatsapp"}); !errors.Is(err, ErrSchedulingSlotTaken) {
+	if _, err := store.Book(BookRequest{
+		OrganizationID: org, ResourceID: recurso, ServiceID: servico,
+		StartsAt: time.Date(2026, 10, 26, 10, 15, 0, 0, loc), Channel: "whatsapp",
+	}); !errors.Is(err, ErrSchedulingSlotTaken) {
 		t.Fatalf("sobreposição dentro do turno precisa continuar recusada: %v", err)
 	}
 	_ = outroDia

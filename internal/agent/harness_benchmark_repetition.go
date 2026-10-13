@@ -50,14 +50,18 @@ func RepetirT2Matrix(ctx context.Context, harnesses []HarnessProposer, tasks []H
 			daCombinacao := make([]HarnessBenchmarkResult, 0, repeticoes)
 			for repeticao := 1; repeticao <= repeticoes; repeticao++ {
 				if ctx.Err() != nil {
-					daCombinacao = append(daCombinacao, HarnessBenchmarkResult{Task: task.Name, Harness: harness.Name(),
-						Model: harness.Model(), GreenExit: -1, Verdict: "NAO_MEDIDO", Reason: "contexto cancelado"})
+					daCombinacao = append(daCombinacao, HarnessBenchmarkResult{
+						Task: task.Name, Harness: harness.Name(),
+						Model: harness.Model(), GreenExit: -1, Verdict: "NAO_MEDIDO", Reason: "contexto cancelado",
+					})
 					continue
 				}
 				resultado, err := RunHarnessBenchmark(ctx, harness, task, tentativas)
 				if err != nil {
-					resultado = HarnessBenchmarkResult{Task: task.Name, Harness: harness.Name(),
-						Model: harness.Model(), GreenExit: -1, Verdict: "NAO_MEDIDO", Reason: err.Error()}
+					resultado = HarnessBenchmarkResult{
+						Task: task.Name, Harness: harness.Name(),
+						Model: harness.Model(), GreenExit: -1, Verdict: "NAO_MEDIDO", Reason: err.Error(),
+					}
 				}
 				resultados = append(resultados, resultado)
 				daCombinacao = append(daCombinacao, resultado)
@@ -72,7 +76,8 @@ func RepetirT2Matrix(ctx context.Context, harnesses []HarnessProposer, tasks []H
 // EscreverArtefatoDaRepeticaoT2 grava a repetição medida (contagem por combinação) em `docs/parity/HADES_T2_REPETICAO.md`.
 func EscreverArtefatoDaRepeticaoT2(t interface {
 	Logf(string, ...any)
-}, agregados []T2RepetitionSummary, tentativas int) {
+}, agregados []T2RepetitionSummary, tentativas int,
+) {
 	raiz, achou := raizDoRepositorioParaArtefato()
 	if !achou {
 		t.Logf("artefato de repetição NÃO gravado: docs/parity não encontrado a partir do arquivo-fonte")

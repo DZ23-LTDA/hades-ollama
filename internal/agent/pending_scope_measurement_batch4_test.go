@@ -24,17 +24,23 @@ func TestQuartoLoteMedeEscopoAusente(t *testing.T) {
 		}
 		store := NewMarketplaceSyncStore(raiz, comercio)
 		// Organização vazia: precisa recusar. Canal vazio também; itens vazios também.
-		if _, err := store.Sync(MarketplaceSyncRequest{OrganizationID: "", ChannelID: "ch-1",
-			Items: []MarketplaceSyncItem{{SKU: "SKU-1"}}}, time.Now().UTC()); err == nil {
+		if _, err := store.Sync(MarketplaceSyncRequest{
+			OrganizationID: "", ChannelID: "ch-1",
+			Items: []MarketplaceSyncItem{{SKU: "SKU-1"}},
+		}, time.Now().UTC()); err == nil {
 			t.Fatal("ARMADILHA: sincronização sem organização foi aceita (gravaria em arquivo compartilhado)")
 		}
-		if _, err := store.Sync(MarketplaceSyncRequest{OrganizationID: "org-a", ChannelID: "",
-			Items: []MarketplaceSyncItem{{SKU: "SKU-1"}}}, time.Now().UTC()); err == nil {
+		if _, err := store.Sync(MarketplaceSyncRequest{
+			OrganizationID: "org-a", ChannelID: "",
+			Items: []MarketplaceSyncItem{{SKU: "SKU-1"}},
+		}, time.Now().UTC()); err == nil {
 			t.Fatal("sincronização sem canal precisa ser recusada")
 		}
 		// Organização só com espaços também é vazia (trim antes da decisão).
-		if _, err := store.Sync(MarketplaceSyncRequest{OrganizationID: "   ", ChannelID: "ch-1",
-			Items: []MarketplaceSyncItem{{SKU: "SKU-1"}}}, time.Now().UTC()); err == nil {
+		if _, err := store.Sync(MarketplaceSyncRequest{
+			OrganizationID: "   ", ChannelID: "ch-1",
+			Items: []MarketplaceSyncItem{{SKU: "SKU-1"}},
+		}, time.Now().UTC()); err == nil {
 			t.Fatal("ARMADILHA: organização só com espaços foi aceita")
 		}
 		assertSemArquivoCompartilhado(t, raiz)
@@ -62,8 +68,10 @@ func TestQuartoLoteComOrganizacaoValidaFunciona(t *testing.T) {
 		t.Fatal(errComercio)
 	}
 	store := NewMarketplaceSyncStore(raiz, comercio)
-	if _, err := store.Sync(MarketplaceSyncRequest{OrganizationID: "org-a", ChannelID: "canal-inexistente",
-		Items: []MarketplaceSyncItem{{SKU: "SKU-1"}}}, time.Now().UTC()); errors.Is(err, ErrTenantScopeRequired) {
+	if _, err := store.Sync(MarketplaceSyncRequest{
+		OrganizationID: "org-a", ChannelID: "canal-inexistente",
+		Items: []MarketplaceSyncItem{{SKU: "SKU-1"}},
+	}, time.Now().UTC()); errors.Is(err, ErrTenantScopeRequired) {
 		t.Fatalf("com organização válida a recusa precisa ser outra (canal), não escopo: %v", err)
 	}
 	// company: criação válida devolve empresa com identificador.

@@ -27,13 +27,17 @@ func TestDuasInstanciasCriandoSessaoNaoPerdemNenhuma(t *testing.T) {
 	erros := make([]error, 2)
 	go func() {
 		defer wg.Done()
-		_, erros[0] = instanciaA.CreateLiveSession(LiveSession{OrganizationID: "org-a", ProjectID: "pA",
-			AuthorizedUntil: agora.Add(time.Hour)})
+		_, erros[0] = instanciaA.CreateLiveSession(LiveSession{
+			OrganizationID: "org-a", ProjectID: "pA",
+			AuthorizedUntil: agora.Add(time.Hour),
+		})
 	}()
 	go func() {
 		defer wg.Done()
-		_, erros[1] = instanciaB.CreateLiveSession(LiveSession{OrganizationID: "org-a", ProjectID: "pB",
-			AuthorizedUntil: agora.Add(time.Hour)})
+		_, erros[1] = instanciaB.CreateLiveSession(LiveSession{
+			OrganizationID: "org-a", ProjectID: "pB",
+			AuthorizedUntil: agora.Add(time.Hour),
+		})
 	}()
 	wg.Wait()
 	for i, err := range erros {
@@ -66,8 +70,10 @@ func TestAprovacaoRegistradaNumaInstanciaNaoSePerde(t *testing.T) {
 	instanciaB := NewLiveCommerceStore(raiz)
 	agora := time.Now().UTC()
 
-	sessao, err := instanciaA.CreateLiveSession(LiveSession{OrganizationID: "org-a", ProjectID: "p1",
-		AuthorizedUntil: agora.Add(time.Hour)})
+	sessao, err := instanciaA.CreateLiveSession(LiveSession{
+		OrganizationID: "org-a", ProjectID: "p1",
+		AuthorizedUntil: agora.Add(time.Hour),
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -120,8 +126,10 @@ func TestAvancoConcorrenteMantemEstadoCoerente(t *testing.T) {
 	instanciaB := NewLiveCommerceStore(raiz)
 	agora := time.Now().UTC()
 
-	sessao, err := instanciaA.CreateLiveSession(LiveSession{OrganizationID: "org-a", ProjectID: "p1",
-		AuthorizedUntil: agora.Add(time.Hour)})
+	sessao, err := instanciaA.CreateLiveSession(LiveSession{
+		OrganizationID: "org-a", ProjectID: "p1",
+		AuthorizedUntil: agora.Add(time.Hour),
+	})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -233,10 +233,8 @@ func (s *CompanyStore) CampaignReport(id string) (CampaignReport, error) {
 // pode inflar o painel com um numero absurdo.
 const CampaignMetricIngestCeiling = int64(1_000_000_000)
 
-var (
-	// ErrCampaignMetricDeliveryInvalid cobre entrega sem SourceID/canal ou com contador acima do teto de sanidade.
-	ErrCampaignMetricDeliveryInvalid = errors.New("campaign metric delivery invalid")
-)
+// ErrCampaignMetricDeliveryInvalid cobre entrega sem SourceID/canal ou com contador acima do teto de sanidade.
+var ErrCampaignMetricDeliveryInvalid = errors.New("campaign metric delivery invalid")
 
 // CampaignMetricDelivery e' uma entrega externa de metrica (webhook, exportacao do provedor).
 type CampaignMetricDelivery struct {

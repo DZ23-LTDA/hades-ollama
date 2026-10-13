@@ -22,9 +22,11 @@ import (
 
 func onboardingComLinhas(quantidade int, nome string) CompanyOnboardingPlan {
 	linhas := make([]CompanyOnboardingRow, 0, quantidade)
-	for i := 0; i < quantidade; i++ {
-		linhas = append(linhas, CompanyOnboardingRow{SKU: fmt.Sprintf("SKU-%06d", i), Name: nome,
-			PriceCents: int64(100 + i), Currency: "BRL", InitialStock: 1})
+	for i := range quantidade {
+		linhas = append(linhas, CompanyOnboardingRow{
+			SKU: fmt.Sprintf("SKU-%06d", i), Name: nome,
+			PriceCents: int64(100 + i), Currency: "BRL", InitialStock: 1,
+		})
 	}
 	return CompanyOnboardingPlan{OrganizationID: "org-a", Origin: "teste", Rows: linhas}
 }

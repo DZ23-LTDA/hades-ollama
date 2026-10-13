@@ -21,13 +21,17 @@ func TestAuditoriaFilaNaoOfereceHorarioJaOcupado(t *testing.T) {
 	slot := time.Date(2026, 12, 15, 10, 0, 0, 0, loc)
 
 	// O horário JÁ está ocupado por um agendamento comum.
-	if _, err := store.Book(BookRequest{OrganizationID: org, ResourceID: recurso, ServiceID: servico,
-		ContactID: "+5511900000001", Channel: "voice", StartsAt: slot, IdempotencyKey: "ocupado-antes"}); err != nil {
+	if _, err := store.Book(BookRequest{
+		OrganizationID: org, ResourceID: recurso, ServiceID: servico,
+		ContactID: "+5511900000001", Channel: "voice", StartsAt: slot, IdempotencyKey: "ocupado-antes",
+	}); err != nil {
 		t.Fatal(err)
 	}
-	entrada, err := store.AddToWaitlist(SchedulingWaitlistEntry{OrganizationID: org, ResourceID: recurso,
+	entrada, err := store.AddToWaitlist(SchedulingWaitlistEntry{
+		OrganizationID: org, ResourceID: recurso,
 		ServiceID: servico, ContactID: "+5511900000002", Channel: "whatsapp",
-		From: slot.Add(-time.Hour), To: slot.Add(time.Hour)})
+		From: slot.Add(-time.Hour), To: slot.Add(time.Hour),
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -56,12 +60,16 @@ func TestAuditoriaFilaNaoOfereceForaDoExpediente(t *testing.T) {
 	store, org, recurso, servico, loc := waitlistFixture(t)
 	// O fixture da fila usa expediente 24/7; aqui fechamos um dia inteiro e tentamos oferecer nele.
 	diaFechado := time.Date(2026, 12, 16, 0, 0, 0, 0, loc)
-	if _, err := store.AddClosure(SchedulingClosure{OrganizationID: org, Date: diaFechado.Format("2006-01-02"),
-		Reason: "feriado"}); err != nil {
+	if _, err := store.AddClosure(SchedulingClosure{
+		OrganizationID: org, Date: diaFechado.Format("2006-01-02"),
+		Reason: "feriado",
+	}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := store.AddToWaitlist(SchedulingWaitlistEntry{OrganizationID: org, ResourceID: recurso,
-		ServiceID: servico, From: diaFechado, To: diaFechado.Add(24 * time.Hour)}); err != nil {
+	if _, err := store.AddToWaitlist(SchedulingWaitlistEntry{
+		OrganizationID: org, ResourceID: recurso,
+		ServiceID: servico, From: diaFechado, To: diaFechado.Add(24 * time.Hour),
+	}); err != nil {
 		t.Fatal(err)
 	}
 	slot := diaFechado.Add(10 * time.Hour)
@@ -77,14 +85,18 @@ func TestAuditoriaFilaNaoOfereceForaDoExpediente(t *testing.T) {
 func TestAuditoriaCancelamentoLiberaEAFilaOfereceDeVerdade(t *testing.T) {
 	store, org, recurso, servico, loc := waitlistFixture(t)
 	slot := time.Date(2026, 12, 17, 14, 0, 0, 0, loc)
-	agendamento, err := store.Book(BookRequest{OrganizationID: org, ResourceID: recurso, ServiceID: servico,
-		ContactID: "+5511900000003", Channel: "voice", StartsAt: slot, IdempotencyKey: "vai-cancelar"})
+	agendamento, err := store.Book(BookRequest{
+		OrganizationID: org, ResourceID: recurso, ServiceID: servico,
+		ContactID: "+5511900000003", Channel: "voice", StartsAt: slot, IdempotencyKey: "vai-cancelar",
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := store.AddToWaitlist(SchedulingWaitlistEntry{OrganizationID: org, ResourceID: recurso,
+	if _, err := store.AddToWaitlist(SchedulingWaitlistEntry{
+		OrganizationID: org, ResourceID: recurso,
 		ServiceID: servico, ContactID: "+5511900000004", Channel: "web",
-		From: slot.Add(-time.Hour), To: slot.Add(time.Hour)}); err != nil {
+		From: slot.Add(-time.Hour), To: slot.Add(time.Hour),
+	}); err != nil {
 		t.Fatal(err)
 	}
 	// Antes do cancelamento não se oferece; depois, sim.
@@ -110,15 +122,19 @@ func TestAuditoriaCancelamentoLiberaEAFilaOfereceDeVerdade(t *testing.T) {
 func TestAuditoriaRescheduleDuranteOfertaNaoPassaEmSilencio(t *testing.T) {
 	store, org, recurso, servico, loc := waitlistFixture(t)
 	slot := time.Date(2026, 12, 18, 9, 0, 0, 0, loc)
-	outro, err := store.Book(BookRequest{OrganizationID: org, ResourceID: recurso, ServiceID: servico,
+	outro, err := store.Book(BookRequest{
+		OrganizationID: org, ResourceID: recurso, ServiceID: servico,
 		ContactID: "+5511900000005", Channel: "voice",
-		StartsAt: time.Date(2026, 12, 18, 15, 0, 0, 0, loc), IdempotencyKey: "vizinho"})
+		StartsAt: time.Date(2026, 12, 18, 15, 0, 0, 0, loc), IdempotencyKey: "vizinho",
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	entrada, err := store.AddToWaitlist(SchedulingWaitlistEntry{OrganizationID: org, ResourceID: recurso,
+	entrada, err := store.AddToWaitlist(SchedulingWaitlistEntry{
+		OrganizationID: org, ResourceID: recurso,
 		ServiceID: servico, ContactID: "+5511900000006", Channel: "whatsapp",
-		From: slot.Add(-time.Hour), To: slot.Add(time.Hour)})
+		From: slot.Add(-time.Hour), To: slot.Add(time.Hour),
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -154,9 +170,11 @@ func TestAuditoriaRescheduleDuranteOfertaNaoPassaEmSilencio(t *testing.T) {
 func TestAuditoriaFilaEOutroCanalDisputandoOMesmoHorario(t *testing.T) {
 	store, org, recurso, servico, loc := waitlistFixture(t)
 	slot := time.Date(2026, 12, 19, 11, 0, 0, 0, loc)
-	entrada, err := store.AddToWaitlist(SchedulingWaitlistEntry{OrganizationID: org, ResourceID: recurso,
+	entrada, err := store.AddToWaitlist(SchedulingWaitlistEntry{
+		OrganizationID: org, ResourceID: recurso,
 		ServiceID: servico, ContactID: "+5511900000007", Channel: "web",
-		From: slot.Add(-time.Hour), To: slot.Add(time.Hour)})
+		From: slot.Add(-time.Hour), To: slot.Add(time.Hour),
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -172,8 +190,10 @@ func TestAuditoriaFilaEOutroCanalDisputandoOMesmoHorario(t *testing.T) {
 	go func() { defer wg.Done(); _, erros[0] = store.ConfirmWaitlistOffer(org, oferta.ID, agora) }()
 	go func() {
 		defer wg.Done()
-		_, erros[1] = store.Book(BookRequest{OrganizationID: org, ResourceID: recurso, ServiceID: servico,
-			ContactID: "+5511900000008", Channel: "voice", StartsAt: slot, IdempotencyKey: "corrida-fila"})
+		_, erros[1] = store.Book(BookRequest{
+			OrganizationID: org, ResourceID: recurso, ServiceID: servico,
+			ContactID: "+5511900000008", Channel: "voice", StartsAt: slot, IdempotencyKey: "corrida-fila",
+		})
 	}()
 	wg.Wait()
 

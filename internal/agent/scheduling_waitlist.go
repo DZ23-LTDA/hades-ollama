@@ -390,8 +390,10 @@ func (s *SchedulingStore) MarkReminderSent(organizationID, appointmentID, kind s
 			return fmt.Errorf("%w: lembrete %q do agendamento %s já foi enviado", ErrSchedulingInvalid, kind, appointmentID)
 		}
 	}
-	org.Reminders = append(org.Reminders, SchedulingReminder{OrganizationID: organizationID,
-		AppointmentID: appointmentID, Kind: kind, SentAt: now.UTC()})
+	org.Reminders = append(org.Reminders, SchedulingReminder{
+		OrganizationID: organizationID,
+		AppointmentID:  appointmentID, Kind: kind, SentAt: now.UTC(),
+	})
 	if err := s.saveLocked(organizationID); err != nil {
 		org.Reminders = org.Reminders[:len(org.Reminders)-1]
 		return err

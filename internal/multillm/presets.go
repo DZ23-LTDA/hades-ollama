@@ -20,7 +20,7 @@ import (
 //
 // Cobertura: Ollama, vLLM, llama.cpp, LM Studio (servidores locais) e OpenAI,
 // Anthropic, Gemini, DeepSeek, Groq, Mistral, OpenRouter e xAI (APIs). Outros
-// servidores compatÃ­veis com OpenAI entram pelo preset genÃ©rico, cuja
+// servidores compatÃveis com OpenAI entram pelo preset genÃ©rico, cuja
 // `base_url` precisa ser editada pelo operador.
 type ProviderPreset struct {
 	ID          string   `json:"id"`
@@ -37,8 +37,8 @@ type ProviderPreset struct {
 }
 
 // GenericPresetBaseURL Ã© um marcador reservado (TLD `.invalid`): o operador
-// precisa substituÃ­-lo ao cadastrar um servidor compatÃ­vel com OpenAI que nÃ£o
-// esteja na lista. Servir um host plausÃ­vel seria pior, porque pareceria
+// precisa substituÃ-lo ao cadastrar um servidor compatÃvel com OpenAI que nÃ£o
+// esteja na lista. Servir um host plausÃvel seria pior, porque pareceria
 // funcional.
 const GenericPresetBaseURL = "https://api.exemplo.invalid/v1"
 
@@ -114,7 +114,7 @@ func BuiltInProviderPresets() []ProviderPreset {
 		},
 		{
 			ID:        "gemini",
-			Name:      "Google Gemini (endpoint compatÃ­vel com OpenAI)",
+			Name:      "Google Gemini (endpoint compatÃvel com OpenAI)",
 			Type:      ProviderTypeOpenAICompatible,
 			BaseURL:   "https://generativelanguage.googleapis.com/v1beta/openai",
 			APIKeyEnv: "GEMINI_API_KEY",
@@ -178,7 +178,7 @@ func BuiltInProviderPresets() []ProviderPreset {
 		},
 		{
 			ID:          "openai-compatible",
-			Name:        "Servidor compatÃ­vel com OpenAI (genÃ©rico)",
+			Name:        "Servidor compatÃvel com OpenAI (genÃ©rico)",
 			Type:        ProviderTypeOpenAICompatible,
 			BaseURL:     GenericPresetBaseURL,
 			APIKeyEnv:   GenericPresetEnvName,
@@ -206,7 +206,7 @@ func ProviderPresetByID(id string) (ProviderPreset, bool) {
 // Provider monta um `Provider` vÃ¡lido a partir do preset. A credencial NÃƒO Ã©
 // copiada: fica apenas o nome da variÃ¡vel de ambiente. Servidores locais sÃ£o
 // marcados com AllowPrivate + AllowInsecureLoopback porque falam HTTP em
-// loopback; isso Ã© explÃ­cito e nÃ£o vale para os presets remotos.
+// loopback; isso Ã© explÃcito e nÃ£o vale para os presets remotos.
 func (p ProviderPreset) Provider(models []ModelConfig) (Provider, error) {
 	provider := Provider{
 		Name:         p.ID,

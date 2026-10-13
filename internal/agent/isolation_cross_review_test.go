@@ -21,8 +21,10 @@ import (
 
 func TestDestaqueRecusaSkuDeOutraOrganizacaoEInexistente(t *testing.T) {
 	store := NewLiveCommerceStore(filepath.Join(t.TempDir(), "live"))
-	sessao, err := store.CreateLiveSession(LiveSession{OrganizationID: "org-a", ProjectID: "p1",
-		AuthorizedUntil: time.Now().UTC().Add(time.Hour)})
+	sessao, err := store.CreateLiveSession(LiveSession{
+		OrganizationID: "org-a", ProjectID: "p1",
+		AuthorizedUntil: time.Now().UTC().Add(time.Hour),
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
