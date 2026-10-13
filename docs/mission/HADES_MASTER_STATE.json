@@ -2322,7 +2322,10 @@
     "T1 FECHADO COM TESTE QUE REINICIA DE VERDADE (E-368): Runtime novo sobre o mesmo diretorio recupera missao, objetivo, organizacao E EVENTOS; outra pasta nao ve nada. Contraprova: com store de memoria o teste FALHA",
     "O QUE DEFINE DURABILIDADE NAO E' O PID, E' O DISCO (E-368): o 'reinicio' e' um store e um contexto NOVOS sobre o mesmo diretorio - equivalente fiel de processo que morreu",
     "RECUPERAR ESTADO NAO E' RE-EXECUTAR (E-368): o teste prova a recuperacao do estado; continuar de onde parou e' outra propriedade e segue declarada no T1",
-    "STASH ANTIGO DECLARADO (E-368): 1 stash de security/scanner-map-shape (E-195, estagio 18), obsoleto - nao descartado, declarado"
+    "STASH ANTIGO DECLARADO (E-368): 1 stash de security/scanner-map-shape (E-195, estagio 18), obsoleto - nao descartado, declarado",
+    "A CONTRAPROVA PEGOU UM DEFEITO NO MEU PROPRIO TESTE (E-369/ADV-49): com a checagem desligada o teste passava por QUALQUER erro. Teste que passa pelo motivo errado e' pior que teste ausente",
+    "O MOTOR JA' TINHA A SEGURANCA DO REINICIO (E-369): interruptedNonReadStep recusa reexecutar passo nao-leitura interrompido. Reexecutar escrita depois de crash pode DUPLICAR efeito",
+    "O INSTRUMENTO CERTO PARA O TRABALHO CERTO (E-369/ADV-50): o PowerShell mutilou um patch Python e a assercao nao foi endurecida; a ferramenta de edicao dedicada resolveu"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -2910,12 +2913,26 @@
           "descricao": "T1 pedia 'estado recuperado apos reinicio' e o item estava declarado como PARCIAL: nao havia teste dedicado provando durabilidade entre processos",
           "estado": "FECHADO com teste + contraprova (store de memoria faz o teste FALHAR)",
           "evidencia": "E-368"
+        },
+        {
+          "id": "ADV-49",
+          "severidade": "ALTA (qualidade de teste)",
+          "descricao": "MEU teste de reexecucao pos-reinicio passava pelo MOTIVO ERRADO: a assercao era so' 'err != nil', satisfeita por qualquer erro (inclusive 'tool nao registrada'), e a contrapova com a checagem desligada deixava o teste VERDE",
+          "estado": "CORRIGIDO: a assercao exige que a recusa NOMEIE o passo interrompido; a contrapova agora FALHA como deve",
+          "evidencia": "E-369"
+        },
+        {
+          "id": "ADV-50",
+          "severidade": "INFORMATIVO (instrumento)",
+          "descricao": "o PowerShell mutilou um patch Python (texto com aspas interpretado como comando); a assercao nao foi endurecida na primeira tentativa",
+          "estado": "CORRIGIDO usando a ferramenta de edicao dedicada em vez de patch por shell",
+          "evidencia": "E-369"
         }
       ],
       "proximos_ataques": [
-        "re-execucao automatica apos reinicio (T1 pede continuar de onde parou, nao so' recuperar o estado)",
+        "testar efeito duplicado REAL: passo de escrita interrompido com ferramenta registrada que grava um marcador",
         "mojibake em 5 arquivos: corrigir com o linter local como verificador",
-        "stash antigo (E-195, security/scanner-map-shape): obsoleto, declarado no checkpoint"
+        "ADV-44: medir o ganho com N chamadas de 1 linha (o lote depende do chamador)"
       ]
     },
     "estagio_42": {
@@ -3212,6 +3229,13 @@
         "prova": "Runtime novo sobre o mesmo diretorio recupera missao, objetivo, organizacao e EVENTOS; outra pasta nao ve nada",
         "contraprova": "com store de memoria o teste FALHA (o estado vivia so' na memoria)",
         "evidencia": "E-368"
+      },
+      "continuar_de_onde_parou": {
+        "estado": "IMPLEMENTADO_E_TESTADO (parte de seguranca)",
+        "prova": "passo de ESCRITA interrompido => recusa que nomeia o passo; passo de LEITURA interrompido => o motor segue",
+        "mecanismo": "Runtime.Run -> interruptedNonReadStep(mission, tools)",
+        "contraprova": "desligar a checagem faz o teste FALHAR (antes de endurecer a assercao, ele passava pelo motivo errado)",
+        "evidencia": "E-369"
       }
     }
   },
@@ -3271,6 +3295,7 @@
     "E-365": "lote de estoque efetivo: 2002 -> 2 gravacoes; vinculo declarado",
     "E-367": "lint do CI 71 -> 14, com golangci-lint local; vinculo declarado",
     "E-366": "planilha XLSX real no export, validada por openpyxl; vinculo declarado",
-    "E-368": "T1: estado recuperado apos reinicio, com contraprova; vinculo declarado"
+    "E-368": "T1: estado recuperado apos reinicio, com contraprova; vinculo declarado",
+    "E-369": "reexecucao apos reinicio: recusa de escrita interrompida com contraprova que discrimina; vinculo declarado"
   }
 }
