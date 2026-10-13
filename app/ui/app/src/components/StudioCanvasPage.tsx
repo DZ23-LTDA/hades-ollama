@@ -41,6 +41,8 @@ import {
   DevicePhoneMobileIcon,
   ChartBarIcon,
 } from "@heroicons/react/24/outline";
+// Relatório de publicação local (E-281/E-282): o que a cópia ENTREGOU de fato.
+import { PublishReportNotice } from "./PublishReportNotice";
 
 const COMPONENT_TEMPLATES: Array<{
   type: string;
@@ -1388,7 +1390,10 @@ export function StudioCanvasPage() {
                 ))}
               </div>
 
-              {deployStatus && (
+              {/* RELATÓRIO DE PUBLICAÇÃO (E-282): o que a publicação local ENTREGOU — nunca um selo verde quando a
+          aplicação não é executável. */}
+      <PublishReportNotice report={project?.publish_report} />
+      {deployStatus && (
                 <div className="mt-4 rounded-xl bg-amber-50 p-3 text-xs text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
                   <div className="font-semibold">{deployStatus.status}</div>
                   <div className="mt-1">{deployStatus.message}</div>
