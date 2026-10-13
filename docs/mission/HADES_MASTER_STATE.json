@@ -2203,7 +2203,11 @@
     "CONTRATO TESTADO GANHA DA MINHA PREFERENCIA (E-340): a suite reprovou em consent_registry dizendo que organizacao vazia precisa ser NORMALIZADA. Minha guarda contradizia contrato do repositorio; revertida no arquivo e registrada com o motivo correto",
     "PATCHER GENERICO SOBRE CODIGO DESCONHECIDO E' ARMA CARREGADA (E-340): v1 corrompeu 6 arquivos; v2 errou a forma de retorno; v3 (whitelist + assinatura de uma linha + zero certo por tipo) passou com build e vet limpos",
     "O COMPILADOR E' O ARBITRO DAS ARITIES (E-340): ListContacts(org, query) e Assign(org, id, assignee, kind, now) vieram das mensagens de erro, nao de suposicao",
-    "REVERTER A PROPRIA EDICAO QUEBRADA E' HIGIENE (E-340): git checkout apenas nos arquivos que eu quebrei, com build limpo depois e zero residuo"
+    "REVERTER A PROPRIA EDICAO QUEBRADA E' HIGIENE (E-340): git checkout apenas nos arquivos que eu quebrei, com build limpo depois e zero residuo",
+    "REGISTRAR A EVOLUCAO NAO E' AFROUXAR A EXIGENCIA (E-341): o contrato de sales_workforce ja exigia falha para escopo ausente; a guarda falha antes e com erro mais especifico, entao a assercao aceita as duas formas",
+    "MEDIR A ASSINATURA CUSTA DUAS MENSAGENS DE COMPILADOR; SUPOR CUSTOU TRES RODADAS (E-341): ListLedgerEntries vive no CompanyStore com (companyID, from, to); Proposals tem (org, status); NewCompanyLedgerStore nao existe",
+    "A REGRA v3 GENERALIZOU (E-341): 18 guardas em 5 arquivos com build 0 e vet 0 na PRIMEIRA tentativa, porque a regra de zero-por-tipo ja havia sido provada em E-340",
+    "QUATRO PENDENCIAS RESTAM, TODAS COM MOTIVO CATEGORICO (E-341): marketplace_sync (sem metodo org-first), scheduling_crossprocess (delegacao), benchmark_suite (nao-organizacao), consent_registry (contrato testado). Declarado nao e' auditado"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -2587,11 +2591,18 @@
           "descricao": "minha guarda de escopo em consent_registry CONTRADIZIA contrato testado de normalizacao para a organizacao local",
           "estado": "REVERTIDO; contrato testado prevalece; registrado com motivo declarado",
           "evidencia": "E-340"
+        },
+        {
+          "id": "ADV-20",
+          "severidade": "ALTA",
+          "descricao": "voice_active_call, company_factory, sales_workforce, company_ledger e business_snapshots aceitavam organizacao vazia",
+          "estado": "CORRIGIDO E MEDIDO (pendências 9 -> 4)",
+          "evidencia": "E-341"
         }
       ],
       "proximos_ataques": [
-        "medir as 8 pendencias restantes (voice_active_call, company_factory, sales_workforce, company_ledger, business_snapshots, marketplace_sync)",
-        "exercitar metodos vizinhos dos arquivos ja medidos (whitelist parcial)",
+        "medir marketplace_sync (nao expoe metodo com organizacao como primeiro parametro)",
+        "exercitar metodos COM MAIS PARAMETROS nos arquivos ja guardados",
         "onboarding com volume grande (limites de recurso)"
       ]
     },
@@ -2668,6 +2679,7 @@
     "E-337": "varredura sistemica de escopo vazio; vinculo declarado",
     "E-338": "catraca de escopo de tenant (instrumento de auditoria continua); vinculo declarado",
     "E-339": "medicao por comportamento de 7 pendencias da catraca; vinculo declarado",
-    "E-340": "segundo lote medido (crm, inbox); consent por contrato testado; vinculo declarado"
+    "E-340": "segundo lote medido (crm, inbox); consent por contrato testado; vinculo declarado",
+    "E-341": "terceiro lote medido (voice, factory, sales, ledger, snapshots); vinculo declarado"
   }
 }

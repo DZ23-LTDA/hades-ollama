@@ -181,6 +181,9 @@ type proposalPolicyFile struct {
 // SetDiscountPolicy define o teto de desconto autorizado (basis points). Zero REMOVE a politica e volta ao padrao
 // SEGURO: sem politica, desconto nenhum.
 func (s *SalesWorkforceStore) SetDiscountPolicy(organizationID string, maxDiscountBasisPoints int64) error {
+	if err := requireOrganization(organizationID); err != nil {
+		return err
+	}
 	organizationID = strings.TrimSpace(organizationID)
 	if organizationID == "" {
 		return fmt.Errorf("%w: organizacao e obrigatoria", ErrProposalPricingInvalid)
@@ -358,6 +361,9 @@ func (s *SalesWorkforceStore) CreateProposal(request SalesProposalRequest, now t
 
 // SendProposal marca o envio, exigindo CONSENTIMENTO do contato no canal informado.
 func (s *SalesWorkforceStore) SendProposal(organizationID, proposalID, channel, actor string, now time.Time) (SalesProposal, error) {
+	if err := requireOrganization(organizationID); err != nil {
+		return SalesProposal{}, err
+	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.loadOrganizationLocked(organizationID)
@@ -390,6 +396,9 @@ func (s *SalesWorkforceStore) SendProposal(organizationID, proposalID, channel, 
 
 // DecideProposal registra a decisão do cliente. Decisão é TERMINAL.
 func (s *SalesWorkforceStore) DecideProposal(organizationID, proposalID, decision, actor string, now time.Time) (SalesProposal, error) {
+	if err := requireOrganization(organizationID); err != nil {
+		return SalesProposal{}, err
+	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.loadOrganizationLocked(organizationID)
@@ -426,6 +435,9 @@ func (s *SalesWorkforceStore) DecideProposal(organizationID, proposalID, decisio
 
 // Proposals lista as propostas da organização, opcionalmente filtrando por estado.
 func (s *SalesWorkforceStore) Proposals(organizationID, status string) []SalesProposal {
+	if err := requireOrganization(organizationID); err != nil {
+		return nil
+	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.loadOrganizationLocked(organizationID)
@@ -443,6 +455,9 @@ func (s *SalesWorkforceStore) Proposals(organizationID, status string) []SalesPr
 
 // Proposal devolve uma proposta específica, escopada por organização.
 func (s *SalesWorkforceStore) Proposal(organizationID, proposalID string) (SalesProposal, error) {
+	if err := requireOrganization(organizationID); err != nil {
+		return SalesProposal{}, err
+	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.loadOrganizationLocked(organizationID)
@@ -464,6 +479,9 @@ func (s *SalesWorkforceStore) proposalIndexLocked(organizationID, proposalID str
 
 // ScheduleFollowUp cria o acompanhamento de pós-venda, com prazo.
 func (s *SalesWorkforceStore) ScheduleFollowUp(organizationID, contactID, orderID, reason string, due time.Duration, now time.Time) (SalesFollowUp, error) {
+	if err := requireOrganization(organizationID); err != nil {
+		return SalesFollowUp{}, err
+	}
 	organizationID = strings.TrimSpace(organizationID)
 	contactID = strings.TrimSpace(contactID)
 	if organizationID == "" || contactID == "" {
@@ -506,6 +524,9 @@ func (s *SalesWorkforceStore) ScheduleFollowUp(organizationID, contactID, orderI
 
 // CompleteFollowUp fecha o acompanhamento.
 func (s *SalesWorkforceStore) CompleteFollowUp(organizationID, followUpID, actor, outcome string, now time.Time) (SalesFollowUp, error) {
+	if err := requireOrganization(organizationID); err != nil {
+		return SalesFollowUp{}, err
+	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.loadOrganizationLocked(organizationID)
@@ -534,6 +555,9 @@ func (s *SalesWorkforceStore) CompleteFollowUp(organizationID, followUpID, actor
 
 // FollowUps lista os acompanhamentos, opcionalmente só os atrasados.
 func (s *SalesWorkforceStore) FollowUps(organizationID string, overdueOnly bool, now time.Time) []SalesFollowUp {
+	if err := requireOrganization(organizationID); err != nil {
+		return nil
+	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.loadOrganizationLocked(organizationID)

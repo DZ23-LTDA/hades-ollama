@@ -210,6 +210,9 @@ func (s *CompanyStore) RecordLedgerEntry(entry LedgerEntry, now time.Time) (Ledg
 
 // ListLedgerEntries devolve os lançamentos do período (limites zero = sem limite).
 func (s *CompanyStore) ListLedgerEntries(companyID string, from, to time.Time) ([]LedgerEntry, error) {
+	if err := requireOrganization(companyID); err != nil {
+		return nil, err
+	}
 	companyID = strings.TrimSpace(companyID)
 	if companyID == "" {
 		return nil, fmt.Errorf("%w: company is required", ErrLedgerEntryInvalid)
@@ -239,6 +242,9 @@ func (s *CompanyStore) ListLedgerEntries(companyID string, from, to time.Time) (
 // ReconcileLedgerEntry concilia o lançamento com uma referência externa.
 // `changed=false` significa que já estava conciliado com a MESMA referência.
 func (s *CompanyStore) ReconcileLedgerEntry(companyID, entryID, reference string, now time.Time) (LedgerEntry, bool, error) {
+	if err := requireOrganization(companyID); err != nil {
+		return LedgerEntry{}, false, err
+	}
 	companyID = strings.TrimSpace(companyID)
 	entryID = strings.TrimSpace(entryID)
 	reference = strings.TrimSpace(reference)
@@ -282,6 +288,9 @@ func (s *CompanyStore) ReconcileLedgerEntry(companyID, entryID, reference string
 
 // LedgerSummary calcula fluxo de caixa e cobertura de conciliação do período.
 func (s *CompanyStore) LedgerSummary(companyID string, from, to time.Time) (LedgerSummary, error) {
+	if err := requireOrganization(companyID); err != nil {
+		return LedgerSummary{}, err
+	}
 	entries, err := s.ListLedgerEntries(companyID, from, to)
 	if err != nil {
 		return LedgerSummary{}, err
@@ -317,6 +326,9 @@ func (s *CompanyStore) LedgerSummary(companyID string, from, to time.Time) (Ledg
 // UnreconciledLedgerEntries devolve o que ficou sem conciliar além do prazo — a
 // fila de trabalho de quem fecha o mês.
 func (s *CompanyStore) UnreconciledLedgerEntries(companyID string, olderThanDays int, now time.Time) ([]LedgerEntry, error) {
+	if err := requireOrganization(companyID); err != nil {
+		return nil, err
+	}
 	entries, err := s.ListLedgerEntries(companyID, time.Time{}, time.Time{})
 	if err != nil {
 		return nil, err

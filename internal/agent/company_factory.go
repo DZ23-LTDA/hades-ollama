@@ -318,6 +318,9 @@ func (r *Runtime) LaunchCompany(request CompanyFactoryRequest, now time.Time) (C
 // CompanyFactoryReportFor devolve o relatório de uma empresa já lançada, reconstruído a
 // partir do estado real (empresa, catálogo e arquivos em disco).
 func (r *Runtime) CompanyFactoryReportFor(organizationID, companyID string) (CompanyFactoryReport, error) {
+	if err := requireOrganization(organizationID); err != nil {
+		return CompanyFactoryReport{}, err
+	}
 	report := CompanyFactoryReport{OrganizationID: consentScope(organizationID)}
 	company, err := r.CompanyStore().Get(companyID)
 	if err != nil {

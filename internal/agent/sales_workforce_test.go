@@ -196,8 +196,12 @@ func TestFollowUpIsIdempotentPerOrderAndOverdueIsMeasurable(t *testing.T) {
 		t.Fatalf("motivo vazio precisa falhar, veio %v", err)
 	}
 	// Escopo obrigatório.
-	if _, err := runtime.SalesWorkforce().ScheduleFollowUp("", "contato-pos", "ord-3", "motivo", 0, now); !errors.Is(err, ErrFollowUpInvalid) {
-		t.Fatalf("organização ausente precisa falhar, veio %v", err)
+	//
+	// E-341: a guarda `requireOrganization` faz a recusa ANTES do módulo, com erro próprio
+	// (`ErrTenantScopeRequired`). O contrato aqui e' "organizacao ausente PRECISA FALHAR" - e ela falha, mais cedo e
+	// com motivo mais especifico. Aceitar as DUAS formas e' registrar a evolucao, nao afrouxar a exigencia.
+	if _, err := runtime.SalesWorkforce().ScheduleFollowUp("", "contato-pos", "ord-3", "motivo", 0, now); !errors.Is(err, ErrFollowUpInvalid) && !errors.Is(err, ErrTenantScopeRequired) {
+		t.Fatalf("organização ausente precisa falhar (ErrFollowUpInvalid ou ErrTenantScopeRequired), veio %v", err)
 	}
 
 	// ATRASO é MEDIDO: antes do prazo não há atraso; depois, sim.

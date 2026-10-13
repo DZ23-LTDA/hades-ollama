@@ -162,6 +162,9 @@ func (s *BusinessSnapshotStore) Record(report BusinessStatusReport, now time.Tim
 
 // Trend lê a série da organização no período pedido (from inclusivo; zero significa tudo).
 func (s *BusinessSnapshotStore) Trend(organizationID string, from time.Time) (BusinessTrend, error) {
+	if err := requireOrganization(organizationID); err != nil {
+		return BusinessTrend{}, err
+	}
 	organizationID = strings.TrimSpace(organizationID)
 	if organizationID == "" {
 		return BusinessTrend{}, fmt.Errorf("%w: organização é obrigatória", ErrBusinessSnapshotScopeRequired)
@@ -221,6 +224,9 @@ func (s *BusinessSnapshotStore) Trend(organizationID string, from time.Time) (Bu
 
 // BusinessSnapshot registrar a amostra do agora e devolve a série atualizada.
 func (r *Runtime) BusinessSnapshot(organizationID string, now time.Time) (BusinessSnapshot, bool, BusinessTrend, error) {
+	if err := requireOrganization(organizationID); err != nil {
+		return BusinessSnapshot{}, false, BusinessTrend{}, err
+	}
 	if r.businessSnapshots == nil {
 		return BusinessSnapshot{}, false, BusinessTrend{}, fmt.Errorf("%w: store de amostras indisponível", ErrBusinessSnapshotScopeRequired)
 	}
@@ -241,6 +247,9 @@ func (r *Runtime) BusinessSnapshot(organizationID string, now time.Time) (Busine
 
 // BusinessTrend lê a série sem registrar nada.
 func (r *Runtime) BusinessTrend(organizationID string, from time.Time) (BusinessTrend, error) {
+	if err := requireOrganization(organizationID); err != nil {
+		return BusinessTrend{}, err
+	}
 	if r.businessSnapshots == nil {
 		return BusinessTrend{}, fmt.Errorf("%w: store de amostras indisponível", ErrBusinessSnapshotScopeRequired)
 	}
