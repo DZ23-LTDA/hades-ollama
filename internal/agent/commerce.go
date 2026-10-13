@@ -346,6 +346,22 @@ func (s *CommerceStore) UpsertProduct(product CommerceProduct, now time.Time) (C
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	// E-360: O ORÇAMENTO VALE TAMBÉM NO CAMINHO DIRETO. Em E-359 o teto acumulado vivia só no onboarding, e eu
+	// declarei esse limite: uma chamada direta a `UpsertProduct` não consumia orçamento. ***Limite que depende do
+	// chamador lembrar de usar o caminho certo não é limite.*** A contagem é feita DENTRO do lock para ser consistente
+	// com o que está sendo gravado. Atualizar SKU existente NÃO é bloqueado: o acervo não cresce.
+	if !existeSKULocked(s, product.OrganizationID, product.SKU) {
+		acervo := 0
+		for _, existente := range s.products {
+			if existente.OrganizationID == product.OrganizationID {
+				acervo++
+			}
+		}
+		if limite := DefaultOnboardingLimits().MaxRows; acervo+1 > limite {
+			return CommerceProduct{}, fmt.Errorf("%w: acervo da organização chegaria a %d produtos (limite %d); "+
+				"use o onboarding com um plano menor ou remova produtos antes de acrescentar", ErrOnboardingTooLarge, acervo+1, limite)
+		}
+	}
 	for id, existing := range s.products {
 		if existing.OrganizationID == product.OrganizationID && existing.SKU == product.SKU {
 			product.ID = id
@@ -1151,4 +1167,15 @@ func (s *CommerceStore) RemoveProduct(organizationID, sku string) error {
 		}
 	}
 	return nil
+}
+
+// existeSKULocked informa se o SKU já existe para a organização. Exige o lock de escrita (ou leitura) já tomado.
+func existeSKULocked(s *CommerceStore, organizationID, sku string) bool {
+	alvo := strings.TrimSpace(sku)
+	for _, produto := range s.products {
+		if produto.OrganizationID == organizationID && produto.SKU == alvo {
+			return true
+		}
+	}
+	return false
 }
