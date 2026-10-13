@@ -67,6 +67,9 @@ func (s *OmnichannelRateLimitStore) path(organizationID string) string {
 // Arquivo ausente é estado normal (ainda não houve evento). Qualquer outro erro é DEVOLVIDO: uma janela que não
 // pôde ser lida é uma proteção que não existe, e isso precisa ser dito.
 func (s *OmnichannelRateLimitStore) Load(organizationID string) (map[string]omnichannelRateLimitBucket, error) {
+	if err := requireOrganization(organizationID); err != nil {
+		return nil, err
+	}
 	caminho := s.path(organizationID)
 	if caminho == "" {
 		return nil, nil
@@ -87,6 +90,9 @@ func (s *OmnichannelRateLimitStore) Load(organizationID string) (map[string]omni
 
 // Save grava as janelas da organização.
 func (s *OmnichannelRateLimitStore) Save(organizationID string, buckets map[string]omnichannelRateLimitBucket) error {
+	if err := requireOrganization(organizationID); err != nil {
+		return err
+	}
 	caminho := s.path(organizationID)
 	if caminho == "" {
 		return nil

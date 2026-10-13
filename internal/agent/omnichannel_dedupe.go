@@ -76,6 +76,9 @@ func (s *OmnichannelDedupeStore) path(organizationID string) string {
 
 // Load devolve o índice persistido da organização. Arquivo ausente é estado normal.
 func (s *OmnichannelDedupeStore) Load(organizationID string) (map[string]OmnichannelDedupeEntry, error) {
+	if err := requireOrganization(organizationID); err != nil {
+		return nil, err
+	}
 	caminho := s.path(organizationID)
 	if caminho == "" {
 		return nil, nil
@@ -96,6 +99,9 @@ func (s *OmnichannelDedupeStore) Load(organizationID string) (map[string]Omnicha
 
 // Save grava o índice da organização já PODADO por quem chama.
 func (s *OmnichannelDedupeStore) Save(organizationID string, entries map[string]OmnichannelDedupeEntry) error {
+	if err := requireOrganization(organizationID); err != nil {
+		return err
+	}
 	caminho := s.path(organizationID)
 	if caminho == "" {
 		return nil

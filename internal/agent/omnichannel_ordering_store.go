@@ -51,6 +51,9 @@ func (s *OmnichannelOrderingStore) path(organizationID string) string {
 
 // Load lê as linhas do tempo da organização. Arquivo ausente não é erro: é organização nova.
 func (s *OmnichannelOrderingStore) Load(organizationID string) (map[string]int64, error) {
+	if err := requireOrganization(organizationID); err != nil {
+		return nil, err
+	}
 	if s == nil || s.root == "" {
 		return nil, nil
 	}
@@ -78,6 +81,9 @@ func (s *OmnichannelOrderingStore) Load(organizationID string) (map[string]int64
 // Save grava as linhas do tempo aplicando o TETO: guarda as mais RECENTES, descarta as mais antigas. Sem teto, um
 // processo longo acumularia uma chave por conversa para sempre.
 func (s *OmnichannelOrderingStore) Save(organizationID string, heads map[string]int64) error {
+	if err := requireOrganization(organizationID); err != nil {
+		return err
+	}
 	if s == nil || s.root == "" {
 		return nil
 	}

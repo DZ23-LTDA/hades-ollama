@@ -61,6 +61,9 @@ func (s *OmnichannelDLQStore) path(organizationID string) string {
 
 // Load devolve as entradas persistidas da organização (mais antigas primeiro).
 func (s *OmnichannelDLQStore) Load(organizationID string) ([]OmnichannelDeadLetter, error) {
+	if err := requireOrganization(organizationID); err != nil {
+		return nil, err
+	}
 	path := s.path(organizationID)
 	if path == "" {
 		return nil, nil
@@ -82,6 +85,9 @@ func (s *OmnichannelDLQStore) Load(organizationID string) ([]OmnichannelDeadLett
 
 // Save grava a fila da organização, respeitando o teto dela.
 func (s *OmnichannelDLQStore) Save(organizationID string, entries []OmnichannelDeadLetter) error {
+	if err := requireOrganization(organizationID); err != nil {
+		return err
+	}
 	path := s.path(organizationID)
 	if path == "" {
 		return nil

@@ -42,14 +42,7 @@ DISPENSAS = {
     "crm.go": "NAO_MEDIDO: monta caminho de armazenamento por organizacao e ainda NAO foi varrido por comportamento (falta teste que ataque a API com organizacao vazia). Pendencia declarada em E-338 — nao e' aprovacao.",
     "inbox.go": "NAO_MEDIDO: monta caminho de armazenamento por organizacao e ainda NAO foi varrido por comportamento (falta teste que ataque a API com organizacao vazia). Pendencia declarada em E-338 — nao e' aprovacao.",
     "marketplace_sync.go": "NAO_MEDIDO: monta caminho de armazenamento por organizacao e ainda NAO foi varrido por comportamento (falta teste que ataque a API com organizacao vazia). Pendencia declarada em E-338 — nao e' aprovacao.",
-    "omnichannel_connectors.go": "NAO_MEDIDO: monta caminho de armazenamento por organizacao e ainda NAO foi varrido por comportamento (falta teste que ataque a API com organizacao vazia). Pendencia declarada em E-338 — nao e' aprovacao.",
-    "omnichannel_dedupe.go": "NAO_MEDIDO: monta caminho de armazenamento por organizacao e ainda NAO foi varrido por comportamento (falta teste que ataque a API com organizacao vazia). Pendencia declarada em E-338 — nao e' aprovacao.",
-    "omnichannel_dlq.go": "NAO_MEDIDO: monta caminho de armazenamento por organizacao e ainda NAO foi varrido por comportamento (falta teste que ataque a API com organizacao vazia). Pendencia declarada em E-338 — nao e' aprovacao.",
-    "omnichannel_ordering_store.go": "NAO_MEDIDO: monta caminho de armazenamento por organizacao e ainda NAO foi varrido por comportamento (falta teste que ataque a API com organizacao vazia). Pendencia declarada em E-338 — nao e' aprovacao.",
-    "omnichannel_rate_limit.go": "NAO_MEDIDO: monta caminho de armazenamento por organizacao e ainda NAO foi varrido por comportamento (falta teste que ataque a API com organizacao vazia). Pendencia declarada em E-338 — nao e' aprovacao.",
     "sales_workforce.go": "NAO_MEDIDO: monta caminho de armazenamento por organizacao e ainda NAO foi varrido por comportamento (falta teste que ataque a API com organizacao vazia). Pendencia declarada em E-338 — nao e' aprovacao.",
-    "service_agent_approvals.go": "NAO_MEDIDO: monta caminho de armazenamento por organizacao e ainda NAO foi varrido por comportamento (falta teste que ataque a API com organizacao vazia). Pendencia declarada em E-338 — nao e' aprovacao.",
-    "service_agent_audit.go": "NAO_MEDIDO: monta caminho de armazenamento por organizacao e ainda NAO foi varrido por comportamento (falta teste que ataque a API com organizacao vazia). Pendencia declarada em E-338 — nao e' aprovacao.",
     "voice_active_call.go": "NAO_MEDIDO: monta caminho de armazenamento por organizacao e ainda NAO foi varrido por comportamento (falta teste que ataque a API com organizacao vazia). Pendencia declarada em E-338 — nao e' aprovacao.",
 }
 
