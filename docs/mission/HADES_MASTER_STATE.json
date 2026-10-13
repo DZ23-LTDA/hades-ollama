@@ -2334,7 +2334,13 @@
     "REGISTRO O QUE MEDI, NAO O NUMERO REDONDO (E-371): o lote ficou abaixo da resolucao do cronometro ('0,000s'), entao o ganho e' um LIMITE INFERIOR (~1000x), nao um valor exato",
     "EFEITO EXTERNO REAL NO REINICIO (E-372): a ferramenta grava um ARQUIVO; com as guardas ativas o arquivo NAO existe no disco. A prova e' sobre o MUNDO, nao sobre uma variavel",
     "A METADE QUE PROVA QUE O EFEITO SABE ACONTECER (E-372): sem executar a ferramenta diretamente, o teste principal poderia passar porque ela nunca grava - a mesma classe de defeito de E-369",
-    "ADV-44 MEDIDO EM DUAS APIs (E-372): UpsertProduct (500 x 1,05s/500 gravacoes) e RecordStock (300 x 0,93s/300 gravacoes, ganho 211x com lote). O lote vale o que o chamador faz com ele"
+    "ADV-44 MEDIDO EM DUAS APIs (E-372): UpsertProduct (500 x 1,05s/500 gravacoes) e RecordStock (300 x 0,93s/300 gravacoes, ganho 211x com lote). O lote vale o que o chamador faz com ele",
+    "ADV-53 (CRITICA): MINHA MA CONFIGURACAO PRODUZIU UM FALSO ACHADO DE PRODUTO. Sem ToolDescriptorSHA256 e sem Capabilities a ferramenta nunca executava; a '2a camada' que a contrapova revelou era o MEU campo vazio. A revisao adversarial independente (subagente) pegou o que eu nao vi",
+    "A PROVA ESTAVA NA MINHA PROPRIA EVIDENCIA (ADV-53): E-370 registra que o contador ficou em 0 MESMO sem a guarda - eu registrei a prova sem ver o que ela significava",
+    "PROVA QUE NAO PODE FALHAR NAO E' PROVA (ADV-53): contador e os.Stat eram decorativos. So' a assercao de NOME falhava - e ela e' lexica, nao semantica",
+    "EFEITO DUPLICADO DEMONSTRADO (E-373): com a configuracao CORRETA (Capabilities + hash + ordem Run->efeito->erro), desligar a guarda faz a ferramenta executar 1 vez",
+    "ORDEM DE ASSERCAO FAZ PARTE DO TESTE (E-373): a 1a tentativa da correcao pos a checagem ANTES do Run - trivialmente zero, pior que decorativa",
+    "MOJIBAKE RESOLVIDO COM A FERRAMENTA ADEQUADA (E-373): ftfy corrigiu 5 de 5 em uma passada, depois de 2 tentativas manuais falharem. Quando a tarefa resiste, a resposta costuma ser uma ferramenta diferente, nao mais esforco"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -2950,12 +2956,22 @@
           "descricao": "tres instrumentos errados na mesma fatia: Step.Inputs (e' Input), StepCompleted (e' StepSucceeded) e patch Python embutido no PowerShell falhando 3x por aspas mutiladas",
           "estado": "CORRIGIDO: compilador como arbitro para os campos; ferramenta de edicao dedicada em vez de patch por shell",
           "evidencia": "E-370"
+        },
+        {
+          "id": "ADV-53",
+          "severidade": "CRITICA (falso achado de produto + prova decorativa)",
+          "descricao": "os testes de efeito de E-370/E-372 eram INFALSIFICAVEIS: sem ToolDescriptorSHA256 e sem Capabilities a ferramenta nunca executava, entao contador e os.Stat nao podiam falhar. A 'segunda camada' que a contrapova 'revelou' era o MEU campo vazio - minha ma configuracao produziu um FALSO ACHADO DE PRODUTO",
+          "descoberto_por": "revisao adversarial independente (subagente, contexto fresco) - o padrao que o autor nao ve",
+          "estado": "CORRIGIDO: capacidade concedida, hash preenchido, assercoes reordenadas; o efeito duplicado esta DEMONSTRADO (contador 1)",
+          "pendente": "ordem de assercao no teste de arquivo; metade de controle passando pelo Runtime.Run; assercao semantica no teste de leitura",
+          "evidencia": "E-373"
         }
       ],
       "proximos_ataques": [
-        "demonstrar o efeito por workspace.write com o fluxo de aprovacao completo (hoje o teste grava direto em tmp)",
-        "mojibake em 5 arquivos: ferramenta adequada, nao round-trip",
-        "checkpoint remedido: contagem final de achados, evidencias e limites"
+        "reordenar as assercoes do teste de ARQUIVO (efeito antes do erro) e refazer a contrapova nele",
+        "reescrever a metade de controle para passar pelo Runtime.Run (o revisor provou que chamar Execute direto nao fecha o buraco)",
+        "teste de leitura: registrar ferramenta RiskRead real e assertar contador, em vez de discriminar pelo ID 'passo-interrompido'",
+        "MOJIBAKE RESOLVIDO com ftfy (5 de 5) na branch wip/adv53-decorative-assertions"
       ]
     },
     "estagio_42": {
@@ -3261,19 +3277,15 @@
         "evidencia": "E-369"
       },
       "efeito_duplicado_medido": {
-        "estado": "MEDIDO com ferramenta REAL registrada (contador em 0); contrapova revelou defesa em CAMADAS",
-        "camadas": [
-          "interruptedNonReadStep (passo nao-leitura interrompido)",
-          "ErrApprovalPayloadChanged (aprovacao vinculada ao descritor/payload, 9 pontos no runtime.go)"
-        ],
-        "nao_demonstrado": "a duplicacao em si - exigiria derrubar as DUAS camadas, enfraquecendo seguranca para agradar um teste",
-        "evidencia": "E-370"
+        "estado": "DEMONSTRADO: com as guardas ativas a ferramenta NAO executa (contador 0); desligando interruptedNonReadStep ela executa 1 vez",
+        "como": "conceder Capabilities (workspace:write) + preencher ToolDescriptorSHA256 + ordenar assercoes Run -> EFEITO -> erro",
+        "retificacao": "a 'defesa em camadas' de E-370 era ERRADA: o ErrApprovalPayloadChanged vinha do MEU campo ToolDescriptorSHA256 vazio, nao de uma camada de produto",
+        "evidencia": "E-373"
       },
       "efeito_externo_real": {
-        "estado": "IMPLEMENTADO_E_TESTADO: ferramenta grava ARQUIVO; com as guardas ativas o arquivo NAO existe",
-        "metade_necessaria": "TestFerramentaDeArquivoGravaQuandoExecutada prova que o efeito SABE acontecer",
-        "contraprova": "1a guarda desligada => 2a camada (ErrApprovalPayloadChanged) recusa; arquivo continua inexistente",
-        "evidencia": "E-372"
+        "estado": "PARCIAL (RETIFICADO): a afirmacao de E-372 era verdadeira POR CONSTRUCAO (a ferramenta nunca executava)",
+        "pendente": "reordenar as assercoes (efeito antes do erro) para que o teste de disco tambem discrimine",
+        "evidencia": "E-373"
       }
     }
   },
@@ -3337,6 +3349,7 @@
     "E-369": "reexecucao apos reinicio: recusa de escrita interrompida com contraprova que discrimina; vinculo declarado",
     "E-370": "efeito duplicado real: 0 execucoes com as guardas; contrapova revelou segunda camada; vinculo declarado",
     "E-371": "ADV-44 medido: N chamadas 1,05s/500 gravacoes x lote 0,000s/1 gravacao; vinculo declarado",
-    "E-372": "efeito externo real (arquivo) apos reinicio + RecordStock medido; vinculo declarado"
+    "E-372": "efeito externo real (arquivo) apos reinicio + RecordStock medido; vinculo declarado",
+    "E-373": "efeito duplicado demonstrado + retificacao de E-370/E-372; vinculo declarado"
   }
 }

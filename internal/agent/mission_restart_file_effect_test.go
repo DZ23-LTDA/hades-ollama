@@ -57,6 +57,9 @@ func TestReinicioNaoTocaOArquivoDePassoInterrompido(t *testing.T) {
 	}
 	missao, err := primeiro.CreateMission(context.Background(), CreateMissionRequest{
 		Objective: "passo de escrita com efeito em disco ficou interrompido", ProjectID: projeto.ID, OrganizationID: "org-a",
+		// 🚨 ADV-53: a capacidade PRECISA ser concedida, senão a 3ª camada (`ErrCapabilityDenied`) recusa e o arquivo
+		// nunca poderia existir — *a asserção de disco seria decorativa de novo*.
+		Capabilities: []string{"workspace:write"},
 	})
 	if err != nil {
 		t.Fatal(err)
