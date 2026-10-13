@@ -2360,7 +2360,13 @@
     "/* */ E STRING SATISFAZEM A GUARDA (ADV-56/3): _sem_comentarios so' remove //. E // dentro de string APAGA guarda real (falso positivo)",
     "IDENTIFICADOR EM SUBPASTA ABORTA A VARREDURA (ADV-56/4): FileNotFoundError + except Exception => a violacao REAL de outro arquivo nao e' reportada",
     "VACUIDADE = APROVACAO (ADV-56/7): caminho com typo devolve ([], []) e imprime a frase de sucesso",
-    "AUDITORIA INDEPENDENTE FUNCIONA (ADV-53..56): QUATRO linhas auditadas por subagentes de contexto fresco, QUATRO vezes encontrada a mesma classe - e duas vezes a medicao derrubou uma afirmacao MINHA"
+    "AUDITORIA INDEPENDENTE FUNCIONA (ADV-53..56): QUATRO linhas auditadas por subagentes de contexto fresco, QUATRO vezes encontrada a mesma classe - e duas vezes a medicao derrubou uma afirmacao MINHA",
+    "O NUMERO PUBLICADO ESTAVA ERRADO (E-380): as contagens sao 24 caminho / 5 identificador / 2 comentario / 1 indefinido - o join do E-355 escondia um uso real de caminho dentro de 'comentario'. Agora ha teste que PINa as contagens",
+    "EVIDENCIA HISTORICA NAO SE REESCREVE (E-380): as linhas E-352/E-355 ficam como estao; a doc canonica aponta a medicao que as supera",
+    "GUARDA QUE SE SATISFAZ COM UMA MENCAO E' PIOR QUE GUARDA AUSENTE (E-381): comentario de bloco e string aprovavam arquivo sem guarda",
+    "INSTRUMENTO QUE MORRE NO PRIMEIRO ARQUIVO ESTRANHO APROVA TUDO O QUE NAO VIU (E-382): glob nao recursivo + basename abortavam a varredura",
+    "DISPENSA QUE NAO CASA COM USO NENHUM NAO E' CONTEXTO, E' RUIDO QUE PARECE DECISAO (E-383)",
+    "MEDICAO VAZIA NAO PODE IMPRIMIR APROVACAO (E-384): caminho com typo devolvia ([], []) E a frase de sucesso"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -3014,12 +3020,11 @@
         }
       ],
       "proximos_ataques": [
-        "ADV-56/1: corrigir o join (nao entrar em linha de comentario) e travar scheduling_crossprocess.go:46 como fixture que EXIGE 'caminho'",
-        "ADV-56/2: teste na suite da catraca para guarda fora de comentario (// E /* */ E string) - sem isso a correcao e' decorativa",
-        "ADV-56/4: rglob + chave por caminho RELATIVO + nao abortar a varredura no primeiro erro",
-        "ADV-56/5: pinar as contagens reais e testar classificar_statement (hoje reverter o E-355 deixa a suite verde)",
-        "ADV-56/6: dispensa por caminho relativo com deteccao de obsoletas",
-        "adotar o classificador ESTRUTURAL medido (mesmas contagens, sem dependencia de nomes) - ja verificado"
+        "adotar a variante ESTRUTURAL do classificador (medida com as MESMAS contagens e sem dependencia de nomes)",
+        "provar declaracoes_obsoletas ISOLADAMENTE (declarar a linha real E uma fantasma ao mesmo tempo)",
+        "tratar a mesma vacuidade no main do classificador (medicao vazia nao pode imprimir aprovacao)",
+        "ADV-56/8: a regra 'definicao' e' checada antes da de comentario",
+        "endurecer a barreira da contraprova entre processos (poll 5ms vs janela ~1,7ms)"
       ]
     },
     "estagio_42": {
@@ -3402,6 +3407,11 @@
     "E-374": "ADV-54: mesma classe no live commerce; vinculo declarado",
     "E-375": "teste do teste dos checkers (b)/(c) com controle; vinculo declarado",
     "E-378": "auditoria do classificador de escopo: classificacao dirigida por nomes; vinculo declarado",
-    "E-379": "3a auditoria independente: o classificador olha o comentario vizinho; 8 achados provados"
+    "E-379": "3a auditoria independente: o classificador olha o comentario vizinho; 8 achados provados",
+    "E-380": "correcoes do ADV-56, com medicao e limites declarados; vinculo declarado",
+    "E-381": "correcoes do ADV-56, com medicao e limites declarados; vinculo declarado",
+    "E-382": "correcoes do ADV-56, com medicao e limites declarados; vinculo declarado",
+    "E-383": "correcoes do ADV-56, com medicao e limites declarados; vinculo declarado",
+    "E-384": "correcoes do ADV-56, com medicao e limites declarados; vinculo declarado"
   }
 }

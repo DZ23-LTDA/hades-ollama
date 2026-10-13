@@ -15,7 +15,7 @@
 | Achados de auditoria adversarial | **28** (ADV-01…ADV-28) | `HADES_MASTER_STATE.json` → `v22.auditoria_adversarial` |
 | Achados por estado | **19 corrigidos/medidos** · **2 sem defeito** (ADV-02, ADV-08) · **1 revertido por contrato testado** (ADV-19) · **1 resolvido por sonda** (ADV-24) · **1 demonstrado** (ADV-03) · **1 prova por catraca** (ADV-16) · **1 rede ampliada** (ADV-27) | contagem por `estado` |
 | Pendências de escopo de tenant | **1** (era **18** há oito fatias) | `scripts/hades_tenant_scope_check.py --check` |
-| Classificação de escopo | **23 caminho · 5 identificador · 2 comentário · 1 indefinido declarado** | `scripts/hades_scope_classifier.py` |
+| Classificação de escopo | **24 caminho · 5 identificador · 2 comentário · 1 indefinido declarado** (*MEDIÇÃO CORRIGIDA em E-380: o `join` entrava na linha de comentário e escondia **um uso real de caminho** dentro de `comentario`; a contagem está agora **pinada por teste** — `24` é o número do instrumento, e as linhas históricas E-352/E-355 (22/23) **não** foram reescritas, porque evidência histórica é história: aponta-se a medição que a supera*) | `scripts/hades_scope_classifier.py` |
 | Notas de estado registradas | **1029** | `HADES_MASTER_STATE.json` → `notes` |
 | Branches remotas | **372** | `git ls-remote --heads origin` |
 | Veredito de release | **`NOT_RELEASE_READY`** | checker de missão |
