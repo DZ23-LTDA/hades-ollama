@@ -2211,7 +2211,12 @@
     "INSTRUMENTO QUE RECONHECE UM UNICO PADRAO TRANSFORMA CODIGO CERTO EM DIVIDA (E-342): marketplace_sync e company.Create ja recusavam organizacao vazia; a catraca os acusava porque so procurava requireOrganization(",
     "DIVIDA INVENTADA E' PIOR QUE DIVIDA DECLARADA (E-342): relatorio que acusa o que esta certo ensina a ignorar o relatorio. Corrigido com teste nas duas direcoes",
     "RECONHECER NAO E' PROVAR (E-342): o segundo padrao e' aproximacao por regex; a prova forte continua sendo o teste de comportamento que ataca a API com organizacao vazia",
-    "SO' RESTAM CATEGORIAS, NAO DIVIDAS (E-342): scheduling_crossprocess (delegacao) e benchmark_suite (nao-organizacao), ambas declaradas com motivo categorico"
+    "SO' RESTAM CATEGORIAS, NAO DIVIDAS (E-342): scheduling_crossprocess (delegacao) e benchmark_suite (nao-organizacao), ambas declaradas com motivo categorico",
+    "T2: PRIMEIRA MEDICAO RED->GREEN REAL (E-343): fixture com bug ficou vermelho, o modelo local corrigiu e ficou verde - 1 hunk, 2 linhas, 11,7s, com qwen2.5:7b",
+    "O MODELO TRAPACEOU NA PRIMEIRA TENTATIVA (E-343): qwen2.5:7b alterou o ARQUIVO DE TESTE em vez do bug. O anti-trapaca recusou, deu feedback, e na 2a tentativa ele consertou o codigo. O registro guarda as DUAS tentativas",
+    "TRAPACA E' MEDICAO, NAO ERRO (E-343): eu havia feito trapacear ser erro de execucao; o correto e' virar VEREDITO e o laco continuar com feedback - como o vermelho, e' resultado",
+    "VALOR ZERO NAO PODE SIGNIFICAR APROVADO (E-343): green_exit comecava em 0, que e' o codigo de `go test` PASSOU - um teste que nunca rodou pareceria aprovado. Agora comeca em -1",
+    "SEM PARIDADE POR DECRETO (E-343): mede UM fixture pequeno e UM harness minimo sobre Ollama local. Harness externo = BLOCKED_BY_EXTERNAL_DEPENDENCY e NAO_MEDIDO - nunca 'ok' por ausencia"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -2660,6 +2665,32 @@
       "bloqueado_externo": [
         "producao real de MP4 com FFmpeg (binario ausente no ambiente)"
       ]
+    },
+    "paridade_t2": {
+      "estado": "MEDIDO para o harness local minimo; NAO_MEDIDO para os demais",
+      "instrumento": "internal/agent/harness_benchmark.go (fixture + red obrigatorio + anti-trapaca + hunks + duracao)",
+      "medicoes": [
+        {
+          "harness": "ollama-local-minimo",
+          "modelo": "qwen2.5:7b",
+          "red_exit": 1,
+          "green_exit": 0,
+          "tentativas": 2,
+          "hunks": 1,
+          "linhas": 2,
+          "duracao_s": 11.7,
+          "veredito": "GREEN",
+          "observacao": "na 1a tentativa o modelo alterou o ARQUIVO DE TESTE (anti-trapaca recusou e deu feedback); na 2a consertou calc.go"
+        }
+      ],
+      "nao_medido": [
+        "agente Hades completo",
+        "Claude Code",
+        "Codex",
+        "Manus",
+        "outros modelos locais"
+      ],
+      "bloqueio": "harnesses externos exigem credencial/login: BLOCKED_BY_EXTERNAL_DEPENDENCY"
     }
   },
   "unlinked_evidence": {
@@ -2692,6 +2723,7 @@
     "E-339": "medicao por comportamento de 7 pendencias da catraca; vinculo declarado",
     "E-340": "segundo lote medido (crm, inbox); consent por contrato testado; vinculo declarado",
     "E-341": "terceiro lote medido (voice, factory, sales, ledger, snapshots); vinculo declarado",
-    "E-342": "correcao do instrumento: duas pendencias eram falsas; vinculo declarado"
+    "E-342": "correcao do instrumento: duas pendencias eram falsas; vinculo declarado",
+    "E-343": "P0-B/T2: primeira medicao red->green com modelo local; vinculo declarado"
   }
 }
