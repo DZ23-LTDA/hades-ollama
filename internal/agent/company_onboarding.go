@@ -225,10 +225,17 @@ func aplicarSemOrcamento(commerce *CommerceStore, plan CompanyOnboardingPlan, no
 	if _, err := commerce.UpsertProducts(lote, now); err != nil {
 		return preview, token, fmt.Errorf("%w: falha ao gravar o lote do onboarding: %v", ErrOnboardingInvalid, err)
 	}
-	// PASSADA 2: estoque inicial, agora com TODOS os produtos já gravados — a ordem que o teste de E-305 exige.
-	for _, estoque := range estoques {
-		commerce.RecordStock(plan.OrganizationID, estoque.sku, estoque.quantidade,
-			"carga inicial de empresa existente", plan.Origin, now)
+	// PASSADA 2: estoque inicial, agora com TODOS os produtos já gravados — a ordem que o teste de E-305 exige — e
+	// gravado em LOTE (E-365): uma gravação em vez de uma por linha (ADV-44: 19,11s medidos antes).
+	if len(estoques) > 0 {
+		movimentos := make([]MovimentoDeEstoque, 0, len(estoques))
+		for _, estoque := range estoques {
+			movimentos = append(movimentos, MovimentoDeEstoque{SKU: estoque.sku, Delta: estoque.quantidade,
+				Kind: "carga inicial de empresa existente", Reference: plan.Origin})
+		}
+		if _, err := commerce.RecordStocks(plan.OrganizationID, movimentos, now); err != nil {
+			return preview, token, fmt.Errorf("%w: falha ao gravar o estoque inicial: %v", ErrOnboardingInvalid, err)
+		}
 	}
 	sort.Strings(token.CreatedSKUs)
 	return preview, token, nil

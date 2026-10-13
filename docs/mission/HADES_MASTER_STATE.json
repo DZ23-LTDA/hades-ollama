@@ -2304,7 +2304,11 @@
     "O GARGALO CAIU QUANDO O DIAGNOSTICO MUDOU (E-364): 2000 linhas de 54,13s/50,01s para 0,01s/0,01s (~5000x). O indice de E-363 nao era o gargalo; persistLocked era",
     "LOTE NAO E' DEBOUNCE (E-364): lote para de repetir a durabilidade; debounce a adia. A gravacao continua ao fim de cada chamada, entao nenhuma garantia foi trocada por velocidade",
     "RESULTADO EXCELENTE EXIGE VERIFICACAO (E-364): 0,01s para 2000 linhas e' bom demais para aceitar sem checar - o teste passou a ler o ARQUIVO em disco e reprova se a contagem divergir",
-    "DEFEITO REAL POR LEITURA (E-364): o onboarding descartava o erro do UpsertProduct; falha de gravacao virava sucesso no relatorio. Agora o erro e' propagado"
+    "DEFEITO REAL POR LEITURA (E-364): o onboarding descartava o erro do UpsertProduct; falha de gravacao virava sucesso no relatorio. Agora o erro e' propagado",
+    "VERIFICAR QUE O CERTO ESTA PRESENTE NAO E' VERIFICAR QUE O ERRADO SAIU (E-365): eu conferi que s.recordStockLocked( estava la' e conclui que o lote estava correto; o corpo extraido ainda tinha o persistLocked interno",
+    "A CONTRADICAO NAO FOI ESCONDIDA (E-365): o cronometro dizia 19,11s -> 32,76s e eu NAO atribui regressao nem ganho. Busquei a medida estrutural (contador de gravacoes): 2002 para 2000 linhas",
+    "NUMEROS DE LINHA DO BINARIO INSTRUMENTADO NAO MAPEIAM PARA O ARQUIVO LIMPO (E-365): o primeiro rastreio apontou append/return como gravacoes. Com NOMES de funcao o autor apareceu",
+    "MEDIDA ESTRUTURAL E' IMUNE AO RUIDO; CRONOMETRO NAO (E-365): 2 gravacoes vs 2002 e' prova de caminho; o tempo corrobora, mas depende da maquina"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -2862,13 +2866,13 @@
           "id": "ADV-44",
           "severidade": "ALTA (desempenho)",
           "descricao": "RecordStock e' chamado por linha no onboarding e TAMBEM persiste: e' o custo restante (2000 linhas em 19,11s, contra 0,01s no caminho so' de produtos)",
-          "estado": "MEDIDO E LOCALIZADO; o lote de estoque e' o proximo alvo (mesma classe do ADV-41)",
+          "estado": "CORRIGIDO E PROVADO ESTRUTURALMENTE: 2000 linhas com 2 gravacoes (eram 2002) e 0,03s/0,02s contra 54,13s/50,01s de linha de base; o corpo extraido tinha um persistLocked interno proprio",
           "evidencia": "E-364"
         }
       ],
       "proximos_ataques": [
-        "medir o custo restante de RecordStock por linha (tambem persiste, nao foi medido)",
         "medir o ganho com N chamadas de 1 linha (o lote depende do chamador usa-lo)",
+        "repetir cronometros em maquina ociosa (a medida estrutural nao precisa; o cronometro sim)",
         "retomar a fila P0-A/T1 e P0-C/T3 (dependencia externa onde faltar alvo)"
       ]
     },
@@ -3195,6 +3199,7 @@
     "E-361": "causa da instabilidade de CI (orcamento x fencing); vinculo declarado",
     "E-362": "catraca da classe de orcamento sub-segundo; vinculo declarado",
     "E-363": "indice O(1) correto que NAO moveu o numero; custo real em persistLocked; vinculo declarado",
-    "E-364": "lote no onboarding/CommerceStore: 54s -> 0,01s com prova em disco; vinculo declarado"
+    "E-364": "lote no onboarding/CommerceStore: 54s -> 0,01s com prova em disco; vinculo declarado",
+    "E-365": "lote de estoque efetivo: 2002 -> 2 gravacoes; vinculo declarado"
   }
 }

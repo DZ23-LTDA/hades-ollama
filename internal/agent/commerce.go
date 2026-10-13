@@ -180,6 +180,9 @@ type CommerceStore struct {
 	// operação varria o mapa inteiro (para saber se o SKU existe E para contar o acervo). O índice responde as duas
 	// perguntas em O(1) e o tamanho do mapa de uma organização É a contagem do acervo — *uma fonte, não duas*.
 	produtosPorChave map[string]map[string]string
+	// gravacoes conta quantas vezes o arquivo da organização foi gravado. É OBSERVABILIDADE (E-365): *contar não é
+	// desligar* — mede o custo estrutural do caminho, imune ao ruído da máquina, e serve para produção também.
+	gravacoes int64
 	// root vazio mantém o motor em memória (usado em testes e cenários efêmeros).
 	root string
 }
@@ -270,6 +273,7 @@ func (s *CommerceStore) persistLocked(organizationID string) error {
 	if path == "" {
 		return nil
 	}
+	s.gravacoes++
 	organizationID = consentScope(organizationID)
 	payload := commerceFile{
 		Products:    []CommerceProduct{},
@@ -458,24 +462,70 @@ func (s *CommerceStore) Products(organizationID string) []CommerceProduct {
 }
 
 func (s *CommerceStore) productBySKULocked(organizationID, sku string) (CommerceProduct, bool) {
-	for _, product := range s.products {
-		if product.OrganizationID == organizationID && product.SKU == strings.TrimSpace(sku) {
-			return product, true
-		}
+	// E-365: O(1) pelo índice (E-363). Era varredura do mapa inteiro, e esta checagem acontece em TODO movimento.
+	if id, existe := s.IDPorSKULocked(organizationID, strings.TrimSpace(sku)); existe {
+		return s.products[id], true
 	}
 	return CommerceProduct{}, false
 }
 
 // RecordStock lança um movimento de estoque. Entrada é positiva; saída/reserva é
 // negativa. Reserva não pode exceder o disponível.
-func (s *CommerceStore) RecordStock(organizationID, sku string, delta int64, kind, reference string, now time.Time) (CommerceStockMovement, error) {
+// MovimentoDeEstoque é um movimento pedido em lote (E-365).
+type MovimentoDeEstoque struct {
+	SKU       string
+	Delta     int64
+	Kind      string
+	Reference string
+}
+
+// RecordStocks aplica um LOTE de movimentos com UMA gravação (E-365).
+//
+// MEDIDO (ADV-44): `RecordStock` grava o arquivo inteiro por chamada, e o onboarding chamava **uma vez por linha** —
+// 2000 linhas com estoque inicial mediam **19,11s**, contra **0,01s** no caminho só de produtos. Mesma classe do
+// ADV-41, mesma correção: lote com **uma** gravação ao fim da chamada. *Durabilidade por chamada preservada.*
+//
+// A validação é feita para TODO o lote antes de gravar qualquer coisa: um lote inválido não deixa metade aplicada.
+func (s *CommerceStore) RecordStocks(organizationID string, movimentos []MovimentoDeEstoque, now time.Time) ([]CommerceStockMovement, error) {
+	if len(movimentos) == 0 {
+		return nil, nil
+	}
 	organizationID = consentScope(organizationID)
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	aplicados := make([]CommerceStockMovement, 0, len(movimentos))
+	for _, pedido := range movimentos {
+		movimento, err := s.recordStockLocked(organizationID, pedido.SKU, pedido.Delta, pedido.Kind, pedido.Reference, now)
+		if err != nil {
+			return aplicados, err
+		}
+		aplicados = append(aplicados, movimento)
+	}
+	if err := s.persistLocked(organizationID); err != nil {
+		return aplicados, err
+	}
+	return aplicados, nil
+}
+
+func (s *CommerceStore) RecordStock(organizationID, sku string, delta int64, kind, reference string, now time.Time) (CommerceStockMovement, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	movimento, err := s.recordStockLocked(consentScope(organizationID), sku, delta, kind, reference, now)
+	if err != nil {
+		return CommerceStockMovement{}, err
+	}
+	if err := s.persistLocked(consentScope(organizationID)); err != nil {
+		return CommerceStockMovement{}, err
+	}
+	return movimento, nil
+}
+
+// recordStockLocked aplica UM movimento em memória, sem gravar. Exige o lock de escrita tomado.
+func (s *CommerceStore) recordStockLocked(organizationID, sku string, delta int64, kind, reference string, now time.Time) (CommerceStockMovement, error) {
 	sku = strings.TrimSpace(sku)
 	if sku == "" || delta == 0 {
 		return CommerceStockMovement{}, fmt.Errorf("%w: sku e delta são obrigatórios", ErrCommerceInvalid)
 	}
-	s.mu.Lock()
-	defer s.mu.Unlock()
 	if _, ok := s.productBySKULocked(organizationID, sku); !ok {
 		return CommerceStockMovement{}, fmt.Errorf("%w: %s", ErrCommerceProductMissing, sku)
 	}
@@ -497,10 +547,6 @@ func (s *CommerceStore) RecordStock(organizationID, sku string, delta int64, kin
 		CreatedAt:      now,
 	}
 	s.stock[key] = append(s.stock[key], movement)
-	if err := s.persistLocked(organizationID); err != nil {
-		s.stock[key] = s.stock[key][:len(s.stock[key])-1]
-		return CommerceStockMovement{}, err
-	}
 	return movement, nil
 }
 
@@ -1271,4 +1317,11 @@ func (s *CommerceStore) IDPorSKULocked(organizacao, sku string) (string, bool) {
 // AcervoLocked devolve quantos produtos a organização tem, em O(1). Exige o lock tomado.
 func (s *CommerceStore) AcervoLocked(organizacao string) int {
 	return len(s.produtosPorChave[organizacao])
+}
+
+// GravacoesLocked devolve quantas vezes o arquivo já foi gravado. Exige o lock tomado (ou chamada em teste).
+func (s *CommerceStore) Gravacoes() int64 {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.gravacoes
 }
