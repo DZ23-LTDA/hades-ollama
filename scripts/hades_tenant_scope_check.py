@@ -67,16 +67,35 @@ CHECAGEM_CRUA = re.compile(
 )
 
 
+def _sem_comentarios(texto: str) -> str:
+    """Remove comentários de LINHA antes de procurar a guarda (E-376).
+
+    **MEDIDO com violação injetada (ADV-54, teste do teste)**: um arquivo **sem guarda real** mas com
+    `requireOrganization(` **apenas dentro de um comentário** era **APROVADO** ✗ — *e a catraca existe justamente para
+    o arquivo que monta caminho por organização sem validar*. ***Guarda que se satisfaz com uma menção é pior que
+    guarda ausente: ela dá a impressão de que alguém verificou.***
+    """
+    linhas = []
+    for linha in texto.split("\n"):
+        marcador = linha.find("//")
+        linhas.append(linha if marcador < 0 else linha[:marcador])
+    return "\n".join(linhas)
+
+
 def tem_guarda_reconhecida(texto: str) -> bool:
     """Reconhece o helper OU a checagem crua de vazio (antes de sanitizar).
 
     POR QUE DOIS CAMINHOS (E-342): `marketplace_sync.Sync` e `company.Create` validam `organizationID == ""` no valor
     cru — correto — e a catraca os acusava porque so' conhecia `requireOrganization(`. ***Instrumento que reconhece um
     unico padrao transforma codigo certo em divida.***
+
+    E-376: a procura agora é feita **fora dos comentários** — medido que uma menção em comentário aprovava um arquivo
+    sem guarda nenhuma ✗.
     """
-    if "requireOrganization(" in texto:
+    codigo = _sem_comentarios(texto)
+    if "requireOrganization(" in codigo:
         return True
-    return bool(CHECAGEM_CRUA.search(texto))
+    return bool(CHECAGEM_CRUA.search(codigo))
 
 
 def auditar(diretorio: Path = DIRETORIO) -> tuple[list[str], list[str]]:
