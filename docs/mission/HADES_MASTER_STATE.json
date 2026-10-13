@@ -2,7 +2,7 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-17T20:20:00-03:00",
+  "updated_at": "2026-10-17T21:35:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
@@ -304,12 +304,13 @@
         "E-043",
         "E-044",
         "E-045",
-        "E-215"
+        "E-215",
+        "E-276"
       ],
       "blocker": null,
-      "next": "Definir e versionar os contratos por componente (hoje existem motores reais, mas sem registro de contrato versionado por modulo)",
+      "next": "LIMITES REAIS (atualizados por E-276): o registro tem os 16 contratos como LISTA FECHADA e apenas UM componente registrado ate agora (os outros 15 aparecem em MissingCanonicalComponents); nao ha verificacao automatica de que o CODIGO de cada componente cumpre a versao declarada (o registro descreve, nao audita); nao ha assinatura criptografica dos contratos. Proximo: preencher os 15 contratos restantes e seguir nos estagios 32-38",
       "execution": "IN_PROGRESS",
-      "done": "ARQUITETURA E CONTRATOS (E-215): os componentes canonicos tem motor real no nucleo agentico (runtime, mission control, gateway de modelos, harness, orquestrador, ferramentas, MCP, plugins, skills, memoria, builder, workflows, politica, artefatos e observabilidade). MEDIDO: 16 testes PASS no filtro 'Contract|Catalogo|Catalog|Component'. LACUNA DECLARADA: contrato VERSIONADO por modulo ainda nao registrado."
+      "done": "ARQUITETURA E CONTRATOS (E-215): os componentes canonicos tem motor real no nucleo agentico (runtime, mission control, gateway de modelos, harness, orquestrador, ferramentas, MCP, plugins, skills, memoria, builder, workflows, politica, artefatos e observabilidade). MEDIDO: 16 testes PASS no filtro 'Contract|Catalogo|Catalog|Component'. LACUNA DECLARADA: contrato VERSIONADO por modulo ainda nao registrado. REGISTRO DE CONTRATOS VERSIONADOS DOS 16 COMPONENTES CANONICOS (E-276): o limite declarado 'existem motores reais, mas sem registro de contrato versionado por modulo' foi VERIFICADO (nao existia ContractRegistry nem ComponentContract no codigo) e FECHADO. Propriedade central: SUBIR A VERSAO DE UM CONTRATO EXIGE REGISTRAR A MIGRACAO - um numero maior sem registro diz 'nada mudou para voce' enquanto algo mudou, e quem ja integrou so descobre em producao. Outras travas: completude e VERIFICAVEL e aponta os componentes que faltam pelo nome (registro parcial que se diz completo e pior do que nenhum); VOLTAR VERSAO e recusado (apaga a historia de compatibilidade); mudanca que QUEBRA precisa declarar QUEM quebra (e a mudanca que derruba producao no sabado); historico de migracao e APPEND-ONLY (reescrever apagaria a trilha de quem ja migrou); formato de versao estrito maior.menor (formato frouxo impede comparar, e e a comparacao que sustenta a promessa de compatibilidade); o registro e PLATAFORMA (global), nao por organizacao - e isso e DECLARADO no codigo, nao acidental. A varredura que encontrou este limite mediu 24 estagios com afirmacoes negativas no campo next; esta era a mais formal e verificavel. MEDIDO: teste de propriedades PASS de primeira e suite completa ok 102,7 s"
     },
     {
       "id": 4,
@@ -1942,7 +1943,11 @@
     "PREMISSA ERRADA NO MEU TESTE, NAO NO CODIGO (E-274): duas falhas iniciais foram premissas minhas - o lease e' mantido PELO proprio ciclo (entao o bloqueio por outra instancia precisa ser montado ANTES do primeiro ciclo) e um &Runtime{} vazio panica dentro do ciclo. Corrigir o teste quando a premissa e' que esta errada e' tao importante quanto corrigir o codigo",
     "ESCREVER NO LUGAR ERRADO PARECE INSTABILIDADE (E-275): E-258 foi revertida porque 'a suite ficou instavel'. A causa real era outra: o unico ponto de escrita do supervisor estava nos caminhos de ACAO, entao o diario so persistia por acidente. Colocar History no MESMO arquivo e persistir UMA vez no fim do ciclo resolveu sem churn - e a suite passou 2x mais 20x de stress",
     "CICLO SILENCIOSO E' O CASO COMUM (E-275): a maioria dos ciclos nao propoe acao. Um diario que so registra quando ha acao registra a EXCECAO e esquece a rotina - e auditoria serve exatamente para a rotina",
-    "TRUNCAR NA RESTAURACAO PELO MAIS RECENTE (E-275): guardar os registros mais ANTIGOS esconderia o que acabou de acontecer. O cap existe para limitar tamanho, nao para apagar o presente"
+    "TRUNCAR NA RESTAURACAO PELO MAIS RECENTE (E-275): guardar os registros mais ANTIGOS esconderia o que acabou de acontecer. O cap existe para limitar tamanho, nao para apagar o presente",
+    "SUBIR VERSAO SEM MIGRACAO MENTE SOBRE COMPATIBILIDADE (E-276): o numero maior diz 'nada mudou para voce'. Exigir motivo, ator e afetados transforma a versao em PROMESSA registrada, nao em decoracao",
+    "QUEBRA SEM DIZER QUEM QUEBRA (E-276): mudanca de ruptura sem lista de afetados e recusada. E a mudanca que derruba producao no sabado porque ninguem sabia que dependia dela",
+    "FORMATO FROUXO DE VERSAO IMPEDE COMPARAR (E-276): aceitar 'v1', '1.2.3' ou 'beta' impede saber se subiu ou desceu - e e a comparacao que sustenta a compatibilidade. O parser estrito e a garantia, nao burocracia",
+    "VARREDURA DE AFIRMACOES NEGATIVAS (E-276): 24 estagios carregam limite declarado em texto. Limite declarado e AFIRMACAO: cada um precisa de comando reproduzivel ao lado ou vira folclore. A varredura vira fila de trabalho"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
