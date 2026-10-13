@@ -70,6 +70,31 @@ var supportedSocialProviders = map[string]struct{}{
 	"x": {}, "instagram": {}, "facebook": {}, "youtube": {}, "tiktok": {}, "linkedin": {}, "pinterest": {}, "telegram": {}, "discord": {}, "whatsapp": {},
 }
 
+// PUBLICAÇÃO SOCIAL: EFEITO UMA VEZ E SEM ENXURRADA (E-302) — estágio 36.
+//
+// Duas guardas que faltavam, ambas sobre o MESMO risco: publicar o que não devia, ou publicar de novo.
+//
+//  1. **EFEITO UMA VEZ**: republicar um rascunho já publicado é postar DUAS vezes na rede social. O §11.7 exige que
+//     "o mesmo efeito externo não ocorra duas vezes" — o segundo `PublishSocialDraft` é recusado;
+//  2. **SEM ENXURRADA**: publicar sem teto é o risco "spam" que o estágio 36 nomeia. O teto é por **janela** e a
+//     recusa é **explícita** (`ErrCompanySocialPublishThrottled`) — nunca silenciosa.
+//
+// LIMITE DECLARADO: isto é **política local do Hades**. **Não** é o rate limit da API da rede social, que só se mede
+// com conta real e continua `BLOCKED_BY_EXTERNAL_DEPENDENCY`. Não se finge que é o mesmo.
+const (
+	// CompanySocialPublishLimitPerWindow é o teto de publicações por janela (por empresa).
+	CompanySocialPublishLimitPerWindow = 5
+	// CompanySocialPublishWindow é a janela do teto.
+	CompanySocialPublishWindow = 10 * time.Minute
+)
+
+var (
+	// ErrCompanySocialAlreadyPublished recusa o SEGUNDO publish do mesmo rascunho (efeito externo uma vez).
+	ErrCompanySocialAlreadyPublished = errors.New("social draft already published")
+	// ErrCompanySocialPublishThrottled recusa a enxurrada, com motivo explícito em vez de silêncio.
+	ErrCompanySocialPublishThrottled = errors.New("social publish throttled by local policy")
+)
+
 func validateSocialProvider(value string) string {
 	value = strings.ToLower(strings.TrimSpace(value))
 	if _, ok := supportedSocialProviders[value]; !ok {
@@ -165,6 +190,21 @@ func (s *CompanyStore) PublishSocialDraft(id, draftID string) (Company, error) {
 			}
 			if !draft.Approved {
 				return ErrCompanyApprovalRequiredForExternal
+			}
+			// EFEITO UMA VEZ (E-302): republicar o mesmo rascunho postaria de novo na rede social.
+			if draft.PublishedAt != nil || strings.HasPrefix(strings.ToLower(draft.Status), "published") {
+				return ErrCompanySocialAlreadyPublished
+			}
+			// SEM ENXURRADA (E-302): conta as publicações DENTRO da janela; passou do teto, recusa com motivo.
+			limite := time.Now().UTC().Add(-CompanySocialPublishWindow)
+			publicadosNaJanela := 0
+			for _, outro := range company.SocialDrafts {
+				if outro.PublishedAt != nil && outro.PublishedAt.After(limite) {
+					publicadosNaJanela++
+				}
+			}
+			if publicadosNaJanela >= CompanySocialPublishLimitPerWindow {
+				return ErrCompanySocialPublishThrottled
 			}
 			if draft.Mode != "sandbox" {
 				return ErrCompanySocialExternalUnavailable
