@@ -196,6 +196,9 @@ func (e *WorkflowEngine) Register(def WorkflowDefinition) (WorkflowDefinition, e
 	if e == nil {
 		return WorkflowDefinition{}, ErrWorkflowInvalid
 	}
+	if err := requireOrganization(def.OrganizationID); err != nil {
+		return WorkflowDefinition{}, fmt.Errorf("%w: %v", ErrWorkflowInvalid, err)
+	}
 	def.OrganizationID = consentScope(def.OrganizationID)
 	def.Name = strings.TrimSpace(def.Name)
 	if def.OrganizationID == "" || def.Name == "" || len(def.Nodes) == 0 || strings.TrimSpace(def.StartNode) == "" {

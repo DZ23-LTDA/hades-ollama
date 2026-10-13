@@ -332,6 +332,9 @@ func looksLikeCardData(value string) bool {
 
 // UpsertProduct cadastra ou atualiza um produto.
 func (s *CommerceStore) UpsertProduct(product CommerceProduct, now time.Time) (CommerceProduct, error) {
+	if err := requireOrganization(product.OrganizationID); err != nil {
+		return CommerceProduct{}, fmt.Errorf("%w: %v", ErrCommerceInvalid, err)
+	}
 	product.OrganizationID = consentScope(product.OrganizationID)
 	product.SKU = strings.TrimSpace(product.SKU)
 	product.Name = strings.TrimSpace(product.Name)

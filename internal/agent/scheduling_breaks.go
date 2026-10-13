@@ -38,6 +38,9 @@ func (s *SchedulingStore) AddBreak(br SchedulingBreak) (SchedulingBreak, error) 
 	if s == nil {
 		return SchedulingBreak{}, ErrSchedulingInvalid
 	}
+	if err := requireOrganization(br.OrganizationID); err != nil {
+		return SchedulingBreak{}, fmt.Errorf("%w: %v", ErrSchedulingInvalid, err)
+	}
 	br.OrganizationID = consentScope(br.OrganizationID)
 	if br.OrganizationID == "" || br.Weekday < 0 || br.Weekday > 6 {
 		return SchedulingBreak{}, fmt.Errorf("%w: organização e dia da semana (0..6) são obrigatórios", ErrSchedulingInvalid)

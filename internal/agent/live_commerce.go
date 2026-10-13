@@ -282,6 +282,9 @@ func (s *LiveCommerceStore) CreateLiveSession(sessao LiveSession) (LiveSession, 
 	if s == nil {
 		return LiveSession{}, ErrLiveCommerceInvalid
 	}
+	if err := requireOrganization(sessao.OrganizationID); err != nil {
+		return LiveSession{}, fmt.Errorf("%w: %v", ErrLiveCommerceInvalid, err)
+	}
 	sessao.OrganizationID = consentScope(sessao.OrganizationID)
 	if sessao.OrganizationID == "" || strings.TrimSpace(sessao.ProjectID) == "" {
 		return LiveSession{}, fmt.Errorf("%w: organização e projeto são obrigatórios", ErrLiveCommerceInvalid)
@@ -486,6 +489,9 @@ func (s *LiveCommerceStore) SweepLiveSessions(organizationID string, now time.Ti
 func (s *LiveCommerceStore) IngestLiveCommerceEvent(evento CommerceEvent) (CommerceEvent, bool, error) {
 	if s == nil {
 		return CommerceEvent{}, false, ErrLiveCommerceInvalid
+	}
+	if err := requireOrganization(evento.OrganizationID); err != nil {
+		return CommerceEvent{}, false, fmt.Errorf("%w: %v", ErrLiveCommerceInvalid, err)
 	}
 	evento.OrganizationID = consentScope(evento.OrganizationID)
 	evento.ExternalID = strings.TrimSpace(evento.ExternalID)
