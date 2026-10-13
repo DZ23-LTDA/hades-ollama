@@ -398,7 +398,8 @@ func (s *ContextStore) AddMemoryContext(ctx context.Context, memory Memory) (Mem
 	previous := append([]Memory(nil), s.memories[memory.ProjectID]...)
 	s.memories[memory.ProjectID] = append(s.memories[memory.ProjectID], memory)
 	if s.root != "" {
-		if err := s.writeMemoriesFile(memory.ProjectID, s.memories[memory.ProjectID]); err != nil {
+		// Caminho NÃO-DESTRUTIVO: guarda contra apagar o que outro escritor acrescentou (E-289).
+		if err := s.writeMemoriesFileGuardingAdditions(memory.ProjectID, s.memories[memory.ProjectID]); err != nil {
 			if previous == nil {
 				delete(s.memories, memory.ProjectID)
 			} else {
