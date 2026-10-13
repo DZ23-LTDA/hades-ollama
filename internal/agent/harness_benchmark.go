@@ -3,7 +3,6 @@ package agent
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -356,31 +355,14 @@ func (h OllamaHarness) ProposeFix(ctx context.Context, task HarnessBenchmarkTask
 
 	prompt := "Você vai corrigir um bug em Go. Responda SOMENTE com o conteúdo COMPLETO do arquivo corrigido, " +
 		"dentro de um bloco delimitado por <<<ARQUIVO nome>>> e <<<FIM>>>. Não altere o arquivo de teste.\n\n" + observacao
-	corpo, err := json.Marshal(map[string]any{"model": modelo, "prompt": prompt, "stream": false,
-		"options": map[string]any{"temperature": 0}})
+	// E-349: UMA implementação da chamada ao modelo. Duas cópias divergiriam — e a divergência apareceria como
+	// diferença de resultado entre o benchmark e o especialista, não como bug de código.
+	resposta, err := OllamaGenerate(ctx, base, modelo, prompt, cliente)
 	if err != nil {
 		return nil, err
 	}
-	requisicao, err := http.NewRequestWithContext(ctx, http.MethodPost, base+"/api/generate", bytes.NewReader(corpo))
-	if err != nil {
-		return nil, err
-	}
-	requisicao.Header.Set("Content-Type", "application/json")
-	resposta, err := cliente.Do(requisicao)
-	if err != nil {
-		return nil, fmt.Errorf("%w: %v", ErrBenchmarkModelUnavailable, err)
-	}
-	defer resposta.Body.Close()
-	if resposta.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("%w: HTTP %d", ErrBenchmarkModelUnavailable, resposta.StatusCode)
-	}
-	var decodificada struct {
-		Response string `json:"response"`
-	}
-	if err := json.NewDecoder(resposta.Body).Decode(&decodificada); err != nil {
-		return nil, err
-	}
-	return ExtrairArquivosDaResposta(decodificada.Response)
+	return ExtrairArquivosDaResposta(resposta)
+
 }
 
 // ExtrairArquivosDaResposta lê os blocos <<<ARQUIVO nome>>> ... <<<FIM>>>.
