@@ -43,21 +43,42 @@ DISPENSAS = {
 }
 
 
+def _chave_relativa(raiz: Path, caminho: Path) -> str:
+    """Chave = caminho RELATIVO (E-382 / ADV-56/4).
+
+    **MEDIDO (3ª auditoria independente)**: a chave era o **basename** ✗, e isso produzia dois defeitos: dois `util.go`
+    em pastas distintas viravam **uma chave só** (contagem inflada com a mesma localização) e — pior — a leitura
+    seguinte usava `(diretorio / basename)`, que **não existe** se o arquivo estiver em subpasta ⇒ `FileNotFoundError`
+    ⇒ *abortava a varredura e a violação REAL de outro arquivo deixava de ser reportada*. ***Instrumento que morre no
+    primeiro arquivo estranho aprova tudo o que não chegou a ver.***
+    """
+    try:
+        return caminho.relative_to(raiz).as_posix()
+    except ValueError:
+        return caminho.name
+
+
 def arquivos_de_armazenamento(diretorio: Path = DIRETORIO) -> dict[str, list[str]]:
     """Devolve, por arquivo não-teste, as linhas que montam caminho com sanitizeIDComponent."""
     encontrados: dict[str, list[str]] = {}
     if not diretorio.is_dir():
         return encontrados
-    for caminho in sorted(diretorio.glob("*.go")):
+    for caminho in sorted(diretorio.rglob("*.go")):
         if caminho.name.endswith("_test.go"):
             continue
-        linhas = caminho.read_text(encoding="utf-8", errors="replace").split("\n")
+        try:
+            linhas = caminho.read_text(encoding="utf-8", errors="replace").split("\n")
+        except OSError as erro:  # E-382 / ADV-56/4: um arquivo ilegível NÃO pode abortar a varredura
+            encontrados.setdefault(_chave_relativa(diretorio, caminho), []).append(
+                "%s: arquivo ilegível (%s)" % (_chave_relativa(diretorio, caminho), erro))
+            continue
         for numero, linha in enumerate(linhas, 1):
             if "sanitizeIDComponent(" not in linha:
                 continue
             if not any(pista in linha for pista in ("filepath.Join", "caminho", "path", "lock", "Root")):
                 continue
-            encontrados.setdefault(caminho.name, []).append(f"{caminho.name}:{numero}")
+            chave = _chave_relativa(diretorio, caminho)
+            encontrados.setdefault(chave, []).append(f"{chave}:{numero}")
     return encontrados
 
 
@@ -158,7 +179,14 @@ def auditar(diretorio: Path = DIRETORIO) -> tuple[list[str], list[str]]:
         for arquivo, dados in _mod.classificar_usos(diretorio).items():
             if not dados["identificador"]:
                 continue
-            texto_arquivo = (diretorio / arquivo).read_text(encoding="utf-8", errors="replace")
+            # E-382 / ADV-56/4: try POR ARQUIVO — antes, um caminho inexistente abortava o laço inteiro e as violações
+            # seguintes NÃO eram reportadas ✗. *Instrumento que morre no primeiro arquivo estranho aprova tudo o que
+            # não chegou a ver.*
+            try:
+                texto_arquivo = (diretorio / arquivo).read_text(encoding="utf-8", errors="replace")
+            except OSError as erro:
+                violacoes.append("%s: não foi possível LER para verificar a guarda (%s)" % (arquivo, erro))
+                continue
             if tem_guarda_reconhecida(texto_arquivo) or DISPENSAS.get(arquivo):
                 continue
             violacoes.append("%s: uso de IDENTIFICADOR derivado de organização sem guarda nem dispensa (%s)"
