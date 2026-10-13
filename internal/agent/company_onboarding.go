@@ -145,7 +145,16 @@ func PlanCompanyOnboarding(commerce *CommerceStore, plan CompanyOnboardingPlan) 
 //
 // Recusa aplicar quando há conflito e `Overwrite` não foi pedido: *o conflito tem de ser uma decisão, não um efeito
 // colateral.*
+// ApplyCompanyOnboarding valida o volume DO PLANO **e** o acervo ACUMULADO antes de aplicar (E-359).
+//
+// ***O limite por plano não limita nada sozinho: três planos de 4000 linhas passam um a um e o resultado são
+// 12000 linhas carregadas.*** Aqui o teto é conferido contra o estado real do comércio, que é a única fonte de
+// verdade que não pode divergir de si mesma.
 func ApplyCompanyOnboarding(commerce *CommerceStore, plan CompanyOnboardingPlan, now time.Time) (CompanyOnboardingPreview, CompanyOnboardingRollback, error) {
+	return aplicarComOrcamento(commerce, plan, now)
+}
+
+func aplicarSemOrcamento(commerce *CommerceStore, plan CompanyOnboardingPlan, now time.Time) (CompanyOnboardingPreview, CompanyOnboardingRollback, error) {
 	preview, err := PlanCompanyOnboarding(commerce, plan)
 	if err != nil {
 		return CompanyOnboardingPreview{}, CompanyOnboardingRollback{}, err
