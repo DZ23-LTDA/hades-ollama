@@ -2243,7 +2243,11 @@
     "O NAO_MEDIDO DE E-348 FOI FECHADO COM MEDICAO (E-349): qwen2.5:7b consertou o fixture dentro da worktree isolada via laco real, go test verde, diff medido e merge MESCLADO em 8,0s",
     "DUAS BARREIRAS DE SEGMENTO (E-349): o fixer confere antes de ESCREVER e o coordenador antes de MESCLAR. Confiar no modelo para respeitar fronteira e' o mesmo que nao ter fronteira",
     "UMA UNICA IMPLEMENTACAO DA CHAMADA AO MODELO (E-349): OllamaGenerate serve o harness do T2 e o fixer do T4; duas copias divergiriam e a divergencia apareceria como diferenca de resultado, nao como bug",
-    "NAO DECLARO VERIFICADO O QUE NAO OBSERVEI (E-349): runtime real, execucao OK, mas nenhum evento em ListEvents. A observabilidade neste caminho fica DECLARADA como nao medida (ADV-24)"
+    "NAO DECLARO VERIFICADO O QUE NAO OBSERVEI (E-349): runtime real, execucao OK, mas nenhum evento em ListEvents. A observabilidade neste caminho fica DECLARADA como nao medida (ADV-24)",
+    "HIPOTESE NAO E' DIAGNOSTICO; SONDA E' (E-350): duas hipoteses sobre o ADV-24 foram separadas por sonda, nao por palpite. A causa era o meu dado de teste (id invalido e missao inexistente), nao o produto",
+    "NAO DECLARAR VERIFICADO O QUE NAO SE OBSERVOU ESTAVA CERTO (E-350): E-349 deixou o achado aberto em vez de inventar explicacao; a investigacao seguinte mostrou que a causa era minha - e isso so' aparece quando se investiga",
+    "ISOLAMENTO DE TENANT NO STORE DE EVENTOS (E-350): evento de uma organizacao nao e' aceito em missao de outra (os.ErrPermission) e missao inexistente devolve erro. Testado com armadilha",
+    "CONTRATO DO STORE CORRIGIU MINHA SUPOSICAO (E-350): eu supunha que missao inexistente devolvesse lista vazia; o contrato devolve erro. Medicao outra vez"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -2653,13 +2657,21 @@
           "id": "ADV-24",
           "severidade": "MEDIA",
           "descricao": "o laco existente emite eventos e a execucao com Runtime real terminou OK, mas NENHUM evento foi observado em NewMemoryStore().ListEvents(missionID)",
-          "estado": "DECLARADO COMO NAO MEDIDO (nao sei se a causa e' o ListEvents do store de memoria ou o caminho de persistencia)",
-          "evidencia": "E-349"
+          "estado": "RESOLVIDO: a causa era o DADO DE TESTE (id invalido + missao inexistente), nao o produto",
+          "evidencia": "E-350",
+          "correcao": "id uuid + CreateMission antes dos eventos; log comprova 4 eventos persistidos"
+        },
+        {
+          "id": "ADV-25",
+          "severidade": "INFORMATIVO (contrato)",
+          "descricao": "o store de eventos exige missao existente e MESMA organizacao; missao inexistente devolve erro, nao lista vazia",
+          "estado": "MEDIDO E TESTADO (isolamento de tenant no store de eventos)",
+          "evidencia": "E-350"
         }
       ],
       "proximos_ataques": [
-        "descobrir por que ListEvents nao mostra os eventos do laco (store de memoria ou persistencia)",
         "auditar escopo compartilhado em modulos FORA desta missao",
+        "medir a contagem de eventos no caminho T4 com modelo local",
         "onboarding com volume grande (limites de recurso)"
       ]
     },
@@ -2924,6 +2936,7 @@
     "E-346": "T4: coordenador de merge sobre o modulo existente; vinculo declarado",
     "E-347": "medicao das categorias declaradas; uma caiu (Cancel/Reschedule); vinculo declarado",
     "E-348": "ligacao T4 ao laco real de reparo; vinculo declarado",
-    "E-349": "T4 com modelo local e fixer com fronteira no segmento; vinculo declarado"
+    "E-349": "T4 com modelo local e fixer com fronteira no segmento; vinculo declarado",
+    "E-350": "ADV-24 resolvido por sonda: causa era o dado de teste; vinculo declarado"
   }
 }
