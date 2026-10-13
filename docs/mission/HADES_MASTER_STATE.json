@@ -2366,7 +2366,12 @@
     "GUARDA QUE SE SATISFAZ COM UMA MENCAO E' PIOR QUE GUARDA AUSENTE (E-381): comentario de bloco e string aprovavam arquivo sem guarda",
     "INSTRUMENTO QUE MORRE NO PRIMEIRO ARQUIVO ESTRANHO APROVA TUDO O QUE NAO VIU (E-382): glob nao recursivo + basename abortavam a varredura",
     "DISPENSA QUE NAO CASA COM USO NENHUM NAO E' CONTEXTO, E' RUIDO QUE PARECE DECISAO (E-383)",
-    "MEDICAO VAZIA NAO PODE IMPRIMIR APROVACAO (E-384): caminho com typo devolvia ([], []) E a frase de sucesso"
+    "MEDICAO VAZIA NAO PODE IMPRIMIR APROVACAO (E-384): caminho com typo devolvia ([], []) E a frase de sucesso",
+    "ADV-55 FECHADO A CUSTO ZERO (E-385): PALAVRAS_CAMINHO era lista de NOMES; virou sinais de CONSTRUCAO, e as contagens no repositorio sao IDENTICAS (24/5/2/1). Variavel chamada 'caminhoDoEvento' agora da' indeterminado, nao caminho",
+    "A ORDEM DAS REGRAS IMPORTA (E-385/ADV-56/8): 'definicao' era checada antes de 'comentario' e um comentario citando a assinatura era descartado como definicao",
+    "CONTRAPROVA ISOLADA DE declaracoes_obsoletas (E-386): mantendo a declaracao real e acrescentando uma fantasma, a fantasma e' acusada e a real NAO - a checagem isola a excecao fantasma",
+    "MEDICAO VAZIA NO CLASSIFICADOR TAMBEM (E-386): o main imprimia sucesso com zero arquivos; agora imprime NADA MEDIDO e sai 1",
+    "METODO DE PR: EMPURRAR UMA VEZ POR RODADA (E-386): empurrei 5 vezes para o #433 numa rodada e os checks reiniciavam a cada push, impedindo o merge. O trabalho deve ser agrupado e publicado uma vez"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -3006,7 +3011,7 @@
           "severidade": "MEDIA (instrumento satisfazivel por renomeacao)",
           "descricao": "o classificador de escopo decide por LISTA DE PALAVRAS + prefixo tipo ID: uma linha com uma variavel chamada 'caminhoDoEvento' vira 'caminho' sem ser caminho, e um identificador sem prefixo ID vira 'indefinido'. As contagens (22/5/1) sao dependentes de NOMENCLATURA, nao de estrutura",
           "descoberto_por": "auditoria do proprio instrumento com casos injetados (2a vez que a medicao derruba expectativa do autor)",
-          "estado": "MEDIDO, NAO CORRIGIDO: exige distinguir estrutura de nomenclatura (mudanca de desenho, nao de regex)",
+          "estado": "FECHADO: PALAVRAS_CAMINHO trocada por sinais de CONSTRUCAO (filepath.Join, os.*, .json, .lock). MEDIDO: as contagens no repositorio sao IDENTICAS (24/5/2/1) - a brecha fechou a custo zero. Variavel chamada 'caminhoDoEvento' agora da' indefinido, nao caminho",
           "evidencia": "E-378"
         },
         {
@@ -3015,16 +3020,15 @@
           "descricao": "3a auditoria independente (subagente), 8 achados todos provados: (1) o join de classificar_statement entra na linha de comentario e um uso REAL de caminho (scheduling_crossprocess.go:46) e' classificado 'comentario' - apagar o comentario ou inserir linha vazia volta a 'caminho'; (2) a correcao do E-376 NAO tem teste que a defenda: revertendo, a suite fica 10 OK; (3) /* */ e string satisfazem a guarda, e // dentro de string apaga guarda real; (4) glob nao recursivo + chave por basename: caminho em subpasta escapa e identificador em subpasta ABORTA a varredura; (5) nenhum teste pina as contagens e classificar_statement nao tem teste: reverter o E-355 inteiro deixa 8 OK; (6) dispensas por basename:linha; (7) vacuidade = aprovacao; (8) definicao checada antes de comentario",
           "descoberto_por": "3a revisao adversarial independente (subagente, contexto fresco) - e os 3 criticos foram REPRODUZIDOS por mim",
           "verificado_por_mim": "scheduling_crossprocess.go:46 -> classificar_statement devolve 'comentario'; reverter E-376 faz a guarda voltar a aprovar comentario; /* */ e string aprovam; // em string gera falso positivo",
-          "estado": "REGISTRADO, NAO CORRIGIDO",
+          "estado": "1 a 8 CORRIGIDOS e medidos (E-380..E-386). Restam como limites declarados: a busca da guarda continua textual; a vacuidade do main da catraca (b) nao tem teste; os sinais de caminho sao textuais",
           "evidencia": "E-379"
         }
       ],
       "proximos_ataques": [
-        "adotar a variante ESTRUTURAL do classificador (medida com as MESMAS contagens e sem dependencia de nomes)",
-        "provar declaracoes_obsoletas ISOLADAMENTE (declarar a linha real E uma fantasma ao mesmo tempo)",
-        "tratar a mesma vacuidade no main do classificador (medicao vazia nao pode imprimir aprovacao)",
-        "ADV-56/8: a regra 'definicao' e' checada antes da de comentario",
-        "endurecer a barreira da contraprova entre processos (poll 5ms vs janela ~1,7ms)"
+        "corrigir as 3 documentacoes divergentes restantes, se houver (HADES_NEXT_ACTION ja' aponta para 24)",
+        "endurecer a barreira da contraprova entre processos (poll 5ms vs janela ~1,7ms)",
+        "auditar as linhas restantes com o mesmo tripe (instrumento + caso injetado + controle)",
+        "mesclar #433 e conferir em main"
       ]
     },
     "estagio_42": {
@@ -3412,6 +3416,8 @@
     "E-381": "correcoes do ADV-56, com medicao e limites declarados; vinculo declarado",
     "E-382": "correcoes do ADV-56, com medicao e limites declarados; vinculo declarado",
     "E-383": "correcoes do ADV-56, com medicao e limites declarados; vinculo declarado",
-    "E-384": "correcoes do ADV-56, com medicao e limites declarados; vinculo declarado"
+    "E-384": "correcoes do ADV-56, com medicao e limites declarados; vinculo declarado",
+    "E-385": "ADV-55 fechado, ADV-56/8 e vacuidade do classificador; vinculo declarado",
+    "E-386": "ADV-55 fechado, ADV-56/8 e vacuidade do classificador; vinculo declarado"
   }
 }

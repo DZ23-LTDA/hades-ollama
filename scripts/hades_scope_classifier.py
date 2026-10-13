@@ -17,7 +17,13 @@ import json
 import re
 from pathlib import Path
 
-PALAVRAS_CAMINHO = ("filepath.Join", "path", "caminho", "lock", "Root", ".json", ".lock", "Dir")
+# E-385 / ADV-55 (MEDIDO): a lista era de NOMES ("path", "caminho", "lock", "Root", "Dir") ✗ ⇒ uma linha com uma
+# variável chamada `caminhoDoEvento` virava **`caminho`** sem ser caminho, e `os.TempDir()` (que não tem nenhuma
+# dessas palavras) **também** virava caminho pela via do `filepath.Join`. Sobra o que é **CONSTRUÇÃO**: a chamada que
+# consome o valor e o sufixo de arquivo. **MEDIDO na troca**: as contagens no repositório são **idênticas**
+# (`24 · 5 · 2 · 1`) ⇒ a brecha fecha **a custo zero**. ***Instrumento que pode ser satisfeito renomeando uma variável
+# não mede o código: mede a escolha de nomes de quem escreveu.***
+PALAVRAS_CAMINHO = ("filepath.Join", "os.Open", "os.Create", "os.WriteFile", "os.MkdirAll", "os.ReadFile", ".json", ".lock")
 PADRAO_IDENTIFICADOR = re.compile(r'(?:"[A-Za-z0-9_]+_"|\bID\b|Id:|id\s*[:=])\s*\+?\s*[^;\n]*sanitizeIDComponent\('
                                   r'|sanitizeIDComponent\([^)]*\)\s*\+')
 
@@ -61,17 +67,25 @@ def classificar_statement(linhas, indice: int) -> str:
 
 
 def classificar_uso(linha: str) -> str:
-    """Classifica UMA ocorrência de sanitizeIDComponent numa linha."""
+    """Classifica UMA ocorrência de sanitizeIDComponent numa linha.
+
+    ⚠️ **E-385 / ADV-56/8 (MEDIDO na 3ª auditoria)**: a ordem das regras importa. A checagem de **definição** vinha
+    ANTES da de **comentário** ⇒ `// func sanitizeIDComponent(value string) string { … }` era classificada
+    **`definicao`** e **descartada sem registro** ✗, em vez de contada como `comentario`. *A categoria `comentario`
+    dependia de o comentário NÃO citar a assinatura — o que é uma coincidência, não uma regra.*
+    """
     texto = linha.strip()
-    # A DEFINIÇÃO da própria função não é uso dela (medido: supervisor_incidents.go:72 aparecia como indefinido).
-    if "func sanitizeIDComponent(" in linha:
-        return "definicao"
+    # COMENTÁRIO primeiro: é a natureza mais externa da linha. Um comentário que CITA a assinatura continua sendo
+    # comentário; a definição só é definição quando a linha é código.
     if texto.startswith("//"):
         return "comentario"
     # Comentário no meio da linha: a ocorrência pode estar depois de `//`
     posicao = linha.find("sanitizeIDComponent(")
     if posicao > 0 and "//" in linha[:posicao]:
         return "comentario"
+    # A DEFINIÇÃO da própria função não é uso dela (medido: supervisor_incidents.go:72 aparecia como indefinido).
+    if "func sanitizeIDComponent(" in linha:
+        return "definicao"
     if any(palavra in linha for palavra in PALAVRAS_CAMINHO):
         return "caminho"
     if PADRAO_IDENTIFICADOR.search(linha):
@@ -163,6 +177,12 @@ if __name__ == "__main__":
     usos = classificar_usos()
     total = resumo_da_classificacao()
     print("USOS DE sanitizeIDComponent por categoria: %s" % json.dumps(total, ensure_ascii=False))
+    # 🚨 E-386 / ADV-56/7 aplicado aqui também (o auditor apontou a MESMA vacuidade neste main): sem uso nenhum a
+    # frase de sucesso acima ("definicao/comentario/caminho/identificador/indefinido-declarado") era impressa e o main
+    # saía **0** ✗ — *medição vazia não é aprovação, é ausência de medição.*
+    if not total.get("arquivos"):
+        print("NADA MEDIDO: nenhum arquivo com sanitizeIDComponent foi encontrado — isto NÃO é aprovação.")
+        raise SystemExit(1)
     pendentes = indefinidos_nao_declarados()
     if pendentes:
         for local in pendentes:
