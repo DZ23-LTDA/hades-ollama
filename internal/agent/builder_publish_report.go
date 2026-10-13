@@ -41,7 +41,10 @@ func InspectBuilderPublish(root string) BuilderPublishReport {
 	temBanco := false
 	_ = filepath.Walk(root, func(caminho string, info os.FileInfo, err error) error {
 		if err != nil || info == nil || info.IsDir() {
-			return nil
+			// AQUI `nil` É A RESPOSTA CERTA: no callback de `filepath.Walk`, devolver `nil` significa "siga a
+			// varredura". Devolver o erro (como o `nilerr` sugere) ABORTARIA o relatório inteiro por causa de uma
+			// entrada ilegível — *mudaria o comportamento, não corrigiria o defeito*. Exceção DECLARADA (E-367).
+			return nil //nolint:nilerr
 		}
 		relatorio.FilesCopied++
 		relativo, relErr := filepath.Rel(root, caminho)
@@ -56,7 +59,8 @@ func InspectBuilderPublish(root string) BuilderPublishReport {
 		}
 		dados, lerErr := os.ReadFile(caminho)
 		if lerErr != nil {
-			return nil
+			// Mesma razão: arquivo ilegível não invalida o relatório do que FOI publicado. Exceção DECLARADA (E-367).
+			return nil //nolint:nilerr
 		}
 		conteudo := strings.ToLower(string(dados))
 		if strings.Contains(conteudo, "auth") || strings.Contains(conteudo, "login") || strings.Contains(conteudo, "jwt") {

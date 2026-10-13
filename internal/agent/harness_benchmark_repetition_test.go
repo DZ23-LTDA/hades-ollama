@@ -9,35 +9,11 @@ import (
 
 // P0-B / T2 — REPETIÇÃO ESTATÍSTICA: TESTES (E-345).
 
-// harnessAlternado alterna entre resolver e trapacear, para provar que a AGREGAÇÃO conta cada veredicto no lugar certo.
-type harnessAlternado struct {
-	chamadas int
-}
-
-func (h *harnessAlternado) Name() string  { return "alternado" }
-func (h *harnessAlternado) Model() string { return "teste" }
-func (h *harnessAlternado) ProposeFix(_ context.Context, task HarnessBenchmarkTask, _ string) (map[string]string, error) {
-	h.chamadas++
-	// 1ª execução: correção correta (verde na 1ª tentativa). 2ª: altera o TESTE (trapaça). 3ª: não propõe nada (vermelho).
-	switch {
-	case h.chamadas == 1:
-		proposta := map[string]string{}
-		for nome, conteudo := range task.ReferenceFix {
-			if nome != "go.mod" && !isTestFile(nome) {
-				proposta[nome] = conteudo
-			}
-		}
-		return proposta, nil
-	case h.chamadas == 2:
-		return map[string]string{"__trapaca__.go": ""}, nil
-	default:
-		return map[string]string{}, nil
-	}
-}
-
-func isTestFile(nome string) bool {
-	return len(nome) > 8 && nome[len(nome)-8:] == "_test.go"
-}
+// E-367: `harnessAlternado` e `isTestFile` foram REMOVIDOS daqui. O lint os apontava como `unused` e a leitura
+// confirmou: a agregação testada abaixo é PURA e monta `HarnessBenchmarkResult` direto, sem harness nenhum.
+// *Código morto não é documentação — é peso que parece intenção.*
+// A primeira tentativa de remoção foi por REGEX e quebrou o arquivo (`expected declaration, found 'for'`); o
+// compilador foi o árbitro e a remoção passou a ser cirúrgica.
 
 func TestAgregacaoDeRepeticaoContaCadaVeredictoNoLugarCerto(t *testing.T) {
 	// Agregação é PURA: a partir de resultados conhecidos, as contagens têm de bater — sem depender de modelo.
