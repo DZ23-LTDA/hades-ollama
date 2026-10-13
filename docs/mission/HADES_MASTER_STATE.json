@@ -2,7 +2,7 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-19T20:30:00-03:00",
+  "updated_at": "2026-10-19T21:40:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
@@ -763,7 +763,8 @@
         "E-295",
         "E-301",
         "E-306",
-        "E-309"
+        "E-309",
+        "E-310"
       ],
       "blocker": null,
       "next": "Pendencia remanescente do gate: ExternalComparison NAO_EXECUTADA (exige comparacao com concorrentes) e os estagios 23-38 em IN_PROGRESS. O vinculo das 13 linhas legadas foi FECHADO (E-251): 13 -> 0 sem vinculo. Proximo: estagio 18 (governanca dos 16 escopos divergentes) e retomada dos estagios de negocio",
@@ -2086,7 +2087,10 @@
     "MEDIR A API EM VEZ DE SUPOR (E-308): tres suposicoes minhas de assinatura (Conversations/ListConversations, aridade de Conversation, onde vive o historico) cairam na primeira compilacao. Ler a API custou um passo; adivinhar custou tres",
     "A LICAO SO VALE QUANDO IMPEDE A REINCIDENCIA (E-309): o version: latest que reprovou um main verde estava a um commit de voltar. Agora um checker reprova gate flutuante, com teste negativo e execucao no CI",
     "TAG MOVEL E' A MESMA CLASSE DO latest (E-309): @v4 pode ser movida pelo mantenedor sem aviso. Como 143 de 144 actions do repositorio ja usam SHA, exigir SHA descreve a convencao existente - nao inventa uma nova",
-    "EXCECAO DECLARADA, NAO SILENCIOSA (E-309): a unica action fora de SHA fica numa lista com motivo escrito. Silenciar uma excecao e' o mesmo defeito que declarar status que envelhece sem remedir"
+    "EXCECAO DECLARADA, NAO SILENCIOSA (E-309): a unica action fora de SHA fica numa lista com motivo escrito. Silenciar uma excecao e' o mesmo defeito que declarar status que envelhece sem remedir",
+    "REGRA DE REMEDICAO PRECISA SER EXERCITADA (E-310): o bloco medido dizia 300 evidencias e ja eram 309. A regra de E-301 existia no documento e foi obedecida agora - uma regra que nunca roda e' decoracao",
+    "FECHAR A JANELA COM O DOCUMENTO VERDADEIRO (E-310): antes de qualquer retomada, o handoff precisa refletir o commit real (fafda19e7), as 309 evidencias, os bloqueios e onde o trabalho parou",
+    "FECHAR A JANELA COM O DOCUMENTO VERDADEIRO (E-310): antes de qualquer retomada, o handoff precisa refletir o commit real (fafda19e7), as 310 evidencias, os bloqueios e onde o trabalho parou"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",

@@ -1,21 +1,24 @@
 # HADES — HANDOFF (como retomar a missão do zero)
 
-## 0. ESTADO MEDIDO — `main` `f190ec8ea` (esta é a leitura canônica, não herde números de texto antigo)
+## 0. ESTADO MEDIDO — `main` `fafda19e7` (esta é a leitura canônica; não herde número de texto antigo)
 
 | Medida | Valor medido |
 | --- | --- |
-| Commit verificado | `f190ec8ea` |
-| Evidências no índice | **300** |
+| Commit verificado | `fafda19e7` |
+| Evidências no índice | **310** |
 | Estágios com evidência | **38 de 38** |
+| Bloqueios externos declarados | **9** |
 | Matriz do gate final | `BLOCKED_BY_EXTERNAL_DEPENDENCY: 5 · DONE: 19` |
 | Veredito global | **`NOT_RELEASE_READY`** |
 
-**Regra desta seção:** qualquer número acima **envelhece**. Antes de citar, remeça:
+**Regra desta seção (E-301, aplicada em E-310):** qualquer número acima **envelhece**. Esta seção já ficou desatualizada
+uma vez (dizia `f190ec8ea` / 300) e foi remedida. **Antes de citar, remeça:**
 
 ```powershell
-git -C . rev-parse --short HEAD
+git rev-parse --short HEAD
 (Select-String -Path docs/mission/HADES_EVIDENCE_INDEX.md -Pattern '^\| E-\d+ ').Count
-python scripts/hades_mission_check.py     # deve imprimir ESCRITURAÇÃO CONSISTENTE (exit 0)
+python scripts/hades_mission_check.py                      # ESCRITURAÇÃO CONSISTENTE (exit 0)
+python scripts/hades_ci_reproducibility_check.py --check    # nenhum gate flutuante (E-309)
 Select-String -Path docs/mission/HADES_FINAL_RELEASE_GATE.md -Pattern 'Resumo: '
 ```
 
@@ -25,6 +28,24 @@ de estado divergiriam. O estado canônico é `HADES_MASTER_STATE.json`. **Não c
 **Retomada exata (comandos reais, nenhum passo presumido):**
 
 ```powershell
+git fetch origin main; git reset --hard origin/main
+$repo = (Get-Location).Path
+$env:GOROOT = "$repo\_tmp\goroot1269\go"; $env:GOPATH = "$repo\_tmp\gopath"
+$env:GOMODCACHE = "$repo\_tmp\gomodcache"; $env:GOCACHE = "$repo\_tmp\gocache1269"
+$env:GOTMPDIR = "$repo\_tmp\gotmp"; $env:GOFLAGS = '-mod=mod'; $env:GOTOOLCHAIN = 'local'
+$env:PATH = "$env:GOROOT\bin;$env:PATH"
+gofmt -l internal/agent internal/multillm server/agent_routes.go   # tem de sair VAZIO
+go test ./internal/agent/ -count=1
+python scripts/hades_release_gate.py; python scripts/hades_baseline_report.py
+python scripts/hades_stage_map.py; python scripts/hades_mission_check.py
+python scripts/hades_ci_reproducibility_check.py --check
+git checkout -b feat/<escopo>   # branch curta + PR; nunca commit direto em main, nunca force-push
+```
+
+**Onde o trabalho parou (para quem retoma):** estágios **36–38** com métricas, publicação, jornada E2E e a fronteira
+cruzada já provadas; faltam **STT/TTS e telefonia reais** (dependem de provedor/número/credencial —
+`BLOCKED_BY_EXTERNAL_DEPENDENCY`), **104/122 conectores** que exigem operador (`APENAS_CATALOGO`), artefato **não
+assinado e só Windows**, e a **decisão de política** do `misspell` (dicionário inglês) ao subir a versão do linter.
 # 1. baseline: main integrada e limpa
 git fetch origin main; git reset --hard origin/main
 # 2. toolchain fixada do repositório (Go declarado em go.mod)
