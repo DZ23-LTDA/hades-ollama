@@ -58,3 +58,66 @@ func TestRollbackDoOnboardingNaoGravaPorSku(t *testing.T) {
 	}
 	t.Logf("MEDIDA ESTRUTURAL: desfazer %d linhas com %d gravação(ões) e 0 produtos restantes", quantidade, gravacoes)
 }
+
+// E-394 — E o cenário que faltava: **catálogo ANTERIOR**. O E-392 declarou este limite em voz alta:
+// *"o cenário do teste é empresa nova; com catálogo anterior o custo é 2 gravações e o teste não cobre"* ✗.
+//
+// Aqui, o plano tem **uma linha que reaproveita um SKU existente** (⇒ o `token.Before` **não** é vazio) e **uma linha
+// nova** (⇒ há o que remover) ⇒ o desfazer tem de custar **EXATAMENTE 2**: **um lote** para restaurar o anterior e
+// **um lote** para remover o criado. *O número exato depende do cenário — e um limite declarado em voz alta só está
+// fechado quando existe teste que o cobre.*
+func TestRollbackComCatalogoAnteriorGravaEmDoisLotes(t *testing.T) {
+	comercio, err := NewCommerceStoreAt(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	agora := time.Now().UTC()
+	// Catálogo ANTERIOR: um produto que já existe, com preço que o plano vai alterar.
+	existente := produtoDeTeste("PRE-0001")
+	existente.PriceCents = 500
+	if _, err := comercio.UpsertProduct(existente, agora); err != nil {
+		t.Fatal(err)
+	}
+
+	plano := []CompanyOnboardingRow{
+		{SKU: "PRE-0001", Name: "Produto que já existia", PriceCents: 1500},
+		{SKU: "NOVO-0002", Name: "Produto novo desta carga", PriceCents: 2500},
+	}
+	_, token, err := ApplyCompanyOnboarding(comercio, CompanyOnboardingPlan{
+		OrganizationID: "org-a", Origin: "teste de catálogo anterior", Rows: plano,
+		// MEDIDO: sem `Overwrite` explícito o plano com SKU existente e preço divergente é **RECUSADO**
+		// (`company onboarding has unresolved conflicts: PRE-0001`) — *conflito tem de ser decisão, não efeito
+		// colateral* ✓. E é essa recusa que faz o `token.Before` existir.
+		Overwrite: true,
+	}, agora)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(token.Before) == 0 {
+		t.Fatal("o cenário PRECISA de catálogo anterior (token.Before não pode ser vazio) — senão o teste não cobre o caso")
+	}
+	if len(token.CreatedSKUs) == 0 {
+		t.Fatal("o cenário PRECISA de pelo menos um SKU criado — senão não há o que remover")
+	}
+
+	antes := comercio.Gravacoes()
+	if err := RollbackCompanyOnboarding(comercio, token, time.Now().UTC()); err != nil {
+		t.Fatal(err)
+	}
+	gravacoes := comercio.Gravacoes() - antes
+	if gravacoes != 2 {
+		t.Fatalf("ARMADILHA: desfazer com catálogo anterior custou %d gravação(ões) — o esperado é EXATAMENTE 2 "+
+			"(um lote de restauração e um de remoção). Se subiu, alguém voltou a gravar POR LINHA ou POR SKU.",
+			gravacoes)
+	}
+	// E o estado anterior foi RESTAURADO de verdade — não basta gravar pouco, tem de desfazer.
+	restaurado, existe := comercio.ProductBySKU("org-a", "PRE-0001")
+	if !existe || restaurado.PriceCents != 500 {
+		t.Fatalf("ARMADILHA: o desfazer não restaurou o preço anterior (%+v, existe=%v)", restaurado, existe)
+	}
+	if _, criadoFicou := comercio.ProductBySKU("org-a", "NOVO-0002"); criadoFicou {
+		t.Fatal("ARMADILHA: o produto criado pela carga continuou no acervo depois do desfazer")
+	}
+	t.Logf("MEDIDA ESTRUTURAL: catálogo anterior ⇒ desfazer com %d gravações, preço restaurado e SKU novo removido",
+		gravacoes)
+}
