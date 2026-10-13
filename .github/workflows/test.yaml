@@ -499,6 +499,12 @@ jobs:
         run: go test -count=1 -tags updater_live ./app/...
 
       - uses: golangci/golangci-lint-action@db9de0fc1a667e1a49d2291a1a042dff081d78f6 # v9
+        with:
+          # VERSÃO FIXA (E-306): com `latest`, o lint baixou v2.14.0 e passou a marcar 27 palavras PORTUGUESAS
+          # (`misspell` tem dicionário inglês) em arquivos que ninguém tocou — o gate mudou sob o código e
+          # reprovou um `main` que estava verde 20 minutos antes. Fixar não desliga linter: impede que a REGRA
+          # mude sem revisão. Subir de versão passa a ser uma decisão, com PR.
+          version: v2.13.0
 
   race:
     strategy:

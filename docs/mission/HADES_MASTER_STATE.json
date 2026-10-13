@@ -2,7 +2,7 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-19T13:50:00-03:00",
+  "updated_at": "2026-10-19T16:30:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
@@ -761,7 +761,8 @@
         "E-251",
         "E-292",
         "E-295",
-        "E-301"
+        "E-301",
+        "E-306"
       ],
       "blocker": null,
       "next": "Pendencia remanescente do gate: ExternalComparison NAO_EXECUTADA (exige comparacao com concorrentes) e os estagios 23-38 em IN_PROGRESS. O vinculo das 13 linhas legadas foi FECHADO (E-251): 13 -> 0 sem vinculo. Proximo: estagio 18 (governanca dos 16 escopos divergentes) e retomada dos estagios de negocio",
@@ -1116,13 +1117,14 @@
         "E-087",
         "E-109",
         "E-112",
-        "E-304"
+        "E-304",
+        "E-305"
       ],
       "blocker": "B-06",
-      "next": "CORRIGIR E-304: reconstruir o reservado de pedidos abertos ao carregar o CommerceStore e provar com o teste de reinicio real. Depois: STT/TTS reais (BLOCKED_BY_EXTERNAL_DEPENDENCY) e a homologacao final.",
+      "next": "Jornada E2E do estagio 38 com empresa nova: corrigida e testada. Restam STT/TTS reais e telefonia (BLOCKED_BY_EXTERNAL_DEPENDENCY) e a homologacao final dos estagios 36-38.",
       "blocked_reason": "",
       "external_dependency": "idem 32: integracoes ao vivo; a jornada em sandbox e local",
-      "done": "CERTIFICACAO E2E EM SANDBOX com 21 etapas, agora INCLUINDO O SUPERVISOR NO LACO: um segundo pedido e pago, tem receita lancada e e cancelado, gerando ESTORNO DEVIDO que por politica EXIGE DECISAO HUMANA; o ciclo do supervisor observa os dominios, a pendencia e consultavel, a aprovacao de gerente-certificacao EXECUTA o efeito real no livro, e a pendencia NAO VAZA para outra organizacao. O relatorio carrega um bloco supervisor com sinais, pendencias, bloqueios por orcamento, quem decidiu e o efeito no livro DEFEITO ABERTO (E-304, severidade ALTA): MEDIDO que a RESERVA DE ESTOQUE nao sobrevive ao reinicio do processo. O pedido persiste (idempotencia) mas Reserved volta a 0 e Available == OnHand. O RecoveryProven do certificador mede idempotencia NO MESMO PROCESSO, nao reinicio. Reproducao e desbloqueio em docs/mission/HADES_BLOCKERS.md. NAO corrigido nesta rodada por ser mudanca de modelo de estoque, declarado em vez de escondido.",
+      "done": "CERTIFICACAO E2E EM SANDBOX com 21 etapas, agora INCLUINDO O SUPERVISOR NO LACO: um segundo pedido e pago, tem receita lancada e e cancelado, gerando ESTORNO DEVIDO que por politica EXIGE DECISAO HUMANA; o ciclo do supervisor observa os dominios, a pendencia e consultavel, a aprovacao de gerente-certificacao EXECUTA o efeito real no livro, e a pendencia NAO VAZA para outra organizacao. O relatorio carrega um bloco supervisor com sinais, pendencias, bloqueios por orcamento, quem decidiu e o efeito no livro DEFEITO ABERTO (E-304, severidade ALTA): MEDIDO que a RESERVA DE ESTOQUE nao sobrevive ao reinicio do processo. O pedido persiste (idempotencia) mas Reserved volta a 0 e Available == OnHand. O RecoveryProven do certificador mede idempotencia NO MESMO PROCESSO, nao reinicio. Reproducao e desbloqueio em docs/mission/HADES_BLOCKERS.md. NAO corrigido nesta rodada por ser mudanca de modelo de estoque, declarado em vez de escondido. LEITURA DE E-304 CORRIGIDA E DEFEITO REAL CORRIGIDO (E-305): MEDIDO com diagnostico de movimentos que a PERSISTENCIA DE ESTOQUE ESTA CORRETA - antes e depois do reinicio o saldo e identico e os 4 movimentos estao la (o teste que ja existia tambem passa). O defeito real era REEXECUCAO: a jornada somava a carga inicial de novo (10 -> 18, estoque inflado) e falhava com 'reserva inesperada'. Correcoes: carga inicial idempotente e recusa explicita (ErrBusinessJourneyAlreadyCertified) para empresa que ja operou.",
       "execution": "BLOCKED_BY_EXTERNAL_DEPENDENCY"
     }
   ],
@@ -2065,7 +2067,14 @@
     "NAO INVENTAR SEGUNDO REGISTRO DE CONSENTIMENTO (E-303): a elegibilidade usa o ConsentRegistry que ja existia. Um segundo registro divergiria do primeiro - mesma licao do HADES_CURRENT_STATE.json",
     "REGISTRO HONESTO DO QUE NAO ACONTECEU (E-303): ProviderExecutedAt fica NIL porque quem liga e' o provedor externo. Campo preenchido 'para parecer completo' seria a mentira que a missao proibe",
     "IDEMPOTENCIA NAO E' REINICIO (E-304): o certificador dizia RecoveryProven medindo 'refazer os passos sem duplicar' - isso e' idempotencia no MESMO processo. O reinicio real revelou um defeito de severidade ALTA que a metrica nao pegava. Nome de campo mais forte que a medicao e' a mesma doenca de 'status declarado'",
-    "DEFEITO ENCONTRADO NAO SE ESCONDE NEM SE APRESSSA (E-304): registrar, reproduzir e documentar o defeito sem empurrar uma correcao nao verificada. Trocar um defeito por uma suposicao seria pior que o defeito"
+    "DEFEITO ENCONTRADO NAO SE ESCONDE NEM SE APRESSSA (E-304): registrar, reproduzir e documentar o defeito sem empurrar uma correcao nao verificada. Trocar um defeito por uma suposicao seria pior que o defeito",
+    "MEDICAO REFUTA CONCLUSAO ANTERIOR (E-305): o diagnostico de movimentos mostrou que a persistencia de estoque nunca esteve quebrada - o E-304 estava errado e foi CORRIGIDO no indice, nao defendido. Antes de reportar um defeito, medir o mecanismo, nao o sintoma",
+    "DIAGNOSTICO QUE IMPRIME O ESTADO E' MAIS FORTE QUE LEITURA DE CODIGO (E-305): quatro passos lendo commerce.go produziram uma hipotese errada; um teste que imprime movimentos e saldo resolveu em uma execucao",
+    "ESTOQUE INFLADO E' INVENTARIO ERRADO (E-305): a carga inicial somava de novo a cada reexecucao. Agora so carrega quando o SKU nao tem movimento nenhum",
+    "RECUSAR EXPLICITAMENTE EM VEZ DE FALHAR OBSCURO (E-305): a jornada nao suporta reexecucao; agora diz isso com ErrBusinessJourneyAlreadyCertified em vez de estourar 'reserva inesperada' no meio",
+    "GATE QUE SE MOVE SOZINHO NAO MEDE O CODIGO (E-306): o golangci-lint estava em 'latest' e passou de v2.13 para v2.14 entre dois runs, reprovando um main que estava verde 20 minutos antes. Versao de gate tem de ser FIXA; subir e' decisao com PR",
+    "MISSPELL CONTRA CODIGO EM pt-BR (E-306): 27 dos 38 avisos eram palavras portuguesas num dicionario ingles. Fixar a versao resolve agora; subir exigira' decidir a politica de idioma com consciencia, nao por arrasto",
+    "A MATRIZ test NAO E' OBRIGATORIA (E-306): medido que em #368 os jobs test (ubuntu/windows/macos) falharam e o PR gate passou. Saber QUAIS gates bloqueiam evita perseguir o vermelho errado"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",

@@ -52,7 +52,7 @@ func TestPublicacaoSocialNaoDuplicaEfeitoNemDisparaEnxurrada(t *testing.T) {
 	limite := CompanySocialPublishLimitPerWindow
 	publicados, recusados := 1, 0
 	var ultimaRecusa error
-	for i := 0; i < limite+3; i++ {
+	for range limite + 3 {
 		outro := criarRascunhoSocial(t, store, empresa, "conteúdo número "+strings.Repeat("x", 1))
 		id := outro.SocialDrafts[len(outro.SocialDrafts)-1].ID
 		if _, err := store.ApproveSocialDraft(empresa, id); err != nil {

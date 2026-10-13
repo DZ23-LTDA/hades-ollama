@@ -1,9 +1,14 @@
 package agent
 
 import (
+	"errors"
 	"fmt"
 	"time"
 )
+
+// ErrBusinessJourneyAlreadyCertified recusa certificar uma empresa que JÁ operou: a jornada é uma cerimônia de
+// empresa nova e reexecutá-la não é suportado (E-305).
+var ErrBusinessJourneyAlreadyCertified = errors.New("business journey requires a fresh company")
 
 // Business E2E Certification (estágio 38): percorre a jornada completa de uma empresa
 // de sandbox e devolve **evidência por etapa**, com prova de isolamento e a lista
@@ -157,6 +162,14 @@ func (r *Runtime) CertifyBusinessJourney(input BusinessJourneyInput, now time.Ti
 	report.CompanyID = company.ID
 	step("empresa_criada", BusinessStepOK, "company="+company.ID, company.Name)
 
+	// A JORNADA NÃO SUPORTA REEXECUÇÃO NA MESMA EMPRESA (E-305). Ela é uma cerimônia de empresa NOVA: cria
+	// produto, carrega estoque e VENDE. Reexecutar numa empresa que já operou inflava estoque e depois falhava
+	// com o erro interno "reserva inesperada" — mensagem confusa para quem opera. Recusar EXPLICITAMENTE é o
+	// desfecho honesto: o defeito não se disfarça de falha obscura.
+	if len(r.Commerce().Orders(input.OrganizationID)) > 0 {
+		return fail("empresa_ja_operou", ErrBusinessJourneyAlreadyCertified)
+	}
+
 	// 2. Produto e estoque (Commerce Engine).
 	product, err := r.Commerce().UpsertProduct(CommerceProduct{
 		OrganizationID: input.OrganizationID, SKU: input.SKU, Name: input.ProductName,
@@ -165,8 +178,14 @@ func (r *Runtime) CertifyBusinessJourney(input BusinessJourneyInput, now time.Ti
 	if err != nil {
 		return fail("produto_e_estoque", err)
 	}
-	if _, err := r.Commerce().RecordStock(input.OrganizationID, input.SKU, input.InitialStock, CommerceMovementEntry, "carga inicial", now); err != nil {
-		return fail("produto_e_estoque", err)
+	// A CARGA INICIAL precisa ser IDEMPOTENTE (E-305). MEDIDO: reexecutar a jornada somava `InitialStock` de novo, e o
+	// estoque ficava inflado (10 -> 18 no diagnóstico). Estoque inflado é inventário errado: o saldo deixa de
+	// corresponder ao que existe. A carga só acontece quando o SKU ainda NÃO tem movimento nenhum — assim a primeira
+	// execução é idêntica e qualquer reexecução (no mesmo processo OU após reinício) não soma estoque.
+	if len(r.Commerce().Movements(input.OrganizationID, input.SKU)) == 0 {
+		if _, err := r.Commerce().RecordStock(input.OrganizationID, input.SKU, input.InitialStock, CommerceMovementEntry, "carga inicial", now); err != nil {
+			return fail("produto_e_estoque", err)
+		}
 	}
 	step("produto_e_estoque", BusinessStepOK, "product="+product.ID,
 		fmt.Sprintf("%s com %d unidades disponíveis", product.SKU, input.InitialStock))
