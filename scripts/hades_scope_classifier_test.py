@@ -65,6 +65,57 @@ class ClassificadorDeEscopoTest(unittest.TestCase):
         # Arquivo de TESTE é ignorado: a varredura é sobre código de produção.
         self.assertNotIn("ignorado_test.go", usos)
 
+    def test_comentario_acima_nao_muda_a_classe_do_uso(self) -> None:
+        """ADV-56/1 (3ª auditoria independente, medido): o `join` para trás entrava na linha de COMENTÁRIO acima e o
+        uso real virava `comentario` ✗. Caso real do repositório: `scheduling_crossprocess.go:46`.
+
+        ***Instrumento cujo veredito depende do comentário vizinho não mede a construção: mede a vizinhança.***
+        """
+        # O comentário tem de estar IMEDIATAMENTE acima do uso (é assim o caso real do repositório).
+        with_comentario = (
+            "package p\n\n"
+            "func f(org string) string {\n"
+            "\t// withFileLock tem a mesma assinatura nos dois sistemas\n"
+            '\treturn filepath.Join("/r", sanitizeIDComponent(org)+".lock")\n'
+            "}\n"
+        )
+        sem_comentario = (
+            "package p\n\n"
+            "func f(org string) string {\n"
+            '\treturn filepath.Join("/r", sanitizeIDComponent(org)+".lock")\n'
+            "}\n"
+        )
+        com = self._dir(**{"com_comentario.go": with_comentario})
+        sem = self._dir(**{"sem_comentario.go": sem_comentario})
+        # A CLASSE PRECISA SER A MESMA: o comentário acima não é parte do statement.
+        self.assertEqual(
+            1, len(classificador.classificar_usos(com)["com_comentario.go"]["caminho"]),
+            "um comentário IMEDIATAMENTE acima do uso não pode virar 'comentario' (era o defeito do ADV-56/1): %s"
+            % (classificador.classificar_usos(com)["com_comentario.go"],),
+        )
+        self.assertEqual(
+            1, len(classificador.classificar_usos(sem)["sem_comentario.go"]["caminho"]),
+            classificador.classificar_usos(sem)["sem_comentario.go"],
+        )
+        # E o mesmo uso, visto POR LINHA, também é caminho: a correção não podia depender do modo de varredura.
+        self.assertEqual("caminho", classificador.classificar_uso('\treturn filepath.Join("/r", sanitizeIDComponent(org)+".lock")'))
+
+    def test_contagens_do_repositorio_estao_pinadas(self) -> None:
+        """ADV-56/5: nenhum teste pinava as contagens, então o recurso do E-355 podia ser revertido com a suíte VERDE.
+
+        MEDIDO: reverter `classificar_statement` para classificação por linha deixava **8 testes OK** ✗. Uma métrica que
+        nenhum teste pina deriva em silêncio — e foi o que aconteceu: a documentação dizia 22 e 23, o instrumento dizia
+        23, e a verdade (depois de corrigir o join) é **24**. *Número publicado sem catraca é narrativa.*
+        """
+        resumo = classificador.resumo_da_classificacao()
+        esperado = {"caminho": 24, "identificador": 5, "comentario": 2, "indefinido": 1}
+        obtido = {chave: resumo[chave] for chave in esperado}
+        self.assertEqual(
+            esperado, obtido,
+            "as contagens de escopo mudaram. Se a mudança é legítima, ATUALIZE este teste e a documentação com a "
+            "medição nova — não deixe a narrativa divergir do instrumento: %s" % (obtido,),
+        )
+
     def test_indefinido_sem_declaracao_reprova(self) -> None:
         raiz = self._dir(**{"solta.go": 'package p\n\nfunc h(v string) string {\n\treturn sanitizeIDComponent(v)\n}\n'})
         pendentes = classificador.indefinidos_nao_declarados(raiz)

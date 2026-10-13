@@ -22,18 +22,40 @@ PADRAO_IDENTIFICADOR = re.compile(r'(?:"[A-Za-z0-9_]+_"|\bID\b|Id:|id\s*[:=])\s*
                                   r'|sanitizeIDComponent\([^)]*\)\s*\+')
 
 
+def _e_comentario(linha: str) -> bool:
+    """Linha que é comentário (não código). Usada para NÃO juntar comentário ao statement."""
+    return linha.strip().startswith("//")
+
+
 def classificar_statement(linhas, indice: int) -> str:
     """Classifica o uso considerando o STATEMENT inteiro (linhas continuadas até `;`, `{` ou linha vazia).
 
     POR QUE ISTO EXISTE (E-355): a classificação por LINHA colocava uso multi-linha em `indefinido` e exigia declaração
     humana. Declaração humana resolve o caso isolado; **não** resolve a próxima ocorrência. *O instrumento precisa
     entender a construção, não a linha.*
+
+    🚨 **CORRIGIDO NO E-380 (ADV-56/1, 3ª auditoria independente — medido)**: o `join` **para trás** entrava na linha de
+    **comentário** acima e o statement inteiro começava com `//` ⇒ `classificar_uso` devolvia **`comentario`** ✗. Caso
+    REAL no repositório: `internal/agent/scheduling_crossprocess.go:46` — um uso **legítimo de caminho** — era contado
+    como comentário; **apagando o comentário** ou **inserindo uma linha vazia** ele voltava a `caminho` ✓.
+    ***Instrumento cujo veredito depende do comentário vizinho não mede a construção: mede a vizinhança.***
+    A correção para em comentário nos DOIS sentidos (para trás e para frente).
     """
     inicio = indice
-    while inicio > 0 and linhas[inicio - 1].strip() and not linhas[inicio - 1].rstrip().endswith((";", "{", "}")):
+    while (
+        inicio > 0
+        and linhas[inicio - 1].strip()
+        and not _e_comentario(linhas[inicio - 1])
+        and not linhas[inicio - 1].rstrip().endswith((";", "{", "}"))
+    ):
         inicio -= 1
     fim = indice
-    while fim + 1 < len(linhas) and linhas[fim].strip() and not linhas[fim].rstrip().endswith((";", "}")):
+    while (
+        fim + 1 < len(linhas)
+        and linhas[fim].strip()
+        and not _e_comentario(linhas[fim + 1])
+        and not linhas[fim].rstrip().endswith((";", "}"))
+    ):
         fim += 1
     return classificar_uso("\n".join(linhas[inicio:fim + 1]))
 
