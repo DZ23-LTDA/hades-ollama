@@ -50,7 +50,7 @@ MATRIZ_ACEITE = [
     ("MCPs têm instalação e execução verificáveis", "DONE", "MCP local/stdio exercitado com testes de revogação e auditoria (estágio 7)", "—"),
     ("Skills têm ativação e execução verificáveis", "DONE", "Ativação por projeto/agente/modelo com testes (estágio 8)", "—"),
     ("Agentes e subagentes executam missões reais", "DONE", "Orquestração com cotas e artefatos verificáveis (estágio 9)", "—"),
-    ("O runtime suporta recuperação e retomada", "DONE", "Checkpoints, cancelamento e retomada testados (estágios 10 e 13)", "—"),
+("O runtime suporta recuperação e retomada", "DONE", "Checkpoints, cancelamento e retomada testados (estágios 10 e 13). **E-291**: a auditoria encontrou e corrigiu um **DEFEITO REAL** desta linha — o claim de agendamento decidia pela cópia em memória, e dois processos sobre a mesma pasta de dados **disparavam o mesmo efeito externo duas vezes**; o defeito foi **provado pelo teste antes da correção** e o claim passou a decidir sobre estado fresco. Limite residual: o frescor é por **releitura do arquivo** (sem trava entre processos no claim)", "—"),
     ("Ferramentas funcionam dentro das permissões", "DONE", "Execução governada com recusa fora de escopo (estágios 7 e 18)", "—"),
     (
         "O Builder entrega aplicações utilizáveis",
@@ -63,11 +63,11 @@ MATRIZ_ACEITE = [
     ("O agente de código entrega correções testadas", "DONE", "Fluxo issue → teste → correção → PR comprovado (estágio 11)", "—"),
     ("Workflows executam os nós realmente suportados", "DONE", "Motor determinístico com retry/DLQ e log por nó (estágio 13)", "—"),
     ("Browser/computer-use funciona nos ambientes homologados", "BLOCKED_BY_EXTERNAL_DEPENDENCY", "B-09 residual: Python ausente para o E2E de browser", "Ambiente com navegador/Python para o E2E (estágio 14)"),
-    ("A memória respeita os escopos", "DONE", "Isolamento entre organizações com prova em disco (estágio 15)", "—"),
-    ("A segurança multitenant está validada", "IN_PROGRESS", "RLS e isolamento com testes; falta prova em banco real (estágio 18)", "Banco PostgreSQL real para provar RLS (estágio 18)"),
+("A memória respeita os escopos", "DONE", "Isolamento entre organizações com prova em disco (estágio 15). **E-289/E-290**: a escrita passou a **recusar** sobrescrever trabalho de outro escritor — **intenção declarada por caminho** (não-destrutivos guardados, destrutivos por intenção) e detecção também por **revisão**. Limites: os 3 caminhos destrutivos seguem **sem guarda por intenção**; a trava do arquivo é **ADVISORY**; sem **fila de escritas**", "—"),
+("A segurança multitenant está validada", "IN_PROGRESS", "RLS e isolamento com testes; falta prova em banco real (estágio 18). **E-287**: a jornada E2E ganhou a **direção negativa** — leitura cruzada entre tenants **IMPEDE a certificação** (erro que nomeia o isolamento), não apenas marca falha no relatório", "Banco PostgreSQL real com papéis distintos"),
     ("A suíte obrigatória está aprovada", "DONE", "Lint, contrato, suíte Go e paridade Linux (com detector de corrida) verdes na rodada mais recente", "—"),
     ("A instalação limpa está homologada", "BLOCKED_BY_EXTERNAL_DEPENDENCY", "B-06: certificado de assinatura e runners de SO", "Certificado + runners reais (estágio 20)"),
-    ("A documentação corresponde ao produto", "DONE", "Relatórios de estágio, índice de evidências e limites declarados por módulo", "—"),
+("A documentação corresponde ao produto", "DONE", "Relatórios de estágio, índice de evidências e **limites declarados por módulo** — inclusive os mais recentes (artefato gerado, memória, claim de agendamento). **Limites declarados não são omissões: são afirmações medidas**, e o índice registra também os **resultados negativos** (E-288)", "—"),
     ("Os artefatos de distribuição estão disponíveis", "NAO_COMPROVADO", "Empacotamento existe; falta release assinado publicado", "Assinatura e publicação de release (estágio 20)"),
     ("Não existem bloqueios críticos ou altos sem mitigação aceita", "NAO_COMPROVADO", "Bloqueios externos em aberto e limites de severidade MÉDIO declarados", "Resolver ou aceitar formalmente cada bloqueio"),
 ]
