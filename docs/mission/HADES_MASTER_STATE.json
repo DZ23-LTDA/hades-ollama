@@ -2120,7 +2120,10 @@
     "SHA NAO E' LEITURA (E-318): para litellm, tldraw e xyflow o arquivo foi localizado (blob SHA registrado) mas o texto NAO foi lido, entao a licenca segue NAO_VERIFICADA e nada pode ser copiado",
     "SIMULACAO DA REFERENCIA VIROU REQUISITO NEGATIVO (E-318): as simulacoes do TUBEGENT foram registradas como aceite invertido - MP4 precisa ser decodificavel de verdade, nao um JSON que finge video",
     "REMARCAR NAO PODE DESTRUIR O ORIGINAL (E-319): cancelar-e-depois-agendar deixa o cliente sem horario nenhum quando o novo esta ocupado. A operacao e' tudo-ou-nada sob o mesmo lock, com as quatro direcoes de falha testadas",
-    "ARITMETICA NO INSTANTE ERRADO, DE NOVO (E-319): repeti o erro de E-313 ao comparar contagem capturada antes de outro agendamento entrar. Medir no instante certo nao e' detalhe de estilo - e' o que faz o teste medir o codigo"
+    "ARITMETICA NO INSTANTE ERRADO, DE NOVO (E-319): repeti o erro de E-313 ao comparar contagem capturada antes de outro agendamento entrar. Medir no instante certo nao e' detalhe de estilo - e' o que faz o teste medir o codigo",
+    "AUDITAR ANTES DE EDITAR DEU RESULTADO (E-320): AgentOrchestrator e CreateGitWorktree ja existiam. O que faltava era a prova ponta a ponta - nao reimplementar o que existe",
+    "CONFLITO NAO E' RESOLVIDO SOZINHO (E-320): dois especialistas na mesma linha geram conflito declarado e o merge e' abortado. Merge automatico silencioso escolheria a versao de alguem sem ninguem decidir",
+    "ISOLAMENTO PRECISA SER MEDIDO, NAO DECLARADO (E-320): o teste confere que o artefato de um papel nao aparece no worktree do outro nem vaza para o base antes do merge"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -2292,7 +2295,7 @@
         "P0-B": "PARCIAL",
         "P0-C": "PARCIAL",
         "P0-D": "PARCIAL",
-        "P0-E": "PARCIAL",
+        "P0-E": "PARCIAL (T4 provado: 3 especialistas em worktrees isolados com merge controlado; faltam cotas de custo sob carga e memoria segmentada)",
         "P0-F": "PARCIAL"
       },
       "p1_p2": {
@@ -2345,6 +2348,13 @@
           "blob_sha": "072ff46d7c23dd8e18ccba11aa6563f14e524312",
           "lida": false
         }
+      },
+      "testes_de_aceite": {
+        "T4": {
+          "estado": "provado",
+          "evidencia": "E-320",
+          "observacao": "git real, isolamento medido, conflito abortado"
+        }
       }
     }
   },
@@ -2355,6 +2365,7 @@
     "E-316": "artefatos do ADENDO DE PARIDADE (inventario de referencias + proxima acao) - nao e' estagio; vinculo declarado",
     "E-317": "defeito de integracao do incremento I (sufixo _GOOS acidental) + bateria de build cruzado; vinculo declarado",
     "E-318": "ADRs de integracao com licencas medidas (adendo §4) - vinculo declarado",
-    "E-319": "fatia 3 do INCREMENTO I do V2.2 (remarcacao atomica); vinculo declarado"
+    "E-319": "fatia 3 do INCREMENTO I do V2.2 (remarcacao atomica); vinculo declarado",
+    "E-320": "teste T4 do ADENDO DE PARIDADE (gate P0-E: multiagente em worktrees isolados); vinculo declarado"
   }
 }
