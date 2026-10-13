@@ -12,7 +12,7 @@ subjetiva.
 
 ## Matriz de aceite (seção 9 das diretrizes)
 
-Resumo: BLOCKED_BY_EXTERNAL_DEPENDENCY: 3 · DONE: 17 · IN_PROGRESS: 1 · NAO_COMPROVADO: 3
+Resumo: BLOCKED_BY_EXTERNAL_DEPENDENCY: 4 · DONE: 17 · IN_PROGRESS: 1 · NAO_COMPROVADO: 2
 
 | # | Requisito | Status | Evidência / limite | O que destrava |
 | --- | --- | --- | --- | --- |
@@ -23,7 +23,7 @@ Resumo: BLOCKED_BY_EXTERNAL_DEPENDENCY: 3 · DONE: 17 · IN_PROGRESS: 1 · NAO_C
 | 5 | APIs externas configuradas são testadas e usadas | **BLOCKED_BY_EXTERNAL_DEPENDENCY** | B-07: chaves de provedor | Credencial de provedor (estágio 4) |
 | 6 | A troca de modelo preserva contexto autorizado | **DONE** | Bootstrap de contexto reconstruído por modelo, com teste (estágio 5) | — |
 | 7 | O sistema de permissões é aplicado pelo servidor | **DONE** | Autorização server-side com testes de escopo (estágios 5 e 18) | — |
-| 8 | Plugins têm instalação e execução verificáveis | **NAO_COMPROVADO** | Há contrato e testes herméticos; falta executar um plugin **real** de terceiro | Instalar e executar um plugin de terceiro (estágio 8) |
+| 8 | Plugins têm instalação e execução verificáveis | **BLOCKED_BY_EXTERNAL_DEPENDENCY** | **Provado (30 testes PASS)**: instalação com verificação de assinatura, rejeição de conteúdo adulterado, rollback que restaura a versão anterior UMA vez, isolamento por organização, sete caminhos de recusa e **delegação ao sandbox governado** com trilha de auditoria. **E-293**: o desfecho da execução passou a ser **afirmado, não tolerado** (o teste anterior aceitava sucesso OU falha). Medido neste host: `sandbox.exec requires the Linux namespace executor; host-process fallback is disabled` — o Hades **recusa cair para processo de host** (fail-closed, correto por segurança), logo a execução real é `BLOCKED_BY_EXTERNAL_DEPENDENCY` | Executar em **Linux/WSL2 com o executor de namespace** (mantendo o fallback de host desabilitado) |
 | 9 | MCPs têm instalação e execução verificáveis | **DONE** | MCP local/stdio exercitado com testes de revogação e auditoria (estágio 7) | — |
 | 10 | Skills têm ativação e execução verificáveis | **DONE** | Ativação por projeto/agente/modelo com testes (estágio 8) | — |
 | 11 | Agentes e subagentes executam missões reais | **DONE** | Orquestração com cotas e artefatos verificáveis (estágio 9) | — |

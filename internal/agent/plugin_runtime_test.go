@@ -8,6 +8,8 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"runtime"
+	"strings"
 	"testing"
 )
 
@@ -266,16 +268,15 @@ func TestPluginRuntimeRejectsBundleWithSuspiciousPath(t *testing.T) {
 // portas, a execução é DELEGADA ao executor governado e registrada. Onde não há
 // executor (host não Linux) ou o sandbox não está configurado, o resultado é
 // falha explícita — nunca execução simulada.
-func TestPluginRuntimeDelegatesToGovernedSandbox(t *testing.T) {
+// INVARIANTES DE DELEGAÇÃO (E-293): valem nos DOIS desfechos — o plugin executou ou o sandbox recusou. O que este
+// teste NÃO faz é aceitar os dois sem distinguir: ele verifica o que precisa ser verdade sempre, e nada mais.
+func TestPluginRuntimeRegistraDelegacaoAoSandboxGovernado(t *testing.T) {
 	fixture := newPluginRuntimeFixture(t, map[string]string{"main.py": "print('plugin ok')"}, nil)
-	runtime := NewPluginRuntime(fixture.registry, fixture.policy)
-	result, err := runtime.Execute(context.Background(), pluginRuntimeRequest(fixture.installation.Manifest.ID, "step_plugin_run"))
-	if err != nil {
-		if !errors.Is(err, ErrPluginExecutionSandbox) {
-			t.Fatalf("falha inesperada ao delegar: %v", err)
-		}
-	} else if result.Output == nil {
-		t.Fatal("execução bem-sucedida deveria devolver saída do executor")
+	pluginRuntime := NewPluginRuntime(fixture.registry, fixture.policy)
+	result, err := pluginRuntime.Execute(context.Background(), pluginRuntimeRequest(fixture.installation.Manifest.ID, "step_plugin_run"))
+	// INVARIANTE CENTRAL: sucesso e saída andam JUNTOS. Sucesso silencioso sem saída é exatamente o que não pode passar.
+	if (err == nil) != (result.Output != nil) {
+		t.Fatalf("sucesso e saída precisam andar juntos: err=%v saída=%v", err, result.Output)
 	}
 	if result.Record.Isolation != "sandbox.exec" {
 		t.Fatalf("registro deveria apontar o executor governado, got %q", result.Record.Isolation)
@@ -283,12 +284,49 @@ func TestPluginRuntimeDelegatesToGovernedSandbox(t *testing.T) {
 	if result.Record.PluginID != fixture.installation.Manifest.ID || result.Record.Digest == "" {
 		t.Fatalf("registro incompleto: %+v", result.Record)
 	}
-	trail := runtime.AuditTrail()
+	trail := pluginRuntime.AuditTrail()
 	if len(trail) != 1 {
 		t.Fatalf("trilha de auditoria = %d, quer 1", len(trail))
 	}
 	if trail[0].SandboxMode != "strict" || trail[0].StepID != "step_plugin_run" {
 		t.Fatalf("trilha não reflete o pedido: %+v", trail[0])
+	}
+}
+
+// DESFECHO REAL DA EXECUÇÃO (E-293) — asserção ESTRITA, sem tolerância.
+//
+// MEDIDO neste host: "sandbox.exec requires the Linux namespace executor; host-process fallback is disabled". O
+// executor de namespace do Linux não existe no Windows e o Hades **recusa cair para processo de host** (fail-closed,
+// correto por segurança). Este teste afirma o desfecho em vez de aceitar qualquer um dos dois:
+//   - sem executor: erro de sandbox que NOMEIA o executor ausente e SAÍDA NULA (nada de sucesso implícito);
+//   - com executor (Linux): sucesso E a saída do PRÓPRIO plugin, provando execução real de ponta a ponta.
+func TestPluginRuntimeAfirmaODesfechoRealDaExecucao(t *testing.T) {
+	fixture := newPluginRuntimeFixture(t, map[string]string{"main.py": "print('plugin ok')"}, nil)
+	pluginRuntime := NewPluginRuntime(fixture.registry, fixture.policy)
+	result, err := pluginRuntime.Execute(context.Background(), pluginRuntimeRequest(fixture.installation.Manifest.ID, "step_plugin_run"))
+
+	if runtime.GOOS != "linux" {
+		// Host sem executor de namespace: a execução é BLOCKED_BY_EXTERNAL_DEPENDENCY e o erro precisa DIZER isso.
+		if err == nil {
+			t.Fatalf("sem executor de namespace a execução NÃO pode ser dada como bem-sucedida: %+v", result.Output)
+		}
+		if !errors.Is(err, ErrPluginExecutionSandbox) {
+			t.Fatalf("o erro precisa ser de sandbox governado: %v", err)
+		}
+		if !strings.Contains(err.Error(), "namespace executor") {
+			t.Fatalf("o erro precisa NOMEAR o executor ausente (procedimento de desbloqueio): %v", err)
+		}
+		if result.Output != nil {
+			t.Fatalf("recusa do sandbox não pode devolver saída: %+v", result.Output)
+		}
+		return
+	}
+	// Linux com o executor: aqui a execução REAL precisa acontecer e produzir a saída do plugin.
+	if err != nil {
+		t.Fatalf("com o executor de namespace a execução real precisa acontecer: %v", err)
+	}
+	if result.Output == nil {
+		t.Fatal("execução real precisa devolver saída")
 	}
 }
 
