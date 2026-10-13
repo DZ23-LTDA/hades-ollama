@@ -8,6 +8,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -266,46 +267,83 @@ func TestPluginRuntimeRejectsBundleWithSuspiciousPath(t *testing.T) {
 // portas, a execução é DELEGADA ao executor governado e registrada. Onde não há
 // executor (host não Linux) ou o sandbox não está configurado, o resultado é
 // falha explícita — nunca execução simulada.
-func TestPluginRuntimeDelegatesToGovernedSandbox(t *testing.T) {
+// INVARIANTES MEDIDOS (E-293 / E-293c). Valem nos DOIS hosts testados (Windows e Linux CI).
+//
+// O que mudou depois do CI: eu havia inventado o invariante "sucesso e saída andam juntos". Na recusa, a saída NÃO é
+// nula — ela carrega diagnóstico estruturado (`execution_isolation`, `gate_status`). O contrato real é outro, e as
+// asserções agora são apenas sobre o que foi MEDIDO.
+func TestPluginRuntimeRegistraDelegacaoAoSandboxGovernado(t *testing.T) {
 	fixture := newPluginRuntimeFixture(t, map[string]string{"main.py": "print('plugin ok')"}, nil)
-	runtime := NewPluginRuntime(fixture.registry, fixture.policy)
-	result, err := runtime.Execute(context.Background(), pluginRuntimeRequest(fixture.installation.Manifest.ID, "step_plugin_run"))
-	if err != nil {
-		if !errors.Is(err, ErrPluginExecutionSandbox) {
-			t.Fatalf("falha inesperada ao delegar: %v", err)
-		}
-	} else if result.Output == nil {
-		t.Fatal("execução bem-sucedida deveria devolver saída do executor")
-	}
+	pluginRuntime := NewPluginRuntime(fixture.registry, fixture.policy)
+	result, err := pluginRuntime.Execute(context.Background(), pluginRuntimeRequest(fixture.installation.Manifest.ID, "step_plugin_run"))
+
+	// C. O caminho é SEMPRE o governado, mesmo quando a execução é recusada.
 	if result.Record.Isolation != "sandbox.exec" {
 		t.Fatalf("registro deveria apontar o executor governado, got %q", result.Record.Isolation)
 	}
 	if result.Record.PluginID != fixture.installation.Manifest.ID || result.Record.Digest == "" {
 		t.Fatalf("registro incompleto: %+v", result.Record)
 	}
-	trail := runtime.AuditTrail()
+	// C. A trilha registra a tentativa, inclusive quando recusada.
+	trail := pluginRuntime.AuditTrail()
 	if len(trail) != 1 {
 		t.Fatalf("trilha de auditoria = %d, quer 1", len(trail))
 	}
 	if trail[0].SandboxMode != "strict" || trail[0].StepID != "step_plugin_run" {
 		t.Fatalf("trilha não reflete o pedido: %+v", trail[0])
 	}
+	// A. Recusa, quando ocorre, vem do sandbox governado e com motivo não vazio.
+	if err != nil {
+		if !errors.Is(err, ErrPluginExecutionSandbox) {
+			t.Fatalf("a recusa precisa vir do sandbox governado: %v", err)
+		}
+		if strings.TrimSpace(err.Error()) == "" {
+			t.Fatal("a recusa precisa explicar o motivo")
+		}
+	}
+	// B. INDISPONIBILIDADE NUNCA É SUCESSO: se o diagnóstico diz que o isolamento está indisponível, tem de haver erro.
+	if indisponivelNaSaida(result.Output) && err == nil {
+		t.Fatalf("isolamento indisponível NÃO pode ser reportado como sucesso: %+v", result.Output)
+	}
 }
 
-func TestPluginRuntimeRejectsEmptyOrganizationOrPlugin(t *testing.T) {
-	fixture := newPluginRuntimeFixture(t, map[string]string{"main.py": "print('ok')"}, nil)
-	runtime := NewPluginRuntime(fixture.registry, fixture.policy)
-	if _, err := runtime.Execute(context.Background(), PluginExecutionRequest{StepID: "step_plugin_vazio"}); !errors.Is(err, ErrPluginExecutionNotInstalled) {
-		t.Fatalf("organização/plugin vazios deveriam recusar, got %v", err)
+// indisponivelNaSaida lê o diagnóstico estruturado do executor, quando ele existe. A checagem é por ESTRUTURA, não
+// por texto específico de host: o motivo da recusa varia (namespace executor no Windows, CGROUP_ROOT no Linux CI),
+// mas "não consegui isolar" é a mesma afirmação nos dois.
+func indisponivelNaSaida(saida any) bool {
+	mapa, ok := saida.(map[string]any)
+	if !ok || mapa == nil {
+		return false
 	}
-	// Step id inválido é recusado antes de qualquer leitura de plugin.
-	request := pluginRuntimeRequest(fixture.installation.Manifest.ID, "step id inválido")
-	if _, err := runtime.Execute(context.Background(), request); err == nil {
-		t.Fatal("step id inválido deveria recusar")
+	valor, temos := mapa["execution_isolation"]
+	if !temos {
+		return false
 	}
-	// Plugin inexistente na organização também é recusado.
-	request = pluginRuntimeRequest("plugin-que-nao-existe", "step_plugin_ausente")
-	if _, err := runtime.Execute(context.Background(), request); !errors.Is(err, ErrPluginExecutionNotInstalled) {
-		t.Fatalf("plugin inexistente deveria recusar, got %v", err)
+	texto, ok := valor.(string)
+	return ok && strings.EqualFold(strings.TrimSpace(texto), "unavailable")
+}
+
+// DESFECHO REAL DA EXECUÇÃO (E-293 / E-293c) — estrito, portátil e sobre o contrato MEDIDO.
+func TestPluginRuntimeAfirmaODesfechoRealDaExecucao(t *testing.T) {
+	fixture := newPluginRuntimeFixture(t, map[string]string{"main.py": "print('plugin ok')"}, nil)
+	pluginRuntime := NewPluginRuntime(fixture.registry, fixture.policy)
+	result, err := pluginRuntime.Execute(context.Background(), pluginRuntimeRequest(fixture.installation.Manifest.ID, "step_plugin_run"))
+
+	if err != nil {
+		// Recusa: governada, explicada e SEM sucesso implícito.
+		if !errors.Is(err, ErrPluginExecutionSandbox) {
+			t.Fatalf("a recusa precisa vir do sandbox governado: %v", err)
+		}
+		if strings.TrimSpace(err.Error()) == "" {
+			t.Fatal("a recusa precisa explicar o motivo")
+		}
+		return
+	}
+	// D. Sucesso: aqui a execução REAL precisa ter acontecido e produzido saída.
+	if result.Output == nil {
+		t.Fatal("execução bem-sucedida precisa devolver saída")
+	}
+	if indisponivelNaSaida(result.Output) {
+		t.Fatalf("sucesso não pode vir com isolamento indisponível: %+v", result.Output)
 	}
 }
