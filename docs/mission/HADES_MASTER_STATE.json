@@ -2,7 +2,7 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-19T11:20:00-03:00",
+  "updated_at": "2026-10-19T12:40:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
@@ -1096,12 +1096,13 @@
       "capability": "AUSENTE",
       "evidence": [
         "E-047",
-        "E-215"
+        "E-215",
+        "E-303"
       ],
       "blocker": "B-04",
       "next": "Implementar telefonia com Tel-Agent apos auditar licenca do projeto de referencia",
       "execution": "BLOCKED_BY_EXTERNAL_DEPENDENCY",
-      "done": "VOZ E TELEFONIA (E-215): sessao de tel-agent e contrato de voz no nucleo. MEDIDO: 13 testes PASS no filtro 'TelAgent|Voice'. LACUNA DECLARADA: telefonia com provedor real e auditoria de licenca do Tel-Agent - BLOCKED_BY_EXTERNAL_DEPENDENCY (B-04)."
+      "done": "VOZ E TELEFONIA (E-215): sessao de tel-agent e contrato de voz no nucleo. MEDIDO: 13 testes PASS no filtro 'TelAgent|Voice'. LACUNA DECLARADA: telefonia com provedor real e auditoria de licenca do Tel-Agent - BLOCKED_BY_EXTERNAL_DEPENDENCY (B-04). CHAMADA ATIVA COM PORTOES (E-303): MEDIDO que nao havia NENHUM conceito de chamada ativa - o Hades ligar para alguem, o efeito externo de maior risco do estagio, nao tinha portao. Implementado VoiceActiveCallStore com finalidade autorizada, contato elegivel (pelo ConsentRegistry existente) e aprovacao humana, mais teto por janela e registro auditavel. ProviderExecutedAt fica nil de proposito. A telefonia REAL segue BLOCKED_BY_EXTERNAL_DEPENDENCY (provedor/numero/credencial)."
     },
     {
       "id": 38,
@@ -2057,7 +2058,11 @@
     "NAO CRIAR O QUE O REPOSITORIO DECIDIU NAO TER (E-301): HADES_CURRENT_STATE.json nao existe por decisao explicita (dois arquivos de estado divergiriam). A evidencia registra a decisao para a proxima sessao nao 'consertar' o que nao esta quebrado",
     "EFEITO UMA VEZ TAMBEM EM PUBLICACAO SOCIAL (E-302): republicar o mesmo rascunho duplica o post na rede. O §11.7 exige que o mesmo efeito externo nao ocorra duas vezes - agora e' recusado, e o teste trava a regressao",
     "RECUSA EXPLICITA, NUNCA SILENCIOSA (E-302): o teto anti-enxurrada devolve erro proprio em vez de descartar em silencio; e o rascunho barrado CONTINUA aprovado e nao publicado - recusa, nao perda",
-    "TETO LOCAL NAO E' RATE LIMIT DA API (E-302): declarado no codigo. Medir o limite real da rede social exige conta autorizada e segue BLOCKED_BY_EXTERNAL_DEPENDENCY; nao se finge que sao a mesma coisa"
+    "TETO LOCAL NAO E' RATE LIMIT DA API (E-302): declarado no codigo. Medir o limite real da rede social exige conta autorizada e segue BLOCKED_BY_EXTERNAL_DEPENDENCY; nao se finge que sao a mesma coisa",
+    "EFEITO EXTERNO DE MAIOR RISCO SEM PORTAO (E-303): o modulo de voz tinha latencia e gravacao com consentimento, mas LIGAR nao tinha portao nenhum. Auditar o que EXISTE nao basta: e' preciso procurar o que NAO existe",
+    "IDENTIDADE DE EFEITO EXTERNO NAO DEPENDE DO RELOGIO (E-303): ID derivado de org+timestamp colidia no mesmo segundo e fazia duas chamadas compartilharem uma autorizacao. O teste pegou; UUID corrigiu",
+    "NAO INVENTAR SEGUNDO REGISTRO DE CONSENTIMENTO (E-303): a elegibilidade usa o ConsentRegistry que ja existia. Um segundo registro divergiria do primeiro - mesma licao do HADES_CURRENT_STATE.json",
+    "REGISTRO HONESTO DO QUE NAO ACONTECEU (E-303): ProviderExecutedAt fica NIL porque quem liga e' o provedor externo. Campo preenchido 'para parecer completo' seria a mentira que a missao proibe"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
