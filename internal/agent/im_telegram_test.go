@@ -368,18 +368,18 @@ func TestTelegramChannelRejectsMessageOutsideLimits(t *testing.T) {
 }
 
 func TestTelegramChannelDescriptionSanitizer(t *testing.T) {
-	if got := sanitizeTelegramDescription("   "); got != "sem descricao" {
+	if got := sanitizeTelegramDescription("   ", testTelegramToken); got != "sem descricao" {
 		t.Fatalf("descricao vazia = %q", got)
 	}
 	long := strings.Repeat("á", telegramMaxDescriptionRunes+50)
-	got := sanitizeTelegramDescription(long)
+	got := sanitizeTelegramDescription(long, testTelegramToken)
 	if len([]rune(got)) != telegramMaxDescriptionRunes {
 		t.Fatalf("descricao truncada com %d runas, quer %d", len([]rune(got)), telegramMaxDescriptionRunes)
 	}
-	if redactTelegramError(nil) != "" {
+	if redactTelegramError(nil, testTelegramToken) != "" {
 		t.Fatalf("erro nulo virou texto")
 	}
-	scrubbed := redactTelegramError(fmt.Errorf(`Post "https://api.telegram.org/bot%s/sendMessage": dial tcp: connect: connection refused`, testTelegramToken))
+	scrubbed := redactTelegramError(fmt.Errorf(`Post "https://api.telegram.org/bot%s/sendMessage": dial tcp: connect: connection refused`, testTelegramToken), testTelegramToken)
 	if strings.Contains(scrubbed, testTelegramToken) {
 		t.Fatalf("mascara nao removeu o token: %q", scrubbed)
 	}

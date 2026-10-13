@@ -2,7 +2,7 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-18T23:40:00-03:00",
+  "updated_at": "2026-10-19T02:00:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
@@ -996,11 +996,12 @@
         "E-030",
         "E-045",
         "E-103",
-        "E-273"
+        "E-273",
+        "E-296"
       ],
       "blocker": "B-03",
       "next": "LIMITES REAIS (corrigidos por E-273): homologacao com BOT REAL depende de credencial (BLOCKED_BY_EXTERNAL_DEPENDENCY: token do bot e webhook publico); os comandos /support, /inbox e /handoff ESTAO disponiveis e mapeados a rotas registradas, com teste; webhook com assinatura validada e anti-replay pertencem ao estagio 34. Proximo: estagios 34-38",
-      "done": "canal Telegram e WhatsApp existentes foram CONSOLIDADOS e ganharam rota: GET /telegram/status (honesto, NOT_CONFIGURED sem credencial) e POST /telegram/send reusando o MESMO canal com a ordem validacao -> credencial -> DLP -> consentimento -> egress. Nenhum cliente duplicado LIMITE DECLARADO DESATUALIZADO CORRIGIDO (E-273): o estado afirmava que '/support, /inbox e /handoff continuam indisponiveis por dependerem da caixa de entrada unificada'. E FALSO e foi medido: as tres rotas existem em server/agent_routes.go (GET /inbox/conversations, GET /inbox/metrics, POST /inbox/conversations/:id/handoff) e os comandos estao declarados DISPONIVEIS no registro, com 11 testes do servidor PASS - incluindo TestInboxBackedCommandsAreAvailable, TestEveryAvailableCommandMapsToARegisteredRoute, TestSlashRegistryBackendsAreActuallyRegistered e TestSlashCommandRoutesExistForSection11MandatoryCommands - e 6 testes do agente PASS. Declarar INDISPONIVEL o que funciona e' tao falso quanto declarar pronto o que nao funciona: o estado da missao e' a fonte de verdade do proximo round",
+      "done": "canal Telegram e WhatsApp existentes foram CONSOLIDADOS e ganharam rota: GET /telegram/status (honesto, NOT_CONFIGURED sem credencial) e POST /telegram/send reusando o MESMO canal com a ordem validacao -> credencial -> DLP -> consentimento -> egress. Nenhum cliente duplicado LIMITE DECLARADO DESATUALIZADO CORRIGIDO (E-273): o estado afirmava que '/support, /inbox e /handoff continuam indisponiveis por dependerem da caixa de entrada unificada'. E FALSO e foi medido: as tres rotas existem em server/agent_routes.go (GET /inbox/conversations, GET /inbox/metrics, POST /inbox/conversations/:id/handoff) e os comandos estao declarados DISPONIVEIS no registro, com 11 testes do servidor PASS - incluindo TestInboxBackedCommandsAreAvailable, TestEveryAvailableCommandMapsToARegisteredRoute, TestSlashRegistryBackendsAreActuallyRegistered e TestSlashCommandRoutesExistForSection11MandatoryCommands - e 6 testes do agente PASS. Declarar INDISPONIVEL o que funciona e' tao falso quanto declarar pronto o que nao funciona: o estado da missao e' a fonte de verdade do proximo round TOKEN DO BOT NAO VAZA - FURO REAL CORRIGIDO EM DUAS INSTANCIAS (E-296): o adaptador do Telegram JA tinha redacao (telegramRedactedToken, redactTelegramError, token validado por telegramTokenPattern contra injecao de caminho) - mas a auditoria desta rodada mediu DOIS furos. (a) redactTelegramError(err) NAO recebia o token: a redacao trocava apenas campos que continham '/bot', entao um erro que ecoasse o token PURO (resposta de provedor, por exemplo) passava intacto para erro/log/auditoria - e token e credencial. (b) O TESTE PONTA A PONTA encontrou a segunda instancia: o caminho de erro HTTP (http 401 com a descricao do provedor) monta a mensagem por OUTRO sanitizador (sanitizeTelegramDescription), que tambem nao tinha o token. CORRECAO: redactTelegramSecret(texto, token) remove o valor conhecido de forma explicita e mantem a troca do campo de URL pelo marcador legivel; sanitizeTelegramDescription passa a receber e aplicar o mesmo token, unificando os dois pontos de saida. TESTE NOVO (TestTokenDoBotNaoVazaEmErroNemEmAuditoria) afirma QUATRO direcoes: URL completa redigida, TOKEN PURO redigido, texto legitimo INTACTO (sem falso positivo) e ponta a ponta com httptest devolvendo 401 ecoando o token - e falhou ANTES das correcoes, provando o furo. NOTA HONESTA: a auditoria inicial concluiu que nao existia teste de redacao; existia, e cobria apenas metade do problema. MEDIDO: suite de Telegram PASS (8 testes) e suite completa ok 116,6 s",
       "execution": "BLOCKED_BY_EXTERNAL_DEPENDENCY"
     },
     {
@@ -2028,7 +2029,10 @@
     "PROVA NO CI NAO E' PROVA NO HOST (E-294): a evidencia de RLS roda no runner Linux com servico Postgres real; no host de desenvolvimento nao roda. Declarar onde a prova vale evita prometer o que nao foi medido localmente",
     "ARTEFATO PUBLICADO NAO E' ARTEFATO COMPROVADO (E-295): existe release com HadesSetup.exe e SHA-256, mas sem assinatura e so Windows. BLOCKED_BY_EXTERNAL_DEPENDENCY diz exatamente isso; NAO_COMPROVADO esconderia o que ja existe",
     "BLOQUEIO TAMBEM ENVELHECE (E-295): a entrada B-01 afirmava que os PRs #56-#71 estavam abertos; a checagem ONLINE devolve zero PRs abertos. Bloqueio declarado e' afirmacao e precisa ser remedido - quarta ocorrencia da classe (E-292, E-293, E-294, E-295)",
-    "GATE SEM LINHA INDEFINIDA (E-295): depois desta rodada nao ha NAO_COMPROVADO nem IN_PROGRESS; so DONE e BLOCKED_BY_EXTERNAL_DEPENDENCY. Isso nao e' release: e' matriz sem ambiguidade, que e' o que o gate exige"
+    "GATE SEM LINHA INDEFINIDA (E-295): depois desta rodada nao ha NAO_COMPROVADO nem IN_PROGRESS; so DONE e BLOCKED_BY_EXTERNAL_DEPENDENCY. Isso nao e' release: e' matriz sem ambiguidade, que e' o que o gate exige",
+    "O TESTE EXISTIA E COBRIA METADE (E-296): a auditoria inicial concluiu que nao havia teste de redacao; havia, e cobria so o caso da URL. Ler o teste antes de afirmar a ausencia dele - mesma classe de E-290 (o campo existia)",
+    "O TESTE ACHOU A SEGUNDA INSTANCIA (E-296): corrigi redactTelegramError e o teste ponta a ponta mostrou que o caminho de erro HTTP usa OUTRO sanitizador, sem token. Corrigir a classe, nao a instancia - e o proprio teste fazendo o trabalho",
+    "CREDENCIAL VAZADA E SEVERIDADE ALTA (E-296): token de bot em log/erro e credencial exposta. O conserto nao poderia ser 'esconder o log': e' redigir na origem, em todos os pontos de saida"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
