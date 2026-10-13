@@ -2247,7 +2247,11 @@
     "HIPOTESE NAO E' DIAGNOSTICO; SONDA E' (E-350): duas hipoteses sobre o ADV-24 foram separadas por sonda, nao por palpite. A causa era o meu dado de teste (id invalido e missao inexistente), nao o produto",
     "NAO DECLARAR VERIFICADO O QUE NAO SE OBSERVOU ESTAVA CERTO (E-350): E-349 deixou o achado aberto em vez de inventar explicacao; a investigacao seguinte mostrou que a causa era minha - e isso so' aparece quando se investiga",
     "ISOLAMENTO DE TENANT NO STORE DE EVENTOS (E-350): evento de uma organizacao nao e' aceito em missao de outra (os.ErrPermission) e missao inexistente devolve erro. Testado com armadilha",
-    "CONTRATO DO STORE CORRIGIU MINHA SUPOSICAO (E-350): eu supunha que missao inexistente devolvesse lista vazia; o contrato devolve erro. Medicao outra vez"
+    "CONTRATO DO STORE CORRIGIU MINHA SUPOSICAO (E-350): eu supunha que missao inexistente devolvesse lista vazia; o contrato devolve erro. Medicao outra vez",
+    "IDENTIFICADOR COMPARTILHADO E' A MESMA CLASSE QUE ARQUIVO COMPARTILHADO (E-351): PlanCompanyOnboarding criava prod_geral a partir de organizacao vazia. Corrigido com guarda crua antes do consentScope",
+    "A CATRACA SO OLHAVA CAMINHO (E-351): 27 arquivos usam sanitizeIDComponent e 5 ficavam fora da rede. Identificador precisa da mesma atencao",
+    "DEFESA NO LUGAR CERTO, NAO NO LUGAR MAIS CONVENIENTE (E-351): eu tratei o fallback 'geral' de sanitizeIDComponent como defeito, mas ele e' proposital; a defesa correta e' a guarda da API, que impede o valor vazio de chegar ali",
+    "CINCO SUPOSICOES DE API DERRUBADAS EM UMA RODADA (E-351): CompanyOnboardingPlan, PlanCompanyOnboarding(commerce, plan), SchedulingShift{OpensAt,ClosesAt}, ausencia de Shifts(org) e CompanyOnboardingRow sem Stock - todas por compilador"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -2667,11 +2671,25 @@
           "descricao": "o store de eventos exige missao existente e MESMA organizacao; missao inexistente devolve erro, nao lista vazia",
           "estado": "MEDIDO E TESTADO (isolamento de tenant no store de eventos)",
           "evidencia": "E-350"
+        },
+        {
+          "id": "ADV-26",
+          "severidade": "ALTA",
+          "descricao": "PlanCompanyOnboarding chamava consentScope antes de validar: organizacao vazia virava 'local' e o identificador de produto saia COMPARTILHADO (prod_geral)",
+          "estado": "CORRIGIDO E MEDIDO",
+          "evidencia": "E-351"
+        },
+        {
+          "id": "ADV-27",
+          "severidade": "INFORMATIVO (instrumento)",
+          "descricao": "a catraca so olhava caminho; identificador derivado de organizacao ficava fora da rede (27 arquivos usam sanitizeIDComponent, 5 fora)",
+          "estado": "REDE AMPLIADA (classificacao manual nesta fatia)",
+          "evidencia": "E-351"
         }
       ],
       "proximos_ataques": [
-        "auditar escopo compartilhado em modulos FORA desta missao",
-        "medir a contagem de eventos no caminho T4 com modelo local",
+        "classificar automaticamente na catraca: ocorrencia de caminho x ocorrencia de identificador",
+        "supervisor_incidents: id de assunto (risco de colisao, nao de tenant)",
         "onboarding com volume grande (limites de recurso)"
       ]
     },
@@ -2937,6 +2955,7 @@
     "E-347": "medicao das categorias declaradas; uma caiu (Cancel/Reschedule); vinculo declarado",
     "E-348": "ligacao T4 ao laco real de reparo; vinculo declarado",
     "E-349": "T4 com modelo local e fixer com fronteira no segmento; vinculo declarado",
-    "E-350": "ADV-24 resolvido por sonda: causa era o dado de teste; vinculo declarado"
+    "E-350": "ADV-24 resolvido por sonda: causa era o dado de teste; vinculo declarado",
+    "E-351": "rede larga: identificadores derivados de organizacao; vinculo declarado"
   }
 }
