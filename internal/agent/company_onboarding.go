@@ -79,6 +79,14 @@ func PlanCompanyOnboarding(commerce *CommerceStore, plan CompanyOnboardingPlan) 
 	if commerce == nil {
 		return CompanyOnboardingPreview{}, fmt.Errorf("%w: comércio ausente", ErrOnboardingInvalid)
 	}
+	// E-351: MESMA CLASSE DO ADV-11 — `consentScope("")` devolve a organização LOCAL, então validar DEPOIS dele nunca
+	// dispara. Aqui isso era pior do que num caminho qualquer: `plan.OrganizationID` também alimenta o IDENTIFICADOR do
+	// produto (`"prod_" + sanitizeIDComponent(...)`), e um identificador com escopo vazio faz o produto de uma empresa
+	// aparecer no onboarding de outra. *Identificador compartilhado é a mesma classe de defeito que arquivo compartilhado
+	// — só muda o objeto.*
+	if err := requireOrganization(plan.OrganizationID); err != nil {
+		return CompanyOnboardingPreview{}, fmt.Errorf("%w: %v", ErrOnboardingInvalid, err)
+	}
 	plan.OrganizationID = consentScope(plan.OrganizationID)
 	if plan.OrganizationID == "" || len(plan.Rows) == 0 {
 		return CompanyOnboardingPreview{}, fmt.Errorf("%w: organização e linhas são obrigatórias", ErrOnboardingInvalid)
