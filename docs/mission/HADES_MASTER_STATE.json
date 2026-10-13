@@ -2392,7 +2392,8 @@
     "O NUMERO EXATO DEPENDE DO CENARIO (E-392): empresa nova => 1 gravacao (Before vazio, so' o lote de remocao); com catalogo anterior => 2. O teste diz isso em vez de aceitar um teto",
     "O QUE E' ESTRUTURAL E' O QUE SERVE DE CATRACA (E-393/ADV-57/3 e /7): o teste media o tempo e nao afirmava nada; agora afirma N chamadas = N gravacoes e 1 lote = 1 gravacao, com razao de 100x - e recusa afirmar tempo",
     "LIMITE DECLARADO EM VOZ ALTA SO' ESTA FECHADO COM TESTE (E-394): a contrapova por reversao do RemoveProducts foi EXECUTADA (101 gravacoes => FALHA) e o cenario com catalogo anterior existe (2 gravacoes, preco restaurado, SKU novo removido). E medido: o plano exige Overwrite explicito, senao o onboarding RECUSA o conflito",
-    "DE 400 PARA 29 BRANCHES (E-395): 371 mescladas apagadas sem force, 28 nao-mescladas preservadas. O achado e' que as 28 sao trabalho que NAO esta na main - pendencias de integracao, nao entulho. E um erro medido no meio: o filtro ^origin/ aceitou a linha 'origin/HEAD -> origin/main' e um lote falhou; corrigido com -notmatch ' -> '"
+    "DE 400 PARA 29 BRANCHES (E-395): 371 mescladas apagadas sem force, 28 nao-mescladas preservadas. O achado e' que as 28 sao trabalho que NAO esta na main - pendencias de integracao, nao entulho. E um erro medido no meio: o filtro ^origin/ aceitou a linha 'origin/HEAD -> origin/main' e um lote falhou; corrigido com -notmatch ' -> '",
+    "A MAIN NAO TEM TUDO QUE A MISSAO PRESUME (E-396): das 28 branches nao-mescladas, 13 tinham o conteudo JA na main (por patch-id) e foram apagadas; 15 tem trabalho real nao integrado - incluindo uma linha de SEGURANCA com 14 patches e a de paridade de UI com 17. Branches: 400 -> 16. Os 15 sao candidatos a revisao de conteudo"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -3376,14 +3377,40 @@
     },
     "higiene_de_repositorio": {
       "branches_antes": 400,
-      "branches_depois": 29,
+      "branches_depois": 16,
       "mescladas_apagadas": 371,
       "mescladas_restantes": 0,
       "nao_mescladas_preservadas": 28,
       "prs_abertos_antes": 1,
       "metodo": "git branch -r --merged origin/main, sem force, excluindo a linha origin/HEAD -> origin/main",
       "achado": "as 28 nao-mescladas sao trabalho que NAO esta na main (large-files-arch, large-files-safety, linux-packaging, macos-unsigned-build, mobile-parity, marca-hades, builder-rollback-manifest, e2e-local-smoke, docs-tests-parity, ...): sao pendencias de INTEGRACAO, nao entulho. Nao foram apagadas e ainda nao foram triadas uma a uma",
-      "proximo": "triar as 28 branches nao-mescladas contra os estagios do MASTER e os bloqueios externos"
+      "proximo": "triar as 28 branches nao-mescladas contra os estagios do MASTER e os bloqueios externos",
+      "conteudo_ja_na_main_apagadas": 13,
+      "nao_integradas_preservadas": 15,
+      "triagem_por_patch_id": {
+        "metodo": "git log --cherry-pick --right-only --no-merges origin/main...<branch>",
+        "nao_integradas": {
+          "feat/ui-shell-parity": 17,
+          "fix/seguranca-ci-docs-20261005": 14,
+          "feat/marca-hades": 8,
+          "perf/adv57-exact-threshold": 7,
+          "feat/e2e-local-smoke": 5,
+          "feat/mobile-parity": 4,
+          "feat/large-files-arch": 4,
+          "fix/windows-installer-identity": 3,
+          "feat/linux-packaging": 2,
+          "feat/supervisor-journal-persist": 2,
+          "test/dlp-clock-false-positive": 1,
+          "test/p0e-t4-worktrees": 1,
+          "feat/docs-tests-parity": 1,
+          "fix/lint-dead-code": 1,
+          "fix/stock-batch-effective": 1
+        },
+        "controles_apos_apagar": "main, perf/adv57-exact-threshold, feat/ui-shell-parity e fix/seguranca-ci-docs continuam existindo",
+        "achado": "15 linhas de trabalho NAO estao na main, incluindo uma de SEGURANCA com 14 patches (fix/seguranca-ci-docs-20261005: 'security: close agentic execution and exposure gaps') e a de paridade de UI com 17 (feat/ui-shell-parity). A entrega nao pode ser declarada pronta enquanto isso nao for revisado",
+        "limite": "--cherry-pick compara patch-id: diz 'este patch exato nao esta na main', NAO 'esta mudanca nao esta'. Os 15 sao candidatos a REVISAO DE CONTEUDO, nao provas de lacuna",
+        "proximo": "revisar por CONTEUDO as 15 (comecando pela de seguranca), integrar o que faltar e declarar o resto"
+      }
     }
   },
   "unlinked_evidence": {
@@ -3467,6 +3494,7 @@
     "E-392": "RemoveProducts em lote: desfazer de 1000 -> 1 gravacao; teste permanente",
     "E-393": "custo estrutural direto x lote (100x em gravacoes), com contraprova",
     "E-394": "contraprova por reversao do RemoveProducts + cenario com catalogo anterior",
-    "E-395": "higiene de branches: 400 -> 29 (371 mescladas), 28 nao-mescladas preservadas"
+    "E-395": "higiene de branches: 400 -> 29 (371 mescladas), 28 nao-mescladas preservadas",
+    "E-396": "triagem por patch-id: 13 conteudo ja na main; 15 com trabalho nao integrado"
   }
 }
