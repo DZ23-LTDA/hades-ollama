@@ -48,3 +48,10 @@ func (s *LiveCommerceStore) withOrganizationLock(organizationID string, run func
 		return run()
 	})
 }
+
+// NOTA DE SEGURANÇA (E-357): a contraprova deste arquivo foi feita por **edição temporária** — desligar a trava e
+// observar o teste FALHAR (`ARMADILHA: perda de escrita entre instâncias`) — e depois REVERTER, como em E-356.
+//
+// ***A tentação de deixar um interruptor de ambiente é forte e o resultado seria pior do que o defeito original: uma
+// variável de ambiente que desliga o lock de segurança.*** Um back door de teste em código de produção não é
+// instrumento: é vulnerabilidade com nome bonito.

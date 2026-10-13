@@ -282,7 +282,22 @@ func (s *LiveCommerceStore) salvarLocked(org string) error {
 }
 
 // CreateLiveSession cria a sessão em DRAFT. O prazo autorizado é OBRIGATÓRIO (não existe live sem limite declarado).
+// CreateLiveSession executa sob o LOCK DA ORGANIZAÇÃO (E-357), com recarga do cache antes.
 func (s *LiveCommerceStore) CreateLiveSession(sessao LiveSession) (LiveSession, error) {
+	var (
+		resultado   LiveSession
+		erroInterno error
+	)
+	if err := s.withOrganizationLock(sessao.OrganizationID, func() error {
+		resultado, erroInterno = s.CreateLiveSessionSemTrava(sessao)
+		return erroInterno
+	}); err != nil {
+		return LiveSession{}, err
+	}
+	return resultado, erroInterno
+}
+
+func (s *LiveCommerceStore) CreateLiveSessionSemTrava(sessao LiveSession) (LiveSession, error) {
 	if s == nil {
 		return LiveSession{}, ErrLiveCommerceInvalid
 	}
@@ -328,7 +343,22 @@ func (s *LiveCommerceStore) LiveSessions(organizationID string) ([]LiveSession, 
 }
 
 // ApproveLiveSession registra a aprovação humana. Sem ela, entrar em LIVE é recusado.
+// ApproveLiveSession executa sob o LOCK DA ORGANIZAÇÃO (E-357), com recarga do cache antes.
 func (s *LiveCommerceStore) ApproveLiveSession(organizationID, sessionID, actor, reason string) (LiveSession, error) {
+	var (
+		resultado   LiveSession
+		erroInterno error
+	)
+	if err := s.withOrganizationLock(organizationID, func() error {
+		resultado, erroInterno = s.ApproveLiveSessionSemTrava(organizationID, sessionID, actor, reason)
+		return erroInterno
+	}); err != nil {
+		return LiveSession{}, err
+	}
+	return resultado, erroInterno
+}
+
+func (s *LiveCommerceStore) ApproveLiveSessionSemTrava(organizationID, sessionID, actor, reason string) (LiveSession, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	organizationID = consentScope(organizationID)
@@ -355,7 +385,22 @@ func (s *LiveCommerceStore) ApproveLiveSession(organizationID, sessionID, actor,
 }
 
 // AdvanceLiveSession valida a transição no grafo permitido e aplica as travas de segurança.
+// AdvanceLiveSession executa sob o LOCK DA ORGANIZAÇÃO (E-357), com recarga do cache antes.
 func (s *LiveCommerceStore) AdvanceLiveSession(organizationID, sessionID, next string, now time.Time) (LiveSession, error) {
+	var (
+		resultado   LiveSession
+		erroInterno error
+	)
+	if err := s.withOrganizationLock(organizationID, func() error {
+		resultado, erroInterno = s.AdvanceLiveSessionSemTrava(organizationID, sessionID, next, now)
+		return erroInterno
+	}); err != nil {
+		return LiveSession{}, err
+	}
+	return resultado, erroInterno
+}
+
+func (s *LiveCommerceStore) AdvanceLiveSessionSemTrava(organizationID, sessionID, next string, now time.Time) (LiveSession, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	organizationID = consentScope(organizationID)
@@ -614,7 +659,22 @@ func (s *LiveCommerceStore) ConfirmedSales(organizationID string) (ConfirmedSale
 // ShowcaseForProduct registra destaque de produto do catálogo existente.
 //
 // `pinnedByPlatform=false` significa **sugestão ao operador** — o Hades não automatiza clique para fixar produto.
+// ShowcaseForProduct executa sob o LOCK DA ORGANIZAÇÃO (E-357), com recarga do cache antes.
 func (s *LiveCommerceStore) ShowcaseForProduct(organizationID, sessionID string, showcase ProductShowcase, now time.Time) (LiveSession, error) {
+	var (
+		resultado   LiveSession
+		erroInterno error
+	)
+	if err := s.withOrganizationLock(organizationID, func() error {
+		resultado, erroInterno = s.ShowcaseForProductSemTrava(organizationID, sessionID, showcase, now)
+		return erroInterno
+	}); err != nil {
+		return LiveSession{}, err
+	}
+	return resultado, erroInterno
+}
+
+func (s *LiveCommerceStore) ShowcaseForProductSemTrava(organizationID, sessionID string, showcase ProductShowcase, now time.Time) (LiveSession, error) {
 	sku := strings.TrimSpace(showcase.SKU)
 	if sku == "" {
 		return LiveSession{}, fmt.Errorf("%w: o destaque precisa referenciar SKU do catálogo", ErrLiveCommerceInvalid)

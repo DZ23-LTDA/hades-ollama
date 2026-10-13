@@ -2270,7 +2270,10 @@
     "O ESTAGIO 42 TINHA A LACUNA QUE O AGENDAMENTO JA CORRIGIU (E-356): sem withFileLock e sem invalidacao de cache, duas instancias podiam perder escritas. O padrao de correcao ja estava no repositorio (E-323)",
     "A SEGUNDA PARTE E' A QUE COSTUMA FALTAR (E-356): lock sem invalidacao de cache deixa a instancia respondendo do cache antigo - o mesmo defeito, mais dificil de ver",
     "CONTRAPROVA MEDIDA (E-356): desligar a invalidacao de cache faz o teste FALHAR - o defeito existia e o teste o detecta. Guarda armada, nao promessa",
-    "ESCOPO DECLARADO DO LOCK (E-356): aplicado em IngestLiveCommerceEvent e RecordPlatformWarning; as demais mutacoes seguem apenas com mutex"
+    "ESCOPO DECLARADO DO LOCK (E-356): aplicado em IngestLiveCommerceEvent e RecordPlatformWarning; as demais mutacoes seguem apenas com mutex",
+    "CONTRAPROVA PROVOU O DEFEITO (E-357): sem o lock, criar sessao em duas instancias perde uma (1 sessao em vez de 2). Com o lock, 12 PASS",
+    "DISTINCAO HONESTA (E-357): nas corridas de aprovacao e avanco os testes passaram MESMO SEM o lock - ali o lock e' defesa em profundidade, nao defeito medido. Dizer 'corrigi um bug' nesses dois seria inflar o resultado",
+    "BACK DOOR DE TESTE EM PRODUCAO (E-357): eu adicionei HADES_CONTRAPROVA=1 no codigo de producao para rodar a contraprova - uma variavel que desliga trava de seguranca. Removido e verificado. Um back door de teste nao e' instrumento: e' vulnerabilidade com nome bonito"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -2732,11 +2735,25 @@
           "descricao": "LiveCommerceStore sem lock de arquivo nem invalidacao de cache: duas instancias podiam perder escritas",
           "estado": "CORRIGIDO e CONTRAPROVADO: com a invalidacao desligada o teste FALHA; com ela, 3 execucoes passam",
           "evidencia": "E-356"
+        },
+        {
+          "id": "ADV-31",
+          "severidade": "ALTA",
+          "descricao": "criacao/aprovacao/avanco/destaque do estagio 42 fora do lock entre processos; aprovacao perdida e' defeito de seguranca",
+          "estado": "CORRIGIDO e CONTRAPROVADO na criacao (teste FALHA sem o lock); aprovacao e avanco passaram sem o lock -> lock e' defesa em profundidade ali, nao defeito medido",
+          "evidencia": "E-357"
+        },
+        {
+          "id": "ADV-32",
+          "severidade": "GRAVE (auto-infligido, corrigido)",
+          "descricao": "back door de contraprova (HADES_CONTRAPROVA=1) adicionado ao codigo de PRODUCAO, capaz de desligar o lock de seguranca",
+          "estado": "REMOVIDO com verificacao de que nao sobrou Getenv; licao registrada no arquivo",
+          "evidencia": "E-357"
         }
       ],
       "proximos_ataques": [
-        "aplicar o lock entre processos as DEMAIS mutacoes do estagio 42 (criacao, avanco de estado, destaque)",
-        "aplicar o lock entre processos a criacao/avanco/destaque (hoje so ingestao e aviso)",
+        "teste de corrida dedicado para ShowcaseForProduct (travado por consistencia, sem teste)",
+        "medir dois PROCESSOS reais (hoje sao duas instancias no mesmo processo)",
         "orcamento acumulado entre planos de onboarding (teto e' por plano)"
       ]
     },
@@ -3055,6 +3072,7 @@
     "E-353": "onboarding com volume: limites declarados e volume medido; vinculo declarado",
     "E-354": "checkpoint remedido da rodada 39; vinculo declarado",
     "E-355": "classificacao por statement + concorrencia do estagio 42 verificada; vinculo declarado",
-    "E-356": "estagio 42 entre processos: lock + invalidacao de cache; vinculo declarado"
+    "E-356": "estagio 42 entre processos: lock + invalidacao de cache; vinculo declarado",
+    "E-357": "lock entre processos nas demais mutacoes do estagio 42, com contraprova; vinculo declarado"
   }
 }
