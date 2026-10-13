@@ -45,9 +45,17 @@ var (
 	ErrWorkflowUnknownNode = errors.New("workflow edge points to an unknown node")
 	// ErrWorkflowInvalid recusa definição malformada.
 	ErrWorkflowInvalid = errors.New("workflow definition is invalid")
+	// ErrWorkflowLoopLimit recusa execução que não termina: ciclo entre nós ou passos acima do limite.
+	//
+	// ACHADO DA AUDITORIA (E-330): um `Next` cíclico fazia o motor girar PARA SEMPRE. O V2.2 fala em "loops
+	// limitados" e proíbe loop infinito — ***um motor que não termina não é automação, é travamento.***
+	ErrWorkflowLoopLimit = errors.New("workflow exceeded the step limit")
 )
 
 // Tipos de nó suportados. Qualquer outro valor FALHA.
+// WorkflowMaxSteps limita a execução. É um BACKSTOP: o ciclo entre nós já é detectado de imediato.
+const WorkflowMaxSteps = 64
+
 const (
 	WorkflowNodeTrigger   = "trigger"
 	WorkflowNodeCondition = "condition"
@@ -281,7 +289,26 @@ func (e *WorkflowEngine) Run(ctx context.Context, organizationID, workflowID str
 		State: WorkflowRunSucceeded, IdempotencyKey: strings.TrimSpace(idempotencyKey), StartedAt: time.Now().UTC()}
 
 	atual := definicao.StartNode
+	visitados := map[string]bool{}
+	passos := 0
 	for atual != "" {
+		// AUDITORIA (E-330): ciclo entre nós é detectado DE IMEDIATO, e o limite de passos é o backstop.
+		passos++
+		if visitados[atual] {
+			execucao.NodeEvidence = append(execucao.NodeEvidence, NodeEvidence{NodeID: atual, State: "failed",
+				Attempts: 1, StartedAt: time.Now().UTC(), FinishedAt: time.Now().UTC(),
+				Error: fmt.Sprintf("%s: ciclo entre nós no nó %q", ErrWorkflowLoopLimit.Error(), atual)})
+			execucao.State = WorkflowRunFailed
+			break
+		}
+		if passos > WorkflowMaxSteps {
+			execucao.NodeEvidence = append(execucao.NodeEvidence, NodeEvidence{NodeID: atual, State: "failed",
+				Attempts: 1, StartedAt: time.Now().UTC(), FinishedAt: time.Now().UTC(),
+				Error: fmt.Sprintf("%s: %d passos", ErrWorkflowLoopLimit.Error(), WorkflowMaxSteps)})
+			execucao.State = WorkflowRunFailed
+			break
+		}
+		visitados[atual] = true
 		no, existe := porID[atual]
 		if !existe {
 			execucao.NodeEvidence = append(execucao.NodeEvidence, NodeEvidence{NodeID: atual, State: "failed",
