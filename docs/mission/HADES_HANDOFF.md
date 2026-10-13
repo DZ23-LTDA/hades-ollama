@@ -39,6 +39,8 @@ go test ./internal/agent/ -count=1
 python scripts/hades_release_gate.py; python scripts/hades_baseline_report.py
 python scripts/hades_stage_map.py; python scripts/hades_mission_check.py
 python scripts/hades_ci_reproducibility_check.py --check
+# BUILD CRUZADO (E-317): sufixo _GOOS acidental passa no Windows e quebra no Linux.
+$env:GOOS = 'linux'; $env:CGO_ENABLED = '0'; go build ./internal/agent/; $env:GOOS = ''
 git checkout -b feat/<escopo>   # branch curta + PR; nunca commit direto em main, nunca force-push
 ```
 

@@ -154,6 +154,9 @@ python scripts/hades_release_gate.py; python scripts/hades_baseline_report.py
 python scripts/hades_stage_map.py; python scripts/hades_mission_check.py
 python scripts/hades_ci_reproducibility_check.py --check
 python scripts/hades_state_chronology_test.py
+# BUILD CRUZADO (E-317): um sufixo _GOOS acidental compila aqui e falha no Linux.
+$env:GOOS = 'linux'; $env:CGO_ENABLED = '0'; go build ./internal/agent/; if ($LASTEXITCODE -ne 0) { throw 'build linux falhou' }
+$env:GOOS = ''; $env:CGO_ENABLED = '1'
 ```
 
 ## 5. Segurança — credenciais comprometidas (V2.2 §3)

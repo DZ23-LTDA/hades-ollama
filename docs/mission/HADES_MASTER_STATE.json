@@ -2112,7 +2112,10 @@
     "RESULTADO AUSENTE E' NAO_MEDIDO (E-315): o adendo proibe tratar provider indisponivel como teste aprovado. Sem metrica honesta, nenhuma alegacao de paridade ou superioridade e' feita",
     "INVENTARIO SEM LICENCA VERIFICADA (E-316): a coluna de licenca fica NAO_VERIFICADA ate a leitura efetiva, e nenhum trecho de referencia pode ser copiado antes disso. Marcar verificado sem ler seria a mesma mentira que declarar capacidade sem teste",
     "DUPLICATA E' UM REGISTRO (E-316): codenotch aparecia repetido na lista; contado uma vez, como o adendo exige",
-    "SIMULACAO NAO E' SUCESSO (E-316): o alerta do TUBEGENT (getVideoStream devolvendo JSON) ficou registrado, e o Hades exigira' MP4 realmente decodificavel quando implementar o Creator Studio"
+    "SIMULACAO NAO E' SUCESSO (E-316): o alerta do TUBEGENT (getVideoStream devolvendo JSON) ficou registrado, e o Hades exigira' MP4 realmente decodificavel quando implementar o Creator Studio",
+    "PLATAFORMA DE DESENVOLVIMENTO ESCONDE DEFEITO (E-317): scheduling_windows.go compilava so no Windows, entao a suite local passava e o Linux nao compilava. Build cruzado entra na bateria obrigatoria",
+    "REPRODUZIR O GATE ANTES DE CORRIGIR (E-317): rodei GOOS=linux go build localmente e vi O MESMO erro do CI antes de mexer. A licao de E-300b aplicada de novo e funcionando",
+    "SUFIXO _GOOS NAO E' DETALHE DE NOME (E-317): _windows.go, _linux.go e _darwin.go sao restricoes de build, nao convencao de pasta. Nomear um arquivo multplataforma assim o EXCLUI das outras plataformas em silencio"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -2309,6 +2312,7 @@
     "E-313": "INCREMENTO I do V2.2 (agendamento universal) - nao e' um dos 38 estagios nem dos estagios 39/40/41; vinculo declarado explicitamente em vez de omitido",
     "E-314": "INCREMENTO I do V2.2 (agendamento universal), fatia 2 - vinculo declarado em vez de omitido",
     "E-315": "ADENDO DE PARIDADE UNIVERSAL (best-of-breed) anexado ao V2.2 - nao e' um estagio; vinculo declarado",
-    "E-316": "artefatos do ADENDO DE PARIDADE (inventario de referencias + proxima acao) - nao e' estagio; vinculo declarado"
+    "E-316": "artefatos do ADENDO DE PARIDADE (inventario de referencias + proxima acao) - nao e' estagio; vinculo declarado",
+    "E-317": "defeito de integracao do incremento I (sufixo _GOOS acidental) + bateria de build cruzado; vinculo declarado"
   }
 }
