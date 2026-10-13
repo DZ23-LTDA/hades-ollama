@@ -2135,7 +2135,11 @@
     "REUSAR O PRIMITIVO EXISTENTE (E-323): withFileLock ja existia com implementacao Windows e Unix. Minha primeira leitura da assinatura estava errada (era func() error nas duas) - medir a assinatura evitou inventar um lock novo",
     "INVENTARIO OTIMISTA CORRIGIDO (E-324): P1-A dizia 'parcial (workflow com retry/DLQ provados)'. A medicao mostrou que o motor de workflow NAO existia - os arquivos schedule_* sao o scheduler do supervisor, outra coisa. Classificar por nome parecido e' o mesmo erro que confundir modulo com capacidade",
     "NO DESCONHECIDO NAO PODE SER PULADO (E-324): o V2.2 proibe declarar sucesso com nos ignorados. Tipo nao suportado falha no REGISTRO e tambem na EXECUCAO quando a definicao vem do disco",
-    "ARMADILHA ARMADA NA IDEMPOTENCIA (E-324): o teste compara o contador de efeitos ANTES e DEPOIS da repeticao. Sem isso, um 'replayed' verdadeiro com efeito duplicado passaria"
+    "ARMADILHA ARMADA NA IDEMPOTENCIA (E-324): o teste compara o contador de efeitos ANTES e DEPOIS da repeticao. Sem isso, um 'replayed' verdadeiro com efeito duplicado passaria",
+    "NAO FINGIR TOOL CALL (E-325): nada no codigo sabia que qwen2.5-coder:7b e deepseek-r1:8b nao emitem tool calls nativos - fato medido nas instrucoes do proprio repositorio. O produto podia prometer o que nao tinha",
+    "CAPACIDADE NAO MEDIDA NAO E' CAPACIDADE (E-325): modelo desconhecido entra como NAO_MEDIDO e cai em modo compativel. A recusa por falta de medicao tem erro DISTINTO da recusa por falta de suporte - a causa e' outra",
+    "CAPACIDADE SEM ORIGEM NAO ENTRA (E-325): cada capacidade declara se e' medido ou declarado. Capacidade sem procedencia e' exatamente o que o V2.2 proibe",
+    "O OLLAMA LOCAL NAO E' MEXIDO (E-325): o registro de capacidades e' somente leitura - nao instala, nao copia e nao altera modelos do usuario para satisfazer teste"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -2307,7 +2311,7 @@
         "P0-A": "PARCIAL",
         "P0-B": "PARCIAL",
         "P0-C": "PARCIAL",
-        "P0-D": "PARCIAL",
+        "P0-D": "PARCIAL: modo de ferramenta por capacidade MEDIDA implementado e provado (E-325) - modelo sem tool call nativo nao e' apresentado como nativo. Ollama Cloud segue exigindo login (BLOCKED_BY_EXTERNAL_DEPENDENCY) e a sonda automatica de endpoint e' a proxima fatia",
         "P0-E": "PARCIAL (T4 provado: 3 especialistas em worktrees isolados com merge controlado; faltam cotas de custo sob carga e memoria segmentada)",
         "P0-F": "PARCIAL"
       },
@@ -2393,6 +2397,7 @@
     "E-321": "integridade das fontes de pesquisa (P1-G/T1 do adendo de paridade); vinculo declarado",
     "E-322": "descoberta honesta (P1-H / estagio 39): guarda que reprova promessa de ranking e valida metadados; vinculo declarado",
     "E-323": "fatia 4 do INCREMENTO I do V2.2 (agendamento entre processos); vinculo declarado",
-    "E-324": "motor de workflow deterministico (P1-A / teste T6 do adendo); vinculo declarado"
+    "E-324": "motor de workflow deterministico (P1-A / teste T6 do adendo); vinculo declarado",
+    "E-325": "capacidades de modelo e modo de ferramenta (P0-D): nao fingir tool calls; vinculo declarado"
   }
 }
