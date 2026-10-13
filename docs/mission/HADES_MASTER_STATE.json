@@ -2296,7 +2296,11 @@
     "NOMEAR A CLASSE, MEDIR A CLASSE E PARAR QUANDO ELA ACABA (E-362): a varredura inicial ERROU o alvo e marcou 5-45s como curtos; a classe correta e' sub-segundo, e nela nao resta nada nos arquivos de integracao",
     "LICAO JA ESCRITA NO REPOSITORIO (E-362): tools_test.go traz o comentario de quem corrigiu a MESMA classe antes (limite de 2s excedido por runner Windows) e a regra: ligar o limite a propriedade medida. Ler o comentario do vizinho custa menos que redescobrir o defeito",
     "SKIP NAO PODE SIGNIFICAR 'MAQUINA LENTA' (E-362): context_memory_lock escapava com t.Skip quando a trava nao bloqueava em 300ms; com 5s o skip volta a significar 'sem semantica de flock'",
-    "ORCAMENTO CURTO LEGITIMO (E-362): 3 sitios testam cancelamento de proposito (contexto ja expirado, MCP cancelado, processo de 10s morto) - dispensados COM MOTIVO MEDIDO, nao por conveniencia"
+    "ORCAMENTO CURTO LEGITIMO (E-362): 3 sitios testam cancelamento de proposito (contexto ja expirado, MCP cancelado, processo de 10s morto) - dispensados COM MOTIVO MEDIDO, nao por conveniencia",
+    "INSTRUMENTO AO LADO DO DEFEITO NAO E' CORRECAO (E-363): adicionei o indice e mantive a varredura; a medicao mostrou o custo subir (10,03 -> 13,56 ms). Removida a varredura, o numero NAO caiu",
+    "A MEDICAO REDIRECIONOU O DIAGNOSTICO (E-363): o custo nao estava na busca e sim em persistLocked, que reconstroi o payload inteiro e grava o arquivo COMPLETO a cada operacao (O(n^2) em varredura e I/O)",
+    "TRES NUMEROS E A INCERTEZA (E-363): 50,17s sem indice, 67,81s com indice e varredura, 68,00s com indice sem varredura - uma execucao cada, sem repeticao. Nao atribuo o aumento ao indice; registro a incerteza",
+    "DURABILIDADE E' DECISAO DE PROJETO (E-363): corrigir persistLocked exige lote/debounce, que troca durabilidade por velocidade. Nao se faz isso as cegas como 'otimizacao'"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -2798,7 +2802,7 @@
           "id": "ADV-36",
           "severidade": "MEDIA (custo declarado)",
           "descricao": "UpsertProduct custa ~10,03 ms por produto (O(n) por chamada; encher e' quadratico) - medido com 5000 produtos",
-          "estado": "DECLARADO; indice por (organizacao, SKU) tornaria O(1) e NAO foi implementado",
+          "estado": "PARCIAL: o indice O(1) foi implementado (correto, 4 pontos de escrita), mas NAO reduziu o tempo medido; o custo real esta em persistLocked (ADV-41)",
           "evidencia": "E-360"
         },
         {
@@ -2828,12 +2832,19 @@
           "descricao": "catraca da classe de orcamento: primeira varredura ERROU o alvo (marcou 5-45s como curtos); a classe correta e' sub-segundo",
           "estado": "CORRIGIDA e testada (5 testes); 5 dispensas declaradas com motivo medido",
           "evidencia": "E-362"
+        },
+        {
+          "id": "ADV-41",
+          "severidade": "ALTA (desempenho)",
+          "descricao": "persistLocked reconstroi o payload inteiro da organizacao e grava o arquivo COMPLETO a cada mutacao: O(n^2) em varredura e I/O. E' o custo real dos 13,6 ms por produto",
+          "estado": "MEDIDO E LOCALIZADO; NAO CORRIGIDO - a correcao exige lote/debounce com troca explicita de durabilidade (decisao de projeto)",
+          "evidencia": "E-363"
         }
       ],
       "proximos_ataques": [
-        "indice O(1) por (organizacao, SKU) no CommerceStore (10,03 ms por produto hoje)",
-        "retomar a fila P0-A/T1 e P0-C/T3 (dependencia externa onde faltar alvo)",
-        "checkpoint remedido apos o proximo marco"
+        "ADV-41: lote/debounce de persistLocked, com durabilidade declarada (o ganho precisa ser medido antes e depois)",
+        "repetir as medicoes de volume (hoje uma execucao por configuracao, sem intervalo de confianca)",
+        "retomar a fila P0-A/T1 e P0-C/T3 (dependencia externa onde faltar alvo)"
       ]
     },
     "estagio_42": {
@@ -3157,6 +3168,7 @@
     "E-359": "orcamento acumulado de onboarding contra o estado real; vinculo declarado",
     "E-360": "orcamento no caminho direto, com volume medido e contraprova; vinculo declarado",
     "E-361": "causa da instabilidade de CI (orcamento x fencing); vinculo declarado",
-    "E-362": "catraca da classe de orcamento sub-segundo; vinculo declarado"
+    "E-362": "catraca da classe de orcamento sub-segundo; vinculo declarado",
+    "E-363": "indice O(1) correto que NAO moveu o numero; custo real em persistLocked; vinculo declarado"
   }
 }
