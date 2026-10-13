@@ -2,7 +2,7 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-19T09:55:00-03:00",
+  "updated_at": "2026-10-19T11:20:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
@@ -1080,12 +1080,13 @@
       "capability": "AUSENTE",
       "evidence": [
         "E-047",
-        "E-215"
+        "E-215",
+        "E-302"
       ],
       "blocker": "B-04",
       "next": "Implementar voz/transcricao com provedor real",
       "execution": "BLOCKED_BY_EXTERNAL_DEPENDENCY",
-      "done": "SOCIAL E MARKETPLACE OPERACIONAL (E-215): contas sociais, rascunhos com APROVACAO, publicacao autorizada, metricas idempotentes, campanhas com agendamento e sincronizacao de marketplace. MEDIDO: 9 testes PASS no filtro 'CompanySocial|Campaign|Marketplace' (mesmos modulos medidos na E-213). LACUNA DECLARADA: provedor real de rede social e alertas."
+      "done": "SOCIAL E MARKETPLACE OPERACIONAL (E-215): contas sociais, rascunhos com APROVACAO, publicacao autorizada, metricas idempotentes, campanhas com agendamento e sincronizacao de marketplace. MEDIDO: 9 testes PASS no filtro 'CompanySocial|Campaign|Marketplace' (mesmos modulos medidos na E-213). LACUNA DECLARADA: provedor real de rede social e alertas. EFEITO UMA VEZ E SEM ENXURRADA NA PUBLICACAO SOCIAL (E-302): MEDIDO que PublishSocialDraft recusava rascunho nao aprovado mas NAO recusava republicar o mesmo rascunho nem tinha teto anti-enxurrada. Implementadas as duas guardas com recusa explicita; o rascunho barrado permanece aprovado e nao publicado. LIMITE DECLARADO: teto local, nao o rate limit da API (seguir BLOCKED_BY_EXTERNAL_DEPENDENCY)."
     },
     {
       "id": 37,
@@ -2053,7 +2054,10 @@
     "TRES SUPOSICOES REFUTADAS PELO PROPRIO TESTE (E-300): agente errado, ExecutedAt lido como execucao, e motivo suposto da recusa. O teste nao so provou a propriedade: corrigiu tres leituras minhas do codigo",
     "O QUE NAO SE ISOLOU FICA DECLARADO (E-300): o portao de consentimento nao e' isolavel pelo unico instrumento de saida, porque a regra do caminho unico de resposta recusa antes. Declarar isso e' melhor que escrever um assert que passaria pelo motivo errado",
     "DOCUMENTO DE RETOMADA TAMBEM ENVELHECE (E-301): os tres documentos de retomada estavam 2 dias atrasados e afirmavam 'tres superficies sequer foram auditadas'. Agora cada um carrega o bloco ESTADO MEDIDO com o commit, a regra de remedir e os comandos exatos de retomada",
-    "NAO CRIAR O QUE O REPOSITORIO DECIDIU NAO TER (E-301): HADES_CURRENT_STATE.json nao existe por decisao explicita (dois arquivos de estado divergiriam). A evidencia registra a decisao para a proxima sessao nao 'consertar' o que nao esta quebrado"
+    "NAO CRIAR O QUE O REPOSITORIO DECIDIU NAO TER (E-301): HADES_CURRENT_STATE.json nao existe por decisao explicita (dois arquivos de estado divergiriam). A evidencia registra a decisao para a proxima sessao nao 'consertar' o que nao esta quebrado",
+    "EFEITO UMA VEZ TAMBEM EM PUBLICACAO SOCIAL (E-302): republicar o mesmo rascunho duplica o post na rede. O §11.7 exige que o mesmo efeito externo nao ocorra duas vezes - agora e' recusado, e o teste trava a regressao",
+    "RECUSA EXPLICITA, NUNCA SILENCIOSA (E-302): o teto anti-enxurrada devolve erro proprio em vez de descartar em silencio; e o rascunho barrado CONTINUA aprovado e nao publicado - recusa, nao perda",
+    "TETO LOCAL NAO E' RATE LIMIT DA API (E-302): declarado no codigo. Medir o limite real da rede social exige conta autorizada e segue BLOCKED_BY_EXTERNAL_DEPENDENCY; nao se finge que sao a mesma coisa"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
