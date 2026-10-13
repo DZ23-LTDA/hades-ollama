@@ -5,9 +5,9 @@ import (
 	"testing"
 )
 
-// TestJoinProviderURLNaoDuplicaSegmentoDeVersao trava a regra que o gateway jÃ¡ aplicava e que o
-// instrumento opt-in havia divergido: BaseURL terminando em /v1 + rota comeÃ§ando com /v1/ deve
-// produzir UM Ãºnico segmento de versÃ£o.
+// TestJoinProviderURLNaoDuplicaSegmentoDeVersao trava a regra que o gateway já aplicava e que o
+// instrumento opt-in havia divergido: BaseURL terminando em /v1 + rota começando com /v1/ deve
+// produzir UM único segmento de versão.
 func TestJoinProviderURLNaoDuplicaSegmentoDeVersao(t *testing.T) {
 	casos := []struct{ base, rota, quer string }{
 		{"https://api.groq.com/openai/v1", "/v1/chat/completions", "https://api.groq.com/openai/v1/chat/completions"},
@@ -16,12 +16,12 @@ func TestJoinProviderURLNaoDuplicaSegmentoDeVersao(t *testing.T) {
 		{"https://openrouter.ai/api/v1", "/v1/chat/completions", "https://openrouter.ai/api/v1/chat/completions"},
 		{"https://api.x.ai/v1", "/v1/chat/completions", "https://api.x.ai/v1/chat/completions"},
 		{"https://api.openai.com/v1", "/v1/chat/completions", "https://api.openai.com/v1/chat/completions"},
-		// Base sem versÃ£o: a rota traz o segmento e ele NÃƒO pode ser removido.
+		// Base sem versão: a rota traz o segmento e ele NÃO pode ser removido.
 		{"https://api.anthropic.com", "/v1/chat/completions", "https://api.anthropic.com/v1/chat/completions"},
-		// Base com a versÃ£o jÃ¡ embutida no fim do caminho (compatibilidade OpenAI do Google):
-		// a rota Ã© relativa e nÃ£o repete a versÃ£o.
+		// Base com a versão já embutida no fim do caminho (compatibilidade OpenAI do Google):
+		// a rota é relativa e não repete a versão.
 		{"https://generativelanguage.googleapis.com/v1beta/openai", "/v1/chat/completions", "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"},
-		// Base com barra final nÃ£o pode gerar barra dupla.
+		// Base com barra final não pode gerar barra dupla.
 		{"https://api.groq.com/openai/v1/", "/v1/chat/completions", "https://api.groq.com/openai/v1/chat/completions"},
 	}
 	for _, caso := range casos {
@@ -35,8 +35,8 @@ func TestJoinProviderURLNaoDuplicaSegmentoDeVersao(t *testing.T) {
 	}
 }
 
-// TestPresetsOpenAICompatÃ­veisGeramURLFinalSemVersaoDuplicada percorre os PRESETS REAIS: a proteÃ§Ã£o
-// Ã© da classe inteira, nÃ£o de um caso escolhido Ã  mÃ£o.
+// TestPresetsOpenAICompatíveisGeramURLFinalSemVersaoDuplicada percorre os PRESETS REAIS: a proteção
+// é da classe inteira, não de um caso escolhido à mão.
 func TestPresetsOpenAICompativeisGeramURLFinalSemVersaoDuplicada(t *testing.T) {
 	verificados := 0
 	for _, preset := range BuiltInProviderPresets() {
@@ -44,7 +44,7 @@ func TestPresetsOpenAICompativeisGeramURLFinalSemVersaoDuplicada(t *testing.T) {
 			continue
 		}
 		if strings.HasPrefix(preset.BaseURL, "http://127.0.0.1") || strings.Contains(preset.BaseURL, ".invalid") {
-			continue // locais e o marcador genÃ©rico nÃ£o tÃªm endpoint real para comparar
+			continue // locais e o marcador genérico não têm endpoint real para comparar
 		}
 		for _, rota := range preset.Paths {
 			final := JoinProviderURL(preset.BaseURL, rota)

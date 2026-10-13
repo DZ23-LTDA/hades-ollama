@@ -8,9 +8,9 @@ import (
 )
 
 // planejadorContabilizado registra quantas vezes foi chamado e reporta consumo a cada chamada.
-// Serve para provar que o registro da missÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â£o CONSISTE com o nÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Âºmero real de chamadas ao modelo:
+// Serve para provar que o registro da missão CONSISTE com o número real de chamadas ao modelo:
 // se o runtime trocasse o consumo em vez de somar, o custo da retomada seria SUBDECLARADO em
-// silÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Âªncio ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â um erro que nÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â£o aparece em CI verde nem em teste de soma isolada.
+// silêncio — um erro que não aparece em CI verde nem em teste de soma isolada.
 type planejadorContabilizado struct {
 	chamadas int
 	destino  *ModelUsage
@@ -34,8 +34,8 @@ func (p *planejadorContabilizado) Plan(_ context.Context, _ Mission) ([]Step, er
 }
 
 // TestConsumoDoPlanejamentoConsisteComAsChamadasReais prova a invariante de contabilidade: o
-// consumo registrado na missÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â£o tem de ser a SOMA de todas as chamadas de planejamento, nÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â£o apenas
-// a ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Âºltima. A missÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â£o pede aprovaÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â§ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â£o (workspace.write), entÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â£o ela ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â© executada em DUAS rodadas ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â
+// consumo registrado na missão tem de ser a SOMA de todas as chamadas de planejamento, não apenas
+// a última. A missão pede aprovação (workspace.write), então ela é executada em DUAS rodadas —
 // exatamente o caminho de retomada em que a contabilidade pode errar.
 func TestConsumoDoPlanejamentoConsisteComAsChamadasReais(t *testing.T) {
 	raiz := t.TempDir()
@@ -64,7 +64,7 @@ func TestConsumoDoPlanejamentoConsisteComAsChamadasReais(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Duas rodadas: a primeira planeja e para na aprovaÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â§ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â£o; a segunda executa o passo aprovado.
+	// Duas rodadas: a primeira planeja e para na aprovação; a segunda executa o passo aprovado.
 	for rodada := range 2 {
 		if err := runtime.Run(ctx, missao.ID); err != nil {
 			t.Fatalf("rodada %d: %v", rodada+1, err)
@@ -84,13 +84,13 @@ func TestConsumoDoPlanejamentoConsisteComAsChamadasReais(t *testing.T) {
 	}
 
 	if missao.Usage == nil {
-		t.Fatal("missÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â£o sem registro de consumo")
+		t.Fatal("missão sem registro de consumo")
 	}
 	t.Logf("CONTABILIDADE: chamadas_ao_planejador=%d chamadas_registradas=%d tokens=%d/%d custo_centavos=%d",
 		planejador.chamadas, missao.Usage.Calls, missao.Usage.PromptTokens, missao.Usage.CompletionTokens, missao.Usage.CostCents)
 
 	if planejador.chamadas == 0 {
-		t.Fatal("o planejador nunca foi chamado: o teste perdeu o propÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³sito")
+		t.Fatal("o planejador nunca foi chamado: o teste perdeu o propósito")
 	}
 	// Invariante central: o registro tem de refletir TODAS as chamadas (soma), com 10/5 e 1 centavo cada.
 	if missao.Usage.Calls != planejador.chamadas {
@@ -101,7 +101,7 @@ func TestConsumoDoPlanejamentoConsisteComAsChamadasReais(t *testing.T) {
 			missao.Usage.PromptTokens, esperado, planejador.chamadas)
 	}
 	if esperado := 5 * planejador.chamadas; missao.Usage.CompletionTokens != esperado {
-		t.Fatalf("tokens de conclusÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â£o=%d, esperado %d", missao.Usage.CompletionTokens, esperado)
+		t.Fatalf("tokens de conclusão=%d, esperado %d", missao.Usage.CompletionTokens, esperado)
 	}
 	if esperado := int64(planejador.chamadas); missao.Usage.CostCents != esperado {
 		t.Fatalf("custo=%d centavos, esperado %d", missao.Usage.CostCents, esperado)
@@ -111,9 +111,9 @@ func TestConsumoDoPlanejamentoConsisteComAsChamadasReais(t *testing.T) {
 	}
 }
 
-// TestConsumoDePlanejamentoSobreviveAReexecucaoGaranteSoma cobre a segunda execuÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â§ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â£o DEPOIS de a
-// missÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â£o jÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡ ter consumo gravado no store: o consumo tem de continuar somando, nunca zerar nem
-// substituir ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â© o caso de retomada apÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³s reinÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â­cio do processo.
+// TestConsumoDePlanejamentoSobreviveAReexecucaoGaranteSoma cobre a segunda execução DEPOIS de a
+// missão já ter consumo gravado no store: o consumo tem de continuar somando, nunca zerar nem
+// substituir — é o caso de retomada após reinício do processo.
 func TestConsumoDePlanejamentoPersistidoNaoEhPerdidoNemSubstituido(t *testing.T) {
 	raiz := t.TempDir()
 	store, err := NewJSONStore(filepath.Join(raiz, ".store"))
@@ -143,7 +143,7 @@ func TestConsumoDePlanejamentoPersistidoNaoEhPerdidoNemSubstituido(t *testing.T)
 		t.Fatal(err)
 	}
 	if primeira.Usage == nil || primeira.Usage.PromptTokens == 0 {
-		t.Fatal("primeira execuÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â§ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â£o nÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â£o registrou consumo")
+		t.Fatal("primeira execução não registrou consumo")
 	}
 	// Recarrega do store (mesmo caminho de um processo reiniciado) e executa de novo.
 	store2, err := NewJSONStore(filepath.Join(raiz, ".store"))
@@ -162,10 +162,10 @@ func TestConsumoDePlanejamentoPersistidoNaoEhPerdidoNemSubstituido(t *testing.T)
 		t.Fatal(err)
 	}
 	if segunda.Usage == nil {
-		t.Fatal("consumo perdido apÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³s reexecuÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â§ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â£o")
+		t.Fatal("consumo perdido após reexecução")
 	}
 	if segunda.Usage.PromptTokens < primeira.Usage.PromptTokens {
-		t.Fatalf("consumo DIMINUIU apÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³s reexecuÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â§ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â£o: %d -> %d", primeira.Usage.PromptTokens, segunda.Usage.PromptTokens)
+		t.Fatalf("consumo DIMINUIU após reexecução: %d -> %d", primeira.Usage.PromptTokens, segunda.Usage.PromptTokens)
 	}
 	t.Logf("RETOMADA: chamadas=%d tokens=%d/%d custo_centavos=%d",
 		segunda.Usage.Calls, segunda.Usage.PromptTokens, segunda.Usage.CompletionTokens, segunda.Usage.CostCents)

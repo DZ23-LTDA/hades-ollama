@@ -17,8 +17,8 @@ import (
 	"github.com/ollama/ollama/internal/multillm"
 )
 
-// planejadorNuvemOpenAI ÃƒÂ© um adaptador de TESTE que fala OpenAI-compatible com o provedor real do
-// preset. Existe porque o caminho de produÃƒÂ§ÃƒÂ£o monta o planejador contra o Ollama local Ã¢â‚¬â€ este
+// planejadorNuvemOpenAI é um adaptador de TESTE que fala OpenAI-compatible com o provedor real do
+// preset. Existe porque o caminho de produção monta o planejador contra o Ollama local — este
 // instrumento prova o que falta: um MODELO DE NUVEM planejando e executando dentro do runtime.
 type planejadorNuvemOpenAI struct {
 	endpoint    string
@@ -94,9 +94,9 @@ func (p planejadorNuvemOpenAI) Chat(ctx context.Context, request *api.ChatReques
 	})
 }
 
-// TestMissaoRealComPlanejadorDeNuvemEhOptIn roda uma MISSÃƒÆ’O DE VERDADE cujo planejamento vem de um
-// MODELO DE NUVEM real. Ãƒâ€° opt-in: sem OLLAMA_AGENT_REAL_PROVIDER e OLLAMA_AGENT_REAL_MODEL o teste
-// NÃƒÆ’O roda. Com as variÃƒÂ¡veis ele FALHA ALTO Ã¢â‚¬â€ nunca finge sucesso nem esconde o erro do provedor.
+// TestMissaoRealComPlanejadorDeNuvemEhOptIn roda uma MISSÃO DE VERDADE cujo planejamento vem de um
+// MODELO DE NUVEM real. É opt-in: sem OLLAMA_AGENT_REAL_PROVIDER e OLLAMA_AGENT_REAL_MODEL o teste
+// NÃO roda. Com as variáveis ele FALHA ALTO — nunca finge sucesso nem esconde o erro do provedor.
 func TestMissaoRealComPlanejadorDeNuvemEhOptIn(t *testing.T) {
 	provedor := strings.TrimSpace(os.Getenv("OLLAMA_AGENT_REAL_PROVIDER"))
 	modelo := strings.TrimSpace(os.Getenv("OLLAMA_AGENT_REAL_MODEL"))
@@ -115,14 +115,14 @@ func TestMissaoRealComPlanejadorDeNuvemEhOptIn(t *testing.T) {
 		}
 	}
 	if caminho == "" {
-		t.Skipf("preset %q nÃƒÂ£o declara caminho de chat", provedor)
+		t.Skipf("preset %q não declara caminho de chat", provedor)
 	}
 	chave := multillm.CredentialValue(preset.APIKeyEnv)
 	if strings.TrimSpace(chave) == "" {
 		t.Skipf("BLOCKED_BY_EXTERNAL_DEPENDENCY: %s ausente", preset.APIKeyEnv)
 	}
 	endpoint := multillm.JoinProviderURL(preset.BaseURL, caminho)
-	t.Logf("missÃƒÂ£o com nuvem: provedor=%s modelo=%s endpoint=%s (chave nÃƒÂ£o impressa)", provedor, modelo, endpoint)
+	t.Logf("missão com nuvem: provedor=%s modelo=%s endpoint=%s (chave não impressa)", provedor, modelo, endpoint)
 
 	raiz := t.TempDir()
 	store, err := NewJSONStore(filepath.Join(raiz, ".store"))
@@ -138,7 +138,7 @@ func TestMissaoRealComPlanejadorDeNuvemEhOptIn(t *testing.T) {
 			limiteSaida: 2048,
 		},
 		Model: modelo,
-		// Tarifa DECLARADA para o teste (o catÃƒÂ¡logo local nÃƒÂ£o traz preÃƒÂ§o destes modelos).
+		// Tarifa DECLARADA para o teste (o catálogo local não traz preço destes modelos).
 		Price: ModelPrice{InputCentsPer1K: 14, OutputCentsPer1K: 28, Known: true},
 	}
 	runtime, err := NewRuntime(RuntimeConfig{
@@ -158,17 +158,17 @@ func TestMissaoRealComPlanejadorDeNuvemEhOptIn(t *testing.T) {
 		Objective: "listar os arquivos do workspace e informar quantos arquivos existem",
 	})
 	if err != nil {
-		t.Fatalf("criar missÃƒÂ£o: %v", err)
+		t.Fatalf("criar missão: %v", err)
 	}
 
-	// O modelo de nuvem decide o plano; se exigir aprovaÃƒÂ§ÃƒÂ£o, o instrumento aprova e continua.
+	// O modelo de nuvem decide o plano; se exigir aprovação, o instrumento aprova e continua.
 	for tentativa := range 5 {
 		if err := runtime.Run(ctx, missao.ID); err != nil {
-			t.Fatalf("executar missÃƒÂ£o (tentativa %d): %v", tentativa+1, err)
+			t.Fatalf("executar missão (tentativa %d): %v", tentativa+1, err)
 		}
 		atual, err := runtime.GetMission(missao.ID)
 		if err != nil {
-			t.Fatalf("ler missÃƒÂ£o: %v", err)
+			t.Fatalf("ler missão: %v", err)
 		}
 		missao = atual
 		if missao.CompletedAt != nil {
@@ -190,13 +190,13 @@ func TestMissaoRealComPlanejadorDeNuvemEhOptIn(t *testing.T) {
 	}
 
 	if missao.CompletedAt == nil {
-		t.Fatalf("missÃƒÂ£o com modelo de nuvem NÃƒÆ’O concluiu: estado=%s etapas=%d", missao.State, len(missao.Plan))
+		t.Fatalf("missão com modelo de nuvem NÃO concluiu: estado=%s etapas=%d", missao.State, len(missao.Plan))
 	}
 	if missao.Usage == nil {
-		t.Fatal("missÃƒÂ£o concluiu sem registrar consumo: tokens reais do provedor se perderam")
+		t.Fatal("missão concluiu sem registrar consumo: tokens reais do provedor se perderam")
 	}
 	if missao.Usage.Provider != provedor || missao.Usage.Model != modelo {
-		t.Fatalf("consumo atribuÃƒÂdo a provedor/modelo errado: %+v", *missao.Usage)
+		t.Fatalf("consumo atribuÃÂdo a provedor/modelo errado: %+v", *missao.Usage)
 	}
 	if missao.Usage.PromptTokens <= 0 || missao.Usage.CompletionTokens <= 0 {
 		t.Fatalf("consumo sem tokens reais: %+v", *missao.Usage)
@@ -204,7 +204,7 @@ func TestMissaoRealComPlanejadorDeNuvemEhOptIn(t *testing.T) {
 	if !missao.Usage.CostKnown {
 		t.Fatalf("tarifa declarada deveria produzir custo conhecido: %+v", *missao.Usage)
 	}
-	t.Logf("MISSÃƒÆ’O COM NUVEM: provedor=%s modelo=%s estado=%s etapas=%d tokens=%d/%d custo_centavos=%d",
+	t.Logf("MISSÃO COM NUVEM: provedor=%s modelo=%s estado=%s etapas=%d tokens=%d/%d custo_centavos=%d",
 		missao.Usage.Provider, missao.Usage.Model, missao.State, len(missao.Plan),
 		missao.Usage.PromptTokens, missao.Usage.CompletionTokens, missao.Usage.CostCents)
 }

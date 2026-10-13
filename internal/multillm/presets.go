@@ -5,22 +5,22 @@ import (
 	"strings"
 )
 
-// Presets guiados de provedor (estÃ¡gio 4 do Hades).
+// Presets guiados de provedor (estágio 4 do Hades).
 //
-// O gateway Ã© orientado por TIPO de protocolo (`openai-compatible`,
-// `anthropic`, `cli`) e os provedores vÃªm de configuraÃ§Ã£o JSON. Estes presets
+// O gateway é orientado por TIPO de protocolo (`openai-compatible`,
+// `anthropic`, `cli`) e os provedores vêm de configuração JSON. Estes presets
 // existem para o cadastro guiado em pt-BR: cada um entrega `base_url`, nome da
-// variÃ¡vel de ambiente da credencial, estilo de autenticaÃ§Ã£o e caminhos
-// suportados â€” nunca a credencial em si.
+// variável de ambiente da credencial, estilo de autenticação e caminhos
+// suportados — nunca a credencial em si.
 //
-// Regra de honestidade embutida: um preset nÃ£o declara modelo nem capacidade.
+// Regra de honestidade embutida: um preset não declara modelo nem capacidade.
 // As capacidades de cada modelo continuam vindo de `ProbeProviderModel` /
 // descoberta real, e a chave continua vindo do ambiente ou do cofre, nunca
 // deste pacote.
 //
 // Cobertura: Ollama, vLLM, llama.cpp, LM Studio (servidores locais) e OpenAI,
 // Anthropic, Gemini, DeepSeek, Groq, Mistral, OpenRouter e xAI (APIs). Outros
-// servidores compatÃveis com OpenAI entram pelo preset genÃ©rico, cuja
+// servidores compatÃveis com OpenAI entram pelo preset genérico, cuja
 // `base_url` precisa ser editada pelo operador.
 type ProviderPreset struct {
 	ID          string   `json:"id"`
@@ -36,19 +36,19 @@ type ProviderPreset struct {
 	Notes       string   `json:"notes,omitempty"`
 }
 
-// GenericPresetBaseURL Ã© um marcador reservado (TLD `.invalid`): o operador
-// precisa substituÃ-lo ao cadastrar um servidor compatÃvel com OpenAI que nÃ£o
+// GenericPresetBaseURL é um marcador reservado (TLD `.invalid`): o operador
+// precisa substituÃ-lo ao cadastrar um servidor compatÃvel com OpenAI que não
 // esteja na lista. Servir um host plausÃvel seria pior, porque pareceria
 // funcional.
 const GenericPresetBaseURL = "https://api.exemplo.invalid/v1"
 
 const (
-	// GenericPresetEnvName Ã© o nome da variÃ¡vel de ambiente esperada pelo
-	// preset genÃ©rico; o operador pode trocÃ¡-lo na configuraÃ§Ã£o.
+	// GenericPresetEnvName é o nome da variável de ambiente esperada pelo
+	// preset genérico; o operador pode trocá-lo na configuração.
 	GenericPresetEnvName = "PROVEDOR_COMPATIVEL_API_KEY"
 )
 
-// BuiltInProviderPresets devolve a lista canÃ´nica de presets, ordenada por ID.
+// BuiltInProviderPresets devolve a lista canônica de presets, ordenada por ID.
 func BuiltInProviderPresets() []ProviderPreset {
 	presets := []ProviderPreset{
 		{
@@ -60,7 +60,7 @@ func BuiltInProviderPresets() []ProviderPreset {
 			Local:       true,
 			RequiresKey: false,
 			DocsURL:     "https://docs.ollama.com/api",
-			Notes:       "Motor local padrÃ£o do Hades; nÃ£o exige credencial.",
+			Notes:       "Motor local padrão do Hades; não exige credencial.",
 		},
 		{
 			ID:          "vllm",
@@ -80,7 +80,7 @@ func BuiltInProviderPresets() []ProviderPreset {
 			Paths:       []string{"/v1/chat/completions", "/v1/completions", "/v1/embeddings"},
 			Local:       true,
 			RequiresKey: false,
-			Notes:       "Porta padrÃ£o do llama-server.",
+			Notes:       "Porta padrão do llama-server.",
 		},
 		{
 			ID:          "lmstudio",
@@ -90,7 +90,7 @@ func BuiltInProviderPresets() []ProviderPreset {
 			Paths:       []string{"/v1/chat/completions", "/v1/completions", "/v1/embeddings"},
 			Local:       true,
 			RequiresKey: false,
-			Notes:       "Porta padrÃ£o do servidor local do LM Studio.",
+			Notes:       "Porta padrão do servidor local do LM Studio.",
 		},
 		{
 			ID:          "openai",
@@ -119,11 +119,11 @@ func BuiltInProviderPresets() []ProviderPreset {
 			BaseURL:   "https://generativelanguage.googleapis.com/v1beta/openai",
 			APIKeyEnv: "GEMINI_API_KEY",
 			AuthStyle: AuthStyleBearer,
-			// A camada de compatibilidade do Google jÃ¡ inclui a versÃ£o no base (.../v1beta/openai),
-			// entÃ£o a rota Ã© relativa: /chat/completions, nÃ£o /v1/chat/completions.
+			// A camada de compatibilidade do Google já inclui a versão no base (.../v1beta/openai),
+			// então a rota é relativa: /chat/completions, não /v1/chat/completions.
 			Paths:       []string{"/v1/chat/completions", "/v1/embeddings"},
 			RequiresKey: true,
-			Notes:       "Usa a camada de compatibilidade oficial; o protocolo nativo nÃ£o Ã© usado aqui.",
+			Notes:       "Usa a camada de compatibilidade oficial; o protocolo nativo não é usado aqui.",
 		},
 		{
 			ID:          "deepseek",
@@ -178,14 +178,14 @@ func BuiltInProviderPresets() []ProviderPreset {
 		},
 		{
 			ID:          "openai-compatible",
-			Name:        "Servidor compatÃvel com OpenAI (genÃ©rico)",
+			Name:        "Servidor compatÃvel com OpenAI (genérico)",
 			Type:        ProviderTypeOpenAICompatible,
 			BaseURL:     GenericPresetBaseURL,
 			APIKeyEnv:   GenericPresetEnvName,
 			AuthStyle:   AuthStyleBearer,
 			Paths:       []string{"/v1/chat/completions", "/v1/completions", "/v1/embeddings"},
 			RequiresKey: false,
-			Notes:       "Substitua a base_url antes de habilitar; Lemonade e outros servidores entram por aqui atÃ© terem preset verificado.",
+			Notes:       "Substitua a base_url antes de habilitar; Lemonade e outros servidores entram por aqui até terem preset verificado.",
 		},
 	}
 	sort.Slice(presets, func(i, j int) bool { return presets[i].ID < presets[j].ID })
@@ -193,7 +193,7 @@ func BuiltInProviderPresets() []ProviderPreset {
 }
 
 // ProviderPresetByID busca um preset pelo identificador (sem diferenciar
-// maiÃºsculas de minÃºsculas).
+// maiúsculas de minúsculas).
 func ProviderPresetByID(id string) (ProviderPreset, bool) {
 	for _, preset := range BuiltInProviderPresets() {
 		if strings.EqualFold(preset.ID, strings.TrimSpace(id)) {
@@ -203,10 +203,10 @@ func ProviderPresetByID(id string) (ProviderPreset, bool) {
 	return ProviderPreset{}, false
 }
 
-// Provider monta um `Provider` vÃ¡lido a partir do preset. A credencial NÃƒO Ã©
-// copiada: fica apenas o nome da variÃ¡vel de ambiente. Servidores locais sÃ£o
+// Provider monta um `Provider` válido a partir do preset. A credencial NÃO é
+// copiada: fica apenas o nome da variável de ambiente. Servidores locais são
 // marcados com AllowPrivate + AllowInsecureLoopback porque falam HTTP em
-// loopback; isso Ã© explÃcito e nÃ£o vale para os presets remotos.
+// loopback; isso é explÃcito e não vale para os presets remotos.
 func (p ProviderPreset) Provider(models []ModelConfig) (Provider, error) {
 	provider := Provider{
 		Name:         p.ID,

@@ -66,6 +66,10 @@ func TestReinicioNaoTocaOArquivoDePassoInterrompido(t *testing.T) {
 	missao.Plan = []Step{{
 		ID: "passo-com-arquivo", Kind: "arquivo.escrita", Title: "passo interrompido que grava arquivo",
 		State: StepRunning, Risk: RiskDestructive, Input: map[string]any{"path": caminhoDoEfeito},
+		// 🚨 ADV-53 (revisão adversarial independente): SEM este hash o motor recusa a etapa antes de `tool.Execute`
+		// (`runtime.go:2219`) ⇒ *o arquivo nunca poderia existir, com ou sem a guarda, e a asserção de disco seria
+		// INFALSIFICÁVEL.* ***Prova que não pode falhar não é prova.***
+		ToolDescriptorSHA256: hashDoDescritor(t, ferramenta.Descriptor()),
 	}}
 	missao.State = MissionRunning
 	missao.Version++

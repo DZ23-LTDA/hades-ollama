@@ -24,6 +24,18 @@ import (
 // (`runtime_test.go`, `TestRuntimeInvalidatesApprovalWhenToolDescriptorChanges`): *o teste do projeto já sabia que
 // "não executou" se prova contando execuções, não lendo mensagens.*
 
+// hashDoDescritor calcula o SHA-256 que o motor EXIGE em `step.ToolDescriptorSHA256` (runtime.go:2219).
+// **MEDIDO na revisão adversarial (ADV-53)**: sem este campo, a etapa é recusada **antes** de `tool.Execute` ⇒
+// *a ferramenta nunca executa e qualquer asserção de efeito vira decoração.*
+func hashDoDescritor(t *testing.T, descritor ToolDescriptor) string {
+	t.Helper()
+	hash, err := toolDescriptorSHA256(descritor)
+	if err != nil {
+		t.Fatalf("calcular o SHA do descritor: %v", err)
+	}
+	return hash
+}
+
 // passoDeEscritaTool é uma ferramenta REAL de risco destrutivo que conta quantas vezes executou.
 type passoDeEscritaTool struct {
 	execucoes atomic.Int64
@@ -69,6 +81,11 @@ func missaoInterrompidaComFerramentaReal(t *testing.T, raiz string) (*Runtime, M
 		State: StepRunning,
 		Risk:  RiskDestructive,
 		Input: map[string]any{"marcador": "efeito-que-nao-pode-duplicar"},
+		// 🚨 REVISÃO ADVERSARIAL INDEPENDENTE (ADV-53): sem este hash, `runtime.go:2219` recusa a etapa **ANTES** de
+		// chamar `tool.Execute` (`step.ToolDescriptorSHA256 == ""` ⇒ `ErrApprovalPayloadChanged`). Ou seja: **a
+		// ferramenta nunca executava, com ou sem a guarda** ⇒ *as asserções de EFEITO abaixo eram INFALSIFICÁVEIS —
+		// davam a impressão de provar algo que não podiam provar.* ***Prova que não pode falhar não é prova.***
+		ToolDescriptorSHA256: hashDoDescritor(t, ferramenta.Descriptor()),
 	}}
 	missao.State = MissionRunning
 	missao.Version++
