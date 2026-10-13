@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
@@ -110,11 +111,15 @@ type harnessFixo struct{}
 func (harnessFixo) Name() string  { return "fixo-referencia" }
 func (harnessFixo) Model() string { return "nenhum" }
 func (harnessFixo) ProposeFix(_ context.Context, task HarnessBenchmarkTask, _ string) (map[string]string, error) {
+	// E-344: antes isto filtrava `calc.go` NA MARRA (escrito quando havia um único fixture) e ficou errado quando a
+	// matriz ganhou outras classes de bug — 1 verde em 4. ***Harness de referência precisa propor a REFERÊNCIA, não o
+	// arquivo que existia no dia em que foi escrito.***
 	proposta := map[string]string{}
 	for nome, conteudo := range task.ReferenceFix {
-		if nome == "calc.go" {
-			proposta[nome] = conteudo
+		if strings.HasSuffix(nome, "_test.go") || nome == "go.mod" {
+			continue // o enunciado e o módulo não são alvo de correção
 		}
+		proposta[nome] = conteudo
 	}
 	return proposta, nil
 }
