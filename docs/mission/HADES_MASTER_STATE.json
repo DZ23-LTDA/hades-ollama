@@ -2,7 +2,7 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-19T08:40:00-03:00",
+  "updated_at": "2026-10-19T09:55:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
@@ -760,7 +760,8 @@
         "E-235",
         "E-251",
         "E-292",
-        "E-295"
+        "E-295",
+        "E-301"
       ],
       "blocker": null,
       "next": "Pendencia remanescente do gate: ExternalComparison NAO_EXECUTADA (exige comparacao com concorrentes) e os estagios 23-38 em IN_PROGRESS. O vinculo das 13 linhas legadas foi FECHADO (E-251): 13 -> 0 sem vinculo. Proximo: estagio 18 (governanca dos 16 escopos divergentes) e retomada dos estagios de negocio",
@@ -2050,7 +2051,9 @@
     "ERROS DE CARGA E GRAVACAO SEPARADOS (E-299): a licao veio do teste do arquivo corrompido da dedupe; uma gravacao bem-sucedida nao pode APAGAR o registro de que a leitura falhou",
     "AFIRMACAO NO CAMPO, ZERO TESTE (E-300): o pedido dizia no comentario 'trocar de modelo NAO altera as politicas'. Comentario nao e' garantia; agora e' falsificavel executando o mesmo pedido com dois modelos",
     "TRES SUPOSICOES REFUTADAS PELO PROPRIO TESTE (E-300): agente errado, ExecutedAt lido como execucao, e motivo suposto da recusa. O teste nao so provou a propriedade: corrigiu tres leituras minhas do codigo",
-    "O QUE NAO SE ISOLOU FICA DECLARADO (E-300): o portao de consentimento nao e' isolavel pelo unico instrumento de saida, porque a regra do caminho unico de resposta recusa antes. Declarar isso e' melhor que escrever um assert que passaria pelo motivo errado"
+    "O QUE NAO SE ISOLOU FICA DECLARADO (E-300): o portao de consentimento nao e' isolavel pelo unico instrumento de saida, porque a regra do caminho unico de resposta recusa antes. Declarar isso e' melhor que escrever um assert que passaria pelo motivo errado",
+    "DOCUMENTO DE RETOMADA TAMBEM ENVELHECE (E-301): os tres documentos de retomada estavam 2 dias atrasados e afirmavam 'tres superficies sequer foram auditadas'. Agora cada um carrega o bloco ESTADO MEDIDO com o commit, a regra de remedir e os comandos exatos de retomada",
+    "NAO CRIAR O QUE O REPOSITORIO DECIDIU NAO TER (E-301): HADES_CURRENT_STATE.json nao existe por decisao explicita (dois arquivos de estado divergiriam). A evidencia registra a decisao para a proxima sessao nao 'consertar' o que nao esta quebrado"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
