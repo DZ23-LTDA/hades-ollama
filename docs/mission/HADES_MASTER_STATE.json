@@ -2273,7 +2273,12 @@
     "ESCOPO DECLARADO DO LOCK (E-356): aplicado em IngestLiveCommerceEvent e RecordPlatformWarning; as demais mutacoes seguem apenas com mutex",
     "CONTRAPROVA PROVOU O DEFEITO (E-357): sem o lock, criar sessao em duas instancias perde uma (1 sessao em vez de 2). Com o lock, 12 PASS",
     "DISTINCAO HONESTA (E-357): nas corridas de aprovacao e avanco os testes passaram MESMO SEM o lock - ali o lock e' defesa em profundidade, nao defeito medido. Dizer 'corrigi um bug' nesses dois seria inflar o resultado",
-    "BACK DOOR DE TESTE EM PRODUCAO (E-357): eu adicionei HADES_CONTRAPROVA=1 no codigo de producao para rodar a contraprova - uma variavel que desliga trava de seguranca. Removido e verificado. Um back door de teste nao e' instrumento: e' vulnerabilidade com nome bonito"
+    "BACK DOOR DE TESTE EM PRODUCAO (E-357): eu adicionei HADES_CONTRAPROVA=1 no codigo de producao para rodar a contraprova - uma variavel que desliga trava de seguranca. Removido e verificado. Um back door de teste nao e' instrumento: e' vulnerabilidade com nome bonito",
+    "PROCESSOS REAIS FECHARAM O LIMITE (E-358): 3 processos separados, 3 pedidos, receita=3000. A semantica do lock de arquivo so' e' inequivoca entre processos",
+    "CONTRAPROVA ENTRE PROCESSOS (E-358): sem o lock, 3 processos gravaram e so' 2 sobreviveram. A perda de escrita entre processos e' real, e o lock do SO e' o que a impede",
+    "PADRAO REUSADO NAO INVENTADO (E-358): o subprocesso segue o que o repositorio ja faz em mcp_test.go. A variavel HADES_LIVE_HELPER vive num arquivo de TESTE - a diferenca em relacao ao ADV-32 nao e' de estilo",
+    "BARREIRA DE LARGADA (E-358): os processos esperam o mesmo arquivo para comecar juntos - maximizar a contencao em vez de esperar que ela aconteca",
+    "CORRIDA NAO E' DETERMINISTICA (E-358): na contraprova UMA escrita se perdeu, nao duas. Contagem, sem probabilidade"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -2749,12 +2754,19 @@
           "descricao": "back door de contraprova (HADES_CONTRAPROVA=1) adicionado ao codigo de PRODUCAO, capaz de desligar o lock de seguranca",
           "estado": "REMOVIDO com verificacao de que nao sobrou Getenv; licao registrada no arquivo",
           "evidencia": "E-357"
+        },
+        {
+          "id": "ADV-33",
+          "severidade": "ALTA",
+          "descricao": "perda de escrita entre PROCESSOS reais no estagio 42 (3 processos gravaram, 2 sobreviveram) quando o lock de arquivo esta ausente",
+          "estado": "MEDIDO E CONTRAPROVADO: com o lock, 3/3 sobrevivem; sem o lock, 2/3 (FAIL do teste)",
+          "evidencia": "E-358"
         }
       ],
       "proximos_ataques": [
         "teste de corrida dedicado para ShowcaseForProduct (travado por consistencia, sem teste)",
-        "medir dois PROCESSOS reais (hoje sao duas instancias no mesmo processo)",
-        "orcamento acumulado entre planos de onboarding (teto e' por plano)"
+        "orcamento acumulado entre planos de onboarding (teto e' por plano)",
+        "retomar a fila P0-A/T1 e P0-C/T3 (dependencia externa onde faltar alvo)"
       ]
     },
     "estagio_42": {
@@ -3073,6 +3085,7 @@
     "E-354": "checkpoint remedido da rodada 39; vinculo declarado",
     "E-355": "classificacao por statement + concorrencia do estagio 42 verificada; vinculo declarado",
     "E-356": "estagio 42 entre processos: lock + invalidacao de cache; vinculo declarado",
-    "E-357": "lock entre processos nas demais mutacoes do estagio 42, com contraprova; vinculo declarado"
+    "E-357": "lock entre processos nas demais mutacoes do estagio 42, com contraprova; vinculo declarado",
+    "E-358": "estagio 42 com processos reais, medido e contraprovado; vinculo declarado"
   }
 }
