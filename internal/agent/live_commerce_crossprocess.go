@@ -39,7 +39,19 @@ func (s *LiveCommerceStore) withOrganizationLock(organizationID string, run func
 	}
 	caminhoTrava := filepath.Join(s.root, sanitizeIDComponent(organizacao)+".json.lock")
 	return withFileLock(caminhoTrava, func() error {
-		// (2) INVALIDAÇÃO DE CACHE: a instância precisa RELER o que outra gravou.
+		// ⚠️ VERDADE MEDIDA (ADV-54, 2ª auditoria adversarial independente): estas linhas são **REDUNDANTES**, e o
+		// comentário anterior ("a instância precisa RELER o que outra gravou") atribuía a elas um papel que **não é
+		// delas**. O que garante a releitura é a **condição** em `carregarLocked` (`live_commerce.go`:
+		// `if s.carregado[org] && s.root == ""` ⇒ *com raiz, o arquivo é relido sempre*), e foi **essa** a mudança do
+		// E-356 — o `git show` prova: `-if s.carregado[org] {` ⇒ `+if s.carregado[org] && s.root == "" {`.
+		//
+		// Consequência medida: **2 dos 3 testes do E-356 ficariam VERDES antes da correção**; o único que falha é
+		// `TestDuasInstanciasNaoPerdemEventoAceito` (pela via do `ConfirmedSales`, que NÃO passa por este lock).
+		//
+		// **Mantidas de propósito** (e não removidas): com `root == ""` esta função retorna antes, então hoje o valor
+		// nunca decide nada; mas *se `carregarLocked` mudar, a invalidação volta a ser load-bearing*. Removê-las
+		// esconderia a intenção; mantê-las **com a verdade escrita** corrige o defeito real, que era a **afirmação**.
+		// ***Evidência que sugere um mecanismo diferente do que realmente protege é pior que evidência ausente.***
 		s.mu.Lock()
 		s.carregado[organizacao] = false
 		s.mu.Unlock()
