@@ -1,7 +1,6 @@
 package agent
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -84,9 +83,10 @@ func TestLimitesDeVolumeSaoDeclaradosEConfiguraveis(t *testing.T) {
 
 // MEDIÇÃO DE VOLUME: um plano grande MAS dentro do limite precisa ser aplicado de verdade — e o tempo é medido.
 func TestOnboardingComVolumeDentroDoLimiteAplica(t *testing.T) {
-	ctx, cancelar := context.WithTimeout(context.Background(), 5*time.Minute)
-	defer cancelar()
-	_ = ctx
+	// 🚨 ADV-57/4 (4ª auditoria independente, MEDIDO): aqui havia `ctx, cancelar := context.WithTimeout(…, 5*time.Minute)`
+	// seguido de `_ = ctx` — **código MORTO**: o contexto nunca era passado a `ApplyCompanyOnboarding`, então a guarda
+	// de cinco minutos não protegia nada, só parecia proteger. ***Guarda que não pode disparar não é proteção: é
+	// sinalizador de intenção.*** REMOVIDO. *O limite real do teste é o timeout do próprio `go test`.*
 	raiz := t.TempDir()
 	comercio, err := NewCommerceStoreAt(raiz)
 	if err != nil {

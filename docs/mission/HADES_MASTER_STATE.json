@@ -2385,7 +2385,8 @@
     "GRAVAR ESTADO INTERMEDIARIO INVISIVEL E' CUSTO SEM EFEITO (E-390): o UpsertProduct(atual) marcava Active=false e persistia o arquivo inteiro para um estado que o RemoveProduct logo apaga",
     "ROLLBACK QUE FALHA EM SILENCIO DEIXA O OPERADOR ACHANDO QUE DESFEZ (E-390): os dois lacos ignoravam o erro; agora devolvem",
     "REMOCAO POR SKU DOMINA O CUSTO DO DESFAZER (E-390): sobram 500 gravacoes porque a API nao tem lote de remocao - a correcao seguinte e' a API, nao um teste mais frouxo",
-    "MEDICAO TEMPORARIA NAO E' PROVA PERMANENTE (E-390): o teste de medicao foi removido depois de usado; o certo e' uma assercao estrutural"
+    "MEDICAO TEMPORARIA NAO E' PROVA PERMANENTE (E-390): o teste de medicao foi removido depois de usado; o certo e' uma assercao estrutural",
+    "GUARDA QUE NAO PODE DISPARAR NAO E' PROTECAO (E-391/ADV-57/4): o teste criava um contexto de 5 minutos e fazia `_ = ctx` - nunca chegava ao ApplyCompanyOnboarding. Removido em vez de fabricar uma prova de fachada"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -3445,6 +3446,7 @@
     "E-387": "contraprova determinista entre processos (barreira com Gosched); vinculo declarado",
     "E-388": "4a auditoria independente: a prova da alegacao mais publicada e' vacuosa; vinculo declarado",
     "E-390": "rollback em lote: 1000 -> 500 gravacoes; comportamento preservado",
-    "E-389": "limiar exato + prova do estoque em disco, contraprovado"
+    "E-389": "limiar exato + prova do estoque em disco, contraprovado",
+    "E-391": "guarda morta de 5 minutos removida com a razao escrita"
   }
 }
