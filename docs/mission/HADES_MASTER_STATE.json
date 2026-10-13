@@ -2118,7 +2118,9 @@
     "SUFIXO _GOOS NAO E' DETALHE DE NOME (E-317): _windows.go, _linux.go e _darwin.go sao restricoes de build, nao convencao de pasta. Nomear um arquivo multplataforma assim o EXCLUI das outras plataformas em silencio",
     "LICENCA LIDA MUDA ARQUITETURA (E-318): Tel-Agent e' AGPL-3.0, copyleft de REDE (§13). Entra como processo separado via adaptador, nunca como codigo embutido, e o acoplamento comercial e' decisao do proprietario",
     "SHA NAO E' LEITURA (E-318): para litellm, tldraw e xyflow o arquivo foi localizado (blob SHA registrado) mas o texto NAO foi lido, entao a licenca segue NAO_VERIFICADA e nada pode ser copiado",
-    "SIMULACAO DA REFERENCIA VIROU REQUISITO NEGATIVO (E-318): as simulacoes do TUBEGENT foram registradas como aceite invertido - MP4 precisa ser decodificavel de verdade, nao um JSON que finge video"
+    "SIMULACAO DA REFERENCIA VIROU REQUISITO NEGATIVO (E-318): as simulacoes do TUBEGENT foram registradas como aceite invertido - MP4 precisa ser decodificavel de verdade, nao um JSON que finge video",
+    "REMARCAR NAO PODE DESTRUIR O ORIGINAL (E-319): cancelar-e-depois-agendar deixa o cliente sem horario nenhum quando o novo esta ocupado. A operacao e' tudo-ou-nada sob o mesmo lock, com as quatro direcoes de falha testadas",
+    "ARITMETICA NO INSTANTE ERRADO, DE NOVO (E-319): repeti o erro de E-313 ao comparar contagem capturada antes de outro agendamento entrar. Medir no instante certo nao e' detalhe de estilo - e' o que faz o teste medir o codigo"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -2266,12 +2268,13 @@
       "fatia_1": "nucleo anti-double-booking sob concorrencia (E-313): servicos, recursos, book, cancel, availability, idempotencia e isolamento",
       "proximas_fatias": [
         "intervalos dentro do turno (almoco) e turnos que cruzam a meia-noite",
+        "auditoria de remarcacao (historico de tentativas)",
         "lista de espera, lembretes e no-show",
         "sync Google Calendar / Microsoft 365 (BLOCKED_BY_EXTERNAL_DEPENDENCY ate credencial)",
-        "pacotes de nicho e interface para leigos",
         "lock no banco para concorrencia entre PROCESSOS"
       ],
-      "fatia_2": "expediente (turnos), fechamentos por data e fuso da organizacao (E-314)"
+      "fatia_2": "expediente (turnos), fechamentos por data e fuso da organizacao (E-314)",
+      "fatia_3": "remarcacao atomica (E-319): tudo-ou-nada, expediente valido, vizinho intocado, lista de remarcacao"
     },
     "addendum_parity": {
       "registrado_em_evidencia": "E-315",
@@ -2351,6 +2354,7 @@
     "E-315": "ADENDO DE PARIDADE UNIVERSAL (best-of-breed) anexado ao V2.2 - nao e' um estagio; vinculo declarado",
     "E-316": "artefatos do ADENDO DE PARIDADE (inventario de referencias + proxima acao) - nao e' estagio; vinculo declarado",
     "E-317": "defeito de integracao do incremento I (sufixo _GOOS acidental) + bateria de build cruzado; vinculo declarado",
-    "E-318": "ADRs de integracao com licencas medidas (adendo §4) - vinculo declarado"
+    "E-318": "ADRs de integracao com licencas medidas (adendo §4) - vinculo declarado",
+    "E-319": "fatia 3 do INCREMENTO I do V2.2 (remarcacao atomica); vinculo declarado"
   }
 }
