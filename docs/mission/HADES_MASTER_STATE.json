@@ -2186,7 +2186,12 @@
     "VALIDAR DEPOIS DE NORMALIZAR E' VALIDAR O QUE A NORMALIZACAO INVENTOU (E-337): consentScope('') devolve LocalOrganizationID, entao org == '' nunca disparava. Quatro armazenamentos compartilhavam escopo",
     "VARREDURA COM TESTE, NAO COM PROMESSA (E-337): o ADV-11 disse que a lista nao tinha sido auditada; agora ha teste atacando cada armazenamento desta missao com organizacao vazia",
     "CORRECAO DE SEGURANCA QUE MUDA COMPORTAMENTO EXIGE SUITE INTEIRA VERDE (E-337): a guarda crua foi aceita so depois de 152,7s de suite completa sem falha",
-    "consentScope MANTIDO DE PROPOSITO (E-337): 147 usos dependem do fallback local. Quebra-lo seria temerario; a guarda foi colocada nos pontos de entrada provados defeituosos"
+    "consentScope MANTIDO DE PROPOSITO (E-337): 147 usos dependem do fallback local. Quebra-lo seria temerario; a guarda foi colocada nos pontos de entrada provados defeituosos",
+    "DIVIDA DECLARADA EM DOCUMENTO ENVELHECE: VIRA CATRACA (E-338): o checker exige requireOrganization OU dispensa com MOTIVO em todo arquivo que monta caminho por organizacao; arquivo novo sem guarda reprova",
+    "DISPENSA NAO E' APROVACAO (E-338): as 16 pendencias aparecem como NAO_MEDIDO, nomeadas uma por uma, com o desbloqueio explicito - e o relatorio nunca as chama de ok",
+    "INSTRUMENTO TESTADO NAS DUAS DIRECOES (E-338): 8 testes, incluindo dispensa SEM MOTIVO reprovando e uso que nao e' armazenamento sendo ignorado",
+    "ASSERCAO MINHA ESTAVA ESTREITA DEMAIS (E-338): exigir NAO_MEDIDO de um caso validado por delegacao seria mentira; o teste passou a aceitar duas categorias honestas e a exigir motivo nas duas",
+    "PRESENCA DE GUARDA NAO E' PROVA DE CAMINHO CORRETO (E-338): a catraca impede crescimento silencioso; a prova de comportamento continua sendo a varredura de E-337"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -2542,10 +2547,17 @@
           "descricao": "commerce aceitava organizacao vazia",
           "estado": "CORRIGIDO",
           "evidencia": "E-337"
+        },
+        {
+          "id": "ADV-16",
+          "severidade": "MEDIA",
+          "descricao": "18 arquivos montam caminho por organizacao; 16 sem guarda crua e NAO MEDIDOS por comportamento",
+          "estado": "DECLARADO E PROVADO POR CATRACA (novo arquivo sem guarda reprova)",
+          "evidencia": "E-338"
         }
       ],
       "proximos_ataques": [
-        "varrer os ~20 arquivos restantes que usam sanitizeIDComponent (39 usos medidos)",
+        "medir por comportamento (API com organizacao vazia) as 16 pendencias declaradas na catraca",
         "onboarding com volume grande (limites de recurso)",
         "reserva temporaria de horario oferecido (a oferta nao reserva)"
       ]
@@ -2620,6 +2632,7 @@
     "E-334": "estagio 42.1: validacao real e worker isolado; vinculo declarado",
     "E-335": "auditoria adversarial 2a onda: fila oferecia horario inexistente; vinculo declarado",
     "E-336": "revisao cruzada de permissao e isolamento nos modulos novos; vinculo declarado",
-    "E-337": "varredura sistemica de escopo vazio; vinculo declarado"
+    "E-337": "varredura sistemica de escopo vazio; vinculo declarado",
+    "E-338": "catraca de escopo de tenant (instrumento de auditoria continua); vinculo declarado"
   }
 }
