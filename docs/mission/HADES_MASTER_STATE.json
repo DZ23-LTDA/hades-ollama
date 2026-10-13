@@ -2329,7 +2329,9 @@
     "DEFESA EM CAMADAS NO CAMINHO DE REEXECUCAO (E-370/ADV-51): interruptedNonReadStep E a vinculacao de aprovacao (ErrApprovalPayloadChanged, 9 pontos no runtime.go). Descoberto pela contrapova",
     "A DEMONSTRACAO DA DUPLICACAO E' INALCANCAVEL (E-370): exigiria derrubar as DUAS camadas. Nao se enfraquece seguranca para agradar um teste - declaro o limite em vez de forcar",
     "O TESTE DO CONTADOR TAMBEM E' NECESSARIO (E-370): sem provar que o contador conta, o teste principal poderia passar porque ele nunca conta - a mesma classe de defeito que a contrapova pegou em E-369",
-    "PATCH POR SHELL E' INSTRUMENTO ERRADO (E-370/ADV-52): o patch Python embutido no PowerShell falhou 3x por aspas mutiladas. A ferramenta certa e' a de edicao dedicada"
+    "PATCH POR SHELL E' INSTRUMENTO ERRADO (E-370/ADV-52): o patch Python embutido no PowerShell falhou 3x por aspas mutiladas. A ferramenta certa e' a de edicao dedicada",
+    "O GANHO DO LOTE DEPENDE DO CHAMADOR USAR O LOTE (E-371/ADV-44): 500 chamadas de 1 linha = 1,05s e 500 gravacoes; 1 lote de 500 = abaixo de 1 ms e 1 gravacao. API mais rapida que ninguem usa nao acelera nada",
+    "REGISTRO O QUE MEDI, NAO O NUMERO REDONDO (E-371): o lote ficou abaixo da resolucao do cronometro ('0,000s'), entao o ganho e' um LIMITE INFERIOR (~1000x), nao um valor exato"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -2887,7 +2889,7 @@
           "id": "ADV-44",
           "severidade": "ALTA (desempenho)",
           "descricao": "RecordStock e' chamado por linha no onboarding e TAMBEM persiste: e' o custo restante (2000 linhas em 19,11s, contra 0,01s no caminho so' de produtos)",
-          "estado": "CORRIGIDO E PROVADO ESTRUTURALMENTE: 2000 linhas com 2 gravacoes (eram 2002) e 0,03s/0,02s contra 54,13s/50,01s de linha de base; o corpo extraido tinha um persistLocked interno proprio",
+          "estado": "MEDIDO: 500 chamadas de 1 linha = 1,05s e 500 gravacoes; 1 lote de 500 = <1ms e 1 gravacao (ganho >= ~1000x). O beneficio esta no CHAMADOR usar o lote",
           "evidencia": "E-364"
         },
         {
@@ -2948,8 +2950,8 @@
         }
       ],
       "proximos_ataques": [
-        "fazer o teste usar um EFEITO EXTERNO real (arquivo) em vez de contador em memoria",
-        "ADV-44: medir o ganho com N chamadas de 1 linha (o lote depende do chamador)",
+        "medir RecordStock no mesmo formato (o lote existe desde E-365, mas nao foi remedido)",
+        "fazer o teste de reinicio usar um EFEITO EXTERNO real (arquivo) em vez de contador em memoria",
         "mojibake em 5 arquivos: ferramenta adequada, nao round-trip"
       ]
     },
@@ -3324,6 +3326,7 @@
     "E-366": "planilha XLSX real no export, validada por openpyxl; vinculo declarado",
     "E-368": "T1: estado recuperado apos reinicio, com contraprova; vinculo declarado",
     "E-369": "reexecucao apos reinicio: recusa de escrita interrompida com contraprova que discrimina; vinculo declarado",
-    "E-370": "efeito duplicado real: 0 execucoes com as guardas; contrapova revelou segunda camada; vinculo declarado"
+    "E-370": "efeito duplicado real: 0 execucoes com as guardas; contrapova revelou segunda camada; vinculo declarado",
+    "E-371": "ADV-44 medido: N chamadas 1,05s/500 gravacoes x lote 0,000s/1 gravacao; vinculo declarado"
   }
 }
