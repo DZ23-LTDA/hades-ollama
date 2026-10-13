@@ -2257,5 +2257,8 @@
         "lock no banco para concorrencia entre PROCESSOS"
       ]
     }
+  },
+  "unlinked_evidence": {
+    "E-313": "INCREMENTO I do V2.2 (agendamento universal) - nao e' um dos 38 estagios nem dos estagios 39/40/41; vinculo declarado explicitamente em vez de omitido"
   }
 }
