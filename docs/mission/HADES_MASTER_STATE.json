@@ -2325,7 +2325,11 @@
     "STASH ANTIGO DECLARADO (E-368): 1 stash de security/scanner-map-shape (E-195, estagio 18), obsoleto - nao descartado, declarado",
     "A CONTRAPROVA PEGOU UM DEFEITO NO MEU PROPRIO TESTE (E-369/ADV-49): com a checagem desligada o teste passava por QUALQUER erro. Teste que passa pelo motivo errado e' pior que teste ausente",
     "O MOTOR JA' TINHA A SEGURANCA DO REINICIO (E-369): interruptedNonReadStep recusa reexecutar passo nao-leitura interrompido. Reexecutar escrita depois de crash pode DUPLICAR efeito",
-    "O INSTRUMENTO CERTO PARA O TRABALHO CERTO (E-369/ADV-50): o PowerShell mutilou um patch Python e a assercao nao foi endurecida; a ferramenta de edicao dedicada resolveu"
+    "O INSTRUMENTO CERTO PARA O TRABALHO CERTO (E-369/ADV-50): o PowerShell mutilou um patch Python e a assercao nao foi endurecida; a ferramenta de edicao dedicada resolveu",
+    "DEFESA EM CAMADAS NO CAMINHO DE REEXECUCAO (E-370/ADV-51): interruptedNonReadStep E a vinculacao de aprovacao (ErrApprovalPayloadChanged, 9 pontos no runtime.go). Descoberto pela contrapova",
+    "A DEMONSTRACAO DA DUPLICACAO E' INALCANCAVEL (E-370): exigiria derrubar as DUAS camadas. Nao se enfraquece seguranca para agradar um teste - declaro o limite em vez de forcar",
+    "O TESTE DO CONTADOR TAMBEM E' NECESSARIO (E-370): sem provar que o contador conta, o teste principal poderia passar porque ele nunca conta - a mesma classe de defeito que a contrapova pegou em E-369",
+    "PATCH POR SHELL E' INSTRUMENTO ERRADO (E-370/ADV-52): o patch Python embutido no PowerShell falhou 3x por aspas mutiladas. A ferramenta certa e' a de edicao dedicada"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -2927,12 +2931,26 @@
           "descricao": "o PowerShell mutilou um patch Python (texto com aspas interpretado como comando); a assercao nao foi endurecida na primeira tentativa",
           "estado": "CORRIGIDO usando a ferramenta de edicao dedicada em vez de patch por shell",
           "evidencia": "E-369"
+        },
+        {
+          "id": "ADV-51",
+          "severidade": "INFORMATIVO (constatacao forte)",
+          "descricao": "o caminho de reexecucao pos-reinicio tem DEFESA EM CAMADAS: interruptedNonReadStep E a vinculacao de aprovacao (ErrApprovalPayloadChanged, 9 pontos). Descoberto pela contrapova",
+          "estado": "DECLARADO; a demonstracao de duplicacao e' INALCANCAVEL sem derrubar as duas camadas",
+          "evidencia": "E-370"
+        },
+        {
+          "id": "ADV-52",
+          "severidade": "MEDIA (processo)",
+          "descricao": "tres instrumentos errados na mesma fatia: Step.Inputs (e' Input), StepCompleted (e' StepSucceeded) e patch Python embutido no PowerShell falhando 3x por aspas mutiladas",
+          "estado": "CORRIGIDO: compilador como arbitro para os campos; ferramenta de edicao dedicada em vez de patch por shell",
+          "evidencia": "E-370"
         }
       ],
       "proximos_ataques": [
-        "testar efeito duplicado REAL: passo de escrita interrompido com ferramenta registrada que grava um marcador",
-        "mojibake em 5 arquivos: corrigir com o linter local como verificador",
-        "ADV-44: medir o ganho com N chamadas de 1 linha (o lote depende do chamador)"
+        "fazer o teste usar um EFEITO EXTERNO real (arquivo) em vez de contador em memoria",
+        "ADV-44: medir o ganho com N chamadas de 1 linha (o lote depende do chamador)",
+        "mojibake em 5 arquivos: ferramenta adequada, nao round-trip"
       ]
     },
     "estagio_42": {
@@ -3236,6 +3254,15 @@
         "mecanismo": "Runtime.Run -> interruptedNonReadStep(mission, tools)",
         "contraprova": "desligar a checagem faz o teste FALHAR (antes de endurecer a assercao, ele passava pelo motivo errado)",
         "evidencia": "E-369"
+      },
+      "efeito_duplicado_medido": {
+        "estado": "MEDIDO com ferramenta REAL registrada (contador em 0); contrapova revelou defesa em CAMADAS",
+        "camadas": [
+          "interruptedNonReadStep (passo nao-leitura interrompido)",
+          "ErrApprovalPayloadChanged (aprovacao vinculada ao descritor/payload, 9 pontos no runtime.go)"
+        ],
+        "nao_demonstrado": "a duplicacao em si - exigiria derrubar as DUAS camadas, enfraquecendo seguranca para agradar um teste",
+        "evidencia": "E-370"
       }
     }
   },
@@ -3296,6 +3323,7 @@
     "E-367": "lint do CI 71 -> 14, com golangci-lint local; vinculo declarado",
     "E-366": "planilha XLSX real no export, validada por openpyxl; vinculo declarado",
     "E-368": "T1: estado recuperado apos reinicio, com contraprova; vinculo declarado",
-    "E-369": "reexecucao apos reinicio: recusa de escrita interrompida com contraprova que discrimina; vinculo declarado"
+    "E-369": "reexecucao apos reinicio: recusa de escrita interrompida com contraprova que discrimina; vinculo declarado",
+    "E-370": "efeito duplicado real: 0 execucoes com as guardas; contrapova revelou segunda camada; vinculo declarado"
   }
 }
