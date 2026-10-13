@@ -43,21 +43,42 @@ DISPENSAS = {
 }
 
 
+def _chave_relativa(raiz: Path, caminho: Path) -> str:
+    """Chave = caminho RELATIVO (E-382 / ADV-56/4).
+
+    **MEDIDO (3ª auditoria independente)**: a chave era o **basename** ✗, e isso produzia dois defeitos: dois `util.go`
+    em pastas distintas viravam **uma chave só** (contagem inflada com a mesma localização) e — pior — a leitura
+    seguinte usava `(diretorio / basename)`, que **não existe** se o arquivo estiver em subpasta ⇒ `FileNotFoundError`
+    ⇒ *abortava a varredura e a violação REAL de outro arquivo deixava de ser reportada*. ***Instrumento que morre no
+    primeiro arquivo estranho aprova tudo o que não chegou a ver.***
+    """
+    try:
+        return caminho.relative_to(raiz).as_posix()
+    except ValueError:
+        return caminho.name
+
+
 def arquivos_de_armazenamento(diretorio: Path = DIRETORIO) -> dict[str, list[str]]:
     """Devolve, por arquivo não-teste, as linhas que montam caminho com sanitizeIDComponent."""
     encontrados: dict[str, list[str]] = {}
     if not diretorio.is_dir():
         return encontrados
-    for caminho in sorted(diretorio.glob("*.go")):
+    for caminho in sorted(diretorio.rglob("*.go")):
         if caminho.name.endswith("_test.go"):
             continue
-        linhas = caminho.read_text(encoding="utf-8", errors="replace").split("\n")
+        try:
+            linhas = caminho.read_text(encoding="utf-8", errors="replace").split("\n")
+        except OSError as erro:  # E-382 / ADV-56/4: um arquivo ilegível NÃO pode abortar a varredura
+            encontrados.setdefault(_chave_relativa(diretorio, caminho), []).append(
+                "%s: arquivo ilegível (%s)" % (_chave_relativa(diretorio, caminho), erro))
+            continue
         for numero, linha in enumerate(linhas, 1):
             if "sanitizeIDComponent(" not in linha:
                 continue
             if not any(pista in linha for pista in ("filepath.Join", "caminho", "path", "lock", "Root")):
                 continue
-            encontrados.setdefault(caminho.name, []).append(f"{caminho.name}:{numero}")
+            chave = _chave_relativa(diretorio, caminho)
+            encontrados.setdefault(chave, []).append(f"{chave}:{numero}")
     return encontrados
 
 
@@ -67,16 +88,79 @@ CHECAGEM_CRUA = re.compile(
 )
 
 
+def _sem_comentarios(texto: str) -> str:
+    """Remove comentários (`//` e `/* */`) respeitando STRINGS (E-381 / ADV-56/3).
+
+    **MEDIDO com violação injetada (3ª auditoria independente)**: a versão anterior cortava a linha no primeiro `//`,
+    o que errava nas DUAS direções ✗:
+      - um **comentário de bloco** `/* requireOrganization(org) … */` **aprovava** um arquivo sem guarda ✗;
+      - uma **string** com a menção (`const doc = "chame requireOrganization(org)"`) também **aprovava** ✗;
+      - e o inverso: `//` **dentro de uma string** (`if url != "https://x" && requireOrganization(org) != nil {`)
+        **apagava uma guarda real** ⇒ **falso positivo** ✗.
+
+    ***Guarda que se satisfaz com uma menção — em comentário de qualquer sintaxe ou em string — é pior que guarda
+    ausente: ela dá a impressão de que alguém verificou.*** Agora as strings são respeitadas (só as aspas ficam: o
+    CONTEÚDO de uma string não é código) e os dois estilos de comentário são removidos.
+    """
+    saida: list[str] = []
+    em_bloco = False
+    for linha in texto.split("\n"):
+        resultado: list[str] = []
+        i = 0
+        em_string = None
+        while i < len(linha):
+            if em_bloco:
+                fim = linha.find("*/", i)
+                if fim < 0:
+                    i = len(linha)
+                    continue
+                em_bloco = False
+                i = fim + 2
+                continue
+            caractere = linha[i]
+            if em_string is not None:
+                # STRING não é código: o CONTEÚDO não pode satisfazer a guarda (MEDIDO: `const doc = "chame
+                # requireOrganization(org)"` aprovava um arquivo SEM guarda ✗). Mantemos só as aspas, para não
+                # colar tokens; e o escape é respeitado para não terminar a string cedo.
+                if caractere == "\\" and i + 1 < len(linha):
+                    i += 2
+                    continue
+                if caractere == em_string:
+                    resultado.append(caractere)
+                    em_string = None
+                i += 1
+                continue
+            if caractere in ('"', "'", "`"):
+                em_string = caractere
+                resultado.append(caractere)
+                i += 1
+                continue
+            if linha.startswith("//", i):
+                break
+            if linha.startswith("/*", i):
+                em_bloco = True
+                i += 2
+                continue
+            resultado.append(caractere)
+            i += 1
+        saida.append("".join(resultado))
+    return "\n".join(saida)
+
+
 def tem_guarda_reconhecida(texto: str) -> bool:
     """Reconhece o helper OU a checagem crua de vazio (antes de sanitizar).
 
     POR QUE DOIS CAMINHOS (E-342): `marketplace_sync.Sync` e `company.Create` validam `organizationID == ""` no valor
     cru — correto — e a catraca os acusava porque so' conhecia `requireOrganization(`. ***Instrumento que reconhece um
     unico padrao transforma codigo certo em divida.***
+
+    E-376: a procura agora é feita **fora dos comentários** — medido que uma menção em comentário aprovava um arquivo
+    sem guarda nenhuma ✗.
     """
-    if "requireOrganization(" in texto:
+    codigo = _sem_comentarios(texto)
+    if "requireOrganization(" in codigo:
         return True
-    return bool(CHECAGEM_CRUA.search(texto))
+    return bool(CHECAGEM_CRUA.search(codigo))
 
 
 def auditar(diretorio: Path = DIRETORIO) -> tuple[list[str], list[str]]:
@@ -95,7 +179,14 @@ def auditar(diretorio: Path = DIRETORIO) -> tuple[list[str], list[str]]:
         for arquivo, dados in _mod.classificar_usos(diretorio).items():
             if not dados["identificador"]:
                 continue
-            texto_arquivo = (diretorio / arquivo).read_text(encoding="utf-8", errors="replace")
+            # E-382 / ADV-56/4: try POR ARQUIVO — antes, um caminho inexistente abortava o laço inteiro e as violações
+            # seguintes NÃO eram reportadas ✗. *Instrumento que morre no primeiro arquivo estranho aprova tudo o que
+            # não chegou a ver.*
+            try:
+                texto_arquivo = (diretorio / arquivo).read_text(encoding="utf-8", errors="replace")
+            except OSError as erro:
+                violacoes.append("%s: não foi possível LER para verificar a guarda (%s)" % (arquivo, erro))
+                continue
             if tem_guarda_reconhecida(texto_arquivo) or DISPENSAS.get(arquivo):
                 continue
             violacoes.append("%s: uso de IDENTIFICADOR derivado de organização sem guarda nem dispensa (%s)"
@@ -127,6 +218,13 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     violacoes, pendentes = auditar()
+    # 🚨 E-384 / ADV-56/7 (MEDIDO na 3ª auditoria independente): a frase de sucesso era impressa MESMO quando nada
+    # havia sido medido ✗ — `auditar(Path("internal/agente"))` (com typo) devolvia `([], [])` **e a aprovação**. *Um
+    # instrumento que não distingue "nada a reportar" de "nada medido" transforma erro de caminho em atestado.*
+    medidos = arquivos_de_armazenamento()
+    if not medidos:
+        print("NADA MEDIDO: nenhum arquivo de armazenamento foi encontrado em %s — isto NÃO é aprovação." % DIRETORIO)
+        return 1
     if pendentes:
         print(f"PENDÊNCIAS DECLARADAS (NAO_MEDIDO, não 'ok'): {len(pendentes)}")
         for item in pendentes:
@@ -136,7 +234,8 @@ def main(argv: list[str] | None = None) -> int:
             print(f"VIOLACAO: {violacao}")
         print(f"\n{len(violacoes)} violação(ões): armazenamento sem guarda e sem dispensa motivada.")
         return 1
-    print("ESCOPO DE TENANT: todo armazenamento tem guarda crua ou dispensa DECLARADA com motivo.")
+    print("ESCOPO DE TENANT: %d arquivo(s) de armazenamento medido(s), todos com guarda crua ou dispensa DECLARADA com "
+          "motivo." % len(medidos))
     return 0
 
 

@@ -2345,7 +2345,33 @@
     "ASSERCAO QUE NAO DISPARA NO MODO DE FALHA PROMETIDO (ADV-54): no teste de corrida do live commerce, aviso PERDIDO da' HumanReview=false => a conjuncao 'HumanReview && LiveLive' fica FALSA => verde com a seguranca desligada",
     "A EVIDENCIA DOCUMENTADA SUPERESTIMA O MEDIDO (ADV-54): o E-356 registra 'invalidacao de cache + contrapova medida', mas a invalidacao e' enfeite e a contrapova entre processos e' probabilistica",
     "AUDITORIA INDEPENDENTE NAO E' LUXO (ADV-53/ADV-54): duas linhas auditadas por subagentes de contexto fresco, DUAS vezes a mesma classe de defeito encontrada",
-    "O CONTROLE TEM DE ATRAVESSAR A PRODUCAO (ADV-53): chamar a ferramenta direto nao fecha o buraco real, que e' 'o motor nunca chega ate' ela'. O novo controle passa pelo Runtime.Run e produz o arquivo"
+    "O CONTROLE TEM DE ATRAVESSAR A PRODUCAO (ADV-53): chamar a ferramenta direto nao fecha o buraco real, que e' 'o motor nunca chega ate' ela'. O novo controle passa pelo Runtime.Run e produz o arquivo",
+    "TESTE DO TESTE E CONTROLE (E-375/ADV-54): injetei violacoes nos checkers. O (c) PARECIA nao pegar nem o literal - mas meu rascunho era .go e o checker faz rglob('*_test.go'). O CONTROLE mostrou que ele pega. Sem o controle eu teria registrado um defeito inexistente",
+    "DEFEITO REAL MEDIDO NO (c) (E-375): orcamento em VARIAVEL ou decimal escapa da regex; a janela +/-8/+25 dispensa por mencao textual a cancelled",
+    "DEFEITO REAL MEDIDO NO (b) (E-375): arquivo com requireOrganization( SO EM COMENTARIO e' aprovado; 7 dispensas por NOME de arquivo; 23 de 519 .go varridos",
+    "AUDITAR O PROPRIO INSTRUMENTO (E-375): um checker que nao acusa uma violacao injetada nao protege nada - e o controle e' obrigatorio antes de acusar",
+    "A CLASSIFICACAO DE ESCOPO E' DIRIGIDA POR NOMES (ADV-55/E-378): a lista de palavras e o prefixo tipo ID fazem uma variavel chamada 'caminhoDoEvento' transformar qualquer uso em 'caminho'. O instrumento se satisfaz RENOMEANDO uma variavel",
+    "O BALDE 'INDEFINIDO' ABSORVE EM SILENCIO (ADV-55/E-378): identificador sem prefixo tipo ID vira indefinido, que exige declaracao humana - exatamente o que o E-355 tentou eliminar",
+    "DUAS EXPECTATIVAS MINHAS DERRUBADAS PELA MEDICAO (E-378): eu esperava 'Dir' alheio como caminho (virou identificador) e 'os.TempDir()' escapando (virou caminho). Inclusive a acusacao precisa de medicao",
+    "O QUE ESTA SOLIDO NO CLASSIFICADOR (E-378): entende continuacao de linha, ignora _test.go, trata comentario e definicao, reage ao conteudo e tem guarda anti-vacuidade (assertGreater > 0)",
+    "ADV-56 (CRITICA): O INSTRUMENTO OLHA PARA O COMENTARIO VIZINHO. Em scheduling_crossprocess.go:46 (uso REAL de caminho) classificar_statement devolve 'comentario'; apagar o comentario ou inserir linha vazia volta a 'caminho'. Eu reproduzi por medicao propria",
+    "A MINHA CORRECAO E-376 NAO TEM DEFESA (ADV-56/2): revertendo-a, a suite do checker fica 10 testes OK. O autoteste que a exercita NAO e' chamado por nenhum workflow. Corrigir o efeito sem travar o efeito e' decoracao",
+    "O E-355 INTEIRO PODE SER REVERTIDO COM A SUITE VERDE (ADV-56/5): classificar_statement nao tem teste e nenhum teste pina as contagens. As tres documentacoes divergem entre si e do instrumento (22 vs 23 caminho; 2 vs 3 comentario)",
+    "/* */ E STRING SATISFAZEM A GUARDA (ADV-56/3): _sem_comentarios so' remove //. E // dentro de string APAGA guarda real (falso positivo)",
+    "IDENTIFICADOR EM SUBPASTA ABORTA A VARREDURA (ADV-56/4): FileNotFoundError + except Exception => a violacao REAL de outro arquivo nao e' reportada",
+    "VACUIDADE = APROVACAO (ADV-56/7): caminho com typo devolve ([], []) e imprime a frase de sucesso",
+    "AUDITORIA INDEPENDENTE FUNCIONA (ADV-53..56): QUATRO linhas auditadas por subagentes de contexto fresco, QUATRO vezes encontrada a mesma classe - e duas vezes a medicao derrubou uma afirmacao MINHA",
+    "O NUMERO PUBLICADO ESTAVA ERRADO (E-380): as contagens sao 24 caminho / 5 identificador / 2 comentario / 1 indefinido - o join do E-355 escondia um uso real de caminho dentro de 'comentario'. Agora ha teste que PINa as contagens",
+    "EVIDENCIA HISTORICA NAO SE REESCREVE (E-380): as linhas E-352/E-355 ficam como estao; a doc canonica aponta a medicao que as supera",
+    "GUARDA QUE SE SATISFAZ COM UMA MENCAO E' PIOR QUE GUARDA AUSENTE (E-381): comentario de bloco e string aprovavam arquivo sem guarda",
+    "INSTRUMENTO QUE MORRE NO PRIMEIRO ARQUIVO ESTRANHO APROVA TUDO O QUE NAO VIU (E-382): glob nao recursivo + basename abortavam a varredura",
+    "DISPENSA QUE NAO CASA COM USO NENHUM NAO E' CONTEXTO, E' RUIDO QUE PARECE DECISAO (E-383)",
+    "MEDICAO VAZIA NAO PODE IMPRIMIR APROVACAO (E-384): caminho com typo devolvia ([], []) E a frase de sucesso",
+    "ADV-55 FECHADO A CUSTO ZERO (E-385): PALAVRAS_CAMINHO era lista de NOMES; virou sinais de CONSTRUCAO, e as contagens no repositorio sao IDENTICAS (24/5/2/1). Variavel chamada 'caminhoDoEvento' agora da' indeterminado, nao caminho",
+    "A ORDEM DAS REGRAS IMPORTA (E-385/ADV-56/8): 'definicao' era checada antes de 'comentario' e um comentario citando a assinatura era descartado como definicao",
+    "CONTRAPROVA ISOLADA DE declaracoes_obsoletas (E-386): mantendo a declaracao real e acrescentando uma fantasma, a fantasma e' acusada e a real NAO - a checagem isola a excecao fantasma",
+    "MEDICAO VAZIA NO CLASSIFICADOR TAMBEM (E-386): o main imprimia sucesso com zero arquivos; agora imprime NADA MEDIDO e sai 1",
+    "METODO DE PR: EMPURRAR UMA VEZ POR RODADA (E-386): empurrei 5 vezes para o #433 numa rodada e os checks reiniciavam a cada push, impedindo o merge. O trabalho deve ser agrupado e publicado uma vez"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -2979,13 +3005,30 @@
           "estado": "REGISTRADO, NAO CORRIGIDO. A evidencia documentada de E-356 SUPERESTIMA o que foi medido",
           "corrigido_nesta_rodada": "as duas pendencias de E-373: ordem de assercao no teste de arquivo + controle pelo Runtime.Run",
           "evidencia": "E-374"
+        },
+        {
+          "id": "ADV-55",
+          "severidade": "MEDIA (instrumento satisfazivel por renomeacao)",
+          "descricao": "o classificador de escopo decide por LISTA DE PALAVRAS + prefixo tipo ID: uma linha com uma variavel chamada 'caminhoDoEvento' vira 'caminho' sem ser caminho, e um identificador sem prefixo ID vira 'indefinido'. As contagens (22/5/1) sao dependentes de NOMENCLATURA, nao de estrutura",
+          "descoberto_por": "auditoria do proprio instrumento com casos injetados (2a vez que a medicao derruba expectativa do autor)",
+          "estado": "FECHADO: PALAVRAS_CAMINHO trocada por sinais de CONSTRUCAO (filepath.Join, os.*, .json, .lock). MEDIDO: as contagens no repositorio sao IDENTICAS (24/5/2/1) - a brecha fechou a custo zero. Variavel chamada 'caminhoDoEvento' agora da' indefinido, nao caminho",
+          "evidencia": "E-378"
+        },
+        {
+          "id": "ADV-56",
+          "severidade": "CRITICA (instrumento enganavel por comentario vizinho + correcao sem defesa)",
+          "descricao": "3a auditoria independente (subagente), 8 achados todos provados: (1) o join de classificar_statement entra na linha de comentario e um uso REAL de caminho (scheduling_crossprocess.go:46) e' classificado 'comentario' - apagar o comentario ou inserir linha vazia volta a 'caminho'; (2) a correcao do E-376 NAO tem teste que a defenda: revertendo, a suite fica 10 OK; (3) /* */ e string satisfazem a guarda, e // dentro de string apaga guarda real; (4) glob nao recursivo + chave por basename: caminho em subpasta escapa e identificador em subpasta ABORTA a varredura; (5) nenhum teste pina as contagens e classificar_statement nao tem teste: reverter o E-355 inteiro deixa 8 OK; (6) dispensas por basename:linha; (7) vacuidade = aprovacao; (8) definicao checada antes de comentario",
+          "descoberto_por": "3a revisao adversarial independente (subagente, contexto fresco) - e os 3 criticos foram REPRODUZIDOS por mim",
+          "verificado_por_mim": "scheduling_crossprocess.go:46 -> classificar_statement devolve 'comentario'; reverter E-376 faz a guarda voltar a aprovar comentario; /* */ e string aprovam; // em string gera falso positivo",
+          "estado": "1 a 8 CORRIGIDOS e medidos (E-380..E-386). Restam como limites declarados: a busca da guarda continua textual; a vacuidade do main da catraca (b) nao tem teste; os sinais de caminho sao textuais",
+          "evidencia": "E-379"
         }
       ],
       "proximos_ataques": [
-        "ADV-54: corrigir a assercao do teste de corrida (deve FALHAR quando o aviso e' perdido) e remover/documentar a invalidacao morta",
-        "ADV-54: endurecer a barreira da contraprova entre processos (poll 5ms vs janela ~1,7ms)",
-        "ADV-54: levar a triagem (b)/(c) a experimento - DISPENSAS por nome de arquivo e regex que so' casa literal inline",
-        "rebaixar no registro as conclusoes de E-356/E-357 que os testes nao sustentam"
+        "corrigir as 3 documentacoes divergentes restantes, se houver (HADES_NEXT_ACTION ja' aponta para 24)",
+        "endurecer a barreira da contraprova entre processos (poll 5ms vs janela ~1,7ms)",
+        "auditar as linhas restantes com o mesmo tripe (instrumento + caso injetado + controle)",
+        "mesclar #433 e conferir em main"
       ]
     },
     "estagio_42": {
@@ -3365,6 +3408,16 @@
     "E-371": "ADV-44 medido: N chamadas 1,05s/500 gravacoes x lote 0,000s/1 gravacao; vinculo declarado",
     "E-372": "efeito externo real (arquivo) apos reinicio + RecordStock medido; vinculo declarado",
     "E-373": "efeito duplicado demonstrado + retificacao de E-370/E-372; vinculo declarado",
-    "E-374": "ADV-54: mesma classe no live commerce; vinculo declarado"
+    "E-374": "ADV-54: mesma classe no live commerce; vinculo declarado",
+    "E-375": "teste do teste dos checkers (b)/(c) com controle; vinculo declarado",
+    "E-378": "auditoria do classificador de escopo: classificacao dirigida por nomes; vinculo declarado",
+    "E-379": "3a auditoria independente: o classificador olha o comentario vizinho; 8 achados provados",
+    "E-380": "correcoes do ADV-56, com medicao e limites declarados; vinculo declarado",
+    "E-381": "correcoes do ADV-56, com medicao e limites declarados; vinculo declarado",
+    "E-382": "correcoes do ADV-56, com medicao e limites declarados; vinculo declarado",
+    "E-383": "correcoes do ADV-56, com medicao e limites declarados; vinculo declarado",
+    "E-384": "correcoes do ADV-56, com medicao e limites declarados; vinculo declarado",
+    "E-385": "ADV-55 fechado, ADV-56/8 e vacuidade do classificador; vinculo declarado",
+    "E-386": "ADV-55 fechado, ADV-56/8 e vacuidade do classificador; vinculo declarado"
   }
 }

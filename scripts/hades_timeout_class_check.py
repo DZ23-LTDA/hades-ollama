@@ -41,7 +41,21 @@ DISPENSAS: dict[str, str] = {
         "e traz a lição escrita: o limite era 2s, o runner Windows excedeu (2,37s) e passou a medir a PROPRIEDADE."),
 }
 
-PADRAO = re.compile(r"With(?:Timeout|Deadline)\(\s*[^,]+,\s*(?P<valor>\d+)\s*\*\s*time\.(?P<unidade>Millisecond|Microsecond|Second)\s*\)")
+# E-376 (ADV-54, teste do teste): a regex só casava INTEIRO INLINE — `\d+` sem parte decimal. Medido com violação
+# injetada: nem `0.15*time.Second` nem um orçamento em variável eram acusados ✗. Agora a forma literal aceita
+# **decimal** (`\d+(?:\.\d+)?`), e orçamentos em **identificador** são resolvidos contra constantes declaradas no
+# MESMO arquivo (`_orcamentos_do_arquivo`), que é o caso que escapava: `orcamento = 150 * time.Millisecond` seguido
+# de `WithTimeout(ctx, orcamento)`. *Instrumento que só reconhece a forma mais conveniente de escrever o defeito não
+# é catraca: é filtro de estilo.*
+PADRAO = re.compile(
+    r"With(?:Timeout|Deadline)\(\s*[^,]+,\s*(?P<valor>\d+(?:\.\d+)?)\s*\*\s*time\.(?P<unidade>Millisecond|Microsecond|Second)\s*\)"
+)
+PADRAO_IDENTIFICADOR = re.compile(
+    r"With(?:Timeout|Deadline)\(\s*[^,]+,\s*(?P<nome>[A-Za-z_][A-Za-z0-9_]*)\s*[,)]"
+)
+PADRAO_CONSTANTE = re.compile(
+    r"(?P<nome>[A-Za-z_][A-Za-z0-9_]*)\s*(?::=|=)\s*(?P<valor>\d+(?:\.\d+)?)\s*\*\s*time\.(?P<unidade>Millisecond|Microsecond|Second)"
+)
 
 
 def _segundos(valor: str, unidade: str) -> float:
@@ -53,6 +67,19 @@ def _segundos(valor: str, unidade: str) -> float:
     return numero
 
 
+def _orcamentos_do_arquivo(linhas: list[str]) -> dict[str, float]:
+    """Resolve constantes/variáveis declaradas NO MESMO arquivo (E-376).
+
+    **MEDIDO antes**: `var orcamento = 150 * time.Millisecond` seguido de `WithTimeout(ctx, orcamento)` **não** era
+    acusado ✗ — *o defeito existia, escrito de outra forma, e o instrumento só reconhecia a forma inline.*
+    """
+    mapa: dict[str, float] = {}
+    for linha in linhas:
+        for achado in PADRAO_CONSTANTE.finditer(linha):
+            mapa[achado.group("nome")] = _segundos(achado.group("valor"), achado.group("unidade"))
+    return mapa
+
+
 def auditar(raiz: Path) -> list[str]:
     violacoes: list[str] = []
     if not raiz.exists():
@@ -62,9 +89,16 @@ def auditar(raiz: Path) -> list[str]:
             linhas = caminho.read_text(encoding="utf-8", errors="replace").split("\n")
         except OSError:
             continue
+        orcamentos = _orcamentos_do_arquivo(linhas)
         for indice, linha in enumerate(linhas):
+            locais: list[tuple[float, str]] = []
             for encontrado in PADRAO.finditer(linha):
-                segundos = _segundos(encontrado.group("valor"), encontrado.group("unidade"))
+                locais.append((_segundos(encontrado.group("valor"), encontrado.group("unidade")), "inline"))
+            for encontrado in PADRAO_IDENTIFICADOR.finditer(linha):
+                nome = encontrado.group("nome")
+                if nome in orcamentos:
+                    locais.append((orcamentos[nome], "via %s" % nome))
+            for segundos, como in locais:
                 if segundos >= 1.0:
                     continue
                 local = "%s:%d" % (caminho.name, indice + 1)
@@ -74,12 +108,14 @@ def auditar(raiz: Path) -> list[str]:
                 contexto = "\n".join(linhas[max(0, indice - 8):indice + 25])
                 # Reconhece o IDENTIFICADOR e a ASSERTIVA TEXTUAL: `tools_test.go` afirma `"deadline exceeded"` como
                 # string (medido), e reprovar um teste que mede cancelamento de propósito seria a catraca errando o alvo.
+                # LIMITE DECLARADO (E-376): a janela ±8/+25 dispensa por MENÇÃO, não por asserção — encurtá-la exige
+                # decidir caso a caso, e reprovar um teste que mede cancelamento de propósito seria pior.
                 if any(marca in contexto for marca in ("DeadlineExceeded", "context.Deadline", "deadline exceeded",
                                                        "cancelled", "canceled", "Canceled")):
                     continue
                 violacoes.append(
-                    "%s: orçamento de %.3fs sem asserção de deadline — a classe do ADV-38 (asserção sobre recusa não "
-                    "pode correr contra o orçamento)" % (local, segundos)
+                    "%s: orçamento de %.3fs (%s) sem asserção de deadline — a classe do ADV-38 (asserção sobre recusa "
+                    "não pode correr contra o orçamento)" % (local, segundos, como)
                 )
     return violacoes
 

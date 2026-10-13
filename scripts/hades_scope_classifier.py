@@ -17,9 +17,20 @@ import json
 import re
 from pathlib import Path
 
-PALAVRAS_CAMINHO = ("filepath.Join", "path", "caminho", "lock", "Root", ".json", ".lock", "Dir")
+# E-385 / ADV-55 (MEDIDO): a lista era de NOMES ("path", "caminho", "lock", "Root", "Dir") ✗ ⇒ uma linha com uma
+# variável chamada `caminhoDoEvento` virava **`caminho`** sem ser caminho, e `os.TempDir()` (que não tem nenhuma
+# dessas palavras) **também** virava caminho pela via do `filepath.Join`. Sobra o que é **CONSTRUÇÃO**: a chamada que
+# consome o valor e o sufixo de arquivo. **MEDIDO na troca**: as contagens no repositório são **idênticas**
+# (`24 · 5 · 2 · 1`) ⇒ a brecha fecha **a custo zero**. ***Instrumento que pode ser satisfeito renomeando uma variável
+# não mede o código: mede a escolha de nomes de quem escreveu.***
+PALAVRAS_CAMINHO = ("filepath.Join", "os.Open", "os.Create", "os.WriteFile", "os.MkdirAll", "os.ReadFile", ".json", ".lock")
 PADRAO_IDENTIFICADOR = re.compile(r'(?:"[A-Za-z0-9_]+_"|\bID\b|Id:|id\s*[:=])\s*\+?\s*[^;\n]*sanitizeIDComponent\('
                                   r'|sanitizeIDComponent\([^)]*\)\s*\+')
+
+
+def _e_comentario(linha: str) -> bool:
+    """Linha que é comentário (não código). Usada para NÃO juntar comentário ao statement."""
+    return linha.strip().startswith("//")
 
 
 def classificar_statement(linhas, indice: int) -> str:
@@ -28,28 +39,53 @@ def classificar_statement(linhas, indice: int) -> str:
     POR QUE ISTO EXISTE (E-355): a classificação por LINHA colocava uso multi-linha em `indefinido` e exigia declaração
     humana. Declaração humana resolve o caso isolado; **não** resolve a próxima ocorrência. *O instrumento precisa
     entender a construção, não a linha.*
+
+    🚨 **CORRIGIDO NO E-380 (ADV-56/1, 3ª auditoria independente — medido)**: o `join` **para trás** entrava na linha de
+    **comentário** acima e o statement inteiro começava com `//` ⇒ `classificar_uso` devolvia **`comentario`** ✗. Caso
+    REAL no repositório: `internal/agent/scheduling_crossprocess.go:46` — um uso **legítimo de caminho** — era contado
+    como comentário; **apagando o comentário** ou **inserindo uma linha vazia** ele voltava a `caminho` ✓.
+    ***Instrumento cujo veredito depende do comentário vizinho não mede a construção: mede a vizinhança.***
+    A correção para em comentário nos DOIS sentidos (para trás e para frente).
     """
     inicio = indice
-    while inicio > 0 and linhas[inicio - 1].strip() and not linhas[inicio - 1].rstrip().endswith((";", "{", "}")):
+    while (
+        inicio > 0
+        and linhas[inicio - 1].strip()
+        and not _e_comentario(linhas[inicio - 1])
+        and not linhas[inicio - 1].rstrip().endswith((";", "{", "}"))
+    ):
         inicio -= 1
     fim = indice
-    while fim + 1 < len(linhas) and linhas[fim].strip() and not linhas[fim].rstrip().endswith((";", "}")):
+    while (
+        fim + 1 < len(linhas)
+        and linhas[fim].strip()
+        and not _e_comentario(linhas[fim + 1])
+        and not linhas[fim].rstrip().endswith((";", "}"))
+    ):
         fim += 1
     return classificar_uso("\n".join(linhas[inicio:fim + 1]))
 
 
 def classificar_uso(linha: str) -> str:
-    """Classifica UMA ocorrência de sanitizeIDComponent numa linha."""
+    """Classifica UMA ocorrência de sanitizeIDComponent numa linha.
+
+    ⚠️ **E-385 / ADV-56/8 (MEDIDO na 3ª auditoria)**: a ordem das regras importa. A checagem de **definição** vinha
+    ANTES da de **comentário** ⇒ `// func sanitizeIDComponent(value string) string { … }` era classificada
+    **`definicao`** e **descartada sem registro** ✗, em vez de contada como `comentario`. *A categoria `comentario`
+    dependia de o comentário NÃO citar a assinatura — o que é uma coincidência, não uma regra.*
+    """
     texto = linha.strip()
-    # A DEFINIÇÃO da própria função não é uso dela (medido: supervisor_incidents.go:72 aparecia como indefinido).
-    if "func sanitizeIDComponent(" in linha:
-        return "definicao"
+    # COMENTÁRIO primeiro: é a natureza mais externa da linha. Um comentário que CITA a assinatura continua sendo
+    # comentário; a definição só é definição quando a linha é código.
     if texto.startswith("//"):
         return "comentario"
     # Comentário no meio da linha: a ocorrência pode estar depois de `//`
     posicao = linha.find("sanitizeIDComponent(")
     if posicao > 0 and "//" in linha[:posicao]:
         return "comentario"
+    # A DEFINIÇÃO da própria função não é uso dela (medido: supervisor_incidents.go:72 aparecia como indefinido).
+    if "func sanitizeIDComponent(" in linha:
+        return "definicao"
     if any(palavra in linha for palavra in PALAVRAS_CAMINHO):
         return "caminho"
     if PADRAO_IDENTIFICADOR.search(linha):
@@ -74,11 +110,18 @@ def classificar_usos(diretorio: Path = None) -> dict:
             if "sanitizeIDComponent(" not in linha:
                 continue
             categoria = classificar_statement(linhas, numero - 1)
-            chave = caminho.name
+            # E-383 / ADV-56/4: chave = CAMINHO RELATIVO, não basename. MEDIDO: com basename, um arquivo de subpasta
+            # (ex.: `a/util.go`) fazia o consumidor montar `diretorio / "util.go"`, que NÃO existe ⇒ FileNotFoundError
+            # ⇒ *ou abortava a varredura, ou reportava o arquivo como ilegível em vez de verificá-lo*. Para arquivos de
+            # topo o resultado é o mesmo nome, então a correção não muda o que já era medido.
+            try:
+                chave = caminho.relative_to(raiz).as_posix()
+            except ValueError:
+                chave = caminho.name
             if categoria == "definicao":
                 continue
             resultado.setdefault(chave, {"caminho": [], "identificador": [], "comentario": [], "indefinido": []})
-            resultado[chave][categoria].append("%s:%d" % (caminho.name, numero))
+            resultado[chave][categoria].append("%s:%d" % (chave, numero))
     return resultado
 
 
@@ -94,10 +137,31 @@ def resumo_da_classificacao(diretorio: Path = None) -> dict:
 
 # DECLARAÇÕES do que a classificação automática não consegue decidir sozinha.
 # Cada linha aqui é uma decisão HUMANA registrada, com motivo — e o instrumento REPROVA indefinido sem declaração.
+#
+# 🚨 E-383 / ADV-56/6 (MEDIDO na 3ª auditoria): a chave é o **CAMINHO RELATIVO**, não o basename. Com basename, um
+# arquivo NOVO em outro pacote com o mesmo nome (`pkg/media_pipeline.go`) **nascia isento** ✗ — *a dispensa cobria a
+# FORMA, não o caso*. Pelo mesmo motivo, um comentário inserido acima deslocava a linha e deixava o CI vermelho por
+# mudança não relacionada ✗. E a entrada abaixo ficava **obsoleta em silêncio**: `indefinidos_nao_declarados` passou a
+# ACUSAR declaração que não casa com uso nenhum (ver `declaracoes_obsoletas`).
 DECLARACOES_INDEFINIDAS = {
-    "media_pipeline.go:358": ("caminho multi-linha: o valor vira `organizacao` e é usado em `filepath.Join` na linha "
-                              "seguinte, dentro de `MediaOrgRoot`, que JÁ valida a organização crua (E-336)."),
+    "agent/media_pipeline.go:358": ("caminho multi-linha: o valor vira `organizacao` e é usado em `filepath.Join` na linha "
+                                    "seguinte, dentro de `MediaOrgRoot`, que JÁ valida a organização crua (E-336)."),
 }
+
+
+def declaracoes_obsoletas(diretorio: Path = None) -> list:
+    """Declarações que NÃO casam com uso nenhum (E-383 / ADV-56/6c).
+
+    **MEDIDO**: uma dispensa obsoleta era apenas **impressa** como "declarado" e o `main` saía **0** ✗ ⇒ *a exceção
+    fantasma sobrevivia para sempre, e a próxima pessoa a lia como se ainda valesse*. ***Dispensa que não casa com uso
+    nenhum não é contexto: é ruído que parece decisão.***
+    """
+    usos = classificar_usos(diretorio)
+    locais = set()
+    for dados in usos.values():
+        for itens in dados.values():
+            locais.update(itens)
+    return sorted(declaracao for declaracao in DECLARACOES_INDEFINIDAS if declaracao not in locais)
 
 
 def indefinidos_nao_declarados(diretorio: Path = None) -> list:
@@ -113,10 +177,22 @@ if __name__ == "__main__":
     usos = classificar_usos()
     total = resumo_da_classificacao()
     print("USOS DE sanitizeIDComponent por categoria: %s" % json.dumps(total, ensure_ascii=False))
+    # 🚨 E-386 / ADV-56/7 aplicado aqui também (o auditor apontou a MESMA vacuidade neste main): sem uso nenhum a
+    # frase de sucesso acima ("definicao/comentario/caminho/identificador/indefinido-declarado") era impressa e o main
+    # saía **0** ✗ — *medição vazia não é aprovação, é ausência de medição.*
+    if not total.get("arquivos"):
+        print("NADA MEDIDO: nenhum arquivo com sanitizeIDComponent foi encontrado — isto NÃO é aprovação.")
+        raise SystemExit(1)
     pendentes = indefinidos_nao_declarados()
     if pendentes:
         for local in pendentes:
             print("VIOLACAO: uso INDEFINIDO sem declaração: %s (o desconhecido não pode passar em silêncio)" % local)
+        raise SystemExit(1)
+    # E-383 / ADV-56/6c: a dispensa que não casa com uso nenhum era apenas IMPRESSA e o main saía 0 ✗. Agora acusa.
+    obsoletas = declaracoes_obsoletas()
+    if obsoletas:
+        for local in obsoletas:
+            print("VIOLACAO: declaração OBSOLETA (não casa com uso nenhum): %s — remova a dispensa ou explique" % local)
         raise SystemExit(1)
     for local, motivo in sorted(DECLARACOES_INDEFINIDAS.items()):
         print("  declarado: %s — %s" % (local, motivo[:90]))

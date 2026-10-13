@@ -105,6 +105,57 @@ class CatracaDeEscopoTest(unittest.TestCase):
         violacoes, _ = catraca.auditar(raiz)
         self.assertTrue(any("SEM `requireOrganization`" in v for v in violacoes), violacoes)
 
+    def test_guarda_mencionada_em_comentario_de_linha_nao_aprova(self) -> None:
+        """ADV-56/2 (3ª auditoria independente, MEDIDO): a correção do E-376 procurava a guarda fora de `//`, mas
+        **nenhum teste a defendia** — revertendo-a, a suíte ficava **10 testes OK** ✗. *Corrigir o efeito sem travar o
+        efeito é decoração: certa no resultado, indefesa na regressão.*
+        """
+        raiz = self._dir(**{"sem_guarda.go": (
+            "// o chamador usa requireOrganization(org) antes de entrar aqui\n"
+            "func (s *Store) caminho(org string) string {\n"
+            "\treturn filepath.Join(s.root, sanitizeIDComponent(org)+\".json\")\n"
+            "}\n")})
+        violacoes, _ = catraca.auditar(raiz)
+        self.assertTrue(any("SEM `requireOrganization`" in v for v in violacoes),
+                        "menção em comentário de linha NÃO pode aprovar: %s" % (violacoes,))
+
+    def test_guarda_mencionada_em_comentario_de_bloco_nao_aprova(self) -> None:
+        """ADV-56/3: `_sem_comentarios` só removia `//` ⇒ `/* … */` aprovava um arquivo SEM guarda ✗."""
+        raiz = self._dir(**{"sem_guarda.go": (
+            "/* requireOrganization(org) é chamado pelo chamador */\n"
+            "func (s *Store) caminho(org string) string {\n"
+            "\treturn filepath.Join(s.root, sanitizeIDComponent(org)+\".json\")\n"
+            "}\n")})
+        violacoes, _ = catraca.auditar(raiz)
+        self.assertTrue(any("SEM `requireOrganization`" in v for v in violacoes),
+                        "menção em comentário de BLOCO NÃO pode aprovar: %s" % (violacoes,))
+
+    def test_guarda_mencionada_em_string_nao_aprova(self) -> None:
+        """ADV-56/3: uma STRING com a menção não é código — e aprovava um arquivo sem guarda ✗."""
+        raiz = self._dir(**{"sem_guarda.go": (
+            "const doc = \"chame requireOrganization(org) antes\"\n"
+            "func (s *Store) caminho(org string) string {\n"
+            "\treturn filepath.Join(s.root, sanitizeIDComponent(org)+\".json\")\n"
+            "}\n")})
+        violacoes, _ = catraca.auditar(raiz)
+        self.assertTrue(any("SEM `requireOrganization`" in v for v in violacoes),
+                        "menção dentro de STRING NÃO pode aprovar: %s" % (violacoes,))
+
+    def test_string_com_barra_dupla_nao_apaga_guarda_real(self) -> None:
+        """ADV-56/3, a direção OPOSTA (falso positivo MEDIDO): cortar no primeiro `//` da linha apagava uma guarda REAL
+        quando havia `//` dentro de uma string (`if url != \"https://x\" && requireOrganization(org) != nil {`) ✗.
+        """
+        raiz = self._dir(**{"com_guarda.go": (
+            "func (s *Store) caminho(org string) string {\n"
+            "\tif url != \"https://x\" && requireOrganization(org) != nil {\n"
+            "\t\treturn filepath.Join(s.root, sanitizeIDComponent(org)+\".json\")\n"
+            "\t}\n"
+            "\treturn \"\"\n"
+            "}\n")})
+        violacoes, _ = catraca.auditar(raiz)
+        self.assertFalse(violacoes,
+                         "uma guarda REAL não pode ser apagada por `//` dentro de string: %s" % (violacoes,))
+
     def test_arquivo_de_teste_e_ignorado(self) -> None:
         raiz = self._dir(**{"coisa_test.go": (
             "func TestX(t *testing.T) {\n"
