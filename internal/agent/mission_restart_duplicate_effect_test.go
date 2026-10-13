@@ -24,6 +24,18 @@ import (
 // (`runtime_test.go`, `TestRuntimeInvalidatesApprovalWhenToolDescriptorChanges`): *o teste do projeto já sabia que
 // "não executou" se prova contando execuções, não lendo mensagens.*
 
+// hashDoDescritor calcula o SHA-256 que o motor EXIGE em `step.ToolDescriptorSHA256` (runtime.go:2219).
+// **MEDIDO na revisão adversarial (ADV-53)**: sem este campo, a etapa é recusada **antes** de `tool.Execute` ⇒
+// *a ferramenta nunca executa e qualquer asserção de efeito vira decoração.*
+func hashDoDescritor(t *testing.T, descritor ToolDescriptor) string {
+	t.Helper()
+	hash, err := toolDescriptorSHA256(descritor)
+	if err != nil {
+		t.Fatalf("calcular o SHA do descritor: %v", err)
+	}
+	return hash
+}
+
 // passoDeEscritaTool é uma ferramenta REAL de risco destrutivo que conta quantas vezes executou.
 type passoDeEscritaTool struct {
 	execucoes atomic.Int64
@@ -55,6 +67,9 @@ func missaoInterrompidaComFerramentaReal(t *testing.T, raiz string) (*Runtime, M
 	}
 	missao, err := runtime.CreateMission(context.Background(), CreateMissionRequest{
 		Objective: "missão interrompida com ferramenta que produz efeito", ProjectID: projeto.ID, OrganizationID: "org-a",
+		// 🚨 ADV-53: sem CONCEDER a capacidade, a 3ª camada recusa (`ErrCapabilityDenied`) e o efeito nunca poderia
+		// acontecer — *a asserção de efeito seria decorativa de novo*. Medido: os testes do repo concedem assim.
+		Capabilities: []string{"workspace:write"},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -69,6 +84,11 @@ func missaoInterrompidaComFerramentaReal(t *testing.T, raiz string) (*Runtime, M
 		State: StepRunning,
 		Risk:  RiskDestructive,
 		Input: map[string]any{"marcador": "efeito-que-nao-pode-duplicar"},
+		// 🚨 REVISÃO ADVERSARIAL INDEPENDENTE (ADV-53): sem este hash, `runtime.go:2219` recusa a etapa **ANTES** de
+		// chamar `tool.Execute` (`step.ToolDescriptorSHA256 == ""` ⇒ `ErrApprovalPayloadChanged`). Ou seja: **a
+		// ferramenta nunca executava, com ou sem a guarda** ⇒ *as asserções de EFEITO abaixo eram INFALSIFICÁVEIS —
+		// davam a impressão de provar algo que não podiam provar.* ***Prova que não pode falhar não é prova.***
+		ToolDescriptorSHA256: hashDoDescritor(t, ferramenta.Descriptor()),
 	}}
 	missao.State = MissionRunning
 	missao.Version++
@@ -88,15 +108,22 @@ func TestReinicioNaoProduzEfeitoDuplicadoDePassoInterrompido(t *testing.T) {
 	depois.tools.Register(medidor)
 
 	err := depois.Run(context.Background(), missao.ID)
+
+	// 🎯 A PROVA DO EFEITO **ANTES** DA ASSERÇÃO DE ERRO (ADV-53, segunda correção): se a asserção de erro abortar
+	// primeiro, o contador nunca é lido e **ninguém** fica sabendo se o efeito aconteceu. *Ordem de asserção é parte
+	// do teste: a que importa não pode ficar atrás da que é só sintoma.* — *e a primeira tentativa desta correção pôs
+	// a checagem ANTES do `Run`, o que a tornava trivialmente zero: pior que decorativa, era enganosa.*
+	if execucoes := medidor.execucoes.Load(); execucoes != 0 {
+		t.Fatalf("ARMADILHA: a ferramenta executou %d vez(es) — o efeito foi DUPLICADO após o reinício", execucoes)
+	}
+	if execucoes := ferramenta.execucoes.Load(); execucoes != 0 {
+		t.Fatalf("a ferramenta do processo 1 não pode ter executado: %d", execucoes)
+	}
 	if err == nil {
 		t.Fatal("ARMADILHA: o motor aceitou continuar um passo de ESCRITA interrompido")
 	}
 	if !strings.Contains(err.Error(), "passo-com-efeito") && !strings.Contains(strings.ToLower(err.Error()), "interromp") {
 		t.Fatalf("ARMADILHA: a recusa precisa nomear o passo interrompido: %v", err)
-	}
-	// A PROVA DO EFEITO: o contador da ferramenta do processo 2 tem de estar em ZERO.
-	if execucoes := medidor.execucoes.Load(); execucoes != 0 {
-		t.Fatalf("ARMADILHA: a ferramenta executou %d vez(es) — o efeito foi DUPLICADO após o reinício", execucoes)
 	}
 	if execucoes := ferramenta.execucoes.Load(); execucoes != 0 {
 		t.Fatalf("a ferramenta do processo 1 não pode ter executado: %d", execucoes)

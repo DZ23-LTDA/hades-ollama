@@ -9,18 +9,18 @@ import (
 	"time"
 )
 
-// EstÃ¡gio 30: razÃ£o financeiro e conciliaÃ§Ã£o.
+// Estágio 30: razão financeiro e conciliação.
 //
 // As propriedades travadas aqui:
-//  1. IDEMPOTÃŠNCIA vale tambÃ©m sob CONCORRÃŠNCIA: a mesma operaÃ§Ã£o reenviada nÃ£o
-//     pode virar duas cobranÃ§as;
-//  2. entrada invÃ¡lida Ã© recusada (valor zero/negativo, tipo desconhecido, empresa
-//     inexistente) em vez de virar lanÃ§amento torto;
-//  3. conciliar Ã© idempotente com a MESMA referÃªncia e CONFLITO com outra;
-//  4. o resumo mostra fluxo de caixa e o que AINDA NÃƒO foi conciliado;
-//  5. o razÃ£o SOBREVIVE ao reinÃcio;
-//  6. o razÃ£o NÃƒO duplica o consumo do orÃ§amento: `SpentCents` Ã© polÃtica de gasto,
-//     jÃ¡ contabilizada por `RecordSpendRequest`.
+//  1. IDEMPOTÊNCIA vale também sob CONCORRÊNCIA: a mesma operação reenviada não
+//     pode virar duas cobranças;
+//  2. entrada inválida é recusada (valor zero/negativo, tipo desconhecido, empresa
+//     inexistente) em vez de virar lançamento torto;
+//  3. conciliar é idempotente com a MESMA referência e CONFLITO com outra;
+//  4. o resumo mostra fluxo de caixa e o que AINDA NÃO foi conciliado;
+//  5. o razão SOBREVIVE ao reinÃcio;
+//  6. o razão NÃO duplica o consumo do orçamento: `SpentCents` é polÃtica de gasto,
+//     já contabilizada por `RecordSpendRequest`.
 func ledgerStore(t *testing.T) (*CompanyStore, Company) {
 	t.Helper()
 	store, err := NewCompanyStore(filepath.Join(t.TempDir(), "companies"))
@@ -71,14 +71,14 @@ func TestLedgerIdempotencyHoldsUnderConcurrency(t *testing.T) {
 		}
 	}
 	if created != 1 {
-		t.Fatalf("a mesma chave de idempotÃªncia precisa criar UM lanÃ§amento, criou %d", created)
+		t.Fatalf("a mesma chave de idempotência precisa criar UM lançamento, criou %d", created)
 	}
 	entries, err := store.ListLedgerEntries(company.ID, time.Time{}, time.Time{})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(entries) != 1 {
-		t.Fatalf("o razÃ£o precisa ter um lanÃ§amento: %d", len(entries))
+		t.Fatalf("o razão precisa ter um lançamento: %d", len(entries))
 	}
 	if entries[0].AmountCents != 15000 {
 		t.Fatalf("o valor precisa ser o original: %+v", entries[0])
@@ -109,7 +109,7 @@ func TestLedgerRejectsInvalidEntries(t *testing.T) {
 		t.Fatal(err)
 	}
 	if len(entries) != 0 {
-		t.Fatalf("entrada invÃ¡lida nÃ£o pode virar lanÃ§amento: %+v", entries)
+		t.Fatalf("entrada inválida não pode virar lançamento: %+v", entries)
 	}
 }
 
@@ -128,28 +128,28 @@ func TestLedgerReconciliationIsIdempotentWithSameReferenceAndConflictsWithOther(
 		t.Fatal(err)
 	}
 	if !changed || reconciled.ReconciledAt == nil {
-		t.Fatalf("a primeira conciliaÃ§Ã£o precisa marcar data: %+v", reconciled)
+		t.Fatalf("a primeira conciliação precisa marcar data: %+v", reconciled)
 	}
-	// Repetir com a MESMA referÃªncia nÃ£o Ã© erro nem muda nada.
+	// Repetir com a MESMA referência não é erro nem muda nada.
 	_, changedAgain, err := store.ReconcileLedgerEntry(company.ID, entry.ID, "extrato-2026-10-linha-7", now.Add(2*time.Hour))
 	if err != nil {
 		t.Fatal(err)
 	}
 	if changedAgain {
-		t.Fatal("repetir a mesma conciliaÃ§Ã£o nÃ£o pode alterar o lanÃ§amento")
+		t.Fatal("repetir a mesma conciliação não pode alterar o lançamento")
 	}
-	// ReferÃªncia DIFERENTE Ã© conflito: o mesmo lanÃ§amento nÃ£o pode ter sido
+	// Referência DIFERENTE é conflito: o mesmo lançamento não pode ter sido
 	// conciliado com duas origens distintas.
 	if _, _, err := store.ReconcileLedgerEntry(company.ID, entry.ID, "outro-extrato", now.Add(3*time.Hour)); !errors.Is(err, ErrLedgerAlreadyReconciled) {
-		t.Fatalf("referÃªncia diferente precisa ser conflito, veio %v", err)
+		t.Fatalf("referência diferente precisa ser conflito, veio %v", err)
 	}
-	// Exigir referÃªncia externa.
+	// Exigir referência externa.
 	if _, _, err := store.ReconcileLedgerEntry(company.ID, entry.ID, "  ", now); err == nil {
-		t.Fatal("conciliaÃ§Ã£o sem referÃªncia precisa falhar")
+		t.Fatal("conciliação sem referência precisa falhar")
 	}
-	// LanÃ§amento inexistente.
+	// Lançamento inexistente.
 	if _, _, err := store.ReconcileLedgerEntry(company.ID, "led_inexistente", "extrato", now); !errors.Is(err, ErrLedgerEntryNotFound) {
-		t.Fatalf("lanÃ§amento inexistente precisa falhar, veio %v", err)
+		t.Fatalf("lançamento inexistente precisa falhar, veio %v", err)
 	}
 }
 
@@ -183,19 +183,19 @@ func TestLedgerSummaryShowsCashFlowAndUnreconciledWork(t *testing.T) {
 		t.Fatalf("lÃquido incorreto: %+v", summary)
 	}
 	if summary.EntryCount != 4 || summary.ReconciledCount != 1 || summary.UnreconciledCount != 3 {
-		t.Fatalf("contagem de conciliaÃ§Ã£o incorreta: %+v", summary)
+		t.Fatalf("contagem de conciliação incorreta: %+v", summary)
 	}
 	if summary.UnreconciledIncome != 400000 || summary.UnreconciledExpense != 50000 {
-		t.Fatalf("pendÃªncias de conciliaÃ§Ã£o incorretas: %+v", summary)
+		t.Fatalf("pendências de conciliação incorretas: %+v", summary)
 	}
 	if summary.ReconciliationCoverage != 25 {
 		t.Fatalf("cobertura precisa ser 25%%, veio %v", summary.ReconciliationCoverage)
 	}
 
-	// Fila de conciliaÃ§Ã£o atrasada: o lanÃ§amento antigo e nÃ£o conciliado aparece.
+	// Fila de conciliação atrasada: o lançamento antigo e não conciliado aparece.
 	old, _, err := store.RecordLedgerEntry(LedgerEntry{
 		CompanyID: company.ID, Kind: LedgerKindExpense, AmountCents: 9000,
-		OccurredAt: now.AddDate(0, 0, -40), Description: "cobranÃ§a antiga",
+		OccurredAt: now.AddDate(0, 0, -40), Description: "cobrança antiga",
 	}, now.AddDate(0, 0, -40))
 	if err != nil {
 		t.Fatal(err)
@@ -211,17 +211,17 @@ func TestLedgerSummaryShowsCashFlowAndUnreconciledWork(t *testing.T) {
 		}
 	}
 	if !found {
-		t.Fatalf("o lanÃ§amento antigo sem conciliaÃ§Ã£o precisa entrar na fila: %+v", pending)
+		t.Fatalf("o lançamento antigo sem conciliação precisa entrar na fila: %+v", pending)
 	}
 
-	// Recorte por perÃodo: sÃ³ o intervalo pedido entra no resumo.
+	// Recorte por perÃodo: só o intervalo pedido entra no resumo.
 	from := now.AddDate(0, 0, -1)
 	period, err := store.LedgerSummary(company.ID, from, now.Add(time.Hour))
 	if err != nil {
 		t.Fatal(err)
 	}
 	if period.EntryCount != 4 {
-		t.Fatalf("o recorte por perÃodo precisa excluir o lanÃ§amento antigo: %+v", period)
+		t.Fatalf("o recorte por perÃodo precisa excluir o lançamento antigo: %+v", period)
 	}
 }
 
@@ -245,14 +245,14 @@ func TestLedgerSurvivesRestartAndDoesNotDoubleBudget(t *testing.T) {
 	}, now); err != nil {
 		t.Fatal(err)
 	}
-	// O razÃ£o registra o fato financeiro; o ORÃ‡AMENTO tem o prÃ³prio caminho
-	// (`RecordSpendRequest`) e nÃ£o pode ser incrementado por tabela.
+	// O razão registra o fato financeiro; o ORÇAMENTO tem o próprio caminho
+	// (`RecordSpendRequest`) e não pode ser incrementado por tabela.
 	reloadedCompany, err := store.Get(company.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if reloadedCompany.Budget.SpentCents != 0 {
-		t.Fatalf("o razÃ£o nÃ£o pode mexer no orÃ§amento: %d", reloadedCompany.Budget.SpentCents)
+		t.Fatalf("o razão não pode mexer no orçamento: %d", reloadedCompany.Budget.SpentCents)
 	}
 
 	restarted, err := NewCompanyStore(root)
@@ -264,25 +264,25 @@ func TestLedgerSurvivesRestartAndDoesNotDoubleBudget(t *testing.T) {
 		t.Fatal(err)
 	}
 	if len(entries) != 1 {
-		t.Fatalf("o razÃ£o precisa sobreviver ao reinÃcio: %d", len(entries))
+		t.Fatalf("o razão precisa sobreviver ao reinÃcio: %d", len(entries))
 	}
 	if entries[0].Idempotency != "ad-2026-10" || entries[0].AmountCents != 12000 {
-		t.Fatalf("o lanÃ§amento precisa vir Ãntegro: %+v", entries[0])
+		t.Fatalf("o lançamento precisa vir Ãntegro: %+v", entries[0])
 	}
-	// E a idempotÃªncia continua valendo depois do reinÃcio: repetir a chave nÃ£o
-	// cria um segundo lanÃ§amento no arquivo recÃ©m-carregado.
+	// E a idempotência continua valendo depois do reinÃcio: repetir a chave não
+	// cria um segundo lançamento no arquivo recém-carregado.
 	if _, created, err := restarted.RecordLedgerEntry(LedgerEntry{
 		CompanyID: company.ID, Kind: LedgerKindExpense, AmountCents: 12000,
 		Category: "marketing", Idempotency: "ad-2026-10",
 	}, now.Add(time.Hour)); err != nil || created {
-		t.Fatalf("idempotÃªncia precisa valer apÃ³s o reinÃcio (created=%v err=%v)", created, err)
+		t.Fatalf("idempotência precisa valer após o reinÃcio (created=%v err=%v)", created, err)
 	}
 	afterRestart, err := restarted.ListLedgerEntries(company.ID, time.Time{}, time.Time{})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(afterRestart) != 1 {
-		t.Fatalf("nÃ£o pode haver lanÃ§amento duplicado apÃ³s o reinÃcio: %d", len(afterRestart))
+		t.Fatalf("não pode haver lançamento duplicado após o reinÃcio: %d", len(afterRestart))
 	}
 }
 
@@ -305,15 +305,15 @@ func TestLedgerIsScopedPerCompany(t *testing.T) {
 		t.Fatal(err)
 	}
 	if len(entries) != 0 {
-		t.Fatalf("o razÃ£o de uma empresa nÃ£o pode aparecer em outra: %+v", entries)
+		t.Fatalf("o razão de uma empresa não pode aparecer em outra: %+v", entries)
 	}
-	// A mesma chave de idempotÃªncia em empresas diferentes Ã© operaÃ§Ã£o diferente.
+	// A mesma chave de idempotência em empresas diferentes é operação diferente.
 	key := "compartilhada-001"
 	if _, _, err := store.RecordLedgerEntry(LedgerEntry{CompanyID: first.ID, Kind: LedgerKindIncome, AmountCents: 500, Idempotency: key}, now); err != nil {
 		t.Fatal(err)
 	}
 	if _, created, err := store.RecordLedgerEntry(LedgerEntry{CompanyID: second.ID, Kind: LedgerKindIncome, AmountCents: 700, Idempotency: key}, now); err != nil || !created {
-		t.Fatalf("a chave Ã© por empresa; na segunda precisa criar (created=%v err=%v)", created, err)
+		t.Fatalf("a chave é por empresa; na segunda precisa criar (created=%v err=%v)", created, err)
 	}
 	if strings.TrimSpace(second.ID) == strings.TrimSpace(first.ID) {
 		t.Fatal("empresas distintas precisam de IDs distintos")
