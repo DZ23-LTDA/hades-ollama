@@ -218,6 +218,13 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     violacoes, pendentes = auditar()
+    # 🚨 E-384 / ADV-56/7 (MEDIDO na 3ª auditoria independente): a frase de sucesso era impressa MESMO quando nada
+    # havia sido medido ✗ — `auditar(Path("internal/agente"))` (com typo) devolvia `([], [])` **e a aprovação**. *Um
+    # instrumento que não distingue "nada a reportar" de "nada medido" transforma erro de caminho em atestado.*
+    medidos = arquivos_de_armazenamento()
+    if not medidos:
+        print("NADA MEDIDO: nenhum arquivo de armazenamento foi encontrado em %s — isto NÃO é aprovação." % DIRETORIO)
+        return 1
     if pendentes:
         print(f"PENDÊNCIAS DECLARADAS (NAO_MEDIDO, não 'ok'): {len(pendentes)}")
         for item in pendentes:
@@ -227,7 +234,8 @@ def main(argv: list[str] | None = None) -> int:
             print(f"VIOLACAO: {violacao}")
         print(f"\n{len(violacoes)} violação(ões): armazenamento sem guarda e sem dispensa motivada.")
         return 1
-    print("ESCOPO DE TENANT: todo armazenamento tem guarda crua ou dispensa DECLARADA com motivo.")
+    print("ESCOPO DE TENANT: %d arquivo(s) de armazenamento medido(s), todos com guarda crua ou dispensa DECLARADA com "
+          "motivo." % len(medidos))
     return 0
 
 
