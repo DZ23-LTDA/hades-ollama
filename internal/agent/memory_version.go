@@ -106,7 +106,8 @@ func (s *ContextStore) UpdateMemoryForActor(ctx context.Context, projectID, memo
 	replaced = append(replaced, stored[index+1:]...)
 	s.memories[projectID] = replaced
 	if s.root != "" {
-		if err := s.writeMemoriesFile(projectID, replaced); err != nil {
+		// Caminho NÃO-DESTRUTIVO (atualização de conteúdo): mesma guarda de E-289.
+		if err := s.writeMemoriesFileGuardingAdditions(projectID, replaced); err != nil {
 			s.memories[projectID] = previous
 			return Memory{}, err
 		}
