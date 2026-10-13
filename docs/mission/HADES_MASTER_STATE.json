@@ -2115,7 +2115,10 @@
     "SIMULACAO NAO E' SUCESSO (E-316): o alerta do TUBEGENT (getVideoStream devolvendo JSON) ficou registrado, e o Hades exigira' MP4 realmente decodificavel quando implementar o Creator Studio",
     "PLATAFORMA DE DESENVOLVIMENTO ESCONDE DEFEITO (E-317): scheduling_windows.go compilava so no Windows, entao a suite local passava e o Linux nao compilava. Build cruzado entra na bateria obrigatoria",
     "REPRODUZIR O GATE ANTES DE CORRIGIR (E-317): rodei GOOS=linux go build localmente e vi O MESMO erro do CI antes de mexer. A licao de E-300b aplicada de novo e funcionando",
-    "SUFIXO _GOOS NAO E' DETALHE DE NOME (E-317): _windows.go, _linux.go e _darwin.go sao restricoes de build, nao convencao de pasta. Nomear um arquivo multplataforma assim o EXCLUI das outras plataformas em silencio"
+    "SUFIXO _GOOS NAO E' DETALHE DE NOME (E-317): _windows.go, _linux.go e _darwin.go sao restricoes de build, nao convencao de pasta. Nomear um arquivo multplataforma assim o EXCLUI das outras plataformas em silencio",
+    "LICENCA LIDA MUDA ARQUITETURA (E-318): Tel-Agent e' AGPL-3.0, copyleft de REDE (§13). Entra como processo separado via adaptador, nunca como codigo embutido, e o acoplamento comercial e' decisao do proprietario",
+    "SHA NAO E' LEITURA (E-318): para litellm, tldraw e xyflow o arquivo foi localizado (blob SHA registrado) mas o texto NAO foi lido, entao a licenca segue NAO_VERIFICADA e nada pode ser copiado",
+    "SIMULACAO DA REFERENCIA VIROU REQUISITO NEGATIVO (E-318): as simulacoes do TUBEGENT foram registradas como aceite invertido - MP4 precisa ser decodificavel de verdade, nao um JSON que finge video"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -2301,11 +2304,45 @@
         "P2": "PARCIAL"
       },
       "regra_de_medicao": "resultado ausente = NAO_MEDIDO (nunca 'ok'); provedor indisponivel NAO equivale a teste aprovado; licenca verificada antes de copiar qualquer trecho; comparar comportamento observavel, nao aparencia",
-      "proxima_fatia": "verificar LICENCAS das referencias a integrar (TUBEGENT, REA, Tel-Agent, litellm, canvas) antes de copiar qualquer trecho e decidir a abordagem a/b/c/d em docs/parity/HADES_INTEGRATION_ADRS.md; em paralelo, P0-B/T2 (benchmark de tarefa equivalente) e P0-E/T4 (tres especialistas em worktrees isolados)",
+      "proxima_fatia": "ler as licencas restantes (litellm, tldraw, xyflow) quando forem adotadas; seguir para P0-B/T2 e P0-E/T4 - lembrando que sem login real T2 fica NAO_MEDIDO",
       "artefatos_criados": [
         "docs/parity/HADES_REFERENCE_INVENTORY.md",
-        "docs/mission/HADES_NEXT_ACTION.md"
-      ]
+        "docs/mission/HADES_NEXT_ACTION.md",
+        "docs/parity/HADES_INTEGRATION_ADRS.md"
+      ],
+      "licencas_medidas": {
+        "OleLehmann/youtube-automation-agent": {
+          "licenca": "MIT",
+          "blob_sha": "de3dcc3f02b8eacb200f033687dbb0fb46576af5",
+          "lida": true
+        },
+        "morluto/rea": {
+          "licenca": "MIT",
+          "blob_sha": "2d476d24fa5a9ae2ab35e5fd121494049eb2ee5d",
+          "lida": true
+        },
+        "Dpro-at/Tel-Agent": {
+          "licenca": "AGPL-3.0",
+          "blob_sha": "be3f7b28e564e7dd05eaf59d64adba1a4065ac0e",
+          "lida": true,
+          "efeito": "copyleft de rede (§13): exige adaptador em processo separado; acoplamento comercial depende do proprietario"
+        },
+        "BerriAI/litellm": {
+          "licenca": "NAO_VERIFICADA",
+          "blob_sha": "3bfef5bae9b48c334acf426d5b7f21bc1913aab9",
+          "lida": false
+        },
+        "tldraw/tldraw": {
+          "licenca": "NAO_VERIFICADA",
+          "blob_sha": "346511b1cc5338abdca005a4c5cb49eec183f483",
+          "lida": false
+        },
+        "xyflow/xyflow": {
+          "licenca": "NAO_VERIFICADA",
+          "blob_sha": "072ff46d7c23dd8e18ccba11aa6563f14e524312",
+          "lida": false
+        }
+      }
     }
   },
   "unlinked_evidence": {
@@ -2313,6 +2350,7 @@
     "E-314": "INCREMENTO I do V2.2 (agendamento universal), fatia 2 - vinculo declarado em vez de omitido",
     "E-315": "ADENDO DE PARIDADE UNIVERSAL (best-of-breed) anexado ao V2.2 - nao e' um estagio; vinculo declarado",
     "E-316": "artefatos do ADENDO DE PARIDADE (inventario de referencias + proxima acao) - nao e' estagio; vinculo declarado",
-    "E-317": "defeito de integracao do incremento I (sufixo _GOOS acidental) + bateria de build cruzado; vinculo declarado"
+    "E-317": "defeito de integracao do incremento I (sufixo _GOOS acidental) + bateria de build cruzado; vinculo declarado",
+    "E-318": "ADRs de integracao com licencas medidas (adendo §4) - vinculo declarado"
   }
 }

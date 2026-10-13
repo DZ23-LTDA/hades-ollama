@@ -93,7 +93,7 @@
 
 | ref_id | repositório | categoria | diferencial | estado no Hades | abordagem | licença | prioridade |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| REF-R01 | Dpro-at/Tel-Agent | telefonia/Voz | STT/TTS + chamadas com ferramentas | `APENAS_ADAPTER` (voz e chamada ativa governadas; sem provedor) | b | NAO_VERIFICADA | P1-D |
+| REF-R01 | Dpro-at/Tel-Agent | telefonia/Voz | STT/TTS + chamadas com ferramentas | `APENAS_ADAPTER` (voz e chamada ativa governadas; sem provedor) | b (**processo separado**) | ⚠️ **AGPL-3.0 lida** (`be3f7b28…`) — copyleft de rede (§13) | P1-D |
 | REF-R02 | wickedapp/openclaw-office | suíte office | documentos/planilhas | `AUSENTE` | c | NAO_VERIFICADA | P2 |
 | REF-R03 | block/buzz | — | infraestrutura/ferramenta | `AUSENTE` | c | NAO_VERIFICADA | P2 |
 | REF-R04 | lemonade-sdk/lemonade | inferência local | NPU/GPU local | `APENAS_ADAPTER` (endpoint compatível) | b | NAO_VERIFICADA | P1 |
@@ -113,8 +113,8 @@
 | REF-R18 | agentscope-ai/agentscope-java | multiagente | orquestração de agentes | `PARCIAL` | c | NAO_VERIFICADA | P0-E |
 | REF-R19 | langchain-ai/langgraph | multiagente | grafos com estado | `PARCIAL` | c | NAO_VERIFICADA | P0-E |
 | REF-R20 | TypingMind/typingmind | UI de chat | UX multi-modelo | `PARCIAL` | c | NAO_VERIFICADA | P1 |
-| REF-R21 | OleLehmann/youtube-automation-agent (TUBEGENT) | creator/YouTube | 7 agentes: roteiro→vídeo→upload | `AUSENTE` | **b/a** (seletivo, com atribuição) | NAO_VERIFICADA | P1-E |
-| REF-R22 | morluto/rea | engenharia reversa | MCP + skill de análise | `AUSENTE` | **b** (MCP/skill, não vendorização) | NAO_VERIFICADA | P1-F |
+| REF-R21 | OleLehmann/youtube-automation-agent (TUBEGENT) | creator/YouTube | 7 agentes: roteiro→vídeo→upload | `AUSENTE` | **b/a** (seletivo, com atribuição) | ✅ **MIT lida** (`de3dcc3f…`) | P1-E |
+| REF-R22 | morluto/rea | engenharia reversa | MCP + skill de análise | `AUSENTE` | **b** (MCP/skill, não vendorização) | ✅ **MIT lida** (`2d476d24…`) | P1-F |
 
 > **Alerta herdado (V2.2 §8):** no TUBEGENT foi reportado que `getVideoStream` devolvia **JSON de simulação** e o
 > fallback multimídia podia produzir resultados simulados. **Nenhum desses caminhos conta como sucesso** no Hades:
