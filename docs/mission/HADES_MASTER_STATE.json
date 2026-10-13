@@ -2,7 +2,7 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-18T09:10:00-03:00",
+  "updated_at": "2026-10-18T09:35:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
@@ -508,7 +508,8 @@
         "E-282",
         "E-283",
         "E-284",
-        "E-285"
+        "E-285",
+        "E-286"
       ],
       "blocker": null,
       "next": "LIMITES REAIS (atualizados por E-285): o app gerado NAO tem SGBD relacional nem auth persistente - decisao medida e declarada (CGO indisponivel, Postgres externo); o tipo APP continua sem backend; o deploy externo nao e exercitado de verdade; o token cai no reinicio (declarado no README). Proximo: estagios 32-38 e, se houver Postgres gerenciado, variante relacional com contrato explicito",
