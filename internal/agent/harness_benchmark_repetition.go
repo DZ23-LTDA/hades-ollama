@@ -90,7 +90,22 @@ func EscreverArtefatoDaRepeticaoT2(t interface {
 	}
 	sort.Strings(nomes)
 
+	// E-346: o artefato é POR MODELO. Rodar o segundo modelo não pode APAGAR a medição do primeiro — *evidência que se
+	// sobrescreve não é registro, é rascunho*.
+	caminho := filepath.Join(raiz, "HADES_T2_REPETICAO.md")
+	anterior := ""
+	if dados, err := os.ReadFile(caminho); err == nil {
+		anterior = string(dados)
+	}
 	var b strings.Builder
+	if anterior != "" {
+		// preserva o que já existe e anexa a medição nova, marcada pelo modelo
+		b.WriteString(anterior)
+		if !strings.HasSuffix(anterior, "\n") {
+			b.WriteString("\n")
+		}
+		b.WriteString("\n---\n\n")
+	}
 	b.WriteString("# HADES — T2: REPETIÇÃO ESTATÍSTICA (MEDIDA)\n\n")
 	b.WriteString("**Gerado por:** `TestT2RepeticaoEstatistica` · **Data:** " + time.Now().UTC().Format(time.RFC3339) + "\n\n")
 	b.WriteString("Tentativas por execução: **" + fmt.Sprint(tentativas) + "**. Modelos: `" + strings.Join(nomes, "`, `") + "`.\n\n")
@@ -108,7 +123,7 @@ func EscreverArtefatoDaRepeticaoT2(t interface {
 	b.WriteString("- `HARNESS_TRAFICOU` significa que o modelo **alterou o arquivo de teste** (o anti-trapaça registrou).\n")
 	b.WriteString("- `não medido` = execução que **não aconteceu** (contexto cancelado/limite): ausência **não** é aprovação.\n")
 	b.WriteString("- Harness **mínimo** sobre Ollama local; Claude Code/Codex/Manus ⇒ `BLOCKED_BY_EXTERNAL_DEPENDENCY` ⇒ `NAO_MEDIDO`.\n")
-	if err := os.WriteFile(filepath.Join(raiz, "HADES_T2_REPETICAO.md"), []byte(b.String()), 0o600); err != nil {
+	if err := os.WriteFile(caminho, []byte(b.String()), 0o600); err != nil {
 		t.Logf("artefato de repetição não gravado: %v", err)
 	}
 }
