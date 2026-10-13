@@ -2,7 +2,7 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-19T15:10:00-03:00",
+  "updated_at": "2026-10-19T16:30:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
@@ -761,7 +761,8 @@
         "E-251",
         "E-292",
         "E-295",
-        "E-301"
+        "E-301",
+        "E-306"
       ],
       "blocker": null,
       "next": "Pendencia remanescente do gate: ExternalComparison NAO_EXECUTADA (exige comparacao com concorrentes) e os estagios 23-38 em IN_PROGRESS. O vinculo das 13 linhas legadas foi FECHADO (E-251): 13 -> 0 sem vinculo. Proximo: estagio 18 (governanca dos 16 escopos divergentes) e retomada dos estagios de negocio",
@@ -2070,7 +2071,10 @@
     "MEDICAO REFUTA CONCLUSAO ANTERIOR (E-305): o diagnostico de movimentos mostrou que a persistencia de estoque nunca esteve quebrada - o E-304 estava errado e foi CORRIGIDO no indice, nao defendido. Antes de reportar um defeito, medir o mecanismo, nao o sintoma",
     "DIAGNOSTICO QUE IMPRIME O ESTADO E' MAIS FORTE QUE LEITURA DE CODIGO (E-305): quatro passos lendo commerce.go produziram uma hipotese errada; um teste que imprime movimentos e saldo resolveu em uma execucao",
     "ESTOQUE INFLADO E' INVENTARIO ERRADO (E-305): a carga inicial somava de novo a cada reexecucao. Agora so carrega quando o SKU nao tem movimento nenhum",
-    "RECUSAR EXPLICITAMENTE EM VEZ DE FALHAR OBSCURO (E-305): a jornada nao suporta reexecucao; agora diz isso com ErrBusinessJourneyAlreadyCertified em vez de estourar 'reserva inesperada' no meio"
+    "RECUSAR EXPLICITAMENTE EM VEZ DE FALHAR OBSCURO (E-305): a jornada nao suporta reexecucao; agora diz isso com ErrBusinessJourneyAlreadyCertified em vez de estourar 'reserva inesperada' no meio",
+    "GATE QUE SE MOVE SOZINHO NAO MEDE O CODIGO (E-306): o golangci-lint estava em 'latest' e passou de v2.13 para v2.14 entre dois runs, reprovando um main que estava verde 20 minutos antes. Versao de gate tem de ser FIXA; subir e' decisao com PR",
+    "MISSPELL CONTRA CODIGO EM pt-BR (E-306): 27 dos 38 avisos eram palavras portuguesas num dicionario ingles. Fixar a versao resolve agora; subir exigira' decidir a politica de idioma com consciencia, nao por arrasto",
+    "A MATRIZ test NAO E' OBRIGATORIA (E-306): medido que em #368 os jobs test (ubuntu/windows/macos) falharam e o PR gate passou. Saber QUAIS gates bloqueiam evita perseguir o vermelho errado"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",

@@ -60,7 +60,7 @@ func TestOrdenacaoDoOmnichannelSobreviveAoReinicio(t *testing.T) {
 	segundo, _, _ := omnichannelRuntime(t)
 	segundo.SetOrderingStore(NewOmnichannelOrderingStore(omnichannelOrderingRoot(raiz)))
 
-	// 1. Um evento ATRASADO em relação ao que a vida anterior registrou precisa ser MARCADO.
+	// 1. Um evento ATRASADO em relacao ao que a vida anterior registrou precisa ser MARCADO.
 	atrasado := enviar(segundo, "p2", agora.Add(-50*time.Second), agora)
 	if !atrasado.OutOfOrder {
 		t.Fatalf("após reinício, evento atrasado precisa ser marcado (a ordem precisa sobreviver): %+v", atrasado)

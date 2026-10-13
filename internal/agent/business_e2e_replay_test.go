@@ -10,7 +10,7 @@ import (
 // ESTÁGIO 38 — REEXECUTAR A JORNADA: RECUSA EXPLÍCITA, SEM INFLAR ESTOQUE (E-305, corrige a leitura de E-304).
 //
 // E-304 afirmou "a reserva de estoque não sobrevive ao reinício". MEDIDO com diagnóstico de movimentos, isso estava
-// ERRADO: antes e depois do reinício o saldo é IDÊNTICO (`OnHand: 8, Reserved: 0`) com TODOS os movimentos presentes
+// ERRADO: antes e depois do reinício o saldo é IDÊNTICO (`OnHand: 8, Reserved: 0`) com TODOS os movimentos no lugar
 // (`entrada`, `reserva`, `liberacao`, `saida`) — e o teste que já existia no repositório
 // (`TestBusinessE2ESurvivesRealRestartWithoutDuplicating`) PASSA afirmando exatamente isso. A persistência sempre
 // funcionou; a leitura estava errada.
