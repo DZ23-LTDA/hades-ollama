@@ -2239,7 +2239,11 @@
     "SUPOSICAO DERRUBADA PELA MEDICAO (E-348): eu afirmei que o laco chamaria o fixer maxTries vezes; com maxTries=2 ele chama 1. A contagem e' semantica do laco existente, nao do meu desejo",
     "RECUSAR DEPOIS DE MESCLAR NAO E' RECUSAR (E-348): no conflito, o teste arma a armadilha e confirma que o arquivo do repositorio continua com o bug",
     "FALHA DE ESPECIALISTA E' RESULTADO, NAO EXCECAO (E-348): fixer que nao conserta termina vermelho e declarado como PARCIAL, com a contagem de chamadas registrada",
-    "Runtime nil = SEM EVENTOS DE OBSERVABILIDADE (E-348): a ligacao nao emite eventos; fica declarado como limite"
+    "Runtime nil = SEM EVENTOS DE OBSERVABILIDADE (E-348): a ligacao nao emite eventos; fica declarado como limite",
+    "O NAO_MEDIDO DE E-348 FOI FECHADO COM MEDICAO (E-349): qwen2.5:7b consertou o fixture dentro da worktree isolada via laco real, go test verde, diff medido e merge MESCLADO em 8,0s",
+    "DUAS BARREIRAS DE SEGMENTO (E-349): o fixer confere antes de ESCREVER e o coordenador antes de MESCLAR. Confiar no modelo para respeitar fronteira e' o mesmo que nao ter fronteira",
+    "UMA UNICA IMPLEMENTACAO DA CHAMADA AO MODELO (E-349): OllamaGenerate serve o harness do T2 e o fixer do T4; duas copias divergiriam e a divergencia apareceria como diferenca de resultado, nao como bug",
+    "NAO DECLARO VERIFICADO O QUE NAO OBSERVEI (E-349): runtime real, execucao OK, mas nenhum evento em ListEvents. A observabilidade neste caminho fica DECLARADA como nao medida (ADV-24)"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -2644,11 +2648,18 @@
           "descricao": "Cancel e Reschedule aceitavam organizacao vazia e so falhavam depois: com id valido operariam em escopo COMPARTILHADO; a categoria 'delegacao' nao se sustentava",
           "estado": "CORRIGIDO E MEDIDO",
           "evidencia": "E-347"
+        },
+        {
+          "id": "ADV-24",
+          "severidade": "MEDIA",
+          "descricao": "o laco existente emite eventos e a execucao com Runtime real terminou OK, mas NENHUM evento foi observado em NewMemoryStore().ListEvents(missionID)",
+          "estado": "DECLARADO COMO NAO MEDIDO (nao sei se a causa e' o ListEvents do store de memoria ou o caminho de persistencia)",
+          "evidencia": "E-349"
         }
       ],
       "proximos_ataques": [
+        "descobrir por que ListEvents nao mostra os eventos do laco (store de memoria ou persistencia)",
         "auditar escopo compartilhado em modulos FORA desta missao",
-        "ligar o coordenador T4 ao laco real (ExecuteRepairLoop) e medir um caso com modelo local",
         "onboarding com volume grande (limites de recurso)"
       ]
     },
@@ -2853,7 +2864,27 @@
           "execucao com modelo local neste caminho",
           "eventos de observabilidade (Runtime nil)"
         ]
-      }
+      },
+      "modelo_local_medido": {
+        "modelo": "qwen2.5:7b",
+        "especialista": "calc",
+        "passou": true,
+        "exit_code": 0,
+        "arquivos": [
+          "calc.go"
+        ],
+        "veredito": "MESCLADO",
+        "duracao_s": 8.0,
+        "nota": "modelo consertou dentro da worktree isolada, via laco real, com go test de verdade"
+      },
+      "barreiras_de_segmento": [
+        "fixer (antes de escrever)",
+        "coordenador (antes de mesclar)"
+      ],
+      "nao_medido": [
+        "observabilidade: nenhum evento observado em ListEvents com Runtime real (ADV-24)",
+        "uma execucao, um fixture, um modelo (sem significancia)"
+      ]
     }
   },
   "unlinked_evidence": {
@@ -2892,6 +2923,7 @@
     "E-345": "T2: repeticao estatistica (contagem, nao probabilidade); vinculo declarado",
     "E-346": "T4: coordenador de merge sobre o modulo existente; vinculo declarado",
     "E-347": "medicao das categorias declaradas; uma caiu (Cancel/Reschedule); vinculo declarado",
-    "E-348": "ligacao T4 ao laco real de reparo; vinculo declarado"
+    "E-348": "ligacao T4 ao laco real de reparo; vinculo declarado",
+    "E-349": "T4 com modelo local e fixer com fronteira no segmento; vinculo declarado"
   }
 }

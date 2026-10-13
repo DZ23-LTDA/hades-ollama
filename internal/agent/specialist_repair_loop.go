@@ -54,6 +54,12 @@ type SpecialistLoopOptions struct {
 	MaxRepairTries int
 	TestTimeout    time.Duration
 	Limits         SpecialistPlanLimits
+	// Runtime (opcional) faz o laço existente EMITIR eventos de observabilidade. Sem ele, os eventos NÃO são emitidos —
+	// limite declarado desde E-348, agora fechável pelo chamador.
+	Runtime *Runtime
+	// MissionID/OrganizationID identificam a missão dos eventos.
+	MissionID      string
+	OrganizationID string
 }
 
 // DefaultSpecialistLoopOptions devolve limites explícitos.
@@ -135,8 +141,9 @@ func RunSpecialistRepairLoops(ctx context.Context, repoDir, dataDir string, tare
 		// 2. LAÇO DE REPARO REAL: os testes do PROJETO rodam dentro da worktree; em falha, o fixer é chamado.
 		reparos := 0
 		testOpts := TestRunOptions{Framework: "go", TimeoutSeconds: int(opcoes.TestTimeout.Seconds())}
-		resultadoTeste, err := ExecuteRepairLoop(ctx, nil,
-			Mission{Workspace: sessao.WorktreeDir}, &Step{ID: "spec-" + tarefa.Name}, testOpts,
+		missao := Mission{Workspace: sessao.WorktreeDir, ID: opcoes.MissionID, OrganizationID: opcoes.OrganizationID}
+		resultadoTeste, err := ExecuteRepairLoop(ctx, opcoes.Runtime,
+			missao, &Step{ID: "spec-" + tarefa.Name}, testOpts,
 			func(attempt int, lastOutput string) error {
 				reparos++
 				return fixer.Fix(ctx, sessao.WorktreeDir, tarefa, attempt, lastOutput)
