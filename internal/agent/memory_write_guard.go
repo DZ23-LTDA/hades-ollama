@@ -16,7 +16,10 @@ import (
 var ErrMemoryChangedOutsideStore = errors.New("memory file changed outside the store")
 
 // writeMemoriesFileGuardingAdditions grava um snapshot de caminho NÃO-DESTRUTIVO recusando apagar o que outro
-// escritor acrescentou.
+// escritor acrescentou OU atualizou.
+//
+// O nome ficou do primeiro passo (E-289, adições) de propósito: renomear quebraria a checagem de fiação que garante
+// que a guarda está LIGADA nos caminhos não-destrutivos. A segunda regra (E-290) usa `Revision`, que já existia.
 //
 // POR QUE SÓ NOS NÃO-DESTRUTIVOS (E-288 → E-289): deleção legítima e sobrescrita por snapshot velho produzem o
 // MESMO estado no arquivo. Sem intenção declarada, qualquer guarda recusa operação legítima — foi exatamente o que
@@ -42,6 +45,23 @@ func (s *ContextStore) writeMemoriesFileGuardingAdditions(projectID string, snap
 			sort.Strings(acrescentadas)
 			return fmt.Errorf("%w: %s (memória(s) acrescentada(s) por outro escritor: %s)",
 				ErrMemoryChangedOutsideStore, projectID, strings.Join(acrescentadas, ", "))
+		}
+		// REVISÃO (E-290): revisão em disco MAIOR que a do snapshot = alguém atualizou depois da nossa cópia.
+		// A atualização LEGÍTIMA incrementa a revisão no próprio snapshot, então não cai aqui.
+		revisaoNoSnapshot := make(map[string]int, len(snapshot))
+		for _, memoria := range snapshot {
+			revisaoNoSnapshot[memoria.ID] = memoria.Revision
+		}
+		atualizadas := []string{}
+		for _, memoria := range atuais {
+			if esperada, temos := revisaoNoSnapshot[memoria.ID]; temos && memoria.Revision > esperada {
+				atualizadas = append(atualizadas, memoria.ID)
+			}
+		}
+		if len(atualizadas) > 0 {
+			sort.Strings(atualizadas)
+			return fmt.Errorf("%w: %s (memória(s) atualizada(s) por outro escritor: %s)",
+				ErrMemoryChangedOutsideStore, projectID, strings.Join(atualizadas, ", "))
 		}
 	}
 	return s.writeMemoriesFile(projectID, snapshot)
