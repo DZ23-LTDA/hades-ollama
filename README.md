@@ -1,3 +1,6 @@
+> **Português (pt-BR):** este é o README técnico herdado do upstream. Para o guia do produto Hades em português, veja [docs/GUIA_RAPIDO_USUARIO.md](docs/GUIA_RAPIDO_USUARIO.md) e [docs/mission/HADES_V22_IMPLEMENTATION_PLAN.md](docs/mission/HADES_V22_IMPLEMENTATION_PLAN.md). English entry point: [README.en.md](README.en.md).
+> **Estado: `NOT_RELEASE_READY`** — nenhuma promessa de posição, ranking ou recomendação por IAs.
+
 # Hades
 
 > **Uma distribuição agentic local-first para modelos, automações, pesquisa, builders e operação segura.**

@@ -2126,7 +2126,10 @@
     "ISOLAMENTO PRECISA SER MEDIDO, NAO DECLARADO (E-320): o teste confere que o artefato de um papel nao aparece no worktree do outro nem vaza para o base antes do merge",
     "AUDITORIA CORRIGIU MINHA SUPOSICAO (E-321): FetchedAt e SHA256 ja existiam em ResearchSource. Eu ia implementar o que ja havia - ler antes de escrever evitou trabalho inutil e uma evidencia falsa de novidade",
     "DUPLICATA NAO E' CORROBORACAO (E-321): a mesma pagina por dois caminhos virava duas fontes. Contar duplicata como fonte independente fabrica consenso que nao existe",
-    "CONTEUDO HOSTIL CONTINUA SENDO DADO (E-321): a pagina que tenta instruir o agente aparece SINALIZADA e no resumo, mas nao e' obedecida. Um detector que prometesse cobrir todo ataque seria a mesma mentira que um teste que sempre passa"
+    "CONTEUDO HOSTIL CONTINUA SENDO DADO (E-321): a pagina que tenta instruir o agente aparece SINALIZADA e no resumo, mas nao e' obedecida. Um detector que prometesse cobrir todo ataque seria a mesma mentira que um teste que sempre passa",
+    "PROIBICAO VIRA TESTE (E-322): o adendo proibe prometer ranking ou recomendacao por IA. Agora essa promessa reprova o CI - inclusive '100% pronto', que o proprio V2.2 proibe",
+    "GUARDA SEM METRICA NAO INVENTA METRICA (E-322): o instrumento nao mede ranqueamento nem 'GEO'. Nao existe metrica honesta de posicao sem consulta externa real, e inventar uma seria o que o adendo proibe",
+    "OS TESTES DO INSTRUMENTO ACHARAM 3 DEFEITOS NELE (E-322): regex que nao pegava 'Seremos', sitemap lido so com namespace oficial, e fixture que criava sitemap/xml. Um guarda precisa dos proprios testes negativos"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -2309,7 +2312,7 @@
         "P1-E": "NAO_INICIADO",
         "P1-F": "NAO_INICIADO",
         "P1-G": "PARCIAL (dedupe, independencia, export verificavel e defesa contra injecao provados; T1 completo depende de navegador autorizado)",
-        "P1-H": "NAO_INICIADO",
+        "P1-H": "PARCIAL: guarda de descoberta honesta no CI, README.en.md criado e README.md com entrada pt-BR; sitemap/robots pendentes de dominio hospedado (BLOCKED_BY_EXTERNAL_DEPENDENCY por exigir autorizacao de publicacao)",
         "P2": "PARCIAL"
       },
       "regra_de_medicao": "resultado ausente = NAO_MEDIDO (nunca 'ok'); provedor indisponivel NAO equivale a teste aprovado; licenca verificada antes de copiar qualquer trecho; comparar comportamento observavel, nao aparencia",
@@ -2375,6 +2378,7 @@
     "E-318": "ADRs de integracao com licencas medidas (adendo §4) - vinculo declarado",
     "E-319": "fatia 3 do INCREMENTO I do V2.2 (remarcacao atomica); vinculo declarado",
     "E-320": "teste T4 do ADENDO DE PARIDADE (gate P0-E: multiagente em worktrees isolados); vinculo declarado",
-    "E-321": "integridade das fontes de pesquisa (P1-G/T1 do adendo de paridade); vinculo declarado"
+    "E-321": "integridade das fontes de pesquisa (P1-G/T1 do adendo de paridade); vinculo declarado",
+    "E-322": "descoberta honesta (P1-H / estagio 39): guarda que reprova promessa de ranking e valida metadados; vinculo declarado"
   }
 }
