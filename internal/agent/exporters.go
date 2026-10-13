@@ -20,8 +20,8 @@ func (b *BuilderService) ExportProfessional(ctx context.Context, id, format stri
 		return BuilderProject{}, "", err
 	}
 	format = strings.ToLower(strings.TrimPrefix(strings.TrimSpace(format), "."))
-	if format != "pdf" && format != "docx" && format != "pptx" {
-		return BuilderProject{}, "", errors.New("professional export format must be pdf, docx, or pptx")
+	if format != "pdf" && format != "docx" && format != "pptx" && format != "xlsx" {
+		return BuilderProject{}, "", errors.New("professional export format must be pdf, docx, pptx, or xlsx")
 	}
 	entry, err := os.ReadFile(filepath.Join(project.Root, filepath.FromSlash(project.Entry)))
 	if err != nil {
@@ -36,6 +36,9 @@ func (b *BuilderService) ExportProfessional(ctx context.Context, id, format stri
 		err = writeMinimalDOCX(path, project.Name, text)
 	case "pptx":
 		err = writeMinimalPPTX(path, project.Name, text)
+	case "xlsx":
+		// E-366: planilha REAL no mesmo caminho dos outros formatos — não uma API órfã que ninguém alcança.
+		err = writeMinimalXLSX(path, project.Name, linhasDaPlanilha(text))
 	}
 	return project, path, err
 }
