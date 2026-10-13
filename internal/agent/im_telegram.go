@@ -221,7 +221,7 @@ func (c *telegramChannel) call(ctx context.Context, token, method string, payloa
 	}
 	response, err := c.httpClient(base).Do(request)
 	if err != nil {
-		return nil, fmt.Errorf("%w: %v", ErrTelegramCallFailed, redactTelegramError(err))
+		return nil, fmt.Errorf("%w: %v", ErrTelegramCallFailed, redactTelegramError(err, token))
 	}
 	defer response.Body.Close()
 	data, err := io.ReadAll(io.LimitReader(response.Body, telegramMaxResponseBytes+1))
@@ -244,7 +244,7 @@ func (c *telegramChannel) call(ctx context.Context, token, method string, payloa
 		if envelope.Description == "" && envelope.ErrorCode == 0 {
 			return nil, ErrTelegramResponseInvalid
 		}
-		return nil, fmt.Errorf("%w (http %d, codigo %d): %s", ErrTelegramCallFailed, response.StatusCode, envelope.ErrorCode, sanitizeTelegramDescription(envelope.Description))
+		return nil, fmt.Errorf("%w (http %d, codigo %d): %s", ErrTelegramCallFailed, response.StatusCode, envelope.ErrorCode, sanitizeTelegramDescription(envelope.Description, token))
 	}
 	if response.StatusCode < 200 || response.StatusCode >= 300 {
 		return nil, fmt.Errorf("%w (http %d)", ErrTelegramCallFailed, response.StatusCode)
@@ -321,8 +321,8 @@ func (c *telegramChannel) verify(ctx context.Context) (telegramBotIdentity, erro
 	}
 	return telegramBotIdentity{
 		ID:        bot.ID,
-		Username:  sanitizeTelegramDescription(bot.Username),
-		FirstName: sanitizeTelegramDescription(bot.FirstName),
+		Username:  sanitizeTelegramDescription(bot.Username, token),
+		FirstName: sanitizeTelegramDescription(bot.FirstName, token),
 	}, nil
 }
 
@@ -336,11 +336,16 @@ func normalizeTelegramChatID(chatID string) (string, error) {
 
 // redactTelegramError remove a credencial de qualquer erro de transporte, que
 // pode citar a URL completa da Bot API.
-func redactTelegramError(err error) string {
-	if err == nil {
-		return ""
+// redactTelegramSecret remove o token do bot de qualquer texto destinado a erro, log ou auditoria.
+//
+// A versão anterior olhava apenas campos que continham `/bot`: um erro que ecoasse o token PURO (por exemplo, a
+// resposta de um provedor) passava intacto — e o token é credencial. Aqui o valor conhecido é removido
+// explicitamente e o campo de URL é trocado pelo marcador, para o texto continuar legível.
+func redactTelegramSecret(text, token string) string {
+	message := strings.TrimSpace(RedactDLP(text))
+	if token = strings.TrimSpace(token); token != "" {
+		message = strings.ReplaceAll(message, token, strings.TrimPrefix(telegramRedactedToken, "bot"))
 	}
-	message := strings.TrimSpace(RedactDLP(err.Error()))
 	for _, field := range strings.Fields(message) {
 		if strings.Contains(field, "/bot") {
 			message = strings.ReplaceAll(message, field, telegramRedactedToken)
@@ -352,13 +357,17 @@ func redactTelegramError(err error) string {
 	return message
 }
 
-func sanitizeTelegramDescription(raw string) string {
-	trimmed := strings.TrimSpace(RedactDLP(raw))
-	runes := []rune(trimmed)
-	if len(runes) > telegramMaxDescriptionRunes {
-		runes = runes[:telegramMaxDescriptionRunes]
+func redactTelegramError(err error, token string) string {
+	if err == nil {
+		return ""
 	}
-	trimmed = strings.TrimSpace(string(runes))
+	return redactTelegramSecret(err.Error(), token)
+}
+
+// sanitizeTelegramDescription limpa descrições vindas do provedor. O TOKEN entra aqui (E-296): a resposta de erro
+// do provedor pode ecoar a credencial, e este caminho é outro ponto de saída para log/erro.
+func sanitizeTelegramDescription(raw, token string) string {
+	trimmed := redactTelegramSecret(raw, token)
 	if trimmed == "" {
 		return "sem descricao"
 	}
