@@ -83,6 +83,8 @@ const (
 	SchedulingAppointmentBooked = "booked"
 	// SchedulingAppointmentCancelled é o estado de um agendamento cancelado (o horário volta a ficar livre).
 	SchedulingAppointmentCancelled = "cancelled"
+	// SchedulingAppointmentNoShow (E-329) registra FALTA do cliente.
+	SchedulingAppointmentNoShow = "no_show"
 )
 
 // SchedulingStore guarda serviços, recursos e agendamentos por organização, com escrita atômica.
@@ -102,8 +104,12 @@ type schedulingOrg struct {
 	Shifts   []SchedulingShift   `json:"shifts,omitempty"`
 	Closures []SchedulingClosure `json:"closures,omitempty"`
 	// Breaks (E-328): intervalos dentro do turno (almoço, descanso, manutenção).
-	Breaks   []SchedulingBreak `json:"breaks,omitempty"`
-	TimeZone string            `json:"time_zone,omitempty"`
+	Breaks []SchedulingBreak `json:"breaks,omitempty"`
+	// Waitlist e Reminders (E-329): fila de espera FIFO com oferta que expira, e trilha de lembretes ja
+	// enviados (para o MESMO lembrete nunca sair duas vezes).
+	Waitlist  []SchedulingWaitlistEntry `json:"waitlist,omitempty"`
+	Reminders []SchedulingReminder      `json:"reminders,omitempty"`
+	TimeZone  string                    `json:"time_zone,omitempty"`
 }
 
 // NewSchedulingStore cria o store no diretório informado.
