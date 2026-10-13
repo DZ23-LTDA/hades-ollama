@@ -93,7 +93,7 @@
 
 | ref_id | repositório | categoria | diferencial | estado no Hades | abordagem | licença | prioridade |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| REF-R01 | Dpro-at/Tel-Agent | telefonia/Voz | STT/TTS + chamadas com ferramentas | `APENAS_ADAPTER` (voz e chamada ativa governadas; sem provedor) | b | NAO_VERIFICADA | P1-D |
+| REF-R01 | Dpro-at/Tel-Agent | telefonia/Voz | STT/TTS + chamadas com ferramentas | `APENAS_ADAPTER` (voz e chamada ativa governadas; sem provedor) | b (**processo separado**) | ⚠️ **AGPL-3.0 lida** (`be3f7b28…`) — copyleft de rede (§13) | P1-D |
 | REF-R02 | wickedapp/openclaw-office | suíte office | documentos/planilhas | `AUSENTE` | c | NAO_VERIFICADA | P2 |
 | REF-R03 | block/buzz | — | infraestrutura/ferramenta | `AUSENTE` | c | NAO_VERIFICADA | P2 |
 | REF-R04 | lemonade-sdk/lemonade | inferência local | NPU/GPU local | `APENAS_ADAPTER` (endpoint compatível) | b | NAO_VERIFICADA | P1 |
