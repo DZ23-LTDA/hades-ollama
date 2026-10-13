@@ -2258,7 +2258,11 @@
     "EFEITO COLATERAL BOM (E-352): scheduling_crossprocess saiu das pendencias porque a guarda de E-347 passou a ser reconhecida - nao por edicao na lista",
     "LIMITE QUE NAO ESTA ESCRITO NAO E' LIMITE: E' SURPRESA (E-353): o onboarding so recusava vazio. Agora tem teto declarado (5000 linhas, 512B por nome, 16MiB) e recusa ANTES de trabalhar",
     "VOLUME MEDIDO, NAO ESTIMADO (E-353): 2000 linhas em 55,68s (~28ms por linha), o que calibra o teto de 5000 em ~2,3 minutos de trabalho",
-    "QUATRO SUPOSICOES DE API DERRUBADAS PELO COMPILADOR (E-353): CompanyOnboardingPreview sem Total/Created e CompanyOnboardingRollback sem Token - os campos reais foram medidos antes de escrever as asserções"
+    "QUATRO SUPOSICOES DE API DERRUBADAS PELO COMPILADOR (E-353): CompanyOnboardingPreview sem Total/Created e CompanyOnboardingRollback sem Token - os campos reais foram medidos antes de escrever as asserções",
+    "CHECKPOINT REMEDIDO (E-354): quatro categorias separadas - implementada, homologada localmente, medida com servico real (apenas T2 e T4 com Ollama local) e nao medida. O checkpoint nao declara projeto concluido nem paridade",
+    "DIVIDA DE ESCOPO: 18 -> 1 pendencia (E-354): instrumento automatico para caminho E identificador, com o desconhecido exigindo declaracao. A ultima pendencia e' benchmark_suite, com motivo declarado",
+    "372 BRANCHES REMOTAS SAO DIVIDA OPERACIONAL (E-354): remocao apenas das mescladas e sem force-push",
+    "O SHA ENVELHECE A CADA MERGE (E-354): o checkpoint vale para bbc9a5412, medido em 2026-10-13; citacao posterior exige remedicao"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -2936,6 +2940,53 @@
         "observabilidade: nenhum evento observado em ListEvents com Runtime real (ADV-24)",
         "uma execucao, um fixture, um modelo (sem significancia)"
       ]
+    },
+    "checkpoint_rodada_39": {
+      "main_medido": "bbc9a5412",
+      "medido_em": "2026-10-13",
+      "evidencias": 353,
+      "achados": 28,
+      "pendencias_escopo": 1,
+      "branches_remotas": 372,
+      "categorias": {
+        "CAPACIDADE_IMPLEMENTADA": [
+          "agendamento (6 fatias)",
+          "estagio 42 (contratos + seguranca + midia + worker)",
+          "T4 (worktree/segmento/conflito/limites + laco real)",
+          "T6/P1-A",
+          "P0-D",
+          "P1-B onboarding com limites de volume",
+          "P1-G",
+          "P1-H",
+          "workflow com DLQ"
+        ],
+        "HOMOLOGADA_LOCALMENTE": "testes que rodam e passam; suite do pacote ok e bateria de instrumentos 7/7",
+        "MEDIDA_COM_SERVICO_REAL": [
+          "T2/P0-B com Ollama local (qwen2.5:7b, llama3.2:3b; 24 execucoes)",
+          "T4 com modelo local (MESCLADO em 8,0s, eventos persistidos)"
+        ],
+        "NAO_MEDIDO": [
+          "harnesses externos",
+          "MP4 real (sem FFmpeg)",
+          "canais",
+          "telefonia/SIP",
+          "Ollama Cloud",
+          "Apple/EAS",
+          "YouTube",
+          "assinatura Windows",
+          "navegador",
+          "dominio",
+          "ERP",
+          "TikTok",
+          "benchmarks de paridade",
+          "significancia estatistica"
+        ]
+      },
+      "nao_declara": [
+        "projeto concluido",
+        "paridade com qualquer outro harness"
+      ],
+      "atencao": "o SHA envelhece a cada merge: remedir antes de citar"
     }
   },
   "unlinked_evidence": {
@@ -2979,6 +3030,7 @@
     "E-350": "ADV-24 resolvido por sonda: causa era o dado de teste; vinculo declarado",
     "E-351": "rede larga: identificadores derivados de organizacao; vinculo declarado",
     "E-352": "classificacao automatica de escopo (caminho x identificador) na catraca; vinculo declarado",
-    "E-353": "onboarding com volume: limites declarados e volume medido; vinculo declarado"
+    "E-353": "onboarding com volume: limites declarados e volume medido; vinculo declarado",
+    "E-354": "checkpoint remedido da rodada 39; vinculo declarado"
   }
 }
