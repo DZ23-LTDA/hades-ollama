@@ -266,17 +266,19 @@ func RollbackCompanyOnboarding(commerce *CommerceStore, token CompanyOnboardingR
 		}
 	}
 	// 2. Remove os que passaram a existir por causa desta carga.
+	// 🚨 E-392 (ADV-57/5b): era `RemoveProduct` **por SKU** — e `RemoveProduct` grava o arquivo inteiro por chamada ⇒
+	// desfazer 500 linhas custava **500 gravações em 1,37s** só na remoção. *A API que faltava era o gargalo, não o
+	// teste:* `RemoveProducts` faz **uma** gravação. ***Faltava a API, não faltava frouxidão no teste.***
+	aRemover := make([]string, 0, len(token.CreatedSKUs))
 	for _, sku := range token.CreatedSKUs {
-		atual, existe := commerce.ProductBySKU(token.OrganizationID, sku)
-		if !existe || !criados[sku] {
+		if _, existe := commerce.ProductBySKU(token.OrganizationID, sku); !existe || !criados[sku] {
 			continue
 		}
-		// O `UpsertProduct` intermediário que marcava `Active=false` foi REMOVIDO: ele persistia o arquivo inteiro
-		// (uma gravação por SKU) para um estado que o `RemoveProduct` logo em seguida apaga. *Gravar um estado
-		// intermediário que ninguém pode observar é custo sem efeito.* E o erro da remoção deixou de ser ignorado.
-		atual.Active = false
-		if err := commerce.RemoveProduct(token.OrganizationID, sku); err != nil {
-			return fmt.Errorf("%w: falha ao remover o produto criado %q: %v", ErrOnboardingInvalid, sku, err)
+		aRemover = append(aRemover, sku)
+	}
+	if len(aRemover) > 0 {
+		if _, err := commerce.RemoveProducts(token.OrganizationID, aRemover); err != nil {
+			return fmt.Errorf("%w: falha ao remover os produtos criados: %v", ErrOnboardingInvalid, err)
 		}
 	}
 	return nil
