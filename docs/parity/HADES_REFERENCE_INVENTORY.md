@@ -113,8 +113,8 @@
 | REF-R18 | agentscope-ai/agentscope-java | multiagente | orquestração de agentes | `PARCIAL` | c | NAO_VERIFICADA | P0-E |
 | REF-R19 | langchain-ai/langgraph | multiagente | grafos com estado | `PARCIAL` | c | NAO_VERIFICADA | P0-E |
 | REF-R20 | TypingMind/typingmind | UI de chat | UX multi-modelo | `PARCIAL` | c | NAO_VERIFICADA | P1 |
-| REF-R21 | OleLehmann/youtube-automation-agent (TUBEGENT) | creator/YouTube | 7 agentes: roteiro→vídeo→upload | `AUSENTE` | **b/a** (seletivo, com atribuição) | NAO_VERIFICADA | P1-E |
-| REF-R22 | morluto/rea | engenharia reversa | MCP + skill de análise | `AUSENTE` | **b** (MCP/skill, não vendorização) | NAO_VERIFICADA | P1-F |
+| REF-R21 | OleLehmann/youtube-automation-agent (TUBEGENT) | creator/YouTube | 7 agentes: roteiro→vídeo→upload | `AUSENTE` | **b/a** (seletivo, com atribuição) | ✅ **MIT lida** (`de3dcc3f…`) | P1-E |
+| REF-R22 | morluto/rea | engenharia reversa | MCP + skill de análise | `AUSENTE` | **b** (MCP/skill, não vendorização) | ✅ **MIT lida** (`2d476d24…`) | P1-F |
 
 > **Alerta herdado (V2.2 §8):** no TUBEGENT foi reportado que `getVideoStream` devolvia **JSON de simulação** e o
 > fallback multimídia podia produzir resultados simulados. **Nenhum desses caminhos conta como sucesso** no Hades:
