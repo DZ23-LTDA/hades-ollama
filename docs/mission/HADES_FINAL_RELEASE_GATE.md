@@ -12,7 +12,7 @@ subjetiva.
 
 ## Matriz de aceite (seção 9 das diretrizes)
 
-Resumo: BLOCKED_BY_EXTERNAL_DEPENDENCY: 4 · DONE: 17 · IN_PROGRESS: 1 · NAO_COMPROVADO: 2
+Resumo: BLOCKED_BY_EXTERNAL_DEPENDENCY: 4 · DONE: 18 · NAO_COMPROVADO: 2
 
 | # | Requisito | Status | Evidência / limite | O que destrava |
 | --- | --- | --- | --- | --- |
@@ -34,7 +34,7 @@ Resumo: BLOCKED_BY_EXTERNAL_DEPENDENCY: 4 · DONE: 17 · IN_PROGRESS: 1 · NAO_C
 | 16 | Workflows executam os nós realmente suportados | **DONE** | Motor determinístico com retry/DLQ e log por nó (estágio 13) | — |
 | 17 | Browser/computer-use funciona nos ambientes homologados | **BLOCKED_BY_EXTERNAL_DEPENDENCY** | B-09 residual: Python ausente para o E2E de browser | Ambiente com navegador/Python para o E2E (estágio 14) |
 | 18 | A memória respeita os escopos | **DONE** | Isolamento entre organizações com prova em disco (estágio 15). **E-289/E-290**: a escrita passou a **recusar** sobrescrever trabalho de outro escritor — **intenção declarada por caminho** (não-destrutivos guardados, destrutivos por intenção) e detecção também por **revisão**. Limites: os 3 caminhos destrutivos seguem **sem guarda por intenção**; a trava do arquivo é **ADVISORY**; sem **fila de escritas** | — |
-| 19 | A segurança multitenant está validada | **IN_PROGRESS** | RLS e isolamento com testes; falta prova em banco real (estágio 18). **E-287**: a jornada E2E ganhou a **direção negativa** — leitura cruzada entre tenants **IMPEDE a certificação** (erro que nomeia o isolamento), não apenas marca falha no relatório | Banco PostgreSQL real com papéis distintos |
+| 19 | A segurança multitenant está validada | **DONE** | **E-294 — lastro medido**: o job de CI *PostgreSQL RLS, Redis DLQ and OTLP integration* sobe um **PostgreSQL 16 real** com **três papéis distintos** (admin/runtime/migrator, senhas geradas por execução), restringe a autenticação **por papel** via `pg_hba`, roda as migrações e executa com `-tags integration`: `TestDistributedPostgresRLSAndEvents`, `...RuntimeRejectsRLSDrift` (**guarda**: recusa quando o RLS desvia), `...RuntimeCannotConnectOutsideApplicationDatabase` (**sonda negativa** de permissão), `...TenantKeyRotation` e a suíte `TestDistributed` completa (**32 testes**). Limite: roda no runner Linux do CI, não no host de desenvolvimento, e **não** mede inferência por timing | — |
 | 20 | A suíte obrigatória está aprovada | **DONE** | Lint, contrato, suíte Go e paridade Linux (com detector de corrida) verdes na rodada mais recente | — |
 | 21 | A instalação limpa está homologada | **BLOCKED_BY_EXTERNAL_DEPENDENCY** | B-06: certificado de assinatura e runners de SO | Certificado + runners reais (estágio 20) |
 | 22 | A documentação corresponde ao produto | **DONE** | Relatórios de estágio, índice de evidências e **limites declarados por módulo** — inclusive os mais recentes (artefato gerado, memória, claim de agendamento). **Limites declarados não são omissões: são afirmações medidas**, e o índice registra também os **resultados negativos** (E-288) | — |
