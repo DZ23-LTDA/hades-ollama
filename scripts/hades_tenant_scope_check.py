@@ -35,6 +35,9 @@ DIRETORIO = RAIZ / "internal/agent"
 DISPENSAS = {
     "benchmark_suite.go": "o componente vem de NOME DE TAREFA, não de organização: não há escopo de tenant a validar.",
     "consent_registry.go": "CONTRATO TESTADO: a organizacao vazia e' normalizada para a organizacao local por decisao do repositorio (testes TestConsentRegistryFailsClosedForUnknownContact, TestWhatsAppGatewaySendIsBlockedWithoutConsent e TestWhatsAppOutboundRequiresAllowlistAndApproval exigem a normalizacao). Guarda de escopo cru seria contradizer contrato - E-340.",
+    "scheduling_hours.go": "IDENTIFICADOR de tempo/campos (dia/horário), não da organização; isolamento por organização é por arquivo (medido em E-351).",
+    "scheduling_breaks.go": "IDENTIFICADOR de tempo/campos (semana/dia), não da organização (medido em E-351).",
+    "supervisor_incidents.go": "IDENTIFICADOR de ASSUNTO do incidente: risco de colisão, NÃO de vazamento entre tenants (medido em E-351).",
     "scheduling_crossprocess.go": "monta o caminho do LOCK; a organização já foi validada pelo chamador (requireOrganization em scheduling.go).",
     "marketplace_sync.go": "NAO_MEDIDO: monta caminho de armazenamento por organizacao e ainda NAO foi varrido por comportamento (falta teste que ataque a API com organizacao vazia). Pendencia declarada em E-338 — nao e' aprovacao.",
 }
@@ -80,6 +83,25 @@ def auditar(diretorio: Path = DIRETORIO) -> tuple[list[str], list[str]]:
     """Devolve (violações, pendências não medidas)."""
     violacoes: list[str] = []
     pendentes: list[str] = []
+    # E-352: IDENTIFICADOR também conta. Medido em E-351: 27 arquivos usam `sanitizeIDComponent` e a rede só olhava
+    # caminho; identificador derivado de organização compartilhada é a MESMA classe de defeito.
+    try:
+        import importlib.util as _ilu
+        _spec = _ilu.spec_from_file_location("classificador_de_escopo", Path(__file__).resolve().parent / "hades_scope_classifier.py")
+        _mod = _ilu.module_from_spec(_spec)
+        _spec.loader.exec_module(_mod)
+        # MEDIDO (E-352): sem passar o diretório, o classificador varria o REPOSITÓRIO REAL mesmo em teste com
+        # fixture — 6 testes da catraca quebraram por isso. *Instrumento que ignora o escopo da própria auditoria.*
+        for arquivo, dados in _mod.classificar_usos(diretorio).items():
+            if not dados["identificador"]:
+                continue
+            texto_arquivo = (diretorio / arquivo).read_text(encoding="utf-8", errors="replace")
+            if tem_guarda_reconhecida(texto_arquivo) or DISPENSAS.get(arquivo):
+                continue
+            violacoes.append("%s: uso de IDENTIFICADOR derivado de organização sem guarda nem dispensa (%s)"
+                             % (arquivo, ", ".join(dados["identificador"])))
+    except Exception as erro:  # o classificador é um instrumento: falhar em silêncio seria pior
+        violacoes.append("classificador de escopo indisponível: %s" % erro)
     for nome, locais in arquivos_de_armazenamento(diretorio).items():
         caminho = diretorio / nome
         texto = caminho.read_text(encoding="utf-8", errors="replace")
