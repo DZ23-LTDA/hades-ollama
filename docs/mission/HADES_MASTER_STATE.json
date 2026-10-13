@@ -2331,7 +2331,10 @@
     "O TESTE DO CONTADOR TAMBEM E' NECESSARIO (E-370): sem provar que o contador conta, o teste principal poderia passar porque ele nunca conta - a mesma classe de defeito que a contrapova pegou em E-369",
     "PATCH POR SHELL E' INSTRUMENTO ERRADO (E-370/ADV-52): o patch Python embutido no PowerShell falhou 3x por aspas mutiladas. A ferramenta certa e' a de edicao dedicada",
     "O GANHO DO LOTE DEPENDE DO CHAMADOR USAR O LOTE (E-371/ADV-44): 500 chamadas de 1 linha = 1,05s e 500 gravacoes; 1 lote de 500 = abaixo de 1 ms e 1 gravacao. API mais rapida que ninguem usa nao acelera nada",
-    "REGISTRO O QUE MEDI, NAO O NUMERO REDONDO (E-371): o lote ficou abaixo da resolucao do cronometro ('0,000s'), entao o ganho e' um LIMITE INFERIOR (~1000x), nao um valor exato"
+    "REGISTRO O QUE MEDI, NAO O NUMERO REDONDO (E-371): o lote ficou abaixo da resolucao do cronometro ('0,000s'), entao o ganho e' um LIMITE INFERIOR (~1000x), nao um valor exato",
+    "EFEITO EXTERNO REAL NO REINICIO (E-372): a ferramenta grava um ARQUIVO; com as guardas ativas o arquivo NAO existe no disco. A prova e' sobre o MUNDO, nao sobre uma variavel",
+    "A METADE QUE PROVA QUE O EFEITO SABE ACONTECER (E-372): sem executar a ferramenta diretamente, o teste principal poderia passar porque ela nunca grava - a mesma classe de defeito de E-369",
+    "ADV-44 MEDIDO EM DUAS APIs (E-372): UpsertProduct (500 x 1,05s/500 gravacoes) e RecordStock (300 x 0,93s/300 gravacoes, ganho 211x com lote). O lote vale o que o chamador faz com ele"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -2889,7 +2892,7 @@
           "id": "ADV-44",
           "severidade": "ALTA (desempenho)",
           "descricao": "RecordStock e' chamado por linha no onboarding e TAMBEM persiste: e' o custo restante (2000 linhas em 19,11s, contra 0,01s no caminho so' de produtos)",
-          "estado": "MEDIDO: 500 chamadas de 1 linha = 1,05s e 500 gravacoes; 1 lote de 500 = <1ms e 1 gravacao (ganho >= ~1000x). O beneficio esta no CHAMADOR usar o lote",
+          "estado": "MEDIDO em DUAS APIs: UpsertProduct (500 chamadas = 1,05s/500 gravacoes x lote <1ms/1 gravacao) e RecordStock (300 chamadas = 0,93s/300 gravacoes x lote 0,004s/1 gravacao, ganho 211x). O beneficio esta no CHAMADOR usar o lote",
           "evidencia": "E-364"
         },
         {
@@ -2950,9 +2953,9 @@
         }
       ],
       "proximos_ataques": [
-        "medir RecordStock no mesmo formato (o lote existe desde E-365, mas nao foi remedido)",
-        "fazer o teste de reinicio usar um EFEITO EXTERNO real (arquivo) em vez de contador em memoria",
-        "mojibake em 5 arquivos: ferramenta adequada, nao round-trip"
+        "demonstrar o efeito por workspace.write com o fluxo de aprovacao completo (hoje o teste grava direto em tmp)",
+        "mojibake em 5 arquivos: ferramenta adequada, nao round-trip",
+        "checkpoint remedido: contagem final de achados, evidencias e limites"
       ]
     },
     "estagio_42": {
@@ -3265,6 +3268,12 @@
         ],
         "nao_demonstrado": "a duplicacao em si - exigiria derrubar as DUAS camadas, enfraquecendo seguranca para agradar um teste",
         "evidencia": "E-370"
+      },
+      "efeito_externo_real": {
+        "estado": "IMPLEMENTADO_E_TESTADO: ferramenta grava ARQUIVO; com as guardas ativas o arquivo NAO existe",
+        "metade_necessaria": "TestFerramentaDeArquivoGravaQuandoExecutada prova que o efeito SABE acontecer",
+        "contraprova": "1a guarda desligada => 2a camada (ErrApprovalPayloadChanged) recusa; arquivo continua inexistente",
+        "evidencia": "E-372"
       }
     }
   },
@@ -3327,6 +3336,7 @@
     "E-368": "T1: estado recuperado apos reinicio, com contraprova; vinculo declarado",
     "E-369": "reexecucao apos reinicio: recusa de escrita interrompida com contraprova que discrimina; vinculo declarado",
     "E-370": "efeito duplicado real: 0 execucoes com as guardas; contrapova revelou segunda camada; vinculo declarado",
-    "E-371": "ADV-44 medido: N chamadas 1,05s/500 gravacoes x lote 0,000s/1 gravacao; vinculo declarado"
+    "E-371": "ADV-44 medido: N chamadas 1,05s/500 gravacoes x lote 0,000s/1 gravacao; vinculo declarado",
+    "E-372": "efeito externo real (arquivo) apos reinicio + RecordStock medido; vinculo declarado"
   }
 }
