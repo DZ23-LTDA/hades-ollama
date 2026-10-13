@@ -23,8 +23,10 @@ func TestDelegacaoDeEscopoRecusaOrganizacaoVazia(t *testing.T) {
 	agora := time.Now().UTC()
 
 	// Book: a organização vem DENTRO do pedido.
-	requisicao := BookRequest{OrganizationID: "", ResourceID: "recurso", ServiceID: "servico",
-		ContactID: "contato", Channel: "voice", StartsAt: agora.Add(time.Hour), IdempotencyKey: "k1"}
+	requisicao := BookRequest{
+		OrganizationID: "", ResourceID: "recurso", ServiceID: "servico",
+		ContactID: "contato", Channel: "voice", StartsAt: agora.Add(time.Hour), IdempotencyKey: "k1",
+	}
 	if _, err := store.Book(requisicao); err == nil {
 		t.Fatal("ARMADILHA: Book com organização vazia foi aceito (o wrapper delega, mas o chamador valida)")
 	}

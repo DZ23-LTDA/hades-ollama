@@ -83,7 +83,7 @@ func TestChamadaAtivaExigeFinalidadeConsentimentoEAprovacao(t *testing.T) {
 
 	// 5. TETO POR JANELA: com uma autorizada, novas autorizações param no teto — com recusa EXPLÍCITA.
 	autorizadas := 1
-	for i := 0; i < VoiceActiveCallLimitPerWindow+2; i++ {
+	for range VoiceActiveCallLimitPerWindow + 2 {
 		novo, err := pedido("delivery_notice", org, contato)
 		if err != nil {
 			// O teto é aplicado já no PEDIDO: ao alcançá-lo, a recusa explícita é o desfecho ESPERADO.

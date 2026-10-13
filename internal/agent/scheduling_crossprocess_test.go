@@ -29,7 +29,7 @@ func TestAgendamentoNaoDuplicaEntreInstanciasIndependentes(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for dia := 0; dia <= 6; dia++ {
+	for dia := range 7 {
 		if _, err := a.AddShift(SchedulingShift{OrganizationID: "org-a", Weekday: dia, OpensAt: 0, ClosesAt: 24 * 60}); err != nil {
 			t.Fatal(err)
 		}
@@ -43,8 +43,10 @@ func TestAgendamentoNaoDuplicaEntreInstanciasIndependentes(t *testing.T) {
 	alvo := time.Date(2026, 12, 7, 9, 0, 0, 0, loc)
 
 	// 1. DUAS INSTÂNCIAS pedindo o MESMO horário ao mesmo tempo.
-	pedido := BookRequest{OrganizationID: "org-a", ResourceID: recurso.ID, ServiceID: servico.ID,
-		ContactID: "+5511911112222", Channel: "voice", StartsAt: alvo, IdempotencyKey: "inst-1"}
+	pedido := BookRequest{
+		OrganizationID: "org-a", ResourceID: recurso.ID, ServiceID: servico.ID,
+		ContactID: "+5511911112222", Channel: "voice", StartsAt: alvo, IdempotencyKey: "inst-1",
+	}
 	erros := make([]error, 2)
 	var wg sync.WaitGroup
 	for i, loja := range []*SchedulingStore{a, b} {
@@ -82,8 +84,10 @@ func TestAgendamentoNaoDuplicaEntreInstanciasIndependentes(t *testing.T) {
 	}
 
 	// 2. SEQUENCIAL ENTRE INSTÂNCIAS: B precisa RECUSAR o horário que A ocupou (releitura sob a trava).
-	if _, err := b.Book(BookRequest{OrganizationID: "org-a", ResourceID: recurso.ID, ServiceID: servico.ID,
-		ContactID: "+5511933334444", Channel: "whatsapp", StartsAt: alvo, IdempotencyKey: "inst-2"}); err == nil {
+	if _, err := b.Book(BookRequest{
+		OrganizationID: "org-a", ResourceID: recurso.ID, ServiceID: servico.ID,
+		ContactID: "+5511933334444", Channel: "whatsapp", StartsAt: alvo, IdempotencyKey: "inst-2",
+	}); err == nil {
 		t.Fatal("a segunda instância NÃO pode confirmar horário já ocupado pela primeira")
 	}
 
@@ -98,8 +102,10 @@ func TestAgendamentoNaoDuplicaEntreInstanciasIndependentes(t *testing.T) {
 	if depois[0].Status != SchedulingAppointmentCancelled {
 		t.Fatalf("o cancelamento entre instâncias precisa persistir: %+v", depois[0])
 	}
-	if _, err := b.Book(BookRequest{OrganizationID: "org-a", ResourceID: recurso.ID, ServiceID: servico.ID,
-		ContactID: "+5511955556666", Channel: "web", StartsAt: alvo, IdempotencyKey: "inst-3"}); err != nil {
+	if _, err := b.Book(BookRequest{
+		OrganizationID: "org-a", ResourceID: recurso.ID, ServiceID: servico.ID,
+		ContactID: "+5511955556666", Channel: "web", StartsAt: alvo, IdempotencyKey: "inst-3",
+	}); err != nil {
 		t.Fatalf("horário cancelado precisa voltar a ser agendável: %v", err)
 	}
 
@@ -113,13 +119,15 @@ func TestAgendamentoNaoDuplicaEntreInstanciasIndependentes(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for dia := 0; dia <= 6; dia++ {
+	for dia := range 7 {
 		if _, err := outra.AddShift(SchedulingShift{OrganizationID: "org-b", Weekday: dia, OpensAt: 0, ClosesAt: 24 * 60}); err != nil {
 			t.Fatal(err)
 		}
 	}
-	if _, err := outra.Book(BookRequest{OrganizationID: "org-b", ResourceID: recursoB.ID, ServiceID: servicoB.ID,
-		StartsAt: alvo, Channel: "web", IdempotencyKey: "orgb-1"}); err != nil {
+	if _, err := outra.Book(BookRequest{
+		OrganizationID: "org-b", ResourceID: recursoB.ID, ServiceID: servicoB.ID,
+		StartsAt: alvo, Channel: "web", IdempotencyKey: "orgb-1",
+	}); err != nil {
 		t.Fatalf("a organização vizinha não pode ser bloqueada pela trava da outra: %v", err)
 	}
 	daVizinha, err := NewSchedulingStore(raiz).Appointments("org-b")

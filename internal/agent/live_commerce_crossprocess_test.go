@@ -21,8 +21,10 @@ func TestSegundaInstanciaVeSessaoCriadaPelaPrimeira(t *testing.T) {
 	instanciaA := NewLiveCommerceStore(raiz)
 	instanciaB := NewLiveCommerceStore(raiz)
 
-	sessao, err := instanciaA.CreateLiveSession(LiveSession{OrganizationID: "org-a", ProjectID: "p1",
-		AuthorizedUntil: time.Now().UTC().Add(time.Hour)})
+	sessao, err := instanciaA.CreateLiveSession(LiveSession{
+		OrganizationID: "org-a", ProjectID: "p1",
+		AuthorizedUntil: time.Now().UTC().Add(time.Hour),
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -42,10 +44,14 @@ func TestDuasInstanciasNaoPerdemEventoAceito(t *testing.T) {
 	instanciaB := NewLiveCommerceStore(raiz)
 
 	// Dois eventos DIFERENTES, aceitos ao mesmo tempo por instâncias diferentes.
-	eventoA := CommerceEvent{OrganizationID: "org-a", ExternalID: "compra-A", Kind: "purchase_confirmed",
-		SKU: "SKU-1", OrderID: "PED-A", AmountCents: 1000, SignatureVerified: true}
-	eventoB := CommerceEvent{OrganizationID: "org-a", ExternalID: "compra-B", Kind: "purchase_confirmed",
-		SKU: "SKU-2", OrderID: "PED-B", AmountCents: 2000, SignatureVerified: true}
+	eventoA := CommerceEvent{
+		OrganizationID: "org-a", ExternalID: "compra-A", Kind: "purchase_confirmed",
+		SKU: "SKU-1", OrderID: "PED-A", AmountCents: 1000, SignatureVerified: true,
+	}
+	eventoB := CommerceEvent{
+		OrganizationID: "org-a", ExternalID: "compra-B", Kind: "purchase_confirmed",
+		SKU: "SKU-2", OrderID: "PED-B", AmountCents: 2000, SignatureVerified: true,
+	}
 
 	var wg sync.WaitGroup
 	wg.Add(2)
@@ -85,8 +91,10 @@ func TestAvisoRegistradoNumaInstanciaNaoEhPerdidoPelaOutra(t *testing.T) {
 	instanciaB := NewLiveCommerceStore(raiz)
 	agora := time.Now().UTC()
 
-	sessao, err := instanciaA.CreateLiveSession(LiveSession{OrganizationID: "org-a", ProjectID: "p1",
-		AuthorizedUntil: agora.Add(time.Hour)})
+	sessao, err := instanciaA.CreateLiveSession(LiveSession{
+		OrganizationID: "org-a", ProjectID: "p1",
+		AuthorizedUntil: agora.Add(time.Hour),
+	})
 	if err != nil {
 		t.Fatal(err)
 	}

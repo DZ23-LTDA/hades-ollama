@@ -141,8 +141,10 @@ func OllamaGenerate(ctx context.Context, baseURL, modelo, prompt string, cliente
 	if cliente == nil {
 		cliente = &http.Client{Timeout: 3 * time.Minute}
 	}
-	corpo, err := json.Marshal(map[string]any{"model": modelo, "prompt": prompt, "stream": false,
-		"options": map[string]any{"temperature": 0}})
+	corpo, err := json.Marshal(map[string]any{
+		"model": modelo, "prompt": prompt, "stream": false,
+		"options": map[string]any{"temperature": 0},
+	})
 	if err != nil {
 		return "", err
 	}

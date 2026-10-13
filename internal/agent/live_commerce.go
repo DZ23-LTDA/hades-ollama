@@ -373,8 +373,10 @@ func (s *LiveCommerceStore) ApproveLiveSessionSemTrava(organizationID, sessionID
 		if strings.TrimSpace(actor) == "" {
 			return LiveSession{}, fmt.Errorf("%w: a aprovação precisa de um responsável identificado", ErrLiveCommerceInvalid)
 		}
-		org.Sessions[i].Approval = &OperatorApproval{ID: "apv_" + uuid.NewString(), Actor: strings.TrimSpace(actor),
-			Reason: strings.TrimSpace(reason), ApprovedAt: time.Now().UTC()}
+		org.Sessions[i].Approval = &OperatorApproval{
+			ID: "apv_" + uuid.NewString(), Actor: strings.TrimSpace(actor),
+			Reason: strings.TrimSpace(reason), ApprovedAt: time.Now().UTC(),
+		}
 		if err := s.salvarLocked(organizationID); err != nil {
 			org.Sessions[i].Approval = nil
 			return LiveSession{}, err
@@ -501,8 +503,10 @@ func (s *LiveCommerceStore) recordPlatformWarningSemTrava(organizationID, sessio
 		if atual.State == LiveLive || atual.State == LivePaused {
 			atual.State = LiveExternallyBlocked
 		}
-		evento := ModerationEvent{ID: "mod_" + uuid.NewString(), Kind: strings.TrimSpace(kind),
-			Evidence: strings.TrimSpace(evidence), RecordedAt: now.UTC(), ActionTaken: acao}
+		evento := ModerationEvent{
+			ID: "mod_" + uuid.NewString(), Kind: strings.TrimSpace(kind),
+			Evidence: strings.TrimSpace(evidence), RecordedAt: now.UTC(), ActionTaken: acao,
+		}
 		atual.Moderation = append(atual.Moderation, evento)
 		atual.Incidents = append(atual.Incidents, fmt.Sprintf("%s: %s", evento.Kind, evento.Evidence))
 		atual.HumanReview = true

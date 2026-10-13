@@ -175,7 +175,8 @@ func TestArgvNaoEhLinhaDeComando(t *testing.T) {
 	transcoder := &transcoderDeTeste{disponivel: true, escrita: cabecalhoMP4()}
 	entrada := filepath.Join(dir, "entrada;rm -rf tudo.mp4")
 	if _, err := TranscodeMedia(context.Background(), transcoder, MediaTranscodeRequest{
-		InputPath: entrada, OutputPath: saida, TargetFormat: "mp4"}, DefaultMediaLimits()); err != nil {
+		InputPath: entrada, OutputPath: saida, TargetFormat: "mp4",
+	}, DefaultMediaLimits()); err != nil {
 		t.Fatalf("transcodificação de teste: %v", err)
 	}
 	if len(transcoder.recebidos) != 1 {
@@ -199,7 +200,8 @@ func TestSaidaInvalidaEhRecusadaERemovida(t *testing.T) {
 	// Transcodificador que "termina bem" mas escreve LIXO — exatamente o "MP4 simulado" que o complemento proíbe.
 	mentiroso := &transcoderDeTeste{disponivel: true, escrita: []byte("isto nao e um video")}
 	if _, err := TranscodeMedia(context.Background(), mentiroso, MediaTranscodeRequest{
-		InputPath: arquivoComConteudo(t, dir, "in.mp4", cabecalhoMP4()), OutputPath: saida, TargetFormat: "mp4"},
+		InputPath: arquivoComConteudo(t, dir, "in.mp4", cabecalhoMP4()), OutputPath: saida, TargetFormat: "mp4",
+	},
 		DefaultMediaLimits()); !errors.Is(err, ErrMediaOutputInvalid) {
 		t.Fatalf("saída que não é vídeo precisa ser RECUSADA: %v", err)
 	}
@@ -209,7 +211,8 @@ func TestSaidaInvalidaEhRecusadaERemovida(t *testing.T) {
 	// Saída vazia também é recusada (existir não é ser mídia).
 	vazio := &transcoderDeTeste{disponivel: true, escrita: []byte{}}
 	if _, err := TranscodeMedia(context.Background(), vazio, MediaTranscodeRequest{
-		InputPath: arquivoComConteudo(t, dir, "in2.mp4", cabecalhoMP4()), OutputPath: saida, TargetFormat: "mp4"},
+		InputPath: arquivoComConteudo(t, dir, "in2.mp4", cabecalhoMP4()), OutputPath: saida, TargetFormat: "mp4",
+	},
 		DefaultMediaLimits()); !errors.Is(err, ErrMediaOutputInvalid) {
 		t.Fatalf("saída vazia precisa ser recusada: %v", err)
 	}
@@ -223,7 +226,8 @@ func TestTimeoutCancelaELimpa(t *testing.T) {
 	limites.Timeout = 50 * time.Millisecond
 	inicio := time.Now()
 	if _, err := TranscodeMedia(context.Background(), lento, MediaTranscodeRequest{
-		InputPath: arquivoComConteudo(t, dir, "in.mp4", cabecalhoMP4()), OutputPath: saida, TargetFormat: "mp4"},
+		InputPath: arquivoComConteudo(t, dir, "in.mp4", cabecalhoMP4()), OutputPath: saida, TargetFormat: "mp4",
+	},
 		limites); !errors.Is(err, ErrMediaInvalid) {
 		t.Fatalf("estouro de tempo precisa ser recusado: %v", err)
 	}
@@ -246,7 +250,8 @@ func TestCancelamentoEhRespeitado(t *testing.T) {
 	}()
 	inicio := time.Now()
 	if _, err := TranscodeMedia(ctx, bloqueante, MediaTranscodeRequest{
-		InputPath: arquivoComConteudo(t, dir, "in.mp4", cabecalhoMP4()), OutputPath: saida, TargetFormat: "mp4"},
+		InputPath: arquivoComConteudo(t, dir, "in.mp4", cabecalhoMP4()), OutputPath: saida, TargetFormat: "mp4",
+	},
 		DefaultMediaLimits()); !errors.Is(err, ErrMediaInvalid) {
 		t.Fatalf("cancelamento precisa ser reportado: %v", err)
 	}
@@ -260,7 +265,8 @@ func TestTranscodificacaoBemSucedidaExigeSaidaDeVideoReal(t *testing.T) {
 	saida := filepath.Join(dir, "out.mp4")
 	bom := &transcoderDeTeste{disponivel: true, escrita: cabecalhoMP4()}
 	resultado, err := TranscodeMedia(context.Background(), bom, MediaTranscodeRequest{
-		InputPath: arquivoComConteudo(t, dir, "in.mp4", cabecalhoMP4()), OutputPath: saida, TargetFormat: "mp4"},
+		InputPath: arquivoComConteudo(t, dir, "in.mp4", cabecalhoMP4()), OutputPath: saida, TargetFormat: "mp4",
+	},
 		DefaultMediaLimits())
 	if err != nil {
 		t.Fatalf("transcodificação válida: %v", err)

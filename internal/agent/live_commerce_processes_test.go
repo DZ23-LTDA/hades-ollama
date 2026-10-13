@@ -55,9 +55,11 @@ func TestProcessoAjudanteDoEstagio42(t *testing.T) {
 	store := NewLiveCommerceStore(raiz)
 	valor := int64(1000)
 	fmt.Sscanf(os.Getenv(variavelValor), "%d", &valor)
-	evento := CommerceEvent{OrganizationID: "org-a", ExternalID: "proc-" + os.Getenv(variavelPedido),
+	evento := CommerceEvent{
+		OrganizationID: "org-a", ExternalID: "proc-" + os.Getenv(variavelPedido),
 		Kind: "purchase_confirmed", SKU: "SKU-" + os.Getenv(variavelPedido), OrderID: os.Getenv(variavelPedido),
-		AmountCents: valor, SignatureVerified: true}
+		AmountCents: valor, SignatureVerified: true,
+	}
 	if _, _, err := store.IngestLiveCommerceEvent(evento); err != nil {
 		fmt.Fprintln(os.Stderr, "ingestao falhou:", err)
 		os.Exit(4)

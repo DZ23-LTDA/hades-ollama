@@ -33,14 +33,18 @@ func storeComRaiz(t *testing.T) *JSONStore {
 func TestAppendEventExigeIdsValidos(t *testing.T) {
 	store := storeComRaiz(t)
 	// ARMADILHA: id de missão inválido precisa ser RECUSADO — foi exatamente isto que aconteceu em E-349.
-	eventoInvalido := Event{ID: uuid.NewString(), MissionID: "missao-sonda", Type: "tipo",
-		Payload: map[string]any{"a": 1}, CreatedAt: time.Now().UTC()}
+	eventoInvalido := Event{
+		ID: uuid.NewString(), MissionID: "missao-sonda", Type: "tipo",
+		Payload: map[string]any{"a": 1}, CreatedAt: time.Now().UTC(),
+	}
 	if err := store.AppendEvent(eventoInvalido); err == nil {
 		t.Fatal("ARMADILHA: id de missão inválido foi aceito; a rejeição observada em E-349 não se explica")
 	}
 	// E id de EVENTO inválido também.
-	eventoComEventIDInvalido := Event{ID: "evt_teste", MissionID: uuid.NewString(), Type: "tipo",
-		Payload: map[string]any{"a": 1}, CreatedAt: time.Now().UTC()}
+	eventoComEventIDInvalido := Event{
+		ID: "evt_teste", MissionID: uuid.NewString(), Type: "tipo",
+		Payload: map[string]any{"a": 1}, CreatedAt: time.Now().UTC(),
+	}
 	if err := store.AppendEvent(eventoComEventIDInvalido); err == nil {
 		t.Fatal("id de evento inválido precisa ser recusado")
 	}
@@ -54,9 +58,11 @@ func TestComIdsValidosOStorePersisteELista(t *testing.T) {
 	if err := store.CreateMission(Mission{ID: missao, OrganizationID: "org-a"}); err != nil {
 		t.Fatalf("criar missão: %v", err)
 	}
-	if err := store.AppendEvent(Event{ID: uuid.NewString(), MissionID: missao, OrganizationID: "org-a",
+	if err := store.AppendEvent(Event{
+		ID: uuid.NewString(), MissionID: missao, OrganizationID: "org-a",
 		Type: "mission.repair_attempt", StepID: "step-1", Payload: map[string]any{"attempt": 1},
-		CreatedAt: time.Now().UTC()}); err != nil {
+		CreatedAt: time.Now().UTC(),
+	}); err != nil {
 		t.Fatalf("com ids válidos o evento precisa ser aceito: %v", err)
 	}
 	eventos, err := store.ListEvents(missao)
@@ -76,8 +82,10 @@ func TestComIdsValidosOStorePersisteELista(t *testing.T) {
 	if err := store.CreateMission(Mission{ID: outraMissao, OrganizationID: "org-b"}); err != nil {
 		t.Fatalf("criar missão da outra organização: %v", err)
 	}
-	if err := store.AppendEvent(Event{ID: uuid.NewString(), MissionID: outraMissao, OrganizationID: "org-a",
-		Type: "tipo", Payload: map[string]any{"a": 1}, CreatedAt: time.Now().UTC()}); err == nil {
+	if err := store.AppendEvent(Event{
+		ID: uuid.NewString(), MissionID: outraMissao, OrganizationID: "org-a",
+		Type: "tipo", Payload: map[string]any{"a": 1}, CreatedAt: time.Now().UTC(),
+	}); err == nil {
 		t.Fatal("ARMADILHA: evento de uma organização não pode ser aceito em missão de outra")
 	}
 	if eventos, err := store.ListEvents(outraMissao); err != nil || len(eventos) != 0 {

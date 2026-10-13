@@ -2308,7 +2308,17 @@
     "VERIFICAR QUE O CERTO ESTA PRESENTE NAO E' VERIFICAR QUE O ERRADO SAIU (E-365): eu conferi que s.recordStockLocked( estava la' e conclui que o lote estava correto; o corpo extraido ainda tinha o persistLocked interno",
     "A CONTRADICAO NAO FOI ESCONDIDA (E-365): o cronometro dizia 19,11s -> 32,76s e eu NAO atribui regressao nem ganho. Busquei a medida estrutural (contador de gravacoes): 2002 para 2000 linhas",
     "NUMEROS DE LINHA DO BINARIO INSTRUMENTADO NAO MAPEIAM PARA O ARQUIVO LIMPO (E-365): o primeiro rastreio apontou append/return como gravacoes. Com NOMES de funcao o autor apareceu",
-    "MEDIDA ESTRUTURAL E' IMUNE AO RUIDO; CRONOMETRO NAO (E-365): 2 gravacoes vs 2002 e' prova de caminho; o tempo corrobora, mas depende da maquina"
+    "MEDIDA ESTRUTURAL E' IMUNE AO RUIDO; CRONOMETRO NAO (E-365): 2 gravacoes vs 2002 e' prova de caminho; o tempo corrobora, mas depende da maquina",
+    "O LINT DO CI NUNCA RODAVA NOS MEUS GATES (E-367): 71 issues. Instalei golangci-lint v2.13.0 LOCAL, a mesma versao do CI - o limite 'o log do CI e' meu linter' esta fechado",
+    "50 DOS 71 ERAM PALAVRAS PORTUGUESAS (E-367): a politica ja' estava escrita no .golangci.yaml - ignore-rules declara IDIOMA, nao esconde erro de digitacao em ingles. Nenhum linter foi desabilitado",
+    "MUDANCA MECANICA GRANDE SO' PASSOU PORQUE A REDE VALIDOU (E-367): o --fix do proprio projeto tocou 52 arquivos e eu rodei a suite inteira ANTES de commitar (ok 258s + 4,9s, vet 0, build linux 0)",
+    "DEFEITO REAL REGISTRADO E NAO CONSERTADO AS CEGAS (E-367/ADV-47): trustedSandboxExecutable('dash') sempre devolve erro => o caminho do sandbox e' inalcancavel. Correcao comportamental exige medir antes",
+    "NAO DELETO O QUE NAO ENTENDO (E-367): os 8 unused restantes sao bindings de webview e stubs de plataforma - chamados por JavaScript ou compilados noutra plataforma. Declarados, nao removidos",
+    "ACHADO DERRUBADO PELA MEDICAO (E-367/ADV-47): registrei SA4023 como furo de seguranca e a medicao mostrou falso positivo de host - rodei o linter no Windows e a variante sandbox_other.go sempre devolve erro. No Linux o CI nao reporta SA4023",
+    "VALIDACAO DE TERCEIRO ACHOU O QUE O TESTE DO AUTOR NAO VIA (E-366): o openpyxl abriu o XLSX e mostrou que o '#' do markdown vazava para a celula. Validar o proprio artefato com o proprio codigo e' auto-atestado",
+    "O REQUISITO DE PLANILHA DO T1 ESTAVA DESATENDIDO (E-366): ExportProfessional recusava qualquer formato alem de pdf/docx/pptx. Agora ha' XLSX OOXML real, integrado ao mesmo caminho",
+    "DUAS CORRECOES VIERAM DA MEDICAO (E-366): a linha separadora |---| virava dado e as bordas | a | b | geravam celulas vazias nas pontas (4 celulas em vez de 2)",
+    "XLSX DECLARADAMENTE SIMPLES (E-366): uma aba, sem formatacao, numeros como texto inline. A lacuna esta registrada, nao escondida"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -2868,12 +2878,33 @@
           "descricao": "RecordStock e' chamado por linha no onboarding e TAMBEM persiste: e' o custo restante (2000 linhas em 19,11s, contra 0,01s no caminho so' de produtos)",
           "estado": "CORRIGIDO E PROVADO ESTRUTURALMENTE: 2000 linhas com 2 gravacoes (eram 2002) e 0,03s/0,02s contra 54,13s/50,01s de linha de base; o corpo extraido tinha um persistLocked interno proprio",
           "evidencia": "E-364"
+        },
+        {
+          "id": "ADV-47",
+          "severidade": "ALTA (seguranca/codigo morto)",
+          "descricao": "tools.go: trustedSandboxExecutable('dash') SEMPRE devolve erro (SA4023), entao o caminho do sandbox e' INALCANCAVEL e o 'if err != nil' e' sempre verdadeiro",
+          "estado": "REGISTRADO pela analise estatica; NAO corrigido - a correcao e' comportamental e exige medir a funcao antes de mudar o chamador",
+          "evidencia": "E-367"
+        },
+        {
+          "id": "ADV-45",
+          "severidade": "MEDIA (lacuna de requisito)",
+          "descricao": "ExportProfessional aceitava pdf/docx/pptx e recusava planilha: o requisito de PLANILHA do T1 nao tinha caminho nenhum",
+          "estado": "CORRIGIDO: XLSX OOXML real com as 5 partes, validado por openpyxl (terceiro)",
+          "evidencia": "E-366"
+        },
+        {
+          "id": "ADV-46",
+          "severidade": "BAIXA (cosmetico, achado por terceiro)",
+          "descricao": "o marcador de titulo do markdown (#) vazava para a celula da planilha",
+          "estado": "CORRIGIDO com teste armado; descoberto pela prova com openpyxl, nao pelo teste do autor",
+          "evidencia": "E-366"
         }
       ],
       "proximos_ataques": [
-        "medir o ganho com N chamadas de 1 linha (o lote depende do chamador usa-lo)",
-        "repetir cronometros em maquina ociosa (a medida estrutural nao precisa; o cronometro sim)",
-        "retomar a fila P0-A/T1 e P0-C/T3 (dependencia externa onde faltar alvo)"
+        "formatacao da planilha: numeros como numero (hoje vao como texto inline), larguras e cabecalho",
+        "teste dedicado de retomada de missao apos reinicio (T1: estado recuperado)",
+        "retomar a fila P0-C/T3 (staging: dependencia externa) e P1-E/T8 (MP4 sem FFmpeg)"
       ]
     },
     "estagio_42": {
@@ -3145,6 +3176,30 @@
         "paridade com qualquer outro harness"
       ],
       "atencao": "o SHA envelhece a cada merge: remedir antes de citar"
+    },
+    "paridade_t1": {
+      "planilha": {
+        "estado": "IMPLEMENTADO_E_PROVADO_POR_TERCEIRO",
+        "prova": "openpyxl 3.1.5 abriu, listou a aba e leu as celulas",
+        "artefato_bytes": 1793,
+        "evidencia": "E-366"
+      },
+      "documento": {
+        "estado": "JA_EXISTIA",
+        "detalhe": "writeMinimalDOCX (pdf/pptx tambem)"
+      },
+      "pesquisa_com_fontes": {
+        "estado": "IMPLEMENTADO",
+        "detalhe": "P1-G integridade de pesquisa"
+      },
+      "navegador": {
+        "estado": "BLOCKED_BY_EXTERNAL_DEPENDENCY",
+        "detalhe": "ambiente autorizado"
+      },
+      "estado_recuperado_apos_reinicio": {
+        "estado": "PARCIAL",
+        "detalhe": "checkpoints persistentes existem; falta teste dedicado de retomada"
+      }
     }
   },
   "unlinked_evidence": {
@@ -3200,6 +3255,8 @@
     "E-362": "catraca da classe de orcamento sub-segundo; vinculo declarado",
     "E-363": "indice O(1) correto que NAO moveu o numero; custo real em persistLocked; vinculo declarado",
     "E-364": "lote no onboarding/CommerceStore: 54s -> 0,01s com prova em disco; vinculo declarado",
-    "E-365": "lote de estoque efetivo: 2002 -> 2 gravacoes; vinculo declarado"
+    "E-365": "lote de estoque efetivo: 2002 -> 2 gravacoes; vinculo declarado",
+    "E-367": "lint do CI 71 -> 14, com golangci-lint local; vinculo declarado",
+    "E-366": "planilha XLSX real no export, validada por openpyxl; vinculo declarado"
   }
 }

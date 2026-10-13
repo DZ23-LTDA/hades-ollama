@@ -26,10 +26,8 @@ import (
 //  3. **FALHAR FECHADO.** Endpoint fora do ar, 5xx, 404 ou timeout ⇒ erro explícito
 //     (`ErrCapabilityProbeUnavailable`), sem capacidade inventada e sem registro alterado.
 
-var (
-	// ErrCapabilityProbeUnavailable: não foi possível obter a declaração do endpoint.
-	ErrCapabilityProbeUnavailable = errors.New("model capability probe unavailable")
-)
+// ErrCapabilityProbeUnavailable: não foi possível obter a declaração do endpoint.
+var ErrCapabilityProbeUnavailable = errors.New("model capability probe unavailable")
 
 // ModelCapabilityProbe consulta um endpoint compatível com Ollama sobre um modelo.
 type ModelCapabilityProbe struct {

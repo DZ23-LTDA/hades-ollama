@@ -46,10 +46,14 @@ func TestWorkflowWebhookCondicaoAcaoRetryEDLQ(t *testing.T) {
 		StartNode:      "gatilho",
 		Nodes: []WorkflowNode{
 			{ID: "gatilho", Kind: WorkflowNodeTrigger, Next: "decisao"},
-			{ID: "decisao", Kind: WorkflowNodeCondition, Next: "registrar",
-				OnFalse: "descartar", Config: map[string]string{"field": "urgencia", "equals": "alta"}},
-			{ID: "registrar", Kind: WorkflowNodeAction, Next: "", Retry: NodeRetryPolicy{MaxAttempts: 3},
-				Config: map[string]string{"action": "abrir_ticket"}},
+			{
+				ID: "decisao", Kind: WorkflowNodeCondition, Next: "registrar",
+				OnFalse: "descartar", Config: map[string]string{"field": "urgencia", "equals": "alta"},
+			},
+			{
+				ID: "registrar", Kind: WorkflowNodeAction, Next: "", Retry: NodeRetryPolicy{MaxAttempts: 3},
+				Config: map[string]string{"action": "abrir_ticket"},
+			},
 			{ID: "descartar", Kind: WorkflowNodeAction, Config: map[string]string{"action": "arquivar"}},
 		},
 	})
@@ -165,8 +169,10 @@ func TestWorkflowWebhookCondicaoAcaoRetryEDLQ(t *testing.T) {
 	}
 
 	// 6. NÓ DESCONHECIDO: recusado no REGISTRO (não se declara sucesso ignorando nó).
-	if _, err := motor.Register(WorkflowDefinition{OrganizationID: "org-a", Name: "ruim", StartNode: "x",
-		Nodes: []WorkflowNode{{ID: "x", Kind: "loop_infinito"}}}); !errors.Is(err, ErrWorkflowUnknownNodeKind) {
+	if _, err := motor.Register(WorkflowDefinition{
+		OrganizationID: "org-a", Name: "ruim", StartNode: "x",
+		Nodes: []WorkflowNode{{ID: "x", Kind: "loop_infinito"}},
+	}); !errors.Is(err, ErrWorkflowUnknownNodeKind) {
 		t.Fatalf("tipo de nó desconhecido precisa ser recusado no registro: %v", err)
 	}
 	// E também recusado na EXECUÇÃO quando a definição chega por outro caminho (importada/editada no disco).

@@ -25,10 +25,14 @@ import (
 func TestRuntimeNaoProduzEfeitoComAprovacaoPendenteNaNada(t *testing.T) {
 	root := t.TempDir()
 	planner := fixedPlanner{steps: []Step{
-		{ID: "step_1", Kind: "workspace.write", Title: "escrever a.txt", Risk: RiskWrite, RequiresApproval: true, State: StepPending,
-			Input: map[string]any{"path": "a.txt", "content": "primeiro\n"}},
-		{ID: "step_2", Kind: "workspace.write", Title: "escrever b.txt", Risk: RiskWrite, RequiresApproval: true, State: StepPending,
-			Input: map[string]any{"path": "b.txt", "content": "segundo\n"}},
+		{
+			ID: "step_1", Kind: "workspace.write", Title: "escrever a.txt", Risk: RiskWrite, RequiresApproval: true, State: StepPending,
+			Input: map[string]any{"path": "a.txt", "content": "primeiro\n"},
+		},
+		{
+			ID: "step_2", Kind: "workspace.write", Title: "escrever b.txt", Risk: RiskWrite, RequiresApproval: true, State: StepPending,
+			Input: map[string]any{"path": "b.txt", "content": "segundo\n"},
+		},
 	}}
 	runtime, err := NewRuntime(RuntimeConfig{Store: NewMemoryStore(), Planner: planner, WorkspaceRoot: root})
 	if err != nil {

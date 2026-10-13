@@ -81,8 +81,10 @@ func TestCapacidadeSemOrigemNaoEntraNoRegistro(t *testing.T) {
 		t.Fatalf("o erro precisa dizer que falta procedência: %v", err)
 	}
 	// Com origem declarada, entra — e o modo passa a nativo porque a capacidade FOI declarada.
-	if err := registro.WithCapabilities(ModelCapabilities{Model: "modelo-x:1b", ToolCalling: true,
-		Source: CapabilitySourceDeclared}); err != nil {
+	if err := registro.WithCapabilities(ModelCapabilities{
+		Model: "modelo-x:1b", ToolCalling: true,
+		Source: CapabilitySourceDeclared,
+	}); err != nil {
 		t.Fatalf("capacidade com origem declarada precisa ser aceita: %v", err)
 	}
 	modo, _ := registro.ResolveToolMode("modelo-x:1b")
@@ -90,8 +92,10 @@ func TestCapacidadeSemOrigemNaoEntraNoRegistro(t *testing.T) {
 		t.Fatalf("após registrar capacidade com origem, o modo precisa refletir a declaração: %q", modo)
 	}
 	// E uma capacidade declarada como SEM ferramentas rebaixa corretamente (o inverso também é medido).
-	if err := registro.WithCapabilities(ModelCapabilities{Model: "modelo-y:1b", ToolCalling: false,
-		Source: CapabilitySourceDeclared, Note: "declarado sem ferramentas"}); err != nil {
+	if err := registro.WithCapabilities(ModelCapabilities{
+		Model: "modelo-y:1b", ToolCalling: false,
+		Source: CapabilitySourceDeclared, Note: "declarado sem ferramentas",
+	}); err != nil {
 		t.Fatal(err)
 	}
 	if modo, _ := registro.ResolveToolMode("modelo-y:1b"); modo != ToolModeCompatibleText {

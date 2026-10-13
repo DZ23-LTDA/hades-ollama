@@ -45,8 +45,10 @@ func TestEscopoVazioNaoCompartilhaArmazenamento(t *testing.T) {
 	t.Run("waitlist", func(t *testing.T) {
 		raiz := filepath.Join(t.TempDir(), "sched")
 		store := NewSchedulingStore(raiz)
-		if _, err := store.AddToWaitlist(SchedulingWaitlistEntry{OrganizationID: "", ResourceID: "r", ServiceID: "s",
-			From: agora, To: agora.Add(time.Hour)}); err == nil {
+		if _, err := store.AddToWaitlist(SchedulingWaitlistEntry{
+			OrganizationID: "", ResourceID: "r", ServiceID: "s",
+			From: agora, To: agora.Add(time.Hour),
+		}); err == nil {
 			t.Fatal("fila sem organização precisa ser recusada")
 		}
 		assertSemArquivoCompartilhado(t, raiz)
@@ -55,12 +57,16 @@ func TestEscopoVazioNaoCompartilhaArmazenamento(t *testing.T) {
 	t.Run("live_commerce", func(t *testing.T) {
 		raiz := filepath.Join(t.TempDir(), "live")
 		store := NewLiveCommerceStore(raiz)
-		if _, err := store.CreateLiveSession(LiveSession{OrganizationID: "", ProjectID: "p",
-			AuthorizedUntil: agora.Add(time.Hour)}); err == nil {
+		if _, err := store.CreateLiveSession(LiveSession{
+			OrganizationID: "", ProjectID: "p",
+			AuthorizedUntil: agora.Add(time.Hour),
+		}); err == nil {
 			t.Fatal("sessão de live sem organização precisa ser recusada")
 		}
-		if _, _, err := store.IngestLiveCommerceEvent(CommerceEvent{OrganizationID: "", ExternalID: "e1",
-			Kind: "cart_added", SignatureVerified: true}); err == nil {
+		if _, _, err := store.IngestLiveCommerceEvent(CommerceEvent{
+			OrganizationID: "", ExternalID: "e1",
+			Kind: "cart_added", SignatureVerified: true,
+		}); err == nil {
 			t.Fatal("evento de comércio sem organização precisa ser recusado")
 		}
 		assertSemArquivoCompartilhado(t, raiz)
@@ -69,8 +75,10 @@ func TestEscopoVazioNaoCompartilhaArmazenamento(t *testing.T) {
 	t.Run("workflow", func(t *testing.T) {
 		raiz := filepath.Join(t.TempDir(), "wf")
 		motor := NewWorkflowEngine(raiz, nil)
-		if _, err := motor.Register(WorkflowDefinition{OrganizationID: "", Name: "x", StartNode: "a",
-			Nodes: []WorkflowNode{{ID: "a", Kind: WorkflowNodeTrigger}}}); err == nil {
+		if _, err := motor.Register(WorkflowDefinition{
+			OrganizationID: "", Name: "x", StartNode: "a",
+			Nodes: []WorkflowNode{{ID: "a", Kind: WorkflowNodeTrigger}},
+		}); err == nil {
 			t.Fatal("workflow sem organização precisa ser recusado")
 		}
 		assertSemArquivoCompartilhado(t, raiz)

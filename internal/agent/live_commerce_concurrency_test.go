@@ -38,8 +38,10 @@ func TestCorridaEntreVarreduraEncerramentoEAvisoMantemSessaoConsistente(t *testi
 	raiz := filepath.Join(t.TempDir(), "live")
 	store := NewLiveCommerceStore(raiz)
 	agora := time.Now().UTC()
-	sessao, err := store.CreateLiveSession(LiveSession{OrganizationID: "org-a", ProjectID: "p1",
-		AuthorizedUntil: agora.Add(1 * time.Second)})
+	sessao, err := store.CreateLiveSession(LiveSession{
+		OrganizationID: "org-a", ProjectID: "p1",
+		AuthorizedUntil: agora.Add(1 * time.Second),
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -103,8 +105,10 @@ func TestCorridaEntreVarreduraEncerramentoEAvisoMantemSessaoConsistente(t *testi
 func TestIngestaoConcorrenteDoMesmoEventoNaoDuplicaReceita(t *testing.T) {
 	raiz := filepath.Join(t.TempDir(), "live")
 	store := NewLiveCommerceStore(raiz)
-	evento := CommerceEvent{OrganizationID: "org-a", ExternalID: "compra-corrida", Kind: "purchase_confirmed",
-		SKU: "SKU-1", OrderID: "PED-1", AmountCents: 5000, SignatureVerified: true}
+	evento := CommerceEvent{
+		OrganizationID: "org-a", ExternalID: "compra-corrida", Kind: "purchase_confirmed",
+		SKU: "SKU-1", OrderID: "PED-1", AmountCents: 5000, SignatureVerified: true,
+	}
 
 	const goroutines = 8
 	var wg sync.WaitGroup
@@ -150,8 +154,10 @@ func TestAvisoDuranteVarreduraNaoDeixaSessaoNoAr(t *testing.T) {
 	raiz := filepath.Join(t.TempDir(), "live")
 	store := NewLiveCommerceStore(raiz)
 	agora := time.Now().UTC()
-	sessao, err := store.CreateLiveSession(LiveSession{OrganizationID: "org-a", ProjectID: "p1",
-		AuthorizedUntil: agora.Add(30 * time.Minute)})
+	sessao, err := store.CreateLiveSession(LiveSession{
+		OrganizationID: "org-a", ProjectID: "p1",
+		AuthorizedUntil: agora.Add(30 * time.Minute),
+	})
 	if err != nil {
 		t.Fatal(err)
 	}

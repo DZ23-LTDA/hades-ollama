@@ -105,8 +105,10 @@ func TestFimAutorizadoEncerraSozinhoENaoDeixaEntrarDepois(t *testing.T) {
 	agora := time.Now().UTC()
 	store := NewLiveCommerceStore(filepath.Join(t.TempDir(), "live"))
 	// Prazo curto, deliberadamente.
-	sessao, err := store.CreateLiveSession(LiveSession{OrganizationID: "org-a", ProjectID: "p1",
-		AuthorizedUntil: agora.Add(2 * time.Second)})
+	sessao, err := store.CreateLiveSession(LiveSession{
+		OrganizationID: "org-a", ProjectID: "p1",
+		AuthorizedUntil: agora.Add(2 * time.Second),
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -133,8 +135,10 @@ func TestFimAutorizadoEncerraSozinhoENaoDeixaEntrarDepois(t *testing.T) {
 	// ARMADILHA (corrigida: minha asserção chamava LiveReady, que É legal em DRAFT — o que precisa ser provado é o
 	// caminho ATÉ o ar): com o prazo já vencido, percorrer o caminho legal até LIVE NÃO pode colocar a sessão no ar —
 	// ela tem de ENCERRAR sozinha, fail-closed no tempo.
-	outra, err := store.CreateLiveSession(LiveSession{OrganizationID: "org-a", ProjectID: "p2",
-		AuthorizedUntil: agora.Add(1 * time.Second)})
+	outra, err := store.CreateLiveSession(LiveSession{
+		OrganizationID: "org-a", ProjectID: "p2",
+		AuthorizedUntil: agora.Add(1 * time.Second),
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -158,8 +162,10 @@ func TestFimAutorizadoEncerraSozinhoENaoDeixaEntrarDepois(t *testing.T) {
 		t.Fatal("o encerramento automático precisa registrar o motivo")
 	}
 	// E prazo no passado nem é aceito na criação: NÃO se promete live infinita nem prazo vencido.
-	if _, err := store.CreateLiveSession(LiveSession{OrganizationID: "org-a", ProjectID: "p3",
-		AuthorizedUntil: agora.Add(-time.Minute)}); !errors.Is(err, ErrLiveCommerceInvalid) {
+	if _, err := store.CreateLiveSession(LiveSession{
+		OrganizationID: "org-a", ProjectID: "p3",
+		AuthorizedUntil: agora.Add(-time.Minute),
+	}); !errors.Is(err, ErrLiveCommerceInvalid) {
 		t.Fatalf("criar sessão com fim autorizado no passado precisa ser recusado: %v", err)
 	}
 	if _, err := store.CreateLiveSession(LiveSession{OrganizationID: "org-a", ProjectID: "p4"}); !errors.Is(err, ErrLiveCommerceInvalid) {
@@ -170,8 +176,10 @@ func TestFimAutorizadoEncerraSozinhoENaoDeixaEntrarDepois(t *testing.T) {
 func TestEventoDeCarrinhoNaoEhVendaConfirmada(t *testing.T) {
 	store, _ := liveFixture(t)
 	// Evento de carrinho: legítimo, mas NÃO é venda.
-	if _, _, err := store.IngestLiveCommerceEvent(CommerceEvent{OrganizationID: "org-a", ExternalID: "carrinho-1",
-		Kind: "cart_added", SKU: "SKU-1", SignatureVerified: true}); err != nil {
+	if _, _, err := store.IngestLiveCommerceEvent(CommerceEvent{
+		OrganizationID: "org-a", ExternalID: "carrinho-1",
+		Kind: "cart_added", SKU: "SKU-1", SignatureVerified: true,
+	}); err != nil {
 		t.Fatal(err)
 	}
 	resumo, err := store.ConfirmedSales("org-a")
@@ -185,13 +193,17 @@ func TestEventoDeCarrinhoNaoEhVendaConfirmada(t *testing.T) {
 		t.Fatalf("o carrinho precisa ser contado à parte, como informação: %+v", resumo)
 	}
 	// Compra confirmada SEM pedido identificado é recusada: não se inventa venda.
-	if _, _, err := store.IngestLiveCommerceEvent(CommerceEvent{OrganizationID: "org-a", ExternalID: "compra-sem-pedido",
-		Kind: "purchase_confirmed", SKU: "SKU-1", AmountCents: 9900, SignatureVerified: true}); !errors.Is(err, ErrLiveCommerceInvalid) {
+	if _, _, err := store.IngestLiveCommerceEvent(CommerceEvent{
+		OrganizationID: "org-a", ExternalID: "compra-sem-pedido",
+		Kind: "purchase_confirmed", SKU: "SKU-1", AmountCents: 9900, SignatureVerified: true,
+	}); !errors.Is(err, ErrLiveCommerceInvalid) {
 		t.Fatalf("compra confirmada sem OrderID precisa ser recusada: %v", err)
 	}
 	// Compra confirmada com pedido conta UMA vez.
-	if _, _, err := store.IngestLiveCommerceEvent(CommerceEvent{OrganizationID: "org-a", ExternalID: "compra-1",
-		Kind: "purchase_confirmed", SKU: "SKU-1", OrderID: "PED-1", AmountCents: 9900, SignatureVerified: true}); err != nil {
+	if _, _, err := store.IngestLiveCommerceEvent(CommerceEvent{
+		OrganizationID: "org-a", ExternalID: "compra-1",
+		Kind: "purchase_confirmed", SKU: "SKU-1", OrderID: "PED-1", AmountCents: 9900, SignatureVerified: true,
+	}); err != nil {
 		t.Fatal(err)
 	}
 	resumo, _ = store.ConfirmedSales("org-a")
@@ -202,8 +214,10 @@ func TestEventoDeCarrinhoNaoEhVendaConfirmada(t *testing.T) {
 
 func TestEventoRepetidoNaoInflaReceitaNemDuplicaEfeito(t *testing.T) {
 	store, _ := liveFixture(t)
-	evento := CommerceEvent{OrganizationID: "org-a", ExternalID: "compra-replay", Kind: "purchase_confirmed",
-		SKU: "SKU-9", OrderID: "PED-9", AmountCents: 5000, SignatureVerified: true}
+	evento := CommerceEvent{
+		OrganizationID: "org-a", ExternalID: "compra-replay", Kind: "purchase_confirmed",
+		SKU: "SKU-9", OrderID: "PED-9", AmountCents: 5000, SignatureVerified: true,
+	}
 	primeiro, replay, err := store.IngestLiveCommerceEvent(evento)
 	if err != nil {
 		t.Fatal(err)
@@ -224,8 +238,10 @@ func TestEventoRepetidoNaoInflaReceitaNemDuplicaEfeito(t *testing.T) {
 		t.Fatalf("ARMADILHA: evento repetido inflou a receita: %+v", resumo)
 	}
 	// O mesmo pedido com OUTRO external_id também não soma duas vezes (dedupe por pedido).
-	if _, _, err := store.IngestLiveCommerceEvent(CommerceEvent{OrganizationID: "org-a", ExternalID: "compra-outro-id",
-		Kind: "purchase_confirmed", SKU: "SKU-9", OrderID: "PED-9", AmountCents: 5000, SignatureVerified: true}); err != nil {
+	if _, _, err := store.IngestLiveCommerceEvent(CommerceEvent{
+		OrganizationID: "org-a", ExternalID: "compra-outro-id",
+		Kind: "purchase_confirmed", SKU: "SKU-9", OrderID: "PED-9", AmountCents: 5000, SignatureVerified: true,
+	}); err != nil {
 		t.Fatal(err)
 	}
 	resumo, _ = store.ConfirmedSales("org-a")
@@ -236,12 +252,16 @@ func TestEventoRepetidoNaoInflaReceitaNemDuplicaEfeito(t *testing.T) {
 
 func TestEventoSemAssinaturaVerificadaEhRecusado(t *testing.T) {
 	store, _ := liveFixture(t)
-	if _, _, err := store.IngestLiveCommerceEvent(CommerceEvent{OrganizationID: "org-a", ExternalID: "sem-assinatura",
-		Kind: "purchase_confirmed", OrderID: "PED-X", AmountCents: 100}); !errors.Is(err, ErrLiveEventUnverified) {
+	if _, _, err := store.IngestLiveCommerceEvent(CommerceEvent{
+		OrganizationID: "org-a", ExternalID: "sem-assinatura",
+		Kind: "purchase_confirmed", OrderID: "PED-X", AmountCents: 100,
+	}); !errors.Is(err, ErrLiveEventUnverified) {
 		t.Fatalf("evento sem assinatura verificada precisa ser recusado: %v", err)
 	}
-	if _, _, err := store.IngestLiveCommerceEvent(CommerceEvent{OrganizationID: "org-a", ExternalID: "tipo-estranho",
-		Kind: "presente_misterioso", SignatureVerified: true}); !errors.Is(err, ErrLiveCommerceInvalid) {
+	if _, _, err := store.IngestLiveCommerceEvent(CommerceEvent{
+		OrganizationID: "org-a", ExternalID: "tipo-estranho",
+		Kind: "presente_misterioso", SignatureVerified: true,
+	}); !errors.Is(err, ErrLiveCommerceInvalid) {
 		t.Fatalf("tipo de evento desconhecido precisa ser recusado: %v", err)
 	}
 }

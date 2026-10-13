@@ -17,12 +17,18 @@ import (
 func TestRuntimeExecutaMissaoMultiEtapaComCadeiaDeAprovacoes(t *testing.T) {
 	root := t.TempDir()
 	planner := fixedPlanner{steps: []Step{
-		{ID: "step_1", Kind: "workspace.write", Title: "escrever a.txt", Risk: RiskWrite, RequiresApproval: true, State: StepPending,
-			Input: map[string]any{"path": "a.txt", "content": "primeiro\n"}},
-		{ID: "step_2", Kind: "workspace.write", Title: "escrever b.txt", Risk: RiskWrite, RequiresApproval: true, State: StepPending,
-			Input: map[string]any{"path": "b.txt", "content": "segundo\n"}},
-		{ID: "step_3", Kind: "workspace.list", Title: "listar o workspace", Risk: RiskRead, State: StepPending,
-			Input: map[string]any{"path": ".", "max_entries": 10}},
+		{
+			ID: "step_1", Kind: "workspace.write", Title: "escrever a.txt", Risk: RiskWrite, RequiresApproval: true, State: StepPending,
+			Input: map[string]any{"path": "a.txt", "content": "primeiro\n"},
+		},
+		{
+			ID: "step_2", Kind: "workspace.write", Title: "escrever b.txt", Risk: RiskWrite, RequiresApproval: true, State: StepPending,
+			Input: map[string]any{"path": "b.txt", "content": "segundo\n"},
+		},
+		{
+			ID: "step_3", Kind: "workspace.list", Title: "listar o workspace", Risk: RiskRead, State: StepPending,
+			Input: map[string]any{"path": ".", "max_entries": 10},
+		},
 	}}
 	runtime, err := NewRuntime(RuntimeConfig{Store: NewMemoryStore(), Planner: planner, WorkspaceRoot: root})
 	if err != nil {
@@ -42,7 +48,7 @@ func TestRuntimeExecutaMissaoMultiEtapaComCadeiaDeAprovacoes(t *testing.T) {
 
 	// Cadeia de aprovacoes: aprovar todas as pendentes e retomar, com limite para não girar em falso.
 	aprovacoesFeitas := 0
-	for tentativa := 0; tentativa < 5; tentativa++ {
+	for range 5 {
 		atual, err := runtime.GetMission(missao.ID)
 		if err != nil {
 			t.Fatal(err)
@@ -110,8 +116,10 @@ func TestRuntimeExecutaMissaoMultiEtapaComCadeiaDeAprovacoes(t *testing.T) {
 func TestRuntimeNaoExecutaEtapaSemAprovacaoNaCadeia(t *testing.T) {
 	root := t.TempDir()
 	planner := fixedPlanner{steps: []Step{
-		{ID: "step_1", Kind: "workspace.write", Title: "escrever a.txt", Risk: RiskWrite, RequiresApproval: true, State: StepPending,
-			Input: map[string]any{"path": "a.txt", "content": "nao deve existir\n"}},
+		{
+			ID: "step_1", Kind: "workspace.write", Title: "escrever a.txt", Risk: RiskWrite, RequiresApproval: true, State: StepPending,
+			Input: map[string]any{"path": "a.txt", "content": "nao deve existir\n"},
+		},
 	}}
 	runtime, err := NewRuntime(RuntimeConfig{Store: NewMemoryStore(), Planner: planner, WorkspaceRoot: root})
 	if err != nil {

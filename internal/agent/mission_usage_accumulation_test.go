@@ -65,7 +65,7 @@ func TestConsumoDoPlanejamentoConsisteComAsChamadasReais(t *testing.T) {
 	}
 
 	// Duas rodadas: a primeira planeja e para na aprovaÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â§ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â£o; a segunda executa o passo aprovado.
-	for rodada := 0; rodada < 2; rodada++ {
+	for rodada := range 2 {
 		if err := runtime.Run(ctx, missao.ID); err != nil {
 			t.Fatalf("rodada %d: %v", rodada+1, err)
 		}

@@ -21,10 +21,8 @@ import (
 //  2. **INVALIDAÇÃO DE CACHE** antes de cada operação travada. Sem ela, a instância A continua respondendo do cache
 //     antigo depois de a instância B gravar — *e o resultado é o mesmo defeito, só que mais difícil de ver*.
 
-var (
-	// ErrLiveStoreCrossProcess recusa operação quando o lock entre processos não pôde ser usado.
-	ErrLiveStoreCrossProcess = errors.New("live commerce cross-process lock failed")
-)
+// ErrLiveStoreCrossProcess recusa operação quando o lock entre processos não pôde ser usado.
+var ErrLiveStoreCrossProcess = errors.New("live commerce cross-process lock failed")
 
 // withOrganizationLock executa `run` sob o lock de arquivo DA ORGANIZAÇÃO, invalidando o cache antes.
 func (s *LiveCommerceStore) withOrganizationLock(organizationID string, run func() error) error {

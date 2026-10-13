@@ -52,7 +52,6 @@ func TestSegundoLoteRecusaEscopoAusente(t *testing.T) {
 		}
 		assertSemArquivoCompartilhado(t, raiz)
 	})
-
 }
 
 // O inverso: com organização válida o caminho continua funcionando (a guarda não pode virar bloqueio geral).

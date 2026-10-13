@@ -121,8 +121,10 @@ func TestSumIncluiTodosOsValores(t *testing.T) {
 	comBugCompleto := map[string]string{"go.mod": modulo, "calc.go": comBug, "calc_test.go": teste}
 	corretoCompleto := map[string]string{"go.mod": modulo, "calc.go": correto, "calc_test.go": teste}
 	_ = base
-	return HarnessBenchmarkTask{Name: "fixture-t2-soma", Files: corretoCompleto, BuggyFiles: comBugCompleto,
-		ReferenceFix: corretoCompleto}
+	return HarnessBenchmarkTask{
+		Name: "fixture-t2-soma", Files: corretoCompleto, BuggyFiles: comBugCompleto,
+		ReferenceFix: corretoCompleto,
+	}
 }
 
 // WriteFixtureT2 escreve os arquivos do fixture num diretório limpo.
@@ -192,7 +194,7 @@ func ContarHunksDoDiff(antes, depois map[string]string) (hunks, linhas int, arqu
 			maximo = len(linhasDepois)
 		}
 		emBloco := false
-		for i := 0; i < maximo; i++ {
+		for i := range maximo {
 			var a, b string
 			if i < len(linhasAntes) {
 				a = linhasAntes[i]
@@ -294,7 +296,9 @@ func RunHarnessBenchmark(ctx context.Context, harness HarnessProposer, task Harn
 		if trapacou != "" {
 			resultado.Verdict = "HARNESS_TRAFICOU"
 			resultado.Reason = "o harness tentou alterar o arquivo de teste: " + trapacou
-			proposta = nil
+			// E-367: `proposta = nil` foi REMOVIDO daqui — o linter (`ineffassign`) provou que a atribuição é
+			// inefetiva porque o laço reatribui no topo. *Atribuição que parece intenção e não faz nada é pior que
+			// ausente: quem lê acredita nela.* O teste anti-trapaça é a rede que confirma o comportamento.
 			// feedback para a próxima tentativa
 			observacao += "\n\nATENÇÃO: a tentativa anterior foi REJEITADA porque alterou " + trapacou +
 				", que é o enunciado do problema. Corrija SOMENTE o arquivo calc.go e NÃO inclua o arquivo de teste."
@@ -362,7 +366,6 @@ func (h OllamaHarness) ProposeFix(ctx context.Context, task HarnessBenchmarkTask
 		return nil, err
 	}
 	return ExtrairArquivosDaResposta(resposta)
-
 }
 
 // ExtrairArquivosDaResposta lê os blocos <<<ARQUIVO nome>>> ... <<<FIM>>>.

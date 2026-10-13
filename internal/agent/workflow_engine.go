@@ -142,8 +142,10 @@ type workflowOrg struct {
 
 // NewWorkflowEngine cria o motor no diretório informado, com o executor de ações.
 func NewWorkflowEngine(root string, executor NodeExecutor) *WorkflowEngine {
-	return &WorkflowEngine{root: strings.TrimSpace(root), executar: executor,
-		porOrg: map[string]*workflowOrg{}, carregado: map[string]bool{}}
+	return &WorkflowEngine{
+		root: strings.TrimSpace(root), executar: executor,
+		porOrg: map[string]*workflowOrg{}, carregado: map[string]bool{},
+	}
 }
 
 func (e *WorkflowEngine) caminho(org string) string {
@@ -288,8 +290,10 @@ func (e *WorkflowEngine) Run(ctx context.Context, organizationID, workflowID str
 		porID[no.ID] = no
 	}
 
-	execucao := WorkflowRun{ID: "run_" + uuid.NewString(), WorkflowID: definicao.ID, OrganizationID: organizationID,
-		State: WorkflowRunSucceeded, IdempotencyKey: strings.TrimSpace(idempotencyKey), StartedAt: time.Now().UTC()}
+	execucao := WorkflowRun{
+		ID: "run_" + uuid.NewString(), WorkflowID: definicao.ID, OrganizationID: organizationID,
+		State: WorkflowRunSucceeded, IdempotencyKey: strings.TrimSpace(idempotencyKey), StartedAt: time.Now().UTC(),
+	}
 
 	atual := definicao.StartNode
 	visitados := map[string]bool{}
@@ -298,24 +302,30 @@ func (e *WorkflowEngine) Run(ctx context.Context, organizationID, workflowID str
 		// AUDITORIA (E-330): ciclo entre nós é detectado DE IMEDIATO, e o limite de passos é o backstop.
 		passos++
 		if visitados[atual] {
-			execucao.NodeEvidence = append(execucao.NodeEvidence, NodeEvidence{NodeID: atual, State: "failed",
+			execucao.NodeEvidence = append(execucao.NodeEvidence, NodeEvidence{
+				NodeID: atual, State: "failed",
 				Attempts: 1, StartedAt: time.Now().UTC(), FinishedAt: time.Now().UTC(),
-				Error: fmt.Sprintf("%s: ciclo entre nós no nó %q", ErrWorkflowLoopLimit.Error(), atual)})
+				Error: fmt.Sprintf("%s: ciclo entre nós no nó %q", ErrWorkflowLoopLimit.Error(), atual),
+			})
 			execucao.State = WorkflowRunFailed
 			break
 		}
 		if passos > WorkflowMaxSteps {
-			execucao.NodeEvidence = append(execucao.NodeEvidence, NodeEvidence{NodeID: atual, State: "failed",
+			execucao.NodeEvidence = append(execucao.NodeEvidence, NodeEvidence{
+				NodeID: atual, State: "failed",
 				Attempts: 1, StartedAt: time.Now().UTC(), FinishedAt: time.Now().UTC(),
-				Error: fmt.Sprintf("%s: %d passos", ErrWorkflowLoopLimit.Error(), WorkflowMaxSteps)})
+				Error: fmt.Sprintf("%s: %d passos", ErrWorkflowLoopLimit.Error(), WorkflowMaxSteps),
+			})
 			execucao.State = WorkflowRunFailed
 			break
 		}
 		visitados[atual] = true
 		no, existe := porID[atual]
 		if !existe {
-			execucao.NodeEvidence = append(execucao.NodeEvidence, NodeEvidence{NodeID: atual, State: "failed",
-				Error: ErrWorkflowUnknownNode.Error(), StartedAt: time.Now().UTC(), FinishedAt: time.Now().UTC()})
+			execucao.NodeEvidence = append(execucao.NodeEvidence, NodeEvidence{
+				NodeID: atual, State: "failed",
+				Error: ErrWorkflowUnknownNode.Error(), StartedAt: time.Now().UTC(), FinishedAt: time.Now().UTC(),
+			})
 			execucao.State = WorkflowRunFailed
 			break
 		}
