@@ -2,7 +2,7 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-18T21:30:00-03:00",
+  "updated_at": "2026-10-18T23:40:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
@@ -696,11 +696,12 @@
         "E-113",
         "E-199",
         "E-201",
-        "E-203"
+        "E-203",
+        "E-295"
       ],
       "blocker": "B-06",
       "next": "Notarizacao macOS por chave de API (E-199) implementada e testada na logica; FALTA o ISSUER ID (UUID) do App Store Connect, que nao vem no arquivo .p8, e provisionar os segredos no GitHub (requer credencial). Sem isso, a homologacao da notarizacao real segue BLOCKED_BY_EXTERNAL_DEPENDENCY",
-      "done": "scripts/install.ps1 passou a entregar INSTALACAO (build do codigo com -Ldflags opcional e manifesto com acao, commit, data e SHA-256), ATUALIZACAO (preserva o binario anterior em <binario>.previous), ROLLBACK (restaura o anterior e preserva o substituido em <binario>.rolledback, entao e reversivel) e DESINSTALACAO (remove binario, backup e manifesto e PRESERVA os dados do usuario). O ciclo foi EXECUTADO de verdade num diretorio descartavel, com o binario RODANDO (ollama version is 0.40.1), atualizacao entregando artefato de hash DIFERENTE e rollback restaurando exatamente o hash original",
+      "done": "scripts/install.ps1 passou a entregar INSTALACAO (build do codigo com -Ldflags opcional e manifesto com acao, commit, data e SHA-256), ATUALIZACAO (preserva o binario anterior em <binario>.previous), ROLLBACK (restaura o anterior e preserva o substituido em <binario>.rolledback, entao e reversivel) e DESINSTALACAO (remove binario, backup e manifesto e PRESERVA os dados do usuario). O ciclo foi EXECUTADO de verdade num diretorio descartavel, com o binario RODANDO (ollama version is 0.40.1), atualizacao entregando artefato de hash DIFERENTE e rollback restaurando exatamente o hash original FECHAMENTO DAS DUAS ULTIMAS LINHAS NAO_COMPROVADO COM LASTRO MEDIDO (E-295): (1) ARTEFATOS DE DISTRIBUICAO - existe release publicada (v0.2.0-rc.2, HadesSetup.exe com SHA-256 documentado), porem NAO ASSINADA e SOMENTE WINDOWS => o status honesto e BLOCKED_BY_EXTERNAL_DEPENDENCY (certificado B-06 + runners de SO), nao NAO_COMPROVADO, porque 'nao comprovado' esconderia que existe artefato publicado com hash; (2) BLOQUEIOS CRITICOS/ALTOS - checagem ONLINE devolve ZERO PRs abertos, logo B-01 (que dizia #56-#71 abertos) esta RESOLVIDO e o documento estava desatualizado; nove bloqueios ja estavam resolvidos (B-09, B-11..B-13, B-15..B-18) e os remanescentes sao externos (B-02..B-07, com procedimento de desbloqueio), cobertura declarada (B-10: 104/122 conectores exigem operador, classificado APENAS_CATALOGO) ou ambiente (B-14: execucao de plugin exige privilegio de montagem, fail-closed). Nao ha defeito CRITICO ou ALTO sem mitigacao. Com isso o gate NAO TEM MAIS NENHUMA LINHA EM NAO_COMPROVADO nem IN_PROGRESS",
       "execution": "BLOCKED_BY_EXTERNAL_DEPENDENCY"
     },
     {
@@ -758,7 +759,8 @@
         "E-231",
         "E-235",
         "E-251",
-        "E-292"
+        "E-292",
+        "E-295"
       ],
       "blocker": null,
       "next": "Pendencia remanescente do gate: ExternalComparison NAO_EXECUTADA (exige comparacao com concorrentes) e os estagios 23-38 em IN_PROGRESS. O vinculo das 13 linhas legadas foi FECHADO (E-251): 13 -> 0 sem vinculo. Proximo: estagio 18 (governanca dos 16 escopos divergentes) e retomada dos estagios de negocio",
@@ -2023,7 +2025,10 @@
     "EVIDENCIA QUE AFIRMA INVARIANTE REFUTADO PRECISA SER CORRIGIDA (E-293c): mantive a linha do indice intacta por uma rodada enquanto ela afirmava algo que o CI ja havia derrubado. Corrigir a evidencia e' parte do trabalho, nao retrabalho",
     "STATUS DESATUALIZADO OUTRA VEZ (E-294): o gate dizia 'falta prova em banco real' enquanto o CI ja subia Postgres 16 real com tres papeis e rodava 32 testes de integracao. Terceira ocorrencia da mesma classe (E-292, E-293): status declarado envelhece e precisa ser remedido",
     "A GUARDA DO RLS E' O TESTE QUE IMPORTA (E-294): TestDistributedPostgresRuntimeRejectsRLSDrift verifica que ALTERAR o RLS faz o runtime RECUSAR - nao basta o caminho felizardo do isolamento",
-    "PROVA NO CI NAO E' PROVA NO HOST (E-294): a evidencia de RLS roda no runner Linux com servico Postgres real; no host de desenvolvimento nao roda. Declarar onde a prova vale evita prometer o que nao foi medido localmente"
+    "PROVA NO CI NAO E' PROVA NO HOST (E-294): a evidencia de RLS roda no runner Linux com servico Postgres real; no host de desenvolvimento nao roda. Declarar onde a prova vale evita prometer o que nao foi medido localmente",
+    "ARTEFATO PUBLICADO NAO E' ARTEFATO COMPROVADO (E-295): existe release com HadesSetup.exe e SHA-256, mas sem assinatura e so Windows. BLOCKED_BY_EXTERNAL_DEPENDENCY diz exatamente isso; NAO_COMPROVADO esconderia o que ja existe",
+    "BLOQUEIO TAMBEM ENVELHECE (E-295): a entrada B-01 afirmava que os PRs #56-#71 estavam abertos; a checagem ONLINE devolve zero PRs abertos. Bloqueio declarado e' afirmacao e precisa ser remedido - quarta ocorrencia da classe (E-292, E-293, E-294, E-295)",
+    "GATE SEM LINHA INDEFINIDA (E-295): depois desta rodada nao ha NAO_COMPROVADO nem IN_PROGRESS; so DONE e BLOCKED_BY_EXTERNAL_DEPENDENCY. Isso nao e' release: e' matriz sem ambiguidade, que e' o que o gate exige"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",

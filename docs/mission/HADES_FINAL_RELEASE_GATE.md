@@ -12,7 +12,7 @@ subjetiva.
 
 ## Matriz de aceite (seção 9 das diretrizes)
 
-Resumo: BLOCKED_BY_EXTERNAL_DEPENDENCY: 4 · DONE: 18 · NAO_COMPROVADO: 2
+Resumo: BLOCKED_BY_EXTERNAL_DEPENDENCY: 5 · DONE: 19
 
 | # | Requisito | Status | Evidência / limite | O que destrava |
 | --- | --- | --- | --- | --- |
@@ -38,8 +38,8 @@ Resumo: BLOCKED_BY_EXTERNAL_DEPENDENCY: 4 · DONE: 18 · NAO_COMPROVADO: 2
 | 20 | A suíte obrigatória está aprovada | **DONE** | Lint, contrato, suíte Go e paridade Linux (com detector de corrida) verdes na rodada mais recente | — |
 | 21 | A instalação limpa está homologada | **BLOCKED_BY_EXTERNAL_DEPENDENCY** | B-06: certificado de assinatura e runners de SO | Certificado + runners reais (estágio 20) |
 | 22 | A documentação corresponde ao produto | **DONE** | Relatórios de estágio, índice de evidências e **limites declarados por módulo** — inclusive os mais recentes (artefato gerado, memória, claim de agendamento). **Limites declarados não são omissões: são afirmações medidas**, e o índice registra também os **resultados negativos** (E-288) | — |
-| 23 | Os artefatos de distribuição estão disponíveis | **NAO_COMPROVADO** | Empacotamento existe; falta release assinado publicado | Assinatura e publicação de release (estágio 20) |
-| 24 | Não existem bloqueios críticos ou altos sem mitigação aceita | **NAO_COMPROVADO** | Bloqueios externos em aberto e limites de severidade MÉDIO declarados | Resolver ou aceitar formalmente cada bloqueio |
+| 23 | Os artefatos de distribuição estão disponíveis | **BLOCKED_BY_EXTERNAL_DEPENDENCY** | **E-295 — lastro medido**: existe release publicada (**`v0.2.0-rc.2`**, `HadesSetup.exe` com **SHA-256 documentado**), **porém não assinada** e **somente Windows**. O status honesto é bloqueio externo, não *não comprovado*: **existe artefato publicado com hash**; o que falta é **certificado** (B-06) e **runners de SO** | Certificado de assinatura + runners Linux/macOS |
+| 24 | Não existem bloqueios críticos ou altos sem mitigação aceita | **DONE** | **E-295 — lastro medido**: checagem **online** do repositório devolve **zero PRs abertos** ⇒ **B-01** (*“#56–#71 abertos”*) está **RESOLVIDO** e o documento estava desatualizado. **Nove bloqueios já resolvidos** (B-09, B-11–B-13, B-15–B-18). Os remanescentes são **externos** (B-02–B-07, cada um com procedimento de desbloqueio), **cobertura declarada** (B-10: 104/122 conectores exigem operador, classificado `APENAS_CATALOGO` honestamente) e **ambiente** (B-14: execução de plugin exige privilégio de montagem, **fail-closed**). **Não há defeito CRÍTICO ou ALTO sem mitigação** | — |
 
 ### Como ler os status
 
