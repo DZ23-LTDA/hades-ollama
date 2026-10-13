@@ -2,7 +2,7 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-19T19:00:00-03:00",
+  "updated_at": "2026-10-19T20:30:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
@@ -762,7 +762,8 @@
         "E-292",
         "E-295",
         "E-301",
-        "E-306"
+        "E-306",
+        "E-309"
       ],
       "blocker": null,
       "next": "Pendencia remanescente do gate: ExternalComparison NAO_EXECUTADA (exige comparacao com concorrentes) e os estagios 23-38 em IN_PROGRESS. O vinculo das 13 linhas legadas foi FECHADO (E-251): 13 -> 0 sem vinculo. Proximo: estagio 18 (governanca dos 16 escopos divergentes) e retomada dos estagios de negocio",
@@ -2082,7 +2083,10 @@
     "SUPOR SILENCIO NO REPLAY IDEMPOTENTE (E-307): minha primeira assercao esperava que repetir a mesma chave devolvesse o mesmo valor; medido, o store RECUSA explicitamente (ErrCompanyIdempotentReplay). A medicao corrigiu a assercao",
     "CAMADAS ISOLADAS NAO PROVAM INTEGRACAO (E-308): nenhum teste usava Ingest() e RunTurn() juntos. Cada camada passava e a fronteira nao tinha prova - e' na fronteira que a integracao quebra",
     "INBOX COMPARTILHADO E' O QUE CRUZA AS CAMADAS (E-308): o teste so cruza algo porque o runtime omnichannel e o de agentes usam o MESMO store de caixa de entrada. Dois stores isolados dariam um teste que nao prova nada",
-    "MEDIR A API EM VEZ DE SUPOR (E-308): tres suposicoes minhas de assinatura (Conversations/ListConversations, aridade de Conversation, onde vive o historico) cairam na primeira compilacao. Ler a API custou um passo; adivinhar custou tres"
+    "MEDIR A API EM VEZ DE SUPOR (E-308): tres suposicoes minhas de assinatura (Conversations/ListConversations, aridade de Conversation, onde vive o historico) cairam na primeira compilacao. Ler a API custou um passo; adivinhar custou tres",
+    "A LICAO SO VALE QUANDO IMPEDE A REINCIDENCIA (E-309): o version: latest que reprovou um main verde estava a um commit de voltar. Agora um checker reprova gate flutuante, com teste negativo e execucao no CI",
+    "TAG MOVEL E' A MESMA CLASSE DO latest (E-309): @v4 pode ser movida pelo mantenedor sem aviso. Como 143 de 144 actions do repositorio ja usam SHA, exigir SHA descreve a convencao existente - nao inventa uma nova",
+    "EXCECAO DECLARADA, NAO SILENCIOSA (E-309): a unica action fora de SHA fica numa lista com motivo escrito. Silenciar uma excecao e' o mesmo defeito que declarar status que envelhece sem remedir"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
