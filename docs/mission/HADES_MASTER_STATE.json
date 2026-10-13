@@ -2174,7 +2174,11 @@
     "AUSENCIA DE BINARIO NAO VIRA PIPELINE FALSO (E-334): sem FFmpeg, o resultado e' ErrMediaTranscoderUnavailable e NENHUM arquivo de saida e' criado. O que nao depende do binario foi entregue e testado",
     "A SAIDA TAMBEM PRECISA SER CONFERIDA (E-334): transcodificador que 'termina bem' e escreve lixo e' recusado e a saida e' removida - a versao de producao do 'MP4 simulado' que o complemento proibe",
     "ARGV, NAO LINHA DE COMANDO (E-334): um vetor de argumentos nao tem shell para injetar; o teste prova que um nome hostil viaja intacto como UM argumento",
-    "WINDOWS ESCONDE DEFEITO DE NOVO (E-334): os.Remove com arquivo aberto falha no Windows e a saida invalida ficava no disco, com o erro descartado. Mesma classe de E-317 - corrigido fechando antes de remover"
+    "WINDOWS ESCONDE DEFEITO DE NOVO (E-334): os.Remove com arquivo aberto falha no Windows e a saida invalida ficava no disco, com o erro descartado. Mesma classe de E-317 - corrigido fechando antes de remover",
+    "A FILA PROMETIA HORARIO INEXISTENTE (E-335): a oferta ignorava sobreposicao, expediente e fechamento. Corrigido na causa-raiz - a oferta passa pelo MESMO portao do Book antes de existir",
+    "OFERTA QUE FALHA NAO PODE PRENDER O CLIENTE (E-335): a entrada volta para WAITING em vez de virar estado terminal silencioso",
+    "CORRIGIR TORNA A EXPECTATIVA ANTIGA OBSOLETA - E O REGISTRO DIZ POR QUE (E-335): a assertiva da 1a onda permitia oferta ruim com recusa na confirmacao; agora exige que a oferta nem aconteca",
+    "CONCORRENCIA REAL: UM GANHADOR (E-335): fila x canal direto no mesmo horario terminou com um agendamento ativo. Registrar ausencia de defeito evita reauditar o mesmo ponto"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -2446,13 +2450,47 @@
           "estado": "CORRIGIDO E DEMONSTRADO",
           "evidencia": "E-333",
           "correcao": "mascarar identificadores gerados antes da busca por fragmento em texto livre, sem enfraquecer a invariante"
+        },
+        {
+          "id": "ADV-04",
+          "severidade": "ALTA",
+          "descricao": "fila oferecia horario JA OCUPADO",
+          "estado": "CORRIGIDO",
+          "evidencia": "E-335"
+        },
+        {
+          "id": "ADV-05",
+          "severidade": "ALTA",
+          "descricao": "fila oferecia horario em DIA FECHADO",
+          "estado": "CORRIGIDO",
+          "evidencia": "E-335"
+        },
+        {
+          "id": "ADV-06",
+          "severidade": "MEDIA",
+          "descricao": "entrada presa em offered de horario inexistente",
+          "estado": "CORRIGIDO",
+          "evidencia": "E-335"
+        },
+        {
+          "id": "ADV-07",
+          "severidade": "MEDIA",
+          "descricao": "oferta presa para sempre apos Reschedule tomar o horario",
+          "estado": "CORRIGIDO",
+          "evidencia": "E-335"
+        },
+        {
+          "id": "ADV-08",
+          "severidade": "INVESTIGADO",
+          "descricao": "fila x canal direto no mesmo horario",
+          "estado": "SEM DEFEITO (um ganhador)",
+          "evidencia": "E-335"
         }
       ],
       "proximos_ataques": [
-        "fila e cancelamento simultaneos (concorrencia entre os dois caminhos)",
-        "reschedule durante oferta de fila",
+        "reserva temporaria de horario oferecido (hoje a oferta nao reserva)",
         "onboarding com volume grande (limites de recurso)",
-        "revisao cruzada de permissao e isolamento nos modulos novos"
+        "revisao cruzada de permissao e isolamento nos modulos novos (estagio 42)"
       ]
     },
     "estagio_42": {
@@ -2522,6 +2560,7 @@
     "E-331": "registro do COMPLEMENTO ESTAGIO 42 (live commerce) anexado ao V2.2; vinculo declarado",
     "E-332": "estagio 42: contratos canonicos e nucleo de seguranca; vinculo declarado",
     "E-333": "causa-raiz do falso positivo de DLP (identificador gerado dentro de texto livre); vinculo declarado",
-    "E-334": "estagio 42.1: validacao real e worker isolado; vinculo declarado"
+    "E-334": "estagio 42.1: validacao real e worker isolado; vinculo declarado",
+    "E-335": "auditoria adversarial 2a onda: fila oferecia horario inexistente; vinculo declarado"
   }
 }
