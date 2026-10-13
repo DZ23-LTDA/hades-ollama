@@ -58,6 +58,24 @@ def arquivos_de_armazenamento(diretorio: Path = DIRETORIO) -> dict[str, list[str
     return encontrados
 
 
+# Checagem CRUA de organizacao vazia (segundo caminho reconhecido como guarda correta).
+CHECAGEM_CRUA = re.compile(
+    r'(organizationID|companyID|org|organizacao)\s*==\s*""',
+)
+
+
+def tem_guarda_reconhecida(texto: str) -> bool:
+    """Reconhece o helper OU a checagem crua de vazio (antes de sanitizar).
+
+    POR QUE DOIS CAMINHOS (E-342): `marketplace_sync.Sync` e `company.Create` validam `organizationID == ""` no valor
+    cru — correto — e a catraca os acusava porque so' conhecia `requireOrganization(`. ***Instrumento que reconhece um
+    unico padrao transforma codigo certo em divida.***
+    """
+    if "requireOrganization(" in texto:
+        return True
+    return bool(CHECAGEM_CRUA.search(texto))
+
+
 def auditar(diretorio: Path = DIRETORIO) -> tuple[list[str], list[str]]:
     """Devolve (violações, pendências não medidas)."""
     violacoes: list[str] = []
@@ -65,7 +83,7 @@ def auditar(diretorio: Path = DIRETORIO) -> tuple[list[str], list[str]]:
     for nome, locais in arquivos_de_armazenamento(diretorio).items():
         caminho = diretorio / nome
         texto = caminho.read_text(encoding="utf-8", errors="replace")
-        tem_guarda = "requireOrganization(" in texto
+        tem_guarda = tem_guarda_reconhecida(texto)
         dispensa = DISPENSAS.get(nome)
         if dispensa is not None and not dispensa.strip():
             violacoes.append(f"{nome}: dispensa SEM MOTIVO (dispensa sem justificativa é aceitação silenciosa)")

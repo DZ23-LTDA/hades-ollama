@@ -2207,7 +2207,11 @@
     "REGISTRAR A EVOLUCAO NAO E' AFROUXAR A EXIGENCIA (E-341): o contrato de sales_workforce ja exigia falha para escopo ausente; a guarda falha antes e com erro mais especifico, entao a assercao aceita as duas formas",
     "MEDIR A ASSINATURA CUSTA DUAS MENSAGENS DE COMPILADOR; SUPOR CUSTOU TRES RODADAS (E-341): ListLedgerEntries vive no CompanyStore com (companyID, from, to); Proposals tem (org, status); NewCompanyLedgerStore nao existe",
     "A REGRA v3 GENERALIZOU (E-341): 18 guardas em 5 arquivos com build 0 e vet 0 na PRIMEIRA tentativa, porque a regra de zero-por-tipo ja havia sido provada em E-340",
-    "QUATRO PENDENCIAS RESTAM, TODAS COM MOTIVO CATEGORICO (E-341): marketplace_sync (sem metodo org-first), scheduling_crossprocess (delegacao), benchmark_suite (nao-organizacao), consent_registry (contrato testado). Declarado nao e' auditado"
+    "QUATRO PENDENCIAS RESTAM, TODAS COM MOTIVO CATEGORICO (E-341): marketplace_sync (sem metodo org-first), scheduling_crossprocess (delegacao), benchmark_suite (nao-organizacao), consent_registry (contrato testado). Declarado nao e' auditado",
+    "INSTRUMENTO QUE RECONHECE UM UNICO PADRAO TRANSFORMA CODIGO CERTO EM DIVIDA (E-342): marketplace_sync e company.Create ja recusavam organizacao vazia; a catraca os acusava porque so procurava requireOrganization(",
+    "DIVIDA INVENTADA E' PIOR QUE DIVIDA DECLARADA (E-342): relatorio que acusa o que esta certo ensina a ignorar o relatorio. Corrigido com teste nas duas direcoes",
+    "RECONHECER NAO E' PROVAR (E-342): o segundo padrao e' aproximacao por regex; a prova forte continua sendo o teste de comportamento que ataca a API com organizacao vazia",
+    "SO' RESTAM CATEGORIAS, NAO DIVIDAS (E-342): scheduling_crossprocess (delegacao) e benchmark_suite (nao-organizacao), ambas declaradas com motivo categorico"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -2598,10 +2602,17 @@
           "descricao": "voice_active_call, company_factory, sales_workforce, company_ledger e business_snapshots aceitavam organizacao vazia",
           "estado": "CORRIGIDO E MEDIDO (pendências 9 -> 4)",
           "evidencia": "E-341"
+        },
+        {
+          "id": "ADV-21",
+          "severidade": "MEDIA (instrumento)",
+          "descricao": "a catraca acusava como pendencia arquivos CORRETOS, porque so reconhecia requireOrganization(",
+          "estado": "CORRIGIDO: reconhece helper OU checagem crua, com teste nas duas direcoes; pendencias 4 -> 2",
+          "evidencia": "E-342"
         }
       ],
       "proximos_ataques": [
-        "medir marketplace_sync (nao expoe metodo com organizacao como primeiro parametro)",
+        "medir por comportamento as 2 categorias restantes (scheduling_crossprocess e benchmark_suite) para confirmar as categorias",
         "exercitar metodos COM MAIS PARAMETROS nos arquivos ja guardados",
         "onboarding com volume grande (limites de recurso)"
       ]
@@ -2680,6 +2691,7 @@
     "E-338": "catraca de escopo de tenant (instrumento de auditoria continua); vinculo declarado",
     "E-339": "medicao por comportamento de 7 pendencias da catraca; vinculo declarado",
     "E-340": "segundo lote medido (crm, inbox); consent por contrato testado; vinculo declarado",
-    "E-341": "terceiro lote medido (voice, factory, sales, ledger, snapshots); vinculo declarado"
+    "E-341": "terceiro lote medido (voice, factory, sales, ledger, snapshots); vinculo declarado",
+    "E-342": "correcao do instrumento: duas pendencias eram falsas; vinculo declarado"
   }
 }
