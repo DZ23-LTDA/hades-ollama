@@ -32,24 +32,25 @@ const (
 )
 
 type BuilderProject struct {
-	ID             string              `json:"id"`
-	OrganizationID string              `json:"organization_id"`
-	Name           string              `json:"name"`
-	Kind           BuilderKind         `json:"kind"`
-	Entry          string              `json:"entry"`
-	Version        int                 `json:"version"`
-	Status         string              `json:"status"`
-	Root           string              `json:"root"`
-	PreviewPath    string              `json:"preview_path,omitempty"`
-	PublishedPath  string              `json:"published_path,omitempty"`
-	ExportChecksum string              `json:"export_checksum,omitempty"`
-	ExportPath     string              `json:"export_path,omitempty"`
-	ExportVersion  int                 `json:"export_version,omitempty"`
-	CreatedAt      time.Time           `json:"created_at"`
-	UpdatedAt      time.Time           `json:"updated_at"`
-	Components     []VisualComponent   `json:"components,omitempty"`
-	UndoStack      [][]VisualComponent `json:"undo_stack,omitempty"`
-	RedoStack      [][]VisualComponent `json:"redo_stack,omitempty"`
+	ID             string               `json:"id"`
+	OrganizationID string               `json:"organization_id"`
+	Name           string               `json:"name"`
+	Kind           BuilderKind          `json:"kind"`
+	Entry          string               `json:"entry"`
+	Version        int                  `json:"version"`
+	Status         string               `json:"status"`
+	Root           string               `json:"root"`
+	PreviewPath    string               `json:"preview_path,omitempty"`
+	PublishedPath  string               `json:"published_path,omitempty"`
+	PublishReport  BuilderPublishReport `json:"publish_report,omitempty"`
+	ExportChecksum string               `json:"export_checksum,omitempty"`
+	ExportPath     string               `json:"export_path,omitempty"`
+	ExportVersion  int                  `json:"export_version,omitempty"`
+	CreatedAt      time.Time            `json:"created_at"`
+	UpdatedAt      time.Time            `json:"updated_at"`
+	Components     []VisualComponent    `json:"components,omitempty"`
+	UndoStack      [][]VisualComponent  `json:"undo_stack,omitempty"`
+	RedoStack      [][]VisualComponent  `json:"redo_stack,omitempty"`
 }
 
 var (
@@ -488,6 +489,9 @@ func (b *BuilderService) PublishLocal(ctx context.Context, id string) (BuilderPr
 		return BuilderProject{}, "", err
 	}
 	project.PublishedPath = published
+	// O STATUS continua "published" (contrato existente), mas o RELATÓRIO diz o que foi entregue de fato: copiar
+	// arquivos não é publicar aplicação. Sem isto, o operador lê "published" e acredita em app rodando.
+	project.PublishReport = InspectBuilderPublish(published)
 	project.Status = "published"
 	project.UpdatedAt = time.Now().UTC()
 	b.mu.Lock()
