@@ -85,33 +85,63 @@ func TestReinicioNaoTocaOArquivoDePassoInterrompido(t *testing.T) {
 	depois.tools.Register(&arquivoDeEscritaTool{caminho: caminhoDoEfeito})
 
 	err = depois.Run(context.Background(), missao.ID)
+
+	// 🎯 A PROVA NO MUNDO **ANTES** DA ASSERÇÃO DE ERRO (ADV-53): se a asserção de erro abortar primeiro, o
+	// `os.Stat` nunca é avaliado e **ninguém** fica sabendo se o arquivo apareceu. *Ordem de asserção é parte do
+	// teste: a que importa não pode ficar atrás da que é só sintoma.*
+	if _, erro := os.Stat(caminhoDoEfeito); erro == nil {
+		t.Fatalf("ARMADILHA: o arquivo %s EXISTE — o efeito em disco foi produzido após o reinício", caminhoDoEfeito)
+	} else if !os.IsNotExist(erro) {
+		t.Fatalf("erro inesperado ao verificar o efeito: %v", erro)
+	}
 	if err == nil {
 		t.Fatal("ARMADILHA: o motor aceitou continuar um passo de ESCRITA interrompido")
 	}
 	if !strings.Contains(err.Error(), "passo-com-arquivo") && !strings.Contains(strings.ToLower(err.Error()), "interromp") {
 		t.Fatalf("ARMADILHA: a recusa precisa nomear o passo interrompido: %v", err)
 	}
-	// A PROVA NO MUNDO: o arquivo NÃO pode existir.
-	if _, erro := os.Stat(caminhoDoEfeito); erro == nil {
-		t.Fatalf("ARMADILHA: o arquivo %s EXISTE — o efeito em disco foi produzido após o reinício", caminhoDoEfeito)
-	} else if !os.IsNotExist(erro) {
-		t.Fatalf("erro inesperado ao verificar o efeito: %v", erro)
-	}
 }
 
-// A METADE QUE PROVA QUE O EFEITO **SABE** ACONTECER: sem ela, o teste acima poderia passar porque a ferramenta
-// nunca grava nada.
-func TestFerramentaDeArquivoGravaQuandoExecutada(t *testing.T) {
-	caminho := filepath.Join(t.TempDir(), "controle.txt")
-	ferramenta := &arquivoDeEscritaTool{caminho: caminho}
-	if _, err := ferramenta.Execute(context.Background(), ToolContext{}, map[string]any{}); err != nil {
+// A METADE QUE PROVA QUE O MOTOR **CHEGA ATÉ A FERRAMENTA** — e ela passa pelo `Runtime.Run` (ADV-53, correção do
+// revisor). A versão anterior chamava `ferramenta.Execute` **direto**, o que NÃO fecha o buraco real: *o risco nunca
+// foi "a ferramenta não sabe gravar", foi "o motor nunca chega até ela"* ✗. Aqui a missão tem o passo **PENDENTE**
+// (não interrompido), com hash e capacidade, e o motor **executa** ⇒ o arquivo **existe**.
+//
+// *Um controle que não atravessa o caminho de produção não controla nada — ele apenas confirma que a ferramenta
+// funciona isolada, que é a hipótese que nunca esteve em dúvida.*
+func TestMotorExecutaPassoPendenteEProduzOArquivo(t *testing.T) {
+	raiz := t.TempDir()
+	caminhoDoEfeito := filepath.Join(raiz, "controle.txt")
+
+	runtime, contexto := runtimeSobre(t, raiz)
+	projeto, err := contexto.CreateProject("projeto de controle", filepath.Join(raiz, "workspace"), "org-a")
+	if err != nil {
 		t.Fatal(err)
 	}
-	dados, err := os.ReadFile(caminho)
+	ferramenta := &arquivoDeEscritaTool{caminho: caminhoDoEfeito}
+	runtime.tools.Register(ferramenta)
+	missao, err := runtime.CreateMission(context.Background(), CreateMissionRequest{
+		Objective: "passo PENDENTE que o motor deve executar", ProjectID: projeto.ID, OrganizationID: "org-a",
+		Capabilities: []string{"workspace:write"},
+	})
 	if err != nil {
-		t.Fatalf("o efeito em disco precisa acontecer quando a ferramenta executa: %v", err)
+		t.Fatal(err)
 	}
-	if !strings.Contains(string(dados), "NÃO pode ser duplicado") {
-		t.Fatalf("conteúdo inesperado no arquivo de controle: %q", string(dados))
+	missao.Plan = []Step{{
+		ID: "passo-pendente", Kind: "arquivo.escrita", Title: "passo que o motor deve executar",
+		State: StepPending, Risk: RiskDestructive, Input: map[string]any{"path": caminhoDoEfeito},
+		ToolDescriptorSHA256: hashDoDescritor(t, ferramenta.Descriptor()),
+	}}
+	missao.State = MissionReady
+	missao.Version++
+	if err := runtime.store.PutMission(missao); err != nil {
+		t.Fatalf("persistir a missão de controle: %v", err)
+	}
+	if err := runtime.Run(context.Background(), missao.ID); err != nil {
+		t.Fatalf("o motor precisa executar o passo PENDENTE (senão o controle não controla nada): %v", err)
+	}
+	// A PROVA: o arquivo EXISTE — o caminho de produção consegue, sim, produzir o efeito.
+	if _, erro := os.Stat(caminhoDoEfeito); erro != nil {
+		t.Fatalf("o controle FALHOU: o motor não produziu o efeito (o teste principal estaria passando por vácuo): %v", erro)
 	}
 }

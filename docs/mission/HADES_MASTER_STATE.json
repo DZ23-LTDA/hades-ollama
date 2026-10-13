@@ -2340,7 +2340,12 @@
     "PROVA QUE NAO PODE FALHAR NAO E' PROVA (ADV-53): contador e os.Stat eram decorativos. So' a assercao de NOME falhava - e ela e' lexica, nao semantica",
     "EFEITO DUPLICADO DEMONSTRADO (E-373): com a configuracao CORRETA (Capabilities + hash + ordem Run->efeito->erro), desligar a guarda faz a ferramenta executar 1 vez",
     "ORDEM DE ASSERCAO FAZ PARTE DO TESTE (E-373): a 1a tentativa da correcao pos a checagem ANTES do Run - trivialmente zero, pior que decorativa",
-    "MOJIBAKE RESOLVIDO COM A FERRAMENTA ADEQUADA (E-373): ftfy corrigiu 5 de 5 em uma passada, depois de 2 tentativas manuais falharem. Quando a tarefa resiste, a resposta costuma ser uma ferramenta diferente, nao mais esforco"
+    "MOJIBAKE RESOLVIDO COM A FERRAMENTA ADEQUADA (E-373): ftfy corrigiu 5 de 5 em uma passada, depois de 2 tentativas manuais falharem. Quando a tarefa resiste, a resposta costuma ser uma ferramenta diferente, nao mais esforco",
+    "ADV-54 (ALTA): A MESMA CLASSE DO ADV-53 NUMA SEGUNDA LINHA. A 'invalidacao de cache' do E-356 e' codigo MORTO - carregarLocked so' usa cache com root == ''. O git show prova que foi a RELEITURA INCONDICIONAL que fez os testes passarem; 2 dos 3 testes eram verdes ANTES da correcao",
+    "ASSERCAO QUE NAO DISPARA NO MODO DE FALHA PROMETIDO (ADV-54): no teste de corrida do live commerce, aviso PERDIDO da' HumanReview=false => a conjuncao 'HumanReview && LiveLive' fica FALSA => verde com a seguranca desligada",
+    "A EVIDENCIA DOCUMENTADA SUPERESTIMA O MEDIDO (ADV-54): o E-356 registra 'invalidacao de cache + contrapova medida', mas a invalidacao e' enfeite e a contrapova entre processos e' probabilistica",
+    "AUDITORIA INDEPENDENTE NAO E' LUXO (ADV-53/ADV-54): duas linhas auditadas por subagentes de contexto fresco, DUAS vezes a mesma classe de defeito encontrada",
+    "O CONTROLE TEM DE ATRAVESSAR A PRODUCAO (ADV-53): chamar a ferramenta direto nao fecha o buraco real, que e' 'o motor nunca chega ate' ela'. O novo controle passa pelo Runtime.Run e produz o arquivo"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -2965,13 +2970,22 @@
           "estado": "CORRIGIDO: capacidade concedida, hash preenchido, assercoes reordenadas; o efeito duplicado esta DEMONSTRADO (contador 1)",
           "pendente": "ordem de assercao no teste de arquivo; metade de controle passando pelo Runtime.Run; assercao semantica no teste de leitura",
           "evidencia": "E-373"
+        },
+        {
+          "id": "ADV-54",
+          "severidade": "ALTA (mesma classe do ADV-53, noutra linha)",
+          "descricao": "2a auditoria independente: (1) a 'invalidacao de cache' do E-356 e' CODIGO MORTO - carregarLocked so' usa cache com root == '', e o git show prova que foi a RELEITURA INCONDICIONAL que fez os testes passarem; 2 dos 3 testes eram verdes ANTES da correcao. (2) O teste de corrida do live commerce e' no-op e a assercao 'HumanReview && LiveLive' NAO dispara quando o aviso e' PERDIDO (conjuncao falsa => verde). (3) Invariantes condicionais + erros descartados. (4) Contraprova entre processos e' probabilistica (poll 5ms vs janela ~1,7ms)",
+          "descoberto_por": "2a revisao adversarial independente (subagente, contexto fresco)",
+          "estado": "REGISTRADO, NAO CORRIGIDO. A evidencia documentada de E-356 SUPERESTIMA o que foi medido",
+          "corrigido_nesta_rodada": "as duas pendencias de E-373: ordem de assercao no teste de arquivo + controle pelo Runtime.Run",
+          "evidencia": "E-374"
         }
       ],
       "proximos_ataques": [
-        "reordenar as assercoes do teste de ARQUIVO (efeito antes do erro) e refazer a contrapova nele",
-        "reescrever a metade de controle para passar pelo Runtime.Run (o revisor provou que chamar Execute direto nao fecha o buraco)",
-        "teste de leitura: registrar ferramenta RiskRead real e assertar contador, em vez de discriminar pelo ID 'passo-interrompido'",
-        "MOJIBAKE RESOLVIDO com ftfy (5 de 5) na branch wip/adv53-decorative-assertions"
+        "ADV-54: corrigir a assercao do teste de corrida (deve FALHAR quando o aviso e' perdido) e remover/documentar a invalidacao morta",
+        "ADV-54: endurecer a barreira da contraprova entre processos (poll 5ms vs janela ~1,7ms)",
+        "ADV-54: levar a triagem (b)/(c) a experimento - DISPENSAS por nome de arquivo e regex que so' casa literal inline",
+        "rebaixar no registro as conclusoes de E-356/E-357 que os testes nao sustentam"
       ]
     },
     "estagio_42": {
@@ -3350,6 +3364,7 @@
     "E-370": "efeito duplicado real: 0 execucoes com as guardas; contrapova revelou segunda camada; vinculo declarado",
     "E-371": "ADV-44 medido: N chamadas 1,05s/500 gravacoes x lote 0,000s/1 gravacao; vinculo declarado",
     "E-372": "efeito externo real (arquivo) apos reinicio + RecordStock medido; vinculo declarado",
-    "E-373": "efeito duplicado demonstrado + retificacao de E-370/E-372; vinculo declarado"
+    "E-373": "efeito duplicado demonstrado + retificacao de E-370/E-372; vinculo declarado",
+    "E-374": "ADV-54: mesma classe no live commerce; vinculo declarado"
   }
 }
