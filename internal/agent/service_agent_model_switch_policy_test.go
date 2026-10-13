@@ -21,8 +21,8 @@ import (
 //     motivo é o do caminho único de resposta, não o de consentimento — assertar o TEXTO do motivo seria proxy;
 //  2. com OUTRO modelo, continua RECUSADO — a política não é do modelo;
 //  3. leitura funciona nos DOIS modelos (a recusa é do EFEITO, não do modelo);
-//  3b. LIMITE DECLARADO: com o único instrumento de saída (`inbox.reply`) não dá para ISOLAR o portão de
-//      consentimento, porque o caminho único de resposta recusa antes. Não se inventa assert sobre o não isolado;
+//     3b. LIMITE DECLARADO: com o único instrumento de saída (`inbox.reply`) não dá para ISOLAR o portão de
+//     consentimento, porque o caminho único de resposta recusa antes. Não se inventa assert sobre o não isolado;
 //  4. com consentimento concedido, `inbox.reply` EXECUTA nos DOIS modelos (sem bloqueio falso);
 //  5. o turno registra o modelo usado (rastreabilidade da troca). MEDIDO: `ExecutedAt` marca QUANDO A DECISÃO foi
 //     tomada, não quando o efeito rodou — o discriminador é `Status`, e inferir execução de `ExecutedAt` é suposição;
