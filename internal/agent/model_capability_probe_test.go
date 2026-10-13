@@ -144,7 +144,9 @@ func TestSondaSemToolsRebaixaParaModoCompativel(t *testing.T) {
 	if modo != ToolModeCompatibleText {
 		t.Fatalf("sem `tools` o modo precisa ser compatível: %q", modo)
 	}
-	if !strings.Contains(aviso, "não declara `tools`") {
+	// MEDIDO: eu comparei "não declara" e a mensagem é "Não declara" (caixa). O motor está certo; a asserção estava
+	// rígida demais. Assertar por CONTEÚDO, não por caixa, é a lição que já estava nas minhas notas.
+	if !strings.Contains(strings.ToLower(aviso), "não declara `tools`") {
 		t.Fatalf("o aviso precisa explicar a limitação: %q", aviso)
 	}
 	if err := registro.RequireNativeToolCalling("modelo-so-texto"); !errors.Is(err, ErrModelWithoutNativeToolCalling) {

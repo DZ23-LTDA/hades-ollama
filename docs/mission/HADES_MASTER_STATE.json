@@ -2142,7 +2142,9 @@
     "O OLLAMA LOCAL NAO E' MEXIDO (E-325): o registro de capacidades e' somente leitura - nao instala, nao copia e nao altera modelos do usuario para satisfazer teste",
     "SONDA SOMENTE LEITURA, PROVADA (E-326): o teste registra TODAS as rotas que o servidor recebeu. Qualquer rota que nao seja descritiva (pull/create/delete) falha o teste - o Ollama local do usuario nao e' mexido",
     "NAO DECLARADO NAO E' NAO SUPORTA (E-326): sem `capabilities` na resposta, o registro NAO e' alterado e a resposta e' NAO MEDIDO. Armadilha armada confere que nada foi gravado",
-    "LIMITE DECLARADO DE UMA FATIA E' FECHADO NA SEGUINTE (E-326): E-325 disse que nao havia sonda; E-326 entrega a sonda. Registrar o limite e' o que permite fecha-lo depois - limite omitido nao volta"
+    "LIMITE DECLARADO DE UMA FATIA E' FECHADO NA SEGUINTE (E-326): E-325 disse que nao havia sonda; E-326 entrega a sonda. Registrar o limite e' o que permite fecha-lo depois - limite omitido nao volta",
+    "PUBLICAR ANTES DO VERDE FOI ERRO DE PROCESSO (E-326b): commitei e empurrei com um teste vermelho porque nao condicionei o commit ao resultado. A assercao comparava caixa ('nao declara' vs 'Nao declara') - o motor estava certo. Corrigido em commit seguinte, com o registro dizendo o que aconteceu",
+    "ASSERTAR POR CONTEUDO, NAO POR CAIXA (E-326b): comparar texto literal sensivel a caixa e' fragil e mede a mensagem, nao a propriedade"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
