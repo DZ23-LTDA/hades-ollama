@@ -2,7 +2,6 @@ package agent
 
 import (
 	"context"
-	"errors"
 	"testing"
 	"time"
 )
@@ -87,16 +86,22 @@ func TestAuditoriaFilaNaoOfereceHorarioQueNaoCabeNoServicoPedido(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !achou {
-		t.Fatal("a fila deveria oferecer (deixando a confirmação recusar) ou NÃO oferecer por incompatibilidade — mas não pode ficar em silêncio")
+	// ASSERTIVA ATUALIZADA PELA SEGUNDA ONDA (E-335): na primeira onda a fila OFERECIA e a confirmação recusava — a
+	// defesa existia, mas o cliente recebia oferta de horário que não caberia. Depois da correção, a propriedade é mais
+	// FORTE: **a oferta nem acontece**. *Corrigir a causa-raiz torna obsoleta a expectativa antiga — e o registro diz
+	// por quê.*
+	if achou {
+		t.Fatalf("a fila NÃO pode oferecer horário que não cabe no serviço pedido (oferta %+v)", oferta)
 	}
-	// O que NÃO pode acontecer: confirmar e criar um agendamento de 2h que invade o compromisso seguinte.
-	agendamento, err := store.ConfirmWaitlistOffer(org, oferta.ID, time.Now().UTC())
-	if err == nil {
-		t.Fatalf("ACHADO CONFIRMADO: a fila ofereceu+confirmou um serviço de 2h num espaço de 30min — agendamento %+v", agendamento)
+	// E a entrada continua aguardando, em vez de virar estado terminal.
+	fila, err := store.Waitlist(org)
+	if err != nil {
+		t.Fatal(err)
 	}
-	if !errors.Is(err, ErrSchedulingSlotTaken) {
-		t.Fatalf("a recusa precisa ser por sobreposição: %v", err)
+	for _, item := range fila {
+		if item.ID == entrada.ID && item.Status != WaitlistWaiting {
+			t.Fatalf("a entrada precisa continuar aguardando: %+v", item)
+		}
 	}
 	_ = entrada
 }

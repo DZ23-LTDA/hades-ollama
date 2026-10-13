@@ -153,6 +153,30 @@ func (s *SchedulingStore) OfferNextFromWaitlist(organizationID, resourceID strin
 			expirou = true
 		}
 	}
+	// E-335 (AUDITORIA): o horário precisa estar REALMENTE livre antes de ser oferecido — caso contrário a fila faz uma
+	// promessa que o motor não pode cumprir. ANTES desta correção a oferta ignorava expediente, intervalo, fechamento e
+	// SOBREPOSIÇÃO: oferecia horário já ocupado e horário em dia fechado ao cliente.
+	horarioAproveitavel := func(entrada SchedulingWaitlistEntry) bool {
+		servico, achou := schedulingService(org, entrada.ServiceID)
+		if !achou {
+			return false
+		}
+		if err := s.appointmentAllowedLocked(organizationID, entrada.ResourceID, slot, servico.DurationMinutes); err != nil {
+			return false // fora do expediente, em intervalo, ou em dia fechado
+		}
+		fim := slot.UTC().Add(time.Duration(servico.DurationMinutes) * time.Minute)
+		ocupadoAte := fim.Add(time.Duration(servico.BufferMinutes) * time.Minute)
+		for _, agendamento := range org.Appointments {
+			if agendamento.Status != SchedulingAppointmentBooked || agendamento.ResourceID != entrada.ResourceID {
+				continue
+			}
+			if slot.UTC().Before(agendamento.BusyUntil) && agendamento.StartsAt.Before(ocupadoAte) {
+				return false // já ocupado
+			}
+		}
+		return true
+	}
+
 	indice := -1
 	for i := range org.Waitlist {
 		entrada := org.Waitlist[i]
@@ -161,6 +185,10 @@ func (s *SchedulingStore) OfferNextFromWaitlist(organizationID, resourceID strin
 		}
 		// A janela desejada precisa CONTER o horário oferecido, em instante absoluto.
 		if slot.Before(entrada.From) || !slot.Before(entrada.To) {
+			continue
+		}
+		// E o horário precisa estar livre DE VERDADE.
+		if !horarioAproveitavel(entrada) {
 			continue
 		}
 		if indice < 0 || entrada.CreatedAt.Before(org.Waitlist[indice].CreatedAt) {
@@ -262,6 +290,26 @@ func (s *SchedulingStore) ConfirmWaitlistOffer(organizationID, entryID string, n
 		IdempotencyKey: "waitlist:" + entryID,
 	})
 	if err != nil {
+		// E-335 (AUDITORIA): o horário pode ter sido tomado entre a oferta e a confirmação (a oferta NÃO reserva). Devolver
+		// a entrada para WAITING é o que impede o cliente de ficar PRESO numa oferta que já não existe — ela pode
+		// receber a próxima oferta em vez de virar estado terminal silencioso.
+		if errors.Is(err, ErrSchedulingSlotTaken) || errors.Is(err, ErrSchedulingOutsideHours) ||
+			errors.Is(err, ErrSchedulingClosed) || errors.Is(err, ErrSchedulingOnBreak) {
+			s.mu.Lock()
+			if carregarErr := s.loadLocked(organizationID); carregarErr == nil {
+				for i := range s.byOrg[organizationID].Waitlist {
+					entradaAtual := &s.byOrg[organizationID].Waitlist[i]
+					if entradaAtual.ID == entryID && entradaAtual.Status == WaitlistOffered {
+						entradaAtual.Status = WaitlistWaiting
+						entradaAtual.OfferedSlot = nil
+						entradaAtual.OfferExpiresAt = nil
+						_ = s.saveLocked(organizationID)
+						break
+					}
+				}
+			}
+			s.mu.Unlock()
+		}
 		return SchedulingAppointment{}, err
 	}
 
