@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -122,18 +121,23 @@ func TestOnboardingComVolumeDentroDoLimiteAplica(t *testing.T) {
 	}
 	// E-364: PROVA EM DISCO. Medir 0,01s para 2000 linhas é bom demais para aceitar sem verificar — e o teste antigo
 	// só olhava o estado em MEMÓRIA. *Resultado excelente sem verificação é o lugar onde o defeito se esconde.*
-	arquivos, err := filepath.Glob(filepath.Join(raiz, "*.json"))
-	if err != nil || len(arquivos) == 0 {
-		t.Fatalf("a gravação precisa existir em disco: %v %v", arquivos, err)
-	}
-	conteudo, err := os.ReadFile(arquivos[0])
+	//
+	// 🚨 ADV-57/6 (4ª auditoria independente): antes isto era um `glob("*.json")` + `arquivos[0]`, **sem conferir que o
+	// arquivo lido era o da organização** — *prova de disco que lê "algum" arquivo não é prova de disco do estado.*
+	caminho := comercio.commercePath("org-a")
+	conteudo, err := os.ReadFile(caminho)
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("a gravação da organização precisa existir em disco (%s): %v", caminho, err)
 	}
 	var gravado struct {
 		Products []struct {
 			SKU string `json:"sku"`
 		} `json:"products"`
+		// MEDIDO DUAS VEZES: primeiro como `map[string]int` deu `cannot unmarshal array`, depois como `[]map[string]any`
+		// deu `cannot unmarshal object` ⇒ *a forma do estoque não é nenhuma das duas que eu supus.* Em vez de adivinhar
+		// uma terceira, decodifico **agnóstico** (`json.RawMessage`) e afirmo o que importa: **o estoque chegou ao
+		// arquivo, não-vazio**. *Prova que só vale para a forma que o autor supôs não é prova do conteúdo.*
+		Stock json.RawMessage `json:"stock"`
 	}
 	if err := json.Unmarshal(conteudo, &gravado); err != nil {
 		t.Fatalf("arquivo do comércio ilegível: %v", err)
@@ -142,12 +146,26 @@ func TestOnboardingComVolumeDentroDoLimiteAplica(t *testing.T) {
 		t.Fatalf("ARMADILHA: %d produtos em memória mas %d no DISCO — o lote não foi gravado",
 			quantidade, len(gravado.Products))
 	}
+	// 🚨 ADV-57/1 (4ª auditoria independente, MEDIDO): a asserção era `Gravacoes() <= 10` e **passava com UMA
+	// gravação** — desligando o lote de ESTOQUE a contagem caía para 1 e `1 > 10` é falso ⇒ *a alegação publicada
+	// ("2000 linhas com 2 gravações") NÃO era verificada por asserção nenhuma*, e a prova em disco só contava
+	// `products`, **nunca** `stock`. ***A parte da alegação que ninguém mede é a parte que envelhece sem avisar.***
+	// E o ESTOQUE também passa a ser conferido NO DISCO:
+	if len(gravado.Stock) == 0 || string(gravado.Stock) == "null" || string(gravado.Stock) == "{}" {
+		t.Fatalf("ARMADILHA: o ESTOQUE inicial não chegou ao DISCO (%s) — a alegação de '2 gravações' incluía o lote de "+
+			"estoque, e ele não está no arquivo", string(gravado.Stock))
+	}
 	// E-365: MEDIDA ESTRUTURAL, imune ao ruído da máquina: quantas vezes o arquivo foi GRAVADO para aplicar o lote.
 	// *Contar é medir o custo do caminho; o cronômetro mede a máquina.*
-	if gravacoes := comercio.Gravacoes(); gravacoes > 10 {
-		t.Fatalf("ARMADILHA: %d linhas causaram %d gravações — o lote não está sendo usado", quantidade, gravacoes)
+	// 🚨 ADV-57/2: o limiar `> 10` também não distinguia **1 lote de N lotes** (fatias de 250 sobre 1000 davam 4
+	// gravações e passavam). O número EXATO é o que prova o lote: **2** — um lote de produtos e um de estoque.
+	if gravacoes := comercio.Gravacoes(); gravacoes != 2 {
+		t.Fatalf("ARMADILHA: %d linhas causaram %d gravações — o esperado é EXATAMENTE 2 (um lote de produtos e um de "+
+			"estoque). Mais que isso: o lote foi fragmentado; menos: uma das gravações não aconteceu, e a alegação "+
+			"publicada não vale.", quantidade, gravacoes)
 	} else {
-		t.Logf("MEDIDA ESTRUTURAL: %d linhas aplicadas com %d gravação(ões) de arquivo", quantidade, gravacoes)
+		t.Logf("MEDIDA ESTRUTURAL: %d linhas aplicadas com %d gravação(ões) de arquivo (1 produtos + 1 estoque)",
+			quantidade, gravacoes)
 	}
 	t.Logf("onboarding com volume medido: %d linhas aplicadas em %.2fs e CONFIRMADAS em disco (%d produtos no arquivo); limite %d linhas, %d bytes",
 		quantidade, decorrido.Seconds(), len(gravado.Products), limites.MaxRows, limites.MaxTotalBytes)
