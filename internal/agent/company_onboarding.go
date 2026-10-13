@@ -29,6 +29,8 @@ import (
 //  5. **REAPLICAÇÃO É IDEMPOTENTE.** A mesma carga duas vezes não duplica produto nem estoque inicial.
 
 var (
+	// ErrOnboardingTooLarge recusa plano acima dos limites DECLARADOS de volume.
+	ErrOnboardingTooLarge = errors.New("onboarding plan exceeds declared limits")
 	// ErrOnboardingInvalid recusa plano malformado.
 	ErrOnboardingInvalid = errors.New("company onboarding plan is invalid")
 	// ErrOnboardingConflict recusa aplicar conflito sem Overwrite explícito.
@@ -90,6 +92,10 @@ func PlanCompanyOnboarding(commerce *CommerceStore, plan CompanyOnboardingPlan) 
 	plan.OrganizationID = consentScope(plan.OrganizationID)
 	if plan.OrganizationID == "" || len(plan.Rows) == 0 {
 		return CompanyOnboardingPreview{}, fmt.Errorf("%w: organização e linhas são obrigatórias", ErrOnboardingInvalid)
+	}
+	// E-353: LIMITE DE VOLUME conferido ANTES de qualquer trabalho (este e' o ponto de entrada comum a plan e apply).
+	if err := ValidarVolumeDoPlano(plan, DefaultOnboardingLimits()); err != nil {
+		return CompanyOnboardingPreview{}, err
 	}
 	existentes := map[string]CommerceProduct{}
 	for _, produto := range commerce.Products(plan.OrganizationID) {
@@ -226,6 +232,63 @@ func RollbackCompanyOnboarding(commerce *CommerceStore, token CompanyOnboardingR
 		atual.Active = false
 		commerce.UpsertProduct(atual, now)
 		commerce.RemoveProduct(token.OrganizationID, sku)
+	}
+	return nil
+}
+
+// OnboardingLimits são os limites DECLARADOS de volume do onboarding.
+//
+// POR QUE ISTO EXISTE (E-353): o caminho aceitava **qualquer** quantidade de linhas — só recusava o vazio. Um payload
+// de volume (milhões de linhas, ou um nome de gigabytes) consumiria memória e disco sem que nada no código dissesse
+// qual era o teto. ***Limite que não está escrito não é limite: é surpresa.***
+type OnboardingLimits struct {
+	MaxRows        int
+	MaxNameBytes   int
+	MaxOriginBytes int
+	MaxTotalBytes  int64
+}
+
+// DefaultOnboardingLimits devolve os limites explícitos (nada de número mágico espalhado).
+func DefaultOnboardingLimits() OnboardingLimits {
+	return OnboardingLimits{MaxRows: 5000, MaxNameBytes: 512, MaxOriginBytes: 256, MaxTotalBytes: 16 << 20}
+}
+
+func (l OnboardingLimits) normalizar() OnboardingLimits {
+	padrao := DefaultOnboardingLimits()
+	if l.MaxRows <= 0 {
+		l.MaxRows = padrao.MaxRows
+	}
+	if l.MaxNameBytes <= 0 {
+		l.MaxNameBytes = padrao.MaxNameBytes
+	}
+	if l.MaxOriginBytes <= 0 {
+		l.MaxOriginBytes = padrao.MaxOriginBytes
+	}
+	if l.MaxTotalBytes <= 0 {
+		l.MaxTotalBytes = padrao.MaxTotalBytes
+	}
+	return l
+}
+
+// ValidarVolumeDoPlano recusa plano acima dos limites declarados, ANTES de qualquer trabalho.
+func ValidarVolumeDoPlano(plan CompanyOnboardingPlan, limites OnboardingLimits) error {
+	limites = limites.normalizar()
+	if len(plan.Rows) > limites.MaxRows {
+		return fmt.Errorf("%w: %d linhas excedem o limite de %d", ErrOnboardingTooLarge, len(plan.Rows), limites.MaxRows)
+	}
+	if len(plan.Origin) > limites.MaxOriginBytes {
+		return fmt.Errorf("%w: origem com %d bytes excede o limite de %d", ErrOnboardingTooLarge, len(plan.Origin), limites.MaxOriginBytes)
+	}
+	total := int64(len(plan.Origin))
+	for _, linha := range plan.Rows {
+		if len(linha.Name) > limites.MaxNameBytes {
+			return fmt.Errorf("%w: nome do SKU %q com %d bytes excede o limite de %d", ErrOnboardingTooLarge,
+				linha.SKU, len(linha.Name), limites.MaxNameBytes)
+		}
+		total += int64(len(linha.SKU) + len(linha.Name) + len(linha.Currency))
+		if total > limites.MaxTotalBytes {
+			return fmt.Errorf("%w: payload com mais de %d bytes", ErrOnboardingTooLarge, limites.MaxTotalBytes)
+		}
 	}
 	return nil
 }

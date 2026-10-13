@@ -2255,7 +2255,10 @@
     "REDE QUE DEPENDE DE ALGUEM LEMBRAR DE OLHAR NAO E' REDE (E-352): classificacao automatica de caminho x identificador, com indefinido sem declaracao sendo VIOLACAO",
     "O DESCONHECIDO NAO PODE PASSAR EM SILENCIO (E-352): uso indefinido exige declaracao humana com motivo, registrada no proprio instrumento - nao na memoria de quem leu",
     "INSTRUMENTO QUE IGNORA O ESCOPO DA PROPRIA AUDITORIA (E-352): o classificador era chamado sem o diretorio auditado e varria o repositorio real dentro de teste com fixture; 6 testes quebraram e o defeito era meu",
-    "EFEITO COLATERAL BOM (E-352): scheduling_crossprocess saiu das pendencias porque a guarda de E-347 passou a ser reconhecida - nao por edicao na lista"
+    "EFEITO COLATERAL BOM (E-352): scheduling_crossprocess saiu das pendencias porque a guarda de E-347 passou a ser reconhecida - nao por edicao na lista",
+    "LIMITE QUE NAO ESTA ESCRITO NAO E' LIMITE: E' SURPRESA (E-353): o onboarding so recusava vazio. Agora tem teto declarado (5000 linhas, 512B por nome, 16MiB) e recusa ANTES de trabalhar",
+    "VOLUME MEDIDO, NAO ESTIMADO (E-353): 2000 linhas em 55,68s (~28ms por linha), o que calibra o teto de 5000 em ~2,3 minutos de trabalho",
+    "QUATRO SUPOSICOES DE API DERRUBADAS PELO COMPILADOR (E-353): CompanyOnboardingPreview sem Total/Created e CompanyOnboardingRollback sem Token - os campos reais foram medidos antes de escrever as asserções"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -2696,11 +2699,18 @@
           "descricao": "classificacao de escopo era MANUAL; agora e' automatica com indefinido exigindo declaracao",
           "estado": "IMPLEMENTADO E TESTADO (23 caminho, 5 identificador, 2 comentario, 1 indefinido declarado)",
           "evidencia": "E-352"
+        },
+        {
+          "id": "ADV-28",
+          "severidade": "ALTA",
+          "descricao": "onboarding aceitava volume ilimitado: so recusava vazio, sem teto de linhas/bytes",
+          "estado": "CORRIGIDO E MEDIDO (5000 linhas / 512B nome / 16MiB, recusa antes de trabalhar; 2000 linhas em 55,68s)",
+          "evidencia": "E-353"
         }
       ],
       "proximos_ataques": [
-        "onboarding com volume grande (limites de recurso)",
-        "classificacao por STATEMENT (hoje e' por linha: uso multi-linha cai em indefinido)",
+        "orcamento acumulado entre planos (hoje o teto e' por plano)",
+        "classificacao de escopo por STATEMENT (hoje e' por linha)",
         "checkpoint de estado final com remedicao"
       ]
     },
@@ -2968,6 +2978,7 @@
     "E-349": "T4 com modelo local e fixer com fronteira no segmento; vinculo declarado",
     "E-350": "ADV-24 resolvido por sonda: causa era o dado de teste; vinculo declarado",
     "E-351": "rede larga: identificadores derivados de organizacao; vinculo declarado",
-    "E-352": "classificacao automatica de escopo (caminho x identificador) na catraca; vinculo declarado"
+    "E-352": "classificacao automatica de escopo (caminho x identificador) na catraca; vinculo declarado",
+    "E-353": "onboarding com volume: limites declarados e volume medido; vinculo declarado"
   }
 }
