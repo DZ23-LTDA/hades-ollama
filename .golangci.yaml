@@ -65,6 +65,29 @@ linters:
         - candidatas
         - processos
         - corporativo
+        # Vocabulario das fatias desta missao (E-367): palavras portuguesas corretas que o dicionario INGLES
+        # sugere trocar por um cognato. Entram aqui pelo MESMO criterio do bloco acima - o misspell segue ligado.
+        - problemas
+        - decorativo
+        - presentes
+        - devolvendo
+        - momento
+        - colateral
+        - metricas
+        - proposito
+        - conveniente
+        - automatico
+        - respondendo
+        - informativo
+        - incidentes
+        # "relacao"/"relatorio": o misspell corta na letra acentuada e sobra o radical.
+        - rela
+        - duplicatas
+        - independente
+        - profissional
+        - intervalos
+        - invalidas
+        - definitivo
     depguard:
       rules:
         test-only-packages:
