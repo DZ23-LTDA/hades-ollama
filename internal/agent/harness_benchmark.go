@@ -260,7 +260,18 @@ func RunHarnessBenchmark(ctx context.Context, harness HarnessProposer, task Harn
 	var proposta map[string]string
 	for tentativa := 1; tentativa <= tentativas; tentativa++ {
 		resultado.Attempts = tentativa
-		proposta, err = harness.ProposeFix(ctx, task, observacao)
+		// MEDIDO (E-344): na matriz, `llama3.2:3b` gastou **1202 s** num único fixture — 2 tentativas contra o timeout
+		// de 10 min do cliente HTTP. Um limite POR TENTATIVA é o que impede que um modelo travado consuma a janela
+		// inteira: ***tempo de espera não declarado é custo invisível***.
+		ctxTentativa, cancelarTentativa := context.WithTimeout(ctx, limitesDeTentativa())
+		proposta, err = harness.ProposeFix(ctxTentativa, task, observacao)
+		excedeuTempo := errors.Is(err, context.DeadlineExceeded) || errors.Is(ctxTentativa.Err(), context.DeadlineExceeded)
+		cancelarTentativa()
+		if excedeuTempo {
+			resultado.Verdict = "TIMEOUT"
+			resultado.Reason = fmt.Sprintf("tentativa %d excedeu o limite de %s", tentativa, limitesDeTentativa())
+			continue
+		}
 		if err != nil {
 			resultado.Reason = err.Error()
 			continue
@@ -306,7 +317,7 @@ func RunHarnessBenchmark(ctx context.Context, harness HarnessProposer, task Harn
 		resultado.Reason = "tentativa " + fmt.Sprint(tentativa) + " não ficou verde: " + saidaVerde
 	}
 	resultado.DurationSeconds = time.Since(inicio).Seconds()
-	if resultado.Verdict != "HARNESS_TRAFICOU" {
+	if resultado.Verdict != "HARNESS_TRAFICOU" && resultado.Verdict != "TIMEOUT" {
 		resultado.Verdict = "RED"
 	}
 	return resultado, nil
@@ -340,7 +351,7 @@ func (h OllamaHarness) ProposeFix(ctx context.Context, task HarnessBenchmarkTask
 	}
 	cliente := h.Client
 	if cliente == nil {
-		cliente = &http.Client{Timeout: 10 * time.Minute}
+		cliente = &http.Client{Timeout: 3 * time.Minute}
 	}
 
 	prompt := "Você vai corrigir um bug em Go. Responda SOMENTE com o conteúdo COMPLETO do arquivo corrigido, " +
@@ -420,4 +431,17 @@ func OllamaDisponivel(ctx context.Context, baseURL string) bool {
 	}
 	defer resposta.Body.Close()
 	return resposta.StatusCode == http.StatusOK
+}
+
+// limitesDeTentativa é o tempo máximo de UMA tentativa de correção.
+//
+// Declarado e ajustável por ambiente (`HADES_T2_ATTEMPT_TIMEOUT`, em segundos) para que a medição seja reproduzível
+// em máquinas diferentes — *limite escondido em código não é limite, é surpresa*.
+func limitesDeTentativa() time.Duration {
+	if bruto := strings.TrimSpace(os.Getenv("HADES_T2_ATTEMPT_TIMEOUT")); bruto != "" {
+		if segundos, err := time.ParseDuration(bruto + "s"); err == nil && segundos > 0 {
+			return segundos
+		}
+	}
+	return 4 * time.Minute
 }

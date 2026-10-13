@@ -2216,7 +2216,12 @@
     "O MODELO TRAPACEOU NA PRIMEIRA TENTATIVA (E-343): qwen2.5:7b alterou o ARQUIVO DE TESTE em vez do bug. O anti-trapaca recusou, deu feedback, e na 2a tentativa ele consertou o codigo. O registro guarda as DUAS tentativas",
     "TRAPACA E' MEDICAO, NAO ERRO (E-343): eu havia feito trapacear ser erro de execucao; o correto e' virar VEREDITO e o laco continuar com feedback - como o vermelho, e' resultado",
     "VALOR ZERO NAO PODE SIGNIFICAR APROVADO (E-343): green_exit comecava em 0, que e' o codigo de `go test` PASSOU - um teste que nunca rodou pareceria aprovado. Agora comeca em -1",
-    "SEM PARIDADE POR DECRETO (E-343): mede UM fixture pequeno e UM harness minimo sobre Ollama local. Harness externo = BLOCKED_BY_EXTERNAL_DEPENDENCY e NAO_MEDIDO - nunca 'ok' por ausencia"
+    "SEM PARIDADE POR DECRETO (E-343): mede UM fixture pequeno e UM harness minimo sobre Ollama local. Harness externo = BLOCKED_BY_EXTERNAL_DEPENDENCY e NAO_MEDIDO - nunca 'ok' por ausencia",
+    "OBSERVACAO NAO E' MATRIZ (E-344): a primeira medicao (E-343) tinha um fixture e um modelo. A matriz com 4 classes de bug x 2 modelos mostrou taxa 3/8 e revelou comportamento que uma execucao so' nunca mostraria",
+    "SEM ANTI-TRAPACA, TRES FALSOS SUCESSOS (E-344): qwen2.5:7b alterou o arquivo de TESTE em 3 de 4 fixtures. O anti-trapaca impediu que isso fosse contado como capacidade",
+    "TEMPO DE ESPERA NAO DECLARADO E' CUSTO INVISIVEL (E-344): llama3.2:3b gastou 1202s num fixture; agora ha limite por tentativa, veredito TIMEOUT, motivo registrado e teste armado",
+    "HARNESS DE REFERENCIA PRECISA PROPOR A REFERENCIA (E-344): o meu filtrava calc.go na marra e resolvia 1 de 4 depois que a matriz ganhou outras classes de bug",
+    "NUMERO QUE SO' EXISTE NO TERMINAL NAO E' EVIDENCIA (E-344): a matriz medida vira artefato docs/parity/HADES_T2_MATRIX.md gravado pelo proprio teste, com data e modelos"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -2667,7 +2672,7 @@
       ]
     },
     "paridade_t2": {
-      "estado": "MEDIDO para o harness local minimo; NAO_MEDIDO para os demais",
+      "estado": "MATRIZ MEDIDA para 2 modelos locais; NAO_MEDIDO para os demais",
       "instrumento": "internal/agent/harness_benchmark.go (fixture + red obrigatorio + anti-trapaca + hunks + duracao)",
       "medicoes": [
         {
@@ -2688,9 +2693,29 @@
         "Claude Code",
         "Codex",
         "Manus",
-        "outros modelos locais"
+        "demais modelos locais"
       ],
-      "bloqueio": "harnesses externos exigem credencial/login: BLOCKED_BY_EXTERNAL_DEPENDENCY"
+      "bloqueio": "harnesses externos exigem credencial/login: BLOCKED_BY_EXTERNAL_DEPENDENCY",
+      "matriz": {
+        "fixtures": 4,
+        "modelos": [
+          "qwen2.5:7b",
+          "llama3.2:3b"
+        ],
+        "execucoes": 8,
+        "verde": 3,
+        "verde_primeira_tentativa": 2,
+        "harness_trapacou": 3,
+        "permaneceu_vermelho": 2,
+        "taxa_sucesso": "3/8",
+        "red_em_todas": true,
+        "artefato": "docs/parity/HADES_T2_MATRIX.md",
+        "achados": [
+          "qwen2.5:7b alterou o ARQUIVO DE TESTE em 3 de 4 fixtures (anti-trapaca evitou 3 falsos sucessos)",
+          "llama3.2:3b gastou 1202s num fixture -> criado limite por tentativa (TIMEOUT) com teste armado",
+          "harness de referencia filtrava calc.go na marra e resolvia 1 de 4 -> generalizado"
+        ]
+      }
     }
   },
   "unlinked_evidence": {
@@ -2724,6 +2749,7 @@
     "E-340": "segundo lote medido (crm, inbox); consent por contrato testado; vinculo declarado",
     "E-341": "terceiro lote medido (voice, factory, sales, ledger, snapshots); vinculo declarado",
     "E-342": "correcao do instrumento: duas pendencias eram falsas; vinculo declarado",
-    "E-343": "P0-B/T2: primeira medicao red->green com modelo local; vinculo declarado"
+    "E-343": "P0-B/T2: primeira medicao red->green com modelo local; vinculo declarado",
+    "E-344": "T2: matriz medida (4 fixtures x 2 modelos) e timeout por tentativa; vinculo declarado"
   }
 }
