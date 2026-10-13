@@ -2374,7 +2374,13 @@
     "METODO DE PR: EMPURRAR UMA VEZ POR RODADA (E-386): empurrei 5 vezes para o #433 numa rodada e os checks reiniciavam a cada push, impedindo o merge. O trabalho deve ser agrupado e publicado uma vez",
     "CONTRAPROVA ENTRE PROCESSOS AGORA E' DETERMINISTICA (E-387): a barreira dormia 5ms com janela de ~1,7ms; trocada por runtime.Gosched(). Com a trava desligada, 3 de 3 execucoes falham; com a trava, 3 de 3 passam",
     "CONTRAPROVA QUE TORCE PARA O DANO NAO E' CONTRAPROVA (E-387): se a largada e' mais lenta que a corrida, o teste pode 'provar' o lock por sorte",
-    "NEUTRALIZAR NA DEFINICAO, NAO NO CHAMADOR (E-387): a primeira tentativa mexeu no chamador e quebrou a compilacao por parenteses desbalanceados; a contraprova certa foi deixar withFileLock chamar run() direto"
+    "NEUTRALIZAR NA DEFINICAO, NAO NO CHAMADOR (E-387): a primeira tentativa mexeu no chamador e quebrou a compilacao por parenteses desbalanceados; a contraprova certa foi deixar withFileLock chamar run() direto",
+    "A PROVA DA ALEGACAO MAIS PUBLICADA E' VACUOSA (ADV-57/E-388): 'Gravacoes() <= 10' passa com UMA gravacao - desligar RecordStocks deixa 1 e o limiar nao pega. A prova de disco so' conta products e nunca le' stock",
+    "A 4a AUDITORIA CALIBROU ANTES DE ACUSAR (E-388): confirmou SOLIDO o nucleo (persistLocked caminho unico, gravacoes++ antes do writeJSONAtomic, prova de disco do lote de produtos falha quando deve) e so' depois mediu os defeitos",
+    "O ROLLBACK GRAVA POR LINHA (ADV-57/5): n=500 => desfazer = 1000 gravacoes em 2,72s. A minha propria tese 'API rapida que ninguem usa nao acelera nada' se aplica ao desfazer, e nenhuma prova cobre isso",
+    "TESTE QUE SO' LOGA NAO E' PROVA (ADV-57/3): commerce_budget mede 5000 chamadas e nao afirma nada; dobrar o laco deixa a suite verde",
+    "O '211x' NAO SE REPRODUZ (ADV-57/7): as contagens 300 vs 1 sao exatas; o tempo e o multiplicador medidos pelo auditor deram ~196x",
+    "O AUDITOR LIMPOU O QUE CRIOU (E-388): as 4 arquivos temporarios que ele usou para medir foram removidos - o git status voltou limpo, e a minha suspeita inicial de violacao de leitura foi corrigida pela medicao"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -3025,12 +3031,22 @@
           "verificado_por_mim": "scheduling_crossprocess.go:46 -> classificar_statement devolve 'comentario'; reverter E-376 faz a guarda voltar a aprovar comentario; /* */ e string aprovam; // em string gera falso positivo",
           "estado": "1 a 8 CORRIGIDOS e medidos (E-380..E-386). Restam como limites declarados: a busca da guarda continua textual; a vacuidade do main da catraca (b) nao tem teste; os sinais de caminho sao textuais",
           "evidencia": "E-379"
+        },
+        {
+          "id": "ADV-57",
+          "severidade": "ALTA (a prova da alegacao mais publicada e' vacuosa)",
+          "descricao": "4a auditoria independente (subagente) nas provas de desempenho. CONFIRMOU SOLIDO o nucleo (persistLocked caminho unico, gravacoes++ antes do writeJSONAtomic, prova de disco do lote de produtos falha quando deve, onboarding_budget mede estado real). ACHADOS: (1) a assercao 'Gravacoes() <= 10' e' VACUOSA - desligar RecordStocks deixa 1 gravacao e 1 > 10 e' falso, entao o teste ainda passa; a prova de disco so' conta products e nunca le' stock. (2) '> 10' nao distingue 1 lote de N lotes (fatias de 250 => 4 gravacoes => passa). (3) commerce_budget_test so' LOGA (5000 chamadas, nenhuma assercao). (4) context.WithTimeout de 5 min e' codigo MORTO. (5) RollbackCompanyOnboarding grava POR LINHA: n=500 => desfazer = 1000 gravacoes em 2,72s. (6) leitura de disco nao enderecada (arquivos[0]). (7) o '211x' do ADV-44 nao se reproduz (medido ~196x); as contagens 300 vs 1 sao exatas",
+          "descoberto_por": "4a revisao adversarial independente (subagente, contexto fresco) com experimento de falsificacao",
+          "estado": "REGISTRADO, NAO CORRIGIDO",
+          "evidencia": "E-388"
         }
       ],
       "proximos_ataques": [
-        "rodar a contraprova entre processos com -count=20 (o auditor sugeriu; hoje sao 3 execucoes de cada lado)",
-        "exercitar file_lock_unix.go (o CI Linux mede; localmente so' o caminho Windows foi contraprovado)",
-        "coletar a 4a auditoria (commerce/onboarding: as provas de desempenho) e corrigir o que ela medir"
+        "ADV-57/1: limiar EXATO e prova do ESTOQUE em disco (hoje so' products) - a alegacao '2 gravacoes' precisa de assercao",
+        "ADV-57/5: rollback em lote (hoje 1000 gravacoes para desfazer 500 linhas)",
+        "ADV-57/4: remover ou LIGAR a guarda morta de 5 minutos",
+        "ADV-57/3: assercao de escala no commerce_budget (hoje so' log)",
+        "ADV-57/7: teste proprio para o ganho do lote (o '211x' nao se reproduz; medido ~196x)"
       ]
     },
     "estagio_42": {
@@ -3421,6 +3437,7 @@
     "E-384": "correcoes do ADV-56, com medicao e limites declarados; vinculo declarado",
     "E-385": "ADV-55 fechado, ADV-56/8 e vacuidade do classificador; vinculo declarado",
     "E-386": "ADV-55 fechado, ADV-56/8 e vacuidade do classificador; vinculo declarado",
-    "E-387": "contraprova determinista entre processos (barreira com Gosched); vinculo declarado"
+    "E-387": "contraprova determinista entre processos (barreira com Gosched); vinculo declarado",
+    "E-388": "4a auditoria independente: a prova da alegacao mais publicada e' vacuosa; vinculo declarado"
   }
 }
