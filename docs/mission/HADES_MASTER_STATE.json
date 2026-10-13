@@ -2099,7 +2099,11 @@
     "ESTADO COM DUAS FONTES MENTE (E-311): stage_states e stages[].state divergiam em 16 estagios, incluindo IN_PROGRESS contra COMPLETED_VERIFIED. Agora stage_states e' DERIVADO de stages[].state, e um teste reprova divergencia",
     "CRONOLOGIA NO FUTURO E' DEFEITO, NAO ESTETICA (E-311): o updated_at estava 161 horas adiante do relogio real. Documento de estado que afirma um futuro impossivel nao pode ser auditado por tempo",
     "NAO CONGELAR SHA QUE O PROPRIO MERGE AVANCA (E-311): o estado passa a registrar measured_at e measured_commit - QUANDO e QUAL revisao foi medida - em vez de um main_sha eterno que nasce desatualizado",
-    "A AUDITORIA PROFUNDA VEM DEPOIS DAS INTEGRACOES (E-312): o V2.2 proibe inverter a ordem. O plano registra a sequencia A..G e o estado de cada etapa, sem chamar entendimento preliminar de auditoria final"
+    "A AUDITORIA PROFUNDA VEM DEPOIS DAS INTEGRACOES (E-312): o V2.2 proibe inverter a ordem. O plano registra a sequencia A..G e o estado de cada etapa, sem chamar entendimento preliminar de auditoria final",
+    "AGENDA NAO EXISTIA COMO MOTOR (E-313): os arquivos schedule* sao o scheduler de WORKFLOW. Nome parecido nao e' capacidade - foi preciso medir para nao confundir",
+    "DOIS AGENTES NO ULTIMO HORARIO (E-313): a checagem e a gravacao acontecem sob o MESMO lock, e o teste exige um ganhador e uma recusa explicita. Se ambos vencessem, o cliente chegaria num horario ocupado",
+    "BUFFER E' PARTE DA OCUPACAO (E-313): sem o preparo entre atendimentos, o sistema diria que havia vaga onde nao havia - e o atraso viraria cascata",
+    "O VENCEDOR DA CORRIDA NAO E' DETERMINISTICO (E-313): minha primeira assercao de idempotencia dependia de quem ganhava. Provar propriedade nao pode depender da sorte do escalonador"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -2241,6 +2245,17 @@
       39,
       40,
       41
-    ]
+    ],
+    "incremento_I": {
+      "estado": "IN_PROGRESS",
+      "fatia_1": "nucleo anti-double-booking sob concorrencia (E-313): servicos, recursos, book, cancel, availability, idempotencia e isolamento",
+      "proximas_fatias": [
+        "turnos/folgas/ferias/feriados/fusos e capacidades",
+        "lista de espera, lembretes e no-show",
+        "sync Google Calendar / Microsoft 365 (BLOCKED_BY_EXTERNAL_DEPENDENCY ate credencial)",
+        "pacotes de nicho e interface para leigos",
+        "lock no banco para concorrencia entre PROCESSOS"
+      ]
+    }
   }
 }
