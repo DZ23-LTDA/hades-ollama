@@ -59,6 +59,39 @@ describe("PublishReportNotice", () => {
     expect(mostrado).not.toContain("NÃO executável");
   });
 
+  it("mostra os problemas de conformidade do artefato e são anunciados", () => {
+    const root = render({
+      files_copied: 4,
+      backend_included: true,
+      auth_included: true,
+      database_included: true,
+      runnable: true,
+      note: "backend presente",
+      artifact_issues: [
+        "go.mod declara dependência externa: o artefato deixa de compilar offline",
+        "README não declara a persistência em arquivo (e a ausência de SGBD relacional)",
+      ],
+    });
+    const mostrado = texto(root.root);
+    expect(mostrado).toContain("fora do contrato");
+    expect(mostrado).toContain("offline");
+    expect(mostrado).toContain("SGBD relacional");
+    // Anunciado: aviso só visual não chega a quem usa leitor de tela.
+    expect(root.root.findAll((node) => node.props?.role === "status").length).toBeGreaterThan(0);
+  });
+
+  it("não inventa alarme de conformidade quando não há problema", () => {
+    const root = render({
+      files_copied: 4,
+      backend_included: true,
+      auth_included: true,
+      database_included: true,
+      runnable: true,
+      note: "backend presente",
+    });
+    expect(texto(root.root)).not.toContain("fora do contrato");
+  });
+
   it("não renderiza nada sem relatório (não inventa status)", () => {
     const semRelatorio = render(undefined);
     expect(semRelatorio.toJSON()).toBeNull();

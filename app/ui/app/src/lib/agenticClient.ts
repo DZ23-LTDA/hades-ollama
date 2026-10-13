@@ -651,6 +651,8 @@ export type BuilderPublishReport = {
   runnable: boolean;
   missing?: string[];
   note?: string;
+  // Conformidade do artefato (offline + limites declarados): eixo SEPARADO de runnable.
+  artifact_issues?: string[];
 };
 
 export type BuilderProject = {
