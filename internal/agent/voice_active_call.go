@@ -111,6 +111,9 @@ func (s *VoiceActiveCallStore) path(organizationID string) string {
 // Calls devolve as chamadas registradas da organização (mais recentes primeiro é irrelevante: a ordem do arquivo é a
 // ordem dos pedidos, e quem lê decide o que fazer com ela).
 func (s *VoiceActiveCallStore) Calls(organizationID string) ([]VoiceActiveCall, error) {
+	if err := requireOrganization(organizationID); err != nil {
+		return nil, err
+	}
 	if s == nil || s.root == "" {
 		return nil, nil
 	}
@@ -220,6 +223,9 @@ func (s *VoiceActiveCallStore) RequestActiveCall(
 // ApproveActiveCall registra a APROVAÇÃO HUMANA e só então libera a chamada. Aprovar duas vezes não republica nada:
 // a segunda tentativa é recusada, porque o efeito externo acontece uma vez.
 func (s *VoiceActiveCallStore) ApproveActiveCall(organizationID, callID, approver string, now time.Time) (VoiceActiveCall, error) {
+	if err := requireOrganization(organizationID); err != nil {
+		return VoiceActiveCall{}, err
+	}
 	if s == nil {
 		return VoiceActiveCall{}, ErrVoiceActiveCallInvalid
 	}
