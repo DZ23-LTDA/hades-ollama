@@ -2349,7 +2349,11 @@
     "TESTE DO TESTE E CONTROLE (E-375/ADV-54): injetei violacoes nos checkers. O (c) PARECIA nao pegar nem o literal - mas meu rascunho era .go e o checker faz rglob('*_test.go'). O CONTROLE mostrou que ele pega. Sem o controle eu teria registrado um defeito inexistente",
     "DEFEITO REAL MEDIDO NO (c) (E-375): orcamento em VARIAVEL ou decimal escapa da regex; a janela +/-8/+25 dispensa por mencao textual a cancelled",
     "DEFEITO REAL MEDIDO NO (b) (E-375): arquivo com requireOrganization( SO EM COMENTARIO e' aprovado; 7 dispensas por NOME de arquivo; 23 de 519 .go varridos",
-    "AUDITAR O PROPRIO INSTRUMENTO (E-375): um checker que nao acusa uma violacao injetada nao protege nada - e o controle e' obrigatorio antes de acusar"
+    "AUDITAR O PROPRIO INSTRUMENTO (E-375): um checker que nao acusa uma violacao injetada nao protege nada - e o controle e' obrigatorio antes de acusar",
+    "A CLASSIFICACAO DE ESCOPO E' DIRIGIDA POR NOMES (ADV-55/E-378): a lista de palavras e o prefixo tipo ID fazem uma variavel chamada 'caminhoDoEvento' transformar qualquer uso em 'caminho'. O instrumento se satisfaz RENOMEANDO uma variavel",
+    "O BALDE 'INDEFINIDO' ABSORVE EM SILENCIO (ADV-55/E-378): identificador sem prefixo tipo ID vira indefinido, que exige declaracao humana - exatamente o que o E-355 tentou eliminar",
+    "DUAS EXPECTATIVAS MINHAS DERRUBADAS PELA MEDICAO (E-378): eu esperava 'Dir' alheio como caminho (virou identificador) e 'os.TempDir()' escapando (virou caminho). Inclusive a acusacao precisa de medicao",
+    "O QUE ESTA SOLIDO NO CLASSIFICADOR (E-378): entende continuacao de linha, ignora _test.go, trata comentario e definicao, reage ao conteudo e tem guarda anti-vacuidade (assertGreater > 0)"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -2983,13 +2987,20 @@
           "estado": "REGISTRADO, NAO CORRIGIDO. A evidencia documentada de E-356 SUPERESTIMA o que foi medido",
           "corrigido_nesta_rodada": "as duas pendencias de E-373: ordem de assercao no teste de arquivo + controle pelo Runtime.Run",
           "evidencia": "E-374"
+        },
+        {
+          "id": "ADV-55",
+          "severidade": "MEDIA (instrumento satisfazivel por renomeacao)",
+          "descricao": "o classificador de escopo decide por LISTA DE PALAVRAS + prefixo tipo ID: uma linha com uma variavel chamada 'caminhoDoEvento' vira 'caminho' sem ser caminho, e um identificador sem prefixo ID vira 'indefinido'. As contagens (22/5/1) sao dependentes de NOMENCLATURA, nao de estrutura",
+          "descoberto_por": "auditoria do proprio instrumento com casos injetados (2a vez que a medicao derruba expectativa do autor)",
+          "estado": "MEDIDO, NAO CORRIGIDO: exige distinguir estrutura de nomenclatura (mudanca de desenho, nao de regex)",
+          "evidencia": "E-378"
         }
       ],
       "proximos_ataques": [
-        "(c) cobrir orcamento em variavel/decimal e restringir a janela textual que dispensa por mencao a 'cancelled'",
-        "(b) exigir guarda REAL (nao mencao em comentario), tirar dispensas por NOME de arquivo e varrer subdiretorios",
-        "medir se existe arquivo de armazenamento em subdiretorio hoje (consequencia do glob nao recursivo)",
-        "endurecer a barreira da contraprova entre processos (poll 5ms vs janela ~1,7ms)"
+        "ADV-55: reescrever a classificacao para olhar ESTRUTURA (o valor e' usado como caminho ou como identificador) em vez de nomes",
+        "endurecer a barreira da contraprova entre processos (poll 5ms vs janela ~1,7ms)",
+        "auditar as linhas restantes com o mesmo metodo (instrumento + caso injetado + controle)"
       ]
     },
     "estagio_42": {
@@ -3370,6 +3381,7 @@
     "E-372": "efeito externo real (arquivo) apos reinicio + RecordStock medido; vinculo declarado",
     "E-373": "efeito duplicado demonstrado + retificacao de E-370/E-372; vinculo declarado",
     "E-374": "ADV-54: mesma classe no live commerce; vinculo declarado",
-    "E-375": "teste do teste dos checkers (b)/(c) com controle; vinculo declarado"
+    "E-375": "teste do teste dos checkers (b)/(c) com controle; vinculo declarado",
+    "E-378": "auditoria do classificador de escopo: classificacao dirigida por nomes; vinculo declarado"
   }
 }
