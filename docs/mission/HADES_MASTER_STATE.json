@@ -2318,7 +2318,11 @@
     "VALIDACAO DE TERCEIRO ACHOU O QUE O TESTE DO AUTOR NAO VIA (E-366): o openpyxl abriu o XLSX e mostrou que o '#' do markdown vazava para a celula. Validar o proprio artefato com o proprio codigo e' auto-atestado",
     "O REQUISITO DE PLANILHA DO T1 ESTAVA DESATENDIDO (E-366): ExportProfessional recusava qualquer formato alem de pdf/docx/pptx. Agora ha' XLSX OOXML real, integrado ao mesmo caminho",
     "DUAS CORRECOES VIERAM DA MEDICAO (E-366): a linha separadora |---| virava dado e as bordas | a | b | geravam celulas vazias nas pontas (4 celulas em vez de 2)",
-    "XLSX DECLARADAMENTE SIMPLES (E-366): uma aba, sem formatacao, numeros como texto inline. A lacuna esta registrada, nao escondida"
+    "XLSX DECLARADAMENTE SIMPLES (E-366): uma aba, sem formatacao, numeros como texto inline. A lacuna esta registrada, nao escondida",
+    "T1 FECHADO COM TESTE QUE REINICIA DE VERDADE (E-368): Runtime novo sobre o mesmo diretorio recupera missao, objetivo, organizacao E EVENTOS; outra pasta nao ve nada. Contraprova: com store de memoria o teste FALHA",
+    "O QUE DEFINE DURABILIDADE NAO E' O PID, E' O DISCO (E-368): o 'reinicio' e' um store e um contexto NOVOS sobre o mesmo diretorio - equivalente fiel de processo que morreu",
+    "RECUPERAR ESTADO NAO E' RE-EXECUTAR (E-368): o teste prova a recuperacao do estado; continuar de onde parou e' outra propriedade e segue declarada no T1",
+    "STASH ANTIGO DECLARADO (E-368): 1 stash de security/scanner-map-shape (E-195, estagio 18), obsoleto - nao descartado, declarado"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -2899,12 +2903,19 @@
           "descricao": "o marcador de titulo do markdown (#) vazava para a celula da planilha",
           "estado": "CORRIGIDO com teste armado; descoberto pela prova com openpyxl, nao pelo teste do autor",
           "evidencia": "E-366"
+        },
+        {
+          "id": "ADV-48",
+          "severidade": "INFORMATIVO (cobertura)",
+          "descricao": "T1 pedia 'estado recuperado apos reinicio' e o item estava declarado como PARCIAL: nao havia teste dedicado provando durabilidade entre processos",
+          "estado": "FECHADO com teste + contraprova (store de memoria faz o teste FALHAR)",
+          "evidencia": "E-368"
         }
       ],
       "proximos_ataques": [
-        "formatacao da planilha: numeros como numero (hoje vao como texto inline), larguras e cabecalho",
-        "teste dedicado de retomada de missao apos reinicio (T1: estado recuperado)",
-        "retomar a fila P0-C/T3 (staging: dependencia externa) e P1-E/T8 (MP4 sem FFmpeg)"
+        "re-execucao automatica apos reinicio (T1 pede continuar de onde parou, nao so' recuperar o estado)",
+        "mojibake em 5 arquivos: corrigir com o linter local como verificador",
+        "stash antigo (E-195, security/scanner-map-shape): obsoleto, declarado no checkpoint"
       ]
     },
     "estagio_42": {
@@ -3197,8 +3208,10 @@
         "detalhe": "ambiente autorizado"
       },
       "estado_recuperado_apos_reinicio": {
-        "estado": "PARCIAL",
-        "detalhe": "checkpoints persistentes existem; falta teste dedicado de retomada"
+        "estado": "IMPLEMENTADO_E_TESTADO_COM_CONTRAPROVA",
+        "prova": "Runtime novo sobre o mesmo diretorio recupera missao, objetivo, organizacao e EVENTOS; outra pasta nao ve nada",
+        "contraprova": "com store de memoria o teste FALHA (o estado vivia so' na memoria)",
+        "evidencia": "E-368"
       }
     }
   },
@@ -3257,6 +3270,7 @@
     "E-364": "lote no onboarding/CommerceStore: 54s -> 0,01s com prova em disco; vinculo declarado",
     "E-365": "lote de estoque efetivo: 2002 -> 2 gravacoes; vinculo declarado",
     "E-367": "lint do CI 71 -> 14, com golangci-lint local; vinculo declarado",
-    "E-366": "planilha XLSX real no export, validada por openpyxl; vinculo declarado"
+    "E-366": "planilha XLSX real no export, validada por openpyxl; vinculo declarado",
+    "E-368": "T1: estado recuperado apos reinicio, com contraprova; vinculo declarado"
   }
 }
