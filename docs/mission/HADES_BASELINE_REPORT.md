@@ -5,7 +5,7 @@
 
 ## 1. Ambiente das medições
 
-- commit de referência: `7951eca1a6b47f563a9fa53d68f439b81fa3929b`
+- commit de referência: `758e6fec1`
 - SO das medições locais: Windows (runner do agente); o CI roda Linux
 - toolchain: **go1.26.9**, fixado por `go-version-file: go.mod` em todos os workflows (E-167)
 - plataforma Linux: container `golang:1.26.9`; execução de plugin: container `node:22-bookworm`
