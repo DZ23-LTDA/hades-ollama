@@ -2103,7 +2103,10 @@
     "AGENDA NAO EXISTIA COMO MOTOR (E-313): os arquivos schedule* sao o scheduler de WORKFLOW. Nome parecido nao e' capacidade - foi preciso medir para nao confundir",
     "DOIS AGENTES NO ULTIMO HORARIO (E-313): a checagem e a gravacao acontecem sob o MESMO lock, e o teste exige um ganhador e uma recusa explicita. Se ambos vencessem, o cliente chegaria num horario ocupado",
     "BUFFER E' PARTE DA OCUPACAO (E-313): sem o preparo entre atendimentos, o sistema diria que havia vaga onde nao havia - e o atraso viraria cascata",
-    "O VENCEDOR DA CORRIDA NAO E' DETERMINISTICO (E-313): minha primeira assercao de idempotencia dependia de quem ganhava. Provar propriedade nao pode depender da sorte do escalonador"
+    "O VENCEDOR DA CORRIDA NAO E' DETERMINISTICO (E-313): minha primeira assercao de idempotencia dependia de quem ganhava. Provar propriedade nao pode depender da sorte do escalonador",
+    "SEM EXPEDIENTE O MOTOR RECUSA (E-314): antes a disponibilidade oferecia 03:00 de domingo. Horario fora do expediente nao e' disponivel, e' invencao - e cliente confirmado as 03:00 chega numa porta fechada",
+    "A HORA LOCAL DECIDE, NAO O UTC (E-314): 03:00 em Sao Paulo parecem 06:00Z e ainda assim sao recusados. Fuso ignorado e' a mesma classe de erro que horario inventado",
+    "FIXTURE HERDADO MEDE O FIXTURE (E-314): o teste de expediente herdou o 24/7 do teste de concorrencia e acusou o proprio fixture. Cada teste que mede uma regra precisa do seu estado inicial"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -2250,15 +2253,17 @@
       "estado": "IN_PROGRESS",
       "fatia_1": "nucleo anti-double-booking sob concorrencia (E-313): servicos, recursos, book, cancel, availability, idempotencia e isolamento",
       "proximas_fatias": [
-        "turnos/folgas/ferias/feriados/fusos e capacidades",
+        "intervalos dentro do turno (almoco) e turnos que cruzam a meia-noite",
         "lista de espera, lembretes e no-show",
         "sync Google Calendar / Microsoft 365 (BLOCKED_BY_EXTERNAL_DEPENDENCY ate credencial)",
         "pacotes de nicho e interface para leigos",
         "lock no banco para concorrencia entre PROCESSOS"
-      ]
+      ],
+      "fatia_2": "expediente (turnos), fechamentos por data e fuso da organizacao (E-314)"
     }
   },
   "unlinked_evidence": {
-    "E-313": "INCREMENTO I do V2.2 (agendamento universal) - nao e' um dos 38 estagios nem dos estagios 39/40/41; vinculo declarado explicitamente em vez de omitido"
+    "E-313": "INCREMENTO I do V2.2 (agendamento universal) - nao e' um dos 38 estagios nem dos estagios 39/40/41; vinculo declarado explicitamente em vez de omitido",
+    "E-314": "INCREMENTO I do V2.2 (agendamento universal), fatia 2 - vinculo declarado em vez de omitido"
   }
 }

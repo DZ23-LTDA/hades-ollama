@@ -97,6 +97,11 @@ type schedulingOrg struct {
 	Services     []SchedulingService     `json:"services"`
 	Resources    []SchedulingResource    `json:"resources"`
 	Appointments []SchedulingAppointment `json:"appointments"`
+	// Shifts, Closures e TimeZone entram na FATIA 2 (E-314): sem eles a disponibilidade oferecia horário fora do
+	// expediente, o que o V2.2 chama de "inventar horários".
+	Shifts   []SchedulingShift   `json:"shifts,omitempty"`
+	Closures []SchedulingClosure `json:"closures,omitempty"`
+	TimeZone string              `json:"time_zone,omitempty"`
 }
 
 // NewSchedulingStore cria o store no diretório informado.
@@ -284,6 +289,13 @@ func (s *SchedulingStore) Book(request BookRequest) (SchedulingAppointment, erro
 	}
 	if !schedulingResourceExists(org, request.ResourceID) {
 		return SchedulingAppointment{}, fmt.Errorf("%w: recurso %s não existe nesta organização", ErrSchedulingInvalid, request.ResourceID)
+	}
+
+	// PORTÃO DE EXPEDIENTE (E-314): fora do turno ou em dia fechado o agendamento é RECUSADO antes de qualquer efeito.
+	// Validar aqui (e não só na consulta) é o que impede que um cliente seja confirmado às 03:00 por um caminho que
+	// não passou pela disponibilidade.
+	if err := s.appointmentAllowedLocked(request.OrganizationID, strings.TrimSpace(request.ResourceID), request.StartsAt, servico.DurationMinutes); err != nil {
+		return SchedulingAppointment{}, err
 	}
 
 	inicio := request.StartsAt.UTC()

@@ -144,5 +144,13 @@ func schedulingFixture(t *testing.T) (*SchedulingStore, string, string, string) 
 	if err != nil {
 		t.Fatal(err)
 	}
+	// EXPEDIENTE 24/7 CONFIGURADO DE PROPÓSITO (E-314): sem turno, o motor agora RECUSA tudo — "não se inventa
+	// horário" (antes, a disponibilidade oferecia 03:00 de domingo). Este teste é sobre CONCORRÊNCIA, então ele
+	// declara um expediente que cobre a semana inteira, para isolar a propriedade que está medindo.
+	for dia := 0; dia <= 6; dia++ {
+		if _, err := store.AddShift(SchedulingShift{OrganizationID: org, Weekday: dia, OpensAt: 0, ClosesAt: 24 * 60}); err != nil {
+			t.Fatal(err)
+		}
+	}
 	return store, org, recurso.ID, servico.ID
 }
