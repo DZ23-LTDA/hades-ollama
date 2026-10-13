@@ -2266,7 +2266,11 @@
     "INSTRUMENTO PASSOU A ENTENDER A CONSTRUCAO (E-355): classificacao por statement em vez de por linha; contagens remedidas 22/5/3/1",
     "E O INDEFINIDO QUE RESTA E' LEGITIMO (E-355): em media_pipeline o uso e' atribuicao cujo destino aparece depois, e ali a organizacao ja foi validada crua. Melhorar o instrumento nao elimina a declaracao humana - dizer o contrario seria o defeito",
     "CONCORRENCIA DO ESTAGIO 42 SEM DEFEITO (E-355): varredura x encerramento x aviso terminam ENDED com 1 incidente e revisao humana; 8 entregas do mesmo evento nao inflam receita",
-    "REGISTRAR AUSENCIA DE DEFEITO E' RESULTADO (E-355): evita reauditar o mesmo ponto (como em ADV-02 e ADV-08)"
+    "REGISTRAR AUSENCIA DE DEFEITO E' RESULTADO (E-355): evita reauditar o mesmo ponto (como em ADV-02 e ADV-08)",
+    "O ESTAGIO 42 TINHA A LACUNA QUE O AGENDAMENTO JA CORRIGIU (E-356): sem withFileLock e sem invalidacao de cache, duas instancias podiam perder escritas. O padrao de correcao ja estava no repositorio (E-323)",
+    "A SEGUNDA PARTE E' A QUE COSTUMA FALTAR (E-356): lock sem invalidacao de cache deixa a instancia respondendo do cache antigo - o mesmo defeito, mais dificil de ver",
+    "CONTRAPROVA MEDIDA (E-356): desligar a invalidacao de cache faz o teste FALHAR - o defeito existia e o teste o detecta. Guarda armada, nao promessa",
+    "ESCOPO DECLARADO DO LOCK (E-356): aplicado em IngestLiveCommerceEvent e RecordPlatformWarning; as demais mutacoes seguem apenas com mutex"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -2721,12 +2725,19 @@
           "descricao": "concorrencia do estagio 42: varredura x encerramento x aviso; ingestao concorrente do mesmo evento; aviso durante varredura",
           "estado": "SEM DEFEITO (invariantes mantidas em 3 execucoes; receita nao infla sob corrida)",
           "evidencia": "E-355"
+        },
+        {
+          "id": "ADV-30",
+          "severidade": "ALTA",
+          "descricao": "LiveCommerceStore sem lock de arquivo nem invalidacao de cache: duas instancias podiam perder escritas",
+          "estado": "CORRIGIDO e CONTRAPROVADO: com a invalidacao desligada o teste FALHA; com ela, 3 execucoes passam",
+          "evidencia": "E-356"
         }
       ],
       "proximos_ataques": [
-        "concorrencia ENTRE PROCESSOS no estagio 42 (hoje so' no mesmo processo)",
-        "orcamento acumulado entre planos de onboarding (teto e' por plano)",
-        "checkpoint remedido apos o proximo marco"
+        "aplicar o lock entre processos as DEMAIS mutacoes do estagio 42 (criacao, avanco de estado, destaque)",
+        "aplicar o lock entre processos a criacao/avanco/destaque (hoje so ingestao e aviso)",
+        "orcamento acumulado entre planos de onboarding (teto e' por plano)"
       ]
     },
     "estagio_42": {
@@ -3043,6 +3054,7 @@
     "E-352": "classificacao automatica de escopo (caminho x identificador) na catraca; vinculo declarado",
     "E-353": "onboarding com volume: limites declarados e volume medido; vinculo declarado",
     "E-354": "checkpoint remedido da rodada 39; vinculo declarado",
-    "E-355": "classificacao por statement + concorrencia do estagio 42 verificada; vinculo declarado"
+    "E-355": "classificacao por statement + concorrencia do estagio 42 verificada; vinculo declarado",
+    "E-356": "estagio 42 entre processos: lock + invalidacao de cache; vinculo declarado"
   }
 }
