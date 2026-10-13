@@ -263,7 +263,14 @@ func TestLiveNaoMisturaOrganizacoesENaoDuplicaModulos(t *testing.T) {
 	if _, err := store.ShowcaseForProduct("org-a", sessao.ID, ProductShowcase{Position: 1}, time.Now().UTC()); !errors.Is(err, ErrLiveCommerceInvalid) {
 		t.Fatalf("destaque sem SKU precisa ser recusado (não se inventa produto): %v", err)
 	}
-	// Destaque como SUGESTÃO ao operador (não automatiza clique na plataforma).
+	// E-336: sem catálogo configurado, o destaque é RECUSADO — não se aceita SKU não verificado.
+	if _, err := store.ShowcaseForProduct("org-a", sessao.ID,
+		ProductShowcase{SKU: "SKU-1", Position: 1}, time.Now().UTC()); !errors.Is(err, ErrLiveCommerceInvalid) {
+		t.Fatalf("sem catálogo, destaque precisa ser recusado: %v", err)
+	}
+	// Com catálogo da organização (SKU existindo DE VERDADE), o destaque é aceito como SUGESTÃO ao operador.
+	catalogo := &catalogoDeTeste{produtos: map[string][]string{"org-a": {"SKU-1"}}}
+	store.SetCatalog(catalogo)
 	comDestaque, err := store.ShowcaseForProduct("org-a", sessao.ID,
 		ProductShowcase{SKU: "SKU-1", Position: 1, PinnedByPlatform: false}, time.Now().UTC())
 	if err != nil {
@@ -272,4 +279,18 @@ func TestLiveNaoMisturaOrganizacoesENaoDuplicaModulos(t *testing.T) {
 	if len(comDestaque.Showcase) != 1 || comDestaque.Showcase[0].PinnedByPlatform {
 		t.Fatalf("o destaque precisa ficar registrado como sugestão ao operador: %+v", comDestaque.Showcase)
 	}
+}
+
+// catalogoDeTeste simula o catálogo existente (CommerceStore) com SKUs POR ORGANIZAÇÃO.
+type catalogoDeTeste struct {
+	produtos map[string][]string
+}
+
+func (c *catalogoDeTeste) ProductBySKU(organizationID, sku string) (CommerceProduct, bool) {
+	for _, existente := range c.produtos[organizationID] {
+		if existente == sku {
+			return CommerceProduct{OrganizationID: organizationID, SKU: sku, Name: existente}, true
+		}
+	}
+	return CommerceProduct{}, false
 }

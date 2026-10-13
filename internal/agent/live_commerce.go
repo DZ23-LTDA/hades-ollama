@@ -201,12 +201,27 @@ type CommerceEvent struct {
 	SignatureVerified bool `json:"signature_verified"`
 }
 
+// LiveCatalog é a ponte com o catálogo JÁ EXISTENTE (`CommerceStore`). O módulo de live NÃO guarda produtos: ele
+// referencia por SKU. A interface existe para que o destaque seja verificável sem acoplar armazenamento.
+type LiveCatalog interface {
+	ProductBySKU(organizationID, sku string) (CommerceProduct, bool)
+}
+
+// SetCatalog liga o catálogo ao módulo. Sem catálogo, destaque de produto é RECUSADO — *não se inventa produto*.
+func (s *LiveCommerceStore) SetCatalog(catalogo LiveCatalog) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.catalogo = catalogo
+}
+
 // LiveCommerceStore guarda projetos, playlists, sessões e eventos por organização, com persistência.
 type LiveCommerceStore struct {
 	mu        sync.Mutex
 	root      string
 	porOrg    map[string]*liveOrg
 	carregado map[string]bool
+	// catalogo é o catálogo existente (E-336): sem ele, destaque de produto é recusado.
+	catalogo LiveCatalog
 }
 
 type liveOrg struct {
@@ -553,7 +568,8 @@ func (s *LiveCommerceStore) ConfirmedSales(organizationID string) (ConfirmedSale
 //
 // `pinnedByPlatform=false` significa **sugestão ao operador** — o Hades não automatiza clique para fixar produto.
 func (s *LiveCommerceStore) ShowcaseForProduct(organizationID, sessionID string, showcase ProductShowcase, now time.Time) (LiveSession, error) {
-	if strings.TrimSpace(showcase.SKU) == "" {
+	sku := strings.TrimSpace(showcase.SKU)
+	if sku == "" {
 		return LiveSession{}, fmt.Errorf("%w: o destaque precisa referenciar SKU do catálogo", ErrLiveCommerceInvalid)
 	}
 	s.mu.Lock()
@@ -561,6 +577,16 @@ func (s *LiveCommerceStore) ShowcaseForProduct(organizationID, sessionID string,
 	organizationID = consentScope(organizationID)
 	if err := s.carregarLocked(organizationID); err != nil {
 		return LiveSession{}, err
+	}
+	// E-336 (REVISÃO CRUZADA): o destaque precisa apontar para produto que EXISTE no catálogo DESTA organização.
+	// Antes desta correção bastava um SKU não vazio: dava para "destacar" produto inexistente — ou de outra empresa, se
+	// o chamador passasse a SKU alheia. *Não se inventa produto, e não se cruza organização.*
+	if s.catalogo == nil {
+		return LiveSession{}, fmt.Errorf("%w: catálogo não configurado — destaque recusado em vez de aceitar SKU não verificado",
+			ErrLiveCommerceInvalid)
+	}
+	if _, existe := s.catalogo.ProductBySKU(organizationID, sku); !existe {
+		return LiveSession{}, fmt.Errorf("%w: SKU %q não existe no catálogo da organização", ErrLiveCommerceInvalid, sku)
 	}
 	for i := range s.porOrg[organizationID].Sessions {
 		atual := &s.porOrg[organizationID].Sessions[i]
