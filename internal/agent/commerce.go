@@ -176,6 +176,10 @@ type CommerceStore struct {
 	orders        map[string]CommerceOrder
 	idempotency   map[string]string
 	orderSequence map[string]int64
+	// E-363: ÍNDICE por (organização, SKU). MEDIDO antes: 10,03 ms por produto e enchimento QUADRÁTICO, porque cada
+	// operação varria o mapa inteiro (para saber se o SKU existe E para contar o acervo). O índice responde as duas
+	// perguntas em O(1) e o tamanho do mapa de uma organização É a contagem do acervo — *uma fonte, não duas*.
+	produtosPorChave map[string]map[string]string
 	// root vazio mantém o motor em memória (usado em testes e cenários efêmeros).
 	root string
 }
@@ -351,35 +355,35 @@ func (s *CommerceStore) UpsertProduct(product CommerceProduct, now time.Time) (C
 	// chamador lembrar de usar o caminho certo não é limite.*** A contagem é feita DENTRO do lock para ser consistente
 	// com o que está sendo gravado. Atualizar SKU existente NÃO é bloqueado: o acervo não cresce.
 	if !existeSKULocked(s, product.OrganizationID, product.SKU) {
-		acervo := 0
-		for _, existente := range s.products {
-			if existente.OrganizationID == product.OrganizationID {
-				acervo++
-			}
-		}
+		// O tamanho do mapa da organização É a contagem do acervo (E-363): uma fonte, não duas.
+		acervo := s.AcervoLocked(product.OrganizationID)
 		if limite := DefaultOnboardingLimits().MaxRows; acervo+1 > limite {
 			return CommerceProduct{}, fmt.Errorf("%w: acervo da organização chegaria a %d produtos (limite %d); "+
 				"use o onboarding com um plano menor ou remova produtos antes de acrescentar", ErrOnboardingTooLarge, acervo+1, limite)
 		}
 	}
-	for id, existing := range s.products {
-		if existing.OrganizationID == product.OrganizationID && existing.SKU == product.SKU {
-			product.ID = id
-			if product.CreatedAt.IsZero() {
-				product.CreatedAt = existing.CreatedAt
-			}
-			s.products[id] = product
-			if err := s.persistLocked(product.OrganizationID); err != nil {
-				return CommerceProduct{}, err
-			}
-			return product, nil
+	// E-363: O(1) de verdade. A primeira versão desta mudança ADICIONOU o índice mas MANTEVE esta varredura — e a
+	// medição mostrou o custo SUBIR (10,03 -> 13,56 ms por produto). ***Instrumento ao lado do defeito não é correção;
+	// a medição é que decide.***
+	if id, existe := s.IDPorSKULocked(product.OrganizationID, product.SKU); existe {
+		existing := s.products[id]
+		product.ID = id
+		if product.CreatedAt.IsZero() {
+			product.CreatedAt = existing.CreatedAt
 		}
+		s.products[id] = product
+		s.indexarProdutoLocked(product)
+		if err := s.persistLocked(product.OrganizationID); err != nil {
+			return CommerceProduct{}, err
+		}
+		return product, nil
 	}
 	if product.ID == "" {
 		product.ID = "prd_" + uuid.NewString()[:12]
 	}
 	product.CreatedAt = now
 	s.products[product.ID] = product
+	s.indexarProdutoLocked(product)
 	if err := s.persistLocked(product.OrganizationID); err != nil {
 		return CommerceProduct{}, err
 	}
@@ -1139,10 +1143,9 @@ func (s *CommerceStore) ProductBySKU(organizationID, sku string) (CommerceProduc
 	alvo := strings.TrimSpace(sku)
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	for _, produto := range s.products {
-		if produto.OrganizationID == organizationID && produto.SKU == alvo {
-			return produto, true
-		}
+	// E-363: O(1). A chave natural (organização, SKU) tem índice; varrer o mapa inteiro era a outra metade do custo.
+	if id, existe := s.IDPorSKULocked(organizationID, alvo); existe {
+		return s.products[id], true
 	}
 	return CommerceProduct{}, false
 }
@@ -1156,11 +1159,14 @@ func (s *CommerceStore) RemoveProduct(organizationID, sku string) error {
 	alvo := strings.TrimSpace(sku)
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	for id, produto := range s.products {
-		if produto.OrganizationID == organizationID && produto.SKU == alvo {
+	if id, existe := s.IDPorSKULocked(organizationID, alvo); existe {
+		produto := s.products[id]
+		{
+			s.desindexarProdutoLocked(organizationID, alvo)
 			delete(s.products, id)
 			if err := s.persistLocked(organizationID); err != nil {
 				s.products[id] = produto // rollback em memória se a gravação falhar
+				s.indexarProdutoLocked(produto)
 				return err
 			}
 			return nil
@@ -1171,11 +1177,47 @@ func (s *CommerceStore) RemoveProduct(organizationID, sku string) error {
 
 // existeSKULocked informa se o SKU já existe para a organização. Exige o lock de escrita (ou leitura) já tomado.
 func existeSKULocked(s *CommerceStore, organizationID, sku string) bool {
-	alvo := strings.TrimSpace(sku)
-	for _, produto := range s.products {
-		if produto.OrganizationID == organizationID && produto.SKU == alvo {
-			return true
-		}
+	// E-363: O(1). Era varredura do mapa inteiro — a metade quadrática do enchimento medido em E-360.
+	_, existe := s.IDPorSKULocked(organizationID, strings.TrimSpace(sku))
+	return existe
+}
+
+// indexarProdutoLocked registra o SKU no índice. Exige o lock de escrita tomado.
+func (s *CommerceStore) indexarProdutoLocked(produto CommerceProduct) {
+	if s.produtosPorChave == nil {
+		s.produtosPorChave = map[string]map[string]string{}
 	}
-	return false
+	porSKU := s.produtosPorChave[produto.OrganizationID]
+	if porSKU == nil {
+		porSKU = map[string]string{}
+		s.produtosPorChave[produto.OrganizationID] = porSKU
+	}
+	porSKU[produto.SKU] = produto.ID
+}
+
+// desindexarProdutoLocked remove o SKU do índice. Exige o lock de escrita tomado.
+func (s *CommerceStore) desindexarProdutoLocked(organizacao, sku string) {
+	porSKU := s.produtosPorChave[organizacao]
+	if porSKU == nil {
+		return
+	}
+	delete(porSKU, sku)
+	if len(porSKU) == 0 {
+		delete(s.produtosPorChave, organizacao)
+	}
+}
+
+// IDPorSKULocked devolve o id do produto em O(1). Exige o lock (leitura ou escrita) tomado.
+func (s *CommerceStore) IDPorSKULocked(organizacao, sku string) (string, bool) {
+	porSKU := s.produtosPorChave[organizacao]
+	if porSKU == nil {
+		return "", false
+	}
+	id, ok := porSKU[sku]
+	return id, ok
+}
+
+// AcervoLocked devolve quantos produtos a organização tem, em O(1). Exige o lock tomado.
+func (s *CommerceStore) AcervoLocked(organizacao string) int {
+	return len(s.produtosPorChave[organizacao])
 }
