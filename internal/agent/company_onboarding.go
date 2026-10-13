@@ -170,6 +170,8 @@ func aplicarSemOrcamento(commerce *CommerceStore, plan CompanyOnboardingPlan, no
 
 	vistos := map[string]bool{}
 	aplicados := map[string]bool{}
+	lote := make([]CommerceProduct, 0, len(plan.Rows))
+	estoques := make([]estoqueInicial, 0, len(plan.Rows))
 	for _, linha := range plan.Rows {
 		sku := strings.TrimSpace(linha.SKU)
 		nome := strings.TrimSpace(linha.Name)
@@ -207,13 +209,26 @@ func aplicarSemOrcamento(commerce *CommerceStore, plan CompanyOnboardingPlan, no
 		} else {
 			token.CreatedSKUs = append(token.CreatedSKUs, sku)
 		}
-		commerce.UpsertProduct(produto, now)
+		// E-364: LOTE. Antes, cada linha gravava o arquivo inteiro da organização (O(n²) em varredura e I/O: 2000
+		// linhas em 54,13s/50,01s). E o erro era DESCARTADO — uma falha de gravação virava "sucesso" no relatório.
+		lote = append(lote, produto)
 		aplicados[sku] = true
 
-		// ESTOQUE INICIAL: registrado UMA vez. Reaplicar não infla (a lição de E-305, agora no onboarding).
+		// ESTOQUE INICIAL: registrado UMA vez por SKU, DEPOIS de o produto existir (a lição de E-305). O guarda fica
+		// aqui (a decisão) e a gravação acontece na segunda passada — *duas passadas preservam a ordem que o teste de
+		// E-305 verifica: produto primeiro, movimento depois*.
 		if linha.InitialStock > 0 && len(commerce.Movements(plan.OrganizationID, sku)) == 0 {
-			commerce.RecordStock(plan.OrganizationID, sku, linha.InitialStock, "carga inicial de empresa existente", plan.Origin, now)
+			estoques = append(estoques, estoqueInicial{sku: sku, quantidade: linha.InitialStock})
 		}
+	}
+	// PASSADA 1: UMA gravação para o lote inteiro. O erro NÃO é descartado: falha de gravação precisa chegar a quem chamou.
+	if _, err := commerce.UpsertProducts(lote, now); err != nil {
+		return preview, token, fmt.Errorf("%w: falha ao gravar o lote do onboarding: %v", ErrOnboardingInvalid, err)
+	}
+	// PASSADA 2: estoque inicial, agora com TODOS os produtos já gravados — a ordem que o teste de E-305 exige.
+	for _, estoque := range estoques {
+		commerce.RecordStock(plan.OrganizationID, estoque.sku, estoque.quantidade,
+			"carga inicial de empresa existente", plan.Origin, now)
 	}
 	sort.Strings(token.CreatedSKUs)
 	return preview, token, nil
@@ -300,4 +315,10 @@ func ValidarVolumeDoPlano(plan CompanyOnboardingPlan, limites OnboardingLimits) 
 		}
 	}
 	return nil
+}
+
+// estoqueInicial é o saldo pendente de gravação (E-364): decidido na varredura, gravado depois que o produto existe.
+type estoqueInicial struct {
+	sku        string
+	quantidade int64
 }

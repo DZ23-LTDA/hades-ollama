@@ -2,8 +2,11 @@ package agent
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -83,7 +86,8 @@ func TestOnboardingComVolumeDentroDoLimiteAplica(t *testing.T) {
 	ctx, cancelar := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancelar()
 	_ = ctx
-	comercio, err := NewCommerceStoreAt(t.TempDir())
+	raiz := t.TempDir()
+	comercio, err := NewCommerceStoreAt(raiz)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -114,6 +118,28 @@ func TestOnboardingComVolumeDentroDoLimiteAplica(t *testing.T) {
 	if len(produtos) != quantidade {
 		t.Fatalf("esperava %d produtos aplicados, medido %d", quantidade, len(produtos))
 	}
-	t.Logf("onboarding com volume medido: %d linhas aplicadas em %.2fs (limite declarado: %d linhas, %d bytes no total)",
-		quantidade, decorrido.Seconds(), limites.MaxRows, limites.MaxTotalBytes)
+	// E-364: PROVA EM DISCO. Medir 0,01s para 2000 linhas é bom demais para aceitar sem verificar — e o teste antigo
+	// só olhava o estado em MEMÓRIA. *Resultado excelente sem verificação é o lugar onde o defeito se esconde.*
+	arquivos, err := filepath.Glob(filepath.Join(raiz, "*.json"))
+	if err != nil || len(arquivos) == 0 {
+		t.Fatalf("a gravação precisa existir em disco: %v %v", arquivos, err)
+	}
+	conteudo, err := os.ReadFile(arquivos[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	var gravado struct {
+		Products []struct {
+			SKU string `json:"sku"`
+		} `json:"products"`
+	}
+	if err := json.Unmarshal(conteudo, &gravado); err != nil {
+		t.Fatalf("arquivo do comércio ilegível: %v", err)
+	}
+	if len(gravado.Products) != quantidade {
+		t.Fatalf("ARMADILHA: %d produtos em memória mas %d no DISCO — o lote não foi gravado",
+			quantidade, len(gravado.Products))
+	}
+	t.Logf("onboarding com volume medido: %d linhas aplicadas em %.2fs e CONFIRMADAS em disco (%d produtos no arquivo); limite %d linhas, %d bytes",
+		quantidade, decorrido.Seconds(), len(gravado.Products), limites.MaxRows, limites.MaxTotalBytes)
 }

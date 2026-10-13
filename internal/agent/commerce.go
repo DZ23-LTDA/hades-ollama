@@ -335,6 +335,39 @@ func looksLikeCardData(value string) bool {
 }
 
 // UpsertProduct cadastra ou atualiza um produto.
+// UpsertProducts aplica um LOTE com UMA gravação (E-364).
+//
+// MEDIDO (ADV-41): `persistLocked` reconstrói o payload inteiro e grava o arquivo COMPLETO a cada operação — encher o
+// acervo era O(n²) em varredura **e** em I/O (2000 linhas em 54,13s/50,01s; 5000 em 68,00s).
+//
+// A CORREÇÃO **NÃO** troca durabilidade por velocidade: a gravação continua acontecendo **ao fim de cada chamada** — o
+// que muda é o **número de gravações**, não a garantia. ***Lote não é debounce: debounce adia a durabilidade; lote
+// apenas para de repeti-la.*** Em caso de falha de gravação o lote devolve erro com o estado em memória já aplicado —
+// declarado, e o chamador decide (o onboarding faz rollback explícito).
+func (s *CommerceStore) UpsertProducts(produtos []CommerceProduct, now time.Time) ([]CommerceProduct, error) {
+	if len(produtos) == 0 {
+		return nil, nil
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	aplicados := make([]CommerceProduct, 0, len(produtos))
+	organizacoes := map[string]bool{}
+	for _, produto := range produtos {
+		aplicado, err := s.upsertProductLocked(produto, now)
+		if err != nil {
+			return aplicados, err
+		}
+		aplicados = append(aplicados, aplicado)
+		organizacoes[aplicado.OrganizationID] = true
+	}
+	for organizacao := range organizacoes {
+		if err := s.persistLocked(organizacao); err != nil {
+			return aplicados, err
+		}
+	}
+	return aplicados, nil
+}
+
 func (s *CommerceStore) UpsertProduct(product CommerceProduct, now time.Time) (CommerceProduct, error) {
 	if err := requireOrganization(product.OrganizationID); err != nil {
 		return CommerceProduct{}, fmt.Errorf("%w: %v", ErrCommerceInvalid, err)
@@ -350,6 +383,30 @@ func (s *CommerceStore) UpsertProduct(product CommerceProduct, now time.Time) (C
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	aplicado, err := s.upsertProductLocked(product, now)
+	if err != nil {
+		return CommerceProduct{}, err
+	}
+	if err := s.persistLocked(aplicado.OrganizationID); err != nil {
+		return CommerceProduct{}, err
+	}
+	return aplicado, nil
+}
+
+// upsertProductLocked aplica UM produto em memória, sem gravar. Exige o lock de escrita tomado.
+func (s *CommerceStore) upsertProductLocked(product CommerceProduct, now time.Time) (CommerceProduct, error) {
+	if err := requireOrganization(product.OrganizationID); err != nil {
+		return CommerceProduct{}, fmt.Errorf("%w: %v", ErrCommerceInvalid, err)
+	}
+	product.OrganizationID = consentScope(product.OrganizationID)
+	product.SKU = strings.TrimSpace(product.SKU)
+	product.Name = strings.TrimSpace(product.Name)
+	if product.SKU == "" || product.Name == "" || product.PriceCents < 0 {
+		return CommerceProduct{}, fmt.Errorf("%w: sku, name and non-negative price are required", ErrCommerceInvalid)
+	}
+	if product.Currency == "" {
+		product.Currency = CommerceDefaultCurrency
+	}
 	// E-360: O ORÇAMENTO VALE TAMBÉM NO CAMINHO DIRETO. Em E-359 o teto acumulado vivia só no onboarding, e eu
 	// declarei esse limite: uma chamada direta a `UpsertProduct` não consumia orçamento. ***Limite que depende do
 	// chamador lembrar de usar o caminho certo não é limite.*** A contagem é feita DENTRO do lock para ser consistente
@@ -373,9 +430,6 @@ func (s *CommerceStore) UpsertProduct(product CommerceProduct, now time.Time) (C
 		}
 		s.products[id] = product
 		s.indexarProdutoLocked(product)
-		if err := s.persistLocked(product.OrganizationID); err != nil {
-			return CommerceProduct{}, err
-		}
 		return product, nil
 	}
 	if product.ID == "" {
@@ -384,9 +438,6 @@ func (s *CommerceStore) UpsertProduct(product CommerceProduct, now time.Time) (C
 	product.CreatedAt = now
 	s.products[product.ID] = product
 	s.indexarProdutoLocked(product)
-	if err := s.persistLocked(product.OrganizationID); err != nil {
-		return CommerceProduct{}, err
-	}
 	return product, nil
 }
 

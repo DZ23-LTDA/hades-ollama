@@ -2300,7 +2300,11 @@
     "INSTRUMENTO AO LADO DO DEFEITO NAO E' CORRECAO (E-363): adicionei o indice e mantive a varredura; a medicao mostrou o custo subir (10,03 -> 13,56 ms). Removida a varredura, o numero NAO caiu",
     "A MEDICAO REDIRECIONOU O DIAGNOSTICO (E-363): o custo nao estava na busca e sim em persistLocked, que reconstroi o payload inteiro e grava o arquivo COMPLETO a cada operacao (O(n^2) em varredura e I/O)",
     "TRES NUMEROS E A INCERTEZA (E-363): 50,17s sem indice, 67,81s com indice e varredura, 68,00s com indice sem varredura - uma execucao cada, sem repeticao. Nao atribuo o aumento ao indice; registro a incerteza",
-    "DURABILIDADE E' DECISAO DE PROJETO (E-363): corrigir persistLocked exige lote/debounce, que troca durabilidade por velocidade. Nao se faz isso as cegas como 'otimizacao'"
+    "DURABILIDADE E' DECISAO DE PROJETO (E-363): corrigir persistLocked exige lote/debounce, que troca durabilidade por velocidade. Nao se faz isso as cegas como 'otimizacao'",
+    "O GARGALO CAIU QUANDO O DIAGNOSTICO MUDOU (E-364): 2000 linhas de 54,13s/50,01s para 0,01s/0,01s (~5000x). O indice de E-363 nao era o gargalo; persistLocked era",
+    "LOTE NAO E' DEBOUNCE (E-364): lote para de repetir a durabilidade; debounce a adia. A gravacao continua ao fim de cada chamada, entao nenhuma garantia foi trocada por velocidade",
+    "RESULTADO EXCELENTE EXIGE VERIFICACAO (E-364): 0,01s para 2000 linhas e' bom demais para aceitar sem checar - o teste passou a ler o ARQUIVO em disco e reprova se a contagem divergir",
+    "DEFEITO REAL POR LEITURA (E-364): o onboarding descartava o erro do UpsertProduct; falha de gravacao virava sucesso no relatorio. Agora o erro e' propagado"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -2802,7 +2806,7 @@
           "id": "ADV-36",
           "severidade": "MEDIA (custo declarado)",
           "descricao": "UpsertProduct custa ~10,03 ms por produto (O(n) por chamada; encher e' quadratico) - medido com 5000 produtos",
-          "estado": "PARCIAL: o indice O(1) foi implementado (correto, 4 pontos de escrita), mas NAO reduziu o tempo medido; o custo real esta em persistLocked (ADV-41)",
+          "estado": "RESOLVIDO pela correcao do ADV-41 (o gargalo era persistLocked, nao a busca)",
           "evidencia": "E-360"
         },
         {
@@ -2837,13 +2841,34 @@
           "id": "ADV-41",
           "severidade": "ALTA (desempenho)",
           "descricao": "persistLocked reconstroi o payload inteiro da organizacao e grava o arquivo COMPLETO a cada mutacao: O(n^2) em varredura e I/O. E' o custo real dos 13,6 ms por produto",
-          "estado": "MEDIDO E LOCALIZADO; NAO CORRIGIDO - a correcao exige lote/debounce com troca explicita de durabilidade (decisao de projeto)",
+          "estado": "CORRIGIDO E MEDIDO: UpsertProducts grava o lote UMA vez; 2000 linhas passaram de 54,13s/50,01s para 0,01s/0,01s, com prova em disco. A durabilidade por chamada foi PRESERVADA (lote nao e' debounce)",
           "evidencia": "E-363"
+        },
+        {
+          "id": "ADV-42",
+          "severidade": "ALTA",
+          "descricao": "onboarding chamava commerce.UpsertProduct DESCARTANDO o erro: falha de gravacao virava 'sucesso' no relatorio",
+          "estado": "CORRIGIDO: o lote devolve o erro e o onboarding o propaga",
+          "evidencia": "E-364"
+        },
+        {
+          "id": "ADV-43",
+          "severidade": "MEDIA (teste)",
+          "descricao": "o teste de volume media 0,01s e so' verificava o estado em MEMORIA - resultado excelente sem verificacao e' onde o defeito se esconde",
+          "estado": "CORRIGIDO: o teste le o arquivo do comercio em disco e reprova se a contagem divergir",
+          "evidencia": "E-364"
+        },
+        {
+          "id": "ADV-44",
+          "severidade": "ALTA (desempenho)",
+          "descricao": "RecordStock e' chamado por linha no onboarding e TAMBEM persiste: e' o custo restante (2000 linhas em 19,11s, contra 0,01s no caminho so' de produtos)",
+          "estado": "MEDIDO E LOCALIZADO; o lote de estoque e' o proximo alvo (mesma classe do ADV-41)",
+          "evidencia": "E-364"
         }
       ],
       "proximos_ataques": [
-        "ADV-41: lote/debounce de persistLocked, com durabilidade declarada (o ganho precisa ser medido antes e depois)",
-        "repetir as medicoes de volume (hoje uma execucao por configuracao, sem intervalo de confianca)",
+        "medir o custo restante de RecordStock por linha (tambem persiste, nao foi medido)",
+        "medir o ganho com N chamadas de 1 linha (o lote depende do chamador usa-lo)",
         "retomar a fila P0-A/T1 e P0-C/T3 (dependencia externa onde faltar alvo)"
       ]
     },
@@ -3169,6 +3194,7 @@
     "E-360": "orcamento no caminho direto, com volume medido e contraprova; vinculo declarado",
     "E-361": "causa da instabilidade de CI (orcamento x fencing); vinculo declarado",
     "E-362": "catraca da classe de orcamento sub-segundo; vinculo declarado",
-    "E-363": "indice O(1) correto que NAO moveu o numero; custo real em persistLocked; vinculo declarado"
+    "E-363": "indice O(1) correto que NAO moveu o numero; custo real em persistLocked; vinculo declarado",
+    "E-364": "lote no onboarding/CommerceStore: 54s -> 0,01s com prova em disco; vinculo declarado"
   }
 }
