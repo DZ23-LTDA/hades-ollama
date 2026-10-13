@@ -58,3 +58,91 @@ func (r *OmnichannelRuntime) OutOfOrderCount() int {
 	defer r.mu.Unlock()
 	return r.outOfOrder
 }
+
+// SetOrderingStore liga a persistência da ORDENAÇÃO (E-299). Sem store, o estado é em memória e o runtime DIZ isso.
+func (r *OmnichannelRuntime) SetOrderingStore(store *OmnichannelOrderingStore) {
+	if r == nil {
+		return
+	}
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.orderingStore = store
+}
+
+// OrderingPersisted informa se há persistência de ordem configurada. Sem store, o estado é em memória — e isso é
+// DITO, não escondido.
+func (r *OmnichannelRuntime) OrderingPersisted() bool {
+	if r == nil {
+		return false
+	}
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return r.orderingStore != nil && r.orderingStore.Root() != ""
+}
+
+// OrderingRoot devolve o diretório usado, para o status poder mostrar ONDE o estado vive.
+func (r *OmnichannelRuntime) OrderingRoot() string {
+	if r == nil {
+		return ""
+	}
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.orderingStore == nil {
+		return ""
+	}
+	return r.orderingStore.Root()
+}
+
+// LastOrderingError devolve a última falha de persistência de ordem. Falha NÃO é engolida: fica registrada para o
+// status mostrar que o estado pode não sobreviver a um reinício.
+func (r *OmnichannelRuntime) LastOrderingError() string {
+	if r == nil {
+		return ""
+	}
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.orderingSaveError != "" {
+		return r.orderingSaveError
+	}
+	return r.orderingLoadError
+}
+
+// restoreOrderingLocked carrega as linhas do tempo da organização UMA vez. Erro de leitura é REGISTRADO e o runtime
+// segue: perder a carga é pior do que perder o processo, mas não pode passar em silêncio.
+func (r *OmnichannelRuntime) restoreOrderingLocked(organizationID string) {
+	if r == nil || r.orderingStore == nil || r.orderingStore.Root() == "" {
+		return
+	}
+	if r.loadedOrderOrgs == nil {
+		r.loadedOrderOrgs = map[string]bool{}
+	}
+	if r.loadedOrderOrgs[organizationID] {
+		return
+	}
+	r.loadedOrderOrgs[organizationID] = true
+	carregado, err := r.orderingStore.Load(organizationID)
+	if err != nil {
+		r.orderingLoadError = err.Error()
+		return
+	}
+	if r.orderHeads == nil {
+		r.orderHeads = map[string]int64{}
+	}
+	for chave, instante := range carregado {
+		if anterior, temos := r.orderHeads[chave]; !temos || instante > anterior {
+			r.orderHeads[chave] = instante
+		}
+	}
+}
+
+// persistOrderingLocked grava as linhas do tempo da organização. Falha é REGISTRADA, nunca engolida.
+func (r *OmnichannelRuntime) persistOrderingLocked(organizationID string) {
+	if r == nil || r.orderingStore == nil || r.orderingStore.Root() == "" {
+		return
+	}
+	if err := r.orderingStore.Save(organizationID, r.orderHeads); err != nil {
+		r.orderingSaveError = err.Error()
+		return
+	}
+	r.orderingSaveError = ""
+}

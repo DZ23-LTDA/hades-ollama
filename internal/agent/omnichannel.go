@@ -161,6 +161,15 @@ type OmnichannelRuntime struct {
 	orderHeads map[string]int64
 	// outOfOrder conta os eventos marcados: visibilidade para o status, sem esconder o fenomeno.
 	outOfOrder int
+	// orderingStore persiste a ORDENACAO (E-299). Sem ele, um reinicio esquece os instantes e o primeiro evento
+	// de cada conversa volta a parecer em ordem.
+	orderingStore *OmnichannelOrderingStore
+	// loadedOrderOrgs marca quais organizacoes ja tiveram as linhas do tempo carregadas do disco.
+	loadedOrderOrgs map[string]bool
+	// orderingLoadError e orderingSaveError sao SEPARADOS: uma gravacao bem-sucedida nao pode apagar o registro
+	// de que a LEITURA falhou (foi o que o teste do arquivo corrompido da dedupe mostrou).
+	orderingLoadError string
+	orderingSaveError string
 	// rateLimitStore persiste a JANELA de rate limit (E-170): sem ele, um reinício ZERA a cota.
 	rateLimitStore *OmnichannelRateLimitStore
 	// loadedRateOrgs marca quais organizações já tiveram a janela carregada do disco.
@@ -666,10 +675,13 @@ func (r *OmnichannelRuntime) Ingest(organizationID, channel string, signature st
 	if event.ID == "" {
 		event.ID = "ev_" + uuid.NewString()[:12]
 	}
-	// ORDENACAO (E-298): marca (nunca descarta, nunca reordena em silencio) o evento que chegou atras na conversa.
+	// ORDENACAO (E-298/E-299): carrega as linhas do tempo ANTES de julgar (sem isto, o primeiro evento de cada
+	// conversa apos um reinicio voltaria a parecer em ordem) e persiste depois de registrar.
+	r.restoreOrderingLocked(connector.OrganizationID)
 	if r.observeOrderLocked(connector.OrganizationID, connector.Channel, event.ConversationID, event.ContactID, event.Timestamp) {
 		event.OutOfOrder = true
 	}
+	r.persistOrderingLocked(connector.OrganizationID)
 	r.mu.Unlock()
 
 	// Mensagem entra pela caixa de entrada JÁ existente — sem segundo caminho.
