@@ -2099,7 +2099,23 @@
     "ESTADO COM DUAS FONTES MENTE (E-311): stage_states e stages[].state divergiam em 16 estagios, incluindo IN_PROGRESS contra COMPLETED_VERIFIED. Agora stage_states e' DERIVADO de stages[].state, e um teste reprova divergencia",
     "CRONOLOGIA NO FUTURO E' DEFEITO, NAO ESTETICA (E-311): o updated_at estava 161 horas adiante do relogio real. Documento de estado que afirma um futuro impossivel nao pode ser auditado por tempo",
     "NAO CONGELAR SHA QUE O PROPRIO MERGE AVANCA (E-311): o estado passa a registrar measured_at e measured_commit - QUANDO e QUAL revisao foi medida - em vez de um main_sha eterno que nasce desatualizado",
-    "A AUDITORIA PROFUNDA VEM DEPOIS DAS INTEGRACOES (E-312): o V2.2 proibe inverter a ordem. O plano registra a sequencia A..G e o estado de cada etapa, sem chamar entendimento preliminar de auditoria final"
+    "A AUDITORIA PROFUNDA VEM DEPOIS DAS INTEGRACOES (E-312): o V2.2 proibe inverter a ordem. O plano registra a sequencia A..G e o estado de cada etapa, sem chamar entendimento preliminar de auditoria final",
+    "AGENDA NAO EXISTIA COMO MOTOR (E-313): os arquivos schedule* sao o scheduler de WORKFLOW. Nome parecido nao e' capacidade - foi preciso medir para nao confundir",
+    "DOIS AGENTES NO ULTIMO HORARIO (E-313): a checagem e a gravacao acontecem sob o MESMO lock, e o teste exige um ganhador e uma recusa explicita. Se ambos vencessem, o cliente chegaria num horario ocupado",
+    "BUFFER E' PARTE DA OCUPACAO (E-313): sem o preparo entre atendimentos, o sistema diria que havia vaga onde nao havia - e o atraso viraria cascata",
+    "O VENCEDOR DA CORRIDA NAO E' DETERMINISTICO (E-313): minha primeira assercao de idempotencia dependia de quem ganhava. Provar propriedade nao pode depender da sorte do escalonador",
+    "SEM EXPEDIENTE O MOTOR RECUSA (E-314): antes a disponibilidade oferecia 03:00 de domingo. Horario fora do expediente nao e' disponivel, e' invencao - e cliente confirmado as 03:00 chega numa porta fechada",
+    "A HORA LOCAL DECIDE, NAO O UTC (E-314): 03:00 em Sao Paulo parecem 06:00Z e ainda assim sao recusados. Fuso ignorado e' a mesma classe de erro que horario inventado",
+    "FIXTURE HERDADO MEDE O FIXTURE (E-314): o teste de expediente herdou o 24/7 do teste de concorrencia e acusou o proprio fixture. Cada teste que mede uma regra precisa do seu estado inicial",
+    "ADENDO NAO REINICIA O V2.2 (E-315): o adendo de paridade foi anexado ao plano e ao estado. Onde ja existe capacidade, a tarefa e' MEDIR E COMPARAR - nao reimplementar nem clonar projeto inteiro",
+    "EXISTE MODULO NAO E' CAPACIDADE HOMOLOGADA (E-315): os gates P0-A..P0-F ficaram registrados como PARCIAL, cada um com o que falta nomeado, em vez de 'pronto'",
+    "RESULTADO AUSENTE E' NAO_MEDIDO (E-315): o adendo proibe tratar provider indisponivel como teste aprovado. Sem metrica honesta, nenhuma alegacao de paridade ou superioridade e' feita",
+    "INVENTARIO SEM LICENCA VERIFICADA (E-316): a coluna de licenca fica NAO_VERIFICADA ate a leitura efetiva, e nenhum trecho de referencia pode ser copiado antes disso. Marcar verificado sem ler seria a mesma mentira que declarar capacidade sem teste",
+    "DUPLICATA E' UM REGISTRO (E-316): codenotch aparecia repetido na lista; contado uma vez, como o adendo exige",
+    "SIMULACAO NAO E' SUCESSO (E-316): o alerta do TUBEGENT (getVideoStream devolvendo JSON) ficou registrado, e o Hades exigira' MP4 realmente decodificavel quando implementar o Creator Studio",
+    "PLATAFORMA DE DESENVOLVIMENTO ESCONDE DEFEITO (E-317): scheduling_windows.go compilava so no Windows, entao a suite local passava e o Linux nao compilava. Build cruzado entra na bateria obrigatoria",
+    "REPRODUZIR O GATE ANTES DE CORRIGIR (E-317): rodei GOOS=linux go build localmente e vi O MESMO erro do CI antes de mexer. A licao de E-300b aplicada de novo e funcionando",
+    "SUFIXO _GOOS NAO E' DETALHE DE NOME (E-317): _windows.go, _linux.go e _darwin.go sao restricoes de build, nao convencao de pasta. Nomear um arquivo multplataforma assim o EXCLUI das outras plataformas em silencio"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -2241,6 +2257,62 @@
       39,
       40,
       41
-    ]
+    ],
+    "incremento_I": {
+      "estado": "IN_PROGRESS",
+      "fatia_1": "nucleo anti-double-booking sob concorrencia (E-313): servicos, recursos, book, cancel, availability, idempotencia e isolamento",
+      "proximas_fatias": [
+        "intervalos dentro do turno (almoco) e turnos que cruzam a meia-noite",
+        "lista de espera, lembretes e no-show",
+        "sync Google Calendar / Microsoft 365 (BLOCKED_BY_EXTERNAL_DEPENDENCY ate credencial)",
+        "pacotes de nicho e interface para leigos",
+        "lock no banco para concorrencia entre PROCESSOS"
+      ],
+      "fatia_2": "expediente (turnos), fechamentos por data e fuso da organizacao (E-314)"
+    },
+    "addendum_parity": {
+      "registrado_em_evidencia": "E-315",
+      "artefatos_exigidos": [
+        "docs/parity/HADES_REFERENCE_INVENTORY.md",
+        "docs/parity/HADES_CAPABILITY_BEST_OF_BREED.md",
+        "docs/parity/HADES_MANUS_PARITY_GATE.md",
+        "docs/parity/HADES_HARNESS_BENCHMARKS.md",
+        "docs/parity/HADES_INTEGRATION_ADRS.md",
+        "docs/parity/HADES_EVIDENCE_MATRIX.json",
+        "docs/mission/HADES_NEXT_ACTION.md"
+      ],
+      "gates": {
+        "P0-A": "PARCIAL",
+        "P0-B": "PARCIAL",
+        "P0-C": "PARCIAL",
+        "P0-D": "PARCIAL",
+        "P0-E": "PARCIAL",
+        "P0-F": "PARCIAL"
+      },
+      "p1_p2": {
+        "P1-A": "PARCIAL",
+        "P1-B": "PARCIAL",
+        "P1-C": "IN_PROGRESS",
+        "P1-D": "BLOCKED_BY_EXTERNAL_DEPENDENCY",
+        "P1-E": "NAO_INICIADO",
+        "P1-F": "NAO_INICIADO",
+        "P1-G": "PARCIAL",
+        "P1-H": "NAO_INICIADO",
+        "P2": "PARCIAL"
+      },
+      "regra_de_medicao": "resultado ausente = NAO_MEDIDO (nunca 'ok'); provedor indisponivel NAO equivale a teste aprovado; licenca verificada antes de copiar qualquer trecho; comparar comportamento observavel, nao aparencia",
+      "proxima_fatia": "verificar LICENCAS das referencias a integrar (TUBEGENT, REA, Tel-Agent, litellm, canvas) antes de copiar qualquer trecho e decidir a abordagem a/b/c/d em docs/parity/HADES_INTEGRATION_ADRS.md; em paralelo, P0-B/T2 (benchmark de tarefa equivalente) e P0-E/T4 (tres especialistas em worktrees isolados)",
+      "artefatos_criados": [
+        "docs/parity/HADES_REFERENCE_INVENTORY.md",
+        "docs/mission/HADES_NEXT_ACTION.md"
+      ]
+    }
+  },
+  "unlinked_evidence": {
+    "E-313": "INCREMENTO I do V2.2 (agendamento universal) - nao e' um dos 38 estagios nem dos estagios 39/40/41; vinculo declarado explicitamente em vez de omitido",
+    "E-314": "INCREMENTO I do V2.2 (agendamento universal), fatia 2 - vinculo declarado em vez de omitido",
+    "E-315": "ADENDO DE PARIDADE UNIVERSAL (best-of-breed) anexado ao V2.2 - nao e' um estagio; vinculo declarado",
+    "E-316": "artefatos do ADENDO DE PARIDADE (inventario de referencias + proxima acao) - nao e' estagio; vinculo declarado",
+    "E-317": "defeito de integracao do incremento I (sufixo _GOOS acidental) + bateria de build cruzado; vinculo declarado"
   }
 }

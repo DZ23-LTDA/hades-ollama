@@ -154,6 +154,9 @@ python scripts/hades_release_gate.py; python scripts/hades_baseline_report.py
 python scripts/hades_stage_map.py; python scripts/hades_mission_check.py
 python scripts/hades_ci_reproducibility_check.py --check
 python scripts/hades_state_chronology_test.py
+# BUILD CRUZADO (E-317): um sufixo _GOOS acidental compila aqui e falha no Linux.
+$env:GOOS = 'linux'; $env:CGO_ENABLED = '0'; go build ./internal/agent/; if ($LASTEXITCODE -ne 0) { throw 'build linux falhou' }
+$env:GOOS = ''; $env:CGO_ENABLED = '1'
 ```
 
 ## 5. Segurança — credenciais comprometidas (V2.2 §3)
@@ -178,3 +181,63 @@ próprio; nenhuma rotação é alegada sem ação comprovada. Trabalho independe
 - Nenhum incremento é marcado concluído sem teste reproduzível ligado a commit e ambiente.
 - `RELEASE_READY` exige recorte explícito de release com **todos** os seus gates aprovados — e **não** afirma que a
   visão completa está pronta.
+
+---
+
+# ADENDO DE PARIDADE UNIVERSAL E BEST-OF-BREED (anexado ao V2.2 — não reinicia nada)
+
+Este adendo **complementa** o plano acima. Ele não zera checkpoints, não cria segunda plataforma nem segundo
+orquestrador. Onde já houver capacidade equivalente, a tarefa é **medir e comparar**, não reimplementar.
+
+## A1. Inventário obrigatório de referências — **artefato inicial**
+
+| Artefato | Estado |
+| --- | --- |
+| `docs/parity/HADES_REFERENCE_INVENTORY.md` | **A CRIAR** (próxima fatia) — uma linha por referência, com ref_id, categoria, diferencial, estado externo verificável, situação no Hades, gap, prioridade, abordagem, licença, risco, teste de aceite |
+| `docs/parity/HADES_CAPABILITY_BEST_OF_BREED.md` | A CRIAR |
+| `docs/parity/HADES_MANUS_PARITY_GATE.md` | A CRIAR |
+| `docs/parity/HADES_HARNESS_BENCHMARKS.md` | A CRIAR |
+| `docs/parity/HADES_INTEGRATION_ADRS.md` | A CRIAR (uma decisão por referência: nativa / adaptador / benchmark / rejeitada) |
+| `docs/parity/HADES_EVIDENCE_MATRIX.json` | A CRIAR |
+| `docs/mission/HADES_NEXT_ACTION.md` | A CRIAR |
+
+**Regra de licença:** identificar licença da raiz, subprojetos, assets, modelos e dependências **antes** de copiar
+qualquer trecho; não copiar código proprietário, marca ou interface protegida. Comparar **comportamento observável**
+por workflows autorizados. Referências duplicadas (ex.: codenotch) contam como **um** registro.
+
+## A2. Gates P0 (não negociáveis) — com o estado **medido** hoje
+
+| Gate | Exigência | Estado medido |
+| --- | --- | --- |
+| **P0-A Manus parity** | missão E2E: navegador autorizado, pesquisa com fontes, arquivos, builder+deploy staging, workflow recorrente, checkpoint e takeover | **PARCIAL** — jornada E2E de negócio provada (E-308); navegador/computer-use e deploy staging são dependência externa |
+| **P0-B Coding harness** | issue → red → fix → lint/typecheck/build/test → diff → PR → regressão verde → retomada | **PARCIAL** — o próprio repositório já roda esse ciclo (E-287…E-314); falta o **benchmark comparativo** com Codex/Claude Code/OpenHands/Aider/SWE-agent |
+| **P0-C Builder** | prompt → app full-stack → auth → DB real em staging → UI editável → preview → E2E → export → deploy/rollback | **PARCIAL** — Builder existe com testes de artefato real; falta **staging real** (dependência externa) |
+| **P0-D Model & harness** | Ollama local sem duplicar modelos, Ollama Cloud, APIs com vault, escolha no chat, tool calling, custo | **PARCIAL** — Model Gateway e troca de modelo testados (E-300); Ollama Cloud exige login (bloqueio) |
+| **P0-E Multiagente** | especialistas, worktrees isolados, delegação autorizada, limites e memória segmentada | **PARCIAL** — orquestração e cotas existem; falta E2E de **três especialistas em worktrees isolados com merge controlado** (T4) |
+| **P0-F Segurança e entrega** | isolamento em DB/API/storage/cache/fila/memória/browser/MCP e releases por SO | **PARCIAL** — RLS real, omnichannel e memória provados; distribuição só Windows, **sem assinatura** |
+
+## A3. P1/P2 — estado e próxima ação
+
+| Item | Estado | Próxima ação |
+| --- | --- | --- |
+| P1-A Automação (n8n/Dify-like) | **PARCIAL** (workflow com retry/DLQ/compensação provados) | fechar T6 (webhook → condição → ação real em sandbox) |
+| P1-B Empresa universal | **PARCIAL** | onboarding de empresa **existente** (importação/mapeamento) |
+| P1-C Agendamento universal | **IN_PROGRESS** — fatias 1 e 2 entregues (E-313, E-314) | intervalos no turno, lista de espera, remarcação, sync autorizada |
+| P1-D Canais reais | **BLOCKED_BY_EXTERNAL_DEPENDENCY** (tokens Meta/Telegram, SIP) | homologar quando houver conta |
+| P1-E Creator Studio | **NÃO INICIADO** — auditoria do TUBEGENT pendente | T8 com MP4 realmente decodificável, sem herdar as simulações da referência |
+| P1-F REA | **NÃO INICIADO** | integração via MCP/skill governada + T9 sobre artefato próprio |
+| P1-G Pesquisa | **PARCIAL** | fontes rastreáveis, data da consulta, dedupe e defesa contra prompt injection |
+| P1-H Descoberta (SEO/GEO) | **NÃO INICIADO** (estágio 39) | README PT/EN, docs versionadas, sitemap, JSON-LD; **sem** prometer ranking |
+| P2 Colaboração/canvas, IDE, voz, fine-tuning | **PARCIAL / não iniciado** | por último, com autorização |
+
+## A4. Testes de aceite determinantes (T1–T10)
+
+Nenhum deles é considerado aprovado sem **evidência reproduzível com ambiente e SHA**. Provedor indisponível **não**
+equivale a teste aprovado: vira `BLOCKED_BY_EXTERNAL_DEPENDENCY` com roteiro de desbloqueio. Resultado ausente é
+**`NAO_MEDIDO`**, nunca "ok".
+
+## A5. Relato final (formato exigido pelo adendo §8)
+
+Separar sempre: **CAPACIDADE_IMPLEMENTADA · HOMOLOGADA_LOCALMENTE · HOMOLOGADA_COM_SERVICO_REAL · NAO_MEDIDO ·
+BLOQUEADA · NAO_IMPLEMENTADA**. `NOT_RELEASE_READY` permanece enquanto houver requisito crítico pendente, e a meta de
+superar concorrentes só pode ser alegada onde **métricas honestas** a sustentarem.
