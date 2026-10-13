@@ -2282,7 +2282,11 @@
     "LIMITE POR PLANO NAO LIMITA NADA (E-359): tres planos de 4000 linhas passavam um a um. Agora o teto e' medido contra o acervo real",
     "CONTADOR PARALELO E' A SEGUNDA FONTE DE VERDADE (E-359): o orcamento e' medido por Products(org), o estado real, porque contador paralelo alguem esquece de atualizar",
     "REIMPORTAR O CATALOGO NAO PODE SER BLOQUEADO (E-359): linhas existentes sao atualizadas, nao somadas - testado com o teto ja atingido",
-    "GUARDA ANTIGA EXERCITADA PELO MEU ERRO (E-359): UpsertProduct recusou produto sem organizacao (guarda de E-337) quando o meu teste esqueceu a OrganizationID"
+    "GUARDA ANTIGA EXERCITADA PELO MEU ERRO (E-359): UpsertProduct recusou produto sem organizacao (guarda de E-337) quando o meu teste esqueceu a OrganizationID",
+    "LIMITE QUE DEPENDE DO CHAMADOR NAO E' LIMITE (E-360): o teto vivia so' no onboarding; agora vale no UpsertProduct direto, dentro do lock",
+    "VOLUME MEDIDO NO CAMINHO DIRETO (E-360): 5000 produtos em 50,17s = 10,03 ms por produto. As duas medicoes (com e sem a checagem restaurada) concordam",
+    "O NUMERO DESCONFORTAVEL FICA DECLARADO (E-360): 10 ms por produto porque cada operacao varre o mapa; encher e' quadratico. Indice por (organizacao, SKU) tornaria O(1) - nao implementado",
+    "ATUALIZAR SKU NO TETO NAO PODE SER BLOQUEADO (E-360): o acervo nao cresce quando a linha ja existe - testado armado"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -2772,10 +2776,31 @@
           "descricao": "limite de onboarding era por plano: tres planos dentro do teto carregavam o triplo",
           "estado": "CORRIGIDO e CONTRAPROVADO: teto medido contra o acervo real; reimportacao nao e' bloqueada",
           "evidencia": "E-359"
+        },
+        {
+          "id": "ADV-35",
+          "severidade": "ALTA",
+          "descricao": "teto acumulado vivia so' no onboarding: UpsertProduct direto nao consumia orcamento",
+          "estado": "CORRIGIDO e CONTRAPROVADO no caminho direto; atualizacao de SKU existente segue permitida",
+          "evidencia": "E-360"
+        },
+        {
+          "id": "ADV-36",
+          "severidade": "MEDIA (custo declarado)",
+          "descricao": "UpsertProduct custa ~10,03 ms por produto (O(n) por chamada; encher e' quadratico) - medido com 5000 produtos",
+          "estado": "DECLARADO; indice por (organizacao, SKU) tornaria O(1) e NAO foi implementado",
+          "evidencia": "E-360"
+        },
+        {
+          "id": "ADV-37",
+          "severidade": "ALTA (processo/CI)",
+          "descricao": "CI vermelho no PR #416 por TESTE INSTAVEL e nao por regressao: TestDistributedPostgresTenantKeyRotation falhou com '...timeout: context deadline exceeded, want enforced quiescence refusal' (0,64s), em teste de rotacao de chave Postgres sem relacao com a mudanca Go",
+          "estado": "DIAGNOSTICADO pelo log do job e re-executado (rerun-failed-jobs); NAO se desabilita teste para obter verde",
+          "evidencia": "E-360 (rodada 46)"
         }
       ],
       "proximos_ataques": [
-        "fazer UpsertProduct direto tambem consumir/verificar orcamento (hoje so' o onboarding)",
+        "indice por (organizacao, SKU) no CommerceStore (hoje O(n) por operacao)",
         "teste de corrida dedicado para ShowcaseForProduct (travado por consistencia, sem teste)",
         "retomar a fila P0-A/T1 e P0-C/T3 (dependencia externa onde faltar alvo)"
       ]
@@ -3098,6 +3123,7 @@
     "E-356": "estagio 42 entre processos: lock + invalidacao de cache; vinculo declarado",
     "E-357": "lock entre processos nas demais mutacoes do estagio 42, com contraprova; vinculo declarado",
     "E-358": "estagio 42 com processos reais, medido e contraprovado; vinculo declarado",
-    "E-359": "orcamento acumulado de onboarding contra o estado real; vinculo declarado"
+    "E-359": "orcamento acumulado de onboarding contra o estado real; vinculo declarado",
+    "E-360": "orcamento no caminho direto, com volume medido e contraprova; vinculo declarado"
   }
 }
