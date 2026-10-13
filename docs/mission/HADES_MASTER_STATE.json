@@ -2132,7 +2132,10 @@
     "OS TESTES DO INSTRUMENTO ACHARAM 3 DEFEITOS NELE (E-322): regex que nao pegava 'Seremos', sitemap lido so com namespace oficial, e fixture que criava sitemap/xml. Um guarda precisa dos proprios testes negativos",
     "LOCK SEM RELEITURA NAO BASTA (E-323): proteger contra escrita simultanea nao protege contra decisao tomada com dado velho. O estado e' recarregado do disco DEPOIS de obter a trava",
     "NOVA INSTANCIA, NAO O CACHE DE QUEM ESCREVEU (E-323): a prova de persistencia vem de um store novo. Cache nao e' evidencia",
-    "REUSAR O PRIMITIVO EXISTENTE (E-323): withFileLock ja existia com implementacao Windows e Unix. Minha primeira leitura da assinatura estava errada (era func() error nas duas) - medir a assinatura evitou inventar um lock novo"
+    "REUSAR O PRIMITIVO EXISTENTE (E-323): withFileLock ja existia com implementacao Windows e Unix. Minha primeira leitura da assinatura estava errada (era func() error nas duas) - medir a assinatura evitou inventar um lock novo",
+    "INVENTARIO OTIMISTA CORRIGIDO (E-324): P1-A dizia 'parcial (workflow com retry/DLQ provados)'. A medicao mostrou que o motor de workflow NAO existia - os arquivos schedule_* sao o scheduler do supervisor, outra coisa. Classificar por nome parecido e' o mesmo erro que confundir modulo com capacidade",
+    "NO DESCONHECIDO NAO PODE SER PULADO (E-324): o V2.2 proibe declarar sucesso com nos ignorados. Tipo nao suportado falha no REGISTRO e tambem na EXECUCAO quando a definicao vem do disco",
+    "ARMADILHA ARMADA NA IDEMPOTENCIA (E-324): o teste compara o contador de efeitos ANTES e DEPOIS da repeticao. Sem isso, um 'replayed' verdadeiro com efeito duplicado passaria"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -2309,7 +2312,7 @@
         "P0-F": "PARCIAL"
       },
       "p1_p2": {
-        "P1-A": "PARCIAL",
+        "P1-A": "PARCIAL CORRIGIDO: o inventario dizia 'parcial' e a medicao mostrou AUSENTE; o nucleo do motor de workflow foi implementado e provado (E-324). Faltam fan-out/join, interface visual e aprovacao humana",
         "P1-B": "PARCIAL",
         "P1-C": "IN_PROGRESS",
         "P1-D": "BLOCKED_BY_EXTERNAL_DEPENDENCY",
@@ -2369,6 +2372,11 @@
           "estado": "PARCIAL",
           "evidencia": "E-321",
           "observacao": "pesquisa com fontes rastreaveis, data, dedupe, multi-fonte e defesa contra injecao provados; navegador autorizado continua BLOCKED_BY_EXTERNAL_DEPENDENCY"
+        },
+        "T6": {
+          "estado": "provado (nucleo)",
+          "evidencia": "E-324",
+          "observacao": "webhook -> condicao -> acao real, retry contado, DLQ, idempotencia com armadilha armada"
         }
       }
     }
@@ -2384,6 +2392,7 @@
     "E-320": "teste T4 do ADENDO DE PARIDADE (gate P0-E: multiagente em worktrees isolados); vinculo declarado",
     "E-321": "integridade das fontes de pesquisa (P1-G/T1 do adendo de paridade); vinculo declarado",
     "E-322": "descoberta honesta (P1-H / estagio 39): guarda que reprova promessa de ranking e valida metadados; vinculo declarado",
-    "E-323": "fatia 4 do INCREMENTO I do V2.2 (agendamento entre processos); vinculo declarado"
+    "E-323": "fatia 4 do INCREMENTO I do V2.2 (agendamento entre processos); vinculo declarado",
+    "E-324": "motor de workflow deterministico (P1-A / teste T6 do adendo); vinculo declarado"
   }
 }
