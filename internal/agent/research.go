@@ -27,23 +27,30 @@ type ResearchRequest struct {
 }
 
 type ResearchSource struct {
-	URL         string    `json:"url"`
-	Title       string    `json:"title,omitempty"`
-	Status      int       `json:"status,omitempty"`
-	ContentType string    `json:"content_type,omitempty"`
-	Text        string    `json:"text,omitempty"`
-	SHA256      string    `json:"sha256,omitempty"`
-	Error       string    `json:"error,omitempty"`
-	FetchedAt   time.Time `json:"fetched_at"`
+	// E-321: a URL normalizada explica por que duas entradas foram consideradas a MESMA pagina, e os sinais
+	// registram que o conteudo tentou instruir o agente - tratado como DADO, nunca como instrucao.
+	CanonicalURL     string    `json:"canonical_url,omitempty"`
+	InjectionSignals []string  `json:"injection_signals,omitempty"`
+	URL              string    `json:"url"`
+	Title            string    `json:"title,omitempty"`
+	Status           int       `json:"status,omitempty"`
+	ContentType      string    `json:"content_type,omitempty"`
+	Text             string    `json:"text,omitempty"`
+	SHA256           string    `json:"sha256,omitempty"`
+	Error            string    `json:"error,omitempty"`
+	FetchedAt        time.Time `json:"fetched_at"`
 }
 
 type ResearchReport struct {
-	Query     string           `json:"query"`
-	Sources   []ResearchSource `json:"sources"`
-	Summary   string           `json:"summary"`
-	Citations []AgentEvidence  `json:"citations"`
-	Conflicts []string         `json:"conflicts,omitempty"`
-	CreatedAt time.Time        `json:"created_at"`
+	// E-321: quantos DOMINIOS independentes sustentam o relatorio e quantas duplicatas foram dobradas. Sem isto,
+	// repetir a mesma origem pareceria corroboracao.
+	Independence *ResearchIndependence `json:"independence,omitempty"`
+	Query        string                `json:"query"`
+	Sources      []ResearchSource      `json:"sources"`
+	Summary      string                `json:"summary"`
+	Citations    []AgentEvidence       `json:"citations"`
+	Conflicts    []string              `json:"conflicts,omitempty"`
+	CreatedAt    time.Time             `json:"created_at"`
 }
 
 // SearchProvider discovers candidate source URLs for a query. It is optional:
@@ -126,8 +133,19 @@ func (e *ResearchEngine) Research(ctx context.Context, request ResearchRequest) 
 	if err := ctx.Err(); err != nil {
 		return ResearchReport{}, err
 	}
+	// E-321: sinalizar conteudo que tenta instruir o agente (dado nao confiavel, nunca instrucao) e colapsar
+	// duplicatas da MESMA pagina canonica ANTES de ordenar - repetir a mesma origem nao e' corroboracao.
+	for i := range results {
+		if results[i].Error == "" && results[i].Text != "" {
+			results[i].InjectionSignals = ResearchInjectionSignals(results[i].Text)
+		}
+	}
+	results, duplicatasDobradas := DedupeResearchSources(results)
+
 	sort.SliceStable(results, func(i, j int) bool { return results[i].URL < results[j].URL })
 	report := ResearchReport{Query: request.Query, Sources: results, CreatedAt: time.Now().UTC()}
+	independencia := SummarizeResearchIndependence(results, duplicatasDobradas)
+	report.Independence = &independencia
 	var summary strings.Builder
 	for index, source := range results {
 		if source.Error != "" || source.Text == "" {

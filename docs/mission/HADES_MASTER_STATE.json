@@ -2123,7 +2123,10 @@
     "ARITMETICA NO INSTANTE ERRADO, DE NOVO (E-319): repeti o erro de E-313 ao comparar contagem capturada antes de outro agendamento entrar. Medir no instante certo nao e' detalhe de estilo - e' o que faz o teste medir o codigo",
     "AUDITAR ANTES DE EDITAR DEU RESULTADO (E-320): AgentOrchestrator e CreateGitWorktree ja existiam. O que faltava era a prova ponta a ponta - nao reimplementar o que existe",
     "CONFLITO NAO E' RESOLVIDO SOZINHO (E-320): dois especialistas na mesma linha geram conflito declarado e o merge e' abortado. Merge automatico silencioso escolheria a versao de alguem sem ninguem decidir",
-    "ISOLAMENTO PRECISA SER MEDIDO, NAO DECLARADO (E-320): o teste confere que o artefato de um papel nao aparece no worktree do outro nem vaza para o base antes do merge"
+    "ISOLAMENTO PRECISA SER MEDIDO, NAO DECLARADO (E-320): o teste confere que o artefato de um papel nao aparece no worktree do outro nem vaza para o base antes do merge",
+    "AUDITORIA CORRIGIU MINHA SUPOSICAO (E-321): FetchedAt e SHA256 ja existiam em ResearchSource. Eu ia implementar o que ja havia - ler antes de escrever evitou trabalho inutil e uma evidencia falsa de novidade",
+    "DUPLICATA NAO E' CORROBORACAO (E-321): a mesma pagina por dois caminhos virava duas fontes. Contar duplicata como fonte independente fabrica consenso que nao existe",
+    "CONTEUDO HOSTIL CONTINUA SENDO DADO (E-321): a pagina que tenta instruir o agente aparece SINALIZADA e no resumo, mas nao e' obedecida. Um detector que prometesse cobrir todo ataque seria a mesma mentira que um teste que sempre passa"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -2305,7 +2308,7 @@
         "P1-D": "BLOCKED_BY_EXTERNAL_DEPENDENCY",
         "P1-E": "NAO_INICIADO",
         "P1-F": "NAO_INICIADO",
-        "P1-G": "PARCIAL",
+        "P1-G": "PARCIAL (dedupe, independencia, export verificavel e defesa contra injecao provados; T1 completo depende de navegador autorizado)",
         "P1-H": "NAO_INICIADO",
         "P2": "PARCIAL"
       },
@@ -2354,6 +2357,11 @@
           "estado": "provado",
           "evidencia": "E-320",
           "observacao": "git real, isolamento medido, conflito abortado"
+        },
+        "T1": {
+          "estado": "PARCIAL",
+          "evidencia": "E-321",
+          "observacao": "pesquisa com fontes rastreaveis, data, dedupe, multi-fonte e defesa contra injecao provados; navegador autorizado continua BLOCKED_BY_EXTERNAL_DEPENDENCY"
         }
       }
     }
@@ -2366,6 +2374,7 @@
     "E-317": "defeito de integracao do incremento I (sufixo _GOOS acidental) + bateria de build cruzado; vinculo declarado",
     "E-318": "ADRs de integracao com licencas medidas (adendo §4) - vinculo declarado",
     "E-319": "fatia 3 do INCREMENTO I do V2.2 (remarcacao atomica); vinculo declarado",
-    "E-320": "teste T4 do ADENDO DE PARIDADE (gate P0-E: multiagente em worktrees isolados); vinculo declarado"
+    "E-320": "teste T4 do ADENDO DE PARIDADE (gate P0-E: multiagente em worktrees isolados); vinculo declarado",
+    "E-321": "integridade das fontes de pesquisa (P1-G/T1 do adendo de paridade); vinculo declarado"
   }
 }
