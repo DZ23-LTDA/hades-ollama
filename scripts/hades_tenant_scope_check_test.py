@@ -81,6 +81,30 @@ class CatracaDeEscopoTest(unittest.TestCase):
         self.assertEqual([], violacoes, violacoes)
         self.assertEqual([], pendentes, pendentes)
 
+    def test_checagem_crua_de_vazio_tambem_e_guarda_reconhecida(self) -> None:
+        """E-342: um arquivo pode estar CERTO sem usar o helper (checando o valor cru)."""
+        raiz = self._dir(**{"cria_cru.go": (
+            "func (s *Store) Sync(req Request) error {\n"
+            "\torganizationID := strings.TrimSpace(req.OrganizationID)\n"
+            "\tif organizationID == \"\" {\n"
+            "\t\treturn ErrInvalid\n"
+            "\t}\n"
+            "\tpath := filepath.Join(s.root, sanitizeIDComponent(organizationID)+\".json\")\n"
+            "\treturn nil\n"
+            "}\n")})
+        violacoes, pendentes = catraca.auditar(raiz)
+        self.assertEqual([], violacoes, violacoes)
+        self.assertEqual([], pendentes, pendentes)
+
+    def test_arquivo_sem_guarda_alguma_continua_reprovando(self) -> None:
+        """A direcao negativa: sem helper E sem checagem crua, reprova."""
+        raiz = self._dir(**{"sem_nada.go": (
+            "func (s *Store) caminho(org string) string {\n"
+            "\treturn filepath.Join(s.root, sanitizeIDComponent(org)+\".json\")\n"
+            "}\n")})
+        violacoes, _ = catraca.auditar(raiz)
+        self.assertTrue(any("SEM `requireOrganization`" in v for v in violacoes), violacoes)
+
     def test_arquivo_de_teste_e_ignorado(self) -> None:
         raiz = self._dir(**{"coisa_test.go": (
             "func TestX(t *testing.T) {\n"
