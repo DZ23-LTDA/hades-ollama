@@ -165,16 +165,44 @@ func TestAvisoDuranteVarreduraNaoDeixaSessaoNoAr(t *testing.T) {
 
 	var wg sync.WaitGroup
 	wg.Add(2)
+	var erroAviso, erroVarredura error
 	go func() {
 		defer wg.Done()
-		_, _ = store.RecordPlatformWarning("org-a", sessao.ID, "diretriz", "id", agora)
+		_, erroAviso = store.RecordPlatformWarning("org-a", sessao.ID, "diretriz", "id", agora)
 	}()
-	go func() { defer wg.Done(); _, _ = store.SweepLiveSessions("org-a", agora.Add(1*time.Second)) }()
+	go func() {
+		defer wg.Done()
+		// 🚨 ADV-54: a varredura era um NO-OP — a sessão estava autorizada por 30 min e a varredura era chamada com
+		// `agora+1s`, então o guard `now.Before(AuthorizedUntil)` fazia `continue` e NADA era encerrado. *Uma "corrida"
+		// em que um dos lados não faz nada não é corrida: é rótulo.* Aqui a varredura age de verdade (depois da
+		// autorização), para haver disputa real pelo mesmo estado.
+		_, erroVarredura = store.SweepLiveSessions("org-a", agora.Add(31*time.Minute))
+	}()
 	wg.Wait()
+	if erroAviso != nil {
+		t.Fatalf("registrar o aviso não pode falhar: %v", erroAviso)
+	}
+	if erroVarredura != nil {
+		t.Fatalf("a varredura não pode falhar: %v", erroVarredura)
+	}
 
-	sessoes, _ := store.LiveSessions("org-a")
-	if sessoes[0].HumanReview && sessoes[0].State == LiveLive {
-		t.Fatalf("ARMADILHA: sessão no ar com revisão humana exigida: %+v", sessoes[0])
+	sessoes, err := store.LiveSessions("org-a")
+	if err != nil {
+		t.Fatalf("listar as sessões: %v", err)
+	}
+	if len(sessoes) == 0 {
+		t.Fatal("ARMADILHA: a sessão desapareceu — verificação vácua (lista vazia) em vez de propriedade")
+	}
+	final := sessoes[0]
+	// 🚨 ADV-54 (a asserção que NÃO disparava): a versão anterior exigia `HumanReview && State == LiveLive`, e quando
+	// o aviso era **PERDIDO** — exatamente o defeito que este teste promete guardar — o resultado era
+	// `HumanReview=false, State=LiveLive`, deixando a conjunção **FALSA** e o teste **VERDE** com o mecanismo de
+	// segurança desligado. *Asserção que não dispara no modo de falha prometido não guarda nada.*
+	if !final.HumanReview {
+		t.Fatalf("ARMADILHA: o aviso da plataforma foi PERDIDO — a sessão ficou sem revisão humana exigida: %+v", final)
+	}
+	if len(final.Incidents) == 0 {
+		t.Fatalf("ARMADILHA: o incidente do aviso não foi registrado (aviso perdido na corrida): %+v", final)
 	}
 }
 
