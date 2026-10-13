@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"sync"
 	"testing"
 	"time"
@@ -50,7 +51,13 @@ func TestProcessoAjudanteDoEstagio42(t *testing.T) {
 			fmt.Fprintln(os.Stderr, "tempo esgotado esperando a largada")
 			os.Exit(3)
 		}
-		time.Sleep(5 * time.Millisecond)
+		// 🚨 E-387 (ADV-54/4, MEDIDO): aqui havia `time.Sleep(5 * time.Millisecond)`, e a janela read→writeJSONAtomic→
+		// rename medida em E-165 é da ordem de **~1,7 ms** ⇒ *a espera era MAIOR que a corrida que ela deveria
+		// provocar*: os três processos podiam sair escalonados e o teste "provar" o lock por sorte ✗.
+		// ***Contraprova que torce para o dano acontecer não é contraprova.***
+		// Agora a espera é **ceder a CPU** (sem dormir): a largada é praticamente simultânea e o jitter cai de
+		// milissegundos para a ordem do escalonador.
+		runtime.Gosched()
 	}
 	store := NewLiveCommerceStore(raiz)
 	valor := int64(1000)
