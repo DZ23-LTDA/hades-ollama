@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strings"
 	"time"
@@ -233,9 +234,9 @@ func EscreverArtefatoDaMatrizT2(t interface {
 	Logf(string, ...any)
 	Fatalf(string, ...any)
 }, resultados []HarnessBenchmarkResult, resumo T2MatrixSummary) {
-	raiz := "docs/parity"
-	if _, err := os.Stat(raiz); err != nil {
-		t.Logf("artefato da matriz não gravado (diretório %s ausente)", raiz)
+	raiz, achou := raizDoRepositorioParaArtefato()
+	if !achou {
+		t.Logf("artefato da matriz NÃO gravado: docs/parity não encontrado a partir do arquivo-fonte")
 		return
 	}
 	var b strings.Builder
@@ -259,4 +260,29 @@ func EscreverArtefatoDaMatrizT2(t interface {
 	if err := os.WriteFile(filepath.Join(raiz, "HADES_T2_MATRIX.md"), []byte(b.String()), 0o600); err != nil {
 		t.Logf("artefato da matriz não gravado: %v", err)
 	}
+}
+
+// raizDoRepositorioParaArtefato localiza `docs/parity` A PARTIR DO ARQUIVO-FONTE, não do diretório de trabalho.
+//
+// POR QUE ISSO IMPORTA (E-345): `go test` roda com o **diretório do pacote** como diretório de trabalho. Um caminho
+// relativo `docs/parity` NÃO existe ali — o artefato era silenciosamente pulado, e o registro ficava sem evidência.
+// ***Artefato que "às vezes" é gravado é pior que artefato nenhum: parece evidência.***
+func raizDoRepositorioParaArtefato() (string, bool) {
+	_, arquivo, _, ok := runtime.Caller(0)
+	if !ok {
+		return "", false
+	}
+	dir := filepath.Dir(arquivo)
+	for i := 0; i < 6; i++ {
+		candidato := filepath.Join(dir, "docs", "parity")
+		if info, err := os.Stat(candidato); err == nil && info.IsDir() {
+			return candidato, true
+		}
+		pai := filepath.Dir(dir)
+		if pai == dir {
+			break
+		}
+		dir = pai
+	}
+	return "", false
 }

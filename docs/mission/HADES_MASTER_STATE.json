@@ -2221,7 +2221,11 @@
     "SEM ANTI-TRAPACA, TRES FALSOS SUCESSOS (E-344): qwen2.5:7b alterou o arquivo de TESTE em 3 de 4 fixtures. O anti-trapaca impediu que isso fosse contado como capacidade",
     "TEMPO DE ESPERA NAO DECLARADO E' CUSTO INVISIVEL (E-344): llama3.2:3b gastou 1202s num fixture; agora ha limite por tentativa, veredito TIMEOUT, motivo registrado e teste armado",
     "HARNESS DE REFERENCIA PRECISA PROPOR A REFERENCIA (E-344): o meu filtrava calc.go na marra e resolvia 1 de 4 depois que a matriz ganhou outras classes de bug",
-    "NUMERO QUE SO' EXISTE NO TERMINAL NAO E' EVIDENCIA (E-344): a matriz medida vira artefato docs/parity/HADES_T2_MATRIX.md gravado pelo proprio teste, com data e modelos"
+    "NUMERO QUE SO' EXISTE NO TERMINAL NAO E' EVIDENCIA (E-344): a matriz medida vira artefato docs/parity/HADES_T2_MATRIX.md gravado pelo proprio teste, com data e modelos",
+    "UMA EXECUCAO NAO DISTINGUE CAPACIDADE DE SORTE (E-345): a repeticao roda N vezes por combinacao e agrega por CONTAGEM de veredicto, com o aviso de que N pequeno nao permite probabilidade nem ranking",
+    "AGREGADOR PRECISA SER TESTAVEL SEM MODELO (E-345): AgregarRepeticaoT2 e' pura; contador errado dentro do laco caro inflaria a taxa em silencio",
+    "O REGISTRO LE O ARTEFATO, NAO DIGITA O NUMERO (E-345): a linha de evidencia e' montada a partir do artefato que o proprio teste grava - numero digitado a mao nao e' evidencia",
+    "NEM COM N SE ALEGA PARIDADE (E-345): o instrumento mede harness minimo sobre Ollama local; Claude Code/Codex/Manus seguem BLOCKED_BY_EXTERNAL_DEPENDENCY e NAO_MEDIDO"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -2715,6 +2719,75 @@
           "llama3.2:3b gastou 1202s num fixture -> criado limite por tentativa (TIMEOUT) com teste armado",
           "harness de referencia filtrava calc.go na marra e resolvia 1 de 4 -> generalizado"
         ]
+      },
+      "repeticao": {
+        "execucoes": 12,
+        "verde": 3,
+        "verde_primeira_tentativa": 0,
+        "trapacou": 9,
+        "vermelho": 0,
+        "timeout": 0,
+        "artefato": "docs/parity/HADES_T2_REPETICAO.md",
+        "permite_afirmar": "contagem por combinacao",
+        "nao_permite_afirmar": [
+          "probabilidade",
+          "intervalo de confianca",
+          "superioridade entre modelos"
+        ],
+        "por_combinacao": [
+          {
+            "modelo": "qwen2.5:7b",
+            "fixture": "fixture-t2-soma",
+            "execucoes": 3,
+            "verde": 3,
+            "primeira": 0,
+            "trapacou": 0,
+            "vermelho": 0,
+            "timeout": 0,
+            "nao_medido": 0,
+            "duracao": "11.8",
+            "taxa": "3/3"
+          },
+          {
+            "modelo": "qwen2.5:7b",
+            "fixture": "fixture-t2-comparacao",
+            "execucoes": 3,
+            "verde": 0,
+            "primeira": 0,
+            "trapacou": 3,
+            "vermelho": 0,
+            "timeout": 0,
+            "nao_medido": 0,
+            "duracao": "9.5",
+            "taxa": "0/3"
+          },
+          {
+            "modelo": "qwen2.5:7b",
+            "fixture": "fixture-t2-caso-limite",
+            "execucoes": 3,
+            "verde": 0,
+            "primeira": 0,
+            "trapacou": 3,
+            "vermelho": 0,
+            "timeout": 0,
+            "nao_medido": 0,
+            "duracao": "10.7",
+            "taxa": "0/3"
+          },
+          {
+            "modelo": "qwen2.5:7b",
+            "fixture": "fixture-t2-fatiamento",
+            "execucoes": 3,
+            "verde": 0,
+            "primeira": 0,
+            "trapacou": 3,
+            "vermelho": 0,
+            "timeout": 0,
+            "nao_medido": 0,
+            "duracao": "20.8",
+            "taxa": "0/3"
+          }
+        ]
       }
     }
   },
@@ -2750,6 +2823,7 @@
     "E-341": "terceiro lote medido (voice, factory, sales, ledger, snapshots); vinculo declarado",
     "E-342": "correcao do instrumento: duas pendencias eram falsas; vinculo declarado",
     "E-343": "P0-B/T2: primeira medicao red->green com modelo local; vinculo declarado",
-    "E-344": "T2: matriz medida (4 fixtures x 2 modelos) e timeout por tentativa; vinculo declarado"
+    "E-344": "T2: matriz medida (4 fixtures x 2 modelos) e timeout por tentativa; vinculo declarado",
+    "E-345": "T2: repeticao estatistica (contagem, nao probabilidade); vinculo declarado"
   }
 }
