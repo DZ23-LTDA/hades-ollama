@@ -107,8 +107,10 @@ class CatracaDeEscopoTest(unittest.TestCase):
             self.assertIn(" — dispensa: ", pendencia, pendencia)
             _, motivo = pendencia.split(" — dispensa: ", 1)
             self.assertTrue(motivo.strip(), f"pendência sem motivo: {pendencia}")
+            # Três categorias honestas: (a) NAO_MEDIDO (falta varredura); (b) validação por DELEGAÇÃO;
+            # (c) CONTRATO TESTADO do repositório que decide o contrário (o contrato ganha da minha preferência).
             categorizada = ("NAO_MEDIDO" in motivo or "NÃO MEDIDO" in motivo or "já foi validada" in motivo
-                            or "não há escopo" in motivo)
+                            or "não há escopo" in motivo or "CONTRATO TESTADO" in motivo)
             self.assertTrue(categorizada, f"pendência sem categoria honesta (NAO_MEDIDO ou delegação): {pendencia}")
 
 

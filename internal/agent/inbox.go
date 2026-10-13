@@ -320,6 +320,9 @@ func (s *InboxStore) openConversationLocked(organizationID, channel, contactID, 
 // `ExternalID` devolve a mensagem original com `Deduplicated=true` em vez de criar
 // outra — webhook duplicado não pode virar mensagem duplicada.
 func (s *InboxStore) AppendInbound(organizationID, channel, contactID, contactName, body, externalID string, now time.Time) (InboxConversation, InboxMessage, error) {
+	if err := requireOrganization(organizationID); err != nil {
+		return InboxConversation{}, InboxMessage{}, err
+	}
 	organizationID = consentScope(organizationID)
 	channel = normalizeInboxChannel(channel)
 	contactID = strings.TrimSpace(contactID)
@@ -376,6 +379,9 @@ func (s *InboxStore) AppendInbound(organizationID, channel, contactID, contactNa
 // AppendOutbound registra resposta do agente ou de uma pessoa. O envio passa pelo
 // CONSENTIMENTO: responder quem pediu para não ser procurado é recusado.
 func (s *InboxStore) AppendOutbound(organizationID, conversationID, authorType, authorID, body string, consent *ConsentRegistry, now time.Time) (InboxConversation, InboxMessage, error) {
+	if err := requireOrganization(organizationID); err != nil {
+		return InboxConversation{}, InboxMessage{}, err
+	}
 	organizationID = consentScope(organizationID)
 	body = strings.TrimSpace(body)
 	if body == "" {
@@ -432,6 +438,9 @@ func truncateInboxPreview(body string) string {
 
 // ListConversations lista as conversas, opcionalmente por status.
 func (s *InboxStore) ListConversations(organizationID, status string) []InboxConversation {
+	if err := requireOrganization(organizationID); err != nil {
+		return nil
+	}
 	organizationID = consentScope(organizationID)
 	status = strings.ToLower(strings.TrimSpace(status))
 	s.mu.RLock()
@@ -452,6 +461,9 @@ func (s *InboxStore) ListConversations(organizationID, status string) []InboxCon
 
 // Conversation carrega a conversa com as mensagens.
 func (s *InboxStore) Conversation(organizationID, conversationID string) (InboxConversation, []InboxMessage, error) {
+	if err := requireOrganization(organizationID); err != nil {
+		return InboxConversation{}, nil, err
+	}
 	organizationID = consentScope(organizationID)
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -464,6 +476,9 @@ func (s *InboxStore) Conversation(organizationID, conversationID string) (InboxC
 
 // Assign define o responsável pela conversa.
 func (s *InboxStore) Assign(organizationID, conversationID, assignee, kind string, now time.Time) (InboxConversation, error) {
+	if err := requireOrganization(organizationID); err != nil {
+		return InboxConversation{}, err
+	}
 	organizationID = consentScope(organizationID)
 	assignee = strings.TrimSpace(assignee)
 	if assignee == "" {
@@ -527,6 +542,9 @@ func (s *InboxStore) HandoffToHuman(organizationID, conversationID, actorID, ass
 
 // Close encerra a conversa e registra quem encerrou.
 func (s *InboxStore) Close(organizationID, conversationID, actorID, reason string, now time.Time) (InboxConversation, error) {
+	if err := requireOrganization(organizationID); err != nil {
+		return InboxConversation{}, err
+	}
 	organizationID = consentScope(organizationID)
 	s.mu.Lock()
 	defer s.mu.Unlock()

@@ -298,6 +298,9 @@ func (s *CRMStore) UpsertContact(contact CRMContact, now time.Time) (CRMContact,
 
 // ListContacts lista (ou busca) contatos da organização.
 func (s *CRMStore) ListContacts(organizationID, query string) []CRMContact {
+	if err := requireOrganization(organizationID); err != nil {
+		return nil
+	}
 	organizationID = consentScope(organizationID)
 	query = strings.ToLower(strings.TrimSpace(query))
 	s.mu.RLock()
@@ -321,6 +324,9 @@ func (s *CRMStore) ListContacts(organizationID, query string) []CRMContact {
 
 // GetContact busca pelo identificador dentro da organização.
 func (s *CRMStore) GetContact(organizationID, contactID string) (CRMContact, error) {
+	if err := requireOrganization(organizationID); err != nil {
+		return CRMContact{}, err
+	}
 	organizationID = consentScope(organizationID)
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -333,6 +339,9 @@ func (s *CRMStore) GetContact(organizationID, contactID string) (CRMContact, err
 
 // CreateOpportunity abre uma oportunidade para um contato da MESMA organização.
 func (s *CRMStore) CreateOpportunity(organizationID, contactID, title string, valueCents int64, ownerID string, now time.Time) (CRMOpportunity, error) {
+	if err := requireOrganization(organizationID); err != nil {
+		return CRMOpportunity{}, err
+	}
 	organizationID = consentScope(organizationID)
 	title = strings.TrimSpace(title)
 	if title == "" {
@@ -370,6 +379,9 @@ func (s *CRMStore) CreateOpportunity(organizationID, contactID, title string, va
 
 // SetOpportunityStage muda a fase. Fase terminal NÃO volta atrás.
 func (s *CRMStore) SetOpportunityStage(organizationID, opportunityID, stage, actor string, now time.Time) (CRMOpportunity, error) {
+	if err := requireOrganization(organizationID); err != nil {
+		return CRMOpportunity{}, err
+	}
 	organizationID = consentScope(organizationID)
 	normalized := normalizeCRMStage(stage)
 	if normalized == "" {
@@ -463,6 +475,9 @@ func (s *CRMStore) PipelineSummary(organizationID string) CRMPipeline {
 // CRM não guarda cópia do opt-out: duas verdades sobre consentimento seriam pior do
 // que nenhuma.
 func (s *CRMStore) ContactView(organizationID, contactID string, registry *ConsentRegistry) (CRMContactView, error) {
+	if err := requireOrganization(organizationID); err != nil {
+		return CRMContactView{}, err
+	}
 	contact, err := s.GetContact(organizationID, contactID)
 	if err != nil {
 		return CRMContactView{}, err

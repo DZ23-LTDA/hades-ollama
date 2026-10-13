@@ -2195,7 +2195,15 @@
     "DECLARAR A DIVIDA E' O PASSO ANTERIOR; PAGAR E' OUTRO (E-339): 7 das 16 pendencias da catraca foram medidas por comportamento e a lista caiu de 18 para 11, com prova",
     "A ESCRITA ESTAVA ABERTA (E-339): as guardas de leitura funcionaram, mas as SETE gravacoes Save(org, payload) aceitavam organizacao vazia. Ler arquivo compartilhado e' vazamento; escrever nele mistura tenants",
     "SUPOR ASSINATURA EM VEZ DE MEDIR - TERCEIRA VEZ (E-339): assumi Save(organizationID string); a real e' Save(organizationID string, payload) e o primeiro patch inseriu 0 guardas. A medicao mecanica corrigiu",
-    "GUARDA QUE PASSA POR ACIDENTE NAO E' GUARDA (E-339): teste proprio exige que a recusa seja por ErrTenantScopeRequired"
+    "GUARDA QUE PASSA POR ACIDENTE NAO E' GUARDA (E-339): teste proprio exige que a recusa seja por ErrTenantScopeRequired",
+    "PATCHER GENERICO SOBRE CODIGO DESCONHECIDO E' ARMA CARREGADA (E-340): a v1 corrompeu 6 arquivos; a v2 errou a forma de retorno; a v3 (whitelist + assinatura de uma linha + zero certo por tipo) passou com build e vet limpos",
+    "O COMPILADOR E' O ARBITRO DAS ARITIES (E-340): ListContacts(org, query), Assign(org, id, assignee, kind, now) e RevokeConsent(org, channel, contactID, reason, actor, now) vieram das mensagens de erro, nao de suposicao",
+    "REVERTER A PROPRIA EDICAO QUEBRADA E' HIGIENE, NAO FRACASSO (E-340): git checkout apenas nos 6 arquivos que eu quebrei, com build limpo depois e zero residuo",
+    "SEM TENANT, SEM DADO (E-340): as leituras de lista devolvem vazio e a leitura de consentimento NAO autoriza - consentimento lido de arquivo compartilhado seria consentimento de outro cliente",
+    "CONTRATO TESTADO GANHA DA MINHA PREFERENCIA (E-340): a suite reprovou em consent_registry dizendo que organizacao vazia precisa ser NORMALIZADA. Minha guarda contradizia contrato do repositorio; revertida no arquivo e registrada com o motivo correto",
+    "PATCHER GENERICO SOBRE CODIGO DESCONHECIDO E' ARMA CARREGADA (E-340): v1 corrompeu 6 arquivos; v2 errou a forma de retorno; v3 (whitelist + assinatura de uma linha + zero certo por tipo) passou com build e vet limpos",
+    "O COMPILADOR E' O ARBITRO DAS ARITIES (E-340): ListContacts(org, query) e Assign(org, id, assignee, kind, now) vieram das mensagens de erro, nao de suposicao",
+    "REVERTER A PROPRIA EDICAO QUEBRADA E' HIGIENE (E-340): git checkout apenas nos arquivos que eu quebrei, com build limpo depois e zero residuo"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -2565,11 +2573,25 @@
           "descricao": "as sete gravacoes Save(org, payload) aceitavam organizacao vazia (escrita em arquivo compartilhado)",
           "estado": "CORRIGIDO E MEDIDO",
           "evidencia": "E-339"
+        },
+        {
+          "id": "ADV-18",
+          "severidade": "ALTA",
+          "descricao": "crm e inbox aceitavam organizacao vazia em leitura/escrita",
+          "estado": "CORRIGIDO E MEDIDO (pendências 11 -> 9)",
+          "evidencia": "E-340"
+        },
+        {
+          "id": "ADV-19",
+          "severidade": "INFORMATIVO",
+          "descricao": "minha guarda de escopo em consent_registry CONTRADIZIA contrato testado de normalizacao para a organizacao local",
+          "estado": "REVERTIDO; contrato testado prevalece; registrado com motivo declarado",
+          "evidencia": "E-340"
         }
       ],
       "proximos_ataques": [
-        "exercitar metodos de dominio especificos dos 7 (Append, SetApprovers, AppendInbound) com organizacao vazia",
-        "medir por comportamento as 11 pendencias restantes da catraca",
+        "medir as 8 pendencias restantes (voice_active_call, company_factory, sales_workforce, company_ledger, business_snapshots, marketplace_sync)",
+        "exercitar metodos vizinhos dos arquivos ja medidos (whitelist parcial)",
         "onboarding com volume grande (limites de recurso)"
       ]
     },
@@ -2645,6 +2667,7 @@
     "E-336": "revisao cruzada de permissao e isolamento nos modulos novos; vinculo declarado",
     "E-337": "varredura sistemica de escopo vazio; vinculo declarado",
     "E-338": "catraca de escopo de tenant (instrumento de auditoria continua); vinculo declarado",
-    "E-339": "medicao por comportamento de 7 pendencias da catraca; vinculo declarado"
+    "E-339": "medicao por comportamento de 7 pendencias da catraca; vinculo declarado",
+    "E-340": "segundo lote medido (crm, inbox); consent por contrato testado; vinculo declarado"
   }
 }
