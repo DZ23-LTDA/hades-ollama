@@ -43,6 +43,8 @@ var (
 	ErrMediaPathUnsafe = errors.New("media filename is unsafe")
 	// ErrMediaTranscoderUnavailable declara ausência de transcodificador em vez de fingir sucesso.
 	ErrMediaTranscoderUnavailable = errors.New("media transcoder is unavailable")
+	// ErrMediaTenantScope recusa destino de upload fora da raiz da organização (E-336).
+	ErrMediaTenantScope = errors.New("media destination is outside the organization scope")
 	// ErrMediaOutputInvalid recusa saída que não é mídia real.
 	ErrMediaOutputInvalid = errors.New("transcoder output is not valid media")
 )
@@ -335,4 +337,36 @@ func removerSaidaInvalida(caminho string) {
 		// Não há o que fazer além de não esconder: o caminho fica sabido para diagnóstico.
 		fmt.Fprintf(os.Stderr, "hades: falha ao remover saída inválida %q: %v\n", caminho, err)
 	}
+}
+
+// MediaOrgRoot devolve a raiz de mídia DA ORGANIZAÇÃO. O armazenamento é tenant-scoped: um upload de uma empresa não
+// pode ser gravado na pasta de outra. ***Isolar por convenção não é isolar.***
+func MediaOrgRoot(baseDir, organizationID string) (string, error) {
+	// MEDIDO (E-336): TANTO `sanitizeIDComponent` (fallback "geral") QUANTO `consentScope` (fallback próprio) engolem
+	// organização vazia e devolvem um escopo COMPARTILHADO. Validar depois deles é tarde: a checagem tem de ser no
+	// PARÂMETRO CRU, antes de qualquer função que "conserte" o vazio.
+	if strings.TrimSpace(organizationID) == "" || strings.TrimSpace(baseDir) == "" {
+		return "", fmt.Errorf("%w: base e organização são obrigatórias", ErrMediaTenantScope)
+	}
+	bruta := consentScope(organizationID)
+	// MEDIDO (E-336): `sanitizeIDComponent("")` devolve um FALLBACK, então validar depois de sanitizar deixava uma
+	// organização vazia compartilhar a mesma pasta que as outras — *um upload "sem tenant" viraria upload de todos*.
+	// A validação é feita no valor CRU, antes de qualquer normalização.
+	if strings.TrimSpace(bruta) == "" || strings.TrimSpace(baseDir) == "" {
+		return "", fmt.Errorf("%w: base e organização são obrigatórias", ErrMediaTenantScope)
+	}
+	organizacao := sanitizeIDComponent(bruta)
+	if strings.TrimSpace(organizacao) == "" {
+		return "", fmt.Errorf("%w: organização %q não produz escopo utilizável", ErrMediaTenantScope, bruta)
+	}
+	return filepath.Join(baseDir, organizacao), nil
+}
+
+// ValidateMediaUploadInOrg valida e grava o upload DENTRO da raiz da organização, recusando destino fora dela.
+func ValidateMediaUploadInOrg(origem, baseDir, organizationID, nomeDeclarado, tipoDeclarado string, limites MediaLimits) (ValidatedMedia, error) {
+	raiz, err := MediaOrgRoot(baseDir, organizationID)
+	if err != nil {
+		return ValidatedMedia{}, err
+	}
+	return ValidateMediaUpload(origem, raiz, nomeDeclarado, tipoDeclarado, limites)
 }

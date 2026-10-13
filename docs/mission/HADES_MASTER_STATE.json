@@ -2178,7 +2178,11 @@
     "A FILA PROMETIA HORARIO INEXISTENTE (E-335): a oferta ignorava sobreposicao, expediente e fechamento. Corrigido na causa-raiz - a oferta passa pelo MESMO portao do Book antes de existir",
     "OFERTA QUE FALHA NAO PODE PRENDER O CLIENTE (E-335): a entrada volta para WAITING em vez de virar estado terminal silencioso",
     "CORRIGIR TORNA A EXPECTATIVA ANTIGA OBSOLETA - E O REGISTRO DIZ POR QUE (E-335): a assertiva da 1a onda permitia oferta ruim com recusa na confirmacao; agora exige que a oferta nem aconteca",
-    "CONCORRENCIA REAL: UM GANHADOR (E-335): fila x canal direto no mesmo horario terminou com um agendamento ativo. Registrar ausencia de defeito evita reauditar o mesmo ponto"
+    "CONCORRENCIA REAL: UM GANHADOR (E-335): fila x canal direto no mesmo horario terminou com um agendamento ativo. Registrar ausencia de defeito evita reauditar o mesmo ponto",
+    "DESTAQUE DE PRODUTO CRUZAVA ORGANIZACAO (E-336): bastava SKU nao vazio. Agora precisa existir no catalogo DA organizacao; sem catalogo, recusa - nao se inventa produto",
+    "UPLOAD DE MIDIA PRECISA DE ESCOPO DE TENANT (E-336): destino era caminho cru. Agora a raiz e' derivada da organizacao, com teste armado conferindo que o arquivo nao cai na raiz alheia",
+    "FALLBACK DE IDENTIFICADOR E' BRECHA DE ISOLAMENTO (E-336): sanitizeIDComponent('') devolve 'geral' e consentScope tem fallback proprio. Validar DEPOIS de sanitizar deixa organizacao vazia compartilhar pasta com todos - validar o parametro CRU",
+    "OBSERVACAO SISTEMICA DECLARADA (E-336): a lista de armazenamentos que usam sanitizeIDComponent(org) nao foi auditada por completo. Fica como ataque declarado com o caminho exato"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -2485,12 +2489,33 @@
           "descricao": "fila x canal direto no mesmo horario",
           "estado": "SEM DEFEITO (um ganhador)",
           "evidencia": "E-335"
+        },
+        {
+          "id": "ADV-09",
+          "severidade": "ALTA",
+          "descricao": "destaque de produto aceitava SKU inexistente ou de OUTRA organizacao",
+          "estado": "CORRIGIDO",
+          "evidencia": "E-336"
+        },
+        {
+          "id": "ADV-10",
+          "severidade": "ALTA",
+          "descricao": "upload de midia sem escopo de tenant",
+          "estado": "CORRIGIDO",
+          "evidencia": "E-336"
+        },
+        {
+          "id": "ADV-11",
+          "severidade": "ALTA",
+          "descricao": "sanitizeIDComponent e consentScope tem fallback: organizacao vazia viraria escopo COMPARTILHADO",
+          "estado": "CORRIGIDO no caminho de midia; LISTA NAO AUDITADA POR COMPLETO",
+          "evidencia": "E-336"
         }
       ],
       "proximos_ataques": [
-        "reserva temporaria de horario oferecido (hoje a oferta nao reserva)",
+        "varrer TODOS os armazenamentos que usam sanitizeIDComponent(org) e confirmar que validam a organizacao crua",
         "onboarding com volume grande (limites de recurso)",
-        "revisao cruzada de permissao e isolamento nos modulos novos (estagio 42)"
+        "reserva temporaria de horario oferecido (a oferta nao reserva)"
       ]
     },
     "estagio_42": {
@@ -2561,6 +2586,7 @@
     "E-332": "estagio 42: contratos canonicos e nucleo de seguranca; vinculo declarado",
     "E-333": "causa-raiz do falso positivo de DLP (identificador gerado dentro de texto livre); vinculo declarado",
     "E-334": "estagio 42.1: validacao real e worker isolado; vinculo declarado",
-    "E-335": "auditoria adversarial 2a onda: fila oferecia horario inexistente; vinculo declarado"
+    "E-335": "auditoria adversarial 2a onda: fila oferecia horario inexistente; vinculo declarado",
+    "E-336": "revisao cruzada de permissao e isolamento nos modulos novos; vinculo declarado"
   }
 }
