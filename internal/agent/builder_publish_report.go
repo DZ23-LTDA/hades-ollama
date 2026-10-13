@@ -23,6 +23,9 @@ type BuilderPublishReport struct {
 	Runnable bool     `json:"runnable"`
 	Missing  []string `json:"missing,omitempty"`
 	Note     string   `json:"note,omitempty"`
+	// ArtifactIssues é a CONFORMIDADE do artefato (offline e limites declarados), eixo SEPARADO de Runnable:
+	// misturar os dois esconderia QUAL deles falhou — o mesmo princípio que separa CAPACIDADE de BLOQUEIO.
+	ArtifactIssues []string `json:"artifact_issues,omitempty"`
 }
 
 // InspectBuilderPublish mede o que existe no diretório publicado. A medição é por ARQUIVO e CONTEÚDO — presumir
@@ -80,6 +83,7 @@ func InspectBuilderPublish(root string) BuilderPublishReport {
 		relatorio.Note = "nenhum arquivo publicado: não há aplicação alguma"
 		return relatorio
 	}
+	relatorio.ArtifactIssues = GeneratedArtifactIssues(root)
 	if !relatorio.Runnable {
 		relatorio.Note = "arquivos copiados; aplicação NÃO executável: falta backend (a cópia não é publicação de app)"
 		return relatorio
