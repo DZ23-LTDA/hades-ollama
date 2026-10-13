@@ -2156,7 +2156,21 @@
     "OFERTA SEM PRAZO TRAVA A FILA (E-329): a oferta expira, passa ao proximo, e o expirado nao volta para a fila",
     "CONFIRMAR RECONFERE O MUNDO (E-329): entre oferta e confirmacao alguem pode agendar por outro canal. A confirmacao passa pelo mesmo portao e pode ser recusada",
     "LEMBRETE REPETIDO E' SPAM (E-329): a chave e' (agendamento, tipo) e o mesmo lembrete nao volta a ficar devido",
-    "ERRO DE PROCESSO MEU, DE NOVO (E-329): usei git reset --hard origin/main estando numa feature branch e movi o ponteiro dela. O commit continuou seguro no PR, mas o estado local confundiu - nao se faz reset destrutivo em branch de trabalho"
+    "ERRO DE PROCESSO MEU, DE NOVO (E-329): usei git reset --hard origin/main estando numa feature branch e movi o ponteiro dela. O commit continuou seguro no PR, mas o estado local confundiu - nao se faz reset destrutivo em branch de trabalho",
+    "AUDITORIA ACHOU UM TRAVAMENTO (E-330): workflow com Next ciclico girava PARA SEMPRE. O teste com timeout provou o defeito antes da correcao - um motor que nao termina nao e' automacao, e' travamento",
+    "TESTE ANTES DA CORRECAO (E-330): o achado virou teste que FALHOU primeiro, provando o defeito. Relatorio sem reproducao nao distingue defeito de opiniao",
+    "DEFESA EM PROFUNDIDADE NO LIMITE (E-330): detectar o ciclo de imediato E ter backstop de passos. Depender so do limite faria o usuario esperar 64 passos para descobrir um ciclo",
+    "AUDITORIA TAMBEM CONFIRMA AUSENCIA DE DEFEITO (E-330): o achado 2 foi investigado e NAO havia defeito (Book recusa por sobreposicao). Registrar isso evita 'auditar' de novo o mesmo ponto",
+    "ESTAGIO 42 ANEXADO, NAO REINICIADO (E-331): o complemento de live commerce entrou no plano e no estado sem criar missao nova e sem revogar controles de seguranca",
+    "EXTENSAO CHROME NAO PROVA PERMISSAO DE API (E-331): a referencia e' uma extensao; a auditoria de APIs oficiais (elegibilidade, escopos, quotas, Termos) e' a primeira fatia. Nao se assume que a API permita a mesma acao",
+    "DIANTE DE AVISO DA PLATAFORMA, PAUSAR E ESCALAR (E-331): o complemento proibe mecanismo de evasao. O Hades encerra/pausa, registra evidencia e chama humano",
+    "NADA DE LIVE INFINITA (E-331): o material de referencia mostra preparacao, nao prova 24/7 nem conformidade. Benchmarks proprios obrigatorios e supervisao humana recomendada pelo proprio apresentador",
+    "ESTAGIO 42: NUCLEO PROVADO (E-332): nada de evasao, evento de carrinho nao e' venda, e fail-closed no tempo e na aprovacao. Cada proibicao do complemento virou teste negativo",
+    "O GRAFO PERMITE, A TRAVA DECIDE (E-332): o defeito real era nao haver caminho legal para LIVE; corrigido o grafo MANTENDO o portao de aprovacao como trava de verdade",
+    "CI: FALHA NO DLP DE ATENDIMENTO, NAO NO MEU CHANGE (rodada 16): `TestServiceAgentAuditNeverStoresContactTextForAnyTool` falhou no runner. Reproduzido LOCALMENTE: passa isolado e na suite completa de 115s. Nao declarar 'flaky' sem prova - proxima rodada investiga a suite do CI e a main",
+    "FALSO POSITIVO DE PRIVACIDADE E' O PIOR TIPO (E-333): o teste de DLP acusava vazamento quando o identificador gerado (apr_28741117) continha os digitos do segredo (4111). Instrumento que acusa por acaso ensina a ignorar alerta",
+    "CAUSA-RAIZ DEMONSTRADA, NAO APENAS 'NAO REPRODUZIDA' (E-333): o teste de regressao NAO pulou - ele prova que o texto cru casa e que o mascaramento remove o falso positivo, mantendo o vazamento real sendo acusado",
+    "CORRIGIR INSTRUMENTO NAO E' ENFRAQUECER (E-333): a invariante segue de pe, provada por teste armado. Se a correcao tivesse cegado o detector, o segundo teste falharia"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -2402,6 +2416,77 @@
           "observacao": "webhook -> condicao -> acao real, retry contado, DLQ, idempotencia com armadilha armada"
         }
       }
+    },
+    "auditoria_adversarial": {
+      "estado": "IN_PROGRESS",
+      "achados": [
+        {
+          "id": "ADV-01",
+          "severidade": "ALTA",
+          "descricao": "workflow ciclico girava para sempre",
+          "estado": "CORRIGIDO",
+          "evidencia": "E-330",
+          "correcao": "deteccao de ciclo imediata + backstop WorkflowMaxSteps=64, com DLQ"
+        },
+        {
+          "id": "ADV-02",
+          "severidade": "INVESTIGADO",
+          "descricao": "fila poderia confirmar servico que nao cabe no espaco livre",
+          "estado": "SEM DEFEITO (Book recusa por sobreposicao)",
+          "evidencia": "E-330"
+        },
+        {
+          "id": "ADV-03",
+          "severidade": "MEDIA (instrumento)",
+          "descricao": "teste de DLP acusava vazamento quando um identificador gerado continha os digitos do segredo",
+          "estado": "CORRIGIDO E DEMONSTRADO",
+          "evidencia": "E-333",
+          "correcao": "mascarar identificadores gerados antes da busca por fragmento em texto livre, sem enfraquecer a invariante"
+        }
+      ],
+      "proximos_ataques": [
+        "fila e cancelamento simultaneos (concorrencia entre os dois caminhos)",
+        "reschedule durante oferta de fila",
+        "onboarding com volume grande (limites de recurso)",
+        "revisao cruzada de permissao e isolamento nos modulos novos"
+      ]
+    },
+    "estagio_42": {
+      "titulo": "HADES LIVE COMMERCE & AI SHOPPING AGENTS",
+      "estado": "IN_PROGRESS (nucleo de contratos e seguranca provado)",
+      "anexado_ao_v22": true,
+      "missao_nova_criada": false,
+      "artefato_exigido": "docs/mission/HADES_STAGE_42_LIVE_COMMERCE.md",
+      "fases": [
+        "42.0 auditoria e contratos",
+        "42.1 central de producao audiovisual",
+        "42.2 planejador e controle de live",
+        "42.3 live commerce real",
+        "42.4 agentes especializados",
+        "42.5 UI/UX",
+        "42.6 testes reproduziveis",
+        "42.7 entregas e checkpoints"
+      ],
+      "proibicoes_registradas": [
+        "spam, engajamento simulado, falsa escassez, falsa compra, perfil falso, personificacao",
+        "evasao de fiscalizacao: diante de aviso de plataforma, PAUSAR/ENCERRAR, registrar e escalar para humano",
+        "injecao de codigo no Chrome ou burla de protecao; camera virtual so por componente desktop explicito",
+        "promessa de transmissao oficial sem conector homologado (sem conector: plano e checklist assistido)",
+        "prometer 'live infinita' ou operacao sem supervisao",
+        "expor PII de comprador sem necessidade"
+      ],
+      "primeira_fatia": "42.0: inventario dos modulos reais + matriz por requisito + auditoria das APIs oficiais do TikTok Shop/LIVE + especificacao canonica versionada",
+      "implementado": [
+        "contratos canonicos versionados",
+        "maquina de estados da sessao",
+        "aprovacao humana obrigatoria antes de LIVE",
+        "encerramento automatico no fim autorizado",
+        "recuo diante de aviso da plataforma (sem evasao)",
+        "evento de carrinho != venda confirmada",
+        "dedupe/idempotencia de evento",
+        "isolamento por organizacao",
+        "destaque como sugestao ao operador"
+      ]
     }
   },
   "unlinked_evidence": {
@@ -2421,6 +2506,10 @@
     "E-326": "sonda real de capacidades no endpoint (P0-D), fecha o limite de E-325; vinculo declarado",
     "E-327": "onboarding de empresa existente (P1-B do adendo); vinculo declarado",
     "E-328": "fatia 5 do INCREMENTO I do V2.2 (intervalos no turno e virada de meia-noite); vinculo declarado",
-    "E-329": "fatia 6 do INCREMENTO I do V2.2 (fila de espera, lembretes e no-show); vinculo declarado"
+    "E-329": "fatia 6 do INCREMENTO I do V2.2 (fila de espera, lembretes e no-show); vinculo declarado",
+    "E-330": "auditoria adversarial (V2.2 secao 12): achado de travamento corrigido + propriedade verificada; vinculo declarado",
+    "E-331": "registro do COMPLEMENTO ESTAGIO 42 (live commerce) anexado ao V2.2; vinculo declarado",
+    "E-332": "estagio 42: contratos canonicos e nucleo de seguranca; vinculo declarado",
+    "E-333": "causa-raiz do falso positivo de DLP (identificador gerado dentro de texto livre); vinculo declarado"
   }
 }

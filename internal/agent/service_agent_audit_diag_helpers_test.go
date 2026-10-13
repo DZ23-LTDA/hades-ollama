@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
+	"regexp"
 	"strings"
 )
 
@@ -34,7 +35,10 @@ func campoDaTrilhaComTexto(conteudo, texto string) string {
 			{"reason", entrada.Reason},
 		}
 		for _, campo := range livres {
-			if contemTexto(campo.valor, texto) {
+			// E-333: mascara identificadores gerados ANTES da busca por fragmento. Sem isto, um identificador como
+			// "apr_28741117-50a" casa com o fragmento "4111" do segredo e acusa vazamento inexistente (a mesma classe
+			// de falso positivo que E-196 já havia corrigido para campos que SÃO identificadores).
+			if contemTexto(mascaraIdentificadoresGerados(campo.valor), texto) {
 				return fmt.Sprintf("entries[%d].%s", indice, campo.nome)
 			}
 		}
@@ -68,4 +72,27 @@ func contemTexto(valor, texto string) bool {
 func mascararTexto(texto string) string {
 	soma := sha256.Sum256([]byte(texto))
 	return fmt.Sprintf("%d caracteres, sha256:%x", len(texto), soma[:6])
+}
+
+// mascaraIdentificadoresGerados remove identificadores cunhados pelo PRÓPRIO sistema antes de procurar conteúdo de
+// terceiro num campo de TEXTO LIVRE.
+//
+// POR QUE ISSO É CAUSA-RAIZ E NÃO ABRANDAMENTO (E-333): o campo `reason` mistura texto fixo ("escrita exige aprovação
+// humana") com um identificador gerado ("apr_28741117-50a"). O segredo da varredura contém "4111", e o identificador
+// também — então a busca por FRAGMENTO acusava vazamento onde não havia. O detector já fazia isso para campos que SÃO
+// identificadores (lição de E-196); faltava o caso de identificador EMBUTIDO em texto livre.
+//
+// O que permanece: um vazamento real do conteúdo do contato continua sendo acusado, porque o texto de terceiro não vive
+// dentro de um identificador gerado.
+func mascaraIdentificadoresGerados(texto string) string {
+	if texto == "" {
+		return texto
+	}
+	// Prefixos cunhados pelo sistema (mission, aprovação, conversa, sessão de live, evento, pedido, produto, etc.).
+	comPrefixo := regexp.MustCompile(`\b(?:apr|aud|cv|tr|sp|ms|apv|run|wf|svc|res|brk|clo|live|cev|mod|wl|prod|ped|appt|shift|org|proj|agent|mission)_[0-9a-zA-Z][0-9a-zA-Z_-]*`)
+	texto = comPrefixo.ReplaceAllString(texto, "<id>")
+	// UUIDs completos (com ou sem hífens) e sequências longas de hexadecimal.
+	uuidCompleto := regexp.MustCompile(`\b[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\b`)
+	texto = uuidCompleto.ReplaceAllString(texto, "<id>")
+	return texto
 }

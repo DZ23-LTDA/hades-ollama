@@ -241,3 +241,52 @@ equivale a teste aprovado: vira `BLOCKED_BY_EXTERNAL_DEPENDENCY` com roteiro de 
 Separar sempre: **CAPACIDADE_IMPLEMENTADA · HOMOLOGADA_LOCALMENTE · HOMOLOGADA_COM_SERVICO_REAL · NAO_MEDIDO ·
 BLOQUEADA · NAO_IMPLEMENTADA**. `NOT_RELEASE_READY` permanece enquanto houver requisito crítico pendente, e a meta de
 superar concorrentes só pode ser alegada onde **métricas honestas** a sustentarem.
+
+---
+
+# COMPLEMENTO OFICIAL — ESTÁGIO 42: HADES LIVE COMMERCE & AI SHOPPING AGENTS
+
+**Anexado ao V2.2. Não cria missão nova, não reinicia nada e não revoga controles de segurança.** O executor **não**
+precisa ver vídeo ou imagem: o complemento veio convertido em requisitos funcionais com limites explícitos.
+
+## 42.0 — Auditoria e contratos (primeira fatia)
+- Mapear módulos **reais** já existentes: mídia, social, campanha, negócio, marketplace, comércio, estoque, mensagens,
+  missões, aprovações, storage e UI — **antes** de criar arquivo novo.
+- **Matriz por requisito** com as classificações canônicas (`IMPLEMENTADO_E_TESTADO` · `PARCIAL` · `APENAS_ADAPTER` ·
+  `APENAS_CATALOGO` · `AUSENTE` · `BLOCKED_BY_EXTERNAL_DEPENDENCY`).
+- Auditar **APIs oficiais** do TikTok Shop/LIVE (elegibilidade regional, escopos, publicação, comentários, eventos de
+  carrinho, quotas, Termos). ***Uma extensão Chrome não prova que a API permite a mesma ação*** — o complemento é
+  explícito nisso.
+- Especificação canônica versionada: `LiveProject` · `MediaAsset` · `Playlist` · `AudioTrack` · `MixingPreset` ·
+  `LiveSession` · `CommerceEvent` · `ProductShowcase` · `OperatorApproval` · `ModerationEvent` · `MetricsSnapshot`,
+  todos com `tenant_id`, owner, versões, estados, limites e trilha.
+- **Artefato:** `docs/mission/HADES_STAGE_42_LIVE_COMMERCE.md`.
+
+## 42.1–42.5 — Escopo declarado (fatias)
+produção audiovisual (validação de MIME real, biblioteca, misturador com ducking, worker FFmpeg **isolado com
+argumentos seguros**, MP4 **decodificável**) · planejador/controle de sessão (**estados** `DRAFT…EXTERNALLY_BLOCKED`,
+pré-voo, painel de saúde, **encerramento no tempo autorizado**, *fail-closed*) · live commerce real (catálogo/estoque/
+pedidos/CRM por IDs da organização; destaque só por API oficial; **evento de carrinho ≠ venda confirmada**) · sete
+agentes especializados **sem elevação de privilégio** · UI em Creator Studio → aba **“Lives & Comércio”**, WCAG 2.2 AA
+na medida aplicável, **sem botão fictício**.
+
+**Comandos `/live`…**: só entram quando o backend estiver operacional e com teste de autorização — *comando decorativo
+é a mesma mentira que botão sem ação*.
+
+## Limites que o complemento impõe e que ficam registrados
+- **Nada de spam, engajamento simulado, falsa escassez, falsa compra, perfil falso ou personificação.**
+- **Nada de evasão**: diante de aviso de plataforma, o Hades **pausa/encerra**, registra evidência e **escala para
+  humano** — *não existe "proteção" que oculte monitoramento*.
+- **Nada de injeção em Chrome** nem burla de proteções: câmera virtual, se existir, vem de **componente desktop
+  explícito e autorizado**; em mobile, apenas **controle remoto** da sessão.
+- **Sem promessa de transmissão oficial** enquanto não houver **conector homologado**; sem conector, entrega-se
+  **plano e checklist assistido** para o operador.
+- **Custos e "live infinita"**: benchmarks próprios obrigatórios; **não** se promete operação infinita ou sem
+  supervisão (o próprio material de referência mostra preparação, não prova 24/7 nem conformidade).
+- **PII**: som/alerta de compra só quando adequado e seguro; nunca expor nome de comprador sem necessidade.
+
+## Conclusão do complemento (aceite)
+`COMPLETED_VERIFIED` **não** vem de UI, catálogo, adapter ou vídeo simulado: exige **workflow real autorizado**,
+**mídia real reproduzível**, controles de segurança e **evidências E2E**. Onde a plataforma não oferecer a operação,
+declara-se o **limite** e oferece-se **fluxo assistido** — **sem contorno de restrições**. `NOT_RELEASE_READY`
+permanece enquanto o estágio não for homologado com conta autorizada.
