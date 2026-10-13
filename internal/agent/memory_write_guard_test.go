@@ -63,9 +63,40 @@ func TestGuardaDeDivergenciaRecusaApagarMemoriaAcrescentadaPorOutro(t *testing.T
 		t.Fatalf("o disco não pode ter sido alterado pela tentativa recusada: %+v", depois)
 	}
 
-	// 2. Com o snapshot ATUALIZADO (incluindo a memória de fora), a gravação é permitida.
-	if err := store.writeMemoriesFileGuardingAdditions(projeto, []Memory{minha, outra}); err != nil {
-		t.Fatalf("snapshot atualizado precisa poder gravar: %v", err)
+	// 1b. EDIÇÃO EXTERNA DO MESMO id (E-290): revisão maior no disco ⇒ gravar sobrescreveria a atualização do outro.
+	editadaNoDisco := outra
+	editadaNoDisco.Content = "outro escritor ATUALIZOU isto"
+	editadaNoDisco.Revision = outra.Revision + 1
+	discoEditado, err := memoriesForDisk([]Memory{minha, editadaNoDisco})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := writeJSONAtomic(caminho, discoEditado); err != nil {
+		t.Fatal(err)
+	}
+	err = store.writeMemoriesFileGuardingAdditions(projeto, []Memory{minha, outra})
+	if !errors.Is(err, ErrMemoryChangedOutsideStore) {
+		t.Fatalf("edição externa do MESMO id (revisão maior no disco) precisa ser RECUSADA: %v", err)
+	}
+	if erro := err.Error(); !strings.Contains(erro, "atualizada") || !strings.Contains(erro, "mem-de-fora") {
+		t.Fatalf("a recusa precisa NOMEAR a memória atualizada por outro: %v", erro)
+	}
+	// A atualização LEGÍTIMA incrementa a revisão no próprio snapshot: não pode ser confundida com divergência.
+	legitima := editadaNoDisco
+	legitima.Revision = editadaNoDisco.Revision + 1
+	if err := store.writeMemoriesFileGuardingAdditions(projeto, []Memory{minha, legitima}); err != nil {
+		t.Fatalf("atualização legítima (revisão do snapshot acima do disco) precisa passar: %v", err)
+	}
+
+	// 2. Quem RELÊ do disco (com as revisões que ESTÃO lá) pode gravar: é o caso legítimo de reenvio consciente.
+	// Nota do próprio teste: cada gravação legítima acima elevou a revisão no disco — usar um snapshot intermediário
+	// como "atualizado" seria, de novo, gravar uma cópia velha, e a guarda recusaria com razão.
+	relido, err := store.readMemoriesForGuard(projeto)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := store.writeMemoriesFileGuardingAdditions(projeto, relido); err != nil {
+		t.Fatalf("snapshot RELIDO do disco precisa poder gravar: %v", err)
 	}
 
 	// 3. A guarda está LIGADA nos caminhos NÃO-DESTRUTIVOS: sem isso, a guarda existiria e não protegeria nada.
