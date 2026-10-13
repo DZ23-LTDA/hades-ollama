@@ -28,9 +28,11 @@ func ComponentEntryPoints() map[string]string {
 		"memory_context_engine":  {"context.go"},
 		"computer_use_runtime":   {"browser.go", "browser_environment.go"},
 		"product_builder":        {"builder.go"},
-		// Fluxo de automação: só aceita arquivo cujo NOME declare workflow/automação. Catalogar automação
+		// MOTOR de automação: schedule_flow.go é o arquivo que define o motor (gatilho, passo, retry, DLQ, branch,
+		// compensação), conforme os próprios testes do pacote (schedule_retry, schedule_dead_letter,
+		// schedule_branch, schedule_compensation, schedule_reprocess). Catalogar automação
 		// (connector_catalog.go) NÃO é o motor — apontar para o catálogo seria afirmar o que não foi medido.
-		"workflow_automation_engine":      {"workflow.go", "automation.go", "workflow_engine.go"},
+		"workflow_automation_engine":      {"schedule_flow.go"},
 		"security_policy_engine":          {"egress_zero_trust.go"},
 		"artifact_delivery_engine":        {"artifacts.go"},
 		"observability_evaluation_engine": {"benchmark_suite.go"},

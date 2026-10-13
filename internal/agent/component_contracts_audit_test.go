@@ -52,9 +52,16 @@ func TestAuditoriaDePresencaDosContratosAcusaPontoDeEntradaAusente(t *testing.T)
 			t.Fatalf("componente SEM ponto de entrada declarado não pode ser presumido presente: %s", contrato.Component)
 		}
 	}
-	// O que o mapa NÃO cobre é DECLARADO como limite, não escondido.
-	if len(relatorio.Missing) > 0 {
-		t.Logf("LIMITE DECLARADO: %d componente(s) canônico(s) sem ponto de entrada verificado: %+v", len(relatorio.Missing), relatorio.Missing)
+	// INVARIANTE (E-279): os 16 canônicos têm ponto de entrada DECLARADO e PRESENTE. Renomear ou remover qualquer
+	// um deles quebra este teste — a auditoria deixa de ser relatório e passa a ser trava.
+	if len(pontos) != len(CanonicalComponentIDs()) {
+		t.Fatalf("os %d canônicos precisam ter ponto de entrada declarado, há %d", len(CanonicalComponentIDs()), len(pontos))
+	}
+	if len(relatorio.Missing) != 0 {
+		t.Fatalf("nenhum componente canônico pode ficar sem ponto de entrada verificado: %+v", relatorio.Missing)
+	}
+	if relatorio.Present != len(CanonicalComponentIDs()) {
+		t.Fatalf("os %d pontos precisam existir no disco, presentes=%d", len(CanonicalComponentIDs()), relatorio.Present)
 	}
 
 	// 3. CAMINHO NEGATIVO: arquivo inexistente é ACUSADO.
