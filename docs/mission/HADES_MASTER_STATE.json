@@ -2290,7 +2290,9 @@
     "RE-RODAR NAO E' CORRIGIR (E-361): a re-execucao da rodada 46 resolveu o sintoma. A causa era orcamento de 150ms correndo contra o fencing e vencendo a corrida, com assercao sobre a MENSAGEM",
     "ASSERCAO SOBRE MENSAGEM + ORCAMENTO APERTADO = TESTE INSTAVEL (E-361): alargado para 20s em 3 pontos, mantendo a assercao estrita - nao se enfraquece o teste para ficar verde",
     "DOCKER LOCAL INDISPONIVEL (E-361): BLOCKED_BY_EXTERNAL_DEPENDENCY. Nao reproduzi o teste Postgres; a verificacao desta correcao vem do job de CI, que e' o unico ambiente com Postgres",
-    "PATCHER INSPECIONADO PONTO A PONTO (E-361): 3 substituicoes mecanicas foram lidas uma a uma antes de aceitar (transacao ativa, FOR UPDATE, advisory lock) - todas a mesma classe semantica"
+    "PATCHER INSPECIONADO PONTO A PONTO (E-361): 3 substituicoes mecanicas foram lidas uma a uma antes de aceitar (transacao ativa, FOR UPDATE, advisory lock) - todas a mesma classe semantica",
+    "E-361 HOMOLOGADA PELO CI (rodada 47): o job PostgreSQL RLS/Redis/OTLP passou na PRIMEIRA tentativa do PR #418, sem re-execucao - a causa era a corrida do orcamento de 150ms contra o fencing, e alargar removeu a instabilidade",
+    "PRIMEIRA TENTATIVA E' PROVA (E-361): quando a correcao de uma instabilidade passa de primeira, isso e' evidencia; quando precisa de re-run, e' sintoma mascarado"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -2799,14 +2801,14 @@
           "id": "ADV-37",
           "severidade": "ALTA (processo/CI)",
           "descricao": "CI vermelho no PR #416 por TESTE INSTAVEL e nao por regressao: TestDistributedPostgresTenantKeyRotation falhou com '...timeout: context deadline exceeded, want enforced quiescence refusal' (0,64s), em teste de rotacao de chave Postgres sem relacao com a mudanca Go",
-          "estado": "CAUSA CORRIGIDA (E-361): orcamento de 150ms corria contra o fencing em 3 pontos e vencia a corrida; alargado para 20s mantendo a assercao estrita. Verificacao depende do CI (Docker local indisponivel)",
+          "estado": "CORRIGIDO E HOMOLOGADO PELO CI: job de RLS/Redis/OTLP = success na PRIMEIRA tentativa do PR #418 (sem re-run), confirmando que a corrida era a causa",
           "evidencia": "E-361"
         },
         {
           "id": "ADV-38",
           "severidade": "MEDIA (teste)",
           "descricao": "asserção sobre MENSAGEM combinada com orçamento de 150ms: sob carga o timeout vence o fencing e o teste falha por motivo errado",
-          "estado": "CORRIGIDO nos 3 pontos do arquivo (orçamento 20s); classe identificada e nomeada",
+          "estado": "CORRIGIDO (3 pontos) e HOMOLOGADO pelo job de integracao do CI",
           "evidencia": "E-361"
         }
       ],
