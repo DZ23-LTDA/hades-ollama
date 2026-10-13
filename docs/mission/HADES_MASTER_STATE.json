@@ -2234,7 +2234,12 @@
     "MOTIVO CATEGORICO NAO E' MEDICAO (E-347): a categoria 'delegacao' caiu ao medir - Cancel e Reschedule aceitavam organizacao vazia e so falhavam depois, por 'agendamento nao encontrado'. Com id valido, escopo COMPARTILHADO",
     "A PROPRIEDADE CERTA MUDA COM A ORIGEM DO DADO (E-347): para identificador interno (nome de tarefa) o risco nao e' vazamento entre tenants, e' COLISAO DE CAMINHO - dai nome nao vazio e unico",
     "GAP DE METODOS MULTI-LINHA E' ZERO - MEDIDO (E-347): a varredura deu 0, entao o patcher v3 nao pulou nenhum metodo com organizacao como primeiro parametro",
-    "RELATAR ARTEFATO QUE NAO EXISTE E' COMO RELATAR TESTE QUE NAO RODOU (E-347): declarei '#403 aberto' sem ter aberto o PR; o merge devolveu 404 e a correcao foi registrada"
+    "RELATAR ARTEFATO QUE NAO EXISTE E' COMO RELATAR TESTE QUE NAO RODOU (E-347): declarei '#403 aberto' sem ter aberto o PR; o merge devolveu 404 e a correcao foi registrada",
+    "O LACO JA EXISTIA; FALTAVA A LIGACAO (E-348): ExecuteRepairLoop ja roda os testes e chama repairFn em falha. A fatia ligou o laco a cada especialista dentro da worktree e ao coordenador",
+    "SUPOSICAO DERRUBADA PELA MEDICAO (E-348): eu afirmei que o laco chamaria o fixer maxTries vezes; com maxTries=2 ele chama 1. A contagem e' semantica do laco existente, nao do meu desejo",
+    "RECUSAR DEPOIS DE MESCLAR NAO E' RECUSAR (E-348): no conflito, o teste arma a armadilha e confirma que o arquivo do repositorio continua com o bug",
+    "FALHA DE ESPECIALISTA E' RESULTADO, NAO EXCECAO (E-348): fixer que nao conserta termina vermelho e declarado como PARCIAL, com a contagem de chamadas registrada",
+    "Runtime nil = SEM EVENTOS DE OBSERVABILIDADE (E-348): a ligacao nao emite eventos; fica declarado como limite"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -2832,7 +2837,23 @@
         "limites declarados",
         "ordem determinista e validar-antes-de-mesclar"
       ],
-      "rascunho_duplicado": "descartado apos a suite revelar o modulo existente (regra: nao refazer o que existe)"
+      "rascunho_duplicado": "descartado apos a suite revelar o modulo existente (regra: nao refazer o que existe)",
+      "ligacao_laco_real": {
+        "cadeia": [
+          "fixer",
+          "worktree isolada",
+          "ExecuteRepairLoop (testes reais)",
+          "GetWorktreeDiff",
+          "ValidateSpecialistPlan",
+          "CoordinateSpecialistMerges"
+        ],
+        "medido": "4 testes PASS com git real e go test real dentro da worktree",
+        "semantica_medida": "ExecuteRepairLoop chama o fixer 1x com maxTries=2 (suposicao minha era 2)",
+        "nao_medido": [
+          "execucao com modelo local neste caminho",
+          "eventos de observabilidade (Runtime nil)"
+        ]
+      }
     }
   },
   "unlinked_evidence": {
@@ -2870,6 +2891,7 @@
     "E-344": "T2: matriz medida (4 fixtures x 2 modelos) e timeout por tentativa; vinculo declarado",
     "E-345": "T2: repeticao estatistica (contagem, nao probabilidade); vinculo declarado",
     "E-346": "T4: coordenador de merge sobre o modulo existente; vinculo declarado",
-    "E-347": "medicao das categorias declaradas; uma caiu (Cancel/Reschedule); vinculo declarado"
+    "E-347": "medicao das categorias declaradas; uma caiu (Cancel/Reschedule); vinculo declarado",
+    "E-348": "ligacao T4 ao laco real de reparo; vinculo declarado"
   }
 }
