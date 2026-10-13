@@ -7,7 +7,7 @@
 
 | ID | Tipo | Bloqueia | Estágios afetados | Quem desbloqueia |
 | --- | --- | --- | --- | --- |
-| B-01 | AGUARDANDO_DECISAO_HUMANA | merge de PRs #56–#71 | vários | usuário |
+| B-01 | RESOLVIDO (E-295) | checagem ONLINE: **zero PRs abertos** — os PRs #56–#71 já não estão abertos | vários | verificado |
 | B-02 | EXTERNO | conta real Codex/Claude | 11 | usuário |
 | B-03 | EXTERNO | tokens reais de canais IM | 16, 28, 33, 34, 35 | usuário |
 | B-04 | EXTERNO | provedor de telefonia/voz | 29, 36, 37 | usuário |
