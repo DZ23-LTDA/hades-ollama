@@ -2278,7 +2278,11 @@
     "CONTRAPROVA ENTRE PROCESSOS (E-358): sem o lock, 3 processos gravaram e so' 2 sobreviveram. A perda de escrita entre processos e' real, e o lock do SO e' o que a impede",
     "PADRAO REUSADO NAO INVENTADO (E-358): o subprocesso segue o que o repositorio ja faz em mcp_test.go. A variavel HADES_LIVE_HELPER vive num arquivo de TESTE - a diferenca em relacao ao ADV-32 nao e' de estilo",
     "BARREIRA DE LARGADA (E-358): os processos esperam o mesmo arquivo para comecar juntos - maximizar a contencao em vez de esperar que ela aconteca",
-    "CORRIDA NAO E' DETERMINISTICA (E-358): na contraprova UMA escrita se perdeu, nao duas. Contagem, sem probabilidade"
+    "CORRIDA NAO E' DETERMINISTICA (E-358): na contraprova UMA escrita se perdeu, nao duas. Contagem, sem probabilidade",
+    "LIMITE POR PLANO NAO LIMITA NADA (E-359): tres planos de 4000 linhas passavam um a um. Agora o teto e' medido contra o acervo real",
+    "CONTADOR PARALELO E' A SEGUNDA FONTE DE VERDADE (E-359): o orcamento e' medido por Products(org), o estado real, porque contador paralelo alguem esquece de atualizar",
+    "REIMPORTAR O CATALOGO NAO PODE SER BLOQUEADO (E-359): linhas existentes sao atualizadas, nao somadas - testado com o teto ja atingido",
+    "GUARDA ANTIGA EXERCITADA PELO MEU ERRO (E-359): UpsertProduct recusou produto sem organizacao (guarda de E-337) quando o meu teste esqueceu a OrganizationID"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -2761,11 +2765,18 @@
           "descricao": "perda de escrita entre PROCESSOS reais no estagio 42 (3 processos gravaram, 2 sobreviveram) quando o lock de arquivo esta ausente",
           "estado": "MEDIDO E CONTRAPROVADO: com o lock, 3/3 sobrevivem; sem o lock, 2/3 (FAIL do teste)",
           "evidencia": "E-358"
+        },
+        {
+          "id": "ADV-34",
+          "severidade": "ALTA",
+          "descricao": "limite de onboarding era por plano: tres planos dentro do teto carregavam o triplo",
+          "estado": "CORRIGIDO e CONTRAPROVADO: teto medido contra o acervo real; reimportacao nao e' bloqueada",
+          "evidencia": "E-359"
         }
       ],
       "proximos_ataques": [
+        "fazer UpsertProduct direto tambem consumir/verificar orcamento (hoje so' o onboarding)",
         "teste de corrida dedicado para ShowcaseForProduct (travado por consistencia, sem teste)",
-        "orcamento acumulado entre planos de onboarding (teto e' por plano)",
         "retomar a fila P0-A/T1 e P0-C/T3 (dependencia externa onde faltar alvo)"
       ]
     },
@@ -3086,6 +3097,7 @@
     "E-355": "classificacao por statement + concorrencia do estagio 42 verificada; vinculo declarado",
     "E-356": "estagio 42 entre processos: lock + invalidacao de cache; vinculo declarado",
     "E-357": "lock entre processos nas demais mutacoes do estagio 42, com contraprova; vinculo declarado",
-    "E-358": "estagio 42 com processos reais, medido e contraprovado; vinculo declarado"
+    "E-358": "estagio 42 com processos reais, medido e contraprovado; vinculo declarado",
+    "E-359": "orcamento acumulado de onboarding contra o estado real; vinculo declarado"
   }
 }
