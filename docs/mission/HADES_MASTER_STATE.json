@@ -2225,7 +2225,12 @@
     "UMA EXECUCAO NAO DISTINGUE CAPACIDADE DE SORTE (E-345): a repeticao roda N vezes por combinacao e agrega por CONTAGEM de veredicto, com o aviso de que N pequeno nao permite probabilidade nem ranking",
     "AGREGADOR PRECISA SER TESTAVEL SEM MODELO (E-345): AgregarRepeticaoT2 e' pura; contador errado dentro do laco caro inflaria a taxa em silencio",
     "O REGISTRO LE O ARTEFATO, NAO DIGITA O NUMERO (E-345): a linha de evidencia e' montada a partir do artefato que o proprio teste grava - numero digitado a mao nao e' evidencia",
-    "NEM COM N SE ALEGA PARIDADE (E-345): o instrumento mede harness minimo sobre Ollama local; Claude Code/Codex/Manus seguem BLOCKED_BY_EXTERNAL_DEPENDENCY e NAO_MEDIDO"
+    "NEM COM N SE ALEGA PARIDADE (E-345): o instrumento mede harness minimo sobre Ollama local; Claude Code/Codex/Manus seguem BLOCKED_BY_EXTERNAL_DEPENDENCY e NAO_MEDIDO",
+    "O T4 JA EXISTIA E A SUITE ME CORRIGIU (E-346): o rascunho paralelo de worktrees foi DESCARTADO e a fatia passou a estender coding_git_cycle.go",
+    "VALIDAR TUDO ANTES DE MESCLAR (E-346): conflito descoberto no meio deixa a arvore num estado que ninguem pediu",
+    "MODELOS TEM PERFIS DIFERENTES - CONTAGEM, NAO RANKING (E-346): qwen2.5:7b trapaceou 9/12; llama3.2:3b trapaceou 0/12 (ou resolve, ou falha). Sem significancia estatistica",
+    "O LIMITE POR TENTATIVA SE PAGOU (E-346): 2 timeouts a 60s contra os 1202s medidos antes de E-344",
+    "ARTEFATO QUE SE SOBRESCREVE NAO E' REGISTRO (E-346): repeticao agora e' append por modelo e o registro le o artefato"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -2788,7 +2793,35 @@
             "taxa": "0/3"
           }
         ]
+      },
+      "repeticao_por_modelo": {
+        "qwen2.5:7b": {
+          "execucoes": 12,
+          "verde": 3,
+          "primeira": 0,
+          "trapacou": 9,
+          "vermelho": 0,
+          "timeout": 0
+        },
+        "llama3.2:3b": {
+          "execucoes": 12,
+          "verde": 6,
+          "primeira": 6,
+          "trapacou": 0,
+          "vermelho": 4,
+          "timeout": 2
+        }
       }
+    },
+    "paridade_t4": {
+      "estado": "JA EXISTIA (coding_git_cycle.go + swarm_worktree_isolation_test.go, teste passando)",
+      "incremento_e346": [
+        "memoria segmentada por especialista",
+        "conflito por arquivo recusado ANTES do merge",
+        "limites declarados",
+        "ordem determinista e validar-antes-de-mesclar"
+      ],
+      "rascunho_duplicado": "descartado apos a suite revelar o modulo existente (regra: nao refazer o que existe)"
     }
   },
   "unlinked_evidence": {
@@ -2824,6 +2857,7 @@
     "E-342": "correcao do instrumento: duas pendencias eram falsas; vinculo declarado",
     "E-343": "P0-B/T2: primeira medicao red->green com modelo local; vinculo declarado",
     "E-344": "T2: matriz medida (4 fixtures x 2 modelos) e timeout por tentativa; vinculo declarado",
-    "E-345": "T2: repeticao estatistica (contagem, nao probabilidade); vinculo declarado"
+    "E-345": "T2: repeticao estatistica (contagem, nao probabilidade); vinculo declarado",
+    "E-346": "T4: coordenador de merge sobre o modulo existente; vinculo declarado"
   }
 }
