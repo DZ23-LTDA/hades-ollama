@@ -60,6 +60,7 @@ jobs:
           python3 scripts/hades_state_chronology_test.py
           python3 scripts/hades_discoverability_check_test.py
           python3 scripts/hades_discoverability_check.py --check
+          python3 scripts/hades_scope_classifier_test.py
           python3 scripts/hades_tenant_scope_check_test.py
           python3 scripts/hades_tenant_scope_check.py --check
       - name: Verify the mission bookkeeping checker itself (fault injection)
