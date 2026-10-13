@@ -113,7 +113,9 @@ func (s *SchedulingStore) AddShift(shift SchedulingShift) (SchedulingShift, erro
 	if shift.OrganizationID == "" || shift.Weekday < 0 || shift.Weekday > 6 {
 		return SchedulingShift{}, fmt.Errorf("%w: organização e dia da semana (0..6) são obrigatórios", ErrSchedulingInvalid)
 	}
-	if shift.OpensAt < 0 || shift.ClosesAt > 24*60 || shift.ClosesAt <= shift.OpensAt {
+	// E-328: `ClosesAt < OpensAt` significa turno que CRUZA a meia-noite (22:00->02:00). Igualdade continua
+	// recusada: janela de duração zero não é janela.
+	if shift.OpensAt < 0 || shift.ClosesAt > 24*60 || shift.ClosesAt == shift.OpensAt {
 		return SchedulingShift{}, fmt.Errorf("%w: janela inválida (%d..%d)", ErrSchedulingInvalid, shift.OpensAt, shift.ClosesAt)
 	}
 	s.mu.Lock()
@@ -251,8 +253,15 @@ func (s *SchedulingStore) OpenSlots(organizationID, resourceID, date, serviceID 
 	}
 	passo := time.Duration(stepMinutes) * time.Minute
 	var livres []AvailabilitySlot
-	for minuto := shift.OpensAt; minuto+duracao <= shift.ClosesAt; minuto += stepMinutes {
-		inicio := time.Date(dia.Year(), dia.Month(), dia.Day(), 0, minuto, 0, 0, loc)
+	// E-328: a janela pode CRUZAR a meia-noite, então o laço anda por DESLOCAMENTO a partir da abertura e o instante
+	// real é calculado com o dia correto — senão um turno 22:00->02:00 ofereceria 01:00 do dia errado (no passado).
+	duracaoJanela := shiftDurationMinutes(shift)
+	for deslocamento := 0; deslocamento+duracao <= duracaoJanela; deslocamento += stepMinutes {
+		inicio := shiftStartInstant(dia, shift, deslocamento, loc)
+		// INTERVALO: almoço/descanso não é horário disponível; oferecer seria o mesmo que inventar expediente.
+		if _, emIntervalo := breakCovers(org, resourceID, inicio.Weekday(), inicio.Hour()*60+inicio.Minute(), duracao); emIntervalo {
+			continue
+		}
 		ocupado := false
 		for _, agendamento := range org.Appointments {
 			if agendamento.Status != SchedulingAppointmentBooked || agendamento.ResourceID != resourceID {
@@ -284,16 +293,29 @@ func (s *SchedulingStore) appointmentAllowedLocked(organizationID, resourceID st
 		}
 		return fmt.Errorf("%w: %s (%s, %s)", ErrSchedulingClosed, motivo, local.Format("2006-01-02"), tz)
 	}
-	shift, temTurno := shiftFor(org, resourceID, local.Weekday())
+	// E-328b: às 01:00 de terça, quem cobre pode ser o turno de SEGUNDA que cruza a meia-noite (22:00->02:00).
+	// Procurar só o dia corrente recusaria a madrugada de um turno que existe — medido pelo teste.
+	shift, temTurno := shiftCovering(org, resourceID, local)
 	if !temTurno {
 		return fmt.Errorf("%w: %s não tem expediente em %s (%s)", ErrSchedulingOutsideHours,
 			resourceID, local.Format("2006-01-02"), tz)
 	}
 	inicioMinuto := local.Hour()*60 + local.Minute()
-	if inicioMinuto < shift.OpensAt || inicioMinuto+durationMinutes > shift.ClosesAt {
+	// E-328: a checagem de janela considera turno que CRUZA a meia-noite.
+	if !shiftCoversMinute(shift, inicioMinuto, durationMinutes) {
 		return fmt.Errorf("%w: %s está fora da janela %02d:%02d-%02d:%02d (%s)",
 			ErrSchedulingOutsideHours, local.Format(time.RFC3339), shift.OpensAt/60, shift.OpensAt%60,
 			shift.ClosesAt/60, shift.ClosesAt%60, tz)
+	}
+	// INTERVALO: almoço/descanso recusa o agendamento com erro PRÓPRIO — a causa é outra, e o cliente merece saber.
+	if br, emIntervalo := breakCovers(org, resourceID, local.Weekday(), inicioMinuto, durationMinutes); emIntervalo {
+		rotulo := strings.TrimSpace(br.Label)
+		if rotulo == "" {
+			rotulo = "intervalo"
+		}
+		return fmt.Errorf("%w: %s cai em %s (%02d:%02d-%02d:%02d)",
+			ErrSchedulingOnBreak, local.Format(time.RFC3339), rotulo, br.StartsAtMinute/60, br.StartsAtMinute%60,
+			br.EndsAtMinute/60, br.EndsAtMinute%60)
 	}
 	return nil
 }

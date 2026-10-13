@@ -2148,7 +2148,10 @@
     "EMPRESA QUE JA EXISTE TEM PRECEDENCIA (E-327): os dados dela nao podem ser tratados como se o Hades a tivesse criado. Preco divergente vira CONFLITO DECLARADO e a aplicacao e' recusada sem autorizacao explicita",
     "PREVIEW QUE GRAVA NAO E' PREVIEW (E-327): o dry-run e' medido com armadilha - o catalogo tem de ficar intacto",
     "ROLLBACK TEM DE REMOVER, NAO SO DESATIVAR (E-327): desfazer importacao significa o produto deixar de existir. Por isso RemoveProduct foi adicionado com persistencia e rollback em memoria",
-    "MEDIR A ASSINATURA DA API (E-327): supus NewCommerceStoreAt com um retorno e o go vet acusou dois. Ja estava nas minhas notas e reincidi - vet pegou antes do commit"
+    "MEDIR A ASSINATURA DA API (E-327): supus NewCommerceStoreAt com um retorno e o go vet acusou dois. Ja estava nas minhas notas e reincidi - vet pegou antes do commit",
+    "OFERECER HORARIO QUE A EMPRESA NAO TEM E' INVENTAR EXPEDIENTE (E-328): intervalos de almoco/descanso passam a ser respeitados na oferta E na escrita, com erro proprio porque a causa e' outra",
+    "TOCAR A BORDA NAO E' INVADIR (E-328): minha assercao dizia que 11:30 invadia o almoco, mas 11:30 + 30min termina exatamente as 12:00. O motor estava certo; o teste estava errado",
+    "A MADRUGADA PERTENCE AO TURNO DO DIA ANTERIOR (E-328): 01:00 de terca e' coberto pelo turno de segunda 22:00->02:00. Procurar so o dia corrente recusava um turno que existe - gap real pego pelo teste"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -2295,15 +2298,16 @@
       "estado": "IN_PROGRESS",
       "fatia_1": "nucleo anti-double-booking sob concorrencia (E-313): servicos, recursos, book, cancel, availability, idempotencia e isolamento",
       "proximas_fatias": [
-        "intervalos dentro do turno (almoco) e turnos que cruzam a meia-noite",
-        "auditoria de remarcacao (historico de tentativas)",
         "lista de espera, lembretes e no-show",
+        "auditoria de remarcacao (historico de tentativas)",
         "sync Google Calendar / Microsoft 365 (BLOCKED_BY_EXTERNAL_DEPENDENCY ate credencial)",
-        "disponibilidade em tempo real entre instancias (decisao de arquitetura: lock por consulta ou banco)"
+        "disponibilidade em tempo real entre instancias (decisao de arquitetura: lock por consulta ou banco)",
+        "sobreposicao de turnos para o mesmo recurso"
       ],
       "fatia_2": "expediente (turnos), fechamentos por data e fuso da organizacao (E-314)",
       "fatia_3": "remarcacao atomica (E-319): tudo-ou-nada, expediente valido, vizinho intocado, lista de remarcacao",
-      "fatia_4": "correcao entre processos (E-323): trava de arquivo por organizacao + RELEITURA sob a trava; ordem arquivo->mutex consistente; leitura eventualmente consistente declarada como limite"
+      "fatia_4": "correcao entre processos (E-323): trava de arquivo por organizacao + RELEITURA sob a trava; ordem arquivo->mutex consistente; leitura eventualmente consistente declarada como limite",
+      "fatia_5": "intervalos no turno (E-328) e turno que cruza a meia-noite com dia local correto; os dois limites declarados nas fatias anteriores foram fechados"
     },
     "addendum_parity": {
       "registrado_em_evidencia": "E-315",
@@ -2409,6 +2413,7 @@
     "E-324": "motor de workflow deterministico (P1-A / teste T6 do adendo); vinculo declarado",
     "E-325": "capacidades de modelo e modo de ferramenta (P0-D): nao fingir tool calls; vinculo declarado",
     "E-326": "sonda real de capacidades no endpoint (P0-D), fecha o limite de E-325; vinculo declarado",
-    "E-327": "onboarding de empresa existente (P1-B do adendo); vinculo declarado"
+    "E-327": "onboarding de empresa existente (P1-B do adendo); vinculo declarado",
+    "E-328": "fatia 5 do INCREMENTO I do V2.2 (intervalos no turno e virada de meia-noite); vinculo declarado"
   }
 }
