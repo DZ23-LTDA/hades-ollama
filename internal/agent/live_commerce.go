@@ -241,7 +241,11 @@ func (s *LiveCommerceStore) caminho(org string) string {
 }
 
 func (s *LiveCommerceStore) carregarLocked(org string) error {
-	if s.carregado[org] {
+	// E-356: INVALIDAÇÃO DE CACHE. Com raiz, o cache em memória é relido a CADA operação — *cache que não pode ser
+	// invalidado é fonte de bug*: sem isto, uma instância continuaria respondendo do cache antigo depois de OUTRA
+	// gravar, e o defeito entre processos apareceria como "evento que sumiu". O custo é uma leitura pequena por
+	// operação, e o tamanho por organização é de uma sessão/fila, não de um banco.
+	if s.carregado[org] && s.root == "" {
 		return nil
 	}
 	s.carregado[org] = true
@@ -420,6 +424,22 @@ func liveTransitionAllowed(atual, proximo string) bool {
 // Política: a sessão vai para EXTERNALLY_BLOCKED, o incidente é registrado, a revisão humana é exigida e o evento de
 // moderação guarda a evidência. **Não existe caminho para ocultar, contornar ou "proteger contra violação".**
 func (s *LiveCommerceStore) RecordPlatformWarning(organizationID, sessionID, kind, evidence string, now time.Time) (LiveSession, error) {
+	// E-356: aviso da plataforma é decisão de SEGURANÇA — precisa do mesmo lock da ingestão, para que um aviso
+	// registrado numa instância não seja perdido por outra que grave a sua própria versão em seguida.
+	var (
+		sessao  LiveSession
+		erroAvi error
+	)
+	if err := s.withOrganizationLock(organizationID, func() error {
+		sessao, erroAvi = s.recordPlatformWarningSemTrava(organizationID, sessionID, kind, evidence, now)
+		return erroAvi
+	}); err != nil {
+		return LiveSession{}, err
+	}
+	return sessao, erroAvi
+}
+
+func (s *LiveCommerceStore) recordPlatformWarningSemTrava(organizationID, sessionID, kind, evidence string, now time.Time) (LiveSession, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	organizationID = consentScope(organizationID)
@@ -486,7 +506,28 @@ func (s *LiveCommerceStore) SweepLiveSessions(organizationID string, now time.Ti
 // IngestLiveCommerceEvent aceita evento de integração autorizada, com deduplicação por (external_id, kind).
 //
 // **EVENTO DE CARRINHO NÃO É VENDA**: só `purchase_confirmed` conta receita — e apenas com `OrderID` presente.
+// IngestLiveCommerceEvent aceita evento sob o LOCK DA ORGANIZAÇÃO, com recarga antes de gravar.
+//
+// E-356: sem isto, duas instâncias que aceitassem eventos ao mesmo tempo leriam o mesmo arquivo e cada uma gravaria a
+// sua versão — ***um evento aceito numa instância seria apagado pela outra***.
 func (s *LiveCommerceStore) IngestLiveCommerceEvent(evento CommerceEvent) (CommerceEvent, bool, error) {
+	var (
+		aceito  CommerceEvent
+		replay  bool
+		erroIng error
+	)
+	org := consentScope(evento.OrganizationID)
+	travar := func() error {
+		aceito, replay, erroIng = s.ingestLiveCommerceEventSemTrava(evento)
+		return erroIng
+	}
+	if err := s.withOrganizationLock(org, travar); err != nil {
+		return CommerceEvent{}, false, err
+	}
+	return aceito, replay, erroIng
+}
+
+func (s *LiveCommerceStore) ingestLiveCommerceEventSemTrava(evento CommerceEvent) (CommerceEvent, bool, error) {
 	if s == nil {
 		return CommerceEvent{}, false, ErrLiveCommerceInvalid
 	}
