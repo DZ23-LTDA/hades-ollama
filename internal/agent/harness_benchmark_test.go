@@ -22,11 +22,7 @@ func TestFixtureT2EstaVermelhoComBugEVerdeComCorrecaoDeReferencia(t *testing.T) 
 	defer cancelar()
 
 	// 1. COM o bug: precisa ficar VERMELHO.
-	dirBug, err := os.MkdirTemp("", "t2-bug-")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(dirBug)
+	dirBug := t.TempDir()
 	if err := WriteFixtureT2(dirBug, tarefa.BuggyFiles); err != nil {
 		t.Fatal(err)
 	}
@@ -39,11 +35,7 @@ func TestFixtureT2EstaVermelhoComBugEVerdeComCorrecaoDeReferencia(t *testing.T) 
 	}
 
 	// 2. COM a correção de REFERÊNCIA: precisa ficar VERDE — prova que a tarefa é solucionável.
-	dirCorreto, err := os.MkdirTemp("", "t2-ok-")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(dirCorreto)
+	dirCorreto := t.TempDir()
 	if err := WriteFixtureT2(dirCorreto, tarefa.ReferenceFix); err != nil {
 		t.Fatal(err)
 	}
