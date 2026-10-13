@@ -2286,7 +2286,11 @@
     "LIMITE QUE DEPENDE DO CHAMADOR NAO E' LIMITE (E-360): o teto vivia so' no onboarding; agora vale no UpsertProduct direto, dentro do lock",
     "VOLUME MEDIDO NO CAMINHO DIRETO (E-360): 5000 produtos em 50,17s = 10,03 ms por produto. As duas medicoes (com e sem a checagem restaurada) concordam",
     "O NUMERO DESCONFORTAVEL FICA DECLARADO (E-360): 10 ms por produto porque cada operacao varre o mapa; encher e' quadratico. Indice por (organizacao, SKU) tornaria O(1) - nao implementado",
-    "ATUALIZAR SKU NO TETO NAO PODE SER BLOQUEADO (E-360): o acervo nao cresce quando a linha ja existe - testado armado"
+    "ATUALIZAR SKU NO TETO NAO PODE SER BLOQUEADO (E-360): o acervo nao cresce quando a linha ja existe - testado armado",
+    "RE-RODAR NAO E' CORRIGIR (E-361): a re-execucao da rodada 46 resolveu o sintoma. A causa era orcamento de 150ms correndo contra o fencing e vencendo a corrida, com assercao sobre a MENSAGEM",
+    "ASSERCAO SOBRE MENSAGEM + ORCAMENTO APERTADO = TESTE INSTAVEL (E-361): alargado para 20s em 3 pontos, mantendo a assercao estrita - nao se enfraquece o teste para ficar verde",
+    "DOCKER LOCAL INDISPONIVEL (E-361): BLOCKED_BY_EXTERNAL_DEPENDENCY. Nao reproduzi o teste Postgres; a verificacao desta correcao vem do job de CI, que e' o unico ambiente com Postgres",
+    "PATCHER INSPECIONADO PONTO A PONTO (E-361): 3 substituicoes mecanicas foram lidas uma a uma antes de aceitar (transacao ativa, FOR UPDATE, advisory lock) - todas a mesma classe semantica"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -2795,13 +2799,20 @@
           "id": "ADV-37",
           "severidade": "ALTA (processo/CI)",
           "descricao": "CI vermelho no PR #416 por TESTE INSTAVEL e nao por regressao: TestDistributedPostgresTenantKeyRotation falhou com '...timeout: context deadline exceeded, want enforced quiescence refusal' (0,64s), em teste de rotacao de chave Postgres sem relacao com a mudanca Go",
-          "estado": "DIAGNOSTICADO pelo log do job e re-executado (rerun-failed-jobs); NAO se desabilita teste para obter verde",
-          "evidencia": "E-360 (rodada 46)"
+          "estado": "CAUSA CORRIGIDA (E-361): orcamento de 150ms corria contra o fencing em 3 pontos e vencia a corrida; alargado para 20s mantendo a assercao estrita. Verificacao depende do CI (Docker local indisponivel)",
+          "evidencia": "E-361"
+        },
+        {
+          "id": "ADV-38",
+          "severidade": "MEDIA (teste)",
+          "descricao": "asserção sobre MENSAGEM combinada com orçamento de 150ms: sob carga o timeout vence o fencing e o teste falha por motivo errado",
+          "estado": "CORRIGIDO nos 3 pontos do arquivo (orçamento 20s); classe identificada e nomeada",
+          "evidencia": "E-361"
         }
       ],
       "proximos_ataques": [
-        "indice por (organizacao, SKU) no CommerceStore (hoje O(n) por operacao)",
-        "teste de corrida dedicado para ShowcaseForProduct (travado por consistencia, sem teste)",
+        "varrer o restante do arquivo por orcamentos curtos que corram contra a logica (33 testes nao varridos)",
+        "indice O(1) por (organizacao, SKU) no CommerceStore (10,03 ms por produto hoje)",
         "retomar a fila P0-A/T1 e P0-C/T3 (dependencia externa onde faltar alvo)"
       ]
     },
@@ -3124,6 +3135,7 @@
     "E-357": "lock entre processos nas demais mutacoes do estagio 42, com contraprova; vinculo declarado",
     "E-358": "estagio 42 com processos reais, medido e contraprovado; vinculo declarado",
     "E-359": "orcamento acumulado de onboarding contra o estado real; vinculo declarado",
-    "E-360": "orcamento no caminho direto, com volume medido e contraprova; vinculo declarado"
+    "E-360": "orcamento no caminho direto, com volume medido e contraprova; vinculo declarado",
+    "E-361": "causa da instabilidade de CI (orcamento x fencing); vinculo declarado"
   }
 }

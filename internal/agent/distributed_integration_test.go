@@ -459,7 +459,7 @@ func TestDistributedPostgresRLSAndEvents(t *testing.T) {
 		_ = blocker.Rollback()
 		t.Fatal(err)
 	}
-	requestCtx, cancelRequest := context.WithTimeout(ctx, 150*time.Millisecond)
+	requestCtx, cancelRequest := context.WithTimeout(ctx, 20*time.Second) /* E-361: 150ms corria contra o fencing e produzia timeout em vez de recusa */
 	blockedUpdate := mission
 	blockedUpdate.Version++
 	blockedUpdate.UpdatedAt = time.Now().UTC()
@@ -2889,7 +2889,7 @@ func TestDistributedPostgresTenantKeyRotation(t *testing.T) {
 		t.Fatalf("begin runtime transaction before rotation: %v", err)
 	}
 	defer cancelOperation()
-	shortCtx, shortCancel := context.WithTimeout(ctx, 150*time.Millisecond)
+	shortCtx, shortCancel := context.WithTimeout(ctx, 20*time.Second) /* E-361: 150ms corria contra o fencing e produzia timeout em vez de recusa */
 	rotationErr := RotatePostgresAgentTenantKey(shortCtx, adminDSN, migratorDSN, 1, currentKey, 2, keyV2)
 	shortCancel()
 	if rotationErr == nil || !strings.Contains(rotationErr.Error(), "runtime is not quiescent") {
@@ -2916,7 +2916,7 @@ func TestDistributedPostgresTenantKeyRotation(t *testing.T) {
 		_ = lockTx.Rollback()
 		t.Fatal(err)
 	}
-	shortCtx, shortCancel = context.WithTimeout(ctx, 150*time.Millisecond)
+	shortCtx, shortCancel = context.WithTimeout(ctx, 20*time.Second) /* E-361: 150ms corria contra o fencing e produzia timeout em vez de recusa */
 	rotationErr = RotatePostgresAgentTenantKey(shortCtx, adminDSN, migratorDSN, 1, currentKey, 2, keyV2)
 	shortCancel()
 	if rotationErr == nil || !strings.Contains(rotationErr.Error(), "drain PostgreSQL tenant transactions") {
