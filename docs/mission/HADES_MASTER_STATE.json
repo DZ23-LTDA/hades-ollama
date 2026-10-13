@@ -2389,7 +2389,8 @@
     "GUARDA QUE NAO PODE DISPARAR NAO E' PROTECAO (E-391/ADV-57/4): o teste criava um contexto de 5 minutos e fazia `_ = ctx` - nunca chegava ao ApplyCompanyOnboarding. Removido em vez de fabricar uma prova de fachada",
     "FALTAVA A API, NAO FROUXIDAO NO TESTE (E-392): o desfazer gravava por SKU. Criado RemoveProducts em lote: 1000 gravacoes/2,72s => 500/1,37s => 1 gravacao/0,00s, com restantes = 0",
     "O LIMITE DO E-390 FOI FECHADO (E-392): aquela evidencia declarou 'ficou a medicao, nao prova permanente'; agora existe TestRollbackDoOnboardingNaoGravaPorSku com assercao EXATA (== 1) e a explicacao de por que 1 e nao 2",
-    "O NUMERO EXATO DEPENDE DO CENARIO (E-392): empresa nova => 1 gravacao (Before vazio, so' o lote de remocao); com catalogo anterior => 2. O teste diz isso em vez de aceitar um teto"
+    "O NUMERO EXATO DEPENDE DO CENARIO (E-392): empresa nova => 1 gravacao (Before vazio, so' o lote de remocao); com catalogo anterior => 2. O teste diz isso em vez de aceitar um teto",
+    "O QUE E' ESTRUTURAL E' O QUE SERVE DE CATRACA (E-393/ADV-57/3 e /7): o teste media o tempo e nao afirmava nada; agora afirma N chamadas = N gravacoes e 1 lote = 1 gravacao, com razao de 100x - e recusa afirmar tempo"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -3046,15 +3047,15 @@
           "severidade": "ALTA (a prova da alegacao mais publicada e' vacuosa)",
           "descricao": "4a auditoria independente (subagente) nas provas de desempenho. CONFIRMOU SOLIDO o nucleo (persistLocked caminho unico, gravacoes++ antes do writeJSONAtomic, prova de disco do lote de produtos falha quando deve, onboarding_budget mede estado real). ACHADOS: (1) a assercao 'Gravacoes() <= 10' e' VACUOSA - desligar RecordStocks deixa 1 gravacao e 1 > 10 e' falso, entao o teste ainda passa; a prova de disco so' conta products e nunca le' stock. (2) '> 10' nao distingue 1 lote de N lotes (fatias de 250 => 4 gravacoes => passa). (3) commerce_budget_test so' LOGA (5000 chamadas, nenhuma assercao). (4) context.WithTimeout de 5 min e' codigo MORTO. (5) RollbackCompanyOnboarding grava POR LINHA: n=500 => desfazer = 1000 gravacoes em 2,72s. (6) leitura de disco nao enderecada (arquivos[0]). (7) o '211x' do ADV-44 nao se reproduz (medido ~196x); as contagens 300 vs 1 sao exatas",
           "descoberto_por": "4a revisao adversarial independente (subagente, contexto fresco) com experimento de falsificacao",
-          "estado": "/1, /2, /4, /5, /5b e /6 CORRIGIDOS e medidos. O desfazer foi de 1000 gravacoes/2,72s para 1 gravacao/0,00s, com teste permanente. Restam /3 (teste que so' loga) e /7 (o '211x' sem teste proprio)",
+          "estado": "TODOS OS ITENS CORRIGIDOS E MEDIDOS (/1, /2, /3, /4, /5, /5b, /6, /7). O que resta e' o cenario com catalogo anterior no teste do rollback e a contraprova por reversao do RemoveProducts",
           "evidencia": "E-388"
         }
       ],
       "proximos_ataques": [
-        "ADV-57/3: assercao estrutural de escala no commerce_budget (hoje so' loga)",
-        "ADV-57/7: teste proprio para o ganho do lote (o '211x' nao se reproduz; medido ~196x)",
         "contraprova por REVERSAO do RemoveProducts (medir que o teste falha com o caminho por SKU)",
-        "quarta auditoria concluida; considerar auditar as linhas restantes (scheduling, media, approvals)"
+        "cobrir o cenario de rollback com catalogo ANTERIOR (seriam 2 gravacoes, nao 1)",
+        "quinta auditoria independente numa linha ainda nao auditada (scheduling, media, approvals)",
+        "checkpoint remedido contra o GitHub"
       ]
     },
     "estagio_42": {
@@ -3450,6 +3451,7 @@
     "E-390": "rollback em lote: 1000 -> 500 gravacoes; comportamento preservado",
     "E-389": "limiar exato + prova do estoque em disco, contraprovado",
     "E-391": "guarda morta de 5 minutos removida com a razao escrita",
-    "E-392": "RemoveProducts em lote: desfazer de 1000 -> 1 gravacao; teste permanente"
+    "E-392": "RemoveProducts em lote: desfazer de 1000 -> 1 gravacao; teste permanente",
+    "E-393": "custo estrutural direto x lote (100x em gravacoes), com contraprova"
   }
 }
