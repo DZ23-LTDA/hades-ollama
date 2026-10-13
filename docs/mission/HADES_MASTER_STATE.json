@@ -2167,7 +2167,10 @@
     "NADA DE LIVE INFINITA (E-331): o material de referencia mostra preparacao, nao prova 24/7 nem conformidade. Benchmarks proprios obrigatorios e supervisao humana recomendada pelo proprio apresentador",
     "ESTAGIO 42: NUCLEO PROVADO (E-332): nada de evasao, evento de carrinho nao e' venda, e fail-closed no tempo e na aprovacao. Cada proibicao do complemento virou teste negativo",
     "O GRAFO PERMITE, A TRAVA DECIDE (E-332): o defeito real era nao haver caminho legal para LIVE; corrigido o grafo MANTENDO o portao de aprovacao como trava de verdade",
-    "CI: FALHA NO DLP DE ATENDIMENTO, NAO NO MEU CHANGE (rodada 16): `TestServiceAgentAuditNeverStoresContactTextForAnyTool` falhou no runner. Reproduzido LOCALMENTE: passa isolado e na suite completa de 115s. Nao declarar 'flaky' sem prova - proxima rodada investiga a suite do CI e a main"
+    "CI: FALHA NO DLP DE ATENDIMENTO, NAO NO MEU CHANGE (rodada 16): `TestServiceAgentAuditNeverStoresContactTextForAnyTool` falhou no runner. Reproduzido LOCALMENTE: passa isolado e na suite completa de 115s. Nao declarar 'flaky' sem prova - proxima rodada investiga a suite do CI e a main",
+    "FALSO POSITIVO DE PRIVACIDADE E' O PIOR TIPO (E-333): o teste de DLP acusava vazamento quando o identificador gerado (apr_28741117) continha os digitos do segredo (4111). Instrumento que acusa por acaso ensina a ignorar alerta",
+    "CAUSA-RAIZ DEMONSTRADA, NAO APENAS 'NAO REPRODUZIDA' (E-333): o teste de regressao NAO pulou - ele prova que o texto cru casa e que o mascaramento remove o falso positivo, mantendo o vazamento real sendo acusado",
+    "CORRIGIR INSTRUMENTO NAO E' ENFRAQUECER (E-333): a invariante segue de pe, provada por teste armado. Se a correcao tivesse cegado o detector, o segundo teste falharia"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -2431,6 +2434,14 @@
           "descricao": "fila poderia confirmar servico que nao cabe no espaco livre",
           "estado": "SEM DEFEITO (Book recusa por sobreposicao)",
           "evidencia": "E-330"
+        },
+        {
+          "id": "ADV-03",
+          "severidade": "MEDIA (instrumento)",
+          "descricao": "teste de DLP acusava vazamento quando um identificador gerado continha os digitos do segredo",
+          "estado": "CORRIGIDO E DEMONSTRADO",
+          "evidencia": "E-333",
+          "correcao": "mascarar identificadores gerados antes da busca por fragmento em texto livre, sem enfraquecer a invariante"
         }
       ],
       "proximos_ataques": [
@@ -2498,6 +2509,7 @@
     "E-329": "fatia 6 do INCREMENTO I do V2.2 (fila de espera, lembretes e no-show); vinculo declarado",
     "E-330": "auditoria adversarial (V2.2 secao 12): achado de travamento corrigido + propriedade verificada; vinculo declarado",
     "E-331": "registro do COMPLEMENTO ESTAGIO 42 (live commerce) anexado ao V2.2; vinculo declarado",
-    "E-332": "estagio 42: contratos canonicos e nucleo de seguranca; vinculo declarado"
+    "E-332": "estagio 42: contratos canonicos e nucleo de seguranca; vinculo declarado",
+    "E-333": "causa-raiz do falso positivo de DLP (identificador gerado dentro de texto livre); vinculo declarado"
   }
 }
