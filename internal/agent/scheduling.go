@@ -177,6 +177,10 @@ func (s *SchedulingStore) AddService(service SchedulingService) (SchedulingServi
 	if s == nil {
 		return SchedulingService{}, ErrSchedulingInvalid
 	}
+	// E-337: valida a organização CRUA antes de consentScope (que tem fallback para "local").
+	if err := requireOrganization(service.OrganizationID); err != nil {
+		return SchedulingService{}, fmt.Errorf("%w: %v", ErrSchedulingInvalid, err)
+	}
 	service.OrganizationID = consentScope(service.OrganizationID)
 	service.Name = strings.TrimSpace(service.Name)
 	if service.OrganizationID == "" || service.Name == "" || service.DurationMinutes <= 0 || service.BufferMinutes < 0 {
@@ -203,6 +207,9 @@ func (s *SchedulingStore) AddService(service SchedulingService) (SchedulingServi
 func (s *SchedulingStore) AddResource(resource SchedulingResource) (SchedulingResource, error) {
 	if s == nil {
 		return SchedulingResource{}, ErrSchedulingInvalid
+	}
+	if err := requireOrganization(resource.OrganizationID); err != nil {
+		return SchedulingResource{}, fmt.Errorf("%w: %v", ErrSchedulingInvalid, err)
 	}
 	resource.OrganizationID = consentScope(resource.OrganizationID)
 	resource.Name = strings.TrimSpace(resource.Name)

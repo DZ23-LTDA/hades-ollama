@@ -232,3 +232,19 @@ func (s *Supervisor) loadIncidents() error {
 	s.incidents = stored
 	return nil
 }
+
+// ErrTenantScopeRequired recusa operação sem organização informada (E-337).
+var ErrTenantScopeRequired = errors.New("organization scope is required")
+
+// requireOrganization valida a organização CRUA, ANTES de qualquer normalização.
+//
+// POR QUE ISTO EXISTE (E-337): `consentScope("")` devolve `LocalOrganizationID` — o que é legítimo para uso local de
+// usuário único, mas em contexto multi-tenant transforma "organização ausente" em **escopo compartilhado**. As
+// validações existentes (`org == ""`) aconteciam DEPOIS de `consentScope`, portanto nunca disparavam. ***Validar
+// depois de normalizar é validar o valor que a normalização inventou.***
+func requireOrganization(organizationID string) error {
+	if strings.TrimSpace(organizationID) == "" {
+		return ErrTenantScopeRequired
+	}
+	return nil
+}
