@@ -2393,7 +2393,8 @@
     "O QUE E' ESTRUTURAL E' O QUE SERVE DE CATRACA (E-393/ADV-57/3 e /7): o teste media o tempo e nao afirmava nada; agora afirma N chamadas = N gravacoes e 1 lote = 1 gravacao, com razao de 100x - e recusa afirmar tempo",
     "LIMITE DECLARADO EM VOZ ALTA SO' ESTA FECHADO COM TESTE (E-394): a contrapova por reversao do RemoveProducts foi EXECUTADA (101 gravacoes => FALHA) e o cenario com catalogo anterior existe (2 gravacoes, preco restaurado, SKU novo removido). E medido: o plano exige Overwrite explicito, senao o onboarding RECUSA o conflito",
     "DE 400 PARA 29 BRANCHES (E-395): 371 mescladas apagadas sem force, 28 nao-mescladas preservadas. O achado e' que as 28 sao trabalho que NAO esta na main - pendencias de integracao, nao entulho. E um erro medido no meio: o filtro ^origin/ aceitou a linha 'origin/HEAD -> origin/main' e um lote falhou; corrigido com -notmatch ' -> '",
-    "A MAIN NAO TEM TUDO QUE A MISSAO PRESUME (E-396): das 28 branches nao-mescladas, 13 tinham o conteudo JA na main (por patch-id) e foram apagadas; 15 tem trabalho real nao integrado - incluindo uma linha de SEGURANCA com 14 patches e a de paridade de UI com 17. Branches: 400 -> 16. Os 15 sao candidatos a revisao de conteudo"
+    "A MAIN NAO TEM TUDO QUE A MISSAO PRESUME (E-396): das 28 branches nao-mescladas, 13 tinham o conteudo JA na main (por patch-id) e foram apagadas; 15 tem trabalho real nao integrado - incluindo uma linha de SEGURANCA com 14 patches e a de paridade de UI com 17. Branches: 400 -> 16. Os 15 sao candidatos a revisao de conteudo",
+    "O ALARME DO E-396 ESTAVA EXAGERADO E FOI CORRIGIDO MEDINDO (E-397): das 15 branches com 'patches pendentes', 12 tem a substancia na main (a linha de SEGURANCA esta' inteira, inclusive TestDevTokenRequiresOperatorSecret) e so' 3 tem lacuna real - todas de UI/mobile (ui-shell-parity, mobile-parity, docs-tests-parity). Um instrumento grosseiro (patch-id) virou precisao ao medir o nivel seguinte (arquivo)"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -3410,6 +3411,31 @@
         "achado": "15 linhas de trabalho NAO estao na main, incluindo uma de SEGURANCA com 14 patches (fix/seguranca-ci-docs-20261005: 'security: close agentic execution and exposure gaps') e a de paridade de UI com 17 (feat/ui-shell-parity). A entrega nao pode ser declarada pronta enquanto isso nao for revisado",
         "limite": "--cherry-pick compara patch-id: diz 'este patch exato nao esta na main', NAO 'esta mudanca nao esta'. Os 15 sao candidatos a REVISAO DE CONTEUDO, nao provas de lacuna",
         "proximo": "revisar por CONTEUDO as 15 (comecando pela de seguranca), integrar o que faltar e declarar o resto"
+      },
+      "revisao_por_arquivo": {
+        "metodo": "git diff --name-status --diff-filter=A origin/main...origin/<branch> + Test-Path de cada adicao",
+        "substancia_na_main": [
+          "feat/marca-hades (41/41)",
+          "feat/e2e-local-smoke (3/3)",
+          "feat/large-files-arch (8/8)",
+          "feat/linux-packaging (2/2)",
+          "test/dlp-clock-false-positive (1/1)",
+          "test/p0e-t4-worktrees (1/1)",
+          "fix/seguranca-ci-docs-20261005 (8/8 adicoes)"
+        ],
+        "somente_edicoes_revisao_pendente": [
+          "fix/windows-installer-identity",
+          "feat/supervisor-journal-persist",
+          "fix/lint-dead-code",
+          "fix/stock-batch-effective"
+        ],
+        "lacuna_real": {
+          "feat/ui-shell-parity": "41 de 44 adicoes faltando (inclui app/ui/app/e2e/*-journey.spec.ts)",
+          "feat/mobile-parity": "8 de 9 faltando (inbox.ts, inbox.test.ts)",
+          "feat/docs-tests-parity": "1 de 1 faltando (docs/agentic/UI_MOBILE_EVIDENCE_TRACKING.md)"
+        },
+        "seguranca": "fix/seguranca-ci-docs-20261005 esta' INTEIRA na main: dev_token.go nao existe mais, mas o comportamento esta' (TestDevTokenRequiresOperatorSecret, TestIsDevTokenRequestAllowedRejectsProxiedRequests), o timeout HTTP esta' em egress_zero_trust.go e as 8 adicoes existem com corpo real. NAO ha' lacuna de seguranca",
+        "achado": "O alarme do E-396 estava exagerado. A lacuna real e' de UI/mobile (3 branches, 50 arquivos), nao de seguranca"
       }
     }
   },
@@ -3495,6 +3521,7 @@
     "E-393": "custo estrutural direto x lote (100x em gravacoes), com contraprova",
     "E-394": "contraprova por reversao do RemoveProducts + cenario com catalogo anterior",
     "E-395": "higiene de branches: 400 -> 29 (371 mescladas), 28 nao-mescladas preservadas",
-    "E-396": "triagem por patch-id: 13 conteudo ja na main; 15 com trabalho nao integrado"
+    "E-396": "triagem por patch-id: 13 conteudo ja na main; 15 com trabalho nao integrado",
+    "E-397": "revisao por arquivo: 12 integradas, 4 so' edicoes, 3 com lacuna real (UI/mobile)"
   }
 }
