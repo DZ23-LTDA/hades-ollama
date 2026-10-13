@@ -139,8 +139,13 @@ func (s *SchedulingStore) FreeSlotsForReschedule(organizationID, appointmentID, 
 	servico, _ := schedulingService(org, atual.ServiceID)
 	passo := time.Duration(stepMinutes) * time.Minute
 	var livres []AvailabilitySlot
-	for minuto := shift.OpensAt; minuto+servico.DurationMinutes <= shift.ClosesAt; minuto += stepMinutes {
-		inicio := time.Date(dia.Year(), dia.Month(), dia.Day(), 0, minuto, 0, 0, loc)
+	// E-328: mesma regra do OpenSlots — virada de meia-noite e intervalos valem também para remarcação.
+	duracaoJanela := shiftDurationMinutes(shift)
+	for deslocamento := 0; deslocamento+servico.DurationMinutes <= duracaoJanela; deslocamento += stepMinutes {
+		inicio := shiftStartInstant(dia, shift, deslocamento, loc)
+		if _, emIntervalo := breakCovers(org, atual.ResourceID, inicio.Weekday(), inicio.Hour()*60+inicio.Minute(), servico.DurationMinutes); emIntervalo {
+			continue
+		}
 		fim := inicio.Add(time.Duration(servico.DurationMinutes) * time.Minute)
 		ocupadoAte := fim.Add(time.Duration(servico.BufferMinutes) * time.Minute)
 		livre := true

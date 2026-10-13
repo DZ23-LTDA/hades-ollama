@@ -101,7 +101,9 @@ type schedulingOrg struct {
 	// expediente, o que o V2.2 chama de "inventar horários".
 	Shifts   []SchedulingShift   `json:"shifts,omitempty"`
 	Closures []SchedulingClosure `json:"closures,omitempty"`
-	TimeZone string              `json:"time_zone,omitempty"`
+	// Breaks (E-328): intervalos dentro do turno (almoço, descanso, manutenção).
+	Breaks   []SchedulingBreak `json:"breaks,omitempty"`
+	TimeZone string            `json:"time_zone,omitempty"`
 }
 
 // NewSchedulingStore cria o store no diretório informado.
