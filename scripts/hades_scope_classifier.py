@@ -96,11 +96,18 @@ def classificar_usos(diretorio: Path = None) -> dict:
             if "sanitizeIDComponent(" not in linha:
                 continue
             categoria = classificar_statement(linhas, numero - 1)
-            chave = caminho.name
+            # E-383 / ADV-56/4: chave = CAMINHO RELATIVO, não basename. MEDIDO: com basename, um arquivo de subpasta
+            # (ex.: `a/util.go`) fazia o consumidor montar `diretorio / "util.go"`, que NÃO existe ⇒ FileNotFoundError
+            # ⇒ *ou abortava a varredura, ou reportava o arquivo como ilegível em vez de verificá-lo*. Para arquivos de
+            # topo o resultado é o mesmo nome, então a correção não muda o que já era medido.
+            try:
+                chave = caminho.relative_to(raiz).as_posix()
+            except ValueError:
+                chave = caminho.name
             if categoria == "definicao":
                 continue
             resultado.setdefault(chave, {"caminho": [], "identificador": [], "comentario": [], "indefinido": []})
-            resultado[chave][categoria].append("%s:%d" % (caminho.name, numero))
+            resultado[chave][categoria].append("%s:%d" % (chave, numero))
     return resultado
 
 
@@ -116,10 +123,31 @@ def resumo_da_classificacao(diretorio: Path = None) -> dict:
 
 # DECLARAÇÕES do que a classificação automática não consegue decidir sozinha.
 # Cada linha aqui é uma decisão HUMANA registrada, com motivo — e o instrumento REPROVA indefinido sem declaração.
+#
+# 🚨 E-383 / ADV-56/6 (MEDIDO na 3ª auditoria): a chave é o **CAMINHO RELATIVO**, não o basename. Com basename, um
+# arquivo NOVO em outro pacote com o mesmo nome (`pkg/media_pipeline.go`) **nascia isento** ✗ — *a dispensa cobria a
+# FORMA, não o caso*. Pelo mesmo motivo, um comentário inserido acima deslocava a linha e deixava o CI vermelho por
+# mudança não relacionada ✗. E a entrada abaixo ficava **obsoleta em silêncio**: `indefinidos_nao_declarados` passou a
+# ACUSAR declaração que não casa com uso nenhum (ver `declaracoes_obsoletas`).
 DECLARACOES_INDEFINIDAS = {
-    "media_pipeline.go:358": ("caminho multi-linha: o valor vira `organizacao` e é usado em `filepath.Join` na linha "
-                              "seguinte, dentro de `MediaOrgRoot`, que JÁ valida a organização crua (E-336)."),
+    "agent/media_pipeline.go:358": ("caminho multi-linha: o valor vira `organizacao` e é usado em `filepath.Join` na linha "
+                                    "seguinte, dentro de `MediaOrgRoot`, que JÁ valida a organização crua (E-336)."),
 }
+
+
+def declaracoes_obsoletas(diretorio: Path = None) -> list:
+    """Declarações que NÃO casam com uso nenhum (E-383 / ADV-56/6c).
+
+    **MEDIDO**: uma dispensa obsoleta era apenas **impressa** como "declarado" e o `main` saía **0** ✗ ⇒ *a exceção
+    fantasma sobrevivia para sempre, e a próxima pessoa a lia como se ainda valesse*. ***Dispensa que não casa com uso
+    nenhum não é contexto: é ruído que parece decisão.***
+    """
+    usos = classificar_usos(diretorio)
+    locais = set()
+    for dados in usos.values():
+        for itens in dados.values():
+            locais.update(itens)
+    return sorted(declaracao for declaracao in DECLARACOES_INDEFINIDAS if declaracao not in locais)
 
 
 def indefinidos_nao_declarados(diretorio: Path = None) -> list:
@@ -139,6 +167,12 @@ if __name__ == "__main__":
     if pendentes:
         for local in pendentes:
             print("VIOLACAO: uso INDEFINIDO sem declaração: %s (o desconhecido não pode passar em silêncio)" % local)
+        raise SystemExit(1)
+    # E-383 / ADV-56/6c: a dispensa que não casa com uso nenhum era apenas IMPRESSA e o main saía 0 ✗. Agora acusa.
+    obsoletas = declaracoes_obsoletas()
+    if obsoletas:
+        for local in obsoletas:
+            print("VIOLACAO: declaração OBSOLETA (não casa com uso nenhum): %s — remova a dispensa ou explique" % local)
         raise SystemExit(1)
     for local, motivo in sorted(DECLARACOES_INDEFINIDAS.items()):
         print("  declarado: %s — %s" % (local, motivo[:90]))
