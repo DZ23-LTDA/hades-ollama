@@ -111,3 +111,40 @@
 - **Como desbloquear:** para cada conector que se queira promover, configurar a
   credencial e anexar evidência de chamada real (mantendo `Auth` não-vazio, sob
   pena de `TestConnectorCatalogIncludesOperationalIntegrations` falhar).
+
+## E-304 — DEFEITO ABERTO: a reserva de estoque não sobrevive ao reinício (severidade **ALTA**)
+
+**Medido em `main` (303 evidências, `22307bf41`)**, com reprodução exata:
+
+```go
+primeiro, dataRoot := businessRuntime(t)                       // cria o runtime
+relatorio1, _ := primeiro.CertifyBusinessJourney(entrada, now)  // certifica (aprovado)
+segundo, _ := NewRuntime(RuntimeConfig{                        // REINÍCIO REAL: memória nova, MESMA raiz
+    Store: NewMemoryStore(), Planner: RulePlanner{}, WorkspaceRoot: raizWorkspace, DataRoot: dataRoot,
+})
+relatorio2, err := segundo.CertifyBusinessJourney(entrada, now)  // <- FALHA
+```
+
+Saída medida:
+
+```
+certificação após o reinício: reserva inesperada:
+{SKU:CAM-001 OnHand:18 Reserved:0 Available:18 MovementCount:7}
+```
+
+`internal/agent/business_e2e.go:229` exige `Available == InitialStock - Quantity`. Depois do reinício o **pedido
+continua existindo** (idempotência persistida) mas `Reserved` volta a **0** e `Available == OnHand`: **o estoque
+reservado pelo pedido não está mais reservado**. Vender o que não existe é o risco de severidade **ALTA**.
+
+**Causa provável**: `CommerceStore.Stock` (`internal/agent/commerce.go`) lê um mapa **em memória** (`s.stock`) e o
+reservado não é reconstruído a partir dos pedidos abertos persistidos. É a mesma classe de E-299 (estado em memória
+que o reinício esquece), agora com efeito de **estoque**.
+
+**Por que não foi corrigido nesta rodada — declarado, não escondido**: corrigir exige mudar o modelo de estoque
+(persistir/reconstruir o reservado por pedido aberto), com efeito em concorrência, comissão e migrations. O orçamento
+da rodada não comporta essa mudança **com a verificação que ela exige**, e entregar sem verificar seria trocar um
+defeito por uma suposição.
+
+**Desbloqueio**: (1) reconstruir o reservado de pedidos abertos ao carregar o store; (2) teste do mesmo reinício
+real, verde; (3) verificar que a jornada continua idempotente **e** que o reservado resiste. O `RecoveryProven`
+atual mede **idempotência no mesmo processo** — não reinício; a evidência E-304 corrige essa leitura.

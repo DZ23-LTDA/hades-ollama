@@ -2,7 +2,7 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-19T12:40:00-03:00",
+  "updated_at": "2026-10-19T13:50:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
@@ -1115,13 +1115,14 @@
         "E-048",
         "E-087",
         "E-109",
-        "E-112"
+        "E-112",
+        "E-304"
       ],
       "blocker": "B-06",
-      "next": "LIMITES: marketplace e redes sociais (conta e scopes), telefonia e voz (numero e provedor), pagamento real (sem PSP), fiscal (NF-e e impostos) e canais externos (credencial). O estorno aprovado e registro CONTABIL sem transferencia de dinheiro, e o veredito segue SANDBOX_APROVADO e nao release",
+      "next": "CORRIGIR E-304: reconstruir o reservado de pedidos abertos ao carregar o CommerceStore e provar com o teste de reinicio real. Depois: STT/TTS reais (BLOCKED_BY_EXTERNAL_DEPENDENCY) e a homologacao final.",
       "blocked_reason": "",
       "external_dependency": "idem 32: integracoes ao vivo; a jornada em sandbox e local",
-      "done": "CERTIFICACAO E2E EM SANDBOX com 21 etapas, agora INCLUINDO O SUPERVISOR NO LACO: um segundo pedido e pago, tem receita lancada e e cancelado, gerando ESTORNO DEVIDO que por politica EXIGE DECISAO HUMANA; o ciclo do supervisor observa os dominios, a pendencia e consultavel, a aprovacao de gerente-certificacao EXECUTA o efeito real no livro, e a pendencia NAO VAZA para outra organizacao. O relatorio carrega um bloco supervisor com sinais, pendencias, bloqueios por orcamento, quem decidiu e o efeito no livro",
+      "done": "CERTIFICACAO E2E EM SANDBOX com 21 etapas, agora INCLUINDO O SUPERVISOR NO LACO: um segundo pedido e pago, tem receita lancada e e cancelado, gerando ESTORNO DEVIDO que por politica EXIGE DECISAO HUMANA; o ciclo do supervisor observa os dominios, a pendencia e consultavel, a aprovacao de gerente-certificacao EXECUTA o efeito real no livro, e a pendencia NAO VAZA para outra organizacao. O relatorio carrega um bloco supervisor com sinais, pendencias, bloqueios por orcamento, quem decidiu e o efeito no livro DEFEITO ABERTO (E-304, severidade ALTA): MEDIDO que a RESERVA DE ESTOQUE nao sobrevive ao reinicio do processo. O pedido persiste (idempotencia) mas Reserved volta a 0 e Available == OnHand. O RecoveryProven do certificador mede idempotencia NO MESMO PROCESSO, nao reinicio. Reproducao e desbloqueio em docs/mission/HADES_BLOCKERS.md. NAO corrigido nesta rodada por ser mudanca de modelo de estoque, declarado em vez de escondido.",
       "execution": "BLOCKED_BY_EXTERNAL_DEPENDENCY"
     }
   ],
@@ -2062,7 +2063,9 @@
     "EFEITO EXTERNO DE MAIOR RISCO SEM PORTAO (E-303): o modulo de voz tinha latencia e gravacao com consentimento, mas LIGAR nao tinha portao nenhum. Auditar o que EXISTE nao basta: e' preciso procurar o que NAO existe",
     "IDENTIDADE DE EFEITO EXTERNO NAO DEPENDE DO RELOGIO (E-303): ID derivado de org+timestamp colidia no mesmo segundo e fazia duas chamadas compartilharem uma autorizacao. O teste pegou; UUID corrigiu",
     "NAO INVENTAR SEGUNDO REGISTRO DE CONSENTIMENTO (E-303): a elegibilidade usa o ConsentRegistry que ja existia. Um segundo registro divergiria do primeiro - mesma licao do HADES_CURRENT_STATE.json",
-    "REGISTRO HONESTO DO QUE NAO ACONTECEU (E-303): ProviderExecutedAt fica NIL porque quem liga e' o provedor externo. Campo preenchido 'para parecer completo' seria a mentira que a missao proibe"
+    "REGISTRO HONESTO DO QUE NAO ACONTECEU (E-303): ProviderExecutedAt fica NIL porque quem liga e' o provedor externo. Campo preenchido 'para parecer completo' seria a mentira que a missao proibe",
+    "IDEMPOTENCIA NAO E' REINICIO (E-304): o certificador dizia RecoveryProven medindo 'refazer os passos sem duplicar' - isso e' idempotencia no MESMO processo. O reinicio real revelou um defeito de severidade ALTA que a metrica nao pegava. Nome de campo mais forte que a medicao e' a mesma doenca de 'status declarado'",
+    "DEFEITO ENCONTRADO NAO SE ESCONDE NEM SE APRESSSA (E-304): registrar, reproduzir e documentar o defeito sem empurrar uma correcao nao verificada. Trocar um defeito por uma suposicao seria pior que o defeito"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
