@@ -2144,7 +2144,11 @@
     "NAO DECLARADO NAO E' NAO SUPORTA (E-326): sem `capabilities` na resposta, o registro NAO e' alterado e a resposta e' NAO MEDIDO. Armadilha armada confere que nada foi gravado",
     "LIMITE DECLARADO DE UMA FATIA E' FECHADO NA SEGUINTE (E-326): E-325 disse que nao havia sonda; E-326 entrega a sonda. Registrar o limite e' o que permite fecha-lo depois - limite omitido nao volta",
     "PUBLICAR ANTES DO VERDE FOI ERRO DE PROCESSO (E-326b): commitei e empurrei com um teste vermelho porque nao condicionei o commit ao resultado. A assercao comparava caixa ('nao declara' vs 'Nao declara') - o motor estava certo. Corrigido em commit seguinte, com o registro dizendo o que aconteceu",
-    "ASSERTAR POR CONTEUDO, NAO POR CAIXA (E-326b): comparar texto literal sensivel a caixa e' fragil e mede a mensagem, nao a propriedade"
+    "ASSERTAR POR CONTEUDO, NAO POR CAIXA (E-326b): comparar texto literal sensivel a caixa e' fragil e mede a mensagem, nao a propriedade",
+    "EMPRESA QUE JA EXISTE TEM PRECEDENCIA (E-327): os dados dela nao podem ser tratados como se o Hades a tivesse criado. Preco divergente vira CONFLITO DECLARADO e a aplicacao e' recusada sem autorizacao explicita",
+    "PREVIEW QUE GRAVA NAO E' PREVIEW (E-327): o dry-run e' medido com armadilha - o catalogo tem de ficar intacto",
+    "ROLLBACK TEM DE REMOVER, NAO SO DESATIVAR (E-327): desfazer importacao significa o produto deixar de existir. Por isso RemoveProduct foi adicionado com persistencia e rollback em memoria",
+    "MEDIR A ASSINATURA DA API (E-327): supus NewCommerceStoreAt com um retorno e o go vet acusou dois. Ja estava nas minhas notas e reincidi - vet pegou antes do commit"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -2322,7 +2326,7 @@
       },
       "p1_p2": {
         "P1-A": "PARCIAL CORRIGIDO: o inventario dizia 'parcial' e a medicao mostrou AUSENTE; o nucleo do motor de workflow foi implementado e provado (E-324). Faltam fan-out/join, interface visual e aprovacao humana",
-        "P1-B": "PARCIAL",
+        "P1-B": "PARCIAL AVANCADO: onboarding de empresa existente com preview, dedupe, conflito e rollback provado (E-327). Faltam clientes/pedidos/financeiro da origem e conectores de ERP reais (BLOCKED_BY_EXTERNAL_DEPENDENCY)",
         "P1-C": "IN_PROGRESS",
         "P1-D": "BLOCKED_BY_EXTERNAL_DEPENDENCY",
         "P1-E": "NAO_INICIADO",
@@ -2404,6 +2408,7 @@
     "E-323": "fatia 4 do INCREMENTO I do V2.2 (agendamento entre processos); vinculo declarado",
     "E-324": "motor de workflow deterministico (P1-A / teste T6 do adendo); vinculo declarado",
     "E-325": "capacidades de modelo e modo de ferramenta (P0-D): nao fingir tool calls; vinculo declarado",
-    "E-326": "sonda real de capacidades no endpoint (P0-D), fecha o limite de E-325; vinculo declarado"
+    "E-326": "sonda real de capacidades no endpoint (P0-D), fecha o limite de E-325; vinculo declarado",
+    "E-327": "onboarding de empresa existente (P1-B do adendo); vinculo declarado"
   }
 }
