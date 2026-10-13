@@ -73,6 +73,12 @@ func (s *SchedulingStore) Book(request BookRequest) (SchedulingAppointment, erro
 
 // Cancel liberta o horário sob a mesma trava (e recarregando o estado do disco).
 func (s *SchedulingStore) Cancel(organizationID, appointmentID, reason string) (SchedulingAppointment, error) {
+	// E-347: MEDIDO — `Cancel`/`Reschedule` aceitavam organização vazia e só falhavam depois, por
+	// "agendamento não encontrado". Com um identificador VÁLIDO, operariam no escopo COMPARTILHADO. A
+	// categoria "delegação" não se sustentava para estes dois pontos de entrada.
+	if err := requireOrganization(organizationID); err != nil {
+		return SchedulingAppointment{}, err
+	}
 	var cancelado SchedulingAppointment
 	err := s.withOrganizationLock(consentScope(organizationID), func() error {
 		var errInterno error
@@ -84,6 +90,12 @@ func (s *SchedulingStore) Cancel(organizationID, appointmentID, reason string) (
 
 // Reschedule move um agendamento sob a mesma trava de arquivo da organização.
 func (s *SchedulingStore) Reschedule(organizationID, appointmentID string, newStart time.Time) (SchedulingAppointment, error) {
+	// E-347: MEDIDO — `Cancel`/`Reschedule` aceitavam organização vazia e só falhavam depois, por
+	// "agendamento não encontrado". Com um identificador VÁLIDO, operariam no escopo COMPARTILHADO. A
+	// categoria "delegação" não se sustentava para estes dois pontos de entrada.
+	if err := requireOrganization(organizationID); err != nil {
+		return SchedulingAppointment{}, err
+	}
 	var movido SchedulingAppointment
 	err := s.withOrganizationLock(consentScope(organizationID), func() error {
 		var errInterno error
