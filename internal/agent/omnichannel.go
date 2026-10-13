@@ -113,8 +113,11 @@ type OmnichannelEvent struct {
 	// nem segredo algum.
 	Preview string `json:"preview,omitempty"`
 	// Deduplicated marca a reentrega já conhecida.
-	Deduplicated bool      `json:"deduplicated,omitempty"`
-	IngestedAt   time.Time `json:"ingested_at"`
+	Deduplicated bool `json:"deduplicated,omitempty"`
+	// OutOfOrder marca o evento que chegou ANTES do ultimo aceito na mesma conversa (E-298). Ele NAO e'
+	// descartado: o dado entra e a ordem fica registrada em vez de presumida.
+	OutOfOrder bool      `json:"out_of_order,omitempty"`
+	IngestedAt time.Time `json:"ingested_at"`
 }
 
 // OmnichannelDeadLetter é o evento que falhou, com o motivo.
@@ -153,6 +156,11 @@ type OmnichannelRuntime struct {
 	dlqError string
 	// now permite testar a janela de replay sem esperar.
 	now func() time.Time
+	// orderHeads guarda o ULTIMO instante aceito por (organizacao, canal, conversa): e' o que permite MARCAR
+	// evento fora de ordem em vez de presumir que a chegada segue a ordem do provedor (E-298).
+	orderHeads map[string]int64
+	// outOfOrder conta os eventos marcados: visibilidade para o status, sem esconder o fenomeno.
+	outOfOrder int
 	// rateLimitStore persiste a JANELA de rate limit (E-170): sem ele, um reinício ZERA a cota.
 	rateLimitStore *OmnichannelRateLimitStore
 	// loadedRateOrgs marca quais organizações já tiveram a janela carregada do disco.
@@ -657,6 +665,10 @@ func (r *OmnichannelRuntime) Ingest(organizationID, channel string, signature st
 	}
 	if event.ID == "" {
 		event.ID = "ev_" + uuid.NewString()[:12]
+	}
+	// ORDENACAO (E-298): marca (nunca descarta, nunca reordena em silencio) o evento que chegou atras na conversa.
+	if r.observeOrderLocked(connector.OrganizationID, connector.Channel, event.ConversationID, event.ContactID, event.Timestamp) {
+		event.OutOfOrder = true
 	}
 	r.mu.Unlock()
 
