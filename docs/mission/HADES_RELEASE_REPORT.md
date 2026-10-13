@@ -9,7 +9,7 @@
 | Número | Valor |
 | --- | --- |
 | Estágios | 38 |
-| Linhas de evidência no índice | 277 |
+| Linhas de evidência no índice | 278 |
 | `COMPLETED_VERIFIED` | 2 |
 | `IN_PROGRESS` | 15 |
 | `BLOCKED_BY_EXTERNAL_DEPENDENCY` | 21 |
@@ -38,7 +38,7 @@ relatório **declara a ausência** em vez de preencher com suposição.
 | --- | --- | --- | --- | --- | --- |
 | 1 | Auditoria total e inventario real | PARCIAL | IN_PROGRESS | — | E-001, E-002, E-010, E-021, E-023, E-036, E-187, E-188, E-211 |
 | 2 | Estabilizacao e consolidacao da base | PARCIAL | IN_PROGRESS | B-09 | E-003, E-004, E-011, E-013, E-014, E-015, E-016, E-017, E-060, E-061, E-062, E-064, E-115, E-116, E-129, E-138, E-142, E… |
-| 3 | Arquitetura canonica dos componentes | PARCIAL | IN_PROGRESS | — | E-037, E-040, E-043, E-044, E-045, E-215, E-276, E-277 |
+| 3 | Arquitetura canonica dos componentes | PARCIAL | IN_PROGRESS | — | E-037, E-040, E-043, E-044, E-045, E-215, E-276, E-277, E-278 |
 | 6 | Harness Runtime (execucao governada) | AUSENTE | IN_PROGRESS | B-01 | E-025, E-041, E-204, E-205, E-206, E-207, E-208, E-215 |
 | 7 | MCP Manager (servidores, ferramentas, escopos) | APENAS_CATALOGO | IN_PROGRESS | B-10 | E-018, E-019, E-026, E-215 |
 | 8 | Plugins e Skills | PARCIAL | IN_PROGRESS | B-14 | E-042, E-053, E-055, E-063, E-065, E-066, E-067, E-068, E-183, E-184, E-185, E-200 |
@@ -90,7 +90,7 @@ possível sem ele**.
 
 ## Referências
 
-- Índice de evidências: [`HADES_EVIDENCE_INDEX.md`](HADES_EVIDENCE_INDEX.md) (277 linhas).
+- Índice de evidências: [`HADES_EVIDENCE_INDEX.md`](HADES_EVIDENCE_INDEX.md) (278 linhas).
 - Estado da missão: [`HADES_MASTER_STATE.json`](HADES_MASTER_STATE.json).
 - Gate global: [`HADES_FINAL_RELEASE_GATE.md`](HADES_FINAL_RELEASE_GATE.md).
 - Gate intermediário de engenharia (estágio 22): [`HADES_ENGINEERING_GATE.md`](HADES_ENGINEERING_GATE.md).
