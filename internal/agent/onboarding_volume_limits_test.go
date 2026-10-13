@@ -140,6 +140,13 @@ func TestOnboardingComVolumeDentroDoLimiteAplica(t *testing.T) {
 		t.Fatalf("ARMADILHA: %d produtos em memória mas %d no DISCO — o lote não foi gravado",
 			quantidade, len(gravado.Products))
 	}
+	// E-365: MEDIDA ESTRUTURAL, imune ao ruído da máquina: quantas vezes o arquivo foi GRAVADO para aplicar o lote.
+	// *Contar é medir o custo do caminho; o cronômetro mede a máquina.*
+	if gravacoes := comercio.Gravacoes(); gravacoes > 10 {
+		t.Fatalf("ARMADILHA: %d linhas causaram %d gravações — o lote não está sendo usado", quantidade, gravacoes)
+	} else {
+		t.Logf("MEDIDA ESTRUTURAL: %d linhas aplicadas com %d gravação(ões) de arquivo", quantidade, gravacoes)
+	}
 	t.Logf("onboarding com volume medido: %d linhas aplicadas em %.2fs e CONFIRMADAS em disco (%d produtos no arquivo); limite %d linhas, %d bytes",
 		quantidade, decorrido.Seconds(), len(gravado.Products), limites.MaxRows, limites.MaxTotalBytes)
 }
