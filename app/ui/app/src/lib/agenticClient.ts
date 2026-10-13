@@ -641,6 +641,18 @@ export type VisualComponent = {
   height?: number;
 };
 
+// Relatório do que a publicação local REALMENTE entregou (E-281/E-282). `runnable` é falso sem backend:
+// copiar arquivos não é aplicação rodando.
+export type BuilderPublishReport = {
+  files_copied: number;
+  backend_included: boolean;
+  auth_included: boolean;
+  database_included: boolean;
+  runnable: boolean;
+  missing?: string[];
+  note?: string;
+};
+
 export type BuilderProject = {
   id: string;
   organization_id: string;
@@ -652,6 +664,7 @@ export type BuilderProject = {
   root: string;
   preview_path?: string;
   published_path?: string;
+  publish_report?: BuilderPublishReport;
   export_checksum?: string;
   export_path?: string;
   created_at: string;
