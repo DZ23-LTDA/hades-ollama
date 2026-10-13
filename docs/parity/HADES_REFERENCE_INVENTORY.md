@@ -132,7 +132,7 @@
 | **P0-D** Model & harness | `PARCIAL` | Ollama Cloud (login), credencial externa válida, tool calling medido por provedor + T5 |
 | **P0-E** Multiagente | `PARCIAL` | E2E de **3 especialistas em worktrees isolados** com merge controlado + T4 |
 | **P0-F** Segurança e entrega | `PARCIAL` | isolamento já provado em várias camadas; falta release por SO e **assinatura** |
-| **P1-A** Automação | `PARCIAL` | T6 (webhook → condição → ação real → retry/idempotência) |
+| **P1-A** Automação | `PARCIAL` (núcleo **implementado** em E-324; a classificação anterior, “parcial”, era **otimista**: a medição mostrou **AUSENTE** antes desta fatia) | fan-out/join, interface visual e aprovação humana |
 | **P1-B** Empresa universal | `PARCIAL` | onboarding de empresa **existente** (importação/mapeamento) |
 | **P1-C** Agendamento universal | `IN_PROGRESS` | E-313/E-314 entregues; faltam intervalos no turno, lista de espera, remarcação e sync autorizada |
 | **P1-D** Canais reais | `BLOCKED_BY_EXTERNAL_DEPENDENCY` | tokens Meta/Telegram, SIP, contas — roteiro em §3 do plano V2.2 |
