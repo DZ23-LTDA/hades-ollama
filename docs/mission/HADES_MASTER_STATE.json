@@ -2262,7 +2262,11 @@
     "CHECKPOINT REMEDIDO (E-354): quatro categorias separadas - implementada, homologada localmente, medida com servico real (apenas T2 e T4 com Ollama local) e nao medida. O checkpoint nao declara projeto concluido nem paridade",
     "DIVIDA DE ESCOPO: 18 -> 1 pendencia (E-354): instrumento automatico para caminho E identificador, com o desconhecido exigindo declaracao. A ultima pendencia e' benchmark_suite, com motivo declarado",
     "372 BRANCHES REMOTAS SAO DIVIDA OPERACIONAL (E-354): remocao apenas das mescladas e sem force-push",
-    "O SHA ENVELHECE A CADA MERGE (E-354): o checkpoint vale para bbc9a5412, medido em 2026-10-13; citacao posterior exige remedicao"
+    "O SHA ENVELHECE A CADA MERGE (E-354): o checkpoint vale para bbc9a5412, medido em 2026-10-13; citacao posterior exige remedicao",
+    "INSTRUMENTO PASSOU A ENTENDER A CONSTRUCAO (E-355): classificacao por statement em vez de por linha; contagens remedidas 22/5/3/1",
+    "E O INDEFINIDO QUE RESTA E' LEGITIMO (E-355): em media_pipeline o uso e' atribuicao cujo destino aparece depois, e ali a organizacao ja foi validada crua. Melhorar o instrumento nao elimina a declaracao humana - dizer o contrario seria o defeito",
+    "CONCORRENCIA DO ESTAGIO 42 SEM DEFEITO (E-355): varredura x encerramento x aviso terminam ENDED com 1 incidente e revisao humana; 8 entregas do mesmo evento nao inflam receita",
+    "REGISTRAR AUSENCIA DE DEFEITO E' RESULTADO (E-355): evita reauditar o mesmo ponto (como em ADV-02 e ADV-08)"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -2710,12 +2714,19 @@
           "descricao": "onboarding aceitava volume ilimitado: so recusava vazio, sem teto de linhas/bytes",
           "estado": "CORRIGIDO E MEDIDO (5000 linhas / 512B nome / 16MiB, recusa antes de trabalhar; 2000 linhas em 55,68s)",
           "evidencia": "E-353"
+        },
+        {
+          "id": "ADV-29",
+          "severidade": "INVESTIGADO",
+          "descricao": "concorrencia do estagio 42: varredura x encerramento x aviso; ingestao concorrente do mesmo evento; aviso durante varredura",
+          "estado": "SEM DEFEITO (invariantes mantidas em 3 execucoes; receita nao infla sob corrida)",
+          "evidencia": "E-355"
         }
       ],
       "proximos_ataques": [
-        "orcamento acumulado entre planos (hoje o teto e' por plano)",
-        "classificacao de escopo por STATEMENT (hoje e' por linha)",
-        "checkpoint de estado final com remedicao"
+        "concorrencia ENTRE PROCESSOS no estagio 42 (hoje so' no mesmo processo)",
+        "orcamento acumulado entre planos de onboarding (teto e' por plano)",
+        "checkpoint remedido apos o proximo marco"
       ]
     },
     "estagio_42": {
@@ -3031,6 +3042,7 @@
     "E-351": "rede larga: identificadores derivados de organizacao; vinculo declarado",
     "E-352": "classificacao automatica de escopo (caminho x identificador) na catraca; vinculo declarado",
     "E-353": "onboarding com volume: limites declarados e volume medido; vinculo declarado",
-    "E-354": "checkpoint remedido da rodada 39; vinculo declarado"
+    "E-354": "checkpoint remedido da rodada 39; vinculo declarado",
+    "E-355": "classificacao por statement + concorrencia do estagio 42 verificada; vinculo declarado"
   }
 }
