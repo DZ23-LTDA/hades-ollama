@@ -262,6 +262,9 @@ func (s *ServiceAgentApprovalStore) path(organizationID string) string {
 
 // Load devolve as aprovações da organização.
 func (s *ServiceAgentApprovalStore) Load(organizationID string) ([]ServiceAgentApproval, error) {
+	if err := requireOrganization(organizationID); err != nil {
+		return nil, err
+	}
 	file, err := s.loadFile(organizationID)
 	if err != nil {
 		return nil, err
@@ -323,6 +326,9 @@ func (s *ServiceAgentApprovalStore) Approvers(organizationID string) ([]string, 
 
 // Save grava as aprovações respeitando o teto e PRESERVANDO a lista de aprovadores da organização.
 func (s *ServiceAgentApprovalStore) Save(organizationID string, approvals []ServiceAgentApproval) error {
+	if err := requireOrganization(organizationID); err != nil {
+		return err
+	}
 	file, err := s.loadFile(organizationID)
 	if err != nil {
 		return err

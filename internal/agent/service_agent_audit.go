@@ -94,6 +94,9 @@ func (s *ServiceAgentAuditStore) path(organizationID string) string {
 
 // Load devolve a trilha persistida da organização (mais antigas primeiro).
 func (s *ServiceAgentAuditStore) Load(organizationID string) ([]ServiceAgentAuditEntry, error) {
+	if err := requireOrganization(organizationID); err != nil {
+		return nil, err
+	}
 	path := s.path(organizationID)
 	if path == "" {
 		return nil, nil
@@ -113,6 +116,9 @@ func (s *ServiceAgentAuditStore) Load(organizationID string) ([]ServiceAgentAudi
 
 // Save grava a trilha da organização respeitando o teto dela.
 func (s *ServiceAgentAuditStore) Save(organizationID string, entries []ServiceAgentAuditEntry) error {
+	if err := requireOrganization(organizationID); err != nil {
+		return err
+	}
 	path := s.path(organizationID)
 	if path == "" {
 		return nil

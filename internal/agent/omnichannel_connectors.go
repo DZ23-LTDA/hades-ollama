@@ -63,6 +63,9 @@ func (s *OmnichannelConnectorStore) path(organizationID string) string {
 // Arquivo ausente é estado normal (nenhum conector cadastrado). Qualquer outro erro é DEVOLVIDO: um conector que
 // não pôde ser lido é um canal que vai recusar mensagens legítimas.
 func (s *OmnichannelConnectorStore) Load(organizationID string) ([]OmnichannelConnector, error) {
+	if err := requireOrganization(organizationID); err != nil {
+		return nil, err
+	}
 	caminho := s.path(organizationID)
 	if caminho == "" {
 		return nil, nil
@@ -109,6 +112,9 @@ func (s *OmnichannelConnectorStore) LoadAll() ([]OmnichannelConnector, error) {
 
 // Save grava os conectores da organização.
 func (s *OmnichannelConnectorStore) Save(organizationID string, connectors []OmnichannelConnector) error {
+	if err := requireOrganization(organizationID); err != nil {
+		return err
+	}
 	caminho := s.path(organizationID)
 	if caminho == "" {
 		return nil

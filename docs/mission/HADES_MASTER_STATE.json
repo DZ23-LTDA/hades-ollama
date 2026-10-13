@@ -2191,7 +2191,11 @@
     "DISPENSA NAO E' APROVACAO (E-338): as 16 pendencias aparecem como NAO_MEDIDO, nomeadas uma por uma, com o desbloqueio explicito - e o relatorio nunca as chama de ok",
     "INSTRUMENTO TESTADO NAS DUAS DIRECOES (E-338): 8 testes, incluindo dispensa SEM MOTIVO reprovando e uso que nao e' armazenamento sendo ignorado",
     "ASSERCAO MINHA ESTAVA ESTREITA DEMAIS (E-338): exigir NAO_MEDIDO de um caso validado por delegacao seria mentira; o teste passou a aceitar duas categorias honestas e a exigir motivo nas duas",
-    "PRESENCA DE GUARDA NAO E' PROVA DE CAMINHO CORRETO (E-338): a catraca impede crescimento silencioso; a prova de comportamento continua sendo a varredura de E-337"
+    "PRESENCA DE GUARDA NAO E' PROVA DE CAMINHO CORRETO (E-338): a catraca impede crescimento silencioso; a prova de comportamento continua sendo a varredura de E-337",
+    "DECLARAR A DIVIDA E' O PASSO ANTERIOR; PAGAR E' OUTRO (E-339): 7 das 16 pendencias da catraca foram medidas por comportamento e a lista caiu de 18 para 11, com prova",
+    "A ESCRITA ESTAVA ABERTA (E-339): as guardas de leitura funcionaram, mas as SETE gravacoes Save(org, payload) aceitavam organizacao vazia. Ler arquivo compartilhado e' vazamento; escrever nele mistura tenants",
+    "SUPOR ASSINATURA EM VEZ DE MEDIR - TERCEIRA VEZ (E-339): assumi Save(organizationID string); a real e' Save(organizationID string, payload) e o primeiro patch inseriu 0 guardas. A medicao mecanica corrigiu",
+    "GUARDA QUE PASSA POR ACIDENTE NAO E' GUARDA (E-339): teste proprio exige que a recusa seja por ErrTenantScopeRequired"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -2554,12 +2558,19 @@
           "descricao": "18 arquivos montam caminho por organizacao; 16 sem guarda crua e NAO MEDIDOS por comportamento",
           "estado": "DECLARADO E PROVADO POR CATRACA (novo arquivo sem guarda reprova)",
           "evidencia": "E-338"
+        },
+        {
+          "id": "ADV-17",
+          "severidade": "ALTA",
+          "descricao": "as sete gravacoes Save(org, payload) aceitavam organizacao vazia (escrita em arquivo compartilhado)",
+          "estado": "CORRIGIDO E MEDIDO",
+          "evidencia": "E-339"
         }
       ],
       "proximos_ataques": [
-        "medir por comportamento (API com organizacao vazia) as 16 pendencias declaradas na catraca",
-        "onboarding com volume grande (limites de recurso)",
-        "reserva temporaria de horario oferecido (a oferta nao reserva)"
+        "exercitar metodos de dominio especificos dos 7 (Append, SetApprovers, AppendInbound) com organizacao vazia",
+        "medir por comportamento as 11 pendencias restantes da catraca",
+        "onboarding com volume grande (limites de recurso)"
       ]
     },
     "estagio_42": {
@@ -2633,6 +2644,7 @@
     "E-335": "auditoria adversarial 2a onda: fila oferecia horario inexistente; vinculo declarado",
     "E-336": "revisao cruzada de permissao e isolamento nos modulos novos; vinculo declarado",
     "E-337": "varredura sistemica de escopo vazio; vinculo declarado",
-    "E-338": "catraca de escopo de tenant (instrumento de auditoria continua); vinculo declarado"
+    "E-338": "catraca de escopo de tenant (instrumento de auditoria continua); vinculo declarado",
+    "E-339": "medicao por comportamento de 7 pendencias da catraca; vinculo declarado"
   }
 }
