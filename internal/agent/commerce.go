@@ -1113,3 +1113,39 @@ func (s *CommerceStore) ConvertCart(organizationID, cartID, idempotencyKey strin
 	}
 	return pedido, carrinho, nil
 }
+
+// ProductBySKU devolve o produto da organização pela SKU (chave natural vinda de sistemas de origem).
+func (s *CommerceStore) ProductBySKU(organizationID, sku string) (CommerceProduct, bool) {
+	organizationID = consentScope(organizationID)
+	alvo := strings.TrimSpace(sku)
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	for _, produto := range s.products {
+		if produto.OrganizationID == organizationID && produto.SKU == alvo {
+			return produto, true
+		}
+	}
+	return CommerceProduct{}, false
+}
+
+// RemoveProduct retira o produto do catálogo da organização, persistindo a remoção.
+//
+// Usado pelo ROLLBACK do onboarding de empresa existente (E-327): uma importação precisa poder ser desfeita, e
+// desfazer significa o produto deixar de existir — não apenas ficar inativo.
+func (s *CommerceStore) RemoveProduct(organizationID, sku string) error {
+	organizationID = consentScope(organizationID)
+	alvo := strings.TrimSpace(sku)
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for id, produto := range s.products {
+		if produto.OrganizationID == organizationID && produto.SKU == alvo {
+			delete(s.products, id)
+			if err := s.persistLocked(organizationID); err != nil {
+				s.products[id] = produto // rollback em memória se a gravação falhar
+				return err
+			}
+			return nil
+		}
+	}
+	return nil
+}
