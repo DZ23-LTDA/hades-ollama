@@ -68,18 +68,62 @@ CHECAGEM_CRUA = re.compile(
 
 
 def _sem_comentarios(texto: str) -> str:
-    """Remove comentários de LINHA antes de procurar a guarda (E-376).
+    """Remove comentários (`//` e `/* */`) respeitando STRINGS (E-381 / ADV-56/3).
 
-    **MEDIDO com violação injetada (ADV-54, teste do teste)**: um arquivo **sem guarda real** mas com
-    `requireOrganization(` **apenas dentro de um comentário** era **APROVADO** ✗ — *e a catraca existe justamente para
-    o arquivo que monta caminho por organização sem validar*. ***Guarda que se satisfaz com uma menção é pior que
-    guarda ausente: ela dá a impressão de que alguém verificou.***
+    **MEDIDO com violação injetada (3ª auditoria independente)**: a versão anterior cortava a linha no primeiro `//`,
+    o que errava nas DUAS direções ✗:
+      - um **comentário de bloco** `/* requireOrganization(org) … */` **aprovava** um arquivo sem guarda ✗;
+      - uma **string** com a menção (`const doc = "chame requireOrganization(org)"`) também **aprovava** ✗;
+      - e o inverso: `//` **dentro de uma string** (`if url != "https://x" && requireOrganization(org) != nil {`)
+        **apagava uma guarda real** ⇒ **falso positivo** ✗.
+
+    ***Guarda que se satisfaz com uma menção — em comentário de qualquer sintaxe ou em string — é pior que guarda
+    ausente: ela dá a impressão de que alguém verificou.*** Agora as strings são respeitadas (só as aspas ficam: o
+    CONTEÚDO de uma string não é código) e os dois estilos de comentário são removidos.
     """
-    linhas = []
+    saida: list[str] = []
+    em_bloco = False
     for linha in texto.split("\n"):
-        marcador = linha.find("//")
-        linhas.append(linha if marcador < 0 else linha[:marcador])
-    return "\n".join(linhas)
+        resultado: list[str] = []
+        i = 0
+        em_string = None
+        while i < len(linha):
+            if em_bloco:
+                fim = linha.find("*/", i)
+                if fim < 0:
+                    i = len(linha)
+                    continue
+                em_bloco = False
+                i = fim + 2
+                continue
+            caractere = linha[i]
+            if em_string is not None:
+                # STRING não é código: o CONTEÚDO não pode satisfazer a guarda (MEDIDO: `const doc = "chame
+                # requireOrganization(org)"` aprovava um arquivo SEM guarda ✗). Mantemos só as aspas, para não
+                # colar tokens; e o escape é respeitado para não terminar a string cedo.
+                if caractere == "\\" and i + 1 < len(linha):
+                    i += 2
+                    continue
+                if caractere == em_string:
+                    resultado.append(caractere)
+                    em_string = None
+                i += 1
+                continue
+            if caractere in ('"', "'", "`"):
+                em_string = caractere
+                resultado.append(caractere)
+                i += 1
+                continue
+            if linha.startswith("//", i):
+                break
+            if linha.startswith("/*", i):
+                em_bloco = True
+                i += 2
+                continue
+            resultado.append(caractere)
+            i += 1
+        saida.append("".join(resultado))
+    return "\n".join(saida)
 
 
 def tem_guarda_reconhecida(texto: str) -> bool:
