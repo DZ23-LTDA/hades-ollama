@@ -2,7 +2,7 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-19T17:45:00-03:00",
+  "updated_at": "2026-10-19T19:00:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
@@ -1119,13 +1119,14 @@
         "E-109",
         "E-112",
         "E-304",
-        "E-305"
+        "E-305",
+        "E-308"
       ],
       "blocker": "B-06",
       "next": "Jornada E2E do estagio 38 com empresa nova: corrigida e testada. Restam STT/TTS reais e telefonia (BLOCKED_BY_EXTERNAL_DEPENDENCY) e a homologacao final dos estagios 36-38.",
       "blocked_reason": "",
       "external_dependency": "idem 32: integracoes ao vivo; a jornada em sandbox e local",
-      "done": "CERTIFICACAO E2E EM SANDBOX com 21 etapas, agora INCLUINDO O SUPERVISOR NO LACO: um segundo pedido e pago, tem receita lancada e e cancelado, gerando ESTORNO DEVIDO que por politica EXIGE DECISAO HUMANA; o ciclo do supervisor observa os dominios, a pendencia e consultavel, a aprovacao de gerente-certificacao EXECUTA o efeito real no livro, e a pendencia NAO VAZA para outra organizacao. O relatorio carrega um bloco supervisor com sinais, pendencias, bloqueios por orcamento, quem decidiu e o efeito no livro DEFEITO ABERTO (E-304, severidade ALTA): MEDIDO que a RESERVA DE ESTOQUE nao sobrevive ao reinicio do processo. O pedido persiste (idempotencia) mas Reserved volta a 0 e Available == OnHand. O RecoveryProven do certificador mede idempotencia NO MESMO PROCESSO, nao reinicio. Reproducao e desbloqueio em docs/mission/HADES_BLOCKERS.md. NAO corrigido nesta rodada por ser mudanca de modelo de estoque, declarado em vez de escondido. LEITURA DE E-304 CORRIGIDA E DEFEITO REAL CORRIGIDO (E-305): MEDIDO com diagnostico de movimentos que a PERSISTENCIA DE ESTOQUE ESTA CORRETA - antes e depois do reinicio o saldo e identico e os 4 movimentos estao la (o teste que ja existia tambem passa). O defeito real era REEXECUCAO: a jornada somava a carga inicial de novo (10 -> 18, estoque inflado) e falhava com 'reserva inesperada'. Correcoes: carga inicial idempotente e recusa explicita (ErrBusinessJourneyAlreadyCertified) para empresa que ja operou.",
+      "done": "CERTIFICACAO E2E EM SANDBOX com 21 etapas, agora INCLUINDO O SUPERVISOR NO LACO: um segundo pedido e pago, tem receita lancada e e cancelado, gerando ESTORNO DEVIDO que por politica EXIGE DECISAO HUMANA; o ciclo do supervisor observa os dominios, a pendencia e consultavel, a aprovacao de gerente-certificacao EXECUTA o efeito real no livro, e a pendencia NAO VAZA para outra organizacao. O relatorio carrega um bloco supervisor com sinais, pendencias, bloqueios por orcamento, quem decidiu e o efeito no livro DEFEITO ABERTO (E-304, severidade ALTA): MEDIDO que a RESERVA DE ESTOQUE nao sobrevive ao reinicio do processo. O pedido persiste (idempotencia) mas Reserved volta a 0 e Available == OnHand. O RecoveryProven do certificador mede idempotencia NO MESMO PROCESSO, nao reinicio. Reproducao e desbloqueio em docs/mission/HADES_BLOCKERS.md. NAO corrigido nesta rodada por ser mudanca de modelo de estoque, declarado em vez de escondido. LEITURA DE E-304 CORRIGIDA E DEFEITO REAL CORRIGIDO (E-305): MEDIDO com diagnostico de movimentos que a PERSISTENCIA DE ESTOQUE ESTA CORRETA - antes e depois do reinicio o saldo e identico e os 4 movimentos estao la (o teste que ja existia tambem passa). O defeito real era REEXECUCAO: a jornada somava a carga inicial de novo (10 -> 18, estoque inflado) e falhava com 'reserva inesperada'. Correcoes: carga inicial idempotente e recusa explicita (ErrBusinessJourneyAlreadyCertified) para empresa que ja operou. TESTE CRUZADO DAS CAMADAS (E-308): MEDIDO que NENHUM teste usava Ingest() e RunTurn() juntos - cada camada era provada isolada. O teste novo compartilha o MESMO InboxStore entre canal e agentes e prova seis direcoes: mensagem do canal chega ao inbox, agente reconhece CRM e historico, ferramenta autorizada executa, replay deduplica sem duplicar mensagem, assinatura invalida recusa, e a reabertura preserva sem cruzar organizacoes. Nao encontrei defeito aqui: encontrei ausencia de prova numa fronteira exigida.",
       "execution": "BLOCKED_BY_EXTERNAL_DEPENDENCY"
     }
   ],
@@ -2078,7 +2079,10 @@
     "A MATRIZ test NAO E' OBRIGATORIA (E-306): medido que em #368 os jobs test (ubuntu/windows/macos) falharam e o PR gate passou. Saber QUAIS gates bloqueiam evita perseguir o vermelho errado",
     "TESTE PODE CRISTALIZAR O COMPORTAMENTO ERRADO (E-307): company_idempotency_test.go gravava metrica de rascunho nunca publicado e passava. Quando a regra correta entrou, foi o TESTE que precisou mudar - sinal de que ele documentava o defeito, nao a regra",
     "NUMERO SEM CAUSA E' METRICA INVENTADA (E-307): o relatorio somava impressoes/cliques/conversoes de conteudo que nunca saiu. Agora a metrica exige publicacao, e a recusa e' explicita",
-    "SUPOR SILENCIO NO REPLAY IDEMPOTENTE (E-307): minha primeira assercao esperava que repetir a mesma chave devolvesse o mesmo valor; medido, o store RECUSA explicitamente (ErrCompanyIdempotentReplay). A medicao corrigiu a assercao"
+    "SUPOR SILENCIO NO REPLAY IDEMPOTENTE (E-307): minha primeira assercao esperava que repetir a mesma chave devolvesse o mesmo valor; medido, o store RECUSA explicitamente (ErrCompanyIdempotentReplay). A medicao corrigiu a assercao",
+    "CAMADAS ISOLADAS NAO PROVAM INTEGRACAO (E-308): nenhum teste usava Ingest() e RunTurn() juntos. Cada camada passava e a fronteira nao tinha prova - e' na fronteira que a integracao quebra",
+    "INBOX COMPARTILHADO E' O QUE CRUZA AS CAMADAS (E-308): o teste so cruza algo porque o runtime omnichannel e o de agentes usam o MESMO store de caixa de entrada. Dois stores isolados dariam um teste que nao prova nada",
+    "MEDIR A API EM VEZ DE SUPOR (E-308): tres suposicoes minhas de assinatura (Conversations/ListConversations, aridade de Conversation, onde vive o historico) cairam na primeira compilacao. Ler a API custou um passo; adivinhar custou tres"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
