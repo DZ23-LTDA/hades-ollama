@@ -2,6 +2,7 @@ package agent
 
 import (
 	"errors"
+	"fmt"
 	"strconv"
 	"strings"
 	"time"
@@ -93,6 +94,9 @@ var (
 	ErrCompanySocialAlreadyPublished = errors.New("social draft already published")
 	// ErrCompanySocialPublishThrottled recusa a enxurrada, com motivo explícito em vez de silêncio.
 	ErrCompanySocialPublishThrottled = errors.New("social publish throttled by local policy")
+	// ErrCompanySocialMetricNotPublished recusa métrica de conteúdo que NUNCA foi publicado: número sem causa
+	// é métrica inventada (E-307).
+	ErrCompanySocialMetricNotPublished = errors.New("social metric requires published content")
 )
 
 func validateSocialProvider(value string) string {
@@ -240,10 +244,17 @@ func (s *CompanyStore) RecordSocialMetricWithIdempotency(id string, metric Compa
 		}
 		found := false
 		for _, draft := range company.SocialDrafts {
-			if draft.ID == metric.DraftID {
-				found = true
-				break
+			if draft.ID != metric.DraftID {
+				continue
 			}
+			// MÉTRICA SÓ EXISTE PARA CONTEÚDO PUBLICADO (E-307). MEDIDO: antes aceitava métrica de rascunho nunca
+			// publicado, e o relatório somava impressões/cliques/conversões sem causa. Número sem causa é métrica
+			// inventada — e "não inventar métricas" é exigência explícita da missão.
+			if draft.PublishedAt == nil && !strings.HasPrefix(strings.ToLower(draft.Status), "published") {
+				return fmt.Errorf("%w: %s", ErrCompanySocialMetricNotPublished, draft.ID)
+			}
+			found = true
+			break
 		}
 		if !found {
 			return ErrCompanySocialNotFound

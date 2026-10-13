@@ -2,7 +2,7 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-19T16:30:00-03:00",
+  "updated_at": "2026-10-19T17:45:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
@@ -1082,12 +1082,13 @@
       "evidence": [
         "E-047",
         "E-215",
-        "E-302"
+        "E-302",
+        "E-307"
       ],
       "blocker": "B-04",
       "next": "Implementar voz/transcricao com provedor real",
       "execution": "BLOCKED_BY_EXTERNAL_DEPENDENCY",
-      "done": "SOCIAL E MARKETPLACE OPERACIONAL (E-215): contas sociais, rascunhos com APROVACAO, publicacao autorizada, metricas idempotentes, campanhas com agendamento e sincronizacao de marketplace. MEDIDO: 9 testes PASS no filtro 'CompanySocial|Campaign|Marketplace' (mesmos modulos medidos na E-213). LACUNA DECLARADA: provedor real de rede social e alertas. EFEITO UMA VEZ E SEM ENXURRADA NA PUBLICACAO SOCIAL (E-302): MEDIDO que PublishSocialDraft recusava rascunho nao aprovado mas NAO recusava republicar o mesmo rascunho nem tinha teto anti-enxurrada. Implementadas as duas guardas com recusa explicita; o rascunho barrado permanece aprovado e nao publicado. LIMITE DECLARADO: teto local, nao o rate limit da API (seguir BLOCKED_BY_EXTERNAL_DEPENDENCY)."
+      "done": "SOCIAL E MARKETPLACE OPERACIONAL (E-215): contas sociais, rascunhos com APROVACAO, publicacao autorizada, metricas idempotentes, campanhas com agendamento e sincronizacao de marketplace. MEDIDO: 9 testes PASS no filtro 'CompanySocial|Campaign|Marketplace' (mesmos modulos medidos na E-213). LACUNA DECLARADA: provedor real de rede social e alertas. EFEITO UMA VEZ E SEM ENXURRADA NA PUBLICACAO SOCIAL (E-302): MEDIDO que PublishSocialDraft recusava rascunho nao aprovado mas NAO recusava republicar o mesmo rascunho nem tinha teto anti-enxurrada. Implementadas as duas guardas com recusa explicita; o rascunho barrado permanece aprovado e nao publicado. LIMITE DECLARADO: teto local, nao o rate limit da API (seguir BLOCKED_BY_EXTERNAL_DEPENDENCY). METRICA EXIGE CONTEUDO PUBLICADO (E-307): MEDIDO que RecordSocialMetricWithIdempotency aceitava metrica de rascunho NUNCA publicado, e o SocialReport somava numeros sem causa. Corrigido com ErrCompanySocialMetricNotPublished. Um teste existente cristalizava o comportamento errado e foi corrigido para publicar antes. Leitura de metrica REAL da API segue BLOCKED_BY_EXTERNAL_DEPENDENCY."
     },
     {
       "id": 37,
@@ -2074,7 +2075,10 @@
     "RECUSAR EXPLICITAMENTE EM VEZ DE FALHAR OBSCURO (E-305): a jornada nao suporta reexecucao; agora diz isso com ErrBusinessJourneyAlreadyCertified em vez de estourar 'reserva inesperada' no meio",
     "GATE QUE SE MOVE SOZINHO NAO MEDE O CODIGO (E-306): o golangci-lint estava em 'latest' e passou de v2.13 para v2.14 entre dois runs, reprovando um main que estava verde 20 minutos antes. Versao de gate tem de ser FIXA; subir e' decisao com PR",
     "MISSPELL CONTRA CODIGO EM pt-BR (E-306): 27 dos 38 avisos eram palavras portuguesas num dicionario ingles. Fixar a versao resolve agora; subir exigira' decidir a politica de idioma com consciencia, nao por arrasto",
-    "A MATRIZ test NAO E' OBRIGATORIA (E-306): medido que em #368 os jobs test (ubuntu/windows/macos) falharam e o PR gate passou. Saber QUAIS gates bloqueiam evita perseguir o vermelho errado"
+    "A MATRIZ test NAO E' OBRIGATORIA (E-306): medido que em #368 os jobs test (ubuntu/windows/macos) falharam e o PR gate passou. Saber QUAIS gates bloqueiam evita perseguir o vermelho errado",
+    "TESTE PODE CRISTALIZAR O COMPORTAMENTO ERRADO (E-307): company_idempotency_test.go gravava metrica de rascunho nunca publicado e passava. Quando a regra correta entrou, foi o TESTE que precisou mudar - sinal de que ele documentava o defeito, nao a regra",
+    "NUMERO SEM CAUSA E' METRICA INVENTADA (E-307): o relatorio somava impressoes/cliques/conversoes de conteudo que nunca saiu. Agora a metrica exige publicacao, e a recusa e' explicita",
+    "SUPOR SILENCIO NO REPLAY IDEMPOTENTE (E-307): minha primeira assercao esperava que repetir a mesma chave devolvesse o mesmo valor; medido, o store RECUSA explicitamente (ErrCompanyIdempotentReplay). A medicao corrigiu a assercao"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",

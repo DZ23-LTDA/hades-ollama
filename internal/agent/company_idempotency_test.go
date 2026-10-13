@@ -96,6 +96,15 @@ func TestCompanyAffiliateAndSocialIdempotencyPreventsDuplicateMetrics(t *testing
 		t.Fatal(err)
 	}
 	draftID := company.SocialDrafts[0].ID
+	// E-307: MÉTRICA SÓ EXISTE PARA CONTEÚDO PUBLICADO. Este teste é sobre IDEMPOTÊNCIA, não sobre métrica de
+	// rascunho — então ele publica primeiro, como manda a regra medida. (Antes, ele gravava métrica de rascunho
+	// nunca publicado: o teste cristalizava o comportamento errado.)
+	if _, err := store.ApproveSocialDraft(company.ID, draftID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := store.PublishSocialDraft(company.ID, draftID); err != nil {
+		t.Fatal(err)
+	}
 	metric := CompanySocialMetric{DraftID: draftID, Provider: "x", Impressions: 10, Clicks: 2, Conversions: 1}
 	if _, err := store.RecordSocialMetricWithIdempotency(company.ID, metric, "metric-1"); err != nil {
 		t.Fatal(err)
