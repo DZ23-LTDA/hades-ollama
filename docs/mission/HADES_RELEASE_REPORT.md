@@ -9,7 +9,7 @@
 | Número | Valor |
 | --- | --- |
 | Estágios | 38 |
-| Linhas de evidência no índice | 304 |
+| Linhas de evidência no índice | 305 |
 | `COMPLETED_VERIFIED` | 2 |
 | `IN_PROGRESS` | 15 |
 | `BLOCKED_BY_EXTERNAL_DEPENDENCY` | 21 |
@@ -76,7 +76,7 @@ relatório **declara a ausência** em vez de preencher com suposição.
 | 35 | Inbox unificado omnicanal | PARCIAL | BLOCKED_BY_EXTERNAL_DEPENDENCY | B-03 | E-047, E-106, E-144, E-145, E-146, E-147, E-148, E-149, E-150, E-151, E-152, E-153, E-154, E-155, E-156, E-157, E-158, E… |
 | 36 | Voz e transcricao | AUSENTE | BLOCKED_BY_EXTERNAL_DEPENDENCY | B-04 | E-047, E-215, E-302 |
 | 37 | Chamadas e follow-up | AUSENTE | BLOCKED_BY_EXTERNAL_DEPENDENCY | B-04 | E-047, E-215, E-303 |
-| 38 | Gate final de release verificado | PARCIAL | BLOCKED_BY_EXTERNAL_DEPENDENCY | B-06 | E-033, E-048, E-087, E-109, E-112, E-304 |
+| 38 | Gate final de release verificado | PARCIAL | BLOCKED_BY_EXTERNAL_DEPENDENCY | B-06 | E-033, E-048, E-087, E-109, E-112, E-304, E-305 |
 
 Procedimento de desbloqueio de cada bloqueio externo está em
 [`HADES_BLOCKERS.md`](HADES_BLOCKERS.md): cada item traz o que falta, quem desbloqueia e **o que continua
@@ -90,7 +90,7 @@ possível sem ele**.
 
 ## Referências
 
-- Índice de evidências: [`HADES_EVIDENCE_INDEX.md`](HADES_EVIDENCE_INDEX.md) (304 linhas).
+- Índice de evidências: [`HADES_EVIDENCE_INDEX.md`](HADES_EVIDENCE_INDEX.md) (305 linhas).
 - Estado da missão: [`HADES_MASTER_STATE.json`](HADES_MASTER_STATE.json).
 - Gate global: [`HADES_FINAL_RELEASE_GATE.md`](HADES_FINAL_RELEASE_GATE.md).
 - Gate intermediário de engenharia (estágio 22): [`HADES_ENGINEERING_GATE.md`](HADES_ENGINEERING_GATE.md).

@@ -148,3 +148,7 @@ defeito por uma suposição.
 **Desbloqueio**: (1) reconstruir o reservado de pedidos abertos ao carregar o store; (2) teste do mesmo reinício
 real, verde; (3) verificar que a jornada continua idempotente **e** que o reservado resiste. O `RecoveryProven`
 atual mede **idempotência no mesmo processo** — não reinício; a evidência E-304 corrige essa leitura.
+
+### ⚠️ Correção de E-304 (E-305) — a persistência **não** estava quebrada
+
+Medição refeita com **diagnóstico de movimentos**: antes e depois do reinício o saldo é **idêntico** e os quatro movimentos estão presentes; o teste que já existia (`TestBusinessE2ESurvivesRealRestartWithoutDuplicating`) **passa**. ***O defeito descrito aqui acima era leitura errada.*** O defeito **real** era outro — a jornada **somava a carga inicial de novo** na reexecução (estoque 10 → 18) e falhava com erro confuso. **Corrigido em E-305**: carga inicial idempotente + recusa explícita (`ErrBusinessJourneyAlreadyCertified`) para empresa que já operou.
