@@ -2371,7 +2371,10 @@
     "A ORDEM DAS REGRAS IMPORTA (E-385/ADV-56/8): 'definicao' era checada antes de 'comentario' e um comentario citando a assinatura era descartado como definicao",
     "CONTRAPROVA ISOLADA DE declaracoes_obsoletas (E-386): mantendo a declaracao real e acrescentando uma fantasma, a fantasma e' acusada e a real NAO - a checagem isola a excecao fantasma",
     "MEDICAO VAZIA NO CLASSIFICADOR TAMBEM (E-386): o main imprimia sucesso com zero arquivos; agora imprime NADA MEDIDO e sai 1",
-    "METODO DE PR: EMPURRAR UMA VEZ POR RODADA (E-386): empurrei 5 vezes para o #433 numa rodada e os checks reiniciavam a cada push, impedindo o merge. O trabalho deve ser agrupado e publicado uma vez"
+    "METODO DE PR: EMPURRAR UMA VEZ POR RODADA (E-386): empurrei 5 vezes para o #433 numa rodada e os checks reiniciavam a cada push, impedindo o merge. O trabalho deve ser agrupado e publicado uma vez",
+    "CONTRAPROVA ENTRE PROCESSOS AGORA E' DETERMINISTICA (E-387): a barreira dormia 5ms com janela de ~1,7ms; trocada por runtime.Gosched(). Com a trava desligada, 3 de 3 execucoes falham; com a trava, 3 de 3 passam",
+    "CONTRAPROVA QUE TORCE PARA O DANO NAO E' CONTRAPROVA (E-387): se a largada e' mais lenta que a corrida, o teste pode 'provar' o lock por sorte",
+    "NEUTRALIZAR NA DEFINICAO, NAO NO CHAMADOR (E-387): a primeira tentativa mexeu no chamador e quebrou a compilacao por parenteses desbalanceados; a contraprova certa foi deixar withFileLock chamar run() direto"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -3002,7 +3005,7 @@
           "severidade": "ALTA (mesma classe do ADV-53, noutra linha)",
           "descricao": "2a auditoria independente: (1) a 'invalidacao de cache' do E-356 e' CODIGO MORTO - carregarLocked so' usa cache com root == '', e o git show prova que foi a RELEITURA INCONDICIONAL que fez os testes passarem; 2 dos 3 testes eram verdes ANTES da correcao. (2) O teste de corrida do live commerce e' no-op e a assercao 'HumanReview && LiveLive' NAO dispara quando o aviso e' PERDIDO (conjuncao falsa => verde). (3) Invariantes condicionais + erros descartados. (4) Contraprova entre processos e' probabilistica (poll 5ms vs janela ~1,7ms)",
           "descoberto_por": "2a revisao adversarial independente (subagente, contexto fresco)",
-          "estado": "REGISTRADO, NAO CORRIGIDO. A evidencia documentada de E-356 SUPERESTIMA o que foi medido",
+          "estado": "CORRIGIDO em /1, /2, /3, /4: invalidacao morta documentada, assercao de corrida agora DISCRIMINA (aviso perdido => FALHA), guarda fora de comentario com 4 testes, e contraprova entre processos DETERMINISTICA (3/3 falham sem a trava). Restam declarados: glob nao recursivo (latente) e a triagem (b)/(c) ja' levada a experimento",
           "corrigido_nesta_rodada": "as duas pendencias de E-373: ordem de assercao no teste de arquivo + controle pelo Runtime.Run",
           "evidencia": "E-374"
         },
@@ -3025,10 +3028,9 @@
         }
       ],
       "proximos_ataques": [
-        "corrigir as 3 documentacoes divergentes restantes, se houver (HADES_NEXT_ACTION ja' aponta para 24)",
-        "endurecer a barreira da contraprova entre processos (poll 5ms vs janela ~1,7ms)",
-        "auditar as linhas restantes com o mesmo tripe (instrumento + caso injetado + controle)",
-        "mesclar #433 e conferir em main"
+        "rodar a contraprova entre processos com -count=20 (o auditor sugeriu; hoje sao 3 execucoes de cada lado)",
+        "exercitar file_lock_unix.go (o CI Linux mede; localmente so' o caminho Windows foi contraprovado)",
+        "coletar a 4a auditoria (commerce/onboarding: as provas de desempenho) e corrigir o que ela medir"
       ]
     },
     "estagio_42": {
@@ -3418,6 +3420,7 @@
     "E-383": "correcoes do ADV-56, com medicao e limites declarados; vinculo declarado",
     "E-384": "correcoes do ADV-56, com medicao e limites declarados; vinculo declarado",
     "E-385": "ADV-55 fechado, ADV-56/8 e vacuidade do classificador; vinculo declarado",
-    "E-386": "ADV-55 fechado, ADV-56/8 e vacuidade do classificador; vinculo declarado"
+    "E-386": "ADV-55 fechado, ADV-56/8 e vacuidade do classificador; vinculo declarado",
+    "E-387": "contraprova determinista entre processos (barreira com Gosched); vinculo declarado"
   }
 }
