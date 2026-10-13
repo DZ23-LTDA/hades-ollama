@@ -2139,7 +2139,12 @@
     "NAO FINGIR TOOL CALL (E-325): nada no codigo sabia que qwen2.5-coder:7b e deepseek-r1:8b nao emitem tool calls nativos - fato medido nas instrucoes do proprio repositorio. O produto podia prometer o que nao tinha",
     "CAPACIDADE NAO MEDIDA NAO E' CAPACIDADE (E-325): modelo desconhecido entra como NAO_MEDIDO e cai em modo compativel. A recusa por falta de medicao tem erro DISTINTO da recusa por falta de suporte - a causa e' outra",
     "CAPACIDADE SEM ORIGEM NAO ENTRA (E-325): cada capacidade declara se e' medido ou declarado. Capacidade sem procedencia e' exatamente o que o V2.2 proibe",
-    "O OLLAMA LOCAL NAO E' MEXIDO (E-325): o registro de capacidades e' somente leitura - nao instala, nao copia e nao altera modelos do usuario para satisfazer teste"
+    "O OLLAMA LOCAL NAO E' MEXIDO (E-325): o registro de capacidades e' somente leitura - nao instala, nao copia e nao altera modelos do usuario para satisfazer teste",
+    "SONDA SOMENTE LEITURA, PROVADA (E-326): o teste registra TODAS as rotas que o servidor recebeu. Qualquer rota que nao seja descritiva (pull/create/delete) falha o teste - o Ollama local do usuario nao e' mexido",
+    "NAO DECLARADO NAO E' NAO SUPORTA (E-326): sem `capabilities` na resposta, o registro NAO e' alterado e a resposta e' NAO MEDIDO. Armadilha armada confere que nada foi gravado",
+    "LIMITE DECLARADO DE UMA FATIA E' FECHADO NA SEGUINTE (E-326): E-325 disse que nao havia sonda; E-326 entrega a sonda. Registrar o limite e' o que permite fecha-lo depois - limite omitido nao volta",
+    "PUBLICAR ANTES DO VERDE FOI ERRO DE PROCESSO (E-326b): commitei e empurrei com um teste vermelho porque nao condicionei o commit ao resultado. A assercao comparava caixa ('nao declara' vs 'Nao declara') - o motor estava certo. Corrigido em commit seguinte, com o registro dizendo o que aconteceu",
+    "ASSERTAR POR CONTEUDO, NAO POR CAIXA (E-326b): comparar texto literal sensivel a caixa e' fragil e mede a mensagem, nao a propriedade"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -2311,7 +2316,7 @@
         "P0-A": "PARCIAL",
         "P0-B": "PARCIAL",
         "P0-C": "PARCIAL",
-        "P0-D": "PARCIAL: modo de ferramenta por capacidade MEDIDA implementado e provado (E-325) - modelo sem tool call nativo nao e' apresentado como nativo. Ollama Cloud segue exigindo login (BLOCKED_BY_EXTERNAL_DEPENDENCY) e a sonda automatica de endpoint e' a proxima fatia",
+        "P0-D": "PARCIAL AVANCADO: modo de ferramenta por capacidade medida (E-325) + sonda real somente-leitura no endpoint (E-326). Ollama Cloud segue exigindo login (BLOCKED_BY_EXTERNAL_DEPENDENCY); falta sonda periodica de todos os modelos e structured_output nao e' declarado por /api/show",
         "P0-E": "PARCIAL (T4 provado: 3 especialistas em worktrees isolados com merge controlado; faltam cotas de custo sob carga e memoria segmentada)",
         "P0-F": "PARCIAL"
       },
@@ -2398,6 +2403,7 @@
     "E-322": "descoberta honesta (P1-H / estagio 39): guarda que reprova promessa de ranking e valida metadados; vinculo declarado",
     "E-323": "fatia 4 do INCREMENTO I do V2.2 (agendamento entre processos); vinculo declarado",
     "E-324": "motor de workflow deterministico (P1-A / teste T6 do adendo); vinculo declarado",
-    "E-325": "capacidades de modelo e modo de ferramenta (P0-D): nao fingir tool calls; vinculo declarado"
+    "E-325": "capacidades de modelo e modo de ferramenta (P0-D): nao fingir tool calls; vinculo declarado",
+    "E-326": "sonda real de capacidades no endpoint (P0-D), fecha o limite de E-325; vinculo declarado"
   }
 }
