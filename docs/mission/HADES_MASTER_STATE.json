@@ -2,7 +2,7 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-18T13:40:00-03:00",
+  "updated_at": "2026-10-18T15:25:00-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
@@ -539,11 +539,12 @@
         "E-085",
         "E-236",
         "E-237",
-        "E-238"
+        "E-238",
+        "E-291"
       ],
       "blocker": null,
-      "next": "LIMITE DE E-237 FECHADO (E-238): existe marcacao 'somente compensacao' e o validador permanece FAIL-CLOSED - gatilho marcado, passo marcado sem quem o use e dependencia num passo marcado sao RECUSADOS (3 casos testados). Medido: passe_normal=\"passo somente de compensacao: roda apenas no desfazer\" e missoes_de_desfazer=1 (antes o desfazer rodava DUAS vezes: no passe normal e no desfazer). Proximo trabalho segue nos estagios elegiveis das ondas seguintes",
-      "done": "VERIFICADO ATIVIDADE POR ATIVIDADE em HADES_STAGE_13_VERIFICATION.md: criterio de conclusao cumprido (falha simulada, retry, reinicio de worker e retomada, com evidencia por no e sem duplicata) e lista de atividades coberta - gatilhos, condicoes, acoes, conectores, webhooks, schedules, variaveis, transformacoes, branches (corrigido nesta rodada), loops limitados, aprovacoes, filas, retry, DLQ, idempotencia, reprocessamento, persistencia, logs por no, versionamento, testes, execucao manual e programada",
+      "next": "LIMITES REAIS (atualizados por E-291): o frescor e' por RELEITURA do arquivo (nao ha trava entre processos no claim); se dois processos reivindicarem no MESMO instante, ambos podem passar antes de qualquer gravacao; 28 residuos de rota do estagio 13 seguem; race detection nao roda (sem compilador C). Proximo: estagios 33 e 34 (canais e runtime omnichannel)",
+      "done": "VERIFICADO ATIVIDADE POR ATIVIDADE em HADES_STAGE_13_VERIFICATION.md: criterio de conclusao cumprido (falha simulada, retry, reinicio de worker e retomada, com evidencia por no e sem duplicata) e lista de atividades coberta - gatilhos, condicoes, acoes, conectores, webhooks, schedules, variaveis, transformacoes, branches (corrigido nesta rodada), loops limitados, aprovacoes, filas, retry, DLQ, idempotencia, reprocessamento, persistencia, logs por no, versionamento, testes, execucao manual e programada O CLAIM DE AGENDAMENTO PASSA A DECIDIR SOBRE ESTADO FRESCO (E-291) - DEFEITO REAL DE EFEITO EXTERNO DUPLICADO: a propriedade mandatoria do §11.7 ('missao longa retoma apos reiniciar o worker; o MESMO EFEITO EXTERNO nao ocorre duas vezes') estava VIOLADA no caminho agendado. ClaimDueSchedulesForOrganization decidia pela copia EM MEMORIA: dois processos sobre a MESMA pasta de dados (reinicio com sobreposicao, runtime duplicado) mantem copias independentes e o SEGUNDO reivindicava DE NOVO, disparando duas vezes o mesmo efeito externo (mensagem, webhook, publicacao). DEFEITO PROVADO PELO TESTE ANTES DA CORRECAO: a execucao pre-correcao FALHA mostrando o segundo processo reivindicando de novo. O TESTE EXISTENTE (TestScheduleClaimIsIdempotent) cobria SO um processo - dizia 'idempotente' sem cobrir o caso que importava. CORRECAO MINIMA: reler o arquivo do agendamento antes de reivindicar; se o disco ja avancou NextRunAt (ou desabilitou), nao reivindica. AS DUAS DIRECOES sao testadas: o segundo processo nao reivindica mais, e um agendamento REALMENTE vencido (rearmado) continua sendo reivindicado - a correcao nao congela o agendador. MEDIDO: teste FALHA antes e PASS depois; suite completa ok 108,9 s",
       "limits": "LIMITES DECLARADOS (nao sao cobertura): conector homologado contra servidor HTTPS controlado, com credenciais de SaaS de terceiros ainda BLOCKED_BY_EXTERNAL_DEPENDENCY (estagios 25/33/36); falha de passo com efeito ABORTA o fluxo em vez de desviar para o ramo alternativo; execucao do fluxo por tick do supervisor, com a fila de jobs cobrindo as missoes criadas pelos nos",
       "execution": "COMPLETED_VERIFIED"
     },
@@ -2004,7 +2005,10 @@
     "A PROVA DO FALSO POSITIVO E O TESTE QUE QUEBROU (E-289): os quatro testes que a guarda de E-288 derrubou passam agora. Nao basta afirmar 'sem falso positivo': o conjunto que quebrou antes e' o juiz",
     "GUARDA PRECISA ESTAR LIGADA (E-289): o teste confere o FONTE - ligada nos dois nao-destrutivos e AUSENTE nos destrutivos. Guarda que existe sem fiacao nao protege; ligada nos destrutivos repete E-288",
     "O CARIMBO JA EXISTIA (E-290): E-289 declarou 'Memory nao tem carimbo de tempo por memoria' e concluiu pela ausencia. O struct tinha `Revision` desde sempre. Declarar limite por ausencia sem ler o struct inteiro e' o mesmo erro de declarar limite sem medir",
-    "O TESTE COMETIA O ERRO QUE A GUARDA PEGA (E-290): duas falhas seguidas e nas duas o codigo estava certo - os snapshots do teste estavam velhos porque gravacoes legitimas anteriores elevaram a revisao. Quando o teste insiste em falhar, vale checar se ele esta olhando para uma copia velha"
+    "O TESTE COMETIA O ERRO QUE A GUARDA PEGA (E-290): duas falhas seguidas e nas duas o codigo estava certo - os snapshots do teste estavam velhos porque gravacoes legitimas anteriores elevaram a revisao. Quando o teste insiste em falhar, vale checar se ele esta olhando para uma copia velha",
+    "IDEMPOTENTE PARA UM PROCESSO, DUPLICADOR PARA DOIS (E-291): o teste existente dizia 'claim e idempotente' e cobria so um processo. O nome da propriedade nao e' a propriedade - o caso que importa (dois processos na mesma pasta) nao estava nele",
+    "PROVAR O DEFEITO ANTES DE CORRIGIR (E-291): o teste rodou ANTES da correcao e FALHOU, mostrando o segundo processo reivindicando de novo. Sem essa execucao, a correcao seria uma hipotese - com ela, e' resposta a um defeito medido",
+    "SCRIPT DE DOC QUE MORRE NAO DOCUMENTA (E-291): aspas nao balanceadas na string da linha do indice mataram o script em tempo de parse, o codigo foi publicado sem a evidencia e o checker ficou verde porque nada citava E-291. Conferir o exit code do script e do checker, nao so a ultima linha"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",

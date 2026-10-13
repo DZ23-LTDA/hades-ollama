@@ -9,7 +9,7 @@
 | Número | Valor |
 | --- | --- |
 | Estágios | 38 |
-| Linhas de evidência no índice | 290 |
+| Linhas de evidência no índice | 291 |
 | `COMPLETED_VERIFIED` | 2 |
 | `IN_PROGRESS` | 15 |
 | `BLOCKED_BY_EXTERNAL_DEPENDENCY` | 21 |
@@ -29,7 +29,7 @@ relatório **declara a ausência** em vez de preencher com suposição.
 
 | # | Estágio | Capacidade | Execução | Bloqueio | Evidências |
 | --- | --- | --- | --- | --- | --- |
-| 13 | Workflow Engine (fluxos, schedules, condicoes) | IMPLEMENTADO_E_TESTADO | COMPLETED_VERIFIED | — | E-020, E-029, E-074, E-075, E-076, E-077, E-078, E-079, E-080, E-081, E-082, E-083, E-084, E-085, E-236, E-237, E-238 |
+| 13 | Workflow Engine (fluxos, schedules, condicoes) | IMPLEMENTADO_E_TESTADO | COMPLETED_VERIFIED | — | E-020, E-029, E-074, E-075, E-076, E-077, E-078, E-079, E-080, E-081, E-082, E-083, E-084, E-085, E-236, E-237, E-238, E… |
 | 15 | Memoria e RAG local | IMPLEMENTADO_E_TESTADO | COMPLETED_VERIFIED | B-07 | E-040, E-052, E-056, E-057, E-087, E-088, E-089, E-090, E-092, E-093, E-094, E-095, E-096 |
 
 ## IN_PROGRESS (trabalho real, com limites declarados)
@@ -90,7 +90,7 @@ possível sem ele**.
 
 ## Referências
 
-- Índice de evidências: [`HADES_EVIDENCE_INDEX.md`](HADES_EVIDENCE_INDEX.md) (290 linhas).
+- Índice de evidências: [`HADES_EVIDENCE_INDEX.md`](HADES_EVIDENCE_INDEX.md) (291 linhas).
 - Estado da missão: [`HADES_MASTER_STATE.json`](HADES_MASTER_STATE.json).
 - Gate global: [`HADES_FINAL_RELEASE_GATE.md`](HADES_FINAL_RELEASE_GATE.md).
 - Gate intermediário de engenharia (estágio 22): [`HADES_ENGINEERING_GATE.md`](HADES_ENGINEERING_GATE.md).
