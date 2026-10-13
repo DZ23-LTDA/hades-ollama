@@ -64,8 +64,10 @@ func TestExportProfessionalGeraXLSXComAsPartesObrigatorias(t *testing.T) {
 		partes[arquivo.Name] = string(dados)
 	}
 	// ARMADILHA: as cinco partes mínimas de um XLSX que um leitor de verdade aceita.
-	for _, obrigatoria := range []string{"[Content_Types].xml", "_rels/.rels", "xl/workbook.xml",
-		"xl/_rels/workbook.xml.rels", "xl/worksheets/sheet1.xml"} {
+	for _, obrigatoria := range []string{
+		"[Content_Types].xml", "_rels/.rels", "xl/workbook.xml",
+		"xl/_rels/workbook.xml.rels", "xl/worksheets/sheet1.xml",
+	} {
 		if _, existe := partes[obrigatoria]; !existe {
 			t.Fatalf("ARMADILHA: falta a parte OOXML obrigatória %q", obrigatoria)
 		}
