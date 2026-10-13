@@ -22,6 +22,22 @@ PADRAO_IDENTIFICADOR = re.compile(r'(?:"[A-Za-z0-9_]+_"|\bID\b|Id:|id\s*[:=])\s*
                                   r'|sanitizeIDComponent\([^)]*\)\s*\+')
 
 
+def classificar_statement(linhas, indice: int) -> str:
+    """Classifica o uso considerando o STATEMENT inteiro (linhas continuadas até `;`, `{` ou linha vazia).
+
+    POR QUE ISTO EXISTE (E-355): a classificação por LINHA colocava uso multi-linha em `indefinido` e exigia declaração
+    humana. Declaração humana resolve o caso isolado; **não** resolve a próxima ocorrência. *O instrumento precisa
+    entender a construção, não a linha.*
+    """
+    inicio = indice
+    while inicio > 0 and linhas[inicio - 1].strip() and not linhas[inicio - 1].rstrip().endswith((";", "{", "}")):
+        inicio -= 1
+    fim = indice
+    while fim + 1 < len(linhas) and linhas[fim].strip() and not linhas[fim].rstrip().endswith((";", "}")):
+        fim += 1
+    return classificar_uso("\n".join(linhas[inicio:fim + 1]))
+
+
 def classificar_uso(linha: str) -> str:
     """Classifica UMA ocorrência de sanitizeIDComponent numa linha."""
     texto = linha.strip()
@@ -57,7 +73,7 @@ def classificar_usos(diretorio: Path = None) -> dict:
         for numero, linha in enumerate(linhas, 1):
             if "sanitizeIDComponent(" not in linha:
                 continue
-            categoria = classificar_uso(linha)
+            categoria = classificar_statement(linhas, numero - 1)
             chave = caminho.name
             if categoria == "definicao":
                 continue
