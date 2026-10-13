@@ -2170,7 +2170,11 @@
     "CI: FALHA NO DLP DE ATENDIMENTO, NAO NO MEU CHANGE (rodada 16): `TestServiceAgentAuditNeverStoresContactTextForAnyTool` falhou no runner. Reproduzido LOCALMENTE: passa isolado e na suite completa de 115s. Nao declarar 'flaky' sem prova - proxima rodada investiga a suite do CI e a main",
     "FALSO POSITIVO DE PRIVACIDADE E' O PIOR TIPO (E-333): o teste de DLP acusava vazamento quando o identificador gerado (apr_28741117) continha os digitos do segredo (4111). Instrumento que acusa por acaso ensina a ignorar alerta",
     "CAUSA-RAIZ DEMONSTRADA, NAO APENAS 'NAO REPRODUZIDA' (E-333): o teste de regressao NAO pulou - ele prova que o texto cru casa e que o mascaramento remove o falso positivo, mantendo o vazamento real sendo acusado",
-    "CORRIGIR INSTRUMENTO NAO E' ENFRAQUECER (E-333): a invariante segue de pe, provada por teste armado. Se a correcao tivesse cegado o detector, o segundo teste falharia"
+    "CORRIGIR INSTRUMENTO NAO E' ENFRAQUECER (E-333): a invariante segue de pe, provada por teste armado. Se a correcao tivesse cegado o detector, o segundo teste falharia",
+    "AUSENCIA DE BINARIO NAO VIRA PIPELINE FALSO (E-334): sem FFmpeg, o resultado e' ErrMediaTranscoderUnavailable e NENHUM arquivo de saida e' criado. O que nao depende do binario foi entregue e testado",
+    "A SAIDA TAMBEM PRECISA SER CONFERIDA (E-334): transcodificador que 'termina bem' e escreve lixo e' recusado e a saida e' removida - a versao de producao do 'MP4 simulado' que o complemento proibe",
+    "ARGV, NAO LINHA DE COMANDO (E-334): um vetor de argumentos nao tem shell para injetar; o teste prova que um nome hostil viaja intacto como UM argumento",
+    "WINDOWS ESCONDE DEFEITO DE NOVO (E-334): os.Remove com arquivo aberto falha no Windows e a saida invalida ficava no disco, com o erro descartado. Mesma classe de E-317 - corrigido fechando antes de remover"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -2485,7 +2489,14 @@
         "evento de carrinho != venda confirmada",
         "dedupe/idempotencia de evento",
         "isolamento por organizacao",
-        "destaque como sugestao ao operador"
+        "destaque como sugestao ao operador",
+        "42.1: validacao de upload por conteudo (magic bytes) e recusa de divergencia",
+        "42.1: recusa de path traversal e nome perigoso",
+        "42.1: worker de transcodificacao com vetor de argumentos (sem shell), timeout, cancelamento e limpeza",
+        "42.1: conferencia da SAIDA (lixo nao e' resultado) e ausencia declarada sem criar arquivo"
+      ],
+      "bloqueado_externo": [
+        "producao real de MP4 com FFmpeg (binario ausente no ambiente)"
       ]
     }
   },
@@ -2510,6 +2521,7 @@
     "E-330": "auditoria adversarial (V2.2 secao 12): achado de travamento corrigido + propriedade verificada; vinculo declarado",
     "E-331": "registro do COMPLEMENTO ESTAGIO 42 (live commerce) anexado ao V2.2; vinculo declarado",
     "E-332": "estagio 42: contratos canonicos e nucleo de seguranca; vinculo declarado",
-    "E-333": "causa-raiz do falso positivo de DLP (identificador gerado dentro de texto livre); vinculo declarado"
+    "E-333": "causa-raiz do falso positivo de DLP (identificador gerado dentro de texto livre); vinculo declarado",
+    "E-334": "estagio 42.1: validacao real e worker isolado; vinculo declarado"
   }
 }
