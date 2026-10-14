@@ -2396,7 +2396,10 @@
     "A MAIN NAO TEM TUDO QUE A MISSAO PRESUME (E-396): das 28 branches nao-mescladas, 13 tinham o conteudo JA na main (por patch-id) e foram apagadas; 15 tem trabalho real nao integrado - incluindo uma linha de SEGURANCA com 14 patches e a de paridade de UI com 17. Branches: 400 -> 16. Os 15 sao candidatos a revisao de conteudo",
     "O ALARME DO E-396 ESTAVA EXAGERADO E FOI CORRIGIDO MEDINDO (E-397): das 15 branches com 'patches pendentes', 12 tem a substancia na main (a linha de SEGURANCA esta' inteira, inclusive TestDevTokenRequiresOperatorSecret) e so' 3 tem lacuna real - todas de UI/mobile (ui-shell-parity, mobile-parity, docs-tests-parity). Um instrumento grosseiro (patch-id) virou precisao ao medir o nivel seguinte (arquivo)",
     "A LACUNA DE UI E' UM ACOPLAMENTO, NAO UMA LISTA DE ARQUIVOS (E-398): trazidos os 14 arquivos de codigo/teste para uma branch a partir da main, o TasksJourney.test.tsx FALHA (7 testes, 4 falham) porque espera UI que a main nao renderiza. O outro lado do acoplamento sao 14 arquivos de componente editados (+866/-35), e os dois comportamentos exigidos pelo teste - a frase 'Nenhuma tarefa criada ainda.' e o role=alert que ele procura - estao AUSENTES na main. Nao integrei o vermelho: branch descartada. A unidade e' a FEATURE, nao o arquivo",
-    "O PORT E' REESCRITA, NAO DELTA (E-399): com os 5 arquivos novos + o delta de tasks.tsx sobre a main, o teste da' 7 testes/4 falhas, e as 4 apontam TODAS para o ProductWorkspacePage (estado vazio, role=status do banner, 2 alertas). NewTaskPage ja' renderiza role=alert. E eu quase trouxe o ProductWorkspacePage INTEIRO da branch, 1176 commits atras - teria revertido progresso de UI. Copiar arquivo de branch velha nao e' integracao: e' regressao disfarcada de merge"
+    "O PORT E' REESCRITA, NAO DELTA (E-399): com os 5 arquivos novos + o delta de tasks.tsx sobre a main, o teste da' 7 testes/4 falhas, e as 4 apontam TODAS para o ProductWorkspacePage (estado vazio, role=status do banner, 2 alertas). NewTaskPage ja' renderiza role=alert. E eu quase trouxe o ProductWorkspacePage INTEIRO da branch, 1176 commits atras - teria revertido progresso de UI. Copiar arquivo de branch velha nao e' integracao: e' regressao disfarcada de merge",
+    "A PROVA DE SEGURANCA MEDIA A SI MESMA (E-400/ADV-58, GRAVE): mutation_gate_test.go:49 define closures locais que reimplementam 'if RequiresApproval && !approved' e compara uma com a outra. Com os 4 pontos de aprovacao do runtime desligados, o teste continua PASS. E a 6a vez que a mesma classe aparece - a primeira na linha de SEGURANCA",
+    "O MECANISMO RESISTIU, A PROVA NAO (E-400): approvalsReady, validateMissionApprovalBindings e tenant+nonce sao load-bearing (desligar cada um derruba testes especificos); nenhum caminho executa efeito sem approvalsReady; sem TOCTOU exploravel; sem vacidade. O problema e' cobertura de duas linhas redundantes e um teste tautologico",
+    "A ARVORE EM QUE SE MEDE FAZ PARTE DA MEDICAO (E-400): eu vi dois arquivos meus 'sumidos' e alertei - era eu mesmo na branch feat/nova-tarefa-port (base da main), onde os arquivos da branch perf/adv57 nao existem. A auditora cometeu o MESMO erro na primeira rodada dela (um mutante apagado, teste rodando o codigo original, falso PASS). Medir na arvore errada nao e' sabotagem: e' medicao invalida"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -3055,14 +3058,29 @@
           "descoberto_por": "4a revisao adversarial independente (subagente, contexto fresco) com experimento de falsificacao",
           "estado": "TODOS OS ITENS CORRIGIDOS E MEDIDOS (/1, /2, /3, /4, /5, /5b, /6, /7). O que resta e' o cenario com catalogo anterior no teste do rollback e a contraprova por reversao do RemoveProducts",
           "evidencia": "E-388"
+        },
+        {
+          "id": "ADV-58",
+          "severidade": "GRAVE (a prova de seguranca mede a si mesma)",
+          "descoberto_por": "5a revisao adversarial independente (subagente, contexto fresco) com mutacao por go test -overlay",
+          "estado": "REGISTRADO, NAO CORRIGIDO",
+          "evidencia": "E-400",
+          "descricao": "mutation_gate_test.go:49 TestMutationHarnessHITLApprovalBypass NAO testa o gate real: closures locais que reimplementam a condicao e se comparam entre si. Contraprova: com os 4 pontos de aprovacao do runtime desligados o teste continua PASS. + runtime.go:2237 (portao por etapa) e 2251-2256 (reconferencia inline do PayloadSHA256) sem cobertura isolada. + mission_multi_step_approval_test.go:116 cujo nome promete mais do que o corpo prova. RESISTIU: approvalsReady, validateMissionApprovalBindings, tenant+nonce (todos load-bearing), nenhum caminho sem approvalsReady, nenhum TOCTOU exploravel, sem vacidade"
         }
       ],
       "proximos_ataques": [
-        "contraprova por REVERSAO do RemoveProducts (medir que o teste falha com o caminho por SKU)",
-        "cobrir o cenario de rollback com catalogo ANTERIOR (seriam 2 gravacoes, nao 1)",
-        "quinta auditoria independente numa linha ainda nao auditada (scheduling, media, approvals)",
-        "checkpoint remedido contra o GitHub"
-      ]
+        "ADV-58/1: trocar as closures de mutation_gate_test.go por chamadas REAIS (stepApproved/approvalsReady/validateMissionApprovalBindings)",
+        "ADV-58/2 e /3: decidir entre dar teste as linhas redundantes (runtime.go:2237, 2251-2256) ou remove-las documentando que approvalsReady cobre",
+        "ADV-58/4: renomear mission_multi_step_approval_test.go:116 para o que o corpo realmente prova",
+        "auditar a PROXIMA linha nao auditada (scheduling, media, ou o proprio runtime.go em outra faixa)"
+      ],
+      "contraprovas_medidas": {
+        "approvalsReady_off": "FALHA TestRuntimeNaoProduzEfeitoComAprovacaoPendenteNaNada (load-bearing)",
+        "validateMissionApprovalBindings_off": "FALHAM TestApprovalValidationBindsPolicyExpiryAndDecisionActor e TestRuntimeFailsClosedWhenApprovalRecordIsMissing (load-bearing)",
+        "tenant_e_nonce_off": "FALHAM TestDecisaoDeAprovacaoNaoRevelaExistenciaEntreTenants, TestApprovalBindsActorOrganizationAndReason e TestApprovalCASAndNonceAreSingleUse (load-bearing)",
+        "portao_por_etapa_off": "NADA falha - sem defesa",
+        "reconferencia_inline_off": "NADA falha - sem defesa"
+      }
     },
     "estagio_42": {
       "titulo": "HADES LIVE COMMERCE & AI SHOPPING AGENTS",
@@ -3579,6 +3597,7 @@
     "E-396": "triagem por patch-id: 13 conteudo ja na main; 15 com trabalho nao integrado",
     "E-397": "revisao por arquivo: 12 integradas, 4 so' edicoes, 3 com lacuna real (UI/mobile)",
     "E-398": "a lacuna de UI e' ACOPLADA: o teste falha sem as edicoes de componente",
-    "E-399": "o port e' reescrita: as 4 falhas apontam para o ProductWorkspacePage (+74)"
+    "E-399": "o port e' reescrita: as 4 falhas apontam para o ProductWorkspacePage (+74)",
+    "E-400": "5a auditoria (aprovacoes): 1 GRAVE (teste de mutacao nao testa o gate) + 3 MEDIOS"
   }
 }
