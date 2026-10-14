@@ -2536,7 +2536,10 @@
     "A LISTA VAZIA NAO E' PROVA DE NADA (E-451): proximos_ataques ficou VAZIA, mas os achados 1..59 nunca foram conferidos por conteudo. 'Nao encontrei defeito aqui' nao e' 'nao ha defeito nos outros': a lista ficou vazia porque ninguem olhou",
     "A VARREDURA VIROU INVARIANTE DO CHECKER (E-452): verificar_referencias_de_arquivo em hades_mission_check.py acusa referencia arquivo.go:NNN para arquivo inexistente OU linha alem do fim. Estado real: 30 referencias, 0 deslocadas, exit 0 em 0s. CONTRAPROVADO: injetar arquivo_que_nao_existe.go:42 => exit 1",
     "INSTRUMENTO LENTO NAO SE RODA - E A LICAO FOI APLICADA (E-452): a versao standalone da varredura tinha rglob dentro do laco (O(n^2) sobre 1346 arquivos, ficou em background e teve de ser morta). No checker o indice e' montado UMA vez, fora do laco: 0s",
-    "AS TRES INVARIANTES DE AUDITORIA TEM TESTE PROPRIO (E-452): cruzamento (E-444), prova podre (E-446) e referencia deslocada (E-451) - 10 testes, OK, 0,108s. Cada uma nas DUAS direcoes (dispara quando deve, passa quando deve)"
+    "AS TRES INVARIANTES DE AUDITORIA TEM TESTE PROPRIO (E-452): cruzamento (E-444), prova podre (E-446) e referencia deslocada (E-451) - 10 testes, OK, 0,108s. Cada uma nas DUAS direcoes (dispara quando deve, passa quando deve)",
+    "CONTEUDO DOS ACHADOS ANTIGOS: A PRIMEIRA CONTAGEM VENCIDA (E-453): o ADV-27b dizia '23 caminho, 5 identificador, 2 comentario, 1 indefinido' e a re-execucao deu 24 caminho. O achado afirma um ESTADO ATUAL, nao um evento historico - e um uso novo apareceu no caminho desde entao. Envelheceu em silencio",
+    "CONTAGEM SEM DATA E' A FORMA MAIS CONVINCENTE DE AFIRMACAO SEM LASTRO (E-453): o registro nao distinguia 'a contagem daquele dia' de 'a contagem agora'. Toda contagem passa a carregar DATA e RECEITA (o comando que a reproduz) - sem a receita, o proximo leitor nao reconfere sem adivinhar",
+    "TRES CONFERENCIAS DE LASTRO, ZERO DE CONTEUDO - ATE AGORA (E-453): E-446 (testes citados existem), E-451 (referencias de arquivo existem) e E-452 (invariante) conferem LASTRO. A conferencia de CONTEUDO comecou nesta rodada, e a primeira tentativa ja' achou uma contagem vencida"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -2975,7 +2978,7 @@
           "id": "ADV-27b",
           "severidade": "INFORMATIVO (instrumento)",
           "descricao": "classificacao de escopo era MANUAL; agora e' automatica com indefinido exigindo declaracao",
-          "estado": "IMPLEMENTADO E TESTADO (23 caminho, 5 identificador, 2 comentario, 1 indefinido declarado)",
+          "estado": "IMPLEMENTADO E TESTADO (MEDIDO EM 2026-10-14: 24 caminho, 5 identificador, 2 comentario, 1 indefinido declarado; 28 arquivos). RECEITA: `python scripts/hades_scope_classifier.py` - a linha 'USOS DE sanitizeIDComponent por categoria'. ***HISTORICO: a primeira medicao deu 23 caminho, e a de 2026-10-14 deu 24 - um uso novo apareceu no caminho.*** *Contagem sem data e sem receita e' afirmacao que apodrece: nao se sabe se o numero e' de entao ou de agora.*",
           "evidencia": "E-352"
         },
         {
@@ -3318,7 +3321,8 @@
         "acao_necessaria": "Para cada uma: decidir entre (a) escrever o teste que falta e move-la para contraprovas_medidas, ou (b) declarar que a defesa e' REDUNDANTE (outra camada ja' cobre) com a medicao que o mostre, ou (c) remover a defesa - porque defesa sem prova e' custo sem beneficio medido."
       },
       "contraprovas_medidas_nota": "Esta chave contem SOMENTE contraprovas que DISPARAM (a mutacao faz um teste nomeado FALHAR). Mutacoes que nao matam nada vivem em `sem_defesa_medida`.",
-      "proximos_ataques_nota": "***CONFERIR ANTES DE TRABALHAR E' OBRIGATORIO.*** Medido em 2026-10-14: dos 4 itens entao listados, **3 ja' estavam ATENDIDOS** (ADV-60, ADV-63, ADV-64) - somando os retratados antes (MEDIO-1, ADV-61 e ADV-65 declarado), **6 de 7 itens de lista estavam vencidos ou parciais**. *O defeito nao era a lista: era nunca CONFERIR. Uma lista que so' cresce e nunca e' relida nao e' backlog - e' um arquivo morto com aparencia de plano.* Todo item carrega `conferido_em` e `conferido_resultado` (ATENDIDO / AINDA_ABERTO / NAO_MEDIDO); `NAO_MEDIDO` NAO e' 'ok'."
+      "proximos_ataques_nota": "***CONFERIR ANTES DE TRABALHAR E' OBRIGATORIO.*** Medido em 2026-10-14: dos 4 itens entao listados, **3 ja' estavam ATENDIDOS** (ADV-60, ADV-63, ADV-64) - somando os retratados antes (MEDIO-1, ADV-61 e ADV-65 declarado), **6 de 7 itens de lista estavam vencidos ou parciais**. *O defeito nao era a lista: era nunca CONFERIR. Uma lista que so' cresce e nunca e' relida nao e' backlog - e' um arquivo morto com aparencia de plano.* Todo item carrega `conferido_em` e `conferido_resultado` (ATENDIDO / AINDA_ABERTO / NAO_MEDIDO); `NAO_MEDIDO` NAO e' 'ok'.",
+      "achados_nota": "🚨 E-453: ***TODA CONTAGEM NUM ACHADO CARREGA DATA E RECEITA.*** Medido: o ADV-27b dizia '23 caminho' e a re-execucao deu **24** - *um uso novo apareceu, e o numero envelheceu em silencio* ✗. Contagem sem data e' **a forma mais convincente de afirmacao sem lastro**: nao se sabe se o numero e' de entao ou de agora. As tres partes de uma contagem honesta: o numero, **quando** foi medido e **o comando** que o reproduz."
     },
     "estagio_42": {
       "titulo": "HADES LIVE COMMERCE & AI SHOPPING AGENTS",
