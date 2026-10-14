@@ -443,11 +443,6 @@ func NewRuntime(config RuntimeConfig) (*Runtime, error) {
 	if err != nil {
 		return nil, err
 	}
-	// E-618: a ferramenta de memória (D-11). Registada AQUI, e não no `NewRegistry()` global,
-	// porque precisa do STORE — e o registry global não o tem. E com o escopo que o runtime pode
-	// garantir: PROJETO, sem ator (D-12), o que faz o isolamento excluir memória `private` por
-	// construção em vez de depender de um filtro que aqui não existe.
-	runtime.tools.Register(memorySearchTool{store: contextStore})
 	runtime.ingestion = DocumentIngestor{Context: contextStore, Research: runtime.research, WorkspaceRoot: root}
 	runtime.projectImporter = NewProjectImporter(root, dataRoot, contextStore, runtime.ingestion)
 	if config.WhatsApp != nil {
@@ -2339,7 +2334,7 @@ func (r *Runtime) Run(ctx context.Context, id string) (runErr error) {
 			return err
 		}
 		toolSpan := r.traces.StartForOrganization(mission.OrganizationID, "tr_"+mission.ID, missionSpan.ID(), "tool."+step.Kind, map[string]any{"mission_id": mission.ID, "step_id": step.ID, "tool": step.Kind})
-		toolContext := ToolContext{MissionID: mission.ID, StepID: step.ID, Workspace: mission.Workspace, WorkspaceRoot: workspaceRoot, OrganizationID: mission.OrganizationID, ProjectID: mission.ProjectID, ToolConfigSHA256: step.ToolConfigSHA256, Consent: r.consent, ModelID: modeloRoteado}
+		toolContext := ToolContext{MissionID: mission.ID, StepID: step.ID, Workspace: mission.Workspace, WorkspaceRoot: workspaceRoot, OrganizationID: mission.OrganizationID, ToolConfigSHA256: step.ToolConfigSHA256, Consent: r.consent, ModelID: modeloRoteado}
 		if step.Kind == "git.repo.inspect" && mission.WorkspaceIsolated {
 			toolContext.WorkspaceSnapshotManifest = snapshotManifest
 			toolContext.WorkspaceSnapshotPrefix = snapshotPrefix
