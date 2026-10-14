@@ -94,7 +94,10 @@ def varrer(raiz: Path) -> list[tuple[str, int, str, str]]:
 # de gate* — a lista existe para que o `--check` reprove **o que é NOVO**, e para que cada aceite carregue a razão.
 # NUNCA acrescente aqui só para o teste passar: meça primeiro e escreva a medição.
 TRIAGADOS = {
-    ("internal/agent/declared_categories_measured_test.go", 28):
+    ("internal/agent/declared_categories_measured_test.go", 36):
+        # E-432: era 28. *Reescrever o cabeçalho daquele teste moveu o sítio para 36* — e foi esta catraca que acusou
+        # o movimento. **Pinar NÚMERO DE LINHA é brittleness conhecida**: o sítio continua sendo a **organização
+        # vazia**, onde o portão de ESCOPO dispara ANTES do expediente, então o instante não decide nada.
         "a organizacao e' \"\" - o portao de ESCOPO dispara ANTES do expediente, entao o instante nao decide nada",
     ("internal/agent/scheduling_waitlist_test.go", 187):
         "e' a linha do COMENTARIO do E-421 (o codigo ja' chama instanteDeTeste)",

@@ -2472,7 +2472,14 @@
     "A TRAVA QUE EU ESCREVI EXIGIA UM DIRETORIO QUE NINGUEM CRIA (E-430): withFileLock nao cria diretorios-pai, entao uma organizacao sem aprovacao passou a receber 400 com erro de SO cru onde antes era 404. E' a TERCEIRA repeticao do defeito que store.go:968 documenta ter corrigido na raiz - eu escrevi a terceira. Quem me mostrou foi o meu proprio teste de autorizacao, que devolveu 400 no subteste do viewer",
     "A AMARRACAO ERA DEFENDIDA EM 4 DE 14 COMPONENTES (E-431/ALTO-2): o auditor removeu um por vez e 10 passaram com internal/agent INTEIRO (431s) e server INTEIRO (47,6s) verdes. A causa e' a classe no' 7 - o teste variava titulo E valor ao MESMO tempo, um OU e nao um E. Agora sao 14 casos, um por parte, com controle de igualdade e catraca de contagem (uma 15a parte sem caso acusa)",
     "A CONTRAPROVA NOMEOU OS DOIS COMPONENTES (E-431): removendo toolName e title - exatamente os que a mutacao do auditor nao pegava - o teste FALHA dizendo 'mudar SO' toolName nao mudou a impressao digital'. Um teste que varia duas coisas ao mesmo tempo nao mede nenhuma das duas",
-    "Channel e Intent FORA DA IMPRESSAO E' DECISAO, NAO DESCUIDO (E-431): Intent e' texto do contato (dado de terceiro) e descreve a ENTRADA, nao a ACAO; Channel nao muda o que sera executado. Declarado no teste para poder ser contestado"
+    "Channel e Intent FORA DA IMPRESSAO E' DECISAO, NAO DESCUIDO (E-431): Intent e' texto do contato (dado de terceiro) e descreve a ENTRADA, nao a ACAO; Channel nao muda o que sera executado. Declarado no teste para poder ser contestado",
+    "O ARQUIVO QUE IMPEDE AFIRMACAO SEM MEDICAO TINHA AFIRMACAO SEM MEDICAO (E-432): declared_categories_measured_test.go dizia '2 pendencias' e listava scheduling_crossprocess, que deixou de ser pendencia em E-347. A medicao da 1. Corrigido",
+    "A CATRACA PASSOU A ACUSAR DISPENSA ORFA E OBSOLETA (E-432): era a assimetria com o scope_classifier, que ja acusava. A acusacao nova encontrou 3 dispensas reais sobreviventes ao proprio motivo - marketplace_sync.go ainda dizia NAO_MEDIDO, exatamente o sintoma que o auditor citou. As 3 foram removidas",
+    "UM ALARME QUE DISPARA EM FIXTURE ENSINA A IGNORAR O ALARME (E-432): a checagem de dispensa orfa quebrou 8 autotestes porque os fixtures montam diretorios temporarios e reaproveitam a DISPENSAS global. Restringi a orfa a raiz real e mantive a de obsolescencia em qualquer lugar: 14/14",
+    "NAO ESCREVI UM TESTE QUE MEDE NADA (E-432): para o MEDIO-2 (a trava do Decide sem teste) medi que o quorum e' RequiredApprovalsFor com QuorumAboveCents=100000 e NAO estabeleci qual dano a raca produz. Sem isso, um teste ali passaria com e sem a trava",
+    "UM INSTRUMENTO QUE NUNCA DISPARA E' UM INSTRUMENTO QUE NUNCA MEDIU (E-432): a acusacao de dispensa orfa nao disparava porque no_repo_real comparava diretorio.resolve() com o PAI de DIRETORIO (internal em vez de internal/agent), dando False SEMPRE. A contrapova pegou; sem ela eu teria declarado pronto um alarme que nunca tocava",
+    "INVENTAR ALEM DO ACHADO PRODUZ ALARME FALSO (E-432): eu criei uma variante OBSOLETA (dispensa cujo arquivo tem guarda) e a premissa estava errada - ter guarda nao torna a isencao obsoleta. Removida. O achado do auditor era sobre ORFA, que nao casa com uso nenhum",
+    "REGEX COM DOTALL SOBRE CODIGO-FONTE E' DEMOLICAO (E-432): re.subn com DOTALL corrompeu a codificacao do arquivo e 4 checkers cairam - o proprio encoding_check acusou. A corrupcao vinha do texto ACENTUADO; com ASCII o encoding fica limpo. Edicao de fonte e' com a ferramenta edit, nunca com script"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -3215,6 +3222,14 @@
         {
           "id": "ADV-70",
           "estado": "FECHADO: TestTodasAsPartesDaImpressaoDigitalSaoAmarradas cobre as 14 partes, cada uma variando SOZINHA, com controle de igualdade e catraca de contagem. Contrapova: removendo toolName e title (os 2 que o auditor provou indetectaveis) o teste FALHA nomeando cada um."
+        },
+        {
+          "id": "ADV-71",
+          "estado": "FECHADO: o texto da catraca dizia 2 pendencias e a medicao da 1. Corrigido."
+        },
+        {
+          "id": "ADV-72",
+          "estado": "FECHADO com contrapova: a catraca acusa DISPENSA ORFA (injetei uma para arquivo inexistente => exit 1 e acusacao). A causa de nao disparar era no_repo_real comparar com o PAI de DIRETORIO, dando False SEMPRE - o instrumento parecia funcionar e nunca executava."
         }
       ],
       "proximos_ataques": [

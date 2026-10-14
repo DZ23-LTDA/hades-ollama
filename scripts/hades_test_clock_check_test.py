@@ -107,7 +107,10 @@ class CheckerDoRelogioTest(unittest.TestCase):
         altos = [(a, l) for a, l, c, _ in checker.varrer(raiz) if c == "ALTO"]
         conhecidos = {
             ("internal/agent/push_outbox_test.go", 274),          # ClaimDue: vencimento
-            ("internal/agent/declared_categories_measured_test.go", 28),  # org vazia: recusado por escopo
+            # E-432: a linha era 28 e virou 36 quando o cabeçalho deste teste mudou (o `agora.Add(time.Hour)` da
+            # ORGANIZAÇÃO VAZIA é triagem resolvida: o portão de ESCOPO dispara antes do expediente).
+            # *Pinar NÚMERO DE LINHA é brittleness conhecida* - um cabeçalho novo move o sítio.
+            ("internal/agent/declared_categories_measured_test.go", 36),  # org vazia: recusado por escopo
             ("internal/agent/scheduling_waitlist_test.go", 187),  # a linha do COMENTÁRIO do E-421
         }
         novos = [x for x in altos if x not in conhecidos]
