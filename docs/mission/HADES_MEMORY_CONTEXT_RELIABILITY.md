@@ -223,3 +223,34 @@ esquece-se de um campo e vaza-o; uma lista branca esquece-se de um campo e omite
 das **missões**; no **chat** ele só chegaria se o pedido identificasse a missão — e hoje o
 chat identifica PROJETO, não missão (`chat_context.go:55-63`, sem `MissionID`). Fazer isso é
 **decisão de contrato de API**, não detalhe de implementação.
+
+### D-3 RESOLVIDO — o `race (macos)` NÃO era corrida: era TEMPO. O F2 está REFUTADO
+
+O job `116110478082` (`race (macos-latest)`, `c6171257d`) diz, textualmente:
+```
+21:24:58  Run go test -race -count=1 ./...
+21:36:11  panic: test timed out after 10m0s
+          FAIL github.com/ollama/ollama/internal/agent  600.096s
+```
+e — o que decide tudo — **não há um único `WARNING: DATA RACE` no log**.
+
+**A hipótese registada como F2 estava errada.** O que estava provado era que existia um
+caminho **não ordenado** entre dois locks (`persistLocked` sob `o.mu` × escritas em
+`job.Tasks` sob `taskMu`); **não** estava provado que fosse ele a reprovar o CI. O comentário
+em `swarm.go:454-458` já mostrava que o autor conhecia aquela corrida e evitava aquele
+caminho. O **E-589** (`taskMu` como campo + `persistLocked` a tomá-lo) mantém-se como
+correcção legítima de ordenação — **não era a causa**. *Não basta provar que um defeito
+existe: é preciso provar que é ELE que quebra.*
+
+**A causa real**: `go test` mata cada binário aos **10 min por omissão**; o `-race` multiplica
+o custo; e o `internal/agent` no macOS ultrapassa os 600 s. Neste mesmo run o `test` **normal**
+passou nas **três** plataformas ⇒ não é defeito de código, é **orçamento de tempo**.
+
+**Correcção (E-600, `062970bd8`)**: `-timeout 20m` em `.github/workflows/test.yaml`. O que ela
+**não** faz, e por isso é aceitável: **não** desliga o `-race` (a rede contra corridas
+continua, agora com tempo para terminar) e **não** esconde uma travagem (um hang real continua
+a falhar, aos 20m em vez de aos 10m). O motivo ficou escrito no próprio workflow.
+
+**O que isto ainda NÃO prova**: que 20 m chega. A confirmação é o próximo `race (macos-latest)`
+ficar verde; se voltar a estourar, o número está medido e o passo seguinte é **dividir o
+pacote** ou **reduzir peso sob `-race`** — nunca subir o limite outra vez.
