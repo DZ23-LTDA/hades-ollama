@@ -42,13 +42,24 @@ func TestSlashRegistryBackendsAreActuallyRegistered(t *testing.T) {
 	if available == 0 {
 		t.Fatal("registry has no available command")
 	}
-	// O registro cobre os 32 comandos da seção 6, mais /cancel, /approve e /deny (§11.1), mais
-	// /spark, /cowork e /reject (Estágio 44 — E-533). ⇒ ***38.*** *Este é o SEGUNDO contrato do mesmo
-	// registo: o primeiro vive em `internal/agent/slash_registry_test.go`. Os dois têm de concordar —
-	// e foi por eu ter corrigido só um deles que o `server` ficou vermelho em 4 jobs (E-547).*
-	if got := len(agent.DefaultSlashRegistry()); got != 38 {
-		t.Fatalf("registry has %d commands, want 38", got)
-	}
+	// ***O NÚMERO NÃO SE REPETE AQUI. E-550.***
+	//
+	// *Este teste contava `len(agent.DefaultSlashRegistry()) != 38`. O `E-547` mediu o custo dessa cópia: quando o
+	// `E-533` levou o registo de 35 para 38, ele corrigiu a lista do `internal/agent` e **esqueceu-se desta** — e
+	// quatro jobs do CI ficaram vermelhos por um número.*
+	//
+	// ⇒ ***Duas cópias de um número não são uma verificação: são uma coincidência à espera de divergir.***
+	//
+	// **A contagem já é verificada onde pertence:** `internal/agent/slash_registry_test.go` compara
+	// `len(registry) == len(required)`, e a lista `required` é o **mandato** — *a verificação bidireccional de que
+	// acrescentar um comando exige uma **decisão**.*
+	//
+	// **O que ESTE teste verifica — e que só ele pode verificar** — é a propriedade que depende do **router**: que
+	// cada `Backend` declarado por um comando disponível está **de facto registado** (o laço acima). *Isso exige
+	// construir o engine do `gin`, e é por isso que vive aqui e não no `internal/agent`.*
+	//
+	// *Removido o número, o teste fica **mais** forte: passa a verificar **uma propriedade** em vez de repetir
+	// **uma contagem** que outro pacote já faz.*
 }
 
 // TestSlashCommandRoutesExistForSection11MandatoryCommands garante que os seis
