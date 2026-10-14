@@ -43,11 +43,23 @@ func (s *SchedulingStore) withOrganizationLock(organizationID string, run func()
 		return err
 	}
 	// `withFileLock` tem a MESMA assinatura em Windows e Unix: (path, func() error) error.
-	return withFileLock(filepath.Join(s.root, sanitizeIDComponent(organizationID)+".lock"), func() error {
+	return withFileLock(s.lockPath(organizationID), func() error {
 		// RECARREGAR sob a trava: o processo vizinho pode ter gravado desde a nossa última leitura.
 		s.invalidateCache(organizationID)
 		return run()
 	})
+}
+
+// lockPath devolve o caminho do arquivo de trava **desta organização**.
+//
+// E-416 / ADV-63: existe como método para que **o teste use o mesmo caminho que o produto**. *Um teste que
+// **replica** a fórmula mede a cópia, não o código:* eu havia escrito uma prova direta da trava por organização
+// que segurava `org-a.lock` calculado **por conta própria** — e, com a mutação do produto para uma trava
+// global, o produto passou a travar `global.lock` enquanto o teste segurava `org-a.lock`: *arquivos diferentes,
+// nenhum bloqueio, asserção passando sem medir nada* (E-415). ***Cópia não muda quando o original muda; por isso
+// o caminho tem um dono só.***
+func (s *SchedulingStore) lockPath(organizationID string) string {
+	return filepath.Join(s.root, sanitizeIDComponent(organizationID)+".lock")
 }
 
 // invalidateCache descarta o cache em memória da organização, forçando releitura no próximo acesso.

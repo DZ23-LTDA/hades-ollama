@@ -2437,7 +2437,9 @@
     "A SONDA DO AUDITOR VIROU PROVA (E-414/ADV-62): o ciclo com NextRunAt futuro agora tem teste com contraprova - desligar o portao de supervisor.go:401 FAZ o teste falhar, e o controle (ciclo vencido) segue passando",
     "UM TESTE COM DOIS PROPÓSITOS FALHA PELO MOTIVO ERRADO (E-414): pus um controle na mesma execucao (acrescentar um ciclo vencido e exigir avanco) e ele falhou, porque a lista de empresas e' lida/cacheada por tick. O teste ficou com um proposito, e o controle e' o teste que ja' existia",
     "A 7a VEZ DA MESMA CLASSE - E A PRIMEIRA EM QUE ME PEGUEI NA MESMA RODADA (E-415): escrevi uma prova direta da trava por organizacao (segurar a trava de A e exigir que B complete) e ela passou. Na contrapova com trava GLOBAL, o meu teste CONTINUOU PASSANDO: ele calculava o caminho replicando a formula do produto, entao media a MINHA copia, nao o codigo. Um teste que parece prova e nao e' e' exatamente a doenca que esta missao vem derrubando",
-    "A COPIA NAO MUDA QUANDO O ORIGINAL MUDA (E-415): teste que replica a formula do produto passa com qualquer produto. A correcao e' extrair o caminho para um unico lugar que produto e teste compartilhem - assim a mutacao muda o INPUT do teste"
+    "A COPIA NAO MUDA QUANDO O ORIGINAL MUDA (E-415): teste que replica a formula do produto passa com qualquer produto. A correcao e' extrair o caminho para um unico lugar que produto e teste compartilhem - assim a mutacao muda o INPUT do teste",
+    "UM DONO SO' PARA O CAMINHO (E-416/ADV-63): extrair lockPath() e fazer produto e teste usarem o MESMO metodo e' o que transforma uma copia em prova - a mutacao passa a mudar o INPUT do teste. Contraprova: lockPath global => o teste FALHA ('as organizacoes A e B compartilham o caminho de trava')",
+    "O QUE SEPARA UMA PROVA DE UMA COPIA E' QUEM E' O DONO DO VALOR (E-416): a minha primeira prova da trava replicava a formula do produto e passava com qualquer produto. A segunda usa o metodo do produto e dispara na mutacao"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -3142,7 +3144,7 @@
           "severidade": "MEDIA-BAIXA (afirmacao sem prova)",
           "descricao": "'a trava e por organizacao' nao e' provado: mutacao para trava GLOBAL => 0 falhas em 20 execucoes. CONTRASTE: sem withFileLock => 20/20 falham; sem invalidateCache => 18/20 falham (prova probabilistica, ~10% de regressao silenciosa)",
           "descoberto_por": "6a revisao adversarial independente (subagente, contexto fresco) com go test -overlay e sondas",
-          "estado": "ABERTO - a minha primeira tentativa de prova era FALSA (replicava a formula do caminho da trava; a contrapova com trava global nao a fez falhar) e foi removida. Correcao certa: extrair lockPath() compartilhado entre produto e teste",
+          "estado": "FECHADO: lockPath(organizationID) extraido como metodo unico, usado pelo produto E pelo teste. O teste retem de verdade a trava da org A e exige que a org B complete em 10s; a contraprova (lockPath global) FAZ o teste falhar, porque a mutacao muda o INPUT do teste. A primeira tentativa era falsa (E-415) e foi removida",
           "evidencia": "E-411"
         },
         {
@@ -3842,6 +3844,7 @@
     "E-412": "ADV-61 corrigido: shiftCovering devolve diaAnterior; o mesmo minuto tem respostas opostas",
     "E-413": "ADV-60: Availability declara o limite e um teste o fixa; E-314 superseded",
     "E-414": "ADV-62: teste do ciclo com NextRunAt futuro, com contraprova e controle",
-    "E-415": "a minha prova da trava era FALSA (replicava a formula do produto); teste removido"
+    "E-415": "a minha prova da trava era FALSA (replicava a formula do produto); teste removido",
+    "E-416": "lockPath compartilhado entre produto e teste: a contraprova passa a disparar"
   }
 }
