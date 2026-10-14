@@ -2696,7 +2696,9 @@
     "E-507 (o `main` real é `4b3e21854` — e o E-495 «corrigiu» um número certo): `actions_list branch=main` · main = **4b3e21854** · E-495 dizia 2bd4dd0eb",
     "E-508 (go test ./... completo): 65 pacotes ok, 6 FAIL todos artefacto de ambiente; e o gate do encoding travou-me por 12 residuos UTF-16 que eu criei na RAIZ - o guard do -ne 8 impediu apagar uma medicao viva.",
     "E-509 (SA4023): a causa raiz do CI vermelho era o staticcheck do v2.13.0 (a versao FIXA do CI) provar que sandbox_other.go devolve sempre erro. Corrigido devolvendo o erro por VARIAVEL DE PACOTE - sem nolint. 14 -> 8 issues com a versao do CI, SA4023 = 0. E os 8 unused sao invisiveis ao CI: sao windows-only e o job de lint corre em ubuntu.",
-    "E-510 (merge da branch): mergeable_state era 'behind'; o merge de origin/main deu exit 0 com 9 ficheiros do #437 (todos app/ui/app/src) e ZERO conflitos - prova independente do E-505. Depois do push: remoto 6173bc417 e 'commits do main que faltam na branch = 0'."
+    "E-510 (merge da branch): mergeable_state era 'behind'; o merge de origin/main deu exit 0 com 9 ficheiros do #437 (todos app/ui/app/src) e ZERO conflitos - prova independente do E-505. Depois do push: remoto 6173bc417 e 'commits do main que faltam na branch = 0'.",
+    "E-512 (criterio de contagem): scripts/hades_limites_check.py fixa o criterio num so' lugar. Mede 3 numeros de proposito: 182 limites citados, 31 sem medicao, 19 AINDA ABERTOS. Confundir os dois ultimos foi o erro da rodada 245.",
+    "E-511 (limites remedidos): acrescentei 'REMEDIDO EM' a E-484, E-485, E-486 e E-491, cada um citando a evidencia que o fechou. E escrevi a E-512 saltando a E-511 - o hades_mission_check detectou o buraco [511] e o GATE 1 bloqueou o commit."
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
