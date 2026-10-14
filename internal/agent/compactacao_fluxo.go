@@ -32,7 +32,6 @@ func FluxoDaCompactacao(mensagens []api.Message, janela, tetoDigest int, histori
 		return res, append([]api.Message(nil), mensagens...), err
 	}
 	resumo, cortado := ResumirPorDigest(plano.Resumir, tetoDigest)
-	_ = cortado // o corte já vai declarado no próprio texto pelo digest? não: ver abaixo.
 	if strings.TrimSpace(resumo) == "" {
 		// NADA COUBE. Não se substitui a conversa por nada: devolve-se a original e diz-se.
 		return ResultadoDaCompactacao{
