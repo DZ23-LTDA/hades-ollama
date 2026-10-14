@@ -130,6 +130,27 @@ simular geração de vídeo/imagem quando não houver provider; exibir bloqueio 
 4. **E-431**: matriz de modalidade × engine (*ADR-004*) como dado, alimentando o `Registry`.
 5. **E-432+**: Artefato canônico (47) → STT/TTS e documentos (45) → Spark e slash commands (44) → Companion (46).
 
+### 4.1 Conciliação medida: a ordem **proposta** × o que o **índice** tem (E-526)
+
+> **A ordem acima foi escrita ANTES de os IDs serem gastos** — e quatro dos cinco IDs, no índice, são **outro
+> assunto**. *Quem a seguir ao pé da letra substitui trabalho alheio.* ⇒ **esta é a conciliação, medida.**
+
+| passo | ID **proposto** | o que o índice diz desse ID | ID **real** do trabalho | estado |
+| --- | --- | --- | --- | --- |
+| 1 | `E-428` | **CONTRAPROVA (pin de modelo)** — *coincide* | **`E-428`** | ✅ **FEITO** |
+| 2 | `E-429` | *DEFEITO DE AUTORIZAÇÃO CRÍTICO (ADV-68)* ✗ | **`E-433`** (*o contrato*) + **`E-434`** (*o DAG validado*) | ✅ **FEITO** |
+| 3 | `E-430` | *«regressão MINHA, corrigida»* ✗ | **`E-435`** (*a ponte*, que garante `ErrNoRoute`) + **`E-436`** (*a injecção*) | ✅ **FEITO** |
+| 4 | `E-431` | *CONTRAPROVA (ALTO-2)* ✗ | — | ⏳ **ABERTO** (*matriz modalidade × engine, ADR-004*) |
+| 5 | `E-432+` | *BAIXO-1 e BAIXO-2 fechados* ✗ | — | ⏳ **ABERTO** (*artefacto canónico 47 → 45 → 44 → 46*) |
+
+**Como o estado foi medido** (não inferido): `types.go:139` → `Step.RequiredCapabilities []string` ·
+`step_routing.go:58` → `func RouteRequestForStep(missao Mission, passo Step) multillm.RouteRequest`, que usa
+**`RequiredCapabilities`** e **`PinnedModelID`** (`:85`), com fallback para `missao.Model` (`:89-90`) ·
+`step_routing_test.go:129` → `ErrNoRoute` para «capability-que-ninguem-tem» ·
+`step_requirements_contract_test.go` → *as capacidades **sobrevivem ao JSON***.
+
+⇒ ***O Estágio 43 (Adaptive Router) tem os seus sub-passos **entregues**; o que falta são os passos **4** e **5**.***
+
 ## 5. Limites honestos desta matriz
 
 - As classificações **`IMPLEMENTADO_*`** valem para o que **medi** (*existência, assinaturas, testes presentes*);
