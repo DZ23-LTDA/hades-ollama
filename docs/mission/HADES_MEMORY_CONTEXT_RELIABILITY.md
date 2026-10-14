@@ -454,3 +454,31 @@ pedido.*
 mesmo projeto não pode entrar por uma ferramenta — a mesma regra que `SearchMemoriesForActor` já
 aplica no caminho do contexto (`agent_routes.go:2887`). Uma ferramenta nova **tem de passar pelo
 mesmo filtro**, não por um atalho.
+
+### D-12. A ferramenta de memória esbarra numa decisão: o runtime NÃO conhece o ATOR
+
+Ao auditar onde injectar a ferramenta (D-11), apareceu um obstáculo que não é de código:
+
+- o registry por missão constrói-se em `internal/agent/runtime.go:224` (`tools = NewRegistry()`,
+  campo `tools *Registry` em `:54`);
+- a interface é `Tool.Descriptor()` + `Execute(ctx, ToolContext, input)` (`types.go:268`), e o
+  `ToolContext` (`:236`) leva `MissionID`, `StepID`, `Workspace`, `OrganizationID`, `Consent`,
+  `ModelID` — **não leva `ProjectID` nem `ActorID`**;
+- e o registo da missão (`types.go:75-115`) tem organização e projeto, **e nenhum criador/autor**.
+
+**A consequência, dita sem rodeios**: o runtime de missões é escopado por **organização e
+projeto**, não por **ator**. Uma ferramenta de memória registada ali poderia aplicar o filtro de
+projeto e **não** o de ator — e o filtro de ator é o que impede a memória `private` de um colega
+do mesmo projeto de entrar. Uma ferramenta que *parece* governada e filtra a menos é **pior** do
+que uma ferramenta ausente: a ausente sabe-se que falta.
+
+**As duas saídas, ambas decisões e não detalhes:**
+1. **`CreatedBy` na missão** (campo aditivo, preenchido do pedido que a cria) ⇒ o runtime passa a
+   poder preencher `ToolContext.ActorID` e a ferramenta aplica o mesmo filtro do caminho do
+   contexto (`SearchMemoriesForActor`, `agent_routes.go:2887`);
+2. **ferramenta request-scoped**, fora do runtime, onde o ator existe por construção.
+
+**O que fica decidido já**: qualquer das duas exige que `ToolContext` ganhe os campos que faltam —
+e isso é aditivo, com precedente no próprio ficheiro (o E-438 acrescentou `ModelID` exactamente
+para uma decisão chegar à ferramenta). O que **não** se faz é registar a ferramenta no sítio
+óbvio e ficar com um filtro a menos.
