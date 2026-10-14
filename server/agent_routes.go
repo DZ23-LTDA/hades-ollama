@@ -810,6 +810,8 @@ func (a *agentAPI) register(r *gin.Engine) {
 	group.POST("/collab/:project_id/presence", a.collabPresence)
 	group.POST("/missions", a.createMission)
 	group.GET("/missions", a.missions)
+	// E-625: relatorio de desempenho das missoes visiveis para o chamador (Paperclip §10).
+	group.GET("/performance", a.performance)
 	group.GET("/notifications", a.notifications)
 	group.GET("/notifications/stream", a.notificationStream)
 	group.GET("/creations", a.creations)
@@ -2696,6 +2698,35 @@ func (a *agentAPI) missions(c *gin.Context) {
 		missions = filtered
 	}
 	c.JSON(http.StatusOK, gin.H{"missions": missions})
+}
+
+// performance agrega o desempenho das missoes QUE O CHAMADOR PODE VER (E-625).
+//
+// O FILTRO POR ORGANIZACAO E' O MESMO DO `missions` ACIMA, E E' OBRIGATORIO. Sem ele o relatorio
+// contaria missoes de outro inquilino: uma rota que PARECE governada e filtra a menos e' pior do
+// que uma rota ausente, porque a ausente sabe-se que falta (foi a licao do D-5, quando a
+// identidade de missao no chat usava a funcao errada e um teste negativo passava por o recurso
+// nunca funcionar).
+func (a *agentAPI) performance(c *gin.Context) {
+	missions, err := a.scopedRuntime(c).ListMissions()
+	if err != nil {
+		writeAgentError(c, http.StatusInternalServerError, err)
+		return
+	}
+	if organizationID := agentOrganizationID(c); organizationID != "" {
+		filtered := missions[:0]
+		for _, mission := range missions {
+			if mission.OrganizationID == organizationID {
+				filtered = append(filtered, mission)
+			}
+		}
+		missions = filtered
+	}
+	// O relatorio DECLARA o escopo: um agregado apresentado sem escopo e' lido como global.
+	c.JSON(http.StatusOK, gin.H{
+		"performance": agent.AvaliarDesempenho(missions),
+		"scope":       "missoes visiveis para o chamador (organizacao da sessao)",
+	})
 }
 
 func (a *agentAPI) notifications(c *gin.Context) {
