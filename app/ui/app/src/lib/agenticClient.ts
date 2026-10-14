@@ -434,6 +434,27 @@ export type AgentPerformance = {
 };
 
 export const getPerformance = () => agentFetch<{ performance: AgentPerformance; scope: string }>("/api/agent/v1/performance");
+
+// HISTÓRICO DE VERSÕES DE SKILL (E-644), sobre as rotas do E-642.
+//
+// A VERSÃO RESTAURADA VOLTA **NÃO CONFIÁVEL**, e o tipo di-lo: `trusted` é obrigatório. O servidor
+// impõe `Trusted=false` no restauro (E-631) porque herdar confiança seria escalada silenciosa —
+// e a superfície tem de PODER mostrar isso, em vez de o esconder.
+export type SkillVersionRestaurada = {
+  id: string;
+  version: string;
+  description?: string;
+  trusted: boolean;
+};
+
+export const getSkillVersions = (id: string) =>
+  agentFetch<{ versions: string[] }>(`/api/agent/v1/skill-versions/${encodeURIComponent(id)}`);
+
+export const restoreSkillVersion = (id: string, version: string) =>
+  agentFetch<{ skill: SkillVersionRestaurada }>(
+    `/api/agent/v1/skill-versions/${encodeURIComponent(id)}/restore/${encodeURIComponent(version)}`,
+    { method: "POST", body: "{}" },
+  );
 export type BrowserEnvironmentStatus = {
   python_path?: string;
   python_ok: boolean;
