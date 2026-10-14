@@ -2684,7 +2684,10 @@
     "E A DIVERGENCIA QUE SOBRA E' OUTRA (E-499): a matriz cita 'docs/evidencias/screen-*.png', 'screen-slash-goal-*.png' e 'screen-ui2-import-*.png', e os tres globs dao ZERO. O manifesto passa (10 ficheiros) e nao os menciona. ⇒ *nao e' 'evidencia ausente': e' DIVERGENCIA ENTRE A MATRIZ E O MANIFESTO* - e essa distincao muda quem tem de corrigir o que: *a matriz cita evidencia que o contrato nao pede.*",
     "O 'FAILURE' DO CI E' A MINHA PROPRIA CANCELACAO - PROVADO PELO LOG (E-500): o job 'test (ubuntu-latest)' do run 38561372861 aparece com conclusion=failure. MEDIDO: o log completo tem 4328 caracteres e o tail e' SO' 'Terminate orphan process: pid (...) (sleep)' x40 + um warning de Node.js - SEM output de teste, SEM FAIL, SEM erro de compilacao. ⇒ *a job foi CANCELADA pelo concurrency: cancel-in-progress, e o GitHub marca cancelamento como failure.* ⇒ NAO HA' CI VERMELHO: ha' uma corrida cancelada.",
     "E ISSO E' A CONSEQUENCIA DO E-496, AGORA COM PROVA (E-500): o E-496 mediu que cada push reinicia o CI; aqui esta' a PROVA no log - a job cancelada e o seu 'failure' decorrente. *O achado e' o mesmo; a evidencia e' nova, e e' a mais directa: o log nao tem teste nenhum.*",
-    "E OS 22 CHECKS CONTAM UMA HISTORIA (E-500): 16 success, 3 skipped (linux/windows/go_license, decididos pelo job 'changes'), 4 in_progress (test macos/windows + race macos/ubuntu) e 1 'failure' que e' cancelamento. ⇒ *o que eu posso afirmar: os gates que CONCLUIRAM passaram; o que 'falhou' foi cancelado por mim.*"
+    "E OS 22 CHECKS CONTAM UMA HISTORIA (E-500): 16 success, 3 skipped (linux/windows/go_license, decididos pelo job 'changes'), 4 in_progress (test macos/windows + race macos/ubuntu) e 1 'failure' que e' cancelamento. ⇒ *o que eu posso afirmar: os gates que CONCLUIRAM passaram; o que 'falhou' foi cancelado por mim.*",
+    "O ADV-24 ESTAVA RESOLVIDO - E HA' UM TESTE QUE O DIZ POR NOME (E-501): o E-349 declarava 'NENHUM evento foi observado' e 'nao sei ainda'. MEDIDO: TestLacoRealPersisteEventosComMissaoValida PASSA e o log diz 'ADV-24 RESOLVIDO: 4 evento(s) do laco persistidos'. O t.Fatal da linha 132 diz 'ADV-24 NAO resolvido' - *o teste foi escrito PARA fechar este achado.*",
+    "DECIMA OITAVA VARIANTE DA MESMA CLASSE (E-501): declarei uma anomalia ABERTA ('nao sei ainda') sem procurar o teste que a fechava POR NOME. *O nome do teste continha a resposta: 'LacoRealPersisteEventos'.*",
+    "E O T4 COM MODELO LOCAL REAL PASSA (E-501): TestFixerComModeloLocalConsertaNoLacoReal -> 'T4 modelo=qwen2.5:7b especialista=calc passou=true exit=0 arquivos=[calc.go] erro=\"\"', veredito MESCLADO, duracao 12.9s. E TestRepairLoopSucceeds PASSA em 3.92s. ⇒ *o laco de reparo funciona com o Ollama local, medido.*"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -3463,6 +3466,10 @@
         {
           "id": "ADV-79",
           "estado": "CORRIGIDO E MEDIDO (E-467, 2026-10-14): `CreateOrder` devolvia `nil` EM SILENCIO na reentrega - nem o pedido existente, nem sinal de replay. O chamador que reentrega por queda de rede nao sabia se o pedido foi criado agora ou antes. Corrigido: o contrato passa a `(Company, CompanyOrder, error)` com `CompanyOrder.Replayed` (espelhando WorkflowRun.Replayed), e a rota responde **409 com o MESMO pedido** + idempotent_replay - como no agendamento (E-458). *Superficie pequena (3 chamadores) tornou a mudanca viavel; o Commerce().CreateOrder (dezenas de chamadores) NAO foi tocado.*"
+        },
+        {
+          "id": "ADV-24",
+          "estado": "RESOLVIDO E MEDIDO (E-501, 2026-10-14): o E-349 declarava 'NENHUM evento foi observado em NewMemoryStore().ListEvents' e 'nao sei ainda'. MEDIDO: `TestLacoRealPersisteEventosComMissaoValida` (`internal/agent/event_contract_probe_test.go:97`) PASSA e registra no log 'ADV-24 RESOLVIDO: 4 evento(s) do laco persistidos (tipos: mission.repair_attempt, mission.repair_failed_test, ...)'. *O teste diz literalmente 'ADV-24 NAO resolvido' se falhar - foi escrito PARA fechar este achado, e ja' o fechava.*"
         }
       ],
       "proximos_ataques": [],
