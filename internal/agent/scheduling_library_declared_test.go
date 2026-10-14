@@ -1,0 +1,90 @@
+package agent
+
+import (
+	"os"
+	"path/filepath"
+	"regexp"
+	"strconv"
+	"strings"
+	"testing"
+)
+
+// E-441 (ADV-65, P0 PARA A ENTREGA) — **O MOTOR DE AGENDAMENTO E' BIBLIOTECA SEM CHAMADOR. DECLARADO, COM CATRACA.**
+//
+// **MEDIDO (rodada 150)**: busca ampla por `NewSchedulingStore` em **todo** o repositorio:
+//
+//	EM PRODUCAO (fora de _test): 2  <- e sao o COMENTARIO e a DEFINICAO, em `scheduling.go` L115-116
+//	TESTE: 17 ocorrencias
+//
+// ⇒ *`SchedulingStore` — com `AddService`, `AddResource`, `Book`, `Cancel`, `Reschedule`, fila de espera e no-show —
+// **nunca e' construido fora dos testes*** ✗ ⇒ ***o motor existe, e' testado, e **nao esta' ligado a nada**: e' a
+// classe "capacidade sem superficie" que o proprio Estagio 26 do projeto ja' nomeou*** ✓.
+//
+// **POR QUE UMA CATRACA E NAO SO' UMA NOTA**: *"declarar biblioteca sem chamador" so' e' honesto **enquanto for
+// verdade***. Uma nota envelhece em silencio — *o MEDIO-1 (E-439) ficou obsoleto por rodadas sem ninguem notar* ✗.
+// Esta catraca **falha no dia em que o motor ganhar chamador em producao**, obrigando quem o ligar a **atualizar a
+// declaracao**. ***Declaracao sem guarda e' a mesma classe do instrumento que nunca dispara (E-432).***
+//
+// **O QUE ESTA CATRACA NAO FAZ**: ela **nao** diz que o motor esta' correto nem que a ausencia de chamador esta'
+// resolvida — *o ADV-65 pede **uma das duas**: ligar em producao **ou** declarar. Eu escolhi **declarar**, e o
+// *ligar* continua aberto* ✗.
+func TestMotorDeAgendamentoDeclaradoSemChamadorEmProducao(t *testing.T) {
+	raiz := filepath.Join("..", "..")
+	chamada := regexp.MustCompile(`NewSchedulingStore\s*\(`)
+	definicao := regexp.MustCompile(`^func NewSchedulingStore\s*\(`)
+
+	var emProducao []string
+	err := filepath.WalkDir(raiz, func(caminho string, entrada os.DirEntry, erro error) error {
+		if erro != nil {
+			return nil // *caminho ilegivel nao e' achado: e' ruido de varredura.*
+		}
+		if entrada.IsDir() {
+			nome := entrada.Name()
+			// `.git` e `_tmp` ficam de fora: artefato e historico nao sao codigo de produto.
+			if nome == ".git" || nome == "_tmp" || nome == "vendor" {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		if !strings.HasSuffix(caminho, ".go") || strings.HasSuffix(caminho, "_test.go") {
+			return nil
+		}
+		dados, erroLeitura := os.ReadFile(caminho)
+		if erroLeitura != nil {
+			return nil
+		}
+		for numero, linha := range strings.Split(string(dados), "\n") {
+			if !chamada.MatchString(linha) || definicao.MatchString(strings.TrimSpace(linha)) {
+				continue
+			}
+			// Comentario tambem nao e' chamador: *a linha L115 e' o doc da funcao, e conta-la seria falso positivo.*
+			aparado := strings.TrimSpace(linha)
+			if strings.HasPrefix(aparado, "//") {
+				continue
+			}
+			emProducao = append(emProducao, filepath.ToSlash(caminho)+":"+strconv.Itoa(numero+1)+" "+aparado)
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("varredura: %v", err)
+	}
+
+	if len(emProducao) > 0 {
+		t.Fatalf("DECLARACAO VENCIDA: o motor de agendamento passou a ter CHAMADOR em producao:\n  %s\n"+
+			"⇒ *A declaracao \"biblioteca sem chamador\" (E-441/ADV-65) deixou de ser verdadeira.* Atualize a evidencia "+
+			"E-441 e o registro do ADV-65, dizendo ONDE o motor esta' ligado - *em vez de apagar esta catraca*.",
+			strings.Join(emProducao, "\n  "))
+	}
+
+	// CONTROLE: e a varredura realmente ALCANCA o arquivo que define o motor? *Senao o teste passaria por nao achar
+	// nada - exatamente a classe do instrumento que nunca mede.*
+	caminhoMotor := filepath.Join(raiz, "internal", "agent", "scheduling.go")
+	if _, erroStat := os.Stat(caminhoMotor); erroStat != nil {
+		t.Fatalf("a varredura nao alcancou %s (%v) - *sem isto, o teste passaria por nao medir nada*", caminhoMotor, erroStat)
+	}
+	dados, _ := os.ReadFile(caminhoMotor)
+	if !strings.Contains(string(dados), "func NewSchedulingStore(") {
+		t.Fatal("o arquivo do motor foi alcancado mas nao contem a definicao - *a sonda esta' medindo o arquivo errado*")
+	}
+}

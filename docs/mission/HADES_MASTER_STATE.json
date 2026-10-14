@@ -2502,7 +2502,11 @@
     "A RETRATACAO NAO E' 'NAO HA DEFEITO' (E-439): ela cobre este achado. Os outros achados antigos do registo NAO foram reverificados, e a funcao que calcula consentGranted nao foi auditada nesta rodada",
     "CONTRAPROVA E LACUNA NAO PODEM DIVIDIR A MESMA CHAVE (E-440): contraprovas_medidas misturava 3 provas reais (mutacao faz teste nomeado falhar) com 2 mutacoes que 'NADA falha - sem defesa'. Quem lesse concluiria que ha 5 provas, quando ha 3 provas e 2 lacunas. Separadas em sem_defesa_medida. As duas lacunas seguem ABERTAS",
     "UMA MUTACAO QUE NAO MATA NENHUM TESTE NAO E' CONTRAPROVA: e' a MEDICAO DE UMA AUSENCIA. O defeito nao estava no codigo, estava em COMO O REGISTRO APRESENTA O QUE FOI MEDIDO - mesma classe de E-432 (instrumento que nunca dispara) e E-434 (validacao que recusa tudo)",
-    "DEFESA SEM PROVA E' CUSTO SEM BENEFICIO MEDIDO (E-440): para portao_por_etapa_off e reconferencia_inline_off ha tres saidas - escrever o teste que falta, declarar redundancia COM a medicao que a mostre, ou remover a defesa. Nenhuma das tres foi executada ainda"
+    "DEFESA SEM PROVA E' CUSTO SEM BENEFICIO MEDIDO (E-440): para portao_por_etapa_off e reconferencia_inline_off ha tres saidas - escrever o teste que falta, declarar redundancia COM a medicao que a mostre, ou remover a defesa. Nenhuma das tres foi executada ainda",
+    "O BACKLOG TEM DE ESTAR ONDE SE OLHA (E-441): o registro guarda os P0 em proximos_ataques, lista que eu NAO estava lendo - por isso 6 P0 (ADV-60, 61, 62, 63, 64, 65) ficaram invisiveis por rodadas enquanto eu trabalhava em achados ja fechados. Ler 'achados' nao e' ler 'o que falta fazer'",
+    "O MOTOR DE AGENDAMENTO E' BIBLIOTECA SEM CHAMADOR (E-441/ADV-65): busca ampla por NewSchedulingStore em todo o repo - em producao so' o comentario e a definicao (scheduling.go:115-116); 17 ocorrencias em testes. Declarado com catraca que DISPARA (contraprovado: chamador injetado => exit 1) e com controle de que a varredura alcanca o arquivo",
+    "DECLARACAO SEM GUARDA ENVELHECE (E-441): 'declarar biblioteca sem chamador' so' e' honesto enquanto for verdade. O MEDIO-1 (E-439) ficou obsoleto por rodadas sem ninguem notar - por isso a declaracao do ADV-65 vem com catraca, e nao com nota",
+    "BURACO NA NUMERACAO, DE NOVO (E-440): a evidencia E-440 foi mencionada na mensagem de commit da rodada 149 mas a LINHA nunca foi criada - o contador acusou (440 em vez de 441). E' a TERCEIRA vez que esta classe aparece (E-423 foi a primeira). Mensagem de commit NAO e' registro: o registro e' a linha no indice"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -3261,12 +3265,15 @@
         {
           "id": "ADV-74",
           "estado": "ABERTO (medido nesta rodada): `contraprovas_medidas` misturava 3 contraprovas REAIS com 2 mutacoes que NADA matam ('portao_por_etapa_off' e 'reconferencia_inline_off', ambas 'NADA falha - sem defesa'). Separadas em `sem_defesa_medida`. AS DUAS LACUNAS CONTINUAM ABERTAS: nao ha teste que cubra essas defesas, e a acao (teste que falta / redundancia medida / remover) NAO foi executada."
+        },
+        {
+          "id": "ADV-65",
+          "estado": "PARCIALMENTE FECHADO (E-441): a segunda alternativa do achado foi ATENDIDA - o motor de agendamento foi DECLARADO biblioteca sem chamador, com catraca que falha (contraprovado: exit 1) no dia em que ganhar chamador em producao, e com controle de que a varredura alcanca o arquivo. A PRIMEIRA alternativa - LIGAR o motor em producao - CONTINUA ABERTA."
         }
       ],
       "proximos_ataques": [
         "ADV-60 (P0): Availability deve delegar a OpenSlots/appointmentAllowedLocked OU ser removida/renomeada com limite declarado - hoje a evidencia E-314 afirma algo falso sobre ela",
         "ADV-61 (P0): shiftCoversMinute deve exigir que o minuto pertenca ao turno do dia corrente OU a cauda do dia anterior; testar Book(segunda 01:00) recusado",
-        "ADV-65 (P0 para a entrega): ligar o motor de agendamento em producao ou declarar que ele e' biblioteca sem chamador",
         "ADV-62: teste 'ciclo com NextRunAt futuro nao avanca no tick' (a sonda do auditor ja' e' o teste)",
         "ADV-63: teste que segure a trava da org A e mostre a org B progredindo",
         "ADV-64: rodar OpenSlots numa data de transicao de DST exigindo horarios distintos"
