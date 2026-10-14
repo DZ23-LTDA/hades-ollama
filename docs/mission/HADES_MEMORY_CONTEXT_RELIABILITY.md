@@ -285,3 +285,23 @@ que o E-597 fechou no outro lado.
 **E uma nota que não é detalhe:** (1) faz o preâmbulo do chat passar a carregar estado de uma
 missão. Isso tem de ser **auditável** — quem injectou o quê, em que missão — senão troca-se um
 limite por um caminho sem rasto. O histórico bruto (E-571) é o sítio onde esse rasto já existe.
+
+### D-6. As falhas LOCAIS não são regressões — e não foi preciso linha de base para o saber
+
+Correr a fatia larga nesta máquina dá pacotes vermelhos que **passam no CI com o MESMO código**:
+
+| pacote | local (Windows, esta máquina) | CI (macos, `c6171257d`) |
+| --- | --- | --- |
+| `cmd/launch` | FAIL 68,9 s | **ok 19.741s** |
+| `create` | FAIL 4,3 s | **ok 2.102s** |
+| `mlxrunner/model/qwen3_5` | FAIL 0,7 s | **ok 2.741s** |
+| `parser` | FAIL 1,7 s | **ok 1.114s** |
+
+Além de `app/...` (na base `4b3e21854`: **37 linhas FAIL sem nenhuma mudança minha** — medido
+com *worktree* no ponto de fusão). A causa é a que o `AGENTS.md` documenta: **nesta máquina o
+temp/`APPDATA` do usuário negam escrita**, e o sintoma aparece como falha de teste, não como
+erro de ambiente.
+
+**Isto é melhor do que uma linha de base**: não é preciso correr noutro commit para saber que
+não é regressão — **o CI já correu o mesmo código e passou**. Regra que fica: *antes de
+atribuir uma falha local ao código, verificar se o CI, com o mesmo código, a tem.*
