@@ -164,3 +164,23 @@ despertar coalescido compõe-se sobre a fila durável que já tem lease e idempo
 da janela produzem **um** despertar que carrega **todas** as razões — e que sinais fora da janela,
 ou de agentes diferentes, **não** se fundem. *A garantia vai para onde é testável; a ligação à
 fila vem depois, e é a parte que pode falhar por razões que o teste puro não vê.*
+
+### 7.1 Auditoria do WIRING — e ela qualifica o E-633
+
+Antes de ligar o despertar coalescido à fila, medi o que a fila **já faz**:
+- `queue.go:216` — `JobQueue.Enqueue(missionID, maxAttempts)`;
+- `queue_test.go:287` — **`TestJobQueueEnqueueIsIdempotentByMission`**: enfileirar a mesma missão
+  duas vezes **não duplica** o job;
+- `runtime.go:1947` — `Runtime.EnqueueMission(missionID)` é onde um despertar vira job.
+
+**Conclusão que qualifica o E-633**: a fila durável **já coalesce por MISSÃO**. O que ela **não**
+faz é fundir **razões diferentes** (tarefa + mensagem + rotina) num só despertar, nem é escopada
+por **agente** (o `QueueJob` carrega `missionID`, não um agente).
+
+**Desencontro de modelos, dito antes de alguém o descobrir a meio**: a unidade da fila é a
+**missão**; o coalescimento do E-633 é por **agente**. Ligá-los exige um mapeamento
+agente→missões, que **não medi**.
+
+**Consequência honesta**: o ganho de **carga** do E-633 é **menor** do que eu supus (a fila já
+deduplica por missão); o que ele acrescenta é juntar as **razões** numa só notificação — ganho de
+**observabilidade e experiência**, não de volume. Fica escrito para não se vender o contrário.
