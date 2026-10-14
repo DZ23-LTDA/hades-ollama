@@ -2433,7 +2433,9 @@
     "O MESMO MINUTO TEM DUAS RESPOSTAS OPOSTAS (E-412/ADV-61): 01:00 de segunda esta' FORA do turno de segunda 22:00-02:00; 01:00 de terca esta' DENTRO da cauda. A minha primeira correcao decidiu pelo tamanho do minuto e trocou as duas - o teste TestTurnoQueCruzaAMeiaNoiteUsaODiaLocalCorreto (E-328) me pegou. Quem sabe o dia e' o shiftCovering, e agora ele devolve diaAnterior",
     "ERRAR A PRIMEIRA CORRECAO NAO E' O PROBLEMA (E-412): o problema seria nao ter com que comparar. O teste que me pegou existia desde o E-328, tres rodadas antes desta auditoria",
     "A FUNCAO NAO MUDOU DE COMPORTAMENTO - MUDOU DE PROMESSA (E-413/ADV-60): Availability nao consulta expediente, e o comentario dizia que ela era a funcao para consultar antes de oferecer horario. O contrato real estava no teste que a exercita ('derivar dos agendamentos persistidos'). Nao reescrevi a funcao: reescrever contradiria esse teste e nao ha' chamador em producao para migrar",
-    "REGISTRO PUBLICO CORRIGIDO (E-413): a E-314 afirma que 'esta fatia fecha esse buraco'. O buraco foi fechado em OpenSlots, funcao NOVA. A linha historica nao e' reescrita; E-413 supersede, e o estado aponta as duas"
+    "REGISTRO PUBLICO CORRIGIDO (E-413): a E-314 afirma que 'esta fatia fecha esse buraco'. O buraco foi fechado em OpenSlots, funcao NOVA. A linha historica nao e' reescrita; E-413 supersede, e o estado aponta as duas",
+    "A SONDA DO AUDITOR VIROU PROVA (E-414/ADV-62): o ciclo com NextRunAt futuro agora tem teste com contraprova - desligar o portao de supervisor.go:401 FAZ o teste falhar, e o controle (ciclo vencido) segue passando",
+    "UM TESTE COM DOIS PROPÓSITOS FALHA PELO MOTIVO ERRADO (E-414): pus um controle na mesma execucao (acrescentar um ciclo vencido e exigir avanco) e ele falhou, porque a lista de empresas e' lida/cacheada por tick. O teste ficou com um proposito, e o controle e' o teste que ja' existia"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -3130,7 +3132,7 @@
           "severidade": "MEDIA (caminho sem defesa)",
           "descricao": "next_run_at de CICLOS (supervisor.go:400-403) pode ser removido sem nenhum teste falhar (mutacao s5: 0 falhas em 20 padroes). Sonda: ciclo com NextRunAt=+24h => CyclesAdvanced=1 e 1 missao criada. CONTRASTE: ignorar NextRunAt no claim de workflow (context.go:1196) FALHA dois testes",
           "descoberto_por": "6a revisao adversarial independente (subagente, contexto fresco) com go test -overlay e sondas",
-          "estado": "REGISTRADO, NAO CORRIGIDO",
+          "estado": "CORRIGIDO: TestCicloComProximaExecucaoNoFuturoNaoAvancaNoTick exige CyclesAdvanced=0, NextRunAt inalterado e LastRunAt nulo; a contraprova (portao desligado) FAZ o teste falhar, e o controle (ciclo vencido) segue verde. A sonda do auditor virou prova",
           "evidencia": "E-411"
         },
         {
@@ -3830,6 +3832,7 @@
     "E-410": "checker de codificacao com teste-do-teste (7 casos) e dispensa obsoleta acusada",
     "E-411": "6a auditoria (agendamento): 14/16 mutacoes detectadas, 4 defeitos reais",
     "E-412": "ADV-61 corrigido: shiftCovering devolve diaAnterior; o mesmo minuto tem respostas opostas",
-    "E-413": "ADV-60: Availability declara o limite e um teste o fixa; E-314 superseded"
+    "E-413": "ADV-60: Availability declara o limite e um teste o fixa; E-314 superseded",
+    "E-414": "ADV-62: teste do ciclo com NextRunAt futuro, com contraprova e controle"
   }
 }
