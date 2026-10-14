@@ -239,6 +239,13 @@ type ToolContext struct {
 	Workspace      string
 	WorkspaceRoot  *os.Root
 	OrganizationID string
+	// ProjectID e' o projeto da missao. Ate' aqui o ToolContext levava a ORGANIZACAO mas nao o
+	// PROJETO — e uma ferramenta que precisa de procurar memoria (**memory.search**, E-618)
+	// precisa do projeto para saber ONDE procurar. Aceitar o projeto pelo `input` seria pior: um
+	// agente poderia pedir a memoria de OUTRO projeto. Vazio significa "missao sem projeto", e a
+	// ferramenta RECUSA procurar nesse caso (a mesma regra do bootstrap: sem projeto declarado,
+	// nenhuma memoria e' injetada).
+	ProjectID string
 	// Consent é o registro de consentimento/opt-out aplicado pelas ferramentas que
 	// falam com terceiros (estágio 27). Ausente significa NEGAR o contato.
 	Consent                   *ConsentRegistry
