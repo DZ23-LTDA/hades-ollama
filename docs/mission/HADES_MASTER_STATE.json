@@ -2466,7 +2466,10 @@
     "A PRE-ETAPA DO COMPLEMENTO 43-47 ESTA' CONCLUIDA (E-427): HADES_ADAPTIVE_COWORK_GAP_MATRIX.md com 33 capacidades classificadas, ADR-001..005, lacunas P0 nomeadas, bloqueios externos declarados (FFmpeg) e ordem de PRs proposta",
     "EU DIAGNOSTIQUEI ERRADO DUAS VEZES E AS DUAS CAIRAM MEDINDO (E-428): escrevi que MIN_COST estava ausente (existe, com outro nome: RoutePreferenceCheapest) e ia escrever que PreferredProvider era bonus (e' filtro rigido). O complemento avisa 'nao suponha ausencia com base somente no nome' - e eu cai nela na minha propria matriz",
     "HARNESSID JA EXISTE E E' USADO (E-428): a linha 'P0: provedor != harness' da matriz estava errada. HarnessID (registry.go:91,103) e' injetado no envelope da requisicao por injectHarnessMetadata (proxy.go:318-319). Tres linhas da matriz foram corrigidas por medicao",
-    "PIN DE MODELO COMO RESTRICAO RIGIDA (E-428): PinnedModelID filtra candidatos como LocalOnly; pin nao honrado devolve ErrNoRoute, nunca substituto silencioso. Contrapova: com o filtro desligado o teste FALHA escolhendo o modelo forte"
+    "PIN DE MODELO COMO RESTRICAO RIGIDA (E-428): PinnedModelID filtra candidatos como LocalOnly; pin nao honrado devolve ErrNoRoute, nunca substituto silencioso. Contrapova: com o filtro desligado o teste FALHA escolhendo o modelo forte",
+    "UM VIEWER APROVAVA A PROPRIA ESCRITA (E-429/ADV-68): as rotas de aprovacao dos service agents nao chamavam requireApprovalApprover e o ator vinha do CORPO. Sonda: viewer decide 200, a escrita executou no CRM (oportunidades 1->2), redefiniu aprovadores, e a trilha gravou 'presidente-da-empresa' escolhido pelo cliente. A mesma sessao numa rota irma recebia 403. O teste chamado EnforceRole media so' a lista de aprovadores",
+    "O FIXTURE NUNCA PERSONIFICOU NINGUEM (E-429): era por isso que os testes desta linha mandavam o ator no corpo - a unica identidade disponivel era a que o cliente escrevesse. Agora o fixture semeia RoleOwner + agent.user, e o caso viewer tem teste proprio com controle de que admin passa",
+    "A TRAVA QUE EU ESCREVI EXIGIA UM DIRETORIO QUE NINGUEM CRIA (E-430): withFileLock nao cria diretorios-pai, entao uma organizacao sem aprovacao passou a receber 400 com erro de SO cru onde antes era 404. E' a TERCEIRA repeticao do defeito que store.go:968 documenta ter corrigido na raiz - eu escrevi a terceira. Quem me mostrou foi o meu proprio teste de autorizacao, que devolveu 400 no subteste do viewer"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -3197,6 +3200,14 @@
         {
           "id": "ADV-67",
           "estado": "FECHADO: reason= e agent= entraram na impressao digital; o teste novo varia CADA PARTE SOZINHA, com controle de que pedido identico produz a mesma impressao. Antes, 9 de 9 componentes eram removiveis com a suite inteira verde."
+        },
+        {
+          "id": "ADV-68",
+          "estado": "FECHADO: as rotas de aprovacao dos service agents passaram a exigir owner/admin (requireApprovalApprover) e a usar o ator da SESSAO, nao o do corpo. O fixture passou a semear sessao (antes nao personificava ninguem) e um teste novo mede o que o nome do teste antigo prometia: viewer => 403 nas duas rotas, com controle de que admin passa. Medido pelo auditor: viewer decidia (200), a escrita executava no CRM (oportunidades 1->2), redefinia aprovadores, e a trilha gravava o nome do cliente."
+        },
+        {
+          "id": "ADV-69",
+          "estado": "FECHADO: regressao MINHA - a trava do E-424/426 exigia diretorio pre-existente e devolvia 400 com erro de SO cru onde antes era 404. Corrigido com os.MkdirAll antes da trava no Consume e no Decide. Era a terceira repeticao do defeito que store.go:968 diz ter corrigido na raiz."
         }
       ],
       "proximos_ataques": [

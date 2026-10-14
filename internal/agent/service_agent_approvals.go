@@ -567,6 +567,10 @@ func (s *ServiceAgentApprovalStore) Decide(organizationID, approvalID string, ap
 		// Sem persistência não existe estado compartilhado a proteger (raiz vazia = store sem arquivo).
 		return s.decideLocked(organizationID, approvalID, approved, actorID, reason, now)
 	}
+	// E-430 / ALTO-3: mesma correção do `Consume` — *a pasta tem de existir antes de a trava existir.*
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+		return ServiceAgentApproval{}, err
+	}
 	var resultado ServiceAgentApproval
 	err := withFileLock(path+".lock", func() error {
 		var errInterno error
@@ -712,6 +716,20 @@ func (s *ServiceAgentApprovalStore) Consume(organizationID, approvalID string, n
 	if path == "" {
 		// Sem persistência não existe estado compartilhado a proteger (raiz vazia = store sem arquivo).
 		return s.consumeLocked(organizationID, approvalID, now)
+	}
+	// 🚨 E-430 / ALTO-3 (medido por auditoria independente): **a trava que eu acrescentei em E-424 exigia um
+	// diretório que ninguém cria.** `withFileLock` usa `CreateFile(..., OPEN_ALWAYS)` no Windows e `open(..., O_CREAT)`
+	// no Unix — **nenhum dos dois cria diretórios-PAI** ⇒ *numa organização que nunca teve aprovação, o erro era
+	// `open file lock: O sistema não pode encontrar o caminho especificado.`* ✗, e o `switch` da rota mandava isso
+	// para **400** — *um erro de INFRAESTRUTURA respondendo como erro de CLIENTE*, onde antes era **404**.
+	//
+	// E é literalmente a **terceira repetição** do defeito que `store.go:968-973` documenta ter corrigido na raiz:
+	//   *"dois stores já falharam na PRIMEIRA gravação com 'caminho não encontrado' … Corrigir na raiz evita a
+	//   terceira repetição do mesmo defeito."*
+	//
+	// ***Uma trava adquirida antes de a pasta existir não é proteção: é um novo jeito de falhar.***
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+		return ServiceAgentApproval{}, err
 	}
 	var resultado ServiceAgentApproval
 	err := withFileLock(path+".lock", func() error {
