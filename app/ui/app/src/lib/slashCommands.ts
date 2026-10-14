@@ -1,4 +1,4 @@
-export type SlashCommandId = "goal" | "plan" | "test" | "review";
+export type SlashCommandId = "goal" | "plan" | "test" | "review" | "spark" | "cowork" | "reject";
 
 export type SlashCommand = {
   id: SlashCommandId;
