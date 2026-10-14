@@ -2431,7 +2431,9 @@
     "A LINHA NAO ESTA LIGADA (E-411/ADV-65): SchedulingStore e NewSupervisorScheduler nao tem chamador em producao - so' em _test.go. O que esta' provado em producao e' o agendador de WORKFLOW",
     "A PROVA DA RELEITURA E' PROBABILISTICA (E-411/ADV-63): sem invalidateCache, 18 de 20 execucoes falham - em ~10% a remocao passa despercebida",
     "O MESMO MINUTO TEM DUAS RESPOSTAS OPOSTAS (E-412/ADV-61): 01:00 de segunda esta' FORA do turno de segunda 22:00-02:00; 01:00 de terca esta' DENTRO da cauda. A minha primeira correcao decidiu pelo tamanho do minuto e trocou as duas - o teste TestTurnoQueCruzaAMeiaNoiteUsaODiaLocalCorreto (E-328) me pegou. Quem sabe o dia e' o shiftCovering, e agora ele devolve diaAnterior",
-    "ERRAR A PRIMEIRA CORRECAO NAO E' O PROBLEMA (E-412): o problema seria nao ter com que comparar. O teste que me pegou existia desde o E-328, tres rodadas antes desta auditoria"
+    "ERRAR A PRIMEIRA CORRECAO NAO E' O PROBLEMA (E-412): o problema seria nao ter com que comparar. O teste que me pegou existia desde o E-328, tres rodadas antes desta auditoria",
+    "A FUNCAO NAO MUDOU DE COMPORTAMENTO - MUDOU DE PROMESSA (E-413/ADV-60): Availability nao consulta expediente, e o comentario dizia que ela era a funcao para consultar antes de oferecer horario. O contrato real estava no teste que a exercita ('derivar dos agendamentos persistidos'). Nao reescrevi a funcao: reescrever contradiria esse teste e nao ha' chamador em producao para migrar",
+    "REGISTRO PUBLICO CORRIGIDO (E-413): a E-314 afirma que 'esta fatia fecha esse buraco'. O buraco foi fechado em OpenSlots, funcao NOVA. A linha historica nao e' reescrita; E-413 supersede, e o estado aponta as duas"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -3112,7 +3114,7 @@
           "severidade": "ALTA (afirmacao publicada FALSA)",
           "descricao": "Availability (scheduling.go:393-423) continua inventando horario: nao consulta turno, fechamento, intervalo nem fuso. A E-314 afirma que o buraco foi fechado, mas ele foi fechado em OpenSlots (funcao NOVA) e Availability ficou intacta. SONDA: org sem turno, domingo 03:00 => Availability devolve 4 slots livres, OpenSlots devolve 0 e Book recusa",
           "descoberto_por": "6a revisao adversarial independente (subagente, contexto fresco) com go test -overlay e sondas",
-          "estado": "REGISTRADO, NAO CORRIGIDO",
+          "estado": "CORRIGIDO COM LIMITE DECLARADO: Availability NAO consulta expediente, e o comentario agora diz isso e aponta OpenSlots como a funcao para oferecer horario. Um teste fixa o limite e falha se ele mudar sem a documentacao. A E-314 (que afirmava o buraco fechado) fica superseded por E-413 - a linha historica nao e' reescrita",
           "evidencia": "E-411"
         },
         {
@@ -3724,6 +3726,9 @@
       },
       "receita_documentada_em": "AGENTS.md (secao 'Windows: redirecione TMP/TEMP quando o teste nao roda')",
       "divisao_de_responsabilidades": "o spec de scheduleFlow declara no cabecalho: a UI prova o CONTRATO cliente->HTTP (rotas interceptadas, vite preview sem backend Go); a SEMANTICA do grafo (ordem topologica, bloqueio de dependentes, decodeJSON estrito) e' provada pelos testes Go (10 em internal/agent/schedule_flow_test.go, 3 em server/agent_schedule_flow_test.go). A ausencia de negativas na suite de UI e' POR DESENHO"
+    },
+    "afirmacoes_superseded": {
+      "E-314": "afirma que 'esta fatia fecha esse buraco' em Availability; o buraco foi fechado em OpenSlots (funcao NOVA) e Availability ficou intacta. Superseded por E-413, que declara o limite e o fixa com teste"
     }
   },
   "unlinked_evidence": {
@@ -3824,6 +3829,7 @@
     "E-409": "varredura do repo inteiro: 2 achados legitimos (detector e fixture) e 2 notas corrigidas",
     "E-410": "checker de codificacao com teste-do-teste (7 casos) e dispensa obsoleta acusada",
     "E-411": "6a auditoria (agendamento): 14/16 mutacoes detectadas, 4 defeitos reais",
-    "E-412": "ADV-61 corrigido: shiftCovering devolve diaAnterior; o mesmo minuto tem respostas opostas"
+    "E-412": "ADV-61 corrigido: shiftCovering devolve diaAnterior; o mesmo minuto tem respostas opostas",
+    "E-413": "ADV-60: Availability declara o limite e um teste o fixa; E-314 superseded"
   }
 }

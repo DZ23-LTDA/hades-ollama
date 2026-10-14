@@ -386,10 +386,23 @@ type AvailabilitySlot struct {
 	Free     bool      `json:"free"`
 }
 
-// Availability devolve a agenda de um recurso numa janela, marcando o que está livre e o que está ocupado.
+// Availability devolve os slots de uma JANELA de relógio, marcando o que está livre e o que está ocupado.
 //
-// A resposta NÃO inventa horários: cada slot ou é livre, ou tem o agendamento que o ocupa. É esta função que os
-// agentes de voz/WhatsApp/Telegram/recepção devem consultar antes de oferecer horário ao cliente.
+// ⚠️ LIMITE DECLARADO (E-413 / ADV-60, 6ª auditoria independente): **esta função NÃO consulta expediente.**
+// Ela decide **apenas por agendamentos** — não olha turno, fechamento por data, intervalo nem fuso. *Um slot
+// marcado `Free` aqui pode estar às 03:00 de um domingo, com a empresa fechada.*
+//
+// 🚨 E a versão anterior deste comentário dizia o contrário: *"A resposta NÃO inventa horários … É esta função
+// que os agentes de voz/WhatsApp/Telegram/recepção devem consultar antes de oferecer horário"* ✗ — **promessa
+// que o corpo não cumpria**, e a **E-314** chegou a registrar que o buraco tinha sido fechado. Ele foi fechado
+// em **`OpenSlots`** (`scheduling_hours.go:224`), função **nova**; esta ficou intacta.
+//
+// ⇒ **PARA OFERECER HORÁRIO AO CLIENTE, USE `OpenSlots`** (*que aplica turno, fechamento, intervalo, fuso e
+// antecedência*). Esta função serve para **cruzar** uma janela com a agenda já marcada.
+// ***A função não mudou de comportamento — mudou de promessa.***
+//
+// O contrato real é o do teste que a exercita (`scheduling_test.go:120`): *"a disponibilidade precisa derivar
+// dos agendamentos persistidos"*.
 func (s *SchedulingStore) Availability(organizationID, resourceID string, from, to time.Time, step time.Duration) ([]AvailabilitySlot, error) {
 	if s == nil || step <= 0 || !to.After(from) {
 		return nil, fmt.Errorf("%w: janela e passo precisam ser válidos", ErrSchedulingInvalid)
