@@ -2234,6 +2234,14 @@ func (r *Runtime) Run(ctx context.Context, id string) (runErr error) {
 		if !r.capabilityPolicy.Allows(tool.Descriptor(), mission.Capabilities) {
 			return r.failStep(mission, step, fmt.Errorf("%w: %s", ErrCapabilityDenied, step.Kind))
 		}
+		// 🛡️ ADV-58/2 (5ª auditoria independente, MEDIDO): este portão por etapa é **DEFESA EM PROFUNDIDADE**, e hoje
+		// ele é **inalcançável** — o portão de entrada `approvalsReady` (acima) já exige que TODA aprovação esteja
+		// decidida, e `validateMissionApprovalBindings` exige registro para cada etapa com `RequiresApproval`. A prova:
+		// desligar esta linha **não faz nenhum teste falhar** (*enquanto desligar `approvalsReady` derruba
+		// `TestRuntimeNaoProduzEfeitoComAprovacaoPendenteNaNada`*). ***Nós o mantemos de propósito***: ele é o único lugar
+		// que sabe **bloquear UMA etapa** e levar a missão a `MissionAwaitingApproval` conservando as demais — *se um dia
+		// `approvalsReady` passar a permitir aprovação por etapa, é este bloco que sustenta o comportamento.*
+		// *Código redundante que ninguém sabe que é redundante vira lenda; redundância declarada é defesa.*
 		if step.RequiresApproval && !r.stepApproved(mission, step.ID) {
 			expectedVersion = mission.Version
 			step.State = StepBlocked
@@ -2248,6 +2256,12 @@ func (r *Runtime) Run(ctx context.Context, id string) (runErr error) {
 			}
 			return nil
 		}
+		// 🛡️ ADV-58/3 (MEDIDO): reconferência inline do `PayloadSHA256` **antes** de executar — também **defesa em
+		// profundidade** e também **inalcançável hoje**: nenhum código altera `mission.Plan`/`Input` depois da criação
+		// (`runtime.go:1263-1301` e `2480/2482` são os únicos escritores), então o payload aprovado não pode mudar entre a
+		// decisão e a execução. *Desligá-la não faz nenhum teste falhar.* Mantida pelo mesmo motivo do bloco acima: é a
+		// **última** linha entre um payload aprovado e o `tool.Execute` — ***e a última linha é o pior lugar para confiar
+		// em "não muda hoje"***. A cobertura indireta do vínculo vem de `TestRuntimeInvalidatesApprovalWhenToolDescriptorChanges`.
 		if approval, ok := approvalForStep(mission, step.ID); ok && approval.Status == ApprovalApproved && approval.PayloadSHA256 != "" {
 			payloadHash, hashErr := approvalPayloadSHA256(*step)
 			if hashErr != nil || payloadHash != approval.PayloadSHA256 {

@@ -2399,7 +2399,11 @@
     "O PORT E' REESCRITA, NAO DELTA (E-399): com os 5 arquivos novos + o delta de tasks.tsx sobre a main, o teste da' 7 testes/4 falhas, e as 4 apontam TODAS para o ProductWorkspacePage (estado vazio, role=status do banner, 2 alertas). NewTaskPage ja' renderiza role=alert. E eu quase trouxe o ProductWorkspacePage INTEIRO da branch, 1176 commits atras - teria revertido progresso de UI. Copiar arquivo de branch velha nao e' integracao: e' regressao disfarcada de merge",
     "A PROVA DE SEGURANCA MEDIA A SI MESMA (E-400/ADV-58, GRAVE): mutation_gate_test.go:49 define closures locais que reimplementam 'if RequiresApproval && !approved' e compara uma com a outra. Com os 4 pontos de aprovacao do runtime desligados, o teste continua PASS. E a 6a vez que a mesma classe aparece - a primeira na linha de SEGURANCA",
     "O MECANISMO RESISTIU, A PROVA NAO (E-400): approvalsReady, validateMissionApprovalBindings e tenant+nonce sao load-bearing (desligar cada um derruba testes especificos); nenhum caminho executa efeito sem approvalsReady; sem TOCTOU exploravel; sem vacidade. O problema e' cobertura de duas linhas redundantes e um teste tautologico",
-    "A ARVORE EM QUE SE MEDE FAZ PARTE DA MEDICAO (E-400): eu vi dois arquivos meus 'sumidos' e alertei - era eu mesmo na branch feat/nova-tarefa-port (base da main), onde os arquivos da branch perf/adv57 nao existem. A auditora cometeu o MESMO erro na primeira rodada dela (um mutante apagado, teste rodando o codigo original, falso PASS). Medir na arvore errada nao e' sabotagem: e' medicao invalida"
+    "A ARVORE EM QUE SE MEDE FAZ PARTE DA MEDICAO (E-400): eu vi dois arquivos meus 'sumidos' e alertei - era eu mesmo na branch feat/nova-tarefa-port (base da main), onde os arquivos da branch perf/adv57 nao existem. A auditora cometeu o MESMO erro na primeira rodada dela (um mutante apagado, teste rodando o codigo original, falso PASS). Medir na arvore errada nao e' sabotagem: e' medicao invalida",
+    "A TAUTOLOGIA VIROU TESTE QUE PODE FALHAR (E-401/ADV-58/1): o teste de mutacao de aprovacao chamava closures locais e comparava uma com a outra; agora chama approvalsReady, stepApproved e validateMissionApprovalBindings de verdade, e FALHA quando approvalsReady e' desligado (o antigo passava com os 4 desligados)",
+    "REDUNDANCIA DECLARADA E' DEFESA (E-402/ADV-58/2 e /3): as duas linhas inalcancaveis hoje foram MANTIDAS de proposito, com o motivo escrito no codigo - em vez de removidas para satisfazer uma metrica de cobertura",
+    "O TESTE REAL ME CORRIGIU (E-401): eu supunha que validateMissionApprovalBindings checasse o STATUS; ele valida o VINCULO e o status e' do approvalsReady. E o DLP recusou persistir payload com Kind git.merge.origin - a guarda funcionando",
+    "ASSERCAO QUE NAO CORRESPONDE AO NOME E' PROMESSA NAO ASSINADA (E-402/ADV-58/4): TestRuntimeNaoExecutaEtapaSemAprovacaoNaCadeia passava com o runtime TOTALMENTE sem aprovacao; renomeado para TestRuntimeComAprovacaoNegadaNaoEscreveNemProduzArtefato"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -3063,7 +3067,7 @@
           "id": "ADV-58",
           "severidade": "GRAVE (a prova de seguranca mede a si mesma)",
           "descoberto_por": "5a revisao adversarial independente (subagente, contexto fresco) com mutacao por go test -overlay",
-          "estado": "REGISTRADO, NAO CORRIGIDO",
+          "estado": "/1 CORRIGIDO e contraprovado (o teste agora chama os gates reais e FALHA com approvalsReady desligado). /2 e /3 DECLARADOS como defesa em profundidade inalcancavel hoje, mantidos de proposito com o motivo escrito. /4 CORRIGIDO (teste renomeado para o que o corpo prova)",
           "evidencia": "E-400",
           "descricao": "mutation_gate_test.go:49 TestMutationHarnessHITLApprovalBypass NAO testa o gate real: closures locais que reimplementam a condicao e se comparam entre si. Contraprova: com os 4 pontos de aprovacao do runtime desligados o teste continua PASS. + runtime.go:2237 (portao por etapa) e 2251-2256 (reconferencia inline do PayloadSHA256) sem cobertura isolada. + mission_multi_step_approval_test.go:116 cujo nome promete mais do que o corpo prova. RESISTIU: approvalsReady, validateMissionApprovalBindings, tenant+nonce (todos load-bearing), nenhum caminho sem approvalsReady, nenhum TOCTOU exploravel, sem vacidade"
         }
@@ -3598,6 +3602,8 @@
     "E-397": "revisao por arquivo: 12 integradas, 4 so' edicoes, 3 com lacuna real (UI/mobile)",
     "E-398": "a lacuna de UI e' ACOPLADA: o teste falha sem as edicoes de componente",
     "E-399": "o port e' reescrita: as 4 falhas apontam para o ProductWorkspacePage (+74)",
-    "E-400": "5a auditoria (aprovacoes): 1 GRAVE (teste de mutacao nao testa o gate) + 3 MEDIOS"
+    "E-400": "5a auditoria (aprovacoes): 1 GRAVE (teste de mutacao nao testa o gate) + 3 MEDIOS",
+    "E-401": "teste de mutacao tautologico reescrito para chamar os gates reais, com contraprova",
+    "E-402": "ADV-58/2, /3 e /4: redundancia declarada e teste renomeado para o que prova"
   }
 }
