@@ -2561,7 +2561,11 @@
     "DEFEITO REAL E ADJACENTE A SEGURANCA (E-460): a IdempotencyKey colidia entre CONTACTOS DIFERENTES. Medido: cliente-B (whatsapp) recebeu ErrSchedulingDuplicate por causa de um agendamento do cliente-A (voice) - e, pela mudanca de E-458, recebeu o agendamento do OUTRO junto com o erro. O comentario prometia 'a MESMA intencao vinda do mesmo CANAL'; o codigo comparava SO' A CHAVE. O escopo que faltava e' o que separa duas PESSOAS",
     "O ESCOPO CERTO E' O CONTACTO, NAO O CANAL (E-460): o mesmo cliente a falar por voz e por WhatsApp e' a MESMA intencao - incluir o Channel faria a reentrega por outro canal criar um SEGUNDO agendamento, que e' exactamente o que a chave existe para impedir. A comparacao passou a exigir ContactID igual, e o comentario passou a dizer o que o codigo faz",
     "UM COMENTARIO QUE PROMETE MAIS DO QUE O CODIGO ENTREGA E' UMA PROMESSA QUE ALGUEM VAI COBRAR (E-460): foi o proprio comentario ('vinda do mesmo canal') que denunciou a assimetria - eu a declarei em E-459 como nao medida, e ao medi-la ela era um defeito real. *Declarar o limite e' o que permite encontra-lo.*",
-    "E O DEFEITO FOI ENCONTRADO PELA DECLARACAO DA RODADA ANTERIOR (E-460): em E-459 eu escrevi 'assimetria entre o que o comentario promete e o que o codigo faz, declarada aqui e NAO medida'. Uma rodada depois, medir essa declaracao achou um defeito que recusava o agendamento de um cliente por causa do agendamento de outro"
+    "E O DEFEITO FOI ENCONTRADO PELA DECLARACAO DA RODADA ANTERIOR (E-460): em E-459 eu escrevi 'assimetria entre o que o comentario promete e o que o codigo faz, declarada aqui e NAO medida'. Uma rodada depois, medir essa declaracao achou um defeito que recusava o agendamento de um cliente por causa do agendamento de outro",
+    "O PADRAO PEGOU O SEGUNDO IRMAO (E-461): depois do ADV-75 (idempotencia sem escopo de CONTACTO, no agendamento), a varredura do padrao - 'comparar um identificador SEM o escopo a que ele pertence' - encontrou o motor de WORKFLOW: a chave era comparada sem o workflow, e e' procurada ANTES de o workflow ser resolvido. MEDIDO: Run(org, wf-B, K) devolveu um run do wf-A. Nao era so' pular: era devolver o resultado do OUTRO workflow",
+    "A CHAVE VEM DO EVENTO, NAO DO WORKFLOW (E-461): id de mensagem, id de transacao. Dois workflows reagindo ao MESMO evento e' o caso mais natural de todos - e o segundo NAO EXECUTAVA. O escopo de TENANT ja' estava garantido (org.Runs e' por organizacao), e e' por isso que o defeito nao atravessava organizacoes",
+    "A VALIDACAO DO MOTOR RECUSOU O MEU TESTE (E-461): eu usei Kind 'noop' e o motor devolveu ErrWorkflowUnknownNodeKind ('nada de pular em silencio'). Os Kind validos sao WorkflowNodeTrigger, WorkflowNodeCondition e WorkflowNodeAction. *O produto recusou o que eu nao medi - a mesma classe de tudo que esta missao registra.*",
+    "DECLARAR O PADRAO E' O QUE O ENCONTRA (E-460/E-461): o ADV-75 foi encontrado porque E-459 declarou uma assimetria nao medida; o ADV-76 foi encontrado porque E-460 declarou a CLASSE ('comparar identificador sem escopo'). Duas rodadas, dois defeitos reais, ambos encontrados por medir o que a rodada anterior declarou"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -3324,6 +3328,10 @@
         {
           "id": "ADV-75",
           "estado": "CORRIGIDO E MEDIDO (E-460, 2026-10-14): a `IdempotencyKey` colidia entre CONTACTOS DIFERENTES - cliente-B (whatsapp) recebia `ErrSchedulingDuplicate` por causa de um agendamento do cliente-A (voice), E recebia o agendamento do outro junto com o erro (por E-458). O comentario do motor prometia 'a MESMA intencao vinda do mesmo CANAL', mas o codigo comparava SO' A CHAVE. Corrigido: a comparacao exige CONTACTO igual, e o comentario passou a dizer o que o codigo faz. LIMITE: ContactID vazio nos dois lados continua colidindo - declarado, nao medido como incidente."
+        },
+        {
+          "id": "ADV-76",
+          "estado": "CORRIGIDO E MEDIDO (E-461, 2026-10-14): o motor de WORKFLOW tinha a MESMA classe do ADV-75 - a `IdempotencyKey` era comparada SEM o escopo do workflow, e a chave e' procurada ANTES de o workflow ser resolvido. MEDIDO: `Run(org, wf-B, ..., K)` devolveu um run do `wf-A`. **Nao era so' pular a execucao: era devolver o resultado do OUTRO workflow como se fosse deste.** Corrigido: a comparacao exige `WorkflowID` igual. *A chave costuma vir do EVENTO, nao do workflow - dois workflows reagindo ao MESMO evento e' o caso mais natural de todos.*"
         }
       ],
       "proximos_ataques": [],
