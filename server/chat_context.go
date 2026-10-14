@@ -143,6 +143,14 @@ func withAgentChatContext() gin.HandlerFunc {
 			c.Next()
 			return
 		}
+		// ORÇAMENTO DE CONTEXTO (§2 do complemento universal de memória): medir e
+		// DECIDIR por orçamento ANTES de enviar ao modelo — e não apenas depois de o
+		// modelo recusar o contexto, que era o único gatilho existente. Sem
+		// `OLLAMA_AGENT_CHAT_CONTEXT_TOKENS` declarado o teto é 0, a decisão é "não
+		// declarado" e NADA muda: esta ligação não altera comportamento por omissão.
+		// A decisão fica registada no contexto do pedido (não só num log) para que o
+		// handler, uma tela de Cowork ou um teste a possam LER.
+		RegistarDecisaoDeOrcamento(c, DecidirOrcamentoDoChat(preamble, request.Messages, OrcamentoDeContextoDoChat()))
 		request.Messages = injectContextBootstrap(request.Messages, preamble)
 		encoded, err := json.Marshal(request)
 		if err != nil {
