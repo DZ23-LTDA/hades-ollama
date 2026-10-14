@@ -5,6 +5,7 @@ import { getModels } from "@/api";
 import type { Model } from "@/gotypes";
 import { humanizeApiError } from "@/lib/userFacingError";
 import { MissionDeliveryCard } from "@/components/MissionDeliveryCard";
+import { PerformanceCard } from "@/components/PerformanceCard";
 import { missionStateLabel, eventTypeLabel } from "@/lib/labels";
 import { MissionCapabilityPicker } from "@/components/MissionCapabilityPicker";
 import { BASELINE_CAPABILITY, buildMissionCapabilities, grantableScopes, type ScopeOption, type ToolScopeSource } from "@/lib/missionCapabilities";
@@ -383,6 +384,10 @@ export default function AgenticConsole() {
                   ))}
                 </div>
                 <MissionDeliveryCard missionId={mission.id} state={mission.state} artifacts={mission.artifacts} />
+                {/* E-641: o relatório de desempenho das missões visíveis — o que a superfície
+                    mostra não é inventado por ela: é o agregado que o SERVIDOR calcula, com a
+                    lista do que NÃO mede. */}
+                <PerformanceCard />
                 <div className="mt-5 flex gap-2">
                   <button type="button" disabled={busy || pendingApprovals.length > 0 || mission.state === "COMPLETED"} onClick={() => void run()} className="rounded-lg bg-neutral-900 px-3 py-2 text-sm text-white disabled:opacity-40 dark:bg-neutral-100 dark:text-neutral-900">Executar</button>
                 </div>

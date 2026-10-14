@@ -404,6 +404,36 @@ export type MissionContextView = {
 
 export const getMissionContext = (id: string) =>
   agentFetch<MissionContextView>(`/api/agent/v1/missions/${encodeURIComponent(id)}/context`);
+
+// AgentPerformance é o relatório que o servidor calcula em `GET /performance` (E-624/E-625).
+//
+// TAMBÉM LISTA BRANCA: só o que a superfície PODE mostrar. Não há ids, caminhos nem nomes de
+// pessoas aqui — e `not_measured` vem do servidor para que a superfície possa MOSTRAR o que o
+// número não cobre, em vez de o esconder. *Um painel que mostra métricas sem dizer o que não mede
+// é uma avaliação fictícia por omissão* (o §10 do complemento proíbe exactamente isso).
+export type AgentPerformance = {
+  missions: number;
+  completed: number;
+  failed: number;
+  cancelled: number;
+  running: number;
+  recovering: number;
+  completion_rate: number;
+  steps: number;
+  steps_with_rework: number;
+  extra_attempts: number;
+  rework_rate: number;
+  pending_approvals: number;
+  prompt_tokens: number;
+  completion_tokens: number;
+  model_calls: number;
+  known_cost_cents: number;
+  missions_with_known_cost: number;
+  missions_with_unknown_cost: number;
+  not_measured?: string[];
+};
+
+export const getPerformance = () => agentFetch<{ performance: AgentPerformance; scope: string }>("/api/agent/v1/performance");
 export type BrowserEnvironmentStatus = {
   python_path?: string;
   python_ok: boolean;
