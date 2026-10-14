@@ -712,7 +712,15 @@ func (a *agentAPI) register(r *gin.Engine) {
 	group.POST("/skills", a.registerSkill)
 	group.POST("/skills/:id/enable", a.enableSkill)
 	group.POST("/skills/:id/disable", a.disableSkill)
-	group.DELETE("/skills/:id", a.removeSkill)
+	// E-642: HISTORICO de versoes de skill. As rotas de skills ja' existiam; o que faltava era
+	// expor o arquivo que o E-629 passou a guardar e o restauro do E-631.
+	//
+	// PREFIXO PROPRIO DE PROPOSITO: `GET /skills/active` usa um LITERAL na segunda posicao, e um
+	// `:id` no mesmo nivel arriscaria conflito na arvore de rotas do gin (o servidor pode recusar
+	// arrancar). `/skill-versions/...` nao tem irmao literal - *e' melhor um nome menos bonito do
+	// que uma colisao que so' aparece ao subir o servidor.*
+	group.GET("/skill-versions/:id", a.skillVersions)
+	group.POST("/skill-versions/:id/restore/:version", a.restoreSkillVersion)
 	group.GET("/companies", a.companies)
 	group.POST("/companies", a.createCompany)
 	group.GET("/companies/:id", a.getCompany)
@@ -1630,6 +1638,34 @@ func (a *agentAPI) replayJob(c *gin.Context) {
 
 func (a *agentAPI) tools(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"tools": a.runtime.ListTools()})
+}
+
+// skillVersions lista as versões ARQUIVADAS de uma skill (E-642).
+//
+// O escopo é aplicado DENTRO do store (E-631): a skill que não é da organização de quem pergunta
+// devolve VAZIO, e não um erro — *distinguir «não existe» de «não é sua» seria uma pista sobre a
+// existência dela.* E «não consegui olhar» é ERRO, não vazio: as duas coisas são diferentes.
+func (a *agentAPI) skillVersions(c *gin.Context) {
+	versoes, err := a.context.SkillVersionsForOrganization(agentOrganizationID(c), c.Param("id"))
+	if err != nil {
+		writeAgentError(c, http.StatusBadRequest, err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"versions": versoes})
+}
+
+// restoreSkillVersion restaura uma versão arquivada (E-642).
+//
+// ***RESTAURAR É RECUPERAR CONTEÚDO, NÃO CONFIANÇA***: o caminho passa pelo mesmo `registerSkill`,
+// que impõe `Trusted=false` e verifica o escopo de organização (E-631). Promover a confiança
+// continua a exigir `PromoteSkillTrustedForOrganization` com política.
+func (a *agentAPI) restoreSkillVersion(c *gin.Context) {
+	manifesto, err := a.context.RestoreSkillVersionForOrganization(agentOrganizationID(c), c.Param("id"), c.Param("version"))
+	if err != nil {
+		writeAgentError(c, http.StatusBadRequest, err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"skill": manifesto})
 }
 
 func (a *agentAPI) skills(c *gin.Context) {
