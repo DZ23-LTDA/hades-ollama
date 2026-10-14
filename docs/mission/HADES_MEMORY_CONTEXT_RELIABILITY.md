@@ -400,3 +400,26 @@ também SUCCESS.
 `WARNING: DATA RACE`») e o E-589 não era o remédio; a causa era **orçamento de tempo**, e o E-600
 (um só limite, com o motivo escrito no workflow) resolveu os **dois** jobs `race`. Com este run,
 **nenhum job vermelho conhecido resta** nesta cabeça.
+
+### D-10. Model Gateway: o contexto ATRAVESSA-O por construção (medido, com alcance declarado)
+
+**O que foi medido.** O Model Gateway é `internal/multillm` (`NewGateway`, `proxy.go:59`), e em
+`server/routes.go:2007-2008` ele é registado **no router inteiro**:
+```
+s.multiProvider = multillm.NewGateway(registry, nil)
+r.Use(s.multiProvider.Middleware())
+```
+Logo **todas** as rotas passam por ele — incluindo `/api/agent/v1/chat`. E o preâmbulo (com o
+handoff redigido) e a compactação já vão **no corpo do pedido** que o gateway encaminha.
+Conclusão: *o contexto viaja pelo Model Gateway **por construção**, não por uma ligação nova a
+fazer.* O `internal/agent/step_routing.go` usa também o `multillm.Registry` para rotear modelo
+por passo (`RouteModelForStep`), com o comentário do E-435 a documentar que antes não usava.
+
+**E o que o gateway NÃO faz**: não conhece memória nem contexto. É um **encaminhador
+transparente** — «integrar» aqui significa «o contexto atravessa-o», e **não** «ele gere o
+contexto». Chamar-lhe integração de memória seria vender outra coisa.
+
+**Alcance declarado**: medi que o middleware está no router inteiro (logo o chat passa por ele) e
+que o roteamento por passo usa o Registry. **NÃO medi** que o corpo é encaminhado sem alteração
+(embora seja o que um proxy faz) e **não medi** a integração com **MCPs/skills** — que continua
+por medir, e fica dito em vez de contado como feito.
