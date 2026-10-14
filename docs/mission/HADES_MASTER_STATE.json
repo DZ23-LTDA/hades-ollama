@@ -2408,7 +2408,10 @@
     "A ESTRUTURA FAZ PARTE DO CONTRATO (E-403): o caso 3 procura node.type === 'li' com aria-current === 'true'; por o aria-current no Link nao satisfaz porque o ResourceRow renderiza um <div>. A assercao nao pede 'algo que indique a missao criada': pede um ITEM DE LISTA marcado",
     "PORTAR E' MESCLAR, NAO SUBSTITUIR (E-403): o render de tasks da main tinha removeMission e deleteDisabled que a branch nao tinha; o port preservou os dois",
     "DECLARAR DIVIDA NAO E' PAGA-LA (E-404): eu vinha declarando os stashes rodada apos rodada - 'um stash e' facil de esquecer', escrevi - e eles passaram de 1 para 3. Consolidei MEDINDO antes: o port existe no remoto, o rollback esta' commitado e o commit do E-195 e' ancestral da main. 3 stashes => 0",
-    "CHECKPOINT (E-404): main = e372a1036, 403 evidencias, 58 achados (ADV-53 a ADV-58), 1177 notas, e as branches remotas cairam de 400 para 17"
+    "CHECKPOINT (E-404): main = e372a1036, 403 evidencias, 58 achados (ADV-53 a ADV-58), 1177 notas, e as branches remotas cairam de 400 para 17",
+    "O E2E REAL ESTA VERDE (E-405): npx playwright test => exit 0, com backend E2E real (GET /api/version 200, POST /api/me 401, GET /api/v1/settings 200). Era o 'nao medido' que eu carregava desde o E-398",
+    "O AMBIENTE DESTA MAQUINA NEGA ESCRITA NO TEMP DO USUARIO (E-405): o esbuild falhou com 'remove C:\\...\\AppData\\Local\\Temp\\esbuild-...: Acesso negado' e o webServer nao subiu. Com TMP/TEMP/TMPDIR sob _tmp, exit 0. E' a MESMA classe que a 5a auditoria achou no Go - e o sintoma e' sempre 'o teste nao roda', nunca 'o teste falha'",
+    "E2E VERDE NAO SUBSTITUI CAPTURA (E-405): as 27 evidencias .png da paridade seguem ausentes; captura nao se deduz de teste"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -3543,6 +3546,30 @@
           "ADV-58"
         ]
       }
+    },
+    "portao_e2e": {
+      "comando": "npx playwright test --reporter=line (em app/ui/app)",
+      "resultado": "exit 0",
+      "specs": [
+        "accessibility.spec.ts",
+        "compare.spec.ts",
+        "first-run-journey.spec.ts",
+        "firstRun.spec.ts",
+        "prompts.spec.ts",
+        "scheduleFlow.spec.ts",
+        "settings-write-loop.spec.ts",
+        "shell.spec.ts",
+        "studioReorder.spec.ts"
+      ],
+      "receita_de_ambiente": "TMP, TEMP e TMPDIR apontando para _tmp/ui-tmp; sem isso o esbuild falha com 'remove C:\\...\\AppData\\Local\\Temp\\esbuild-...: Acesso negado' e o webServer nao sobe",
+      "primeira_tentativa": "webServer nao subiu (Build failed in 19.40s) - ambiente, nao produto",
+      "mesma_classe": "a 5a auditoria encontrou o mesmo no Go: GOPATH/GOMODCACHE/GOCACHE/GOTMPDIR/APPDATA sob _tmp, senao o runtime falha em %AppData%\\ollama-agent",
+      "limites": [
+        "os specs sao executados, mas o que cada um afirma nao foi lido",
+        "screens:verify nao foi executado",
+        "as 27 evidencias .png seguem ausentes - E2E verde nao substitui captura",
+        "a receita nao foi levada ao CI nem ao AGENTS.md"
+      ]
     }
   },
   "unlinked_evidence": {
@@ -3635,6 +3662,7 @@
     "E-401": "teste de mutacao tautologico reescrito para chamar os gates reais, com contraprova",
     "E-402": "ADV-58/2, /3 e /4: redundancia declarada e teste renomeado para o que prova",
     "E-403": "port da jornada Nova tarefa -> Tarefas: 7/7 testes verdes e tsc 0",
-    "E-404": "consolidacao de 3 stashes redundantes (medido) + checkpoint remedido"
+    "E-404": "consolidacao de 3 stashes redundantes (medido) + checkpoint remedido",
+    "E-405": "E2E real verde (exit 0) com a receita TMP/TEMP/TMPDIR sob _tmp"
   }
 }
