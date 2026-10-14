@@ -3034,6 +3034,21 @@ func (a *agentAPI) createOrchestration(c *gin.Context) {
 		return
 	}
 	organizationID := agentOrganizationID(c)
+	// F1 DA AUDITORIA DE SEGURANÇA (P1): `Workspace` e `ProjectID` vêm do CORPO do
+	// pedido, e ate' aqui iam direto para `PlanForOrganization` SEM verificar se
+	// pertencem à organização autenticada. O guard que todos os outros caminhos usam
+	// (`projectForRequestID`) estava AUSENTE precisamente aqui — e o runner do
+	// orquestrador é o runtime BASE (`organizationScope == ""`), logo a checagem de
+	// dono que existe no runtime também não corria. Um membro de outra organização
+	// podia apontar o job a um projeto alheio e LER o workspace dele.
+	// A correcção reusa o guard existente em vez de criar uma segunda regra que
+	// pudesse divergir (o defeito do "irmão esquecido").
+	if strings.TrimSpace(request.ProjectID) != "" {
+		if _, err := a.projectForRequestID(c, request.ProjectID); err != nil {
+			writeAgentError(c, statusForAgentError(err), err)
+			return
+		}
+	}
 	job, err := a.runtime.Orchestrator().PlanForOrganization(organizationID, request.Objective, request.Workspace, request.ProjectID, request.Roles, request.Budget)
 	if err != nil {
 		writeAgentError(c, http.StatusBadRequest, err)
