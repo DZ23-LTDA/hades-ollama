@@ -2508,7 +2508,10 @@
     "DECLARACAO SEM GUARDA ENVELHECE (E-441): 'declarar biblioteca sem chamador' so' e' honesto enquanto for verdade. O MEDIO-1 (E-439) ficou obsoleto por rodadas sem ninguem notar - por isso a declaracao do ADV-65 vem com catraca, e nao com nota",
     "BURACO NA NUMERACAO, DE NOVO (E-440): a evidencia E-440 foi mencionada na mensagem de commit da rodada 149 mas a LINHA nunca foi criada - o contador acusou (440 em vez de 441). E' a TERCEIRA vez que esta classe aparece (E-423 foi a primeira). Mensagem de commit NAO e' registro: o registro e' a linha no indice",
     "SEGUNDO P0 OBSTATO, E AGORA A CAUSA ESTRUTURAL (E-442): o ADV-61 estava corrigido E testado (scheduling_breaks.go:133 distingue o dia; scheduling_tail_day_test.go cobre segunda 01:00 FORA e terca 01:00 DENTRO). Retratado. A causa nao e' desleixo: proximos_ataques era uma lista de FRASES SEM DATA, e um P0 da rodada 40 fica identico a um de ontem. Cada item passa a carregar escrito_em e conferido_em",
-    "NAO INVENTO DATA (E-442): para os itens antigos, escrito_em recebeu NAO_MEDIDO com a explicacao, em vez de uma data fabricada - *registro fabricado e' pior que registro ausente, porque parece medido*"
+    "NAO INVENTO DATA (E-442): para os itens antigos, escrito_em recebeu NAO_MEDIDO com a explicacao, em vez de uma data fabricada - *registro fabricado e' pior que registro ausente, porque parece medido*",
+    "A LISTA DE ATAQUES ESTAVA 75%% VENCIDA, E O DEFEITO ERA NUNCA CONFERIR (E-443): dos 4 itens, ADV-60, ADV-63 e ADV-64 ja' estavam ATENDIDOS (comentario de Availability reescrito com limite declarado; teste de trava por organizacao; testes de DST exigindo instantes distintos). Somando MEDIO-1, ADV-61 e ADV-65, 6 de 7 itens estavam vencidos ou parciais. Uma lista que so' cresce e nunca e' relida nao e' backlog - e' arquivo morto com aparencia de plano",
+    "NAO AFIRMO 'ATENDIDO' SEM MEDIR (E-443): o ADV-62 ficou NAO_MEDIDO porque so' ha NextRunAt generico em mission_idempotency_test.go, nao o caso especifico pedido. Nao afirmar 'ok' quando nao se mediu e' o ponto",
+    "O MEU PROPRIO SCRIPT PRODUZIU UM REGISTRO FALSO (E-443, corrigido na mesma rodada): o id do item era 'ADV-60 (P0)' e o lookup comparava com 'ADV-60' exato, entao o ADV-60 nao foi retratado E recebeu a nota de conferencia do ADV-62 ('NextRunAt generico'). Um conferido_resultado errado e' PIOR que nenhum: afirma que alguem mediu, e a afirmacao e' falsa. Corrigido normalizando o id, e o ADV-60 foi retratado com a medicao certa"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -3189,7 +3192,7 @@
           "severidade": "ALTA (afirmacao publicada FALSA)",
           "descricao": "Availability (scheduling.go:393-423) continua inventando horario: nao consulta turno, fechamento, intervalo nem fuso. A E-314 afirma que o buraco foi fechado, mas ele foi fechado em OpenSlots (funcao NOVA) e Availability ficou intacta. SONDA: org sem turno, domingo 03:00 => Availability devolve 4 slots livres, OpenSlots devolve 0 e Book recusa",
           "descoberto_por": "6a revisao adversarial independente (subagente, contexto fresco) com go test -overlay e sondas",
-          "estado": "CORRIGIDO COM LIMITE DECLARADO: Availability NAO consulta expediente, e o comentario agora diz isso e aponta OpenSlots como a funcao para oferecer horario. Um teste fixa o limite e falha se ele mudar sem a documentacao. A E-314 (que afirmava o buraco fechado) fica superseded por E-413 - a linha historica nao e' reescrita",
+          "estado": "ATENDIDO (medido em 2026-10-14): a segunda alternativa do proprio achado ('removida/renomeada com limite declarado') foi cumprida. `scheduling.go:392-405` declara que a funcao decide APENAS por agendamentos (nao olha turno, fechamento por data, intervalo nem fuso) e aponta `OpenSlots` para oferecer horario ao cliente. Ha teste do limite (`scheduling_availability_limit_test.go:31`). *A funcao nao mudou de comportamento - mudou de promessa.*  ||  HISTORICO (registro anterior): CORRIGIDO COM LIMITE DECLARADO: Availability NAO consulta expediente, e o comentario agora diz isso e aponta OpenSlots como a funcao para oferecer horario. Um teste fixa o limite e falha se ele mudar sem a documentacao. A E-314 (que afirmava o buraco fechado) fica superseded por E-413 - a linha historica nao e' reescrita",
           "evidencia": "E-411"
         },
         {
@@ -3197,7 +3200,7 @@
           "severidade": "ALTA/MEDIA (aceita horario com a empresa fechada)",
           "descricao": "Book aceita horario fora do turno quando ele cruza a meia-noite: shiftCoversMinute (scheduling_breaks.go:124-131) no ramo '|| fimMinuto <= ClosesAt' nao verifica se o turno comecou no dia ANTERIOR. SONDA: turno so segunda 22:00-02:00 => Book(segunda 01:00) aceito, enquanto OpenSlots nao oferece nada nesse instante",
           "descoberto_por": "6a revisao adversarial independente (subagente, contexto fresco) com go test -overlay e sondas",
-          "estado": "CORRIGIDO: shiftCovering devolve diaAnterior e o chamador soma 1440; shiftCoversMinute exige que o ramo da cauda seja do dia seguinte. Teste novo + o existente (E-328) passam. A MINHA PRIMEIRA CORRECAO (decidir pelo tamanho do minuto) estava errada e o teste existente a pegou",
+          "estado": "RETRATADO (medido em 2026-10-14): ja' estava corrigido E testado. `scheduling_breaks.go:133` distingue o dia (`inicioMinuto >= 24*60` = cauda do dia seguinte; senao exige a abertura), e o caso LITERAL esta' testado nos DOIS lados em `scheduling_tail_day_test.go` (segunda 01:00 => FORA; terca 01:00 => DENTRO). 4 testes PASS. O item em proximos_ataques estava VENCIDO.  ||  HISTORICO (registro anterior): CORRIGIDO: shiftCovering devolve diaAnterior e o chamador soma 1440; shiftCoversMinute exige que o ramo da cauda seja do dia seguinte. Teste novo + o existente (E-328) passam. A MINHA PRIMEIRA CORRECAO (decidir pelo tamanho do minuto) estava errada e o teste existente a pegou",
           "evidencia": "E-411"
         },
         {
@@ -3213,7 +3216,7 @@
           "severidade": "MEDIA-BAIXA (afirmacao sem prova)",
           "descricao": "'a trava e por organizacao' nao e' provado: mutacao para trava GLOBAL => 0 falhas em 20 execucoes. CONTRASTE: sem withFileLock => 20/20 falham; sem invalidateCache => 18/20 falham (prova probabilistica, ~10% de regressao silenciosa)",
           "descoberto_por": "6a revisao adversarial independente (subagente, contexto fresco) com go test -overlay e sondas",
-          "estado": "FECHADO: lockPath(organizationID) extraido como metodo unico, usado pelo produto E pelo teste. O teste retem de verdade a trava da org A e exige que a org B complete em 10s; a contraprova (lockPath global) FAZ o teste falhar, porque a mutacao muda o INPUT do teste. A primeira tentativa era falsa (E-415) e foi removida",
+          "estado": "ATENDIDO (medido em 2026-10-14): `scheduling_lock_scope_proof_test.go:19 TestTravaDeAgendamentoEporOrganizacaoNaoGlobal` cobre exatamente o pedido - pega `lockPath(\"org-a\")` e `lockPath(\"org-b\")` e mostra trabalho progredindo na org-b.  ||  HISTORICO (registro anterior): FECHADO: lockPath(organizationID) extraido como metodo unico, usado pelo produto E pelo teste. O teste retem de verdade a trava da org A e exige que a org B complete em 10s; a contraprova (lockPath global) FAZ o teste falhar, porque a mutacao muda o INPUT do teste. A primeira tentativa era falsa (E-415) e foi removida",
           "evidencia": "E-411"
         },
         {
@@ -3221,7 +3224,7 @@
           "severidade": "BAIXA/MEDIA (DST nunca exercitado)",
           "descricao": "Maquina America/Sao_Paulo (sem DST desde 2019) e laco em minutos de relogio de parede. Sonda em America/New_York, turno domingo 01:00-05:00 em 2026-03-08 => 8 slots com 01:00 e 01:30 DUPLICADOS no mesmo instante UTC",
           "descoberto_por": "6a revisao adversarial independente (subagente, contexto fresco) com go test -overlay e sondas",
-          "estado": "FECHADO: OpenSlots deduplica por INSTANTE depois de ordenar. Antes da correcao o teste novo FALHAVA com 'o instante 2026-03-08T06:30:00Z foi oferecido 2 vezes' (8 slots); depois, 6 slots distintos e a bateria de agendamento ok. A contraprova e' a propria reproducao. Preserva a hora repetida do FIM do horario de verao (instantes distintos)",
+          "estado": "ATENDIDO (medido em 2026-10-14): `scheduling_dst_test.go:19 TestOpenSlotsNaoDuplicaInstanteNaViradaDeHorarioDeVerao` e `scheduling_dst_fallback_test.go:24 TestOpenSlotsNoFimDoHorarioDeVerao` exigem instantes distintos, com \"MEDIDA ESTRUTURAL: %d slot(s) distintos\" - exatamente o pedido.  ||  HISTORICO (registro anterior): FECHADO: OpenSlots deduplica por INSTANTE depois de ordenar. Antes da correcao o teste novo FALHAVA com 'o instante 2026-03-08T06:30:00Z foi oferecido 2 vezes' (8 slots); depois, 6 slots distintos e a bateria de agendamento ok. A contraprova e' a propria reproducao. Preserva a hora repetida do FIM do horario de verao (instantes distintos)",
           "evidencia": "E-411"
         },
         {
@@ -3229,7 +3232,7 @@
           "severidade": "INFORMATIVO/ALTO para a entrega (linha NAO ligada)",
           "descricao": "Nada em producao chama o motor de agendamento: SchedulingStore tem zero chamadores fora de _test.go; NewSupervisorScheduler so' no teste; Supervisor.Start so' em supervisor_test.go:504. O que esta' provado em producao e' o agendador de WORKFLOW (resumePending/ClaimDueSchedules, w1 + frescor entre processos)",
           "descoberto_por": "6a revisao adversarial independente (subagente, contexto fresco) com go test -overlay e sondas",
-          "estado": "DECLARADO, NAO LIGADO: o motor de agendamento e' hoje uma biblioteca testada e sem chamador em producao (zero usos fora de _test.go). O que esta' provado em producao e' o agendador de WORKFLOW. Ligar exigiria: (a) dono de tick em producao (hoje o tick vem de HTTP); (b) ponte com os canais de voz/WhatsApp/Telegram, que NAO existem (BLOCKED_BY_EXTERNAL_DEPENDENCY); (c) testes de concorrencia com o tick rodando. Declarar e' a entrega honesta enquanto (a)-(c) nao estiverem feitos",
+          "estado": "PARCIALMENTE FECHADO (E-441): a segunda alternativa do achado foi ATENDIDA - o motor de agendamento foi DECLARADO biblioteca sem chamador, com catraca que falha (contraprovado: exit 1) no dia em que ganhar chamador em producao, e com controle de que a varredura alcanca o arquivo. A PRIMEIRA alternativa - LIGAR o motor em producao - CONTINUA ABERTA.  ||  HISTORICO (registro anterior): DECLARADO, NAO LIGADO: o motor de agendamento e' hoje uma biblioteca testada e sem chamador em producao (zero usos fora de _test.go). O que esta' provado em producao e' o agendador de WORKFLOW. Ligar exigiria: (a) dono de tick em producao (hoje o tick vem de HTTP); (b) ponte com os canais de voz/WhatsApp/Telegram, que NAO existem (BLOCKED_BY_EXTERNAL_DEPENDENCY); (c) testes de concorrencia com o tick rodando. Declarar e' a entrega honesta enquanto (a)-(c) nao estiverem feitos",
           "evidencia": "E-411"
         },
         {
@@ -3267,48 +3270,16 @@
         {
           "id": "ADV-74",
           "estado": "ABERTO (medido nesta rodada): `contraprovas_medidas` misturava 3 contraprovas REAIS com 2 mutacoes que NADA matam ('portao_por_etapa_off' e 'reconferencia_inline_off', ambas 'NADA falha - sem defesa'). Separadas em `sem_defesa_medida`. AS DUAS LACUNAS CONTINUAM ABERTAS: nao ha teste que cubra essas defesas, e a acao (teste que falta / redundancia medida / remover) NAO foi executada."
-        },
-        {
-          "id": "ADV-65",
-          "estado": "PARCIALMENTE FECHADO (E-441): a segunda alternativa do achado foi ATENDIDA - o motor de agendamento foi DECLARADO biblioteca sem chamador, com catraca que falha (contraprovado: exit 1) no dia em que ganhar chamador em producao, e com controle de que a varredura alcanca o arquivo. A PRIMEIRA alternativa - LIGAR o motor em producao - CONTINUA ABERTA."
-        },
-        {
-          "id": "ADV-61",
-          "estado": "RETRATADO (medido em 2026-10-14): ja' estava corrigido E testado. `scheduling_breaks.go:133` distingue o dia (`inicioMinuto >= 24*60` = cauda do dia seguinte; senao exige a abertura), e o caso LITERAL esta' testado nos DOIS lados em `scheduling_tail_day_test.go` (segunda 01:00 => FORA; terca 01:00 => DENTRO). 4 testes PASS. O item em proximos_ataques estava VENCIDO."
         }
       ],
       "proximos_ataques": [
-        {
-          "id": "ADV-60 (P0)",
-          "descricao": "ADV-60 (P0): Availability deve delegar a OpenSlots/appointmentAllowedLocked OU ser removida/renomeada com limite declarado - hoje a evidencia E-314 afirma algo falso sobre ela",
-          "escrito_em": null,
-          "escrito_em_declarado": "NAO_MEDIDO: o item foi escrito antes de a lista passar a datar; a data nao existe.",
-          "conferido_em": "2026-10-14",
-          "conferido_resultado": "NAO_CONFERIDO nesta rodada: a varredura de conferencia comecou agora. NAO_MEDIDO, nao 'ok'."
-        },
         {
           "id": "ADV-62",
           "descricao": "ADV-62: teste 'ciclo com NextRunAt futuro nao avanca no tick' (a sonda do auditor ja' e' o teste)",
           "escrito_em": null,
           "escrito_em_declarado": "NAO_MEDIDO: o item foi escrito antes de a lista passar a datar; a data nao existe.",
           "conferido_em": "2026-10-14",
-          "conferido_resultado": "NAO_CONFERIDO nesta rodada: a varredura de conferencia comecou agora. NAO_MEDIDO, nao 'ok'."
-        },
-        {
-          "id": "ADV-63",
-          "descricao": "ADV-63: teste que segure a trava da org A e mostre a org B progredindo",
-          "escrito_em": null,
-          "escrito_em_declarado": "NAO_MEDIDO: o item foi escrito antes de a lista passar a datar; a data nao existe.",
-          "conferido_em": "2026-10-14",
-          "conferido_resultado": "NAO_CONFERIDO nesta rodada: a varredura de conferencia comecou agora. NAO_MEDIDO, nao 'ok'."
-        },
-        {
-          "id": "ADV-64",
-          "descricao": "ADV-64: rodar OpenSlots numa data de transicao de DST exigindo horarios distintos",
-          "escrito_em": null,
-          "escrito_em_declarado": "NAO_MEDIDO: o item foi escrito antes de a lista passar a datar; a data nao existe.",
-          "conferido_em": "2026-10-14",
-          "conferido_resultado": "NAO_CONFERIDO nesta rodada: a varredura de conferencia comecou agora. NAO_MEDIDO, nao 'ok'."
+          "conferido_resultado": "NAO_MEDIDO: ha `NextRunAt` generico em `mission_idempotency_test.go`, mas NAO achei o caso especifico pedido ('ciclo com NextRunAt futuro nao avanca no tick'). *Nao afirmo que esta' atendido - e nao afirmar 'ok' quando nao se mediu e' o ponto.*"
         }
       ],
       "contraprovas_medidas": {
@@ -3331,7 +3302,7 @@
         "acao_necessaria": "Para cada uma: decidir entre (a) escrever o teste que falta e move-la para contraprovas_medidas, ou (b) declarar que a defesa e' REDUNDANTE (outra camada ja' cobre) com a medicao que o mostre, ou (c) remover a defesa - porque defesa sem prova e' custo sem beneficio medido."
       },
       "contraprovas_medidas_nota": "Esta chave contem SOMENTE contraprovas que DISPARAM (a mutacao faz um teste nomeado FALHAR). Mutacoes que nao matam nada vivem em `sem_defesa_medida`.",
-      "proximos_ataques_nota": "Cada item carrega `escrito_em` e `conferido_em`. ***Lista de frases SEM DATA envelhece em silencio***: um P0 da rodada 40 e um de ontem ficam com a mesma cara - foi assim que o ADV-61 (corrigido e testado) e o ADV-65 (corrigido, faltando declaracao) pareciam abertos. `NAO_MEDIDO` e' usado onde a data nao existe, em vez de inventar uma."
+      "proximos_ataques_nota": "***CONFERIR ANTES DE TRABALHAR E' OBRIGATORIO.*** Medido em 2026-10-14: dos 4 itens entao listados, **3 ja' estavam ATENDIDOS** (ADV-60, ADV-63, ADV-64) - somando os retratados antes (MEDIO-1, ADV-61 e ADV-65 declarado), **6 de 7 itens de lista estavam vencidos ou parciais**. *O defeito nao era a lista: era nunca CONFERIR. Uma lista que so' cresce e nunca e' relida nao e' backlog - e' um arquivo morto com aparencia de plano.* Todo item carrega `conferido_em` e `conferido_resultado` (ATENDIDO / AINDA_ABERTO / NAO_MEDIDO); `NAO_MEDIDO` NAO e' 'ok'."
     },
     "estagio_42": {
       "titulo": "HADES LIVE COMMERCE & AI SHOPPING AGENTS",
