@@ -2699,7 +2699,8 @@
     "E-510 (merge da branch): mergeable_state era 'behind'; o merge de origin/main deu exit 0 com 9 ficheiros do #437 (todos app/ui/app/src) e ZERO conflitos - prova independente do E-505. Depois do push: remoto 6173bc417 e 'commits do main que faltam na branch = 0'.",
     "E-512 (criterio de contagem): scripts/hades_limites_check.py fixa o criterio num so' lugar. Mede 3 numeros de proposito: 182 limites citados, 31 sem medicao, 19 AINDA ABERTOS. Confundir os dois ultimos foi o erro da rodada 245.",
     "E-511 (limites remedidos): acrescentei 'REMEDIDO EM' a E-484, E-485, E-486 e E-491, cada um citando a evidencia que o fechou. E escrevi a E-512 saltando a E-511 - o hades_mission_check detectou o buraco [511] e o GATE 1 bloqueou o commit.",
-    "E-513 (limites, dois sentidos): o E-285 aparecia como limite aberto, mas o seu texto sao os limites DO ARTEFACTO (o que ele nao assume). O criterio passou a exigir primeira pessoa: 184 citados, 26 sem medicao, 14 ainda abertos (era 19 com o criterio largo). O numero vai sempre com o criterio."
+    "E-513 (limites, dois sentidos): o E-285 aparecia como limite aberto, mas o seu texto sao os limites DO ARTEFACTO (o que ele nao assume). O criterio passou a exigir primeira pessoa: 184 citados, 26 sem medicao, 14 ainda abertos (era 19 com o criterio largo). O numero vai sempre com o criterio.",
+    "E-514 (atribuicao corrigida): o golangci-lint NAO esta' no job 'Go agentic and server gates' - vive no test.yaml:501, num job ubuntu. Em ubuntu compila sandbox_linux.go, logo os 6 SA4023 nao aparecem la. A causa do main vermelho e' o passo 'CGO_ENABLED=1 go test ./...' em ubuntu. O SA4023 continua corrigido - aparece no job Windows."
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
