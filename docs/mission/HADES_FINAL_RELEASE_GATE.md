@@ -10,7 +10,7 @@
 
 | Campo | Valor |
 | --- | --- |
-| **Commit medido** (`measured_commit`) | `78c141803` |
+| **Commit medido** (`measured_commit`) | `a31d65dcf` |
 | **Commit da `main`** (`git.main_sha`) | `4b3e21854` |
 | **Gerado em** (`measured_at`) | 2026-10-14T11:17:05-03:00 |
 
