@@ -40,6 +40,9 @@ type SinalDeDespertar struct {
 type Despertar struct {
 	AgenteID string
 	Motivos  []string
+	// Missoes leva as missões DISTINTAS que provocaram o despertar. Sem isto, o despertar diria
+	// «acorda por causa de aprovação» sem dizer de QUÊ — e quem acorda não saberia o que abrir.
+	Missoes  []string
 	Sinais   int
 	Primeiro time.Time
 	Ultimo   time.Time
@@ -75,6 +78,7 @@ func DespertaresCoalescidos(sinais []SinalDeDespertar) []Despertar {
 
 		actual := Despertar{AgenteID: agenteID, Primeiro: doAgente[0].Quando, Ultimo: doAgente[0].Quando}
 		distintos := make(map[string]bool)
+		missõesVistas := make(map[string]bool)
 		acrescentar := func(sinal SinalDeDespertar) {
 			actual.Sinais++
 			if sinal.Quando.After(actual.Ultimo) {
@@ -84,6 +88,10 @@ func DespertaresCoalescidos(sinais []SinalDeDespertar) []Despertar {
 				distintos[sinal.Motivo] = true
 				actual.Motivos = append(actual.Motivos, sinal.Motivo)
 			}
+			if sinal.MissaoID != "" && !missõesVistas[sinal.MissaoID] {
+				missõesVistas[sinal.MissaoID] = true
+				actual.Missoes = append(actual.Missoes, sinal.MissaoID)
+			}
 		}
 		acrescentar(doAgente[0])
 		for _, sinal := range doAgente[1:] {
@@ -91,6 +99,7 @@ func DespertaresCoalescidos(sinais []SinalDeDespertar) []Despertar {
 				despertares = append(despertares, actual)
 				actual = Despertar{AgenteID: agenteID, Primeiro: sinal.Quando, Ultimo: sinal.Quando}
 				distintos = make(map[string]bool)
+				missõesVistas = make(map[string]bool)
 			}
 			acrescentar(sinal)
 		}

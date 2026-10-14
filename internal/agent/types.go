@@ -51,6 +51,11 @@ const (
 type CreateMissionRequest struct {
 	MissionID string `json:"-"`
 	ActorID   string `json:"-"`
+	// AgentID atribui a missão a um AGENTE (por exemplo um agente de empresa). Entra no registo da
+	// missão porque o despertar coalescido (E-633) é POR AGENTE e a fila durável é POR MISSÃO:
+	// sem este campo, «acordar o agente» não tem como saber a quem — foi o que a auditoria do
+	// E-635 mediu (`Mission` e `Step` não tinham a dimensão; `Memory` e `ArtifactManifest` tinham).
+	AgentID string `json:"agent_id,omitempty"`
 	// IdempotencyKey torna a criação repetível sem duplicar missão. Quando
 	// presente, o ID é DERIVADO da chave (organização + chave), então repetir a
 	// mesma criação devolve a missão já existente em vez de criar outra. É o
@@ -73,33 +78,39 @@ type CreateMissionRequest struct {
 }
 
 type Mission struct {
-	ID                      string             `json:"id"`
-	Version                 int64              `json:"version"`
-	Objective               string             `json:"objective"`
-	Provider                string             `json:"provider,omitempty"`
-	Model                   string             `json:"model,omitempty"`
-	Workspace               string             `json:"workspace,omitempty"`
-	WorkspaceIdentity       string             `json:"workspace_identity,omitempty"`
-	WorkspaceIsolated       bool               `json:"workspace_isolated,omitempty"`
-	WorkspaceSnapshotID     string             `json:"workspace_snapshot_id,omitempty"`
-	WorkspaceSnapshotSHA256 string             `json:"workspace_snapshot_sha256,omitempty"`
-	ProjectID               string             `json:"project_id,omitempty"`
-	OrganizationID          string             `json:"organization_id,omitempty"`
-	Capabilities            []string           `json:"capabilities,omitempty"`
-	AutoRun                 bool               `json:"auto_run,omitempty"`
-	State                   MissionState       `json:"state"`
-	Plan                    []Step             `json:"plan"`
-	Approvals               []Approval         `json:"approvals,omitempty"`
-	Artifacts               []ArtifactManifest `json:"artifacts,omitempty"`
-	GitRepoRoot             string             `json:"git_repo_root,omitempty"`
-	GitBranch               string             `json:"git_branch,omitempty"`
-	GitWorktreePath         string             `json:"git_worktree_path,omitempty"`
-	GitBaseCommit           string             `json:"git_base_commit,omitempty"`
-	GitMergeStatus          string             `json:"git_merge_status,omitempty"`
-	GitWorktreeActive       bool               `json:"git_worktree_active,omitempty"`
-	AutoRepair              bool               `json:"auto_repair,omitempty"`
-	MaxRepairTries          int                `json:"max_repair_tries,omitempty"`
-	LastError               string             `json:"last_error,omitempty"`
+	ID                      string `json:"id"`
+	Version                 int64  `json:"version"`
+	Objective               string `json:"objective"`
+	Provider                string `json:"provider,omitempty"`
+	Model                   string `json:"model,omitempty"`
+	Workspace               string `json:"workspace,omitempty"`
+	WorkspaceIdentity       string `json:"workspace_identity,omitempty"`
+	WorkspaceIsolated       bool   `json:"workspace_isolated,omitempty"`
+	WorkspaceSnapshotID     string `json:"workspace_snapshot_id,omitempty"`
+	WorkspaceSnapshotSHA256 string `json:"workspace_snapshot_sha256,omitempty"`
+	ProjectID               string `json:"project_id,omitempty"`
+	OrganizationID          string `json:"organization_id,omitempty"`
+	// ActorID e AgentID: QUEM PEDIU e QUE AGENTE executa. O `CreateMissionRequest` já trazia o
+	// `ActorID` (`json:"-"`, preenchido pelo servidor) mas a MISSAO nao o guardava — ou seja, a
+	// atribuicao existia no pedido e perdia-se no registo (a mesma classe de lacuna do D-12: o
+	// runtime nao conhecia o ator). Coalescer despertares por agente exige os dois.
+	ActorID           string             `json:"actor_id,omitempty"`
+	AgentID           string             `json:"agent_id,omitempty"`
+	Capabilities      []string           `json:"capabilities,omitempty"`
+	AutoRun           bool               `json:"auto_run,omitempty"`
+	State             MissionState       `json:"state"`
+	Plan              []Step             `json:"plan"`
+	Approvals         []Approval         `json:"approvals,omitempty"`
+	Artifacts         []ArtifactManifest `json:"artifacts,omitempty"`
+	GitRepoRoot       string             `json:"git_repo_root,omitempty"`
+	GitBranch         string             `json:"git_branch,omitempty"`
+	GitWorktreePath   string             `json:"git_worktree_path,omitempty"`
+	GitBaseCommit     string             `json:"git_base_commit,omitempty"`
+	GitMergeStatus    string             `json:"git_merge_status,omitempty"`
+	GitWorktreeActive bool               `json:"git_worktree_active,omitempty"`
+	AutoRepair        bool               `json:"auto_repair,omitempty"`
+	MaxRepairTries    int                `json:"max_repair_tries,omitempty"`
+	LastError         string             `json:"last_error,omitempty"`
 	// Usage leva o consumo real de modelo (tokens e custo) para dentro do registro da
 	// missão. Sem isto, o custo ficava só no catálogo de provedores e a linha do tempo
 	// não conseguia responder "quanto custou esta missão".
