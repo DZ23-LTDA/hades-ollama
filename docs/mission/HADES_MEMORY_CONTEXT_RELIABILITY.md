@@ -482,3 +482,27 @@ que uma ferramenta ausente: a ausente sabe-se que falta.
 e isso é aditivo, com precedente no próprio ficheiro (o E-438 acrescentou `ModelID` exactamente
 para uma decisão chegar à ferramenta). O que **não** se faz é registar a ferramenta no sítio
 óbvio e ficar com um filtro a menos.
+
+
+### D-3, corrigido por medição nova: o job estava À BEIRA do limite, não sempre acima
+
+Eu tinha escrito que o `race` «estourava» o limite antigo de 600 s. Quatro medições do mesmo job
+obrigam a corrigir a frase — e a correcção é mais útil do que a frase original:
+
+| run | job | duração de `go test -race` |
+| --- | --- | --- |
+| `5bba1132e` | race (ubuntu) | 653 s |
+| `5bba1132e` | race (macos) | 657 s |
+| `9c7cdf154` | race (ubuntu) | **469 s** |
+| `72f01d6cd` | race (macos) | 867 s |
+
+**A leitura certa**: a duração varia de **469 s a 867 s**, e o limite antigo era 600 s ⇒ o job
+ficava **à beira da linha**: reprovava umas vezes e passava outras. ***É isso que explica o CI
+intermitentemente vermelho*** — não «estava sempre acima», mas «estava por cima da linha, às
+vezes». E uma falha intermitente é a pior de diagnosticar, porque se parece com flake sem o ser:
+é orçamento.
+
+O limite de 20m (1200 s) dá ~1,4× de folga sobre o pior caso medido (867 s). Não é folga
+generosa — é folga **medida**, e é o motivo de eu não tratar o assunto como encerrado para
+sempre: se a duração voltar a subir, a frente passa a ser **dividir o pacote**, e não subir o
+limite outra vez.
