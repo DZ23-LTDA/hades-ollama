@@ -100,3 +100,39 @@ environment values and local paths can remain*» em pacotes exportados (a limpez
 configured environment and adapter**». *É a mesma disciplina de declarar janelas residuais que
 esta missão usa — e é a razão de eu não tratar «o Paperclip faz» como «nós conseguimos fazer
 igual».*
+
+## 6. Auditoria da lacuna «Skill Version History & Restore» — com o ponto de inserção
+
+**Medido** (`internal/agent/context.go`):
+
+| facto | linha |
+| --- | --- |
+| `skills map[string]SkillManifest` — **uma versão por ID** | `:27` |
+| `registerSkill` escreve por cima da anterior | `:816`, `:841` |
+| o manifesto que SAI está em `previous, existed := s.skills[manifest.ID]` | `:839` |
+| persistência por ID: `<root>/skills/<ID>.json` | `:832-834` |
+| `writeJSONAtomic` com rollback em falha | `:844`, `:845-854` |
+| `Trusted = false` imposto na entrada | `:817` |
+| promoção de confiança **governada por política**: `PromoteSkillTrustedForOrganization` | `:941` |
+| manifesto já tem `ID` + `Version` validados | `:764`, `:788-796` |
+
+**Conclusão**: o versionamento **não** falta (o manifesto tem id+versão validados); o que falta é
+**guardar** as versões em vez de as substituir. A lacuna é estreita e concreta.
+
+**Desenho aprovado para implementar:**
+1. em `:839`, se `existed && previous.Version != manifest.Version`, arquivar `previous` em
+   `<root>/skills/<ID>.versions/<versão>.json` com o mesmo `writeJSONAtomic`;
+2. **falha ao arquivar REPROVA o registo** (fail-closed, coerente com o rollback que já existe em
+   `:845-854`): *se não se consegue preservar a versão que sai, não se substitui* — perder
+   funcionalidade é preferível a perder histórico em silêncio;
+3. `SkillVersionsForOrganization(org, id)` lista as versões arquivadas (versão, ficheiro, tamanho),
+   rejeitando ficheiros inválidos com `validateSkillManifest`;
+4. `RestoreSkillVersionForOrganization(org, id, versão)` lê o arquivado e **volta a passar por
+   `registerSkill`** — o que impõe `Trusted=false` de graça e faz a confiança continuar a exigir
+   `PromoteSkillTrustedForOrganization` com política;
+5. testes: (a) registar a v2 **preserva** a v1 e a lista mostra as duas; (b) restaurar devolve o
+   manifesto antigo ***com `Trusted=false`**, mesmo que o arquivado tenha sido promovido; (c)
+   restaurar versão inexistente falha.
+
+**O que este desenho NÃO faz**: não promove confiança, não apaga versões, e não mexe no que a
+activação (`skill_activation.go`) já faz.
