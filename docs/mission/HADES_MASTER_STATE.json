@@ -2423,7 +2423,9 @@
     "VARREDURA DO REPOSITORIO INTEIRO (E-409): 2216 arquivos varridos; 3 com dupla codificacao, e apenas 2 eram REAIS. hades_mission_check.py contem mojibake porque e' o REGEX DO DETECTOR (a municao parece a doenca) e hades_mission_check_test.py contem porque e' a FIXTURE que prova que o detector dispara. Meu scan acusou o detetor",
     "O MESMO ERRO, DUAS VEZES, DOCUMENTADO NA PRIMEIRA (E-409): a nota de E-235 diz 'QUARTA VEZ QUE O MEU INSTRUMENTO PRODUZIU FALSO ACHADO: vi Hades [dupla codificacao] concorrentes e conclui que a documentacao estava corrompida'. Eu repeti: vi o artefato no console, transcrevi para o indice (o gate acusou 2 ocorrencias) e escrevi uma nota sobre isso - cuja propria frase continha o artefato",
     "ARTEFATO DE LEITURA TRANSCRITO VIRA DADO PERMANENTE (E-409): a descricao passou a ser '[dupla codificacao]', nao a transcricao. Transcrever o artefato foi o que o tornou real no repositorio",
-    "A TERCEIRA VEZ NA MESMA SESSAO (E-409): a linha E-409, escrita para registrar que transcrever o artefato o torna real, continha o REGEX DO DETECTOR transcrito - e o gate acusou de novo. A descricao passou a ser '[padrao de dupla codificacao]'. A licao nao e' 'ter cuidado': e' que DESCREVER e' seguro e TRANSCREVER nao e'"
+    "A TERCEIRA VEZ NA MESMA SESSAO (E-409): a linha E-409, escrita para registrar que transcrever o artefato o torna real, continha o REGEX DO DETECTOR transcrito - e o gate acusou de novo. A descricao passou a ser '[padrao de dupla codificacao]'. A licao nao e' 'ter cuidado': e' que DESCREVER e' seguro e TRANSCREVER nao e'",
+    "A VARREDURA VIROU CHECKER, E ELE ME CORRIGIU DUAS VEZES (E-410): (1) com rglob levou mais de 10 minutos porque ENTRAVA em dist/build antes de filtrar - os.walk com poda deu 1,09 s. O custo estava no CAMINHO, nao no trabalho; checker que nao termina nao e' checker. (2) acusou dispensa OBSOLETA quando a fixture nao continha o padrao literal - fazendo consigo mesmo o que o E-383 fez com o classificador",
+    "DISPENSA QUE NAO CASA COM NADA E' DIVIDA DISFARCADA DE EXCECAO (E-410): o checker de codificacao acusa dispensas obsoletas, e foi assim que ele pegou a minha propria fixture escrita com escapes"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -3594,6 +3596,25 @@
           "o padrao do travessao pode dar falso positivo",
           "a varredura nao virou checker do repositorio: depende de rodar a mao"
         ]
+      },
+      "checker_de_codificacao": {
+        "script": "scripts/hades_encoding_check.py",
+        "teste": "scripts/hades_encoding_check_test.py",
+        "medido": "2218 arquivos, 4 dispensas, exit 0, 1,09 s",
+        "dispensas": [
+          "scripts/hades_mission_check.py (o detector)",
+          "scripts/hades_mission_check_test.py (a fixture dele)",
+          "scripts/hades_encoding_check.py (este checker)",
+          "scripts/hades_encoding_check_test.py (a fixture dele)"
+        ],
+        "o_checker_me_corrigiu": [
+          "levou >10 min com rglob: o custo estava no CAMINHO; os.walk com poda => 1,09 s",
+          "acusou dispensa OBSOLETA quando a fixture nao continha o padrao literal"
+        ],
+        "limites": [
+          "ainda NAO foi incluido na bateria de checkers (a lista esta no shell, nao em arquivo)",
+          "cobre extensoes de texto; binarios e .png nao sao lidos"
+        ]
       }
     },
     "portao_e2e": {
@@ -3744,6 +3765,7 @@
     "E-406": "peso do E2E medido (18 testes/105 expects/0 skips) + screens:verify PASS + receita no AGENTS.md",
     "E-407": "natureza das 105 assercoes E2E: 2 negativas, 0 convergencia; instrumento corrigido",
     "E-408": "correcao do meu ADV-59: as negativas existem nos testes Go; 0 mojibake",
-    "E-409": "varredura do repo inteiro: 2 achados legitimos (detector e fixture) e 2 notas corrigidas"
+    "E-409": "varredura do repo inteiro: 2 achados legitimos (detector e fixture) e 2 notas corrigidas",
+    "E-410": "checker de codificacao com teste-do-teste (7 casos) e dispensa obsoleta acusada"
   }
 }
