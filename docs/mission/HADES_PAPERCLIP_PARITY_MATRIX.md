@@ -207,3 +207,29 @@ tem** — decisão de desenho, não detalhe de implementação.
 **Porque isto fica escrito ANTES da ligação**: escrever a ligação sobre um campo que **não existe**
 foi exactamente o erro do E-618 (o `memory.search` que duplicava o `knowledge.search`) — custou um
 commit revertido. *Auditar antes de ligar é mais barato do que reverter depois.*
+
+## 8. Auditoria MCP — o Hades é CLIENTE, não SERVIDOR (item 3)
+
+**Medido** (`internal/agent/mcp*.go`, ~30 testes):
+
+| o que existe | evidência |
+| --- | --- |
+| gestor de servidores MCP locais (stdio) | `MCPManager.Register/List/SetEnabled/Remove/Call` — **todos** com variante `...ForOrganization` |
+| gestor remoto (HTTP/SSE) com OAuth | `RemoteMCPManager.BeginOAuth/CompleteOAuth/refreshOAuth`, pairing autenticado de uso único |
+| anti-SSRF | DNS pinning, recusa de endereços especiais, mesma origem em redireccionamentos, loopback controlado |
+| MCP como FERRAMENTA do agente | `mcpCallTool` (`mcp.go:648`) e `remoteMCPCallTool` (`mcp_remote.go:843`) |
+| segredos e limites | segredos por organização, allowlist de métodos, limite de payload, redacção de resultado |
+| fail-closed | `TestMCPOrganizationCallFailsClosedWithoutStrictSandbox` |
+
+**E a direcção que falta**: todas as ocorrências de JSON-RPC no repositório são de **cliente**
+(a construir pedidos) ou de **servidores falsos nos testes**. **Não há nenhum respondedor MCP** —
+nenhum handler de `initialize`, `tools/list` ou `tools/call` como servidor.
+
+**Consequência**: nenhum cliente MCP (Claude Desktop, Cursor, outro harness) consegue consultar a
+memória do Hades. *O complemento pede «integrar as capacidades de memória aos MCPs» — e integrar
+nas duas direcções: consumir servidores MCP (feito, com segurança a sério) e **servir** a memória
+pelo protocolo (por fazer).*
+
+**O que uma implementação tem de respeitar** (para não abrir um buraco): o escopo de organização
+do **chamador** aplicado a cada `tools/call` (o mesmo guard dos 8 rotas de memória), a redacção do
+DLP nos resultados, e `trusted`/visibilidade das skills como o resto do sistema já impõe.
