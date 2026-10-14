@@ -2747,7 +2747,8 @@
     "E-553 (FASE 1 - a falha REAL do race macos/ubuntu, discriminada e corrigida): NAO era data race, nem timeout (11m10s contra 11m06s), nem infra, nem MLX/CGO (ubuntu e macos falharam nos MESMOS testes). Era o meu E-535, em duas metades. METADE 1 - a ORDEM: o E-535 pos recusarModalidadeDeMidia ANTES de validateMediaOutputDirectory e eu declarei isso como vitoria; mas dois testes existentes exigem o symlink primeiro. A modalidade NAO e' o provider: a ordem correcta e' symlink (disco) -> modalidade (modelo) -> provider (rede), e a guarda continua antes do postJSON. METADE 2 - O FIXTURE: TestMediaProcessDoesNotCallProviderBeforeApproval quer medir o fluxo com aprovacao, e o MediaProvider do fixture nao declarava ImageModel - a recusa (correcta) abortava a missao. Acrescentado ImageModel ao fixture. O SKIP do teste de symlink e' o comportamento DESENHADO (t.Skip de plataforma que nunca era alcancado). Verificado: gofmt limpo; 3 testes PASS/SKIP/PASS (ok 9.206s); todos os de Media ok 9.868s; server ok 9.788s. E a licao do E-540 aplicada CONTRA MIM: o pacote inteiro leva >600s e eu deixei de o correr; o dirigido '-run Media' leva 5,5s - e foi por isso que o defeito chegou ao CI.",
     "E-554 (2a natureza do E-552): os TRES derivados passam a citar o commit medido, e o campo foi REMEDIDO (a81b847c3 -> HEAD). Correccao em dois sits: release_gate.py ganhou tabela de procedencia nos DOIS cabecalhos (RELEASE_REPORT :113 e FINAL_RELEASE_GATE :197), e baseline_report.py passou a declarar DOIS campos (main e medido) em vez do 'commit de referencia' ambiguo. O ERRO DENTRO DO ERRO: corrigi um cabecalho e tratei o script como se gerasse UM documento - e ele gera DOIS. 'Um gerador que escreve N ficheiros nao e' N lugares: e' UM.' PROVA: 3 de 3 citam o commit medido; hades_release_gate.py --check = GATE CONSISTENTE, exit 0. A (2) natureza - instrumentar - fica declarada com o sitio: passo 14 do gate (procedencia), irmao do 13 (frescura, E-549). LIMITE: o measured_at continua a ser escrito A' MAO - e um carimbo escrito a' mao e' indistinguivel de um inventado.",
     "E-555 (o passo 14 do gate - procedencia dos derivados): o E-552 mediu o achado e declarou DUAS naturezas; o E-554 fez o conteudo (os 3 geradores citam o commit medido) e este faz a verificacao. Funcao verificar_procedencia_dos_derivados no hades_mission_check.py, chamada como passo 14, no formato da casa. E' o PAR do passo 13 (frescura, E-549): 'frescura diz QUANDO foi medido; procedencia diz SOBRE O QUE'. Criterio minimo: nao se exige QUAL campo o derivado cita (decisao em aberto do E-552), exige-se que o valor ESTEJA ESCRITO. PROVA: ordem => exit 0; 1 derivado adulterado (FINAL_RELEASE_GATE, d9db1ccef -> SEM-COMMIT) => exit 1 com 'derivado SEM PROCEDENCIA: HADES_FINAL_RELEASE_GATE.md nao cita o commit medido d9db1ccef'; restaurado => exit 0. O gate passa a 14 verificacoes. LIMITE: criterio de PRESENCA, nao de CORRECCAO; e a lista dos 3 derivados e' MANUAL, como a do passo 13.",
-    "E-556 (a lista de checkpoint ganha DONO): o E-549 (passo 13) e o E-555 (passo 14) tinham a lista LITERAL no script, e os dois declararam a divida 'a lista e' manual'. Na rodada 140 eu escrevi que a cura era DERIVAR; a medicao (rodada 141) desmentiu - o estado tinha 32 chaves e NENHUMA declarava documentos obrigatorios, logo nao havia de onde derivar. A cura certa e' DECLARAR: acrescentado 'checkpoint_documents' ao estado (retomada, derivados, declarados_mas_nao_cobertos), e os passos 13 e 14 passam a LER de la, com fallback literal declarado em '*_lista_de'. O HADES_EVIDENCE_INDEX.md fica DECLARADO como nao coberto (e' verificado por outros passos). PROVA EM DUAS TENTATIVAS: esvaziar a lista => exit 0, INDISTINGUIVEL (cai no fallback com os mesmos 3 ficheiros); por um nome INEXISTENTE so' no estado => exit 1 com 'documento de retomada AUSENTE: HADES_INEXISTENTE.md'. 'Um teste que nao distingue os caminhos nao prova nenhum.' E' a 31a variacao, e e' minha - a licao do E-549, aprendida e depois esquecida. LIMITE: o campo e' mantido A' MAO; e o EVIDENCE_INDEX fica declarado, mas NAO coberto - proxima divida: ou o passo mede a frescura do indice, ou o indice sai da FASE 7."
+    "E-556 (a lista de checkpoint ganha DONO): o E-549 (passo 13) e o E-555 (passo 14) tinham a lista LITERAL no script, e os dois declararam a divida 'a lista e' manual'. Na rodada 140 eu escrevi que a cura era DERIVAR; a medicao (rodada 141) desmentiu - o estado tinha 32 chaves e NENHUMA declarava documentos obrigatorios, logo nao havia de onde derivar. A cura certa e' DECLARAR: acrescentado 'checkpoint_documents' ao estado (retomada, derivados, declarados_mas_nao_cobertos), e os passos 13 e 14 passam a LER de la, com fallback literal declarado em '*_lista_de'. O HADES_EVIDENCE_INDEX.md fica DECLARADO como nao coberto (e' verificado por outros passos). PROVA EM DUAS TENTATIVAS: esvaziar a lista => exit 0, INDISTINGUIVEL (cai no fallback com os mesmos 3 ficheiros); por um nome INEXISTENTE so' no estado => exit 1 com 'documento de retomada AUSENTE: HADES_INEXISTENTE.md'. 'Um teste que nao distingue os caminhos nao prova nenhum.' E' a 31a variacao, e e' minha - a licao do E-549, aprendida e depois esquecida. LIMITE: o campo e' mantido A' MAO; e o EVIDENCE_INDEX fica declarado, mas NAO coberto - proxima divida: ou o passo mede a frescura do indice, ou o indice sai da FASE 7.",
+    "E-557 (FONTE x RESUMO - a divida do indice era FALSA): o E-556 declarou o HADES_EVIDENCE_INDEX.md como 'nao coberto'. A medicao mostra que a lacuna nao existe: os 5 documentos da FASE 7 sao de DOIS tipos - FONTE (o estado e o indice) e RESUMO (handoff, pending, release report, e os derivados). 'Um resumo tem de citar o commit; uma fonte nao.' O indice e' fonte e esta' coberto por INTEGRIDADE (passo 1: 556 linhas, buracos NENHUM, duplicados NENHUM). Ficou escrito no estado, em checkpoint_documents.tipos, com o tipo de cada documento e o que o cobre. Tres tipos, tres verificacoes, nenhuma repetida. E' a 33a variacao e a PRIMEIRA em que a medicao ABSOLVE o objecto: nas duas anteriores (a lista manual, o E-999) mostrou que EU estava errado. LIMITE: a classificacao e' declarada a' mao e nao inferida; e falta uma verificacao possivel e nao feita - o indice diz 556 e o estado poderia dizer outro numero."
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -2839,7 +2840,7 @@
     "evidence": "E-173"
   },
   "measured_at": "2026-10-14T11:17:05-03:00",
-  "measured_commit": "a0cdb57c7",
+  "measured_commit": "4d783e2d9",
   "measured_how": "git rev-parse origin/fix/checker-relogio (o commit DO PR, medido no GitHub) + git rev-parse origin/main + consulta a API de checks do PR #438. O HEAD local e' 1065e5c56 (1 commit a frente: E-518/E-519, ainda nao empurrado).",
   "stage_states_derived_from": "stages[].state (fonte unica desde E-311)",
   "reconciliation_v22": {
@@ -4381,9 +4382,42 @@
       "HADES_FINAL_RELEASE_GATE.md",
       "HADES_BASELINE_REPORT.md"
     ],
-    "declarados_mas_nao_cobertos": [
-      "HADES_EVIDENCE_INDEX.md"
-    ],
-    "nota_do_ultimo": "HADES_EVIDENCE_INDEX.md e nomeado pela FASE 7 e NAO e coberto por frescura nem por procedencia: e verificado por outros passos (IDs, veredito), mas nao por estes dois. Fica DECLARADO aqui, e nao escondido."
+    "declarados_mas_nao_cobertos": [],
+    "nota_do_ultimo": "E-557: o HADES_EVIDENCE_INDEX.md SAIU de 'declarados_mas_nao_cobertos' porque a lacuna era FALSA - ele e' FONTE, e o passo 1 ja' o cobre por INTEGRIDADE (556 linhas, buracos NENHUM, duplicados NENHUM). Declarar uma lacuna sem a medir e' inventar trabalho.",
+    "tipos": {
+      "nota": "E-557: os 5 documentos da FASE 7 nao sao todos a mesma coisa. FONTE prova-se por INTEGRIDADE; RESUMO por FRESCURA; RESUMO DERIVADO por PROCEDENCIA. 'Um resumo tem de citar o commit; uma fonte nao.' Foi isto que mostrou que a lacuna declarada no E-556 sobre o EVIDENCE_INDEX era FALSA: ele e' fonte, e o passo 1 ja' o cobre por integridade.",
+      "HADES_MASTER_STATE.json": {
+        "tipo": "fonte",
+        "coberto_por": "measured_commit remédido a cada registo"
+      },
+      "HADES_EVIDENCE_INDEX.md": {
+        "tipo": "fonte",
+        "coberto_por": "integridade — passo 1 (IDs orfaos)"
+      },
+      "HADES_HANDOFF.md": {
+        "tipo": "resumo",
+        "coberto_por": "frescura — passo 13"
+      },
+      "HADES_PENDING_WORK.md": {
+        "tipo": "resumo",
+        "coberto_por": "frescura — passo 13"
+      },
+      "HADES_NEXT_ACTION.md": {
+        "tipo": "resumo",
+        "coberto_por": "frescura — passo 13"
+      },
+      "HADES_RELEASE_REPORT.md": {
+        "tipo": "resumo derivado",
+        "coberto_por": "procedencia — passo 14"
+      },
+      "HADES_FINAL_RELEASE_GATE.md": {
+        "tipo": "resumo derivado",
+        "coberto_por": "procedencia — passo 14"
+      },
+      "HADES_BASELINE_REPORT.md": {
+        "tipo": "resumo derivado",
+        "coberto_por": "procedencia — passo 14"
+      }
+    }
   }
 }
