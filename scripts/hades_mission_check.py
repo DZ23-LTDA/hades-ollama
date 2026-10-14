@@ -560,7 +560,7 @@ MARCADORES_DE_CONFLITO = ("<<<<<<<", ">>>>>>>")
 
 
 def verificar_frescura_dos_documentos_de_retomada(
-    raiz: Path, ultimo_id: int, tolerancia: int = 40
+    raiz: Path, ultimo_id: int, estado: dict, tolerancia: int = 40
 ) -> tuple[list[str], dict]:
     """Confere que os documentos de RETOMADA mencionam evidência recente (E-544 / E-548).
 
@@ -578,11 +578,17 @@ def verificar_frescura_dos_documentos_de_retomada(
 
     *Devolve `(problemas, resumo)`, como as outras verificações deste ficheiro.*
     """
-    caminhos = [
-        ("HADES_HANDOFF.md", raiz / "docs/mission/HADES_HANDOFF.md"),
-        ("HADES_PENDING_WORK.md", raiz / "docs/mission/HADES_PENDING_WORK.md"),
-        ("HADES_NEXT_ACTION.md", raiz / "docs/mission/HADES_NEXT_ACTION.md"),
-    ]
+    # 🚨 E-556: ***A LISTA VEM DO ESTADO, NÃO DO SCRIPT.*** *Até aqui era literal, e por isso a lista do `E-549` e a
+    # do `E-555` eram **afirmações sem dono** sobre o que existe.* ⇒ *A medição do `E-556` mostrou que a cura **não**
+    # podia ser derivar (o estado **não** tinha chave nenhuma) — *tinha de ser **declarar**: `checkpoint_documents`.*
+    #
+    # *A lista literal fica como **retrocompatibilidade**: se a chave faltar, o passo usa-a e **declara** que caiu nela.*
+    nomes = (estado.get("checkpoint_documents") or {}).get("retomada") or []
+    origem = "estado"
+    if not nomes:
+        nomes = ["HADES_HANDOFF.md", "HADES_PENDING_WORK.md", "HADES_NEXT_ACTION.md"]
+        origem = "literal (retrocompatibilidade: o estado nao declara checkpoint_documents)"
+    caminhos = [(nome, raiz / "docs/mission" / nome) for nome in nomes]
     piso = max(1, ultimo_id - tolerancia)
     problemas: list[str] = []
     desactualizados: list[str] = []
@@ -606,6 +612,7 @@ def verificar_frescura_dos_documentos_de_retomada(
     return problemas, {
         "retomada_desactualizados": len(desactualizados),
         "retomada_piso": piso,
+        "retomada_lista_de": origem,
     }
 
 
@@ -628,11 +635,13 @@ def verificar_procedencia_dos_derivados(raiz: Path, estado: dict) -> tuple[list[
     *Devolve `(problemas, resumo)`, como as outras verificações deste ficheiro.*
     """
     medido = (estado.get("measured_commit") or "").strip()
-    derivados = [
-        ("HADES_RELEASE_REPORT.md", raiz / "docs/mission/HADES_RELEASE_REPORT.md"),
-        ("HADES_FINAL_RELEASE_GATE.md", raiz / "docs/mission/HADES_FINAL_RELEASE_GATE.md"),
-        ("HADES_BASELINE_REPORT.md", raiz / "docs/mission/HADES_BASELINE_REPORT.md"),
-    ]
+    # 🚨 E-556: ***A LISTA VEM DO ESTADO.*** *Mesma correcção do passo 13: o dono da lista é o estado, não o script.*
+    nomes_derivados = (estado.get("checkpoint_documents") or {}).get("derivados") or []
+    origem_derivados = "estado"
+    if not nomes_derivados:
+        nomes_derivados = ["HADES_RELEASE_REPORT.md", "HADES_FINAL_RELEASE_GATE.md", "HADES_BASELINE_REPORT.md"]
+        origem_derivados = "literal (retrocompatibilidade: o estado nao declara checkpoint_documents)"
+    derivados = [(nome, raiz / "docs/mission" / nome) for nome in nomes_derivados]
     problemas: list[str] = []
     sem_procedencia: list[str] = []
     if not medido:
@@ -654,6 +663,7 @@ def verificar_procedencia_dos_derivados(raiz: Path, estado: dict) -> tuple[list[
     return problemas, {
         "derivados_sem_procedencia": len(sem_procedencia),
         "derivados_medido": medido,
+        "derivados_lista_de": origem_derivados,
     }
 
 
@@ -744,7 +754,7 @@ def main() -> int:
     # ***A regra não era o problema: faltava QUEM A VERIFICASSE.*** *Este passo é a segunda natureza da correcção
     # que o `E-544` declarou e o `E-548` registou como NÃO feita.*
     problemas_retomada, resumo_retomada = verificar_frescura_dos_documentos_de_retomada(
-        raiz_do_repositorio, resumo["ultimo_id"]
+        raiz_do_repositorio, resumo["ultimo_id"], estado
     )
     problemas += problemas_retomada
     resumo.update(resumo_retomada)

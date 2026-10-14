@@ -6,7 +6,7 @@
 ## 1. Ambiente das medições
 
 - commit de referência (`main`): `4b3e21854`
-- commit **medido** (`measured_commit`): `d9db1ccef`
+- commit **medido** (`measured_commit`): `a0cdb57c7`
 - medido em (`measured_at`): 2026-10-14T11:17:05-03:00
 - SO das medições locais: Windows (runner do agente); o CI roda Linux
 - toolchain: **go1.26.9**, fixado por `go-version-file: go.mod` em todos os workflows (E-167)

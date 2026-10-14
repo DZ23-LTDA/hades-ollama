@@ -2746,7 +2746,8 @@
     "E-552 (auditoria de FASE 3): os derivados NAO identificam o commit medido. FINAL_RELEASE_GATE: sem commit explicito. RELEASE_REPORT: 0 mencoes. BASELINE_REPORT: cita a main (4b3e21854), que nao e' o objecto medido quando ha' commits locais. E' IRMA do E-545 (onde o measured_commit do estado estava obsoleto): nos dois casos, um numero que nao se sabe a que objecto pertence. 'Um relatorio derivado sem o commit medido nao se pode reproduzir nem contestar.' Correccao de duas naturezas: (1) acrescentar a linha nos geradores; (2) instrumentar - seria o passo 14 do gate, a verificar procedencia (o 13, do E-549, verifica frescura). E o measured_commit do estado voltou a envelhecer (a81b847c3 vs HEAD fde0c2ef4) - como o E-545 previu.",
     "E-553 (FASE 1 - a falha REAL do race macos/ubuntu, discriminada e corrigida): NAO era data race, nem timeout (11m10s contra 11m06s), nem infra, nem MLX/CGO (ubuntu e macos falharam nos MESMOS testes). Era o meu E-535, em duas metades. METADE 1 - a ORDEM: o E-535 pos recusarModalidadeDeMidia ANTES de validateMediaOutputDirectory e eu declarei isso como vitoria; mas dois testes existentes exigem o symlink primeiro. A modalidade NAO e' o provider: a ordem correcta e' symlink (disco) -> modalidade (modelo) -> provider (rede), e a guarda continua antes do postJSON. METADE 2 - O FIXTURE: TestMediaProcessDoesNotCallProviderBeforeApproval quer medir o fluxo com aprovacao, e o MediaProvider do fixture nao declarava ImageModel - a recusa (correcta) abortava a missao. Acrescentado ImageModel ao fixture. O SKIP do teste de symlink e' o comportamento DESENHADO (t.Skip de plataforma que nunca era alcancado). Verificado: gofmt limpo; 3 testes PASS/SKIP/PASS (ok 9.206s); todos os de Media ok 9.868s; server ok 9.788s. E a licao do E-540 aplicada CONTRA MIM: o pacote inteiro leva >600s e eu deixei de o correr; o dirigido '-run Media' leva 5,5s - e foi por isso que o defeito chegou ao CI.",
     "E-554 (2a natureza do E-552): os TRES derivados passam a citar o commit medido, e o campo foi REMEDIDO (a81b847c3 -> HEAD). Correccao em dois sits: release_gate.py ganhou tabela de procedencia nos DOIS cabecalhos (RELEASE_REPORT :113 e FINAL_RELEASE_GATE :197), e baseline_report.py passou a declarar DOIS campos (main e medido) em vez do 'commit de referencia' ambiguo. O ERRO DENTRO DO ERRO: corrigi um cabecalho e tratei o script como se gerasse UM documento - e ele gera DOIS. 'Um gerador que escreve N ficheiros nao e' N lugares: e' UM.' PROVA: 3 de 3 citam o commit medido; hades_release_gate.py --check = GATE CONSISTENTE, exit 0. A (2) natureza - instrumentar - fica declarada com o sitio: passo 14 do gate (procedencia), irmao do 13 (frescura, E-549). LIMITE: o measured_at continua a ser escrito A' MAO - e um carimbo escrito a' mao e' indistinguivel de um inventado.",
-    "E-555 (o passo 14 do gate - procedencia dos derivados): o E-552 mediu o achado e declarou DUAS naturezas; o E-554 fez o conteudo (os 3 geradores citam o commit medido) e este faz a verificacao. Funcao verificar_procedencia_dos_derivados no hades_mission_check.py, chamada como passo 14, no formato da casa. E' o PAR do passo 13 (frescura, E-549): 'frescura diz QUANDO foi medido; procedencia diz SOBRE O QUE'. Criterio minimo: nao se exige QUAL campo o derivado cita (decisao em aberto do E-552), exige-se que o valor ESTEJA ESCRITO. PROVA: ordem => exit 0; 1 derivado adulterado (FINAL_RELEASE_GATE, d9db1ccef -> SEM-COMMIT) => exit 1 com 'derivado SEM PROCEDENCIA: HADES_FINAL_RELEASE_GATE.md nao cita o commit medido d9db1ccef'; restaurado => exit 0. O gate passa a 14 verificacoes. LIMITE: criterio de PRESENCA, nao de CORRECCAO; e a lista dos 3 derivados e' MANUAL, como a do passo 13."
+    "E-555 (o passo 14 do gate - procedencia dos derivados): o E-552 mediu o achado e declarou DUAS naturezas; o E-554 fez o conteudo (os 3 geradores citam o commit medido) e este faz a verificacao. Funcao verificar_procedencia_dos_derivados no hades_mission_check.py, chamada como passo 14, no formato da casa. E' o PAR do passo 13 (frescura, E-549): 'frescura diz QUANDO foi medido; procedencia diz SOBRE O QUE'. Criterio minimo: nao se exige QUAL campo o derivado cita (decisao em aberto do E-552), exige-se que o valor ESTEJA ESCRITO. PROVA: ordem => exit 0; 1 derivado adulterado (FINAL_RELEASE_GATE, d9db1ccef -> SEM-COMMIT) => exit 1 com 'derivado SEM PROCEDENCIA: HADES_FINAL_RELEASE_GATE.md nao cita o commit medido d9db1ccef'; restaurado => exit 0. O gate passa a 14 verificacoes. LIMITE: criterio de PRESENCA, nao de CORRECCAO; e a lista dos 3 derivados e' MANUAL, como a do passo 13.",
+    "E-556 (a lista de checkpoint ganha DONO): o E-549 (passo 13) e o E-555 (passo 14) tinham a lista LITERAL no script, e os dois declararam a divida 'a lista e' manual'. Na rodada 140 eu escrevi que a cura era DERIVAR; a medicao (rodada 141) desmentiu - o estado tinha 32 chaves e NENHUMA declarava documentos obrigatorios, logo nao havia de onde derivar. A cura certa e' DECLARAR: acrescentado 'checkpoint_documents' ao estado (retomada, derivados, declarados_mas_nao_cobertos), e os passos 13 e 14 passam a LER de la, com fallback literal declarado em '*_lista_de'. O HADES_EVIDENCE_INDEX.md fica DECLARADO como nao coberto (e' verificado por outros passos). PROVA EM DUAS TENTATIVAS: esvaziar a lista => exit 0, INDISTINGUIVEL (cai no fallback com os mesmos 3 ficheiros); por um nome INEXISTENTE so' no estado => exit 1 com 'documento de retomada AUSENTE: HADES_INEXISTENTE.md'. 'Um teste que nao distingue os caminhos nao prova nenhum.' E' a 31a variacao, e e' minha - a licao do E-549, aprendida e depois esquecida. LIMITE: o campo e' mantido A' MAO; e o EVIDENCE_INDEX fica declarado, mas NAO coberto - proxima divida: ou o passo mede a frescura do indice, ou o indice sai da FASE 7."
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -2838,7 +2839,7 @@
     "evidence": "E-173"
   },
   "measured_at": "2026-10-14T11:17:05-03:00",
-  "measured_commit": "d9db1ccef",
+  "measured_commit": "a0cdb57c7",
   "measured_how": "git rev-parse origin/fix/checker-relogio (o commit DO PR, medido no GitHub) + git rev-parse origin/main + consulta a API de checks do PR #438. O HEAD local e' 1065e5c56 (1 commit a frente: E-518/E-519, ainda nao empurrado).",
   "stage_states_derived_from": "stages[].state (fonte unica desde E-311)",
   "reconciliation_v22": {
@@ -4367,5 +4368,22 @@
     "E-428": "pin de modelo (MANUAL) no RouteRequest, com contraprova"
   },
   "mission_id_declared": "hades-universal-v21",
-  "mission_id_note": "O `mission_id` diz `hades-universal-v21` e a missao activa e' a **V2.2**. *Nao alterei o campo*: ele pode ser chave de continuidade dos checkpoints, e trocar uma chave por estetica seria o tipo de ajuste cosmetico que a FASE 3 proibe. **Fica declarado como divergencia a decidir.**"
+  "mission_id_note": "O `mission_id` diz `hades-universal-v21` e a missao activa e' a **V2.2**. *Nao alterei o campo*: ele pode ser chave de continuidade dos checkpoints, e trocar uma chave por estetica seria o tipo de ajuste cosmetico que a FASE 3 proibe. **Fica declarado como divergencia a decidir.**",
+  "checkpoint_documents": {
+    "nota": "E-556: a LISTA DOS DOCUMENTOS DE CHECKPOINT tem DONO. O E-549 (passo 13) e o E-555 (passo 14) traziam a lista LITERAL dentro do script, e os dois declararam a divida: a lista e MANUAL. A medicao do E-556 mostrou que a cura NAO podia ser derivar: o estado NAO tinha chave nenhuma que declarasse os documentos obrigatorios (32 chaves, nenhuma). Entao a cura e DECLARAR aqui, e os passos 13 e 14 LEREM daqui. Uma lista num script e uma afirmacao SEM DONO sobre o que existe.",
+    "retomada": [
+      "HADES_HANDOFF.md",
+      "HADES_PENDING_WORK.md",
+      "HADES_NEXT_ACTION.md"
+    ],
+    "derivados": [
+      "HADES_RELEASE_REPORT.md",
+      "HADES_FINAL_RELEASE_GATE.md",
+      "HADES_BASELINE_REPORT.md"
+    ],
+    "declarados_mas_nao_cobertos": [
+      "HADES_EVIDENCE_INDEX.md"
+    ],
+    "nota_do_ultimo": "HADES_EVIDENCE_INDEX.md e nomeado pela FASE 7 e NAO e coberto por frescura nem por procedencia: e verificado por outros passos (IDs, veredito), mas nao por estes dois. Fica DECLARADO aqui, e nao escondido."
+  }
 }
