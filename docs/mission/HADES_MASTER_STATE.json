@@ -2529,7 +2529,11 @@
     "QUASE ACUSEI O PRODUTO POR ERRO MEU (E-448): FindApproved(org, ID, quando) - mas o segundo parametro e' a IMPRESSAO DIGITAL, nao o id. Com o id nunca achava nada, e a mensagem dizia '8 de 8 NAO sobreviveram'. A medida foi trocada por carregar e contar, que nao depende de acertar qual campo e' a chave de busca",
     "ADV-65 FECHADO PELA PRIMEIRA ALTERNATIVA (E-449): o motor de agendamento esta' ligado em producao - server/scheduling_routes.go expoe services/slots/book, o agentAPI ganhou o campo scheduling, e agent_routes.go:288 constroi o store sob storeRoot. A superficie falha fechado (503) e o escopo vem do middleware, nao do corpo",
     "A CAUSA DOS '0 SLOTS' FOI MEDIDA (E-449): o meu middleware punha c.Set('agent.organization', 'org-a') - uma STRING - mas agentOrganizationID espera o tipo agent.Organization, entao organizationID(c) caia para LocalOrganizationID. O store estava populado com 'org-a' e a rota lia 'local': sem turnos. O motor funcionava; o teste media OUTRO tenant",
-    "UMA CATRACA CUJO SUCESSO SE MEDE POR ELA DISPARAR (E-450): a catraca de E-441 dizia 'atualize a evidencia - em vez de apagar esta catraca', e DISPAROU quando a superficie foi ligada. Ela protegia contra a VERDADE MUDAR EM SILENCIO - o mesmo defeito do MEDIO-1 (E-439) e do '2 pendencias' (E-432). Invertida para falhar se o chamador desaparecer"
+    "UMA CATRACA CUJO SUCESSO SE MEDE POR ELA DISPARAR (E-450): a catraca de E-441 dizia 'atualize a evidencia - em vez de apagar esta catraca', e DISPAROU quando a superficie foi ligada. Ela protegia contra a VERDADE MUDAR EM SILENCIO - o mesmo defeito do MEDIO-1 (E-439) e do '2 pendencias' (E-432). Invertida para falhar se o chamador desaparecer",
+    "A VARREDURA DE REFERENCIAS ACHOU UMA PROVA DESLOCADA, E ERA MINHA (E-451): das 30 referencias arquivo:linha no registro, 29 apontam para arquivo existente com a linha dentro e 1 aponta para o vazio - 'service_agent_audit_test.go:65', escrita por mim na E-439 quando o arquivo e' service_agent_audit_test.go. A frase continua legitima e o lastro sumiu",
+    "E-446 DEIXOU ESTA LACUNA DECLARADA (E-451): aquela varredura provava que os TESTES citados existem, mas nao que as REFERENCIAS DE ARQUIVO existem. Duas conferencias diferentes, e a segunda faltava",
+    "O MEU INSTRUMENTO TAMBEM TINHA DEFEITO (E-451): a primeira versao da varredura tinha rglob DENTRO do laco de impressao - O(n^2) sobre 1346 arquivos, ficou a correr em background e teve de ser morta. 'Instrumento lento e' instrumento que nao se roda' (E-447), e desta vez o instrumento lento era o meu",
+    "A LISTA VAZIA NAO E' PROVA DE NADA (E-451): proximos_ataques ficou VAZIA, mas os achados 1..59 nunca foram conferidos por conteudo. 'Nao encontrei defeito aqui' nao e' 'nao ha defeito nos outros': a lista ficou vazia porque ninguem olhou"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -3283,7 +3287,7 @@
         },
         {
           "id": "ADV-73",
-          "estado": "RETRATADO (medido): o portao outbound NAO e' codigo morto. service_agent_tools.go:242 e' alcancavel e bloqueia com motivo; :226 recebe effectOutboundAllowed e service_agents.go:336 o alimenta com consentGranted; ha teste do bloqueio (tools_test.go:103) e do motivo (audit_test.go:65). O MEDIO-1 do registo estava OBSOLETO."
+          "estado": "RETRATADO (medido): o portao outbound NAO e' codigo morto. service_agent_tools.go:242 e' alcancavel e bloqueia com motivo; :226 recebe effectOutboundAllowed e service_agents.go:336 o alimenta com consentGranted; ha teste do bloqueio (tools_test.go:103) e do motivo (service_agent_audit_test.go:65). O MEDIO-1 do registo estava OBSOLETO."
         },
         {
           "id": "ADV-74",
