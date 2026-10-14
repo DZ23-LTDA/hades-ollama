@@ -184,3 +184,26 @@ agente→missões, que **não medi**.
 **Consequência honesta**: o ganho de **carga** do E-633 é **menor** do que eu supus (a fila já
 deduplica por missão); o que ele acrescenta é juntar as **razões** numa só notificação — ganho de
 **observabilidade e experiência**, não de volume. Fica escrito para não se vender o contrário.
+
+### 7.2 A fila não conhece o AGENTE — o mesmo padrão do D-12
+
+Segunda auditoria do wiring, e é a que decide o desenho:
+
+| onde | a dimensão do agente existe? |
+| --- | --- |
+| `ArtifactManifest` (`types.go:176-201`) | **sim** — `AgentID` (com `TenantID`, `UserID`, `ProjectID`) |
+| `Memory` (`types.go:282-313`) | **sim** — `MissionID` + `AgentID` + `TeamID` (é o `MemoryScope` que o `memory_isolation.go` filtra) |
+| `Mission` (`:75`) e `Step` (`:117`) | **não** |
+| `service_agents.go` | **não** tem `MissionID`/`mission_id` ⇒ um agente de serviço não está ligado a uma missão por campo |
+
+**O que isto significa**: o mapeamento **agente→missões não existe como campo**. Existe na **memória**
+(escopo) e na **atribuição de artefactos**, mas **não** no registo da missão nem no `QueueJob`.
+
+**E é o mesmo padrão do D-12** — lá era «o runtime não conhece o ator»; aqui é «a **fila** não conhece
+o **agente**». A saída é da mesma família: um campo aditivo (`Mission.AgentID`, como o `CreatedBy`
+proposto no D-12) **ou** coalescer pelo par (agente, missão) usando o escopo que a **memória já
+tem** — decisão de desenho, não detalhe de implementação.
+
+**Porque isto fica escrito ANTES da ligação**: escrever a ligação sobre um campo que **não existe**
+foi exactamente o erro do E-618 (o `memory.search` que duplicava o `knowledge.search`) — custou um
+commit revertido. *Auditar antes de ligar é mais barato do que reverter depois.*
