@@ -239,6 +239,10 @@ type agentAPI struct {
 	chatHandlers []gin.HandlerFunc
 	// activeStreams bounds concurrent long-lived SSE/WS connections (SEC-13).
 	activeStreams atomic.Int64
+	// E-449 (ADV-65): o MOTOR DE AGENDAMENTO ligado à superfície. **Ate' aqui ele nao era construido fora dos testes**
+	// - *o motor existia, era testado, e nao estava ligado a nada*. Nulo significa "sem superficie ligada", e as rotas
+	// **falham fechado** em vez de devolver lista vazia (*que pareceria "nao ha servicos" em vez de "nao ha motor"*).
+	scheduling *agent.SchedulingStore
 }
 
 var errAgentForbidden = errors.New("object is outside the active organization")
@@ -281,7 +285,10 @@ func newAgentAPI(runtime *agent.Runtime) (*agentAPI, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &agentAPI{runtime: runtime, context: runtime.Context(), plugins: pluginRegistry, auth: auth, oauthClients: oauthClients, authRequired: required, push: runtime.Push(), grok: grokClient, samlServices: map[string]*agent.SAMLService{}}, nil
+	// E-449 (ADV-65): o motor de agendamento passa a ser CONSTRUIDO em producao. *Em E-441 a busca ampla mostrou que as
+	// duas ocorrencias de `NewSchedulingStore` fora dos testes eram o **comentario** e a **definicao**.* Sob `storeRoot`,
+	// como os outros stores - *um diretorio por preocupacao, e persistencia herdada.*
+	return &agentAPI{runtime: runtime, context: runtime.Context(), plugins: pluginRegistry, auth: auth, oauthClients: oauthClients, authRequired: required, push: runtime.Push(), grok: grokClient, samlServices: map[string]*agent.SAMLService{}, scheduling: agent.NewSchedulingStore(filepath.Join(storeRoot, "scheduling"))}, nil
 }
 
 func newAgentGrokClient() (*grok.Client, error) {
@@ -667,6 +674,11 @@ func (a *agentAPI) register(r *gin.Engine) {
 	group.POST("/oauth-clients/:provider", a.saveOAuthClient)
 	group.GET("/browser/environment", a.browserEnvironment)
 	group.POST("/browser/environment/setup", a.browserEnvironmentSetup)
+	// E-449 (ADV-65): a SUPERFICIE do motor de agendamento. *Um motor sem superficie nao e' capacidade: e' biblioteca.*
+	// Para OFERECER horario usa-se `/scheduling/slots`, que chama `OpenSlots` - **nao** `Availability` (ADV-60).
+	group.GET("/scheduling/services", a.schedulingServices)
+	group.GET("/scheduling/slots", a.schedulingSlots)
+	group.POST("/scheduling/book", a.schedulingBook)
 	group.GET("/mcp", a.mcp)
 	group.POST("/mcp", a.registerMCP)
 	group.POST("/mcp/:id/enable", a.enableMCP)
