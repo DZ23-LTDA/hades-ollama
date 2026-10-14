@@ -2411,7 +2411,10 @@
     "CHECKPOINT (E-404): main = e372a1036, 403 evidencias, 58 achados (ADV-53 a ADV-58), 1177 notas, e as branches remotas cairam de 400 para 17",
     "O E2E REAL ESTA VERDE (E-405): npx playwright test => exit 0, com backend E2E real (GET /api/version 200, POST /api/me 401, GET /api/v1/settings 200). Era o 'nao medido' que eu carregava desde o E-398",
     "O AMBIENTE DESTA MAQUINA NEGA ESCRITA NO TEMP DO USUARIO (E-405): o esbuild falhou com 'remove C:\\...\\AppData\\Local\\Temp\\esbuild-...: Acesso negado' e o webServer nao subiu. Com TMP/TEMP/TMPDIR sob _tmp, exit 0. E' a MESMA classe que a 5a auditoria achou no Go - e o sintoma e' sempre 'o teste nao roda', nunca 'o teste falha'",
-    "E2E VERDE NAO SUBSTITUI CAPTURA (E-405): as 27 evidencias .png da paridade seguem ausentes; captura nao se deduz de teste"
+    "E2E VERDE NAO SUBSTITUI CAPTURA (E-405): as 27 evidencias .png da paridade seguem ausentes; captura nao se deduz de teste",
+    "O VERDE E' DO CONJUNTO; A FORCA DE CADA ASSERCAO E' OUTRA MEDICAO (E-406): medi o peso da suite E2E - 9 specs, 18 testes, 105 expects, 0 skips. Nao e' smoke de fachada. Contagem de expect nao prova qualidade, mas distingue suite real de decorativa",
+    "O MANIFESTO DE CAPTURA TAMBEM PASSA (E-406): screens:verify => 'capture manifest: PASS (10 files)', validando SHA-256 de cada arquivo. Nao e' 'existe uma pasta': e' conteudo verificado por hash",
+    "A RECEITA FOI PARA O LUGAR CERTO (E-406): o sintoma 'o teste nao roda' custou duas sessoes em dois toolchains (Go e Node/esbuild). A tabela foi escrita no AGENTS.md, onde o proximo agente comeca a ler"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -3568,8 +3571,35 @@
         "os specs sao executados, mas o que cada um afirma nao foi lido",
         "screens:verify nao foi executado",
         "as 27 evidencias .png seguem ausentes - E2E verde nao substitui captura",
-        "a receita nao foi levada ao CI nem ao AGENTS.md"
-      ]
+        "a receita nao foi levada ao CI nem ao AGENTS.md",
+        "a contagem de expects nao mede se a assercao e' falsificavel - auditoria linha a linha ainda nao feita",
+        "as 27 evidencias .png da paridade NAO estao entre os 10 do manifesto: seguem ausentes",
+        "a receita foi para o AGENTS.md e nao para o CI (decisao, nao medicao)"
+      ],
+      "peso_medido": {
+        "specs": 9,
+        "testes": 18,
+        "expects": 105,
+        "skips": 0,
+        "por_spec": {
+          "firstRun": 24,
+          "first-run-journey": 18,
+          "prompts": 14,
+          "shell": 11,
+          "studioReorder": 11,
+          "compare": 9,
+          "scheduleFlow": 8,
+          "accessibility": 7,
+          "settings-write-loop": 3
+        }
+      },
+      "screens_verify": {
+        "comando": "node scripts/validate-capture-manifest.mjs",
+        "resultado": "capture manifest: PASS (10 files)",
+        "manifesto": "docs/images/screens/class-a-plus-capture-manifest.json (schema class-a-plus.capture.v1)",
+        "forca": "valida SHA-256 de cada arquivo - nao e' 'existe uma pasta', e' conteudo verificado por hash"
+      },
+      "receita_documentada_em": "AGENTS.md (secao 'Windows: redirecione TMP/TEMP quando o teste nao roda')"
     }
   },
   "unlinked_evidence": {
@@ -3663,6 +3693,7 @@
     "E-402": "ADV-58/2, /3 e /4: redundancia declarada e teste renomeado para o que prova",
     "E-403": "port da jornada Nova tarefa -> Tarefas: 7/7 testes verdes e tsc 0",
     "E-404": "consolidacao de 3 stashes redundantes (medido) + checkpoint remedido",
-    "E-405": "E2E real verde (exit 0) com a receita TMP/TEMP/TMPDIR sob _tmp"
+    "E-405": "E2E real verde (exit 0) com a receita TMP/TEMP/TMPDIR sob _tmp",
+    "E-406": "peso do E2E medido (18 testes/105 expects/0 skips) + screens:verify PASS + receita no AGENTS.md"
   }
 }
