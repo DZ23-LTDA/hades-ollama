@@ -15,7 +15,7 @@ import (
 
 func mensagensDeTeste(n int) []api.Message {
 	mensagens := make([]api.Message, 0, n)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		papel := "user"
 		if i%2 == 1 {
 			papel = "assistant"
@@ -56,7 +56,7 @@ func TestCompactacaoDoChatAplicaQuandoTudoEstaDeclarado(t *testing.T) {
 		t.Fatalf("o bruto ficou fora da raiz: %q", res.Caminho)
 	}
 	// As últimas mensagens seguem intactas, com o conteúdo original.
-	for i := 0; i < 6; i++ {
+	for i := range 6 {
 		esperado := originais[len(originais)-6+i].Content
 		if novas[1+i].Content != esperado {
 			t.Fatalf("intacta %d alterada: %q != %q", i, novas[1+i].Content, esperado)

@@ -15,7 +15,7 @@ import (
 func planoDeTeste(t *testing.T, n int) PlanoDeCompactacao {
 	t.Helper()
 	mensagens := make([]api.Message, 0, n)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		papel := "user"
 		if i%2 == 1 {
 			papel = "assistant"

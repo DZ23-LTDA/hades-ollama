@@ -14,7 +14,7 @@ import (
 
 func conversaLonga(n int) []api.Message {
 	mensagens := make([]api.Message, 0, n)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		papel := "user"
 		if i%2 == 1 {
 			papel = "assistant"
@@ -46,7 +46,7 @@ func TestFluxoCompactaGravaERecuperaOMaterial(t *testing.T) {
 		t.Fatal("a primeira mensagem não está marcada como resumo")
 	}
 	// AS ÚLTIMAS 4 SEGUEM INTACTAS, com o conteúdo original.
-	for i := 0; i < 4; i++ {
+	for i := range 4 {
 		esperado := originais[len(originais)-4+i].Content
 		if mensagens[1+i].Content != esperado {
 			t.Fatalf("mensagem intacta %d: %q != %q", i, mensagens[1+i].Content, esperado)

@@ -43,7 +43,7 @@ func TestChatContextCompactaQuandoOTetoEstaDeclarado(t *testing.T) {
 	// 10 mensagens, para haver faixa antiga a resumir (a janela padrão é 6).
 	var corpo strings.Builder
 	corpo.WriteString(`{"model":"qwen2.5:7b","messages":[`)
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		if i > 0 {
 			corpo.WriteString(",")
 		}
@@ -142,7 +142,7 @@ func TestChatContextNaoCompactaSemTetoDeclarado(t *testing.T) {
 
 	var corpo strings.Builder
 	corpo.WriteString(`{"model":"qwen2.5:7b","messages":[`)
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		if i > 0 {
 			corpo.WriteString(",")
 		}
