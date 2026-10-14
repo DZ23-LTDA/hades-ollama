@@ -564,4 +564,9 @@ jobs:
         shell: bash
         run: find . -type d -name node_modules -prune -exec rm -rf {} +
       - name: go test -race
-        run: go test -race -count=1 ./...
+        # -timeout 20m: o padrao do Go e' 10m POR BINARIO, e o `internal/agent` sob -race no
+        # macOS ultrapassa os 600 s (medido: `panic: test timed out after 10m0s`, SEM nenhum
+        # "WARNING: DATA RACE" - nao ha' corrida, ha' orcamento de tempo). Elevar o limite NAO
+        # esconde uma travagem: um hang real continua a falhar, aos 20m. E o `-race` NAO se
+        # desliga: e' a unica rede contra corridas e sai reforcada por ter tempo para correr.
+        run: go test -race -count=1 -timeout 20m ./...
