@@ -2496,7 +2496,10 @@
     "A DECISAO E' REGISTRADA, MAS NAO APLICADA (E-437): o passo continua executando com o planejador da MISSAO. Trocar o executor e' o incremento seguinte, e chama-lo de feito seria a classe que esta missao derruba",
     "A DECISAO APLICADA (E-438): ToolContext nao tinha campo de modelo, entao a rota era registrada e nao chegava a ferramenta. Decisao registrada e nao aplicada e' documentacao, nao controle. O teste prova entrega com pin, vazio sem registry, e que o evento e a entrega contam a mesma historia",
     "O DEFEITO ERA DO TESTE, NAO DO PRODUTO (E-438): o ModelID chegava vazio e o diagnostico mostrou que a rota DISPAROU (step.model.route com local/forte) e que o plano persistido era o do RulePlanner - eu trocava o planejador DEPOIS do CreateMission, que e' quem planeja e persiste. Foi preciso medir para saber qual dos dois estava errado",
-    "QUATRO RECUSAS DO PROPRIO MOTOR, TODAS CERTAS (E-438): Payload e' any e precisa de assercao; projeto fora do workspace; missao com escopo de organizacao sem ProjectID; e ferramenta fora do catalogo ('planner returned unsupported tool'). Todas estavam certas - os meus testes e' que nao"
+    "QUATRO RECUSAS DO PROPRIO MOTOR, TODAS CERTAS (E-438): Payload e' any e precisa de assercao; projeto fora do workspace; missao com escopo de organizacao sem ProjectID; e ferramenta fora do catalogo ('planner returned unsupported tool'). Todas estavam certas - os meus testes e' que nao",
+    "ACHADO RETRATADO POR MEDICAO (E-439): o registo dizia 'MEDIO-1: o portao outbound e' codigo morto (if false)'. Medido: nao ha 'if false' em internal/agent nem em server; service_agent_tools.go:242 bloqueia de verdade; :226 recebe effectOutboundAllowed e service_agents.go:336 o alimenta com consentGranted; ha teste do bloqueio e do motivo. O achado estava OBSOLETO",
+    "ACHADO DE AUDITORIA PRECISA DE DATA E MEDICAO (E-439): o MEDIO-1 envelheceu em silencio e passou a custar credibilidade. Manter um alarme falso no registo e' pior que nao te-lo - e' a mesma licao de E-432 (instrumento que nunca disparava) e E-434 (validacao que recusava tudo), agora do lado do REGISTO",
+    "A RETRATACAO NAO E' 'NAO HA DEFEITO' (E-439): ela cobre este achado. Os outros achados antigos do registo NAO foram reverificados, e a funcao que calcula consentGranted nao foi auditada nesta rodada"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -3247,6 +3250,10 @@
         {
           "id": "ADV-72",
           "estado": "FECHADO com contrapova: a catraca acusa DISPENSA ORFA (injetei uma para arquivo inexistente => exit 1 e acusacao). A causa de nao disparar era no_repo_real comparar com o PAI de DIRETORIO, dando False SEMPRE - o instrumento parecia funcionar e nunca executava."
+        },
+        {
+          "id": "ADV-73",
+          "estado": "RETRATADO (medido): o portao outbound NAO e' codigo morto. service_agent_tools.go:242 e' alcancavel e bloqueia com motivo; :226 recebe effectOutboundAllowed e service_agents.go:336 o alimenta com consentGranted; ha teste do bloqueio (tools_test.go:103) e do motivo (audit_test.go:65). O MEDIO-1 do registo estava OBSOLETO."
         }
       ],
       "proximos_ataques": [
