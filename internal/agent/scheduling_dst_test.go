@@ -19,7 +19,9 @@ import (
 func TestOpenSlotsNaoDuplicaInstanteNaViradaDeHorarioDeVerao(t *testing.T) {
 	loc, err := time.LoadLocation("America/New_York")
 	if err != nil {
-		t.Skipf("fuso America/New_York indisponível nesta máquina: %v", err)
+		// 🚨 E-420: era `t.Skipf` ✗ — *um teste que se pula sozinho é verde sem medir nada.* Agora **falha**.
+		t.Fatalf("fuso America/New_York indisponível: %v — instale o banco de fusos (tzdata); um teste pulado em "+
+			"silêncio não é aprovação", err)
 	}
 	// 2026-03-08 é o domingo do spring-forward nos EUA: 02:00 vira 03:00 (horário local inexistente).
 	dia := time.Date(2026, 3, 8, 0, 0, 0, 0, loc)

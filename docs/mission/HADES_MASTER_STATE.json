@@ -2447,7 +2447,10 @@
     "ADV-65 DECLARADO, NAO LIGADO (E-418): o motor de agendamento e' uma biblioteca testada e sem chamador em producao; o que esta' provado em producao e' o agendador de WORKFLOW. Ligar exigiria dono de tick em producao, ponte com os canais (que nao existem) e testes de concorrencia com o tick rodando",
     "HORARIO DE VERAO: O MESMO INSTANTE DUAS VEZES (E-419/ADV-64): o laco anda por deslocamento de relogio de parede e time.Date NORMALIZA horarios que nao existem, entao 02:00 e 02:30 caiam ambos em 03:00. A lista so' ordenava, sem deduplicar. Corrigido deduplicando por INSTANTE: remove o impossivel e preserva a hora legitimamente repetida",
     "O FUSO DO DESENVOLVEDOR ESCONDEU A CLASSE (E-419): a maquina desta base e' America/Sao_Paulo, sem horario de verao desde 2019 - por isso nenhum teste pegou uma duplicata de instante que existe em qualquer fuso com DST",
-    "A CONTRAPROVA PODE SER A PROPRIA REPRODUCAO (E-419): o teste novo rodou ANTES da correcao e falhou com o instante duplicado impresso. Nao foi preciso mutar nada: a evidencia de que ele detecta esta' no historico"
+    "A CONTRAPROVA PODE SER A PROPRIA REPRODUCAO (E-419): o teste novo rodou ANTES da correcao e falhou com o instante duplicado impresso. Nao foi preciso mutar nada: a evidencia de que ele detecta esta' no historico",
+    "EU DECLAREI, NAO MEDI - E A DECLARACAO ESTAVA ERRADA (E-420): no E-419 escrevi que a deduplicacao por instante preserva a hora repetida do fim do horario de verao. Medido: o laco por relogio de parede nunca gera o segundo lado, entao o produto oferece 01:00 UMA vez. A correcao continua certa; a JUSTIFICATIVA era falsa",
+    "DECLARACAO NAO E' MEDICAO (E-420): a justificativa que eu escrevi no E-419 virou um teste no E-420, e o teste disse que ela estava errada. O limite real - a hora repetida e' oferecida uma vez - ficou declarado",
+    "UM TESTE QUE SE PULA SOZINHO E' VERDE SEM MEDIR NADA (E-420): os dois testes de fuso faziam t.Skipf se o banco de fusos faltasse; agora falham com a mensagem dizendo o que instalar"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -3748,7 +3751,8 @@
       "divisao_de_responsabilidades": "o spec de scheduleFlow declara no cabecalho: a UI prova o CONTRATO cliente->HTTP (rotas interceptadas, vite preview sem backend Go); a SEMANTICA do grafo (ordem topologica, bloqueio de dependentes, decodeJSON estrito) e' provada pelos testes Go (10 em internal/agent/schedule_flow_test.go, 3 em server/agent_schedule_flow_test.go). A ausencia de negativas na suite de UI e' POR DESENHO"
     },
     "afirmacoes_superseded": {
-      "E-314": "afirma que 'esta fatia fecha esse buraco' em Availability; o buraco foi fechado em OpenSlots (funcao NOVA) e Availability ficou intacta. Superseded por E-413, que declara o limite e o fixa com teste"
+      "E-314": "afirma que 'esta fatia fecha esse buraco' em Availability; o buraco foi fechado em OpenSlots (funcao NOVA) e Availability ficou intacta. Superseded por E-413, que declara o limite e o fixa com teste",
+      "E-419 (justificativa)": "E-419 afirmou que a deduplicacao por instante PRESERVA a hora repetida do fim do horario de verao. MEDIDO em E-420: o laco por relogio de parede nunca gera o segundo lado da hora repetida, entao o produto oferece 01:00 UMA vez. A correcao do E-419 continua certa; a JUSTIFICATIVA era falsa. Limite real: o produto sub-oferece (nunca sobre-oferece)"
     },
     "portao_de_testes": {
       "dependencia_do_relogio": {
@@ -3776,6 +3780,15 @@
         "limites": [
           "cobre _test.go de internal/, nao server/, cmd/ nem JS",
           "o scanner le' comentarios"
+        ]
+      },
+      "dst_fallback": {
+        "medido": "6 slots; 1 instante distinto com horario de parede 01:00",
+        "conclusao": "a hora repetida e' oferecida uma vez: sub-oferta, nao double-booking",
+        "skip_silencioso": "substituido por Fatal nos dois testes de fuso - teste pulado em silencio e' verde sem medir nada",
+        "limites": [
+          "nao corrigi a sub-oferta (trabalho de produto)",
+          "a sub-oferta nao tem teste de regressao"
         ]
       }
     }
@@ -3885,6 +3898,7 @@
     "E-416": "lockPath compartilhado entre produto e teste: a contraprova passa a disparar",
     "E-417": "teste que dependia da hora: fixture escolhia instante na borda da meia-noite",
     "E-418": "varredura exaustiva do relogio (57 usos, 5 triados, todos seguros) + ADV-65 declarado",
-    "E-419": "ADV-64: dedup por instante na virada de horario de verao, com a reproducao como contraprova"
+    "E-419": "ADV-64: dedup por instante na virada de horario de verao, com a reproducao como contraprova",
+    "E-420": "a hora repetida do fall-back e' oferecida UMA vez: a minha declaracao no E-419 estava errada"
   }
 }
