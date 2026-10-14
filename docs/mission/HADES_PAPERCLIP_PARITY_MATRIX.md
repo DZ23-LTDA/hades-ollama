@@ -136,3 +136,31 @@ igual».*
 
 **O que este desenho NÃO faz**: não promove confiança, não apaga versões, e não mexe no que a
 activação (`skill_activation.go`) já faz.
+
+## 7. Auditoria da lacuna «Heartbeat Execution» — a lacuna é de COMPOSIÇÃO
+
+**Medido** (busca pelos nomes que o código usa):
+
+| termo | resultado |
+| --- | --- |
+| `WakeQueue` / `fila de despertar` | **0 ocorrências** |
+| `Coalesce` / `coalesc` / `Wakeup` / `acordar` | 19 ocorrências, **todas** `COALESCE(` de SQL (rotação de chaves, segurança) — nada de fila |
+| `Heartbeat` | 51 ocorrências; as primeiras são `DeviceStore.Heartbeat(deviceID, token, capabilities)` — heartbeat de **DISPOSITIVO**, não de agente |
+
+**O que o Hades JÁ tem**: fila durável (`OrchestrationJob` com *lease*, *claim* idempotente e DLQ no
+Redis) ✅ · agendador do supervisor (`business_supervisor_scheduler.go`, ciclo no intervalo
+configurado) ✅ · heartbeat de dispositivo ✅.
+
+**O que NÃO tem**: uma fila de despertar **por agente** com **coalescing** — «vários sinais
+pendentes para o mesmo agente ⇒ UM despertar».
+
+**Conclusão que muda o trabalho**: a lacuna é de **composição**, não de infraestrutura. As peças
+existem; falta a semântica. E isso implica a decisão de desenho já tomada: **não se cria uma fila
+nova ao lado da existente** — seria o «segundo sistema de tarefas» que os complementos proíbem. O
+despertar coalescido compõe-se sobre a fila durável que já tem lease e idempotência.
+
+**Primeiro passo testável, antes de ligar à fila**: a regra de coalescência como função pura
+(`DespertaresCoalescidos(sinais) []Despertar`), com teste de que N sinais do mesmo agente e dentro
+da janela produzem **um** despertar que carrega **todas** as razões — e que sinais fora da janela,
+ou de agentes diferentes, **não** se fundem. *A garantia vai para onde é testável; a ligação à
+fila vem depois, e é a parte que pode falhar por razões que o teste puro não vê.*
