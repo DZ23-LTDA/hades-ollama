@@ -212,6 +212,18 @@ type ToolContext struct {
 	WorkspaceSnapshotManifest *WorkspaceSnapshotManifest
 	WorkspaceSnapshotPrefix   string
 	MissionArtifacts          []ArtifactManifest
+	// E-438 (Estagio 43) — **A DECISAO APLICADA.** Ate aqui a rota por passo era tomada e **registrada** em
+	// `step.model.route` (E-437), mas **nao chegava a ferramenta** ✗: o `ToolContext` nao tinha campo de modelo, entao
+	// uma ferramenta que chama modelo **nao tinha como saber qual foi escolhido** ⇒ *a decisao ficava na cadeia de
+	// evidencias e fora do caminho de execucao.*
+	//
+	// **O que este campo e'**: o modelo que o ROTEADOR escolheu para ESTE passo (*capacidades + pin*), para a
+	// ferramenta usa-lo em vez de adivinhar.
+	//
+	// **O que ele NAO e'**, e precisa ficar dito: ele **nao obriga** nenhuma ferramenta a usa-lo ✗ - *quem chama modelo
+	// passa a ter a informacao; honra-la e' de cada ferramenta.* Vazio significa "nao houve roteamento por passo"
+	// (*runtime sem registry*), e **nao** "use o modelo da missao por conta propria".
+	ModelID string
 }
 
 type ToolResult struct {

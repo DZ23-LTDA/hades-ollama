@@ -2232,6 +2232,9 @@ func (r *Runtime) Run(ctx context.Context, id string) (runErr error) {
 		//
 		// **SEM REGISTRY NADA MUDA**: `r.models == nil` ⇒ *o ramo nao entra, e todo o comportamento anterior
 		// permanece* ✓ - e' isso que torna esta ligacao segura.
+		// E-438: o modelo roteado para ESTE passo sobe para fora do `if` para poder ser ENTREGUE a ferramenta - *antes
+		// ele era so' registrado no evento e o `ToolContext` nao o levava* ✗.
+		modeloRoteado := ""
 		if r.models != nil {
 			decisao, erroRota := r.RouteModelForStep(mission, *step)
 			if erroRota != nil {
@@ -2239,6 +2242,7 @@ func (r *Runtime) Run(ctx context.Context, id string) (runErr error) {
 				// executar no modelo da missao fingindo que a exigencia foi honrada.
 				return r.failStep(mission, step, fmt.Errorf("roteamento de modelo do passo %q: %w", step.ID, erroRota))
 			}
+			modeloRoteado = decisao.Model.ID
 			if err := r.observeEvent(mission, "step.model.route", step.ID, map[string]any{
 				"step_id": step.ID,
 				"model":   decisao.Model.ID,
@@ -2330,7 +2334,7 @@ func (r *Runtime) Run(ctx context.Context, id string) (runErr error) {
 			return err
 		}
 		toolSpan := r.traces.StartForOrganization(mission.OrganizationID, "tr_"+mission.ID, missionSpan.ID(), "tool."+step.Kind, map[string]any{"mission_id": mission.ID, "step_id": step.ID, "tool": step.Kind})
-		toolContext := ToolContext{MissionID: mission.ID, StepID: step.ID, Workspace: mission.Workspace, WorkspaceRoot: workspaceRoot, OrganizationID: mission.OrganizationID, ToolConfigSHA256: step.ToolConfigSHA256, Consent: r.consent}
+		toolContext := ToolContext{MissionID: mission.ID, StepID: step.ID, Workspace: mission.Workspace, WorkspaceRoot: workspaceRoot, OrganizationID: mission.OrganizationID, ToolConfigSHA256: step.ToolConfigSHA256, Consent: r.consent, ModelID: modeloRoteado}
 		if step.Kind == "git.repo.inspect" && mission.WorkspaceIsolated {
 			toolContext.WorkspaceSnapshotManifest = snapshotManifest
 			toolContext.WorkspaceSnapshotPrefix = snapshotPrefix
