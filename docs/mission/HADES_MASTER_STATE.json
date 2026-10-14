@@ -2693,7 +2693,8 @@
     "E-504 (o meu local NÃO reproduz o CI — 2 variáveis e um separador): `go test ./...` local · 6 pacotes falham · `app/store`, `app/ui`, `app/server`, `app/updater`, `cmd/launch`, `create`",
     "E-505 (o `main` está vermelho — e o commit que o tornou vermelho não toca Go): `actions_list` em `main` · `get_commit 4b3e21854` (*9 ficheiros, **zero Go***)",
     "E-506 (o CI do `#438` está VERDE — `dz23-agentic-quality` passou com `go test ./...`): `actions_list dz23-agentic-quality.yaml` · run **1853** @ `53a7f4280` → **`success`**",
-    "E-507 (o `main` real é `4b3e21854` — e o E-495 «corrigiu» um número certo): `actions_list branch=main` · main = **4b3e21854** · E-495 dizia 2bd4dd0eb"
+    "E-507 (o `main` real é `4b3e21854` — e o E-495 «corrigiu» um número certo): `actions_list branch=main` · main = **4b3e21854** · E-495 dizia 2bd4dd0eb",
+    "E-508 (go test ./... completo): 65 pacotes ok, 6 FAIL todos artefacto de ambiente; e o gate do encoding travou-me por 12 residuos UTF-16 que eu criei na RAIZ - o guard do -ne 8 impediu apagar uma medicao viva."
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
