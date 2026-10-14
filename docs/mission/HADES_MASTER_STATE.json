@@ -2461,7 +2461,9 @@
     "USO UNICO NAO RESISTIA A CONCORRENCIA (E-424/ADV-66): Consume era leitura-modificacao-escrita sem trava. Uma decisao humana autorizava 3-4 escritas (8 turnos simultaneos, mesmo ApprovalID). Corrigido com withFileLock; a contrapova reproduz o '3 de 8' do auditor. O worker nao tinha NENHUM teste concorrente",
     "O TESTE VARIAVA DUAS COISAS AO MESMO TEMPO (E-425/ADV-67): a impressao digital nao amarrava reason nem agent, e o teste que alegava amarracao variava titulo E valor - um OU, nao um E. Removendo um componente por vez, 9 de 9 passavam com a suite inteira verde. Um teste que varia duas coisas nao mede nenhuma das duas",
     "A ASSIMETRIA DENUNCIA O DESCUIDO (E-426): Decide/Consume/FindApproved/FindDenied nao conferiam OrganizationID, enquanto ListApprovals e AuditTrail conferiam. Defesa em profundidade que so' existe num dos lados nao e' defesa, e' sorte. Os dois Find* passaram a conferir; Decide recebeu a mesma trava do Consume",
-    "UM BURACO NA NUMERACAO E' UMA FALHA DE DISCIPLINA, E OS CHECKERS PEGARAM (E-423): registrei E-424/425/426 e pulei o E-423 (o fix de lint, descrito so' no commit). hades_mission_check.py acusou 'buracos na numeracao: E-423' e hades_state_chronology_test.py falhou junto. Corrigido - e a licao: o registro nao e' opcional quando o commit menciona a evidencia"
+    "UM BURACO NA NUMERACAO E' UMA FALHA DE DISCIPLINA, E OS CHECKERS PEGARAM (E-423): registrei E-424/425/426 e pulei o E-423 (o fix de lint, descrito so' no commit). hades_mission_check.py acusou 'buracos na numeracao: E-423' e hades_state_chronology_test.py falhou junto. Corrigido - e a licao: o registro nao e' opcional quando o commit menciona a evidencia",
+    "NAO E' GREENFIELD - A AUDITORIA DE REUSO DESMENTIU A SUPOSICAO (E-427): o substrato do Estagio 43 ja' existe em grande parte - RequiredCapabilities, LocalOnly, RouteCandidates, routeReason, ProviderHealth, 3 das 6 estrategias, e ate' o probe real de capacidade (model_capability_probe.go). O entregavel honesto era a MATRIZ DE LACUNAS, nao' um router novo - e o complemento proibe 'um segundo router em conflito'",
+    "A PRE-ETAPA DO COMPLEMENTO 43-47 ESTA' CONCLUIDA (E-427): HADES_ADAPTIVE_COWORK_GAP_MATRIX.md com 33 capacidades classificadas, ADR-001..005, lacunas P0 nomeadas, bloqueios externos declarados (FFmpeg) e ordem de PRs proposta"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -3850,6 +3852,47 @@
           "AINDA NAO esta na bateria do CI - so' na minha"
         ]
       }
+    },
+    "estagios": {
+      "complemento_43_47": {
+        "documento": "HADES_MASTER_V2_2_COMPLEMENTO_GENSPARK_ESTAGIOS_43_A_47.txt",
+        "pre_etapa": "CONCLUIDA: docs/mission/HADES_ADAPTIVE_COWORK_GAP_MATRIX.md (33 capacidades + ADR-001..005)",
+        "reuso_medido": [
+          "multillm/router.go: RequiredCapabilities, LocalOnly, RouteCandidates, routeReason, ProviderHealth",
+          "3 de 6 estrategias ja existem: BALANCED (padrao), FASTEST, BEST_QUALITY",
+          "model_capabilities.go + model_capability_probe.go: declarado vs verificado por probe REAL - ja existe",
+          "planner.go: RoutedPlannerResolver (roteamento dentro do plano) e PlanUsageSink/Reporter",
+          "media.go 35KB + media_pipeline.go 16KB + media_process_approval.go",
+          "artifacts.go, builder_generated_artifact_contract.go, skill_activation.go",
+          "UI: AgenticConsole, ProductWorkspacePage, StudioCanvasPage (72KB), ArtifactsViewer, ModelPicker - todos existem"
+        ],
+        "lacunas_p0": [
+          "roteamento POR SUBTAREFA (o router e' chamado por requisicao, nao por no de plano)",
+          "MIN_COST e MANUAL (pin por tarefa)",
+          "matriz de modalidade x engine (ADR-004)",
+          "Spark e slash commands (/goal /spark /cowork /status /resume /cancel /approve /reject)",
+          "modelo canonico de artefato (versionar/comparar/restaurar/buscar)",
+          "Companion",
+          "especializacao real de modalidade (recusar video para modelo textual)",
+          "provedor != harness no motor"
+        ],
+        "bloqueado_externo": [
+          "MP4 real: FFmpeg ausente",
+          "STT/TTS e geracao de imagem: sem credencial de midia"
+        ],
+        "ordem_proposta": [
+          "E-428 MIN_COST+MANUAL",
+          "E-429 exigencias por no de plano",
+          "E-430 recusa de modalidade incompativel",
+          "E-431 matriz modalidade x engine",
+          "E-432+ artefato canonico -> midia/documentos -> Spark/slash -> Companion"
+        ],
+        "limites": [
+          "nenhuma missao ponta a ponta dos estagios 43-47 foi executada",
+          "nenhuma alegacao de paridade com o Genspark e' feita",
+          "a maioria das lacunas esta NAO_MEDIDO, que nao e' ausente nem ok"
+        ]
+      }
     }
   },
   "unlinked_evidence": {
@@ -3960,6 +4003,7 @@
     "E-419": "ADV-64: dedup por instante na virada de horario de verao, com a reproducao como contraprova",
     "E-420": "a hora repetida do fall-back e' oferecida UMA vez: a minha declaracao no E-419 estava errada",
     "E-421": "causa raiz do CI vermelho: fixture dependente do relogio em scheduling_waitlist_test.go",
-    "E-422": "checker do relogio de parede com teste proprio; corrige a conclusao do E-418"
+    "E-422": "checker do relogio de parede com teste proprio; corrige a conclusao do E-418",
+    "E-427": "matriz de lacunas + ADR da pre-etapa do complemento 43-47"
   }
 }
