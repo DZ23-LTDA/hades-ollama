@@ -48,7 +48,7 @@ func TestConsumoDeAprovacaoEResistenteAConcorrencia(t *testing.T) {
 	)
 	largada := make(chan struct{})
 	prontos.Add(turnos)
-	for i := 0; i < turnos; i++ {
+	for i := range turnos {
 		go func(indice int) {
 			defer prontos.Done()
 			<-largada // todos partem juntos: é a janela que interessa

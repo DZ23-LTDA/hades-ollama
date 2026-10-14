@@ -80,7 +80,7 @@ func TestPinDeModeloERestricaoRigidaNaoPreferencia(t *testing.T) {
 			"(*um pin que deixa outros concorrerem não é pin*)", candidatos)
 	}
 
-	// (d) PIN QUE NÃO PODE SER HONRADO ⇒ `ErrNoRoute`, **nunca** um substituto silencioso.
+	// (d) PIN QUE NÃO PODE SER HONRADO ⇒ `ErrNoRoute`, **nunca** trocar por outro em silêncio.
 	if _, err := registry.Route(RouteRequest{
 		RequiredCapabilities: []string{"coding"},
 		PinnedModelID:        "modelo-que-nao-existe",
