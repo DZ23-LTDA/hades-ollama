@@ -79,18 +79,29 @@ print("  LOCALAPPDATA herdado = %r  ->  aplicado = %s" % (HERDADO_LOCALAPPDATA, 
 print("  go = %s" % go)
 
 ALVOS = ["./internal/agent", "./server", "./internal/proxy", "./internal/multillm"]
-print("  correndo: go test %s -count=1" % " ".join(ALVOS))
-resultado = subprocess.run([go, "test", *ALVOS, "-count=1", "-timeout", "30m"],
-                           cwd=str(RAIZ), env=ambiente, capture_output=True, text=True)
-if resultado.stdout:
-    for linha in resultado.stdout.strip().split("\n")[-8:]:
-        print("    " + linha)
-if resultado.returncode != 0 and resultado.stderr:
-    for linha in resultado.stderr.strip().split("\n")[-8:]:
-        print("    ERR " + linha)
 
-if resultado.returncode == 0:
-    print("  TESTES GO: TODOS PASSAM ✓")
+# 🚨 E-490 (MEDIDO): a versão anterior corria `go test` nos QUATRO pacotes **numa só invocação** — e o `go test` só
+# imprime **quando cada pacote termina** ⇒ ***19 minutos de SILÊNCIO*** ✓✓ — *e o utilizador perguntou «travou?», com
+# razão: **um instrumento que fica mudo é indistinguível de um instrumento parado**.*
+# A correcção é correr **um pacote por vez** e imprimir **ao fim de cada um** ⇒ *o tempo total é o mesmo, e deixa de
+# haver silêncio longo.*
+print("  correndo %d pacotes, um a um (progresso ao fim de cada):" % len(ALVOS))
+falhados = []
+for alvo in ALVOS:
+    print("    ... %s" % alvo, flush=True)
+    resultado = subprocess.run([go, "test", alvo, "-count=1", "-timeout", "30m"],
+                               cwd=str(RAIZ), env=ambiente, capture_output=True, text=True)
+    for linha in (resultado.stdout or "").strip().split("\n"):
+        if linha.startswith("ok ") or linha.startswith("FAIL") or linha.startswith("---"):
+            print("        " + linha)
+    if resultado.returncode != 0:
+        falhados.append(alvo)
+        for linha in (resultado.stderr or "").strip().split("\n")[-6:]:
+            print("        ERR " + linha)
+    print("    -> %s: %s" % (alvo, "OK" if resultado.returncode == 0 else "FALHOU"), flush=True)
+
+if not falhados:
+    print("  TESTES GO: TODOS PASSAM ✓ (%d pacotes)" % len(ALVOS))
 else:
-    print("  TESTES GO: FALHA (exit %d) - *e aqui, com a receita completa, a falha E' do produto*" % resultado.returncode)
-sys.exit(0 if resultado.returncode == 0 else 1)
+    print("  TESTES GO: %d de %d FALHARAM: %s" % (len(falhados), len(ALVOS), ", ".join(falhados)))
+sys.exit(0 if not falhados else 1)
