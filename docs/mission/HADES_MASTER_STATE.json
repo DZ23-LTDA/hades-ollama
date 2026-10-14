@@ -2395,7 +2395,8 @@
     "DE 400 PARA 29 BRANCHES (E-395): 371 mescladas apagadas sem force, 28 nao-mescladas preservadas. O achado e' que as 28 sao trabalho que NAO esta na main - pendencias de integracao, nao entulho. E um erro medido no meio: o filtro ^origin/ aceitou a linha 'origin/HEAD -> origin/main' e um lote falhou; corrigido com -notmatch ' -> '",
     "A MAIN NAO TEM TUDO QUE A MISSAO PRESUME (E-396): das 28 branches nao-mescladas, 13 tinham o conteudo JA na main (por patch-id) e foram apagadas; 15 tem trabalho real nao integrado - incluindo uma linha de SEGURANCA com 14 patches e a de paridade de UI com 17. Branches: 400 -> 16. Os 15 sao candidatos a revisao de conteudo",
     "O ALARME DO E-396 ESTAVA EXAGERADO E FOI CORRIGIDO MEDINDO (E-397): das 15 branches com 'patches pendentes', 12 tem a substancia na main (a linha de SEGURANCA esta' inteira, inclusive TestDevTokenRequiresOperatorSecret) e so' 3 tem lacuna real - todas de UI/mobile (ui-shell-parity, mobile-parity, docs-tests-parity). Um instrumento grosseiro (patch-id) virou precisao ao medir o nivel seguinte (arquivo)",
-    "A LACUNA DE UI E' UM ACOPLAMENTO, NAO UMA LISTA DE ARQUIVOS (E-398): trazidos os 14 arquivos de codigo/teste para uma branch a partir da main, o TasksJourney.test.tsx FALHA (7 testes, 4 falham) porque espera UI que a main nao renderiza. O outro lado do acoplamento sao 14 arquivos de componente editados (+866/-35), e os dois comportamentos exigidos pelo teste - a frase 'Nenhuma tarefa criada ainda.' e o role=alert que ele procura - estao AUSENTES na main. Nao integrei o vermelho: branch descartada. A unidade e' a FEATURE, nao o arquivo"
+    "A LACUNA DE UI E' UM ACOPLAMENTO, NAO UMA LISTA DE ARQUIVOS (E-398): trazidos os 14 arquivos de codigo/teste para uma branch a partir da main, o TasksJourney.test.tsx FALHA (7 testes, 4 falham) porque espera UI que a main nao renderiza. O outro lado do acoplamento sao 14 arquivos de componente editados (+866/-35), e os dois comportamentos exigidos pelo teste - a frase 'Nenhuma tarefa criada ainda.' e o role=alert que ele procura - estao AUSENTES na main. Nao integrei o vermelho: branch descartada. A unidade e' a FEATURE, nao o arquivo",
+    "O PORT E' REESCRITA, NAO DELTA (E-399): com os 5 arquivos novos + o delta de tasks.tsx sobre a main, o teste da' 7 testes/4 falhas, e as 4 apontam TODAS para o ProductWorkspacePage (estado vazio, role=status do banner, 2 alertas). NewTaskPage ja' renderiza role=alert. E eu quase trouxe o ProductWorkspacePage INTEIRO da branch, 1176 commits atras - teria revertido progresso de UI. Copiar arquivo de branch velha nao e' integracao: e' regressao disfarcada de merge"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -3467,6 +3468,29 @@
           "os 6 E2E nao foram executados",
           "a branch esta' 1176 commits atras: o port sera' reescrita, nao merge"
         ]
+      },
+      "port_da_feature_nova_tarefa": {
+        "branch_local": "feat/nova-tarefa-port (nao publicada)",
+        "trazido": [
+          "NewTaskPage.tsx",
+          "TasksJourney.test.tsx",
+          "routes/tasks_.new.tsx",
+          "ConnectorLogo.tsx",
+          "lib/connectorCatalog.ts",
+          "delta de routes/tasks.tsx (+12)"
+        ],
+        "rodado": "npx --no-install vitest run src/components/TasksJourney.test.tsx",
+        "resultado": "7 testes, 4 FALHAM",
+        "falhas": [
+          "No instances found with props: {\"role\":\"alert\"}",
+          "No instances found with props: {\"role\":\"status\",\"aria-live\":\"polite\",\"tabIndex\":-1}",
+          "No instances found with props: {\"role\":\"alert\",\"tabIndex\":-1}",
+          "expected '...' to contain 'Nenhuma tarefa criada ainda.'"
+        ],
+        "diagnostico": "as 4 falhas sao o ProductWorkspacePage: falta o estado vazio, o role=status do banner de criada e dois alertas. NewTaskPage JA renderiza role=alert (L138) e aria-live=assertive (L139)",
+        "o_que_eu_quase_fiz": "ia trazer o ProductWorkspacePage INTEIRO da branch (1176 commits atras) - teria revertido progresso de UI naquele arquivo. Copiar arquivo de branch velha nao e' integracao: e' regressao disfarcada de merge",
+        "entrega": "portar +74 linhas de UI no ProductWorkspacePage de hoje, com os 4 casos do teste como criterio",
+        "licao_de_ferramenta": "o '>' do PowerShell grava UTF-16; arquivos extraidos ficaram ilegiveis para o Python (0xff BOM)"
       }
     }
   },
@@ -3554,6 +3578,7 @@
     "E-395": "higiene de branches: 400 -> 29 (371 mescladas), 28 nao-mescladas preservadas",
     "E-396": "triagem por patch-id: 13 conteudo ja na main; 15 com trabalho nao integrado",
     "E-397": "revisao por arquivo: 12 integradas, 4 so' edicoes, 3 com lacuna real (UI/mobile)",
-    "E-398": "a lacuna de UI e' ACOPLADA: o teste falha sem as edicoes de componente"
+    "E-398": "a lacuna de UI e' ACOPLADA: o teste falha sem as edicoes de componente",
+    "E-399": "o port e' reescrita: as 4 falhas apontam para o ProductWorkspacePage (+74)"
   }
 }
