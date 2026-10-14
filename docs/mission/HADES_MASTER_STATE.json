@@ -2394,7 +2394,8 @@
     "LIMITE DECLARADO EM VOZ ALTA SO' ESTA FECHADO COM TESTE (E-394): a contrapova por reversao do RemoveProducts foi EXECUTADA (101 gravacoes => FALHA) e o cenario com catalogo anterior existe (2 gravacoes, preco restaurado, SKU novo removido). E medido: o plano exige Overwrite explicito, senao o onboarding RECUSA o conflito",
     "DE 400 PARA 29 BRANCHES (E-395): 371 mescladas apagadas sem force, 28 nao-mescladas preservadas. O achado e' que as 28 sao trabalho que NAO esta na main - pendencias de integracao, nao entulho. E um erro medido no meio: o filtro ^origin/ aceitou a linha 'origin/HEAD -> origin/main' e um lote falhou; corrigido com -notmatch ' -> '",
     "A MAIN NAO TEM TUDO QUE A MISSAO PRESUME (E-396): das 28 branches nao-mescladas, 13 tinham o conteudo JA na main (por patch-id) e foram apagadas; 15 tem trabalho real nao integrado - incluindo uma linha de SEGURANCA com 14 patches e a de paridade de UI com 17. Branches: 400 -> 16. Os 15 sao candidatos a revisao de conteudo",
-    "O ALARME DO E-396 ESTAVA EXAGERADO E FOI CORRIGIDO MEDINDO (E-397): das 15 branches com 'patches pendentes', 12 tem a substancia na main (a linha de SEGURANCA esta' inteira, inclusive TestDevTokenRequiresOperatorSecret) e so' 3 tem lacuna real - todas de UI/mobile (ui-shell-parity, mobile-parity, docs-tests-parity). Um instrumento grosseiro (patch-id) virou precisao ao medir o nivel seguinte (arquivo)"
+    "O ALARME DO E-396 ESTAVA EXAGERADO E FOI CORRIGIDO MEDINDO (E-397): das 15 branches com 'patches pendentes', 12 tem a substancia na main (a linha de SEGURANCA esta' inteira, inclusive TestDevTokenRequiresOperatorSecret) e so' 3 tem lacuna real - todas de UI/mobile (ui-shell-parity, mobile-parity, docs-tests-parity). Um instrumento grosseiro (patch-id) virou precisao ao medir o nivel seguinte (arquivo)",
+    "A LACUNA DE UI E' UM ACOPLAMENTO, NAO UMA LISTA DE ARQUIVOS (E-398): trazidos os 14 arquivos de codigo/teste para uma branch a partir da main, o TasksJourney.test.tsx FALHA (7 testes, 4 falham) porque espera UI que a main nao renderiza. O outro lado do acoplamento sao 14 arquivos de componente editados (+866/-35), e os dois comportamentos exigidos pelo teste - a frase 'Nenhuma tarefa criada ainda.' e o role=alert que ele procura - estao AUSENTES na main. Nao integrei o vermelho: branch descartada. A unidade e' a FEATURE, nao o arquivo"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -3436,6 +3437,36 @@
         },
         "seguranca": "fix/seguranca-ci-docs-20261005 esta' INTEIRA na main: dev_token.go nao existe mais, mas o comportamento esta' (TestDevTokenRequiresOperatorSecret, TestIsDevTokenRequestAllowedRejectsProxiedRequests), o timeout HTTP esta' em egress_zero_trust.go e as 8 adicoes existem com corpo real. NAO ha' lacuna de seguranca",
         "achado": "O alarme do E-396 estava exagerado. A lacuna real e' de UI/mobile (3 branches, 50 arquivos), nao de seguranca"
+      },
+      "lacuna_de_ui_medida": {
+        "metodo": "trouxe os 14 arquivos de codigo/teste para uma branch a partir da main e rodei npx vitest run src/components/TasksJourney.test.tsx",
+        "resultado": "7 testes, 4 FALHAM - o teste espera UI que a main nao renderiza",
+        "exemplos": [
+          "No instances found with props: {\"role\":\"alert\"}",
+          "expected 'Inbox de missoesTarefasVeja missoes e...' to contain 'Nenhuma tarefa criada ainda.'"
+        ],
+        "acoplamento": {
+          "edicoes_de_componente_na_branch": "14 arquivos, +866/-35",
+          "maiores": {
+            "NewTaskPage.tsx": "+173",
+            "HomePage.tsx": "+139",
+            "TasksJourney.test.tsx": "+287",
+            "ThemeSwitcher.tsx": "+78",
+            "ProductWorkspacePage.tsx": "+74"
+          },
+          "ausentes_na_main": [
+            "a frase 'Nenhuma tarefa criada ainda.'",
+            "o role=alert que o teste procura"
+          ]
+        },
+        "decisao": "branch DESCARTADA - nao se integra teste vermelho (regra 9). A unidade e' a FEATURE, nao o arquivo",
+        "entrega_delimitada": "portar NewTaskPage.tsx + o estado vazio de tasks.tsx + routes/tasks_.new.tsx + TasksJourney.test.tsx + tasks-journey.spec.ts sobre a main de hoje",
+        "limites": [
+          "o port nao foi feito",
+          "HomePage/ThemeSwitcher podem ser dependencia e nao foram analisados",
+          "os 6 E2E nao foram executados",
+          "a branch esta' 1176 commits atras: o port sera' reescrita, nao merge"
+        ]
       }
     }
   },
@@ -3522,6 +3553,7 @@
     "E-394": "contraprova por reversao do RemoveProducts + cenario com catalogo anterior",
     "E-395": "higiene de branches: 400 -> 29 (371 mescladas), 28 nao-mescladas preservadas",
     "E-396": "triagem por patch-id: 13 conteudo ja na main; 15 com trabalho nao integrado",
-    "E-397": "revisao por arquivo: 12 integradas, 4 so' edicoes, 3 com lacuna real (UI/mobile)"
+    "E-397": "revisao por arquivo: 12 integradas, 4 so' edicoes, 3 com lacuna real (UI/mobile)",
+    "E-398": "a lacuna de UI e' ACOPLADA: o teste falha sem as edicoes de componente"
   }
 }
