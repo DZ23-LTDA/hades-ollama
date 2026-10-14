@@ -2519,7 +2519,10 @@
     "FATO MEDIDO NAO E' DEFEITO (E-445): runtime.go:2731 compara o hash INCONDICIONALMENTE, sem o guard de hash vazio que existe em :2532. Registro como FATO porque medi; NAO como defeito, porque nao medi se um PayloadSHA256 vazio e' alcancavel em producao",
     "A VARREDURA DE PROVA PODRE PASSOU LIMPA (E-446): o estado cita 13 testes e TODOS existem como func Test... em algum _test.go. Nenhuma prova podre em achados",
     "AS DUAS LISTAS TEM HIGIENE DIFERENTE (E-446): a podridao (E-442/443/444 - itens vencidos citando testes com outro nome) estava em proximos_ataques, NAO em achados. Os achados foram escritos COM medicao e mantiveram o lastro; a lista de ataques era frases sem data, e apodreceu. Onde ha' disciplina de escrita, o registro envelhece bem",
-    "RESULTADO NEGATIVO TAMBEM E' RESULTADO (E-446): a varredura nao achou nada, e isso DELIMITA o defeito - nao havia prova podre nos achados. Registrar 'NAO ENCONTREI' com a medicao e' diferente de nao medir"
+    "RESULTADO NEGATIVO TAMBEM E' RESULTADO (E-446): a varredura nao achou nada, e isso DELIMITA o defeito - nao havia prova podre nos achados. Registrar 'NAO ENCONTREI' com a medicao e' diferente de nao medir",
+    "OS MEUS INVARIANTES NOVOS NAO TINHAM TESTE, E O TESTE ACHOU UM BUG NELES (E-447): o cruzamento de E-444 acusava o estado 'ABERTO: ainda nao corrigido' como ENCERRADO, porque a tupla contem 'CORRIGIDO' e a string contem a palavra dentro de 'nao corrigido'. Substring sobre texto livre e' casamento por acidente. Corrigido para PREFIXO",
+    "VERIFICADOR LENTO E' VERIFICADOR QUE NAO SE RODA (E-447): a varredura de prova podre levava 245s porque fazia rglob no repositorio inteiro. Restrita a internal/server/cmd: 0,118s",
+    "UM INSTRUMENTO SEM TESTE PROPRIO E' A LACUNA QUE ELE MESMO DENUNCIA (E-447): escrevi dois verificadores para pegar registro vencido e deixei ambos sem teste - exatamente as '2 defesas sem prova' que eu criticava. Com o teste nas DUAS direcoes, o bug apareceu no controle"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",

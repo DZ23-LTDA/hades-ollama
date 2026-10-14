@@ -413,7 +413,13 @@ def verificar_cruzamento_de_auditoria(estado: dict) -> tuple[list[str], dict]:
         if not identificador:
             continue
         estado_do_achado = por_id.get(identificador)
-        if estado_do_achado and any(marca in estado_do_achado.upper() for marca in encerrado):
+        # 🚨 E-447: casamento por **PREFIXO**, nao por substring. *O meu proprio teste de controle pegou isto*: o estado
+        # `"ABERTO: ainda nao corrigido"` **contem** `"CORRIGIDO"` ⇒ com `in` ele era acusado como encerrado ✗✓.
+        # ***Substring sobre campo de texto livre e' casamento por acidente: "nao corrigido" casa com "CORRIGIDO".***
+        # *O veredito e' o comeco da frase; o resto e' explicacao.*
+        if estado_do_achado and any(
+            estado_do_achado.strip().upper().startswith(marca) for marca in encerrado
+        ):
             duplicados.append("%s (achado diz: %s)" % (identificador, estado_do_achado[:70]))
 
     for duplicado in duplicados:
@@ -449,15 +455,21 @@ def verificar_testes_citados(raiz: Path, estado: dict) -> tuple[list[str], dict]
         return problemas, {"testes_citados": 0, "testes_citados_inexistentes": 0}
 
     definidos: set[str] = set()
-    for caminho in raiz.rglob("*_test.go"):
-        partes = set(caminho.parts)
-        if "_tmp" in partes or "vendor" in partes or ".git" in partes:
+    # ⚡ E-447: varredura RESTRITA as raizes de codigo. *O `rglob` no repositorio inteiro levava 245 s* ✗ - e um
+    # verificador lento e' um verificador que as pessoas deixam de rodar. *As raizes estao declaradas, nao adivinhadas.*
+    for sub in ("internal", "server", "cmd"):
+        sub_raiz = raiz / sub
+        if not sub_raiz.exists():
             continue
-        try:
-            conteudo = caminho.read_text(encoding="utf-8", errors="replace")
-        except OSError:
-            continue
-        definidos.update(re.findall(r"func (Test[A-Za-z0-9_]{3,})\s*\(", conteudo))
+        for caminho in sub_raiz.rglob("*_test.go"):
+            partes = set(caminho.parts)
+            if "_tmp" in partes or "vendor" in partes or ".git" in partes:
+                continue
+            try:
+                conteudo = caminho.read_text(encoding="utf-8", errors="replace")
+            except OSError:
+                continue
+            definidos.update(re.findall(r"func (Test[A-Za-z0-9_]{3,})\s*\(", conteudo))
 
     inexistentes = sorted(citados - definidos)
     for citado in inexistentes:
