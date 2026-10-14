@@ -4,6 +4,21 @@
 > intermediário de engenharia (estágio 22, em [`HADES_ENGINEERING_GATE.md`](HADES_ENGINEERING_GATE.md)).
 > **Gerado por `scripts/hades_release_gate.py`** — rode com `--check` para conferir.
 
+## Procedência
+
+🚨 **E-552 + E-554: *o commit medido tem de estar ESCRITO, ou o documento não se pode reproduzir nem contestar.***
+
+| Campo | Valor |
+| --- | --- |
+| **Commit medido** (`measured_commit`) | `d9db1ccef` |
+| **Commit da `main`** (`git.main_sha`) | `4b3e21854` |
+| **Gerado em** (`measured_at`) | 2026-10-14T11:17:05-03:00 |
+
+*Dois campos, e não um: o `E-552` mediu que este derivado **não** citava commit nenhum, e que o
+`HADES_BASELINE_REPORT.md` citava **só** a `main` — *o que não está errado (*ele mede o baseline, e o baseline é da
+`main`*), mas era **ambíguo**: «commit de referência» não dizia **se** era o medido ou o comparado* ⇒ *agora a
+ambiguidade desaparece **por construção**.*
+
 ## Veredito
 
 **`NOT_RELEASE_READY`** — `RELEASE_CANDIDATE` e `COMPLETED_VERIFIED` **não** podem ser declarados

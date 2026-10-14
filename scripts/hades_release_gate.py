@@ -120,6 +120,9 @@ def gerar_relatorio(estado: dict) -> str:
 
 | Número | Valor |
 | --- | --- |
+| **Commit medido** (`measured_commit`) | `{estado.get('measured_commit', 'NAO_MEDIDO')}` |
+| **Commit da `main`** (`git.main_sha`) | `{estado.get('git', {}).get('main_sha', 'NAO_MEDIDO')}` |
+| **Gerado em** (`measured_at`) | {estado.get('measured_at', 'NAO_MEDIDO')} |
 | Estágios | {len(estado['stages'])} |
 | Linhas de evidência no índice | {linhas_do_indice()} |
 | `COMPLETED_VERIFIED` | {contagem.get('COMPLETED_VERIFIED', 0)} |
@@ -196,6 +199,21 @@ def gerar_gate(estado: dict) -> str:
 > Exigido pela seção **11.8**. Este é o **gate GLOBAL**, posterior aos estágios 1–38 — e **não** substitui o gate
 > intermediário de engenharia (estágio 22, em [`HADES_ENGINEERING_GATE.md`](HADES_ENGINEERING_GATE.md)).
 > **Gerado por `scripts/hades_release_gate.py`** — rode com `--check` para conferir.
+
+## Procedência
+
+🚨 **E-552 + E-554: *o commit medido tem de estar ESCRITO, ou o documento não se pode reproduzir nem contestar.***
+
+| Campo | Valor |
+| --- | --- |
+| **Commit medido** (`measured_commit`) | `{estado.get('measured_commit', 'NAO_MEDIDO')}` |
+| **Commit da `main`** (`git.main_sha`) | `{estado.get('git', {}).get('main_sha', 'NAO_MEDIDO')}` |
+| **Gerado em** (`measured_at`) | {estado.get('measured_at', 'NAO_MEDIDO')} |
+
+*Dois campos, e não um: o `E-552` mediu que este derivado **não** citava commit nenhum, e que o
+`HADES_BASELINE_REPORT.md` citava **só** a `main` — *o que não está errado (*ele mede o baseline, e o baseline é da
+`main`*), mas era **ambíguo**: «commit de referência» não dizia **se** era o medido ou o comparado* ⇒ *agora a
+ambiguidade desaparece **por construção**.*
 
 ## Veredito
 
