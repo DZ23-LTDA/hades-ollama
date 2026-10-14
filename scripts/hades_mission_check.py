@@ -480,6 +480,59 @@ def verificar_testes_citados(raiz: Path, estado: dict) -> tuple[list[str], dict]
     return problemas, {"testes_citados": len(citados), "testes_citados_inexistentes": len(inexistentes)}
 
 
+def verificar_referencias_de_arquivo(raiz: Path, estado: dict) -> tuple[list[str], dict]:
+    """🚨 E-451: toda referencia `arquivo.go:NNN` no estado tem de apontar para arquivo existente COM a linha dentro.
+
+    **POR QUE ISTO EXISTE**: a varredura de E-446 provava que os **testes citados** existem, mas **nao** que as
+    **referencias de arquivo** existem - *duas conferencias diferentes, e a segunda faltava*. Ao fazê-la, ela achou em
+    **30** referencias **uma** que apontava para o vazio: `audit_test.go:65`, abreviada por mim na E-439 quando o arquivo
+    e' `service_agent_audit_test.go`.
+
+    ***Referencia para linha inexistente e' prova DESLOCADA: a frase continua legitima e o lastro aponta para o vazio.***
+
+    **O QUE ELA NAO FAZ**: nao prova que a linha **contem** o que o achado diz ✗ - *isso exigiria julgamento, e inventar
+    heuristica aqui produziria alarme falso (E-432/E-434/E-447)*. E **nao** confere referencias que citam apenas **nome de
+    funcao** ✗.
+
+    ⚡ *O indice de nomes e' montado UMA vez, FORA do laco* - a primeira versao da varredura tinha `rglob` dentro do
+    laco e ficou **O(n^2)** sobre 1346 arquivos, a correr em background. ***Instrumento lento e' instrumento que nao se
+    roda (E-447).***
+    """
+    problemas: list[str] = []
+    auditoria = estado.get("v22", {}).get("auditoria_adversarial", {})
+    texto = json.dumps(auditoria, ensure_ascii=False)
+    referencias = re.findall(r"([A-Za-z0-9_./-]+\.go):(\d+)(?:-(\d+))?", texto)
+    if not referencias:
+        return problemas, {"referencias_de_arquivo": 0, "referencias_deslocadas": 0}
+
+    # INDICE UMA VEZ. *Fora do laco - a licao de E-451.*
+    por_nome: dict[str, list[Path]] = {}
+    for sub in ("internal", "server", "cmd", "scripts"):
+        sub_raiz = raiz / sub
+        if not sub_raiz.exists():
+            continue
+        for caminho in sub_raiz.rglob("*.go"):
+            if any(parte in {"_tmp", "vendor", ".git"} for parte in caminho.parts):
+                continue
+            por_nome.setdefault(caminho.name, []).append(caminho)
+
+    deslocadas = []
+    for arquivo, inicio, fim in referencias:
+        candidatos = por_nome.get(Path(arquivo).name, [])
+        if not candidatos:
+            deslocadas.append("%s:%s (arquivo nao existe)" % (arquivo, inicio))
+            continue
+        alvo = int(fim or inicio)
+        if not any(alvo <= len(caminho.read_text(encoding="utf-8", errors="replace").split("\n")) for caminho in candidatos):
+            deslocadas.append("%s:%s (linha alem do fim do arquivo)" % (arquivo, inicio))
+
+    for deslocada in sorted(set(deslocadas)):
+        problemas.append(
+            "REFERENCIA DESLOCADA: %s — *a frase continua legitima e o lastro aponta para o vazio*" % deslocada
+        )
+    return problemas, {"referencias_de_arquivo": len(referencias), "referencias_deslocadas": len(set(deslocadas))}
+
+
 def verificar_bloqueios(bloqueios_path: Path, ids_do_estado: set[str]) -> tuple[list[str], dict]:
     """Confere o documento de bloqueios contra o estado (E-181), nos DOIS sentidos.
 
@@ -572,6 +625,15 @@ def main() -> int:
     problemas_citados, resumo_citados = verificar_testes_citados(raiz_do_repositorio, estado)
     problemas += problemas_citados
     resumo.update(resumo_citados)
+
+    # 12. 🚨 E-451: toda referencia `arquivo.go:NNN` tem de apontar para arquivo existente COM a linha dentro.
+    #
+    # A varredura de E-446 provava que os **testes citados** existem, mas **nao** que as **referencias de arquivo**
+    # existem. *Duas conferencias diferentes, e a segunda faltava* - e ao fazê-la ela achou `audit_test.go:65` apontando
+    # para o vazio (*abreviacao minha na E-439*).
+    problemas_referencias, resumo_referencias = verificar_referencias_de_arquivo(raiz_do_repositorio, estado)
+    problemas += problemas_referencias
+    resumo.update(resumo_referencias)
 
     # 9. Nenhum documento da escrituração (nem os gerados) pode conter marcador de merge não resolvido.
     problemas += verificar_sem_marcadores_de_conflito(

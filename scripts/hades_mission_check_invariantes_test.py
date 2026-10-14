@@ -96,5 +96,40 @@ class ProvaPodreTest(unittest.TestCase):
         self.assertEqual(0, resumo["testes_citados"])
 
 
+class ReferenciaDeslocadaTest(unittest.TestCase):
+    """E-451: toda referencia `arquivo.go:NNN` tem de apontar para arquivo existente COM a linha dentro."""
+
+    def test_referencia_para_arquivo_inexistente_e_encontrada(self) -> None:
+        # O caso REAL medido: `audit_test.go:65`, abreviacao minha na E-439 - o arquivo e' service_agent_audit_test.go.
+        problemas, resumo = verificador.verificar_referencias_de_arquivo(
+            RAIZ, estado_com([], [], citados="CORRIGIDO: ver arquivo_que_nao_existe.go:42")
+        )
+        self.assertTrue(problemas, "referencia para arquivo inexistente TEM de ser acusada")
+        self.assertIn("DESLOCADA", problemas[0])
+        self.assertEqual(1, resumo["referencias_deslocadas"])
+
+    def test_referencia_valida_passa(self) -> None:
+        # CONTROLE: uma referencia que existe de verdade nao pode ser acusada. *Usei `runtime.go:2237`, que esta' no
+        # estado real - se ele for renomeado, este teste falha, e isso e' desejado: ele mede a EXISTENCIA.*
+        problemas, resumo = verificador.verificar_referencias_de_arquivo(
+            RAIZ, estado_com([], [], citados="CORRIGIDO: ver runtime.go:2237")
+        )
+        self.assertEqual([], problemas, "referencia valida nao pode ser acusada")
+        self.assertEqual(0, resumo["referencias_deslocadas"])
+
+    def test_linha_alem_do_fim_e_encontrada(self) -> None:
+        # *Arquivo existe, linha nao: e' o outro modo de a prova se deslocar.*
+        problemas, _ = verificador.verificar_referencias_de_arquivo(
+            RAIZ, estado_com([], [], citados="CORRIGIDO: ver runtime.go:999999")
+        )
+        self.assertTrue(problemas, "linha alem do fim TEM de ser acusada")
+        self.assertIn("alem do fim", problemas[0])
+
+    def test_estado_sem_referencias_passa(self) -> None:
+        problemas, resumo = verificador.verificar_referencias_de_arquivo(RAIZ, estado_com([], []))
+        self.assertEqual([], problemas)
+        self.assertEqual(0, resumo["referencias_de_arquivo"])
+
+
 if __name__ == "__main__":
     unittest.main()

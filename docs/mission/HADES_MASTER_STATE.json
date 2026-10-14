@@ -2533,7 +2533,10 @@
     "A VARREDURA DE REFERENCIAS ACHOU UMA PROVA DESLOCADA, E ERA MINHA (E-451): das 30 referencias arquivo:linha no registro, 29 apontam para arquivo existente com a linha dentro e 1 aponta para o vazio - 'service_agent_audit_test.go:65', escrita por mim na E-439 quando o arquivo e' service_agent_audit_test.go. A frase continua legitima e o lastro sumiu",
     "E-446 DEIXOU ESTA LACUNA DECLARADA (E-451): aquela varredura provava que os TESTES citados existem, mas nao que as REFERENCIAS DE ARQUIVO existem. Duas conferencias diferentes, e a segunda faltava",
     "O MEU INSTRUMENTO TAMBEM TINHA DEFEITO (E-451): a primeira versao da varredura tinha rglob DENTRO do laco de impressao - O(n^2) sobre 1346 arquivos, ficou a correr em background e teve de ser morta. 'Instrumento lento e' instrumento que nao se roda' (E-447), e desta vez o instrumento lento era o meu",
-    "A LISTA VAZIA NAO E' PROVA DE NADA (E-451): proximos_ataques ficou VAZIA, mas os achados 1..59 nunca foram conferidos por conteudo. 'Nao encontrei defeito aqui' nao e' 'nao ha defeito nos outros': a lista ficou vazia porque ninguem olhou"
+    "A LISTA VAZIA NAO E' PROVA DE NADA (E-451): proximos_ataques ficou VAZIA, mas os achados 1..59 nunca foram conferidos por conteudo. 'Nao encontrei defeito aqui' nao e' 'nao ha defeito nos outros': a lista ficou vazia porque ninguem olhou",
+    "A VARREDURA VIROU INVARIANTE DO CHECKER (E-452): verificar_referencias_de_arquivo em hades_mission_check.py acusa referencia arquivo.go:NNN para arquivo inexistente OU linha alem do fim. Estado real: 30 referencias, 0 deslocadas, exit 0 em 0s. CONTRAPROVADO: injetar arquivo_que_nao_existe.go:42 => exit 1",
+    "INSTRUMENTO LENTO NAO SE RODA - E A LICAO FOI APLICADA (E-452): a versao standalone da varredura tinha rglob dentro do laco (O(n^2) sobre 1346 arquivos, ficou em background e teve de ser morta). No checker o indice e' montado UMA vez, fora do laco: 0s",
+    "AS TRES INVARIANTES DE AUDITORIA TEM TESTE PROPRIO (E-452): cruzamento (E-444), prova podre (E-446) e referencia deslocada (E-451) - 10 testes, OK, 0,108s. Cada uma nas DUAS direcoes (dispara quando deve, passa quando deve)"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
