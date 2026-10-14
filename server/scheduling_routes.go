@@ -126,6 +126,16 @@ func (a *agentAPI) schedulingBook(c *gin.Context) {
 		IdempotencyKey: strings.TrimSpace(entrada.IdempotencyKey),
 	}
 	agendamento, err := a.scheduling.Book(pedido)
+	if errors.Is(err, agent.ErrSchedulingDuplicate) {
+		// 🚨 E-458: REENTREGA NÃO É ERRO DO CLIENTE. *O motor devolve, junto com `ErrSchedulingDuplicate`, o agendamento
+		// que JA' EXISTE* - e a resposta honesta e' **409 com o mesmo recurso**, nao um 400 que sugere "pedido
+		// malformado".
+		//
+		// ***Idempotência de verdade e' devolver o MESMO RECURSO.*** Um cliente que reentrega o pedido *- porque a rede
+		// caiu, porque o agente repetiu -* quer o agendamento, nao uma licao sobre o formato do pedido.
+		c.JSON(http.StatusConflict, gin.H{"appointment": agendamento, "idempotent_replay": true})
+		return
+	}
 	if err != nil {
 		writeAgentError(c, http.StatusBadRequest, err)
 		return

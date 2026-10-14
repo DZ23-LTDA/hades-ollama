@@ -290,10 +290,17 @@ func (s *SchedulingStore) bookLocked(request BookRequest) (SchedulingAppointment
 	org := s.byOrg[request.OrganizationID]
 
 	// Idempotência ANTES de qualquer efeito: reentrega do mesmo canal não cria segundo agendamento.
+	//
+	// 🚨 E-458: o agendamento EXISTENTE volta JUNTO com o erro - *antes voltava `SchedulingAppointment{}` e o id so'
+	// aparecia DENTRO da mensagem* ✗. ***Idempotência de verdade e' devolver o MESMO RECURSO, nao um erro:*** quem
+	// reentrega o pedido quer o agendamento que ja' existe, e obrigar a superficie a **extrair o id de um texto** e'
+	// faze-la depender do formato de uma mensagem (*e uma mensagem nao e' contrato*).
+	//
+	// `errors.Is(err, ErrSchedulingDuplicate)` continua valendo - *o erro nao mudou, o que mudou e' o que vem com ele.*
 	if chave := strings.TrimSpace(request.IdempotencyKey); chave != "" {
 		for _, existente := range org.Appointments {
 			if existente.IdempotencyKey == chave && existente.Status == SchedulingAppointmentBooked {
-				return SchedulingAppointment{}, fmt.Errorf("%w: %s", ErrSchedulingDuplicate, existente.ID)
+				return existente, fmt.Errorf("%w: %s", ErrSchedulingDuplicate, existente.ID)
 			}
 		}
 	}

@@ -342,6 +342,98 @@ func TestFilaDeEsperaENoShowNaSuperficie(t *testing.T) {
 	}
 }
 
+// E-458 — **A IDEMPOTÊNCIA DE `Book`, EXERCITADA PELA ROTA.**
+//
+// **A PROMESSA ESTA' ESCRITA NO MOTOR** (`scheduling.go:266`): *"IdempotencyKey identifica a MESMA intenção vinda do
+// mesmo canal: **reentrega não cria segundo agendamento**"*. **E a superfície não a provava** ✗ ⇒ ***uma promessa que a
+// superfície não exercita é uma promessa que o cliente descobre ser falsa em produção*** — *e o modo de falha é o pior
+// possível num agendamento: **dois horários para a mesma intenção**, e alguém aparece sem vaga.*
+//
+// **AS TRÊS DIREÇÕES** (*a terceira é a que quase sempre falta*):
+//  1. **mesma chave** ⇒ **um** agendamento, e o segundo devolve o MESMO id (*não uma cópia*);
+//  2. **chave DIFERENTE** ⇒ segundo agendamento (*senão a rota estaria a recusar intenções legítimas - um "idempotente"
+//     que engole tudo é um defeito diferente e pior*);
+//  3. e o CONTROLE que separa os dois: *o motor tem de ter exactamente o número certo de agendamentos depois de cada
+//     passo - medido no MOTOR, não na resposta da rota.*
+func TestIdempotenciaDeBookingNaSuperficie(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	organizacao := agent.LocalOrganizationID
+	loja := agent.NewSchedulingStore(t.TempDir())
+	servico, err := loja.AddService(agent.SchedulingService{OrganizationID: organizacao, Name: "Consulta", DurationMinutes: 30})
+	if err != nil {
+		t.Fatalf("criar serviço: %v", err)
+	}
+	recurso, err := loja.AddResource(agent.SchedulingResource{OrganizationID: organizacao, Name: "Bia"})
+	if err != nil {
+		t.Fatalf("criar recurso: %v", err)
+	}
+	dia, _ := time.Parse("2006-01-02", "2026-10-14")
+	if _, err := loja.AddShift(agent.SchedulingShift{
+		OrganizationID: organizacao, ResourceID: recurso.ID, Weekday: int(dia.Weekday()), OpensAt: 0, ClosesAt: 24 * 60,
+	}); err != nil {
+		t.Fatalf("criar turno: %v", err)
+	}
+
+	engine := montarRotaDeAgendamento(loja, organizacao)
+	agendar := func(chave, inicio string) (int, string) {
+		corpo := `{"service_id":"` + servico.ID + `","resource_id":"` + recurso.ID + `","contact_id":"cliente-idem",` +
+			`"channel":"voice","starts_at":"` + inicio + `","idempotency_key":"` + chave + `"}`
+		requisicao := httptest.NewRequest(http.MethodPost, "/api/agent/v1/scheduling/book", strings.NewReader(corpo))
+		requisicao.Header.Set("Content-Type", "application/json")
+		resposta := httptest.NewRecorder()
+		engine.ServeHTTP(resposta, requisicao)
+		var criado struct {
+			Appointment struct {
+				ID string `json:"id"`
+			} `json:"appointment"`
+		}
+		_ = json.Unmarshal(resposta.Body.Bytes(), &criado)
+		return resposta.Code, criado.Appointment.ID
+	}
+	contar := func() int {
+		agendamentos, err := loja.Appointments(organizacao)
+		if err != nil {
+			t.Fatalf("listar no motor: %v", err)
+		}
+		return len(agendamentos)
+	}
+
+	// 1. MESMA CHAVE, duas entregas.
+	codigo1, id1 := agendar("k-idem", "2026-10-14T08:00:00Z")
+	if codigo1 != http.StatusCreated || id1 == "" {
+		t.Fatalf("primeira entrega devolveu %d (id=%q)", codigo1, id1)
+	}
+	if contar() != 1 {
+		t.Fatalf("depois da primeira entrega o motor tem %d agendamento(s), esperava 1", contar())
+	}
+	codigo2, id2 := agendar("k-idem", "2026-10-14T08:00:00Z")
+	// E-458: a reentrega é **409 com o MESMO recurso** — *não 400 (que sugere pedido malformado) nem 500*.
+	// ***Idempotência de verdade é devolver o MESMO RECURSO, não um erro.*** *A asserção nasceu fraca (`>= 500`) porque
+	// eu não sabia o que a rota devolvia; com o contrato decidido, ela passa a medir o contrato.*
+	if codigo2 != http.StatusConflict {
+		t.Fatalf("a reentrega devolveu %d, esperava 409 — *reentrega não é erro do cliente, e o recurso JÁ existe; "+
+			"400 sugeriria pedido malformado*", codigo2)
+	}
+	if id2 != id1 {
+		t.Fatalf("ARMADILHA: a reentrega com a MESMA chave devolveu outro id (%q vs %q) — *a promessa do motor é que "+
+			"reentrega NÃO cria segundo agendamento*", id2, id1)
+	}
+	if total := contar(); total != 1 {
+		t.Fatalf("ARMADILHA GRAVE: a reentrega criou um SEGUNDO agendamento (motor tem %d) — *isto é o pior modo de "+
+			"falha num agendamento: dois horários para a mesma intenção, e alguém aparece sem vaga*", total)
+	}
+
+	// 2. CHAVE DIFERENTE, outro horário: tem de criar. *Um "idempotente" que engole tudo é um defeito diferente e pior.*
+	codigo3, id3 := agendar("k-outra", "2026-10-14T10:00:00Z")
+	if codigo3 != http.StatusCreated || id3 == "" || id3 == id1 {
+		t.Fatalf("chave DIFERENTE tinha de criar outro agendamento (codigo=%d id=%q vs %q)", codigo3, id3, id1)
+	}
+	if total := contar(); total != 2 {
+		t.Fatalf("depois de uma intenção NOVA o motor tem %d agendamento(s), esperava 2 — *recusar intenção legítima "+
+			"seria um defeito pior que o original*", total)
+	}
+}
+
 // montarRotaDeAgendamento cria o engine com o store e um middleware que fixa a organizacao - *o mesmo padrao dos outros
 // testes de rota do projeto.*
 //
