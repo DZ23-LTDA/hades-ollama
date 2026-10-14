@@ -425,6 +425,49 @@ def verificar_cruzamento_de_auditoria(estado: dict) -> tuple[list[str], dict]:
     return problemas, {"proximos_ataques": len(ataques), "ataques_duplicando_achado_encerrado": len(duplicados)}
 
 
+def verificar_testes_citados(raiz: Path, estado: dict) -> tuple[list[str], dict]:
+    """🚨 E-446: todo teste CITADO no estado tem de EXISTIR no codigo.
+
+    **POR QUE ISTO EXISTE**: em sete rodadas de auditoria, **7 de 7** itens de lista estavam vencidos, e **3** deles
+    citavam testes que **existiam com outro nome** (E-442, E-443, E-444). *Um achado que diz "CORRIGIDO: TestX" e cujo
+    `TestX` nao existe mais nao esta' corrigido - esta' **com a prova podre**, e ninguem percebe porque a frase continua
+    legitima.*
+
+    ***A mesma licao de E-432 (instrumento que nunca dispara) e E-434 (validacao que recusa tudo), do lado da EVIDENCIA:
+    prova citada que nao existe e' afirmacao sem lastro com aparencia de lastro.***
+
+    **O QUE ESTA INVARIANTE NAO FAZ**: ela **nao** prova que o teste cita passa, nem que ele cobre o que o achado diz ✗
+    - so' prova que o NOME existe. *Nome existente com corpo vazio seria aprovado aqui, e e' por isso que a conferencia
+    humana continua necessaria.*
+    """
+    problemas: list[str] = []
+    auditoria = estado.get("v22", {}).get("auditoria_adversarial", {})
+    texto_do_estado = json.dumps(auditoria, ensure_ascii=False)
+
+    citados = set(re.findall(r"\bTest[A-Z][A-Za-z0-9_]{3,}\b", texto_do_estado))
+    if not citados:
+        return problemas, {"testes_citados": 0, "testes_citados_inexistentes": 0}
+
+    definidos: set[str] = set()
+    for caminho in raiz.rglob("*_test.go"):
+        partes = set(caminho.parts)
+        if "_tmp" in partes or "vendor" in partes or ".git" in partes:
+            continue
+        try:
+            conteudo = caminho.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        definidos.update(re.findall(r"func (Test[A-Za-z0-9_]{3,})\s*\(", conteudo))
+
+    inexistentes = sorted(citados - definidos)
+    for citado in inexistentes:
+        problemas.append(
+            "TESTE CITADO QUE NAO EXISTE: %s — *um achado que cita um teste inexistente tem a PROVA PODRE: a frase "
+            "continua legitima e o lastro sumiu*" % citado
+        )
+    return problemas, {"testes_citados": len(citados), "testes_citados_inexistentes": len(inexistentes)}
+
+
 def verificar_bloqueios(bloqueios_path: Path, ids_do_estado: set[str]) -> tuple[list[str], dict]:
     """Confere o documento de bloqueios contra o estado (E-181), nos DOIS sentidos.
 
@@ -508,6 +551,15 @@ def main() -> int:
     problemas_cruzamento, resumo_cruzamento = verificar_cruzamento_de_auditoria(estado)
     problemas += problemas_cruzamento
     resumo.update(resumo_cruzamento)
+
+    # 11. 🚨 E-446: TODO TESTE CITADO NO ESTADO TEM DE EXISTIR.
+    #
+    # Em sete rodadas, **7 de 7** itens de lista estavam vencidos, e **3** citavam testes que existiam **com outro
+    # nome** (E-442/443/444). *Um achado que diz "CORRIGIDO: TestX" e cujo `TestX` não existe mais não está corrigido —
+    # está com a **prova podre**, e ninguém percebe porque a frase continua legítima.*
+    problemas_citados, resumo_citados = verificar_testes_citados(raiz_do_repositorio, estado)
+    problemas += problemas_citados
+    resumo.update(resumo_citados)
 
     # 9. Nenhum documento da escrituração (nem os gerados) pode conter marcador de merge não resolvido.
     problemas += verificar_sem_marcadores_de_conflito(

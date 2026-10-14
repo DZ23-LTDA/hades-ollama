@@ -2516,7 +2516,10 @@
     "CHECAR POR INVARIANTE EM VEZ DE PROCURAR A MAO (E-443): o cruzamento em hades_mission_check.py (um id nao pode estar em proximos_ataques E em achados encerrado) pagou-se na PRIMEIRA execucao, achando o que a leitura manual nao achou",
     "A DEFESA EXISTE EM SETE LUGARES (E-445): ErrApprovalPayloadChanged e' devolvido em runtime.go:2271 (descriptor), 2282 (config do connector), 2319 (a reconferencia inline), 2539 (validateMissionApprovalBindings), 2731 (approvalsReady), tools.go:614 (sandbox) e connectors.go:554. Mutar UMA camada nao muda o resultado porque ha outras seis - e' por isso que a auditoria mediu 'NADA falha - sem defesa'",
     "NAO E' QUE A DEFESA NAO EXISTA: E' QUE ELA E' REDUNDANTE (E-445): nenhum teste de uma camada isolada consegue provar que aquela camada funciona quando outras seis cobrem o mesmo caminho. As duas lacunas fecham-se como REDUNDANCIA MEDIDA - opcao (b) do E-440 - e nao como 'defesa provada'",
-    "FATO MEDIDO NAO E' DEFEITO (E-445): runtime.go:2731 compara o hash INCONDICIONALMENTE, sem o guard de hash vazio que existe em :2532. Registro como FATO porque medi; NAO como defeito, porque nao medi se um PayloadSHA256 vazio e' alcancavel em producao"
+    "FATO MEDIDO NAO E' DEFEITO (E-445): runtime.go:2731 compara o hash INCONDICIONALMENTE, sem o guard de hash vazio que existe em :2532. Registro como FATO porque medi; NAO como defeito, porque nao medi se um PayloadSHA256 vazio e' alcancavel em producao",
+    "A VARREDURA DE PROVA PODRE PASSOU LIMPA (E-446): o estado cita 13 testes e TODOS existem como func Test... em algum _test.go. Nenhuma prova podre em achados",
+    "AS DUAS LISTAS TEM HIGIENE DIFERENTE (E-446): a podridao (E-442/443/444 - itens vencidos citando testes com outro nome) estava em proximos_ataques, NAO em achados. Os achados foram escritos COM medicao e mantiveram o lastro; a lista de ataques era frases sem data, e apodreceu. Onde ha' disciplina de escrita, o registro envelhece bem",
+    "RESULTADO NEGATIVO TAMBEM E' RESULTADO (E-446): a varredura nao achou nada, e isso DELIMITA o defeito - nao havia prova podre nos achados. Registrar 'NAO ENCONTREI' com a medicao e' diferente de nao medir"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
