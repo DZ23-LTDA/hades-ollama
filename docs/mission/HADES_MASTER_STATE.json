@@ -7,14 +7,15 @@
   "release_state": "NOT_RELEASE_READY",
   "git": {
     "integration_branch": "main",
-    "main_sha": "758e6fec1",
+    "main_sha": "4b3e21854",
     "main_committed_at": "2026-10-09T10:24:45Z",
-    "main_ci_state": "green (dz23-agentic-quality + class-a-plus-integrity = success nesse SHA)",
-    "mission_branch": "docs/checkpoints-missao-v21",
+    "main_ci_state": "**VERMELHO** (medido em 2026-10-14): no commit 4b3e21854, o job `Go agentic and server gates` FALHA no passo `CGO_ENABLED=1 go test ./... -count=1`. *A declaracao anterior («green») era FALSA.* O PR #438 corrige a causa (E-421) e o mesmo passo PASSA no commit do PR.",
+    "mission_branch": "fix/checker-relogio",
     "mission_branch_base": "889750abe4006985b3bf9037bca2323d1e40cef0",
     "main_sha_convention": "VALOR MEDIDO em `measured_at`/`measured_commit` (V2.2 secao 2). O SHA observado ANTES do merge deste PR e `measured_commit`; depois do merge, o proprio merge cria um commit novo, entao a main avanca em um. Nao se tenta congelar um SHA que muda no merge: registra-se QUANDO e QUAL revisao foi medida, e o comando para remedir.",
     "main_sha_long": "758e6fec14d9eea294b78bae1e2ab4d90ee59179",
-    "main_sha_measured_at": "2026-10-13T04:43:14-03:00"
+    "main_sha_measured_at": "2026-10-13T04:43:14-03:00",
+    "mission_branch_measured": "17a850984"
   },
   "honesty_conventions": {
     "state_IN_PROGRESS": "conservador: nao comprovado como concluido; nao afirma trabalho executado",
@@ -23,7 +24,7 @@
     "capability_PENDENTE_DE_AUDITORIA": "extensao declarada; NAO e classificacao canonica e nao promove capacidade"
   },
   "pull_requests": {
-    "open_count": 0,
+    "open_count": 1,
     "merged_this_mission": [
       {
         "number": 54,
@@ -187,7 +188,10 @@
     "mission_prs_open": [],
     "dependabot_open": 7,
     "green_awaiting_merge_authorization": [],
-    "stacked_on_branch": {}
+    "stacked_on_branch": {},
+    "open_list": [
+      "#438 (fix/checker-relogio -> main), revisao pedida a LMPrado-DZ23"
+    ]
   },
   "stage_states": {
     "NOT_STARTED": [],
@@ -2704,7 +2708,8 @@
     "E-515 (a coluna, nao a linha): o extractor varria a linha toda, e o E-325/E-326/E-345 apareciam abertos sem terem clausula de limites. Corrigido para ler a coluna 4: 184->7 citados, 26->3 sem medicao, 14->1 abertos - e o 1 e' o E-513, que cita o proprio numero. Limites: o checker mede 7 de 514 evidencias; o resto dos limites vive em prosa.",
     "E-516 (o passo decisivo passou): no job 'Go agentic and server gates' @ 6173bc417, os passos CGO_ENABLED=1 go test ./..., go vet ./... e go build PASSARAM. O main @ 4b3e21854 falhava no mesmo passo. A diferenca sao as minhas mudancas, e a que toca esse passo e' o E-421 (time.Now() -> instanteDeTeste(t) em scheduling_waitlist_test.go). => O PR #438 E' a correccao do main.",
     "E-517 (behind -> blocked): o mergeable_state saiu de 'behind' e passou a 'blocked'; o base passou a 4b3e21854. blocked NAO e' conflito (seria 'dirty') - e' falta de checks requeridos ou revisao. O run 3856830398x tem 10 checks: 2 success e 8 in_progress. Nao mesclo enquanto estiver blocked.",
-    "E-518 (unused sao invisiveis ao CI): o job 'test (macos-latest)' corre golangci-lint e PASSOU. Os 8 unused sao de app_windows.go e mlx/*_other.go, que so compilam em Windows - nenhum runner do CI os ve. E' divida declarada, nao divida de CI. FASE 3 (os oito unused) fica RESOLVIDA como declaracao."
+    "E-518 (unused sao invisiveis ao CI): o job 'test (macos-latest)' corre golangci-lint e PASSOU. Os 8 unused sao de app_windows.go e mlx/*_other.go, que so compilam em Windows - nenhum runner do CI os ve. E' divida declarada, nao divida de CI. FASE 3 (os oito unused) fica RESOLVIDA como declaracao.",
+    "E-519 (cabecalho do estado corrigido): measured_commit 758e6fec1 -> 17a850984; measured_at -> hoje; main_sha -> 4b3e21854; main_ci_state de 'green' (FALSO) para 'VERMELHO com a causa'; mission_branch -> fix/checker-relogio; open_count 0 -> 1. Cada valor com o comando ao lado, em measured_how. E o mission_id (v21 vs V2.2) fica DECLARADO como divergencia, nao alterado."
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -2795,9 +2800,9 @@
     },
     "evidence": "E-173"
   },
-  "measured_at": "2026-10-13T04:43:14-03:00",
-  "measured_commit": "758e6fec1",
-  "measured_how": "git rev-parse HEAD + leitura dos derivados; a cronologia e a coerencia das duas fontes de estado sao verificadas por scripts/hades_state_chronology_test.py, que roda no CI",
+  "measured_at": "2026-10-14T11:17:05-03:00",
+  "measured_commit": "17a850984",
+  "measured_how": "git rev-parse origin/fix/checker-relogio (o commit DO PR, medido no GitHub) + git rev-parse origin/main + consulta a API de checks do PR #438. O HEAD local e' 1065e5c56 (1 commit a frente: E-518/E-519, ainda nao empurrado).",
   "stage_states_derived_from": "stages[].state (fonte unica desde E-311)",
   "reconciliation_v22": {
     "measured_at": "2026-10-13T04:43:14-03:00",
@@ -4323,5 +4328,7 @@
     "E-422": "checker do relogio de parede com teste proprio; corrige a conclusao do E-418",
     "E-427": "matriz de lacunas + ADR da pre-etapa do complemento 43-47",
     "E-428": "pin de modelo (MANUAL) no RouteRequest, com contraprova"
-  }
+  },
+  "mission_id_declared": "hades-universal-v21",
+  "mission_id_note": "O `mission_id` diz `hades-universal-v21` e a missao activa e' a **V2.2**. *Nao alterei o campo*: ele pode ser chave de continuidade dos checkpoints, e trocar uma chave por estetica seria o tipo de ajuste cosmetico que a FASE 3 proibe. **Fica declarado como divergencia a decidir.**"
 }
