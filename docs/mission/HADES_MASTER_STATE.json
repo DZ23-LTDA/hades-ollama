@@ -2570,7 +2570,11 @@
     "TRES DEFEITOS REAIS EM TRES RODADAS, TODOS DO MESMO PADRAO (E-460/461/463): ADV-75 (escopo = CONTACTO, no agendamento), ADV-76 (escopo = WORKFLOW, no motor de workflow) e ADV-77 (escopo = PRODUTO/CLIENTE, nos pedidos). *Comparar um identificador sem o escopo a que ele pertence* - e os tres vieram de MEDIR o que a rodada anterior declarou",
     "A VARREDURA POR FORMA (E-463): reduzir 1521 comparacoes '==' a 55 candidatos deu a lista triavel, e a triagem do primeiro candidato de risco - company_growth.go:341 - achou um defeito grave. *A ferramenta vale pelo que ela reduz, nao pelo que ela prova.*",
     "E UM LIMITE QUE FICA DECLARADO, NAO ESCONDIDO (E-463): quando a intencao E' a mesma, o `return nil` do CreateOrder nao devolve NADA ao chamador - nem o pedido existente, nem sinal de replay. Corrigi-lo exige mudar a assinatura de CreateOrder; nao foi feito, e esta' declarado no codigo.",
-    "BURACO NA NUMERACAO, PELA QUINTA VEZ (E-462 era a varredura e nao foi registada): registei a E-463 e o contador acusou 462. *Mensagem de commit nao e' registro; e a linha do indice que e' o registro.* Desta vez o buraco foi criado e fechado na MESMA rodada"
+    "BURACO NA NUMERACAO, PELA QUINTA VEZ (E-462 era a varredura e nao foi registada): registei a E-463 e o contador acusou 462. *Mensagem de commit nao e' registro; e a linha do indice que e' o registro.* Desta vez o buraco foi criado e fechado na MESMA rodada",
+    "DOIS SEGREDOS COMPARADOS COM `==`, E O REPO CONHECIA O PADRAO (E-464/E-465): whatsapp_adapter.go:325 (token de verificacao de webhook) e codex_desktop.go:677 (API key gerida). O repositorio ja' usa subtle.ConstantTimeCompare/hmac.Equal em SEIS sitios. Era INCONSISTENCIA, nao desconhecimento. No WhatsApp o contraste estava DENTRO DO MESMO FICHEIRO: ValidateWebhook valida com HMAC e VerifyWebhook comparava com ==",
+    "UM TESTE DE TIMING E' RUIDO (E-464): o que se testa e' o CONTRATO do helper (quem confere, quem nao, e que vazio nunca autoriza). A constante de tempo fica DECLARADA, nao medida - *e isso e' dito, em vez de fingido*",
+    "ASSERCAO ESCRITA A PARTIR DO CODIGO VELHO MEDE O CODIGO VELHO (E-464): escrevi a assercao dos espacos ao contrario, porque a li do comportamento ANTIGO (token != '' sem aparar). O helper APARA os dois lados, e isso e' uma MELHORIA",
+    "AS DUAS VARREDURAS DESTA SERIE, E O QUE CADA UMA VALE (E-462/E-465): a de ESCOPO de identidade reduziu 1521 comparacoes a 55 e achou TRES defeitos reais; a de SEGREDO sem tempo constante reduziu ~42 a 2 reais. *Nenhuma das duas provou ausencia: as duas REDUZIRAM o espaco onde a ausencia importa.*"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -3341,6 +3345,10 @@
         {
           "id": "ADV-77",
           "estado": "CORRIGIDO E MEDIDO (E-463, 2026-10-14): `CreateOrder` comparava a `IdempotencyKey` SEM o PRODUTO e SEM o CLIENTE. MEDIDO: o cliente pediu o produto B com a mesma chave do pedido A e o motor ficou com **1** pedido - *sem erro, sem aviso, e sem devolver o pedido de A tampouco*. ***O cliente pediu dois produtos e recebeu um.*** Corrigido: o escopo da chave inclui ProductID e CustomerRef. LIMITE DECLARADO E NAO CORRIGIDO: quando a intencao E' a mesma, o `return nil` nao devolve nada ao chamador (nem o pedido existente, nem sinal de replay) - *o oposto da licao de E-458*; corrigi-lo exige mudar a assinatura de CreateOrder."
+        },
+        {
+          "id": "ADV-78",
+          "estado": "CORRIGIDO E MEDIDO (E-464/E-465, 2026-10-14): DOIS segredos comparados com `==` em vez de tempo constante. (1) `whatsapp_adapter.go:325` comparava o token de verificacao do webhook com `==` - *e o `ValidateWebhook` do MESMO ficheiro valida a assinatura com HMAC*; (2) `codex_desktop.go:677` comparava uma API KEY apresentada com `==` (`parts[1] == CodexDesktopManagedAPIKey`). MEDIDO: o repositorio JA' usa `subtle.ConstantTimeCompare`/`hmac.Equal` em SEIS sitios (auth TOTP, auth.go:537, backup.go, mcp_remote_h5.go, omnichannel.go, postgres_key_rotation.go) -> ***era INCONSISTENCIA, nao desconhecimento.*** Corrigidos os dois, com 'vazio nunca confere'. LIMITE: um teste de TIMING e' ruido - o que se testa e' o CONTRATO do helper, e a constante de tempo fica DECLARADA, nao medida."
         }
       ],
       "proximos_ataques": [],

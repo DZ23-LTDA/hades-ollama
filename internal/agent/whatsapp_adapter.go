@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/hmac"
 	"crypto/sha256"
+	"crypto/subtle"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -317,12 +318,36 @@ func (c *CloudAPIAdapter) StatusDetails() string {
 	return fmt.Sprintf("WhatsApp Cloud API ativa (Phone ID: %s)", c.config.PhoneNumberID)
 }
 
+// verifyTokenConfere compara o token de verificacao do webhook em TEMPO CONSTANTE.
+//
+// 🚨 E-464 (MEDIDO): a comparacao era `token == c.config.VerifyToken` ✗ — e o contraste estava **dentro do mesmo
+// ficheiro**: `ValidateWebhook` (logo abaixo) valida a assinatura com **HMAC** ✓, enquanto `VerifyWebhook` comparava o
+// token com `==`. ***E o repositorio JA' usa `subtle.ConstantTimeCompare`/`hmac.Equal` em SEIS outros sitios*** (*auth
+// TOTP, `auth.go:537`, `backup.go`, `mcp_remote_h5.go`, `omnichannel.go`, `postgres_key_rotation.go*) ⇒ ***era
+// INCONSISTENCIA, nao desconhecimento.***
+//
+// **POR QUE IMPORTA**: a comparacao de strings em Go **sai no primeiro byte diferente** ⇒ *o tempo de resposta revela
+// quantos bytes do token o atacante acertou* — *um oraculo byte a byte.* **E POR QUE A SEVERIDADE E' BAIXA, declarado
+// honestamente**: *o token e' de **verificacao de webhook**, o atacante ja' tem de conhecer o endpoint, e medir tempo por
+// rede e' ruidoso* ⇒ ***mas a correccao e' uma linha e o padrao ja' existia no repo: o custo de nao corrigir e' discutir
+// isto outra vez.***
+//
+// **`false` quando qualquer lado e' vazio** — *um token nao configurado nao pode autorizar nada.*
+func verifyTokenConfere(presented, expected string) bool {
+	presented = strings.TrimSpace(presented)
+	expected = strings.TrimSpace(expected)
+	if presented == "" || expected == "" {
+		return false
+	}
+	return subtle.ConstantTimeCompare([]byte(presented), []byte(expected)) == 1
+}
+
 func (c *CloudAPIAdapter) VerifyWebhook(req *http.Request) ([]byte, bool) {
 	mode := req.URL.Query().Get("hub.mode")
 	token := req.URL.Query().Get("hub.verify_token")
 	challenge := req.URL.Query().Get("hub.challenge")
 
-	if strings.TrimSpace(c.config.VerifyToken) != "" && mode == "subscribe" && token != "" && token == c.config.VerifyToken {
+	if mode == "subscribe" && verifyTokenConfere(token, c.config.VerifyToken) {
 		return []byte(challenge), true
 	}
 	return nil, false
