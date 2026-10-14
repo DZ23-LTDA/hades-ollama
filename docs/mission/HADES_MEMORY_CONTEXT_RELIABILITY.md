@@ -197,3 +197,29 @@ depois de alguém ler «handoff implementado».
 Superfícies adjacentes que NÃO são este conceito, para não serem confundidas: `resumeCompany`
 e `resumeCompanyAgent` (`:762`/`:767`) são retoma de empresa/agente; `Last-Event-ID`
 (`:2966`) é retoma de stream SSE.
+
+### D-4 FECHADO (§4 completo) — o que fica dito para quem ler isto depois
+
+A integração que o D-4 deixava em aberto está **feita e provada**, em quatro passos que se
+podem seguir no histórico:
+
+| commit | peça | prova |
+| --- | --- | --- |
+| `5d3633d20` (E-588) | contrato: `Validar` · `ParaContexto` · marcador de dado | 5 testes |
+| `36db38979` (E-593) | produtor da **orquestração** (`HandoffDoJob`) | 5 testes |
+| `3bf2fc3a5` (E-595) | produtor da **missão** (`HandoffDaMissao`), com autorização REAL e só a concedida | 5 testes |
+| `30769e3a4` (E-596) | o bootstrap **aceita** o bloco (documento **e** preâmbulo) | 3 testes |
+| `eaff74969` (E-597) | preâmbulo **REDIGIDO** (sem identificadores nem caminhos) | 3 testes |
+| `c6171257d` (E-598) | **a ligação**: builder usa o redigido · `missionContext` deriva e passa | **prova conjunta**: `server` = 0 **e** `internal/agent` = 0 |
+
+**E um defeito que só apareceu porque um teste já existia**: ligar o bloco completo ao
+preâmbulo fez `mission_context_test.go:118` falhar com a linha exacta —
+`preamble leaked "mis_…"`, `"prj_…"` e **o caminho do workspace**. *O teste estava certo e a
+ligação estava errada.* Identificador interno e caminho local não são conteúdo de trabalho:
+são topologia do servidor. Daí o `ParaPreambulo` por **lista branca** — *uma lista negra
+esquece-se de um campo e vaza-o; uma lista branca esquece-se de um campo e omite-o.*
+
+**O QUE CONTINUA FORA, e não se esconde atrás de «§4 feito»**: o contrato chega ao contexto
+das **missões**; no **chat** ele só chegaria se o pedido identificasse a missão — e hoje o
+chat identifica PROJETO, não missão (`chat_context.go:55-63`, sem `MissionID`). Fazer isso é
+**decisão de contrato de API**, não detalhe de implementação.
