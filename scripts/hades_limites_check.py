@@ -50,23 +50,27 @@ lista_abertos = []
 for linha in linhas:
     if not linha.startswith("| E-"):
         continue
-    colunas = linha.split("|")
-    if len(colunas) < 5:
-        continue
-    # ***E-515 (MEDIDO): o marcador tem de ser procurado NA CLAUSULA, nao na linha toda.***
-    # *O `E-325`, o `E-326` e o `E-345` apareciam como «abertos» porque o `nao medid` estava **fora** da clausula de
-    # limites - e a linha inteira era varrida.* ⇒ ***o instrumento procurava no sitio errado da linha.***
-    # A clausula de limites vive na **coluna 4** (o corpo da evidencia).
-    corpo = colunas[4]
-    if "LIMITES" not in corpo:
+    # ***E-522 (MEDIDO) — O E-515 ESTAVA ERRADO, E A RAZAO E' ESTRUTURAL.***
+    #
+    # No E-515 eu passei a ler **so' a coluna 4**, com o argumento «a clausula e' a coluna, nao a linha».
+    # *MEDIDO*: as linhas do indice tem entre **7 e 25** colunas (7->54, 8->120, 9->79, 10->178, 11->30, 12->16,
+    # 13->16, 14->13, 15->7, 16->5, 18->1, 25->1 linhas) - porque **o corpo da evidencia contem tabelas Markdown**, e os
+    # `|` dessas tabelas **partem** a linha.
+    #
+    # ⇒ ***«a coluna 4» NAO EXISTE como conceito estavel.*** O meu checker nao estava a ler «a coluna errada»:
+    #   ***a coluna nao existe.*** E por isso ele media **7** onde havia **~192** - *uma reducao de que eu me gabei.*
+    #
+    # ⇒ a leitura volta a ser **da LINHA**, como antes do E-515, mantendo o criterio de **primeira pessoa** do E-513 -
+    #   *que era, e e', a unica das tres correccoes que estava certa.*
+    if "LIMITES" not in linha:
         continue
     citados += 1
-    clausula = corpo[corpo.index("LIMITES"):]
+    clausula = linha[linha.index("LIMITES"):]
     if any(marcador in clausula for marcador in SEM_MEDICAO):
         sem_medicao += 1
-        if "REMEDIDO EM" not in corpo:
+        if "REMEDIDO EM" not in linha:
             abertos += 1
-            lista_abertos.append(colunas[1].strip())
+            lista_abertos.append(linha.split("|")[1].strip())
 
 print("  LIMITES CITADOS  : %d  (*evidencias que tem clausula de limite*)"
       % citados)
