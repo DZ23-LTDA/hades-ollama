@@ -2548,7 +2548,10 @@
     "MESMA CLASSE DE E-442 E E-443 (E-455): itens de lista sem data (E-442) e duas listas que se duplicavam (E-443). O defeito nunca esteve no conteudo - sempre esteve em nao se poder LER o conteudo",
     "A JORNADA DO CLIENTE NA SUPERFICIE (E-456): services, slots, book, appointments, cancel, reschedule/slots e reschedule. Um cliente que agenda e nao consegue cancelar nem remarcar nao tem um produto: tem uma demonstracao. E FreeSlotsForReschedule e' a peca que quase sempre falta - remarcar sem saber o que esta' livre obriga a adivinhar, e a adivinhacao vira horario inexistente que o motor recusa DEPOIS",
     "EXPOR A STRUCT INTERNA COMO CONTRATO DE API ACOPLA A API A IMPLEMENTACAO (E-456): BookRequest nao tem json tags (scheduling.go:259-268), entao o encoding/json usa os NOMES DOS CAMPOS e o corpo com resource_id/starts_at virou um ZERO SILENCIOSO - e o erro culpava os campos que o cliente mandou. A superficie passou a ter o seu proprio contrato",
-    "O MOTOR RECUSOU TRES VEZES, E AS TRES ESTAVAM CERTAS (E-456): (1) 'todos obrigatorios' -> o contrato JSON; (2) 'servico nao existe nesta organizacao' -> eu criava com org-a e o middleware fixa LocalOrganizationID; (3) 'nao tem expediente' -> o turno era de ResourceID vazio e a jornada usa o recurso real. Quarta vez nesta serie em que 'o teste falhou' nao era 'o produto falhou'"
+    "O MOTOR RECUSOU TRES VEZES, E AS TRES ESTAVAM CERTAS (E-456): (1) 'todos obrigatorios' -> o contrato JSON; (2) 'servico nao existe nesta organizacao' -> eu criava com org-a e o middleware fixa LocalOrganizationID; (3) 'nao tem expediente' -> o turno era de ResourceID vazio e a jornada usa o recurso real. Quarta vez nesta serie em que 'o teste falhou' nao era 'o produto falhou'",
+    "SUPERFICIE DO AGENDAMENTO COMPLETA (E-457): fila de espera (entrar/listar/oferecer/confirmar) e no-show. O limite que E-449 declarou esta' fechado: services, slots, book, appointments, cancel, reschedule/slots, reschedule, waitlist x4 e no-show. O motor tinha as quatro funcoes da fila e NENHUMA porta",
+    "DECISOES DELIBERADAS NAS ROTAS DE FILA (E-457): OrganizationID vem do middleware (o corpo nao escolhe o tenant); ID/CreatedAt/Status sao ZERADOS (aceita-los do corpo seria deixar o cliente escolher a propria identidade e o proprio estado na fila); e `now` NAO vem do corpo - um corpo que escolhe 'agora' escolhe o proprio prazo de expiracao da oferta",
+    "O PROBLEMA NUNCA FOI REUSAR STRUCT (E-457): foi reusar uma struct que NAO FOI DESENHADA PARA SER LIDA DE FORA. SchedulingWaitlistEntry TEM json tags e ja' e' devolvido ao cliente - e' um DTO publico, e reusa-lo como entrada e' coerente. E' a distincao que o E-456 mediu"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -4020,7 +4023,8 @@
           "E-436: RuntimeConfig.Models + Runtime.RouteModelForStep, com falha fechada (ErrModelRegistryUnavailable) quando nao ha registry. O LACO DE EXECUCAO ainda NAO chama - a entrada existe, o consumidor nao.",
           "E-437: o laco de execucao chama RouteModelForStep por passo e REGISTRA a decisao no evento step.model.route; falha fechado se a exigencia nao pode ser honrada. A decisao e' registrada, mas NAO aplicada - o executor segue o da missao.",
           "E-438: ToolContext.ModelID + o laco entrega o modelo roteado a ferramenta. O teste prova entrega, vazio sem registry, e que evento e entrega contam a mesma historia. NENHUMA ferramenta le o campo ainda.",
-          "E-456: a superficie do agendamento cobre a JORNADA DO CLIENTE - services, slots, book, appointments, cancel, reschedule/slots e reschedule. Restam fila de espera e no-show."
+          "E-456: a superficie do agendamento cobre a JORNADA DO CLIENTE - services, slots, book, appointments, cancel, reschedule/slots e reschedule. Restam fila de espera e no-show.",
+          "E-457: fila de espera (entrar/listar/oferecer/confirmar) e no-show na superficie. O limite que E-449 declarou esta' FECHADO - services, slots, book, appointments, cancel, reschedule/slots, reschedule, waitlist x4 e no-show."
         ],
         "matriz_correcoes_por_medicao": [
           "MIN_COST NAO estava ausente: RoutePreferenceCheapest existe (router.go:25) - a capacidade existia com outro nome",

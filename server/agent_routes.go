@@ -685,6 +685,12 @@ func (a *agentAPI) register(r *gin.Engine) {
 	group.POST("/scheduling/cancel", a.schedulingCancel)
 	group.GET("/scheduling/reschedule/slots", a.schedulingRescheduleSlots)
 	group.POST("/scheduling/reschedule", a.schedulingReschedule)
+	// E-457: FILA DE ESPERA e NO-SHOW - *o motor tinha as quatro funcoes e nenhuma porta.*
+	group.GET("/scheduling/waitlist", a.schedulingWaitlist)
+	group.POST("/scheduling/waitlist", a.schedulingWaitlistAdd)
+	group.POST("/scheduling/waitlist/offer", a.schedulingWaitlistOffer)
+	group.POST("/scheduling/waitlist/confirm", a.schedulingWaitlistConfirm)
+	group.POST("/scheduling/no-show", a.schedulingNoShow)
 	group.GET("/mcp", a.mcp)
 	group.POST("/mcp", a.registerMCP)
 	group.POST("/mcp/:id/enable", a.enableMCP)

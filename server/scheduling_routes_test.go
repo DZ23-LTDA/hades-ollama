@@ -226,6 +226,122 @@ func TestJornadaDoClienteNaSuperficieDeAgendamento(t *testing.T) {
 	}
 }
 
+// E-457 — **A FILA DE ESPERA E O `NO-SHOW` PELA SUPERFICIE.**
+//
+// **O QUE E-456 DEIXOU ABERTO**: *"fila de espera e `no-show` seguem sem rota"* ✗. ***Capacidade sem superficie e'
+// biblioteca - e a biblioteca ja' provou que existe.***
+//
+// O fluxo medido: **entrar na fila → listar → OFERECER um horario que vagou → CONFIRMAR** (*a oferta vira agendamento*),
+// e o **no-show** num agendamento que existiu. *E' a ultima milha do agendamento: sem ela, quem nao conseguiu horario
+// simplesmente desaparece, e quem faltou e' indistinguivel de quem cancelou.*
+func TestFilaDeEsperaENoShowNaSuperficie(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	organizacao := agent.LocalOrganizationID
+	loja := agent.NewSchedulingStore(t.TempDir())
+	servico, err := loja.AddService(agent.SchedulingService{OrganizationID: organizacao, Name: "Consulta", DurationMinutes: 30})
+	if err != nil {
+		t.Fatalf("criar serviço: %v", err)
+	}
+	recurso, err := loja.AddResource(agent.SchedulingResource{OrganizationID: organizacao, Name: "Bia"})
+	if err != nil {
+		t.Fatalf("criar recurso: %v", err)
+	}
+	dia, _ := time.Parse("2006-01-02", "2026-10-14")
+	if _, err := loja.AddShift(agent.SchedulingShift{
+		OrganizationID: organizacao, ResourceID: recurso.ID, Weekday: int(dia.Weekday()), OpensAt: 0, ClosesAt: 24 * 60,
+	}); err != nil {
+		t.Fatalf("criar turno: %v", err)
+	}
+
+	engine := montarRotaDeAgendamento(loja, organizacao)
+	executar := func(metodo, caminho, corpo string) *httptest.ResponseRecorder {
+		requisicao := httptest.NewRequest(metodo, "/api/agent/v1"+caminho, strings.NewReader(corpo))
+		requisicao.Header.Set("Content-Type", "application/json")
+		resposta := httptest.NewRecorder()
+		engine.ServeHTTP(resposta, requisicao)
+		return resposta
+	}
+
+	// 1. ENTRAR NA FILA.
+	resposta := executar(http.MethodPost, "/scheduling/waitlist",
+		`{"service_id":"`+servico.ID+`","resource_id":"`+recurso.ID+`","contact_id":"cliente-fila","channel":"voice",`+
+			`"from":"2026-10-14T00:00:00Z","to":"2026-10-20T00:00:00Z"}`)
+	if resposta.Code != http.StatusCreated {
+		t.Fatalf("entrar na fila devolveu %d: %s", resposta.Code, resposta.Body.String())
+	}
+	var criada struct {
+		Entry struct {
+			ID string `json:"id"`
+		} `json:"entry"`
+	}
+	if err := json.Unmarshal(resposta.Body.Bytes(), &criada); err != nil || criada.Entry.ID == "" {
+		t.Fatalf("a entrada da fila nao veio com ID: %s", resposta.Body.String())
+	}
+
+	// 2. LISTAR.
+	resposta = executar(http.MethodGet, "/scheduling/waitlist", "")
+	if resposta.Code != http.StatusOK {
+		t.Fatalf("listar a fila devolveu %d: %s", resposta.Code, resposta.Body.String())
+	}
+	var fila struct {
+		Count int `json:"count"`
+	}
+	_ = json.Unmarshal(resposta.Body.Bytes(), &fila)
+	if fila.Count == 0 {
+		t.Fatal("depois de entrar na fila, a lista veio vazia — *quem espera tem de poder ser visto*")
+	}
+
+	// 3. OFERECER um horario que vagou. *Fila com uma entrada e um horario livre: tem de oferecer.*
+	resposta = executar(http.MethodPost, "/scheduling/waitlist/offer",
+		`{"resource_id":"`+recurso.ID+`","slot":"2026-10-14T09:00:00Z"}`)
+	if resposta.Code != http.StatusOK {
+		t.Fatalf("oferecer devolveu %d: %s", resposta.Code, resposta.Body.String())
+	}
+	var oferta struct {
+		Offered bool `json:"offered"`
+	}
+	_ = json.Unmarshal(resposta.Body.Bytes(), &oferta)
+	if !oferta.Offered {
+		t.Fatalf("com uma entrada na fila e um horario livre, a oferta tinha de sair — veio %s", resposta.Body.String())
+	}
+
+	// 4. CONFIRMAR: *a oferta vira agendamento.*
+	resposta = executar(http.MethodPost, "/scheduling/waitlist/confirm", `{"entry_id":"`+criada.Entry.ID+`"}`)
+	if resposta.Code != http.StatusCreated {
+		t.Fatalf("confirmar devolveu %d: %s", resposta.Code, resposta.Body.String())
+	}
+	var confirmado struct {
+		Appointment struct {
+			ID string `json:"id"`
+		} `json:"appointment"`
+	}
+	if err := json.Unmarshal(resposta.Body.Bytes(), &confirmado); err != nil || confirmado.Appointment.ID == "" {
+		t.Fatalf("a confirmacao nao criou agendamento: %s", resposta.Body.String())
+	}
+
+	// 5. NO-SHOW: *quem faltou nao e' o mesmo que quem cancelou.*
+	resposta = executar(http.MethodPost, "/scheduling/no-show", `{"appointment_id":"`+confirmado.Appointment.ID+`"}`)
+	if resposta.Code != http.StatusOK {
+		t.Fatalf("no-show devolveu %d: %s", resposta.Code, resposta.Body.String())
+	}
+
+	// E o MOTOR conta a mesma historia: *o agendamento confirmado pela fila esta' marcado como no-show.*
+	agendamentos, err := loja.Appointments(organizacao)
+	if err != nil {
+		t.Fatalf("listar no motor: %v", err)
+	}
+	achouNoShow := false
+	for _, agendamento := range agendamentos {
+		if agendamento.ID == confirmado.Appointment.ID && agendamento.Status == agent.SchedulingAppointmentNoShow {
+			achouNoShow = true
+		}
+	}
+	if !achouNoShow {
+		t.Fatalf("a superficie disse no-show e o motor diz %+v — *a rota e o motor tem de contar a MESMA historia*",
+			agendamentos)
+	}
+}
+
 // montarRotaDeAgendamento cria o engine com o store e um middleware que fixa a organizacao - *o mesmo padrao dos outros
 // testes de rota do projeto.*
 //
@@ -252,5 +368,11 @@ func montarRotaDeAgendamento(loja *agent.SchedulingStore, organizacao string) *g
 	grupo.POST("/scheduling/cancel", api.schedulingCancel)
 	grupo.GET("/scheduling/reschedule/slots", api.schedulingRescheduleSlots)
 	grupo.POST("/scheduling/reschedule", api.schedulingReschedule)
+	// E-457: fila de espera e no-show.
+	grupo.GET("/scheduling/waitlist", api.schedulingWaitlist)
+	grupo.POST("/scheduling/waitlist", api.schedulingWaitlistAdd)
+	grupo.POST("/scheduling/waitlist/offer", api.schedulingWaitlistOffer)
+	grupo.POST("/scheduling/waitlist/confirm", api.schedulingWaitlistConfirm)
+	grupo.POST("/scheduling/no-show", api.schedulingNoShow)
 	return engine
 }

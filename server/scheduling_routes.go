@@ -240,6 +240,135 @@ func (a *agentAPI) schedulingReschedule(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"appointment": agendamento})
 }
 
+// E-457 — **A FILA DE ESPERA E O `NO-SHOW`, QUE FECHAVAM O LIMITE DE E-449.**
+//
+// **O QUE E-456 DEIXOU ABERTO**: *"fila de espera e `no-show` seguem sem rota"* ✗ — *e o motor tem `AddToWaitlist`,
+// `OfferNextFromWaitlist`, `ConfirmWaitlistOffer` e `MarkNoShow`.* ***Capacidade sem superficie e' biblioteca - e a
+// biblioteca ja' provou que existe.***
+//
+// **POR QUE O `E-456` NAO SE REPETE AQUI**: la' o contrato de entrada era uma struct **interna** sem `json` tags, e o
+// corpo virava **zero silencioso** ✗. `SchedulingWaitlistEntry` **tem** tags ✓ e **ja' e' devolvido** ao cliente em
+// `Waitlist` ⇒ *e' um **DTO publico**, e reusa-lo como entrada e' coerente* ✓. **A distincao importa**: o problema nunca
+// foi "reusar struct" - foi reusar uma struct que **nao foi desenhada para ser lida de fora**.
+
+// schedulingWaitlist lista a fila de espera da organizacao.
+func (a *agentAPI) schedulingWaitlist(c *gin.Context) {
+	if a.scheduling == nil {
+		writeAgentError(c, http.StatusServiceUnavailable, errors.New("motor de agendamento não está ligado neste runtime"))
+		return
+	}
+	fila, err := a.scheduling.Waitlist(a.organizationID(c))
+	if err != nil {
+		writeAgentError(c, http.StatusBadRequest, err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"waitlist": fila, "count": len(fila)})
+}
+
+// schedulingWaitlistAdd poe um contato na fila. *O escopo vem do middleware - o corpo nao escolhe o tenant.*
+func (a *agentAPI) schedulingWaitlistAdd(c *gin.Context) {
+	if a.scheduling == nil {
+		writeAgentError(c, http.StatusServiceUnavailable, errors.New("motor de agendamento não está ligado neste runtime"))
+		return
+	}
+	var entrada agent.SchedulingWaitlistEntry
+	if err := c.ShouldBindJSON(&entrada); err != nil {
+		writeAgentError(c, http.StatusBadRequest, err)
+		return
+	}
+	entrada.OrganizationID = a.organizationID(c)
+	// `ID`, `CreatedAt` e `Status` sao do MOTOR: *aceitar do corpo seria deixar o cliente escolher a propria identidade
+	// e o proprio estado na fila.*
+	entrada.ID = ""
+	entrada.CreatedAt = time.Time{}
+	entrada.Status = ""
+	criada, err := a.scheduling.AddToWaitlist(entrada)
+	if err != nil {
+		writeAgentError(c, http.StatusBadRequest, err)
+		return
+	}
+	c.JSON(http.StatusCreated, gin.H{"entry": criada})
+}
+
+// schedulingWaitlistOffer oferece o proximo da fila para um horario que vagou.
+//
+// ⚠️ `now` NAO vem do corpo: *um corpo que escolhe "agora" escolhe o proprio prazo de expiracao da oferta.*
+func (a *agentAPI) schedulingWaitlistOffer(c *gin.Context) {
+	if a.scheduling == nil {
+		writeAgentError(c, http.StatusServiceUnavailable, errors.New("motor de agendamento não está ligado neste runtime"))
+		return
+	}
+	var pedido struct {
+		ResourceID string `json:"resource_id"`
+		Slot       string `json:"slot"`
+	}
+	if err := c.ShouldBindJSON(&pedido); err != nil {
+		writeAgentError(c, http.StatusBadRequest, err)
+		return
+	}
+	horario, err := time.Parse(time.RFC3339, strings.TrimSpace(pedido.Slot))
+	if err != nil {
+		writeAgentError(c, http.StatusBadRequest, errors.New("`slot` precisa ser RFC 3339"))
+		return
+	}
+	oferta, ofereceu, err := a.scheduling.OfferNextFromWaitlist(a.organizationID(c),
+		strings.TrimSpace(pedido.ResourceID), horario, time.Now().UTC())
+	if err != nil {
+		writeAgentError(c, http.StatusBadRequest, err)
+		return
+	}
+	if !ofereceu {
+		// *Fila vazia nao e' erro: e' ausencia de oferta - e o status tem de dizer isso, nao 500.*
+		c.JSON(http.StatusOK, gin.H{"offered": false})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"offered": true, "entry": oferta})
+}
+
+// schedulingWaitlistConfirm confirma a oferta, criando o agendamento. *A oferta EXPIRA: o motor decide, nao a rota.*
+func (a *agentAPI) schedulingWaitlistConfirm(c *gin.Context) {
+	if a.scheduling == nil {
+		writeAgentError(c, http.StatusServiceUnavailable, errors.New("motor de agendamento não está ligado neste runtime"))
+		return
+	}
+	var pedido struct {
+		EntryID string `json:"entry_id"`
+	}
+	if err := c.ShouldBindJSON(&pedido); err != nil {
+		writeAgentError(c, http.StatusBadRequest, err)
+		return
+	}
+	agendamento, err := a.scheduling.ConfirmWaitlistOffer(a.organizationID(c),
+		strings.TrimSpace(pedido.EntryID), time.Now().UTC())
+	if err != nil {
+		writeAgentError(c, http.StatusBadRequest, err)
+		return
+	}
+	c.JSON(http.StatusCreated, gin.H{"appointment": agendamento})
+}
+
+// schedulingNoShow marca o no-show. *Quem faltou nao e' o mesmo que quem cancelou, e a agenda precisa distinguir.*
+func (a *agentAPI) schedulingNoShow(c *gin.Context) {
+	if a.scheduling == nil {
+		writeAgentError(c, http.StatusServiceUnavailable, errors.New("motor de agendamento não está ligado neste runtime"))
+		return
+	}
+	var pedido struct {
+		AppointmentID string `json:"appointment_id"`
+	}
+	if err := c.ShouldBindJSON(&pedido); err != nil {
+		writeAgentError(c, http.StatusBadRequest, err)
+		return
+	}
+	agendamento, err := a.scheduling.MarkNoShow(a.organizationID(c), strings.TrimSpace(pedido.AppointmentID),
+		time.Now().UTC())
+	if err != nil {
+		writeAgentError(c, http.StatusBadRequest, err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"appointment": agendamento})
+}
+
 // parsePositiveInt converte sem `strconv.Atoi` cru: *`Atoi` aceita sinal, e "-5" passaria por "inteiro".*
 func parsePositiveInt(bruto string) (int, error) {
 	valor := 0
