@@ -37,7 +37,7 @@ func TestChatContextCompactaQuandoOTetoEstaDeclarado(t *testing.T) {
 	engine := gin.New()
 	engine.POST("/api/agent/v1/chat", func(c *gin.Context) {
 		c.Set("agent.organization", agent.Organization{ID: "org-a"})
-		withAgentChatContext(raiz)(c)
+		withAgentChatContext(nil, raiz)(c)
 	}, chatContextRecorder(&capturado))
 
 	// 10 mensagens, para haver faixa antiga a resumir (a janela padrão é 6).
@@ -137,7 +137,7 @@ func TestChatContextNaoCompactaSemTetoDeclarado(t *testing.T) {
 	engine := gin.New()
 	engine.POST("/api/agent/v1/chat", func(c *gin.Context) {
 		c.Set("agent.organization", agent.Organization{ID: "org-a"})
-		withAgentChatContext(raiz)(c)
+		withAgentChatContext(nil, raiz)(c)
 	}, chatContextRecorder(&capturado))
 
 	var corpo strings.Builder

@@ -596,7 +596,7 @@ func (a *agentAPI) register(r *gin.Engine) {
 	// contexto canônico injetado pelo middleware (estágio 5). O /api/chat de
 	// sempre permanece intocado para CLI e clientes compatíveis.
 	if len(a.chatHandlers) > 0 {
-		chatRoute := append([]gin.HandlerFunc{withAgentChatContext(a.context.Root())}, a.chatHandlers...)
+		chatRoute := append([]gin.HandlerFunc{withAgentChatContext(a, a.context.Root())}, a.chatHandlers...)
 		group.POST("/chat", chatRoute...)
 	}
 	// Comandos slash (§6/§11.1): descoberta e execução pelo registro canônico.

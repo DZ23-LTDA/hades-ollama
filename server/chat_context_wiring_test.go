@@ -34,7 +34,7 @@ func TestChatContextMiddlewareRegistraDecisaoDeOrcamento(t *testing.T) {
 		engine := gin.New()
 		engine.POST("/api/agent/v1/chat", func(c *gin.Context) {
 			c.Set("agent.organization", agent.Organization{ID: "org-a"})
-			withAgentChatContext("")(c)
+			withAgentChatContext(nil, "")(c)
 		}, func(c *gin.Context) {
 			decisao, encontrada = DecisaoDeOrcamentoRegistada(c)
 			c.Status(http.StatusOK)
