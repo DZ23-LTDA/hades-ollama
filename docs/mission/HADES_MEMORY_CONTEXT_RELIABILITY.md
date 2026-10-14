@@ -139,3 +139,38 @@ memória compartilhada governada, handoff, recuperação de fontes e retomada de
 tiverem **provas ponta a ponta**, com persistência íntegra e autorização em todas as
 rotas. **Falhas e dependências externas permanecem expressas, nunca disfarçadas.**
 Enquanto o P0 da compactação real estiver aberto, este complemento é `IN_PROGRESS`.
+
+## Decisões tomadas e ainda NÃO executadas
+
+Registadas aqui de propósito: esta missão já perdeu decisões que existiam só na conversa
+quando o contexto foi compactado. Uma decisão que não está em disco não é uma decisão.
+
+### D-1. Envelope versionado no `/memories/summary` — forma ADITIVA, nunca breaking
+`agent_routes.go:2322-2333` devolve `MemorySummary` **directo** (`c.JSON(200, summary)`) e o
+envelope do E-561 (`ConstruirEnvelope`: versão, hash, fontes cobertas, orçamento, validação)
+**existe e não é usado**. Escolha fixada:
+- **(b) ADITIVA** — juntar os campos do envelope AO `MemorySummary`. Consumidores antigos
+  continuam a ler o que liam. **É este o caminho.**
+- (a) aninhar em `{"summary":…,"envelope":…}` está **RECUSADA**: muda a forma na rede sem
+  necessidade, quebra `memory_summary_routes_test.go` e clientes — uma alteração breaking
+  desnecessária não é progresso, é um incidente à espera de acontecer.
+- Cuidado obrigatório: `MemorySummary` é **Estágio 15, a preservar**. *Preservar não é não
+  tocar: é não lhe mudar o significado.* O teste tem de provar que os campos antigos saem
+  **iguais** (nome, tipo e conteúdo) além dos novos.
+
+### D-2. §4 handoff — o que falta é a INTEGRAÇÃO, não o contrato
+`internal/agent/handoff.go` (E-588) tem contrato + `Validar` + `ParaContexto` provados, e
+**nenhum chamador em produção**. Passo seguinte: ligar o `Handoff` a um caminho real de troca
+entre agentes/modelos (Mission Control / Cowork) e prová-lo ponta a ponta, como se fez com a
+compactação (E-585). Enquanto isso não existir, o §4 está **contrato-feito / integração-AUSENTE**
+— o mesmo defeito «apenas adaptador» que esta missão persegue, aqui declarado em vez de escondido.
+
+### D-3. `race (macos-latest)` — a medição que decide o F2
+O E-589 fez `persistLocked` tomar `o.taskMu` (o mesmo lock das escritas em `job.Tasks`).
+**Não está provado que fosse essa a causa do vermelho**: `Cancel` de um job a correr já
+evitava persistir por causa dessa corrida (`swarm.go:454-458`), logo o autor conhecia-a e
+fechara o caminho que conhecia. O log do próximo `race (macos)` decide:
+- `WARNING: DATA RACE` ⇒ a corrida era real e o E-589 mirou certo;
+- `panic: test timed out after 10m0s` ⇒ é **TEMPO**, o F2 não era a causa, e a frente passa a
+  ser a duração do pacote `internal/agent` (fatia do CI medida localmente: 241,9–288,1 s;
+  limite de 600 s por binário).
