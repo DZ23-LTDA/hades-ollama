@@ -110,6 +110,122 @@ func TestSuperficieDeAgendamentoUsaOMotorEFalhaFechado(t *testing.T) {
 	_ = daOrgA
 }
 
+// E-456 — **A JORNADA DO CLIENTE, MEDIDA PELA SUPERFICIE: AGENDAR, LISTAR, REMARCAR, CANCELAR.**
+//
+// **O LIMITE QUE E-449 DECLAROU**: *"liguei o nucleo, nao o motor inteiro - `Cancel`/`Reschedule`/fila/`no-show` NAO tem
+// rota"* ✗. ***Um cliente que agenda e nao consegue cancelar nem remarcar nao tem um produto: tem uma demonstracao.***
+//
+// **O QUE ESTE TESTE PROVA**: que a jornada inteira atravessa a superficie, **na ordem em que o cliente a vive** - e que
+// `reschedule/slots` responde **ANTES** de o cliente escolher (*remarcar sem saber o que esta' livre obriga a adivinhar,
+// e a adivinhacao vira horario inexistente que o motor recusa **depois***).
+func TestJornadaDoClienteNaSuperficieDeAgendamento(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	loja := agent.NewSchedulingStore(t.TempDir())
+	// ⚠️ E-456: a organizacao do TESTE e a do MIDDLEWARE tem de ser a MESMA. Eu criava o servico com "org-a" e o
+	// middleware fixava `agent.LocalOrganizationID` ⇒ *o motor respondeu "servico ... nao existe nesta organizacao"*,
+	// com razao. **O motor estava certo; o teste e' que era incoerente consigo mesmo.**
+	organizacao := agent.LocalOrganizationID
+	servico, err := loja.AddService(agent.SchedulingService{OrganizationID: organizacao, Name: "Consulta", DurationMinutes: 30})
+	if err != nil {
+		t.Fatalf("criar serviço: %v", err)
+	}
+	recurso, err := loja.AddResource(agent.SchedulingResource{OrganizationID: organizacao, Name: "Bia"})
+	if err != nil {
+		t.Fatalf("criar recurso: %v", err)
+	}
+
+	// A data e' FIXA e o turno nasce no dia da semana DELA: *criar turnos para "0..6" nao funcionava porque
+	// `OpenSlots` procura o turno do dia da data* (medido em E-449).
+	data := "2026-10-14"
+	dia, erroData := time.Parse("2006-01-02", data)
+	if erroData != nil {
+		t.Fatalf("data: %v", erroData)
+	}
+	// ⚠️ E-456, terceiro ajuste: o turno tem de ser do RECURSO que a jornada usa. *Eu criava com `ResourceID: ""` e a
+	// jornada manda o recurso real ⇒ o motor respondeu "nao tem expediente", com razao.*
+	// **O motor recusou tres vezes, e as tres estavam certas** - cada recusa apontou um erro MEU de setup.
+	if _, err := loja.AddShift(agent.SchedulingShift{
+		OrganizationID: organizacao, ResourceID: recurso.ID, Weekday: int(dia.Weekday()), OpensAt: 0, ClosesAt: 24 * 60,
+	}); err != nil {
+		t.Fatalf("criar turno: %v", err)
+	}
+
+	engine := montarRotaDeAgendamento(loja, agent.LocalOrganizationID)
+	executar := func(metodo, caminho, corpo string) *httptest.ResponseRecorder {
+		requisicao := httptest.NewRequest(metodo, "/api/agent/v1"+caminho, strings.NewReader(corpo))
+		requisicao.Header.Set("Content-Type", "application/json")
+		resposta := httptest.NewRecorder()
+		engine.ServeHTTP(resposta, requisicao)
+		return resposta
+	}
+
+	// 1. AGENDAR.
+	resposta := executar(http.MethodPost, "/scheduling/book", `{"service_id":"`+servico.ID+`","resource_id":"`+recurso.ID+
+		`","contact_id":"cliente-1","channel":"voice","starts_at":"2026-10-14T08:00:00Z","idempotency_key":"k-jornada"}`)
+	if resposta.Code != http.StatusCreated {
+		t.Fatalf("agendar devolveu %d: %s", resposta.Code, resposta.Body.String())
+	}
+	var criado struct {
+		Appointment struct {
+			ID string `json:"id"`
+		} `json:"appointment"`
+	}
+	if err := json.Unmarshal(resposta.Body.Bytes(), &criado); err != nil || criado.Appointment.ID == "" {
+		t.Fatalf("o agendamento criado nao veio com ID: %s", resposta.Body.String())
+	}
+
+	// 2. LISTAR: *o cliente tem de conseguir ver o que marcou.*
+	resposta = executar(http.MethodGet, "/scheduling/appointments", "")
+	if resposta.Code != http.StatusOK {
+		t.Fatalf("listar devolveu %d: %s", resposta.Code, resposta.Body.String())
+	}
+	var listados struct {
+		Count int `json:"count"`
+	}
+	_ = json.Unmarshal(resposta.Body.Bytes(), &listados)
+	if listados.Count == 0 {
+		t.Fatalf("depois de agendar, a lista veio vazia — *agendar e nao conseguir ver o que marcou nao e' jornada*")
+	}
+
+	// 3. O QUE ESTA' LIVRE PARA REMARCAR — **antes** de escolher.
+	resposta = executar(http.MethodGet,
+		"/scheduling/reschedule/slots?appointment_id="+criado.Appointment.ID+"&date="+data+"&step=60", "")
+	if resposta.Code != http.StatusOK {
+		t.Fatalf("reschedule/slots devolveu %d: %s", resposta.Code, resposta.Body.String())
+	}
+	var livres struct {
+		Count int `json:"count"`
+	}
+	_ = json.Unmarshal(resposta.Body.Bytes(), &livres)
+	if livres.Count == 0 {
+		t.Fatalf("um dia inteiro de turno devia ter horario livre para remarcar, e vieram %d", livres.Count)
+	}
+
+	// 4. REMARCAR para um horario que o MOTOR disse estar livre.
+	resposta = executar(http.MethodPost, "/scheduling/reschedule", `{"appointment_id":"`+criado.Appointment.ID+
+		`","starts_at":"2026-10-14T14:00:00Z"}`)
+	if resposta.Code != http.StatusOK {
+		t.Fatalf("remarcar devolveu %d: %s", resposta.Code, resposta.Body.String())
+	}
+
+	// 5. CANCELAR, com motivo (*cancelamento sem motivo nao e' auditavel*).
+	resposta = executar(http.MethodPost, "/scheduling/cancel", `{"appointment_id":"`+criado.Appointment.ID+
+		`","reason":"o cliente desmarcou"}`)
+	if resposta.Code != http.StatusOK {
+		t.Fatalf("cancelar devolveu %d: %s", resposta.Code, resposta.Body.String())
+	}
+
+	// E o MOTOR tem de contar a mesma historia que a superficie: *a superficie nao pode ser uma segunda verdade.*
+	agendamentos, err := loja.Appointments(agent.LocalOrganizationID)
+	if err != nil {
+		t.Fatalf("listar no motor: %v", err)
+	}
+	if len(agendamentos) != 1 || agendamentos[0].Status != agent.SchedulingAppointmentCancelled {
+		t.Fatalf("ARMADILHA: depois de cancelar pela superficie, o motor diz %+v — *a rota e o motor tem de contar a "+
+			"MESMA historia*", agendamentos)
+	}
+}
+
 // montarRotaDeAgendamento cria o engine com o store e um middleware que fixa a organizacao - *o mesmo padrao dos outros
 // testes de rota do projeto.*
 //
@@ -131,5 +247,10 @@ func montarRotaDeAgendamento(loja *agent.SchedulingStore, organizacao string) *g
 	grupo.GET("/scheduling/services", api.schedulingServices)
 	grupo.GET("/scheduling/slots", api.schedulingSlots)
 	grupo.POST("/scheduling/book", api.schedulingBook)
+	// E-456: a jornada completa.
+	grupo.GET("/scheduling/appointments", api.schedulingAppointments)
+	grupo.POST("/scheduling/cancel", api.schedulingCancel)
+	grupo.GET("/scheduling/reschedule/slots", api.schedulingRescheduleSlots)
+	grupo.POST("/scheduling/reschedule", api.schedulingReschedule)
 	return engine
 }

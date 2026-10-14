@@ -2545,7 +2545,10 @@
     "E UM ACHADO RESISTIU (E-454): o ADV-28 foi reconferido e as tres constantes batem (company_onboarding.go:301: 5000 / 512B / 16<<20). NEM TODO achado antigo esta' vencido - o que nao se pode e' SABER sem reexecutar a receita",
     "O REGISTRO MISTURA TRES TIPOS DE AFIRMACAO E NAO MARCA QUAL E' QUAL (E-455): (1) ESTADO_ATUAL - 'a catraca tem N dispensas' - VENCE quando o mundo muda, e precisa ser remedido; (2) EVENTO_HISTORICO - 'homologado no PR #418' - NAO vence, aconteceu; (3) CADEIA - '11 -> 9 -> 4 -> 2' - NAO vence, e' a sequencia de remocoes. O defeito estrutural nao esta' no conteudo: esta' em NAO SE PODER LER o conteudo corretamente",
     "13 ACHADOS CLASSIFICADOS (E-455): e o ADV-39 ficou NAO_MEDIDO de proposito - a 'janela 5s' nao foi localizada no codigo (o grep achou varios 5*time.Second, nenhum identificado como janela de flock), entao nao declaro valido nem vencido. NAO MEDI",
-    "MESMA CLASSE DE E-442 E E-443 (E-455): itens de lista sem data (E-442) e duas listas que se duplicavam (E-443). O defeito nunca esteve no conteudo - sempre esteve em nao se poder LER o conteudo"
+    "MESMA CLASSE DE E-442 E E-443 (E-455): itens de lista sem data (E-442) e duas listas que se duplicavam (E-443). O defeito nunca esteve no conteudo - sempre esteve em nao se poder LER o conteudo",
+    "A JORNADA DO CLIENTE NA SUPERFICIE (E-456): services, slots, book, appointments, cancel, reschedule/slots e reschedule. Um cliente que agenda e nao consegue cancelar nem remarcar nao tem um produto: tem uma demonstracao. E FreeSlotsForReschedule e' a peca que quase sempre falta - remarcar sem saber o que esta' livre obriga a adivinhar, e a adivinhacao vira horario inexistente que o motor recusa DEPOIS",
+    "EXPOR A STRUCT INTERNA COMO CONTRATO DE API ACOPLA A API A IMPLEMENTACAO (E-456): BookRequest nao tem json tags (scheduling.go:259-268), entao o encoding/json usa os NOMES DOS CAMPOS e o corpo com resource_id/starts_at virou um ZERO SILENCIOSO - e o erro culpava os campos que o cliente mandou. A superficie passou a ter o seu proprio contrato",
+    "O MOTOR RECUSOU TRES VEZES, E AS TRES ESTAVAM CERTAS (E-456): (1) 'todos obrigatorios' -> o contrato JSON; (2) 'servico nao existe nesta organizacao' -> eu criava com org-a e o middleware fixa LocalOrganizationID; (3) 'nao tem expediente' -> o turno era de ResourceID vazio e a jornada usa o recurso real. Quarta vez nesta serie em que 'o teste falhou' nao era 'o produto falhou'"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -4016,7 +4019,8 @@
           "E-435: RouteRequestForStep (a ponte Step -> multillm.RouteRequest). O teste prova o mapeamento E o motor honrando. A INJECAO do Registry no Runtime continua NAO feita - nada chama a ponte.",
           "E-436: RuntimeConfig.Models + Runtime.RouteModelForStep, com falha fechada (ErrModelRegistryUnavailable) quando nao ha registry. O LACO DE EXECUCAO ainda NAO chama - a entrada existe, o consumidor nao.",
           "E-437: o laco de execucao chama RouteModelForStep por passo e REGISTRA a decisao no evento step.model.route; falha fechado se a exigencia nao pode ser honrada. A decisao e' registrada, mas NAO aplicada - o executor segue o da missao.",
-          "E-438: ToolContext.ModelID + o laco entrega o modelo roteado a ferramenta. O teste prova entrega, vazio sem registry, e que evento e entrega contam a mesma historia. NENHUMA ferramenta le o campo ainda."
+          "E-438: ToolContext.ModelID + o laco entrega o modelo roteado a ferramenta. O teste prova entrega, vazio sem registry, e que evento e entrega contam a mesma historia. NENHUMA ferramenta le o campo ainda.",
+          "E-456: a superficie do agendamento cobre a JORNADA DO CLIENTE - services, slots, book, appointments, cancel, reschedule/slots e reschedule. Restam fila de espera e no-show."
         ],
         "matriz_correcoes_por_medicao": [
           "MIN_COST NAO estava ausente: RoutePreferenceCheapest existe (router.go:25) - a capacidade existia com outro nome",

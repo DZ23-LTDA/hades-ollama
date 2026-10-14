@@ -679,6 +679,12 @@ func (a *agentAPI) register(r *gin.Engine) {
 	group.GET("/scheduling/services", a.schedulingServices)
 	group.GET("/scheduling/slots", a.schedulingSlots)
 	group.POST("/scheduling/book", a.schedulingBook)
+	// E-456: a JORNADA DO CLIENTE COMPLETA. *Um cliente que agenda e nao consegue cancelar nem remarcar nao tem um
+	// produto: tem uma demonstracao.* E `reschedule/slots` responde ANTES de o cliente escolher.
+	group.GET("/scheduling/appointments", a.schedulingAppointments)
+	group.POST("/scheduling/cancel", a.schedulingCancel)
+	group.GET("/scheduling/reschedule/slots", a.schedulingRescheduleSlots)
+	group.POST("/scheduling/reschedule", a.schedulingReschedule)
 	group.GET("/mcp", a.mcp)
 	group.POST("/mcp", a.registerMCP)
 	group.POST("/mcp/:id/enable", a.enableMCP)
