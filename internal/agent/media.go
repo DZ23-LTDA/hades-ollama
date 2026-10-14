@@ -424,12 +424,21 @@ func (m *MediaManager) GenerateImage(ctx context.Context, workspace, prompt, mod
 	if model == "" {
 		model = m.Provider.ImageModel
 	}
-	// 🚨 E-535: a recusa vem AQUI - depois do fallback do modelo e ANTES de qualquer disco ou rede. *A ordem e' a
-	// parte importante: se ela viesse depois, o provider ja' teria sido chamado, e a recusa chegaria tarde.*
-	if err := recusarModalidadeDeMidia("image", model); err != nil {
+	// 🚨 E-535 + E-553: ***A ORDEM É `symlink` → `modalidade` → `provider`*** - e a primeira versão desta guarda errou-a.
+	//
+	// *O E-535 acrescentou `recusarModalidadeDeMidia` **ANTES** de `validateMediaOutputDirectory`, e eu declarei isso
+	// como vitória («a recusa vem antes de qualquer disco ou rede»).* ⇒ ***Mas dois testes já existentes -
+	// `TestMediaOutputsRejectInternalSymlinkBeforeProvider` e `TestMediaProcessDoesNotCallProviderBeforeApproval` -
+	// verificam que a recusa do **symlink** vem primeiro*** ⇒ *e passaram a receber **outro** erro* ⇒ *e o CI ficou
+	// vermelho em três testes, por eu ter mudado a **ordem** de guardas que já existiam* ✗.
+	//
+	// ⇒ ***A modalidade não é o provider.*** *O symlink é o **disco** (primeiro), a modalidade é o **modelo** (depois), e
+	// o provider é a **rede** (por último).* **A guarda da modalidade continua ANTES do `postJSON`** - que é o que o
+	// `E-535` queria garantir, e que este `E-553` preserva.
+	if err := validateMediaOutputDirectory(workspace, ".agent-media", pinnedRoots...); err != nil {
 		return MediaResult{}, err
 	}
-	if err := validateMediaOutputDirectory(workspace, ".agent-media", pinnedRoots...); err != nil {
+	if err := recusarModalidadeDeMidia("image", model); err != nil {
 		return MediaResult{}, err
 	}
 	payload, err := m.postJSON(ctx, "/images/generations", map[string]any{"model": model, "prompt": prompt, "n": 1, "response_format": "b64_json"})
@@ -461,14 +470,19 @@ func (m *MediaManager) GenerateVideo(ctx context.Context, workspace, prompt, mod
 	if model == "" {
 		model = m.Provider.VideoModel
 	}
-	// 🚨 E-535: **e' aqui que «video para modelo textual» deixa de ser possivel.** A versao anterior seguia para a
-	// rede com `model` vazio quando o `VideoModel` nao estava configurado - e o resultado passava a ser «video» por
-	// **AFIRMACAO**, nao por capacidade. *Um pedido de video atendido por um motor que nao o declara, com sucesso
-	// devolvido, e' a mesma traicao de uma aprovacao que nunca foi dada - so' muda o objecto.*
-	if err := recusarModalidadeDeMidia("video", model); err != nil {
+	// 🚨 E-535 + E-553: **é aqui que «vídeo para modelo textual» deixa de ser possível** - *e a ordem é
+	// `symlink` → `modalidade` → `provider`.* A versão anterior seguia para a rede com `model` vazio quando o
+	// `VideoModel` não estava configurado — e o resultado passava a ser «vídeo» por **AFIRMAÇÃO**, não por capacidade.
+	// *Um pedido de vídeo atendido por um motor que não o declara, com sucesso devolvido, é a mesma traição de uma
+	// aprovação que nunca foi dada — só muda o objecto.*
+	//
+	// ⇒ ***Mas o `E-553` corrige a **posição** desta guarda*** ✗: *ela estava **antes** do `validateMediaOutputDirectory`,
+	// e dois testes existentes exigem que o **symlink** seja recusado primeiro* ⇒ *a modalidade não é o provider: o
+	// symlink é o **disco** (primeiro), a modalidade é o **modelo** (depois), o provider é a **rede** (por último).*
+	if err := validateMediaOutputDirectory(workspace, ".agent-media", pinnedRoots...); err != nil {
 		return MediaResult{}, err
 	}
-	if err := validateMediaOutputDirectory(workspace, ".agent-media", pinnedRoots...); err != nil {
+	if err := recusarModalidadeDeMidia("video", model); err != nil {
 		return MediaResult{}, err
 	}
 	payload, err := m.postJSON(ctx, "/videos/generations", map[string]any{"model": model, "prompt": prompt})

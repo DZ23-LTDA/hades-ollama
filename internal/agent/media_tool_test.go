@@ -95,7 +95,13 @@ func TestMediaProcessDoesNotCallProviderBeforeApproval(t *testing.T) {
 		_ = json.NewEncoder(w).Encode(map[string]any{"data": []any{map[string]any{"b64_json": base64.StdEncoding.EncodeToString(png)}}})
 	}))
 	defer server.Close()
-	manager, err := NewMediaManager(MediaProvider{Name: "fixture", BaseURL: server.URL})
+	// 🚨 E-553: ***o `ImageModel` é PRÉ-CONDIÇÃO deste fluxo, não o seu objecto.***
+	//
+	// *O `E-535` acrescentou a recusa por modalidade — e ela está **certa**: sem modelo explícito, «o provider não pode
+	// decidir no nosso lugar».* ⇒ *O que faltava era o **fixture** declarar o modelo*, para que o teste chegasse ao que
+	// ele realmente quer medir: **o fluxo com aprovação** (*:123 «nenhum pedido antes da aprovação»*, :140 «exactamente
+	// um depois»*). *Sem isto, a missão nunca completava e o `t.Fatal(err)` do :131 disparava.*
+	manager, err := NewMediaManager(MediaProvider{Name: "fixture", BaseURL: server.URL, ImageModel: "fixture-image"})
 	if err != nil {
 		t.Fatal(err)
 	}
