@@ -838,6 +838,23 @@ func (s *ContextStore) registerSkill(manifest SkillManifest, organizationID stri
 	}
 	previous, existed := s.skills[manifest.ID]
 	previousPath := s.skillPaths[manifest.ID]
+	// HISTORICO DE VERSOES (E-629). O store guardava UMA versao por ID (`s.skills[id]`), logo a
+	// anterior perdia-se ao registar a seguinte. Antes de substituir, a versao que sai e'
+	// ARQUIVADA em `<root>/skills/<ID>.versions/<versao>.json`.
+	//
+	// FALHA AO ARQUIVAR REPROVA O REGISTO, e isso e' deliberado: e' coerente com o rollback logo
+	// abaixo, quando a propria escrita falha. *Se nao se consegue preservar a versao que sai, nao
+	// se substitui* — perder funcionalidade e' preferivel a perder historico em silencio, porque a
+	// perda silenciosa so' se descobre quando alguem precisa da versao antiga.
+	if existed && previous.Version != "" && previous.Version != manifest.Version && s.root != "" {
+		historico := filepath.Join(s.root, "skills", manifest.ID+".versions", previous.Version+".json")
+		if err := os.MkdirAll(filepath.Dir(historico), 0o700); err != nil {
+			return fmt.Errorf("arquivar versao anterior da skill: %w", err)
+		}
+		if err := writeJSONAtomic(historico, previous); err != nil {
+			return fmt.Errorf("arquivar versao anterior da skill: %w", err)
+		}
+	}
 	s.skills[manifest.ID] = manifest
 	if path != "" {
 		s.skillPaths[manifest.ID] = path
