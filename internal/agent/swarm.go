@@ -129,6 +129,10 @@ type (
 )
 
 type AgentOrchestrator struct {
+	// taskMu ordena as escritas em job.Tasks JUNTAMENTE com o marshal do persistLocked: dois locks
+	// para o mesmo dado nao e' proteccao mais fina, e' a corrida com outro nome (F2).
+	taskMu sync.Mutex
+
 	mu      sync.Mutex
 	root    string
 	runner  SubagentRunner
@@ -310,7 +314,6 @@ func (o *AgentOrchestrator) Run(ctx context.Context, id string) (OrchestrationJo
 	}
 	semaphore := make(chan struct{}, job.Budget.MaxAgents)
 	var wait sync.WaitGroup
-	var taskMu sync.Mutex
 	for index := range job.Tasks {
 		wait.Add(1)
 		go func(index int) {
@@ -318,24 +321,24 @@ func (o *AgentOrchestrator) Run(ctx context.Context, id string) (OrchestrationJo
 			select {
 			case semaphore <- struct{}{}:
 			case <-ctx.Done():
-				taskMu.Lock()
+				o.taskMu.Lock()
 				job.Tasks[index].State = AgentTaskCancelled
-				taskMu.Unlock()
+				o.taskMu.Unlock()
 				return
 			}
 			defer func() { <-semaphore }()
 			task := &job.Tasks[index]
 			start := time.Now().UTC()
-			taskMu.Lock()
+			o.taskMu.Lock()
 			task.State = AgentTaskRunning
 			task.StartedAt = &start
-			taskMu.Unlock()
+			o.taskMu.Unlock()
 			var result AgentResult
 			var runErr error
 			for attempt := 1; attempt <= job.Budget.MaxRetries+1; attempt++ {
-				taskMu.Lock()
+				o.taskMu.Lock()
 				task.Attempts = attempt
-				taskMu.Unlock()
+				o.taskMu.Unlock()
 				// O workspace do agente precisa EXISTIR antes do despacho: o orquestrador atribuía o caminho e não
 				// criava o diretório, então o primeiro WriteFile do agente falhava com "no such file or directory" e a
 				// missão multiagente nunca chegava a artefato consolidado. A criação NÃO impõe contenção: o workspace do
@@ -353,7 +356,7 @@ func (o *AgentOrchestrator) Run(ctx context.Context, id string) (OrchestrationJo
 				}
 			}
 			finish := time.Now().UTC()
-			taskMu.Lock()
+			o.taskMu.Lock()
 			task.FinishedAt = &finish
 			task.DurationMS = finish.Sub(start).Milliseconds()
 			task.Output = truncateAgentOutput(result.Output, job.Budget.MaxOutputBytes)
@@ -368,7 +371,7 @@ func (o *AgentOrchestrator) Run(ctx context.Context, id string) (OrchestrationJo
 			} else {
 				task.State = AgentTaskSucceeded
 			}
-			taskMu.Unlock()
+			o.taskMu.Unlock()
 		}(index)
 	}
 	wait.Wait()
@@ -476,6 +479,8 @@ func normalizedOrganizationID(organizationID string) string {
 }
 
 func (o *AgentOrchestrator) persistLocked() error {
+	o.taskMu.Lock()
+	defer o.taskMu.Unlock()
 	return writeJSONAtomic(filepath.Join(o.root, "jobs.json"), o.jobs)
 }
 
