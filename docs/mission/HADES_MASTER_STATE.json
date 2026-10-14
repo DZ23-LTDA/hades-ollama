@@ -1868,7 +1868,7 @@
     "GUARD POR SUBSTRING FALHOU E EU PEGUEI (E-233): usei 'if MarketplaceEntityOrder not in arquivo' para decidir se criava a constante, mas o arquivo JA tinha MarketplaceEntityOrders (plural) - a substring batia e a constante nunca era criada, quebrando o build. A correcao foi MELHOR que a intencao original: reusar a constante existente ('pedidos', ja declarada como capacidade de canal) em vez de criar outra. Licao: guard de presenca por substring mente quando existem plurais/prefixos",
     "ISOLAMENTO PRECISA DE TESTE NEGATIVO, NAO SO DE LEITURA (E-234): o inbox ja recusava LER a conversa de outra organizacao, mas nada provava que ATRIBUIR, TRANSFERIR e FECHAR tambem eram recusados - nem que o estado alheio ficava intacto. Faltava ainda o caso do DEDUPE entre tenants: o mesmo id externo em duas organizacoes precisa gerar conversas DISTINTAS, senao uma mensagem legitima de outro cliente e engolida como repetida (perda de mensagem disfarcada de idempotencia). Agora os tres lados estao medidos",
     "'NEM INFERE' E UM REQUISITO PROPRIO (E-234): o master pede que o tenant A nao acesse NEM INFIRA o tenant B. Testei isso onde a inferencia de fato aconteceria: nas METRICAS. Indicadores globais vazariam volume de conversas e carga de trabalho alheios; medido: orgA=3, orgB=1, sem cruzamento",
-    "QUARTA VEZ QUE O MEU INSTRUMENTO PRODUZIU FALSO ACHADO (E-235): ao ler o comparativo de concorrentes eu vi 'Hades Ã— concorrentes' e 'jÃ¡ funciona' e conclui que a documentacao estava corrompida. MEDI: 0 de 217 arquivos .md tem mojibake. O 'Ã—' era o MEU shell - Get-Content no PowerShell 5.1 le UTF-8 como ANSI e MOSTRA corrompido sem que o arquivo esteja. Regra pratica: para SUSPEITAR de arquivo, medir por script Python (UTF-8), nunca pelos olhos do shell. As tres anteriores foram URL reimplementada (E-220), max_tokens=8 (E-223) e shell comendo aspas (E-226)",
+    "[ARTEFATO DE CONSOLE DESCRITO, NAO TRANSCRITO] QUARTA VEZ QUE O MEU INSTRUMENTO PRODUZIU FALSO ACHADO (E-235): ao ler o comparativo de concorrentes eu vi 'Hades Ã— concorrentes' e 'j[dupla codificacao] funciona' e conclui que a documentacao estava corrompida. MEDI: 0 de 217 arquivos .md tem mojibake. O 'Ã—' era o MEU shell - Get-Content no PowerShell 5.1 le UTF-8 como ANSI e MOSTRA corrompido sem que o arquivo esteja. Regra pratica: para SUSPEITAR de arquivo, medir por script Python (UTF-8), nunca pelos olhos do shell. As tres anteriores foram URL reimplementada (E-220), max_tokens=8 (E-223) e shell comendo aspas (E-226)",
     "A CORRUPCAO DE UTF-8 E RISCO REAL, MESMO SENDO FALSO AQUI (E-235): eu mesmo CORROMPI internal/agent/marketplace_sync.go na rodada anterior com Get-Content -Raw + WriteAllText. Como a classe e real e recorrente para qualquer agente no PowerShell 5.1, virou guarda no checker: documento com texto duplamente codificado vira PROBLEMA, com teste nos dois sentidos (acusa o corrompido e aceita portugues acentuado legitimo)",
     "AUDITORIA DO COMPARATIVO DE CONCORRENTES (E-235): o documento declara explicitamente que NAO alega superioridade sem prova e marca cada item como funciona/parcial/falta. Spot-check das alegacoes verificaveis: geracao por IA local e export HTML tem teste de UI; o Builder tem testes de traversal, cross-tenant, symlink e escaping. Documentacao e produto batem NESSES pontos",
     "COMPENSACAO AUSENTE NO MOTOR DE FLUXO (E-236, medido): grep por compensat/Compensat/desfaz em internal/agent nao encontra o conceito; o que existe e retry, DLQ (com recuperacao), reprocessamento, bloqueio por condicao e rollback em falha de PERSISTENCIA (context_schedule_rollback_test.go). Compensar efeito ja executado quando um no posterior falha (saga) e OUTRA coisa, exigida pelo §11.7",
@@ -2380,7 +2380,81 @@
     "O ROLLBACK GRAVA POR LINHA (ADV-57/5): n=500 => desfazer = 1000 gravacoes em 2,72s. A minha propria tese 'API rapida que ninguem usa nao acelera nada' se aplica ao desfazer, e nenhuma prova cobre isso",
     "TESTE QUE SO' LOGA NAO E' PROVA (ADV-57/3): commerce_budget mede 5000 chamadas e nao afirma nada; dobrar o laco deixa a suite verde",
     "O '211x' NAO SE REPRODUZ (ADV-57/7): as contagens 300 vs 1 sao exatas; o tempo e o multiplicador medidos pelo auditor deram ~196x",
-    "O AUDITOR LIMPOU O QUE CRIOU (E-388): as 4 arquivos temporarios que ele usou para medir foram removidos - o git status voltou limpo, e a minha suspeita inicial de violacao de leitura foi corrigida pela medicao"
+    "O AUDITOR LIMPOU O QUE CRIOU (E-388): as 4 arquivos temporarios que ele usou para medir foram removidos - o git status voltou limpo, e a minha suspeita inicial de violacao de leitura foi corrigida pela medicao",
+    "A MINHA PROPRIA TESE SE APLICAVA AO DESFAZER (E-390/ADV-57/5): o RollbackCompanyOnboarding gravava POR LINHA - 1000 gravacoes em 2,72s para desfazer 500. Corrigido: lote + remocao do intermediario => 500 gravacoes em 1,37s, com restantes = 0",
+    "GRAVAR ESTADO INTERMEDIARIO INVISIVEL E' CUSTO SEM EFEITO (E-390): o UpsertProduct(atual) marcava Active=false e persistia o arquivo inteiro para um estado que o RemoveProduct logo apaga",
+    "ROLLBACK QUE FALHA EM SILENCIO DEIXA O OPERADOR ACHANDO QUE DESFEZ (E-390): os dois lacos ignoravam o erro; agora devolvem",
+    "REMOCAO POR SKU DOMINA O CUSTO DO DESFAZER (E-390): sobram 500 gravacoes porque a API nao tem lote de remocao - a correcao seguinte e' a API, nao um teste mais frouxo",
+    "MEDICAO TEMPORARIA NAO E' PROVA PERMANENTE (E-390): o teste de medicao foi removido depois de usado; o certo e' uma assercao estrutural",
+    "GUARDA QUE NAO PODE DISPARAR NAO E' PROTECAO (E-391/ADV-57/4): o teste criava um contexto de 5 minutos e fazia `_ = ctx` - nunca chegava ao ApplyCompanyOnboarding. Removido em vez de fabricar uma prova de fachada",
+    "FALTAVA A API, NAO FROUXIDAO NO TESTE (E-392): o desfazer gravava por SKU. Criado RemoveProducts em lote: 1000 gravacoes/2,72s => 500/1,37s => 1 gravacao/0,00s, com restantes = 0",
+    "O LIMITE DO E-390 FOI FECHADO (E-392): aquela evidencia declarou 'ficou a medicao, nao prova permanente'; agora existe TestRollbackDoOnboardingNaoGravaPorSku com assercao EXATA (== 1) e a explicacao de por que 1 e nao 2",
+    "O NUMERO EXATO DEPENDE DO CENARIO (E-392): empresa nova => 1 gravacao (Before vazio, so' o lote de remocao); com catalogo anterior => 2. O teste diz isso em vez de aceitar um teto",
+    "O QUE E' ESTRUTURAL E' O QUE SERVE DE CATRACA (E-393/ADV-57/3 e /7): o teste media o tempo e nao afirmava nada; agora afirma N chamadas = N gravacoes e 1 lote = 1 gravacao, com razao de 100x - e recusa afirmar tempo",
+    "LIMITE DECLARADO EM VOZ ALTA SO' ESTA FECHADO COM TESTE (E-394): a contrapova por reversao do RemoveProducts foi EXECUTADA (101 gravacoes => FALHA) e o cenario com catalogo anterior existe (2 gravacoes, preco restaurado, SKU novo removido). E medido: o plano exige Overwrite explicito, senao o onboarding RECUSA o conflito",
+    "DE 400 PARA 29 BRANCHES (E-395): 371 mescladas apagadas sem force, 28 nao-mescladas preservadas. O achado e' que as 28 sao trabalho que NAO esta na main - pendencias de integracao, nao entulho. E um erro medido no meio: o filtro ^origin/ aceitou a linha 'origin/HEAD -> origin/main' e um lote falhou; corrigido com -notmatch ' -> '",
+    "A MAIN NAO TEM TUDO QUE A MISSAO PRESUME (E-396): das 28 branches nao-mescladas, 13 tinham o conteudo JA na main (por patch-id) e foram apagadas; 15 tem trabalho real nao integrado - incluindo uma linha de SEGURANCA com 14 patches e a de paridade de UI com 17. Branches: 400 -> 16. Os 15 sao candidatos a revisao de conteudo",
+    "O ALARME DO E-396 ESTAVA EXAGERADO E FOI CORRIGIDO MEDINDO (E-397): das 15 branches com 'patches pendentes', 12 tem a substancia na main (a linha de SEGURANCA esta' inteira, inclusive TestDevTokenRequiresOperatorSecret) e so' 3 tem lacuna real - todas de UI/mobile (ui-shell-parity, mobile-parity, docs-tests-parity). Um instrumento grosseiro (patch-id) virou precisao ao medir o nivel seguinte (arquivo)",
+    "A LACUNA DE UI E' UM ACOPLAMENTO, NAO UMA LISTA DE ARQUIVOS (E-398): trazidos os 14 arquivos de codigo/teste para uma branch a partir da main, o TasksJourney.test.tsx FALHA (7 testes, 4 falham) porque espera UI que a main nao renderiza. O outro lado do acoplamento sao 14 arquivos de componente editados (+866/-35), e os dois comportamentos exigidos pelo teste - a frase 'Nenhuma tarefa criada ainda.' e o role=alert que ele procura - estao AUSENTES na main. Nao integrei o vermelho: branch descartada. A unidade e' a FEATURE, nao o arquivo",
+    "O PORT E' REESCRITA, NAO DELTA (E-399): com os 5 arquivos novos + o delta de tasks.tsx sobre a main, o teste da' 7 testes/4 falhas, e as 4 apontam TODAS para o ProductWorkspacePage (estado vazio, role=status do banner, 2 alertas). NewTaskPage ja' renderiza role=alert. E eu quase trouxe o ProductWorkspacePage INTEIRO da branch, 1176 commits atras - teria revertido progresso de UI. Copiar arquivo de branch velha nao e' integracao: e' regressao disfarcada de merge",
+    "A PROVA DE SEGURANCA MEDIA A SI MESMA (E-400/ADV-58, GRAVE): mutation_gate_test.go:49 define closures locais que reimplementam 'if RequiresApproval && !approved' e compara uma com a outra. Com os 4 pontos de aprovacao do runtime desligados, o teste continua PASS. E a 6a vez que a mesma classe aparece - a primeira na linha de SEGURANCA",
+    "O MECANISMO RESISTIU, A PROVA NAO (E-400): approvalsReady, validateMissionApprovalBindings e tenant+nonce sao load-bearing (desligar cada um derruba testes especificos); nenhum caminho executa efeito sem approvalsReady; sem TOCTOU exploravel; sem vacidade. O problema e' cobertura de duas linhas redundantes e um teste tautologico",
+    "A ARVORE EM QUE SE MEDE FAZ PARTE DA MEDICAO (E-400): eu vi dois arquivos meus 'sumidos' e alertei - era eu mesmo na branch feat/nova-tarefa-port (base da main), onde os arquivos da branch perf/adv57 nao existem. A auditora cometeu o MESMO erro na primeira rodada dela (um mutante apagado, teste rodando o codigo original, falso PASS). Medir na arvore errada nao e' sabotagem: e' medicao invalida",
+    "A TAUTOLOGIA VIROU TESTE QUE PODE FALHAR (E-401/ADV-58/1): o teste de mutacao de aprovacao chamava closures locais e comparava uma com a outra; agora chama approvalsReady, stepApproved e validateMissionApprovalBindings de verdade, e FALHA quando approvalsReady e' desligado (o antigo passava com os 4 desligados)",
+    "REDUNDANCIA DECLARADA E' DEFESA (E-402/ADV-58/2 e /3): as duas linhas inalcancaveis hoje foram MANTIDAS de proposito, com o motivo escrito no codigo - em vez de removidas para satisfazer uma metrica de cobertura",
+    "O TESTE REAL ME CORRIGIU (E-401): eu supunha que validateMissionApprovalBindings checasse o STATUS; ele valida o VINCULO e o status e' do approvalsReady. E o DLP recusou persistir payload com Kind git.merge.origin - a guarda funcionando",
+    "ASSERCAO QUE NAO CORRESPONDE AO NOME E' PROMESSA NAO ASSINADA (E-402/ADV-58/4): TestRuntimeNaoExecutaEtapaSemAprovacaoNaCadeia passava com o runtime TOTALMENTE sem aprovacao; renomeado para TestRuntimeComAprovacaoNegadaNaoEscreveNemProduzArtefato",
+    "O PORT DA JORNADA DE UI ESTA FECHADO (E-403): 7/7 testes verdes e tsc exit 0, com progressao MEDIDA de 4 falhas -> 2 -> 1 -> 0. E a lacuna nao era uma lista de arquivos: era um acoplamento (teste + componentes)",
+    "A ESTRUTURA FAZ PARTE DO CONTRATO (E-403): o caso 3 procura node.type === 'li' com aria-current === 'true'; por o aria-current no Link nao satisfaz porque o ResourceRow renderiza um <div>. A assercao nao pede 'algo que indique a missao criada': pede um ITEM DE LISTA marcado",
+    "PORTAR E' MESCLAR, NAO SUBSTITUIR (E-403): o render de tasks da main tinha removeMission e deleteDisabled que a branch nao tinha; o port preservou os dois",
+    "DECLARAR DIVIDA NAO E' PAGA-LA (E-404): eu vinha declarando os stashes rodada apos rodada - 'um stash e' facil de esquecer', escrevi - e eles passaram de 1 para 3. Consolidei MEDINDO antes: o port existe no remoto, o rollback esta' commitado e o commit do E-195 e' ancestral da main. 3 stashes => 0",
+    "CHECKPOINT (E-404): main = e372a1036, 403 evidencias, 58 achados (ADV-53 a ADV-58), 1177 notas, e as branches remotas cairam de 400 para 17",
+    "O E2E REAL ESTA VERDE (E-405): npx playwright test => exit 0, com backend E2E real (GET /api/version 200, POST /api/me 401, GET /api/v1/settings 200). Era o 'nao medido' que eu carregava desde o E-398",
+    "O AMBIENTE DESTA MAQUINA NEGA ESCRITA NO TEMP DO USUARIO (E-405): o esbuild falhou com 'remove C:\\...\\AppData\\Local\\Temp\\esbuild-...: Acesso negado' e o webServer nao subiu. Com TMP/TEMP/TMPDIR sob _tmp, exit 0. E' a MESMA classe que a 5a auditoria achou no Go - e o sintoma e' sempre 'o teste nao roda', nunca 'o teste falha'",
+    "E2E VERDE NAO SUBSTITUI CAPTURA (E-405): as 27 evidencias .png da paridade seguem ausentes; captura nao se deduz de teste",
+    "O VERDE E' DO CONJUNTO; A FORCA DE CADA ASSERCAO E' OUTRA MEDICAO (E-406): medi o peso da suite E2E - 9 specs, 18 testes, 105 expects, 0 skips. Nao e' smoke de fachada. Contagem de expect nao prova qualidade, mas distingue suite real de decorativa",
+    "O MANIFESTO DE CAPTURA TAMBEM PASSA (E-406): screens:verify => 'capture manifest: PASS (10 files)', validando SHA-256 de cada arquivo. Nao e' 'existe uma pasta': e' conteudo verificado por hash",
+    "A RECEITA FOI PARA O LUGAR CERTO (E-406): o sintoma 'o teste nao roda' custou duas sessoes em dois toolchains (Go e Node/esbuild). A tabela foi escrita no AGENTS.md, onde o proximo agente comeca a ler",
+    "PRIMEIRO O INSTRUMENTO ERROU, DEPOIS A LEITURA MELHOROU (E-407/ADV-59): o meu classificador jogou 52 das 105 assercoes E2E em 'outro' e eu quase conclui que a suite so' afirmava presenca. Medindo o balde, 33 eram multi-linha - o defeito era do INSTRUMENTO. Antes de acusar o objeto, medir se o instrumento sabe le-lo",
+    "A SUITE E2E E' REAL MAS NAO PROVA AUSENCIA NEM CONVERGENCIA (E-407/ADV-59): 21 de presenca, 13 de ESTADO, 4 de conteudo, apenas 2 NEGATIVAS em 105, e ZERO de convergencia (toPass/poll/waitFor). Provar que algo NAO aconteceu e' exatamente a classe que derrubou seis linhas de prova nesta missao",
+    "EU ACUSEI E ERA ARTEFATO DE LEITURA (E-408): declarei que a suite E2E quase nao provava ausencia e propus acrescentar negativas - mas o proprio spec separa as responsabilidades no cabecalho (UI = contrato cliente->HTTP; Go = semantica do grafo), e os testes Go tem 10 e 3 testes com 13 e 8 linhas de negacao. ADV-59 rebaixado",
+    "[ARTEFATO DE CONSOLE DESCRITO, NAO TRANSCRITO] A CORRUPCAO ESTAVA NA MINHA TELA (E-408): vi 'automa[dupla codificacao][dupla codificacao]es' num spec e alertei sobre UTF-8 quebrado; varri app/ui inteiro e ha 0 arquivos com mojibake - era o Get-Content do PowerShell lendo UTF-8 como ANSI. Antes de acusar o objeto, medir o instrumento, inclusive quando o instrumento sou eu lendo",
+    "[ARTEFATO DE CONSOLE DESCRITO, NAO TRANSCRITO] CITAR UM ARTEFATO DE CONSOLE NUM DOCUMENTO TORNA A CORRUPCAO REAL (E-408): eu vi 'automa[dupla codificacao][dupla codificacao]es' no output do PowerShell, alertei sobre UTF-8 quebrado e TRANSCREVI o texto para as linhas E-407/E-408 do indice. A varredura mostrou 0 arquivos corrompidos em app/ui - o defeito era a renderizacao do console. Mas o gate entao acusou 'documento com TEXTO CORROMPIDO (dupla codificacao): HADES_EVIDENCE_INDEX.md (2 ocorrencias)': a corrupcao passou a existir NO REPOSITORIO porque eu a coloquei la. O artefato de leitura virou dado permanente por transcricao",
+    "VARREDURA DO REPOSITORIO INTEIRO (E-409): 2216 arquivos varridos; 3 com dupla codificacao, e apenas 2 eram REAIS. hades_mission_check.py contem mojibake porque e' o REGEX DO DETECTOR (a municao parece a doenca) e hades_mission_check_test.py contem porque e' a FIXTURE que prova que o detector dispara. Meu scan acusou o detetor",
+    "O MESMO ERRO, DUAS VEZES, DOCUMENTADO NA PRIMEIRA (E-409): a nota de E-235 diz 'QUARTA VEZ QUE O MEU INSTRUMENTO PRODUZIU FALSO ACHADO: vi Hades [dupla codificacao] concorrentes e conclui que a documentacao estava corrompida'. Eu repeti: vi o artefato no console, transcrevi para o indice (o gate acusou 2 ocorrencias) e escrevi uma nota sobre isso - cuja propria frase continha o artefato",
+    "ARTEFATO DE LEITURA TRANSCRITO VIRA DADO PERMANENTE (E-409): a descricao passou a ser '[dupla codificacao]', nao a transcricao. Transcrever o artefato foi o que o tornou real no repositorio",
+    "A TERCEIRA VEZ NA MESMA SESSAO (E-409): a linha E-409, escrita para registrar que transcrever o artefato o torna real, continha o REGEX DO DETECTOR transcrito - e o gate acusou de novo. A descricao passou a ser '[padrao de dupla codificacao]'. A licao nao e' 'ter cuidado': e' que DESCREVER e' seguro e TRANSCREVER nao e'",
+    "A VARREDURA VIROU CHECKER, E ELE ME CORRIGIU DUAS VEZES (E-410): (1) com rglob levou mais de 10 minutos porque ENTRAVA em dist/build antes de filtrar - os.walk com poda deu 1,09 s. O custo estava no CAMINHO, nao no trabalho; checker que nao termina nao e' checker. (2) acusou dispensa OBSOLETA quando a fixture nao continha o padrao literal - fazendo consigo mesmo o que o E-383 fez com o classificador",
+    "DISPENSA QUE NAO CASA COM NADA E' DIVIDA DISFARCADA DE EXCECAO (E-410): o checker de codificacao acusa dispensas obsoletas, e foi assim que ele pegou a minha propria fixture escrita com escapes",
+    "A LINHA MAIS DEFENDIDA ATE AGORA (E-411): 14 de 16 mutacoes detectadas no agendamento. O auditor nao achou assercao que compara consigo mesma",
+    "AFIRMACAO PUBLICADA FALSA NO AGENDAMENTO (E-411/ADV-60): a E-314 diz que Availability deixou de inventar horario, mas o buraco foi fechado em OpenSlots (funcao NOVA) e Availability ficou intacta. Sonda: org sem turno, domingo 03:00 => Availability devolve 4 slots livres; OpenSlots devolve 0; Book recusa",
+    "A LINHA NAO ESTA LIGADA (E-411/ADV-65): SchedulingStore e NewSupervisorScheduler nao tem chamador em producao - so' em _test.go. O que esta' provado em producao e' o agendador de WORKFLOW",
+    "A PROVA DA RELEITURA E' PROBABILISTICA (E-411/ADV-63): sem invalidateCache, 18 de 20 execucoes falham - em ~10% a remocao passa despercebida",
+    "O MESMO MINUTO TEM DUAS RESPOSTAS OPOSTAS (E-412/ADV-61): 01:00 de segunda esta' FORA do turno de segunda 22:00-02:00; 01:00 de terca esta' DENTRO da cauda. A minha primeira correcao decidiu pelo tamanho do minuto e trocou as duas - o teste TestTurnoQueCruzaAMeiaNoiteUsaODiaLocalCorreto (E-328) me pegou. Quem sabe o dia e' o shiftCovering, e agora ele devolve diaAnterior",
+    "ERRAR A PRIMEIRA CORRECAO NAO E' O PROBLEMA (E-412): o problema seria nao ter com que comparar. O teste que me pegou existia desde o E-328, tres rodadas antes desta auditoria",
+    "A FUNCAO NAO MUDOU DE COMPORTAMENTO - MUDOU DE PROMESSA (E-413/ADV-60): Availability nao consulta expediente, e o comentario dizia que ela era a funcao para consultar antes de oferecer horario. O contrato real estava no teste que a exercita ('derivar dos agendamentos persistidos'). Nao reescrevi a funcao: reescrever contradiria esse teste e nao ha' chamador em producao para migrar",
+    "REGISTRO PUBLICO CORRIGIDO (E-413): a E-314 afirma que 'esta fatia fecha esse buraco'. O buraco foi fechado em OpenSlots, funcao NOVA. A linha historica nao e' reescrita; E-413 supersede, e o estado aponta as duas",
+    "A SONDA DO AUDITOR VIROU PROVA (E-414/ADV-62): o ciclo com NextRunAt futuro agora tem teste com contraprova - desligar o portao de supervisor.go:401 FAZ o teste falhar, e o controle (ciclo vencido) segue passando",
+    "UM TESTE COM DOIS PROPÓSITOS FALHA PELO MOTIVO ERRADO (E-414): pus um controle na mesma execucao (acrescentar um ciclo vencido e exigir avanco) e ele falhou, porque a lista de empresas e' lida/cacheada por tick. O teste ficou com um proposito, e o controle e' o teste que ja' existia",
+    "A 7a VEZ DA MESMA CLASSE - E A PRIMEIRA EM QUE ME PEGUEI NA MESMA RODADA (E-415): escrevi uma prova direta da trava por organizacao (segurar a trava de A e exigir que B complete) e ela passou. Na contrapova com trava GLOBAL, o meu teste CONTINUOU PASSANDO: ele calculava o caminho replicando a formula do produto, entao media a MINHA copia, nao o codigo. Um teste que parece prova e nao e' e' exatamente a doenca que esta missao vem derrubando",
+    "A COPIA NAO MUDA QUANDO O ORIGINAL MUDA (E-415): teste que replica a formula do produto passa com qualquer produto. A correcao e' extrair o caminho para um unico lugar que produto e teste compartilhem - assim a mutacao muda o INPUT do teste",
+    "UM DONO SO' PARA O CAMINHO (E-416/ADV-63): extrair lockPath() e fazer produto e teste usarem o MESMO metodo e' o que transforma uma copia em prova - a mutacao passa a mudar o INPUT do teste. Contraprova: lockPath global => o teste FALHA ('as organizacoes A e B compartilham o caminho de trava')",
+    "O QUE SEPARA UMA PROVA DE UMA COPIA E' QUEM E' O DONO DO VALOR (E-416): a minha primeira prova da trava replicava a formula do produto e passava com qualquer produto. A segunda usa o metodo do produto e dispara na mutacao",
+    "UM TESTE QUE PASSA 23 HORAS POR DIA E FALHA NA 24a (E-417): TestAgendamentoImpedeDoubleBookingSobConcorrencia falhava 5/5 apos ~23:30, porque o fixture nascia de time.Now().Add(24h) e agendava em +90min, caindo no dia seguinte. O PRODUTO ESTA' CERTO (servico que termina 00:11 nao cabe em turno que fecha 24:00); o fixture herdava o instante do relogio da maquina",
+    "INSTANTE DE TESTE NAO SE HERDA DO RELOGIO: ESCOLHE-SE (E-417): o fixture passou a usar amanha as 10:00 UTC. E o mesmo defeito estava no meu proprio teste novo (Now+2h), corrigido pela mesma regra. Verificado 3x as 22:12, na janela em que falhava",
+    "A VARREDURA EXAUSTIVA DO RELOGIO DEU UM RESULTADO CALMO (E-418): 57 usos de Now()+Add em testes, 5 triados como alto risco e TODOS seguros (deslocamentos de +-1s/1min, ou vencido). O defeito do E-417 era singular: nao ha' familia",
+    "O MEU SCANNER LE' COMENTARIOS (E-418): ele marcou como risco o proprio comentario que eu escrevi no E-417 - um scanner que le' comentarios conta a documentacao do defeito como defeito",
+    "ADV-65 DECLARADO, NAO LIGADO (E-418): o motor de agendamento e' uma biblioteca testada e sem chamador em producao; o que esta' provado em producao e' o agendador de WORKFLOW. Ligar exigiria dono de tick em producao, ponte com os canais (que nao existem) e testes de concorrencia com o tick rodando",
+    "HORARIO DE VERAO: O MESMO INSTANTE DUAS VEZES (E-419/ADV-64): o laco anda por deslocamento de relogio de parede e time.Date NORMALIZA horarios que nao existem, entao 02:00 e 02:30 caiam ambos em 03:00. A lista so' ordenava, sem deduplicar. Corrigido deduplicando por INSTANTE: remove o impossivel e preserva a hora legitimamente repetida",
+    "O FUSO DO DESENVOLVEDOR ESCONDEU A CLASSE (E-419): a maquina desta base e' America/Sao_Paulo, sem horario de verao desde 2019 - por isso nenhum teste pegou uma duplicata de instante que existe em qualquer fuso com DST",
+    "A CONTRAPROVA PODE SER A PROPRIA REPRODUCAO (E-419): o teste novo rodou ANTES da correcao e falhou com o instante duplicado impresso. Nao foi preciso mutar nada: a evidencia de que ele detecta esta' no historico",
+    "EU DECLAREI, NAO MEDI - E A DECLARACAO ESTAVA ERRADA (E-420): no E-419 escrevi que a deduplicacao por instante preserva a hora repetida do fim do horario de verao. Medido: o laco por relogio de parede nunca gera o segundo lado, entao o produto oferece 01:00 UMA vez. A correcao continua certa; a JUSTIFICATIVA era falsa",
+    "DECLARACAO NAO E' MEDICAO (E-420): a justificativa que eu escrevi no E-419 virou um teste no E-420, e o teste disse que ela estava errada. O limite real - a hora repetida e' oferecida uma vez - ficou declarado",
+    "UM TESTE QUE SE PULA SOZINHO E' VERDE SEM MEDIR NADA (E-420): os dois testes de fuso faziam t.Skipf se o banco de fusos faltasse; agora falham com a mensagem dizendo o que instalar",
+    "O CI VERMELHO ERA MEU - E A CAUSA ERA UM FIXTURE QUE HERDAVA O RELOGIO (E-421): o log do job Go agentic and server gates mostrou 'FAIL TestLembreteNaoSaiDuasVezes' com 'fora do expediente configurado: 2026-10-13T23:53:07-03:00'. Agora := time.Now() + marcado := agora.Add(90min): as 22:23 de Sao Paulo o agendamento cai em 23:53 e nao cabe num turno 00:00-24:00. E' a MINHA correcao do ADV-61 que expos - o produto esta' certo",
+    "DESCARTADOS POR MEDICAO, UM A UM (E-421): nao e' timeout (1m35s, nao 30min); nao e' app/server (falha so' localmente: a maquina nao tem compilador C); gofmt, govulncheck, go mod verify e check-class-a-plus-integrity.sh deram SUCCESS na CI. Quatro hipoteses minhas morreram medindo",
+    "UM UNICO LUGAR ESCOLHE O INSTANTE (E-421): instanteDeTeste(t) devolve amanha as 10:00 UTC e GUARDA a propria propriedade - falha se o instante ficar a menos de 2h de uma virada ou a menos de 20h de agora. O relogio do teste deriva do instante escolhido, nunca o contrario",
+    "A VARREDURA DO E-418 TEM UM PONTO CEGO (E-421): ela procura Now()+Add direto na linha e nao pega a forma agora := time.Now(); marcado := agora.Add(...) numa variavel - foi por esse buraco que o segundo teste da classe passou"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -3037,17 +3111,95 @@
           "severidade": "ALTA (a prova da alegacao mais publicada e' vacuosa)",
           "descricao": "4a auditoria independente (subagente) nas provas de desempenho. CONFIRMOU SOLIDO o nucleo (persistLocked caminho unico, gravacoes++ antes do writeJSONAtomic, prova de disco do lote de produtos falha quando deve, onboarding_budget mede estado real). ACHADOS: (1) a assercao 'Gravacoes() <= 10' e' VACUOSA - desligar RecordStocks deixa 1 gravacao e 1 > 10 e' falso, entao o teste ainda passa; a prova de disco so' conta products e nunca le' stock. (2) '> 10' nao distingue 1 lote de N lotes (fatias de 250 => 4 gravacoes => passa). (3) commerce_budget_test so' LOGA (5000 chamadas, nenhuma assercao). (4) context.WithTimeout de 5 min e' codigo MORTO. (5) RollbackCompanyOnboarding grava POR LINHA: n=500 => desfazer = 1000 gravacoes em 2,72s. (6) leitura de disco nao enderecada (arquivos[0]). (7) o '211x' do ADV-44 nao se reproduz (medido ~196x); as contagens 300 vs 1 sao exatas",
           "descoberto_por": "4a revisao adversarial independente (subagente, contexto fresco) com experimento de falsificacao",
-          "estado": "REGISTRADO, NAO CORRIGIDO",
+          "estado": "TODOS OS ITENS CORRIGIDOS E MEDIDOS (/1, /2, /3, /4, /5, /5b, /6, /7). O que resta e' o cenario com catalogo anterior no teste do rollback e a contraprova por reversao do RemoveProducts",
           "evidencia": "E-388"
+        },
+        {
+          "id": "ADV-58",
+          "severidade": "GRAVE (a prova de seguranca mede a si mesma)",
+          "descoberto_por": "5a revisao adversarial independente (subagente, contexto fresco) com mutacao por go test -overlay",
+          "estado": "/1 CORRIGIDO e contraprovado (o teste agora chama os gates reais e FALHA com approvalsReady desligado). /2 e /3 DECLARADOS como defesa em profundidade inalcancavel hoje, mantidos de proposito com o motivo escrito. /4 CORRIGIDO (teste renomeado para o que o corpo prova)",
+          "evidencia": "E-400",
+          "descricao": "mutation_gate_test.go:49 TestMutationHarnessHITLApprovalBypass NAO testa o gate real: closures locais que reimplementam a condicao e se comparam entre si. Contraprova: com os 4 pontos de aprovacao do runtime desligados o teste continua PASS. + runtime.go:2237 (portao por etapa) e 2251-2256 (reconferencia inline do PayloadSHA256) sem cobertura isolada. + mission_multi_step_approval_test.go:116 cujo nome promete mais do que o corpo prova. RESISTIU: approvalsReady, validateMissionApprovalBindings, tenant+nonce (todos load-bearing), nenhum caminho sem approvalsReady, nenhum TOCTOU exploravel, sem vacidade"
+        },
+        {
+          "id": "ADV-59",
+          "severidade": "BAIXA (rebaixado apos medicao - era leitura minha, nao defeito)",
+          "descoberto_por": "auto-auditoria da natureza das assercoes (E-407)",
+          "estado": "REBAIXADO: as provas negativas existem e no lugar certo (internal/agent/schedule_flow_test.go tem 10 testes com 13 linhas de negacao/bloqueio; server/agent_schedule_flow_test.go tem 3). O proprio cabecalho do spec declara a separacao contrato/semantica. Sobra apenas o limite de nao haver prova de convergencia eventual (toPass/poll) - adequado para vite preview com rotas interceptadas, mas declarado",
+          "evidencia": "E-407",
+          "descricao": "105 expects: 21 de presenca (toBeVisible), 13 de ESTADO (toBeDisabled/Enabled/Focused/Truthy), 4 de conteudo, 2 NEGATIVAS e ZERO de convergencia (toPass/poll/waitFor/reload). A suite prova que a UI renderiza e reage a estado, mas quase nao prova que algo NAO aconteceu - e essa e' exatamente a classe que derrubou seis linhas de prova nesta missao. E o meu primeiro classificador jogou 52 assercoes em 'outro' por nao lidar com multi-linha: o defeito era do INSTRUMENTO, nao da suite"
+        },
+        {
+          "id": "ADV-60",
+          "severidade": "ALTA (afirmacao publicada FALSA)",
+          "descricao": "Availability (scheduling.go:393-423) continua inventando horario: nao consulta turno, fechamento, intervalo nem fuso. A E-314 afirma que o buraco foi fechado, mas ele foi fechado em OpenSlots (funcao NOVA) e Availability ficou intacta. SONDA: org sem turno, domingo 03:00 => Availability devolve 4 slots livres, OpenSlots devolve 0 e Book recusa",
+          "descoberto_por": "6a revisao adversarial independente (subagente, contexto fresco) com go test -overlay e sondas",
+          "estado": "CORRIGIDO COM LIMITE DECLARADO: Availability NAO consulta expediente, e o comentario agora diz isso e aponta OpenSlots como a funcao para oferecer horario. Um teste fixa o limite e falha se ele mudar sem a documentacao. A E-314 (que afirmava o buraco fechado) fica superseded por E-413 - a linha historica nao e' reescrita",
+          "evidencia": "E-411"
+        },
+        {
+          "id": "ADV-61",
+          "severidade": "ALTA/MEDIA (aceita horario com a empresa fechada)",
+          "descricao": "Book aceita horario fora do turno quando ele cruza a meia-noite: shiftCoversMinute (scheduling_breaks.go:124-131) no ramo '|| fimMinuto <= ClosesAt' nao verifica se o turno comecou no dia ANTERIOR. SONDA: turno so segunda 22:00-02:00 => Book(segunda 01:00) aceito, enquanto OpenSlots nao oferece nada nesse instante",
+          "descoberto_por": "6a revisao adversarial independente (subagente, contexto fresco) com go test -overlay e sondas",
+          "estado": "CORRIGIDO: shiftCovering devolve diaAnterior e o chamador soma 1440; shiftCoversMinute exige que o ramo da cauda seja do dia seguinte. Teste novo + o existente (E-328) passam. A MINHA PRIMEIRA CORRECAO (decidir pelo tamanho do minuto) estava errada e o teste existente a pegou",
+          "evidencia": "E-411"
+        },
+        {
+          "id": "ADV-62",
+          "severidade": "MEDIA (caminho sem defesa)",
+          "descricao": "next_run_at de CICLOS (supervisor.go:400-403) pode ser removido sem nenhum teste falhar (mutacao s5: 0 falhas em 20 padroes). Sonda: ciclo com NextRunAt=+24h => CyclesAdvanced=1 e 1 missao criada. CONTRASTE: ignorar NextRunAt no claim de workflow (context.go:1196) FALHA dois testes",
+          "descoberto_por": "6a revisao adversarial independente (subagente, contexto fresco) com go test -overlay e sondas",
+          "estado": "CORRIGIDO: TestCicloComProximaExecucaoNoFuturoNaoAvancaNoTick exige CyclesAdvanced=0, NextRunAt inalterado e LastRunAt nulo; a contraprova (portao desligado) FAZ o teste falhar, e o controle (ciclo vencido) segue verde. A sonda do auditor virou prova",
+          "evidencia": "E-411"
+        },
+        {
+          "id": "ADV-63",
+          "severidade": "MEDIA-BAIXA (afirmacao sem prova)",
+          "descricao": "'a trava e por organizacao' nao e' provado: mutacao para trava GLOBAL => 0 falhas em 20 execucoes. CONTRASTE: sem withFileLock => 20/20 falham; sem invalidateCache => 18/20 falham (prova probabilistica, ~10% de regressao silenciosa)",
+          "descoberto_por": "6a revisao adversarial independente (subagente, contexto fresco) com go test -overlay e sondas",
+          "estado": "FECHADO: lockPath(organizationID) extraido como metodo unico, usado pelo produto E pelo teste. O teste retem de verdade a trava da org A e exige que a org B complete em 10s; a contraprova (lockPath global) FAZ o teste falhar, porque a mutacao muda o INPUT do teste. A primeira tentativa era falsa (E-415) e foi removida",
+          "evidencia": "E-411"
+        },
+        {
+          "id": "ADV-64",
+          "severidade": "BAIXA/MEDIA (DST nunca exercitado)",
+          "descricao": "Maquina America/Sao_Paulo (sem DST desde 2019) e laco em minutos de relogio de parede. Sonda em America/New_York, turno domingo 01:00-05:00 em 2026-03-08 => 8 slots com 01:00 e 01:30 DUPLICADOS no mesmo instante UTC",
+          "descoberto_por": "6a revisao adversarial independente (subagente, contexto fresco) com go test -overlay e sondas",
+          "estado": "FECHADO: OpenSlots deduplica por INSTANTE depois de ordenar. Antes da correcao o teste novo FALHAVA com 'o instante 2026-03-08T06:30:00Z foi oferecido 2 vezes' (8 slots); depois, 6 slots distintos e a bateria de agendamento ok. A contraprova e' a propria reproducao. Preserva a hora repetida do FIM do horario de verao (instantes distintos)",
+          "evidencia": "E-411"
+        },
+        {
+          "id": "ADV-65",
+          "severidade": "INFORMATIVO/ALTO para a entrega (linha NAO ligada)",
+          "descricao": "Nada em producao chama o motor de agendamento: SchedulingStore tem zero chamadores fora de _test.go; NewSupervisorScheduler so' no teste; Supervisor.Start so' em supervisor_test.go:504. O que esta' provado em producao e' o agendador de WORKFLOW (resumePending/ClaimDueSchedules, w1 + frescor entre processos)",
+          "descoberto_por": "6a revisao adversarial independente (subagente, contexto fresco) com go test -overlay e sondas",
+          "estado": "DECLARADO, NAO LIGADO: o motor de agendamento e' hoje uma biblioteca testada e sem chamador em producao (zero usos fora de _test.go). O que esta' provado em producao e' o agendador de WORKFLOW. Ligar exigiria: (a) dono de tick em producao (hoje o tick vem de HTTP); (b) ponte com os canais de voz/WhatsApp/Telegram, que NAO existem (BLOCKED_BY_EXTERNAL_DEPENDENCY); (c) testes de concorrencia com o tick rodando. Declarar e' a entrega honesta enquanto (a)-(c) nao estiverem feitos",
+          "evidencia": "E-411"
         }
       ],
       "proximos_ataques": [
-        "ADV-57/1: limiar EXATO e prova do ESTOQUE em disco (hoje so' products) - a alegacao '2 gravacoes' precisa de assercao",
-        "ADV-57/5: rollback em lote (hoje 1000 gravacoes para desfazer 500 linhas)",
-        "ADV-57/4: remover ou LIGAR a guarda morta de 5 minutos",
-        "ADV-57/3: assercao de escala no commerce_budget (hoje so' log)",
-        "ADV-57/7: teste proprio para o ganho do lote (o '211x' nao se reproduz; medido ~196x)"
-      ]
+        "ADV-60 (P0): Availability deve delegar a OpenSlots/appointmentAllowedLocked OU ser removida/renomeada com limite declarado - hoje a evidencia E-314 afirma algo falso sobre ela",
+        "ADV-61 (P0): shiftCoversMinute deve exigir que o minuto pertenca ao turno do dia corrente OU a cauda do dia anterior; testar Book(segunda 01:00) recusado",
+        "ADV-65 (P0 para a entrega): ligar o motor de agendamento em producao ou declarar que ele e' biblioteca sem chamador",
+        "ADV-62: teste 'ciclo com NextRunAt futuro nao avanca no tick' (a sonda do auditor ja' e' o teste)",
+        "ADV-63: teste que segure a trava da org A e mostre a org B progredindo",
+        "ADV-64: rodar OpenSlots numa data de transicao de DST exigindo horarios distintos"
+      ],
+      "contraprovas_medidas": {
+        "approvalsReady_off": "FALHA TestRuntimeNaoProduzEfeitoComAprovacaoPendenteNaNada (load-bearing)",
+        "validateMissionApprovalBindings_off": "FALHAM TestApprovalValidationBindsPolicyExpiryAndDecisionActor e TestRuntimeFailsClosedWhenApprovalRecordIsMissing (load-bearing)",
+        "tenant_e_nonce_off": "FALHAM TestDecisaoDeAprovacaoNaoRevelaExistenciaEntreTenants, TestApprovalBindsActorOrganizationAndReason e TestApprovalCASAndNonceAreSingleUse (load-bearing)",
+        "portao_por_etapa_off": "NADA falha - sem defesa",
+        "reconferencia_inline_off": "NADA falha - sem defesa"
+      },
+      "setima_ocorrencia_da_classe": {
+        "onde": "E-415 - a minha propria prova da trava por organizacao",
+        "classe": "assercao cuja cor nao depende do comportamento alegado",
+        "detalhe": "o teste calculava o caminho da trava REPLICANDO a formula do produto; com a mutacao para trava global o produto usava global.lock e o teste segurava org-a.lock - arquivos diferentes, assercao passando sem medir nada. A contrapova pegou",
+        "correcao_para_a_proxima_rodada": "extrair lockPath(organizationID) para um unico lugar compartilhado entre produto e teste, para que a mutacao mude o INPUT do teste"
+      }
     },
     "estagio_42": {
       "titulo": "HADES LIVE COMMERCE & AI SHOPPING AGENTS",
@@ -3362,6 +3514,307 @@
         "pendente": "reordenar as assercoes (efeito antes do erro) para que o teste de disco tambem discrimine",
         "evidencia": "E-373"
       }
+    },
+    "higiene_de_repositorio": {
+      "branches_antes": 400,
+      "branches_depois": 16,
+      "mescladas_apagadas": 371,
+      "mescladas_restantes": 0,
+      "nao_mescladas_preservadas": 28,
+      "prs_abertos_antes": 1,
+      "metodo": "git branch -r --merged origin/main, sem force, excluindo a linha origin/HEAD -> origin/main",
+      "achado": "as 28 nao-mescladas sao trabalho que NAO esta na main (large-files-arch, large-files-safety, linux-packaging, macos-unsigned-build, mobile-parity, marca-hades, builder-rollback-manifest, e2e-local-smoke, docs-tests-parity, ...): sao pendencias de INTEGRACAO, nao entulho. Nao foram apagadas e ainda nao foram triadas uma a uma",
+      "proximo": "triar as 28 branches nao-mescladas contra os estagios do MASTER e os bloqueios externos",
+      "conteudo_ja_na_main_apagadas": 13,
+      "nao_integradas_preservadas": 15,
+      "triagem_por_patch_id": {
+        "metodo": "git log --cherry-pick --right-only --no-merges origin/main...<branch>",
+        "nao_integradas": {
+          "feat/ui-shell-parity": 17,
+          "fix/seguranca-ci-docs-20261005": 14,
+          "feat/marca-hades": 8,
+          "perf/adv57-exact-threshold": 7,
+          "feat/e2e-local-smoke": 5,
+          "feat/mobile-parity": 4,
+          "feat/large-files-arch": 4,
+          "fix/windows-installer-identity": 3,
+          "feat/linux-packaging": 2,
+          "feat/supervisor-journal-persist": 2,
+          "test/dlp-clock-false-positive": 1,
+          "test/p0e-t4-worktrees": 1,
+          "feat/docs-tests-parity": 1,
+          "fix/lint-dead-code": 1,
+          "fix/stock-batch-effective": 1
+        },
+        "controles_apos_apagar": "main, perf/adv57-exact-threshold, feat/ui-shell-parity e fix/seguranca-ci-docs continuam existindo",
+        "achado": "15 linhas de trabalho NAO estao na main, incluindo uma de SEGURANCA com 14 patches (fix/seguranca-ci-docs-20261005: 'security: close agentic execution and exposure gaps') e a de paridade de UI com 17 (feat/ui-shell-parity). A entrega nao pode ser declarada pronta enquanto isso nao for revisado",
+        "limite": "--cherry-pick compara patch-id: diz 'este patch exato nao esta na main', NAO 'esta mudanca nao esta'. Os 15 sao candidatos a REVISAO DE CONTEUDO, nao provas de lacuna",
+        "proximo": "revisar por CONTEUDO as 15 (comecando pela de seguranca), integrar o que faltar e declarar o resto"
+      },
+      "revisao_por_arquivo": {
+        "metodo": "git diff --name-status --diff-filter=A origin/main...origin/<branch> + Test-Path de cada adicao",
+        "substancia_na_main": [
+          "feat/marca-hades (41/41)",
+          "feat/e2e-local-smoke (3/3)",
+          "feat/large-files-arch (8/8)",
+          "feat/linux-packaging (2/2)",
+          "test/dlp-clock-false-positive (1/1)",
+          "test/p0e-t4-worktrees (1/1)",
+          "fix/seguranca-ci-docs-20261005 (8/8 adicoes)"
+        ],
+        "somente_edicoes_revisao_pendente": [
+          "fix/windows-installer-identity",
+          "feat/supervisor-journal-persist",
+          "fix/lint-dead-code",
+          "fix/stock-batch-effective"
+        ],
+        "lacuna_real": {
+          "feat/ui-shell-parity": "41 de 44 adicoes faltando (inclui app/ui/app/e2e/*-journey.spec.ts)",
+          "feat/mobile-parity": "8 de 9 faltando (inbox.ts, inbox.test.ts)",
+          "feat/docs-tests-parity": "1 de 1 faltando (docs/agentic/UI_MOBILE_EVIDENCE_TRACKING.md)"
+        },
+        "seguranca": "fix/seguranca-ci-docs-20261005 esta' INTEIRA na main: dev_token.go nao existe mais, mas o comportamento esta' (TestDevTokenRequiresOperatorSecret, TestIsDevTokenRequestAllowedRejectsProxiedRequests), o timeout HTTP esta' em egress_zero_trust.go e as 8 adicoes existem com corpo real. NAO ha' lacuna de seguranca",
+        "achado": "O alarme do E-396 estava exagerado. A lacuna real e' de UI/mobile (3 branches, 50 arquivos), nao de seguranca"
+      },
+      "lacuna_de_ui_medida": {
+        "metodo": "trouxe os 14 arquivos de codigo/teste para uma branch a partir da main e rodei npx vitest run src/components/TasksJourney.test.tsx",
+        "resultado": "7 testes, 4 FALHAM - o teste espera UI que a main nao renderiza",
+        "exemplos": [
+          "No instances found with props: {\"role\":\"alert\"}",
+          "expected 'Inbox de missoesTarefasVeja missoes e...' to contain 'Nenhuma tarefa criada ainda.'"
+        ],
+        "acoplamento": {
+          "edicoes_de_componente_na_branch": "14 arquivos, +866/-35",
+          "maiores": {
+            "NewTaskPage.tsx": "+173",
+            "HomePage.tsx": "+139",
+            "TasksJourney.test.tsx": "+287",
+            "ThemeSwitcher.tsx": "+78",
+            "ProductWorkspacePage.tsx": "+74"
+          },
+          "ausentes_na_main": [
+            "a frase 'Nenhuma tarefa criada ainda.'",
+            "o role=alert que o teste procura"
+          ]
+        },
+        "decisao": "branch DESCARTADA - nao se integra teste vermelho (regra 9). A unidade e' a FEATURE, nao o arquivo",
+        "entrega_delimitada": "portar NewTaskPage.tsx + o estado vazio de tasks.tsx + routes/tasks_.new.tsx + TasksJourney.test.tsx + tasks-journey.spec.ts sobre a main de hoje",
+        "limites": [
+          "o port nao foi feito",
+          "HomePage/ThemeSwitcher podem ser dependencia e nao foram analisados",
+          "os 6 E2E nao foram executados",
+          "a branch esta' 1176 commits atras: o port sera' reescrita, nao merge"
+        ]
+      },
+      "port_da_feature_nova_tarefa": {
+        "branch_local": "feat/nova-tarefa-port (nao publicada)",
+        "trazido": [
+          "NewTaskPage.tsx",
+          "TasksJourney.test.tsx",
+          "routes/tasks_.new.tsx",
+          "ConnectorLogo.tsx",
+          "lib/connectorCatalog.ts",
+          "delta de routes/tasks.tsx (+12)"
+        ],
+        "rodado": "npx --no-install vitest run src/components/TasksJourney.test.tsx",
+        "resultado": "7 testes, 4 FALHAM",
+        "falhas": [
+          "No instances found with props: {\"role\":\"alert\"}",
+          "No instances found with props: {\"role\":\"status\",\"aria-live\":\"polite\",\"tabIndex\":-1}",
+          "No instances found with props: {\"role\":\"alert\",\"tabIndex\":-1}",
+          "expected '...' to contain 'Nenhuma tarefa criada ainda.'"
+        ],
+        "diagnostico": "as 4 falhas sao o ProductWorkspacePage: falta o estado vazio, o role=status do banner de criada e dois alertas. NewTaskPage JA renderiza role=alert (L138) e aria-live=assertive (L139)",
+        "o_que_eu_quase_fiz": "ia trazer o ProductWorkspacePage INTEIRO da branch (1176 commits atras) - teria revertido progresso de UI naquele arquivo. Copiar arquivo de branch velha nao e' integracao: e' regressao disfarcada de merge",
+        "entrega": "portar +74 linhas de UI no ProductWorkspacePage de hoje, com os 4 casos do teste como criterio",
+        "licao_de_ferramenta": "o '>' do PowerShell grava UTF-16; arquivos extraidos ficaram ilegiveis para o Python (0xff BOM)",
+        "resultado_final": "CONCLUIDO: 7/7 testes verdes, tsc exit 0, branch feat/nova-tarefa-parity com PR proprio. Progressao medida: 4 falhas -> 2 -> 1 -> 0. Nada vermelho foi integrado nas tentativas anteriores",
+        "licao_de_estrutura": "o caso 3 procura node.type === 'li' com aria-current === 'true'; por o aria-current no Link (<a>) nao satisfaz, porque o ResourceRow renderiza um <div>. A ESTRUTURA da lista faz parte do contrato",
+        "conservador": "o render de tasks da main e' mais rico que o da branch (tem removeMission e deleteDisabled): o port MESCLOU em vez de substituir"
+      },
+      "stashes": {
+        "antes": 3,
+        "depois": 0,
+        "verificacao": "cada um foi medido antes de apagar: o port existe no remoto; o rollback ADV-57/5 esta' commitado; 17aa6e41c (E-195) e' ancestral de origin/main",
+        "recuperacao": "git reflog (local e temporario) - nao arquivei o diff em disco"
+      },
+      "checkpoint": {
+        "main": "e372a1036",
+        "evidencias": 403,
+        "achados": 58,
+        "notas": 1177,
+        "branches_remotas": 17,
+        "ultimos_achados": [
+          "ADV-53",
+          "ADV-54",
+          "ADV-55",
+          "ADV-56",
+          "ADV-57",
+          "ADV-58"
+        ]
+      },
+      "varredura_de_codificacao": {
+        "arquivos_varridos": 2216,
+        "extensoes": [
+          ".go",
+          ".md",
+          ".py",
+          ".ts",
+          ".tsx",
+          ".js",
+          ".mjs",
+          ".json",
+          ".yaml",
+          ".yml",
+          ".txt",
+          ".ps1",
+          ".sh"
+        ],
+        "achados_reais_corrigidos": 3,
+        "achados_legitimos": {
+          "scripts/hades_mission_check.py": "o proprio regex do detector - a municao parece a doenca",
+          "scripts/hades_mission_check_test.py": "fixture deliberada que prova que o detector dispara"
+        },
+        "criterio_da_correcao": "as notas passaram a DESCREVER o artefato como [dupla codificacao], nao a transcreve-lo",
+        "limites": [
+          "cobre extensoes de texto; binarios e .png nao foram lidos",
+          "o padrao do travessao pode dar falso positivo",
+          "a varredura nao virou checker do repositorio: depende de rodar a mao"
+        ]
+      },
+      "checker_de_codificacao": {
+        "script": "scripts/hades_encoding_check.py",
+        "teste": "scripts/hades_encoding_check_test.py",
+        "medido": "2218 arquivos, 4 dispensas, exit 0, 1,09 s",
+        "dispensas": [
+          "scripts/hades_mission_check.py (o detector)",
+          "scripts/hades_mission_check_test.py (a fixture dele)",
+          "scripts/hades_encoding_check.py (este checker)",
+          "scripts/hades_encoding_check_test.py (a fixture dele)"
+        ],
+        "o_checker_me_corrigiu": [
+          "levou >10 min com rglob: o custo estava no CAMINHO; os.walk com poda => 1,09 s",
+          "acusou dispensa OBSOLETA quando a fixture nao continha o padrao literal"
+        ],
+        "limites": [
+          "ainda NAO foi incluido na bateria de checkers (a lista esta no shell, nao em arquivo)",
+          "cobre extensoes de texto; binarios e .png nao sao lidos"
+        ]
+      }
+    },
+    "portao_e2e": {
+      "comando": "npx playwright test --reporter=line (em app/ui/app)",
+      "resultado": "exit 0",
+      "specs": [
+        "accessibility.spec.ts",
+        "compare.spec.ts",
+        "first-run-journey.spec.ts",
+        "firstRun.spec.ts",
+        "prompts.spec.ts",
+        "scheduleFlow.spec.ts",
+        "settings-write-loop.spec.ts",
+        "shell.spec.ts",
+        "studioReorder.spec.ts"
+      ],
+      "receita_de_ambiente": "TMP, TEMP e TMPDIR apontando para _tmp/ui-tmp; sem isso o esbuild falha com 'remove C:\\...\\AppData\\Local\\Temp\\esbuild-...: Acesso negado' e o webServer nao sobe",
+      "primeira_tentativa": "webServer nao subiu (Build failed in 19.40s) - ambiente, nao produto",
+      "mesma_classe": "a 5a auditoria encontrou o mesmo no Go: GOPATH/GOMODCACHE/GOCACHE/GOTMPDIR/APPDATA sob _tmp, senao o runtime falha em %AppData%\\ollama-agent",
+      "limites": [
+        "os specs sao executados, mas o que cada um afirma nao foi lido",
+        "screens:verify nao foi executado",
+        "as 27 evidencias .png seguem ausentes - E2E verde nao substitui captura",
+        "a receita nao foi levada ao CI nem ao AGENTS.md",
+        "a contagem de expects nao mede se a assercao e' falsificavel - auditoria linha a linha ainda nao feita",
+        "as 27 evidencias .png da paridade NAO estao entre os 10 do manifesto: seguem ausentes",
+        "a receita foi para o AGENTS.md e nao para o CI (decisao, nao medicao)"
+      ],
+      "peso_medido": {
+        "specs": 9,
+        "testes": 18,
+        "expects": 105,
+        "skips": 0,
+        "por_spec": {
+          "firstRun": 24,
+          "first-run-journey": 18,
+          "prompts": 14,
+          "shell": 11,
+          "studioReorder": 11,
+          "compare": 9,
+          "scheduleFlow": 8,
+          "accessibility": 7,
+          "settings-write-loop": 3
+        }
+      },
+      "screens_verify": {
+        "comando": "node scripts/validate-capture-manifest.mjs",
+        "resultado": "capture manifest: PASS (10 files)",
+        "manifesto": "docs/images/screens/class-a-plus-capture-manifest.json (schema class-a-plus.capture.v1)",
+        "forca": "valida SHA-256 de cada arquivo - nao e' 'existe uma pasta', e' conteudo verificado por hash"
+      },
+      "receita_documentada_em": "AGENTS.md (secao 'Windows: redirecione TMP/TEMP quando o teste nao roda')",
+      "divisao_de_responsabilidades": "o spec de scheduleFlow declara no cabecalho: a UI prova o CONTRATO cliente->HTTP (rotas interceptadas, vite preview sem backend Go); a SEMANTICA do grafo (ordem topologica, bloqueio de dependentes, decodeJSON estrito) e' provada pelos testes Go (10 em internal/agent/schedule_flow_test.go, 3 em server/agent_schedule_flow_test.go). A ausencia de negativas na suite de UI e' POR DESENHO"
+    },
+    "afirmacoes_superseded": {
+      "E-314": "afirma que 'esta fatia fecha esse buraco' em Availability; o buraco foi fechado em OpenSlots (funcao NOVA) e Availability ficou intacta. Superseded por E-413, que declara o limite e o fixa com teste",
+      "E-419 (justificativa)": "E-419 afirmou que a deduplicacao por instante PRESERVA a hora repetida do fim do horario de verao. MEDIDO em E-420: o laco por relogio de parede nunca gera o segundo lado da hora repetida, entao o produto oferece 01:00 UMA vez. A correcao do E-419 continua certa; a JUSTIFICATIVA era falsa. Limite real: o produto sub-oferece (nunca sobre-oferece)"
+    },
+    "portao_de_testes": {
+      "dependencia_do_relogio": {
+        "achado": "TestAgendamentoImpedeDoubleBookingSobConcorrencia falhava 5/5 apos ~23:30",
+        "causa": "o fixture nascia de time.Now().Add(24h) e agendava em +90min; perto da meia-noite isso cai no dia seguinte e o turno de 24h (ClosesAt=1440) recusa, porque fimMinuto=1451 > 1440",
+        "produto_esta_certo": "um servico que termina 00:11 nao cabe num turno que fecha 24:00 - e' a BORDA do produto, nao um bug",
+        "correcao": "instante escolhido: amanha as 10:00 UTC (o +90min termina 11:30 UTC, longe da virada)",
+        "mesmo_defeito_no_meu_teste": "scheduling_lock_scope_proof_test.go usava Now+2h; corrigido pela mesma regra",
+        "verificacao": "0 falhas em 3 execucoes as 22:12 local",
+        "limites": [
+          "varredura dirigida, nao exaustiva (distributed_integration_test.go tem 68 usos de time.Now nao inspecionados)",
+          "nao ha teste da borda (23:41 com servico de 30min)"
+        ]
+      },
+      "varredura_do_relogio": {
+        "usos_de_Now_mais_Add_em_testes": 57,
+        "alto_risco_triados": 5,
+        "todos_seguros": [
+          "ClaimDue(Now+1s)",
+          "NextRunAt = Now-1s (x2)",
+          "NextRunAt = Now-1min",
+          "1 falso positivo: o scanner le' comentarios"
+        ],
+        "conclusao": "o defeito do E-417 era singular: nao ha' familia de testes dependentes do relogio",
+        "limites": [
+          "cobre _test.go de internal/, nao server/, cmd/ nem JS",
+          "o scanner le' comentarios"
+        ]
+      },
+      "dst_fallback": {
+        "medido": "6 slots; 1 instante distinto com horario de parede 01:00",
+        "conclusao": "a hora repetida e' oferecida uma vez: sub-oferta, nao double-booking",
+        "skip_silencioso": "substituido por Fatal nos dois testes de fuso - teste pulado em silencio e' verde sem medir nada",
+        "limites": [
+          "nao corrigi a sub-oferta (trabalho de produto)",
+          "a sub-oferta nao tem teste de regressao"
+        ]
+      },
+      "ci_vermelho_436": {
+        "sha": "bfc62cef5",
+        "run": 38495080255,
+        "passo_que_falha": "CGO_ENABLED=0 go test ./internal/agent -count=1",
+        "causa_raiz": "scheduling_waitlist_test.go: agora := time.Now().UTC() + marcado := agora.Add(90min); as 22:23 de Sao Paulo o agendamento cai em 23:53 e nao cabe num turno 00:00-24:00",
+        "e_meu": "a correcao do ADV-61 expos - antes o ramo com bug aceitava 23:53; agora um turno que nao cruza exige fimMinuto <= 1440. O produto esta' certo; o fixture herdava o relogio",
+        "descartados_por_medicao": [
+          "timeout: o passo durou 1m35s, nao 30min",
+          "app/server: falha so' localmente, porque a maquina nao tem compilador C (gcc/cc/cl ausentes)",
+          "check-class-a-plus-integrity.sh: SUCCESS na CI (nao roda aqui: bash resolve para WSL quebrado)",
+          "gofmt/govulncheck/go mod verify: SUCCESS na CI"
+        ],
+        "correcao": "instanteDeTeste(t) num unico lugar: escolhe amanha as 10:00 UTC e guarda a propria propriedade (falha se ficar a menos de 2h de uma virada ou a menos de 20h de agora); o teste virou marcado := instanteDeTeste(t); agora := marcado.Add(-90min)",
+        "medidos_e_descartados_no_mesmo_arquivo": "linhas 102 e 160 usam agora so' como 'now' com slot de data fixa: nao dependem do relogio",
+        "limites": [
+          "a varredura do E-418 procura Now()+Add direto e NAO pega a forma agora.Add(...) numa variavel",
+          "o job Windows falhou no mesmo passo; Windows nao traz tzdata (suspeita nao medida)",
+          "CGO_ENABLED=1 nao e' executavel nesta maquina"
+        ]
+      }
     }
   },
   "unlinked_evidence": {
@@ -3438,6 +3891,39 @@
     "E-385": "ADV-55 fechado, ADV-56/8 e vacuidade do classificador; vinculo declarado",
     "E-386": "ADV-55 fechado, ADV-56/8 e vacuidade do classificador; vinculo declarado",
     "E-387": "contraprova determinista entre processos (barreira com Gosched); vinculo declarado",
-    "E-388": "4a auditoria independente: a prova da alegacao mais publicada e' vacuosa; vinculo declarado"
+    "E-388": "4a auditoria independente: a prova da alegacao mais publicada e' vacuosa; vinculo declarado",
+    "E-390": "rollback em lote: 1000 -> 500 gravacoes; comportamento preservado",
+    "E-389": "limiar exato + prova do estoque em disco, contraprovado",
+    "E-391": "guarda morta de 5 minutos removida com a razao escrita",
+    "E-392": "RemoveProducts em lote: desfazer de 1000 -> 1 gravacao; teste permanente",
+    "E-393": "custo estrutural direto x lote (100x em gravacoes), com contraprova",
+    "E-394": "contraprova por reversao do RemoveProducts + cenario com catalogo anterior",
+    "E-395": "higiene de branches: 400 -> 29 (371 mescladas), 28 nao-mescladas preservadas",
+    "E-396": "triagem por patch-id: 13 conteudo ja na main; 15 com trabalho nao integrado",
+    "E-397": "revisao por arquivo: 12 integradas, 4 so' edicoes, 3 com lacuna real (UI/mobile)",
+    "E-398": "a lacuna de UI e' ACOPLADA: o teste falha sem as edicoes de componente",
+    "E-399": "o port e' reescrita: as 4 falhas apontam para o ProductWorkspacePage (+74)",
+    "E-400": "5a auditoria (aprovacoes): 1 GRAVE (teste de mutacao nao testa o gate) + 3 MEDIOS",
+    "E-401": "teste de mutacao tautologico reescrito para chamar os gates reais, com contraprova",
+    "E-402": "ADV-58/2, /3 e /4: redundancia declarada e teste renomeado para o que prova",
+    "E-403": "port da jornada Nova tarefa -> Tarefas: 7/7 testes verdes e tsc 0",
+    "E-404": "consolidacao de 3 stashes redundantes (medido) + checkpoint remedido",
+    "E-405": "E2E real verde (exit 0) com a receita TMP/TEMP/TMPDIR sob _tmp",
+    "E-406": "peso do E2E medido (18 testes/105 expects/0 skips) + screens:verify PASS + receita no AGENTS.md",
+    "E-407": "natureza das 105 assercoes E2E: 2 negativas, 0 convergencia; instrumento corrigido",
+    "E-408": "correcao do meu ADV-59: as negativas existem nos testes Go; 0 mojibake",
+    "E-409": "varredura do repo inteiro: 2 achados legitimos (detector e fixture) e 2 notas corrigidas",
+    "E-410": "checker de codificacao com teste-do-teste (7 casos) e dispensa obsoleta acusada",
+    "E-411": "6a auditoria (agendamento): 14/16 mutacoes detectadas, 4 defeitos reais",
+    "E-412": "ADV-61 corrigido: shiftCovering devolve diaAnterior; o mesmo minuto tem respostas opostas",
+    "E-413": "ADV-60: Availability declara o limite e um teste o fixa; E-314 superseded",
+    "E-414": "ADV-62: teste do ciclo com NextRunAt futuro, com contraprova e controle",
+    "E-415": "a minha prova da trava era FALSA (replicava a formula do produto); teste removido",
+    "E-416": "lockPath compartilhado entre produto e teste: a contraprova passa a disparar",
+    "E-417": "teste que dependia da hora: fixture escolhia instante na borda da meia-noite",
+    "E-418": "varredura exaustiva do relogio (57 usos, 5 triados, todos seguros) + ADV-65 declarado",
+    "E-419": "ADV-64: dedup por instante na virada de horario de verao, com a reproducao como contraprova",
+    "E-420": "a hora repetida do fall-back e' oferecida UMA vez: a minha declaracao no E-419 estava errada",
+    "E-421": "causa raiz do CI vermelho: fixture dependente do relogio em scheduling_waitlist_test.go"
   }
 }

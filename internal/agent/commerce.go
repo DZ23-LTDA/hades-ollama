@@ -1272,6 +1272,45 @@ func (s *CommerceStore) RemoveProduct(organizationID, sku string) error {
 	return nil
 }
 
+// RemoveProducts remove VÁRIOS produtos com **UMA** gravação por organização (E-392 / ADV-57/5b).
+//
+// POR QUE ISTO EXISTE (MEDIDO na 4ª auditoria independente): `RemoveProduct` grava o arquivo inteiro **por chamada** —
+// desfazer um onboarding de 500 linhas custava **500 gravações** (1,37s) só na remoção, *depois* de o lote do E-390 já
+// ter reduzido a restauração a **uma**. ***A API que faltava era o gargalo, não o teste.*** Espelha `UpsertProducts`:
+// mutação em memória por item, **um** `persistLocked` no fim — e, se a gravação falhar, **todas** as remoções voltam.
+func (s *CommerceStore) RemoveProducts(organizationID string, skus []string) (int, error) {
+	if len(skus) == 0 {
+		return 0, nil
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	organizacao := consentScope(organizationID)
+	removidos := make([]CommerceProduct, 0, len(skus))
+	for _, sku := range skus {
+		alvo := strings.TrimSpace(sku)
+		id, existe := s.IDPorSKULocked(organizacao, alvo)
+		if !existe {
+			continue
+		}
+		produto := s.products[id]
+		s.desindexarProdutoLocked(organizacao, alvo)
+		delete(s.products, id)
+		removidos = append(removidos, produto)
+	}
+	if len(removidos) == 0 {
+		return 0, nil
+	}
+	if err := s.persistLocked(organizacao); err != nil {
+		// Rollback em memória de TODAS as remoções: *lote que falha no meio não pode deixar o estado pela metade.*
+		for _, produto := range removidos {
+			s.products[produto.ID] = produto
+			s.indexarProdutoLocked(produto)
+		}
+		return 0, err
+	}
+	return len(removidos), nil
+}
+
 // existeSKULocked informa se o SKU já existe para a organização. Exige o lock de escrita (ou leitura) já tomado.
 func existeSKULocked(s *CommerceStore, organizationID, sku string) bool {
 	// E-363: O(1). Era varredura do mapa inteiro — a metade quadrática do enchimento medido em E-360.
