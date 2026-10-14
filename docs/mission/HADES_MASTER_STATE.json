@@ -2499,7 +2499,10 @@
     "QUATRO RECUSAS DO PROPRIO MOTOR, TODAS CERTAS (E-438): Payload e' any e precisa de assercao; projeto fora do workspace; missao com escopo de organizacao sem ProjectID; e ferramenta fora do catalogo ('planner returned unsupported tool'). Todas estavam certas - os meus testes e' que nao",
     "ACHADO RETRATADO POR MEDICAO (E-439): o registo dizia 'MEDIO-1: o portao outbound e' codigo morto (if false)'. Medido: nao ha 'if false' em internal/agent nem em server; service_agent_tools.go:242 bloqueia de verdade; :226 recebe effectOutboundAllowed e service_agents.go:336 o alimenta com consentGranted; ha teste do bloqueio e do motivo. O achado estava OBSOLETO",
     "ACHADO DE AUDITORIA PRECISA DE DATA E MEDICAO (E-439): o MEDIO-1 envelheceu em silencio e passou a custar credibilidade. Manter um alarme falso no registo e' pior que nao te-lo - e' a mesma licao de E-432 (instrumento que nunca disparava) e E-434 (validacao que recusava tudo), agora do lado do REGISTO",
-    "A RETRATACAO NAO E' 'NAO HA DEFEITO' (E-439): ela cobre este achado. Os outros achados antigos do registo NAO foram reverificados, e a funcao que calcula consentGranted nao foi auditada nesta rodada"
+    "A RETRATACAO NAO E' 'NAO HA DEFEITO' (E-439): ela cobre este achado. Os outros achados antigos do registo NAO foram reverificados, e a funcao que calcula consentGranted nao foi auditada nesta rodada",
+    "CONTRAPROVA E LACUNA NAO PODEM DIVIDIR A MESMA CHAVE (E-440): contraprovas_medidas misturava 3 provas reais (mutacao faz teste nomeado falhar) com 2 mutacoes que 'NADA falha - sem defesa'. Quem lesse concluiria que ha 5 provas, quando ha 3 provas e 2 lacunas. Separadas em sem_defesa_medida. As duas lacunas seguem ABERTAS",
+    "UMA MUTACAO QUE NAO MATA NENHUM TESTE NAO E' CONTRAPROVA: e' a MEDICAO DE UMA AUSENCIA. O defeito nao estava no codigo, estava em COMO O REGISTRO APRESENTA O QUE FOI MEDIDO - mesma classe de E-432 (instrumento que nunca dispara) e E-434 (validacao que recusa tudo)",
+    "DEFESA SEM PROVA E' CUSTO SEM BENEFICIO MEDIDO (E-440): para portao_por_etapa_off e reconferencia_inline_off ha tres saidas - escrever o teste que falta, declarar redundancia COM a medicao que a mostre, ou remover a defesa. Nenhuma das tres foi executada ainda"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -3254,6 +3257,10 @@
         {
           "id": "ADV-73",
           "estado": "RETRATADO (medido): o portao outbound NAO e' codigo morto. service_agent_tools.go:242 e' alcancavel e bloqueia com motivo; :226 recebe effectOutboundAllowed e service_agents.go:336 o alimenta com consentGranted; ha teste do bloqueio (tools_test.go:103) e do motivo (audit_test.go:65). O MEDIO-1 do registo estava OBSOLETO."
+        },
+        {
+          "id": "ADV-74",
+          "estado": "ABERTO (medido nesta rodada): `contraprovas_medidas` misturava 3 contraprovas REAIS com 2 mutacoes que NADA matam ('portao_por_etapa_off' e 'reconferencia_inline_off', ambas 'NADA falha - sem defesa'). Separadas em `sem_defesa_medida`. AS DUAS LACUNAS CONTINUAM ABERTAS: nao ha teste que cubra essas defesas, e a acao (teste que falta / redundancia medida / remover) NAO foi executada."
         }
       ],
       "proximos_ataques": [
@@ -3267,16 +3274,23 @@
       "contraprovas_medidas": {
         "approvalsReady_off": "FALHA TestRuntimeNaoProduzEfeitoComAprovacaoPendenteNaNada (load-bearing)",
         "validateMissionApprovalBindings_off": "FALHAM TestApprovalValidationBindsPolicyExpiryAndDecisionActor e TestRuntimeFailsClosedWhenApprovalRecordIsMissing (load-bearing)",
-        "tenant_e_nonce_off": "FALHAM TestDecisaoDeAprovacaoNaoRevelaExistenciaEntreTenants, TestApprovalBindsActorOrganizationAndReason e TestApprovalCASAndNonceAreSingleUse (load-bearing)",
-        "portao_por_etapa_off": "NADA falha - sem defesa",
-        "reconferencia_inline_off": "NADA falha - sem defesa"
+        "tenant_e_nonce_off": "FALHAM TestDecisaoDeAprovacaoNaoRevelaExistenciaEntreTenants, TestApprovalBindsActorOrganizationAndReason e TestApprovalCASAndNonceAreSingleUse (load-bearing)"
       },
       "setima_ocorrencia_da_classe": {
         "onde": "E-415 - a minha propria prova da trava por organizacao",
         "classe": "assercao cuja cor nao depende do comportamento alegado",
         "detalhe": "o teste calculava o caminho da trava REPLICANDO a formula do produto; com a mutacao para trava global o produto usava global.lock e o teste segurava org-a.lock - arquivos diferentes, assercao passando sem medir nada. A contrapova pegou",
         "correcao_para_a_proxima_rodada": "extrair lockPath(organizationID) para um unico lugar compartilhado entre produto e teste, para que a mutacao mude o INPUT do teste"
-      }
+      },
+      "sem_defesa_medida": {
+        "significado": "MUTACOES QUE NAO MATAM NENHUM TESTE. Nao sao contraprovas: sao a MEDICAO DE UMA AUSENCIA. Desligar estas defesas NAO faz a suite falhar, entao NADA prova que elas defendem algo.",
+        "entradas": {
+          "portao_por_etapa_off": "NADA falha - sem defesa",
+          "reconferencia_inline_off": "NADA falha - sem defesa"
+        },
+        "acao_necessaria": "Para cada uma: decidir entre (a) escrever o teste que falta e move-la para contraprovas_medidas, ou (b) declarar que a defesa e' REDUNDANTE (outra camada ja' cobre) com a medicao que o mostre, ou (c) remover a defesa - porque defesa sem prova e' custo sem beneficio medido."
+      },
+      "contraprovas_medidas_nota": "Esta chave contem SOMENTE contraprovas que DISPARAM (a mutacao faz um teste nomeado FALHAR). Mutacoes que nao matam nada vivem em `sem_defesa_medida`."
     },
     "estagio_42": {
       "titulo": "HADES LIVE COMMERCE & AI SHOPPING AGENTS",
