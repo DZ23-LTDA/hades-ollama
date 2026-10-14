@@ -90,6 +90,16 @@ passe nos dois sentidos não prova nada):
    rotulada; o tokenizer real existe noutro caminho (`server/prompt.go`).
 5. **`encrypted_content` do protocolo de compactação não é cifrado** — é JSON canónico;
    o nome sugere proteção que não existe.
+6. **CADÊNCIA DE PUSH INVALIDA A VALIDAÇÃO (defeito operacional, meu).** Empurrei ~19
+   commits em rápida sucessão e o `concurrency: cancel-in-progress` dos workflows
+   **cancelou os runs intermédios**: `test` #1116 (E-575), `agentic-quality` #1892/#1895,
+   `class-a-plus-integrity` #1990. Um run `cancelled` **não é verde nem vermelho — é
+   `NAO_MEDIDO`**, e vários commits desta série nunca foram totalmente validados. Pior: o
+   `pr-gate` recusa passar quando um gate profundo está `cancelled` (E-541), logo o PR
+   pode estar bloqueado **pela cadência de push, não pelo código**. A regra já estava
+   escrita nesta missão («um push por run; ler o run anterior antes de empurrar») e foi
+   violada: ***a lição escrita não é a lição aplicada.*** Correcção em vigor: nenhum push
+   sem ler o run anterior.
 
 ---
 
