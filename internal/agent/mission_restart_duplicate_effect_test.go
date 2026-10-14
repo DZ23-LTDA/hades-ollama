@@ -31,7 +31,7 @@ func hashDoDescritor(t *testing.T, descritor ToolDescriptor) string {
 	t.Helper()
 	hash, err := toolDescriptorSHA256(descritor)
 	if err != nil {
-		t.Fatalf("calcular o SHA do descritor: %v", err)
+		t.Fatalf("obter o SHA do descritor: %v", err)
 	}
 	return hash
 }

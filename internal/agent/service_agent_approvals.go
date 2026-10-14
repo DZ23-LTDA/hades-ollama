@@ -662,7 +662,38 @@ func (s *ServiceAgentApprovalStore) FindDenied(organizationID, fingerprint strin
 //
 // A checagem de PRAZO acontece AQUI também, além da busca: entre a decisão e o consumo pode ter passado
 // tempo suficiente para a autorização vencer, e um caminho que consome sem conferir anularia o prazo.
+// 🚨 E-424 / ADV-66 (CRÍTICO, medido por auditoria independente): **a janela que este comentário dizia ter fechado
+// continuava ABERTA.** `Consume` era leitura-modificação-escrita **sem trava**: duas execuções simultâneas liam
+// `approved` antes de qualquer escrita, ambas gravavam `consumed` e **ambas executavam**. Sonda do auditor, com o
+// MESMO pedido e UMA decisão humana:
+//
+//	8 turnos simultâneos → executadas=3 escritas_no_CRM=3, todas com o MESMO ApprovalID
+//	8 Consume simultâneos → 20 de 20 rodadas com MAIS DE UM consumo bem-sucedido
+//
+// ⇒ **Agora a leitura-modificação-escrita acontece SOB TRAVA DE ARQUIVO** (`withFileLock`, o mesmo primitivo que o
+// outbox de push e o agendamento usam): *serializa entre goroutines e entre processos*. O corpo virou
+// `consumeLocked` — *e `loadFile`/`saveFile` NÃO travam por dentro (medido), então não há deadlock.*
+// ***"Uso único" só é verdade se a decisão de consumir e a gravação forem o mesmo passo indivisível.***
 func (s *ServiceAgentApprovalStore) Consume(organizationID, approvalID string, now time.Time) (ServiceAgentApproval, error) {
+	path := s.path(organizationID)
+	if path == "" {
+		// Sem persistência não existe estado compartilhado a proteger (raiz vazia = store sem arquivo).
+		return s.consumeLocked(organizationID, approvalID, now)
+	}
+	var resultado ServiceAgentApproval
+	err := withFileLock(path+".lock", func() error {
+		var errInterno error
+		resultado, errInterno = s.consumeLocked(organizationID, approvalID, now)
+		return errInterno
+	})
+	return resultado, err
+}
+
+// consumeLocked é o corpo do `Consume`, executado SOB a trava da organização.
+//
+// A checagem de PRAZO acontece AQUI também, além da busca: entre a decisão e o consumo pode ter passado
+// tempo suficiente para a autorização vencer, e um caminho que consome sem conferir anularia o prazo.
+func (s *ServiceAgentApprovalStore) consumeLocked(organizationID, approvalID string, now time.Time) (ServiceAgentApproval, error) {
 	file, err := s.loadFile(organizationID)
 	if err != nil {
 		return ServiceAgentApproval{}, err
@@ -756,6 +787,20 @@ func serviceAgentApprovalFingerprint(request ServiceAgentToolRequest, toolName s
 		"session=" + strings.TrimSpace(request.SessionID),
 		"provider=" + strings.TrimSpace(request.Provider),
 		"body=" + strings.TrimSpace(request.Body),
+		// 🚨 E-425 (ALTO, medido por DUAS auditorias independentes):
+		//   (a) `reason` NÃO estava aqui, e ele **é o efeito**: `inbox.handoff` grava
+		//       `"transferido para atendimento humano: " + reason` na conversa. Sonda: aprovação pedida com
+		//       reason="MOTIVO-APROVADO" e turno repetido com "MOTIVO-NAO-APROVADO" ⇒ `status=executed`, e a
+		//       conversa gravou literalmente o motivo **não aprovado**. Controle: trocar `assignee` ⇒
+		//       `approval_required` (*o probe distingue — não é artefato*);
+		//   (b) `agent` NÃO estava aqui: pedido feito por `support`, aprovado, e um turno idêntico com
+		//       `AgentID=receptionist` **executou** — *a aprovação de um agente consumida por outro*, que é
+		//       literalmente o item 1 da missão ("aceite aprovação de… outro agente"). Agrava: `inbox.handoff`
+		//       é declarado por **6 dos 7** agentes.
+		// ***A impressão digital dizia "AMARRADA aos PARÂMETROS" e media doze deles; o efeito de dois deles
+		// ficava de fora.***
+		"reason=" + strings.TrimSpace(request.Reason),
+		"agent=" + strings.TrimSpace(request.AgentID),
 	}
 	soma := sha256.Sum256([]byte(strings.Join(partes, "\x1f")))
 	return hex.EncodeToString(soma[:])
