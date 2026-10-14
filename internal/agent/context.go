@@ -313,6 +313,26 @@ func (s *ContextStore) UpdateProject(id, name, root string) (Project, error) {
 	return project, nil
 }
 
+// Root devolve a raiz de dados do store, ou "" quando o store é só em memória.
+//
+// PORQUE EXISTE (E-577): o complemento de memória precisa de um sítio para o histórico
+// bruto, e a disciplina desta missão é REUTILIZAR o escopo que já é governado em vez de
+// criar um segundo regime de permissões. O isolamento por organização já vive nesta
+// raiz; o histórico vai para dentro dela, e não para um diretório novo com regras
+// próprias que pudessem divergir. Um acessor explícito é melhor do que o servidor
+// adivinhar o caminho a partir de constantes.
+//
+// Devolve cópia sob leitura: a raiz não muda depois da construção, mas a leitura passa
+// pelo mesmo mutex que tudo o resto para não introduzir uma corrida nova.
+func (s *ContextStore) Root() string {
+	if s == nil {
+		return ""
+	}
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.root
+}
+
 func (s *ContextStore) DeleteProject(id string) error {
 	id = strings.TrimSpace(id)
 	if id == "" {
