@@ -110,7 +110,7 @@ func injectContextBootstrap(messages []api.Message, preamble string) []api.Messa
 // handler. Qualquer falha na leitura do corpo devolve o pedido original: a
 // injeção de contexto não pode impedir uma conversa legítima, e o erro de corpo
 // inválido continua sendo do handler de chat.
-func withAgentChatContext() gin.HandlerFunc {
+func withAgentChatContext(raizDoHistorico string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if c == nil || c.Request == nil || c.Request.Body == nil {
 			c.Next()
@@ -150,7 +150,14 @@ func withAgentChatContext() gin.HandlerFunc {
 		// declarado" e NADA muda: esta ligação não altera comportamento por omissão.
 		// A decisão fica registada no contexto do pedido (não só num log) para que o
 		// handler, uma tela de Cowork ou um teste a possam LER.
-		RegistarDecisaoDeOrcamento(c, DecidirOrcamentoDoChat(preamble, request.Messages, OrcamentoDeContextoDoChat()))
+		decisao := DecidirOrcamentoDoChat(preamble, request.Messages, OrcamentoDeContextoDoChat())
+		RegistarDecisaoDeOrcamento(c, decisao)
+		// COMPACTACAO (§2): quando a decisao manda, o bruto e' gravado ANTES do resumo e as
+		// mensagens sao substituidas; em QUALQUER recusa ficam as originais (E-583).
+		compactadas, resultadoDaCompactacao := CompactarMensagensDoChat(raizDoHistorico, organizationID, projectID, request.Messages, decisao)
+		if resultadoDaCompactacao.Aplicada {
+			request.Messages = compactadas
+		}
 		request.Messages = injectContextBootstrap(request.Messages, preamble)
 		encoded, err := json.Marshal(request)
 		if err != nil {

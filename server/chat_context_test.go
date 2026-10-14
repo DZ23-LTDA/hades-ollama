@@ -128,7 +128,7 @@ func TestChatContextMiddlewareInjectsForAuthenticatedScope(t *testing.T) {
 	engine := gin.New()
 	engine.POST("/api/agent/v1/chat", func(c *gin.Context) {
 		c.Set("agent.organization", agent.Organization{ID: "org-a"})
-		withAgentChatContext()(c)
+		withAgentChatContext("")(c)
 	}, chatContextRecorder(&captured))
 
 	body := `{"model":"qwen2.5:7b","messages":[{"role":"user","content":"oi"}]}`
@@ -159,7 +159,7 @@ func TestChatContextMiddlewareLeavesBodyUntouchedWithoutScope(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	var captured []byte
 	engine := gin.New()
-	engine.POST("/api/agent/v1/chat", withAgentChatContext(), chatContextRecorder(&captured))
+	engine.POST("/api/agent/v1/chat", withAgentChatContext(""), chatContextRecorder(&captured))
 
 	body := `{"model":"qwen2.5:7b","messages":[{"role":"user","content":"oi"}]}`
 	recorder := httptest.NewRecorder()
@@ -177,7 +177,7 @@ func TestChatContextMiddlewareSurvivesInvalidBody(t *testing.T) {
 	engine := gin.New()
 	engine.POST("/api/agent/v1/chat", func(c *gin.Context) {
 		c.Set("agent.organization", agent.Organization{ID: "org-a"})
-		withAgentChatContext()(c)
+		withAgentChatContext("")(c)
 	}, chatContextRecorder(&captured))
 
 	recorder := httptest.NewRecorder()
