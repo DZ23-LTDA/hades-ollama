@@ -2416,7 +2416,10 @@
     "O MANIFESTO DE CAPTURA TAMBEM PASSA (E-406): screens:verify => 'capture manifest: PASS (10 files)', validando SHA-256 de cada arquivo. Nao e' 'existe uma pasta': e' conteudo verificado por hash",
     "A RECEITA FOI PARA O LUGAR CERTO (E-406): o sintoma 'o teste nao roda' custou duas sessoes em dois toolchains (Go e Node/esbuild). A tabela foi escrita no AGENTS.md, onde o proximo agente comeca a ler",
     "PRIMEIRO O INSTRUMENTO ERROU, DEPOIS A LEITURA MELHOROU (E-407/ADV-59): o meu classificador jogou 52 das 105 assercoes E2E em 'outro' e eu quase conclui que a suite so' afirmava presenca. Medindo o balde, 33 eram multi-linha - o defeito era do INSTRUMENTO. Antes de acusar o objeto, medir se o instrumento sabe le-lo",
-    "A SUITE E2E E' REAL MAS NAO PROVA AUSENCIA NEM CONVERGENCIA (E-407/ADV-59): 21 de presenca, 13 de ESTADO, 4 de conteudo, apenas 2 NEGATIVAS em 105, e ZERO de convergencia (toPass/poll/waitFor). Provar que algo NAO aconteceu e' exatamente a classe que derrubou seis linhas de prova nesta missao"
+    "A SUITE E2E E' REAL MAS NAO PROVA AUSENCIA NEM CONVERGENCIA (E-407/ADV-59): 21 de presenca, 13 de ESTADO, 4 de conteudo, apenas 2 NEGATIVAS em 105, e ZERO de convergencia (toPass/poll/waitFor). Provar que algo NAO aconteceu e' exatamente a classe que derrubou seis linhas de prova nesta missao",
+    "EU ACUSEI E ERA ARTEFATO DE LEITURA (E-408): declarei que a suite E2E quase nao provava ausencia e propus acrescentar negativas - mas o proprio spec separa as responsabilidades no cabecalho (UI = contrato cliente->HTTP; Go = semantica do grafo), e os testes Go tem 10 e 3 testes com 13 e 8 linhas de negacao. ADV-59 rebaixado",
+    "A CORRUPCAO ESTAVA NA MINHA TELA (E-408): vi 'automaÃ§Ãµes' num spec e alertei sobre UTF-8 quebrado; varri app/ui inteiro e ha 0 arquivos com mojibake - era o Get-Content do PowerShell lendo UTF-8 como ANSI. Antes de acusar o objeto, medir o instrumento, inclusive quando o instrumento sou eu lendo",
+    "CITAR UM ARTEFATO DE CONSOLE NUM DOCUMENTO TORNA A CORRUPCAO REAL (E-408): eu vi 'automaÃ§Ãµes' no output do PowerShell, alertei sobre UTF-8 quebrado e TRANSCREVI o texto para as linhas E-407/E-408 do indice. A varredura mostrou 0 arquivos corrompidos em app/ui - o defeito era a renderizacao do console. Mas o gate entao acusou 'documento com TEXTO CORROMPIDO (dupla codificacao): HADES_EVIDENCE_INDEX.md (2 ocorrencias)': a corrupcao passou a existir NO REPOSITORIO porque eu a coloquei la. O artefato de leitura virou dado permanente por transcricao"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -3086,9 +3089,9 @@
         },
         {
           "id": "ADV-59",
-          "severidade": "MEDIA (a suite E2E e' real mas quase nao prova ausencia nem convergencia)",
+          "severidade": "BAIXA (rebaixado apos medicao - era leitura minha, nao defeito)",
           "descoberto_por": "auto-auditoria da natureza das assercoes (E-407)",
-          "estado": "REGISTRADO, NAO CORRIGIDO",
+          "estado": "REBAIXADO: as provas negativas existem e no lugar certo (internal/agent/schedule_flow_test.go tem 10 testes com 13 linhas de negacao/bloqueio; server/agent_schedule_flow_test.go tem 3). O proprio cabecalho do spec declara a separacao contrato/semantica. Sobra apenas o limite de nao haver prova de convergencia eventual (toPass/poll) - adequado para vite preview com rotas interceptadas, mas declarado",
           "evidencia": "E-407",
           "descricao": "105 expects: 21 de presenca (toBeVisible), 13 de ESTADO (toBeDisabled/Enabled/Focused/Truthy), 4 de conteudo, 2 NEGATIVAS e ZERO de convergencia (toPass/poll/waitFor/reload). A suite prova que a UI renderiza e reage a estado, mas quase nao prova que algo NAO aconteceu - e essa e' exatamente a classe que derrubou seis linhas de prova nesta missao. E o meu primeiro classificador jogou 52 assercoes em 'outro' por nao lidar com multi-linha: o defeito era do INSTRUMENTO, nao da suite"
         }
@@ -3609,7 +3612,8 @@
         "manifesto": "docs/images/screens/class-a-plus-capture-manifest.json (schema class-a-plus.capture.v1)",
         "forca": "valida SHA-256 de cada arquivo - nao e' 'existe uma pasta', e' conteudo verificado por hash"
       },
-      "receita_documentada_em": "AGENTS.md (secao 'Windows: redirecione TMP/TEMP quando o teste nao roda')"
+      "receita_documentada_em": "AGENTS.md (secao 'Windows: redirecione TMP/TEMP quando o teste nao roda')",
+      "divisao_de_responsabilidades": "o spec de scheduleFlow declara no cabecalho: a UI prova o CONTRATO cliente->HTTP (rotas interceptadas, vite preview sem backend Go); a SEMANTICA do grafo (ordem topologica, bloqueio de dependentes, decodeJSON estrito) e' provada pelos testes Go (10 em internal/agent/schedule_flow_test.go, 3 em server/agent_schedule_flow_test.go). A ausencia de negativas na suite de UI e' POR DESENHO"
     }
   },
   "unlinked_evidence": {
@@ -3705,6 +3709,7 @@
     "E-404": "consolidacao de 3 stashes redundantes (medido) + checkpoint remedido",
     "E-405": "E2E real verde (exit 0) com a receita TMP/TEMP/TMPDIR sob _tmp",
     "E-406": "peso do E2E medido (18 testes/105 expects/0 skips) + screens:verify PASS + receita no AGENTS.md",
-    "E-407": "natureza das 105 assercoes E2E: 2 negativas, 0 convergencia; instrumento corrigido"
+    "E-407": "natureza das 105 assercoes E2E: 2 negativas, 0 convergencia; instrumento corrigido",
+    "E-408": "correcao do meu ADV-59: as negativas existem nos testes Go; 0 mojibake"
   }
 }
