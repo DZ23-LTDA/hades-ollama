@@ -5,6 +5,8 @@ import { StatusBar } from "expo-status-bar";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Alert, AppState, KeyboardAvoidingView, Platform, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { buildApprovalDecisionPayload, missionStorageKey, pushStorageKey, queueStorageKey, shouldQueueOffline } from "./offlinePolicy";
+import { fetchMissionContext } from "./missionContextClient";
+import type { MissionContextView } from "./missionContextPolicy";
 
 Notifications.setNotificationHandler({ handleNotification: async () => ({ shouldShowAlert: true, shouldShowBanner: true, shouldShowList: true, shouldPlaySound: true, shouldSetBadge: false }) });
 
@@ -38,6 +40,11 @@ export default function App() {
 	const [subjectID, setSubjectID] = useState<string | null>(null);
   const [objective, setObjective] = useState("");
   const [mission, setMission] = useState<Mission | null>(null);
+  // D-9: o CONTEXTO da missão — o que ela SABE. Opcional por desenho: a busca NÃO lança
+  // (`fetchMissionContext` devolve vista vazia com motivo), logo uma falha de contexto nunca
+  // impede ver, executar ou aprovar a missão.
+  const [missionContext, setMissionContext] = useState<MissionContextView | null>(null);
+  const [missionContextReason, setMissionContextReason] = useState<string | undefined>(undefined);
   const [events, setEvents] = useState<Event[]>([]);
   const [busy, setBusy] = useState(false);
 	  const [error, setError] = useState("");
@@ -250,6 +257,18 @@ export default function App() {
 	    };
 	  }, []);
 
+  useEffect(() => {
+    const missionId = mission?.id;
+    if (!missionId || !base) { setMissionContext(null); setMissionContextReason(undefined); return; }
+    let cancelado = false;
+    void fetchMissionContext(missionId, fetch, base, token).then((resposta) => {
+      if (cancelado) return;
+      setMissionContext(resposta.vista);
+      setMissionContextReason(resposta.motivo);
+    });
+    return () => { cancelado = true; };
+  }, [mission?.id, base, token]);
+
   const approvals = useMemo(() => mission?.approvals?.filter((approval) => approval.status === "PENDING") ?? [], [mission]);
   const mutationHeaders = () => mission?.version ? { "If-Match": String(mission.version) } : undefined;
   const perform = async (path: string, method: string, body: unknown, fallback: string) => {
@@ -299,7 +318,7 @@ export default function App() {
     <View style={styles.card}><Text style={styles.label}>Servidor</Text><TextInput value={draftBase} onChangeText={setDraftBase} autoCapitalize="none" autoCorrect={false} style={styles.input} /><Text style={styles.label}>Token Bearer (armazenado no SecureStore)</Text><TextInput value={draftToken} onChangeText={setDraftToken} autoCapitalize="none" autoCorrect={false} secureTextEntry style={styles.input} /><View style={styles.row}><Pressable onPress={() => void saveSession()} accessibilityRole="button" accessibilityLabel="Salvar sessão" style={[styles.secondary, { flex: 1 }]}><Text style={styles.secondaryText}>Salvar sessão</Text></Pressable><Pressable onPress={() => void clearSession()} accessibilityRole="button" accessibilityLabel="Sair da sessão" style={styles.secondary}><Text style={styles.secondaryText}>Sair</Text></Pressable></View></View>
     <View style={styles.card}><Text style={styles.label}>Novo objetivo</Text><TextInput value={objective} onChangeText={setObjective} multiline placeholder="Ex.: verificar os testes do projeto" style={[styles.input, styles.multiline]} /><Pressable disabled={busy || !objective.trim()} onPress={() => void create()} accessibilityRole="button" accessibilityLabel="Criar missão" style={[styles.primary, (!objective.trim() || busy) && styles.disabled]}>{busy ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryText}>Criar missão</Text>}</Pressable></View>
     {error ? <Text style={styles.error}>{error}</Text> : null}
-	    {mission ? <View style={styles.card}><View style={styles.row}><View style={{ flex: 1 }}><Text style={styles.muted}>{mission.id} · v{mission.version ?? "?"}</Text><Text style={styles.mission}>{mission.objective}</Text></View><Text style={styles.status}>{mission.state}</Text></View><Pressable onPress={() => void run()} disabled={busy || approvals.length > 0 || mission.state === "COMPLETED"} accessibilityRole="button" accessibilityLabel="Executar missão" style={[styles.secondary, (busy || approvals.length > 0) && styles.disabled]}><Text style={styles.secondaryText}>Executar missão</Text></Pressable>{approvals.map((approval) => <View key={approval.id} style={styles.approval}><Text style={styles.label}>Aprovação: {approval.step_id}</Text><TextInput value={approvalReasons[approval.id] ?? ""} onChangeText={(value) => setApprovalReasons((current) => ({ ...current, [approval.id]: value }))} placeholder="Por que aprovar ou rejeitar?" accessibilityLabel={`Motivo do approval ${approval.step_id}`} multiline style={[styles.input, styles.approvalReason]} /><View style={styles.row}><Pressable onPress={() => void decide(approval.id, approval.nonce, true)} disabled={busy || !(approvalReasons[approval.id] ?? "").trim()} accessibilityRole="button" accessibilityLabel={`Aprovar ${approval.step_id}`} style={[styles.approve, (busy || !(approvalReasons[approval.id] ?? "").trim()) && styles.disabled]}><Text style={styles.primaryText}>Aprovar</Text></Pressable><Pressable onPress={() => void decide(approval.id, approval.nonce, false)} disabled={busy || !(approvalReasons[approval.id] ?? "").trim()} accessibilityRole="button" accessibilityLabel={`Rejeitar ${approval.step_id}`} style={[styles.reject, (busy || !(approvalReasons[approval.id] ?? "").trim()) && styles.disabled]}><Text style={styles.primaryText}>Rejeitar</Text></Pressable></View></View>)}<Text style={styles.label}>Linha do tempo</Text>{events.map((event) => <View key={event.id} style={styles.event}><View style={styles.dot} /><View><Text style={styles.eventType}>{event.type}</Text><Text style={styles.muted}>{event.step_id ?? "mission"} · {new Date(event.created_at).toLocaleString()}</Text></View></View>)}</View> : null}
+	    {mission ? <View style={styles.card}><View style={styles.row}><View style={{ flex: 1 }}><Text style={styles.muted}>{mission.id} · v{mission.version ?? "?"}</Text><Text style={styles.mission}>{mission.objective}</Text></View><Text style={styles.status}>{mission.state}</Text></View><Pressable onPress={() => void run()} disabled={busy || approvals.length > 0 || mission.state === "COMPLETED"} accessibilityRole="button" accessibilityLabel="Executar missão" style={[styles.secondary, (busy || approvals.length > 0) && styles.disabled]}><Text style={styles.secondaryText}>Executar missão</Text></Pressable>{approvals.map((approval) => <View key={approval.id} style={styles.approval}><Text style={styles.label}>Aprovação: {approval.step_id}</Text><TextInput value={approvalReasons[approval.id] ?? ""} onChangeText={(value) => setApprovalReasons((current) => ({ ...current, [approval.id]: value }))} placeholder="Por que aprovar ou rejeitar?" accessibilityLabel={`Motivo do approval ${approval.step_id}`} multiline style={[styles.input, styles.approvalReason]} /><View style={styles.row}><Pressable onPress={() => void decide(approval.id, approval.nonce, true)} disabled={busy || !(approvalReasons[approval.id] ?? "").trim()} accessibilityRole="button" accessibilityLabel={`Aprovar ${approval.step_id}`} style={[styles.approve, (busy || !(approvalReasons[approval.id] ?? "").trim()) && styles.disabled]}><Text style={styles.primaryText}>Aprovar</Text></Pressable><Pressable onPress={() => void decide(approval.id, approval.nonce, false)} disabled={busy || !(approvalReasons[approval.id] ?? "").trim()} accessibilityRole="button" accessibilityLabel={`Rejeitar ${approval.step_id}`} style={[styles.reject, (busy || !(approvalReasons[approval.id] ?? "").trim()) && styles.disabled]}><Text style={styles.primaryText}>Rejeitar</Text></Pressable></View></View>)}<Text style={styles.label}>Contexto da missão (o que ela sabe)</Text>{missionContextReason ? <Text style={styles.muted}>Contexto indisponível: {missionContextReason}</Text> : null}{missionContext?.objective ? <Text style={styles.muted}>Objetivo: {missionContext.objective}</Text> : null}{missionContext?.plan && missionContext.plan.length > 0 ? <Text style={styles.muted}>Plano: {missionContext.plan.join(" · ")}</Text> : null}{missionContext?.checkpoints && missionContext.checkpoints.length > 0 ? <Text style={styles.muted}>Checkpoints: {missionContext.checkpoints.join(" · ")}</Text> : null}{missionContext?.handoff ? <Text style={styles.muted}>{missionContext.handoff}</Text> : null}<Text style={styles.label}>Linha do tempo</Text>{events.map((event) => <View key={event.id} style={styles.event}><View style={styles.dot} /><View><Text style={styles.eventType}>{event.type}</Text><Text style={styles.muted}>{event.step_id ?? "mission"} · {new Date(event.created_at).toLocaleString()}</Text></View></View>)}</View> : null}
 	  </ScrollView></KeyboardAvoidingView></SafeAreaView>;
 }
 
