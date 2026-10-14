@@ -338,7 +338,21 @@ func (s *CompanyStore) CreateOrder(id string, order CompanyOrder) (Company, erro
 	return s.mutate(id, func(company *Company) error {
 		if order.IdempotencyKey != "" {
 			for _, existing := range company.Orders {
-				if existing.IdempotencyKey == order.IdempotencyKey {
+				// 🚨 E-462 (MEDIDO): a comparação usava **só a chave** ✗, e a chave **não inclui o `ProductID`** ⇒
+				// *um pedido do produto B **desaparecia** por causa de um pedido do produto A* — **sem erro, sem aviso**
+				// ✓✓. ***O cliente pediu dois produtos e recebeu um.***
+				//
+				// ⇒ o escopo da chave passa a incluir **o PRODUTO e o CLIENTE**: *a mesma chave para intenções diferentes
+				// já não engole a segunda.* É a **mesma classe** do ADV-75 (*contacto*) e do ADV-76 (*workflow*):
+				// *comparar um identificador **sem o escopo a que ele pertence***.
+				//
+				// ⚠️ **LIMITE DECLARADO, e ele NÃO está corrigido**: quando a intenção **é** a mesma, o `return nil`
+				// **não devolve nada ao chamador** ✗ — *nem o pedido existente, nem um sinal de replay.* É o **oposto** da
+				// lição de E-458 (*idempotência de verdade é devolver o MESMO RECURSO*); corrigi-lo exige mudar a
+				// assinatura de `CreateOrder`.
+				if existing.IdempotencyKey == order.IdempotencyKey &&
+					existing.ProductID == order.ProductID &&
+					existing.CustomerRef == order.CustomerRef {
 					return nil
 				}
 			}
