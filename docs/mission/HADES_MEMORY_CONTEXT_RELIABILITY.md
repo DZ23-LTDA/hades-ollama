@@ -257,3 +257,31 @@ a falhar, aos 20m em vez de aos 10m). O motivo ficou escrito no próprio workflo
 **O que isto ainda NÃO prova**: que 20 m chega. A confirmação é o próximo `race (macos-latest)`
 ficar verde; se voltar a estourar, o número está medido e o passo seguinte é **dividir o
 pacote** ou **reduzir peso sob `-race`** — nunca subir o limite outra vez.
+
+### D-5. Identidade de MISSÃO no funil do chat — decisão, não implementação
+
+**O facto medido.** `chat_context.go:55-63` constrói o `ContextBootstrapInput` com
+`Version`, `OrganizationID`, `ProjectID`, `Objective` (a **última mensagem do utilizador**,
+`:59`/`:71`), `GrantedCapabilities`, `Policy`, `UntrustedSources` — e **sem `MissionID`**. Logo
+o handoff (que deriva de uma missão) **não alcança o contexto do modelo no chat**; alcança-o
+no caminho de missão (`missionContext`, `agent_routes.go:2894`). Isto é um **limite do
+contrato**, e eu tinha-o declarado como se estivesse resolvido.
+
+**As três opções, com o custo de cada uma:**
+1. **Cabeçalho `X-Hades-Mission`** no pedido de chat, validado por `missionForRequest`
+   (o mesmo guard, não um segundo). Menor superfície; e o guard existente já aplica
+   isolamento por organização.
+2. **Corpo/parametro explícito** no pedido de chat. Mais visível, mas muda o contrato do
+   corpo que hoje é compatível com `/api/chat`.
+3. **Não fazer nada** e deixar o chat project-scoped. Zero risco, zero ganho: o handoff
+   continua a não chegar ao modelo no chat.
+
+**Recomendação: (1)** — com uma condição inegociável: o identificador **vem do pedido**, logo
+**tem de passar pelo guard de missão** (`missionForRequest`), e o handoff derivado tem de
+seguir pela versão **REDIGIDA** (`ParaPreambulo`, E-597). Sem isso, um cabeçalho controlado
+pelo cliente seria uma **superfície de injecção de contexto entre inquilinos** — exactamente o
+que o E-597 fechou no outro lado.
+
+**E uma nota que não é detalhe:** (1) faz o preâmbulo do chat passar a carregar estado de uma
+missão. Isso tem de ser **auditável** — quem injectou o quê, em que missão — senão troca-se um
+limite por um caminho sem rasto. O histórico bruto (E-571) é o sítio onde esse rasto já existe.
