@@ -90,10 +90,14 @@ func TestRotaDeAprovacaoDeServiceAgentExigePapelOwnerOuAdmin(t *testing.T) {
 		corpo  string
 		oque   string
 	}{
-		{"decidir", http.MethodPost, "/api/agent/v1/service-agents/approvals/" + pedidoInexistente + "/decide", corpo,
-			"aprovar a própria escrita"},
-		{"redefinir aprovadores", http.MethodPut, "/api/agent/v1/service-agents/approval-approvers",
-			`{"actor_id":"presidente-da-empresa","approvers":["presidente-da-empresa"]}`, "definir quem pode aprovar"},
+		{
+			"decidir", http.MethodPost, "/api/agent/v1/service-agents/approvals/" + pedidoInexistente + "/decide", corpo,
+			"aprovar a própria escrita",
+		},
+		{
+			"redefinir aprovadores", http.MethodPut, "/api/agent/v1/service-agents/approval-approvers",
+			`{"actor_id":"presidente-da-empresa","approvers":["presidente-da-empresa"]}`, "definir quem pode aprovar",
+		},
 	}
 	for _, caso := range casos {
 		t.Run("viewer nao pode "+caso.nome, func(t *testing.T) {

@@ -30,7 +30,7 @@ func TestDecisoesConcorrentesNaoPerdemRegistro(t *testing.T) {
 	// Oito aprovacoes PENDENTES, cada uma distinta. *Distintas de proposito: decidir a MESMA duas vezes mediria
 	// idempotencia, nao a perda de registro.*
 	ids := make([]string, 0, quantas)
-	for i := 0; i < quantas; i++ {
+	for i := range quantas {
 		pedido := ServiceAgentApproval{
 			AgentID:     "agente-concorrente",
 			Fingerprint: "impressao-" + string(rune('a'+i)),

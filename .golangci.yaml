@@ -46,6 +46,15 @@ linters:
         - operacional
         # Vocabulário do fluxo agendado (P0-2): dependente, condicional.
         - dependente
+        # E-502 (MEDIDO): o `misspell` acusou 5 palavras portuguesas correctas a mais.
+        # ***A chave é `ignore-rules`, não `ignore-words`*** — *foi escrever a chave errada que fez o
+        # `golangci-lint` sair com `exit 3` (erro de config), e eu revertei a edição sem ver a mensagem.*
+        # *O mecanismo já existia, com o mesmo propósito; faltava acrescentar as palavras.*
+        - convincente   # acusada como "convenient"
+        - dependencias  # acusada como "dependencies"
+        - contactos     # acusada como "contacts"
+        - Calcular      # acusada como "Calculator"
+        - intencional   # acusada como "intentional"
         - condicional
         - cliente
         - clientes

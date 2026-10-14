@@ -28,8 +28,10 @@ func TestModeloRoteadoChegaNaFerramenta(t *testing.T) {
 	emissor := &ferramentaQueAnotaModelo{}
 
 	// (1) COM registry e pin no passo.
-	missaoComPin := []Step{{ID: "passo-pinado", Kind: "workspace.list", Title: "anotar",
-		State: StepPending, PinnedModelID: "local/barato"}}
+	missaoComPin := []Step{{
+		ID: "passo-pinado", Kind: "workspace.list", Title: "anotar",
+		State: StepPending, PinnedModelID: "local/barato",
+	}}
 	runtime, id, eventos := missaoRoteada(t, emissor, missaoComPin, registryDeTeste(t), true)
 	if err := runtime.Run(context.Background(), id); err != nil {
 		t.Fatalf("executar missao roteada: %v", err)
@@ -84,8 +86,10 @@ type ferramentaQueAnotaModelo struct {
 }
 
 func (f *ferramentaQueAnotaModelo) Descriptor() ToolDescriptor {
-	return ToolDescriptor{Name: "workspace.list", Description: "anota o modelo recebido",
-		Scopes: []string{"workspace:read"}}
+	return ToolDescriptor{
+		Name: "workspace.list", Description: "anota o modelo recebido",
+		Scopes: []string{"workspace:read"},
+	}
 }
 
 func (f *ferramentaQueAnotaModelo) Execute(_ context.Context, contexto ToolContext, _ map[string]any) (ToolResult, error) {

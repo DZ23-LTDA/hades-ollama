@@ -61,34 +61,62 @@ func TestTodasAsPartesDaImpressaoDigitalSaoAmarradas(t *testing.T) {
 		alterar func(*ServiceAgentToolRequest)
 		ferram  string
 	}{
-		{"toolName", "sem ele, a aprovação de `inbox.assign` autoriza `crm.opportunity.write`",
-			func(*ServiceAgentToolRequest) {}, "crm.opportunity.write"},
-		{"org", "sem ele, aprovação de uma organização vale noutra",
-			func(r *ServiceAgentToolRequest) { r.OrganizationID = "org-b" }, ferramenta},
-		{"conversation", "sem ele, a aprovação vale noutra conversa",
-			func(r *ServiceAgentToolRequest) { r.ConversationID = "cv-2" }, ferramenta},
-		{"contact", "sem ele, a aprovação vale para outro contato",
-			func(r *ServiceAgentToolRequest) { r.ContactID = "ct-2" }, ferramenta},
-		{"title", "o título é o rótulo da oportunidade criada",
-			func(r *ServiceAgentToolRequest) { r.Title = "Outro plano" }, ferramenta},
-		{"value", "aprovar 100 não pode autorizar 10.000 — é a promessa nº 2 do contrato",
-			func(r *ServiceAgentToolRequest) { r.ValueCents = 1 }, ferramenta},
-		{"owner", "o dono da oportunidade muda quem responde por ela",
-			func(r *ServiceAgentToolRequest) { r.OwnerID = "outra-pessoa" }, ferramenta},
-		{"assignee", "o responsável muda quem executa",
-			func(r *ServiceAgentToolRequest) { r.Assignee = "outra-pessoa" }, ferramenta},
-		{"company", "a empresa é o escopo de empresa/social/voz",
-			func(r *ServiceAgentToolRequest) { r.CompanyID = "co-2" }, ferramenta},
-		{"session", "uma aprovação para uma sessão de voz não pode valer para outra",
-			func(r *ServiceAgentToolRequest) { r.SessionID = "sess-2" }, ferramenta},
-		{"provider", "o canal de origem muda o que o provedor executa",
-			func(r *ServiceAgentToolRequest) { r.Provider = "telegram" }, ferramenta},
-		{"body", "o corpo é o conteúdo que será gravado",
-			func(r *ServiceAgentToolRequest) { r.Body = "outro corpo" }, ferramenta},
-		{"reason", "`inbox.handoff` grava o motivo literalmente na conversa (E-425)",
-			func(r *ServiceAgentToolRequest) { r.Reason = "outro motivo" }, ferramenta},
-		{"agent", "`inbox.handoff` é declarado por 6 dos 7 agentes: reuso cruzado não é caso de canto (E-425)",
-			func(r *ServiceAgentToolRequest) { r.AgentID = "receptionist" }, ferramenta},
+		{
+			"toolName", "sem ele, a aprovação de `inbox.assign` autoriza `crm.opportunity.write`",
+			func(*ServiceAgentToolRequest) {}, "crm.opportunity.write",
+		},
+		{
+			"org", "sem ele, aprovação de uma organização vale noutra",
+			func(r *ServiceAgentToolRequest) { r.OrganizationID = "org-b" }, ferramenta,
+		},
+		{
+			"conversation", "sem ele, a aprovação vale noutra conversa",
+			func(r *ServiceAgentToolRequest) { r.ConversationID = "cv-2" }, ferramenta,
+		},
+		{
+			"contact", "sem ele, a aprovação vale para outro contato",
+			func(r *ServiceAgentToolRequest) { r.ContactID = "ct-2" }, ferramenta,
+		},
+		{
+			"title", "o título é o rótulo da oportunidade criada",
+			func(r *ServiceAgentToolRequest) { r.Title = "Outro plano" }, ferramenta,
+		},
+		{
+			"value", "aprovar 100 não pode autorizar 10.000 — é a promessa nº 2 do contrato",
+			func(r *ServiceAgentToolRequest) { r.ValueCents = 1 }, ferramenta,
+		},
+		{
+			"owner", "o dono da oportunidade muda quem responde por ela",
+			func(r *ServiceAgentToolRequest) { r.OwnerID = "outra-pessoa" }, ferramenta,
+		},
+		{
+			"assignee", "o responsável muda quem executa",
+			func(r *ServiceAgentToolRequest) { r.Assignee = "outra-pessoa" }, ferramenta,
+		},
+		{
+			"company", "a empresa é o escopo de empresa/social/voz",
+			func(r *ServiceAgentToolRequest) { r.CompanyID = "co-2" }, ferramenta,
+		},
+		{
+			"session", "uma aprovação para uma sessão de voz não pode valer para outra",
+			func(r *ServiceAgentToolRequest) { r.SessionID = "sess-2" }, ferramenta,
+		},
+		{
+			"provider", "o canal de origem muda o que o provedor executa",
+			func(r *ServiceAgentToolRequest) { r.Provider = "telegram" }, ferramenta,
+		},
+		{
+			"body", "o corpo é o conteúdo que será gravado",
+			func(r *ServiceAgentToolRequest) { r.Body = "outro corpo" }, ferramenta,
+		},
+		{
+			"reason", "`inbox.handoff` grava o motivo literalmente na conversa (E-425)",
+			func(r *ServiceAgentToolRequest) { r.Reason = "outro motivo" }, ferramenta,
+		},
+		{
+			"agent", "`inbox.handoff` é declarado por 6 dos 7 agentes: reuso cruzado não é caso de canto (E-425)",
+			func(r *ServiceAgentToolRequest) { r.AgentID = "receptionist" }, ferramenta,
+		},
 	}
 
 	vistas := map[string]bool{}

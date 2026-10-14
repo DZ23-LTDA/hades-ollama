@@ -41,9 +41,12 @@ func TestMotorDeAgendamentoTemChamadorEmProducao(t *testing.T) {
 	definicao := regexp.MustCompile(`^func NewSchedulingStore\s*\(`)
 
 	var emProducao []string
+	var saltados []string // E-503: *o que a varredura nao conseguiu ler nao some: fica aqui.*
 	err := filepath.WalkDir(raiz, func(caminho string, entrada os.DirEntry, erro error) error {
 		if erro != nil {
-			return nil // *caminho ilegivel nao e' achado: e' ruido de varredura.*
+			saltados = append(saltados, caminho+": "+erro.Error())
+			//nolint:nilerr // *caminho ilegivel nao invalida a varredura: o salto fica REGISTADO em `saltados`, e abortar aqui esconderia os restantes ficheiros.*
+			return nil
 		}
 		if entrada.IsDir() {
 			nome := entrada.Name()
@@ -58,6 +61,8 @@ func TestMotorDeAgendamentoTemChamadorEmProducao(t *testing.T) {
 		}
 		dados, erroLeitura := os.ReadFile(caminho)
 		if erroLeitura != nil {
+			saltados = append(saltados, caminho+": "+erroLeitura.Error())
+			//nolint:nilerr // *uma leitura que falhou nao invalida a varredura: o ficheiro entra em `saltados` com o motivo, e o laco continua.*
 			return nil
 		}
 		for numero, linha := range strings.Split(string(dados), "\n") {

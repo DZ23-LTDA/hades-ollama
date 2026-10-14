@@ -2687,7 +2687,13 @@
     "E OS 22 CHECKS CONTAM UMA HISTORIA (E-500): 16 success, 3 skipped (linux/windows/go_license, decididos pelo job 'changes'), 4 in_progress (test macos/windows + race macos/ubuntu) e 1 'failure' que e' cancelamento. ⇒ *o que eu posso afirmar: os gates que CONCLUIRAM passaram; o que 'falhou' foi cancelado por mim.*",
     "O ADV-24 ESTAVA RESOLVIDO - E HA' UM TESTE QUE O DIZ POR NOME (E-501): o E-349 declarava 'NENHUM evento foi observado' e 'nao sei ainda'. MEDIDO: TestLacoRealPersisteEventosComMissaoValida PASSA e o log diz 'ADV-24 RESOLVIDO: 4 evento(s) do laco persistidos'. O t.Fatal da linha 132 diz 'ADV-24 NAO resolvido' - *o teste foi escrito PARA fechar este achado.*",
     "DECIMA OITAVA VARIANTE DA MESMA CLASSE (E-501): declarei uma anomalia ABERTA ('nao sei ainda') sem procurar o teste que a fechava POR NOME. *O nome do teste continha a resposta: 'LacoRealPersisteEventos'.*",
-    "E O T4 COM MODELO LOCAL REAL PASSA (E-501): TestFixerComModeloLocalConsertaNoLacoReal -> 'T4 modelo=qwen2.5:7b especialista=calc passou=true exit=0 arquivos=[calc.go] erro=\"\"', veredito MESCLADO, duracao 12.9s. E TestRepairLoopSucceeds PASSA em 3.92s. ⇒ *o laco de reparo funciona com o Ollama local, medido.*"
+    "E O T4 COM MODELO LOCAL REAL PASSA (E-501): TestFixerComModeloLocalConsertaNoLacoReal -> 'T4 modelo=qwen2.5:7b especialista=calc passou=true exit=0 arquivos=[calc.go] erro=\"\"', veredito MESCLADO, duracao 12.9s. E TestRepairLoopSucceeds PASSA em 3.92s. ⇒ *o laco de reparo funciona com o Ollama local, medido.*",
+    "E-502 (o lint de 27 para 8 — e as 8 restantes são pré-existentes): `golangci-lint` **2.14.0** local · `_tmp_gl_v4.txt` · `.golangci.yaml` · 5 ficheiros corrigidos",
+    "E-503 (`intrange`, `gofumpt` e `nilerr` — corrigidos na fonte): 5 ficheiros · `go vet` **exit 0**",
+    "E-504 (o meu local NÃO reproduz o CI — 2 variáveis e um separador): `go test ./...` local · 6 pacotes falham · `app/store`, `app/ui`, `app/server`, `app/updater`, `cmd/launch`, `create`",
+    "E-505 (o `main` está vermelho — e o commit que o tornou vermelho não toca Go): `actions_list` em `main` · `get_commit 4b3e21854` (*9 ficheiros, **zero Go***)",
+    "E-506 (o CI do `#438` está VERDE — `dz23-agentic-quality` passou com `go test ./...`): `actions_list dz23-agentic-quality.yaml` · run **1853** @ `53a7f4280` → **`success`**",
+    "E-507 (o `main` real é `4b3e21854` — e o E-495 «corrigiu» um número certo): `actions_list branch=main` · main = **4b3e21854** · E-495 dizia 2bd4dd0eb"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",

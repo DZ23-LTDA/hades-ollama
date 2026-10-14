@@ -35,7 +35,7 @@ func TestReagendarDepoisDeCancelarComAMesmaChave(t *testing.T) {
 		t.Fatalf("criar recurso: %v", err)
 	}
 	dia := time.Date(2026, 10, 14, 0, 0, 0, 0, time.UTC)
-	for deslocamento := 0; deslocamento < 7; deslocamento++ {
+	for deslocamento := range 7 {
 		if _, err := store.AddShift(SchedulingShift{
 			OrganizationID: organizacao, ResourceID: recurso.ID,
 			Weekday: int(dia.AddDate(0, 0, deslocamento).Weekday()), OpensAt: 0, ClosesAt: 24 * 60,

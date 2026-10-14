@@ -455,7 +455,7 @@ func TestLembretesNaSuperficie(t *testing.T) {
 	}
 	// O turno nasce no dia da semana da data escolhida - *e a data é FIXA, para o teste não depender do relógio.*
 	dia, _ := time.Parse("2006-01-02", "2026-10-14")
-	for deslocamento := 0; deslocamento < 7; deslocamento++ {
+	for deslocamento := range 7 {
 		if _, err := loja.AddShift(agent.SchedulingShift{
 			OrganizationID: organizacao, ResourceID: recurso.ID,
 			Weekday: int(dia.AddDate(0, 0, deslocamento).Weekday()), OpensAt: 0, ClosesAt: 24 * 60,

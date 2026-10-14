@@ -337,8 +337,10 @@ func (a *agentAPI) schedulingDueReminders(c *gin.Context) {
 		writeAgentError(c, http.StatusBadRequest, err)
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"appointments": devidos, "count": len(devidos), "kind": tipo,
-		"lead_minutes": antecedencia})
+	c.JSON(http.StatusOK, gin.H{
+		"appointments": devidos, "count": len(devidos), "kind": tipo,
+		"lead_minutes": antecedencia,
+	})
 }
 
 // schedulingMarkReminderSent registra que o lembrete FOI enviado. *A recusa de duplicado é do MOTOR, e é preservada.*
