@@ -2218,6 +2218,37 @@ func (r *Runtime) Run(ctx context.Context, id string) (runErr error) {
 		if step.State == StepSucceeded {
 			continue
 		}
+		// 🌉 E-437 (Estagio 43) — **O CONSUMIDOR DA PONTE.** Era aqui que o laco escolhia a FERRAMENTA por passo
+		// (`r.tools.Get`, logo abaixo) e **nada** escolhia o MODELO ✗: `RouteModelForStep` existia desde E-436 e
+		// **nao era chamada por ninguem**. *Uma entrada sem consumidor e' um contrato, nao uma integracao.*
+		//
+		// **O QUE ESTA CHAMADA FAZ**: com registry injetado, a decisao por passo (*capacidades + pin*) e' tomada e
+		// **REGISTRADA** no evento `step.model.route`, com o modelo vencedor e a justificativa - *que e' o que o
+		// Estagio 43 exige que fique na cadeia de evidencias.*
+		//
+		// **O QUE ELA NAO FAZ, e precisa ficar dito**: ela **nao troca o executor**. O passo continua executando com
+		// o planejador da MISSAO; a decisao por passo fica **medida e registrada**, mas ainda nao **aplicada**.
+		// *Trocar o executor e' o incremento seguinte, e chama-lo de feito seria a classe que esta missao derruba.*
+		//
+		// **SEM REGISTRY NADA MUDA**: `r.models == nil` ⇒ *o ramo nao entra, e todo o comportamento anterior
+		// permanece* ✓ - e' isso que torna esta ligacao segura.
+		if r.models != nil {
+			decisao, erroRota := r.RouteModelForStep(mission, *step)
+			if erroRota != nil {
+				// FALHA FECHADO: *um passo cujas exigencias nao podem ser atendidas NAO executa* - em vez de
+				// executar no modelo da missao fingindo que a exigencia foi honrada.
+				return r.failStep(mission, step, fmt.Errorf("roteamento de modelo do passo %q: %w", step.ID, erroRota))
+			}
+			if err := r.observeEvent(mission, "step.model.route", step.ID, map[string]any{
+				"step_id": step.ID,
+				"model":   decisao.Model.ID,
+				"score":   decisao.Score,
+				"reason":  decisao.Reason,
+				"pinned":  step.PinnedModelID,
+			}); err != nil {
+				return err
+			}
+		}
 		tool, ok := r.tools.Get(step.Kind)
 		if !ok {
 			return r.failStep(mission, step, fmt.Errorf("tool %q is not registered", step.Kind))

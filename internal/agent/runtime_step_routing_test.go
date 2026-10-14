@@ -65,9 +65,13 @@ func TestRuntimeRoteiaModeloPorPassoEFalhaFechadoSemRegistry(t *testing.T) {
 	}
 
 	// E uma exigencia que o pin nao satisfaz tem de FALHAR no runtime tambem - *a ponte nao atropela a capacidade.*
+	//
+	// ⚠️ E-437: eu havia escrito `Mission{Capabilities: []string{"vision"}}` ✗ — *mas as capacidades da **missão** são
+	// de **FERRAMENTA**, e a ponte (corrigida) as **ignora*** ⇒ *a exigência de modelo tem de vir do **PASSO**.* *O
+	// teste falhou por isso, e o modo de falha confirma a correção: o pin passou porque nada exigia visão do modelo.*
 	if _, err := comRegistry.RouteModelForStep(
-		Mission{Capabilities: []string{"vision"}},
-		Step{ID: "s3", PinnedModelID: "local/barato"}); err == nil {
+		Mission{},
+		Step{ID: "s3", RequiredCapabilities: []string{"vision"}, PinnedModelID: "local/barato"}); err == nil {
 		t.Fatal("ARMADILHA: pin sem a capacidade exigida passou no runtime — *um pin que nao pode ser honrado tem de " +
 			"falhar, em vez de trocar de modelo em silencio (E-428)*")
 	}

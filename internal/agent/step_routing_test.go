@@ -22,17 +22,21 @@ func TestPonteDoPassoParaORegistry(t *testing.T) {
 	missao := Mission{
 		OrganizationID: "org-a",
 		Model:          "local/modelo-da-missao",
-		Capabilities:   []string{"coding", "vision"},
+		// ⚠️ E-437: **ESTAS SÃO CAPACIDADES DE FERRAMENTA** (`workspace:write` é o vocabulário real), e o meu
+		// primeiro teste as misturava com as de MODELO esperando a UNIÃO ✗. *São eixos distintos: um modelo não "tem
+		// `workspace:write`".* Aqui elas entram **de propósito** para provar que a ponte as **IGNORA** no pedido de
+		// roteamento - *o que a asserção (a2) mede.*
+		Capabilities: []string{"workspace:write", "crm:write"},
 	}
 
-	// (a) MAPEAMENTO: uniao sem duplicata, com espaco em branco ignorado.
+	// (a) MAPEAMENTO: **somente** as capacidades do PASSO, sem duplicata e sem vazio.
 	passo := Step{
 		ID:                   "s1",
 		RequiredCapabilities: []string{"vision", "  ", "tools"},
 	}
 	pedido := RouteRequestForStep(missao, passo)
-	if len(pedido.RequiredCapabilities) != 3 {
-		t.Fatalf("esperava 3 capacidades (coding, vision, tools) sem duplicata e sem vazio, veio %v",
+	if len(pedido.RequiredCapabilities) != 2 {
+		t.Fatalf("esperava 2 capacidades (vision, tools) - SEM unir as de ferramenta da missão -, veio %v",
 			pedido.RequiredCapabilities)
 	}
 	vistas := map[string]bool{}
@@ -42,9 +46,20 @@ func TestPonteDoPassoParaORegistry(t *testing.T) {
 		}
 		vistas[c] = true
 	}
-	for _, esperada := range []string{"coding", "vision", "tools"} {
+	for _, esperada := range []string{"vision", "tools"} {
 		if !vistas[esperada] {
 			t.Fatalf("faltou %q no pedido: %v", esperada, pedido.RequiredCapabilities)
+		}
+	}
+
+	// (a2) E AS CAPACIDADES DE **FERRAMENTA** DA MISSÃO **NÃO** ENTRAM NO ROTEAMENTO DE MODELO. *É esta asserção que
+	// impede a mistura de vocabulários de voltar - e ela falha se alguém "melhorar" a ponte unindo os dois eixos.*
+	for _, deFerramenta := range missao.Capabilities {
+		if vistas[deFerramenta] {
+			t.Fatalf("ARMADILHA: a capacidade de FERRAMENTA %q da missão entrou no pedido de roteamento de MODELO "+
+				"(%v) - *são vocabulários diferentes: um modelo não tem `workspace:write`, e exigir isso faria todo "+
+				"passo de missão falhar com ErrNoRoute por um motivo que não existe*", deFerramenta,
+				pedido.RequiredCapabilities)
 		}
 	}
 

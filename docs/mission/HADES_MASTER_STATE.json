@@ -2490,7 +2490,10 @@
     "ASSERCAO POR ID MEDE A ORDENACAO DE HOJE (E-435): eu assertei que pedir 'vision' devolveria local/visual e veio local/forte (tambem tem visao e pontua mais). Corrigido para asserir a PROPRIEDADE (tem a capacidade), com controle de que um pin honravel passa",
     "O REGISTRY ENTROU NO RUNTIME (E-436): RuntimeConfig.Models (opcional), campo privado models como tools, acessor Models() e RouteModelForStep. O teste mede as duas direcoes: com registry escolhe honrando capacidade e pin, com justificativa; SEM registry devolve ErrModelRegistryUnavailable, em vez de cair em silencio para o modelo da missao",
     "FALHA FECHADO E' O QUE TORNA A INJECAO SEGURA (E-436): um runtime que nao sabe rotear por passo e devolve o modelo da missao 'como se' roteasse esconde exactamente o defeito que E-433/E-435 vieram corrigir",
-    "A ENTRADA NAO E' O CONSUMIDOR (E-436): RouteModelForStep existe e e' testada, mas o laco de execucao ainda NAO a chama. Expor a entrada sem ligar o consumidor e' melhor que ligar sem testar - mas nao e' o mesmo que integrado"
+    "A ENTRADA NAO E' O CONSUMIDOR (E-436): RouteModelForStep existe e e' testada, mas o laco de execucao ainda NAO a chama. Expor a entrada sem ligar o consumidor e' melhor que ligar sem testar - mas nao e' o mesmo que integrado",
+    "O CONSUMIDOR DA PONTE (E-437): o laco escolhia a FERRAMENTA por passo e nada escolhia o MODELO. Agora chama RouteModelForStep e registra step.model.route com modelo, score, motivo e pin; sem registry nada muda",
+    "MISTURAR VOCABULARIOS NAO E' RIGOR (E-437): mission.Capabilities sao escopos de FERRAMENTA (workspace:write) e RouteRequest.RequiredCapabilities sao capacidades de MODELO (coding, vision). Eu fazia a UNIAO e todo passo de missao falharia com ErrNoRoute por um motivo que nao existe - e o modo de falha e' fechado, entao ninguem desconfia",
+    "A DECISAO E' REGISTRADA, MAS NAO APLICADA (E-437): o passo continua executando com o planejador da MISSAO. Trocar o executor e' o incremento seguinte, e chama-lo de feito seria a classe que esta missao derruba"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -3944,7 +3947,8 @@
           "E-433 (contrato): Step carrega RequiredCapabilities, PinnedModelID e DependsOn, com round-trip JSON e compatibilidade de plano antigo. O CONSUMO pelo runtime NAO esta feito.",
           "E-434: ValidatePlanGraph (ID, dependencia inexistente/vazia/em si, e CICLO por Kahn) ligado em validateMissionPersistenceBounds. O plano e' valido, mas ainda NAO e' ordenado nem honrado.",
           "E-435: RouteRequestForStep (a ponte Step -> multillm.RouteRequest). O teste prova o mapeamento E o motor honrando. A INJECAO do Registry no Runtime continua NAO feita - nada chama a ponte.",
-          "E-436: RuntimeConfig.Models + Runtime.RouteModelForStep, com falha fechada (ErrModelRegistryUnavailable) quando nao ha registry. O LACO DE EXECUCAO ainda NAO chama - a entrada existe, o consumidor nao."
+          "E-436: RuntimeConfig.Models + Runtime.RouteModelForStep, com falha fechada (ErrModelRegistryUnavailable) quando nao ha registry. O LACO DE EXECUCAO ainda NAO chama - a entrada existe, o consumidor nao.",
+          "E-437: o laco de execucao chama RouteModelForStep por passo e REGISTRA a decisao no evento step.model.route; falha fechado se a exigencia nao pode ser honrada. A decisao e' registrada, mas NAO aplicada - o executor segue o da missao."
         ],
         "matriz_correcoes_por_medicao": [
           "MIN_COST NAO estava ausente: RoutePreferenceCheapest existe (router.go:25) - a capacidade existia com outro nome",

@@ -56,19 +56,29 @@ func (r *Runtime) RouteModelForStep(missao Mission, passo Step) (multillm.RouteD
 //
 // ***Uma ponte nao e' a estrada - mas ponte sem teste e' pior que ponte nenhuma, porque parece caminho.***
 func RouteRequestForStep(missao Mission, passo Step) multillm.RouteRequest {
-	// As capacidades do PASSO sao pre-requisito do que a MISSAO ja' exige: *um passo que precisa de visao nao
-	// dispensa a capacidade que a missao declarou.* Uniao sem duplicata, para o pedido nao crescer a' toa.
-	capacidades := make([]string, 0, len(missao.Capabilities)+len(passo.RequiredCapabilities))
+	// 🚨 E-437 — **DOIS VOCABULÁRIOS DIFERENTES, E EU OS HAVIA MISTURADO.** `mission.Capabilities` são **escopos de
+	// FERRAMENTA** (`workspace:write`, `crm:write`) — é o que o **motor de ferramentas** confere
+	// (`tool must declare known capabilities`). As `RequiredCapabilities` do `multillm.RouteRequest` são
+	// **capacidades de MODELO** (`coding`, `vision`, `tools`). *São eixos distintos: um modelo não "tem
+	// `workspace:write`".*
+	//
+	// A minha primeira versão fazia a **união** dos dois ⇒ *todo passo de missão exigiria um modelo com a
+	// capacidade-ferramenta, `ErrNoRoute` garantido, e o passo **falharia fechado** por um motivo que não existe* ✗.
+	// ***Misturar vocabulários não é rigor: é um erro que passa por rigor - e o modo de falha é fechado, então
+	// ninguém desconfia.***
+	//
+	// ⇒ A ponte usa **SOMENTE** `passo.RequiredCapabilities`. O `Mission` não tem campo de capacidade de **modelo**;
+	// *enquanto não tiver, não há o que unir* — e inventar um seria pior que declarar a ausência.
+	_ = missao
+	capacidades := make([]string, 0, len(passo.RequiredCapabilities))
 	vistas := map[string]bool{}
-	for _, origem := range [][]string{missao.Capabilities, passo.RequiredCapabilities} {
-		for _, capacidade := range origem {
-			limpa := strings.TrimSpace(capacidade)
-			if limpa == "" || vistas[limpa] {
-				continue
-			}
-			vistas[limpa] = true
-			capacidades = append(capacidades, limpa)
+	for _, capacidade := range passo.RequiredCapabilities {
+		limpa := strings.TrimSpace(capacidade)
+		if limpa == "" || vistas[limpa] {
+			continue
 		}
+		vistas[limpa] = true
+		capacidades = append(capacidades, limpa)
 	}
 	pedido := multillm.RouteRequest{
 		RequiredCapabilities: capacidades,
