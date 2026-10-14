@@ -28,7 +28,15 @@ SCRIPTS = RAIZ / "scripts"
 # LINHA DE BASE MEDIDA: 4 candidatos em 2026-10-16, TODOS falsos positivos de validacao de ENTRADA do proprio
 # chamador (o valor comparado e' o pedido do atacante, nao estado de outro tenant). O candidato da decisao de
 # aprovacao saiu da lista porque E-253 corrigiu a ordem das checagens.
+#
+# E-636 (2026-10-14): entrou um QUINTO candidato, `context.go::SkillVersionsForOrganization`, e a investigacao
+# que o instrumento exige foi feita: ***nao e' falso positivo de validacao de entrada — o escopo E' aplicado.***
+# A funcao le `s.skills[id]` e, quando `organizationID` nao e' vazio, recusa com
+# `pluginOwnedByOrganization(atual.OrganizationID, organizationID)`; devolve vazio (e nao erro de escopo) para
+# nao revelar a EXISTENCIA de uma skill de outra organizacao. O candidato entra declarado porque o instrumento
+# procura a PRESENCA do parametro de organizacao para leitura humana — que e' o que aqui se fez.
 BASELINE_ORACULO = (
+    "internal/agent/context.go::SkillVersionsForOrganization",
     "internal/agent/mcp.go::register",
     "internal/agent/mcp_remote.go::register",
     "internal/agent/queue.go::EnqueueForOrganization",
