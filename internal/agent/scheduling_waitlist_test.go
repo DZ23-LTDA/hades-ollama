@@ -184,8 +184,18 @@ func TestConfirmacaoBemSucedidaCriaAgendamentoEChamaDeNovoNaoDuplica(t *testing.
 
 func TestLembreteNaoSaiDuasVezes(t *testing.T) {
 	store, org, recurso, servico, _ := waitlistFixture(t)
-	agora := time.Now().UTC()
-	marcado := agora.Add(90 * time.Minute)
+	// 🚨 E-421 (MEDIDO no CI): era `agora := time.Now().UTC()` + `marcado := agora.Add(90 * time.Minute)` ✗ —
+	// *rodando às 22:23 de São Paulo o agendamento caía em **23:53**, e um serviço que termina depois da
+	// meia-noite **não cabe** num turno `00:00–24:00`* (`ClosesAt=1440`) ⇒ **o CI ficou vermelho** ✗ e o log
+	// dizia `fora do expediente configurado: 2026-10-13T23:53:07-03:00 está fora da janela 00:00-24:00`.
+	//
+	// ***O produto estava certo; o fixture herdava o instante do relógio da máquina.*** Este é o **segundo**
+	// teste da mesma classe que a correção do ADV-61 expôs (*o primeiro foi `scheduling_test.go:17`*).
+	//
+	// ⇒ **O instante ESCOLHE-SE, e o relógio do teste DERIVA dele** — *assim a intenção ("o lembrete vence
+	// 90 min antes") continua idêntica e a hora da máquina deixa de importar.*
+	marcado := instanteDeTeste(t)
+	agora := marcado.Add(-90 * time.Minute)
 	agendamento, err := store.Book(BookRequest{
 		OrganizationID: org, ResourceID: recurso, ServiceID: servico,
 		ContactID: "+5511900000007", Channel: "voice", StartsAt: marcado, IdempotencyKey: "lembrete-1",

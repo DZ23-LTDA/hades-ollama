@@ -2450,7 +2450,11 @@
     "A CONTRAPROVA PODE SER A PROPRIA REPRODUCAO (E-419): o teste novo rodou ANTES da correcao e falhou com o instante duplicado impresso. Nao foi preciso mutar nada: a evidencia de que ele detecta esta' no historico",
     "EU DECLAREI, NAO MEDI - E A DECLARACAO ESTAVA ERRADA (E-420): no E-419 escrevi que a deduplicacao por instante preserva a hora repetida do fim do horario de verao. Medido: o laco por relogio de parede nunca gera o segundo lado, entao o produto oferece 01:00 UMA vez. A correcao continua certa; a JUSTIFICATIVA era falsa",
     "DECLARACAO NAO E' MEDICAO (E-420): a justificativa que eu escrevi no E-419 virou um teste no E-420, e o teste disse que ela estava errada. O limite real - a hora repetida e' oferecida uma vez - ficou declarado",
-    "UM TESTE QUE SE PULA SOZINHO E' VERDE SEM MEDIR NADA (E-420): os dois testes de fuso faziam t.Skipf se o banco de fusos faltasse; agora falham com a mensagem dizendo o que instalar"
+    "UM TESTE QUE SE PULA SOZINHO E' VERDE SEM MEDIR NADA (E-420): os dois testes de fuso faziam t.Skipf se o banco de fusos faltasse; agora falham com a mensagem dizendo o que instalar",
+    "O CI VERMELHO ERA MEU - E A CAUSA ERA UM FIXTURE QUE HERDAVA O RELOGIO (E-421): o log do job Go agentic and server gates mostrou 'FAIL TestLembreteNaoSaiDuasVezes' com 'fora do expediente configurado: 2026-10-13T23:53:07-03:00'. Agora := time.Now() + marcado := agora.Add(90min): as 22:23 de Sao Paulo o agendamento cai em 23:53 e nao cabe num turno 00:00-24:00. E' a MINHA correcao do ADV-61 que expos - o produto esta' certo",
+    "DESCARTADOS POR MEDICAO, UM A UM (E-421): nao e' timeout (1m35s, nao 30min); nao e' app/server (falha so' localmente: a maquina nao tem compilador C); gofmt, govulncheck, go mod verify e check-class-a-plus-integrity.sh deram SUCCESS na CI. Quatro hipoteses minhas morreram medindo",
+    "UM UNICO LUGAR ESCOLHE O INSTANTE (E-421): instanteDeTeste(t) devolve amanha as 10:00 UTC e GUARDA a propria propriedade - falha se o instante ficar a menos de 2h de uma virada ou a menos de 20h de agora. O relogio do teste deriva do instante escolhido, nunca o contrario",
+    "A VARREDURA DO E-418 TEM UM PONTO CEGO (E-421): ela procura Now()+Add direto na linha e nao pega a forma agora := time.Now(); marcado := agora.Add(...) numa variavel - foi por esse buraco que o segundo teste da classe passou"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -3790,6 +3794,26 @@
           "nao corrigi a sub-oferta (trabalho de produto)",
           "a sub-oferta nao tem teste de regressao"
         ]
+      },
+      "ci_vermelho_436": {
+        "sha": "bfc62cef5",
+        "run": 38495080255,
+        "passo_que_falha": "CGO_ENABLED=0 go test ./internal/agent -count=1",
+        "causa_raiz": "scheduling_waitlist_test.go: agora := time.Now().UTC() + marcado := agora.Add(90min); as 22:23 de Sao Paulo o agendamento cai em 23:53 e nao cabe num turno 00:00-24:00",
+        "e_meu": "a correcao do ADV-61 expos - antes o ramo com bug aceitava 23:53; agora um turno que nao cruza exige fimMinuto <= 1440. O produto esta' certo; o fixture herdava o relogio",
+        "descartados_por_medicao": [
+          "timeout: o passo durou 1m35s, nao 30min",
+          "app/server: falha so' localmente, porque a maquina nao tem compilador C (gcc/cc/cl ausentes)",
+          "check-class-a-plus-integrity.sh: SUCCESS na CI (nao roda aqui: bash resolve para WSL quebrado)",
+          "gofmt/govulncheck/go mod verify: SUCCESS na CI"
+        ],
+        "correcao": "instanteDeTeste(t) num unico lugar: escolhe amanha as 10:00 UTC e guarda a propria propriedade (falha se ficar a menos de 2h de uma virada ou a menos de 20h de agora); o teste virou marcado := instanteDeTeste(t); agora := marcado.Add(-90min)",
+        "medidos_e_descartados_no_mesmo_arquivo": "linhas 102 e 160 usam agora so' como 'now' com slot de data fixa: nao dependem do relogio",
+        "limites": [
+          "a varredura do E-418 procura Now()+Add direto e NAO pega a forma agora.Add(...) numa variavel",
+          "o job Windows falhou no mesmo passo; Windows nao traz tzdata (suspeita nao medida)",
+          "CGO_ENABLED=1 nao e' executavel nesta maquina"
+        ]
       }
     }
   },
@@ -3899,6 +3923,7 @@
     "E-417": "teste que dependia da hora: fixture escolhia instante na borda da meia-noite",
     "E-418": "varredura exaustiva do relogio (57 usos, 5 triados, todos seguros) + ADV-65 declarado",
     "E-419": "ADV-64: dedup por instante na virada de horario de verao, com a reproducao como contraprova",
-    "E-420": "a hora repetida do fall-back e' oferecida UMA vez: a minha declaracao no E-419 estava errada"
+    "E-420": "a hora repetida do fall-back e' oferecida UMA vez: a minha declaracao no E-419 estava errada",
+    "E-421": "causa raiz do CI vermelho: fixture dependente do relogio em scheduling_waitlist_test.go"
   }
 }
