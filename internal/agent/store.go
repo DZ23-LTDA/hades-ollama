@@ -601,6 +601,11 @@ type missionJSONBudget struct {
 }
 
 func validateMissionPersistenceBounds(mission Mission) error {
+	// E-434: o GRAFO do plano e' validado no MESMO caminho que todo save atravessa. *Dependencia apontando para
+	// passo inexistente, para si mesma, ou em CICLO nao e' detalhe de persistencia: e' um plano que nao termina.*
+	if err := ValidatePlanGraph(mission.Plan); err != nil {
+		return err
+	}
 	if len(mission.Plan) > maxMissionPlanSteps || len(mission.Approvals) > maxMissionApprovals || len(mission.Artifacts) > maxMissionArtifacts || len(mission.Capabilities) > 64 {
 		return errors.New("mission collection exceeds persistence limit")
 	}
