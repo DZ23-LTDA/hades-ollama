@@ -237,11 +237,13 @@ func BuildContextBootstrap(input ContextBootstrapInput) (ContextBootstrap, error
 	}
 	bootstrap.UntrustedSources = boundedList(input.UntrustedSources, 0)
 
-	// HANDOFF COMO DADO (§7-E): o bloco sai MARCADO pelo próprio `ParaContexto`, e o teto
-	// declarado lá é o que impede o handoff de inchar o documento - não se inventa um
-	// segundo limite aqui, que poderia divergir do primeiro.
+	// HANDOFF COMO DADO (§7-E): vai a versão REDIGIDA (`ParaPreambulo`), e não o documento
+	// completo — este bloco entra no PREÂMBULO que vai ao modelo, e identificador interno ou
+	// caminho local não são conteúdo de trabalho: são TOPOLOGIA DO SERVIDOR (o vazamento
+	// medido em `mission_context_test.go:118`, E-597). O teto declarado pelo próprio contrato
+	// é o que impede o handoff de inchar o documento.
 	if input.Handoff != nil {
-		if bloco, _ := input.Handoff.ParaContexto(0); strings.TrimSpace(bloco) != "" {
+		if bloco, _ := input.Handoff.ParaPreambulo(0); strings.TrimSpace(bloco) != "" {
 			bootstrap.Handoff = bloco
 		}
 	}

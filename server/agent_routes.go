@@ -2891,7 +2891,18 @@ func (a *agentAPI) missionContext(c *gin.Context) {
 		}
 		memories = found
 	}
+	// HANDOFF (§4): derivado da missão para que objetivo, plano, capacidades concedidas e o
+	// que EXIGE APROVAÇÃO cheguem ao contexto entregue. Derivar é mais seguro do que anexar.
+	// O erro NÃO derruba o contexto: uma missão sem handoff possível continua a ter contexto
+	// — entregar sem handoff é degradação declarada; falhar por causa dele seria pior.
+	// O bloco que vai aqui é o REDIGIDO (`handoff_preambulo.go`), porque este documento
+	// alimenta o preâmbulo que vai ao modelo (vazamento medido em mission_context_test.go:118).
+	var handoff *agent.Handoff
+	if derivado, handoffErr := agent.HandoffDaMissao(mission); handoffErr == nil {
+		handoff = &derivado
+	}
 	bootstrap, err := agent.BuildContextBootstrap(agent.ContextBootstrapInput{
+		Handoff:             handoff,
 		Version:             version.Version,
 		OrganizationID:      mission.OrganizationID,
 		ProjectID:           mission.ProjectID,
