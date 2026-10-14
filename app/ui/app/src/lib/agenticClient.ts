@@ -385,6 +385,25 @@ export const createMission = (payload: { objective: string; provider?: string; m
 export const runMission = (id: string) => agentFetch<AgentMission>(`/api/agent/v1/missions/${encodeURIComponent(id)}/run`, { method: "POST", body: "{}" });
 export const deleteMission = (id: string) => agentFetch<{ status: string; id: string }>(`/api/agent/v1/missions/${encodeURIComponent(id)}`, { method: "DELETE" });
 export const decideMissionApproval = (missionID: string, approvalID: string, approved: boolean, nonce?: string) => agentFetch<AgentMission>(`/api/agent/v1/missions/${encodeURIComponent(missionID)}/approvals/${encodeURIComponent(approvalID)}`, { method: "POST", body: JSON.stringify({ decision: approved ? "approve" : "reject", nonce, reason: approved ? "Aprovado no Agentic Console" : "Rejeitado no Agentic Console" }) });
+
+// MissionContextView é o contexto da missão NA FORMA QUE A SUPERFÍCIE PODE MOSTRAR (D-8).
+//
+// LISTA BRANCA DE PROPÓSITO — a mesma disciplina do `ParaPreambulo` no servidor (E-597): o
+// documento do servidor traz `mission_id`, `project_id`, `organization_id`, `workspace` e
+// referências de memória. Nenhum deles é conteúdo de trabalho: são topologia do servidor, e um
+// caminho local revela a estrutura da máquina. Este tipo NÃO os declara, porque ***um tipo que
+// não os tem não os pode renderizar*** — a garantia fica no tipo, não na disciplina de quem
+// escreve o componente.
+export type MissionContextView = {
+  objective?: string;
+  plan?: string[];
+  checkpoints?: string[];
+  // `handoff` já vem REDIGIDO do servidor (E-597): sem identificadores, sem caminhos.
+  handoff?: string;
+};
+
+export const getMissionContext = (id: string) =>
+  agentFetch<MissionContextView>(`/api/agent/v1/missions/${encodeURIComponent(id)}/context`);
 export type BrowserEnvironmentStatus = {
   python_path?: string;
   python_ok: boolean;
