@@ -2425,7 +2425,11 @@
     "ARTEFATO DE LEITURA TRANSCRITO VIRA DADO PERMANENTE (E-409): a descricao passou a ser '[dupla codificacao]', nao a transcricao. Transcrever o artefato foi o que o tornou real no repositorio",
     "A TERCEIRA VEZ NA MESMA SESSAO (E-409): a linha E-409, escrita para registrar que transcrever o artefato o torna real, continha o REGEX DO DETECTOR transcrito - e o gate acusou de novo. A descricao passou a ser '[padrao de dupla codificacao]'. A licao nao e' 'ter cuidado': e' que DESCREVER e' seguro e TRANSCREVER nao e'",
     "A VARREDURA VIROU CHECKER, E ELE ME CORRIGIU DUAS VEZES (E-410): (1) com rglob levou mais de 10 minutos porque ENTRAVA em dist/build antes de filtrar - os.walk com poda deu 1,09 s. O custo estava no CAMINHO, nao no trabalho; checker que nao termina nao e' checker. (2) acusou dispensa OBSOLETA quando a fixture nao continha o padrao literal - fazendo consigo mesmo o que o E-383 fez com o classificador",
-    "DISPENSA QUE NAO CASA COM NADA E' DIVIDA DISFARCADA DE EXCECAO (E-410): o checker de codificacao acusa dispensas obsoletas, e foi assim que ele pegou a minha propria fixture escrita com escapes"
+    "DISPENSA QUE NAO CASA COM NADA E' DIVIDA DISFARCADA DE EXCECAO (E-410): o checker de codificacao acusa dispensas obsoletas, e foi assim que ele pegou a minha propria fixture escrita com escapes",
+    "A LINHA MAIS DEFENDIDA ATE AGORA (E-411): 14 de 16 mutacoes detectadas no agendamento. O auditor nao achou assercao que compara consigo mesma",
+    "AFIRMACAO PUBLICADA FALSA NO AGENDAMENTO (E-411/ADV-60): a E-314 diz que Availability deixou de inventar horario, mas o buraco foi fechado em OpenSlots (funcao NOVA) e Availability ficou intacta. Sonda: org sem turno, domingo 03:00 => Availability devolve 4 slots livres; OpenSlots devolve 0; Book recusa",
+    "A LINHA NAO ESTA LIGADA (E-411/ADV-65): SchedulingStore e NewSupervisorScheduler nao tem chamador em producao - so' em _test.go. O que esta' provado em producao e' o agendador de WORKFLOW",
+    "A PROVA DA RELEITURA E' PROBABILISTICA (E-411/ADV-63): sem invalidateCache, 18 de 20 execucoes falham - em ~10% a remocao passa despercebida"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -3100,13 +3104,63 @@
           "estado": "REBAIXADO: as provas negativas existem e no lugar certo (internal/agent/schedule_flow_test.go tem 10 testes com 13 linhas de negacao/bloqueio; server/agent_schedule_flow_test.go tem 3). O proprio cabecalho do spec declara a separacao contrato/semantica. Sobra apenas o limite de nao haver prova de convergencia eventual (toPass/poll) - adequado para vite preview com rotas interceptadas, mas declarado",
           "evidencia": "E-407",
           "descricao": "105 expects: 21 de presenca (toBeVisible), 13 de ESTADO (toBeDisabled/Enabled/Focused/Truthy), 4 de conteudo, 2 NEGATIVAS e ZERO de convergencia (toPass/poll/waitFor/reload). A suite prova que a UI renderiza e reage a estado, mas quase nao prova que algo NAO aconteceu - e essa e' exatamente a classe que derrubou seis linhas de prova nesta missao. E o meu primeiro classificador jogou 52 assercoes em 'outro' por nao lidar com multi-linha: o defeito era do INSTRUMENTO, nao da suite"
+        },
+        {
+          "id": "ADV-60",
+          "severidade": "ALTA (afirmacao publicada FALSA)",
+          "descricao": "Availability (scheduling.go:393-423) continua inventando horario: nao consulta turno, fechamento, intervalo nem fuso. A E-314 afirma que o buraco foi fechado, mas ele foi fechado em OpenSlots (funcao NOVA) e Availability ficou intacta. SONDA: org sem turno, domingo 03:00 => Availability devolve 4 slots livres, OpenSlots devolve 0 e Book recusa",
+          "descoberto_por": "6a revisao adversarial independente (subagente, contexto fresco) com go test -overlay e sondas",
+          "estado": "REGISTRADO, NAO CORRIGIDO",
+          "evidencia": "E-411"
+        },
+        {
+          "id": "ADV-61",
+          "severidade": "ALTA/MEDIA (aceita horario com a empresa fechada)",
+          "descricao": "Book aceita horario fora do turno quando ele cruza a meia-noite: shiftCoversMinute (scheduling_breaks.go:124-131) no ramo '|| fimMinuto <= ClosesAt' nao verifica se o turno comecou no dia ANTERIOR. SONDA: turno so segunda 22:00-02:00 => Book(segunda 01:00) aceito, enquanto OpenSlots nao oferece nada nesse instante",
+          "descoberto_por": "6a revisao adversarial independente (subagente, contexto fresco) com go test -overlay e sondas",
+          "estado": "REGISTRADO, NAO CORRIGIDO",
+          "evidencia": "E-411"
+        },
+        {
+          "id": "ADV-62",
+          "severidade": "MEDIA (caminho sem defesa)",
+          "descricao": "next_run_at de CICLOS (supervisor.go:400-403) pode ser removido sem nenhum teste falhar (mutacao s5: 0 falhas em 20 padroes). Sonda: ciclo com NextRunAt=+24h => CyclesAdvanced=1 e 1 missao criada. CONTRASTE: ignorar NextRunAt no claim de workflow (context.go:1196) FALHA dois testes",
+          "descoberto_por": "6a revisao adversarial independente (subagente, contexto fresco) com go test -overlay e sondas",
+          "estado": "REGISTRADO, NAO CORRIGIDO",
+          "evidencia": "E-411"
+        },
+        {
+          "id": "ADV-63",
+          "severidade": "MEDIA-BAIXA (afirmacao sem prova)",
+          "descricao": "'a trava e por organizacao' nao e' provado: mutacao para trava GLOBAL => 0 falhas em 20 execucoes. CONTRASTE: sem withFileLock => 20/20 falham; sem invalidateCache => 18/20 falham (prova probabilistica, ~10% de regressao silenciosa)",
+          "descoberto_por": "6a revisao adversarial independente (subagente, contexto fresco) com go test -overlay e sondas",
+          "estado": "REGISTRADO, NAO CORRIGIDO",
+          "evidencia": "E-411"
+        },
+        {
+          "id": "ADV-64",
+          "severidade": "BAIXA/MEDIA (DST nunca exercitado)",
+          "descricao": "Maquina America/Sao_Paulo (sem DST desde 2019) e laco em minutos de relogio de parede. Sonda em America/New_York, turno domingo 01:00-05:00 em 2026-03-08 => 8 slots com 01:00 e 01:30 DUPLICADOS no mesmo instante UTC",
+          "descoberto_por": "6a revisao adversarial independente (subagente, contexto fresco) com go test -overlay e sondas",
+          "estado": "REGISTRADO, NAO CORRIGIDO",
+          "evidencia": "E-411"
+        },
+        {
+          "id": "ADV-65",
+          "severidade": "INFORMATIVO/ALTO para a entrega (linha NAO ligada)",
+          "descricao": "Nada em producao chama o motor de agendamento: SchedulingStore tem zero chamadores fora de _test.go; NewSupervisorScheduler so' no teste; Supervisor.Start so' em supervisor_test.go:504. O que esta' provado em producao e' o agendador de WORKFLOW (resumePending/ClaimDueSchedules, w1 + frescor entre processos)",
+          "descoberto_por": "6a revisao adversarial independente (subagente, contexto fresco) com go test -overlay e sondas",
+          "estado": "REGISTRADO, NAO CORRIGIDO",
+          "evidencia": "E-411"
         }
       ],
       "proximos_ataques": [
-        "ADV-59: acrescentar assercoes NEGATIVAS aos specs criticos (provar que o efeito NAO ocorreu sem aprovacao, que o aviso NAO foi perdido) - a classe que mais derrubou provas aqui",
-        "ADV-59: cobrir convergencia eventual (toPass/expect.poll) onde a UI depende do backend",
-        "auditar linha a linha o que cada texto comparado significa nos specs",
-        "coletar a 6a auditoria (scheduling) e corrigir o que ela medir"
+        "ADV-60 (P0): Availability deve delegar a OpenSlots/appointmentAllowedLocked OU ser removida/renomeada com limite declarado - hoje a evidencia E-314 afirma algo falso sobre ela",
+        "ADV-61 (P0): shiftCoversMinute deve exigir que o minuto pertenca ao turno do dia corrente OU a cauda do dia anterior; testar Book(segunda 01:00) recusado",
+        "ADV-65 (P0 para a entrega): ligar o motor de agendamento em producao ou declarar que ele e' biblioteca sem chamador",
+        "ADV-62: teste 'ciclo com NextRunAt futuro nao avanca no tick' (a sonda do auditor ja' e' o teste)",
+        "ADV-63: teste que segure a trava da org A e mostre a org B progredindo",
+        "ADV-64: rodar OpenSlots numa data de transicao de DST exigindo horarios distintos"
       ],
       "contraprovas_medidas": {
         "approvalsReady_off": "FALHA TestRuntimeNaoProduzEfeitoComAprovacaoPendenteNaNada (load-bearing)",
@@ -3766,6 +3820,7 @@
     "E-407": "natureza das 105 assercoes E2E: 2 negativas, 0 convergencia; instrumento corrigido",
     "E-408": "correcao do meu ADV-59: as negativas existem nos testes Go; 0 mojibake",
     "E-409": "varredura do repo inteiro: 2 achados legitimos (detector e fixture) e 2 notas corrigidas",
-    "E-410": "checker de codificacao com teste-do-teste (7 casos) e dispensa obsoleta acusada"
+    "E-410": "checker de codificacao com teste-do-teste (7 casos) e dispensa obsoleta acusada",
+    "E-411": "6a auditoria (agendamento): 14/16 mutacoes detectadas, 4 defeitos reais"
   }
 }
