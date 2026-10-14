@@ -451,11 +451,15 @@ func (o *AgentOrchestrator) Cancel(id string) (OrchestrationJob, error) {
 	}
 	if job.State == OrchestrationRunning {
 		if cancel, ok := o.cancels[id]; ok && cancel != nil {
-			// Signal the in-flight Run to abort. Do NOT modify o.jobs or persist
-			// here: the task goroutines are still mutating job.Tasks under
-			// taskMu, so marshaling the job now would be a data race. Run's
-			// finalization persists the Cancelled state once the goroutines
-			// finish; report Cancelled to the caller on a local copy only.
+			// Signal the in-flight Run to abort. Nao se modifica o.jobs nem se persiste
+			// aqui: quem o faz e' a finalizacao do Run, uma so' vez, e reporta-se
+			// Cancelled ao chamador numa copia local.
+			//
+			// E-589: a razao ANTIGA deste cuidado - "marshalhar agora seria data race" -
+			// deixou de ser verdade. O persistLocked passa a tomar o.taskMu, o MESMO
+			// lock das escritas em job.Tasks, logo marshalhar durante a corrida deixou
+			// de ser uma corrida. O cuidado mantem-se por DESENHO (um so' escritor da
+			// verdade), e nao por medo de uma corrida que ja' nao existe.
 			cancel()
 			job.State = OrchestrationCancelled
 			return job, nil
