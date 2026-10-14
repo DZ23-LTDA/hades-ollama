@@ -151,7 +151,6 @@ func DerivarEstadoCompanion(missaoID string, eventos []CompanionEventoVerificado
 	razaoTerminal := ""
 	passoAberto := ""
 	aprovacaoPendente := ""
-	bloqueado := ""
 
 	for _, e := range meus {
 		switch e.Tipo {
@@ -174,10 +173,8 @@ func DerivarEstadoCompanion(missaoID string, eventos []CompanionEventoVerificado
 		case "mission.approval.granted", "mission.approval.denied":
 			aprovacaoPendente = ""
 		case "mission.blocked":
-			bloqueado = e.Detalhe
-			if bloqueado == "" {
-				bloqueado = e.Tipo
-			}
+			// *O detalhe do bloqueio NAO e' guardado numa variavel local: ele sai imediatamente como razao,
+			// na linha seguinte. Guarda-lo seria `wastedassign` - e o `golangci-lint` tem razao (E-547).*
 			terminal, razaoTerminal = CompanionBloqueado, e.Tipo
 		case "mission.repair_exhausted", "mission.failed":
 			passoAberto = ""

@@ -97,6 +97,14 @@ linters:
         - intervalos
         - invalidas
         - definitivo
+        # E-547 (MEDIDO): o `ignore-rules` casa a FORMA EXACTA, nao o radical. ⇒ `decorativo` (L80) ja' estava
+        # aqui, e o linter acusou `decorativos` — *o plural e' outra palavra para o dicionario*. Mesma coisa com
+        # `operacional` vs `organizacional`. ⇒ *Acrescentam-se as QUATRO formas exactas que o CI acusou.*
+        # ***O `misspell` SEGUE LIGADO.*** *Isto declara idioma portugues; nao esconde erro de digitacao em ingles.*
+        - decorativos   # acusada como "decorations"
+        - cosmeticos    # acusada como "cosmetics"
+        - organizacional # acusada como "organizational"
+        - posicional    # acusada como "positional"
     depguard:
       rules:
         test-only-packages:

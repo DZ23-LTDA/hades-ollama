@@ -1,18 +1,24 @@
 # HADES — TRABALHO PENDENTE PRIORIZADO
 
-## 0. ESTADO MEDIDO — `main` `fafda19e7` (esta é a leitura canônica; não herde número de texto antigo)
+## 0. ESTADO MEDIDO — `fix/checker-relogio` `cafb00dbe` (esta é a leitura canônica; não herde número de texto antigo)
 
 | Medida | Valor medido |
 | --- | --- |
-| Commit verificado | `fafda19e7` |
-| Evidências no índice | **310** |
+| Commit medido (**local**, à frente do remoto) | `cafb00dbe` |
+| Remoto da branch | `48beffc9d` (*5 commits locais por empurrar*) |
+| `main` remota | `4b3e21854` |
+| Evidências no índice | **546** |
 | Estágios com evidência | **38 de 38** |
-| Bloqueios externos declarados | **9** |
+| Bloqueios declarados | **17** (estado: 17 itens / **17 ids únicos**) |
 | Matriz do gate final | `BLOCKED_BY_EXTERNAL_DEPENDENCY: 5 · DONE: 19` |
 | Veredito global | **`NOT_RELEASE_READY`** |
 
-**Regra desta seção (E-301, aplicada em E-310):** qualquer número acima **envelhece**. Esta seção já ficou desatualizada
-uma vez (dizia `f190ec8ea` / 300) e foi remedida. **Antes de citar, remeça:**
+**Medido em `2026-10-14 16:35 UTC`.**
+
+**Regra desta seção (E-301, aplicada em E-310, e outra vez em E-544):** qualquer número acima **envelhece**. Esta seção
+já ficou desatualizada **duas** vezes (dizia `f190ec8ea` / 300, e depois `fafda19e7` / 310) e foi remedida. ⇒ *E o `E-544`
+mediu o custo: este documento e o `HADES_HANDOFF.md` estiveram **parados ~16 h**, sem mencionar **um único** commit ou
+evidência recente.* **Antes de citar, remeça:**
 
 ```powershell
 git rev-parse --short HEAD
@@ -26,6 +32,15 @@ Select-String -Path docs/mission/HADES_FINAL_RELEASE_GATE.md -Pattern 'Resumo: '
 de estado divergiriam. O estado canônico é `HADES_MASTER_STATE.json`. **Não criar** o outro.
 
 **Retomada exata (comandos reais, nenhum passo presumido):**
+
+> ⚠️ **A PRIMEIRA LINHA DESTRÓI TRABALHO LOCAL. LEIA A CONDIÇÃO ANTES DE A CORRER.**
+> *`git reset --hard origin/main` é o passo **certo** para quem retoma **da `main`** — e **destrutivo** para quem tem
+> commits locais por empurrar.* ⇒ **Confirme primeiro:**
+> ```powershell
+> git rev-list --count origin/fix/checker-relogio..HEAD   # 0 = seguro; >0 = HA' TRABALHO LOCAL
+> ```
+> *Se der **> 0**, **não** corra o `reset --hard`: empurre primeiro (um push por corrida — `E-541`), ou guarde o
+> trabalho numa branch.* **O `reset --hard` não avisa: ele apaga.**
 
 ```powershell
 git fetch origin main; git reset --hard origin/main

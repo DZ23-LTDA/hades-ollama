@@ -42,10 +42,12 @@ func TestSlashRegistryBackendsAreActuallyRegistered(t *testing.T) {
 	if available == 0 {
 		t.Fatal("registry has no available command")
 	}
-	// O registro cobre os 32 comandos da seção 6 mais /cancel, /approve e /deny
-	// exigidos pela §11.1.
-	if got := len(agent.DefaultSlashRegistry()); got != 35 {
-		t.Fatalf("registry has %d commands, want 35", got)
+	// O registro cobre os 32 comandos da seção 6, mais /cancel, /approve e /deny (§11.1), mais
+	// /spark, /cowork e /reject (Estágio 44 — E-533). ⇒ ***38.*** *Este é o SEGUNDO contrato do mesmo
+	// registo: o primeiro vive em `internal/agent/slash_registry_test.go`. Os dois têm de concordar —
+	// e foi por eu ter corrigido só um deles que o `server` ficou vermelho em 4 jobs (E-547).*
+	if got := len(agent.DefaultSlashRegistry()); got != 38 {
+		t.Fatalf("registry has %d commands, want 38", got)
 	}
 }
 
