@@ -1,0 +1,11 @@
+{
+  "id": "replica-diff",
+  "version": "0.1.0+77c9436f",
+  "description": "Compares an app clone against the original: a feature parity score from the feature matrix (weighted by must, should, could) with the missing list in build order, plus a screenshot layout diff that ignores colour so a rebrand does not count against you. Two standard-library Python tools. Use when the user says \"how close is my clone\", \"compare it to the original\", \"what's missing\", \"parity check\", \"diff the screens\", \"is it ready\", or after /replica-test.",
+  "category": "replica",
+  "license": "MIT",
+  "homepage": "https://github.com/Jakeschincariol/replica-skill",
+  "dependencies": [],
+  "token_budget": 1048,
+  "content_sha256": "c90c46dc1f78f8d3cbc3349e678d3e452dfb3d6ea1d85eeebb10cc1f6b908b18"
+}

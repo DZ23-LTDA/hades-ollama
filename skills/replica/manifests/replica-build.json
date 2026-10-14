@@ -1,0 +1,11 @@
+{
+  "id": "replica-build",
+  "version": "0.1.0+77c9436f",
+  "description": "Rebuilds an app screen by screen from the recon map: app shell first, then the core flow as a vertical slice, then every screen with all its states, ticking off the feature matrix as it goes. Writes every line fresh, never the original's code, assets or copy. Use when the user says \"build the clone\", \"build screen S07\", \"start building\", \"rebuild this screen\", \"implement the booking page\", or after /replica-design.",
+  "category": "replica",
+  "license": "MIT",
+  "homepage": "https://github.com/Jakeschincariol/replica-skill",
+  "dependencies": [],
+  "token_budget": 949,
+  "content_sha256": "24aab464e557108cea24a88bf1e4930a9adf3dab69884a85b201fda5b019c507"
+}

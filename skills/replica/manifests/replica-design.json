@@ -1,0 +1,11 @@
+{
+  "id": "replica-design",
+  "version": "0.1.0+77c9436f",
+  "description": "Rebuilds an app's design system for a clone: colour roles, type scale, spacing, radius, shadows and every component with its states, as design tokens plus component specs, with original assets instead of the target's logos, icons, illustrations or licensed fonts. Includes a WCAG contrast checker. Use when the user says \"match the design\", \"rebuild the design system\", \"get the colours and fonts\", \"make it look like X\", \"design tokens for my clone\", or after /replica-architect.",
+  "category": "replica",
+  "license": "MIT",
+  "homepage": "https://github.com/Jakeschincariol/replica-skill",
+  "dependencies": [],
+  "token_budget": 1018,
+  "content_sha256": "2af68aa2ed91db73474208e8d4cf680c11bd7928cfbc5073f501134959c8a534"
+}

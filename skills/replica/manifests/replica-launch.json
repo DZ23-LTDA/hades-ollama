@@ -1,0 +1,11 @@
+{
+  "id": "replica-launch",
+  "version": "0.1.0+77c9436f",
+  "description": "Writes the launch for an app clone: the landing page built on the positioning angle, pricing set against the original's public pricing and its users' complaints, and the App Store and Google Play listing linted against the stores' limits and copycat rules. Use when the user says \"landing page\", \"pricing\", \"how much should I charge\", \"App Store listing\", \"store screenshots\", \"launch plan\", \"Product Hunt\", or after /replica-brand.",
+  "category": "replica",
+  "license": "MIT",
+  "homepage": "https://github.com/Jakeschincariol/replica-skill",
+  "dependencies": [],
+  "token_budget": 1057,
+  "content_sha256": "8b1faa128e57ae345f873f31ef35420314ed9a2610cd7ab99afc1abf28d99245"
+}

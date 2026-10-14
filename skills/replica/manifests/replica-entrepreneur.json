@@ -1,0 +1,11 @@
+{
+  "id": "replica-entrepreneur",
+  "version": "0.1.0+77c9436f",
+  "description": "Researches the app being cloned and reads what its real users say in public reviews (App Store, Google Play, G2, Capterra, Trustpilot, Reddit, Hacker News, its own feature-request board), then ranks what they hate, what is missing and what is unsolved, turns it into a fix plan for the clone and a positioning angle you can sell. Every quote is real, verbatim and linked. Use when the user says \"what do people hate about X\", \"read the reviews\", \"how do I make mine better\", \"find the gap\", \"what features are missing\", \"how do I position this\", \"make it sellable\", or after /replica-diff.",
+  "category": "replica",
+  "license": "MIT",
+  "homepage": "https://github.com/Jakeschincariol/replica-skill",
+  "dependencies": [],
+  "token_budget": 1243,
+  "content_sha256": "49207154416e679f65e65f209e8c3ead35497cc9d776cb5605ff0698a67f64bc"
+}
