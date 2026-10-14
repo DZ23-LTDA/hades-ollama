@@ -2694,9 +2694,16 @@ func (a *agentAPI) missoesDoChamador(c *gin.Context) ([]agent.Mission, error) {
 	if err != nil {
 		return nil, err
 	}
-	organizationID := agentOrganizationID(c)
+	return missoesDaOrganizacao(missions, agentOrganizationID(c)), nil
+}
+
+// missoesDaOrganizacao e' a REGRA, separada da ligacao HTTP de proposito (E-627): assim o
+// isolamento entre inquilinos e' PROVADO por um teste puro, sem harness de servidor, e nao fica
+// dependente de um teste de rota que ninguem escreveu. Organizacao vazia devolve tudo — e' o
+// comportamento anterior e esta' fixado por teste, para nao mudar por acidente.
+func missoesDaOrganizacao(missions []agent.Mission, organizationID string) []agent.Mission {
 	if organizationID == "" {
-		return missions, nil
+		return missions
 	}
 	filtered := make([]agent.Mission, 0, len(missions))
 	for _, mission := range missions {
@@ -2704,7 +2711,7 @@ func (a *agentAPI) missoesDoChamador(c *gin.Context) ([]agent.Mission, error) {
 			filtered = append(filtered, mission)
 		}
 	}
-	return filtered, nil
+	return filtered
 }
 
 func (a *agentAPI) missions(c *gin.Context) {
