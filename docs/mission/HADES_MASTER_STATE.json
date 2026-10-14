@@ -2441,7 +2441,10 @@
     "UM DONO SO' PARA O CAMINHO (E-416/ADV-63): extrair lockPath() e fazer produto e teste usarem o MESMO metodo e' o que transforma uma copia em prova - a mutacao passa a mudar o INPUT do teste. Contraprova: lockPath global => o teste FALHA ('as organizacoes A e B compartilham o caminho de trava')",
     "O QUE SEPARA UMA PROVA DE UMA COPIA E' QUEM E' O DONO DO VALOR (E-416): a minha primeira prova da trava replicava a formula do produto e passava com qualquer produto. A segunda usa o metodo do produto e dispara na mutacao",
     "UM TESTE QUE PASSA 23 HORAS POR DIA E FALHA NA 24a (E-417): TestAgendamentoImpedeDoubleBookingSobConcorrencia falhava 5/5 apos ~23:30, porque o fixture nascia de time.Now().Add(24h) e agendava em +90min, caindo no dia seguinte. O PRODUTO ESTA' CERTO (servico que termina 00:11 nao cabe em turno que fecha 24:00); o fixture herdava o instante do relogio da maquina",
-    "INSTANTE DE TESTE NAO SE HERDA DO RELOGIO: ESCOLHE-SE (E-417): o fixture passou a usar amanha as 10:00 UTC. E o mesmo defeito estava no meu proprio teste novo (Now+2h), corrigido pela mesma regra. Verificado 3x as 22:12, na janela em que falhava"
+    "INSTANTE DE TESTE NAO SE HERDA DO RELOGIO: ESCOLHE-SE (E-417): o fixture passou a usar amanha as 10:00 UTC. E o mesmo defeito estava no meu proprio teste novo (Now+2h), corrigido pela mesma regra. Verificado 3x as 22:12, na janela em que falhava",
+    "A VARREDURA EXAUSTIVA DO RELOGIO DEU UM RESULTADO CALMO (E-418): 57 usos de Now()+Add em testes, 5 triados como alto risco e TODOS seguros (deslocamentos de +-1s/1min, ou vencido). O defeito do E-417 era singular: nao ha' familia",
+    "O MEU SCANNER LE' COMENTARIOS (E-418): ele marcou como risco o proprio comentario que eu escrevi no E-417 - um scanner que le' comentarios conta a documentacao do defeito como defeito",
+    "ADV-65 DECLARADO, NAO LIGADO (E-418): o motor de agendamento e' uma biblioteca testada e sem chamador em producao; o que esta' provado em producao e' o agendador de WORKFLOW. Ligar exigiria dono de tick em producao, ponte com os canais (que nao existem) e testes de concorrencia com o tick rodando"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -3162,7 +3165,7 @@
           "severidade": "INFORMATIVO/ALTO para a entrega (linha NAO ligada)",
           "descricao": "Nada em producao chama o motor de agendamento: SchedulingStore tem zero chamadores fora de _test.go; NewSupervisorScheduler so' no teste; Supervisor.Start so' em supervisor_test.go:504. O que esta' provado em producao e' o agendador de WORKFLOW (resumePending/ClaimDueSchedules, w1 + frescor entre processos)",
           "descoberto_por": "6a revisao adversarial independente (subagente, contexto fresco) com go test -overlay e sondas",
-          "estado": "REGISTRADO, NAO CORRIGIDO",
+          "estado": "DECLARADO, NAO LIGADO: o motor de agendamento e' hoje uma biblioteca testada e sem chamador em producao (zero usos fora de _test.go). O que esta' provado em producao e' o agendador de WORKFLOW. Ligar exigiria: (a) dono de tick em producao (hoje o tick vem de HTTP); (b) ponte com os canais de voz/WhatsApp/Telegram, que NAO existem (BLOCKED_BY_EXTERNAL_DEPENDENCY); (c) testes de concorrencia com o tick rodando. Declarar e' a entrega honesta enquanto (a)-(c) nao estiverem feitos",
           "evidencia": "E-411"
         }
       ],
@@ -3756,6 +3759,21 @@
           "varredura dirigida, nao exaustiva (distributed_integration_test.go tem 68 usos de time.Now nao inspecionados)",
           "nao ha teste da borda (23:41 com servico de 30min)"
         ]
+      },
+      "varredura_do_relogio": {
+        "usos_de_Now_mais_Add_em_testes": 57,
+        "alto_risco_triados": 5,
+        "todos_seguros": [
+          "ClaimDue(Now+1s)",
+          "NextRunAt = Now-1s (x2)",
+          "NextRunAt = Now-1min",
+          "1 falso positivo: o scanner le' comentarios"
+        ],
+        "conclusao": "o defeito do E-417 era singular: nao ha' familia de testes dependentes do relogio",
+        "limites": [
+          "cobre _test.go de internal/, nao server/, cmd/ nem JS",
+          "o scanner le' comentarios"
+        ]
       }
     }
   },
@@ -3862,6 +3880,7 @@
     "E-414": "ADV-62: teste do ciclo com NextRunAt futuro, com contraprova e controle",
     "E-415": "a minha prova da trava era FALSA (replicava a formula do produto); teste removido",
     "E-416": "lockPath compartilhado entre produto e teste: a contraprova passa a disparar",
-    "E-417": "teste que dependia da hora: fixture escolhia instante na borda da meia-noite"
+    "E-417": "teste que dependia da hora: fixture escolhia instante na borda da meia-noite",
+    "E-418": "varredura exaustiva do relogio (57 usos, 5 triados, todos seguros) + ADV-65 declarado"
   }
 }
