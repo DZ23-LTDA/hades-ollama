@@ -1,10 +1,40 @@
 package agent
 
 import (
+	"errors"
 	"strings"
 
 	"github.com/ollama/ollama/internal/multillm"
 )
+
+// ErrModelRegistryUnavailable marca a tentativa de rotear modelo por passo num runtime **sem** registry.
+//
+// *Sentinel proprio de proposito:* "nao ha como escolher por passo" e' uma condicao de CONFIGURACAO, e a resposta
+// honesta e' **recusar** - nunca cair em silencio para o modelo da missao, porque isso esconderia exactamente o
+// defeito que E-433/E-435 vieram corrigir (*a escolha ser do turno e nao do passo*).
+var ErrModelRegistryUnavailable = errors.New("model registry is not configured for this runtime")
+
+// Models devolve o registry de modelos injetado, ou nil. *Nulo e' um estado DECLARADO, nao um erro de leitura.*
+func (r *Runtime) Models() *multillm.Registry {
+	if r == nil {
+		return nil
+	}
+	return r.models
+}
+
+// RouteModelForStep escolhe o modelo de UM passo, usando a ponte (E-435) e o registry injetado (E-436).
+//
+// **ESTA E' A ESTRADA DEPOIS DA PONTE** - a funcao que existe para o executor chamar. *E ela vem com o limite
+// declarado no proprio corpo: quem ainda NAO a chama e' o laco de execucao, e isso esta' registrado como limite de
+// E-436. Expor a entrada sem ligar o consumidor e' melhor que ligar sem testar - mas nao e' o mesmo que integrado.*
+func (r *Runtime) RouteModelForStep(missao Mission, passo Step) (multillm.RouteDecision, error) {
+	if r == nil || r.models == nil {
+		// FALHA FECHADO: sem registry nao se escolhe por passo, e **nao** se devolve o modelo da missao fingindo
+		// que a exigencia do passo foi honrada.
+		return multillm.RouteDecision{}, ErrModelRegistryUnavailable
+	}
+	return r.models.Route(RouteRequestForStep(missao, passo))
+}
 
 // E-435 (Estagio 43) — A PONTE ENTRE O NO DO PLANO E O MOTOR DE SELECAO.
 //

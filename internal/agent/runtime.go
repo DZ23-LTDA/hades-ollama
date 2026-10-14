@@ -16,6 +16,10 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
+	// E-436: o runtime passa a poder receber o REGISTRY DE MODELOS (Estagio 43). *`multillm` nao importa `agent`*
+	// (medido), entao esta direcao nao cria ciclo.
+	"github.com/ollama/ollama/internal/multillm"
 )
 
 // idempotentMissionID deriva um ID estável de (organização, chave) para que a
@@ -43,11 +47,14 @@ func missionScopeMatches(mission Mission, requestedOrganization, runtimeScope st
 type Runtime struct {
 	// writeDurability é o modo EFETIVO de durabilidade da escrita (E-168): "durable" (padrão) ou
 	// "relaxed". Fica no runtime para poder ser relatado, não para ser inferido do ambiente.
-	writeDurability     string
-	store               Store
-	planner             Planner
-	plannerResolver     PlannerResolver
-	tools               *Registry
+	writeDurability string
+	store           Store
+	planner         Planner
+	plannerResolver PlannerResolver
+	tools           *Registry
+	// E-436: o registry de MODELOS (pode ser nulo - ver `RuntimeConfig.Models`). *Fica privado, como `tools`, e o
+	// acesso e' pelo metodo `Models()`: campo exportado convidaria a mutacao de fora.*
+	models              *multillm.Registry
 	capabilityPolicy    CapabilityPolicy
 	workspaceRoot       string
 	dataRoot            string
@@ -129,6 +136,15 @@ type RuntimeConfig struct {
 	WebhookReplay       *WebhookReplayStore
 	WhatsApp            *WhatsAppGateway
 	SupervisorConfig    *SupervisorConfig
+	// E-436 (Estagio 43): o REGISTRY DE MODELOS entra no runtime do agente. **Ate aqui ele nao entrava** ✗ - o
+	// roteamento existente e' o do PLANEJADOR (`ResolvePlannerForMission`), que escreve **um** modelo para a MISSAO
+	// inteira. *Sem esta injecao, `Step.RequiredCapabilities`/`PinnedModelID` (E-433) e a ponte (E-435) nao tinham
+	// como ser consumidos: nao havia de onde ler.*
+	//
+	// **OPCIONAL POR DESENHO**: nulo significa "sem selecao por passo", e `RouteModelForStep` **falha fechado** -
+	// *nunca inventa um modelo nem cai em silencio para o da missao.* Um runtime sem Registry continua funcionando
+	// como antes; o que ele **nao** faz e' fingir que roteia.
+	Models *multillm.Registry
 }
 
 var (
@@ -404,7 +420,7 @@ func NewRuntime(config RuntimeConfig) (*Runtime, error) {
 	}
 	runtime := &Runtime{
 		writeDurability: durabilidade,
-		store:           store, planner: planner, plannerResolver: config.PlannerResolver, tools: tools, capabilityPolicy: capabilityPolicy, workspaceRoot: root, dataRoot: dataRoot, context: contextStore, company: companyStore, consent: consentRegistry, crm: crmStore, inbox: inboxStore, omnichannel: omnichannelRuntime, serviceAgents: serviceAgentRuntime, commerce: commerceStore,
+		store:           store, planner: planner, plannerResolver: config.PlannerResolver, tools: tools, models: config.Models, capabilityPolicy: capabilityPolicy, workspaceRoot: root, dataRoot: dataRoot, context: contextStore, company: companyStore, consent: consentRegistry, crm: crmStore, inbox: inboxStore, omnichannel: omnichannelRuntime, serviceAgents: serviceAgentRuntime, commerce: commerceStore,
 		salesWorkforce:    salesWorkforceStore,
 		marketplace:       marketplaceSyncStore,
 		businessSnapshots: businessSnapshotStore, finance: financeOps, businessSupervisor: businessSupervisor, remoteMCP: config.RemoteMCP, metrics: &RuntimeMetrics{}, connectors: config.Connectors, mcp: config.MCP, queue: queue, redisQueue: config.RedisQueue, traces: traces, telemetry: telemetry, media: config.Media, builder: builder, collaboration: collaboration, push: config.Push, pushOutbox: pushOutbox, deployments: config.Deployments, deploymentApprovals: deploymentApprovals, webhookReplay: webhookReplay, mu: &sync.Mutex{}, running: make(map[string]bool), activeCancels: make(map[string]context.CancelFunc), cancelPollInterval: durableCancelPollInterval(),

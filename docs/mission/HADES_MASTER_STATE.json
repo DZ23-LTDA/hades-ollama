@@ -2487,7 +2487,10 @@
     "VALIDAR O GRAFO NAO E' HONRAR O GRAFO (E-434): a execucao segue em ORDEM DE LISTA e o runtime ainda nao consome RequiredCapabilities nem PinnedModelID por passo. Declarado no codigo e no registro",
     "O RUNTIME NAO USA O MULTILLM.REGISTRY PARA PASSO (E-435): o roteamento que existe e' do PLANEJADOR e escreve de volta um modelo unico para a missao (runtime.go:1141-1151). grep multillm. em internal/agent so' encontra plugins e ContractRegistry. Consumir exigencia por passo exige injetar o Registry - e isso NAO esta feito",
     "UMA PONTE NAO E' A ESTRADA (E-435): RouteRequestForStep traduz Step -> RouteRequest e o teste prova o mapeamento E o motor honrando. Mas nada chama a ponte ainda. Ponte sem teste e' pior que ponte nenhuma, porque parece caminho",
-    "ASSERCAO POR ID MEDE A ORDENACAO DE HOJE (E-435): eu assertei que pedir 'vision' devolveria local/visual e veio local/forte (tambem tem visao e pontua mais). Corrigido para asserir a PROPRIEDADE (tem a capacidade), com controle de que um pin honravel passa"
+    "ASSERCAO POR ID MEDE A ORDENACAO DE HOJE (E-435): eu assertei que pedir 'vision' devolveria local/visual e veio local/forte (tambem tem visao e pontua mais). Corrigido para asserir a PROPRIEDADE (tem a capacidade), com controle de que um pin honravel passa",
+    "O REGISTRY ENTROU NO RUNTIME (E-436): RuntimeConfig.Models (opcional), campo privado models como tools, acessor Models() e RouteModelForStep. O teste mede as duas direcoes: com registry escolhe honrando capacidade e pin, com justificativa; SEM registry devolve ErrModelRegistryUnavailable, em vez de cair em silencio para o modelo da missao",
+    "FALHA FECHADO E' O QUE TORNA A INJECAO SEGURA (E-436): um runtime que nao sabe rotear por passo e devolve o modelo da missao 'como se' roteasse esconde exactamente o defeito que E-433/E-435 vieram corrigir",
+    "A ENTRADA NAO E' O CONSUMIDOR (E-436): RouteModelForStep existe e e' testada, mas o laco de execucao ainda NAO a chama. Expor a entrada sem ligar o consumidor e' melhor que ligar sem testar - mas nao e' o mesmo que integrado"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -3940,7 +3943,8 @@
           "E-428: PinnedModelID como restricao rigida (MANUAL), com ErrNoRoute quando nao honrado",
           "E-433 (contrato): Step carrega RequiredCapabilities, PinnedModelID e DependsOn, com round-trip JSON e compatibilidade de plano antigo. O CONSUMO pelo runtime NAO esta feito.",
           "E-434: ValidatePlanGraph (ID, dependencia inexistente/vazia/em si, e CICLO por Kahn) ligado em validateMissionPersistenceBounds. O plano e' valido, mas ainda NAO e' ordenado nem honrado.",
-          "E-435: RouteRequestForStep (a ponte Step -> multillm.RouteRequest). O teste prova o mapeamento E o motor honrando. A INJECAO do Registry no Runtime continua NAO feita - nada chama a ponte."
+          "E-435: RouteRequestForStep (a ponte Step -> multillm.RouteRequest). O teste prova o mapeamento E o motor honrando. A INJECAO do Registry no Runtime continua NAO feita - nada chama a ponte.",
+          "E-436: RuntimeConfig.Models + Runtime.RouteModelForStep, com falha fechada (ErrModelRegistryUnavailable) quando nao ha registry. O LACO DE EXECUCAO ainda NAO chama - a entrada existe, o consumidor nao."
         ],
         "matriz_correcoes_por_medicao": [
           "MIN_COST NAO estava ausente: RoutePreferenceCheapest existe (router.go:25) - a capacidade existia com outro nome",
