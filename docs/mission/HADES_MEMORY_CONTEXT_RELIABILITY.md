@@ -423,3 +423,34 @@ contexto». Chamar-lhe integração de memória seria vender outra coisa.
 que o roteamento por passo usa o Registry. **NÃO medi** que o corpo é encaminhado sem alteração
 (embora seja o que um proxy faz) e **não medi** a integração com **MCPs/skills** — que continua
 por medir, e fica dito em vez de contado como feito.
+
+### D-11. MCPs/skills: NÃO há ferramenta de memória — a lacuna que sobra, com o ponto de inserção
+
+**Medido.** Procurei em `internal/agent` ferramentas de agente que exponham memória/contexto
+(`memory_*`, `search_memories`, `context_*`, `handoff_*`): **zero**. O que existe é outra coisa, e
+vale registar porque mostra que a governação já está lá:
+- `company_agents.go:17` — `MemoryScope string` ⇒ agentes de empresa **já declaram** um escopo de
+  memória (é configuração, não pedido);
+- `component_contracts_seed.go:28` — `memory_context_engine` → `context.go`, «memória governada com
+  escopo, proveniência e isolamento» ⇒ o motor é um **componente registado** com contrato versionado.
+
+**Consequência**: um agente **não pode pedir memória pelo protocolo**. A memória entra no contexto
+por **injecção** (o preâmbulo), não por pedido da ferramenta. Para o mandato — «integrar a MCPs,
+skills» — isto é uma **lacuna real**, e é a única que sobra depois do E-608/E-614/E-615.
+
+**O ponto de inserção, auditado (`internal/agent/tools.go`)**:
+```
+:23  type Registry struct { tools map[string]Tool }
+:27  ErrCapabilityDenied = "tool capability is not granted to this mission"
+:33  func NewRegistry() *Registry { registry.Register(workspaceListTool{}) ... }
+```
+Uma ferramenta de memória segue **o padrão que já existe**: uma struct que implementa `Tool`, um
+`registry.Register(...)` em `NewRegistry`, e um `ToolDescriptor` com a capacidade exigida (por
+exemplo `memory:read`). Fica assim sujeita ao **mesmo portão de capacidades** das outras — *o que
+torna esta lacuna implementável sem inventar política nova: a governação já existe, falta o
+pedido.*
+
+**E o que NÃO fazer**: expor a procura sem escopo de ator. A memória `private` de outro usuário do
+mesmo projeto não pode entrar por uma ferramenta — a mesma regra que `SearchMemoriesForActor` já
+aplica no caminho do contexto (`agent_routes.go:2887`). Uma ferramenta nova **tem de passar pelo
+mesmo filtro**, não por um atalho.
