@@ -1,5 +1,5 @@
 import { Link, useNavigate } from "@tanstack/react-router";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
 	  createProject,
 	  deleteProject,
@@ -86,7 +86,7 @@ function skillActivationsFromSelection(selection: AgentSkillSelection | null): A
   return [...new Set(ids)].map((id) => ({ skill_id: id }));
 }
 
-export function ProductWorkspacePage({ kind }: { kind: ProductPageKind }) {
+export function ProductWorkspacePage({ kind, createdMissionId }: { kind: ProductPageKind; createdMissionId?: string }) {
   const copy = pageCopy[kind];
   const current = kind as AppSection;
   const navigate = useNavigate();
@@ -382,11 +382,35 @@ export function ProductWorkspacePage({ kind }: { kind: ProductPageKind }) {
 				} catch (cause) { setNotice(cause instanceof Error ? cause.message : "Falha ao registrar skill."); }
 			};
 
+			// E-400 (port da paridade de UI, medido pelos 4 casos de TasksJourney.test.tsx):
+			// *sucesso só se confirma quando a missão criada volta da LISTAGEM PERSISTIDA; um registro ausente é
+			// reportado em vez de presumido.* O banner recebe foco para quem usa leitor de tela não perder o aviso.
+			const createdBannerRef = useRef<HTMLDivElement>(null);
+			const createdMission = useMemo(
+				() => (kind === "tasks" && createdMissionId ? missions.find((mission) => mission.id === createdMissionId) : undefined),
+				[kind, createdMissionId, missions],
+			);
+			const showCreatedBanner = kind === "tasks" && Boolean(createdMissionId) && !loading && !loadError;
+			useEffect(() => {
+				if (showCreatedBanner) createdBannerRef.current?.focus();
+			}, [showCreatedBanner]);
+			const openNewTask = () => void navigate({ to: "/tasks/new" });
+
 			const renderContent = () => {
 	    if (loading) return <div role="status" aria-live="polite" aria-busy="true" className="rounded-xl border border-dashed border-neutral-300 px-6 py-12 text-center text-sm text-neutral-500 dark:border-neutral-700">Consultando contratos agentic…</div>;
 	    if (loadError) return <div role="alert" aria-live="assertive" className="rounded-xl border border-red-200 bg-red-50 px-6 py-8 text-center text-sm text-red-700 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300"><p>{loadError}</p><button type="button" onClick={() => void refresh()} className="mt-4 rounded-lg border border-red-300 px-3 py-2 text-xs font-medium dark:border-red-800">Tentar novamente</button></div>;
     if (kind === "projects") return <div className="space-y-3">{projects.length ? projects.map((project) => <ResourceRow key={project.id} onDelete={() => void removeProject(project)}><div className="flex flex-wrap items-center justify-between gap-2"><div><p className="font-medium text-neutral-900 dark:text-white">{editingProject === project.id ? <input autoFocus value={editingProjectName} onChange={(event) => setEditingProjectName(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") void saveProject(project); if (event.key === "Escape") setEditingProject(null); }} className="h-8 rounded-lg border border-neutral-300 bg-transparent px-2 text-sm dark:border-neutral-700" /> : project.name}</p><p className="mt-1 text-xs text-neutral-500">{project.root || "workspace local gerenciado"} · atualizado {new Date(project.updated_at).toLocaleString()}</p></div>{editingProject === project.id ? <button onClick={() => void saveProject(project)} className="rounded-lg bg-neutral-900 px-3 py-2 text-xs text-white dark:bg-white dark:text-neutral-900">Salvar</button> : <button onClick={() => { setEditingProject(project.id); setEditingProjectName(project.name); }} className="rounded-lg border border-neutral-200 px-3 py-2 text-xs dark:border-neutral-700">Editar</button>}</div></ResourceRow>) : <EmptyState message="Crie um projeto para manter instruções, arquivos e contexto entre missões." action="Criar projeto" onAction={() => document.getElementById("new-project-name")?.focus()} />}</div>;
-    if (kind === "tasks") return missions.length ? <div className="space-y-3">{missions.map((mission) => { const missionActive = ["RUNNING", "OBSERVING", "RECOVERING", "PLANNING", "PENDING"].includes(mission.state); return (<ResourceRow key={mission.id} onDelete={() => void removeMission(mission)} deleteDisabled={missionActive} deleteLabel={missionActive ? "Cancele a tarefa antes de excluir" : "Excluir tarefa"}><Link to="/agentic" className="block"><div className="flex flex-wrap items-center justify-between gap-2"><p className="font-medium text-neutral-900 dark:text-white">{mission.objective}</p><span className="rounded-full bg-neutral-100 px-2 py-1 text-[10px] font-medium dark:bg-neutral-800">{missionStateLabel(mission.state)}</span></div><p className="mt-1 text-xs text-neutral-500">{mission.id} · {mission.plan?.length ?? 0} passos · {mission.artifacts?.length ?? 0} artefatos · {mission.model || "modelo padrão"}</p></Link></ResourceRow>); })}</div> : <EmptyState message="As missões criadas no Agentic Console aparecerão aqui com timeline e artifacts." action="Nova tarefa" onAction={() => void navigate({ to: "/agentic" })} />;
+    if (kind === "tasks") {
+      const createdBanner = showCreatedBanner && (createdMission
+        ? <div ref={createdBannerRef} tabIndex={-1} role="status" aria-live="polite" className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200"><p className="font-medium">Tarefa criada</p><p className="mt-1 break-words text-xs">{createdMission.objective} · estado {createdMission.state}</p></div>
+        : <div ref={createdBannerRef} tabIndex={-1} role="alert" aria-live="assertive" className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200"><p className="font-medium">A tarefa criada não apareceu na listagem</p><p className="mt-1 break-all text-xs">ID {createdMissionId}. Atualize a lista ou verifique a organização ativa.</p><button type="button" onClick={() => void refresh()} className="mt-3 rounded-lg border border-amber-300 px-3 py-1.5 text-xs font-medium dark:border-amber-800">Atualizar lista</button></div>);
+      if (!missions.length) return <>{createdBanner}<EmptyState message="Nenhuma tarefa criada ainda. Crie a primeira para acompanhar plano, approvals e artifacts aqui." action="Nova tarefa" onAction={openNewTask} /></>;
+      // MEDIDO (E-403): o teste procura `node.type === "li" && node.props["aria-current"] === "true"`.
+      // A minha primeira versão pôs o `aria-current` no `<Link>` (`<a>`) e o `ResourceRow` renderiza um `<div>` ⇒
+      // `findAll` devolvia `[]`. ***A asserção não pede "algo que indique a missão criada": ela pede um item de LISTA
+      // marcado — e a estrutura da lista faz parte do contrato.***
+      return <>{createdBanner}<ul aria-label="Tarefas" className="space-y-3">{missions.map((mission) => { const missionActive = ["RUNNING", "OBSERVING", "RECOVERING", "PLANNING", "PENDING"].includes(mission.state); const isCreated = mission.id === createdMissionId; return (<li key={mission.id} aria-current={isCreated ? "true" : undefined} className={isCreated ? "rounded-xl ring-2 ring-emerald-400" : undefined}><ResourceRow onDelete={() => void removeMission(mission)} deleteDisabled={missionActive} deleteLabel={missionActive ? "Cancele a tarefa antes de excluir" : "Excluir tarefa"}><Link to="/agentic" className="block"><div className="flex flex-wrap items-center justify-between gap-2"><p className="font-medium text-neutral-900 dark:text-white">{mission.objective}</p><span className="rounded-full bg-neutral-100 px-2 py-1 text-[10px] font-medium dark:bg-neutral-800">{missionStateLabel(mission.state)}</span></div><p className="mt-1 text-xs text-neutral-500">{mission.id} · {mission.plan?.length ?? 0} passos · {mission.artifacts?.length ?? 0} artefatos · {mission.model || "modelo padrão"}</p></Link></ResourceRow></li>); })}</ul></>;
+    }
 			if (kind === "skills") return <div className="space-y-5"><section className="rounded-2xl border border-neutral-200/80 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
 				<div><h3 className="text-sm font-semibold text-neutral-900 dark:text-white">Catálogo por contexto</h3><p className="mt-1 text-xs leading-5 text-neutral-500 dark:text-neutral-400">Ative skills por projeto, agente ou modelo e veja o que o servidor selecionou para o orçamento informado. A ordem e as exclusões vêm do servidor; a tela não decide sozinha.</p></div>
 				<div className="mt-4"><SkillCatalogPanel

@@ -28,6 +28,7 @@ import { Route as SkillsRouteImport } from './routes/skills'
 import { Route as StudioRouteImport } from './routes/studio'
 import { Route as TasksRouteImport } from './routes/tasks'
 import { Route as CChatIdRouteImport } from './routes/c.$chatId'
+import { Route as TasksNewRouteImport } from './routes/tasks_.new'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -124,6 +125,11 @@ const CChatIdRoute = CChatIdRouteImport.update({
   path: '/c/$chatId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TasksNewRoute = TasksNewRouteImport.update({
+  id: '/tasks_/new',
+  path: '/tasks/new',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -145,6 +151,7 @@ export interface FileRoutesByFullPath {
   '/studio': typeof StudioRoute
   '/tasks': typeof TasksRoute
   '/c/$chatId': typeof CChatIdRoute
+  '/tasks/new': typeof TasksNewRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -166,6 +173,7 @@ export interface FileRoutesByTo {
   '/studio': typeof StudioRoute
   '/tasks': typeof TasksRoute
   '/c/$chatId': typeof CChatIdRoute
+  '/tasks/new': typeof TasksNewRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -188,6 +196,7 @@ export interface FileRoutesById {
   '/studio': typeof StudioRoute
   '/tasks': typeof TasksRoute
   '/c/$chatId': typeof CChatIdRoute
+  '/tasks_/new': typeof TasksNewRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -211,6 +220,7 @@ export interface FileRouteTypes {
     | '/studio'
     | '/tasks'
     | '/c/$chatId'
+    | '/tasks/new'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -232,6 +242,7 @@ export interface FileRouteTypes {
     | '/studio'
     | '/tasks'
     | '/c/$chatId'
+    | '/tasks/new'
   id:
     | '__root__'
     | '/'
@@ -253,6 +264,7 @@ export interface FileRouteTypes {
     | '/studio'
     | '/tasks'
     | '/c/$chatId'
+    | '/tasks_/new'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -275,6 +287,7 @@ export interface RootRouteChildren {
   StudioRoute: typeof StudioRoute
   TasksRoute: typeof TasksRoute
   CChatIdRoute: typeof CChatIdRoute
+  TasksNewRoute: typeof TasksNewRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -412,6 +425,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CChatIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/tasks_/new': {
+      id: '/tasks_/new'
+      path: '/tasks/new'
+      fullPath: '/tasks/new'
+      preLoaderRoute: typeof TasksNewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -435,6 +455,7 @@ const rootRouteChildren: RootRouteChildren = {
   StudioRoute: StudioRoute,
   TasksRoute: TasksRoute,
   CChatIdRoute: CChatIdRoute,
+  TasksNewRoute: TasksNewRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

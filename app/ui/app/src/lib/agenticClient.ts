@@ -693,3 +693,8 @@ export const redoBuilder = (id: string, expectedVersion?: number) => agentFetch<
 export const previewBuilder = (id: string) => agentFetch<{ project: BuilderProject; artifact: unknown }>(`/api/agent/v1/builders/${encodeURIComponent(id)}/preview`, { method: "POST", body: "{}" });
 export const exportBuilder = (id: string) => agentFetch<{ project: BuilderProject; archive_path: string; checksum: string; sha256: string; download_url: string }>(`/api/agent/v1/builders/${encodeURIComponent(id)}/export`, { method: "POST", body: "{}" });
 export const deployBuilder = (id: string, provider: string, payload: { target?: string; approval_id?: string; nonce?: string }) => agentFetch<{ status: string; url?: string }>(`/api/agent/v1/builders/${encodeURIComponent(id)}/deploy/${encodeURIComponent(provider)}`, { method: "POST", body: JSON.stringify(payload) });
+
+export function agentErrorMessage(cause: unknown, fallback: string): string {
+  if (cause instanceof TypeError) return "Não foi possível conectar ao runtime agentic local. Verifique se ele está em execução e tente novamente.";
+  return cause instanceof Error && cause.message ? cause.message : fallback;
+}
