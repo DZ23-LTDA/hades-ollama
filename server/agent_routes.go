@@ -2764,30 +2764,16 @@ func (a *agentAPI) wakeups(c *gin.Context) {
 		writeAgentError(c, http.StatusInternalServerError, err)
 		return
 	}
-	despertares := agent.DespertaresDasMissoes(missions, time.Now().UTC())
-	porID := make(map[string]agent.Mission, len(missions))
-	for _, mission := range missions {
-		porID[mission.ID] = mission
-	}
-	runtime := a.scopedRuntime(c)
-	enfileiradas := make([]gin.H, 0)
-	falhas := make([]gin.H, 0)
-	for _, despertar := range despertares {
-		for _, missaoID := range agent.MissoesAExecutar(despertar, porID) {
-			if _, err := runtime.EnqueueMission(missaoID); err != nil {
-				falhas = append(falhas, gin.H{"agent_id": despertar.AgenteID, "mission_id": missaoID, "error": err.Error()})
-				continue
-			}
-			enfileiradas = append(enfileiradas, gin.H{"agent_id": despertar.AgenteID, "mission_id": missaoID})
-		}
-	}
+	// UMA implementacao, dois chamadores (E-639): a MESMA operacao que o tique do agendador usa.
+	// Duplicar aqui a decisao de enfileirar deixaria um lado a agir a menos sem se notar.
+	resultado := a.scopedRuntime(c).DespertarAgentes(missions, time.Now().UTC())
 	resposta := gin.H{
-		"wakeups":  despertares,
-		"enqueued": enfileiradas,
-		"failed":   falhas,
+		"wakeups":  resultado.Despertares,
+		"enqueued": resultado.Enfileiradas,
+		"failed":   resultado.Falhas,
 		"scope":    "missoes visiveis para o chamador (organizacao da sessao)",
 	}
-	if len(enfileiradas) == 0 && len(falhas) > 0 {
+	if len(resultado.Enfileiradas) == 0 && len(resultado.Falhas) > 0 {
 		c.JSON(http.StatusInternalServerError, resposta)
 		return
 	}

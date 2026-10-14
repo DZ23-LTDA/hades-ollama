@@ -146,7 +146,25 @@ func (s *SupervisorScheduler) RunDue(holder string, now time.Time) (BusinessTick
 		return result, true, err
 	}
 	s.lastTick = result.TickNumber
-	s.lastNote = ""
+	// DESPERTAR COALESCIDO (E-639): o TIQUE tambem acorda os agentes das missoes prontas - uma vez
+	// por agente, com todas as razoes, em vez de um despertar por missao. A operacao e' a MESMA da
+	// rota `/wakeups` (`Runtime.DespertarAgentes`), para nao haver duas decisoes de enfileirar.
+	//
+	// Uma falha ao enfileirar NAO se esconde no sucesso do ciclo: fica na nota do agendador, que e'
+	// persistida - *um ciclo que "correu bem" e nao enfileirou nada tem de o dizer.*
+	nota := ""
+	if missoes, listErr := s.supervisor.runtime.ListMissions(); listErr == nil {
+		despertar := s.supervisor.runtime.DespertarAgentes(missoes, now)
+		switch {
+		case len(despertar.Falhas) > 0:
+			nota = "despertar: houve falha ao enfileirar"
+		case len(despertar.Enfileiradas) > 0:
+			nota = "despertar: missoes enfileiradas"
+		}
+	} else {
+		nota = "despertar: nao foi possivel listar as missoes"
+	}
+	s.lastNote = nota
 	if persistErr := s.persist(); persistErr != nil {
 		return result, true, persistErr
 	}
