@@ -4,28 +4,24 @@ import (
 	"testing"
 )
 
-// E-462 — **`CreateOrder`: A REENTREGA QUE DEVOLVE `nil` EM SILÊNCIO — E O PEDIDO QUE PODE DESAPARECER.**
+// E-467 — **`CreateOrder`: O SILÊNCIO CORRIGIDO — E A REENTREGA QUE AGORA DIZ O QUE ACONTECEU.**
 //
 // **COMO ISTO FOI ENCONTRADO**: a varredura **exaustiva** do padrão ADV-75/ADV-76 (*comparar um identificador sem o
-// escopo*) reduziu **1521** comparações `==` a **55** candidatos, e `company_growth.go:341` estava entre eles —
-// `existing.IdempotencyKey == order.IdempotencyKey`.
+// escopo*) reduziu **1521** comparações `==` a **55** candidatos, e `company_growth.go:341` estava entre eles.
 //
-// **E A LEITURA DO CÓDIGO MOSTROU QUE NÃO É IRMÃO, É OUTRA COISA**:
+// **MEDIDO, em duas partes**:
+//  1. **E-463 (ADV-77)** — a chave **não incluía o `ProductID`** ⇒ *um pedido do produto B **desaparecia** por causa de
+//     um pedido do produto A, sem erro, sem aviso* ✓✓. ***O cliente pediu dois produtos e recebeu um.***
+//  2. **E-467** — e a reentrega devolvia `nil` **em silêncio**: *nem o pedido existente, nem um sinal de replay* ✗ ⇒
+//     ***o chamador que reentrega por queda de rede não sabia se o pedido foi criado agora ou antes.***
 //
-//	return s.mutate(id, func(company *Company) error {          <- escopo por EMPRESA esta' garantido
-//	    if existing.IdempotencyKey == order.IdempotencyKey {
-//	        return nil                                          <- SILENCIO
+// **E O CONTRASTE QUE AUTORIZOU A MUDANÇA (E-466)**: `live_commerce.go:611` devolve `anterior` (*"replay: devolve o
+// MESMO evento, sem segundo efeito"*) e `sales_workforce.go:512` devolve `existing` ⇒ ***dois vizinhos devolvem o
+// recurso existente; `CreateOrder` era a excepção*** ⇒ ***não era questão de opinião: era inconsistência dentro do
+// repositório*** ✓. E o próprio repo **já tem** `commerce_restart_idempotency_test.go` ⇒ *o padrão é **testar** replay.*
 //
-// ⇒ ***A reentrega não cria o pedido (correcto), mas o chamador não recebe NADA: nem o pedido existente, nem um sinal de
-// replay.*** É **exactamente o oposto** da lição de **E-458** — *"idempotência de verdade é devolver o **MESMO
-// RECURSO**"*.
-//
-// **AS DUAS PERGUNTAS, medidas separadamente**:
-//  1. a chave **não inclui o `ProductID`** ⇒ *produtos diferentes com a mesma chave fazem o segundo pedido
-//     **desaparecer**?* — *o cliente pediu dois produtos e recebeu um, sem erro?*
-//  2. e a reentrega do **mesmo** produto devolve `nil` — *o chamador fica sem o pedido que já existe.*
-//
-// ***Meço antes de decidir; o veredicto é o que a medição mostrar.***
+// ⇒ o contrato passa a `(Company, CompanyOrder, error)` com **`CompanyOrder.Replayed`** (*espelhando
+// `WorkflowRun.Replayed`*), e este teste mede as **quatro** direcções.
 func TestIdempotenciaDoPedidoDeProdutoNaCompanyStore(t *testing.T) {
 	store, err := NewCompanyStore(t.TempDir())
 	if err != nil {
@@ -37,8 +33,8 @@ func TestIdempotenciaDoPedidoDeProdutoNaCompanyStore(t *testing.T) {
 	}
 
 	adicionarProduto := func(nome string) string {
-		// ⚠️ O motor exige `sku`, `name` e `supplier` - *e recusa com o motivo exacto, o que e' o que permite corrigir
-		// sem adivinhar* (`product sku, name and supplier are required`).
+		// ⚠️ O motor exige `sku`, `name` e `supplier` — *e recusa com o motivo exacto, o que permite corrigir sem
+		// adivinhar* (`product sku, name and supplier are required`).
 		atualizada, err := store.AddProduct(empresa.ID, CompanyProduct{
 			SKU: "SKU-" + nome, Name: nome, Supplier: "fornecedor-do-teste",
 			PriceCents: 1000, Inventory: 10, Status: "active",
@@ -52,52 +48,67 @@ func TestIdempotenciaDoPedidoDeProdutoNaCompanyStore(t *testing.T) {
 	produtoB := adicionarProduto("B")
 	chave := "k-pedido-do-mesmo-evento"
 
-	// (1) Primeiro pedido: produto A.
-	depoisDoPrimeiro, err := store.CreateOrder(empresa.ID, CompanyOrder{
-		ProductID: produtoA, CustomerRef: "cliente-1", Quantity: 1, IdempotencyKey: chave,
-	})
-	if err != nil {
-		t.Fatalf("primeiro pedido: %v", err)
+	pedir := func(produto string) (Company, CompanyOrder) {
+		empresaAtual, pedido, err := store.CreateOrder(empresa.ID, CompanyOrder{
+			ProductID: produto, CustomerRef: "cliente-1", Quantity: 1, IdempotencyKey: chave,
+		})
+		if err != nil {
+			t.Fatalf("pedido do produto %s: %v", produto, err)
+		}
+		return empresaAtual, pedido
 	}
+
+	// (1) CRIAR: o pedido nasce, e **não** é replay.
+	depoisDoPrimeiro, primeiro := pedir(produtoA)
 	if len(depoisDoPrimeiro.Orders) != 1 {
 		t.Fatalf("depois do primeiro pedido esperava 1, veio %d", len(depoisDoPrimeiro.Orders))
 	}
-
-	// (2) PRODUTO DIFERENTE, MESMA CHAVE: *se a chave identifica a intenção, isto é uma intenção NOVA.*
-	depoisDoSegundo, err := store.CreateOrder(empresa.ID, CompanyOrder{
-		ProductID: produtoB, CustomerRef: "cliente-1", Quantity: 1, IdempotencyKey: chave,
-	})
-	if err != nil {
-		t.Fatalf("segundo pedido: %v", err)
+	if primeiro.ID == "" || primeiro.Replayed {
+		t.Fatalf("o primeiro pedido tem de vir com ID e SEM `Replayed`: %+v", primeiro)
 	}
 
+	// (2) **PRODUTO DIFERENTE, MESMA CHAVE** — a medida do E-463. *Se a chave identifica a intenção, isto é intenção NOVA.*
+	depoisDoSegundo, segundo := pedir(produtoB)
 	pedidos := len(depoisDoSegundo.Orders)
 	switch pedidos {
 	case 1:
 		t.Fatalf("MEDIDO — O PEDIDO DESAPARECE: o cliente pediu o produto B com a mesma chave do pedido A, e o motor " +
-			"ficou com 1 pedido — **sem erro, sem aviso, e sem devolver o pedido de A tampouco**. ***A chave nao inclui " +
-			"o ProductID, e o `return nil` nao diz nada ao chamador: e' o OPOSTO da licao de E-458 (idempotencia de " +
-			"verdade e' devolver o MESMO RECURSO).***")
+			"ficou com 1 pedido — **sem erro, sem aviso**. ***A chave nao inclui o ProductID.***")
 	case 2:
-		t.Log("MEDIDO: produtos diferentes com a mesma chave criaram DOIS pedidos — a intencao nova NAO foi engolida. " +
-			"*O que resta e' o SILENCIO na reentrega: `return nil` sem devolver o pedido existente.*")
+		// *O comportamento correcto.*
 	default:
 		t.Fatalf("esperava 1 ou 2 pedidos, veio %d", pedidos)
 	}
-
-	// (3) REENTREGA DO MESMO produto e mesma chave: *aqui a idempotencia age — e o que ela DEVOLVE?*
-	depoisDaReentrega, err := store.CreateOrder(empresa.ID, CompanyOrder{
-		ProductID: produtoA, CustomerRef: "cliente-1", Quantity: 1, IdempotencyKey: chave,
-	})
-	if err != nil {
-		t.Fatalf("reentrega: %v", err)
+	if segundo.ID == "" || segundo.ID == primeiro.ID || segundo.Replayed {
+		t.Fatalf("o pedido de um produto DIFERENTE tem de ser NOVO e sem replay: %+v (primeiro=%q)",
+			segundo, primeiro.ID)
 	}
+
+	// (3) **REENTREGA DO MESMO pedido** — e agora ela **DIZ** o que aconteceu.
+	depoisDaReentrega, reentrega := pedir(produtoA)
 	if len(depoisDaReentrega.Orders) != pedidos {
 		t.Fatalf("a reentrega NAO pode criar pedido: antes=%d depois=%d", pedidos, len(depoisDaReentrega.Orders))
 	}
-	// E o defeito de DESENHO, medido: *o chamador recebe a empresa, sem qualquer sinal de que a intencao ja' existia.*
-	// **Nao afirmo `Replayed` aqui** - o campo nao existe neste tipo; afirmo o que medi: *a resposta e' indistinguivel de
-	// uma criacao bem-sucedida.*
-	t.Logf("MEDIDO: a reentrega devolve a empresa com %d pedido(s) e **nada** que distinga 'criei' de 'ja' existia' — "+
-		"*o chamador que reentrega por queda de rede nao sabe se o pedido foi criado agora ou antes.*", len(depoisDaReentrega.Orders))
+	if !reentrega.Replayed {
+		t.Fatalf("ARMADILHA: a reentrega MESMA intencao NAO foi marcada como `Replayed` — *e' exactamente o silencio "+
+			"que o E-467 corrigiu: o chamador que reentrega por queda de rede tem de saber se criou ou se ja' existia* "+
+			"(reentrega=%+v)", reentrega)
+	}
+	if reentrega.ID != primeiro.ID {
+		t.Fatalf("a reentrega tem de devolver o MESMO pedido: veio %q, o original e' %q — *idempotencia de verdade e' "+
+			"devolver o MESMO RECURSO (E-458)*", reentrega.ID, primeiro.ID)
+	}
+
+	// (4) E o CONTRATO com o motor: *o pedido devolvido na criacao tem de estar na lista da empresa* — *a resposta nao
+	// pode ser uma segunda verdade.*
+	achado := false
+	for _, existente := range depoisDaReentrega.Orders {
+		if existente.ID == reentrega.ID {
+			achado = true
+		}
+	}
+	if !achado {
+		t.Fatalf("o pedido devolvido (%q) nao esta' na lista da empresa — *a resposta e o motor tem de contar a MESMA "+
+			"historia*", reentrega.ID)
+	}
 }

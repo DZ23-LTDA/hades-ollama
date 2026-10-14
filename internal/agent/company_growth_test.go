@@ -60,9 +60,14 @@ func TestCompanyGrowthLifecycleAndApprovals(t *testing.T) {
 		t.Fatal(err)
 	}
 	productID := created.Products[0].ID
-	created, err = store.CreateOrder(company.ID, CompanyOrder{ProductID: productID, CustomerRef: "customer-test", Quantity: 2})
+	// E-467: `CreateOrder` passou a devolver o pedido (criado ou existente) além da empresa.
+	var pedidoCriado CompanyOrder
+	created, pedidoCriado, err = store.CreateOrder(company.ID, CompanyOrder{ProductID: productID, CustomerRef: "customer-test", Quantity: 2})
 	if err != nil || len(created.Orders) != 1 || created.Orders[0].Status != "pending_approval" {
 		t.Fatalf("order create failed: %v", err)
+	}
+	if pedidoCriado.ID == "" || pedidoCriado.Replayed {
+		t.Fatalf("pedido criado tem de vir com ID e SEM `Replayed`: %+v", pedidoCriado)
 	}
 	if created.Orders[0].Mode != "sandbox" {
 		t.Fatalf("order mode=%q, want sandbox", created.Orders[0].Mode)
