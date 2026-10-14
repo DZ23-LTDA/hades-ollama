@@ -111,9 +111,17 @@ func TestRuntimeExecutaMissaoMultiEtapaComCadeiaDeAprovacoes(t *testing.T) {
 	}
 }
 
-// TestRuntimeNaoExecutaEtapaSemAprovacaoNaCadeia garante o lado negativo: com uma aprovação NEGADA,
-// a etapa correspondente não escreve e nenhum artefato daquela etapa aparece.
-func TestRuntimeNaoExecutaEtapaSemAprovacaoNaCadeia(t *testing.T) {
+// TestRuntimeComAprovacaoNegadaNaoEscreveNemProduzArtefato prova o lado negativo pelo caminho que ele REALMENTE
+// percorre: com uma aprovação **NEGADA**, a missão fica FAILED e o `Run` retorna ANTES do portão por etapa ⇒ a etapa
+// correspondente não escreve e nenhum artefato dela aparece.
+//
+// 🚨 ADV-58/4 (5ª auditoria independente, MEDIDO): esta função se chamava `TestRuntimeNaoExecutaEtapaSemAprovacaoNaCadeia`
+// — e o **nome** prometia mais do que o corpo prova: *"na cadeia"* sugeria que o portão por etapa (runtime.go:2237) era
+// exercitado, mas ele **não é alcançado** neste cenário. A prova do auditor é exata: o teste passa **mesmo com o runtime
+// totalmente sem aprovação**. ***O que ele garante (decisão negada ⇒ nenhum efeito) é válido e útil — só não é o que o
+// nome dizia.*** Renomeado para o comportamento medido: *asserção que não corresponde ao nome é uma promessa que o
+// código não assinou.*
+func TestRuntimeComAprovacaoNegadaNaoEscreveNemProduzArtefato(t *testing.T) {
 	root := t.TempDir()
 	planner := fixedPlanner{steps: []Step{
 		{

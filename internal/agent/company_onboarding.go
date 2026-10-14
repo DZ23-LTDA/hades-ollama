@@ -255,18 +255,31 @@ func RollbackCompanyOnboarding(commerce *CommerceStore, token CompanyOnboardingR
 		criados[sku] = true
 	}
 	// 1. Volta cada produto ao estado anterior EXATO.
-	for _, produto := range token.Before {
-		commerce.UpsertProduct(produto, now)
+	// 🚨 ADV-57/5 (4ª auditoria independente, MEDIDO): aqui era `commerce.UpsertProduct(produto, now)` **por linha**,
+	// com o erro **ignorado**: desfazer 500 linhas custava **1000 gravações em 2,72s** (o mesmo O(n²) do aplicar, que
+	// o E-364 corrigiu). ***A minha própria tese — "uma API mais rápida que ninguém usa não acelera nada" — se
+	// aplicava ao desfazer, e nenhuma prova publicada cobria isso.*** Agora é **um lote** (1 gravação), com o erro
+	// **checado**: *rollback que falha em silêncio deixa o operador achando que desfez.*
+	if len(token.Before) > 0 {
+		if _, err := commerce.UpsertProducts(token.Before, now); err != nil {
+			return fmt.Errorf("%w: falha ao restaurar os produtos anteriores: %v", ErrOnboardingInvalid, err)
+		}
 	}
 	// 2. Remove os que passaram a existir por causa desta carga.
+	// 🚨 E-392 (ADV-57/5b): era `RemoveProduct` **por SKU** — e `RemoveProduct` grava o arquivo inteiro por chamada ⇒
+	// desfazer 500 linhas custava **500 gravações em 1,37s** só na remoção. *A API que faltava era o gargalo, não o
+	// teste:* `RemoveProducts` faz **uma** gravação. ***Faltava a API, não faltava frouxidão no teste.***
+	aRemover := make([]string, 0, len(token.CreatedSKUs))
 	for _, sku := range token.CreatedSKUs {
-		atual, existe := commerce.ProductBySKU(token.OrganizationID, sku)
-		if !existe || !criados[sku] {
+		if _, existe := commerce.ProductBySKU(token.OrganizationID, sku); !existe || !criados[sku] {
 			continue
 		}
-		atual.Active = false
-		commerce.UpsertProduct(atual, now)
-		commerce.RemoveProduct(token.OrganizationID, sku)
+		aRemover = append(aRemover, sku)
+	}
+	if len(aRemover) > 0 {
+		if _, err := commerce.RemoveProducts(token.OrganizationID, aRemover); err != nil {
+			return fmt.Errorf("%w: falha ao remover os produtos criados: %v", ErrOnboardingInvalid, err)
+		}
 	}
 	return nil
 }

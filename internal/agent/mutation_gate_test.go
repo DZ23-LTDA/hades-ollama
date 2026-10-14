@@ -1,7 +1,7 @@
 package agent
 
 import (
-	"errors"
+	"context"
 	"os"
 	"path/filepath"
 	"testing"
@@ -44,43 +44,83 @@ func TestMutationHarnessCapabilityEnforcement(t *testing.T) {
 	}
 }
 
-// TestMutationHarnessHITLApprovalBypass verifies that mutating (bypassing)
-// human-in-the-loop approval is caught and fails.
+// TestMutationHarnessHITLApprovalBypass exige que os gates REAIS de aprovação recusem um passo que exige aprovação.
+//
+// 🚨 E-401 / ADV-58/1 (5ª auditoria independente, MEDIDO): esta função era **TEATRO**. As linhas 59-64 e 72-75 eram
+// **closures LOCAIS** que reimplementavam a condição `if s.RequiresApproval && !approved`, e a asserção final comparava
+// **uma closure com a outra** — *um teste que mede a si mesmo*. A contraprova do auditor é decisiva: com **TODOS** os
+// pontos de aprovação do runtime desligados (`runtime.go:2166/2176/2237/2251`), este teste continuava **PASSANDO** ✗.
+//
+// ***Teste de mutação que não toca o produto não é teste de mutação: é um espelho.***
+//
+// A versão abaixo chama as funções **reais** (`approvalsReady`, `stepApproved`, `validateMissionApprovalBindings`) sobre
+// um `Runtime` e uma `Mission` de verdade. *A mutação em si é aplicada EXTERNAMENTE por `go test -overlay` (foi assim que
+// o auditor mediu), porque um teste não pode reescrever o código que ele está executando — mas ele **pode** exigir o
+// comportamento que a mutação destruiria.*
 func TestMutationHarnessHITLApprovalBypass(t *testing.T) {
-	// Baseline: a step that requires approval
-	step := &Step{
-		ID:               "step_merge",
-		Kind:             "git.merge.origin",
-		RequiresApproval: true,
-		State:            StepPending,
+	runtime, err := NewRuntime(RuntimeConfig{
+		Store: NewMemoryStore(), WorkspaceRoot: t.TempDir(),
+		Planner: fixedPlanner{steps: []Step{{
+			ID: "step_merge", Kind: "workspace.write", Title: "write", Risk: RiskWrite,
+			RequiresApproval: true,
+			Input:            map[string]any{"path": "descriptor.txt", "content": "safe"},
+		}}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	// MEDIDO: com `Kind: "git.merge.origin"` a própria guarda anti-secreto RECUSA persistir o payload
+	// (`hash approval payload: approval payload contains sensitive data that cannot be persisted safely`) ⇒ *a defesa
+	// funcionando*, e o cenário tinha de usar um passo benigno para exercitar o **gate de aprovação** em vez da DLP.
+	missao, err := runtime.CreateMission(context.Background(), CreateMissionRequest{
+		Objective: "gate de aprovacao real", OrganizationID: "org_a",
+		Capabilities: []string{"workspace:write"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(missao.Approvals) != 1 {
+		t.Fatalf("cenário precisa de exatamente 1 aprovação pendente, medido %d", len(missao.Approvals))
+	}
+	passo := missao.Plan[0]
+
+	// 1. ANTES da decisão: os TRÊS gates reais têm de recusar. *Fail-closed, medido no produto.*
+	if runtime.approvalsReady(missao) {
+		t.Fatal("ARMADILHA: approvalsReady aprovou uma missão com aprovação PENDENTE — o portão de entrada caiu")
+	}
+	if runtime.stepApproved(missao, passo.ID) {
+		t.Fatal("ARMADILHA: stepApproved aprovou um passo pendente — o portão por etapa caiu")
+	}
+	// MEDIDO (e é uma correção da MINHA expectativa, não do produto): `validateMissionApprovalBindings` **aceita** um
+	// vínculo ainda PENDENTE — ele valida o **vínculo** (que existe registro para cada etapa que exige aprovação, com
+	// política, validade e ator), e a decisão de **status** é do `approvalsReady`. *Eu havia suposto que ele checasse o
+	// status; o teste real me corrigiu.* A divisão de trabalho é: vínculo ⇒ `validateMissionApprovalBindings`;
+	// status global ⇒ `approvalsReady`; etapa ⇒ `stepApproved`.
+	if err := runtime.validateMissionApprovalBindings(missao); err != nil {
+		t.Fatalf("ARMADILHA: o VÍNCULO deveria estar válido mesmo com decisão pendente (é o approvalsReady que cuida do "+
+			"status): %v", err)
 	}
 
-	// Gate 1: unapproved step cannot be executed directly
-	executeStepWithGate := func(s *Step, approved bool) error {
-		if s.RequiresApproval && !approved {
-			return errors.New("security gate: step requires human approval before execution")
-		}
-		return nil
+	// 2. DEPOIS da decisão explícita do ator: os gates têm de ABRIR. *Sem isso, o teste acima passaria com o gate
+	// travado em "sempre recusa", que é um defeito diferente e igualmente grave.*
+	missao, err = runtime.DecideApprovalForActor(missao.ID, missao.Approvals[0].ID, true, "aprovado no teste do gate", "user_a", "org_a")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !runtime.approvalsReady(missao) {
+		t.Fatal("ARMADILHA: approvalsReady recusou uma missão com TODAS as aprovações decididas — o gate ficou trancado")
+	}
+	if err := runtime.validateMissionApprovalBindings(missao); err != nil {
+		t.Fatalf("ARMADILHA: o vínculo deveria ser válido depois da decisão: %v", err)
+	}
+	if !runtime.stepApproved(missao, passo.ID) {
+		t.Fatal("ARMADILHA: stepApproved recusou um passo cuja aprovação foi decidida")
 	}
 
-	errUnapproved := executeStepWithGate(step, false)
-	if errUnapproved == nil {
-		t.Fatalf("Baseline security failure: unapproved step executed without approval")
-	}
-
-	// Mutation: weakened gate that forgets to check `RequiresApproval`
-	mutatedExecuteGate := func(s *Step, approved bool) error {
-		// MUTATION: weakened/omitted approval check
-		return nil
-	}
-	errMutated := mutatedExecuteGate(step, false)
-	if errMutated != nil {
-		t.Fatalf("Mutation test setup error: mutated gate should have bypassed check")
-	}
-
-	// Meta-assertion: real gate must block, mutated gate allows
-	if errUnapproved == nil || errMutated != nil {
-		t.Fatalf("MUTATION HARNESS REPROVED: HITL approval gate is trivial or inactive!")
+	// E o passo continua marcado como exigindo aprovação — *se alguém apagar `RequiresApproval`, o cenário acima deixa
+	// de exercitar o gate e este teste tem de dizer isso, não passar em silêncio.*
+	if !passo.RequiresApproval {
+		t.Fatal("ARMADILHA: o passo do cenário perdeu RequiresApproval — o teste deixaria de exercitar o gate")
 	}
 }
 

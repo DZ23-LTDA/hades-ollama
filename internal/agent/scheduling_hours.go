@@ -275,7 +275,21 @@ func (s *SchedulingStore) OpenSlots(organizationID, resourceID, date, serviceID 
 		livres = append(livres, AvailabilitySlot{StartsAt: inicio, EndsAt: inicio.Add(passo), Free: !ocupado})
 	}
 	sort.Slice(livres, func(i, j int) bool { return livres[i].StartsAt.Before(livres[j].StartsAt) })
-	return livres, nil
+	// 🚨 ADV-64 / E-419 (6ª auditoria independente, MEDIDO): na **virada de horário de verão** o laço anda por
+	// deslocamento de **relógio de parede** e `time.Date` **normaliza** horários que não existem ⇒ *02:00 e 02:30
+	// caem ambos em 03:00 e a lista oferecia o **mesmo instante UTC duas vezes*** ✗ (medido: 8 slots com
+	// `2026-03-08T06:30:00Z` repetido, com a organização em `America/New_York`).
+	// ⇒ **Deduplicar por INSTANTE**, não por horário de parede: *isto remove o horário **impossível** e **preserva**
+	// a hora legitimamente repetida do fim do horário de verão — que tem instantes **distintos** e é real.*
+	// ***Duas vezes o mesmo instante não é "dois horários livres": é um horário contado duas vezes.***
+	unicos := livres[:0]
+	for i, slot := range livres {
+		if i > 0 && slot.StartsAt.Equal(livres[i-1].StartsAt) {
+			continue
+		}
+		unicos = append(unicos, slot)
+	}
+	return unicos, nil
 }
 
 // appointmentAllowedLocked confere expediente/fechamento para o instante pedido — é o portão que `Book` usa.
@@ -295,12 +309,19 @@ func (s *SchedulingStore) appointmentAllowedLocked(organizationID, resourceID st
 	}
 	// E-328b: às 01:00 de terça, quem cobre pode ser o turno de SEGUNDA que cruza a meia-noite (22:00->02:00).
 	// Procurar só o dia corrente recusaria a madrugada de um turno que existe — medido pelo teste.
-	shift, temTurno := shiftCovering(org, resourceID, local)
+	shift, diaAnterior, temTurno := shiftCovering(org, resourceID, local)
 	if !temTurno {
 		return fmt.Errorf("%w: %s não tem expediente em %s (%s)", ErrSchedulingOutsideHours,
 			resourceID, local.Format("2006-01-02"), tz)
 	}
 	inicioMinuto := local.Hour()*60 + local.Minute()
+	if diaAnterior {
+		// 🚨 ADV-61 (MEDIDO): o turno é do dia ANTERIOR (cruzou a meia-noite), então o minuto relevante é o do
+		// turno — `+1440` — e não o relógio local. *Sem esta conversão, 01:00 de terça (cauda legítima do turno de
+		// segunda) era recusado, e 01:00 de segunda (fora de um turno que só abre às 22:00) era aceito: o mesmo
+		// minuto, duas respostas trocadas.*
+		inicioMinuto += 24 * 60
+	}
 	// E-328: a checagem de janela considera turno que CRUZA a meia-noite.
 	if !shiftCoversMinute(shift, inicioMinuto, durationMinutes) {
 		return fmt.Errorf("%w: %s está fora da janela %02d:%02d-%02d:%02d (%s)",

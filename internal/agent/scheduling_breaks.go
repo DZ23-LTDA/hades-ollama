@@ -121,30 +121,50 @@ func shiftStartInstant(dia time.Time, shift SchedulingShift, deslocamentoMinutos
 }
 
 // shiftCoversMinute diz se um horário local está DENTRO do turno, considerando virada de meia-noite.
+//
+// 🚨 ADV-61 (6ª auditoria independente, MEDIDO): o ramo da CAUDA (`fimMinuto <= shift.ClosesAt`) era aplicado
+// **sem distinguir o dia** ⇒ *01:00 de segunda era aceito pelo turno de segunda que só abre às 22:00* ✗, e o
+// `Book` confirmava um cliente com a empresa fechada — divergindo da própria lista de `OpenSlots`
+// (`Book(segunda 01:00)` aceito; `OpenSlots` não oferecia nada nesse instante).
+//
+// **A informação do dia já está no parâmetro**: o chamador `shiftCovering` procura primeiro o turno do dia
+// corrente (`minuto`) e, se não cobrir, o do dia ANTERIOR que atravessa a meia-noite (**`minuto + 24*60`**,
+// `scheduling_breaks.go:139/145`). ⇒ *a cauda só pode valer para o minuto do dia seguinte.*
 func shiftCoversMinute(shift SchedulingShift, inicioMinuto, duracaoMinutos int) bool {
 	fimMinuto := inicioMinuto + duracaoMinutos
 	if shift.ClosesAt > shift.OpensAt {
 		return inicioMinuto >= shift.OpensAt && fimMinuto <= shift.ClosesAt
 	}
-	// Turno que cruza: precisa estar depois da abertura OU terminar antes do fechamento (no dia seguinte).
-	return inicioMinuto >= shift.OpensAt || fimMinuto <= shift.ClosesAt
+	// Turno que cruza a meia-noite.
+	if inicioMinuto >= 24*60 {
+		// Minuto do dia SEGUINTE (o chamador somou 1440): aqui vale a cauda — terminar antes do fechamento.
+		return fimMinuto <= shift.ClosesAt+24*60
+	}
+	// Minuto do dia do PRÓPRIO turno: a cauda dele é amanhã, não hoje. Só a abertura conta.
+	// *Sem esta linha, 01:00 de segunda caía na cauda do turno de segunda que abre às 22:00.*
+	return inicioMinuto >= shift.OpensAt
 }
 
 // shiftCovering encontra o turno que COBRE um instante local, considerando a virada de meia-noite.
 //
 // Procura primeiro o turno do próprio dia; se não cobrir, procura o turno do dia ANTERIOR que atravessa a meia-noite.
 // Exemplo: 01:00 de terça pode ser coberto pelo turno de segunda 22:00→02:00.
-func shiftCovering(org *schedulingOrg, resourceID string, local time.Time) (SchedulingShift, bool) {
+//
+// 🚨 ADV-61 (6ª auditoria independente, MEDIDO): devolve **diaAnterior** porque *só esta função sabe de que dia veio o
+// turno* — e é essa informação que o chamador precisa para converter o minuto local no minuto do turno. Sem ela,
+// `shiftCoversMinute(MondayShift, 60, …)` não tem como distinguir "01:00 de segunda, fora do turno que abre às 22:00"
+// de "01:00 de TERÇA, cauda legítima do turno de segunda". *Duas situações com o mesmo minuto e respostas opostas.*
+func shiftCovering(org *schedulingOrg, resourceID string, local time.Time) (SchedulingShift, bool, bool) {
 	minuto := local.Hour()*60 + local.Minute()
 	if shift, achou := shiftFor(org, resourceID, local.Weekday()); achou && shiftCoversMinute(shift, minuto, 0) {
-		return shift, true
+		return shift, false, true
 	}
 	anterior := local.AddDate(0, 0, -1)
 	if shift, achou := shiftFor(org, resourceID, anterior.Weekday()); achou && shift.ClosesAt <= shift.OpensAt {
 		// Turno que cruza: o minuto relevante é o do dia anterior (minuto + 1440) para comparar com a janela.
 		if shiftCoversMinute(shift, minuto+(24*60), 0) {
-			return shift, true
+			return shift, true, true
 		}
 	}
-	return SchedulingShift{}, false
+	return SchedulingShift{}, false, false
 }
