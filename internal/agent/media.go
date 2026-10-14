@@ -41,6 +41,20 @@ type MediaResult struct {
 	Text      string           `json:"text,omitempty"`
 }
 
+// 🚨 E-535 (Estagio 45, o `E-430` da matriz): as recusas de modalidade.
+//
+// *A distincao entre as duas e' o que as torna uteis para quem depura:* uma e' sobre **ausencia** (nao ha modelo
+// nenhum), a outra sobre **incoerencia** (ha um modelo, e o nome dele desmente o pedido). *Juntar as duas num
+// «modelo invalido» generico obrigaria a ler a mensagem para saber qual dos dois casos aconteceu.*
+var (
+	// ErrMediaModelRequired recusa a geracao quando nao ha modelo: *nao existe caminho que chame o provider com um
+	// modelo vazio «para ver no que da» - o provider nao decide no nosso lugar.*
+	ErrMediaModelRequired = errors.New("media generation requires an explicit model")
+	// ErrMediaModalityMismatch recusa quando o nome do modelo afirma outra modalidade: *um pedido de video a um modelo
+	// chamado `llama` nao e' arriscado, e' impossivel - e a resposta honesta e' recusar, nao tentar.*
+	ErrMediaModalityMismatch = errors.New("model does not declare the requested modality")
+)
+
 func (p MediaProvider) Validate() error {
 	if strings.TrimSpace(p.BaseURL) == "" {
 		return errors.New("media provider base URL is required")
@@ -410,6 +424,11 @@ func (m *MediaManager) GenerateImage(ctx context.Context, workspace, prompt, mod
 	if model == "" {
 		model = m.Provider.ImageModel
 	}
+	// 🚨 E-535: a recusa vem AQUI - depois do fallback do modelo e ANTES de qualquer disco ou rede. *A ordem e' a
+	// parte importante: se ela viesse depois, o provider ja' teria sido chamado, e a recusa chegaria tarde.*
+	if err := recusarModalidadeDeMidia("image", model); err != nil {
+		return MediaResult{}, err
+	}
 	if err := validateMediaOutputDirectory(workspace, ".agent-media", pinnedRoots...); err != nil {
 		return MediaResult{}, err
 	}
@@ -441,6 +460,13 @@ func (m *MediaManager) GenerateVideo(ctx context.Context, workspace, prompt, mod
 	}
 	if model == "" {
 		model = m.Provider.VideoModel
+	}
+	// 🚨 E-535: **e' aqui que «video para modelo textual» deixa de ser possivel.** A versao anterior seguia para a
+	// rede com `model` vazio quando o `VideoModel` nao estava configurado - e o resultado passava a ser «video» por
+	// **AFIRMACAO**, nao por capacidade. *Um pedido de video atendido por um motor que nao o declara, com sucesso
+	// devolvido, e' a mesma traicao de uma aprovacao que nunca foi dada - so' muda o objecto.*
+	if err := recusarModalidadeDeMidia("video", model); err != nil {
+		return MediaResult{}, err
 	}
 	if err := validateMediaOutputDirectory(workspace, ".agent-media", pinnedRoots...); err != nil {
 		return MediaResult{}, err
