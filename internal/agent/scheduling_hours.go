@@ -295,12 +295,19 @@ func (s *SchedulingStore) appointmentAllowedLocked(organizationID, resourceID st
 	}
 	// E-328b: às 01:00 de terça, quem cobre pode ser o turno de SEGUNDA que cruza a meia-noite (22:00->02:00).
 	// Procurar só o dia corrente recusaria a madrugada de um turno que existe — medido pelo teste.
-	shift, temTurno := shiftCovering(org, resourceID, local)
+	shift, diaAnterior, temTurno := shiftCovering(org, resourceID, local)
 	if !temTurno {
 		return fmt.Errorf("%w: %s não tem expediente em %s (%s)", ErrSchedulingOutsideHours,
 			resourceID, local.Format("2006-01-02"), tz)
 	}
 	inicioMinuto := local.Hour()*60 + local.Minute()
+	if diaAnterior {
+		// 🚨 ADV-61 (MEDIDO): o turno é do dia ANTERIOR (cruzou a meia-noite), então o minuto relevante é o do
+		// turno — `+1440` — e não o relógio local. *Sem esta conversão, 01:00 de terça (cauda legítima do turno de
+		// segunda) era recusado, e 01:00 de segunda (fora de um turno que só abre às 22:00) era aceito: o mesmo
+		// minuto, duas respostas trocadas.*
+		inicioMinuto += 24 * 60
+	}
 	// E-328: a checagem de janela considera turno que CRUZA a meia-noite.
 	if !shiftCoversMinute(shift, inicioMinuto, durationMinutes) {
 		return fmt.Errorf("%w: %s está fora da janela %02d:%02d-%02d:%02d (%s)",

@@ -2429,7 +2429,9 @@
     "A LINHA MAIS DEFENDIDA ATE AGORA (E-411): 14 de 16 mutacoes detectadas no agendamento. O auditor nao achou assercao que compara consigo mesma",
     "AFIRMACAO PUBLICADA FALSA NO AGENDAMENTO (E-411/ADV-60): a E-314 diz que Availability deixou de inventar horario, mas o buraco foi fechado em OpenSlots (funcao NOVA) e Availability ficou intacta. Sonda: org sem turno, domingo 03:00 => Availability devolve 4 slots livres; OpenSlots devolve 0; Book recusa",
     "A LINHA NAO ESTA LIGADA (E-411/ADV-65): SchedulingStore e NewSupervisorScheduler nao tem chamador em producao - so' em _test.go. O que esta' provado em producao e' o agendador de WORKFLOW",
-    "A PROVA DA RELEITURA E' PROBABILISTICA (E-411/ADV-63): sem invalidateCache, 18 de 20 execucoes falham - em ~10% a remocao passa despercebida"
+    "A PROVA DA RELEITURA E' PROBABILISTICA (E-411/ADV-63): sem invalidateCache, 18 de 20 execucoes falham - em ~10% a remocao passa despercebida",
+    "O MESMO MINUTO TEM DUAS RESPOSTAS OPOSTAS (E-412/ADV-61): 01:00 de segunda esta' FORA do turno de segunda 22:00-02:00; 01:00 de terca esta' DENTRO da cauda. A minha primeira correcao decidiu pelo tamanho do minuto e trocou as duas - o teste TestTurnoQueCruzaAMeiaNoiteUsaODiaLocalCorreto (E-328) me pegou. Quem sabe o dia e' o shiftCovering, e agora ele devolve diaAnterior",
+    "ERRAR A PRIMEIRA CORRECAO NAO E' O PROBLEMA (E-412): o problema seria nao ter com que comparar. O teste que me pegou existia desde o E-328, tres rodadas antes desta auditoria"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -3118,7 +3120,7 @@
           "severidade": "ALTA/MEDIA (aceita horario com a empresa fechada)",
           "descricao": "Book aceita horario fora do turno quando ele cruza a meia-noite: shiftCoversMinute (scheduling_breaks.go:124-131) no ramo '|| fimMinuto <= ClosesAt' nao verifica se o turno comecou no dia ANTERIOR. SONDA: turno so segunda 22:00-02:00 => Book(segunda 01:00) aceito, enquanto OpenSlots nao oferece nada nesse instante",
           "descoberto_por": "6a revisao adversarial independente (subagente, contexto fresco) com go test -overlay e sondas",
-          "estado": "REGISTRADO, NAO CORRIGIDO",
+          "estado": "CORRIGIDO: shiftCovering devolve diaAnterior e o chamador soma 1440; shiftCoversMinute exige que o ramo da cauda seja do dia seguinte. Teste novo + o existente (E-328) passam. A MINHA PRIMEIRA CORRECAO (decidir pelo tamanho do minuto) estava errada e o teste existente a pegou",
           "evidencia": "E-411"
         },
         {
@@ -3821,6 +3823,7 @@
     "E-408": "correcao do meu ADV-59: as negativas existem nos testes Go; 0 mojibake",
     "E-409": "varredura do repo inteiro: 2 achados legitimos (detector e fixture) e 2 notas corrigidas",
     "E-410": "checker de codificacao com teste-do-teste (7 casos) e dispensa obsoleta acusada",
-    "E-411": "6a auditoria (agendamento): 14/16 mutacoes detectadas, 4 defeitos reais"
+    "E-411": "6a auditoria (agendamento): 14/16 mutacoes detectadas, 4 defeitos reais",
+    "E-412": "ADV-61 corrigido: shiftCovering devolve diaAnterior; o mesmo minuto tem respostas opostas"
   }
 }
