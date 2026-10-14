@@ -183,6 +183,40 @@ type ArtifactManifest struct {
 	Size      int64     `json:"size"`
 	SHA256    string    `json:"sha256"`
 	CreatedAt time.Time `json:"created_at"`
+
+	// 🚨 E-532 (Estagio 47, "modelo canonico de artefacto"): os campos que a auditoria mediu em FALTA.
+	//
+	// ***POR QUE ESTES, E POR QUE AGORA.*** O Estagio 47 pede uma biblioteca PARTILHADA - e uma biblioteca partilhada
+	// sem **tenant** nao e' partilhada: e' uma pasta aberta. A auditoria de `types.go:176` mostrou que existiam
+	// `MissionID`/`StepID` (o eixo da MISSAO) e **nada** do eixo da ORGANIZACAO.
+	//
+	// **TenantID** e' deliberadamente **obrigatorio** (`ValidateArtifactScope`): *um artefacto sem tenant nao pode
+	// existir, porque "sem tenant" e' exactamente o estado em que uma busca atravessa organizacoes sem ninguem notar.*
+	//
+	// *Todos com `omitempty`* para nao quebrar consumidores de JSON ja' existentes - **o que se acrescenta nao pode
+	// partir o que ja' funciona.**
+	TenantID  string `json:"tenant_id,omitempty"`
+	UserID    string `json:"user_id,omitempty"`
+	ProjectID string `json:"project_id,omitempty"`
+	AgentID   string `json:"agent_id,omitempty"`
+
+	// Version comeca em 1 e e' do ARTEFACTO (nao do ficheiro): *o ficheiro muda, a versao sobe, e o checksum muda com
+	// ela.* Distinto de `builder.ExportVersion`, que versiona a EXPORTACAO de um projeto - e que a auditoria encontrou
+	// num **outro** sitio. *Duas versoes com o mesmo nome em dominios diferentes e' aceitavel; confundi-las, nao.*
+	Version int `json:"version,omitempty"`
+
+	// RetentionDays e' politica, nao prazo cumprido: *0 significa "nao declarado", e nao declarado NAO e' o mesmo que
+	// eterno.* Quem apaga tem de tratar 0 explicitamente.
+	RetentionDays int `json:"retention_days,omitempty"`
+
+	// ACL e' a lista de sujeitos autorizados, no formato `tipo:id` (ex.: `user:ana`, `group:qa`, `tenant:acme`).
+	// ***Vazia significa "ninguem alem do dono" - e nao "todos".*** *O sentido do vazio escolhe-se uma vez, e escolhe-se
+	// pelo lado que falha fechado.*
+	ACL []string `json:"acl,omitempty"`
+
+	// MIMEVerified diz se o `MediaType` foi **confirmado pelo CONTEUDO** ou apenas **inferido pela extensao**.
+	// *A auditoria mostrou que hoje e' sempre por extensao (`mime.TypeByExtension`) - e uma extensao mente.*
+	MIMEVerified bool `json:"mime_verified,omitempty"`
 }
 
 type ToolDescriptor struct {
