@@ -609,6 +609,54 @@ def verificar_frescura_dos_documentos_de_retomada(
     }
 
 
+def verificar_procedencia_dos_derivados(raiz: Path, estado: dict) -> tuple[list[str], dict]:
+    """Confere que os relatórios DERIVADOS citam o commit medido (E-552 / E-554).
+
+    **A DÍVIDA, MEDIDA.** *A FASE 3 manda regerar os derivados «com fonte de verdade única e **identificação explícita
+    do commit medido**».* ⇒ *O `E-552` mediu que **nenhum dos três** o fazia: o `RELEASE_REPORT` tinha **0** menções, o
+    `FINAL_RELEASE_GATE` citação nenhuma, e o `BASELINE_REPORT` citava **a `main`** — *o que não está errado (*ele mede
+    o baseline, e o baseline é da `main`*), mas era **ambíguo**.*
+
+    ⇒ *O `E-554` corrigiu o **conteúdo** (os três geradores).* ⇒ ***E este passo é a segunda metade: **quem verifica**.***
+    *Sem ele, um quarto derivado pode nascer amanhã sem procedência — e nada o diria.*
+
+    **O CRITÉRIO.** Exige-se que cada derivado **mencione o `measured_commit` do estado**. Não se exige *qual* campo
+    cita (*isso é a decisão em aberto*), exige-se que o valor **esteja escrito**: *um relatório de release sem o commit
+    medido não se pode **reproduzir** nem **contestar** — e um número que não se sabe a que objecto pertence é
+    indistinguível de um número inventado.*
+
+    *Devolve `(problemas, resumo)`, como as outras verificações deste ficheiro.*
+    """
+    medido = (estado.get("measured_commit") or "").strip()
+    derivados = [
+        ("HADES_RELEASE_REPORT.md", raiz / "docs/mission/HADES_RELEASE_REPORT.md"),
+        ("HADES_FINAL_RELEASE_GATE.md", raiz / "docs/mission/HADES_FINAL_RELEASE_GATE.md"),
+        ("HADES_BASELINE_REPORT.md", raiz / "docs/mission/HADES_BASELINE_REPORT.md"),
+    ]
+    problemas: list[str] = []
+    sem_procedencia: list[str] = []
+    if not medido:
+        return (
+            ["o estado nao declara `measured_commit`: nenhum derivado pode ser conferido contra nada"],
+            {"derivados_sem_procedencia": 0, "derivados_medido": "NAO_MEDIDO"},
+        )
+    for nome, caminho in derivados:
+        if not caminho.exists():
+            problemas.append(f"derivado AUSENTE: {nome}")
+            continue
+        if medido not in caminho.read_text(encoding="utf-8"):
+            sem_procedencia.append(nome)
+            problemas.append(
+                "derivado SEM PROCEDENCIA: "
+                f"{nome} nao cita o commit medido `{medido}` - *um relatorio derivado sem o commit medido nao se pode "
+                "reproduzir nem contestar*"
+            )
+    return problemas, {
+        "derivados_sem_procedencia": len(sem_procedencia),
+        "derivados_medido": medido,
+    }
+
+
 def verificar_sem_marcadores_de_conflito(caminhos: list[Path]) -> list[str]:
     """Reprova documento da missão que contenha marcador de merge não resolvido.
 
@@ -700,6 +748,22 @@ def main() -> int:
     )
     problemas += problemas_retomada
     resumo.update(resumo_retomada)
+
+    # 14. 🚨 E-552 / E-554: os DERIVADOS citam o COMMIT MEDIDO.
+    #
+    # *A FASE 3 manda regerar os derivados «com fonte de verdade única e **identificação explícita do commit medido**».*
+    # ⇒ *O `E-552` mediu que **nenhum dos três** o fazia: 0 menções no `RELEASE_REPORT`, nenhuma citação no
+    # `FINAL_RELEASE_GATE`, e o `BASELINE_REPORT` citava a **`main`** — *ambíguo, porque «commit de referência» não diz
+    # **se** é o medido ou o comparado*.*
+    #
+    # ***E é o PAR DO PASSO 13***: *o 13 (`E-549`) verifica a **frescura** dos documentos de retomada; **este** verifica
+    # a **procedência** dos derivados* ⇒ ***«frescura diz **quando** foi medido; procedência diz **sobre o quê**»*** — e
+    # *um relatório pode estar fresco e não dizer sobre que commit fala* ✓✓.
+    #
+    # *Sem este passo, um quarto derivado nasce amanhã sem procedência — e nada o diria.*
+    problemas_derivados, resumo_derivados = verificar_procedencia_dos_derivados(raiz_do_repositorio, estado)
+    problemas += problemas_derivados
+    resumo.update(resumo_derivados)
 
     # 9. Nenhum documento da escrituração (nem os gerados) pode conter marcador de merge não resolvido.
     problemas += verificar_sem_marcadores_de_conflito(
