@@ -7,8 +7,25 @@ estágios 1–47 nem substitui o Estágio 15, que continua `COMPLETED_VERIFIED`.
 **Estado do complemento:** `IN_PROGRESS` — **não homologável** (§10). A peça central
 existe e está ligada; **o efeito sobre as mensagens não existe ainda**.
 
-**Commit medido:** a medição mais recente deste documento refere-se a `d2d580367`
+**Commit medido:** a medição mais recente deste documento refere-se a `f9ddaa75c`
 (branch `fix/checker-relogio`, PR #438). Medições anteriores são históricas.
+
+**Inventário de código construído e testado desde a primeira versão deste documento**
+(cada um com testes próprios; **nenhum ligado ao funil**, ver §4):
+
+| commit | peça | o que prova |
+| --- | --- | --- |
+| `68ab4b1a3` | histórico bruto append-only + cadeia de hashes | 5 testes: cadeia, retomada após reabrir, deteção de adulteração, linha corrompida recusada |
+| `2f58f86ed` | plano (recentes intactas × faixa a resumir) | 4 testes: a instrução corrente nunca é resumida |
+| `807db4bdc` | efeito (bruto ANTES do resumo) | 4 testes: §7-D — falha na gravação não substitui nada |
+| `38a7d205b` | digest determinístico da faixa | 3 testes: fidelidade, corte declarado, corte nunca a meio de uma mensagem |
+| `0ff52217c` | fluxo ponta a ponta | 3 testes: **recuperação provada** (fechar → reabrir → recuperar o material coberto) |
+| `f9ddaa75c` | `ContextStore.Root()` | 3 testes: habilita o histórico dentro do escopo já governado |
+
+**O que continua `AUSENTE` apesar destas peças:** a **ligação** ao funil do chat. O
+`FluxoDaCompactacao` não é chamado por ninguém em produção, e o chat continua a enviar as
+mensagens tal e qual. As duas linhas de decisão por orçamento (`4542ea468`) correm, mas
+**por omissão não mudam nada** (sem teto declarado, a decisão é «não declarado»).
 
 ---
 
