@@ -21,6 +21,22 @@ existe e está ligada; **o efeito sobre as mensagens não existe ainda**.
 | `38a7d205b` | digest determinístico da faixa | 3 testes: fidelidade, corte declarado, corte nunca a meio de uma mensagem |
 | `0ff52217c` | fluxo ponta a ponta | 3 testes: **recuperação provada** (fechar → reabrir → recuperar o material coberto) |
 | `f9ddaa75c` | `ContextStore.Root()` | 3 testes: habilita o histórico dentro do escopo já governado |
+| `0ca5cae62` | caminho do histórico com recusa de travessia | 3 testes: 12 casos de ataque recusados + identificadores legítimos com ponto aceites |
+| `18e413433` | recuperação pelo **caminho derivado** | 2 testes: material recuperado no caminho derivado e isolamento entre projetos |
+| `9ec100db3` | compactação no chat como unidade testável | 3 testes: 4 recusas devolvem as **originais**; sem efeito antes da decisão |
+| `7cba79ee9` | **LIGAÇÃO** ao funil com a raiz do `ContextStore` | `vet` 0 · funil verde · 4 sítios (o 4.º só apareceu no compilador) |
+| `856bfec6b` | **compactação PONTA A PONTA por HTTP** | 2 testes: corpo no handler com resumo + bruto recuperável em disco; **sem teto, nada muda** |
+
+**A ligação EXISTE desde `7cba79ee9`** — esta secção substitui a afirmação anterior de que
+era `AUSENTE`. O que continua a decidir o §10 é a **cobertura parcial**: a compactação e a
+recuperação estão provadas ponta a ponta; o **handoff entre agentes e modelos (§4)
+continua AUSENTE**, a retomada de **missões** após interrupção não está medida, e a memória
+governada é a do Estágio 15 (que não tem `OrganizationID`/`WorkspaceID` no registo).
+
+E a compactação é **opt-in**: sem `OLLAMA_AGENT_CHAT_CONTEXT_TOKENS` declarado a decisão é
+«não declarado» e o corpo do pedido segue **igual** ao que o cliente enviou — medido em
+`TestChatContextNaoCompactaSemTetoDeclarado`, que também exige que **nenhum histórico seja
+criado sem compactação**.
 
 **O que continua `AUSENTE` apesar destas peças:** a **ligação** ao funil do chat. O
 `FluxoDaCompactacao` não é chamado por ninguém em produção, e o chat continua a enviar as
