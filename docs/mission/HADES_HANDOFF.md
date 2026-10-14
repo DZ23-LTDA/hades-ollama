@@ -193,3 +193,16 @@ Ao final de cada rodada: reexecutar os gates do que mudou, anexar evidência
 (comando + ambiente + resultado), atualizar `HADES_MASTER_STATE.json` e o
 relatório por estágio, e só então declarar estado. Após interrupção, retomar do
 último estado **verificado** — não do que foi tentado.
+
+## 8. Estado do CI e dos complementos
+
+2026-10-14 — CI e complementos, MEDIDO
+
+Run `5bba1132e` (PR #438): 23 checks, ZERO vermelhos.
+  race (ubuntu-latest)  SUCCESS  653 s
+  race (macos-latest)   SUCCESS  867 s
+  ⇒ ambos ACIMA do limite antigo de 600 s do `go test`: a causa dos `race` vermelhos era
+    ORÇAMENTO DE TEMPO (não corrida de dados - o log não tinha `WARNING: DATA RACE`), e a
+    correcção foi um só limite (`-timeout 20m`) com o motivo escrito no workflow.
+  test ubuntu/macos/windows ✅ · PR gate ✅ · Web and mobile quality ✅ · Go agentic gates ✅ ·
+  CGO-free/Windows build ✅ · RLS/Redis/OTLP ✅ · Web E2E ✅ · SBOM ✅

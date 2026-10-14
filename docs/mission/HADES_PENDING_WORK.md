@@ -194,3 +194,24 @@ antes de corrigir**, em vez de supor a causa.
 ### P3-4 · Estágios 5, 8, 15 e 34–37
 - Auditar existência real (nada foi inspecionado) antes de qualquer
   classificação; depois avançar conforme a dependência externa permitir.
+
+### P0 · Complementos MASTER V2.2 (MEMÓRIA · PAPERCLIP · CLOUDROOM)
+
+Estado medido em 2026-10-14, com evidência no `HADES_MEMORY_CONTEXT_RELIABILITY.md`:
+
+1. **MEMÓRIA / COMPACTAÇÃO UNIVERSAL** — fechado no que é verificável:
+   compactação automática (E2E por HTTP), histórico original (append-only + cadeia de hashes),
+   recuperação das fontes, memória governada (8 rotas com escopo auditado), §4 handoff
+   (contrato → produtores → chat → UI desktop → mobile) e §6 retomada de missões (já existia e
+   está testada). Decisões D-1..D-12 registadas. **Correcção registada**: o `memory.search` do
+   E-618 era DUPLICADO do `knowledge.search` (E-152) e foi revertido no E-619 — a «lacuna» era
+   um defeito de busca, não do produto.
+2. **PAPERCLIP — Agent Organization OS** — pendente: matriz de paridade (20 capacidades, com
+   referência ao código real dos dois lados) e depois implementação incremental, reutilizando
+   Company OS, Mission Control, memória e tarefas existentes. **Não** copiar o backend Node.
+3. **CLOUDROOM — Session Teleport** — pendente: matriz de paridade (20 capacidades) e depois
+   adaptadores por harness/executor. Diferenciar sempre `Native Resume` / `Checkpoint Restore` /
+   `Context Handoff`; nada de segundo runtime.
+
+Regra que estes dois blocos herdam do erro do E-619: ***procurar pelos NOMES que o código usa,
+com padrões que não excluam o alvo*** — antes de declarar qualquer lacuna.
