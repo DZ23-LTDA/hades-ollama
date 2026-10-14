@@ -305,3 +305,24 @@ erro de ambiente.
 **Isto é melhor do que uma linha de base**: não é preciso correr noutro commit para saber que
 não é regressão — **o CI já correu o mesmo código e passou**. Regra que fica: *antes de
 atribuir uma falha local ao código, verificar se o CI, com o mesmo código, a tem.*
+
+### D-7. Os 8 `unused` do meu lint local NÃO são dívida do CI — são artefacto do instrumento
+
+A config do lint **não tem exclusões** (`.golangci.yaml`, `version: "2"`, 5353 bytes) e o CI usa
+a **mesma** versão (`golangci-lint-action` com `version: v2.13.0`, `test.yaml:501-507`) **sem**
+filtro de «issues novas». Mesmo assim o CI nunca os acusou. A razão é a **tag de compilação**:
+
+| ficheiro | tag | consequência |
+| --- | --- | --- |
+| `mlx/stub_nocgo.go` | `//go:build !cgo` | só é compilado com **CGO desligado** |
+| `mlx/dynamic_other.go` | `//go:build !darwin` | é compilado em Windows/Linux, não em macOS |
+
+O CI linta com **CGO ligado** (o log do job mostra `CGO_ENABLED: 1`) ⇒ `stub_nocgo.go` **não**
+entra no conjunto lintonado. Eu corro com `CGO_ENABLED=0` — **esta máquina não tem compilador
+C** — ⇒ compilo os stubs ⇒ `unavailableN`, `macOSMajorVersion` e companhia aparecem como `unused`.
+
+**Portanto: não se toca em nada.** Ficam declarados como dívida do *briefing* e ficam, agora,
+**explicados**: são da mesma família das falhas locais de `create`, `parser`, `cmd/launch` e
+`app/...` (D-6). Três vezes na mesma sessão a mesma lição: ***o ambiente local não é o ambiente
+do CI, e as diferenças disfarçam-se de defeitos.*** A pergunta que passa a ser obrigatória antes
+de agir sobre uma medida local: **o CI, neste código, produziria este resultado?**
