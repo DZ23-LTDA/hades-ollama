@@ -50,15 +50,23 @@ lista_abertos = []
 for linha in linhas:
     if not linha.startswith("| E-"):
         continue
-    if "LIMITES" not in linha:
+    colunas = linha.split("|")
+    if len(colunas) < 5:
+        continue
+    # ***E-515 (MEDIDO): o marcador tem de ser procurado NA CLAUSULA, nao na linha toda.***
+    # *O `E-325`, o `E-326` e o `E-345` apareciam como «abertos» porque o `nao medid` estava **fora** da clausula de
+    # limites - e a linha inteira era varrida.* ⇒ ***o instrumento procurava no sitio errado da linha.***
+    # A clausula de limites vive na **coluna 4** (o corpo da evidencia).
+    corpo = colunas[4]
+    if "LIMITES" not in corpo:
         continue
     citados += 1
-    clausula = linha[linha.index("LIMITES"):]
+    clausula = corpo[corpo.index("LIMITES"):]
     if any(marcador in clausula for marcador in SEM_MEDICAO):
         sem_medicao += 1
-        if "REMEDIDO EM" not in linha:
+        if "REMEDIDO EM" not in corpo:
             abertos += 1
-            lista_abertos.append(linha.split("|")[1].strip())
+            lista_abertos.append(colunas[1].strip())
 
 print("  LIMITES CITADOS  : %d  (*evidencias que tem clausula de limite*)"
       % citados)
