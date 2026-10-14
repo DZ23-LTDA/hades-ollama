@@ -37,8 +37,9 @@ mensagens tal e qual. As duas linhas de decisão por orçamento (`4542ea468`) co
 | Medição de tokens **rotulada** (`Exata=false`) | `TESTED` **e ligada** | `internal/agent/memory_summary_envelope.go`, chamada no funil |
 | Decisão por **orçamento** com motivo | `TESTED` **e ligada** | `server/chat_context_budget.go` + `chat_context.go:146` |
 | Envelope versionado (versão, hash, fontes, validação) | `TESTED` **e DESLIGADO** | `memory_summary_envelope.go`; só usado no próprio teste |
-| Gravar **histórico bruto antes** do resumo | **AUSENTE** | nenhum snapshot de conversa por faixa de mensagens |
-| Substituir mensagens pelo resumo | **AUSENTE** | o funil decide e regista; **não altera** `request.Messages` |
+| Gravar **histórico bruto antes** do resumo | `TESTED` **e DESLIGADO** | `historico_bruto.go` (append-only + cadeia + retomada, 5 testes) e `compactacao_aplicar.go` (§7-D provado); nenhum chamador em produção |
+| Substituir mensagens pelo resumo | `TESTED` **e DESLIGADO** | `compactacao_plano.go` + `compactacao_digest.go` + `compactacao_fluxo.go` (recuperação ponta a ponta provada); o funil decide e regista, mas **não altera** `request.Messages` |
+| Ligação do fluxo ao funil do chat | **AUSENTE** | falta tornar `withAgentChatContext` método de `*agentAPI` (`chat_context.go:113`, chamadores em `agent_routes.go:599`) e abrir o histórico em `<root>/historico/<org>/<projeto>.jsonl` |
 | Handoff universal (§4) | **AUSENTE** | `BuildHandoff|MissionHandoff|HandoffContract` → 0 ocorrências |
 | Camadas de memória A–E (§3) | **PARCIAL** | `Memory.Kind` é texto livre; sem camada, validade ou sensibilidade por registo |
 | Busca híbrida / rerank / contradição (§3) | **AUSENTE** | `RetrieveRelevant` é **ou** cosseno **ou** literal, mutuamente exclusivos |
