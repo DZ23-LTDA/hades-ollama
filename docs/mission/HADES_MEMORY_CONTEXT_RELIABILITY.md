@@ -174,3 +174,26 @@ fechara o caminho que conhecia. O log do próximo `race (macos)` decide:
 - `panic: test timed out after 10m0s` ⇒ é **TEMPO**, o F2 não era a causa, e a frente passa a
   ser a duração do pacote `internal/agent` (fatia do CI medida localmente: 241,9–288,1 s;
   limite de 600 s por binário).
+
+### D-4. Consumidor do handoff — desenho CORRIGIDO por leitura, não por suposição
+Eu tinha proposto (D-2) injectar o `Handoff` no corpo do `POST /missions/:id/run`. **Está
+errado**: `runMission` (`agent_routes.go:3863-3882`) **não aceita corpo** — resolve a missão
+por `missionForRequest`, confere a versão, chama `EnqueueMission(id)` e devolve `202` com o
+job. O plano/objetivo vivem no registo da missão no runtime, não no pedido.
+
+Desenho corrigido, e é MENOR do que o proposto antes:
+- `POST /missions/:id/handoff` — anexa um `Handoff` ao registo da missão, **validado com
+  `Validar()` (E-588)**: um handoff inválido é RECUSADO com o motivo, não guardado.
+- `GET /missions/:id/handoff` — exporta o handoff, construído com `HandoffDoJob` (E-593) a
+  partir do job de orquestração.
+- Ambos ADITIVOS, sob o guard de missão que já existe (`missionForRequest`) — nenhum caminho
+  novo de autorização.
+
+LIMITE DECLARADO ANTES DE ESCREVER: isto torna o handoff **transportável dentro do Hades**
+(gravado + recuperável sob governação). **Injectá-lo no contexto do modelo durante a
+execução continua a ser o passo seguinte** — e a diferença fica dita agora, não descoberta
+depois de alguém ler «handoff implementado».
+
+Superfícies adjacentes que NÃO são este conceito, para não serem confundidas: `resumeCompany`
+e `resumeCompanyAgent` (`:762`/`:767`) são retoma de empresa/agente; `Last-Event-ID`
+(`:2966`) é retoma de stream SSE.
