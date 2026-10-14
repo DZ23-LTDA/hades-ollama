@@ -326,3 +326,36 @@ C** — ⇒ compilo os stubs ⇒ `unavailableN`, `macOSMajorVersion` e companhia
 `app/...` (D-6). Três vezes na mesma sessão a mesma lição: ***o ambiente local não é o ambiente
 do CI, e as diferenças disfarçam-se de defeitos.*** A pergunta que passa a ser obrigatória antes
 de agir sobre uma medida local: **o CI, neste código, produziria este resultado?**
+
+### D-8. Integração às SUPERFÍCIES — medida, e com o ponto de inserção identificado
+
+**O que foi medido (não suposto).** No front-end do desktop (`app/ui/app/src`):
+- `lib/agenticClient.ts:381-387` tem sete funções de missão — `listMissions`, `getMission`,
+  `listMissionEvents`, `createMission`, `runMission`, `deleteMission`, `decideMissionApproval`
+  — e **nenhuma** de contexto/handoff;
+- `components/MissionDeliveryCard.tsx` mostra o que a missão **entregou**;
+  `MissionCapabilityPicker.tsx` mostra o que ela **pode**; `hooks/useMissionEvents.ts` mostra o
+  que ela **fez**;
+- e **nada** mostra o que ela **sabe**: zero ocorrências de `missions/:id/context`,
+  `memories/summary` ou do conceito de handoff. As sete ocorrências de «handoff» que existem
+  são de **autenticação** (`Onboarding.tsx:1316`, `api.test.ts:91`) — *contar a palavra não é
+  medir o conceito*, a mesma armadilha que a auditoria independente documentou no início.
+
+**A rota já existe e já traz o bloco certo**: `GET /missions/:id/context` devolve o
+`ContextBootstrap`, que desde o E-596/E-598 inclui o handoff **na versão redigida**
+(`ParaPreambulo`) — sem identificadores internos nem caminhos. **Não é preciso servidor novo.**
+
+**Ponto de inserção**: `lib/agenticClient.ts`, ao lado das outras sete:
+`export const getMissionContext = (id) => agentFetch<ContextBootstrap>("/api/agent/v1/missions/" + encodeURIComponent(id) + "/context")`.
+
+**E a superfície, que é decisão de PRODUTO, em duas opções com custos distintos:**
+1. **secção no `MissionDeliveryCard`** — menor, reaproveita a superfície da missão, responde a
+   «o que esta missão sabe»; risco: misturar entrega com contexto no mesmo cartão;
+2. **vista própria de contexto** (rota nova) — mais espaço para objetivo, pendentes, o que
+   exige aprovação e as capacidades autorizadas; risco: mais superfície para manter.
+
+**Recomendação: (1)** como primeiro passo, com o bloco **colapsado por defeito** (o contexto é
+longo e não é o que se olha primeiro) e **sem nunca mostrar o que a versão redigida remove**.
+Nenhuma das duas se implementa sem um teste que prove que o identificador da missão e os
+caminhos **não** aparecem no que é renderizado — a mesma asserção que fechou o vazamento no
+servidor (`mission_context_test.go:118`, E-597) tem de existir no cliente.
