@@ -2444,7 +2444,10 @@
     "INSTANTE DE TESTE NAO SE HERDA DO RELOGIO: ESCOLHE-SE (E-417): o fixture passou a usar amanha as 10:00 UTC. E o mesmo defeito estava no meu proprio teste novo (Now+2h), corrigido pela mesma regra. Verificado 3x as 22:12, na janela em que falhava",
     "A VARREDURA EXAUSTIVA DO RELOGIO DEU UM RESULTADO CALMO (E-418): 57 usos de Now()+Add em testes, 5 triados como alto risco e TODOS seguros (deslocamentos de +-1s/1min, ou vencido). O defeito do E-417 era singular: nao ha' familia",
     "O MEU SCANNER LE' COMENTARIOS (E-418): ele marcou como risco o proprio comentario que eu escrevi no E-417 - um scanner que le' comentarios conta a documentacao do defeito como defeito",
-    "ADV-65 DECLARADO, NAO LIGADO (E-418): o motor de agendamento e' uma biblioteca testada e sem chamador em producao; o que esta' provado em producao e' o agendador de WORKFLOW. Ligar exigiria dono de tick em producao, ponte com os canais (que nao existem) e testes de concorrencia com o tick rodando"
+    "ADV-65 DECLARADO, NAO LIGADO (E-418): o motor de agendamento e' uma biblioteca testada e sem chamador em producao; o que esta' provado em producao e' o agendador de WORKFLOW. Ligar exigiria dono de tick em producao, ponte com os canais (que nao existem) e testes de concorrencia com o tick rodando",
+    "HORARIO DE VERAO: O MESMO INSTANTE DUAS VEZES (E-419/ADV-64): o laco anda por deslocamento de relogio de parede e time.Date NORMALIZA horarios que nao existem, entao 02:00 e 02:30 caiam ambos em 03:00. A lista so' ordenava, sem deduplicar. Corrigido deduplicando por INSTANTE: remove o impossivel e preserva a hora legitimamente repetida",
+    "O FUSO DO DESENVOLVEDOR ESCONDEU A CLASSE (E-419): a maquina desta base e' America/Sao_Paulo, sem horario de verao desde 2019 - por isso nenhum teste pegou uma duplicata de instante que existe em qualquer fuso com DST",
+    "A CONTRAPROVA PODE SER A PROPRIA REPRODUCAO (E-419): o teste novo rodou ANTES da correcao e falhou com o instante duplicado impresso. Nao foi preciso mutar nada: a evidencia de que ele detecta esta' no historico"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -3157,7 +3160,7 @@
           "severidade": "BAIXA/MEDIA (DST nunca exercitado)",
           "descricao": "Maquina America/Sao_Paulo (sem DST desde 2019) e laco em minutos de relogio de parede. Sonda em America/New_York, turno domingo 01:00-05:00 em 2026-03-08 => 8 slots com 01:00 e 01:30 DUPLICADOS no mesmo instante UTC",
           "descoberto_por": "6a revisao adversarial independente (subagente, contexto fresco) com go test -overlay e sondas",
-          "estado": "REGISTRADO, NAO CORRIGIDO",
+          "estado": "FECHADO: OpenSlots deduplica por INSTANTE depois de ordenar. Antes da correcao o teste novo FALHAVA com 'o instante 2026-03-08T06:30:00Z foi oferecido 2 vezes' (8 slots); depois, 6 slots distintos e a bateria de agendamento ok. A contraprova e' a propria reproducao. Preserva a hora repetida do FIM do horario de verao (instantes distintos)",
           "evidencia": "E-411"
         },
         {
@@ -3881,6 +3884,7 @@
     "E-415": "a minha prova da trava era FALSA (replicava a formula do produto); teste removido",
     "E-416": "lockPath compartilhado entre produto e teste: a contraprova passa a disparar",
     "E-417": "teste que dependia da hora: fixture escolhia instante na borda da meia-noite",
-    "E-418": "varredura exaustiva do relogio (57 usos, 5 triados, todos seguros) + ADV-65 declarado"
+    "E-418": "varredura exaustiva do relogio (57 usos, 5 triados, todos seguros) + ADV-65 declarado",
+    "E-419": "ADV-64: dedup por instante na virada de horario de verao, com a reproducao como contraprova"
   }
 }

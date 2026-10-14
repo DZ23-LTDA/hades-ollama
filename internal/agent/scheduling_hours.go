@@ -275,7 +275,21 @@ func (s *SchedulingStore) OpenSlots(organizationID, resourceID, date, serviceID 
 		livres = append(livres, AvailabilitySlot{StartsAt: inicio, EndsAt: inicio.Add(passo), Free: !ocupado})
 	}
 	sort.Slice(livres, func(i, j int) bool { return livres[i].StartsAt.Before(livres[j].StartsAt) })
-	return livres, nil
+	// 🚨 ADV-64 / E-419 (6ª auditoria independente, MEDIDO): na **virada de horário de verão** o laço anda por
+	// deslocamento de **relógio de parede** e `time.Date` **normaliza** horários que não existem ⇒ *02:00 e 02:30
+	// caem ambos em 03:00 e a lista oferecia o **mesmo instante UTC duas vezes*** ✗ (medido: 8 slots com
+	// `2026-03-08T06:30:00Z` repetido, com a organização em `America/New_York`).
+	// ⇒ **Deduplicar por INSTANTE**, não por horário de parede: *isto remove o horário **impossível** e **preserva**
+	// a hora legitimamente repetida do fim do horário de verão — que tem instantes **distintos** e é real.*
+	// ***Duas vezes o mesmo instante não é "dois horários livres": é um horário contado duas vezes.***
+	unicos := livres[:0]
+	for i, slot := range livres {
+		if i > 0 && slot.StartsAt.Equal(livres[i-1].StartsAt) {
+			continue
+		}
+		unicos = append(unicos, slot)
+	}
+	return unicos, nil
 }
 
 // appointmentAllowedLocked confere expediente/fechamento para o instante pedido — é o portão que `Book` usa.
