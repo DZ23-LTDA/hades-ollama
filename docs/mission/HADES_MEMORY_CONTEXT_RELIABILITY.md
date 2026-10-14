@@ -359,3 +359,26 @@ longo e não é o que se olha primeiro) e **sem nunca mostrar o que a versão re
 Nenhuma das duas se implementa sem um teste que prove que o identificador da missão e os
 caminhos **não** aparecem no que é renderizado — a mesma asserção que fechou o vazamento no
 servidor (`mission_context_test.go:118`, E-597) tem de existir no cliente.
+
+### D-9. Levantamento das superfícies — o que cada uma mostra da missão (medido)
+
+| superfície | ciclo de vida da missão | **contexto / handoff** |
+| --- | --- | --- |
+| servidor (`GET /missions/:id/context`) | ✅ | ✅ **já devolve o handoff REDIGIDO** (E-596/E-598) |
+| desktop `app/ui/app` | ✅ entrega (`MissionDeliveryCard`) · capacidades (`MissionCapabilityPicker`) · eventos (`useMissionEvents`) | ✅ **primeiro consumidor real** (`47c5cae45`, E-608) |
+| mobile `apps/mobile-agentic` | ✅ incl. **fila offline** (`enqueue`), notificações, expiração de sessão | ❌ nenhum (medido: 0 ocorrências) |
+| `AgenticConsole` (rota própria) | ✅ consome o cartão | ❌ sem vista própria de contexto |
+| `Model Gateway` / MCPs / skills | — | ❌ nada (não medido em profundidade) |
+
+**O que este levantamento corrige**: a frase «integração às superfícies ausente» era **larga de
+mais**. As superfícies estão construídas e funcionais para o **ciclo de vida** da missão — criar,
+correr, aprovar, cancelar, ver eventos, ver artefactos, e no mobile até com fila offline. O que
+faltava era a superfície do **contexto** (o que a missão *sabe*), e ela começou a existir no
+E-608 no desktop.
+
+**O caminho que fica para o mobile**, para não ser redescoberto: `apps/mobile-agentic/App.tsx`
+já tem `request<Mission>(base, ...)` e um `refresh(id)`; falta a chamada a
+`/missions/:id/context` e uma secção colapsada — **com o mesmo tipo por lista branca do lado do
+cliente** (`MissionContextView`) e um teste que exija que identificadores e caminhos **não**
+apareçam no renderizado. *A garantia que o servidor ganhou (E-597) tem de ser ganha de novo em
+cada cliente — e é por isso que ela se põe no TIPO, não na disciplina de quem escreve o JSX.*
