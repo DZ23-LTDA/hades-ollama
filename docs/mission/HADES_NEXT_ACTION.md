@@ -1,42 +1,57 @@
 # HADES — PRÓXIMA AÇÃO (V2.2 + adendo de paridade)
 
-**Atualizado por:** E-354 (checkpoint remedido — rodada 39) · **Evidência de criação:** E-316
+**Atualizado por:** E-547 (checkpoint remedido — rodada 101) · **Evidência de criação:** E-316
 **Regra:** este arquivo diz **o que fazer a seguir**, não o que já foi feito. Estado completo em
 `HADES_MASTER_STATE.json`; prova em `HADES_EVIDENCE_INDEX.md`.
 
+> ⚠️ **ESTE ARQUIVO ESTEVE PARADO 62 RODADAS** (*rodada 39 → 101*): dizia **353** evidências quando havia **547**, e a
+> «fila imediata» era de uma era em que os **estágios 44–47 nem existiam**. ⇒ *Foi o `E-544` que o mediu: dos cinco
+> documentos que a FASE 7 manda actualizar, **três** estavam parados há ~16 h, e este não estava na lista — *mas estava
+> parado pela mesma razão*. É a **terceira** vez que um documento desta casa escreve a regra que ele próprio viola
+> (*o `HANDOFF` e o `PENDING_WORK` também avisam que «os números envelhecem»*).*
+
 ---
 
-## 📌 Checkpoint MEDIDO (rodada 39 — nada aqui é estimativa)
+## 📌 Checkpoint MEDIDO (rodada 101 — nada aqui é estimativa)
 
 | Medida | Valor medido | Como foi medido |
 | --- | --- | --- |
-| `main` (remoto) | `bbc9a5412` | `git rev-parse --short origin/main` |
-| Evidências no índice | **353** | contagem de linhas `\| E-` |
-| Achados de auditoria adversarial | **28** (ADV-01…ADV-28) | `HADES_MASTER_STATE.json` → `v22.auditoria_adversarial` |
-| Achados por estado | **19 corrigidos/medidos** · **2 sem defeito** (ADV-02, ADV-08) · **1 revertido por contrato testado** (ADV-19) · **1 resolvido por sonda** (ADV-24) · **1 demonstrado** (ADV-03) · **1 prova por catraca** (ADV-16) · **1 rede ampliada** (ADV-27) | contagem por `estado` |
-| Pendências de escopo de tenant | **1** (era **18** há oito fatias) | `scripts/hades_tenant_scope_check.py --check` |
-| Classificação de escopo | **24 caminho · 5 identificador · 2 comentário · 1 indefinido declarado** (*MEDIÇÃO CORRIGIDA em E-380: o `join` entrava na linha de comentário e escondia **um uso real de caminho** dentro de `comentario`; a contagem está agora **pinada por teste** — `24` é o número do instrumento, e as linhas históricas E-352/E-355 (22/23) **não** foram reescritas, porque evidência histórica é história: aponta-se a medição que a supera*) | `scripts/hades_scope_classifier.py` |
-| Notas de estado registradas | **1029** | `HADES_MASTER_STATE.json` → `notes` |
-| Branches remotas | **372** | `git ls-remote --heads origin` |
+| `main` (remoto) | `4b3e21854` | `git rev-parse --short origin/main` |
+| Branch do PR #438 | `eaad692e0` | `git rev-parse --short origin/fix/checker-relogio` |
+| Evidências no índice | **547** | contagem de linhas `\| E-` |
+| Estágios | **38** (*44–47 entregues*) | `HADES_MASTER_STATE.json` → `stages` |
+| Bloqueios declarados | **17** (*17 itens / 17 ids únicos — o `B-15` duplicado foi removido no `E-545`*) | `hades_mission_check.py` |
+| Conflitos com a `main` | **nenhum** | `git merge-tree --write-tree` → exit 0 |
+| Credenciais expostas | **nenhuma** (*20 ocorrências de padrão `ghp_`, **20/20** em ficheiros de teste, **0** em produção*) | varrimento + classificação (`E-547`-era) |
 | Veredito de release | **`NOT_RELEASE_READY`** | checker de missão |
 
-> **Regra de honestidade sobre o SHA**: ele **envelhece a cada merge**. Este checkpoint vale para a revisão
-> `bbc9a5412`, medida em **2026-10-13**; qualquer trabalho posterior precisa **remedir** antes de citar.
+> **Regra de honestidade sobre o SHA**: ele **envelhece a cada merge**. Este checkpoint vale para `eaad692e0`, medido em
+> **2026-10-14**; qualquer trabalho posterior precisa **remedir** antes de citar.
 
 ---
 
-## Fila imediata (ordem do adendo §6)
+## Fila imediata — REORDENADA pelas rodadas 40–101
 
-| # | Ação | Artefato/Comando | Critério de aceite |
-| --- | --- | --- | --- |
-| 1 | **Classificação por STATEMENT** (a catraca hoje classifica **por linha**: uso multi-linha cai em `indefinido`) | `scripts/hades_scope_classifier.py` + testes | nenhum `indefinido` por limitação do instrumento |
-| 2 | **Orçamento acumulado** entre planos de onboarding (hoje o teto é **por plano**) | `internal/agent/company_onboarding.go` | teto declarado também para a soma |
-| 3 | **P0-B / T2 nos harnesses externos** (Claude Code, Codex, Manus) | `docs/parity/HADES_T2_MATRIX.md` | **`BLOCKED_BY_EXTERNAL_DEPENDENCY`** até haver login ⇒ **`NAO_MEDIDO`** |
-| 4 | **P0-A / T1** — missão Manus-parity: pesquisa **com fontes e data**, planilha/documento, navegador autorizado, estado recuperado após reinício | `docs/parity/HADES_MANUS_PARITY_GATE.md` | artefatos reais; navegador depende de ambiente autorizado |
-| 5 | **P0-C / T3** — app full-stack de estoque com auth, DB real (staging), preview, E2E, export e rollback | evidência de staging | **staging real** é dependência externa até haver alvo |
-| 6 | **P1-E / T8** — Creator Studio: MP4 **decodificável**, áudio, legendas, thumbnail; upload só com OAuth | `docs/parity/…` + evidência | proibido herdar as **simulações** do TUBEGENT; **MP4 real exige FFmpeg** (`BLOCKED_BY_EXTERNAL_DEPENDENCY`) |
-| 7 | **P1-F / T9** — REA via MCP/skill governada sobre artefato **próprio/autorizado** | skill + evidência | escopo, timeout e evidência; nunca burlar DRM/acesso |
-| 8 | **P1-H** — descoberta: README PT/EN, docs versionadas, sitemap, JSON-LD, acessibilidade | estágio 39 | **sem** prometer ranking ou recomendação por IAs |
+### ✅ Já não está na fila (*entregue e testado*)
+| O que era pendente | Onde ficou |
+| --- | --- |
+| **Estágio 44** — Cowork & Spark | `E-533`: `/spark`, `/cowork`, `/reject` na infra existente (*mesma rota de `/goal`*) |
+| **Estágio 45** — Multimodal Studio | `E-529` matriz modalidade×engine · `E-535` a **recusa antes de disco/rede** · documentos PDF/DOCX/XLSX/PPTX já existiam |
+| **Estágio 46** — Companion | `E-536` estados derivados de **eventos verificados** · `E-538` a11y ligada ao `prefers-reduced-motion` **existente** |
+| **Estágio 47** — Artifact Drive | `E-537` busca + CAS · `E-539` comparar/restaurar **sem apagar história** · `E-542` dedup **dentro do tenant** |
+| **FASE 1** — `race (macos)` | **provada**: 11/11 etapas, macOS 10 min 28 s vs ubuntu 6 min 32 s |
+
+### ⏭️ O que resta, por ordem
+| # | Ação | Critério de aceite |
+| --- | --- | --- |
+| 1 | **Revisão humana do PR #438** (*`LMPrado-DZ23`*) — **não** se contorna | aprovação registada; só depois o merge |
+| 2 | **Contrato duplicado**: o `server` **repete** o número do `internal/agent` (*35→38 foi o sintoma*) | o `server` **lê** o valor em vez de o repetir — *dívida registada no `E-547`* |
+| 3 | **P0-B / T2** harnesses externos (*Claude Code, Codex, Manus*) | `BLOCKED_BY_EXTERNAL_DEPENDENCY` até haver login ⇒ `NAO_MEDIDO` |
+| 4 | **P0-A / T1** paridade Manus: pesquisa com fontes, planilha/documento, navegador autorizado | artefatos reais; navegador depende de ambiente autorizado |
+| 5 | **P0-C / T3** app full-stack com auth, DB real, preview, E2E, rollback | **staging real** é dependência externa até haver alvo |
+| 6 | **P1-E / T8** Creator Studio: MP4 **decodificável**, áudio, legendas, thumbnail | **MP4 real exige FFmpeg** ⇒ `BLOCKED_BY_EXTERNAL_DEPENDENCY` |
+| 7 | **P1-F / T9** REA via MCP/skill governada sobre artefato próprio/autorizado | escopo, timeout e evidência; nunca burlar DRM |
+| 8 | **P1-H** descoberta: README PT/EN, docs versionadas, sitemap, JSON-LD, acessibilidade | **sem** prometer ranking ou recomendação por IAs |
 
 ## Bloqueios que **não** se resolvem por código
 
