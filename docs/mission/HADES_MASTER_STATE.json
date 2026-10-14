@@ -2439,7 +2439,9 @@
     "A 7a VEZ DA MESMA CLASSE - E A PRIMEIRA EM QUE ME PEGUEI NA MESMA RODADA (E-415): escrevi uma prova direta da trava por organizacao (segurar a trava de A e exigir que B complete) e ela passou. Na contrapova com trava GLOBAL, o meu teste CONTINUOU PASSANDO: ele calculava o caminho replicando a formula do produto, entao media a MINHA copia, nao o codigo. Um teste que parece prova e nao e' e' exatamente a doenca que esta missao vem derrubando",
     "A COPIA NAO MUDA QUANDO O ORIGINAL MUDA (E-415): teste que replica a formula do produto passa com qualquer produto. A correcao e' extrair o caminho para um unico lugar que produto e teste compartilhem - assim a mutacao muda o INPUT do teste",
     "UM DONO SO' PARA O CAMINHO (E-416/ADV-63): extrair lockPath() e fazer produto e teste usarem o MESMO metodo e' o que transforma uma copia em prova - a mutacao passa a mudar o INPUT do teste. Contraprova: lockPath global => o teste FALHA ('as organizacoes A e B compartilham o caminho de trava')",
-    "O QUE SEPARA UMA PROVA DE UMA COPIA E' QUEM E' O DONO DO VALOR (E-416): a minha primeira prova da trava replicava a formula do produto e passava com qualquer produto. A segunda usa o metodo do produto e dispara na mutacao"
+    "O QUE SEPARA UMA PROVA DE UMA COPIA E' QUEM E' O DONO DO VALOR (E-416): a minha primeira prova da trava replicava a formula do produto e passava com qualquer produto. A segunda usa o metodo do produto e dispara na mutacao",
+    "UM TESTE QUE PASSA 23 HORAS POR DIA E FALHA NA 24a (E-417): TestAgendamentoImpedeDoubleBookingSobConcorrencia falhava 5/5 apos ~23:30, porque o fixture nascia de time.Now().Add(24h) e agendava em +90min, caindo no dia seguinte. O PRODUTO ESTA' CERTO (servico que termina 00:11 nao cabe em turno que fecha 24:00); o fixture herdava o instante do relogio da maquina",
+    "INSTANTE DE TESTE NAO SE HERDA DO RELOGIO: ESCOLHE-SE (E-417): o fixture passou a usar amanha as 10:00 UTC. E o mesmo defeito estava no meu proprio teste novo (Now+2h), corrigido pela mesma regra. Verificado 3x as 22:12, na janela em que falhava"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -3741,6 +3743,20 @@
     },
     "afirmacoes_superseded": {
       "E-314": "afirma que 'esta fatia fecha esse buraco' em Availability; o buraco foi fechado em OpenSlots (funcao NOVA) e Availability ficou intacta. Superseded por E-413, que declara o limite e o fixa com teste"
+    },
+    "portao_de_testes": {
+      "dependencia_do_relogio": {
+        "achado": "TestAgendamentoImpedeDoubleBookingSobConcorrencia falhava 5/5 apos ~23:30",
+        "causa": "o fixture nascia de time.Now().Add(24h) e agendava em +90min; perto da meia-noite isso cai no dia seguinte e o turno de 24h (ClosesAt=1440) recusa, porque fimMinuto=1451 > 1440",
+        "produto_esta_certo": "um servico que termina 00:11 nao cabe num turno que fecha 24:00 - e' a BORDA do produto, nao um bug",
+        "correcao": "instante escolhido: amanha as 10:00 UTC (o +90min termina 11:30 UTC, longe da virada)",
+        "mesmo_defeito_no_meu_teste": "scheduling_lock_scope_proof_test.go usava Now+2h; corrigido pela mesma regra",
+        "verificacao": "0 falhas em 3 execucoes as 22:12 local",
+        "limites": [
+          "varredura dirigida, nao exaustiva (distributed_integration_test.go tem 68 usos de time.Now nao inspecionados)",
+          "nao ha teste da borda (23:41 com servico de 30min)"
+        ]
+      }
     }
   },
   "unlinked_evidence": {
@@ -3845,6 +3861,7 @@
     "E-413": "ADV-60: Availability declara o limite e um teste o fixa; E-314 superseded",
     "E-414": "ADV-62: teste do ciclo com NextRunAt futuro, com contraprova e controle",
     "E-415": "a minha prova da trava era FALSA (replicava a formula do produto); teste removido",
-    "E-416": "lockPath compartilhado entre produto e teste: a contraprova passa a disparar"
+    "E-416": "lockPath compartilhado entre produto e teste: a contraprova passa a disparar",
+    "E-417": "teste que dependia da hora: fixture escolhia instante na borda da meia-noite"
   }
 }

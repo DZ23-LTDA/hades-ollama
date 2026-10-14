@@ -42,7 +42,10 @@ func TestTravaDeAgendamentoEporOrganizacaoNaoGlobal(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	alvo := time.Now().UTC().Add(2 * time.Hour).Truncate(30 * time.Minute)
+	// ⚠️ E-417: nada de `time.Now().Add(2h)` — *às 23:41 isso cai no dia seguinte e o turno de 24 h recusa* ✗.
+	// O instante é **escolhido**: amanhã às 10:00 UTC, longe de qualquer virada.
+	base := time.Now().UTC().Add(24 * time.Hour)
+	alvo := time.Date(base.Year(), base.Month(), base.Day(), 10, 0, 0, 0, time.UTC)
 
 	// (b) A PROVA DIRETA: reter a trava da organização A (pelo caminho do PRODUTO) e exigir que B complete.
 	liberarA := make(chan struct{})

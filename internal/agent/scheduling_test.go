@@ -14,7 +14,15 @@ import (
 // confirmação e chega num horário já ocupado: o pior desfecho de um sistema de agenda.
 func TestAgendamentoImpedeDoubleBookingSobConcorrencia(t *testing.T) {
 	store, org, recurso, servico := schedulingFixture(t)
-	agora := time.Now().UTC().Truncate(time.Minute).Add(24 * time.Hour)
+	// 🚨 E-417 (MEDIDO): `agora` era `time.Now().UTC().Truncate(time.Minute).Add(24 * time.Hour)` ⇒ *rodando às
+	// 23:41, o `livre := agora.Add(90 * time.Minute)` caía em **01:11 do dia seguinte***, fora da janela
+	// `00:00–24:00` (`ClosesAt=1440`), e o teste falhava **5/5** ✗ — *um teste que passa 23 h por dia e falha na
+	// 24ª*. O produto estava **certo** (um serviço que termina 00:11 **não** cabe num turno que fecha 24:00);
+	// o **fixture** é que escolhia um instante na borda. ***Instante de teste não se herda do relógio da
+	// máquina: escolhe-se.*** Agora é **amanhã às 10:00 UTC** — *o `+90 min` termina 11:30 UTC, longe de
+	// qualquer virada.*
+	base := time.Now().UTC().Truncate(time.Minute).Add(24 * time.Hour)
+	agora := time.Date(base.Year(), base.Month(), base.Day(), 10, 0, 0, 0, time.UTC)
 
 	// DOIS CANAIS DIFERENTES (voz e WhatsApp) pedindo o MESMO horário ao mesmo tempo.
 	pedidos := []BookRequest{
