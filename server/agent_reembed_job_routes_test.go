@@ -1,10 +1,12 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -93,6 +95,37 @@ func TestAgentReembedJobRouteRunsToCompletion(t *testing.T) {
 	}
 }
 
+// Portão determinístico para o teste do 409 (E-560).
+//
+// POR QUE ELE EXISTE — o teste fazia duas chamadas seguidas e exigia 409 na segunda.
+// Isso só é verdade se o job #1 ainda estiver `Running` quando a #2 chega, e com o
+// `stubVetorial` (instantâneo, sem I/O) ele termina antes. MAS O PRODUTO NÃO TEM
+// CORRIDA: `StartReembedJob` (internal/agent/context_reembed_job.go:78) verifica e
+// cria sob o MESMO `reembedMu`, e devolve `ErrReembedJobRunning` de forma atómica.
+// O que era temporal era o PRESSUPOSTO DO TESTE — e no `race (macos-latest)` do
+// commit `f115749cf` o segundo pedido recebeu **202** em vez de 409, derrubando o
+// pacote `server` (`agent_reembed_job_routes_test.go:115`). Este embedder troca a
+// aposta no escalonador por um facto: o job fica bloqueado DENTRO do `Embed`, logo
+// `Running` é observável antes da segunda chamada, em qualquer máquina e com ou sem
+// `-race`. A asserção continua a ser **409** — não foi enfraquecida nem ignorada.
+type vetorialComPortao struct {
+	entrou chan struct{} // fechado quando o job entra no Embed
+	libera chan struct{} // o teste fecha para o job prosseguir
+	uma    sync.Once
+}
+
+func (v *vetorialComPortao) Embed(ctx context.Context, _ string) ([]float32, error) {
+	v.uma.Do(func() { close(v.entrou) })
+	select {
+	case <-v.libera:
+		return []float32{1, 0, 0}, nil
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
+}
+
+func (v *vetorialComPortao) EmbeddingModel() string { return "modelo-do-portao" }
+
 func TestAgentReembedJobRouteRefusesSecondJobWith409(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	api, projectA, _ := newObjectScopeTestAPI(t)
@@ -101,11 +134,17 @@ func TestAgentReembedJobRouteRefusesSecondJobWith409(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	api.context.SetEmbedder(stubVetorial{})
+	portao := &vetorialComPortao{entrou: make(chan struct{}), libera: make(chan struct{})}
+	api.context.SetEmbedder(portao)
 
-	ctx, _ := scopedObjectRequest(t, http.MethodPost, "/api/agent/projects/"+projectA.ID+"/memories/reembed/jobs", "", "org_a")
+	ctx, primeiro := scopedObjectRequest(t, http.MethodPost, "/api/agent/projects/"+projectA.ID+"/memories/reembed/jobs", "", "org_a")
 	ctx.Params = gin.Params{{Key: "id", Value: projectA.ID}}
 	api.startReembedJob(ctx)
+	if primeiro.Code != http.StatusAccepted {
+		t.Fatalf("o primeiro job precisa ser aceito, veio %d: %s", primeiro.Code, primeiro.Body.String())
+	}
+	// O job está DENTRO do Embed ⇒ `Running` é um facto, não uma aposta.
+	<-portao.entrou
 
 	// Segundo pedido no mesmo projeto: 409 (dois jobs competiriam pelo mesmo arquivo).
 	ctx, recorder := scopedObjectRequest(t, http.MethodPost, "/api/agent/projects/"+projectA.ID+"/memories/reembed/jobs", "", "org_a")
@@ -113,6 +152,72 @@ func TestAgentReembedJobRouteRefusesSecondJobWith409(t *testing.T) {
 	api.startReembedJob(ctx)
 	if recorder.Code != http.StatusConflict {
 		t.Fatalf("segundo job precisa responder 409, veio %d: %s", recorder.Code, recorder.Body.String())
+	}
+
+	// Libera o job e espera que ele termine: nenhuma goroutine pode sobreviver ao teste.
+	jobID := extrairCampoJSON(t, primeiro.Body.String(), "id")
+	close(portao.libera)
+	limite := time.Now().Add(10 * time.Second)
+	for {
+		job, err := api.context.ReembedJobStatus(jobID)
+		if err == nil && job.State != agent.ReembedJobRunning {
+			break
+		}
+		if time.Now().After(limite) {
+			t.Fatalf("o job %s não terminou dentro do limite (estado=%v, err=%v)", jobID, job.State, err)
+		}
+		time.Sleep(2 * time.Millisecond)
+	}
+}
+
+// O OUTRO LADO DO CONTRATO (E-560): o 409 é do job **em curso**, não do projeto.
+//
+// Isto não é zelo decorativo — é a explicação medida do defeito que derrubou o
+// `race (macos-latest)`. O teste anterior era ambíguo: exigia 409, mas nada
+// garantia que o job #1 ainda estivesse vivo, e quando ele já tinha terminado a
+// resposta CORRECTA é **202**. Ao fixar os dois casos, deixa de existir a zona em
+// que uma máquina reprova e outra passa — e qualquer mudança futura que passe a
+// recusar um projeto já concluído quebra aqui, nomeando o contrato.
+func TestAgentReembedJobRouteAllowsNewJobAfterPreviousFinished(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	api, projectA, _ := newObjectScopeTestAPI(t)
+	for i := range 200 {
+		if _, err := api.context.AddMemory(agent.Memory{ProjectID: projectA.ID, Kind: "fact", Content: fmt.Sprintf("memória %d", i), Source: "manual"}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	portao := &vetorialComPortao{entrou: make(chan struct{}), libera: make(chan struct{})}
+	api.context.SetEmbedder(portao)
+
+	ctx, primeiro := scopedObjectRequest(t, http.MethodPost, "/api/agent/projects/"+projectA.ID+"/memories/reembed/jobs", "", "org_a")
+	ctx.Params = gin.Params{{Key: "id", Value: projectA.ID}}
+	api.startReembedJob(ctx)
+	if primeiro.Code != http.StatusAccepted {
+		t.Fatalf("primeiro job: veio %d, esperado 202", primeiro.Code)
+	}
+	jobID := extrairCampoJSON(t, primeiro.Body.String(), "id")
+
+	// Deixa o job CONCLUIR de verdade — é essa a condição que muda a resposta.
+	close(portao.libera)
+	limite := time.Now().Add(10 * time.Second)
+	for {
+		job, err := api.context.ReembedJobStatus(jobID)
+		if err == nil && job.State != agent.ReembedJobRunning {
+			break
+		}
+		if time.Now().After(limite) {
+			t.Fatalf("o job %s não terminou dentro do limite", jobID)
+		}
+		time.Sleep(2 * time.Millisecond)
+	}
+
+	// Com o anterior CONCLUÍDO, um novo job é legítimo: recusar seria travar o remédio.
+	ctx, segundo := scopedObjectRequest(t, http.MethodPost, "/api/agent/projects/"+projectA.ID+"/memories/reembed/jobs", "", "org_a")
+	ctx.Params = gin.Params{{Key: "id", Value: projectA.ID}}
+	api.startReembedJob(ctx)
+	if segundo.Code != http.StatusAccepted {
+		t.Fatalf("após o job anterior concluir, um novo job precisa ser aceito; veio %d: %s",
+			segundo.Code, segundo.Body.String())
 	}
 }
 
