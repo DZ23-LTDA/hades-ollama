@@ -70,6 +70,40 @@ func SinaisDeMissao(missao Mission, quando time.Time) []SinalDeDespertar {
 	return sinais
 }
 
+// MissoesAExecutar decide QUAIS missões de um despertar devem ser levadas À FILA (E-638).
+//
+// SÓ O MOTIVO `MotivoTrabalhoPendente` ENFILEIRA. Aprovação pendente e recuperação produzem
+// despertar INFORMATIVO: quem age é a pessoa (aprovar) ou o caminho de recuperação — *enfileirar
+// uma missão que espera aprovação seria executá-la sem a decisão que ela própria pediu.*
+//
+// E confirma o ESTADO no momento de enfileirar (o `porID` vem da leitura corrente): uma missão que
+// deixou de estar pronta entre o cálculo do despertar e o enfileiramento não entra. O despertar é
+// uma fotografia; a fila tem de agir sobre o presente.
+func MissoesAExecutar(despertar Despertar, porID map[string]Mission) []string {
+	precisaExecutar := false
+	for _, motivo := range despertar.Motivos {
+		if motivo == MotivoTrabalhoPendente {
+			precisaExecutar = true
+			break
+		}
+	}
+	if !precisaExecutar {
+		return nil
+	}
+	prontas := make([]string, 0, len(despertar.Missoes))
+	for _, missaoID := range despertar.Missoes {
+		missao, existe := porID[missaoID]
+		if !existe {
+			continue
+		}
+		switch missao.State {
+		case MissionReady, MissionPlanning, MissionCreated:
+			prontas = append(prontas, missaoID)
+		}
+	}
+	return prontas
+}
+
 // DespertaresDasMissoes reúne os sinais de VÁRIAS missões e devolve os despertares COALESCIDOS.
 //
 // O dispatcher chama isto com as missões visíveis e obtém, por agente, UM despertar que leva todas

@@ -96,3 +96,36 @@ func TestDespertaresDasMissoesSemMissoes(t *testing.T) {
 		t.Fatalf("sem missões não há despertares: %+v", despertares)
 	}
 }
+
+// O QUE VAI À FILA, E O QUE NÃO VAI (E-638). Esta é a decisão que separa «informar» de «executar».
+func TestSoTrabalhoPendenteVaiParaAFila(t *testing.T) {
+	pronta := missaoDeDespertar("mis_pronta", "agente-a", MissionReady)
+	aprovacao := missaoDeDespertar("mis_aprovar", "agente-a", MissionAwaitingApproval)
+	recuperando := missaoDeDespertar("mis_recuperar", "agente-a", MissionRecovering)
+	porID := map[string]Mission{pronta.ID: pronta, aprovacao.ID: aprovacao, recuperando.ID: recuperando}
+
+	// Um despertar com trabalho pendente ENTRE os motivos leva à fila só a missão pronta.
+	misto := Despertar{AgenteID: "agente-a", Motivos: []string{MotivoAprovacaoPendente, MotivoTrabalhoPendente}, Missoes: []string{pronta.ID, aprovacao.ID, recuperando.ID}}
+	fila := MissoesAExecutar(misto, porID)
+	if len(fila) != 1 || fila[0] != pronta.ID {
+		t.Fatalf("só a missão pronta devia ir à fila: %v", fila)
+	}
+
+	// E um despertar SÓ informativo não leva NADA — aprovar é de uma pessoa.
+	informativo := Despertar{AgenteID: "agente-a", Motivos: []string{MotivoAprovacaoPendente, MotivoRecuperacao}, Missoes: []string{aprovacao.ID, recuperando.ID}}
+	if fila := MissoesAExecutar(informativo, porID); len(fila) != 0 {
+		t.Fatalf("*** despertar informativo não pode enfileirar ***: %v", fila)
+	}
+}
+
+// A FOTOGRAFIA NÃO MANDA NA FILA: se a missão deixou de estar pronta, não entra.
+func TestMissaoQueDeixouDeEstarProntaNaoEntra(t *testing.T) {
+	despertar := Despertar{AgenteID: "agente-a", Motivos: []string{MotivoTrabalhoPendente}, Missoes: []string{"mis_1"}}
+	corrente := map[string]Mission{"mis_1": missaoDeDespertar("mis_1", "agente-a", MissionRunning)}
+	if fila := MissoesAExecutar(despertar, corrente); len(fila) != 0 {
+		t.Fatalf("missão que já corre não pode ser enfileirada: %v", fila)
+	}
+	if fila := MissoesAExecutar(despertar, map[string]Mission{}); len(fila) != 0 {
+		t.Fatalf("missão ausente da leitura não pode ser enfileirada: %v", fila)
+	}
+}

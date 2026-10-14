@@ -812,6 +812,8 @@ func (a *agentAPI) register(r *gin.Engine) {
 	group.GET("/missions", a.missions)
 	// E-625: relatorio de desempenho das missoes visiveis para o chamador (Paperclip §10).
 	group.GET("/performance", a.performance)
+	// E-638: despertares coalescidos por agente, com enfileiramento do que precisa de execucao.
+	group.POST("/wakeups", a.wakeups)
 	group.GET("/notifications", a.notifications)
 	group.GET("/notifications/stream", a.notificationStream)
 	group.GET("/creations", a.creations)
@@ -2741,6 +2743,55 @@ func (a *agentAPI) performance(c *gin.Context) {
 		"performance": agent.AvaliarDesempenho(missions),
 		"scope":       "missoes visiveis para o chamador (organizacao da sessao)",
 	})
+}
+
+// wakeups calcula os despertares COALESCIDOS por agente e ENFILEIRA o que precisa de execucao
+// (E-638). E' a ligacao entre a regra pura (E-633) e a fila duravel que ja' existe.
+//
+// O QUE VAI A' FILA: so' as missoes cujo motivo e' `missao pronta a executar`, decidido por
+// `agent.MissoesAExecutar` (funcao pura, testada). Aprovacao pendente e recuperacao produzem
+// despertar INFORMATIVO: *enfileirar uma missao que espera aprovacao seria executa-la sem a
+// decisao que ela propria pediu.*
+//
+// NAO DUPLICA: `EnqueueMission` e' idempotente por missao (ha' teste no pacote do agente) - logo
+// repetir o despertar nao cria job novo. E' o que torna esta rota segura de chamar periodicamente.
+//
+// FALHA DE UMA MISSAO NAO ESCONDE AS OUTRAS: é reportada em `failed`, e se NADA foi enfileirado a
+// resposta e' 500 — *sucesso parcial declarado nao e' sucesso, e silencio nao e' desfecho.*
+func (a *agentAPI) wakeups(c *gin.Context) {
+	missions, err := a.missoesDoChamador(c)
+	if err != nil {
+		writeAgentError(c, http.StatusInternalServerError, err)
+		return
+	}
+	despertares := agent.DespertaresDasMissoes(missions, time.Now().UTC())
+	porID := make(map[string]agent.Mission, len(missions))
+	for _, mission := range missions {
+		porID[mission.ID] = mission
+	}
+	runtime := a.scopedRuntime(c)
+	enfileiradas := make([]gin.H, 0)
+	falhas := make([]gin.H, 0)
+	for _, despertar := range despertares {
+		for _, missaoID := range agent.MissoesAExecutar(despertar, porID) {
+			if _, err := runtime.EnqueueMission(missaoID); err != nil {
+				falhas = append(falhas, gin.H{"agent_id": despertar.AgenteID, "mission_id": missaoID, "error": err.Error()})
+				continue
+			}
+			enfileiradas = append(enfileiradas, gin.H{"agent_id": despertar.AgenteID, "mission_id": missaoID})
+		}
+	}
+	resposta := gin.H{
+		"wakeups":  despertares,
+		"enqueued": enfileiradas,
+		"failed":   falhas,
+		"scope":    "missoes visiveis para o chamador (organizacao da sessao)",
+	}
+	if len(enfileiradas) == 0 && len(falhas) > 0 {
+		c.JSON(http.StatusInternalServerError, resposta)
+		return
+	}
+	c.JSON(http.StatusOK, resposta)
 }
 
 func (a *agentAPI) notifications(c *gin.Context) {
