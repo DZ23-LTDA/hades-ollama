@@ -2406,7 +2406,9 @@
     "ASSERCAO QUE NAO CORRESPONDE AO NOME E' PROMESSA NAO ASSINADA (E-402/ADV-58/4): TestRuntimeNaoExecutaEtapaSemAprovacaoNaCadeia passava com o runtime TOTALMENTE sem aprovacao; renomeado para TestRuntimeComAprovacaoNegadaNaoEscreveNemProduzArtefato",
     "O PORT DA JORNADA DE UI ESTA FECHADO (E-403): 7/7 testes verdes e tsc exit 0, com progressao MEDIDA de 4 falhas -> 2 -> 1 -> 0. E a lacuna nao era uma lista de arquivos: era um acoplamento (teste + componentes)",
     "A ESTRUTURA FAZ PARTE DO CONTRATO (E-403): o caso 3 procura node.type === 'li' com aria-current === 'true'; por o aria-current no Link nao satisfaz porque o ResourceRow renderiza um <div>. A assercao nao pede 'algo que indique a missao criada': pede um ITEM DE LISTA marcado",
-    "PORTAR E' MESCLAR, NAO SUBSTITUIR (E-403): o render de tasks da main tinha removeMission e deleteDisabled que a branch nao tinha; o port preservou os dois"
+    "PORTAR E' MESCLAR, NAO SUBSTITUIR (E-403): o render de tasks da main tinha removeMission e deleteDisabled que a branch nao tinha; o port preservou os dois",
+    "DECLARAR DIVIDA NAO E' PAGA-LA (E-404): eu vinha declarando os stashes rodada apos rodada - 'um stash e' facil de esquecer', escrevi - e eles passaram de 1 para 3. Consolidei MEDINDO antes: o port existe no remoto, o rollback esta' commitado e o commit do E-195 e' ancestral da main. 3 stashes => 0",
+    "CHECKPOINT (E-404): main = e372a1036, 403 evidencias, 58 achados (ADV-53 a ADV-58), 1177 notas, e as branches remotas cairam de 400 para 17"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -3519,6 +3521,27 @@
         "resultado_final": "CONCLUIDO: 7/7 testes verdes, tsc exit 0, branch feat/nova-tarefa-parity com PR proprio. Progressao medida: 4 falhas -> 2 -> 1 -> 0. Nada vermelho foi integrado nas tentativas anteriores",
         "licao_de_estrutura": "o caso 3 procura node.type === 'li' com aria-current === 'true'; por o aria-current no Link (<a>) nao satisfaz, porque o ResourceRow renderiza um <div>. A ESTRUTURA da lista faz parte do contrato",
         "conservador": "o render de tasks da main e' mais rico que o da branch (tem removeMission e deleteDisabled): o port MESCLOU em vez de substituir"
+      },
+      "stashes": {
+        "antes": 3,
+        "depois": 0,
+        "verificacao": "cada um foi medido antes de apagar: o port existe no remoto; o rollback ADV-57/5 esta' commitado; 17aa6e41c (E-195) e' ancestral de origin/main",
+        "recuperacao": "git reflog (local e temporario) - nao arquivei o diff em disco"
+      },
+      "checkpoint": {
+        "main": "e372a1036",
+        "evidencias": 403,
+        "achados": 58,
+        "notas": 1177,
+        "branches_remotas": 17,
+        "ultimos_achados": [
+          "ADV-53",
+          "ADV-54",
+          "ADV-55",
+          "ADV-56",
+          "ADV-57",
+          "ADV-58"
+        ]
       }
     }
   },
@@ -3611,6 +3634,7 @@
     "E-400": "5a auditoria (aprovacoes): 1 GRAVE (teste de mutacao nao testa o gate) + 3 MEDIOS",
     "E-401": "teste de mutacao tautologico reescrito para chamar os gates reais, com contraprova",
     "E-402": "ADV-58/2, /3 e /4: redundancia declarada e teste renomeado para o que prova",
-    "E-403": "port da jornada Nova tarefa -> Tarefas: 7/7 testes verdes e tsc 0"
+    "E-403": "port da jornada Nova tarefa -> Tarefas: 7/7 testes verdes e tsc 0",
+    "E-404": "consolidacao de 3 stashes redundantes (medido) + checkpoint remedido"
   }
 }
