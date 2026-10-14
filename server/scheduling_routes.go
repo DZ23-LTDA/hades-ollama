@@ -300,6 +300,69 @@ func (a *agentAPI) schedulingWaitlistAdd(c *gin.Context) {
 	c.JSON(http.StatusCreated, gin.H{"entry": criada})
 }
 
+// E-479 — **OS LEMBRETES, A ÚLTIMA PEÇA DECLARADA EM FALTA NA SUPERFÍCIE.**
+//
+// **O LIMITE QUE E-457 DECLAROU**: *"`DueReminders`/`MarkReminderSent` seguem **sem rota**"* ✗ — *e o motor já os tinha,
+// com uma regra que a superfície não podia deixar de preservar: **registrar o mesmo lembrete duas vezes é recusado*** ✓.
+//
+// **POR QUE IMPORTA**: um lembrete enviado duas vezes é um incómodo; um lembrete **não registado** é um cliente que
+// **não recebe aviso**. ⇒ *a superfície tem de expor as DUAS metades: quem deve ser avisado, e o registo de que foi.*
+
+// schedulingDueReminders devolve os agendamentos que precisam de lembrete AGORA.
+//
+// ⚠️ `now` **não** vem do corpo: *um corpo que escolhe «agora» escolhe quem deve ser avisado.*
+func (a *agentAPI) schedulingDueReminders(c *gin.Context) {
+	if a.scheduling == nil {
+		writeAgentError(c, http.StatusServiceUnavailable, errors.New("motor de agendamento não está ligado neste runtime"))
+		return
+	}
+	tipo := strings.TrimSpace(c.Query("kind"))
+	if tipo == "" {
+		writeAgentError(c, http.StatusBadRequest, errors.New("`kind` é obrigatório (ex.: `24h`)"))
+		return
+	}
+	antecedencia := 24 * 60
+	if bruto := strings.TrimSpace(c.Query("lead_minutes")); bruto != "" {
+		convertido, err := parsePositiveInt(bruto)
+		if err != nil || convertido <= 0 || convertido > 100000 {
+			writeAgentError(c, http.StatusBadRequest,
+				errors.New("`lead_minutes` precisa ser um inteiro entre 1 e 100000"))
+			return
+		}
+		antecedencia = convertido
+	}
+	devidos, err := a.scheduling.DueReminders(a.organizationID(c), tipo,
+		time.Duration(antecedencia)*time.Minute, time.Now().UTC())
+	if err != nil {
+		writeAgentError(c, http.StatusBadRequest, err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"appointments": devidos, "count": len(devidos), "kind": tipo,
+		"lead_minutes": antecedencia})
+}
+
+// schedulingMarkReminderSent registra que o lembrete FOI enviado. *A recusa de duplicado é do MOTOR, e é preservada.*
+func (a *agentAPI) schedulingMarkReminderSent(c *gin.Context) {
+	if a.scheduling == nil {
+		writeAgentError(c, http.StatusServiceUnavailable, errors.New("motor de agendamento não está ligado neste runtime"))
+		return
+	}
+	var pedido struct {
+		AppointmentID string `json:"appointment_id"`
+		Kind          string `json:"kind"`
+	}
+	if err := c.ShouldBindJSON(&pedido); err != nil {
+		writeAgentError(c, http.StatusBadRequest, err)
+		return
+	}
+	if err := a.scheduling.MarkReminderSent(a.organizationID(c), strings.TrimSpace(pedido.AppointmentID),
+		strings.TrimSpace(pedido.Kind), time.Now().UTC()); err != nil {
+		writeAgentError(c, http.StatusBadRequest, err)
+		return
+	}
+	c.JSON(http.StatusCreated, gin.H{"marked": true})
+}
+
 // schedulingWaitlistOffer oferece o proximo da fila para um horario que vagou.
 //
 // ⚠️ `now` NAO vem do corpo: *um corpo que escolhe "agora" escolhe o proprio prazo de expiracao da oferta.*

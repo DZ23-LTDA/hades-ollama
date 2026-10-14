@@ -434,6 +434,100 @@ func TestIdempotenciaDeBookingNaSuperficie(t *testing.T) {
 	}
 }
 
+// E-479 — **OS LEMBRETES PELA SUPERFÍCIE: QUEM DEVE SER AVISADO, E O REGISTO DE QUE FOI.**
+//
+// **O LIMITE QUE E-457 DECLAROU**: *"`DueReminders`/`MarkReminderSent` seguem sem rota"* ✗. ***Um lembrete enviado duas
+// vezes é um incómodo; um lembrete NÃO registado é um cliente que NÃO recebe aviso.***
+//
+// **E A REGRA DO MOTOR É PRESERVADA**: *registrar o MESMO lembrete duas vezes é recusado* ⇒ *o teste tem de provar as
+// duas metades — e que a segunda não passa.*
+func TestLembretesNaSuperficie(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	organizacao := agent.LocalOrganizationID
+	loja := agent.NewSchedulingStore(t.TempDir())
+	servico, err := loja.AddService(agent.SchedulingService{OrganizationID: organizacao, Name: "Consulta", DurationMinutes: 30})
+	if err != nil {
+		t.Fatalf("criar serviço: %v", err)
+	}
+	recurso, err := loja.AddResource(agent.SchedulingResource{OrganizationID: organizacao, Name: "Bia"})
+	if err != nil {
+		t.Fatalf("criar recurso: %v", err)
+	}
+	// O turno nasce no dia da semana da data escolhida - *e a data é FIXA, para o teste não depender do relógio.*
+	dia, _ := time.Parse("2006-01-02", "2026-10-14")
+	for deslocamento := 0; deslocamento < 7; deslocamento++ {
+		if _, err := loja.AddShift(agent.SchedulingShift{
+			OrganizationID: organizacao, ResourceID: recurso.ID,
+			Weekday: int(dia.AddDate(0, 0, deslocamento).Weekday()), OpensAt: 0, ClosesAt: 24 * 60,
+		}); err != nil {
+			t.Fatalf("criar turno: %v", err)
+		}
+	}
+
+	// Um agendamento que começa dentro de 24 horas a contar de um `now` fixo: *para o motor, «devido» é uma relação
+	// entre o início e o agora — e a rota usa o relógio REAL, então escolhemos um início próximo do real.*
+	inicio := time.Now().UTC().Add(2 * time.Hour).Truncate(time.Minute)
+	agendamento, err := loja.Book(agent.BookRequest{
+		OrganizationID: organizacao, ResourceID: recurso.ID, ServiceID: servico.ID,
+		ContactID: "cliente-lembrete", Channel: "voice", StartsAt: inicio, IdempotencyKey: "k-lembrete",
+	})
+	if err != nil {
+		t.Fatalf("agendar: %v", err)
+	}
+
+	engine := montarRotaDeAgendamento(loja, organizacao)
+	executar := func(metodo, caminho, corpo string) *httptest.ResponseRecorder {
+		requisicao := httptest.NewRequest(metodo, "/api/agent/v1"+caminho, strings.NewReader(corpo))
+		requisicao.Header.Set("Content-Type", "application/json")
+		resposta := httptest.NewRecorder()
+		engine.ServeHTTP(resposta, requisicao)
+		return resposta
+	}
+
+	// (1) QUEM DEVE SER AVISADO: *com antecedência de 24h e início em 2h, este agendamento é devido.*
+	resposta := executar(http.MethodGet, "/scheduling/reminders/due?kind=24h&lead_minutes=1440", "")
+	if resposta.Code != http.StatusOK {
+		t.Fatalf("lembretes devidos devolveu %d: %s", resposta.Code, resposta.Body.String())
+	}
+	var devidos struct {
+		Count int `json:"count"`
+	}
+	_ = json.Unmarshal(resposta.Body.Bytes(), &devidos)
+	if devidos.Count == 0 {
+		t.Fatalf("um agendamento em 2 horas, com antecedencia de 24h, tinha de estar devido — veio %s",
+			resposta.Body.String())
+	}
+
+	// (2) `kind` é obrigatório: *sem ele não se sabe de QUE lembrete se fala.*
+	if resposta := executar(http.MethodGet, "/scheduling/reminders/due", ""); resposta.Code != http.StatusBadRequest {
+		t.Fatalf("sem `kind` tinha de ser 400, veio %d", resposta.Code)
+	}
+
+	// (3) O REGISTO: marcar como enviado.
+	resposta = executar(http.MethodPost, "/scheduling/reminders/sent",
+		`{"appointment_id":"`+agendamento.ID+`","kind":"24h"}`)
+	if resposta.Code != http.StatusCreated {
+		t.Fatalf("marcar lembrete devolveu %d: %s", resposta.Code, resposta.Body.String())
+	}
+
+	// (4) E A REGRA DO MOTOR, PELA SUPERFÍCIE: *o MESMO lembrete, de novo, é recusado* — e por isso ele **sai da lista**.
+	resposta = executar(http.MethodPost, "/scheduling/reminders/sent",
+		`{"appointment_id":"`+agendamento.ID+`","kind":"24h"}`)
+	if resposta.Code == http.StatusCreated {
+		t.Fatal("ARMADILHA: a superficie marcou o MESMO lembrete duas vezes — *registrar de novo o mesmo lembrete e' " +
+			"recusado pelo motor, e a recusa tem de chegar ao cliente*")
+	}
+	resposta = executar(http.MethodGet, "/scheduling/reminders/due?kind=24h&lead_minutes=1440", "")
+	var depois struct {
+		Count int `json:"count"`
+	}
+	_ = json.Unmarshal(resposta.Body.Bytes(), &depois)
+	if depois.Count != 0 {
+		t.Fatalf("depois de marcado, o lembrete tem de SAIR da lista de devidos — ainda veio %d: *senao o cliente "+
+			"seria avisado duas vezes*", depois.Count)
+	}
+}
+
 // montarRotaDeAgendamento cria o engine com o store e um middleware que fixa a organizacao - *o mesmo padrao dos outros
 // testes de rota do projeto.*
 //
@@ -466,5 +560,8 @@ func montarRotaDeAgendamento(loja *agent.SchedulingStore, organizacao string) *g
 	grupo.POST("/scheduling/waitlist/offer", api.schedulingWaitlistOffer)
 	grupo.POST("/scheduling/waitlist/confirm", api.schedulingWaitlistConfirm)
 	grupo.POST("/scheduling/no-show", api.schedulingNoShow)
+	// E-479: lembretes.
+	grupo.GET("/scheduling/reminders/due", api.schedulingDueReminders)
+	grupo.POST("/scheduling/reminders/sent", api.schedulingMarkReminderSent)
 	return engine
 }

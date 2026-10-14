@@ -691,6 +691,9 @@ func (a *agentAPI) register(r *gin.Engine) {
 	group.POST("/scheduling/waitlist/offer", a.schedulingWaitlistOffer)
 	group.POST("/scheduling/waitlist/confirm", a.schedulingWaitlistConfirm)
 	group.POST("/scheduling/no-show", a.schedulingNoShow)
+	// E-479: os LEMBRETES - *quem deve ser avisado, e o registo de que foi. O motor ja' tinha as duas metades.*
+	group.GET("/scheduling/reminders/due", a.schedulingDueReminders)
+	group.POST("/scheduling/reminders/sent", a.schedulingMarkReminderSent)
 	group.GET("/mcp", a.mcp)
 	group.POST("/mcp", a.registerMCP)
 	group.POST("/mcp/:id/enable", a.enableMCP)

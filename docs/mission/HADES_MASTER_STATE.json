@@ -2616,7 +2616,10 @@
     "E OS OUTROS DOIS ESTAVAM CERTOS TAMBEM (E-477): E-382 e E-386 citam '14 testes' de hades_tenant_scope_check_test.py - e o ficheiro tem 14. O E-386 cita '10' do classifier - e tem 10. *A varredura por duplicados encontrou 2 grupos com remediacao parcial; os 3 pendentes estavam TODOS certos, e o remedido e' que estava errado.*",
     "MAIS TRES CONTAGENS VENCIDAS, COM VALOR CONCRETO (E-478): hades_stage_map_test.py tem HOJE 11 testes (E-187 diz 7); hades_scope_classifier_test.py tem 10 (E-352 diz 8); hades_tenant_scope_check_test.py tem 14 (E-352 diz 10). *E-352 tem DOIS numeros vencidos.*",
     "E O MESMO NUMERO ESTA CERTO NUMA EVIDENCIA E ERRADO NOUTRA (E-478): o '14 testes' de hades_tenant_scope_check_test.py esta' CERTO em E-382 e E-386 (medido no E-477) e o E-352 diz '10' para o MESMO ficheiro. ⇒ *nao ha' um valor por evidencia: ha' um valor por INSTRUMENTO, e cada evidencia e' uma fotografia dele.*",
-    "O AGRUPAMENTO POR NUMERO E' EM GRANDE PARTE ESPURIO (E-478): dos 36 'grupos partilhados', a maioria sao numeros SOLTOS ('9', '0', '8', '5', '7', '1') que o meu regex apanhou por causa da unidade 's' (segundos: '54,9 s', '26,0 s', '119,0 s'). *O instrumento criou 36 grupos onde havia talvez 3. Quinta vez na mesma classe: mede o meu pensamento, nao o objecto.*"
+    "O AGRUPAMENTO POR NUMERO E' EM GRANDE PARTE ESPURIO (E-478): dos 36 'grupos partilhados', a maioria sao numeros SOLTOS ('9', '0', '8', '5', '7', '1') que o meu regex apanhou por causa da unidade 's' (segundos: '54,9 s', '26,0 s', '119,0 s'). *O instrumento criou 36 grupos onde havia talvez 3. Quinta vez na mesma classe: mede o meu pensamento, nao o objecto.*",
+    "SUPERFICIE DE AGENDAMENTO COMPLETA, INCLUSIVE LEMBRETES (E-479): reminders/due (quem deve ser avisado AGORA) e reminders/sent (o registo de que foi). *Um lembrete enviado duas vezes e' um incomodo; um lembrete NAO registado e' um cliente que NAO recebe aviso.* O limite declarado em E-457 esta' fechado",
+    "E A REGRA DO MOTOR E' PRESERVADA NA SUPERFICIE (E-479): o motor recusa registrar o MESMO lembrete duas vezes - e o teste prova as duas metades: a segunda marcacao nao e' 201, e o lembrete SAI da lista de devidos. *Senao o cliente seria avisado duas vezes.*",
+    "`now` NAO VEM DO CORPO, OUTRA VEZ (E-479): em reminders/due, um corpo que escolhe 'agora' escolhe QUEM DEVE SER AVISADO. E' a terceira rota onde isso vale (waitlist/offer, no-show e agora reminders)."
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -4109,7 +4112,8 @@
           "E-437: o laco de execucao chama RouteModelForStep por passo e REGISTRA a decisao no evento step.model.route; falha fechado se a exigencia nao pode ser honrada. A decisao e' registrada, mas NAO aplicada - o executor segue o da missao.",
           "E-438: ToolContext.ModelID + o laco entrega o modelo roteado a ferramenta. O teste prova entrega, vazio sem registry, e que evento e entrega contam a mesma historia. NENHUMA ferramenta le o campo ainda.",
           "E-456: a superficie do agendamento cobre a JORNADA DO CLIENTE - services, slots, book, appointments, cancel, reschedule/slots e reschedule. Restam fila de espera e no-show.",
-          "E-457: fila de espera (entrar/listar/oferecer/confirmar) e no-show na superficie. O limite que E-449 declarou esta' FECHADO - services, slots, book, appointments, cancel, reschedule/slots, reschedule, waitlist x4 e no-show."
+          "E-457: fila de espera (entrar/listar/oferecer/confirmar) e no-show na superficie. O limite que E-449 declarou esta' FECHADO - services, slots, book, appointments, cancel, reschedule/slots, reschedule, waitlist x4 e no-show.",
+          "E-479: lembretes na superficie (reminders/due + reminders/sent). O limite declarado em E-457 esta' FECHADO: services, slots, book, appointments, cancel, reschedule/slots, reschedule, waitlist x4, no-show e reminders x2."
         ],
         "matriz_correcoes_por_medicao": [
           "MIN_COST NAO estava ausente: RoutePreferenceCheapest existe (router.go:25) - a capacidade existia com outro nome",
