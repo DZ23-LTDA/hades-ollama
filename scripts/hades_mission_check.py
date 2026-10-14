@@ -559,6 +559,56 @@ def verificar_bloqueios(bloqueios_path: Path, ids_do_estado: set[str]) -> tuple[
 MARCADORES_DE_CONFLITO = ("<<<<<<<", ">>>>>>>")
 
 
+def verificar_frescura_dos_documentos_de_retomada(
+    raiz: Path, ultimo_id: int, tolerancia: int = 40
+) -> tuple[list[str], dict]:
+    """Confere que os documentos de RETOMADA mencionam evidência recente (E-544 / E-548).
+
+    **A DÍVIDA, MEDIDA.** *A FASE 7 manda actualizar «continuamente» CINCO documentos, e o `E-544` mediu que TRÊS
+    estavam parados há ~16 h — e que este checker **não os lia**: `grep HANDOFF|PENDING` devolvia vazio. ⇒ Três
+    documentos avisavam, **eles próprios**, que «os números envelhecem» … e os três envelheceram.*
+
+    ***A REGRA NÃO ERA O PROBLEMA: FALTAVA QUEM A VERIFICASSE.*** *Este passo é essa metade em falta — a segunda
+    natureza da correcção que o `E-544` declarou e o `E-548` registou como **não feita**.*
+
+    **O CRITÉRIO, E PORQUE É ESTE.** Não se exige o número *exacto* de evidências: ele muda a cada registo, e um
+    documento é actualizado a cada poucas dezenas. Exige-se que mencione **alguma** evidência dos últimos
+    `tolerancia` registos. ⇒ *Um documento parado há 62 rodadas (*o `NEXT_ACTION` dizia «rodada 39»/«353»*) não
+    menciona nenhum `E-5xx` recente, e é **isso** que se detecta. Um documento fresco menciona pelo menos um.*
+
+    *Devolve `(problemas, resumo)`, como as outras verificações deste ficheiro.*
+    """
+    caminhos = [
+        ("HADES_HANDOFF.md", raiz / "docs/mission/HADES_HANDOFF.md"),
+        ("HADES_PENDING_WORK.md", raiz / "docs/mission/HADES_PENDING_WORK.md"),
+        ("HADES_NEXT_ACTION.md", raiz / "docs/mission/HADES_NEXT_ACTION.md"),
+    ]
+    piso = max(1, ultimo_id - tolerancia)
+    problemas: list[str] = []
+    desactualizados: list[str] = []
+    for nome, caminho in caminhos:
+        if not caminho.exists():
+            problemas.append(f"documento de retomada AUSENTE: {nome}")
+            continue
+        texto = caminho.read_text(encoding="utf-8")
+        # *Qualquer `E-NNN` citado, seja na forma `E-547` ou `E-0547`.*
+        citados = [int(m) for m in re.findall(r"\bE-?(\d{3,4})\b", texto)]
+        recentes = [n for n in citados if n >= piso]
+        if not recentes:
+            maior = max(citados) if citados else 0
+            desactualizados.append(nome)
+            problemas.append(
+                "documento de retomada DESACTUALIZADO: "
+                f"{nome} nao cita nenhuma evidencia >= E-{piso:03d} "
+                f"(a mais recente que cita e' E-{maior:03d}) - *um documento de retomada que so' fala do passado "
+                "nao serve para retomar*"
+            )
+    return problemas, {
+        "retomada_desactualizados": len(desactualizados),
+        "retomada_piso": piso,
+    }
+
+
 def verificar_sem_marcadores_de_conflito(caminhos: list[Path]) -> list[str]:
     """Reprova documento da missão que contenha marcador de merge não resolvido.
 
@@ -634,6 +684,22 @@ def main() -> int:
     problemas_referencias, resumo_referencias = verificar_referencias_de_arquivo(raiz_do_repositorio, estado)
     problemas += problemas_referencias
     resumo.update(resumo_referencias)
+
+    # 13. 🚨 E-544 / E-548: os TRES documentos de RETOMADA mencionam evidencia RECENTE.
+    #
+    # **MEDIDO (E-544)**: dos CINCO documentos que a FASE 7 manda actualizar «continuamente», TRÊS estavam em dia e
+    # DOIS estavam **parados há ~16 h** — e filtrando o `HANDOFF` por commit, evidência e «evid», o resultado era
+    # **ZERO linhas**. *E o `NEXT_ACTION` estava **62 rodadas** atrás.*
+    #
+    # ***E ESTE CHECKER NÃO OS LIA*** — *`grep HANDOFF|PENDING` no próprio ficheiro devolvia vazio*. ⇒ *Os três
+    # documentos avisavam, eles próprios, que «os números envelhecem» … e envelheceram.*
+    # ***A regra não era o problema: faltava QUEM A VERIFICASSE.*** *Este passo é a segunda natureza da correcção
+    # que o `E-544` declarou e o `E-548` registou como NÃO feita.*
+    problemas_retomada, resumo_retomada = verificar_frescura_dos_documentos_de_retomada(
+        raiz_do_repositorio, resumo["ultimo_id"]
+    )
+    problemas += problemas_retomada
+    resumo.update(resumo_retomada)
 
     # 9. Nenhum documento da escrituração (nem os gerados) pode conter marcador de merge não resolvido.
     problemas += verificar_sem_marcadores_de_conflito(
