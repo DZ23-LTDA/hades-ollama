@@ -127,6 +127,23 @@ type Step struct {
 	Attempts             int            `json:"attempts"`
 	Result               any            `json:"result,omitempty"`
 	Error                string         `json:"error,omitempty"`
+	// E-429 (Estagio 43, ADR-002): o NO do plano passa a CARREGAR as exigencias, e a DECISAO continua no
+	// `multillm.Registry`. *Antes disto o `Step` era uma lista plana:* nao havia como dizer "este passo precisa de
+	// visao" nem "quero ESTE modelo aqui" - a escolha era do turno inteiro, nao do passo.
+	//
+	// ***Preserva a separacao que o complemento exige:** o no declara o que precisa; o motor decide quem atende.*
+	//
+	// NOTA DE ESCOPO, para nao alegar mais do que foi feito: estes campos sao o CONTRATO e o seu round-trip. O
+	// consumo pelo runtime (o passo consultar o Registry com as suas exigencias) e' o incremento seguinte e NAO
+	// esta' feito - ver LIMITES em E-429.
+	RequiredCapabilities []string `json:"required_capabilities,omitempty"`
+	// PinnedModelID e' o PIN (`MANUAL` do Estagio 43) POR PASSO: *restricao rigida, igual a
+	// `RouteRequest.PinnedModelID`*. Um pin que nao pode ser honrado tem de FALHAR, nunca trocar de modelo em
+	// silencio.
+	PinnedModelID string `json:"pinned_model_id,omitempty"`
+	// DependsOn sao os IDs dos passos que precisam terminar antes deste. *E' a aresta do DAG* - sem ela o plano e'
+	// uma lista, e ordem de lista nao expressa dependencia.
+	DependsOn []string `json:"depends_on,omitempty"`
 }
 
 type Approval struct {

@@ -2479,7 +2479,9 @@
     "NAO ESCREVI UM TESTE QUE MEDE NADA (E-432): para o MEDIO-2 (a trava do Decide sem teste) medi que o quorum e' RequiredApprovalsFor com QuorumAboveCents=100000 e NAO estabeleci qual dano a raca produz. Sem isso, um teste ali passaria com e sem a trava",
     "UM INSTRUMENTO QUE NUNCA DISPARA E' UM INSTRUMENTO QUE NUNCA MEDIU (E-432): a acusacao de dispensa orfa nao disparava porque no_repo_real comparava diretorio.resolve() com o PAI de DIRETORIO (internal em vez de internal/agent), dando False SEMPRE. A contrapova pegou; sem ela eu teria declarado pronto um alarme que nunca tocava",
     "INVENTAR ALEM DO ACHADO PRODUZ ALARME FALSO (E-432): eu criei uma variante OBSOLETA (dispensa cujo arquivo tem guarda) e a premissa estava errada - ter guarda nao torna a isencao obsoleta. Removida. O achado do auditor era sobre ORFA, que nao casa com uso nenhum",
-    "REGEX COM DOTALL SOBRE CODIGO-FONTE E' DEMOLICAO (E-432): re.subn com DOTALL corrompeu a codificacao do arquivo e 4 checkers cairam - o proprio encoding_check acusou. A corrupcao vinha do texto ACENTUADO; com ASCII o encoding fica limpo. Edicao de fonte e' com a ferramenta edit, nunca com script"
+    "REGEX COM DOTALL SOBRE CODIGO-FONTE E' DEMOLICAO (E-432): re.subn com DOTALL corrompeu a codificacao do arquivo e 4 checkers cairam - o proprio encoding_check acusou. A corrupcao vinha do texto ACENTUADO; com ASCII o encoding fica limpo. Edicao de fonte e' com a ferramenta edit, nunca com script",
+    "O NO DO PLANO ERA LISTA PLANA (E-433): Step nao tinha modelo, capability nem dependencia - a escolha era do TURNO, nao do PASSO, e sem DependsOn o plano nao e' um DAG (ordem de lista nao distingue 'depois' de 'por causa de'). Acrescentados RequiredCapabilities, PinnedModelID e DependsOn, com round-trip JSON e compatibilidade de plano antigo",
+    "O CONTRATO NAO E' O CONSUMO (E-433): o teste declara explicitamente que NAO prova que o runtime consulta o Registry com as exigencias por passo - isso nao esta feito. Declarar contrato como implementado quando so' o contrato existe e' a classe que esta missao vem derrubando"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -3929,7 +3931,8 @@
           "a maioria das lacunas esta NAO_MEDIDO, que nao e' ausente nem ok"
         ],
         "implementado": [
-          "E-428: PinnedModelID como restricao rigida (MANUAL), com ErrNoRoute quando nao honrado"
+          "E-428: PinnedModelID como restricao rigida (MANUAL), com ErrNoRoute quando nao honrado",
+          "E-433 (contrato): Step carrega RequiredCapabilities, PinnedModelID e DependsOn, com round-trip JSON e compatibilidade de plano antigo. O CONSUMO pelo runtime NAO esta feito."
         ],
         "matriz_correcoes_por_medicao": [
           "MIN_COST NAO estava ausente: RoutePreferenceCheapest existe (router.go:25) - a capacidade existia com outro nome",
