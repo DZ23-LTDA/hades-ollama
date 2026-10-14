@@ -2542,7 +2542,10 @@
     "TRES CONFERENCIAS DE LASTRO, ZERO DE CONTEUDO - ATE AGORA (E-453): E-446 (testes citados existem), E-451 (referencias de arquivo existem) e E-452 (invariante) conferem LASTRO. A conferencia de CONTEUDO comecou nesta rodada, e a primeira tentativa ja' achou uma contagem vencida",
     "SEGUNDA CONTAGEM VENCIDA (E-454): o ADV-40 dizia '5 dispensas declaradas' e a catraca tem 7 hoje. As 7 incluem as tres que a rodada 133 tentou remover - e que VOLTARAM quando a premissa 'OBSOLETA' do E-432 se mostrou errada. O 7 e' o numero correto; o 5 envelheceu",
     "DUAS CONTAGENS VENCIDAS EM DOIS ACHADOS CONFERIDOS (E-454): nao e' sorte - e' o previsivel de um registro que media UMA VEZ e nunca remedia. E' a regra de E-453 (toda contagem carrega data e receita) a pagar-se imediatamente",
-    "E UM ACHADO RESISTIU (E-454): o ADV-28 foi reconferido e as tres constantes batem (company_onboarding.go:301: 5000 / 512B / 16<<20). NEM TODO achado antigo esta' vencido - o que nao se pode e' SABER sem reexecutar a receita"
+    "E UM ACHADO RESISTIU (E-454): o ADV-28 foi reconferido e as tres constantes batem (company_onboarding.go:301: 5000 / 512B / 16<<20). NEM TODO achado antigo esta' vencido - o que nao se pode e' SABER sem reexecutar a receita",
+    "O REGISTRO MISTURA TRES TIPOS DE AFIRMACAO E NAO MARCA QUAL E' QUAL (E-455): (1) ESTADO_ATUAL - 'a catraca tem N dispensas' - VENCE quando o mundo muda, e precisa ser remedido; (2) EVENTO_HISTORICO - 'homologado no PR #418' - NAO vence, aconteceu; (3) CADEIA - '11 -> 9 -> 4 -> 2' - NAO vence, e' a sequencia de remocoes. O defeito estrutural nao esta' no conteudo: esta' em NAO SE PODER LER o conteudo corretamente",
+    "13 ACHADOS CLASSIFICADOS (E-455): e o ADV-39 ficou NAO_MEDIDO de proposito - a 'janela 5s' nao foi localizada no codigo (o grep achou varios 5*time.Second, nenhum identificado como janela de flock), entao nao declaro valido nem vencido. NAO MEDI",
+    "MESMA CLASSE DE E-442 E E-443 (E-455): itens de lista sem data (E-442) e duas listas que se duplicavam (E-443). O defeito nunca esteve no conteudo - sempre esteve em nao se poder LER o conteudo"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -2917,7 +2920,7 @@
           "id": "ADV-18",
           "severidade": "ALTA",
           "descricao": "crm e inbox aceitavam organizacao vazia em leitura/escrita",
-          "estado": "CORRIGIDO E MEDIDO (pendências 11 -> 9)",
+          "estado": "CORRIGIDO E MEDIDO (pendências 11 -> 9) || TIPO_DE_AFIRMACAO (classificado em 2026-10-14): CADEIA",
           "evidencia": "E-340"
         },
         {
@@ -2931,14 +2934,14 @@
           "id": "ADV-20",
           "severidade": "ALTA",
           "descricao": "voice_active_call, company_factory, sales_workforce, company_ledger e business_snapshots aceitavam organizacao vazia",
-          "estado": "CORRIGIDO E MEDIDO (pendências 9 -> 4)",
+          "estado": "CORRIGIDO E MEDIDO (pendências 9 -> 4) || TIPO_DE_AFIRMACAO (classificado em 2026-10-14): CADEIA",
           "evidencia": "E-341"
         },
         {
           "id": "ADV-21",
           "severidade": "MEDIA (instrumento)",
           "descricao": "a catraca acusava como pendencia arquivos CORRETOS, porque so reconhecia requireOrganization(",
-          "estado": "CORRIGIDO: reconhece helper OU checagem crua, com teste nas duas direcoes; pendencias 4 -> 2",
+          "estado": "CORRIGIDO: reconhece helper OU checagem crua, com teste nas duas direcoes; pendencias 4 -> 2 || TIPO_DE_AFIRMACAO (classificado em 2026-10-14): CADEIA (o '4 -> 2') + ESTADO_ATUAL (o comportamento 'helper OU checagem crua', reconferido OK)",
           "evidencia": "E-342"
         },
         {
@@ -2981,28 +2984,28 @@
           "id": "ADV-27b",
           "severidade": "INFORMATIVO (instrumento)",
           "descricao": "classificacao de escopo era MANUAL; agora e' automatica com indefinido exigindo declaracao",
-          "estado": "IMPLEMENTADO E TESTADO (MEDIDO EM 2026-10-14: 24 caminho, 5 identificador, 2 comentario, 1 indefinido declarado; 28 arquivos). RECEITA: `python scripts/hades_scope_classifier.py` - a linha 'USOS DE sanitizeIDComponent por categoria'. ***HISTORICO: a primeira medicao deu 23 caminho, e a de 2026-10-14 deu 24 - um uso novo apareceu no caminho.*** *Contagem sem data e sem receita e' afirmacao que apodrece: nao se sabe se o numero e' de entao ou de agora.*",
+          "estado": "IMPLEMENTADO E TESTADO (MEDIDO EM 2026-10-14: 24 caminho, 5 identificador, 2 comentario, 1 indefinido declarado; 28 arquivos). RECEITA: `python scripts/hades_scope_classifier.py` - a linha 'USOS DE sanitizeIDComponent por categoria'. ***HISTORICO: a primeira medicao deu 23 caminho, e a de 2026-10-14 deu 24 - um uso novo apareceu no caminho.*** *Contagem sem data e sem receita e' afirmacao que apodrece: nao se sabe se o numero e' de entao ou de agora.* || TIPO_DE_AFIRMACAO (classificado em 2026-10-14): ESTADO_ATUAL (corrigido em E-453: 23 -> 24, com data e receita)",
           "evidencia": "E-352"
         },
         {
           "id": "ADV-28",
           "severidade": "ALTA",
           "descricao": "onboarding aceitava volume ilimitado: so recusava vazio, sem teto de linhas/bytes",
-          "estado": "CORRIGIDO E MEDIDO (5000 linhas / 512B nome / 16MiB, recusa antes de trabalhar; 2000 linhas em 55,68s) || RECONFERIDO EM 2026-10-14: `company_onboarding.go:301` tem OnboardingLimits{MaxRows: 5000, MaxNameBytes: 512, MaxOriginBytes: 256, MaxTotalBytes: 16 << 20} - as constantes BATEM. *Unico dos conferidos ate' agora que resistiu sem correcao.*",
+          "estado": "CORRIGIDO E MEDIDO (5000 linhas / 512B nome / 16MiB, recusa antes de trabalhar; 2000 linhas em 55,68s) || RECONFERIDO EM 2026-10-14: `company_onboarding.go:301` tem OnboardingLimits{MaxRows: 5000, MaxNameBytes: 512, MaxOriginBytes: 256, MaxTotalBytes: 16 << 20} - as constantes BATEM. *Unico dos conferidos ate' agora que resistiu sem correcao.* || TIPO_DE_AFIRMACAO (classificado em 2026-10-14): ESTADO_ATUAL (RECONFERIDO em E-454: as tres constantes batem)",
           "evidencia": "E-353"
         },
         {
           "id": "ADV-29",
           "severidade": "INVESTIGADO",
           "descricao": "concorrencia do estagio 42: varredura x encerramento x aviso; ingestao concorrente do mesmo evento; aviso durante varredura",
-          "estado": "SEM DEFEITO (invariantes mantidas em 3 execucoes; receita nao infla sob corrida)",
+          "estado": "SEM DEFEITO (invariantes mantidas em 3 execucoes; receita nao infla sob corrida) || TIPO_DE_AFIRMACAO (classificado em 2026-10-14): ESTADO_ATUAL (NAO_REMEDIDO: '3 execucoes' e' uma contagem que nao foi reexecutada)",
           "evidencia": "E-355"
         },
         {
           "id": "ADV-30",
           "severidade": "ALTA",
           "descricao": "LiveCommerceStore sem lock de arquivo nem invalidacao de cache: duas instancias podiam perder escritas",
-          "estado": "CORRIGIDO e CONTRAPROVADO: com a invalidacao desligada o teste FALHA; com ela, 3 execucoes passam",
+          "estado": "CORRIGIDO e CONTRAPROVADO: com a invalidacao desligada o teste FALHA; com ela, 3 execucoes passam || TIPO_DE_AFIRMACAO (classificado em 2026-10-14): ESTADO_ATUAL (NAO_REMEDIDO: a contraprova cita teste, mas nao foi reexecutada)",
           "evidencia": "E-356"
         },
         {
@@ -3023,7 +3026,7 @@
           "id": "ADV-33",
           "severidade": "ALTA",
           "descricao": "perda de escrita entre PROCESSOS reais no estagio 42 (3 processos gravaram, 2 sobreviveram) quando o lock de arquivo esta ausente",
-          "estado": "MEDIDO E CONTRAPROVADO: com o lock, 3/3 sobrevivem; sem o lock, 2/3 (FAIL do teste)",
+          "estado": "MEDIDO E CONTRAPROVADO: com o lock, 3/3 sobrevivem; sem o lock, 2/3 (FAIL do teste) || TIPO_DE_AFIRMACAO (classificado em 2026-10-14): ESTADO_ATUAL (NAO_REMEDIDO: 'com o lock 3/3, sem o lock 2/3' nao foi reexecutado)",
           "evidencia": "E-358"
         },
         {
@@ -3044,35 +3047,35 @@
           "id": "ADV-36",
           "severidade": "MEDIA (custo declarado)",
           "descricao": "UpsertProduct custa ~10,03 ms por produto (O(n) por chamada; encher e' quadratico) - medido com 5000 produtos",
-          "estado": "RESOLVIDO pela correcao do ADV-41 (o gargalo era persistLocked, nao a busca)",
+          "estado": "RESOLVIDO pela correcao do ADV-41 (o gargalo era persistLocked, nao a busca) || TIPO_DE_AFIRMACAO (classificado em 2026-10-14): EVENTO_HISTORICO (a resolucao pelo ADV-41 aconteceu)",
           "evidencia": "E-360"
         },
         {
           "id": "ADV-37",
           "severidade": "ALTA (processo/CI)",
           "descricao": "CI vermelho no PR #416 por TESTE INSTAVEL e nao por regressao: TestDistributedPostgresTenantKeyRotation falhou com '...timeout: context deadline exceeded, want enforced quiescence refusal' (0,64s), em teste de rotacao de chave Postgres sem relacao com a mudanca Go",
-          "estado": "CORRIGIDO E HOMOLOGADO PELO CI: job de RLS/Redis/OTLP = success na PRIMEIRA tentativa do PR #418 (sem re-run), confirmando que a corrida era a causa",
+          "estado": "CORRIGIDO E HOMOLOGADO PELO CI: job de RLS/Redis/OTLP = success na PRIMEIRA tentativa do PR #418 (sem re-run), confirmando que a corrida era a causa || TIPO_DE_AFIRMACAO (classificado em 2026-10-14): EVENTO_HISTORICO (homologacao no CI do PR #418: aconteceu)",
           "evidencia": "E-361"
         },
         {
           "id": "ADV-38",
           "severidade": "MEDIA (teste)",
           "descricao": "asserção sobre MENSAGEM combinada com orçamento de 150ms: sob carga o timeout vence o fencing e o teste falha por motivo errado",
-          "estado": "CORRIGIDO (3 pontos) e HOMOLOGADO pelo job de integracao do CI",
+          "estado": "CORRIGIDO (3 pontos) e HOMOLOGADO pelo job de integracao do CI || TIPO_DE_AFIRMACAO (classificado em 2026-10-14): EVENTO_HISTORICO (homologacao pelo job de integracao: aconteceu)",
           "evidencia": "E-361"
         },
         {
           "id": "ADV-39",
           "severidade": "MEDIA (teste)",
           "descricao": "context_memory_lock_test usava janela de 300ms e ESCAPAVA com t.Skip quando a trava nao bloqueava a tempo: maquina lenta silenciava a propriedade",
-          "estado": "CORRIGIDO (janela 5s); Skip volta a significar 'sem semantica de flock'",
+          "estado": "CORRIGIDO (janela 5s); Skip volta a significar 'sem semantica de flock' || TIPO_DE_AFIRMACAO (classificado em 2026-10-14): ESTADO_ATUAL (NAO_MEDIDO: a 'janela 5s' NAO foi localizada - nao declaro valido nem vencido)",
           "evidencia": "E-362"
         },
         {
           "id": "ADV-40",
           "severidade": "INFORMATIVO (instrumento)",
           "descricao": "catraca da classe de orcamento: primeira varredura ERROU o alvo (marcou 5-45s como curtos); a classe correta e' sub-segundo",
-          "estado": "CORRIGIDA e testada (MEDIDO EM 2026-10-14: **7 dispensas** declaradas, nao 5; 5 testes). RECEITA: `python scripts/hades_tenant_scope_check.py` conta as pendencias, e as dispensas estao em `DISPENSAS` no proprio script. ***HISTORICO: eram 5; a rodada 133 tentou remover 3 (consent_registry, scheduling_crossprocess, marketplace_sync) e elas VOLTARAM quando a premissa 'OBSOLETA' do E-432 se mostrou ERRADA - ter guarda nao torna a isencao obsoleta.*** *O 7 e' o numero correto; o 5 envelheceu.*",
+          "estado": "CORRIGIDA e testada (MEDIDO EM 2026-10-14: **7 dispensas** declaradas, nao 5; 5 testes). RECEITA: `python scripts/hades_tenant_scope_check.py` conta as pendencias, e as dispensas estao em `DISPENSAS` no proprio script. ***HISTORICO: eram 5; a rodada 133 tentou remover 3 (consent_registry, scheduling_crossprocess, marketplace_sync) e elas VOLTARAM quando a premissa 'OBSOLETA' do E-432 se mostrou ERRADA - ter guarda nao torna a isencao obsoleta.*** *O 7 e' o numero correto; o 5 envelheceu.* || TIPO_DE_AFIRMACAO (classificado em 2026-10-14): ESTADO_ATUAL (corrigido em E-454: 5 -> 7 dispensas, com data e receita)",
           "evidencia": "E-362"
         },
         {
@@ -3325,7 +3328,12 @@
       },
       "contraprovas_medidas_nota": "Esta chave contem SOMENTE contraprovas que DISPARAM (a mutacao faz um teste nomeado FALHAR). Mutacoes que nao matam nada vivem em `sem_defesa_medida`.",
       "proximos_ataques_nota": "***CONFERIR ANTES DE TRABALHAR E' OBRIGATORIO.*** Medido em 2026-10-14: dos 4 itens entao listados, **3 ja' estavam ATENDIDOS** (ADV-60, ADV-63, ADV-64) - somando os retratados antes (MEDIO-1, ADV-61 e ADV-65 declarado), **6 de 7 itens de lista estavam vencidos ou parciais**. *O defeito nao era a lista: era nunca CONFERIR. Uma lista que so' cresce e nunca e' relida nao e' backlog - e' um arquivo morto com aparencia de plano.* Todo item carrega `conferido_em` e `conferido_resultado` (ATENDIDO / AINDA_ABERTO / NAO_MEDIDO); `NAO_MEDIDO` NAO e' 'ok'.",
-      "achados_nota": "🚨 E-453: ***TODA CONTAGEM NUM ACHADO CARREGA DATA E RECEITA.*** Medido: o ADV-27b dizia '23 caminho' e a re-execucao deu **24** - *um uso novo apareceu, e o numero envelheceu em silencio* ✗. Contagem sem data e' **a forma mais convincente de afirmacao sem lastro**: nao se sabe se o numero e' de entao ou de agora. As tres partes de uma contagem honesta: o numero, **quando** foi medido e **o comando** que o reproduz."
+      "achados_nota": "🚨 E-453: ***TODA CONTAGEM NUM ACHADO CARREGA DATA E RECEITA.*** Medido: o ADV-27b dizia '23 caminho' e a re-execucao deu **24** - *um uso novo apareceu, e o numero envelheceu em silencio* ✗. Contagem sem data e' **a forma mais convincente de afirmacao sem lastro**: nao se sabe se o numero e' de entao ou de agora. As tres partes de uma contagem honesta: o numero, **quando** foi medido e **o comando** que o reproduz.",
+      "tipos_de_afirmacao": {
+        "regra": "🚨 E-455: ***TRES TIPOS DE AFIRMACAO, E ELES ENVELHECEM DIFERENTE.*** (1) ESTADO_ATUAL - 'a catraca tem N dispensas', '23 usos': *VENCE quando o mundo muda* -> **precisa de data e receita, e precisa ser remedido**; (2) EVENTO_HISTORICO - 'homologado no PR #418': *NAO vence - aconteceu*; (3) CADEIA - '11 -> 9 -> 4 -> 2': *NAO vence - e' a sequencia de remocoes.* ***O defeito estrutural nao esta' no conteudo: esta' em NAO SE PODER LER o conteudo corretamente.*** Foi assim que '2 pendencias' (E-432) e '5 dispensas' (E-454) pareceram estado atual quando eram historia, e vice-versa.",
+        "classificados_em": "2026-10-14",
+        "total_classificado": 13
+      }
     },
     "estagio_42": {
       "titulo": "HADES LIVE COMMERCE & AI SHOPPING AGENTS",
