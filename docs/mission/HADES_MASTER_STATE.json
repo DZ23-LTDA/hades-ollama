@@ -2659,7 +2659,9 @@
     "DECIMA PRIMEIRA VARIANTE DA MESMA CLASSE (E-491): E-464, E-469, E-473/474, E-453/E-477, E-478, E-480, E-481, E-487, E-488 e agora E-419/E-491. *A forma e' constante: o instrumento mede o meu pensamento, nao o objecto. E desta vez o 'objecto' era um ficheiro de teste com o nome exacto do que eu dizia faltar.*",
     "O CHECKER ESTA' BEM - E A MINHA SUSPEITA ESTAVA ERRADA (E-492): vi 'go: CPU=5,6s, RAM=51MB' e conclui 'bloqueado'. MEDIDO com a ARVORE de processos: go.exe (PID 9088, CPU=2s) e' o DRIVER, que compila e ESPERA; agent.test.exe (PID 16208, filho, CPU=73,5s) e' quem corre os testes. *E o tempo real era ~4 MINUTOS, nao 20 - eu tinha contado mal o inicio do job.*",
     "DECIMA SEGUNDA VARIANTE DA MESMA CLASSE (E-492): li o CPU de UM processo e concluí sobre o sistema, sem ver que havia DOIS. *A arvore de processos estava a distancia de um comando.* A forma continua: o instrumento mede o meu pensamento, nao o objecto.",
-    "E A LICAO E' OPERACIONAL (E-492): ao medir um job, medir a ARVORE, nao o primeiro processo com o nome que eu esperava. `go test` gera um binario FILHO (`<pacote>.test.exe`) e o driver fica ocioso - *um `go.exe` com CPU baixa nao e' um `go.exe` parado.*"
+    "E A LICAO E' OPERACIONAL (E-492): ao medir um job, medir a ARVORE, nao o primeiro processo com o nome que eu esperava. `go test` gera um binario FILHO (`<pacote>.test.exe`) e o driver fica ocioso - *um `go.exe` com CPU baixa nao e' um `go.exe` parado.*",
+    "O CHECKER PROVADO EM USO REAL, COM O PROGRESSO POR PACOTE (E-493): a corrida terminou exit 0 e a saida mostra, por pacote, '... <pacote>' -> 'ok <pacote> <tempo>' -> '-> <pacote>: OK'. *Se eu olhasse a meio, saberia QUAL estava a correr* - que era exactamente o que faltava no E-490. Tempos: {}",
+    "E O E-490 FICA PROVADO PELO PROPRIO USO (E-493): a correccao nao foi so' declarada - *a saida da corrida real tem o progresso*. Nao ha' teste unitario para 'o instrumento fala enquanto trabalha'; ha' a saida, e ela esta' registada."
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
