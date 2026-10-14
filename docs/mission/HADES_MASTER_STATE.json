@@ -2539,7 +2539,10 @@
     "AS TRES INVARIANTES DE AUDITORIA TEM TESTE PROPRIO (E-452): cruzamento (E-444), prova podre (E-446) e referencia deslocada (E-451) - 10 testes, OK, 0,108s. Cada uma nas DUAS direcoes (dispara quando deve, passa quando deve)",
     "CONTEUDO DOS ACHADOS ANTIGOS: A PRIMEIRA CONTAGEM VENCIDA (E-453): o ADV-27b dizia '23 caminho, 5 identificador, 2 comentario, 1 indefinido' e a re-execucao deu 24 caminho. O achado afirma um ESTADO ATUAL, nao um evento historico - e um uso novo apareceu no caminho desde entao. Envelheceu em silencio",
     "CONTAGEM SEM DATA E' A FORMA MAIS CONVINCENTE DE AFIRMACAO SEM LASTRO (E-453): o registro nao distinguia 'a contagem daquele dia' de 'a contagem agora'. Toda contagem passa a carregar DATA e RECEITA (o comando que a reproduz) - sem a receita, o proximo leitor nao reconfere sem adivinhar",
-    "TRES CONFERENCIAS DE LASTRO, ZERO DE CONTEUDO - ATE AGORA (E-453): E-446 (testes citados existem), E-451 (referencias de arquivo existem) e E-452 (invariante) conferem LASTRO. A conferencia de CONTEUDO comecou nesta rodada, e a primeira tentativa ja' achou uma contagem vencida"
+    "TRES CONFERENCIAS DE LASTRO, ZERO DE CONTEUDO - ATE AGORA (E-453): E-446 (testes citados existem), E-451 (referencias de arquivo existem) e E-452 (invariante) conferem LASTRO. A conferencia de CONTEUDO comecou nesta rodada, e a primeira tentativa ja' achou uma contagem vencida",
+    "SEGUNDA CONTAGEM VENCIDA (E-454): o ADV-40 dizia '5 dispensas declaradas' e a catraca tem 7 hoje. As 7 incluem as tres que a rodada 133 tentou remover - e que VOLTARAM quando a premissa 'OBSOLETA' do E-432 se mostrou errada. O 7 e' o numero correto; o 5 envelheceu",
+    "DUAS CONTAGENS VENCIDAS EM DOIS ACHADOS CONFERIDOS (E-454): nao e' sorte - e' o previsivel de um registro que media UMA VEZ e nunca remedia. E' a regra de E-453 (toda contagem carrega data e receita) a pagar-se imediatamente",
+    "E UM ACHADO RESISTIU (E-454): o ADV-28 foi reconferido e as tres constantes batem (company_onboarding.go:301: 5000 / 512B / 16<<20). NEM TODO achado antigo esta' vencido - o que nao se pode e' SABER sem reexecutar a receita"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -2985,7 +2988,7 @@
           "id": "ADV-28",
           "severidade": "ALTA",
           "descricao": "onboarding aceitava volume ilimitado: so recusava vazio, sem teto de linhas/bytes",
-          "estado": "CORRIGIDO E MEDIDO (5000 linhas / 512B nome / 16MiB, recusa antes de trabalhar; 2000 linhas em 55,68s)",
+          "estado": "CORRIGIDO E MEDIDO (5000 linhas / 512B nome / 16MiB, recusa antes de trabalhar; 2000 linhas em 55,68s) || RECONFERIDO EM 2026-10-14: `company_onboarding.go:301` tem OnboardingLimits{MaxRows: 5000, MaxNameBytes: 512, MaxOriginBytes: 256, MaxTotalBytes: 16 << 20} - as constantes BATEM. *Unico dos conferidos ate' agora que resistiu sem correcao.*",
           "evidencia": "E-353"
         },
         {
@@ -3069,7 +3072,7 @@
           "id": "ADV-40",
           "severidade": "INFORMATIVO (instrumento)",
           "descricao": "catraca da classe de orcamento: primeira varredura ERROU o alvo (marcou 5-45s como curtos); a classe correta e' sub-segundo",
-          "estado": "CORRIGIDA e testada (5 testes); 5 dispensas declaradas com motivo medido",
+          "estado": "CORRIGIDA e testada (MEDIDO EM 2026-10-14: **7 dispensas** declaradas, nao 5; 5 testes). RECEITA: `python scripts/hades_tenant_scope_check.py` conta as pendencias, e as dispensas estao em `DISPENSAS` no proprio script. ***HISTORICO: eram 5; a rodada 133 tentou remover 3 (consent_registry, scheduling_crossprocess, marketplace_sync) e elas VOLTARAM quando a premissa 'OBSOLETA' do E-432 se mostrou ERRADA - ter guarda nao torna a isencao obsoleta.*** *O 7 e' o numero correto; o 5 envelheceu.*",
           "evidencia": "E-362"
         },
         {
