@@ -380,6 +380,51 @@ def verificar_relatorio(relatorio_path: Path, conjunto_ids: set[str]) -> tuple[l
     return problemas, {"itens": len(numeros), "ultimo": max(numeros), "citadas": len(citadas)}
 
 
+def verificar_cruzamento_de_auditoria(estado: dict) -> tuple[list[str], dict]:
+    """🚨 E-443: cruza `proximos_ataques` com `achados` - o cruzamento que faltava.
+
+    **MEDIDO**: dos 4 itens em `proximos_ataques`, TRÊS já tinham achado correspondente marcado CORRIGIDO/FECHADO
+    (ADV-60, ADV-63, ADV-64). A lista de ataques **duplicava** a lista ao lado, e ninguém cruzou as duas ⇒ *conferir
+    item a item funcionaria, mas **o dado já estava lá***.
+
+    *Uma lista que só cresce e nunca é relida não é backlog: é arquivo morto com aparência de plano.*
+
+    A regra: um id **não pode** estar em `proximos_ataques` **e** em `achados` com estado que o próprio registro dá por
+    encerrado. Se está, ou a lista está vencida, ou o achado foi reaberto sem retirar o ataque — *nos dois casos há duas
+    verdades sobre o mesmo id, e nenhuma autoridade.*
+    """
+    problemas: list[str] = []
+    auditoria = estado.get("v22", {}).get("auditoria_adversarial", {})
+    ataques = auditoria.get("proximos_ataques", [])
+
+    encerrado = ("CORRIGIDO", "FECHADO", "RESOLVIDO", "RETRATADO", "ATENDIDO", "SEM DEFEITO", "PARCIALMENTE FECHADO")
+    por_id: dict[str, str] = {}
+    for achado in auditoria.get("achados", []):
+        identificador = str(achado.get("id", "")).split(" ")[0].strip()
+        if identificador:
+            por_id[identificador] = str(achado.get("estado", ""))
+
+    duplicados = []
+    for item in ataques:
+        # O id do item pode vir com sufixo (`"ADV-60 (P0)"`) - *foi a falta desta normalização que produziu o registro
+        # falso de E-443, onde o ADV-60 recebeu a conferência do ADV-62.*
+        bruto = item.get("id", "") if isinstance(item, dict) else str(item)
+        identificador = str(bruto).split(":")[0].split(" ")[0].strip()
+        if not identificador:
+            continue
+        estado_do_achado = por_id.get(identificador)
+        if estado_do_achado and any(marca in estado_do_achado.upper() for marca in encerrado):
+            duplicados.append("%s (achado diz: %s)" % (identificador, estado_do_achado[:70]))
+
+    for duplicado in duplicados:
+        problemas.append(
+            "ATaque E ACHADO AO MESMO TEMPO: %s — *ou a lista de ataques está VENCIDA, ou o achado foi reaberto sem "
+            "retirar o ataque. Duas verdades sobre o mesmo id, e nenhuma autoridade*" % duplicado
+        )
+
+    return problemas, {"proximos_ataques": len(ataques), "ataques_duplicando_achado_encerrado": len(duplicados)}
+
+
 def verificar_bloqueios(bloqueios_path: Path, ids_do_estado: set[str]) -> tuple[list[str], dict]:
     """Confere o documento de bloqueios contra o estado (E-181), nos DOIS sentidos.
 
@@ -451,6 +496,18 @@ def main() -> int:
     ids_do_estado = {b.get("id") for b in estado.get("blockers", [])}
     problemas_bloqueios, resumo_bloqueios = verificar_bloqueios(args.blockers, ids_do_estado)
     problemas += problemas_bloqueios
+
+    # 10. 🚨 E-443: CRUZAMENTO ENTRE AS DUAS LISTAS DE AUDITORIA.
+    #
+    # **MEDIDO**: dos 4 itens em `proximos_ataques`, **TRÊS** já tinham achado correspondente em `achados` marcado
+    # `CORRIGIDO`/`FECHADO` ✗ ⇒ *a lista de ataques **duplicava** a lista ao lado, e ninguém cruzou as duas.* Somando
+    # os retratados antes, **6 de 7** itens de lista estavam vencidos ou parciais.
+    #
+    # ***Conferir item a item funcionaria — mas o dado já estava lá. O que faltava era o CRUZAMENTO.*** *Uma lista que
+    # só cresce e nunca é relida não é backlog: é arquivo morto com aparência de plano.*
+    problemas_cruzamento, resumo_cruzamento = verificar_cruzamento_de_auditoria(estado)
+    problemas += problemas_cruzamento
+    resumo.update(resumo_cruzamento)
 
     # 9. Nenhum documento da escrituração (nem os gerados) pode conter marcador de merge não resolvido.
     problemas += verificar_sem_marcadores_de_conflito(

@@ -2511,7 +2511,9 @@
     "NAO INVENTO DATA (E-442): para os itens antigos, escrito_em recebeu NAO_MEDIDO com a explicacao, em vez de uma data fabricada - *registro fabricado e' pior que registro ausente, porque parece medido*",
     "A LISTA DE ATAQUES ESTAVA 75%% VENCIDA, E O DEFEITO ERA NUNCA CONFERIR (E-443): dos 4 itens, ADV-60, ADV-63 e ADV-64 ja' estavam ATENDIDOS (comentario de Availability reescrito com limite declarado; teste de trava por organizacao; testes de DST exigindo instantes distintos). Somando MEDIO-1, ADV-61 e ADV-65, 6 de 7 itens estavam vencidos ou parciais. Uma lista que so' cresce e nunca e' relida nao e' backlog - e' arquivo morto com aparencia de plano",
     "NAO AFIRMO 'ATENDIDO' SEM MEDIR (E-443): o ADV-62 ficou NAO_MEDIDO porque so' ha NextRunAt generico em mission_idempotency_test.go, nao o caso especifico pedido. Nao afirmar 'ok' quando nao se mediu e' o ponto",
-    "O MEU PROPRIO SCRIPT PRODUZIU UM REGISTRO FALSO (E-443, corrigido na mesma rodada): o id do item era 'ADV-60 (P0)' e o lookup comparava com 'ADV-60' exato, entao o ADV-60 nao foi retratado E recebeu a nota de conferencia do ADV-62 ('NextRunAt generico'). Um conferido_resultado errado e' PIOR que nenhum: afirma que alguem mediu, e a afirmacao e' falsa. Corrigido normalizando o id, e o ADV-60 foi retratado com a medicao certa"
+    "O MEU PROPRIO SCRIPT PRODUZIU UM REGISTRO FALSO (E-443, corrigido na mesma rodada): o id do item era 'ADV-60 (P0)' e o lookup comparava com 'ADV-60' exato, entao o ADV-60 nao foi retratado E recebeu a nota de conferencia do ADV-62 ('NextRunAt generico'). Um conferido_resultado errado e' PIOR que nenhum: afirma que alguem mediu, e a afirmacao e' falsa. Corrigido normalizando o id, e o ADV-60 foi retratado com a medicao certa",
+    "O CRUZAMENTO ACHOU O QUARTO ITEM VENCIDO EM SEGUNDOS (E-443): o ADV-62 estava NAO_MEDIDO porque procurei NextRunAt e o teste se chama TestCicloComProximaExecucaoNoFuturoNaoAvancaNoTick. A busca manual procura pelo nome que se imagina; a invariante procura pela RELACAO. Com isso, 7 de 7 itens de lista estavam vencidos",
+    "CHECAR POR INVARIANTE EM VEZ DE PROCURAR A MAO (E-443): o cruzamento em hades_mission_check.py (um id nao pode estar em proximos_ataques E em achados encerrado) pagou-se na PRIMEIRA execucao, achando o que a leitura manual nao achou"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -3208,7 +3210,7 @@
           "severidade": "MEDIA (caminho sem defesa)",
           "descricao": "next_run_at de CICLOS (supervisor.go:400-403) pode ser removido sem nenhum teste falhar (mutacao s5: 0 falhas em 20 padroes). Sonda: ciclo com NextRunAt=+24h => CyclesAdvanced=1 e 1 missao criada. CONTRASTE: ignorar NextRunAt no claim de workflow (context.go:1196) FALHA dois testes",
           "descoberto_por": "6a revisao adversarial independente (subagente, contexto fresco) com go test -overlay e sondas",
-          "estado": "CORRIGIDO: TestCicloComProximaExecucaoNoFuturoNaoAvancaNoTick exige CyclesAdvanced=0, NextRunAt inalterado e LastRunAt nulo; a contraprova (portao desligado) FAZ o teste falhar, e o controle (ciclo vencido) segue verde. A sonda do auditor virou prova",
+          "estado": "CORRIGIDO: TestCicloComProximaExecucaoNoFuturoNaoAvancaNoTick exige CyclesAdvanced=0, NextRunAt inalterado e LastRunAt nulo; a contraprova (portao desligado) FAZ o teste falhar, e o controle (ciclo vencido) segue verde. A sonda do auditor virou prova || CONFERIDO EM 2026-10-14: o cruzamento de E-443 achou este id nas DUAS listas. O teste existe e esta' verde - `TestCicloComProximaExecucaoNoFuturoNaoAvancaNoTick`. *A minha busca manual por `NextRunAt` nao o achou porque procurava pelo nome que eu imaginava; a invariante procura pela RELACAO.*",
           "evidencia": "E-411"
         },
         {
@@ -3272,16 +3274,7 @@
           "estado": "ABERTO (medido nesta rodada): `contraprovas_medidas` misturava 3 contraprovas REAIS com 2 mutacoes que NADA matam ('portao_por_etapa_off' e 'reconferencia_inline_off', ambas 'NADA falha - sem defesa'). Separadas em `sem_defesa_medida`. AS DUAS LACUNAS CONTINUAM ABERTAS: nao ha teste que cubra essas defesas, e a acao (teste que falta / redundancia medida / remover) NAO foi executada."
         }
       ],
-      "proximos_ataques": [
-        {
-          "id": "ADV-62",
-          "descricao": "ADV-62: teste 'ciclo com NextRunAt futuro nao avanca no tick' (a sonda do auditor ja' e' o teste)",
-          "escrito_em": null,
-          "escrito_em_declarado": "NAO_MEDIDO: o item foi escrito antes de a lista passar a datar; a data nao existe.",
-          "conferido_em": "2026-10-14",
-          "conferido_resultado": "NAO_MEDIDO: ha `NextRunAt` generico em `mission_idempotency_test.go`, mas NAO achei o caso especifico pedido ('ciclo com NextRunAt futuro nao avanca no tick'). *Nao afirmo que esta' atendido - e nao afirmar 'ok' quando nao se mediu e' o ponto.*"
-        }
-      ],
+      "proximos_ataques": [],
       "contraprovas_medidas": {
         "approvalsReady_off": "FALHA TestRuntimeNaoProduzEfeitoComAprovacaoPendenteNaNada (load-bearing)",
         "validateMissionApprovalBindings_off": "FALHAM TestApprovalValidationBindsPolicyExpiryAndDecisionActor e TestRuntimeFailsClosedWhenApprovalRecordIsMissing (load-bearing)",
