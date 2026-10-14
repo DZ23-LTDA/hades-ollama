@@ -2682,20 +2682,36 @@ func (a *agentAPI) pruneProjectMemories(c *gin.Context) {
 	})
 }
 
-func (a *agentAPI) missions(c *gin.Context) {
+// missoesDoChamador devolve as missoes que a ORGANIZACAO DA SESSAO pode ver (E-626).
+//
+// Existe porque o filtro estava DUPLICADO no `missions` e no `performance`, e duplicacao de guard
+// de inquilino e' a que sai mais caro: uma mudanca num dos sitios deixa o outro a filtrar a menos
+// — e uma rota que filtra a menos NAO SE NOTA, porque continua a responder 200 com dados de outro
+// inquilino. Agora ha' um sitio so'. (A versao anterior reutilizava `missions[:0]` no proprio
+// slice; esta aloca o resultado, para nao deixar aliasing a quem chame.)
+func (a *agentAPI) missoesDoChamador(c *gin.Context) ([]agent.Mission, error) {
 	missions, err := a.scopedRuntime(c).ListMissions()
+	if err != nil {
+		return nil, err
+	}
+	organizationID := agentOrganizationID(c)
+	if organizationID == "" {
+		return missions, nil
+	}
+	filtered := make([]agent.Mission, 0, len(missions))
+	for _, mission := range missions {
+		if mission.OrganizationID == organizationID {
+			filtered = append(filtered, mission)
+		}
+	}
+	return filtered, nil
+}
+
+func (a *agentAPI) missions(c *gin.Context) {
+	missions, err := a.missoesDoChamador(c)
 	if err != nil {
 		writeAgentError(c, http.StatusInternalServerError, err)
 		return
-	}
-	if organizationID := agentOrganizationID(c); organizationID != "" {
-		filtered := missions[:0]
-		for _, mission := range missions {
-			if mission.OrganizationID == organizationID {
-				filtered = append(filtered, mission)
-			}
-		}
-		missions = filtered
 	}
 	c.JSON(http.StatusOK, gin.H{"missions": missions})
 }
@@ -2708,19 +2724,10 @@ func (a *agentAPI) missions(c *gin.Context) {
 // identidade de missao no chat usava a funcao errada e um teste negativo passava por o recurso
 // nunca funcionar).
 func (a *agentAPI) performance(c *gin.Context) {
-	missions, err := a.scopedRuntime(c).ListMissions()
+	missions, err := a.missoesDoChamador(c)
 	if err != nil {
 		writeAgentError(c, http.StatusInternalServerError, err)
 		return
-	}
-	if organizationID := agentOrganizationID(c); organizationID != "" {
-		filtered := missions[:0]
-		for _, mission := range missions {
-			if mission.OrganizationID == organizationID {
-				filtered = append(filtered, mission)
-			}
-		}
-		missions = filtered
 	}
 	// O relatorio DECLARA o escopo: um agregado apresentado sem escopo e' lido como global.
 	c.JSON(http.StatusOK, gin.H{
