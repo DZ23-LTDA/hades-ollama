@@ -90,6 +90,17 @@ def varrer(raiz: Path) -> list[tuple[str, int, str, str]]:
     return achados
 
 
+# E-422: sítios de ALTO já **inspecionados e medidos** como legítimos. *Um instrumento que acusa sempre não serve
+# de gate* — a lista existe para que o `--check` reprove **o que é NOVO**, e para que cada aceite carregue a razão.
+# NUNCA acrescente aqui só para o teste passar: meça primeiro e escreva a medição.
+TRIAGADOS = {
+    ("internal/agent/declared_categories_measured_test.go", 28):
+        "a organizacao e' \"\" - o portao de ESCOPO dispara ANTES do expediente, entao o instante nao decide nada",
+    ("internal/agent/scheduling_waitlist_test.go", 187):
+        "e' a linha do COMENTARIO do E-421 (o codigo ja' chama instanteDeTeste)",
+}
+
+
 def main() -> int:
     check = "--check" in sys.argv
     raiz = Path("internal")
@@ -98,15 +109,22 @@ def main() -> int:
         return 0
     achados = varrer(raiz)
     altos = [a for a in achados if a[2] == "ALTO"]
+    novos = [a for a in altos if (a[0], a[1]) not in TRIAGADOS]
     print("  sitios com relogio deslocado em testes: %d" % len(achados))
     for arq, linha, classe, trecho in achados:
-        marca = "🔴" if classe == "ALTO" else "  "
-        print("    %s %s:%d  [%s]  %s" % (marca, arq, linha, classe, trecho))
-    print("  ALTO risco: %d" % len(altos))
-    print("  NOTA: ALTO nao prova defeito - e' TRIAGEM. Uso legitimo de vencimento (ex.: 'ja' vencido) nao entra")
-    print("        porque o resultado nao depende do calendario; timestamp e 'now' puro tambem nao.")
-    if check and altos:
-        print("  FALHA: ha sitio de ALTO risco; inspecione e, se for instante de negocio, use instanteDeTeste(t).")
+        if classe != "ALTO":
+            continue
+        razão = TRIAGADOS.get((arq, linha))
+        if razão:
+            print("    ✅ %s:%d  [ALTO TRIAGADO]  %s" % (arq, linha, razão))
+        else:
+            print("    🔴 %s:%d  [ALTO NOVO]  %s" % (arq, linha, trecho))
+    print("  ALTO triagado: %d | ALTO NOVO: %d" % (len(altos) - len(novos), len(novos)))
+    print("  NOTA: ALTO nao prova defeito - e' TRIAGEM. Vencimento/timestamp/'now' puro nao entram porque o")
+    print("        resultado nao depende do calendario.")
+    if check and novos:
+        print("  FALHA: %d sitio(s) de ALTO NAO TRIAGADO(S) - inspecione e, se for instante de negocio, use" % len(novos))
+        print("         instanteDeTeste(t) (E-421); se for legitimo, acrescente a TRIAGADOS com a razao MEDIDA.")
         return 1
     return 0
 
