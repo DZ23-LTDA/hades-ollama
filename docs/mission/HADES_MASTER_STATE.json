@@ -2414,7 +2414,9 @@
     "E2E VERDE NAO SUBSTITUI CAPTURA (E-405): as 27 evidencias .png da paridade seguem ausentes; captura nao se deduz de teste",
     "O VERDE E' DO CONJUNTO; A FORCA DE CADA ASSERCAO E' OUTRA MEDICAO (E-406): medi o peso da suite E2E - 9 specs, 18 testes, 105 expects, 0 skips. Nao e' smoke de fachada. Contagem de expect nao prova qualidade, mas distingue suite real de decorativa",
     "O MANIFESTO DE CAPTURA TAMBEM PASSA (E-406): screens:verify => 'capture manifest: PASS (10 files)', validando SHA-256 de cada arquivo. Nao e' 'existe uma pasta': e' conteudo verificado por hash",
-    "A RECEITA FOI PARA O LUGAR CERTO (E-406): o sintoma 'o teste nao roda' custou duas sessoes em dois toolchains (Go e Node/esbuild). A tabela foi escrita no AGENTS.md, onde o proximo agente comeca a ler"
+    "A RECEITA FOI PARA O LUGAR CERTO (E-406): o sintoma 'o teste nao roda' custou duas sessoes em dois toolchains (Go e Node/esbuild). A tabela foi escrita no AGENTS.md, onde o proximo agente comeca a ler",
+    "PRIMEIRO O INSTRUMENTO ERROU, DEPOIS A LEITURA MELHOROU (E-407/ADV-59): o meu classificador jogou 52 das 105 assercoes E2E em 'outro' e eu quase conclui que a suite so' afirmava presenca. Medindo o balde, 33 eram multi-linha - o defeito era do INSTRUMENTO. Antes de acusar o objeto, medir se o instrumento sabe le-lo",
+    "A SUITE E2E E' REAL MAS NAO PROVA AUSENCIA NEM CONVERGENCIA (E-407/ADV-59): 21 de presenca, 13 de ESTADO, 4 de conteudo, apenas 2 NEGATIVAS em 105, e ZERO de convergencia (toPass/poll/waitFor). Provar que algo NAO aconteceu e' exatamente a classe que derrubou seis linhas de prova nesta missao"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -3081,13 +3083,21 @@
           "estado": "/1 CORRIGIDO e contraprovado (o teste agora chama os gates reais e FALHA com approvalsReady desligado). /2 e /3 DECLARADOS como defesa em profundidade inalcancavel hoje, mantidos de proposito com o motivo escrito. /4 CORRIGIDO (teste renomeado para o que o corpo prova)",
           "evidencia": "E-400",
           "descricao": "mutation_gate_test.go:49 TestMutationHarnessHITLApprovalBypass NAO testa o gate real: closures locais que reimplementam a condicao e se comparam entre si. Contraprova: com os 4 pontos de aprovacao do runtime desligados o teste continua PASS. + runtime.go:2237 (portao por etapa) e 2251-2256 (reconferencia inline do PayloadSHA256) sem cobertura isolada. + mission_multi_step_approval_test.go:116 cujo nome promete mais do que o corpo prova. RESISTIU: approvalsReady, validateMissionApprovalBindings, tenant+nonce (todos load-bearing), nenhum caminho sem approvalsReady, nenhum TOCTOU exploravel, sem vacidade"
+        },
+        {
+          "id": "ADV-59",
+          "severidade": "MEDIA (a suite E2E e' real mas quase nao prova ausencia nem convergencia)",
+          "descoberto_por": "auto-auditoria da natureza das assercoes (E-407)",
+          "estado": "REGISTRADO, NAO CORRIGIDO",
+          "evidencia": "E-407",
+          "descricao": "105 expects: 21 de presenca (toBeVisible), 13 de ESTADO (toBeDisabled/Enabled/Focused/Truthy), 4 de conteudo, 2 NEGATIVAS e ZERO de convergencia (toPass/poll/waitFor/reload). A suite prova que a UI renderiza e reage a estado, mas quase nao prova que algo NAO aconteceu - e essa e' exatamente a classe que derrubou seis linhas de prova nesta missao. E o meu primeiro classificador jogou 52 assercoes em 'outro' por nao lidar com multi-linha: o defeito era do INSTRUMENTO, nao da suite"
         }
       ],
       "proximos_ataques": [
-        "ADV-58/1: trocar as closures de mutation_gate_test.go por chamadas REAIS (stepApproved/approvalsReady/validateMissionApprovalBindings)",
-        "ADV-58/2 e /3: decidir entre dar teste as linhas redundantes (runtime.go:2237, 2251-2256) ou remove-las documentando que approvalsReady cobre",
-        "ADV-58/4: renomear mission_multi_step_approval_test.go:116 para o que o corpo realmente prova",
-        "auditar a PROXIMA linha nao auditada (scheduling, media, ou o proprio runtime.go em outra faixa)"
+        "ADV-59: acrescentar assercoes NEGATIVAS aos specs criticos (provar que o efeito NAO ocorreu sem aprovacao, que o aviso NAO foi perdido) - a classe que mais derrubou provas aqui",
+        "ADV-59: cobrir convergencia eventual (toPass/expect.poll) onde a UI depende do backend",
+        "auditar linha a linha o que cada texto comparado significa nos specs",
+        "coletar a 6a auditoria (scheduling) e corrigir o que ela medir"
       ],
       "contraprovas_medidas": {
         "approvalsReady_off": "FALHA TestRuntimeNaoProduzEfeitoComAprovacaoPendenteNaNada (load-bearing)",
@@ -3694,6 +3704,7 @@
     "E-403": "port da jornada Nova tarefa -> Tarefas: 7/7 testes verdes e tsc 0",
     "E-404": "consolidacao de 3 stashes redundantes (medido) + checkpoint remedido",
     "E-405": "E2E real verde (exit 0) com a receita TMP/TEMP/TMPDIR sob _tmp",
-    "E-406": "peso do E2E medido (18 testes/105 expects/0 skips) + screens:verify PASS + receita no AGENTS.md"
+    "E-406": "peso do E2E medido (18 testes/105 expects/0 skips) + screens:verify PASS + receita no AGENTS.md",
+    "E-407": "natureza das 105 assercoes E2E: 2 negativas, 0 convergencia; instrumento corrigido"
   }
 }
