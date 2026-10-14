@@ -885,6 +885,110 @@ func (s *ContextStore) persistSkillLocked(id string) error {
 	return writeJSONAtomic(path, manifest)
 }
 
+// versaoDeSkillSegura recusa versões que possam SAIR DA PASTA. A versão entra num caminho de
+// ficheiro, e o `validateSkillManifest` valida o ID para travessia mas NÃO a versão (só o
+// comprimento, em `:794`) — sem esta verificação, uma versão como `../../x` leria um ficheiro fora
+// da pasta de skills. *A validação tem de estar onde o valor é usado como caminho.*
+func versaoDeSkillSegura(versao string) bool {
+	versao = strings.TrimSpace(versao)
+	if versao == "" || len(versao) > 64 {
+		return false
+	}
+	if versao == "." || versao == ".." {
+		return false
+	}
+	return !strings.ContainsAny(versao, "/\\\x00\r\n")
+}
+
+func idDeSkillSeguro(id string) bool {
+	id = strings.TrimSpace(id)
+	return id != "" && len(id) <= 120 && !strings.ContainsAny(id, "/\\\x00\r\n")
+}
+
+// SkillVersionsForOrganization lista as versões ARQUIVADAS de uma skill (E-631), ordenadas.
+//
+// DUAS HONESTIDADES: (1) quando a pasta não existe devolve vazio, mas quando existe e não pode ser
+// lida devolve ERRO — *«não consegui olhar» e «não há versões» são afirmações diferentes*, e
+// devolver vazio nas duas faria a superfície mentir; (2) quando a skill não é da organização de
+// quem pergunta devolve vazio, e não um erro de escopo: distinguir «não existe» de «não é sua»
+// seria uma pista sobre a existência dela.
+func (s *ContextStore) SkillVersionsForOrganization(organizationID, id string) ([]string, error) {
+	if !idDeSkillSeguro(id) {
+		return nil, errors.New("skill id is invalid")
+	}
+	if s.root == "" {
+		return nil, errors.New("skill history requires a store root")
+	}
+	s.mu.Lock()
+	atual, existe := s.skills[id]
+	s.mu.Unlock()
+	if !existe {
+		return nil, nil
+	}
+	if organizationID != "" && !pluginOwnedByOrganization(atual.OrganizationID, organizationID) {
+		return nil, nil
+	}
+	pasta := filepath.Join(s.root, "skills", id+".versions")
+	entradas, err := os.ReadDir(pasta)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("ler historico de versoes: %w", err)
+	}
+	versoes := make([]string, 0, len(entradas))
+	for _, entrada := range entradas {
+		if entrada.IsDir() || !strings.HasSuffix(entrada.Name(), ".json") {
+			continue
+		}
+		versoes = append(versoes, strings.TrimSuffix(entrada.Name(), ".json"))
+	}
+	sort.Strings(versoes)
+	return versoes, nil
+}
+
+// RestoreSkillVersionForOrganization recupera uma versão ARQUIVADA (E-631).
+//
+// RESTAURAR É RECUPERAR CONTEÚDO, NÃO CONFIANÇA: passa pelo MESMO `registerSkill`, o que impõe
+// `Trusted=false` (`:817`) e a verificação de escopo de organização (`:824-828`). Uma versão
+// arquivada que alguma vez tenha sido promovida volta como NÃO confiável — e é isso que o teste
+// tem de provar, porque uma confiança herdada por restauro seria uma escalada silenciosa.
+func (s *ContextStore) RestoreSkillVersionForOrganization(organizationID, id, versao string) (SkillManifest, error) {
+	if !idDeSkillSeguro(id) {
+		return SkillManifest{}, errors.New("skill id is invalid")
+	}
+	if !versaoDeSkillSegura(versao) {
+		return SkillManifest{}, errors.New("skill version is invalid")
+	}
+	if s.root == "" {
+		return SkillManifest{}, errors.New("skill history requires a store root")
+	}
+	base := filepath.Join(s.root, "skills", id+".versions")
+	caminho := filepath.Join(base, versao+".json")
+	// DEFESA EM PROFUNDIDADE: validação e travessia podem divergir; confirma-se que o ficheiro
+	// está DENTRO da pasta de versões antes de o ler.
+	if relativo, err := filepath.Rel(base, caminho); err != nil || strings.HasPrefix(relativo, "..") {
+		return SkillManifest{}, errors.New("skill version path escapes the history folder")
+	}
+	dados, err := os.ReadFile(caminho)
+	if err != nil {
+		return SkillManifest{}, fmt.Errorf("ler versao arquivada: %w", err)
+	}
+	var manifesto SkillManifest
+	decoder := json.NewDecoder(bytes.NewReader(dados))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&manifesto); err != nil {
+		return SkillManifest{}, fmt.Errorf("versao arquivada invalida: %w", err)
+	}
+	if manifesto.ID != id || manifesto.Version != versao {
+		return SkillManifest{}, errors.New("versao arquivada nao corresponde ao pedido")
+	}
+	if err := s.registerSkill(manifesto, organizationID); err != nil {
+		return SkillManifest{}, err
+	}
+	return manifesto, nil
+}
+
 func (s *ContextStore) Skills() []SkillManifest {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
