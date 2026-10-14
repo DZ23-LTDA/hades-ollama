@@ -2435,7 +2435,9 @@
     "A FUNCAO NAO MUDOU DE COMPORTAMENTO - MUDOU DE PROMESSA (E-413/ADV-60): Availability nao consulta expediente, e o comentario dizia que ela era a funcao para consultar antes de oferecer horario. O contrato real estava no teste que a exercita ('derivar dos agendamentos persistidos'). Nao reescrevi a funcao: reescrever contradiria esse teste e nao ha' chamador em producao para migrar",
     "REGISTRO PUBLICO CORRIGIDO (E-413): a E-314 afirma que 'esta fatia fecha esse buraco'. O buraco foi fechado em OpenSlots, funcao NOVA. A linha historica nao e' reescrita; E-413 supersede, e o estado aponta as duas",
     "A SONDA DO AUDITOR VIROU PROVA (E-414/ADV-62): o ciclo com NextRunAt futuro agora tem teste com contraprova - desligar o portao de supervisor.go:401 FAZ o teste falhar, e o controle (ciclo vencido) segue passando",
-    "UM TESTE COM DOIS PROPÓSITOS FALHA PELO MOTIVO ERRADO (E-414): pus um controle na mesma execucao (acrescentar um ciclo vencido e exigir avanco) e ele falhou, porque a lista de empresas e' lida/cacheada por tick. O teste ficou com um proposito, e o controle e' o teste que ja' existia"
+    "UM TESTE COM DOIS PROPÓSITOS FALHA PELO MOTIVO ERRADO (E-414): pus um controle na mesma execucao (acrescentar um ciclo vencido e exigir avanco) e ele falhou, porque a lista de empresas e' lida/cacheada por tick. O teste ficou com um proposito, e o controle e' o teste que ja' existia",
+    "A 7a VEZ DA MESMA CLASSE - E A PRIMEIRA EM QUE ME PEGUEI NA MESMA RODADA (E-415): escrevi uma prova direta da trava por organizacao (segurar a trava de A e exigir que B complete) e ela passou. Na contrapova com trava GLOBAL, o meu teste CONTINUOU PASSANDO: ele calculava o caminho replicando a formula do produto, entao media a MINHA copia, nao o codigo. Um teste que parece prova e nao e' e' exatamente a doenca que esta missao vem derrubando",
+    "A COPIA NAO MUDA QUANDO O ORIGINAL MUDA (E-415): teste que replica a formula do produto passa com qualquer produto. A correcao e' extrair o caminho para um unico lugar que produto e teste compartilhem - assim a mutacao muda o INPUT do teste"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -3140,7 +3142,7 @@
           "severidade": "MEDIA-BAIXA (afirmacao sem prova)",
           "descricao": "'a trava e por organizacao' nao e' provado: mutacao para trava GLOBAL => 0 falhas em 20 execucoes. CONTRASTE: sem withFileLock => 20/20 falham; sem invalidateCache => 18/20 falham (prova probabilistica, ~10% de regressao silenciosa)",
           "descoberto_por": "6a revisao adversarial independente (subagente, contexto fresco) com go test -overlay e sondas",
-          "estado": "REGISTRADO, NAO CORRIGIDO",
+          "estado": "ABERTO - a minha primeira tentativa de prova era FALSA (replicava a formula do caminho da trava; a contrapova com trava global nao a fez falhar) e foi removida. Correcao certa: extrair lockPath() compartilhado entre produto e teste",
           "evidencia": "E-411"
         },
         {
@@ -3174,6 +3176,12 @@
         "tenant_e_nonce_off": "FALHAM TestDecisaoDeAprovacaoNaoRevelaExistenciaEntreTenants, TestApprovalBindsActorOrganizationAndReason e TestApprovalCASAndNonceAreSingleUse (load-bearing)",
         "portao_por_etapa_off": "NADA falha - sem defesa",
         "reconferencia_inline_off": "NADA falha - sem defesa"
+      },
+      "setima_ocorrencia_da_classe": {
+        "onde": "E-415 - a minha propria prova da trava por organizacao",
+        "classe": "assercao cuja cor nao depende do comportamento alegado",
+        "detalhe": "o teste calculava o caminho da trava REPLICANDO a formula do produto; com a mutacao para trava global o produto usava global.lock e o teste segurava org-a.lock - arquivos diferentes, assercao passando sem medir nada. A contrapova pegou",
+        "correcao_para_a_proxima_rodada": "extrair lockPath(organizationID) para um unico lugar compartilhado entre produto e teste, para que a mutacao mude o INPUT do teste"
       }
     },
     "estagio_42": {
@@ -3833,6 +3841,7 @@
     "E-411": "6a auditoria (agendamento): 14/16 mutacoes detectadas, 4 defeitos reais",
     "E-412": "ADV-61 corrigido: shiftCovering devolve diaAnterior; o mesmo minuto tem respostas opostas",
     "E-413": "ADV-60: Availability declara o limite e um teste o fixa; E-314 superseded",
-    "E-414": "ADV-62: teste do ciclo com NextRunAt futuro, com contraprova e controle"
+    "E-414": "ADV-62: teste do ciclo com NextRunAt futuro, com contraprova e controle",
+    "E-415": "a minha prova da trava era FALSA (replicava a formula do produto); teste removido"
   }
 }
