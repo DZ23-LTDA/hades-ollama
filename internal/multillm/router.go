@@ -35,6 +35,19 @@ type RouteRequest struct {
 	LocalOnly            bool
 	Preference           RoutePreference
 	Health               map[string]ProviderHealth
+	// 🚨 E-428 (Estágio 43 do complemento, estratégia `MANUAL`): **PIN de MODELO por tarefa**.
+	//
+	// *Isto completa o que já existia — e a correção do meu próprio diagnóstico importa:* `PreferredProvider`
+	// (`:32`) **já é restrição RÍGIDA por PROVEDOR** (`:67` faz `continue` em quem não bate), *não* um bônus
+	// solto. **O que faltava era fixar o MODELO**: *"quero ESTE modelo nesta tarefa"*, e não "quero qualquer um
+	// deste provedor".
+	//
+	// ***Uma tarefa que fixa um modelo e recebe outro silenciosamente é a mesma traição de confiar numa aprovação
+	// que não foi dada — só muda o objeto.***
+	//
+	// Um pin que **não pode ser honrado** (modelo indisponível, capability ausente, teto de custo, `LocalOnly`
+	// incompatível) devolve `ErrNoRoute`: *falhar é a resposta honesta; escolher outro por baixo é que não é.*
+	PinnedModelID string
 }
 
 type RouteDecision struct {
@@ -61,6 +74,11 @@ func (r *Registry) RouteCandidates(request RouteRequest) ([]RouteDecision, error
 			model.Available = true
 		}
 		if !model.Available || !supports(model, request.RequiredCapabilities) || !r.supportsPath(model, request.Path) {
+			continue
+		}
+		// E-428: o PIN de modelo é restrição RÍGIDA, como `LocalOnly` — *os outros não são candidatos.* Um pin que
+		// não pode ser honrado cai no `ErrNoRoute` do fim da função, **nunca** num "escolhi outro" silencioso.
+		if request.PinnedModelID != "" && model.ID != request.PinnedModelID {
 			continue
 		}
 		provider, ok := r.providers[model.Provider]

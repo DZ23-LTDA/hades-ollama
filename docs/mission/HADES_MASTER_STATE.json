@@ -2463,7 +2463,10 @@
     "A ASSIMETRIA DENUNCIA O DESCUIDO (E-426): Decide/Consume/FindApproved/FindDenied nao conferiam OrganizationID, enquanto ListApprovals e AuditTrail conferiam. Defesa em profundidade que so' existe num dos lados nao e' defesa, e' sorte. Os dois Find* passaram a conferir; Decide recebeu a mesma trava do Consume",
     "UM BURACO NA NUMERACAO E' UMA FALHA DE DISCIPLINA, E OS CHECKERS PEGARAM (E-423): registrei E-424/425/426 e pulei o E-423 (o fix de lint, descrito so' no commit). hades_mission_check.py acusou 'buracos na numeracao: E-423' e hades_state_chronology_test.py falhou junto. Corrigido - e a licao: o registro nao e' opcional quando o commit menciona a evidencia",
     "NAO E' GREENFIELD - A AUDITORIA DE REUSO DESMENTIU A SUPOSICAO (E-427): o substrato do Estagio 43 ja' existe em grande parte - RequiredCapabilities, LocalOnly, RouteCandidates, routeReason, ProviderHealth, 3 das 6 estrategias, e ate' o probe real de capacidade (model_capability_probe.go). O entregavel honesto era a MATRIZ DE LACUNAS, nao' um router novo - e o complemento proibe 'um segundo router em conflito'",
-    "A PRE-ETAPA DO COMPLEMENTO 43-47 ESTA' CONCLUIDA (E-427): HADES_ADAPTIVE_COWORK_GAP_MATRIX.md com 33 capacidades classificadas, ADR-001..005, lacunas P0 nomeadas, bloqueios externos declarados (FFmpeg) e ordem de PRs proposta"
+    "A PRE-ETAPA DO COMPLEMENTO 43-47 ESTA' CONCLUIDA (E-427): HADES_ADAPTIVE_COWORK_GAP_MATRIX.md com 33 capacidades classificadas, ADR-001..005, lacunas P0 nomeadas, bloqueios externos declarados (FFmpeg) e ordem de PRs proposta",
+    "EU DIAGNOSTIQUEI ERRADO DUAS VEZES E AS DUAS CAIRAM MEDINDO (E-428): escrevi que MIN_COST estava ausente (existe, com outro nome: RoutePreferenceCheapest) e ia escrever que PreferredProvider era bonus (e' filtro rigido). O complemento avisa 'nao suponha ausencia com base somente no nome' - e eu cai nela na minha propria matriz",
+    "HARNESSID JA EXISTE E E' USADO (E-428): a linha 'P0: provedor != harness' da matriz estava errada. HarnessID (registry.go:91,103) e' injetado no envelope da requisicao por injectHarnessMetadata (proxy.go:318-319). Tres linhas da matriz foram corrigidas por medicao",
+    "PIN DE MODELO COMO RESTRICAO RIGIDA (E-428): PinnedModelID filtra candidatos como LocalOnly; pin nao honrado devolve ErrNoRoute, nunca substituto silencioso. Contrapova: com o filtro desligado o teste FALHA escolhendo o modelo forte"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -3891,6 +3894,14 @@
           "nenhuma missao ponta a ponta dos estagios 43-47 foi executada",
           "nenhuma alegacao de paridade com o Genspark e' feita",
           "a maioria das lacunas esta NAO_MEDIDO, que nao e' ausente nem ok"
+        ],
+        "implementado": [
+          "E-428: PinnedModelID como restricao rigida (MANUAL), com ErrNoRoute quando nao honrado"
+        ],
+        "matriz_correcoes_por_medicao": [
+          "MIN_COST NAO estava ausente: RoutePreferenceCheapest existe (router.go:25) - a capacidade existia com outro nome",
+          "PreferredProvider NAO e' bonus: e' filtro rigido por provedor (router.go:67) - a lacuna era fixar o MODELO",
+          "provedor != harness JA esta implementado: HarnessID + injectHarnessMetadata (proxy.go:318-319)"
         ]
       }
     }
@@ -4004,6 +4015,7 @@
     "E-420": "a hora repetida do fall-back e' oferecida UMA vez: a minha declaracao no E-419 estava errada",
     "E-421": "causa raiz do CI vermelho: fixture dependente do relogio em scheduling_waitlist_test.go",
     "E-422": "checker do relogio de parede com teste proprio; corrige a conclusao do E-418",
-    "E-427": "matriz de lacunas + ADR da pre-etapa do complemento 43-47"
+    "E-427": "matriz de lacunas + ADR da pre-etapa do complemento 43-47",
+    "E-428": "pin de modelo (MANUAL) no RouteRequest, com contraprova"
   }
 }
