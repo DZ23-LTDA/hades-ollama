@@ -1868,7 +1868,7 @@
     "GUARD POR SUBSTRING FALHOU E EU PEGUEI (E-233): usei 'if MarketplaceEntityOrder not in arquivo' para decidir se criava a constante, mas o arquivo JA tinha MarketplaceEntityOrders (plural) - a substring batia e a constante nunca era criada, quebrando o build. A correcao foi MELHOR que a intencao original: reusar a constante existente ('pedidos', ja declarada como capacidade de canal) em vez de criar outra. Licao: guard de presenca por substring mente quando existem plurais/prefixos",
     "ISOLAMENTO PRECISA DE TESTE NEGATIVO, NAO SO DE LEITURA (E-234): o inbox ja recusava LER a conversa de outra organizacao, mas nada provava que ATRIBUIR, TRANSFERIR e FECHAR tambem eram recusados - nem que o estado alheio ficava intacto. Faltava ainda o caso do DEDUPE entre tenants: o mesmo id externo em duas organizacoes precisa gerar conversas DISTINTAS, senao uma mensagem legitima de outro cliente e engolida como repetida (perda de mensagem disfarcada de idempotencia). Agora os tres lados estao medidos",
     "'NEM INFERE' E UM REQUISITO PROPRIO (E-234): o master pede que o tenant A nao acesse NEM INFIRA o tenant B. Testei isso onde a inferencia de fato aconteceria: nas METRICAS. Indicadores globais vazariam volume de conversas e carga de trabalho alheios; medido: orgA=3, orgB=1, sem cruzamento",
-    "QUARTA VEZ QUE O MEU INSTRUMENTO PRODUZIU FALSO ACHADO (E-235): ao ler o comparativo de concorrentes eu vi 'Hades Ã— concorrentes' e 'jÃ¡ funciona' e conclui que a documentacao estava corrompida. MEDI: 0 de 217 arquivos .md tem mojibake. O 'Ã—' era o MEU shell - Get-Content no PowerShell 5.1 le UTF-8 como ANSI e MOSTRA corrompido sem que o arquivo esteja. Regra pratica: para SUSPEITAR de arquivo, medir por script Python (UTF-8), nunca pelos olhos do shell. As tres anteriores foram URL reimplementada (E-220), max_tokens=8 (E-223) e shell comendo aspas (E-226)",
+    "[ARTEFATO DE CONSOLE DESCRITO, NAO TRANSCRITO] QUARTA VEZ QUE O MEU INSTRUMENTO PRODUZIU FALSO ACHADO (E-235): ao ler o comparativo de concorrentes eu vi 'Hades Ã— concorrentes' e 'j[dupla codificacao] funciona' e conclui que a documentacao estava corrompida. MEDI: 0 de 217 arquivos .md tem mojibake. O 'Ã—' era o MEU shell - Get-Content no PowerShell 5.1 le UTF-8 como ANSI e MOSTRA corrompido sem que o arquivo esteja. Regra pratica: para SUSPEITAR de arquivo, medir por script Python (UTF-8), nunca pelos olhos do shell. As tres anteriores foram URL reimplementada (E-220), max_tokens=8 (E-223) e shell comendo aspas (E-226)",
     "A CORRUPCAO DE UTF-8 E RISCO REAL, MESMO SENDO FALSO AQUI (E-235): eu mesmo CORROMPI internal/agent/marketplace_sync.go na rodada anterior com Get-Content -Raw + WriteAllText. Como a classe e real e recorrente para qualquer agente no PowerShell 5.1, virou guarda no checker: documento com texto duplamente codificado vira PROBLEMA, com teste nos dois sentidos (acusa o corrompido e aceita portugues acentuado legitimo)",
     "AUDITORIA DO COMPARATIVO DE CONCORRENTES (E-235): o documento declara explicitamente que NAO alega superioridade sem prova e marca cada item como funciona/parcial/falta. Spot-check das alegacoes verificaveis: geracao por IA local e export HTML tem teste de UI; o Builder tem testes de traversal, cross-tenant, symlink e escaping. Documentacao e produto batem NESSES pontos",
     "COMPENSACAO AUSENTE NO MOTOR DE FLUXO (E-236, medido): grep por compensat/Compensat/desfaz em internal/agent nao encontra o conceito; o que existe e retry, DLQ (com recuperacao), reprocessamento, bloqueio por condicao e rollback em falha de PERSISTENCIA (context_schedule_rollback_test.go). Compensar efeito ja executado quando um no posterior falha (saga) e OUTRA coisa, exigida pelo §11.7",
@@ -2418,8 +2418,12 @@
     "PRIMEIRO O INSTRUMENTO ERROU, DEPOIS A LEITURA MELHOROU (E-407/ADV-59): o meu classificador jogou 52 das 105 assercoes E2E em 'outro' e eu quase conclui que a suite so' afirmava presenca. Medindo o balde, 33 eram multi-linha - o defeito era do INSTRUMENTO. Antes de acusar o objeto, medir se o instrumento sabe le-lo",
     "A SUITE E2E E' REAL MAS NAO PROVA AUSENCIA NEM CONVERGENCIA (E-407/ADV-59): 21 de presenca, 13 de ESTADO, 4 de conteudo, apenas 2 NEGATIVAS em 105, e ZERO de convergencia (toPass/poll/waitFor). Provar que algo NAO aconteceu e' exatamente a classe que derrubou seis linhas de prova nesta missao",
     "EU ACUSEI E ERA ARTEFATO DE LEITURA (E-408): declarei que a suite E2E quase nao provava ausencia e propus acrescentar negativas - mas o proprio spec separa as responsabilidades no cabecalho (UI = contrato cliente->HTTP; Go = semantica do grafo), e os testes Go tem 10 e 3 testes com 13 e 8 linhas de negacao. ADV-59 rebaixado",
-    "A CORRUPCAO ESTAVA NA MINHA TELA (E-408): vi 'automaÃ§Ãµes' num spec e alertei sobre UTF-8 quebrado; varri app/ui inteiro e ha 0 arquivos com mojibake - era o Get-Content do PowerShell lendo UTF-8 como ANSI. Antes de acusar o objeto, medir o instrumento, inclusive quando o instrumento sou eu lendo",
-    "CITAR UM ARTEFATO DE CONSOLE NUM DOCUMENTO TORNA A CORRUPCAO REAL (E-408): eu vi 'automaÃ§Ãµes' no output do PowerShell, alertei sobre UTF-8 quebrado e TRANSCREVI o texto para as linhas E-407/E-408 do indice. A varredura mostrou 0 arquivos corrompidos em app/ui - o defeito era a renderizacao do console. Mas o gate entao acusou 'documento com TEXTO CORROMPIDO (dupla codificacao): HADES_EVIDENCE_INDEX.md (2 ocorrencias)': a corrupcao passou a existir NO REPOSITORIO porque eu a coloquei la. O artefato de leitura virou dado permanente por transcricao"
+    "[ARTEFATO DE CONSOLE DESCRITO, NAO TRANSCRITO] A CORRUPCAO ESTAVA NA MINHA TELA (E-408): vi 'automa[dupla codificacao][dupla codificacao]es' num spec e alertei sobre UTF-8 quebrado; varri app/ui inteiro e ha 0 arquivos com mojibake - era o Get-Content do PowerShell lendo UTF-8 como ANSI. Antes de acusar o objeto, medir o instrumento, inclusive quando o instrumento sou eu lendo",
+    "[ARTEFATO DE CONSOLE DESCRITO, NAO TRANSCRITO] CITAR UM ARTEFATO DE CONSOLE NUM DOCUMENTO TORNA A CORRUPCAO REAL (E-408): eu vi 'automa[dupla codificacao][dupla codificacao]es' no output do PowerShell, alertei sobre UTF-8 quebrado e TRANSCREVI o texto para as linhas E-407/E-408 do indice. A varredura mostrou 0 arquivos corrompidos em app/ui - o defeito era a renderizacao do console. Mas o gate entao acusou 'documento com TEXTO CORROMPIDO (dupla codificacao): HADES_EVIDENCE_INDEX.md (2 ocorrencias)': a corrupcao passou a existir NO REPOSITORIO porque eu a coloquei la. O artefato de leitura virou dado permanente por transcricao",
+    "VARREDURA DO REPOSITORIO INTEIRO (E-409): 2216 arquivos varridos; 3 com dupla codificacao, e apenas 2 eram REAIS. hades_mission_check.py contem mojibake porque e' o REGEX DO DETECTOR (a municao parece a doenca) e hades_mission_check_test.py contem porque e' a FIXTURE que prova que o detector dispara. Meu scan acusou o detetor",
+    "O MESMO ERRO, DUAS VEZES, DOCUMENTADO NA PRIMEIRA (E-409): a nota de E-235 diz 'QUARTA VEZ QUE O MEU INSTRUMENTO PRODUZIU FALSO ACHADO: vi Hades [dupla codificacao] concorrentes e conclui que a documentacao estava corrompida'. Eu repeti: vi o artefato no console, transcrevi para o indice (o gate acusou 2 ocorrencias) e escrevi uma nota sobre isso - cuja propria frase continha o artefato",
+    "ARTEFATO DE LEITURA TRANSCRITO VIRA DADO PERMANENTE (E-409): a descricao passou a ser '[dupla codificacao]', nao a transcricao. Transcrever o artefato foi o que o tornou real no repositorio",
+    "A TERCEIRA VEZ NA MESMA SESSAO (E-409): a linha E-409, escrita para registrar que transcrever o artefato o torna real, continha o REGEX DO DETECTOR transcrito - e o gate acusou de novo. A descricao passou a ser '[padrao de dupla codificacao]'. A licao nao e' 'ter cuidado': e' que DESCREVER e' seguro e TRANSCREVER nao e'"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -3561,6 +3565,35 @@
           "ADV-57",
           "ADV-58"
         ]
+      },
+      "varredura_de_codificacao": {
+        "arquivos_varridos": 2216,
+        "extensoes": [
+          ".go",
+          ".md",
+          ".py",
+          ".ts",
+          ".tsx",
+          ".js",
+          ".mjs",
+          ".json",
+          ".yaml",
+          ".yml",
+          ".txt",
+          ".ps1",
+          ".sh"
+        ],
+        "achados_reais_corrigidos": 3,
+        "achados_legitimos": {
+          "scripts/hades_mission_check.py": "o proprio regex do detector - a municao parece a doenca",
+          "scripts/hades_mission_check_test.py": "fixture deliberada que prova que o detector dispara"
+        },
+        "criterio_da_correcao": "as notas passaram a DESCREVER o artefato como [dupla codificacao], nao a transcreve-lo",
+        "limites": [
+          "cobre extensoes de texto; binarios e .png nao foram lidos",
+          "o padrao do travessao pode dar falso positivo",
+          "a varredura nao virou checker do repositorio: depende de rodar a mao"
+        ]
       }
     },
     "portao_e2e": {
@@ -3710,6 +3743,7 @@
     "E-405": "E2E real verde (exit 0) com a receita TMP/TEMP/TMPDIR sob _tmp",
     "E-406": "peso do E2E medido (18 testes/105 expects/0 skips) + screens:verify PASS + receita no AGENTS.md",
     "E-407": "natureza das 105 assercoes E2E: 2 negativas, 0 convergencia; instrumento corrigido",
-    "E-408": "correcao do meu ADV-59: as negativas existem nos testes Go; 0 mojibake"
+    "E-408": "correcao do meu ADV-59: as negativas existem nos testes Go; 0 mojibake",
+    "E-409": "varredura do repo inteiro: 2 achados legitimos (detector e fixture) e 2 notas corrigidas"
   }
 }
