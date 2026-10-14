@@ -30,6 +30,13 @@ var amostrasDLP = []struct {
 	{"private_key", "-----BEGIN RSA PRIVATE KEY-----\nMIIabc\n-----END RSA PRIVATE KEY-----"},
 	{"github_token (ghp_)", "ghp_" + strings.Repeat("a1B2c3D4e5", 2)},
 	{"github_token (github_pat_)", "github_pat_" + strings.Repeat("a1B2c3D4e5", 2)},
+	// E-564 / F4 da auditoria de segurança: os 4 formatos que ficavam FORA. A auditoria
+	// mediu que só `ghp_` e `github_pat_` eram cobertos, e que um token isolado dos
+	// outros passava sem achado (o `credential_assignment` exige `chave=valor`).
+	{"github_token (gho_)", "gho_" + strings.Repeat("a1B2c3D4e5", 2)},
+	{"github_token (ghu_)", "ghu_" + strings.Repeat("a1B2c3D4e5", 2)},
+	{"github_token (ghs_)", "ghs_" + strings.Repeat("a1B2c3D4e5", 2)},
+	{"github_token (ghr_)", "ghr_" + strings.Repeat("a1B2c3D4e5", 2)},
 	{"openrouter_token", "sk-or-v1-" + strings.Repeat("a1B2c3D4e5", 2)},
 	{"openai_token", "sk-" + strings.Repeat("a1B2c3D4e5", 2)},
 	{"xai_token", "xai-" + strings.Repeat("a1B2c3D4e5", 2)},

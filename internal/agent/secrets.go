@@ -195,7 +195,7 @@ var dlpPatterns = []struct {
 	prefixos []string
 }{
 	{"private_key", regexp.MustCompile(`(?s)-----BEGIN [A-Z ]+PRIVATE KEY-----.*?-----END [A-Z ]+PRIVATE KEY-----`), []string{"-----begin"}},
-	{"github_token", regexp.MustCompile(`(?i)\b(?:ghp|github_pat)_[A-Za-z0-9_]{20,}\b`), []string{"ghp_", "github_pat_"}},
+	{"github_token", regexp.MustCompile(`(?i)\b(?:ghp|gho|ghu|ghs|ghr|github_pat)_[A-Za-z0-9_]{20,}\b`), []string{"ghp_", "gho_", "ghu_", "ghs_", "ghr_", "github_pat_"}},
 	{"openrouter_token", regexp.MustCompile(`\bsk-or-v1-[A-Za-z0-9_-]{20,}\b`), []string{"sk-or-v1-"}},
 	{"openai_token", regexp.MustCompile(`\bsk-[A-Za-z0-9_-]{20,}\b`), []string{"sk-"}},
 	{"xai_token", regexp.MustCompile(`\bxai-[A-Za-z0-9_-]{20,}\b`), []string{"xai-"}},
