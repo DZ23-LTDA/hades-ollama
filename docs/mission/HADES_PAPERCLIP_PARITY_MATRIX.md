@@ -58,3 +58,45 @@ As classificações desta matriz vêm de medições feitas no repositório a 202
 ficheiros com tamanho, `Select-String` por nomes de tipo/função e por comentários de desenho, e
 `grep` por nomes de ferramentas). O run de CI `5bba1132e` (PR #438) fechou com **23 checks e zero
 vermelhos** na mesma janela. Nenhum código de produção foi alterado para produzir esta matriz.
+
+## 5. Coluna de REFERÊNCIA — README do Paperclip (`master`, MIT), lido a 2026-10-14
+
+O Paperclip descreve-se como «Node.js server e React UI que orquestra uma equipa de agentes para
+tocar um negócio» — **quatro pilares**: (1) *Agentic Task Manager*, (2) *Org Chart for Agents*,
+(3) *Agent Employee Training* (Skill Studio, evals, revisões de desempenho, templates de equipa),
+(4) *Agentic OS* (runtime multi-provedor, sandboxing e MCP, SSO/GRC/RBAC e custos, privacidade e
+tracing, conexões, histórico). O próprio `ROADMAP.md` do repositório marca o estado de cada
+capacidade — e é isso que permite julgar **paridade** em vez de julgar **existência**.
+
+### 5.1 O que o roadmap do Paperclip marca como FEITO (✅) e que o Hades não tem
+
+| Capacidade | Paperclip | Hades | Efeito na matriz |
+| --- | --- | --- | --- |
+| **Agent evals & feedback** | ✅ feito | `PARTIAL` (métricas de negócio; sem avaliação por agente) | **lacuna real de paridade** (item 9) |
+| **Skills Manager, Skill Studio & Skills Store** | ✅ feito | `PARTIAL` (`skill_activation.go`; sem studio/versões/loja) | **lacuna real** (item 8) |
+| **Skill Version History & Restore** | ✅ feito | não encontrado | **lacuna real** |
+| **Cloud / Sandbox agents** (e2b, Cloudflare, Daytona, Modal, Novita, K8s) | ✅ feito | `MISSING` | **confirma o `BLOCKED_EXTERNAL` do Cloudroom** (itens 1 e 4): outros já o fazem, nós não |
+| **Heartbeat Execution** (fila de despertar em BD, com *coalescing*, orçamento, injecção de segredo, carregamento de skills) | ✅ feito | `PARTIAL` (ciclo do supervisor, não heartbeat por agente) | **lacuna real** (item 4) |
+| **MCP Tool Gateway & Apps** (acesso governado a ferramentas) | ✅ feito | não medido nesta matriz | a medir |
+| **Deep Planning** (planos versionados e aprovados) | ✅ feito | planos existem; versionamento de plano não medido especificamente | a medir |
+
+### 5.2 O que muda a classificação do Hades — para MELHOR
+
+- **Item 19 (Automatic Organizational Learning): `MISSING` no Hades, mas ⚪ no roadmap do
+  Paperclip também** ⇒ *não é lacuna de paridade*. Reclassificado: **`NOT_APPLICABLE` para
+  efeitos de paridade** (ambos ausentes). O Hades não está atrás aqui; ninguém está à frente.
+- **Memory / Knowledge: 🟡 (parcial) no Paperclip; `IMPLEMENTED_VERIFIED` no Hades** (Estágio 15
+  governado + `knowledge.search` + 8 rotas auditadas) ⇒ **nesta capacidade o Hades está à
+  frente**, e isso fica dito porque é medido — não como propaganda.
+- **Atomic task checkout: ✅ nos dois** (o Paperclip diz «execution locks»; o Hades tem *lease* e
+  *claim* idempotente com testes de *reclaim*) ⇒ paridade confirmada dos dois lados.
+
+### 5.3 Honestidade que o próprio Paperclip pratica, e que vale registar
+
+O README declara limites que muitos produtos escondem: «*enforcement uses recorded spend; usage
+reporting and in-flight work can delay a stop*» (o travão de orçamento pode chegar tarde); «*plain
+environment values and local paths can remain*» em pacotes exportados (a limpeza de segredos não
+é total); «sandbox providers extend execution beyond the local host; **availability depends on the
+configured environment and adapter**». *É a mesma disciplina de declarar janelas residuais que
+esta missão usa — e é a razão de eu não tratar «o Paperclip faz» como «nós conseguimos fazer
+igual».*
