@@ -2403,7 +2403,10 @@
     "A TAUTOLOGIA VIROU TESTE QUE PODE FALHAR (E-401/ADV-58/1): o teste de mutacao de aprovacao chamava closures locais e comparava uma com a outra; agora chama approvalsReady, stepApproved e validateMissionApprovalBindings de verdade, e FALHA quando approvalsReady e' desligado (o antigo passava com os 4 desligados)",
     "REDUNDANCIA DECLARADA E' DEFESA (E-402/ADV-58/2 e /3): as duas linhas inalcancaveis hoje foram MANTIDAS de proposito, com o motivo escrito no codigo - em vez de removidas para satisfazer uma metrica de cobertura",
     "O TESTE REAL ME CORRIGIU (E-401): eu supunha que validateMissionApprovalBindings checasse o STATUS; ele valida o VINCULO e o status e' do approvalsReady. E o DLP recusou persistir payload com Kind git.merge.origin - a guarda funcionando",
-    "ASSERCAO QUE NAO CORRESPONDE AO NOME E' PROMESSA NAO ASSINADA (E-402/ADV-58/4): TestRuntimeNaoExecutaEtapaSemAprovacaoNaCadeia passava com o runtime TOTALMENTE sem aprovacao; renomeado para TestRuntimeComAprovacaoNegadaNaoEscreveNemProduzArtefato"
+    "ASSERCAO QUE NAO CORRESPONDE AO NOME E' PROMESSA NAO ASSINADA (E-402/ADV-58/4): TestRuntimeNaoExecutaEtapaSemAprovacaoNaCadeia passava com o runtime TOTALMENTE sem aprovacao; renomeado para TestRuntimeComAprovacaoNegadaNaoEscreveNemProduzArtefato",
+    "O PORT DA JORNADA DE UI ESTA FECHADO (E-403): 7/7 testes verdes e tsc exit 0, com progressao MEDIDA de 4 falhas -> 2 -> 1 -> 0. E a lacuna nao era uma lista de arquivos: era um acoplamento (teste + componentes)",
+    "A ESTRUTURA FAZ PARTE DO CONTRATO (E-403): o caso 3 procura node.type === 'li' com aria-current === 'true'; por o aria-current no Link nao satisfaz porque o ResourceRow renderiza um <div>. A assercao nao pede 'algo que indique a missao criada': pede um ITEM DE LISTA marcado",
+    "PORTAR E' MESCLAR, NAO SUBSTITUIR (E-403): o render de tasks da main tinha removeMission e deleteDisabled que a branch nao tinha; o port preservou os dois"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -3512,7 +3515,10 @@
         "diagnostico": "as 4 falhas sao o ProductWorkspacePage: falta o estado vazio, o role=status do banner de criada e dois alertas. NewTaskPage JA renderiza role=alert (L138) e aria-live=assertive (L139)",
         "o_que_eu_quase_fiz": "ia trazer o ProductWorkspacePage INTEIRO da branch (1176 commits atras) - teria revertido progresso de UI naquele arquivo. Copiar arquivo de branch velha nao e' integracao: e' regressao disfarcada de merge",
         "entrega": "portar +74 linhas de UI no ProductWorkspacePage de hoje, com os 4 casos do teste como criterio",
-        "licao_de_ferramenta": "o '>' do PowerShell grava UTF-16; arquivos extraidos ficaram ilegiveis para o Python (0xff BOM)"
+        "licao_de_ferramenta": "o '>' do PowerShell grava UTF-16; arquivos extraidos ficaram ilegiveis para o Python (0xff BOM)",
+        "resultado_final": "CONCLUIDO: 7/7 testes verdes, tsc exit 0, branch feat/nova-tarefa-parity com PR proprio. Progressao medida: 4 falhas -> 2 -> 1 -> 0. Nada vermelho foi integrado nas tentativas anteriores",
+        "licao_de_estrutura": "o caso 3 procura node.type === 'li' com aria-current === 'true'; por o aria-current no Link (<a>) nao satisfaz, porque o ResourceRow renderiza um <div>. A ESTRUTURA da lista faz parte do contrato",
+        "conservador": "o render de tasks da main e' mais rico que o da branch (tem removeMission e deleteDisabled): o port MESCLOU em vez de substituir"
       }
     }
   },
@@ -3604,6 +3610,7 @@
     "E-399": "o port e' reescrita: as 4 falhas apontam para o ProductWorkspacePage (+74)",
     "E-400": "5a auditoria (aprovacoes): 1 GRAVE (teste de mutacao nao testa o gate) + 3 MEDIOS",
     "E-401": "teste de mutacao tautologico reescrito para chamar os gates reais, com contraprova",
-    "E-402": "ADV-58/2, /3 e /4: redundancia declarada e teste renomeado para o que prova"
+    "E-402": "ADV-58/2, /3 e /4: redundancia declarada e teste renomeado para o que prova",
+    "E-403": "port da jornada Nova tarefa -> Tarefas: 7/7 testes verdes e tsc 0"
   }
 }
