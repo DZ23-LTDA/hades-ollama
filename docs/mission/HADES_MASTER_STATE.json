@@ -2557,7 +2557,11 @@
     "E O TESTE MEDE AS TRES DIRECOES (E-458): mesma chave => UM agendamento e o MESMO id; chave DIFERENTE => cria outro (um idempotente que engole tudo e' um defeito diferente e PIOR); e a contagem e' medida no MOTOR, nao na resposta da rota. A assercao nasceu fraca (>= 500) porque eu nao sabia o que a rota devolvia; com o contrato decidido, ela passou a medir 409",
     "DUPLICATA APOS CANCELAMENTO: MEDIDA, E A LEITURA ESTA' CERTA (E-459): o limite que E-458 declarou nao medido foi medido. Com o agendamento VIVO a reentrega da ErrSchedulingDuplicate; depois de CANCELAR, a mesma chave PERMITE reagendar (agendamento novo). A leitura de Status == Booked nao e' esquecimento: e' a leitura CERTA - depois do cancelamento a intencao e' NOVA, e o cancelamento e' exactamente o acto que liberta a agenda",
     "SE O MOTOR RECUSASSE, O CLIENTE FICARIA PRESO (E-459): cancelou uma vez e nunca mais marcaria com aquela intencao. 'Nao afirmo se e' defeito' era a postura honesta SEM medir; medida, a resposta e' que nao e' defeito",
-    "E CANCELAR NAO APAGA HISTORIA (E-459): depois do ciclo o motor tem DOIS registos - um cancelado e um agendado. *A agenda precisa de saber que houve um cancelamento.*"
+    "E CANCELAR NAO APAGA HISTORIA (E-459): depois do ciclo o motor tem DOIS registos - um cancelado e um agendado. *A agenda precisa de saber que houve um cancelamento.*",
+    "DEFEITO REAL E ADJACENTE A SEGURANCA (E-460): a IdempotencyKey colidia entre CONTACTOS DIFERENTES. Medido: cliente-B (whatsapp) recebeu ErrSchedulingDuplicate por causa de um agendamento do cliente-A (voice) - e, pela mudanca de E-458, recebeu o agendamento do OUTRO junto com o erro. O comentario prometia 'a MESMA intencao vinda do mesmo CANAL'; o codigo comparava SO' A CHAVE. O escopo que faltava e' o que separa duas PESSOAS",
+    "O ESCOPO CERTO E' O CONTACTO, NAO O CANAL (E-460): o mesmo cliente a falar por voz e por WhatsApp e' a MESMA intencao - incluir o Channel faria a reentrega por outro canal criar um SEGUNDO agendamento, que e' exactamente o que a chave existe para impedir. A comparacao passou a exigir ContactID igual, e o comentario passou a dizer o que o codigo faz",
+    "UM COMENTARIO QUE PROMETE MAIS DO QUE O CODIGO ENTREGA E' UMA PROMESSA QUE ALGUEM VAI COBRAR (E-460): foi o proprio comentario ('vinda do mesmo canal') que denunciou a assimetria - eu a declarei em E-459 como nao medida, e ao medi-la ela era um defeito real. *Declarar o limite e' o que permite encontra-lo.*",
+    "E O DEFEITO FOI ENCONTRADO PELA DECLARACAO DA RODADA ANTERIOR (E-460): em E-459 eu escrevi 'assimetria entre o que o comentario promete e o que o codigo faz, declarada aqui e NAO medida'. Uma rodada depois, medir essa declaracao achou um defeito que recusava o agendamento de um cliente por causa do agendamento de outro"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -3316,6 +3320,10 @@
         {
           "id": "ADV-74",
           "estado": "ABERTO (medido nesta rodada): `contraprovas_medidas` misturava 3 contraprovas REAIS com 2 mutacoes que NADA matam ('portao_por_etapa_off' e 'reconferencia_inline_off', ambas 'NADA falha - sem defesa'). Separadas em `sem_defesa_medida`. AS DUAS LACUNAS CONTINUAM ABERTAS: nao ha teste que cubra essas defesas, e a acao (teste que falta / redundancia medida / remover) NAO foi executada."
+        },
+        {
+          "id": "ADV-75",
+          "estado": "CORRIGIDO E MEDIDO (E-460, 2026-10-14): a `IdempotencyKey` colidia entre CONTACTOS DIFERENTES - cliente-B (whatsapp) recebia `ErrSchedulingDuplicate` por causa de um agendamento do cliente-A (voice), E recebia o agendamento do outro junto com o erro (por E-458). O comentario do motor prometia 'a MESMA intencao vinda do mesmo CANAL', mas o codigo comparava SO' A CHAVE. Corrigido: a comparacao exige CONTACTO igual, e o comentario passou a dizer o que o codigo faz. LIMITE: ContactID vazio nos dois lados continua colidindo - declarado, nao medido como incidente."
         }
       ],
       "proximos_ataques": [],
