@@ -382,3 +382,21 @@ já tem `request<Mission>(base, ...)` e um `refresh(id)`; falta a chamada a
 cliente** (`MissionContextView`) e um teste que exija que identificadores e caminhos **não**
 apareçam no renderizado. *A garantia que o servidor ganhou (E-597) tem de ser ganha de novo em
 cada cliente — e é por isso que ela se põe no TIPO, não na disciplina de quem escreve o JSX.*
+
+### D-3, encerrado com a MEDIÇÃO: 657 s contra um limite de 600 s
+
+O run de `72f01d6cd` fechou o caso. O step «go test -race» do job `race (macos-latest)` correu de
+**22:02:55 a 22:13:52 = 657 s** e terminou **SUCCESS**; o `race (ubuntu-latest)` levou **666 s**,
+também SUCCESS.
+
+| | valor |
+| --- | --- |
+| limite antigo (`go test` por omissão) | **600 s** ⇒ 657 s **estourava** — e foi o que aconteceu |
+| limite novo (E-600) | **1200 s** ⇒ 657 s **passa** |
+| previsão declarada ANTES de medir | multiplicador 2×-4× ⇒ 480-1160 s |
+| medido | **657 s** — ***dentro do intervalo previsto*** |
+
+**O que isto encerra**: a hipótese F2 (corrida de dados) está refutada pelo log («nenhum
+`WARNING: DATA RACE`») e o E-589 não era o remédio; a causa era **orçamento de tempo**, e o E-600
+(um só limite, com o motivo escrito no workflow) resolveu os **dois** jobs `race`. Com este run,
+**nenhum job vermelho conhecido resta** nesta cabeça.
