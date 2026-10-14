@@ -105,8 +105,11 @@ passe nos dois sentidos não prova nada):
    medido que recusa um projeto de outra organização.
 4. **Não há contagem exata de tokens** — a estimativa é 4 caracteres/token e está
    rotulada; o tokenizer real existe noutro caminho (`server/prompt.go`).
-5. **`encrypted_content` do protocolo de compactação não é cifrado** — é JSON canónico;
-   o nome sugere proteção que não existe.
+5. **`encrypted_content`: o nome herda-se do PROTOCOLO, e o conteúdo depende do caminho**
+   (corrigido — a versão anterior deste defeito tratava dois casos como um):
+   - **memória** (`internal/agent`): o campo **É cifra** quando há chave — `memory_encryption.go:113/124` sela, `:140-157` decifra, e `types.go:306-308` declara «existe SÓ no disco». Faz o que o nome promete.
+   - **protocolo de compactação** (Responses/Codex): carrega JSON canónico em claro, e o próprio código o documenta (`openai/responses_compact.go:37`). O nome vem do protocolo alheio — renomeá-lo não está ao nosso alcance.
+   ⇒ o defeito real é de LEITURA, não de criptografia: quem vê o campo fora do contexto da memória supõe proteção que ali não existe.
 6. **CADÊNCIA DE PUSH INVALIDA A VALIDAÇÃO (defeito operacional, meu).** Empurrei ~19
    commits em rápida sucessão e o `concurrency: cancel-in-progress` dos workflows
    **cancelou os runs intermédios**: `test` #1116 (E-575), `agentic-quality` #1892/#1895,
