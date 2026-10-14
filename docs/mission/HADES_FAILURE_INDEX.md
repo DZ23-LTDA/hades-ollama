@@ -3,7 +3,7 @@
 > Gerado por `python scripts/hades_baseline_report.py` a partir de `HADES_MASTER_STATE.json`: um bloqueio que
 > existe no estado aparece aqui, e um que sai do estado sai daqui. O `--check` no CI detecta divergência.
 
-Total: **18** — 9 em aberto · 9 resolvidos.
+Total: **17** — 8 em aberto · 9 resolvidos.
 
 ## 1. Em aberto
 
@@ -17,7 +17,6 @@ Total: **18** — 9 em aberto · 9 resolvidos.
 | B-07 | EXTERNO (MEDIDO: PARCIAL) | ATUALIZADO E-221: verificacao real concluida em DOIS provedores de nuvem (deepseek e openrouter, HTTP 200 com tokens). As demais chaves sao CHAMADAS e autenticam; o que falta nelas e acesso a modelo, rate limit ou credito - nao a chave em si. | MEDIDO (E-209), nao suposto. O B-07 dizia 'chaves de provedor de modelo para homologacao de chamada real'. Medido: 19 provedores com credencial PRESENTE e habilitados, com descoberta de catalogo real (openrouter 458, huggingface 127, novita 94, nvidia 80, gemini 62, mistral 46, fireworks 20, ollama 18, upstage 15, groq 11, sambanova 6, deepseek 2, cerebras 2 |
 | B-09 | AMBIENTAL (MEDIDO E CORRIGIDO, COM PROCEDIMENTO) | CORRIGIDO POR MEDICAO (E-202). A descricao anterior ('Host sem Python/sh: 4 testes falham por ambiente') estava errada em duas frentes: Python EXISTE no host (3.12.10) e bash esta no PATH (so `sh` nao); e o numero real e 45 funcoes de teste, nao 4. Causa raiz unica e medida: o host NAO TEM COMPILADOR C (gcc/cc ausentes) => CGO_ENABLED=0 => go-sqlite3 devolve |
 | B-14 | AMBIENTE (DIAGNOSTICO RESOLVIDO) | LIMITE (E-184): a execucao de plugin exige PRIVILEGIO DE MONTAGEM - mesmo o modo best-effort faz mount/chroot (mount --make-rprivate, mount --bind, tmpfs e chroot/unshare em tools.go). Onde nao ha esse privilegio (Windows, container nao privilegiado, runner padrao de CI) a execucao nao acontece e o sintoma e 'exit status 1' com stdout e stderr VAZIOS - falha |
-| B-15 | AMBIENTE (LOG COMPLETO INACESSIVEL) |  |
 
 ## 2. Resolvidos
 

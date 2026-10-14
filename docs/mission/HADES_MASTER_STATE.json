@@ -1230,17 +1230,6 @@
       "id": "B-18",
       "tipo": "RESOLVIDO",
       "descricao": "FALHA INTERMITENTE NA CI DA MAIN (E-193): TestServiceAgentAuditKeepsContactTextOut (DLP: conteudo do contato nao pode entrar na trilha de auditoria) falhou uma vez no passo 'CGO_ENABLED=1 go test ./... -count=1' do job dz23-agentic-quality, em bc3c708f6. NAO reproduzida em SEIS condicoes medidas: 10x isolado (Windows), 20x isolado sob CGO=1 (Linux/golang:1.26.9), pacote -count=3, pacote inteiro sob CGO=1, -shuffle com 3 seeds e pacote sob carga paralela. A varredura de DLP criada em E-193 cobre 30 ferramentas em 7 agentes e NAO encontrou vazamento. DESBLOQUEIO: obter credencial de API do GitHub para re-executar o job duas vezes com o mesmo SHA e, se reproduzir, capturar o campo nomeado pelo diagnostico de E-193; sem reproducao, a classificacao segue 'nao demonstrada' - nem flake afirmado, nem vazamento afirmado. || RESOLVIDO (E-196): NAO era vazamento nem flake - era o RELOGIO. A checagem procurava o fragmento '4111' no ARQUIVO INTEIRO da trilha, e um decided_at como '...T08:26:43.411114Z' contem '4111'. O log do job 114722821097 (race macos-latest) trouxe o JSON da entrada acusada SEM conteudo de terceiro, o que fechou o caso. Correcao: a checagem passou a olhar CAMPOS (texto livre x identificadores) e o mecanismo ficou fixado em TestTimestampComFragmentoNaoEhVazamento. O produto nunca vazou."
-    },
-    {
-      "id": "B-15",
-      "estado": "ABERTO_POR_INVESTIGAR",
-      "medido": "attempt 1: go test -race 13:09:36->13:20:51 failure (11 min; suite normal 4 min). attempt 2: Build UI 14:16:22 preso (baseline 2 min). Run cancelado por mim.",
-      "o_que_falta": "O log completo da attempt 1 (a API devolve so' o tail) para identificar pacote e teste. Sem ele, nao posso distinguir teste instavel de falha de infraestrutura.",
-      "nao_posso_localmente": "go test -race exige CGO e esta maquina nao tem compilador C.",
-      "tipo": "AMBIENTE (LOG COMPLETO INACESSIVEL)",
-      "bloqueia": "`race (macos-latest)`: attempt 1 falhou apos 11 min no `go test -race`; attempt 2 ficou PRESO no `Build UI` (15+ min contra 2 min de baseline)",
-      "estagios_afetados": "nenhum (gate de CI do PR #438)",
-      "quem_desbloqueia": "acesso ao log completo do job (a API devolve so' o tail)"
     }
   ],
   "evidence_index": "docs/mission/HADES_EVIDENCE_INDEX.md",
@@ -2745,7 +2734,9 @@
     "E-541 (auditoria de CI, FASE 2): o pr-gate vermelho em 14b799008 NAO e' defeito de codigo - e' timeout a esperar substitutas de dois gates cancelados ('Go agentic and server gates' e 'Go agentic Windows portability', ambos cancelled). Causa: cancel-in-progress, porque empurrei 5 commits seguidos. Isto JA' tinha sido identificado no E-524 e voltou a acontecer: e' falha de DISCIPLINA, nao de conhecimento. Regra operacional: um push por corrida, sempre com a anterior lida.",
     "E-542 (dedup, Estagio 47): novo artifact_dedupe.go - ArtefactoDetetarDuplicados agrupa por SHA256 DENTRO do tenant e so' sobre o que o sujeito ve'. Recusa a dedup entre tenants POR DESENHO: saber que outro tenant tem o mesmo ficheiro e' informacao sobre esse tenant (canal lateral). Nao agrupa sem sha256. vet 0, dirigidos verdes.",
     "E-543 (conflitos com a main, FASE 2): merge-tree exit 0, SEM CONFLITOS. origin/main=4b3e21854, merge-base=4b3e21854, 111 commits a' frente e 0 atras. Verificado com git merge-tree --write-tree, que mede sem tocar no working directory.",
-    "E-544 (auditoria da FASE 7): dos CINCO documentos que a missao manda actualizar continuamente, TRES estao em dia (EVIDENCE_INDEX, MASTER_STATE, RELEASE_REPORT = 14/10 13:29) e DOIS estao parados em 13/10 21:02 (HANDOFF, PENDING_WORK) - mais o NEXT_ACTION. A prova nao e' so' a data: o HANDOFF nao menciona NENHUM commit, nenhum E-5xx e nem a palavra 'evid'. E o hades_mission_check.py NAO valida estes documentos (grep HANDOFF|PENDING = vazio), logo nada avisa quando ficam obsoletos. Divida declarada; a correccao tem duas partes: actualizar o conteudo E instrumentar a verificacao."
+    "E-544 (auditoria da FASE 7): dos CINCO documentos que a missao manda actualizar continuamente, TRES estao em dia (EVIDENCE_INDEX, MASTER_STATE, RELEASE_REPORT = 14/10 13:29) e DOIS estao parados em 13/10 21:02 (HANDOFF, PENDING_WORK) - mais o NEXT_ACTION. A prova nao e' so' a data: o HANDOFF nao menciona NENHUM commit, nenhum E-5xx e nem a palavra 'evid'. E o hades_mission_check.py NAO valida estes documentos (grep HANDOFF|PENDING = vazio), logo nada avisa quando ficam obsoletos. Divida declarada; a correccao tem duas partes: actualizar o conteudo E instrumentar a verificacao.",
+    "E-545 (correcao de consistencia): removido o item DUPLICADO `B-15` (AMBIENTE (LOG COMPLETO INACESSIVEL)) da lista de blockers. O estado tinha 18 itens mas apenas 17 ids unicos - `B-15` aparecia duas vezes, uma como RESOLVIDO e outra como 'AMBIENTE (LOG COMPLETO INACESSIVEL)', sem descricao. O hades_mission_check conta `len({b['id']})`, logo o numero do instrumento (17) estava CERTO e o estado e' que tinha lixo. O item removido era o BLOQUEIO ANTIGO do log inacessivel - ja' resolvido, e foi o que permitiu ler os logs do race (macos). *Nao se apaga em silencio: uma remocao sem rasto e' indistinguivel de um item que nunca existiu.*",
+    "E-545 (correcao de consistencia): `measured_commit` estava em `17a850984` - o commit da referencia HISTORICA da missao, ~100 commits atras - e foi actualizado para `a81b847c3`, o HEAD real em que a medicao e' feita. *O campo que garante a rastreabilidade de todos os numeros do estado estava a apontar para o objecto errado: e' o pior dos erros desta classe, porque o proposito inteiro do campo e' IMPEDIR isto.*"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -2837,7 +2828,7 @@
     "evidence": "E-173"
   },
   "measured_at": "2026-10-14T11:17:05-03:00",
-  "measured_commit": "17a850984",
+  "measured_commit": "a81b847c3",
   "measured_how": "git rev-parse origin/fix/checker-relogio (o commit DO PR, medido no GitHub) + git rev-parse origin/main + consulta a API de checks do PR #438. O HEAD local e' 1065e5c56 (1 commit a frente: E-518/E-519, ainda nao empurrado).",
   "stage_states_derived_from": "stages[].state (fonte unica desde E-311)",
   "reconciliation_v22": {
