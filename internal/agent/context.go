@@ -323,8 +323,18 @@ func (s *ContextStore) DeleteProject(id string) error {
 	if _, ok := s.projects[id]; !ok {
 		return os.ErrNotExist
 	}
-	delete(s.projects, id)
-	delete(s.memories, id)
+	// ORDEM CORRIGIDA (E-565 / F5 da auditoria de segurança): o DISCO primeiro, a
+	// memória depois. Antes era o contrário — `delete()` nos mapas e só então
+	// `os.Remove` —, e uma falha no disco devolvia erro com o projeto já apagado da
+	// memória e os ficheiros ainda em disco: estado divergente, e o chamador a ver um
+	// erro que não correspondia a nada. Agora, se o disco falhar, a memória fica
+	// INTACTA (falha fechado: nada mudou) e o erro é verdadeiro.
+	//
+	// JANELA RESIDUAL, DECLARADA: são DOIS ficheiros e não há transação entre eles. Se
+	// o primeiro `os.Remove` passar e o segundo falhar, o ficheiro do projeto já não
+	// existe e a memória continua com o projeto. Fechar isto exigiria duas fases (mover
+	// para quarentena e só depois apagar) ou um diário — é um PR próprio, e prefiro
+	// declarar a janela a fingir que ela não existe.
 	if s.root != "" {
 		if err := os.Remove(filepath.Join(s.root, "projects", id+".json")); err != nil && !errors.Is(err, os.ErrNotExist) {
 			return err
@@ -333,6 +343,8 @@ func (s *ContextStore) DeleteProject(id string) error {
 			return err
 		}
 	}
+	delete(s.projects, id)
+	delete(s.memories, id)
 	return nil
 }
 
