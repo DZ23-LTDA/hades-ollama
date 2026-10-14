@@ -2484,7 +2484,10 @@
     "O CONTRATO NAO E' O CONSUMO (E-433): o teste declara explicitamente que NAO prova que o runtime consulta o Registry com as exigencias por passo - isso nao esta feito. Declarar contrato como implementado quando so' o contrato existe e' a classe que esta missao vem derrubando",
     "DEPENDSON ERA DECORACAO (E-434): o campo entrou em E-433 como aresta do DAG e nada o validava. Agora ValidatePlanGraph recusa dependencia inexistente, em si mesmo, ID vazio/repetido e CICLO, ligado no caminho de save",
     "TRES DEFEITOS MEUS, PEGOS PELOS MEUS PROPRIOS CONTROLES (E-434): (1) o Kahn so' adicionava passos COM aresta a pendentes, entao plano valido era acusado de ciclo - quem pegou foi o controle 'senao o teste passaria com a validacao recusando tudo'; (2) usei Goal/MissionPending, que nao existem; (3) a regra de compatibilidade deixou dois casos passarem. Validacao que recusa tudo nao e' validacao: e' um alarme que sempre toca",
-    "VALIDAR O GRAFO NAO E' HONRAR O GRAFO (E-434): a execucao segue em ORDEM DE LISTA e o runtime ainda nao consome RequiredCapabilities nem PinnedModelID por passo. Declarado no codigo e no registro"
+    "VALIDAR O GRAFO NAO E' HONRAR O GRAFO (E-434): a execucao segue em ORDEM DE LISTA e o runtime ainda nao consome RequiredCapabilities nem PinnedModelID por passo. Declarado no codigo e no registro",
+    "O RUNTIME NAO USA O MULTILLM.REGISTRY PARA PASSO (E-435): o roteamento que existe e' do PLANEJADOR e escreve de volta um modelo unico para a missao (runtime.go:1141-1151). grep multillm. em internal/agent so' encontra plugins e ContractRegistry. Consumir exigencia por passo exige injetar o Registry - e isso NAO esta feito",
+    "UMA PONTE NAO E' A ESTRADA (E-435): RouteRequestForStep traduz Step -> RouteRequest e o teste prova o mapeamento E o motor honrando. Mas nada chama a ponte ainda. Ponte sem teste e' pior que ponte nenhuma, porque parece caminho",
+    "ASSERCAO POR ID MEDE A ORDENACAO DE HOJE (E-435): eu assertei que pedir 'vision' devolveria local/visual e veio local/forte (tambem tem visao e pontua mais). Corrigido para asserir a PROPRIEDADE (tem a capacidade), com controle de que um pin honravel passa"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -3936,7 +3939,8 @@
         "implementado": [
           "E-428: PinnedModelID como restricao rigida (MANUAL), com ErrNoRoute quando nao honrado",
           "E-433 (contrato): Step carrega RequiredCapabilities, PinnedModelID e DependsOn, com round-trip JSON e compatibilidade de plano antigo. O CONSUMO pelo runtime NAO esta feito.",
-          "E-434: ValidatePlanGraph (ID, dependencia inexistente/vazia/em si, e CICLO por Kahn) ligado em validateMissionPersistenceBounds. O plano e' valido, mas ainda NAO e' ordenado nem honrado."
+          "E-434: ValidatePlanGraph (ID, dependencia inexistente/vazia/em si, e CICLO por Kahn) ligado em validateMissionPersistenceBounds. O plano e' valido, mas ainda NAO e' ordenado nem honrado.",
+          "E-435: RouteRequestForStep (a ponte Step -> multillm.RouteRequest). O teste prova o mapeamento E o motor honrando. A INJECAO do Registry no Runtime continua NAO feita - nada chama a ponte."
         ],
         "matriz_correcoes_por_medicao": [
           "MIN_COST NAO estava ausente: RoutePreferenceCheapest existe (router.go:25) - a capacidade existia com outro nome",
