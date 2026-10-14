@@ -2694,7 +2694,8 @@
     "E-505 (o `main` está vermelho — e o commit que o tornou vermelho não toca Go): `actions_list` em `main` · `get_commit 4b3e21854` (*9 ficheiros, **zero Go***)",
     "E-506 (o CI do `#438` está VERDE — `dz23-agentic-quality` passou com `go test ./...`): `actions_list dz23-agentic-quality.yaml` · run **1853** @ `53a7f4280` → **`success`**",
     "E-507 (o `main` real é `4b3e21854` — e o E-495 «corrigiu» um número certo): `actions_list branch=main` · main = **4b3e21854** · E-495 dizia 2bd4dd0eb",
-    "E-508 (go test ./... completo): 65 pacotes ok, 6 FAIL todos artefacto de ambiente; e o gate do encoding travou-me por 12 residuos UTF-16 que eu criei na RAIZ - o guard do -ne 8 impediu apagar uma medicao viva."
+    "E-508 (go test ./... completo): 65 pacotes ok, 6 FAIL todos artefacto de ambiente; e o gate do encoding travou-me por 12 residuos UTF-16 que eu criei na RAIZ - o guard do -ne 8 impediu apagar uma medicao viva.",
+    "E-509 (SA4023): a causa raiz do CI vermelho era o staticcheck do v2.13.0 (a versao FIXA do CI) provar que sandbox_other.go devolve sempre erro. Corrigido devolvendo o erro por VARIAVEL DE PACOTE - sem nolint. 14 -> 8 issues com a versao do CI, SA4023 = 0. E os 8 unused sao invisiveis ao CI: sao windows-only e o job de lint corre em ubuntu."
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
