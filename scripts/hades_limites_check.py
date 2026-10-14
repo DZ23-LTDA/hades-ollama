@@ -26,14 +26,22 @@ from pathlib import Path
 RAIZ = Path(__file__).resolve().parent.parent
 INDICE = RAIZ / "docs" / "mission" / "HADES_EVIDENCE_INDEX.md"
 
-# ***O CRITERIO - fixo, aqui, e so' aqui.*** Lista completa das formas declaradas (nao uma escolhida por corrida).
+# ***O CRITERIO - fixo, aqui, e so' aqui.***
+#
+# E-513 (MEDIDO): a lista anterior era LARGA de mais, e o caso concreto apareceu no `E-285` - cuja clausula diz
+# «**LIMITES DECLARADOS** ... `mattn/go-sqlite3` exige CGO ... `jackc/pgx/v5` exige PostgreSQL rodando ⇒ a persistencia
+# em arquivo com escrita atomica e' DECISAO JUSTIFICADA». ***Isso NAO e' um limite por medir: sao os limites DO
+# ARTEFACTO*** - *o que ele nao assume, e por que.*
+#
+# ⇒ a mesma palavra, **dois sentidos**: *«o que eu nao medi»* x *«o que o artefacto nao depende»*.
+# O extractor so' pode medir o primeiro, e para isso tem de exigir a **primeira pessoa**: nao medi / nao executei /
+# nao verifiquei. *Nao basta a palavra «limite» nem «sem teste» no meio de uma frase sobre o produto.*
 SEM_MEDICAO = (
     "nao medi", "não medi", "nao medid", "não medid",
     "nao executei", "não executei", "nao executados", "não executados",
-    "nao verificado", "não verificado",
+    "nao verifiquei", "não verifiquei",
     "nao foi medido", "não foi medido",
-    "sem teste", "nao testado", "não testado",
-    "nao exercitad", "não exercitad", "nao exercitados", "não exercitados",
+    "nao testado", "não testado", "nao testad",
 )
 
 linhas = INDICE.read_text(encoding="utf-8").split("\n")
