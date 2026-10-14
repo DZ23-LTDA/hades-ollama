@@ -2457,7 +2457,10 @@
     "A VARREDURA DO E-418 TEM UM PONTO CEGO (E-421): ela procura Now()+Add direto na linha e nao pega a forma agora := time.Now(); marcado := agora.Add(...) numa variavel - foi por esse buraco que o segundo teste da classe passou",
     "O PONTO CEGO DO INSTRUMENTO ERA A CAUSA, NAO O PRODUTO (E-422): a varredura do E-418 procurava Now()+Add na mesma linha e concluiu que nao havia familia. Nao via a forma em DUAS linhas - que e' a do E-421, o teste que deixou o CI vermelho. A conclusao do E-418 estava errada e a causa era a forma nao coberta",
     "O TESTE DO CHECKER PEGOU UM DEFEITO NO PROPRIO CHECKER (E-422): test_nao_marca_vencimento FALHOU na primeira execucao - ClaimDue(now+1s) era marcado ALTO. Consulta de vencimento compara instantes, nao dias; um +1s nunca cruza uma fronteira que mude a resposta. Corrigido com precedencia de vencimento",
-    "CHECKER DE VERIFICADOR PRECISA DE TESTE NAS DUAS DIRECOES (E-422): 7 testes - 3 provam que ele PEGA a classe (incluindo a forma de duas linhas que era o ponto cego) e 4 provam que ele DEIXA PASSAR o que nao e' da classe. E um teste de catraca no repositorio real que reprova QUALQUER sitio ALTO novo, com a instrucao de medir antes de aceitar"
+    "CHECKER DE VERIFICADOR PRECISA DE TESTE NAS DUAS DIRECOES (E-422): 7 testes - 3 provam que ele PEGA a classe (incluindo a forma de duas linhas que era o ponto cego) e 4 provam que ele DEIXA PASSAR o que nao e' da classe. E um teste de catraca no repositorio real que reprova QUALQUER sitio ALTO novo, com a instrucao de medir antes de aceitar",
+    "USO UNICO NAO RESISTIA A CONCORRENCIA (E-424/ADV-66): Consume era leitura-modificacao-escrita sem trava. Uma decisao humana autorizava 3-4 escritas (8 turnos simultaneos, mesmo ApprovalID). Corrigido com withFileLock; a contrapova reproduz o '3 de 8' do auditor. O worker nao tinha NENHUM teste concorrente",
+    "O TESTE VARIAVA DUAS COISAS AO MESMO TEMPO (E-425/ADV-67): a impressao digital nao amarrava reason nem agent, e o teste que alegava amarracao variava titulo E valor - um OU, nao um E. Removendo um componente por vez, 9 de 9 passavam com a suite inteira verde. Um teste que varia duas coisas nao mede nenhuma das duas",
+    "A ASSIMETRIA DENUNCIA O DESCUIDO (E-426): Decide/Consume/FindApproved/FindDenied nao conferiam OrganizationID, enquanto ListApprovals e AuditTrail conferiam. Defesa em profundidade que so' existe num dos lados nao e' defesa, e' sorte. Os dois Find* passaram a conferir; Decide recebeu a mesma trava do Consume"
   ],
   "verification": {
     "estagio_13": "COMPLETED_VERIFIED",
@@ -3180,6 +3183,14 @@
           "descoberto_por": "6a revisao adversarial independente (subagente, contexto fresco) com go test -overlay e sondas",
           "estado": "DECLARADO, NAO LIGADO: o motor de agendamento e' hoje uma biblioteca testada e sem chamador em producao (zero usos fora de _test.go). O que esta' provado em producao e' o agendador de WORKFLOW. Ligar exigiria: (a) dono de tick em producao (hoje o tick vem de HTTP); (b) ponte com os canais de voz/WhatsApp/Telegram, que NAO existem (BLOCKED_BY_EXTERNAL_DEPENDENCY); (c) testes de concorrencia com o tick rodando. Declarar e' a entrega honesta enquanto (a)-(c) nao estiverem feitos",
           "evidencia": "E-411"
+        },
+        {
+          "id": "ADV-66",
+          "estado": "FECHADO: Consume passou a fazer a leitura-modificacao-escrita sob withFileLock; contrapova com a trava desligada FALHA com '3 de 8 consumos simultaneos venceram para a MESMA aprovacao' - o mesmo executadas=3 do auditor. Teste concorrente novo (o worker nao tinha nenhum)."
+        },
+        {
+          "id": "ADV-67",
+          "estado": "FECHADO: reason= e agent= entraram na impressao digital; o teste novo varia CADA PARTE SOZINHA, com controle de que pedido identico produz a mesma impressao. Antes, 9 de 9 componentes eram removiveis com a suite inteira verde."
         }
       ],
       "proximos_ataques": [

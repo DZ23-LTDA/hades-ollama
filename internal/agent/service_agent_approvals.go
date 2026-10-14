@@ -554,7 +554,30 @@ func (s *ServiceAgentApprovalStore) Request(organizationID string, request Servi
 // Com LISTA DE APROVADORES configurada para a organização, quem não está nela é RECUSADO — e a recusa é
 // erro declarado, não um registro silencioso. Sem lista, a decisão é aceita e gravada com
 // `RoleChecked = false`: a ausência de verificação vira DADO em vez de confiança implícita.
+// 🚨 E-426: o `Decide` tinha a MESMA leitura-modificação-escrita sem trava do `Consume` (E-424). Aqui o dano é
+// menor — *duas decisões simultâneas que leem a lista antes da gravação fazem uma **perder**, e o quórum fica
+// **sub-contado**, que falha fechado* — mas é a mesma classe, e uma delas já custou um CRÍTICO.
+// ***Fechar a janela num sítio e deixá-la aberta no irmão é o começo do próximo incidente.***
+//
+// A decisão e a gravação passam a ser o mesmo passo indivisível, sob a trava da organização. O corpo virou
+// `decideLocked`; `loadFile`/`saveFile` NÃO travam por dentro (medido), então não há deadlock.
 func (s *ServiceAgentApprovalStore) Decide(organizationID, approvalID string, approved bool, actorID, reason string, now time.Time) (ServiceAgentApproval, error) {
+	path := s.path(organizationID)
+	if path == "" {
+		// Sem persistência não existe estado compartilhado a proteger (raiz vazia = store sem arquivo).
+		return s.decideLocked(organizationID, approvalID, approved, actorID, reason, now)
+	}
+	var resultado ServiceAgentApproval
+	err := withFileLock(path+".lock", func() error {
+		var errInterno error
+		resultado, errInterno = s.decideLocked(organizationID, approvalID, approved, actorID, reason, now)
+		return errInterno
+	})
+	return resultado, err
+}
+
+// decideLocked é o corpo do `Decide`, executado SOB a trava da organização.
+func (s *ServiceAgentApprovalStore) decideLocked(organizationID, approvalID string, approved bool, actorID, reason string, now time.Time) (ServiceAgentApproval, error) {
 	actorID = strings.TrimSpace(actorID)
 	if actorID == "" {
 		return ServiceAgentApproval{}, fmt.Errorf("%w: decidir aprovação exige o ator humano", ErrServiceAgentApprovalInvalid)
@@ -637,7 +660,14 @@ func (s *ServiceAgentApprovalStore) FindApproved(organizationID, fingerprint str
 		return ServiceAgentApproval{}, false, err
 	}
 	for _, approval := range approvals {
-		if approval.Status == ServiceAgentApprovalApproved && approval.Fingerprint == fingerprint {
+		// 🚨 E-426 (MEDIDO por auditoria independente): faltava aqui o mesmo controle que `ListApprovals` e
+		// `AuditTrail` já fazem — *uma assimetria que denuncia descuido*. Hoje a separação por ARQUIVO protege,
+		// mas defesa em profundidade que só existe num dos lados não é defesa: é sorte. O `Fingerprint` já contém
+		// `org=`, então esta checagem é o **segundo** cinto — e o teste que alega isolamento entre tenants
+		// (`service_agent_approvals_test.go:194`) era satisfeito só pela separação de arquivo.
+		if approval.Status == ServiceAgentApprovalApproved &&
+			approval.OrganizationID == consentScope(organizationID) &&
+			approval.Fingerprint == fingerprint {
 			return approval, true, nil
 		}
 	}
@@ -651,7 +681,10 @@ func (s *ServiceAgentApprovalStore) FindDenied(organizationID, fingerprint strin
 		return ServiceAgentApproval{}, false, err
 	}
 	for _, approval := range approvals {
-		if approval.Status == ServiceAgentApprovalDenied && approval.Fingerprint == fingerprint {
+		// E-426: mesmo controle do `FindApproved` — ver o comentário lá.
+		if approval.Status == ServiceAgentApprovalDenied &&
+			approval.OrganizationID == consentScope(organizationID) &&
+			approval.Fingerprint == fingerprint {
 			return approval, true, nil
 		}
 	}
