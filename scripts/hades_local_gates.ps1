@@ -66,7 +66,7 @@ if ($LASTEXITCODE -ne 0) { $falhas.Add('go build ./...') } else { '    OK' }
 if ($SemLint) {
   '--- 3. golangci-lint PULADO por -SemLint (isto NAO e aprovacao do gate de lint)'
 } else {
-  '--- 3. golangci-lint run ./internal/agent/... (mesma versao do CI)'
+  '--- 3. golangci-lint run ./internal/agent/... ./server/... (mesma versao do CI)'
   $gl = Join-Path $repo '_tmp\golangci\v2130\golangci-lint.exe'
   if (-not (Test-Path $gl)) {
     $achado = Get-Command golangci-lint -ErrorAction SilentlyContinue
@@ -74,7 +74,7 @@ if ($SemLint) {
   }
   if ($gl) {
     $env:GOLANGCI_LINT_CACHE = Join-Path $repo '_tmp\golangci-cache'
-    & $gl run ./internal/agent/... 2>&1 | Select-Object -Last 20 | ForEach-Object { "    $_" }
+    & $gl run ./internal/agent/... ./server/... 2>&1 | Select-Object -Last 20 | ForEach-Object { "    $_" }
     if ($LASTEXITCODE -ne 0) { $falhas.Add("golangci-lint (exit $LASTEXITCODE)") } else { '    OK' }
   } else {
     $falhas.Add('golangci-lint AUSENTE: o gate de lint do CI NAO foi medido (v2.13.0 em _tmp/golangci/v2130)')

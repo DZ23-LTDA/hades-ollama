@@ -436,14 +436,20 @@ func newDefaultAgentRuntime() (*agent.Runtime, error) {
 		}
 	}
 	var planner agent.Planner = agent.RulePlanner{}
+	// E-667: o MESMO cliente de chat do planejador e' injetado como executor de INFERENCIA POR PASSO. *Criar um
+	// segundo cliente aqui contornaria o controle de egresso (`newServerEgressClient`, auditado) e daria dois
+	// caminhos para falar com modelo - a classe de defeito que o E-658 varreu do roteador.* Sem `OLLAMA_AGENT_MODEL`
+	// nao ha cliente, e o kind `model.infer` **nao se registra**: o passo e' recusado no planejamento.
+	var inferenceClient agent.InferenceChatClient
 	if model := strings.TrimSpace(os.Getenv("OLLAMA_AGENT_MODEL")); model != "" {
+		inferenceClient = api.NewClient(envconfig.ConnectableHost(), newServerEgressClient("server.agent.ollama_local", true))
 		planner = &agent.OllamaPlanner{
-			Client: api.NewClient(envconfig.ConnectableHost(), newServerEgressClient("server.agent.ollama_local", true)),
+			Client: inferenceClient,
 			Model:  model,
 			Price:  agent.LocalModelPrice(),
 		}
 	}
-	runtime, err := agent.NewRuntime(agent.RuntimeConfig{Store: store, Context: contextStore, Company: companyStore, Planner: planner, WorkspaceRoot: workspaceRoot, DataRoot: storeRoot, Connectors: connectors, MCP: mcp, RemoteMCP: remoteMCP, Media: media, RedisQueue: redisQueue, Telemetry: telemetry, Push: push, Deployments: deployments})
+	runtime, err := agent.NewRuntime(agent.RuntimeConfig{Store: store, Context: contextStore, Company: companyStore, Planner: planner, InferenceChatClient: inferenceClient, WorkspaceRoot: workspaceRoot, DataRoot: storeRoot, Connectors: connectors, MCP: mcp, RemoteMCP: remoteMCP, Media: media, RedisQueue: redisQueue, Telemetry: telemetry, Push: push, Deployments: deployments})
 	if err != nil {
 		return nil, err
 	}
