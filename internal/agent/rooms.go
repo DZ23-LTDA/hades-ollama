@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-// Complemento 48 / FASE 2 â€” A SALA (room).
+// Complemento 48 / FASE 2 — A SALA (room).
 //
 // O QUE FOI MEDIDO ANTES DE ESCREVER (2026-10-15, commits 93f12ac19 e 0a0e4f5f3): nao existia conceito de sala
 // em NENHUMA das tres camadas (runtime, backend, UI) - zero ocorrencias de `room`/`sala` como conversa; o unico
@@ -17,11 +17,11 @@ import (
 //
 // A REGRA QUE DA' VALOR A ISTO (fail-closed): **so' entra na sala quem ja' e' membro do projeto.** *Uma sala que
 // aceita qualquer id vira um canal paralelo de permissao* - e o complemento proibe criar um segundo motor de
-// permissao (regra â‘ ). Por isso `JoinRoom` **recusa** um id que nao esteja em `Participants`.
+// permissao (regra ①). Por isso `JoinRoom` **recusa** um id que nao esteja em `Participants`.
 //
-// LIMITES DECLARADOS: â‘  a sala **nao** tem visibilidade publica/privada nem papeis (nao invento vocabulario que
-// ninguem pediu); â‘¡ **nao** ha canal de mensagens ligado a ela ainda - o chat existente (`inbox`, `/api/agent/v1/chat`)
-// continua a ser o unico caminho de mensagem, *e a sala aponta para ele, nao o substitui*; â‘¢ **nenhuma UI**.
+// LIMITES DECLARADOS: ① a sala **nao** tem visibilidade publica/privada nem papeis (nao invento vocabulario que
+// ninguem pediu); ② **nao** ha canal de mensagens ligado a ela ainda - o chat existente (`inbox`, `/api/agent/v1/chat`)
+// continua a ser o unico caminho de mensagem, *e a sala aponta para ele, nao o substitui*; ③ **nenhuma UI**.
 
 // Room e' um lugar de trabalho com membros (pessoas e agentes).
 type Room struct {

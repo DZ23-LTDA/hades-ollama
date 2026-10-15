@@ -8,20 +8,26 @@ import (
 	"time"
 )
 
-// Complemento 48 / FASE 2 e FASE 6 Ã¢â‚¬â€ membroS: humanos e AGENTES na MESMA lista.
+// Complemento 48 / FASE 2 e FASE 6 - MEMBROS: humanos e AGENTES na MESMA lista.
 //
-// O QUE FOI MEDIDO ANTES DE ESCREVER (2026-10-15, commit 93f12ac19): nao existia membro nenhum; a
-// presenca era chaveada por `ProjectID+UserID`, o que **excluia o agente por construcao** - *um agente nao tem
-// "user id" de pessoa*. Sem uma lista unica, "o time" e' so' a soma das pessoas, e a FASE 2 ("humanos e
-// multiplos agentes na mesma sala") nao tem onde existir.
+// O QUE FOI MEDIDO ANTES DE ESCREVER (2026-10-15, commit 93f12ac19): nao existia membro nenhum; a presenca era
+// chaveada por `ProjectID+UserID`, o que **excluia o agente por construcao** - *um agente nao tem "user id" de
+// pessoa*. Sem uma lista unica, "o time" e' so' a soma das pessoas, e a FASE 2 ("humanos e multiplos agentes na
+// mesma sala") nao tem onde existir.
 //
 // DECISAO DE DESENHO: o tipo e' **explicito** (`human`/`agent`) e nao um booleano ou um campo livre.
 // *Quem for decidir orcamento, permissao ou aprovacao precisa distinguir os dois SEM comparar strings.*
 //
-// NOTA DE ESTILO (aprendida com o lint, nao com a opiniao): os identificadores desta API sao em en-US, como os
-// vizinhos (`Comment`, `Presence`, `AddComment`, `SetPresence`). *A primeira versao usou nomes em pt-BR e o
-// `misspell` acusou 14 ocorrencias - o dicionario do linter e' en-US, e a consistencia com a API existente
-// ganha dos dois lados.* **Os comentarios continuam em pt-BR.**
+// NOTA DE ESTILO (aprendida com o lint, nao com a opiniao): os identificadores desta API sao em INGLES, como os
+// vizinhos (`Comment`, `Presence`, `AddComment`, `SetPresence`). *A primeira versao usou nomes noutra lingua e o
+// `misspell` acusou 14 ocorrencias - o dicionario do linter e' en-US, e a consistencia com a API existente ganha
+// dos dois lados.* **Os comentarios continuam em pt-BR.**
+//
+// NOTA DE CODIFICACAO (esta custou um CI vermelho, e fica registada): editar este ficheiro com
+// `Set-Content -Encoding UTF8` do PowerShell 5.1 **duplica a codificacao** - o `Get-Content -Raw` le o UTF-8 como
+// cp1252 e a gravacao transforma o texto acentuado num monstro. **O arbitro e' o checker do repositorio**
+// (`python scripts/hades_encoding_check_test.py`), que roda no CI: *editar texto por shell neste host exige
+// verificar a codificacao depois.*
 //
 // LIMITE DECLARADO: entrar na lista **nao autentica** ninguem - mesmo limite da presenca (item 4). A `Origin`
 // diz QUEM declarou a entrada; quem autentica e' a sessao/credencial, que nao vive neste arquivo.
@@ -118,9 +124,9 @@ func (s *CollaborationStore) Participants(projectID string) []Participant {
 // **agentes de verdade**, e nao contra pessoas cujo nome por acaso coincide.
 func (s *CollaborationStore) ProjectAgents(projectID string) []Participant {
 	agents := make([]Participant, 0)
-	for _, participant := range s.Participants(projectID) {
-		if participant.Kind == ParticipantAgent {
-			agents = append(agents, participant)
+	for _, member := range s.Participants(projectID) {
+		if member.Kind == ParticipantAgent {
+			agents = append(agents, member)
 		}
 	}
 	return agents

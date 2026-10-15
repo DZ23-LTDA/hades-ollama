@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-// Complemento 48 / FASE 2 + FASE 6 â€” membros: *humanos e agentes na MESMA lista.*
+// Complemento 48 / FASE 2 + FASE 6 — membros: *humanos e agentes na MESMA lista.*
 // O defeito medido: a presenca era chaveada por `ProjectID+UserID`, o que excluia o agente por construcao.
 
 func TestHumanoEAgenteFicamNaMesmaLista(t *testing.T) {
