@@ -94,17 +94,19 @@ if ($SemTestes) {
   # densa - `go test ./internal/agent` e `go test ./server`. *Um gate escopado e' melhor que gate nenhum, desde que
   # o escopo esteja ESCRITO.* Se o tempo incomodar, `-SemTestes` pula - e o script DIZ que pulou.
   #
-  # `-timeout 150s`: **nao** e' para esconder falha - e' para a falha ser RAPIDA e ALTA.
-  #
-  # MEDIDO (2026-10-15, duas medicoes independentes): `TestMatrizComCorrecaoDeReferenciaDaVerdeEmTodas`
-  # (`harness_benchmark_matrix_test.go:46`) **PASSA ISOLADO em 17,12 s** (`ok ... 21,566 s`), e o pacote **INTEIRO**
-  # trava em **605 s** (= limite padrao de 10 min do `go test`), com uma conexao HTTP presa no dump de goroutines
-  # (`net/http.persistConn.writeLoop`) e **sem** este teste tocar a rede (o `harnessFixo` devolve a referencia).
-  # => ***e' INTERACAO entre testes, nao lentidao de um teste.*** O `-timeout` faz a falha dizer QUAL teste travou;
-  # a bisseccao do pacote para achar quem envenena a execucao esta' registrada como **bloqueio local aberto**.
-  # *Nao se contorna isso tirando os testes do gate: um gate que nao roda teste nao substitui o CI (E-650).*
-  '--- 4. go test ./internal/agent ./server -count=1 -timeout 150s (o passo que mais reprova no CI)'
-  $saidaTeste = & go test ./internal/agent ./server -count=1 -timeout 150s 2>&1
+  # `-timeout 10m`: **nao** e' para esconder falha - e' para a falha ser RAPIDA o suficiente E o orcamento ser
+  # HONESTO. A historia deste numero, toda MEDIDA (2026-10-15):
+  #   1. a suite cheia travava de verdade: morria no limite padrao de 10 min do `go test`;
+  #   2. a causa foi achada e corrigida (E-671): `TestMatrizRealComModelosLocais` chamava um modelo que NAO gera,
+  #      e a sonda de disponibilidade dizia "disponivel" ⇒ 3 min por chamada;
+  #   3. com o travamento corrigido, medi `-timeout 150s` e o teste CULPADO **mudou entre rodadas**
+  #      (`TestMatrizComCorrecaoDeReferenciaDaVerdeEmTodas` numa, `TestReembedJobRefusesASecondJobOnTheSameProject`
+  #      na outra) ⇒ *nao havia "um teste que trava": o pacote era simplesmente MAIS LONGO que 150 s.*
+  #   4. as metades confirmaram: `^Test[A-L]` = 130,080 s e `^Test[M-Z]` = 186,705 s ⇒ a suite cheia precisa de
+  #      **>=316 s**. Um orcamento de 150 s era, portanto, uma FALHA FABRICADA PELO PROPRIO GATE.
+  # *Licao: um limite apertado depois de corrigir o defeito que o justificava passa a inventar falhas.*
+  '--- 4. go test ./internal/agent ./server -count=1 -timeout 10m (o passo que mais reprova no CI)'
+  $saidaTeste = & go test ./internal/agent ./server -count=1 -timeout 10m 2>&1
   $saidaTeste | Select-Object -Last 12 | ForEach-Object { "    $_" }
   if ($LASTEXITCODE -ne 0) { $falhas.Add("go test ./internal/agent ./server (exit $LASTEXITCODE)") } else { '    OK' }
 }
