@@ -54,10 +54,11 @@ type CollaborationStore struct {
 	comments     map[string][]Comment
 	presence     map[string]map[string]Presence
 	participants map[string][]Participant
+	rooms        map[string][]Room
 }
 
 func NewCollaborationStore(root string) (*CollaborationStore, error) {
-	store := &CollaborationStore{root: root, comments: map[string][]Comment{}, presence: map[string]map[string]Presence{}, participants: map[string][]Participant{}}
+	store := &CollaborationStore{root: root, comments: map[string][]Comment{}, presence: map[string]map[string]Presence{}, participants: map[string][]Participant{}, rooms: map[string][]Room{}}
 	if strings.TrimSpace(root) == "" {
 		return store, nil
 	}
@@ -74,6 +75,11 @@ func NewCollaborationStore(root string) (*CollaborationStore, error) {
 	// lista nao esta' na sala*, e e' isso que impede um mencionado inexistente de ser tratado como membro.
 	if err := readJSON(filepath.Join(root, "participantes.json"), &store.participants); err != nil && !errors.Is(err, os.ErrNotExist) {
 		return nil, fmt.Errorf("load collaboration participants: %w", err)
+	}
+	// ROOMS (complemento 48, FASE 2): a sala e' o lugar onde os membros se reúnem. *Uma sala que aceitasse
+	// qualquer id seria uma via paralela de permissao* - por isso `JoinRoom` checa `participants` primeiro.
+	if err := readJSON(filepath.Join(root, "rooms.json"), &store.rooms); err != nil && !errors.Is(err, os.ErrNotExist) {
+		return nil, fmt.Errorf("load collaboration rooms: %w", err)
 	}
 	return store, nil
 }
@@ -240,5 +246,8 @@ func (s *CollaborationStore) persistLocked() error {
 	if err := writeJSONAtomic(filepath.Join(s.root, "presence.json"), s.presence); err != nil {
 		return err
 	}
-	return writeJSONAtomic(filepath.Join(s.root, "participantes.json"), s.participants)
+	if err := writeJSONAtomic(filepath.Join(s.root, "participantes.json"), s.participants); err != nil {
+		return err
+	}
+	return writeJSONAtomic(filepath.Join(s.root, "rooms.json"), s.rooms)
 }
