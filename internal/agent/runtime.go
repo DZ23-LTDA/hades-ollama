@@ -54,7 +54,10 @@ type Runtime struct {
 	tools           *Registry
 	// E-436: o registry de MODELOS (pode ser nulo - ver `RuntimeConfig.Models`). *Fica privado, como `tools`, e o
 	// acesso e' pelo metodo `Models()`: campo exportado convidaria a mutacao de fora.*
-	models              *multillm.Registry
+	models *multillm.Registry
+	// E-663: conhecimento sobre CAPACIDADE dos modelos (tool call nativo, visao...). *Nunca nulo:* NewRuntime
+	// preenche com o registro MEDIDO do ambiente quando a config nao injeta um - e o gate do passo o consulta.
+	modelCapabilities   *ModelCapabilityRegistry
 	capabilityPolicy    CapabilityPolicy
 	workspaceRoot       string
 	dataRoot            string
@@ -145,6 +148,11 @@ type RuntimeConfig struct {
 	// *nunca inventa um modelo nem cai em silencio para o da missao.* Um runtime sem Registry continua funcionando
 	// como antes; o que ele **nao** faz e' fingir que roteia.
 	Models *multillm.Registry
+
+	// E-663: capacidades de MODELO (tool call nativo, visao, saida estruturada). Opcional: quando nil, o runtime usa
+	// `DefaultModelCapabilityRegistry()` - as capacidades MEDIDAS neste ambiente. *Injetavel para que um teste possa
+	// provar a recusa de um modelo medido como `compatible_text` sem mexer no registro global.*
+	ModelCapabilities *ModelCapabilityRegistry
 }
 
 var (
@@ -420,7 +428,7 @@ func NewRuntime(config RuntimeConfig) (*Runtime, error) {
 	}
 	runtime := &Runtime{
 		writeDurability: durabilidade,
-		store:           store, planner: planner, plannerResolver: config.PlannerResolver, tools: tools, models: config.Models, capabilityPolicy: capabilityPolicy, workspaceRoot: root, dataRoot: dataRoot, context: contextStore, company: companyStore, consent: consentRegistry, crm: crmStore, inbox: inboxStore, omnichannel: omnichannelRuntime, serviceAgents: serviceAgentRuntime, commerce: commerceStore,
+		store:           store, planner: planner, plannerResolver: config.PlannerResolver, tools: tools, models: config.Models, modelCapabilities: registroDeCapacidadesDeModelo(config.ModelCapabilities), capabilityPolicy: capabilityPolicy, workspaceRoot: root, dataRoot: dataRoot, context: contextStore, company: companyStore, consent: consentRegistry, crm: crmStore, inbox: inboxStore, omnichannel: omnichannelRuntime, serviceAgents: serviceAgentRuntime, commerce: commerceStore,
 		salesWorkforce:    salesWorkforceStore,
 		marketplace:       marketplaceSyncStore,
 		businessSnapshots: businessSnapshotStore, finance: financeOps, businessSupervisor: businessSupervisor, remoteMCP: config.RemoteMCP, metrics: &RuntimeMetrics{}, connectors: config.Connectors, mcp: config.MCP, queue: queue, redisQueue: config.RedisQueue, traces: traces, telemetry: telemetry, media: config.Media, builder: builder, collaboration: collaboration, push: config.Push, pushOutbox: pushOutbox, deployments: config.Deployments, deploymentApprovals: deploymentApprovals, webhookReplay: webhookReplay, mu: &sync.Mutex{}, running: make(map[string]bool), activeCancels: make(map[string]context.CancelFunc), cancelPollInterval: durableCancelPollInterval(),
@@ -2243,12 +2251,21 @@ func (r *Runtime) Run(ctx context.Context, id string) (runErr error) {
 				return r.failStep(mission, step, fmt.Errorf("roteamento de modelo do passo %q: %w", step.ID, erroRota))
 			}
 			modeloRoteado = decisao.Model.ID
+			// E-663 — A EXIGENCIA DE CHAMADA NATIVA E' CONFERIDA **ANTES** DE EXECUTAR (ver
+			// `conferirFerramentaNativa`): um passo que declara a capacidade `tools` e' RECUSADO se o modelo
+			// roteado foi MEDIDO como sem chamada nativa. Antes disto o registro sabia dizer isso e ninguem
+			// perguntava - o passo executava mesmo assim ("tool call fingido", proibido pelo V2.2).
+			rotuloFerramenta, erroFerramenta := r.conferirFerramentaNativa(*step, modeloRoteado)
+			if erroFerramenta != nil {
+				return r.failStep(mission, step, erroFerramenta)
+			}
 			if err := r.observeEvent(mission, "step.model.route", step.ID, map[string]any{
-				"step_id": step.ID,
-				"model":   decisao.Model.ID,
-				"score":   decisao.Score,
-				"reason":  decisao.Reason,
-				"pinned":  step.PinnedModelID,
+				"step_id":             step.ID,
+				"model":               decisao.Model.ID,
+				"score":               decisao.Score,
+				"reason":              decisao.Reason,
+				"pinned":              step.PinnedModelID,
+				"native_tool_calling": rotuloFerramenta,
 			}); err != nil {
 				return err
 			}

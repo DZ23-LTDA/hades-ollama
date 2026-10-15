@@ -2,6 +2,7 @@ package agent
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/ollama/ollama/internal/multillm"
@@ -90,4 +91,64 @@ func RouteRequestForStep(missao Mission, passo Step) multillm.RouteRequest {
 		pedido.PinnedModelID = strings.TrimSpace(missao.Model)
 	}
 	return pedido
+}
+
+// registroDeCapacidadesDeModelo devolve o registro injetado ou, quando ausente, o registro MEDIDO do ambiente.
+//
+// *Nunca devolve nil:* o gate do passo consulta este registro, e um nil transformaria "nao medido" em panic.
+func registroDeCapacidadesDeModelo(injetado *ModelCapabilityRegistry) *ModelCapabilityRegistry {
+	if injetado != nil {
+		return injetado
+	}
+	return DefaultModelCapabilityRegistry()
+}
+
+// E-663 — A EXIGENCIA DE CHAMADA NATIVA DE FERRAMENTA PASSA A SER APLICADA NO PASSO.
+//
+// **O QUE ESTAVA MEDIDO (06:45-03):** `ModelCapabilityRegistry.RequireNativeToolCalling` existia
+// (`model_capabilities.go:139`) e **so' era chamado em testes**. Um passo que declara a capacidade de modelo
+// `tools` podia ser roteado para um modelo **MEDIDO** como `compatible_text` e **executar assim mesmo** - o
+// "tool call fingido" que o V2.2 proibe. *O registro sabia dizer; ninguem perguntava.*
+//
+// **A DISTINCAO QUE O PROPRIO REGISTRO FAZ - e que aqui e' respeitada (ela e' o ponto):**
+//   - **MEDIDO como sem chamada nativa** (`ErrModelWithoutNativeToolCalling`) ⇒ **RECUSA** o passo: a exigencia
+//     declarada nao pode ser honrada, e executar esconderia exatamente isso;
+//   - **NAO MEDIDO** (`ErrModelCapabilityUnknown`) ⇒ **nao recusa**: *ausencia de medicao nao e' prova de
+//     incapacidade* - o proprio `ResolveToolMode` diz "nao medido", nunca "nao suporta". O fato, porem, vai para
+//     a trilha, porque *resultado ausente e' `NAO_MEDIDO`, nao aprovacao*.
+//
+// Devolve o rotulo honesto para o evento; **erro nao-nulo significa RECUSAR o passo**.
+func (r *Runtime) conferirFerramentaNativa(passo Step, modeloRoteado string) (string, error) {
+	if !exigeFerramentaNativa(passo) {
+		return "nao_exigido", nil
+	}
+	if strings.TrimSpace(modeloRoteado) == "" {
+		// O ramo so' entra com registry de modelos, e o roteamento falha fechado antes daqui. Declarar a ausencia
+		// e' melhor que fingir conformidade.
+		return "sem_modelo_roteado", nil
+	}
+	erro := r.modelCapabilities.RequireNativeToolCalling(modeloRoteado)
+	switch {
+	case erro == nil:
+		return "nativo", nil
+	case errors.Is(erro, ErrModelCapabilityUnknown):
+		return "nao_medido", nil
+	default:
+		return "recusado", fmt.Errorf("passo %q exige chamada nativa de ferramenta: %w", passo.ID, erro)
+	}
+}
+
+// exigeFerramentaNativa diz se o passo declara a capacidade de MODELO `tools`.
+//
+// A comparacao e' por CAPACIDADE e nao por texto livre: `RequiredCapabilities` e' o vocabulario de capacidade de
+// **modelo** (`coding`, `vision`, `tools`) - eixo distinto do escopo de **ferramenta** (`workspace:write`), como o
+// E-437 deixou registrado. *Misturar os dois vocabularios foi um defeito real deste repositorio: um passo de missao
+// passou a exigir uma capacidade-ferramenta do MODELO e falhava fechado por um motivo que nao existia.*
+func exigeFerramentaNativa(passo Step) bool {
+	for _, capacidade := range passo.RequiredCapabilities {
+		if strings.EqualFold(strings.TrimSpace(capacidade), "tools") {
+			return true
+		}
+	}
+	return false
 }
