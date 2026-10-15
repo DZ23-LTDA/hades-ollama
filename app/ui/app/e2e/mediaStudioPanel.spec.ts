@@ -30,11 +30,13 @@ test.describe("Estudio multimodal (item 45)", () => {
   }) => {
     await page.goto("/agentic?mission_id=mis_e2e");
 
-    // A aba de artefactos pode ou nao estar activa por omissao.
+    // O botao da aba so existe DEPOIS de a missao carregar
+    // (`Artefatos ({mission?.artifacts?.length ?? 0})`, AgenticSplitShell.tsx:643).
+    // Medido: testar `count() > 0` uma unica vez corre contra o fetch — se a missao
+    // ainda nao tiver chegado, nao se clica e o painel nunca monta. Por isso ESPERA-SE.
     const abaArtefatos = page.getByRole("button", { name: /^Artefatos/ });
-    if ((await abaArtefatos.count()) > 0) {
-      await abaArtefatos.first().click();
-    }
+    await expect(abaArtefatos.first()).toBeVisible({ timeout: 20000 });
+    await abaArtefatos.first().click();
 
     const resumo = page.locator("[data-estudio-resumo]");
     await expect(resumo).toBeVisible();
