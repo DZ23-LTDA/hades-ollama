@@ -230,7 +230,8 @@ commit revertido. *Auditar antes de ligar é mais barato do que reverter depois.
 | --- | --- | --- |
 | **Heartbeat de dispositivo** | ✅ **SIM** | `group.POST("/devices/:id/heartbeat", a.deviceHeartbeat)` `agent_routes.go:645` · handler `:3481` · `HeartbeatForOrganization` `:3493` · **WebSocket** `companion_ws.go:82,106` · teste `p0_scope_test.go:113` |
 | **Skill versions / restore** (§6) | ✅ **SIM** | handlers chamam `SkillVersionsForOrganization` `agent_routes.go:1683` e `RestoreSkillVersionForOrganization` `:1713` |
-| **Avaliação (`EvaluationRunner`)** | ❌ **NÃO** | `grep 'Evaluation\|evaluation'` em `server/**/*.go` ⇒ **0** |
+| **Avaliação (`EvaluationRunner`)** | ❌ **NÃO** | `grep 'Evaluation\|evaluation'` em `server/**/*.go` ⇒ **0** — *este é o harness de QUALIDADE; **não** é «avaliação de desempenho»* |
+| **Avaliação de DESEMPENHO — correção medida (2026-10-15)** | ✅ **SIM** | `group.GET("/performance", a.performance)` `agent_routes.go:846` · handler `:2969` chama **`agent.AvaliarDesempenho(missions)`** · ***e DECLARA o escopo*** (`"scope": "missoes visiveis para o chamador (organizacao da sessao)"`) — *um agregado sem escopo seria lido como global*. **ERRO MEU, MEDIDO:** o meu grep procurava nomes em INGLÊS (`Evaluation`/`Performance`) e **não** encontrou `AvaliarDesempenho` ⇒ ***procurar pelo nome errado produz falso negativo*, e eu quase declarei ausente uma capacidade que tem rota** |
 | **Orçamento por área / lease do supervisor** | ❌ **NÃO** (neste recorte) | `AreaBudget` e `AcquireSupervisorLease` ⇒ **0** ocorrências em `server/` |
 
 **Conclusão honesta:** a lacuna «domínio testado sem elo de API» atinge **avaliação** e **orçamento/lease** — *não* o heartbeat nem as versões de skills, que **têm rota**. *Não generalizo um defeito a partir de um caso.*
