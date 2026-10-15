@@ -50,9 +50,9 @@
 ### Estágio 43 — Adaptive Intelligence Router
 | lacuna | por que é lacuna (medido) | prioridade |
 | --- | --- | --- |
-| **Roteamento POR SUBTAREFA** | o router é chamado por **requisição** (`Route(request)`), e o planner produz `[]Step` — *não medi nenhum nó de plano carregando `RequiredCapabilities` própria nem escolha por nó* | **P0** |
+| **Roteamento POR SUBTAREFA** | *(medição 2026-10-15, HEAD `c4acbabef`)* o **CONTRATO por passo EXISTE**: `internal/agent/adaptive_router.go:17` declara «`Step.RequiredCapabilities` + `Step.PinnedModelID`: contrato do passo» e `:45`/`:60`/`:68` trazem `PinnedModelID` no passo. **O que continua EM ABERTO e' a LIGACAO ao runtime**: *nao medi ainda a escolha por no sendo exercida na execucao de uma missao* | **P0** |
 | **`MIN_COST`** | ✅ **JÁ EXISTE — com OUTRO NOME** | `router.go:25` **`RoutePreferenceCheapest = "cheapest"`**; reweight em `:104-105` (`score -= cost*100`); teto em `:34` `MaxCostCents` | **IMPLEMENTADO_E_TESTADO** |
-| **`MANUAL`** (*pin por tarefa*) | ❌ **ausente** | existe `PreferredProvider` (`:32`) com bônus **+10000** — *é **preferência**, não **pin**: não exclui os outros* | **P0** |
+| **`MANUAL`** (*pin por tarefa*) | ✅ **JA' EXISTE — MEDIDO no HEAD `c4acbabef`** *(a linha anterior dizia «ausente»: era **medicao HISTORICA**, preservada como tal)* | `internal/multillm/router.go:50` **`PinnedModelID`** (marcado **E-428**, estrategia `MANUAL`), **aplicado** em `:81-83` (`continue` rigido — os outros **nao** sao candidatos) com fallback honesto **`ErrNoRoute`** (`:131`); testes em `internal/multillm/router_pin_v2_test.go`. **Correcao do diagnostico antigo:** `PreferredProvider` **e' filtro RIGIDO por provedor** (`:85`, `continue`), *nao* «bonus solto» — o `+10000` (`:114-115`) e' redundante. *(Go nao existe neste host ⇒ a prova destes testes e' CI.)* | **IMPLEMENTADO_E_TESTADO** |
 | **DAG com dependências tipadas** | `RulePlanner.Plan` devolve passos; *não medi dependências entre nós nem orçamento/permissões por nó* | **P1** |
 | **Registry VERSIONADO** de capacidades | existem capacidades e probe, mas *não medi versão de registro nem proveniência por entrada* | **P1** |
 | **Circuit breaker / retry por classificação de falha** | *não medi* contador de falhas por provedor com abertura de circuito | **P1** |
