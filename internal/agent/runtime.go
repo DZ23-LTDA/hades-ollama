@@ -2665,6 +2665,26 @@ func (r *Runtime) watchDurableCancellation(ctx context.Context, id string, cance
 	}
 }
 
+// RegisteredToolKinds devolve os kinds de ferramenta REALMENTE registrados neste runtime, em ordem estavel.
+//
+// *POR QUE EXPORTADO (E-667):* a injecao de dependencia de um kind acontece na CONSTRUCAO do runtime. Sem um jeito
+// de **perguntar de fora** o que ficou registrado, a prova de que a injecao chegou ate' o runtime fica presa no
+// pacote `agent` - *foi o que aconteceu com `model.infer`: o executor existia e os testes do pacote passavam, mas
+// nada provava que o SERVIDOR registrava o kind.* Este acessor fecha essa lacuna de observabilidade (e serve ao
+// registro de capacidade do §9, que precisa refletir indisponibilidade real).
+func (r *Runtime) RegisteredToolKinds() []string {
+	if r == nil || r.tools == nil {
+		return nil
+	}
+	descritores := r.tools.Descriptors()
+	kinds := make([]string, 0, len(descritores))
+	for _, descritor := range descritores {
+		kinds = append(kinds, descritor.Name)
+	}
+	sort.Strings(kinds)
+	return kinds
+}
+
 func (r *Runtime) Events(id string) ([]Event, error) {
 	if _, err := r.getMission(strings.TrimSpace(id)); err != nil {
 		return nil, err
