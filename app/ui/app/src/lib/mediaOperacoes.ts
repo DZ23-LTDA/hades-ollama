@@ -138,9 +138,19 @@ export function motivoDeIndisponibilidade(
 }
 
 /** Mensagem de estado do estudio^ - nunca vazia, nunca prometendo o que nao existe. */
-export function resumoDoEstudio(providerConfigurado: boolean): string {
+export function resumoDoEstudio(
+  providerConfigurado: boolean | undefined,
+): string {
   const disponiveis = operacoesDisponiveis(providerConfigurado);
-  if (!providerConfigurado) {
+  if (providerConfigurado === undefined) {
+    // *«Nao sei» e' um estado legitimo - e diz-se:* a UI nao afirma disponibilidade que nao mediu;
+    // o servidor responde com a razao real quando a missao e' lancada.
+    return (
+      "Disponibilidade de provider de midia A CONFIRMAR: as 6 operacoes ficam lancaveis e o " +
+      "servidor responde com a razao real se nao houver provider configurado."
+    );
+  }
+  if (providerConfigurado === false) {
     return (
       `Sem provider de midia configurado: ${disponiveis.length} de ${OPERACOES_DE_MIDIA.length} ` +
       "operacao(oes) disponivel(is) (tom local). Imagem, video, TTS e STT exigem provider " +
