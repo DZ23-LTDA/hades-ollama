@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -316,26 +317,125 @@ func (r *DefaultAdaptiveRouter) addToCache(caps []string, pinnedModelID string, 
 	}
 }
 
+// DecomporPlanoEmSubtarefas projeta o PLANO da missao nas subtarefas roteaveis (E-662).
+//
+// *POR QUE PROJETAR O PLANO, E NAO "DECOMPOR" DE NOVO:* o plano JA' e' o DAG do trabalho, e `ValidatePlanGraph`
+// (E-434) ja' o recusa no planejamento quando as arestas sao invalidas. Um decompositor que inventasse subtarefas a
+// partir do texto do objetivo criaria um **segundo** plano - sem as garantias do primeiro - e os dois divergiriam.
+// Aqui a decomposicao e' uma PROJECAO: cada passo vira uma subtarefa com as MESMAS capacidades, o MESMO pin e as
+// MESMAS arestas.
+//
+// A prioridade e' a POSICAO no plano (o primeiro passo tem prioridade maior). Ela serve apenas de desempate em
+// `RouteBatch`: *nunca* para furar uma dependencia.
+func DecomporPlanoEmSubtarefas(plano []Step) []Subtask {
+	total := len(plano)
+	subtarefas := make([]Subtask, 0, total)
+	for indice, passo := range plano {
+		subtarefas = append(subtarefas, Subtask{
+			ID:                   passo.ID,
+			Objective:            passo.Title,
+			RequiredCapabilities: append([]string(nil), passo.RequiredCapabilities...),
+			PinnedModelID:        passo.PinnedModelID,
+			Priority:             total - indice,
+			Dependencies:         append([]string(nil), passo.DependsOn...),
+		})
+	}
+	return subtarefas
+}
+
+// ordenarPorDependencias devolve as subtarefas em ordem TOPOLOGICA (Kahn), com prioridade como desempate.
+//
+// Recusa o que a interface prometia respeitar: dependencia que nao existe, subtarefa sem ID, ID repetido e ciclo.
+// *Uma ordem que nao respeita a aresta nao e' ordem - e' a lista de novo com outro criterio.*
+func ordenarPorDependencias(subtarefas []Subtask) ([]Subtask, error) {
+	porID := make(map[string]Subtask, len(subtarefas))
+	posicao := make(map[string]int, len(subtarefas))
+	for indice, subtarefa := range subtarefas {
+		id := strings.TrimSpace(subtarefa.ID)
+		if id == "" {
+			return nil, fmt.Errorf("%w: subtarefa sem ID na posicao %d", ErrPlanGraphInvalid, indice)
+		}
+		if _, repetido := porID[id]; repetido {
+			return nil, fmt.Errorf("%w: subtarefa repetida %q", ErrPlanGraphInvalid, id)
+		}
+		subtarefa.ID = id
+		porID[id] = subtarefa
+		posicao[id] = indice
+	}
+
+	pendentes := make(map[string]int, len(subtarefas))
+	dependentes := make(map[string][]string, len(subtarefas))
+	for _, subtarefa := range subtarefas {
+		vistas := map[string]bool{}
+		for _, bruta := range subtarefa.Dependencies {
+			dependencia := strings.TrimSpace(bruta)
+			if dependencia == "" || vistas[dependencia] {
+				continue
+			}
+			if dependencia == subtarefa.ID {
+				return nil, fmt.Errorf("%w: a subtarefa %q depende de si mesma", ErrPlanGraphInvalid, subtarefa.ID)
+			}
+			if _, existe := porID[dependencia]; !existe {
+				return nil, fmt.Errorf("%w: a subtarefa %q depende de %q, que nao existe",
+					ErrPlanGraphInvalid, subtarefa.ID, dependencia)
+			}
+			vistas[dependencia] = true
+			pendentes[subtarefa.ID]++
+			dependentes[dependencia] = append(dependentes[dependencia], subtarefa.ID)
+		}
+	}
+
+	// Prontas = sem dependencia pendente. A cada rodada escolhe a de MAIOR prioridade (desempate: posicao original).
+	prontas := make([]string, 0, len(subtarefas))
+	for _, subtarefa := range subtarefas {
+		if pendentes[subtarefa.ID] == 0 {
+			prontas = append(prontas, subtarefa.ID)
+		}
+	}
+	ordenadas := make([]Subtask, 0, len(subtarefas))
+	for len(prontas) > 0 {
+		escolhida := 0
+		for i := 1; i < len(prontas); i++ {
+			a, b := porID[prontas[i]], porID[prontas[escolhida]]
+			if a.Priority > b.Priority || (a.Priority == b.Priority && posicao[a.ID] < posicao[b.ID]) {
+				escolhida = i
+			}
+		}
+		id := prontas[escolhida]
+		prontas = append(prontas[:escolhida], prontas[escolhida+1:]...)
+		ordenadas = append(ordenadas, porID[id])
+		for _, dependente := range dependentes[id] {
+			pendentes[dependente]--
+			if pendentes[dependente] == 0 {
+				prontas = append(prontas, dependente)
+			}
+		}
+	}
+	if len(ordenadas) != len(subtarefas) {
+		return nil, fmt.Errorf("%w: ciclo entre as subtarefas (sobrou %d de %d)",
+			ErrPlanGraphInvalid, len(subtarefas)-len(ordenadas), len(subtarefas))
+	}
+	return ordenadas, nil
+}
+
 // RouteBatch implementa AdaptiveRouter.RouteBatch
 func (r *DefaultAdaptiveRouter) RouteBatch(ctx context.Context, subtasks []Subtask) ([]RoutingDecision, error) {
 	if len(subtasks) == 0 {
 		return nil, nil
 	}
 
-	// Ordena por prioridade (maior primeiro)
-	sorted := make([]Subtask, len(subtasks))
-	copy(sorted, subtasks)
-	for i := 0; i < len(sorted); i++ {
-		for j := i + 1; j < len(sorted); j++ {
-			if sorted[i].Priority < sorted[j].Priority {
-				sorted[i], sorted[j] = sorted[j], sorted[i]
-			}
-		}
+	// E-662 - A ORDEM E' TOPOLOGICA, E A PRIORIDADE E' SO' DESEMPATE.
+	//
+	// O comentario da interface prometia "respeita dependencias" e a implementacao ordenava apenas por PRIORIDADE
+	// - *um dependente com prioridade maior era decidido ANTES do seu prerequisito.* Ordem que nao respeita a
+	// aresta do DAG nao e' ordem.
+	ordenadas, err := ordenarPorDependencias(subtasks)
+	if err != nil {
+		return nil, err
 	}
 
-	// Resolve dependências topologicamente (simples: processa por ordem de prioridade)
-	results := make([]RoutingDecision, 0, len(subtasks))
-	for _, subtask := range sorted {
+	results := make([]RoutingDecision, 0, len(ordenadas))
+	for _, subtask := range ordenadas {
 		select {
 		case <-ctx.Done():
 			return results, ctx.Err()
