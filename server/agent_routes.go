@@ -867,6 +867,11 @@ func (a *agentAPI) register(r *gin.Engine) {
 	group.GET("/missions/:id/companion", a.companion)
 	group.GET("/missions/:id/traces", a.traces)
 	group.GET("/missions/:id/artifacts/:artifact_id", a.artifact)
+	// ESTAGIO 47: a superficie de VERSOES. *O dominio (historico/comparar/restaurar) existia
+	// e testado em `internal/agent` e nao tinha rota nenhuma - a capacidade era inalcancavel.*
+	// Leitura sem CAS; escrita (`restore`) passa pelo `missionVersionMatches`, como todas.
+	group.GET("/missions/:id/artifacts/:artifact_id/versions", a.artifactVersions)
+	group.POST("/missions/:id/artifacts/:artifact_id/restore", a.artifactRestore)
 	group.POST("/missions/:id/run", a.runMission)
 	group.POST("/missions/:id/cancel", a.cancelMission)
 	group.DELETE("/missions/:id", a.deleteMission)
