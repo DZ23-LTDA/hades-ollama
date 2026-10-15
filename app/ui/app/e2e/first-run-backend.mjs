@@ -28,6 +28,9 @@
 import { createServer } from "node:http";
 
 import { createStudioBuilderFixture } from "./studio-builder-fixture.mjs";
+// Fixture da missão do Estúdio multimodal (item 45): mesma disciplina — HTTP de verdade
+// no stub, e NÃO `page.route` (medido: `page.route` não intercepta aqui).
+import { createMediaStudioFixture } from "./media-studio-fixture.mjs";
 
 const PORT = Number(process.env.E2E_BACKEND_PORT || 43117);
 const HOST = "127.0.0.1";
@@ -63,6 +66,13 @@ let settings = defaultSettings();
 // processo como o ÚNICO backend real da suíte: a spec de reordenação precisa
 // de HTTP de verdade, não de `page.route`.
 const handleStudioBuilderRequest = createStudioBuilderFixture({
+  sendJSON,
+  readBody,
+});
+
+// Fixture da missão (item 45): serve `/api/agent/v1/missions*` para o Agentic Console
+// conseguir seleccionar a missão e montar o painel do Estúdio multimodal.
+const handleMediaStudioRequest = createMediaStudioFixture({
   sendJSON,
   readBody,
 });
@@ -173,10 +183,14 @@ const server = createServer(async (request, response) => {
       request,
       response,
     });
-    if (studioStatus === null) {
+    const mediaStatus =
+      studioStatus === null
+        ? await handleMediaStudioRequest({ route, request, response })
+        : studioStatus;
+    if (mediaStatus === null) {
       sendJSON(response, status, { error: "not found" });
     } else {
-      status = studioStatus;
+      status = mediaStatus;
     }
   }
 
