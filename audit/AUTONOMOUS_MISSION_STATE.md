@@ -1,3 +1,43 @@
+## Checkpoint vigente — memoria persistente comprovada + build quebrado no PR #438 reparado — 2026-10-15 06:25 -03
+
+```yaml
+state: FIXING
+branch: fix/checker-relogio
+pr: 438
+toolchain: "_tmp/goroot1269/go (go1.26.9) — o `go` NAO esta no PATH; o repo traz o toolchain fixado"
+bateria_local: "_tmp/bateria_local.ps1 = espelho do job do CI: 1 node + 27 python = 28/28 VERDE"
+
+memoria_persistente:
+  vault: "C:\\Users\\DZ23\\Documents\\Obsidian Vault\\Memoria-Compartilhada-IA"
+  notas: [HADES-CURRENT-TASK.md, HADES-MEMORIA-DESENVOLVIMENTO.md, HADES-Retomada-20261015.md, MEMORY_INDEX.md, HADES-CHECKPOINT-LOG.md]
+  escrita_automatica: "hook .git/hooks/post-commit -> scripts/hades_checkpoint_note.ps1 (versionado)"
+  prova_do_hook: "commit 9c3a85b13 gerou SOZINHO a entrada `motivo: post-commit` no HADES-CHECKPOINT-LOG.md"
+  recuperacao_em_sessao_nova:
+    metodo: "subagente com contexto ZERO, lendo SOMENTE a pasta de memoria (proibido abrir o repo ou rodar git)"
+    resultado: "PASSOU — recuperou projeto, branch, SHAs, a tarefa em andamento, o proximo passo, os documentos canonicos, o comando de retomada e os bloqueios; usou NAO ENCONTRADO NA MEMORIA onde nao havia dado"
+    achado_do_teste: "a nota viva estava UMA revisao atras do log automatico (aa7b0f2c1 vs 9c3a85b13) — corrigido"
+
+E661_build_quebrado_no_PUSH:
+  sintoma: "gofmt acusou erro de sintaxe em internal/agent/adaptive_router.go (E-657, ja empurrado no commit 06b55b9c5)"
+  causa_raiz: "o arquivo tinha uma CHAVE TROCADA: faltava o `}` do `for` externo de capabilitiesHash (linha ~124) e sobrava um `}` depois de addToCache (linha ~264). Os dois erros se CANCELAVAM no balanco de chaves."
+  segunda_causa: "linha 231 usava `:=` com o nome `decision`, ja' existente como multillm.RouteDecision -> sombreamento -> 4 erros de tipo em cascata + import github.com/google/uuid nao usado"
+  correcao: "acrescentado o `}` que faltava, removido o `}` que sobrava, variavel renomeada para `roteada`, import removido, `Confidence` fica 0 (NAO MEDIDA) e o score BRUTO do registry segue no `Reason` — nao inventei normalizacao 0..1"
+  prova: "gofmt -l vazio; go build ./... exit 0; CGO_ENABLED=0 go build ./... exit 0; go vet ./internal/agent/ exit 0; bateria 28/28"
+  licao_de_metodo: "BALANCO DE CHAVES NAO E' PARSE VALIDO. Eu havia concluido 'o commit esta balanceado, logo compila' — falso. O ARBITRO e' o parser (gofmt/build), nao a contagem (ADV-24 aplicado a mim mesmo)."
+
+gate_verde_por_construcao:
+  defeito: "o passo do CI era `test -z \"$(gofmt -l ...)\"`: com erro de parse o gofmt escreve em STDERR e sai com STDOUT VAZIO, entao `test -z \"\"` PASSAVA. Foi assim que um arquivo Go invalido atravessou o CI verde."
+  correcao: "o codigo de saida do gofmt passa a ser conferido e o motivo da falha e' impresso"
+  numeracao: "E-658 fica reservado ao AdaptiveRouter (ja' declarado no proprio arquivo); minha instrumentacao de codificacao vira E-660 e o gate do gofmt E-661"
+
+pendencias:
+  - "empurrar estes commits e confirmar o CI no novo SHA (o `go build` do CI deve voltar a verde)"
+  - "o AdaptiveRouter (E-657/E-658) COMPILA mas NAO esta LIGADO a nada: nenhum call site fora do proprio arquivo. Nao declarar §4 entregue."
+  - "remedir os 5 documentos de checkpoint (frescura) antes de mexer em measured_at do estado"
+next_action: commit + push dos reparos, conferir CI, e retomar Paperclip/Cloudroom a partir do estado real
+rollback: reverter os commits desta fatia; nenhum reset --hard, nenhum force-push
+```
+
 ## Checkpoint vigente — P0 do CI reparado na raiz + memória de retomada — 2026-10-15 06:2x -03
 
 ```yaml
@@ -26,7 +66,7 @@ reparo_provado:
     - folhas novas: 14, todas em evidence_log[0] (rodada 8)
   diff_do_estado: 80 linhas alteradas (cirurgico), nao o ficheiro inteiro
 
-instrumento_E658:
+instrumento_E660:
   - scripts/hades_encoding_check.py cobria so dupla codificacao; BOM passava em silencio
     (read_text(encoding='utf-8') NAO lanca sobre BOM: o \ufeff vira o primeiro caractere)
   - passa a acusar BOM (medido nos BYTES) + 3 testes novos
