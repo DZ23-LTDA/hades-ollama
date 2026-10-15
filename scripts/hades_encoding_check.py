@@ -15,7 +15,7 @@ DISPENSAS: são **explícitas, por caminho, com motivo** — e o checker **falha
 (o arquivo dispensado deixou de conter o padrão), porque *dispensa que não casa com nada é dívida disfarçada
 de exceção*. Foi exatamente o defeito que corrigi no classificador de escopo (E-383).
 
-O PONTO CEGO QUE ESTE CHECKER TINHA (E-658)
+O PONTO CEGO QUE ESTE CHECKER TINHA (E-660)
 -------------------------------------------
 Até o E-658 este checker só procurava **dupla codificação** — e um **BOM UTF-8** passava silenciosamente por
 ele. *E passava porque `read_text(encoding="utf-8")` NÃO lança exceção sobre um BOM: o `\ufeff` vira o

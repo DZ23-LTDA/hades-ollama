@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Teste-do-teste do hades_encoding_check.py (E-410; BOM coberto no E-658).
+"""Teste-do-teste do hades_encoding_check.py (E-410; BOM coberto no E-660).
 
 Um checker que nunca dispara não é checker. Este teste monta uma ÁRVORE FALSA em diretório temporário e
 exige que o checker **acuse** o arquivo corrompido injetado — e que **não** acuse o arquivo limpo.
@@ -8,7 +8,7 @@ E prova também a metade que costuma ficar de fora: a **dispensa obsoleta**. *Di
 é dívida disfarçada de exceção* — foi o defeito que corrigi no classificador de escopo (E-383), e aqui ele
 tem de ser acusado pelo mesmo motivo.
 
-E-658 — A SEGUNDA FORMA: o BOM. O checker cobria só dupla codificação, e um BOM UTF-8 passava em silêncio
+E-660 — A SEGUNDA FORMA: o BOM. O checker cobria só dupla codificação, e um BOM UTF-8 passava em silêncio
 (`read_text(encoding="utf-8")` não lança sobre BOM: o `\ufeff` vira o primeiro caractere). Foi assim que o
 `HADES_MASTER_STATE.json` com BOM chegou ao CI e derrubou o `hades_release_gate.py`. As três provas abaixo
 fecham a classe: **acusa o BOM injetado**, **não acusa árvore sem BOM** e **a árvore real não tem BOM**.
