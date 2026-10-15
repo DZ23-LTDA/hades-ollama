@@ -464,9 +464,21 @@ func TestLembretesNaSuperficie(t *testing.T) {
 		}
 	}
 
-	// Um agendamento que começa dentro de 24 horas a contar de um `now` fixo: *para o motor, «devido» é uma relação
-	// entre o início e o agora — e a rota usa o relógio REAL, então escolhemos um início próximo do real.*
-	inicio := time.Now().UTC().Add(2 * time.Hour).Truncate(time.Minute)
+	// E-650 — **O INÍCIO NÃO PODE DEPENDER DO RELÓGIO DE PAREDE.**
+	//
+	// Antes: `time.Now().UTC().Add(2 * time.Hour)`. Com turno `00:00-24:00` e serviço de 30 min, um
+	// início às **23:56 (local)** termina 00:26 do dia seguinte e o motor RECUSA — e recusa COM RAZÃO
+	// (`shiftCoversMinute` considera a duração). O teste passava de manhã e falhava à noite:
+	// ***a cor do CI dependia da hora a que ele corria*** — medido, não suposto: reproduzido às
+	// 21:56 BRT com `2026-10-14T23:56:00-03:00 está fora da janela 00:00-24:00`.
+	//
+	// Agora escolhe-se o PRÓXIMO MEIO-DIA UTC: cabe com folga em qualquer janela de 24 horas e está
+	// SEMPRE a menos de 24h de distância, que é exactamente o que o lembrete de 24h exige.
+	agora := time.Now().UTC()
+	inicio := time.Date(agora.Year(), agora.Month(), agora.Day(), 12, 0, 0, 0, time.UTC)
+	if !inicio.After(agora) {
+		inicio = inicio.AddDate(0, 0, 1)
+	}
 	agendamento, err := loja.Book(agent.BookRequest{
 		OrganizationID: organizacao, ResourceID: recurso.ID, ServiceID: servico.ID,
 		ContactID: "cliente-lembrete", Channel: "voice", StartsAt: inicio, IdempotencyKey: "k-lembrete",

@@ -712,6 +712,17 @@ func (a *agentAPI) register(r *gin.Engine) {
 	group.POST("/skills", a.registerSkill)
 	group.POST("/skills/:id/enable", a.enableSkill)
 	group.POST("/skills/:id/disable", a.disableSkill)
+	// REPOSTO NO E-650. Esta rota foi APAGADA POR ENGANO no E-642: usei a linha do `DELETE` como
+	// ANCORA de edicao e substitui-a pelas rotas novas SEM A REPOR. A consequencia nao foi um erro
+	// de compilacao (nada a referencia) mas uma FUNCIONALIDADE A MENOS: apagar skill deixou de
+	// existir, e o cliente da UI continuava a chamar a rota.
+	//
+	// *Quem apanhou foi o CI* (`node scripts/verify-contracts.mjs`, dentro de "Preserve Class A+
+	// surfaces"), a comparar o caminho do frontend com as rotas do backend. A minha bateria local
+	// de 16 verificadores NAO o via, porque nenhum deles e' esse script - a mesma classe de falha
+	// do E-636: *a bateria nao continha o gate que o CI continha.* O verificador de contrato passa
+	// a fazer parte dela.
+	group.DELETE("/skills/:id", a.removeSkill)
 	// E-642: HISTORICO de versoes de skill. As rotas de skills ja' existiam; o que faltava era
 	// expor o arquivo que o E-629 passou a guardar e o restauro do E-631.
 	//
