@@ -6,7 +6,7 @@
 | --- | --- |
 | Commit medido (**local = remoto**, 0 por empurrar) | `06cd277da` |
 | Remoto da branch | `06cd277da` (*nenhum commit local pendente*) |
-| `main` remota | `4b3e21854` (**histórico**, não re-medido neste checkpoint) |
+| `main` remota | `4b3e2185422c24d5a05fd46a343953ad6f41d1e5` (**medido agora** com `git ls-remote`, 2026-10-15 — *não é valor herdado*) |
 | Evidências no índice | **546** (**histórico** — não re-medido; *não herde este número*) |
 | Estágios com evidência | **38 de 38** (**histórico**) |
 | Bloqueios declarados | **17** (**histórico**) |
