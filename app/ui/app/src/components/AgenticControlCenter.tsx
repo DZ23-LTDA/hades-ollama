@@ -11,6 +11,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { agentFetch, listCLIStatus, listConnectors, listMCPServers, listSkills } from "@/lib/agenticClient";
 import { getModels } from "@/api";
+import { CapabilitiesCard } from "@/components/CapabilitiesCard";
 
 type SafeConfig = {
   runtime?: string;
@@ -108,6 +109,9 @@ export function AgenticControlCenter() {
             <ResourceList title="Conectores na allowlist" count={connectors.length}>{connectorsLoading ? <span className="text-xs text-neutral-400">Carregando…</span> : connectors.length ? connectors.map((connector) => <div key={connector.id} className="rounded-lg bg-neutral-50 p-2.5 text-xs dark:bg-neutral-900"><div className="font-medium text-neutral-800 dark:text-neutral-200">{connector.provider} <span className="text-neutral-400">· {connector.id}</span></div><div className="mt-1 truncate text-[10px] text-neutral-500">{connector.base_url}</div><div className="mt-1 text-[10px] text-neutral-400">{connector.operations?.length ?? 0} operações · token por ambiente{connector.oauth_provider ? ` · OAuth ${connector.oauth_provider}` : ""}</div></div>) : <span className="text-xs text-neutral-400">Nenhum connector carregado.</span>}</ResourceList>
             <ResourceList title="MCP stdio" count={mcpServers.length}>{mcpLoading ? <span className="text-xs text-neutral-400">Carregando…</span> : mcpServers.length ? mcpServers.map((server) => <div key={server.id} className="rounded-lg bg-neutral-50 p-2.5 text-xs dark:bg-neutral-900"><div className="font-medium text-neutral-800 dark:text-neutral-200">{server.id}</div><div className="mt-1 truncate font-mono text-[10px] text-neutral-500">{server.command} {(server.args ?? []).join(" ")}</div><div className="mt-1 text-[10px] text-neutral-400">{server.allowed_methods?.length ?? 0} métodos allowlisted · {server.environment_vars?.length ?? 0} nomes de ambiente</div></div>) : <span className="text-xs text-neutral-400">Nenhum servidor MCP carregado.</span>}</ResourceList>
             <ResourceList title="Skills" count={skills.length}>{skillsLoading ? <span className="text-xs text-neutral-400">Carregando…</span> : skills.length ? skills.map((skill) => <div key={skill.id} className="rounded-lg bg-neutral-50 p-2.5 text-xs dark:bg-neutral-900"><div className="flex items-center justify-between gap-2 font-medium text-neutral-800 dark:text-neutral-200"><span>{skill.id}</span><StatusPill ok={skill.trusted}>{skill.trusted ? "confiável" : "revisar"}</StatusPill></div><div className="mt-1 line-clamp-2 text-[10px] text-neutral-500">{skill.description}</div><div className="mt-1 text-[10px] text-neutral-400">v{skill.version} · {skill.tools?.length ?? 0} tools</div></div>) : <span className="text-xs text-neutral-400">Nenhuma skill carregada.</span>}</ResourceList>
+            <ResourceList title="Capacidades dos modelos" count={1}>
+              <CapabilitiesCard />
+            </ResourceList>
             <ResourceList title="CLIs detectadas" count={installedCLIs.length}>{cliLoading ? <span className="text-xs text-neutral-400">Detectando…</span> : installedCLIs.length ? installedCLIs.map((cli) => <div key={cli.id} className="flex items-center justify-between rounded-lg bg-neutral-50 p-2.5 text-xs dark:bg-neutral-900"><span className="font-medium text-neutral-800 dark:text-neutral-200">{cli.name}</span><StatusPill ok>{cli.executable ?? "instalado"}</StatusPill></div>) : <span className="text-xs text-neutral-400">Nenhum CLI compatível detectado no ambiente.</span>}</ResourceList>
           </div>
         </div>

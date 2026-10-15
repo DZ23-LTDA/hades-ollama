@@ -477,6 +477,42 @@ export const getSkillDifference = (id: string, from: string, to: string) =>
   agentFetch<{ difference: SkillDiferenca }>(
     `/api/agent/v1/skill-versions/${encodeURIComponent(id)}/compare?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`,
   );
+
+// VERDADE DE CAPACIDADE POR MODELO (§9), sobre a rota do E-654.
+//
+// `source` é OBRIGATÓRIO: capacidade sem origem é exactamente o que o V2.2 proíbe. E `known:false`
+// significa «não medido» — que NÃO é «não suporta»: o produto cai em modo compatível e diz isso.
+export type ModelCapability = {
+  model: string;
+  tool_calling: boolean;
+  vision: boolean;
+  structured_output: boolean;
+  embeddings: boolean;
+  context_tokens?: number;
+  source: string;
+  note?: string;
+};
+
+export type CapabilityReport = {
+  models: ModelCapability[];
+  policy: string;
+  scope: string;
+};
+
+export type SingleCapabilityReport = {
+  model: string;
+  known: boolean;
+  tool_mode: string;
+  reason: string;
+  capabilities?: ModelCapability;
+};
+
+export const getCapabilities = (model?: string) =>
+  agentFetch<CapabilityReport | SingleCapabilityReport>(
+    model
+      ? `/api/agent/v1/capabilities?model=${encodeURIComponent(model)}`
+      : "/api/agent/v1/capabilities",
+  );
 export type BrowserEnvironmentStatus = {
   python_path?: string;
   python_ok: boolean;
