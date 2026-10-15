@@ -10,9 +10,9 @@
 
 | Campo | Valor |
 | --- | --- |
-| **Commit medido** (`measured_commit`) | `3e585c242f251a6c44003ad0c1519373625ff5cc` |
+| **Commit medido** (`measured_commit`) | `e423ec72e682764d50bc966edd181c854e28d3a3` |
 | **Commit da `main`** (`git.main_sha`) | `4b3e21854` |
-| **Gerado em** (`measured_at`) | 2026-10-15T07:06:44-03:00 |
+| **Gerado em** (`measured_at`) | 2026-10-15T07:41:51-03:00 |
 
 *Dois campos, e não um: o `E-552` mediu que este derivado **não** citava commit nenhum, e que o
 `HADES_BASELINE_REPORT.md` citava **só** a `main` — *o que não está errado (*ele mede o baseline, e o baseline é da
