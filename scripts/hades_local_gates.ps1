@@ -94,19 +94,23 @@ if ($SemTestes) {
   # densa - `go test ./internal/agent` e `go test ./server`. *Um gate escopado e' melhor que gate nenhum, desde que
   # o escopo esteja ESCRITO.* Se o tempo incomodar, `-SemTestes` pula - e o script DIZ que pulou.
   #
-  # `-timeout 10m`: **nao** e' para esconder falha - e' para a falha ser RAPIDA o suficiente E o orcamento ser
-  # HONESTO. A historia deste numero, toda MEDIDA (2026-10-15):
-  #   1. a suite cheia travava de verdade: morria no limite padrao de 10 min do `go test`;
-  #   2. a causa foi achada e corrigida (E-671): `TestMatrizRealComModelosLocais` chamava um modelo que NAO gera,
-  #      e a sonda de disponibilidade dizia "disponivel" ⇒ 3 min por chamada;
-  #   3. com o travamento corrigido, medi `-timeout 150s` e o teste CULPADO **mudou entre rodadas**
-  #      (`TestMatrizComCorrecaoDeReferenciaDaVerdeEmTodas` numa, `TestReembedJobRefusesASecondJobOnTheSameProject`
-  #      na outra) ⇒ *nao havia "um teste que trava": o pacote era simplesmente MAIS LONGO que 150 s.*
-  #   4. as metades confirmaram: `^Test[A-L]` = 130,080 s e `^Test[M-Z]` = 186,705 s ⇒ a suite cheia precisa de
-  #      **>=316 s**. Um orcamento de 150 s era, portanto, uma FALHA FABRICADA PELO PROPRIO GATE.
-  # *Licao: um limite apertado depois de corrigir o defeito que o justificava passa a inventar falhas.*
-  '--- 4. go test ./internal/agent ./server -count=1 -timeout 10m (o passo que mais reprova no CI)'
-  $saidaTeste = & go test ./internal/agent ./server -count=1 -timeout 10m 2>&1
+  # `-timeout 25m`: **nao** e' para esconder falha - e' para o orcamento ter MARGEM sobre o que foi MEDIDO.
+  # A historia deste numero, toda medida (2026-10-15):
+  #   1. a suite cheia morria no limite padrao de 10 min do `go test`;
+  #   2. a causa era REAL e foi corrigida (E-671): `TestMatrizRealComModelosLocais` chamava um modelo que NAO gera
+  #      (`llama3.2:3b`) e a sonda de disponibilidade dizia "disponivel" ⇒ 3 min por chamada;
+  #   3. com o travamento corrigido, medi `-timeout 150s` e o teste apontado como culpado **mudou entre rodadas**
+  #      (`TestMatrizComCorrecaoDeReferenciaDaVerdeEmTodas`, depois `TestReembedJobRefusesASecondJobOnTheSameProject`)
+  #      ⇒ *nao havia "um teste que trava": o pacote era mais longo que o orcamento.*
+  #   4. as metades confirmaram: `^Test[A-L]` = 130,080 s e `^Test[M-Z]` = 186,705 s.
+  #   5. **A MEDICAO DECISIVA:** a suite INTEIRA com 10 min de orcamento **PASSOU em 549,506 s** numa rodada e
+  #      **estourou em 603,914 s** noutra ⇒ *o pacote leva ~9-10 min NESTE host, na BORDA do padrao de 10 min.*
+  #      **Nao existe travamento: existe orcamento apertado.** O `io.Copy`/`os/exec` que eu via no dump eram os
+  #      filhos `go test ./...` dos fixtures, **ainda rodando** - que e' o trabalho legitimo deles.
+  # *Licao (duas hipoteses minhas cairam por medicao neste episodio: "vazamento de processos" e "travamento no
+  # filho"): um limite apertado deixa de ser protecao e passa a inventar falhas.*
+  '--- 4. go test ./internal/agent ./server -count=1 -timeout 25m (o passo que mais reprova no CI)'
+  $saidaTeste = & go test ./internal/agent ./server -count=1 -timeout 25m 2>&1
   $saidaTeste | Select-Object -Last 12 | ForEach-Object { "    $_" }
   if ($LASTEXITCODE -ne 0) { $falhas.Add("go test ./internal/agent ./server (exit $LASTEXITCODE)") } else { '    OK' }
 }
