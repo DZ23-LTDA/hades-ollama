@@ -20,9 +20,24 @@ import (
 // ESTADO MEDIDO (E-658): o router **decide pelo caminho canonico** (`Runtime.RouteModelForStep`) - fonte unica de
 // decisao, falha fechado sem runtime, cache com identidade correcta e estatistica sem corrida.
 //
-// O QUE CONTINUA FALTANDO (nao declarar entregue): o **DECOMPOSITOR** (objetivo -> subtarefas em DAG) e o **evento
-// de auditoria** da decisao de roteamento. Hoje quem consome o router e' quem monta as `Subtask` (testes e chamadas
-// directas) - o laco de execucao ainda **nao** o chama.
+// CORRECCAO POR MEDICAO (2026-10-15, HEAD `d102d700f`): o texto abaixo **era verdadeiro na epoca em que foi escrito e
+// ficou DESACTUALIZADO** - preservado como registo historico, *nao como estado corrente*. Medido por call site:
+//   - `internal/agent/runtime.go:2275` **CHAMA** `r.RouteModelForStep(mission, *step)` dentro do laco de execucao
+//     (E-437: «`RouteModelForStep` existia desde E-436 e **nao era chamada por ninguem**» <= esse era o estado antigo);
+//   - o passo que nao pode honrar as exigencias **FALHA FECHADO** (`runtime.go:2276-2280`), nunca executa no modelo
+//     da missao fingindo que a exigencia foi honrada;
+//   - o EVENTO DE AUDITORIA **existe**: `step.model.route` (`runtime.go:2295`) leva modelo, score, motivo, `pinned`,
+//     chamada nativa, custo/1k, `candidates` (de `RouteCandidates`, nao recalculado) e orcamento declarado;
+//   - a exigencia de chamada nativa e' conferida ANTES de executar (`runtime.go:2286`, E-663) - recusa "tool fingida".
+//
+// O QUE CONTINUA FALTANDO (**este e' o delta real**, declarado pelo proprio `runtime.go:2265-2267`): a chamada
+// **nao troca o executor**. O passo continua com o planejador da MISSAO; a decisao por passo fica *medida, registrada
+// e entregue a ferramenta* (`runtime.go:2271-2273`, E-438), mas ainda **nao aplicada**: *«Trocar o executor e' o
+// incremento seguinte, e chama-lo de feito seria a classe que esta missao derruba.»*
+//
+// TEXTO HISTORICO (preservado): «o **DECOMPOSITOR** (objetivo -> subtarefas em DAG) e o **evento de auditoria** da
+// decisao de roteamento [faltavam]. Hoje quem consome o router e' quem monta as `Subtask` (testes e chamadas
+// directas) - o laco de execucao ainda **nao** o chama.»
 //
 // Lista original do que faltava:
 // 1. Recebe um objetivo + contexto → decompõe em subtarefas (DAG) com capacidades requeridas
