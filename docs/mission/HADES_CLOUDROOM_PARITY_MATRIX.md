@@ -33,6 +33,21 @@ A lição do E-619 está aplicada aqui: uma capacidade declarada «em falta» se
 **Resumo**: 14 `IMPLEMENTED_VERIFIED` · 3 `IMPLEMENTED_PARTIAL` (3, 14, 17) · 1 `MISSING` (9) ·
 2 `BLOCKED_EXTERNAL` (1, 4).
 
+## 1.1 Medição própria (2026-10-15, branch `fix/checker-relogio`) — e o que ela NÃO pode concluir
+
+*Procurei os conceitos desta matriz **por nome** em `*.go`:*
+
+```
+1.ª família: UNKNOWN_OUTCOME|UnknownOutcome|Teleport|SleepDaSessao|DurableQueue|FilaDuravel|NativeResume|RetomadaNativa → 0
+2.ª família: SessaoDuravel|DurableSession|ResumeSession|RetomarSessao|TransferirSessao|Indeterminado|Unresolved|ExecutorRemoto|RemoteExecutor → 0
+```
+
+**MAS — e este é o ponto que me corrige outra vez: a §2 abaixo já classifica `UNKNOWN_OUTCOME` como `PARTIAL`, com a implementação medida em `RetryDeadLetter`.** ⇒ o meu zero **não contradiz** a matriz: ele só mostra que **o conceito vive sob outro nome**. *A mesma lição dos rounds 64-65 (grep por nome errado ⇒ falso negativo), agora aplicada a **este** documento — e é por isso que eu NÃO reclassifico nada aqui.*
+
+**Substrato medido (e que existe de facto):** fila durável + claim atómico + lease + heartbeat + reclaim — `queue.go:340,563` · `redis_queue.go:58,853,871`, com testes nomeados (`TestRedisClaimAndReclaimUseAtomicLeaseScripts`, `TestDistributedRedisClaimIsIdempotentAndReclaimsExpiredLease`, `TestDistributedRedisHeartbeatReclaimAndAtomicMoveDue`). *É a base sobre a qual o Teleport se constrói; **não** é o Teleport.*
+
+**Sobre o **Teleport** (§8 da meta):** exige prova real com **dois executores**; **não medi nenhum segundo executor** ⇒ continua `BLOCKED_EXTERNAL` como a matriz já diz, e o caminho correcto é **contratos/testes locais independentes**, sem segundo runtime.
+
 ## 2. As duas reclassificações, e por que mudaram
 
 1. **`UNKNOWN_OUTCOME`: de `MISSING` para `PARTIAL`.** O §5 exige não repetir efeitos externos
