@@ -251,3 +251,118 @@ func TestAdaptiveRouterPinNaoAtropelaCapacidade(t *testing.T) {
 		t.Fatal("ARMADILHA: pin sem a capacidade exigida passou — *um pin que nao pode ser honrado tem de falhar*")
 	}
 }
+
+// (9) DAG: a DEPENDENCIA vence a PRIORIDADE (o comentario da interface prometia isso e a implementacao nao fazia).
+func TestRouteBatchRespeitaDependenciaAcimaDaPrioridade(t *testing.T) {
+	router := NewAdaptiveRouterParaRuntime(runtimeDeRoteamento(t), DefaultModelCapabilityRegistry())
+	lote := []Subtask{
+		{ID: "depois", RequiredCapabilities: []string{"coding"}, Priority: 9, Dependencies: []string{"antes"}},
+		{ID: "antes", RequiredCapabilities: []string{"coding"}, Priority: 1},
+	}
+	ordem, err := router.RouteBatch(context.Background(), lote)
+	if err != nil {
+		t.Fatalf("RouteBatch: %v", err)
+	}
+	if len(ordem) != 2 {
+		t.Fatalf("esperadas 2 decisoes, vieram %d", len(ordem))
+	}
+	if ordem[0].SubtaskID != "antes" {
+		t.Fatalf("DEFEITO: a subtarefa %q foi decidida primeiro — *a dependencia tem de vencer a prioridade*",
+			ordem[0].SubtaskID)
+	}
+}
+
+// (10) DAG invalido: ciclo, dependencia fantasma, ID repetido e ID vazio sao RECUSADOS (nao roteados "na ordem").
+func TestRouteBatchRecusaGrafoInvalido(t *testing.T) {
+	router := NewAdaptiveRouterParaRuntime(runtimeDeRoteamento(t), DefaultModelCapabilityRegistry())
+	ctx := context.Background()
+	casos := map[string][]Subtask{
+		"ciclo": {
+			{ID: "a", RequiredCapabilities: []string{"coding"}, Dependencies: []string{"b"}},
+			{ID: "b", RequiredCapabilities: []string{"coding"}, Dependencies: []string{"a"}},
+		},
+		"auto dependencia": {
+			{ID: "a", RequiredCapabilities: []string{"coding"}, Dependencies: []string{"a"}},
+		},
+		"dependencia fantasma": {
+			{ID: "a", RequiredCapabilities: []string{"coding"}, Dependencies: []string{"nao-existe"}},
+		},
+		"ID repetido": {
+			{ID: "a", RequiredCapabilities: []string{"coding"}},
+			{ID: "a", RequiredCapabilities: []string{"coding"}},
+		},
+		"ID vazio": {
+			{ID: "   ", RequiredCapabilities: []string{"coding"}},
+		},
+	}
+	for nome, lote := range casos {
+		if _, err := router.RouteBatch(ctx, lote); !errors.Is(err, ErrPlanGraphInvalid) {
+			t.Fatalf("caso %q: esperado ErrPlanGraphInvalid, veio %v", nome, err)
+		}
+	}
+}
+
+// (11) DECOMPOSITOR: projeta o plano (nao inventa um segundo) e COPIA as fatias.
+func TestDecomporPlanoEmSubtarefasProjetaOPlanoValidado(t *testing.T) {
+	plano := []Step{
+		{ID: "pesquisa", Title: "levantar fontes", RequiredCapabilities: []string{"research"}},
+		{ID: "codigo", Title: "implementar", RequiredCapabilities: []string{"coding"},
+			PinnedModelID: "local/forte", DependsOn: []string{"pesquisa"}},
+	}
+	if err := ValidatePlanGraph(plano); err != nil {
+		t.Fatalf("o plano do teste tinha de ser valido para o validador EXISTENTE: %v", err)
+	}
+	subtarefas := DecomporPlanoEmSubtarefas(plano)
+	if len(subtarefas) != 2 {
+		t.Fatalf("esperadas 2 subtarefas, vieram %d", len(subtarefas))
+	}
+	if subtarefas[0].ID != "pesquisa" || subtarefas[1].ID != "codigo" {
+		t.Fatalf("a projecao trocou a ordem/identidade: %q, %q", subtarefas[0].ID, subtarefas[1].ID)
+	}
+	if len(subtarefas[1].Dependencies) != 1 || subtarefas[1].Dependencies[0] != "pesquisa" {
+		t.Fatalf("a ARESTA nao foi projetada: %+v", subtarefas[1].Dependencies)
+	}
+	if subtarefas[1].PinnedModelID != "local/forte" {
+		t.Fatalf("o pin nao foi projetado: %q", subtarefas[1].PinnedModelID)
+	}
+	if len(subtarefas[1].RequiredCapabilities) != 1 || subtarefas[1].RequiredCapabilities[0] != "coding" {
+		t.Fatalf("as capacidades nao foram projetadas: %+v", subtarefas[1].RequiredCapabilities)
+	}
+	if subtarefas[0].Priority <= subtarefas[1].Priority {
+		t.Fatalf("o primeiro passo do plano tem de ter prioridade MAIOR (desempate): %d vs %d",
+			subtarefas[0].Priority, subtarefas[1].Priority)
+	}
+	// PROVA DA COPIA: mutar a subtarefa nao pode tocar o PLANO.
+	subtarefas[1].RequiredCapabilities[0] = "mutado"
+	if plano[1].RequiredCapabilities[0] != "coding" {
+		t.Fatal("a decomposicao compartilhou a fatia: mutar a subtarefa alterou o PLANO")
+	}
+}
+
+// (12) PONTA A PONTA: plano validado -> subtarefas -> decisoes NA ORDEM DO DAG.
+func TestPlanoValidadoViraRoteamentoNaOrdemDoDAG(t *testing.T) {
+	router := NewAdaptiveRouterParaRuntime(runtimeDeRoteamento(t), DefaultModelCapabilityRegistry())
+	plano := []Step{
+		{ID: "a", Title: "primeiro", RequiredCapabilities: []string{"coding"}},
+		{ID: "b", Title: "segundo", RequiredCapabilities: []string{"coding"}, DependsOn: []string{"a"}},
+		{ID: "c", Title: "terceiro", RequiredCapabilities: []string{"coding"}, DependsOn: []string{"b"}},
+	}
+	if err := ValidatePlanGraph(plano); err != nil {
+		t.Fatalf("plano do teste invalido: %v", err)
+	}
+	decisoes, err := router.RouteBatch(context.Background(), DecomporPlanoEmSubtarefas(plano))
+	if err != nil {
+		t.Fatalf("RouteBatch sobre o plano projetado: %v", err)
+	}
+	if len(decisoes) != 3 {
+		t.Fatalf("esperadas 3 decisoes, vieram %d", len(decisoes))
+	}
+	for indice, esperado := range []string{"a", "b", "c"} {
+		if decisoes[indice].SubtaskID != esperado {
+			t.Fatalf("posicao %d: esperado %q, veio %q", indice, esperado, decisoes[indice].SubtaskID)
+		}
+		if decisoes[indice].ChosenModel == "" {
+			t.Fatalf("a decisao da subtarefa %q veio SEM modelo escolhido", esperado)
+		}
+	}
+}
