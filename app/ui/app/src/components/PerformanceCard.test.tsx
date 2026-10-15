@@ -82,4 +82,13 @@ describe("PerformanceCard", () => {
     expect(conteudo).not.toContain("Taxa de conclusão");
     expect(conteudo).not.toContain("R$");
   });
+
+  // E-651 — REGRESSÃO DO E2E: um payload SEM `performance` derrubava a página inteira (TypeError
+  // até ao error boundary). *Um teste só com o payload bom não prova resiliência a payload mau.*
+  it("payload sem `performance` diz que não há relatório e NÃO rebenta", async () => {
+    vi.mocked(getPerformance).mockResolvedValue({} as never);
+    const conteudo = await renderizar();
+    expect(conteudo).toContain("não devolveu o relatório");
+    expect(conteudo).not.toContain("Taxa de conclusão");
+  });
 });

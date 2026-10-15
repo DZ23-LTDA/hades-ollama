@@ -59,7 +59,24 @@ export function PerformanceCard() {
     );
   }
 
+  // E-651 — ***UM PAYLOAD SEM `performance` NÃO PODE DERRUBAR A PÁGINA.***
+  //
+  // Medido no E2E: o stub responde `{}` a rotas não tratadas, este componente fazia
+  // `dados.performance` → `undefined` e logo `relatorio.completed` → `TypeError`, que subia até ao
+  // error boundary e mostrava «Esta página encontrou um erro» — *a jornada inteira falhava por
+  // causa de um cartão informativo*. O teste unitário não viu porque usava o payload CORRECTO:
+  // ***um teste só com o payload bom não prova resiliência a payload mau.***
   const relatorio = dados.performance;
+  if (!relatorio) {
+    return (
+      <section aria-labelledby="performance-heading" className="mt-5 rounded-xl border border-neutral-200 bg-neutral-50 p-4 dark:border-neutral-800 dark:bg-neutral-900/40">
+        <h3 id="performance-heading" className="text-sm font-semibold">Desempenho</h3>
+        <p className="mt-2 text-xs text-neutral-500" role="status">
+          O servidor não devolveu o relatório de desempenho. Nada é apresentado para não inventar números.
+        </p>
+      </section>
+    );
+  }
   const naoMedido = relatorio.not_measured ?? [];
 
   return (
