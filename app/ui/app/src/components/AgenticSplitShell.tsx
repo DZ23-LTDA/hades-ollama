@@ -18,6 +18,10 @@ import { ArtifactsViewer } from "@/components/ArtifactsViewer";
 // A LIGACAO do Companion (item 46): *o componente existia e nao era renderizado em lado
 // nenhum - esta linha e' o que o tira da caixa fechada.*
 import { CompanionLigado } from "@/components/CompanionLigado";
+// Estagio 45 - ESTUDIO MULTIMODAL: as 6 operacoes existiam no runtime e nao tinham ecra^.
+// *O painel conduz uma missao com `media:execute` (nada de API paralela) e nao afirma provider
+// que nao foi medido - ver o tri-estado em `mediaOperacoes.ts`.*
+import { MediaStudioPanel } from "@/components/MediaStudioPanel";
 import { safeImageSrc } from "@/lib/safeUrl";
 import { agentFetch } from "@/lib/agenticClient";
 import { missionStateLabel, eventTypeLabel, stepKindLabel } from "@/lib/labels";
@@ -45,6 +49,10 @@ export interface MissionData {
   id: string;
   objective: string;
   state: string;
+  /** Workspace fixado da missao (`types.go:86` no servidor). *Vem no JSON que o `AgenticConsole`
+   *  ja' busca em `GET /missions/:id` (`:121`) e passa a este shell (`:328`);* sem ele o Estudio
+   *  Multimodal nao arranca - e o painel diz isso em vez de fingir. */
+  workspace?: string;
   plan?: MissionStep[];
   approvals?: MissionApproval[];
   artifacts?: Array<{ id: string; name: string; sha256: string; size: number }>;
@@ -700,6 +708,12 @@ export function AgenticSplitShell({
               {/* O COMPANION: estado REAL da missao, lido da rota testada (item 46).
                *Ate' aqui o mascote existia, era testado, e nenhum ecra o mostrava.* */}
               {mission?.id ? <CompanionLigado missionID={mission.id} /> : null}
+              {/* ESTUDIO MULTIMODAL (item 45): conduz uma MISSAO com `media:execute` - sem API
+               * paralela e com a aprovacao real (`decision`+`nonce`). *Nao se passa
+               * `providerConfigurado`: nao foi medido ⇒ o painel diz «a confirmar».* */}
+              {mission?.id ? (
+                <MediaStudioPanel workspace={mission.workspace ?? ""} />
+              ) : null}
               {/* Visualizador de Artefatos e Entrega */}
               <ArtifactsViewer
                 missionId={mission?.id ?? ""}
