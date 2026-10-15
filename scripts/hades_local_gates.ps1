@@ -94,10 +94,15 @@ if ($SemTestes) {
   # densa - `go test ./internal/agent` e `go test ./server`. *Um gate escopado e' melhor que gate nenhum, desde que
   # o escopo esteja ESCRITO.* Se o tempo incomodar, `-SemTestes` pula - e o script DIZ que pulou.
   #
-  # `-timeout 150s`: **nao** e' para esconder falha - e' para a falha ser RAPIDA e ALTA. Medido (2026-10-15):
-  # `TestMatrizComCorrecaoDeReferenciaDaVerdeEmTodas` (`harness_benchmark_matrix_test.go:46`) **trava** neste host
-  # (conexao HTTP presa, `net/http.persistConn.writeLoop`) e so' morre no limite padrao de 10 min do `go test`.
-  # Com 150s ele falha em 2m30s DIZENDO qual teste travou, em vez de consumir 10 minutos em silencio.
+  # `-timeout 150s`: **nao** e' para esconder falha - e' para a falha ser RAPIDA e ALTA.
+  #
+  # MEDIDO (2026-10-15, duas medicoes independentes): `TestMatrizComCorrecaoDeReferenciaDaVerdeEmTodas`
+  # (`harness_benchmark_matrix_test.go:46`) **PASSA ISOLADO em 17,12 s** (`ok ... 21,566 s`), e o pacote **INTEIRO**
+  # trava em **605 s** (= limite padrao de 10 min do `go test`), com uma conexao HTTP presa no dump de goroutines
+  # (`net/http.persistConn.writeLoop`) e **sem** este teste tocar a rede (o `harnessFixo` devolve a referencia).
+  # => ***e' INTERACAO entre testes, nao lentidao de um teste.*** O `-timeout` faz a falha dizer QUAL teste travou;
+  # a bisseccao do pacote para achar quem envenena a execucao esta' registrada como **bloqueio local aberto**.
+  # *Nao se contorna isso tirando os testes do gate: um gate que nao roda teste nao substitui o CI (E-650).*
   '--- 4. go test ./internal/agent ./server -count=1 -timeout 150s (o passo que mais reprova no CI)'
   $saidaTeste = & go test ./internal/agent ./server -count=1 -timeout 150s 2>&1
   $saidaTeste | Select-Object -Last 12 | ForEach-Object { "    $_" }
