@@ -24,16 +24,14 @@ afterEach(() => {
 
 describe("carregarVersoesDoArtefacto", () => {
   it("pede a rota de versoes do artefacto certo", async () => {
-    const fetchFalso = vi
-      .fn()
-      .mockResolvedValue(
-        respostaJSON({
-          mission_id: "mis_1",
-          artifact_id: "art_1",
-          versions: [],
-          scope: "missao do chamador",
-        }),
-      );
+    const fetchFalso = vi.fn().mockResolvedValue(
+      respostaJSON({
+        mission_id: "mis_1",
+        artifact_id: "art_1",
+        versions: [],
+        scope: "missao do chamador",
+      }),
+    );
     vi.stubGlobal("fetch", fetchFalso);
 
     await carregarVersoesDoArtefacto("mis_1", "art_1");
@@ -73,16 +71,14 @@ describe("carregarVersoesDoArtefacto", () => {
   it("transporta o escopo declarado pelo servidor", async () => {
     vi.stubGlobal(
       "fetch",
-      vi
-        .fn()
-        .mockResolvedValue(
-          respostaJSON({
-            mission_id: "mis_1",
-            artifact_id: "art_1",
-            versions: [],
-            scope: "missao do chamador",
-          }),
-        ),
+      vi.fn().mockResolvedValue(
+        respostaJSON({
+          mission_id: "mis_1",
+          artifact_id: "art_1",
+          versions: [],
+          scope: "missao do chamador",
+        }),
+      ),
     );
 
     const resultado = await carregarVersoesDoArtefacto("mis_1", "art_1");
@@ -121,15 +117,13 @@ describe("carregarVersoesDoArtefacto", () => {
 
 describe("restaurarVersaoDoArtefacto", () => {
   it("envia POST com a versao e o expected_version (o CAS do artefacto)", async () => {
-    const fetchFalso = vi
-      .fn()
-      .mockResolvedValue(
-        respostaJSON({
-          mission_id: "mis_1",
-          restored: { id: "art_1", version: 3 },
-          scope: "missao do chamador",
-        }),
-      );
+    const fetchFalso = vi.fn().mockResolvedValue(
+      respostaJSON({
+        mission_id: "mis_1",
+        restored: { id: "art_1", version: 3 },
+        scope: "missao do chamador",
+      }),
+    );
     vi.stubGlobal("fetch", fetchFalso);
 
     const restaurado = await restaurarVersaoDoArtefacto("mis_1", "art_1", 1, 2);
