@@ -8,6 +8,8 @@ import {
 } from "@heroicons/react/24/outline";
 import { agentFetchBlob } from "@/lib/agenticClient";
 import StreamingMarkdownContent from "@/components/StreamingMarkdownContent";
+// Estagio 47: as VERSOES do artefacto. *O dominio versionava e comparava, e nenhum ecra o mostrava.*
+import { ArtifactVersionsPanel } from "@/components/ArtifactVersionsPanel";
 
 export interface ArtifactItem {
   id: string;
@@ -31,7 +33,9 @@ export function ArtifactsViewer({
   selectedArtifactId,
   onSelectArtifact,
 }: ArtifactsViewerProps) {
-  const [activeTab, setActiveTab] = useState<"preview" | "code" | "download">("preview");
+  const [activeTab, setActiveTab] = useState<"preview" | "code" | "download">(
+    "preview",
+  );
   const [activeArtifactIndex, setActiveArtifactIndex] = useState(0);
   const [content, setContent] = useState<string>("");
   const [loading, setLoading] = useState(false);
@@ -56,10 +60,16 @@ export function ArtifactsViewer({
     }
 
     setLoading(true);
-    agentFetchBlob(`/api/agent/v1/missions/${encodeURIComponent(missionId)}/artifacts/${encodeURIComponent(currentArtifact.id)}`)
+    agentFetchBlob(
+      `/api/agent/v1/missions/${encodeURIComponent(missionId)}/artifacts/${encodeURIComponent(currentArtifact.id)}`,
+    )
       .then((blob) => blob.text())
       .then((text) => setContent(text))
-      .catch(() => setContent("// Não foi possível carregar o conteúdo prévio do artefato."))
+      .catch(() =>
+        setContent(
+          "// Não foi possível carregar o conteúdo prévio do artefato.",
+        ),
+      )
       .finally(() => setLoading(false));
   }, [missionId, currentArtifact]);
 
@@ -67,18 +77,28 @@ export function ArtifactsViewer({
     return (
       <div className="flex h-full flex-col items-center justify-center p-8 text-center text-neutral-400 dark:text-neutral-500">
         <DocumentTextIcon className="h-12 w-12 stroke-[1.2]" />
-        <p className="mt-3 text-sm font-medium">Nenhum artefato produzido nesta missão ainda.</p>
-        <p className="mt-1 text-xs">Documentos, relatórios, códigos e mídias gerados aparecerão aqui.</p>
+        <p className="mt-3 text-sm font-medium">
+          Nenhum artefato produzido nesta missão ainda.
+        </p>
+        <p className="mt-1 text-xs">
+          Documentos, relatórios, códigos e mídias gerados aparecerão aqui.
+        </p>
       </div>
     );
   }
 
-  const isHtml = currentArtifact?.name.endsWith(".html") || currentArtifact?.media_type === "text/html";
-  const isMd = currentArtifact?.name.endsWith(".md") || currentArtifact?.media_type === "text/markdown";
+  const isHtml =
+    currentArtifact?.name.endsWith(".html") ||
+    currentArtifact?.media_type === "text/html";
+  const isMd =
+    currentArtifact?.name.endsWith(".md") ||
+    currentArtifact?.media_type === "text/markdown";
   const downloadArtifact = async () => {
     if (!currentArtifact) return;
     try {
-      const blob = await agentFetchBlob(`/api/agent/v1/missions/${encodeURIComponent(missionId)}/artifacts/${encodeURIComponent(currentArtifact.id)}`);
+      const blob = await agentFetchBlob(
+        `/api/agent/v1/missions/${encodeURIComponent(missionId)}/artifacts/${encodeURIComponent(currentArtifact.id)}`,
+      );
       const href = URL.createObjectURL(blob);
       const anchor = document.createElement("a");
       anchor.href = href;
@@ -86,7 +106,9 @@ export function ArtifactsViewer({
       anchor.click();
       window.setTimeout(() => URL.revokeObjectURL(href), 0);
     } catch (error) {
-      setContent(`// Download indisponível: ${error instanceof Error ? error.message : "erro de autenticação"}`);
+      setContent(
+        `// Download indisponível: ${error instanceof Error ? error.message : "erro de autenticação"}`,
+      );
       setActiveTab("code");
     }
   };
@@ -119,7 +141,9 @@ export function ArtifactsViewer({
           <button
             onClick={() => setActiveTab("preview")}
             className={`flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium ${
-              activeTab === "preview" ? "bg-white shadow-sm dark:bg-neutral-700 text-neutral-900 dark:text-white" : "text-neutral-500 hover:text-neutral-800 dark:text-neutral-400"
+              activeTab === "preview"
+                ? "bg-white shadow-sm dark:bg-neutral-700 text-neutral-900 dark:text-white"
+                : "text-neutral-500 hover:text-neutral-800 dark:text-neutral-400"
             }`}
           >
             <EyeIcon className="h-3.5 w-3.5" />
@@ -128,7 +152,9 @@ export function ArtifactsViewer({
           <button
             onClick={() => setActiveTab("code")}
             className={`flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium ${
-              activeTab === "code" ? "bg-white shadow-sm dark:bg-neutral-700 text-neutral-900 dark:text-white" : "text-neutral-500 hover:text-neutral-800 dark:text-neutral-400"
+              activeTab === "code"
+                ? "bg-white shadow-sm dark:bg-neutral-700 text-neutral-900 dark:text-white"
+                : "text-neutral-500 hover:text-neutral-800 dark:text-neutral-400"
             }`}
           >
             <CodeBracketIcon className="h-3.5 w-3.5" />
@@ -137,7 +163,9 @@ export function ArtifactsViewer({
           <button
             onClick={() => setActiveTab("download")}
             className={`flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium ${
-              activeTab === "download" ? "bg-white shadow-sm dark:bg-neutral-700 text-neutral-900 dark:text-white" : "text-neutral-500 hover:text-neutral-800 dark:text-neutral-400"
+              activeTab === "download"
+                ? "bg-white shadow-sm dark:bg-neutral-700 text-neutral-900 dark:text-white"
+                : "text-neutral-500 hover:text-neutral-800 dark:text-neutral-400"
             }`}
           >
             <ArrowDownTrayIcon className="h-3.5 w-3.5" />
@@ -181,9 +209,14 @@ export function ArtifactsViewer({
             <div className="rounded-2xl border border-neutral-200 bg-neutral-50/50 p-5 dark:border-neutral-800 dark:bg-neutral-900/40">
               <div className="flex items-start justify-between">
                 <div>
-                  <h3 className="font-semibold text-neutral-900 dark:text-white text-base">{currentArtifact.name}</h3>
+                  <h3 className="font-semibold text-neutral-900 dark:text-white text-base">
+                    {currentArtifact.name}
+                  </h3>
                   <p className="mt-1 text-xs text-neutral-500">
-                    Tamanho: {currentArtifact.size ? `${(currentArtifact.size / 1024).toFixed(1)} KB` : "Automático"}
+                    Tamanho:{" "}
+                    {currentArtifact.size
+                      ? `${(currentArtifact.size / 1024).toFixed(1)} KB`
+                      : "Automático"}
                   </p>
                 </div>
                 <button
@@ -200,11 +233,22 @@ export function ArtifactsViewer({
                 <div className="mt-4 flex items-center gap-2 rounded-xl bg-white p-3 border border-neutral-200 dark:border-neutral-800 dark:bg-neutral-950">
                   <ShieldCheckIcon className="h-5 w-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
                   <div className="min-w-0 flex-1">
-                    <p className="text-[11px] font-medium text-neutral-500">Hash de Proveniência SHA-256</p>
-                    <p className="font-mono text-xs text-neutral-800 dark:text-neutral-200 truncate">{currentArtifact.sha256}</p>
+                    <p className="text-[11px] font-medium text-neutral-500">
+                      Hash de Proveniência SHA-256
+                    </p>
+                    <p className="font-mono text-xs text-neutral-800 dark:text-neutral-200 truncate">
+                      {currentArtifact.sha256}
+                    </p>
                   </div>
                 </div>
               )}
+
+              {/* O historico de versoes vive na aba de integridade: *e' aqui que o utilizador
+                  ve^ o SHA da versao corrente - o mesmo dado que o restauro precisa de citar.* */}
+              <ArtifactVersionsPanel
+                missionId={missionId}
+                artifactId={currentArtifact.id}
+              />
             </div>
           </div>
         )}
