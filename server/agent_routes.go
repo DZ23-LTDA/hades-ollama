@@ -862,6 +862,9 @@ func (a *agentAPI) register(r *gin.Engine) {
 	group.GET("/missions/:id", a.getMission)
 	group.GET("/missions/:id/events", a.events)
 	group.GET("/missions/:id/events/stream", a.eventStream)
+	// Estado REAL do Companion para uma missao (complemento 48 / item 46). Reutiliza o
+	// mesmo escopo das rotas acima: *nao inventa autorizacao nova.*
+	group.GET("/missions/:id/companion", a.companion)
 	group.GET("/missions/:id/traces", a.traces)
 	group.GET("/missions/:id/artifacts/:artifact_id", a.artifact)
 	group.POST("/missions/:id/run", a.runMission)
@@ -3266,6 +3269,42 @@ func (a *agentAPI) events(c *gin.Context) {
 		events = events[len(events)-limit:]
 	}
 	c.JSON(http.StatusOK, gin.H{"mission_id": c.Param("id"), "events": events, "total": total})
+}
+
+// companion devolve o estado que o Companion PODE dizer sobre uma missao (item 46).
+//
+// O que isto NAO faz, de proposito:
+//
+//   - **Nao inventa estado.** O estado sai de `agent.DerivarEstadoCompanion` sobre os
+//     eventos PERSISTIDOS da missao. Sem eventos, a derivacao responde o estado honesto
+//     ("ausente") com a razao - *nao um "a trabalhar" de cortesia.*
+//   - **Nao transporta detalhe de evento.** `Event.Payload` nao tem sanitizacao
+//     garantida neste caminho, e o nucleo exige detalhe *ja' sanitizado a montante*;
+//     por isso o detalhe vai vazio (ver `internal/agent/companion_eventos.go`).
+//   - **Nao inventa autorizacao.** O escopo e' o que `missionForRequest` ja' prova; a
+//     resposta DECLARA esse escopo, porque um agregado sem escopo e' lido como global.
+func (a *agentAPI) companion(c *gin.Context) {
+	if _, err := a.missionForRequest(c); err != nil {
+		writeAgentError(c, statusForAgentError(err), err)
+		return
+	}
+	missaoID := c.Param("id")
+	eventos, err := a.scopedRuntime(c).Events(missaoID)
+	if err != nil {
+		writeAgentError(c, statusForAgentError(err), err)
+		return
+	}
+	estado, razao, err := agent.DerivarEstadoCompanion(missaoID, agent.EventosDoCompanionDaMissao(missaoID, eventos, nil))
+	if err != nil {
+		writeAgentError(c, statusForAgentError(err), err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"mission_id": missaoID,
+		"estado":     estado,
+		"razao":      razao,
+		"scope":      "missao do chamador (organizacao da sessao)",
+	})
 }
 
 func (a *agentAPI) eventStream(c *gin.Context) {
