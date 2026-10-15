@@ -721,6 +721,8 @@ func (a *agentAPI) register(r *gin.Engine) {
 	// que uma colisao que so' aparece ao subir o servidor.*
 	group.GET("/skill-versions/:id", a.skillVersions)
 	group.POST("/skill-versions/:id/restore/:version", a.restoreSkillVersion)
+	// E-647: TRANSPORTE do servidor MCP — a memoria do Hades exposta pelo protocolo.
+	group.POST("/mcp/rpc", a.mcpRPC)
 	group.GET("/companies", a.companies)
 	group.POST("/companies", a.createCompany)
 	group.GET("/companies/:id", a.getCompany)
@@ -1666,6 +1668,41 @@ func (a *agentAPI) restoreSkillVersion(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"skill": manifesto})
+}
+
+// mcpRPC responde a pedidos MCP (JSON-RPC 2.0) na organizacao DA SESSAO (E-647).
+//
+// SEM ISTO, O RESPONDEDOR NAO SERVIA NINGUEM: o E-646 implementou os metodos e a ferramenta, mas
+// nenhum cliente MCP real se ligava. Este e' o transporte.
+//
+// O VERIFICADOR DE PROJETO USA O MESMO GUARD DO RESTO (`projectForRequestID`): um projeto que nao
+// pertence a organizacao da sessao nao e' projeto - e o servidor responde o mesmo para "nao existe"
+// e "nao e' seu", para nao dar pistas sobre o que existe noutra organizacao.
+//
+// E OS ERROS SAO DO PROTOCOLO, NAO DO HTTP: um metodo desconhecido devolve 200 com corpo de erro
+// JSON-RPC. *Quem fala MCP le JSON-RPC - responder 4xx obrigaria o cliente a adivinhar.*
+func (a *agentAPI) mcpRPC(c *gin.Context) {
+	var pedido struct {
+		JSONRPC string          `json:"jsonrpc"`
+		ID      json.RawMessage `json:"id"`
+		Method  string          `json:"method"`
+		Params  json.RawMessage `json:"params"`
+	}
+	if err := c.ShouldBindJSON(&pedido); err != nil {
+		c.JSON(http.StatusOK, gin.H{"jsonrpc": "2.0", "id": nil, "error": gin.H{"code": -32700, "message": "parse error"}})
+		return
+	}
+	verificarProjeto := func(projectID string) bool {
+		_, err := a.projectForRequestID(c, projectID)
+		return err == nil
+	}
+	servidor := agent.NovoServidorMCP(a.context, agentOrganizationID(c), verificarProjeto)
+	resultado, erro := servidor.Responder(c.Request.Context(), pedido.Method, pedido.Params)
+	if erro != nil {
+		c.JSON(http.StatusOK, gin.H{"jsonrpc": "2.0", "id": pedido.ID, "error": gin.H{"code": erro.Codigo, "message": erro.Mensagem}})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"jsonrpc": "2.0", "id": pedido.ID, "result": resultado})
 }
 
 func (a *agentAPI) skills(c *gin.Context) {
