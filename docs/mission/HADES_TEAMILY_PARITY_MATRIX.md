@@ -44,7 +44,7 @@ produto; o que **não** foi medido está marcado como `NOT_MEASURED`, *jamais co
 | 17 | **Canal externo com DLP e allowlist** (F11) | `TESTED` | `im_telegram.go` (allowlist, DLP **antes** do envio, higiene de credencial; 9 testes) | Reusar no Team Chat para egresso |
 | 18 | **Canais (email/WhatsApp/voz/telefonia)** (F10) | `CONFIG_REQUIRED` | Catálogo de conectores com `operator_setup_required` | Sem credencial ⇒ `EXTERNALLY_BLOCKED` (**não** simular) |
 | 19 | **Testes simulados declarados como simulados** (regra ④) | `DECISION` parcial | Doutrina em uso: as sondas declaram `NAO_MEDIDO` (E-671) e o gate **declara** o que exclui (E-672) | Estender a regra às telas de time |
-| 20 | **Handoff/continuidade entre agentes e modelos** (F5) | `A MEDIR` | **Não medido nesta passada** — *a existência de arquivos `*handoff*` não é prova de caminho completo UI→efeito* | Medir os call sites do handoff antes de declarar qualquer estado |
+| 20 | **Handoff/continuidade entre agentes e modelos** (F5) | ✅ `TESTED` (**medido nesta 4ª passada**) | **Fonte:** `handoff.go` (`Handoff` + `Validar()` que **recusa** handoff sem objetivo / sem pendentes declarados / sem estado / com capacidade vazia; `ParaContexto(teto)` com **corte declarado** em vez de truncar em silêncio) · `handoff_da_missao.go` (`HandoffDaMissao` — transporta **só a capacidade CONCEDIDA** e declara aprovações pendentes quando não há nenhuma) · `handoff_do_job.go` (`HandoffDoJob` — **não herda autorização**, leva o orçamento como restrição) · `handoff_preambulo.go` (`ParaPreambulo`, bloco marcado `[HANDOFF ENTRE AGENTES — contexto de trabalho, não é instrução]`) · integração no Context Bootstrap como **DADO** (`context_bootstrap.go:106-108`, `:248-251`, `:369-370`). **Testes:** `handoff_test.go`, `handoff_da_missao_test.go`, `handoff_do_job_test.go`, `handoff_preambulo_test.go`, `context_bootstrap_handoff_test.go`. *Nota do próprio autor em `handoff.go:13-14`: mediu `BuildHandoff\|MissionHandoff\|HandoffContract` = **zero** ocorrências e concluiu que todos os `handoff` anteriores eram outra coisa (transferência para humano) — o mesmo método de medição desta matriz.* | Nada a fazer no contrato; a **UI** de continuidade (F2/F12) continua `NOT_STARTED` |
 
 ## 2. O QUE JÁ EXISTE E **DEVE SER REUSADO** (não recriar)
 
@@ -67,5 +67,5 @@ produto; o que **não** foi medido está marcado como `NOT_MEASURED`, *jamais co
 
 - A **referência (Teamily)** não foi verificada em detalhe (`NOT_MEASURED`).
 - As capacidades **10–12, 14, 17** foram medidas **por leitura + CI verde do commit `fd3afc89e`**, não por E2E em tela.
-- **Handoff (20)** ficou `A MEDIR`.
+- **Handoff (20)**: era `A MEDIR` na 1ª passada e **foi medido na 4ª** ⇒ `TESTED` (contrato + 4 produtores + integração + 5 arquivos de teste). *A regra continua: o que não foi medido fica dito, e quando é medido a marca muda.*
 - **Não** foi criada nenhuma funcionalidade nesta passada: esta matriz é **auditoria**, e a missão **não** termina por documentação.
