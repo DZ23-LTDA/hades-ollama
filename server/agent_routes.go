@@ -721,6 +721,9 @@ func (a *agentAPI) register(r *gin.Engine) {
 	// que uma colisao que so' aparece ao subir o servidor.*
 	group.GET("/skill-versions/:id", a.skillVersions)
 	group.POST("/skill-versions/:id/restore/:version", a.restoreSkillVersion)
+	// E-649: comparar duas revisoes (§9 Paperclip). `from`/`to` sao versoes; uma delas pode ser a
+	// ACTIVA, que nao esta' no arquivo (so' as superadas ficam la').
+	group.GET("/skill-versions/:id/compare", a.compararVersoesDeSkill)
 	// E-647: TRANSPORTE do servidor MCP — a memoria do Hades exposta pelo protocolo.
 	group.POST("/mcp/rpc", a.mcpRPC)
 	group.GET("/companies", a.companies)
@@ -1654,6 +1657,22 @@ func (a *agentAPI) skillVersions(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"versions": versoes})
+}
+
+// compararVersoesDeSkill compara duas revisoes de uma skill (E-649).
+//
+// `from` e `to` vem por QUERY e uma delas pode ser a versao ACTIVA — o historico guarda so' as
+// superadas, e o nucleo (`CompararVersoesDeSkill`, E-648) sabe resolver isso com o manifesto vivo.
+//
+// A comparacao NAO mostra `trusted`/`enabled` como mudanca de conteudo: sao estado derivado, e
+// apresenta-los sugeriria que uma versao antiga e' mais confiavel do que e'.
+func (a *agentAPI) compararVersoesDeSkill(c *gin.Context) {
+	diferenca, err := a.context.CompararVersoesDeSkill(agentOrganizationID(c), c.Param("id"), c.Query("from"), c.Query("to"))
+	if err != nil {
+		writeAgentError(c, http.StatusBadRequest, err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"difference": diferenca})
 }
 
 // restoreSkillVersion restaura uma versão arquivada (E-642).

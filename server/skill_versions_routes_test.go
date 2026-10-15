@@ -3,6 +3,7 @@ package server
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -112,5 +113,47 @@ func TestRestaurarVersaoInexistentePelaRotaEhRecusada(t *testing.T) {
 	api.restoreSkillVersion(ctx)
 	if recorder.Code == http.StatusOK {
 		t.Fatalf("versao inexistente devia ser recusada: %s", recorder.Body.String())
+	}
+}
+
+// COMPARAR REVISOES PELA ROTA (E-649), com a versao ACTIVA de um dos lados — que e' o caso util e
+// nao esta' no arquivo.
+func TestCompararVersoesDeSkillPelaRota(t *testing.T) {
+	store, err := agent.NewContextStore(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := store.RegisterSkillForOrganization("org-a", agent.SkillManifest{
+		ID: "skill-y", Version: "1.0", Description: "leitura", Scopes: []string{"read"},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.RegisterSkillForOrganization("org-a", agent.SkillManifest{
+		ID: "skill-y", Version: "2.0", Description: "leitura e escrita", Scopes: []string{"read", "write"},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	api := &agentAPI{context: store, authRequired: true}
+
+	// 1.0 esta' ARQUIVADA e 2.0 e' a ACTIVA: comparar as duas tem de funcionar.
+	ctx, recorder := skillRequest(t, http.MethodGet, "/api/agent/v1/skill-versions/skill-y/compare?from=1.0&to=2.0", "", "skill-y", "org-a")
+	api.compararVersoesDeSkill(ctx)
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("comparar devia dar 200, deu %d (%s)", recorder.Code, recorder.Body.String())
+	}
+	corpo := recorder.Body.String()
+	if !strings.Contains(corpo, "description") || !strings.Contains(corpo, "scopes") {
+		t.Fatalf("a diferenca devia trazer descricao e escopos: %s", corpo)
+	}
+	// E nao pode apresentar `trusted` como mudanca de conteudo.
+	if strings.Contains(corpo, `"field":"trusted"`) || strings.Contains(corpo, `"field":"enabled"`) {
+		t.Fatalf("*** trusted/enabled nao sao mudanca de conteudo ***: %s", corpo)
+	}
+
+	// OUTRA ORGANIZACAO: recusado (a mesma resposta de «nao existe»).
+	ctxB, recorderB := skillRequest(t, http.MethodGet, "/api/agent/v1/skill-versions/skill-y/compare?from=1.0&to=2.0", "", "skill-y", "org-b")
+	api.compararVersoesDeSkill(ctxB)
+	if recorderB.Code == http.StatusOK {
+		t.Fatalf("*** outro inquilino comparou a skill alheia ***: %s", recorderB.Body.String())
 	}
 }
