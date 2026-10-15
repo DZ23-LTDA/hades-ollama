@@ -1,13 +1,8 @@
 import { useEffect, useState } from "react";
 
-import {
-  estadoCarregando,
-  estadoDeErro,
-  estadoPronto,
-  SalaPainel,
-  type EstadoDaSala,
-} from "./SalaPainel";
-import { buscarMembrosDaSala, type Fetcher } from "../lib/salaApi";
+import { SalaPainel, estadoCarregando, type EstadoDaSala } from "./SalaPainel";
+import { carregarEstado } from "./salaEstado";
+import type { Fetcher } from "../lib/salaApi";
 
 /**
  * Complemento 48 / FASE 2 — A TELA LIGADA: efeito + cliente + painel.
@@ -39,15 +34,10 @@ export function SalaLigada({ projectID, roomID, fetcher }: PropsDaTela) {
   useEffect(() => {
     let vivo = true;
     setEstado(estadoCarregando());
-    buscarMembrosDaSala({ fetcher, projectID, roomID })
-      .then((membros) => {
-        if (vivo) setEstado(estadoPronto(membros));
-      })
-      .catch((causa: unknown) => {
-        if (!vivo) return;
-        const mensagem = causa instanceof Error ? causa.message : String(causa);
-        setEstado(estadoDeErro(mensagem));
-      });
+    // A decisão vive em `carregarEstado` (pura e testada); *aqui só fica a fiação e a guarda de desmontagem.*
+    void carregarEstado({ fetcher, projectID, roomID }).then((proximo) => {
+      if (vivo) setEstado(proximo);
+    });
     return () => {
       vivo = false;
     };
