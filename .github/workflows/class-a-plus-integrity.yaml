@@ -63,7 +63,7 @@ jobs:
           python3 scripts/hades_scope_classifier_test.py
           python3 scripts/hades_tenant_scope_check_test.py
           python3 scripts/hades_tenant_scope_check.py --check
-      # E-658: a CODIFICACAO dos artefatos passa a ser gate. O checker existia (E-409/E-410) mas nao rodava no CI
+      # E-660: a CODIFICACAO dos artefatos passa a ser gate. O checker existia (E-409/E-410) mas nao rodava no CI
       # e cobria so' dupla codificacao - um BOM UTF-8 passava em silencio, e um `HADES_MASTER_STATE.json` com BOM
       # derrubou o `hades_release_gate.py --check` (JSONDecodeError) nesta propria workflow. Instrumento fora da
       # bateria nao protege: *o defeito que o instrumento cobre e' o defeito que passa*.
@@ -77,9 +77,23 @@ jobs:
           python3 scripts/hades_test_clock_check.py --check
       - name: Verify the mission bookkeeping checker itself (fault injection)
         run: python3 scripts/hades_mission_check_test.py
+      # E-661: o gate anterior era `test -z "$(gofmt -l ...)"` - e um arquivo que NAO PARSEIA faz o gofmt
+      # escrever o erro em STDERR e sair com STDOUT VAZIO => `test -z ""` PASSAVA. Verde por construcao:
+      # foi assim que um `internal/agent/adaptive_router.go` com um `}` faltando atravessou o CI verde.
+      # Agora o CODIGO DE SAIDA do gofmt e conferido, e o motivo da falha e' impresso.
       - name: Verify Go formatting for protected backend surfaces
         run: |
-          test -z "$(gofmt -l internal/agent internal/multillm server/agent_routes.go)"
+          if ! saida="$(gofmt -l internal/agent internal/multillm server/agent_routes.go 2>&1)"; then
+            echo "gofmt FALHOU (arquivo nao parseavel ou erro de leitura):"
+            echo "$saida"
+            exit 1
+          fi
+          if [ -n "$saida" ]; then
+            echo "arquivos fora do gofmt:"
+            echo "$saida"
+            exit 1
+          fi
+          echo "gofmt OK: nenhum arquivo fora de formato e nenhum erro de parse"
 
   platform-builds:
     name: CGO-free and Windows build gate
