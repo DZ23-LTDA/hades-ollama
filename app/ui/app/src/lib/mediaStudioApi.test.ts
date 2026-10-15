@@ -128,7 +128,7 @@ describe("executarMissaoDeMidia", () => {
 });
 
 describe("decidirAprovacaoDeMidia", () => {
-  it("envia approved e reason (inclusive ao RECUSAR)", async () => {
+  it("envia decision e reason, com nonce (inclusive ao RECUSAR)", async () => {
     const fetchFalso = vi.fn().mockResolvedValue(respostaJSON({ ok: true }));
     vi.stubGlobal("fetch", fetchFalso);
 
@@ -137,6 +137,7 @@ describe("decidirAprovacaoDeMidia", () => {
       "apr_9",
       false,
       "sem provider configurado",
+      "nonce_abc",
     );
 
     const url = String(fetchFalso.mock.calls[0][0]);
@@ -144,9 +145,10 @@ describe("decidirAprovacaoDeMidia", () => {
       true,
     );
     const corpo = JSON.parse(String(fetchFalso.mock.calls[0][1].body));
-    // *Campos medidos em `agent_routes.go:1896-1897`.*
-    expect(corpo.approved).toBe(false);
+    // *Contrato medido na ROTA real: `agent_routes.go:878` ⇒ `decideApproval` (`:4285`, struct `:4287`/`:4289`).*
+    expect(corpo.decision).toBe("reject");
     expect(corpo.reason).toBe("sem provider configurado");
+    expect(corpo.nonce).toBe("nonce_abc");
   });
 
   it("exige identificador de aprovacao e nao chama o servidor sem ele", async () => {

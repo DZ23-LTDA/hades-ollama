@@ -73,14 +73,17 @@ export async function executarMissaoDeMidia(missionID: string): Promise<void> {
 /**
  * Decide uma aprovacao da missao.
  *
- * `approved` e' o campo medido (`agent_routes.go:1896`); recusar tambem e' uma decisao legitima e
- * **vai com motivo**, para a auditoria dizer *porque* a operacao de midia nao correu.
+ * Contrato **medido** na rota real: `agent_routes.go:878` ⇒ `decideApproval` (`:4285`), cujo struct
+ * (`:4287`/`:4289`) e' `{ decision, reason, nonce }` — ***nao* `approved`**. Enviar `approved`
+ * deixava `decision` vazia e o servidor recusava com 400 antes de aprovar.
+ * O `nonce` e' o que impede aprovar uma aprovacao que ja mudou.
  */
 export async function decidirAprovacaoDeMidia(
   missionID: string,
   approvalID: string,
   aprovado: boolean,
   motivo: string,
+  nonce = "",
 ): Promise<void> {
   if (approvalID.trim() === "") {
     throw new Error("a aprovacao precisa de identificador");
@@ -89,7 +92,11 @@ export async function decidirAprovacaoDeMidia(
     `${BASE}/missions/${encodeURIComponent(missionID)}/approvals/${encodeURIComponent(approvalID)}`,
     {
       method: "POST",
-      body: JSON.stringify({ approved: aprovado, reason: motivo }),
+      body: JSON.stringify({
+        decision: aprovado ? "approve" : "reject",
+        reason: motivo,
+        nonce,
+      }),
     },
   );
 }
