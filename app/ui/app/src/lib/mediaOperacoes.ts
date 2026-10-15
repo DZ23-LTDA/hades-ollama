@@ -97,10 +97,23 @@ export function operacaoPermitida(
   return OPERACOES_DE_MIDIA.some((d) => d.operacao === operacao);
 }
 
-/** Disponibilidade honesta: sem provider, so^ o que e' local continua disponivel. */
+/**
+ * Disponibilidade honesta das operacoes.
+ *
+ * `true` ⇒ todas; `false` ⇒ so^ o que corre localmente; ***`undefined` ⇒ NAO SE SABE***.
+ * No caso «nao sei» **nao se bloqueia nada**: *a autoridade e' o servidor, que responde com a
+ * razao real («media provider is not configured») quando a missao e' lancada.*
+ *
+ * Motivo medido: o catalogo de conectores devolve sempre `status: "available"` (= «disponivel
+ * para configurar») e o proprio ficheiro avisa que «nenhuma entrada afirma conexao pronta» -
+ * logo a UI nao pode derivar «configurado» de la', nem fingir que sabe.
+ */
 export function operacoesDisponiveis(
-  providerConfigurado: boolean,
+  providerConfigurado: boolean | undefined,
 ): DescritorDeOperacao[] {
+  if (providerConfigurado === undefined) {
+    return OPERACOES_DE_MIDIA.slice();
+  }
   return OPERACOES_DE_MIDIA.filter(
     (d) => providerConfigurado || !d.exigeProvider,
   );
