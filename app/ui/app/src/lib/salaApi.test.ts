@@ -97,7 +97,7 @@ describe("buscarMembrosDaSala — o sucesso é o que o servidor disse", () => {
 
   it("a URL é a do contrato, com os ids escapados", () => {
     expect(urlDosMembros("proj 1", "sala/2")).toBe(
-      "/api/agent/v1/projects/proj%201/rooms/sala%2F2/members",
+      "/api/agent/v1/collab/proj%201/rooms/sala%2F2/members",
     );
   });
 });

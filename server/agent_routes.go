@@ -840,6 +840,16 @@ func (a *agentAPI) register(r *gin.Engine) {
 	group.GET("/collab/:project_id/stream", a.collabStream)
 	group.POST("/collab/:project_id/comments", a.collabComment)
 	group.POST("/collab/:project_id/presence", a.collabPresence)
+	// Complemento 48 / FASE 2 — a SALA e os MEMBROS passam a ser alcançáveis.
+	// *Sem estas rotas, o domínio (sala, membros humanos e agentes) existia e **ninguém** o podia usar* - e a
+	// superfície de UI ficaria a chamar um caminho que não existe. Mesma forma dos vizinhos: autorização de
+	// projeto primeiro (`projectForRequestID`), depois o store, e erro sempre por `writeAgentError`.
+	group.GET("/collab/:project_id/members", a.collabMembers)
+	group.POST("/collab/:project_id/members", a.collabJoinProject)
+	group.GET("/collab/:project_id/rooms", a.collabRooms)
+	group.POST("/collab/:project_id/rooms", a.collabCreateRoom)
+	group.GET("/collab/:project_id/rooms/:room_id/members", a.collabRoomMembers)
+	group.POST("/collab/:project_id/rooms/:room_id/members", a.collabJoinRoom)
 	group.POST("/missions", a.createMission)
 	group.GET("/missions", a.missions)
 	// E-625: relatorio de desempenho das missoes visiveis para o chamador (Paperclip §10).
@@ -2333,6 +2343,119 @@ func (a *agentAPI) collabPresence(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, presence)
+}
+
+// collabMembers devolve os MEMBROS do projeto — humanos e agentes na MESMA lista (complemento 48, FASE 2).
+func (a *agentAPI) collabMembers(c *gin.Context) {
+	if _, err := a.projectForRequestID(c, c.Param("project_id")); err != nil {
+		writeAgentError(c, statusForAgentError(err), err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"membros": a.runtime.Collaboration().Participants(c.Param("project_id"))})
+}
+
+// collabJoinProject põe um humano OU um agente na lista de membros. A ORIGEM é o ator autenticado da requisição
+// - *não se aceita do corpo: quem declara é quem está a chamar, e isso o cliente não escolhe.*
+func (a *agentAPI) collabJoinProject(c *gin.Context) {
+	if _, err := a.projectForRequestID(c, c.Param("project_id")); err != nil {
+		writeAgentError(c, statusForAgentError(err), err)
+		return
+	}
+	var request struct {
+		ID   string `json:"id"`
+		Tipo string `json:"tipo"`
+		Nome string `json:"nome"`
+	}
+	if err := decodeJSON(c, &request); err != nil {
+		writeAgentError(c, http.StatusBadRequest, err)
+		return
+	}
+	membro, err := a.runtime.Collaboration().JoinProject(
+		c.Param("project_id"), request.ID, agent.ParticipantKind(request.Tipo), request.Nome, a.collabActor(c),
+	)
+	if err != nil {
+		writeAgentError(c, http.StatusBadRequest, err)
+		return
+	}
+	c.JSON(http.StatusCreated, membro)
+}
+
+// collabRooms lista as salas do projeto.
+func (a *agentAPI) collabRooms(c *gin.Context) {
+	if _, err := a.projectForRequestID(c, c.Param("project_id")); err != nil {
+		writeAgentError(c, statusForAgentError(err), err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"salas": a.runtime.Collaboration().Rooms(c.Param("project_id"))})
+}
+
+// collabCreateRoom cria a sala. O criador tem de ser membro do projeto - *a regra vive no domínio, e a rota não
+// a contorna: quem não é membro recebe 400 com o motivo.*
+func (a *agentAPI) collabCreateRoom(c *gin.Context) {
+	if _, err := a.projectForRequestID(c, c.Param("project_id")); err != nil {
+		writeAgentError(c, statusForAgentError(err), err)
+		return
+	}
+	var request struct {
+		ID   string `json:"id"`
+		Nome string `json:"nome"`
+	}
+	if err := decodeJSON(c, &request); err != nil {
+		writeAgentError(c, http.StatusBadRequest, err)
+		return
+	}
+	sala, err := a.runtime.Collaboration().CreateRoom(c.Param("project_id"), request.ID, request.Nome, a.collabActor(c))
+	if err != nil {
+		writeAgentError(c, http.StatusBadRequest, err)
+		return
+	}
+	c.JSON(http.StatusCreated, sala)
+}
+
+// collabRoomMembers devolve os membros de UMA sala.
+//
+// SALA INEXISTENTE ⇒ **404**, e não uma lista vazia: *«não há ninguém» e «essa sala não existe» são coisas
+// diferentes* - a mesma distinção que a superfície de UI testa. **Uma lista vazia só significa sala vazia.**
+func (a *agentAPI) collabRoomMembers(c *gin.Context) {
+	if _, err := a.projectForRequestID(c, c.Param("project_id")); err != nil {
+		writeAgentError(c, statusForAgentError(err), err)
+		return
+	}
+	projectID := c.Param("project_id")
+	roomID := c.Param("room_id")
+	existe := false
+	for _, sala := range a.runtime.Collaboration().Rooms(projectID) {
+		if sala.ID == roomID {
+			existe = true
+			break
+		}
+	}
+	if !existe {
+		writeAgentError(c, http.StatusNotFound, agent.ErrRoomNotFound)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"membros": a.runtime.Collaboration().RoomMembers(projectID, roomID)})
+}
+
+// collabJoinRoom põe um MEMBRO DO PROJETO na sala. O domínio recusa quem não é membro; a rota devolve o motivo.
+func (a *agentAPI) collabJoinRoom(c *gin.Context) {
+	if _, err := a.projectForRequestID(c, c.Param("project_id")); err != nil {
+		writeAgentError(c, statusForAgentError(err), err)
+		return
+	}
+	var request struct {
+		ID string `json:"id"`
+	}
+	if err := decodeJSON(c, &request); err != nil {
+		writeAgentError(c, http.StatusBadRequest, err)
+		return
+	}
+	sala, err := a.runtime.Collaboration().JoinRoom(c.Param("project_id"), c.Param("room_id"), request.ID)
+	if err != nil {
+		writeAgentError(c, http.StatusBadRequest, err)
+		return
+	}
+	c.JSON(http.StatusOK, sala)
 }
 
 func (a *agentAPI) collabStream(c *gin.Context) {

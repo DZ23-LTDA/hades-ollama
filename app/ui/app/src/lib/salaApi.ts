@@ -43,8 +43,11 @@ export type Fetcher = (
   json: () => Promise<unknown>;
 }>;
 
+/** A URL da casa. **Medida, não inventada:** o grupo de rotas do servidor é `/api/agent/v1` e as rotas de
+ * colaboração vivem em `/collab/:project_id/...` (`server/agent_routes.go`). *A minha primeira versão usou
+ * `/api/agent/v1/projects/:id/rooms/...`, que **não era** a convenção — corrigido depois de medir.* */
 export function urlDosMembros(projectID: string, roomID: string): string {
-  return `/api/agent/v1/projects/${encodeURIComponent(projectID)}/rooms/${encodeURIComponent(roomID)}/members`;
+  return `/api/agent/v1/collab/${encodeURIComponent(projectID)}/rooms/${encodeURIComponent(roomID)}/members`;
 }
 
 function ehMembro(valor: unknown): valor is MembroDaSala {
