@@ -1,8 +1,14 @@
 import { useEffect, useState } from "react";
 
-import { getSkillVersions, restoreSkillVersion, type SkillVersionRestaurada } from "../lib/agenticClient";
+import {
+  getSkillDifference,
+  getSkillVersions,
+  restoreSkillVersion,
+  type SkillDiferenca,
+  type SkillVersionRestaurada,
+} from "../lib/agenticClient";
 
-type Props = { skillId: string };
+type Props = { skillId: string; activeVersion?: string };
 
 /**
  * SkillVersionsCard lista o HISTÓRICO de uma skill e permite restaurar uma versão antiga (E-644).
@@ -15,11 +21,23 @@ type Props = { skillId: string };
  * E não inventa: se a lista vier vazia, diz que não há versões anteriores — não supõe que a skill
  * não existe (o servidor responde vazio também para skill de outra organização, de propósito).
  */
-export function SkillVersionsCard({ skillId }: Props) {
+export function SkillVersionsCard({ skillId, activeVersion }: Props) {
   const [versoes, setVersoes] = useState<string[] | null>(null);
   const [restaurada, setRestaurada] = useState<SkillVersionRestaurada | null>(null);
+  const [diferenca, setDiferenca] = useState<SkillDiferenca | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [aRestaurar, setARestaurar] = useState<string | null>(null);
+
+  const comparar = async (versao: string) => {
+    if (!activeVersion) return;
+    setErro(null);
+    try {
+      const resposta = await getSkillDifference(skillId, versao, activeVersion);
+      setDiferenca(resposta.difference);
+    } catch (falha: unknown) {
+      setErro(falha instanceof Error ? falha.message : "falha ao comparar");
+    }
+  };
 
   useEffect(() => {
     let cancelado = false;
@@ -68,14 +86,25 @@ export function SkillVersionsCard({ skillId }: Props) {
           {versoes.map((versao) => (
             <li key={versao} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-neutral-200 bg-white p-3 dark:border-neutral-800 dark:bg-neutral-950">
               <span className="text-xs font-medium">{versao}</span>
-              <button
-                type="button"
-                onClick={() => void restaurar(versao)}
-                disabled={aRestaurar !== null}
-                className="min-h-9 rounded-lg bg-neutral-900 px-3 py-2 text-xs font-medium text-white disabled:opacity-40 dark:bg-neutral-100 dark:text-neutral-900"
-              >
-                {aRestaurar === versao ? "A restaurar…" : "Restaurar esta versão"}
-              </button>
+              <div className="flex flex-wrap gap-2">
+                {activeVersion ? (
+                  <button
+                    type="button"
+                    onClick={() => void comparar(versao)}
+                    className="min-h-9 rounded-lg border border-neutral-300 px-3 py-2 text-xs font-medium dark:border-neutral-700"
+                  >
+                    Comparar com a activa
+                  </button>
+                ) : null}
+                <button
+                  type="button"
+                  onClick={() => void restaurar(versao)}
+                  disabled={aRestaurar !== null}
+                  className="min-h-9 rounded-lg bg-neutral-900 px-3 py-2 text-xs font-medium text-white disabled:opacity-40 dark:bg-neutral-100 dark:text-neutral-900"
+                >
+                  {aRestaurar === versao ? "A restaurar…" : "Restaurar esta versão"}
+                </button>
+              </div>
             </li>
           ))}
         </ul>
@@ -88,6 +117,31 @@ export function SkillVersionsCard({ skillId }: Props) {
           {/* A CONFIANÇA É MOSTRADA COMO O SERVIDOR A DEVOLVEU. Restaurar não a promove. */}
           <span className="text-neutral-500"> · confiança: {restaurada.trusted ? "confiável" : "não confiável (exige promoção com política)"}</span>
         </p>
+      ) : null}
+
+      {diferenca ? (
+        <div className="mt-3 rounded-lg border border-neutral-200 bg-white p-3 dark:border-neutral-800 dark:bg-neutral-950">
+          <p className="text-[11px] font-medium">
+            Diferença de {diferenca.from} para {diferenca.to}
+          </p>
+          {diferenca.changes.length === 0 ? (
+            <p className="mt-1 text-[11px] text-neutral-500">Sem diferenças de conteúdo.</p>
+          ) : (
+            <ul className="mt-1 space-y-1 text-[11px] text-neutral-600 dark:text-neutral-300">
+              {diferenca.changes.map((mudanca) => (
+                <li key={mudanca.field}>
+                  <span className="font-medium">{mudanca.field}</span>: {mudanca.from || "—"} → {mudanca.to || "—"}
+                </li>
+              ))}
+            </ul>
+          )}
+          {/* INTEGRIDADE DITA À PARTE: não é «conteúdo de trabalho», é a prova de que o conteúdo é o
+              que diz ser. Misturá-la com a descrição faria a diferença mais importante perder-se. */}
+          <p className="mt-2 text-[11px] text-neutral-500">
+            {diferenca.content_changed ? "Conteúdo (hash) mudou." : "Conteúdo (hash) igual."}{" "}
+            {diferenca.signature_changed ? "Assinatura mudou." : "Assinatura igual."}
+          </p>
+        </div>
       ) : null}
     </section>
   );

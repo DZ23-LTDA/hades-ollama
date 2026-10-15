@@ -455,6 +455,28 @@ export const restoreSkillVersion = (id: string, version: string) =>
     `/api/agent/v1/skill-versions/${encodeURIComponent(id)}/restore/${encodeURIComponent(version)}`,
     { method: "POST", body: "{}" },
   );
+
+// COMPARAR REVISÕES (E-650), sobre a rota do E-649.
+//
+// O tipo NÃO declara `trusted`/`enabled` porque o servidor NÃO os compara: são estado derivado, e
+// mostrá-los como mudança de conteúdo sugeriria que uma versão antiga é mais confiável do que é
+// — quando restaurar **não** promove confiança (E-631).
+export type SkillMudanca = { field: string; from: string; to: string };
+
+export type SkillDiferenca = {
+  skill_id: string;
+  from: string;
+  to: string;
+  changes: SkillMudanca[];
+  // Integridade vem DITA À PARTE, e não no meio das outras mudanças.
+  content_changed: boolean;
+  signature_changed: boolean;
+};
+
+export const getSkillDifference = (id: string, from: string, to: string) =>
+  agentFetch<{ difference: SkillDiferenca }>(
+    `/api/agent/v1/skill-versions/${encodeURIComponent(id)}/compare?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`,
+  );
 export type BrowserEnvironmentStatus = {
   python_path?: string;
   python_ok: boolean;

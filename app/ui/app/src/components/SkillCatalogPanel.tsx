@@ -136,7 +136,7 @@ export function SkillCatalogPanel({
             >
               {/* E-644: o HISTÓRICO de versões desta skill, com restauro. A confiança devolvida
                   pelo servidor é mostrada como vem — restaurar recupera conteúdo, não confiança. */}
-              <SkillVersionsCard skillId={skill.id} />
+              <SkillVersionsCard skillId={skill.id} activeVersion={skill.version} />
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
                   <p className="text-sm font-medium text-neutral-900 dark:text-white">
