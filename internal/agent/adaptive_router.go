@@ -7,8 +7,6 @@ import (
 	"strings"
 	"sync"
 	"time"
-
-	"github.com/ollama/ollama/internal/multillm"
 )
 
 // E-657 — ADAPTIVE ROUTER / SUBTASK ROUTER (FASE C, §4)
@@ -99,7 +97,6 @@ type RouterStats struct {
 type DefaultAdaptiveRouter struct {
 	mu           sync.RWMutex
 	registry     *ModelCapabilityRegistry
-	multillmReg  *multillm.Registry
 	runtime      *Runtime // E-658: dono da decisao (caminho canonico RouteModelForStep)
 	cache        map[RoutingCacheKey]RoutingDecision
 	cacheOrder   []RoutingCacheKey // para LRU simples
@@ -458,14 +455,14 @@ func (r *DefaultAdaptiveRouter) InvalidateCache() {
 	r.cacheOrder = make([]RoutingCacheKey, 0)
 }
 
-// Stats retorna estatísticas
+// Stats retorna as estatísticas do roteador.
+//
+// E-663 (lint SA9003): havia aqui um ramo **VAZIO** (`if r.stats.TotalRequests > 0 { /* comentario */ }`) — o
+// staticcheck o recusa, e com razão: *ramo vazio não calcula nada*. Não existe estimativa de `UnknownModelRate`
+// neste router, e **não se inventa uma**: o campo fica com o que foi medido, e zero significa "não medido", nunca
+// "zero por cento".
 func (r *DefaultAdaptiveRouter) Stats() RouterStats {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	stats := r.stats
-	// Calcula taxa de unknown
-	if r.stats.TotalRequests > 0 {
-		// Não temos contador direto de unknown, mas podemos estimar
-	}
-	return stats
+	return r.stats
 }

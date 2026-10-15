@@ -174,11 +174,11 @@ func TestAdaptiveRouterConcorrenteSemCorrida(t *testing.T) {
 
 	const goroutines, porGoroutine = 16, 8
 	var wg sync.WaitGroup
-	for g := 0; g < goroutines; g++ {
+	for g := range goroutines {
 		wg.Add(1)
 		go func(g int) {
 			defer wg.Done()
-			for i := 0; i < porGoroutine; i++ {
+			for i := range porGoroutine {
 				subtarefa := Subtask{
 					ID:                   fmt.Sprintf("g%d-i%d", g, i),
 					RequiredCapabilities: []string{"coding"},
@@ -306,8 +306,7 @@ func TestRouteBatchRecusaGrafoInvalido(t *testing.T) {
 func TestDecomporPlanoEmSubtarefasProjetaOPlanoValidado(t *testing.T) {
 	plano := []Step{
 		{ID: "pesquisa", Title: "levantar fontes", RequiredCapabilities: []string{"research"}},
-		{ID: "codigo", Title: "implementar", RequiredCapabilities: []string{"coding"},
-			PinnedModelID: "local/forte", DependsOn: []string{"pesquisa"}},
+		{ID: "codigo", Title: "implementar", RequiredCapabilities: []string{"coding"}, PinnedModelID: "local/forte", DependsOn: []string{"pesquisa"}},
 	}
 	if err := ValidatePlanGraph(plano); err != nil {
 		t.Fatalf("o plano do teste tinha de ser valido para o validador EXISTENTE: %v", err)
