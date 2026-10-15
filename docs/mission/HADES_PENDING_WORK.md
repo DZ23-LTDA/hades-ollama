@@ -215,3 +215,53 @@ Estado medido em 2026-10-14, com evidência no `HADES_MEMORY_CONTEXT_RELIABILITY
 
 Regra que estes dois blocos herdam do erro do E-619: ***procurar pelos NOMES que o código usa,
 com padrões que não excluam o alvo*** — antes de declarar qualquer lacuna.
+
+## Checkpoint E-650/E-651 — reparacao do CI vermelho do PR #438
+
+**Medido em 2026-10-15T01:35Z (2026-10-14T22:35 BRT).** NAO substitui `HADES_MASTER_STATE.json`
+(fonte canonica unica); e' o registo de trabalho desta fatia.
+
+### Estado medido (nao narrado)
+| item | valor | origem |
+| --- | --- | --- |
+| `origin/main` | `4b3e2185422c24d5a05fd46a343953ad6f41d1e5` | `git rev-parse origin/main` |
+| branch | `fix/checker-relogio` | `git rev-parse --abbrev-ref HEAD` |
+| head ANTES desta fatia | `3c2edf466` | igual ao head que a auditoria externa registou |
+| head DEPOIS | `f461ec86a` (E-650, E-651, E-650-ui) | `git rev-parse HEAD` |
+| PR #438 | aberto, **nao mergeado**, `mergeable_state=blocked` | revisao humana pendente — **nao contornada** |
+| checks do head `3c2edf466` | **6 falhas, 17 verdes** | `get_check_runs` |
+| checks do head `e432a9091` | as 6 falhas caem para **1** (so' o E2E) | `get_check_runs` |
+
+### As 6 falhas, com causa raiz medida por log (nao por suposicao)
+| check | causa raiz | correccao | prova |
+| --- | --- | --- | --- |
+| `Preserve Class A+ surfaces` (12 s) | `verify-contracts.mjs`: `DELETE /api/agent/v1/skills/:id` **NO MATCH** — a rota foi APAGADA no E-642, quando usei a linha como ANCORA de edicao e nao a repus | rota reposta + comentario do incidente | *«CONTRACT VERIFICATION PASSED»*, exit 0 |
+| `Go agentic and server gates` | mesmo `verify-contracts.mjs` | idem | idem |
+| `PR gate` | agregava os anteriores | idem | verde no CI |
+| `test (ubuntu-latest)` | `TestLembretesNaSuperficie`: `time.Now().UTC().Add(2h)` + servico de 30 min dentro de turno `00:00-24:00` ⇒ as 23:56 recusa **com razao** ⇒ ***a cor do CI dependia da hora*** | proximo meio-dia UTC (sempre < 24 h e com folga na janela) | reproduzido as 21:56 BRT e depois `--- PASS` + `go test ./server/` ok (29,7 s) |
+| `test (macos-latest)` | mesma causa | idem | verde no CI |
+| `Web E2E (shell smoke)` | **`PerformanceCard` derrubava a PAGINA**: o stub do E2E responde `{}` a rotas nao tratadas ⇒ `dados.performance` indefinido ⇒ `TypeError` ⇒ error boundary | guarda + mensagem honesta + teste de regressao com payload mau | `npx playwright test e2e/first-run-journey.spec.ts` = **1 passed (28,2 s)** (era `1 failed`) |
+
+### A causa de eu nao os ter apanhado (a parte reutilizavel)
+A bateria local tinha **16** verificadores e **nao continha o gate do CI**: `verify-contracts.mjs`
+e' **Node**, nao Python. Passa a existir `_tmp/bateria_local.ps1`, **espelho dos passos do job**
+`Preserve Class A+ surfaces`: **1 node + 27 python = 28/28 TUDO VERDE**. *Bateria que nao contem o
+gate do CI nao substitui o CI* (mesma classe do E-636).
+
+### Correccao de um numero que EU declarei mal
+A mensagem do commit `146350696` (E-651) diz *«633 passed (633)»*; o **medido foi 630**. O numero
+errado fica na historia (commit empurrado) e o correcto e' este: **630**. Licao: nao escrever
+numeros de memoria numa mensagem de commit — colar o que a ferramenta mediu.
+
+### Proximo passo e comando de retomada segura
+1. Confirmar o CI do head final (`f461ec86a`): os 6 checks que estavam vermelhos.
+2. Correr a **suite E2E inteira** (`npx playwright test`), nao so' o spec da jornada.
+3. Actualizar `HADES_MASTER_STATE.json` (valores medidos desta fatia), sem criar fonte concorrente.
+4. `PR #438` continua a exigir **revisao humana** (`LMPrado-DZ23`): nao fazer merge, nao contornar.
+
+```bash
+# retomada segura
+cd hades-ollama && git fetch origin && git status --porcelain=v1
+git rev-parse HEAD origin/fix/checker-relogio origin/main
+powershell -NoProfile -ExecutionPolicy Bypass -File _tmp/bateria_local.ps1   # 28 gates do CI
+```
