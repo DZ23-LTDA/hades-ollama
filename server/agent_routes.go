@@ -705,6 +705,8 @@ func (a *agentAPI) register(r *gin.Engine) {
 	group.POST("/remote-mcp", a.registerRemoteMCP)
 	group.GET("/jobs", a.jobs)
 	group.POST("/jobs/:id/replay", a.replayJob)
+	// E-654: §9 — a VERDADE de capacidade por modelo, na superficie (o registo existia e era invisivel).
+	group.GET("/capabilities", a.capabilities)
 	group.GET("/skills", a.skills)
 	group.GET("/skills/active", a.activeSkills)
 	group.POST("/skills/:id/activate", a.activateSkill)
