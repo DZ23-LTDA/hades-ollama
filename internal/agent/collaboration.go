@@ -49,14 +49,15 @@ type CollaborationSnapshot struct {
 	UpdatedAt time.Time  `json:"updated_at"`
 }
 type CollaborationStore struct {
-	mu       sync.Mutex
-	root     string
-	comments map[string][]Comment
-	presence map[string]map[string]Presence
+	mu           sync.Mutex
+	root         string
+	comments     map[string][]Comment
+	presence     map[string]map[string]Presence
+	participants map[string][]Participant
 }
 
 func NewCollaborationStore(root string) (*CollaborationStore, error) {
-	store := &CollaborationStore{root: root, comments: map[string][]Comment{}, presence: map[string]map[string]Presence{}}
+	store := &CollaborationStore{root: root, comments: map[string][]Comment{}, presence: map[string]map[string]Presence{}, participants: map[string][]Participant{}}
 	if strings.TrimSpace(root) == "" {
 		return store, nil
 	}
@@ -68,6 +69,11 @@ func NewCollaborationStore(root string) (*CollaborationStore, error) {
 	}
 	if err := readJSON(filepath.Join(root, "presence.json"), &store.presence); err != nil && !errors.Is(err, os.ErrNotExist) {
 		return nil, fmt.Errorf("load collaboration presence: %w", err)
+	}
+	// PARTICIPANTS (complemento 48, FASE 2/F6): humanos e agentes na MESMA lista - *um agente que nao esta' na
+	// lista nao esta' na sala*, e e' isso que impede um mencionado inexistente de ser tratado como membro.
+	if err := readJSON(filepath.Join(root, "participantes.json"), &store.participants); err != nil && !errors.Is(err, os.ErrNotExist) {
+		return nil, fmt.Errorf("load collaboration participants: %w", err)
 	}
 	return store, nil
 }
@@ -231,5 +237,8 @@ func (s *CollaborationStore) persistLocked() error {
 	if err := writeJSONAtomic(filepath.Join(s.root, "comments.json"), s.comments); err != nil {
 		return err
 	}
-	return writeJSONAtomic(filepath.Join(s.root, "presence.json"), s.presence)
+	if err := writeJSONAtomic(filepath.Join(s.root, "presence.json"), s.presence); err != nil {
+		return err
+	}
+	return writeJSONAtomic(filepath.Join(s.root, "participantes.json"), s.participants)
 }
