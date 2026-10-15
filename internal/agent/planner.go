@@ -34,9 +34,10 @@ type RoutedPlannerResolver interface {
 	ResolvePlannerForMission(ctx context.Context, provider, model, organizationID string, capabilities []string) (Planner, PlannerResolution, error)
 }
 
-type plannerChatClient interface {
-	Chat(ctx context.Context, request *api.ChatRequest, callback api.ChatResponseFunc) error
-}
+// plannerChatClient e' o nome historico do cliente de chat do planejador. E-666: passou a ser ALIAS da interface
+// exportada `InferenceChatClient`, para que o runtime injete o MESMO tipo em vez de manter duas abstracoes
+// paralelas para falar com modelo.
+type plannerChatClient = InferenceChatClient
 
 // PlanUsageSink permite que o runtime injete o destino do consumo do modelo. Fica em uma
 // interface separada de Planner para não quebrar planejadores que não reportam consumo.
@@ -263,7 +264,7 @@ func (p OllamaPlanner) Plan(ctx context.Context, mission Mission) ([]Step, error
 	// ou projeto, o contexto canônico do Hades entra como mensagem de sistema
 	// ANTES do objetivo, declarando identidade, escopo e permissões. Sem escopo
 	// de tenant nada é injetado — na dúvida, não se vaza contexto de outro dono.
-	instrucaoSistema := "You are a mission planner. Return only JSON with a top-level steps array. Each step must have kind, title, risk, requires_approval, and input. Allowed kinds are workspace.list, workspace.read, git.repo.inspect, workspace.write, terminal.exec, sandbox.exec, browser.operator, desktop.companion, mcp.call, mcp.remote.call, connector.http, and media.process only when a media provider is configured. Never invent completed results. Use read risk for inspection, write risk for filesystem changes, external_side_effect for browser, desktop, MCP, connectors, and media provider actions, and require approval for write, terminal, sandbox, browser, desktop, MCP, connector, and media steps. Use workspace.list to inspect a DIRECTORY and workspace.read to read a specific FILE: never use workspace.read to inspect a directory. Workspace paths MUST be RELATIVE to the workspace root (for example \"README.md\" or \"cmd/app\" or \".\" for the root directory): an absolute path such as \"/\" is refused before execution."
+	instrucaoSistema := "You are a mission planner. Return only JSON with a top-level steps array. Each step must have kind, title, risk, requires_approval, and input. Allowed kinds are workspace.list, workspace.read, git.repo.inspect, workspace.write, terminal.exec, sandbox.exec, browser.operator, desktop.companion, mcp.call, mcp.remote.call, connector.http, and media.process only when a media provider is configured, plus model.infer for a step that must actually run one inference call on the model routed for that step. Never invent completed results. Use read risk for inspection, write risk for filesystem changes, external_side_effect for browser, desktop, MCP, connectors, and media provider actions, and require approval for write, terminal, sandbox, browser, desktop, MCP, connector, and media steps. Use workspace.list to inspect a DIRECTORY and workspace.read to read a specific FILE: never use workspace.read to inspect a directory. Workspace paths MUST be RELATIVE to the workspace root (for example \"README.md\" or \"cmd/app\" or \".\" for the root directory): an absolute path such as \"/\" is refused before execution."
 	// O contrato vem dos DESCRITORES reais: dizer só os kinds permitidos deixava o modelo
 	// devolver passos sem os campos exigidos.
 	if contrato := PlanningToolContract(p.Tools); contrato != "" {
@@ -373,6 +374,13 @@ func normalizeSteps(steps []Step) ([]Step, error) {
 		// executes project code on the host (external side effect).
 		"project.test.run": RiskExternalSideEffect,
 		"git.merge.origin": RiskWrite,
+		// E-666: inferencia por passo (`model.infer`). E' EFEITO EXTERNO - sai da maquina, custa e pode enviar dado -
+		// e portanto exige aprovacao, como qualquer ferramenta dessa classe. *A classe aqui tem de ser a MESMA do
+		// descritor da ferramenta: este mapa e' a fonte unica do risco (SEC-01), e uma divergencia entre os dois
+		// deixaria o plano rebaixar o risco.* Sem esta linha o kind nem e' planejavel: `normalizeSteps` recusa
+		// qualquer ferramenta fora deste mapa ("planner returned unsupported tool") - *e um executor inalcancavel e'
+		// so' uma promessa.*
+		KindDeInferencia: RiskExternalSideEffect,
 	}
 	for i := range steps {
 		if _, ok := allowed[steps[i].Kind]; !ok {

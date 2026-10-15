@@ -69,6 +69,10 @@ var approvalRequiredScopes = map[string]struct{}{
 	"mcp:remote:call":      {},
 	"connector:external":   {},
 	"media:execute":        {},
+	// E-666: um passo de inferencia sai da maquina, custa e pode enviar dado ⇒ **exige aprovacao por passo**, como
+	// qualquer outro efeito externo. *Declarar o escopo aqui e no descritor da ferramenta nao e' redundancia: sao os
+	// dois lados que a politica confronta - e um escopo que exigisse aprovacao so' num dos lados seria uma brecha.*
+	"model:infer": {},
 }
 
 // readScopes são os escopos que só leem.

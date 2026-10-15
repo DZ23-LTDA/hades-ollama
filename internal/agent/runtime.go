@@ -57,7 +57,10 @@ type Runtime struct {
 	models *multillm.Registry
 	// E-663: conhecimento sobre CAPACIDADE dos modelos (tool call nativo, visao...). *Nunca nulo:* NewRuntime
 	// preenche com o registro MEDIDO do ambiente quando a config nao injeta um - e o gate do passo o consulta.
-	modelCapabilities   *ModelCapabilityRegistry
+	modelCapabilities *ModelCapabilityRegistry
+	// E-666: cliente de inferencia que o passo `model.infer` usa. *O modelo NAO e' escolhido aqui:* a ferramenta
+	// le' o modelo ROTEADO do `ToolContext`. Sem cliente a ferramenta nem se registra - fail-closed.
+	inference           InferenceChatClient
 	capabilityPolicy    CapabilityPolicy
 	workspaceRoot       string
 	dataRoot            string
@@ -153,6 +156,11 @@ type RuntimeConfig struct {
 	// `DefaultModelCapabilityRegistry()` - as capacidades MEDIDAS neste ambiente. *Injetavel para que um teste possa
 	// provar a recusa de um modelo medido como `compatible_text` sem mexer no registro global.*
 	ModelCapabilities *ModelCapabilityRegistry
+
+	// E-666 (§4): cliente de inferencia para o passo `model.infer`. **Opcional e fail-closed:** sem ele a ferramenta
+	// nao se registra e um plano que peça `model.infer` e' recusado por ferramenta desconhecida - *melhor do que um
+	// passo de inferencia que devolve texto vazio como se tivesse trabalhado.*
+	InferenceChatClient InferenceChatClient
 }
 
 var (
@@ -243,6 +251,12 @@ func NewRuntime(config RuntimeConfig) (*Runtime, error) {
 	}
 	if config.Media != nil {
 		tools.Register(mediaProcessTool{manager: config.Media})
+	}
+	// E-666: o passo que FAZ INFERENCIA so' existe quando ha' cliente. *Registrar a ferramenta sem cliente daria um
+	// kind que aceita o passo e falha no meio da execucao; ausencia do kind recusa no planejamento, que e' onde a
+	// recusa e' barata.*
+	if config.InferenceChatClient != nil {
+		tools.Register(inferenceTool{cliente: config.InferenceChatClient})
 	}
 	for _, descriptor := range tools.Descriptors() {
 		if err := capabilityPolicy.ValidateToolDescriptor(descriptor); err != nil {
@@ -428,7 +442,7 @@ func NewRuntime(config RuntimeConfig) (*Runtime, error) {
 	}
 	runtime := &Runtime{
 		writeDurability: durabilidade,
-		store:           store, planner: planner, plannerResolver: config.PlannerResolver, tools: tools, models: config.Models, modelCapabilities: registroDeCapacidadesDeModelo(config.ModelCapabilities), capabilityPolicy: capabilityPolicy, workspaceRoot: root, dataRoot: dataRoot, context: contextStore, company: companyStore, consent: consentRegistry, crm: crmStore, inbox: inboxStore, omnichannel: omnichannelRuntime, serviceAgents: serviceAgentRuntime, commerce: commerceStore,
+		store:           store, planner: planner, plannerResolver: config.PlannerResolver, tools: tools, models: config.Models, modelCapabilities: registroDeCapacidadesDeModelo(config.ModelCapabilities), inference: config.InferenceChatClient, capabilityPolicy: capabilityPolicy, workspaceRoot: root, dataRoot: dataRoot, context: contextStore, company: companyStore, consent: consentRegistry, crm: crmStore, inbox: inboxStore, omnichannel: omnichannelRuntime, serviceAgents: serviceAgentRuntime, commerce: commerceStore,
 		salesWorkforce:    salesWorkforceStore,
 		marketplace:       marketplaceSyncStore,
 		businessSnapshots: businessSnapshotStore, finance: financeOps, businessSupervisor: businessSupervisor, remoteMCP: config.RemoteMCP, metrics: &RuntimeMetrics{}, connectors: config.Connectors, mcp: config.MCP, queue: queue, redisQueue: config.RedisQueue, traces: traces, telemetry: telemetry, media: config.Media, builder: builder, collaboration: collaboration, push: config.Push, pushOutbox: pushOutbox, deployments: config.Deployments, deploymentApprovals: deploymentApprovals, webhookReplay: webhookReplay, mu: &sync.Mutex{}, running: make(map[string]bool), activeCancels: make(map[string]context.CancelFunc), cancelPollInterval: durableCancelPollInterval(),
