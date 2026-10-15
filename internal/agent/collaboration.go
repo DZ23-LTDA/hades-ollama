@@ -19,6 +19,15 @@ type Comment struct {
 	UserID    string    `json:"user_id"`
 	Body      string    `json:"body"`
 	CreatedAt time.Time `json:"created_at"`
+	// ParentID responde a OUTRO comentario do MESMO projeto (referencia por id, nao por indice).
+	// Complemento 48 / FASE 2 ("respostas vinculadas") - antes disto o comentario era uma lista plana.
+	ParentID string `json:"parent_id,omitempty"`
+	// ArtifactID pendura o comentario num ENTREGAVEL (FASE 7).
+	//
+	// ATENCAO, MEDIDO: nao existe registro de entregaveis NESTE store, logo `ArtifactID` **nao e' validado
+	// aqui** - ele e' DECLARADO, nao verificado. *Quem grava um id errado grava um id errado*, e quem for
+	// construir a tela tem de resolver o artefato no registro que existir (artefatos de missao), nao aqui.
+	ArtifactID string `json:"artifact_id,omitempty"`
 }
 type Presence struct {
 	ProjectID string    `json:"project_id"`
@@ -55,7 +64,23 @@ func NewCollaborationStore(root string) (*CollaborationStore, error) {
 	return store, nil
 }
 
-func (s *CollaborationStore) AddComment(projectID, userID, body string) (Comment, error) {
+// VinculoDoComentario declara ONDE o comentario se pendura: numa RESPOSTA (`ParentID`) e/ou num ENTREGAVEL
+// (`ArtifactID`). Complemento 48, FASES 2 e 7. *Vazio e' vazio* - e o vinculo que aponta para o nada e'
+// **recusado** (ver `AddCommentWithLink`).
+type VinculoDoComentario struct {
+	ParentID   string
+	ArtifactID string
+}
+
+// ErrComentarioSemPai: o comentario respondido nao existe NESTE projeto. *Uma resposta orfa e' um fio
+// partido: melhor recusar na gravacao do que descobrir na leitura.*
+var ErrComentarioSemPai = errors.New("comment parent does not exist in this project")
+
+// AddCommentWithLink grava um comentario COM vinculo, validando o que da' para validar.
+//
+// Mantem `AddComment` (assinatura antiga) funcionando: aquele passa a delegar aqui com vinculo vazio, de modo
+// que existe **um unico caminho de escrita** (uma unica persistencia, um unico rollback) - nao dois.
+func (s *CollaborationStore) AddCommentWithLink(projectID, userID, body string, vinculo VinculoDoComentario) (Comment, error) {
 	projectID = strings.TrimSpace(projectID)
 	userID = strings.TrimSpace(userID)
 	body = strings.TrimSpace(body)
@@ -65,9 +90,18 @@ func (s *CollaborationStore) AddComment(projectID, userID, body string) (Comment
 	if len(body) > 10000 {
 		return Comment{}, errors.New("comment is too long")
 	}
-	comment := Comment{ID: "com_" + uuid.NewString(), ProjectID: projectID, UserID: userID, Body: body, CreatedAt: time.Now().UTC()}
+	pai := strings.TrimSpace(vinculo.ParentID)
+	artefato := strings.TrimSpace(vinculo.ArtifactID)
+	comment := Comment{
+		ID: "com_" + uuid.NewString(), ProjectID: projectID, UserID: userID, Body: body,
+		CreatedAt: time.Now().UTC(), ParentID: pai, ArtifactID: artefato,
+	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	// O PAI TEM DE EXISTIR NO MESMO PROJETO - a checagem e' feita sob o lock, contra o estado corrente.
+	if pai != "" && !s.comentarioExisteLocked(projectID, pai) {
+		return Comment{}, fmt.Errorf("%w: %s", ErrComentarioSemPai, pai)
+	}
 	previous := append([]Comment(nil), s.comments[projectID]...)
 	s.comments[projectID] = append(s.comments[projectID], comment)
 	if err := s.persistLocked(); err != nil {
@@ -79,6 +113,37 @@ func (s *CollaborationStore) AddComment(projectID, userID, body string) (Comment
 		return Comment{}, err
 	}
 	return comment, nil
+}
+
+func (s *CollaborationStore) comentarioExisteLocked(projectID, commentID string) bool {
+	for _, item := range s.comments[projectID] {
+		if item.ID == commentID {
+			return true
+		}
+	}
+	return false
+}
+
+// Respostas devolve as respostas DIRETAS de um comentario, em ordem cronologica. E' o que a FASE 2 pede
+// ("respostas vinculadas as mensagens") e o que uma tela de time consome sem varrer a lista inteira.
+func (s *CollaborationStore) Respostas(projectID, parentID string) []Comment {
+	parentID = strings.TrimSpace(parentID)
+	if parentID == "" {
+		return nil
+	}
+	todos := s.Comments(projectID)
+	respostas := make([]Comment, 0)
+	for _, item := range todos {
+		if item.ParentID == parentID {
+			respostas = append(respostas, item)
+		}
+	}
+	return respostas
+}
+
+// AddComment grava um comentario simples (sem vinculo). Delega para o caminho unico de escrita.
+func (s *CollaborationStore) AddComment(projectID, userID, body string) (Comment, error) {
+	return s.AddCommentWithLink(projectID, userID, body, VinculoDoComentario{})
 }
 
 func (s *CollaborationStore) Comments(projectID string) []Comment {
