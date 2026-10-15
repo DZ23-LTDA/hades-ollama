@@ -2857,6 +2857,9 @@
                            },
     "measured_at":  "2026-10-15T07:41:51-03:00",
     "measured_commit":  "e423ec72e682764d50bc966edd181c854e28d3a3",
+    "branch_head_measured":  "f1a6c261b",
+    "branch_head_measured_at":  "2026-10-15T10:30:00-03:00",
+    "branch_head_measured_how":  "git rev-parse HEAD no checkout local (branch fix/checker-relogio), medido no round 54. DIVERGENCIA DECLARADA: measured_commit continua a ser a ultima MEDICAO COMPLETA (e423ec72e); o head avancou com as fatias do complemento 48 (sala: dominio, rotas HTTP, cliente, componente, painel e tela) e com checkpoints. Nao se reescreveu a historia e nao se reivindica nova medicao completa. NOTA DE CONCORRENCIA: este arquivo tambem e escrito por outro agente (o measured_how seguinte cita HEAD 1065e5c56 / E-518-E-519) - editar sempre por ancora unica e re-ler antes de gravar.",
     "measured_how":  "git rev-parse origin/fix/checker-relogio (o commit DO PR, medido no GitHub) + git rev-parse origin/main + consulta a API de checks do PR #438. O HEAD local e\u0027 1065e5c56 (1 commit a frente: E-518/E-519, ainda nao empurrado).",
     "stage_states_derived_from":  "stages[].state (fonte unica desde E-311)",
     "reconciliation_v22":  {
