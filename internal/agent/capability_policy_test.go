@@ -44,7 +44,11 @@ func TestCapabilityPolicyKnownScopesAreDeterministic(t *testing.T) {
 		"browser:files", "browser:navigate", "browser:takeover", "connector:external",
 		"desktop:clipboard", "desktop:input", "desktop:process", "desktop:screen",
 		"harness:cli",
-		"mcp:call", "mcp:remote:call", "media:execute", "repo:read", "sandbox:execute", "terminal:allowlisted",
+		"mcp:call", "mcp:remote:call", "media:execute",
+		// E-666: escopo de INFERENCIA por passo. *Esta lista e' uma trava contra deriva silenciosa: alargar o
+		// vocabulario de capacidades tem de ser uma decisao consciente e registada, nao um efeito colateral.*
+		"model:infer",
+		"repo:read", "sandbox:execute", "terminal:allowlisted",
 		"workspace:read", "workspace:write",
 	}
 	if !reflect.DeepEqual(got, want) {
