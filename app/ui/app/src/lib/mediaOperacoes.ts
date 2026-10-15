@@ -122,13 +122,15 @@ export function operacoesDisponiveis(
 /** Motivo exacto a mostrar quando a operacao nao pode correr - *a frase e' a do servidor.* */
 export function motivoDeIndisponibilidade(
   operacao: string,
-  providerConfigurado: boolean,
+  providerConfigurado: boolean | undefined,
 ): string | null {
   if (!operacaoPermitida(operacao)) {
     return `A operacao "${operacao}" nao esta na allowlist do servidor.`;
   }
   const descritor = OPERACOES_DE_MIDIA.find((d) => d.operacao === operacao);
-  if (descritor?.exigeProvider && !providerConfigurado) {
+  // `providerConfigurado === false` significa «medido que NAO ha»; `undefined` significa «nao sei».
+  // *«Nao sei» nunca vira «indisponivel»*: quem responde e' o servidor, ao lancar a missao.
+  if (descritor?.exigeProvider && providerConfigurado === false) {
     // Texto literal do servidor: quem le^ o ecra^ ve^ a mesma razao que o log.
     return "media provider is not configured";
   }
