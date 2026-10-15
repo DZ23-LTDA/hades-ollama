@@ -208,6 +208,20 @@ tem** — decisão de desenho, não detalhe de implementação.
 foi exactamente o erro do E-618 (o `memory.search` que duplicava o `knowledge.search`) — custou um
 commit revertido. *Auditar antes de ligar é mais barato do que reverter depois.*
 
+## 7.3 Confirmação medida (2026-10-15, branch `fix/checker-relogio`) — corrige uma leitura MINHA
+
+*Eu reportei nos rounds 59/60 «descobri que heartbeat, lease, orçamento, versões de skills e avaliação já existem» — **como se fosse novidade**. Não é: **§6 e §7 já auditavam isto**, e o §7 diz explicitamente que a lacuna do heartbeat é de **COMPOSIÇÃO**. Fica aqui a confirmação **com linha exata**, para o número não se perder:*
+
+| Capacidade | Código medido (função:linha) | Teste nomeado medido |
+| --- | --- | --- |
+| Heartbeat por agente | `JobQueue.Heartbeat` `internal/agent/queue.go:340` · `runWithHeartbeat` `queue.go:563` e `redis_queue.go:871` · `renewLease` `redis_queue.go:853` · `DeviceStore.Heartbeat` `devices.go:130,149` | `TestDistributedRedisHeartbeatReclaimAndAtomicMoveDue` · `TestDistributedRedisDrainRenewsLeaseImmediatelyNearExpiry` · `TestDevicePairingHeartbeatAndRevocation` |
+| Checkout atómico / lease durável | `AcquireSupervisorLease` `business_supervisor.go:698` · `ReleaseSupervisorLease` `:732` · `setQueueLeaseUntil` `queue.go:71` · `redisLeaseDurationMillis` `redis_queue.go:58` | `TestRedisClaimAndReclaimUseAtomicLeaseScripts` · `TestDistributedRedisClaimIsIdempotentAndReclaimsExpiredLease` · `TestSupervisorLeaseImpedeCicloDuploEPermiteAssuncao` · `TestPushOutboxExpiredLeaseFencesCompleteAndFail` |
+| Orçamento por agente/projeto/organização | `AgentOrchestrator.Plan` `swarm.go:227` · `normalizeAgentBudget` `:491` · `FinanceOps.SetAreaBudget` `finance_area_budget.go:91` · `AreaBudgetStatus` `:143` | `TestCompanyAgentSpendFailsAtomicallyAtBudgetAndPause` · `TestCompanySpendRequiresApprovalBeforeBudgetMutation` · `TestAreaBudgetLimitaCustoEProtegeContraCobrancaDupla` · `TestLedgerSurvivesRestartAndDoesNotDoubleBudget` |
+| Skill version history / restore (§6) | `ContextStore.SkillVersionsForOrganization` `context.go:915` · `RestoreSkillVersionForOrganization` `context.go:956` | *(confirmar cobertura nos testes do pacote)* |
+| Avaliação de desempenho | `EvaluationRunner.Run` `evaluation.go:59` · `DefaultEvaluationCases` `evaluation.go:44` | `TestEvaluationRunnerProducesReport` · `TestEvaluationRunnerRecordsErrorsAndMissingMarkers` · `TestEvaluationRunnerAppliesTimeout` · `TestDefaultEvaluationCasesCoverCoreSurfaces` |
+
+**O que continua NÃO provado — e é o que a meta exige:** o **caminho completo UI → API → efeito real** e o **E2E** de cada linha acima. *«Função de domínio com teste unitário» não é «capacidade homologada»*. **Não encontrei**, neste recorte, função de **aprendizagem organizacional supervisionada** nem **templates de equipes** — declaro **a medir**, não **ausente**.
+
 ## 8. Auditoria MCP — o Hades é CLIENTE, não SERVIDOR (item 3)
 
 **Medido** (`internal/agent/mcp*.go`, ~30 testes):
