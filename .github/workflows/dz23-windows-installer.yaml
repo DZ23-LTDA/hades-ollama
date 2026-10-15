@@ -47,7 +47,7 @@ jobs:
         # Compila o backend CUDA (ggml-cuda.dll) para o Hades usar a GPU NVIDIA
         # localmente, em vez de rodar o modelo só na CPU. Rede + subpacotes
         # mínimos para caber no disco/tempo do runner.
-        uses: Jimver/cuda-toolkit@v0.2.21
+        uses: Jimver/cuda-toolkit@v0.2.36
         id: cuda-toolkit
         with:
           # 12.6.2 é a versão disponível no action e compila todas as
