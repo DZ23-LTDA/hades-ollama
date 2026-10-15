@@ -60,7 +60,11 @@ type Runtime struct {
 	modelCapabilities *ModelCapabilityRegistry
 	// E-666: cliente de inferencia que o passo `model.infer` usa. *O modelo NAO e' escolhido aqui:* a ferramenta
 	// le' o modelo ROTEADO do `ToolContext`. Sem cliente a ferramenta nem se registra - fail-closed.
-	inference           InferenceChatClient
+	inference InferenceChatClient
+	// E-669: teto de custo por PASSO (centavos por 1k tokens). *Zero = NAO DECLARADO*, e o evento registra os dois
+	// estados (`budget_declared`) - *nao declarado nao e' o mesmo que ilimitado, e o operador tem de poder ver qual
+	// dos dois vale.*
+	maxStepCostCents    int64
 	capabilityPolicy    CapabilityPolicy
 	workspaceRoot       string
 	dataRoot            string
@@ -161,6 +165,16 @@ type RuntimeConfig struct {
 	// nao se registra e um plano que peça `model.infer` e' recusado por ferramenta desconhecida - *melhor do que um
 	// passo de inferencia que devolve texto vazio como se tivesse trabalhado.*
 	InferenceChatClient InferenceChatClient
+
+	// E-669 (§4/§7 — ORCAMENTO): teto de custo por PASSO, em centavos por 1k tokens. **Zero significa "nao
+	// declarado"**, e nao declarado NAO e' o mesmo que ilimitado: o evento `step.model.route` publica o teto e o
+	// rotulo `budget_declared`, para o operador ver QUAL dos dois estados vale.
+	//
+	// *POR QUE ISTO EXISTE:* `multillm.RouteRequest.MaxCostCents` ja' existia e o motor ja' o APLICAVA
+	// (`router.go:92`) - mas **o unico caller que o definia era um TESTE do `multillm`**. *Um teto que ninguem
+	// declara nao protege orcamento nenhum: era um controle medido e nunca usado - a mesma classe do
+	// `RequireNativeToolCalling` que o E-663 ligou.*
+	MaxStepCostCents int64
 }
 
 var (
@@ -442,7 +456,7 @@ func NewRuntime(config RuntimeConfig) (*Runtime, error) {
 	}
 	runtime := &Runtime{
 		writeDurability: durabilidade,
-		store:           store, planner: planner, plannerResolver: config.PlannerResolver, tools: tools, models: config.Models, modelCapabilities: registroDeCapacidadesDeModelo(config.ModelCapabilities), inference: config.InferenceChatClient, capabilityPolicy: capabilityPolicy, workspaceRoot: root, dataRoot: dataRoot, context: contextStore, company: companyStore, consent: consentRegistry, crm: crmStore, inbox: inboxStore, omnichannel: omnichannelRuntime, serviceAgents: serviceAgentRuntime, commerce: commerceStore,
+		store:           store, planner: planner, plannerResolver: config.PlannerResolver, tools: tools, models: config.Models, modelCapabilities: registroDeCapacidadesDeModelo(config.ModelCapabilities), inference: config.InferenceChatClient, maxStepCostCents: config.MaxStepCostCents, capabilityPolicy: capabilityPolicy, workspaceRoot: root, dataRoot: dataRoot, context: contextStore, company: companyStore, consent: consentRegistry, crm: crmStore, inbox: inboxStore, omnichannel: omnichannelRuntime, serviceAgents: serviceAgentRuntime, commerce: commerceStore,
 		salesWorkforce:    salesWorkforceStore,
 		marketplace:       marketplaceSyncStore,
 		businessSnapshots: businessSnapshotStore, finance: financeOps, businessSupervisor: businessSupervisor, remoteMCP: config.RemoteMCP, metrics: &RuntimeMetrics{}, connectors: config.Connectors, mcp: config.MCP, queue: queue, redisQueue: config.RedisQueue, traces: traces, telemetry: telemetry, media: config.Media, builder: builder, collaboration: collaboration, push: config.Push, pushOutbox: pushOutbox, deployments: config.Deployments, deploymentApprovals: deploymentApprovals, webhookReplay: webhookReplay, mu: &sync.Mutex{}, running: make(map[string]bool), activeCancels: make(map[string]context.CancelFunc), cancelPollInterval: durableCancelPollInterval(),
@@ -2289,6 +2303,10 @@ func (r *Runtime) Run(ctx context.Context, id string) (runErr error) {
 				"candidates":                  candidatos,
 				"candidates_measured":         len(candidatos) > 0,
 				"candidates_source":           "multillm.Registry.RouteCandidates (motor de scoring; nao recalculado aqui)",
+				// E-669: o TETO aplicado e se ele foi DECLARADO. *Publicar so' o modelo nao diz ao operador sob que
+				// restricao de orcamento a escolha foi feita - e `0` sem rotulo se confundiria com "sem limite".*
+				"budget_cents":    r.maxStepCostCents,
+				"budget_declared": r.maxStepCostCents > 0,
 			}); err != nil {
 				return err
 			}

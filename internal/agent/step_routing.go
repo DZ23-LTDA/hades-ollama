@@ -34,7 +34,23 @@ func (r *Runtime) RouteModelForStep(missao Mission, passo Step) (multillm.RouteD
 		// que a exigencia do passo foi honrada.
 		return multillm.RouteDecision{}, ErrModelRegistryUnavailable
 	}
-	return r.models.Route(RouteRequestForStep(missao, passo))
+	requisicao := RouteRequestForStep(missao, passo)
+	// E-669 (§4/§7) — O TETO DE CUSTO QUE EXISTIA E NINGUEM DECLARAVA.
+	//
+	// `multillm.RouteRequest.MaxCostCents` ja' existia e o motor ja' o APLICAVA (`router.go:92`) — mas o **unico
+	// caller que o definia era um TESTE do proprio `multillm`**. *Um teto que ninguem declara nao protege orcamento
+	// nenhum.* Aqui a politica do runtime entra na requisicao, **num unico lugar** — e nao em cada chamador, que e'
+	// como um controle se perde.
+	requisicao.MaxCostCents = r.maxStepCostCents
+	decisao, err := r.models.Route(requisicao)
+	if err != nil && r.maxStepCostCents > 0 && errors.Is(err, multillm.ErrNoRoute) {
+		// A recusa passa a NOMEAR a causa. `ErrNoRoute` sozinho ("no provider route satisfies the requested
+		// constraints") nao diz QUAL restricao excluiu tudo — e mandar o operador procurar no lugar errado e' pior
+		// do que nao dizer nada. *O erro tem de dizer qual restricao excluiu.*
+		return multillm.RouteDecision{}, fmt.Errorf("%w: nenhum modelo cabe no teto de custo por passo declarado (%d centavos/1k)",
+			err, r.maxStepCostCents)
+	}
+	return decisao, err
 }
 
 // E-435 (Estagio 43) — A PONTE ENTRE O NO DO PLANO E O MOTOR DE SELECAO.
