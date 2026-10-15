@@ -4,14 +4,15 @@
 
 | Medida | Valor medido |
 | --- | --- |
-| Commit medido (**local**, à frente do remoto) | `cafb00dbe` |
-| Remoto da branch | `48beffc9d` (*5 commits locais por empurrar*) |
-| `main` remota | `4b3e21854` |
-| Evidências no índice | **546** |
-| Estágios com evidência | **38 de 38** |
-| Bloqueios declarados | **17** (estado: 17 itens / **17 ids únicos**) |
-| Matriz do gate final | `BLOCKED_BY_EXTERNAL_DEPENDENCY: 5 · DONE: 19` |
+| Commit medido (**local = remoto**, 0 por empurrar) | `06cd277da` |
+| Remoto da branch | `06cd277da` (*nenhum commit local pendente*) |
+| `main` remota | `4b3e21854` (**histórico**, não re-medido neste checkpoint) |
+| Evidências no índice | **546** (**histórico** — não re-medido; *não herde este número*) |
+| Estágios com evidência | **38 de 38** (**histórico**) |
+| Bloqueios declarados | **17** (**histórico**) |
+| Matriz do gate final | `BLOCKED_BY_EXTERNAL_DEPENDENCY: 5 · DONE: 19` (**histórico**) |
 | Veredito global | **`NOT_RELEASE_READY`** |
+| **Checkpoint 2026-10-15 (BRT) — medido** | **CI do SHA `06cd277da`: `NOT MEASURED`** — o run `38741470515` ficou **preso do lado do GitHub** (`in_progress`, `updated_at` congelado em 13:17:43Z), com `Verify formatting` e `Test multi-provider contracts` já **verdes**. *Último veredito medido: `abd3771ab` ⇒ `class-a-plus-integrity` **success** + `dz23-multi-provider` **success** (13:04:43Z).* **Provas locais no SHA corrente:** `python scripts/hades_encoding_check_test.py` **OK** · `prettier --check` **limpo** · **`vitest run` na UI inteira: 100 ficheiros / 661 testes PASS** · `tsc -b` exit 0 · `gofmt` limpo · `go build ./...` exit 0 · `golangci-lint` **0 issues** (`./internal/agent/...` e `./server/...`) · `go test ./server -run TestCollab` **5/5 PASS**. **Entregue no complemento 48 (F2) — cadeia da sala:** domínio → **rotas HTTP** (`GET/POST /api/agent/v1/collab/:project_id/members`, `.../rooms`, `.../rooms/:room_id/members`; *origem = ator autenticado; sala inexistente ⇒ **404**, nunca lista vazia*) → cliente `salaApi.ts` (*falha nunca vira lista vazia*) → componente `SalaMembros.tsx` → painel `SalaPainel.tsx` (*estado em união discriminada*) — **todos `TESTED`**; **`SalaLigada.tsx` = `IMPLEMENTED_UNTESTED`** (*medido: sem `jsdom`/`happy-dom`/`testing-library`; existe `@vitest/browser` ⇒ é esse o teste que falta*). **Bloqueio humano declarado:** PR #438 `blocked` por revisão (`LMPrado-DZ23`) — **não contornar**. **Próximas ações:** ① teste de browser da `SalaLigada` (para `E2E_VERIFIED`); ② ler o veredito de `06cd277da` quando houver runner; ③ retomar as prioridades da FASE 6 (Paperclip → Cloudroom/Teleport → Studios → homologação e benchmarks reais). |
 
 **Medido em `2026-10-14 16:35 UTC`.**
 
