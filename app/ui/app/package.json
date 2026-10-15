@@ -39,7 +39,7 @@
     "remark-math": "^6.0.0",
     "shiki": "^3.14.0",
     "simple-icons": "^16.34.0",
-    "streamdown": "^2.6.0",
+    "streamdown": "^2.7.0",
     "unist-builder": "^4.0.0",
     "unist-util-parents": "^3.0.0"
   },
