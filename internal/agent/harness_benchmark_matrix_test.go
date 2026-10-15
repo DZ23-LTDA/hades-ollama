@@ -139,6 +139,26 @@ func TestMatrizRealComModelosLocais(t *testing.T) {
 	if escolhido := os.Getenv("HADES_T2_MODELS"); escolhido != "" {
 		modelos = []string{escolhido}
 	}
+	// ⚠️ E-671 — A SONDA DE ENDPOINT MENTIU (medido 2026-10-15): `OllamaDisponivel` devolveu `true` e a GERACAO
+	// travava; a matriz gastou 3 min por chamada e o pacote morreu no limite do `go test`. *O skip passa a exigir
+	// CAPACIDADE por modelo: uma geracao de 1 token que COMPLETA.* Modelo que nao gera e' DECLARADO, nao medido.
+	prontos := make([]string, 0, len(modelos))
+	var semCapacidade []string
+	for _, modelo := range modelos {
+		if OllamaModeloPronto(ctx, "", modelo) {
+			prontos = append(prontos, modelo)
+			continue
+		}
+		semCapacidade = append(semCapacidade, modelo)
+	}
+	if len(semCapacidade) > 0 {
+		t.Logf("modelos locais que NAO geraram (declarados, nao medidos): %v", semCapacidade)
+	}
+	if len(prontos) == 0 {
+		t.Skipf("nenhum modelo local consegue GERAR (endpoint responde? %v): matriz com modelos = NAO_MEDIDO "+
+			"(nunca 'ok' por ausencia)", OllamaDisponivel(ctx, ""))
+	}
+	modelos = prontos
 	harnesses := make([]HarnessProposer, 0, len(modelos))
 	for _, modelo := range modelos {
 		harnesses = append(harnesses, OllamaHarness{Modelo: modelo})
