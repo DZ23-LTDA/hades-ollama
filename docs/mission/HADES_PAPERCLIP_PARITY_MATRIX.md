@@ -222,6 +222,19 @@ commit revertido. *Auditar antes de ligar é mais barato do que reverter depois.
 
 **O que continua NÃO provado — e é o que a meta exige:** o **caminho completo UI → API → efeito real** e o **E2E** de cada linha acima. **Medição do elo que falta (2026-10-15):** `grep 'Evaluation|evaluation'` em `server/**/*.go` ⇒ **ZERO ocorrências**. O `EvaluationRunner` **existe no domínio, tem 4 testes nomeados e NÃO tem rota de API** — *logo não há caminho possível da UI até ao efeito*. **É exactamente a classe de defeito que esta missão persegue** (um controlo que existe, é testado e ninguém o pode usar: E-663, E-665, E-669). *A ausência de rota foi MEDIDA; a consequência para a UI é dedução, não medição.* *«Função de domínio com teste unitário» não é «capacidade homologada»*. **Não encontrei**, neste recorte, função de **aprendizagem organizacional supervisionada** nem **templates de equipes** — declaro **a medir**, não **ausente**.
 
+## 7.4 Elo de API, item a item (medido 2026-10-15) — a minha hipótese caiu
+
+*Eu supus que «os outros itens estariam na mesma situação da avaliação». **Medi, e não estão**:*
+
+| Item do §7 | Rota de API? | Evidência medida (`server/`) |
+| --- | --- | --- |
+| **Heartbeat de dispositivo** | ✅ **SIM** | `group.POST("/devices/:id/heartbeat", a.deviceHeartbeat)` `agent_routes.go:645` · handler `:3481` · `HeartbeatForOrganization` `:3493` · **WebSocket** `companion_ws.go:82,106` · teste `p0_scope_test.go:113` |
+| **Skill versions / restore** (§6) | ✅ **SIM** | handlers chamam `SkillVersionsForOrganization` `agent_routes.go:1683` e `RestoreSkillVersionForOrganization` `:1713` |
+| **Avaliação (`EvaluationRunner`)** | ❌ **NÃO** | `grep 'Evaluation\|evaluation'` em `server/**/*.go` ⇒ **0** |
+| **Orçamento por área / lease do supervisor** | ❌ **NÃO** (neste recorte) | `AreaBudget` e `AcquireSupervisorLease` ⇒ **0** ocorrências em `server/` |
+
+**Conclusão honesta:** a lacuna «domínio testado sem elo de API» atinge **avaliação** e **orçamento/lease** — *não* o heartbeat nem as versões de skills, que **têm rota**. *Não generalizo um defeito a partir de um caso.*
+
 ## 8. Auditoria MCP — o Hades é CLIENTE, não SERVIDOR (item 3)
 
 **Medido** (`internal/agent/mcp*.go`, ~30 testes):
