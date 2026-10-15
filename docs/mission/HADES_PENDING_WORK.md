@@ -219,7 +219,12 @@ Estado medido em 2026-10-14, com evidência no `HADES_MEMORY_CONTEXT_RELIABILITY
    **NOVO (2026-10-15)**, recebido como complemento da MASTER V2.2. Objetivo: humanos e múltiplos
    agentes **na mesma sala**, com delegação que executa trabalho real. **Estado medido hoje: NADA
    implementado** (as 15 fases estão `PENDING`; o primeiro passo é a **matriz de paridade com
-   evidência**, como manda a FASE 1). Fases: 0 recuperar contexto/memória · 1 auditoria de paridade ·
+   evidência**, como manda a FASE 1). ✅ **FASE 1 CONCLUÍDA — auditoria medida no commit `93f12ac19`:** a matriz
+   das 20 capacidades está em `docs/mission/HADES_TEAMILY_PARITY_MATRIX.md` (estado por capacidade, evidência com
+   **arquivo e linha**, o que já existe para **reusar**, e o que ficou **`A MEDIR`**). *Resultado curto: salas,
+   menções, respostas encadeadas, presença com origem e participante-agente **não existem em nenhuma camada**
+   (runtime, backend, UI); o que existe e deve ser reusado é o chat com injeção de contexto e compactação, o
+   `inbox`, o store de colaboração, o canal externo com DLP, os orçamentos/aprovações e o Companion.* Fases: 0 recuperar contexto/memória · 1 auditoria de paridade ·
    2 Team Chat (salas, menções `@agente`/`@equipe`/`@todos`, anexos, tarefas, presença com origem
    verificável, reconexão) · 3 Social Orchestrator (plano → delegação → paralelismo seguro →
    aprovações) · 4 Living Memory (com os rótulos `FACT_VERIFIED`/`DECISION_APPROVED`/`PROPOSAL`/
