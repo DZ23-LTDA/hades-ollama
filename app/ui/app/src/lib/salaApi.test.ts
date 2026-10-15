@@ -26,12 +26,20 @@ function fetcherQueFalha(causa: unknown): Fetcher {
 }
 
 const ana = { id: "ana", tipo: "humano" as const, nome: "Ana" };
-const agente = { id: "agente-pesquisador", tipo: "agente" as const, nome: "Pesquisador" };
+const agente = {
+  id: "agente-pesquisador",
+  tipo: "agente" as const,
+  nome: "Pesquisador",
+};
 
 describe("buscarMembrosDaSala — falha nunca vira lista vazia", () => {
   it("rede em baixo LANÇA SalaIndisponivel (não devolve lista vazia)", async () => {
     await expect(
-      buscarMembrosDaSala({ fetcher: fetcherQueFalha(new Error("offline")), projectID: "p", roomID: "r" }),
+      buscarMembrosDaSala({
+        fetcher: fetcherQueFalha(new Error("offline")),
+        projectID: "p",
+        roomID: "r",
+      }),
     ).rejects.toBeInstanceOf(SalaIndisponivel);
   });
 
@@ -47,7 +55,11 @@ describe("buscarMembrosDaSala — falha nunca vira lista vazia", () => {
 
   it("corpo sem o campo `membros` LANÇA (resposta inválida não é sala vazia)", async () => {
     await expect(
-      buscarMembrosDaSala({ fetcher: fetcherQueDevolve({ itens: [] }), projectID: "p", roomID: "r" }),
+      buscarMembrosDaSala({
+        fetcher: fetcherQueDevolve({ itens: [] }),
+        projectID: "p",
+        roomID: "r",
+      }),
     ).rejects.toBeInstanceOf(SalaIndisponivel);
   });
 
@@ -59,9 +71,9 @@ describe("buscarMembrosDaSala — falha nunca vira lista vazia", () => {
         throw new SyntaxError("bad json");
       },
     });
-    await expect(buscarMembrosDaSala({ fetcher, projectID: "p", roomID: "r" })).rejects.toBeInstanceOf(
-      SalaIndisponivel,
-    );
+    await expect(
+      buscarMembrosDaSala({ fetcher, projectID: "p", roomID: "r" }),
+    ).rejects.toBeInstanceOf(SalaIndisponivel);
   });
 
   it("membro com forma desconhecida LANÇA (não se inventa um tipo)", async () => {

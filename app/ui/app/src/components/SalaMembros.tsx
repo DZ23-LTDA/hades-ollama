@@ -49,10 +49,16 @@ export function rotuloDoMembro(membro: MembroDaSala): string {
 
 /** `etiquetaDoTipo` diz, em palavras, o que o membro é. *A cor não chega.* */
 export function etiquetaDoTipo(tipo: TipoDeMembro): string {
-  return tipo === "agente" ? TEXTOS_DA_SALA.etiquetaAgente : TEXTOS_DA_SALA.etiquetaHumano;
+  return tipo === "agente"
+    ? TEXTOS_DA_SALA.etiquetaAgente
+    : TEXTOS_DA_SALA.etiquetaHumano;
 }
 
-export function SalaMembros({ membros, carregando = false, erro = "" }: PropsDaSala) {
+export function SalaMembros({
+  membros,
+  carregando = false,
+  erro = "",
+}: PropsDaSala) {
   const falha = erro.trim();
 
   // A ORDEM DAS DECISÕES É A GARANTIA: falha primeiro, depois carregamento, depois ausência, depois lista.
@@ -73,7 +79,11 @@ export function SalaMembros({ membros, carregando = false, erro = "" }: PropsDaS
   }
 
   if (membros.length === 0) {
-    return createElement("p", { className: "sala-membros-vazia" }, TEXTOS_DA_SALA.vazia);
+    return createElement(
+      "p",
+      { className: "sala-membros-vazia" },
+      TEXTOS_DA_SALA.vazia,
+    );
   }
 
   return createElement(
@@ -83,9 +93,17 @@ export function SalaMembros({ membros, carregando = false, erro = "" }: PropsDaS
       createElement(
         "li",
         { key: membro.id, className: `sala-membro sala-membro-${membro.tipo}` },
-        createElement("span", { className: "sala-membro-tipo" }, etiquetaDoTipo(membro.tipo)),
+        createElement(
+          "span",
+          { className: "sala-membro-tipo" },
+          etiquetaDoTipo(membro.tipo),
+        ),
         " ",
-        createElement("span", { className: "sala-membro-nome" }, rotuloDoMembro(membro)),
+        createElement(
+          "span",
+          { className: "sala-membro-nome" },
+          rotuloDoMembro(membro),
+        ),
       ),
     ),
   );

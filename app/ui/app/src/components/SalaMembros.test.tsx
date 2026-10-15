@@ -17,10 +17,16 @@ import {
  */
 
 const ana: MembroDaSala = { id: "ana", tipo: "humano", nome: "Ana" };
-const agente: MembroDaSala = { id: "agente-pesquisador", tipo: "agente", nome: "Pesquisador" };
+const agente: MembroDaSala = {
+  id: "agente-pesquisador",
+  tipo: "agente",
+  nome: "Pesquisador",
+};
 
 function html(props: Partial<Parameters<typeof SalaMembros>[0]> = {}): string {
-  return renderToStaticMarkup(createElement(SalaMembros, { membros: [], ...props }));
+  return renderToStaticMarkup(
+    createElement(SalaMembros, { membros: [], ...props }),
+  );
 }
 
 describe("SalaMembros — a falha NÃO se disfarça de ausência", () => {
@@ -70,7 +76,9 @@ describe("SalaMembros — um agente não passa por pessoa", () => {
 describe("SalaMembros — os rótulos são o que dizem ser", () => {
   it("sem nome, o rótulo é o id — nunca vazio", () => {
     expect(rotuloDoMembro({ id: "x1", tipo: "agente" })).toBe("x1");
-    expect(rotuloDoMembro({ id: "x1", tipo: "agente", nome: "   " })).toBe("x1");
+    expect(rotuloDoMembro({ id: "x1", tipo: "agente", nome: "   " })).toBe(
+      "x1",
+    );
   });
 
   it("etiquetaDoTipo distingue os dois tipos", () => {

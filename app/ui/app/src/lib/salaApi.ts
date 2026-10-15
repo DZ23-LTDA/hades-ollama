@@ -86,7 +86,9 @@ export async function buscarMembrosDaSala(opcoes: {
   }
 
   if (!resposta.ok) {
-    throw new SalaIndisponivel(`o servidor recusou a leitura da sala (HTTP ${resposta.status})`);
+    throw new SalaIndisponivel(
+      `o servidor recusou a leitura da sala (HTTP ${resposta.status})`,
+    );
   }
 
   let corpo: unknown;
@@ -97,7 +99,9 @@ export async function buscarMembrosDaSala(opcoes: {
   }
 
   if (typeof corpo !== "object" || corpo === null || !("membros" in corpo)) {
-    throw new SalaIndisponivel("a resposta da sala não trouxe o campo `membros`");
+    throw new SalaIndisponivel(
+      "a resposta da sala não trouxe o campo `membros`",
+    );
   }
 
   const membros = (corpo as RespostaDaSala).membros;
@@ -106,7 +110,9 @@ export async function buscarMembrosDaSala(opcoes: {
   }
   for (const membro of membros) {
     if (!ehMembro(membro)) {
-      throw new SalaIndisponivel("a sala trouxe um membro com forma desconhecida");
+      throw new SalaIndisponivel(
+        "a sala trouxe um membro com forma desconhecida",
+      );
     }
   }
   return membros;

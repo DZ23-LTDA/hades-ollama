@@ -26,7 +26,10 @@ export const estadoCarregando = (): EstadoDaSala => ({ tipo: "carregando" });
  * é indistinguível de «vazio».* */
 export function estadoDeErro(mensagem: string): EstadoDaSala {
   const limpa = mensagem.trim();
-  return { tipo: "erro", mensagem: limpa === "" ? "motivo não informado" : limpa };
+  return {
+    tipo: "erro",
+    mensagem: limpa === "" ? "motivo não informado" : limpa,
+  };
 }
 
 export function estadoPronto(membros: MembroDaSala[]): EstadoDaSala {
@@ -39,7 +42,9 @@ export function estadoPronto(membros: MembroDaSala[]): EstadoDaSala {
  * *Recebe o resultado JÁ resolvido (ou o erro) — e é aqui que a decisão fica escrita em um só lugar:*
  * **sucesso ⇒ `pronta` (mesmo com zero membros); falha ⇒ `erro` (nunca `pronta` vazia).**
  */
-export function estadoDoResultado(resultado: { membros: MembroDaSala[] } | { erro: unknown }): EstadoDaSala {
+export function estadoDoResultado(
+  resultado: { membros: MembroDaSala[] } | { erro: unknown },
+): EstadoDaSala {
   if ("erro" in resultado) {
     const causa = resultado.erro;
     const mensagem = causa instanceof Error ? causa.message : String(causa);
