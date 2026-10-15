@@ -18,7 +18,14 @@ import (
 // - Step.RequiredCapabilities + Step.PinnedModelID: contrato do passo
 // - ModelCapabilityRegistry.ResolveToolMode: devolve ToolMode (native/compatible_text/unknown) + motivo
 //
-// O que FALTA (E-658): um **AdaptiveRouter** que:
+// ESTADO MEDIDO (E-658): o router **decide pelo caminho canonico** (`Runtime.RouteModelForStep`) - fonte unica de
+// decisao, falha fechado sem runtime, cache com identidade correcta e estatistica sem corrida.
+//
+// O QUE CONTINUA FALTANDO (nao declarar entregue): o **DECOMPOSITOR** (objetivo -> subtarefas em DAG) e o **evento
+// de auditoria** da decisao de roteamento. Hoje quem consome o router e' quem monta as `Subtask` (testes e chamadas
+// directas) - o laco de execucao ainda **nao** o chama.
+//
+// Lista original do que faltava:
 // 1. Recebe um objetivo + contexto → decompõe em subtarefas (DAG) com capacidades requeridas
 // 2. Para cada subtarefa, invoca RouteModelForStep → obtém modelo + modo + justificativa
 // 3. Emite decisão de roteamento como evento (auditoria)
@@ -92,17 +99,28 @@ type DefaultAdaptiveRouter struct {
 	mu           sync.RWMutex
 	registry     *ModelCapabilityRegistry
 	multillmReg  *multillm.Registry
+	runtime      *Runtime // E-658: dono da decisao (caminho canonico RouteModelForStep)
 	cache        map[RoutingCacheKey]RoutingDecision
 	cacheOrder   []RoutingCacheKey // para LRU simples
 	maxCacheSize int
 	stats        RouterStats
 }
 
-// NewAdaptiveRouter cria um router adaptativo
-func NewAdaptiveRouter(registry *ModelCapabilityRegistry, multillmReg *multillm.Registry) *DefaultAdaptiveRouter {
+// NewAdaptiveRouterParaRuntime liga o roteador adaptativo ao caminho CANONICO de roteamento por passo (E-658).
+//
+// *POR QUE ESTE CONSTRUTOR SUBSTITUI O ANTIGO:* a versao anterior (`NewAdaptiveRouter(registry, multillmReg)`)
+// criava um roteador capaz de decidir por conta propria, chamando `multillmReg.Route` direto - um SEGUNDO caminho
+// paralelo ao `Runtime.RouteModelForStep`, que e' o caminho auditado. Um construtor que produz um roteador
+// divergente e' uma armadilha; ele foi REMOVIDO em vez de mantido "por compatibilidade" (nao havia nenhum call
+// site). Aqui o runtime e' o **dono da decisao** e o registro de capacidades serve so' para ENRIQUECER.
+func NewAdaptiveRouterParaRuntime(runtime *Runtime, registro *ModelCapabilityRegistry) *DefaultAdaptiveRouter {
+	if registro == nil {
+		// O registro tem um padrao MEDIDO neste ambiente; nulo viraria panic no enriquecimento.
+		registro = DefaultModelCapabilityRegistry()
+	}
 	return &DefaultAdaptiveRouter{
-		registry:     registry,
-		multillmReg:  multillmReg,
+		registry:     registro,
+		runtime:      runtime,
 		cache:        make(map[RoutingCacheKey]RoutingDecision),
 		cacheOrder:   make([]RoutingCacheKey, 0),
 		maxCacheSize: 1000,
@@ -160,13 +178,25 @@ func (r *DefaultAdaptiveRouter) RouteSubtask(ctx context.Context, subtask Subtas
 	// Verifica cache
 	cacheKey := makeCacheKey(subtask.RequiredCapabilities, subtask.PinnedModelID)
 	r.mu.RLock()
-	if cached, ok := r.cache[cacheKey]; ok {
+	cached, ok := r.cache[cacheKey]
+	r.mu.RUnlock()
+	if ok {
+		// E-658 - DUAS CORRECOES NESTE CAMINHO:
+		//
+		// (a) CORRIDA DE DADOS: `r.stats.CacheHits++` era feito **sob RLock** - uma ESCRITA num campo partilhado
+		//     protegido apenas por lock de LEITURA. Em chamadas concorrentes isto e' corrida; a estatistica exige o
+		//     lock de escrita (e um teste concorrente sob `-race` passa a prova-lo).
+		// (b) IDENTIDADE: o cache e' por (capacidades, pin), **nao** por subtarefa. Devolver a copia guardada com o
+		//     `SubtaskID` do primeiro dono TROCARIA a identidade de quem pergunta - e a identidade e' do chamador.
+		r.mu.Lock()
 		r.stats.CacheHits++
+		r.mu.Unlock()
 		cached.CacheHit = true
-		r.mu.RUnlock()
+		cached.SubtaskID = subtask.ID
+		cached.RequiredCapabilities = subtask.RequiredCapabilities
+		cached.PinnedModelID = subtask.PinnedModelID
 		return cached, nil
 	}
-	r.mu.RUnlock()
 	r.mu.Lock()
 	r.stats.CacheMisses++
 	r.mu.Unlock()
@@ -194,17 +224,24 @@ func (r *DefaultAdaptiveRouter) RouteSubtask(ctx context.Context, subtask Subtas
 		// Pin não existe no registo -> cai para seleção por capacidades
 	}
 
-	// Seleciona por capacidades usando multillm.Registry
-	req := multillm.RouteRequest{
+	// E-658 - A DECISAO VEM DO CAMINHO CANONICO, NAO DE UM SEGUNDO ROTEADOR.
+	//
+	// Antes daqui havia um `multillm.RouteRequest` montado a mao + `r.multillmReg.Route(...)`: um SEGUNDO
+	// caminho de roteamento, paralelo ao `Runtime.RouteModelForStep` - que e' o caminho auditado (contrato do
+	// passo, pin por passo pela ponte E-435 e o evento `step.model.route`). Dois roteadores decidindo em paralelo
+	// e' a forma mais barata de divergir em silencio; e a montagem a mao repetia o mapeamento que a ponte E-437 ja'
+	// havia corrigido (capacidade de MODELO x capacidade de FERRAMENTA).
+	//
+	// Sem runtime nao se escolhe - e o router FALHA FECHADO, exatamente como `RouteModelForStep` faz. Nunca cair
+	// em silencio no modelo da missao, porque isso esconderia a exigencia nao honrada do subtarefa.
+	if r.runtime == nil {
+		return RoutingDecision{}, ErrModelRegistryUnavailable
+	}
+	decision, err := r.runtime.RouteModelForStep(Mission{}, Step{
+		ID:                   subtask.ID,
 		RequiredCapabilities: subtask.RequiredCapabilities,
 		PinnedModelID:        subtask.PinnedModelID,
-	}
-
-	if r.multillmReg == nil {
-		return RoutingDecision{}, ErrNoSuitableModel
-	}
-
-	decision, err := r.multillmReg.Route(req)
+	})
 	if err != nil {
 		return RoutingDecision{}, err
 	}
@@ -213,18 +250,29 @@ func (r *DefaultAdaptiveRouter) RouteSubtask(ctx context.Context, subtask Subtas
 	caps, known := r.registry.Lookup(decision.Model.ID)
 	if !known {
 		// Modelo escolhido pelo multillm mas não no nosso registo -> desconhecido
-		return RoutingDecision{
+		// Fallback honesto: o modelo foi escolhido pelo registry, mas NAO ha medicao local dele.
+		//
+		// E-658 - DOIS DEFEITOS QUE O TESTE PEGOU AQUI:
+		// (a) `Confidence` era **0,5** - um numero INVENTADO (nao existe medicao nenhuma sobre este modelo). A regra
+		//     desta casa e' que resultado ausente e' `NAO MEDIDO`; 0 e' a unica confianca honesta, e o motivo declara
+		//     o limite.
+		// (b) a decisao degradada **nao era cacheada**, embora o router anuncie cache por (capacidades, pin): a
+		//     mesma subtarefa repetida voltava a rotear, e `CacheMisses` contava sempre. A decisao e' determinista
+		//     para a mesma chave, entao entra no cache como qualquer outra.
+		degradada := RoutingDecision{
 			SubtaskID:            subtask.ID,
 			RequiredCapabilities: subtask.RequiredCapabilities,
 			PinnedModelID:        subtask.PinnedModelID,
 			ChosenModel:          decision.Model.ID,
 			ToolMode:             string(ToolModeUnknown),
-			Reason:               "modelo escolhido pelo registry mas nao medido localmente",
+			Reason:               "modelo escolhido pelo registry mas nao medido localmente (confianca NAO MEDIDA)",
 			ModelCapabilities:    ModelCapabilities{},
-			Confidence:           0.5,
+			Confidence:           0,
 			CacheHit:             false,
 			Timestamp:            time.Now().UTC(),
-		}, nil
+		}
+		r.addToCache(subtask.RequiredCapabilities, subtask.PinnedModelID, degradada)
+		return degradada, nil
 	}
 
 	mode, reason := r.registry.ResolveToolMode(decision.Model.ID)
