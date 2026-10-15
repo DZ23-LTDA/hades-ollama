@@ -27,7 +27,7 @@
   powershell -NoProfile -ExecutionPolicy Bypass -File scripts\hades_local_gates.ps1 -SemLint
 #>
 [CmdletBinding()]
-param([switch]$SemLint)
+param([switch]$SemLint, [switch]$SemTestes)
 
 $ErrorActionPreference = 'Continue'
 $repo = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
@@ -81,10 +81,36 @@ if ($SemLint) {
   }
 }
 
+if ($SemTestes) {
+  '--- 4. go test PULADO por -SemTestes (isto NAO e aprovacao dos testes)'
+} else {
+  # E-670 — OS TESTES ENTRAM NO GATE LOCAL.
+  #
+  # *POR QUE ISTO EXISTE:* este script rodava `gofmt` + `go build` + `golangci-lint` e **nao rodava teste nenhum** -
+  # e o passo que MAIS reprova no CI e' `go test`. *Uma bateria que nao contem o gate do CI nao substitui o CI*: foi
+  # essa lacuna que deixou o lint passar (E-663/E-665) e que aqui fica fechada tambem para os testes.
+  #
+  # ESCOPO DECLARADO: os dois pacotes que o job decisivo do CI (`Go agentic and server gates`) cobre de forma mais
+  # densa - `go test ./internal/agent` e `go test ./server`. *Um gate escopado e' melhor que gate nenhum, desde que
+  # o escopo esteja ESCRITO.* Se o tempo incomodar, `-SemTestes` pula - e o script DIZ que pulou.
+  #
+  # `-timeout 150s`: **nao** e' para esconder falha - e' para a falha ser RAPIDA e ALTA. Medido (2026-10-15):
+  # `TestMatrizComCorrecaoDeReferenciaDaVerdeEmTodas` (`harness_benchmark_matrix_test.go:46`) **trava** neste host
+  # (conexao HTTP presa, `net/http.persistConn.writeLoop`) e so' morre no limite padrao de 10 min do `go test`.
+  # Com 150s ele falha em 2m30s DIZENDO qual teste travou, em vez de consumir 10 minutos em silencio.
+  '--- 4. go test ./internal/agent ./server -count=1 -timeout 150s (o passo que mais reprova no CI)'
+  $saidaTeste = & go test ./internal/agent ./server -count=1 -timeout 150s 2>&1
+  $saidaTeste | Select-Object -Last 12 | ForEach-Object { "    $_" }
+  if ($LASTEXITCODE -ne 0) { $falhas.Add("go test ./internal/agent ./server (exit $LASTEXITCODE)") } else { '    OK' }
+}
+
 ''
 if ($falhas.Count -gt 0) {
   "GATES LOCAIS: $($falhas.Count) falha(s)"
   $falhas | ForEach-Object { "  - $_" }
   exit 1
 }
-'GATES LOCAIS: gofmt + build + lint VERDES'
+$passos = @('gofmt', 'build')
+if (-not $SemLint) { $passos += 'lint' }
+if (-not $SemTestes) { $passos += 'testes' }
+"GATES LOCAIS: $($passos -join ' + ') VERDES"

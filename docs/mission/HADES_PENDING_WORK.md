@@ -212,6 +212,29 @@ Estado medido em 2026-10-14, com evidência no `HADES_MEMORY_CONTEXT_RELIABILITY
 3. **CLOUDROOM — Session Teleport** — pendente: matriz de paridade (20 capacidades) e depois
    adaptadores por harness/executor. Diferenciar sempre `Native Resume` / `Checkpoint Restore` /
    `Context Handoff`; nada de segundo runtime.
+4. **HADES Collaborative Intelligence — Teamily Parity** (complemento **48 PROPOSTO**; *a numeração
+   foi CONFERIDA, não herdada*: `stages` do `HADES_MASTER_STATE.json` = **38** ids `1..38` sem
+   lacuna, e as extensões 39–42 / complementos 43–47 vivem em texto, não na lista do estado — logo
+   o próximo livre é 48, e a atribuição fica **pendente de confirmação no schema canônico**) —
+   **NOVO (2026-10-15)**, recebido como complemento da MASTER V2.2. Objetivo: humanos e múltiplos
+   agentes **na mesma sala**, com delegação que executa trabalho real. **Estado medido hoje: NADA
+   implementado** (as 15 fases estão `PENDING`; o primeiro passo é a **matriz de paridade com
+   evidência**, como manda a FASE 1). Fases: 0 recuperar contexto/memória · 1 auditoria de paridade ·
+   2 Team Chat (salas, menções `@agente`/`@equipe`/`@todos`, anexos, tarefas, presença com origem
+   verificável, reconexão) · 3 Social Orchestrator (plano → delegação → paralelismo seguro →
+   aprovações) · 4 Living Memory (com os rótulos `FACT_VERIFIED`/`DECISION_APPROVED`/`PROPOSAL`/
+   `HYPOTHESIS`/`UNTRUSTED_CONTENT`) · 5 roteamento inteligente na conversa · 6 humanos e agentes no
+   mesmo workspace · 7 Collaborative Studios · 8 Companion/assistentes · 9 agentes proativos com
+   governança · 10 continuidade entre chats e dispositivos · 11 segurança e privacidade (isolamento
+   por organização, anti-injeção, DLP) · 12 UX A+++ · 13 testes e homologação · 14 integração no
+   backlog canônico · 15 critérios de conclusão.
+   **REGRAS QUE VINCULAM (do próprio complemento):** ① **não** criar segundo chat engine, runtime,
+   memory engine, permission engine ou sistema de tarefas — reutilizar Cowork, inbox, eventos,
+   memória, Company OS e tarefas existentes; ② **primeiro** resolver os bloqueios do **PR #438** e
+   estabilizar a `main`, depois implementar incrementalmente; ③ uma menção só dispara execução com
+   **autorização + capacidade + orçamento** — *e o orçamento por passo já existe medido (E-669)*;
+   ④ testes simulados têm de ser **declarados como simulados**, e UI responsiva **não** é prova de
+   sincronização.
 
 Regra que estes dois blocos herdam do erro do E-619: ***procurar pelos NOMES que o código usa,
 com padrões que não excluam o alvo*** — antes de declarar qualquer lacuna.
