@@ -1,9 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import {
-  criarMissaoDeMidia,
-  decidirAprovacaoDeMidia,
-  executarMissaoDeMidia,
-} from "./mediaStudioApi";
+import { criarMissaoDeMidia, executarMissaoDeMidia } from "./mediaStudioApi";
 
 /**
  * A chamada do Multimodal Studio (Estagio 45). *Cada rota aqui foi lida no servidor antes de ser
@@ -127,37 +123,12 @@ describe("executarMissaoDeMidia", () => {
   });
 });
 
-describe("decidirAprovacaoDeMidia", () => {
-  it("envia decision e reason, com nonce (inclusive ao RECUSAR)", async () => {
-    const fetchFalso = vi.fn().mockResolvedValue(respostaJSON({ ok: true }));
-    vi.stubGlobal("fetch", fetchFalso);
-
-    await decidirAprovacaoDeMidia(
-      "mis_1",
-      "apr_9",
-      false,
-      "sem provider configurado",
-      "nonce_abc",
-    );
-
-    const url = String(fetchFalso.mock.calls[0][0]);
-    expect(url.endsWith("/api/agent/v1/missions/mis_1/approvals/apr_9")).toBe(
-      true,
-    );
-    const corpo = JSON.parse(String(fetchFalso.mock.calls[0][1].body));
-    // *Contrato medido na ROTA real: `agent_routes.go:878` ⇒ `decideApproval` (`:4285`, struct `:4287`/`:4289`).*
-    expect(corpo.decision).toBe("reject");
-    expect(corpo.reason).toBe("sem provider configurado");
-    expect(corpo.nonce).toBe("nonce_abc");
-  });
-
-  it("exige identificador de aprovacao e nao chama o servidor sem ele", async () => {
-    const fetchFalso = vi.fn();
-    vi.stubGlobal("fetch", fetchFalso);
-
-    await expect(
-      decidirAprovacaoDeMidia("mis_1", "  ", true, "ok"),
-    ).rejects.toThrow(/aprovacao/);
-    expect(fetchFalso).not.toHaveBeenCalled();
+describe("aprovacao de midia", () => {
+  it("NAO existe cliente de aprovacao no estudio (um so caminho: a superficie de aprovacao)", async () => {
+    // *Medido:* o painel cria e lanca a missao; aprovar pertence a' superficie que ja' existe
+    // (`AgenticSplitShell`/`AgenticConsole`, com `MissionApproval.nonce`). Um cliente paralelo
+    // sem chamador foi removido - este teste impede que ele volte por engano.
+    const modulo = await import("./mediaStudioApi");
+    expect("decidirAprovacaoDeMidia" in modulo).toBe(false);
   });
 });

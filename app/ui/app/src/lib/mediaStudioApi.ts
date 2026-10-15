@@ -80,33 +80,12 @@ export async function executarMissaoDeMidia(missionID: string): Promise<void> {
   await runMission(missionID);
 }
 
-/**
- * Decide uma aprovacao da missao.
+/*
+ * NAO ha aqui funcao de decidir aprovacao - **de proposito**.
  *
- * Contrato **medido** na rota real: `agent_routes.go:878` ⇒ `decideApproval` (`:4285`), cujo struct
- * (`:4287`/`:4289`) e' `{ decision, reason, nonce }` — ***nao* `approved`**. Enviar `approved`
- * deixava `decision` vazia e o servidor recusava com 400 antes de aprovar.
- * O `nonce` e' o que impede aprovar uma aprovacao que ja mudou.
+ * Medido: o painel cria a missao e lanca-a; *quem aprova e' a superficie de aprovacao que ja'
+ * existe* (`AgenticSplitShell`/`AgenticConsole`), que recebe `MissionApproval.nonce` (`:43`) e
+ * envia `{decision, nonce, reason}` (`:250`). Uma segunda funcao de aprovar - que cheguei a
+ * escrever e a testar - **nao era chamada por ecra nenhum** e criaria um segundo caminho para a
+ * mesma decisao. Foi removida com o seu teste: um so caminho de aprovacao e' requisito da meta.
  */
-export async function decidirAprovacaoDeMidia(
-  missionID: string,
-  approvalID: string,
-  aprovado: boolean,
-  motivo: string,
-  nonce = "",
-): Promise<void> {
-  if (approvalID.trim() === "") {
-    throw new Error("a aprovacao precisa de identificador");
-  }
-  await agentFetch(
-    `${BASE}/missions/${encodeURIComponent(missionID)}/approvals/${encodeURIComponent(approvalID)}`,
-    {
-      method: "POST",
-      body: JSON.stringify({
-        decision: aprovado ? "approve" : "reject",
-        reason: motivo,
-        nonce,
-      }),
-    },
-  );
-}
