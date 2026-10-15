@@ -25,7 +25,8 @@ import { agentFetch, runMission } from "./agenticClient";
  *    partilhada e depois delegar.
  */
 
-const BASE = "/api/agent/v1";
+// *Sem constante de base:* cada chamada usa o caminho LITERAL (`/api/agent/v1/...`), que e' o que
+// o verificador de superficies Class A+ consegue comparar com as rotas do backend.
 
 export type MissaoDeMidia = { id: string };
 
@@ -66,10 +67,16 @@ export async function criarMissaoDeMidia(
   if (organizationID) {
     corpo.organization_id = organizationID;
   }
-  const resposta = await agentFetch<RespostaDeMissao>(`${BASE}/missions`, {
-    method: "POST",
-    body: JSON.stringify(corpo),
-  });
+  // *Caminho LITERAL, nao `\${BASE}/missions`:* o verificador de superficies Class A+ compara o
+  // texto do `agentFetch` com as rotas do backend e uma constante interpolada da' `NO MATCH`
+  // (`Preserve Class A+ surfaces` falhou exactamente aqui). O servidor e' `/api/agent/v1/missions`.
+  const resposta = await agentFetch<RespostaDeMissao>(
+    "/api/agent/v1/missions",
+    {
+      method: "POST",
+      body: JSON.stringify(corpo),
+    },
+  );
   return { id: identificador(resposta) };
 }
 
