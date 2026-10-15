@@ -1,4 +1,4 @@
-import { agentFetch } from "./agenticClient";
+import { agentFetch, runMission } from "./agenticClient";
 
 /**
  * Chamada do Multimodal Studio (Estagio 45 / item 45).
@@ -14,9 +14,15 @@ import { agentFetch } from "./agenticClient";
  * a crio**: `media.process` exige aprovacao, escopo `media:execute` e workspace fixado - uma rota
  * directa contornaria exactamente essa politica.
  *
- * *PENDENTE DE CONSOLIDACAO (medido):* `agenticClient` ja' expoe `createMission`, `runMission` e
- * `decideMissionApproval` com estes mesmos contratos - **estas tres funcoes sao duplicacao minha e
- * devem passar a delegar**, para nao haver dois clientes da mesma API.
+ * *CONSOLIDACAO (medido, uma parte feita nesta fatia):*
+ *  - `executarMissaoDeMidia` **ja' delega** em `agenticClient.runMission`;
+ *  - `criarMissaoDeMidia` ainda NAO delega: `createMission` aceita
+ *    `{objective, workspace, capabilities}` mas o seu tipo de retorno e o nome do campo do
+ *    identificador precisam de ser lidos antes (nao se troca um cliente por outro a' cegas);
+ *  - `decidirAprovacaoDeMidia` ainda NAO delega **de proposito**: `decideMissionApproval` fixa o
+ *    `reason` («Aprovado no Agentic Console»), e aqui o motivo e' dado de AUDITORIA da operacao de
+ *    midia - delegar perderia informacao. Caminho correcto: acrescentar `reason?` a' funcao
+ *    partilhada e depois delegar.
  */
 
 const BASE = "/api/agent/v1";
@@ -67,11 +73,11 @@ export async function criarMissaoDeMidia(
   return { id: identificador(resposta) };
 }
 
-/** Executa a missao. *A midia nao corre por um pedido directo: corre dentro dos passos.* */
+/** Executa a missao. *A midia nao corre por um pedido directo: corre dentro dos passos.*
+ * **Delega** em `agenticClient.runMission` (mesma rota, ja' existente) - *nao se mantem um
+ * segundo cliente da mesma API.* */
 export async function executarMissaoDeMidia(missionID: string): Promise<void> {
-  await agentFetch(`${BASE}/missions/${encodeURIComponent(missionID)}/run`, {
-    method: "POST",
-  });
+  await runMission(missionID);
 }
 
 /**
