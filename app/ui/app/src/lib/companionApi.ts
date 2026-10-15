@@ -19,6 +19,22 @@ export type EstadoCompanion =
   | "falhou"
   | "cancelado";
 
+/**
+ * A lista dos estados validos, para VALIDAR o que chega. *Sem isto, um estado inesperado
+ * atravessava a API como se fosse legitimo e o componente rebentava ao procura-lo,
+ * derrubando a pagina inteira. Medido: `Cannot read properties of undefined (reading 'titulo')`.*
+ */
+export const ESTADOS_CONHECIDOS: readonly EstadoCompanion[] = [
+  "ausente",
+  "a_planear",
+  "a_trabalhar",
+  "a_aprovar",
+  "bloqueado",
+  "concluido",
+  "falhou",
+  "cancelado",
+];
+
 export type EstadoDoCompanion = {
   estado: EstadoCompanion;
   /** A razao vem SEMPRE do servidor. *Um estado sem razao e' indistinguivel de um palpite.* */
@@ -46,6 +62,14 @@ export async function carregarEstadoDoCompanion(
   const resposta = await agentFetch<RespostaDoCompanion>(
     `/api/agent/v1/missions/${encodeURIComponent(missionID)}/companion`,
   );
+  // ***VALIDACAO NA FRONTEIRA.*** Um estado fora dos oito conhecidos NAO pode atravessar:
+  // o componente rebentaria ao procura-lo no seu mapa e levaria o painel inteiro com ele.
+  // Medido no teste do host: `Cannot read properties of undefined (reading 'titulo')`.
+  if (!ESTADOS_CONHECIDOS.includes(resposta.estado as EstadoCompanion)) {
+    return estadoIndisponivel(
+      `estado desconhecido devolvido pelo servidor: ${String(resposta.estado)}`,
+    );
+  }
   return {
     estado: resposta.estado as EstadoCompanion,
     razao: resposta.razao ?? "",
