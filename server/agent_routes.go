@@ -4421,11 +4421,17 @@ func statusForAgentError(err error) int {
 	if errors.Is(err, errAgentForbidden) || errors.Is(err, agent.ErrPluginOrganizationScope) || errors.Is(err, agent.ErrBuilderForbidden) || errors.Is(err, agent.ErrOrchestrationForbidden) || errors.Is(err, agent.ErrDeviceForbidden) || errors.Is(err, agent.ErrQueueJobForbidden) {
 		return http.StatusForbidden
 	}
-	if errors.Is(err, agent.ErrApprovalVersionConflict) || errors.Is(err, agent.ErrBuilderVersionConflict) || errors.Is(err, agent.ErrDeploymentApprovalNonce) || errors.Is(err, agent.ErrDeploymentApprovalConflict) || errors.Is(err, agent.ErrDeploymentApprovalExpired) || errors.Is(err, agent.ErrReembedJobRunning) {
+	// `ErrRestauroConflitante` entra aqui: a restauracao de versao de artefacto usa o CAS
+	// (`expectedVersion`) e um conflito e' 409 - *nao* 500. Sem isto, o cliente nao distingue
+	// «alguem escreveu entretanto» de «o servidor avariou».
+	if errors.Is(err, agent.ErrApprovalVersionConflict) || errors.Is(err, agent.ErrBuilderVersionConflict) || errors.Is(err, agent.ErrDeploymentApprovalNonce) || errors.Is(err, agent.ErrDeploymentApprovalConflict) || errors.Is(err, agent.ErrDeploymentApprovalExpired) || errors.Is(err, agent.ErrReembedJobRunning) || errors.Is(err, agent.ErrRestauroConflitante) {
 		return http.StatusConflict
 	}
 	// Job de re-embed desconhecido é 404: o recurso não existe (ou se perdeu com o reinício do processo).
-	if errors.Is(err, agent.ErrReembedJobNotFound) {
+	// `ErrVersaoInexistente` junta-se ao mesmo 404: *o erro e' PARTILHADO entre artefactos
+	// (`ArtefactoCompararVersoes`) e skills (`CompararVersoesDeSkill`)* - mapear aqui serve as duas
+	// funcionalidades; mapear na rota do artefacto deixaria as skills a devolver 500.
+	if errors.Is(err, agent.ErrReembedJobNotFound) || errors.Is(err, agent.ErrVersaoInexistente) {
 		return http.StatusNotFound
 	}
 	if errors.Is(err, agent.ErrBuilderExportExpired) {
