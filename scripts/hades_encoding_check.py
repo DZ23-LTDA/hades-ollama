@@ -14,12 +14,33 @@ Este checker torna a varredura **reproduzível** em vez de depender de alguém l
 DISPENSAS: são **explícitas, por caminho, com motivo** — e o checker **falha se uma dispensa ficar obsoleta**
 (o arquivo dispensado deixou de conter o padrão), porque *dispensa que não casa com nada é dívida disfarçada
 de exceção*. Foi exatamente o defeito que corrigi no classificador de escopo (E-383).
+
+O PONTO CEGO QUE ESTE CHECKER TINHA (E-658)
+-------------------------------------------
+Até o E-658 este checker só procurava **dupla codificação** — e um **BOM UTF-8** passava silenciosamente por
+ele. *E passava porque `read_text(encoding="utf-8")` NÃO lança exceção sobre um BOM: o `\ufeff` vira o
+primeiro caractere da string.* O padrão de mojibake não casa com `\ufeff`, e o arquivo era declarado limpo.
+
+O custo medido: o `HADES_MASTER_STATE.json` foi gravado **com BOM** no commit `6a391ef5c` (rodada 8), e o
+`hades_release_gate.py` — que lê o estado com `encoding="utf-8"` — passou a **estourar** no CI:
+
+    json.decoder.JSONDecodeError: Unexpected UTF-8 BOM (decode using utf-8-sig)
+
+O mesmo commit gravou o ficheiro passando por **Windows-1252** e **dupla-codificou 58 ocorrências**
+(travessão `—` virava `â€"`). *O instrumento existia, cobria metade da classe, e essa metade era a que
+importava.*
+
+Este checker passa a acusar **as duas formas**, e a varredura é a mesma (`os.walk` podado).
 """
 
 import os
 import re
 import sys
 from pathlib import Path
+
+# BOM UTF-8: o marcador que `read_text(encoding="utf-8")` NÃO denuncia (vira `\ufeff` na string) e que quebra
+# leitores estritos — `json.loads` lança JSONDecodeError. Nenhum ficheiro deste repositório o justifica.
+BOM_UTF8 = b"\xef\xbb\xbf"
 
 EXTENSOES = {".go", ".md", ".py", ".ts", ".tsx", ".js", ".mjs", ".json", ".yaml", ".yml", ".txt", ".ps1", ".sh"}
 IGNORAR_DIR = {"node_modules", ".git", "_tmp", "dist", "build", "vendor", ".next", "coverage", "testdata", "__pycache__"}
@@ -58,13 +79,22 @@ def arquivos(raiz: Path):
 
 
 def medir(raiz: Path):
-    """Devolve (sujos, ilegiveis, dispensas_obsoletas)."""
-    sujos, ilegiveis, usadas = [], [], set()
+    """Devolve (sujos, ilegiveis, dispensas_obsoletas, com_bom)."""
+    sujos, ilegiveis, com_bom, usadas = [], [], [], set()
     for caminho in arquivos(raiz):
         relativo = caminho.relative_to(raiz).as_posix()
         try:
-            texto = caminho.read_text(encoding="utf-8")
-        except (UnicodeDecodeError, OSError) as erro:
+            dados = caminho.read_bytes()
+        except OSError as erro:
+            ilegiveis.append("%s (%s)" % (relativo, erro))
+            continue
+        # O BOM tem de ser medido nos BYTES: decodificado como UTF-8 ele vira `\ufeff`, que não é erro e não
+        # casa com nenhum padrão de mojibake — era exatamente por isso que passava em silêncio.
+        if dados.startswith(BOM_UTF8):
+            com_bom.append(relativo)
+        try:
+            texto = dados.decode("utf-8")
+        except UnicodeDecodeError as erro:
             ilegiveis.append("%s (%s)" % (relativo, erro))
             continue
         if not REGEX.search(texto):
@@ -74,13 +104,13 @@ def medir(raiz: Path):
             continue
         sujos.append(relativo)
     obsoletas = sorted(set(DISPENSAS) - usadas)
-    return sujos, ilegiveis, obsoletas
+    return sujos, ilegiveis, obsoletas, com_bom
 
 
 def main(argv):
     raiz = Path(argv[1]) if len(argv) > 1 else Path(".")
     medidos = sum(1 for _ in arquivos(raiz))
-    sujos, ilegiveis, obsoletas = medir(raiz)
+    sujos, ilegiveis, obsoletas, com_bom = medir(raiz)
     print("CODIFICACAO: %d arquivo(s) medido(s), %d dispensa(s) declarada(s)" % (medidos, len(DISPENSAS)))
     if medidos == 0:
         print("NADA MEDIDO: nenhum arquivo de texto encontrado em %s — isto NÃO é aprovação." % raiz)
@@ -88,6 +118,11 @@ def main(argv):
     falhou = False
     for relativo in sujos:
         print("VIOLACAO: dupla codificacao REAL em %s — descreva o artefato, nao o transcreva" % relativo)
+        falhou = True
+    for relativo in com_bom:
+        print("VIOLACAO: BOM UTF-8 no inicio de %s — leitor estrito quebra "
+              "(json.loads: \"Unexpected UTF-8 BOM\"). Grave como UTF-8 SEM BOM: `encoding=\"utf-8\"` "
+              "(nao `utf-8-sig`) e, no PowerShell 5.1, nao use `Set-Content -Encoding UTF8`." % relativo)
         falhou = True
     for item in ilegiveis:
         print("VIOLACAO: arquivo nao decodifica como UTF-8: %s" % item)
@@ -97,7 +132,8 @@ def main(argv):
               % relativo)
         falhou = True
     if not falhou:
-        print("  (as %d dispensas sao o detector, a fixture dele, este checker e a fixture dele)" % len(DISPENSAS))
+        print("  (sem BOM e sem dupla codificacao; as %d dispensas sao o detector, a fixture dele, "
+              "este checker e a fixture dele)" % len(DISPENSAS))
     return 1 if falhou else 0
 
 

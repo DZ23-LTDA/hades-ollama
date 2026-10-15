@@ -63,6 +63,18 @@ jobs:
           python3 scripts/hades_scope_classifier_test.py
           python3 scripts/hades_tenant_scope_check_test.py
           python3 scripts/hades_tenant_scope_check.py --check
+      # E-658: a CODIFICACAO dos artefatos passa a ser gate. O checker existia (E-409/E-410) mas nao rodava no CI
+      # e cobria so' dupla codificacao - um BOM UTF-8 passava em silencio, e um `HADES_MASTER_STATE.json` com BOM
+      # derrubou o `hades_release_gate.py --check` (JSONDecodeError) nesta propria workflow. Instrumento fora da
+      # bateria nao protege: *o defeito que o instrumento cobre e' o defeito que passa*.
+      - name: Verify artifact encoding (no BOM, no double encoding)
+        run: |
+          python3 scripts/hades_encoding_check_test.py
+          python3 scripts/hades_encoding_check.py
+          # E-422: o checker do relogio de parede cobre as duas formas de `time.Now()` + `.Add(`, e era a causa
+          # real do `Go agentic and server gates` vermelho. Ficou fora da bateria quando foi criado; entra agora.
+          python3 scripts/hades_test_clock_check_test.py
+          python3 scripts/hades_test_clock_check.py --check
       - name: Verify the mission bookkeeping checker itself (fault injection)
         run: python3 scripts/hades_mission_check_test.py
       - name: Verify Go formatting for protected backend surfaces
