@@ -3,10 +3,10 @@ package agent
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/ollama/ollama/internal/multillm"
 )
 
@@ -34,26 +34,26 @@ var ErrNoSuitableModel = errors.New("no suitable model for required capabilities
 
 // RoutingDecision é a decisão de roteamento para uma subtarefa
 type RoutingDecision struct {
-	SubtaskID        string            `json:"subtask_id"`
-	RequiredCapabilities []string       `json:"required_capabilities"`
-	PinnedModelID    string            `json:"pinned_model_id,omitempty"`
-	ChosenModel      string            `json:"chosen_model"`
-	ToolMode         string            `json:"tool_mode"`          // native | compatible_text | unknown
-	Reason           string            `json:"reason"`             // por que este modelo
-	ModelCapabilities ModelCapabilities  `json:"model_capabilities"`
-	Confidence       float64           `json:"confidence"`         // 0.0 a 1.0
-	CacheHit         bool              `json:"cache_hit"`
-	Timestamp        time.Time         `json:"timestamp"`
+	SubtaskID            string            `json:"subtask_id"`
+	RequiredCapabilities []string          `json:"required_capabilities"`
+	PinnedModelID        string            `json:"pinned_model_id,omitempty"`
+	ChosenModel          string            `json:"chosen_model"`
+	ToolMode             string            `json:"tool_mode"` // native | compatible_text | unknown
+	Reason               string            `json:"reason"`    // por que este modelo
+	ModelCapabilities    ModelCapabilities `json:"model_capabilities"`
+	Confidence           float64           `json:"confidence"` // 0.0 a 1.0
+	CacheHit             bool              `json:"cache_hit"`
+	Timestamp            time.Time         `json:"timestamp"`
 }
 
 // Subtask representa uma tarefa decomposta com capacidades requeridas
 type Subtask struct {
-	ID                 string   `json:"id"`
-	Objective          string   `json:"objective"`
+	ID                   string   `json:"id"`
+	Objective            string   `json:"objective"`
 	RequiredCapabilities []string `json:"required_capabilities"`
-	PinnedModelID      string   `json:"pinned_model_id,omitempty"`
-	Priority           int      `json:"priority"` // maior = mais urgente
-	Dependencies       []string `json:"dependencies,omitempty"` // IDs de subtarefas que devem terminar primeiro
+	PinnedModelID        string   `json:"pinned_model_id,omitempty"`
+	Priority             int      `json:"priority"`               // maior = mais urgente
+	Dependencies         []string `json:"dependencies,omitempty"` // IDs de subtarefas que devem terminar primeiro
 }
 
 // RoutingCacheKey é a chave do cache de decisões de roteamento
@@ -66,25 +66,25 @@ type RoutingCacheKey struct {
 type AdaptiveRouter interface {
 	// RouteSubtask escolhe o melhor modelo para uma subtarefa
 	RouteSubtask(ctx context.Context, subtask Subtask) (RoutingDecision, error)
-	
+
 	// RouteBatch escolhe modelos para múltiplas subtarefas (respeita dependências)
 	RouteBatch(ctx context.Context, subtasks []Subtask) ([]RoutingDecision, error)
-	
+
 	// InvalidateCache limpa o cache de decisões
 	InvalidateCache()
-	
+
 	// Stats retorna estatísticas do router
 	Stats() RouterStats
 }
 
 // RouterStats estatísticas do router
 type RouterStats struct {
-	TotalRequests      int64   `json:"total_requests"`
-	CacheHits          int64   `json:"cache_hits"`
-	CacheMisses        int64   `json:"cache_misses"`
-	AvgLatencyMS       float64 `json:"avg_latency_ms"`
-	UnknownModelRate   float64 `json:"unknown_model_rate"` // % de chamadas que resultaram em unknown
-	LastUpdated        time.Time `json:"last_updated"`
+	TotalRequests    int64     `json:"total_requests"`
+	CacheHits        int64     `json:"cache_hits"`
+	CacheMisses      int64     `json:"cache_misses"`
+	AvgLatencyMS     float64   `json:"avg_latency_ms"`
+	UnknownModelRate float64   `json:"unknown_model_rate"` // % de chamadas que resultaram em unknown
+	LastUpdated      time.Time `json:"last_updated"`
 }
 
 // DefaultAdaptiveRouter implementação padrão
@@ -122,6 +122,7 @@ func capabilitiesHash(caps []string) string {
 				sorted[i], sorted[j] = sorted[j], sorted[i]
 			}
 		}
+	}
 	h := make([]byte, 0, len(caps)*8)
 	for _, c := range sorted {
 		h = append(h, c...)
@@ -227,22 +228,28 @@ func (r *DefaultAdaptiveRouter) RouteSubtask(ctx context.Context, subtask Subtas
 	}
 
 	mode, reason := r.registry.ResolveToolMode(decision.Model.ID)
-	decision := RoutingDecision{
-		SubtaskID:             subtask.ID,
-		RequiredCapabilities:  subtask.RequiredCapabilities,
-		PinnedModelID:         subtask.PinnedModelID,
-		ChosenModel:           decision.Model.ID,
-		ToolMode:              string(mode),
-		Reason:                reason,
-		ModelCapabilities:     caps,
-		Confidence:            decision.Score,
-		CacheHit:              false,
-		Timestamp:             time.Now().UTC(),
+	// E-658 PENDENTE (nao inventar semantica): `multillm.RouteDecision.Score` e' um inteiro de scoring
+	// BRUTO (medido em internal/multillm/router.go:100-129: QualityScore*10 ou *100, +100000 de bonus de
+	// provedor, +10000 de bonus de pin), NAO uma confianca 0..1. Normaliza-lo exigiria uma regra de produto
+	// que ainda nao existe; entao a confianca fica NAO MEDIDA (0) e o score bruto continua visivel no motivo.
+	// A variavel recebe nome proprio porque `:=` com o mesmo nome SOMBREAVA a decisao do multillm (era o
+	// defeito que impedia o pacote de compilar).
+	roteada := RoutingDecision{
+		SubtaskID:            subtask.ID,
+		RequiredCapabilities: subtask.RequiredCapabilities,
+		PinnedModelID:        subtask.PinnedModelID,
+		ChosenModel:          decision.Model.ID,
+		ToolMode:             string(mode),
+		Reason:               fmt.Sprintf("%s | score_bruto_do_registry=%d (nao normalizado para 0..1)", reason, decision.Score),
+		ModelCapabilities:    caps,
+		Confidence:           0,
+		CacheHit:             false,
+		Timestamp:            time.Now().UTC(),
 	}
 
 	// Cache
-	r.addToCache(subtask.RequiredCapabilities, subtask.PinnedModelID, decision)
-	return decision, nil
+	r.addToCache(subtask.RequiredCapabilities, subtask.PinnedModelID, roteada)
+	return roteada, nil
 }
 
 // addToCache adiciona ao cache com LRU simples
@@ -252,7 +259,7 @@ func (r *DefaultAdaptiveRouter) addToCache(caps []string, pinnedModelID string, 
 	key := makeCacheKey(caps, pinnedModelID)
 	r.cache[key] = decision
 	r.cacheOrder = append(r.cacheOrder, key)
-	
+
 	// LRU simples: remove mais antigo se exceder
 	if len(r.cacheOrder) > r.maxCacheSize {
 		oldest := r.cacheOrder[0]
@@ -260,14 +267,13 @@ func (r *DefaultAdaptiveRouter) addToCache(caps []string, pinnedModelID string, 
 		r.cacheOrder = r.cacheOrder[1:]
 	}
 }
-}
 
 // RouteBatch implementa AdaptiveRouter.RouteBatch
 func (r *DefaultAdaptiveRouter) RouteBatch(ctx context.Context, subtasks []Subtask) ([]RoutingDecision, error) {
 	if len(subtasks) == 0 {
 		return nil, nil
 	}
-	
+
 	// Ordena por prioridade (maior primeiro)
 	sorted := make([]Subtask, len(subtasks))
 	copy(sorted, subtasks)
