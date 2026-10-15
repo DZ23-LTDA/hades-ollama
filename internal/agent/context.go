@@ -954,34 +954,12 @@ func (s *ContextStore) SkillVersionsForOrganization(organizationID, id string) (
 // arquivada que alguma vez tenha sido promovida volta como NÃO confiável — e é isso que o teste
 // tem de provar, porque uma confiança herdada por restauro seria uma escalada silenciosa.
 func (s *ContextStore) RestoreSkillVersionForOrganization(organizationID, id, versao string) (SkillManifest, error) {
-	if !idDeSkillSeguro(id) {
-		return SkillManifest{}, errors.New("skill id is invalid")
-	}
-	if !versaoDeSkillSegura(versao) {
-		return SkillManifest{}, errors.New("skill version is invalid")
-	}
-	if s.root == "" {
-		return SkillManifest{}, errors.New("skill history requires a store root")
-	}
-	base := filepath.Join(s.root, "skills", id+".versions")
-	caminho := filepath.Join(base, versao+".json")
-	// DEFESA EM PROFUNDIDADE: validação e travessia podem divergir; confirma-se que o ficheiro
-	// está DENTRO da pasta de versões antes de o ler.
-	if relativo, err := filepath.Rel(base, caminho); err != nil || strings.HasPrefix(relativo, "..") {
-		return SkillManifest{}, errors.New("skill version path escapes the history folder")
-	}
-	dados, err := os.ReadFile(caminho)
+	// A LEITURA — validação de id/versão, confirmação de travessia e descodificação — vive num
+	// sítio só (`lerManifestoArquivado`, E-648). *Duas cópias de uma verificação de caminho
+	// divergem, e a que fica a menos não se nota* (a lição do E-626).
+	manifesto, err := s.lerManifestoArquivado(id, versao)
 	if err != nil {
-		return SkillManifest{}, fmt.Errorf("ler versao arquivada: %w", err)
-	}
-	var manifesto SkillManifest
-	decoder := json.NewDecoder(bytes.NewReader(dados))
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(&manifesto); err != nil {
-		return SkillManifest{}, fmt.Errorf("versao arquivada invalida: %w", err)
-	}
-	if manifesto.ID != id || manifesto.Version != versao {
-		return SkillManifest{}, errors.New("versao arquivada nao corresponde ao pedido")
+		return SkillManifest{}, err
 	}
 	if err := s.registerSkill(manifesto, organizationID); err != nil {
 		return SkillManifest{}, err
