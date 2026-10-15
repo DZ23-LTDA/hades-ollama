@@ -27,6 +27,17 @@ export function createMediaStudioFixture({ sendJSON } = {}) {
   };
 
   return async function handleMediaStudioRequest({ route, request, response }) {
+    // ISOLAMENTO (medido no job 116501392677): servir `/missions` a TODOS os testes
+    // mudou o DOM que a `shell.spec.ts:45` observa (passaram a existir 2 botões
+    // «Criar missão») e reprovou-a por strict mode violation. O stub é PARTILHADO,
+    // portanto este fixture só responde quando a navegação é a da prova do item 45:
+    // a console e' aberta em `/agentic?mission_id=mis_e2e` e o `Referer` do fetch
+    // carrega esse marcador. Qualquer outro teste recebe `null` (404, como antes).
+    const referer = String(
+      (request && request.headers && request.headers.referer) || "",
+    );
+    if (!referer.includes(`mission_id=${MISSAO_E2E_ID}`)) return null;
+
     if (route === "GET /api/agent/v1/missions") {
       sendJSON(response, 200, { missions: [missao] });
       return 200;
