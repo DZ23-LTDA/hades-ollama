@@ -2259,13 +2259,22 @@ func (r *Runtime) Run(ctx context.Context, id string) (runErr error) {
 			if erroFerramenta != nil {
 				return r.failStep(mission, step, erroFerramenta)
 			}
+			// E-664 (§4: "persistir decisao, motivo, CANDIDATO e custo real/estimado"): a trilha passa a carregar
+			// QUEM foi considerado e o CUSTO do vencedor. Sem os preteridos nao se responde "por que ESTE e nao
+			// aquele"; sem o custo nao ha' base para orcamento. *A lista vem do proprio motor
+			// (`RouteCandidates`), nao de um recalculo - duas contas sobre a mesma decisao divergiriam.*
+			candidatos := r.trilhaDeCandidatos(mission, *step, limiteDeCandidatosNaTrilha)
 			if err := r.observeEvent(mission, "step.model.route", step.ID, map[string]any{
-				"step_id":             step.ID,
-				"model":               decisao.Model.ID,
-				"score":               decisao.Score,
-				"reason":              decisao.Reason,
-				"pinned":              step.PinnedModelID,
-				"native_tool_calling": rotuloFerramenta,
+				"step_id":                     step.ID,
+				"model":                       decisao.Model.ID,
+				"score":                       decisao.Score,
+				"reason":                      decisao.Reason,
+				"pinned":                      step.PinnedModelID,
+				"native_tool_calling":         rotuloFerramenta,
+				"estimated_cost_cents_per_1k": decisao.Model.CostPer1KInputCents + decisao.Model.CostPer1KOutputCents,
+				"candidates":                  candidatos,
+				"candidates_measured":         len(candidatos) > 0,
+				"candidates_source":           "multillm.Registry.RouteCandidates (motor de scoring; nao recalculado aqui)",
 			}); err != nil {
 				return err
 			}

@@ -152,3 +152,44 @@ func exigeFerramentaNativa(passo Step) bool {
 	}
 	return false
 }
+
+// limiteDeCandidatosNaTrilha e' quantos candidatos a trilha guarda. *O numero e' DECLARADO de proposito:*
+// guardar todos faria o evento crescer sem limite, e guardar zero apagaria a resposta a "por que ESTE e nao aquele".
+const limiteDeCandidatosNaTrilha = 5
+
+// trilhaDeCandidatos resume QUEM foi considerado na escolha do modelo para o passo (E-664).
+//
+// *POR QUE ISTO EXISTE:* o §4 exige persistir **decisao, motivo, CANDIDATO e custo estimado**. O evento
+// `step.model.route` registrava o **vencedor** e o motivo, mas **nao os preteridos** - e uma escolha sem os
+// preteridos nao e' auditavel: nao da' para responder *"por que ESTE e nao aquele"*, que e' a pergunta que o
+// estagio 43 faz.
+//
+// A fonte e' o **proprio motor**: `multillm.Registry.RouteCandidates`, que ja' devolve a lista elegivel ordenada.
+// *Nao se recalcula o scoring aqui* - recalcular seria criar uma **segunda verdade** sobre a mesma decisao, e as
+// duas divergiriam em silencio (a classe de defeito do E-619).
+//
+// Devolve `nil` quando nao ha como medir, e o chamador **declara** isso: `nil` significa "nao medido", nunca
+// "nenhum candidato".
+func (r *Runtime) trilhaDeCandidatos(missao Mission, passo Step, limite int) []map[string]any {
+	if r == nil || r.models == nil {
+		return nil
+	}
+	candidatos, err := r.models.RouteCandidates(RouteRequestForStep(missao, passo))
+	if err != nil || len(candidatos) == 0 {
+		return nil
+	}
+	if limite <= 0 || limite > len(candidatos) {
+		limite = len(candidatos)
+	}
+	trilha := make([]map[string]any, 0, limite)
+	for _, candidato := range candidatos[:limite] {
+		trilha = append(trilha, map[string]any{
+			"model":             candidato.Model.ID,
+			"provider":          candidato.Model.Provider,
+			"score":             candidato.Score,
+			"cost_cents_per_1k": candidato.Model.CostPer1KInputCents + candidato.Model.CostPer1KOutputCents,
+			"reason":            candidato.Reason,
+		})
+	}
+	return trilha
+}
