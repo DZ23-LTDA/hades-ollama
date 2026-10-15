@@ -75,6 +75,14 @@ jobs:
           # real do `Go agentic and server gates` vermelho. Ficou fora da bateria quando foi criado; entra agora.
           python3 scripts/hades_test_clock_check_test.py
           python3 scripts/hades_test_clock_check.py --check
+      # E-665: CATRACA do gate do `gofmt`. A forma `test -z "$(gofmt ...)"` aprova arquivo ILEGIVEL: com erro de
+      # parse o gofmt escreve em STDERR e sai com STDOUT VAZIO, entao a comparacao de string vazia PASSA. *A
+      # cegueira existia em TRES workflows e so' uma estava corrigida — foi esta catraca que encontrou as outras
+      # duas.* Sem ela, a correcao de hoje volta a ser revertida por descuido amanha.
+      - name: Ratchet the gofmt gate (it may not go back to green by construction)
+        run: |
+          python3 scripts/hades_ci_gate_check_test.py
+          python3 scripts/hades_ci_gate_check.py
       - name: Verify the mission bookkeeping checker itself (fault injection)
         run: python3 scripts/hades_mission_check_test.py
       # E-661: o gate anterior era `test -z "$(gofmt -l ...)"` - e um arquivo que NAO PARSEIA faz o gofmt
