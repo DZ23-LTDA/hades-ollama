@@ -37,8 +37,13 @@ export function objetivoDaOperacao(
 /** Linha de estado de cada operacao no ecra^ - *vazia nunca, e a razao e' sempre dita.* */
 export function estadoDaOperacao(
   descritor: DescritorDeOperacao,
-  providerConfigurado: boolean,
+  providerConfigurado: boolean | undefined,
 ): string {
+  if (providerConfigurado === undefined && descritor.exigeProvider) {
+    // *Nao se escreve «Disponivel (provider configurado)» quando NAO foi medido* - seria prometer
+    // o que pode nao existir. O servidor responde ao lancar a missao.
+    return "Disponibilidade a confirmar (o servidor decide ao lancar)";
+  }
   const motivo = motivoDeIndisponibilidade(
     descritor.operacao,
     providerConfigurado,
@@ -58,7 +63,11 @@ export function MediaStudioPanel({
 }: {
   workspace: string;
   organizationId?: string;
-  providerConfigurado: boolean;
+  /**
+   * Omitir = **nao sei** (o servidor decide ao lancar). *Nunca `true`/`false` por conveniencia:
+   * as tres funcoes do catalogo distinguem «medido que nao ha» de «nao medido».*
+   */
+  providerConfigurado?: boolean;
 }) {
   const [escolhida, setEscolhida] = useState<OperacaoDeMidia | null>(null);
   const [entradas, setEntradas] = useState<Record<string, string>>({});
