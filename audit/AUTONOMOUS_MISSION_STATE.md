@@ -1,3 +1,32 @@
+## Checkpoint vigente — E-662: decompositor + RouteBatch pelo DAG — 2026-10-15 06:36 -03
+
+```yaml
+state: FIXING
+branch: fix/checker-relogio
+pr: 438
+toolchain: "_tmp/goroot1269 (go1.26.9); APPDATA/LOCALAPPDATA em _tmp para os testes que criam runtime"
+
+E662_entregue:
+  - "DecomporPlanoEmSubtarefas: PROJETA o plano da missao (Step.Title/capacidades/pin/DependsOn) em subtarefas. NAO cria um segundo plano - reusa `ValidatePlanGraph` (E-434) como garantia."
+  - "RouteBatch: o comentario da interface prometia 'respeita dependencias' e a implementacao ordenava SO' por prioridade -> um dependente de prioridade maior era decidido ANTES do prerequisito. Agora a ordem e' TOPOLOGICA (Kahn) e a prioridade e' apenas desempate."
+  - "Grafo invalido RECUSADO com `ErrPlanGraphInvalid` (reuso do sentinel existente): ciclo, auto-dependencia, dependencia fantasma, ID repetido, ID vazio."
+  - "A projecao COPIA as fatias (prova no teste: mutar a subtarefa nao altera o plano)."
+
+E662_provas:
+  - "12/12 testes do router/DAG PASS (`-run TestAdaptiveRouter|TestRouteBatch|TestDecompor|TestPlanoValidado`)"
+  - "gofmt -l vazio; go vet ./internal/agent/ exit 0; go build ./... exit 0"
+  - "regressao na area afetada (Plan|Step|Route|Router|Runtime|Mission|WhatsApp): exit 0"
+
+E487_reconfirmado:
+  - "Duas falhas (`mkdir %APPDATA%\\ollama-agent: Acesso negado`) sao AMBIENTAIS, nao do produto: com APPDATA/LOCALAPPDATA sob _tmp o mesmo comando da' exit 0. Registrado no HADES_PENDING_WORK.md (E-487) e reconfirmado aqui."
+
+limites:
+  - "go test -race exige cgo (ausente neste host): a prova do detector de corrida vem dos jobs `race` do CI."
+  - "O router ainda NAO e' chamado pelo loop de execucao, e o EVENTO de auditoria da decisao continua faltando - §4 nao esta entregue."
+next_action: commit+push, confirmar CI no novo SHA, e ligar o router ao loop de execucao com evento
+rollback: reverter os commits desta fatia; nenhum reset --hard, nenhum force-push
+```
+
 ## Checkpoint vigente — memoria persistente comprovada + build quebrado no PR #438 reparado — 2026-10-15 06:25 -03
 
 ```yaml
