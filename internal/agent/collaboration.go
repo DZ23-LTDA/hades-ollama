@@ -34,6 +34,14 @@ type Presence struct {
 	UserID    string    `json:"user_id"`
 	Status    string    `json:"status"`
 	UpdatedAt time.Time `json:"updated_at"`
+	// Origem e' QUEM DECLAROU este estado. Antes disto o `Status` era texto livre SEM origem, e um status
+	// forjado era indistinguivel de um real (complemento 48 / FASE 2: "presenca com origem verificavel").
+	//
+	// LIMITE DECLARADO: este store ATRIBUI a origem, nao a AUTENTICA. `SetPresenceWithOrigin` recusa origem
+	// vazia e grava quem declarou; **um ator que declare a origem de OUTRO nao e' detectado aqui** - *quem
+	// autentica e' a sessao/credencial, que nao vive neste arquivo*. O que muda e' que agora a declaracao
+	// **tem autor** e a ausencia de autor e' RECUSADA, em vez de virar texto anonimo.
+	Origem string `json:"origem,omitempty"`
 }
 type CollaborationSnapshot struct {
 	Comments  []Comment  `json:"comments"`
@@ -154,17 +162,26 @@ func (s *CollaborationStore) Comments(projectID string) []Comment {
 	return result
 }
 
-func (s *CollaborationStore) SetPresence(projectID, userID, status string) (Presence, error) {
+// ErrPresencaSemOrigem: presenca sem quem a declarou nao entra no store. *Um estado que nao se sabe de quem
+// veio nao e' informacao: e' ruido com aparencia de informacao.*
+var ErrPresencaSemOrigem = errors.New("presence requires an origin")
+
+// SetPresenceWithOrigin registra a presenca ATRIBUINDO quem a declarou (complemento 48, FASE 2).
+func (s *CollaborationStore) SetPresenceWithOrigin(projectID, userID, status, origem string) (Presence, error) {
 	projectID = strings.TrimSpace(projectID)
 	userID = strings.TrimSpace(userID)
 	status = strings.TrimSpace(status)
+	origem = strings.TrimSpace(origem)
 	if projectID == "" || userID == "" {
 		return Presence{}, errors.New("project and user are required")
+	}
+	if origem == "" {
+		return Presence{}, ErrPresencaSemOrigem
 	}
 	if status == "" {
 		status = "online"
 	}
-	presence := Presence{ProjectID: projectID, UserID: userID, Status: status, UpdatedAt: time.Now().UTC()}
+	presence := Presence{ProjectID: projectID, UserID: userID, Status: status, UpdatedAt: time.Now().UTC(), Origem: origem}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.presence[projectID] == nil {
@@ -184,6 +201,12 @@ func (s *CollaborationStore) SetPresence(projectID, userID, status string) (Pres
 		return Presence{}, err
 	}
 	return presence, nil
+}
+
+// SetPresence mantem a assinatura antiga e significa **AUTO-DECLARACAO**: a origem e' o proprio `userID`.
+// Nao ha caminho sem origem - o antigo passou a delegar, de modo que existe **um unico caminho de escrita**.
+func (s *CollaborationStore) SetPresence(projectID, userID, status string) (Presence, error) {
+	return s.SetPresenceWithOrigin(projectID, userID, status, strings.TrimSpace(userID))
 }
 
 func (s *CollaborationStore) Presence(projectID string) []Presence {
