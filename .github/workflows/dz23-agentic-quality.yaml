@@ -58,7 +58,23 @@ jobs:
       - run: go mod verify
       - name: Go vulnerability scan (reachable symbols only)
         run: go run golang.org/x/vuln/cmd/govulncheck@v1.8.0 ./...
-      - run: gofmt -l internal/agent server/companion_ws.go server/agent_routes.go | tee /tmp/gofmt.txt && test ! -s /tmp/gofmt.txt
+      # E-665: a forma anterior era `gofmt -l ... | tee ... && test ! -s ...` — a MESMA cegueira por outro caminho:
+      # sem `set -o pipefail`, o status de uma pipeline e' o do ULTIMO comando (`tee`), entao um arquivo que NAO
+      # PARSEIA (gofmt sem stdout) passava. Agora o codigo de saida do gofmt e' observado e o erro vai para o log;
+      # o `tee` continua, porque o ficheiro e' evidencia.
+      - name: Verify Go formatting (exit code conferido)
+        run: |
+          if ! saida="$(gofmt -l internal/agent server/companion_ws.go server/agent_routes.go 2>&1)"; then
+            echo "gofmt FALHOU (arquivo nao parseavel ou erro de leitura):"
+            echo "$saida"
+            exit 1
+          fi
+          echo "$saida" | tee /tmp/gofmt.txt
+          if [ -n "$saida" ]; then
+            echo "arquivos fora do gofmt:"
+            exit 1
+          fi
+          echo "gofmt OK: nenhum arquivo fora de formato e nenhum erro de parse"
       - run: ./scripts/check-class-a-plus-integrity.sh
       - run: bash -n scripts/smoke-company-os.sh && python3 -m json.tool examples/dz23-desktop-commander-mcp.json >/dev/null && python3 -m json.tool examples/dz23-desktop-commander-remote.json >/dev/null
       - run: CGO_ENABLED=0 go test ./internal/agent -count=1
