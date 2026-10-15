@@ -8,9 +8,9 @@
 
 | Número | Valor |
 | --- | --- |
-| **Commit medido** (`measured_commit`) | `a31d65dcf` |
+| **Commit medido** (`measured_commit`) | `1bfcf8fa299078db860c4d04eb21a431ae387583` |
 | **Commit da `main`** (`git.main_sha`) | `4b3e21854` |
-| **Gerado em** (`measured_at`) | 2026-10-14T11:17:05-03:00 |
+| **Gerado em** (`measured_at`) | 2026-10-14T23:21:20-03:00 |
 | Estágios | 38 |
 | Linhas de evidência no índice | 559 |
 | `COMPLETED_VERIFIED` | 2 |
