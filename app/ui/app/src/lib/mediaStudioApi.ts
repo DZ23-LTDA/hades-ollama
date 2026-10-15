@@ -8,11 +8,15 @@ import { agentFetch } from "./agenticClient";
  *
  *   POST /missions                     {objective, workspace, capabilities:["media:execute"]}
  *   POST /missions/:id/run             executa os passos (e a tool `media.process`)
- *   POST /missions/:id/approvals/:aid  {"approved": bool, "reason": string}
+ *   POST /missions/:id/approvals/:aid  {decision: "approve"|"reject", reason, nonce}
  *
  * **NAO ha rota REST de geracao de midia** (medido: zero correspondencias em `server/*.go`), e **nao
  * a crio**: `media.process` exige aprovacao, escopo `media:execute` e workspace fixado - uma rota
  * directa contornaria exactamente essa politica.
+ *
+ * *PENDENTE DE CONSOLIDACAO (medido):* `agenticClient` ja' expoe `createMission`, `runMission` e
+ * `decideMissionApproval` com estes mesmos contratos - **estas tres funcoes sao duplicacao minha e
+ * devem passar a delegar**, para nao haver dois clientes da mesma API.
  */
 
 const BASE = "/api/agent/v1";
