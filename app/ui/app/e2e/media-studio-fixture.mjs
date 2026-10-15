@@ -47,6 +47,18 @@ export function createMediaStudioFixture({ sendJSON } = {}) {
       sendJSON(response, 200, { tools: [] });
       return 200;
     }
+    // SSE da missão. Medido em 2026-10-15 (job 116498804570): sem esta rota o stub
+    // respondia 404 em `/events/stream` e o painel do Estúdio nunca aparecia, apesar
+    // de `/missions` e `/missions/<id>` já responderem 200.
+    if (route === `GET /api/agent/v1/missions/${MISSAO_E2E_ID}/events/stream`) {
+      response.writeHead(200, {
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache",
+        Connection: "keep-alive",
+      });
+      response.write(": conectado\n\n");
+      return 200;
+    }
     return null;
   };
 }
