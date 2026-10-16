@@ -442,4 +442,20 @@ $passos += 'e2e-aba'
 $passos += 'e2e-takeover'
 $passos += 'e2e-origem'
 $passos += 'catraca-optin'
+
+''
+# E-1037: o `pushState`, o RELOAD e o badge. *A divida declarada no E-1035 era um nao-problema
+# -- `pushState` nao pode mudar de origem -- mas ao medi-la encontrei DOIS defeitos reais.*
+'--- 23. E2E DO PUSHSTATE: a concessao sobrevive ao reload; a origem real revoga'
+if ($ComE2E) {
+  $saidaPs = & node scripts/hades_browser_bridge_e2e_pushstate.mjs 2>&1
+  $saidaPs | Select-Object -Last 3 | ForEach-Object { "    " + $_.ToString().Substring(0, [Math]::Min(110, $_.ToString().Length)) }
+  if ($LASTEXITCODE -ne 0) {
+    $falhas.Add("hades_browser_bridge_e2e_pushstate.mjs (exit $LASTEXITCODE)")
+    '    FALHA'
+  } else { '    OK' }
+} else {
+  '    PULADO (opt-in: use -ComE2E)'
+}
+$passos += 'e2e-pushstate'
 "GATES LOCAIS: $($passos -join ' + ') VERDES"

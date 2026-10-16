@@ -122,13 +122,32 @@ async function refletirBadges(estado) {
     const tabId = Number(chave.slice(1));
     if (!Number.isFinite(tabId)) continue;
     if (expirou(c, agora)) continue;
-    try {
-      await chrome.action.setBadgeText({ tabId, text: "ON" });
-      await chrome.action.setBadgeBackgroundColor({ tabId, color: "#171717" });
-      await chrome.action.setTitle({ tabId, title: `HADES: aba conectada (${c.origem})` });
-    } catch {
-      /* a aba pode ter fechado; nao e' erro */
-    }
+    await marcarBadge(tabId, c.origem);
+  }
+}
+
+/**
+ * O INDICADOR DE ABA CONCEDIDA, num unico sitio (`E-1037`).
+ *
+ * *Antes estava inline em dois locais* -- e por isso a reposicao depois de um reload nao
+ * tinha onde se apoiar. Agora ha' **uma** funcao que diz "esta aba esta' concedida", e os
+ * dois locais usam-na.
+ *
+ * O contrato exige *badge/indicador persistente e inequivoco enquanto uma aba estiver sendo
+ * observada ou controlada*. Medido: o Chrome **limpa o badge da aba ao navegar** -- sem
+ * reposicao, uma concessao viva ficava **invisivel**, e *um indicador que nao reflecte o
+ * estado e' pior do que indicador nenhum: da' confianca a quem nao a devia ter.*
+ */
+async function marcarBadge(tabId, origem) {
+  try {
+    await chrome.action.setBadgeText({ tabId, text: "ON" });
+    await chrome.action.setBadgeBackgroundColor({ tabId, color: "#171717" });
+    await chrome.action.setTitle({
+      tabId,
+      title: origem ? `HADES: aba conectada (${origem})` : "HADES: aba conectada",
+    });
+  } catch {
+    /* a aba pode ter fechado; nao e' erro */
   }
 }
 
@@ -186,7 +205,7 @@ async function conectarAbaAtiva(tabIdPedido) {
   };
   estado.accoes[chaveDaAba(aba.id)] = [];
   await gravarEstado(estado);
-  await chrome.action.setBadgeText({ tabId: aba.id, text: "ON" });
+  await marcarBadge(aba.id, dono);
   return { ok: true, tabId: aba.id, origem: dono, expiraEm: estado.concessoes[chaveDaAba(aba.id)].expiraEm };
 }
 
@@ -460,7 +479,31 @@ chrome.tabs.onUpdated.addListener(async (tabId, info) => {
     await limparBadge(tabId);
     return;
   }
-  const v = validarUrl(info.url ?? "", { permitirPrivado: await lerOptIn() });
+
+  // `E-1037`: SE NAO HA' URL, NAO HA' MUDANCA DE ORIGEM A AVALIAR.
+  //
+  // Medido: o browser emite `onUpdated` com `changeInfo` que traz **so' `status`**
+  // (`{status:"loading"}` / `{status:"complete"}`) e **sem `url`** -- a cada `pushState`,
+  // `replaceState`, **reload** e ate' a cada mudanca de titulo. O codigo antigo fazia
+  // `validarUrl(info.url ?? "", ...)`: validava a **string vazia**, que falha, e concluia
+  // "nova origem" => **revogava a concessao**.
+  //
+  // *A navegacao mais comum que existe -- recarregar a pagina -- matava a sessao.*
+  // O `E-1035` nao apanhou isto porque la' a mudanca de origem era **real** e trazia URL.
+  //
+  // Se o URL esta' AUSENTE, nao ha' nada a decidir: mantem-se a concessao. Decidir sobre
+  // um vazio inventado e' o defeito; nao decidir e' a cura.
+  if (!info.url) {
+    // ...MAS O INDICADOR TEM DE CONTINUAR A DIZER A VERDADE. Medido: o Chrome **limpa o
+    // badge da aba** ao navegar, e a concessao sobrevivia com o badge VAZIO -- o utilizador
+    // deixava de ver que a aba estava concedida. *Um indicador que nao reflecte o estado
+    // e' pior do que indicador nenhum: da' confianca a quem nao a devia ter.*
+    // Repor aqui, quando a pagina termina de carregar, custa nada e mantem o badge honesto.
+    if (info.status === "complete") await marcarBadge(tabId, c.origem);
+    return;
+  }
+
+  const v = validarUrl(info.url, { permitirPrivado: await lerOptIn() });
   if (!v.ok || new URL(v.url).origin !== c.origem) {
     // nova origem: revoga. O utilizador reconecta se quiser.
     delete estado.concessoes[chaveDaAba(tabId)];

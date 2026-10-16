@@ -945,3 +945,38 @@ injecao vai para la', e o teste guarda o hash do ficheiro real antes e compara n
 **Doutrina em uma linha**: uma cura pontual nao fecha a classe do defeito; o gate certo
 mede o codigo que o produziria, nao o sintoma; uma catraca que fica vermelha com tudo nao
 discrimina nada; e um teste que muta producao e' um risco.
+
+### Instrucoes de retomada (janela `E-1037`)
+
+**Estado**: branch `fix/checker-relogio`; cabeca do indice `E-1037`; PR #438 **aberto** e
+**nao tocado**; `reviewDecision` **vazio** => sem revisao humana independente.
+
+**Bateria: 30 passos.** CINCO E2E por **opt-in** (`-ComE2E`, abrem o Edge):
+  node scripts/hades_browser_bridge_e2e.mjs            # canal: extensao <-> Companion
+  node scripts/hades_browser_bridge_e2e_aba.mjs        # aba: DOM, escrita, RECUSA, badge
+  node scripts/hades_browser_bridge_e2e_takeover.mjs   # takeover: o agente PARA
+  node scripts/hades_browser_bridge_e2e_origem.mjs     # origem: navegar revoga
+  node scripts/hades_browser_bridge_e2e_pushstate.mjs  # reload, pushState, badge
+
+**DOIS DEFEITOS QUE A DIVIDA ESCONDIA** (`E-1037`):
+1. **`onUpdated` SEM URL revogava a concessao.** O browser emite `changeInfo` com **so**
+   `status` a cada `pushState`, `replaceState`, **reload** e mudanca de titulo. O codigo
+   fazia `validarUrl(info.url ?? "")` -- validava a **string vazia**, falhava, e concluia
+   "nova origem". ***A navegacao mais comum que existe matava a sessao.***
+2. **O badge mentia.** Com a concessao viva, o Chrome limpava o badge ao navegar e ele
+   ficava `""`. ***Um indicador que nao reflecte o estado e' pior do que indicador nenhum.***
+   E o badge tinha **dois donos** (inline em dois sitios) => extraido para `marcarBadge`.
+
+**A LICAO**: *uma divida declarada e' uma medicao a fazer, nao uma ressalva* -- e a
+medicao dela encontrou dois defeitos que ela escondia. *O valor de medir uma duvida nao
+esta' na resposta a essa duvida: esta' no que aparece pelo caminho.*
+
+**DUAS CATRACAS COMPLEMENTARES**: `hades_index_shape_check.py` varre o **indice**;
+`hades_mission_check.py` varre **todo o codigo**. **Um ID novo continua do MAIOR cunhado.**
+
+**O que NAO fazer**: `reset --hard`, `git clean`, rebase destrutivo, force-push, stash,
+`merge`, tag, release, publicacao externa, ou **resolver threads** do PR #438.
+
+**Doutrina em uma linha**: um teste que so' exercita o caminho feliz nao ve o caminho
+vazio; decidir sobre um vazio inventado e' o defeito e nao decidir e' a cura; e um
+indicador que nao reflecte o estado da' confianca a quem nao a devia ter.

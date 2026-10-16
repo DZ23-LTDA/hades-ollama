@@ -494,3 +494,23 @@ com a cura pontual do local que falhou.
 `tabs.onUpdated` com URL novo, logo a concessão **não** seria revogada. Medir primeiro:
 um teste que navegue por `pushState` e verifique se a concessão sobrevive indevidamente.
 Tudo interno, na mesma página local.
+
+### A proxima accao unica (janela `E-1037`)
+
+**A dívida declarada no `E-1035` era um não-problema** -- `pushState` **não pode** mudar de
+origem: o browser lança `SecurityError`. Mas **ao medi-la encontrei dois defeitos reais**:
+
+1. **`onUpdated` sem URL revogava a concessão.** O browser emite `changeInfo` com **só
+   `status`** (sem `url`) a cada `pushState`, `replaceState`, **reload** e até mudança de
+   título. O código validava a **string vazia**, falhava, e concluía «nova origem».
+   ***A navegação mais comum que existe -- recarregar -- matava a sessão.***
+2. **O badge mentia.** Com a concessão viva, o Chrome limpava o badge ao navegar e ele
+   ficava vazio. ***Um indicador que não reflecte o estado é pior do que indicador nenhum.***
+
+⇒ ***O valor de medir uma dúvida não está na resposta a essa dúvida: está no que aparece
+pelo caminho.***
+
+**A proxima accao unica**: **o BFCache**. Ficou sem cobertura e **pode repor uma página
+de outra origem** ao voltar atrás -- se o browser restaurar do cache sem emitir `onUpdated`
+com URL, a concessão pode viver sobre conteúdo de outra origem. Medir com dois servidores
+e uma navegação real seguida de `goBack`. Tudo interno.

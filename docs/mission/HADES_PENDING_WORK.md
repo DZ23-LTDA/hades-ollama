@@ -1124,3 +1124,30 @@ curado.
 - APK Android bloqueado pela DLL JNI (`E-1019`);
 - macOS/iOS `BLOCKED_EXTERNAL` pela **máquina**;
 - benchmark reproduzível (ESTÁGIO 21) não iniciado.
+
+### O que falta (actualizado na janela `E-1037`)
+
+**Fechado**: dois defeitos reais que a dívida do `E-1035` escondia -- o evento `onUpdated`
+**sem URL** (que revogava a concessão a cada reload) e o **badge que ficava vazio** com a
+concessão viva. E o `pushState` foi medido: **não pode mudar de origem** (o browser recusa
+com `SecurityError`), logo não era buraco.
+
+**Continua em falta, sem disfarce**:
+- **BFCache** (voltar atrás): **não testado**, e pode repor uma página de outra origem
+  sem disparar `onUpdated` com URL novo;
+- `pushState` **dentro de iframes**, `document.domain`, service workers de página: não testados;
+- **redireccionamentos e `https`**: só medido com dois servidores em loopback;
+- **frames e shadow DOM**: nao testados;
+- **downloads e uploads**: nao testados;
+- **o takeover não tem duração ajustável** (30s fixos);
+- **o Chrome real do utilizador**: a versão 155 deste host **não carrega** por
+  `--load-extension`; exige carregamento manual;
+- **Firefox** e **Safari**;
+- **sem `.crx`, sem assinatura, sem SBOM do pacote**;
+- **a chave privada de distribuição está fora do Git**;
+- **`CAPACIDADES` VAZIO**: o Companion **não** controla o PC;
+- **taxa e pairing em memória**;
+- ligação da extensão ao **Mission Control** (`missao`/`aprovado` ficam a `null`);
+- APK Android bloqueado pela DLL JNI (`E-1019`);
+- macOS/iOS `BLOCKED_EXTERNAL` pela **máquina**;
+- benchmark reproduzível (ESTÁGIO 21) não iniciado.
