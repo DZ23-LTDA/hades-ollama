@@ -238,3 +238,59 @@ revisao humana         reviewDecision vazio no #438     -> o dono designa reviso
 2. **`E-998` citava codigo nao commitado** - corrigido no `31be202d6` (`E-1000`).
 3. O `_tmp/bateria_local.ps1` citado neste documento **nao existe no repositorio** (foi removido):
    a bateria canonica e' `scripts/hades_local_gates.ps1` mais os 4 `--check` do `E-987`..`E-997`.
+
+---
+
+## ACTUALIZACAO V3.0 (RONDA 86) - O QUE MUDOU DESDE O `E-1000`
+
+> **Requisito**: a catraca `hades_handoff_window_check.py` (`E-1008`) mede a **janela** de
+> citacao -- *o maior ID citado tem de estar a menos de **12** evidencias da cabeca do indice*.
+> Este documento parava no `E-1000`, e a cabeca estava em `E-1008`: **8 de atraso**, medidos.
+> *A correccao fecha o `atras` para **0**.*
+
+### As 8 evidencias novas, e o que cada uma fechou
+``````
+E-1001  os 3 documentos de retomada paravam no E-959 (42 de atraso)   aec62f0eb
+E-1002  a divida declarada A MAIS (a 5a instancia ja' estava curada)  aec62f0eb
+E-1003  o E-1002 PARTIDO em 2 linhas - e NENHUM checker viu          2e3de0dc2
+E-1004  o normalizar so' apanhava METADE das tabelas de contagem      55d69ea5d
+E-1005  as 5 strings do FASE-5 + o marcador que mutilava `DZ23`       a10e52cdc
+E-1006  o E-1005 partiu o passo 8 -> comparar CONJUNTOS, nao listas   b1f1f0d86
+E-1007  a catraca da FORMA do indice (5 regras, fault injection)      dbadd69b6
+E-1008  a JANELA de citacao dos documentos de retomada (janela 12)    db1ee1fae
+``````
+
+### Estado medido nesta ronda
+``````
+HEAD db1ee1fae · branch fix/checker-relogio · main 4b3e21854 · WIP 13
+indice 801 entradas (E-001..E-1008) · bateria 19 OK / 0 FAIL
+CI: b1f1f0d86 e dbadd69b6 sem failure · db1ee1fae a correr com os 3 passos novos
+    (inventario, FORMA do indice, JANELA de citacao)
+PR #438: OPEN · mergeState=BLOCKED · reviewDecision VAZIO (FALTA REVISAO HUMANA)
+``````
+
+### As 6 causas de CI vermelho, todas curadas e provadas
+``````
+run 38922978710  passo 6  gate_head/gate_branch volateis      -> E-993
+run 38924032504  passo 7  source_sha/source_branch            -> E-994
+run 38926745194  passo 7  host Windows vs Linux               -> E-996
+run 38932562362  passo 8  inventario media o DISCO            -> E-997
+run 38939790452  passo 8  normalizar so' via 2 colunas        -> E-1004
+run 38941538186  passo 8  o E-1005 partiu-o (tabela aberta)   -> E-1006
+``````
+
+### Licoes medidas nesta janela
+1. Um checker que conta LINHAS nao ve' uma linha que NAO E' LINHA (`E-1007`).
+2. Um risco DECLARADO e' uma medicao a fazer -- e as 2 declaracoes cumpriram-se (`E-1006`).
+3. Uma cura pode ter o MESMO defeito que cura (`E-1005`).
+4. Sobrestimar tambem e' defeito (`E-1002`).
+5. Um limiar que mede «SE HA» nao mede «QUAO RECENTE» (`E-1008`).
+6. Um detector de texto nao distingue uma MENCAO de uma OCORRENCIA (`E-1007`, `E-1008`).
+7. Uma catraca sem teste e' uma crenca -- o teste do `E-1007` deu 3 defeitos da propria.
+
+### Bloqueios externos reais
+``````
+race / go test -race   CGO_ENABLED=0, mingw-w64 ausente
+pacotes / instalador   FASE-6 nao iniciada
+revisao humana         reviewDecision VAZIO no PR #438
+``````
