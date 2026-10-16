@@ -65,6 +65,16 @@ jobs:
       # Escrituracao da missao: evidencia citada que nao existe, ID duplicado, buraco na numeracao, bloqueio
       # orfao e veredito otimista com pendencia precisam FALHAR aqui (E-180). O passo seguinte injeta esses
       # defeitos em fixtures para provar que a checagem realmente os encontra.
+      # A FORMA do indice, e nao o seu conteudo (E-1007): *quatro* anomalias **intra-registo** passaram
+      # todos os checkers nesta janela, porque **todos contam linhas que comecam por `| E-`** -- e uma
+      # entrada **partida** nao comeca. Esta catraca verifica as cinco formas: entrada = uma linha,
+      # nenhuma linha orfa dentro da tabela, IDs unicos, nenhum newline LITERAL (`E-999`) e nenhum ID
+      # citado sem entrada fora da faixa historica declarada (`E-571..E-777`).
+      - name: Verify the evidence index SHAPE (no split entries, no phantom IDs)
+        run: |
+          python3 -m py_compile scripts/hades_index_shape_check.py
+          python3 scripts/hades_index_shape_check_test.py
+          python3 scripts/hades_index_shape_check.py --check
       - name: Verify mission bookkeeping (no phantom evidence, coherent verdict)
         run: |
           python3 scripts/hades_mission_check.py

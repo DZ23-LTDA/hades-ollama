@@ -190,6 +190,19 @@ $saidaAscii = & python -X utf8 scripts/hades_ascii_ps1_check.py 2>&1
 $saidaAscii | Select-Object -Last 3 | ForEach-Object { "    $_" }
 if ($LASTEXITCODE -ne 0) { $falhas.Add("hades_ascii_ps1_check.py (exit $LASTEXITCODE)") } else { '    OK' }
 
+# *POR QUE ISTO EXISTE:* o `E-1007`. Quatro anomalias INTRA-REGISTO passaram todos os checkers
+# nesta janela (E-995, E-999, E-1002, e o proprio E-1003) porque **todos contam linhas que
+# comecam por `| E-`** -- e uma entrada **partida** nao comeca. Esta catraca mede a FORMA:
+# entrada = uma linha, sem linhas orfas dentro da tabela, IDs unicos, sem newline LITERAL e
+# sem ID citado sem entrada fora da faixa historica declarada (E-571..E-777).
+'--- 9. FORMA do indice de evidencias - entrada = uma linha, sem ID fantasma'
+$saidaForma = & python -X utf8 scripts/hades_index_shape_check_test.py 2>&1
+$saidaForma | Select-Object -Last 2 | ForEach-Object { "    $_" }
+if ($LASTEXITCODE -ne 0) { $falhas.Add("hades_index_shape_check_test.py (exit $LASTEXITCODE)") }
+$saidaForma2 = & python -X utf8 scripts/hades_index_shape_check.py --check 2>&1
+$saidaForma2 | Select-Object -First 6 | ForEach-Object { "    $_" }
+if ($LASTEXITCODE -ne 0) { $falhas.Add("hades_index_shape_check.py --check (exit $LASTEXITCODE)") } else { '    OK' }
+
 ''
 if ($falhas.Count -gt 0) {
   "GATES LOCAIS: $($falhas.Count) falha(s)"
