@@ -371,3 +371,19 @@ certificado efemero. Tudo interno, sem credencial.
 
 Antes disso, dois defeitos de higiene que o `E-1026` expos: a taxa vive **em memoria** (reiniciar
 o host apaga a contagem) e nao ha rate-limit do lado do SO.
+
+### A proxima accao unica (janela `E-1028`)
+
+**O transporte existe e o protocolo atravessa-o** (`E-1027`): enquadramento de native messaging
+com 4 bytes little-endian, erros tipados, corpo parcial que nao e' erro, e um canal em memoria
+que leva pairing -> handshake -> envelope -> replay recusado, com o fluxo partido em pedacos de
+1 byte. 84 assercoes nos 4 ficheiros.
+
+**A proxima accao unica**: **o processo `HADES Local Companion`** -- o enquadramento esta' pronto e
+testado, mas **nunca correu contra `process.stdin`/`stdout` de um processo real**. Fazer o
+executavel minimo (Node ou Go) que: le' do `stdin` com `desenquadrar`, responde no `stdout` com
+`enquadrar`, usa o `estadoInicial()` do contrato, e implementa **so'** o handshake. Depois um teste
+que o **arranca como subprocesso** e fala com ele pelo fio -- sem socket, sem mock. Tudo interno,
+sem credencial.
+
+Antes disso, o que o `E-1028` expos: a taxa vive em memoria, e nao ha' rate-limit do lado do SO.

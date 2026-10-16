@@ -643,3 +643,46 @@ tag, release, publicacao externa, ou **resolver threads** do PR #438.
 **Doutrina em uma linha**: medir antes de afirmar; um gate que me apanha esta a funcionar; um
 argumento a mais em JavaScript nao e' erro, e' silencio; e um teste que passa pelo motivo errado
 nao mede nada.
+
+### Instrucoes de retomada (janela `E-1028`)
+
+**Estado**: branch `fix/checker-relogio`; cabeca do indice `E-1028`; PR #438 **aberto** e **nao
+tocado**; `reviewDecision` **vazio** => sem revisao humana independente.
+
+**A extensao tem 4 ficheiros de teste (84 assercoes)**:
+  node --test apps/hades-browser-bridge/test/protocol.test.js \
+                apps/hades-browser-bridge/test/carregavel.test.js \
+                apps/hades-browser-bridge/test/canal_local.test.js \
+                apps/hades-browser-bridge/test/transporte.test.js
+
+**Artefactos**:
+- pacote: `dist/browser-bridge/hades-browser-bridge-0.1.0-unsigned.zip` + `SHA256SUMS.txt` +
+  `LEIA-ME.txt` -- fora do Git; **11 entradas**, incluindo `src/transporte.js`;
+- script versionado: `scripts/hades_browser_bridge_package.py` (passo 14 da bateria);
+- contrato do canal: `apps/hades-browser-bridge/src/canal_local.js` -- HKDF, codigo de uso unico,
+  handshake de prova de posse, taxa e anti-replay;
+- transporte: `apps/hades-browser-bridge/src/transporte.js` -- enquadramento + canal em memoria;
+- native host (template):
+  `apps/hades-browser-bridge/native-host/com.dz23ltd.hades.bridge.json`.
+
+**NAO CONTES BYTES A MAO -- MEDE-OS** (`E-1028`): na janela do transporte errei **tres**
+contagens/nomes de cabeca (*12 vs 7 bytes*, *306 vs 308*, *`replay` vs
+`replay_ou_fora_de_ordem`*). E o mesmo vale para nomes de campos (`E-1026`: `registro.revogadaEm`)
+e para premissas do que e' detectavel (*um enquadramento de comprimento **nao tem numero magico**:
+lixo no inicio nao e' detectavel, e exigir isso seria exigir adivinhacao*).
+
+**UM TESTE VERMELHO PODE MEDIR O TESTE, NAO O CODIGO**: das 3 falhas do transporte, **3 eram
+minhas** e **0 do codigo**. Curar o codigo para satisfazer uma premissa errada teria produzido um
+transporte pior e um teste verde.
+
+**DUAS CATRACAS COMPLEMENTARES**: `hades_index_shape_check.py` varre o **indice**;
+`hades_mission_check.py` varre **todo o codigo** -- e foi ele que apanhou o `E-1024` citado em
+codigo antes de existir. **Um ID novo continua do MAIOR cunhado, nao da cabeca do indice.**
+
+**O que NAO fazer**: `reset --hard`, `git clean`, rebase destrutivo, force-push, stash, `merge`,
+tag, release, publicacao externa, ou **resolver threads** do PR #438.
+
+**Bateria de 21 gates** (exit 0 obrigatorio), incluindo o **pacote da extensao** no passo 14.
+
+**Doutrina em uma linha**: medir antes de afirmar; um registro de comprimento nao distingue lixo
+de cabecalho; e um teste que passa pelo motivo errado nao mede nada.

@@ -921,3 +921,26 @@ estava MORTA), e `>` em vez de `>=` no limite de expiracao.
 - APK Android bloqueado pela DLL JNI neste host (`E-1019`), desbloqueio = runner Linux;
 - macOS/iOS `BLOCKED_EXTERNAL` pela **maquina**, nao pela credencial;
 - benchmark reproduzivel (ESTAGIO 21) nao iniciado.
+
+### O que falta (actualizado na janela `E-1028`)
+
+**Fechado**: o transporte (`E-1027`) -- enquadramento de native messaging (4 bytes little-endian)
+com erros tipados, corpo parcial tratado como parcial, limites de comprimento zero e gigante
+antes de alocar, e um canal em memoria que prova o protocolo completo pelo fio, inclusive partido
+em pedacos de 1 byte. E **tres premissas minhas erradas** curadas no mesmo teste (`E-1028`):
+contagem de bytes a mao (*duas vezes*), exigir deteccao de lixo no inicio (*impossivel num
+enquadramento de comprimento*) e um nome de motivo inventado.
+
+**Continua em falta, sem disfarce**:
+- **o processo Companion nao existe**: o enquadramento e' testado em memoria e **nunca** correu
+  contra `process.stdin`/`stdout` de um processo real;
+- **`allowed_origins` e' template**: nao ha' host instalado nem origem validada em execucao;
+- **sem TLS de loopback** -- o codigo curto continua a viajar em claro no primeiro salto;
+- **a taxa vive em memoria**: reiniciar o host apaga a contagem; sem rate-limit do lado do SO;
+- **DNS rebinding** a nivel de socket: o contrato valida o hostname, nao a ligacao;
+- **E2E em Chrome/Edge reais**: o pacote foi verificado, **nunca carregado**;
+- Firefox (`.xpi`), Safari e assinatura (`.crx`): **nao existem**; sem SBOM do pacote;
+- ligacao da extensao ao **Mission Control** (`missao`/`aprovado` ficam a `null`);
+- APK Android bloqueado pela DLL JNI neste host (`E-1019`), desbloqueio = runner Linux;
+- macOS/iOS `BLOCKED_EXTERNAL` pela **maquina**, nao pela credencial;
+- benchmark reproduzivel (ESTAGIO 21) nao iniciado.
