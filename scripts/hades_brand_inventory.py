@@ -289,10 +289,21 @@ def normalizar(texto: str) -> str:
     nao e' a branch.** => *so' que agora ela aparece do lado das **contagens**, e nao do lado
     de um campo.*
 
-    **O que continua a ser comparado** (e por isso o `--check` ainda protege a coisa que
-    importa): a **lista de strings** que o §FASE-5 nomeia, a **tabela de excepcoes** com as
-    razoes e os desbloqueios, e as **seccoes** do documento. => *se alguem apagar uma excepcao,
-    mudar uma razao ou tirar uma string, o `--check` falha.*
+    **O que continua a ser comparado**: a **tabela de excepcoes** da seccao 3 (`| caminho |
+    tipo | razao |`, que **nao** leva contagem), as **seccoes** do documento, e a contagem de
+    excepcoes por tipo. => *se alguem apagar uma excepcao, mudar uma razao ou tirar uma
+    seccao, o `--check` falha.*
+
+    **E O QUE **NAO** E COMPARADO, medido no `E-1004` e nao suposto**: *os **nomes das 5
+    strings** do §FASE-5 vivem **dentro** das linhas de contagem da seccao 1* (`| **Hades/HADES**
+    (canonica) | **918** |`) => *logo, quando o `normalizar` remove a linha inteira, **remove
+    tambem o nome da string*** => *e **apagar uma string nao faz o `--check` falhar**.* => *A
+    versao anterior deste docstring afirmava o contrario -- **«a lista de strings... continua a
+    ser comparada»** -- e essa afirmacao era **falsa** desde o `E-997`.* => *a prova esta' no
+    teste do `E-1004`, que verifica explicitamente que a string **nao** sobrevive ao
+    `normalizar`.* => *A cura (preservar os **nomes** e substituir so' os **numeros** por um
+    marcador) **nao** foi feita nesta fatia: mudaria o desenho do `--check` e arriscaria partido
+    novo, e havia dois SHAs vermelhos a fechar primeiro.*
 
     **O que fica declarado**: os numeros, com a origem dita no proprio documento (*«as
     contagens sao um retrato do momento; a origem esta' nesta linha»*). => *aquele que le' o
@@ -301,15 +312,37 @@ def normalizar(texto: str) -> str:
     linhas = []
     for linha in texto.splitlines():
         s = linha.strip()
-        # Linhas de contagem: tabelas do topo (`| ... | N |`) e as somas em prosa.
+        # Linhas de contagem: **tabelas de 2 E de 3 colunas**, e as somas em prosa.
+        #
+        # **Este e' o `E-1004`, e o defeito estava aqui.** A versao anterior (do `E-997`) so'
+        # apanhava `| nome | N |` -- **2 colunas**. => *mas as seccoes **4** (ficheiros
+        # migraveis) e **5** (ficheiros de excecao) usam **3 colunas***: `| caminho | N | tipo |`
+        # => *e essas linhas contem a **contagem por ficheiro**, que e' exactamente o que depende
+        # do conjunto de ficheiros do checkout* => *logo **nao eram removidas**, e o `--check`
+        # continuava a comparar numeros que o `E-997` acreditava ter deixado de comparar.*
+        #
+        # *Na minha maquina passava*, porque o disco e' o commit local; no CI, o checkout e'
+        # `refs/pull/N/merge` = **branch + main** => aparecem ficheiros que a branch nao tem
+        # => a tabela muda => **divergencia**. *Medido no run 38939790452*: o passo 8 falhou com
+        # `INVENTARIO DIVERGENTE do repositorio: docs/mission/HADES_BRAND_INVENTORY.md`.
+        #
+        # **A licao**: *o `E-997` normalizou **uma** das **duas** formas de tabela de contagem, e
+        # o docstring afirmava que as contagens estavam removidas* => *uma cura que se julga
+        # completa **fecha a investigacao antes do fim*** => e' o **`E-1002`** (*a divida
+        # declarada a mais*) na forma de **filtro**: aqui a cura **faltava**, e o texto dizia que
+        # estava feita.
         if re.match(r"^\|\s*\*{0,2}[^|]+\*{0,2}\s*\|\s*\*{0,2}\d+\*{0,2}\s*\|$", s):
-            continue
+            continue  # tabela de 2 colunas: `| nome | N |`
+        if re.match(r"^\|\s*\*{0,2}[^|]+\*{0,2}\s*\|\s*\*{0,2}\d+\*{0,2}\s*\|[^|]*\|$", s):
+            continue  # tabela de 3 colunas: `| caminho | N | tipo |`
         if s.startswith("**Legadas somadas:**"):
             continue
         if s.startswith("**Por tipo de excecao:**"):
             continue
         if s.startswith("> Origens medidas neste snapshot:"):
             continue
+        if s.startswith("(231 em ficheiros") or s.startswith("(231 em"):
+            continue  # a segunda linha da mesma soma, tambem com numeros
         linhas.append(linha)
     return "\n".join(linhas)
 
