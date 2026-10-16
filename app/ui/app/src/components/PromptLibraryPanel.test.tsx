@@ -90,10 +90,10 @@ function variableFields(result: ReactTestRenderer): ReactTestInstance[] {
 describe("PromptLibraryPanel", () => {
   it("lista os prompts iniciais e o contador", () => {
     const result = renderer();
-    expect(items(result)).toHaveLength(4);
+    expect(items(result)).toHaveLength(6);
     expect(
       textContent(result.root.findByProps({ "aria-label": "Biblioteca de prompts" })),
-    ).toContain("4 prompt(s) salvos neste navegador.");
+    ).toContain("6 prompt(s) salvos neste navegador.");
   });
 
   it("cria um prompt, persiste e recarrega do armazenamento injetado", () => {
@@ -106,14 +106,14 @@ describe("PromptLibraryPanel", () => {
 
     submit(first);
 
-    expect(items(first)).toHaveLength(5);
+    expect(items(first)).toHaveLength(7);
     expect(textContent(first.root.findByProps({ role: "status" }))).toBe(
       "Prompt salvo na biblioteca.",
     );
     expect(storage.raw(PROMPT_STORAGE_KEY)).toContain("Resumo executivo");
 
     const reloaded = renderer({ storage });
-    expect(items(reloaded)).toHaveLength(5);
+    expect(items(reloaded)).toHaveLength(7);
     expect(textContent(reloaded.root)).toContain("Resumo executivo");
   });
 
@@ -181,7 +181,7 @@ describe("PromptLibraryPanel", () => {
 
     fill(result, "prompt-library-search", "");
     selectValue(result, "prompt-library-folder", "Comandos");
-    expect(items(result)).toHaveLength(4);
+    expect(items(result)).toHaveLength(6);
 
     click(result, "Alternar favorito de /test");
 
@@ -205,11 +205,11 @@ describe("PromptLibraryPanel", () => {
     expect(textContent(result.root)).toContain("Plano revisado");
 
     click(result, "Duplicar Plano revisado");
-    expect(items(result)).toHaveLength(5);
+    expect(items(result)).toHaveLength(7);
 
     click(result, "Excluir Plano revisado");
     expect(textContent(result.root)).toContain("Prompt excluído.");
-    expect(items(result)).toHaveLength(4);
+    expect(items(result)).toHaveLength(6);
   });
 
   it("explica quando a importação não traz prompt válido", () => {
