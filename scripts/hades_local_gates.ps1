@@ -556,4 +556,17 @@ if ($LASTEXITCODE -ne 0) {
   '    FALHA'
 } else { '    OK' }
 $passos += 'render-indice'
+
+''
+# E-1048: o INVENTARIO do worktree. *Uma contagem nao e' um inventario.* Separa `M` de conteudo
+# de `M` de fim-de-linha -- reportei «14 entradas» durante dezenas de rondas e havia ZERO de
+# trabalho real.
+'--- 31. INVENTARIO do worktree: `M` de conteudo vs `M` de fim-de-linha'
+$saidaInv = & python -X utf8 scripts/hades_worktree_inventory.py --check 2>&1
+$saidaInv | Select-Object -Last 2 | ForEach-Object { "    " + $_.ToString().Substring(0, [Math]::Min(110, $_.ToString().Length)) }
+if ($LASTEXITCODE -ne 0) {
+  $falhas.Add("hades_worktree_inventory.py (exit $LASTEXITCODE)")
+  '    FALHA'
+} else { '    OK' }
+$passos += 'inventario-worktree'
 "GATES LOCAIS: $($passos -join ' + ') VERDES"

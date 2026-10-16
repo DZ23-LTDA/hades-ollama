@@ -1329,3 +1329,39 @@ O par real esta' DENTRO da corrida: 92,2 / 89,7 / 91,3 tok/s -- warm/cold **0,98
 **Doutrina em uma linha**: uma nota que dizia «nao iniciado» e um estagio a espera de
 alguem o correr; medir a taxa de sucesso sem medir a trapaca seria medir a mentira; e a
 comparacao externa continua NAO_EXECUTADA -- nao ha' numero inventado.
+
+### Instrucoes de retomada (janela `E-1048`)
+
+**Estado**: branch `fix/checker-relogio`; cabeca do indice `E-1048`; PR #438 **aberto** e
+**nao tocado** -- *as 14 threads continuam como estavam*; `reviewDecision` **vazio**.
+
+**Bateria: 28 passos.** OITO E2E por opt-in, **quatro** catracas, o render do indice e o
+inventario do worktree.
+
+**O WORKTREE, MEDIDO (passo 31)** -- *nao contado, listado*:
+  python -X utf8 scripts\hades_worktree_inventory.py
+  => A. CONTEUDO: 0   B. SO' FIM-DE-LINHA: 11   C. NAO RASTREADO: 2
+  => git diff --stat = 0 ; git diff --ignore-cr-at-eol --numstat = 0
+
+***Reportei «14 entradas» durante dezenas de rondas sem nunca listar. O numero era 14; o
+trabalho real era ZERO.*** A licao: *uma contagem nao e' um inventario* -- e *reportar o
+numero certo da coisa errada e' uma forma de mentir sem dizer uma palavra falsa.*
+
+**O WIP DO PROMPT ESTA' INTEGRADO**: `app/secrets/secrets.go`, `parser/parser.go`,
+`server/desktop_local_routes.go`, `app/ui/app/src/lib/salaApi.ts`,
+`scripts/hades_bundle_windows.ps1`, `THIRD_PARTY_NOTICES.md` -- todos em disco, commitados
+na FASE 1. O que resta e' residuo de `core.autocrlf`.
+
+**O ESTAGIO 21, MEDIDO** (`E-1047`): `PASS` em 599,88 s -- 3/8 verde, 4 trapacearam, 1
+vermelho; veredictos identicos um dia depois. O anti-trapaca e' codigo
+(`harness_benchmark.go:286`).
+
+**DUAS CATRACAS COMPLEMENTARES**: `hades_index_shape_check.py` varre o **indice**;
+`hades_mission_check.py` varre **todo o codigo**. **Um ID novo continua do MAIOR cunhado.**
+
+**O que NAO fazer**: `reset --hard`, `git clean`, rebase destrutivo, force-push, stash,
+`merge`, tag, release, publicacao externa, ou **resolver threads** do PR #438.
+
+**Doutrina em uma linha**: uma contagem nao e' um inventario; um `M` num `git status` nao
+e' necessariamente conteudo; e reportar o numero certo da coisa errada e' uma forma de
+mentir sem dizer uma palavra falsa.

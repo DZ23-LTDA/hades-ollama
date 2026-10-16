@@ -705,3 +705,21 @@ alterar o **teste** em vez do **código**.
 (`harness_benchmark_repetition.go`); correr com `HADES_T2_MEDIR_MODELO=1` e comparar o
 `46+/0` com o que sai agora. Se divergir, o artefacto está desactualizado e deve ser
 regenerado; se coincidir, a repetição ganha a mesma reprodutibilidade que a matriz.
+
+### A proxima accao unica (janela `E-1048`)
+
+**ZERO WIP real por integrar.** As «14 entradas» que reportei durante dezenas de rondas
+eram **11 `M` de fim-de-linha** + 2 não rastreados + os 2 T2 que commitei.
+`git diff --stat` = **0** e `--ignore-cr-at-eol` = **0**: ***num `git status` um `M` não é
+necessariamente uma mudança de conteúdo.***
+
+⇒ ***«Reportar o número certo da coisa errada é uma forma de mentir sem dizer uma palavra
+falsa.»*** *Uma contagem não é um inventário.*
+
+**Curado**: `scripts/hades_worktree_inventory.py` classifica em três categorias e **imprime
+cada caminho** — passo 31 da bateria.
+
+**A proxima accao unica**: **revalidar a repetição T2** (`46+/0`), cuja corrida está
+lançada em background com `qwen2.5:7b` e 3 repetições — o mesmo que o artefacto antigo
+(`2026-10-13T13:41:29Z`), para comparação directa. Enquanto corre, **não duplicar** o
+trabalho que ela já faz.

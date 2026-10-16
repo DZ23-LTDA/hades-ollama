@@ -1444,3 +1444,26 @@ Ollama directo (`load` 19,95 s · `ttft` 20,00 s · `prefill` 1445 tok/s · `gen
 - ligação da extensão ao **Mission Control** (`missao` fica a `null`);
 - APK Android bloqueado pela DLL JNI (`E-1019`);
 - macOS/iOS `BLOCKED_EXTERNAL` pela **máquina**.
+
+### O que falta (actualizado na janela `E-1048`)
+
+**Fechado**: o inventário do worktree. **Zero trabalho real por integrar** — os 11 `M`
+são só fim-de-linha (`--ignore-cr-at-eol` = 0). O WIP do prompt existe em disco e foi
+integrado na FASE 1. Há agora um instrumento que **lista** (passo 31).
+
+**Continua em falta, sem disfarce**:
+- **a repetição T2 (`46+/0`) está por revalidar** -- a corrida está lançada;
+- **nenhuma comparação externa foi executada** -- `NAO_EXECUTADA`, não `PARITY_MEASURED`;
+- **a taxa da matriz T2 é 3/8** com modelos locais de 3–7B: *um modelo, um host, uma quantização*;
+- **sem GPU/VRAM medidos por época** -- só tempo de parede;
+- **as 14 threads do PR continuam abertas** -- não resolvi nenhuma (proibido);
+- **o encaixe da aprovação continua por ligar** (`E-1044`);
+- **shadow roots fechados**, **cross-origin**, `document.domain`, `srcdoc`: como no `E-1040`;
+- **BFCache** sem execução observada (`E-1038`);
+- **o Chrome real do utilizador**: a versão 155 **não carrega** por `--load-extension`;
+- **Firefox** e **Safari**;
+- **sem `.crx`, sem assinatura, sem SBOM do pacote**;
+- **`CAPACIDADES` VAZIO**: o Companion **não** controla o PC;
+- ligação da extensão ao **Mission Control** (`missao` fica a `null`);
+- APK Android bloqueado pela DLL JNI (`E-1019`);
+- macOS/iOS `BLOCKED_EXTERNAL` pela **máquina**.
