@@ -37,6 +37,34 @@ export const SLASH_COMMANDS: readonly SlashCommand[] = [
     mode: "goal",
     autoRun: true,
   },
+  // E-975: `spark` e `cowork` estavam NO TIPO (`SlashCommandId`, L1) e NAO no catalogo.
+  //
+  // *Um tipo que promete mais do que o catalogo entrega*: `filterSlashCommands` nunca os
+  // podia devolver, e o menu nunca os mostrava. E' o `E-964` literalmente - *o tipo dizia
+  // que existia, o catalogo dizia que nao*.
+  //
+  // **E sao MODOS do mesmo mecanismo, nao motores separados** (§FASE-3 item 3): ambos
+  // entram por `parseSlashCommand` -> `/agentic?objective&slash&autorun` -> `AgenticConsole`,
+  // que cria a missao pela **mesma** `POST /api/agent/v1/missions`.
+  //
+  // *E o que NAO se faz aqui*: mudar o `AgenticConsole:230` de `slashCommand === "goal"`
+  // para `mode === "goal"`. Isso faria `/test` e `/review` **passarem a delegar**, e eles
+  // nao delegavam - *alterar comportamento para o codigo "ficar mais coerente" e' o que o
+  // §ANTILOOP item 10 proibe.*
+  {
+    id: "spark",
+    label: "/spark",
+    description: "cria uma missão curta de ideação e rascunho, sem execução pesada",
+    mode: "goal",
+    autoRun: false,
+  },
+  {
+    id: "cowork",
+    label: "/cowork",
+    description: "cria uma missão colaborativa com os papéis do swarm sobre o mesmo runtime",
+    mode: "goal",
+    autoRun: true,
+  },
 ];
 
 export function filterSlashCommands(query: string): SlashCommand[] {
