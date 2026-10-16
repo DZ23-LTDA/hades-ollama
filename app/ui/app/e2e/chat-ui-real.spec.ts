@@ -78,7 +78,7 @@ test.describe("chat na UI com motor real", () => {
     // => o spec passa a aceitar os DOIS estados. *Isto NAO relaxa a asserção de produto: a
     // resposta do modelo local continua a ter de aparecer (`:83-91`).*
     const placeholder = page.getByRole("button", { name: "Selecionar modelo" });
-    const jaComModelo = page.getByRole("button", { name: /^[\w.\-]+:[\w.\-]+$/ });
+    const jaComModelo = page.getByRole("button", { name: /^[\w.-]+:[\w.-]+$/ });
     const abridor =
       (await placeholder.count()) > 0 ? placeholder.first() : jaComModelo.first();
     await abridor.click();
