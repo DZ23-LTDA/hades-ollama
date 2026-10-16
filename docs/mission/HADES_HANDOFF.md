@@ -459,3 +459,31 @@ race / go test -race   CGO_ENABLED=0, mingw-w64 ausente
 pacotes / instalador   FASE-6 nao iniciada
 revisao humana         reviewDecision VAZIO no PR #438
 ``````
+
+### Instrucoes de retomada (actualizadas na janela `E-1009`..`E-1021`)
+
+**Estado**: branch `fix/checker-relogio`; cabeca do indice `E-1021`; PR #438 **aberto** e **nao
+tocado** (decisao do dono); `reviewDecision` **vazio** => sem revisao humana independente.
+
+**Onde estao as coisas novas**:
+- extensao: `apps/hades-browser-bridge/` (11 ficheiros, 24 testes: `node --test apps/hades-browser-bridge/test/protocol.test.js apps/hades-browser-bridge/test/carregavel.test.js`);
+- ferramentas baixadas a mao em `_tmp/`: `jdk17` (JDK 17.0.20.1), `android-sdk` (394,2 MB), `gradle-8.13-bin.zip`;
+- `_tmp/` **nao** entra no Git (`E-1020`);
+- material de assinatura Apple: em `C:\Users\DZ23\Downloads`, **fora** do repo, **0** rastreados;
+  o `.gitignore` agora cobre 20 padroes (verificado 19/19 com `git check-ignore`).
+
+**O que NAO fazer**: `reset --hard`, `git clean`, rebase destrutivo, force-push, stash, `merge`,
+tag, release, publicacao externa, ou **resolver threads** do PR #438. Nada disso esta' autorizado.
+
+**Como verificar tudo antes de commitar** (bateria de 20 gates, exit 0 obrigatorio):
+`hades_release_gate.py` (write) -> `--check`; `hades_manifest.py`; `hades_brand_inventory.py`;
+`hades_ascii_ps1_check.py`; `hades_mission_check.py`; `hades_state_chronology_test.py`;
+`hades_index_shape_check.py --check` **e** `_test.py`; `hades_handoff_window_check.py --check`
+**e** `_test.py`; `hades_orphan_instruments_check.py --check`; `hades_audit_instruments_test.py`;
+`hades_stage_map.py --check`; `hades_baseline_report.py --check`;
+`hades_ci_reproducibility_check.py --check`; `hades_tenant_scope_check.py --check`;
+`hades_non_inference_scan.py`; `hades_encoding_check.py`; `hades_fix_mojibake.py --check`;
+`git diff --check`.
+
+**Doutrina em uma linha**: *medir antes de afirmar; um gate que me apanha esta' a funcionar; e
+evidencia sem commit e' uma afirmacao.*

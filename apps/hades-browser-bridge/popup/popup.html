@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <title>HADES Browser Bridge</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <header>
+    <img src="../icons/hades-icon-192.png" alt="" width="24" height="24">
+    <h1>HADES Browser Bridge</h1>
+  </header>
+
+  <p id="aviso" class="aviso" role="status" aria-live="polite"></p>
+
+  <section aria-labelledby="t-estado">
+    <h2 id="t-estado">Estado</h2>
+    <dl>
+      <dt>Missão</dt><dd id="missao">—</dd>
+      <dt>Host local</dt><dd id="host">—</dd>
+      <dt>Aprovação</dt><dd id="aprovacao">—</dd>
+      <dt>Abas conectadas</dt><dd id="abas">0</dd>
+    </dl>
+  </section>
+
+  <section aria-labelledby="t-aba">
+    <h2 id="t-aba">Esta aba</h2>
+    <p id="origem-aba" class="mono">—</p>
+    <p class="nota">
+      Ao conectar, o HADES poderá observar o DOM desta aba e interagir com ela
+      enquanto a concessão durar. Campos de senha, cartão e MFA <strong>nunca</strong>
+      são lidos: nesses campos o controlo é seu.
+    </p>
+    <div class="accoes">
+      <button id="bt-conectar" type="button" class="primario">Conectar esta aba</button>
+      <button id="bt-desconectar" type="button">Desconectar</button>
+    </div>
+  </section>
+
+  <section aria-labelledby="t-esc">
+    <h2 id="t-esc">Permissões</h2>
+    <ul id="escopos" class="escopos"></ul>
+  </section>
+
+  <footer>
+    <button id="bt-revogar" type="button" class="perigo">Revogar todas as abas</button>
+    <p class="nota">
+      A extensão não decide aprovações e não tem acesso ao sistema operativo.
+      Toda a ação de risco é aprovada no HADES.
+    </p>
+  </footer>
+
+  <script type="module" src="popup.js"></script>
+</body>
+</html>

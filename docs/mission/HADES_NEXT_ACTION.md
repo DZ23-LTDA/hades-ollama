@@ -294,3 +294,15 @@ race / go test -race   CGO_ENABLED=0, mingw-w64 ausente
 pacotes / instalador   FASE-6 nao iniciada
 revisao humana         reviewDecision VAZIO no PR #438
 ``````
+
+### A proxima accao unica (actualizada)
+
+**Empacotar a extensao `.zip` nao publicado, com SHA-256 e instrucoes de instalacao/remocao** --
+depois de a extensao ficar carregavel (`E-1021`, 24 testes verdes). O `.zip` e' trabalho interno;
+**publicar** na Chrome Web Store / Edge Add-ons exige conta e autorizacao do proprietario.
+
+Ordem para os passos seguintes, sem inventar atalhos:
+1. `.zip` da extensao + `SHA256SUMS` + `LEIA-ME` de instalacao e remocao;
+2. pairing real (native messaging + `HADES Local Companion`) -- ainda **nao existe**;
+3. E2E em Chrome/Edge reais (este host consegue, com uma sessao de browser controlada);
+4. `E-1021` fechou o `Browser Bridge`; o `Computer Use` continua `PARTIAL`.

@@ -1,0 +1,289 @@
+// HADES Browser Bridge -- service worker (MV3).
+//
+// REUTILIZA o contrato do runtime do HADES (internal/agent/browser.go e
+// browser_helper.py) e NAO cria protocolo, aprovacao ou missao paralelos:
+//   - os 3 scopes canonicos vivem em src/protocol.js
+//   - session_id = id da MISSAO, igual a toolContext.MissionID
+//   - requires_approval e' declarado aqui e DECIDIDO no HADES, nunca na extensao
+//   - a extensao nunca executa shell nem toca no sistema operativo
+//
+// Regras que este ficheiro faz cumprir:
+//   * uma aba so e' observada/controlada depois de o UTILIZADOR a conceder;
+//   * a concessao e' por (aba, janela, origem) e tem prazo;
+//   * badge persistente enquanto houver concedao ativa;
+//   * desconectar/revogar apaga tudo, sem tocar em projetos do utilizador;
+//   * incognito nunca e', sequer, alcancavel (manifest: incognito not_allowed);
+//   * nada de eval, nada de codigo remoto.
+
+import {
+  SCOPES, TOOL, LIMITES, validarUrl, guardarRota, campoSensivel,
+} from "./protocol.js";
+
+/** Chave unica de armazenamento. Uma so' fonte de verdade. */
+const CHAVE = "hades.bridge.v1";
+
+/** Uma concessao expira sozinha. O utilizador nao fica exposto por esquecimento. */
+const TTL_PADRAO_MS = 30 * 60 * 1000;
+
+/** Teto de accoes por minuto, por concessao (backpressure). */
+const JANELA_MS = 60 * 1000;
+
+/* ------------------------------------------------------------------ estado */
+
+async function lerEstado() {
+  const bruto = await chrome.storage.session.get(CHAVE);
+  const estado = bruto?.[CHAVE];
+  if (!estado || typeof estado !== "object") {
+    return { concessoes: {}, accoes: {}, missao: null, host: null, aprovado: false };
+  }
+  return {
+    concessoes: estado.concessoes ?? {},
+    accoes: estado.accoes ?? {},
+    missao: estado.missao ?? null,
+    host: estado.host ?? null,
+    aprovado: estado.aprovado === true,
+  };
+}
+
+async function gravarEstado(estado) {
+  await chrome.storage.session.set({ [CHAVE]: estado });
+  await refletirBadges(estado);
+}
+
+/** A chave de uma concessao e' a aba: uma aba = uma concessao. */
+const chaveDaAba = (tabId) => `t${tabId}`;
+
+function expirou(concessao, agora = Date.now()) {
+  return !concessao || typeof concessao.expiraEm !== "number" || concessao.expiraEm <= agora;
+}
+
+/**
+ * Devolve a concessao viva de uma aba, ou null. Uma concessao expirada e'
+ * removida -- nao ha' "reconexao que restaura permissao expirada".
+ */
+async function concessaoViva(tabId) {
+  const estado = await lerEstado();
+  const c = estado.concessoes[chaveDaAba(tabId)];
+  if (!c) return null;
+  if (expirou(c)) {
+    delete estado.concessoes[chaveDaAba(tabId)];
+    delete estado.accoes[chaveDaAba(tabId)];
+    await gravarEstado(estado);
+    return null;
+  }
+  return c;
+}
+
+/** Badge persistente e inequivoco enquanto a aba estiver concedida. */
+async function refletirBadges(estado) {
+  const agora = Date.now();
+  for (const [chave, c] of Object.entries(estado.concessoes)) {
+    const tabId = Number(chave.slice(1));
+    if (!Number.isFinite(tabId)) continue;
+    if (expirou(c, agora)) continue;
+    try {
+      await chrome.action.setBadgeText({ tabId, text: "ON" });
+      await chrome.action.setBadgeBackgroundColor({ tabId, color: "#171717" });
+      await chrome.action.setTitle({ tabId, title: `HADES: aba conectada (${c.origem})` });
+    } catch {
+      /* a aba pode ter fechado; nao e' erro */
+    }
+  }
+}
+
+async function limparBadge(tabId) {
+  try {
+    await chrome.action.setBadgeText({ tabId, text: "" });
+    await chrome.action.setTitle({ tabId, title: "HADES Browser Bridge" });
+  } catch {
+    /* aba fechada */
+  }
+}
+
+/* --------------------------------------------------------------- concessao */
+
+/**
+ * Concede a aba ATIVA ao HADES, a pedido explicito do utilizador.
+ * So' aceita origem http/https validada; guarda aba, janela, origem e prazo.
+ */
+async function conectarAbaAtiva() {
+  const [aba] = await chrome.tabs.query({ active: true, currentWindow: true });
+  if (!aba || typeof aba.id !== "number") {
+    return { ok: false, motivo: "sem_aba_ativa" };
+  }
+  // incognito: recusa, mesmo que o manifest ja' o bloqueie
+  if (aba.incognito) return { ok: false, motivo: "incognito_recusado" };
+
+  const v = validarUrl(aba.url ?? "");
+  if (!v.ok) return { ok: false, motivo: v.motivo };
+
+  const dono = new URL(v.url).origin;
+  const estado = await lerEstado();
+  estado.concessoes[chaveDaAba(aba.id)] = {
+    tabId: aba.id,
+    windowId: aba.windowId,
+    origem: dono,
+    concedidaEm: Date.now(),
+    expiraEm: Date.now() + TTL_PADRAO_MS,
+    scopes: [...SCOPES],
+  };
+  estado.accoes[chaveDaAba(aba.id)] = [];
+  await gravarEstado(estado);
+  await chrome.action.setBadgeText({ tabId: aba.id, text: "ON" });
+  return { ok: true, tabId: aba.id, origem: dono, expiraEm: estado.concessoes[chaveDaAba(aba.id)].expiraEm };
+}
+
+/** Revoga uma aba (ou todas). Nao toca em nada do utilizador. */
+async function desconectar(tabId) {
+  const estado = await lerEstado();
+  if (typeof tabId === "number") {
+    delete estado.concessoes[chaveDaAba(tabId)];
+    delete estado.accoes[chaveDaAba(tabId)];
+    await gravarEstado(estado);
+    await limparBadge(tabId);
+    return { ok: true, revogadas: 1 };
+  }
+  const ids = Object.keys(estado.concessoes).map((k) => Number(k.slice(1)));
+  estado.concessoes = {};
+  estado.accoes = {};
+  await gravarEstado(estado);
+  for (const id of ids) await limparBadge(id);
+  return { ok: true, revogadas: ids.length };
+}
+
+/* ------------------------------------------------------------------ accoes */
+
+/** Backpressure simples: no maximo LIMITES.accoesPorMinuto por concessao. */
+function dentroDoLimite(estado, chave) {
+  const agora = Date.now();
+  const marcas = (estado.accoes[chave] ?? []).filter((t) => agora - t < JANELA_MS);
+  if (marcas.length >= LIMITES.accoesPorMinuto) {
+    estado.accoes[chave] = marcas;
+    return false;
+  }
+  marcas.push(agora);
+  estado.accoes[chave] = marcas;
+  return true;
+}
+
+/**
+ * Ponto unico por onde passam as accoes vindas do popup/content script.
+ * Nao executa nada por si: valida escopo, concessao e limite, e devolve o
+ * pedido canonico para o HADES decidir (aprovacao incluida).
+ */
+async function tratarAccao(mensagem) {
+  if (!mensagem || typeof mensagem !== "object") return { ok: false, motivo: "mensagem_invalida" };
+  const { tipo } = mensagem;
+
+  if (tipo === "conectar") return conectarAbaAtiva();
+  if (tipo === "desconectar") return desconectar(mensagem.tabId);
+  if (tipo === "estado") {
+    const estado = await lerEstado();
+    return {
+      ok: true,
+      missao: estado.missao,
+      host: estado.host,
+      aprovado: estado.aprovado,
+      concessoes: Object.values(estado.concessoes).filter((c) => !expirou(c)),
+      escopos: [...SCOPES],
+      ferramenta: TOOL,
+    };
+  }
+
+  if (tipo !== "accao") return { ok: false, motivo: "tipo_desconhecido" };
+
+  const tabId = Number(mensagem.tabId);
+  if (!Number.isFinite(tabId)) return { ok: false, motivo: "aba_ausente" };
+  const concessao = await concessaoViva(tabId);
+  if (!concessao) return { ok: false, motivo: "aba_nao_concedida" };
+
+  // a accao tem de estar dentro dos 3 scopes canonicos
+  if (!SCOPES.includes(mensagem.scope)) return { ok: false, motivo: "scope_nao_canonico" };
+
+  // e a origem do alvo tem de continuar a ser a concedida
+  if (mensagem.url) {
+    const rota = guardarRota(mensagem.url, [concessao.origem]);
+    if (!rota.ok) return rota;
+  }
+
+  const estado = await lerEstado();
+  if (!dentroDoLimite(estado, chaveDaAba(tabId))) {
+    await gravarEstado(estado);
+    return { ok: false, motivo: "limite_de_accoes_excedido" };
+  }
+  await gravarEstado(estado);
+
+  // A extensao NAO decide aprovacao: declara a exigencia e devolve o pedido.
+  return {
+    ok: true,
+    pedido: {
+      tool: TOOL,
+      scope: mensagem.scope,
+      action: mensagem.action,
+      params: mensagem.params ?? {},
+      session_id: estado.missao,
+      requires_approval: true,
+      origem: concessao.origem,
+    },
+  };
+}
+
+/* -------------------------------------------------- mensagens e ciclo de vida */
+
+chrome.runtime.onMessage.addListener((mensagem, remetente, responder) => {
+  // Uma pagina NUNCA fala com o service worker: so' o popup e o content script
+  // da propria extensao. Uma mensagem de origem externa e' recusada de imediato.
+  if (remetente?.id !== chrome.runtime.id) {
+    responder({ ok: false, motivo: "remetente_nao_autorizado" });
+    return false;
+  }
+  tratarAccao(mensagem)
+    .then(responder)
+    .catch((erro) => responder({ ok: false, motivo: "erro_interno", detalhe: String(erro?.message ?? erro) }));
+  return true; // resposta assincrona
+});
+
+// fechar a aba revoga a concessao
+chrome.tabs.onRemoved.addListener(async (tabId) => {
+  const estado = await lerEstado();
+  if (estado.concessoes[chaveDaAba(tabId)]) {
+    delete estado.concessoes[chaveDaAba(tabId)];
+    delete estado.accoes[chaveDaAba(tabId)];
+    await gravarEstado(estado);
+  }
+});
+
+// navegar para outra origem dentro da mesma aba exige nova concessao
+chrome.tabs.onUpdated.addListener(async (tabId, info) => {
+  if (!info.url && !info.status) return;
+  const estado = await lerEstado();
+  const c = estado.concessoes[chaveDaAba(tabId)];
+  if (!c) return;
+  if (expirou(c)) {
+    delete estado.concessoes[chaveDaAba(tabId)];
+    await gravarEstado(estado);
+    await limparBadge(tabId);
+    return;
+  }
+  const v = validarUrl(info.url ?? "");
+  if (!v.ok || new URL(v.url).origin !== c.origem) {
+    // nova origem: revoga. O utilizador reconecta se quiser.
+    delete estado.concessoes[chaveDaAba(tabId)];
+    delete estado.accoes[chaveDaAba(tabId)];
+    await gravarEstado(estado);
+    await limparBadge(tabId);
+  }
+});
+
+// limpeza na instalacao/arranque: nada de estado orfao de uma versao anterior
+chrome.runtime.onInstalled.addListener(async () => {
+  const estado = await lerEstado();
+  const agora = Date.now();
+  for (const [k, c] of Object.entries(estado.concessoes)) {
+    if (expirou(c, agora)) {
+      delete estado.concessoes[k];
+      delete estado.accoes[k];
+    }
+  }
+  await gravarEstado(estado);
+});

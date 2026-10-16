@@ -817,3 +817,24 @@ race / go test -race   CGO_ENABLED=0, mingw-w64 ausente
 pacotes / instalador   FASE-6 nao iniciada
 revisao humana         reviewDecision VAZIO no PR #438
 ``````
+
+### O que falta (actualizado na janela `E-1009`..`E-1021`)
+
+**Fechado nesta janela**: instalador Windows (`E-1012`), pacote Linux (`E-1013`), inventario de
+marca (`E-1015`), MV3 provado inexistente antes (`E-1016`/`E-1017`), Android medido ate' a
+fronteira (`E-1019`), extensao MV3 criada (`E-1020`) e **completada e carregavel** (`E-1021`),
+`.gitignore` de material de assinatura (`E-1020`, commit `82228563f`).
+
+**Continua em falta, sem disfarce**:
+- `.zip` da extensao com hash e instrucoes -- **proximo passo**;
+- **pairing real** (`native messaging` + `HADES Local Companion`): **nao existe**; o popup mostra
+  `host: - (native host nao instalado)`;
+- ligacao da extensao ao **Mission Control** (hoje `missao` e `aprovado` ficam a `null`);
+- E2E em Chrome/Edge reais; Firefox e Safari **nao** tem suporte demonstrado;
+- APK Android: bloqueado pela DLL nativa JNI neste host (`E-1019`), passo de desbloqueio = runner Linux;
+- macOS e iOS: `BLOCKED_EXTERNAL` pela **maquina**, nao pela credencial -- o material Apple
+  fornecido (3 `AuthKey` + 1 `.cer`) serve para **submeter/notarizar**, o `.cer` sozinho **nao
+  assina**, e `codesign`/`notarytool` **so' existem no macOS**;
+- script + doc de notarizacao/assinatura: **pedido pelo dono, ainda nao escrito**;
+- iOS sem build de simulador; dispositivo fisico e TestFlight `BLOCKED_EXTERNAL`;
+- benchmark reproduzivel (ESTAGIO 21) nao iniciado; `SUPERIOR_MEASURED` nao reclamado.
