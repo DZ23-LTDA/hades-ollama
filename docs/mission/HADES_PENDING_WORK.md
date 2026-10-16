@@ -1206,3 +1206,35 @@ e **declara** os limites com contagens e profundidades. E o shadow fechado é de
 - APK Android bloqueado pela DLL JNI (`E-1019`);
 - macOS/iOS `BLOCKED_EXTERNAL` pela **máquina**;
 - benchmark reproduzível (ESTÁGIO 21) não iniciado.
+
+### O que falta (actualizado na janela `E-1040`)
+
+**Fechado**: o scope `browser:files` decide. Política com 9 regras ordenadas, 17 asserções
+unitárias, E2E real no Edge, registo auditável sem o hash, e a **cura na raiz** da lista
+fixa do `lerEstado` (que já tinha mordido no `E-1037`).
+
+**Continua em falta, sem disfarce**:
+- **a extensão NÃO executa a transferência**: decide sobre ela. Não há hook em
+  `chrome.downloads` nem em `type=file`;
+- **a aprovação chega por `mensagem.aprovado`** -- um campo que **quem pede** controla.
+  *Quem pede não certifica o que pede.* A ligação às approvals do Mission Control
+  **não existe**;
+- **`sha256` é medido onde os bytes existem**: a extensão **não pode verificar** que os
+  bytes transferidos correspondem ao manifesto -- só a decisão é auditável;
+- o registo vive em `storage.session` (morre com a sessão) e **não é assinado**;
+- **shadow roots fechados**: invisíveis por design do browser;
+- **cross-origin**: contado, nunca lido;
+- `document.domain`, iframes `srcdoc`/`about:blank`, service workers de página: não testados;
+- **BFCache** sem execução observada (`E-1038`, `persisted: false`);
+- **o takeover não tem duração ajustável** (30s fixos);
+- **o Chrome real do utilizador**: a versão 155 deste host **não carrega** por
+  `--load-extension`; exige carregamento manual;
+- **Firefox** e **Safari**;
+- **sem `.crx`, sem assinatura, sem SBOM do pacote**;
+- **a chave privada de distribuição está fora do Git**;
+- **`CAPACIDADES` VAZIO**: o Companion **não** controla o PC;
+- **taxa e pairing em memória**;
+- ligação da extensão ao **Mission Control** (`missao`/`aprovado` ficam a `null`);
+- APK Android bloqueado pela DLL JNI (`E-1019`);
+- macOS/iOS `BLOCKED_EXTERNAL` pela **máquina**;
+- benchmark reproduzível (ESTÁGIO 21) não iniciado.

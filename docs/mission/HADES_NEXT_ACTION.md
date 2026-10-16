@@ -551,3 +551,22 @@ parece medida.*** Agora diz `"nao_detectaveis_por_design"`.
 FASE-3-B sem cobertura: o contrato exige «caminhos autorizados e manifestos com
 tamanho/hash», e aprovação para download executável. Medir primeiro o que existe hoje:
 o `preencher` recusa `type=file`, e **nada** gere downloads. Tudo interno.
+
+### A proxima accao unica (janela `E-1040`)
+
+**O scope `browser:files` não tinha uma linha de implementação** — e a mensagem do
+`preencher` prometia um `caminho_autorizado` que não existia. Agora **decide**: um
+executável **nunca** fica «permitido» (nem com aprovação), e o **mesmo** `a.txt` inerte
+é `permitido` em download e `exige_aprovacao` em upload. ***Sair do disco é sempre um acto.***
+
+**Duas lições que valem mais do que o código:**
+1. **O canal não transporta binário.** `sendMessage` serializa em JSON — um `Uint8Array`
+   atravessa sem `byteLength`. O conteúdo de um ficheiro **não passa por aqui**.
+2. **A lista fixa do `lerEstado` ia morder outra vez** — terceira ocorrência. Curada na
+   raiz: agora preserva o que não conhece. *Curar o campo que falhou não cura a lista.*
+
+**A proxima accao unica**: **ligar `podesTransferir` às approvals reais do Mission
+Control**. Hoje a aprovação chega por `mensagem.aprovado` — um campo que **quem pede**
+controla. *Quem pede não certifica o que pede.* Medir a rota de approvals existente
+(`internal/agent/service_agent_approvals.go`) e ligá-la, ou declarar honestamente que a
+extensão decide sem autoridade de aprovação.

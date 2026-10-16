@@ -18,6 +18,11 @@
 import {
   SCOPES, TOOL, LIMITES, validarUrl, guardarRota, campoSensivel, loopbackAutorizado,
 } from "./protocol.js";
+// `E-1040`: o scope `browser:files` estava nos 3 canonicos e nao tinha implementacao. Aqui
+// entra a DECISAO sobre ficheiros -- *nao um motor de download*.
+import {
+  PROTOCOLO_ARQUIVOS, decidir, sha256De, resumoDaDecisao,
+} from "./arquivos.js";
 
 /** Chave unica de armazenamento. Uma so' fonte de verdade. */
 const CHAVE = "hades.bridge.v1";
@@ -68,22 +73,50 @@ const JANELA_MS = 60 * 1000;
 
 /* ------------------------------------------------------------------ estado */
 
+/**
+ * LE' o estado, e **NAO PERDE O QUE NAO CONHECE** (`E-1040`).
+ *
+ * A versao anterior reconstruia o objecto com uma **lista fixa** de campos:
+ *
+ *     return { concessoes: ..., accoes: ..., missao: ..., host: ..., aprovado: ..., takeover: ... };
+ *
+ * => *todo o campo que nao estivesse na lista era APAGADO a cada leitura.* O `takeover` foi
+ * perdido assim (`E-1037`); e quando fui acrescentar o `arquivos`, ia ser perdido da mesma
+ * forma -- **o mesmo defeito, pela terceira vez.**
+ *
+ * *Curar o campo que falhou nao cura a lista.* Agora a lista e' de campos **com tratamento
+ * proprio** (validados um a um) e **tudo o resto passa intacto** -- sem validacao, mas sem
+ * perda. *Um campo desconhecido e' um campo que ainda nao tem regra, nao um campo a apagar.*
+ */
+const CAMPOS_TIPADOS = Object.freeze({
+  concessoes: (v) => (v && typeof v === "object" ? v : {}),
+  accoes: (v) => (v && typeof v === "object" ? v : {}),
+  missao: (v) => v ?? null,
+  host: (v) => v ?? null,
+  aprovado: (v) => v === true,
+  takeover: (v) => (v && typeof v === "object" ? v : {}),
+});
+
 async function lerEstado() {
   const bruto = await chrome.storage.session.get(CHAVE);
   const estado = bruto?.[CHAVE];
   if (!estado || typeof estado !== "object") {
-    return { concessoes: {}, accoes: {}, missao: null, host: null, aprovado: false, takeover: {} };
+    return {
+      concessoes: {}, accoes: {}, missao: null, host: null, aprovado: false, takeover: {},
+      arquivos: [],
+    };
   }
-  return {
-    concessoes: estado.concessoes ?? {},
-    accoes: estado.accoes ?? {},
-    missao: estado.missao ?? null,
-    host: estado.host ?? null,
-    aprovado: estado.aprovado === true,
-    // *Um `lerEstado` que reconstroi o objecto com campos fixos APAGA todo o campo que
-    // nao esteja na lista* -- o `takeover` do `E-1034` era perdido a cada leitura.
-    takeover: estado.takeover ?? {},
-  };
+  // 1. o que tem regra, normalizado
+  const saida = {};
+  for (const [campo, normalizar] of Object.entries(CAMPOS_TIPADOS)) {
+    saida[campo] = normalizar(estado[campo]);
+  }
+  // 2. e TUDO O RESTO, preservado -- *um campo desconhecido e' um campo sem regra ainda.*
+  for (const [campo, valor] of Object.entries(estado)) {
+    if (campo in CAMPOS_TIPADOS) continue;
+    saida[campo] = valor;
+  }
+  return saida;
 }
 
 async function gravarEstado(estado) {
@@ -421,6 +454,79 @@ async function devolverSessao(tabId) {
   return { ok: true, devolvida: tinha !== null, autor: "agent" };
 }
 
+/* ------------------------------------- ficheiros: a decisao (`E-1040`) */
+
+/**
+ * AVALIA um pedido de transferencia e devolve a decisao. **Nao transfere nada.**
+ *
+ * O que NAO faz, de proposito:
+ *   * nao descarrega -- a extensao nao e' um cliente de download com escrita no disco;
+ *   * nao le' o ficheiro do disco do utilizador -- o content script nao tem esse poder;
+ *   * nao aprova nada sozinha -- a aprovacao vem do utilizador (`aprovado`), e um
+ *     executavel **continua** a exigir aprovacao mesmo depois dela.
+ *
+ * O `sha256` tem de vir MEDIDO (`arquivo:medir`) ou de quem ja' mediu. *Quem pede nao
+ * certifica o que pede* -- e por isso o campo declarado e' cruzado com o tamanho.
+ */
+async function avaliarArquivo(mensagem) {
+  const pedido = mensagem?.pedido ?? {};
+  const decisao = decidir(pedido, { aprovado: mensagem?.aprovado === true });
+  // O resumo vai para o audit log; o hash NAO -- um hash e' um identificador, e identificadores
+  // nao pertencem a um log que se mostra.
+  const registo = {
+    em: Date.now(),
+    decisao: decisao.veredicto,
+    motivo: decisao.motivo,
+    risco: decisao.risco ?? null,
+    direcao: decisao.direcao ?? null,
+    extensao: decisao.extensao ?? null,
+    tamanho: decisao.tamanho ?? null,
+    resumo: resumoDaDecisao(decisao),
+  };
+  const estado = await lerEstado();
+  estado.arquivos = Array.isArray(estado.arquivos) ? estado.arquivos : [];
+  estado.arquivos.push(registo);
+  if (estado.arquivos.length > 200) estado.arquivos = estado.arquivos.slice(-200);
+  await gravarEstado(estado);
+  // *Um campo `ok` num caminho de PERMISSAO tem de significar "podes transferir agora".*
+  // Medido no E2E: `ok: true` para um `.exe` **sem** aprovacao -- porque `ok` estava a dizer
+  // "a avaliacao correu", e nao "esta autorizado". *A ambiguidade num campo de permissao e'
+  // um defeito: quem le' `ok` age.*
+  //
+  //   permitido                       -> sim
+  //   exige_aprovacao + aprovado      -> sim (a decisao registou que a aprovacao veio)
+  //   exige_aprovacao sem aprovacao   -> nao
+  //   proibido                        -> nao
+  const podesTransferir = decisao.veredicto === "permitido"
+    || (decisao.veredicto === "exige_aprovacao" && decisao.aprovado === true);
+  return {
+    // a avaliacao correu -- nada rebentou
+    ok: true,
+    // e a resposta que interessa a quem vai transferir
+    podesTransferir,
+    protocolo: PROTOCOLO_ARQUIVOS,
+    decisao,
+    registo,
+  };
+}
+
+/**
+ * MEDE os bytes de um ficheiro que o POPUP escolheu (`<input type=file>`).
+ *
+ * *O content script nao pode ler ficheiros; o popup pode, com um gesto.* Assim a medicao
+ * acontece onde o utilizador a autorizou, e o que sai dali e' **o hash e o tamanho** -- nunca
+ * o conteudo.
+ */
+async function medirBytes(mensagem) {
+  const bytes = mensagem?.bytes;
+  const h = await sha256De(bytes);
+  if (!h.ok) return { ok: false, motivo: h.motivo };
+  return {
+    ok: true, protocolo: PROTOCOLO_ARQUIVOS,
+    nome: String(mensagem?.nome ?? ""), tamanho: h.bytes, sha256: h.sha256,
+  };
+}
+
 /* -------------------------------------------------- mensagens e ciclo de vida */
 
 chrome.runtime.onMessage.addListener((mensagem, remetente, responder) => {
@@ -445,6 +551,11 @@ chrome.runtime.onMessage.addListener((mensagem, remetente, responder) => {
       ? registarTakeover(Number(remetente?.tab?.id ?? mensagem.tabId), String(mensagem.motivo ?? "interaccao"))
     : t === "takeover:estado" ? estadoDoTakeover(Number(mensagem.tabId))
     : t === "takeover:devolver" ? devolverSessao(Number(mensagem.tabId))
+    // E-1040: o scope `browser:files`. A extensao NAO descarrega nem carrega nada por conta
+    // propria: avalia um manifesto e devolve a decisao. *O que faltava nao era um motor de
+    // download -- era uma decisao auditavel sobre ficheiros.*
+    : t === "arquivo:avaliar" ? avaliarArquivo(mensagem)
+    : t === "arquivo:medir" ? medirBytes(mensagem)
     : null;
   if (doCanal) {
     doCanal.then(responder).catch((erro) =>

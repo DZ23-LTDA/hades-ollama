@@ -490,4 +490,31 @@ if ($ComE2E) {
   '    PULADO (opt-in: use -ComE2E)'
 }
 $passos += 'e2e-frames'
+
+''
+# E-1040: o scope `browser:files`. *Estava nos 3 canonicos e nao tinha uma linha de
+# implementacao -- e a mensagem do `preencher` prometia um caminho autorizado que nao existia.*
+'--- 26. E2E DE ARQUIVOS: o browser:files DECIDE -- executavel nunca fica permitido'
+if ($ComE2E) {
+  $saidaAr = & node scripts/hades_browser_bridge_e2e_arquivos.mjs 2>&1
+  $saidaAr | Select-Object -Last 3 | ForEach-Object { "    " + $_.ToString().Substring(0, [Math]::Min(110, $_.ToString().Length)) }
+  if ($LASTEXITCODE -ne 0) {
+    $falhas.Add("hades_browser_bridge_e2e_arquivos.mjs (exit $LASTEXITCODE)")
+    '    FALHA'
+  } else { '    OK' }
+} else {
+  '    PULADO (opt-in: use -ComE2E)'
+}
+
+''
+# E-1040: os 17 testes da politica de ficheiros. *Nao precisam de browser: sao politica pura.*
+'--- 27. TESTES da politica de ficheiros (17 assercoes, sem browser)'
+$saidaArT = & node --test apps/hades-browser-bridge/test/arquivos.test.js 2>&1
+$linhaAr = ($saidaArT | Select-String -Pattern 'pass ' | Select-Object -Last 1)
+$linhaAr | ForEach-Object { "    " + $_.ToString().Trim() }
+if ($LASTEXITCODE -ne 0) {
+  $falhas.Add("test/arquivos.test.js (exit $LASTEXITCODE)")
+  '    FALHA'
+} else { '    OK' }
+$passos += 'e2e-arquivos'
 "GATES LOCAIS: $($passos -join ' + ') VERDES"

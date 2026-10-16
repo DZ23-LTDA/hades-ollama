@@ -1047,3 +1047,38 @@ observacao e' completa -- e a resposta honesta e' "pode nao ser".*
 **Doutrina em uma linha**: um observador que devolve parcial como completo e' pior do que
 um que se recusa; `zero` parece medido e `nao sei` nao parece nada -- e o segundo e' a
 verdade; e nem tudo o que limita e' uma perda: parte e' a forma do mundo.
+
+### Instrucoes de retomada (janela `E-1040`)
+
+**Estado**: branch `fix/checker-relogio`; cabeca do indice `E-1040`; PR #438 **aberto** e
+**nao tocado**; `reviewDecision` **vazio** => sem revisao humana independente.
+
+**Bateria: 34 passos.** OITO E2E por **opt-in** (`-ComE2E`) e as **17 assercoes** da
+politica de ficheiros (passo 27, sem browser):
+  node scripts/hades_browser_bridge_e2e_arquivos.mjs     # browser:files decide
+  node --test apps/hades-browser-bridge/test/arquivos.test.js
+
+**A POLITICA DE FICHEIROS** (`E-1040`), na ordem em que e' aplicada -- *a ordem e' a
+politica*: nome com caminho -> **proibido**; sem `sha256` -> **proibido**; executavel ->
+**exige_aprovacao**; sensivel -> **exige_aprovacao**; upload (qualquer) ->
+**exige_aprovacao**; desconhecido -> **exige_aprovacao**; inerte em download -> **permitido**.
+
+**UM EXECUTAVEL NUNCA FICA «PERMITIDO»** -- nem com aprovacao: continua `exige_aprovacao`,
+com o motivo a dizer que foi aprovado nesta transferencia.
+
+**`ok` vs `podesTransferir`**: `ok` diz que a avaliacao correu; `podesTransferir` diz se
+esta' autorizado. *A ambiguidade num campo de permissao e' um defeito: quem le' `ok` age.*
+
+**`lerEstado` FOI CURADO NA RAIZ**: a lista fixa de campos apagava qualquer campo novo --
+o `takeover` caiu no `E-1037` e o `arquivos` ia cair agora. Agora normaliza so' os campos
+**com regra** e **preserva tudo o resto**. *Curar o campo que falhou nao cura a lista.*
+
+**DUAS CATRACAS COMPLEMENTARES**: `hades_index_shape_check.py` varre o **indice**;
+`hades_mission_check.py` varre **todo o codigo**. **Um ID novo continua do MAIOR cunhado.**
+
+**O que NAO fazer**: `reset --hard`, `git clean`, rebase destrutivo, force-push, stash,
+`merge`, tag, release, publicacao externa, ou **resolver threads** do PR #438.
+
+**Doutrina em uma linha**: um scope declarado sem implementacao e' pior do que um ausente,
+e uma mensagem que promete o que nao existe e' pior ainda; uma lista fixa de campos e' uma
+armadilha que se arma a cada campo novo; e quem pede nao certifica o que pede.
