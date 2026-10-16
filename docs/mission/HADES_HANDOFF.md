@@ -1365,3 +1365,39 @@ vermelho; veredictos identicos um dia depois. O anti-trapaca e' codigo
 **Doutrina em uma linha**: uma contagem nao e' um inventario; um `M` num `git status` nao
 e' necessariamente conteudo; e reportar o numero certo da coisa errada e' uma forma de
 mentir sem dizer uma palavra falsa.
+
+### Instrucoes de retomada (janela `E-1049`)
+
+**Estado**: branch `fix/checker-relogio`; cabeca do indice `E-1049`; PR #438 **aberto** e
+**nao tocado** -- *as 14 threads continuam como estavam*; `reviewDecision` **vazio**.
+
+**Bateria: 28 passos, 29 OK, 0 FAIL.** OITO E2E por opt-in, **quatro** catracas, o render
+do indice e o inventario do worktree.
+
+**A REPETICAO T2, REVALIDADA** (`E-1049`):
+  $env:HADES_T2_MEDIR_MODELO='1'; $env:HADES_T2_MODELS='qwen2.5:7b'; $env:HADES_T2_REPEATS_N='3'
+  go test ./internal/agent/ -run 'TestT2RepeticaoEstatistica' -count=1 -timeout 40m
+  => --- PASS: TestT2RepeticaoEstatistica (209.78s)
+  => ok github.com/ollama/ollama/internal/agent 215.740s
+
+**O `46+/0` RESISTIU, FIXTURE A FIXTURE**: `soma` 3/3 (11,8 -> 15,1 s) - `comparacao` 0/3
+(9,5 -> 11,1 s) - `caso-limite` 0/3 (10,7 -> 25,0 s) - `fatiamento` 0/3 (20,8 -> 18,7 s).
+*Veredictos identicos tres dias depois; so' as duracoes mudaram.*
+
+**E O ARTEFACTO PASSOU DE AFIRMACAO A MEDICAO**: a data era `2026-10-13T13:41:29Z` e eu
+tinha-o commitado no `E-1047` sem o correr (com a divida declarada no commit). Agora e'
+`2026-10-16T23:52:54Z`. *Declarar a divida no commit nao a paga; correr o teste paga.*
+
+**DUAS CONFIRMACOES DE REPRODUTIBILIDADE NA MESMA JANELA**: a matriz T2 (8 fixtures,
+veredictos identicos **um** dia depois) e a repeticao (4 fixtures x 3 execucoes,
+identicos **tres** dias depois).
+
+**DUAS CATRACAS COMPLEMENTARES**: `hades_index_shape_check.py` varre o **indice**;
+`hades_mission_check.py` varre **todo o codigo**. **Um ID novo continua do MAIOR cunhado.**
+
+**O que NAO fazer**: `reset --hard`, `git clean`, rebase destrutivo, force-push, stash,
+`merge`, tag, release, publicacao externa, ou **resolver threads** do PR #438.
+
+**Doutrina em uma linha**: um numero que resiste a tres dias e' um numero; declarar a
+divida no commit nao a paga; e a repeticao mede estabilidade, nao qualidade -- `0/3`
+estavel continua a ser `0/3`.

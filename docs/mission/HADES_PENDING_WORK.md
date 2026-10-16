@@ -1467,3 +1467,27 @@ integrado na FASE 1. Há agora um instrumento que **lista** (passo 31).
 - ligação da extensão ao **Mission Control** (`missao` fica a `null`);
 - APK Android bloqueado pela DLL JNI (`E-1019`);
 - macOS/iOS `BLOCKED_EXTERNAL` pela **máquina**.
+
+### O que falta (actualizado na janela `E-1049`)
+
+**Fechado**: a repetição T2. Corrida agora (`PASS`, 209,78 s); veredictos idênticos três
+dias depois; o artefacto passou de `2026-10-13` para `2026-10-16T23:52:54Z` e o número é
+medido. O `46+/0` **está confirmado**.
+
+**Continua em falta, sem disfarce**:
+- **N=3 por fixture**: contagem, não probabilidade, sem intervalo de confiança;
+- **a taxa da repetição é 1 de 4 fixtures** (`soma` `3/3`; as outras três `0/3`, trapaceando);
+- **nenhuma comparação externa foi executada** -- `NAO_EXECUTADA`, não `PARITY_MEASURED`;
+- **um modelo, um host, uma quantização**;
+- **sem GPU/VRAM medidos por época** -- só tempo de parede;
+- **as 14 threads do PR continuam abertas** -- não resolvi nenhuma (proibido);
+- **o encaixe da aprovação continua por ligar** (`E-1044`);
+- **shadow roots fechados**, **cross-origin**, `document.domain`, `srcdoc`: como no `E-1040`;
+- **BFCache** sem execução observada (`E-1038`);
+- **o Chrome real do utilizador**: a versão 155 **não carrega** por `--load-extension`;
+- **Firefox** e **Safari**;
+- **sem `.crx`, sem assinatura, sem SBOM do pacote**;
+- **`CAPACIDADES` VAZIO**: o Companion **não** controla o PC;
+- ligação da extensão ao **Mission Control** (`missao` fica a `null`);
+- APK Android bloqueado pela DLL JNI (`E-1019`);
+- macOS/iOS `BLOCKED_EXTERNAL` pela **máquina**.

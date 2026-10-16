@@ -723,3 +723,19 @@ cada caminho** — passo 31 da bateria.
 lançada em background com `qwen2.5:7b` e 3 repetições — o mesmo que o artefacto antigo
 (`2026-10-13T13:41:29Z`), para comparação directa. Enquanto corre, **não duplicar** o
 trabalho que ela já faz.
+
+### A proxima accao unica (janela `E-1049`)
+
+**A repetição T2 foi revalidada: o `46+/0` está confirmado.** Corrida: `PASS` em
+209,78 s. Os veredictos são **idênticos três dias depois** (soma `3/3`; comparação,
+caso-limite e fatiamento `0/3` com trapaça nas três) — só as durações mudaram.
+
+⇒ *O artefacto estava desactualizado (`2026-10-13`) e eu tinha-o commitado assim, com a
+dívida declarada. **Agora a data é `2026-10-16T23:52:54Z` e o número é meu.***
+⇒ ***«Declarar a dívida no commit não a paga; correr o teste paga.»***
+
+**A proxima accao unica**: **o estágio 21 tem uma lacuna que não é medição — é
+integração.** O `HADES_BENCHMARK_METHOD.md` e o `HADES_STAGE_21_BENCHMARK.md` descrevem
+medições **sem referenciar** a matriz T2 real e a repetição (que agora são medidas do
+mesmo snapshot). Verificar se os documentos canónicos do estágio apontam para os
+artefactos reais e corrigir a fonte onde divergirem. Tudo interno.
