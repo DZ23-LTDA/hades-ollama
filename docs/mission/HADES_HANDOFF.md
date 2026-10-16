@@ -1195,3 +1195,37 @@ recarregar, e o caso **com** ela ja' esta' provado no `E-1032`.
 **Doutrina em uma linha**: o que faltava nao era a verificacao -- era a pergunta; uma
 rota que responde «nao posso» e' melhor do que uma rota que nao existe; e nao repetir um
 teste que ja' existe noutro sitio, onde ele corre no sitio certo.
+
+### Instrucoes de retomada (janela `E-1044`)
+
+**Estado**: branch `fix/checker-relogio`; cabeca do indice `E-1044`; PR #438 **aberto** e
+**nao tocado**; `reviewDecision` **vazio** => sem revisao humana independente.
+
+**Bateria: 36 passos.** OITO E2E por **opt-in** (`-ComE2E`) e **tres** catracas
+(passos 21, 22, 28, 29):
+  python -X utf8 scripts\hades_approval_hook_ratchet.py        # a catraca do encaixe
+  python -X utf8 scripts\hades_approval_hook_ratchet_test.py   # 17 assercoes, 4 injecoes
+
+**A CATRACA DO ENCAIXE** (`E-1044`) vigia: nenhuma rota HTTP chama `FindApproved`,
+nenhum handler de approvals dispensa a sessao, o encaixe `MOTIVO_SEM_ROTA` existe e e'
+usado. Se o mundo mudar, ela **acorda e diz o que fazer**. Aceita `--raiz CAMINHO` para
+os testes trabalharem numa copia.
+
+**A LICAO DOS QUATRO FALSOS POSITIVOS**: o detector conhecia duas formas de ler a sessao
+e havia cinco. *Um detector que conhece duas formas de uma coisa e' um detector que nao a
+conhece.* Agora as formas sao uma **lista declarada** (sete) e o relatorio **nomeia qual**
+cada handler usou -- um falso positivo futuro e' visivel a olho.
+
+**E UM ERRO MEU**: o teste copiava so' `agent_routes.go` e `companion.mjs`, e a catraca
+acordou com «`FindApproved` DESAPARECEU» -- **um falso vermelho DO TESTE**. *Um teste que
+nao monta o mundo que o checker mede acusa o checker de um defeito que e' seu.*
+
+**DUAS CATRACAS COMPLEMENTARES**: `hades_index_shape_check.py` varre o **indice**;
+`hades_mission_check.py` varre **todo o codigo**. **Um ID novo continua do MAIOR cunhado.**
+
+**O que NAO fazer**: `reset --hard`, `git clean`, rebase destrutivo, force-push, stash,
+`merge`, tag, release, publicacao externa, ou **resolver threads** do PR #438.
+
+**Doutrina em uma linha**: um passo de desbloqueio escrito nao e' um passo de desbloqueio
+vigiado; um detector que conhece duas formas de uma coisa nao a conhece; e uma catraca
+nao e' um obstaculo -- e' um lembrete que nao se esquece.

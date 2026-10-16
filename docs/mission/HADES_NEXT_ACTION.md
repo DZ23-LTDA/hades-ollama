@@ -632,3 +632,22 @@ constante `MOTIVO_SEM_ROTA`, **escrita mas não vigiada** — se o runtime expus
 nada falha. Fazer um teste que **falhe quando `FindApproved` passar a estar acessível**
 (por exemplo, quando existir um endpoint loopback de approvals), para que o encaixe não
 fique esquecido. Tudo interno.
+
+### A proxima accao unica (janela `E-1044`)
+
+**A catraca do encaixe existe.** No `E-1043` deixei o encaixe (`MOTIVO_SEM_ROTA`) e uma
+frase num documento — ***e uma frase num documento não acorda ninguém***. Agora há um
+checker que **acorda** se aparecer uma rota HTTP que chame `FindApproved` ou um handler
+de approvals sem sessão — o sinal de que o Companion já pode verificar.
+
+E falha **alto, com instrução**: *«troque `MOTIVO_SEM_ROTA` pela consulta real e eleve a
+autoridade de `forma_apenas` para `verificada` — com teste que discrimine»*.
+
+⇒ ***Uma catraca não é um obstáculo: é um lembrete que não se esquece.***
+
+**A proxima accao unica**: **a família de extensão está fechada e vigiada; mudar de eixo.**
+O que falta e é interno e executável: **os quatro achados P2 de integridade do PR #438**
+(`scheduling_library_declared_test.go`, `declared_categories_measured_test.go`,
+comentários obsoletos em `types.go`/`runtime.go`/`step_routing.go`, e o
+`HADES_ADAPTIVE_COWORK_GAP_MATRIX.md`) — são findings de revisão válidos, não expandem
+escopo, e fecham dívida de rastreabilidade. Tudo interno.

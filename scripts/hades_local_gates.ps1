@@ -517,4 +517,30 @@ if ($LASTEXITCODE -ne 0) {
   '    FALHA'
 } else { '    OK' }
 $passos += 'e2e-arquivos'
+
+''
+# E-1044: a CATRACA DO ENCAIXE. *Um passo de desbloqueio escrito nao e' um passo de
+# desbloqueio vigiado.* Falha se aparecer uma rota HTTP que chame `FindApproved` ou um
+# handler de approvals sem sessao -- o sinal de que o Companion ja' pode verificar.
+'--- 28. CATRACA do encaixe: acorda se o runtime expuser a rota de aprovacao'
+$saidaEnc = & python -X utf8 scripts/hades_approval_hook_ratchet.py 2>&1
+$saidaEnc | Select-Object -Last 3 | ForEach-Object { "    " + $_.ToString().Substring(0, [Math]::Min(110, $_.ToString().Length)) }
+if ($LASTEXITCODE -eq 3) {
+  '    BLOCKED_BY_EXTERNAL_DEPENDENCY: sem `python`'
+} elseif ($LASTEXITCODE -ne 0) {
+  $falhas.Add("hades_approval_hook_ratchet.py (exit $LASTEXITCODE)")
+  '    FALHA'
+} else { '    OK' }
+
+''
+'--- 29. testes da catraca do encaixe (4 injecoes + contraprova, numa COPIA)'
+$saidaEncT = & python -X utf8 scripts/hades_approval_hook_ratchet_test.py 2>&1
+$saidaEncT | Select-Object -Last 2 | ForEach-Object { "    " + $_.ToString().Substring(0, [Math]::Min(110, $_.ToString().Length)) }
+if ($LASTEXITCODE -eq 3) {
+  '    BLOCKED_BY_EXTERNAL_DEPENDENCY: sem `python`'
+} elseif ($LASTEXITCODE -ne 0) {
+  $falhas.Add("hades_approval_hook_ratchet_test.py (exit $LASTEXITCODE)")
+  '    FALHA'
+} else { '    OK' }
+$passos += 'catraca-encaixe'
 "GATES LOCAIS: $($passos -join ' + ') VERDES"

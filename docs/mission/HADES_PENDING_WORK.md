@@ -1335,3 +1335,32 @@ parecer melhor.
 - APK Android bloqueado pela DLL JNI (`E-1019`);
 - macOS/iOS `BLOCKED_EXTERNAL` pela **máquina**;
 - benchmark reproduzível (ESTÁGIO 21) não iniciado.
+
+### O que falta (actualizado na janela `E-1044`)
+
+**Fechado**: o encaixe do `E-1043` deixou de ser uma frase. Há uma catraca
+(`hades_approval_hook_ratchet.py`) que acorda quando o runtime expuser a rota, e 17
+asserções provam que ela **discrimina** — com 4 injeções e uma contraprova, numa cópia.
+
+**Continua em falta, sem disfarce**:
+- **o encaixe continua por ligar**: a autoridade da extensão continua `forma_apenas`;
+- **a catraca vigia SINAIS**, não a existência real de um canal: um canal feito por outra
+  via (socket, ficheiro, segundo binário) **não a faria acordar**;
+- **a lista de formas de sessão tem sete entradas e não é exaustiva por construção** --
+  uma forma nova daria falso positivo (o modo seguro de falhar, mas ainda assim falso);
+- **os 4 findings P2 do PR #438** continuam abertos;
+- **a extensão não executa a transferência** -- decide sobre ela;
+- **shadow roots fechados**, **cross-origin**, `document.domain`, `srcdoc`: como no `E-1040`;
+- **BFCache** sem execução observada (`E-1038`);
+- **o takeover não tem duração ajustável** (30s fixos);
+- **o Chrome real do utilizador**: a versão 155 deste host **não carrega** por
+  `--load-extension`; exige carregamento manual;
+- **Firefox** e **Safari**;
+- **sem `.crx`, sem assinatura, sem SBOM do pacote**;
+- **a chave privada de distribuição está fora do Git**;
+- **`CAPACIDADES` VAZIO**: o Companion **não** controla o PC;
+- **taxa e pairing em memória**;
+- ligação da extensão ao **Mission Control** (`missao` fica a `null`);
+- APK Android bloqueado pela DLL JNI (`E-1019`);
+- macOS/iOS `BLOCKED_EXTERNAL` pela **máquina**;
+- benchmark reproduzível (ESTÁGIO 21) não iniciado.
