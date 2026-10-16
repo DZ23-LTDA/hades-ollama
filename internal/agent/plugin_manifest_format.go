@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+	"time"
 )
 
 // E-972: O FORMATO ABERTO `hades-plugin.json` — versao 1.0.
@@ -174,4 +175,84 @@ func ValidateHadesPluginManifest(manifest HadesPluginManifest, policy Capability
 		}
 	}
 	return manifest, nil
+}
+
+// InstallHadesPluginForOrganization instala um plugin declarado no formato aberto.
+//
+// **A ligacao que faltava**: o `E-972` criou o formato; isto **liga-o** ao registo
+// canonico. *Um formato que ninguem consegue instalar e' uma especificacao, nao uma
+// capacidade* — e o `§REGRA-DE-IMPLEMENTACAO` item 3 diz exactamente isso: *«se existe
+// isolada, conecte»*.
+//
+// **E o que NAO se duplica**: a instalacao em si — tenant isolation, recusa de versao ja'
+// instalada, digest, `Trusted=false`, `RequestedScopes` vs `GrantedScopes` — e' **toda**
+// do `InstallForOrganization` (`plugin_registry.go:337`). *Este metodo valida o formato e
+// delega; nao reimplementa uma segunda instalacao.*
+//
+// **As `skills` e a `interface` sao PERSISTIDAS**: sem isso, o manifesto seria aceito e a
+// informacao perdida no momento de gravar — *e um plugin que ensina 25 skills apareceria
+// sem nenhuma.*
+func (r *PluginRegistry) InstallHadesPluginForOrganization(organizationID string, manifest HadesPluginManifest, policy CapabilityPolicy) (PluginInstallation, error) {
+	validated, err := ValidateHadesPluginManifest(manifest, policy)
+	if err != nil {
+		return PluginInstallation{}, err
+	}
+	// Primeiro o caminho canonico: *ele valida o tenant, recusa versao repetida, calcula o
+	// digest e grava.* Nao ha' segunda instalacao.
+	if _, err := r.InstallForOrganization(organizationID, validated.PluginManifest, policy); err != nil {
+		return PluginInstallation{}, err
+	}
+	// **E aqui esta' a armadilha que eu evitei**, e vale a pena escreve-la: o
+	// `InstallForOrganization` termina com `return clonePluginInstallation(*installation)`
+	// (`plugin_registry.go:383`). *Mutar o valor devolvido alteraria um CLONE, e o registo
+	// ficaria sem as skills* — o manifesto seria aceito e a informacao perdida no momento
+	// de gravar.
+	//
+	// Por isso a anexacao e' feita **no mapa, sob o mesmo lock**, e **persistida de novo**.
+	// Se a segunda gravacao falhar, os campos sao revertidos: *uma instalacao sem as skills
+	// que o manifesto declarava seria um estado que nunca existiu.*
+	trimmed := strings.TrimSpace(organizationID)
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	scoped := r.byOrg[trimmed]
+	if scoped == nil {
+		return PluginInstallation{}, fmt.Errorf("%w: %s", ErrPluginNotFound, validated.ID)
+	}
+	stored, ok := scoped[validated.ID]
+	if !ok {
+		return PluginInstallation{}, fmt.Errorf("%w: %s", ErrPluginNotFound, validated.ID)
+	}
+	previousSkills, previousInterface := stored.Skills, stored.Interface
+	stored.Skills = append([]HadesPluginSkill(nil), validated.Skills...)
+	if validated.Interface != nil {
+		copied := *validated.Interface
+		stored.Interface = &copied
+	}
+	stored.UpdatedAt = time.Now().UTC()
+	if err := r.persistLocked(trimmed); err != nil {
+		stored.Skills, stored.Interface = previousSkills, previousInterface
+		return PluginInstallation{}, err
+	}
+	return clonePluginInstallation(*stored), nil
+}
+
+// SkillsDeclaradas devolve as skills que uma instalacao oferece.
+//
+// *Leitura pura, do estado persistido*: a lista vem da instalacao, e nao de um pedido.
+func (i PluginInstallation) SkillsDeclaradas() []HadesPluginSkill {
+	return append([]HadesPluginSkill(nil), i.Skills...)
+}
+
+// NomeVisivel devolve o nome de APRESENTACAO, com o nome do nucleo como fallback.
+//
+// *A separacao importa*: um plugin pode mudar de nome visivel sem mudar de identidade —
+// e sem invalidar a assinatura do conteudo. Quando nao ha' `interface`, o nome do nucleo
+// e' a resposta honesta.
+func (i PluginInstallation) NomeVisivel() string {
+	if i.Interface != nil {
+		if display := strings.TrimSpace(i.Interface.DisplayName); display != "" {
+			return display
+		}
+	}
+	return i.Manifest.Name
 }

@@ -99,6 +99,12 @@ type PluginInstallation struct {
 	ContentSHA256   string `json:"content_sha256,omitempty"`
 	ContentPath     string `json:"content_path,omitempty"`
 	ContentVerified bool   `json:"content_verified"`
+	// E-973: o que o FORMATO ABERTO (`hades-plugin.json`) acrescenta ao nucleo.
+	// *Guardados aqui porque sem isto o manifesto seria aceito e a informacao perdida
+	// no momento de gravar* - um plugin que ensina 25 skills apareceria sem nenhuma.
+	// `omitempty` para nao alterar os bytes de instalacoes que nao usam o formato.
+	Skills    []HadesPluginSkill    `json:"skills,omitempty"`
+	Interface *HadesPluginInterface `json:"interface,omitempty"`
 }
 
 // PluginManifestSignatureBytes é a representação canônica assinada. Os campos
