@@ -3,6 +3,7 @@ package agent
 import (
 	"context"
 	"os"
+	"strings"
 	"testing"
 	"time"
 )
@@ -52,6 +53,15 @@ func TestAgregacaoDeRepeticaoContaCadaVeredictoNoLugarCerto(t *testing.T) {
 
 // REPETIÇÃO REAL: roda N vezes por combinação com modelo local; PULA com motivo declarado se o Ollama não responder.
 func TestT2RepeticaoEstatistica(t *testing.T) {
+	// E-968: MEDICAO COM MODELO REAL e' OPT-IN.
+	// *Este teste pede 30 min de contexto contra os **10 min** do pacote `go test`, e o
+	// Ollama local responde — logo ele NAO pulava e o pacote estourava (medido: 905 s no CI).*
+	// O `t.Skip` abaixo protege contra «sem Ollama»; este guarda protege contra «com Ollama»,
+	// que e' o caso normal. *O orcamento nao se esconde: declara-se.*
+	if strings.TrimSpace(os.Getenv("HADES_T2_MEDIR_MODELO")) == "" {
+		t.Skip("medicao com modelo real = NAO_MEDIDO (opt-in): pede 30 min contra os 10 min do pacote. " +
+			"Defina HADES_T2_MEDIR_MODELO=1 para a correr.")
+	}
 	ctx, cancelar := context.WithTimeout(context.Background(), 30*time.Minute)
 	defer cancelar()
 	if !OllamaDisponivel(ctx, "") {
