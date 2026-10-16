@@ -300,19 +300,34 @@ def inventariar() -> dict:
 # => *E' o `E-992` ao quadrado: **nao basta distinguir o rotulo da medicao; e' preciso saber
 # QUAL dos numeros e' a medicao.***
 _MASCARA_2COL = re.compile(r"^(\|\s*\*{0,2}[^|]+\*{0,2}\s*\|\s*\*{0,2})\d+(\*{0,2}\s*\|)$")
-_MASCARA_3COL = re.compile(r"^(\|\s*\*{0,2}[^|]+\*{0,2}\s*\|\s*\*{0,2})\d+(\*{0,2}\s*\|[^|]*\|)$")
+# **As 3 colunas (seccoes 4 e 5) sao ABERTAS**: mascara-se o **caminho** e o **numero**.
+# => *o `[^|]+` do caminho vira `<C>`* => *a **forma** da linha fica comparada, o **conteudo**
+# nao* => *e' o `E-1006`, a correccao do `E-1005`.*
+_MASCARA_3COL = re.compile(r"^(\|\s*)\*{0,2}(?:`?[^|`]+`?)\*{0,2}(\s*\|\s*\*{0,2})\d+(\*{0,2}\s*\|[^|]*\|)$")
 _MASCARA_SOMA = re.compile(r"^(\*\*Legadas somadas:\*\*\s*)\d+")
 _MASCARA_TIPO = re.compile(r"^(\*\*Por tipo de excecao:\*\* )(.*)$")
+# **A segunda linha da soma**: `(233 em ficheiros migraveis, 267 em ficheiros de excecao).`
+# => *a **forma** e' fixa, os **numeros** nao* => mascaram-se os dois.
+_MASCARA_SOMA2 = re.compile(r"^(\()\d+( em ficheiros .*, )\d+( em ficheiros de .*\)\.)$")
 
 
 def _mascarar_2col(s: str) -> str:
-    """`| nome | N |` -> `| nome | <N> |` -- *preserva o nome, mesmo que ele tenha digitos.*"""
+    """`| nome | N |` -> `| nome | <N> |` -- *preserva o nome, mesmo que ele tenha digitos.*
+
+    *E' a seccao **1** (*as 5 strings*), e ela e' **fechada**: comparar o nome e' o objectivo.*
+    """
     return _MASCARA_2COL.sub(r"\1<N>\2", s)
 
 
 def _mascarar_3col(s: str) -> str:
-    """`| caminho | N | tipo |` -> `| caminho | <N> | tipo |`"""
-    return _MASCARA_3COL.sub(r"\1<N>\2", s)
+    """`| caminho | N | tipo |` -> `| <C> | <N> | tipo |`
+
+    *As seccoes **4** e **5** sao **abertas**: o conjunto de ficheiros depende do checkout, e no
+    CI ele tem **mais** ficheiros que a branch* => *comparar **quais** ficheiros estao la'
+    partiria o `--check`.* => *Fica a **forma** (`| <C> | <N> | tipo |`) e o **tipo**; o caminho
+    e o numero sao declaradamente **nao comparados**, como as contagens do `E-997`.*
+    """
+    return _MASCARA_3COL.sub(r"\1<C>\2<N>\3", s)
 
 
 def _mascarar_soma(s: str) -> str:
@@ -387,11 +402,24 @@ def normalizar(texto: str) -> str:
         # declarada a mais*) na forma de **filtro**: aqui a cura **faltava**, e o texto dizia que
         # estava feita.
         if re.match(r"^\|\s*\*{0,2}[^|]+\*{0,2}\s*\|\s*\*{0,2}\d+\*{0,2}\s*\|$", s):
-            # tabela de 2 colunas: `| nome | N |` => *substitui SO' o numero.*
+            # **Tabela de 2 colunas = a seccao 1 (AS 5 STRINGS), e ela e' FECHADA.**
+            # => *preserva-se o **nome** (*mesmo com digitos, como `DZ23`*) e mascara-se o
+            # **numero** => *apagar ou renomear uma string **falha** o `--check`* -- a cura do
+            # `E-1005` -- *e mudar a contagem nao* -- a decisao do `E-997`.*
             linhas.append(_mascarar_2col(s))
             continue
         if re.match(r"^\|\s*\*{0,2}[^|]+\*{0,2}\s*\|\s*\*{0,2}\d+\*{0,2}\s*\|[^|]*\|$", s):
-            # tabela de 3 colunas: `| caminho | N | tipo |` => *substitui SO' o numero.*
+            # **Tabela de 3 colunas = as seccoes 4 e 5 (ficheiros migraveis / de excecao),
+            # e essas sao ABERTAS.** => *o conjunto de ficheiros **depende do checkout***:
+            # no CI o `actions/checkout` faz checkout de `refs/pull/N/merge` = **branch + main**,
+            # que **traz ficheiros que a branch nao tem** => *a tabela ganha linhas.*
+            # => *logo **nao** se pode comparar **quais** ficheiros estao la'* => *mascara-se o
+            # **caminho** e o **numero**, e fica a **forma** da linha.*
+            # => *E' o `E-1006`, e e' a **correccao do `E-1005`**: eu declarei o risco em LIMITES
+            # (*«acrescentar ou remover um ficheiro migravel MUDA o normalizado, e isso pode
+            # voltar a partir o `--check` no CI»*) => *e ele **materializou-se**, medido no run
+            # **38941538186**: o passo 8 voltou a `failure` no `a10e52cdc`.* => *«o risco
+            # declarado foi medido, e nao suposto» -- e a medicao confirmou-o.*
             linhas.append(_mascarar_3col(s))
             continue
         if s.startswith("**Legadas somadas:**"):
@@ -402,10 +430,41 @@ def normalizar(texto: str) -> str:
             continue
         if s.startswith("> Origens medidas neste snapshot:"):
             continue
-        if s.startswith("(231 em ficheiros") or s.startswith("(231 em"):
-            continue  # a segunda linha da mesma soma, tambem com numeros
+        # **A segunda linha da soma** (`(233 em ficheiros migraveis, 267 em ficheiros de
+        # excecao).`) => *aqui estava um **numero escrito a mao no normalizador**: o
+        # `startswith("(231 em")` do `E-997`.*
+        #
+        # **E o `E-1004` declarou-o em LIMITES, e ele materializou-se**: *«a segunda parte da
+        # soma e' removida por prefixo `(231 em`, pelo que uma **mudanca de valor** faz a linha
+        # **voltar a ser comparada**»* => *e foi o que aconteceu, medido agora: as contagens
+        # passaram a **233** e **267**, o prefixo deixou de bater, e a linha entrou na
+        # comparacao* => *a chave do disco ficou com **58** elementos e a do gerado com **59**.*
+        #
+        # **A cura e' nunca escrever o valor no filtro**: reconhece-se a **forma** da linha e
+        # mascaram-se-lhe os numeros, como em todas as outras. => *E' o `E-1005` outra vez:
+        # **um literal que devia ser volatico, fixado no codigo**.*
+        if _MASCARA_SOMA2.match(s):
+            linhas.append(_MASCARA_SOMA2.sub(r"\1<N>\2<N>\3", s))
+            continue
         linhas.append(linha)
     return "\n".join(linhas)
+
+
+def _chave(texto: str) -> frozenset:
+    """**A chave de comparacao do `--check`: o CONJUNTO das linhas normalizadas e uteis.**
+
+    *E' a cura do `E-1006`, e a razao e' a do `E-997` levada ao fim.* => *o `--check` comparava
+    **texto** (ou **listas**), e ambos contam **quantas vezes** uma forma aparece* => *e o numero
+    de ficheiros de cada tipo **depende do checkout**: no CI e' `refs/pull/N/merge`, que traz
+    ficheiros que a branch nao tem.* => *Com um **conjunto**, um ficheiro a mais do **mesmo
+    tipo** produz a **mesma linha normalizada** e **nao muda nada**; um **tipo novo**
+    (`excecao:credencial`) acrescenta um elemento => **acusa** -- que e' o que interessa.*
+
+    **O que fica sob catraca**: *as 5 strings do §FASE-5 (a seccao 1, que e' **fechada**), os
+    **tipos** de excepcao, as **razoes** (que vivem na tabela de 2 colunas da seccao 3), e as
+    **seccoes** do documento.* => *O que sai: as contagens e **quantos** ficheiros de cada tipo.*
+    """
+    return frozenset(l for l in normalizar(texto).splitlines() if l.strip())
 
 
 def classificar(rel: str) -> str:
@@ -537,18 +596,29 @@ def main() -> int:
         if not DOC.exists():
             print("INVENTARIO AUSENTE: %s" % DOC.relative_to(RAIZ))
             return 1
-        # **E-997, e esta comparacao foi a TERCEIRA tentativa**: comparar `texto` cru falhava no
-        # CI porque as contagens dependem do conjunto de ficheiros do checkout, e num
-        # `pull_request` o checkout e' `refs/pull/N/merge` (branch + main). Comparar o
-        # `normalizar()` (*sem numeros*) mantem o que importa sob catraca -- *as strings, as
-        # excepcoes, as razoes* -- e deixa os numeros como **declaracao do momento**.
-        if normalizar(DOC.read_text(encoding="utf-8")) != normalizar(texto):
+        # **E-997, `E-1004`, `E-1006` - e esta comparacao vai na QUARTA tentativa.**
+        #
+        # (a) comparar `texto` cru falhava no CI => as contagens dependem do **conjunto de
+        #     ficheiros do checkout**, e num `pull_request` o checkout e' `refs/pull/N/merge`
+        #     (branch + main) => **E-997**.
+        # (b) `normalizar()` so' apanhava METADE das tabelas de contagem => **E-1004**.
+        # (c) preservar os nomes das tabelas 4/5 fez a **lista** de ficheiros ser comparada
+        #     => *e como o merge traz mais ficheiros, voltou a falhar* => **E-1005/E-1006**.
+        #
+        # **A cura desta vez e' comparar CONJUNTOS, e nao listas.** => *Um ficheiro **a mais**
+        # do mesmo tipo produz a **mesma linha normalizada** (`| <C> | <N> | migravel |`) =>
+        # com `set` ele **nao** muda nada* => *mas um **tipo novo** (`excecao:credencial`, por
+        # exemplo) acrescenta um elemento ao conjunto => **e acusa**, que e' o que importa.*
+        # => *E' o `E-990`/`E-992` outra vez: **o que interessa e' quais formas existem, e nao
+        # quantas vezes cada uma aparece**.*
+        if _chave(DOC.read_text(encoding="utf-8")) != _chave(texto):
             print("INVENTARIO DIVERGENTE do repositorio: %s" % DOC.relative_to(RAIZ))
             print("Rode: python scripts/hades_brand_inventory.py")
             return 1
         print("INVENTARIO CONSISTENTE: bate com o repositorio (5 strings, excecoes, razoes).")
-        print("  NAO comparados: as CONTAGENS. *Dependem do conjunto de ficheiros do checkout*,")
-        print("  e num `pull_request` o CI faz checkout de `refs/pull/N/merge` (branch + main).")
+        print("  NAO comparados: as CONTAGENS e QUANTOS ficheiros de cada tipo. *Dependem do")
+        print("  conjunto de ficheiros do checkout*, e num `pull_request` o CI faz checkout de")
+        print("  `refs/pull/N/merge` (branch + main). *O que se compara e' o CONJUNTO das formas.*")
         return 0
 
     DOC.write_text(texto, encoding="utf-8")

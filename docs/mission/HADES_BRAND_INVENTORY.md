@@ -15,14 +15,14 @@
 
 | String | Ocorrencias |
 | --- | --- |
-| **Hades/HADES** (canonica) | **926** |
-| DZ23 Agentic | 192 |
-| Ollama Full | 167 |
-| Ollama Classe A+ | 85 |
-| Ollama DZ23 | 42 |
+| **Hades/HADES** (canonica) | **932** |
+| DZ23 Agentic | 197 |
+| Ollama Full | 169 |
+| Ollama Classe A+ | 86 |
+| Ollama DZ23 | 48 |
 
-**Legadas somadas:** 486 ocorrencias
-(231 em ficheiros **migraveis**, 255 em ficheiros de **excecao**).
+**Legadas somadas:** 500 ocorrencias
+(233 em ficheiros **migraveis**, 267 em ficheiros de **excecao**).
 
 *O total **nao** decide: os mesmos numeros distribuem-se por sitios de tipos muito
 diferentes, e e' o sitio que decide.* Um ``README`` migra; um `bundle ID` nao.
@@ -58,7 +58,7 @@ hoje** e **falso sobre o que foi medido**.*
 | --- | --- | --- |
 | `MEMORIA.md` | 49 | migravel |
 | `docs/agentic/READINESS_2026-09-22.md` | 18 | migravel |
-| `scripts/hades_brand_inventory.py` | 16 | migravel |
+| `scripts/hades_brand_inventory.py` | 18 | migravel |
 | `docs/agentic/PRODUCT_TREE.md` | 10 | migravel |
 | `docs/OLLAMA_FULL_PRODUCT_VISION.md` | 9 | migravel |
 | `docs/agentic/PARITY_MATRIX.md` | 9 | migravel |
@@ -124,7 +124,7 @@ hoje** e **falso sobre o que foi medido**.*
 
 | Ficheiro | Legadas | Categoria |
 | --- | --- | --- |
-| `docs/mission/HADES_EVIDENCE_INDEX.md` | 89 | excecao:historico |
+| `docs/mission/HADES_EVIDENCE_INDEX.md` | 101 | excecao:historico |
 | `audit/AUTONOMOUS_MISSION_STATE.md` | 32 | excecao:historico |
 | `audit/OLLAMA_FULL_MISSION_STATE.md` | 27 | excecao:historico |
 | `docs/evidencias/browser-console-audit-f12.json` | 16 | excecao:historico |
@@ -152,7 +152,7 @@ hoje** e **falso sobre o que foi medido**.*
 | `audit/auditoria.md` | 1 | excecao:historico |
 | `docs/evidencias/browser-console-audit-audfix2.json` | 1 | excecao:historico |
 
-**Por tipo de excecao:** bundle id: 3, credencial: 3, env var: 4, historico: 234, instalador: 9, teste: 2
+**Por tipo de excecao:** bundle id: 3, credencial: 3, env var: 4, historico: 246, instalador: 9, teste: 2
 
 ## 6. O que este documento **nao** faz
 
