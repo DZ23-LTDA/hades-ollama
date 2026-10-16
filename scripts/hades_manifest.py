@@ -212,36 +212,82 @@ def construir() -> dict:
     }
 
 
+# ---------------------------------------------------------------------------
+# **E-996 — CLASSIFICACAO OBRIGATORIA DE CADA CAMPO.** A inversao para «volatil por omissao»
+# resolve as tres falhas do CI, *mas cria um risco que eu tenho de declarar*: um campo que
+# **devesse** ser comparado e nao fosse classificado ficaria **silenciosamente** de fora => e
+# isso e' um **verde falso**, que o §ANTILOOP item 8 proibe.
+#
+# *A cura e' exigir a classificacao*: todo campo que `construir()` produza tem de estar numa
+# das duas listas, ou o `--check` **falha**. Assim:
+#   - um campo novo **nao pode** entrar em silencio (falha ate' ser classificado);
+#   - e a decisao de o comparar ou nao fica **escrita**, com motivo, e nao inferida.
+#
+# ESTAVEIS: descrevem **o que o manifesto prova** — conteudo derivado de ficheiros commitados.
+# VOLATEIS: descrevem **onde e quando** ele foi produzido.
+# ---------------------------------------------------------------------------
+CAMPOS_ESTAVEIS = (
+    # Ordem = ordem em que o `--check` os compara; muda-la muda o dict, mas nao o resultado.
+    "schema", "gerado_por", "nao_avalia",
+    "sbom", "tests", "platforms", "limitations",
+)
+CAMPOS_VOLATEIS = (
+    # **E-993/E-994/E-996**: todos descrevem o AMBIENTE, e o CI nao e' o ambiente onde o
+    # manifesto foi gerado. `host` foi o terceiro a falhar (run 38926745194): o manifesto e'
+    # gerado em Windows e o CI corre em Linux.
+    "generated_at", "source_sha", "source_branch", "source_dirty", "host",
+)
+
+
 def normalizar(dados: dict) -> dict:
-    """Remove o que muda por si, pela licao do `E-987`.
+    """Devolve **apenas** os campos que o manifesto PROVA - o resto e' declarado, nao comparado.
 
-    `generated_at` muda a cada geracao; `source_dirty` muda a cada ficheiro escrito - *e o
-    proprio manifesto, ao ser escrito, muda a contagem*. Se o `--check` os comparasse,
-    falharia sempre, e um `--check` que grita sempre deixa de ser lido.
+    **E-996, e esta funcao foi INVERTIDA por causa de tres falhas seguidas no CI.**
 
-    **E-994 — o `source_sha` entra aqui pela MESMA razao que o `gate_head` no `E-993`.** Eu
-    curei o `gate_head` do `hades_release_gate.py` e **deixei o `source_sha` deste ficheiro**,
-    porque sao ficheiros diferentes e tratei-os como casos separados. *Mas a causa e' uma so':*
-    **perguntar ao CI em que commit ele corre, como se a resposta fosse o commit candidato.**
+    A versao original **removia** as volateis uma a uma (`generated_at`, `source_dirty`,
+    `source_sha`, `source_branch`). *Parecia uma allowlist de excepcoes; era uma allowlist
+    pelo avesso* -- *e cada campo novo nascia **comparado** por omissao*. O resultado, medido
+    em tres runs do `class-a-plus-integrity`:
 
-    *E o CI respondeu*: o run **38924032504** do `class-a-plus-integrity` mostrou o passo 6 (o
-    gate) a **passar** e o passo 7 (*«Verify the snapshot manifest matches the tree»*) a
-    **falhar**. => *num workflow `pull_request` o `actions/checkout` faz checkout do **merge
-    commit sintetico***, que nao corresponde a nenhum commit da branch => logo
-    `source_sha != measured_commit` gravado, e o `--check` falha.
+    - **38922978710** (`dd43d85fc`) -> passo 6 (`hades_release_gate.py --check`) falhou:
+      `gate_head`/`gate_branch` volateis no CI;
+    - **38924032504** (`bddeb7ebd`) -> passo 7 falhou: `source_sha`/`source_branch`;
+    - **38926745194** (`a4ddaa4e0`) -> passo 7 falhou **outra vez**, agora pelo `host`:
+      `{"sistema": "Windows", "release": "11", "maquina": "AMD64", "python": "3.12.10"}`.
+      *O manifesto e' gerado localmente, em Windows; o CI corre em Linux.* => *`sistema`,
+      `release`, `maquina` e `python` sao **todos** diferentes.*
 
-    *O `source_sha` continua no documento*: e' a **proveniencia** declarada, e o §FASE-6 exige
-    que todo artefato a registe. => *o que muda e' que ele passa a ser **declarado**, e nao
-    **criterio***. O que o manifesto prova e' o **conteudo** (SBOM com sha256, plataformas,
-    limitacoes) -- e esse continua comparado.
+    *Tres instrumentos, quatro classes, e em todos eu curei o que o CI apontou e deixei o
+    resto.* => **curar o que o CI aponta e' perseguir sintomas.**
+
+    **A inversao**: em vez de listar o que **nao** se compara, lista-se o que **se** compara.
+    *Um campo novo passa a ser **volatil por omissao***. **E `classificar_campos()` exige que
+    todo campo esteja numa das listas** -- *para que «volatil por omissao» nao vire «esquecido
+    com sorte»*.
+
+    **O que ele PROVA** (e por isso e' comparado): o **SBOM** com `sha256` de cada ficheiro
+    (*prova que os artefactos nao mudaram*), as **plataformas** (*o que se pode afirmar por
+    SO*), as **limitacoes** declaradas e os **comandos de teste**. => *tudo isso e' **conteudo**,
+    derivado de ficheiros commitados.*
+
+    **O que ele apenas DECLARA** (e fica no documento, sem ser criterio): `generated_at`,
+    `source_sha`, `source_branch`, `source_dirty` e `host` => *todos descrevem **onde e quando**
+    o manifesto foi produzido, e nenhum descreve **o que ele prova***. *E o `source_sha`
+    continua gravado porque o §FASE-6 exige a proveniencia em todo artefacto: **declarado, nao
+    comparado** -- que e' a distincao que o `E-993` estabeleceu para o gate.*
     """
-    copia = dict(dados)
-    copia.pop("generated_at", None)
-    copia.pop("source_dirty", None)
-    # **E-994**: em `pull_request` o HEAD e' o merge commit -> volateis, pela licao do `E-993`.
-    copia.pop("source_sha", None)
-    copia.pop("source_branch", None)
-    return copia
+    return {chave: dados[chave] for chave in CAMPOS_ESTAVEIS if chave in dados}
+
+
+def classificar_campos(dados: dict) -> list[str]:
+    """Devolve os campos que **nao** foram classificados nem como estaveis nem como volateis.
+
+    *E' este o contrapeso da inversao*: sem ele, um campo novo entrar no manifesto e nunca ser
+    comparado seria **indistinguivel** de um campo novo ser corretamente volatil. => *com ele,
+    um campo novo **falha**, e obriga a uma decisao escrita.*
+    """
+    conhecidos = set(CAMPOS_ESTAVEIS) | set(CAMPOS_VOLATEIS)
+    return sorted(set(dados) - conhecidos)
 
 
 def main() -> int:
@@ -253,6 +299,17 @@ def main() -> int:
     dados = construir()
     texto = json.dumps(dados, ensure_ascii=False, indent=2) + "\n"
 
+    # **E-996**: a classificacao obrigatoria. *Um campo que nao seja estavel nem volatil declarado
+    # torna este manifesto **incomparavel** -- e falhar alto e' melhor que comparar metade em
+    # silencio.* => *e' o contrapeso da inversao para «volatil por omissao».*
+    nao_classificados = classificar_campos(dados)
+    if nao_classificados:
+        print("MANIFESTO: campo(s) de topo NAO CLASSIFICADO(S): %s" % ", ".join(nao_classificados))
+        print("Cada campo tem de entrar em CAMPOS_ESTAVEIS (o manifesto PROVA) ou em")
+        print("CAMPOS_VOLATEIS (declara o ambiente) neste script. *Um campo novo nao pode")
+        print("entrar em silencio* -- e' o contrapeso de «volatil por omissao» (E-996).")
+        return 1
+
     if args.json:
         sys.stdout.write(texto)
         return 0
@@ -262,6 +319,19 @@ def main() -> int:
             print("MANIFESTO AUSENTE: %s" % MANIFESTO.relative_to(RAIZ))
             return 1
         atual = json.loads(MANIFESTO.read_text(encoding="utf-8"))
+        # **E-996, e o teste apanhou a metade que faltava**: classificar so' o `dados`
+        # (*o que `construir()` produz*) deixava passar um campo novo **escrito a mao no JSON**
+        # -- *porque o `--check` nao reconstroi o ficheiro, so' o compara*. => *logo classificam-se
+        # **os dois lados***: o construido e o lido. *Um campo novo, venha de onde vier, falha.*
+        for rotulo, origem in (("construido", dados), ("no ficheiro", atual)):
+            por_classificar = classificar_campos(origem)
+            if por_classificar:
+                print("MANIFESTO: campo(s) de topo NAO CLASSIFICADO(S) %s: %s"
+                      % (rotulo, ", ".join(por_classificar)))
+                print("Cada campo tem de entrar em CAMPOS_ESTAVEIS (o manifesto PROVA) ou em")
+                print("CAMPOS_VOLATEIS (declara o ambiente) neste script. *Um campo novo nao pode")
+                print("entrar em silencio* -- e' o contrapeso de «volatil por omissao» (E-996).")
+                return 1
         if normalizar(atual) != normalizar(dados):
             print("MANIFESTO DIVERGENTE do snapshot: %s" % MANIFESTO.relative_to(RAIZ))
             print("Rode: python scripts/hades_manifest.py")
