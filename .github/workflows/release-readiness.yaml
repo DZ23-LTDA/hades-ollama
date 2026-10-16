@@ -49,7 +49,7 @@ jobs:
         run: |
           set -euo pipefail
           # Conjunto REAL de provas que rodam NO commit candidato (push:main / tag)
-          # e constituem a prova de release DESTE fork (camada agentic Classe A+).
+          # e constituem a prova de release DESTE fork (camada agentic HADES).
           # Cada um SO conta com conclusao == success (skipped/failure/cancelled/
           # timed_out => NAO release-ready). Em sincronia com docs/RELEASE_READINESS.md.
           #

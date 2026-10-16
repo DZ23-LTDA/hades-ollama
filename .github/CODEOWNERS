@@ -1,4 +1,4 @@
-# CODEOWNERS — Ollama Classe A+ (fork DZ23)
+# CODEOWNERS — HADES (fork DZ23)
 # Revisão obrigatória do mantenedor nas superfícies sensíveis do fork.
 # Ativar exige, no ruleset da main, require_code_owner_review: true
 # (ver docs/BRANCH_PROTECTION.md).

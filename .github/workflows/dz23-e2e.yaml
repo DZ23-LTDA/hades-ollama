@@ -1,6 +1,6 @@
 name: dz23-e2e
 
-# E2E UI-first local (Playwright) do shell Classe A+, sem provider externo.
+# E2E UI-first local (Playwright) do shell HADES, sem provider externo.
 # Sobe o build via `vite preview` (webServer no playwright.config.ts) e valida
 # a jornada de UI determinística offline.
 
