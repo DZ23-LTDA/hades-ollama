@@ -731,6 +731,8 @@ func (a *agentAPI) register(r *gin.Engine) {
 	// do E-636: *a bateria nao continha o gate que o CI continha.* O verificador de contrato passa
 	// a fazer parte dela.
 	group.DELETE("/skills/:id", a.removeSkill)
+	// E-966: a rota de EXECUCAO. *O lifecycle ja' existia (13 handlers); executar nao.*
+	group.POST("/plugins/:plugin_id/execute", a.executePlugin)
 	// E-642: HISTORICO de versoes de skill. As rotas de skills ja' existiam; o que faltava era
 	// expor o arquivo que o E-629 passou a guardar e o restauro do E-631.
 	//
