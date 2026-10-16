@@ -2262,9 +2262,21 @@ func (r *Runtime) Run(ctx context.Context, id string) (runErr error) {
 		// **REGISTRADA** no evento `step.model.route`, com o modelo vencedor e a justificativa - *que e' o que o
 		// Estagio 43 exige que fique na cadeia de evidencias.*
 		//
-		// **O QUE ELA NAO FAZ, e precisa ficar dito**: ela **nao troca o executor**. O passo continua executando com
-		// o planejador da MISSAO; a decisao por passo fica **medida e registrada**, mas ainda nao **aplicada**.
-		// *Trocar o executor e' o incremento seguinte, e chama-lo de feito seria a classe que esta missao derruba.*
+		// ⚠️ **CORRECAO POR MEDICAO (E-910, 2026-10-16)**: o texto que estava aqui dizia *"a decisao por passo
+		// fica medida e registrada, mas ainda nao **aplicada**"* - *e isso ficou **DESACTUALIZADO** no proprio
+		// commit que o `E-438` descreve (a linha 2271, logo abaixo): o `modeloRoteado` passou a subir para fora do
+		// `if` para ser ENTREGUE a ferramenta.* Texto antigo, preservado como registo historico:
+		//   *"ela **nao troca o executor**. O passo continua executando com o planejador da MISSAO; a decisao por
+		//    passo fica **medida e registrada**, mas ainda nao **aplicada**."*
+		// Medido agora, em vez de citado:
+		//   - `tool_context_model_test.go:27` => `TestModeloRoteadoChegaNaFerramenta` **PASS** (0,34s);
+		//   - `inference_tool_test.go:23` => `TestPassoDeInferenciaUsaOModeloRoteadoParaEle` **PASS** (0,32s);
+		//   - `inference_tool.go:24` => `ErrInferenciaSemModeloRoteado`, *o erro de um passo de inferencia **sem**
+		//     roteamento por passo* - *e um erro desses so' existe porque ha' um consumidor a exigi-lo.*
+		//
+		// **O QUE ELA NAO FAZ, e continua verdade**: ela **nao troca o EXECUTOR**. O laco do passo continua a
+		// correr no modelo da MISSAO; o que a decisao muda e' o modelo que a **ferramenta de inferencia do passo**
+		// usa. *Trocar o executor e' o incremento seguinte, e chama-lo de feito seria a classe que esta missao derruba.*
 		//
 		// **SEM REGISTRY NADA MUDA**: `r.models == nil` ⇒ *o ramo nao entra, e todo o comportamento anterior
 		// permanece* ✓ - e' isso que torna esta ligacao segura.

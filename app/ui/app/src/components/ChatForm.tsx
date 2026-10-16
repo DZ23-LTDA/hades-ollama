@@ -167,6 +167,7 @@ function ChatForm({
       thinkLevel: settingsThinkLevel,
     },
     setSettings,
+    settingsNotPersisted,
   } = useSettings();
   const { cloudDisabled } = useCloudStatus();
 
@@ -1136,6 +1137,18 @@ function ChatForm({
               )}
             </button>
           </div>
+          {/* 🚨 E-783: a escolha vale nesta sessao, mas o servidor local NAO a guarda
+              (`POST /api/v1/settings` -> 501). Dize-lo e' a diferenca entre uma limitacao e
+              uma mentira - a licao do `E-560`. */}
+          {settingsNotPersisted && (
+            <p
+              role="status"
+              className="px-1 pb-1 text-[11px] leading-snug text-amber-700 dark:text-amber-400"
+            >
+              Este servidor local não guarda configurações: o modelo
+              escolhido vale nesta sessão, mas não fica memorizado.
+            </p>
+          )}
         </div>
       </div>
 

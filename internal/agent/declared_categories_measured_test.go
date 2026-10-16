@@ -18,8 +18,19 @@ import (
 // afirmação sem medição. **Corrigido, e a lição**: *número que depende de outro instrumento envelhece — quem mede
 // é `scripts/hades_tenant_scope_check.py`, e é a ele que este texto deve obedecer.*
 //
-// E a catraca passou a acusar **dispensa órfã e obsoleta** (E-432): *exceção sem uso é dívida disfarçada de
-// política* — foi ela que encontrou três dispensas sobreviventes ao próprio motivo.
+// E-912 (finding 8, medido): a frase que estava aqui dizia *«a catraca passou a acusar **dispensa órfã e obsoleta**
+// (E-432)»* - e **a metade «e obsoleta» era FALSA**. O comportamento **real** do checker, lido em
+// `scripts/hades_tenant_scope_check.py:216-218`, e' este - e ele **diz por que**:
+//
+//	NOTA DELIBERADA: eu tentei tambem acusar dispensa OBSOLETA (arquivo que JA TEM guarda) e a premissa estava
+//	errada ... TER GUARDA NAO TORNA A ISENCAO OBSOLETA. Removi essa acusacao; fica so' a de ORFA.
+//
+// ⇒ *a acusacao que **existe** e' a de **ÓRFÃ** (`:239`): a dispensa cujo arquivo **nao existe mais** - «excecao sem
+// uso e' divida disfarcada de politica». A de **obsoleta** foi **removida de proposito**, porque a premissa nao se
+// sustentava.* ***E o texto deste arquivo - que existe para impedir afirmacao sem medicao - afirmava as duas.***
+//
+// E o numero, medido agora: o checker declara **1** pendencia (`benchmark_suite.go`), nao tres. *As **tres** foram o
+// achado do `E-432` naquele momento; o texto conta-o no passado e e' isso que fica.*
 //
 // ***Motivo categórico não é medição.*** Este arquivo mede as duas — e é honesto sobre o que **não** consegue provar.
 

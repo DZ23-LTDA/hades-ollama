@@ -35,9 +35,22 @@ import (
 //
 // **O QUE ESTA CATRACA NAO FAZ**: nao diz que as rotas estao corretas nem que cobrem o motor inteiro ✗ - so' que a
 // ligacao existe.
+// E-912 (finding 7, medido): a varredura procurava **`NewSchedulingStore\s*\(`** - *o **parentese** exigia que o
+// chamador fosse uma **chamada direta***. Se o uso em producao passasse a ser **indireto**
+// (`f := agent.NewSchedulingStore`, *method value*, entrada numa tabela de funcoes, comparacao com `nil`), a regex
+// **nao o encontrava** ⇒ `emProducao == 0` ⇒ *a catraca **falhava com a mensagem errada** («LIGACAO DESAPARECEU»)
+// quando a ligacao **existia** - so' tinha mudado de forma.*
+//
+// Um instrumento que da' **falso alarme** e' tao ruim quanto um que nao ve: *o primeiro treina a ignorar a
+// catraca, o segundo esconde a regressao.*
+//
+// **Cura**: a varredura passa a procurar o **SIMBOLO** (`\bNewSchedulingStore\b`), e nao a chamada - *mas as
+// exclusoes continuam a valer, e agora tambem excluem a **declaracao** (`func`), nao so' a definicao do construtor.*
+// O comentario ja' era excluido (`:74`), e o controlo (`:91-100`) prova que a varredura **alcanca** o ficheiro.
 func TestMotorDeAgendamentoTemChamadorEmProducao(t *testing.T) {
 	raiz := filepath.Join("..", "..")
-	chamada := regexp.MustCompile(`NewSchedulingStore\s*\(`)
+	// E-912: o SIMBOLO, nao a chamada. `\b` nos dois lados evita casar `NewSchedulingStoreX`.
+	chamada := regexp.MustCompile(`\bNewSchedulingStore\b`)
 	definicao := regexp.MustCompile(`^func NewSchedulingStore\s*\(`)
 
 	var emProducao []string

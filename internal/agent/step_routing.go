@@ -25,9 +25,16 @@ func (r *Runtime) Models() *multillm.Registry {
 
 // RouteModelForStep escolhe o modelo de UM passo, usando a ponte (E-435) e o registry injetado (E-436).
 //
-// **ESTA E' A ESTRADA DEPOIS DA PONTE** - a funcao que existe para o executor chamar. *E ela vem com o limite
-// declarado no proprio corpo: quem ainda NAO a chama e' o laco de execucao, e isso esta' registrado como limite de
-// E-436. Expor a entrada sem ligar o consumidor e' melhor que ligar sem testar - mas nao e' o mesmo que integrado.*
+// ⚠️ **CORRECAO POR MEDICAO (E-910, 2026-10-16)**: o texto abaixo dizia *"quem ainda NAO a chama e' o laco de
+// execucao"* - *e isso ficou **DESACTUALIZADO**:* **`runtime.go:2275` CHAMA `r.RouteModelForStep(mission, *step)`**,
+// dentro do laco de execucao. Texto antigo, preservado como registo historico:
+//
+//	*"E ela vem com o limite declarado no proprio corpo: quem ainda NAO a chama e' o laco de execucao, e isso
+//	 esta' registrado como limite de E-436."*
+//
+// O que **passou a existir** (medido): a chamada por passo, a falha fechado quando o roteamento falha, a conferencia
+// de chamada nativa (`E-663`), o evento `step.model.route` com candidatos e custo (`E-664`), e a entrega do
+// `modeloRoteado` ao `ToolContext` (`E-438`). *O que **nao** mudou: o executor do passo.*
 func (r *Runtime) RouteModelForStep(missao Mission, passo Step) (multillm.RouteDecision, error) {
 	if r == nil || r.models == nil {
 		// FALHA FECHADO: sem registry nao se escolhe por passo, e **nao** se devolve o modelo da missao fingindo
@@ -55,21 +62,27 @@ func (r *Runtime) RouteModelForStep(missao Mission, passo Step) (multillm.RouteD
 
 // E-435 (Estagio 43) — A PONTE ENTRE O NO DO PLANO E O MOTOR DE SELECAO.
 //
-// **O QUE ESTAVA MEDIDO** (e e' uma descoberta, nao um detalhe): o runtime **nao** usa o `multillm.Registry` para
-// escolher modelo de PASSO ✗. O roteamento que existe e' o do **planejador** -
-// `runtime.go:1141-1151` chama `RoutedPlannerResolver.ResolvePlannerForMission` e **escreve de volta** em
-// `mission.Provider`/`mission.Model` ⇒ ***um modelo para a MISSao inteira, escolhido uma vez*** ✓. `grep 'multillm.'`
-// em `internal/agent` so' encontra **plugins** e `ContractRegistry` ⇒ *o Registry de modelos nunca entra no runtime
-// do agente.*
+// ⚠️ **CORRECAO POR MEDICAO (E-910, 2026-10-16)**: as duas afirmacoes abaixo ficaram **DESACTUALIZADAS**.
+// Texto antigo, preservado como registo historico:
 //
-// ⇒ E-433 declarou o contrato (`Step.RequiredCapabilities`/`PinnedModelID`) e **o consumo ficou aberto**. Consumir
-// exige **injetar** o Registry no Runtime, o que `RuntimeConfig` permite (`Tools *Registry` ja' mora la') mas
-// **ainda nao esta' feito**.
+//	*"`grep 'multillm.'` em `internal/agent` so' encontra plugins e `ContractRegistry` ⇒ o Registry de modelos
+//	 nunca entra no runtime do agente."*  e  *"Consumir exige injetar o Registry no Runtime … mas ainda nao esta'
+//	 feito."*
+//
+// **Medido agora**: o Registry **entra** - `runtime.go:2274` testa `r.models != nil` antes de rotear por passo - e
+// `runtime.go:2275` **chama** `r.RouteModelForStep`. *O `grep` era um instrumento que **nao via** a injecao: ela
+// passa por `RuntimeConfig`, nao por uma mencao literal a `multillm.` no sitio onde eu procurei.*
+//
+// ⇒ E-433 declarou o contrato (`Step.RequiredCapabilities`/`PinnedModelID`) e o consumo **foi fechado** no
+// `E-437`/`E-438`: a decisao e' tomada, registada no evento `step.model.route` e entregue ao `ToolContext`.
 //
 // **O QUE ESTA FUNCAO RESOLVE, e o que ela NAO resolve** - *a distincao e' o ponto*:
 //   - RESOLVE: a traducao `Step` -> `multillm.RouteRequest`. *Sem ela, quem for ligar o Registry teria de repetir o
 //     mapeamento (e o mapeamento errado nao aparece: um campo trocado produz uma escolha plausivel e errada).*
-//   - NAO RESOLVE: a injecao no Runtime e a chamada por passo. **Nada consome esta funcao ainda** ✗.
+//   - **RESOLVIDO desde entao** (E-910): a injecao no Runtime e a chamada por passo. *O texto antigo dizia
+//     «a injecao no Runtime e a chamada por passo. **Nada consome esta funcao ainda** ✗» - e isso deixou de ser
+//     verdade: `runtime.go:2275` e' o consumidor.* O que **segue aberto** e' outro incremento: fazer o **executor**
+//     do passo seguir o modelo roteado (hoje so' a **ferramenta de inferencia** o segue).
 //
 // ***Uma ponte nao e' a estrada - mas ponte sem teste e' pior que ponte nenhuma, porque parece caminho.***
 func RouteRequestForStep(missao Mission, passo Step) multillm.RouteRequest {

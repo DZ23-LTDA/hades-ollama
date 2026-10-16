@@ -18,6 +18,9 @@ import { ArtifactsViewer } from "@/components/ArtifactsViewer";
 // A LIGACAO do Companion (item 46): *o componente existia e nao era renderizado em lado
 // nenhum - esta linha e' o que o tira da caixa fechada.*
 import { CompanionLigado } from "@/components/CompanionLigado";
+// E-915 (complemento 48): a SALA. *O componente existia, era testado em 31 testes, e **nenhum ecra o mostrava***
+// - a mesma classe do Companion (E-449), cujo comentario aqui ao lado diz isso mesmo.
+import { SalaLigada } from "@/components/SalaLigada";
 // Estagio 45 - ESTUDIO MULTIMODAL: as 6 operacoes existiam no runtime e nao tinham ecra^.
 // *O painel conduz uma missao com `media:execute` (nada de API paralela) e nao afirma provider
 // que nao foi medido - ver o tri-estado em `mediaOperacoes.ts`.*
@@ -129,6 +132,20 @@ interface AgenticSplitShellProps {
   onRefreshMission?: () => Promise<void>;
   onCreateMission?: (objective: string) => Promise<void>;
   busy?: boolean;
+  /**
+   * E-915 (complemento 48): a SALA precisa de **projecto** e **sala**.
+   *
+   * **Porque e' que estes dois props existem aqui, e nao no `SalaLigada`**: o `SalaLigada` ja' os pedia desde
+   * o inicio - *o que faltava era **quem lhos desse*.** O `AgenticConsole` **tem** o `projectID` (lido do query
+   * param `project_id`, que a `HomePage` escreve), e este shell e' o ponto de montagem das superficies da
+   * missao (Companion, MediaStudio, Artifacts).
+   *
+   * ⚠️ **OPCIONAIS DE PROPOSITO**: os **4** testes do shell montam-no sem estes props
+   * (`AgenticSplitShell.test.tsx`, `.cancel`, `.cost`, `.result`). Torna-los obrigatorios mudaria um painel
+   * ja' testado para acomodar uma superficie nova - *e o §00.2 diz reutilizar, nao reescrever.*
+   */
+  projectID?: string;
+  roomID?: string;
 }
 
 export function AgenticSplitShell({
@@ -136,6 +153,8 @@ export function AgenticSplitShell({
   onRefreshMission,
   onCreateMission,
   busy = false,
+  projectID = "",
+  roomID = "",
 }: AgenticSplitShellProps) {
   const [activeCanvasTab, setActiveCanvasTab] = useState<
     "browser" | "artifacts" | "code"
@@ -708,6 +727,23 @@ export function AgenticSplitShell({
               {/* O COMPANION: estado REAL da missao, lido da rota testada (item 46).
                *Ate' aqui o mascote existia, era testado, e nenhum ecra o mostrava.* */}
               {mission?.id ? <CompanionLigado missionID={mission.id} /> : null}
+              {/* E-915 — A SALA (complemento 48: Cowork/Team Chat), pela MESMA razao do Companion acima.
+               *
+               * O `SalaLigada` existia, tinha **31 testes de UI + 14 de Go** (todos verdes) e **nenhum ecra o
+               * montava**: o proprio `e2e/sala-fixture.mjs` declarava *«Enquanto a montagem nao existir, ESTE
+               * FICHEIRO NAO PROVA NADA … o estado do complemento 48 continua a ser `EXISTE x DESCONECTADO`».*
+               * Isto e' o que fecha essa declaracao.
+               *
+               * CONDICIONAL AOS **DOIS** identificadores, sem inventar nenhum: o `projectID` vem do query param
+               * `project_id` (que a `HomePage` escreve quando importa um projeto) e o `roomID` do `room_id`.
+               * *Sem os dois, nao se mostra um painel vazio a fingir de sala - nao se mostra nada*; e o
+               * `SalaPainel` ja' distingue carregando/erro/pronto, pelo que um painel mostrado nunca mente.
+               *
+               * O `fetcher` e' o `fetch` real. *O `PropsDaTela` declara-o injectavel exactamente para que um
+               * teste de browser possa passar um duplo - que e' o que o `sala.spec.ts` fara'.* */}
+              {projectID && roomID ? (
+                <SalaLigada projectID={projectID} roomID={roomID} fetcher={fetch} />
+              ) : null}
               {/* ESTUDIO MULTIMODAL (item 45): conduz uma MISSAO com `media:execute` - sem API
                * paralela e com a aprovacao real (`decision`+`nonce`). *Nao se passa
                * `providerConfigurado`: nao foi medido ⇒ o painel diz «a confirmar».* */}

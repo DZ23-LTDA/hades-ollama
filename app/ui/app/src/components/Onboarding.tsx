@@ -1370,7 +1370,21 @@ export default function Onboarding(props: OnboardingProps) {
       <IntroScreen
         completionError={props.completionError}
         isLeaving={isLeaving}
-        onRetryCompletion={() => void leave()}
+        /**
+         * E-936 (cura do `E-818`): **«Tentar de novo» TEM DE VOLTAR A GRAVAR.**
+         *
+         * Estava `() => void leave()`, e o `E-935` mediu a consequencia: *o botao ao lado de
+         * «Unable to save setup. Please try again.» **sai da pagina em vez de repetir a
+         * escrita*** - e' o `E-818` do dono: «Tentar de novo apaga o erro e nao grava».
+         *
+         * `props.onRetryCompletion` e' o `retryCompletion` de `routes/onboarding.tsx:113-117`,
+         * que chama `completeOnboarding(true)` - *com `forcar`, que e' o que faz a escrita
+         * repetida passar a guarda (`useSettings.ts:278`)*.
+         *
+         * *O `leave()` continua nos `onContinue`, que e' onde ele faz sentido: sair quando a
+         * gravacao **correu bem**.*
+         */
+        onRetryCompletion={props.onRetryCompletion}
         onContinue={() => {
           if (props.isAuthenticated && props.isLocalOnly) setStep("run");
           else if (props.isAuthenticated) void leave();
@@ -1387,7 +1401,9 @@ export default function Onboarding(props: OnboardingProps) {
       cloudOptIn={cloudOptIn}
       onCloudOptInChange={(enabled) => { setCloudOptIn(enabled); setCloudError(null); }}
       isLeaving={isLeaving}
-      onRetryCompletion={() => void leave()}
+      // E-936: mesma cura do `IntroScreen` - *ver o commentario acima.* O `E-935` mediu que
+      // estes dois botoes chamavam `leave()` em vez de `retryCompletion()`.
+      onRetryCompletion={props.onRetryCompletion}
       onLocal={() => {
         if (leavingRef.current) return;
         props.onUseLocal();

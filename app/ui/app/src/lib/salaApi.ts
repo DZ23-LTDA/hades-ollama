@@ -8,10 +8,12 @@ import type { MembroDaSala } from "../components/SalaMembros";
  * distinção morre aqui e a tela volta a mentir — *com a agravante de o teste do componente continuar verde*.
  * Por isso aqui **falha lança**, e lista vazia só existe quando o servidor disse mesmo que está vazia.
  *
- * LIMITE DECLARADO (medido, não presumido): **o endpoint ainda não existe no servidor.** A matriz do complemento
- * tem a sala no domínio (`internal/agent/rooms.go`) e a superfície na UI, mas **não há rota HTTP** exposta para
- * os membros da sala. Este cliente fixa o **contrato** que a rota terá de cumprir; enquanto ela não existir, o
- * caminho real devolve `SalaIndisponivel` — *e isso é uma falha declarada, não uma lista vazia.*
+ * ROTA (medida no código, não presumida): **o endpoint existe.** Está em `server/agent_routes.go:851`
+ * (`GET /collab/:project_id/rooms/:room_id/members` → `a.collabRoomMembers`), servido por `internal/agent/rooms.go`
+ * e coberto por testes de servidor em `server/agent_collab_rooms_test.go`.
+ * *Este parágrafo afirmava «o endpoint ainda não existe no servidor» e ficou obsoleto quando a rota foi
+ * implementada; corrigido por medição, porque um comentário desactualizado engana quem audita o código.*
+ * O contrato abaixo mantém-se: o caminho real devolve `SalaIndisponivel` em falha — *falha declarada, nunca `[]`.*
  */
 
 /** O que o servidor tem de devolver: os membros, com o mesmo vocabulário do domínio. */

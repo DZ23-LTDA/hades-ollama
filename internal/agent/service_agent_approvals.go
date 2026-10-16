@@ -300,7 +300,31 @@ func (s *ServiceAgentApprovalStore) ttl() time.Duration {
 
 // SetApprovers define QUEM pode aprovar nesta organização. Lista vazia desliga a checagem de papel — e as
 // decisões passam a ser registradas com `RoleChecked = false`, para a ausência de verificação ser visível.
+// E-907 / ALTO-4: `SetApprovers` fazia leitura-modificacao-escrita SEM trava, como o `Consume` (E-424) e o
+// `Decide` (E-426) faziam. *Fechar a janela no `Consume` e no `Decide` e deixa-la aberta nos tres irmaos
+// (`SetApprovers`, `Save`, `expireStale`) e' exactamente o que o `E-426` avisou por escrito:*
+// ***«Fechar a janela num sitio e deixa-la aberta no irmao e' o comeco do proximo incidente.»***
+//
+// O dano medido desta vez: um `ExpireStale`/`Save`/`SetApprovers` que LEU antes de um `Consume` gravar
+// reescreve o ficheiro inteiro com o instantaneo ANTIGO - e a aprovacao CONSUMIDA **ressuscita**.
+// `loadFile`/`saveFile` NAO travam por dentro, logo o corpo `*Locked` pode ser chamado sob a trava sem
+// deadlock (o mesmo argumento que o `E-426` registou).
 func (s *ServiceAgentApprovalStore) SetApprovers(organizationID string, approvers []string) error {
+	path := s.path(organizationID)
+	if path == "" {
+		return s.setApproversLocked(organizationID, approvers)
+	}
+	// E-430: a pasta tem de existir ANTES de a trava existir.
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+		return err
+	}
+	return withFileLock(path+".lock", func() error {
+		return s.setApproversLocked(organizationID, approvers)
+	})
+}
+
+// setApproversLocked e' o corpo do `SetApprovers`, executado SOB a trava da organizacao.
+func (s *ServiceAgentApprovalStore) setApproversLocked(organizationID string, approvers []string) error {
 	file, err := s.loadFile(organizationID)
 	if err != nil {
 		return err
@@ -324,17 +348,70 @@ func (s *ServiceAgentApprovalStore) Approvers(organizationID string) ([]string, 
 	return file.Approvers, nil
 }
 
-// Save grava as aprovações respeitando o teto e PRESERVANDO a lista de aprovadores da organização.
+// Save grava as aprovacoes respeitando o teto e PRESERVANDO a lista de aprovadores da organizacao.
+//
+// E-907 / ALTO-4: era leitura-modificacao-escrita SEM trava. *Agora e' o wrapper publico; o corpo virou
+// `saveLocked` para que os chamadores que JA tem a trava (`requestLocked`, `expireStaleLocked`) o usem SEM
+// trava aninhada - um `withFileLock` dentro de outro trava para sempre.*
 func (s *ServiceAgentApprovalStore) Save(organizationID string, approvals []ServiceAgentApproval) error {
 	if err := requireOrganization(organizationID); err != nil {
 		return err
 	}
+	path := s.path(organizationID)
+	if path == "" {
+		return s.saveLocked(organizationID, approvals)
+	}
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+		return err
+	}
+	return withFileLock(path+".lock", func() error {
+		return s.saveLocked(organizationID, approvals)
+	})
+}
+
+// saveLocked e' o corpo do `Save`, executado SOB a trava da organizacao (ou sem persistencia).
+func (s *ServiceAgentApprovalStore) saveLocked(organizationID string, approvals []ServiceAgentApproval) error {
 	file, err := s.loadFile(organizationID)
 	if err != nil {
 		return err
 	}
-	file.Approvals = approvals
+	// UMA leitura serve as duas coisas: aplicar a invariante precisa do estado atual, e o estado atual e' o
+	// que acabamos de ler.
+	file.Approvals = preservarConsumidas(file.Approvals, approvals)
 	return s.saveFile(organizationID, file)
+}
+
+// preservarConsumidas aplica a invariante **O CONSUMO E' TERMINAL** antes de uma gravacao que substitua a
+// lista inteira de aprovacoes.
+//
+// E-907 / ALTO-4: `Save` grava o FICHEIRO INTEIRO. Um chamador que passe um instantaneo lido ANTES de um
+// `Consume` rebaixaria a aprovacao consumida de volta a "aprovada" - *e uma ferramenta ja' executada poderia
+// executar DE NOVO*. A trava sozinha NAO impede isto: a trava serializa os escritores, mas nao corrige o
+// conteudo que o chamador entrega. *Foi o que o teste discriminante apanhou.*
+//
+// A regra: uma aprovacao que esta' CONSUMIDA no disco NAO PODE sair de consumida por uma gravacao que a
+// substitua. Quem quiser reabrir cria um pedido NOVO - *que e' o que o pedido de aprovacao existe para tornar
+// visivel e auditavel.*
+//
+// Nota: `setApproversLocked` NAO chama esta funcao porque NAO aceita lista de aprovacoes de fora - ele lê sob
+// a trava e so' substitui `file.Approvers`. E `expireStaleLocked` idem: lê sob a trava e so' promove para
+// `expired`.
+func preservarConsumidas(atual, proposta []ServiceAgentApproval) []ServiceAgentApproval {
+	consumidas := make(map[string]ServiceAgentApproval, len(atual))
+	for _, a := range atual {
+		if a.Status == ServiceAgentApprovalConsumed {
+			consumidas[a.ID] = a
+		}
+	}
+	if len(consumidas) == 0 {
+		return proposta
+	}
+	for i := range proposta {
+		if doDisco, ok := consumidas[proposta[i].ID]; ok && proposta[i].Status != ServiceAgentApprovalConsumed {
+			proposta[i] = doDisco
+		}
+	}
+	return proposta
 }
 
 // saveFile grava o arquivo aplicando o teto por organização.
@@ -382,12 +459,31 @@ func (s *ServiceAgentApprovalStore) saveFile(organizationID string, file service
 //
 // A expiração do PENDENTE é o que impede o desfecho pior do quórum: uma primeira assinatura esquecida que,
 // semanas depois, se somaria a um segundo olhar sobre um contexto que ninguém revisou junto.
+// E-907 / ALTO-4: era leitura-modificacao-escrita SEM trava - e a sua gravacao e' a mais perigosa das tres,
+// porque reescreve o FICHEIRO INTEIRO: um `expireStale` que leu antes de um `Consume` gravar marca expiradas
+// sobre um instantaneo antigo e **desfaz o consumo**. Agora e' o wrapper; o corpo virou `expireStaleLocked`.
 func (s *ServiceAgentApprovalStore) expireStale(organizationID string, now time.Time) error {
+	path := s.path(organizationID)
+	if path == "" {
+		return s.expireStaleLocked(organizationID, now)
+	}
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+		return err
+	}
+	return withFileLock(path+".lock", func() error {
+		return s.expireStaleLocked(organizationID, now)
+	})
+}
+
+// expireStaleLocked e' o corpo do `expireStale`, executado SOB a trava da organizacao.
+func (s *ServiceAgentApprovalStore) expireStaleLocked(organizationID string, now time.Time) error {
 	ttl := s.ttl()
 	pendingTTL := s.pendingTTL()
 	if ttl <= 0 && pendingTTL <= 0 {
 		return nil
 	}
+	// Releitura SOB a trava: a lista que o chamador viu antes pode ja' ter sido alterada por um `Consume`.
+	// Sem esta releitura, a gravacao seguinte ressuscitaria o que o `Consume` marcou como consumido.
 	file, err := s.loadFile(organizationID)
 	if err != nil {
 		return err
@@ -511,22 +607,68 @@ func (s *ServiceAgentApprovalStore) ApprovalQueue(organizationID string, now tim
 	return queue, nil
 }
 
-// Request registra um pedido pendente, REUSANDO o pedido já pendente para a mesma impressão digital.
+// E-907 / ALTO-4: era a QUARTA leitura-modificacao-escrita sem trava. Era a mais subtil das quatro porque
+// chama `Save` por dentro - *e o `Save` passou a ser um wrapper com trava, logo chama-lo daqui daria
+// **trava aninhada**, que neste helper segura para sempre.* Por isso o corpo virou `requestLocked` e usa
+// `saveFile` diretamente, com a **releitura e a deduplicacao DENTRO da trava**.
 //
-// Reusar é deliberado: repetir o turno enquanto o humano decide não pode inundar a caixa de aprovações com
-// o mesmo pedido — e um pedido duplicado esconde quantas decisões realmente faltam.
+// A deduplicacao dentro da trava importa: dois `Request` simultaneos para a mesma impressao digital liam a
+// lista antes de qualquer gravacao, nao se viam, e criavam **dois pedidos pendentes** - *exactamente o que
+// esta funcao existe para impedir, e o numero de decisoes que faltam apareceria inflado.*
 func (s *ServiceAgentApprovalStore) Request(organizationID string, request ServiceAgentApproval) (ServiceAgentApproval, error) {
-	approvals, err := s.Load(organizationID)
+	path := s.path(organizationID)
+	if path == "" {
+		resultado, criou, err := s.requestLocked(organizationID, request)
+		if err != nil {
+			return ServiceAgentApproval{}, err
+		}
+		if criou {
+			s.notifyPending(resultado)
+		}
+		return resultado, nil
+	}
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+		return ServiceAgentApproval{}, err
+	}
+	var resultado ServiceAgentApproval
+	criou := false
+	err := withFileLock(path+".lock", func() error {
+		var errInterno error
+		resultado, criou, errInterno = s.requestLocked(organizationID, request)
+		return errInterno
+	})
 	if err != nil {
 		return ServiceAgentApproval{}, err
 	}
+	// Aviso DEPOIS de persistir E FORA da trava: avisar sobre pedido que nao ficou gravado seria alarme falso,
+	// e avisar com a trava na mao aumentaria o tempo de posse sem necessidade.
+	//
+	// E SO' quando um pedido NOVO foi gravado: *repetir o turno enquanto o humano decide **nao pode** reenviar
+	// o aviso* - e' o defeito que `TestServiceAgentApprovalNotificationSendsOnceWithMinimalPayload` discrimina.
+	// Os dois caminhos de REUSO (`pendente` e `negado`) saem de `requestLocked` com `criou=false`.
+	if criou {
+		s.notifyPending(resultado)
+	}
+	return resultado, nil
+}
+
+// requestLocked e' o corpo do `Request`, executado SOB a trava da organizacao.
+//
+// Devolve `criou=true` apenas quando um pedido NOVO foi acrescentado ao ficheiro. O reuso de um pedido ja
+// existente devolve `false`: quem decide se avisa e' o wrapper, e o aviso so' sai para pedido novo.
+func (s *ServiceAgentApprovalStore) requestLocked(organizationID string, request ServiceAgentApproval) (ServiceAgentApproval, bool, error) {
+	file, err := s.loadFile(organizationID)
+	if err != nil {
+		return ServiceAgentApproval{}, false, err
+	}
+	approvals := file.Approvals
 	for _, existing := range approvals {
 		if existing.Status == ServiceAgentApprovalPending && existing.Fingerprint == request.Fingerprint {
-			return existing, nil
+			return existing, false, nil
 		}
-		// Pedido NEGADO para a mesma impressão digital não vira novo pedido: a decisão foi tomada.
+		// Pedido NEGADO para a mesma impressao digital nao vira novo pedido: a decisao foi tomada.
 		if existing.Status == ServiceAgentApprovalDenied && existing.Fingerprint == request.Fingerprint {
-			return existing, nil
+			return existing, false, nil
 		}
 	}
 	if strings.TrimSpace(request.ID) == "" {
@@ -534,19 +676,17 @@ func (s *ServiceAgentApprovalStore) Request(organizationID string, request Servi
 	}
 	request.Status = ServiceAgentApprovalPending
 	if request.RequiredApprovals <= 0 {
-		// O quórum fica GRAVADO no pedido: mudar a configuração depois não altera o que já foi exigido.
+		// O quorum fica GRAVADO no pedido: mudar a configuracao depois nao altera o que ja foi exigido.
 		request.RequiredApprovals = s.RequiredApprovalsFor(request.ValueCents)
 	}
 	if request.RequestedAt.IsZero() {
 		request.RequestedAt = time.Now().UTC()
 	}
-	approvals = append(approvals, request)
-	if err := s.Save(organizationID, approvals); err != nil {
-		return ServiceAgentApproval{}, err
+	file.Approvals = append(approvals, request)
+	if err := s.saveFile(organizationID, file); err != nil {
+		return ServiceAgentApproval{}, false, err
 	}
-	// Aviso DEPOIS de persistir: avisar sobre pedido que não ficou gravado seria alarme falso.
-	s.notifyPending(request)
-	return request, nil
+	return request, true, nil
 }
 
 // Decide registra a decisão humana. Sem ator identificado não há aprovação: não se decide no anonimato.

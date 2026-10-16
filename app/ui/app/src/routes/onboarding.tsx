@@ -67,7 +67,7 @@ function OnboardingRoute() {
     }
   }, [navigate, settingsData?.OnboardingVersion]);
 
-  const completeOnboarding = useCallback(async (): Promise<boolean> => {
+  const completeOnboarding = useCallback(async (forcarEscrita = false): Promise<boolean> => {
     setCompletionError(null);
 
     try {
@@ -76,9 +76,21 @@ function OnboardingRoute() {
       }
 
       completedHereRef.current = true;
-      await setSettings({
-        OnboardingVersion: CURRENT_ONBOARDING_VERSION,
-      });
+      await setSettings(
+        {
+          OnboardingVersion: CURRENT_ONBOARDING_VERSION,
+        },
+        /**
+         * E-933: **intencao explicita do utilizador.** O `retryCompletion` (`:101-103`) chama
+         * esta funcao com os **mesmos** valores, logo a guarda de escrita identica
+         * (`useSettings.ts:278`) travaria o 2.o `save` - *e o `OnboardingRoute.test.tsx:216`
+         * exige `toHaveBeenCalledTimes(2)`.*
+         *
+         * *O `finishSetup` (primeira tentativa) **nao** forca: ali um efeito pode re-executar, e
+         * e' exactamente isso que a guarda tem de travar.*
+         */
+        { forcar: forcarEscrita },
+      );
       return true;
     } catch (error) {
       completedHereRef.current = false;
@@ -99,8 +111,22 @@ function OnboardingRoute() {
   }, [completeOnboarding, navigate]);
 
   const retryCompletion = useCallback(() => {
-    void completeOnboarding();
-  }, [completeOnboarding]);
+    /**
+     * E-936: o retry faz as **duas** metades da operacao que estavam partidas ao meio.
+     *
+     *  - `E-933`: e' uma **intencao explicita**, logo grava com `forcar` (a guarda de escrita
+     *    identica `useSettings.ts:278` nao se aplica).
+     *  - `E-935`/`E-936`: e **depois** segue para `/connect`, como o `openApps` (`:107-111`) faz
+     *    - *estava `() => void leave()` nos dois ecras, e o `OnboardingRoute.test.tsx:218-220`
+     *    exige `navigate` exactamente uma vez com `{ to: "/connect" }`.*
+     *
+     * *Antes da cura: o botao so' gravava (e sem `forcar`) **ou** so' navegava - nunca as duas.*
+     */
+    void (async () => {
+      if (!(await completeOnboarding(true))) return;
+      await navigate({ to: "/connect" });
+    })();
+  }, [completeOnboarding, navigate]);
 
   const authenticate = useCallback(
     async (mode: OnboardingAuthMode) => {

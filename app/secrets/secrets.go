@@ -6,6 +6,7 @@ package secrets
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -62,7 +63,15 @@ func Save(dir, envName, key string) (string, error) {
 	os.Unsetenv(envName)
 	os.Setenv(envName+"_FILE", path)
 	if err := persistUserEnv(envName, path); err != nil {
-		return path, fmt.Errorf("credential saved but user environment not updated: %w", err)
+		// The credential IS saved: the protected file is in place and <ENV>_FILE
+		// already points at it for this process. persistUserEnv only spares a
+		// future session from having to call Adopt, which exists for exactly that
+		// case. Returning an error here is not a warning - app/ui treats a
+		// non-empty path with an error as "the save half-failed", ROLLS BACK and
+		// answers 500, deleting the key the user just pasted. The degradation is
+		// reported, not fatal.
+		slog.Warn("credential saved but user environment not persisted; a future session will rely on Adopt",
+			"env", envName, "path", path, "error", err)
 	}
 	return path, nil
 }
