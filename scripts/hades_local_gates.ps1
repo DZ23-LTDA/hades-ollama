@@ -390,6 +390,31 @@ if ($ComE2E) {
 }
 
 ''
+# E-1036: a catraca sobre o CODIGO. *O defeito do opt-in apareceu em TRES locais sucessivos;
+# a cura pontual nao fecha a classe.* Esta mede o codigo, nao o resultado: falha se um
+# chamador novo de `validarUrl`/`guardarRota` nao passar `permitirPrivado`.
+'--- 21. CATRACA do opt-in: todo o chamador de validarUrl/guardarRota passa o opt-in'
+$saidaRat = & python -X utf8 scripts/hades_bridge_optin_ratchet.py 2>&1
+$saidaRat | Select-Object -Last 3 | ForEach-Object { "    " + $_.ToString().Substring(0, [Math]::Min(110, $_.ToString().Length)) }
+if ($LASTEXITCODE -eq 3) {
+  '    BLOCKED_BY_EXTERNAL_DEPENDENCY: sem `python`'
+} elseif ($LASTEXITCODE -ne 0) {
+  $falhas.Add("hades_bridge_optin_ratchet.py (exit $LASTEXITCODE)")
+  '    FALHA'
+} else { '    OK' }
+
+''
+'--- 22. testes da catraca (fault injection, numa COPIA)'
+$saidaRatT = & python -X utf8 scripts/hades_bridge_optin_ratchet_test.py 2>&1
+$saidaRatT | Select-Object -Last 2 | ForEach-Object { "    " + $_.ToString().Substring(0, [Math]::Min(110, $_.ToString().Length)) }
+if ($LASTEXITCODE -eq 3) {
+  '    BLOCKED_BY_EXTERNAL_DEPENDENCY: sem `python`'
+} elseif ($LASTEXITCODE -ne 0) {
+  $falhas.Add("hades_bridge_optin_ratchet_test.py (exit $LASTEXITCODE)")
+  '    FALHA'
+} else { '    OK' }
+
+''
 if ($falhas.Count -gt 0) {
   "GATES LOCAIS: $($falhas.Count) falha(s)"
   $falhas | ForEach-Object { "  - $_" }
@@ -416,4 +441,5 @@ $passos += 'native-host-testes'
 $passos += 'e2e-aba'
 $passos += 'e2e-takeover'
 $passos += 'e2e-origem'
+$passos += 'catraca-optin'
 "GATES LOCAIS: $($passos -join ' + ') VERDES"

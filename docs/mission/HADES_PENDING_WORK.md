@@ -1096,3 +1096,31 @@ curado.
 - APK Android bloqueado pela DLL JNI (`E-1019`);
 - macOS/iOS `BLOCKED_EXTERNAL` pela **máquina**;
 - benchmark reproduzível (ESTÁGIO 21) não iniciado.
+
+### O que falta (actualizado na janela `E-1036`)
+
+**Fechado**: o defeito do opt-in deixou de ser uma classe aberta. A catraca
+`hades_bridge_optin_ratchet.py` mede o **código** -- falha se um novo chamador de
+`validarUrl`/`guardarRota` não passar `permitirPrivado` -- e 13 asserções provam que ela
+**discrimina** nos dois sentidos, numa **cópia** (o repositório real nunca é tocado).
+
+**Continua em falta, sem disfarce**:
+- **`pushState`/`replaceState`**: pode ser buraco real -- um SPA que mude de origem por
+  History API **não** dispara `tabs.onUpdated` com URL novo. **Não medido**;
+- **a catraca olha duas linhas**: uma chamada com o opt-in mais longe seria falso positivo;
+  e `permitirPrivado: false` literal passaria (mede a menção, não o valor);
+- **redireccionamentos e `https`**: só medido com dois servidores em loopback;
+- **frames e shadow DOM**: nao testados;
+- **downloads e uploads**: nao testados;
+- **o takeover não tem duração ajustável** (30s fixos);
+- **o Chrome real do utilizador**: a versão 155 deste host **não carrega** por
+  `--load-extension`; exige carregamento manual;
+- **Firefox** e **Safari**;
+- **sem `.crx`, sem assinatura, sem SBOM do pacote**;
+- **a chave privada de distribuição está fora do Git**;
+- **`CAPACIDADES` VAZIO**: o Companion **não** controla o PC;
+- **taxa e pairing em memória**;
+- ligação da extensão ao **Mission Control** (`missao`/`aprovado` ficam a `null`);
+- APK Android bloqueado pela DLL JNI (`E-1019`);
+- macOS/iOS `BLOCKED_EXTERNAL` pela **máquina**;
+- benchmark reproduzível (ESTÁGIO 21) não iniciado.

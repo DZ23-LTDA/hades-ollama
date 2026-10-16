@@ -915,3 +915,33 @@ revogado. Registado como divida, nao como coberto.
 **Doutrina em uma linha**: codigo de seguranca sem teste e' uma promessa; curar o sintoma
 que se mediu nao fecha a classe do defeito; e um SPA que muda de origem sem disparar
 `onUpdated` e' uma pergunta em aberto, nao uma resposta.
+
+### Instrucoes de retomada (janela `E-1036`)
+
+**Estado**: branch `fix/checker-relogio`; cabeca do indice `E-1036`; PR #438 **aberto** e
+**nao tocado**; `reviewDecision` **vazio** => sem revisao humana independente.
+
+**Bateria: 29 passos.** QUATRO E2E por **opt-in** (`-ComE2E`, abrem o Edge) e **duas**
+catracas novas (passos 21 e 22):
+  powershell -NoProfile -ExecutionPolicy Bypass -File scripts\hades_local_gates.ps1 -ComE2E
+  python -X utf8 scripts\hades_bridge_optin_ratchet.py        # a catraca
+  python -X utf8 scripts\hades_bridge_optin_ratchet_test.py   # 13 assercoes, fault injection
+
+**A CATRACA DO OPT-IN** (`E-1036`) mede o **codigo**, nao o resultado: falha se um
+chamador novo de `validarUrl`/`guardarRota` nao passar `permitirPrivado`. O defeito
+apareceu em **tres** locais em tres rondas (`E-1033` -> `E-1035`); a cura pontual nao
+fecha a classe.
+
+**E O TESTE NAO MUTA PRODUCAO**: `--raiz CAMINHO` aponta a catraca a uma **copia**; a
+injecao vai para la', e o teste guarda o hash do ficheiro real antes e compara no fim.
+*Um teste que muta o codigo de producao e' um risco, nao uma prova.*
+
+**DUAS CATRACAS COMPLEMENTARES**: `hades_index_shape_check.py` varre o **indice**;
+`hades_mission_check.py` varre **todo o codigo**. **Um ID novo continua do MAIOR cunhado.**
+
+**O que NAO fazer**: `reset --hard`, `git clean`, rebase destrutivo, force-push, stash,
+`merge`, tag, release, publicacao externa, ou **resolver threads** do PR #438.
+
+**Doutrina em uma linha**: uma cura pontual nao fecha a classe do defeito; o gate certo
+mede o codigo que o produziria, nao o sintoma; uma catraca que fica vermelha com tudo nao
+discrimina nada; e um teste que muta producao e' um risco.

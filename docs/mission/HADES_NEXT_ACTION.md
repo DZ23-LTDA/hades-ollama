@@ -478,3 +478,19 @@ outros aceitam`. O sintoma era incoerência: a mesma origem concedia e depois re
 **falhe se um novo local validar URL sem o opt-in** -- isto é, uma catraca sobre o
 **código**, e não sobre o resultado. O defeito apareceu três vezes; a cura pontual não o
 fecha. Tudo interno.
+
+### A proxima accao unica (janela `E-1036`)
+
+**A catraca sobre o código existe** (`E-1036`): todo o chamador de `validarUrl`/
+`guardarRota` tem de passar `permitirPrivado`, e ela **discrimina** -- verde com a cura,
+vermelha sem ela. O defeito do opt-in apareceu em **três** locais em três rondas, cada vez
+com a cura pontual do local que falhou.
+
+⇒ ***uma cura pontual não fecha a classe do defeito.** O gate certo não mede o sintoma:
+**mede o código que o produziria.***
+
+**A proxima accao unica**: **o `pushState`**. Ficou registado como dívida no `E-1035` e
+**pode ser um buraco real**: um SPA que mude de origem por History API **não** dispara
+`tabs.onUpdated` com URL novo, logo a concessão **não** seria revogada. Medir primeiro:
+um teste que navegue por `pushState` e verifique se a concessão sobrevive indevidamente.
+Tudo interno, na mesma página local.
