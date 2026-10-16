@@ -487,3 +487,38 @@ tag, release, publicacao externa, ou **resolver threads** do PR #438. Nada disso
 
 **Doutrina em uma linha**: *medir antes de afirmar; um gate que me apanha esta' a funcionar; e
 evidencia sem commit e' uma afirmacao.*
+
+### Instrucoes de retomada (janela `E-1022`)
+
+**Estado**: branch `fix/checker-relogio`; cabeca do indice `E-1022`; PR #438 **aberto** e **nao
+tocado** (decisao do dono); `reviewDecision` **vazio** => sem revisao humana independente.
+
+**Artefactos novos desta janela**:
+- pacote: `dist/browser-bridge/hades-browser-bridge-0.1.0-unsigned.zip` + `SHA256SUMS.txt` +
+  `LEIA-ME.txt` -- **fora do Git** (`dist/` esta no `.gitignore`; `git ls-files dist` e vazio);
+- script versionado: `scripts/hades_browser_bridge_package.py` (constroi e verifica; `--check`
+  so verifica);
+- discriminador: `_tmp/discrimina_pacote_v2.py` (3 defeitos; exige que a **regra propria**
+  dispare, nao basta o exit code).
+
+**A armadilha a nao repetir**: o `zipfile` do Python **normaliza o separador ao LER E ao
+ESCREVER**. Logo: (1) uma regra escrita sobre o `namelist()` **nunca dispara**; (2) `writestr`
+com o nome trocado **nao cria** um zip com separador invertido. Para testar o separador e preciso
+mexer nos **bytes crus**, nos **dois** cabecalhos: local file header (PK 03 04, nome em offset+30)
+e central directory (PK 01 02, nome em offset+46), trocando 0x2F por 0x5C.
+
+**O que NAO fazer**: `reset --hard`, `git clean`, rebase destrutivo, force-push, stash, `merge`,
+tag, release, publicacao externa, ou **resolver threads** do PR #438.
+
+**Bateria de 20 gates antes de commitar** (exit 0 obrigatorio): `hades_release_gate.py` (write)
+-> `--check`; `hades_manifest.py`; `hades_brand_inventory.py`; `hades_ascii_ps1_check.py`;
+`hades_mission_check.py`; `hades_state_chronology_test.py`; `hades_index_shape_check.py --check`
+**e** `_test.py`; `hades_handoff_window_check.py --check` **e** `_test.py`;
+`hades_orphan_instruments_check.py --check`; `hades_audit_instruments_test.py`;
+`hades_stage_map.py --check`; `hades_baseline_report.py --check`;
+`hades_ci_reproducibility_check.py --check`; `hades_tenant_scope_check.py --check`;
+`hades_non_inference_scan.py`; `hades_encoding_check.py`; `hades_fix_mojibake.py --check`;
+`git diff --check`.
+
+**Doutrina em uma linha**: medir antes de afirmar; um gate que me apanha esta a funcionar; e um
+teste que usa a mesma biblioteca que causa o defeito nunca injecta o defeito.

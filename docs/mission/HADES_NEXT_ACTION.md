@@ -306,3 +306,19 @@ Ordem para os passos seguintes, sem inventar atalhos:
 2. pairing real (native messaging + `HADES Local Companion`) -- ainda **nao existe**;
 3. E2E em Chrome/Edge reais (este host consegue, com uma sessao de browser controlada);
 4. `E-1021` fechou o `Browser Bridge`; o `Computer Use` continua `PARTIAL`.
+
+### A proxima accao unica (janela `E-1022`)
+
+**O pacote da extensao esta fechado** (`E-1022`): `.zip` nao assinado de 84,3 KB, SHA-256
+`6125f72adc9812ae...`, reproduzivel byte-a-byte, com `SHA256SUMS` e `LEIA-ME` ASCII, e um
+verificador (`scripts/hades_browser_bridge_package.py`) que **reprova tres defeitos reais pela
+regra propria** -- incluindo o separador invertido que o .NET escreve e o Chrome recusa.
+
+**A proxima accao unica**: **provar o handshake sem navegador** -- escrever o contrato do canal
+local (schema, sequencia, expiracao, replay) e um teste de contrato que o valide, porque **o
+pairing nao existe**: nao ha native messaging nem `HADES Local Companion`, e o popup mostra
+`host: - (native host nao instalado)`. Isto e trabalho interno, sem credencial.
+
+Depois, pela ordem: (2) SBOM do pacote da extensao; (3) E2E em Chrome real (este host consegue,
+com sessao de browser controlada); (4) Firefox (`.xpi`) ou `ABSENT` documentado; (5) script e doc
+de notarizacao/assinatura (pedido pelo dono, ainda nao escrito).

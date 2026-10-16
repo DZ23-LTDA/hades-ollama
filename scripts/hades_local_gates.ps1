@@ -268,6 +268,21 @@ if ($LASTEXITCODE -eq 3) {
 
 
 
+# *POR QUE ISTO EXISTE:* o `E-1022`. O pacote da extensao (`dist\browser-bridge\*.zip`) e' um
+# artefacto local, invisivel ao Git. *Um instrumento que nunca corre nao mede nada* -- a catraca
+# `hades_orphan_instruments_check.py` apontou-o como ORFAO precisamente por isso.
+# => *O script CONSTROI e VERIFICA: se o pacote nao existir, ele e' refeito; se existir, e' medido.*
+# => *E ele reprova um defeito real medido nesta sessao: o `.NET` escreve as entradas do ZIP com
+#    barra invertida (8 de 9), a spec exige barra normal, e o Chrome recusa carregar o manifest.
+'--- 14. PACOTE da extensao HADES Browser Bridge (zip nao assinado)'
+$saidaPkg = & python -X utf8 scripts/hades_browser_bridge_package.py 2>&1
+$saidaPkg | Select-Object -Last 2 | ForEach-Object { "    " + $_.ToString().Substring(0, [Math]::Min(110, $_.ToString().Length)) }
+if ($LASTEXITCODE -eq 3) {
+  '    BLOCKED_BY_EXTERNAL_DEPENDENCY: sem `python` -- declarado, nao e falha do produto'
+} elseif ($LASTEXITCODE -ne 0) {
+  $falhas.Add("hades_browser_bridge_package.py (exit $LASTEXITCODE)")
+} else { '    OK' }
+
 ''
 if ($falhas.Count -gt 0) {
   "GATES LOCAIS: $($falhas.Count) falha(s)"
@@ -285,4 +300,7 @@ if ($appRodou) { $passos += 'app' } else { $passos += 'app-PULADO' }
 $passos += 'manifesto'
 $passos += 'marca'
 $passos += 'ascii'
+# E-1022: o pacote da extensao entra no resumo. *Um passo que corre e nao aparece no resumo e'
+# um passo que ninguem sabe que correu* (o E-989, aplicado outra vez).
+$passos += 'pacote-extensao'
 "GATES LOCAIS: $($passos -join ' + ') VERDES"

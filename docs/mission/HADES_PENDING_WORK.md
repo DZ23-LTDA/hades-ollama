@@ -838,3 +838,23 @@ fronteira (`E-1019`), extensao MV3 criada (`E-1020`) e **completada e carregavel
 - script + doc de notarizacao/assinatura: **pedido pelo dono, ainda nao escrito**;
 - iOS sem build de simulador; dispositivo fisico e TestFlight `BLOCKED_EXTERNAL`;
 - benchmark reproduzivel (ESTAGIO 21) nao iniciado; `SUPERIOR_MEASURED` nao reclamado.
+
+### O que falta (actualizado na janela `E-1022`)
+
+**Fechado nesta janela**: o pacote nao assinado da extensao -- `.zip` + `SHA256SUMS` + `LEIA-ME`
+ASCII + verificador versionado, reprodutivel e provado contra 3 defeitos reais (`E-1022`). O
+defeito do separador foi medido, curado e **provado por injecao nos bytes crus**.
+
+**Continua em falta, sem disfarce**:
+- **pairing**: `native messaging` + `HADES Local Companion` **nao existem**; o popup mostra
+  `host: - (native host nao instalado)` e `missao`/`aprovado` ficam a `null`;
+- ligacao da extensao ao **Mission Control** (nada alimenta os campos de estado);
+- **E2E em Chrome/Edge reais**: o pacote foi verificado, **nao carregado**;
+- Firefox (`.xpi`), Safari e assinatura (`.crx`): **nao existem**;
+- **SBOM do pacote da extensao** e actualizacao do `THIRD_PARTY_NOTICES` com os icones
+  reutilizados de `app/ui/app/public/`;
+- medicao de latencia/CPU/RAM do `observar()` e backpressure medido;
+- APK Android bloqueado pela DLL JNI neste host (`E-1019`), desbloqueio = runner Linux;
+- macOS/iOS `BLOCKED_EXTERNAL` pela **maquina**, nao pela credencial;
+- script e doc de notarizacao/assinatura (pedido pelo dono);
+- benchmark reproduzivel (ESTAGIO 21) nao iniciado; `SUPERIOR_MEASURED` nao reclamado.
