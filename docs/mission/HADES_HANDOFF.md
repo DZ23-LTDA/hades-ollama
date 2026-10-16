@@ -1292,3 +1292,40 @@ do checker (`:216-219`) diz que essa acusacao foi **removida de proposito**. Cor
 **Doutrina em uma linha**: um bot que erra duas vezes em doze ensina a nao copiar; um arquivo
 que existe para impedir afirmacao sem medicao pode ele proprio afirmar sem medicao; e o
 trabalho e' tecnico -- a thread e' do GitHub e a decisao de a fechar e' do proprietario.
+
+### Instrucoes de retomada (janela `E-1047`)
+
+**Estado**: branch `fix/checker-relogio`; cabeca do indice `E-1047`; PR #438 **aberto** e
+**nao tocado** -- *as 14 threads continuam como estavam*; `reviewDecision` **vazio**.
+
+**Bateria: 27 passos, 28 OK, 0 FAIL.** OITO E2E por opt-in e **quatro** catracas.
+
+**O ESTAGIO 21, MEDIDO** (era o unico dos 10 estagios livres que a minha nota dizia
+«nao iniciado» -- *e a nota estava errada*):
+  $env:HADES_T2_MEDIR_MODELO='1'
+  go test ./internal/agent/ -run 'TestMatrizRealComModelosLocais' -count=1 -timeout 30m
+  => --- PASS: TestMatrizRealComModelosLocais (599.88s)
+  => ok github.com/ollama/ollama/internal/agent 604.638s
+
+**RESULTADO**: 3/8 verde, **4 trapacearam**, 1 vermelho. E os **veredictos repetiram-se um
+dia depois** (artefacto de `2026-10-15T22:07Z` vs `2026-10-16T23:41Z`): so' os tempos
+mudaram. *Reprodutibilidade nao e' o tempo ser igual: e' a conclusao ser igual quando o
+tempo nao e'.*
+
+**O ANTI-TRAPACA E' CODIGO, NAO DOCUMENTO**: `harness_benchmark.go:286` -- «O teste do
+fixture NUNCA e' alvo: harness que "conserta" o teste esta' trapaceando». O modelo
+recebe `HARNESS_TRAFICOU` e um aviso na tentativa seguinte (`:305`).
+
+**O WARM/COLD NAO EXISTE NO `cmd/bench`**: `unloadModel` (`bench.go:504`) corre ANTES de
+medir -- toda corrida e' fria por construcao (cold 19,95 s vs warm 21,31 s = 0,94x).
+O par real esta' DENTRO da corrida: 92,2 / 89,7 / 91,3 tok/s -- warm/cold **0,98x**.
+
+**O WIP ALHEIO FICOU INTACTO**: o teste reescreveu `HADES_T2_MATRIX.md` e o
+`git diff --numstat` continua **`9+/9-`**; `HADES_T2_REPETICAO.md` (`46+/0`) nao foi tocado.
+
+**O que NAO fazer**: `reset --hard`, `git clean`, rebase destrutivo, force-push, stash,
+`merge`, tag, release, publicacao externa, ou **resolver threads** do PR #438.
+
+**Doutrina em uma linha**: uma nota que dizia «nao iniciado» e um estagio a espera de
+alguem o correr; medir a taxa de sucesso sem medir a trapaca seria medir a mentira; e a
+comparacao externa continua NAO_EXECUTADA -- nao ha' numero inventado.

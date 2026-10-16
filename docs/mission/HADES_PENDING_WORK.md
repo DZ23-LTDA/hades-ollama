@@ -1418,3 +1418,29 @@ O #8 foi fechado com a contraprova que faltava: **o teste a correr** (`ok … 5.
 - ligação da extensão ao **Mission Control** (`missao` fica a `null`);
 - APK Android bloqueado pela DLL JNI (`E-1019`);
 - macOS/iOS `BLOCKED_EXTERNAL` pela **máquina**.
+
+### O que falta (actualizado na janela `E-1047`)
+
+**Fechado**: o ESTÁGIO 21 foi **medido**. A matriz T2 real correu com dois modelos locais
+(`PASS`, 599,88 s), os veredictos repetiram-se um dia depois, e o `cmd/bench` mediu o
+Ollama directo (`load` 19,95 s · `ttft` 20,00 s · `prefill` 1445 tok/s · `generate`
+92,17 tok/s).
+
+**Continua em falta, sem disfarce**:
+- **a repetição (`HADES_T2_REPETICAO.md`, `46+/0`) não foi corrida nesta janela** -- o
+  número é do WIP e **está por revalidar**;
+- **nenhuma comparação externa foi executada** -- `NAO_EXECUTADA`, não `PARITY_MEASURED`;
+- **a taxa é 3/8** com modelos locais de 3–7B: *um modelo, um host, uma quantização*;
+- **sem GPU/VRAM medidos por época** -- só tempo de parede;
+- **o warm/cold do `cmd/bench` não existe** (frio por construção, `bench.go:504`);
+- **as 14 threads do PR continuam abertas** -- não resolvi nenhuma (proibido);
+- **o encaixe da aprovação continua por ligar** (`E-1044`);
+- **shadow roots fechados**, **cross-origin**, `document.domain`, `srcdoc`: como no `E-1040`;
+- **BFCache** sem execução observada (`E-1038`);
+- **o Chrome real do utilizador**: a versão 155 **não carrega** por `--load-extension`;
+- **Firefox** e **Safari**;
+- **sem `.crx`, sem assinatura, sem SBOM do pacote**;
+- **`CAPACIDADES` VAZIO**: o Companion **não** controla o PC;
+- ligação da extensão ao **Mission Control** (`missao` fica a `null`);
+- APK Android bloqueado pela DLL JNI (`E-1019`);
+- macOS/iOS `BLOCKED_EXTERNAL` pela **máquina**.

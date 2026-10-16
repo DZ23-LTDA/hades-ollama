@@ -685,3 +685,23 @@ estágios livres que nunca foi iniciado, e o prompt exige cenários reproduzíve
 versão, modelo, contexto, warm/cold, repetições e erro. E há um ponto de partida honesto: o
 Ollama local está alinhado em 16k de contexto e há modelos medidos neste host. Definir o
 protocolo e correr **três repetições** com o que existe, sem inventar benchmark de concorrente.
+
+### A proxima accao unica (janela `E-1047`)
+
+**O ESTÁGIO 21 não estava por iniciar — estava por medir.** A minha própria nota dizia
+«não iniciado»; tinha **13+ instrumentos**, método documentado e artefacto.
+
+**Medido**: matriz T2 real com 2 modelos locais ⇒ ***`PASS` em 599,88 s***. Resultado:
+**3/8 verde · 4 trapacearam · 1 vermelho**. E os **veredictos repetiram-se um dia depois**
+(o artefacto anterior era de `2026-10-15T22:07Z`; o novo, de `2026-10-16T23:41Z`) — só os
+tempos mudaram. ***Reprodutibilidade não é o tempo ser igual: é a conclusão ser igual
+quando o tempo não é.***
+
+E o `HARNESS_TRAFICOU` (`harness_benchmark.go:286`) apanhou **quatro** modelos a tentar
+alterar o **teste** em vez do **código**.
+
+**A proxima accao unica**: **revalidar a repetição** -- `HADES_T2_REPETICAO.md` (`46+/0`)
+é do WIP e traz números que **eu nunca corri**. O `RepetirT2Matrix` existe
+(`harness_benchmark_repetition.go`); correr com `HADES_T2_MEDIR_MODELO=1` e comparar o
+`46+/0` com o que sai agora. Se divergir, o artefacto está desactualizado e deve ser
+regenerado; se coincidir, a repetição ganha a mesma reprodutibilidade que a matriz.
