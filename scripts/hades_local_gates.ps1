@@ -303,4 +303,53 @@ $passos += 'ascii'
 # E-1022: o pacote da extensao entra no resumo. *Um passo que corre e nao aparece no resumo e'
 # um passo que ninguem sabe que correu* (o E-989, aplicado outra vez).
 $passos += 'pacote-extensao'
+
+# E-1031: o ID da extensao e o manifesto do native host. *O `allowed_origins` era um placeholder
+# (`REPLACE_WITH_EXTENSION_ID`) porque o ID so' existia depois de carregar a extensao no navegador.*
+# Com a chave publica versionada, o ID e' CALCULAVEL e a instalacao do host deixa de ser adivinhacao.
+'--- 15. ID deterministico da extensao e manifesto do native host'
+$saidaNh = & python -X utf8 scripts/hades_native_host.py --check-repo 2>&1
+$saidaNh | ForEach-Object { "    " + $_.ToString().Substring(0, [Math]::Min(110, $_.ToString().Length)) }
+if ($LASTEXITCODE -eq 3) {
+  '    BLOCKED_BY_EXTERNAL_DEPENDENCY: sem `python` -- declarado, nao e falha do produto'
+} elseif ($LASTEXITCODE -ne 0) {
+  $falhas.Add("hades_native_host.py --check-repo (exit $LASTEXITCODE)")
+  '    FALHA'
+} else { '    OK' }
+
+''
+'--- 16. testes do ID deterministico (com fault injection)'
+$saidaNhT = & python -X utf8 scripts/hades_native_host_test.py 2>&1
+$saidaNhT | Select-Object -Last 2 | ForEach-Object { "    " + $_.ToString().Substring(0, [Math]::Min(110, $_.ToString().Length)) }
+if ($LASTEXITCODE -eq 3) {
+  '    BLOCKED_BY_EXTERNAL_DEPENDENCY: sem `python`'
+} elseif ($LASTEXITCODE -ne 0) {
+  $falhas.Add("hades_native_host_test.py (exit $LASTEXITCODE)")
+  '    FALHA'
+} else { '    OK' }
+
+''
+if ($falhas.Count -gt 0) {
+  "GATES LOCAIS: $($falhas.Count) falha(s)"
+  $falhas | ForEach-Object { "  - $_" }
+  exit 1
+}
+$passos = @('gofmt', 'build')
+if (-not $SemLint) { $passos += 'lint' }
+if (-not $SemTestes) { $passos += 'testes' }
+# E-561: o escopo de `./app/...` entra no resumo SEMPRE - medido ou PULADO. Um resumo que omitisse o
+# passo pulado faria um gate de escopo menor parecer um gate de escopo maior.
+if ($appRodou) { $passos += 'app' } else { $passos += 'app-PULADO' }
+# E-989: o manifesto entra no resumo. *Um passo que corre e nao aparece no resumo e' um passo que
+# ninguem sabe que correu.*
+$passos += 'manifesto'
+$passos += 'marca'
+$passos += 'ascii'
+# E-1022: o pacote da extensao entra no resumo. *Um passo que corre e nao aparece no resumo e'
+# um passo que ninguem sabe que correu* (o E-989, aplicado outra vez).
+$passos += 'pacote-extensao'
+# E-1031: *o ID e o native host.* Um passo que corre e nao aparece no resumo e' um passo
+# que ninguem sabe que correu -- a mesma licao do E-989, aplicada pela terceira vez.
+$passos += 'native-host-id'
+$passos += 'native-host-testes'
 "GATES LOCAIS: $($passos -join ' + ') VERDES"

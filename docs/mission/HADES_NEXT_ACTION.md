@@ -400,3 +400,17 @@ respeita a fronteira. Tudo interno; a instalacao e' local e reversivel.
 
 Antes disso, o que o `E-1029` expos: a taxa e o estado do pairing vivem **em memoria** -- reiniciar o
 processo apaga-os. Persistir com escopo e apagar ao revogar e' o passo seguinte.
+
+### A proxima accao unica (janela `E-1031`)
+
+**O ID da extensao deixou de ser adivinhacao** (`E-1031`): e' derivado da chave publica
+versionada (`lbndhojeaplfofjmhdmlbocabojakddb`), o `manifest.json` tem `key`, e o native host
+**instala-se e desinstala-se de verdade** no registo do Windows -- medido: `registo SUJO: 0`.
+
+**A proxima accao unica**: **exercitar o host POR UM NAVEGADOR**. Instalei-o, mas **nunca abri
+o Chrome**. A prova que falta e' o E2E real: carregar a extensao em `chrome://extensions`,
+confirmar que o ID mostrado e' o esperado, e falar com o Companion por native messaging a serio.
+Sem isso, o que existe e' um protocolo correcto testado por subprocesso -- e nao um produto
+instalado num navegador.
+
+Antes disso: persistir a taxa e o estado do pairing (hoje vivem **em memoria**, `E-1029`).

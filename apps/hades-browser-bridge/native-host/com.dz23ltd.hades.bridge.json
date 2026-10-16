@@ -1,6 +1,15 @@
 {
+  "_comentario": [
+    "TEMPLATE do host de native messaging do HADES. NAO e' o manifesto usado:",
+    "o `path` tem de ser absoluto e o `allowed_origins` tem de ter o ID real da",
+    "extensao, ambos especificos da instalacao. O manifesto REAL e' gerado por",
+    "`scripts/hades_native_host_install.ps1`, que o escreve em",
+    "%LOCALAPPDATA%\\HADES\\NativeHost\\ e registra as chaves do navegador de forma",
+    "REVERSIVEL (INSTALACAO.json lista tudo o que foi criado).",
+    "ID esperado: derivado de `chave-publica.b64` -- rode `hades_native_host.py --check`."
+  ],
   "name": "com.dz23ltd.hades.bridge",
-  "description": "HADES Local Companion -- host de native messaging do HADES Browser Bridge (NAO INSTALADO; template).",
+  "description": "HADES Local Companion (NAO PUBLICADO, NAO ASSINADO).",
   "path": "REPLACE_WITH_ABSOLUTE_PATH_TO_HADES_COMPANION",
   "type": "stdio",
   "allowed_origins": [

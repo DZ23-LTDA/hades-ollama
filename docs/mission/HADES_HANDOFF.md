@@ -734,3 +734,44 @@ tag, release, publicacao externa, ou **resolver threads** do PR #438.
 
 **Doutrina em uma linha**: medir antes de afirmar; o `stdout` e' o fio; uma resposta sem `id` e' um
 pedido que nunca termina; e tres sondas verdes que medem a mesma coisa continuam a ser uma sonda.
+
+### Instrucoes de retomada (janela `E-1031`)
+
+**Estado**: branch `fix/checker-relogio`; cabeca do indice `E-1031`; PR #438 **aberto** e **nao
+tocado**; `reviewDecision` **vazio** => sem revisao humana independente.
+
+**O native host agora INSTALA-SE** (e desinstala-se):
+  powershell -NoProfile -ExecutionPolicy Bypass -File scripts\hades_native_host_install.ps1 -Diagnostico
+  powershell -NoProfile -ExecutionPolicy Bypass -File scripts\hades_native_host_install.ps1
+  powershell -NoProfile -ExecutionPolicy Bypass -File scripts\hades_native_host_install.ps1 -Desinstalar
+
+Escreve SO' no `HKCU` (Chrome + Edge), **nunca** pede elevacao, e grava `INSTALACAO.json`
+listando o que criou -- o `-Desinstalar` remove exactamente isso.
+
+**O ID da extensao e' DETERMINISTICO** (nao precisa de navegador para o saber):
+  python -X utf8 scripts\hades_native_host.py --check
+  # id=lbndhojeaplfofjmhdmlbocabojakddb  (derivado de native-host/chave-publica.b64)
+
+Se um dia a `chave-publica.b64` mudar, o ID muda e o `allowed_origins` **tem** de ser regerado --
+o `--check` acusa (`MANIFESTO DIVERGE`).
+
+**NUNCA versione o manifesto REAL**: ele tem o caminho absoluto da maquina. O que esta' no Git e'
+a chave publica, o gerador e o instalador. O template do repo tem placeholders de proposito.
+
+**A chave PRIVADA de distribuicao esta' fora do Git** (`_tmp/ext-chave-privada.pem`). Sem ela nao
+se empacota um `.crx` com o mesmo ID. **Nunca** a imprima nem a mova para o repo.
+
+**O que ainda NAO foi provado**: o host a falar com um navegador a serio. Instalei-o e
+desinstalei-o; **nao abri o Chrome**. O E2E real e' o proximo passo.
+
+**Bateria**: agora com **23 passos** -- os passos 15 (`native-host-id`) e 16
+(`native-host-testes`) entraram, e a catraca de orfaos fecha com `ORFAO 0`.
+
+**DUAS CATRACAS COMPLEMENTARES**: `hades_index_shape_check.py` varre o **indice**;
+`hades_mission_check.py` varre **todo o codigo**. **Um ID novo continua do MAIOR cunhado.**
+
+**O que NAO fazer**: `reset --hard`, `git clean`, rebase destrutivo, force-push, stash, `merge`,
+tag, release, publicacao externa, ou **resolver threads** do PR #438.
+
+**Doutrina em uma linha**: um ID que se deriva nao se adivinha; um manifesto com caminho absoluto
+nao se versiona; instalar nao e' publicar; e uma catraca so' vale depois de ter ficado vermelha.

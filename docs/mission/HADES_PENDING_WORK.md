@@ -966,3 +966,26 @@ como erro. Tres sondas passaram antes de a quarta o revelar -- nenhuma correlaci
 - APK Android bloqueado pela DLL JNI neste host (`E-1019`), desbloqueio = runner Linux;
 - macOS/iOS `BLOCKED_EXTERNAL` pela **maquina**, nao pela credencial;
 - benchmark reproduzivel (ESTAGIO 21) nao iniciado.
+
+### O que falta (actualizado na janela `E-1031`)
+
+**Fechado**: o `allowed_origins` **deixou de ser placeholder** (`E-1031`). O ID e' derivado da
+chave publica (`sha256` do DER, hex, `0-f` -> `a-p`), o `manifest.json` tem `key`, o host
+instala-se no `HKCU` para Chrome e Edge com manifesto em `%LOCALAPPDATA%`, e o `-Desinstalar`
+deixa **zero** registo sujo -- medido. 25 assercoes, com 3 fault injections que provam a catraca.
+
+**Continua em falta, sem disfarce**:
+- **o host nao foi exercitado por um navegador**: instalei-o e desinstalei-o, mas **nao abri o
+  Chrome**. O E2E real (carregar a extensao, ver o ID, falar por native messaging) e' o proximo
+  passo e e' o que separa «protocolo correto» de «produto instalado»;
+- **Firefox**: nao usa registo do Windows; o `.xpi` continua por fazer;
+- **Safari**: alvo separado, exige macOS/Xcode e projeto proprio;
+- **sem `.crx`, sem assinatura, sem SBOM do pacote**;
+- **a chave privada de distribuicao esta' fora do Git** (`_tmp/ext-chave-privada.pem`): sem ela
+  nao se empacota um `.crx` com o MESMO ID; quem for empacotar precisa dela ou de outra chave;
+- **taxa e pairing em memoria** -- reiniciar o processo do Companion apaga-os;
+- sem TLS de loopback, sem rate-limit do SO, sem DNS rebinding a nivel de socket;
+- ligacao da extensao ao **Mission Control** (`missao`/`aprovado` ficam a `null`);
+- APK Android bloqueado pela DLL JNI (`E-1019`), desbloqueio = runner Linux;
+- macOS/iOS `BLOCKED_EXTERNAL` pela **maquina**, nao pela credencial;
+- benchmark reproduzivel (ESTAGIO 21) nao iniciado.
