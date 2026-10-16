@@ -41,6 +41,7 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -123,6 +124,82 @@ NAO_ASCII = re.compile(r"[^\x00-\x7F]")
 COMENTARIO = re.compile(r"^\s*#")
 
 
+def _git(*args: str) -> str | None:
+    try:
+        saida = subprocess.run(
+            ["git", *args], cwd=RAIZ, capture_output=True, text=True,
+            encoding="utf-8", errors="replace", timeout=60, check=False,
+        )
+        return saida.stdout if saida.returncode == 0 else None
+    except (OSError, subprocess.SubprocessError):
+        return None
+
+
+def _git_bytes(*args: str) -> bytes | None:
+    try:
+        saida = subprocess.run(["git", *args], cwd=RAIZ, capture_output=True, timeout=60, check=False)
+        return saida.stdout if saida.returncode == 0 else None
+    except (OSError, subprocess.SubprocessError):
+        return None
+
+
+def ficheiros_sujos() -> set[str]:
+    """Os `.ps1` que diferem do `HEAD` -- *numa so' chamada ao Git* (licao do `E-997`)."""
+    saida = _git("status", "--porcelain=v1", "--untracked-files=no")
+    if saida is None:
+        return set()
+    sujos: set[str] = set()
+    for linha in saida.splitlines():
+        if len(linha) < 4:
+            continue
+        caminho = linha[3:].strip().strip('"')
+        if " -> " in caminho:
+            caminho = caminho.split(" -> ", 1)[1].strip().strip('"')
+        if caminho.lower().endswith(".ps1"):
+            sujos.add(caminho)
+    return sujos
+
+
+def rastreados_ps1() -> list[str] | None:
+    """Os `.ps1` **que estao' no Git** (`git ls-files`). `None` se nao houver git.
+
+    **E-998, e a medicao decidiu**: eu tinha declarado, no `E-997`, que este checker era a
+    *«quinta instancia»* do defeito «mede o disco». Medido **antes** de o corrigir:
+
+    - `.ps1` no disco: **11**; `.ps1` rastreados: **11** -- *o mesmo conjunto*;
+    - `.ps1` sujos: **nenhum**;
+    - soma de bytes > 127: **disco 149, HEAD 149** -- **diferenca 0**.
+
+    => *logo ele **passa** hoje* -- **mas por sorte de estado, e nao por construcao**: *bastava
+    **um** `.ps1` sujo com acentos, e o `--check` falharia no CI* -- *e foi exactamente o que o
+    `E-992` encontrou, 34 caracteres nao-ASCII em string no `install.ps1`*.
+
+    *A cura e' a mesma do `E-997`, e responde a' **segunda pergunta*** (*«o ficheiro que eu leio
+    esta' commitado?»*): **medir o conjunto rastreado, lendo do `HEAD` o que estiver sujo** =>
+    *o resultado passa a ser **o mesmo** aqui e no CI, independentemente do WIP local.*
+    """
+    saida = _git("ls-files", "*.ps1")
+    if saida is None:
+        return None
+    return [l.strip() for l in saida.splitlines() if l.strip()]
+
+
+def conteudo_medido(rel: str, sujos: set[str]) -> tuple[bytes, str]:
+    """Devolve `(bytes, origem)` do ficheiro, **preferindo o commitado** quando ele esta' sujo.
+
+    *Um ficheiro limpo no disco e', por definicao, o que esta' no `HEAD`* => *so' os sujos vao
+    ao Git* => *e o resultado deixa de depender do WIP local.*
+    """
+    if rel in sujos:
+        dados = _git_bytes("show", "HEAD:%s" % rel)
+        if dados is not None:
+            return dados, "HEAD (sujo no disco)"
+    try:
+        return (RAIZ / rel).read_bytes(), "disco (limpo)"
+    except OSError:
+        return b"", "ilegivel"
+
+
 def classificar(linha: str) -> str:
     """Diz se a linha e' **comentario** ou **codigo** (string/expressao).
 
@@ -156,15 +233,44 @@ def medir(caminho: Path) -> dict:
 
 
 def varrer() -> dict[str, dict]:
+    """Mede os `.ps1` **rastreados** pelo Git, nao os que estao no disco (E-998).
+
+    *Antes desta cura o `varrer()` usava `RAIZ.rglob("*.ps1")`* => *media o **disco*** => *e o
+    CI mede o **checkout*** => *logo um `.ps1` sujo com acentos mudaria o resultado entre a
+    minha maquina e o CI*. => **medido**: o conjunto era o mesmo (**11**) e nao havia sujos, e a
+    soma dava **149 = 149** => *passava **por sorte de estado***.
+
+    *Agora mede-se o que o Git tem* -- e um `.ps1` **nao rastreado** (novo, esquecido no
+    `git add`) **deixa de esconder** o defeito: *ele nem entra na medicao, e o resumo diz
+    quantos foram medidos* => *que e' a informacao que faltava para notar a ausencia.*
+    """
     medido: dict[str, dict] = {}
-    for caminho in sorted(RAIZ.rglob("*.ps1")):
-        rel = caminho.relative_to(RAIZ).as_posix()
-        if "_tmp/" in rel or "node_modules/" in rel:
+    sujos = ficheiros_sujos()
+    rastreados = rastreados_ps1()
+    if rastreados is None:
+        # Sem git: cai para o disco, **dizendo-o** (*um instrumento que nao corre nao prova
+        # nada; um que rebenta por falta de git seria pior*).
+        for caminho in sorted(RAIZ.rglob("*.ps1")):
+            rel = caminho.relative_to(RAIZ).as_posix()
+            if "_tmp/" in rel or "node_modules/" in rel:
+                continue
+            try:
+                medido[rel] = medir(caminho)
+            except OSError:
+                continue
+        return medido
+    for rel in rastreados:
+        dados, origem = conteudo_medido(rel, sujos)
+        if not dados:
             continue
-        try:
-            medido[rel] = medir(caminho)
-        except OSError:
-            continue
+        linhas = dados.decode("utf-8", errors="replace").splitlines()
+        contagem = {"comentario": 0, "codigo": 0}
+        for linha in linhas:
+            n = len(NAO_ASCII.findall(linha))
+            if n:
+                contagem[classificar(linha)] += n
+        medido[rel] = {"comentario": contagem["comentario"], "codigo": contagem["codigo"],
+                       "mojibake": mojibake(linhas), "origem": origem}
     return medido
 
 
