@@ -259,7 +259,12 @@ async function tratarAccao(mensagem) {
 
   // e a origem do alvo tem de continuar a ser a concedida
   if (mensagem.url) {
-    const rota = guardarRota(mensagem.url, [concessao.origem]);
+    // `E-1035`: o `guardarRota` valida o URL com `validarUrl` -- e era o **TERCEIRO**
+    // local a faze-lo **sem o opt-in**, depois de o `conectarAbaAtiva` e o `tabs.onUpdated`
+    // ja' terem sido curados. *Curar dois de tres sitios deixa o terceiro a recusar o que
+    // os outros aceitam* -- e o sintoma, medido, foi uma concessao viva a receber
+    // `rede_privada_sem_optin`.
+    const rota = guardarRota(mensagem.url, [concessao.origem], { permitirPrivado: await lerOptIn() });
     if (!rota.ok) return rota;
   }
 

@@ -463,3 +463,18 @@ como gesto humano. O agente escrevia **uma vez** e perdia o controlo por sua pr�
 `tabs.onUpdated` e **não tem E2E**: navegar de `127.0.0.1` para outra origem deve revogar a
 concessão, limpar o badge e recusar a acção seguinte -- e o mesmo para outra **aba** com a
 mesma origem (que deve continuar concedida). Tudo interno, na mesma página local.
+
+### A proxima accao unica (janela `E-1035`)
+
+**A revogação por mudança de origem funciona** (`E-1035`): a aba que navega para outra
+origem perde a concessão, o badge limpa e a acção é recusada -- e a **aba vizinha, na
+mesma origem, continua concedida**. Voltar não restaura.
+
+E o E2E expôs o **terceiro** local do mesmo defeito: o `tratarAccao` validava a URL do
+alvo **sem o opt-in** -- `curar dois de três sítios deixa o terceiro a recusar o que os
+outros aceitam`. O sintoma era incoerência: a mesma origem concedia e depois recusava.
+
+**A proxima accao unica**: **procurar os chamadores, não o sintoma**. Fazer um teste que
+**falhe se um novo local validar URL sem o opt-in** -- isto é, uma catraca sobre o
+**código**, e não sobre o resultado. O defeito apareceu três vezes; a cura pontual não o
+fecha. Tudo interno.

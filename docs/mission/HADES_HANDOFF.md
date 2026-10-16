@@ -882,3 +882,36 @@ vazio vale mais do que dez documentos a dizer que a recusa existe.
 **Doutrina em uma linha**: um scope declarado sem implementacao e' pior do que um scope
 ausente; a automacao pode accionar o travao que existe para a travar; e distinguir QUEM
 escreve e' a diferenca entre um travao e um obstaculo.
+
+### Instrucoes de retomada (janela `E-1035`)
+
+**Estado**: branch `fix/checker-relogio`; cabeca do indice `E-1035`; PR #438 **aberto** e
+**nao tocado**; `reviewDecision` **vazio** => sem revisao humana independente.
+
+**Bateria: 27 passos.** QUATRO E2E entram por **opt-in** (`-ComE2E`), porque abrem o Edge:
+  powershell -NoProfile -ExecutionPolicy Bypass -File scripts\hades_local_gates.ps1 -ComE2E
+
+**Os quatro E2E, sozinhos** (todos exit 0):
+  node scripts/hades_browser_bridge_e2e.mjs            # canal: extensao <-> Companion
+  node scripts/hades_browser_bridge_e2e_aba.mjs        # aba: DOM, escrita, RECUSA, badge
+  node scripts/hades_browser_bridge_e2e_takeover.mjs   # takeover: o agente PARA
+  node scripts/hades_browser_bridge_e2e_origem.mjs     # origem: navegar revoga
+
+**TRES LOCAIS, UM DEFEITO** (`E-1033` -> `E-1035`): o opt-in de rede privada nao era
+passado ao `validarUrl`. Curei o `conectarAbaAtiva` e o `tabs.onUpdated`; o `tratarAccao`
+ficou. *Curar dois de tres sitios deixa o terceiro a recusar o que os outros aceitam.*
+=> **procure TODOS os chamadores, nao o que falhou.**
+
+**Limitacao que NAO foi testada e pode ser buraco real**: `history.pushState` nao dispara
+`tabs.onUpdated` com URL novo, logo um SPA que mude de origem por History API **nao** seria
+revogado. Registado como divida, nao como coberto.
+
+**DUAS CATRACAS COMPLEMENTARES**: `hades_index_shape_check.py` varre o **indice**;
+`hades_mission_check.py` varre **todo o codigo**. **Um ID novo continua do MAIOR cunhado.**
+
+**O que NAO fazer**: `reset --hard`, `git clean`, rebase destrutivo, force-push, stash,
+`merge`, tag, release, publicacao externa, ou **resolver threads** do PR #438.
+
+**Doutrina em uma linha**: codigo de seguranca sem teste e' uma promessa; curar o sintoma
+que se mediu nao fecha a classe do defeito; e um SPA que muda de origem sem disparar
+`onUpdated` e' uma pergunta em aberto, nao uma resposta.

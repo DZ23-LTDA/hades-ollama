@@ -376,6 +376,20 @@ if ($ComE2E) {
 }
 
 ''
+# E-1035: a revogacao por MUDANCA DE ORIGEM. *Codigo de seguranca sem teste e' uma promessa.*
+'--- 20. E2E DE ORIGEM: navegar para outra origem revoga, a outra aba continua'
+if ($ComE2E) {
+  $saidaOg = & node scripts/hades_browser_bridge_e2e_origem.mjs 2>&1
+  $saidaOg | Select-Object -Last 3 | ForEach-Object { "    " + $_.ToString().Substring(0, [Math]::Min(110, $_.ToString().Length)) }
+  if ($LASTEXITCODE -ne 0) {
+    $falhas.Add("hades_browser_bridge_e2e_origem.mjs (exit $LASTEXITCODE)")
+    '    FALHA'
+  } else { '    OK' }
+} else {
+  '    PULADO (opt-in: use -ComE2E)'
+}
+
+''
 if ($falhas.Count -gt 0) {
   "GATES LOCAIS: $($falhas.Count) falha(s)"
   $falhas | ForEach-Object { "  - $_" }
@@ -401,4 +415,5 @@ $passos += 'native-host-id'
 $passos += 'native-host-testes'
 $passos += 'e2e-aba'
 $passos += 'e2e-takeover'
+$passos += 'e2e-origem'
 "GATES LOCAIS: $($passos -join ' + ') VERDES"
