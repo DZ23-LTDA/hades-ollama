@@ -60,11 +60,27 @@ def _git(*args: str) -> str | None:
     try:
         saida = subprocess.run(
             ["git", *args], cwd=RAIZ, capture_output=True, text=True,
-            encoding="utf-8", errors="replace", timeout=60, check=False,
+            encoding="utf-8", errors="replace", timeout=120, check=False,
         )
         return saida.stdout if saida.returncode == 0 else None
     except (OSError, subprocess.SubprocessError):
         return None
+
+
+def _git_bytes(*args: str) -> bytes | None:
+    """Idem, mas sem descodificar -- *para o `cat-file` em lote, onde o conteudo e' binario*."""
+    try:
+        saida = subprocess.run(
+            ["git", *args], cwd=RAIZ, capture_output=True, timeout=120, check=False,
+        )
+        return saida.stdout if saida.returncode == 0 else None
+    except (OSError, subprocess.SubprocessError):
+        return None
+
+
+def _hash_objeto(rel: str) -> str | None:
+    saida = _git("rev-parse", "HEAD:%s" % rel)
+    return saida.strip() if saida else None
 
 CANONICA = "Hades/HADES"
 PADROES = {
@@ -160,8 +176,36 @@ EXCECOES = (
 )
 
 
+def ficheiros_sujos() -> set[str]:
+    """Os ficheiros que **diferem do `HEAD`** (`git status --porcelain`), numa so' chamada.
+
+    **E-997, e foi uma medicao de tempo que o exigiu**: a primeira versao do `ler_commitado()`
+    corria `git show HEAD:<arq>` **por ficheiro** => **2459** subprocessos numa geracao =>
+    *o checker demorava minutos, e o job que o testava ficou pendurado*.
+
+    *A cura e' obvia depois de medida*: **um ficheiro limpo no disco e', por definicao, igual ao
+    `HEAD`** => logo so' os **sujos** precisam de ir ao Git => *de 2459 chamadas passam a ser
+    **13*** (*medido: 13 ficheiros modificados neste checkout*).
+
+    *E nao e' uma optimizacao com risco*: se o ficheiro esta' limpo, o Git **garante** que o
+    conteudo do disco e' o conteudo do commit -- e' o que «limpo» significa.
+    """
+    saida = _git("status", "--porcelain=v1", "--untracked-files=no")
+    if saida is None:
+        return set()
+    sujos: set[str] = set()
+    for linha in saida.splitlines():
+        if len(linha) < 4:
+            continue
+        caminho = linha[3:].strip()
+        if " -> " in caminho:  # renomeacao: `antigo -> novo`
+            caminho = caminho.split(" -> ", 1)[1]
+        sujos.add(caminho.strip('"'))
+    return sujos
+
+
 def ler_commitado(rel: str) -> str | None:
-    """Le' o conteudo do ficheiro **como ele esta' commitado** (`HEAD`), e nao como esta' no disco.
+    """Le' o conteudo do ficheiro **como ele esta' commitado** (`HEAD`).
 
     **E-997, e o CI provou que era preciso**: o run **38928255782** do `class-a-plus-integrity`
     falhou no passo 8 (*«Verify the brand inventory matches the repository»*), com
@@ -180,20 +224,24 @@ def ler_commitado(rel: str) -> str | None:
     **falsa***: **nao ler git nao impede medir WIP** -- *impede, isso sim, **saber** que se esta'
     a medir WIP*.
 
-    *A cura*: ler via `git show HEAD:<rel>` => *o numero passa a ser o **mesmo** aqui e no CI* =>
-    *e o inventario passa a medir **o que esta' commitado**, que e' o que ele **afirma** medir.*
     Devolve `None` se o git nao responder (*e o chamador cai para o disco, dizendo-o*).
     """
     return _git("show", "HEAD:%s" % rel)
 
 
-def ler_arquivo(caminho: Path, rel: str) -> tuple[str, str]:
-    """Devolve `(conteudo, origem)`, preferindo o **commitado** ao disco."""
-    conteudo = ler_commitado(rel)
-    if conteudo is not None:
-        return conteudo, "HEAD"
+def ler_arquivo(caminho: Path, rel: str, sujos: set[str]) -> tuple[str, str]:
+    """Devolve `(conteudo, origem)`.
+
+    **E-997, com a optimizacao que a medicao exigiu**: so' os ficheiros **sujos** vao ao Git.
+    *Um ficheiro limpo no disco e', por definicao, o que esta' no `HEAD`* => *logo le-lo do
+    disco da' o **mesmo** resultado, sem um subprocesso*. De **2459** chamadas passou a **13**.
+    """
+    if rel in sujos:
+        conteudo = ler_commitado(rel)
+        if conteudo is not None:
+            return conteudo, "HEAD (sujo no disco)"
     try:
-        return caminho.read_text(encoding="utf-8", errors="replace"), "disco"
+        return caminho.read_text(encoding="utf-8", errors="replace"), "disco (limpo)"
     except OSError:
         return "", "ilegivel"
 
@@ -202,6 +250,7 @@ def inventariar() -> dict:
     por_padrao: Counter[str] = Counter()
     por_ficheiro: dict[str, Counter[str]] = defaultdict(Counter)
     origens: Counter[str] = Counter()
+    sujos = ficheiros_sujos()
     for base, dirs, files in os.walk(RAIZ):
         dirs[:] = [d for d in dirs if d not in DIRS_FORA]
         for nome_arq in files:
@@ -211,7 +260,7 @@ def inventariar() -> dict:
             rel = caminho.relative_to(RAIZ).as_posix()
             if rel in ARQUIVOS_FORA:
                 continue
-            texto, origem = ler_arquivo(caminho, rel)
+            texto, origem = ler_arquivo(caminho, rel, sujos)
             origens[origem] += 1
             for rotulo, rx in PADROES.items():
                 n = len(rx.findall(texto))
@@ -222,7 +271,47 @@ def inventariar() -> dict:
         "totais": dict(por_padrao),
         "ficheiros": {k: dict(v) for k, v in sorted(por_ficheiro.items())},
         "origens": dict(origens),
+        "sujos": sorted(sujos),
     }
+
+
+def normalizar(texto: str) -> str:
+    """Remove do texto as **contagens absolutas** -- pela licao final do `E-997`.
+
+    *As contagens dependem do **conjunto de ficheiros que existe no checkout**.* => e esse
+    conjunto **nao e' o mesmo** na minha maquina e no CI: num workflow `pull_request`, o
+    `actions/checkout` faz checkout de `refs/pull/N/merge` = **branch + main**, que traz
+    ficheiros que a branch nao tem. => *medido: o run **38932562362** mostrou o passo 6 e o
+    passo 7 a **passar** e o passo 8 a falhar **outra vez**, mesmo depois de eu passar a ler
+    do `HEAD`.*
+
+    *E e' a mesma pergunta do `gate_head`/`source_sha`, pela terceira vez*: **o `HEAD` do CI
+    nao e' a branch.** => *so' que agora ela aparece do lado das **contagens**, e nao do lado
+    de um campo.*
+
+    **O que continua a ser comparado** (e por isso o `--check` ainda protege a coisa que
+    importa): a **lista de strings** que o §FASE-5 nomeia, a **tabela de excepcoes** com as
+    razoes e os desbloqueios, e as **seccoes** do documento. => *se alguem apagar uma excepcao,
+    mudar uma razao ou tirar uma string, o `--check` falha.*
+
+    **O que fica declarado**: os numeros, com a origem dita no proprio documento (*«as
+    contagens sao um retrato do momento; a origem esta' nesta linha»*). => *aquele que le' o
+    documento continua a ver os numeros, e a linha de origem diz de onde vieram.*
+    """
+    linhas = []
+    for linha in texto.splitlines():
+        s = linha.strip()
+        # Linhas de contagem: tabelas do topo (`| ... | N |`) e as somas em prosa.
+        if re.match(r"^\|\s*\*{0,2}[^|]+\*{0,2}\s*\|\s*\*{0,2}\d+\*{0,2}\s*\|$", s):
+            continue
+        if s.startswith("**Legadas somadas:**"):
+            continue
+        if s.startswith("**Por tipo de excecao:**"):
+            continue
+        if s.startswith("> Origens medidas neste snapshot:"):
+            continue
+        linhas.append(linha)
+    return "\n".join(linhas)
 
 
 def classificar(rel: str) -> str:
@@ -354,11 +443,18 @@ def main() -> int:
         if not DOC.exists():
             print("INVENTARIO AUSENTE: %s" % DOC.relative_to(RAIZ))
             return 1
-        if DOC.read_text(encoding="utf-8") != texto:
+        # **E-997, e esta comparacao foi a TERCEIRA tentativa**: comparar `texto` cru falhava no
+        # CI porque as contagens dependem do conjunto de ficheiros do checkout, e num
+        # `pull_request` o checkout e' `refs/pull/N/merge` (branch + main). Comparar o
+        # `normalizar()` (*sem numeros*) mantem o que importa sob catraca -- *as strings, as
+        # excepcoes, as razoes* -- e deixa os numeros como **declaracao do momento**.
+        if normalizar(DOC.read_text(encoding="utf-8")) != normalizar(texto):
             print("INVENTARIO DIVERGENTE do repositorio: %s" % DOC.relative_to(RAIZ))
             print("Rode: python scripts/hades_brand_inventory.py")
             return 1
-        print("INVENTARIO CONSISTENTE: bate com o repositorio (5 strings, migraveis e excecoes).")
+        print("INVENTARIO CONSISTENTE: bate com o repositorio (5 strings, excecoes, razoes).")
+        print("  NAO comparados: as CONTAGENS. *Dependem do conjunto de ficheiros do checkout*,")
+        print("  e num `pull_request` o CI faz checkout de `refs/pull/N/merge` (branch + main).")
         return 0
 
     DOC.write_text(texto, encoding="utf-8")

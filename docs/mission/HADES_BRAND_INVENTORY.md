@@ -11,11 +11,11 @@
 > modificados** com **24** ocorrencias de marca que **nao existem no commit**, e o inventario
 > divergia entre a minha maquina e o CI. => *um instrumento que mede o disco mede **tambem o
 > trabalho nao commitado** -- e publica um numero que so' e' verdadeiro onde foi gerado.*
-> Origens medidas neste snapshot: `HEAD`: 2459.
+> Origens medidas neste snapshot: `HEAD (sujo no disco)`: 14, `disco (limpo)`: 2445.
 
 | String | Ocorrencias |
 | --- | --- |
-| **Hades/HADES** (canonica) | **915** |
+| **Hades/HADES** (canonica) | **918** |
 | DZ23 Agentic | 191 |
 | Ollama Full | 167 |
 | Ollama Classe A+ | 85 |
