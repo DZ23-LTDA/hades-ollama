@@ -287,23 +287,8 @@ function checkEnv {
         $script:HIP_PATH=$script:HIP_PATH_V6
     }
     
-    # E-938: o Inno Setup tem DUAS instalacoes possiveis, e a antiga so' procurava a primeira.
-    #
-    # Medido: o `ISCC.exe` deste host esta' em
-    #   %LOCALAPPDATA%\Programs\Inno Setup 6\ISCC.exe
-    # - a instalacao POR UTILIZADOR, que o Inno Setup 6 oferece por omissao e que nao exige
-    # administrador. A versao anterior procurava apenas `C:\Program Files*\Inno Setup*\`, logo
-    # `$inoSetup` ficava vazio, `INNO_SETUP_DIR` ficava `$null`, e o `installer` (`:1058-1060`)
-    # abortava com "missing Inno Setup installation directory" - *apesar de o compilador
-    # existir e funcionar*.
-    #
-    # *Nao e' bloqueio externo: e' o script a procurar no sitio errado. Conserva-se a ordem
-    # antiga (maquina inteira primeiro) para nao mudar o comportamento onde ja' funcionava.*
-    $inoSetup=@(Get-Item "C:\Program Files*\Inno Setup*\" -ErrorAction SilentlyContinue)
-    if ($inoSetup.Length -eq 0) {
-        $inoSetup=@(Get-Item (Join-Path $env:LOCALAPPDATA "Programs\Inno Setup*") -ErrorAction SilentlyContinue)
-    }
-    if ($inoSetup.Length -gt 0) {
+    $inoSetup=(get-item "C:\Program Files*\Inno Setup*\")
+    if ($inoSetup.length -gt 0) {
         $script:INNO_SETUP_DIR=$inoSetup[0]
     }
 

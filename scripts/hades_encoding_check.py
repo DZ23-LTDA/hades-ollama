@@ -43,11 +43,7 @@ from pathlib import Path
 BOM_UTF8 = b"\xef\xbb\xbf"
 
 EXTENSOES = {".go", ".md", ".py", ".ts", ".tsx", ".js", ".mjs", ".json", ".yaml", ".yml", ".txt", ".ps1", ".sh"}
-# `test-results` e `playwright-report` sao GERADOS pelo Playwright dentro de `app/ui/app/`. Sem eles nesta
-# lista, os artefactos da suite E2E (`test-results/.last-run.json` tem extensao `.json`, que esta' em
-# EXTENSOES) entram na contagem — e o numero «N arquivo(s) medido(s)» passa a variar com o que a ultima
-# execucao deixou no disco, em vez de ser funcao do repositorio. Medido em 15/10: 2453 com o artefacto.
-IGNORAR_DIR = {"node_modules", ".git", "_tmp", "dist", "build", "vendor", ".next", "coverage", "testdata", "__pycache__", "test-results", "playwright-report"}
+IGNORAR_DIR = {"node_modules", ".git", "_tmp", "dist", "build", "vendor", ".next", "coverage", "testdata", "__pycache__"}
 
 # Padrões de dupla codificação: UTF-8 lido como Latin-1. O travessão vira a sequência de dois bytes.
 PADROES = ["Ã§", "Ãµ", "Ã£", "Ã©", "Ã¡", "Ã­", "Ã³", "Ãº", "Ã¢", "Ãª", "Ã´", "Ã ", "Ã‡", "Ã‰", "â€", "Âº", "Âª", "Ãƒ"]

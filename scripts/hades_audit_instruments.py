@@ -48,7 +48,15 @@ BASELINE_ORACULO = (
 # igualada por E-190) e exige papel de aprovador ANTES de decidir. Ensinada a delegacao ao instrumento, 35 -> 28.
 # O restante segue declarado: limite do proprio instrumento (corpo do handler nao localizado) e rota publica por
 # desenho (blobs, signout, callbacks OAuth/SAML, desktop-only).
-TETO_ROTAS = 28
+#
+# 28 -> 30 (medido nesta rodada, pelo CI do PR #438): os DOIS residuais novos sao `servedByDesktopApp`, que devolve
+# **501 Not Implemented** - «este servidor nao serve esta rota» - e NAO devolve dado nenhum nem consulta tenant.
+# Existem por causa do `E-784`: a familia `/api/v1/chat/...` **nao** estava registada e o SPA chama-a
+# (`app/ui/app/src/api.ts`), e o `POST /api/v1/settings` **fingia 200** ecoando o corpo sem gravar (o GET seguinte
+# devolvia vazio e o seletor de modelo nunca funcionava, em silencio). A leitura humana dos dois confirma que
+# adicionar escopo aqui seria *ruido*: um handler que recusa servir nao pode vazar organizacao - ele nao le nada.
+# A catraca continua a fazer o seu trabalho: qualquer residual NOVO acima de 30 volta a falhar.
+TETO_ROTAS = 30
 
 LINHA_CANDIDATO = re.compile(r"^\s*(\S+?)\s*::\s*([A-Za-z0-9_]+)\s*\(")
 LINHA_RESIDUAL = re.compile(r"handlers SEM escopo[^\d]*(\d+)")

@@ -97,7 +97,7 @@ class EscrituracaoTest(unittest.TestCase):
         """Texto duplamente codificado torna o documento ilegivel: precisa ser acusado."""
         alvo = self.tmp / "docs" / "mission"
         alvo.mkdir(parents=True, exist_ok=True)
-        (alvo / "COM_DEFEITO.md").write_text("objetivo: integrar com seguranÃ§a e sem [a-circ-duplo]nimo", encoding="utf-8")
+        (alvo / "COM_DEFEITO.md").write_text("objetivo: integrar com seguranÃ§a e sem Ã¢nimo", encoding="utf-8")
         problemas, resumo = verificador.verificar_mojibake(self.tmp)
         self.assertTrue(
             any("TEXTO CORROMPIDO" in p and "COM_DEFEITO.md" in p for p in problemas),
