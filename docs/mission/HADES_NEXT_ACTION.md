@@ -448,3 +448,18 @@ origem onde o content script era injectado era a única que o HADES não podia u
 protocolo e é o scope que falta exercitar: enquanto o utilizador digita, o agente **não**
 disputa o campo; pausar; devolver a sessão; e a revogação por **mudança de origem**
 (que tem código e não tem E2E). Tudo interno, na mesma página local.
+
+### A proxima accao unica (janela `E-1034`)
+
+**O takeover humano existe e funciona** (`E-1034`): quando o utilizador digita ou clica, o
+agente para -- e **o valor do humano não é sobrescrito**. O scope `browser:takeover` estava
+declarado e não tinha uma linha de implementação.
+
+Pelo caminho caiu um achado que só o E2E podia ver: **a automação accionava o próprio
+travão** -- o `preencher` do agente despacha `input`, e o listener de takeover contava isso
+como gesto humano. O agente escrevia **uma vez** e perdia o controlo por sua própria acção.
+
+**A proxima accao unica**: **a revogação por mudança de origem**. Tem código no
+`tabs.onUpdated` e **não tem E2E**: navegar de `127.0.0.1` para outra origem deve revogar a
+concessão, limpar o badge e recusar a acção seguinte -- e o mesmo para outra **aba** com a
+mesma origem (que deve continuar concedida). Tudo interno, na mesma página local.

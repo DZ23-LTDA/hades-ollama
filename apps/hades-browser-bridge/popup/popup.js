@@ -204,6 +204,47 @@ if (btOptIn) {
   });
 }
 
+/**
+ * O TAKEOVER (`E-1034`). O scope `browser:takeover` estava declarado e **nao tinha
+ * implementacao** -- e ninguem via quem tinha o controlo. Aqui o utilizador VE e DECIDE.
+ */
+async function atualizarTakeover() {
+  const [aba] = await chrome.tabs.query({ active: true, currentWindow: true });
+  const r = await pedir({ tipo: "takeover:estado", tabId: aba?.id });
+  const bt = $("bt-takeover");
+  const alvo = $("takeover-estado");
+  if (!bt || !alvo) return;
+  if (r?.ativo) {
+    alvo.textContent = "Controlo: HUMANO (desde " + new Date(r.takeover?.desde ?? Date.now()).toLocaleTimeString() + ")";
+    bt.textContent = "Devolver ao agente";
+  } else {
+    alvo.textContent = "Controlo: agente";
+    bt.textContent = "Assumir eu";
+  }
+}
+
+const btTakeover = $("bt-takeover");
+if (btTakeover) {
+  btTakeover.addEventListener("click", async () => {
+    const [aba] = await chrome.tabs.query({ active: true, currentWindow: true });
+    const atual = await pedir({ tipo: "takeover:estado", tabId: aba?.id });
+    if (atual?.ativo) {
+      // Devolver: o agente volta a poder escrever. So' o utilizador faz isto.
+      await pedir({ tipo: "takeover:devolver", tabId: aba?.id });
+      // ...e o content script tem de esquecer o episodio, senao continua a recusar.
+      await chrome.tabs.sendMessage(aba.id, { tipo: "takeover:devolver" }).catch(() => {});
+      dizer("Sessão devolvida ao agente.", false);
+    } else {
+      // Assumir: marca o takeover localmente, para que o agente pare ja'.
+      await chrome.tabs.sendMessage(aba.id, { tipo: "takeover:humano", motivo: "assumido_no_popup" }).catch(() => {});
+      await pedir({ tipo: "takeover:humano", tabId: aba?.id, motivo: "assumido_no_popup" });
+      dizer("Você assumiu o controlo. O agente não escreve enquanto durar.", false);
+    }
+    await atualizarTakeover();
+  });
+}
+
 atualizar();
 atualizarCanal();
 atualizarOptIn();
+atualizarTakeover();

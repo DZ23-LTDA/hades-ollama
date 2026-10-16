@@ -849,3 +849,36 @@ exist`) -- nos E2E, emita do **popup**, que e' um contexto de extensao valido.
 **Doutrina em uma linha**: uma protecao que ninguem consegue exercer nao protege -- esconde;
 duas metades coerentes podem ser juntas impossiveis; e um campo de senha recusado com o DOM
 vazio vale mais do que dez documentos a dizer que a recusa existe.
+
+### Instrucoes de retomada (janela `E-1034`)
+
+**Estado**: branch `fix/checker-relogio`; cabeca do indice `E-1034`; PR #438 **aberto** e
+**nao tocado**; `reviewDecision` **vazio** => sem revisao humana independente.
+
+**Bateria: 26 passos.** Tres E2E entram por **opt-in** (`-ComE2E`), porque abrem o Edge:
+  powershell -NoProfile -ExecutionPolicy Bypass -File scripts\hades_local_gates.ps1 -ComE2E
+
+**Os tres E2E, sozinhos** (todos exit 0):
+  node scripts/hades_browser_bridge_e2e.mjs            # canal: extensao <-> Companion
+  node scripts/hades_browser_bridge_e2e_aba.mjs        # aba: DOM, escrita, RECUSA, badge
+  node scripts/hades_browser_bridge_e2e_takeover.mjs   # takeover: o agente PARA
+
+**DOIS DEFEITOS QUE SO O E2E VIA** (`E-1034`):
+1. **a escrita do agente accionava o takeover** -- o `preencher` despacha `input`, e o
+   listener contava isso como gesto humano. O agente escrevia uma vez e perdia o controlo
+   por sua propria accao. Curado com a flag `escrevendoPeloAgente`.
+2. **`lerEstado` apagava o campo novo** -- ele reconstroi o objecto com uma lista fixa de
+   campos, logo qualquer campo que nao esteja na lista e' perdido a cada leitura.
+
+**O TAKEOVER TEM DE SER LIMPO NOS DOIS LADOS**: devolver pelo popup limpa o service worker
+**e** o content script. *Um controlo que so' existe num dos lados nao devolve nada.*
+
+**DUAS CATRACAS COMPLEMENTARES**: `hades_index_shape_check.py` varre o **indice**;
+`hades_mission_check.py` varre **todo o codigo**. **Um ID novo continua do MAIOR cunhado.**
+
+**O que NAO fazer**: `reset --hard`, `git clean`, rebase destrutivo, force-push, stash,
+`merge`, tag, release, publicacao externa, ou **resolver threads** do PR #438.
+
+**Doutrina em uma linha**: um scope declarado sem implementacao e' pior do que um scope
+ausente; a automacao pode accionar o travao que existe para a travar; e distinguir QUEM
+escreve e' a diferenca entre um travao e um obstaculo.

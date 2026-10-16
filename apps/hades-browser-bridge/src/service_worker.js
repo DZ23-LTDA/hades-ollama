@@ -72,7 +72,7 @@ async function lerEstado() {
   const bruto = await chrome.storage.session.get(CHAVE);
   const estado = bruto?.[CHAVE];
   if (!estado || typeof estado !== "object") {
-    return { concessoes: {}, accoes: {}, missao: null, host: null, aprovado: false };
+    return { concessoes: {}, accoes: {}, missao: null, host: null, aprovado: false, takeover: {} };
   }
   return {
     concessoes: estado.concessoes ?? {},
@@ -80,6 +80,9 @@ async function lerEstado() {
     missao: estado.missao ?? null,
     host: estado.host ?? null,
     aprovado: estado.aprovado === true,
+    // *Um `lerEstado` que reconstroi o objecto com campos fixos APAGA todo o campo que
+    // nao esteja na lista* -- o `takeover` do `E-1034` era perdido a cada leitura.
+    takeover: estado.takeover ?? {},
   };
 }
 
@@ -353,6 +356,47 @@ async function diagnosticoDoCanal() {
   };
 }
 
+/* ------------------------------------------- takeover humano (E-1034) */
+
+/**
+ * O scope `browser:takeover` estava nos 3 canonicos e **nao tinha implementacao**. E o
+ * contrato exige: *enquanto o utilizador estiver a interagir, o agente nao disputa
+ * mouse/teclado nem sobrescreve campos.*
+ *
+ * O content script observa os gestos humanos e avisa; aqui registamos QUEM tem o
+ * controlo, com autor (`agent`/`human`/`system`), e permitimos que o utilizador devolva
+ * a sessao. Nunca guardamos o que foi escrito -- so' o instante e o tipo de gesto.
+ */
+async function registarTakeover(tabId, motivo) {
+  const estado = await lerEstado();
+  estado.takeover = estado.takeover ?? {};
+  const chave = chaveDaAba(tabId);
+  if (!estado.takeover[chave]) {
+    estado.takeover[chave] = {
+      tabId, autor: "human", desde: Date.now(), motivo, eventos: 0,
+    };
+  }
+  estado.takeover[chave].eventos += 1;
+  estado.takeover[chave].desde = Date.now();
+  await gravarEstado(estado);
+  return { ok: true, autor: "human" };
+}
+
+async function estadoDoTakeover(tabId) {
+  const estado = await lerEstado();
+  const t = (estado.takeover ?? {})[chaveDaAba(tabId)] ?? null;
+  return { ok: true, ativo: t !== null, takeover: t, autor: t ? "human" : "agent" };
+}
+
+async function devolverSessao(tabId) {
+  const estado = await lerEstado();
+  const chave = chaveDaAba(tabId);
+  const tinha = (estado.takeover ?? {})[chave] ?? null;
+  if (estado.takeover) delete estado.takeover[chave];
+  await gravarEstado(estado);
+  return { ok: true, devolvida: tinha !== null, autor: "agent" };
+}
+
 /* -------------------------------------------------- mensagens e ciclo de vida */
 
 chrome.runtime.onMessage.addListener((mensagem, remetente, responder) => {
@@ -371,6 +415,12 @@ chrome.runtime.onMessage.addListener((mensagem, remetente, responder) => {
     : t === "canal:diagnostico" ? diagnosticoDoCanal()
     : t === "optin:estado" ? lerOptIn().then((ligado) => ({ ok: true, ligado }))
     : t === "optin:definir" ? definirOptIn(mensagem.ligado === true)
+    // E-1034: o takeover humano. O content script avisa (sem `tabId`: ele nao o conhece --
+    // vem do `remetente`); o popup consulta e devolve.
+    : t === "takeover:humano"
+      ? registarTakeover(Number(remetente?.tab?.id ?? mensagem.tabId), String(mensagem.motivo ?? "interaccao"))
+    : t === "takeover:estado" ? estadoDoTakeover(Number(mensagem.tabId))
+    : t === "takeover:devolver" ? devolverSessao(Number(mensagem.tabId))
     : null;
   if (doCanal) {
     doCanal.then(responder).catch((erro) =>

@@ -361,6 +361,21 @@ if ($ComE2E) {
 }
 
 ''
+# E-1034: o takeover humano. *O scope `browser:takeover` estava declarado e nao tinha uma
+# linha de implementacao -- e ninguem via quem tinha o controlo.*
+'--- 19. E2E DE TAKEOVER: o humano assume, o agente e recusado, a sessao volta'
+if ($ComE2E) {
+  $saidaTk = & node scripts/hades_browser_bridge_e2e_takeover.mjs 2>&1
+  $saidaTk | Select-Object -Last 3 | ForEach-Object { "    " + $_.ToString().Substring(0, [Math]::Min(110, $_.ToString().Length)) }
+  if ($LASTEXITCODE -ne 0) {
+    $falhas.Add("hades_browser_bridge_e2e_takeover.mjs (exit $LASTEXITCODE)")
+    '    FALHA'
+  } else { '    OK' }
+} else {
+  '    PULADO (opt-in: use -ComE2E)'
+}
+
+''
 if ($falhas.Count -gt 0) {
   "GATES LOCAIS: $($falhas.Count) falha(s)"
   $falhas | ForEach-Object { "  - $_" }
@@ -385,4 +400,5 @@ $passos += 'pacote-extensao'
 $passos += 'native-host-id'
 $passos += 'native-host-testes'
 $passos += 'e2e-aba'
+$passos += 'e2e-takeover'
 "GATES LOCAIS: $($passos -join ' + ') VERDES"

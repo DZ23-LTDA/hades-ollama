@@ -1038,3 +1038,32 @@ código morto: passou a ser decisão do utilizador, visível no popup, desligado
 - APK Android bloqueado pela DLL JNI (`E-1019`);
 - macOS/iOS `BLOCKED_EXTERNAL` pela **máquina**;
 - benchmark reproduzível (ESTÁGIO 21) não iniciado.
+
+### O que falta (actualizado na janela `E-1034`)
+
+**Fechado**: o takeover humano. O content script observa `input`/`keydown`/`pointerdown`,
+marca o takeover por 30s, e o agente é **recusado** com `takeover_humano_ativo` enquanto
+durar -- com o **valor do humano preservado** e o autor (`human`/`agent`) registado. E o
+popup dá ao utilizador o botão para assumir ou devolver.
+
+Dois defeitos reais corrigidos no caminho: a **escrita do agente accionava o takeover**
+(flag `escrevendoPeloAgente`), e o **`lerEstado` apagava o campo novo** (reconstruía o
+objecto com lista fixa).
+
+**Continua em falta, sem disfarce**:
+- **revogação por mudança de origem**: tem código no `tabs.onUpdated` e **não** tem E2E;
+- **frames e shadow DOM**: nao testados;
+- **downloads e uploads**: nao testados;
+- **o takeover não tem duração ajustável** (30s fixos) e não detecta actividade fora do DOM;
+- **o Chrome real do utilizador**: a versão 155 deste host **não carrega** por
+  `--load-extension`; exige carregamento manual;
+- **Firefox** (não usa registo do Windows; falta o `.xpi`) e **Safari** (macOS/Xcode);
+- **sem `.crx`, sem assinatura, sem SBOM do pacote**;
+- **a chave privada de distribuição está fora do Git**;
+- **`CAPACIDADES` VAZIO**: o Companion **não** controla o PC;
+- **taxa e pairing em memória**;
+- sem TLS de loopback, sem rate-limit do SO, sem DNS rebinding a nível de socket;
+- ligação da extensão ao **Mission Control** (`missao`/`aprovado` ficam a `null`);
+- APK Android bloqueado pela DLL JNI (`E-1019`);
+- macOS/iOS `BLOCKED_EXTERNAL` pela **máquina**;
+- benchmark reproduzível (ESTÁGIO 21) não iniciado.

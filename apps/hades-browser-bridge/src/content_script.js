@@ -23,6 +23,65 @@
     "one-time-code", "otp", "mfa", "totp", "iban", "account-number", "ssn",
   ];
 
+  /* -------------------------------------------------- TAKEOVER HUMANO (E-1034) */
+  //
+  // O scope `browser:takeover` estava nos 3 canonicos e **nao tinha uma linha de
+  // implementacao**. Pior: o content script nao observava a interaccao do utilizador,
+  // logo o agente podia escrever por cima de quem estava a digitar -- exactamente o que
+  // o contrato proibe.
+  //
+  // Aqui a pagina observa-se a si propria: qualquer gesto HUMANO (input, keydown,
+  // pointerdown) marca takeover. Enquanto durar, as accoes de ESCRITA sao recusadas.
+  // Nunca lemos o valor: so' o instante e o tipo de gesto.
+
+  /** Quanto tempo o takeover humano dura depois do ultimo gesto. */
+  const TAKEOVER_MS = 30 * 1000;
+
+  const takeover = {
+    ativo: false,
+    desde: 0,
+    autor: "system",
+    motivo: "sem_interaccao",
+  };
+
+  /**
+   * *A ESCRITA DO AGENTE NAO E' GESTO HUMANO.*
+   *
+   * Medido no `E-1034`: o `preencher` do agente faz `el.value = ...` e despacha `input` --
+   * e o listener de takeover contava esse `input` como interaccao HUMANA. Resultado: o
+   * agente escrevia uma vez e **perdia o controlo por sua propria accao**, e a accao
+   * seguinte era recusada. *A automacao accionava o travao que existe para a travar.*
+   *
+   * Esta flag marca a janela em que quem escreve e' o agente. O listener respeita-a.
+   */
+  let escrevendoPeloAgente = false;
+
+  function marcarTakeover(tipoDeGesto) {
+    if (escrevendoPeloAgente) return; // e' a nossa propria escrita
+    const agora = Date.now();
+    const jaEstava = takeover.ativo && (agora - takeover.desde) < TAKEOVER_MS;
+    takeover.ativo = true;
+    takeover.desde = agora;
+    takeover.autor = "human";
+    takeover.motivo = tipoDeGesto;
+    // Avisar o service worker UMA vez por episodio -- nao a cada tecla. *Uma ponte que
+    // grita a cada frame e' pior do que uma que se cala.*
+    if (!jaEstava) {
+      try {
+        chrome.runtime.sendMessage({ tipo: "takeover:humano", motivo: tipoDeGesto }).catch(() => {});
+      } catch { /* o service worker pode estar a dormir; nao e' erro */ }
+    }
+  }
+
+  function takeoverVivo() {
+    return takeover.ativo && (Date.now() - takeover.desde) < TAKEOVER_MS;
+  }
+
+  // `capture: true` para apanhar ANTES de a pagina poder parar a propagacao.
+  for (const evento of ["input", "keydown", "pointerdown"]) {
+    window.addEventListener(evento, () => marcarTakeover(evento), { capture: true, passive: true });
+  }
+
   /** Mesma regra do protocolo: tipo, autocomplete E nome, os tres. */
   function campoSensivel(el) {
     if (!el) return false;
@@ -86,6 +145,11 @@
 
   /** Acao de escrita: recusa campos sensiveis -- o utilizador preenche-os. */
   function preencher(seletor, valor) {
+    // O TAKEOVER vem primeiro: enquanto o humano esta' a interagir, o agente NAO escreve
+    // por cima. *Nao basta recusar credenciais -- e' preciso nao disputar o campo.*
+    if (takeoverVivo()) {
+      return { ok: false, motivo: "takeover_humano_ativo", desde: takeover.desde };
+    }
     let el;
     try {
       el = document.querySelector(seletor);
@@ -100,14 +164,24 @@
     const tipo = String(el.getAttribute?.("type") ?? "").toLowerCase();
     if (tipo === "file") return { ok: false, motivo: "upload_exige_aprovacao_e_caminho_autorizado" };
     el.focus();
-    el.value = String(valor ?? "");
-    el.dispatchEvent(new Event("input", { bubbles: true }));
-    el.dispatchEvent(new Event("change", { bubbles: true }));
+    // A escrita do agente fica MARCADA: o listener de takeover nao a conta como humana.
+    escrevendoPeloAgente = true;
+    try {
+      el.value = String(valor ?? "");
+      el.dispatchEvent(new Event("input", { bubbles: true }));
+      el.dispatchEvent(new Event("change", { bubbles: true }));
+    } finally {
+      escrevendoPeloAgente = false;
+    }
     return { ok: true };
   }
 
   /** Clique: so' em elemento visivel e nao sensivel. */
   function clicar(seletor) {
+    // *Um clique tambem disputa o controlo.* Enquanto o humano interage, o agente para.
+    if (takeoverVivo()) {
+      return { ok: false, motivo: "takeover_humano_ativo", desde: takeover.desde };
+    }
     let el;
     try {
       el = document.querySelector(seletor);
@@ -145,6 +219,29 @@
         return false;
       case "origem":
         responder({ ok: true, origem: location.origin });
+        return false;
+      case "takeover:estado":
+        responder({
+          ok: true,
+          ativo: takeoverVivo(),
+          autor: takeoverVivo() ? takeover.autor : "agent",
+          desde: takeover.desde,
+          motivo: takeover.motivo,
+          ttlMs: TAKEOVER_MS,
+        });
+        return false;
+      case "takeover:humano":
+        // O utilizador assumiu pelo POPUP: marca localmente para o agente parar ja'.
+        marcarTakeover(String(mensagem.motivo ?? "assumido_no_popup"));
+        responder({ ok: true, ativo: takeoverVivo(), autor: "human" });
+        return false;
+      case "takeover:devolver":
+        // O UTILIZADOR devolve a sessao ao agente. So' ele pode fazer isto -- e a
+        // mensagem so' chega aqui vinda da propria extensao.
+        takeover.ativo = false;
+        takeover.autor = "agent";
+        takeover.motivo = "devolvido_pelo_utilizador";
+        responder({ ok: true, ativo: false });
         return false;
       default:
         responder({ ok: false, motivo: "tipo_desconhecido" });
