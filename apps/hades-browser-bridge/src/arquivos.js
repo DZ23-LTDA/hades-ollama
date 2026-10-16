@@ -219,6 +219,29 @@ export function provaValida(prova) {
 }
 
 /**
+ * A AUTORIDADE DA APROVACAO (`E-1042`).
+ *
+ * Medido: existe uma rota autenticada por **sessao** (`serviceAgentApprovals`), e ela usa
+ * `store.ListApprovals(organizationID, ...)`. Mas o **Companion e' um processo local SEM
+ * sessao HTTP** -- e dar-lhe a sessao do utilizador seria pior: *um processo local com a
+ * sessao do utilizador e' exactamente o que nao queremos.*
+ *
+ * Portanto a extensao **nao pode verificar** a prova contra o store. E o contrato tem de o
+ * DIZER, em vez de o esconder.
+ *
+ *   `forma_apenas`  -- a prova tem a forma certa; **ninguem confirmou que existe**. E' o
+ *                      unico valor que a extensao pode produzir hoje.
+ *   `verificada`    -- alguem consultou o store e o `FindApproved` devolveu esta aprovacao.
+ *                      **Sera' o Companion a produzi-lo, quando a rota existir la'.**
+ *
+ * *Um campo que diz `verificada` sem ter sido verificado e' pior do que nao ter campo.*
+ */
+export const AUTORIDADES = Object.freeze(["forma_apenas", "verificada"]);
+
+/** A extensao NAO tem autoridade de aprovacao. Este e' o valor honesto. */
+export const AUTORIDADE_DA_EXTENSAO = "forma_apenas";
+
+/**
  * A DECISAO. Recebe o manifesto e a PROVA de aprovacao (nao um booleano).
  *
  * `E-1041`: a versao anterior aceitava `opcoes.aprovado === true`. ***Um campo que quem pede
@@ -239,6 +262,8 @@ export function provaValida(prova) {
  *
  * Para as regras 4..7, o `exige_aprovacao` so' se torna `autorizado` com uma prova cujo
  * `fingerprint` **casa com este pedido**.
+ *
+ * E TODO o veredicto `autorizado` traz `autoridade` -- que hoje e' sempre `forma_apenas`.
  */
 export function decidir(manifesto, opcoes = {}) {
   const m = manifesto ?? {};
@@ -256,6 +281,8 @@ export function decidir(manifesto, opcoes = {}) {
   const base = {
     nome: c.nome, extensao: c.extensao, tamanho: c.tamanho, risco: c.risco,
     direcao, sha256: m.sha256,
+    // A autoridade acompanha SEMPRE a decisao -- nao so' o caso autorizado.
+    autoridade: opcoes.autoridade === "verificada" ? "verificada" : AUTORIDADE_DA_EXTENSAO,
   };
 
   // A prova e' avaliada UMA vez, e so' se for preciso.
@@ -290,7 +317,10 @@ export function decidir(manifesto, opcoes = {}) {
       return {
         veredicto: "autorizado", motivo: motivoSemProva + "_com_aprovacao",
         aprovacaoId: prova.aprovacaoId, aprovadoPor: prova.aprovadoPor,
-        fingerprint: prova.fingerprint, ...base,
+        fingerprint: prova.fingerprint,
+        // *A extensao NUNCA afirma `verificada`: ela nao consultou o store.*
+        autoridade: opcoes.autoridade === "verificada" ? "verificada" : AUTORIDADE_DA_EXTENSAO,
+        ...base,
       };
     }
     return { veredicto: "exige_aprovacao", motivo: motivoSemProva, aprovacao: a.motivo, ...base };
@@ -301,6 +331,18 @@ export function decidir(manifesto, opcoes = {}) {
   if (direcao === "upload") return comAprovacao("upload_exige_aprovacao");
   if (c.risco === "desconhecido") return comAprovacao("extensao_desconhecida_exige_aprovacao");
   return { veredicto: "permitido", motivo: "conteudo_inerte_em_download", ...base };
+}
+
+/**
+ * O TEXTO QUE DIZ O LIMITE (`E-1042`). *Um limite que nao se le' nao e' um limite.*
+ * Usado no popup e no registo, para que quem decide saiba o que a decisao vale.
+ */
+export function avisoDeAutoridade(autoridade) {
+  if (autoridade === "verificada") {
+    return "Aprovacao verificada no store do Mission Control.";
+  }
+  return "Aprovacao com FORMA valida, mas NAO verificada: a extensao nao tem acesso ao store "
+    + "de aprovacoes. Uma prova bem formada mas inexistente passaria aqui.";
 }
 
 /**

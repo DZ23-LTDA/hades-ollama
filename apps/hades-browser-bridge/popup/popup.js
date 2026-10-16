@@ -244,7 +244,21 @@ if (btTakeover) {
   });
 }
 
+/**
+ * `E-1042`: o aviso de autoridade. *A extensao nao verifica a aprovacao contra o store --
+ * nao tem acesso. O utilizador tem de saber isso antes de confiar na decisao.*
+ */
+async function atualizarAutoridade() {
+  const alvo = $("autoridade-arquivos");
+  if (!alvo) return;
+  const r = await pedir({ tipo: "arquivo:avaliar", pedido: { nome: "consulta.txt", direcao: "download", tamanho: 1, sha256: "0".repeat(64) } });
+  const a = r?.autoridade ?? "forma_apenas";
+  alvo.textContent = "Autoridade de aprovação de ficheiros: " + a + " -- " + (r?.aviso ?? "");
+  alvo.dataset.autoridade = a;
+}
+
 atualizar();
 atualizarCanal();
 atualizarOptIn();
 atualizarTakeover();
+atualizarAutoridade();

@@ -590,3 +590,24 @@ a autoridade existir: o `nativeMessaging` já funciona (`E-1032`) e o Companion 
 protocolo. Medir se o Companion pode consultar `FindApproved` e devolver a prova — ou
 declarar que sem a rota no runtime a extensão decide **sem autoridade** e assumi-lo no
 contrato. Tudo interno.
+
+### A proxima accao unica (janela `E-1042`)
+
+**O canal não existe — e agora a decisão diz o que vale.** A rota de approvals existe
+(`serviceAgentApprovals`), mas é **autenticada por sessão** — e o Companion é um processo
+local **sem sessão**. ***Dar-lhe a sessão do utilizador seria pior: um processo local com
+a sessão do utilizador é exactamente o que não queremos.***
+
+Em vez de inventar a integração, **pus a fronteira dentro do contrato**:
+`autoridade: "forma_apenas"` acompanha **todo** o veredicto, e `avisoDeAutoridade` diz
+por palavras: *«Aprovação com FORMA válida, mas NÃO verificada … uma prova bem formada
+mas inexistente passaria aqui.»*
+
+⇒ ***Um limite que não se lê não é um limite. Um campo que diz `verificada` sem ter sido
+verificado é pior do que não ter campo.***
+
+**A proxima accao unica**: **a rota no Companion**. É o passo de desbloqueio exacto: uma
+rota **no Companion** (não na extensão) que use o **canal emparelhado**
+(`pairing:iniciar` / `handshake:*`, que já existem do `E-1031`) para se autenticar
+perante o runtime e consultar `FindApproved`. Só então `verificada` tem quem o possa
+afirmar. Tudo interno.

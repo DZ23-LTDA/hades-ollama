@@ -8,7 +8,8 @@ import assert from "node:assert/strict";
 import {
   PROTOCOLO_ARQUIVOS, LIMITES_ARQUIVOS, EXECUTAVEIS, SENSIVEIS, INERTES, DIRECOES,
   extensaoDe, nomeSeguro, sha256De, classificar, decidir, resumoDaDecisao, normalizarBytes,
-  impressaoDoPedido, fingerprintDe, provaValida, manifesto as montarManifesto,
+  impressaoDoPedido, fingerprintDe, provaValida, avisoDeAutoridade, AUTORIDADES, AUTORIDADE_DA_EXTENSAO,
+  manifesto as montarManifesto,
 
 } from "../src/arquivos.js";
 
@@ -337,4 +338,49 @@ test("23) `fingerprintDe` e' deterministico e sensivel ao pedido", async () => {
   assert.match(a.fingerprint, /^[a-f0-9]{64}$/);
   assert.equal(typeof a.impressao, "string");
   assert.ok(a.impressao.startsWith("v1|download|a.csv|1|"));
+});
+
+test("24) a AUTORIDADE acompanha a decisao -- e a extensao NUNCA diz `verificada`", async () => {
+  // `E-1042`: medido que a rota de approvals e' autenticada por SESSAO, e o Companion e' um
+  // processo local SEM sessao. *Dar-lhe a sessao do utilizador seria pior: um processo local
+  // com a sessao do utilizador e' exactamente o que nao queremos.*
+  assert.deepEqual([...AUTORIDADES], ["forma_apenas", "verificada"]);
+  assert.equal(AUTORIDADE_DA_EXTENSAO, "forma_apenas");
+
+  const pedido = { nome: "setup.exe", direcao: "download", tamanho: 10, sha256: H64 };
+  const fp = (await fingerprintDe(pedido)).fingerprint;
+  const m = { ...pedido, fingerprint: fp };
+
+  // proibido, permitido e autorizado -- TODOS trazem autoridade
+  const proibido = decidir({ nome: "../a.txt", direcao: "download", tamanho: 1, sha256: H64 });
+  assert.equal(proibido.veredicto, "proibido");
+  assert.equal(proibido.autoridade, undefined, "um proibido nao chega a ter autoridade");
+
+  const permitido = decidir({ nome: "a.csv", direcao: "download", tamanho: 1, sha256: H64 });
+  assert.equal(permitido.veredicto, "permitido");
+  assert.equal(permitido.autoridade, "forma_apenas", "o inerte nao precisa de autoridade, mas declara-a");
+
+  const autorizado = decidir(m, { prova: { aprovacaoId: "AP-1", fingerprint: fp, aprovadoPor: "h" } });
+  assert.equal(autorizado.veredicto, "autorizado");
+  assert.equal(autorizado.autoridade, "forma_apenas", "A EXTENSAO NUNCA DIZ `verificada`");
+
+  // e mesmo que alguem peca `verificada`, so' o consegue se o disser explicitamente --
+  // o que e' o ponto: *nao ha' verificacao por omissao.*
+  const forjado = decidir(m, { prova: { aprovacaoId: "AP-1", fingerprint: fp, aprovadoPor: "h" }, autoridade: "verificada" });
+  assert.equal(forjado.autoridade, "verificada", "so' quem VERIFICOU o pode afirmar");
+  assert.equal(decidir(m, { prova: { aprovacaoId: "AP-1", fingerprint: fp, aprovadoPor: "h" }, autoridade: "inventada" }).autoridade,
+    "forma_apenas", "uma autoridade desconhecida cai no valor honesto");
+});
+
+test("25) `avisoDeAutoridade` DIZ o limite por palavras", () => {
+  // *Um limite que nao se le' nao e' um limite.*
+  const f = avisoDeAutoridade("forma_apenas");
+  assert.ok(f.includes("NAO verificada"), f);
+  assert.ok(f.includes("nao tem acesso ao store"), f);
+  assert.ok(f.includes("passaria aqui"), "diz a consequencia concreta: " + f);
+  const v = avisoDeAutoridade("verificada");
+  assert.ok(v.includes("verificada no store"), v);
+  // e um valor desconhecido cai no aviso honesto
+  assert.equal(avisoDeAutoridade("seja-o-que-for"), f);
+  assert.equal(avisoDeAutoridade(undefined), f);
 });

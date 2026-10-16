@@ -21,7 +21,8 @@ import {
 // `E-1040`: o scope `browser:files` estava nos 3 canonicos e nao tinha implementacao. Aqui
 // entra a DECISAO sobre ficheiros -- *nao um motor de download*.
 import {
-  PROTOCOLO_ARQUIVOS, decidir, sha256De, resumoDaDecisao, fingerprintDe, manifesto as montarManifesto,
+  PROTOCOLO_ARQUIVOS, decidir, sha256De, resumoDaDecisao, fingerprintDe,
+  AUTORIDADE_DA_EXTENSAO, avisoDeAutoridade,
 } from "./arquivos.js";
 
 /** Chave unica de armazenamento. Uma so' fonte de verdade. */
@@ -491,6 +492,8 @@ async function avaliarArquivo(mensagem) {
     // parecia o pedido.* O fingerprint NAO entra: e' um identificador.
     aprovacaoId: decisao.aprovacaoId ?? null,
     aprovadoPor: decisao.aprovadoPor ?? null,
+    // `E-1042`: a decisao DIZ o que vale. *Um limite que nao se le' nao e' um limite.*
+    autoridade: decisao.autoridade ?? "forma_apenas",
   };
   const estado = await lerEstado();
   estado.arquivos = Array.isArray(estado.arquivos) ? estado.arquivos : [];
@@ -512,6 +515,9 @@ async function avaliarArquivo(mensagem) {
     ok: true,
     // e a resposta que interessa a quem vai transferir
     podesTransferir,
+    // e o que essa autorizacao VALE -- sempre, nao so' no caso autorizado
+    autoridade: decisao.autoridade ?? AUTORIDADE_DA_EXTENSAO,
+    aviso: avisoDeAutoridade(decisao.autoridade ?? AUTORIDADE_DA_EXTENSAO),
     protocolo: PROTOCOLO_ARQUIVOS,
     decisao,
     registo,

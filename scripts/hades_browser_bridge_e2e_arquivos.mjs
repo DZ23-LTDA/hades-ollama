@@ -197,6 +197,33 @@ try {
     "foi apagado pela lista fixa do lerEstado!");
   ok("e os registos continuam", (est2?.arquivos ?? []).length > quantos, String((est2?.arquivos ?? []).length));
 
+  console.log("\n9) `E-1042`: a decisao DIZ o que vale -- a extensao nao pode verificar");
+  const comProva = await pedir({
+    tipo: "arquivo:avaliar",
+    prova: { aprovacaoId: "AP-1", fingerprint: fp, aprovadoPor: "humano-do-teste" },
+    pedido: { nome: "setup.exe", direcao: "download", tamanho: 12, sha256: H, fingerprint: fp },
+  });
+  console.log("   autoridade=" + JSON.stringify(comProva?.autoridade));
+  console.log("   aviso=" + JSON.stringify(comProva?.aviso));
+  ok("a resposta traz `autoridade`", typeof comProva?.autoridade === "string", JSON.stringify(comProva?.autoridade));
+  ok("e a extensao diz `forma_apenas`, nunca `verificada`",
+    comProva?.autoridade === "forma_apenas", String(comProva?.autoridade));
+  ok("e traz o AVISO por palavras", typeof comProva?.aviso === "string" && comProva.aviso.includes("NAO verificada"),
+    String(comProva?.aviso));
+  ok("o aviso diz a consequencia", String(comProva?.aviso).includes("passaria aqui"), String(comProva?.aviso));
+  // e o registo tambem guarda a autoridade
+  const est3 = await sw.evaluate(async () => {
+    const b = await chrome.storage.session.get("hades.bridge.v1");
+    return b?.["hades.bridge.v1"] ?? null;
+  });
+  const comAut = (est3?.arquivos ?? []).filter((a) => a.autoridade === "forma_apenas");
+  ok("o registo guarda a autoridade", comAut.length >= 1, JSON.stringify(comAut.slice(-1)));
+
+  // e uma decisao PERMITIDA tambem declara a autoridade -- *nao so' o caso autorizado*
+  const permissiva = await pedir({ tipo: "arquivo:avaliar", pedido: { nome: "a.csv", direcao: "download", tamanho: 12, sha256: H } });
+  ok("um `permitido` tambem declara autoridade", permissiva?.autoridade === "forma_apenas",
+    JSON.stringify(permissiva?.autoridade));
+
   await popup.close();
 } catch (e) {
   console.log("   ERRO: " + e.message);

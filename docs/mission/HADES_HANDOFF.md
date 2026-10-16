@@ -1123,3 +1123,38 @@ medido para dentro.
 **Doutrina em uma linha**: um campo de permissao que quem pede controla nao e' uma
 permissao; nao inventar um sistema quando a forma do existente serve; e ignorar um campo
 que alguem envia deixa quem o envia sem saber porque nao funcionou.
+
+### Instrucoes de retomada (janela `E-1042`)
+
+**Estado**: branch `fix/checker-relogio`; cabeca do indice `E-1042`; PR #438 **aberto** e
+**nao tocado**; `reviewDecision` **vazio** => sem revisao humana independente.
+
+**Bateria: 34 passos.** OITO E2E por **opt-in** (`-ComE2E`) e as **25 assercoes** da
+politica de ficheiros (passo 27, sem browser):
+  node scripts/hades_browser_bridge_e2e_arquivos.mjs     # browser:files decide
+  node --test apps/hades-browser-bridge/test/arquivos.test.js
+
+**A AUTORIDADE ENTROU NO CONTRATO** (`E-1042`): `autoridade: forma_apenas` acompanha
+**todo** o veredicto -- mesmo `permitido`. A extensao **nunca** diz `verificada`
+(`verificada` so' com afirmacao explicita, e um valor desconhecido cai no honesto).
+E `avisoDeAutoridade` diz o limite **por palavras**, visivel no popup e no registo.
+
+**A FRONTEIRA MEDIDA**: `serviceAgentApprovals` existe mas e' de **SESSAO**
+(`organizationID` vem da sessao). O Companion e' um processo local **sem sessao**.
+*Dar-lhe a sessao do utilizador seria pior: um processo local com a sessao do utilizador
+e' exactamente o que nao queremos.*
+
+**PASSO DE DESBLOQUEIO EXACTO**: uma rota **no Companion** (nao na extensao) que use o
+**canal emparelhado** (`pairing:iniciar` / `handshake:*`, ja' existentes do `E-1031`)
+para se autenticar perante o runtime e consultar `FindApproved`. So' entao `verificada`
+tem quem o possa afirmar.
+
+**DUAS CATRACAS COMPLEMENTARES**: `hades_index_shape_check.py` varre o **indice**;
+`hades_mission_check.py` varre **todo o codigo**. **Um ID novo continua do MAIOR cunhado.**
+
+**O que NAO fazer**: `reset --hard`, `git clean`, rebase destrutivo, force-push, stash,
+`merge`, tag, release, publicacao externa, ou **resolver threads** do PR #438.
+
+**Doutrina em uma linha**: a fronteira certa nao e' um silencio -- e' um campo; nao ligar
+o que nao se pode autenticar; e dizer «nao da'» seria falso, dizer «da', mas nao assim»
+e' a verdade.
