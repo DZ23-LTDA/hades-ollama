@@ -169,6 +169,18 @@ $saidaManifesto = & python -X utf8 scripts/hades_manifest.py --check 2>&1
 $saidaManifesto | Select-Object -Last 4 | ForEach-Object { "    $_" }
 if ($LASTEXITCODE -ne 0) { $falhas.Add("hades_manifest.py --check (exit $LASTEXITCODE)") } else { '    OK' }
 
+# E-991 - O INVENTARIO DE MARCA TAMBEM TEM GERADOR, E UM GERADOR SEM CATRACA ENVELHECE.
+#
+# *POR QUE ISTO EXISTE:* o `E-991` criou o `scripts/hades_brand_inventory.py` (§FASE-5 itens 1
+# e 3). E a primeira versao desse gerador **media o proprio output**: ele escrevia um documento
+# que contem as strings da marca e depois contava-as, o que dava 15 linhas diferentes entre
+# duas geracoes. *Foi o `--check` do E-989 que o apanhou* - e e' por isso que ele tem de
+# continuar a correr: um gerador sem catraca envelhece, e foi assim que o defeito nasceu.
+'--- 7. inventario de marca (FASE-5) - drift entre o inventario e o repositorio'
+$saidaMarca = & python -X utf8 scripts/hades_brand_inventory.py --check 2>&1
+$saidaMarca | Select-Object -Last 3 | ForEach-Object { "    $_" }
+if ($LASTEXITCODE -ne 0) { $falhas.Add("hades_brand_inventory.py --check (exit $LASTEXITCODE)") } else { '    OK' }
+
 ''
 if ($falhas.Count -gt 0) {
   "GATES LOCAIS: $($falhas.Count) falha(s)"
@@ -184,4 +196,5 @@ if ($appRodou) { $passos += 'app' } else { $passos += 'app-PULADO' }
 # E-989: o manifesto entra no resumo. *Um passo que corre e nao aparece no resumo e' um passo que
 # ninguem sabe que correu.*
 $passos += 'manifesto'
+$passos += 'marca'
 "GATES LOCAIS: $($passos -join ' + ') VERDES"

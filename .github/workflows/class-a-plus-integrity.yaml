@@ -47,6 +47,14 @@ jobs:
         run: |
           python3 -m py_compile scripts/hades_manifest.py
           python3 scripts/hades_manifest.py --check
+      # **E-991**: o INVENTARIO DE MARCA (§FASE-5 itens 1 e 3). Mesmo caso do manifesto: e' um
+      # ficheiro gerado, portanto envelhece. E a primeira versao do gerador **media o proprio
+      # output** (escrevia um documento com as strings da marca e depois contava-as), o que
+      # dava 15 linhas diferentes entre duas geracoes; *foi este `--check` que o apanhou*.
+      - name: Verify the brand inventory matches the repository (no drift)
+        run: |
+          python3 -m py_compile scripts/hades_brand_inventory.py
+          python3 scripts/hades_brand_inventory.py --check
       # Escrituracao da missao: evidencia citada que nao existe, ID duplicado, buraco na numeracao, bloqueio
       # orfao e veredito otimista com pendencia precisam FALHAR aqui (E-180). O passo seguinte injeta esses
       # defeitos em fixtures para provar que a checagem realmente os encontra.
