@@ -686,3 +686,51 @@ tag, release, publicacao externa, ou **resolver threads** do PR #438.
 
 **Doutrina em uma linha**: medir antes de afirmar; um registro de comprimento nao distingue lixo
 de cabecalho; e um teste que passa pelo motivo errado nao mede nada.
+
+### Instrucoes de retomada (janela `E-1030`)
+
+**Estado**: branch `fix/checker-relogio`; cabeca do indice `E-1030`; PR #438 **aberto** e **nao
+tocado**; `reviewDecision` **vazio** => sem revisao humana independente.
+
+**A extensao tem 5 ficheiros de teste (93 assercoes)**:
+  node --test apps/hades-browser-bridge/test/protocol.test.js \
+                apps/hades-browser-bridge/test/carregavel.test.js \
+                apps/hades-browser-bridge/test/canal_local.test.js \
+                apps/hades-browser-bridge/test/transporte.test.js \
+                apps/hades-browser-bridge/test/companion.test.js
+
+**O Companion arranca-se a mao** (fala native messaging pelo `stdin`/`stdout`):
+  node apps/hades-browser-bridge/native-host/companion.mjs
+
+**Artefactos**:
+- pacote da extensao: `dist/browser-bridge/hades-browser-bridge-0.1.0-unsigned.zip` +
+  `SHA256SUMS.txt` + `LEIA-ME.txt` -- fora do Git; **11 entradas** (inclui `src/transporte.js` e
+  **NAO** inclui o Companion: sao produtos separados por fronteira de permissao);
+- script versionado: `scripts/hades_browser_bridge_package.py` (passo 14 da bateria);
+- contrato do canal: `apps/hades-browser-bridge/src/canal_local.js`;
+- transporte: `apps/hades-browser-bridge/src/transporte.js`;
+- processo: `apps/hades-browser-bridge/native-host/companion.mjs`;
+- native host (template): `.../native-host/com.dz23ltd.hades.bridge.json`.
+
+**TRES SONDAS VERDES NAO PROVARAM NADA** (`E-1030`): contaram bytes, imprimiram a mensagem e
+importaram o modulo -- todas mediram o que **chegou**, nenhuma mediu a **relacao** entre pedido e
+resposta. A 4a, com o helper exacto do teste, imprimiu `MSG id=undefined` e o defeito ficou visivel.
+Uma sonda tem de medir a **hipotese**, nao a vizinhanca dela.
+
+**Regra de ouro do Companion**: o `stdout` e' o FIO. Todo diagnostico vai para o `stderr`; um
+`console.log` perdido dentro do protocolo corrompe o fluxo. E **todo** `id` tem de ser ecoado, mesmo
+nas respostas de erro.
+
+**NAO CONTES BYTES A MAO -- MEDE-OS** (`E-1028`). E o mesmo vale para nomes de campos (`E-1026`:
+`registro.revogadaEm`) e para nomes de motivos (`replay_ou_fora_de_ordem`).
+
+**DUAS CATRACAS COMPLEMENTARES**: `hades_index_shape_check.py` varre o **indice**;
+`hades_mission_check.py` varre **todo o codigo**. **Um ID novo continua do MAIOR cunhado.**
+
+**O que NAO fazer**: `reset --hard`, `git clean`, rebase destrutivo, force-push, stash, `merge`,
+tag, release, publicacao externa, ou **resolver threads** do PR #438.
+
+**Bateria de 21 gates** (exit 0 obrigatorio), incluindo o **pacote da extensao** no passo 14.
+
+**Doutrina em uma linha**: medir antes de afirmar; o `stdout` e' o fio; uma resposta sem `id` e' um
+pedido que nunca termina; e tres sondas verdes que medem a mesma coisa continuam a ser uma sonda.

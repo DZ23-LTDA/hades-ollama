@@ -387,3 +387,16 @@ que o **arranca como subprocesso** e fala com ele pelo fio -- sem socket, sem mo
 sem credencial.
 
 Antes disso, o que o `E-1028` expos: a taxa vive em memoria, e nao ha' rate-limit do lado do SO.
+
+### A proxima accao unica (janela `E-1030`)
+
+**O Companion existe como processo** (`E-1029`): o transporte e o handshake atravessam `stdin`/`stdout`
+reais, com o fio partido em bytes e a correlacao por `id` a funcionar. 93 assercoes nos 5 ficheiros.
+
+**A proxima accao unica**: **instalar o host de verdade** -- gerar o manifesto de native messaging com o
+ID real da extensao e um instalador/desinstalador reversivel, e provar que o navegador arranca o
+Companion. Sem isso, `allowed_origins` continua **template** e nao ha' prova de que o SO/navegador
+respeita a fronteira. Tudo interno; a instalacao e' local e reversivel.
+
+Antes disso, o que o `E-1029` expos: a taxa e o estado do pairing vivem **em memoria** -- reiniciar o
+processo apaga-os. Persistir com escopo e apagar ao revogar e' o passo seguinte.

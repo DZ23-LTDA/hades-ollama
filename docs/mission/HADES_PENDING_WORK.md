@@ -944,3 +944,25 @@ enquadramento de comprimento*) e um nome de motivo inventado.
 - APK Android bloqueado pela DLL JNI neste host (`E-1019`), desbloqueio = runner Linux;
 - macOS/iOS `BLOCKED_EXTERNAL` pela **maquina**, nao pela credencial;
 - benchmark reproduzivel (ESTAGIO 21) nao iniciado.
+
+### O que falta (actualizado na janela `E-1030`)
+
+**Fechado**: o `HADES Local Companion` **como processo** (`E-1029`) -- le' do `stdin`, responde no
+`stdout`, implementa so' o pairing e o handshake, encerra com codigo 2 quando o fluxo dessincroniza, e
+mantem o diagnostico no `stderr`. E o defeito de protocolo que so' um processo real expos (`E-1030`):
+**o host respondia sem ecoar o `id`**, e um pedido pendente para sempre aparece como **silencio**, nao
+como erro. Tres sondas passaram antes de a quarta o revelar -- nenhuma correlacionava.
+
+**Continua em falta, sem disfarce**:
+- **o host nao esta instalado**: `allowed_origins` e' template e nao ha' registo no navegador nem
+  prova de que o SO respeita a fronteira;
+- **o estado vive em memoria**: taxa, pairing e dispositivos desaparecem ao reiniciar o processo;
+- **sem TLS de loopback** -- o codigo curto continua a viajar em claro no primeiro salto;
+- **sem rate-limit do lado do SO**;
+- **DNS rebinding** a nivel de socket: o contrato valida o hostname, nao a ligacao;
+- **E2E em Chrome/Edge reais**: o pacote foi verificado, **nunca carregado**;
+- Firefox (`.xpi`), Safari e assinatura (`.crx`): **nao existem**; sem SBOM do pacote;
+- ligacao da extensao ao **Mission Control** (`missao`/`aprovado` ficam a `null`);
+- APK Android bloqueado pela DLL JNI neste host (`E-1019`), desbloqueio = runner Linux;
+- macOS/iOS `BLOCKED_EXTERNAL` pela **maquina**, nao pela credencial;
+- benchmark reproduzivel (ESTAGIO 21) nao iniciado.
