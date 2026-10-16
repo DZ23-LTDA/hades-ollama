@@ -98,14 +98,42 @@ try {
   ok("a avaliacao correu", r2?.ok === true, String(r2?.ok));
   ok("mas NAO podes transferir sem aprovacao", r2?.podesTransferir === false, String(r2?.podesTransferir));
 
-  const r3 = await pedir({ tipo: "arquivo:avaliar", aprovado: true, pedido: { nome: "setup.exe", direcao: "download", tamanho: 12, sha256: H } });
-  console.log("   com aprovacao: " + JSON.stringify(r3?.decisao));
-  ok("MESMO APROVADO o veredicto e' `exige_aprovacao`", r3?.decisao?.veredicto === "exige_aprovacao", JSON.stringify(r3?.decisao));
-  ok("mas o motivo diz que foi aprovado", r3?.decisao?.motivo === "executavel_aprovado_nesta_transferencia");
-  ok("e `aprovado: true` no registo", r3?.decisao?.aprovado === true);
-  ok("COM aprovacao, podesTransferir e' TRUE", r3?.podesTransferir === true, String(r3?.podesTransferir));
-  ok("e sem aprovacao era FALSE -- a aprovacao muda a resposta",
-    r2?.podesTransferir === false && r3?.podesTransferir === true);
+  // `E-1041`: um booleano solto JA' NAO AUTORIZA. *Um campo que quem pede controla nao e'
+  // uma aprovacao -- e' uma afirmacao.*
+  const r3s = await pedir({ tipo: "arquivo:avaliar", aprovado: true, pedido: { nome: "setup.exe", direcao: "download", tamanho: 12, sha256: H } });
+  console.log("   booleano solto: " + JSON.stringify(r3s?.decisao));
+  ok("booleano solto NAO autoriza", r3s?.decisao?.veredicto === "exige_aprovacao", JSON.stringify(r3s?.decisao));
+  ok("e diz porque", r3s?.decisao?.aprovacao === "booleano_solto_nao_e_aprovacao", JSON.stringify(r3s?.decisao));
+
+  // a PROVA estruturada: o fingerprint tem de casar com o pedido
+  // *`import()` e' proibido no ServiceWorkerGlobalScope por especificacao.* O fingerprint
+  // calcula-se AQUI, com o mesmo modulo, e vai medido para dentro.
+  const { fingerprintDe } = await import(pathToFileURL(path.join(EXT, "src", "arquivos.js")).href);
+  const fp = (await fingerprintDe({ direcao: "download", nome: "setup.exe", tamanho: 12, sha256: H })).fingerprint;
+  const r3 = await pedir({
+    tipo: "arquivo:avaliar",
+    prova: { aprovacaoId: "AP-1", fingerprint: fp, aprovadoPor: "humano-do-teste" },
+    pedido: { nome: "setup.exe", direcao: "download", tamanho: 12, sha256: H, fingerprint: fp },
+  });
+  console.log("   com prova: " + JSON.stringify(r3?.decisao));
+  ok("COM a prova certa, autorizado", r3?.decisao?.veredicto === "autorizado", JSON.stringify(r3?.decisao));
+  ok("e o id da aprovacao fica registado", r3?.decisao?.aprovacaoId === "AP-1");
+  ok("e o autor tambem", r3?.decisao?.aprovadoPor === "humano-do-teste");
+
+  // prova de OUTRO pedido
+  const fpOutro = (await fingerprintDe({ direcao: "download", nome: "outro.csv", tamanho: 1, sha256: H })).fingerprint;
+  const r3x = await pedir({
+    tipo: "arquivo:avaliar",
+    prova: { aprovacaoId: "AP-2", fingerprint: fpOutro, aprovadoPor: "humano" },
+    pedido: { nome: "setup.exe", direcao: "download", tamanho: 12, sha256: H, fingerprint: fp },
+  });
+  console.log("   prova cruzada: " + JSON.stringify(r3x?.decisao));
+  ok("prova de OUTRO pedido NAO serve", r3x?.decisao?.veredicto === "exige_aprovacao", JSON.stringify(r3x?.decisao));
+  ok("e diz porque", r3x?.decisao?.aprovacao === "fingerprint_nao_corresponde");
+  ok("COM a prova, podesTransferir e' TRUE", r3?.podesTransferir === true, String(r3?.podesTransferir));
+  ok("e com o booleano solto era FALSE -- a prova muda a resposta",
+    r3s?.podesTransferir === false && r3?.podesTransferir === true,
+    JSON.stringify([r3s?.podesTransferir, r3?.podesTransferir]));
 
   console.log("\n4) nome com CAMINHO -> proibido");
   const r4 = await pedir({ tipo: "arquivo:avaliar", pedido: { nome: "../a.txt", direcao: "download", tamanho: 5, sha256: H } });
@@ -141,7 +169,12 @@ try {
   });
   const quantos = (est?.arquivos ?? []).length;
   console.log("   registos: " + quantos + "  ultimo: " + JSON.stringify(est?.arquivos?.[est.arquivos.length - 1]));
-  ok("ha registos de decisao", quantos >= 8, String(quantos));
+  ok("ha registos de decisao", quantos >= 10, String(quantos));
+  // *a autoria da aprovacao fica no registo -- quem autorizou.*
+  const comAutor = (est?.arquivos ?? []).filter((a) => a.aprovadoPor);
+  console.log("   registos com autor: " + JSON.stringify(comAutor));
+  ok("o registo guarda QUEM autorizou", comAutor.length >= 1 && comAutor[0].aprovadoPor === "humano-do-teste", JSON.stringify(comAutor));
+  ok("e guarda o id da aprovacao", comAutor[0]?.aprovacaoId === "AP-1", JSON.stringify(comAutor[0]));
   ok("o registo NAO leva o hash", !JSON.stringify(est?.arquivos ?? []).includes(H), "o hash esta no registo!");
   ok("o registo leva o resumo", typeof est?.arquivos?.[0]?.resumo === "string", JSON.stringify(est?.arquivos?.[0]));
 

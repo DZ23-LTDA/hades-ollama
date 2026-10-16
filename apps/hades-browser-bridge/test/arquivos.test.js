@@ -7,7 +7,9 @@ import assert from "node:assert/strict";
 
 import {
   PROTOCOLO_ARQUIVOS, LIMITES_ARQUIVOS, EXECUTAVEIS, SENSIVEIS, INERTES, DIRECOES,
-  extensaoDe, nomeSeguro, sha256De, classificar, decidir, manifesto, resumoDaDecisao, normalizarBytes,
+  extensaoDe, nomeSeguro, sha256De, classificar, decidir, resumoDaDecisao, normalizarBytes,
+  impressaoDoPedido, fingerprintDe, provaValida, manifesto as montarManifesto,
+
 } from "../src/arquivos.js";
 
 const H64 = "a".repeat(64);
@@ -128,12 +130,15 @@ test("9) DOWNLOAD inerte e' permitido; o resto NAO", () => {
   const exe = decidir({ nome: "setup.exe", direcao: "download", tamanho: 100, sha256: H64 });
   assert.equal(exe.veredicto, "exige_aprovacao");
   assert.equal(exe.motivo, "executavel_exige_aprovacao");
-  assert.equal(exe.aprovado, false);
+  // *nao ha' `aprovado: false` a confirmar: nao ha' aprovacao nenhuma.*
+  assert.equal(exe.aprovacao, "aprovacao_ausente");
+  assert.equal("aprovado" in exe, false, "o campo booleano desapareceu do contrato");
 
-  const exeOk = decidir({ nome: "setup.exe", direcao: "download", tamanho: 100, sha256: H64 }, { aprovado: true });
-  assert.equal(exeOk.veredicto, "exige_aprovacao", "continua a exigir: nao vira permitido");
-  assert.equal(exeOk.motivo, "executavel_aprovado_nesta_transferencia");
-  assert.equal(exeOk.aprovado, true);
+  // `E-1041`: `{ aprovado: true }` JA' NAO BASTA -- *um booleano solto diz que alguem
+  // afirmou; nao diz quem, nem para que pedido.*
+  const solto = decidir({ nome: "setup.exe", direcao: "download", tamanho: 100, sha256: H64 }, { aprovado: true });
+  assert.equal(solto.veredicto, "exige_aprovacao", "um booleano solto nao autoriza");
+  assert.equal(solto.aprovacao, "booleano_solto_nao_e_aprovacao");
 });
 
 test("10) DOWNLOAD sensivel e desconhecido exigem aprovacao", () => {
@@ -163,20 +168,23 @@ test("12) a ORDEM das regras e' a politica -- o executavel vem antes do upload",
   assert.equal(upExe.motivo, "executavel_exige_aprovacao", "o risco manda sobre a direccao");
 });
 
-test("13) `manifesto` monta a forma canonica e recusa o que nao caiba", () => {
-  const m = manifesto({ nome: "a.txt", direcao: "download", bytes: bytes(5), sha256: H64, missao: "M-1", origem: "https://x" });
+test("13) `manifesto` monta a forma canonica -- com FINGERPRINT -- e recusa o que nao caiba", async () => {
+  const m = await montarManifesto({ nome: "a.txt", direcao: "download", bytes: bytes(5), sha256: H64, missao: "M-1", origem: "https://x" });
   assert.equal(m.ok, true);
   assert.equal(m.manifesto.protocolo, 1);
   assert.equal(m.manifesto.tamanho, 5);
   assert.equal(m.manifesto.extensao, "txt");
   assert.equal(m.manifesto.missao, "M-1");
-  assert.equal(manifesto({ nome: "../a.txt", direcao: "download", bytes: bytes(5) }).motivo, "nome_tem_caminho");
+  assert.match(m.manifesto.fingerprint, /^[a-f0-9]{64}$/, "o manifesto traz o fingerprint");
+  // *um manifesto sem hash MEDIDO nao e' um manifesto: e' uma descricao.*
+  assert.equal((await montarManifesto({ nome: "a.txt", direcao: "download", bytes: bytes(5) })).motivo, "sha256_ausente_ou_invalido");
+  assert.equal((await montarManifesto({ nome: "../a.txt", direcao: "download", bytes: bytes(5), sha256: H64 })).motivo, "nome_tem_caminho");
   // um objecto que nao e' uma sequencia de octetos e' recusado na normalizacao
-  assert.equal(manifesto({ nome: "a.txt", direcao: "download", bytes: { byteLength: 5 } }).motivo, "bytes_invalidos");
-  assert.equal(manifesto({ nome: "a.txt", direcao: "download", bytes: null }).motivo, "bytes_ausentes");
+  assert.equal((await montarManifesto({ nome: "a.txt", direcao: "download", bytes: { byteLength: 5 }, sha256: H64 })).motivo, "bytes_invalidos");
+  assert.equal((await montarManifesto({ nome: "a.txt", direcao: "download", bytes: null, sha256: H64 })).motivo, "bytes_ausentes");
   // e o LIMITE e' verificado sobre o tamanho real dos bytes normalizados
   const grande = new Uint8Array(LIMITES_ARQUIVOS.ficheiroBytes + 1);
-  assert.equal(manifesto({ nome: "a.txt", direcao: "download", bytes: grande }).motivo, "ficheiro_demasiado_grande");
+  assert.equal((await montarManifesto({ nome: "a.txt", direcao: "download", bytes: grande, sha256: H64 })).motivo, "ficheiro_demasiado_grande");
 });
 
 test("14) `resumoDaDecisao` e' curto e nao leva o hash", () => {
@@ -191,7 +199,7 @@ test("15) um manifesto HONESTO ponta a ponta: hash medido, decisao coerente", as
   const conteudo = bytes(12);
   const h = await sha256De(conteudo);
   assert.equal(h.ok, true);
-  const m = manifesto({ nome: "dados.csv", direcao: "download", bytes: conteudo, sha256: h.sha256, missao: "M-9" });
+  const m = await montarManifesto({ nome: "dados.csv", direcao: "download", bytes: conteudo, sha256: h.sha256, missao: "M-9" });
   assert.equal(m.ok, true);
   const d = decidir(m.manifesto);
   assert.equal(d.veredicto, "permitido");
@@ -237,4 +245,96 @@ test("17) o canal NAO transporta binario -- e isso e' uma propriedade, nao um de
   assert.equal(voltou instanceof Uint8Array, false);
   assert.equal(voltou.byteLength, undefined, "sem byteLength: a primeira versao falhava aqui");
   assert.equal(Array.isArray(voltou), false);
+});
+
+test("18) `impressaoDoPedido` cobre o que a decisao decide", () => {
+  // *Uma aprovacao para `a.csv` de 12 bytes nao pode servir para `b.exe` de 2 MB.*
+  const a = impressaoDoPedido({ direcao: "download", nome: "a.csv", tamanho: 12, sha256: H64 });
+  const b = impressaoDoPedido({ direcao: "download", nome: "b.csv", tamanho: 12, sha256: H64 });
+  const c = impressaoDoPedido({ direcao: "download", nome: "a.csv", tamanho: 13, sha256: H64 });
+  const d = impressaoDoPedido({ direcao: "download", nome: "a.csv", tamanho: 12, sha256: "b".repeat(64) });
+  const e = impressaoDoPedido({ direcao: "upload", nome: "a.csv", tamanho: 12, sha256: H64 });
+  const iguais = new Set([a, b, c, d, e]);
+  assert.equal(iguais.size, 5, "cada campo muda a impressao");
+  assert.equal(a, impressaoDoPedido({ direcao: "download", nome: "a.csv", tamanho: 12, sha256: H64 }),
+    "e a mesma impressao para o mesmo pedido");
+});
+
+test("19) `provaValida` exige os TRES campos -- id, fingerprint e autor", () => {
+  const fp = "a".repeat(64);
+  assert.equal(provaValida({ aprovacaoId: "AP-1", fingerprint: fp, aprovadoPor: "LMPrado-DZ23" }).ok, true);
+  assert.equal(provaValida(null).motivo, "aprovacao_ausente");
+  assert.equal(provaValida({}).motivo, "aprovacao_sem_id");
+  assert.equal(provaValida({ aprovacaoId: "AP-1" }).motivo, "aprovacao_sem_fingerprint");
+  assert.equal(provaValida({ aprovacaoId: "AP-1", fingerprint: "abc" }).motivo, "aprovacao_sem_fingerprint");
+  assert.equal(provaValida({ aprovacaoId: "AP-1", fingerprint: fp }).motivo, "aprovacao_sem_actor");
+  assert.equal(provaValida({ aprovacaoId: "  ", fingerprint: fp, aprovadoPor: "x" }).motivo, "aprovacao_sem_id");
+  // *uma aprovacao sem autor nao tem responsavel.*
+  assert.equal(provaValida({ aprovacaoId: "AP-1", fingerprint: fp, aprovadoPor: " " }).motivo, "aprovacao_sem_actor");
+});
+
+test("20) a PROVA autoriza -- mas so' para o pedido EXACTO", async () => {
+  const pedido = { nome: "setup.exe", direcao: "download", tamanho: 100, sha256: H64 };
+  const fp = await fingerprintDe(pedido);
+  assert.equal(fp.ok, true);
+  const manifesto = { ...pedido, fingerprint: fp.fingerprint };
+
+  // sem prova nenhuma
+  const sem = decidir(manifesto);
+  assert.equal(sem.veredicto, "exige_aprovacao");
+  assert.equal(sem.aprovacao, "aprovacao_ausente");
+
+  // prova do pedido CERTO
+  const boa = decidir(manifesto, { prova: { aprovacaoId: "AP-1", fingerprint: fp.fingerprint, aprovadoPor: "humano" } });
+  assert.equal(boa.veredicto, "autorizado", JSON.stringify(boa));
+  assert.equal(boa.motivo, "executavel_exige_aprovacao_com_aprovacao");
+  assert.equal(boa.aprovacaoId, "AP-1");
+  assert.equal(boa.aprovadoPor, "humano");
+
+  // prova de OUTRO pedido -- o fingerprint nao casa
+  const outro = await fingerprintDe({ nome: "outro.csv", direcao: "download", tamanho: 1, sha256: H64 });
+  const cruzada = decidir(manifesto, { prova: { aprovacaoId: "AP-2", fingerprint: outro.fingerprint, aprovadoPor: "humano" } });
+  assert.equal(cruzada.veredicto, "exige_aprovacao", "uma aprovacao para outro pedido nao serve");
+  assert.equal(cruzada.aprovacao, "fingerprint_nao_corresponde");
+
+  // prova sem fingerprint do pedido
+  const semFp = decidir({ ...pedido }, { prova: { aprovacaoId: "AP-3", fingerprint: fp.fingerprint, aprovadoPor: "h" } });
+  assert.equal(semFp.veredicto, "exige_aprovacao");
+  assert.equal(semFp.aprovacao, "fingerprint_do_pedido_ausente");
+});
+
+test("21) a prova tambem autoriza upload e ficheiro sensivel -- com o fingerprint certo", async () => {
+  for (const caso of [
+    { nome: "a.txt", direcao: "upload", tamanho: 10 },
+    { nome: "chave.pem", direcao: "download", tamanho: 10 },
+    { nome: "a.zzz", direcao: "download", tamanho: 10 },
+  ]) {
+    const pedido = { ...caso, sha256: H64 };
+    const fp = await fingerprintDe(pedido);
+    const manifesto = { ...pedido, fingerprint: fp.fingerprint };
+    assert.equal(decidir(manifesto).veredicto, "exige_aprovacao", caso.nome + " sem prova");
+    const com = decidir(manifesto, { prova: { aprovacaoId: "AP-9", fingerprint: fp.fingerprint, aprovadoPor: "h" } });
+    assert.equal(com.veredicto, "autorizado", caso.nome + " com prova: " + JSON.stringify(com));
+  }
+});
+
+test("22) inerte em download e' PERMITIDO e nao precisa de prova nenhuma", async () => {
+  const pedido = { nome: "a.csv", direcao: "download", tamanho: 10, sha256: H64 };
+  const fp = await fingerprintDe(pedido);
+  const d = decidir({ ...pedido, fingerprint: fp.fingerprint });
+  assert.equal(d.veredicto, "permitido");
+  // e uma prova INVALIDA nao estraga um caso que ja' era permitido -- mas tambem nao o muda
+  const d2 = decidir({ ...pedido, fingerprint: fp.fingerprint }, { prova: { aprovacaoId: "" } });
+  assert.equal(d2.veredicto, "permitido");
+});
+
+test("23) `fingerprintDe` e' deterministico e sensivel ao pedido", async () => {
+  const a = await fingerprintDe({ direcao: "download", nome: "a.csv", tamanho: 1, sha256: H64 });
+  const b = await fingerprintDe({ direcao: "download", nome: "a.csv", tamanho: 1, sha256: H64 });
+  const c = await fingerprintDe({ direcao: "download", nome: "a.csv", tamanho: 2, sha256: H64 });
+  assert.equal(a.fingerprint, b.fingerprint);
+  assert.notEqual(a.fingerprint, c.fingerprint);
+  assert.match(a.fingerprint, /^[a-f0-9]{64}$/);
+  assert.equal(typeof a.impressao, "string");
+  assert.ok(a.impressao.startsWith("v1|download|a.csv|1|"));
 });

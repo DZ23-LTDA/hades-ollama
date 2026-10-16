@@ -21,7 +21,7 @@ import {
 // `E-1040`: o scope `browser:files` estava nos 3 canonicos e nao tinha implementacao. Aqui
 // entra a DECISAO sobre ficheiros -- *nao um motor de download*.
 import {
-  PROTOCOLO_ARQUIVOS, decidir, sha256De, resumoDaDecisao,
+  PROTOCOLO_ARQUIVOS, decidir, sha256De, resumoDaDecisao, fingerprintDe, manifesto as montarManifesto,
 } from "./arquivos.js";
 
 /** Chave unica de armazenamento. Uma so' fonte de verdade. */
@@ -470,7 +470,12 @@ async function devolverSessao(tabId) {
  */
 async function avaliarArquivo(mensagem) {
   const pedido = mensagem?.pedido ?? {};
-  const decisao = decidir(pedido, { aprovado: mensagem?.aprovado === true });
+  // `E-1041`: a PROVA, nao um booleano. *Um campo que quem pede controla nao e' uma
+  // aprovacao -- e' uma afirmacao.* O `fingerprint` da prova tem de casar com o do pedido.
+  //
+  // O `aprovado` continua a ser LIDO -- mas so' para ser RECUSADO com o nome certo. *Ignorar
+  // um campo que quem pede envia deixa quem o envia sem saber porque nao funcionou.*
+  const decisao = decidir(pedido, { prova: mensagem?.prova, aprovado: mensagem?.aprovado });
   // O resumo vai para o audit log; o hash NAO -- um hash e' um identificador, e identificadores
   // nao pertencem a um log que se mostra.
   const registo = {
@@ -482,6 +487,10 @@ async function avaliarArquivo(mensagem) {
     extensao: decisao.extensao ?? null,
     tamanho: decisao.tamanho ?? null,
     resumo: resumoDaDecisao(decisao),
+    // A autoria da aprovacao, quando houve uma. *Quem autorizou, e nao o quao convincente
+    // parecia o pedido.* O fingerprint NAO entra: e' um identificador.
+    aprovacaoId: decisao.aprovacaoId ?? null,
+    aprovadoPor: decisao.aprovadoPor ?? null,
   };
   const estado = await lerEstado();
   estado.arquivos = Array.isArray(estado.arquivos) ? estado.arquivos : [];
@@ -497,8 +506,7 @@ async function avaliarArquivo(mensagem) {
   //   exige_aprovacao + aprovado      -> sim (a decisao registou que a aprovacao veio)
   //   exige_aprovacao sem aprovacao   -> nao
   //   proibido                        -> nao
-  const podesTransferir = decisao.veredicto === "permitido"
-    || (decisao.veredicto === "exige_aprovacao" && decisao.aprovado === true);
+  const podesTransferir = decisao.veredicto === "permitido" || decisao.veredicto === "autorizado";
   return {
     // a avaliacao correu -- nada rebentou
     ok: true,

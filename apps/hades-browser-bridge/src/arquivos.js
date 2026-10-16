@@ -169,21 +169,78 @@ export function classificar(nome, bytesOuTamanho) {
 }
 
 /**
- * A DECISAO. Recebe o manifesto e se ja' houve aprovacao para ESTA transferencia.
+ * A IMPRESSAO DIGITAL DO PEDIDO -- o `fingerprint` do Mission Control (`E-1041`).
+ *
+ * O backend tem `FindApproved(organizationID, fingerprint, now)`: procura uma aprovacao
+ * **aprovada, com quorum e nao consumida** para um pedido identificado por impressao. E o
+ * `Consume` garante **uso unico**.
+ *
+ * A extensao nao tem acesso ao store -- mas pode exigir a **mesma forma de prova**. *Um
+ * booleano `aprovado: true` que quem pede controla nao e' uma aprovacao: e' uma afirmacao.*
+ *
+ * A impressao tem de cobrir o que a decisao decide: direccao, nome, tamanho e hash. *Uma
+ * aprovacao para `a.csv` de 12 bytes nao pode servir para `b.exe` de 2 MB.*
+ */
+export function impressaoDoPedido(pedido) {
+  const p = pedido ?? {};
+  const partes = [
+    "v1",
+    String(p.direcao ?? ""),
+    String(p.nome ?? ""),
+    String(p.tamanho ?? ""),
+    String(p.sha256 ?? ""),
+  ];
+  return partes.join("|");
+}
+
+/** SHA-256 da impressao, em hex -- e' isto que casa com o `fingerprint` do Mission Control. */
+export async function fingerprintDe(pedido) {
+  const texto = impressaoDoPedido(pedido);
+  const bytes = new TextEncoder().encode(texto);
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  const hex = Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, "0")).join("");
+  return { ok: true, fingerprint: hex, impressao: texto };
+}
+
+/** A forma minima de uma prova de aprovacao. *Nada de booleanos soltos.* */
+export function provaValida(prova) {
+  if (!prova || typeof prova !== "object") return { ok: false, motivo: "aprovacao_ausente" };
+  const { aprovacaoId, fingerprint, aprovadoPor } = prova;
+  if (typeof aprovacaoId !== "string" || aprovacaoId.trim() === "") {
+    return { ok: false, motivo: "aprovacao_sem_id" };
+  }
+  if (typeof fingerprint !== "string" || !/^[a-f0-9]{64}$/.test(fingerprint)) {
+    return { ok: false, motivo: "aprovacao_sem_fingerprint" };
+  }
+  if (typeof aprovadoPor !== "string" || aprovadoPor.trim() === "") {
+    return { ok: false, motivo: "aprovacao_sem_actor" };
+  }
+  return { ok: true, prova: { aprovacaoId, fingerprint, aprovadoPor } };
+}
+
+/**
+ * A DECISAO. Recebe o manifesto e a PROVA de aprovacao (nao um booleano).
+ *
+ * `E-1041`: a versao anterior aceitava `opcoes.aprovado === true`. ***Um campo que quem pede
+ * controla nao e' uma aprovacao.*** Agora e' preciso:
+ *   * `aprovacaoId` -- a aprovacao concreta, para poder ser consumida uma vez;
+ *   * `fingerprint` -- e tem de ser **o fingerprint DESTE pedido**;
+ *   * `aprovadoPor` -- *uma aprovacao sem autor nao tem responsavel.*
  *
  * Regras, na ordem em que sao aplicadas -- *a ordem e' a politica*:
  *   1. nome invalido               -> proibido;
  *   2. direccao invalida           -> proibido;
  *   3. sem sha256 quando exigido   -> proibido (nao se aprova o que nao se mediu);
- *   4. risco executavel            -> exige_aprovacao (mesmo com aprovacao previa: o
- *      executavel nunca e' "permitido" -- no maximo "permitido_com_aprovacao");
+ *   4. risco executavel            -> exige_aprovacao;
  *   5. risco sensivel              -> exige_aprovacao;
- *   6. upload de qualquer ficheiro -> exige_aprovacao (sair do disco e' sempre um acto);
- *   7. risco desconhecido          -> exige_aprovacao (*nao ha' lista completa de perigo*);
+ *   6. upload de qualquer ficheiro -> exige_aprovacao;
+ *   7. risco desconhecido          -> exige_aprovacao;
  *   8. inerte + download           -> permitido.
+ *
+ * Para as regras 4..7, o `exige_aprovacao` so' se torna `autorizado` com uma prova cujo
+ * `fingerprint` **casa com este pedido**.
  */
 export function decidir(manifesto, opcoes = {}) {
-  const aprovado = opcoes.aprovado === true;
   const m = manifesto ?? {};
 
   const direcao = String(m.direcao ?? "");
@@ -201,41 +258,77 @@ export function decidir(manifesto, opcoes = {}) {
     direcao, sha256: m.sha256,
   };
 
-  if (c.risco === "executavel") {
-    // *Um executavel nunca fica "permitido" sozinho.* Com aprovacao, o veredicto continua a
-    // dizer de onde veio a permissao.
-    return aprovado
-      ? { veredicto: "exige_aprovacao", motivo: "executavel_aprovado_nesta_transferencia", aprovado: true, ...base }
-      : { veredicto: "exige_aprovacao", motivo: "executavel_exige_aprovacao", aprovado: false, ...base };
+  // A prova e' avaliada UMA vez, e so' se for preciso.
+  let prova = null;
+  let motivoDaProva = null;
+  if (opcoes.prova !== undefined && opcoes.prova !== null) {
+    const pv = provaValida(opcoes.prova);
+    if (!pv.ok) motivoDaProva = pv.motivo;
+    else prova = pv.prova;
+  } else if (opcoes.aprovado === true) {
+    // *Compatibilidade explicita e' um erro, nao um atalho.* Um booleano solto diz que
+    // alguem afirmou; nao diz quem, nem para que pedido.
+    motivoDaProva = "booleano_solto_nao_e_aprovacao";
   }
-  if (c.risco === "sensivel") {
-    return { veredicto: "exige_aprovacao", motivo: "ficheiro_sensivel_exige_aprovacao", aprovado, ...base };
-  }
-  if (direcao === "upload") {
-    return { veredicto: "exige_aprovacao", motivo: "upload_exige_aprovacao", aprovado, ...base };
-  }
-  if (c.risco === "desconhecido") {
-    return { veredicto: "exige_aprovacao", motivo: "extensao_desconhecida_exige_aprovacao", aprovado, ...base };
-  }
-  return { veredicto: "permitido", motivo: "conteudo_inerte_em_download", aprovado, ...base };
+
+  /** Decide se a prova autoriza ESTE pedido. */
+  const autoriza = () => {
+    if (!prova) return { autorizado: false, motivo: motivoDaProva ?? "aprovacao_ausente" };
+    if (prova.fingerprint !== m.fingerprint) {
+      // *Uma aprovacao para outro pedido nao serve.* E o fingerprint tem de vir medido.
+      return {
+        autorizado: false,
+        motivo: m.fingerprint ? "fingerprint_nao_corresponde" : "fingerprint_do_pedido_ausente",
+      };
+    }
+    return { autorizado: true, motivo: null };
+  };
+
+  const comAprovacao = (motivoSemProva) => {
+    const a = autoriza();
+    if (a.autorizado) {
+      return {
+        veredicto: "autorizado", motivo: motivoSemProva + "_com_aprovacao",
+        aprovacaoId: prova.aprovacaoId, aprovadoPor: prova.aprovadoPor,
+        fingerprint: prova.fingerprint, ...base,
+      };
+    }
+    return { veredicto: "exige_aprovacao", motivo: motivoSemProva, aprovacao: a.motivo, ...base };
+  };
+
+  if (c.risco === "executavel") return comAprovacao("executavel_exige_aprovacao");
+  if (c.risco === "sensivel") return comAprovacao("ficheiro_sensivel_exige_aprovacao");
+  if (direcao === "upload") return comAprovacao("upload_exige_aprovacao");
+  if (c.risco === "desconhecido") return comAprovacao("extensao_desconhecida_exige_aprovacao");
+  return { veredicto: "permitido", motivo: "conteudo_inerte_em_download", ...base };
 }
 
 /**
- * Monta o manifesto canonico. O `sha256` tem de vir de `sha256De(bytes)` -- nunca de um
- * campo declarado por quem pede. *Quem pede nao certifica o que pede.*
+ * Monta o manifesto canonico, **com o fingerprint** (`E-1041`).
+ *
+ * O `sha256` e o `fingerprint` tem de vir MEDIDOS. *Quem pede nao certifica o que pede* -- e
+ * por isso o fingerprint e' derivado do proprio pedido normalizado, nao aceite de fora.
  */
-export function manifesto({ nome, direcao, bytes, sha256, missao, origem }) {
+export async function manifesto({ nome, direcao, bytes, sha256, missao, origem }) {
   const nb = normalizarBytes(bytes);
   if (!nb.ok) return { ok: false, motivo: nb.motivo };
   const c = classificar(nome, nb.bytes.byteLength);
   if (!c.ok) return { ok: false, motivo: c.motivo };
+  if (typeof sha256 !== "string" || !/^[a-f0-9]{64}$/.test(sha256)) {
+    // *Um manifesto sem hash medido nao e' um manifesto: e' uma descricao.*
+    return { ok: false, motivo: "sha256_ausente_ou_invalido" };
+  }
+  const fp = await fingerprintDe({
+    direcao, nome: c.nome, tamanho: c.tamanho, sha256,
+  });
   const m = {
     protocolo: PROTOCOLO_ARQUIVOS,
     nome: c.nome,
     extensao: c.extensao,
     direcao,
     tamanho: c.tamanho,
-    sha256: sha256 ?? null,
+    sha256,
+    fingerprint: fp.fingerprint,
     missao: missao ?? null,
     origem: origem ?? null,
   };

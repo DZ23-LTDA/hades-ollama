@@ -1082,3 +1082,44 @@ o `takeover` caiu no `E-1037` e o `arquivos` ia cair agora. Agora normaliza so' 
 **Doutrina em uma linha**: um scope declarado sem implementacao e' pior do que um ausente,
 e uma mensagem que promete o que nao existe e' pior ainda; uma lista fixa de campos e' uma
 armadilha que se arma a cada campo novo; e quem pede nao certifica o que pede.
+
+### Instrucoes de retomada (janela `E-1041`)
+
+**Estado**: branch `fix/checker-relogio`; cabeca do indice `E-1041`; PR #438 **aberto** e
+**nao tocado**; `reviewDecision` **vazio** => sem revisao humana independente.
+
+**Bateria: 34 passos.** OITO E2E por **opt-in** (`-ComE2E`) e as **23 assercoes** da
+politica de ficheiros (passo 27, sem browser):
+  node scripts/hades_browser_bridge_e2e_arquivos.mjs     # browser:files decide
+  node --test apps/hades-browser-bridge/test/arquivos.test.js
+
+**A PROVA DE APROVACAO** (`E-1041`): `{aprovacaoId, fingerprint, aprovadoPor}`. Os tres
+sao obrigatorios -- *uma aprovacao sem autor nao tem responsavel*. Um **booleano solto**
+(`aprovado: true`) e' recusado com `booleano_solto_nao_e_aprovacao`, **com nome**, e nao
+ignorado em silencio. E o `fingerprint` tem de **casar com o pedido**.
+
+**OS TRES VEREDICTOS**: `permitido` (inerte em download, sem prova) / `exige_aprovacao`
+(falta ou nao casa) / `autorizado` (a prova casa com ESTE pedido).
+
+**A FRONTEIRA, DITA SEM DESFARCE**: a extensao **nao verifica** a prova contra o store --
+nao tem acesso. *A forma esta' implementada e testada; a autoridade nao.* Uma prova bem
+formada mas falsa passaria. Adoptou-se a forma do que ja' existia
+(`FindApproved` + `Consume`) em vez de inventar um segundo sistema de aprovacao.
+
+**`import()` NAO EXISTE NO SERVICE WORKER** -- `TypeError: import() is disallowed on
+ServiceWorkerGlobalScope`. O fingerprint calcula-se **fora**, com o mesmo modulo, e vai
+medido para dentro.
+
+**A CATRACA APANHOU ANTES DO REGISTO**: o `mission_check` ficou VERMELHO com
+*«evidencia CITADA e NAO REGISTADA ... E-1041»* e *«CABECA DO INDICE ATRAS DO CODIGO»* --
+*um ID citado sem entrada nao e' verificavel por quem audita*. O registo veio depois.
+
+**DUAS CATRACAS COMPLEMENTARES**: `hades_index_shape_check.py` varre o **indice**;
+`hades_mission_check.py` varre **todo o codigo**. **Um ID novo continua do MAIOR cunhado.**
+
+**O que NAO fazer**: `reset --hard`, `git clean`, rebase destrutivo, force-push, stash,
+`merge`, tag, release, publicacao externa, ou **resolver threads** do PR #438.
+
+**Doutrina em uma linha**: um campo de permissao que quem pede controla nao e' uma
+permissao; nao inventar um sistema quando a forma do existente serve; e ignorar um campo
+que alguem envia deixa quem o envia sem saber porque nao funcionou.

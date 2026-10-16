@@ -570,3 +570,23 @@ Control**. Hoje a aprovação chega por `mensagem.aprovado` — um campo que **q
 controla. *Quem pede não certifica o que pede.* Medir a rota de approvals existente
 (`internal/agent/service_agent_approvals.go`) e ligá-la, ou declarar honestamente que a
 extensão decide sem autoridade de aprovação.
+
+### A proxima accao unica (janela `E-1041`)
+
+**A aprovação da extensão era um campo que quem pede controla** (`aprovado: true`).
+Agora é uma **prova estruturada** — `{aprovacaoId, fingerprint, aprovadoPor}` — e o
+`fingerprint` tem de **casar com o pedido**. ***Um campo de permissão que quem pede
+controla não é uma permissão.***
+
+E não inventei um sistema: o backend **já tinha** `FindApproved(org, fingerprint, now)`
+e `Consume` (uso único). A extensão exige a **mesma forma de prova**.
+
+⇒ ***Mas a fronteira é honesta: a extensão **não verifica** a prova contra o store — não
+tem acesso. Uma prova bem formada mas falsa passaria. A forma está implementada e
+testada; a autoridade não.***
+
+**A proxima accao unica**: **o canal autenticado extensão ↔ runtime**. É o que falta para
+a autoridade existir: o `nativeMessaging` já funciona (`E-1032`) e o Companion já fala o
+protocolo. Medir se o Companion pode consultar `FindApproved` e devolver a prova — ou
+declarar que sem a rota no runtime a extensão decide **sem autoridade** e assumi-lo no
+contrato. Tudo interno.
