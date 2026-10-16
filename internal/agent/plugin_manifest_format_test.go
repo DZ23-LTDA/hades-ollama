@@ -84,7 +84,7 @@ func TestFormatoRecusaVersaoDeFormatoDesconhecida(t *testing.T) {
 	}
 }
 
-// TestFormatoRecusaCampoDesconhecido e' o DISCRIMINANTE do DisallowUnknownFields.
+// TestFormatoRecusaCampoDesconhecido e' o DISCRIMINADOR do DisallowUnknownFields.
 //
 // *Se alguem remover o `DisallowUnknownFields`, este teste falha* — e o efeito seria
 // aceitar manifestos cujo efeito o runtime nao sabe prever.

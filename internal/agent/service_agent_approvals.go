@@ -387,7 +387,7 @@ func (s *ServiceAgentApprovalStore) saveLocked(organizationID string, approvals 
 // E-907 / ALTO-4: `Save` grava o FICHEIRO INTEIRO. Um chamador que passe um instantaneo lido ANTES de um
 // `Consume` rebaixaria a aprovacao consumida de volta a "aprovada" - *e uma ferramenta ja' executada poderia
 // executar DE NOVO*. A trava sozinha NAO impede isto: a trava serializa os escritores, mas nao corrige o
-// conteudo que o chamador entrega. *Foi o que o teste discriminante apanhou.*
+// conteudo que o chamador entrega. *Foi o que o teste discriminador apanhou.*
 //
 // A regra: uma aprovacao que esta' CONSUMIDA no disco NAO PODE sair de consumida por uma gravacao que a
 // substitua. Quem quiser reabrir cria um pedido NOVO - *que e' o que o pedido de aprovacao existe para tornar
@@ -612,7 +612,7 @@ func (s *ServiceAgentApprovalStore) ApprovalQueue(organizationID string, now tim
 // **trava aninhada**, que neste helper segura para sempre.* Por isso o corpo virou `requestLocked` e usa
 // `saveFile` diretamente, com a **releitura e a deduplicacao DENTRO da trava**.
 //
-// A deduplicacao dentro da trava importa: dois `Request` simultaneos para a mesma impressao digital liam a
+// A deduplicacao dentro da trava importa: dois `Request` simultâneos para a mesma impressao digital liam a
 // lista antes de qualquer gravacao, nao se viam, e criavam **dois pedidos pendentes** - *exactamente o que
 // esta funcao existe para impedir, e o numero de decisoes que faltam apareceria inflado.*
 func (s *ServiceAgentApprovalStore) Request(organizationID string, request ServiceAgentApproval) (ServiceAgentApproval, error) {

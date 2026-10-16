@@ -63,7 +63,7 @@ func statusDaAprovacao(t *testing.T, store *ServiceAgentApprovalStore, org, id s
 	return ""
 }
 
-// TestExpireStaleNaoRessuscitaAprovacaoConsumida e' o discriminante DIRETO do achado.
+// TestExpireStaleNaoRessuscitaAprovacaoConsumida e' o discriminador DIRETO do achado.
 //
 // Magnetude: `expireStale` reescreve o FICHEIRO INTEIRO. Se ele gravar a lista que leu antes do `Consume`,
 // a aprovacao que o `Consume` marcou como CONSUMIDA volta a ficar APPROVED - e uma ferramenta ja' executada
@@ -162,7 +162,7 @@ func TestConsumeConcorrenteComEscritoresNaoDuplicaExecucao(t *testing.T) {
 
 	const quantos = 12
 	ids := make([]string, 0, quantos)
-	for i := 0; i < quantos; i++ {
+	for i := range quantos {
 		pedido, err := store.Request(org, ServiceAgentApproval{
 			Fingerprint: "fp-conc-" + string(rune('a'+i)),
 			ValueCents:  100,

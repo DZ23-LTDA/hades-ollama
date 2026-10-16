@@ -62,7 +62,7 @@ func TestLigacaoInstalaPeloCaminhoCanonico(t *testing.T) {
 	}
 }
 
-// TestLigacaoAsSkillsSobrevivemAoRegisto e' O DISCRIMINANTE DA ARMADILHA DO CLONE.
+// TestLigacaoAsSkillsSobrevivemAoRegisto e' O DISCRIMINADOR DA ARMADILHA DO CLONE.
 //
 // **O achado**: o `InstallForOrganization` termina com
 // `return clonePluginInstallation(*installation)` (`plugin_registry.go:383`). *Mutar o
@@ -143,7 +143,7 @@ func TestLigacaoRecusaSkillComTravessiaAntesDeInstalar(t *testing.T) {
 // TestLigacaoPreservaOTenantIsolationDoNucleo prova que a ligacao **nao** contorna a
 // regra de organizacao: *um id instalado numa organizacao nao entra noutra.*
 //
-// **E o discriminante de que nao ha' segunda instalacao**: se eu tivesse reimplementado a
+// **E o discriminador de que nao ha' segunda instalacao**: se eu tivesse reimplementado a
 // instalacao neste ficheiro, esta recusa poderia ter sido esquecida.
 func TestLigacaoPreservaOTenantIsolationDoNucleo(t *testing.T) {
 	registry := registoParaFormato(t)

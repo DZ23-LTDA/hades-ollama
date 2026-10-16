@@ -54,7 +54,7 @@ var safeSkillNamePattern = regexp.MustCompile(`^[a-z0-9][a-z0-9-]*$`)
 //
 // ⇒ ***«raciocinei em sintaxe PCRE, e o motor era RE2»*** — e o sintoma nao foi um erro
 // devolvido, foi um panico. A cura e' **codigo explicito**, que o RE2 le' e um humano
-// audita sem decorar dialectos de regex.
+// audita sem decorar dialetos de regex.
 //
 // *A mesma defesa que `preparePluginWorkspace` aplica na execucao* — mas aqui, mais cedo:
 // um manifesto que aponta para fora do bundle e' recusado na **instalacao**.

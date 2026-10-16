@@ -14,7 +14,7 @@ import (
 // E-976: A SUPERFICIE DO FORMATO ABERTO.
 //
 // **O que faltava**: o formato existia (`E-972`) e instalava no registo (`E-974`), mas
-// **so' por dentro do processo**. Estes testes provam a **rota** - e o discriminante
+// **so' por dentro do processo**. Estes testes provam a **rota** - e o discriminador
 // central e' que a organizacao vem do **contexto**, nunca do corpo.
 
 func formatoRouteContext(body, organization, role string) (*gin.Context, *httptest.ResponseRecorder) {
@@ -82,7 +82,7 @@ func TestFormatoRouteExigeAdmin(t *testing.T) {
 	}
 }
 
-// TestFormatoRouteNaoAceitaTenantDoCorpo e' O DISCRIMINANTE CENTRAL.
+// TestFormatoRouteNaoAceitaTenantDoCorpo e' O DISCRIMINADOR CENTRAL.
 //
 // **A garantia**: a organizacao vem do **contexto autenticado**, e o corpo **nao** a pode
 // escolher. *E o `DisallowUnknownFields` torna isto **mais forte** que «ignorado»: o campo

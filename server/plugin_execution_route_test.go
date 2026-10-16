@@ -92,7 +92,7 @@ func TestExecutionRouteRejectsStepIDMissing(t *testing.T) {
 	}
 }
 
-// TestExecutionRouteRejectsInvalidSandboxMode e' o DISCRIMINANTE da aprovacao: *um modo que
+// TestExecutionRouteRejectsInvalidSandboxMode e' o DISCRIMINADOR da aprovacao: *um modo que
 // nao seja `strict` nem `best-effort` e' recusado por `ErrPluginExecutionApproval`.*
 //
 // Este teste chega **depois** das portas de instalacao? Nao: ele prova que a porta de
