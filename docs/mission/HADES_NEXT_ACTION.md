@@ -356,3 +356,18 @@ handshake que prova posse da chave derivada, (b) o codigo so vive em memoria no 
 
 Depois: (2) o executavel do `HADES Local Companion` (stdio, com o manifesto ja escrito);
 (3) DNS rebinding a nivel de socket; (4) SBOM do pacote; (5) E2E em Chrome real.
+
+### A proxima accao unica (janela `E-1026`)
+
+**O handshake existe e discrimina** (`E-1025`): desafio de 32 bytes com prazo de 30 s, prova de
+posse, taxa de 20 tentativas por instalacao numa janela de 60 s, e o nonce morre so' depois de a
+prova conferir. 67 assercoes nos 3 ficheiros de teste.
+
+**A proxima accao unica**: **o TRANSPORTE** -- o handshake prova **identidade**, nao **sigilo**.
+O codigo curto continua a atravessar o `localhost` em claro no primeiro salto. Falta escolher e
+implementar: (a) native messaging por `stdio` (o manifesto ja' existe como template), com o
+Companion a ler/escrever mensagens de 4 bytes de comprimento + JSON; ou (b) `loopback` com TLS e
+certificado efemero. Tudo interno, sem credencial.
+
+Antes disso, dois defeitos de higiene que o `E-1026` expos: a taxa vive **em memoria** (reiniciar
+o host apaga a contagem) e nao ha rate-limit do lado do SO.

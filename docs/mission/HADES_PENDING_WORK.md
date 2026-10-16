@@ -900,3 +900,24 @@ indice nao cobre.
 - APK Android bloqueado pela DLL JNI neste host (`E-1019`), desbloqueio = runner Linux;
 - macOS/iOS `BLOCKED_EXTERNAL` pela **maquina**, nao pela credencial;
 - benchmark reproduzivel (ESTAGIO 21) nao iniciado.
+
+### O que falta (actualizado na janela `E-1026`)
+
+**Fechado**: o handshake de prova de posse com desafio de uso unico e prazo, a taxa por instalacao
+com janela expiravel, e a canonizacao propria do desafio (`E-1025`). E **tres defeitos reais**
+curados no mesmo sitio (`E-1026`): `verificar` chamado com 3 argumentos numa funcao de 2 (a guarda
+de prova morria sempre), `registro.revogadaEm` (campo que nunca existiu -- a guarda de revogacao
+estava MORTA), e `>` em vez de `>=` no limite de expiracao.
+
+**Continua em falta, sem disfarce**:
+- **o TRANSPORTE**: o handshake prova identidade, nao sigilo. O codigo curto viaja em claro no
+  `localhost` no primeiro salto; nao ha stdio pipe nem TLS de loopback;
+- **o `HADES Local Companion` nao existe** (o manifesto e' template com placeholders);
+- **a taxa vive em memoria**: reiniciar o host apaga a contagem; sem rate-limit do lado do SO;
+- **DNS rebinding** a nivel de socket: o contrato valida o hostname, nao a ligacao;
+- **E2E em Chrome/Edge reais**: o pacote foi verificado, **nunca carregado**;
+- Firefox (`.xpi`), Safari e assinatura (`.crx`): **nao existem**; sem SBOM do pacote;
+- ligacao da extensao ao **Mission Control** (`missao`/`aprovado` ficam a `null`);
+- APK Android bloqueado pela DLL JNI neste host (`E-1019`), desbloqueio = runner Linux;
+- macOS/iOS `BLOCKED_EXTERNAL` pela **maquina**, nao pela credencial;
+- benchmark reproduzivel (ESTAGIO 21) nao iniciado.

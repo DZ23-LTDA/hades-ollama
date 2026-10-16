@@ -80,6 +80,145 @@ export function contextoDoPairing(pedido, instalacao, missao = null) {
   );
 }
 
+/* -------------------------------------------- prova de posse e trafego (E-1025) */
+
+/**
+ * O DESAFIO. Um nonce que o outro lado tem de ASSINAR antes de o host arrancar.
+ *
+ * POR QUE ISTO EXISTE (`E-1025`): o `E-1024` derivou a chave, mas **nada provava que
+ * o portador a tinha**. Um host que aceita a primeira conexao e depois valida o MAC
+ * esta' a fazer o trabalho caro antes de saber com quem fala -- e num canal `loopback`
+ * sem TLS o codigo curto de 6 digitos viaja EM CLARO no `localhost`. O desafio resolve
+ * a segunda metade: quem nao tem a chave nao passa, mesmo que tenha ouvido o codigo.
+ *
+ * O nonce tem 32 bytes. E' **de uso unico** e **expira**: um desafio reutilizado e' um
+ * replay, e um desafio eterno e' uma assinatura que nunca caduca.
+ */
+export const DESAFIO_BYTES = 32;
+export const TTL_DESAFIO_MS = 30 * 1000;
+
+/** Limites de taxa. Sem isto, um copo de 10^6 codigos e' questao de tempo. */
+export const LIMITES_DE_TAXA = {
+  tentativasPorPedido: 5,
+  tentativasPorInstalacao: 20,
+  janelaMs: 60 * 1000,
+  conexoesSimultaneas: 1,
+};
+
+/** Um desafio novo. Nonce aleatorio, uso unico, com prazo. */
+export function abrirDesafio(instalacao, agora = Date.now()) {
+  if (typeof instalacao !== "string" || !instalacao) {
+    return { ok: false, motivo: "instalacao_ausente" };
+  }
+  return {
+    ok: true,
+    desafio: {
+      nonce: Array.from(aleatorio(DESAFIO_BYTES), (b) => b.toString(16).padStart(2, "0")).join(""),
+      instalacao,
+      criadoEm: agora,
+      expiraEm: agora + TTL_DESAFIO_MS,
+      usado: false,
+    },
+  };
+}
+
+/**
+ * A PROVA DE POSSE: assina o desafio com a chave derivada.
+ * Isto e' o que separa "ouviu o codigo" de "tem a chave".
+ *
+ * `agora` e' parametro explicito porque TODO o resto do contrato o recebe: usar
+ * `Date.now()` escondido aqui tornava o prazo do desafio impossivel de testar sem
+ * esperar 30 segundos reais, e uma expiracao que so' se testa esperando e' uma
+ * expiracao que ninguem testa.
+ *
+ * `canonicoDoDesafio` e' PROPOSITAL e nao usa `canonico` (`E-1026`): o `canonico`
+ * le' campos de um ENVELOPE (`tipoCanal`, `sequencia`, `instante`, `corpo`). Assinar
+ * uma string com ele produziria o MAC de `v1\0undefined\0undefined\0...` -- **uma
+ * constante igual para todos os desafios**, e o handshake aceitaria qualquer prova.
+ * Um objeto desafio tem a sua propria forma, logo tem a sua propria canonizacao.
+ */
+export function canonicoDoDesafio(nonce, instalacao) {
+  return new TextEncoder().encode(
+    ["hades-desafio", "v" + PROTOCOLO, instalacao, nonce].join("\u0000"),
+  );
+}
+
+/** Assina o desafio. Dois argumentos, ambos usados -- ver `E-1026`. */
+export async function assinarDesafio(chave, nonce, instalacao) {
+  const mac = await crypto.subtle.sign(ALG, chave, canonicoDoDesafio(nonce, instalacao));
+  return Array.from(new Uint8Array(mac), (x) => x.toString(16).padStart(2, "0")).join("");
+}
+
+/** Verifica a prova. Dois argumentos, ambos usados -- ver `E-1026`. */
+export async function verificarDesafio(chave, nonce, instalacao, prova) {
+  if (typeof prova !== "string" || !prova) return false;
+  const esperado = await assinarDesafio(chave, nonce, instalacao);
+  if (esperado.length !== prova.length) return false;
+  let dif = 0;
+  for (let i = 0; i < esperado.length; i++) {
+    dif |= esperado.charCodeAt(i) ^ prova.charCodeAt(i);
+  }
+  return dif === 0;
+}
+
+export async function provarPosse(chave, desafio, agora = Date.now()) {
+  if (!desafio || typeof desafio.nonce !== "string" || !desafio.nonce) {
+    throw new Error("sem desafio: nao ha o que provar");
+  }
+  if (desafio.usado === true) throw new Error("desafio ja usado");
+  if (agora >= desafio.expiraEm) throw new Error("desafio expirado");
+  return assinarDesafio(chave, desafio.nonce, desafio.instalacao);
+}
+
+/**
+ * A FRONTEIRA DO HANDSHAKE. O host so' abre o canal depois disto devolver `ok`.
+ *
+ * Recusa por ordem, do mais barato ao mais caro: estrutura -> instalacao -> desafio
+ * -> expiracao -> uso unico -> taxa -> assinatura. E marca o desafio como USADO
+ * DEPOIS de a assinatura conferir: um desafio consumido por uma prova errada deixaria
+ * qualquer um a queimar o nonce do vizinho.
+ */
+export async function aceitarHandshake(recebido, estado, agora = Date.now()) {
+  if (!recebido || typeof recebido !== "object") return { ok: false, motivo: "handshake_malformado" };
+  const { instalacao, nonce, prova } = recebido;
+  if (typeof instalacao !== "string" || !instalacao) return { ok: false, motivo: "instalacao_ausente" };
+  if (typeof nonce !== "string" || !nonce) return { ok: false, motivo: "nonce_ausente" };
+  if (typeof prova !== "string" || !prova) return { ok: false, motivo: "prova_ausente" };
+
+  const registro = estado.dispositivos[instalacao];
+  if (!registro) return { ok: false, motivo: "instalacao_desconhecida" };
+  // O CAMPO E' `revogada` e nao `revogadaEm` (`E-1026`): eu inventei o nome, o
+  // `undefined` era sempre falsy, e a guarda de revogacao estava MORTA -- o erro
+  // so' apareceu porque `importarChave(new Uint8Array(0))` explodiu a seguir.
+  if (registro.revogada === true) return { ok: false, motivo: "dispositivo_revogado" };
+  if (agora >= registro.expiraEm) return { ok: false, motivo: "chave_expirada" };
+
+  const d = estado.desafios[nonce];
+  if (!d) return { ok: false, motivo: "desafio_desconhecido" };
+  if (d.instalacao !== instalacao) return { ok: false, motivo: "desafio_de_outra_instalacao" };
+  if (d.usado === true) return { ok: false, motivo: "desafio_ja_usado" };
+  // `>=`: um desafio NO instante de expiracao esta' expirado. Fail-closed.
+  if (agora >= d.expiraEm) return { ok: false, motivo: "desafio_expirado" };
+
+  // Taxa: barata de medir, e ANTES da verificacao criptografica.
+  const taxa = estado.taxa[instalacao] ?? (estado.taxa[instalacao] = []);
+  const recentes = taxa.filter((t) => agora - t < LIMITES_DE_TAXA.janelaMs);
+  if (recentes.length >= LIMITES_DE_TAXA.tentativasPorInstalacao) {
+    estado.taxa[instalacao] = recentes;
+    return { ok: false, motivo: "taxa_excedida" };
+  }
+  recentes.push(agora);
+  estado.taxa[instalacao] = recentes;
+
+  const chave = await importarChave(registro.chave);
+  if (!(await verificarDesafio(chave, d.nonce, instalacao, prova))) {
+    return { ok: false, motivo: "prova_invalida" };
+  }
+  // So' DEPOIS de a prova conferir e' que o nonce morre.
+  d.usado = true;
+  return { ok: true, instalacao, missao: registro.missao ?? null };
+}
+
 /* ------------------------------------------------------------- aleatoriedade */
 
 /**
@@ -376,5 +515,5 @@ export async function rodarChave(estado, instalacao, agora = Date.now()) {
 
 /** Estado inicial vazio. Sem dispositivos, nada e' aceito -- o default e' fechado. */
 export function estadoInicial() {
-  return { dispositivos: {}, protocolo: PROTOCOLO };
+  return { dispositivos: {}, desafios: {}, taxa: {}, protocolo: PROTOCOLO };
 }

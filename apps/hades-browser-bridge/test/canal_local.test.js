@@ -409,3 +409,152 @@ test("a extensao NAO pede nativeMessaging no nucleo, mas declara-o como opcional
   assert.ok((m.optional_permissions ?? []).includes("nativeMessaging"),
     "sem optional_permissions, o tipo de canal `native` do contrato nao pode existir");
 });
+
+/* ------------------------------- handshake: prova de posse e taxa (E-1025) */
+
+async function comDispositivo() {
+  const pedido = C.abrirPairing(AGORA);
+  const chave = await C.derivarChave(pedido.codigo, pedido.pedido, "inst-1", "m1");
+  const bytes = await C.exportarChave(chave);
+  const estado = C.estadoInicial();
+  C.registrarDispositivo(estado, "inst-1", bytes, AGORA);
+  return { chave, estado, bytes };
+}
+
+function registaDesafio(estado, instalacao, agora = AGORA) {
+  const d = C.abrirDesafio(instalacao, agora);
+  assert.equal(d.ok, true);
+  estado.desafios[d.desafio.nonce] = d.desafio;
+  return d.desafio;
+}
+
+test("o desafio tem 32 bytes de nonce, uso unico e prazo de 30 s", () => {
+  const d = C.abrirDesafio("inst-1", AGORA);
+  assert.equal(d.ok, true);
+  assert.equal(d.desafio.nonce.length, C.DESAFIO_BYTES * 2, "hex de 32 bytes");
+  assert.match(d.desafio.nonce, /^[0-9a-f]{64}$/);
+  assert.equal(d.desafio.expiraEm - d.desafio.criadoEm, C.TTL_DESAFIO_MS);
+  assert.equal(d.desafio.usado, false);
+  // dois desafios seguidos NAO sao iguais
+  assert.notEqual(d.desafio.nonce, C.abrirDesafio("inst-1", AGORA).desafio.nonce);
+  assert.equal(C.abrirDesafio("", AGORA).motivo, "instalacao_ausente");
+});
+
+test("quem TEM a chave passa o handshake", async () => {
+  const { chave, estado } = await comDispositivo();
+  const d = registaDesafio(estado, "inst-1");
+  const prova = await C.provarPosse(chave, d, AGORA);
+  const r = await C.aceitarHandshake({ instalacao: "inst-1", nonce: d.nonce, prova }, estado, AGORA);
+  assert.equal(r.ok, true);
+  assert.equal(r.instalacao, "inst-1");
+  assert.equal(d.usado, true, "o nonce morre depois de conferir");
+});
+
+test("quem so' OUVIU o codigo NAO passa -- e' a razao de o handshake existir", async () => {
+  const { estado } = await comDispositivo();
+  const d = registaDesafio(estado, "inst-1");
+  // o atacante tem outra chave qualquer, derivada do MESMO codigo mas sem contexto
+  const outra = await C.derivarChave("000000", "pr-x", "inst-1");
+  const prova = await C.assinarDesafio(outra, d.nonce, "inst-1");
+  const r = await C.aceitarHandshake({ instalacao: "inst-1", nonce: d.nonce, prova }, estado, AGORA);
+  assert.equal(r.ok, false);
+  assert.equal(r.motivo, "prova_invalida");
+  assert.equal(d.usado, false, "prova errada NAO queima o nonce do dono");
+});
+
+test("o handshake recusa por ordem: estrutura, instalacao, desafio, uso, prazo, taxa", async () => {
+  const { chave, estado } = await comDispositivo();
+  const d = registaDesafio(estado, "inst-1");
+  const prova = await C.provarPosse(chave, d, AGORA);
+
+  assert.equal((await C.aceitarHandshake(null, estado, AGORA)).motivo, "handshake_malformado");
+  assert.equal((await C.aceitarHandshake({ nonce: d.nonce, prova }, estado, AGORA)).motivo, "instalacao_ausente");
+  assert.equal((await C.aceitarHandshake({ instalacao: "inst-1", prova }, estado, AGORA)).motivo, "nonce_ausente");
+  assert.equal((await C.aceitarHandshake({ instalacao: "inst-1", nonce: d.nonce }, estado, AGORA)).motivo, "prova_ausente");
+  assert.equal((await C.aceitarHandshake({ instalacao: "inst-outra", nonce: d.nonce, prova }, estado, AGORA)).motivo, "instalacao_desconhecida");
+  assert.equal((await C.aceitarHandshake({ instalacao: "inst-1", nonce: "ff".repeat(32), prova }, estado, AGORA)).motivo, "desafio_desconhecido");
+  // desafio expirado
+  const d2 = registaDesafio(estado, "inst-1", AGORA);
+  const p2 = await C.provarPosse(chave, d2, AGORA);
+  assert.equal((await C.aceitarHandshake({ instalacao: "inst-1", nonce: d2.nonce, prova: p2 }, estado, AGORA + C.TTL_DESAFIO_MS + 1)).motivo, "desafio_expirado");
+});
+
+test("o desafio e' de OUTRA instalacao: recusado antes da criptografia", async () => {
+  const { chave, estado } = await comDispositivo();
+  const d = registaDesafio(estado, "inst-9");
+  const prova = await C.assinarDesafio(chave, d.nonce, "inst-9");
+  const r = await C.aceitarHandshake({ instalacao: "inst-1", nonce: d.nonce, prova }, estado, AGORA);
+  assert.equal(r.motivo, "desafio_de_outra_instalacao");
+});
+
+test("o MESMO desafio duas vezes e' replay: a 2a recusa", async () => {
+  const { chave, estado } = await comDispositivo();
+  const d = registaDesafio(estado, "inst-1");
+  const prova = await C.provarPosse(chave, d, AGORA);
+  assert.equal((await C.aceitarHandshake({ instalacao: "inst-1", nonce: d.nonce, prova }, estado, AGORA)).ok, true);
+  // exactamente o mesmo envelope, outra vez
+  const r = await C.aceitarHandshake({ instalacao: "inst-1", nonce: d.nonce, prova }, estado, AGORA);
+  assert.equal(r.ok, false);
+  assert.equal(r.motivo, "desafio_ja_usado");
+});
+
+test("dispositivo revogado nao faz handshake; chave expirada tambem nao", async () => {
+  const { chave, estado } = await comDispositivo();
+  const d = registaDesafio(estado, "inst-1");
+  const prova = await C.provarPosse(chave, d, AGORA);
+  C.revogarDispositivo(estado, "inst-1");
+  assert.equal((await C.aceitarHandshake({ instalacao: "inst-1", nonce: d.nonce, prova }, estado, AGORA)).motivo, "dispositivo_revogado");
+});
+
+test("a TAXA trava a 21a tentativa, ANTES de verificar a assinatura", async () => {
+  const { chave, estado } = await comDispositivo();
+  const provaRuim = "00".repeat(32);
+  let ultimo = null;
+  // as 20 primeiras gastam-se com provas ERRADAS -- e a taxa conta-as
+  for (let i = 0; i < C.LIMITES_DE_TAXA.tentativasPorInstalacao; i++) {
+    const d = registaDesafio(estado, "inst-1", AGORA + i);
+    ultimo = await C.aceitarHandshake({ instalacao: "inst-1", nonce: d.nonce, prova: provaRuim }, estado, AGORA + i);
+    assert.equal(ultimo.motivo, "prova_invalida", "tentativa " + i);
+  }
+  // a 21a morre na TAXA, mesmo com a prova CERTA
+  const d = registaDesafio(estado, "inst-1", AGORA + 21);
+  const boa = await C.assinarDesafio(chave, d.nonce, "inst-1");
+  const r = await C.aceitarHandshake({ instalacao: "inst-1", nonce: d.nonce, prova: boa }, estado, AGORA + 21);
+  assert.equal(r.ok, false);
+  assert.equal(r.motivo, "taxa_excedida");
+  assert.equal(d.usado, false, "nem o nonce se gasta quando a taxa trava");
+});
+
+test("a taxa EXPIRA com a janela: 21 tentativas depois de 60 s passam de novo", async () => {
+  const { chave, estado } = await comDispositivo();
+  const ruim = "00".repeat(32);
+  for (let i = 0; i < C.LIMITES_DE_TAXA.tentativasPorInstalacao; i++) {
+    const d = registaDesafio(estado, "inst-1", AGORA);
+    await C.aceitarHandshake({ instalacao: "inst-1", nonce: d.nonce, prova: ruim }, estado, AGORA);
+  }
+  // dentro da janela: travado
+  const d1 = registaDesafio(estado, "inst-1", AGORA);
+  assert.equal((await C.aceitarHandshake({ instalacao: "inst-1", nonce: d1.nonce, prova: ruim }, estado, AGORA)).motivo, "taxa_excedida");
+  // fora da janela: volta a poder
+  const depois = AGORA + C.LIMITES_DE_TAXA.janelaMs + 1;
+  const d2 = registaDesafio(estado, "inst-1", depois);
+  const boa = await C.provarPosse(chave, d2, depois);
+  assert.equal((await C.aceitarHandshake({ instalacao: "inst-1", nonce: d2.nonce, prova: boa }, estado, depois)).ok, true);
+});
+
+test("provarPosse recusa desafio usado, expirado ou ausente", async () => {
+  const { chave, estado } = await comDispositivo();
+  const d = registaDesafio(estado, "inst-1");
+  await assert.rejects(() => C.provarPosse(chave, null, AGORA), /sem desafio/);
+  await assert.rejects(() => C.provarPosse(chave, { nonce: "", expiraEm: AGORA }, AGORA), /sem desafio/);
+  await assert.rejects(() => C.provarPosse(chave, { nonce: d.nonce, expiraEm: AGORA }, AGORA), /desafio expirado/);
+  await assert.rejects(() => C.provarPosse(chave, { nonce: d.nonce, expiraEm: AGORA + 1e6, usado: true }, AGORA), /desafio ja usado/);
+});
+
+test("o estado inicial nasce com desafios e taxa vazios -- default fechado", () => {
+  const e = C.estadoInicial();
+  assert.deepEqual(e.dispositivos, {});
+  assert.deepEqual(e.desafios, {});
+  assert.deepEqual(e.taxa, {});
+  assert.equal(e.protocolo, C.PROTOCOLO);
+});

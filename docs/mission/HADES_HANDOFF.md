@@ -601,3 +601,45 @@ nunca a mencao.
 **Doutrina em uma linha**: medir antes de afirmar; um gate que me apanha esta a funcionar; um
 detector que procura texto confunde usar com falar sobre; e a cabeca de uma numeracao e o
 MAIOR cunhado, nao o ultimo registado.
+
+### Instrucoes de retomada (janela `E-1026`)
+
+**Estado**: branch `fix/checker-relogio`; cabeca do indice `E-1026`; PR #438 **aberto** e **nao
+tocado**; `reviewDecision` **vazio** => sem revisao humana independente.
+
+**A extensao tem 3 ficheiros de teste (67 assercoes)**:
+  node --test apps/hades-browser-bridge/test/protocol.test.js \
+                apps/hades-browser-bridge/test/carregavel.test.js \
+                apps/hades-browser-bridge/test/canal_local.test.js
+
+**Artefactos**:
+- pacote: `dist/browser-bridge/hades-browser-bridge-0.1.0-unsigned.zip` + `SHA256SUMS.txt` +
+  `LEIA-ME.txt` -- fora do Git;
+- script versionado: `scripts/hades_browser_bridge_package.py` (passo 14 da bateria);
+- contrato do canal: `apps/hades-browser-bridge/src/canal_local.js` -- HKDF, codigo de uso unico,
+  handshake de prova de posse, taxa e anti-replay;
+- native host (template):
+  `apps/hades-browser-bridge/native-host/com.dz23ltd.hades.bridge.json`.
+
+**TRES ARMADILHAS DA JANELA, todas da classe «contrato inventado de memoria»**:
+- `verificar(chave, nonce, prova)` -- **3 argumentos numa funcao de 2**. O 3o era ignorado, a
+  guarda devolvia `false` SEMPRE, e um teste dava verde pelo motivo errado;
+- `registro.revogadaEm` -- **campo que nunca existiu**. `undefined` e' falsy, logo a guarda de
+  revogacao estava MORTA, e so' o `DataError: Zero-length key` a denunciou;
+- `assinar(chave, "string")` -- `canonico` le' campos de ENVELOPE: o MAC era **o mesmo para
+  todos os desafios**. A cura foi dar ao desafio a **sua propria** canonizacao.
+  Antes de chamar funcao existente: **ler a assinatura**. Um `undefined` numa guarda e' uma
+  guarda que nao existe.
+
+**DUAS CATRACAS COMPLEMENTARES**: `hades_index_shape_check.py` varre o **indice**;
+`hades_mission_check.py` varre **todo o codigo** -- e foi ele que apanhou o `E-1024` citado em
+codigo antes de existir. **Um ID novo continua do MAIOR cunhado, nao da cabeca do indice.**
+
+**O que NAO fazer**: `reset --hard`, `git clean`, rebase destrutivo, force-push, stash, `merge`,
+tag, release, publicacao externa, ou **resolver threads** do PR #438.
+
+**Bateria de 21 gates** (exit 0 obrigatorio), incluindo o **pacote da extensao** no passo 14.
+
+**Doutrina em uma linha**: medir antes de afirmar; um gate que me apanha esta a funcionar; um
+argumento a mais em JavaScript nao e' erro, e' silencio; e um teste que passa pelo motivo errado
+nao mede nada.
