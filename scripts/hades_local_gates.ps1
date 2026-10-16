@@ -214,6 +214,45 @@ $saidaJanela2 = & python -X utf8 scripts/hades_handoff_window_check.py --check 2
 $saidaJanela2 | Select-Object -First 6 | ForEach-Object { "    $_" }
 if ($LASTEXITCODE -ne 0) { $falhas.Add("hades_handoff_window_check.py --check (exit $LASTEXITCODE)") } else { '    OK' }
 
+# *POR QUE ISTO EXISTE:* o `E-1010`. **18 instrumentos em `scripts/` nao corriam em nenhum gate.**
+# Entre eles, **dois testes** cujas proprias docstrings dizem porque existem -- e o
+# `hades_scope_classifier_autoteste.py` **descobriu** uma divergencia entre a afirmacao do `E-352`
+# e o codigo, **reportou-a**, e saiu **0 desde entao**. => *Um instrumento que mede e nao atua e'
+# decorativo.* => *Estes passam a correr aqui.*
+'--- 11. instrumentos de auditoria que estavam ORFAOS'
+$orfaos = @(
+  @('scripts/hades_orphan_instruments_check.py', '--check', 'a catraca dos orfaos'),
+  @('scripts/hades_scope_classifier_autoteste.py', '', 'o autoteste do classificador (E-352)'),
+  @('scripts/hades_mission_check_invariantes_test.py', '', 'invariantes do mission_check (E-444/E-446)'),
+  @('scripts/hades_timeout_class_check_test.py', '', 'a catraca da classe de orcamento (E-362)'),
+  @('scripts/hades_checkers_autoteste.py', '', 'o teste do teste (ADV-54)'),
+  @('scripts/hades_fix_mojibake.py', '--check', 'a dupla codificacao'),
+  @('scripts/audit_tenant_guards.py', '', 'a guarda de tenant nos handlers')
+)
+foreach ($o in $orfaos) {
+  $saida = & python -X utf8 $o[0] $o[1] 2>&1
+  $saida | Select-Object -Last 1 | ForEach-Object { "    " + $_.ToString().Substring(0, [Math]::Min(96, $_.ToString().Length)) }
+  if ($LASTEXITCODE -ne 0) { $falhas.Add("$($o[0]) $($o[1]) (exit $LASTEXITCODE) - $($o[2])") }
+}
+'    OK'
+
+# *POR QUE ISTO EXISTE:* o `E-1010`. O `hades_go_test_check.py` (E-488) foi criado porque "a
+# bateria de 15 checkers nao corria `go test`" -- e ele nao estava em gate NENHUM. *Um checker
+# que nunca corre nao mede nada.* Medido com a receita completa: 4 pacotes, exit=0, ~450s.
+# => *Ele exige o `LOCALAPPDATA` sob `_tmp/` e recusa (exit=2) se o valor HERDADO vier errado --
+#    e' um anti-armadilha contra teste que passa por acidente, e o valor fica aqui, nao no script.*
+'--- 12. TESTES GO (o 16o checker, E-488)'
+$env:LOCALAPPDATA = (Join-Path $PWD '_tmp\localappdata')
+New-Item -ItemType Directory -Force -Path $env:LOCALAPPDATA | Out-Null
+$saidaGo = & python -X utf8 scripts/hades_go_test_check.py 2>&1
+$saidaGo | Select-Object -Last 2 | ForEach-Object { "    " + $_.ToString().Substring(0, [Math]::Min(110, $_.ToString().Length)) }
+if ($LASTEXITCODE -eq 3) {
+  '    BLOCKED_BY_EXTERNAL_DEPENDENCY: sem `go` -- declarado, nao e falha do produto'
+} elseif ($LASTEXITCODE -ne 0) {
+  $falhas.Add("hades_go_test_check.py (exit $LASTEXITCODE)")
+} else { '    OK' }
+
+
 
 ''
 if ($falhas.Count -gt 0) {

@@ -84,7 +84,14 @@ jobs:
           python3 -m py_compile scripts/hades_handoff_window_check.py
           python3 scripts/hades_handoff_window_check_test.py
           python3 scripts/hades_handoff_window_check.py --check
+      # A COBERTURA DE EXECUCAO dos instrumentos (E-1010): *o `hades_go_test_check.py` (E-488)
+      # foi criado porque «a bateria nao corria go test» -- e nao estava em gate nenhum.*
+      - name: Verify every instrument is wired to a gate (no orphans)
+        run: |
+          python3 -m py_compile scripts/hades_orphan_instruments_check.py
+          python3 scripts/hades_orphan_instruments_check.py --check
       - name: Verify mission bookkeeping (no phantom evidence, coherent verdict)
+
 
         run: |
           python3 scripts/hades_mission_check.py

@@ -11,18 +11,18 @@
 > modificados** com **24** ocorrencias de marca que **nao existem no commit**, e o inventario
 > divergia entre a minha maquina e o CI. => *um instrumento que mede o disco mede **tambem o
 > trabalho nao commitado** -- e publica um numero que so' e' verdadeiro onde foi gerado.*
-> Origens medidas neste snapshot: `HEAD (sujo no disco)`: 14, `disco (limpo)`: 2449.
+> Origens medidas neste snapshot: `HEAD (sujo no disco)`: 16, `disco (limpo)`: 2448.
 
 | String | Ocorrencias |
 | --- | --- |
 | **Hades/HADES** (canonica) | **934** |
-| DZ23 Agentic | 197 |
+| DZ23 Agentic | 198 |
 | Ollama Full | 169 |
 | Ollama Classe A+ | 86 |
 | Ollama DZ23 | 48 |
 
-**Legadas somadas:** 500 ocorrencias
-(233 em ficheiros **migraveis**, 267 em ficheiros de **excecao**).
+**Legadas somadas:** 501 ocorrencias
+(234 em ficheiros **migraveis**, 267 em ficheiros de **excecao**).
 
 *O total **nao** decide: os mesmos numeros distribuem-se por sitios de tipos muito
 diferentes, e e' o sitio que decide.* Um ``README`` migra; um `bundle ID` nao.
@@ -119,6 +119,7 @@ hoje** e **falso sobre o que foi medido**.*
 | `scripts/hades-quickstart.ps1` | 1 | migravel |
 | `scripts/hades_ci_gate_check_test.py` | 1 | migravel |
 | `scripts/hades_local_gates.ps1` | 1 | migravel |
+| `scripts/hades_orphan_instruments_check.py` | 1 | migravel |
 
 ## 5. Ficheiros de excecao (apenas os com legado)
 
