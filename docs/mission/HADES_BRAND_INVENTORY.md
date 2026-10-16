@@ -11,18 +11,18 @@
 > modificados** com **24** ocorrencias de marca que **nao existem no commit**, e o inventario
 > divergia entre a minha maquina e o CI. => *um instrumento que mede o disco mede **tambem o
 > trabalho nao commitado** -- e publica um numero que so' e' verdadeiro onde foi gerado.*
-> Origens medidas neste snapshot: `HEAD (sujo no disco)`: 17, `disco (limpo)`: 2442.
+> Origens medidas neste snapshot: `HEAD (sujo no disco)`: 14, `disco (limpo)`: 2445.
 
 | String | Ocorrencias |
 | --- | --- |
 | **Hades/HADES** (canonica) | **918** |
-| DZ23 Agentic | 191 |
+| DZ23 Agentic | 192 |
 | Ollama Full | 167 |
 | Ollama Classe A+ | 85 |
 | Ollama DZ23 | 41 |
 
-**Legadas somadas:** 484 ocorrencias
-(230 em ficheiros **migraveis**, 254 em ficheiros de **excecao**).
+**Legadas somadas:** 485 ocorrencias
+(231 em ficheiros **migraveis**, 254 em ficheiros de **excecao**).
 
 *O total **nao** decide: os mesmos numeros distribuem-se por sitios de tipos muito
 diferentes, e e' o sitio que decide.* Um ``README`` migra; um `bundle ID` nao.
@@ -75,6 +75,7 @@ hoje** e **falso sobre o que foi medido**.*
 | `docs/agentic/COMPOSIO.md` | 3 | migravel |
 | `docs/agentic/HARNESS_COMPARISON_SYNTHESIS.md` | 3 | migravel |
 | `docs/dz23-multi-provider.md` | 3 | migravel |
+| `docs/mission/HADES_PENDING_WORK.md` | 3 | migravel |
 | `scripts/classify-ci-surfaces.py` | 3 | migravel |
 | `scripts/classify_ci_surfaces_test.py` | 3 | migravel |
 | `app/ui/app/e2e/shell.spec.ts` | 2 | migravel |
@@ -84,7 +85,6 @@ hoje** e **falso sobre o que foi medido**.*
 | `docs/agentic/COMPANY_OS.md` | 2 | migravel |
 | `docs/agentic/DESKTOP_COMMANDER_REMOTE.md` | 2 | migravel |
 | `docs/agentic/PHASE5_DELIVERY.md` | 2 | migravel |
-| `docs/mission/HADES_PENDING_WORK.md` | 2 | migravel |
 | `internal/agent/builder_studio_test.go` | 2 | migravel |
 | `server/agent_routes.go` | 2 | migravel |
 | `.github/workflows/dz23-agentic-quality.yaml` | 1 | migravel |
