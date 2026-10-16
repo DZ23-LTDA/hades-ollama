@@ -1011,3 +1011,39 @@ indicador que nao reflecte o estado da' confianca a quem nao a devia ter.
 
 **Doutrina em uma linha**: um resultado favoravel nao e' uma cobertura; declarar o limite
 e' parte do resultado; e a honestidade do limite vale mais do que a alegria do verde.
+
+### Instrucoes de retomada (janela `E-1039`)
+
+**Estado**: branch `fix/checker-relogio`; cabeca do indice `E-1039`; PR #438 **aberto** e
+**nao tocado**; `reviewDecision` **vazio** => sem revisao humana independente.
+
+**Bateria: 32 passos.** SETE E2E por **opt-in** (`-ComE2E`, abrem o Edge):
+  node scripts/hades_browser_bridge_e2e.mjs            # canal: extensao <-> Companion
+  node scripts/hades_browser_bridge_e2e_aba.mjs        # aba: DOM, escrita, RECUSA, badge
+  node scripts/hades_browser_bridge_e2e_takeover.mjs   # takeover: o agente PARA
+  node scripts/hades_browser_bridge_e2e_origem.mjs     # origem: navegar revoga
+  node scripts/hades_browser_bridge_e2e_pushstate.mjs  # reload, pushState, badge
+  node scripts/hades_browser_bridge_e2e_bfcache.mjs    # voltar atras nao revive
+  node scripts/hades_browser_bridge_e2e_frames.mjs     # shadow aberto, iframe, limites
+
+**O `observar` MUDOU DE CONTRATO** (`E-1039`): devolve `limites` --
+`{parcial, totalNoDocumentoPrincipal, shadowRoots:{...}, frames:{...}, truncadoPorLimiteDeNos,
+limitacaoEstrutural}`. *Quem consumir `total` tem agora de ler `limites` para saber se a
+observacao e' completa -- e a resposta honesta e' "pode nao ser".*
+
+**DOIS ERROS MEUS, REGISTADOS**:
+1. `parcial` incluiria a limitacao estrutural => seria `true` sempre => **um aviso
+   permanente deixa de ser aviso: vira ruido**. Separados em dois campos.
+2. O contador de shadow fechados era **um palpite** (`custom element` com filhos) e deu
+   `0` para uma pagina que tinha um. *Um palpite que falha e' pior do que uma declaracao
+   de ignorancia: da' uma contagem que parece medida.*
+
+**DUAS CATRACAS COMPLEMENTARES**: `hades_index_shape_check.py` varre o **indice**;
+`hades_mission_check.py` varre **todo o codigo**. **Um ID novo continua do MAIOR cunhado.**
+
+**O que NAO fazer**: `reset --hard`, `git clean`, rebase destrutivo, force-push, stash,
+`merge`, tag, release, publicacao externa, ou **resolver threads** do PR #438.
+
+**Doutrina em uma linha**: um observador que devolve parcial como completo e' pior do que
+um que se recusa; `zero` parece medido e `nao sei` nao parece nada -- e o segundo e' a
+verdade; e nem tudo o que limita e' uma perda: parte e' a forma do mundo.

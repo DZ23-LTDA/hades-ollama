@@ -1178,3 +1178,31 @@ declaração explícita: **o BFCache em si não chegou a correr** (`persisted: f
 - APK Android bloqueado pela DLL JNI (`E-1019`);
 - macOS/iOS `BLOCKED_EXTERNAL` pela **máquina**;
 - benchmark reproduzível (ESTÁGIO 21) não iniciado.
+
+### O que falta (actualizado na janela `E-1039`)
+
+**Fechado**: frames e shadow DOM. O `observar` já não devolve uma lista parcial como se
+fosse completa — **atravessa** shadow roots abertos e iframes de mesma origem (2 → 5 nós)
+e **declara** os limites com contagens e profundidades. E o shadow fechado é declarado
+**indetectável**, em vez de contado por palpite.
+
+**Continua em falta, sem disfarce**:
+- **downloads e uploads**: nada gere downloads, e o `preencher` recusa `type=file` --
+  o contrato exige caminhos autorizados, manifesto com hash e aprovação -- **não implementado**;
+- **shadow roots fechados**: invisíveis por design do browser, não por defeito do HADES;
+- **cross-origin**: contado, nunca lido;
+- `document.domain`, iframes `srcdoc`/`about:blank` e service workers de página: não testados;
+- **BFCache** sem execução observada (`E-1038`, `persisted: false`);
+- **redireccionamentos e `https`**: só medido com dois servidores em loopback;
+- **o takeover não tem duração ajustável** (30s fixos);
+- **o Chrome real do utilizador**: a versão 155 deste host **não carrega** por
+  `--load-extension`; exige carregamento manual;
+- **Firefox** e **Safari**;
+- **sem `.crx`, sem assinatura, sem SBOM do pacote**;
+- **a chave privada de distribuição está fora do Git**;
+- **`CAPACIDADES` VAZIO**: o Companion **não** controla o PC;
+- **taxa e pairing em memória**;
+- ligação da extensão ao **Mission Control** (`missao`/`aprovado` ficam a `null`);
+- APK Android bloqueado pela DLL JNI (`E-1019`);
+- macOS/iOS `BLOCKED_EXTERNAL` pela **máquina**;
+- benchmark reproduzível (ESTÁGIO 21) não iniciado.

@@ -474,4 +474,20 @@ if ($ComE2E) {
   '    PULADO (opt-in: use -ComE2E)'
 }
 $passos += 'e2e-bfcache'
+
+''
+# E-1039: frames e shadow DOM. *O `observar` devolvia uma lista PARCIAL como se fosse
+# completa: o `total` era o total do documento principal e parecia o total da pagina.*
+'--- 25. E2E DE FRAMES: o observar ATRAVESSA shadow aberto e iframe, e DECLARA os limites'
+if ($ComE2E) {
+  $saidaFr = & node scripts/hades_browser_bridge_e2e_frames.mjs 2>&1
+  $saidaFr | Select-Object -Last 3 | ForEach-Object { "    " + $_.ToString().Substring(0, [Math]::Min(110, $_.ToString().Length)) }
+  if ($LASTEXITCODE -ne 0) {
+    $falhas.Add("hades_browser_bridge_e2e_frames.mjs (exit $LASTEXITCODE)")
+    '    FALHA'
+  } else { '    OK' }
+} else {
+  '    PULADO (opt-in: use -ComE2E)'
+}
+$passos += 'e2e-frames'
 "GATES LOCAIS: $($passos -join ' + ') VERDES"

@@ -531,3 +531,23 @@ O que falta e é interno e executável: **os frames e o shadow DOM** -- o contra
 suportá-los «com limites», e o `observar` actual só olha o documento principal. Medir
 primeiro o que acontece hoje com um `iframe` de mesma origem e com um componente de
 shadow DOM: o `observar` vê-os, ignora-os, ou mente sobre eles? Tudo interno.
+
+### A proxima accao unica (janela `E-1039`)
+
+**O `observar` devolvia uma lista parcial como se fosse completa** (`E-1039`). Medido:
+uma página com **3** controlos reais devolvia **2 nós** e `total: 2`.
+***Um observador que devolve parcial como completo faz o modelo agir sobre uma página
+que não é a que existe.*** Não era «não atravessar frames» — era **não dizer**.
+
+Agora **atravessa** shadow roots abertos e iframes de mesma origem (2 → **5** nós) e
+**declara** `limites` com contagens, profundidades e o que ficou de fora.
+
+E a minha primeira cura **falhou de forma instrutiva**: contava shadow roots fechados
+procurando custom elements com filhos — e devolveu `0` para uma página que **tinha** um.
+***Um palpite que falha é pior do que uma declaração de ignorância: dá uma contagem que
+parece medida.*** Agora diz `"nao_detectaveis_por_design"`.
+
+**A proxima accao unica**: **downloads e uploads**. É a última capacidade do escopo da
+FASE-3-B sem cobertura: o contrato exige «caminhos autorizados e manifestos com
+tamanho/hash», e aprovação para download executável. Medir primeiro o que existe hoje:
+o `preencher` recusa `type=file`, e **nada** gere downloads. Tudo interno.

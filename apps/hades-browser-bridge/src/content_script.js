@@ -103,43 +103,135 @@
   /**
    * DOM saneado + acessibilidade. Nunca inclui o VALOR de um campo sensivel --
    * nem o valor de nenhum input, so' o rotulo e o estado.
+   *
+   * `E-1039`: ATRAVESSA shadow roots ABERTOS e iframes de MESMA ORIGEM, e **DECLARA** os
+   * limites. Medido antes: o `observar` devolvia `{url, titulo, nos, total}` e o `total` era
+   * o total do **documento principal** -- parecia o total da pagina.
+   *
+   * *Um observador que devolve uma lista parcial como se fosse completa faz o modelo agir
+   * sobre uma pagina que nao e' a que existe.* O defeito nao era nao atravessar frames: era
+   * **nao dizer** que nao atravessou.
+   *
+   * Limites reais, declarados e nao escondidos:
+   *   - shadow root **ABERTO** entra; **FECHADO** e' inacessivel por design (contado, nao lido);
+   *   - **so' frames de mesma origem** (cross-origin lanca `SecurityError` -- *nunca contornar
+   *     same-origin por exploracao*);
+   *   - profundidade limitada, para nao explodir numa pagina hostil.
    */
+  const SELETOR = "a[href], button, input, select, textarea, [role], h1, h2, h3, label";
+  const PROFUNDIDADE_SHADOW = 5;
+  const PROFUNDIDADE_FRAME = 3;
+
+  /** Monta a entrada saneada de um elemento. O VALOR nunca sai. */
+  function entradaDe(el) {
+    const sensivel = campoSensivel(el);
+    const entrada = {
+      tag: el.tagName.toLowerCase(),
+      role: el.getAttribute?.("role") ?? null,
+      rotulo: limpar(el.getAttribute?.("aria-label") ?? el.textContent ?? "", 120),
+      // O VALOR nunca sai. Para campos sensiveis, nem o tipo exato sai.
+      tipo: sensivel ? "campo_sensivel" : (el.getAttribute?.("type") ?? null),
+      desabilitado: el.disabled === true,
+      sensivel,
+    };
+    if (el.tagName === "A" && el.href) {
+      try {
+        // so' a origem + caminho: nunca query nem fragmento (podem ter tokens)
+        const u = new URL(el.href);
+        if (u.protocol === "http:" || u.protocol === "https:") {
+          entrada.href = u.origin + u.pathname;
+        }
+      } catch { /* href invalido: ignora */ }
+    }
+    return entrada;
+  }
+
+  /** Percorre uma raiz (documento, shadow root) somando nos e descendo nos shadow roots. */
+  function coletarDe(raiz, nos, contas, limiteNos, profundidade) {
+    for (const el of raiz.querySelectorAll(SELETOR)) {
+      if (nos.length >= limiteNos) { contas.truncado = true; return; }
+      // nada de invisiveis, nada de dentro de <script>/<style>
+      if (!el.offsetParent && el.tagName !== "BODY" && getComputedStyle(el).position !== "fixed") continue;
+      nos.push(entradaDe(el));
+    }
+    if (profundidade >= PROFUNDIDADE_SHADOW) return;
+    // Shadow DOM: so' os ABERTOS. Os fechados sao contados mas NUNCA lidos.
+    for (const el of raiz.querySelectorAll("*")) {
+      if (!el.shadowRoot) continue;
+      contas.shadowAbertos += 1;
+      try { coletarDe(el.shadowRoot, nos, contas, limiteNos, profundidade + 1); } catch { /* hostil */ }
+    }
+  }
+
+  /** Percorre iframes de MESMA ORIGEM. Cross-origin lanca -- e ficamos por fora. */
+  function coletarFrames(doc, nos, contas, limiteNos, profundidade) {
+    let quadros = [];
+    try { quadros = Array.from(doc.querySelectorAll("iframe, frame")); } catch { return; }
+    contas.framesTotal += quadros.length;
+    if (profundidade >= PROFUNDIDADE_FRAME) return;
+    for (const q of quadros) {
+      let interno = null;
+      try { interno = q.contentDocument; } catch { interno = null; }
+      if (!interno) { contas.framesCrossOrigin += 1; continue; } // mesma-origem negada
+      contas.framesMesmaOrigem += 1;
+      contas.framesIncluidos += 1;
+      try {
+        coletarDe(interno, nos, contas, limiteNos, 0);
+        coletarFrames(interno, nos, contas, limiteNos, profundidade + 1);
+      } catch { /* hostil */ }
+    }
+  }
+
   function observar(limiteNos = 400) {
     const nos = [];
+    const contas = {
+      shadowAbertos: 0, truncado: false,
+      framesTotal: 0, framesMesmaOrigem: 0, framesCrossOrigin: 0, framesIncluidos: 0,
+    };
     const todos = document.querySelectorAll(
       "a[href], button, input, select, textarea, [role], h1, h2, h3, label",
     );
-    for (const el of todos) {
-      if (nos.length >= limiteNos) break;
-      // nada de invisiveis, nada de dentro de <script>/<style>
-      if (!el.offsetParent && el.tagName !== "BODY" && getComputedStyle(el).position !== "fixed") continue;
+    const totalPrincipal = todos.length;
+    coletarDe(document, nos, contas, limiteNos, 0);
+    // Shadow FECHADO: **nao ha' API para enumerar**. A primeira versao procurava custom
+    // elements com filhos -- *um palpite* -- e devolvia `fechadosNaoLidos: 0` para uma pagina
+    // que TINHA um shadow fechado. *Um palpite que falha e' pior do que uma declaracao de
+    // ignorancia: da' uma contagem que parece medida.*
+    //
+    // O que se pode afirmar com verdade: se existirem shadow roots fechados, esta observacao
+    // **nao os ve e nao os pode ver**. Isso e' uma limitacao ESTRUTURAL, nao uma perda
+    // concreta -- e por isso vai em campo proprio, para nao transformar `parcial` em ruido
+    // permanente nem esconder o que e' accionavel.
+    coletarFrames(document, nos, contas, limiteNos, 0);
 
-      const sensivel = campoSensivel(el);
-      const entrada = {
-        tag: el.tagName.toLowerCase(),
-        role: el.getAttribute?.("role") ?? null,
-        rotulo: limpar(el.getAttribute?.("aria-label") ?? el.textContent ?? "", 120),
-        // O VALOR nunca sai. Para campos sensiveis, nem o tipo exato sai.
-        tipo: sensivel ? "campo_sensivel" : (el.getAttribute?.("type") ?? null),
-        desabilitado: el.disabled === true,
-        sensivel,
-      };
-      if (el.tagName === "A" && el.href) {
-        try {
-          // so' a origem + caminho: nunca query nem fragmento (podem ter tokens)
-          const u = new URL(el.href);
-          if (u.protocol === "http:" || u.protocol === "https:") {
-            entrada.href = u.origin + u.pathname;
-          }
-        } catch { /* href invalido: ignora */ }
-      }
-      nos.push(entrada);
-    }
+    const parcial = contas.truncado || contas.framesCrossOrigin > 0
+      || contas.framesTotal > contas.framesIncluidos;
+
     return {
       url: location.origin + location.pathname,
       titulo: limpar(document.title, 160),
       nos,
-      total: todos.length,
+      total: nos.length,
+      // A VERDADE INTEIRA: o que se viu, o que existe, e o que ficou de fora.
+      limites: {
+        parcial,
+        totalNoDocumentoPrincipal: totalPrincipal,
+        shadowRoots: {
+          abertosIncluidos: contas.shadowAbertos,
+          fechados: "nao_detectaveis_por_design",
+          profundidadeMaxima: PROFUNDIDADE_SHADOW,
+        },
+        frames: {
+          existentes: contas.framesTotal,
+          mesmaOrigemIncluidos: contas.framesIncluidos,
+          crossOriginNaoLidos: contas.framesCrossOrigin,
+          profundidadeMaxima: PROFUNDIDADE_FRAME,
+        },
+        truncadoPorLimiteDeNos: contas.truncado,
+        // Sempre presente: o consumidor SABE que a observacao nao pode ser completa.
+        limitacaoEstrutural: "shadow roots fechados sao invisiveis a content scripts; "
+          + "se existirem, nao estao nesta lista e nao ha' forma de os contar daqui",
+      },
     };
   }
 
