@@ -739,3 +739,26 @@ integração.** O `HADES_BENCHMARK_METHOD.md` e o `HADES_STAGE_21_BENCHMARK.md` 
 medições **sem referenciar** a matriz T2 real e a repetição (que agora são medidas do
 mesmo snapshot). Verificar se os documentos canónicos do estágio apontam para os
 artefactos reais e corrigir a fonte onde divergirem. Tudo interno.
+
+### A proxima accao unica (janela `E-1050`)
+
+**O vermelho do `pr-gate` está explicado, e não é defeito de código.** No `55327160c`, os
+gates `test` e `dz23-agentic-quality` foram **cancelados** (pelo push seguinte) e o
+`pr-gate.yaml:91` ficou a **esperar uma substituta** até ao deadline de **30 min**
+(`:61`) — ***«Timeout aguardando os gates profundos deste SHA»***.
+
+**A prova são dois SHAs, os mesmos gates:** `55327160c` (23:19:46Z) ⇒ `test` e
+`dz23-agentic-quality` **cancelled** ⇒ `pr-gate` **failure**. `4157a459b` (23:28:43Z) ⇒
+os mesmos dois **success** ⇒ ***6 runs, 6 success***.
+
+⇒ ***«Um push rápido garante um vermelho que não é um defeito.»*** E o `cda756f82` já
+tem os dois cancelados — **vai repetir o padrão**.
+
+**O que NÃO fiz**: aceitar `cancelled` como aprovação no `pr-gate`. O owner proibiu-o por
+palavras, e **a gate está certa em reprovar**: não pode certificar um SHA cujos gates
+não correram.
+
+**A proxima accao unica**: **não fazer push enquanto as runs do SHA corrente não
+terminarem** — e verificar se `ba62baf88` (HEAD, 6 runs em curso) fecha com
+`failure=0`, agora que sei o que o mata. Se fechar 6/6, o mecanismo fica provado por
+**três** SHAs em vez de dois.

@@ -1401,3 +1401,36 @@ identicos **tres** dias depois).
 **Doutrina em uma linha**: um numero que resiste a tres dias e' um numero; declarar a
 divida no commit nao a paga; e a repeticao mede estabilidade, nao qualidade -- `0/3`
 estavel continua a ser `0/3`.
+
+### Instrucoes de retomada (janela `E-1050`)
+
+**Estado**: branch `fix/checker-relogio`; cabeca do indice `E-1050`; PR #438 **aberto** e
+**nao tocado** -- *as 14 threads continuam como estavam*; `reviewDecision` **vazio**.
+
+**Bateria: 28 passos, 29 OK, 0 FAIL.** OITO E2E por opt-in, **quatro** catracas, o render
+do indice e o inventario do worktree.
+
+**LEIA ISTO ANTES DE FAZER PUSH -- O `pr-gate` E O RITMO**:
+  - `pr-gate.yaml:56` lista os gates profundos exigidos (entre eles `test` e
+    `dz23-agentic-quality`);
+  - `:61` tem `deadline=$(($(date +%s) + 1800))` -- **30 min**;
+  - `:91` espera por uma **substituta** quando um gate foi cancelado;
+  - `:100-101` reprova com `Timeout aguardando os gates profundos deste SHA`.
+
+**CADA PUSH CANCELA AS RUNS DO SHA ANTERIOR** -- e o `pr-gate` desse SHA fica a esperar
+por gates que nunca vao correr. Medido: `55327160c` (`test` e `dz23-agentic-quality`
+cancelled) -> `pr-gate` **failure**; `4157a459b` (os mesmos dois **success**) -> **6/6**.
+
+***Nao faca push enquanto as runs do SHA corrente nao terminarem.*** E **nao** cure isto
+aceitando `cancelled` no `pr-gate`: *a gate esta' certa em reprovar, e a cura por baixo
+esta' proibida pelo owner por palavras.*
+
+**DUAS CATRACAS COMPLEMENTARES**: `hades_index_shape_check.py` varre o **indice**;
+`hades_mission_check.py` varre **todo o codigo**. **Um ID novo continua do MAIOR cunhado.**
+
+**O que NAO fazer**: `reset --hard`, `git clean`, rebase destrutivo, force-push, stash,
+`merge`, tag, release, publicacao externa, ou **resolver threads** do PR #438.
+
+**Doutrina em uma linha**: um vermelho que nao e' um defeito continua a ser um vermelho;
+quando a cura facil exige enfraquecer a medida, a resposta e' mudar o procedimento; e o
+sinal estava a medir o intervalo entre pushes, nao a qualidade do commit.
