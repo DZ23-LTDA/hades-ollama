@@ -668,3 +668,96 @@ cd hades-ollama && git fetch origin && git status --porcelain=v1
 git rev-parse HEAD origin/fix/checker-relogio origin/main
 powershell -NoProfile -ExecutionPolicy Bypass -File _tmp/bateria_local.ps1   # 28 gates do CI
 ```
+
+---
+
+## ACTUALIZACAO V3.0 (RONDA 71) - O QUE MUDOU DESDE O `E-959`
+
+> **Requisito**: o `mission_check` exige que os documentos de retomada citem evidencia
+> **recente** (>= `E-960`). Este documento parava no `E-959` - *41 evidencias de atraso*.
+> **Isto e' o §FASE-7 e o ESTAGIO 1** (*«reconciliar documentos canonicos e historicos»*).
+
+### Estado medido nesta ronda
+```
+branch  fix/checker-relogio     HEAD  31be202d6     origin/main  4b3e21854
+WIP     14 entradas             stashes 0          indice  793 entradas (E-001..E-1000)
+CI      os 6 workflows VERDES no d1f4e7915 (test, pr-gate, dz23-e2e, dz23-agentic-quality,
+        dz23-multi-provider, class-a-plus-integrity com os 9 passos)
+bateria 16 OK / 0 FAIL
+```
+
+### Evidencias novas (E-960 .. E-1000), por tema
+
+**Adendo do ecossistema de plugins/skills/app/MCP**
+- `E-960` a `E-967` - as **5 fontes** do adendo (*agent-skills, hyperframes, googleworkspace-cli,
+  apify-mcp-server, playwright*), a matriz de encaixe e a fatia vertical do `POST /plugin`.
+- `E-972` - o **formato aberto `hades-plugin.format/v1`** e a rota de formato.
+
+**Fechamento dos 12 findings do PR #438**
+- `E-961`, `E-962` - os **5 P1 do checker do relogio** e os **12 findings** revalidados.
+- `E-963` a `E-965` - as **5 fontes** conferidas e a correccao factual do `E-959`.
+
+**§ESTAGIO 22 - o gate de engenharia (3 dos 4 itens)**
+- `E-987` - o gate deixa de ser **espelho do `MASTER_STATE`** e passa a provar o **snapshot real**
+  (*`gate_head`, `gate_branch`, `gate_dirty`, `gate_snapshot`*).
+- `E-988` - o **MANIFESTO do snapshot**: SBOM com `sha256`, plataformas, limitacoes, `source_sha`.
+- `E-989` - **catraca** do manifesto no CI e na bateria local.
+- `E-993` - o gate estava **impossivel de satisfazer no CI**: eram **4 volateis**, nao 1.
+- `E-994` - o **mesmo defeito no manifesto** (`source_sha`).
+- `E-996` - o **terceiro instrumento** (`host`) e a **INVERSAO DA REGRA**: so' se compara o que o
+  manifesto **PROVA**, e cada campo tem de ser **classificado**.
+- `E-997` - o inventario **media o disco**; passa a ler o **commit** e a comparar **estrutura**.
+
+**§FASE-5 - marca canonica**
+- `E-990` - **inventario da marca**: **909** canonicas contra **441** legadas em 4 nomes.
+- `E-991` - o **gerador** do inventario com **8 excepcoes** declaradas (*razao + desbloqueio*).
+- `E-997` - as contagens passam a vir do commit, e nao do disco.
+
+**Instrumentos e rastreabilidade**
+- `E-992` - **catraca do ASCII nos `.ps1`**: 34 caracteres nao-ASCII em **string** no `install.ps1`.
+- `E-995` - o **`E-559` restaurado do Git**, engolido pelo `E-993`.
+- `E-998` - a **quinta instancia** do defeito (*o checker media o disco e passava por sorte*).
+- `E-999` - o **`\n` LITERAL** do here-string duplicou o `E-559` e engoliu o `E-560`.
+- `E-1000` - **evidencia que citava codigo NAO COMMITADO**: o `E-998` descrevia uma cura que
+  ficou **fora** do commit; curado no `31be202d6` (*1 file changed, 113 insertions*).
+
+### As QUATRO falhas do CI, com o run que provou cada cura
+```
+run 38922978710  passo 6 (gate)        gate_head/gate_branch volateis  -> E-993  bddeb7ebd
+run 38924032504  passo 7 (manifesto)   source_sha/source_branch        -> E-994  a4ddaa4e0
+run 38926745194  passo 7 (host)        host Windows vs Linux           -> E-996  c025eee59
+run 38932562362  passo 8 (inventario)  media o DISCO                  -> E-997  ecd8bb31b + d1f4e7915
+run 38935930565  *** 6/6 SUCCESS ***
+```
+
+### Licoes medidas (nao supostas)
+1. **Curar o que o CI aponta e' perseguir sintomas** - 3 instrumentos, e em todos curei o que ele
+   apontou e deixei o resto. Dai' a **INVERSAO**: allowlist do que e' **estavel**, volatil por
+   omissao, **+ classificacao obrigatoria**.
+2. **Nao ler git nao impede medir WIP** - a segunda pergunta: *o ficheiro que eu leio esta'
+   commitado?*
+3. **O `HEAD` do CI nao e' a branch** - em `pull_request` e' `refs/pull/N/merge`. Mesma pergunta
+   em 3 lugares.
+4. **Performance tambem e' correccao**: 2459 `git show` -> **11**, de **minutos** para **1,8 s**.
+5. **Uma evidencia sem commit e' uma afirmacao** (`E-1000`).
+
+### Divida declarada (nao escondida)
+```
+5a instancia de "mede o disco": os 3 DIVIDA_STRING e os 4 tectos de comentario do
+  hades_ascii_ps1_check.py medem o DISCO, e o CI mede o checkout -> declarada, NAO corrigida
+install.ps1: 34 caracteres nao-ASCII em STRING -> fecha com o FASE-6 (teste de instalacao limpa)
+duplicacao intra-linha: o mission_check conta LINHAS e nao ve' uma copia embutida -> declarada
+```
+
+### Retomada segura (comandos que existem neste repositorio)
+```bash
+cd hades-ollama && git fetch origin && git status --porcelain=v1
+git rev-parse HEAD origin/fix/checker-relogio origin/main
+python scripts/hades_release_gate.py --check          # o gate bate com o estado da missao
+python scripts/hades_mission_check.py                 # escrituracao: sem fantasma, veredito coerente
+python -X utf8 scripts/hades_manifest.py --check      # o manifesto bate com a arvore
+python -X utf8 scripts/hades_brand_inventory.py --check
+python -X utf8 scripts/hades_ascii_ps1_check.py       # ASCII nos .ps1
+```
+*Os caminhos em `_tmp/` **nao** vao para o Git e **nao** sao instrucoes de retomada validas --
+a bateria canonica e' a lista acima, mais `scripts/hades_local_gates.ps1`.*

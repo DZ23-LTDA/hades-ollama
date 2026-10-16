@@ -341,3 +341,65 @@ Run `5bba1132e` (PR #438): 23 checks, ZERO vermelhos.
     correcção foi um só limite (`-timeout 20m`) com o motivo escrito no workflow.
   test ubuntu/macos/windows ✅ · PR gate ✅ · Web and mobile quality ✅ · Go agentic gates ✅ ·
   CGO-free/Windows build ✅ · RLS/Redis/OTLP ✅ · Web E2E ✅ · SBOM ✅
+
+---
+
+## ACTUALIZACAO V3.0 (RONDA 71) - ESTADO E AS INSTRUCOES DESTRUTIVAS
+
+> **Requisito**: o `mission_check` exige que os documentos de retomada citem evidencia **recente**
+> (>= `E-960`). Este documento parava no `E-959`. **E' o ESTAGIO 1.**
+
+### ⚠️ As instrucoes destrutivas deste documento, localizadas AGORA (E-986 revalidado)
+```
+:163  o aviso «PERIGO, MEDIDO - os DOIS blocos abaixo ...»  (*a linha que proibe*)
+:175  BLOCO 1 destrutivo  (*12 linhas apos o aviso*)
+:196  BLOCO 2 destrutivo  (*33 linhas apos o aviso*)
+```
+*Medicao desta ronda: **as 3 linhas continuam intactas** e o aviso **precede** os dois blocos.*
+=> *O requisito do ESTAGIO 1 («marcar inequivocamente como historicas e proibidas com WIP») esta'
+**satisfeito**, e foi reconfirmado - **nao** declarado uma vez e esquecido.*
+
+**E este documento NAO reproduz os comandos, de proposito.** *A primeira versao desta seccao
+copiou-os para os citar* => *e o `assert` do gerador apanhou **quatro** ocorrencias em vez de
+**duas*** => *porque **documentar uma instrucao destrutiva e' reintroduzi-la*** => *um `grep` por
+`reset --hard` neste ficheiro passaria a acusar duas ordens **a mais**, e uma delas seria a que
+existe para as proibir.*
+=> *Por isso aqui ha' **numeros de linha**, e nao o texto dos comandos.* **Consulte-os em `:175` e
+`:196` se precisar; nao os execute com WIP presente.**
+
+**Regra viva:** com WIP de 14 entradas, **qualquer** um desses dois blocos destruiria trabalho
+nao commitado. *Eles sao **historicos**: descrevem o que foi feito numa janela em que a arvore
+estava limpa.*
+
+### Evidencias novas (E-960 .. E-1000), por tema
+- **Adendo do ecossistema**: `E-960`..`E-967` (as 5 fontes, a matriz de encaixe, a fatia vertical do
+  `POST /plugin`) e `E-972` (o formato aberto `hades-plugin.format/v1`).
+- **Findings do PR #438**: `E-961`, `E-962` (os 5 P1 do checker do relogio, os 12 findings),
+  `E-963`..`E-965` (as 5 fontes conferidas e a correccao factual do `E-959`).
+- **ESTAGIO 22**: `E-987` (snapshot real), `E-988` (manifesto), `E-989` (catraca), `E-993`
+  (4 volateis), `E-994` (`source_sha`), `E-996` (o `host` e a inversao da regra), `E-997` (o
+  inventario media o disco).
+- **FASE-5**: `E-990` (909 canonicas / 441 legadas) e `E-991` (o gerador com 8 excecoes).
+- **Instrumentos**: `E-992` (ASCII nos `.ps1`), `E-995` (`E-559` restaurado do Git), `E-998`
+  (quinta instancia), `E-999` (`\n` literal), `E-1000` (evidencia sem commit).
+
+### Estado medido nesta ronda
+```
+HEAD 31be202d6 · branch fix/checker-relogio · main 4b3e21854 · WIP 14 · stashes 0
+indice 793 entradas (E-001..E-1000) · bateria 16 OK / 0 FAIL
+CI: 6/6 verdes no d1f4e7915 (incluindo `test`, que era o que mais reprovava)
+PR #438: OPEN · mergeState=BLOCKED · reviewDecision VAZIO (FALTA REVISAO HUMANA)
+```
+
+### Retomada segura (o que EXISTE neste repositorio)
+```bash
+cd hades-ollama && git fetch origin && git status --porcelain=v1
+git rev-parse HEAD origin/fix/checker-relogio origin/main
+python scripts/hades_release_gate.py --check
+python scripts/hades_mission_check.py
+python -X utf8 scripts/hades_manifest.py --check
+python -X utf8 scripts/hades_brand_inventory.py --check
+python -X utf8 scripts/hades_ascii_ps1_check.py
+```
+*O `_tmp/bateria_local.ps1` citado na versao anterior deste documento **nao existe** no
+repositorio; a bateria canonica e' `scripts/hades_local_gates.ps1` mais os `--check` acima.*

@@ -191,3 +191,50 @@ assinatura Windows · licenças de ferramentas comerciais de REA · **FFmpeg** (
 9. **Limite que não está escrito não é limite: é surpresa** (E-353).
 10. **Não declarar verificado o que não se observou**; e **não relatar artefato que não existe** (o PR precisa ser
     **criado** e a criação **confirmada**).
+
+---
+
+## PROXIMA ACCAO - V3.0 (RONDA 71)
+
+> **Requisito**: o `mission_check` exige que este documento cite evidencia **recente** (>= `E-960`).
+> Ele parava no `E-959`. **Isto e' o ESTAGIO 1** (*«actualizar inventario e registar divergencias»*).
+
+### A accao unica, agora
+**Fechar a QUINTA instancia do defeito «mede o disco»**: os `DIVIDA_STRING` e os tectos de
+comentario do `scripts/hades_ascii_ps1_check.py` medem o **disco**, e o CI mede o **checkout**
+(*`refs/pull/N/merge`*). *A cura e' a mesma do `E-997` - ler o commit - e ela ja' esta' escrita no
+`rastreados_ps1()`, mas os dois dicionarios de tecto ainda sao comparados contra o resultado.*
+
+*Alternativas, em ordem de custo:* **§ESTAGIO 21** (benchmarks reproduziveis), **§ESTAGIO 10**
+(Mission Control unico), **§FASE-6** (instalador/`HadesSetup.exe`, que tambem fecha a divida dos
+34 caracteres do `install.ps1`).
+
+### O que acabou de fechar (E-960 .. E-1000)
+- **§ESTAGIO 22**: `E-987` (snapshot real), `E-988` (manifesto), `E-989` (catraca), `E-993`/`E-994`/
+  `E-996` (as 4 volateis e a inversao da regra), `E-997` (o inventario media o disco).
+- **§FASE-5**: `E-990` (inventario da marca: 909 canonicas / 441 legadas) e `E-991` (o gerador com
+  8 excecoes declaradas).
+- **Instrumentos**: `E-992` (ASCII nos `.ps1`), `E-995` (`E-559` restaurado do Git),
+  `E-998` (quinta instancia), `E-999` (`\n` literal), `E-1000` (evidencia sem commit).
+
+### Estado medido
+```
+HEAD 31be202d6 · branch fix/checker-relogio · main 4b3e21854 · WIP 14 · stashes 0
+indice 793 entradas (E-001..E-1000) · bateria 16 OK / 0 FAIL
+CI: 6/6 verdes no d1f4e7915 (incluindo `test`, que era o que mais reprovava)
+PR #438: OPEN · mergeState=BLOCKED · reviewDecision VAZIO (FALTA REVISAO HUMANA)
+```
+
+### Bloqueios externos reais (nao mascara-los como internos)
+```
+race / go test -race   CGO_ENABLED=0 e mingw-w64 ausente -> w64devkit + CGO_ENABLED=1
+PACKAGE / INSTALL      nenhum artefacto do candidato    -> FASE-6
+revisao humana         reviewDecision vazio no #438     -> o dono designa revisor (nao LMPrado-DZ23)
+```
+
+### Divergencias factuais registadas (nao reescrever historia)
+1. O indice parava em `E-905` no `ROUND 256` e esta' em `E-1000`; a faixa `E-571..E-777` (**207**
+   IDs) continua **ausente e declarada** como `EVIDENCE_LOST_HISTORICAL`.
+2. **`E-998` citava codigo nao commitado** - corrigido no `31be202d6` (`E-1000`).
+3. O `_tmp/bateria_local.ps1` citado neste documento **nao existe no repositorio** (foi removido):
+   a bateria canonica e' `scripts/hades_local_gates.ps1` mais os 4 `--check` do `E-987`..`E-997`.
