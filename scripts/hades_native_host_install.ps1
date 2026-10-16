@@ -28,6 +28,10 @@ $Companion = Join-Path $Bridge 'native-host\companion.mjs'
 $Gerador = Join-Path $PSScriptRoot 'hades_native_host.py'
 $Destino = Join-Path $env:LOCALAPPDATA 'HADES\NativeHost'
 $Manifesto = Join-Path $Destino ($NomeDoHost + '.json')
+# O `path` do manifesto aponta para o LANCADOR, nao para o `.mjs`: medido no `E-1032`,
+# o Windows nao executa `.mjs` directamente e o Chrome responde
+# "Error when communicating with the native messaging host".
+$Lancador = Join-Path $Destino ($NomeDoHost + '.cmd')
 $Registo = Join-Path $Destino 'INSTALACAO.json'
 
 # Chaves do registo do Windows, por navegador. Firefox NAO usa registo -- nao esta' aqui.
@@ -88,6 +92,7 @@ function Instalar {
         nomeDoHost   = $NomeDoHost
         idDaExtensao = $id
         manifesto    = $Manifesto
+        lancador     = $Lancador
         companion    = $Companion
         chavesRegisto = $gravados
         instaladoEm  = (Get-Date).ToString('o')
@@ -116,6 +121,9 @@ function Desinstalar {
         }
     }
     if (Test-Path -LiteralPath $Manifesto) { Remove-Item -LiteralPath $Manifesto -Force; Escrever ('removido: ' + $Manifesto) }
+    # O LANCADOR tambem: *um desinstalador que esquece um ficheiro que o instalador criou
+    # nao desinstala -- deixa residuo, e o `--check` seguinte acusa.* Foi medido no `E-1032`.
+    if (Test-Path -LiteralPath $Lancador) { Remove-Item -LiteralPath $Lancador -Force; Escrever ('removido: ' + $Lancador) }
     if (Test-Path -LiteralPath $Registo) { Remove-Item -LiteralPath $Registo -Force; Escrever ('removido: ' + $Registo) }
     # SO' apaga a pasta se ficou vazia: se o usuario pos la' algo, preserva-se.
     if ((Test-Path -LiteralPath $Destino) -and -not (Get-ChildItem -LiteralPath $Destino -Force)) {

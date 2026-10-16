@@ -27,7 +27,7 @@
   powershell -NoProfile -ExecutionPolicy Bypass -File scripts\hades_local_gates.ps1 -SemLint
 #>
 [CmdletBinding()]
-param([switch]$SemLint, [switch]$SemTestes)
+param([switch]$SemLint, [switch]$SemTestes, [switch]$ComE2E)
 
 $ErrorActionPreference = 'Continue'
 $repo = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
@@ -327,6 +327,22 @@ if ($LASTEXITCODE -eq 3) {
   $falhas.Add("hades_native_host_test.py (exit $LASTEXITCODE)")
   '    FALHA'
 } else { '    OK' }
+
+''
+# E-1032: o E2E REAL num navegador. *Um protocolo que nunca atravessou uma extensao a
+# serio nao esta' provado.* Mas abre uma janela do Edge -- logo entra por opt-in: um gate
+# que abre um navegador sem avisar nao serve para correr a toda a hora.
+'--- 17. E2E REAL: Edge -> extensao -> native messaging -> Companion'
+if ($ComE2E) {
+  $saidaE2E = & node scripts/hades_browser_bridge_e2e.mjs 2>&1
+  $saidaE2E | Select-Object -Last 3 | ForEach-Object { "    " + $_.ToString().Substring(0, [Math]::Min(110, $_.ToString().Length)) }
+  if ($LASTEXITCODE -ne 0) {
+    $falhas.Add("hades_browser_bridge_e2e.mjs (exit $LASTEXITCODE)")
+    '    FALHA'
+  } else { '    OK' }
+} else {
+  '    PULADO (opt-in: use -ComE2E para abrir o Edge e falar com o Companion)'
+}
 
 ''
 if ($falhas.Count -gt 0) {

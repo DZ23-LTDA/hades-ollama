@@ -88,4 +88,88 @@ $("bt-desconectar").addEventListener("click", async () => {
 });
 $("bt-revogar").addEventListener("click", () => agir({ tipo: "desconectar" }, "Todas as abas revogadas."));
 
+/**
+ * O CANAL LOCAL (`E-1032`).
+ *
+ * `nativeMessaging` esta' em `optional_permissions`: enquanto nao for CONCEDIDA,
+ * `chrome.runtime.sendNativeMessage` **nao existe** -- nao da' erro de permissao, nao e'
+ * uma funcao.
+ *
+ * E `chrome.permissions.request` **nao pode ser pedido a partir do service worker**:
+ * o `sendMessage` e' assincrono, e quando o pedido chega la' o GESTO DO UTILIZADOR JA'
+ * EXPIROU. Medido: o Chrome recusa e o motivo e' `permissao_nao_pedivel` (antes disso,
+ * o catch devolvia `erro_interno` e escondia a causa).
+ *
+ * Logo o pedido vive AQUI, no handler do clique -- que e' onde o gesto existe.
+ */
+async function atualizarCanal() {
+  const r = await pedir({ tipo: "canal:diagnostico" });
+  const bt = $("bt-canal");
+  if (!bt) return;
+  if (r?.ligado) {
+    bt.textContent = "Desligar do HADES";
+    dizer(`Ligado ao host ${r.nomeDoHost} (protocolo ${r.host?.protocolo}).`, false);
+  } else if (r?.permissaoConcedida) {
+    bt.textContent = "Ligar ao HADES";
+    dizer("Permissao concedida; o host ainda nao respondeu.", false);
+  } else {
+    bt.textContent = "Ligar ao HADES";
+    dizer("O canal local esta' desligado. Nada e' enviado ao PC.", false);
+  }
+}
+
+/**
+ * `chrome.permissions.request` **TRAVA em vez de falhar.** Medido (`E-1032`): quando o
+ * contexto nao consegue apresentar o dialogo nativo, a promessa **nunca resolve nem
+ * rejeita** -- o handler fica congelado e o utilizador ve "A pedir permissao..." para
+ * sempre, sem erro e sem timeout. *Uma promessa pendurada e' pior do que uma excepcao.*
+ *
+ * Por isso o pedido tem prazo. Sem isto, o unico sintoma e' um botao que nao faz nada.
+ */
+function comPrazo(promessa, ms, motivo) {
+  return Promise.race([
+    promessa,
+    new Promise((_, rej) => setTimeout(() => rej(new Error(motivo)), ms)),
+  ]);
+}
+
+const btCanal = $("bt-canal");
+if (btCanal) {
+  btCanal.addEventListener("click", async () => {
+    dizer("A pedir permissão…", false);
+    let concedida = false;
+    try {
+      concedida = await chrome.permissions.contains({ permissions: ["nativeMessaging"] });
+    } catch (erro) {
+      dizer("contains falhou: " + String(erro?.message ?? erro), true);
+      return;
+    }
+    if (!concedida) {
+      try {
+        concedida = await comPrazo(
+          chrome.permissions.request({ permissions: ["nativeMessaging"] }),
+          8000,
+          "o navegador não respondeu ao pedido de permissão",
+        );
+      } catch (erro) {
+        dizer("Pedido de permissão: " + String(erro?.message ?? erro), true);
+        return;
+      }
+    }
+    if (!concedida) {
+      dizer("Permissão recusada: a extensão continua sem falar com o Companion.", true);
+      return;
+    }
+    const r = await pedir({ tipo: "canal:ligar" });
+    if (r?.ok) {
+      dizer(`Ligado ao Companion (protocolo ${r.resposta?.protocolo ?? "?"}).`, false);
+    } else {
+      dizer("canal:ligar -> " + (r?.motivo ?? r?.detalhe ?? "falhou"), true);
+    }
+    await atualizarCanal();
+    if (!r?.ok) dizer("canal:ligar -> " + (r?.motivo ?? r?.detalhe ?? "falhou"), true);
+  });
+}
+
 atualizar();
+atualizarCanal();

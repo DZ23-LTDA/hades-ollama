@@ -989,3 +989,27 @@ deixa **zero** registo sujo -- medido. 25 assercoes, com 3 fault injections que 
 - APK Android bloqueado pela DLL JNI (`E-1019`), desbloqueio = runner Linux;
 - macOS/iOS `BLOCKED_EXTERNAL` pela **maquina**, nao pela credencial;
 - benchmark reproduzivel (ESTAGIO 21) nao iniciado.
+
+### O que falta (actualizado na janela `E-1032`)
+
+**Fechado**: o E2E real num navegador. O Edge carrega a extensao, o ID bate com o derivado, e a
+extensao fala com o Companion por native messaging -- medido, com desinstalacao sem residuo.
+Quatro defeitos reais corrigidos: a permissao nunca pedida, o `permissions.request` que trava,
+o gesto que nao sobrevive ao `sendMessage`, e o `path` a apontar para `.mjs`.
+
+**Continua em falta, sem disfarce**:
+- **controle de aba ponta a ponta**: o canal funciona; observar DOM, clicar, preencher e
+  **recusar campo de senha** numa pagina real ainda **nao** foi provado;
+- **takeover e revogacao por evento** nao testados com uma pagina a serio;
+- **o Chrome real do utilizador nao foi exercitado**: a versao 155 deste host **nao carrega**
+  por `--load-extension` (medido: 0 service workers). Exige carregamento manual;
+- **Firefox** (nao usa registo do Windows; falta o `.xpi`) e **Safari** (macOS/Xcode);
+- **sem `.crx`, sem assinatura, sem SBOM do pacote**;
+- **a chave privada de distribuicao esta' fora do Git** (`_tmp/ext-chave-privada.pem`);
+- **`CAPACIDADES` VAZIO**: o Companion **nao** controla o PC. Computer use nao existe;
+- **taxa e pairing em memoria** -- reiniciar o Companion apaga-os;
+- sem TLS de loopback, sem rate-limit do SO, sem DNS rebinding a nivel de socket;
+- ligacao da extensao ao **Mission Control** (`missao`/`aprovado` ficam a `null`);
+- APK Android bloqueado pela DLL JNI (`E-1019`), desbloqueio = runner Linux;
+- macOS/iOS `BLOCKED_EXTERNAL` pela **maquina**;
+- benchmark reproduzivel (ESTAGIO 21) nao iniciado.

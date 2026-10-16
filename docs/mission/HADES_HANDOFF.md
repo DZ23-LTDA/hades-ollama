@@ -775,3 +775,42 @@ tag, release, publicacao externa, ou **resolver threads** do PR #438.
 
 **Doutrina em uma linha**: um ID que se deriva nao se adivinha; um manifesto com caminho absoluto
 nao se versiona; instalar nao e' publicar; e uma catraca so' vale depois de ter ficado vermelha.
+
+### Instrucoes de retomada (janela `E-1032`)
+
+**Estado**: branch `fix/checker-relogio`; cabeca do indice `E-1032`; PR #438 **aberto** e **nao
+tocado**; `reviewDecision` **vazio** => sem revisao humana independente.
+
+**Bateria: 24 passos.** O E2E real entra por **opt-in** (abre uma janela do Edge):
+  powershell -NoProfile -ExecutionPolicy Bypass -File scripts\hades_local_gates.ps1 -ComE2E
+
+**O E2E real, sozinho**:
+  node scripts/hades_browser_bridge_e2e.mjs
+  # instala o host -> Edge carrega a extensao -> id do navegador == id derivado
+  # -> popup -> conceder -> recarregar -> sendNativeMessage -> resposta -> desinstalar
+
+**QUATRO ARMADILHAS MEDIDAS, PARA NAO AS REPETIR** (`E-1032`):
+1. `chrome.runtime.sendNativeMessage` **nao existe** enquanto `nativeMessaging` nao for
+   concedida -- e nao da' erro de permissao, **nao e' uma funcao**;
+2. `chrome.permissions.request` **trava para sempre** dentro do handler do clique -- tem
+   prazo de 8s no popup, senao o botao fica morto sem erro;
+3. o **gesto do utilizador nao sobrevive** ao `chrome.runtime.sendMessage` -- o pedido tem
+   de viver no `popup.js`;
+4. o **Windows nao executa `.mjs`** -- o `path` do manifesto aponta para um lancador `.cmd`,
+   e o `--check` recusa `path` terminado em `.mjs`.
+
+**E O `chrome.runtime` NAO SE RECONSTROI**: com a permissao ja' concedida,
+`typeof chrome.runtime.sendNativeMessage` continua `undefined` ate' a extensao recarregar.
+
+**O Chrome 155 deste host nao carrega por `--load-extension`** (medido: 0 service workers).
+O Edge carrega. Nao suponha qual serve -- meca.
+
+**DUAS CATRACAS COMPLEMENTARES**: `hades_index_shape_check.py` varre o **indice**;
+`hades_mission_check.py` varre **todo o codigo**. **Um ID novo continua do MAIOR cunhado.**
+
+**O que NAO fazer**: `reset --hard`, `git clean`, rebase destrutivo, force-push, stash, `merge`,
+tag, release, publicacao externa, ou **resolver threads** do PR #438.
+
+**Doutrina em uma linha**: um protocolo que nunca atravessou um navegador a serio nao esta'
+provado; um `path` que o SO nao executa nao e' um host; uma promessa que trava e' pior do que
+uma excecao; e o gesto do utilizador nao sobrevive a um `sendMessage`.

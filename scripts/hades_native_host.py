@@ -101,15 +101,22 @@ def id_da_chave_versionada() -> str | None:
 
 
 def escrever_manifesto(ext_id: str, caminho_companion: str, destino: str = None) -> str:
-    """Escreve o manifesto do native host com o ID REAL. Devolve o JSON."""
+    """Escreve o manifesto do native host com o ID REAL. Devolve o JSON.
+
+    O `path` NAO pode apontar para o `.mjs`: medido no `E-1032`, o Windows **nao executa**
+    `.mjs` directamente -- o Chrome arranca o processo, nao corre o ficheiro, e a resposta
+    e' «Error when communicating with the native messaging host». O `path` aponta para o
+    **lancador** (`.cmd`), que chama o `node`.
+    """
     caminho_companion = os.path.abspath(caminho_companion)
+    lancador = escrever_lancador(caminho_companion, os.path.dirname(destino or HOST_JSON))
     m = {
         "name": NOME_DO_HOST,
         "description": (
             "HADES Local Companion -- host de native messaging do HADES Browser Bridge "
             "(NAO PUBLICADO, NAO ASSINADO)."
         ),
-        "path": caminho_companion,
+        "path": lancador,
         "type": "stdio",
         # A REGRA: SO' a extensao HADES. Nada de curinga, nada de <all_urls>, nada de http.
         "allowed_origins": ["chrome-extension://%s/" % ext_id],
@@ -119,6 +126,32 @@ def escrever_manifesto(ext_id: str, caminho_companion: str, destino: str = None)
     with io.open(alvo, "w", encoding="utf-8", newline="\n") as f:
         f.write(texto)
     return texto
+
+
+def escrever_lancador(caminho_companion: str, pasta: str) -> str:
+    """Gera o lancador `.cmd`. Devolve o caminho absoluto do lancador.
+
+    `.cmd` (e nao `.bat`) porque e' a extensao que o `CreateProcess` do `cmd.exe` aceita
+    sem ambiguidade. `@echo off` e `%~dp0` mantem o caminho relativo ao proprio lancador,
+    para o pacote poder ser movido.
+    """
+    if pasta and not os.path.isdir(pasta):
+        os.makedirs(pasta)
+    lancador = os.path.join(pasta, NOME_DO_HOST + ".cmd")
+    # Caminho ABSOLUTO embutido: o manifesto ja' e' especifico da maquina, e um caminho
+    # relativo a partir de `%LOCALAPPDATA%` nao chegaria ao repo.
+    # ASCII puro: o `cmd.exe` deste host le' em OEM/ANSI e um acento aqui vira lixo.
+    corpo = (
+        "@echo off\r\n"
+        "rem HADES Local Companion -- lancador do host de native messaging.\r\n"
+        "rem O Windows NAO executa `.mjs` directamente (medido no E-1032): o Chrome\r\n"
+        "rem arranca este processo e o ficheiro nao corre. Este lancador chama o node.\r\n"
+        "rem NAO PUBLICADO, NAO ASSINADO.\r\n"
+        'node "%s" %%*\r\n' % caminho_companion
+    )
+    with io.open(lancador, "w", encoding="ascii", newline="") as f:
+        f.write(corpo)
+    return lancador
 
 
 def verificar(alvo: str = None) -> int:
@@ -164,8 +197,15 @@ def verificar(alvo: str = None) -> int:
             caminho = h.get("path") or ""
             if caminho.startswith("REPLACE_WITH_") or not caminho:
                 problemas.append("PATH PLACEHOLDER: o Companion nao esta' apontado")
-            if not os.path.isfile(caminho):
+            elif not os.path.isfile(caminho):
                 problemas.append("PATH NAO EXISTE: %s" % caminho)
+            elif caminho.lower().endswith(".mjs"):
+                # Medido no `E-1032`: o Windows NAO executa `.mjs`, e o Chrome responde
+                # «Error when communicating with the native messaging host».
+                problemas.append(
+                    "PATH APONTA PARA .mjs: o Windows nao executa .mjs directamente. "
+                    "O `path` tem de apontar para o lancador (.cmd)."
+                )
     if problemas:
         print("  NAO VERIFICA:")
         for p in problemas:

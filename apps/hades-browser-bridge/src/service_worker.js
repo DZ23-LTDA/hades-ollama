@@ -22,6 +22,12 @@ import {
 /** Chave unica de armazenamento. Uma so' fonte de verdade. */
 const CHAVE = "hades.bridge.v1";
 
+/**
+ * O nome do host de native messaging. Tem de ser o MESMO que o `name` do manifesto
+ * (`native-host/com.dz23ltd.hades.bridge.json`) e que o nome registado no SO.
+ */
+const NOME_DO_HOST = "com.dz23ltd.hades.bridge";
+
 /** Uma concessao expira sozinha. O utilizador nao fica exposto por esquecimento. */
 const TTL_PADRAO_MS = 30 * 60 * 1000;
 
@@ -228,6 +234,77 @@ async function tratarAccao(mensagem) {
   };
 }
 
+/* ------------------------------------------------- o canal local (E-1032) */
+
+/**
+ * A permissao `nativeMessaging` esta' em `optional_permissions` -- de proposito: *o
+ * `E-1025` decidiu que a extensao NAO deve ter poder sobre o PC desde a instalacao.*
+ *
+ * MAS ISSO TEM UMA CONSEQUENCIA QUE FALTAVA: enquanto a permissao nao for CONCEDIDA,
+ * `chrome.runtime.sendNativeMessage` **nao existe no objecto**. Nao devolve erro de
+ * permissao -- nao e' uma funcao. E nenhum ficheiro desta extensao a pedia.
+ *
+ * Este e' o unico sitio onde o canal local e' ligado, e ele exige o gesto do utilizador
+ * (`chrome.permissions.request` so' funciona em contexto de clique).
+ */
+async function estadoDoCanal() {
+  const tem = await chrome.permissions.contains({ permissions: ["nativeMessaging"] });
+  return { ok: true, permissaoConcedida: tem, host: NOME_DO_HOST };
+}
+
+async function ligarCanal() {
+  const tem = await chrome.permissions.contains({ permissions: ["nativeMessaging"] });
+  if (!tem) return { ok: false, motivo: "permissao_nao_concedida" };
+  try {
+    // Pergunta minima: so' o necessario. Nada de scopes do SO.
+    const resposta = await chrome.runtime.sendNativeMessage(NOME_DO_HOST, { id: 1, cmd: "host:ola" });
+    const estado = await lerEstado();
+    if (resposta?.ok === true) {
+      estado.host = { protocolo: resposta.protocolo, instalado: resposta.instalado === true, em: Date.now() };
+      await gravarEstado(estado);
+    }
+    return { ok: resposta?.ok === true, resposta };
+  } catch (e) {
+    return { ok: false, motivo: "host_nao_responde", detalhe: String(e?.message ?? e) };
+  }
+}
+
+/**
+ * ATENCAO -- **isto NAO serve para PEDIR a permissao.** Medido (`E-1032`): o Chrome
+ * recusa com «This function must be called during a user gesture» porque o
+ * `sendMessage` e' assincrono e o gesto ja' expirou quando o pedido chega aqui.
+ *
+ * O pedido tem de viver no POPUP, no handler do clique. Esta funcao existe apenas para
+ * documentar o beco sem saida -- o `popup.js` **nao** a chama.
+ */
+async function pedirCanal() {
+  return {
+    ok: false,
+    motivo: "gesto_expirado",
+    dica: "peça a permissão no popup: o gesto não sobrevive ao sendMessage assíncrono",
+  };
+}
+
+async function desligarCanal() {
+  const estado = await lerEstado();
+  estado.host = null;
+  await gravarEstado(estado);
+  return { ok: true };
+}
+
+/** Diagnostico honesto: o que esta' ligado e o que nao esta'. */
+async function diagnosticoDoCanal() {
+  const base = await estadoDoCanal();
+  const estado = await lerEstado();
+  return {
+    ...base,
+    ligado: estado.host !== null,
+    host: estado.host,
+    nomeDoHost: NOME_DO_HOST,
+    extensaoId: chrome.runtime.id,
+  };
+}
+
 /* -------------------------------------------------- mensagens e ciclo de vida */
 
 chrome.runtime.onMessage.addListener((mensagem, remetente, responder) => {
@@ -236,6 +313,19 @@ chrome.runtime.onMessage.addListener((mensagem, remetente, responder) => {
   if (remetente?.id !== chrome.runtime.id) {
     responder({ ok: false, motivo: "remetente_nao_autorizado" });
     return false;
+  }
+  const t = mensagem?.tipo;
+  // O canal local tem os seus proprios handlers: `pedir` PRECISA do gesto do
+  // utilizador, logo nao pode passar pelo funil generico sem se perder a origem.
+  const doCanal = t === "canal:estado" ? estadoDoCanal()
+    : t === "canal:ligar" ? ligarCanal()
+    : t === "canal:desligar" ? desligarCanal()
+    : t === "canal:diagnostico" ? diagnosticoDoCanal()
+    : null;
+  if (doCanal) {
+    doCanal.then(responder).catch((erro) =>
+      responder({ ok: false, motivo: "erro_interno", detalhe: String(erro?.message ?? erro) }));
+    return true;
   }
   tratarAccao(mensagem)
     .then(responder)

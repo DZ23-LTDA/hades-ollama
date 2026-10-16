@@ -414,3 +414,21 @@ Sem isso, o que existe e' um protocolo correcto testado por subprocesso -- e nao
 instalado num navegador.
 
 Antes disso: persistir a taxa e o estado do pairing (hoje vivem **em memoria**, `E-1029`).
+
+### A proxima accao unica (janela `E-1032`)
+
+**O protocolo atravessou um navegador a serio** (`E-1032`): o Edge real carrega a extensao,
+deriva o **mesmo ID**, e a extensao falou com o Companion por native messaging -- resposta de
+ida e volta, com o `id` ecoado. Exit 0.
+
+Pelo caminho cairam **4 defeitos que nenhum teste anterior podia ver**:
+- `nativeMessaging` estava declarada mas **ninguem a pedia** (e sem ela `sendNativeMessage`
+  **nao e' uma funcao**);
+- `chrome.permissions.request` **trava para sempre** dentro do handler (curado com prazo de 8s);
+- o gesto **nao sobrevive** ao `sendMessage` -- o pedido tem de viver no popup;
+- o Windows **nao executa `.mjs`** -- o `path` tem de apontar para um lancador `.cmd`.
+
+**A proxima accao unica**: **o controle de aba a funcionar ponta a ponta**. Hoje o E2E prova o
+**canal**; nao prova **observar o DOM de uma pagina real, clicar, e recusar um campo de senha**.
+E' um teste com uma pagina local e a extensao a fazer `browser:navigate` -> `browser:files`
+com a concessao por aba, o badge, o takeover e a revogacao. Tudo interno.
