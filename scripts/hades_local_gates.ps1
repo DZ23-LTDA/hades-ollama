@@ -105,13 +105,13 @@ if ($SemTestes) {
   # A historia deste numero, toda medida (2026-10-15):
   #   1. a suite cheia morria no limite padrao de 10 min do `go test`;
   #   2. a causa era REAL e foi corrigida (E-671): `TestMatrizRealComModelosLocais` chamava um modelo que NAO gera
-  #      (`llama3.2:3b`) e a sonda de disponibilidade dizia "disponivel" ⇒ 3 min por chamada;
+  #      (`llama3.2:3b`) e a sonda de disponibilidade dizia "disponivel" -> 3 min por chamada;
   #   3. com o travamento corrigido, o gate passou uma vez (**549,506 s**) e falhou noutra (**1507,556 s** = o limite
-  #      de 25 min), com quadro de `net/http` preso ⇒ *a duracao nao e' estavel porque depende de INFERENCIA REAL*;
+  #      de 25 min), com quadro de `net/http` preso -> *a duracao nao e' estavel porque depende de INFERENCIA REAL*;
   #   4. a causa: os testes opt-in de modelo local fazem trabalho real de LLM (benchmark 2 tentativas, repeticao
-  #      **3x2 geracoes**, fixer 2 reparos, cada tentativa com orcamento de 4 min) ⇒ **6-10 geracoes** = minutos.
+  #      **3x2 geracoes**, fixer 2 reparos, cada tentativa com orcamento de 4 min) -> **6-10 geracoes** = minutos.
   #      *Isso e' MEDICAO, nao verificacao.* No CI (sem Ollama) eles pulam na hora - e' por isso que o CI e' verde.
-  #   5. ⇒ o gate EXCLUI os testes de medicao real e **DECLARA** que os excluiu. Eles continuam executaveis sob
+  #   5. -> o gate EXCLUI os testes de medicao real e **DECLARA** que os excluiu. Eles continuam executaveis sob
   #      demanda (ver `scripts/hades_medicao_real.ps1`), e sao eles que produzem os artefatos T2.
   # *Licao (tres hipoteses minhas cairam por medicao: vazamento de processos, travamento no filho, "so lentidao"):
   # um gate com escopo errado inventa falhas; um gate que nao roda teste nao substitui o CI (E-650).*
@@ -203,7 +203,7 @@ $saidaForma2 = & python -X utf8 scripts/hades_index_shape_check.py --check 2>&1
 $saidaForma2 | Select-Object -First 6 | ForEach-Object { "    $_" }
 if ($LASTEXITCODE -ne 0) { $falhas.Add("hades_index_shape_check.py --check (exit $LASTEXITCODE)") } else { '    OK' }
 
-# *POR QUE ISTO EXISTE:* o `E-1008`. O `mission_check` exige «alguma evidencia >= E-960», e um
+# *POR QUE ISTO EXISTE:* o `E-1008`. O `mission_check` exige "alguma evidencia >= E-960", e um
 # documento de retomada parado no E-1000 satisfaz PARA SEMPRE. Esta catraca mede a JANELA: o
 # maior ID citado tem de estar a menos de 12 evidencias da cabeca do indice.
 '--- 10. JANELA de citacao dos documentos de retomada'
