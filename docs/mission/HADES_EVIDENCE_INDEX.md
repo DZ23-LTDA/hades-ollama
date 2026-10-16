@@ -9,6 +9,18 @@ Ambiente de coleta: host Windows, PowerShell 5.1, repositório
 Go em `_tmp\goroot\go\bin\go.exe` (go1.27.2), Node v24.19.0, `gh 2.102.0`,
 Python 3.12. Datas relativas a `2026-10-10T08:17-03:00`.
 
+
+> **FAIXA HISTORICA AUSENTE: E-571..E-777 (207 IDs) - \EVIDENCE_LOST_HISTORICAL\.**
+> Alcance: os 207 identificadores nao possuem entrada neste indice e **nao serao**
+> reconstruidos - nao existe material de origem para eles, e inventar texto retroativo
+> seria prova falsa. Impacto medido: nenhum requisito ATIVO depende deles. A arqueologia
+> registrada no WIP classifica 134 como sem ocorrencia em nenhum arquivo pesquisado e 73
+> como referencias orfas em documentos historicos.
+> Guarda: o teste \scripts/hades_state_chronology_test.py::auditar_evidence_ids\ le esta
+> declaracao e (a) deixa de acusar estes 207 IDs como buraco de numeracao, (b) **falha** se
+> qualquer ID novo cair dentro da faixa - a divida declarada nao pode virar licenca para
+> reutilizar numeros perdidos (FASE 7.6).
+
 | ID | Tipo | Comando reproduzível | Resultado observado | Severidade residual |
 | --- | --- | --- | --- | --- |
 | E-001 | git/estado | `gh api repos/DZ23-LTDA/hades-ollama/commits/main` | `main = 889750abe4006985b3bf9037bca2323d1e40cef0`, commit em `2026-10-09T10:24:45Z` | — |
