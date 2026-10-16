@@ -60,7 +60,14 @@ if ($LASTEXITCODE -ne 0) {
 } else { '    (vazio) OK' }
 
 '--- 2. go build ./...'
-& go build ./... 2>&1 | Select-Object -First 10 | ForEach-Object { "    $_" }
+# E-561 - `-First 10` NUM COMANDO NATIVO E' UMA FALSA APROVACAO.
+#
+# *O DEFEITO:* `Select-Object -First N` fecha o pipeline apos N objectos e TERMINA o comando a montante.
+# Medido nesta sessao: `& npx ... | Select-Object -First 30` matou o `npx` (exit -1). Se o `go build`
+# produzir mais de 10 linhas, ele e' morto a meio e `$LASTEXITCODE` pode nao reflectir o build inteiro
+# => o passo 2 diria OK sobre um build que NAO terminou. A linha do passo 4 ja' usava `-Last 12`; so' esta
+# nao. Corrigido para `-Last 10`: le' tudo e mostra as ultimas 10 (a saida de um build e' curta).
+& go build ./... 2>&1 | Select-Object -Last 10 | ForEach-Object { "    $_" }
 if ($LASTEXITCODE -ne 0) { $falhas.Add('go build ./...') } else { '    OK' }
 
 if ($SemLint) {
@@ -117,6 +124,37 @@ if ($SemTestes) {
   if ($LASTEXITCODE -ne 0) { $falhas.Add("go test ./internal/agent ./server (exit $LASTEXITCODE)") } else { '    OK' }
 }
 
+# E-561 - O GATE LOCAL NAO VIA O CAMINHO DE PERSISTENCIA (`./app/...`).
+#
+# *POR QUE ISTO EXISTE:* o passo 4 cobre `./internal/agent` e `./server`. Mas o CI tambem roda
+# `CGO_ENABLED=1 go test ./...` (dz23-agentic-quality.yaml, release.yaml), e `./...` inclui `./app/...`,
+# onde vive `app/store` (SQLite via `github.com/mattn/go-sqlite3`, que exige CGO). O gate local NAO
+# incluia `./app/...`: medido em 2026-10-15, o gate local estava VERDE enquanto `go test ./app/store`
+# era 100% VERMELHO com `Binary was compiled with 'CGO_ENABLED=0', go-sqlite3 requires cgo to work.
+# This is a stub`, porque este host tem `CGO_ENABLED=0` e `gcc` AUSENTE. *Um gate que nao mede o
+# caminho de persistencia nao pode aprova-lo* - e o `E-560` (seletor de modelo) vive nesse caminho.
+#
+# DECISAO: rodar `./app/...` QUANDO houver cgo; quando NAO houver, PULAR e DIZER que pulou, com o passo
+# exacto de desbloqueio. Ausencia de cgo NAO se converte em sucesso: seria o silenciamento proibido.
+$appRodou = $false
+if ($SemTestes) {
+  '--- 5. go test ./app/... PULADO por -SemTestes (isto NAO e aprovacao de app/store)'
+} else {
+  $cgo = (& go env CGO_ENABLED).Trim()
+  $temCC = $null -ne (Get-Command gcc -ErrorAction SilentlyContinue)
+  '--- 5. go test ./app/... -count=1 (persistencia: app/store usa SQLite via CGO)'
+  if ($cgo -eq '1' -and $temCC) {
+    $saidaApp = & go test ./app/... -count=1 -timeout 25m 2>&1
+    $saidaApp | Select-Object -Last 12 | ForEach-Object { "    $_" }
+    if ($LASTEXITCODE -ne 0) { $falhas.Add("go test ./app/... (exit $LASTEXITCODE)") } else { '    OK' }
+    $appRodou = $true
+  } else {
+    "    PULADO: CGO_ENABLED=$cgo e gcc presente=$temCC - isto NAO e aprovacao de app/store"
+    '    DESBLOQUEIO: instalar um compilador C (mingw-w64/w64devkit) e rodar com CGO_ENABLED=1.'
+    '    NAO MEDIDO NESTE HOST: app/store (settings, chats e memoria em SQLite) nao pode ser verificado.'
+  }
+}
+
 ''
 if ($falhas.Count -gt 0) {
   "GATES LOCAIS: $($falhas.Count) falha(s)"
@@ -126,4 +164,7 @@ if ($falhas.Count -gt 0) {
 $passos = @('gofmt', 'build')
 if (-not $SemLint) { $passos += 'lint' }
 if (-not $SemTestes) { $passos += 'testes' }
+# E-561: o escopo de `./app/...` entra no resumo SEMPRE - medido ou PULADO. Um resumo que omitisse o
+# passo pulado faria um gate de escopo menor parecer um gate de escopo maior.
+if ($appRodou) { $passos += 'app' } else { $passos += 'app-PULADO' }
 "GATES LOCAIS: $($passos -join ' + ') VERDES"
