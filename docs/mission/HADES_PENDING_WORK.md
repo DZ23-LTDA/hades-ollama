@@ -878,3 +878,25 @@ replay, pairing por codigo curto, chave por dispositivo, rotacao, revogacao e re
 - APK Android bloqueado pela DLL JNI neste host (`E-1019`), desbloqueio = runner Linux;
 - macOS/iOS `BLOCKED_EXTERNAL` pela **maquina**, nao pela credencial;
 - benchmark reproduzivel (ESTAGIO 21) nao iniciado.
+
+### O que falta (actualizado na janela `E-1024`)
+
+**Fechado nesta janela**: a derivacao de chave por HKDF com contexto e codigo de uso unico,
+o manifesto template do native host com allowlist, e a permissao `nativeMessaging` movida
+para `optional_permissions` (`E-1024`). O `mission_check` apanhou o `E-1024` citado em
+codigo antes de existir -- a mesma classe do `E-1020`, por um vector que a catraca do
+indice nao cobre.
+
+**Continua em falta, sem disfarce**:
+- **o `HADES Local Companion` nao existe**: o manifesto e template com placeholders, e nao
+  ha executavel, transporte, stdio pipe nem handshake;
+- **o codigo curto em trafego**: num canal `loopback` sem TLS ele viaja em claro no
+  `localhost`; falta o handshake que prova posse da chave derivada e o rate-limit;
+- **DNS rebinding** a nivel de socket: o contrato valida o hostname, nao a ligacao;
+- **E2E em Chrome/Edge reais**: o pacote foi verificado, **nunca carregado**;
+- Firefox (`.xpi`), Safari e assinatura (`.crx`): **nao existem**;
+- **SBOM do pacote da extensao** e `THIRD_PARTY_NOTICES` com os icones reutilizados;
+- ligacao da extensao ao **Mission Control** (`missao`/`aprovado` ficam a `null`);
+- APK Android bloqueado pela DLL JNI neste host (`E-1019`), desbloqueio = runner Linux;
+- macOS/iOS `BLOCKED_EXTERNAL` pela **maquina**, nao pela credencial;
+- benchmark reproduzivel (ESTAGIO 21) nao iniciado.

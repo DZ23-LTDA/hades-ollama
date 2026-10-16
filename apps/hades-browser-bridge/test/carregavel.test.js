@@ -105,3 +105,16 @@ test("a extensao nao declara qualquer scope de sistema operativo", () => {
   assert.ok(!/"desktop:(screen|input|clipboard|process)"/.test(todos),
     "a extensao nao pode reclamar scopes de desktop");
 });
+
+test("nativeMessaging esta' em optional_permissions, NUNCA no nucleo", () => {
+  const nucleo = [...(manifest.permissions ?? []), ...(manifest.host_permissions ?? [])];
+  assert.ok(!nucleo.includes("nativeMessaging"),
+    "nativeMessaging no nucleo seria poder desde a instalacao, sem consentimento");
+  assert.ok((manifest.optional_permissions ?? []).includes("nativeMessaging"),
+    "o canal `native` do contrato canal_local.js precisa desta permissao opcional");
+  // e as opcionais nao podem alargar o poder sem pedido explicito do utilizador
+  const opcionais = manifest.optional_permissions ?? [];
+  for (const p of opcionais) {
+    assert.ok(["nativeMessaging"].includes(p), "opcional nao prevista: " + p);
+  }
+});

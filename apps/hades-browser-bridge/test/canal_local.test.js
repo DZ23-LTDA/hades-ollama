@@ -315,3 +315,97 @@ test("nao ha token estatico nem segredo literal no modulo", async () => {
   const fora = urls.filter((u) => !/^https?:\/\/(127\.|localhost|\[::1\]|::1)/.test(u));
   assert.deepEqual(fora, [], "URL nao-loopback no codigo: " + fora.join(", "));
 });
+
+/* ------------------------------------------------------- derivacao (E-1024) */
+
+test("a chave do canal DERIVA do codigo curto, nao e' o codigo", async () => {
+  const pedido = C.abrirPairing(AGORA);
+  const a = await C.derivarChave(pedido.codigo, pedido.pedido, "inst-1");
+  const b = await C.derivarChave(pedido.codigo, pedido.pedido, "inst-1");
+  const bytes = await C.exportarChave(a);
+  const bytes2 = await C.exportarChave(b);
+  assert.equal(bytes.length, C.HKDF_BITS / 8, "a chave tem 256 bits");
+  assert.deepEqual(Array.from(bytes), Array.from(bytes2), "derivacao determinista");
+  // e a chave NAO e' o codigo curto
+  assert.notEqual(Buffer.from(bytes).toString("utf8"), pedido.codigo);
+});
+
+test("o MESMO codigo em contextos diferentes da' chaves DIFERENTES", async () => {
+  // Sem salt/info, um codigo de 6 digitos seria a mesma chave em todo o lado.
+  const codigo = "123456";
+  const k1 = await C.exportarChave(await C.derivarChave(codigo, "pr-a", "inst-1"));
+  const k2 = await C.exportarChave(await C.derivarChave(codigo, "pr-b", "inst-1"));
+  const k3 = await C.exportarChave(await C.derivarChave(codigo, "pr-a", "inst-2"));
+  const k4 = await C.exportarChave(await C.derivarChave(codigo, "pr-a", "inst-1", "m1"));
+  const todos = [k1, k2, k3, k4].map((x) => Buffer.from(x).toString("hex"));
+  assert.equal(new Set(todos).size, 4, "os 4 contextos tem de dar 4 chaves");
+  for (const t of todos) assert.notEqual(t, codigo);
+});
+
+test("derivar sem codigo LANCA em vez de gerar chave fraca", async () => {
+  await assert.rejects(() => C.derivarChave("", "pr", "inst"), /codigo curto ausente/);
+  await assert.rejects(() => C.derivarChave(null, "pr", "inst"), /codigo curto ausente/);
+});
+
+test("a chave derivada assina e verifica como qualquer outra", async () => {
+  const pedido = C.abrirPairing(AGORA);
+  const chave = await C.derivarChave(pedido.codigo, pedido.pedido, "inst-1", "m1");
+  const estado = C.estadoInicial();
+  const bytes = await C.exportarChave(chave);
+  assert.equal(C.registrarDispositivo(estado, "inst-1", bytes, AGORA).ok, true);
+  const e = await enviar(chave, { tipoCanal: "native", instalacao: "inst-1",
+                                  missao: "m1", sequencia: 1, corpo: "ok", agora: AGORA });
+  assert.equal((await C.aceitar(e, estado, AGORA)).ok, true);
+});
+
+test("o codigo curto e' de USO UNICO: consumido, nao volta a valer", () => {
+  const pedido = C.abrirPairing(AGORA);
+  assert.equal(C.confirmarPairing(pedido, pedido.codigo, AGORA).ok, true);
+  assert.equal(C.consumirCodigo(pedido).ok, true);
+  assert.equal(pedido.codigo, null, "o codigo e' apagado");
+  const r = C.confirmarPairing(pedido, "000000", AGORA);
+  assert.equal(r.ok, false);
+  assert.equal(r.motivo, "codigo_ja_usado");
+});
+
+test("consumir duas vezes e' recusado", () => {
+  const pedido = C.abrirPairing(AGORA);
+  assert.equal(C.consumirCodigo(pedido).ok, true);
+  assert.equal(C.consumirCodigo(pedido).motivo, "codigo_ja_usado");
+  assert.equal(C.consumirCodigo(null).motivo, "pedido_ausente");
+});
+
+/* ------------------------------------------------------- native host (E-1024) */
+
+test("o manifesto do native host existe, e' stdio e NAO tem origem curinga", async () => {
+  const fs = await import("node:fs");
+  const path = await import("node:path");
+  const { fileURLToPath } = await import("node:url");
+  const raiz = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
+  const p = path.join(raiz, "native-host", "com.dz23ltd.hades.bridge.json");
+  const m = JSON.parse(fs.readFileSync(p, "utf8"));
+
+  assert.equal(m.type, "stdio", "native messaging usa stdio");
+  assert.match(m.name, /^[a-z0-9._]+$/, "o nome tem de ser DNS-like");
+  assert.ok(Array.isArray(m.allowed_origins) && m.allowed_origins.length >= 1);
+  for (const o of m.allowed_origins) {
+    // A REGRA: nada de "*", nada de <all_urls>, nada de http. So' a extensao HADES.
+    assert.match(o, /^chrome-extension:\/\/[a-p]{32}\/$|^chrome-extension:\/\/REPLACE_WITH_EXTENSION_ID\/$/,
+      "origem nao e' um id de extensao: " + o);
+    assert.ok(!o.includes("*"), "origem curinga: " + o);
+  }
+  // o path e' um placeholder explicito, porque o Companion NAO EXISTE
+  assert.match(m.path, /^REPLACE_WITH_/, "o path tem de ser um placeholder declarado");
+});
+
+test("a extensao NAO pede nativeMessaging no nucleo, mas declara-o como opcional", async () => {
+  const fs = await import("node:fs");
+  const path = await import("node:path");
+  const { fileURLToPath } = await import("node:url");
+  const raiz = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
+  const m = JSON.parse(fs.readFileSync(path.join(raiz, "manifest.json"), "utf8"));
+  assert.ok(!(m.permissions ?? []).includes("nativeMessaging"),
+    "nativeMessaging no nucleo da' poder a toda a extensao desde a instalacao");
+  assert.ok((m.optional_permissions ?? []).includes("nativeMessaging"),
+    "sem optional_permissions, o tipo de canal `native` do contrato nao pode existir");
+});

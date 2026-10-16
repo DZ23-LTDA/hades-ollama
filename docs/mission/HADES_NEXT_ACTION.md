@@ -340,3 +340,19 @@ Continua a ser trabalho interno, sem credencial.
 
 Depois, pela ordem: (2) DNS rebinding a nivel de socket; (3) SBOM do pacote da extensao;
 (4) E2E em Chrome real; (5) Firefox (`.xpi`) ou `ABSENT` documentado.
+
+### A proxima accao unica (janela `E-1024`)
+
+**A chave do canal ja deriva do codigo curto** (`E-1024`): HKDF-SHA256 com `salt` e
+`info` do contexto, codigo de uso unico, native host com allowlist restrita e
+`nativeMessaging` em `optional_permissions`. 56 assercoes nos 3 ficheiros de teste, e a
+discriminacao provou que o teste do contexto reprova o defeito do `E-1023`.
+
+**A proxima accao unica**: **proteger o codigo em TRAFEGO** -- o HKDF assume que o codigo
+curto atravessou um canal ja autenticado, e num canal `loopback` sem TLS o codigo de 6
+digitos viaja em claro no `localhost`. Definir e testar: (a) o host recusa arrancar sem um
+handshake que prova posse da chave derivada, (b) o codigo so vive em memoria no host,
+(c) rate-limit por pedido e por instalacao. Tudo interno, sem credencial.
+
+Depois: (2) o executavel do `HADES Local Companion` (stdio, com o manifesto ja escrito);
+(3) DNS rebinding a nivel de socket; (4) SBOM do pacote; (5) E2E em Chrome real.

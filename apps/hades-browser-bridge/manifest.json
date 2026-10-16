@@ -25,6 +25,9 @@
     "storage",
     "tabs"
   ],
+  "optional_permissions": [
+    "nativeMessaging"
+  ],
   "optional_host_permissions": [
     "http://*/*",
     "https://*/*"

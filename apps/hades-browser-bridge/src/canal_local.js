@@ -55,6 +55,31 @@ export const TTL_CHAVE_MS = 24 * 60 * 60 * 1000;
 /** Onde a sequencia comeca. A sequencia e' estritamente crescente. */
 export const SEQUENCIA_INICIAL = 1;
 
+/**
+ * HKDF-SHA256 para DERIVAR a chave do canal a partir do codigo curto do pairing.
+ *
+ * POR QUE ISTO EXISTE (`E-1024`): o contrato do `E-1023` usava HMAC **simetrico** e
+ * apenas **assumia** que a chave tinha sido partilhada com seguranca -- o que, em
+ * seguranca, e' o mesmo que nao ter contrato nenhum. Aqui a chave **deriva-se**.
+ *
+ * O `salt` e o `info` NAO sao decoracao: sem eles, o mesmo codigo curto produziria a
+ * MESMA chave em instalacoes diferentes, e um segredo de 6 digitos reutilizado entre
+ * dispositivos e' um segredo de 6 digitos para todos eles.
+ *
+ * LIMITE HONESTO: HKDF **nao adiciona entropia**. Um codigo de 6 digitos tem ~20 bits;
+ * derivar nao o torna forte. O que protege e' o codigo ser **de uso unico**, ter
+ * **prazo de 3 minutos**, **teto de 5 tentativas** e nunca atravessar um canal publico.
+ */
+export const HKDF = "HKDF";
+export const HKDF_BITS = 256;
+
+/** Sem contexto, a chave derivada e' so' um codigo curto. O contexto separa-os. */
+export function contextoDoPairing(pedido, instalacao, missao = null) {
+  return new TextEncoder().encode(
+    ["hades-canal", "v" + PROTOCOLO, pedido, instalacao, missao ?? "-"].join("\u0000"),
+  );
+}
+
 /* ------------------------------------------------------------- aleatoriedade */
 
 /**
@@ -99,6 +124,48 @@ export async function exportarChave(chave) {
 /** Importa uma chave ja' existente. */
 export async function importarChave(bytes) {
   return crypto.subtle.importKey("raw", bytes, { name: ALG, hash: HASH }, true, ["sign", "verify"]);
+}
+
+/**
+ * DERIVA a chave do canal a partir do codigo curto + contexto.
+ *
+ * O codigo curto NUNCA e' usado directamente como chave: passa por HKDF-SHA256 com
+ * `salt` e `info` derivados do pedido, da instalacao e da missao. Assim:
+ *   - o mesmo codigo em instalacoes diferentes da' chaves DIFERENTES;
+ *   - a chave nao pode ser testada offline contra um dicionario de 10^6 codigos
+ *     sem conhecer o pedido e a instalacao (que sao aleatorios por pairing);
+ *   - a chave derivada tem 256 bits, mesmo que o codigo tenha ~20.
+ */
+export async function derivarChave(codigoCurto, pedido, instalacao, missao = null) {
+  if (typeof codigoCurto !== "string" || !codigoCurto) {
+    throw new Error("codigo curto ausente: nao derive chave de nada");
+  }
+  const base = await crypto.subtle.importKey(
+    "raw", new TextEncoder().encode(codigoCurto), HKDF, false, ["deriveBits"],
+  );
+  const bits = await crypto.subtle.deriveBits(
+    {
+      name: HKDF,
+      hash: HASH,
+      salt: contextoDoPairing(pedido, instalacao, missao),
+      info: new TextEncoder().encode("hades-canal-chave"),
+    },
+    base,
+    HKDF_BITS,
+  );
+  return importarChave(new Uint8Array(bits));
+}
+
+/**
+ * O codigo curto morre DEPOIS de ser usado. Um codigo de 6 digitos que continua
+ * valido depois do pairing e' uma porta aberta com prazo de 3 minutos.
+ */
+export function consumirCodigo(pedido) {
+  if (!pedido || typeof pedido !== "object") return { ok: false, motivo: "pedido_ausente" };
+  if (pedido.consumido === true) return { ok: false, motivo: "codigo_ja_usado" };
+  pedido.consumido = true;
+  pedido.codigo = null;
+  return { ok: true };
 }
 
 /**
@@ -182,6 +249,9 @@ export function abrirPairing(agora = Date.now()) {
  */
 export function confirmarPairing(pedido, codigo, agora = Date.now()) {
   if (!pedido || typeof pedido !== "object") return { ok: false, motivo: "pedido_ausente" };
+  // Um codigo de USO UNICO: depois de consumido nao volta a valer, nem com o
+  // codigo certo. Sem isto, um codigo de 6 digitos reutilizado e' uma porta aberta.
+  if (pedido.consumido === true) return { ok: false, motivo: "codigo_ja_usado" };
   if (agora > pedido.expiraEm) return { ok: false, motivo: "codigo_expirado" };
   if (pedido.tentativas >= LIMITES.tentativasDePairing) {
     return { ok: false, motivo: "tentativas_esgotadas" };

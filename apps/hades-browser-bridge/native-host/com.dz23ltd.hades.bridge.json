@@ -1,0 +1,9 @@
+{
+  "name": "com.dz23ltd.hades.bridge",
+  "description": "HADES Local Companion -- host de native messaging do HADES Browser Bridge (NAO INSTALADO; template).",
+  "path": "REPLACE_WITH_ABSOLUTE_PATH_TO_HADES_COMPANION",
+  "type": "stdio",
+  "allowed_origins": [
+    "chrome-extension://REPLACE_WITH_EXTENSION_ID/"
+  ]
+}

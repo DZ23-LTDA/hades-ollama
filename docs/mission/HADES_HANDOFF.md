@@ -559,3 +559,45 @@ sobre um `dist/` vazio.
 **Doutrina em uma linha**: medir antes de afirmar; um gate que me apanha esta a funcionar; um
 detector que procura texto confunde usar com falar sobre; e um teste que usa a mesma
 biblioteca que causa o defeito nunca injecta o defeito.
+
+### Instrucoes de retomada (janela `E-1024`)
+
+**Estado**: branch `fix/checker-relogio`; cabeca do indice `E-1024`; PR #438 **aberto** e
+**nao tocado**; `reviewDecision` **vazio** => sem revisao humana independente.
+
+**A extensao tem 3 ficheiros de teste (56 assercoes)**:
+  node --test apps/hades-browser-bridge/test/protocol.test.js
+                apps/hades-browser-bridge/test/carregavel.test.js
+                apps/hades-browser-bridge/test/canal_local.test.js
+
+**Artefactos**:
+- pacote: `dist/browser-bridge/hades-browser-bridge-0.1.0-unsigned.zip` +
+  `SHA256SUMS.txt` + `LEIA-ME.txt` -- fora do Git;
+- script versionado: `scripts/hades_browser_bridge_package.py` (passo 14 da bateria);
+- contrato do canal: `apps/hades-browser-bridge/src/canal_local.js` (HKDF + anti-replay);
+- native host (template):
+  `apps/hades-browser-bridge/native-host/com.dz23ltd.hades.bridge.json`.
+
+**DUAS CATRACAS COMPLEMENTARES -- nao confundir**:
+- `hades_index_shape_check.py` so varre o **indice**; apanhou um ID citado sem entrada no
+  `E-1020`;
+- `hades_mission_check.py` varre **todo o codigo**; apanhou o mesmo erro no `E-1024`, por
+  citacao em `canal_local.js` e `canal_local.test.js` -- vector que o `index_shape`
+  **nao ve**. E ele tem a regra certa: **um ID novo continua do MAIOR cunhado, nao da
+  cabeca do indice** (numerar onde o indice acaba reutiliza numeros com dono -- a colisao
+  do `E-778`).
+
+**A armadilha do detector de texto -- QUARTA vez**: `E-1008`, `E-1016`/`E-1017`, `E-1021` e
+`E-1023` (`Math.random` dentro de uma **string de erro**). Procurar o **uso** (a chamada),
+nunca a mencao.
+
+**Outra armadilha**: `new URL("http://[::1]:9").hostname` devolve `[::1]` **COM brackets**.
+
+**O que NAO fazer**: `reset --hard`, `git clean`, rebase destrutivo, force-push, stash,
+`merge`, tag, release, publicacao externa, ou **resolver threads** do PR #438.
+
+**Bateria de 21 gates** (exit 0 obrigatorio), incluindo o **pacote da extensao** no passo 14.
+
+**Doutrina em uma linha**: medir antes de afirmar; um gate que me apanha esta a funcionar; um
+detector que procura texto confunde usar com falar sobre; e a cabeca de uma numeracao e o
+MAIOR cunhado, nao o ultimo registado.
