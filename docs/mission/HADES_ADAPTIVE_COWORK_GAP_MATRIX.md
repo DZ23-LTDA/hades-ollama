@@ -48,18 +48,18 @@
 ## 2. Lacunas **concretas** por estágio
 
 ### Estágio 43 — Adaptive Intelligence Router
-| lacuna | por que é lacuna (medido) | prioridade |
-| --- | --- | --- |
-| **Roteamento POR SUBTAREFA** | *(medição 2026-10-15, HEAD `c4acbabef`)* o **CONTRATO por passo EXISTE**: `internal/agent/adaptive_router.go:17` declara «`Step.RequiredCapabilities` + `Step.PinnedModelID`: contrato do passo» e `:45`/`:60`/`:68` trazem `PinnedModelID` no passo. **O que continua EM ABERTO e' a LIGACAO ao runtime**: *nao medi ainda a escolha por no sendo exercida na execucao de uma missao* | **P0** |
+| lacuna | por que é lacuna (medido) | evidência (código/teste) | classificação |
+| --- | --- | --- | --- |
+| **Roteamento POR SUBTAREFA** | *(medição 2026-10-15, HEAD `c4acbabef`)* o **CONTRATO por passo EXISTE**: `internal/agent/adaptive_router.go:17` declara «`Step.RequiredCapabilities` + `Step.PinnedModelID`: contrato do passo» e `:45`/`:60`/`:68` trazem `PinnedModelID` no passo. **O que continua EM ABERTO e' a LIGACAO ao runtime**: *nao medi ainda a escolha por no sendo exercida na execucao de uma missao* | **P0** | — |
 | **`MIN_COST`** | ✅ **JÁ EXISTE — com OUTRO NOME** | `router.go:25` **`RoutePreferenceCheapest = "cheapest"`**; reweight em `:104-105` (`score -= cost*100`); teto em `:34` `MaxCostCents` | **IMPLEMENTADO_E_TESTADO** |
 | **`MANUAL`** (*pin por tarefa*) | ✅ **JA' EXISTE — MEDIDO no HEAD `c4acbabef`** *(a linha anterior dizia «ausente»: era **medicao HISTORICA**, preservada como tal)* | `internal/multillm/router.go:50` **`PinnedModelID`** (marcado **E-428**, estrategia `MANUAL`), **aplicado** em `:81-83` (`continue` rigido — os outros **nao** sao candidatos) com fallback honesto **`ErrNoRoute`** (`:131`); testes em `internal/multillm/router_pin_v2_test.go`. **Correcao do diagnostico antigo:** `PreferredProvider` **e' filtro RIGIDO por provedor** (`:85`, `continue`), *nao* «bonus solto» — o `+10000` (`:114-115`) e' redundante. *(Go nao existe neste host ⇒ a prova destes testes e' CI.)* | **IMPLEMENTADO_E_TESTADO** |
-| **DAG com dependências tipadas** | `RulePlanner.Plan` devolve passos; *não medi dependências entre nós nem orçamento/permissões por nó* | **P1** |
-| **Registry VERSIONADO** de capacidades | existem capacidades e probe, mas *não medi versão de registro nem proveniência por entrada* | **P1** |
-| **Circuit breaker / retry por classificação de falha** | *não medi* contador de falhas por provedor com abertura de circuito | **P1** |
-| **Persistência da decisão** (*candidatos, vencedor, motivo, custo*) | existe `routeReason` e `PlanUsageSink`, mas *não medi registro durável por decisão com candidatos perdedores* | **P1** |
-| **Especialização real de modalidade** (*imagem→gerador de imagem*) | *não medi* recusa explícita de rotear vídeo para modelo textual | **P0** (*o documento é enfático: "não mandar pedido de vídeo para modelo textual e afirmar sucesso"*) |
+| **DAG com dependências tipadas** | `RulePlanner.Plan` devolve passos; *não medi dependências entre nós nem orçamento/permissões por nó* | **P1** | — |
+| **Registry VERSIONADO** de capacidades | existem capacidades e probe, mas *não medi versão de registro nem proveniência por entrada* | **P1** | — |
+| **Circuit breaker / retry por classificação de falha** | *não medi* contador de falhas por provedor com abertura de circuito | **P1** | — |
+| **Persistência da decisão** (*candidatos, vencedor, motivo, custo*) | existe `routeReason` e `PlanUsageSink`, mas *não medi registro durável por decisão com candidatos perdedores* | **P1** | — |
+| **Especialização real de modalidade** (*imagem→gerador de imagem*) | *não medi* recusa explícita de rotear vídeo para modelo textual | **P0** (*o documento é enfático: "não mandar pedido de vídeo para modelo textual e afirmar sucesso"*) | — |
 | **Provedor ≠ harness** | ✅ **JÁ EXISTE** | `Model.HarnessID` (`registry.go:91,103`, carregado em `:167`) **e usado de verdade**: `proxy.go:318-319` injeta `harness_id` no envelope da requisição via `injectHarnessMetadata` (`:348`) | **IMPLEMENTADO_E_TESTADO** |
-| **Controle de gasto por usuário/organização/missão** | existe contabilização de plano; *não medi teto por escopo* | **P1** |
+| **Controle de gasto por usuário/organização/missão** | existe contabilização de plano; *não medi teto por escopo* | **P1** | — |
 
 ### Estágio 44 — Cowork & Spark
 | lacuna | medido | prioridade |

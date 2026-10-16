@@ -1,5 +1,131 @@
 # HADES — HANDOFF (como retomar a missão do zero)
 
+## 0.0 REMEDIÇÃO MEDIDA (2026-10-15, agora) — a secção 0 abaixo fica preservada como HISTÓRIA
+
+> **REMEDIÇÃO MAIS RECENTE: `E-959`** (*cadeia `E-820` → `E-867`, rodadas 181–222*).
+>
+> ⚡ **E o §18.3-25 completou-se nas duas partes que faltavam (`E-867`):** **API concorrente medida** —
+> *1 pedido **370 ms**; 4 concorrentes **187/178/168/163 ms**, **4 de 4 `ok`**, parede **730 ms**,
+> soma **696 ms*** ⇒ **`wall/serial = 1,05×`**: *o Ollama serve 4 clientes com **5%** de overhead*.
+> E a **bateria** ficou `NÃO_MEDIDO` **com causa**: o WMI devolve `71582788` min = **`0x7FFFFFFF`**
+> (*outro tecto de 32 bits, como o `4095 MB` do `E-860`*) e `status=2` = **ligado à corrente**.
+> *A 1.ª tentativa deu `0,05×` — impossível — e foi o próprio número que denunciou o erro:
+> `Start-Job` não herda `$body`.*
+>
+> 🧑 **E o §18.3-30 (pessoa leiga), inventariado (`E-866`):** o **onboarding é o maior componente de UI do
+> repositório** (*`Onboarding.tsx` 50 828 B; `Onboarding.test.tsx` 45 437 B*) e há **onboarding de empresa**
+> também. A **escolha do modelo** existe (`ModelPicker.tsx`) com erro em pt-BR que sugere a acção; **3 testes
+> de onboarding passam**. ⚠️ **Mas «instalar sem terminal» tem receita e não artefacto**: `app\ollama.iss`
+> (*Inno Setup 6*) existe e o Inno Setup **não está instalado** — *decisão **(c)** do dono*. **Item PARCIAL.**
+>
+> 🔎 **A «via barata» do `G3` foi tentada (`E-865`)**: o `llama-server.exe` **existe** no Ollama instalado
+> (`%LOCALAPPDATA%\Programs\Ollama\lib\ollama\` — 4 DLLs, 43 ficheiros) e o Hades procura em **9 caminhos,
+> todos dentro do repositório**. Copiei-o ⇒ **o erro mudou** de `binary not found` para
+> **`system_info line not found in output`** ⇒ *o binário corre e **não é compatível***, porque o fork
+> **modificou** `llama/server`. **`G3` continua `BLOCKED_EXTERNAL`** — agora por **incompatibilidade de
+> protocolo**, não por ficheiro ausente. *10,3 MB copiados foram removidos; `git status` = **34**.*
+>
+> 🔥 **O `G3` MUDOU DE CATEGORIA (`E-864`):** o Hades **compila** (*65,7 MB, 10,1 s*) e **arranca**, mas
+> `POST /api/chat` devolve **404** — e o `stderr` do próprio servidor diz por quê: **`llama-server binary
+> not found`** (*o motor de inferência nunca foi construído*) e dá o comando
+> **`cmake -S llama/server --preset cpu && cmake --build --preset cpu`**. *Exige `cmake` + C++, ausentes
+> neste host* ⇒ **`G3` = `BLOCKED_EXTERNAL` com procedimento**, não «por medir».
+> *E a GPU fica invisível ao Hades (`total_vram="0 B"`) enquanto o motor não existir.* HEAD
+> **`9f7379502`** · branch **`fix/checker-relogio`** · PR **#438** aberto, **NÃO mesclado** ·
+> **656** evidências no índice · **34** entradas não commitadas · **0** stashes · veredicto
+> **`NOT_RELEASE_READY`**. Os blocos `E-819` e `E-778` abaixo ficam **preservados como HISTÓRIA**.
+>
+> **O que mudou nesta janela (medido, não narrado):**
+> - **A inferência local foi MEDIDA pela primeira vez** (`E-862`/`E-863`): **12,07 s a frio** contra
+>   **0,88 s a quente**; **93,7%** do tempo a frio é `load_duration` (*11 295,5 ms*) e o **trabalho útil
+>   é idêntico** nos dois regimes (*738,7 vs 783,7 ms*). **TTFT 22,36 ms/token**, decode ~20 tokens/s.
+>   Há **9** modelos locais. **VRAM real 8188 MiB** (`nvidia-smi`), o dobro dos **4095** que o WMI reporta.
+> - **O §18.3 está em 13 medidos / 7 parciais / 6 externos / 6 por medir**; os que faltam são `30`
+>   (pessoa leiga), `25` (API concorrente + bateria) e `22` (responsividade + sessão longa).
+> - **`main` continua VERMELHA** (`4b3e21854`) ⇒ **`G0` FALHADO**; o SHA candidato não é ancestral de
+>   `main`. **`G12` FALHADO** (*NOTICE de 105 566 B e SBOM fora do Git*). **`G2-race` = `NÃO_SUPORTADO`**
+>   (*`go: -race requires cgo`*).
+> - **6 alterações ao repositório**, todas **não commitadas**: 5 de código + os documentos de retomada.
+>
+> ⚠️ **REGRA DE MANUTENÇÃO** (*`E-861`, reconfirmada na ronda 218*): este ficheiro, o
+> `HADES_PENDING_WORK.md` e o `HADES_NEXT_ACTION.md` são os **três** documentos de retomada que o
+> `hades_mission_check.py` valida. O piso de evidência **sobe a cada ronda** — logo **toda a ronda que
+> registe evidência nova tem de actualizar os três NA MESMA RONDA**. E o checker nomeia **um de cada
+> vez**: corrigir o nomeado revela o seguinte. *Um documento de retomada desactualiza-se por omissão.*
+
+> **REMEDIÇÃO MAIS RECENTE: `E-819`** (*cadeia `E-816` → `E-819`, rodadas 169–180*). O bloco `E-778` abaixo fica
+> **preservado como HISTÓRIA** — a regra de numeração dele continua válida (*evidência nova segue o **maior ID
+> cunhado***, e **não** se reutiliza nada abaixo de `E-778`), mas os números dele envelheceram.
+>
+> | Medida | Valor **medido agora** |
+> | --- | --- |
+> | Commit | `9f7379502` (**inalterado** desde a rodada 169) |
+> | Branch / PR | `fix/checker-relogio` / **PR #438 ABERTO, NÃO mesclado** (*review humano pendente: `LMPrado-DZ23`*) |
+> | `main` remota | `4b3e2185422c24d5a05fd46a343953ad6f41d1e5` |
+> | Evidências no índice | **612** (`Select-String '^\| E-\d+ ' docs/mission/HADES_EVIDENCE_INDEX.md`) — *a **fonte** é o índice: **não** copie este literal* |
+> | Entradas não commitadas | **33** · **Stashes: 0** |
+> | Checkers | **7/7** `exit=0` · `GEN=0` · `--check=0` · `go build ./...` **exit 0** |
+> | **Camada Web** | **719 PASS / 2 FAIL** em 110 ficheiros (`npx vitest run`, 13,55 s) — *medida pela **primeira vez** no `E-816`* |
+> | Veredito global | **`NOT_RELEASE_READY`** |
+>
+> **O que uma IA que retoma precisa de saber (rondas 169–180):**
+> 1. **`E-816`** — a camada **Web** nunca tinha sido contada: *o `go test ./...` não corre vitest*. São **719 PASS / 2 FAIL**, e as 2 falhas estão **num só ficheiro** (`OnboardingRoute.test.tsx`).
+> 2. **`E-816`** — **P0-4 FECHADO**: o gate de onboarding é **decisão documentada** (`routes/index.tsx:17-20`), não erro engolido; o teste que faltava existe (`index.onboarding-gate.test.tsx`, **3/3 PASS**).
+> 3. **`E-818`/`E-819`** — **DEFEITO DE PRODUTO, registado e NÃO corrigido**: o «Tentar de novo» do onboarding **apaga o erro e não grava nada**. A guarda anti-repetição (`useSettings.ts:150-152`) bloqueia o retry porque o payload é idêntico, e a guarda compara **dados**, não **origem** (`:61-68`). *Não tocar sem contrato novo: este ponto tem **dois** incidentes de carga medidos — **2 387 req/3 s** e **42 651 POST**.* A alternativa segura é **não limpar o erro antes de gravar** (`routes/onboarding.tsx:70-71`).
+> 4. **`E-811`/`E-812`** — §18.2-A **em uso real**: model store em **`D:\AI\Ollama`** (49 blobs, 7 manifestos), configurável pela UI **com validação e fallback**.
+> 5. **`E-815`** — **este host não tem toolchain C**: `CGO_ENABLED=0` é derivado pelo Go, e isso explica ~14 das falhas de teste (*stub `go-sqlite3`*). *Via recomendada: **mingw-w64 portátil**, que não toca em código.*
+> 6. **`E-807`** — defeito **registado e não corrigido**: host de registry com `:` no `manifest.WriteManifest` (*válido em Linux, reservado em Windows*). *Corrigir mudaria o **formato do model store** ⇒ exige **ADR**.*
+>
+> **REGRA DE ISOLAMENTO (aprendida à força, 3 variáveis):** ao correr testes neste host, isolar `APPDATA`,
+> `LOCALAPPDATA` **e** `OLLAMA_CONTEXT_LENGTH` — *esta última é lida no `init` (`envconfig/config.go:230`), logo
+> **só** se neutraliza antes do processo arrancar; e `TMP`/`TEMP` devem apontar para dentro do repo, senão o build
+> falha por não poder apagar em `%LOCALAPPDATA%\Temp`.*
+>
+> 7. **`E-822`** — 🔴 **A `main` ESTÁ VERMELHA**, confirmado por API: run **`38499987288`** (`run_number` 1784), evento **`push`**, `head_sha` **`4b3e21854`**, **`conclusion: failure`** (*14/10 02:14Z*). O run **anterior** (`#436`, `2bd4dd0eb`) foi **`success`** ⇒ ***a regressão entrou no PR #437***. ⇒ **`G0` está FALHADO** (*«main/PR reconciliados e aprovados»*), e é **por isso** que a branch `fix/checker-relogio` existe. **Cuidado ao ler o CI:** os 4 runs mais recentes na `main` são do **`dependabot`** com `success` — *não são os gates*. E `test.yaml` na `main` = **0 runs** (*corre só em PR*). **O token desta sessão é de `LMPrado-DZ23`, o revisor pedido no PR #438 ⇒ NÃO aprovar/mergear.**
+>
+> **PRÓXIMO PASSO (não mudou):** **revisão humana do PR #438** — *não se contorna*. Depois: `HADES_PENDING_WORK.md`
+> (*P0-5, P1-1..5, P2-1..5, P3-1..4 ainda por remedir item a item*).
+
+> **EVIDÊNCIA MAIS RECENTE: `E-778` — COLISÃO DE IDs.** Medido em `2026-10-15`: a **sequência viva** do projecto vai
+> em **`E-777`** (cunhada em **código e commits**, não no índice), enquanto este índice registava até `E-570` ⇒
+> **7** das entradas `E-560..E-570` **colidem** com trabalho committado de **outro** objecto (`E-560` = «409 do job»
+> em `server/agent_reembed_job_routes_test.go:98`; `E-561` = «envelope/orçamento» em `internal/agent/historico_bruto.go:183`;
+> `E-563` = «catraca do pré-filtro» em `secrets_prefixos_test.go:8`; `E-564` = «F4 da auditoria de segurança»; `E-565` =
+> «F5, ordem disco-primeiro» em `internal/agent/context.go:346`; `E-566` = «injecção da compactação»; `E-568` =
+> «ligação do P8-1 de memória» em `server/chat_context_wiring_test.go:14`). **REGRA CORRIGIDA:** *a evidência nova
+> **não** continua do índice — continua do **maior ID cunhado em qualquer ficheiro***. É por isso que este registo é
+> `E-778` e não `E-571`. ⇒ ***Ao retomar: NÃO reutilize nenhum ID abaixo de `E-778`.***
+
+> **A regra do próprio documento (linha ~21) diz: «qualquer número acima envelhece. Antes de citar, remeça.»** Isto é o
+> resultado de a cumprir — *e é a **terceira** remeção: a secção 0 já disse `f190ec8ea`/300, depois `fafda19e7`/310, e
+> agora cita `cafb00dbe` / `48beffc9d` / **546**.* *Nada foi apagado: o histórico fica, e estes números substituem-no.*
+
+| Medida | Valor **medido agora** |
+| --- | --- |
+| Commit medido (**local**) | `9f7379502b1d5d5bb7abb8e2bd55224e92796dfd` |
+| Remoto da branch (`git ls-remote`) | `9f7379502` => **local = remoto**, **0 commits por empurrar** (a secção 0 diz «5 por empurrar») |
+| `main` remota (`git ls-remote`) | `4b3e2185422c24d5a05fd46a343953ad6f41d1e5` (*igual ao que a secção 0 diz — este campo continua correcto*) |
+| Distância da secção 0 ao HEAD | **227 commits** (`git rev-list --count 48beffc9d..HEAD`; e `48beffc9d` é **ancestral**: `merge-base --is-ancestor` => exit 0) |
+| Evidências no índice | **566** no instante em que `E-566` entrou — ***e este literal NÃO deve ser copiado nem mantido aqui***: a **fonte** é o índice, e lê-se com `Select-String '^\| E-\d+ ' docs/mission/HADES_EVIDENCE_INDEX.md`. *O `E-550` mediu que **duas cópias de um número** são «uma coincidência à espera de divergir» — e eu criei **duas** (aqui e no `HADES_PENDING_WORK.md`) ao escrever este número literal.* |
+| Entradas não commitadas | **17** (`git status --porcelain`, medido **antes** desta edição) — *esta edição acrescenta **1** => **18*** |
+| Stashes | **0** |
+| Veredito global | **`NOT_RELEASE_READY`** |
+
+### CI DO SHA CONGELADO (medido; detalhe em `E-565`)
+
+`9f7379502` tem **5 workflows `success` no MESMO `head_sha`** (evento `pull_request`, PR **#438**, `2026-10-15T17:19:55Z`):
+`test` `38776430738` · `dz23-agentic-quality` `38776430666` · `pr-gate` `38776430633` · `dz23-e2e` `38776430658` ·
+`class-a-plus-integrity` `38776430631`. *O `pr-gate` é o **agregador** que recusa `cancelled`/`skipped` sem mascarar (`E-551`).*
+**LIMITE:** prova a **árvore commitada** — **não** as entradas não commitadas.
+
+### ANTES DE RETOMAR: existe trabalho que NÃO está no CI nem no remoto
+
+As entradas não commitadas incluem: o fix do `POST /api/v1/settings` (`server/desktop_local_routes.go`), a **catraca**
+nova (`server/desktop_local_settings_ratchet_test.go`), o fix do **gate local** (`scripts/hades_local_gates.ps1`), o E2E
+de backend real (`app/ui/app/e2e/chat-*-real.spec.ts`), as fixtures de sala/companion, e as **evidências `E-561`–`E-566`**
+mais a reme­dição deste documento e do `HADES_PENDING_WORK.md`. ⇒ *A revisão independente usa **um** SHA (§18.5.10), e esse
+SHA é `9f7379502`, que **não** contém isto.*
+
 ## 0. ESTADO MEDIDO — `fix/checker-relogio` `cafb00dbe` (esta é a leitura canônica; não herde número de texto antigo)
 
 | Medida | Valor medido |
@@ -33,6 +159,15 @@ Select-String -Path docs/mission/HADES_FINAL_RELEASE_GATE.md -Pattern 'Resumo: '
 
 **Decisão preservada:** `docs/mission/HADES_CURRENT_STATE.json` **não existe por decisão explícita** — dois arquivos
 de estado divergiriam. O estado canônico é `HADES_MASTER_STATE.json`. **Não criar** o outro.
+
+> ⚠️ **PERIGO, MEDIDO — os DOIS blocos abaixo começam por `git fetch origin main; git reset --hard origin/main`**
+> (`:40` e `:61`, medidos em 2026-10-15 **antes** desta nota). *Essa linha **destrói** todo o trabalho não commitado.*
+> Na árvore medida há **17 entradas não commitadas**, incluindo os **dois WIP do proprietário**
+> (`docs/parity/HADES_T2_MATRIX.md`, `docs/parity/HADES_T2_REPETICAO.md`) que a missão manda **PROTEGER**.
+> ⇒ **Não cole este bloco sem guardar o trabalho primeiro.** Caminho **não destrutivo**: `git status --porcelain` para ver
+> o que existe, `git stash push -u -m "wip-antes-da-retomada"` (ou copiar os ficheiros para fora do repositório) e **só
+> depois** decidir. *Esta nota existe porque o texto abaixo se apresenta como «nenhum passo presumido» — e um passo
+> destrutivo apresentado sem guarda é exactamente a definição de passo presumido.*
 
 **Retomada exata (comandos reais, nenhum passo presumido):**
 

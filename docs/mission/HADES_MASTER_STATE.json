@@ -4443,6 +4443,32 @@
                                                                             }
                                            }
                              },
+    "evidence_ids_nao_registrados":  [
+                                         "E-000",
+                                         "E-618",
+                                         "E-619",
+                                         "E-636",
+                                         "E-642",
+                                         "E-650",
+                                         "E-651",
+                                         "E-653",
+                                         "E-654",
+                                         "E-655",
+                                         "E-656",
+                                         "E-669",
+                                         "E-672",
+                                         "E-999"
+                                     ],
+    "evidence_ids_placeholder":  [
+                                     "E-000",
+                                     "E-999"
+                                 ],
+    "evidence_ids_placeholder_nota":  "PLACEHOLDERS, NAO EVIDENCIA (E-779): E-000 e E-999 sao valores de EXEMPLO usados pelos proprios testes e pela documentacao do verificador (hades_mission_check_test.py, finance_ops_test.go). Eles NAO sao IDs cunhados - por isso o passo 16 (cabeca do indice) tem de os ignorar, senao o maior ID 'citado no codigo' seria sempre 999 e a verificacao seria um falso positivo permanente. A lista vive no estado, nao no script (doutrina E-556).",
+    "evidence_ids_nao_registrados_faixas":  [
+                                                [571, 777]
+                                            ],
+    "evidence_ids_nao_registrados_faixas_nota":  "FAIXA DECLARADA (E-778): a era paralela cunhou IDs de E-571 a E-777 em codigo e commits sem nunca os registar no indice. E' divida DECLARADA e FECHADA: um ID ausente dentro dela nao e' 'buraco'; um ID ausente FORA dela, ou acima de 777, continua a FALHAR.",
+    "evidence_ids_nao_registrados_nota":  "CATRACA (E-569, passo 15 do hades_mission_check.py): IDs citados que o indice NAO registra. A lista so' pode DIMINUIR - um ID novo citado e nao registado FALHA o gate. E-000 e E-999 sao placeholders/exemplo do proprio verificador. E-618..E-669 e' a era cunhada em mensagens de commit (94 commits, ate' E-672) que nunca entrou no indice: o proprio evidence_log deste estado registra 6 deles (E-650..E-656), com interseccao ZERO com o indice.",
     "evidence_log":  [
                          {
                              "branch":  "fix/checker-relogio",

@@ -1,5 +1,113 @@
 # HADES — PRÓXIMA AÇÃO (V2.2 + adendo de paridade)
 
+> **CHECKPOINT REMEDIDO nas rodadas 181–222 (evidência mais recente `E-959`; cadeia `E-820`→`E-867`).**
+>
+> ⚡ **E o §18.3-25 ficou COMPLETO nas partes que faltavam (`E-867`):** **API concorrente MEDIDA** —
+> **1 pedido = 370 ms**; **4 concorrentes = 187/178/168/163 ms**, **4 de 4 com sucesso**, parede **730 ms**,
+> soma **696 ms** ⇒ **`wall/serial = 1,05×`**. ***«A concorrência do Ollama por omissão é uma **fila bem
+> servida**: sem paralelismo real e sem degradação.»*** E a **bateria**: o WMI devolve `71582788` min =
+> **`0x7FFFFFFF`** = *«desconhecido»*, `status=2` = ligado à corrente ⇒ ***`NÃO_MEDIDO` com causa***.
+> ⚠️ **E a 1.ª tentativa deu um número impossível (`0,05×`)** — *e foi ele que denunciou um erro meu:
+> `Start-Job` **não herda** `$body`, logo os 4 pedidos foram feitos **sem corpo**.*
+> ***«Um número impossível é mais útil que um plausível: obriga a procurá-lo.»***
+>
+> 🧑 **E o §18.3-30 (pessoa leiga) foi inventariado (`E-866`):** o **onboarding é o maior componente de UI
+> do repositório** — `Onboarding.tsx` **50 828 B** e `Onboarding.test.tsx` **45 437 B** — e há **onboarding
+> de empresa** também (`company_onboarding_test.go`, `onboarding_volume_limits_test.go`,
+> `onboarding_budget_test.go`, `onboarding_rollback_batch_test.go`). A **escolha do modelo** existe
+> (`ModelPicker.tsx`) com erro em pt-BR que **sugere a acção**. **3 testes de onboarding passam** (`3 passed`).
+> ⚠️ **Mas «instalar sem terminal» tem receita e não artefacto**: `app\ollama.iss` (**10 393 B**, Inno Setup 6)
+> existe e o **Inno Setup não está instalado** ⇒ *é a decisão **(c)** do dono*. **O item fica PARCIAL** —
+> *as peças existem e o **teste da pessoa** ainda não foi feito: um componente de 50 KB não substitui isso.*
+>
+> 🔎 **E a «via barata» do `G3` foi TENTADA (`E-865`) — e falhou, mas com prova melhor:** o `llama-server.exe`
+> **existe** no Ollama instalado (`%LOCALAPPDATA%\Programs\Ollama\lib\ollama\`, com 4 DLLs e 43 ficheiros),
+> e o Hades procura em **9 caminhos — todos dentro do repositório**. Copiei-o e **o erro MUDOU**: de
+> `llama-server binary not found` para **`system_info line not found in output`** ⇒ *o binário corre e
+> **não é compatível*** — porque o repositório **tem** `llama/server` e o fork **modificou** o motor.
+> ***«Não encontro o ficheiro» e «o ficheiro corre e não serve» são dois diagnósticos diferentes.***
+> E o `/api/chat` devolve **404**: é o **fail-closed** correcto — *sem motor, o Hades não finge inferência*.
+> *Os 10,3 MB copiados foram **removidos**; `git status` de volta a **34**; o Ollama do utilizador intacto.*
+>
+> 🔥 **E O `G3` MUDOU DE CATEGORIA — de «por medir» para `BLOCKED_EXTERNAL` com causa e remédio medidos
+> (`E-864`):** o Hades **compila** (*65,7 MB em 10,1 s*) e **arranca**, mas `POST /api/chat` devolve
+> **404** — e o `stderr` do próprio servidor diz porquê: **`llama-server binary not found`** (*o motor de
+> inferência nunca foi construído*) e dá o comando: **`cmake -S llama/server --preset cpu && cmake --build --preset cpu`**.
+> *Exige `cmake` + toolchain C++, que o `E-815`/`E-859` provaram **ausentes*** ⇒ *é a decisão **(a)** do dono
+> (`mingw-w64`), **agora com uma segunda razão**: não serve só para o `-race`, serve para **construir o motor**.*
+> HEAD **`9f7379502`** · branch **`fix/checker-relogio`** · PR **#438** aberto, **NÃO mesclado**
+> (`mergeState=CLEAN`, `reviewDecision=[]`, 1 revisor = `LMPrado-DZ23`) · **656** evidências no índice ·
+> **ID mais alto `E-863`, próximo livre `864`** · **34** entradas não commitadas · **0** stashes ·
+> veredicto **`NOT_RELEASE_READY`**.
+>
+> ⚠️ **REGRA DE MANUTENÇÃO DESTE DOCUMENTO** (*aprendida em `E-861` e reconfirmada na ronda 218*): o
+> `hades_mission_check.py` exige que este ficheiro cite **evidência recente** — o piso vem do índice e
+> **sobe a cada ronda**. Logo: **toda a ronda que registe uma evidência nova tem de actualizar este
+> bloco na MESMA ronda**, ou o checker fica vermelho por um documento que ninguém tocou.
+> *Um documento de retomada desactualiza-se **por omissão**, não por acção.*
+>
+> **PRÓXIMA AÇÃO (medida):** fechar os **3** itens internos do §18.3 que continuam por medir —
+> **`30`** (pessoa leiga) · **`25`** (as partes que faltam: TTFT/tokens, API concorrente, bateria) e
+> **`22`** (responsividade + sessão longa); e **fechar a lacuna dos headers**, que agora tem **um sítio**:
+> `app/ui/ui.go` (*3 dos 9 existem; `SameSite`, `HttpOnly`, `CSP`, `HSTS`, `X-Content-Type-Options`, `csrf` ausentes*).
+>
+> **E o TTFT/PERF, agora MEDIDO (`E-862` + `E-863`):** há **9** modelos locais (*não* 0,92 GB — essa
+> medição do `E-860` media o **directório**, não o conteúdo) e a **primeira inferência real** desta
+> sessão correu: **12,07 s a frio** (*93,7% é `load_duration`*) contra **0,88 s a quente** — o
+> `load_duration` caiu de **11 295,5** para **55,2 ms** (*204,6×*) e o **trabalho útil ficou idêntico**
+> (*738,7 vs 783,7 ms*). **TTFT 22,36 ms/token**, **decode ~20 tokens/s**. E a **VRAM real é 8188 MiB**
+> (`nvidia-smi`), o **dobro** dos 4095 que o WMI reporta — *4095 é o tecto de um `uint32` em MB*.
+> ***Próximo passo de perf: API concorrente e bateria — ainda NÃO medidos.***
+>
+> **Estado dos gates:** `G0` **FALHADO** (*`main` vermelha em `4b3e21854`; o SHA candidato não é
+> ancestral de `main`*) · `G1`/`G2` verdes (*7/7 checkers, `go build` exit 0*) · **`G2-race` =
+> `NÃO_SUPORTADO`** (*`go: -race requires cgo`*) · `G12` **FALHADO** (*`THIRD_PARTY_NOTICES.md`
+> 105 566 B e `HADES_SBOM_GO.csv` 21 349 B **fora do Git**; 33 vulnerabilidades*) ·
+> `G10` = **`NOT_TRIGGERED`** (*existem 3 workflows de packaging — `dz23-windows-installer`,
+> `dz23-linux-package`, `dz23-macos-build` — e o gatilho é `tags: v*`/`dispatch`*).
+>
+> **E o §18.5 continua a NÃO se aplicar:** o pacote de auditoria independente **não deve ser criado
+> ainda** — faltam itens internos do §18.3.
+
+> *A secção abaixo, medida nas rodadas 169–180, fica preservada como **HISTÓRIA**.*
+
+> **REMEDIDO em `2026-10-15` (evidência `E-778`).** HEAD **`9f7379502`** · branch **`fix/checker-relogio`** ·
+> PR **#438** aberto e **NÃO mesclado** (review humano pendente) · **5 workflows `success` no MESMO `head_sha`**,
+> incluindo o agregador `pr-gate` · **20** entradas não commitadas e **0** stashes · **7/7** checkers `exit=0`.
+> **A REGRA DE NUMERAÇÃO MUDOU:** o maior ID cunhado no projecto é **`E-777`** (em código e commits, **não** no
+> índice) ⇒ ***a evidência nova continua do MAIOR ID cunhado, não da cabeça do índice***. E **7** das entradas
+> `E-560..E-570` **colidem** com outro objecto já citado em código committado ⇒ **não reutilize IDs abaixo de `E-778`**.
+> *A secção abaixo, medida na rodada 101, fica preservada como **HISTÓRIA** — citava `eaad692e0` e 547 evidências.*
+
+> **CHECKPOINT REMEDIDO nas rodadas 169–180 (evidência `E-819`; cadeia `E-816`→`E-819`).**
+> HEAD **`9f7379502`** · branch **`fix/checker-relogio`** · PR **#438** aberto, **NÃO mesclado** ·
+> **612** evidências no índice · **33** entradas não commitadas · **0** stashes · **7/7** checkers `exit=0` ·
+> veredicto **`NOT_RELEASE_READY`**. *A secção de baixo, medida na rodada 101, fica preservada como **HISTÓRIA**.*
+>
+> **O que mudou na fila desde a rodada 101:**
+>
+> - **`E-816`** — a camada **Web** foi medida pela **primeira vez**: **719 PASS / 2 FAIL** em 110 ficheiros
+>   (`npx vitest run`, 13,55 s). *O `go test ./...` **não** corre vitest ⇒ esta camada nunca tinha sido contada.*
+> - **`E-816`** — item **P0-4** do `HADES_PENDING_WORK.md` **FECHADO**: a decisão do gate de onboarding está
+>   documentada em `routes/index.tsx:17-20` (*«the local-first shell must remain usable when the optional
+>   preferences API is offline»*) e o teste que faltava existe: `index.onboarding-gate.test.tsx`, **3/3 PASS**.
+> - **`E-818`** — **DEFEITO DE PRODUTO registado**: o «Tentar de novo» do onboarding **apaga o erro e não grava**.
+>   Causa: a guarda anti-repetição (`useSettings.ts:150-152`) bloqueia o retry do utilizador, porque o payload é
+>   idêntico. **NÃO corrigido de propósito**: este ponto tem **dois** incidentes de carga medidos
+>   (**2 387 req/3 s** na home e **42 651 POST** idênticos no `E-782`).
+> - **`E-819`** — o **contrato** da guarda: ela compara **dados** (`key` + `snapshot`), **não origem** ⇒ não pode
+>   distinguir o clique de uma re-execução automática. Correção exige **contrato novo**; a alternativa segura é
+>   **não limpar o erro antes de gravar** (`routes/onboarding.tsx:70-71`), que mata o silêncio sem tocar na guarda.
+> - **`E-811`/`E-812`** — §18.2-A verificado **em uso real** neste host: model store em **`D:\AI\Ollama`**
+>   (49 blobs, 7 manifestos), configurável pela UI **com validação e fallback** (`server.go:266-272`).
+> - **`E-804`/`E-807`/`E-808`** — o `parser` corrigido (*glob sem correspondência em Windows*), o `manifest` com
+>   host de registry (`:`) **registado e não corrigido** (*mudaria o formato do model store ⇒ exige ADR*), e um
+>   teste que escrevia no `~/.ollama` **real** do utilizador **corrigido e verificado**.
+> - **`E-815`** — este host **não tem toolchain C** nenhuma (9 compiladores e 6 directórios ausentes): o
+>   `CGO_ENABLED=0` é derivado pelo próprio Go. *A via recomendada é **mingw-w64 portátil**, que não toca em código.*
+>
+> **Próxima ação imediata (não mudou):** **revisão humana do PR #438** (`LMPrado-DZ23`) — *não se contorna*.
+
 **Atualizado por:** E-547 (checkpoint remedido — rodada 101) · **Evidência de criação:** E-316
 **Regra:** este arquivo diz **o que fazer a seguir**, não o que já foi feito. Estado completo em
 `HADES_MASTER_STATE.json`; prova em `HADES_EVIDENCE_INDEX.md`.

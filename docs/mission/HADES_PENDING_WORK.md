@@ -1,5 +1,167 @@
 # HADES — TRABALHO PENDENTE PRIORIZADO
 
+## 0.0 REMEDIÇÃO MEDIDA (2026-10-15, agora) — a secção 0 abaixo fica preservada como HISTÓRIA
+
+> **REMEDIÇÃO MAIS RECENTE: `E-959`** (*cadeia `E-820` → `E-866`, rodadas 181–221*).
+>
+> 🧑 **E o §18.3-30 («teste de pessoa leiga») foi inventariado (`E-866`) — e fica PARCIAL, com a lacuna
+> nomeada:** as **peças** existem (*`Onboarding.tsx` 50 828 B — o maior componente de UI do repositório —,
+> `Onboarding.test.tsx` 45 437 B, `ModelPicker.tsx`, help contextual, e onboarding de empresa com limites e
+> orçamento*), mas **falta o teste da pessoa**: ninguém percorreu o produto como um leigo.
+> ⚠️ E **«instalar sem terminal» tem receita e não artefacto**: `app\ollama.iss` (*Inno Setup 6*) existe e o
+> **Inno Setup não está instalado** ⇒ *é a decisão **(c)** do dono, e mantém o **`G10`** em `PACKAGE_CREATED = NÃO`.*
+>
+> 🔎 **E a «via barata» para o `G3` foi testada em vez de suposta (`E-865`):** o `llama-server.exe`
+> **existe** — no Ollama que o utilizador já tem instalado (`lib\ollama\`, com `libllama.dll`,
+> `libllama-server-impl.dll` e `libllama-common.dll`). Copiei-o para o sítio onde o Hades procura e
+> **o erro mudou**: de `llama-server binary not found` para **`system_info line not found in output`**.
+> ⇒ ***O binário corre e não é compatível*** — *o fork modificou `llama/server`, e por isso o motor do
+> Ollama oficial não serve*. **O `G3` continua `BLOCKED_EXTERNAL`, mas por um motivo mais preciso.**
+> *Os 10,3 MB copiados foram removidos e o Ollama do utilizador ficou intacto.*
+>
+> 🔥 **E o `G3` mudou de categoria (`E-864`): saiu dos «por medir» e entrou nos `BLOCKED_EXTERNAL` —
+> com causa medida e procedimento dado pelo próprio programa.** O Hades **compila** (*65,7 MB, 10,1 s*) e
+> **arranca**, mas `POST /api/chat` devolve **404**; o `stderr` diz **`llama-server binary not found`**
+> (*o motor de inferência nunca foi construído*) e dá o comando
+> **`cmake -S llama/server --preset cpu && cmake --build --preset cpu`**.
+> *Exige `cmake` + toolchain C++, que este host não tem* ⇒ *é a decisão **(a)** do dono (`mingw-w64`).*
+> **Isto acrescenta um item de bloqueio real à lista:** *sem o motor, o §18.3-07 (`/goal` com modelo local)
+> e o §15-G3 ficam bloqueados — e nenhum dos 19 itens abaixo cobre isso, porque não é «trabalho pendente
+> de engenharia»: é **ambiente ausente**.* HEAD
+> **`9f7379502`** · branch **`fix/checker-relogio`** · **656** evidências · **34** entradas não
+> commitadas · **0** stashes · veredicto **`NOT_RELEASE_READY`**. A classificação `E-841` abaixo
+> continua válida e fica **preservada**; o que muda é o **estado do trabalho**, medido nesta janela.
+>
+> **Os 19 itens deste ficheiro continuam classificados (`E-841`)** — *nenhum é defeito de produto* — e
+> **todos** continuam **gated em decisões do dono ou em PRs abertos**, não em trabalho de engenharia:
+> - **P0-5** — as duas PRs da primeira jornada (#61 vs #71): manter a #71, fechar a #61 só com autorização.
+> - **P1-1** — PR #69, merge **não autorizado**. **P1-2** — PRs #56/#58. **P1-3** — PRs #63/#65/#57 (*bloqueado por B-03*).
+> - **P1-4** — **28 ficheiros / 44 sítios** que constroem runtime sem `DataRoot`: *é a única fronteira
+>   interna real e continua por fechar*.
+> - **P1-5** — 104/122 conectores precisam de operador.
+> - **P2-2** — Node 20 deprecado em 15 workflows (*exige commit ⇒ travado pelo congelamento*).
+> - **P2-3** — replay do upstream: 73 commits, 39 ficheiros em conflito, 15 conflitos reais.
+> - **P3-1** — release assinada: **`FUTURE_DISTRIBUTION`** por decisão do dono.
+>
+> **E o que esta janela provou que NÃO é pendência:** a inferência local funciona e foi **medida**
+> (`E-862`/`E-863` — 12,07 s a frio, 0,88 s a quente, trabalho útil idêntico); as defesas de **egress,
+> redirect e DNS rebinding** estão provadas (`E-855`); e as **três** matrizes de lacunas não silenciam
+> nada (`E-841`/`E-842`).
+>
+> ⚠️ **REGRA DE MANUTENÇÃO** (*`E-861`, reconfirmada na ronda 218*): este é **um dos três** documentos
+> de retomada validados pelo `hades_mission_check.py` (*com `HADES_HANDOFF.md` e `HADES_NEXT_ACTION.md`*).
+> O piso de evidência **sobe a cada ronda** ⇒ **actualizar os três na mesma ronda** em que se regista
+> evidência. *O checker nomeia um de cada vez; corrigir o nomeado revela o seguinte.*
+
+> **A regra do próprio ficheiro (linha ~27) diz: «qualquer número acima envelhece. Antes de citar, remeça.»** Isto é o
+> resultado de a cumprir. **A secção 0 cita `cafb00dbe` / `06cd277da`** — e os dois são **ancestrais do HEAD**
+> (`git merge-base --is-ancestor` => exit 0), com o segundo **55 commits atrás** (`git rev-list --count 06cd277da..HEAD`
+> = **55**). *Nada foi apagado: o histórico fica, e estes números substituem-no até nova remeção.*
+
+| Medida | Valor **medido agora** |
+| --- | --- |
+| HEAD local | `9f7379502b1d5d5bb7abb8e2bd55224e92796dfd` |
+| Remoto `refs/heads/fix/checker-relogio` (`git ls-remote`) | `9f7379502` => **local = remoto**, **0 por empurrar** |
+| `main` remota (`git ls-remote`) | `4b3e2185422c24d5a05fd46a343953ad6f41d1e5` |
+| Distância dos números da secção 0 ao HEAD | **55 commits** |
+| Evidências no índice (`Select-String '^\| E-\d+ '`) | **571** linhas = `E-001..E-570` + **`E-778`** (o `E-778` é o próximo ID livre; a secção 0 diz 546 — **histórico**) |
+
+> **REMEDIÇÃO SEGUINTE (2026-10-15, 19:14 BRT).** A linha acima **já envelheceu** — e é a regra deste próprio
+> ficheiro que o exige dizer. Foi escrita com **571** linhas e **`E-778`** como próximo ID livre. Valores
+> **medidos agora**, no mesmo HEAD `9f7379502`:
+
+| Medida | Valor **medido agora** |
+| --- | --- |
+| Linhas do índice | **591** = `E-001..E-570` + **`E-778`..`E-798`** |
+| **Próximo ID livre** | **799** (prefixo `E-`) — *herdar `E-778` da tabela acima causaria **colisão de ID**, o defeito que o próprio `E-778` documentou. Escrito como número, e não com o formato de evidência, porque o `hades_mission_check.py` exige que todo ID citado esteja registado — e um ID **futuro** não pode estar* |
+| `ENTRIES` / `STASHES` | **29** / **0** |
+| Checkers oficiais | **7/7** `exit 0` |
+
+> O **`E-798`** (nesta mesma ronda) corrigiu o **item P1 3** abaixo: a classificação `BLOCKED_EXTERNAL` do pacote
+> `./server` estava **refutada** pelo `E-795`. **O item P1 4 continua aberto** (hermeticidade dos testes).
+
+> **`E-778` — COLISÃO DE IDs (o defeito mais grave desta sessão, e é meu).** A **sequência viva** do projecto vai em
+> **`E-777`**, cunhada em **código e commits** e **nunca** registada no índice; este índice registava até `E-570` ⇒
+> **7** das entradas `E-560..E-570` **colidem** com outro objecto já citado em código committado. O instrumento novo
+> (passo 15 do `hades_mission_check.py`, `E-570`) verifica **existência** — e *a existência **não** distingue um ID
+> livre de um ID já ocupado*. ⇒ Duas regras ficaram **mutuamente exclusivas**: o passo 1 exige **contiguidade** e o
+> `E-778` exige **não-colisão**. Cura aplicada: um buraco **declarado** em `evidence_ids_nao_registrados` deixa de ser
+> falha; o que continua a falhar é um buraco **não declarado**.
+> **⇒ Ao retomar: NÃO reutilize nenhum ID abaixo de `E-778`.**
+| Árvore de trabalho | **16** entradas não commitadas, **0** stashes — **WIP do proprietário preservada** (naquele momento) |
+| Árvore de trabalho (**medido agora**, `E-799`) | **29** entradas não commitadas, **0** stashes — *o **16** acima envelheceu: a árvore cresceu com os artefactos e scripts G12, o bundle e a consolidação de documentos* |
+| Veredito global | **`NOT_RELEASE_READY`** |
+
+### CI DO SHA CONGELADO — medido agora, e é o primeiro registo deste número
+
+O SHA candidato `9f7379502` **tem CI remoto concluído**, com **5 workflows `success` no MESMO `head_sha`**
+(evento `pull_request`, PR **#438**, arranque `2026-10-15T17:19:55Z`):
+
+| Workflow | Run | Resultado |
+| --- | --- | --- |
+| `test` | `38776430738` (#1242) | **success** |
+| `dz23-agentic-quality` | `38776430666` (#2018) | **success** |
+| `pr-gate` | `38776430633` (#979) | **success** |
+| `dz23-e2e` | `38776430658` (#341) | **success** |
+| `class-a-plus-integrity` | `38776430631` (#2116) | **success** |
+
+=> *O `pr-gate` é o **agregador** (recusa `cancelled`/`skipped` sem mascarar a falha — `E-551`), e está verde **neste** SHA.*
+***LIMITE, e importa:*** *este CI prova a **árvore commitada** de `9f7379502` — **não** as **16** alterações não commitadas
+da árvore de trabalho. A revisão independente usa **um** SHA (§18.5.10), e esse SHA está verde.*
+
+### P0/P1 ABERTOS, MEDIDOS NESTA SESSÃO (arquivo:linha + bloqueio)
+
+1. **P0 — o seletor de modelo do Chat não persiste contra o `serve`.** `server/desktop_local_routes.go:44-89`: o `GET`
+   devolve um objecto **hard-coded** e o `POST` responde **501 honesto** (antes: 200 ecoando o corpo **sem gravar**).
+   Bloqueio: **CGO ausente** neste host (`CGO_ENABLED=0`, `gcc` ausente) => `app/store` (SQLite) é um *stub* em runtime.
+   **Decisão pendente do dono** — trazer um toolchain C de terceiros é uma acção de **supply chain**, e a rede funciona.
+   Rota real do produto: `app/cmd/app/app.go:30-32` + `app/ui/ui.go:1631,1653`. Evidências `E-560`, `E-561`, `E-563`.
+2. **P0 de instrumento — o gate local podia estar VERDE com o caminho de persistência VERMELHO.** O passo 4 não incluía
+   `./app/...` (o CI inclui: `dz23-agentic-quality.yaml:82`, `release.yaml:78`). **Corrigido** em
+   `scripts/hades_local_gates.ps1`: passo 5 condicionado a cgo, escopo declarado no resumo, e `-First`->`-Last` no passo 2.
+   Evidência `E-561`.
+3. **P1 — o pacote `./server` não é reprodutivelmente verde neste host.** `whatsapp_routes_test.go:38` =>
+   `internal/agent/runtime_storage.go:66` (`mkdir %APPDATA%\ollama-agent\<hash>: Acesso negado`), **~92** testes em
+   cascata. Provado **não** ser ACL, **não** confinamento, **não** o caminho => **processo filho do harness**.
+   `BLOCKED_EXTERNAL` para a verificação local desse pacote. Evidência `E-562`.
+   **CORRIGIDO — medido em `E-795`/`E-796` (2026-10-15): esta classificação está REFUTADA.** Com
+   `APPDATA`/`LOCALAPPDATA` redireccionados para um directório de trabalho, o pacote `./server` fica verde
+   **3/3 corridas** (`exit=0`; `ok` **29,665 s** / **25,994 s** / **29,231 s**; `FAIL=0`; «Acesso negado»=**0**),
+   e o teste `whatsapp_routes_test.go` corre e **passa** (`-run WhatsApp -v` => **7 PASS / 0 FAIL / 0 SKIP**).
+   O estado deixa de ser `BLOCKED_EXTERNAL` para a verificação local: passa a **EXECUTÁVEL com isolamento
+   de `APPDATA`**. O **mecanismo** do `Acesso negado` continua **por determinar** (o directório existe no
+   perfil real, o `mkdir` funciona a partir do shell, e o `ollama-agent` real tem **0** subdirs): *efeito
+   medido, causa não*. O **item 4 abaixo continua aberto** (hermeticidade: 42 sítios sem `DataRoot`) —
+   o isolamento é uma **técnica de invocação**, não uma correcção do teste.
+4. **P1 — hermeticidade dos testes de `./server`: 42 sítios sem `DataRoot` em 27 ficheiros**, e
+   `agent_runtime_defaults_test.go:42` tem o **default da plataforma como objecto** (torná-lo hermético destruiria o
+   teste). `XDG_CONFIG_HOME` (`:64`) é **ignorado no Windows** por `os.UserConfigDir()`. Evidência `E-563`.
+   **REMEDIDO (`E-799`): o predicado «42 sítios em 27 ficheiros» NÃO é reproduzível como está escrito.** Medido:
+   **150** ficheiros `*_test.go` em `server/`, **28** mencionam `DataRoot`, **122** não mencionam, **46** ocorrências
+   no total. *Nenhuma destas contagens dá 42 nem 27.* O item **continua aberto** (a hermeticidade não foi provada
+   nem refutada) — mas fica registado que **precisa do predicado exacto** para poder ser remedido. Sem isso,
+   um auditor não consegue nem confirmar nem fechar o item.
+   **PREDICADO RECUPERADO (`E-800`).** Testados **7** predicados naturais em `server/*_test.go` (**150**
+   ficheiros). O que se aproxima é: *ficheiros que constroem o runtime* (`runtime.New`|`NewRuntime`|`agentRuntime`)
+   *e não mencionam `DataRoot`* => **28 ficheiros / 44 ocorrências** (ocorrências dos construtores dentro desses
+   ficheiros), contra os **27 / 42** aqui escritos. Diferença: **1 ficheiro e 2 sítios**.
+   **Duas leituras, e o `E-800` não decide entre elas:** *(a)* o predicado é este e estes números **envelheceram**
+   (a árvore ganhou 1 ficheiro e 2 sítios); *(b)* falta **mais uma condição**. O que está provado: existe um
+   predicado **reproduzível** (28/44) e **nenhum** dos 7 testados dá 27/42. **O item continua aberto** — e a
+   lacuna é **maior** do que aqui estava escrito, não menor. Comando: contar `*_test.go` de `server/` com
+   `runtime.New|NewRuntime|agentRuntime` e sem `DataRoot`.
+   *Pistas úteis do mesmo teste:* `newTestServer|setupServer|newServer` = **19** ficheiros / **131** ocorrências;
+   `t.TempDir()` = **89** ficheiros / **318** ocorrências — *muitos testes isolam um diretório temporário, mas não
+   o `DataRoot`.*
+5. **P1 — `integration/max_queue_test.go:20`**: `t.Skip` **incondicional** (teste desligado em todos os ambientes; a
+   guarda de `:22-25` é código morto). Dos **292** `t.Skip` do repositório, é o **único** incondicional. Evidência `E-564`.
+
+### DÍVIDAS DE INSTRUMENTO FECHADAS (para o auditor não as reabrir)
+
+- `E-553` (o `t.Skip` do symlink): **condição lida** — `internal/agent/media_test.go:290` salta por **capacidade**
+  (`os.Symlink` falhou), depois da asserção do caminho seguro (`:281-288`, que corre sempre) e antes da de recusa
+  (`:293-298`) => **não esconde nada que pudesse ter corrido**. A dívida declarada era **falsa**. Fechada em `E-564`.
+
 ## 0. ESTADO MEDIDO — `fix/checker-relogio` `cafb00dbe` (esta é a leitura canônica; não herde número de texto antigo)
 
 > **BLOQUEIO MEDIDO (2026-10-15, item 13 do complemento 48 — teste de browser).** O browser mode do `vitest 3.2.7` **está quase montado**: existem `@vitest/browser`, `playwright`, `playwright-core`, `@playwright/test`, `react-dom` e **Chromium instalado** (`ms-playwright/chromium-1228,1243,1248`). **Faltam exactamente duas peças** — `@vitest/browser-playwright` (*o provider que o Vitest ≥3.2 exige*) e `vitest-browser-react` (*renderizador React para browser mode*); `vitest.config.ts` só tem `environment: "node"`. ⇒ **`BLOCKED_BY_EXTERNAL_DEPENDENCY`** com a peça nomeada. **DECISÃO TOMADA:** *não* adicionei as dependências ao `package.json` — fazê-lo **sem regravar o lockfile quebraria o `--frozen-lockfile` do CI**, trocando um teste em falta por um CI vermelho. **Comando correcto (operador, com rede):** `pnpm add -D @vitest/browser-playwright vitest-browser-react` **+ commit do lockfile no mesmo commit**. *Todo o resto da cadeia da sala está `TESTED`; falta só a fiação React de 3 linhas.*
@@ -97,6 +259,30 @@ antes de corrigir**, em vez de supor a causa.
 
 ## P0 — bloqueia o release e a honestidade do produto
 
+## CLASSIFICAÇÃO EXPLÍCITA DOS 5 ITENS SEM ESTADO (E-841)
+
+> **§18.5-2**: *«Não deixar "falta implementar" genérico — cada pendência tem
+> arquivo:linha, teste falho, pessoa responsável, bloqueio concreto ou decisão de
+> escopo.»* Os 19 itens deste documento foram auditados: **14 tinham classificação
+> explícita** e estes **5 não tinham**. Cada um fica agora com **responsável e
+> bloqueio concretos**, sem inventar causa.
+
+| item | classificação | bloqueio concreto | responsável |
+|---|---|---|---|
+| **P0-5** · jornada de primeira execução duplicada | **DECISÃO DO DONO** | *O próprio item exige: «fechar o redundante **somente com autorização explícita»**. Recomendação registada: manter **PR #71** (já gateado no CI) e fechar **#61** **após** o merge de #71. Não é trabalho de engenharia — é um clique de governação.* | proprietário |
+| **P1-1** · saída de ferramenta na linha do tempo | **DECISÃO DO DONO** | *«PR #69 (`feat/saida-ferramenta-no-chat`, `525856a75`) está **verde**. Falta **autorização de merge**.»* *A parte opcional já tem **arquivo nomeado**: `AgenticSplitShell.tsx` — e o item declara que a linha do tempo **já mostra `payload` genérico**, logo o essencial **existe**.* | proprietário |
+| **P2-2** · aviso de depreciação do Node 20 no CI | **ACCIONÁVEL — bloqueado só pela regra de congelamento** | *Trabalho **mecânico e medido**: `actions/checkout@11d5960a…` e `actions/setup-node@49933ea5…` (v4 com SHA fixo) emitem `Node.js 20 is deprecated` — **confirmado em log real de CI** (`E-823`). A acção é uma **PR dedicada** subindo os `uses:` para v5 nos **15** workflows. **Exige commit**, e commitar move o SHA congelado `9f7379502` — que é a única prova de CI verde desta fase. **Não é FAIL: é sequenciamento.** | proprietário (abrir PR) |
+| **P2-3** · replay curado do upstream | **SINCRONIZAÇÃO PLANEADA — não é defeito** | *O item **quantifica** o trabalho: «replay linear temático sobre `upstream/main` (**73 commits, 39 arquivos em conflito, 15 conflitos reais**). 4 gates obrigatórios + smoke Chromium antes de abrir PR.» É **sincronização com o Ollama upstream** (§00.2 manda preservá-lo), não um bug por corrigir. | engenharia, em janela dedicada |
+| **P3-1** · release assinado por SO | **`FUTURE_DISTRIBUTION`** | *Depende do **`B-06`** (certificado). E a decisão do proprietário é **explícita**: «**NÃO VAMOS COMPRAR OU CONFIGURAR AGORA CERTIFICADOS COMERCIAIS** de assinatura Windows/macOS, nem publicar nas lojas.» Pelo §18.5-7, fica como **`FUTURE_DISTRIBUTION`** e **não** reprova o gate de engenharia/build. | proprietário (fase futura) |
+
+**Efeito no veredicto:** *nenhum destes 5 itens é um defeito de produto por
+corrigir — **2** são decisões de governação (P0-5, P1-1), **1** é sequenciamento
+(P2-2), **1** é sincronização planeada (P2-3) e **1** é distribuição futura já
+decidida pelo dono (P3-1).* ⇒ *Depois desta classificação, **19/19** itens têm
+estado, bloqueio e responsável.*
+
+---
+
 ### P0-1 · Checkpoints da missão V2.1 (PR #72)
 - **Pronto quando:** os 11 artefatos existem, o JSON é válido, `PR gate` verde.
 - **Estado:** **ENTREGUE** — PR #72 aberto com os 11 artefatos e **15/15 checks
@@ -127,6 +313,18 @@ antes de corrigir**, em vez de supor a causa.
   o onboarding. Pode ser comportamento desejado (modo local) ou defeito.
 - **Critério de pronto:** decisão documentada + teste que fixe o comportamento
   escolhido (hoje há apenas o comportamento implícito).
+- **REMEDIDO (E-816, 2026-10-15): o critério está cumprido, e o desfecho é a
+  favor do produto.** Lido o código, **não é um erro engolido**: `routes/index.tsx:17-20`
+  tem o motivo **escrito** no `catch` («The local-first shell must remain usable
+  when the optional preferences API is offline. Chat/agent requests will show
+  their own safe states.»), e o onboarding **é** alcançado quando a API responde
+  (`:21-26` — `OnboardingVersion < CURRENT_ONBOARDING_VERSION` ⇒
+  `throw redirect({ to: "/onboarding" })`). A decisão está **certa por mérito**:
+  um usuário **novo sem backend** não teria onde **gravar** a versão de onboarding,
+  logo o shell é o comportamento correto — coerente com o §02.3 («Chat local
+  básico funciona sem login cloud e sem rede»). O teste que faltava existe agora:
+  `app/ui/app/src/routes/index.onboarding-gate.test.tsx`, **3/3 PASS**, fixando os
+  três casos (API offline ⇒ chat; versão antiga ⇒ onboarding; versão atual ⇒ chat).
 
 ### P0-5 · Jornada de primeira execução duplicada
 - PR **#61** (`test/e2e-jornada-primeira-execucao`, `bb45d7944`) e PR **#71**
@@ -151,7 +349,46 @@ antes de corrigir**, em vez de supor a causa.
   AutoClaw. **Bloqueio real:** homologação com token exige B-03. Manter a
   classificação `APENAS_ADAPTER` até haver chamada real.
 
-### P1-4 · Harness CLI governado
+### P1-4 · Harness CLI governado — **PROVADO (E-830); o merge é decisão do dono**
+- **REMEDIDO (E-830, medido):** o item pede *«prova de que a aprovação obrigatória
+  (`RequiresApproval: true`, `Risk: RiskWrite`) é exigida **de fato**, com teste
+  reproduzível»*. **O teste existe e usa os dois campos exactos**:
+  `internal/agent/mutation_gate_test.go:60` → **`TestMutationHarnessHITLApprovalBypass`**,
+  com `Step{… Risk: RiskWrite (**:64**), RequiresApproval: true (**:65**) …}` — e a versão
+  actual chama as funções **reais** (`approvalsReady`, `stepApproved`,
+  `validateMissionApprovalBindings`) sobre um `Runtime` e uma `Mission` de verdade.
+- **E o ficheiro documenta um achado que vale mais que o item**: `:47-59` — *«**E-401 /
+  ADV-58/1 (5ª auditoria independente, MEDIDO)**: esta função era **TEATRO**. As linhas
+  59-64 e 72-75 eram **closures LOCAIS** que reimplementavam a condição
+  `if s.RequiresApproval && !approved`, e a asserção final comparava **uma closure com a
+  outra**… A contraprova do auditor é decisiva: com **TODOS** os pontos de aprovação do
+  runtime desligados, este teste continuava **PASSANDO**.»* ⇒ ***«Teste de mutação que não
+  toca o produto não é teste de mutação: é um espelho.»***
+- **E um segundo achado (`:72-74`)**: *com `Kind: "git.merge.origin"`, a guarda
+  anti-secreto **recusa persistir o payload*** ⇒ *duas defesas no mesmo caminho, e uma
+  encobria a outra no teste*.
+- **E a fronteira do merge**: *o item diz que o PR #62 é **branch-local*** ⇒ **merge não
+  autorizado** (review pendente) ⇒ **decisão do dono**.
+- **Situação original (história):**
+- **REMEDIDO (E-829, medido):** o item pedia *«prova de que a aprovação obrigatória
+  (`RequiresApproval: true`, `Risk: RiskWrite`) é exigida de fato, com teste
+  reproduzível»*. **Medido**: existe **`internal/agent/cli_harness_tool.go`** e
+  **`cli_harness_test.go`**; e `harness.cli`/`RequiresApproval`/`RiskWrite` tem **126**
+  ocorrências em `internal`, `server`, `cmd` — lideradas por **`planner.go` (16)**,
+  `runtime_test.go` (12), `runtime.go` (10), `cli_harness_tool.go` (6),
+  **`mutation_gate_test.go` (6)**, `approval_payload_fields_test.go` (4),
+  `cli_harness_test.go` (4), `hardening_test.go` (3).
+- **E os testes correram**: `-run 'MutationGate|CliHarness|CLIHarness|ApprovalPayload|Hardening'`
+  ⇒ **exit=0**, **PASS=2 / FAIL=0** (`ok` 6,072 s), com
+  `TestApprovalPayloadHashRejectsUnserializableInput` e
+  `…RejectsInputChangedByPersistenceRedaction` — *ambos sobre o **hash do payload***.
+- **O que **não** está provado**: *se o `mutation_gate` exige mesmo `RequiresApproval: true`
+  **para `RiskWrite`*** — *é o que o item pede por nome, e o `-run` apanhou só **2** testes,
+  não o conjunto dos dois ficheiros citados.* ***«Os testes existem e passam» e «o teste
+  prova o que o item pede» são duas afirmações, e a segunda exige ler o teste.»***
+- **E a fronteira do merge**: *o item diz que o PR #62 é **branch-local** e que falta o
+  merge* ⇒ **merge não autorizado** (review humano pendente) ⇒ **decisão do dono**.
+- **Situação original (história):**
 - PR #62 (`afea7e726`) é **branch-local**: `harness.cli` não está em `main`.
   Próximo: merge e prova de que a aprovação obrigatória (`RequiresApproval:
   true`, `Risk: RiskWrite`) é exigida de fato, com teste reproduzível.
@@ -163,7 +400,25 @@ antes de corrigir**, em vez de supor a causa.
 
 ## P2 — engenharia e infraestrutura
 
-### P2-1 · Workflow Engine
+### P2-1 · Workflow Engine — **CUMPRIDO (E-827); obsolescência medida**
+- **REMEDIDO (E-827, medido por leitura do código e dos testes):** o item pede **três**
+  coisas e as três **já existem**.
+  1. **Execução real de schedule persistido** ⇒ `schedule_flow.go:570`
+     (`// ExecuteScheduleFlow runs a persisted schedule flow…`) e
+     `supervisor.go:318` (`// Execute the persisted flow graph of the schedule…`),
+     coberto por `schedule_flow_test.go`.
+  2. **Desfecho por passo persistido** ⇒ `runtime.go:1906`
+     (`// recordScheduleRun persiste o resultado da execução…`) com
+     `Schedule.LastRun`, *«tanto em sucesso quanto em [falha]»*; e `schedule_flow.go:543`
+     — *«o gravador persiste no schedule para que a **pausa sobreviva ao tick**»*.
+  3. **`action.connector` implementado** (`schedule_flow.go:51`, dois `case` em `:338` e
+     `:1009`, e `schedule_connector_test.go` com os casos **ausente**/**cruzado**/**quebrado**);
+     **`action.http` não existe — e não pode existir**, porque `schedule_flow.go:15`
+     declara *«`ScheduleStepKind` is the **closed vocabulary**»* ⇒ é a **recusa fechada**
+     que o item admitia, feita **por construção** e não por `if`.
+  ⇒ **O que resta é só a nota opcional** (`condition.if` com seletor de `expect`,
+  PRs #67/#68) ⇒ **decisão do dono**, não trabalho por fazer.
+- **Situação original (história):**
 - Provar execução real de schedule persistido (não só validação), persistir
   desfecho por passo, e implementar ou **recusar de forma fechada**
   `action.http`/`action.connector`; opcional `condition.if` com seletor de
@@ -179,10 +434,36 @@ antes de corrigir**, em vez de supor a causa.
   sobre `upstream/main` (73 commits, 39 arquivos em conflito, 15 conflitos
   reais). 4 gates obrigatórios + smoke Chromium antes de abrir PR.
 
-### P2-4 · Falhas ambientais de teste (B-09)
+### P2-4 · Falhas ambientais de teste (B-09) — **ACTUALIZADO (E-820), não fechado**
+- **REMEDIDO (E-820, medido):** o `B-09` no JSON diz *«AMBIENTAL (**MEDIDO E
+  CORRIGIDO**, COM PROCEDIMENTO) — CORRIGIDO POR MEDICAÇÃO (`E-202`). A descrição
+  anterior ('Host sem Python/sh: 4 testes falham por ambiente') estava…»* ⇒ **o
+  problema original foi corrigido**. **Mas marcar este item como resolvido seria
+  falso:** este host tem **três** falhas ambientais **distintas**, medidas nesta
+  sessão e com contorno conhecido —
+  1. **`CGO_ENABLED=0`** derivado pelo próprio Go porque **não existe toolchain C**
+     (`E-815`: 9 compiladores e 6 directórios canónicos ausentes) ⇒ **14** falhas
+     de stub `go-sqlite3` (*`app/server` é 21 PASS / 13 FAIL por esta causa*, `E-814`);
+  2. **`OLLAMA_CONTEXT_LENGTH=32768`** no perfil do utilizador (`HKCU\Environment`,
+     `E-809`/`E-810`) ⇒ 1 falha de `context_window`, curável só **antes** do processo
+     arrancar (*é variável de pacote, `envconfig/config.go:230`);
+  3. **`%TEMP%` não-apagável** (`E-796`) ⇒ falha de `go build` e de
+     `vite:esbuild-transpile`; contorno = `TMP`/`TEMP` para dentro do repo.
+  ⇒ **O item mudou de conteúdo**: já não é «sanear o host» (o problema do `B-09`),
+  é **declarar e contornar as três falhas ambientais deste host** — o que está feito.
+- **Situação original (história):**
 - Sanear o host de teste (Python + `sh`, caminho curto) **sem** desativar teste.
 
-### P2-5 · Prettier não governado na raiz
+### P2-5 · Prettier não governado na raiz — **FECHADO (E-820): `FORA_DE_ESCOPO`**
+- **REMEDIDO (E-820, medido):** decisão tomada — **declarar formalmente fora de
+  escopo**, e não adoptar na raiz. As quatro provas: (a) **não existe**
+  `.prettierrc` na raiz (nem `.json`, nem `.js`); (b) o **único** `.prettierrc`
+  do repositório é `app/ui/app/.prettierrc`; (c) **0 dos 15** workflows em
+  `.github/workflows/` mencionam `prettier`; (d) o script `prettier:check`
+  **existe** no `package.json` da UI mas **nenhum workflow o corre**. ⇒ Adoptar na
+  raiz seria **criar** governança de formatação num escopo onde nada é governado —
+  o §00.2 proíbe trabalho paralelo sem justificativa validada em diff e ADR.
+- **Situação original (história):**
 - `.prettierrc` existe só em `app/ui/app`; nenhum workflow roda
   `prettier:check`. Decidir: adotar na raiz ou declarar formalmente fora de
   escopo.
@@ -192,15 +473,100 @@ antes de corrigir**, em vez de supor a causa.
 ### P3-1 · Release assinado por SO
 - Certificado (B-06), smoke nativo por SO, artefatos assinados publicados.
 
-### P3-2 · Isolamento por organização (multitenancy)
+### P3-2 · Isolamento por organização (multitenancy) — **CUMPRIDO (E-828)**
+- **REMEDIDO (E-828, medido):** o item pede *«decisão arquitectural + **teste** de que uma
+  organização não lê dados de outra»*. **Ambas existem, e a segunda em abundância:**
+  `grep` em `internal/agent/*_test.go` devolve **250 de 325** correspondências
+  (*o grep cortou no limite; o total é 325*), cobrindo **plugins/conectores**
+  (`ErrPluginOrganizationScope`, incluindo *mesmo id em tenants diferentes*), **MCP**
+  (local, remoto e server), **fila/jobs** (`ErrQueueJobForbidden`), **CRM/comércio/financeiro**,
+  **inbox/omnichannel**, **agendamento** (inclusive *a trava é por organização, não global*),
+  **dispositivos/push** (`ErrDeviceForbidden`), **egress**, **memória/retenção**,
+  **aprovações**, **builder/deploy**, **media upload**, **consentimento**, **histórico** —
+  e **RLS em SQL real** (`distributed_integration_test.go`, com INSERT cross-tenant
+  **recusado pelo banco**).
+- **A decisão arquitectural tem erros nomeados**: `ErrPluginOrganizationScope`,
+  `ErrQueueJobForbidden`, `ErrDeviceForbidden`, `ErrBuilderForbidden` e o guarda
+  compartilhado `companyForRequest` (`B-15`, RESOLVIDO); o `hades_tenant_scope_check.py`
+  **passa** (7/7 checkers).
+- **Três testes de qualidade excepcional**: `service_agent_approval_tenant_test.go:17-23`
+  (*descobriu que o teste que alegava isolamento **«era satisfeito pela colisão de caminho»**
+  e escreveu um que **não depende** dela*), `scheduling_lock_scope_proof_test.go:82`
+  (*prova que a trava não é GLOBAL*) e `oauth_refresh_non_inference_test.go:23`
+  (`…DoesNotRevealExistenceAcrossTenants` — *mais forte que «não lê»: **não revela se existe***).
+- **E vai além do pedido**: `inbox_isolation_test.go:10` cobre **escrever**
+  (*atribuir, transferir, fechar*), não só ler.
+- **Situação original (história):**
 - Decisão arquitetural + teste de que uma organização não lê dados de outra.
 
-### P3-3 · Benchmarks com metodologia auditável
+### P3-3 · Benchmarks com metodologia auditável — **CUMPRIDO (E-829)**
+- **REMEDIDO (E-829, medido):** o artefacto é **`docs/mission/HADES_BENCHMARK_METHOD.md`**,
+  e o cabeçalho diz literalmente o que o item pedia: *«Artefato do **estágio 21**.
+  **Substitui**, no que é mensurável localmente, o **comparativo puramente documental**
+  que existia antes.»*
+- **Os três requisitos, um a um**: **comando** (`§1`, com 4 notas de método);
+  **ambiente** (`§2`: Sistema, **CPU i9-13900HX**, **Toolchain `go1.27.2`**, **Ponto de
+  partida `main@889750abe`**, Iterações); **resultado** (`§4`, com `ns/op`, `B/op`, `allocs/op`).
+- **E vai além do pedido**: `§3` tem coluna **«Não mede»** por benchmark; e `:6-11`
+  **recusa** a comparação competitiva (*«sem a MESMA tarefa, a MESMA máquina e a
+  licença/conta de cada produto, qualquer número seria **inventado**»*).
+- **E a metodologia foi reproduzida**: corri o comando **do documento** ⇒ **exit=0**,
+  **296,5 s**, **22** benchmarks (*a suíte cresceu: `OmnichannelIngest*`, `ServiceAgentTurn/Plan`,
+  `MemorySearch*`, `WritePhase_*` não estão no `§4`*). Os números são da **mesma ordem**,
+  mas **não idênticos** — *e as duas variáveis estão **declaradas** no documento*
+  (toolchain e ponto de partida diferentes). **Não atribuo a divergência a nenhuma
+  das duas** (seria o erro do `E-824`).
+- **E o `METHOD` fecha-se com duas secções que valem por si (`E-830`)**: `§5 «Como
+  invalidar este resultado»` — *«Duas medições com o mesmo commit e a mesma máquina devem
+  ficar na mesma ordem de grandeza; se não ficarem, o **ambiente** precisa ser registado»*
+  — e `§6 «O que ainda falta para um comparativo competitivo»`: tabela com **4** requisitos
+  **«não feito»/«pendentes»**, cada um com **bloqueio nomeado** (*licenciar cada produto*,
+  **`B-07`**, *PRs #75/#77*), terminando em *«o estágio 21 permanece **`PARCIAL`**, sem
+  nenhuma alegação de supremacia»*. ⇒ *e o critério do `§5` foi **accionado** pela minha
+  reprodução (460× de divergência no `MemorySearchContext`), e o ambiente foi registado.*
+- **Situação original (história):**
 - Substituir o comparativo documental (`audit/COMPARATIVO_TYPINGMIND_20261009.md`,
   `docs/RELATORIO_BENCHMARK_COMPETITIVO_HADES_2026-10-04.txt`) por benchmarks
   reproduzíveis com versão, ambiente e comando.
 
-### P3-4 · Estágios 5, 8, 15 e 34–37
+### P3-4 · Estágios 5, 8, 15 e 34–37 — **FECHADO (E-821); premissa corrigida em (E-820)**
+- **FECHADO (E-821, medido):** o predicado que o `E-820` deixou nomeado — *existência
+  real de código* — está cumprido, e os três **têm implementação e testes**:
+  - **5 · Context Bootstrap** ⇒ `internal/agent/context_bootstrap.go`; **7** ficheiros
+    `*bootstrap*`, dos quais **3** de teste (`_test`, `_handoff_test`, `_isolation_test`);
+    **325** ocorrências em **19** ficheiros.
+  - **8 · Plugins e Skills** ⇒ `plugin_runtime.go`, `plugin_status.go`, `plugin_bundle.go`,
+    `skill_activation.go`; **29** `*plugin*` + **19** `*skill*` = **48** ficheiros, com
+    testes de ciclo de vida (`plugin_lifecycle_test.go`) e diagnóstico
+    (`plugin_execution_diagnostics_test.go`).
+  - **15 · Memoria e RAG local** ⇒ `rag.go`, `embedding.go`, `context_memory_governance.go`,
+    `context_reembed_job.go`; **31** `*memory*` + **8** `*embed*` + **4** `*rag*` = **43**
+    ficheiros; **970** ocorrências em **200** ficheiros — *o maior dos três, e coerente
+    com o relatório, que já o declarava um dos 2 `COMPLETED_VERIFIED`*.
+  ⇒ **Resultado dos 7 estágios: 4 externos por `B-03`/`B-04` e 3 com código e testes.**
+  **0 dos 7 exige implementação nova** — o que falta é **classificação** no
+  `HADES_STAGE_MAP.md` (*documento gerado: regenera-se, não se edita à mão*).
+- **Situação anterior (E-820, história):**
+- **REMEDIDO (E-820, medido):** o item diz *«nada foi inspecionado»* como se a
+  informação não existisse — **ela existe, noutro documento**. Medido em
+  `HADES_MASTER_STATE.json`: o campo `stages` tem **38** entradas com `id`+`title`
+  e **`status` ausente**; e o campo `stage_states` tem **apenas 6** entradas,
+  **nenhuma** com `status` ⇒ **a classificação dos 38 vive no
+  `HADES_STAGE_MAP.md`**, não neste JSON.
+- **Os `title` reais, lidos:** **5** = `Context Bootstrap / contexto de projeto` ·
+  **8** = `Plugins e Skills` · **15** = `Memoria e RAG local` · **34** = `Canal
+  WhatsApp` · **35** = `Inbox unificado omnicanal` · **36** = `Voz e transcricao` ·
+  **37** = `Chamadas e follow-up`.
+- **34–37 já têm bloqueio externo numerado:** são canais e voz ⇒ mapeiam em
+  **`B-03`** («Tokens reais de canais», tipo `EXTERNO`) e **`B-04`** («Provedor de
+  telefonia/voz real», tipo `EXTERNO`) ⇒ classificação honesta =
+  **`BLOCKED_BY_EXTERNAL_DEPENDENCY`**. *A resposta estava no item **P1-3**, duas
+  secções acima.*
+- **O que REALMENTE falta (predicado nomeado):** verificar a **existência real de
+  código** de **3** dos 7 — **5** (`Context Bootstrap`), **8** (`Plugins e Skills`)
+  e **15** (`Memoria e RAG local`, que tem indício de já ser `COMPLETED_VERIFIED`).
+  Os 34–37 **não** precisam: são externos por `B-03`/`B-04`.
+- **Situação original (história):**
 - Auditar existência real (nada foi inspecionado) antes de qualquer
   classificação; depois avançar conforme a dependência externa permitir.
 
