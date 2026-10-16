@@ -42,12 +42,29 @@ import argparse
 import json
 import os
 import re
+import subprocess
 import sys
 from collections import Counter, defaultdict
 from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parent.parent
 DOC = RAIZ / "docs/mission/HADES_BRAND_INVENTORY.md"
+
+
+def _git(*args: str) -> str | None:
+    """Corre um comando de leitura do Git. Devolve `None` se falhar (*nunca rebenta*).
+
+    *Um instrumento que rebenta por nao haver git e' pior que um que declara a falta* -- e' a
+    mesma decisao do `snapshot_do_git()` no `E-987`.
+    """
+    try:
+        saida = subprocess.run(
+            ["git", *args], cwd=RAIZ, capture_output=True, text=True,
+            encoding="utf-8", errors="replace", timeout=60, check=False,
+        )
+        return saida.stdout if saida.returncode == 0 else None
+    except (OSError, subprocess.SubprocessError):
+        return None
 
 CANONICA = "Hades/HADES"
 PADROES = {
@@ -143,22 +160,59 @@ EXCECOES = (
 )
 
 
+def ler_commitado(rel: str) -> str | None:
+    """Le' o conteudo do ficheiro **como ele esta' commitado** (`HEAD`), e nao como esta' no disco.
+
+    **E-997, e o CI provou que era preciso**: o run **38928255782** do `class-a-plus-integrity`
+    falhou no passo 8 (*«Verify the brand inventory matches the repository»*), com
+    *«INVENTARIO DIVERGENTE»* -- *depois de os passos 6 e 7 terem **passado**.*
+
+    A causa: o inventario lia os ficheiros **do disco**. => *e o disco tem **13 ficheiros
+    modificados** (WIP nao commitado) com **24** ocorrencias de marca que **nao existem no
+    commit*** => *entre eles `apps/mobile-agentic/package.json`, que o inventario **lista*** =>
+    *logo o texto gerado localmente nao bate com o texto gerado no CI, onde o checkout e' limpo*.
+
+    *E' a mesma classe do `source_dirty` do manifesto*: **um instrumento que mede um estado que
+    inclui trabalho nao commitado** produz um numero que **so' e' verdadeiro naquela maquina**.
+
+    *E eu tinha declarado o contrario*: no `E-996` escrevi que *«o inventario **nao invoca git**,
+    portanto **nao pode** ter este defeito»* => *a declaracao era **verdadeira** e a conclusao
+    **falsa***: **nao ler git nao impede medir WIP** -- *impede, isso sim, **saber** que se esta'
+    a medir WIP*.
+
+    *A cura*: ler via `git show HEAD:<rel>` => *o numero passa a ser o **mesmo** aqui e no CI* =>
+    *e o inventario passa a medir **o que esta' commitado**, que e' o que ele **afirma** medir.*
+    Devolve `None` se o git nao responder (*e o chamador cai para o disco, dizendo-o*).
+    """
+    return _git("show", "HEAD:%s" % rel)
+
+
+def ler_arquivo(caminho: Path, rel: str) -> tuple[str, str]:
+    """Devolve `(conteudo, origem)`, preferindo o **commitado** ao disco."""
+    conteudo = ler_commitado(rel)
+    if conteudo is not None:
+        return conteudo, "HEAD"
+    try:
+        return caminho.read_text(encoding="utf-8", errors="replace"), "disco"
+    except OSError:
+        return "", "ilegivel"
+
+
 def inventariar() -> dict:
     por_padrao: Counter[str] = Counter()
     por_ficheiro: dict[str, Counter[str]] = defaultdict(Counter)
+    origens: Counter[str] = Counter()
     for base, dirs, files in os.walk(RAIZ):
         dirs[:] = [d for d in dirs if d not in DIRS_FORA]
         for nome_arq in files:
             if not nome_arq.lower().endswith(SUFIXOS):
                 continue
             caminho = Path(base) / nome_arq
-            try:
-                texto = caminho.read_text(encoding="utf-8", errors="replace")
-            except OSError:
-                continue
             rel = caminho.relative_to(RAIZ).as_posix()
             if rel in ARQUIVOS_FORA:
                 continue
+            texto, origem = ler_arquivo(caminho, rel)
+            origens[origem] += 1
             for rotulo, rx in PADROES.items():
                 n = len(rx.findall(texto))
                 if n:
@@ -167,6 +221,7 @@ def inventariar() -> dict:
     return {
         "totais": dict(por_padrao),
         "ficheiros": {k: dict(v) for k, v in sorted(por_ficheiro.items())},
+        "origens": dict(origens),
     }
 
 
@@ -205,6 +260,8 @@ def gerar(inv: dict) -> str:
         f"| `{e['caminho']}` | **{e['tipo']}** | {e['razao']} | {e['desbloqueio']} |"
         for e in EXCECOES
     )
+    org = inv.get("origens", {})
+    origens_txt = ", ".join(f"`{k}`: {v}" for k, v in sorted(org.items())) or "(nao medido)"
     # **generated_at NAO entra no documento**: um gerado com data obriga a re-gerar a cada
     # dia e torna a catraca inutil. A data fica no `source_sha`, que muda so' quando o
     # conteudo muda - a licao do `E-987`/`E-989`.
@@ -215,6 +272,13 @@ def gerar(inv: dict) -> str:
 > superficie visivel e **documentacao de cada excecao de compatibilidade**.
 
 ## 1. As cinco strings, como o §FASE-5 item 1 as nomeia
+
+> **Fonte das contagens (E-997)**: os ficheiros sao lidos **do commit (`HEAD`)**, e nao do disco.
+> *Medido no run **38928255782**, onde este passo falhou*: o disco tinha **13 ficheiros
+> modificados** com **24** ocorrencias de marca que **nao existem no commit**, e o inventario
+> divergia entre a minha maquina e o CI. => *um instrumento que mede o disco mede **tambem o
+> trabalho nao commitado** -- e publica um numero que so' e' verdadeiro onde foi gerado.*
+> Origens medidas neste snapshot: {origens_txt}.
 
 | String | Ocorrencias |
 | --- | --- |

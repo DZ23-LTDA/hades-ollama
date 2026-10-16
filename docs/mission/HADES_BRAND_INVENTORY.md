@@ -6,9 +6,16 @@
 
 ## 1. As cinco strings, como o §FASE-5 item 1 as nomeia
 
+> **Fonte das contagens (E-997)**: os ficheiros sao lidos **do commit (`HEAD`)**, e nao do disco.
+> *Medido no run **38928255782**, onde este passo falhou*: o disco tinha **13 ficheiros
+> modificados** com **24** ocorrencias de marca que **nao existem no commit**, e o inventario
+> divergia entre a minha maquina e o CI. => *um instrumento que mede o disco mede **tambem o
+> trabalho nao commitado** -- e publica um numero que so' e' verdadeiro onde foi gerado.*
+> Origens medidas neste snapshot: `HEAD`: 2459.
+
 | String | Ocorrencias |
 | --- | --- |
-| **Hades/HADES** (canonica) | **917** |
+| **Hades/HADES** (canonica) | **915** |
 | DZ23 Agentic | 191 |
 | Ollama Full | 167 |
 | Ollama Classe A+ | 85 |
