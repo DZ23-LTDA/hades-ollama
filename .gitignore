@@ -36,3 +36,32 @@ docs/evidencias/manus_*.png
 outputs/
 # Toolchain Go e caches locais de verificação dos agentes (nunca commitar)
 _tmp/
+
+# Material de assinatura, chaves e credenciais -- NUNCA commitar.
+# Medido em 2026-10-16: o repositório tinha 0 ficheiros destes rastreados, mas o
+# .gitignore só cobria .env, pelo que qualquer um deles entraria sem aviso.
+# Chaves privadas (App Store Connect, etc.):
+*.p8
+*.p12
+*.pfx
+AuthKey_*
+# Certificados e perfis (o .cer e' a parte publica; o .crt ja' era coberto acima):
+*.cer
+*.mobileprovision
+*.provisionprofile
+# Chaves genericas (nunca commitar chaves privadas de servico):
+*.key
+*.pem
+id_rsa
+id_rsa.*
+id_ed25519
+id_ed25519.*
+# Keystores Android (o APK de desenvolvimento usa uma chave local descartavel):
+*.jks
+*.keystore
+keystore.properties
+# Configuracao local que costuma carregar segredos:
+.env.*
+!.env.example
+secrets.json
+credentials.json
