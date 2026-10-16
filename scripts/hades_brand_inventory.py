@@ -275,6 +275,61 @@ def inventariar() -> dict:
     }
 
 
+# **Troca cada contagem por um marcador, em vez de apagar a linha inteira.**
+#
+# *E' a cura que o `E-1004` declarou.* => *antes, o `normalizar` **removia** a linha de
+# contagem* => *e as **5 strings** do §FASE-5 vivem **dentro** dessas linhas*
+# (`| **Hades/HADES** (canonica) | **918** |`) => *logo, **apagar uma string nao fazia o
+# `--check` falhar** -- e o docstring afirmava o contrario.*
+#
+# *Agora o **nome fica** e so' o **numero** sai* => *apagar ou renomear uma string **muda** o
+# normalizado e o `--check` **falha**; mudar a **contagem** nao muda nada, que era a decisao
+# do `E-997` e continua a ser.*
+#
+# **E A PRIMEIRA VERSAO DESTA CURA ESTAVA ERRADA, medido no proprio teste**: eu usei
+# `re.compile(r"\*{0,2}\d+\*{0,2}")`, que substitui **qualquer** numero da linha => *e a string
+# legada e' **`DZ23 Agentic`** => *o `23` **faz parte do nome*** => *o normalizador
+# transformava-a em `DZ<N> Agentic`* => **mutilava a marca que queria proteger** => *e o efeito
+# era o pior possivel: mudar `DZ23` para outra coisa **continuava a nao mudar nada**, pelo que
+# a string seguia **desprotegida** -- exactamente o defeito que a cura existia para fechar.*
+# => *apanhado pelo `T('o nome Ollama DZ23 sobrevive')` do teste do `E-1005`, na primeira
+# execucao.*
+#
+# **A regra certa e' POSICIONAL**: nas tabelas, a contagem e' o campo numerico **que esta'
+# sozinho entre dois separadores** => *substitui-se **um** `\d+`, e **so'** naquela posicao.*
+# => *E' o `E-992` ao quadrado: **nao basta distinguir o rotulo da medicao; e' preciso saber
+# QUAL dos numeros e' a medicao.***
+_MASCARA_2COL = re.compile(r"^(\|\s*\*{0,2}[^|]+\*{0,2}\s*\|\s*\*{0,2})\d+(\*{0,2}\s*\|)$")
+_MASCARA_3COL = re.compile(r"^(\|\s*\*{0,2}[^|]+\*{0,2}\s*\|\s*\*{0,2})\d+(\*{0,2}\s*\|[^|]*\|)$")
+_MASCARA_SOMA = re.compile(r"^(\*\*Legadas somadas:\*\*\s*)\d+")
+_MASCARA_TIPO = re.compile(r"^(\*\*Por tipo de excecao:\*\* )(.*)$")
+
+
+def _mascarar_2col(s: str) -> str:
+    """`| nome | N |` -> `| nome | <N> |` -- *preserva o nome, mesmo que ele tenha digitos.*"""
+    return _MASCARA_2COL.sub(r"\1<N>\2", s)
+
+
+def _mascarar_3col(s: str) -> str:
+    """`| caminho | N | tipo |` -> `| caminho | <N> | tipo |`"""
+    return _MASCARA_3COL.sub(r"\1<N>\2", s)
+
+
+def _mascarar_soma(s: str) -> str:
+    """`**Legadas somadas:** 485 ocorrencias` -> `**Legadas somadas:** <N> ocorrencias`"""
+    return _MASCARA_SOMA.sub(r"\1<N>", s)
+
+
+def _mascarar_tipo(s: str) -> str:
+    """`**Por tipo de excecao:** historico: 233, ...` -> *so' os numeros, apos o rotulo.*
+
+    *Aqui o `\\d+` global **e'** seguro: depois do rotulo so' ha' contagens.*
+    """
+    m = _MASCARA_TIPO.match(s)
+    return m.group(1) + re.sub(r"\d+", "<N>", m.group(2)) if m else s
+
+
+
 def normalizar(texto: str) -> str:
     """Remove do texto as **contagens absolutas** -- pela licao final do `E-997`.
 
@@ -332,12 +387,18 @@ def normalizar(texto: str) -> str:
         # declarada a mais*) na forma de **filtro**: aqui a cura **faltava**, e o texto dizia que
         # estava feita.
         if re.match(r"^\|\s*\*{0,2}[^|]+\*{0,2}\s*\|\s*\*{0,2}\d+\*{0,2}\s*\|$", s):
-            continue  # tabela de 2 colunas: `| nome | N |`
+            # tabela de 2 colunas: `| nome | N |` => *substitui SO' o numero.*
+            linhas.append(_mascarar_2col(s))
+            continue
         if re.match(r"^\|\s*\*{0,2}[^|]+\*{0,2}\s*\|\s*\*{0,2}\d+\*{0,2}\s*\|[^|]*\|$", s):
-            continue  # tabela de 3 colunas: `| caminho | N | tipo |`
+            # tabela de 3 colunas: `| caminho | N | tipo |` => *substitui SO' o numero.*
+            linhas.append(_mascarar_3col(s))
+            continue
         if s.startswith("**Legadas somadas:**"):
+            linhas.append(_mascarar_soma(s))
             continue
         if s.startswith("**Por tipo de excecao:**"):
+            linhas.append(_mascarar_tipo(s))
             continue
         if s.startswith("> Origens medidas neste snapshot:"):
             continue
