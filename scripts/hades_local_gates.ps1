@@ -171,7 +171,7 @@ if ($LASTEXITCODE -ne 0) { $falhas.Add("hades_manifest.py --check (exit $LASTEXI
 
 # E-991 - O INVENTARIO DE MARCA TAMBEM TEM GERADOR, E UM GERADOR SEM CATRACA ENVELHECE.
 #
-# *POR QUE ISTO EXISTE:* o `E-991` criou o `scripts/hades_brand_inventory.py` (§FASE-5 itens 1
+# *POR QUE ISTO EXISTE:* o `E-991` criou o `scripts/hades_brand_inventory.py` (ESTAGIO 22 /
 # e 3). E a primeira versao desse gerador **media o proprio output**: ele escrevia um documento
 # que contem as strings da marca e depois contava-as, o que dava 15 linhas diferentes entre
 # duas geracoes. *Foi o `--check` do E-989 que o apanhou* - e e' por isso que ele tem de
@@ -180,6 +180,15 @@ if ($LASTEXITCODE -ne 0) { $falhas.Add("hades_manifest.py --check (exit $LASTEXI
 $saidaMarca = & python -X utf8 scripts/hades_brand_inventory.py --check 2>&1
 $saidaMarca | Select-Object -Last 3 | ForEach-Object { "    $_" }
 if ($LASTEXITCODE -ne 0) { $falhas.Add("hades_brand_inventory.py --check (exit $LASTEXITCODE)") } else { '    OK' }
+
+# E-992 - A CATRACA DO ASCII NOS .ps1. *Duas vezes escrevi um byte > 127 num comentario deste
+# proprio ficheiro* - e as duas vezes porque confiei na disciplina em vez de num teste. O
+# checker separa COMENTARIO (tecto declarado) de STRING (a que e' impressa ao utilizador, e
+# que o powershell.exe 5.1 corrompe por ler o ficheiro como Windows-1252).
+'--- 8. ASCII nos .ps1 - comentario com tecto, string com divida declarada'
+$saidaAscii = & python -X utf8 scripts/hades_ascii_ps1_check.py 2>&1
+$saidaAscii | Select-Object -Last 3 | ForEach-Object { "    $_" }
+if ($LASTEXITCODE -ne 0) { $falhas.Add("hades_ascii_ps1_check.py (exit $LASTEXITCODE)") } else { '    OK' }
 
 ''
 if ($falhas.Count -gt 0) {
@@ -197,4 +206,5 @@ if ($appRodou) { $passos += 'app' } else { $passos += 'app-PULADO' }
 # ninguem sabe que correu.*
 $passos += 'manifesto'
 $passos += 'marca'
+$passos += 'ascii'
 "GATES LOCAIS: $($passos -join ' + ') VERDES"

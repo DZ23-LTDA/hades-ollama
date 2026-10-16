@@ -55,6 +55,13 @@ jobs:
         run: |
           python3 -m py_compile scripts/hades_brand_inventory.py
           python3 scripts/hades_brand_inventory.py --check
+      # **E-992**: a CATRACA DO ASCII nos `.ps1`. `powershell.exe` 5.1 le' `.ps1` sem BOM como
+      # Windows-1252. Um byte > 127 num **comentario** nao e' impresso; numa **string** e' -- e
+      # sai corrompido para o utilizador. O checker separa as duas classes: `codigo`/string tem
+      # divida **declarada** (34 no `install.ps1`, 1 no `hades-quickstart.ps1`, ligados ao
+      # §FASE-6), e **divida nova falha**; `comentario` tem tecto por ficheiro.
+      - name: Verify no non-ASCII reaches PowerShell strings (ratchet)
+        run: python3 scripts/hades_ascii_ps1_check.py
       # Escrituracao da missao: evidencia citada que nao existe, ID duplicado, buraco na numeracao, bloqueio
       # orfao e veredito otimista com pendencia precisam FALHAR aqui (E-180). O passo seguinte injeta esses
       # defeitos em fixtures para provar que a checagem realmente os encontra.
