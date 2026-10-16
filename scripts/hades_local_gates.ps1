@@ -155,6 +155,20 @@ if ($SemTestes) {
   }
 }
 
+# E-989 - O MANIFESTO DO SNAPSHOT NAO TINHA CATRACA.
+#
+# *POR QUE ISTO EXISTE:* o ESTAGIO 22 item 3 mandou emitir manifestos, e o `E-988` criou o
+# `scripts/hades_manifest.py`. Mas um ficheiro GERADO sem `--check` num gate **envelhece em
+# silencio** - e' o mesmo defeito que o `E-987` curou no `hades_release_gate.py`, onde o
+# relatorio citava um commit de ontem e ninguem notava.
+#
+# Aqui ele passa a ser conferido com o MESMO escopo do CI (`class-a-plus-integrity.yaml`), para
+# que o defeito apareca localmente antes de aparecer no CI.
+'--- 6. manifesto do snapshot (ESTAGIO 22 item 3) - drift entre o manifesto e a arvore'
+$saidaManifesto = & python -X utf8 scripts/hades_manifest.py --check 2>&1
+$saidaManifesto | Select-Object -Last 4 | ForEach-Object { "    $_" }
+if ($LASTEXITCODE -ne 0) { $falhas.Add("hades_manifest.py --check (exit $LASTEXITCODE)") } else { '    OK' }
+
 ''
 if ($falhas.Count -gt 0) {
   "GATES LOCAIS: $($falhas.Count) falha(s)"
@@ -167,4 +181,7 @@ if (-not $SemTestes) { $passos += 'testes' }
 # E-561: o escopo de `./app/...` entra no resumo SEMPRE - medido ou PULADO. Um resumo que omitisse o
 # passo pulado faria um gate de escopo menor parecer um gate de escopo maior.
 if ($appRodou) { $passos += 'app' } else { $passos += 'app-PULADO' }
+# E-989: o manifesto entra no resumo. *Um passo que corre e nao aparece no resumo e' um passo que
+# ninguem sabe que correu.*
+$passos += 'manifesto'
 "GATES LOCAIS: $($passos -join ' + ') VERDES"

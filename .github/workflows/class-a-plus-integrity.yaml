@@ -38,6 +38,15 @@ jobs:
       # requisito como DONE no documento enquanto o indice de evidencias diz outra coisa - um gate que mente.
       - name: Verify the release gate matches the mission state (no drift)
         run: python3 scripts/hades_release_gate.py --check
+      # **E-989**: o MANIFESTO do snapshot (ESTAGIO 22 item 3). Ele registra `source_sha`, ramo,
+      # SBOM com sha256, plataformas e limitacoes - e, como todo ficheiro gerado, **envelhece em
+      # silencio** se ninguem o conferir. O `--check` compara o que e' estavel e ignora o que muda
+      # por si (`generated_at`, `source_dirty`), pela licao do `E-987`: *um `--check` que grita
+      # sempre nao e' lido*. Aqui ele passa a ter catraca no CI.
+      - name: Verify the snapshot manifest matches the tree (no drift)
+        run: |
+          python3 -m py_compile scripts/hades_manifest.py
+          python3 scripts/hades_manifest.py --check
       # Escrituracao da missao: evidencia citada que nao existe, ID duplicado, buraco na numeracao, bloqueio
       # orfao e veredito otimista com pendencia precisam FALHAR aqui (E-180). O passo seguinte injeta esses
       # defeitos em fixtures para provar que a checagem realmente os encontra.
