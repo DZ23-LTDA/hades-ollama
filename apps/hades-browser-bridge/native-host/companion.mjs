@@ -25,6 +25,17 @@ export const HOST_PROTOCOLO = 1;
 /** Capacidades declaradas. Vazio e' honesto: este host nao controla o PC. */
 export const CAPACIDADES = [];
 
+/**
+ * PORQUE A CONSULTA DE APROVACAO NAO VERIFICA NADA (`E-1043`).
+ *
+ * Nao e' uma limitacao esquecida: e' uma limitacao MEDIDA. A rota de approvals do
+ * runtime e' autenticada por **sessao**; este processo nao tem sessao e nao deve ter.
+ * *Um processo local com a sessao do utilizador e' exactamente o que nao queremos.*
+ *
+ * O motivo viaja na RESPOSTA, nao num documento: quem pergunta recebe a razao.
+ */
+export const MOTIVO_SEM_ROTA = "sem_rota_autenticavel_no_runtime";
+
 /** Diagnostico vai para stderr, NUNCA para o fio. */
 function diag(...partes) {
   process.stderr.write("[companion] " + partes.join(" ") + "\n");
@@ -93,6 +104,42 @@ export function criarHost(agora = () => Date.now()) {
         case "revogar": {
           const r = C.revogarDispositivo(estado, m.instalacao);
           return r.ok ? { ok: true } : erro(r.motivo);
+        }
+
+        // `E-1043`: A ROTA DE APROVACAO -- o lado que E' executavel.
+        //
+        // No `E-1042` medi que a rota HTTP de approvals (`serviceAgentApprovals`) e'
+        // autenticada por **sessao**, e o Companion e' um processo local **sem sessao**.
+        // *Dar-lhe a sessao do utilizador seria pior: um processo local com a sessao do
+        // utilizador e' exactamente o que nao queremos.*
+        //
+        // Entao o que existe AQUI e' o contrato e a recusa honesta. O Companion responde
+        // sempre -- e responde `verificada: false` com o motivo **exacto**. *Uma rota que
+        // responde «nao posso» e' melhor do que uma rota que nao existe: quem pergunta fica a
+        // saber que perguntou ao sitio certo.*
+        //
+        // O que falta para `verificada: true` e' **uma linha no runtime**: expor
+        // `FindApproved` num canal que o Companion possa autenticar com o par emparelhado.
+        // Naquele dia, muda-se `MOTIVO_SEM_ROTA` para uma chamada -- e nada mais.
+        case "aprovacao:consultar": {
+          // Sem par emparelhado nao ha' sequer direito de perguntar.
+          const pareados = Object.keys(estado.dispositivos ?? {});
+          if (pareados.length === 0) return erro("sem_dispositivo_pareado");
+          const fingerprint = String(m.fingerprint ?? "");
+          if (!/^[a-f0-9]{64}$/.test(fingerprint)) return erro("fingerprint_invalido");
+          if (typeof m.instalacao !== "string" || !pareados.includes(m.instalacao)) {
+            return erro("instalacao_desconhecida");
+          }
+          return {
+            ok: true,
+            cmd: "aprovacao:consultar",
+            fingerprint,
+            // *A verdade: o Companion NAO consultou o store. Nunca diz que sim.*
+            verificada: false,
+            motivo: MOTIVO_SEM_ROTA,
+            // O passo de desbloqueio, dito a quem pergunta.
+            desbloqueio: "expor FindApproved num canal autenticavel pelo par emparelhado",
+          };
         }
 
         default:

@@ -232,3 +232,68 @@ test("a unidade: `criarHost` recusa campo a campo sem subprocesso", async () => 
   await host2.tratar({ cmd: "pairing:confirmar", codigo: ini.codigo, chave: Array.from(bytes), instalacao: "inst-1" });
   assert.equal((await host2.tratar({ cmd: "handshake:aceitar", instalacao: "inst-1", nonce: "x" })).motivo, "prova_ausente");
 });
+
+test("`E-1043`: a consulta de aprovacao RESPONDE -- e responde que NAO verificou", async () => {
+  // *Uma rota que responde «nao posso» e' melhor do que uma rota que nao existe: quem pergunta
+  // fica a saber que perguntou ao sitio certo.*
+  const host = H.criarHost();
+
+  // 1) sem par emparelhado nao ha' sequer direito de perguntar
+  const semPar = await host.tratar({ cmd: "aprovacao:consultar", fingerprint: "a".repeat(64), instalacao: "inst-1" });
+  assert.equal(semPar.ok, false);
+  assert.equal(semPar.motivo, "sem_dispositivo_pareado");
+
+  // 2) emparelhar
+  const ini = await host.tratar({ cmd: "pairing:iniciar" });
+  const chave = await C.derivarChave(ini.codigo, ini.pedido, "inst-1");
+  const bytes = await C.exportarChave(chave);
+  const conf = await host.tratar({
+    cmd: "pairing:confirmar", codigo: ini.codigo, chave: Array.from(bytes), instalacao: "inst-1",
+  });
+  assert.equal(conf.ok, true);
+
+  // 3) fingerprint invalido
+  assert.equal((await host.tratar({ cmd: "aprovacao:consultar", fingerprint: "curto", instalacao: "inst-1" })).motivo,
+    "fingerprint_invalido");
+  assert.equal((await host.tratar({ cmd: "aprovacao:consultar", instalacao: "inst-1" })).motivo,
+    "fingerprint_invalido");
+
+  // 4) instalacao desconhecida
+  assert.equal((await host.tratar({ cmd: "aprovacao:consultar", fingerprint: "a".repeat(64), instalacao: "outra" })).motivo,
+    "instalacao_desconhecida");
+
+  // 5) e a resposta HONESTA
+  const fp = "b".repeat(64);
+  const r = await host.tratar({ cmd: "aprovacao:consultar", fingerprint: fp, instalacao: "inst-1" });
+  assert.equal(r.ok, true);
+  assert.equal(r.fingerprint, fp, "ecoa o fingerprint perguntado");
+  // *A LINHA QUE IMPORTA: o Companion NUNCA diz que verificou.*
+  assert.equal(r.verificada, false, "O COMPANION NAO CONSULTOU O STORE -- NAO PODE DIZER QUE SIM");
+  assert.equal(r.motivo, "sem_rota_autenticavel_no_runtime");
+  assert.equal(r.motivo, H.MOTIVO_SEM_ROTA, "o motivo e' a constante, nao uma string solta");
+  // e diz o passo de desbloqueio, em vez de deixar a pergunta sem resposta
+  assert.equal(typeof r.desbloqueio, "string");
+  assert.ok(r.desbloqueio.includes("FindApproved"), r.desbloqueio);
+});
+
+test("`E-1043`: o Companion NUNCA afirma `verificada: true` -- em nenhuma entrada", async () => {
+  // *Um campo que diz `verificada` sem ter sido verificado e' pior do que nao ter campo.*
+  // Este teste varre TODAS as formas de chamar e confirma que a afirmacao nao existe.
+  const host = H.criarHost();
+  const ini = await host.tratar({ cmd: "pairing:iniciar" });
+  const chave = await C.derivarChave(ini.codigo, ini.pedido, "inst-1");
+  await host.tratar({ cmd: "pairing:confirmar", codigo: ini.codigo, chave: Array.from(await C.exportarChave(chave)), instalacao: "inst-1" });
+
+  const tentativas = [
+    { cmd: "aprovacao:consultar", fingerprint: "c".repeat(64), instalacao: "inst-1" },
+    { cmd: "aprovacao:consultar", fingerprint: "c".repeat(64), instalacao: "inst-1", verificada: true },
+    { cmd: "aprovacao:consultar", fingerprint: "c".repeat(64), instalacao: "inst-1", forcar: true },
+    { cmd: "aprovacao:consultar", fingerprint: "c".repeat(64), instalacao: "inst-1", aprovado: true },
+  ];
+  for (const t of tentativas) {
+    const r = await host.tratar(t);
+    assert.equal(r.verificada, false, "pedido com " + JSON.stringify(t) + " deu verificada=" + r.verificada);
+  }
+  // e a constante de capacidades continua vazia -- *o Companion nao controla o PC.*
+  assert.deepEqual([...H.CAPACIDADES], []);
+});

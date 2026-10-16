@@ -1158,3 +1158,40 @@ tem quem o possa afirmar.
 **Doutrina em uma linha**: a fronteira certa nao e' um silencio -- e' um campo; nao ligar
 o que nao se pode autenticar; e dizer «nao da'» seria falso, dizer «da', mas nao assim»
 e' a verdade.
+
+### Instrucoes de retomada (janela `E-1043`)
+
+**Estado**: branch `fix/checker-relogio`; cabeca do indice `E-1043`; PR #438 **aberto** e
+**nao tocado**; `reviewDecision` **vazio** => sem revisao humana independente.
+
+**Bateria: 34 passos.** OITO E2E por **opt-in** (`-ComE2E`) e as **25 assercoes** da
+politica de ficheiros (passo 27, sem browser):
+  node scripts/hades_browser_bridge_e2e_arquivos.mjs     # browser:files decide
+  node --test apps/hades-browser-bridge/test/arquivos.test.js
+
+**A ROTA DE APROVACAO** (`E-1043`): `aprovacao:consultar` (Companion) e
+`arquivo:consultarAutoridade` (extensao). O Companion responde sempre -- e responde
+`verificada: false`, `motivo: "sem_rota_autenticavel_no_runtime"`, com o
+`desbloqueio` dito na propria resposta.
+
+**O COMPANION NUNCA DIZ `verificada: true`**: oito assercoes no `companion.test.js`,
+incluindo **quatro tentativas de o forcar** (`verificada: true`, `forcar: true`,
+`aprovado: true` no pedido). Todas devolvem `false`.
+
+**A EXTENSAO NAO DEPENDE DA RESPOSTA**: `verificada: true` sobe a autoridade; `false`
+deixa `forma_apenas`; canal indisponivel deixa `forma_apenas` com `canal_indisponivel`.
+*Nunca o contrario: um canal em baixo nao pode fazer uma decisao parecer melhor.*
+
+**`chrome.runtime.reload()` FECHA O POPUP** -- medido: `Target page, context or browser
+has been closed`. E nao era preciso: o caso **sem** `nativeMessaging` mede-se sem
+recarregar, e o caso **com** ela ja' esta' provado no `E-1032`.
+
+**DUAS CATRACAS COMPLEMENTARES**: `hades_index_shape_check.py` varre o **indice**;
+`hades_mission_check.py` varre **todo o codigo**. **Um ID novo continua do MAIOR cunhado.**
+
+**O que NAO fazer**: `reset --hard`, `git clean`, rebase destrutivo, force-push, stash,
+`merge`, tag, release, publicacao externa, ou **resolver threads** do PR #438.
+
+**Doutrina em uma linha**: o que faltava nao era a verificacao -- era a pergunta; uma
+rota que responde «nao posso» e' melhor do que uma rota que nao existe; e nao repetir um
+teste que ja' existe noutro sitio, onde ele corre no sitio certo.

@@ -1304,3 +1304,34 @@ Companion é um processo local **sem sessão**. Dar-lhe a sessão do utilizador 
 - APK Android bloqueado pela DLL JNI (`E-1019`);
 - macOS/iOS `BLOCKED_EXTERNAL` pela **máquina**;
 - benchmark reproduzível (ESTÁGIO 21) não iniciado.
+
+### O que falta (actualizado na janela `E-1043`)
+
+**Fechado**: a pergunta existe. O Companion trata `aprovacao:consultar`, valida o par e o
+fingerprint, e responde **sempre** — com `verificada: false` e o motivo constante. A
+extensão pergunta e **não depende da resposta**: um canal em baixo nunca faz a decisão
+parecer melhor.
+
+**Continua em falta, sem disfarce**:
+- **a verificação continua a NÃO acontecer** -- o que existe é a pergunta e a recusa
+  honesta. O encaixe é `MOTIVO_SEM_ROTA`, **uma constante**;
+- **não há teste que falhe no dia em que o runtime expuser a rota** -- o passo de
+  desbloqueio está **escrito, não vigiado**;
+- **a extensão não executa a transferência** -- decide sobre ela;
+- **`sha256` é medido onde os bytes existem**: a extensão não pode verificar que os bytes
+  transferidos correspondem ao manifesto;
+- o registo vive em `storage.session` (morre com a sessão) e **não é assinado**;
+- **shadow roots fechados**, **cross-origin**, `document.domain`, `srcdoc`: como no `E-1040`;
+- **BFCache** sem execução observada (`E-1038`);
+- **o takeover não tem duração ajustável** (30s fixos);
+- **o Chrome real do utilizador**: a versão 155 deste host **não carrega** por
+  `--load-extension`; exige carregamento manual;
+- **Firefox** e **Safari**;
+- **sem `.crx`, sem assinatura, sem SBOM do pacote**;
+- **a chave privada de distribuição está fora do Git**;
+- **`CAPACIDADES` VAZIO**: o Companion **não** controla o PC;
+- **taxa e pairing em memória**;
+- ligação da extensão ao **Mission Control** (`missao` fica a `null`);
+- APK Android bloqueado pela DLL JNI (`E-1019`);
+- macOS/iOS `BLOCKED_EXTERNAL` pela **máquina**;
+- benchmark reproduzível (ESTÁGIO 21) não iniciado.

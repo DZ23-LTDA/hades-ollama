@@ -541,6 +541,58 @@ async function medirBytes(mensagem) {
   };
 }
 
+/* --------------------------------- consulta de aprovacao (`E-1043`) */
+
+/**
+ * CONSULTA O COMPANION PELA APROVACAO.
+ *
+ * O caminho existe ponta a ponta: extensao -> native messaging -> Companion. **E o Companion
+ * responde que NAO verificou** -- porque a rota do runtime e' de sessao e ele nao tem sessao.
+ *
+ * *O que isto acrescenta nao e' a verificacao: e' a PERGUNTA.* Antes desta entrada, a
+ * extensao decidia sozinha e nao havia a quem perguntar. Agora pergunta ao sitio certo,
+ * recebe uma resposta honesta, e **nao deixa a decisao depender dela**:
+ *
+ *   * se o Companion disser `verificada: true`, a autoridade **sobe** para `verificada`;
+ *   * se disser `false`, fica `forma_apenas` -- **e o motivo viaja**;
+ *   * se o canal nem existir (sem `nativeMessaging`), fica `forma_apenas` com
+ *     `motivo: "canal_indisponivel"`.
+ *
+ * *Nunca o contrario: um canal em baixo nao pode fazer uma decisao parecer melhor.*
+ */
+async function consultarAutoridade(fingerprint) {
+  const base = {
+    ok: true, fingerprint,
+    verificada: false, autoridade: AUTORIDADE_DA_EXTENSAO,
+    motivo: "canal_indisponivel", desbloqueio: null,
+  };
+  if (typeof chrome?.runtime?.sendNativeMessage !== "function") return base;
+  try {
+    const estado = await lerEstado();
+    const r = await chrome.runtime.sendNativeMessage(NOME_DO_HOST, {
+      cmd: "aprovacao:consultar", fingerprint,
+      // A instalacao sobe quem pergunta. Sem par emparelhado, o Companion recusa.
+      instalacao: estado.instalacao ?? null,
+    });
+    if (!r || r.ok !== true) {
+      return { ...base, motivo: r?.motivo ?? "resposta_invalida" };
+    }
+    // A unica coisa que pode subir a autoridade: o Companion dizer que verificou.
+    const verificada = r.verificada === true;
+    return {
+      ok: true,
+      fingerprint: r.fingerprint ?? fingerprint,
+      verificada,
+      autoridade: verificada ? "verificada" : AUTORIDADE_DA_EXTENSAO,
+      motivo: r.motivo ?? null,
+      desbloqueio: r.desbloqueio ?? null,
+    };
+  } catch (e) {
+    // *Um canal em baixo nao pode fazer uma decisao parecer melhor.*
+    return { ...base, motivo: "erro_de_canal", detalhe: String(e?.message ?? e).slice(0, 120) };
+  }
+}
+
 /* -------------------------------------------------- mensagens e ciclo de vida */
 
 chrome.runtime.onMessage.addListener((mensagem, remetente, responder) => {
@@ -570,6 +622,9 @@ chrome.runtime.onMessage.addListener((mensagem, remetente, responder) => {
     // download -- era uma decisao auditavel sobre ficheiros.*
     : t === "arquivo:avaliar" ? avaliarArquivo(mensagem)
     : t === "arquivo:medir" ? medirBytes(mensagem)
+    // `E-1043`: pergunta ao Companion se ele consegue VERIFICAR a aprovacao. O caminho
+    // existe; a resposta honesta e' que nao pode. *A extensao pergunta e nao depende.*
+    : t === "arquivo:consultarAutoridade" ? consultarAutoridade(String(mensagem.fingerprint ?? ""))
     : null;
   if (doCanal) {
     doCanal.then(responder).catch((erro) =>

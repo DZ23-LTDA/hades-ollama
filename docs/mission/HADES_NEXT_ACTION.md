@@ -611,3 +611,24 @@ rota **no Companion** (não na extensão) que use o **canal emparelhado**
 (`pairing:iniciar` / `handshake:*`, que já existem do `E-1031`) para se autenticar
 perante o runtime e consultar `FindApproved`. Só então `verificada` tem quem o possa
 afirmar. Tudo interno.
+
+### A proxima accao unica (janela `E-1043`)
+
+**A rota de aprovação existe ponta a ponta — e responde que não pode verificar.**
+`aprovacao:consultar` no Companion, `arquivo:consultarAutoridade` na extensão: o caminho
+completo extensão → native messaging → Companion. ***O que faltava não era a verificação:
+era a pergunta.***
+
+O Companion responde `{ok: true, verificada: false, motivo:
+"sem_rota_autenticavel_no_runtime", desbloqueio: "expor FindApproved ..."}`.
+⇒ ***Uma rota que responde «não posso» é melhor do que uma rota que não existe: quem
+pergunta fica a saber que perguntou ao sítio certo.***
+
+E **oito asserções** provam que ele **nunca** diz `verificada: true` — incluindo quatro
+tentativas de o forçar.
+
+**A proxima accao unica**: **a catraca do encaixe**. Hoje o passo de desbloqueio é a
+constante `MOTIVO_SEM_ROTA`, **escrita mas não vigiada** — se o runtime expuser a rota,
+nada falha. Fazer um teste que **falhe quando `FindApproved` passar a estar acessível**
+(por exemplo, quando existir um endpoint loopback de approvals), para que o encaixe não
+fique esquecido. Tudo interno.

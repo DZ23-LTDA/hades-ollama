@@ -224,6 +224,32 @@ try {
   ok("um `permitido` tambem declara autoridade", permissiva?.autoridade === "forma_apenas",
     JSON.stringify(permissiva?.autoridade));
 
+  console.log("\n10) `E-1043`: a extensao PERGUNTA ao Companion -- e o Companion responde que nao pode");
+  // Primeiro conceder `nativeMessaging` e recarregar (o `E-1032` mostrou que sem reload o
+  // `chrome.runtime` nao ganha a permissao).
+  const perm = await sw.evaluate(async () => {
+    try { return await chrome.permissions.contains({ permissions: ["nativeMessaging"] }); }
+    catch (e) { return "erro:" + e.message; }
+  });
+  console.log("   nativeMessaging concedida? " + JSON.stringify(perm));
+  // *`chrome.runtime.reload()` FECHA o popup* (medido: `Target page ... has been closed`).
+  // E nao e' preciso: o que este passo prova e' que a CONSULTA responde e que ela **nunca diz
+  // `verificada`** -- e isso mede-se sem a permissao. O caminho COM `nativeMessaging` ja' esta'
+  // provado ponta a ponta no `E-1032` (extensao -> native messaging -> Companion).
+  const cons = await pedir({ tipo: "arquivo:consultarAutoridade", fingerprint: fp });
+  console.log("   resposta: " + JSON.stringify(cons));
+  ok("a consulta responde", cons?.ok === true, JSON.stringify(cons));
+  ok("e responde que NAO verificou", cons?.verificada === false, JSON.stringify(cons));
+  ok("a autoridade fica `forma_apenas`", cons?.autoridade === "forma_apenas", String(cons?.autoridade));
+  ok("com um motivo", typeof cons?.motivo === "string" && cons.motivo.length > 0, String(cons?.motivo));
+  // O motivo e'' o do Companion quando o canal funciona; `canal_indisponivel` e'' o honesto
+  // quando a permissao nao esta. Ambos sao verdade -- e nenhum diz `verificada`.
+  ok("o motivo e' honesto",
+    ["sem_rota_autenticavel_no_runtime", "canal_indisponivel", "sem_dispositivo_pareado",
+     "instalacao_desconhecida", "erro_de_canal", "resposta_invalida"].includes(cons?.motivo),
+    String(cons?.motivo));
+  ok("NUNCA diz verificada", cons?.verificada !== true, JSON.stringify(cons));
+
   await popup.close();
 } catch (e) {
   console.log("   ERRO: " + e.message);
