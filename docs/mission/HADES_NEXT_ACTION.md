@@ -651,3 +651,19 @@ O que falta e é interno e executável: **os quatro achados P2 de integridade do
 comentários obsoletos em `types.go`/`runtime.go`/`step_routing.go`, e o
 `HADES_ADAPTIVE_COWORK_GAP_MATRIX.md`) — são findings de revisão válidos, não expandem
 escopo, e fecham dívida de rastreabilidade. Tudo interno.
+
+### A proxima accao unica (janela `E-1045`)
+
+**Os 12 findings do PR #438 foram medidos um a um contra o HEAD.** Dez estão corrigidos
+(#2–#6 no `E-909`, #7 no `E-912`, #9 no `E-910`) ou são **falsos positivos do bot**
+(#10 e #11).
+
+⇒ ***#11 — «pipe literal numa célula Markdown» — **não se reproduz**: renderizei as 837
+linhas com o `marked` e **todas produzem 5 campos**. E a minha medição dele errou **três
+vezes** (767, 303, 768) antes de eu usar um renderizador. ***Não se adivinha um
+renderizador: usa-se um.*** Eu ia corrigir 768 linhas correctas.***
+
+**A proxima accao unica**: **o #8 é o único não totalmente revalidado.**
+`declared_categories_measured_test.go` foi inspeccionado **por nome de teste**, não pela
+alegação contra o **comportamento real** do checker. Medir o que o teste afirma, correr o
+checker e confrontar os dois — e corrigir a alegação se divergir. Tudo interno.

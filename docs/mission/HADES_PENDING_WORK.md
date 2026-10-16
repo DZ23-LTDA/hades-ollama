@@ -1364,3 +1364,32 @@ asserções provam que ela **discrimina** — com 4 injeções e uma contraprova
 - APK Android bloqueado pela DLL JNI (`E-1019`);
 - macOS/iOS `BLOCKED_EXTERNAL` pela **máquina**;
 - benchmark reproduzível (ESTÁGIO 21) não iniciado.
+
+### O que falta (actualizado na janela `E-1045`)
+
+**Fechado**: os 12 findings do PR #438 foram medidos contra o HEAD. **Dez estão corrigidos
+ou são falsos positivos do bot.** E **nenhuma thread do GitHub foi tocada** — proibido sem
+autorização.
+
+**Continua em falta, sem disfarce**:
+- **#8 não totalmente revalidado**: `declared_categories_measured_test.go` foi inspeccionado
+  por **nome de teste**, não pela alegação contra o **comportamento real** do checker;
+- **a medição do #11 usa o `marked` e um cabeçalho de 5 colunas** -- outro renderizador
+  (GitHub, Pandoc) podia divergir em casos de borda; **não testei no GitHub real**;
+- **as 14 threads do PR continuam abertas** -- não resolvi nenhuma (proibido);
+- **o encaixe da aprovação continua por ligar** (autoridade `forma_apenas`);
+- **a extensão não executa a transferência** -- decide sobre ela;
+- **shadow roots fechados**, **cross-origin**, `document.domain`, `srcdoc`: como no `E-1040`;
+- **BFCache** sem execução observada (`E-1038`);
+- **o takeover não tem duração ajustável** (30s fixos);
+- **o Chrome real do utilizador**: a versão 155 deste host **não carrega** por
+  `--load-extension`; exige carregamento manual;
+- **Firefox** e **Safari**;
+- **sem `.crx`, sem assinatura, sem SBOM do pacote**;
+- **a chave privada de distribuição está fora do Git**;
+- **`CAPACIDADES` VAZIO**: o Companion **não** controla o PC;
+- **taxa e pairing em memória**;
+- ligação da extensão ao **Mission Control** (`missao` fica a `null`);
+- APK Android bloqueado pela DLL JNI (`E-1019`);
+- macOS/iOS `BLOCKED_EXTERNAL` pela **máquina**;
+- benchmark reproduzível (ESTÁGIO 21) não iniciado.

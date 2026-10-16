@@ -1229,3 +1229,35 @@ nao monta o mundo que o checker mede acusa o checker de um defeito que e' seu.*
 **Doutrina em uma linha**: um passo de desbloqueio escrito nao e' um passo de desbloqueio
 vigiado; um detector que conhece duas formas de uma coisa nao a conhece; e uma catraca
 nao e' um obstaculo -- e' um lembrete que nao se esquece.
+
+### Instrucoes de retomada (janela `E-1045`)
+
+**Estado**: branch `fix/checker-relogio`; cabeca do indice `E-1045`; PR #438 **aberto** e
+**nao tocado** -- *as 14 threads continuam como estavam*; `reviewDecision` **vazio**.
+
+**Bateria: 36 passos, 27 OK, 0 FAIL.** OITO E2E por opt-in e **tres** catracas.
+
+**OS 12 FINDINGS, MEDIDOS**:
+- **#2-#6** -> `E-909` (`TRIAGADOS` por assinatura de conteudo, `sem_comentarios`, o
+  `_test.py` a importar `checker.TRIAGADOS`);
+- **#7** -> `E-912` (o SIMBOLO, nao a chamada);
+- **#9** -> `E-910` (comentario corrigido por medicao, texto antigo preservado);
+- **#10 e #11** -> **FALSOS POSITIVOS** do bot;
+- **#1** -> tratado em rodada anterior;
+- **#8** -> **nao totalmente revalidado** (inspeccionado por nome de teste, nao pela
+  alegacao contra o comportamento do checker).
+
+**#11 -- E EU ERREI TRES VEZES A MEDI-LO**: 767, depois 303, depois 768. A quarta medicao
+usou o `marked` (ja' no `node_modules`) e deu **0**: as 837 linhas produzem 5 campos.
+*NAO SE ADIVINHA UM RENDERIZADOR: USA-SE UM.* E: *antes de curar, contar a coisa certa* --
+eu ia corrigir 768 linhas correctas.
+
+**DUAS CATRACAS COMPLEMENTARES**: `hades_index_shape_check.py` varre o **indice**;
+`hades_mission_check.py` varre **todo o codigo**. **Um ID novo continua do MAIOR cunhado.**
+
+**O que NAO fazer**: `reset --hard`, `git clean`, rebase destrutivo, force-push, stash,
+`merge`, tag, release, publicacao externa, ou **resolver threads** do PR #438.
+
+**Doutrina em uma linha**: um finding de bot e' uma hipotese -- duas das doze eram falsas;
+quando a pergunta e' «o que isto faz?», a resposta nao se deduz, executa-se; e a pressa de
+corrigir e' o caminho mais curto para estragar.

@@ -543,4 +543,17 @@ if ($LASTEXITCODE -eq 3) {
   '    FALHA'
 } else { '    OK' }
 $passos += 'catraca-encaixe'
+
+''
+# E-1045: o RENDERIZADOR do indice. *Nao se adivinha um renderizador: usa-se um.*
+# Renderiza as entradas com o `marked` e exige 5 campos em todas -- as contagens de `|` deram
+# 767, 303 e 768, e todas estavam erradas.
+'--- 30. RENDER do indice: todas as entradas com 5 campos'
+$saidaRen = & node scripts/hades_index_render_check.mjs 2>&1
+$saidaRen | Select-Object -Last 3 | ForEach-Object { "    " + $_.ToString().Substring(0, [Math]::Min(110, $_.ToString().Length)) }
+if ($LASTEXITCODE -ne 0) {
+  $falhas.Add("hades_index_render_check.mjs (exit $LASTEXITCODE)")
+  '    FALHA'
+} else { '    OK' }
+$passos += 'render-indice'
 "GATES LOCAIS: $($passos -join ' + ') VERDES"
