@@ -345,6 +345,22 @@ if ($ComE2E) {
 }
 
 ''
+# E-1033: o controle de ABA. *O canal provado nao prova que o HADES consegue observar e
+# interagir com uma pagina -- nem que ele RECUSA o que nao deve.* Servidor local, campo de
+# senha, badge e revogacao. Opt-in pelo mesmo motivo do passo 17.
+'--- 18. E2E DE ABA: concessao, DOM, campo sensivel, badge, revogacao'
+if ($ComE2E) {
+  $saidaAba = & node scripts/hades_browser_bridge_e2e_aba.mjs 2>&1
+  $saidaAba | Select-Object -Last 3 | ForEach-Object { "    " + $_.ToString().Substring(0, [Math]::Min(110, $_.ToString().Length)) }
+  if ($LASTEXITCODE -ne 0) {
+    $falhas.Add("hades_browser_bridge_e2e_aba.mjs (exit $LASTEXITCODE)")
+    '    FALHA'
+  } else { '    OK' }
+} else {
+  '    PULADO (opt-in: use -ComE2E)'
+}
+
+''
 if ($falhas.Count -gt 0) {
   "GATES LOCAIS: $($falhas.Count) falha(s)"
   $falhas | ForEach-Object { "  - $_" }
@@ -368,4 +384,5 @@ $passos += 'pacote-extensao'
 # que ninguem sabe que correu -- a mesma licao do E-989, aplicada pela terceira vez.
 $passos += 'native-host-id'
 $passos += 'native-host-testes'
+$passos += 'e2e-aba'
 "GATES LOCAIS: $($passos -join ' + ') VERDES"

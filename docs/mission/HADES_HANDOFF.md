@@ -814,3 +814,38 @@ tag, release, publicacao externa, ou **resolver threads** do PR #438.
 **Doutrina em uma linha**: um protocolo que nunca atravessou um navegador a serio nao esta'
 provado; um `path` que o SO nao executa nao e' um host; uma promessa que trava e' pior do que
 uma excecao; e o gesto do utilizador nao sobrevive a um `sendMessage`.
+
+### Instrucoes de retomada (janela `E-1033`)
+
+**Estado**: branch `fix/checker-relogio`; cabeca do indice `E-1033`; PR #438 **aberto** e
+**nao tocado**; `reviewDecision` **vazio** => sem revisao humana independente.
+
+**Bateria: 25 passos.** Dois E2E entram por **opt-in** (`-ComE2E`), porque abrem o Edge:
+  powershell -NoProfile -ExecutionPolicy Bypass -File scripts\hades_local_gates.ps1 -ComE2E
+
+**Os dois E2E, sozinhos**:
+  node scripts/hades_browser_bridge_e2e.mjs       # canal: extensao <-> Companion
+  node scripts/hades_browser_bridge_e2e_aba.mjs   # aba: DOM, escrita, RECUSA, badge
+
+**A CONTRADICAO QUE O E2E DE ABA EXPOS** (`E-1033`): o protocolo tinha
+`loopbackAutorizado()` -- e **ninguem o chamava**; e o `content_scripts.matches` cobria
+**so** `127.0.0.1`/`localhost`, exactamente as origens que o `validarUrl` **sempre**
+recusa. *A unica origem onde o content script era injectado era a unica que o HADES nao
+podia usar.* Cada metade tinha o seu teste verde; o defeito vivia entre elas.
+
+**O opt-in de rede privada e' do UTILIZADOR**: `chrome.storage.local`, chave canonica
+`OLLAMA_AGENT_BROWSER_ALLOW_PRIVATE`, **desligado por omissao**, controlo visivel no
+popup. Fail-closed: sem conseguir ler, continua recusado.
+
+**E O `sendMessage` DO WORKER NAO FUNCIONA PARA SI PROPRIO** (`Receiving end does not
+exist`) -- nos E2E, emita do **popup**, que e' um contexto de extensao valido.
+
+**DUAS CATRACAS COMPLEMENTARES**: `hades_index_shape_check.py` varre o **indice**;
+`hades_mission_check.py` varre **todo o codigo**. **Um ID novo continua do MAIOR cunhado.**
+
+**O que NAO fazer**: `reset --hard`, `git clean`, rebase destrutivo, force-push, stash,
+`merge`, tag, release, publicacao externa, ou **resolver threads** do PR #438.
+
+**Doutrina em uma linha**: uma protecao que ninguem consegue exercer nao protege -- esconde;
+duas metades coerentes podem ser juntas impossiveis; e um campo de senha recusado com o DOM
+vazio vale mais do que dez documentos a dizer que a recusa existe.

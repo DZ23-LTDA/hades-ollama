@@ -171,5 +171,39 @@ if (btCanal) {
   });
 }
 
+/**
+ * O OPT-IN DE REDE PRIVADA (`E-1033`).
+ *
+ * O protocolo ja' tinha `loopbackAutorizado()` -- **mas ninguem o chamava**, logo a rede
+ * privada era sempre recusada e o opt-in era codigo morto. E o `content_scripts.matches`
+ * cobre *so'* `127.0.0.1` e `localhost`: a unica origem onde o content script e'
+ * injectado era a unica que o HADES nao podia usar.
+ *
+ * Aqui o utilizador LIGA-O, com o risco escrito ao lado. Por omissao continua DESLIGADO.
+ */
+async function atualizarOptIn() {
+  const r = await pedir({ tipo: "optin:estado" });
+  const bt = $("bt-optin");
+  if (!bt) return;
+  bt.textContent = r?.ligado ? "Desligar rede privada" : "Ligar rede privada";
+  const alvo = $("optin-estado");
+  if (alvo) {
+    alvo.textContent = r?.ligado
+      ? "Ligado: o HADES pode abrir localhost e 127.0.0.1."
+      : "Desligado: localhost e 127.0.0.1 são recusados.";
+  }
+}
+
+const btOptIn = $("bt-optin");
+if (btOptIn) {
+  btOptIn.addEventListener("click", async () => {
+    const atual = await pedir({ tipo: "optin:estado" });
+    const r = await pedir({ tipo: "optin:definir", ligado: !atual?.ligado });
+    dizer(r?.ligado ? "Rede privada ligada por decisão sua." : "Rede privada desligada.", false);
+    await atualizarOptIn();
+  });
+}
+
 atualizar();
 atualizarCanal();
+atualizarOptIn();

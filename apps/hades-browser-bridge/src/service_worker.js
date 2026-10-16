@@ -16,11 +16,43 @@
 //   * nada de eval, nada de codigo remoto.
 
 import {
-  SCOPES, TOOL, LIMITES, validarUrl, guardarRota, campoSensivel,
+  SCOPES, TOOL, LIMITES, validarUrl, guardarRota, campoSensivel, loopbackAutorizado,
 } from "./protocol.js";
 
 /** Chave unica de armazenamento. Uma so' fonte de verdade. */
 const CHAVE = "hades.bridge.v1";
+
+/**
+ * O OPT-IN de rede privada (`E-1033`).
+ *
+ * O protocolo ja' tinha `loopbackAutorizado()` -- com o MESMO nome da variavel do
+ * `browser_helper.py` -- mas **ninguem o chamava**: o service worker validava o URL sem
+ * opcoes, logo `permitirPrivado` era sempre `false` e o opt-in era **codigo morto**.
+ *
+ * E havia uma contradicao pior: o `content_scripts.matches` do manifest cobre **so'**
+ * `127.0.0.1` e `localhost` -- exactamente as origens que o protocolo **sempre** recusa.
+ * A unica origem onde o content script e' injectado era a unica que o HADES nao podia
+ * usar. Duas metades coerentes, juntas impossiveis.
+ *
+ * Agora o opt-in e' do UTILIZADOR, explicito, persistente e revogavel -- em
+ * `chrome.storage.local`, com o nome canonico, e nunca ligado por omissao.
+ */
+const CHAVE_OPTIN = "OLLAMA_AGENT_BROWSER_ALLOW_PRIVATE";
+
+async function lerOptIn() {
+  try {
+    const bruto = await chrome.storage.local.get(CHAVE_OPTIN);
+    return loopbackAutorizado(bruto);
+  } catch {
+    return false; // fail-closed: sem conseguir ler, a rede privada continua recusada
+  }
+}
+
+async function definirOptIn(ligar) {
+  // Grava o valor CANONICO ("1"), o que `loopbackAutorizado` espera.
+  await chrome.storage.local.set({ [CHAVE_OPTIN]: ligar ? "1" : "0" });
+  return { ok: true, ligado: ligar === true };
+}
 
 /**
  * O nome do host de native messaging. Tem de ser o MESMO que o `name` do manifesto
@@ -111,16 +143,32 @@ async function limparBadge(tabId) {
 /**
  * Concede a aba ATIVA ao HADES, a pedido explicito do utilizador.
  * So' aceita origem http/https validada; guarda aba, janela, origem e prazo.
+ *
+ * Aceita `tabId` explicito (`E-1033`): sem isso, so' a aba activa podia ser concedida --
+ * e uma superficie que escolhe a aba numa lista (ou o proprio E2E, onde o popup e' uma
+ * aba e passa a ser ele a aba activa) nao tinha como conceder a aba certa. O caminho
+ * por omissao continua a ser a aba activa.
  */
-async function conectarAbaAtiva() {
-  const [aba] = await chrome.tabs.query({ active: true, currentWindow: true });
+async function conectarAbaAtiva(tabIdPedido) {
+  let aba;
+  if (Number.isFinite(Number(tabIdPedido))) {
+    try {
+      aba = await chrome.tabs.get(Number(tabIdPedido));
+    } catch {
+      return { ok: false, motivo: "aba_inexistente" };
+    }
+  } else {
+    [aba] = await chrome.tabs.query({ active: true, currentWindow: true });
+  }
   if (!aba || typeof aba.id !== "number") {
     return { ok: false, motivo: "sem_aba_ativa" };
   }
   // incognito: recusa, mesmo que o manifest ja' o bloqueie
   if (aba.incognito) return { ok: false, motivo: "incognito_recusado" };
 
-  const v = validarUrl(aba.url ?? "");
+  // `E-1033`: o opt-in de rede privada tem de ser LIDO e passado, senao `permitirPrivado`
+  // era sempre `false` e o `loopbackAutorizado` do protocolo nunca servia para nada.
+  const v = validarUrl(aba.url ?? "", { permitirPrivado: await lerOptIn() });
   if (!v.ok) return { ok: false, motivo: v.motivo };
 
   const dono = new URL(v.url).origin;
@@ -181,7 +229,7 @@ async function tratarAccao(mensagem) {
   if (!mensagem || typeof mensagem !== "object") return { ok: false, motivo: "mensagem_invalida" };
   const { tipo } = mensagem;
 
-  if (tipo === "conectar") return conectarAbaAtiva();
+  if (tipo === "conectar") return conectarAbaAtiva(mensagem.tabId);
   if (tipo === "desconectar") return desconectar(mensagem.tabId);
   if (tipo === "estado") {
     const estado = await lerEstado();
@@ -321,6 +369,8 @@ chrome.runtime.onMessage.addListener((mensagem, remetente, responder) => {
     : t === "canal:ligar" ? ligarCanal()
     : t === "canal:desligar" ? desligarCanal()
     : t === "canal:diagnostico" ? diagnosticoDoCanal()
+    : t === "optin:estado" ? lerOptIn().then((ligado) => ({ ok: true, ligado }))
+    : t === "optin:definir" ? definirOptIn(mensagem.ligado === true)
     : null;
   if (doCanal) {
     doCanal.then(responder).catch((erro) =>
@@ -355,7 +405,7 @@ chrome.tabs.onUpdated.addListener(async (tabId, info) => {
     await limparBadge(tabId);
     return;
   }
-  const v = validarUrl(info.url ?? "");
+  const v = validarUrl(info.url ?? "", { permitirPrivado: await lerOptIn() });
   if (!v.ok || new URL(v.url).origin !== c.origem) {
     // nova origem: revoga. O utilizador reconecta se quiser.
     delete estado.concessoes[chaveDaAba(tabId)];

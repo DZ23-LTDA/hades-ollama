@@ -432,3 +432,19 @@ Pelo caminho cairam **4 defeitos que nenhum teste anterior podia ver**:
 **canal**; nao prova **observar o DOM de uma pagina real, clicar, e recusar um campo de senha**.
 E' um teste com uma pagina local e a extensao a fazer `browser:navigate` -> `browser:files`
 com a concessao por aba, o badge, o takeover e a revogacao. Tudo interno.
+
+### A proxima accao unica (janela `E-1033`)
+
+**O controle de aba funciona ponta a ponta** (`E-1033`): observar o DOM real, escrever
+num campo legítimo (**o valor chega ao DOM**), **recusar senha e cartão**, badge `ON`,
+revogar. Exit 0.
+
+E caiu uma **contradição interna** que nenhum teste de unidade via: o protocolo tinha o
+opt-in de loopback -- e **ninguém o chamava**; e o `content_scripts.matches` cobria
+**só** `127.0.0.1`/`localhost`, as origens que o protocolo **sempre** recusava. *A única
+origem onde o content script era injectado era a única que o HADES não podia usar.*
+
+**A proxima accao unica**: **o takeover humano**. O `browser:takeover` existe no
+protocolo e é o scope que falta exercitar: enquanto o utilizador digita, o agente **não**
+disputa o campo; pausar; devolver a sessão; e a revogação por **mudança de origem**
+(que tem código e não tem E2E). Tudo interno, na mesma página local.

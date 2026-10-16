@@ -1013,3 +1013,28 @@ o gesto que nao sobrevive ao `sendMessage`, e o `path` a apontar para `.mjs`.
 - APK Android bloqueado pela DLL JNI (`E-1019`), desbloqueio = runner Linux;
 - macOS/iOS `BLOCKED_EXTERNAL` pela **maquina**;
 - benchmark reproduzivel (ESTAGIO 21) nao iniciado.
+
+### O que falta (actualizado na janela `E-1033`)
+
+**Fechado**: o controle de aba ponta a ponta. Observar o DOM real, escrever num campo
+legítimo com o valor **verificado no DOM**, **recusar senha e cartão** com o DOM a ficar
+vazio, badge `ON`, revogar e recusar depois. E o opt-in de rede privada deixou de ser
+código morto: passou a ser decisão do utilizador, visível no popup, desligado por omissão.
+
+**Continua em falta, sem disfarce**:
+- **takeover humano**: o scope `browser:takeover` existe e **não** foi exercitado;
+- **revogação por mudança de origem**: tem código e **não** tem E2E;
+- **frames e shadow DOM**: nao testados;
+- **downloads e uploads**: nao testados (o `preencher` recusa `type=file`, sem E2E);
+- **o Chrome real do utilizador**: a versão 155 deste host **não carrega** por
+  `--load-extension` (medido); exige carregamento manual;
+- **Firefox** (não usa registo do Windows; falta o `.xpi`) e **Safari** (macOS/Xcode);
+- **sem `.crx`, sem assinatura, sem SBOM do pacote**;
+- **a chave privada de distribuição está fora do Git** (`_tmp/ext-chave-privada.pem`);
+- **`CAPACIDADES` VAZIO**: o Companion **não** controla o PC. Computer use não existe;
+- **taxa e pairing em memória**;
+- sem TLS de loopback, sem rate-limit do SO, sem DNS rebinding a nível de socket;
+- ligação da extensão ao **Mission Control** (`missao`/`aprovado` ficam a `null`);
+- APK Android bloqueado pela DLL JNI (`E-1019`);
+- macOS/iOS `BLOCKED_EXTERNAL` pela **máquina**;
+- benchmark reproduzível (ESTÁGIO 21) não iniciado.

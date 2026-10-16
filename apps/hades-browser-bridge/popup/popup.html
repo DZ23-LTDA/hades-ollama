@@ -50,6 +50,20 @@
     </div>
   </section>
 
+  <section aria-labelledby="t-privada">
+    <h2 id="t-privada">Rede privada</h2>
+    <p class="nota">
+      Por omissão o HADES <strong>recusa</strong> <code>localhost</code> e
+      <code>127.0.0.1</code> — é a proteção contra SSRF e contra alcançar serviços que
+      só existem na sua máquina. Ligue aqui <strong>só</strong> se precisar de testar
+      uma aplicação local, e desligue quando terminar.
+    </p>
+    <p id="optin-estado" class="mono" role="status" aria-live="polite">—</p>
+    <div class="accoes">
+      <button id="bt-optin" type="button">Ligar rede privada</button>
+    </div>
+  </section>
+
   <section aria-labelledby="t-esc">
     <h2 id="t-esc">Permissões</h2>
     <ul id="escopos" class="escopos"></ul>
