@@ -75,7 +75,17 @@ jobs:
           python3 -m py_compile scripts/hades_index_shape_check.py
           python3 scripts/hades_index_shape_check_test.py
           python3 scripts/hades_index_shape_check.py --check
+      # A JANELA DE CITACAO dos documentos de retomada (E-1008): *o `mission_check` exige
+      # «alguma evidencia >= E-960», e um documento de retomada parado no E-1000 satisfaz
+      # PARA SEMPRE.* Esta catraca mede **quao recente** a citacao e' -- a menos de 12
+      # evidencias da cabeca do indice.
+      - name: Verify the handoff documents cite the head of the index (window)
+        run: |
+          python3 -m py_compile scripts/hades_handoff_window_check.py
+          python3 scripts/hades_handoff_window_check_test.py
+          python3 scripts/hades_handoff_window_check.py --check
       - name: Verify mission bookkeeping (no phantom evidence, coherent verdict)
+
         run: |
           python3 scripts/hades_mission_check.py
           python3 scripts/hades_mission_check_docs_test.py

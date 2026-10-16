@@ -203,6 +203,18 @@ $saidaForma2 = & python -X utf8 scripts/hades_index_shape_check.py --check 2>&1
 $saidaForma2 | Select-Object -First 6 | ForEach-Object { "    $_" }
 if ($LASTEXITCODE -ne 0) { $falhas.Add("hades_index_shape_check.py --check (exit $LASTEXITCODE)") } else { '    OK' }
 
+# *POR QUE ISTO EXISTE:* o `E-1008`. O `mission_check` exige «alguma evidencia >= E-960», e um
+# documento de retomada parado no E-1000 satisfaz PARA SEMPRE. Esta catraca mede a JANELA: o
+# maior ID citado tem de estar a menos de 12 evidencias da cabeca do indice.
+'--- 10. JANELA de citacao dos documentos de retomada'
+$saidaJanela = & python -X utf8 scripts/hades_handoff_window_check_test.py 2>&1
+$saidaJanela | Select-Object -Last 2 | ForEach-Object { "    $_" }
+if ($LASTEXITCODE -ne 0) { $falhas.Add("hades_handoff_window_check_test.py (exit $LASTEXITCODE)") }
+$saidaJanela2 = & python -X utf8 scripts/hades_handoff_window_check.py --check 2>&1
+$saidaJanela2 | Select-Object -First 6 | ForEach-Object { "    $_" }
+if ($LASTEXITCODE -ne 0) { $falhas.Add("hades_handoff_window_check.py --check (exit $LASTEXITCODE)") } else { '    OK' }
+
+
 ''
 if ($falhas.Count -gt 0) {
   "GATES LOCAIS: $($falhas.Count) falha(s)"
