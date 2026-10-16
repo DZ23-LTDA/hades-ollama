@@ -361,12 +361,45 @@ def normalizar_volateis(texto: str) -> str:
 
     *A escolha nao foi retirar a informacao* — o `gate_dirty` e' exactamente o que prova
     que ha' WIP, e o §ESTAGIO 22 quer essa prova. *A escolha foi o `--check` comparar o que
-    e' estavel* e **declarar as volateis como nao comparadas**. As estaveis (`gate_head`,
-    `gate_branch`) continuam a ser comparadas, e sao elas que provam o **mesmo snapshot**.
+    e' estavel* e **declarar as volateis como nao comparadas**. As estaveis (`gate_branch`)
+    continuam a ser comparadas, e sao elas que provam o **mesmo snapshot**.
 
-    Volateis removidas: `gate_dirty` (muda com qualquer ficheiro escrito).
+    **E-993 — eu tinha aplicado so' METADE desta cura, e o CI provou-o.** O `gate_head`
+    continuava a ser **comparado**. *E num workflow `pull_request`, o `actions/checkout` faz
+    checkout do **merge commit sintetico*** — pelo que `git rev-parse HEAD` no CI **nunca**
+    e' o SHA da branch. => *o passo `hades_release_gate.py --check` do
+    `class-a-plus-integrity.yaml` falhou em **205a1705f**, e os dois passos seguintes
+    ficaram `skipped` porque o job para no primeiro `failure`* => *o meu manifesto e o meu
+    inventario **nunca correram no CI**.*
+
+    *E o erro de raciocinio foi este*: eu escrevi um gate que **pergunta ao CI** em que commit
+    ele corre, *como se a resposta fosse o commit candidato*. **Nao e':** em PR, HEAD e' um
+    commit que **nao existe** fora do CI. => *logo `gate_head` e' um facto sobre **onde o gate
+    corre**, e nao sobre **o que ele prova***. O que ele prova e' o `measured_commit` — *que
+    esta' gravado no texto que este modulo compara*.
+
+    Volateis removidas: `gate_dirty` (muda com qualquer ficheiro escrito), `gate_head`
+    (e' o merge commit no CI) e `gate_branch` (em `pull_request` o checkout e' **detached
+    HEAD**, logo o ramo medido no CI **nao e'** o ramo da branch). **O `gate_snapshot` fica
+    no documento**: *e' informacao para o leitor, e nao criterio para o `--check`.*
+
+    *E a terceira so' apareceu porque o teste a mediu*: eu tinha classificado `gate_branch`
+    como **estavel** e troquei-o no teste de simulacao -- *e o `--check` falhou (exit 1)*.
+    Classifiquei-o por intuicao, e a intuicao estava errada. => e' o `E-992` («a distincao
+    e' a coisa toda») outra vez: **o que descreve ONDE o gate corre nao pode ser criterio do
+    que ele PROVA.**
     """
-    volateis = ("| **Entradas nao commitadas** (`gate_dirty`) |",)
+    volateis = (
+        "| **Entradas nao commitadas** (`gate_dirty`) |",
+        "| **Snapshot real** (`gate_head`) |",
+        "| **Ramo do snapshot** (`gate_branch`) |",
+        # **E-993, quarta volátil, e tambem so' apareceu porque o teste a mediu**: a linha do
+        # `gate_snapshot` carrega a **distancia** («DIVERGENTE - **36** commits depois»). *O
+        # rotulo coincide no CI, mas o numero nao*: la' o `HEAD` e' o merge commit, e a
+        # distancia e' outra. => *comparar a linha seria falhar por um numero que descreve o
+        # ambiente, e nao o documento* => *e' a mesma doenca do `gate_head`, na mesma celula.*
+        "| **O gate prova o snapshot candidato?** (`gate_snapshot`) |",
+    )
     return "\n".join(
         linha for linha in texto.splitlines()
         if not any(linha.startswith(prefixo) for prefixo in volateis)
