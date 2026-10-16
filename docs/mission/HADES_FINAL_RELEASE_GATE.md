@@ -13,10 +13,10 @@
 | **Commit medido** (`measured_commit`) | `fbe1a235dc794aaebf65d82ab4a7cf226cbc2ccd` |
 | **Commit da `main`** (`git.main_sha`) | `4b3e21854` |
 | **Gerado em** (`measured_at`) | 2026-10-15T14:19:33-03:00 |
-| **Snapshot real** (`gate_head`) | `8169e1c8a7414c9b0d8bd91eb1d081099203e749` |
+| **Snapshot real** (`gate_head`) | `e7be710c567252ff6642cca0fe5eada27c818e31` |
 | **Ramo do snapshot** (`gate_branch`) | `fix/checker-relogio` |
 | **Entradas nao commitadas** (`gate_dirty`) | 14 |
-| **O gate prova o snapshot candidato?** (`gate_snapshot`) | **DIVERGENTE** - 65 commits depois do `measured_commit` |
+| **O gate prova o snapshot candidato?** (`gate_snapshot`) | **DIVERGENTE** - 66 commits depois do `measured_commit` |
 
 *Dois campos, e não um: o `E-552` mediu que este derivado **não** citava commit nenhum, e que o
 `HADES_BASELINE_REPORT.md` citava **só** a `main` — *o que não está errado (*ele mede o baseline, e o baseline é da

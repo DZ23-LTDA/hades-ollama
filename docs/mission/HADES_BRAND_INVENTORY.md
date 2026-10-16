@@ -15,14 +15,14 @@
 
 | String | Ocorrencias |
 | --- | --- |
-| **Hades/HADES** (canonica) | **943** |
-| DZ23 Agentic | 198 |
-| Ollama Full | 169 |
-| Ollama Classe A+ | 86 |
-| Ollama DZ23 | 48 |
+| **Hades/HADES** (canonica) | **948** |
+| DZ23 Agentic | 200 |
+| Ollama Full | 172 |
+| Ollama Classe A+ | 95 |
+| Ollama DZ23 | 49 |
 
-**Legadas somadas:** 501 ocorrencias
-(234 em ficheiros **migraveis**, 267 em ficheiros de **excecao**).
+**Legadas somadas:** 516 ocorrencias
+(234 em ficheiros **migraveis**, 282 em ficheiros de **excecao**).
 
 *O total **nao** decide: os mesmos numeros distribuem-se por sitios de tipos muito
 diferentes, e e' o sitio que decide.* Um ``README`` migra; um `bundle ID` nao.
@@ -125,7 +125,7 @@ hoje** e **falso sobre o que foi medido**.*
 
 | Ficheiro | Legadas | Categoria |
 | --- | --- | --- |
-| `docs/mission/HADES_EVIDENCE_INDEX.md` | 101 | excecao:historico |
+| `docs/mission/HADES_EVIDENCE_INDEX.md` | 116 | excecao:historico |
 | `audit/AUTONOMOUS_MISSION_STATE.md` | 32 | excecao:historico |
 | `audit/OLLAMA_FULL_MISSION_STATE.md` | 27 | excecao:historico |
 | `docs/evidencias/browser-console-audit-f12.json` | 16 | excecao:historico |
@@ -153,7 +153,7 @@ hoje** e **falso sobre o que foi medido**.*
 | `audit/auditoria.md` | 1 | excecao:historico |
 | `docs/evidencias/browser-console-audit-audfix2.json` | 1 | excecao:historico |
 
-**Por tipo de excecao:** bundle id: 3, credencial: 3, env var: 4, historico: 246, instalador: 9, teste: 2
+**Por tipo de excecao:** bundle id: 3, credencial: 3, env var: 4, historico: 261, instalador: 9, teste: 2
 
 ## 6. O que este documento **nao** faz
 
