@@ -359,8 +359,85 @@ func writePluginExecutionError(c *gin.Context, err error) {
 	writeAgentError(c, status, err)
 }
 
-// executePlugin executa um plugin instalado pela superficie canonica.
+// ---------------------------------------------------------------------------
+// E-976: A ROTA DO FORMATO ABERTO `hades-plugin.json`.
 //
+// **O que faltava**: o `E-972` criou o formato e o `E-974` ligou-o ao registo — *mas
+// so' por dentro do processo*. **Nao havia superficie**: um `hades-plugin.json` so'
+// podia ser instalado por codigo. E o `§REGRA-DE-IMPLEMENTACAO` item 6 diz que
+// *«uma capacidade so' esta' implementada quando o utilizador consegue aciona-la pela
+// experiencia real»*.
+//
+// **O molde e' o `installPlugin`** (`:83-105`): organizacao do contexto, corpo por
+// `decodeJSON`, `pluginCapabilityPolicy()`, delegacao no registo, `201 Created`. *Nao se
+// inventa uma segunda forma de instalar.*
+//
+// **E a diferenca deliberada**: esta rota exige `requirePluginAdmin` — *a mesma porta da
+// rota de execucao (`E-966`)*. O `installPlugin` **nao** o fazia, e eu **nao o alterei**:
+// *mudar uma rota existente para «ficar mais coerente» e' o que o `§ANTILOOP` item 10
+// proibe; a rota nova nasce com a porta.*
+// ---------------------------------------------------------------------------
+
+// installHadesPlugin instala um plugin declarado no formato aberto, versionado.
+//
+// `POST /plugins/format` — *a organizacao vem do contexto autenticado, nunca do corpo.*
+func (a *agentAPI) installHadesPlugin(c *gin.Context) {
+	if !a.requirePluginAdmin(c) {
+		return
+	}
+	if a.plugins == nil {
+		// FALHA FECHADO, o padrao do `E-449` e do `executePlugin` (`E-966`): *sem registro
+		// nao ha' superficie* - e dizer isso (503) e' melhor que um nil-pointer panic, que
+		// e' o pior resultado possivel: *derruba a ligacao em vez de a recusar.*
+		//
+		// **E foi um TESTE que o apanhou**, nao a revisao: o
+		// `TestFormatoRouteFalhaFechadoSemRegisto` chamou a rota com `plugins == nil`.
+		// *Eu conhecia o padrao e nao o apliquei* - o `executePlugin` tem-no, e esta rota
+		// nasceu sem ele.
+		writeAgentError(c, http.StatusServiceUnavailable, errors.New("registro de plugins nao esta' ligado neste runtime"))
+		return
+	}
+	organizationID := a.organizationID(c)
+	if organizationID == "" {
+		writeAgentError(c, http.StatusForbidden, errAgentForbidden)
+		return
+	}
+	var manifest agent.HadesPluginManifest
+	if err := decodeJSON(c, &manifest); err != nil {
+		// `decodeJSON` usa `DisallowUnknownFields`: *um campo que o runtime nao conhece
+		// e' um campo cujo efeito nao se pode prever* (`E-966`).
+		writeAgentError(c, http.StatusBadRequest, err)
+		return
+	}
+	policy, err := pluginCapabilityPolicy()
+	if err != nil {
+		writeAgentError(c, http.StatusInternalServerError, err)
+		return
+	}
+	installation, err := a.plugins.InstallHadesPluginForOrganization(organizationID, manifest, policy)
+	if err != nil {
+		writeAgentError(c, statusForPluginError(err), err)
+		return
+	}
+	c.JSON(http.StatusCreated, installation)
+}
+
+// hadesPluginFormat descreve o formato para o cliente: *o `$schema` e' publico, e a
+// `format_version` diz qual o runtime aceita.*
+//
+// `GET /plugins/format` — **sem corpo e sem efeito**: leitura pura.
+func (a *agentAPI) hadesPluginFormat(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{
+		"schema":         agent.HadesPluginSchemaID,
+		"format_version": agent.HadesPluginFormatVersion,
+		// Os cinco `kind` que o validador canonico aceita (`plugin_registry.go:40-44`).
+		"kinds": []string{"connector", "mcp", "remote-mcp", "skill", "bundle"},
+		// O runtime de execucao suportado (`plugin_runtime.go:256-265`). *Declarado aqui
+		// para que o autor do plugin saiba o que o runtime faz antes de o escrever.*
+		"runtimes": []string{"python", "python3", "node", "javascript", "js"},
+	})
+}
+
 // `POST /plugins/:id/execute` — *o `:id` e' o plugin; tudo o resto que o identifica
 // vem do contexto.*
 func (a *agentAPI) executePlugin(c *gin.Context) {
