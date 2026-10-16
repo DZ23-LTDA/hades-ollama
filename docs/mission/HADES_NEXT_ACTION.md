@@ -667,3 +667,21 @@ renderizador: usa-se um.*** Eu ia corrigir 768 linhas correctas.***
 `declared_categories_measured_test.go` foi inspeccionado **por nome de teste**, não pela
 alegação contra o **comportamento real** do checker. Medir o que o teste afirma, correr o
 checker e confrontar os dois — e corrigir a alegação se divergir. Tudo interno.
+
+### A proxima accao unica (janela `E-1046`)
+
+**O #8 está fechado por medição — e os 12 findings do PR #438 estão RESOLVIDOS.**
+O teste afirmava que a catraca acusa «dispensa órfã **e obsoleta**»; o comentário deliberado
+do próprio checker (`hades_tenant_scope_check.py:216-219`) diz que a premissa de **obsoleta**
+estava **errada** e que a acusação foi **removida de propósito**. Já estava corrigido
+(`E-912`) — e a contraprova que faltava foi correr o teste: **`ok … 5.620s`**.
+
+**Balanço**: #1 tratado antes · #2–#9 **corrigidos** · #10 e #11 **falsos positivos do bot**
+· #12 **feito por construção**. E **as 14 threads do GitHub continuam abertas** — proibido
+resolvê-las sem autorização.
+
+**A proxima accao unica**: **mudar de eixo para o ESTÁGIO 21 (benchmarks)**. É o único dos 10
+estágios livres que nunca foi iniciado, e o prompt exige cenários reproduzíveis com hardware,
+versão, modelo, contexto, warm/cold, repetições e erro. E há um ponto de partida honesto: o
+Ollama local está alinhado em 16k de contexto e há modelos medidos neste host. Definir o
+protocolo e correr **três repetições** com o que existe, sem inventar benchmark de concorrente.

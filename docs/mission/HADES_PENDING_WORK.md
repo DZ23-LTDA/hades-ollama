@@ -1393,3 +1393,28 @@ autorização.
 - APK Android bloqueado pela DLL JNI (`E-1019`);
 - macOS/iOS `BLOCKED_EXTERNAL` pela **máquina**;
 - benchmark reproduzível (ESTÁGIO 21) não iniciado.
+
+### O que falta (actualizado na janela `E-1046`)
+
+**Fechado**: os 12 findings do PR #438. Oito corrigidos (`E-909`, `E-910`, `E-912`), dois
+falsos positivos do bot (#10, #11), um tratado antes (#1), e o #12 feito por construção.
+O #8 foi fechado com a contraprova que faltava: **o teste a correr** (`ok … 5.620s`).
+
+**Continua em falta, sem disfarce**:
+- **as 14 threads do PR continuam abertas** -- não resolvi nenhuma (proibido sem autorização);
+- **ESTÁGIO 21 (benchmarks) não iniciado** -- nenhuma medição warm/cold, p50/p95, repetições;
+- **o encaixe da aprovação continua por ligar** (`E-1044`); a extensão decide sem autoridade;
+- **a extensão não executa a transferência** -- decide sobre ela;
+- **shadow roots fechados**, **cross-origin**, `document.domain`, `srcdoc`: como no `E-1040`;
+- **BFCache** sem execução observada (`E-1038`);
+- **o takeover não tem duração ajustável** (30s fixos);
+- **o Chrome real do utilizador**: a versão 155 deste host **não carrega** por
+  `--load-extension`; exige carregamento manual;
+- **Firefox** e **Safari**;
+- **sem `.crx`, sem assinatura, sem SBOM do pacote**;
+- **a chave privada de distribuição está fora do Git**;
+- **`CAPACIDADES` VAZIO**: o Companion **não** controla o PC;
+- **taxa e pairing em memória**;
+- ligação da extensão ao **Mission Control** (`missao` fica a `null`);
+- APK Android bloqueado pela DLL JNI (`E-1019`);
+- macOS/iOS `BLOCKED_EXTERNAL` pela **máquina**.

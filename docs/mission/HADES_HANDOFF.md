@@ -1261,3 +1261,34 @@ eu ia corrigir 768 linhas correctas.
 **Doutrina em uma linha**: um finding de bot e' uma hipotese -- duas das doze eram falsas;
 quando a pergunta e' «o que isto faz?», a resposta nao se deduz, executa-se; e a pressa de
 corrigir e' o caminho mais curto para estragar.
+
+### Instrucoes de retomada (janela `E-1046`)
+
+**Estado**: branch `fix/checker-relogio`; cabeca do indice `E-1046`; PR #438 **aberto** e
+**nao tocado** -- *as 14 threads continuam como estavam*; `reviewDecision` **vazio**.
+
+**Bateria: 27 passos, 28 OK, 0 FAIL.** OITO E2E por opt-in e **quatro** catracas.
+
+**OS 12 FINDINGS DO PR #438 -- RESOLVIDOS**:
+- **#1** tratado antes; **#2-#6** `E-909`; **#7 e #8** `E-912`; **#9** `E-910`;
+- **#10** FALSO POSITIVO (tabelas diferentes podem ter colunas diferentes);
+- **#11** NAO SE REPRODUZ (838 entradas renderizam com 5 campos via `marked`);
+- **#12** feito por construcao (os doze medidos no HEAD).
+
+**O #8, FECHADO COM A CONTRAPROVA**: o teste afirmava «e obsoleta» e o comentario deliberado
+do checker (`:216-219`) diz que essa acusacao foi **removida de proposito**. Corrido agora:
+  go test ./internal/agent/ -run 'TestDelegacaoDeEscopoRecusaOrganizacaoVazia|TestTarefasDeBenchmarkTemNomeUnicoENaoVazio|TestValidacaoDeNomeDeTarefaReprovaVazioEDuplicado' -count=1
+  => ok github.com/ollama/ollama/internal/agent 5.620s
+
+**O RENDER CHECK DO INDICE e' o passo 30** (`hades_index_render_check.mjs`): renderiza as
+838 entradas com o `marked` e exige 5 campos. *Nao se adivinha um renderizador: usa-se um.*
+
+**DUAS CATRACAS COMPLEMENTARES**: `hades_index_shape_check.py` varre o **indice**;
+`hades_mission_check.py` varre **todo o codigo**. **Um ID novo continua do MAIOR cunhado.**
+
+**O que NAO fazer**: `reset --hard`, `git clean`, rebase destrutivo, force-push, stash,
+`merge`, tag, release, publicacao externa, ou **resolver threads** do PR #438.
+
+**Doutrina em uma linha**: um bot que erra duas vezes em doze ensina a nao copiar; um arquivo
+que existe para impedir afirmacao sem medicao pode ele proprio afirmar sem medicao; e o
+trabalho e' tecnico -- a thread e' do GitHub e a decisao de a fechar e' do proprietario.
