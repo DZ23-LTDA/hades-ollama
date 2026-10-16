@@ -858,3 +858,23 @@ defeito do separador foi medido, curado e **provado por injecao nos bytes crus**
 - macOS/iOS `BLOCKED_EXTERNAL` pela **maquina**, nao pela credencial;
 - script e doc de notarizacao/assinatura (pedido pelo dono);
 - benchmark reproduzivel (ESTAGIO 21) nao iniciado; `SUPERIOR_MEASURED` nao reclamado.
+
+### O que falta (actualizado na janela `E-1023`)
+
+**Fechado nesta janela**: o contrato do canal local (`E-1023`) -- schema, sequencia, expiracao,
+replay, pairing por codigo curto, chave por dispositivo, rotacao, revogacao e recusa de LAN.
+23 assercoes, e 2 delas apanharam defeitos reais de codigo.
+
+**Continua em falta, sem disfarce**:
+- **acordo de chaves**: o contrato usa HMAC **simetrico** e **assume** que a chave foi
+  partilhada com seguranca -- a derivacao (HKDF a partir do codigo curto) **nao existe**;
+- **transporte**: nao ha native messaging, nao ha socket, nao ha `HADES Local Companion`;
+  o popup continua a mostrar `host: - (native host nao instalado)`;
+- **DNS rebinding** a nivel de socket: o contrato valida o hostname, nao a ligacao;
+- **E2E em Chrome/Edge reais**: o pacote foi verificado, **nunca carregado**;
+- Firefox (`.xpi`), Safari e assinatura (`.crx`): **nao existem**;
+- **SBOM do pacote da extensao** e `THIRD_PARTY_NOTICES` com os icones reutilizados;
+- ligacao da extensao ao **Mission Control** (`missao`/`aprovado` ficam a `null`);
+- APK Android bloqueado pela DLL JNI neste host (`E-1019`), desbloqueio = runner Linux;
+- macOS/iOS `BLOCKED_EXTERNAL` pela **maquina**, nao pela credencial;
+- benchmark reproduzivel (ESTAGIO 21) nao iniciado.

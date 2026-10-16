@@ -522,3 +522,40 @@ tag, release, publicacao externa, ou **resolver threads** do PR #438.
 
 **Doutrina em uma linha**: medir antes de afirmar; um gate que me apanha esta a funcionar; e um
 teste que usa a mesma biblioteca que causa o defeito nunca injecta o defeito.
+
+### Instrucoes de retomada (janela `E-1023`)
+
+**Estado**: branch `fix/checker-relogio`; cabeca do indice `E-1023`; PR #438 **aberto** e
+**nao tocado**; `reviewDecision` **vazio** => sem revisao humana independente.
+
+**A extensao tem 3 ficheiros de teste (47 assercoes)**:
+  node --test apps/hades-browser-bridge/test/protocol.test.js
+                apps/hades-browser-bridge/test/carregavel.test.js
+                apps/hades-browser-bridge/test/canal_local.test.js
+
+**Artefactos**:
+- pacote: `dist/browser-bridge/hades-browser-bridge-0.1.0-unsigned.zip` + `SHA256SUMS.txt`
+  + `LEIA-ME.txt` -- **fora do Git**;
+- script versionado: `scripts/hades_browser_bridge_package.py` (passo 14 da bateria);
+- contrato do canal: `apps/hades-browser-bridge/src/canal_local.js`.
+
+**A armadilha a nao repetir -- QUARTA vez**: *um detector de texto nao distingue USAR de
+FALAR SOBRE*. Casos medidos: `E-1008` (um literal de quebra de linha descrito);
+`E-1016`/`E-1017` (o grep que encontrou a propria declaracao de ausencia); `E-1021`
+(a palavra tokens num comentario); e `E-1023` -- **`Math.random` dentro de uma STRING DE
+ERRO**, que nem comentario e. A cura e procurar o **uso** (a chamada, com parenteses),
+nunca a mencao.
+
+**Outra armadilha**: `new URL("http://[::1]:9").hostname` devolve `[::1]` **COM brackets**.
+Uma lista de loopback sem essa forma **recusa o IPv6** -- medido e curado no `E-1023`.
+
+**O que NAO fazer**: `reset --hard`, `git clean`, rebase destrutivo, force-push, stash,
+`merge`, tag, release, publicacao externa, ou **resolver threads** do PR #438.
+
+**Bateria de 21 gates** (exit 0 obrigatorio): os 20 anteriores mais o **pacote da extensao**.
+O passo 14 chama `hades_browser_bridge_package.py`, que constroi e verifica por si -- e seguro
+sobre um `dist/` vazio.
+
+**Doutrina em uma linha**: medir antes de afirmar; um gate que me apanha esta a funcionar; um
+detector que procura texto confunde usar com falar sobre; e um teste que usa a mesma
+biblioteca que causa o defeito nunca injecta o defeito.

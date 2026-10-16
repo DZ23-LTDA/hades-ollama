@@ -322,3 +322,21 @@ pairing nao existe**: nao ha native messaging nem `HADES Local Companion`, e o p
 Depois, pela ordem: (2) SBOM do pacote da extensao; (3) E2E em Chrome real (este host consegue,
 com sessao de browser controlada); (4) Firefox (`.xpi`) ou `ABSENT` documentado; (5) script e doc
 de notarizacao/assinatura (pedido pelo dono, ainda nao escrito).
+
+### A proxima accao unica (janela `E-1023`)
+
+**O contrato do canal local esta fechado e testado** (`E-1023`): 23 assercoes em
+`apps/hades-browser-bridge/test/canal_local.test.js` provam que o pairing futuro nao pode
+nascer com token estatico, replay, ligacao LAN, instalacao desconhecida, chave expirada ou
+mensagem fora de ordem. Dois desses testes apanharam defeitos reais meus: o loopback IPv6
+estava recusado (o `URL` do Node devolve `[::1]` com brackets) e o detector de `Math.random`
+acusava uma **string de erro** que menciona a funcao para a proibir.
+
+**A proxima accao unica**: **acordo de chaves e transporte** -- o contrato assume que a chave
+simetrica ja foi partilhada com seguranca, e isso **nao esta feito**. Escrever a derivacao
+(por exemplo HKDF a partir do codigo curto, com o codigo a morrer depois de usado) e o
+manifesto do native host com a allowlist de `allowed_origins` restrita a extensao HADES.
+Continua a ser trabalho interno, sem credencial.
+
+Depois, pela ordem: (2) DNS rebinding a nivel de socket; (3) SBOM do pacote da extensao;
+(4) E2E em Chrome real; (5) Firefox (`.xpi`) ou `ABSENT` documentado.
