@@ -26,6 +26,7 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -105,7 +106,84 @@ def tabela_de_estagios(estado: dict, filtro: set[str] | None = None) -> str:
     return "\n".join(linhas)
 
 
+def snapshot_do_git() -> dict:
+    """Le o snapshot REAL do Git, em vez de o supor a partir do estado.
+
+    **E-987**: o §ESTAGIO 22 item 1 pede *«transformar o gate em prova do **mesmo snapshot
+    candidato**»*. Medido antes desta cura: o gate citava `measured_commit =
+    fbe1a235dc79…` e `measured_at = 2026-10-15T14:19:33` — *ambos lidos do
+    `HADES_MASTER_STATE.json`* — enquanto o `HEAD` era `417fe9735b43…`, **36 commits
+    depois**. E o ficheiro nao tinha **uma unica** chamada a `subprocess`/`rev-parse`/
+    `porcelain`: era um **espelho de um ficheiro parado**, e por isso provava o snapshot
+    de **ontem**, nao o candidato.
+
+    *O gate passa a declarar os dois*: o `measured_commit` (a **proveniencia** — de que
+    estado o texto foi gerado) e o `gate_head` (o **snapshot real** em que o gate corre).
+    Se divergirem, o texto **diz** que divergem e quantos commits os separam.
+
+    Falha suave: sem git, devolve `NAO_MEDIDO` em vez de rebentar — *um gate que nao
+    corre nao prova nada, e um gate que rebenta por falta de git seria pior*.
+    """
+    def _git(*args: str) -> str:
+        try:
+            saida = subprocess.run(
+                ["git", *args],
+                cwd=RAIZ,
+                capture_output=True,
+                text=True,
+                timeout=30,
+                check=False,
+            )
+            if saida.returncode != 0:
+                return ""
+            return saida.stdout.strip()
+        except (OSError, subprocess.SubprocessError):
+            return ""
+
+    head = _git("rev-parse", "HEAD")
+    sujo = _git("status", "--porcelain")
+    porcelana = [l for l in sujo.splitlines() if l.strip()]
+    ramo = _git("rev-parse", "--abbrev-ref", "HEAD")
+    return {
+        "head": head or "NAO_MEDIDO",
+        "branch": ramo or "NAO_MEDIDO",
+        "dirty": len(porcelana),
+        "dirty_amostra": porcelana[:3],
+    }
+
+
+def distancia_do_measured(estado: dict, snapshot: dict) -> tuple[str, int]:
+    """Quantos commits separam o snapshot real do `measured_commit`.
+
+    Devolve `(rotulo, n)` onde o rotulo e' `MESMO`, `DIVERGENTE` ou `NAO_MEDIDO`.
+    *E' isto que o §ESTAGIO 22 item 1 chama «prova do mesmo snapshot»: nao basta citar um
+    commit; tem de se dizer se **o que corre** e' o que esta' citado.*
+    """
+    medido = (estado.get("measured_commit") or "").strip()
+    head = snapshot.get("head") or ""
+    if not medido or not head or head == "NAO_MEDIDO":
+        return "NAO_MEDIDO", 0
+    if medido == head:
+        return "MESMO", 0
+    try:
+        saida = subprocess.run(
+            ["git", "rev-list", "--count", f"{medido}..{head}"],
+            cwd=RAIZ,
+            capture_output=True,
+            text=True,
+            timeout=30,
+            check=False,
+        )
+        if saida.returncode == 0 and saida.stdout.strip():
+            return "DIVERGENTE", int(saida.stdout.strip())
+    except (OSError, ValueError, subprocess.SubprocessError):
+        pass
+    return "DIVERGENTE", 0
+
+
 def gerar_relatorio(estado: dict) -> str:
+    snapshot = snapshot_do_git()
+    rotulo, distancia = distancia_do_measured(estado, snapshot)
     contagem = contagem_por_execucao(estado)
     externos = [b for b in estado.get("blockers", []) if "EXTERNO" in (b.get("tipo") or "").upper()]
     resolvidos = [b for b in estado.get("blockers", []) if "RESOLVIDO" in (b.get("tipo") or "").upper()]
@@ -123,6 +201,10 @@ def gerar_relatorio(estado: dict) -> str:
 | **Commit medido** (`measured_commit`) | `{estado.get('measured_commit', 'NAO_MEDIDO')}` |
 | **Commit da `main`** (`git.main_sha`) | `{estado.get('git', {}).get('main_sha', 'NAO_MEDIDO')}` |
 | **Gerado em** (`measured_at`) | {estado.get('measured_at', 'NAO_MEDIDO')} |
+| **Snapshot real** (`gate_head`) | `{snapshot['head']}` |
+| **Ramo do snapshot** (`gate_branch`) | `{snapshot['branch']}` |
+| **Entradas nao commitadas** (`gate_dirty`) | {snapshot['dirty']} |
+| **O gate prova o snapshot candidato?** (`gate_snapshot`) | **{rotulo}**{(' - ' + str(distancia) + ' commits depois do `measured_commit`') if rotulo == 'DIVERGENTE' else ''} |
 | Estágios | {len(estado['stages'])} |
 | Linhas de evidência no índice | {linhas_do_indice()} |
 | `COMPLETED_VERIFIED` | {contagem.get('COMPLETED_VERIFIED', 0)} |
@@ -181,6 +263,8 @@ possível sem ele**.
 
 
 def gerar_gate(estado: dict) -> str:
+    snapshot = snapshot_do_git()
+    rotulo, distancia = distancia_do_measured(estado, snapshot)
     externos = [b for b in estado.get("blockers", []) if "EXTERNO" in (b.get("tipo") or "").upper()]
     resumo: dict[str, int] = {}
     for _, status, _, _ in MATRIZ_ACEITE:
@@ -209,6 +293,10 @@ def gerar_gate(estado: dict) -> str:
 | **Commit medido** (`measured_commit`) | `{estado.get('measured_commit', 'NAO_MEDIDO')}` |
 | **Commit da `main`** (`git.main_sha`) | `{estado.get('git', {}).get('main_sha', 'NAO_MEDIDO')}` |
 | **Gerado em** (`measured_at`) | {estado.get('measured_at', 'NAO_MEDIDO')} |
+| **Snapshot real** (`gate_head`) | `{snapshot['head']}` |
+| **Ramo do snapshot** (`gate_branch`) | `{snapshot['branch']}` |
+| **Entradas nao commitadas** (`gate_dirty`) | {snapshot['dirty']} |
+| **O gate prova o snapshot candidato?** (`gate_snapshot`) | **{rotulo}**{(' - ' + str(distancia) + ' commits depois do `measured_commit`') if rotulo == 'DIVERGENTE' else ''} |
 
 *Dois campos, e não um: o `E-552` mediu que este derivado **não** citava commit nenhum, e que o
 `HADES_BASELINE_REPORT.md` citava **só** a `main` — *o que não está errado (*ele mede o baseline, e o baseline é da
@@ -261,6 +349,30 @@ Nenhuma dessas condições pode ser satisfeita por documentação: todas exigem 
 """
 
 
+def normalizar_volateis(texto: str) -> str:
+    """Remove do texto as linhas que mudam **por si**, para o `--check` poder comparar.
+
+    **E-987, e foi o proprio `--check` que o apanhou**: ao acrescentar o `gate_dirty` a
+    tabela, o `--check` passou a falhar **sempre** — *«GATE DIVERGENTE do estado da missão»*
+    — porque o numero de entradas sujas muda **a cada escrita do proprio gerador**
+    (*13 -> 14*). Um gerador tem de ser **deterministico**, e uma linha volatil dentro de
+    um ficheiro gerado torna o `--check` inutil: *ele acusaria divergencia todos os dias e
+    ninguem voltaria a acreditar nele.*
+
+    *A escolha nao foi retirar a informacao* — o `gate_dirty` e' exactamente o que prova
+    que ha' WIP, e o §ESTAGIO 22 quer essa prova. *A escolha foi o `--check` comparar o que
+    e' estavel* e **declarar as volateis como nao comparadas**. As estaveis (`gate_head`,
+    `gate_branch`) continuam a ser comparadas, e sao elas que provam o **mesmo snapshot**.
+
+    Volateis removidas: `gate_dirty` (muda com qualquer ficheiro escrito).
+    """
+    volateis = ("| **Entradas nao commitadas** (`gate_dirty`) |",)
+    return "\n".join(
+        linha for linha in texto.splitlines()
+        if not any(linha.startswith(prefixo) for prefixo in volateis)
+    )
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Gera/confere os artefatos do gate global.")
     parser.add_argument("--check", action="store_true", help="não escreve: falha se houver divergência")
@@ -273,7 +385,9 @@ def main() -> int:
         divergentes = []
         for caminho, conteudo in gerados.items():
             atual = caminho.read_text(encoding="utf-8") if caminho.exists() else ""
-            if atual != conteudo:
+            # **E-987**: comparar o ESTAVEL. Uma linha volatil num ficheiro gerado faria o
+            # `--check` falhar todos os dias - *e um gate que grita sempre nao e' um gate*.
+            if normalizar_volateis(atual) != normalizar_volateis(conteudo):
                 divergentes.append(caminho.name)
         if divergentes:
             print("GATE DIVERGENTE do estado da missão: " + ", ".join(divergentes))
