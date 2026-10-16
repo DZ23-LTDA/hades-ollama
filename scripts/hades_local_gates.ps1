@@ -241,6 +241,20 @@ foreach ($o in $orfaos) {
 # que nunca corre nao mede nada.* Medido com a receita completa: 4 pacotes, exit=0, ~450s.
 # => *Ele exige o `LOCALAPPDATA` sob `_tmp/` e recusa (exit=2) se o valor HERDADO vier errado --
 #    e' um anti-armadilha contra teste que passa por acidente, e o valor fica aqui, nao no script.*
+# *POR QUE ISTO EXISTE:* o `E-1012`. O `dist\HadesSetup.exe` existia desde 10-16 05:11 com
+# `produto='Hades'`, e **nenhuma** leitura do repositorio o mostrava -- porque o `dist\` esta' no
+# `.gitignore`. => *Antes de declarar um artefacto ausente, mede-se o DISCO, e nao so' o Git.*
+# => *O script confere os 3 alvos do `.iss` ANTES de o chamar, porque o `.iss` e' DEFENSIVO
+#    (`#if FileExists(...)`) e um alvo em falta sairia como instalador INCOMPLETO, com exit 0.*
+'--- 13. INSTALADOR Windows (Inno Setup), NAO assinado'
+$saidaInst = & powershell -NoProfile -ExecutionPolicy Bypass -File scripts/hades_installer_windows.ps1 2>&1
+$saidaInst | Select-Object -Last 3 | ForEach-Object { "    " + $_.ToString().Substring(0, [Math]::Min(104, $_.ToString().Length)) }
+if ($LASTEXITCODE -eq 3) {
+  '    BLOCKED_BY_EXTERNAL_DEPENDENCY: sem ISCC.exe -- declarado, nao e falha do produto'
+} elseif ($LASTEXITCODE -ne 0) {
+  $falhas.Add("hades_installer_windows.ps1 (exit $LASTEXITCODE)")
+} else { '    OK' }
+
 '--- 12. TESTES GO (o 16o checker, E-488)'
 $env:LOCALAPPDATA = (Join-Path $PWD '_tmp\localappdata')
 New-Item -ItemType Directory -Force -Path $env:LOCALAPPDATA | Out-Null
