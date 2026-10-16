@@ -1151,3 +1151,30 @@ com `SecurityError`), logo não era buraco.
 - APK Android bloqueado pela DLL JNI (`E-1019`);
 - macOS/iOS `BLOCKED_EXTERNAL` pela **máquina**;
 - benchmark reproduzível (ESTÁGIO 21) não iniciado.
+
+### O que falta (actualizado na janela `E-1038`)
+
+**Fechado**: a família `onUpdated`. A ida revoga (com ou sem BFCache), o regresso **traz
+URL** e não revive nada, o badge não ressuscita, e a acção segue recusada. E há uma
+declaração explícita: **o BFCache em si não chegou a correr** (`persisted: false`).
+
+**Continua em falta, sem disfarce**:
+- **BFCache sem execução observada**: o Edge recarregou em vez de restaurar; forçá-lo
+  exigiria ausência de `unload`, `Cache-Control` permissivo e uma decisão do browser;
+- **frames e shadow DOM**: o contrato exige suportá-los «com limites» e o `observar`
+  actual só olha o documento principal -- **não medido**;
+- `pushState` **dentro de iframes**, `document.domain`, service workers de página: não testados;
+- **redireccionamentos e `https`**: só medido com dois servidores em loopback;
+- **downloads e uploads**: nao testados;
+- **o takeover não tem duração ajustável** (30s fixos);
+- **o Chrome real do utilizador**: a versão 155 deste host **não carrega** por
+  `--load-extension`; exige carregamento manual;
+- **Firefox** e **Safari**;
+- **sem `.crx`, sem assinatura, sem SBOM do pacote**;
+- **a chave privada de distribuição está fora do Git**;
+- **`CAPACIDADES` VAZIO**: o Companion **não** controla o PC;
+- **taxa e pairing em memória**;
+- ligação da extensão ao **Mission Control** (`missao`/`aprovado` ficam a `null`);
+- APK Android bloqueado pela DLL JNI (`E-1019`);
+- macOS/iOS `BLOCKED_EXTERNAL` pela **máquina**;
+- benchmark reproduzível (ESTÁGIO 21) não iniciado.

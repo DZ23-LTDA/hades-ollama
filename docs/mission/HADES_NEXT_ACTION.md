@@ -514,3 +514,20 @@ pelo caminho.***
 de outra origem** ao voltar atrás -- se o browser restaurar do cache sem emitir `onUpdated`
 com URL, a concessão pode viver sobre conteúdo de outra origem. Medir com dois servidores
 e uma navegação real seguida de `goBack`. Tudo interno.
+
+### A proxima accao unica (janela `E-1038`)
+
+**O BFCache não revive a concessão** (`E-1038`), e agora sei **porquê**: o regresso traz
+**URL** no `onUpdated` -- `{chaves:["status","url"], ...}` -- logo o handler **avalia-o**
+contra a origem concedida. E não há restauração automática: 4 passos de ida-e-volta, a
+concessão cai em todos e não revive em nenhum.
+
+⇒ ***Mas o limite é tão importante como o resultado: as marcas da página deram `pageshow`
+com `persisted: false` -- o browser **recarregou**, não restaurou do cache. Esta medição
+não exercitou o BFCache. Um resultado favorável não é uma cobertura.***
+
+**A proxima accao unica**: **a familia `onUpdated` está fechada; mudar de superficie.**
+O que falta e é interno e executável: **os frames e o shadow DOM** -- o contrato exige
+suportá-los «com limites», e o `observar` actual só olha o documento principal. Medir
+primeiro o que acontece hoje com um `iframe` de mesma origem e com um componente de
+shadow DOM: o `observar` vê-os, ignora-os, ou mente sobre eles? Tudo interno.

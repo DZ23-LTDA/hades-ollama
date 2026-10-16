@@ -980,3 +980,34 @@ esta' na resposta a essa duvida: esta' no que aparece pelo caminho.*
 **Doutrina em uma linha**: um teste que so' exercita o caminho feliz nao ve o caminho
 vazio; decidir sobre um vazio inventado e' o defeito e nao decidir e' a cura; e um
 indicador que nao reflecte o estado da' confianca a quem nao a devia ter.
+
+### Instrucoes de retomada (janela `E-1038`)
+
+**Estado**: branch `fix/checker-relogio`; cabeca do indice `E-1038`; PR #438 **aberto** e
+**nao tocado**; `reviewDecision` **vazio** => sem revisao humana independente.
+
+**Bateria: 31 passos.** SEIS E2E por **opt-in** (`-ComE2E`, abrem o Edge):
+  node scripts/hades_browser_bridge_e2e.mjs            # canal: extensao <-> Companion
+  node scripts/hades_browser_bridge_e2e_aba.mjs        # aba: DOM, escrita, RECUSA, badge
+  node scripts/hades_browser_bridge_e2e_takeover.mjs   # takeover: o agente PARA
+  node scripts/hades_browser_bridge_e2e_origem.mjs     # origem: navegar revoga
+  node scripts/hades_browser_bridge_e2e_pushstate.mjs  # reload, pushState, badge
+  node scripts/hades_browser_bridge_e2e_bfcache.mjs    # voltar atras nao revive
+
+**A FAMILIA `onUpdated` ESTA' FECHADA** (`E-1035` -> `E-1038`):
+- a **ida** para outra origem revoga -- com URL (`E-1035`);
+- o evento **sem URL** NAO revoga mais (era o defeito do `E-1037`);
+- o **reload** preserva a concessao e o badge (`E-1037`);
+- o **regresso** traz URL e **nao revive** nada (`E-1038`).
+
+**O LIMITE DECLARADO**: o BFCache **nao chegou a correr** -- `pageshow` deu
+`persisted: false`, o browser recarregou. *Um resultado favoravel nao e' uma cobertura.*
+
+**DUAS CATRACAS COMPLEMENTARES**: `hades_index_shape_check.py` varre o **indice**;
+`hades_mission_check.py` varre **todo o codigo**. **Um ID novo continua do MAIOR cunhado.**
+
+**O que NAO fazer**: `reset --hard`, `git clean`, rebase destrutivo, force-push, stash,
+`merge`, tag, release, publicacao externa, ou **resolver threads** do PR #438.
+
+**Doutrina em uma linha**: um resultado favoravel nao e' uma cobertura; declarar o limite
+e' parte do resultado; e a honestidade do limite vale mais do que a alegria do verde.

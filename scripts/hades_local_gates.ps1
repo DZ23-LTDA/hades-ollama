@@ -458,4 +458,20 @@ if ($ComE2E) {
   '    PULADO (opt-in: use -ComE2E)'
 }
 $passos += 'e2e-pushstate'
+
+''
+# E-1038: o BFCACHE. *A ultima divida da familia `onUpdated`: voltar atras reviveria a
+# concessao sobre conteudo de outra origem?* Medido: nao -- e o regresso traz URL.
+'--- 24. E2E DO BFCACHE: voltar atras NAO revive a concessao'
+if ($ComE2E) {
+  $saidaBf = & node scripts/hades_browser_bridge_e2e_bfcache.mjs 2>&1
+  $saidaBf | Select-Object -Last 3 | ForEach-Object { "    " + $_.ToString().Substring(0, [Math]::Min(110, $_.ToString().Length)) }
+  if ($LASTEXITCODE -ne 0) {
+    $falhas.Add("hades_browser_bridge_e2e_bfcache.mjs (exit $LASTEXITCODE)")
+    '    FALHA'
+  } else { '    OK' }
+} else {
+  '    PULADO (opt-in: use -ComE2E)'
+}
+$passos += 'e2e-bfcache'
 "GATES LOCAIS: $($passos -join ' + ') VERDES"
