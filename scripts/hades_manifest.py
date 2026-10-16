@@ -218,10 +218,29 @@ def normalizar(dados: dict) -> dict:
     `generated_at` muda a cada geracao; `source_dirty` muda a cada ficheiro escrito - *e o
     proprio manifesto, ao ser escrito, muda a contagem*. Se o `--check` os comparasse,
     falharia sempre, e um `--check` que grita sempre deixa de ser lido.
+
+    **E-994 — o `source_sha` entra aqui pela MESMA razao que o `gate_head` no `E-993`.** Eu
+    curei o `gate_head` do `hades_release_gate.py` e **deixei o `source_sha` deste ficheiro**,
+    porque sao ficheiros diferentes e tratei-os como casos separados. *Mas a causa e' uma so':*
+    **perguntar ao CI em que commit ele corre, como se a resposta fosse o commit candidato.**
+
+    *E o CI respondeu*: o run **38924032504** do `class-a-plus-integrity` mostrou o passo 6 (o
+    gate) a **passar** e o passo 7 (*«Verify the snapshot manifest matches the tree»*) a
+    **falhar**. => *num workflow `pull_request` o `actions/checkout` faz checkout do **merge
+    commit sintetico***, que nao corresponde a nenhum commit da branch => logo
+    `source_sha != measured_commit` gravado, e o `--check` falha.
+
+    *O `source_sha` continua no documento*: e' a **proveniencia** declarada, e o §FASE-6 exige
+    que todo artefato a registe. => *o que muda e' que ele passa a ser **declarado**, e nao
+    **criterio***. O que o manifesto prova e' o **conteudo** (SBOM com sha256, plataformas,
+    limitacoes) -- e esse continua comparado.
     """
     copia = dict(dados)
     copia.pop("generated_at", None)
     copia.pop("source_dirty", None)
+    # **E-994**: em `pull_request` o HEAD e' o merge commit -> volateis, pela licao do `E-993`.
+    copia.pop("source_sha", None)
+    copia.pop("source_branch", None)
     return copia
 
 
@@ -247,7 +266,14 @@ def main() -> int:
             print("MANIFESTO DIVERGENTE do snapshot: %s" % MANIFESTO.relative_to(RAIZ))
             print("Rode: python scripts/hades_manifest.py")
             return 1
-        print("MANIFESTO CONSISTENTE: bate com o snapshot (source_sha, ramo, SBOM, testes, plataformas, limitacoes).")
+        # **E-994**: a mensagem tem de dizer o que REALMENTE e' comparado. *Ela dizia
+        # «source_sha, ramo, SBOM, ...» depois de eu ter tirado o `source_sha` e o ramo da
+        # comparacao* -- e uma mensagem que mente sobre o que faz e' o `E-986` na forma de
+        # saida: *documentar o defeito pode reintroduzi-lo, agora na representacao.*
+        print("MANIFESTO CONSISTENTE: bate com o snapshot (SBOM com sha256, testes, "
+              "plataformas, limitacoes).")
+        print("  NAO comparados por serem volateis no CI (`pull_request` faz checkout do "
+              "merge commit): source_sha, source_branch, source_dirty, generated_at.")
         return 0
 
     MANIFESTO.write_text(texto, encoding="utf-8")
