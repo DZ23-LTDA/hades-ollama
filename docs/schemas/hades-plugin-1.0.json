@@ -1,0 +1,115 @@
+{
+  "$schema": "https://hades.dev/schemas/hades-plugin-1.0.json",
+  "$id": "https://hades.dev/schemas/hades-plugin-1.0.json",
+  "title": "HADES Plugin Manifest",
+  "description": "Formato aberto e versionado de manifesto de plugin do HADES. O nucleo (id, version, name, kind, description, scopes, dependencies, min_engine, license, homepage, signing_key_id, content_sha256, signature, runtime, entrypoint) e' o MESMO tipo `PluginManifest` que o runtime ja' valida em internal/agent/plugin_registry.go. O HADES acrescenta `skills` e `interface` porque um plugin precisa de declarar O QUE OFERECE e COMO SE APRESENTA - e nada no formato dos outros preve a governanca que o HADES ja' tem.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["format_version", "id", "version", "name", "kind"],
+  "properties": {
+    "format_version": {
+      "type": "string",
+      "description": "Versao do FORMATO (nao do plugin). Permite evoluir o schema sem quebrar manifestos existentes. A 1.0 e' a primeira.",
+      "enum": ["1.0"]
+    },
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[^/:\\\\ ]+$",
+      "description": "Identificador estavel do plugin. NAO pode conter separadores de caminho nem espaco - a mesma regra que validatePluginManifest aplica (plugin_registry.go:188), porque o id entra em nomes de ficheiro e de workspace."
+    },
+    "version": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "pattern": "^\\S+$",
+      "description": "Versao do plugin, como token unico, sem espacos (plugin_registry.go:191)."
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200,
+      "description": "Nome legivel. Obrigatorio (plugin_registry.go:194)."
+    },
+    "kind": {
+      "type": "string",
+      "description": "Tipo de plugin. Os cinco valores sao os mesmos de plugin_registry.go:40-44 e :197-201.",
+      "enum": ["connector", "mcp", "remote-mcp", "skill", "bundle"]
+    },
+    "description": { "type": "string", "maxLength": 2000 },
+    "scopes": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "description": "Capacidades pedidas. Cada uma tem de existir em CapabilityPolicy.KnownScopes(), senao a instalacao e' recusada com ErrUnknownCapability (plugin_registry.go:228). O manifesto PEDE; a organizacao CONCEDE - e o servidor nunca le a concessao do manifesto."
+    },
+    "dependencies": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "description": "Ids de outros plugins. Um plugin NAO pode depender de si mesmo (plugin_registry.go:207)."
+    },
+    "min_engine": { "type": "string", "maxLength": 64 },
+    "license": {
+      "type": "string",
+      "maxLength": 64,
+      "description": "Identificador SPDX. Exigido pela politica de proveniencia: codigo sem licenca nao pode ser distribuido."
+    },
+    "homepage": { "type": "string", "maxLength": 512 },
+    "signing_key_id": { "type": "string", "maxLength": 128 },
+    "content_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$",
+      "description": "Digest do CONTEUDO do bundle. O runtime REVERIFICA-o a cada execucao: executar conteudo divergente do digest seria confiar no disco em vez de confiar no que foi verificado."
+    },
+    "signature": { "type": "string" },
+    "runtime": {
+      "type": "string",
+      "maxLength": 64,
+      "description": "Como o plugin executa. So' valores que o runtime implementa: python/python3 ou node/javascript/js (plugin_runtime.go:256-265). O pedido de execucao pode CONFIRMAR isto; nunca escolhe-lo."
+    },
+    "entrypoint": {
+      "type": "string",
+      "maxLength": 256,
+      "description": "Ficheiro, DENTRO do bundle, que e' o ponto de entrada. Fica no manifesto assinado para que a decisao de executar venha do conteudo assinado - e nao de um pedido em tempo de execucao, que poderia apontar para qualquer ficheiro (plugin_registry.go:75-79)."
+    },
+    "skills": {
+      "type": "array",
+      "description": "O que o plugin OFERECE em instrucoes. Cada entrada aponta para um SKILL.md DENTRO do bundle. O carregamento e' sob demanda (progressive disclosure): declarar 95 skills no manifesto NAO as carrega no contexto.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "path"],
+        "properties": {
+          "name": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-z0-9][a-z0-9-]*$" },
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256,
+            "pattern": "^(?!/)(?!.*\\.\\.)[^\\\\]+$",
+            "description": "Caminho RELATIVO ao bundle, com / como separador. Recusa caminhos absolutos e qualquer `..` - a mesma defesa que preparePluginWorkspace aplica contra travessia."
+          },
+          "description": { "type": "string", "maxLength": 500 }
+        }
+      }
+    },
+    "interface": {
+      "type": "object",
+      "description": "Metadados de APRESENTACAO, separados do nucleo executavel. Um plugin pode mudar de nome visivel sem mudar de identidade nem invalidar a assinatura do conteudo.",
+      "additionalProperties": false,
+      "properties": {
+        "display_name": { "type": "string", "maxLength": 200 },
+        "short_description": { "type": "string", "maxLength": 200 },
+        "long_description": { "type": "string", "maxLength": 4000 },
+        "category": { "type": "string", "maxLength": 64 },
+        "capabilities": { "type": "array", "items": { "type": "string", "maxLength": 64 } },
+        "default_prompt": { "type": "array", "items": { "type": "string", "maxLength": 500 } },
+        "icon": {
+          "type": "string",
+          "maxLength": 256,
+          "pattern": "^(?!/)(?!.*\\.\\.)[^\\\\]+$",
+          "description": "Caminho relativo, dentro do bundle. Um asset remoto NAO e' aceito: o plugin tem de funcionar offline."
+        }
+      }
+    }
+  }
+}
