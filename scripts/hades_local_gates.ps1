@@ -1143,4 +1143,17 @@ if ($exitDom -ne 0) {
 } else { '    OK' }
 $passos += 'extensao-dom'
 
+
+''
+# E-1116: o PACOTE FIREFOX. *O manifest derivado (gecko.id + data_collection_permissions + background.scripts),
+# CSP estrita preservada, e o `web-ext lint` do PROPRIO Mozilla em 0 erros / 0 avisos / 0 notices.*
+'--- 74. PACOTE FIREFOX: o manifest derivado e o lint do Mozilla'
+$saidaFf = & python -X utf8 scripts/hades_firefox_package.py --check 2>&1
+$saidaFf | Select-Object -Last 3 | ForEach-Object { "    " + $_.ToString().Substring(0, [Math]::Min(110, $_.ToString().Length)) }
+if ($LASTEXITCODE -ne 0) {
+  $falhas.Add("hades_firefox_package.py --check (exit $LASTEXITCODE)")
+  '    FALHA'
+} else { '    OK' }
+$passos += 'pacote-firefox'
+
 "GATES LOCAIS: $($passos -join ' + ') VERDES"
