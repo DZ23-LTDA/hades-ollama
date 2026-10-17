@@ -108,3 +108,65 @@ describe("Onboarding do Companion", () => {
     expect(ONBOARDING_DO_COMPANION.map((i) => i.corpo).join(" ")).toMatch(/movimento/i);
   });
 });
+
+/**
+ * `E-1085` — **as preferências LIGADAS ao componente.**
+ *
+ * *O `E-1084` criou as preferências e declarou a limitação: «ainda NÃO estão ligadas ao
+ * `CompanionMascote.tsx`»*. Estes testes fecham essa lacuna: *uma preferência que nenhum componente lê
+ * é um ficheiro, não uma funcionalidade.*
+ *
+ * ***O QUE CADA TESTE DISCRIMINA.*** Cada um parte de uma preferência **que o utilizador pode escolher**
+ * e exige o efeito visível. *Se o componente ignorasse a prop, todos falhavam.*
+ */
+describe("CompanionMascote — as preferências do utilizador (E-1085)", () => {
+  it("visivel: false => não desenha NADA (nem um contentor vazio)", () => {
+    const saida = html({ estado: "a_trabalhar", preferencias: { visivel: false, silenciado: false, movimentoReduzido: false } });
+    expect(saida).toBe("");
+  });
+
+  it("visivel: true => desenha, como antes", () => {
+    const saida = html({ estado: "a_trabalhar", preferencias: { visivel: true, silenciado: false, movimentoReduzido: false } });
+    expect(saida).toContain("companion-typing");
+  });
+
+  it("silenciado: true => o aria-live passa a off, e o TEXTO continua na página", () => {
+    const saida = html({ estado: "a_trabalhar", preferencias: { visivel: true, silenciado: true, movimentoReduzido: false } });
+    expect(saida).toContain('aria-live="off"');
+    // ***A ACESSIBILIDADE NÃO SE PERDE.*** *O leitor de ecrã deixa de ser interrompido, mas o estado
+    // continua legível quando ele chegar ali.*
+    expect(saida).toContain("A trabalhar");
+    expect(saida).toContain('data-state="a_trabalhar"');
+  });
+
+  it("movimentoReduzido: true => companion-idle, e o data-* DECLARA a razão «pedido»", () => {
+    const saida = html({ estado: "a_trabalhar", preferencias: { visivel: true, silenciado: false, movimentoReduzido: true } });
+    expect(saida).toContain("companion-idle");
+    expect(saida).not.toContain("companion-typing");
+    expect(saida).toContain('data-companion-animacao="pedido"');
+  });
+
+  it("sistemaPedeMenosMovimento => companion-idle, com a razão «sistema»", () => {
+    const saida = html({ estado: "a_trabalhar", sistemaPedeMenosMovimento: true });
+    expect(saida).toContain("companion-idle");
+    expect(saida).not.toContain("companion-typing");
+    expect(saida).toContain('data-companion-animacao="sistema"');
+  });
+
+  it("o PEDIDO vence o SISTEMA -- e a animação para pelos dois", () => {
+    const saida = html({
+      estado: "a_trabalhar",
+      preferencias: { visivel: true, silenciado: false, movimentoReduzido: true },
+      sistemaPedeMenosMovimento: true,
+    });
+    expect(saida).toContain('data-companion-animacao="pedido"');
+    expect(saida).toContain("companion-idle");
+  });
+
+  it("sem preferências => o comportamento ANTERIOR (nenhuma regressão para quem não mudou nada)", () => {
+    const comDefault = html({ estado: "a_trabalhar" });
+    const explicito = html({ estado: "a_trabalhar", preferencias: { visivel: true, silenciado: false, movimentoReduzido: false } });
+    expect(comDefault).toBe(explicito);
+    expect(comDefault).toContain('data-companion-animacao="nenhum"');
+  });
+});

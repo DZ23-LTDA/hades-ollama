@@ -18,6 +18,13 @@
  *    linguagem escondido atrás de um desenho, e sem o motor por trás seria uma alucinação com olhos.*
  */
 
+import {
+  PREFERENCIAS_PADRAO,
+  type CompanionPreferencias,
+  podeDesenharCompanion,
+  razaoParaNaoAnimar,
+} from "../lib/companionPreferencias";
+
 export type CompanionEstado =
   | "ausente"
   | "a_planear"
@@ -39,6 +46,17 @@ export interface CompanionProps {
   podeFalar?: boolean;
   /** **Só** é chamado quando o humano carrega. *O Companion nunca inicia uma acção por si.* */
   onFalarPedido?: () => void;
+  /**
+   * `E-1085`: as preferências do UTILIZADOR (`visivel`/`silenciado`/`movimentoReduzido`).
+   * *Ausente ⇒ `PREFERENCIAS_PADRAO`* — **um componente que muda de comportamento para quem não mudou
+   * nada é uma regressão, não uma feature.**
+   */
+  preferencias?: CompanionPreferencias;
+  /**
+   * `E-1085`: o que o `matchMedia("(prefers-reduced-motion: reduce)")` diz. *Injectado para que o teste
+   * possa exercitar os dois lados, e para que o componente não leia `window` por conta própria.*
+   */
+  sistemaPedeMenosMovimento?: boolean;
 }
 
 /** O texto de cada estado. *Cada frase é verificável contra a `razao` que vem do servidor.* */
@@ -101,16 +119,30 @@ export function CompanionMascote({
   nome = "Hades",
   podeFalar = false,
   onFalarPedido,
+  preferencias = PREFERENCIAS_PADRAO,
+  sistemaPedeMenosMovimento = false,
 }: CompanionProps) {
   const texto = TEXTO_DO_ESTADO[estado];
-  const movimento = classeDeMovimento(estado);
   const aprovacaoPendente = estado === "a_aprovar";
+
+  // ***`E-1085` — AS PREFERÊNCIAS DECIDEM, E A DECISÃO FICA DECLARADA.*** *O `data-companion-animacao`
+  // diz QUAL razão parou a animação (`pedido`/`sistema`/`nenhum`), em vez de a parar em silêncio: um
+  // efeito visível sem causa visível é indistinguível de uma avaria.*
+  const razaoDeParar = razaoParaNaoAnimar(preferencias, sistemaPedeMenosMovimento);
+  const movimento = razaoDeParar === "nenhum" ? classeDeMovimento(estado) : "companion-idle";
+
+  // ***A GUARDA FINAL.*** *O `E-1084` já a tinha escrito para ser usada: visível **E** estado conhecido.
+  // Se o utilizador desligou o pet, não se desenha **nada** — nem um contentor vazio a ocupar espaço.*
+  if (!podeDesenharCompanion(preferencias, estado)) {
+    return null;
+  }
 
   return (
     <section
       className="companion-state-transition flex flex-col gap-3 rounded-2xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900"
       aria-label={`Companion ${nome}`}
       data-state={estado}
+      data-companion-animacao={razaoDeParar}
     >
       <div className="flex items-center gap-3">
         {/* O mascote: o `aria-hidden` é deliberado — *o estado é anunciado pelo texto ao lado, e um leitor de ecrã não
@@ -141,7 +173,7 @@ export function CompanionMascote({
           reservado a aprovações — que são o único caso em que a acção é do humano.* */}
       <p
         className="sr-only"
-        aria-live={aprovacaoPendente ? "assertive" : "polite"}
+        aria-live={preferencias.silenciado ? "off" : aprovacaoPendente ? "assertive" : "polite"}
         aria-atomic="true"
       >
         {`Companion ${nome}: ${texto.titulo}. ${texto.explicacao}`}
