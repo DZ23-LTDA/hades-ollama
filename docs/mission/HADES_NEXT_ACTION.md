@@ -1,6 +1,8 @@
 # HADES — PRÓXIMA AÇÃO (V2.2 + adendo de paridade)
 
-> **REMEDIACAO MAIS RECENTE: E-1117** -- *o E2E do takeover e da revogacao ao vivo (24 verificacoes) e a cura do `devolverSessao`.*
+> **REMEDIACAO MAIS RECENTE: E-1118** -- *o E2E do pareamento real com o Companion (17 verificacoes) e as 2 curas no `companion.mjs`.*
+
+
 
 
 

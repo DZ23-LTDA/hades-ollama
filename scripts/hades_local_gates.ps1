@@ -1173,4 +1173,21 @@ if ($exitTk -ne 0) {
 } else { '    OK' }
 $passos += 'extensao-takeover'
 
+
+''
+# E-1118: o E2E do PAREAMENTO REAL com o Companion (processo real, pipe do SO). *O `host:ola` honesto, o
+# codigo de 6 digitos com expiracao, a chave de 32 bytes da EXTENSAO, o handshake com HMAC-SHA256, o replay e a
+# prova errada recusados, a rota de aprovacao a dizer `verificada: false`, e a REVOGACAO que o handshake recusa.*
+'--- 76. E2E DO PAREAMENTO REAL COM O COMPANION (17 verificacoes)'
+Push-Location apps/hades-browser-bridge
+$saidaComp = & node test/e2e-companion-real.mjs 2>&1
+$saidaComp | Select-Object -Last 3 | ForEach-Object { "    " + $_.ToString().Substring(0, [Math]::Min(110, $_.ToString().Length)) }
+$exitComp = $LASTEXITCODE
+Pop-Location
+if ($exitComp -ne 0) {
+  $falhas.Add("e2e-companion-real.mjs (exit $exitComp)")
+  '    FALHA'
+} else { '    OK' }
+$passos += 'companion-pareamento'
+
 "GATES LOCAIS: $($passos -join ' + ') VERDES"

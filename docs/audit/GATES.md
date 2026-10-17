@@ -83,6 +83,7 @@ que passam: *quem os corre é o auditor, e o resultado é do estado em que ele o
 | 73 | E2E DA EXTENSAO COM DOM REAL (nove verificacoes) |
 | 74 | PACOTE FIREFOX: o manifest derivado e o lint do Mozilla |
 | 75 | E2E DO TAKEOVER HUMANO E DA REVOGACAO AO VIVO (24 verificacoes) |
+| 76 | E2E DO PAREAMENTO REAL COM O COMPANION (17 verificacoes) |
 
 ## Como correr a bateria completa
 

@@ -69,13 +69,21 @@ export function criarHost(agora = () => Date.now()) {
 
         case "pairing:confirmar": {
           if (!ultimoPedido) return erro("sem_pedido");
+          // ***`E-1118`: VALIDAR OS INPUTS ANTES DE CONSUMIR O CODIGO.*** *A ordem antiga era
+          // `confirmarPedido` -> `consumirCodigo` -> validar a `chave`. Logo uma chamada **sem chave**
+          // consumia o codigo e so' depois era recusada:* *o utilizador legitimo ficava com o codigo
+          // queimado por uma tentativa que nunca podia ter sucesso -- um **DoS trivial**, porque
+          // qualquer processo que fale com o host consome o codigo de um pairing em curso.*
+          // => *o codigo de 6 digitos e' **o recurso escasso**: so' se gasta quando a troca esta'
+          // completa.*
+          const bytesCru = Array.isArray(m.chave) ? m.chave : null;
+          if (!bytesCru || bytesCru.length !== 32) return erro("chave_ausente");
           const r = C.confirmarPairing(ultimoPedido, m.codigo, t);
           if (!r.ok) return erro(r.motivo);
           const c = C.consumirCodigo(ultimoPedido);
           if (!c.ok) return erro(c.motivo);
           // A chave vem da EXTENSAO: o host nao a inventa nem a deriva sozinho.
-          if (!Array.isArray(m.chave) || m.chave.length !== 32) return erro("chave_ausente");
-          const bytes = new Uint8Array(m.chave);
+          const bytes = new Uint8Array(bytesCru);
           const inst = m.instalacao ?? r.pedido;
           const reg = C.registrarDispositivo(estado, inst, bytes, t);
           if (!reg.ok) return erro(reg.motivo);
@@ -129,6 +137,15 @@ export function criarHost(agora = () => Date.now()) {
           if (!/^[a-f0-9]{64}$/.test(fingerprint)) return erro("fingerprint_invalido");
           if (typeof m.instalacao !== "string" || !pareados.includes(m.instalacao)) {
             return erro("instalacao_desconhecida");
+          }
+          // ***`E-1118`: UM DISPOSITIVO REVOGADO NAO TEM DIREITO A PERGUNTAR.*** *O `revogarDispositivo`
+          // **marca** `revogada: true` mas **nao remove** de `estado.dispositivos` -- logo este
+          // `includes` passava, e o dispositivo revogado continuava a receber uma resposta.* => *e a
+          // inconsistencia era visivel: o `aceitarHandshake` e o `rodarChave` **verificam** `revogada`, e
+          // este caminho **nao** -- *«curar dois de tres sitios deixa o terceiro a aceitar o que os outros
+          // recusam»* (`E-1035`).*
+          if (estado.dispositivos[m.instalacao].revogada === true) {
+            return erro("dispositivo_revogado");
           }
           return {
             ok: true,
