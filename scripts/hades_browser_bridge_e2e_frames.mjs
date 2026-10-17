@@ -29,7 +29,23 @@ const { chromium } = await import(
   pathToFileURL(path.join(RAIZ, "app", "ui", "app", "node_modules", "playwright", "index.mjs")).href
 );
 const EXT = path.join(RAIZ, "apps", "hades-browser-bridge");
-const EDGE = "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe";
+// **E-1083: o browser vem do ambiente, e nao do codigo.** *O prompt exige Chrome E Edge; com o
+// caminho do Edge fixo, so' um deles era testavel -- e a constante `EDGE` afirmava o browser.*
+const BROWSERS = {
+  edge: "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe",
+  chrome: "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+};
+const QUAL = (process.env.HADES_E2E_BROWSER || "edge").trim().toLowerCase();
+if (!(QUAL in BROWSERS)) {
+  console.error(`  HADES_E2E_BROWSER="${QUAL}" nao suportado. Aceita: ${Object.keys(BROWSERS).join(", ")}.`);
+  if (QUAL === "firefox" || QUAL === "webkit") {
+    console.error("  Firefox/WebKit NAO sao suportados: a extensao e' Manifest V3, e o caminho de carga");
+    console.error("  e' o de Chromium (--load-extension). Testa-la noutro motor exige outro manifesto.");
+  }
+  process.exit(2);
+}
+const EDGE = BROWSERS[QUAL];
+const CHROMIUM = true; // *as duas entradas acima sao Chromium*
 
 const falhas = [];
 const ok = (n, c, d = "") => {
@@ -77,7 +93,9 @@ try {
   ctx = await chromium.launchPersistentContext(perfil, {
     executablePath: EDGE, headless: false,
     args: [`--disable-extensions-except=${EXT}`, `--load-extension=${EXT}`,
-      "--disable-features=DisableLoadExtensionCommandLineSwitch", "--no-first-run", "--no-default-browser-check"],
+      // *O Chrome 155 removeu `--load-extension`; o Edge ainda o aceita com este workaround.*
+        // => *declarado, e nao silencioso: o leitor sabe que ha um switch a compensar.*
+        "--disable-features=DisableLoadExtensionCommandLineSwitch", "--no-first-run", "--no-default-browser-check"],
   });
   let sw = ctx.serviceWorkers()[0];
   if (!sw) sw = await ctx.waitForEvent("serviceworker", { timeout: 30000 }).catch(() => null);
