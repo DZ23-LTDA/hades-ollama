@@ -969,4 +969,28 @@ if ($LASTEXITCODE -ne 0) {
 } else { '    OK' }
 $passos += 'extensao-injecoes'
 
+
+''
+# E-1106: o ESTAGIO 7 (MCP Manager). *O estado dizia `APENAS_CATALOGO`; o codigo tem cliente real --
+# `exec.Command` no `mcp.go`, transporte HTTP no `mcp_remote.go`, SSRF no `unsafeEgressIP`, escopo de
+# workspace, politica de comando, e o proprio HADES como servidor MCP.*
+'--- 60. MCP: o catalogo, o spawn, o transporte, o SSRF e a politica'
+$saidaMcp = & python -X utf8 scripts/hades_mcp_check.py 2>&1
+$saidaMcp | Select-Object -Last 3 | ForEach-Object { "    " + $_.ToString().Substring(0, [Math]::Min(110, $_.ToString().Length)) }
+if ($LASTEXITCODE -ne 0) {
+  $falhas.Add("hades_mcp_check.py (exit $LASTEXITCODE)")
+  '    FALHA'
+} else { '    OK' }
+$passos += 'mcp'
+
+''
+'--- 61. fault injection do MCP (3 injecoes + contraprova)'
+$saidaMcpT = & python -X utf8 scripts/hades_mcp_check_test.py 2>&1
+$saidaMcpT | Select-Object -Last 2 | ForEach-Object { "    " + $_.ToString().Substring(0, [Math]::Min(110, $_.ToString().Length)) }
+if ($LASTEXITCODE -ne 0) {
+  $falhas.Add("hades_mcp_check_test.py (exit $LASTEXITCODE)")
+  '    FALHA'
+} else { '    OK' }
+$passos += 'mcp-injecoes'
+
 "GATES LOCAIS: $($passos -join ' + ') VERDES"
