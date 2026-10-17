@@ -1017,4 +1017,28 @@ if ($LASTEXITCODE -ne 0) {
 } else { '    OK' }
 $passos += 'plugins-injecoes'
 
+
+''
+# E-1108: o ESTAGIO 2 (Estabilizacao e consolidacao da base). *O flake do macOS esta' `NAO_REPRODUZIDO`
+# (6 SHAs limpos depois do `E-197`), a base e' hermetica com divida declarada (107), a codificacao e' limpa,
+# as catracas tem teste, e o `./server` passa com o comando EXACTO do CI (`-bench=. -benchtime=1x`).*
+'--- 64. ESTABILIDADE: o flake, a hermeticidade, a codificacao e o comando do CI'
+$saidaStab = & python -X utf8 scripts/hades_stability_check.py 2>&1
+$saidaStab | Select-Object -Last 3 | ForEach-Object { "    " + $_.ToString().Substring(0, [Math]::Min(110, $_.ToString().Length)) }
+if ($LASTEXITCODE -ne 0) {
+  $falhas.Add("hades_stability_check.py (exit $LASTEXITCODE)")
+  '    FALHA'
+} else { '    OK' }
+$passos += 'estabilidade'
+
+''
+'--- 65. fault injection da estabilidade (3 injecoes + contraprova)'
+$saidaStabT = & python -X utf8 scripts/hades_stability_check_test.py 2>&1
+$saidaStabT | Select-Object -Last 2 | ForEach-Object { "    " + $_.ToString().Substring(0, [Math]::Min(110, $_.ToString().Length)) }
+if ($LASTEXITCODE -ne 0) {
+  $falhas.Add("hades_stability_check_test.py (exit $LASTEXITCODE)")
+  '    FALHA'
+} else { '    OK' }
+$passos += 'estabilidade-injecoes'
+
 "GATES LOCAIS: $($passos -join ' + ') VERDES"

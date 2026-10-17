@@ -71,6 +71,8 @@ que passam: *quem os corre é o auditor, e o resultado é do estado em que ele o
 | 61 | fault injection do MCP (3 injecoes + contraprova) |
 | 62 | PLUGINS: o manifesto, o bundle, o registry, os estados e o escopo |
 | 63 | fault injection dos plugins (3 injecoes + contraprova) |
+| 64 | ESTABILIDADE: o flake, a hermeticidade, a codificacao e o comando do CI |
+| 65 | fault injection da estabilidade (3 injecoes + contraprova) |
 
 ## Como correr a bateria completa
 
