@@ -2,7 +2,7 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-17T20:12:01-03:00",
+  "updated_at": "2026-10-17T20:13:32-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
@@ -719,7 +719,8 @@
         "E-255",
         "E-256",
         "E-257",
-        "E-294"
+        "E-294",
+        "E-1169"
       ],
       "blocker": "",
       "next": "SEM BLOQUEIO ABERTO E SEM RESIDUAL SEM LEITURA: oraculo por ORDEM (E-253) com os 4 candidatos lidos e classificados, escopo por ROTA calibrado e re-medido (E-254/E-257, 35 -> 28), governanca com guard (E-255) e instrumentos reexecutados no CI com linha de base (E-256). Proximo: estagios 23-38 (os externamente dependentes seguem BLOCKED_BY_EXTERNAL_DEPENDENCY com procedimento de desbloqueio)",
@@ -873,7 +874,8 @@
         "E-1165",
         "E-1166",
         "E-1167",
-        "E-1168"
+        "E-1168",
+        "E-1169"
       ],
       "blocker": null,
       "next": "V2.2 em curso: retomada e reconciliacao concluidas (E-311) e plano V2.2 escrito (E-312). Proximas tarefas P0: incremento I (agendamento universal + onboarding de empresas existentes) e incremento II (distribuicao Windows/Linux/Android/iOS), depois os estagios 39, 40 e 41. A auditoria profunda vem DEPOIS das integracoes.",
@@ -2950,8 +2952,8 @@
     },
     "evidence": "E-173"
   },
-  "measured_at": "2026-10-17T20:12:01-03:00",
-  "measured_commit": "b452404d0a6022412849f9c9f9c5e4e8f1a42fb8",
+  "measured_at": "2026-10-17T20:13:32-03:00",
+  "measured_commit": "8a6211f4ebdcbca03d6491bc8c9d498aef8cd411",
   "branch_head_measured": "f1a6c261b",
   "branch_head_measured_at": "2026-10-15T10:30:00-03:00",
   "branch_head_measured_how": "git rev-parse HEAD no checkout local (branch fix/checker-relogio), medido no round 54. DIVERGENCIA DECLARADA: measured_commit continua a ser a ultima MEDICAO COMPLETA (e423ec72e); o head avancou com as fatias do complemento 48 (sala: dominio, rotas HTTP, cliente, componente, painel e tela) e com checkpoints. Nao se reescreveu a historia e nao se reivindica nova medicao completa. NOTA DE CONCORRENCIA: este arquivo tambem e escrito por outro agente (o measured_how seguinte cita HEAD 1065e5c56 / E-518-E-519) - editar sempre por ancora unica e re-ler antes de gravar.",
