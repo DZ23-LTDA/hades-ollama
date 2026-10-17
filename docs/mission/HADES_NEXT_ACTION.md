@@ -1,37 +1,10 @@
 # HADES — PRÓXIMA AÇÃO (V2.2 + adendo de paridade)
 
-> **REMEDIACAO MAIS RECENTE: E-1134** -- *o vermelho do `class-a-plus-integrity` era o hasher a medir CRLF, nao o indice: o manifesto e o pacote de auditoria liam o ficheiro de trabalho e o CI faz checkout LF -- curado e verde em `045fb7919`.*
+> **REMEDIACAO MAIS RECENTE: `E-1135`** (*rondas 241-245*). *O inventario aprendeu a dizer de que snapshot e' cada artefacto -- e a dizer quando nao sabe.* As 6 plataformas de produto passaram a ser medidas contra o artefacto CERTO: o Windows citava o instalador do dia anterior (`A70B5107...`, mesmo tamanho, por isso passava despercebido) em vez do candidato (`0F95833A...`); o Linux le a proveniencia **dentro** do tarball (`SOURCE_SHA 9a0408e31905`); o bundle Web/PWA nao pode declarar SHA (o Vite nao o escreve) e passa a provar a **auto-coerencia** (5/5 assets); e os dois pacotes da extensao, que existiam em `dist/` **fora de qualquer inventario**, passaram a declarar `SOURCE_SHA: a313019e48ef`. Junto com eles: o passo de smoke de instalacao passou a existir no `dz23-windows-installer.yaml` (nenhum workflow instalava o `HadesSetup.exe` -- o desbloqueio que eu tinha declarado nao existia) e o `test-install.yaml` deixou de instalar `ollama-classe-a-plus`.
 
+> **REMEDIACAO ANTERIOR: E-1134** -- *o vermelho do `class-a-plus-integrity` era o hasher a medir CRLF, nao o indice: o manifesto e o pacote de auditoria liam o ficheiro de trabalho e o CI faz checkout LF -- curado e verde em `045fb7919`.*
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-> **REMEDICAO MAIS RECENTE: `E-1090`** (*ronda 173*). A cabeca do indice e' **`E-1090`**: *a documentacao do Companion (`docs/COMPANION.md`), a catraca de 47 verificacoes e as 4 injectoes que a provam.* => *a §FASE-3-A fica `COMPLETED_VERIFIED` nos 10 criterios; o que falta e' a **jornada completa** (`idle -> /goal -> ... -> success`, backend Go real + Ollama).*
+> **REMEDICAO ANTERIOR: `E-1090`** (*ronda 173*). A cabeca do indice e' **`E-1090`**: *a documentacao do Companion (`docs/COMPANION.md`), a catraca de 47 verificacoes e as 4 injectoes que a provam.* => *a §FASE-3-A fica `COMPLETED_VERIFIED` nos 10 criterios; o que falta e' a **jornada completa** (`idle -> /goal -> ... -> success`, backend Go real + Ollama).*
 
 > **CHECKPOINT REMEDIDO nas rodadas 181–222 (evidência mais recente `E-959`; cadeia `E-820`→`E-867`).**
 >
