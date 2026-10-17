@@ -20,6 +20,7 @@ import io
 import json
 import re
 import sys
+import tarfile
 from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parent.parent
@@ -103,6 +104,40 @@ def instalador_do_candidato() -> tuple[Path | None, str]:
     return None, "AUSENTE"
 
 
+def tarball_linux() -> tuple[Path | None, str]:
+    """O tarball Linux **do candidato**, com o `SOURCE_SHA` que o `PROVENIENCIA.txt` DE DENTRO declara.
+
+    *A MESMA CLASSE DO WINDOWS, medida na ronda 239.* O `hades_linux_package.py` escreve a
+    proveniencia **dentro** do pacote (`.../PROVENIENCIA.txt`), nao ao lado. O `dist/hades-linux-amd64/`
+    que a matriz citava trazia `SOURCE_SHA: 9a0408e31905` enquanto o HEAD era outro -- *ou seja, a
+    matriz apresentava ao candidato um artefacto de outro snapshot, sem o dizer.*
+    **Cura:** abrir o tarball (stdlib `tarfile`, sem subprocesso) e ler o `SOURCE_SHA`.
+    """
+    for rel in ("dist/hades-linux-amd64/hades-linux-amd64-UNSIGNED.tar.gz",
+                "dist/Hades-0.2.0-linux-amd64-unsigned.tar.gz",
+                "dist/hades-linux-amd64-unsigned.tar.gz"):
+        p = RAIZ / rel
+        if not p.is_file():
+            continue
+        declarado = "NAO_DECLARADO"
+        try:
+            with tarfile.open(p, "r:*") as tf:
+                for n in tf.getnames():
+                    if n.endswith("PROVENIENCIA.txt"):
+                        dados = tf.extractfile(n)
+                        if dados is None:
+                            continue
+                        texto = dados.read().decode("utf-8", errors="replace")
+                        m = re.search(r"SOURCE_SHA:\s*([0-9a-f]{7,40})", texto)
+                        if m:
+                            declarado = m.group(1)
+                        break
+        except (tarfile.TarError, OSError):
+            declarado = "ILEGIVEL"
+        return p, declarado
+    return None, "AUSENTE"
+
+
 def main() -> int:
     # ---------- Android: o `app.json`/`eas.json` existem? o APK? ----------
     app_json = MOBILE / "app.json"
@@ -115,6 +150,12 @@ def main() -> int:
     web_index = web_dist / "index.html"
 
     instalador_win, sha_declarado_win = instalador_do_candidato()
+    tarball_lnx, sha_declarado_lnx = tarball_linux()
+    if sha_declarado_lnx not in ("NAO_DECLARADO", "AUSENTE", "ILEGIVEL"):
+        prefixo_lnx = ("artefacto de SOURCE_SHA " + sha_declarado_lnx +
+                       " (declarado no PROVENIENCIA.txt DENTRO do tarball); ")
+    else:
+        prefixo_lnx = "proveniencia NAO declarada no tarball; "
     if sha_declarado_win not in ("NAO_DECLARADO", "AUSENTE"):
         nota_win = ("artefacto do candidato (SOURCE_SHA " + sha_declarado_win +
                     " declarado no PROVENIENCIA.txt)")
@@ -150,17 +191,17 @@ def main() -> int:
         plataforma(
             "Linux", "`cmd/`, `app/`, `server/` (Go)",
             existe_wf("dz23-linux-package.yaml"),
-            ("dist/Hades-0.2.0-linux-amd64-unsigned.tar.gz",
+            ((tarball_lnx,) if tarball_lnx else ("dist/Hades-0.2.0-linux-amd64-unsigned.tar.gz",
              "dist/hades-linux-amd64-unsigned.tar.gz",
              # ***O `E-1112` GEROU O TARBALL POR CROSS-COMPILE.*** *O `scripts/package_linux.sh` do repo usa
              # `CGO_ENABLED=1`; este foi **CGO=0** a partir do Windows* => *logo: **PACKAGE=sim** (o ficheiro
              # existe, com tamanho e hash), **BUILD=cross** (nao nativo), e **INSTALL=NAO** (nao houve Linux
              # para instalar)* => ***`um pacote que esconde como foi feito e' pior do que um pacote que nao
              # existe.`***
-             "dist/hades-linux-amd64/hades-linux-amd64-UNSIGNED.tar.gz"),
+             "dist/hades-linux-amd64/hades-linux-amd64-UNSIGNED.tar.gz")),
             # *INSTALL continua NAO MEDIDO -- o pacote existe, mas ninguem o instalou*
             "NÃO MEDIDO (INSTALLED=NAO)", "NÃO MEDIDO", "não assinado (unsigned)",
-            "cross-compile Windows→Linux com CGO=0; **NAO** e' build nativo, **NAO** foi instalado, e **NAO** "
+            prefixo_lnx + "cross-compile Windows→Linux com CGO=0; **NAO** e' build nativo, **NAO** foi instalado, e **NAO** "
             "e' byte-a-byte o artefacto do `dz23-linux-package.yaml` (que usa CGO=1)"),
         plataforma(
             "macOS", "`cmd/`, `app/`, `server/` (Go)",
