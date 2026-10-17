@@ -11,12 +11,12 @@
 | **Commit medido** (`measured_commit`) | `fbe1a235dc794aaebf65d82ab4a7cf226cbc2ccd` |
 | **Commit da `main`** (`git.main_sha`) | `4b3e21854` |
 | **Gerado em** (`measured_at`) | 2026-10-15T14:19:33-03:00 |
-| **Snapshot real** (`gate_head`) | `c0bb045035b4d97c0d0105485f8f9511a327e641` |
+| **Snapshot real** (`gate_head`) | `55ab4214f301766d6836a5de099d1a593abed013` |
 | **Ramo do snapshot** (`gate_branch`) | `fix/checker-relogio` |
-| **Entradas nao commitadas** (`gate_dirty`) | 14 |
-| **O gate prova o snapshot candidato?** (`gate_snapshot`) | **DIVERGENTE** - 139 commits depois do `measured_commit` |
+| **Entradas nao commitadas** (`gate_dirty`) | 18 |
+| **O gate prova o snapshot candidato?** (`gate_snapshot`) | **DIVERGENTE** - 140 commits depois do `measured_commit` |
 | Estágios | 38 |
-| Linhas de evidência no índice | 885 |
+| Linhas de evidência no índice | 886 |
 | `COMPLETED_VERIFIED` | 2 |
 | `IN_PROGRESS` | 15 |
 | `BLOCKED_BY_EXTERNAL_DEPENDENCY` | 21 |
@@ -97,7 +97,7 @@ possível sem ele**.
 
 ## Referências
 
-- Índice de evidências: [`HADES_EVIDENCE_INDEX.md`](HADES_EVIDENCE_INDEX.md) (885 linhas).
+- Índice de evidências: [`HADES_EVIDENCE_INDEX.md`](HADES_EVIDENCE_INDEX.md) (886 linhas).
 - Estado da missão: [`HADES_MASTER_STATE.json`](HADES_MASTER_STATE.json).
 - Gate global: [`HADES_FINAL_RELEASE_GATE.md`](HADES_FINAL_RELEASE_GATE.md).
 - Gate intermediário de engenharia (estágio 22): [`HADES_ENGINEERING_GATE.md`](HADES_ENGINEERING_GATE.md).

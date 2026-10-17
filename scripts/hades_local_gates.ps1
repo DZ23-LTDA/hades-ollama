@@ -687,4 +687,29 @@ if ($LASTEXITCODE -ne 0) {
   '    FALHA'
 } else { '    OK' }
 $passos += 'requisitos-testes'
+
+''
+# E-1093: o AMBIENTE da medicao T2 (§ESTAGIO 21). *O prompt exige «hardware, versao, modelo, contexto,
+# warm/cold, repeticoes e erro» -- e as duas matrizes do T2 tinham os cenarios, os modelos e as repeticoes,
+# e NAO tinham o ambiente.* => *sem ambiente, os numeros nao sao reproduziveis.*
+'--- 38. AMBIENTE do T2: hardware, SO, Ollama, modelos, lacunas e proveniencia'
+$saidaT2 = & python -X utf8 scripts/hades_t2_contexto.py 2>&1
+$saidaT2 | Select-Object -Last 2 | ForEach-Object { "    " + $_.ToString().Substring(0, [Math]::Min(110, $_.ToString().Length)) }
+$saidaT2c = & python -X utf8 scripts/hades_t2_contexto.py --check 2>&1
+$saidaT2c | Select-Object -Last 2 | ForEach-Object { "    " + $_.ToString().Substring(0, [Math]::Min(110, $_.ToString().Length)) }
+if ($LASTEXITCODE -ne 0) {
+  $falhas.Add("hades_t2_contexto.py --check (exit $LASTEXITCODE)")
+  '    FALHA'
+} else { '    OK' }
+$passos += 't2-ambiente'
+
+''
+'--- 39. fault injection do ambiente T2 (3 injecoes + contraprova)'
+$saidaT2T = & python -X utf8 scripts/hades_t2_contexto_test.py 2>&1
+$saidaT2T | Select-Object -Last 2 | ForEach-Object { "    " + $_.ToString().Substring(0, [Math]::Min(110, $_.ToString().Length)) }
+if ($LASTEXITCODE -ne 0) {
+  $falhas.Add("hades_t2_contexto_test.py (exit $LASTEXITCODE)")
+  '    FALHA'
+} else { '    OK' }
+$passos += 't2-ambiente-testes'
 "GATES LOCAIS: $($passos -join ' + ') VERDES"
