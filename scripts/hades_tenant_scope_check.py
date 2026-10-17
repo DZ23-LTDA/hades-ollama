@@ -209,6 +209,36 @@ def auditar(diretorio: Path = DIRETORIO) -> tuple[list[str], list[str]]:
             continue
         if not tem_guarda:
             pendentes.append(f"{nome} — dispensa: {dispensa}")
+    # E-432 (BAIXO-2, medido por auditoria independente): o laco acima SO olha as dispensas dos arquivos que ELE
+    # encontrou, entao uma dispensa que NAO CASA COM NADA passa em silencio - e a mensagem de sucesso afirma que
+    # todos tem motivo declarado. E' a assimetria que o hades_scope_classifier.py (E-383) ja corrigiu do lado dele.
+    #
+    # NOTA DELIBERADA: eu tentei tambem acusar dispensa OBSOLETA (arquivo que JA TEM guarda) e a premissa estava
+    # ERRADA - as isencoes de scheduling_hours/breaks e supervisor_incidents explicam por que o IDENTIFICADOR nao e'
+    # de tenant, e TER GUARDA NAO TORNA A ISENCAO OBSOLETA. Removi essa acusacao; fica so' a de ORFA, que e' o
+    # achado medido. *Inventar alem do achado produz alarme falso, e alarme falso ensina a ignorar o instrumento.*
+    # A checagem de ORFA so' vale na arvore que ESTE instrumento audita (`DIRETORIO` = `internal/agent`): os
+    # autotestes chamam `auditar(tempdir)` e reaproveitam a DISPENSAS global, entao toda dispensa pareceria orfa
+    # ali. *Um alarme que dispara em fixture ensina a ignorar o alarme.*
+    #
+    # 🚨 E MEDIDO (E-432): eu havia escrito `raiz_real = ... / "internal"` - o PAI de DIRETORIO - e a comparacao
+    # dava `False` SEMPRE, entao a acusacao **nunca executava** e o instrumento PARECIA funcionar. *Um instrumento
+    # que nunca dispara e' um instrumento que nunca mediu.*
+    no_repo_real = diretorio.resolve() == DIRETORIO.resolve()
+    for nome_dispensado in sorted(DISPENSAS):
+        caminho_encontrado = None
+        for candidato in (diretorio / nome_dispensado, diretorio / "agent" / nome_dispensado):
+            if candidato.exists():
+                caminho_encontrado = candidato
+                break
+        # A checagem de ORFA so' vale na raiz REAL: os autotestes montam diretorios temporarios e reaproveitam a
+        # DISPENSAS global, entao toda dispensa pareceria orfa ali. *Um alarme que dispara em fixture ensina a
+        # ignorar o alarme.*
+        if caminho_encontrado is None and no_repo_real:
+            violacoes.append(
+                "%s: DISPENSA ORFA - o arquivo nao existe mais, entao a isencao nao casa com uso nenhum "
+                "(excecao sem uso e' divida disfarcada de politica)" % nome_dispensado
+            )
     return violacoes, pendentes
 
 

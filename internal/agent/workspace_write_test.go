@@ -9,6 +9,12 @@ import (
 )
 
 func TestWorkspaceWriteApprovalBindsPayloadAndCreatesFile(t *testing.T) {
+	// ***E-1094: o `LocalAppData` e' TEMPORARIO.*** *O `withWorkspaceMutationLock` usa
+	// `os.UserCacheDir()` -- que no Windows e' `%LocalAppData%` -- para o **lock dir**. => *sem esta
+	// linha, o teste escreve no `%LOCALAPPDATA%` real do utilizador, e falha num ambiente confinado
+	// (`mkdir ...\\ollama-agent: Acesso negado`).* => *o mesmo defeito do `E-1087`/`E-1092`, na
+	// variante do **cache** em vez do config.*
+	t.Setenv("LocalAppData", t.TempDir())
 	workspace := t.TempDir()
 	input := map[string]any{"path": "nested/result.txt", "content": "approved output"}
 	prepared, err := prepareWorkspaceWriteApproval(workspace, input)
@@ -43,6 +49,9 @@ func TestWorkspaceWriteApprovalBindsPayloadAndCreatesFile(t *testing.T) {
 }
 
 func TestWorkspaceWriteRejectsChangedTargetAndPreservesBackup(t *testing.T) {
+	// ***E-1094: o `LocalAppData` e' TEMPORARIO** -- o lock dir do `withWorkspaceMutationLock` vive
+	// no `os.UserCacheDir()`. *Sem esta linha o teste escreve no `%LOCALAPPDATA%` real.*
+	t.Setenv("LocalAppData", t.TempDir())
 	workspace := t.TempDir()
 	target := filepath.Join(workspace, "existing.txt")
 	if err := os.WriteFile(target, []byte("original"), 0o640); err != nil {

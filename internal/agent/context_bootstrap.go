@@ -69,6 +69,10 @@ var approvalRequiredScopes = map[string]struct{}{
 	"mcp:remote:call":      {},
 	"connector:external":   {},
 	"media:execute":        {},
+	// E-666: um passo de inferencia sai da maquina, custa e pode enviar dado ⇒ **exige aprovacao por passo**, como
+	// qualquer outro efeito externo. *Declarar o escopo aqui e no descritor da ferramenta nao e' redundancia: sao os
+	// dois lados que a politica confronta - e um escopo que exigisse aprovacao so' num dos lados seria uma brecha.*
+	"model:infer": {},
 }
 
 // readScopes são os escopos que só leem.
@@ -99,6 +103,9 @@ type ContextBootstrapInput struct {
 	LocalOnly           bool
 	DelegationAllowed   bool
 	UntrustedSources    []string
+	// Handoff é o contrato do E-588 a incluir no contexto como DADO (nunca instrução).
+	// Ponteiro de propósito: nil é «não há handoff», que NÃO é o mesmo que um handoff vazio.
+	Handoff *Handoff
 }
 
 // ContextMemoryRef é uma memória já redigida e truncada.
@@ -121,8 +128,11 @@ type ContextLimits struct {
 // ContextBootstrap é o documento final. `Permissions` relaciona cada escopo
 // conhecido ao estado declarado (nunca a uma autorização concedida aqui).
 type ContextBootstrap struct {
-	Identity         string             `json:"identity"`
-	Version          string             `json:"version"`
+	Identity string `json:"identity"`
+	Version  string `json:"version"`
+	// Handoff é o bloco JÁ MARCADO do contrato (E-588), ou vazio quando não há. Vai como
+	// DADO no documento e no preâmbulo: nunca como instrução (§7-E).
+	Handoff          string             `json:"handoff,omitempty"`
 	Mode             string             `json:"mode"`
 	OrganizationID   string             `json:"organization_id,omitempty"`
 	ProjectID        string             `json:"project_id,omitempty"`
@@ -230,6 +240,17 @@ func BuildContextBootstrap(input ContextBootstrapInput) (ContextBootstrap, error
 		bootstrap.Delegation = PermissionForbidden
 	}
 	bootstrap.UntrustedSources = boundedList(input.UntrustedSources, 0)
+
+	// HANDOFF COMO DADO (§7-E): vai a versão REDIGIDA (`ParaPreambulo`), e não o documento
+	// completo — este bloco entra no PREÂMBULO que vai ao modelo, e identificador interno ou
+	// caminho local não são conteúdo de trabalho: são TOPOLOGIA DO SERVIDOR (o vazamento
+	// medido em `mission_context_test.go:118`, E-597). O teto declarado pelo próprio contrato
+	// é o que impede o handoff de inchar o documento.
+	if input.Handoff != nil {
+		if bloco, _ := input.Handoff.ParaPreambulo(0); strings.TrimSpace(bloco) != "" {
+			bootstrap.Handoff = bloco
+		}
+	}
 
 	// Isolamento em DUAS camadas: só memórias do MESMO projeto entram no contexto
 	// E, dentro do projeto, memória `private` de OUTRO ator nunca entra. Sem
@@ -340,6 +361,13 @@ func renderContextPreamble(b ContextBootstrap) string {
 		for index, checkpoint := range b.Checkpoints {
 			builder.WriteString(itemsLine(index, checkpoint))
 		}
+	}
+	// O HANDOFF VAI NO PREÂMBULO, e não só no JSON: sem esta secção ele chegaria ao
+	// documento e não ao modelo - que é precisamente onde a transferência de contexto
+	// acontece. O bloco já traz o próprio marcador de dado, pela mesma razão que as
+	// memórias trazem o seu.
+	if strings.TrimSpace(b.Handoff) != "" {
+		builder.WriteString("\n" + b.Handoff + "\n")
 	}
 	if len(b.MemoryRefs) > 0 {
 		builder.WriteString("\nMemória autorizada deste projeto (já redigida):\n")

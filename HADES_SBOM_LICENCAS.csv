@@ -1,0 +1,931 @@
+ecossistema,item,versao,licenca_texto,familia
+go,github.com/TheTitanrain/w32,v0.0.0-20180517000239-4f5cfb03fabf,Copyright (c) 2010-2012 The w32 Authors. All rights reserved.,PERMISSIVA
+go,github.com/agnivade/levenshtein,v1.2.1,The MIT License (MIT),PERMISSIVA
+go,github.com/arbovm/levenshtein,v0.0.0-20160628152529-48b4e1c0c4d0,Copyright (c) 2015; Arbo von Monkiewitsch All rights reserved.,PERMISSIVA
+go,github.com/aymanbagabas/go-osc52/v2,v2.0.1,MIT License,PERMISSIVA
+go,github.com/bahlo/generic-list-go,v0.2.0,Copyright (c) 2009 The Go Authors. All rights reserved.,PERMISSIVA
+go,github.com/beevik/etree,v1.6.0,Copyright 2015-2024 Brett Vickers. All rights reserved.,PERMISSIVA
+go,github.com/buger/jsonparser,v1.1.2,MIT License,PERMISSIVA
+go,github.com/cenkalti/backoff/v5,v5.0.3,The MIT License (MIT),PERMISSIVA
+go,github.com/cespare/xxhash/v2,v2.3.0,Copyright (c) 2016 Caleb Spare,PERMISSIVA
+go,github.com/charmbracelet/bubbletea,v1.3.10,MIT License,PERMISSIVA
+go,github.com/charmbracelet/colorprofile,v0.2.3-0.20250311203215-f60798e515dc,MIT License,PERMISSIVA
+go,github.com/charmbracelet/lipgloss,v1.1.0,MIT License,PERMISSIVA
+go,github.com/charmbracelet/x/ansi,v0.10.1,MIT License,PERMISSIVA
+go,github.com/charmbracelet/x/cellbuf,v0.0.13-0.20250311204145-2c3ea96c31dd,MIT License,PERMISSIVA
+go,github.com/charmbracelet/x/term,v0.2.1,MIT License,PERMISSIVA
+go,github.com/clipperhouse/displaywidth,v0.10.0,MIT License,PERMISSIVA
+go,github.com/clipperhouse/uax29/v2,v2.6.0,MIT License,PERMISSIVA
+go,github.com/containerd/console,v1.0.5,Apache License,PERMISSIVA
+go,github.com/crewjam/saml,v0.5.1,Copyright (c) 2015; Ross Kinder,PERMISSIVA
+go,github.com/davecgh/go-spew,v1.1.1,ISC License,PERMISSIVA
+go,github.com/emirpasic/gods/v2,v2.0.0-alpha,Copyright (c) 2015; Emir Pasic,PERMISSIVA
+go,github.com/erikgeiser/coninput,v0.0.0-20211004153227-1c3628e74d0f,MIT License,PERMISSIVA
+go,github.com/fatih/color,v1.18.0,The MIT License (MIT),PERMISSIVA
+go,github.com/gabriel-vasile/mimetype,v1.4.13,MIT License,PERMISSIVA
+go,github.com/gin-contrib/cors,v1.7.9,MIT License,PERMISSIVA
+go,github.com/gin-contrib/sse,v1.1.1,The MIT License (MIT),PERMISSIVA
+go,github.com/gin-gonic/gin,v1.12.0,The MIT License (MIT),PERMISSIVA
+go,github.com/go-logr/logr,v1.4.4,Apache License,PERMISSIVA
+go,github.com/go-logr/stdr,v1.2.2,Apache License,PERMISSIVA
+go,github.com/go-playground/assert/v2,v2.2.0,The MIT License (MIT),PERMISSIVA
+go,github.com/go-playground/locales,v0.14.1,The MIT License (MIT),PERMISSIVA
+go,github.com/go-playground/universal-translator,v0.18.1,The MIT License (MIT),PERMISSIVA
+go,github.com/go-playground/validator/v10,v10.30.3,The MIT License (MIT),PERMISSIVA
+go,github.com/go-viper/mapstructure/v2,v2.5.0,The MIT License (MIT),PERMISSIVA
+go,github.com/goccy/go-yaml,v1.19.2,MIT License,PERMISSIVA
+go,github.com/golang-jwt/jwt/v4,v4.5.2,Copyright (c) 2012 Dave Grijalva,PERMISSIVA
+go,github.com/golang/protobuf,v1.5.4,Copyright 2010 The Go Authors.  All rights reserved.,PERMISSIVA
+go,github.com/google/go-cmp,v0.7.0,Copyright (c) 2017 The Go Authors. All rights reserved.,PERMISSIVA
+go,github.com/google/uuid,v1.6.0,Copyright (c) 2009;2014 Google Inc. All rights reserved.,PERMISSIVA
+go,github.com/gorilla/websocket,v1.5.3,Copyright (c) 2013 The Gorilla WebSocket Authors. All rights reserved.,PERMISSIVA
+go,github.com/grpc-ecosystem/grpc-gateway/v2,v2.30.0,Copyright (c) 2015; Gengo; Inc.,PERMISSIVA
+go,github.com/inconshreveable/mousetrap,v1.1.0,Apache License,PERMISSIVA
+go,github.com/jackc/pgpassfile,v1.0.0,Copyright (c) 2019 Jack Christensen,PERMISSIVA
+go,github.com/jackc/pgservicefile,v0.0.0-20240606120523-5a60cdf6a761,Copyright (c) 2020 Jack Christensen,PERMISSIVA
+go,github.com/jackc/pgx/v5,v5.11.0,Copyright (c) 2013-2021 Jack Christensen,PERMISSIVA
+go,github.com/jackc/puddle/v2,v2.2.2,Copyright (c) 2018 Jack Christensen,PERMISSIVA
+go,github.com/jonboulle/clockwork,v0.5.0,Apache License,PERMISSIVA
+go,github.com/json-iterator/go,v1.1.12,MIT License,PERMISSIVA
+go,github.com/klauspost/compress,v1.20.1,Copyright (c) 2012 The Go Authors. All rights reserved.,PERMISSIVA
+go,github.com/kr/pretty,v0.3.1,Copyright 2012 Keith Rarick,PERMISSIVA
+go,github.com/kr/text,v0.2.0,Copyright 2012 Keith Rarick,PERMISSIVA
+go,github.com/ledongthuc/pdf,v0.0.0-20250511090121-5959a4027728,Copyright (c) 2009 The Go Authors. All rights reserved.,PERMISSIVA
+go,github.com/leodido/go-urn,v1.4.0,MIT License,PERMISSIVA
+go,github.com/lucasb-eyer/go-colorful,v1.2.0,Copyright (c) 2013 Lucas Beyer,PERMISSIVA
+go,github.com/mailru/easyjson,v0.7.7,Copyright (c) 2016 Mail.Ru Group,PERMISSIVA
+go,github.com/mattermost/xml-roundtrip-validator,v0.1.0,Apache License,PERMISSIVA
+go,github.com/mattn/go-colorable,v0.1.14,The MIT License (MIT),PERMISSIVA
+go,github.com/mattn/go-isatty,v0.0.23,Copyright (c) Yasuhiro MATSUMOTO <mattn.jp@gmail.com>,PERMISSIVA
+go,github.com/mattn/go-localereader,v0.0.2-0.20220822084737-6bae6c923850,The MIT License (MIT),PERMISSIVA
+go,github.com/mattn/go-pointer,v0.0.1,The MIT License (MIT),PERMISSIVA
+go,github.com/mattn/go-runewidth,v0.0.30,The MIT License (MIT),PERMISSIVA
+go,github.com/mattn/go-sqlite3,v1.14.52,The MIT License (MIT),PERMISSIVA
+go,github.com/modern-go/concurrent,v0.0.0-20180306012644-bacd9c7ef1dd,Apache License,PERMISSIVA
+go,github.com/modern-go/reflect2,v1.0.2,Apache License,PERMISSIVA
+go,github.com/muesli/ansi,v0.0.0-20230316100256-276c6243b2f6,MIT License,PERMISSIVA
+go,github.com/muesli/cancelreader,v0.2.2,MIT License,PERMISSIVA
+go,github.com/muesli/termenv,v0.16.0,MIT License,PERMISSIVA
+go,github.com/olekukonko/cat,v0.0.0-20250911104152-50322a0618f6,MIT License,PERMISSIVA
+go,github.com/olekukonko/errors,v1.2.0,MIT License,PERMISSIVA
+go,github.com/olekukonko/ll,v0.1.6,MIT License,PERMISSIVA
+go,github.com/olekukonko/tablewriter,v1.1.5,Copyright (C) 2014 by Oleku Konko,PERMISSIVA
+go,github.com/pelletier/go-toml/v2,v2.4.3,The MIT License (MIT),PERMISSIVA
+go,github.com/pkg/browser,v0.0.0-20240102092130-5ac0b6a4141c,Copyright (c) 2014; Dave Cheney <dave@cheney.net>,PERMISSIVA
+go,github.com/pkg/errors,v0.9.1,Copyright (c) 2015; Dave Cheney <dave@cheney.net>,PERMISSIVA
+go,github.com/pmezard/go-difflib,v1.0.0,Copyright (c) 2013; Patrick Mezard,PERMISSIVA
+go,github.com/quic-go/qpack,v0.6.0,Copyright 2019 Marten Seemann,PERMISSIVA
+go,github.com/quic-go/quic-go,v0.60.0,MIT License,PERMISSIVA
+go,github.com/rivo/uniseg,v0.4.7,MIT License,PERMISSIVA
+go,github.com/rogpeppe/go-internal,v1.14.1,Copyright (c) 2018 The Go Authors. All rights reserved.,PERMISSIVA
+go,github.com/russellhaering/goxmldsig,v1.6.0,Apache License,PERMISSIVA
+go,github.com/spf13/cobra,v1.10.2,Apache License,PERMISSIVA
+go,github.com/spf13/pflag,v1.0.9,Copyright (c) 2012 Alex Ogier. All rights reserved.,PERMISSIVA
+go,github.com/stretchr/objx,v0.5.3,The MIT License,PERMISSIVA
+go,github.com/stretchr/testify,v1.12.1,MIT License,PERMISSIVA
+go,github.com/tkrajina/go-reflector,v0.5.5,Apache License,PERMISSIVA
+go,github.com/tkrajina/typescriptify-golang-structs,v0.2.0,Apache License,PERMISSIVA
+go,github.com/tree-sitter/go-tree-sitter,v0.25.0,The MIT License (MIT),PERMISSIVA
+go,github.com/tree-sitter/tree-sitter-c,v0.23.4,The MIT License (MIT),PERMISSIVA
+go,github.com/tree-sitter/tree-sitter-cpp,v0.23.4,The MIT License (MIT),PERMISSIVA
+go,github.com/tree-sitter/tree-sitter-embedded-template,v0.23.2,The MIT License (MIT),PERMISSIVA
+go,github.com/tree-sitter/tree-sitter-go,v0.23.4,The MIT License (MIT),PERMISSIVA
+go,github.com/tree-sitter/tree-sitter-html,v0.23.2,The MIT License (MIT),PERMISSIVA
+go,github.com/tree-sitter/tree-sitter-java,v0.23.5,MIT License,PERMISSIVA
+go,github.com/tree-sitter/tree-sitter-javascript,v0.23.1,The MIT License (MIT),PERMISSIVA
+go,github.com/tree-sitter/tree-sitter-json,v0.24.8,The MIT License (MIT),PERMISSIVA
+go,github.com/tree-sitter/tree-sitter-php,v0.23.11,The MIT License (MIT),PERMISSIVA
+go,github.com/tree-sitter/tree-sitter-python,v0.23.6,The MIT License (MIT),PERMISSIVA
+go,github.com/tree-sitter/tree-sitter-ruby,v0.23.1,The MIT License (MIT),PERMISSIVA
+go,github.com/tree-sitter/tree-sitter-rust,v0.23.2,The MIT License (MIT),PERMISSIVA
+go,github.com/twitchyliquid64/golang-asm,v0.15.1,Copyright (c) 2009 The Go Authors. All rights reserved.,PERMISSIVA
+go,github.com/ugorji/go/codec,v1.3.1,The MIT License (MIT),PERMISSIVA
+go,github.com/wk8/go-ordered-map/v2,v2.1.8,Apache License,PERMISSIVA
+go,github.com/xo/terminfo,v0.0.0-20220910002029-abceb7e1c41e,The MIT License (MIT),PERMISSIVA
+go,go.mongodb.org/mongo-driver/v2,v2.8.0,Apache License,PERMISSIVA
+go,go.opentelemetry.io/auto/sdk,v1.2.1,Apache License,PERMISSIVA
+go,go.opentelemetry.io/otel,v1.47.0,Apache License,PERMISSIVA
+go,go.opentelemetry.io/otel/exporters/otlp/otlptrace,v1.47.0,Apache License,PERMISSIVA
+go,go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp,v1.47.0,Apache License,PERMISSIVA
+go,go.opentelemetry.io/otel/log,v1.47.0,Apache License,PERMISSIVA
+go,go.opentelemetry.io/otel/metric,v1.47.0,Apache License,PERMISSIVA
+go,go.opentelemetry.io/otel/sdk,v1.47.0,Apache License,PERMISSIVA
+go,go.opentelemetry.io/otel/trace,v1.47.0,Apache License,PERMISSIVA
+go,go.opentelemetry.io/proto/otlp,v1.11.0,Apache License,PERMISSIVA
+go,go.uber.org/goleak,v1.3.0,The MIT License (MIT),PERMISSIVA
+go,go.yaml.in/yaml/v3,v3.0.5,This project is covered by two different licenses: MIT and Apache.,PERMISSIVA
+go,go.yaml.in/yaml/v3,v3.0.5,Copyright 2011-2016 Canonical Ltd.,PERMISSIVA
+go,golang.org/x/crypto,v0.57.0,Copyright 2009 The Go Authors.,PERMISSIVA
+go,golang.org/x/exp,v0.0.0-20250218142911-aa4b98e5adaa,Copyright 2009 The Go Authors.,PERMISSIVA
+go,golang.org/x/image,v0.46.0,Copyright 2009 The Go Authors.,PERMISSIVA
+go,golang.org/x/mod,v0.41.0,Copyright 2009 The Go Authors.,PERMISSIVA
+go,golang.org/x/net,v0.60.0,Copyright 2009 The Go Authors.,PERMISSIVA
+go,golang.org/x/sync,v0.24.0,Copyright 2009 The Go Authors.,PERMISSIVA
+go,golang.org/x/sys,v0.49.0,Copyright 2009 The Go Authors.,PERMISSIVA
+go,golang.org/x/term,v0.46.0,Copyright 2009 The Go Authors.,PERMISSIVA
+go,golang.org/x/text,v0.42.0,Copyright 2009 The Go Authors.,PERMISSIVA
+go,golang.org/x/tools,v0.49.0,Copyright 2009 The Go Authors.,PERMISSIVA
+go,gonum.org/v1/gonum,v0.17.0,Copyright ?2013 The Gonum Authors. All rights reserved.,PERMISSIVA
+go,google.golang.org/genproto/googleapis/api,v0.0.0-20260928230214-8a89bd6388cc,Apache License,PERMISSIVA
+go,google.golang.org/genproto/googleapis/rpc,v0.0.0-20260928230214-8a89bd6388cc,Apache License,PERMISSIVA
+go,google.golang.org/grpc,v1.83.2,Apache License,PERMISSIVA
+go,google.golang.org/grpc,v1.83.2,Copyright 2014 gRPC authors.,PERMISSIVA
+go,google.golang.org/protobuf,v1.36.12,Copyright (c) 2018 The Go Authors. All rights reserved.,PERMISSIVA
+go,gopkg.in/check.v1,v1.0.0-20201130134442-10cb98267c6c,Gocheck - A rich testing framework for Go,PERMISSIVA
+go,gopkg.in/yaml.v3,v3.0.1,This project is covered by two different licenses: MIT and Apache.,PERMISSIVA
+go,gopkg.in/yaml.v3,v3.0.1,Copyright 2011-2016 Canonical Ltd.,PERMISSIVA
+go,gotest.tools,v2.2.0+incompatible,Copyright 2018 gotest.tools authors,PERMISSIVA
+npm,@adobe/css-tools,4.4.3,MIT,PERMISSIVA
+npm,@ampproject/remapping,2.3.0,Apache-2.0,PERMISSIVA
+npm,@axe-core/playwright,4.13.0,MPL-2.0,COPYLEFT_FRACO
+npm,@babel/code-frame,7.29.7,MIT,PERMISSIVA
+npm,@babel/compat-data,7.29.7,MIT,PERMISSIVA
+npm,@babel/core,7.29.7,MIT,PERMISSIVA
+npm,@babel/generator,7.29.8,MIT,PERMISSIVA
+npm,@babel/helper-compilation-targets,7.29.7,MIT,PERMISSIVA
+npm,@babel/helper-globals,7.29.7,MIT,PERMISSIVA
+npm,@babel/helper-module-imports,7.29.7,MIT,PERMISSIVA
+npm,@babel/helper-module-transforms,7.29.7,MIT,PERMISSIVA
+npm,@babel/helper-plugin-utils,7.27.1,MIT,PERMISSIVA
+npm,@babel/helper-string-parser,7.29.7,MIT,PERMISSIVA
+npm,@babel/helper-validator-identifier,7.29.7,MIT,PERMISSIVA
+npm,@babel/helper-validator-option,7.29.7,MIT,PERMISSIVA
+npm,@babel/helpers,7.29.7,MIT,PERMISSIVA
+npm,@babel/parser,7.29.9,MIT,PERMISSIVA
+npm,@babel/plugin-transform-react-jsx-self,7.27.1,MIT,PERMISSIVA
+npm,@babel/plugin-transform-react-jsx-source,7.27.1,MIT,PERMISSIVA
+npm,@babel/runtime,7.27.6,MIT,PERMISSIVA
+npm,@babel/template,7.29.7,MIT,PERMISSIVA
+npm,@babel/traverse,7.29.8,MIT,PERMISSIVA
+npm,@babel/types,7.29.8,MIT,PERMISSIVA
+npm,@bcoe/v8-coverage,1.0.2,MIT,PERMISSIVA
+npm,@chromatic-com/storybook,4.1.3,MIT,PERMISSIVA
+npm,@csstools/cascade-layer-name-parser,2.0.5,MIT,PERMISSIVA
+npm,@csstools/color-helpers,5.1.0,MIT-0,PERMISSIVA
+npm,@csstools/css-calc,2.1.4,MIT,PERMISSIVA
+npm,@csstools/css-color-parser,3.1.0,MIT,PERMISSIVA
+npm,@csstools/css-parser-algorithms,3.0.5,MIT,PERMISSIVA
+npm,@csstools/css-tokenizer,3.0.4,MIT,PERMISSIVA
+npm,@csstools/media-query-list-parser,4.0.3,MIT,PERMISSIVA
+npm,@csstools/postcss-alpha-function,1.0.1,MIT-0,PERMISSIVA
+npm,@csstools/postcss-cascade-layers,5.0.2,MIT-0,PERMISSIVA
+npm,@csstools/selector-specificity,5.0.0,MIT-0,PERMISSIVA
+npm,postcss-selector-parser,7.1.6,MIT,PERMISSIVA
+npm,@csstools/postcss-color-function,4.0.12,MIT-0,PERMISSIVA
+npm,@csstools/postcss-color-function-display-p3-linear,1.0.1,MIT-0,PERMISSIVA
+npm,@csstools/postcss-color-mix-function,3.0.12,MIT-0,PERMISSIVA
+npm,@csstools/postcss-color-mix-variadic-function-arguments,1.0.2,MIT-0,PERMISSIVA
+npm,@csstools/postcss-content-alt-text,2.0.8,MIT-0,PERMISSIVA
+npm,@csstools/postcss-contrast-color-function,2.0.12,MIT-0,PERMISSIVA
+npm,@csstools/postcss-exponential-functions,2.0.9,MIT-0,PERMISSIVA
+npm,@csstools/postcss-font-format-keywords,4.0.0,MIT-0,PERMISSIVA
+npm,@csstools/postcss-gamut-mapping,2.0.11,MIT-0,PERMISSIVA
+npm,@csstools/postcss-gradients-interpolation-method,5.0.12,MIT-0,PERMISSIVA
+npm,@csstools/postcss-hwb-function,4.0.12,MIT-0,PERMISSIVA
+npm,@csstools/postcss-ic-unit,4.0.4,MIT-0,PERMISSIVA
+npm,@csstools/postcss-initial,2.0.1,MIT-0,PERMISSIVA
+npm,@csstools/postcss-is-pseudo-class,5.0.3,MIT-0,PERMISSIVA
+npm,@csstools/selector-specificity,5.0.0,MIT-0,PERMISSIVA
+npm,postcss-selector-parser,7.1.6,MIT,PERMISSIVA
+npm,@csstools/postcss-light-dark-function,2.0.11,MIT-0,PERMISSIVA
+npm,@csstools/postcss-logical-float-and-clear,3.0.0,MIT-0,PERMISSIVA
+npm,@csstools/postcss-logical-overflow,2.0.0,MIT-0,PERMISSIVA
+npm,@csstools/postcss-logical-overscroll-behavior,2.0.0,MIT-0,PERMISSIVA
+npm,@csstools/postcss-logical-resize,3.0.0,MIT-0,PERMISSIVA
+npm,@csstools/postcss-logical-viewport-units,3.0.4,MIT-0,PERMISSIVA
+npm,@csstools/postcss-media-minmax,2.0.9,MIT,PERMISSIVA
+npm,@csstools/postcss-media-queries-aspect-ratio-number-values,3.0.5,MIT-0,PERMISSIVA
+npm,@csstools/postcss-nested-calc,4.0.0,MIT-0,PERMISSIVA
+npm,@csstools/postcss-normalize-display-values,4.0.1,MIT-0,PERMISSIVA
+npm,@csstools/postcss-oklab-function,4.0.12,MIT-0,PERMISSIVA
+npm,@csstools/postcss-position-area-property,1.0.0,MIT-0,PERMISSIVA
+npm,@csstools/postcss-progressive-custom-properties,4.2.1,MIT-0,PERMISSIVA
+npm,@csstools/postcss-property-rule-prelude-list,1.0.0,MIT-0,PERMISSIVA
+npm,@csstools/postcss-random-function,2.0.1,MIT-0,PERMISSIVA
+npm,@csstools/postcss-relative-color-syntax,3.0.12,MIT-0,PERMISSIVA
+npm,@csstools/postcss-scope-pseudo-class,4.0.1,MIT-0,PERMISSIVA
+npm,postcss-selector-parser,7.1.6,MIT,PERMISSIVA
+npm,@csstools/postcss-sign-functions,1.1.4,MIT-0,PERMISSIVA
+npm,@csstools/postcss-stepped-value-functions,4.0.9,MIT-0,PERMISSIVA
+npm,@csstools/postcss-syntax-descriptor-syntax-production,1.0.1,MIT-0,PERMISSIVA
+npm,@csstools/postcss-system-ui-font-family,1.0.0,MIT-0,PERMISSIVA
+npm,@csstools/postcss-text-decoration-shorthand,4.0.3,MIT-0,PERMISSIVA
+npm,@csstools/postcss-trigonometric-functions,4.0.9,MIT-0,PERMISSIVA
+npm,@csstools/postcss-unset-value,4.0.0,MIT-0,PERMISSIVA
+npm,@csstools/utilities,2.0.0,MIT-0,PERMISSIVA
+npm,@esbuild/aix-ppc64,0.25.5,MIT,PERMISSIVA
+npm,@esbuild/android-arm,0.25.5,MIT,PERMISSIVA
+npm,@esbuild/android-arm64,0.25.5,MIT,PERMISSIVA
+npm,@esbuild/android-x64,0.25.5,MIT,PERMISSIVA
+npm,@esbuild/darwin-arm64,0.25.5,MIT,PERMISSIVA
+npm,@esbuild/darwin-x64,0.25.5,MIT,PERMISSIVA
+npm,@esbuild/freebsd-arm64,0.25.5,MIT,PERMISSIVA
+npm,@esbuild/freebsd-x64,0.25.5,MIT,PERMISSIVA
+npm,@esbuild/linux-arm,0.25.5,MIT,PERMISSIVA
+npm,@esbuild/linux-arm64,0.25.5,MIT,PERMISSIVA
+npm,@esbuild/linux-ia32,0.25.5,MIT,PERMISSIVA
+npm,@esbuild/linux-loong64,0.25.5,MIT,PERMISSIVA
+npm,@esbuild/linux-mips64el,0.25.5,MIT,PERMISSIVA
+npm,@esbuild/linux-ppc64,0.25.5,MIT,PERMISSIVA
+npm,@esbuild/linux-riscv64,0.25.5,MIT,PERMISSIVA
+npm,@esbuild/linux-s390x,0.25.5,MIT,PERMISSIVA
+npm,@esbuild/linux-x64,0.25.5,MIT,PERMISSIVA
+npm,@esbuild/netbsd-arm64,0.25.5,MIT,PERMISSIVA
+npm,@esbuild/netbsd-x64,0.25.5,MIT,PERMISSIVA
+npm,@esbuild/openbsd-arm64,0.25.5,MIT,PERMISSIVA
+npm,@esbuild/openbsd-x64,0.25.5,MIT,PERMISSIVA
+npm,@esbuild/sunos-x64,0.25.5,MIT,PERMISSIVA
+npm,@esbuild/win32-arm64,0.25.5,MIT,PERMISSIVA
+npm,@esbuild/win32-ia32,0.25.5,MIT,PERMISSIVA
+npm,@esbuild/win32-x64,0.25.5,MIT,PERMISSIVA
+npm,@eslint-community/eslint-utils,4.10.1,MIT,PERMISSIVA
+npm,eslint-visitor-keys,3.4.3,Apache-2.0,PERMISSIVA
+npm,@eslint-community/regexpp,4.12.2,MIT,PERMISSIVA
+npm,@eslint/config-array,0.20.0,Apache-2.0,PERMISSIVA
+npm,@eslint/config-helpers,0.2.2,Apache-2.0,PERMISSIVA
+npm,@eslint/core,0.14.0,Apache-2.0,PERMISSIVA
+npm,@eslint/eslintrc,3.3.1,MIT,PERMISSIVA
+npm,globals,14.0.0,MIT,PERMISSIVA
+npm,@eslint/js,9.39.5,MIT,PERMISSIVA
+npm,@eslint/object-schema,2.1.6,Apache-2.0,PERMISSIVA
+npm,@eslint/plugin-kit,0.3.5,Apache-2.0,PERMISSIVA
+npm,@eslint/core,0.15.2,Apache-2.0,PERMISSIVA
+npm,@floating-ui/core,1.7.1,MIT,PERMISSIVA
+npm,@floating-ui/dom,1.7.1,MIT,PERMISSIVA
+npm,@floating-ui/react,0.26.28,MIT,PERMISSIVA
+npm,@floating-ui/react-dom,2.1.3,MIT,PERMISSIVA
+npm,@floating-ui/utils,0.2.9,MIT,PERMISSIVA
+npm,@headlessui/react,2.2.10,MIT,PERMISSIVA
+npm,@heroicons/react,2.2.0,MIT,PERMISSIVA
+npm,@humanfs/core,0.19.2,Apache-2.0,PERMISSIVA
+npm,@humanfs/node,0.16.8,Apache-2.0,PERMISSIVA
+npm,@humanfs/types,0.15.0,Apache-2.0,PERMISSIVA
+npm,@humanwhocodes/module-importer,1.0.1,Apache-2.0,PERMISSIVA
+npm,@humanwhocodes/retry,0.4.3,Apache-2.0,PERMISSIVA
+npm,@isaacs/cliui,8.0.2,ISC,PERMISSIVA
+npm,@istanbuljs/schema,0.1.3,MIT,PERMISSIVA
+npm,@joshwooding/vite-plugin-react-docgen-typescript,0.6.1,MIT,PERMISSIVA
+npm,@jridgewell/gen-mapping,0.3.13,MIT,PERMISSIVA
+npm,@jridgewell/remapping,2.3.5,MIT,PERMISSIVA
+npm,@jridgewell/resolve-uri,3.1.2,MIT,PERMISSIVA
+npm,@jridgewell/sourcemap-codec,1.6.0,MIT,PERMISSIVA
+npm,@jridgewell/trace-mapping,0.3.31,MIT,PERMISSIVA
+npm,@mdx-js/react,3.1.0,MIT,PERMISSIVA
+npm,@napi-rs/lzma-linux-x64-gnu,1.5.1,MIT,PERMISSIVA
+npm,@neoconfetti/react,1.0.0,MIT,PERMISSIVA
+npm,@pkgjs/parseargs,0.11.0,MIT,PERMISSIVA
+npm,@playwright/test,1.64.0,Apache-2.0,PERMISSIVA
+npm,@polka/url,1.0.0-next.29,MIT,PERMISSIVA
+npm,@react-aria/focus,3.20.5,Apache-2.0,PERMISSIVA
+npm,@react-aria/interactions,3.25.3,Apache-2.0,PERMISSIVA
+npm,@react-aria/ssr,3.9.9,Apache-2.0,PERMISSIVA
+npm,@react-aria/utils,3.29.1,Apache-2.0,PERMISSIVA
+npm,@react-stately/flags,3.1.2,Apache-2.0,PERMISSIVA
+npm,@react-stately/utils,3.10.7,Apache-2.0,PERMISSIVA
+npm,@react-types/shared,3.30.0,Apache-2.0,PERMISSIVA
+npm,@rolldown/pluginutils,1.0.0-beta.27,MIT,PERMISSIVA
+npm,@rollup/pluginutils,5.2.0,MIT,PERMISSIVA
+npm,@rollup/rollup-android-arm-eabi,4.63.4,MIT,PERMISSIVA
+npm,@rollup/rollup-android-arm64,4.63.4,MIT,PERMISSIVA
+npm,@rollup/rollup-darwin-arm64,4.63.4,MIT,PERMISSIVA
+npm,@rollup/rollup-darwin-x64,4.63.4,MIT,PERMISSIVA
+npm,@rollup/rollup-freebsd-arm64,4.63.4,MIT,PERMISSIVA
+npm,@rollup/rollup-freebsd-x64,4.63.4,MIT,PERMISSIVA
+npm,@rollup/rollup-linux-arm-gnueabihf,4.63.4,MIT,PERMISSIVA
+npm,@rollup/rollup-linux-arm-musleabihf,4.63.4,MIT,PERMISSIVA
+npm,@rollup/rollup-linux-arm64-gnu,4.63.4,MIT,PERMISSIVA
+npm,@rollup/rollup-linux-arm64-musl,4.63.4,MIT,PERMISSIVA
+npm,@rollup/rollup-linux-loong64-gnu,4.63.4,MIT,PERMISSIVA
+npm,@rollup/rollup-linux-loong64-musl,4.63.4,MIT,PERMISSIVA
+npm,@rollup/rollup-linux-ppc64-gnu,4.63.4,MIT,PERMISSIVA
+npm,@rollup/rollup-linux-ppc64-musl,4.63.4,MIT,PERMISSIVA
+npm,@rollup/rollup-linux-riscv64-gnu,4.63.4,MIT,PERMISSIVA
+npm,@rollup/rollup-linux-riscv64-musl,4.63.4,MIT,PERMISSIVA
+npm,@rollup/rollup-linux-s390x-gnu,4.63.4,MIT,PERMISSIVA
+npm,@rollup/rollup-linux-x64-gnu,4.63.4,MIT,PERMISSIVA
+npm,@rollup/rollup-linux-x64-musl,4.63.4,MIT,PERMISSIVA
+npm,@rollup/rollup-openbsd-x64,4.63.4,MIT,PERMISSIVA
+npm,@rollup/rollup-openharmony-arm64,4.63.4,MIT,PERMISSIVA
+npm,@rollup/rollup-win32-arm64-msvc,4.63.4,MIT,PERMISSIVA
+npm,@rollup/rollup-win32-ia32-msvc,4.63.4,MIT,PERMISSIVA
+npm,@rollup/rollup-win32-x64-gnu,4.63.4,MIT,PERMISSIVA
+npm,@rollup/rollup-win32-x64-msvc,4.63.4,MIT,PERMISSIVA
+npm,@shikijs/core,3.23.0,MIT,PERMISSIVA
+npm,@shikijs/engine-javascript,3.23.0,MIT,PERMISSIVA
+npm,@shikijs/engine-oniguruma,3.23.0,MIT,PERMISSIVA
+npm,@shikijs/langs,3.23.0,MIT,PERMISSIVA
+npm,@shikijs/themes,3.23.0,MIT,PERMISSIVA
+npm,@shikijs/types,3.23.0,MIT,PERMISSIVA
+npm,@shikijs/vscode-textmate,10.0.2,MIT,PERMISSIVA
+npm,@storybook/addon-a11y,9.1.20,MIT,PERMISSIVA
+npm,@storybook/addon-docs,9.1.20,MIT,PERMISSIVA
+npm,@storybook/addon-onboarding,9.1.20,MIT,PERMISSIVA
+npm,@storybook/addon-vitest,9.1.20,MIT,PERMISSIVA
+npm,@storybook/builder-vite,9.1.20,MIT,PERMISSIVA
+npm,@storybook/csf-plugin,9.1.20,MIT,PERMISSIVA
+npm,unplugin,1.16.1,MIT,PERMISSIVA
+npm,@storybook/global,5.0.0,MIT,PERMISSIVA
+npm,@storybook/icons,1.4.0,MIT,PERMISSIVA
+npm,@storybook/react,9.1.20,MIT,PERMISSIVA
+npm,@storybook/react-dom-shim,9.1.20,MIT,PERMISSIVA
+npm,@storybook/react-vite,9.1.20,MIT,PERMISSIVA
+npm,find-up,7.0.0,MIT,PERMISSIVA
+npm,locate-path,7.2.0,MIT,PERMISSIVA
+npm,p-limit,4.0.0,MIT,PERMISSIVA
+npm,p-locate,6.0.0,MIT,PERMISSIVA
+npm,path-exists,5.0.0,MIT,PERMISSIVA
+npm,yocto-queue,1.2.1,MIT,PERMISSIVA
+npm,@swc/helpers,0.5.17,Apache-2.0,PERMISSIVA
+npm,@tailwindcss/node,4.3.3,MIT,PERMISSIVA
+npm,@tailwindcss/oxide,4.3.3,MIT,PERMISSIVA
+npm,@tailwindcss/oxide-android-arm64,4.3.3,MIT,PERMISSIVA
+npm,@tailwindcss/oxide-darwin-arm64,4.3.3,MIT,PERMISSIVA
+npm,@tailwindcss/oxide-darwin-x64,4.3.3,MIT,PERMISSIVA
+npm,@tailwindcss/oxide-freebsd-x64,4.3.3,MIT,PERMISSIVA
+npm,@tailwindcss/oxide-linux-arm-gnueabihf,4.3.3,MIT,PERMISSIVA
+npm,@tailwindcss/oxide-linux-arm64-gnu,4.3.3,MIT,PERMISSIVA
+npm,@tailwindcss/oxide-linux-arm64-musl,4.3.3,MIT,PERMISSIVA
+npm,@tailwindcss/oxide-linux-x64-gnu,4.3.3,MIT,PERMISSIVA
+npm,@tailwindcss/oxide-linux-x64-musl,4.3.3,MIT,PERMISSIVA
+npm,@tailwindcss/oxide-wasm32-wasi,4.3.3,MIT,PERMISSIVA
+npm,@emnapi/core,1.11.1,MIT,PERMISSIVA
+npm,@emnapi/runtime,1.11.1,MIT,PERMISSIVA
+npm,@emnapi/wasi-threads,1.2.2,MIT,PERMISSIVA
+npm,@napi-rs/wasm-runtime,1.1.4,MIT,PERMISSIVA
+npm,@tybys/wasm-util,0.10.2,MIT,PERMISSIVA
+npm,tslib,2.8.1,0BSD,PERMISSIVA
+npm,@tailwindcss/oxide-win32-arm64-msvc,4.3.3,MIT,PERMISSIVA
+npm,@tailwindcss/oxide-win32-x64-msvc,4.3.3,MIT,PERMISSIVA
+npm,@tailwindcss/typography,0.5.20,MIT,PERMISSIVA
+npm,@tailwindcss/vite,4.3.3,MIT,PERMISSIVA
+npm,@tanstack/history,1.162.5,MIT,PERMISSIVA
+npm,@tanstack/query-core,5.104.1,MIT,PERMISSIVA
+npm,@tanstack/react-query,5.104.1,MIT,PERMISSIVA
+npm,@tanstack/react-router,1.170.42,MIT,PERMISSIVA
+npm,@tanstack/react-store,0.11.2,MIT,PERMISSIVA
+npm,@tanstack/react-virtual,3.13.10,MIT,PERMISSIVA
+npm,@tanstack/router-core,1.171.35,MIT,PERMISSIVA
+npm,@tanstack/router-generator,1.167.40,MIT,PERMISSIVA
+npm,@tanstack/history,1.162.4,MIT,PERMISSIVA
+npm,@tanstack/router-core,1.171.34,MIT,PERMISSIVA
+npm,@tanstack/router-plugin,1.168.42,MIT,PERMISSIVA
+npm,@tanstack/history,1.162.4,MIT,PERMISSIVA
+npm,@tanstack/router-core,1.171.34,MIT,PERMISSIVA
+npm,@tanstack/router-utils,1.162.3,MIT,PERMISSIVA
+npm,@tanstack/store,0.11.2,MIT,PERMISSIVA
+npm,@tanstack/virtual-core,3.13.10,MIT,PERMISSIVA
+npm,@tanstack/virtual-file-routes,1.162.0,MIT,PERMISSIVA
+npm,@testing-library/dom,10.4.0,MIT,PERMISSIVA
+npm,@testing-library/jest-dom,6.6.3,MIT,PERMISSIVA
+npm,chalk,3.0.0,MIT,PERMISSIVA
+npm,dom-accessibility-api,0.6.3,MIT,PERMISSIVA
+npm,@testing-library/user-event,14.6.1,MIT,PERMISSIVA
+npm,@types/aria-query,5.0.4,MIT,PERMISSIVA
+npm,@types/babel__core,7.20.5,MIT,PERMISSIVA
+npm,@types/babel__generator,7.27.0,MIT,PERMISSIVA
+npm,@types/babel__template,7.4.4,MIT,PERMISSIVA
+npm,@types/babel__traverse,7.20.7,MIT,PERMISSIVA
+npm,@types/chai,5.2.2,MIT,PERMISSIVA
+npm,@types/debug,4.1.12,MIT,PERMISSIVA
+npm,@types/deep-eql,4.0.2,MIT,PERMISSIVA
+npm,@types/doctrine,0.0.9,MIT,PERMISSIVA
+npm,@types/estree,1.0.9,MIT,PERMISSIVA
+npm,@types/estree-jsx,1.0.5,MIT,PERMISSIVA
+npm,@types/hast,3.0.4,MIT,PERMISSIVA
+npm,@types/json-schema,7.0.15,MIT,PERMISSIVA
+npm,@types/katex,0.16.7,MIT,PERMISSIVA
+npm,@types/mdast,4.0.4,MIT,PERMISSIVA
+npm,@types/mdx,2.0.13,MIT,PERMISSIVA
+npm,@types/ms,2.1.0,MIT,PERMISSIVA
+npm,@types/node,24.19.1,MIT,PERMISSIVA
+npm,@types/prismjs,1.26.6,MIT,PERMISSIVA
+npm,@types/react,19.3.0,MIT,PERMISSIVA
+npm,@types/react-dom,19.3.0,MIT,PERMISSIVA
+npm,@types/react-test-renderer,19.3.0,MIT,PERMISSIVA
+npm,@types/resolve,1.20.6,MIT,PERMISSIVA
+npm,@types/unist,3.0.3,MIT,PERMISSIVA
+npm,@typescript-eslint/eslint-plugin,8.71.1,MIT,PERMISSIVA
+npm,ignore,7.0.12,MIT,PERMISSIVA
+npm,@typescript-eslint/parser,8.71.1,MIT,PERMISSIVA
+npm,@typescript-eslint/project-service,8.71.1,MIT,PERMISSIVA
+npm,@typescript-eslint/scope-manager,8.71.1,MIT,PERMISSIVA
+npm,@typescript-eslint/tsconfig-utils,8.71.1,MIT,PERMISSIVA
+npm,@typescript-eslint/type-utils,8.71.1,MIT,PERMISSIVA
+npm,@typescript-eslint/types,8.71.1,MIT,PERMISSIVA
+npm,@typescript-eslint/typescript-estree,8.71.1,MIT,PERMISSIVA
+npm,balanced-match,4.0.4,MIT,PERMISSIVA
+npm,brace-expansion,5.0.12,MIT,PERMISSIVA
+npm,minimatch,10.2.6,BlueOak-1.0.0,PERMISSIVA
+npm,semver,7.8.5,ISC,PERMISSIVA
+npm,@typescript-eslint/utils,8.71.1,MIT,PERMISSIVA
+npm,@typescript-eslint/visitor-keys,8.71.1,MIT,PERMISSIVA
+npm,eslint-visitor-keys,5.0.1,Apache-2.0,PERMISSIVA
+npm,@ungap/structured-clone,1.3.0,ISC,PERMISSIVA
+npm,@vitejs/plugin-react,4.7.0,MIT,PERMISSIVA
+npm,@vitest/browser,3.2.7,MIT,PERMISSIVA
+npm,@vitest/pretty-format,3.2.7,MIT,PERMISSIVA
+npm,@vitest/utils,3.2.7,MIT,PERMISSIVA
+npm,@vitest/coverage-v8,3.2.7,MIT,PERMISSIVA
+npm,@vitest/expect,3.2.4,MIT,PERMISSIVA
+npm,@vitest/mocker,3.2.7,MIT,PERMISSIVA
+npm,@vitest/spy,3.2.7,MIT,PERMISSIVA
+npm,estree-walker,3.0.3,MIT,PERMISSIVA
+npm,@vitest/pretty-format,3.2.4,MIT,PERMISSIVA
+npm,@vitest/runner,3.2.7,MIT,PERMISSIVA
+npm,@vitest/pretty-format,3.2.7,MIT,PERMISSIVA
+npm,@vitest/utils,3.2.7,MIT,PERMISSIVA
+npm,@vitest/snapshot,3.2.7,MIT,PERMISSIVA
+npm,@vitest/pretty-format,3.2.7,MIT,PERMISSIVA
+npm,@vitest/spy,3.2.4,MIT,PERMISSIVA
+npm,@vitest/ui,3.2.7,MIT,PERMISSIVA
+npm,@vitest/pretty-format,3.2.7,MIT,PERMISSIVA
+npm,@vitest/utils,3.2.7,MIT,PERMISSIVA
+npm,@vitest/utils,3.2.4,MIT,PERMISSIVA
+npm,acorn,8.15.0,MIT,PERMISSIVA
+npm,acorn-jsx,5.3.2,MIT,PERMISSIVA
+npm,ajv,6.15.0,MIT,PERMISSIVA
+npm,ansi-regex,5.0.1,MIT,PERMISSIVA
+npm,ansi-styles,4.3.0,MIT,PERMISSIVA
+npm,ansis,4.4.0,ISC,PERMISSIVA
+npm,argparse,2.0.1,Python-2.0,PERMISSIVA
+npm,aria-query,5.3.0,Apache-2.0,PERMISSIVA
+npm,assertion-error,2.0.1,MIT,PERMISSIVA
+npm,ast-types,0.16.1,MIT,PERMISSIVA
+npm,ast-v8-to-istanbul,0.3.3,MIT,PERMISSIVA
+npm,estree-walker,3.0.3,MIT,PERMISSIVA
+npm,js-tokens,9.0.1,MIT,PERMISSIVA
+npm,autoprefixer,10.6.1,MIT,PERMISSIVA
+npm,axe-core,4.13.0,MPL-2.0,COPYLEFT_FRACO
+npm,babel-dead-code-elimination,1.0.12,MIT,PERMISSIVA
+npm,bail,2.0.2,MIT,PERMISSIVA
+npm,balanced-match,1.0.2,MIT,PERMISSIVA
+npm,baseline-browser-mapping,2.11.25,Apache-2.0,PERMISSIVA
+npm,better-opn,3.0.2,MIT,PERMISSIVA
+npm,brace-expansion,1.1.21,MIT,PERMISSIVA
+npm,browserslist,4.29.0,MIT,PERMISSIVA
+npm,cac,6.7.14,MIT,PERMISSIVA
+npm,callsites,3.1.0,MIT,PERMISSIVA
+npm,caniuse-lite,1.0.30001810,CC-BY-4.0,PERMISSIVA
+npm,ccount,2.0.1,MIT,PERMISSIVA
+npm,chai,5.2.0,MIT,PERMISSIVA
+npm,chalk,4.1.2,MIT,PERMISSIVA
+npm,character-entities,2.0.2,MIT,PERMISSIVA
+npm,character-entities-html4,2.1.0,MIT,PERMISSIVA
+npm,character-entities-legacy,3.0.0,MIT,PERMISSIVA
+npm,character-reference-invalid,2.0.1,MIT,PERMISSIVA
+npm,check-error,2.1.1,MIT,PERMISSIVA
+npm,chokidar,5.0.0,MIT,PERMISSIVA
+npm,chromatic,13.3.5,MIT,PERMISSIVA
+npm,clsx,2.1.1,MIT,PERMISSIVA
+npm,color-convert,2.0.1,MIT,PERMISSIVA
+npm,color-name,1.1.4,MIT,PERMISSIVA
+npm,comma-separated-tokens,2.0.3,MIT,PERMISSIVA
+npm,commander,15.0.0,MIT,PERMISSIVA
+npm,concat-map,0.0.1,MIT,PERMISSIVA
+npm,convert-source-map,2.0.0,MIT,PERMISSIVA
+npm,cookie-es,3.1.1,MIT,PERMISSIVA
+npm,cross-spawn,7.0.6,MIT,PERMISSIVA
+npm,css-blank-pseudo,7.0.1,MIT-0,PERMISSIVA
+npm,postcss-selector-parser,7.1.6,MIT,PERMISSIVA
+npm,css-has-pseudo,7.0.3,MIT-0,PERMISSIVA
+npm,@csstools/selector-specificity,5.0.0,MIT-0,PERMISSIVA
+npm,postcss-selector-parser,7.1.6,MIT,PERMISSIVA
+npm,css-prefers-color-scheme,10.0.0,MIT-0,PERMISSIVA
+npm,css.escape,1.5.1,MIT,PERMISSIVA
+npm,cssdb,8.12.0,MIT-0,PERMISSIVA
+npm,cssesc,3.0.0,MIT,PERMISSIVA
+npm,csstype,3.2.3,MIT,PERMISSIVA
+npm,debug,4.4.3,MIT,PERMISSIVA
+npm,decode-named-character-reference,1.1.0,MIT,PERMISSIVA
+npm,deep-eql,5.0.2,MIT,PERMISSIVA
+npm,deep-is,0.1.4,MIT,PERMISSIVA
+npm,define-lazy-prop,2.0.0,MIT,PERMISSIVA
+npm,dequal,2.0.3,MIT,PERMISSIVA
+npm,detect-libc,2.0.4,Apache-2.0,PERMISSIVA
+npm,devlop,1.1.0,MIT,PERMISSIVA
+npm,diff,8.0.4,BSD-3-Clause,PERMISSIVA
+npm,doctrine,3.0.0,Apache-2.0,PERMISSIVA
+npm,dom-accessibility-api,0.5.16,MIT,PERMISSIVA
+npm,eastasianwidth,0.2.0,MIT,PERMISSIVA
+npm,electron-to-chromium,1.5.438,ISC,PERMISSIVA
+npm,emoji-regex,9.2.2,MIT,PERMISSIVA
+npm,enhanced-resolve,5.26.0,MIT,PERMISSIVA
+npm,entities,6.0.1,BSD-2-Clause,PERMISSIVA
+npm,es-module-lexer,1.7.0,MIT,PERMISSIVA
+npm,esbuild,0.25.5,MIT,PERMISSIVA
+npm,esbuild-register,3.6.0,MIT,PERMISSIVA
+npm,escalade,3.2.0,MIT,PERMISSIVA
+npm,escape-string-regexp,4.0.0,MIT,PERMISSIVA
+npm,eslint,9.28.0,MIT,PERMISSIVA
+npm,eslint-plugin-react-hooks,5.2.0,MIT,PERMISSIVA
+npm,eslint-plugin-react-refresh,0.5.7,MIT,PERMISSIVA
+npm,eslint-plugin-storybook,10.6.1,MIT,PERMISSIVA
+npm,@typescript-eslint/project-service,8.71.1,MIT,PERMISSIVA
+npm,@typescript-eslint/scope-manager,8.71.1,MIT,PERMISSIVA
+npm,@typescript-eslint/tsconfig-utils,8.71.1,MIT,PERMISSIVA
+npm,@typescript-eslint/types,8.71.1,MIT,PERMISSIVA
+npm,@typescript-eslint/typescript-estree,8.71.1,MIT,PERMISSIVA
+npm,@typescript-eslint/utils,8.71.1,MIT,PERMISSIVA
+npm,@typescript-eslint/visitor-keys,8.71.1,MIT,PERMISSIVA
+npm,balanced-match,4.0.4,MIT,PERMISSIVA
+npm,brace-expansion,5.0.12,MIT,PERMISSIVA
+npm,eslint-visitor-keys,5.0.1,Apache-2.0,PERMISSIVA
+npm,minimatch,10.2.6,BlueOak-1.0.0,PERMISSIVA
+npm,semver,7.8.5,ISC,PERMISSIVA
+npm,eslint-scope,8.4.0,BSD-2-Clause,PERMISSIVA
+npm,eslint-visitor-keys,4.2.1,Apache-2.0,PERMISSIVA
+npm,@eslint/js,9.28.0,MIT,PERMISSIVA
+npm,espree,10.4.0,BSD-2-Clause,PERMISSIVA
+npm,esprima,4.0.1,BSD-2-Clause,PERMISSIVA
+npm,esquery,1.6.0,BSD-3-Clause,PERMISSIVA
+npm,esrecurse,4.3.0,BSD-2-Clause,PERMISSIVA
+npm,estraverse,5.3.0,BSD-2-Clause,PERMISSIVA
+npm,estree-util-is-identifier-name,3.0.0,MIT,PERMISSIVA
+npm,estree-walker,2.0.2,MIT,PERMISSIVA
+npm,esutils,2.0.3,BSD-2-Clause,PERMISSIVA
+npm,expect-type,1.2.1,Apache-2.0,PERMISSIVA
+npm,extend,3.0.2,MIT,PERMISSIVA
+npm,fast-deep-equal,3.1.3,MIT,PERMISSIVA
+npm,fast-json-stable-stringify,2.1.0,MIT,PERMISSIVA
+npm,fast-levenshtein,2.0.6,MIT,PERMISSIVA
+npm,fflate,0.8.3,MIT,PERMISSIVA
+npm,file-entry-cache,8.0.0,MIT,PERMISSIVA
+npm,filesize,10.1.6,BSD-3-Clause,PERMISSIVA
+npm,find-up,5.0.0,MIT,PERMISSIVA
+npm,flat-cache,4.0.1,MIT,PERMISSIVA
+npm,flatted,3.4.4,ISC,PERMISSIVA
+npm,foreground-child,3.3.1,ISC,PERMISSIVA
+npm,fraction.js,5.3.4,MIT,PERMISSIVA
+npm,framer-motion,12.43.0,MIT,PERMISSIVA
+npm,fsevents,2.3.3,MIT,PERMISSIVA
+npm,function-bind,1.1.2,MIT,PERMISSIVA
+npm,gensync,1.0.0-beta.2,MIT,PERMISSIVA
+npm,glob,10.5.0,ISC,PERMISSIVA
+npm,glob-parent,6.0.2,ISC,PERMISSIVA
+npm,brace-expansion,2.1.7,MIT,PERMISSIVA
+npm,minimatch,9.0.9,ISC,PERMISSIVA
+npm,globals,16.5.0,MIT,PERMISSIVA
+npm,globrex,0.1.2,MIT,PERMISSIVA
+npm,graceful-fs,4.2.11,ISC,PERMISSIVA
+npm,has-flag,4.0.0,MIT,PERMISSIVA
+npm,hasown,2.0.2,MIT,PERMISSIVA
+npm,hast-util-from-dom,5.0.1,ISC,PERMISSIVA
+npm,hast-util-from-html,2.0.3,MIT,PERMISSIVA
+npm,hast-util-from-html-isomorphic,2.0.0,MIT,PERMISSIVA
+npm,hast-util-from-parse5,8.0.3,MIT,PERMISSIVA
+npm,hast-util-is-element,3.0.0,MIT,PERMISSIVA
+npm,hast-util-parse-selector,4.0.0,MIT,PERMISSIVA
+npm,hast-util-raw,9.1.0,MIT,PERMISSIVA
+npm,hast-util-sanitize,5.0.2,MIT,PERMISSIVA
+npm,hast-util-to-html,9.0.5,MIT,PERMISSIVA
+npm,hast-util-to-jsx-runtime,2.3.6,MIT,PERMISSIVA
+npm,hast-util-to-parse5,8.0.0,MIT,PERMISSIVA
+npm,property-information,6.5.0,MIT,PERMISSIVA
+npm,hast-util-to-string,3.0.1,MIT,PERMISSIVA
+npm,hast-util-to-text,4.0.2,MIT,PERMISSIVA
+npm,hast-util-whitespace,3.0.0,MIT,PERMISSIVA
+npm,hastscript,9.0.1,MIT,PERMISSIVA
+npm,html-escaper,2.0.2,MIT,PERMISSIVA
+npm,html-url-attributes,3.0.1,MIT,PERMISSIVA
+npm,html-void-elements,3.0.0,MIT,PERMISSIVA
+npm,ignore,5.3.2,MIT,PERMISSIVA
+npm,import-fresh,3.3.1,MIT,PERMISSIVA
+npm,imurmurhash,0.1.4,MIT,PERMISSIVA
+npm,indent-string,4.0.0,MIT,PERMISSIVA
+npm,inline-style-parser,0.2.4,MIT,PERMISSIVA
+npm,is-alphabetical,2.0.1,MIT,PERMISSIVA
+npm,is-alphanumerical,2.0.1,MIT,PERMISSIVA
+npm,is-core-module,2.16.1,MIT,PERMISSIVA
+npm,is-decimal,2.0.1,MIT,PERMISSIVA
+npm,is-docker,2.2.1,MIT,PERMISSIVA
+npm,is-extglob,2.1.1,MIT,PERMISSIVA
+npm,is-fullwidth-code-point,3.0.0,MIT,PERMISSIVA
+npm,is-glob,4.0.3,MIT,PERMISSIVA
+npm,is-hexadecimal,2.0.1,MIT,PERMISSIVA
+npm,is-plain-obj,4.1.0,MIT,PERMISSIVA
+npm,is-wsl,2.2.0,MIT,PERMISSIVA
+npm,isbot,5.2.2,Unlicense,PERMISSIVA
+npm,isexe,2.0.0,ISC,PERMISSIVA
+npm,istanbul-lib-coverage,3.2.2,BSD-3-Clause,PERMISSIVA
+npm,istanbul-lib-report,3.0.1,BSD-3-Clause,PERMISSIVA
+npm,istanbul-lib-source-maps,5.0.6,BSD-3-Clause,PERMISSIVA
+npm,istanbul-reports,3.1.7,BSD-3-Clause,PERMISSIVA
+npm,jackspeak,3.4.3,BlueOak-1.0.0,PERMISSIVA
+npm,jiti,2.7.0,MIT,PERMISSIVA
+npm,js-tokens,4.0.0,MIT,PERMISSIVA
+npm,js-yaml,4.3.2,MIT,PERMISSIVA
+npm,jsesc,3.1.0,MIT,PERMISSIVA
+npm,json-buffer,3.0.1,MIT,PERMISSIVA
+npm,json-schema-traverse,0.4.1,MIT,PERMISSIVA
+npm,json-stable-stringify-without-jsonify,1.0.1,MIT,PERMISSIVA
+npm,json5,2.2.3,MIT,PERMISSIVA
+npm,jsonfile,6.1.0,MIT,PERMISSIVA
+npm,katex,0.19.0,MIT,PERMISSIVA
+npm,keyv,4.5.4,MIT,PERMISSIVA
+npm,kleur,3.0.3,MIT,PERMISSIVA
+npm,levn,0.4.1,MIT,PERMISSIVA
+npm,lightningcss,1.32.0,MPL-2.0,COPYLEFT_FRACO
+npm,lightningcss-android-arm64,1.32.0,MPL-2.0,COPYLEFT_FRACO
+npm,lightningcss-darwin-arm64,1.32.0,MPL-2.0,COPYLEFT_FRACO
+npm,lightningcss-darwin-x64,1.32.0,MPL-2.0,COPYLEFT_FRACO
+npm,lightningcss-freebsd-x64,1.32.0,MPL-2.0,COPYLEFT_FRACO
+npm,lightningcss-linux-arm-gnueabihf,1.32.0,MPL-2.0,COPYLEFT_FRACO
+npm,lightningcss-linux-arm64-gnu,1.32.0,MPL-2.0,COPYLEFT_FRACO
+npm,lightningcss-linux-arm64-musl,1.32.0,MPL-2.0,COPYLEFT_FRACO
+npm,lightningcss-linux-x64-gnu,1.32.0,MPL-2.0,COPYLEFT_FRACO
+npm,lightningcss-linux-x64-musl,1.32.0,MPL-2.0,COPYLEFT_FRACO
+npm,lightningcss-win32-arm64-msvc,1.32.0,MPL-2.0,COPYLEFT_FRACO
+npm,lightningcss-win32-x64-msvc,1.32.0,MPL-2.0,COPYLEFT_FRACO
+npm,locate-path,6.0.0,MIT,PERMISSIVA
+npm,lodash,4.18.1,MIT,PERMISSIVA
+npm,lodash.merge,4.6.2,MIT,PERMISSIVA
+npm,longest-streak,3.1.0,MIT,PERMISSIVA
+npm,loupe,3.1.4,MIT,PERMISSIVA
+npm,lru-cache,5.1.1,ISC,PERMISSIVA
+npm,lz-string,1.5.0,MIT,PERMISSIVA
+npm,magic-string,0.30.21,MIT,PERMISSIVA
+npm,magicast,0.3.5,MIT,PERMISSIVA
+npm,make-dir,4.0.0,MIT,PERMISSIVA
+npm,semver,7.7.2,ISC,PERMISSIVA
+npm,markdown-table,3.0.4,MIT,PERMISSIVA
+npm,marked,17.0.6,MIT,PERMISSIVA
+npm,mdast-util-find-and-replace,3.0.2,MIT,PERMISSIVA
+npm,escape-string-regexp,5.0.0,MIT,PERMISSIVA
+npm,mdast-util-from-markdown,2.0.2,MIT,PERMISSIVA
+npm,mdast-util-gfm,3.1.0,MIT,PERMISSIVA
+npm,mdast-util-gfm-footnote,2.1.0,MIT,PERMISSIVA
+npm,mdast-util-gfm-strikethrough,2.0.0,MIT,PERMISSIVA
+npm,mdast-util-gfm-table,2.0.0,MIT,PERMISSIVA
+npm,mdast-util-gfm-task-list-item,2.0.0,MIT,PERMISSIVA
+npm,mdast-util-gfm-autolink-literal,2.0.0,MIT,PERMISSIVA
+npm,mdast-util-math,3.0.0,MIT,PERMISSIVA
+npm,mdast-util-mdx-expression,2.0.1,MIT,PERMISSIVA
+npm,mdast-util-mdx-jsx,3.2.0,MIT,PERMISSIVA
+npm,mdast-util-mdxjs-esm,2.0.1,MIT,PERMISSIVA
+npm,mdast-util-phrasing,4.1.0,MIT,PERMISSIVA
+npm,mdast-util-to-hast,13.2.1,MIT,PERMISSIVA
+npm,mdast-util-to-markdown,2.1.2,MIT,PERMISSIVA
+npm,mdast-util-to-string,4.0.0,MIT,PERMISSIVA
+npm,micromark,4.0.2,MIT,PERMISSIVA
+npm,micromark-core-commonmark,2.0.3,MIT,PERMISSIVA
+npm,micromark-extension-gfm,3.0.0,MIT,PERMISSIVA
+npm,micromark-extension-gfm-autolink-literal,2.1.0,MIT,PERMISSIVA
+npm,micromark-extension-gfm-footnote,2.1.0,MIT,PERMISSIVA
+npm,micromark-extension-gfm-strikethrough,2.1.0,MIT,PERMISSIVA
+npm,micromark-extension-gfm-table,2.1.1,MIT,PERMISSIVA
+npm,micromark-extension-gfm-tagfilter,2.0.0,MIT,PERMISSIVA
+npm,micromark-extension-gfm-task-list-item,2.1.0,MIT,PERMISSIVA
+npm,micromark-extension-llm-math,3.1.0,MIT,PERMISSIVA
+npm,commander,8.3.0,MIT,PERMISSIVA
+npm,katex,0.16.47,MIT,PERMISSIVA
+npm,micromark-extension-math,3.1.0,MIT,PERMISSIVA
+npm,commander,8.3.0,MIT,PERMISSIVA
+npm,katex,0.16.47,MIT,PERMISSIVA
+npm,micromark-factory-destination,2.0.1,MIT,PERMISSIVA
+npm,micromark-factory-label,2.0.1,MIT,PERMISSIVA
+npm,micromark-factory-space,2.0.1,MIT,PERMISSIVA
+npm,micromark-factory-title,2.0.1,MIT,PERMISSIVA
+npm,micromark-factory-whitespace,2.0.1,MIT,PERMISSIVA
+npm,micromark-util-character,2.1.1,MIT,PERMISSIVA
+npm,micromark-util-chunked,2.0.1,MIT,PERMISSIVA
+npm,micromark-util-classify-character,2.0.1,MIT,PERMISSIVA
+npm,micromark-util-combine-extensions,2.0.1,MIT,PERMISSIVA
+npm,micromark-util-decode-numeric-character-reference,2.0.2,MIT,PERMISSIVA
+npm,micromark-util-decode-string,2.0.1,MIT,PERMISSIVA
+npm,micromark-util-encode,2.0.1,MIT,PERMISSIVA
+npm,micromark-util-html-tag-name,2.0.1,MIT,PERMISSIVA
+npm,micromark-util-normalize-identifier,2.0.1,MIT,PERMISSIVA
+npm,micromark-util-resolve-all,2.0.1,MIT,PERMISSIVA
+npm,micromark-util-sanitize-uri,2.0.1,MIT,PERMISSIVA
+npm,micromark-util-subtokenize,2.1.0,MIT,PERMISSIVA
+npm,micromark-util-symbol,2.0.1,MIT,PERMISSIVA
+npm,micromark-util-types,2.0.2,MIT,PERMISSIVA
+npm,min-indent,1.0.1,MIT,PERMISSIVA
+npm,minimatch,3.1.5,ISC,PERMISSIVA
+npm,minimist,1.2.8,MIT,PERMISSIVA
+npm,minipass,7.1.2,ISC,PERMISSIVA
+npm,motion-dom,12.43.0,MIT,PERMISSIVA
+npm,motion-utils,12.39.0,MIT,PERMISSIVA
+npm,mrmime,2.0.1,MIT,PERMISSIVA
+npm,ms,2.1.3,MIT,PERMISSIVA
+npm,nanoid,3.3.19,MIT,PERMISSIVA
+npm,natural-compare,1.4.0,MIT,PERMISSIVA
+npm,node-releases,2.0.57,MIT,PERMISSIVA
+npm,ollama,0.6.4,MIT,PERMISSIVA
+npm,oniguruma-parser,0.12.2,MIT,PERMISSIVA
+npm,oniguruma-to-es,4.3.6,MIT,PERMISSIVA
+npm,open,8.4.2,MIT,PERMISSIVA
+npm,optionator,0.9.4,MIT,PERMISSIVA
+npm,p-limit,3.1.0,MIT,PERMISSIVA
+npm,p-locate,5.0.0,MIT,PERMISSIVA
+npm,package-json-from-dist,1.0.1,BlueOak-1.0.0,PERMISSIVA
+npm,parent-module,1.0.1,MIT,PERMISSIVA
+npm,parse-entities,4.0.2,MIT,PERMISSIVA
+npm,@types/unist,2.0.11,MIT,PERMISSIVA
+npm,parse-numeric-range,1.3.0,ISC,PERMISSIVA
+npm,parse5,7.3.0,MIT,PERMISSIVA
+npm,path-exists,4.0.0,MIT,PERMISSIVA
+npm,path-key,3.1.1,MIT,PERMISSIVA
+npm,path-parse,1.0.7,MIT,PERMISSIVA
+npm,path-scurry,1.11.1,BlueOak-1.0.0,PERMISSIVA
+npm,lru-cache,10.4.3,ISC,PERMISSIVA
+npm,pathe,2.0.3,MIT,PERMISSIVA
+npm,pathval,2.0.1,MIT,PERMISSIVA
+npm,picocolors,1.1.1,ISC,PERMISSIVA
+npm,picomatch,4.0.7,MIT,PERMISSIVA
+npm,playwright,1.64.0,Apache-2.0,PERMISSIVA
+npm,playwright-core,1.64.0,Apache-2.0,PERMISSIVA
+npm,postcss,8.5.28,MIT,PERMISSIVA
+npm,postcss-attribute-case-insensitive,7.0.1,MIT,PERMISSIVA
+npm,postcss-selector-parser,7.1.6,MIT,PERMISSIVA
+npm,postcss-clamp,4.1.0,MIT,PERMISSIVA
+npm,postcss-color-functional-notation,7.0.12,MIT-0,PERMISSIVA
+npm,postcss-color-hex-alpha,10.0.0,MIT,PERMISSIVA
+npm,postcss-color-rebeccapurple,10.0.0,MIT-0,PERMISSIVA
+npm,postcss-custom-media,11.0.6,MIT,PERMISSIVA
+npm,postcss-custom-properties,14.0.6,MIT,PERMISSIVA
+npm,postcss-custom-selectors,8.0.5,MIT,PERMISSIVA
+npm,postcss-selector-parser,7.1.6,MIT,PERMISSIVA
+npm,postcss-dir-pseudo-class,9.0.1,MIT-0,PERMISSIVA
+npm,postcss-selector-parser,7.1.6,MIT,PERMISSIVA
+npm,postcss-double-position-gradients,6.0.4,MIT-0,PERMISSIVA
+npm,postcss-focus-visible,10.0.1,MIT-0,PERMISSIVA
+npm,postcss-selector-parser,7.1.6,MIT,PERMISSIVA
+npm,postcss-focus-within,9.0.1,MIT-0,PERMISSIVA
+npm,postcss-selector-parser,7.1.6,MIT,PERMISSIVA
+npm,postcss-font-variant,5.0.0,MIT,PERMISSIVA
+npm,postcss-gap-properties,6.0.0,MIT-0,PERMISSIVA
+npm,postcss-image-set-function,7.0.0,MIT-0,PERMISSIVA
+npm,postcss-lab-function,7.0.12,MIT-0,PERMISSIVA
+npm,postcss-logical,8.1.0,MIT-0,PERMISSIVA
+npm,postcss-nesting,13.0.2,MIT-0,PERMISSIVA
+npm,@csstools/selector-resolve-nested,3.1.0,MIT-0,PERMISSIVA
+npm,@csstools/selector-specificity,5.0.0,MIT-0,PERMISSIVA
+npm,postcss-selector-parser,7.1.6,MIT,PERMISSIVA
+npm,postcss-opacity-percentage,3.0.0,MIT,PERMISSIVA
+npm,postcss-overflow-shorthand,6.0.0,MIT-0,PERMISSIVA
+npm,postcss-page-break,3.0.4,MIT,PERMISSIVA
+npm,postcss-place,10.0.0,MIT-0,PERMISSIVA
+npm,postcss-preset-env,10.6.1,MIT-0,PERMISSIVA
+npm,postcss-pseudo-class-any-link,10.0.1,MIT-0,PERMISSIVA
+npm,postcss-selector-parser,7.1.6,MIT,PERMISSIVA
+npm,postcss-replace-overflow-wrap,4.0.0,MIT,PERMISSIVA
+npm,postcss-selector-not,8.0.1,MIT,PERMISSIVA
+npm,postcss-selector-parser,7.1.6,MIT,PERMISSIVA
+npm,postcss-selector-parser,6.0.10,MIT,PERMISSIVA
+npm,postcss-value-parser,4.2.0,MIT,PERMISSIVA
+npm,prelude-ls,1.2.1,MIT,PERMISSIVA
+npm,prettier,3.9.10,MIT,PERMISSIVA
+npm,pretty-format,27.5.1,MIT,PERMISSIVA
+npm,ansi-styles,5.2.0,MIT,PERMISSIVA
+npm,prompts,2.4.2,MIT,PERMISSIVA
+npm,property-information,7.1.0,MIT,PERMISSIVA
+npm,punycode,2.3.1,MIT,PERMISSIVA
+npm,react,19.3.0,MIT,PERMISSIVA
+npm,react-docgen,8.0.0,MIT,PERMISSIVA
+npm,react-docgen-typescript,2.4.0,MIT,PERMISSIVA
+npm,react-dom,19.3.0,MIT,PERMISSIVA
+npm,react-is,17.0.2,MIT,PERMISSIVA
+npm,react-markdown,10.1.0,MIT,PERMISSIVA
+npm,react-refresh,0.17.0,MIT,PERMISSIVA
+npm,react-test-renderer,19.3.0,MIT,PERMISSIVA
+npm,react-is,19.3.0,MIT,PERMISSIVA
+npm,readdirp,5.1.1,MIT,PERMISSIVA
+npm,recast,0.23.11,MIT,PERMISSIVA
+npm,redent,3.0.0,MIT,PERMISSIVA
+npm,strip-indent,3.0.0,MIT,PERMISSIVA
+npm,refractor,5.0.0,MIT,PERMISSIVA
+npm,regex,6.1.0,MIT,PERMISSIVA
+npm,regex-recursion,6.0.2,MIT,PERMISSIVA
+npm,regex-utilities,2.3.0,MIT,PERMISSIVA
+npm,rehype-harden,1.1.8,MIT,PERMISSIVA
+npm,rehype-katex,7.0.1,MIT,PERMISSIVA
+npm,commander,8.3.0,MIT,PERMISSIVA
+npm,katex,0.16.47,MIT,PERMISSIVA
+npm,rehype-parse,9.0.1,MIT,PERMISSIVA
+npm,rehype-prism-plus,2.0.2,MIT,PERMISSIVA
+npm,rehype-raw,7.0.0,MIT,PERMISSIVA
+npm,rehype-sanitize,6.0.0,MIT,PERMISSIVA
+npm,remark,15.0.1,MIT,PERMISSIVA
+npm,remark-gfm,4.0.1,MIT,PERMISSIVA
+npm,remark-math,6.0.0,MIT,PERMISSIVA
+npm,remark-parse,11.0.0,MIT,PERMISSIVA
+npm,remark-rehype,11.1.2,MIT,PERMISSIVA
+npm,remark-stringify,11.0.0,MIT,PERMISSIVA
+npm,remend,1.3.1,Apache-2.0,PERMISSIVA
+npm,resolve,1.22.10,MIT,PERMISSIVA
+npm,resolve-from,4.0.0,MIT,PERMISSIVA
+npm,rollup,4.63.4,MIT,PERMISSIVA
+npm,scheduler,0.28.0,MIT,PERMISSIVA
+npm,semver,6.3.1,ISC,PERMISSIVA
+npm,seroval,1.6.9,MIT,PERMISSIVA
+npm,seroval-plugins,1.6.9,MIT,PERMISSIVA
+npm,shebang-command,2.0.0,MIT,PERMISSIVA
+npm,shebang-regex,3.0.0,MIT,PERMISSIVA
+npm,shiki,3.23.0,MIT,PERMISSIVA
+npm,siginfo,2.0.0,ISC,PERMISSIVA
+npm,signal-exit,4.1.0,ISC,PERMISSIVA
+npm,simple-icons,16.34.0,CC0-1.0,PERMISSIVA
+npm,sirv,3.0.1,MIT,PERMISSIVA
+npm,sisteransi,1.0.5,MIT,PERMISSIVA
+npm,source-map,0.6.1,BSD-3-Clause,PERMISSIVA
+npm,source-map-js,1.2.1,BSD-3-Clause,PERMISSIVA
+npm,space-separated-tokens,2.0.2,MIT,PERMISSIVA
+npm,stackback,0.0.2,MIT,PERMISSIVA
+npm,std-env,3.9.0,MIT,PERMISSIVA
+npm,storybook,9.1.20,MIT,PERMISSIVA
+npm,@vitest/mocker,3.2.4,MIT,PERMISSIVA
+npm,estree-walker,3.0.3,MIT,PERMISSIVA
+npm,semver,7.7.2,ISC,PERMISSIVA
+npm,streamdown,2.6.0,Apache-2.0,PERMISSIVA
+npm,string-width,5.1.2,MIT,PERMISSIVA
+npm,string-width-cjs,4.2.3,MIT,PERMISSIVA
+npm,emoji-regex,8.0.0,MIT,PERMISSIVA
+npm,strip-ansi,6.0.1,MIT,PERMISSIVA
+npm,stringify-entities,4.0.4,MIT,PERMISSIVA
+npm,strip-ansi,7.1.0,MIT,PERMISSIVA
+npm,strip-ansi-cjs,6.0.1,MIT,PERMISSIVA
+npm,ansi-regex,6.1.0,MIT,PERMISSIVA
+npm,strip-bom,3.0.0,MIT,PERMISSIVA
+npm,strip-indent,4.0.0,MIT,PERMISSIVA
+npm,strip-json-comments,3.1.1,MIT,PERMISSIVA
+npm,strip-literal,3.0.0,MIT,PERMISSIVA
+npm,js-tokens,9.0.1,MIT,PERMISSIVA
+npm,style-to-js,1.1.16,MIT,PERMISSIVA
+npm,style-to-object,1.0.8,MIT,PERMISSIVA
+npm,supports-color,7.2.0,MIT,PERMISSIVA
+npm,supports-preserve-symlinks-flag,1.0.0,MIT,PERMISSIVA
+npm,tabbable,6.2.0,MIT,PERMISSIVA
+npm,tailwind-merge,3.7.0,MIT,PERMISSIVA
+npm,tailwindcss,4.3.3,MIT,PERMISSIVA
+npm,tapable,2.3.3,MIT,PERMISSIVA
+npm,test-exclude,7.0.1,ISC,PERMISSIVA
+npm,brace-expansion,2.1.7,MIT,PERMISSIVA
+npm,minimatch,9.0.9,ISC,PERMISSIVA
+npm,tiny-invariant,1.3.3,MIT,PERMISSIVA
+npm,tinybench,2.9.0,MIT,PERMISSIVA
+npm,tinyexec,0.3.2,MIT,PERMISSIVA
+npm,tinyglobby,0.2.17,MIT,PERMISSIVA
+npm,fdir,6.5.0,MIT,PERMISSIVA
+npm,tinypool,1.1.1,MIT,PERMISSIVA
+npm,tinyrainbow,2.0.0,MIT,PERMISSIVA
+npm,tinyspy,4.0.3,MIT,PERMISSIVA
+npm,totalist,3.0.1,MIT,PERMISSIVA
+npm,trim-lines,3.0.1,MIT,PERMISSIVA
+npm,trough,2.2.0,MIT,PERMISSIVA
+npm,ts-api-utils,2.5.0,MIT,PERMISSIVA
+npm,ts-dedent,2.2.0,MIT,PERMISSIVA
+npm,tsconfck,3.1.6,MIT,PERMISSIVA
+npm,tsconfig-paths,4.2.0,MIT,PERMISSIVA
+npm,tslib,2.8.1,0BSD,PERMISSIVA
+npm,type-check,0.4.0,MIT,PERMISSIVA
+npm,typescript,5.9.3,Apache-2.0,PERMISSIVA
+npm,typescript-eslint,8.71.1,MIT,PERMISSIVA
+npm,undici-types,7.24.6,MIT,PERMISSIVA
+npm,unicorn-magic,0.1.0,MIT,PERMISSIVA
+npm,unified,11.0.5,MIT,PERMISSIVA
+npm,unist-builder,4.0.0,MIT,PERMISSIVA
+npm,unist-util-filter,5.0.1,MIT,PERMISSIVA
+npm,unist-util-find-after,5.0.0,MIT,PERMISSIVA
+npm,unist-util-is,6.0.0,MIT,PERMISSIVA
+npm,unist-util-parents,3.0.0,MIT,PERMISSIVA
+npm,unist-util-position,5.0.0,MIT,PERMISSIVA
+npm,unist-util-remove-position,5.0.0,MIT,PERMISSIVA
+npm,unist-util-stringify-position,4.0.0,MIT,PERMISSIVA
+npm,unist-util-visit,5.1.0,MIT,PERMISSIVA
+npm,unist-util-visit-parents,6.0.2,MIT,PERMISSIVA
+npm,universalify,2.0.1,MIT,PERMISSIVA
+npm,unplugin,3.4.0,MIT,PERMISSIVA
+npm,update-browserslist-db,1.3.3,MIT,PERMISSIVA
+npm,uri-js,4.4.1,BSD-2-Clause,PERMISSIVA
+npm,use-sync-external-store,1.7.0,MIT,PERMISSIVA
+npm,util-deprecate,1.0.2,MIT,PERMISSIVA
+npm,vfile,6.0.3,MIT,PERMISSIVA
+npm,vfile-location,5.0.3,MIT,PERMISSIVA
+npm,vfile-message,4.0.2,MIT,PERMISSIVA
+npm,vite,6.4.4,MIT,PERMISSIVA
+npm,vite-node,3.2.4,MIT,PERMISSIVA
+npm,vite-tsconfig-paths,5.1.4,MIT,PERMISSIVA
+npm,fdir,6.4.5,MIT,PERMISSIVA
+npm,vitest,3.2.7,MIT,PERMISSIVA
+npm,@vitest/expect,3.2.7,MIT,PERMISSIVA
+npm,@vitest/pretty-format,3.2.7,MIT,PERMISSIVA
+npm,@vitest/spy,3.2.7,MIT,PERMISSIVA
+npm,@vitest/utils,3.2.7,MIT,PERMISSIVA
+npm,web-namespaces,2.0.1,MIT,PERMISSIVA
+npm,webpack-virtual-modules,0.6.2,MIT,PERMISSIVA
+npm,whatwg-fetch,3.6.20,MIT,PERMISSIVA
+npm,which,2.0.2,ISC,PERMISSIVA
+npm,why-is-node-running,2.3.0,MIT,PERMISSIVA
+npm,word-wrap,1.2.5,MIT,PERMISSIVA
+npm,wrap-ansi,8.1.0,MIT,PERMISSIVA
+npm,wrap-ansi-cjs,7.0.0,MIT,PERMISSIVA
+npm,emoji-regex,8.0.0,MIT,PERMISSIVA
+npm,string-width,4.2.3,MIT,PERMISSIVA
+npm,strip-ansi,6.0.1,MIT,PERMISSIVA
+npm,ansi-styles,6.2.1,MIT,PERMISSIVA
+npm,ws,8.21.3,MIT,PERMISSIVA
+npm,yallist,3.1.1,ISC,PERMISSIVA
+npm,yocto-queue,0.1.0,MIT,PERMISSIVA
+npm,zod,4.6.5,MIT,PERMISSIVA
+npm,zwitch,2.0.4,MIT,PERMISSIVA

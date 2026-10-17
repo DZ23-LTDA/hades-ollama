@@ -21,15 +21,15 @@ jobs:
           cache: true
       - name: Run source installer into runner temp directory
         env:
-          OLLAMA_INSTALL_DIR: ${{ runner.temp }}/ollama-classe-a-plus-bin
-          OLLAMA_BINARY_NAME: ollama-classe-a-plus
+          OLLAMA_INSTALL_DIR: ${{ runner.temp }}/hades-bin
+          OLLAMA_BINARY_NAME: hades
         run: sh ./scripts/install.sh
       - name: Verify the exact source-built fork binary
         env:
-          OLLAMA_INSTALL_DIR: ${{ runner.temp }}/ollama-classe-a-plus-bin
+          OLLAMA_INSTALL_DIR: ${{ runner.temp }}/hades-bin
         run: |
-          test -x "$OLLAMA_INSTALL_DIR/ollama-classe-a-plus"
-          "$OLLAMA_INSTALL_DIR/ollama-classe-a-plus" --version
+          test -x "$OLLAMA_INSTALL_DIR/hades"
+          "$OLLAMA_INSTALL_DIR/hades" --version
           test ! -e "$OLLAMA_INSTALL_DIR/ollama"
       - name: Verify actionable failures without Go and with invalid install directory
         run: |

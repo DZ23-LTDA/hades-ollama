@@ -41,7 +41,7 @@ func TestRuntimePersisteConsumoDoModeloNaMissao(t *testing.T) {
 		t.Fatal(err)
 	}
 	planner := &planejadorComConsumo{price: ModelPrice{InputCentsPer1K: 6, OutputCentsPer1K: 12, Known: true}}
-	runtime, err := NewRuntime(RuntimeConfig{Store: store, Planner: planner, WorkspaceRoot: root})
+	runtime, err := NewRuntime(RuntimeConfig{Store: store, Planner: planner, WorkspaceRoot: root, DataRoot: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -87,7 +87,7 @@ func TestRuntimeNaoInventaConsumoQuandoOPlanejadorNaoReporta(t *testing.T) {
 		t.Fatal(err)
 	}
 	// RulePlanner nao reporta consumo: a missao NAO pode ganhar um registro de custo inventado.
-	runtime, err := NewRuntime(RuntimeConfig{Store: store, Planner: RulePlanner{}, WorkspaceRoot: root})
+	runtime, err := NewRuntime(RuntimeConfig{Store: store, Planner: RulePlanner{}, WorkspaceRoot: root, DataRoot: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}

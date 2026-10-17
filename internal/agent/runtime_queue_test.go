@@ -17,7 +17,7 @@ func TestCreateMissionAutoRunFailsClosedWhenQueuePersistenceFails(t *testing.T) 
 	if err := os.RemoveAll(queueRoot); err != nil {
 		t.Fatal(err)
 	}
-	runtime, err := NewRuntime(RuntimeConfig{Store: NewMemoryStore(), Queue: queue, Planner: RulePlanner{}, WorkspaceRoot: workspace})
+	runtime, err := NewRuntime(RuntimeConfig{Store: NewMemoryStore(), Queue: queue, Planner: RulePlanner{}, WorkspaceRoot: workspace, DataRoot: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -203,6 +203,30 @@ func DefaultSlashRegistry() []SlashCommandSpec {
 		slashSpec("/business-status", "Acompanha as operações da empresa", "31",
 			"GET /api/agent/v1/companies/:id/report", "",
 			required("empresa", "id da empresa", SlashArgID)),
+
+		// 🚨 E-533 (Estagio 44 - Cowork & Spark): os tres comandos que a auditoria mediu em falta.
+		//
+		// ***SPARK E COWORK ENTRAM PELA MESMA ROTA DE `/goal` - E ISSO E' O PONTO.***
+		//
+		// O complemento exige o Spark como **modo**, e nao como segundo runtime. Dar-lhes um backend proprio seria
+		// criar exactamente o «segundo runtime em conflito» que o documento proibe - e este registo, que recusa
+		// comandos sem rota, **nao me impediria** de o fazer: um backend inventado *parece* uma rota valida.
+		// ⇒ por isso o backend e' o mesmo de `/goal`, e o que distingue o Spark e' o **modo**, nao o motor.
+		slashSpec("/spark", "Roda a missão em modo Spark: ideação rápida sobre a MESMA engine (não é um segundo runtime)", "44",
+			"POST /api/agent/v1/missions", "",
+			required("objetivo", "o que idealizar", SlashArgText),
+			optional("workspace", "workspace isolado da missão", SlashArgText)),
+		slashSpec("/cowork", "Abre o workspace Cowork e delega tarefas aos agentes", "44",
+			"POST /api/agent/v1/missions", "",
+			required("objetivo", "o que delegar", SlashArgText),
+			optional("workspace", "workspace isolado da missão", SlashArgText)),
+		// `/reject` e' o par de `/deny`, que ja' existe: **mesmo backend, mesmo contrato de auditoria**. *Um par a'
+		// solta seria um comando que so' sabe dizer «nao»; o que interessa e' que aprovar e rejeitar passem pelo MESMO
+		// caminho auditado.*
+		slashSpec("/reject", "Rejeita uma ação de risco (par de `/approve`, mesmo caminho auditado de `/deny`)", "44",
+			"POST /api/agent/v1/missions/:id/approvals/:approval_id", "",
+			required("missao", "id da missão", SlashArgID),
+			required("aprovacao", "id da aprovação", SlashArgID)),
 	}
 	sort.Slice(specs, func(i, j int) bool { return specs[i].Name < specs[j].Name })
 	return specs

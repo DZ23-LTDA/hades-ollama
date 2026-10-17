@@ -51,6 +51,11 @@ const (
 type CreateMissionRequest struct {
 	MissionID string `json:"-"`
 	ActorID   string `json:"-"`
+	// AgentID atribui a missão a um AGENTE (por exemplo um agente de empresa). Entra no registo da
+	// missão porque o despertar coalescido (E-633) é POR AGENTE e a fila durável é POR MISSÃO:
+	// sem este campo, «acordar o agente» não tem como saber a quem — foi o que a auditoria do
+	// E-635 mediu (`Mission` e `Step` não tinham a dimensão; `Memory` e `ArtifactManifest` tinham).
+	AgentID string `json:"agent_id,omitempty"`
 	// IdempotencyKey torna a criação repetível sem duplicar missão. Quando
 	// presente, o ID é DERIVADO da chave (organização + chave), então repetir a
 	// mesma criação devolve a missão já existente em vez de criar outra. É o
@@ -73,33 +78,39 @@ type CreateMissionRequest struct {
 }
 
 type Mission struct {
-	ID                      string             `json:"id"`
-	Version                 int64              `json:"version"`
-	Objective               string             `json:"objective"`
-	Provider                string             `json:"provider,omitempty"`
-	Model                   string             `json:"model,omitempty"`
-	Workspace               string             `json:"workspace,omitempty"`
-	WorkspaceIdentity       string             `json:"workspace_identity,omitempty"`
-	WorkspaceIsolated       bool               `json:"workspace_isolated,omitempty"`
-	WorkspaceSnapshotID     string             `json:"workspace_snapshot_id,omitempty"`
-	WorkspaceSnapshotSHA256 string             `json:"workspace_snapshot_sha256,omitempty"`
-	ProjectID               string             `json:"project_id,omitempty"`
-	OrganizationID          string             `json:"organization_id,omitempty"`
-	Capabilities            []string           `json:"capabilities,omitempty"`
-	AutoRun                 bool               `json:"auto_run,omitempty"`
-	State                   MissionState       `json:"state"`
-	Plan                    []Step             `json:"plan"`
-	Approvals               []Approval         `json:"approvals,omitempty"`
-	Artifacts               []ArtifactManifest `json:"artifacts,omitempty"`
-	GitRepoRoot             string             `json:"git_repo_root,omitempty"`
-	GitBranch               string             `json:"git_branch,omitempty"`
-	GitWorktreePath         string             `json:"git_worktree_path,omitempty"`
-	GitBaseCommit           string             `json:"git_base_commit,omitempty"`
-	GitMergeStatus          string             `json:"git_merge_status,omitempty"`
-	GitWorktreeActive       bool               `json:"git_worktree_active,omitempty"`
-	AutoRepair              bool               `json:"auto_repair,omitempty"`
-	MaxRepairTries          int                `json:"max_repair_tries,omitempty"`
-	LastError               string             `json:"last_error,omitempty"`
+	ID                      string `json:"id"`
+	Version                 int64  `json:"version"`
+	Objective               string `json:"objective"`
+	Provider                string `json:"provider,omitempty"`
+	Model                   string `json:"model,omitempty"`
+	Workspace               string `json:"workspace,omitempty"`
+	WorkspaceIdentity       string `json:"workspace_identity,omitempty"`
+	WorkspaceIsolated       bool   `json:"workspace_isolated,omitempty"`
+	WorkspaceSnapshotID     string `json:"workspace_snapshot_id,omitempty"`
+	WorkspaceSnapshotSHA256 string `json:"workspace_snapshot_sha256,omitempty"`
+	ProjectID               string `json:"project_id,omitempty"`
+	OrganizationID          string `json:"organization_id,omitempty"`
+	// ActorID e AgentID: QUEM PEDIU e QUE AGENTE executa. O `CreateMissionRequest` já trazia o
+	// `ActorID` (`json:"-"`, preenchido pelo servidor) mas a MISSAO nao o guardava — ou seja, a
+	// atribuicao existia no pedido e perdia-se no registo (a mesma classe de lacuna do D-12: o
+	// runtime nao conhecia o ator). Coalescer despertares por agente exige os dois.
+	ActorID           string             `json:"actor_id,omitempty"`
+	AgentID           string             `json:"agent_id,omitempty"`
+	Capabilities      []string           `json:"capabilities,omitempty"`
+	AutoRun           bool               `json:"auto_run,omitempty"`
+	State             MissionState       `json:"state"`
+	Plan              []Step             `json:"plan"`
+	Approvals         []Approval         `json:"approvals,omitempty"`
+	Artifacts         []ArtifactManifest `json:"artifacts,omitempty"`
+	GitRepoRoot       string             `json:"git_repo_root,omitempty"`
+	GitBranch         string             `json:"git_branch,omitempty"`
+	GitWorktreePath   string             `json:"git_worktree_path,omitempty"`
+	GitBaseCommit     string             `json:"git_base_commit,omitempty"`
+	GitMergeStatus    string             `json:"git_merge_status,omitempty"`
+	GitWorktreeActive bool               `json:"git_worktree_active,omitempty"`
+	AutoRepair        bool               `json:"auto_repair,omitempty"`
+	MaxRepairTries    int                `json:"max_repair_tries,omitempty"`
+	LastError         string             `json:"last_error,omitempty"`
 	// Usage leva o consumo real de modelo (tokens e custo) para dentro do registro da
 	// missão. Sem isto, o custo ficava só no catálogo de provedores e a linha do tempo
 	// não conseguia responder "quanto custou esta missão".
@@ -127,6 +138,23 @@ type Step struct {
 	Attempts             int            `json:"attempts"`
 	Result               any            `json:"result,omitempty"`
 	Error                string         `json:"error,omitempty"`
+	// E-429 (Estagio 43, ADR-002): o NO do plano passa a CARREGAR as exigencias, e a DECISAO continua no
+	// `multillm.Registry`. *Antes disto o `Step` era uma lista plana:* nao havia como dizer "este passo precisa de
+	// visao" nem "quero ESTE modelo aqui" - a escolha era do turno inteiro, nao do passo.
+	//
+	// ***Preserva a separacao que o complemento exige:** o no declara o que precisa; o motor decide quem atende.*
+	//
+	// NOTA DE ESCOPO, para nao alegar mais do que foi feito: estes campos sao o CONTRATO e o seu round-trip. O
+	// consumo pelo runtime (o passo consultar o Registry com as suas exigencias) e' o incremento seguinte e NAO
+	// esta' feito - ver LIMITES em E-429.
+	RequiredCapabilities []string `json:"required_capabilities,omitempty"`
+	// PinnedModelID e' o PIN (`MANUAL` do Estagio 43) POR PASSO: *restricao rigida, igual a
+	// `RouteRequest.PinnedModelID`*. Um pin que nao pode ser honrado tem de FALHAR, nunca trocar de modelo em
+	// silencio.
+	PinnedModelID string `json:"pinned_model_id,omitempty"`
+	// DependsOn sao os IDs dos passos que precisam terminar antes deste. *E' a aresta do DAG* - sem ela o plano e'
+	// uma lista, e ordem de lista nao expressa dependencia.
+	DependsOn []string `json:"depends_on,omitempty"`
 }
 
 type Approval struct {
@@ -166,6 +194,40 @@ type ArtifactManifest struct {
 	Size      int64     `json:"size"`
 	SHA256    string    `json:"sha256"`
 	CreatedAt time.Time `json:"created_at"`
+
+	// 🚨 E-532 (Estagio 47, "modelo canonico de artefacto"): os campos que a auditoria mediu em FALTA.
+	//
+	// ***POR QUE ESTES, E POR QUE AGORA.*** O Estagio 47 pede uma biblioteca PARTILHADA - e uma biblioteca partilhada
+	// sem **tenant** nao e' partilhada: e' uma pasta aberta. A auditoria de `types.go:176` mostrou que existiam
+	// `MissionID`/`StepID` (o eixo da MISSAO) e **nada** do eixo da ORGANIZACAO.
+	//
+	// **TenantID** e' deliberadamente **obrigatorio** (`ValidateArtifactScope`): *um artefacto sem tenant nao pode
+	// existir, porque "sem tenant" e' exactamente o estado em que uma busca atravessa organizacoes sem ninguem notar.*
+	//
+	// *Todos com `omitempty`* para nao quebrar consumidores de JSON ja' existentes - **o que se acrescenta nao pode
+	// partir o que ja' funciona.**
+	TenantID  string `json:"tenant_id,omitempty"`
+	UserID    string `json:"user_id,omitempty"`
+	ProjectID string `json:"project_id,omitempty"`
+	AgentID   string `json:"agent_id,omitempty"`
+
+	// Version comeca em 1 e e' do ARTEFACTO (nao do ficheiro): *o ficheiro muda, a versao sobe, e o checksum muda com
+	// ela.* Distinto de `builder.ExportVersion`, que versiona a EXPORTACAO de um projeto - e que a auditoria encontrou
+	// num **outro** sitio. *Duas versoes com o mesmo nome em dominios diferentes e' aceitavel; confundi-las, nao.*
+	Version int `json:"version,omitempty"`
+
+	// RetentionDays e' politica, nao prazo cumprido: *0 significa "nao declarado", e nao declarado NAO e' o mesmo que
+	// eterno.* Quem apaga tem de tratar 0 explicitamente.
+	RetentionDays int `json:"retention_days,omitempty"`
+
+	// ACL e' a lista de sujeitos autorizados, no formato `tipo:id` (ex.: `user:ana`, `group:qa`, `tenant:acme`).
+	// ***Vazia significa "ninguem alem do dono" - e nao "todos".*** *O sentido do vazio escolhe-se uma vez, e escolhe-se
+	// pelo lado que falha fechado.*
+	ACL []string `json:"acl,omitempty"`
+
+	// MIMEVerified diz se o `MediaType` foi **confirmado pelo CONTEUDO** ou apenas **inferido pela extensao**.
+	// *A auditoria mostrou que hoje e' sempre por extensao (`mime.TypeByExtension`) - e uma extensao mente.*
+	MIMEVerified bool `json:"mime_verified,omitempty"`
 }
 
 type ToolDescriptor struct {
@@ -195,6 +257,18 @@ type ToolContext struct {
 	WorkspaceSnapshotManifest *WorkspaceSnapshotManifest
 	WorkspaceSnapshotPrefix   string
 	MissionArtifacts          []ArtifactManifest
+	// E-438 (Estagio 43) — **A DECISAO APLICADA.** Ate aqui a rota por passo era tomada e **registrada** em
+	// `step.model.route` (E-437), mas **nao chegava a ferramenta** ✗: o `ToolContext` nao tinha campo de modelo, entao
+	// uma ferramenta que chama modelo **nao tinha como saber qual foi escolhido** ⇒ *a decisao ficava na cadeia de
+	// evidencias e fora do caminho de execucao.*
+	//
+	// **O que este campo e'**: o modelo que o ROTEADOR escolheu para ESTE passo (*capacidades + pin*), para a
+	// ferramenta usa-lo em vez de adivinhar.
+	//
+	// **O que ele NAO e'**, e precisa ficar dito: ele **nao obriga** nenhuma ferramenta a usa-lo ✗ - *quem chama modelo
+	// passa a ter a informacao; honra-la e' de cada ferramenta.* Vazio significa "nao houve roteamento por passo"
+	// (*runtime sem registry*), e **nao** "use o modelo da missao por conta propria".
+	ModelID string
 }
 
 type ToolResult struct {

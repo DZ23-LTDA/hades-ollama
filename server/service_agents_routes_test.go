@@ -50,6 +50,21 @@ func setupServiceAgentAPI(t *testing.T, grantConsent bool) (*gin.Engine, *agent.
 	}
 	engine := gin.New()
 	group := engine.Group("/api/agent/v1")
+	// 🚨 E-429/ADV-68: **até aqui o fixture não personificava NINGUÉM.** As rotas eram registradas sem
+	// middleware e o contexto não tinha `agent.membership` ⇒ *`requireApprovalApprover` devolvia 403 para
+	// qualquer decisão* — e é por isso que os testes desta linha, antes, mandavam o ator **no corpo** e exigiam
+	// **200**: *a única "identidade" disponível era a que o cliente escrevesse* ✗.
+	//
+	// Agora o fixture semeia uma sessão **owner** — *o papel que o portão exige* — e o caso **viewer** (que
+	// precisa ser recusado) tem teste próprio em `service_agent_approval_authorization_test.go`.
+	group.Use(func(c *gin.Context) {
+		c.Set("agent.membership", agent.Membership{Role: agent.RoleOwner, OrganizationID: agent.LocalOrganizationID})
+		// E o ATOR da sessão: `agentActorID` lê `agent.user` (ou o header `X-Ollama-User`) e cai em `"local"`.
+		// *Sem semear o ator, a rota recusa por ator ausente — e o efeito seria confundir "sem sessão" com
+		// "sem permissão".*
+		c.Set("agent.user", agent.User{ID: "ator-da-sessao"})
+		c.Next()
+	})
 	group.GET("/service-agents", api.listServiceAgents)
 	group.POST("/service-agents/:id/turn", api.serviceAgentTurn)
 	group.GET("/service-agents/audit", api.serviceAgentAudit)

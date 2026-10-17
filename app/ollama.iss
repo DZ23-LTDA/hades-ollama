@@ -124,10 +124,10 @@ Name: "{userprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFile
 Filename: "{cmd}"; Parameters: "/C set ""OLLAMA_DZ23_CONFIG={userappdata}\Ollama DZ23\dz23-providers.json"" & set PATH={app};%PATH% & ""{app}\{#MyAppExeName}"""; Flags: postinstall nowait runhidden
 
 [UninstallRun]
-Filename: "powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -Command ""Get-CimInstance Win32_Process | Where-Object {{ $_.ExecutablePath -and $_.ExecutablePath.StartsWith('{app}',[System.StringComparison]::OrdinalIgnoreCase) }} | ForEach-Object {{ Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }}"""; Flags: runhidden
+Filename: "powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -Command ""Get-CimInstance Win32_Process | Where-Object {{ $_.ExecutablePath -and $_.ExecutablePath.StartsWith('{app}',[System.StringComparison]::OrdinalIgnoreCase) }} | ForEach-Object {{ Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }}"""; Flags: runhidden; RunOnceId: "HadesPararProcessos"
 ; HACK!  need to give the server and app enough time to exit
 ; TODO - convert this to a Pascal code script so it waits until they're no longer running, then completes
-Filename: "{cmd}"; Parameters: "/c timeout 5"; Flags: runhidden
+Filename: "{cmd}"; Parameters: "/c timeout 5"; Flags: runhidden; RunOnceId: "HadesEsperarSaida"
 
 [UninstallDelete]
 Type: filesandordirs; Name: "{userstartup}\{#MyAppName}.lnk"

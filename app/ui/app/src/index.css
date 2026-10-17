@@ -171,15 +171,92 @@
   animation: apps-copy-card-flash 1800ms ease-in-out both;
 }
 
+/* ------------------------------------------------------------------------------------------------
+   E-538 (Estagio 46) - o Companion: movimento a servico do ESTADO, nunca a fingir trabalho.
+
+   ***A REGRA QUE GOVERNA ESTAS QUATRO CLASSES.*** O complemento proibe *«animacoes ou respostas falsas para simular
+   trabalho»*. ⇒ **cada animacao daqui esta' ligada a um estado que EXISTE**, e a ausencia de animacao e' ela propria um
+   estado: `companion-idle` **nao anima** - *um mascote parado quando nada acontece e' a representacao fiel do sistema,
+   e nao uma avaria.*
+
+   *E `companion-typing` so' aparece com `data-state="a_trabalhar"` - o unico estado em que afirmar trabalho e' honesto,
+   pela mesma regra do `CompanionPodeDizer` (E-536).*
+   ------------------------------------------------------------------------------------------------ */
+.companion-pulse {
+  animation: companion-pulse 2s ease-in-out infinite;
+}
+
+.companion-breath {
+  animation: companion-breath 4s ease-in-out infinite;
+}
+
+.companion-typing {
+  animation: companion-typing 1.2s steps(3, end) infinite;
+}
+
+.companion-state-transition {
+  transition:
+    color 300ms ease-out,
+    background-color 300ms ease-out;
+}
+
+.companion-idle {
+  /* ***A CLASSE MAIS IMPORTANTE DESTE BLOCO: ela NAO ANIMA.*** Um mascote a rodar sem nada a acontecer e' a mentira
+     mais facil de escrever - e por isso aqui nao ha' `animation`, de proposito e com comentario. */
+  opacity: 1;
+}
+
+@keyframes companion-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.06);
+  }
+}
+
+@keyframes companion-breath {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-2px);
+  }
+}
+
+@keyframes companion-typing {
+  0% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.35;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .claude-connected-backdrop,
   .claude-connected-dialog,
-  .apps-copy-card-feedback {
+  .apps-copy-card-feedback,
+  /* E-538 (Estagio 46): as classes do Companion entram NA LISTA QUE JA' EXISTE.
+     *Nao criei um segundo mecanismo de movimento reduzido - o `prefers-reduced-motion` ja' estava aqui, com tres
+     classes. Acrescentar e' mais seguro do que duplicar: um segundo bloco poderia divergir do primeiro, e a pessoa que
+     pediu menos movimento veria metade do que pediu.* */
+  .companion-pulse,
+  .companion-breath,
+  .companion-typing {
     animation: none;
   }
 
   .apps-copy-hint,
-  .apps-copy-hint[data-leave] {
+  .apps-copy-hint[data-leave],
+  /* E as transicoes do Companion tambem: *movimento reduzido nao e' so' `animation` - uma transicao de 300ms num
+     estado que muda muitas vezes por minuto e' movimento a serio.* */
+  .companion-state-transition {
     transition: none;
   }
 

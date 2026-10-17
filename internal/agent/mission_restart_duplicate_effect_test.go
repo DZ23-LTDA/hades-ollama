@@ -31,7 +31,7 @@ func hashDoDescritor(t *testing.T, descritor ToolDescriptor) string {
 	t.Helper()
 	hash, err := toolDescriptorSHA256(descritor)
 	if err != nil {
-		t.Fatalf("calcular o SHA do descritor: %v", err)
+		t.Fatalf("obter o SHA do descritor: %v", err)
 	}
 	return hash
 }
@@ -135,7 +135,7 @@ func TestSemARecusaOEfeitoAconteceria(t *testing.T) {
 	// Este teste NÃO desliga nada: ele verifica que a ferramenta, quando executada diretamente, conta. É a metade
 	// "o contador funciona" — sem ela, o teste acima poderia passar porque o contador nunca conta.
 	ferramenta := &passoDeEscritaTool{}
-	runtime, err := NewRuntime(RuntimeConfig{Store: NewMemoryStore(), WorkspaceRoot: t.TempDir(), Planner: RulePlanner{}})
+	runtime, err := NewRuntime(RuntimeConfig{Store: NewMemoryStore(), WorkspaceRoot: t.TempDir(), Planner: RulePlanner{}, DataRoot: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}

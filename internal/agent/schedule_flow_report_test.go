@@ -22,7 +22,7 @@ func scheduleFlowRuntime(t *testing.T) (*Runtime, *ContextStore) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	runtime, err := NewRuntime(RuntimeConfig{Context: store, WorkspaceRoot: t.TempDir()})
+	runtime, err := NewRuntime(RuntimeConfig{Context: store, WorkspaceRoot: t.TempDir(), DataRoot: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}

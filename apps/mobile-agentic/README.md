@@ -1,4 +1,4 @@
-# DZ23 Agentic Mobile
+# HADES Mobile
 
 Cliente Expo para acompanhar missões, visualizar timeline, aprovar/rejeitar passos protegidos, iniciar execução e consultar uma API agentic v1 autenticada.
 
@@ -17,7 +17,7 @@ Em modo multiusuário, forneça um token Bearer emitido pelo servidor. Para dese
 
 ## Android e iOS
 
-Os identificadores de produção são `com.lmprado.dz23agentic`. Para builds EAS, configure primeiro a conta Expo/EAS e as credenciais de assinatura fora do repositório:
+Os identificadores de produção são `com.dz23ltd.hades`. Para builds EAS, configure primeiro a conta Expo/EAS e as credenciais de assinatura fora do repositório:
 
 ```bash
 npm install -g eas-cli

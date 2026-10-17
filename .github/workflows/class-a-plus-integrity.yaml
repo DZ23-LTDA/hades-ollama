@@ -38,10 +38,61 @@ jobs:
       # requisito como DONE no documento enquanto o indice de evidencias diz outra coisa - um gate que mente.
       - name: Verify the release gate matches the mission state (no drift)
         run: python3 scripts/hades_release_gate.py --check
+      # **E-989**: o MANIFESTO do snapshot (ESTAGIO 22 item 3). Ele registra `source_sha`, ramo,
+      # SBOM com sha256, plataformas e limitacoes - e, como todo ficheiro gerado, **envelhece em
+      # silencio** se ninguem o conferir. O `--check` compara o que e' estavel e ignora o que muda
+      # por si (`generated_at`, `source_dirty`), pela licao do `E-987`: *um `--check` que grita
+      # sempre nao e' lido*. Aqui ele passa a ter catraca no CI.
+      - name: Verify the snapshot manifest matches the tree (no drift)
+        run: |
+          python3 -m py_compile scripts/hades_manifest.py
+          python3 scripts/hades_manifest.py --check
+      # **E-991**: o INVENTARIO DE MARCA (§FASE-5 itens 1 e 3). Mesmo caso do manifesto: e' um
+      # ficheiro gerado, portanto envelhece. E a primeira versao do gerador **media o proprio
+      # output** (escrevia um documento com as strings da marca e depois contava-as), o que
+      # dava 15 linhas diferentes entre duas geracoes; *foi este `--check` que o apanhou*.
+      - name: Verify the brand inventory matches the repository (no drift)
+        run: |
+          python3 -m py_compile scripts/hades_brand_inventory.py
+          python3 scripts/hades_brand_inventory.py --check
+      # **E-992**: a CATRACA DO ASCII nos `.ps1`. `powershell.exe` 5.1 le' `.ps1` sem BOM como
+      # Windows-1252. Um byte > 127 num **comentario** nao e' impresso; numa **string** e' -- e
+      # sai corrompido para o utilizador. O checker separa as duas classes: `codigo`/string tem
+      # divida **declarada** (34 no `install.ps1`, 1 no `hades-quickstart.ps1`, ligados ao
+      # §FASE-6), e **divida nova falha**; `comentario` tem tecto por ficheiro.
+      - name: Verify no non-ASCII reaches PowerShell strings (ratchet)
+        run: python3 scripts/hades_ascii_ps1_check.py
       # Escrituracao da missao: evidencia citada que nao existe, ID duplicado, buraco na numeracao, bloqueio
       # orfao e veredito otimista com pendencia precisam FALHAR aqui (E-180). O passo seguinte injeta esses
       # defeitos em fixtures para provar que a checagem realmente os encontra.
+      # A FORMA do indice, e nao o seu conteudo (E-1007): *quatro* anomalias **intra-registo** passaram
+      # todos os checkers nesta janela, porque **todos contam linhas que comecam por `| E-`** -- e uma
+      # entrada **partida** nao comeca. Esta catraca verifica as cinco formas: entrada = uma linha,
+      # nenhuma linha orfa dentro da tabela, IDs unicos, nenhum newline LITERAL (`E-999`) e nenhum ID
+      # citado sem entrada fora da faixa historica declarada (`E-571..E-777`).
+      - name: Verify the evidence index SHAPE (no split entries, no phantom IDs)
+        run: |
+          python3 -m py_compile scripts/hades_index_shape_check.py
+          python3 scripts/hades_index_shape_check_test.py
+          python3 scripts/hades_index_shape_check.py --check
+      # A JANELA DE CITACAO dos documentos de retomada (E-1008): *o `mission_check` exige
+      # «alguma evidencia >= E-960», e um documento de retomada parado no E-1000 satisfaz
+      # PARA SEMPRE.* Esta catraca mede **quao recente** a citacao e' -- a menos de 12
+      # evidencias da cabeca do indice.
+      - name: Verify the handoff documents cite the head of the index (window)
+        run: |
+          python3 -m py_compile scripts/hades_handoff_window_check.py
+          python3 scripts/hades_handoff_window_check_test.py
+          python3 scripts/hades_handoff_window_check.py --check
+      # A COBERTURA DE EXECUCAO dos instrumentos (E-1010): *o `hades_go_test_check.py` (E-488)
+      # foi criado porque «a bateria nao corria go test» -- e nao estava em gate nenhum.*
+      - name: Verify every instrument is wired to a gate (no orphans)
+        run: |
+          python3 -m py_compile scripts/hades_orphan_instruments_check.py
+          python3 scripts/hades_orphan_instruments_check.py --check
       - name: Verify mission bookkeeping (no phantom evidence, coherent verdict)
+
+
         run: |
           python3 scripts/hades_mission_check.py
           python3 scripts/hades_mission_check_docs_test.py
@@ -63,11 +114,45 @@ jobs:
           python3 scripts/hades_scope_classifier_test.py
           python3 scripts/hades_tenant_scope_check_test.py
           python3 scripts/hades_tenant_scope_check.py --check
+      # E-660: a CODIFICACAO dos artefatos passa a ser gate. O checker existia (E-409/E-410) mas nao rodava no CI
+      # e cobria so' dupla codificacao - um BOM UTF-8 passava em silencio, e um `HADES_MASTER_STATE.json` com BOM
+      # derrubou o `hades_release_gate.py --check` (JSONDecodeError) nesta propria workflow. Instrumento fora da
+      # bateria nao protege: *o defeito que o instrumento cobre e' o defeito que passa*.
+      - name: Verify artifact encoding (no BOM, no double encoding)
+        run: |
+          python3 scripts/hades_encoding_check_test.py
+          python3 scripts/hades_encoding_check.py
+          # E-422: o checker do relogio de parede cobre as duas formas de `time.Now()` + `.Add(`, e era a causa
+          # real do `Go agentic and server gates` vermelho. Ficou fora da bateria quando foi criado; entra agora.
+          python3 scripts/hades_test_clock_check_test.py
+          python3 scripts/hades_test_clock_check.py --check
+      # E-665: CATRACA do gate do `gofmt`. A forma `test -z "$(gofmt ...)"` aprova arquivo ILEGIVEL: com erro de
+      # parse o gofmt escreve em STDERR e sai com STDOUT VAZIO, entao a comparacao de string vazia PASSA. *A
+      # cegueira existia em TRES workflows e so' uma estava corrigida — foi esta catraca que encontrou as outras
+      # duas.* Sem ela, a correcao de hoje volta a ser revertida por descuido amanha.
+      - name: Ratchet the gofmt gate (it may not go back to green by construction)
+        run: |
+          python3 scripts/hades_ci_gate_check_test.py
+          python3 scripts/hades_ci_gate_check.py
       - name: Verify the mission bookkeeping checker itself (fault injection)
         run: python3 scripts/hades_mission_check_test.py
+      # E-661: o gate anterior era `test -z "$(gofmt -l ...)"` - e um arquivo que NAO PARSEIA faz o gofmt
+      # escrever o erro em STDERR e sair com STDOUT VAZIO => `test -z ""` PASSAVA. Verde por construcao:
+      # foi assim que um `internal/agent/adaptive_router.go` com um `}` faltando atravessou o CI verde.
+      # Agora o CODIGO DE SAIDA do gofmt e conferido, e o motivo da falha e' impresso.
       - name: Verify Go formatting for protected backend surfaces
         run: |
-          test -z "$(gofmt -l internal/agent internal/multillm server/agent_routes.go)"
+          if ! saida="$(gofmt -l internal/agent internal/multillm server/agent_routes.go 2>&1)"; then
+            echo "gofmt FALHOU (arquivo nao parseavel ou erro de leitura):"
+            echo "$saida"
+            exit 1
+          fi
+          if [ -n "$saida" ]; then
+            echo "arquivos fora do gofmt:"
+            echo "$saida"
+            exit 1
+          fi
+          echo "gofmt OK: nenhum arquivo fora de formato e nenhum erro de parse"
 
   platform-builds:
     name: CGO-free and Windows build gate

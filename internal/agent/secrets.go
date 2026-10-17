@@ -180,19 +180,32 @@ type DLPFinding struct {
 var dlpPatterns = []struct {
 	kind    string
 	pattern *regexp.Regexp
+	// ***E-559: prefixos é uma lista de LITERAIS, e todo casamento do padrão
+	// tem de conter pelo menos um deles.*** É uma condição **necessária**, não
+	// uma heurística: *sem nenhum dos literais no texto, o padrão não pode
+	// casar, e o motor de regex não precisa de varrer 4 MiB.*
+	//
+	// *O Go já faz esta optimização sozinho quando o padrão **começa** por um
+	// literal — foi por isso que o `private_key` mediu **0,0 ms** em 4 MiB,
+	// contra **40-142 ms** dos outros. Mas ele **não** a faz quando o padrão
+	// tem `(?i)` ou alternâncias no início, que é o caso de 11 deles.*
+	//
+	// *Comparados em minúsculas: os padrões com `(?i)` exigem-no, e os sem
+	// `(?i)` usam literais que já são minúsculos ou que não colidem.*
+	prefixos []string
 }{
-	{"private_key", regexp.MustCompile(`(?s)-----BEGIN [A-Z ]+PRIVATE KEY-----.*?-----END [A-Z ]+PRIVATE KEY-----`)},
-	{"github_token", regexp.MustCompile(`(?i)\b(?:ghp|github_pat)_[A-Za-z0-9_]{20,}\b`)},
-	{"openrouter_token", regexp.MustCompile(`\bsk-or-v1-[A-Za-z0-9_-]{20,}\b`)},
-	{"openai_token", regexp.MustCompile(`\bsk-[A-Za-z0-9_-]{20,}\b`)},
-	{"xai_token", regexp.MustCompile(`\bxai-[A-Za-z0-9_-]{20,}\b`)},
-	{"aws_access_key", regexp.MustCompile(`\bAKIA[A-Z0-9]{16}\b`)},
-	{"slack_token", regexp.MustCompile(`\bxox[baprs]-[A-Za-z0-9-]{16,}\b`)},
-	{"bearer_token", regexp.MustCompile(`(?i)\bBearer\s+[A-Za-z0-9._~+/=-]{16,}`)},
-	{"basic_authorization", regexp.MustCompile(`(?i)\b(?:authorization\s*:\s*)?basic\s+[A-Za-z0-9+/=_-]{8,}`)},
-	{"cookie_credential", regexp.MustCompile(`(?i)\b(?:cookie|set-cookie)\s*:\s*[^\s;=]+=\s*[^\s;]+|\b(?:session|sid|auth|jwt|access_token|refresh_token|phpsessid)=\s*[^\s;,&]+`)},
-	{"jwt_token", regexp.MustCompile(`\beyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\b`)},
-	{"credential_assignment", regexp.MustCompile(`(?i)(?:password|passwd|secret|credential|credentials|token|api[_-]?key|access[_-]?token|refresh[_-]?token)\s*[:=]\s*["']?[A-Za-z0-9._~+/=-]{1,}["']?`)},
+	{"private_key", regexp.MustCompile(`(?s)-----BEGIN [A-Z ]+PRIVATE KEY-----.*?-----END [A-Z ]+PRIVATE KEY-----`), []string{"-----begin"}},
+	{"github_token", regexp.MustCompile(`(?i)\b(?:ghp|gho|ghu|ghs|ghr|github_pat)_[A-Za-z0-9_]{20,}\b`), []string{"ghp_", "gho_", "ghu_", "ghs_", "ghr_", "github_pat_"}},
+	{"openrouter_token", regexp.MustCompile(`\bsk-or-v1-[A-Za-z0-9_-]{20,}\b`), []string{"sk-or-v1-"}},
+	{"openai_token", regexp.MustCompile(`\bsk-[A-Za-z0-9_-]{20,}\b`), []string{"sk-"}},
+	{"xai_token", regexp.MustCompile(`\bxai-[A-Za-z0-9_-]{20,}\b`), []string{"xai-"}},
+	{"aws_access_key", regexp.MustCompile(`\bAKIA[A-Z0-9]{16}\b`), []string{"akia"}},
+	{"slack_token", regexp.MustCompile(`\bxox[baprs]-[A-Za-z0-9-]{16,}\b`), []string{"xox"}},
+	{"bearer_token", regexp.MustCompile(`(?i)\bBearer\s+[A-Za-z0-9._~+/=-]{16,}`), []string{"bearer"}},
+	{"basic_authorization", regexp.MustCompile(`(?i)\b(?:authorization\s*:\s*)?basic\s+[A-Za-z0-9+/=_-]{8,}`), []string{"basic"}},
+	{"cookie_credential", regexp.MustCompile(`(?i)\b(?:cookie|set-cookie)\s*:\s*[^\s;=]+=\s*[^\s;]+|\b(?:session|sid|auth|jwt|access_token|refresh_token|phpsessid)=\s*[^\s;,&]+`), []string{"cookie", "session", "sid=", "auth", "jwt", "access_token", "refresh_token", "phpsessid"}},
+	{"jwt_token", regexp.MustCompile(`\beyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\b`), []string{"eyj"}},
+	{"credential_assignment", regexp.MustCompile(`(?i)(?:password|passwd|secret|credential|credentials|token|api[_-]?key|access[_-]?token|refresh[_-]?token)\s*[:=]\s*["']?[A-Za-z0-9._~+/=-]{1,}["']?`), []string{"password", "passwd", "secret", "credential", "token", "api_key", "apikey", "api-key"}},
 }
 
 // embeddedJSONStringKeyPattern recognizes both ordinary JSON property names
@@ -428,12 +441,38 @@ func ScanDLP(text string) []DLPFinding {
 	if redactCredentialURLs(text) != text {
 		findings = append(findings, DLPFinding{Kind: "credential_url", Redacted: "[REDACTED]"})
 	}
+	// E-559: uma única conversão, partilhada pelos 12 padrões.
+	minusculas := strings.ToLower(text)
 	for _, item := range dlpPatterns {
+		// ***E-559: o pré-filtro por LITERAL é uma CONDIÇÃO NECESSÁRIA*** —
+		// *cada padrão exige um dos literais, e sem ele nenhum casamento é
+		// possível. O Go já faz isto sozinho quando o padrão **começa** por um
+		// literal (o `private_key` mediu **0,0 ms** em 4 MiB), mas **não** o faz
+		// com `(?i)` ou alternâncias — e é o caso de 11 dos 12.*
+		//
+		// *Medido antes do pré-filtro: 1 618,7 ms dos 12 padrões sobre 4 MiB, e
+		// o `credential_assignment` sozinho levava 754,7 ms.*
+		if !dlpPrefixoPresente(minusculas, item.prefixos) {
+			continue
+		}
 		if match := item.pattern.FindString(text); match != "" {
 			findings = append(findings, DLPFinding{Kind: item.kind, Redacted: item.pattern.ReplaceAllString(match, "[REDACTED]")})
 		}
 	}
 	return findings
+}
+
+// dlpPrefixoPresente diz se ALGUM dos literais obrigatórios aparece no texto já
+// em minúsculas. É o pré-filtro de `dlpPatterns` (E-559): *um literal ausente
+// prova que o padrão não pode casar, e evita varrer o texto com o motor de
+// regex — que foi medido em 40-142 ms por padrão sobre 4 MiB.*
+func dlpPrefixoPresente(minusculas string, prefixos []string) bool {
+	for _, prefixo := range prefixos {
+		if strings.Contains(minusculas, prefixo) {
+			return true
+		}
+	}
+	return false
 }
 
 func RedactDLP(text string) string {
@@ -444,7 +483,13 @@ func RedactDLP(text string) string {
 		return "[REDACTED]"
 	}
 	text = redactCredentialURLs(text)
+	// E-559: mesmo pré-filtro por literal que o `ScanDLP` — *sem o literal, o
+	// padrão não pode casar, e `ReplaceAllString` varreria o texto inteiro.*
+	minusculas := strings.ToLower(text)
 	for _, item := range dlpPatterns {
+		if !dlpPrefixoPresente(minusculas, item.prefixos) {
+			continue
+		}
 		text = item.pattern.ReplaceAllString(text, "[REDACTED]")
 	}
 	return text

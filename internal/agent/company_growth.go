@@ -84,6 +84,9 @@ type CompanyOrder struct {
 	TrackingCode   string    `json:"tracking_code,omitempty"`
 	CreatedAt      time.Time `json:"created_at"`
 	UpdatedAt      time.Time `json:"updated_at"`
+	// Replayed é verdadeiro quando o pedido devolvido é o MESMO de uma intenção já vista (idempotência) — *e só aparece
+	// na RESPOSTA, nunca é aceite do corpo* (E-467). Espelha `WorkflowRun.Replayed`.
+	Replayed bool `json:"replayed,omitempty"`
 }
 
 type CompanyGrowthReport struct {
@@ -330,15 +333,43 @@ func (s *CompanyStore) AddProduct(id string, product CompanyProduct) (Company, e
 	})
 }
 
-func (s *CompanyStore) CreateOrder(id string, order CompanyOrder) (Company, error) {
+// CreateOrder cria um pedido na empresa, com idempotência POR PRODUTO E CLIENTE.
+//
+// 🚨 E-467 (MEDIDO): esta função devolvia `(Company, error)` e, na reentrega, o `return nil` **não dizia nada ao
+// chamador** ✗ — *nem o pedido que já existia, nem um sinal de replay* ⇒ ***o chamador que reentrega por queda de rede não
+// sabia se o pedido foi criado agora ou antes.*** É o **oposto** da lição de **E-458** (*idempotência de verdade é
+// devolver o MESMO RECURSO*).
+//
+// **E O CONTRASTE, medido em E-466, removeu a dúvida**: `live_commerce.go:611` devolve `anterior` (*"replay: devolve o
+// MESMO evento, sem segundo efeito"*) e `sales_workforce.go:512` devolve `existing` ⇒ ***dois vizinhos devolvem o recurso
+// existente; esta função era a excepção*** ✓ ⇒ ***não era questão de opinião: era inconsistência dentro do repositório.***
+//
+// ⇒ passa a devolver **(Company, CompanyOrder, error)**: *o `CompanyOrder` devolvido é o pedido **criado** ou o
+// **existente**, com `Replayed` a dizer qual dos dois.* E a superfície é pequena (*3 chamadores*), o que torna a mudança
+// de contrato viável em vez de teórica.
+func (s *CompanyStore) CreateOrder(id string, order CompanyOrder) (Company, CompanyOrder, error) {
 	order.CustomerRef = strings.TrimSpace(order.CustomerRef)
 	if order.ProductID == "" || order.CustomerRef == "" || order.Quantity <= 0 {
-		return Company{}, errors.New("order product, customer and positive quantity are required")
+		return Company{}, CompanyOrder{}, errors.New("order product, customer and positive quantity are required")
 	}
-	return s.mutate(id, func(company *Company) error {
+	var devolvido CompanyOrder
+	empresa, err := s.mutate(id, func(company *Company) error {
 		if order.IdempotencyKey != "" {
 			for _, existing := range company.Orders {
-				if existing.IdempotencyKey == order.IdempotencyKey {
+				// 🚨 E-462 (MEDIDO): a comparação usava **só a chave** ✗, e a chave **não inclui o `ProductID`** ⇒
+				// *um pedido do produto B **desaparecia** por causa de um pedido do produto A* — **sem erro, sem aviso**
+				// ✓✓. ***O cliente pediu dois produtos e recebeu um.***
+				//
+				// ⇒ o escopo da chave inclui **o PRODUTO e o CLIENTE**: *a mesma chave para intenções diferentes já não
+				// engole a segunda.* É a **mesma classe** do ADV-75 (*contacto*) e do ADV-76 (*workflow*):
+				// *comparar um identificador **sem o escopo a que ele pertence***.
+				if existing.IdempotencyKey == order.IdempotencyKey &&
+					existing.ProductID == order.ProductID &&
+					existing.CustomerRef == order.CustomerRef {
+					// E-467: o pedido EXISTENTE volta, marcado como replay. *Idempotência de verdade devolve o recurso.*
+					replay := existing
+					replay.Replayed = true
+					devolvido = replay
 					return nil
 				}
 			}
@@ -360,11 +391,13 @@ func (s *CompanyStore) CreateOrder(id string, order CompanyOrder) (Company, erro
 				order.UpdatedAt = order.CreatedAt
 				company.Orders = append(company.Orders, order)
 				queueCompanyApproval(company, "order", order.ID, "order:external", order.CreatedAt)
+				devolvido = order
 				return nil
 			}
 		}
 		return ErrCompanyProductNotFound
 	})
+	return empresa, devolvido, err
 }
 
 func (s *CompanyStore) ApproveOrder(id, orderID string) (Company, error) {

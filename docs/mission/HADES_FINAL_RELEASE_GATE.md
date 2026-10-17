@@ -4,6 +4,25 @@
 > intermediário de engenharia (estágio 22, em [`HADES_ENGINEERING_GATE.md`](HADES_ENGINEERING_GATE.md)).
 > **Gerado por `scripts/hades_release_gate.py`** — rode com `--check` para conferir.
 
+## Procedência
+
+🚨 **E-552 + E-554: *o commit medido tem de estar ESCRITO, ou o documento não se pode reproduzir nem contestar.***
+
+| Campo | Valor |
+| --- | --- |
+| **Commit medido** (`measured_commit`) | `e7b6610ff39a8cc2844a3da1d352e3533b17d0e6` |
+| **Commit da `main`** (`git.main_sha`) | `4b3e21854` |
+| **Gerado em** (`measured_at`) | 2026-10-17T18:31:29-03:00 |
+| **Snapshot real** (`gate_head`) | `e7b6610ff39a8cc2844a3da1d352e3533b17d0e6` |
+| **Ramo do snapshot** (`gate_branch`) | `fix/checker-relogio` |
+| **Entradas nao commitadas** (`gate_dirty`) | 3 |
+| **O gate prova o snapshot candidato?** (`gate_snapshot`) | **MESMO** |
+
+*Dois campos, e não um: o `E-552` mediu que este derivado **não** citava commit nenhum, e que o
+`HADES_BASELINE_REPORT.md` citava **só** a `main` — *o que não está errado (*ele mede o baseline, e o baseline é da
+`main`*), mas era **ambíguo**: «commit de referência» não dizia **se** era o medido ou o comparado* ⇒ *agora a
+ambiguidade desaparece **por construção**.*
+
 ## Veredito
 
 **`NOT_RELEASE_READY`** — `RELEASE_CANDIDATE` e `COMPLETED_VERIFIED` **não** podem ser declarados
@@ -60,6 +79,7 @@ Resumo: BLOCKED_BY_EXTERNAL_DEPENDENCY: 5 · DONE: 19
 | B-05 | Contas reais de marketplace/social/pagamento | ver HADES_BLOCKERS.md |
 | B-06 | Identidade de assinatura de release (certificado). ESTADO MEDIDO (E-201): a autenticacao de NOTARIZACAO foi PROVADA com a chave de API do App Store Connect (JWT | ver HADES_BLOCKERS.md |
 | B-07 | MEDIDO (E-209), nao suposto. O B-07 dizia 'chaves de provedor de modelo para homologacao de chamada real'. Medido: 19 provedores com credencial PRESENTE e habil | ver HADES_BLOCKERS.md |
+| B-19 | (1) Chrome real exige a Chrome Web Store (conta + revisao) -- o `--load-extension` foi removido e o service_worker nao acorda; o Chromium 156 e o Edge 155 passa | ver HADES_BLOCKERS.md |
 
 ## O que faria o veredito mudar
 

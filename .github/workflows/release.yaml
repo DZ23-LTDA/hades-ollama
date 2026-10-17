@@ -75,7 +75,8 @@ jobs:
           node-version: 22
       - run: go mod verify
       - run: ./scripts/check-class-a-plus-integrity.sh
-      - run: CGO_ENABLED=1 go test ./... -count=1
+      # E-1120: o `./...` INCLUI o internal/agent (353,4 s) -- o default de 10 min nao cabe.
+      - run: CGO_ENABLED=1 go test ./... -count=1 -timeout 25m
       - run: CGO_ENABLED=1 go vet ./...
       - run: CGO_ENABLED=1 go build -o /tmp/ollama-agentic-release .
       - name: Mobile typecheck

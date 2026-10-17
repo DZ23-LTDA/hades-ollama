@@ -46,6 +46,15 @@ linters:
         - operacional
         # Vocabulário do fluxo agendado (P0-2): dependente, condicional.
         - dependente
+        # E-502 (MEDIDO): o `misspell` acusou 5 palavras portuguesas correctas a mais.
+        # ***A chave é `ignore-rules`, não `ignore-words`*** — *foi escrever a chave errada que fez o
+        # `golangci-lint` sair com `exit 3` (erro de config), e eu revertei a edição sem ver a mensagem.*
+        # *O mecanismo já existia, com o mesmo propósito; faltava acrescentar as palavras.*
+        - convincente   # acusada como "convenient"
+        - dependencias  # acusada como "dependencies"
+        - contactos     # acusada como "contacts"
+        - Calcular      # acusada como "Calculator"
+        - intencional   # acusada como "intentional"
         - condicional
         - cliente
         - clientes
@@ -88,6 +97,14 @@ linters:
         - intervalos
         - invalidas
         - definitivo
+        # E-547 (MEDIDO): o `ignore-rules` casa a FORMA EXACTA, nao o radical. ⇒ `decorativo` (L80) ja' estava
+        # aqui, e o linter acusou `decorativos` — *o plural e' outra palavra para o dicionario*. Mesma coisa com
+        # `operacional` vs `organizacional`. ⇒ *Acrescentam-se as QUATRO formas exactas que o CI acusou.*
+        # ***O `misspell` SEGUE LIGADO.*** *Isto declara idioma portugues; nao esconde erro de digitacao em ingles.*
+        - decorativos   # acusada como "decorations"
+        - cosmeticos    # acusada como "cosmetics"
+        - organizacional # acusada como "organizational"
+        - posicional    # acusada como "positional"
     depguard:
       rules:
         test-only-packages:

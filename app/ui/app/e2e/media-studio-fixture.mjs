@@ -1,0 +1,75 @@
+// Fixture de MISSAO para a prova em browser do Estudio multimodal (item 45).
+//
+// Segue EXACTAMENTE o contrato do `studio-builder-fixture.mjs`: quem constroi passa
+// `{ sendJSON, readBody }`; o handler recebe `{ route, request, response }` e devolve o
+// STATUS HTTP quando tratou a rota, ou `null` para o chamador responder 404.
+//
+// *Porque nao `page.route`:* medido em 2026-10-15 (commit e899c5f77) — um spec com
+// `page.route` foi REPROVADO pelo `Web E2E`, porque as chamadas do browser foram ao
+// backend-stub do repositorio (`[e2e-backend] GET /api/agent/v1/missions -> 404`) e nao
+// foram interceptadas. O caminho do repositorio e' este: fixture ligado ao stub.
+//
+// A missao declara `workspace` de proposito: o painel exige um workspace fixado para
+// poder lancar, e o servidor recusa sem ele ("pinned media workspace is required").
+
+export const MISSAO_E2E_ID = "mis_e2e";
+
+export function createMediaStudioFixture({ sendJSON } = {}) {
+  const missao = {
+    id: MISSAO_E2E_ID,
+    objective: "Prova E2E do estudio multimodal",
+    state: "PENDING",
+    workspace: "/workspace/e2e",
+    plan: { steps: [] },
+    approvals: [],
+    artifacts: [],
+    usage: {},
+  };
+
+  return async function handleMediaStudioRequest({ route, request, response }) {
+    // ISOLAMENTO (medido no job 116501392677): servir `/missions` a TODOS os testes
+    // mudou o DOM que a `shell.spec.ts:45` observa (passaram a existir 2 botões
+    // «Criar missão») e reprovou-a por strict mode violation. O stub é PARTILHADO,
+    // portanto este fixture só responde quando a navegação é a da prova do item 45:
+    // a console e' aberta em `/agentic?mission_id=mis_e2e` e o `Referer` do fetch
+    // carrega esse marcador. Qualquer outro teste recebe `null` (404, como antes).
+    const referer = String(
+      (request && request.headers && request.headers.referer) || "",
+    );
+    if (!referer.includes(`mission_id=${MISSAO_E2E_ID}`)) return null;
+
+    if (route === "GET /api/agent/v1/missions") {
+      sendJSON(response, 200, { missions: [missao] });
+      return 200;
+    }
+    if (route === `GET /api/agent/v1/missions/${MISSAO_E2E_ID}`) {
+      sendJSON(response, 200, missao);
+      return 200;
+    }
+    if (route === `GET /api/agent/v1/missions/${MISSAO_E2E_ID}/events`) {
+      sendJSON(response, 200, { events: [] });
+      return 200;
+    }
+    if (route === "GET /api/agent/v1/metrics") {
+      sendJSON(response, 200, {});
+      return 200;
+    }
+    if (route === "GET /api/agent/v1/tools") {
+      sendJSON(response, 200, { tools: [] });
+      return 200;
+    }
+    // SSE da missão. Medido em 2026-10-15 (job 116498804570): sem esta rota o stub
+    // respondia 404 em `/events/stream` e o painel do Estúdio nunca aparecia, apesar
+    // de `/missions` e `/missions/<id>` já responderem 200.
+    if (route === `GET /api/agent/v1/missions/${MISSAO_E2E_ID}/events/stream`) {
+      response.writeHead(200, {
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache",
+        Connection: "keep-alive",
+      });
+      response.write(": conectado\n\n");
+      return 200;
+    }
+    return null;
+  };
+}

@@ -8,7 +8,7 @@
   "submit": {
     "production": {
       "android": { "track": "production" },
-      "ios": { "ascAppId": "REPLACE_WITH_APP_STORE_CONNECT_ID" }
+      "ios": { "ascAppId": "6823949568" }
     }
   }
 }

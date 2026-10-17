@@ -1,6 +1,6 @@
 name: dz23-linux-package
 
-# Packaging Linux (CPU) do Ollama Classe A+: tarball reproduzivel + checksum +
+# Packaging Linux (CPU) do HADES: tarball reproduzivel + checksum +
 # SBOM + smoke (install/--version/start/stop/data dir). GPU fica no release.
 # Artefato UNSIGNED explicitamente.
 

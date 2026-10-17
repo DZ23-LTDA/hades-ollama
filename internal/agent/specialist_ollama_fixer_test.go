@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
@@ -139,6 +140,15 @@ func TestLacoEmiteEventoComRuntimeReal(t *testing.T) {
 
 // MEDIÇÃO COM MODELO LOCAL: fecha o `NAO_MEDIDO` declarado em E-348 (fixer determinístico). PULA sem Ollama.
 func TestFixerComModeloLocalConsertaNoLacoReal(t *testing.T) {
+	// E-968: MEDICAO COM MODELO REAL e' OPT-IN.
+	// *Este teste pede 20 min de contexto contra os **10 min** do pacote `go test`, e o
+	// Ollama local responde — logo ele NAO pulava e o pacote estourava (medido: 905 s no CI).*
+	// O `t.Skip` abaixo protege contra «sem Ollama»; este guarda protege contra «com Ollama»,
+	// que e' o caso normal. *O orcamento nao se esconde: declara-se.*
+	if strings.TrimSpace(os.Getenv("HADES_T2_MEDIR_MODELO")) == "" {
+		t.Skip("medicao com modelo real = NAO_MEDIDO (opt-in): pede 20 min contra os 10 min do pacote. " +
+			"Defina HADES_T2_MEDIR_MODELO=1 para a correr.")
+	}
 	ctx, cancelar := context.WithTimeout(context.Background(), 20*time.Minute)
 	defer cancelar()
 	if !OllamaDisponivel(ctx, "") {

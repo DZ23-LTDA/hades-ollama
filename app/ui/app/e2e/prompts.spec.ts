@@ -75,7 +75,7 @@ test.describe("biblioteca de prompts", () => {
     await mockBackend(page);
     await openLibrary(page);
 
-    await expect(page.getByText("4 prompt(s) salvos neste navegador.")).toBeVisible();
+    await expect(page.getByText("6 prompt(s) salvos neste navegador.")).toBeVisible();
 
     await page.getByLabel("Título do prompt").fill("Resumo semanal");
     await page
@@ -86,13 +86,13 @@ test.describe("biblioteca de prompts", () => {
     await page.getByRole("button", { name: "Salvar prompt" }).click();
 
     await expect(page.getByText("Prompt salvo na biblioteca.")).toBeVisible();
-    await expect(page.getByText("5 prompt(s) salvos neste navegador.")).toBeVisible();
+    await expect(page.getByText("7 prompt(s) salvos neste navegador.")).toBeVisible();
     await expect(page.getByText("Resumo semanal")).toBeVisible();
 
     await page.reload();
     await page.getByRole("button", { name: "Biblioteca de prompts" }).click();
     await expect(page.getByText("Resumo semanal")).toBeVisible();
-    await expect(page.getByText("5 prompt(s) salvos neste navegador.")).toBeVisible();
+    await expect(page.getByText("7 prompt(s) salvos neste navegador.")).toBeVisible();
 
     // Usar fecha o painel e entrega o texto pronto ao campo de mensagem.
     await page

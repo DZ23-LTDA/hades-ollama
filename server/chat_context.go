@@ -110,7 +110,10 @@ func injectContextBootstrap(messages []api.Message, preamble string) []api.Messa
 // handler. Qualquer falha na leitura do corpo devolve o pedido original: a
 // injeção de contexto não pode impedir uma conversa legítima, e o erro de corpo
 // inválido continua sendo do handler de chat.
-func withAgentChatContext() gin.HandlerFunc {
+//
+// `a` pode ser nil (e é, nos testes que só exercitam o preâmbulo): sem API não há
+// identidade de missão a resolver, e o chat segue escopado por PROJETO como sempre.
+func withAgentChatContext(a *agentAPI, raizDoHistorico string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if c == nil || c.Request == nil || c.Request.Body == nil {
 			c.Next()
@@ -136,12 +139,54 @@ func withAgentChatContext() gin.HandlerFunc {
 			return
 		}
 		projectID := strings.TrimSpace(c.GetHeader("X-Hades-Project"))
+		// D-5: identidade de MISSÃO, opcional, no funil do chat. O identificador VEM DO
+		// PEDIDO, logo TEM de passar pelo MESMO guard de missão (`missionForRequest`) —
+		// sem isso, um cabeçalho controlado pelo cliente seria injecção de contexto entre
+		// inquilinos, exactamente o que o E-597 fechou do outro lado. Sem API (testes) ou
+		// sem cabeçalho, o chat segue escopado por projeto como sempre: a degradação é
+		// declarada, não silenciosa.
+		var handoff *agent.Handoff
+		if missionID := strings.TrimSpace(c.GetHeader("X-Hades-Mission")); missionID != "" && a != nil && a.context != nil {
+			// `missionByID` e NÃO `missionForRequest`: a segunda lê `c.Param("id")`, que a rota
+			// de chat não tem — foi o teste POSITIVO que o revelou (o negativo passava porque a
+			// resolução falhava sempre, e não porque o guard recusava). `missionByID` aplica o
+			// MESMO guard de inquilino (`agent_routes.go:1276`) com um id explícito.
+			if missao, missionErr := a.missionByID(c, missionID); missionErr == nil && missao.ID == missionID {
+				if derivado, handoffErr := agent.HandoffDaMissao(missao); handoffErr == nil {
+					handoff = &derivado
+				}
+			}
+		}
 		preamble, err := buildChatContextPreamble(organizationID, projectID, request, agentChatGrantedCapabilities(c), agent.DefaultCapabilityPolicy())
 		if err != nil {
 			// Contexto indisponível não bloqueia a conversa: o modelo responde sem
 			// o preâmbulo, e o motivo fica no log do servidor.
 			c.Next()
 			return
+		}
+		// ORÇAMENTO DE CONTEXTO (§2 do complemento universal de memória): medir e
+		// DECIDIR por orçamento ANTES de enviar ao modelo — e não apenas depois de o
+		// modelo recusar o contexto, que era o único gatilho existente. Sem
+		// `OLLAMA_AGENT_CHAT_CONTEXT_TOKENS` declarado o teto é 0, a decisão é "não
+		// declarado" e NADA muda: esta ligação não altera comportamento por omissão.
+		// A decisão fica registada no contexto do pedido (não só num log) para que o
+		// handler, uma tela de Cowork ou um teste a possam LER.
+		decisao := DecidirOrcamentoDoChat(preamble, request.Messages, OrcamentoDeContextoDoChat())
+		RegistarDecisaoDeOrcamento(c, decisao)
+		// COMPACTACAO (§2): quando a decisao manda, o bruto e' gravado ANTES do resumo e as
+		// mensagens sao substituidas; em QUALQUER recusa ficam as originais (E-583).
+		compactadas, resultadoDaCompactacao := CompactarMensagensDoChat(raizDoHistorico, organizationID, projectID, request.Messages, decisao)
+		if resultadoDaCompactacao.Aplicada {
+			request.Messages = compactadas
+		}
+		// O HANDOFF VAI NO PREÂMBULO, EM VERSÃO REDIGIDA: com o D-5 o chat passa a poder
+		// carregar o estado de uma missão — e identificador interno ou caminho local não são
+		// conteúdo de trabalho (`ParaPreambulo`, E-597). O corte já vem DECLARADO do próprio
+		// contrato.
+		if handoff != nil {
+			if bloco, _ := handoff.ParaPreambulo(0); strings.TrimSpace(bloco) != "" {
+				preamble += "\n\n" + bloco
+			}
 		}
 		request.Messages = injectContextBootstrap(request.Messages, preamble)
 		encoded, err := json.Marshal(request)

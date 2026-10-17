@@ -30,7 +30,7 @@ func uploadTestCtx(method, target, org string, params gin.Params, body []byte) (
 
 func TestUploadRoutesHappyPathAndCrossTenant(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	runtime, err := agent.NewRuntime(agent.RuntimeConfig{WorkspaceRoot: t.TempDir()})
+	runtime, err := agent.NewRuntime(agent.RuntimeConfig{WorkspaceRoot: t.TempDir(), DataRoot: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}

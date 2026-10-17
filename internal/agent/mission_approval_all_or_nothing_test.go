@@ -34,7 +34,7 @@ func TestRuntimeNaoProduzEfeitoComAprovacaoPendenteNaNada(t *testing.T) {
 			Input: map[string]any{"path": "b.txt", "content": "segundo\n"},
 		},
 	}}
-	runtime, err := NewRuntime(RuntimeConfig{Store: NewMemoryStore(), Planner: planner, WorkspaceRoot: root})
+	runtime, err := NewRuntime(RuntimeConfig{Store: NewMemoryStore(), Planner: planner, WorkspaceRoot: root, DataRoot: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}

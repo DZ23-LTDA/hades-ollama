@@ -14,12 +14,12 @@ import (
 func TestWatchDurableCancellationPropagatesAcrossInstances(t *testing.T) {
 	store := NewMemoryStore()
 	workspace := t.TempDir()
-	running, err := NewRuntime(RuntimeConfig{Store: store, Planner: RulePlanner{}, WorkspaceRoot: workspace})
+	running, err := NewRuntime(RuntimeConfig{Store: store, Planner: RulePlanner{}, WorkspaceRoot: workspace, DataRoot: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}
 	running.cancelPollInterval = 20 * time.Millisecond
-	other, err := NewRuntime(RuntimeConfig{Store: store, Planner: RulePlanner{}, WorkspaceRoot: t.TempDir()})
+	other, err := NewRuntime(RuntimeConfig{Store: store, Planner: RulePlanner{}, WorkspaceRoot: t.TempDir(), DataRoot: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}

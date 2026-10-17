@@ -1,5 +1,9 @@
 # Correções P0 de jornadas e UX — plano de implementação
 
+> ***AVISO (E-1100, §ESTAGIO 1 item 2): os comandos `git reset --hard` / `git clean` abaixo sao HISTORICOS e PROIBIDOS com WIP.***
+> *O §ANTILOOP e o prompt proibem-nos: «nao use `git reset --hard`, `git clean`, checkout restaurador, rebase destrutivo, force-push ou stash que esconda o estado»* => *seguir esta instrucao com trabalho nao commitado **apaga-o**. *Se precisar de recuperar, use `git stash create` (que nao esconde) ou trabalhe numa branch nova; **nunca** `reset --hard`.*
+
+
 > **Para agentes:** executar as tarefas incrementalmente, com testes e revisão do diff entre fatias. Preservar estado e artefatos locais do usuário.
 
 **Objetivo:** corrigir os gaps mais graves percebidos por usuários na Home/Agentic e tornar explícitos os limites de segurança, privacidade e recuperação documental.

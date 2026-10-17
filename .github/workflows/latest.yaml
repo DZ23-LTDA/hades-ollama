@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       enable_latest:
-        description: "Enable the explicitly configured Classe A+ Docker registry"
+        description: "Enable the explicitly configured HADES Docker registry"
         required: true
         default: false
         type: boolean

@@ -47,7 +47,7 @@ func TestResolveRuntimeDataRootMigratesLegacyDirectories(t *testing.T) {
 
 func TestRuntimeStoresAreOutsideWorkspaceByDefault(t *testing.T) {
 	workspace := t.TempDir()
-	runtime, err := NewRuntime(RuntimeConfig{Store: NewMemoryStore(), WorkspaceRoot: workspace})
+	runtime, err := NewRuntime(RuntimeConfig{Store: NewMemoryStore(), WorkspaceRoot: workspace, DataRoot: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}

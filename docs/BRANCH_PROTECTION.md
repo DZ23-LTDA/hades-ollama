@@ -1,5 +1,9 @@
 # Proteção da branch `main` — Ollama Full
 
+> ***AVISO (E-1100, §ESTAGIO 1 item 2): os comandos `git reset --hard` / `git clean` abaixo sao HISTORICOS e PROIBIDOS com WIP.***
+> *O §ANTILOOP e o prompt proibem-nos: «nao use `git reset --hard`, `git clean`, checkout restaurador, rebase destrutivo, force-push ou stash que esconda o estado»* => *seguir esta instrucao com trabalho nao commitado **apaga-o**. *Se precisar de recuperar, use `git stash create` (que nao esconde) ou trabalhe numa branch nova; **nunca** `reset --hard`.*
+
+
 > **Status: APLICADO (2026-09-24)** com a conta admin `DZ23-LTDA`.
 >
 > - `main-protection` [branch] — ruleset **active** (`main.protected = true`).

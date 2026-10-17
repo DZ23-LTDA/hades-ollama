@@ -35,7 +35,7 @@ func newMemoryIsolationAPI(t *testing.T) (*agentAPI, agent.Project) {
 		t.Fatal(err)
 	}
 	root := t.TempDir()
-	runtime, err := agent.NewRuntime(agent.RuntimeConfig{Context: contextStore, Planner: agent.RulePlanner{}, WorkspaceRoot: root})
+	runtime, err := agent.NewRuntime(agent.RuntimeConfig{Context: contextStore, Planner: agent.RulePlanner{}, WorkspaceRoot: root, DataRoot: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -175,7 +175,7 @@ func TestAskProjectDocumentsDoesNotCiteOtherUserPrivateMemory(t *testing.T) {
 		"orcamento":         {1, 0},
 	})
 	root := t.TempDir()
-	runtime, err := agent.NewRuntime(agent.RuntimeConfig{Context: contextStore, Planner: agent.RulePlanner{}, WorkspaceRoot: root})
+	runtime, err := agent.NewRuntime(agent.RuntimeConfig{Context: contextStore, Planner: agent.RulePlanner{}, WorkspaceRoot: root, DataRoot: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}

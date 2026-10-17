@@ -35,7 +35,7 @@ func TestAgentP0StoresRejectCrossTenantReadsAndMutations(t *testing.T) {
 	runner := func(context.Context, agent.AgentTask) (agent.AgentResult, error) {
 		return agent.AgentResult{Output: "ok"}, nil
 	}
-	runtime, err := agent.NewRuntime(agent.RuntimeConfig{WorkspaceRoot: t.TempDir(), Traces: traces, Devices: devices, Planner: agent.RulePlanner{}})
+	runtime, err := agent.NewRuntime(agent.RuntimeConfig{WorkspaceRoot: t.TempDir(), Traces: traces, Devices: devices, Planner: agent.RulePlanner{}, DataRoot: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}

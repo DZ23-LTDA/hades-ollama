@@ -129,6 +129,10 @@ type (
 )
 
 type AgentOrchestrator struct {
+	// taskMu ordena as escritas em job.Tasks JUNTAMENTE com o marshal do persistLocked: dois locks
+	// para o mesmo dado nao e' proteccao mais fina, e' a corrida com outro nome (F2).
+	taskMu sync.Mutex
+
 	mu      sync.Mutex
 	root    string
 	runner  SubagentRunner
@@ -310,7 +314,6 @@ func (o *AgentOrchestrator) Run(ctx context.Context, id string) (OrchestrationJo
 	}
 	semaphore := make(chan struct{}, job.Budget.MaxAgents)
 	var wait sync.WaitGroup
-	var taskMu sync.Mutex
 	for index := range job.Tasks {
 		wait.Add(1)
 		go func(index int) {
@@ -318,24 +321,24 @@ func (o *AgentOrchestrator) Run(ctx context.Context, id string) (OrchestrationJo
 			select {
 			case semaphore <- struct{}{}:
 			case <-ctx.Done():
-				taskMu.Lock()
+				o.taskMu.Lock()
 				job.Tasks[index].State = AgentTaskCancelled
-				taskMu.Unlock()
+				o.taskMu.Unlock()
 				return
 			}
 			defer func() { <-semaphore }()
 			task := &job.Tasks[index]
 			start := time.Now().UTC()
-			taskMu.Lock()
+			o.taskMu.Lock()
 			task.State = AgentTaskRunning
 			task.StartedAt = &start
-			taskMu.Unlock()
+			o.taskMu.Unlock()
 			var result AgentResult
 			var runErr error
 			for attempt := 1; attempt <= job.Budget.MaxRetries+1; attempt++ {
-				taskMu.Lock()
+				o.taskMu.Lock()
 				task.Attempts = attempt
-				taskMu.Unlock()
+				o.taskMu.Unlock()
 				// O workspace do agente precisa EXISTIR antes do despacho: o orquestrador atribuía o caminho e não
 				// criava o diretório, então o primeiro WriteFile do agente falhava com "no such file or directory" e a
 				// missão multiagente nunca chegava a artefato consolidado. A criação NÃO impõe contenção: o workspace do
@@ -353,7 +356,7 @@ func (o *AgentOrchestrator) Run(ctx context.Context, id string) (OrchestrationJo
 				}
 			}
 			finish := time.Now().UTC()
-			taskMu.Lock()
+			o.taskMu.Lock()
 			task.FinishedAt = &finish
 			task.DurationMS = finish.Sub(start).Milliseconds()
 			task.Output = truncateAgentOutput(result.Output, job.Budget.MaxOutputBytes)
@@ -368,7 +371,7 @@ func (o *AgentOrchestrator) Run(ctx context.Context, id string) (OrchestrationJo
 			} else {
 				task.State = AgentTaskSucceeded
 			}
-			taskMu.Unlock()
+			o.taskMu.Unlock()
 		}(index)
 	}
 	wait.Wait()
@@ -448,11 +451,15 @@ func (o *AgentOrchestrator) Cancel(id string) (OrchestrationJob, error) {
 	}
 	if job.State == OrchestrationRunning {
 		if cancel, ok := o.cancels[id]; ok && cancel != nil {
-			// Signal the in-flight Run to abort. Do NOT modify o.jobs or persist
-			// here: the task goroutines are still mutating job.Tasks under
-			// taskMu, so marshaling the job now would be a data race. Run's
-			// finalization persists the Cancelled state once the goroutines
-			// finish; report Cancelled to the caller on a local copy only.
+			// Signal the in-flight Run to abort. Nao se modifica o.jobs nem se persiste
+			// aqui: quem o faz e' a finalizacao do Run, uma so' vez, e reporta-se
+			// Cancelled ao chamador numa copia local.
+			//
+			// E-589: a razao ANTIGA deste cuidado - "marshalhar agora seria data race" -
+			// deixou de ser verdade. O persistLocked passa a tomar o.taskMu, o MESMO
+			// lock das escritas em job.Tasks, logo marshalhar durante a corrida deixou
+			// de ser uma corrida. O cuidado mantem-se por DESENHO (um so' escritor da
+			// verdade), e nao por medo de uma corrida que ja' nao existe.
 			cancel()
 			job.State = OrchestrationCancelled
 			return job, nil
@@ -476,6 +483,8 @@ func normalizedOrganizationID(organizationID string) string {
 }
 
 func (o *AgentOrchestrator) persistLocked() error {
+	o.taskMu.Lock()
+	defer o.taskMu.Unlock()
 	return writeJSONAtomic(filepath.Join(o.root, "jobs.json"), o.jobs)
 }
 

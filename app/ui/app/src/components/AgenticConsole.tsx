@@ -5,6 +5,7 @@ import { getModels } from "@/api";
 import type { Model } from "@/gotypes";
 import { humanizeApiError } from "@/lib/userFacingError";
 import { MissionDeliveryCard } from "@/components/MissionDeliveryCard";
+import { PerformanceCard } from "@/components/PerformanceCard";
 import { missionStateLabel, eventTypeLabel } from "@/lib/labels";
 import { MissionCapabilityPicker } from "@/components/MissionCapabilityPicker";
 import { BASELINE_CAPABILITY, buildMissionCapabilities, grantableScopes, type ScopeOption, type ToolScopeSource } from "@/lib/missionCapabilities";
@@ -66,6 +67,17 @@ export default function AgenticConsole() {
   const [catalogUnavailable, setCatalogUnavailable] = useState(false);
   const [grantedScopes, setGrantedScopes] = useState<string[]>([]);
   const [projectID, setProjectID] = useState("");
+  /**
+   * E-915: o `roomID` que a SALA exige (complemento 48).
+   *
+   * ⚠️ **DEFEITO PREEXISTENTE, DECLARADO E NAO CORRIGIDO AQUI** (medido): a linha 156 le'
+   * `searchParams.get("project_id")`, mas o `setProjectID` so' corre **dentro** do `if (requestedObjective)`
+   * (`:176-178`). *Logo, um URL com `project_id` e **sem** `objective` - que e' como a `HomePage` escreve ao
+   * importar um projeto (`:100`) - **nao aplica** o projeto.* **O `roomID` de baixo NAO repete esse erro**:
+   *e' definido fora do `if`.* Corrigir o `projectID` muda comportamento ja' testado e fica para a fatia
+   *seguinte, com o seu proprio teste discriminante - *e nao "de passagem" aqui.*
+   */
+  const [roomID, setRoomID] = useState("");
   const [isolateWorkspace, setIsolateWorkspace] = useState(false);
   const [projects, setProjects] = useState<AgentProject[]>([]);
   const [orchestrationObjective, setOrchestrationObjective] = useState("");
@@ -157,6 +169,27 @@ export default function AgenticConsole() {
     const requestedProvider = searchParams.get("provider") || "ollama-local";
     const requestedModel = searchParams.get("model") || "auto/coding";
     const requestedMissionId = searchParams.get("mission_id") || searchParams.get("missionId");
+    // E-916: o `roomID` e' aplicado **FORA** do `if (requestedObjective)` - *ao contrario do `projectID`
+    // (`:178`), que so' corria com `objective`.* A SALA precisa dos **dois**, logo nao pode herdar aquele
+    // defeito: *um URL com `project_id` + `room_id` e sem `objective` tem de montar a sala.*
+    setRoomID(searchParams.get("room_id") || "");
+    /**
+     * E-916 — **DEFEITO PREEXISTENTE, AGORA CORRIGIDO COM TESTE DISCRIMINANTE.**
+     *
+     * O `setProjectID` estava **dentro** do `if (requestedObjective)`. Consequencia medida: um URL com
+     * `project_id` e **sem** `objective` — que e' como a `HomePage` escreve ao **importar um projeto**
+     * (`HomePage.tsx:100`) — **ignorava o projeto pedido**.
+     *
+     * *A prova de que era defeito, e nao gosto pessoal*: o `e2e/sala.spec.ts` navegou para
+     * `/agentic?mission_id=mis_sala_e2e&project_id=proj_sala_e2e&room_id=sala_e2e` — **sem `objective`** —
+     * e o backend registou `GET /api/agent/v1/missions/mis_sala_e2e -> 200` **sem um unico** pedido a
+     * `/api/agent/v1/collab/...`; a aba `Artefacts` existia mas a Sala **nao montava**, porque o
+     * condicional `projectID && roomID` recebia `projectID === ""`.
+     *
+     * *`setProjectID("")` num estado que ja' e' `""` e' inofensivo*, e com `objective` presente o
+     * comportamento anterior mantem-se identico — por isso a mudanca e' segura.
+     */
+    setProjectID(requestedProjectID);
     if (requestedMissionId) {
       setViewMode("split");
       void load(requestedMissionId);
@@ -174,7 +207,6 @@ export default function AgenticConsole() {
     }
     if (requestedObjective) {
       setObjective(requestedObjective);
-      setProjectID(requestedProjectID);
       setAllowWorkspaceWrite(requestedAllowWrite);
       setProvider(requestedProvider);
       setSelectedModel(requestedModel.startsWith("auto/") ? "" : requestedModel);
@@ -331,6 +363,12 @@ export default function AgenticConsole() {
                   await createMission(obj);
                 }}
                 busy={busy}
+                // E-915: os DOIS identificadores que a SALA exige. O `projectID` ja' era estado deste
+                // componente (lido do query param `project_id`, `:156`); o `roomID` vem do `room_id`, pela
+                // MESMA via - *sem inventar uma fonte nova nem duplicar estado para um valor derivado do URL.*
+                // Ausentes, o shell simplesmente nao monta a Sala (condicao la' dentro).
+                projectID={projectID}
+                roomID={roomID}
               />
             </div>
           ) : (
@@ -383,6 +421,10 @@ export default function AgenticConsole() {
                   ))}
                 </div>
                 <MissionDeliveryCard missionId={mission.id} state={mission.state} artifacts={mission.artifacts} />
+                {/* E-641: o relatório de desempenho das missões visíveis — o que a superfície
+                    mostra não é inventado por ela: é o agregado que o SERVIDOR calcula, com a
+                    lista do que NÃO mede. */}
+                <PerformanceCard />
                 <div className="mt-5 flex gap-2">
                   <button type="button" disabled={busy || pendingApprovals.length > 0 || mission.state === "COMPLETED"} onClick={() => void run()} className="rounded-lg bg-neutral-900 px-3 py-2 text-sm text-white disabled:opacity-40 dark:bg-neutral-100 dark:text-neutral-900">Executar</button>
                 </div>

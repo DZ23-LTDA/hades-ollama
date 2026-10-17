@@ -17,3 +17,11 @@ llama/build-info.cpp linguist-generated
 # Sem esta regra, o checkout no Windows converte LF -> CRLF e o hash deixa de bater - foi o que o job
 # "Go agentic Windows portability" pegou (E-183).
 internal/agent/testdata/thirdparty/** -text
+# Pacote de TERCEIRO: as 11 skills Replica (MIT, (c) 2026 Jake Schincariol).
+# O upstream grava CRLF nos blobs - verificado com `git hash-object <ficheiro>` ==
+# `git rev-parse HEAD:<ficheiro>`. Sem `-text`, o `* text=auto` acima normalizaria
+# para LF no commit, e o sha256 declarado em `skills/replica/PROVENANCE.md` deixaria
+# de bater noutro checkout. E' a mesma armadilha do E-183, com outro ficheiro.
+skills/replica/replica-*/** -text linguist-vendored
+skills/replica/LICENSE -text linguist-vendored
+skills/replica/UPSTREAM_README.md -text linguist-vendored

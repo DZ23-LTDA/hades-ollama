@@ -247,6 +247,20 @@ func fileDigestMap(path string) (map[string]string, error) {
 
 	fi, err := os.Stat(path)
 	if err != nil {
+		// No Windows, o Stat de um caminho com metacaracteres de glob que nao
+		// corresponde a ficheiro nenhum devolve ERROR_INVALID_NAME - «A sintaxe do
+		// nome do arquivo, do nome do diretorio ou do rotulo do volume esta'
+		// incorreta» - que NAO e' os.ErrNotExist. Em Linux o mesmo caso devolve
+		// ENOENT. Para quem chama, o significado e' um so': o argumento nao e' um
+		// ficheiro, e' um nome de modelo (`FROM model-*.gguf` num Modelfile, caso que
+		// `expandPaths` ja' decidiu tratar assim quando a glob nao casa nada).
+		// Sem normalizar, o MESMO Modelfile funciona em Linux e falha em Windows -
+		// medido: `parser_test.go:960` => «CreateFile …\model-*.gguf: A sintaxe do
+		// nome do arquivo … esta' incorreta» (E-797), com
+		// `TestCreateRequestFileGlobNoMatchUsesModelName` a falhar.
+		if strings.ContainsAny(path, "*?[") {
+			return nil, os.ErrNotExist
+		}
 		return nil, err
 	}
 

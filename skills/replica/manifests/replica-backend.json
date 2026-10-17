@@ -1,0 +1,11 @@
+{
+  "id": "replica-backend",
+  "version": "0.1.0+77c9436f",
+  "description": "Builds the backend of an app clone: auth, database migrations and access rules, payments with Stripe, email, background jobs and third-party integrations through official APIs only, plus a security checklist. Use when the user says \"add login\", \"set up auth\", \"wire up the database\", \"add payments\", \"connect Stripe\", \"add Google Calendar\", \"send emails\", \"backend for my clone\", or when /replica-build is running on fake data.",
+  "category": "replica",
+  "license": "MIT",
+  "homepage": "https://github.com/Jakeschincariol/replica-skill",
+  "dependencies": [],
+  "token_budget": 1018,
+  "content_sha256": "c3190c3048ecce128f480d230dd873839eceda8f08180f6eb3445bc0f31c6784"
+}

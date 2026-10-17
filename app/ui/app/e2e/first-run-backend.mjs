@@ -28,6 +28,24 @@
 import { createServer } from "node:http";
 
 import { createStudioBuilderFixture } from "./studio-builder-fixture.mjs";
+// Fixture da missão do Estúdio multimodal (item 45): mesma disciplina — HTTP de verdade
+// no stub, e NÃO `page.route` (medido: `page.route` não intercepta aqui).
+import { createMediaStudioFixture } from "./media-studio-fixture.mjs";
+// Fixture do Companion (item 46 / complemento 48): mesma disciplina — HTTP de verdade,
+// e NAO `page.route`. So' responde quando o `Referer` traz `mission_id=mis_companion_e2e`,
+// para nao mudar o DOM que os outros specs observam (ver comentario no proprio fixture).
+import { createCompanionFixture } from "./companion-fixture.mjs";
+// E-916: Fixture da SALA (complemento 48 — Cowork/Team Chat). Mesma disciplina do Companion
+// (HTTP de verdade, NAO `page.route`) e o **mesmo isolamento por `Referer`**
+// (`mission_id=mis_sala_e2e`). *O fixture existia desde os rounds 62-63 e **ninguem o importava**:
+// sem esta linha ele nunca corria - era tao orfao como o componente que ele serve.*
+import { createSalaFixture } from "./sala-fixture.mjs";
+// E-926/E-927: Fixture do CHAT (familia `/api/v1/chat/...`). Mesma disciplina (HTTP de
+// verdade, NAO `page.route`), mas a cerca e' a **ROTA** e nao o `Referer`: o
+// `chat-ui-real.spec.ts` faz `page.goto("/")` SEM missao. O contrato servido e' o do
+// **desktop** (`app/ui/ui.go:285-290`), o unico que serve esta familia; o `hades serve`
+// responde 501 **de proposito** (`server/desktop_local_routes.go:141-145`).
+import { createChatFixture } from "./chat-fixture.mjs";
 
 const PORT = Number(process.env.E2E_BACKEND_PORT || 43117);
 const HOST = "127.0.0.1";
@@ -65,6 +83,37 @@ let settings = defaultSettings();
 const handleStudioBuilderRequest = createStudioBuilderFixture({
   sendJSON,
   readBody,
+});
+
+// Fixture da missão (item 45): serve `/api/agent/v1/missions*` para o Agentic Console
+// conseguir seleccionar a missão e montar o painel do Estúdio multimodal.
+const handleMediaStudioRequest = createMediaStudioFixture({
+  sendJSON,
+  readBody,
+});
+
+// Fixture do Companion (item 46): serve
+// `GET /api/agent/v1/missions/mis_companion_e2e/companion` para a prova do mascote.
+const handleCompanionRequest = createCompanionFixture({
+  sendJSON,
+  readBody,
+});
+
+// E-916: Fixture da SALA. Serve
+//   `GET /api/agent/v1/collab/proj_sala_e2e/rooms/sala_e2e/members` -> { membros }
+//   `GET /api/agent/v1/collab/proj_sala_e2e/rooms`                  -> { salas }
+// — o contrato real de `server/agent_routes.go:849-851`.
+const handleSalaRequest = createSalaFixture({
+  sendJSON,
+});
+
+// E-926/E-927: Fixture do CHAT. Serve a familia que o SPA chama de verdade
+//   `POST /api/v1/chat/new`       -> stream JSONL (o `id` literal "new" CRIA o chat)
+//   `POST /api/v1/chat/{id}`      -> stream JSONL
+//   `GET  /api/v1/chat/{id}`      -> { chat }
+// — o contrato real de `app/ui/ui.go:285-290`, o unico servidor que serve esta familia.
+const handleChatRequest = createChatFixture({
+  sendJSON,
 });
 
 function sendJSON(response, status, payload) {
@@ -173,10 +222,31 @@ const server = createServer(async (request, response) => {
       request,
       response,
     });
-    if (studioStatus === null) {
-      sendJSON(response, status, { error: "not found" });
+    const mediaStatus =
+      studioStatus === null
+        ? await handleMediaStudioRequest({ route, request, response })
+        : studioStatus;
+    // Fixture do Companion (item 46): so' entra na cadeia se os anteriores devolverem null.
+    const companionStatus =
+      mediaStatus === null
+        ? await handleCompanionRequest({ route, request, response })
+        : mediaStatus;
+    // E-916: Fixture da SALA (complemento 48), pela mesma regra de cadeia.
+    const salaStatus =
+      companionStatus === null
+        ? await handleSalaRequest({ route, request, response })
+        : companionStatus;
+    if (salaStatus === null) {
+      // E-926/E-927: Fixture do CHAT, pela mesma regra de cadeia. A cerca dele e' a ROTA
+      // (`/api/v1/chat/...`), nao o `Referer` — ver o cabecalho do `chat-fixture.mjs`.
+      const chatStatus = await handleChatRequest({ route, request, response });
+      if (chatStatus === null) {
+        sendJSON(response, status, { error: "not found" });
+      } else {
+        status = chatStatus;
+      }
     } else {
-      status = studioStatus;
+      status = salaStatus;
     }
   }
 

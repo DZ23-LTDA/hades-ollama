@@ -23,7 +23,7 @@ func TestRollbackDoOnboardingNaoGravaPorSku(t *testing.T) {
 		t.Fatal(err)
 	}
 	linhas := make([]CompanyOnboardingRow, 0, quantidade)
-	for i := 0; i < quantidade; i++ {
+	for i := range quantidade {
 		linhas = append(linhas, CompanyOnboardingRow{
 			SKU: fmt.Sprintf("RB-%04d", i), Name: fmt.Sprintf("produto %d", i), PriceCents: 1000,
 		})

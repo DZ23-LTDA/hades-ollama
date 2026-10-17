@@ -64,7 +64,7 @@ func TestMutationHarnessHITLApprovalBypass(t *testing.T) {
 			ID: "step_merge", Kind: "workspace.write", Title: "write", Risk: RiskWrite,
 			RequiresApproval: true,
 			Input:            map[string]any{"path": "descriptor.txt", "content": "safe"},
-		}}},
+		}}}, DataRoot: t.TempDir(),
 	})
 	if err != nil {
 		t.Fatal(err)

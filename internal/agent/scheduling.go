@@ -263,7 +263,21 @@ type BookRequest struct {
 	ContactID      string
 	Channel        string
 	StartsAt       time.Time
-	// IdempotencyKey identifica a MESMA intenção vinda do mesmo canal: reentrega não cria segundo agendamento.
+	// IdempotencyKey identifica a MESMA intenção **do MESMO CONTACTO**: reentrega não cria segundo agendamento.
+	//
+	// 🚨 E-460 (MEDIDO): o comentário dizia *"vinda do mesmo **canal**"* ✗, e o código comparava **só a chave** - sem
+	// `ContactID` e sem `Channel` ⇒ ***a chave de um cliente recusava o agendamento de OUTRO*** ✓: medido, `cliente-B`
+	// (whatsapp) recebeu `ErrSchedulingDuplicate` por causa de um agendamento do `cliente-A` (voice), **e recebeu o
+	// agendamento do outro junto com o erro** (*E-458*) ⇒ ***o escopo que faltava é o que separa duas PESSOAS.***
+	//
+	// **O escopo certo é o CONTACTO, não o canal**: *o mesmo cliente a falar por voz e por WhatsApp é a **mesma**
+	// intenção - incluir o `Channel` faria a reentrega por outro canal criar um segundo agendamento, que é exactamente
+	// o que a chave existe para impedir.* ⇒ **a comparação passa a exigir `ContactID` igual**, e o comentário passa a
+	// dizer o que o código faz: *um comentário que promete mais do que o código entrega é uma promessa que alguém vai
+	// cobrar.*
+	//
+	// **LIMITE DECLARADO**: `ContactID` vazio **não** distingue contactos ⇒ *duas intenções anónimas com a mesma chave
+	// continuam a colidir* ✗ - e isso **não** foi medido como incidente; fica declarado.
 	IdempotencyKey string
 }
 
@@ -289,11 +303,28 @@ func (s *SchedulingStore) bookLocked(request BookRequest) (SchedulingAppointment
 	}
 	org := s.byOrg[request.OrganizationID]
 
-	// Idempotência ANTES de qualquer efeito: reentrega do mesmo canal não cria segundo agendamento.
+	// Idempotência ANTES de qualquer efeito: reentrega do MESMO CONTACTO não cria segundo agendamento.
+	//
+	// 🚨 E-458: o agendamento EXISTENTE volta JUNTO com o erro - *antes voltava `SchedulingAppointment{}` e o id so'
+	// aparecia DENTRO da mensagem* ✗. ***Idempotência de verdade e' devolver o MESMO RECURSO, nao um erro:*** quem
+	// reentrega o pedido quer o agendamento que ja' existe, e obrigar a superficie a **extrair o id de um texto** e'
+	// faze-la depender do formato de uma mensagem (*e uma mensagem nao e' contrato*).
+	//
+	// 🚨 E-460 (MEDIDO): a comparacao exigia **so' a chave** ✗, e a chave de um cliente recusava o agendamento de OUTRO
+	// (*cliente-B recebeu a duplicata do cliente-A, e com ela o agendamento do outro*). Aqui a comparacao passa a exigir
+	// **CONTACTO igual** ⇒ ***o escopo que faltava e' o que separa duas PESSOAS.***
+	//
+	// `errors.Is(err, ErrSchedulingDuplicate)` continua valendo - *o erro nao mudou, o que mudou e' o que vem com ele.*
 	if chave := strings.TrimSpace(request.IdempotencyKey); chave != "" {
+		contacto := strings.TrimSpace(request.ContactID)
 		for _, existente := range org.Appointments {
-			if existente.IdempotencyKey == chave && existente.Status == SchedulingAppointmentBooked {
-				return SchedulingAppointment{}, fmt.Errorf("%w: %s", ErrSchedulingDuplicate, existente.ID)
+			if existente.IdempotencyKey != chave || existente.Status != SchedulingAppointmentBooked {
+				continue
+			}
+			// ⚠️ LIMITE DECLARADO: com `ContactID` VAZIO nos dois lados, `existentes` casa mesmo sendo intencoes de
+			// pessoas diferentes. *Nao medido como incidente; declarado em vez de escondido.*
+			if strings.TrimSpace(existente.ContactID) == contacto {
+				return existente, fmt.Errorf("%w: %s", ErrSchedulingDuplicate, existente.ID)
 			}
 		}
 	}

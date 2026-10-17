@@ -8,4 +8,7 @@ build
 .cache
 test_data
 .git
-
+# E-949: o contexto de build tinha 78 GB porque o _tmp/ (toolchain Go, caches, webtemp)
+# nao estava excluido. Medido: _tmp = 78 028,8 MB, dist = 1 179,6 MB (dist ja' estava).
+# Apenas isto levava o docker buildx a transferir dezenas de GB antes de compilar.
+_tmp
