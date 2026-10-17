@@ -1995,3 +1995,47 @@ comparar os tres. *Registar a diferenca e' medir; explica-la sem medir seria inv
 
 **Doutrina em uma linha**: tres numeros diferentes sao a prova de que o cronometro nao esta' a
 medir o cronometro; e um numero nao e' uma explicacao.
+
+### Instrucoes de retomada (janela `E-1066`)
+
+**Estado**: branch `fix/checker-relogio`; cabeca do indice `E-1066`; PR #438 **aberto** e
+**nao tocado** -- *as 14 threads continuam como estavam*; `reviewDecision` **vazio**.
+
+**REGRA DE PUSH -- OBRIGATORIA, E JA' VALIDADA** (dezesseis 6/6 consecutivos):
+  1. commit local -> 2. ESPERAR o SHA remoto fechar com `failure=0` -> 3. `git push`.
+
+**O PERFIL DO install/activate DO SW** (`E-1066`) -- `app/ui/app/e2e/pwa-onde-esta-o-tempo.mjs`:
+  $env:HADES_E2E_BROWSER='chromium'; node e2e/pwa-onde-esta-o-tempo.mjs
+  => install=18.2 ms  activate=0.1 ms  fora=1.0 ms  pagina=73.2 ms
+  $env:HADES_E2E_BROWSER='firefox';  node e2e/pwa-onde-esta-o-tempo.mjs
+  => install=132.0 ms activate=0.0 ms  fora=3.0 ms  pagina=262.0 ms
+  $env:HADES_E2E_BROWSER='webkit';   node e2e/pwa-onde-esta-o-tempo.mjs
+  => install=72.0 ms  activate=0.0 ms  fora=12.0 ms pagina=308.0 ms
+  => H1 ACEITE nos tres: o custo e' o addAll. O activate custa 0 ms.
+
+**COMO FOI DISCRIMINADO SEM TOCAR NO PRODUTO**: o servidor de teste serve o `dist/` e **injeta**
+uma versao instrumentada **so' no `/sw.js`** -- `performance.now()` no inicio/fim do `install` e
+do `activate`, com `postMessage` para a pagina. ***O `sw.js` do produto continua sem
+telemetria.*** *Um service worker de producao nao leva cronometros dentro.*
+
+**E A CORRECCAO DA MEDICAO ANTERIOR**: o `E-1065` mediu Firefox **1646 ms**; este mede **262 ms**
+no mesmo motor e maquina. A diferenca e' o que cada um cronometra: o `E-1065` desde **abrir a
+pagina**, este desde `navigator.serviceWorker.ready`. ***O numero grande era o browser a arrancar,
+nao o service worker.*** *O cronometro estava certo; a etiqueta no cronometro e' que estava
+errada.*
+
+**NAO OPTIMIZAR**: `install` 132 ms vs orcamento de 20 s = **~150x de folga**. Trocar o `addAll`
+atomico para ganhar 100 ms poria em risco a garantia do `E-1061`.
+
+**O ESTADO DAS PLATAFORMAS**: Windows/amd64 -> portatil **e** instalador (`E-1057`/
+`E-1058`), nao assinados, nao instalados. Linux/amd64 -> tarball **instalavel** (`E-1059`).
+**Web/PWA** -> build (`E-1060`), SW (`E-1061`), **8 pontos em 3 motores** (`E-1062`/`E-1063`),
+**recursos+upgrade 9/9 em 3 motores** (`E-1064`/`E-1065`), **perfil install/activate**
+(`E-1066`), mas **`PWA_INSTALADO_NA_UI=NAO`**. macOS/Android/iOS -> por produzir; **Android e' a
+proxima viavel**.
+
+**O que NAO fazer**: `reset --hard`, `git clean`, rebase destrutivo, force-push, stash,
+`merge`, tag, release, publicacao externa, ou **resolver threads** do PR #438.
+
+**Doutrina em uma linha**: um numero nao e' uma explicacao; um numero certo com o nome errado e'
+uma conclusao errada; e nao se optimiza o que ja' esta' 150x dentro do orcamento.

@@ -1077,3 +1077,30 @@ Chromium, e **eu nao medi por que**.
 medido e nao explicado. Instrumentar os marcos (`install`, `waiting`, `activate`) com
 `performance.now()` no proprio `sw.js` e comparar. Se for estrutural do motor, registar como
 limite; se for do nosso `addAll`, corrigir. **E esperar as runs antes do push.**
+
+### A proxima accao unica (janela `E-1066`)
+
+**O tempo da activacao do SW esta' no `install` -- e o numero de 1646 ms do `E-1065` NAO era o SW.**
+
+| motor | install | activate | fora | pagina (ready->activated) |
+|---|---|---|---|---|
+| Chromium | **18,2 ms** | **0,1 ms** | 1,0 ms | **73,2 ms** |
+| Firefox | **132,0 ms** | **0,0 ms** | 3,0 ms | **262,0 ms** |
+| WebKit | **72,0 ms** | **0,0 ms** | 12,0 ms | **308,0 ms** |
+
+**H1 ACEITE** nos tres: o custo e' o `addAll` (shell + 6 icones). O `activate` custa **0 ms**.
+
+**E a correcao da minha propria medicao**: o `E-1065` media desde **abrir a pagina**; este mede
+desde `navigator.serviceWorker.ready`. O numero grande era **o browser a arrancar**, nao o SW.
+=> ***«O cronometro estava certo; a etiqueta no cronometro e' que estava errada.»***
+
+**E o veredito sobre optimizar**: `install` do Firefox **132 ms** contra orcamento de **20 s** =
+**~150x de folga**. Nao se optimiza. E trocar o `addAll` atomico para ganhar 100 ms poria em risco
+a garantia do `E-1061`: *«preferimos um SW que nao instala a um SW que instala meio shell»*.
+=> ***«Nao se optimiza o que ja' esta' 150x dentro do orcamento.»***
+
+**A proxima accao unica**: o perfil do SW esta' fechado. **Web/PWA tem agora 8 pontos (3 motores),
+9 pontos de recursos/upgrade (3 motores) e o perfil do install/activate.** O que resta no Web e'
+**`PWA_INSTALADO_NA_UI`**, que e' humano. *Avancar para uma plataforma por produzir* -- e a
+**Android** e' a proxima tecnicamente possivel (Gradle local, APK nao assinado). Medir primeiro o
+que o `apps/mobile-agentic` exige. **E esperar as runs antes do push.**

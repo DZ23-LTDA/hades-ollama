@@ -1930,3 +1930,27 @@ e a manter `/api/*` fora do cache.
 - **Firefox** e **Safari** reais (extensao); sem `.crx`, sem SBOM do pacote;
 - **`CAPACIDADES` VAZIO**: o Companion **nao** controla o PC;
 - **macOS, Android e iOS continuam por produzir** neste candidato.
+
+### O que falta (actualizado na janela `E-1066`)
+
+**Fechado**: o perfil do `install`/`activate` do SW nos tres motores. O custo esta' no `install`
+(18-132 ms); o `activate` e' **0 ms**; e os 1646 ms do `E-1065` eram o **arranque do browser**.
+
+**Continua em falta, sem disfarce**:
+- ***`PWA_INSTALADO_NA_UI=NAO`*** -- o gesto de instalar e' humano;
+- **sem medicao de CPU nem memoria** -- o perfil e' so' de tempo, e de **um registo a frio**;
+- **o WebKit do Playwright nao e' o Safari do macOS**;
+- ***`OFFLINE=PARCIAL`*** -- o shell abre; o chat, as missoes e as aprovacoes **nao**;
+- ***Android, iOS e macOS continuam por produzir*** -- Android e' a proxima viavel;
+- **a comparacao externa continua `NAO_EXECUTADA`**;
+- **`55327160c` e `cda756f82` continuam VERMELHOS** -- pelo ritmo de push, nao por defeito;
+- **decisao do proprietario em aberto**: distinguir «cancelado pelo push» de «cancelado por
+  falha» no `pr-gate` **toca a politica do gate**;
+- **N=3 por fixture** na repeticao: contagem, nao probabilidade;
+- **as 14 threads do PR continuam abertas** -- nao resolvi nenhuma (proibido);
+- **o encaixe da aprovacao continua por ligar** (`E-1044`);
+- **shadow roots fechados**, **cross-origin**: como no `E-1040`; **BFCache** sem execucao
+  observada (`E-1038`);
+- **o Chrome real do utilizador**: a versao 155 **nao carrega** por `--load-extension`;
+- **Firefox** e **Safari** reais (extensao); sem `.crx`, sem SBOM do pacote;
+- **`CAPACIDADES` VAZIO**: o Companion **nao** controla o PC.
