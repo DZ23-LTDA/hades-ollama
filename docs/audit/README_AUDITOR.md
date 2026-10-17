@@ -8,7 +8,7 @@
 | Alegação | Onde vive |
 | --- | --- |
 | **Veredito**: `NOT_RELEASE_READY` | `docs/mission/HADES_MASTER_STATE.json` (`release_state`) |
-| **939 entradas** de evidência, de `E-001` a `E-1146` | `docs/mission/HADES_EVIDENCE_INDEX.md` |
+| **940 entradas** de evidência, de `E-001` a `E-1147` | `docs/mission/HADES_EVIDENCE_INDEX.md` |
 | **84 gates** declarados | `scripts/hades_local_gates.ps1` |
 | **18 bloqueios** | `LIMITACOES.md` (gerado do estado) |
 | **Faixa histórica** `571..777` | declarada no estado |
