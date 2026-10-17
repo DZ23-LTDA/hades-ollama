@@ -5,6 +5,8 @@
 
 **Total: 14** — **5 Major** · **9 Minor**.
 
+**Validados contra o código: 1 de 14** — #6 (VALIDADO_JA_CORRIGIDO).
+
 ## O que este ficheiro NÃO afirma
 
 - **não afirma que algum finding foi corrigido** — nenhum foi marcado como resolvido no GitHub;
@@ -18,6 +20,19 @@
 O `E-1070` e o `E-1074` são o modelo: **reproduzir o defeito num checkout limpo**, medir, e só
 então decidir. *«Comentário de bot como hipótese não confiável: confirme no código atual, crie
 contraprova e só então corrija.»*
+
+## Validados contra o código
+
+### #6 — `internal/agent/service_agent_approvals.go` — **VALIDADO_JA_CORRIGIDO**
+
+*«Protect every per-organization approval write with the same lock.»*
+
+- as 6 funcoes de escrita tem withFileLock (SetApprovers:321, Save:367, expireStale:473, Request:635, Decide:715, Consume:875)
+- saveLocked aplica preservarConsumidas(:380) -- a invariante «o consumo e' terminal»
+- 3 testes discriminadores PASS (6.7 s)
+- CONTRAPROVA: sem preservarConsumidas o teste FALHA com «REGRESSAO: Save gravou o instantaneo antigo e reabriu um pedido»
+
+**Evidência**: `E-1078`.
 
 ## Por severidade
 

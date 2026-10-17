@@ -77,7 +77,17 @@
       "severidade": "Major",
       "categoria": "🗄️ Data Integrity & Integration",
       "titulo": "Protect every per-organization approval write with the same lock.",
-      "trecho": "**🗄️ Data Integrity & Integration** | **🟠 Major** | **🏗️ Heavy lift**  <details> <summary>🔎 Supported by static analysis</summary>  🏁 Script executed:  ```bash sed -n '400,715p' internal/agent/service_agent_approvals.go rg -n 'func .*Request|func .*Decide|func .*expireStale|withFileLock|saveFile|loadFile|FindApproved' internal/agent/service_agent_approvals.go internal/agent/service_agent_tools.go "
+      "trecho": "**🗄️ Data Integrity & Integration** | **🟠 Major** | **🏗️ Heavy lift**  <details> <summary>🔎 Supported by static analysis</summary>  🏁 Script executed:  ```bash sed -n '400,715p' internal/agent/service_agent_approvals.go rg -n 'func .*Request|func .*Decide|func .*expireStale|withFileLock|saveFile|loadFile|FindApproved' internal/agent/service_agent_approvals.go internal/agent/service_agent_tools.go ",
+      "validacao": {
+        "estado": "VALIDADO_JA_CORRIGIDO",
+        "evidencia": "E-1078",
+        "prova": [
+          "as 6 funcoes de escrita tem withFileLock (SetApprovers:321, Save:367, expireStale:473, Request:635, Decide:715, Consume:875)",
+          "saveLocked aplica preservarConsumidas(:380) -- a invariante «o consumo e' terminal»",
+          "3 testes discriminadores PASS (6.7 s)",
+          "CONTRAPROVA: sem preservarConsumidas o teste FALHA com «REGRESSAO: Save gravou o instantaneo antigo e reabriu um pedido»"
+        ]
+      }
     },
     {
       "n": 7,
@@ -175,5 +185,9 @@
       "titulo": "Do not classify partially closed findings as closed.",
       "trecho": "**🎯 Functional Correctness** | **🟡 Minor** | **⚡ Quick win**  **Do not classify partially closed findings as closed.**  If ADV-65 is added to `proximos_ataques` for its remaining production integration, this substring check reports a conflict: its status starts with `PARCIALMENTE FECHADO`, but the same status says that integration remains open. Match an explicit terminal status instead of searchin"
     }
-  ]
+  ],
+  "validados": [
+    6
+  ],
+  "total_validados": 1
 }

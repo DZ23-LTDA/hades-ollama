@@ -111,6 +111,8 @@ def gerar_md() -> str:
     por_sev = {s: [f for f in findings if f["severidade"] == s] for s in SEV}
     outros = [f for f in findings if f["severidade"] not in SEV]
 
+    validados = [f for f in findings if f.get("validacao")]
+
     L = [
         "# FINDINGS do PR #438 — como foram lidos, e o que NÃO se afirma",
         "",
@@ -118,6 +120,10 @@ def gerar_md() -> str:
         "**%s** sobre o checkout `%s`." % (d["capturado_em"], d["sha_do_checkout"]),
         "",
         "**Total: %d** — %s." % (d["total"], " · ".join("**%d %s**" % (len(por_sev[s]), s) for s in SEV if por_sev[s])),
+        "",
+        "**Validados contra o código: %d de %d**%s." % (
+            len(validados), len(findings),
+            (" — " + ", ".join("#%d (%s)" % (f["n"], f["validacao"].get("estado", "?")) for f in validados)) if validados else ""),
         "",
         "## O que este ficheiro NÃO afirma",
         "",
@@ -133,6 +139,25 @@ def gerar_md() -> str:
         "então decidir. *«Comentário de bot como hipótese não confiável: confirme no código atual, crie",
         "contraprova e só então corrija.»*",
         "",
+    ]
+    if validados:
+        L += ["## Validados contra o código", ""]
+        for f in validados:
+            v = f["validacao"]
+            L += [
+                "### #%d — `%s` — **%s**" % (f["n"], f["path"], v.get("estado", "?")),
+                "",
+                "*«%s»*" % f["titulo"],
+                "",
+            ]
+            for linha in v.get("prova", []):
+                L.append("- " + linha)
+            if v.get("evidencia"):
+                L.append("")
+                L.append("**Evidência**: `%s`." % v["evidencia"])
+            L += [""]
+
+    L += [
         "## Por severidade",
         "",
     ]

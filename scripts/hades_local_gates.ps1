@@ -91,7 +91,7 @@ if ($SemLint) {
 if ($SemTestes) {
   '--- 4. go test PULADO por -SemTestes (isto NAO e aprovacao dos testes)'
 } else {
-  # E-670 — OS TESTES ENTRAM NO GATE LOCAL.
+  # E-670 -- OS TESTES ENTRAM NO GATE LOCAL.
   #
   # *POR QUE ISTO EXISTE:* este script rodava `gofmt` + `go build` + `golangci-lint` e **nao rodava teste nenhum** -
   # e o passo que MAIS reprova no CI e' `go test`. *Uma bateria que nao contem o gate do CI nao substitui o CI*: foi
@@ -199,7 +199,7 @@ $saidaDerivT = & python -X utf8 scripts/hades_derivados_check_test.py 2>&1
 $saidaDerivT | Select-Object -Last 4 | ForEach-Object { "    $_" }
 if ($LASTEXITCODE -ne 0) { $falhas.Add("hades_derivados_check_test.py (exit $LASTEXITCODE)") } else { '    OK   13/13 verificacoes do pre-commit' }
 
-# *POR QUE ISTO EXISTE:* o `E-1076` / §FASE-7 item 8. O pacote de auditoria independente
+# *POR QUE ISTO EXISTE:* o `E-1076` / FASE-7 item 8. O pacote de auditoria independente
 # (`README_AUDITOR.md`, `PARIDADE_EVIDENCIAS.csv`, `GATES.md`, `LIMITACOES.md`,
 # `ARTEFATOS.sha256`) e' **gerado** a partir do indice, do estado, dos gates declarados e dos
 # artefactos que existem. *Um pacote escrito a mao envelhece no dia seguinte* -- e' o `E-1071`.
@@ -215,8 +215,8 @@ $saidaAuditT = & python -X utf8 scripts/hades_audit_package_test.py 2>&1
 $saidaAuditT | Select-Object -Last 4 | ForEach-Object { "    $_" }
 if ($LASTEXITCODE -ne 0) { $falhas.Add("hades_audit_package_test.py (exit $LASTEXITCODE)") } else { '    OK   24/24 verificacoes do pacote de auditoria' }
 
-# *POR QUE ISTO EXISTE:* o `E-1077` / §FASE-7 item 8, ultima parte: *«a lista de findings
-# abertos/fechados»*. O `FINDINGS.json` foi **capturado da API do GitHub** (com data e SHA) e o
+# *POR QUE ISTO EXISTE:* o `E-1077` / FASE-7 item 8, ultima parte: *"a lista de findings
+# abertos/fechados"*. O `FINDINGS.json` foi **capturado da API do GitHub** (com data e SHA) e o
 # `FINDINGS.md` e' gerado **dele** -- logo o `--check` **nao precisa de rede**.
 '--- 7f. FINDINGS do PR #438 - o MD bate com o JSON capturado?'
 $saidaFind = & python -X utf8 scripts/hades_findings_report.py --check 2>&1
@@ -604,7 +604,7 @@ $passos += 'render-indice'
 
 ''
 # E-1048: o INVENTARIO do worktree. *Uma contagem nao e' um inventario.* Separa `M` de conteudo
-# de `M` de fim-de-linha -- reportei «14 entradas» durante dezenas de rondas e havia ZERO de
+# de `M` de fim-de-linha -- reportei "14 entradas" durante dezenas de rondas e havia ZERO de
 # trabalho real.
 '--- 31. INVENTARIO do worktree: `M` de conteudo vs `M` de fim-de-linha'
 $saidaInv = & python -X utf8 scripts/hades_worktree_inventory.py --check 2>&1
