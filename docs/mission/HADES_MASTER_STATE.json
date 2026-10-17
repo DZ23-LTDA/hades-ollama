@@ -2,7 +2,7 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-17T16:08:46-03:00",
+  "updated_at": "2026-10-17T16:11:56-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
@@ -576,10 +576,13 @@
       "evidence": [
         "E-1105",
         "E-015",
-        "E-086"
+        "E-086",
+        "E-1121",
+        "E-1124",
+        "E-1129"
       ],
-      "blocker": "B-09",
-      "next": "reavaliar o estado a luz da evidencia do CI: o E2E de navegador esta homologado em CI/Linux; falta a classificacao por plataforma (Windows/macOS desktop) e o desktop nativo",
+      "blocker": "B-19",
+      "next": "As 3 fronteiras estao NOMEADAS em B-19 e nenhuma e' codigo por escrever: (1) o Chrome real exige a Chrome Web Store (conta + revisao) -- o Chromium 156 e o Edge 155 passam 10+25 (E-1121); (2) o operar no Firefox exige um Developer Edition com xpinstall.signatures.required=false, porque o web-ext instala como temporary add-on e ele nao persiste (E-1124); (3) o computer-use exige E2E nativo em cada SO declarado, e nao ha' nenhum. O Browser Operator (Playwright) e o Browser Bridge externo estao MEDIDOS onde nao dependem de loja. O B-09 que aqui estava era «AMBIENTAL MEDIDO E CORRIGIDO» -- nao era bloqueio.",
       "done": "resolucao de interpretador corrigida e compartilhada entre status e operador; status honesto de prontidao com orientacao acionavel; coberto sem navegador: ambiente filho sem segredos, recusa de escopo sem sandbox estrita, eventos de frame e logica de setup. O E2E de navegador real sai de FAIL para SKIP com causa legivel",
       "blocked_reason": "Playwright e Chromium ausentes neste host (python_ok=true, playwright_ok=false, chromium_ok=false). Desbloqueio: python -m pip install playwright && python -m playwright install chromium (~150MB), disponivel no produto em SetupBrowserEnvironment e nao executado por ser mudanca de maquina com custo relevante",
       "external_dependency": "desktop/computer-use NATIVO nao homologado e execucao neste host Windows sem Playwright. O NAVEGADOR REAL NAO ESTA BLOQUEADO: o CI instala Playwright 1.63.0 e Chromium 153, aponta OLLAMA_AGENT_BROWSER_EXECUTABLE para um Chromium real e roda browser_helper_test.py com 9 testes OK, com a suite do agente verde na main (E-098)",
@@ -1247,6 +1250,11 @@
       "id": "B-18",
       "tipo": "RESOLVIDO",
       "descricao": "FALHA INTERMITENTE NA CI DA MAIN (E-193): TestServiceAgentAuditKeepsContactTextOut (DLP: conteudo do contato nao pode entrar na trilha de auditoria) falhou uma vez no passo 'CGO_ENABLED=1 go test ./... -count=1' do job dz23-agentic-quality, em bc3c708f6. NAO reproduzida em SEIS condicoes medidas: 10x isolado (Windows), 20x isolado sob CGO=1 (Linux/golang:1.26.9), pacote -count=3, pacote inteiro sob CGO=1, -shuffle com 3 seeds e pacote sob carga paralela. A varredura de DLP criada em E-193 cobre 30 ferramentas em 7 agentes e NAO encontrou vazamento. DESBLOQUEIO: obter credencial de API do GitHub para re-executar o job duas vezes com o mesmo SHA e, se reproduzir, capturar o campo nomeado pelo diagnostico de E-193; sem reproducao, a classificacao segue 'nao demonstrada' - nem flake afirmado, nem vazamento afirmado. || RESOLVIDO (E-196): NAO era vazamento nem flake - era o RELOGIO. A checagem procurava o fragmento '4111' no ARQUIVO INTEIRO da trilha, e um decided_at como '...T08:26:43.411114Z' contem '4111'. O log do job 114722821097 (race macos-latest) trouxe o JSON da entrada acusada SEM conteudo de terceiro, o que fechou o caso. Correcao: a checagem passou a olhar CAMPOS (texto livre x identificadores) e o mecanismo ficou fixado em TestTimestampComFragmentoNaoEhVazamento. O produto nunca vazou."
+    },
+    {
+      "id": "B-19",
+      "tipo": "EXTERNO (3 fronteiras, todas NOMEADAS)",
+      "descricao": "(1) Chrome real exige a Chrome Web Store (conta + revisao) -- o `--load-extension` foi removido e o service_worker nao acorda; o Chromium 156 e o Edge 155 passam 10+25 (E-1121). (2) O operar no Firefox exige um Developer Edition com `xpinstall.signatures.required=false`, porque o web-ext instala como temporary add-on e ele nao persiste (E-1124). (3) O computer-use exige E2E nativo em cada SO declarado, e nao ha' nenhum. Nenhuma das tres e' codigo por escrever: sao conta/loja, um binario especifico e um host nativo."
     }
   ],
   "evidence_index": "docs/mission/HADES_EVIDENCE_INDEX.md",
@@ -2858,8 +2866,8 @@
     },
     "evidence": "E-173"
   },
-  "measured_at": "2026-10-17T16:08:46-03:00",
-  "measured_commit": "6348c51fab45000fa4d4de1ce53ca9f8b5fd9695",
+  "measured_at": "2026-10-17T16:11:56-03:00",
+  "measured_commit": "583a7c1bdfae622dd50a7ada2a212015fe4a8901",
   "branch_head_measured": "f1a6c261b",
   "branch_head_measured_at": "2026-10-15T10:30:00-03:00",
   "branch_head_measured_how": "git rev-parse HEAD no checkout local (branch fix/checker-relogio), medido no round 54. DIVERGENCIA DECLARADA: measured_commit continua a ser a ultima MEDICAO COMPLETA (e423ec72e); o head avancou com as fatias do complemento 48 (sala: dominio, rotas HTTP, cliente, componente, painel e tela) e com checkpoints. Nao se reescreveu a historia e nao se reivindica nova medicao completa. NOTA DE CONCORRENCIA: este arquivo tambem e escrito por outro agente (o measured_how seguinte cita HEAD 1065e5c56 / E-518-E-519) - editar sempre por ancora unica e re-ler antes de gravar.",

@@ -10,12 +10,12 @@
 
 | Campo | Valor |
 | --- | --- |
-| **Commit medido** (`measured_commit`) | `6348c51fab45000fa4d4de1ce53ca9f8b5fd9695` |
+| **Commit medido** (`measured_commit`) | `583a7c1bdfae622dd50a7ada2a212015fe4a8901` |
 | **Commit da `main`** (`git.main_sha`) | `4b3e21854` |
-| **Gerado em** (`measured_at`) | 2026-10-17T16:08:46-03:00 |
-| **Snapshot real** (`gate_head`) | `6348c51fab45000fa4d4de1ce53ca9f8b5fd9695` |
+| **Gerado em** (`measured_at`) | 2026-10-17T16:11:56-03:00 |
+| **Snapshot real** (`gate_head`) | `583a7c1bdfae622dd50a7ada2a212015fe4a8901` |
 | **Ramo do snapshot** (`gate_branch`) | `fix/checker-relogio` |
-| **Entradas nao commitadas** (`gate_dirty`) | 17 |
+| **Entradas nao commitadas** (`gate_dirty`) | 26 |
 | **O gate prova o snapshot candidato?** (`gate_snapshot`) | **MESMO** |
 
 *Dois campos, e não um: o `E-552` mediu que este derivado **não** citava commit nenhum, e que o
@@ -79,6 +79,7 @@ Resumo: BLOCKED_BY_EXTERNAL_DEPENDENCY: 5 · DONE: 19
 | B-05 | Contas reais de marketplace/social/pagamento | ver HADES_BLOCKERS.md |
 | B-06 | Identidade de assinatura de release (certificado). ESTADO MEDIDO (E-201): a autenticacao de NOTARIZACAO foi PROVADA com a chave de API do App Store Connect (JWT | ver HADES_BLOCKERS.md |
 | B-07 | MEDIDO (E-209), nao suposto. O B-07 dizia 'chaves de provedor de modelo para homologacao de chamada real'. Medido: 19 provedores com credencial PRESENTE e habil | ver HADES_BLOCKERS.md |
+| B-19 | (1) Chrome real exige a Chrome Web Store (conta + revisao) -- o `--load-extension` foi removido e o service_worker nao acorda; o Chromium 156 e o Edge 155 passa | ver HADES_BLOCKERS.md |
 
 ## O que faria o veredito mudar
 

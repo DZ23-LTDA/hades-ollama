@@ -23,6 +23,7 @@
 | B-16 | RESOLVIDO | mesma classe do B-15 em QUATRO módulos: `GetForOrganization` de `builder.go:352`, `devices.go:210`, `swarm.go:218` e `TelAgentSessionForOrganization` (`tel_agent_session.go:181`) devolvem erro **cru** quando não existe (→404) e erro **próprio** quando é de outro tenant (→403), revelando existência (E-191) | 18 | por módulo: unificar as duas recusas e converter as asserções que codificam o 404 em asserção de não inferência | **RESOLVIDO (E-192)**: recusas unificadas nos quatro módulos, com 5 testes novos (4 de não inferência + controle positivo); agent e server passaram sem conversão de teste |
 | B-17 | RESOLVIDO | `internal/agent/mcp_remote.go:606` (`call`) devolve `remote MCP server … is not registered` **antes** do portão de organização — mesma forma do B-15/B-16, **sem** teste que compare as duas recusas (E-192) | 18 | montar harness de MCP remoto, comparar as negações e unificar se confirmado | **RESOLVIDO (E-194)**: a verificação achou **seis** métodos `*ForOrganization` com o mesmo oráculo; caminho de tenant unificado, caminho global declarado; 11 testes novos |
 | B-18 | RESOLVIDO | `TestServiceAgentAuditKeepsContactTextOut` falhou **uma vez** na `main` (passo `CGO_ENABLED=1 go test ./...`); **não reproduzida em 6 condições**, e a varredura de DLP (30 ferramentas × 7 agentes) não achou vazamento (E-193) | 18 | re-executar o job com credencial de API e capturar o **campo** nomeado pelo diagnóstico | **RESOLVIDO (E-196)**: era o **relógio** — o fragmento `4111` casava com `decided_at` (`.411114Z`), não com conteúdo de terceiro. Checagem passou a olhar **campos**; mecanismo fixado em teste |
+| B-19 | EXTERNO (3 fronteiras) | **Chrome real** (loja) / **Firefox operar** (Developer Edition) / **computer-use** (E2E nativo por SO) | 14 | usuário / sistema |
 | B-15 | RESOLVIDO | oráculo de enumeração em TODA a superfície de empresa: `companyForRequest` devolve **404** para empresa inexistente e **403** para empresa de outro tenant, revelando existência de ID sem acesso a dado; o vazamento está **codificado em testes** (E-189) | 18 | unificar as duas recusas no guarda, converter cada asserção de 404 em asserção de não inferência e varrer outras rotas | **RESOLVIDO (E-190)**: recusas unificadas no guarda compartilhado; segundo mecanismo (eco do ID só no caminho que existe) encontrado pelo teste genérico e corrigido; prova com controle positivo |
 
 ## B-01 — Autorização de merge (decisão humana)
@@ -152,3 +153,23 @@ atual mede **idempotência no mesmo processo** — não reinício; a evidência 
 ### ⚠️ Correção de E-304 (E-305) — a persistência **não** estava quebrada
 
 Medição refeita com **diagnóstico de movimentos**: antes e depois do reinício o saldo é **idêntico** e os quatro movimentos estão presentes; o teste que já existia (`TestBusinessE2ESurvivesRealRestartWithoutDuplicating`) **passa**. ***O defeito descrito aqui acima era leitura errada.*** O defeito **real** era outro — a jornada **somava a carga inicial de novo** na reexecução (estoque 10 → 18) e falhava com erro confuso. **Corrigido em E-305**: carga inicial idempotente + recusa explícita (`ErrBusinessJourneyAlreadyCertified`) para empresa que já operou.
+
+## B-19 — As 3 fronteiras do §ESTÁGIO 14 (todas NOMEADAS, `E-1129`)
+
+O §ESTÁGIO 14 estava `BLOCKED_BY_EXTERNAL_DEPENDENCY` com `blocker: B-09` — e o **`B-09` está declarado como
+«AMBIENTAL (MEDIDO E CORRIGIDO)»**: *um estágio bloqueado por um blocker que o próprio estado declara corrigido não
+está bloqueado — está mal classificado.* As **três** fronteiras reais, medidas nos `E-1121`/`E-1124`:
+
+1. **Chrome real** — o `--load-extension` foi **removido** e o `service_worker` não acorda (155.0.8059.79). Exige a
+   **Chrome Web Store**: conta + revisão. *O que continua possível sem ela*: **Chromium 156** e **Edge 155** passam
+   **10 + 25** verificações (`E-1121`).
+2. **Operar no Firefox** — o `web-ext` instala como **temporary add-on** e ele **não persiste**; o Playwright
+   Firefox lança mas **não vê** a extensão. Exige um **Developer Edition** com
+   `xpinstall.signatures.required=false`. *O que continua possível sem ele*: o pacote, o `lint` **0/0/0** e o
+   **`Installed`** (`E-1116`/`E-1122`), e o **operar** no Chromium e no Edge.
+3. **Computer Use** — não há **nenhum** E2E nativo por SO. Exige E2E real em Windows/macOS/Linux, com permissões
+   nativas, kill switch e testes de abuso. *O que continua possível sem ele*: os adapters compilados e o
+   `desktop.companion` declarado.
+
+**Nenhuma das três é código por escrever**: são conta/loja, um binário específico e um host nativo. E o §ESTÁGIO 14
+continua **`PARTIAL` (10 de 11)** e **`BLOCKED_BY_EXTERNAL_DEPENDENCY`** — agora pelo motivo certo.

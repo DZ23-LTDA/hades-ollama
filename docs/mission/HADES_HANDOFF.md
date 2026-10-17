@@ -1,6 +1,8 @@
 # HADES — HANDOFF (como retomar a missão do zero)
 
-> **REMEDIACAO MAIS RECENTE: E-1128** -- *o finding `4266327642` tem numero (**848** de **920**) e instrumento (a 6.a medida do `hades_index_shape_check.py`), com a catraca a falhar se subir.*
+> **REMEDIACAO MAIS RECENTE: E-1129** -- *o §ESTAGIO 14 estava bloqueado pelo `B-09` (que o proprio JSON declara corrigido); passa a citar o `B-19`, as 3 fronteiras reais e nomeadas.*
+
+
 
 
 
