@@ -17,7 +17,20 @@
       "severidade": "Minor",
       "categoria": "🎯 Functional Correctness",
       "titulo": "Use a mesma lista de triagem no teste e no `--check`.",
-      "trecho": "**🎯 Functional Correctness** | **🟡 Minor** | **⚡ Quick win**  **Use a mesma lista de triagem no teste e no `--check`.**  Este teste ainda aceita `internal/agent/push_outbox_test.go:274`, mas `checker.TRIAGADOS` não aceita essa posição. Se ela voltar a ser classificada como ALTO, o teste do repositório passará e `--check` falhará. Derive `conhecidos` de `checker.TRIAGADOS` para que os dois gates av"
+      "trecho": "**🎯 Functional Correctness** | **🟡 Minor** | **⚡ Quick win**  **Use a mesma lista de triagem no teste e no `--check`.**  Este teste ainda aceita `internal/agent/push_outbox_test.go:274`, mas `checker.TRIAGADOS` não aceita essa posição. Se ela voltar a ser classificada como ALTO, o teste do repositório passará e `--check` falhará. Derive `conhecidos` de `checker.TRIAGADOS` para que os dois gates av",
+      "validacao": {
+        "estado": "VALIDADO_JA_CORRIGIDO",
+        "evidencia": "E-1080",
+        "prova": [
+          "usos(linha) devolve o CONTEXTO de cada .Add( -- dois usos na mesma linha sao classificados em separado (E-909(a))",
+          "usos() devolve TODOS, nao o primeiro -- uma variavel com dois deslocamentos expoe o de negocio (E-909(b))",
+          "TRIAGADOS indexado por assinatura(linha), o texto sem espacos e sem comentario -- reindentar nao reabre, alterar reabre (E-909(c))",
+          "sem_comentarios(linhas) remove // e /* */ preservando o numero de linha",
+          "o _test.py importa hades_test_clock_check as checker e usa checker.TRIAGADOS -- uma fonte, nao duas allowlists",
+          "12/12 testes OK (1.3 s); repo real: 112 sitios, ALTO triagado 1, ALTO NOVO 0",
+          "CONTRAPROVA: um break no usos() (so o primeiro uso) faz falhar test_um_uso_seguro_nao_esconde_um_de_negocio_na_mesma_linha -- \"'ALTO' not found in ['timestamp']\""
+        ]
+      }
     },
     {
       "n": 2,
@@ -29,7 +42,20 @@
       "severidade": "Major",
       "categoria": "🎯 Functional Correctness",
       "titulo": "Classifique cada uso de relógio separadamente.",
-      "trecho": "**🎯 Functional Correctness** | **🟠 Major** | **🏗️ Heavy lift**  **Classifique cada uso de relógio separadamente.**  Se uma linha contiver `StartsAt: time.Now().Add(90 * time.Minute)` e `CreatedAt: time.Now().Add(-time.Second)`, `SEGURO` classifica a linha inteira como segura. O uso em `StartsAt` deixa de aparecer como ALTO, e `--check` retorna sucesso. Associe cada `.Add(` ao seu campo antes de ap"
+      "trecho": "**🎯 Functional Correctness** | **🟠 Major** | **🏗️ Heavy lift**  **Classifique cada uso de relógio separadamente.**  Se uma linha contiver `StartsAt: time.Now().Add(90 * time.Minute)` e `CreatedAt: time.Now().Add(-time.Second)`, `SEGURO` classifica a linha inteira como segura. O uso em `StartsAt` deixa de aparecer como ALTO, e `--check` retorna sucesso. Associe cada `.Add(` ao seu campo antes de ap",
+      "validacao": {
+        "estado": "VALIDADO_JA_CORRIGIDO",
+        "evidencia": "E-1080",
+        "prova": [
+          "usos(linha) devolve o CONTEXTO de cada .Add( -- dois usos na mesma linha sao classificados em separado (E-909(a))",
+          "usos() devolve TODOS, nao o primeiro -- uma variavel com dois deslocamentos expoe o de negocio (E-909(b))",
+          "TRIAGADOS indexado por assinatura(linha), o texto sem espacos e sem comentario -- reindentar nao reabre, alterar reabre (E-909(c))",
+          "sem_comentarios(linhas) remove // e /* */ preservando o numero de linha",
+          "o _test.py importa hades_test_clock_check as checker e usa checker.TRIAGADOS -- uma fonte, nao duas allowlists",
+          "12/12 testes OK (1.3 s); repo real: 112 sitios, ALTO triagado 1, ALTO NOVO 0",
+          "CONTRAPROVA: um break no usos() (so o primeiro uso) faz falhar test_um_uso_seguro_nao_esconde_um_de_negocio_na_mesma_linha -- \"'ALTO' not found in ['timestamp']\""
+        ]
+      }
     },
     {
       "n": 3,
@@ -41,7 +67,20 @@
       "severidade": "Minor",
       "categoria": "🎯 Functional Correctness",
       "titulo": "Ignore comentários antes de procurar expressões.",
-      "trecho": "**🎯 Functional Correctness** | **🟡 Minor** | **⚡ Quick win**  **Ignore comentários antes de procurar expressões.**  A varredura aceita `// StartsAt: time.Now().Add(90 * time.Minute)` como achado ALTO. O comentário já triado em `internal/agent/scheduling_waitlist_test.go` confirma que esse caminho ocorre no repositório. Um comentário explicativo novo pode, portanto, fazer `--check` falhar sem adici"
+      "trecho": "**🎯 Functional Correctness** | **🟡 Minor** | **⚡ Quick win**  **Ignore comentários antes de procurar expressões.**  A varredura aceita `// StartsAt: time.Now().Add(90 * time.Minute)` como achado ALTO. O comentário já triado em `internal/agent/scheduling_waitlist_test.go` confirma que esse caminho ocorre no repositório. Um comentário explicativo novo pode, portanto, fazer `--check` falhar sem adici",
+      "validacao": {
+        "estado": "VALIDADO_JA_CORRIGIDO",
+        "evidencia": "E-1080",
+        "prova": [
+          "usos(linha) devolve o CONTEXTO de cada .Add( -- dois usos na mesma linha sao classificados em separado (E-909(a))",
+          "usos() devolve TODOS, nao o primeiro -- uma variavel com dois deslocamentos expoe o de negocio (E-909(b))",
+          "TRIAGADOS indexado por assinatura(linha), o texto sem espacos e sem comentario -- reindentar nao reabre, alterar reabre (E-909(c))",
+          "sem_comentarios(linhas) remove // e /* */ preservando o numero de linha",
+          "o _test.py importa hades_test_clock_check as checker e usa checker.TRIAGADOS -- uma fonte, nao duas allowlists",
+          "12/12 testes OK (1.3 s); repo real: 112 sitios, ALTO triagado 1, ALTO NOVO 0",
+          "CONTRAPROVA: um break no usos() (so o primeiro uso) faz falhar test_um_uso_seguro_nao_esconde_um_de_negocio_na_mesma_linha -- \"'ALTO' not found in ['timestamp']\""
+        ]
+      }
     },
     {
       "n": 4,
@@ -53,7 +92,20 @@
       "severidade": "Major",
       "categoria": "🎯 Functional Correctness",
       "titulo": "Continue a busca após o primeiro `.Add(` da variável.",
-      "trecho": "**🎯 Functional Correctness** | **🟠 Major** | **⚡ Quick win**  **Continue a busca após o primeiro `.Add(` da variável.**  Se um teste usar `agora.Add(time.Second)` e depois `marcado := agora.Add(90 * time.Minute)`, o `break` impede a inspeção de `marcado`. O segundo uso é um instante de negócio, mas `--check` não o recebe como achado ALTO. Inspecione todos os usos da variável dentro da janela de bu"
+      "trecho": "**🎯 Functional Correctness** | **🟠 Major** | **⚡ Quick win**  **Continue a busca após o primeiro `.Add(` da variável.**  Se um teste usar `agora.Add(time.Second)` e depois `marcado := agora.Add(90 * time.Minute)`, o `break` impede a inspeção de `marcado`. O segundo uso é um instante de negócio, mas `--check` não o recebe como achado ALTO. Inspecione todos os usos da variável dentro da janela de bu",
+      "validacao": {
+        "estado": "VALIDADO_JA_CORRIGIDO",
+        "evidencia": "E-1080",
+        "prova": [
+          "usos(linha) devolve o CONTEXTO de cada .Add( -- dois usos na mesma linha sao classificados em separado (E-909(a))",
+          "usos() devolve TODOS, nao o primeiro -- uma variavel com dois deslocamentos expoe o de negocio (E-909(b))",
+          "TRIAGADOS indexado por assinatura(linha), o texto sem espacos e sem comentario -- reindentar nao reabre, alterar reabre (E-909(c))",
+          "sem_comentarios(linhas) remove // e /* */ preservando o numero de linha",
+          "o _test.py importa hades_test_clock_check as checker e usa checker.TRIAGADOS -- uma fonte, nao duas allowlists",
+          "12/12 testes OK (1.3 s); repo real: 112 sitios, ALTO triagado 1, ALTO NOVO 0",
+          "CONTRAPROVA: um break no usos() (so o primeiro uso) faz falhar test_um_uso_seguro_nao_esconde_um_de_negocio_na_mesma_linha -- \"'ALTO' not found in ['timestamp']\""
+        ]
+      }
     },
     {
       "n": 5,
@@ -65,7 +117,20 @@
       "severidade": "Major",
       "categoria": "🎯 Functional Correctness",
       "titulo": "Vincule a triagem ao conteúdo inspecionado, não apenas à linha.",
-      "trecho": "**🎯 Functional Correctness** | **🟠 Major** | **⚡ Quick win**  **Vincule a triagem ao conteúdo inspecionado, não apenas à linha.**  Se a expressão em `internal/agent/scheduling_waitlist_test.go:187` deixar de ser comentário e passar a construir um `StartsAt` com `time.Now().Add(...)`, a mesma chave continuará dispensando o achado ALTO. `--check` retornará sucesso para um uso novo naquele local. Ver"
+      "trecho": "**🎯 Functional Correctness** | **🟠 Major** | **⚡ Quick win**  **Vincule a triagem ao conteúdo inspecionado, não apenas à linha.**  Se a expressão em `internal/agent/scheduling_waitlist_test.go:187` deixar de ser comentário e passar a construir um `StartsAt` com `time.Now().Add(...)`, a mesma chave continuará dispensando o achado ALTO. `--check` retornará sucesso para um uso novo naquele local. Ver",
+      "validacao": {
+        "estado": "VALIDADO_JA_CORRIGIDO",
+        "evidencia": "E-1080",
+        "prova": [
+          "usos(linha) devolve o CONTEXTO de cada .Add( -- dois usos na mesma linha sao classificados em separado (E-909(a))",
+          "usos() devolve TODOS, nao o primeiro -- uma variavel com dois deslocamentos expoe o de negocio (E-909(b))",
+          "TRIAGADOS indexado por assinatura(linha), o texto sem espacos e sem comentario -- reindentar nao reabre, alterar reabre (E-909(c))",
+          "sem_comentarios(linhas) remove // e /* */ preservando o numero de linha",
+          "o _test.py importa hades_test_clock_check as checker e usa checker.TRIAGADOS -- uma fonte, nao duas allowlists",
+          "12/12 testes OK (1.3 s); repo real: 112 sitios, ALTO triagado 1, ALTO NOVO 0",
+          "CONTRAPROVA: um break no usos() (so o primeiro uso) faz falhar test_um_uso_seguro_nao_esconde_um_de_negocio_na_mesma_linha -- \"'ALTO' not found in ['timestamp']\""
+        ]
+      }
     },
     {
       "n": 6,
@@ -187,7 +252,12 @@
     }
   ],
   "validados": [
+    1,
+    2,
+    3,
+    4,
+    5,
     6
   ],
-  "total_validados": 1
+  "total_validados": 6
 }

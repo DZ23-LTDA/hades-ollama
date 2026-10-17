@@ -5,7 +5,7 @@
 
 **Total: 14** — **5 Major** · **9 Minor**.
 
-**Validados contra o código: 1 de 14** — #6 (VALIDADO_JA_CORRIGIDO).
+**Validados contra o código: 6 de 14** — #1 (VALIDADO_JA_CORRIGIDO), #2 (VALIDADO_JA_CORRIGIDO), #3 (VALIDADO_JA_CORRIGIDO), #4 (VALIDADO_JA_CORRIGIDO), #5 (VALIDADO_JA_CORRIGIDO), #6 (VALIDADO_JA_CORRIGIDO).
 
 ## O que este ficheiro NÃO afirma
 
@@ -22,6 +22,76 @@ então decidir. *«Comentário de bot como hipótese não confiável: confirme n
 contraprova e só então corrija.»*
 
 ## Validados contra o código
+
+### #1 — `scripts/hades_test_clock_check_test.py` — **VALIDADO_JA_CORRIGIDO**
+
+*«Use a mesma lista de triagem no teste e no `--check`.»*
+
+- usos(linha) devolve o CONTEXTO de cada .Add( -- dois usos na mesma linha sao classificados em separado (E-909(a))
+- usos() devolve TODOS, nao o primeiro -- uma variavel com dois deslocamentos expoe o de negocio (E-909(b))
+- TRIAGADOS indexado por assinatura(linha), o texto sem espacos e sem comentario -- reindentar nao reabre, alterar reabre (E-909(c))
+- sem_comentarios(linhas) remove // e /* */ preservando o numero de linha
+- o _test.py importa hades_test_clock_check as checker e usa checker.TRIAGADOS -- uma fonte, nao duas allowlists
+- 12/12 testes OK (1.3 s); repo real: 112 sitios, ALTO triagado 1, ALTO NOVO 0
+- CONTRAPROVA: um break no usos() (so o primeiro uso) faz falhar test_um_uso_seguro_nao_esconde_um_de_negocio_na_mesma_linha -- "'ALTO' not found in ['timestamp']"
+
+**Evidência**: `E-1080`.
+
+### #2 — `scripts/hades_test_clock_check.py` — **VALIDADO_JA_CORRIGIDO**
+
+*«Classifique cada uso de relógio separadamente.»*
+
+- usos(linha) devolve o CONTEXTO de cada .Add( -- dois usos na mesma linha sao classificados em separado (E-909(a))
+- usos() devolve TODOS, nao o primeiro -- uma variavel com dois deslocamentos expoe o de negocio (E-909(b))
+- TRIAGADOS indexado por assinatura(linha), o texto sem espacos e sem comentario -- reindentar nao reabre, alterar reabre (E-909(c))
+- sem_comentarios(linhas) remove // e /* */ preservando o numero de linha
+- o _test.py importa hades_test_clock_check as checker e usa checker.TRIAGADOS -- uma fonte, nao duas allowlists
+- 12/12 testes OK (1.3 s); repo real: 112 sitios, ALTO triagado 1, ALTO NOVO 0
+- CONTRAPROVA: um break no usos() (so o primeiro uso) faz falhar test_um_uso_seguro_nao_esconde_um_de_negocio_na_mesma_linha -- "'ALTO' not found in ['timestamp']"
+
+**Evidência**: `E-1080`.
+
+### #3 — `scripts/hades_test_clock_check.py` — **VALIDADO_JA_CORRIGIDO**
+
+*«Ignore comentários antes de procurar expressões.»*
+
+- usos(linha) devolve o CONTEXTO de cada .Add( -- dois usos na mesma linha sao classificados em separado (E-909(a))
+- usos() devolve TODOS, nao o primeiro -- uma variavel com dois deslocamentos expoe o de negocio (E-909(b))
+- TRIAGADOS indexado por assinatura(linha), o texto sem espacos e sem comentario -- reindentar nao reabre, alterar reabre (E-909(c))
+- sem_comentarios(linhas) remove // e /* */ preservando o numero de linha
+- o _test.py importa hades_test_clock_check as checker e usa checker.TRIAGADOS -- uma fonte, nao duas allowlists
+- 12/12 testes OK (1.3 s); repo real: 112 sitios, ALTO triagado 1, ALTO NOVO 0
+- CONTRAPROVA: um break no usos() (so o primeiro uso) faz falhar test_um_uso_seguro_nao_esconde_um_de_negocio_na_mesma_linha -- "'ALTO' not found in ['timestamp']"
+
+**Evidência**: `E-1080`.
+
+### #4 — `scripts/hades_test_clock_check.py` — **VALIDADO_JA_CORRIGIDO**
+
+*«Continue a busca após o primeiro `.Add(` da variável.»*
+
+- usos(linha) devolve o CONTEXTO de cada .Add( -- dois usos na mesma linha sao classificados em separado (E-909(a))
+- usos() devolve TODOS, nao o primeiro -- uma variavel com dois deslocamentos expoe o de negocio (E-909(b))
+- TRIAGADOS indexado por assinatura(linha), o texto sem espacos e sem comentario -- reindentar nao reabre, alterar reabre (E-909(c))
+- sem_comentarios(linhas) remove // e /* */ preservando o numero de linha
+- o _test.py importa hades_test_clock_check as checker e usa checker.TRIAGADOS -- uma fonte, nao duas allowlists
+- 12/12 testes OK (1.3 s); repo real: 112 sitios, ALTO triagado 1, ALTO NOVO 0
+- CONTRAPROVA: um break no usos() (so o primeiro uso) faz falhar test_um_uso_seguro_nao_esconde_um_de_negocio_na_mesma_linha -- "'ALTO' not found in ['timestamp']"
+
+**Evidência**: `E-1080`.
+
+### #5 — `scripts/hades_test_clock_check.py` — **VALIDADO_JA_CORRIGIDO**
+
+*«Vincule a triagem ao conteúdo inspecionado, não apenas à linha.»*
+
+- usos(linha) devolve o CONTEXTO de cada .Add( -- dois usos na mesma linha sao classificados em separado (E-909(a))
+- usos() devolve TODOS, nao o primeiro -- uma variavel com dois deslocamentos expoe o de negocio (E-909(b))
+- TRIAGADOS indexado por assinatura(linha), o texto sem espacos e sem comentario -- reindentar nao reabre, alterar reabre (E-909(c))
+- sem_comentarios(linhas) remove // e /* */ preservando o numero de linha
+- o _test.py importa hades_test_clock_check as checker e usa checker.TRIAGADOS -- uma fonte, nao duas allowlists
+- 12/12 testes OK (1.3 s); repo real: 112 sitios, ALTO triagado 1, ALTO NOVO 0
+- CONTRAPROVA: um break no usos() (so o primeiro uso) faz falhar test_um_uso_seguro_nao_esconde_um_de_negocio_na_mesma_linha -- "'ALTO' not found in ['timestamp']"
+
+**Evidência**: `E-1080`.
 
 ### #6 — `internal/agent/service_agent_approvals.go` — **VALIDADO_JA_CORRIGIDO**
 
