@@ -1,63 +1,38 @@
 # HADES — HANDOFF (como retomar a missão do zero)
-
-## JANELA E-1151 — o Mission Control funciona no binario (ronda 266-267)
+## JANELA E-1164 — os gates que faltavam medir (rondas 268-280)
 
 *Bloco de cabeca: mantem os tres documentos de retomada dentro da `JANELA = 12` do
 `hades_handoff_window_check.py`. Cada afirmacao abaixo tem ID proprio no indice.*
 
-- **`E-1149`** — `go test ./internal/agent -run (TestMission-ou-TestRuntime-ou-TestStore)` -> `ok` em
-  21,666 s: o **motor** de missao (criacao, persistencia, retomada, eventos, store) passa com
-  `RulePlanner` **deterministico**, sem LLM.
-- **`E-1150`** — **ciclo COMPLETO no binario do produto, 9,4 s**: `agent create` -> missao `READY` com
-  plano (`workspace.list`, `risk: read`, `tool_descriptor_sha256`) -> `agent run` -> job enfileirado ->
-  worker executou -> passo `SUCCEEDED` com `result.entries` reais -> missao **`COMPLETED`**. Presentes:
-  `provider: ollama-local`, `organization_id: local`, `capabilities: [workspace:read]`.
-- **`E-1151`** — **o `/goal` do UI cria a missao**: contra o backend real, `3 passed (32,1 s)`,
-  `POST /api/agent/v1/missions` -> **201** e `POST /api/agent/v1/orchestration/jobs` -> **202**
-  (5 papeis, `max_agents 3`, `max_seconds 600`). Teste **discriminante** acrescentado ao
-  `goal-command.spec.ts`; sem ele eu teria registado um defeito que nao existe.
-- **Desbloqueio operacional**: `OLLAMA_AGENT_ROOT` + `OLLAMA_AGENT_STORE` + `OLLAMA_AGENT_CREDENTIAL_KEY`
-  fazeem o agent runtime subir (`/api/agent/v1/tools` -> 200, **17 ferramentas**). O `RulePlanner` e' o
-  **default**; so' ha' `OllamaPlanner` quando ha' modelo configurado — *era isso que eu estava a
-  estragar ao passar `--model`.*
-- **`E-1147` corrigida** (nao apagada): a frase «nao e' configuravel por env» era **falsa**.
+- **`E-1152`** — os **16 testes E2E** que nunca tinham corrido: **16 passed (53,9 s)**; suite completa =
+  **27 testes verdes** em 15 specs (1 skip condicional com razao escrita).
+- **`E-1153`** — porque o `INSTALL` nao esta' medido: o smoke existe no workflow mas o `on:` nao cobre esta
+  branch; **nunca foi accionado**. Desbloqueio: `gh workflow run` (autorizacao do dono).
+- **`E-1154`** — os **10 estagios livres ja' estao `COMPLETED_VERIFIED`** (1,3,6,9,10,12,17,19,21,22); os
+  23 `IN_PROGRESS` sao **outros**.
+- **`E-1155` -> `E-1158` -> `E-1159`** — a correccao de um achado meu: o `go vet` do CI **nao** ve' o codigo
+  Windows, **mas o `golangci-lint` corre em `windows-latest`** (matrix do `test.yaml` L415, action L504) e
+  respeita os `//nolint:govet` que ja' existiam. Nao havia lacuna. E o CI **ja' corre** o orcamento do
+  bundle (L532) e o E2E de primeira execucao (L546).
+- **`E-1156`** — finding #1: **94 testes de aprovacao, 0 falhas**, incluindo
+  `TestConsumeConcorrenteComEscritoresNaoDuplicaExecucao` (PASS 0,83 s com `sync.WaitGroup`).
+- **`E-1157`** — `BUNDLE_BUDGET=PASS`: `raw=1512670/2000000`, `gzip=413586/600000`.
+- **`E-1160`** — **defeito real curado**: o gate §ESTAGIO 2 estava **CEGO** (o `stability_check` lia 1 de 3
+  formatos de saida do `hermeticos_check`, e ficou cego quando a divida chegou a zero). Baseline 107 -> 0.
+  **41/41 testes de instrumentos verdes.**
+- **`E-1161`** — os 2 candidatos de non-inference tem **teste discriminante + contraprova**;
+  **102 testes tenant/non-inference, 0 falhas**.
+- **`E-1162`** — `git diff --check` dava 3213 avisos; **3212 sao falso positivo por design** (`skills/replica`
+  e' `-text` para preservar o sha256 de terceiros). Só 1 era nosso, e foi curado.
+- **`E-1163`** — SBOM/licencas/notices passam: **0 copyleft forte em 930 itens**; a falha anterior era o
+  `go` fora do PATH.
+- **`E-1164`** — secret scan manual do diff: **5 match, 0 secrets reais** (todos fixtures em `_test.go`).
+  **Lacuna real**: o CI **nao tem** `gitleaks`/`trufflehog`/`detect-secrets` — o gate e' manual, nao continuo.
 
-*Nao ha' lacuna conhecida no `/goal`. O `CAP-L-01` fica `PARTIAL` apenas porque o enum nao tem estado
-para «implementado e medido sem referencia externa». O veredito continua `NOT_RELEASE_READY`.*
-
-
-> **REMEDIACAO MAIS RECENTE: E-1134** -- *o vermelho do `class-a-plus-integrity` era o hasher a medir CRLF, nao o indice: o manifesto e o pacote de auditoria liam o ficheiro de trabalho e o CI faz checkout LF -- curado e verde em `045fb7919`.*
-
-
-
-
-
-
-
+*O veredito nao mudou: `NOT_RELEASE_READY`. Dos 9 criterios de conclusao, **1 esta' satisfeito** -- faltam
+`INSTALL`, APK, iOS, homologacao por plataforma e revisao humana independente.*
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-> **REMEDICAO MAIS RECENTE: `E-1090`** (*ronda 173*). A cabeca do indice e' **`E-1090`**: *a documentacao do Companion (`docs/COMPANION.md`), a catraca de 47 verificacoes e as 4 injectoes que a provam.* => *a §FASE-3-A fica `COMPLETED_VERIFIED` nos 10 criterios; o que falta e' a **jornada completa** (`idle -> /goal -> ... -> success`, backend Go real + Ollama).*
 
 ## 0.0 REMEDIÇÃO MEDIDA (2026-10-15, agora) — a secção 0 abaixo fica preservada como HISTÓRIA
 
