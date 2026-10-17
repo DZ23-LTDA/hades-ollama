@@ -2169,3 +2169,46 @@ migrada, **Gradle bloqueado na DLL** (`E-1067`), **sem APK**. macOS/iOS -> por p
 
 **Doutrina em uma linha**: um ficheiro migravel nao faz das suas ocorrencias marca visivel; e
 quem procura um erro no numero pode nao ver o erro na pergunta.
+
+### Instrucoes de retomada (janela `E-1072`)
+
+**Estado**: branch `fix/checker-relogio`; cabeca do indice `E-1072`; PR #438 **aberto** e
+**nao tocado** -- *as 14 threads continuam como estavam*; `reviewDecision` **vazio**.
+
+**REGRA DE PUSH -- OBRIGATORIA, E JA' VALIDADA** (vinte 6/6 consecutivos):
+  1. commit local -> 2. ESPERAR o SHA remoto fechar com `failure=0` -> 3. `git push`.
+
+**O GRADLE, MEDIDO** (`E-1072`):
+  jar: native-platform-windows-amd64-0.22-milestone-28.jar (69.5 KB)
+       -> net/rubygrapefruit/platform/windows-amd64/native-platform.dll (141 312 B)
+  extraido para _tmp/gradle-native  (com o jar.exe do JDK 17)
+  gradle --version --no-daemon -Dorg.gradle.native.dir=_tmp/gradle-native
+  => exit 0: Gradle 8.13, Launcher JVM 17.0.20.1, OS Windows 11
+
+**O DAEMON NAO HERDA -- 6 hipoteses testadas**:
+  1. -Dorg.gradle.native.dir no launcher        -> --version SIM, daemon NAO
+  2. -Dorg.gradle.native=false                  -> nao ajuda (o daemon PRECISA das native services)
+  3. -Djava.io.tmpdir curto e existente (C:\gt) -> nao ajuda (e o tmpdir existe e e' gravavel)
+  4. GRADLE_OPTS / JAVA_OPTS                    -> nao chegam ao daemon
+  5. layout alternativo no native.dir           -> mesmo erro
+  6. org.gradle.jvmargs no gradle.properties    -> mesmo erro
+
+**A PISTA QUE O LOG DO DAEMON DEU**: ~/.gradle/daemon/8.13/daemon-3984.out.log diz que em
+**2026-10-16T06:42:43** o daemon **executou uma build** e falhou com
+***GeneratedClassCompilationException: No Java compiler found*** -- **nao** com a DLL.
+=> *o daemon JA carregou a DLL nesse dia; o que mudou foi a JVM que ele ve.*
+=> ***Um log antigo que ninguem le e' uma pista que ninguem usa.***
+
+**O ESTADO DAS PLATAFORMAS**: Windows/amd64 -> portatil **e** instalador (`E-1057`/
+`E-1058`), nao assinados, nao instalados. Linux/amd64 -> tarball **instalavel** (`E-1059`).
+**Web/PWA** -> build, SW, 3 motores, recursos+upgrade, perfil (`E-1060`..`E-1066`), mas
+`PWA_INSTALADO_NA_UI=NAO`. **Android** -> projecto completo, toolchain presente, marca
+migrada, **Gradle arranca mas o daemon nao carrega a DLL** (`E-1072`), **sem APK**.
+macOS/iOS -> por produzir.
+
+**O que NAO fazer**: `reset --hard`, `git clean`, rebase destrutivo, force-push, stash,
+`merge`, tag, release, publicacao externa, ou **resolver threads** do PR #438.
+
+**Doutrina em uma linha**: um `--version` que passa nao e' um build que passa -- o primeiro
+passo nao e' o caminho, e' a prova de que o caminho existe; e um log antigo que ninguem le e'
+uma pista que ninguem usa.

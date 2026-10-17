@@ -2032,3 +2032,29 @@ marca visível. O §FASE-5 item 2 está cumprido.
 - **o encaixe da aprovação continua por ligar** (`E-1044`);
 - **o Chrome real do utilizador**: a versão 155 **não carrega** por `--load-extension`;
 - **`CAPACIDADES` VAZIO**: o Companion **não** controla o PC.
+
+### O que falta (actualizado na janela `E-1072`)
+
+**Ganho**: o Gradle **arranca** com a `native-platform.dll` extraída do jar (`--version` exit 0).
+Antes nem isso.
+
+**Continua em falta, sem disfarce**:
+- ***`BUILD=NAO` e `APK=NAO` no Android*** -- o **daemon** do Gradle 8.13 não carrega a DLL
+  (**6 hipóteses, 10 tentativas**); **não é bloqueio externo**;
+- **a 6ª hipótese falhou** (editar o `org.gradle.jvmargs` no `gradle.properties`) -- e o
+  `android/` é **gerado**, logo testar ali é descartável;
+- **a pista por seguir**: o log do daemon diz que ele **já correu** (2026-10-16T06:42) e falhou
+  com `No Java compiler found` -- **a JVM do daemon não vê o JDK 17**;
+- **a migração da marca não foi testada numa build**;
+- **sem E2E em emulador**;
+- **macOS e iOS continuam por produzir**;
+- ***`PWA_INSTALADO_NA_UI=NAO`*** no Web;
+- **Windows e Linux `INSTALLED=NAO`/`DEVICE_E2E=NAO`**;
+- **a comparação externa continua `NAO_EXECUTADA`**;
+- **`55327160c` e `cda756f82` continuam VERMELHOS** -- pelo ritmo de push, não por defeito;
+- **decisão do proprietário em aberto**: distinguir «cancelado pelo push» de «cancelado por
+  falha» no `pr-gate` **toca a política do gate**;
+- **N=3 por fixture** na repetição: contagem, não probabilidade;
+- **as 14 threads do PR continuam abertas** -- não resolvi nenhuma (proibido);
+- **o encaixe da aprovação continua por ligar** (`E-1044`);
+- **`CAPACIDADES` VAZIO**: o Companion **não** controla o PC.

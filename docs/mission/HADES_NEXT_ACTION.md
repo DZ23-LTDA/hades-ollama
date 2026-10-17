@@ -1191,3 +1191,26 @@ nada para migrar**. O item 3 («manter, e dizer por que») resta — e o invent�
 as **8 exceções**. ⇒ **fechar o §FASE-5** e **voltar ao bloqueio do Android** com a última
 hipótese não testada: extrair a `native-platform.dll` do jar **à mão** e passar
 `-Dorg.gradle.native.dir`. **E esperar as runs antes do push.**
+
+### A proxima accao unica (janela `E-1072`)
+
+**O Gradle arranca com a DLL extraída à mão — mas o daemon não a herda.**
+
+**O ganho, medido**: extraí a `native-platform.dll` (**141 312 B**) do
+`native-platform-windows-amd64-0.22-milestone-28.jar`, e
+`gradle --version -Dorg.gradle.native.dir=…` deu **exit 0** — `Gradle 8.13`, `Launcher JVM:
+17.0.20.1`. **Antes disto, o Gradle nem `--version` fazia.**
+
+**O bloqueio**: `assembleDebug` arranca um **daemon**, e o daemon falha com
+***`NativeServices.initializeOnDaemon` → `createFileExclusively` → «O sistema não pode
+encontrar o caminho especificado»***. **6 hipóteses, 10 tentativas**, todas falharam no daemon.
+
+**E a pista que o log do daemon deu — e que diz que já funcionou**: em **2026-10-16T06:42:43**
+o daemon **executou uma build** e falhou com ***`No Java compiler found`*** — **não** com a DLL.
+⇒ ***«Um log antigo que ninguém lê é uma pista que ninguém usa.»***
+
+**A próxima accao unica**: a **6ª hipótese falhou** (o `gradle.properties`), e o `android/` é
+**gerado** — testar mais variantes ali é **trabalho descartável**. O caminho real é **o
+`JAVA_HOME` do daemon**: o log diz que o daemon já correu, e o erro de então era `No Java
+compiler found` — **a JVM do daemon não está a ver o JDK 17**. Verificar o `org.gradle.java.home`
+e o `daemon JVM` que o `--version` reporta. **E esperar as runs antes do push.**
