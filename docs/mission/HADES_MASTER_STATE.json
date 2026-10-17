@@ -2,7 +2,7 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-17T19:10:44-03:00",
+  "updated_at": "2026-10-17T19:13:16-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
@@ -395,7 +395,8 @@
         "E-215",
         "E-1145",
         "E-1146",
-        "E-1148"
+        "E-1148",
+        "E-1149"
       ],
       "blocker": "B-01",
       "next": "Sessao real de CLI: 5 hipoteses eliminadas (E-207). Candidato restante, NAO testado: contexto de criacao do processo (token/integridade/console) do filho do runner. Nao chamar de causa sem medir",
@@ -459,7 +460,8 @@
         "E-215",
         "E-239",
         "E-240",
-        "E-1148"
+        "E-1148",
+        "E-1149"
       ],
       "blocker": null,
       "next": "Isolamento por agente FECHADO (E-240). Restam como limites declarados: subagente nao herda elevacao (coberto por testes de aprovacao/quorum) e a missao multiagente real com MODELO ainda depende de credencial/opt-in para o planejador de nuvem (o runner de teste e deterministico)",
@@ -487,7 +489,8 @@
         "E-244",
         "E-245",
         "E-1147",
-        "E-1148"
+        "E-1148",
+        "E-1149"
       ],
       "blocker": null,
       "next": "Consumo por missao (com origem) FECHADO no registro, na API e na interface. Custo por ETAPA segue AUSENTE por medicao (E-241): nao ha chamada de modelo por etapa. Proximo trabalho segue nos estagios elegiveis: 12 (app full-stack - auditoria desta rodada mostrou que PublishLocal apenas COPIA arquivos, sem backend: exige rodada dedicada para banco/auth/CRUD), 21 (benchmark) e 18 (governanca)",
@@ -2894,8 +2897,8 @@
     },
     "evidence": "E-173"
   },
-  "measured_at": "2026-10-17T19:10:44-03:00",
-  "measured_commit": "cc7f76e9c75da09bda10f82bb5b4e84a9323cc0d",
+  "measured_at": "2026-10-17T19:13:16-03:00",
+  "measured_commit": "d15fc48a4ede461696122fab89fe77d43bf4aa18",
   "branch_head_measured": "f1a6c261b",
   "branch_head_measured_at": "2026-10-15T10:30:00-03:00",
   "branch_head_measured_how": "git rev-parse HEAD no checkout local (branch fix/checker-relogio), medido no round 54. DIVERGENCIA DECLARADA: measured_commit continua a ser a ultima MEDICAO COMPLETA (e423ec72e); o head avancou com as fatias do complemento 48 (sala: dominio, rotas HTTP, cliente, componente, painel e tela) e com checkpoints. Nao se reescreveu a historia e nao se reivindica nova medicao completa. NOTA DE CONCORRENCIA: este arquivo tambem e escrito por outro agente (o measured_how seguinte cita HEAD 1065e5c56 / E-518-E-519) - editar sempre por ancora unica e re-ler antes de gravar.",
