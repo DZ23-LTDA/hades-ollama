@@ -2058,3 +2058,28 @@ Antes nem isso.
 - **as 14 threads do PR continuam abertas** -- não resolvi nenhuma (proibido);
 - **o encaixe da aprovação continua por ligar** (`E-1044`);
 - **`CAPACIDADES` VAZIO**: o Companion **não** controla o PC.
+
+### O que falta (actualizado na janela `E-1073`)
+
+**Ganho mantido**: o Gradle **arranca** com a `native-platform.dll` extraída do jar
+(`--version` exit 0), e o daemon **já carregou** essa DLL neste host em 2026-10-16.
+
+**Continua em falta, sem disfarce**:
+- ***`BUILD=NAO` e `APK=NAO` no Android*** -- **12 tentativas, 8 hipoteses**, `BLOCKED`
+  registado; **não é bloqueio externo**, mas o desbloqueio é **decisão do dono**
+  (outro Gradle 8.14+/9.x, ou outro host/runner);
+- **as duas causas candidatas foram eliminadas** (o `java.io.tmpdir` e o `~/.gradle/native/`
+  inexistente);
+- **a migração da marca não foi testada numa build**;
+- **sem E2E em emulador**;
+- **macOS e iOS continuam por produzir**;
+- ***`PWA_INSTALADO_NA_UI=NAO`*** no Web;
+- **Windows e Linux `INSTALLED=NAO`/`DEVICE_E2E=NAO`**;
+- **a comparação externa continua `NAO_EXECUTADA`**;
+- **`55327160c` e `cda756f82` continuam VERMELHOS** -- pelo ritmo de push, não por defeito;
+- **decisão do proprietário em aberto**: distinguir «cancelado pelo push» de «cancelado por
+  falha» no `pr-gate` **toca a política do gate**;
+- **os 73 IDs órfãos continuam por classificar** (§FASE-7 item 3) -- **o próximo trabalho**;
+- **as 14 threads do PR continuam abertas** -- não resolvi nenhuma (proibido);
+- **o encaixe da aprovação continua por ligar** (`E-1044`);
+- **`CAPACIDADES` VAZIO**: o Companion **não** controla o PC.

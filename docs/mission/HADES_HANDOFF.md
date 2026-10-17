@@ -2212,3 +2212,40 @@ macOS/iOS -> por produzir.
 **Doutrina em uma linha**: um `--version` que passa nao e' um build que passa -- o primeiro
 passo nao e' o caminho, e' a prova de que o caminho existe; e um log antigo que ninguem le e'
 uma pista que ninguem usa.
+
+### Instrucoes de retomada (janela `E-1073`)
+
+**Estado**: branch `fix/checker-relogio`; cabeca do indice `E-1073`; PR #438 **aberto** e
+**nao tocado** -- *as 14 threads continuam como estavam*; `reviewDecision` **vazio**.
+
+**REGRA DE PUSH -- OBRIGATORIA, E JA' VALIDADA** (vinte e um 6/6 consecutivos):
+  1. commit local -> 2. ESPERAR o SHA remoto fechar com `failure=0` -> 3. `git push`.
+
+**O GRADLE, FECHADO COM `BLOCKED`** (`E-1073`):
+  12 tentativas, 8 hipoteses, todas com a mesma linha:
+    Failed to load native library 'native-platform.dll' for Windows 11 amd64
+  O launcher carrega (com -Dorg.gradle.native.dir); o daemon nao.
+  As duas causas candidatas foram ELIMINADAS por medicao:
+    - java.io.tmpdir efectivo = C:\Users\DZ23\AppData\Local\Temp\ (o Java ignora TMP/TEMP)
+    - ~/.gradle/native/ nao existia; criado e gravavel; falhou igual
+  E a prova de que o daemon JA carregou: daemon-3984.out.log (10-16 06:42:43) tem
+    [DEBUG] [NativeServices] Native-plat...   <- inicializou
+  e a falha de entao era GeneratedClassCompilationException: No Java compiler found.
+  => O desbloqueio e' DECISAO DO DONO: outro Gradle (8.14+/9.x) ou outro host/runner.
+
+**PELO PROTOCOLO ANTILOOP, ITEM 5** -- *tres tentativas na mesma causa => BLOCKED e avancar*
+  => 12 tentativas e' quatro vezes o limite => ***BLOCKED registado, e mudanca de trabalho.***
+  => *Repetir com variacao nao e' investigar -- e' insistir com disfarce.*
+
+**O ESTADO DAS PLATAFORMAS**: Windows/amd64 -> portatil **e** instalador (`E-1057`/
+`E-1058`), nao assinados, nao instalados. Linux/amd64 -> tarball **instalavel** (`E-1059`).
+**Web/PWA** -> build, SW, 3 motores, recursos+upgrade, perfil (`E-1060`..`E-1066`), mas
+`PWA_INSTALADO_NA_UI=NAO`. **Android** -> projecto completo, toolchain presente, marca
+migrada, **`BLOCKED` no daemon do Gradle** (`E-1073`), **sem APK**. macOS/iOS -> por produzir.
+
+**O que NAO fazer**: `reset --hard`, `git clean`, rebase destrutivo, force-push, stash,
+`merge`, tag, release, publicacao externa, ou **resolver threads** do PR #438.
+**E nao voltar ao Gradle sem hipotese nova**: 8 ja' foram testadas.
+
+**Doutrina em uma linha**: repetir com variacao nao e' investigar -- e' insistir com disfarce;
+e o que ja' funcionou uma vez neste host nao esta' provado impossivel -- esta' provado instavel.
