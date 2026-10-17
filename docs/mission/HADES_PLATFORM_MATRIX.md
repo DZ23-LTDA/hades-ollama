@@ -23,6 +23,16 @@ não é APK.***
 | **iOS** | `apps/mobile-agentic/` (Expo/RN) | `AUSENTE` | `AUSENTE` | - | `AUSENTE` | NÃO MEDIDO | NÃO MEDIDO | não assinado (unsigned) |
 | **Web/PWA** | `app/ui/app/` (React+TS+Vite) | `dz23-e2e.yaml` | `app\ui\app\dist\index.html` | 9 KB | `0daa2a2f233dc3d58c8699f4c72e0738` | N/A (build de produção) | NÃO MEDIDO (PWA_INSTALADO_NA_UI=NAO) | N/A |
 
+## Artefactos de COMPONENTE (nao sao uma das 6 plataformas)
+
+Pacotes que vivem em `dist/` e nao correspondem a um alvo de produto. *Sem esta seccao, um pacote que existe nao aparece em inventario nenhum.*
+
+| Componente | Pacote | Tamanho | Hash (SHA-256[:32]) | Proveniencia | Escrito em |
+| --- | --- | --- | --- | --- | --- |
+| `browser-bridge` | `dist\browser-bridge\hades-browser-bridge-0.1.0-unsigned.zip` | 94 KB | `5d8792022fae0ae0aec5b82dbd893a2c` | SEM_PROVENIENCIA | 2026-10-16 18:52 |
+| `browser-bridge-firefox` | `dist\browser-bridge-firefox\hades-browser-bridge-firefox-UNSIGNED.zip` | 108 KB | `d6c08f0875ef0a0c6c740a9e2bb75c8b` | PROVENIENCIA_SEM_SHA | 2026-10-17 13:30 |
+
+
 ## O que cada eixo significa, e o que NÃO conta
 
 | Eixo | Conta como MEDIDO | NÃO conta |

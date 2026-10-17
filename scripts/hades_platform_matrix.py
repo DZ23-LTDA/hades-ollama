@@ -164,6 +164,43 @@ def web_build_coerente(web_dist: Path) -> tuple[int, int, str]:
     return len(refs), faltam, data
 
 
+def artefactos_de_componentes() -> list[dict]:
+    """Os `.zip`/artefactos de COMPONENTE que vivem em `dist/` e nao sao uma das 6 plataformas.
+
+    *PORQUE ISTO EXISTE (medido na ronda 241):* `dist/browser-bridge/` (zip de 2026-10-16 18:52,
+    sem `PROVENIENCIA.txt`) e `dist/browser-bridge-firefox/` (zip de 2026-10-17 13:30, COM
+    `PROVENIENCIA.txt`) existiam e **nenhum aparecia em inventario nenhum**. O §ESTAGIO 1 exige
+    «inventario de codigo, plataformas, workflows, **pacotes** e lacunas» -- *um pacote que
+    existe e nao esta' no inventario e' um pacote que ninguem sabe que existe.*
+    """
+    out = []
+    for pasta in sorted(DIST.glob("browser-bridge*")):
+        if not pasta.is_dir():
+            continue
+        zips = sorted(p for p in pasta.rglob("*.zip") if p.is_file())
+        if not zips:
+            continue
+        z = zips[0]
+        declarado = "SEM_PROVENIENCIA"
+        # o `PROVENIENCIA.txt` pode estar na raiz OU dentro da pasta extraida do zip
+        provs = sorted(pasta.rglob("PROVENIENCIA.txt"))
+        prov = provs[0] if provs else (pasta / "PROVENIENCIA.txt")
+        if prov.is_file():
+            m = re.search(r"SOURCE_SHA:\s*([0-9a-f]{7,40})",
+                          prov.read_text(encoding="utf-8", errors="replace"))
+            declarado = m.group(1) if m else "PROVENIENCIA_SEM_SHA"
+        out.append({
+            "nome": pasta.name,
+            "pacote": str(z.relative_to(RAIZ)),
+            "tamanho": tamanho(z),
+            "hash": sha(z),
+            "proveniencia": declarado,
+            "data": __import__("datetime").datetime.fromtimestamp(
+                z.stat().st_mtime).strftime("%Y-%m-%d %H:%M"),
+        })
+    return out
+
+
 def main() -> int:
     # ---------- Android: o `app.json`/`eas.json` existem? o APK? ----------
     app_json = MOBILE / "app.json"
@@ -284,6 +321,17 @@ def main() -> int:
             p["nome"], p["fonte"], p["build_wf"], p["pacote"], p["pacote_tamanho"],
             p["pacote_hash"], p["install"], p["device_e2e"], p["assinatura"]))
 
+    linhas.append("")
+    linhas.append("## Artefactos de COMPONENTE (nao sao uma das 6 plataformas)")
+    linhas.append("")
+    linhas.append("Pacotes que vivem em `dist/` e nao correspondem a um alvo de produto. *Sem esta seccao, um pacote que existe nao aparece em inventario nenhum.*")
+    linhas.append("")
+    linhas.append("| Componente | Pacote | Tamanho | Hash (SHA-256[:32]) | Proveniencia | Escrito em |")
+    linhas.append("| --- | --- | --- | --- | --- | --- |")
+    for a in artefactos_de_componentes():
+        linhas.append("| `%s` | `%s` | %s | `%s` | %s | %s |" % (
+            a["nome"], a["pacote"], a["tamanho"], a["hash"], a["proveniencia"], a["data"]))
+    linhas.append("")
     linhas.append("")
     linhas.append("## O que cada eixo significa, e o que NÃO conta")
     linhas.append("")
