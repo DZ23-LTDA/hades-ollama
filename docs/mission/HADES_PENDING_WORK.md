@@ -1659,3 +1659,31 @@ E **não alarguei o mapa `LIGACOES`** com eles.
 - ligação da extensão ao **Mission Control** (`missao` fica a `null`);
 - APK Android bloqueado pela DLL JNI (`E-1019`);
 - macOS/iOS `BLOCKED_EXTERNAL` pela **máquina**.
+
+### O que falta (actualizado na janela `E-1056`)
+
+**Fechado**: a linha de investigação da rastreabilidade. **Duas perguntas, dois zeros.**
+Os quatro detectores de varredura **não entraram na bateria** — deliberado.
+
+**Continua em falta, sem disfarce**:
+- **os artefactos não assinados do candidato actual** (§FASE-6) -- o trabalho de produto
+  que falta; **nenhum pacote do candidato `2bca9392f` foi produzido**;
+- **o mapa `LIGACOES` continua com 6 entradas** (`E-1054`), só do estágio 21;
+- **um detector léxico não vê uma ligação descrita por outras palavras** -- o limite fica;
+- **`eas.json` existe**, mas num caminho que o detector só encontrou corrigido;
+- **a comparação externa continua `NAO_EXECUTADA`**;
+- **`55327160c` e `cda756f82` continuam VERMELHOS** -- pelo ritmo de push, não por defeito;
+- **decisão do proprietário em aberto**: distinguir «cancelado pelo push» de «cancelado
+  por falha» no `pr-gate` **toca a política do gate**; a cura por baixo está **proibida**;
+- **N=3 por fixture** na repetição: contagem, não probabilidade;
+- **as 14 threads do PR continuam abertas** -- não resolvi nenhuma (proibido);
+- **o encaixe da aprovação continua por ligar** (`E-1044`);
+- **shadow roots fechados**, **cross-origin**, `document.domain`, `srcdoc`: como no `E-1040`;
+- **BFCache** sem execução observada (`E-1038`);
+- **o Chrome real do utilizador**: a versão 155 **não carrega** por `--load-extension`;
+- **Firefox** e **Safari**;
+- **sem `.crx`, sem assinatura, sem SBOM do pacote**;
+- **`CAPACIDADES` VAZIO**: o Companion **não** controla o PC;
+- ligação da extensão ao **Mission Control** (`missao` fica a `null`);
+- APK Android bloqueado pela DLL JNI (`E-1019`);
+- macOS/iOS `BLOCKED_EXTERNAL` pela **máquina**.

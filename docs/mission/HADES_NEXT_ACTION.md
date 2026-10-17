@@ -851,3 +851,27 @@ produzir** um artefacto e **não o citam?*** Não «quais citam zero» (113 dos 
 narrativos e não têm de citar). A pergunta é sobre **afirmação**, não sobre ausência:
 procurar nos documentos frases que nomeiam um artefacto como produzido por eles, e
 verificar se o ponteiro está lá. Tudo interno, e **esperar as runs antes de qualquer push**.
+
+### A proxima accao unica (janela `E-1056`)
+
+**Fiz a pergunta certa — *quais documentos **afirmam produzir** um artefacto e não o
+citam?* — e deu SETE falsos positivos, todos do mesmo erro: o regex lê «está em» e «a
+partir de» como se fossem «gera».**
+
+Verificados um a um: `eas.json` **existe**; `_tmp/rel_a.md` é **gitignored**;
+`HADES_MASTER_STATE.json` é a **entrada** do gerador, não a saída; e os outros quatro são
+**citações**, não produções.
+
+⇒ ***«Um detector léxico não vê a relação: vê os termos.»***
+⇒ ***«O resultado de procurar e não encontrar é «não encontrei» — e não «não existe».»***
+
+**As duas perguntas úteis foram feitas e respondidas (zero). A linha de investigação
+encerra aqui.** — ***«A diligência sem hipótese vira ruído, e ruído num gate é pior do que
+um gate a menos.»***
+
+**A proxima accao unica**: **voltar a construir em vez de auditar.** A janela 142 provou
+que o estágio 21 mede (3/8 verde, veredictos reproduzem) e que a ligação vigia. O trabalho
+que falta é **de produto**, não de rastreabilidade: os artefactos não assinados do
+candidato actual (§FASE-6). O Windows é o único que o toolchain deste host consegue
+produzir ponta a ponta — e há `scripts/hades_bundle_windows.ps1` no WIP integrado.
+Medir primeiro o que ele faz; depois correr. **E esperar as runs antes de qualquer push.**

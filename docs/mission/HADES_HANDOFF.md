@@ -1602,3 +1602,37 @@ e' sobre afirmacao, nao sobre ausencia.*
 **Doutrina em uma linha**: quando uma medicao produz muitos achados de uma vez, a primeira
 hipotese e' a medicao; um mapa com falsos positivos e' pior do que nenhum; e um instrumento
 que produz falsos positivos nao deve virar gate.
+
+### Instrucoes de retomada (janela `E-1056`)
+
+**Estado**: branch `fix/checker-relogio`; cabeca do indice `E-1056`; PR #438 **aberto** e
+**nao tocado** -- *as 14 threads continuam como estavam*; `reviewDecision` **vazio**.
+
+**REGRA DE PUSH -- OBRIGATORIA, E JA' VALIDADA** (sete 6/6 consecutivos):
+  1. commit local -> 2. ESPERAR o SHA remoto fechar com `failure=0` -> 3. `git push`.
+
+**A LINHA DA RASTREABILIDADE, ENCERRADA** (`E-1055`, `E-1056`): duas perguntas foram
+feitas -- *quais documentos citam zero artefactos* (113 de 143, narrativos) e *quais
+afirmam produzir um artefacto e nao o citam* (7 achados) -- e as duas deram **ZERO
+defeitos reais**. Os quatro detectores de varredura **nao entraram na bateria**.
+  *O resultado de procurar e nao encontrar e' «nao encontrei» -- e nao «nao existe».*
+
+**E O ERRO DOS SETE TEM UM NOME**: o regex aceita `e' a fonte`, `gera` **e** `esta' em`,
+`a partir de`. *Um detector lexico nao ve a relacao: ve os termos.*
+
+**QUATRO MEDICOES NA MESMA JANELA QUE APONTARAM PARA O INSTRUMENTO**: o `#11`
+(767/303/768 antes do renderizador); o `E-1044` (o teste que nao montava o mundo); o
+`E-1055` (10 ponteiros quebrados que eram 4 erros); o `E-1056` (7 afirmacoes que eram 7
+leituras erradas). ***Quando uma medicao produz muitos achados de uma vez, a primeira
+hipotese e' a medicao.***
+
+**O QUE A JANELA 142 PROVOU**: o estagio 21 mede (matriz T2 real `PASS` 599,88 s -- 3/8
+verde, 4 trapacearam, veredictos repetem um dia depois); a repeticao resiste tres dias; a
+ligacao vigia (18 assercoes, 4 injecoes); e o vermelho do `pr-gate` e' o **ritmo de push**.
+
+**O que NAO fazer**: `reset --hard`, `git clean`, rebase destrutivo, force-push, stash,
+`merge`, tag, release, publicacao externa, ou **resolver threads** do PR #438.
+
+**Doutrina em uma linha**: um detector lexico ve termos, nao relacoes; procurar e nao
+encontrar e' «nao encontrei»; e a diligencia sem hipotese vira ruido -- que num gate e'
+pior do que um gate a menos.

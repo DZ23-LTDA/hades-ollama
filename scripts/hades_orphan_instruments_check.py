@@ -82,6 +82,14 @@ ISENTOS = {
     # vermelho sobre documentos correctos, e a catraca seria desacreditada pela propria lista.*
     # => *Fica isento com o motivo escrito; a divida e' a pergunta que ele ainda nao sabe fazer.*
     "hades_link_scan.py": "varredura exploratoria; da' falsos positivos (E-1055) -- nao deve ser gate",
+    # *A QUARTA varredura exploratoria.* Ele fez a **pergunta certa** (`E-1056`): *quais
+    # documentos **afirmam produzir** um artefacto e nao o citam?* -- e deu **7 achados**,
+    # verificados um a um: **os 7 eram falsos positivos**, todos do mesmo erro, porque o regex
+    # aceita `e' a fonte`, `gera` **e** `esta' em`, `a partir de`. => ***Um detector lexico nao ve
+    # a relacao: ve os termos.*** => *Mesma razao do `hades_link_scan.py`: falso positivo nao vira
+    # gate. A regra dos quatro: **varredura exploratoria fica isenta; so' entra na bateria o que
+    # discrimina.***
+    "hades_claim_scan.py": "varredura exploratoria; detector lexico da' falsos positivos (E-1056)",
     # *Anti-armadilha deliberado:* recusa (exit=2) se a receita `LOCALAPPDATA` vier incompleta,
     # e declara BLOCKED_BY_EXTERNAL_DEPENDENCY (exit=3) sem `go`. => *Agora corre no passo 12 da
     # bateria, que e' um gate -- logo a isencao seria desnecessaria, e o proprio `--check`
