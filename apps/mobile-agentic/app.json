@@ -2,6 +2,7 @@
   "expo": {
     "name": "HADES",
     "slug": "hades",
+    "owner": "dz23s-team",
     "version": "0.2.0",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
@@ -20,6 +21,11 @@
       "permissions": ["POST_NOTIFICATIONS"],
       "adaptiveIcon": { "backgroundColor": "#111111" }
     },
-    "web": { "bundler": "metro" }
+    "web": { "bundler": "metro" },
+    "extra": {
+      "eas": {
+        "projectId": "bf2278ec-ade5-4a97-9b31-7c2899488596"
+      }
+    }
   }
 }
