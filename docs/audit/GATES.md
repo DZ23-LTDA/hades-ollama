@@ -80,6 +80,7 @@ que passam: *quem os corre é o auditor, e o resultado é do estado em que ele o
 | 70 | FINDINGS do PR: a revalidacao contra o codigo atual |
 | 71 | fault injection dos findings (3 injecoes + contraprova) |
 | 72 | PACOTE LINUX: o tarball, o binario ELF e o hash |
+| 73 | E2E DA EXTENSAO COM DOM REAL (nove verificacoes) |
 
 ## Como correr a bateria completa
 

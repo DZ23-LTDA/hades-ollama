@@ -1126,4 +1126,21 @@ if ($LASTEXITCODE -ne 0) {
 } else { '    OK' }
 $passos += 'pacote-linux'
 
+
+''
+# E-1115: o E2E da extensao com DOM REAL. *A aba em 127.0.0.1, a observacao do DOM via chrome.scripting, o
+# clique, o preenchimento de um campo nao-sensivel, a navegacao para outra origem, o NEGATIVO (o valor do
+# password NAO e' lido), e a prova de que a extensao NAO injecta fora das origens autorizadas.*
+'--- 73. E2E DA EXTENSAO COM DOM REAL (nove verificacoes)'
+Push-Location app/ui/app
+$saidaDom = & node e2e-extension-dom.mjs 2>&1
+$saidaDom | Select-Object -Last 3 | ForEach-Object { "    " + $_.ToString().Substring(0, [Math]::Min(110, $_.ToString().Length)) }
+$exitDom = $LASTEXITCODE
+Pop-Location
+if ($exitDom -ne 0) {
+  $falhas.Add("e2e-extension-dom.mjs (exit $exitDom)")
+  '    FALHA'
+} else { '    OK' }
+$passos += 'extensao-dom'
+
 "GATES LOCAIS: $($passos -join ' + ') VERDES"
