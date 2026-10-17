@@ -28,7 +28,8 @@ func idempotencyRuntime(t *testing.T) (*Runtime, *ContextStore, Project) {
 		Store:         store,
 		Context:       contextStore,
 		Planner:       RulePlanner{},
-		WorkspaceRoot: workspace, DataRoot: t.TempDir()})
+		WorkspaceRoot: workspace, DataRoot: t.TempDir(),
+	})
 	if err != nil {
 		t.Fatal(err)
 	}

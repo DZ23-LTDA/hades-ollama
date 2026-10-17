@@ -52,7 +52,8 @@ func TestConsumoDoPlanejamentoConsisteComAsChamadasReais(t *testing.T) {
 	runtime, err := NewRuntime(RuntimeConfig{
 		Store:         store,
 		Planner:       planejador,
-		WorkspaceRoot: raiz, DataRoot: t.TempDir()})
+		WorkspaceRoot: raiz, DataRoot: t.TempDir(),
+	})
 	if err != nil {
 		t.Fatal(err)
 	}

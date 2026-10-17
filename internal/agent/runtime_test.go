@@ -760,7 +760,8 @@ func TestRuntimeCancelInterruptsActiveToolAndPreventsNextStep(t *testing.T) {
 		Planner: fixedPlanner{steps: []Step{
 			{ID: "step_1", Kind: "workspace.read", Title: "blocking", Risk: RiskRead, State: StepPending},
 			{ID: "step_2", Kind: "workspace.read", Title: "must not run", Risk: RiskRead, State: StepPending},
-		}}, DataRoot: t.TempDir()})
+		}}, DataRoot: t.TempDir(),
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1379,7 +1380,8 @@ func TestRuntimeUsesExplicitPlannerResolverForRemoteProvider(t *testing.T) {
 	runtime, err := NewRuntime(RuntimeConfig{
 		Store:           NewMemoryStore(),
 		PlannerResolver: resolver,
-		WorkspaceRoot:   t.TempDir(), DataRoot: t.TempDir()})
+		WorkspaceRoot:   t.TempDir(), DataRoot: t.TempDir(),
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1710,7 +1712,8 @@ func TestRuntimeEmitsBrowserFrameEvent(t *testing.T) {
 		Store:         store,
 		WorkspaceRoot: workspace,
 		Planner:       planner,
-		Tools:         registry, DataRoot: t.TempDir()})
+		Tools:         registry, DataRoot: t.TempDir(),
+	})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -20,7 +20,8 @@ func setupLedgerAPI(t *testing.T) (*gin.Engine, *agent.Runtime, agent.Company) {
 	runtime, err := agent.NewRuntime(agent.RuntimeConfig{
 		Store:         agent.NewMemoryStore(),
 		Planner:       agent.RulePlanner{},
-		WorkspaceRoot: t.TempDir(), DataRoot: t.TempDir()})
+		WorkspaceRoot: t.TempDir(), DataRoot: t.TempDir(),
+	})
 	if err != nil {
 		t.Fatalf("create runtime: %v", err)
 	}

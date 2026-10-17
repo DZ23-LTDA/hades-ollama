@@ -145,7 +145,8 @@ func TestMissaoRealComPlanejadorDeNuvemEhOptIn(t *testing.T) {
 		Store:           store,
 		Planner:         planejador,
 		PlannerResolver: resolvedorFixo{provider: provedor, planner: planejador},
-		WorkspaceRoot:   raiz, DataRoot: t.TempDir()})
+		WorkspaceRoot:   raiz, DataRoot: t.TempDir(),
+	})
 	if err != nil {
 		t.Fatal(err)
 	}

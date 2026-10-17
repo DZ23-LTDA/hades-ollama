@@ -34,7 +34,8 @@ func connectorScheduleFixture(t *testing.T, server *httptest.Server, methods []s
 		Context:       contextStore,
 		Planner:       RulePlanner{},
 		WorkspaceRoot: t.TempDir(),
-		Connectors:    manager, DataRoot: t.TempDir()})
+		Connectors:    manager, DataRoot: t.TempDir(),
+	})
 	if err != nil {
 		t.Fatal(err)
 	}

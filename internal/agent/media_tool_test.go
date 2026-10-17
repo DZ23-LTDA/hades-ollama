@@ -111,7 +111,8 @@ func TestMediaProcessDoesNotCallProviderBeforeApproval(t *testing.T) {
 		Store:         NewMemoryStore(),
 		Planner:       fixedPlanner{steps: []Step{{ID: "step_media", Kind: "media.process", Title: "generate image", Risk: RiskExternalSideEffect, State: StepPending, Input: map[string]any{"operation": "image.generate", "prompt": "fixture"}}}},
 		WorkspaceRoot: workspace,
-		Media:         manager, DataRoot: t.TempDir()})
+		Media:         manager, DataRoot: t.TempDir(),
+	})
 	if err != nil {
 		t.Fatal(err)
 	}

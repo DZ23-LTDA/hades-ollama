@@ -36,7 +36,8 @@ func runtimeSobre(t *testing.T, raiz string) (*Runtime, *ContextStore) {
 		Store:         store,
 		Context:       contextStore,
 		Planner:       RulePlanner{},
-		WorkspaceRoot: workspace, DataRoot: t.TempDir()})
+		WorkspaceRoot: workspace, DataRoot: t.TempDir(),
+	})
 	if err != nil {
 		t.Fatal(err)
 	}

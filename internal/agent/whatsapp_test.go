@@ -463,7 +463,8 @@ func TestWhatsAppGatewayCommandBridgeCreatesMission(t *testing.T) {
 	runtime, err := NewRuntime(RuntimeConfig{
 		Store:         NewMemoryStore(),
 		Planner:       RulePlanner{},
-		WorkspaceRoot: t.TempDir(), DataRoot: t.TempDir()})
+		WorkspaceRoot: t.TempDir(), DataRoot: t.TempDir(),
+	})
 	if err != nil {
 		t.Fatalf("create runtime: %v", err)
 	}
@@ -541,7 +542,8 @@ func TestWhatsAppGatewayIntentRouting(t *testing.T) {
 	runtime, _ := NewRuntime(RuntimeConfig{
 		Store:         NewMemoryStore(),
 		Planner:       RulePlanner{},
-		WorkspaceRoot: t.TempDir(), DataRoot: t.TempDir()})
+		WorkspaceRoot: t.TempDir(), DataRoot: t.TempDir(),
+	})
 
 	mockAdp := NewMockWhatsAppAdapter(WhatsAppBackendEvolution, GateStatusPass)
 	gw := NewWhatsAppGateway(WhatsAppGatewayConfig{

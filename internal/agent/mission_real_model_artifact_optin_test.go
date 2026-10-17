@@ -44,7 +44,8 @@ func TestMissaoRealComModeloLocalProduzArtefato(t *testing.T) {
 		Store:           store,
 		Planner:         planejador,
 		PlannerResolver: resolvedorFixo{provider: "ollama-local", planner: planejador},
-		WorkspaceRoot:   root, DataRoot: t.TempDir()})
+		WorkspaceRoot:   root, DataRoot: t.TempDir(),
+	})
 	if err != nil {
 		t.Fatal(err)
 	}

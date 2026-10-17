@@ -21,7 +21,8 @@ func TestRunMissionReportsQueuedNotRunning(t *testing.T) {
 	runtime, err := agent.NewRuntime(agent.RuntimeConfig{
 		Store:         agent.NewMemoryStore(),
 		Planner:       agent.RulePlanner{},
-		WorkspaceRoot: workspace, DataRoot: t.TempDir()})
+		WorkspaceRoot: workspace, DataRoot: t.TempDir(),
+	})
 	if err != nil {
 		t.Fatal(err)
 	}

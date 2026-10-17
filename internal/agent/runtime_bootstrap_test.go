@@ -57,7 +57,8 @@ func TestRuntimeUsesLocalModelResolver(t *testing.T) {
 	runtime, err := NewRuntime(RuntimeConfig{
 		Store:           NewMemoryStore(),
 		PlannerResolver: resolver,
-		WorkspaceRoot:   t.TempDir(), DataRoot: t.TempDir()})
+		WorkspaceRoot:   t.TempDir(), DataRoot: t.TempDir(),
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
