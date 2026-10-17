@@ -1,5 +1,7 @@
 # HADES — HANDOFF (como retomar a missão do zero)
 
+> **REMEDICAO MAIS RECENTE: `E-1090`** (*ronda 173*). A cabeca do indice e' **`E-1090`**: *a documentacao do Companion (`docs/COMPANION.md`), a catraca de 47 verificacoes e as 4 injectoes que a provam.* => *a §FASE-3-A fica `COMPLETED_VERIFIED` nos 10 criterios; o que falta e' a **jornada completa** (`idle -> /goal -> ... -> success`, backend Go real + Ollama).*
+
 ## 0.0 REMEDIÇÃO MEDIDA (2026-10-15, agora) — a secção 0 abaixo fica preservada como HISTÓRIA
 
 > **REMEDIÇÃO MAIS RECENTE: `E-959`** (*cadeia `E-820` → `E-867`, rodadas 181–222*).

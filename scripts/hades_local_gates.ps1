@@ -635,4 +635,32 @@ if ($LASTEXITCODE -ne 0) {
   '    FALHA'
 } else { '    OK' }
 $passos += 'catraca-ligacao'
+
+''
+# E-1090: a DOCUMENTACAO do Companion. *Um documento que existe mas nao cobre os estados e' pior do
+# que nenhum: parece documentacao e nao o e'.* => *e o mesmo defeito que o E-1084 apanhou no
+# inventario -- um detector lexical ve termos, nao relacoes -- por isso cada verificacao e' especifica:
+# o estado tem de estar na tabela E no mapa, a chave tem de ser a MESMA do codigo, e as limitacoes
+# tem de estar declaradas em vez de escondidas.*
+'--- 34. DOCUMENTACAO do Companion: os 8 estados, o mapa para os 14, e as limitacoes'
+$saidaDocC = & python -X utf8 scripts/hades_companion_doc_check.py 2>&1
+$saidaDocC | Select-Object -Last 2 | ForEach-Object { "    " + $_.ToString().Substring(0, [Math]::Min(110, $_.ToString().Length)) }
+if ($LASTEXITCODE -ne 0) {
+  $falhas.Add("hades_companion_doc_check.py (exit $LASTEXITCODE)")
+  '    FALHA'
+} else { '    OK' }
+$passos += 'doc-companion'
+
+''
+# E-1090: o fault injection da catraca da documentacao. *Um checker que so' passa nao vale nada -- o
+# E-1082 ensinou que um teste que passa com o defeito nao discrimina.* => *aqui injectam-se 4 defeitos
+# no DOCUMENTO real, numa copia descartavel, e exige-se que o checker os apanhe.*
+'--- 35. fault injection da catraca da documentacao (4 injecoes + contraprova)'
+$saidaDocCT = & python -X utf8 scripts/hades_companion_doc_check_test.py 2>&1
+$saidaDocCT | Select-Object -Last 2 | ForEach-Object { "    " + $_.ToString().Substring(0, [Math]::Min(110, $_.ToString().Length)) }
+if ($LASTEXITCODE -ne 0) {
+  $falhas.Add("hades_companion_doc_check_test.py (exit $LASTEXITCODE)")
+  '    FALHA'
+} else { '    OK' }
+$passos += 'doc-companion-testes'
 "GATES LOCAIS: $($passos -join ' + ') VERDES"

@@ -41,6 +41,8 @@ que passam: *quem os corre é o auditor, e o resultado é do estado em que ele o
 | 31 | INVENTARIO do worktree: `M` de conteudo vs `M` de fim-de-linha |
 | 32 | CATRACA da ligacao: os docs do estagio citam os artefactos? |
 | 33 | testes da ligacao (4 injecoes + contraprova, numa COPIA) |
+| 34 | DOCUMENTACAO do Companion: os 8 estados, o mapa para os 14, e as limitacoes |
+| 35 | fault injection da catraca da documentacao (4 injecoes + contraprova) |
 
 ## Como correr a bateria completa
 
