@@ -1742,3 +1742,31 @@ gerado com binários Go construídos da fonte. E a dívida do `[UninstallRun]` s
 - **o Chrome real do utilizador**: a versão 155 **não carrega** por `--load-extension`;
 - **Firefox** e **Safari**; sem `.crx`, sem SBOM do pacote;
 - **`CAPACIDADES` VAZIO**: o Companion **não** controla o PC.
+
+### O que falta (actualizado na janela `E-1059`)
+
+**Fechado**: o **tarball Linux instalável** — 11 entradas, com `install.sh`/`uninstall.sh`
+e `VERSION`, construído **sem bash e sem compilador C**.
+
+**Continua em falta, sem disfarce**:
+- ***`BUILD_DESTE_HEAD=NAO` no Linux*** -- o binário é de `9f7379502b1d`; reconstruí-lo
+  exige **CGO + gcc/clang**, ausentes;
+- ***`INSTALLED=NAO` e `DEVICE_E2E=NAO` no Linux*** -- não há Linux nativo aqui, e o
+  `install.sh` **não foi executado**;
+- **a sintaxe do `install.sh` não foi validada por um bash** -- só o conteúdo, que vem do
+  `package_linux.sh`;
+- **macOS, Android, iOS e Web/PWA continuam por produzir** neste candidato;
+- **`INSTALLED=NAO` e `DEVICE_E2E=NAO` no Windows** -- instalar exige aprovação do dono;
+- **`lib\ollama` é pré-construído**: o instalador Windows **não é** build 100% reproduzível;
+- **a comparação externa continua `NAO_EXECUTADA`**;
+- **`55327160c` e `cda756f82` continuam VERMELHOS** -- pelo ritmo de push, não por defeito;
+- **decisão do proprietário em aberto**: distinguir «cancelado pelo push» de «cancelado
+  por falha» no `pr-gate` **toca a política do gate**;
+- **N=3 por fixture** na repetição: contagem, não probabilidade;
+- **as 14 threads do PR continuam abertas** -- não resolvi nenhuma (proibido);
+- **o encaixe da aprovação continua por ligar** (`E-1044`);
+- **shadow roots fechados**, **cross-origin**: como no `E-1040`; **BFCache** sem execução
+  observada (`E-1038`);
+- **o Chrome real do utilizador**: a versão 155 **não carrega** por `--load-extension`;
+- **Firefox** e **Safari**; sem `.crx`, sem SBOM do pacote;
+- **`CAPACIDADES` VAZIO**: o Companion **não** controla o PC.

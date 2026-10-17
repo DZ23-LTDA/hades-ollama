@@ -1713,3 +1713,45 @@ primeiro parecido.*
 **Doutrina em uma linha**: o bloqueio nao e' de permissao, e' de toolchain; um aviso do
 compilador e' uma medicao; e um seletor que nao esta' limitado ao sitio onde o defeito vive
 apanha o primeiro parecido.
+
+### Instrucoes de retomada (janela `E-1059`)
+
+**Estado**: branch `fix/checker-relogio`; cabeca do indice `E-1059`; PR #438 **aberto** e
+**nao tocado** -- *as 14 threads continuam como estavam*; `reviewDecision` **vazio**.
+
+**REGRA DE PUSH -- OBRIGATORIA, E JA' VALIDADA** (nove 6/6 consecutivos):
+  1. commit local -> 2. ESPERAR o SHA remoto fechar com `failure=0` -> 3. `git push`.
+
+**O TARBALL LINUX INSTALAVEL** (`E-1059`):
+  dist\linux-amd64\r144\hades-linux-amd64-unsigned.tar.gz
+  16 970 476 bytes   SHA256 1d870504a759dba2eb12d9381ae21495e9c6e87cad82fa7ffa9df3b0f46fe2db
+  11 entradas: bin/hades + install.sh + uninstall.sh + VERSION + LEIA-ME +
+               LICENSE + UPSTREAM_POLICY + THIRD_PARTY_NOTICES + 3 SBOMs
+
+**O QUE O `VERSION` DIZ, E E' O QUE IMPORTA**:
+  commit_do_binario=9f7379502b1d      <-- o binario NAO e' deste HEAD
+  commit_do_head_no_momento=63a1b47c062a
+  build_reproduzivel=NAO
+  *Reconstrui-lo exigiria CGO_ENABLED=1 e gcc/clang -- ausentes -- e um bash real (o do
+  WSL responde `execvpe(/bin/bash) failed`).*
+
+**E O PACOTE FOI MONTADO SEM BASH**: o `package_linux.sh` nao corre aqui; montei o tar com
+o modulo `tarfile` do Python -- **ordem alfabetica**, `mtime=0`, `uid=gid=0`, e
+`install.sh`/`uninstall.sh` a `0o755`. *O caminho que exigia a ferramenta nao era o unico
+caminho -- outra vez.*
+
+**A MATRIZ DO LINUX, DITA COMO E'**: `SOURCE_READY=SIM` | **`BUILD_DESTE_HEAD=NAO`** |
+`PACKAGE_CREATED=SIM` | **`INSTALLED=NAO`** | **`DEVICE_E2E=NAO`** |
+`SIGNED_FOR_PUBLIC_RELEASE=NAO` | `STORE_PUBLISHED=NAO`.
+
+**O ESTADO DAS PLATAFORMAS, SEM CONFUSAO**: Windows/amd64 -> portatil **e** instalador
+(`E-1057`/`E-1058`), **nenhum assinado**, **nenhum instalado**. Linux/amd64 -> tarball
+**instalavel** (`E-1059`), binario de `9f7379502b1d`. macOS, Android, iOS e Web/PWA ->
+**por produzir**; macOS/iOS `BLOCKED_EXTERNAL` pela **maquina**.
+
+**O que NAO fazer**: `reset --hard`, `git clean`, rebase destrutivo, force-push, stash,
+`merge`, tag, release, publicacao externa, ou **resolver threads** do PR #438.
+
+**Doutrina em uma linha**: um tarball nao e' um tarball instalavel; o caminho que exigia a
+ferramenta nao era o unico caminho; e um artefacto que declara os seus limites vale mais
+do que um que os omite.

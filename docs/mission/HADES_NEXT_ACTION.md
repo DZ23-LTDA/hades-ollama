@@ -919,3 +919,25 @@ instalador** com o `/SILENT`+`/DIR` num diretório descartável? Não — isso *
 O que resta sem instalar: **extrair o conteúdo do Setup** (o Inno tem `/EXTRACT` em
 `innounp`-like tools, mas não há ferramenta) **ou** documentar os hashes e entregar. Medir
 primeiro o que é possível sem tocar em `%LOCALAPPDATA%`.
+
+### A proxima accao unica (janela `E-1059`)
+
+**O tarball Linux instalável existe.** O que havia era **um tarball, não um tarball
+instalável**: 9 entradas, **sem `install.sh`, sem `uninstall.sh`, sem `VERSION`**.
+
+⇒ ***«A diferença entre os dois estava num ficheiro de 400 bytes.»***
+
+**E o binário Linux é de outro candidato** — medido no próprio ELF: `0.2.0-rc.2.0.
+20261015171943-9f7379502b1d+dirty` ⇒ commit **`9f7379502b1d`**, **não** o HEAD. E o
+`VERSION` do pacote **diz isso**: ***`build_reproduzivel=NAO`.***
+
+**Sem compilador C e sem bash real** (`gcc`/`clang` ausentes; o `bash` do sistema é o do
+WSL e responde `execvpe(/bin/bash) failed`), o `package_linux.sh` **não corre** — e no
+entanto o pacote foi produzido. ⇒ ***«O caminho que exigia a ferramenta não era o único
+caminho — outra vez.»***
+
+**A proxima accao unica**: **macOS e Web/PWA são os próximos tecnicamente possíveis.**
+macOS exige macOS/Xcode (`BLOCKED_EXTERNAL` pela máquina), mas o **Web/PWA** é build
+local: `app/ui/app` tem `vite build` e o prompt pede «build de produção + manifest +
+ícones + PWA». Verificar se existe script de build de produção e correr. **E esperar as
+runs antes de qualquer push.**
