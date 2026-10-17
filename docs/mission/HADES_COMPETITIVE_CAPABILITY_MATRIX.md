@@ -214,7 +214,7 @@ um é passo obrigatório antes de qualquer integração.*
 
 | CAP-ID | capacidade | referências | licença | HADES | prova HADES | lacuna / decisão |
 |---|---|---|---|---|---|---|
-| `CAP-L-01` | um composer com `/goal` | todos | várias | `PARTIAL` | `ChatForm.tsx`, `slashCommands.ts`, `E-1138` | **Medido por 13 testes** (`E-1138`): os 6 comandos do prompt são **modos do mesmo mecanismo** (`parseSlashCommand` → `AgenticConsole` → a **mesma** `POST /api/agent/v1/missions`), o objetivo vazio é recusado e não vai cru ao modelo, e o mesmo campo aceita texto normal, caminhos Windows, pt-BR e texto longo. **Falta** o E2E de navegador (§FASE-3 item 8) — por isso continua `PARTIAL`: *teste unitário não é navegador*. |
+| `CAP-L-01` | um composer com `/goal` | todos | várias | `PARTIAL` | `ChatForm.tsx`, `slashCommands.ts`, `E-1138`, `E-1140` | **Duas provas**: (a) 13 testes unitarios (`E-1138`) -- os 6 comandos sao modos do mesmo mecanismo, objetivo vazio recusado, mesmo campo aceita texto normal/caminhos Windows/pt-BR/texto longo; (b) **E2E em Chromium real** (`E-1140`) -- 2 passed em 58,1 s contra backend real, incluindo «home renders the unified chat composer and sidebar». **Falta** a jornada `/goal` -> approval -> success (`first-run-journey.spec.ts`, ainda nao corrido) -- por isso continua `PARTIAL`. |
 | `CAP-L-02` | um Mission Control + um menu | — | — | `PARTIAL` | missions | — |
 | `CAP-L-03` | onboarding local-first | — | — | `PARTIAL` | onboarding gate | — |
 | `CAP-L-04` | Windows/Linux/macOS/Android/iOS/Web | — | — | `PARTIAL` | `E-938` (`HadesSetup.exe`), `E-953` (Linux), `E-955` (Android prebuild) | *sem APK, sem macOS, sem iOS* |
