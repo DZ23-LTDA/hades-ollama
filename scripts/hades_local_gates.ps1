@@ -859,4 +859,30 @@ if ($LASTEXITCODE -ne 0) {
 } else { '    OK' }
 $passos += 'auditoria-inventario-testes'
 
+
+''
+# E-1102: o §ESTAGIO 3 (Arquitetura canonica). *As fontes de verdade SINGULARES (1 Runtime, 1 Mission, 0
+# MissionControl -- o MC e' superficie, nao motor), o lock partilhado da aprovacao, os testes de CONTRATO
+# (nao busca de simbolo), e a arquitectura e a API documentadas.*
+'--- 52. ARQUITETURA: fontes de verdade singulares, testes de contrato, e a documentacao'
+$saidaArq = & python -X utf8 scripts/hades_architecture.py 2>&1
+$saidaArq | Select-Object -Last 1 | ForEach-Object { "    " + $_.ToString().Substring(0, [Math]::Min(110, $_.ToString().Length)) }
+$saidaArqC = & python -X utf8 scripts/hades_architecture_check.py 2>&1
+$saidaArqC | Select-Object -Last 2 | ForEach-Object { "    " + $_.ToString().Substring(0, [Math]::Min(110, $_.ToString().Length)) }
+if ($LASTEXITCODE -ne 0) {
+  $falhas.Add("hades_architecture_check.py (exit $LASTEXITCODE)")
+  '    FALHA'
+} else { '    OK' }
+$passos += 'arquitetura'
+
+''
+'--- 53. fault injection da arquitectura (3 injecoes + contraprova)'
+$saidaArqT = & python -X utf8 scripts/hades_architecture_check_test.py 2>&1
+$saidaArqT | Select-Object -Last 2 | ForEach-Object { "    " + $_.ToString().Substring(0, [Math]::Min(110, $_.ToString().Length)) }
+if ($LASTEXITCODE -ne 0) {
+  $falhas.Add("hades_architecture_check_test.py (exit $LASTEXITCODE)")
+  '    FALHA'
+} else { '    OK' }
+$passos += 'arquitetura-testes'
+
 "GATES LOCAIS: $($passos -join ' + ') VERDES"
