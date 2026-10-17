@@ -1112,4 +1112,18 @@ if ($LASTEXITCODE -ne 0) {
 } else { '    OK' }
 $passos += 'findings-injecoes'
 
+
+''
+# E-1112: o PACOTE LINUX. *Cross-compile GOOS=linux CGO=0 => binario ELF de 45,6 MB => tarball de 16,2 MB com
+# VERSION, install/uninstall, PROVENIENCIA e SHA256SUMS que confere.* => *e a matriz de plataformas cita-o.*
+# NAO foi instalado (nao houve Linux), NAO e' byte-a-byte o do workflow (que usa CGO=1), e NAO e' assinado.
+'--- 72. PACOTE LINUX: o tarball, o binario ELF e o hash'
+$saidaLinux = & python -X utf8 scripts/hades_linux_package.py --check 2>&1
+$saidaLinux | Select-Object -Last 3 | ForEach-Object { "    " + $_.ToString().Substring(0, [Math]::Min(110, $_.ToString().Length)) }
+if ($LASTEXITCODE -ne 0) {
+  $falhas.Add("hades_linux_package.py --check (exit $LASTEXITCODE)")
+  '    FALHA'
+} else { '    OK' }
+$passos += 'pacote-linux'
+
 "GATES LOCAIS: $($passos -join ' + ') VERDES"

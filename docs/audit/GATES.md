@@ -79,6 +79,7 @@ que passam: *quem os corre é o auditor, e o resultado é do estado em que ele o
 | 69 | fault injection da rastreabilidade (3 injecoes + contraprova) |
 | 70 | FINDINGS do PR: a revalidacao contra o codigo atual |
 | 71 | fault injection dos findings (3 injecoes + contraprova) |
+| 72 | PACOTE LINUX: o tarball, o binario ELF e o hash |
 
 ## Como correr a bateria completa
 

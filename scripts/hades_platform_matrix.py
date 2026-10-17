@@ -113,15 +113,38 @@ def main() -> int:
         plataforma(
             "Linux", "`cmd/`, `app/`, `server/` (Go)",
             existe_wf("dz23-linux-package.yaml"),
-            ("dist/Hades-0.2.0-linux-amd64-unsigned.tar.gz", "dist/hades-linux-amd64-unsigned.tar.gz"),
+            ("dist/Hades-0.2.0-linux-amd64-unsigned.tar.gz",
+             "dist/hades-linux-amd64-unsigned.tar.gz",
+             # ***O `E-1112` GEROU O TARBALL POR CROSS-COMPILE.*** *O `scripts/package_linux.sh` do repo usa
+             # `CGO_ENABLED=1`; este foi **CGO=0** a partir do Windows* => *logo: **PACKAGE=sim** (o ficheiro
+             # existe, com tamanho e hash), **BUILD=cross** (nao nativo), e **INSTALL=NAO** (nao houve Linux
+             # para instalar)* => ***`um pacote que esconde como foi feito e' pior do que um pacote que nao
+             # existe.`***
+             "dist/hades-linux-amd64/hades-linux-amd64-UNSIGNED.tar.gz"),
+            # *INSTALL continua NAO MEDIDO -- o pacote existe, mas ninguem o instalou*
             "NÃO MEDIDO (INSTALLED=NAO)", "NÃO MEDIDO", "não assinado (unsigned)",
-            "cross-build Windows não é teste Linux"),
+            "cross-compile Windows→Linux com CGO=0; **NAO** e' build nativo, **NAO** foi instalado, e **NAO** "
+            "e' byte-a-byte o artefacto do `dz23-linux-package.yaml` (que usa CGO=1)"),
         plataforma(
             "macOS", "`cmd/`, `app/`, `server/` (Go)",
             existe_wf("dz23-macos-build.yaml"),
             None,
             "NÃO MEDIDO", "NÃO MEDIDO", "não assinado (unsigned)",
-            "**BLOCKED_EXTERNAL**: exige macOS/Xcode, e não ha'"),
+            # ***A CAUSA MEDIDA NO `E-1112` (nao uma suposicao).*** *O cross-compile `GOOS=darwin` com
+            # **`CGO_ENABLED=0`** falha:*
+            #     `discover/gpu.go:28:18: undefined: GetCPUMem`
+            #     `discover/types.go:49:13: undefined: GetCPUMem`
+            # => *e a causa e': o `GetCPUMem` do darwin esta' em **`discover/gpu_darwin.go`**, que usa
+            # **`import "C"`** (`#cgo LDFLAGS: -framework Foundation -framework CoreGraphics -framework
+            # Metal`) => *e o Go **exclui automaticamente** qualquer ficheiro com `import "C"` quando
+            # `CGO_ENABLED=0`* => ***logo o macOS exige CGO, e o CGO exige a toolchain Apple.*** => *nao e'
+            # «o build nao foi tentado»: foi tentado, e **chegou ao limite** -- e o limite e' a **toolchain
+            # nativa**, nao o codigo.* => ***`BLOCKED_EXTERNAL` legitimo: o passo de desbloqueio e' o
+            # `dz23-macos-build.yaml` em `macos-latest` (que tem Xcode e CGO).`***
+            "**BLOCKED_EXTERNAL (medido, nao suposto)**: `GOOS=darwin CGO_ENABLED=0` falha com "
+            "`undefined: GetCPUMem` -- o `GetCPUMem` do darwin vive em `discover/gpu_darwin.go`, que usa "
+            "`import \"C\"` (Metal/Foundation), e o Go exclui ficheiros com `import \"C\"` quando CGO=0. "
+            "Desbloqueio: o `dz23-macos-build.yaml` em `macos-latest` (Xcode + CGO)."),
         plataforma(
             "Android", "`apps/mobile-agentic/` (Expo/RN + `android/`)",
             existe_wf("dz23-e2e.yaml"),
