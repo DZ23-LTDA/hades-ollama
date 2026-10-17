@@ -119,7 +119,17 @@ Write-Output ("  ZIP              {0} bytes" -f (Get-Item $zip).Length)
 
 # 7) VERIFICACAO: extrair para directorio limpo e medir o que o ZIP entrega
 $v = Join-Path $raiz ("_tmp\bundle_check_" + $Porta)
-if (Test-Path $v) { Remove-Item $v -Recurse -Force }
+  # E-1057: antes de APAGAR, matar quem la ficou de uma corrida anterior --
+  # *um directorio que nao se consegue apagar e um proceso que ninguem viu.*
+  @(Get-Process -Name "llama-server", "hades" -ErrorAction SilentlyContinue |
+      Where-Object { $_.Path -and $_.Path.StartsWith($v, [StringComparison]::OrdinalIgnoreCase) }) |
+      Stop-Process -Force -ErrorAction SilentlyContinue
+  Start-Sleep -Milliseconds 500
+  if (Test-Path $v) { Remove-Item $v -Recurse -Force -ErrorAction SilentlyContinue }
+  if (Test-Path $v) {
+      Write-Output "ERRO: nao consegui limpar $v -- um proceso ainda segura os DLLs"
+      exit 1
+  }
 New-Item -ItemType Directory -Force -Path $v | Out-Null
 Expand-Archive -Path $zip -DestinationPath $v -Force
 $extraidos = (Get-ChildItem $v -File).Count
@@ -148,6 +158,22 @@ if ($ok) {
     Write-Output "  model/upstream   $up (esperado 501)"
     if ($up -ne 501) { $falhas++ }
 }
+  # E-1057: O `llama-server` E UM FILHO -- e `Stop-Process` no pai NAO o mata.
+  #
+  # MEDIDO depois de uma corrida: ficaram 17 procesos `llama-server` de rondas anteriores
+  # (_tmp/bundle_check_*, _tmp/completo_verify, _tmp/sbom_verify*, _tmp/final_verify), todos a
+  # segurar os DLLs -- e a corrida seguinte falhou com
+  #   Remove-Item : ... ggml-base.dll: O acesso ao caminho foi negado.
+  #
+  # *Um teste que arranca um filho e mata so o pai deixa o filho a segurar o directorio.*
+  # => mata-se o FILHO primeiro, e SO os que vivem DENTRO deste directorio de verificacao.
+  # *Nunca `Get-Process llama-server | Stop-Process` -- isso mataria o servidor do utilizador.*
+  $filhos = @(Get-Process -Name "llama-server" -ErrorAction SilentlyContinue |
+      Where-Object { $_.Path -and $_.Path.StartsWith($v, [StringComparison]::OrdinalIgnoreCase) })
+  if ($filhos.Count -gt 0) {
+      $filhos | Stop-Process -Force -ErrorAction SilentlyContinue
+      Write-Output ("  runner parado    {0} proceso(s) llama-server DESTE bundle" -f $filhos.Count)
+  }
 Stop-Process -Id $srv.Id -Force -ErrorAction SilentlyContinue
 Start-Sleep -Seconds 2
 

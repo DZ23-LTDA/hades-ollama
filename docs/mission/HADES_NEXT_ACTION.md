@@ -875,3 +875,24 @@ que falta é **de produto**, não de rastreabilidade: os artefactos não assinad
 candidato actual (§FASE-6). O Windows é o único que o toolchain deste host consegue
 produzir ponta a ponta — e há `scripts/hades_bundle_windows.ps1` no WIP integrado.
 Medir primeiro o que ele faz; depois correr. **E esperar as runs antes de qualquer push.**
+
+### A proxima accao unica (janela `E-1057`)
+
+**O artefacto do candidato existe.** `Hades-6093a6692-windows-amd64-portable-completo.zip`
+— **48 234 478 bytes**, verificado pelo próprio script: `/api/tags` 200, `/api/chat` 200
+com resposta **real** (`[Tudo certo!]`), `/api/v1/model/upstream` **501** (contrato honesto).
+
+⇒ ***«Um artefacto que declara os seus limites vale mais do que um que os omite.»***
+
+**E o caminho até ele revelou dois achados**: o `TMP` negado (curado **na chamada**, não no
+script) e **17 processos `llama-server` órfãos** de dez verificações anteriores — o script
+matava o `hades.exe` mas **não o filho**, e o filho segurava os DLLs.
+⇒ ***«Um teste que arranca um filho e mata só o pai deixa o filho a segurar o diretório.»***
+**Curado e provado**: `runner parado 1 proceso(s)`, e **0 órfãos** depois.
+
+**A proxima accao unica**: **o `HadesSetup.exe` não assinado** — o `build_windows.ps1`
+(1369 linhas) e o `app/ollama.iss` (223 linhas) existem, e o `ISCC.exe` **existe e
+funciona**. O `LEIA-ME` do bundle já o diz: *«o que falta não é a ferramenta: é EXECUTAR o
+instalador»*. **Gerar** o instalador é interno; **instalá-lo** escreve em
+`%LOCALAPPDATA%\Programs\Hades` e exige decisão do dono. Medir o que o
+`build_windows.ps1` faz antes de o correr. **E esperar as runs antes de qualquer push.**

@@ -1636,3 +1636,40 @@ ligacao vigia (18 assercoes, 4 injecoes); e o vermelho do `pr-gate` e' o **ritmo
 **Doutrina em uma linha**: um detector lexico ve termos, nao relacoes; procurar e nao
 encontrar e' «nao encontrei»; e a diligencia sem hipotese vira ruido -- que num gate e'
 pior do que um gate a menos.
+
+### Instrucoes de retomada (janela `E-1057`)
+
+**Estado**: branch `fix/checker-relogio`; cabeca do indice `E-1057`; PR #438 **aberto** e
+**nao tocado** -- *as 14 threads continuam como estavam*; `reviewDecision` **vazio**.
+
+**REGRA DE PUSH -- OBRIGATORIA, E JA' VALIDADA** (oito 6/6 consecutivos):
+  1. commit local -> 2. ESPERAR o SHA remoto fechar com `failure=0` -> 3. `git push`.
+
+**O BUNDLE WINDOWS DO CANDIDATO** (`E-1057`):
+  $env:TMP=$raiz\_tmp\webtemp; $env:TEMP=$env:TMP; $env:GOTMPDIR=$raiz\_tmp\gotmp
+  powershell -NoProfile -ExecutionPolicy Bypass -File scripts\hades_bundle_windows.ps1 -OutDir dist\hades-r143
+  => dist\hades-r143\Hades-6093a6692-windows-amd64-portable-completo.zip  (48 234 478 bytes)
+  => tags 200 / chat 200 [resposta real] / upstream 501  =>  RESULTADO: VERIFICADO
+
+**DUAS ARMADILHAS MEDIDAS NESTE CAMINHO**:
+  1. **`TMP` negado** -> `go build` falha com «creating work dir ... Acesso negado». *Curado na
+     CHAMADA, nao no script: o script esta' certo em nao adivinhar o ambiente.*
+  2. **filho orfao**: o script matava o `hades.exe` mas **nao o `llama-server`**, que e' um
+     **filho** -- e ficaram **17 processos** de dez directorios. *Curado: mata o filho primeiro,
+     e so' os que vivem DENTRO do directorio de verificacao.* Provado: **17 -> 0**.
+
+**O QUE O ARTEFACTO NAO E'**: nao assinado; nao e' instalador Inno/NSIS (e' o portatil);
+o runner vem **pre-construido** (`_tmp\hadesbin`) -- **nao e' build 100% reproduzivel da
+fonte**; `INSTALLED=NAO`, `DEVICE_E2E=NAO`, `SIGNED_FOR_PUBLIC_RELEASE=NAO`.
+
+**O `HadesSetup.exe` NAO FOI GERADO**: `build_windows.ps1` (1369 linhas) e `app/ollama.iss`
+(223 linhas) existem; `ISCC.exe` **existe e funciona** em
+`%LOCALAPPDATA%\Programs\Inno Setup 6\`. *O que falta nao e' a ferramenta: e' executar* --
+e **instalar** exige aprovacao do dono.
+
+**O que NAO fazer**: `reset --hard`, `git clean`, rebase destrutivo, force-push, stash,
+`merge`, tag, release, publicacao externa, ou **resolver threads** do PR #438.
+
+**Doutrina em uma linha**: um teste que arranca um filho e mata so' o pai deixa o filho a
+segurar o directorio; um script que adivinha o ambiente esconde o ambiente que o chamador
+devia declarar; e um artefacto que declara os seus limites vale mais do que um que os omite.

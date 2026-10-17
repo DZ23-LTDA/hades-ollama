@@ -1687,3 +1687,30 @@ Os quatro detectores de varredura **não entraram na bateria** — deliberado.
 - ligação da extensão ao **Mission Control** (`missao` fica a `null`);
 - APK Android bloqueado pela DLL JNI (`E-1019`);
 - macOS/iOS `BLOCKED_EXTERNAL` pela **máquina**.
+
+### O que falta (actualizado na janela `E-1057`)
+
+**Fechado**: o **artefacto portátil Windows do candidato `6093a6692`** — 48 MB, verificado
+com resposta real do modelo. E a lacuna do **filho órfão** no script (17 → 0).
+
+**Continua em falta, sem disfarce**:
+- **o `HadesSetup.exe` não assinado não foi gerado** -- o `ISCC.exe` existe; falta executar;
+- **`INSTALLED=NAO` e `DEVICE_E2E=NAO`** -- instalar escreve em `%LOCALAPPDATA%\Programs\Hades`
+  e **exige aprovação do dono**;
+- **o bundle é Windows/amd64 apenas**: Linux, macOS, Android, iOS e Web/PWA continuam por
+  produzir neste candidato;
+- **o runner é pré-construído** (`_tmp\hadesbin`): o ZIP **não é** build reproduzível da fonte;
+- **não assinado**, não publicado (`SIGNED_FOR_PUBLIC_RELEASE=NAO`);
+- **Linux/macOS `BLOCKED_EXTERNAL` pela máquina**; Android bloqueado pela DLL JNI (`E-1019`);
+- **a comparação externa continua `NAO_EXECUTADA`**;
+- **`55327160c` e `cda756f82` continuam VERMELHOS** -- pelo ritmo de push, não por defeito;
+- **decisão do proprietário em aberto**: distinguir «cancelado pelo push» de «cancelado
+  por falha» no `pr-gate` **toca a política do gate**;
+- **N=3 por fixture** na repetição: contagem, não probabilidade;
+- **as 14 threads do PR continuam abertas** -- não resolvi nenhuma (proibido);
+- **o encaixe da aprovação continua por ligar** (`E-1044`);
+- **shadow roots fechados**, **cross-origin**: como no `E-1040`; **BFCache** sem execução
+  observada (`E-1038`);
+- **o Chrome real do utilizador**: a versão 155 **não carrega** por `--load-extension`;
+- **Firefox** e **Safari**; sem `.crx`, sem assinatura, sem SBOM do pacote;
+- **`CAPACIDADES` VAZIO**: o Companion **não** controla o PC.
