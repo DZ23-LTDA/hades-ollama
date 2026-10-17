@@ -164,3 +164,35 @@ export function podeDesenharCompanion(
 ): boolean {
   return prefs.visivel && (ESTADOS_CONHECIDOS as readonly string[]).includes(estado);
 }
+
+/**
+ * `E-1086` — as três acções que a UI oferece, e a função que as aplica.
+ *
+ * *Vivem **aqui** e não no `CompanionLigado` porque não são um componente React: são a regra pura das
+ * preferências.* ⇒ *o `eslint` avisa `react-refresh/only-export-components` quando um ficheiro de
+ * componente exporta constantes — e mover a regra para o módulo dela resolve o aviso **na causa**,
+ * em vez de o silenciar.*
+ *
+ * *E o prompt exige as três: **«ocultar, silenciar... e restaurar defaults»**.*
+ */
+export type AccaoDePreferencia = "alternarVisivel" | "alternarSilenciado" | "restaurar";
+
+/**
+ * Aplica uma acção e devolve as preferências **novas** — *sem tocar nas que recebeu.*
+ *
+ * *`restaurar` não é «a ausência de uma acção»: é a reposição explícita do `PREFERENCIAS_PADRAO`, e
+ * tem de ser distinguível das outras duas.*
+ */
+export function aplicarAccao(
+  actuais: CompanionPreferencias,
+  accao: AccaoDePreferencia,
+): CompanionPreferencias {
+  switch (accao) {
+    case "alternarVisivel":
+      return { ...actuais, visivel: !actuais.visivel };
+    case "alternarSilenciado":
+      return { ...actuais, silenciado: !actuais.silenciado };
+    case "restaurar":
+      return { ...PREFERENCIAS_PADRAO };
+  }
+}
