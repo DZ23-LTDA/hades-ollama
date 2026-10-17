@@ -100,6 +100,19 @@ def ficheiros_referenciados(m: dict) -> list[str]:
     return sorted(out)
 
 
+def _source_sha() -> str:
+    """O SHA do commit de onde este pacote saiu. *Sem ele, o pacote nao diz de que fonte veio.*"""
+    try:
+        r = subprocess.run(["git", "rev-parse", "--short=12", "HEAD"],
+                           cwd=str(Path(__file__).resolve().parent.parent),
+                           capture_output=True, text=True, timeout=20)
+        if r.returncode == 0 and r.stdout.strip():
+            return r.stdout.strip()
+    except (OSError, subprocess.SubprocessError):
+        pass
+    return "INDISPONIVEL (git indisponivel no ambiente)"
+
+
 def main() -> int:
     if "--check" in sys.argv:
         return verificar()
@@ -152,6 +165,8 @@ def main() -> int:
         n_erros = None
 
     PROV = (
+        "SOURCE_SHA: " + _source_sha() + "\n"
+        "\n"
         "PROVENIENCIA -- HADES Browser Bridge para FIREFOX\n"
         "================================================\n"
         "\n"

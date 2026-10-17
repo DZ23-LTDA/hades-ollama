@@ -17,8 +17,10 @@ import hashlib
 import io
 import json
 import os
+import subprocess
 import sys
 import zipfile
+from pathlib import Path
 
 RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SRC = os.path.join(RAIZ, 'apps', 'hades-browser-bridge')
@@ -28,11 +30,25 @@ OUT = os.path.join(RAIZ, 'dist', 'browser-bridge')
 # distribuicao nao leva o arnes de teste.
 INCLUIR = ['manifest.json', 'src', 'popup', 'icons']
 
+def _source_sha() -> str:
+    """O SHA do commit de onde este pacote saiu. *Sem ele, o pacote nao diz de que fonte veio.*"""
+    try:
+        r = subprocess.run(["git", "rev-parse", "--short=12", "HEAD"],
+                           cwd=str(Path(__file__).resolve().parent.parent),
+                           capture_output=True, text=True, timeout=20)
+        if r.returncode == 0 and r.stdout.strip():
+            return r.stdout.strip()
+    except (OSError, subprocess.SubprocessError):
+        pass
+    return "INDISPONIVEL (git indisponivel no ambiente)"
+
+
 LEIA_ME = """LEIA-ME -- HADES Browser Bridge (extensao de desenvolvimento, NAO PUBLICADA)
 
   Ficheiro : {zip}
   Versao   : {versao}
   SHA-256  : {sha}
+  SOURCE_SHA: {source_sha}
   Assinado : NAO. Este pacote e' de DESENVOLVIMENTO e nao esta' assinado.
   Publicado: NAO. Nao foi enviado para a Chrome Web Store, Edge Add-ons,
              Firefox Add-ons nem para nenhuma loja. Nao distribuir.
@@ -162,7 +178,7 @@ def empacotar():
     with io.open(os.path.join(OUT, 'SHA256SUMS.txt'), 'w', encoding='ascii', newline='\n') as f:
         f.write('%s  %s\n' % (sha, zip_nome))
 
-    leia = LEIA_ME.format(zip=zip_nome, versao=versao, sha=sha)
+    leia = LEIA_ME.format(zip=zip_nome, versao=versao, sha=sha, source_sha=_source_sha())
     destino = os.path.join(OUT, 'LEIA-ME.txt')
     with io.open(destino, 'w', encoding='ascii', newline='\n') as f:
         f.write(leia)

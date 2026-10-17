@@ -182,8 +182,9 @@ def artefactos_de_componentes() -> list[dict]:
             continue
         z = zips[0]
         declarado = "SEM_PROVENIENCIA"
-        # o `PROVENIENCIA.txt` pode estar na raiz OU dentro da pasta extraida do zip
-        provs = sorted(pasta.rglob("PROVENIENCIA.txt"))
+        # o ficheiro de proveniencia pode chamar-se PROVENIENCIA.txt OU LEIA-ME.txt
+        # (a extensao do Chrome escreve o SHA no LEIA-ME), e pode estar dentro da pasta extraida
+        provs = sorted(list(pasta.rglob("PROVENIENCIA.txt")) + list(pasta.rglob("LEIA-ME.txt")))
         prov = provs[0] if provs else (pasta / "PROVENIENCIA.txt")
         if prov.is_file():
             m = re.search(r"SOURCE_SHA:\s*([0-9a-f]{7,40})",

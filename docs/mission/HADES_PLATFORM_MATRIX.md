@@ -29,8 +29,8 @@ Pacotes que vivem em `dist/` e nao correspondem a um alvo de produto. *Sem esta 
 
 | Componente | Pacote | Tamanho | Hash (SHA-256[:32]) | Proveniencia | Escrito em |
 | --- | --- | --- | --- | --- | --- |
-| `browser-bridge` | `dist\browser-bridge\hades-browser-bridge-0.1.0-unsigned.zip` | 94 KB | `5d8792022fae0ae0aec5b82dbd893a2c` | SEM_PROVENIENCIA | 2026-10-16 18:52 |
-| `browser-bridge-firefox` | `dist\browser-bridge-firefox\hades-browser-bridge-firefox-UNSIGNED.zip` | 108 KB | `d6c08f0875ef0a0c6c740a9e2bb75c8b` | PROVENIENCIA_SEM_SHA | 2026-10-17 13:30 |
+| `browser-bridge` | `dist\browser-bridge\hades-browser-bridge-0.1.0-unsigned.zip` | 112 KB | `3507621561c87d263bca626bf07a00ac` | a313019e48ef | 2026-10-17 18:22 |
+| `browser-bridge-firefox` | `dist\browser-bridge-firefox\hades-browser-bridge-firefox-UNSIGNED.zip` | 108 KB | `dcd66d17482b2e1ad26313ab0206e520` | a313019e48ef | 2026-10-17 18:23 |
 
 
 ## O que cada eixo significa, e o que NÃO conta
