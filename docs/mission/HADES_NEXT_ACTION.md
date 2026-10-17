@@ -1,6 +1,8 @@
 # HADES — PRÓXIMA AÇÃO (V2.2 + adendo de paridade)
 
-> **REMEDIACAO MAIS RECENTE: E-1126** -- *a divida do §ESTAGIO 2 PAGA: **107 -> 0**, baseline **0**, e o teste do checker deriva-a em vez de a copiar.*
+> **REMEDIACAO MAIS RECENTE: E-1127** -- *as 2 pendencias declaradas do §ESTAGIO 2 resolvidas por medicao (o B-09 ja corrigido; o flake do macOS nao reproduz em 6 runs), e o MASTER_STATE actualizado.*
+
+
 
 
 
