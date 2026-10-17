@@ -993,4 +993,28 @@ if ($LASTEXITCODE -ne 0) {
 } else { '    OK' }
 $passos += 'mcp-injecoes'
 
+
+''
+# E-1107: o ESTAGIO 8 (Plugins e Skills). *A METADE QUE NAO PRECISA DE PRIVILEGIO DE MONTAGEM: o manifesto
+# tipado e versionado, o bundle com hash e limite (64 MiB), o registry, os 7 estados canonicos, o escopo de
+# tenant, o status e o workspace.* => *a EXECUCAO (o sandbox mount/chroot) e' o `B-14`, um limite de HOST.*
+'--- 62. PLUGINS: o manifesto, o bundle, o registry, os estados e o escopo'
+$saidaPlug = & python -X utf8 scripts/hades_plugins_check.py 2>&1
+$saidaPlug | Select-Object -Last 3 | ForEach-Object { "    " + $_.ToString().Substring(0, [Math]::Min(110, $_.ToString().Length)) }
+if ($LASTEXITCODE -ne 0) {
+  $falhas.Add("hades_plugins_check.py (exit $LASTEXITCODE)")
+  '    FALHA'
+} else { '    OK' }
+$passos += 'plugins'
+
+''
+'--- 63. fault injection dos plugins (3 injecoes + contraprova)'
+$saidaPlugT = & python -X utf8 scripts/hades_plugins_check_test.py 2>&1
+$saidaPlugT | Select-Object -Last 2 | ForEach-Object { "    " + $_.ToString().Substring(0, [Math]::Min(110, $_.ToString().Length)) }
+if ($LASTEXITCODE -ne 0) {
+  $falhas.Add("hades_plugins_check_test.py (exit $LASTEXITCODE)")
+  '    FALHA'
+} else { '    OK' }
+$passos += 'plugins-injecoes'
+
 "GATES LOCAIS: $($passos -join ' + ') VERDES"
