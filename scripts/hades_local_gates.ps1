@@ -786,4 +786,28 @@ if ($linhaSnap) {
   $falhas.Add("o gate nao declara o gate_snapshot")
   '    FALHA'
 }
+
+''
+# E-1098: o §ESTAGIO 6 (Harness Runtime). *As 7 capacidades -- cancelamento, timeout, retry limitado,
+# idempotencia, retomada, artefactos e governacao -- nomeadas por TESTE; o cancelamento entre instancias; o
+# Ollama no caminho local; e o CLI externo com bloqueio declarado (t.Skip com MOTIVO) e sonda OPT-IN.*
+'--- 46. HARNESS: as 7 capacidades, cancelamento entre instancias, Ollama, e o CLI com sonda opt-in'
+$saidaH = & python -X utf8 scripts/hades_harness_check.py 2>&1
+$saidaH | Select-Object -Last 2 | ForEach-Object { "    " + $_.ToString().Substring(0, [Math]::Min(110, $_.ToString().Length)) }
+if ($LASTEXITCODE -ne 0) {
+  $falhas.Add("hades_harness_check.py (exit $LASTEXITCODE)")
+  '    FALHA'
+} else { '    OK' }
+$passos += 'harness'
+
+''
+'--- 47. fault injection do harness (3 injecoes + contraprova)'
+$saidaHT = & python -X utf8 scripts/hades_harness_check_test.py 2>&1
+$saidaHT | Select-Object -Last 2 | ForEach-Object { "    " + $_.ToString().Substring(0, [Math]::Min(110, $_.ToString().Length)) }
+if ($LASTEXITCODE -ne 0) {
+  $falhas.Add("hades_harness_check_test.py (exit $LASTEXITCODE)")
+  '    FALHA'
+} else { '    OK' }
+$passos += 'harness-testes'
+
 "GATES LOCAIS: $($passos -join ' + ') VERDES"
