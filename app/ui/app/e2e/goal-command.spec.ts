@@ -1,4 +1,4 @@
-﻿import { test, expect } from "@playwright/test";
+import { test, expect } from "@playwright/test";
 
 // §FASE-3 item 8: *criar missao via `/goal` no composer*.
 //
