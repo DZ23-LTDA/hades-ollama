@@ -1539,3 +1539,32 @@ modelos de 3-7B; `N=3` por fixture (contagem, nao probabilidade); o warm/cold do
 **Doutrina em uma linha**: um metodo que nao aponta para o artefacto e' um metodo que o
 auditor nao segue; um resultado sem ponteiro existe e nao se encontra; e acrescentar
 informacao pode degradar a forma -- que e' como a informacao se le.
+
+### Instrucoes de retomada (janela `E-1054`)
+
+**Estado**: branch `fix/checker-relogio`; cabeca do indice `E-1054`; PR #438 **aberto** e
+**nao tocado** -- *as 14 threads continuam como estavam*; `reviewDecision` **vazio**.
+
+**REGRA DE PUSH -- OBRIGATORIA, E JA' VALIDADA** (cinco 6/6 consecutivos):
+  1. commit local -> 2. ESPERAR o SHA remoto fechar com `failure=0` -> 3. `git push`.
+
+**A CATRACA DA LIGACAO docs->artefactos** (`E-1054`, passos 32 e 33):
+  python -X utf8 scripts\hades_stage_artifacts_check.py
+  python -X utf8 scripts\hades_stage_artifacts_check_test.py   # 18 assercoes, 4 injecoes
+  *Mede: artefacto existe (com tamanho -- `SUSPEITO` abaixo de 400 bytes), documento cita
+  o artefacto, e a fonte da verdade e' o mapa `LIGACOES` declarado no proprio checker.*
+
+**E ANTES DE ESCREVER UM INSTRUMENTO, MEDIR O QUE JA' EXISTE**: havia um
+`hades_discoverability_check.py` -- li-o e corri-o antes de escrever; protege a proibicao
+de **prometer ranking**, nao a ligacao. *Reutilizar primeiro nao e' regra de estilo: e' a
+diferenca entre acrescentar e duplicar.*
+
+**O ESTAGIO 21, MEDIDO E LIGADO**: matriz T2 real `PASS` 599,88 s (3/8 verde, 4
+trapacearam, 1 vermelho -- `E-1047`); repeticao `PASS` 209,78 s (`46+/0` resiste tres dias
+-- `E-1049`); a **seccao 6** de `HADES_STAGE_21_BENCHMARK.md` liga-os com comandos.
+
+**O que NAO fazer**: `reset --hard`, `git clean`, rebase destrutivo, force-push, stash,
+`merge`, tag, release, publicacao externa, ou **resolver threads** do PR #438.
+
+**Doutrina em uma linha**: ligar com texto nao e' ligar; declarar a fraqueza de uma cura
+nao e' cura-la, mas e' o que permite ir procura-la; e um ficheiro vazio nao e' um artefacto.

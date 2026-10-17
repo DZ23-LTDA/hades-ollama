@@ -1600,3 +1600,32 @@ push produziu **quatro 6/6 consecutivos** (`4157a459b`, `ba62baf88`, `67581a993`
 - ligação da extensão ao **Mission Control** (`missao` fica a `null`);
 - APK Android bloqueado pela DLL JNI (`E-1019`);
 - macOS/iOS `BLOCKED_EXTERNAL` pela **máquina**.
+
+### O que falta (actualizado na janela `E-1054`)
+
+**Fechado**: a ligação do estágio 21 deixou de ser textual. A catraca
+(`hades_stage_artifacts_check.py`) acusa artefacto apagado, artefacto vazio, ponteiro
+removido e documento ausente — com 4 injeções e contraprova.
+
+**Continua em falta, sem disfarce**:
+- **o mapa `LIGACOES` cobre só o estágio 21** -- 3 documentos e 2 artefactos: uma ligação
+  que não esteja no mapa **não é vigiada**;
+- **o limite de 400 bytes é um palpite calibrado**, não uma medida;
+- **a catraca verifica a presença do nome**, não que o texto descreva o artefacto certo:
+  *um ponteiro errado apontaria para o mesmo nome*;
+- **a comparação externa continua `NAO_EXECUTADA`**;
+- **`55327160c` e `cda756f82` continuam VERMELHOS** -- pelo ritmo de push, não por defeito;
+- **decisão do proprietário em aberto**: distinguir «cancelado pelo push» de «cancelado
+  por falha» no `pr-gate` **toca a política do gate**; a cura por baixo está **proibida**;
+- **N=3 por fixture** na repetição: contagem, não probabilidade;
+- **as 14 threads do PR continuam abertas** -- não resolvi nenhuma (proibido);
+- **o encaixe da aprovação continua por ligar** (`E-1044`);
+- **shadow roots fechados**, **cross-origin**, `document.domain`, `srcdoc`: como no `E-1040`;
+- **BFCache** sem execução observada (`E-1038`);
+- **o Chrome real do utilizador**: a versão 155 **não carrega** por `--load-extension`;
+- **Firefox** e **Safari**;
+- **sem `.crx`, sem assinatura, sem SBOM do pacote**;
+- **`CAPACIDADES` VAZIO**: o Companion **não** controla o PC;
+- ligação da extensão ao **Mission Control** (`missao` fica a `null`);
+- APK Android bloqueado pela DLL JNI (`E-1019`);
+- macOS/iOS `BLOCKED_EXTERNAL` pela **máquina**.

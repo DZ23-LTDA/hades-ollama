@@ -569,4 +569,25 @@ if ($LASTEXITCODE -ne 0) {
   '    FALHA'
 } else { '    OK' }
 $passos += 'inventario-worktree'
+
+''
+# E-1054: a LIGACAO docs -> artefactos. *Um resultado sem ponteiro existe e nao se encontra.*
+# No E-1053 a ligacao do estagio 21 foi feita com TEXTO -- e o texto nao vigia nada.
+'--- 32. CATRACA da ligacao: os docs do estagio citam os artefactos?'
+$saidaLig = & python -X utf8 scripts/hades_stage_artifacts_check.py --check 2>&1
+$saidaLig | Select-Object -Last 2 | ForEach-Object { "    " + $_.ToString().Substring(0, [Math]::Min(110, $_.ToString().Length)) }
+if ($LASTEXITCODE -ne 0) {
+  $falhas.Add("hades_stage_artifacts_check.py (exit $LASTEXITCODE)")
+  '    FALHA'
+} else { '    OK' }
+
+''
+'--- 33. testes da ligacao (4 injecoes + contraprova, numa COPIA)'
+$saidaLigT = & python -X utf8 scripts/hades_stage_artifacts_check_test.py 2>&1
+$saidaLigT | Select-Object -Last 2 | ForEach-Object { "    " + $_.ToString().Substring(0, [Math]::Min(110, $_.ToString().Length)) }
+if ($LASTEXITCODE -ne 0) {
+  $falhas.Add("hades_stage_artifacts_check_test.py (exit $LASTEXITCODE)")
+  '    FALHA'
+} else { '    OK' }
+$passos += 'catraca-ligacao'
 "GATES LOCAIS: $($passos -join ' + ') VERDES"

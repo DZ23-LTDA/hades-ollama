@@ -814,3 +814,21 @@ texto. Hoje a ligação é textual: **se alguém renomear `HADES_T2_MATRIX.md`, 
 Um checker que verifique que os documentos do estágio 21 citam os artefactos (e que os
 artefactos existem) fecha isso — e é o mesmo padrão da catraca do encaixe (`E-1044`).
 Tudo interno, e **esperar que as runs terminem antes de qualquer push**.
+
+### A proxima accao unica (janela `E-1054`)
+
+**A ligação deixou de ser texto.** No `E-1053` liguei os documentos do estágio 21 aos
+artefactos — com texto — e escrevi a dívida: *«se alguém renomear `HADES_T2_MATRIX.md`,
+nada acusa»*. Agora acusa: `hades_stage_artifacts_check.py` (**passos 32 e 33**),
+**18 asserções**, **4 injeções** e uma contraprova, numa cópia.
+
+⇒ ***«Ligar com texto não é ligar: é descrever a ligação.»***
+
+**E antes de escrever, medi**: existe `hades_discoverability_check.py` — li-o e corri-o;
+protege a proibição de **prometer ranking**, não a ligação. ***Reutilizar primeiro não é
+uma regra de estilo: é a diferença entre acrescentar e duplicar.***
+
+**A proxima accao unica**: **estender o mapa `LIGACOES`** — hoje vigia só o estágio 21
+(3 documentos, 2 artefactos). A mesma pergunta aplica-se a **outros** estágios que
+produzem artefactos: verificar quais documentos canónicos citam artefactos reais e quais
+não citam, e declarar cada ligação que falta. Medir primeiro; só depois escrever.
