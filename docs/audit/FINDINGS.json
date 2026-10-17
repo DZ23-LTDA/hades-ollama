@@ -54,7 +54,8 @@
           "o _test.py importa hades_test_clock_check as checker e usa checker.TRIAGADOS -- uma fonte, nao duas allowlists",
           "12/12 testes OK (1.3 s); repo real: 112 sitios, ALTO triagado 1, ALTO NOVO 0",
           "CONTRAPROVA: um break no usos() (so o primeiro uso) faz falhar test_um_uso_seguro_nao_esconde_um_de_negocio_na_mesma_linha -- \"'ALTO' not found in ['timestamp']\""
-        ]
+        ],
+        "contraprova": true
       }
     },
     {
@@ -79,7 +80,8 @@
           "o _test.py importa hades_test_clock_check as checker e usa checker.TRIAGADOS -- uma fonte, nao duas allowlists",
           "12/12 testes OK (1.3 s); repo real: 112 sitios, ALTO triagado 1, ALTO NOVO 0",
           "CONTRAPROVA: um break no usos() (so o primeiro uso) faz falhar test_um_uso_seguro_nao_esconde_um_de_negocio_na_mesma_linha -- \"'ALTO' not found in ['timestamp']\""
-        ]
+        ],
+        "contraprova": true
       }
     },
     {
@@ -103,8 +105,11 @@
           "sem_comentarios(linhas) remove // e /* */ preservando o numero de linha",
           "o _test.py importa hades_test_clock_check as checker e usa checker.TRIAGADOS -- uma fonte, nao duas allowlists",
           "12/12 testes OK (1.3 s); repo real: 112 sitios, ALTO triagado 1, ALTO NOVO 0",
-          "CONTRAPROVA: um break no usos() (so o primeiro uso) faz falhar test_um_uso_seguro_nao_esconde_um_de_negocio_na_mesma_linha -- \"'ALTO' not found in ['timestamp']\""
-        ]
+          "CONTRAPROVA: um break no usos() (so o primeiro uso) faz falhar test_um_uso_seguro_nao_esconde_um_de_negocio_na_mesma_linha -- \"'ALTO' not found in ['timestamp']\"",
+          "CONTRAPROVA: sem sem_comentarios() na assinatura, o teste FALHA por assercao -- DEPOIS de acrescentar o caso que faltava (o teste antigo nao tinha `//` e nao discriminava)",
+          "2 assercoes novas: assinatura(a) == assinatura(a + ' // comentario') e o mesmo com /* */"
+        ],
+        "contraprova": true
       }
     },
     {
@@ -128,8 +133,10 @@
           "sem_comentarios(linhas) remove // e /* */ preservando o numero de linha",
           "o _test.py importa hades_test_clock_check as checker e usa checker.TRIAGADOS -- uma fonte, nao duas allowlists",
           "12/12 testes OK (1.3 s); repo real: 112 sitios, ALTO triagado 1, ALTO NOVO 0",
-          "CONTRAPROVA: um break no usos() (so o primeiro uso) faz falhar test_um_uso_seguro_nao_esconde_um_de_negocio_na_mesma_linha -- \"'ALTO' not found in ['timestamp']\""
-        ]
+          "CONTRAPROVA: um break no usos() (so o primeiro uso) faz falhar test_um_uso_seguro_nao_esconde_um_de_negocio_na_mesma_linha -- \"'ALTO' not found in ['timestamp']\"",
+          "CONTRAPROVA: sem_comentarios() devolvendo as linhas originais, test_comentario_nao_e_acusado FALHA por assercao"
+        ],
+        "contraprova": true
       }
     },
     {
@@ -150,8 +157,10 @@
           "as 6 funcoes de escrita tem withFileLock (SetApprovers:321, Save:367, expireStale:473, Request:635, Decide:715, Consume:875)",
           "saveLocked aplica preservarConsumidas(:380) -- a invariante «o consumo e' terminal»",
           "3 testes discriminadores PASS (6.7 s)",
-          "CONTRAPROVA: sem preservarConsumidas o teste FALHA com «REGRESSAO: Save gravou o instantaneo antigo e reabriu um pedido»"
-        ]
+          "CONTRAPROVA: sem preservarConsumidas o teste FALHA com «REGRESSAO: Save gravou o instantaneo antigo e reabriu um pedido»",
+          "CONTRAPROVA: uma dispensa morta em TRIAGADOS faz test_triagem_nao_tem_dispensa_morta FALHAR por assercao"
+        ],
+        "contraprova": true
       }
     },
     {
@@ -211,7 +220,8 @@
           "2 pipes NAO escapados dentro de codigo inline na linha 439 (E-412) foram escapados como \\|",
           "o GFM exige \\| dentro de celula, mesmo em codigo",
           "o index_shape_check continua exit 0 -- o \\| renderiza como |, o conteudo do comando nao muda"
-        ]
+        ],
+        "contraprova": true
       }
     },
     {
@@ -309,7 +319,8 @@
           "E-913: PARCIALMENTE FECHADO removido de `encerrado` -- so' estado TERMINAL encerra",
           "3 testes discriminadores em CruzamentoDeAuditoriaTest (23 -> 26 testes)",
           "CONTRAPROVA: reintroduzir PARCIALMENTE FECHADO faz o teste FALHAR com 'ATaque E ACHADO AO MESMO TEMPO: ADV-65 (achado diz: PARCIALMENTE FECHADO...)'"
-        ]
+        ],
+        "contraprova": true
       }
     }
   ],
@@ -329,5 +340,15 @@
     13,
     14
   ],
-  "total_validados": 14
+  "total_validados": 14,
+  "contraprovas": [
+    2,
+    3,
+    4,
+    5,
+    6,
+    9,
+    14
+  ],
+  "total_contraprovas": 7
 }

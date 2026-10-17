@@ -209,6 +209,23 @@ class CheckerDoRelogioTest(unittest.TestCase):
         self.assertEqual(checker.assinatura(a), checker.assinatura(b), "reindentar nao pode reabrir o achado")
         self.assertNotEqual(checker.assinatura(a), checker.assinatura(c), "mudar a expressao TEM de reabrir")
 
+        # ***E O COMENTARIO NAO PODE MUDAR A ASSINATURA.*** *Acrescentado na janela do `E-1082`:* a
+        # versao anterior deste teste **nao discriminava** a remocao de comentarios -- os tres casos
+        # (`a`, `b`, `c`) nao tinham `//`, logo o `sem_comentarios` **nunca era exercitado** ali.
+        # => *a contraprova do `E-1080` foi honesta ao falhar em discriminar o #4, e a cura foi
+        # **acrescentar o caso que falta**, nao mudar o teste escolhido.*
+        com_comentario = a + "  // o mesmo deslocamento, agora com comentario"
+        self.assertEqual(
+            checker.assinatura(a), checker.assinatura(com_comentario),
+            "um comentario NAO pode mudar a assinatura -- senao a triagem reabre quando alguem documenta a linha",
+        )
+        # E o `/* */` tambem: *um bloco de comentario na mesma linha tem o mesmo efeito.*
+        em_bloco = "_ = S{StartsAt: agora.Add(time.Hour)} /* documentado */"
+        self.assertEqual(
+            checker.assinatura(a), checker.assinatura(em_bloco),
+            "um comentario de bloco NAO pode mudar a assinatura",
+        )
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

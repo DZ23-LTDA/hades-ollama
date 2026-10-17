@@ -125,6 +125,11 @@ def gerar_md() -> str:
             len(validados), len(findings),
             (" — " + ", ".join("#%d (%s)" % (f["n"], f["validacao"].get("estado", "?")) for f in validados)) if validados else ""),
         "",
+        "**Com contraprova (o defeito injetado faz o teste falhar): %d de %d**%s." % (
+            sum(1 for f in validados if f["validacao"].get("contraprova")), len(validados),
+            (" — " + ", ".join("#%d" % f["n"] for f in validados if f["validacao"].get("contraprova"))) if any(
+                f["validacao"].get("contraprova") for f in validados) else ""),
+        "",
         "## O que este ficheiro NÃO afirma",
         "",
         "- **não afirma que algum finding foi corrigido** — nenhum foi marcado como resolvido no GitHub;",

@@ -7,6 +7,8 @@
 
 **Validados contra o código: 14 de 14** — #1 (VALIDADO_JA_CORRIGIDO), #2 (VALIDADO_JA_CORRIGIDO), #3 (VALIDADO_JA_CORRIGIDO), #4 (VALIDADO_JA_CORRIGIDO), #5 (VALIDADO_JA_CORRIGIDO), #6 (VALIDADO_JA_CORRIGIDO), #7 (CORRIGIDO_AGORA_JA_ESTAVA), #8 (CORRIGIDO_AGORA_JA_ESTAVA), #9 (CURADO_NESTA_JANELA), #10 (CORRIGIDO_AGORA_JA_ESTAVA), #11 (CORRIGIDO_AGORA_JA_ESTAVA), #12 (CORRIGIDO_AGORA_JA_ESTAVA), #13 (CORRIGIDO_AGORA_JA_ESTAVA), #14 (CURADO_NESTA_JANELA).
 
+**Com contraprova (o defeito injetado faz o teste falhar): 7 de 14** — #2, #3, #4, #5, #6, #9, #14.
+
 ## O que este ficheiro NÃO afirma
 
 - **não afirma que algum finding foi corrigido** — nenhum foi marcado como resolvido no GitHub;
@@ -76,6 +78,8 @@ contraprova e só então corrija.»*
 - o _test.py importa hades_test_clock_check as checker e usa checker.TRIAGADOS -- uma fonte, nao duas allowlists
 - 12/12 testes OK (1.3 s); repo real: 112 sitios, ALTO triagado 1, ALTO NOVO 0
 - CONTRAPROVA: um break no usos() (so o primeiro uso) faz falhar test_um_uso_seguro_nao_esconde_um_de_negocio_na_mesma_linha -- "'ALTO' not found in ['timestamp']"
+- CONTRAPROVA: sem sem_comentarios() na assinatura, o teste FALHA por assercao -- DEPOIS de acrescentar o caso que faltava (o teste antigo nao tinha `//` e nao discriminava)
+- 2 assercoes novas: assinatura(a) == assinatura(a + ' // comentario') e o mesmo com /* */
 
 **Evidência**: `E-1080`.
 
@@ -90,6 +94,7 @@ contraprova e só então corrija.»*
 - o _test.py importa hades_test_clock_check as checker e usa checker.TRIAGADOS -- uma fonte, nao duas allowlists
 - 12/12 testes OK (1.3 s); repo real: 112 sitios, ALTO triagado 1, ALTO NOVO 0
 - CONTRAPROVA: um break no usos() (so o primeiro uso) faz falhar test_um_uso_seguro_nao_esconde_um_de_negocio_na_mesma_linha -- "'ALTO' not found in ['timestamp']"
+- CONTRAPROVA: sem_comentarios() devolvendo as linhas originais, test_comentario_nao_e_acusado FALHA por assercao
 
 **Evidência**: `E-1080`.
 
@@ -101,6 +106,7 @@ contraprova e só então corrija.»*
 - saveLocked aplica preservarConsumidas(:380) -- a invariante «o consumo e' terminal»
 - 3 testes discriminadores PASS (6.7 s)
 - CONTRAPROVA: sem preservarConsumidas o teste FALHA com «REGRESSAO: Save gravou o instantaneo antigo e reabriu um pedido»
+- CONTRAPROVA: uma dispensa morta em TRIAGADOS faz test_triagem_nao_tem_dispensa_morta FALHAR por assercao
 
 **Evidência**: `E-1078`.
 
