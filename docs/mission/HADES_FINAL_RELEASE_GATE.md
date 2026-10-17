@@ -10,12 +10,12 @@
 
 | Campo | Valor |
 | --- | --- |
-| **Commit medido** (`measured_commit`) | `c6d4580197b697f5b762ba39e2e17d0ea69c28d6` |
+| **Commit medido** (`measured_commit`) | `8f8155cfca472c0a80f6fe6c401e99f9fea7d9a7` |
 | **Commit da `main`** (`git.main_sha`) | `4b3e21854` |
-| **Gerado em** (`measured_at`) | 2026-10-17T18:33:22-03:00 |
-| **Snapshot real** (`gate_head`) | `c6d4580197b697f5b762ba39e2e17d0ea69c28d6` |
+| **Gerado em** (`measured_at`) | 2026-10-17T18:35:10-03:00 |
+| **Snapshot real** (`gate_head`) | `8f8155cfca472c0a80f6fe6c401e99f9fea7d9a7` |
 | **Ramo do snapshot** (`gate_branch`) | `fix/checker-relogio` |
-| **Entradas nao commitadas** (`gate_dirty`) | 4 |
+| **Entradas nao commitadas** (`gate_dirty`) | 6 |
 | **O gate prova o snapshot candidato?** (`gate_snapshot`) | **MESMO** |
 
 *Dois campos, e não um: o `E-552` mediu que este derivado **não** citava commit nenhum, e que o
