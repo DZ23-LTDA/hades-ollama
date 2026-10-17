@@ -1,5 +1,8 @@
 # HADES — PRÓXIMA AÇÃO (V2.2 + adendo de paridade)
 
+> **REMEDIACAO MAIS RECENTE: E-1103** -- *os 10 estagios fechados no estado canonico (12 `COMPLETED_VERIFIED`); o gate prova o snapshot (`MESMO`).*
+
+
 > **REMEDICAO MAIS RECENTE: `E-1090`** (*ronda 173*). A cabeca do indice e' **`E-1090`**: *a documentacao do Companion (`docs/COMPANION.md`), a catraca de 47 verificacoes e as 4 injectoes que a provam.* => *a §FASE-3-A fica `COMPLETED_VERIFIED` nos 10 criterios; o que falta e' a **jornada completa** (`idle -> /goal -> ... -> success`, backend Go real + Ollama).*
 
 > **CHECKPOINT REMEDIDO nas rodadas 181–222 (evidência mais recente `E-959`; cadeia `E-820`→`E-867`).**
