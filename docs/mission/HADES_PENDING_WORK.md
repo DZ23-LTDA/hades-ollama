@@ -1714,3 +1714,31 @@ com resposta real do modelo. E a lacuna do **filho órfão** no script (17 → 0
 - **o Chrome real do utilizador**: a versão 155 **não carrega** por `--load-extension`;
 - **Firefox** e **Safari**; sem `.crx`, sem assinatura, sem SBOM do pacote;
 - **`CAPACIDADES` VAZIO**: o Companion **não** controla o PC.
+
+### O que falta (actualizado na janela `E-1058`)
+
+**Fechado**: o **`HadesSetup.exe` não assinado do candidato `d7ace6c12`** — 24,26 MB,
+gerado com binários Go construídos da fonte. E a dívida do `[UninstallRun]` sem
+`RunOnceId`, curada (o `Warning` desapareceu).
+
+**Continua em falta, sem disfarce**:
+- **`INSTALLED=NAO` e `DEVICE_E2E=NAO`** -- **não executei o instalador**: instalar escreve
+  em `%LOCALAPPDATA%\Programs\Hades` e **exige aprovação do dono**;
+- **o `lib\ollama` (42 ficheiros, 39,7 MB) é pré-construído**: o instalador **não é** build
+  100% reproduzível da fonte; só os binários Go são;
+- **não assinado** -- `SIGNED_FOR_PUBLIC_RELEASE=NAO`;
+- **ARM64 não foi gerado** (o `.iss` protege com `Check: IsArm64()`);
+- **Linux, macOS, Android, iOS e Web/PWA continuam por produzir** neste candidato;
+- **Linux/macOS `BLOCKED_EXTERNAL` pela máquina**; Android pela DLL JNI (`E-1019`);
+- **a comparação externa continua `NAO_EXECUTADA`**;
+- **`55327160c` e `cda756f82` continuam VERMELHOS** -- pelo ritmo de push, não por defeito;
+- **decisão do proprietário em aberto**: distinguir «cancelado pelo push» de «cancelado
+  por falha» no `pr-gate` **toca a política do gate**;
+- **N=3 por fixture** na repetição: contagem, não probabilidade;
+- **as 14 threads do PR continuam abertas** -- não resolvi nenhuma (proibido);
+- **o encaixe da aprovação continua por ligar** (`E-1044`);
+- **shadow roots fechados**, **cross-origin**: como no `E-1040`; **BFCache** sem execução
+  observada (`E-1038`);
+- **o Chrome real do utilizador**: a versão 155 **não carrega** por `--load-extension`;
+- **Firefox** e **Safari**; sem `.crx`, sem SBOM do pacote;
+- **`CAPACIDADES` VAZIO**: o Companion **não** controla o PC.

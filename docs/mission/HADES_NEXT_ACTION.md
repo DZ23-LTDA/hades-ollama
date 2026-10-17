@@ -896,3 +896,26 @@ funciona**. O `LEIA-ME` do bundle já o diz: *«o que falta não é a ferramenta
 instalador»*. **Gerar** o instalador é interno; **instalá-lo** escreve em
 `%LOCALAPPDATA%\Programs\Hades` e exige decisão do dono. Medir o que o
 `build_windows.ps1` faz antes de o correr. **E esperar as runs antes de qualquer push.**
+
+### A proxima accao unica (janela `E-1058`)
+
+**O `HadesSetup.exe` não assinado do candidato existe** — 24,26 MB, gerado pelo `ISCC.exe`
+a partir de binários que **EU** construí da fonte:
+`ollama.exe` 46,65 MB e `windows-ollama-app-amd64.exe` 42,66 MB, ambos `exit 0`.
+
+⇒ ***«O bloqueio não é de permissão: é de toolchain.»*** — o `build_windows.ps1` compila o
+motor C++ (`cmake`/`ninja`/`cl` **ausentes**), mas **o caminho que exigia a ferramenta não
+era o único caminho**: os binários Go constroem-se, e o C++ já está pronto.
+
+**E o compilador denunciou uma dívida**: `[UninstallRun]` sem `RunOnceId` — **curada**
+(2 linhas), e o `Warning` **desapareceu** na recompilação. O hash mudou: é a prova de que
+a cura entrou no artefacto.
+⇒ ***«Um aviso do compilador é uma medição, não um ruído.»***
+
+**A proxima accao unica**: **medir o artefacto gerado sem o instalar.** `INSTALLED=NAO`
+continua verdadeiro e **instalar exige decisão do dono** (escreve em
+`%LOCALAPPDATA%\Programs\Hades`). O que é interno e se pode fazer: **verificar o
+instalador** com o `/SILENT`+`/DIR` num diretório descartável? Não — isso **é instalar**.
+O que resta sem instalar: **extrair o conteúdo do Setup** (o Inno tem `/EXTRACT` em
+`innounp`-like tools, mas não há ferramenta) **ou** documentar os hashes e entregar. Medir
+primeiro o que é possível sem tocar em `%LOCALAPPDATA%`.

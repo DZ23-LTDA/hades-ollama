@@ -1673,3 +1673,43 @@ e **instalar** exige aprovacao do dono.
 **Doutrina em uma linha**: um teste que arranca um filho e mata so' o pai deixa o filho a
 segurar o directorio; um script que adivinha o ambiente esconde o ambiente que o chamador
 devia declarar; e um artefacto que declara os seus limites vale mais do que um que os omite.
+
+### Instrucoes de retomada (janela `E-1058`)
+
+**Estado**: branch `fix/checker-relogio`; cabeca do indice `E-1058`; PR #438 **aberto** e
+**nao tocado** -- *as 14 threads continuam como estavam*; `reviewDecision` **vazio**.
+
+**REGRA DE PUSH -- OBRIGATORIA, E JA' VALIDADA** (oito 6/6 consecutivos):
+  1. commit local -> 2. ESPERAR o SHA remoto fechar com `failure=0` -> 3. `git push`.
+
+**O INSTALADOR DO CANDIDATO** (`E-1058`):
+  go build -trimpath -ldflags "-s -w -X=.../version.Version=$V -X=.../server.mode=release" -o dist\windows-amd64\ollama.exe .
+  go build -trimpath -ldflags "-s -w -H windowsgui -X=.../app/version.Version=$V" -o dist\windows-ollama-app-amd64.exe ./app/cmd/app/
+  $env:PKG_VERSION="0.2.0"; & "$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe" /DARCH=amd64 .\ollama.iss
+  => dist\HadesSetup.exe  24,26 MB  SHA256 a70b51073d89b7f65463f4f46d5a7a893fbab966d762a8c5aa679d52c0894456
+
+**O BLOQUEIO NAO E' DE PERMISSAO: E' DE TOOLCHAIN.** O `build_windows.ps1` (1370 linhas)
+compila o motor C++ e exige `cmake`/`ninja`/`cl` -- **todos ausentes**. Mas o `.iss` e' um
+script Inno Setup: os **binarios Go** constroem-se da fonte, e o **C++ ja' esta' pronto**
+(`dist\windows-amd64\lib\ollama`, 42 ficheiros). *O caminho que exigia a ferramenta nao era
+o unico caminho.*
+
+**UM AVISO DO COMPILADOR E' UMA MEDICAO**: o `ISCC` avisou `[UninstallRun]` sem `RunOnceId`;
+curado com `RunOnceId: "HadesPararProcessos"` e `"HadesEsperarSaida"`; o `Warning`
+**desapareceu** na recompilacao e o hash mudou -- *prova de que a cura entrou no artefacto*.
+
+**E UM ERRO MEU PELO CAMINHO**: a primeira cura falhou porque o `for` percorria **todo** o
+ficheiro e apanhava a primeira `Filename: "powershell.exe"` -- que esta' no `[Run]`, nao no
+`[UninstallRun]`. *Um seletor que nao esta' limitado ao sitio onde o defeito vive apanha o
+primeiro parecido.*
+
+**O QUE NAO FOI FEITO, E E' DELIBERADO**: **nao instalei o instalador**. Instalar escreve em
+`%LOCALAPPDATA%\Programs\Hades` e **exige aprovacao do dono**. `INSTALLED=NAO`,
+`DEVICE_E2E=NAO`, `SIGNED_FOR_PUBLIC_RELEASE=NAO` continuam verdadeiros.
+
+**O que NAO fazer**: `reset --hard`, `git clean`, rebase destrutivo, force-push, stash,
+`merge`, tag, release, publicacao externa, ou **resolver threads** do PR #438.
+
+**Doutrina em uma linha**: o bloqueio nao e' de permissao, e' de toolchain; um aviso do
+compilador e' uma medicao; e um seletor que nao esta' limitado ao sitio onde o defeito vive
+apanha o primeiro parecido.
