@@ -45,4 +45,43 @@ test.describe("/goal no composer", () => {
     await expect(page).not.toHaveURL(/\/agentic/);
     await expect(composer).toBeVisible();
   });
+
+  test("digitar /goal CRIA a missao no backend (teste discriminante)", async ({
+    page,
+    request,
+  }) => {
+    // Este teste existe porque os anteriores provavam a NAVEGACAO e paravam ai'.
+    // O teste anterior termina logo apos `waitForURL` -- antes de o `useEffect`
+    // do AgenticConsole disparar o POST. Aqui esperamos pela criacao e lemos a API.
+    //
+    // Requer backend real: `HADES_E2E_BACKEND_URL` (o `webServer` do fixture nao
+    // tem `/api/agent/v1`). Sem ele, fica SKIPPED com razao -- nunca PASS falso.
+    test.skip(
+      !process.env.HADES_E2E_BACKEND_URL,
+      "precisa de backend real (HADES_E2E_BACKEND_URL) com agent runtime",
+    );
+
+    await page.goto("/");
+    const composer = page.getByRole("textbox", { name: "Mensagem para o agente" });
+    await expect(composer).toBeVisible();
+
+    const objetivo = `missao-verificavel-${Date.now()}`;
+    await composer.fill(`/goal ${objetivo}`);
+    await composer.press("Enter");
+    await page.waitForURL(/\/agentic/, { timeout: 20_000 });
+
+    // O `useEffect` do AgenticConsole cria a missao de forma assincrona.
+    // Esperamos ate' 25 s por ela aparecer na API.
+    await expect
+      .poll(
+        async () => {
+          const res = await request.get("/api/agent/v1/missions");
+          if (!res.ok()) return -1;
+          const body = (await res.json()) as { missions?: Array<{ objective?: string }> };
+          return (body.missions ?? []).filter((m) => m.objective === objetivo).length;
+        },
+        { timeout: 25_000, intervals: [500, 1000, 2000] },
+      )
+      .toBeGreaterThan(0);
+  });
 });
