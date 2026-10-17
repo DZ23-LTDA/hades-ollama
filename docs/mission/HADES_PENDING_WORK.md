@@ -1877,3 +1877,30 @@ faltavam foram instalados (Firefox 157.0, WebKit 27.2).
 - **Firefox** e **Safari** reais (extensão); sem `.crx`, sem SBOM do pacote;
 - **`CAPACIDADES` VAZIO**: o Companion **não** controla o PC;
 - **macOS, Android e iOS continuam por produzir** neste candidato.
+
+### O que falta (actualizado na janela `E-1064`)
+
+**Fechado**: os **recursos do SW** (9 entradas, 160,6 KB, **448 ms**) e o **upgrade
+v1→v2** num Chromium real — a v1 é apagada e o `/api/*` continua fora do cache.
+
+**Continua em falta, sem disfarce**:
+- ***recursos e upgrade só em Chromium*** -- Firefox e WebKit ficaram no `E-1063` com
+  os 8 pontos, mas **sem** medição de recursos nem upgrade;
+- ***`PWA_INSTALADO_NA_UI=NAO`*** -- o gesto de instalar é humano e **não foi executado**;
+- **sem medição de CPU nem bateria** -- só tamanho do cache e latência;
+- **`performance.memory` não foi reportado** pelo Chromium headless aqui;
+- **o WebKit do Playwright não é o Safari do macOS**;
+- ***`OFFLINE=PARCIAL`*** -- o shell abre; o chat, as missões e as aprovações **não**;
+- **a comparação externa continua `NAO_EXECUTADA`**;
+- **`55327160c` e `cda756f82` continuam VERMELHOS** -- pelo ritmo de push, não por defeito;
+- **decisão do proprietário em aberto**: distinguir «cancelado pelo push» de «cancelado
+  por falha» no `pr-gate` **toca a política do gate**;
+- **N=3 por fixture** na repetição: contagem, não probabilidade;
+- **as 14 threads do PR continuam abertas** -- não resolvi nenhuma (proibido);
+- **o encaixe da aprovação continua por ligar** (`E-1044`);
+- **shadow roots fechados**, **cross-origin**: como no `E-1040`; **BFCache** sem execução
+  observada (`E-1038`);
+- **o Chrome real do utilizador**: a versão 155 **não carrega** por `--load-extension`;
+- **Firefox** e **Safari** reais (extensão); sem `.crx`, sem SBOM do pacote;
+- **`CAPACIDADES` VAZIO**: o Companion **não** controla o PC;
+- **macOS, Android e iOS continuam por produzir** neste candidato.

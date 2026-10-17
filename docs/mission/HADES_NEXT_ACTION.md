@@ -1028,3 +1028,27 @@ ambos porque **ambos são honestos** — nenhum inventa conteúdo.
 tempo de `install`/`activate`, tamanho do cache) num browser real, e **testar upgrade
 entre versões reais do SW** (publicar v2, activar, confirmar que a v1 é apagada).
 **E esperar as runs antes do push.**
+
+### A proxima accao unica (janela `E-1064`)
+
+**Os recursos do service worker medidos e o upgrade v1→v2 provado num browser real: 9/9.**
+
+| medição | orçamento (declarado **antes**) | medido |
+|---|---|---|
+| entradas no cache | ≤ 400 | **9** |
+| bytes no cache | ≤ 64 MB | **0,16 MB** |
+| activação | < 20 s | **448 ms** |
+
+⇒ ***«Um limite que se ajusta ao resultado não é um limite.»***
+
+**E o upgrade**: com o servidor a servir `hades-sw-v2`, o browser **aceitou a v2**, o
+`activate` **apagou a v1** («nenhum cache `hades-sw-v1-*`»), e o **`/api/*` continuou a ir
+à rede** depois do upgrade.
+⇒ ***«Um service worker que nunca é substituído congela o produto no dia em que é
+instalado.»***
+
+**A proxima accao unica**: **Firefox e WebKit não foram medidos** — o `E-1063` correu os
+8 pontos nos três motores, mas **recursos e upgrade só em Chromium**. Correr o mesmo
+`pwa-recursos-e-upgrade.mjs` nos três motores (o script já abre um servidor próprio na
+porta 5180; basta parametrizar o motor como no `E-1063`). **E esperar as runs antes do
+push.**

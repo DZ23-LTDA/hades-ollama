@@ -1922,3 +1922,43 @@ iOS -> por produzir.
 **Doutrina em uma linha**: duas ferramentas instalaveis nao sao dois bloqueios externos;
 se o teste medisse a si mesmo os tres motores dariam o mesmo resultado; e um motor nao e'
 um dispositivo.
+
+### Instrucoes de retomada (janela `E-1064`)
+
+**Estado**: branch `fix/checker-relogio`; cabeca do indice `E-1064`; PR #438 **aberto** e
+**nao tocado** -- *as 14 threads continuam como estavam*; `reviewDecision` **vazio**.
+
+**REGRA DE PUSH -- OBRIGATORIA, E JA' VALIDADA** (quatorze 6/6 consecutivos):
+  1. commit local -> 2. ESPERAR o SHA remoto fechar com `failure=0` -> 3. `git push`.
+
+**OS RECURSOS E O UPGRADE DO SW** (`E-1064`) -- `app/ui/app/e2e/pwa-recursos-e-upgrade.mjs`:
+  node e2e/pwa-recursos-e-upgrade.mjs      # abre servidor proprio na porta 5180
+  => v1 activo; caches hades-sw-v1-shell(3) + hades-sw-v1-assets(6)
+  => 9 entradas, 160.6 KB, 0.16 MB      (orcamento declarado ANTES: 400 / 64 MB)
+  => activo em 448 ms                    (orcamento declarado ANTES: 20 s)
+  => upgrade: browser aceitou a v2 e activou-a  (caches = hades-sw-v2-*)
+  => upgrade: a v1 FOI APAGADA            (nenhum cache hades-sw-v1-*)
+  => upgrade: /api/* continua a ir a rede  ({"status":404})
+  ==== 9/9 ====
+
+**COMO O UPGRADE E' TESTADO SEM INVENTAR NADA**: o script serve o **mesmo `dist/`** por um
+servidor local que, **so' no caminho `/sw.js`**, reescreve `const VERSAO` para
+`hades-sw-v2`. O corpo do SW e' o mesmo; so' a constante muda. O codigo de limpeza do
+`activate` ja' existia -- o `E-1061` testou-o em simulacao; **aqui e' um browser.**
+
+**O QUE FALTA, MEDIDO**: recursos e upgrade **so' em Chromium**; Firefox/WebKit ficaram
+no `E-1063` com os 8 pontos mas sem esta medicao; sem CPU nem bateria;
+`PWA_INSTALADO_NA_UI=NAO`.
+
+**O ESTADO DAS PLATAFORMAS**: Windows/amd64 -> portatil **e** instalador (`E-1057`/
+`E-1058`), nao assinados, nao instalados. Linux/amd64 -> tarball **instalavel** (`E-1059`).
+**Web/PWA** -> build PASS (`E-1060`), icones 3/3 e SW (`E-1061`), **E2E 8/8 em 3 motores**
+(`E-1062`/`E-1063`), **recursos + upgrade 9/9 em Chromium** (`E-1064`), mas
+**`PWA_INSTALADO_NA_UI=NAO`**. macOS/Android/iOS -> por produzir.
+
+**O que NAO fazer**: `reset --hard`, `git clean`, rebase destrutivo, force-push, stash,
+`merge`, tag, release, publicacao externa, ou **resolver threads** do PR #438.
+
+**Doutrina em uma linha**: um limite que se ajusta ao resultado nao e' um limite; um
+service worker que nunca e' substituido congela o produto no dia em que e' instalado; e o
+cache que sobrevive a' sua propria versao e' um produto que nao consegue corrigir-se.
