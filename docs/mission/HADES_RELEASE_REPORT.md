@@ -8,15 +8,15 @@
 
 | Número | Valor |
 | --- | --- |
-| **Commit medido** (`measured_commit`) | `15ba8c75ae68d13c2c8753ef74d442dfe251ff69` |
+| **Commit medido** (`measured_commit`) | `818251093bda8c1ba62acd15784ac3d92bfc7da3` |
 | **Commit da `main`** (`git.main_sha`) | `4b3e21854` |
-| **Gerado em** (`measured_at`) | 2026-10-17T17:26:49-03:00 |
-| **Snapshot real** (`gate_head`) | `15ba8c75ae68d13c2c8753ef74d442dfe251ff69` |
+| **Gerado em** (`measured_at`) | 2026-10-17T17:53:32-03:00 |
+| **Snapshot real** (`gate_head`) | `818251093bda8c1ba62acd15784ac3d92bfc7da3` |
 | **Ramo do snapshot** (`gate_branch`) | `fix/checker-relogio` |
-| **Entradas nao commitadas** (`gate_dirty`) | 2 |
+| **Entradas nao commitadas** (`gate_dirty`) | 3 |
 | **O gate prova o snapshot candidato?** (`gate_snapshot`) | **MESMO** |
 | Estágios | 38 |
-| Linhas de evidência no índice | 927 |
+| Linhas de evidência no índice | 928 |
 | `COMPLETED_VERIFIED` | 14 |
 | `IN_PROGRESS` | 3 |
 | `BLOCKED_BY_EXTERNAL_DEPENDENCY` | 21 |
@@ -67,7 +67,7 @@ relatório **declara a ausência** em vez de preencher com suposição.
 | 5 | Context Bootstrap / contexto de projeto | PARCIAL | BLOCKED_BY_EXTERNAL_DEPENDENCY | B-07 | E-040, E-050, E-051, E-069 |
 | 11 | Paridade Codex/Claude (harnesses de codigo) | PARCIAL | BLOCKED_BY_EXTERNAL_DEPENDENCY | B-02 | E-025, E-046, E-116 |
 | 16 | Canais de IM (WhatsApp/Telegram/inbox unificado) | APENAS_ADAPTER | BLOCKED_BY_EXTERNAL_DEPENDENCY | B-03 | E-030, E-215 |
-| 20 | Distribuicao e instaladores (Windows/macOS/Linux) | PARCIAL | BLOCKED_BY_EXTERNAL_DEPENDENCY | B-06 | E-022, E-113, E-199, E-201, E-203, E-295 |
+| 20 | Distribuicao e instaladores (Windows/macOS/Linux) | PARCIAL | BLOCKED_BY_EXTERNAL_DEPENDENCY | B-06 | E-1135, E-022, E-113, E-199, E-201, E-203, E-295 |
 | 23 | Company Factory (empresa orquestrada) | PARCIAL | BLOCKED_BY_EXTERNAL_DEPENDENCY | B-07 | E-044, E-087, E-114 |
 | 24 | CRM e pipeline de vendas | PARCIAL | BLOCKED_BY_EXTERNAL_DEPENDENCY | B-05 | E-047, E-087, E-107, E-232, E-259, E-260 |
 | 25 | Commerce / loja e pedidos | IMPLEMENTADO_NAO_HOMOLOGADO | BLOCKED_BY_EXTERNAL_DEPENDENCY | B-05 | E-047, E-087, E-126, E-128, E-233, E-270 |
@@ -97,7 +97,7 @@ possível sem ele**.
 
 ## Referências
 
-- Índice de evidências: [`HADES_EVIDENCE_INDEX.md`](HADES_EVIDENCE_INDEX.md) (927 linhas).
+- Índice de evidências: [`HADES_EVIDENCE_INDEX.md`](HADES_EVIDENCE_INDEX.md) (928 linhas).
 - Estado da missão: [`HADES_MASTER_STATE.json`](HADES_MASTER_STATE.json).
 - Gate global: [`HADES_FINAL_RELEASE_GATE.md`](HADES_FINAL_RELEASE_GATE.md).
 - Gate intermediário de engenharia (estágio 22): [`HADES_ENGINEERING_GATE.md`](HADES_ENGINEERING_GATE.md).
