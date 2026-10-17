@@ -2039,3 +2039,43 @@ proxima viavel**.
 
 **Doutrina em uma linha**: um numero nao e' uma explicacao; um numero certo com o nome errado e'
 uma conclusao errada; e nao se optimiza o que ja' esta' 150x dentro do orcamento.
+
+### Instrucoes de retomada (janela `E-1067`)
+
+**Estado**: branch `fix/checker-relogio`; cabeca do indice `E-1067`; PR #438 **aberto** e
+**nao tocado** -- *as 14 threads continuam como estavam*; `reviewDecision` **vazio**.
+
+**REGRA DE PUSH -- OBRIGATORIA, E JA' VALIDADA** (dezesete 6/6 consecutivos):
+  1. commit local -> 2. ESPERAR o SHA remoto fechar com `failure=0` -> 3. `git push`.
+
+**O ANDROID, MEDIDO** (`E-1067`) -- tudo esta' la', menos o Gradle a arrancar:
+  apps/mobile-agentic/android/      nativo completo (gradlew, gradlew.bat, build.gradle, ...)
+  _tmp/android-sdk                  394.2 MB  (android-34, build-tools 34.0.0, adb)
+  _tmp/jdk17                        openjdk 17.0.20.1 (Temurin)
+  local.properties                  sdk.dir=<raiz>/_tmp/android-sdk   (ja' aponta para o SDK)
+  ~/.gradle/.../gradle-8.13         ja' extraido
+
+**AS 3 TENTATIVAS, E A CAUSA NOMEADA**:
+  1. gradlew.bat assembleDebug  -> FileNotFoundException no gradle-8.13-bin.zip (o zip foi apagado)
+  2. gradle.bat assembleDebug   -> Failed to load native library 'native-platform.dll'
+     (-Dorg.gradle.native=false e --no-daemon NAO ajudam)
+  3. -Djava.io.tmpdir explicito -> mesmo erro; --stacktrace deu a causa:
+     NativeLibraryLocator.java:46 -> File.createNewFile -> createFileExclusively
+     -> 'O sistema nao pode encontrar o caminho especificado'
+
+**ISTO NAO E' BLOCKED_EXTERNAL**: falta o Gradle a extrair uma DLL, nao uma credencial. O passo
+de desbloqueio e' concreto: (1) ver o `java.io.tmpdir` que o processo java ve;
+(2) criar esse directorio; (3) extrair a `native-platform.dll` do jar a' mao e passar
+`-Dorg.gradle.native.dir`.
+
+**O ESTADO DAS PLATAFORMAS**: Windows/amd64 -> portatil **e** instalador (`E-1057`/
+`E-1058`), nao assinados, nao instalados. Linux/amd64 -> tarball **instalavel** (`E-1059`).
+**Web/PWA** -> build, SW, 3 motores, recursos+upgrade, perfil (`E-1060`..`E-1066`), mas
+`PWA_INSTALADO_NA_UI=NAO`. **Android** -> projecto completo + toolchain presente, **Gradle
+bloqueado na DLL** (`E-1067`). macOS/iOS -> por produzir.
+
+**O que NAO fazer**: `reset --hard`, `git clean`, rebase destrutivo, force-push, stash,
+`merge`, tag, release, publicacao externa, ou **resolver threads** do PR #438.
+
+**Doutrina em uma linha**: um bloqueio de ambiente nao se disfarca de bloqueio externo -- e
+tambem nao se esconde atras de «quase».

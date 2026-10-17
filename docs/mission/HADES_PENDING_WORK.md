@@ -1954,3 +1954,28 @@ e a manter `/api/*` fora do cache.
 - **o Chrome real do utilizador**: a versao 155 **nao carrega** por `--load-extension`;
 - **Firefox** e **Safari** reais (extensao); sem `.crx`, sem SBOM do pacote;
 - **`CAPACIDADES` VAZIO**: o Companion **nao** controla o PC.
+
+### O que falta (actualizado na janela `E-1067`)
+
+**Medido e fechado**: o inventario do Android -- o projecto esta' **completo**, e **JDK 17 +
+SDK 34 + Gradle 8.13** estao' presentes. O bloqueio esta' **numa DLL do Gradle**, com causa nomeada.
+
+**Continua em falta, sem disfarce**:
+- ***`BUILD=NAO` e `APK=NAO` no Android*** -- o Gradle 8.13 nao carrega a `native-platform.dll`
+  (`NativeLibraryLocator.java:46`); **nao e' bloqueio externo** -- e' ambiente, com passo concreto;
+- **sem E2E em emulador** e **sem prova de que o `App.tsx` compila**;
+- ***a marca Android continua `DZ23 Agentic`*** -- `"name": "DZ23 Agentic"`,
+  `"package": "com.lmprado.dz23agentic"`, `namespace 'com.lmprado.dz23agentic'`; a migracao para
+  **`com.dz23ltd.hades`** que o dono decidiu **nao foi feita**;
+- ***`PWA_INSTALADO_NA_UI=NAO`*** no Web;
+- **macOS e iOS continuam por produzir**;
+- **Windows e Linux `INSTALLED=NAO`/`DEVICE_E2E=NAO`**;
+- **a comparacao externa continua `NAO_EXECUTADA`**;
+- **`55327160c` e `cda756f82` continuam VERMELHOS** -- pelo ritmo de push, nao por defeito;
+- **decisao do proprietario em aberto**: distinguir «cancelado pelo push» de «cancelado por
+  falha» no `pr-gate` **toca a politica do gate**;
+- **N=3 por fixture** na repeticao: contagem, nao probabilidade;
+- **as 14 threads do PR continuam abertas** -- nao resolvi nenhuma (proibido);
+- **o encaixe da aprovacao continua por ligar** (`E-1044`);
+- **o Chrome real do utilizador**: a versao 155 **nao carrega** por `--load-extension`;
+- **`CAPACIDADES` VAZIO**: o Companion **nao** controla o PC.

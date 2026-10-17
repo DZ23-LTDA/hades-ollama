@@ -1104,3 +1104,29 @@ a garantia do `E-1061`: *«preferimos um SW que nao instala a um SW que instala 
 **`PWA_INSTALADO_NA_UI`**, que e' humano. *Avancar para uma plataforma por produzir* -- e a
 **Android** e' a proxima tecnicamente possivel (Gradle local, APK nao assinado). Medir primeiro o
 que o `apps/mobile-agentic` exige. **E esperar as runs antes do push.**
+
+### A proxima accao unica (janela `E-1067`)
+
+**O APK Android: o projecto esta' completo, os tres requisitos estao' presentes, e o Gradle 8.13
+nao carrega a `native-platform.dll` neste host.**
+
+**Medido**: `apps/mobile-agentic/android/` **nativo completo** (`gradlew`, `gradlew.bat`,
+`build.gradle`, `settings.gradle`, `local.properties`, `gradle-wrapper`); **`_tmp\android-sdk`
+com 394,2 MB** (`android-34`, `build-tools 34.0.0`, `adb`); **`_tmp\jdk17` = openjdk 17.0.20.1**;
+**Gradle 8.13** ja' extraido. Os tres requisitos estavam la'.
+
+**3 tentativas, 3 hipoteses**: wrapper (`FileNotFoundException` no zip apagado) -> gradle directo
+(`Failed to load native library`) -> `-Djava.io.tmpdir` explicito (mesmo erro). O `--stacktrace`
+**nomeou a causa**: `NativeLibraryLocator.java:46` -> `createFileExclusively` ->
+***«O sistema nao pode encontrar o caminho especificado»***.
+=> ***«O protocolo antiloop manda parar a' terceira e registar -- e' o que faco.»***
+
+**E isto NAO e' `BLOCKED_EXTERNAL`**: nao falta credencial, conta nem dispositivo. E' uma **falha
+de ambiente reproduzivel**, com causa nomeada e passo de desbloqueio concreto: (1) confirmar o
+`java.io.tmpdir` que o processo java ve; (2) criar esse directorio exactamente; (3) se continuar,
+extrair a `native-platform.dll` do jar a' mao e passar `-Dorg.gradle.native.dir`.
+
+**A proxima accao unica**: **fazer o passo (1)** -- `java -XshowSettings:properties -version` com o
+JDK 17 e o `TMP` que o Gradle herda, para ver **que caminho** o `NativeLibraryLocator` tenta criar.
+E' uma medicao de 1 comando, com hipotese nova -- nao e' a quarta tentativa cega. **E esperar as
+runs antes do push.**
