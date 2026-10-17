@@ -53,6 +53,14 @@ INDICE = RAIZ / "docs" / "mission" / "HADES_EVIDENCE_INDEX.md"
 # A **faixa historica declarada**: 207 IDs ausentes, classificados no proprio WIP.
 FAIXA_AUSENTE = (571, 777)
 
+# ***A BASELINE DAS COLUNAS*** *-- o finding `4266327642` do PR #438: o cabecalho declara **5**
+# colunas e as linhas com `|` literal dentro do texto tem mais.* *Medida no `E-1128`: **843** de
+# **920** linhas.* => *o numero fica **declarado com tecto**, e a catraca **falha se SUBIR*** =>
+# ***`uma divida declarada com tecto nao e' o mesmo que uma divida escondida -- e o que o finding
+# pedia era NUMERO, nao desculpa.`***
+# *o numero real, medido pelo proprio detector: **848** de **920** linhas.*
+BASELINE_COLUNAS = 848
+
 CABECALHO = re.compile(r"^\|\s*(E-\d+)\s*\|")
 # **E o `\d{3,}` e' a correcao de um defeito do proprio detector**: com `\d{3,4}` o ID
 # `E-99999` **nao casava**, e a catraca deixava passar um ID citado sem entrada. => *o
@@ -95,6 +103,19 @@ def medir(texto: str) -> dict:
         for k in range(len(linhas))
         if ("\\" + "n| E-") in linhas[k] or ("\\" + "n") in linhas[k][-4:]
     ]
+
+    # (6) ***AS COLUNAS -- o finding `4266327642` do PR #438.*** *O cabecalho do indice declara
+    # **5** colunas (`| ID | Tipo | Comando | Resultado | Severidade |`), logo cada linha de
+    # evidencia tem de ter **6** pipes nao escapados.* => *e uma linha com **mais** pipes tem um
+    # `|` **literal** dentro do texto: o Markdown parte a celula em duas e a linha passa a ter
+    # colunas a mais* => ***`um pipe que devia ser texto vira estrutura -- e a tabela mente sobre
+    # o que cada coluna e'.`*** => *a cura e' escapar (`\|`); esta medida **conta** quantas linhas
+    # ainda nao estao escapadas, para o finding ter **numero** em vez de ter **texto**.*
+    colunas_irregulares = []
+    for k in com_cabecalho:
+        n = len(re.findall(r"(?<!\\)\|", linhas[k]))
+        if n != 6:
+            colunas_irregulares.append((k + 1, n))
 
     # (5) IDs citados sem cabecalho, **fora** da faixa historica declarada.
     #
@@ -146,6 +167,7 @@ def medir(texto: str) -> dict:
         "duplicados": sorted(duplicados),
         "literais": literais,
         "sem_entrada": sem_entrada,
+        "colunas_irregulares": colunas_irregulares,
     }
 
 
@@ -173,6 +195,8 @@ def main() -> int:
     print("  IDs duplicados       : %d" % len(m["duplicados"]))
     print("  newlines literais    : %d" % len(m["literais"]))
     print("  citados sem entrada  : %d" % len(m["sem_entrada"]))
+    print("  colunas irregulares  : %d (baseline declarada: %d)" % (
+        len(m["colunas_irregulares"]), BASELINE_COLUNAS))
 
     problemas = []
     if m["orfas"]:
@@ -192,6 +216,14 @@ def main() -> int:
             "NEWLINE LITERAL (a licao do `E-999`): %d entrada(s) => *um here-string "
             "PowerShell nao interpreta `\\n`, e o que chega ao Python e' barra + n* => "
             "linhas: %s" % (len(m["literais"]), ", ".join(str(l) for l, _ in m["literais"][:6]))
+        )
+    # *o finding `4266327642`: as colunas a mais sao DIVIDA DECLARADA, e a catraca falha se SUBIR.*
+    if len(m["colunas_irregulares"]) > BASELINE_COLUNAS:
+        problemas.append(
+            "COLUNAS A MAIS (o finding `4266327642` do PR #438): %d linha(s) com numero de "
+            "colunas diferente do cabecalho (5 colunas = 6 pipes), e a baseline e' %d => "
+            "*um `|` literal dentro do texto PARTE a celula em duas* => **numero subiu**"
+            % (len(m["colunas_irregulares"]), BASELINE_COLUNAS)
         )
     if m["sem_entrada"]:
         problemas.append(

@@ -1,6 +1,8 @@
 # HADES — HANDOFF (como retomar a missão do zero)
 
-> **REMEDIACAO MAIS RECENTE: E-1127** -- *as 2 pendencias declaradas do §ESTAGIO 2 resolvidas por medicao (o B-09 ja corrigido; o flake do macOS nao reproduz em 6 runs), e o MASTER_STATE actualizado.*
+> **REMEDIACAO MAIS RECENTE: E-1128** -- *o finding `4266327642` tem numero (**848** de **920**) e instrumento (a 6.a medida do `hades_index_shape_check.py`), com a catraca a falhar se subir.*
+
+
 
 
 
