@@ -102,4 +102,52 @@ describe("slash commands", () => {
     expect(parseSlashCommand("/unknown objetivo")).toBeNull();
     expect(slashCommandURL("/goal")).toBeNull();
   });
+
+  // ***E-1095 (§ESTAGIO 19): O MESMO CAMPO ACEITA TEXTO NORMAL E `/goal`.***
+  //
+  // *O critério do prompt: «o chat principal deve aceitar texto normal e `/goal` no mesmo campo» e
+  // «preservar texto longo, espaços, caminhos Windows e caracteres pt-BR sem o limite artificial
+  // actual do parser de argumentos».* => *estes 5 testes **discriminam**: sem eles, o parser podia
+  // tratar TODO o texto como comando (`parseSlashCommand` devolver algo em vez de `null`) e a suite
+  // continuava verde.*
+  describe("texto normal e `/goal` no mesmo campo", () => {
+    it("texto normal NÃO é comando -- o parser devolve null", () => {
+      expect(parseSlashCommand("olá, como estão as coisas?")).toBeNull();
+      expect(parseSlashCommand("explique o erro do parser")).toBeNull();
+      expect(parseSlashCommand("")).toBeNull();
+      // *e uma barra que nao e' comando conhecido tambem nao*
+      expect(parseSlashCommand("/etc/hosts")).toBeNull();
+      expect(parseSlashCommand("/tmp/arquivo.txt")).toBeNull();
+    });
+
+    it("caminho Windows com barras invertidas é preservado", () => {
+      const alvo = "C:\\Users\\DZ23\\Documents\\projeto";
+      const parsed = parseSlashCommand("/goal revisar " + alvo);
+      expect(parsed?.command.id).toBe("goal");
+      expect(parsed?.objective).toBe("revisar " + alvo);
+      expect(parsed?.objective).toContain("\\Users\\DZ23\\");
+      // *e a URL codifica-o em vez de o perder*
+      expect(slashCommandURL("/goal revisar " + alvo)).toContain("C%3A%5CUsers%5CDZ23");
+    });
+
+    it("caracteres pt-BR são preservados no objective", () => {
+      const parsed = parseSlashCommand("/goal criar missão com acentuação e cedilha: ação, coração");
+      expect(parsed?.objective).toBe("criar missão com acentuação e cedilha: ação, coração");
+    });
+
+    it("espaços internos e texto longo são preservados", () => {
+      const longo = "a".repeat(300) + "  com  espaços   duplos";
+      const parsed = parseSlashCommand("/goal " + longo);
+      expect(parsed?.objective).toBe(longo);
+      expect(parsed?.objective.length).toBe(300 + "  com  espaços   duplos".length);
+    });
+
+    it("`/goal` sem objective devolve comando com objective vazio (e a URL recusa)", () => {
+      const parsed = parseSlashCommand("/goal");
+      expect(parsed?.command.id).toBe("goal");
+      expect(parsed?.objective).toBe("");
+      // *o criterio: objetivo vazio pede complemento e NUNCA envia `/goal` cru ao modelo*
+      expect(slashCommandURL("/goal")).toBeNull();
+    });
+  });
 });

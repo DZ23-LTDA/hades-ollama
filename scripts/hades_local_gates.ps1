@@ -736,4 +736,26 @@ if ($LASTEXITCODE -ne 0) {
   '    FALHA'
 } else { '    OK' }
 $passos += 'testes-hermeticos-testes'
+
+''
+# E-1095: o §ESTAGIO 19 (UX/onboarding). *`/goal` no MESMO campo do chat, onboarding com as 3 pecas,
+# acessibilidade e teclado, menu unificado (<= 24 rotas) e a marca com as excecoes declaradas.*
+'--- 42. UX/ONBOARDING: /goal no composer, onboarding real, ARIA e teclado, menu unificado'
+$saidaUX = & python -X utf8 scripts/hades_ux_onboarding_check.py 2>&1
+$saidaUX | Select-Object -Last 3 | ForEach-Object { "    " + $_.ToString().Substring(0, [Math]::Min(110, $_.ToString().Length)) }
+if ($LASTEXITCODE -ne 0) {
+  $falhas.Add("hades_ux_onboarding_check.py (exit $LASTEXITCODE)")
+  '    FALHA'
+} else { '    OK' }
+$passos += 'ux-onboarding'
+
+''
+'--- 43. fault injection do UX/onboarding (3 injecoes + contraprova)'
+$saidaUXT = & python -X utf8 scripts/hades_ux_onboarding_check_test.py 2>&1
+$saidaUXT | Select-Object -Last 2 | ForEach-Object { "    " + $_.ToString().Substring(0, [Math]::Min(110, $_.ToString().Length)) }
+if ($LASTEXITCODE -ne 0) {
+  $falhas.Add("hades_ux_onboarding_check_test.py (exit $LASTEXITCODE)")
+  '    FALHA'
+} else { '    OK' }
+$passos += 'ux-onboarding-testes'
 "GATES LOCAIS: $($passos -join ' + ') VERDES"

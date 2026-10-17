@@ -49,6 +49,8 @@ que passam: *quem os corre é o auditor, e o resultado é do estado em que ele o
 | 39 | fault injection do ambiente T2 (3 injecoes + contraprova) |
 | 40 | TESTES HERMETICOS: NewRuntime em testes sempre com DataRoot (divida declarada: 107) |
 | 41 | fault injection da catraca dos testes hermeticos (injecao + 3 contraprovas) |
+| 42 | UX/ONBOARDING: /goal no composer, onboarding real, ARIA e teclado, menu unificado |
+| 43 | fault injection do UX/onboarding (3 injecoes + contraprova) |
 
 ## Como correr a bateria completa
 
