@@ -1052,3 +1052,28 @@ instalado.»***
 `pwa-recursos-e-upgrade.mjs` nos três motores (o script já abre um servidor próprio na
 porta 5180; basta parametrizar o motor como no `E-1063`). **E esperar as runs antes do
 push.**
+
+### A proxima accao unica (janela `E-1065`)
+
+**Os recursos e o upgrade do SW passam 9/9 nos tres motores** -- e a latencia de activacao difere:
+
+| motor | activacao | resultado |
+|---|---|---|
+| Chromium | **423 ms** | 9/9 |
+| WebKit | **1041 ms** | 9/9 |
+| Firefox | **1646 ms** | 9/9 |
+
+Mesmo comando, mesma maquina, mesmo `dist/`, mesmo orcamento de 20 s.
+=> ***«Se o instrumento se medisse a si mesmo, os tres dariam o mesmo numero.»***
+
+E os tres, em todos os pontos: SW `activated`; `hades-sw-v1-shell`(3) + `hades-sw-v1-assets`(6);
+**9 entradas, 160,6 KB, 0,16 MB** (identico ao byte); **upgrade v1->v2 aceite**; **v1 APAGADA**;
+e **`/api/*` continua a ir a rede** depois do upgrade.
+
+=> ***«Um numero nao e' uma explicacao.»*** -- o Firefox e' **3,9x** mais lento a activar que o
+Chromium, e **eu nao medi por que**.
+
+**A proxima accao unica**: **investigar o +1,2 s do Firefox na activacao do SW** -- e' um numero
+medido e nao explicado. Instrumentar os marcos (`install`, `waiting`, `activate`) com
+`performance.now()` no proprio `sw.js` e comparar. Se for estrutural do motor, registar como
+limite; se for do nosso `addAll`, corrigir. **E esperar as runs antes do push.**

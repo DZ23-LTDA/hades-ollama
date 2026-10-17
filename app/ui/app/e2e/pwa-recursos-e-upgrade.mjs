@@ -24,7 +24,16 @@
  *
  * NAO prova: instalacao pela UI, nem Safari real, nem Android/iOS.
  */
-import { chromium } from "playwright";
+import { chromium, firefox, webkit } from "playwright";
+
+/** Os tres motores. *O upgrade e os recursos tem de ser medidos em cada um, ou nao sao medidos.* */
+const MOTORES = { chromium, firefox, webkit };
+const NOME_MOTOR = process.env.HADES_E2E_BROWSER || "chromium";
+const motor = MOTORES[NOME_MOTOR];
+if (!motor) {
+  console.error("motor desconhecido: " + NOME_MOTOR + " (usa chromium|firefox|webkit)");
+  process.exit(2);
+}
 import { createServer } from "node:http";
 import { readFile, stat } from "node:fs/promises";
 import { extname, join, normalize } from "node:path";
@@ -84,8 +93,12 @@ function registar(nome, ok, detalhe) {
   console.log(`  ${ok ? "OK  " : "FALHA"} ${nome}${detalhe ? "  -- " + detalhe : ""}`);
 }
 
-const browser = await chromium.launch({ headless: true });
-const contexto = await browser.newContext({ serviceWorkers: "allow" });
+console.log(`\n  ==== motor: ${NOME_MOTOR} ====`);
+const browser = await motor.launch({ headless: true });
+// *`serviceWorkers: "allow"` so existe no Chromium;* nos outros motores o default ja permite.
+const contexto = await browser.newContext(
+  NOME_MOTOR === "chromium" ? { serviceWorkers: "allow" } : {},
+);
 
 async function medirCacheESW() {
   const pagina = await contexto.newPage();
