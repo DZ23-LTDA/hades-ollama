@@ -214,7 +214,7 @@ um é passo obrigatório antes de qualquer integração.*
 
 | CAP-ID | capacidade | referências | licença | HADES | prova HADES | lacuna / decisão |
 |---|---|---|---|---|---|---|
-| `CAP-L-01` | um composer com `/goal` | todos | várias | `PARTIAL` | `ChatForm.tsx`, `slashCommands.ts`, `E-1138`, `E-1140`, `E-1141`, `E-1142`, `E-1144`, `E-1147` | **Cinco provas de UI** (13 unitarios, shell, jornada, `/goal`, `/goal` com binario real). **Lacuna com causa raiz NOMEADA** (`E-1147`): em modo `serve` o agent runtime nao arranca (`mkdir %APPDATA%\ollama-agent\workspaces: Acesso negado`, limite ja' registado em `E-1087`), logo a missao nao pode ser criada no binario -- o `/goal` navega, mas falta o Mission Control vivo. |
+| `CAP-L-01` | um composer com `/goal` | todos | várias | `PARTIAL` | `ChatForm.tsx`, `slashCommands.ts`, `E-1138`, `E-1140`, `E-1141`, `E-1142`, `E-1144`, `E-1147`, `E-1148` | **Cinco provas de UI** + **o backend PROVADO**: `E-1148` fez o agent runtime subir (`/api/agent/v1/tools` 200, 17 ferramentas) e **criou/persistiu uma missão** com `provider: ollama-local`, `organization_id: local`, `capabilities: [workspace:read]`. A lacuna que sobra e' **de modelo, nao de integracao**: o planner devolveu `no steps` com `llama3.2:3b` e `context deadline exceeded` com `qwen2.5:7b` — precisa de modelo maior/mais tempo. |
 | `CAP-L-02` | um Mission Control + um menu | — | — | `PARTIAL` | missions | — |
 | `CAP-L-03` | onboarding local-first | — | — | `PARTIAL` | onboarding gate | — |
 | `CAP-L-04` | Windows/Linux/macOS/Android/iOS/Web | — | — | `PARTIAL` | `E-938` (`HadesSetup.exe`), `E-953` (Linux), `E-955` (Android prebuild) | *sem APK, sem macOS, sem iOS* |
