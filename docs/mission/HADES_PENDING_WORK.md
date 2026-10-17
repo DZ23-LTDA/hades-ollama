@@ -1574,3 +1574,29 @@ push produziu **quatro 6/6 consecutivos** (`4157a459b`, `ba62baf88`, `67581a993`
 - ligação da extensão ao **Mission Control** (`missao` fica a `null`);
 - APK Android bloqueado pela DLL JNI (`E-1019`);
 - macOS/iOS `BLOCKED_EXTERNAL` pela **máquina**.
+
+### O que falta (actualizado na janela `E-1053`)
+
+**Fechado**: a ligação do estágio 21 aos artefactos. Os três documentos referenciam
+`HADES_T2_MATRIX.md` e `HADES_T2_REPETICAO.md`, com comandos reproduzíveis na secção 6.
+
+**Continua em falta, sem disfarce**:
+- **a ligação é textual**: se alguém renomear um artefacto, **nada acusa** -- não há teste;
+- **os comandos da secção 6 exigem Ollama local e 25–30 min cada**;
+- **a comparação externa continua `NAO_EXECUTADA`** -- nada disto produz número de concorrente;
+- **`55327160c` e `cda756f82` continuam VERMELHOS** -- pelo ritmo de push, não por defeito;
+- **decisão do proprietário em aberto**: distinguir «cancelado pelo push» de «cancelado
+  por falha» no `pr-gate` **toca a política do gate**; a cura por baixo está **proibida**;
+- **`882acb121` não foi medido até ao fim** -- não afirmo o seu estado;
+- **N=3 por fixture** na repetição: contagem, não probabilidade;
+- **as 14 threads do PR continuam abertas** -- não resolvi nenhuma (proibido);
+- **o encaixe da aprovação continua por ligar** (`E-1044`);
+- **shadow roots fechados**, **cross-origin**, `document.domain`, `srcdoc`: como no `E-1040`;
+- **BFCache** sem execução observada (`E-1038`);
+- **o Chrome real do utilizador**: a versão 155 **não carrega** por `--load-extension`;
+- **Firefox** e **Safari**;
+- **sem `.crx`, sem assinatura, sem SBOM do pacote**;
+- **`CAPACIDADES` VAZIO**: o Companion **não** controla o PC;
+- ligação da extensão ao **Mission Control** (`missao` fica a `null`);
+- APK Android bloqueado pela DLL JNI (`E-1019`);
+- macOS/iOS `BLOCKED_EXTERNAL` pela **máquina**.

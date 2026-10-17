@@ -1508,3 +1508,34 @@ construcao, `bench.go:504`).
 **Doutrina em uma linha**: uma previsao escrita antes e' a unica prova de que a explicacao
 serve; quando a cura facil exige enfraquecer a medida, a resposta e' mudar o procedimento;
 e um procedimento que ninguem escreveu e' um procedimento que cada um inventa.
+
+### Instrucoes de retomada (janela `E-1053`)
+
+**Estado**: branch `fix/checker-relogio`; cabeca do indice `E-1053`; PR #438 **aberto** e
+**nao tocado** -- *as 14 threads continuam como estavam*; `reviewDecision` **vazio**.
+
+**REGRA DE PUSH -- OBRIGATORIA, E JA' VALIDADA** (quatro 6/6 consecutivos):
+  1. commit local -> 2. ESPERAR o SHA remoto fechar com `failure=0` -> 3. `git push`.
+
+**O ESTAGIO 21, AGORA LIGADO AOS ARTEFACTOS** (`E-1053`):
+  - `docs/parity/HADES_T2_MATRIX.md` -- matriz real, 3/8 verde, 4 `HARNESS_TRAFICOU` (`E-1047`);
+  - `docs/parity/HADES_T2_REPETICAO.md` -- repeticao, `46+/0` resiste tres dias (`E-1049`);
+  - a **seccao 6** de `HADES_STAGE_21_BENCHMARK.md` traz `artefacto -> comando -> evidencia`;
+  - os outros dois documentos tem a ligacao **dentro do bloco de citacao**.
+
+**A LIGACAO E' TEXTUAL**: *se alguem renomear `HADES_T2_MATRIX.md`, nada acusa.* Fechar
+com um checker e' a proxima accao -- mesmo padrao da catraca do encaixe (`E-1044`).
+
+**O QUE OS ARTEFACTOS NAO PROVAM**: comparacao externa `NAO_EXECUTADA`; taxa 3/8 com
+modelos de 3-7B; `N=3` por fixture (contagem, nao probabilidade); o warm/cold do
+`cmd/bench` nao existe (`bench.go:504` desarrega antes de medir).
+
+**DUAS CATRACAS COMPLEMENTARES**: `hades_index_shape_check.py` varre o **indice**;
+`hades_mission_check.py` varre **todo o codigo**. **Um ID novo continua do MAIOR cunhado.**
+
+**O que NAO fazer**: `reset --hard`, `git clean`, rebase destrutivo, force-push, stash,
+`merge`, tag, release, publicacao externa, ou **resolver threads** do PR #438.
+
+**Doutrina em uma linha**: um metodo que nao aponta para o artefacto e' um metodo que o
+auditor nao segue; um resultado sem ponteiro existe e nao se encontra; e acrescentar
+informacao pode degradar a forma -- que e' como a informacao se le.

@@ -795,3 +795,22 @@ referenciar** a matriz T2 real (`E-1047`) nem a repetição (`E-1049`) — que a
 medições verificadas do mesmo snapshot. Verificar se os documentos canónicos apontam para
 os artefactos reais e corrigir a fonte onde divergirem. **E, antes de qualquer push,
 esperar que as runs do SHA remoto terminem com `failure=0`.**
+
+### A proxima accao unica (janela `E-1053`)
+
+**O estágio 21 está ligado aos seus artefactos.** Os três documentos canónicos
+descreviam as medições e **nenhum chegava ao resultado** — um auditor que lesse o estágio
+não chegava ao `3/8 verde`.
+
+⇒ ***«Um método que não aponta para o artefacto é um método que o auditor não segue.»***
+⇒ ***«O trabalho estava feito; a prova não estava ligada.»***
+
+**Curado**: `HADES_STAGE_21_BENCHMARK.md` ganhou a **secção 6** (tabela `artefacto →
+comando → evidência`), e os outros dois ganharam a ligação **dentro do bloco de
+citação** — a primeira tentativa criou dois blocos partidos em Markdown, e foi corrigida.
+
+**A proxima accao unica**: **fechar a lacuna de rastreabilidade com um teste**, não com
+texto. Hoje a ligação é textual: **se alguém renomear `HADES_T2_MATRIX.md`, nada acusa.**
+Um checker que verifique que os documentos do estágio 21 citam os artefactos (e que os
+artefactos existem) fecha isso — e é o mesmo padrão da catraca do encaixe (`E-1044`).
+Tudo interno, e **esperar que as runs terminem antes de qualquer push**.
