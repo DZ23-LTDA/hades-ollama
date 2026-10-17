@@ -1,38 +1,34 @@
 # HADES — HANDOFF (como retomar a missão do zero)
-## JANELA E-1164 — os gates que faltavam medir (rondas 268-280)
+## JANELA E-1171 -- os gates que faltavam, e o lint que me apanhou (rondas 268-288)
 
 *Bloco de cabeca: mantem os tres documentos de retomada dentro da `JANELA = 12` do
 `hades_handoff_window_check.py`. Cada afirmacao abaixo tem ID proprio no indice.*
 
-- **`E-1152`** — os **16 testes E2E** que nunca tinham corrido: **16 passed (53,9 s)**; suite completa =
-  **27 testes verdes** em 15 specs (1 skip condicional com razao escrita).
-- **`E-1153`** — porque o `INSTALL` nao esta' medido: o smoke existe no workflow mas o `on:` nao cobre esta
-  branch; **nunca foi accionado**. Desbloqueio: `gh workflow run` (autorizacao do dono).
-- **`E-1154`** — os **10 estagios livres ja' estao `COMPLETED_VERIFIED`** (1,3,6,9,10,12,17,19,21,22); os
-  23 `IN_PROGRESS` sao **outros**.
-- **`E-1155` -> `E-1158` -> `E-1159`** — a correccao de um achado meu: o `go vet` do CI **nao** ve' o codigo
-  Windows, **mas o `golangci-lint` corre em `windows-latest`** (matrix do `test.yaml` L415, action L504) e
-  respeita os `//nolint:govet` que ja' existiam. Nao havia lacuna. E o CI **ja' corre** o orcamento do
-  bundle (L532) e o E2E de primeira execucao (L546).
-- **`E-1156`** — finding #1: **94 testes de aprovacao, 0 falhas**, incluindo
-  `TestConsumeConcorrenteComEscritoresNaoDuplicaExecucao` (PASS 0,83 s com `sync.WaitGroup`).
-- **`E-1157`** — `BUNDLE_BUDGET=PASS`: `raw=1512670/2000000`, `gzip=413586/600000`.
-- **`E-1160`** — **defeito real curado**: o gate §ESTAGIO 2 estava **CEGO** (o `stability_check` lia 1 de 3
-  formatos de saida do `hermeticos_check`, e ficou cego quando a divida chegou a zero). Baseline 107 -> 0.
-  **41/41 testes de instrumentos verdes.**
-- **`E-1161`** — os 2 candidatos de non-inference tem **teste discriminante + contraprova**;
-  **102 testes tenant/non-inference, 0 falhas**.
-- **`E-1162`** — `git diff --check` dava 3213 avisos; **3212 sao falso positivo por design** (`skills/replica`
-  e' `-text` para preservar o sha256 de terceiros). Só 1 era nosso, e foi curado.
-- **`E-1163`** — SBOM/licencas/notices passam: **0 copyleft forte em 930 itens**; a falha anterior era o
-  `go` fora do PATH.
-- **`E-1164`** — secret scan manual do diff: **5 match, 0 secrets reais** (todos fixtures em `_test.go`).
-  **Lacuna real**: o CI **nao tem** `gitleaks`/`trufflehog`/`detect-secrets` — o gate e' manual, nao continuo.
-
-*O veredito nao mudou: `NOT_RELEASE_READY`. Dos 9 criterios de conclusao, **1 esta' satisfeito** -- faltam
-`INSTALL`, APK, iOS, homologacao por plataforma e revisao humana independente.*
-
-
+- **`E-1170`** -- **lacuna ENTRE PROCESSOS fechada com teste, e o store estava CERTO.** Novo ficheiro
+  `internal/agent/service_agent_approvals_crossproc_test.go`: `Request -> Decide ->` 4 subprocessos do
+  proprio binario de teste via `os.Executable()`, cada um tenta `Consume()` da MESMA aprovacao; exige
+  exactamente **1 sucesso**. Medido: **1 de 4**; os outros 3 recusados. Suite de aprovacao: **97 PASS,
+  0 FAIL, 2 SKIP**. Salta em `-short`.
+- **`E-1171`** -- **o `golangci-lint` LOCAL apanhou 2 defeitos que eu tinha acabado de introduzir**:
+  `for i := 0; i < n; i++` em L74 e L94 do teste novo -> aviso `intrange`. Curado: lint **exit 0**,
+  teste **PASS 3,05 s**. *A primeira tentativa de lint falhou por `go` fora do PATH -- mesma armadilha
+  do `E-1097`, **3a ocorrencia na sessao**.*
+- **`E-1169`** -- 2a varredura de segredos, mais ampla: **12 ficheiros com match, 12/12 de teste, 0 em
+  codigo de produto**. `git diff --check origin/main...HEAD` = 3212 avisos, **0 fora de
+  `skills/replica/`** (terceiro `-text` de proposito).
+- **`E-1168`** -- caracterizacao honesta: existe infra de `flock` (`context_memory_lock.go`), mas e'
+  para o ficheiro de MEMORIAS, nao para o store de aprovacoes. (Fechada pelo `E-1170`.)
+- **`E-1167`** -- `go build` do HEAD em **10,8 s** e o binario **arranca** (`ollama version is 0.40.1`).
+- **`E-1166`** -- `gate_snapshot` e' um **ciclo estrutural de 1 commit**; o `--check` ja' exclui
+  `gate_dirty`, `gate_head` e `gate_snapshot`. O gate prova o `measured_commit`.
+- **`E-1165`** -- os **dois comandos EXACTOS de `go test` do CI passam**: `./server` 5,25 s;
+  `internal/agent` **296,05 s completos** (~1700 testes).
+- **`E-1164`** -- secret scan do diff: 5 match, 0 secrets reais. **Lacuna**: o CI **nao tem** scanner.
+- **`E-1163`** -- SBOM/licencas/notices: **0 copyleft forte em 930 itens**.
+- **`E-1162`** -- `git diff --check`: 3213 avisos, **3212 falso positivo por design**; 1 nosso, curado.
+- **`E-1161`** -- non-inference: **102 testes tenant/non-inference, 0 falhas**.
+- **`E-1160`** -- **defeito real curado**: o gate §ESTAGIO 2 estava **CEGO** quando a divida chegou a
+  zero. Baseline 107 -> 0. **41/41 testes de instrumentos verdes**.
 
 ## 0.0 REMEDIÇÃO MEDIDA (2026-10-15, agora) — a secção 0 abaixo fica preservada como HISTÓRIA
 
