@@ -1088,4 +1088,28 @@ if ($LASTEXITCODE -ne 0) {
 } else { '    OK' }
 $passos += 'rastreabilidade-injecoes'
 
+
+''
+# E-1111: a REVALIDACAO dos 14 findings do PR #438. *O finding e' HIPOTESE: o veredicto vem do CODIGO ATUAL,
+# nao do comentario do bot. 13 `CONFIRMADO_CORRIGIDO` e 1 `CONFIRMADO_PARCIAL` (o pipe no indice -- a classe
+# persiste em 831 linhas, e corrigi-la exigiria tocar na evidencia, que o prompt proibe).*
+'--- 70. FINDINGS do PR: a revalidacao contra o codigo atual'
+$saidaFind = & python -X utf8 scripts/hades_findings_revalidation.py --check 2>&1
+$saidaFind | Select-Object -Last 3 | ForEach-Object { "    " + $_.ToString().Substring(0, [Math]::Min(110, $_.ToString().Length)) }
+if ($LASTEXITCODE -ne 0) {
+  $falhas.Add("hades_findings_revalidation.py --check (exit $LASTEXITCODE)")
+  '    FALHA'
+} else { '    OK' }
+$passos += 'findings-revalidados'
+
+''
+'--- 71. fault injection dos findings (3 injecoes + contraprova)'
+$saidaFindT = & python -X utf8 scripts/hades_findings_revalidation_test.py 2>&1
+$saidaFindT | Select-Object -Last 2 | ForEach-Object { "    " + $_.ToString().Substring(0, [Math]::Min(110, $_.ToString().Length)) }
+if ($LASTEXITCODE -ne 0) {
+  $falhas.Add("hades_findings_revalidation_test.py (exit $LASTEXITCODE)")
+  '    FALHA'
+} else { '    OK' }
+$passos += 'findings-injecoes'
+
 "GATES LOCAIS: $($passos -join ' + ') VERDES"
