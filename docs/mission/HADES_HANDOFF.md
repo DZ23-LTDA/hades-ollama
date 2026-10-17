@@ -2303,3 +2303,49 @@ mesma regra, e um deles ficou para trás.»***
 **Resultado**: `JANELA DE CITACAO - fault injection: 20 OK, 0 FAIL` (era 18/2), e a bateria voltou a
 **33 OK / 0 FAIL**. ⇒ ***«O documento que documenta o falso positivo é o teste que o checker não
 esperava.»***
+
+### Instrucoes de retomada (janela `E-1076`)
+
+**Estado**: branch `fix/checker-relogio`; cabeca do indice `E-1076`; PR #438 **aberto** e
+**nao tocado** -- *as 14 threads continuam como estavam*; `reviewDecision` **vazio**.
+
+**REGRA DE PUSH -- OBRIGATORIA, E JA' VALIDADA** (vinte e tres 6/6 consecutivos):
+  1. commit local -> 2. ESPERAR o SHA remoto fechar com `failure=0` -> 3. `git push`.
+
+**O PACOTE DE AUDITORIA** (`E-1076`, §FASE-7 item 8) -- `docs/audit/`:
+  README_AUDITOR.md       <- seccoes, hashes, e «o que voce NAO vai encontrar»
+  PARIDADE_EVIDENCIAS.csv <- as 869 entradas do indice
+  GATES.md                <- os 36 gates declarados (LISTA, nao executa)
+  LIMITACOES.md           <- 17 blockers (8 ABERTOS / 9 resolvidos pelo campo tipo),
+                             faixa 571..777, artefactos ausentes, matriz por plataforma
+  ARTEFATOS.sha256        <- SHA-256 dos artefactos que EXISTEM
+  gerador: scripts/hades_audit_package.py  (com --check)
+  teste:   scripts/hades_audit_package_test.py  (24 verificacoes, 4 defeitos injetados)
+
+**COMO REGERAR**: python -X utf8 scripts/hades_audit_package.py  (e depois --check)
+
+**O DEFEITO QUE O PROPRIO GERADOR TINHA**: a primeira versao separava resolvidos de abertos
+por `"RESOLVIDO" in descricao.upper()` => e MEDIU MAL (5 abertos / 12 resolvidos quando sao
+8 / 9) => *e' o E-83: um detector lexical ve termos, nao relacoes* => a cura foi usar o
+**campo `tipo`**, e o LIMITACOES.md passou a mostrar o tipo em cada linha.
+
+**O TESTE TAMBEM TEVE DE SER CURADO** (pela terceira vez): a copia descartavel nao tinha os
+artefactos declarados, logo gerava um ARTEFATOS.sha256 diferente e falhava POR CONSTRUCAO
+=> curado importando a lista ARTEFATOS_DECLARADOS do proprio gerador.
+=> *E-1071 e E-1044/E-1054 outra vez: uma copia sem o mundo que o mede acusa o medidor.*
+
+**E A CATRACA DE ORFAOS APANHOU-ME PELA QUARTA VEZ** (E-1055, E-1056, E-1071, agora):
+criei os dois instrumentos e nao os pus na bateria => curado com os blocos 7d e 7e.
+
+**O ESTADO DAS PLATAFORMAS**: Windows/amd64 -> portatil **e** instalador (`E-1057`/
+`E-1058`), nao assinados, nao instalados. Linux/amd64 -> tarball **instalavel** (`E-1059`).
+**Web/PWA** -> build, SW, 3 motores, recursos+upgrade, perfil (`E-1060`..`E-1066`), mas
+`PWA_INSTALADO_NA_UI=NAO`. **Android** -> projecto completo, toolchain presente, marca
+migrada, **`BLOCKED` no daemon do Gradle** (`E-1073`), **sem APK**. macOS/iOS -> por produzir.
+
+**O que NAO fazer**: `reset --hard`, `git clean`, rebase destrutivo, force-push, stash,
+`merge`, tag, release, publicacao externa, ou **resolver threads** do PR #438.
+**E nao voltar ao Gradle sem hipotese nova**: 8 ja' foram testadas.
+
+**Doutrina em uma linha**: um pacote que so' lista o que existe e' uma brochura -- um que diz o
+que falta e' um instrumento; e um detector lexical ve termos, nao relacoes.

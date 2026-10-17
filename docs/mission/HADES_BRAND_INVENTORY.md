@@ -11,18 +11,18 @@
 > modificados** com **24** ocorrencias de marca que **nao existem no commit**, e o inventario
 > divergia entre a minha maquina e o CI. => *um instrumento que mede o disco mede **tambem o
 > trabalho nao commitado** -- e publica um numero que so' e' verdadeiro onde foi gerado.*
-> Origens medidas neste snapshot: `HEAD (sujo no disco)`: 17, `disco (limpo)`: 2497.
+> Origens medidas neste snapshot: `HEAD (sujo no disco)`: 15, `disco (limpo)`: 2504.
 
 | String | Ocorrencias |
 | --- | --- |
-| **Hades/HADES** (canonica) | **1121** |
-| DZ23 Agentic | 245 |
+| **Hades/HADES** (canonica) | **1126** |
+| DZ23 Agentic | 246 |
 | Ollama Full | 176 |
 | Ollama Classe A+ | 98 |
 | Ollama DZ23 | 59 |
 
-**Legadas somadas:** 578 ocorrencias
-(257 em ficheiros **migraveis**, 321 em ficheiros de **excecao**).
+**Legadas somadas:** 579 ocorrencias
+(258 em ficheiros **migraveis**, 321 em ficheiros de **excecao**).
 
 *O total **nao** decide: os mesmos numeros distribuem-se por sitios de tipos muito
 diferentes, e e' o sitio que decide.* Um ``README`` migra; um `bundle ID` nao.
@@ -101,6 +101,7 @@ hoje** e **falso sobre o que foi medido**.*
 | `docs/agentic/PHASE3_DELIVERY.md` | 1 | migravel |
 | `docs/agentic/PHASE9_DELIVERY.md` | 1 | migravel |
 | `docs/agentic/POLSIA_COMPARISON.md` | 1 | migravel |
+| `docs/audit/LIMITACOES.md` | 1 | migravel |
 | `docs/decisions/ADR-001-REMOTE-CLOUD-PROVIDERS.md` | 1 | migravel |
 | `docs/decisions/ADR-004-POSTGRES-TENANT-RLS-MIGRATION.md` | 1 | migravel |
 | `docs/dz23-parity-backlog.md` | 1 | migravel |

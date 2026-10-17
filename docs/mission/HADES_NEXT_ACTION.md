@@ -1282,3 +1282,31 @@ mesma regra, e um deles ficou para trás.»***
 **Resultado**: `JANELA DE CITACAO - fault injection: 20 OK, 0 FAIL` (era 18/2), e a bateria voltou a
 **33 OK / 0 FAIL**. ⇒ ***«O documento que documenta o falso positivo é o teste que o checker não
 esperava.»***
+
+### A proxima accao unica (janela `E-1076`)
+
+**O pacote de auditoria independente (§FASE-7 item 8) existe — e é gerado, não escrito.**
+
+**5 artefactos**, cada um função de uma fonte medível: `README_AUDITOR.md` (as secções, os
+hashes, e **o que o auditor NÃO vai encontrar**) · `PARIDADE_EVIDENCIAS.csv` (as 869 entradas
+do índice) · `GATES.md` (os **36** gates declarados, um por linha) · `LIMITACOES.md` (os **17**
+blockers, a faixa `571..777`, os artefactos ausentes, a matriz por plataforma) ·
+`ARTEFATOS.sha256` (SHA-256 dos artefactos que **existem**).
+
+**Por que é gerado**: um pacote escrito à mão **envelhece no dia seguinte** — é o `E-1071`
+outra vez. `--check` verifica que bate com o repositório.
+
+**E o gerador tinha dois defeitos, ambos medidos**: (1) listava um zip que **já não existe** no
+`dist/`; (2) separava os blockers resolvidos dos abertos por `"RESOLVIDO" in descricao` — e
+**mediu mal**: dava 5 abertos e 12 resolvidos, quando há **8 abertos e 9 resolvidos**.
+⇒ ***«É o `E-83` no meu próprio gerador: um detector lexical vê termos, não relações.»*** A
+cura foi separar pelo **campo `tipo`**.
+
+**24 verificações, 4 defeitos injetados**: artefacto apagado → exit 1; linha a mais → exit 1;
+índice que muda → exit 1; e o **`E-83`**: um blocker com `tipo=RESOLVIDO` e a palavra «ABERTO»
+na descrição fica em **Resolvidos**, e um com `tipo=EXTERNO` e a palavra «RESOLVIDO» fica em
+**Abertos** — ambos verificados.
+
+**A proxima accao unica**: o **`E-1076` fecha os 5 artefactos nomeados**; falta o **estado do
+CI do mesmo snapshot** e a **lista de findings abertos/fechados** que o item 8 também pede.
+E o **Android** continua `BLOCKED` (decisão do dono). **E esperar as runs antes do push.**

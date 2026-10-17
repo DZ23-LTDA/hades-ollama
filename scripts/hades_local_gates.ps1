@@ -199,6 +199,22 @@ $saidaDerivT = & python -X utf8 scripts/hades_derivados_check_test.py 2>&1
 $saidaDerivT | Select-Object -Last 4 | ForEach-Object { "    $_" }
 if ($LASTEXITCODE -ne 0) { $falhas.Add("hades_derivados_check_test.py (exit $LASTEXITCODE)") } else { '    OK   13/13 verificacoes do pre-commit' }
 
+# *POR QUE ISTO EXISTE:* o `E-1076` / §FASE-7 item 8. O pacote de auditoria independente
+# (`README_AUDITOR.md`, `PARIDADE_EVIDENCIAS.csv`, `GATES.md`, `LIMITACOES.md`,
+# `ARTEFATOS.sha256`) e' **gerado** a partir do indice, do estado, dos gates declarados e dos
+# artefactos que existem. *Um pacote escrito a mao envelhece no dia seguinte* -- e' o `E-1071`.
+'--- 7d. PACOTE de auditoria independente (FASE-7 item 8) - bate com o repositorio?'
+$saidaAudit = & python -X utf8 scripts/hades_audit_package.py --check 2>&1
+$saidaAudit | Select-Object -Last 3 | ForEach-Object { "    $_" }
+if ($LASTEXITCODE -ne 0) { $falhas.Add("hades_audit_package.py --check (exit $LASTEXITCODE)") } else { '    OK   pacote de auditoria consistente (5 artefactos)' }
+
+# *24 verificacoes, 4 defeitos injetados (artefacto apagado, linha a mais, indice que muda,
+# e o `E-83` no proprio gerador: o `tipo` manda e nao o texto).*
+'--- 7e. teste do pacote de auditoria (4 defeitos + contraprova)'
+$saidaAuditT = & python -X utf8 scripts/hades_audit_package_test.py 2>&1
+$saidaAuditT | Select-Object -Last 4 | ForEach-Object { "    $_" }
+if ($LASTEXITCODE -ne 0) { $falhas.Add("hades_audit_package_test.py (exit $LASTEXITCODE)") } else { '    OK   24/24 verificacoes do pacote de auditoria' }
+
 # E-992 - A CATRACA DO ASCII NOS .ps1. *Duas vezes escrevi um byte > 127 num comentario deste
 # proprio ficheiro* - e as duas vezes porque confiei na disciplina em vez de num teste. O
 # checker separa COMENTARIO (tecto declarado) de STRING (a que e' impressa ao utilizador, e
@@ -318,6 +334,7 @@ if ($appRodou) { $passos += 'app' } else { $passos += 'app-PULADO' }
 $passos += 'manifesto'
 $passos += 'marca'
 $passos += 'derivados'
+$passos += 'auditoria'
 $passos += 'ascii'
 # E-1022: o pacote da extensao entra no resumo. *Um passo que corre e nao aparece no resumo e'
 # um passo que ninguem sabe que correu* (o E-989, aplicado outra vez).

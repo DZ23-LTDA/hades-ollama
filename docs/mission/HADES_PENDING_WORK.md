@@ -2120,3 +2120,27 @@ mesma regra, e um deles ficou para trás.»***
 **Resultado**: `JANELA DE CITACAO - fault injection: 20 OK, 0 FAIL` (era 18/2), e a bateria voltou a
 **33 OK / 0 FAIL**. ⇒ ***«O documento que documenta o falso positivo é o teste que o checker não
 esperava.»***
+
+### O que falta (actualizado na janela `E-1076`)
+
+**Fechado**: o **pacote de auditoria independente** — 5 artefactos nomeados, **gerados** e
+verificados (`--check`), com **24 verificações** e **4 defeitos injetados**. E o `LIMITACOES.md`
+separa **8 blockers abertos** de **9 resolvidos** pelo campo `tipo`, não pela palavra.
+
+**Continua em falta, sem disfarce**:
+- **o item 8 também pede a lista de findings abertos/fechados** -- o `LIMITACOES.md` dá os
+  **blockers**, mas os **14 findings do PR #438** ainda não estão numa lista gerada;
+- **o estado do CI do mesmo snapshot** -- o pacote **não** o inclui, e é por desenho: *o SHA
+  muda a cada commit*;
+- ***`BUILD=NAO` e `APK=NAO` no Android*** -- `BLOCKED` no daemon do Gradle (`E-1073`),
+  **decisão do dono**;
+- **macOS e iOS continuam por produzir**;
+- ***`PWA_INSTALADO_NA_UI=NAO`*** no Web;
+- **Windows e Linux `INSTALLED=NAO`/`DEVICE_E2E=NAO`**;
+- **a comparação externa continua `NAO_EXECUTADA`**;
+- **`55327160c` e `cda756f82` continuam VERMELHOS** -- pelo ritmo de push, não por defeito;
+- **decisão do proprietário em aberto**: distinguir «cancelado pelo push» de «cancelado por
+  falha» no `pr-gate` **toca a política do gate**;
+- **as 14 threads do PR continuam abertas** -- não resolvi nenhuma (proibido);
+- **o encaixe da aprovação continua por ligar** (`E-1044`);
+- **`CAPACIDADES` VAZIO**: o Companion **não** controla o PC.
