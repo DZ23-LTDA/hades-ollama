@@ -126,12 +126,29 @@ def _git(*args: str) -> str:
         return ""
 
 
+def bytes_do_conteudo(caminho: Path) -> bytes:
+    """Os bytes do **conteudo**, e nao os do ficheiro de trabalho.
+
+    *Um derivado tem de medir o mesmo conteudo em qualquer checkout.* Com
+    `core.autocrlf=true` (o default do Git no Windows) o ficheiro de trabalho tem `CRLF` e
+    o **blob commitado tem `LF`**; um `sha256` calculado sobre o ficheiro de trabalho fica
+    **consistente no Windows e divergente no CI Linux**. Foi exactamente assim que o job
+    `class-a-plus-integrity` ficou vermelho: o manifesto gravava o hash dos `CRLF` locais e
+    o CI, ao recalcular sobre o checkout `LF`, chamava-lhe divergencia.
+
+    O `E-183` protege o caso **oposto** (uma fixture de terceiro com bytes publicados, marcada
+    `-text` no `.gitattributes`, cujo `sha256` tem de bater *no blob*); aqui nao ha bytes
+    publicados -- o SBOM e' gerado -- portanto **normaliza-se**. Ficheiros binarios (`dist/*`)
+    nao sao tocados: o `\\x00` e' o mesmo criterio que o proprio Git usa para os distinguir.
+    """
+    dados = caminho.read_bytes()
+    if b"\x00" in dados:
+        return dados
+    return dados.replace(b"\r\n", b"\n")
+
+
 def sha256_de(caminho: Path) -> str:
-    h = hashlib.sha256()
-    with caminho.open("rb") as f:
-        for bloco in iter(lambda: f.read(1 << 20), b""):
-            h.update(bloco)
-    return h.hexdigest()
+    return hashlib.sha256(bytes_do_conteudo(caminho)).hexdigest()
 
 
 def bloco_sbom() -> list[dict]:
@@ -145,7 +162,7 @@ def bloco_sbom() -> list[dict]:
         itens.append({
             "arquivo": nome,
             "estado": "PRESENTE",
-            "bytes": p.stat().st_size,
+            "bytes": len(bytes_do_conteudo(p)),
             "linhas": linhas,
             "sha256": sha256_de(p),
         })
