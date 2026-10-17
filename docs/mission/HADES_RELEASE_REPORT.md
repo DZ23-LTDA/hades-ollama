@@ -8,15 +8,15 @@
 
 | Número | Valor |
 | --- | --- |
-| **Commit medido** (`measured_commit`) | `f6d5315ce4a5f169ba58c355c761dec0ef738a25` |
+| **Commit medido** (`measured_commit`) | `a3db6ba19af0fc0130da1ae50fdc3cb70907295a` |
 | **Commit da `main`** (`git.main_sha`) | `4b3e21854` |
-| **Gerado em** (`measured_at`) | 2026-10-17T19:35:44-03:00 |
-| **Snapshot real** (`gate_head`) | `f6d5315ce4a5f169ba58c355c761dec0ef738a25` |
+| **Gerado em** (`measured_at`) | 2026-10-17T19:36:53-03:00 |
+| **Snapshot real** (`gate_head`) | `a3db6ba19af0fc0130da1ae50fdc3cb70907295a` |
 | **Ramo do snapshot** (`gate_branch`) | `fix/checker-relogio` |
 | **Entradas nao commitadas** (`gate_dirty`) | 3 |
 | **O gate prova o snapshot candidato?** (`gate_snapshot`) | **MESMO** |
 | Estágios | 38 |
-| Linhas de evidência no índice | 950 |
+| Linhas de evidência no índice | 951 |
 | `COMPLETED_VERIFIED` | 14 |
 | `IN_PROGRESS` | 3 |
 | `BLOCKED_BY_EXTERNAL_DEPENDENCY` | 21 |
@@ -37,7 +37,7 @@ relatório **declara a ausência** em vez de preencher com suposição.
 | # | Estágio | Capacidade | Execução | Bloqueio | Evidências |
 | --- | --- | --- | --- | --- | --- |
 | 1 | Auditoria total e inventario real | PARCIAL | COMPLETED_VERIFIED | — | E-1100, E-001, E-002, E-010, E-021, E-023, E-036, E-187, E-188, E-211, E-1154 |
-| 3 | Arquitetura canonica dos componentes | PARCIAL | COMPLETED_VERIFIED | — | E-1102, E-037, E-040, E-043, E-044, E-045, E-215, E-276, E-277, E-278, E-279, E-280, E-1154, E-1155 |
+| 3 | Arquitetura canonica dos componentes | PARCIAL | COMPLETED_VERIFIED | — | E-1102, E-037, E-040, E-043, E-044, E-045, E-215, E-276, E-277, E-278, E-279, E-280, E-1154, E-1155, E-1158 |
 | 6 | Harness Runtime (execucao governada) | AUSENTE | COMPLETED_VERIFIED | B-01 | E-1098, E-025, E-041, E-204, E-205, E-206, E-207, E-208, E-215, E-1145, E-1146, E-1148, E-1149, E-1150, E-1151, E-1154, … |
 | 7 | MCP Manager (servidores, ferramentas, escopos) | IMPLEMENTADO_E_TESTADO | COMPLETED_VERIFIED | B-10 | E-1106, E-018, E-019, E-026, E-215 |
 | 9 | Agentes e subagentes (delegacao) | IMPLEMENTADO_NAO_HOMOLOGADO | COMPLETED_VERIFIED | — | E-1099, E-043, E-215, E-239, E-240, E-1148, E-1149, E-1150, E-1151, E-1154, E-1156 |
@@ -97,7 +97,7 @@ possível sem ele**.
 
 ## Referências
 
-- Índice de evidências: [`HADES_EVIDENCE_INDEX.md`](HADES_EVIDENCE_INDEX.md) (950 linhas).
+- Índice de evidências: [`HADES_EVIDENCE_INDEX.md`](HADES_EVIDENCE_INDEX.md) (951 linhas).
 - Estado da missão: [`HADES_MASTER_STATE.json`](HADES_MASTER_STATE.json).
 - Gate global: [`HADES_FINAL_RELEASE_GATE.md`](HADES_FINAL_RELEASE_GATE.md).
 - Gate intermediário de engenharia (estágio 22): [`HADES_ENGINEERING_GATE.md`](HADES_ENGINEERING_GATE.md).
