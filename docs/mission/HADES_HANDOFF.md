@@ -1,6 +1,8 @@
 # HADES — HANDOFF (como retomar a missão do zero)
 
-> **REMEDIACAO MAIS RECENTE: E-1122** -- *a extensao INSTALA e ARRANCA num Firefox 157.0 REAL (`web-ext` diz `Installed`, 7 processos) -- e o `operar` fica declarado como nao provado.*
+> **REMEDIACAO MAIS RECENTE: E-1123** -- *os dois instaladores do `dist/` (um sem proveniencia, e nenhum do candidato actual), e o `SOURCE_SHA: DESCONHECIDO` declarado em `docs/release/PROVENIENCIA-HadesSetup.md`.*
+
+
 
 
 
