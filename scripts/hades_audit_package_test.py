@@ -112,6 +112,12 @@ def main() -> int:
         (tmp / PACOTE).mkdir(parents=True, exist_ok=True)
         for nome in OBRIGATORIOS:
             shutil.copy2(RAIZ / PACOTE / nome, tmp / PACOTE / nome)
+        # **o `E-1077` acrescentou dois artefactos ao pacote** (`FINDINGS.md` e `FINDINGS.json`), e o
+        # `--check` do pacote **exige a presenca** deles. *Uma copia sem eles falha por construcao*
+        # -- e' o `E-1071`/`E-1044` pela quarta vez.
+        for extra in ("FINDINGS.md", "FINDINGS.json"):
+            if (RAIZ / PACOTE / extra).is_file():
+                shutil.copy2(RAIZ / PACOTE / extra, tmp / PACOTE / extra)
 
         def recomputar_raiz():
             """O script resolve `RAIZ` por `__file__`; redireccionamos para a copia."""

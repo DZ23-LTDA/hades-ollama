@@ -311,6 +311,11 @@ def gerar() -> dict[str, str]:
         "GATES.md": gates_md,
         "LIMITACOES.md": limitacoes,
         "ARTEFATOS.sha256": artefatos,
+        # **O `FINDINGS.md` NAO e' gerado aqui**: ele e' gerado pelo `hades_findings_report.py` a
+        # partir do `FINDINGS.json` capturado da API. *Se este script o gerasse, o `--check` deste
+        # precisaria de rede* -- e um pacote de auditoria que so' se verifica com internet nao se
+        # verifica num ambiente isolado. => o `--check` do pacote **exige a presenca** do ficheiro,
+        # e o `--check` do findings valida o **conteudo**.
     }
 
 
@@ -333,6 +338,13 @@ def main() -> int:
         p = PACOTE / nome
         if not p.is_file() or p.read_text(encoding="utf-8") != conteudo:
             divergentes.append(nome)
+    # *A presenca do `FINDINGS.md` e' exigida por este `--check`, mas o CONTEUDO e' do
+    # `hades_findings_report.py --check`.* => *dois checkers, duas responsabilidades, e a
+    # fronteira e' a rede: este nao a usa.*
+    if not (PACOTE / "FINDINGS.md").is_file():
+        divergentes.append("FINDINGS.md (ausente; rode scripts/hades_findings_report.py)")
+    if not (PACOTE / "FINDINGS.json").is_file():
+        divergentes.append("FINDINGS.json (ausente; rode scripts/hades_findings_report.py --capturar)")
     if divergentes:
         print("  PACOTE DE AUDITORIA DIVERGENTE: %s" % ", ".join(divergentes))
         print("  Rode: python -X utf8 scripts/hades_audit_package.py")

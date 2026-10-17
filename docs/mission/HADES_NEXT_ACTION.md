@@ -1310,3 +1310,37 @@ na descrição fica em **Resolvidos**, e um com `tipo=EXTERNO` e a palavra «RES
 **A proxima accao unica**: o **`E-1076` fecha os 5 artefactos nomeados**; falta o **estado do
 CI do mesmo snapshot** e a **lista de findings abertos/fechados** que o item 8 também pede.
 E o **Android** continua `BLOCKED` (decisão do dono). **E esperar as runs antes do push.**
+
+### A proxima accao unica (janela `E-1077`)
+
+**A lista de findings do PR #438: 14 capturados da API, e o MD gerado do JSON — o `--check`
+não precisa de rede.**
+
+**O que foi medido**: `gh api …/pulls/438/comments` → **14 review comments**, todos de
+`coderabbitai[bot]` → **5 Major** e **9 Minor**. O `FINDINGS.json` versionado guarda id, autor,
+path, linha, data, severidade, categoria, título e trecho, mais o **SHA do checkout**
+(`093390737`) e a **data da captura**.
+
+**E os findings batem com o que o prompt descreve** — o que valida a captura: o #2
+«Classifique cada uso de relógio separadamente» (item 2), o #4 «Continue a busca após o
+primeiro `.Add(`» (item 3), o #5 «Vincule a triagem ao conteúdo» (item 4), o **#6 Major
+«Protect every per-organization approval write»** (o **P0**, item 1), o #14 «Do not classify
+partially closed findings as closed» (item 8).
+
+**A decisão de desenho, por causa da rede**: dois passos. A captura (`--capturar`) escreve o
+**JSON versionado** com data e SHA; a geração lê **só** o JSON. ⇒ ***«Um pacote de auditoria
+que só se verifica com internet não se verifica num ambiente isolado.»***
+
+**E os três defeitos que o gerador tinha, todos medidos**: (1) o `Total: 14 — .` saiu com a
+lista vazia porque o regex procurava `"**Major**"` e o corpo tem `"**🟠 Major**"` — **o emoji
+fica DENTRO do negrito**; (2) o **título** saiu como `🟠 Major` porque apanhava `negritos[1]`,
+que é a severidade — o título é o **quarto**; (3) o ID injectado do DEFEITO 3 foi construído em runtime, e não escrito por extenso.
+⇒ ***«Um índice por posição fixa quebra quando a decoração muda.»***
+
+**O `FINDINGS.md` diz o que NÃO afirma**: não afirma que algum finding foi corrigido (nenhum
+foi marcado no GitHub — proibido), não afirma que o bot está certo, não afirma que a lista é
+completa.
+
+**A proxima accao unica**: **os 14 findings ainda não foram validados contra o código**. O
+`E-1070` mostrou o método (reproduzir num worktree limpo). O **#6 (P0)** e o **#2/#4/#5** são
+os primeiros. **E esperar as runs antes do push.**

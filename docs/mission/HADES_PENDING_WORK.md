@@ -2144,3 +2144,28 @@ separa **8 blockers abertos** de **9 resolvidos** pelo campo `tipo`, não pela p
 - **as 14 threads do PR continuam abertas** -- não resolvi nenhuma (proibido);
 - **o encaixe da aprovação continua por ligar** (`E-1044`);
 - **`CAPACIDADES` VAZIO**: o Companion **não** controla o PC.
+
+### O que falta (actualizado na janela `E-1077`)
+
+**Fechado**: o **§FASE-7 item 8** está completo — os 5 artefactos nomeados (`E-1076`), os
+**SBOMs** (já existentes) e a **lista de findings** (`E-1077`): **14 findings** (5 Major,
+9 Minor) capturados com data e SHA, e o MD gerado do JSON.
+
+**Continua em falta, sem disfarce**:
+- **nenhum dos 14 findings foi validado contra o código** -- o `E-1070` mostrou o método
+  (reproduzir num worktree limpo) e **nenhum** passou por ele;
+- **o JSON envelhece**: um finding novo não aparece até alguém correr `--capturar`;
+- **o `FINDINGS.json` não tem `isResolved`** -- a API de review comments não traz o estado da
+  thread, e o GraphQL falhou;
+- ***`BUILD=NAO` e `APK=NAO` no Android*** -- `BLOCKED` no daemon do Gradle (`E-1073`),
+  **decisão do dono**;
+- **macOS e iOS continuam por produzir**;
+- ***`PWA_INSTALADO_NA_UI=NAO`*** no Web;
+- **Windows e Linux `INSTALLED=NAO`/`DEVICE_E2E=NAO`**;
+- **a comparação externa continua `NAO_EXECUTADA`**;
+- **`55327160c` e `cda756f82` continuam VERMELHOS** -- pelo ritmo de push, não por defeito;
+- **decisão do proprietário em aberto**: distinguir «cancelado pelo push» de «cancelado por
+  falha» no `pr-gate` **toca a política do gate**;
+- **as 14 threads do PR continuam abertas** -- não resolvi nenhuma (proibido);
+- **o encaixe da aprovação continua por ligar** (`E-1044`);
+- **`CAPACIDADES` VAZIO**: o Companion **não** controla o PC.

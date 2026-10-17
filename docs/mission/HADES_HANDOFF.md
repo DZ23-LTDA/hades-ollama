@@ -2349,3 +2349,56 @@ migrada, **`BLOCKED` no daemon do Gradle** (`E-1073`), **sem APK**. macOS/iOS ->
 
 **Doutrina em uma linha**: um pacote que so' lista o que existe e' uma brochura -- um que diz o
 que falta e' um instrumento; e um detector lexical ve termos, nao relacoes.
+
+### Instrucoes de retomada (janela `E-1077`)
+
+**Estado**: branch `fix/checker-relogio`; cabeca do indice `E-1077`; PR #438 **aberto** e
+**nao tocado** -- *as 14 threads continuam como estavam*; `reviewDecision` **vazio**.
+
+**REGRA DE PUSH -- OBRIGATORIA, E JA' VALIDADA** (vinte e quatro 6/6 consecutivos):
+  1. commit local -> 2. ESPERAR o SHA remoto fechar com `failure=0` -> 3. `git push`.
+
+**OS FINDINGS DO PR** (`E-1077`, §FASE-7 item 8 ultima parte) -- `docs/audit/`:
+  FINDINGS.json  <- capturado da API em 2026-10-17T06:03:40Z sobre o checkout 093390737
+                    (id, autor, path, linha, data, severidade, categoria, titulo, trecho)
+  FINDINGS.md    <- gerado DO JSON (o --check NAO precisa de rede)
+  gerador: scripts/hades_findings_report.py
+    --capturar  -> le' a API do GitHub (precisa de rede e de gh)
+    (sem arg)   -> gera o MD do JSON
+    --check     -> compara o MD com o JSON (SEM rede)
+
+**O QUE OS 14 SAO**: 5 Major + 9 Minor, todos de coderabbitai[bot].
+  Major: hades_test_clock_check.py x3, service_agent_approvals.go:879, router_pin_v2_test.go
+  E BATEM COM O PROMPT: #2 (item 2), #4 (item 3), #5 (item 4), #6 (o P0, item 1),
+  #14 (item 8), #13 (item 9).
+
+**O FINDINGS.md DIZ O QUE NAO AFIRMA** (e isso e' o que importa):
+  - nao afirma que algum finding foi corrigido (nenhum foi marcado no GitHub -- proibido);
+  - nao afirma que o bot esta' certo (comentario de bot e' hipotese, nao facto);
+  - nao afirma que a lista esta' completa (sao os review comments daquele instante);
+  - e diz COMO validar: o E-1070 e o E-1074 sao o modelo (reproduzir num checkout limpo).
+
+**OS TRES DEFEITOS DO GERADOR, MEDIDOS**: (1) `Total: 14 — .` com a lista vazia, porque o
+regex procurava "**Major**" e o corpo tem "**🟠 Major**" -- o emoji fica DENTRO do negrito;
+(2) o titulo saiu como "🟠 Major" porque apanhava negritos[1]; o titulo e' o QUARTO (depois do
+esforco); (3) o ID injectado do DEFEITO 3 foi construido em runtime. => UM INDICE POR POSICAO FIXA
+QUEBRA QUANDO A DECORACAO MUDA.
+
+**E O TESTE DO PACOTE TEVE DE SER CURADO OUTRA VEZ**: o audit_package --check passou a exigir
+FINDINGS.md e FINDINGS.json, e a copia do teste nao os tinha => 4 falhas por construcao.
+Curado. E o E-1071/E-1044/E-1054 pela quarta vez: uma copia sem o mundo que o mede acusa o
+medidor do seu proprio defeito.
+
+**O ESTADO DAS PLATAFORMAS**: Windows/amd64 -> portatil **e** instalador (`E-1057`/
+`E-1058`), nao assinados, nao instalados. Linux/amd64 -> tarball **instalavel** (`E-1059`).
+**Web/PWA** -> build, SW, 3 motores, recursos+upgrade, perfil (`E-1060`..`E-1066`), mas
+`PWA_INSTALADO_NA_UI=NAO`. **Android** -> projecto completo, toolchain presente, marca
+migrada, **`BLOCKED` no daemon do Gradle** (`E-1073`), **sem APK**. macOS/iOS -> por produzir.
+
+**O que NAO fazer**: `reset --hard`, `git clean`, rebase destrutivo, force-push, stash,
+`merge`, tag, release, publicacao externa, ou **resolver threads** do PR #438.
+**E nao voltar ao Gradle sem hipotese nova**: 8 ja' foram testadas.
+
+**Doutrina em uma linha**: um `--check` que precisa de rede nao e' um `--check` -- o JSON e' a
+prova do que a API disse naquele dia, e o MD e' a sua leitura; e um indice por posicao fixa
+quebra quando a decoracao muda.

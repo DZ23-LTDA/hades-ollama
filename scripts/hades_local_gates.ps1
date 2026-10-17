@@ -215,6 +215,14 @@ $saidaAuditT = & python -X utf8 scripts/hades_audit_package_test.py 2>&1
 $saidaAuditT | Select-Object -Last 4 | ForEach-Object { "    $_" }
 if ($LASTEXITCODE -ne 0) { $falhas.Add("hades_audit_package_test.py (exit $LASTEXITCODE)") } else { '    OK   24/24 verificacoes do pacote de auditoria' }
 
+# *POR QUE ISTO EXISTE:* o `E-1077` / §FASE-7 item 8, ultima parte: *«a lista de findings
+# abertos/fechados»*. O `FINDINGS.json` foi **capturado da API do GitHub** (com data e SHA) e o
+# `FINDINGS.md` e' gerado **dele** -- logo o `--check` **nao precisa de rede**.
+'--- 7f. FINDINGS do PR #438 - o MD bate com o JSON capturado?'
+$saidaFind = & python -X utf8 scripts/hades_findings_report.py --check 2>&1
+$saidaFind | Select-Object -Last 3 | ForEach-Object { "    $_" }
+if ($LASTEXITCODE -ne 0) { $falhas.Add("hades_findings_report.py --check (exit $LASTEXITCODE)") } else { '    OK   findings do PR consistentes (MD bate com o JSON)' }
+
 # E-992 - A CATRACA DO ASCII NOS .ps1. *Duas vezes escrevi um byte > 127 num comentario deste
 # proprio ficheiro* - e as duas vezes porque confiei na disciplina em vez de num teste. O
 # checker separa COMENTARIO (tecto declarado) de STRING (a que e' impressa ao utilizador, e
@@ -335,6 +343,7 @@ $passos += 'manifesto'
 $passos += 'marca'
 $passos += 'derivados'
 $passos += 'auditoria'
+$passos += 'findings'
 $passos += 'ascii'
 # E-1022: o pacote da extensao entra no resumo. *Um passo que corre e nao aparece no resumo e'
 # um passo que ninguem sabe que correu* (o E-989, aplicado outra vez).
