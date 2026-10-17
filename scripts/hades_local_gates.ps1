@@ -1232,4 +1232,18 @@ if ($LASTEXITCODE -ne 0) {
 } else { '    OK' }
 $passos += 'extensao-motores'
 
+
+''
+# E-1122: o FIREFOX -- a extensao INSTALA e ARRANCA num Firefox REAL. *O `web-ext` (a ferramenta do PROPRIO
+# Mozilla) diz `Installed` e o Firefox 157.0 do Playwright arranca com 7 processos. O `operar` (DOM, clique) fica
+# declarado como nao provado: o Playwright nao controla o Firefox que o `web-ext` lanca.
+'--- 80. FIREFOX: a extensao INSTALA e ARRANCA num Firefox real'
+$saidaFfE2E = & python -X utf8 scripts/hades_firefox_e2e.py 2>&1
+$saidaFfE2E | Select-Object -Last 3 | ForEach-Object { "    " + $_.ToString().Substring(0, [Math]::Min(110, $_.ToString().Length)) }
+if ($LASTEXITCODE -ne 0) {
+  $falhas.Add("hades_firefox_e2e.py (exit $LASTEXITCODE)")
+  '    FALHA'
+} else { '    OK' }
+$passos += 'firefox-instala'
+
 "GATES LOCAIS: $($passos -join ' + ') VERDES"

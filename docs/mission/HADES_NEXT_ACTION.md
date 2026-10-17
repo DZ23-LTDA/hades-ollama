@@ -1,6 +1,8 @@
 # HADES — PRÓXIMA AÇÃO (V2.2 + adendo de paridade)
 
-> **REMEDIACAO MAIS RECENTE: E-1121** -- *a extensao medida nos MOTORES REAIS: Chromium (10+25) e **Edge 155** (10+25) passam; o Chrome 155 nao carrega (reportado, nao exigido) -- e o `E-1105` corrigido.*
+> **REMEDIACAO MAIS RECENTE: E-1122** -- *a extensao INSTALA e ARRANCA num Firefox 157.0 REAL (`web-ext` diz `Installed`, 7 processos) -- e o `operar` fica declarado como nao provado.*
+
+
 
 
 

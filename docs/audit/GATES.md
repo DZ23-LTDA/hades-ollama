@@ -87,6 +87,7 @@ que passam: *quem os corre é o auditor, e o resultado é do estado em que ele o
 | 77 | NATIVE HOST: instalacao REVERSIVEL (roundtrip na sandbox) |
 | 78 | TIMEOUT DO CI: o `-timeout` declarado nos `go test` do agent |
 | 79 | EXTENSAO nos MOTORES REAIS: Chromium e Edge |
+| 80 | FIREFOX: a extensao INSTALA e ARRANCA num Firefox real |
 
 ## Como correr a bateria completa
 
