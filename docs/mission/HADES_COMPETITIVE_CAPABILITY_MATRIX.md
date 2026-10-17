@@ -164,7 +164,7 @@ um é passo obrigatório antes de qualquer integração.*
 | `CAP-H-02` | conectores tipados OAuth + least privilege | n8n | Apache | **`PARITY_MEASURED`** | `connector_catalog_status_test.go` | — |
 | `CAP-H-03` | retries idempotentes + dead-letter | n8n | Apache | `IMPLEMENTED_UNMEASURED` | `queue.go` | — |
 | `CAP-H-04` | Telegram/WhatsApp | n8n | Apache | `BLOCKED_EXTERNAL` | `whatsapp_test.go` | *token real* — **desbloqueio: token do dono** |
-| `CAP-H-05` | **telefonia/SIP** (`Dpro-at/Tel-Agent`, **correção factual**) | `Dpro-at/Tel-Agent` | **a confirmar** | `OUT_OF_SCOPE` | — | ⚠️ *a competência central é **telefonia/agentes, SIP** — não «controle por Telegram/WhatsApp»* |
+| `CAP-H-05` | **telefonia/SIP** (`Dpro-at/Tel-Agent`, **correção factual**) | `Dpro-at/Tel-Agent` | **AGPL-3.0** (`E-1136`) | `ABSENT_APPROVED` | `E-1136`/`E-1137` | ⚠️ *a competência central é **telefonia/agentes, SIP** — não «controle por Telegram/WhatsApp»*. **Não** é `OUT_OF_SCOPE`: existe o **estágio 37** dedicado a implementá-la e o §FASE-8 mantém-na como externa por **número SIP real**, não fora de escopo. O código do Tel-Agent é **AGPL-3.0 e não pode ser copiado**; as bibliotecas por baixo (`livekit/agents`, `livekit/livekit` = **Apache-2.0**; `aiortc` = **BSD-3-Clause**) **são compatíveis com MIT**, logo implementação própria é viável. Falta **implementação**, não autorização. |
 | `CAP-H-06` | integrações Git/cloud/DB/CRM | n8n, Dify | Apache | `PARTIAL` | `connector_*` | — |
 | `CAP-H-07` | execução local/self-hosted + MCP | Dify, n8n | Apache | **`PARITY_MEASURED`** | `E-966` (rota de execução) | *o `mcp_transport_test.go` cobre* |
 | `CAP-H-08` | import/export + testes de contrato | n8n | Apache | `IMPLEMENTED_UNMEASURED` | contract tests | — |
