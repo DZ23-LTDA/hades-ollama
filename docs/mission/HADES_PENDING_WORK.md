@@ -1979,3 +1979,29 @@ SDK 34 + Gradle 8.13** estao' presentes. O bloqueio esta' **numa DLL do Gradle**
 - **o encaixe da aprovacao continua por ligar** (`E-1044`);
 - **o Chrome real do utilizador**: a versao 155 **nao carrega** por `--load-extension`;
 - **`CAPACIDADES` VAZIO**: o Companion **nao** controla o PC.
+
+### O que falta (actualizado na janela `E-1068`)
+
+**Fechado**: a **marca Android** — `HADES`, `com.dz23ltd.hades`, com as chaves de storage
+preservadas e o plano de migração escrito.
+
+**Continua em falta, sem disfarce**:
+- ***a marca no resto do monorepo*** -- o inventário mostra **231 `DZ23 Agentic`** e **49
+  `Ollama DZ23`** ainda; a migração do mobile reduziu, mas não fechou;
+- ***`BUILD=NAO` e `APK=NAO` no Android*** -- o Gradle 8.13 não carrega a
+  `native-platform.dll` (`E-1067`, 4 tentativas, 2 hipóteses novas); **não é bloqueio externo**;
+- ***a migração não foi testada numa build*** -- *«uma migração de marca que nunca compilou
+  está pronta a compilar — não está verificada»*;
+- **sem E2E em emulador**;
+- **macOS e iOS continuam por produzir**;
+- ***`PWA_INSTALADO_NA_UI=NAO`*** no Web;
+- **Windows e Linux `INSTALLED=NAO`/`DEVICE_E2E=NAO`**;
+- **a comparação externa continua `NAO_EXECUTADA`**;
+- **`55327160c` e `cda756f82` continuam VERMELHOS** -- pelo ritmo de push, não por defeito;
+- **decisão do proprietário em aberto**: distinguir «cancelado pelo push» de «cancelado por
+  falha» no `pr-gate` **toca a política do gate**;
+- **N=3 por fixture** na repetição: contagem, não probabilidade;
+- **as 14 threads do PR continuam abertas** -- não resolvi nenhuma (proibido);
+- **o encaixe da aprovação continua por ligar** (`E-1044`);
+- **o Chrome real do utilizador**: a versão 155 **não carrega** por `--load-extension`;
+- **`CAPACIDADES` VAZIO**: o Companion **não** controla o PC.

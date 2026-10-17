@@ -1130,3 +1130,34 @@ extrair a `native-platform.dll` do jar a' mao e passar `-Dorg.gradle.native.dir`
 JDK 17 e o `TMP` que o Gradle herda, para ver **que caminho** o `NativeLibraryLocator` tenta criar.
 E' uma medicao de 1 comando, com hipotese nova -- nao e' a quarta tentativa cega. **E esperar as
 runs antes do push.**
+
+### A proxima accao unica (janela `E-1068`)
+
+**A marca Android migrada em três categorias, e elas não são a mesma coisa**:
+
+| categoria | acção |
+|---|---|
+| **UI visível** | muda — `DZ23 AGENTIC` → **`HADES`** |
+| **identificadores de package** | mudam — `com.lmprado.dz23agentic` → **`com.dz23ltd.hades`** |
+| **chaves de storage** (`dz23.agent.*`) | **FICAM** (4 + 2 ocorrências preservadas) |
+
+⇒ ***«Uma migração de marca que apaga a sessão de quem já a usava não é uma migração: é uma
+perda.»***
+
+**E o `android/` não se commitou**: é **saída do `expo prebuild`** (35 ficheiros não
+rastreados), e o `app.json` é a fonte — o `build.gradle` deriva do `app.json.android.package`.
+A migração **correcta** é no `app.json`, e está feita.
+
+**O plano está escrito onde se lê**: `apps/mobile-agentic/MIGRACAO_MARCA.md` — com a tabela
+antes/depois, o que **não** mudou e por quê, e o que acontece a quem tem a versão antiga (no
+Android o `applicationId` **é a identidade** — a versão nova é **outra app**; e a mitigação
+honesta é que **não existe APK com o id antigo**, logo não há ninguém a quebrar).
+
+**E quatro ficheiros que eu não toquei apareceram como `M`**: medido com
+`git diff --ignore-cr-at-eol --numstat` → **vazio** ⇒ **só fim-de-linha**.
+
+**A proxima accao unica**: **o inventário de marca mostra 231 `DZ23 Agentic` e 49
+`Ollama DZ23` ainda no monorepo** — a migração do mobile reduziu, mas falta o resto. **A
+proxima fatia é classificar as 231 ocorrências** por categoria (UI visível / nome técnico /
+excepção) usando o próprio `HADES_BRAND_INVENTORY.md`, que já as classifica. **E esperar as
+runs antes do push.**

@@ -2079,3 +2079,52 @@ bloqueado na DLL** (`E-1067`). macOS/iOS -> por produzir.
 
 **Doutrina em uma linha**: um bloqueio de ambiente nao se disfarca de bloqueio externo -- e
 tambem nao se esconde atras de «quase».
+
+### Instrucoes de retomada (janela `E-1068`)
+
+**Estado**: branch `fix/checker-relogio`; cabeca do indice `E-1068`; PR #438 **aberto** e
+**nao tocado** -- *as 14 threads continuam como estavam*; `reviewDecision` **vazio**.
+
+**REGRA DE PUSH -- OBRIGATORIA, E JA' VALIDADA** (dezoito 6/6 consecutivos):
+  1. commit local -> 2. ESPERAR o SHA remoto fechar com `failure=0` -> 3. `git push`.
+
+**A MARCA ANDROID MIGRADA** (`E-1068`):
+  app.json      name=HADES  slug=hades  scheme=hades
+                android.package=com.dz23ltd.hades  ios.bundleIdentifier=com.dz23ltd.hades
+  build.gradle  namespace + applicationId = com.dz23ltd.hades   (mas android/ e' GERADO)
+  package.json  name=hades-mobile
+  App.tsx       '<Text>DZ23 AGENTIC</Text>' -> '<Text>HADES</Text>'
+                as chaves dz23.agent.* FICAM (4 + 2 ocorrencias)
+  README.md     '# DZ23 Agentic Mobile' -> '# HADES Mobile'
+  MIGRACAO_MARCA.md   2917 B  (o plano, com o que acontece a quem tem a versao antiga)
+
+**O `android/` NAO SE COMMITA**: e' saida do `expo prebuild` (35 ficheiros nao rastreados), e
+o `app.json` e' a **fonte** -- o `build.gradle` deriva do `app.json.android.package`.
+A migracao correcta e' no `app.json`, e esta' feita.
+
+**AS TRES CATEGORIAS, QUE NAO SAO A MESMA COISA**: UI visivel muda; package muda; **chaves de
+storage ficam**. *Uma migracao de marca que apaga a sessao de quem ja' a usava nao e' uma
+migracao: e' uma perda.*
+
+**E A MITIGACAO DO `applicationId`**: no Android ele **e' a identidade da app**, logo a versao
+nova e' **outra app**. A mitigacao honesta: **nao existe APK publicado com o id antigo**
+(`E-1067`), logo **nao ha' utilizadores a quebrar**. Se um dia houver:
+`MigrateAndroidApplicationId` (AGP 8+) ou `MY_PACKAGE_REPLACED`.
+
+**QUATRO FICHEIROS QUE EU NAO TOQUEI APARECERAM COMO `M`**: `missionContext*` (4) =>
+`git diff --ignore-cr-at-eol --numstat` deu **vazio** => **so' fim-de-linha**. O diff real da
+migracao e' **4 ficheiros, 9 insercoes, 9 remocoes**.
+
+**O ESTADO DAS PLATAFORMAS**: Windows/amd64 -> portatil **e** instalador (`E-1057`/
+`E-1058`), nao assinados, nao instalados. Linux/amd64 -> tarball **instalavel** (`E-1059`).
+**Web/PWA** -> build, SW, 3 motores, recursos+upgrade, perfil (`E-1060`..`E-1066`), mas
+`PWA_INSTALADO_NA_UI=NAO`. **Android** -> projecto completo, toolchain presente, marca
+**migrada** (`E-1068`), mas **Gradle bloqueado na DLL** (`E-1067`) e **sem APK**. macOS/iOS
+-> por produzir.
+
+**O que NAO fazer**: `reset --hard`, `git clean`, rebase destrutivo, force-push, stash,
+`merge`, tag, release, publicacao externa, ou **resolver threads** do PR #438.
+
+**Doutrina em uma linha**: uma migracao de marca que apaga a sessao nao e' uma migracao; uma
+marca muda-se num sitio e uma sessao perde-se em qualquer um; e uma migracao que nunca
+compilou esta pronta a compilar, nao esta verificada.

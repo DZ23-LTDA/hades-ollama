@@ -11,18 +11,18 @@
 > modificados** com **24** ocorrencias de marca que **nao existem no commit**, e o inventario
 > divergia entre a minha maquina e o CI. => *um instrumento que mede o disco mede **tambem o
 > trabalho nao commitado** -- e publica um numero que so' e' verdadeiro onde foi gerado.*
-> Origens medidas neste snapshot: `HEAD (sujo no disco)`: 15, `disco (limpo)`: 2496.
+> Origens medidas neste snapshot: `HEAD (sujo no disco)`: 18, `disco (limpo)`: 2494.
 
 | String | Ocorrencias |
 | --- | --- |
-| **Hades/HADES** (canonica) | **1103** |
-| DZ23 Agentic | 220 |
+| **Hades/HADES** (canonica) | **1108** |
+| DZ23 Agentic | 231 |
 | Ollama Full | 172 |
 | Ollama Classe A+ | 95 |
 | Ollama DZ23 | 49 |
 
-**Legadas somadas:** 536 ocorrencias
-(239 em ficheiros **migraveis**, 297 em ficheiros de **excecao**).
+**Legadas somadas:** 547 ocorrencias
+(247 em ficheiros **migraveis**, 300 em ficheiros de **excecao**).
 
 *O total **nao** decide: os mesmos numeros distribuem-se por sitios de tipos muito
 diferentes, e e' o sitio que decide.* Um ``README`` migra; um `bundle ID` nao.
@@ -64,10 +64,12 @@ hoje** e **falso sobre o que foi medido**.*
 | `docs/agentic/PARITY_MATRIX.md` | 9 | migravel |
 | `docs/agentic/INTEGRATIONS.md` | 8 | migravel |
 | `CHANGELOG.md` | 7 | migravel |
+| `apps/mobile-agentic/MIGRACAO_MARCA.md` | 6 | migravel |
 | `docs/RELEASE_READINESS.md` | 6 | migravel |
 | `docs/agentic/HARNESSROUTER.md` | 6 | migravel |
 | `docs/mission/HADES_MASTER_STATE.json` | 6 | migravel |
 | `docs/agentic/ROADMAP.md` | 5 | migravel |
+| `docs/mission/HADES_PENDING_WORK.md` | 5 | migravel |
 | `docs/agentic/XAI_GROK.md` | 4 | migravel |
 | `scripts/install.ps1` | 4 | migravel |
 | `UPSTREAM_POLICY.md` | 3 | migravel |
@@ -77,7 +79,6 @@ hoje** e **falso sobre o que foi medido**.*
 | `docs/dz23-multi-provider.md` | 3 | migravel |
 | `docs/mission/HADES_HANDOFF.md` | 3 | migravel |
 | `docs/mission/HADES_NEXT_ACTION.md` | 3 | migravel |
-| `docs/mission/HADES_PENDING_WORK.md` | 3 | migravel |
 | `scripts/classify-ci-surfaces.py` | 3 | migravel |
 | `scripts/classify_ci_surfaces_test.py` | 3 | migravel |
 | `app/ui/app/e2e/shell.spec.ts` | 2 | migravel |
@@ -126,7 +127,7 @@ hoje** e **falso sobre o que foi medido**.*
 
 | Ficheiro | Legadas | Categoria |
 | --- | --- | --- |
-| `docs/mission/HADES_EVIDENCE_INDEX.md` | 131 | excecao:historico |
+| `docs/mission/HADES_EVIDENCE_INDEX.md` | 134 | excecao:historico |
 | `audit/AUTONOMOUS_MISSION_STATE.md` | 32 | excecao:historico |
 | `audit/OLLAMA_FULL_MISSION_STATE.md` | 27 | excecao:historico |
 | `docs/evidencias/browser-console-audit-f12.json` | 16 | excecao:historico |
@@ -154,7 +155,7 @@ hoje** e **falso sobre o que foi medido**.*
 | `audit/auditoria.md` | 1 | excecao:historico |
 | `docs/evidencias/browser-console-audit-audfix2.json` | 1 | excecao:historico |
 
-**Por tipo de excecao:** bundle id: 3, credencial: 3, env var: 4, historico: 276, instalador: 9, teste: 2
+**Por tipo de excecao:** bundle id: 3, credencial: 3, env var: 4, historico: 279, instalador: 9, teste: 2
 
 ## 6. O que este documento **nao** faz
 
