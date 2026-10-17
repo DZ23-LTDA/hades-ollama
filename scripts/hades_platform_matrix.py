@@ -18,6 +18,7 @@ que falta.`***
 import hashlib
 import io
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -73,6 +74,35 @@ def plataforma(nome: str, fonte: str, wf: str, pacote, install: str, e2e: str,
     }
 
 
+def instalador_do_candidato() -> tuple[Path | None, str]:
+    """O instalador Windows **do candidato**, com o `SOURCE_SHA` que ele proprio declara.
+
+    *PORQUE ISTO EXISTE (medido na ronda 237):* o gerador apontava para o caminho **fixo**
+    `dist/HadesSetup.exe`, que em 2026-10-17 era o instalador do dia ANTERIOR
+    (`SHA256 A70B5107...`, gerado em 2026-10-16 22:58) -- enquanto o artefacto do candidato
+    `32a7ffc57` estava em `dist/hades-installer-818251093/HadesSetup-818251093.exe`
+    (`SHA256 0F95833A...`). *A matriz estava a atribuir ao candidato um artefacto de outro
+    snapshot.* **Cura:** procurar o directorio `dist/hades-installer-*` mais RECENTE e ler o
+    `SOURCE_SHA` do `PROVENIENCIA.txt` que o script de instalador escreve ao lado.
+    """
+    candidatos = sorted(
+        (p for p in DIST.glob("hades-installer-*/HadesSetup-*.exe") if p.is_file()),
+        key=lambda p: p.stat().st_mtime, reverse=True)
+    for exe in candidatos:
+        prov = exe.parent / "PROVENIENCIA.txt"
+        declarado = "NAO_DECLARADO"
+        if prov.is_file():
+            m = re.search(r"SOURCE_SHA:\s*([0-9a-f]{7,40})", prov.read_text(encoding="utf-8", errors="replace"))
+            if m:
+                declarado = m.group(1)
+        return exe, declarado
+    # sem instalador do candidato: cai para o caminho legado, e DIZ que a proveniencia nao foi conferida
+    legado = DIST / "HadesSetup.exe"
+    if legado.is_file():
+        return legado, "NAO_DECLARADO"
+    return None, "AUSENTE"
+
+
 def main() -> int:
     # ---------- Android: o `app.json`/`eas.json` existem? o APK? ----------
     app_json = MOBILE / "app.json"
@@ -84,6 +114,12 @@ def main() -> int:
     web_dist = RAIZ / "app" / "ui" / "app" / "dist"
     web_index = web_dist / "index.html"
 
+    instalador_win, sha_declarado_win = instalador_do_candidato()
+    if sha_declarado_win not in ("NAO_DECLARADO", "AUSENTE"):
+        nota_win = ("artefacto do candidato (SOURCE_SHA " + sha_declarado_win +
+                    " declarado no PROVENIENCIA.txt)")
+    else:
+        nota_win = "artefacto LEGADO: o PROVENIENCIA.txt nao confirma o SHA do candidato"
     linhas = []
     linhas.append("# HADES — MATRIZ DE PLATAFORMAS (medida)")
     linhas.append("")
@@ -108,8 +144,9 @@ def main() -> int:
         plataforma(
             "Windows", "`cmd/`, `app/`, `server/` (Go)",
             existe_wf("dz23-windows-installer.yaml"),
-            ("dist/HadesSetup.exe",), "NÃO MEDIDO (INSTALLED=NAO)",
-            "NÃO MEDIDO", "não assinado (unsigned)", "o SmartScreen é limite esperado"),
+            ((instalador_win,) if instalador_win else ("dist/HadesSetup.exe",)),
+            "NÃO MEDIDO (INSTALLED=NAO)",
+            "NÃO MEDIDO", "não assinado (unsigned)", nota_win),
         plataforma(
             "Linux", "`cmd/`, `app/`, `server/` (Go)",
             existe_wf("dz23-linux-package.yaml"),

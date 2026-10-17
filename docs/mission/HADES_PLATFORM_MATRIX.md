@@ -16,7 +16,7 @@ não é APK.***
 
 | Plataforma | SOURCE | BUILD (workflow) | PACKAGE | Tamanho | Hash (SHA-256[:32]) | INSTALL | DEVICE_E2E | Assinatura |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| **Windows** | `cmd/`, `app/`, `server/` (Go) | `dz23-windows-installer.yaml` | `dist\HadesSetup.exe` | 24.3 MB | `a70b51073d89b7f65463f4f46d5a7a89` | NÃO MEDIDO (INSTALLED=NAO) | NÃO MEDIDO | não assinado (unsigned) |
+| **Windows** | `cmd/`, `app/`, `server/` (Go) | `dz23-windows-installer.yaml` | `dist\hades-installer-818251093\HadesSetup-818251093.exe` | 24.3 MB | `0f95833a67144eb6a01fe45b0ce0d85a` | NÃO MEDIDO (INSTALLED=NAO) | NÃO MEDIDO | não assinado (unsigned) |
 | **Linux** | `cmd/`, `app/`, `server/` (Go) | `dz23-linux-package.yaml` | `dist\hades-linux-amd64\hades-linux-amd64-UNSIGNED.tar.gz` | 16.2 MB | `1b7ee3046a887138f75298054f81f1ea` | NÃO MEDIDO (INSTALLED=NAO) | NÃO MEDIDO | não assinado (unsigned) |
 | **macOS** | `cmd/`, `app/`, `server/` (Go) | `dz23-macos-build.yaml` | `AUSENTE` | - | `AUSENTE` | NÃO MEDIDO | NÃO MEDIDO | não assinado (unsigned) |
 | **Android** | `apps/mobile-agentic/` (Expo/RN + `android/`) | `dz23-e2e.yaml` | `AUSENTE` | - | `AUSENTE` | NÃO MEDIDO | NÃO MEDIDO | APK de desenvolvimento (não publicável) |
@@ -36,7 +36,7 @@ não é APK.***
 
 ## As lacunas, por plataforma
 
-- **Windows**: o SmartScreen é limite esperado
+- **Windows**: artefacto do candidato (SOURCE_SHA 818251093 declarado no PROVENIENCIA.txt)
 - **Linux**: cross-compile Windows→Linux com CGO=0; **NAO** e' build nativo, **NAO** foi instalado, e **NAO** e' byte-a-byte o artefacto do `dz23-linux-package.yaml` (que usa CGO=1)
 - **macOS**: **BLOCKED_EXTERNAL (medido, nao suposto)**: `GOOS=darwin CGO_ENABLED=0` falha com `undefined: GetCPUMem` -- o `GetCPUMem` do darwin vive em `discover/gpu_darwin.go`, que usa `import "C"` (Metal/Foundation), e o Go exclui ficheiros com `import "C"` quando CGO=0. Desbloqueio: o `dz23-macos-build.yaml` em `macos-latest` (Xcode + CGO).
 - **Android**: **o `app.json`/`eas.json` existem; o APK não**
