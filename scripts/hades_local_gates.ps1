@@ -885,4 +885,54 @@ if ($LASTEXITCODE -ne 0) {
 } else { '    OK' }
 $passos += 'arquitetura-testes'
 
+
+''
+# E-1104: os 3 instrumentos de SEGURANCA que corriam so' na bateria manual -- agora DECLARADOS no gates.
+# *O §ESTAGIO 18 exige «RBAC/ABAC, tenant isolation, non-inference, approvals de uso unico e audit log»*
+# => *e um instrumento que corre numa bateria nao-commitada nao esta' ligado a nada.*
+'--- 54. SEGURANCA: tenant scope, non-inference, e o relogio de teste'
+$saidaTen = & python -X utf8 scripts/hades_tenant_scope_check.py --check 2>&1
+$saidaTen | Select-Object -Last 2 | ForEach-Object { "    " + $_.ToString().Substring(0, [Math]::Min(110, $_.ToString().Length)) }
+if ($LASTEXITCODE -ne 0) {
+  $falhas.Add("hades_tenant_scope_check.py --check (exit $LASTEXITCODE)")
+  '    FALHA'
+} else { '    OK' }
+$passos += 'tenant-scope'
+
+$saidaNon = & python -X utf8 scripts/hades_non_inference_scan.py 2>&1
+$saidaNon | Select-Object -Last 2 | ForEach-Object { "    " + $_.ToString().Substring(0, [Math]::Min(110, $_.ToString().Length)) }
+if ($LASTEXITCODE -ne 0) {
+  $falhas.Add("hades_non_inference_scan.py (exit $LASTEXITCODE)")
+  '    FALHA'
+} else { '    OK' }
+$passos += 'non-inference'
+
+$saidaClock = & python -X utf8 scripts/hades_test_clock_check.py 2>&1
+$saidaClock | Select-Object -Last 2 | ForEach-Object { "    " + $_.ToString().Substring(0, [Math]::Min(110, $_.ToString().Length)) }
+if ($LASTEXITCODE -ne 0) {
+  $falhas.Add("hades_test_clock_check.py (exit $LASTEXITCODE)")
+  '    FALHA'
+} else { '    OK' }
+$passos += 'relogio-de-teste'
+
+''
+'--- 55. o CHECADOR da seguranca (9 eixos do Dominio K)'
+$saidaSec = & python -X utf8 scripts/hades_security_check.py 2>&1
+$saidaSec | Select-Object -Last 3 | ForEach-Object { "    " + $_.ToString().Substring(0, [Math]::Min(110, $_.ToString().Length)) }
+if ($LASTEXITCODE -ne 0) {
+  $falhas.Add("hades_security_check.py (exit $LASTEXITCODE)")
+  '    FALHA'
+} else { '    OK' }
+$passos += 'seguranca'
+
+''
+'--- 56. fault injection da seguranca (3 injecoes + contraprova)'
+$saidaSecT = & python -X utf8 scripts/hades_security_check_test.py 2>&1
+$saidaSecT | Select-Object -Last 2 | ForEach-Object { "    " + $_.ToString().Substring(0, [Math]::Min(110, $_.ToString().Length)) }
+if ($LASTEXITCODE -ne 0) {
+  $falhas.Add("hades_security_check_test.py (exit $LASTEXITCODE)")
+  '    FALHA'
+} else { '    OK' }
+$passos += 'seguranca-testes'
+
 "GATES LOCAIS: $($passos -join ' + ') VERDES"

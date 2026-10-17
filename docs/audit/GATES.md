@@ -61,6 +61,9 @@ que passam: *quem os corre é o auditor, e o resultado é do estado em que ele o
 | 51 | fault injection da auditoria (3 injecoes + contraprova) |
 | 52 | ARQUITETURA: fontes de verdade singulares, testes de contrato, e a documentacao |
 | 53 | fault injection da arquitectura (3 injecoes + contraprova) |
+| 54 | SEGURANCA: tenant scope, non-inference, e o relogio de teste |
+| 55 | o CHECADOR da seguranca (9 eixos do Dominio K) |
+| 56 | fault injection da seguranca (3 injecoes + contraprova) |
 
 ## Como correr a bateria completa
 

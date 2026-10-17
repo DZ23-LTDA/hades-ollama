@@ -270,6 +270,14 @@ TRIAGADOS = {
 
 
 def main() -> int:
+    # ***O STDOUT TEM DE SER UTF-8, MESMO QUANDO O TERMINAL NAO E'.***
+    # Medido: o script imprime U+2705, U+1F534 e U+1F6A8, e com o stdout em **cp1252** (o default do
+    # Windows quando nao ha' `-X utf8`) rebenta com
+    # `UnicodeEncodeError: 'charmap' codec can't encode character '\u2705'`.
+    # => o `reconfigure` com `errors="replace"` garante que o RELATORIO sai, mesmo que um simbolo
+    # apareca como `?` -- ***um checker que morre a imprimir nao checa nada.***
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     check = "--check" in sys.argv
     raiz = Path("internal")
     if not raiz.is_dir():
