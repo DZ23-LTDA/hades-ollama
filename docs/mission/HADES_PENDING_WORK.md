@@ -2202,3 +2202,33 @@ separa **8 blockers abertos** de **9 resolvidos** pelo campo `tipo`, não pela p
 - **as 14 threads do PR continuam abertas** -- não resolvi nenhuma (proibido);
 - **o encaixe da aprovação continua por ligar** (`E-1044`);
 - **`CAPACIDADES` VAZIO**: o Companion **não** controla o PC.
+
+### O que falta (actualizado na janela `E-1135` -- proveniencia dos artefactos)
+
+**Fechado nesta janela** (todas com medicao, nao declaracao):
+
+- **o Windows citava o instalador de outro snapshot**: a matriz usava o caminho FIXO
+  `dist/HadesSetup.exe`, que era o de `2026-10-16 22:58` (`SHA256 A70B5107...`), enquanto o
+  artefacto do candidato estava em `dist/hades-installer-818251093/` (`0F95833A...`). Mesmo
+  tamanho (24,26 MB). Cura: leitura do `SOURCE_SHA` do `PROVENIENCIA.txt`;
+- **o Linux tinha a mesma classe**: a proveniencia vive **dentro** do tarball e declara
+  `SOURCE_SHA: 9a0408e31905`. Cura: leitura com a stdlib `tarfile`;
+- **o Web/PWA nao pode declarar SHA** (Vite nao o escreve): passou a ser provada a
+  **auto-coerencia** do bundle (5/5 assets referenciados presentes) e a data do build;
+- **os dois pacotes da extensao nao estavam em inventario nenhum**: passaram a ter seccao
+  propria na matriz e a declarar `SOURCE_SHA: a313019e48ef` (campo escrito pelos dois geradores,
+  e o inventario passou a ler `LEIA-ME.txt` *e* `PROVENIENCIA.txt`, em qualquer nivel).
+
+**Continua em falta, sem disfarce**:
+
+- **smoke de instalacao do `HadesSetup`**: `BLOCKED` pela ferramenta de execucao deste host
+  (`Start-Process` deixa o filho a segurar o stdio do harness). Nada foi instalado e nada ficou
+  pendente. Desbloqueio: runner do `test-install.yaml`;
+- **`INSTALL` e `DEVICE_E2E` continuam NAO MEDIDO em TODAS as plataformas** -- a cura foi sobre
+  a proveniencia do artefacto, **nao** sobre a homologacao dele;
+- **o bundle Web/PWA nao declara o SHA do fonte** (limite do Vite, dito na matriz);
+- APK Android (**decisao do dono**), macOS e iOS por produzir, PWA nao instalado na UI;
+- pairing (`native messaging` + Companion), ligacao da extensao ao Mission Control, E2E em
+  Chrome/Edge reais;
+- benchmark reproduzivel (`ESTAGIO 21`) nao iniciado; `SUPERIOR_MEASURED` nao reclamado;
+- as 14 threads do PR continuam abertas -- **nenhuma foi resolvida** (proibido sem autorizacao).
