@@ -1434,3 +1434,40 @@ esta' proibida pelo owner por palavras.*
 **Doutrina em uma linha**: um vermelho que nao e' um defeito continua a ser um vermelho;
 quando a cura facil exige enfraquecer a medida, a resposta e' mudar o procedimento; e o
 sinal estava a medir o intervalo entre pushes, nao a qualidade do commit.
+
+### Instrucoes de retomada (janela `E-1051`)
+
+**Estado**: branch `fix/checker-relogio`; cabeca do indice `E-1051`; PR #438 **aberto** e
+**nao tocado** -- *as 14 threads continuam como estavam*; `reviewDecision` **vazio**.
+
+**REGRA DE PUSH -- LEIA ANTES DE ENVIAR QUALQUER COISA**:
+  1. faca o commit localmente;
+  2. ESPERE que as runs do SHA remoto corrente fechem com `failure=0`;
+  3. so' entao faca `git push`.
+  *Cada push cancela as runs do SHA anterior; o `pr-gate` espera por gates do MESMO SHA
+  (`pr-gate.yaml:91`) com deadline de 30 min (`:61`) -- e reprova se eles nao terminarem.*
+
+**A PROVA, TRES SHAs**: `55327160c` (gates **cancelled**) -> `pr-gate` **FAILURE**;
+`4157a459b` e `ba62baf88` (gates **success**) -> **6/6**. *Um push rapido garante um
+vermelho que nao e' um defeito.*
+
+**E NAO CURE ISTO POR BAIXO**: aceitar `cancelled` como aprovacao no `pr-gate` esta'
+**proibido pelo owner por palavras**. *A gate esta' certa em reprovar.* Mudar a gate
+**toca a politica do gate** e e' decisao do proprietario.
+
+**O ESTAGIO 21, MEDIDO NESTA JANELA**:
+  - matriz T2 real: `PASS` 599,88 s -- 3/8 verde, 4 trapacearam, 1 vermelho; veredictos
+    identicos **um dia** depois (`E-1047`);
+  - repeticao T2: `PASS` 209,78 s -- o `46+/0` resiste **tres dias** (`E-1049`);
+  - anti-trapaca e' **codigo** (`harness_benchmark.go:286`);
+  - o warm/cold do `cmd/bench` **nao existe** (frio por construcao, `bench.go:504`).
+
+**INVENTARIO DO WORKTREE (passo 31)**: *conteudo 0, so' fim-de-linha 11, nao rastreado 1*.
+***Uma contagem nao e' um inventario.***
+
+**O que NAO fazer**: `reset --hard`, `git clean`, rebase destrutivo, force-push, stash,
+`merge`, tag, release, publicacao externa, ou **resolver threads** do PR #438.
+
+**Doutrina em uma linha**: um vermelho que nao e' um defeito continua a ser um vermelho;
+uma previsao que se cumpre vale mais do que uma explicacao que se acomoda; e um
+procedimento que ninguem escreveu e' um procedimento que cada um inventa.

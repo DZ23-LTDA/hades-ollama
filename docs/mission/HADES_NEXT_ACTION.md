@@ -762,3 +762,20 @@ não correram.
 terminarem** — e verificar se `ba62baf88` (HEAD, 6 runs em curso) fecha com
 `failure=0`, agora que sei o que o mata. Se fechar 6/6, o mecanismo fica provado por
 **três** SHAs em vez de dois.
+
+### A proxima accao unica (janela `E-1051`)
+
+**O mecanismo do `pr-gate` está provado com TRÊS SHAs.** `55327160c` (gates cancelados)
+⇒ `pr-gate` **failure**; `4157a459b` e `ba62baf88` (gates terminados) ⇒ **6/6 success**.
+A previsão do `E-1050` foi escrita **antes** do terceiro SHA fechar — e cumpriu-se.
+
+E o comportamento mudou por causa dela: o commit `67581a993` foi feito **localmente** e só
+enviado **depois** do `ba62baf88` fechar 6/6. ***A disciplina de push deixou de ser uma
+frase no handoff e passou a ser um procedimento seguido.***
+
+**A proxima accao unica**: **fechar o estágio 21 com os documentos canónicos.** O
+`HADES_BENCHMARK_METHOD.md` e o `HADES_STAGE_21_BENCHMARK.md` descrevem medições **sem
+referenciar** a matriz T2 real e a repetição — que agora são medições do mesmo snapshot,
+verificadas. Verificar se os documentos canónicos apontam para os artefactos reais e
+corrigir a fonte onde divergirem. E, antes de qualquer push, **esperar que as runs
+terminem**.

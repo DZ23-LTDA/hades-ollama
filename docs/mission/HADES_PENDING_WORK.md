@@ -1517,3 +1517,31 @@ seguinte a cancelar os gates que ele espera (`pr-gate.yaml:91`, deadline em `:61
 - ligação da extensão ao **Mission Control** (`missao` fica a `null`);
 - APK Android bloqueado pela DLL JNI (`E-1019`);
 - macOS/iOS `BLOCKED_EXTERNAL` pela **máquina**.
+
+### O que falta (actualizado na janela `E-1051`)
+
+**Fechado**: o mecanismo do `pr-gate`, provado com três SHAs. E o procedimento de push
+mudou por causa disso.
+
+**Continua em falta, sem disfarce**:
+- **`55327160c` continua VERMELHO no GitHub** -- e quem o vir não sabe, sem ler o log,
+  que a causa foi um push;
+- **o `cda756f82` vai repetir o padrão** -- declarado antes de acontecer, não observado ainda;
+- **uma decisão do proprietário em aberto**: distinguir «cancelado pelo push» de
+  «cancelado por falha» no `pr-gate` **toca a política do gate**; a cura por baixo está
+  **proibida**;
+- **o estágio 21 tem uma lacuna de integração**: os documentos canónicos de método não
+  referenciam a matriz T2 real nem a repetição;
+- **N=3 por fixture** na repetição: contagem, não probabilidade;
+- **nenhuma comparação externa executada** -- `NAO_EXECUTADA`;
+- **as 14 threads do PR continuam abertas** -- não resolvi nenhuma (proibido);
+- **o encaixe da aprovação continua por ligar** (`E-1044`);
+- **shadow roots fechados**, **cross-origin**, `document.domain`, `srcdoc`: como no `E-1040`;
+- **BFCache** sem execução observada (`E-1038`);
+- **o Chrome real do utilizador**: a versão 155 **não carrega** por `--load-extension`;
+- **Firefox** e **Safari**;
+- **sem `.crx`, sem assinatura, sem SBOM do pacote**;
+- **`CAPACIDADES` VAZIO**: o Companion **não** controla o PC;
+- ligação da extensão ao **Mission Control** (`missao` fica a `null`);
+- APK Android bloqueado pela DLL JNI (`E-1019`);
+- macOS/iOS `BLOCKED_EXTERNAL` pela **máquina**.
