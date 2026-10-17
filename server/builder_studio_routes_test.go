@@ -26,6 +26,10 @@ func TestStudioBuilderRoutesInteractiveAndTraceableExport(t *testing.T) {
 	runtime, err := agent.NewRuntime(agent.RuntimeConfig{
 		WorkspaceRoot: tmpDir,
 		Builder:       builder,
+		// ***E-1092: o `DataRoot` e' TEMPORARIO.*** *Sem ele, o `NewRuntime` resolve para o
+		// `%APPDATA%` real do utilizador (`resolveRuntimeDataRoot`) e o teste escreve na maquina --
+		// o mesmo defeito do `E-1087`, noutro ficheiro.*
+		DataRoot: t.TempDir(),
 	})
 	if err != nil {
 		t.Fatalf("failed to create runtime: %v", err)
@@ -210,6 +214,8 @@ func TestStudioDeployRejectsWithoutCredentialsHonestGateStatus(t *testing.T) {
 		WorkspaceRoot: tmpDir,
 		Builder:       builder,
 		// No deployment manager configured -> honest fail-closed
+		// ***E-1092: o `DataRoot` e' TEMPORARIO -- o mesmo defeito do `E-1087`.***
+		DataRoot: t.TempDir(),
 	})
 	if err != nil {
 		t.Fatalf("preparar o runtime: %v", err)
@@ -246,7 +252,7 @@ func TestStudioPreviewAndDownloadRequireBearerWhenAuthEnabled(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	runtime, err := agent.NewRuntime(agent.RuntimeConfig{WorkspaceRoot: tmpDir, Builder: builder})
+	runtime, err := agent.NewRuntime(agent.RuntimeConfig{WorkspaceRoot: tmpDir, Builder: builder, DataRoot: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -332,7 +338,10 @@ func TestStudioRoutesRejectStaleVersionAndExpiredExport(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	runtime, err := agent.NewRuntime(agent.RuntimeConfig{WorkspaceRoot: root, Builder: builder})
+	// ***E-1092: o `DataRoot` e' TEMPORARIO.*** *Sem ele, o `NewRuntime` resolve para o
+	// `%APPDATA%` real do utilizador (`resolveRuntimeDataRoot`), e o teste **escreve na maquina**
+	// -- o mesmo defeito do `E-1087`, noutro ficheiro.*
+	runtime, err := agent.NewRuntime(agent.RuntimeConfig{WorkspaceRoot: root, Builder: builder, DataRoot: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}
