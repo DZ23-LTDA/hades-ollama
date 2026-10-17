@@ -181,6 +181,24 @@ $saidaMarca = & python -X utf8 scripts/hades_brand_inventory.py --check 2>&1
 $saidaMarca | Select-Object -Last 3 | ForEach-Object { "    $_" }
 if ($LASTEXITCODE -ne 0) { $falhas.Add("hades_brand_inventory.py --check (exit $LASTEXITCODE)") } else { '    OK' }
 
+# *POR QUE ISTO EXISTE:* o `E-1070` e o `E-1071`. O `E-1068` mudou o `apps/mobile-agentic/app.json`
+# -- um ficheiro que **alimenta um instrumento** -- e **nao correu o instrumento**. O
+# `HADES_BRAND_INVENTORY.md` ficou desactualizado e o CI reprovou com `INVENTARIO DIVERGENTE`.
+# *A causa-raiz nao era o `app.json`: era **nao haver nada que obrigasse**.*
+# => este passo corre os **tres** geradores em `--check` e diz **qual regenerar**.
+'--- 7b. derivados batem com a fonte (E-1071) - o pre-commit tambem corre isto'
+$saidaDeriv = & python -X utf8 scripts/hades_derivados_check.py --quiet 2>&1
+$saidaDeriv | Select-Object -Last 8 | ForEach-Object { "    $_" }
+if ($LASTEXITCODE -ne 0) { $falhas.Add("hades_derivados_check.py (exit $LASTEXITCODE)") } else { '    OK   derivados consistentes (3 geradores)' }
+
+# *POR QUE ISTO EXISTE:* o `E-1055` e o `E-1056` ja' o disseram -- **copiar um scanner para
+# `scripts/` sem um gate e' um INSTRUMENTO ORFAO**. E este teste tem o seu proprio valor: *um
+# teste que nao corre e' um teste que nao existe.*
+'--- 7c. o teste do pre-commit dos derivados (E-1071)'
+$saidaDerivT = & python -X utf8 scripts/hades_derivados_check_test.py 2>&1
+$saidaDerivT | Select-Object -Last 4 | ForEach-Object { "    $_" }
+if ($LASTEXITCODE -ne 0) { $falhas.Add("hades_derivados_check_test.py (exit $LASTEXITCODE)") } else { '    OK   13/13 verificacoes do pre-commit' }
+
 # E-992 - A CATRACA DO ASCII NOS .ps1. *Duas vezes escrevi um byte > 127 num comentario deste
 # proprio ficheiro* - e as duas vezes porque confiei na disciplina em vez de num teste. O
 # checker separa COMENTARIO (tecto declarado) de STRING (a que e' impressa ao utilizador, e
@@ -299,6 +317,7 @@ if ($appRodou) { $passos += 'app' } else { $passos += 'app-PULADO' }
 # ninguem sabe que correu.*
 $passos += 'manifesto'
 $passos += 'marca'
+$passos += 'derivados'
 $passos += 'ascii'
 # E-1022: o pacote da extensao entra no resumo. *Um passo que corre e nao aparece no resumo e'
 # um passo que ninguem sabe que correu* (o E-989, aplicado outra vez).

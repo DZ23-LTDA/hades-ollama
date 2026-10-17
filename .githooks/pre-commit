@@ -1,0 +1,40 @@
+#!/bin/sh
+# Pre-commit do HADES: o derivado tem de bater com a fonte (`E-1071`).
+#
+# POR QUE ESTE FICHEIRO EXISTE, E POR QUE ESTA' NO GIT.
+#
+# O `E-1070` mediu um vermelho de CI cuja causa foi: *o `E-1068` mudou o `app.json` -- um ficheiro
+# que alimenta um instrumento -- e nao correu o instrumento*. Os `--check` detectam a divergencia,
+# mas ninguem os obriga a correr.
+#
+# Um `.git/hooks/pre-commit` local **nao se partilha**: cada clone teria de o recriar. => *um hook
+# que existe so' na minha maquina e' a mesma doenca do `E-1070`: o problema nao foi medir mal, foi o
+# instrumento nao estar no sitio onde o trabalho acontece.*
+#
+# => o hook vive em `.githooks/` (versionado) e instala-se com:
+#
+#       git config core.hooksPath .githooks
+#
+# **Isso e' um comando por clone** -- declarado aqui, no `README` de `docs/mission/`, e no
+# `HADES_HANDOFF.md`. Um hook que se instala sozinho e' um hook que se desinstala sozinho.
+#
+# `--quiet`: so' fala quando ha' divergencia. *Um hook que imprime sucesso em cada commit ensina a
+# ignorar a sua saida.*
+
+set -eu
+
+RAIZ="$(git rev-parse --show-toplevel)"
+cd "$RAIZ"
+
+# O interpretador: `python` no Windows, `python3` no CI. *O hook tem de correr nos dois.*
+if command -v python >/dev/null 2>&1; then
+    PY=python
+elif command -v python3 >/dev/null 2>&1; then
+    PY=python3
+else
+    echo "  AVISO: python nao encontrado -- o pre-commit dos derivados NAO correu."
+    echo "         Isso nao bloqueia o commit, mas o CI vai verificar."
+    exit 0
+fi
+
+exec "$PY" -X utf8 scripts/hades_derivados_check.py --quiet

@@ -11,18 +11,18 @@
 > modificados** com **24** ocorrencias de marca que **nao existem no commit**, e o inventario
 > divergia entre a minha maquina e o CI. => *um instrumento que mede o disco mede **tambem o
 > trabalho nao commitado** -- e publica um numero que so' e' verdadeiro onde foi gerado.*
-> Origens medidas neste snapshot: `HEAD (sujo no disco)`: 12, `disco (limpo)`: 2500.
+> Origens medidas neste snapshot: `HEAD (sujo no disco)`: 11, `disco (limpo)`: 2503.
 
 | String | Ocorrencias |
 | --- | --- |
 | **Hades/HADES** (canonica) | **1121** |
-| DZ23 Agentic | 243 |
-| Ollama Full | 175 |
-| Ollama Classe A+ | 97 |
-| Ollama DZ23 | 58 |
+| DZ23 Agentic | 245 |
+| Ollama Full | 176 |
+| Ollama Classe A+ | 98 |
+| Ollama DZ23 | 59 |
 
-**Legadas somadas:** 573 ocorrencias
-(257 em ficheiros **migraveis**, 316 em ficheiros de **excecao**).
+**Legadas somadas:** 578 ocorrencias
+(257 em ficheiros **migraveis**, 321 em ficheiros de **excecao**).
 
 *O total **nao** decide: os mesmos numeros distribuem-se por sitios de tipos muito
 diferentes, e e' o sitio que decide.* Um ``README`` migra; um `bundle ID` nao.
@@ -124,7 +124,7 @@ hoje** e **falso sobre o que foi medido**.*
 
 | Ficheiro | Legadas | Categoria |
 | --- | --- | --- |
-| `docs/mission/HADES_EVIDENCE_INDEX.md` | 153 | excecao:historico |
+| `docs/mission/HADES_EVIDENCE_INDEX.md` | 158 | excecao:historico |
 | `audit/AUTONOMOUS_MISSION_STATE.md` | 32 | excecao:historico |
 | `audit/OLLAMA_FULL_MISSION_STATE.md` | 27 | excecao:historico |
 | `docs/evidencias/browser-console-audit-f12.json` | 16 | excecao:historico |
@@ -151,7 +151,7 @@ hoje** e **falso sobre o que foi medido**.*
 | `audit/auditoria.md` | 1 | excecao:historico |
 | `docs/evidencias/browser-console-audit-audfix2.json` | 1 | excecao:historico |
 
-**Por tipo de excecao:** credencial: 3, env var: 4, historico: 298, instalador: 9, teste: 2
+**Por tipo de excecao:** credencial: 3, env var: 4, historico: 303, instalador: 9, teste: 2
 
 ## 6. O que este documento **nao** faz
 
