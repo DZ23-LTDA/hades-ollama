@@ -37,10 +37,22 @@
 como dívida declarada. **Não foram reconstruídos**: os que estão citados têm o alcance medido
 (o `E-1074`), e os que não estão citados continuam **sem texto**.
 
-## Artefactos declarados que NÃO existem neste checkout (2)
+## Artefactos declarados que NAO existem neste checkout (0)
 
-- `dist/Hades-0.2.0-linux-amd64-unsigned.tar.gz` — **ausente**
-- `dist/hades-linux-amd64-unsigned.tar.gz` — **ausente**
+- _(nenhum)_
+
+## Artefactos NAO versionados — **nao medidos por este pacote** (4)
+
+**Estes nao vem no repositorio** (estao no `.gitignore`): existem apenas onde foram
+construidos. Por isso o `ARTEFATOS.sha256` **nao os cobre** -- um hash de um ficheiro que
+*nao existe no checkout* nao se pode verificar, e um pacote de auditoria que so' se
+verifica na maquina de origem nao e' um pacote. *A ausencia e' declarada aqui, e a
+proveniencia (ou a falta dela) vive em `docs/release/PROVENIENCIA-HadesSetup.md`.*
+
+- `dist/HadesSetup.exe` — proveniencia NAO declarada (`E-1123`)
+- `dist/windows-ollama-app-amd64.exe` — proveniencia NAO declarada
+- `dist/Hades-0.2.0-linux-amd64-unsigned.tar.gz` — proveniencia NAO declarada
+- `dist/hades-linux-amd64-unsigned.tar.gz` — proveniencia NAO declarada
 
 ## Por plataforma
 

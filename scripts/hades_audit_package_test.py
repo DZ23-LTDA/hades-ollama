@@ -38,7 +38,11 @@ from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(RAIZ / "scripts"))
-from hades_audit_package import ARTEFATOS_DECLARADOS  # a lista DECLARADA, sem duplicar
+from hades_audit_package import (  # a lista DECLARADA, sem duplicar
+    ARTEFATOS_VERSIONADOS,
+    ARTEFATOS_NAO_VERSIONADOS,
+    bytes_do_conteudo,
+)
 SCRIPT = "scripts/hades_audit_package.py"
 PACOTE = "docs/audit"
 OBRIGATORIOS = ["README_AUDITOR.md", "PARIDADE_EVIDENCIAS.csv", "GATES.md", "LIMITACOES.md", "ARTEFATOS.sha256"]
@@ -93,6 +97,32 @@ def main() -> int:
     T("o ARTEFATOS tem pelo menos 5 linhas", len([l for l in art if l.strip()]) >= 5)
     T("cada linha do ARTEFATOS tem 64 hex + 2 espacos + caminho",
       all(len(l.split("  ")[0]) == 64 for l in art if l.strip()))
+    # **O `ARTEFATOS.sha256` so' cobre o que VEM no checkout.** *Um hash de um ficheiro que nao
+    # existe no repositorio nao se pode verificar num checkout limpo -- e o pacote deixaria de se
+    # reconstituir fora da maquina de origem, que e' o oposto do que um pacote de auditoria serve.*
+    caminhos_art = {l.split("  ", 1)[1].strip() for l in art if l.strip()}
+    nao_versionados = [rel for rel, _ in ARTEFATOS_NAO_VERSIONADOS]
+    T("o ARTEFATOS nao cobre artefactos nao versionados",
+      not (caminhos_art & set(nao_versionados)),
+      "interseccao: %s" % sorted(caminhos_art & set(nao_versionados)))
+    T("o LIMITACOES nomeia cada artefacto nao versionado",
+      all(rel in lim for rel in nao_versionados))
+    # **A normalizacao CRLF->LF e' o que torna a medicao independente do checkout.** *Sem ela, o
+    # hash depende do `core.autocrlf` de quem gera -- e o mesmo ficheiro mede diferente em dois
+    # hosts, que e' exactamente o defeito que deixou o `class-a-plus-integrity` vermelho.*
+    _t = Path(tempfile.mkdtemp(prefix="hades-crlf-"))
+    try:
+        _a = _t / "lf.md"
+        _b = _t / "crlf.md"
+        _a.write_bytes(b"linha um\nlinha dois\n")
+        _b.write_bytes(b"linha um\r\nlinha dois\r\n")
+        T("bytes_do_conteudo normaliza CRLF->LF (mede o mesmo conteudo)",
+          bytes_do_conteudo(_a) == bytes_do_conteudo(_b))
+        _bin = _t / "bin.dat"
+        _bin.write_bytes(b"\x00\r\n\x01")
+        T("bytes_do_conteudo nao toca em binarios", bytes_do_conteudo(_bin) == b"\x00\r\n\x01")
+    finally:
+        shutil.rmtree(_t, ignore_errors=True)
 
     # ---------- 6. os defeitos injetados, numa copia descartavel ----------
     tmp = Path(tempfile.mkdtemp(prefix="hades-audit-"))
@@ -102,7 +132,7 @@ def main() -> int:
         # falha por construcao, nao por defeito. => *copiam-se as fontes E os artefactos.*
         ESSENCIAIS = [SCRIPT, "docs/mission/HADES_EVIDENCE_INDEX.md",
                       "docs/mission/HADES_MASTER_STATE.json", "scripts/hades_local_gates.ps1"]
-        for rel in ESSENCIAIS + [a for a in ARTEFATOS_DECLARADOS if a not in ESSENCIAIS]:
+        for rel in ESSENCIAIS + [a for a in ARTEFATOS_VERSIONADOS if a not in ESSENCIAIS]:
             src = RAIZ / rel
             if src.is_file():
                 d = tmp / rel

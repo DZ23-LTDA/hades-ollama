@@ -21,7 +21,7 @@ O pacote nao declara nada que nao venha de uma fonte medivel:
     GATES.md               <- os gates DECLARADOS no hades_local_gates.ps1, um por linha
     LIMITACOES.md          <- os blockers do HADES_MASTER_STATE.json + a faixa historica + as
                               limitacoes por plataforma
-    ARTEFATOS.sha256       <- SHA-256 dos artefactos que EXISTEM em disco, e so' esses
+    ARTEFATOS.sha256       <- SHA-256 dos artefactos VERSIONADOS, e so' esses
 
 **O que este script NAO faz**: nao verifica se um gate passa, nao reconstroi evidencia perdida, nao
 corre os testes. *Um pacote que se gaba de verificar o que nao correu e' pior do que nenhum.*
@@ -46,9 +46,15 @@ INDICE = RAIZ / "docs" / "mission" / "HADES_EVIDENCE_INDEX.md"
 ESTADO = RAIZ / "docs" / "mission" / "HADES_MASTER_STATE.json"
 GATES = RAIZ / "scripts" / "hades_local_gates.ps1"
 
-# **Os artefactos que o pacote mede, e SO' esses.** *Uma lista declarada e' auditavel; um `glob`
-# apanha o que estiver la' e cala-se sobre o que falta.*
-ARTEFATOS_DECLARADOS = [
+# **Os artefactos VERSIONADOS que o pacote mede, e SO' esses.** *Uma lista declarada e' auditavel;
+# um `glob` apanha o que estiver la' e cala-se sobre o que falta.*
+#
+# **E por que `dist/` saiu desta lista**: o pacote tem de se **reconstituir em qualquer checkout** --
+# e' esse o sentido de um pacote de auditoria. O `dist/` esta' no `.gitignore`, portanto **nao vem
+# no repositorio**: qualquer `--check` num checkout limpo (CI, outro programador, auditor) acusava
+# `ARTEFATOS.sha256` e `LIMITACOES.md` divergentes, e o pacote so' se verificava na maquina de quem
+# o gerou. *Um pacote que so' verifica na origem nao e' um pacote: e' uma fotografia da origem.*
+ARTEFATOS_VERSIONADOS = [
     "HADES_SBOM_GO.csv",
     "HADES_SBOM_LICENCAS.csv",
     "HADES_SBOM_NPM.csv",
@@ -59,11 +65,17 @@ ARTEFATOS_DECLARADOS = [
     "docs/mission/HADES_FINAL_RELEASE_GATE.md",
     "docs/mission/HADES_SNAPSHOT_MANIFEST.json",
     "docs/mission/HADES_BRAND_INVENTORY.md",
-    "dist/HadesSetup.exe",
-    "dist/windows-ollama-app-amd64.exe",
-    "dist/Hades-0.2.0-linux-amd64-unsigned.tar.gz",
-    "dist/hades-linux-amd64-unsigned.tar.gz",
     "docs/audit/REQUISITOS.csv",
+]
+
+# **Os que NAO vem no checkout.** Nao entram no `ARTEFATOS.sha256` (nao existem num checkout limpo),
+# e o `LIMITACOES.md` nomeia-os **sem afirmar presenca** -- para o texto ser o mesmo em qualquer
+# maquina. *A proveniencia (ou a falta dela) vive em `docs/release/PROVENIENCIA-HadesSetup.md`.*
+ARTEFATOS_NAO_VERSIONADOS = [
+    ("dist/HadesSetup.exe", "proveniencia NAO declarada (`E-1123`)"),
+    ("dist/windows-ollama-app-amd64.exe", "proveniencia NAO declarada"),
+    ("dist/Hades-0.2.0-linux-amd64-unsigned.tar.gz", "proveniencia NAO declarada"),
+    ("dist/hades-linux-amd64-unsigned.tar.gz", "proveniencia NAO declarada"),
 ]
 
 # **O que este pacote NAO prova** -- escrito a mao porque e' uma decisao, nao uma medicao.
@@ -77,12 +89,25 @@ NAO_PROVA = [
 ]
 
 
+def bytes_do_conteudo(caminho: Path) -> bytes:
+    """Os bytes do **conteudo**, e nao os do ficheiro de trabalho.
+
+    *Um derivado tem de medir o mesmo conteudo em qualquer checkout.* Com `core.autocrlf=true`
+    (o default do Git no Windows) o ficheiro de trabalho tem `CRLF` e o **blob commitado tem
+    `LF`**; um `sha256` calculado sobre o ficheiro de trabalho fica **consistente no Windows e
+    divergente num checkout `LF`** -- foi assim que o `class-a-plus-integrity` ficou vermelho
+    pelo `hades_manifest.py`, e este pacote tinha exactamente o mesmo defeito.
+
+    Ficheiros binarios (`dist/*`) nao sao tocados: o `\\x00` e' o mesmo criterio que o Git usa.
+    """
+    dados = caminho.read_bytes()
+    if b"\x00" in dados:
+        return dados
+    return dados.replace(b"\r\n", b"\n")
+
+
 def sha256(caminho: Path) -> str:
-    h = hashlib.sha256()
-    with open(caminho, "rb") as f:
-        for bloco in iter(lambda: f.read(1 << 20), b""):
-            h.update(bloco)
-    return h.hexdigest()
+    return hashlib.sha256(bytes_do_conteudo(caminho)).hexdigest()
 
 
 def ler_indice() -> list[tuple[str, str]]:
@@ -124,7 +149,7 @@ def gerar() -> dict[str, str]:
     # ---------- ARTEFATOS.sha256 ----------
     linhas_art = []
     ausentes = []
-    for rel in ARTEFATOS_DECLARADOS:
+    for rel in ARTEFATOS_VERSIONADOS:
         p = RAIZ / rel
         if p.is_file():
             linhas_art.append("%s  %s" % (sha256(p), rel))
@@ -226,7 +251,7 @@ def gerar() -> dict[str, str]:
         "como dívida declarada. **Não foram reconstruídos**: os que estão citados têm o alcance medido",
         "(o `E-1074`), e os que não estão citados continuam **sem texto**.",
         "",
-        "## Artefactos declarados que NÃO existem neste checkout (%d)" % len(ausentes),
+        "## Artefactos declarados que NAO existem neste checkout (%d)" % len(ausentes),
         "",
     ]
     if ausentes:
@@ -234,6 +259,19 @@ def gerar() -> dict[str, str]:
             lim.append("- `%s` — **ausente**" % a)
     else:
         lim.append("- _(nenhum)_")
+    lim += [
+        "",
+        "## Artefactos NAO versionados — **nao medidos por este pacote** (%d)" % len(ARTEFATOS_NAO_VERSIONADOS),
+        "",
+        "**Estes nao vem no repositorio** (estao no `.gitignore`): existem apenas onde foram",
+        "construidos. Por isso o `ARTEFATOS.sha256` **nao os cobre** -- um hash de um ficheiro que",
+        "*nao existe no checkout* nao se pode verificar, e um pacote de auditoria que so' se",
+        "verifica na maquina de origem nao e' um pacote. *A ausencia e' declarada aqui, e a",
+        "proveniencia (ou a falta dela) vive em `docs/release/PROVENIENCIA-HadesSetup.md`.*",
+        "",
+    ]
+    for rel, prov in ARTEFATOS_NAO_VERSIONADOS:
+        lim.append("- `%s` — %s" % (rel, prov))
     lim += [
         "",
         "## Por plataforma",
@@ -293,7 +331,8 @@ def gerar() -> dict[str, str]:
         "- **as %d evidências sem texto**: não foram reconstruídas (§FASE-7 item 2). O" % sum(int(f[1]) - int(f[0]) + 1 for f in faixas),
         "  `PARIDADE_EVIDENCIAS.csv` lista as que **existem**; as da faixa histórica não estão nele",
         "  porque não têm registo;",
-        "- **os artefactos ausentes**: `LIMITACOES.md` nomeia-os um a um;",
+        "- **os artefactos de `dist/`**: nao vem no repositorio, portanto nao sao medidos; o",
+        "  `LIMITACOES.md` nomeia-os um a um com a proveniencia declarada;",
         "- **o resultado dos gates**: `GATES.md` lista-os, não os executa. *Um pacote que dissesse",
         "  «passam» estaria a afirmar o que não mediu.*",
         "",

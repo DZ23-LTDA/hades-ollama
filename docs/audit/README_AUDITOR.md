@@ -38,7 +38,8 @@ foi gerado deste estado; se não bater, alguém mudou o repositório sem regener
 - **as 207 evidências sem texto**: não foram reconstruídas (§FASE-7 item 2). O
   `PARIDADE_EVIDENCIAS.csv` lista as que **existem**; as da faixa histórica não estão nele
   porque não têm registo;
-- **os artefactos ausentes**: `LIMITACOES.md` nomeia-os um a um;
+- **os artefactos de `dist/`**: nao vem no repositorio, portanto nao sao medidos; o
+  `LIMITACOES.md` nomeia-os um a um com a proveniencia declarada;
 - **o resultado dos gates**: `GATES.md` lista-os, não os executa. *Um pacote que dissesse
   «passam» estaria a afirmar o que não mediu.*
 
