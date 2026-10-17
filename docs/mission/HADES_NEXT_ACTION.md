@@ -832,3 +832,22 @@ uma regra de estilo: é a diferença entre acrescentar e duplicar.***
 (3 documentos, 2 artefactos). A mesma pergunta aplica-se a **outros** estágios que
 produzem artefactos: verificar quais documentos canónicos citam artefactos reais e quais
 não citam, e declarar cada ligação que falta. Medir primeiro; só depois escrever.
+
+### A proxima accao unica (janela `E-1055`)
+
+**Fui procurar ponteiros quebrados em 131 artefactos e 143 documentos: deu ZERO defeitos
+reais e QUATRO erros meus.** Comparava `basename` contra caminhos, o `fullmatch` falhava
+em nomes longos, e tratava ficheiros gerados em runtime e itens «A CRIAR» como quebrados.
+
+⇒ ***«Quando uma medição produz muitos achados de uma vez, a primeira hipótese é a
+medição.»*** — terceira vez nesta janela (`E-1044`/`#11`).
+⇒ ***«Um mapa com falsos positivos é pior do que nenhum mapa, porque ensina a ignorá-lo.»***
+
+**A decisão foi NÃO alargar a lista** com os 10 falsos: o `E-1054` continua com as
+mesmas 6 entradas verificadas.
+
+**A proxima accao unica**: **medir a pergunta certa** — *quais documentos **afirmam
+produzir** um artefacto e **não o citam?*** Não «quais citam zero» (113 dos 143 são
+narrativos e não têm de citar). A pergunta é sobre **afirmação**, não sobre ausência:
+procurar nos documentos frases que nomeiam um artefacto como produzido por eles, e
+verificar se o ponteiro está lá. Tudo interno, e **esperar as runs antes de qualquer push**.

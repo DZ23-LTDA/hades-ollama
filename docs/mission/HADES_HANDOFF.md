@@ -1568,3 +1568,37 @@ trapacearam, 1 vermelho -- `E-1047`); repeticao `PASS` 209,78 s (`46+/0` resiste
 
 **Doutrina em uma linha**: ligar com texto nao e' ligar; declarar a fraqueza de uma cura
 nao e' cura-la, mas e' o que permite ir procura-la; e um ficheiro vazio nao e' um artefacto.
+
+### Instrucoes de retomada (janela `E-1055`)
+
+**Estado**: branch `fix/checker-relogio`; cabeca do indice `E-1055`; PR #438 **aberto** e
+**nao tocado** -- *as 14 threads continuam como estavam*; `reviewDecision` **vazio**.
+
+**REGRA DE PUSH -- OBRIGATORIA, E JA' VALIDADA** (seis 6/6 consecutivos):
+  1. commit local -> 2. ESPERAR o SHA remoto fechar com `failure=0` -> 3. `git push`.
+
+**A VARREDURA DE LIGACOES, E O QUE ELA ENSINOU** (`E-1055`): 131 artefactos, 143
+documentos -> **10 «ponteiros quebrados»** e **1 «artefacto orfao»** -> verificados um a
+um: **ZERO defeitos reais, QUATRO erros meus.**
+  - comparar `basename` contra uma lista de **caminhos**;
+  - `fullmatch` que falha em nomes longos e **exclui em silencio**;
+  - tratar **ficheiros gerados em runtime** (`INSTALACAO.json`) como artefactos do repo;
+  - tratar itens **«A CRIAR»** como ponteiros quebrados.
+
+***NAO ALARGUEI O MAPA `LIGACOES`.*** *Um mapa com falsos positivos e' pior do que nenhum
+mapa -- e a catraca do `E-1054` acusa com precisao porque as 6 entradas foram todas
+verificadas.*
+
+**E A PERGUNTA QUE EU NAO FIZ**: *quais documentos **afirmam produzir** um artefacto e nao
+o citam?* Medir «quais citam zero» da' 113 de 143 -- e a maioria e' narrativa. *A pergunta
+e' sobre afirmacao, nao sobre ausencia.*
+
+**O ESTAGIO 21, MEDIDO E LIGADO**: matriz T2 real `PASS` 599,88 s (`E-1047`); repeticao
+`PASS` 209,78 s (`E-1049`); a catraca da ligacao com 18 assercoes e 4 injecoes (`E-1054`).
+
+**O que NAO fazer**: `reset --hard`, `git clean`, rebase destrutivo, force-push, stash,
+`merge`, tag, release, publicacao externa, ou **resolver threads** do PR #438.
+
+**Doutrina em uma linha**: quando uma medicao produz muitos achados de uma vez, a primeira
+hipotese e' a medicao; um mapa com falsos positivos e' pior do que nenhum; e um instrumento
+que produz falsos positivos nao deve virar gate.

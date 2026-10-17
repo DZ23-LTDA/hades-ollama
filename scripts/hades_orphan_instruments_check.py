@@ -73,6 +73,15 @@ ISENTOS = {
     # vermelho permanente enquanto houver divida real -- e transformar isso em verde seria
     # esconder a divida (o `E-992`).* => *Ele fica isento com o codigo de saida documentado.*
     "hades_limites_check.py": "relatorio: exit=1 significa «ha limites abertos», nao violacao",
+    # *Varredura exploratoria, e nao gate:* o `hades_link_scan.py` mediu **131 artefactos** e
+    # **143 documentos** e produziu **10 «ponteiros quebrados» e 1 «artefacto orfao»** --
+    # verificados um a um no `E-1055`: **ZERO defeitos reais e QUATRO erros do proprio detector**
+    # (comparar `basename` contra caminhos; `fullmatch` que exclui nomes longos em silencio;
+    # ficheiros gerados em runtime como o `INSTALACAO.json`; itens marcados «A CRIAR»).
+    # => *Um instrumento que produz falsos positivos **nao deve virar gate**: liga-lo daria
+    # vermelho sobre documentos correctos, e a catraca seria desacreditada pela propria lista.*
+    # => *Fica isento com o motivo escrito; a divida e' a pergunta que ele ainda nao sabe fazer.*
+    "hades_link_scan.py": "varredura exploratoria; da' falsos positivos (E-1055) -- nao deve ser gate",
     # *Anti-armadilha deliberado:* recusa (exit=2) se a receita `LOCALAPPDATA` vier incompleta,
     # e declara BLOCKED_BY_EXTERNAL_DEPENDENCY (exit=3) sem `go`. => *Agora corre no passo 12 da
     # bateria, que e' um gate -- logo a isencao seria desnecessaria, e o proprio `--check`

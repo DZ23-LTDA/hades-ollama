@@ -1629,3 +1629,33 @@ removido e documento ausente — com 4 injeções e contraprova.
 - ligação da extensão ao **Mission Control** (`missao` fica a `null`);
 - APK Android bloqueado pela DLL JNI (`E-1019`);
 - macOS/iOS `BLOCKED_EXTERNAL` pela **máquina**.
+
+### O que falta (actualizado na janela `E-1055`)
+
+**Fechado**: a primeira varredura de ligações docs→artefactos. **Zero defeitos reais** —
+os 10 «ponteiros quebrados» e o 1 «artefacto órfão» eram **quatro erros do meu detector**.
+E **não alarguei o mapa `LIGACOES`** com eles.
+
+**Continua em falta, sem disfarce**:
+- **não medi a pergunta certa**: quais documentos **afirmam produzir** um artefacto e não
+  o citam -- a próxima acção;
+- **o mapa `LIGACOES` continua com 6 entradas** (`E-1054`), só do estágio 21;
+- **o detector de varredura não entrou na bateria** -- *um instrumento que produz falsos
+  positivos não deve virar gate*;
+- **`INSTALACAO.json` existe quando o instalador corre**, num caminho que eu não medi;
+- **a comparação externa continua `NAO_EXECUTADA`**;
+- **`55327160c` e `cda756f82` continuam VERMELHOS** -- pelo ritmo de push, não por defeito;
+- **decisão do proprietário em aberto**: distinguir «cancelado pelo push» de «cancelado
+  por falha» no `pr-gate` **toca a política do gate**; a cura por baixo está **proibida**;
+- **N=3 por fixture** na repetição: contagem, não probabilidade;
+- **as 14 threads do PR continuam abertas** -- não resolvi nenhuma (proibido);
+- **o encaixe da aprovação continua por ligar** (`E-1044`);
+- **shadow roots fechados**, **cross-origin**, `document.domain`, `srcdoc`: como no `E-1040`;
+- **BFCache** sem execução observada (`E-1038`);
+- **o Chrome real do utilizador**: a versão 155 **não carrega** por `--load-extension`;
+- **Firefox** e **Safari**;
+- **sem `.crx`, sem assinatura, sem SBOM do pacote**;
+- **`CAPACIDADES` VAZIO**: o Companion **não** controla o PC;
+- ligação da extensão ao **Mission Control** (`missao` fica a `null`);
+- APK Android bloqueado pela DLL JNI (`E-1019`);
+- macOS/iOS `BLOCKED_EXTERNAL` pela **máquina**.
