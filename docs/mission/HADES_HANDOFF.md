@@ -1,6 +1,7 @@
 # HADES — HANDOFF (como retomar a missão do zero)
 
-> **REMEDIACAO MAIS RECENTE: E-1129** -- *o §ESTAGIO 14 estava bloqueado pelo `B-09` (que o proprio JSON declara corrigido); passa a citar o `B-19`, as 3 fronteiras reais e nomeadas.*
+> **REMEDIACAO MAIS RECENTE: E-1130** -- *o E-1126 deixou 24 ficheiros fora do gofumpt (o CI acusou 3 e parou); gofmt nao e gofumpt.*
+
 
 
 

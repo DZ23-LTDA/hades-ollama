@@ -8,10 +8,10 @@
 
 | Número | Valor |
 | --- | --- |
-| **Commit medido** (`measured_commit`) | `7ba562b449eca09b08f9368791517611121e92b4` |
+| **Commit medido** (`measured_commit`) | `d242e33cf64aca499553a747c0ad94219ffd3801` |
 | **Commit da `main`** (`git.main_sha`) | `4b3e21854` |
-| **Gerado em** (`measured_at`) | 2026-10-17T16:25:31-03:00 |
-| **Snapshot real** (`gate_head`) | `7ba562b449eca09b08f9368791517611121e92b4` |
+| **Gerado em** (`measured_at`) | 2026-10-17T16:26:42-03:00 |
+| **Snapshot real** (`gate_head`) | `d242e33cf64aca499553a747c0ad94219ffd3801` |
 | **Ramo do snapshot** (`gate_branch`) | `fix/checker-relogio` |
 | **Entradas nao commitadas** (`gate_dirty`) | 20 |
 | **O gate prova o snapshot candidato?** (`gate_snapshot`) | **MESMO** |
