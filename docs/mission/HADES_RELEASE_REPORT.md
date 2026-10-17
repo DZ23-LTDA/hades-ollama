@@ -8,15 +8,15 @@
 
 | Número | Valor |
 | --- | --- |
-| **Commit medido** (`measured_commit`) | `c46819644bfca495a559a2a8cf87858ee1c24e63` |
+| **Commit medido** (`measured_commit`) | `1e4dc42b30aed1ae01da47505c7dfe79a556340c` |
 | **Commit da `main`** (`git.main_sha`) | `4b3e21854` |
-| **Gerado em** (`measured_at`) | 2026-10-17T19:21:26-03:00 |
-| **Snapshot real** (`gate_head`) | `c46819644bfca495a559a2a8cf87858ee1c24e63` |
+| **Gerado em** (`measured_at`) | 2026-10-17T19:24:05-03:00 |
+| **Snapshot real** (`gate_head`) | `1e4dc42b30aed1ae01da47505c7dfe79a556340c` |
 | **Ramo do snapshot** (`gate_branch`) | `fix/checker-relogio` |
-| **Entradas nao commitadas** (`gate_dirty`) | 5 |
+| **Entradas nao commitadas** (`gate_dirty`) | 3 |
 | **O gate prova o snapshot candidato?** (`gate_snapshot`) | **MESMO** |
 | Estágios | 38 |
-| Linhas de evidência no índice | 944 |
+| Linhas de evidência no índice | 945 |
 | `COMPLETED_VERIFIED` | 14 |
 | `IN_PROGRESS` | 3 |
 | `BLOCKED_BY_EXTERNAL_DEPENDENCY` | 21 |
@@ -45,7 +45,7 @@ relatório **declara a ausência** em vez de preencher com suposição.
 | 12 | Studio / Builder visual | IMPLEMENTADO_NAO_HOMOLOGADO | COMPLETED_VERIFIED | — | E-1092, E-008, E-009, E-028, E-034, E-035, E-039, E-178, E-246, E-247, E-248, E-249, E-281, E-282, E-283, E-284, E-285, … |
 | 13 | Workflow Engine (fluxos, schedules, condicoes) | IMPLEMENTADO_E_TESTADO | COMPLETED_VERIFIED | — | E-020, E-029, E-074, E-075, E-076, E-077, E-078, E-079, E-080, E-081, E-082, E-083, E-084, E-085, E-236, E-237, E-238, E… |
 | 15 | Memoria e RAG local | IMPLEMENTADO_E_TESTADO | COMPLETED_VERIFIED | B-07 | E-040, E-052, E-056, E-057, E-087, E-088, E-089, E-090, E-092, E-093, E-094, E-095, E-096, E-1150 |
-| 17 | Workspace do agente (threads, artefatos, preview) | PARCIAL | COMPLETED_VERIFIED | — | E-1094, E-027, E-215, E-242, E-1143 |
+| 17 | Workspace do agente (threads, artefatos, preview) | PARCIAL | COMPLETED_VERIFIED | — | E-1094, E-027, E-215, E-242, E-1143, E-1152 |
 | 18 | Seguranca, permissoes e multitenancy | IMPLEMENTADO_NAO_HOMOLOGADO | COMPLETED_VERIFIED | — | E-1104, E-019, E-031, E-058, E-070, E-071, E-072, E-073, E-091, E-121, E-122, E-123, E-189, E-190, E-191, E-192, E-193, … |
 | 19 | UX/onboarding e jornada de primeira execucao | IMPLEMENTADO_E_TESTADO | COMPLETED_VERIFIED | — | E-1095, E-011, E-012, E-032, E-130, E-131, E-139, E-182, E-1138, E-1140, E-1141, E-1142, E-1143, E-1144, E-1145, E-1146,… |
 | 21 | Benchmarks e comparativo competitivo | PARCIAL | COMPLETED_VERIFIED | — | E-1093, E-021, E-054, E-117, E-127, E-160, E-161, E-164, E-165, E-166, E-167, E-168, E-169, E-250, E-1145 |
@@ -97,7 +97,7 @@ possível sem ele**.
 
 ## Referências
 
-- Índice de evidências: [`HADES_EVIDENCE_INDEX.md`](HADES_EVIDENCE_INDEX.md) (944 linhas).
+- Índice de evidências: [`HADES_EVIDENCE_INDEX.md`](HADES_EVIDENCE_INDEX.md) (945 linhas).
 - Estado da missão: [`HADES_MASTER_STATE.json`](HADES_MASTER_STATE.json).
 - Gate global: [`HADES_FINAL_RELEASE_GATE.md`](HADES_FINAL_RELEASE_GATE.md).
 - Gate intermediário de engenharia (estágio 22): [`HADES_ENGINEERING_GATE.md`](HADES_ENGINEERING_GATE.md).
