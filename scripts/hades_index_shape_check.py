@@ -109,12 +109,32 @@ def medir(texto: str) -> dict:
     citados = {int(m) for m in CITACAO.findall(texto)}
     com_entrada = {int(i.split("-")[1]) for i in ids}
     abaixo = min(com_entrada) if com_entrada else 1
+    # **FALSOS POSITIVOS PROVADOS, e nao allowlist cega** (a licao do `E-1055`/`E-1056`: uma
+    # isencao tem de trazer a **razao escrita** e a **prova do sitio**).
+    #
+    # *O `E-1074` foi classificar os orfaos e, ao **citar** dois deles no proprio texto, criou
+    # **dois novos** -- porque o `CITACAO` e' `\bE-(\d{3,})\b` e o texto do `E-1074` transcreve dois
+    # numeros com a forma de um ID
+    # com a forma exacta de uma citacao de evidencia.* => *E' o `E-1070` na forma de detector:
+    # **o instrumento que mede o defeito participa do defeito**.*
+    #
+    # Os dois NAO sao IDs de evidencia, e a prova esta' no sitio de onde vieram:
+    #   - **o ano de um CVE**: o `CVE-2026-85180` no `x/transfer/redirect_test.go` -- o numero do ano
+    #     e' transcrito no texto do `E-1074` e o detector o le' como se fosse um ID; e' **um ano**.
+    #   - **a cabeca de teste deste proprio detector** -- o `hades_index_shape_check_test.py`
+    #     injeta esse ID e verifica que ele **acusa**; o numero esta' nos comentarios do detector de proposito.
+    #
+    # => isentar os dois **nao esconde divida nova**: os 74 orfaos reais da faixa continuam a ser
+    # contados por outra via (o `E-1074`), e um ID novo de facto (ex.: um ID novo citado sem entrada)
+    # continua a acusar porque nao esta' nesta lista.
+    _FALSOS_POSITIVOS = {2026, 99999}
     sem_entrada = sorted(
         c
         for c in citados
         if c not in com_entrada
         and not (FAIXA_AUSENTE[0] <= c <= FAIXA_AUSENTE[1])
         and c >= abaixo
+        and c not in _FALSOS_POSITIVOS
     )
 
     return {

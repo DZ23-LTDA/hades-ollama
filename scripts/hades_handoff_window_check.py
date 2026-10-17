@@ -79,10 +79,21 @@ def medir(caminho: Path, registados: set, cabeca_atual: int) -> dict:
     linhas = texto.split("\n")
 
     citados = {int(m) for m in CITACAO.findall(texto)}
+    # **O LIMITE INFERIOR, e ele faltava aqui.** *O `hades_index_shape_check.py` curou-o no
+    # `E-1007`: um `E-1` num texto corrido nao e' uma citacao de evidencia, e o `E-000`
+    # (sentinela/placeholder) vira `0` no `int()` -- logo entrava como «citado sem entrada»
+    # em **qualquer** documento que o mencionasse.*
+    # => *Este checker tinha a **mesma** logica e **nao** tinha a cura* => *e o `E-1074` expos
+    # isso ao citar o `E-000` na prova dos falsos positivos, nos `NEXT_ACTION` e `HANDOFF`.*
+    # => *Dois checkers, uma regra, e **um deles ficou para tras**: e' o `E-1004` na forma de
+    # paridade -- «uma cura que se julga completa fecha a investigacao antes do fim».*
+    _abaixo = min(registados) if registados else 1
     sem_entrada = sorted(
         c
         for c in citados
-        if c not in registados and not (FAIXA_AUSENTE[0] <= c <= FAIXA_AUSENTE[1])
+        if c not in registados
+        and not (FAIXA_AUSENTE[0] <= c <= FAIXA_AUSENTE[1])
+        and c >= _abaixo
     )
     literais = [
         (k + 1, linhas[k][:100])

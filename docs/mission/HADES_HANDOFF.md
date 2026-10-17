@@ -2249,3 +2249,57 @@ migrada, **`BLOCKED` no daemon do Gradle** (`E-1073`), **sem APK**. macOS/iOS ->
 
 **Doutrina em uma linha**: repetir com variacao nao e' investigar -- e' insistir com disfarce;
 e o que ja' funcionou uma vez neste host nao esta' provado impossivel -- esta' provado instavel.
+
+### Instrucoes de retomada (janela `E-1074`)
+
+**Estado**: branch `fix/checker-relogio`; cabeca do indice `E-1074`; PR #438 **aberto** e
+**nao tocado** -- *as 14 threads continuam como estavam*; `reviewDecision` **vazio**.
+
+**REGRA DE PUSH -- OBRIGATORIA, E JA' VALIDADA** (vinte e dois 6/6 consecutivos):
+  1. commit local -> 2. ESPERAR o SHA remoto fechar com `failure=0` -> 3. `git push`.
+
+**OS 74 ORFAOS, CLASSIFICADOS** (`E-1074`):
+  medicao: varredura do repo por E-(\d{3,}) vs as 866 entradas do indice
+  => 77 citados sem entrada => 3 falsos positivos => 74 orfaos reais
+  faixa E-571..E-777 = 207 = 74 citados + 133 nao citados   (o prompt dizia 73+134)
+  DENTRO da faixa: 74   |   FORA da faixa: 0
+  em codigo: 63  (88 ficheiros)   |   so em documentos: 11
+  lista completa: _tmp/orfaos_tabela.md (74 linhas)
+
+**OS 3 FALSOS POSITIVOS, COM PROVA**:
+  - E-000   -> sentinela/placeholder (o E-779 diz que E-999 e E-000 sao valores de exemplo)
+  - o ANO de CVE-2026-85180 em x/transfer/redirect_test.go
+  - a CABECA DE TESTE do proprio hades_index_shape_check.py
+
+**A IRONIA DO E-1074**: ao CITAR os dois falsos positivos no texto, criei DOIS NOVOS -- porque
+o CITACAO e' \bE-(\d{3,})\b e o texto tinha a forma exacta de uma citacao.
+=> *O instrumento que mede o defeito participa do defeito.*
+=> Curado com isencao MINIMA e provada, e com um teste que prova que ela e' minima:
+   um ID vizinho (outro ano) e um ID abaixo (outra cabeca) CONTINUAM a acusar.
+   hades_index_shape_check_test.py: 12 OK, 0 FAIL.
+
+**O ESTADO DAS PLATAFORMAS**: Windows/amd64 -> portatil **e** instalador (`E-1057`/
+`E-1058`), nao assinados, nao instalados. Linux/amd64 -> tarball **instalavel** (`E-1059`).
+**Web/PWA** -> build, SW, 3 motores, recursos+upgrade, perfil (`E-1060`..`E-1066`), mas
+`PWA_INSTALADO_NA_UI=NAO`. **Android** -> projecto completo, toolchain presente, marca
+migrada, **`BLOCKED` no daemon do Gradle** (`E-1073`), **sem APK**. macOS/iOS -> por produzir.
+
+**O que NAO fazer**: `reset --hard`, `git clean`, rebase destrutivo, force-push, stash,
+`merge`, tag, release, publicacao externa, ou **resolver threads** do PR #438.
+**E nao voltar ao Gradle sem hipotese nova**: 8 ja' foram testadas.
+
+**Doutrina em uma linha**: copiar um numero e' mais rapido do que medi-lo -- e e' assim que um
+numero errado entra num relatorio; e o instrumento que mede o defeito participa do defeito.
+
+### A cura do `E-1075` (a mesma janela)
+
+**O `E-1074` expôs um defeito de paridade**: o `hades_handoff_window_check.py` **não** tinha o
+limite inferior que o `hades_index_shape_check.py` já tinha ⇒ o `E-000` (que vira `0` no `int()`)
+entrava como *«citado sem entrada»* em **qualquer** documento que o mencionasse.
+
+**Cura**: a **mesma** regra (`_abaixo = min(registados)` e `c >= _abaixo`). ⇒ ***«Dois checkers, a
+mesma regra, e um deles ficou para trás.»***
+
+**Resultado**: `JANELA DE CITACAO - fault injection: 20 OK, 0 FAIL` (era 18/2), e a bateria voltou a
+**33 OK / 0 FAIL**. ⇒ ***«O documento que documenta o falso positivo é o teste que o checker não
+esperava.»***

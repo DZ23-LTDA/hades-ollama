@@ -105,6 +105,16 @@ def main() -> int:
     m = c.medir(texto + "\nVer tambem E-%d.\n" % id_fora)
     T("um ID fora da faixa citado sem entrada -> detectado", id_fora in m["sem_entrada"])
 
+    # (7) **A ISENCAO DOS 2 FALSOS POSITIVOS NAO E' UMA PORTA ABERTA.**
+    # *O `E-1074` isentou dois numeros que nao sao IDs de evidencia: o ano de um CVE e a cabeca de teste deste
+    # detector.* => *mas uma isencao por **valor** pode
+    # virar isencao por **classe** se ninguem a testar.*
+    # => *Este teste prova que ela e' **minima**: um ID **vizinho** (outro ano) e um ID **abaixo** (outra cabeca) **continuam a acusar**.*
+    for vizinho, rotulo in ((2027, "um ano vizinho"), (99998, "uma cabeca vizinha")):
+        m = c.medir(texto + "\nVer E-%d.\n" % vizinho)
+        T("%s (E-%d) citado sem entrada -> detectado, a isencao e' minima" % (rotulo, vizinho),
+          vizinho in m["sem_entrada"])
+
     print("FORMA DO INDICE - fault injection: %d OK, %d FAIL" % (OK, len(FALHAS)))
     for f in FALHAS:
         print("  FALHOU: %s" % f)

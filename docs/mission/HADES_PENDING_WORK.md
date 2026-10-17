@@ -2083,3 +2083,40 @@ Antes nem isso.
 - **as 14 threads do PR continuam abertas** -- não resolvi nenhuma (proibido);
 - **o encaixe da aprovação continua por ligar** (`E-1044`);
 - **`CAPACIDADES` VAZIO**: o Companion **não** controla o PC.
+
+### O que falta (actualizado na janela `E-1074`)
+
+**Fechado**: os 74 órfãos classificados — **todos dentro da faixa declarada, zero fora**;
+**63 em código**, **11 só em documentos**, **88 ficheiros**; e **3 falsos positivos** provados.
+A catraca do §FASE-7 item 6 está **cumprida**.
+
+**Continua em falta, sem disfarce**:
+- **as 133 não-citadas continuam sem texto** -- **não as reconstruí** (§FASE-7 item 2);
+- **as 74 citações não foram verificadas uma a uma** -- provei que existem, não que estão no
+  sítio certo;
+- **as 11 só em documentos** não foram cruzadas com requisito;
+- ***`BUILD=NAO` e `APK=NAO` no Android*** -- `BLOCKED` no daemon do Gradle (`E-1073`),
+  **decisão do dono**;
+- **macOS e iOS continuam por produzir**;
+- ***`PWA_INSTALADO_NA_UI=NAO`*** no Web;
+- **Windows e Linux `INSTALLED=NAO`/`DEVICE_E2E=NAO`**;
+- **a comparação externa continua `NAO_EXECUTADA`**;
+- **`55327160c` e `cda756f82` continuam VERMELHOS** -- pelo ritmo de push, não por defeito;
+- **decisão do proprietário em aberto**: distinguir «cancelado pelo push» de «cancelado por
+  falha» no `pr-gate` **toca a política do gate**;
+- **as 14 threads do PR continuam abertas** -- não resolvi nenhuma (proibido);
+- **o encaixe da aprovação continua por ligar** (`E-1044`);
+- **`CAPACIDADES` VAZIO**: o Companion **não** controla o PC.
+
+### A cura do `E-1075` (a mesma janela)
+
+**O `E-1074` expôs um defeito de paridade**: o `hades_handoff_window_check.py` **não** tinha o
+limite inferior que o `hades_index_shape_check.py` já tinha ⇒ o `E-000` (que vira `0` no `int()`)
+entrava como *«citado sem entrada»* em **qualquer** documento que o mencionasse.
+
+**Cura**: a **mesma** regra (`_abaixo = min(registados)` e `c >= _abaixo`). ⇒ ***«Dois checkers, a
+mesma regra, e um deles ficou para trás.»***
+
+**Resultado**: `JANELA DE CITACAO - fault injection: 20 OK, 0 FAIL` (era 18/2), e a bateria voltou a
+**33 OK / 0 FAIL**. ⇒ ***«O documento que documenta o falso positivo é o teste que o checker não
+esperava.»***

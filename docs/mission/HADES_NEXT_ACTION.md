@@ -1240,3 +1240,45 @@ o limite. ⇒ ***«Repetir com variação não é investigar — é insistir com
 sem bloqueio é o **§FASE-7 item 3**: classificar os **73 IDs órfãos** por requisito/call site.
 O desbloqueio do Android é **decisão do dono** (outro Gradle 8.14+/9.x, ou outro host/runner).
 **E esperar as runs antes do push.**
+
+### A proxima accao unica (janela `E-1074`)
+
+**Os 74 IDs orfaos classificados: todos dentro da faixa declarada, zero fora.**
+
+**Como foi medido**: varri o repositorio por `E-(\d{3,})` e comparei com as **866** entradas
+do indice. Resultado: **77 IDs citados sem entrada** — e desses, **3 são falsos positivos**
+com prova: o `E-000` (sentinela), o **ano** de um aviso CVE, e a **cabeça de teste** do
+proprio `hades_index_shape_check.py` ⇒ **74 orfaos reais**.
+
+**O split exacto**: a faixa `E-571..E-777` tem **207** IDs ⇒ **74 citados + 133 não
+citados = 207**. O prompt dizia **73 + 134** ⇒ ***a diferença é 1, e eu medi o número, não o
+copiei.***
+
+**E os 74 estão TODOS dentro da faixa; `FORA da faixa: 0`** ⇒ a catraca (`E-778`) **já os
+permite** porque a faixa é **dívida declarada**. O §FASE-7 item 6 está cumprido.
+
+**Onde os 74 vivem**: **63 em código** e **11 só em documentos**, em **88 ficheiros de
+código**. Os que mais citam: `server/agent_routes.go` (18), `agenticClient.ts` (9),
+`hades_local_gates.ps1` (7). A lista completa está em `_tmp/orfaos_tabela.md`.
+
+**E a ironia que isto produziu**: ao **citar** os dois falsos positivos no texto do `E-1074`,
+criei **dois novos** — porque o `CITACAO` é `\bE-(\d{3,})\b` e o texto tinha a forma exacta
+de uma citação. ⇒ ***«O instrumento que mede o defeito participa do defeito.»***
+
+**A proxima accao unica**: o **pacote de auditoria independente** (§FASE-7 item 8) —
+`README_AUDITOR.md`, `PARIDADE_EVIDENCIAS.csv`, `GATES.md`, `LIMITACOES.md`,
+`ARTEFATOS.sha256` — usando a classificação dos 74 como **alcance declarado**. **E esperar as
+runs antes do push.**
+
+### A cura do `E-1075` (a mesma janela)
+
+**O `E-1074` expôs um defeito de paridade**: o `hades_handoff_window_check.py` **não** tinha o
+limite inferior que o `hades_index_shape_check.py` já tinha ⇒ o `E-000` (que vira `0` no `int()`)
+entrava como *«citado sem entrada»* em **qualquer** documento que o mencionasse.
+
+**Cura**: a **mesma** regra (`_abaixo = min(registados)` e `c >= _abaixo`). ⇒ ***«Dois checkers, a
+mesma regra, e um deles ficou para trás.»***
+
+**Resultado**: `JANELA DE CITACAO - fault injection: 20 OK, 0 FAIL` (era 18/2), e a bateria voltou a
+**33 OK / 0 FAIL**. ⇒ ***«O documento que documenta o falso positivo é o teste que o checker não
+esperava.»***
