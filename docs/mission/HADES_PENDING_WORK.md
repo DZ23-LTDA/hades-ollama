@@ -1,6 +1,8 @@
 # HADES — TRABALHO PENDENTE PRIORIZADO
 
-> **REMEDIACAO MAIS RECENTE: E-1120** -- *o `-timeout 25m` declarado em 5 comandos do CI (a cura dos 2 vermelhos do `f813386bc`) e o `hades_ci_timeout_check.py`.*
+> **REMEDIACAO MAIS RECENTE: E-1121** -- *a extensao medida nos MOTORES REAIS: Chromium (10+25) e **Edge 155** (10+25) passam; o Chrome 155 nao carrega (reportado, nao exigido) -- e o `E-1105` corrigido.*
+
+
 
 
 

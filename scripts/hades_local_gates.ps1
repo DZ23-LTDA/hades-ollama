@@ -1218,4 +1218,18 @@ if ($LASTEXITCODE -ne 0) {
 } else { '    OK' }
 $passos += 'ci-timeout'
 
+
+''
+# E-1121: a extensao nos MOTORES REAIS. *Os 2 E2E (DOM e takeover) passam no Chromium do Playwright E no EDGE
+# REAL -- o `E-1105` tinha dado o Edge por perdido, e ele funciona. O Chrome real continua sem o `--load-extension`
+# (removido no 137+), e isso e' REPORTADO, nao exigido: PARTILHAR O MOTOR NAO E' PARTILHAR A POLITICA.
+'--- 79. EXTENSAO nos MOTORES REAIS: Chromium e Edge'
+$saidaMotores = & python -X utf8 scripts/hades_extension_engines_check.py 2>&1
+$saidaMotores | Select-Object -Last 4 | ForEach-Object { "    " + $_.ToString().Substring(0, [Math]::Min(110, $_.ToString().Length)) }
+if ($LASTEXITCODE -ne 0) {
+  $falhas.Add("hades_extension_engines_check.py (exit $LASTEXITCODE)")
+  '    FALHA'
+} else { '    OK' }
+$passos += 'extensao-motores'
+
 "GATES LOCAIS: $($passos -join ' + ') VERDES"

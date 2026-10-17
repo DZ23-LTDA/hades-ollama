@@ -86,8 +86,17 @@ async function main() {
 
   let ctx;
   try {
+    // ***`E-1121`: O CANAL E' ESCOLHIDO POR AMBIENTE.*** *O Playwright sabe lancar o **Chrome** e o **Edge
+    // REAIS** com `channel`* => *e isso permite distinguir o que o `E-1105` so' conseguiu supor:*
+    //   - *`HADES_E2E_CHANNEL` vazio => o **Chromium do Playwright** (o unico que carrega `--load-extension`);*
+    //   - *`HADES_E2E_CHANNEL=msedge` => o **Edge real** (155.0.4283.45);*
+    //   - *`HADES_E2E_CHANNEL=chrome` => o **Chrome real** (155.0.8059.79).*
+    // => *e o teste **diz qual e' que usou** -- *um E2E que nao diz em que motor correu e' um E2E que nao se sabe
+    // onde procurar quando falha.*
+    const canal = process.env.HADES_E2E_CHANNEL || "";
     ctx = await chromium.launchPersistentContext(perfil, {
       headless: false,
+      ...(canal ? { channel: canal } : {}),
       args: [
         `--disable-extensions-except=${EXTENSAO}`,
         `--load-extension=${EXTENSAO}`,
@@ -95,6 +104,8 @@ async function main() {
         "--no-default-browser-check",
       ],
     });
+    T("(0) o motor: " + (canal || "chromium do Playwright"),
+      true, "versao=" + ctx.browser()?.version?.() || "?");
 
     let sw = ctx.serviceWorkers()[0];
     if (!sw) sw = await ctx.waitForEvent("serviceworker", { timeout: 20000 }).catch(() => null);
@@ -186,9 +197,15 @@ async function main() {
     process.exit(1);
   }
   console.log(`  ==== O E2E COM DOM REAL PASSOU (${resultados.length} verificacoes) ====`);
+  // ***`E-1121`: O EDGE NAO PARTILHA O DESTINO DO CHROME.*** *O `E-1105` escreveu que «o Chrome 155 removeu o
+  // `--load-extension`» e assumiu que o **Edge**, por partilhar o motor, tambem* => *medido no `E-1121`:*
+  //   - *Chromium do Playwright 156.0.8078.4 => **carrega**;*
+  //   - *Edge REAL 155.0.4283.45 => **carrega**;*
+  //   - *Chrome REAL 155.0.8059.79 => **NAO carrega** (o flag foi removido).*
+  // => *e a licao: **partilhar o motor nao e' partilhar a politica** -- o Edge manteve o flag.*
   console.log("  ***O QUE ELE AINDA NAO COBRE***: *parear (o native host tem de ser instalado pelo");
-  console.log("  utilizador), Chrome/Edge reais (o Chrome 155 removeu `--load-extension`), Firefox e");
-  console.log("  computer-use -- cada um com a sua razao declarada.*");
+  console.log("  utilizador), o **Chrome REAL** (o 155 removeu `--load-extension` -- mas o **Edge** 155");
+  console.log("  NAO removeu: partilhar o motor nao e' partilhar a politica), Firefox e computer-use.*");
 }
 
 main().catch((e) => {

@@ -61,11 +61,16 @@ async function main() {
 
   let ctx;
   try {
+    // ***`E-1121`: O CANAL E' ESCOLHIDO POR AMBIENTE*** -- *o mesmo contrato do `e2e-extension-dom.mjs`,
+    // para o takeover poder correr no **Edge real** e nao so' no Chromium do Playwright.*
+    const canal = process.env.HADES_E2E_CHANNEL || "";
     ctx = await chromium.launchPersistentContext(perfil, {
       headless: false,
+      ...(canal ? { channel: canal } : {}),
       args: [`--disable-extensions-except=${EXTENSAO}`, `--load-extension=${EXTENSAO}`,
         "--no-first-run", "--no-default-browser-check"],
     });
+    T("(0) o motor: " + (canal || "chromium do Playwright"), true, "versao=" + (ctx.browser()?.version?.() || "?"));
     let sw = ctx.serviceWorkers()[0];
     if (!sw) sw = await ctx.waitForEvent("serviceworker", { timeout: 20000 }).catch(() => null);
     T("(1) a extensao carregou e o service_worker acordou", !!sw);
