@@ -77,9 +77,11 @@ jobs:
           echo "gofmt OK: nenhum arquivo fora de formato e nenhum erro de parse"
       - run: ./scripts/check-class-a-plus-integrity.sh
       - run: bash -n scripts/smoke-company-os.sh && python3 -m json.tool examples/dz23-desktop-commander-mcp.json >/dev/null && python3 -m json.tool examples/dz23-desktop-commander-remote.json >/dev/null
-      - run: CGO_ENABLED=0 go test ./internal/agent -count=1
+      # E-1120: -timeout 25m declarado (353,4 s medidos + 2-3x num runner de 2 cores).
+      - run: CGO_ENABLED=0 go test ./internal/agent -count=1 -timeout 25m
       - run: CGO_ENABLED=1 go test ./server -count=1
-      - run: CGO_ENABLED=1 go test ./... -count=1
+      # E-1120: o `./...` INCLUI o internal/agent (353,4 s) -- o default de 10 min nao cabe.
+      - run: CGO_ENABLED=1 go test ./... -count=1 -timeout 25m
       - run: CGO_ENABLED=1 go vet ./...
       - run: CGO_ENABLED=1 go build -o dist/ollama-agentic .
       - name: Windows amd64 cross-compilation for agent package
@@ -127,7 +129,19 @@ jobs:
         env:
           CGO_ENABLED: '0'
           OLLAMA_AGENT_BROWSER_EXECUTABLE: 'C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe'
-        run: go test ./internal/agent -count=1
+        # ***`E-1120`: O `-timeout` E' DECLARADO, NAO ESCONDIDO.*** *O `go test` tem o default de **10 min**, e
+        # este pacote **nao** cabe nele num runner `windows-latest`* => *medido neste host (32 threads):*
+        #   - `go test -count=1 ./internal/agent` => **353,4 s** com **1722** testes;
+        #   - e o maior teste **so'zinho** e' o `TestUpsertDiretoRespeitaOrcamentoEDeixaAtualizarNoTeto`
+        #     (**66,06 s**), porque enche **5 000** produtos (`DefaultOnboardingLimits().MaxRows`) pelo caminho
+        #     direto -- *e medir esse custo e' o proposito do teste (ver `commerce_budget_test.go`)*.
+        # => *num runner Windows (2 cores) o package leva **2-3x** => **12-18 min** => estoura os 10 do default*
+        # => *e o CI do `f813386bc` deu exactamente `panic: test timed out after 10m0s`, a meio do
+        # `TestEspecialistaQueNaoConsertaEhDeclaradoVermelho` (que estava na fila, nao a causar).*
+        # => ***`25m` NAO e' "aumentar o timeout para esconder um deadlock": e' declarar o tempo medido, dentro
+        # do `timeout-minutes: 30` do job.*** *Um deadlock nao terminaria em 25 min; um teste de volume de 5 000
+        # insercoes termina.*
+        run: go test ./internal/agent -count=1 -timeout 25m
 
   distributed-integration:
     name: PostgreSQL RLS, Redis DLQ and OTLP integration

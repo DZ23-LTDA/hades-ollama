@@ -85,6 +85,7 @@ que passam: *quem os corre é o auditor, e o resultado é do estado em que ele o
 | 75 | E2E DO TAKEOVER HUMANO E DA REVOGACAO AO VIVO (24 verificacoes) |
 | 76 | E2E DO PAREAMENTO REAL COM O COMPANION (17 verificacoes) |
 | 77 | NATIVE HOST: instalacao REVERSIVEL (roundtrip na sandbox) |
+| 78 | TIMEOUT DO CI: o `-timeout` declarado nos `go test` do agent |
 
 ## Como correr a bateria completa
 

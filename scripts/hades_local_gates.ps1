@@ -1204,4 +1204,18 @@ if ($LASTEXITCODE -ne 0) {
 } else { '    OK' }
 $passos += 'native-host-reversivel'
 
+
+''
+# E-1120: o TIMEOUT do CI. *Todo `go test` que corre o `internal/agent` (ou o `./...` da raiz) declara um
+# `-timeout` >= 20 min, e ele cabe no `timeout-minutes` do job. E' DECLARAR o tempo medido (353,4 s com 1722
+# testes, e o maior teste so'zinho = 66,06 s a encher 5 000 produtos) -- NAO e' esconder deadlock.
+'--- 78. TIMEOUT DO CI: o `-timeout` declarado nos `go test` do agent'
+$saidaTimeout = & python -X utf8 scripts/hades_ci_timeout_check.py 2>&1
+$saidaTimeout | Select-Object -Last 3 | ForEach-Object { "    " + $_.ToString().Substring(0, [Math]::Min(110, $_.ToString().Length)) }
+if ($LASTEXITCODE -ne 0) {
+  $falhas.Add("hades_ci_timeout_check.py (exit $LASTEXITCODE)")
+  '    FALHA'
+} else { '    OK' }
+$passos += 'ci-timeout'
+
 "GATES LOCAIS: $($passos -join ' + ') VERDES"

@@ -1,6 +1,8 @@
 # HADES — HANDOFF (como retomar a missão do zero)
 
-> **REMEDIACAO MAIS RECENTE: E-1119** -- *a instalacao REVERSIVEL do Native Host provada (no `%LOCALAPPDATA%` real e em sandbox) e o roundtrip de 27 verificacoes.*
+> **REMEDIACAO MAIS RECENTE: E-1120** -- *o `-timeout 25m` declarado em 5 comandos do CI (a cura dos 2 vermelhos do `f813386bc`) e o `hades_ci_timeout_check.py`.*
+
+
 
 
 
