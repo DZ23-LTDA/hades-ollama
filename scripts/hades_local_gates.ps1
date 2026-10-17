@@ -1041,4 +1041,27 @@ if ($LASTEXITCODE -ne 0) {
 } else { '    OK' }
 $passos += 'estabilidade-injecoes'
 
+
+''
+# E-1109: a MATRIZ COMPETITIVA. *27/27 repositorios e 49/49 referencias de produto cobertos; nenhum
+# `SUPERIOR_MEASURED` sem benchmark; e as correccoes factuais do prompt aplicadas.*
+'--- 66. MATRIZ COMPETITIVA: cobertura obrigatoria e nenhuma vitoria sem prova'
+$saidaComp = & python -X utf8 scripts/hades_competitive_check.py 2>&1
+$saidaComp | Select-Object -Last 3 | ForEach-Object { "    " + $_.ToString().Substring(0, [Math]::Min(110, $_.ToString().Length)) }
+if ($LASTEXITCODE -ne 0) {
+  $falhas.Add("hades_competitive_check.py (exit $LASTEXITCODE)")
+  '    FALHA'
+} else { '    OK' }
+$passos += 'matriz-competitiva'
+
+''
+'--- 67. fault injection da matriz competitiva (3 injecoes + contraprova)'
+$saidaCompT = & python -X utf8 scripts/hades_competitive_check_test.py 2>&1
+$saidaCompT | Select-Object -Last 2 | ForEach-Object { "    " + $_.ToString().Substring(0, [Math]::Min(110, $_.ToString().Length)) }
+if ($LASTEXITCODE -ne 0) {
+  $falhas.Add("hades_competitive_check_test.py (exit $LASTEXITCODE)")
+  '    FALHA'
+} else { '    OK' }
+$passos += 'matriz-injecoes'
+
 "GATES LOCAIS: $($passos -join ' + ') VERDES"

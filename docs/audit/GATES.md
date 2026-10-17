@@ -73,6 +73,8 @@ que passam: *quem os corre é o auditor, e o resultado é do estado em que ele o
 | 63 | fault injection dos plugins (3 injecoes + contraprova) |
 | 64 | ESTABILIDADE: o flake, a hermeticidade, a codificacao e o comando do CI |
 | 65 | fault injection da estabilidade (3 injecoes + contraprova) |
+| 66 | MATRIZ COMPETITIVA: cobertura obrigatoria e nenhuma vitoria sem prova |
+| 67 | fault injection da matriz competitiva (3 injecoes + contraprova) |
 
 ## Como correr a bateria completa
 

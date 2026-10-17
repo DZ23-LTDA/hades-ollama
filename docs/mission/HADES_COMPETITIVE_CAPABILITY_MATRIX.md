@@ -248,6 +248,29 @@ ficam `UNVERIFIABLE`, não `ABSENT`* — e a diferença importa: **não medido �
 
 ---
 
+### 15.1 As 20 referências acrescentadas na ronda 191 (`E-1109`)
+
+*Medido: a matriz cobria **19 de 27** repositórios e **37 de 49** referências de produto do prompt* =>
+*faltavam **20**, e uma referência em falta é uma referência **silenciosamente ignorada** -- o que o prompt
+proíbe.*
+
+=> *as 20 estão agora no `.csv` como `REF-01..REF-20`, **todas** com o estado ***`UNVERIFIABLE`*** e o motivo
+escrito:*
+
+| grupo | referências | estado | porquê |
+|---|---|---|---|
+| 8 repositórios | `wickedapp/openclaw-office` · `lemonade-sdk/lemonade` · `agentconnect-md/agentconnect` · `nexu-io/open-design` · `renatoasse/opensquad` · `TypingMind/typingmind` · `davidondrej/cloudroom-gui` · `davidondrej/cloudroom-core` | `UNVERIFIABLE` | *não consultados com fonte primária nesta sessão* |
+| 12 produtos | Marblism · Create.xyz · Base44 · OmniRoute · DeepSeek · Hercules.app · Verdent.ai · ChatDev · Continue.dev · Grok · Blink · Qoder | `UNVERIFIABLE` | *fechados (sem licença OSS) ou sem URL canónica confirmada* |
+
+⇒ ***`UNVERIFIABLE` não é `ABSENT`, e não é `PARITY_MEASURED`.*** *A diferença importa: **não medido ≠
+inexistente ≠ igual**.* => *e o prompt aceita-o explicitamente: «sem acesso legal/técnico ao concorrente, marque
+`NOT_MEASURED`/`CLAIM_ONLY`; compare o HADES ao requisito observável, não invente resultado».*
+
+⇒ **A dívida declarada**: *as 20 continuam **sem fonte primária consultada** => *a decisão é **ADIAR**, e a matriz
+diz isso na coluna `lacuna_decisao` de cada uma.*
+
+---
+
 ## 16. Correções factuais obrigatórias (aplicadas)
 
 | referência | classificação **errada** | classificação **medida/corrigida** |
