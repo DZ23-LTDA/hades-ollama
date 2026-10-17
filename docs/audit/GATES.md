@@ -64,6 +64,9 @@ que passam: *quem os corre é o auditor, e o resultado é do estado em que ele o
 | 54 | SEGURANCA: tenant scope, non-inference, e o relogio de teste |
 | 55 | o CHECADOR da seguranca (9 eixos do Dominio K) |
 | 56 | fault injection da seguranca (3 injecoes + contraprova) |
+| 57 | EXTENSAO: o manifesto, as permissoes, a CSP e o native host |
+| 58 | os 120 TESTES da extensao (node --test) |
+| 59 | fault injection da extensao (3 injecoes + contraprova) |
 
 ## Como correr a bateria completa
 

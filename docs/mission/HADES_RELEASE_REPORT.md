@@ -8,15 +8,15 @@
 
 | Número | Valor |
 | --- | --- |
-| **Commit medido** (`measured_commit`) | `da111e32221cf162354789e7f6e149737f808c1a` |
+| **Commit medido** (`measured_commit`) | `cc895e576b004d2f299b39a9c86baa81a658bc99` |
 | **Commit da `main`** (`git.main_sha`) | `4b3e21854` |
-| **Gerado em** (`measured_at`) | 2026-10-17T10:36:35-03:00 |
-| **Snapshot real** (`gate_head`) | `da111e32221cf162354789e7f6e149737f808c1a` |
+| **Gerado em** (`measured_at`) | 2026-10-17T10:45:52-03:00 |
+| **Snapshot real** (`gate_head`) | `cc895e576b004d2f299b39a9c86baa81a658bc99` |
 | **Ramo do snapshot** (`gate_branch`) | `fix/checker-relogio` |
-| **Entradas nao commitadas** (`gate_dirty`) | 18 |
+| **Entradas nao commitadas** (`gate_dirty`) | 27 |
 | **O gate prova o snapshot candidato?** (`gate_snapshot`) | **MESMO** |
 | Estágios | 38 |
-| Linhas de evidência no índice | 897 |
+| Linhas de evidência no índice | 898 |
 | `COMPLETED_VERIFIED` | 13 |
 | `IN_PROGRESS` | 4 |
 | `BLOCKED_BY_EXTERNAL_DEPENDENCY` | 21 |
@@ -57,7 +57,7 @@ relatório **declara a ausência** em vez de preencher com suposição.
 | 2 | Estabilizacao e consolidacao da base | PARCIAL | IN_PROGRESS | B-09 | E-003, E-004, E-011, E-013, E-014, E-015, E-016, E-017, E-060, E-061, E-062, E-064, E-115, E-116, E-129, E-138, E-142, E… |
 | 7 | MCP Manager (servidores, ferramentas, escopos) | APENAS_CATALOGO | IN_PROGRESS | B-10 | E-018, E-019, E-026, E-215 |
 | 8 | Plugins e Skills | PARCIAL | IN_PROGRESS | B-14 | E-042, E-053, E-055, E-063, E-065, E-066, E-067, E-068, E-183, E-184, E-185, E-200, E-293 |
-| 14 | Browser Operator / computer-use | PARCIAL | IN_PROGRESS | B-09 | E-015, E-086 |
+| 14 | Browser Operator / computer-use | PARCIAL | IN_PROGRESS | B-09 | E-1105, E-015, E-086 |
 
 ## BLOCKED (impedimento externo, com procedimento de desbloqueio)
 
@@ -97,7 +97,7 @@ possível sem ele**.
 
 ## Referências
 
-- Índice de evidências: [`HADES_EVIDENCE_INDEX.md`](HADES_EVIDENCE_INDEX.md) (897 linhas).
+- Índice de evidências: [`HADES_EVIDENCE_INDEX.md`](HADES_EVIDENCE_INDEX.md) (898 linhas).
 - Estado da missão: [`HADES_MASTER_STATE.json`](HADES_MASTER_STATE.json).
 - Gate global: [`HADES_FINAL_RELEASE_GATE.md`](HADES_FINAL_RELEASE_GATE.md).
 - Gate intermediário de engenharia (estágio 22): [`HADES_ENGINEERING_GATE.md`](HADES_ENGINEERING_GATE.md).

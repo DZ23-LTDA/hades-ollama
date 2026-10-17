@@ -788,7 +788,7 @@ if ($linhaSnap) {
 }
 
 ''
-# E-1098: o §ESTAGIO 6 (Harness Runtime). *As 7 capacidades -- cancelamento, timeout, retry limitado,
+# E-1098: o ESTAGIO ESTAGIO 6 (Harness Runtime). *As 7 capacidades -- cancelamento, timeout, retry limitado,
 # idempotencia, retomada, artefactos e governacao -- nomeadas por TESTE; o cancelamento entre instancias; o
 # Ollama no caminho local; e o CLI externo com bloqueio declarado (t.Skip com MOTIVO) e sonda OPT-IN.*
 '--- 46. HARNESS: as 7 capacidades, cancelamento entre instancias, Ollama, e o CLI com sonda opt-in'
@@ -812,7 +812,7 @@ $passos += 'harness-testes'
 
 
 ''
-# E-1099: o §ESTAGIO 9 (Agentes e subagentes). *O swarm com o `MaxAgents` APLICADO (semaforo), o orcamento
+# E-1099: o ESTAGIO ESTAGIO 9 (Agentes e subagentes). *O swarm com o `MaxAgents` APLICADO (semaforo), o orcamento
 # de 4 limites, o custo por passo ligado ao motor, o isolamento de worktree, os artefactos reais, e o HITL
 # com recusa por omissao.*
 '--- 48. AGENTES: swarm com limite aplicado, orcamento, isolamento, artefactos e HITL'
@@ -836,7 +836,7 @@ $passos += 'agentes-testes'
 
 
 ''
-# E-1100: o §ESTAGIO 1 (Auditoria total e inventario real). *A matriz de plataformas (6 plataformas x 7
+# E-1100: o ESTAGIO ESTAGIO 1 (Auditoria total e inventario real). *A matriz de plataformas (6 plataformas x 7
 # eixos), os 15 workflows citados, e ZERO instrucoes destrutivas sem o aviso de HISTORICO e PROIBIDO com WIP.*
 '--- 50. AUDITORIA: matriz de plataformas, workflows citados, e o aviso das instrucoes destrutivas'
 $saidaM = & python -X utf8 scripts/hades_platform_matrix.py 2>&1
@@ -861,7 +861,7 @@ $passos += 'auditoria-inventario-testes'
 
 
 ''
-# E-1102: o §ESTAGIO 3 (Arquitetura canonica). *As fontes de verdade SINGULARES (1 Runtime, 1 Mission, 0
+# E-1102: o ESTAGIO ESTAGIO 3 (Arquitetura canonica). *As fontes de verdade SINGULARES (1 Runtime, 1 Mission, 0
 # MissionControl -- o MC e' superficie, nao motor), o lock partilhado da aprovacao, os testes de CONTRATO
 # (nao busca de simbolo), e a arquitectura e a API documentadas.*
 '--- 52. ARQUITETURA: fontes de verdade singulares, testes de contrato, e a documentacao'
@@ -888,7 +888,7 @@ $passos += 'arquitetura-testes'
 
 ''
 # E-1104: os 3 instrumentos de SEGURANCA que corriam so' na bateria manual -- agora DECLARADOS no gates.
-# *O §ESTAGIO 18 exige «RBAC/ABAC, tenant isolation, non-inference, approvals de uso unico e audit log»*
+# *O ESTAGIO ESTAGIO 18 exige "RBAC/ABAC, tenant isolation, non-inference, approvals de uso unico e audit log"*
 # => *e um instrumento que corre numa bateria nao-commitada nao esta' ligado a nada.*
 '--- 54. SEGURANCA: tenant scope, non-inference, e o relogio de teste'
 $saidaTen = & python -X utf8 scripts/hades_tenant_scope_check.py --check 2>&1
@@ -934,5 +934,39 @@ if ($LASTEXITCODE -ne 0) {
   '    FALHA'
 } else { '    OK' }
 $passos += 'seguranca-testes'
+
+
+''
+# E-1105: o ESTAGIO ESTAGIO 14 / ESTAGIO FASE-3-B (HADES Browser Bridge). *MV3, incognito fora, permissoes minimas, CSP
+# estrita, sem eval nem codigo remoto, native host restrito, e os 120 testes unitarios da extensao.*
+'--- 57. EXTENSAO: o manifesto, as permissoes, a CSP e o native host'
+$saidaExt = & python -X utf8 scripts/hades_extension_check.py 2>&1
+$saidaExt | Select-Object -Last 3 | ForEach-Object { "    " + $_.ToString().Substring(0, [Math]::Min(110, $_.ToString().Length)) }
+if ($LASTEXITCODE -ne 0) {
+  $falhas.Add("hades_extension_check.py (exit $LASTEXITCODE)")
+  '    FALHA'
+} else { '    OK' }
+$passos += 'extensao'
+
+''
+'--- 58. os 120 TESTES da extensao (node --test)'
+$saidaExtT = & node --test apps/hades-browser-bridge/test/arquivos.test.js apps/hades-browser-bridge/test/canal_local.test.js apps/hades-browser-bridge/test/carregavel.test.js apps/hades-browser-bridge/test/companion.test.js apps/hades-browser-bridge/test/protocol.test.js apps/hades-browser-bridge/test/transporte.test.js 2>&1
+$saidaExtT | Select-String -Pattern '^# (pass|fail)' | ForEach-Object { "    " + $_.Line.InnerText }
+$saidaExtT | Select-Object -Last 3 | ForEach-Object { "    " + $_.ToString().Substring(0, [Math]::Min(110, $_.ToString().Length)) }
+if ($LASTEXITCODE -ne 0) {
+  $falhas.Add("os testes da extensao (exit $LASTEXITCODE)")
+  '    FALHA'
+} else { '    OK' }
+$passos += 'extensao-testes'
+
+''
+'--- 59. fault injection da extensao (3 injecoes + contraprova)'
+$saidaExtIj = & python -X utf8 scripts/hades_extension_check_test.py 2>&1
+$saidaExtIj | Select-Object -Last 2 | ForEach-Object { "    " + $_.ToString().Substring(0, [Math]::Min(110, $_.ToString().Length)) }
+if ($LASTEXITCODE -ne 0) {
+  $falhas.Add("hades_extension_check_test.py (exit $LASTEXITCODE)")
+  '    FALHA'
+} else { '    OK' }
+$passos += 'extensao-injecoes'
 
 "GATES LOCAIS: $($passos -join ' + ') VERDES"
