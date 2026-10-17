@@ -70,11 +70,25 @@ def main() -> int:
 
     # ---------- 2. a base e' HERMETICA, com divida declarada ----------
     rc, saida = correr("hades_testes_hermeticos_check.py")
-    m = re.search(r"TESTES NAO-HERMETICOS:\s*(\d+)", saida)
-    n_nao = int(m.group(1)) if m else -1
+    # ***O CHECKER TEM TRES SAIDAS, E ESTE GATE TEM DE AS LER TODAS.*** *Enquanto a divida era 107, a unica
+    # saida possivel era `TESTES NAO-HERMETICOS: N` -- e o gate so' procurava essa. Quando a divida chegou a
+    # ZERO (o `BASELINE` do checker passou a 0), a saida passou a ser `TESTES HERMETICOS: N chamadas ...
+    # todas com DataRoot`, e este gate ficou **CEGO** (`n=-1`) exactamente no estado que queria atingir --
+    # o `hades_stability_check_test.py` acusou-o como «baseline: a copia passa ...» falhado.* => *um gate que
+    # so' reconhece o formato do DEFEITO nao ve' a CURA: tem de reconhecer os tres formatos.*
+    m = re.search(r"TESTES HERMETICOS:\s*(\d+)\s+chamadas", saida)
+    if m:
+        n_nao = 0                      # todas com DataRoot => divida zero
+    else:
+        m = re.search(r"TESTES NAO-HERMETICOS:\s*(\d+)", saida)
+        if m:
+            n_nao = int(m.group(1))
+        else:
+            m = re.search(r"CRESCIMENTO DE DIVIDA:\s*(\d+)", saida)
+            n_nao = int(m.group(1)) if m else -1
     T("(2) a hermeticidade e' MEDIDA (o `hades_testes_hermeticos_check.py` corre)", rc == 0,
       "nao-hermeticos=%d (a baseline nao pode crescer)" % n_nao)
-    T("(2b) e a divida NAO cresceu (baseline 107)", n_nao == 107,
+    T("(2b) e a divida NAO cresceu (baseline 0)", n_nao == 0,
       "n=%d" % n_nao if n_nao >= 0 else "nao medido")
 
     # ---------- 3. a base e' DETERMINISTA na codificacao ----------
