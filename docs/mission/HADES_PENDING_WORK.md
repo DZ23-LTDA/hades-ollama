@@ -1,6 +1,6 @@
 # HADES — TRABALHO PENDENTE PRIORIZADO
 
-> **REMEDIACAO MAIS RECENTE: E-1133** -- *a cura das 760 linhas foi FALSA (acrescentei colunas em vez de curar) e foi REVERTIDA; a 2.a fatia e linha a linha.*
+> **REMEDIACAO MAIS RECENTE: E-1134** -- *o vermelho do `class-a-plus-integrity` era o hasher a medir CRLF, nao o indice: o manifesto e o pacote de auditoria liam o ficheiro de trabalho e o CI faz checkout LF -- curado e verde em `045fb7919`.*
 
 
 

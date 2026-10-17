@@ -11,18 +11,18 @@
 > modificados** com **24** ocorrencias de marca que **nao existem no commit**, e o inventario
 > divergia entre a minha maquina e o CI. => *um instrumento que mede o disco mede **tambem o
 > trabalho nao commitado** -- e publica um numero que so' e' verdadeiro onde foi gerado.*
-> Origens medidas neste snapshot: `HEAD (sujo no disco)`: 14, `disco (limpo)`: 2544.
+> Origens medidas neste snapshot: `HEAD (sujo no disco)`: 10, `disco (limpo)`: 2570.
 
 | String | Ocorrencias |
 | --- | --- |
-| **Hades/HADES** (canonica) | **1156** |
-| DZ23 Agentic | 248 |
-| Ollama Full | 176 |
-| Ollama Classe A+ | 98 |
+| **Hades/HADES** (canonica) | **1188** |
+| DZ23 Agentic | 252 |
+| Ollama Full | 177 |
+| Ollama Classe A+ | 99 |
 | Ollama DZ23 | 59 |
 
-**Legadas somadas:** 581 ocorrencias
-(259 em ficheiros **migraveis**, 322 em ficheiros de **excecao**).
+**Legadas somadas:** 587 ocorrencias
+(262 em ficheiros **migraveis**, 325 em ficheiros de **excecao**).
 
 *O total **nao** decide: os mesmos numeros distribuem-se por sitios de tipos muito
 diferentes, e e' o sitio que decide.* Um ``README`` migra; um `bundle ID` nao.
@@ -87,6 +87,7 @@ hoje** e **falso sobre o que foi medido**.*
 | `docs/agentic/COMPANY_OS.md` | 2 | migravel |
 | `docs/agentic/DESKTOP_COMMANDER_REMOTE.md` | 2 | migravel |
 | `docs/agentic/PHASE5_DELIVERY.md` | 2 | migravel |
+| `docs/mission/HADES_FINAL_REPORT.md` | 2 | migravel |
 | `internal/agent/builder_studio_test.go` | 2 | migravel |
 | `server/agent_routes.go` | 2 | migravel |
 | `.github/workflows/dz23-agentic-quality.yaml` | 1 | migravel |
@@ -119,6 +120,7 @@ hoje** e **falso sobre o que foi medido**.*
 | `internal/agent/workspace_snapshot_test.go` | 1 | migravel |
 | `scripts/hades-quickstart.ps1` | 1 | migravel |
 | `scripts/hades_ci_gate_check_test.py` | 1 | migravel |
+| `scripts/hades_linux_package.py` | 1 | migravel |
 | `scripts/hades_local_gates.ps1` | 1 | migravel |
 | `scripts/hades_orphan_instruments_check.py` | 1 | migravel |
 
@@ -126,7 +128,7 @@ hoje** e **falso sobre o que foi medido**.*
 
 | Ficheiro | Legadas | Categoria |
 | --- | --- | --- |
-| `docs/mission/HADES_EVIDENCE_INDEX.md` | 159 | excecao:historico |
+| `docs/mission/HADES_EVIDENCE_INDEX.md` | 162 | excecao:historico |
 | `audit/AUTONOMOUS_MISSION_STATE.md` | 32 | excecao:historico |
 | `audit/OLLAMA_FULL_MISSION_STATE.md` | 27 | excecao:historico |
 | `docs/evidencias/browser-console-audit-f12.json` | 16 | excecao:historico |
@@ -153,7 +155,7 @@ hoje** e **falso sobre o que foi medido**.*
 | `audit/auditoria.md` | 1 | excecao:historico |
 | `docs/evidencias/browser-console-audit-audfix2.json` | 1 | excecao:historico |
 
-**Por tipo de excecao:** credencial: 3, env var: 4, historico: 304, instalador: 9, teste: 2
+**Por tipo de excecao:** credencial: 3, env var: 4, historico: 307, instalador: 9, teste: 2
 
 ## 6. O que este documento **nao** faz
 
