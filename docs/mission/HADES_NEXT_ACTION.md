@@ -779,3 +779,19 @@ referenciar** a matriz T2 real e a repetição — que agora são medições do 
 verificadas. Verificar se os documentos canónicos apontam para os artefactos reais e
 corrigir a fonte onde divergirem. E, antes de qualquer push, **esperar que as runs
 terminem**.
+
+### A proxima accao unica (janela `E-1052`)
+
+**A previsão cumpriu-se.** O `E-1051` escreveu que o `cda756f82` reprovaria pelo mesmo
+mecanismo; reprovou (`pr-gate` failure, `test` e `dz23-agentic-quality` cancelled).
+E a disciplina de push deu **quatro SHAs 6/6 consecutivos** — sem tocar numa linha da gate.
+
+⇒ ***«Uma previsão escrita antes é a única prova de que a explicação serve.»***
+⇒ ***«O problema tinha solução procedural, e a solução foi executada.»***
+
+**A proxima accao unica**: **fechar o estágio 21 com os documentos canónicos.** O
+`HADES_BENCHMARK_METHOD.md` e o `HADES_STAGE_21_BENCHMARK.md` descrevem medições **sem
+referenciar** a matriz T2 real (`E-1047`) nem a repetição (`E-1049`) — que agora são
+medições verificadas do mesmo snapshot. Verificar se os documentos canónicos apontam para
+os artefactos reais e corrigir a fonte onde divergirem. **E, antes de qualquer push,
+esperar que as runs do SHA remoto terminem com `failure=0`.**
