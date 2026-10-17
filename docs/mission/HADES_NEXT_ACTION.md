@@ -1,5 +1,31 @@
 # HADES — PRÓXIMA AÇÃO (V2.2 + adendo de paridade)
 
+## JANELA E-1151 — o Mission Control funciona no binario (ronda 266-267)
+
+*Bloco de cabeca: mantem os tres documentos de retomada dentro da `JANELA = 12` do
+`hades_handoff_window_check.py`. Cada afirmacao abaixo tem ID proprio no indice.*
+
+- **`E-1149`** — `go test ./internal/agent -run (TestMission-ou-TestRuntime-ou-TestStore)` -> `ok` em
+  21,666 s: o **motor** de missao (criacao, persistencia, retomada, eventos, store) passa com
+  `RulePlanner` **deterministico**, sem LLM.
+- **`E-1150`** — **ciclo COMPLETO no binario do produto, 9,4 s**: `agent create` -> missao `READY` com
+  plano (`workspace.list`, `risk: read`, `tool_descriptor_sha256`) -> `agent run` -> job enfileirado ->
+  worker executou -> passo `SUCCEEDED` com `result.entries` reais -> missao **`COMPLETED`**. Presentes:
+  `provider: ollama-local`, `organization_id: local`, `capabilities: [workspace:read]`.
+- **`E-1151`** — **o `/goal` do UI cria a missao**: contra o backend real, `3 passed (32,1 s)`,
+  `POST /api/agent/v1/missions` -> **201** e `POST /api/agent/v1/orchestration/jobs` -> **202**
+  (5 papeis, `max_agents 3`, `max_seconds 600`). Teste **discriminante** acrescentado ao
+  `goal-command.spec.ts`; sem ele eu teria registado um defeito que nao existe.
+- **Desbloqueio operacional**: `OLLAMA_AGENT_ROOT` + `OLLAMA_AGENT_STORE` + `OLLAMA_AGENT_CREDENTIAL_KEY`
+  fazeem o agent runtime subir (`/api/agent/v1/tools` -> 200, **17 ferramentas**). O `RulePlanner` e' o
+  **default**; so' ha' `OllamaPlanner` quando ha' modelo configurado — *era isso que eu estava a
+  estragar ao passar `--model`.*
+- **`E-1147` corrigida** (nao apagada): a frase «nao e' configuravel por env» era **falsa**.
+
+*Nao ha' lacuna conhecida no `/goal`. O `CAP-L-01` fica `PARTIAL` apenas porque o enum nao tem estado
+para «implementado e medido sem referencia externa». O veredito continua `NOT_RELEASE_READY`.*
+
+
 > **REMEDIACAO MAIS RECENTE: `E-1135`** (*rondas 241-245*). *O inventario aprendeu a dizer de que snapshot e' cada artefacto -- e a dizer quando nao sabe.* As 6 plataformas de produto passaram a ser medidas contra o artefacto CERTO: o Windows citava o instalador do dia anterior (`A70B5107...`, mesmo tamanho, por isso passava despercebido) em vez do candidato (`0F95833A...`); o Linux le a proveniencia **dentro** do tarball (`SOURCE_SHA 9a0408e31905`); o bundle Web/PWA nao pode declarar SHA (o Vite nao o escreve) e passa a provar a **auto-coerencia** (5/5 assets); e os dois pacotes da extensao, que existiam em `dist/` **fora de qualquer inventario**, passaram a declarar `SOURCE_SHA: a313019e48ef`. Junto com eles: o passo de smoke de instalacao passou a existir no `dz23-windows-installer.yaml` (nenhum workflow instalava o `HadesSetup.exe` -- o desbloqueio que eu tinha declarado nao existia) e o `test-install.yaml` deixou de instalar `ollama-classe-a-plus`.
 
 > **REMEDIACAO ANTERIOR: E-1134** -- *o vermelho do `class-a-plus-integrity` era o hasher a medir CRLF, nao o indice: o manifesto e o pacote de auditoria liam o ficheiro de trabalho e o CI faz checkout LF -- curado e verde em `045fb7919`.*
