@@ -214,7 +214,7 @@ um é passo obrigatório antes de qualquer integração.*
 
 | CAP-ID | capacidade | referências | licença | HADES | prova HADES | lacuna / decisão |
 |---|---|---|---|---|---|---|
-| `CAP-L-01` | um composer com `/goal` | todos | várias | `PARTIAL` | `ChatForm.tsx`, `slashCommands.ts`, `E-1138`, `E-1140`, `E-1141`, `E-1142` | **Quatro provas**: (a) 13 testes unitarios do parser (`E-1138`); (b) E2E shell -- composer+sidebar+mobile (`E-1140`); (c) jornada de primeira execucao (`E-1141`); (d) **E2E do proprio `/goal`** (`E-1142`) -- digita, navega para `/agentic`, `objective` preservado, `slash=goal`, `autorun=true`, e `/goal` vazio NAO navega. **Lacuna unica e honesta**: o backend do E2E e' o **fixture** `first-run-backend.mjs`, nao o binario do produto. |
+| `CAP-L-01` | um composer com `/goal` | todos | várias | `PARTIAL` | `ChatForm.tsx`, `slashCommands.ts`, `E-1138`, `E-1140`, `E-1141`, `E-1142`, `E-1144` | **Cinco provas**: (a) 13 testes unitarios (`E-1138`); (b) E2E shell 2 passed (`E-1140`); (c) jornada 1 passed (`E-1141`); (d) E2E do `/goal` 2 passed (`E-1142`); (e) **o mesmo `/goal` com o BINARIO REAL** 2 passed 33,0 s (`E-1144`, via `HADES_E2E_BACKEND_URL`). **Lacuna restante**: o spec assegura a navegacao com os params; **nao** assegura que a missao e' criada na base do binario real. |
 | `CAP-L-02` | um Mission Control + um menu | — | — | `PARTIAL` | missions | — |
 | `CAP-L-03` | onboarding local-first | — | — | `PARTIAL` | onboarding gate | — |
 | `CAP-L-04` | Windows/Linux/macOS/Android/iOS/Web | — | — | `PARTIAL` | `E-938` (`HadesSetup.exe`), `E-953` (Linux), `E-955` (Android prebuild) | *sem APK, sem macOS, sem iOS* |
