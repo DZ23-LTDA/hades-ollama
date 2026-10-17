@@ -1,6 +1,8 @@
 # HADES — PRÓXIMA AÇÃO (V2.2 + adendo de paridade)
 
-> **REMEDIACAO MAIS RECENTE: E-1116** -- *o pacote Firefox (lint do Mozilla em 0/0/0), o E2E da extensao com DOM real, a revalidacao dos 14 findings, o pacote Linux e o relatorio final.*
+> **REMEDIACAO MAIS RECENTE: E-1117** -- *o E2E do takeover e da revogacao ao vivo (24 verificacoes) e a cura do `devolverSessao`.*
+
+
 
 
 

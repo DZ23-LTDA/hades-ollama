@@ -452,6 +452,19 @@ async function devolverSessao(tabId) {
   const tinha = (estado.takeover ?? {})[chave] ?? null;
   if (estado.takeover) delete estado.takeover[chave];
   await gravarEstado(estado);
+  // ***`E-1117`: DEVOLVER TEM DE CHEGAR AO CONTENT SCRIPT.*** *O `takeover` vive em DOIS sitios: o
+  // estado do service worker (que o popup consulta) e a variavel local do `content_script` (que
+  // RECUSA a escrita).* => *limpar so' o primeiro deixava o segundo a recusar:* *o estado dizia
+  // `inativo`, e a escrita continuava a bater em `takeover_humano_ativo` -- **o botao dizia uma coisa e
+  // o travao fazia outra**.* => *logo: avisar a aba. Se a aba ja' nao existir, a limpeza do estado
+  // basta (nao ha' content script para recusar).*
+  if (tinha !== null) {
+    try {
+      await chrome.tabs.sendMessage(tabId, { tipo: "takeover:devolver" });
+    } catch {
+      // *a aba pode ter sido fechada; a limpeza do estado e' o que importa*
+    }
+  }
   return { ok: true, devolvida: tinha !== null, autor: "agent" };
 }
 

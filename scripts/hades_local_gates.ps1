@@ -1156,4 +1156,21 @@ if ($LASTEXITCODE -ne 0) {
 } else { '    OK' }
 $passos += 'pacote-firefox'
 
+
+''
+# E-1117: o E2E do TAKEOVER e da REVOGACAO ao vivo. *A concessao criada e revogada pelo POPUP (a porta real),
+# a accao que devolve PEDIDO e nao aprovacao, o scope nao-canonico recusado, o gesto humano que marca o takeover,
+# a escrita do agente RECUSADA durante ele, e a devolucao que a faz voltar a funcionar.*
+'--- 75. E2E DO TAKEOVER HUMANO E DA REVOGACAO AO VIVO (24 verificacoes)'
+Push-Location app/ui/app
+$saidaTk = & node e2e-extension-takeover.mjs 2>&1
+$saidaTk | Select-Object -Last 3 | ForEach-Object { "    " + $_.ToString().Substring(0, [Math]::Min(110, $_.ToString().Length)) }
+$exitTk = $LASTEXITCODE
+Pop-Location
+if ($exitTk -ne 0) {
+  $falhas.Add("e2e-extension-takeover.mjs (exit $exitTk)")
+  '    FALHA'
+} else { '    OK' }
+$passos += 'extensao-takeover'
+
 "GATES LOCAIS: $($passos -join ' + ') VERDES"
