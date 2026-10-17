@@ -423,7 +423,14 @@ def verificar_cruzamento_de_auditoria(estado: dict) -> tuple[list[str], dict]:
     auditoria = estado.get("v22", {}).get("auditoria_adversarial", {})
     ataques = auditoria.get("proximos_ataques", [])
 
-    encerrado = ("CORRIGIDO", "FECHADO", "RESOLVIDO", "RETRATADO", "ATENDIDO", "SEM DEFEITO", "PARCIALMENTE FECHADO")
+    # **E-913 / finding 14 do bot, CONFIRMADO por leitura:** `PARCIALMENTE FECHADO` estava nesta lista e
+    # **nao e' um estado terminal** -- o proprio texto do achado diz que a integracao de producao continua
+    # aberta. => *um achado parcialmente fechado e' **meio aberto**, e a lista de ataques aponta-lo e'
+    # **legitimo**: ha' trabalho por fazer.* => *inclui-lo aqui acusava de «duas verdades sobre o mesmo id»
+    # um caso em que so' ha' **uma**: a integracao esta' pendente e o ataque continua na lista.*
+    #
+    # *A regra passa a ser: **so' estado TERMINAL encerra** -- o que nao deixa trabalho pendente.*
+    encerrado = ("CORRIGIDO", "FECHADO", "RESOLVIDO", "RETRATADO", "ATENDIDO", "SEM DEFEITO")
     por_id: dict[str, str] = {}
     for achado in auditoria.get("achados", []):
         identificador = str(achado.get("id", "")).split(" ")[0].strip()

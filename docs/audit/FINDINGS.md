@@ -5,7 +5,7 @@
 
 **Total: 14** — **5 Major** · **9 Minor**.
 
-**Validados contra o código: 6 de 14** — #1 (VALIDADO_JA_CORRIGIDO), #2 (VALIDADO_JA_CORRIGIDO), #3 (VALIDADO_JA_CORRIGIDO), #4 (VALIDADO_JA_CORRIGIDO), #5 (VALIDADO_JA_CORRIGIDO), #6 (VALIDADO_JA_CORRIGIDO).
+**Validados contra o código: 14 de 14** — #1 (VALIDADO_JA_CORRIGIDO), #2 (VALIDADO_JA_CORRIGIDO), #3 (VALIDADO_JA_CORRIGIDO), #4 (VALIDADO_JA_CORRIGIDO), #5 (VALIDADO_JA_CORRIGIDO), #6 (VALIDADO_JA_CORRIGIDO), #7 (CORRIGIDO_AGORA_JA_ESTAVA), #8 (CORRIGIDO_AGORA_JA_ESTAVA), #9 (CURADO_NESTA_JANELA), #10 (CORRIGIDO_AGORA_JA_ESTAVA), #11 (CORRIGIDO_AGORA_JA_ESTAVA), #12 (CORRIGIDO_AGORA_JA_ESTAVA), #13 (CORRIGIDO_AGORA_JA_ESTAVA), #14 (CURADO_NESTA_JANELA).
 
 ## O que este ficheiro NÃO afirma
 
@@ -103,6 +103,76 @@ contraprova e só então corrija.»*
 - CONTRAPROVA: sem preservarConsumidas o teste FALHA com «REGRESSAO: Save gravou o instantaneo antigo e reabriu um pedido»
 
 **Evidência**: `E-1078`.
+
+### #7 — `docs/mission/HADES_ADAPTIVE_COWORK_GAP_MATRIX.md` — **CORRIGIDO_AGORA_JA_ESTAVA**
+
+*«Alinhe as linhas da tabela ao cabeçalho.»*
+
+- o cabecalho e as linhas 53/54/55/61/62 tem 5 pipes = 4 colunas (medido)
+
+**Evidência**: `E-1081`.
+
+### #8 — `docs/mission/HADES_ADAPTIVE_COWORK_GAP_MATRIX.md` — **CORRIGIDO_AGORA_JA_ESTAVA**
+
+*«Corrija a descrição de `PreferredProvider`.»*
+
+- a linha 55 diz: PreferredProvider e' filtro RIGIDO por provedor (:85, continue), nao bonus solto
+- o codigo confirma: router.go:85
+
+**Evidência**: `E-1081`.
+
+### #9 — `docs/mission/HADES_EVIDENCE_INDEX.md` — **CURADO_NESTA_JANELA**
+
+*«Escape the pipe in the table cell.»*
+
+- 2 pipes NAO escapados dentro de codigo inline na linha 439 (E-412) foram escapados como \|
+- o GFM exige \| dentro de celula, mesmo em codigo
+- o index_shape_check continua exit 0 -- o \| renderiza como |, o conteudo do comando nao muda
+
+**Evidência**: `E-1081`.
+
+### #10 — `internal/multillm/router_pin_v2_test.go` — **CORRIGIDO_AGORA_JA_ESTAVA**
+
+*«Remove the word that fails the test checks.»*
+
+- grep em todo o .go: 0 ocorrencias de 'substituto'
+- o misspell nao tem o que acusar
+
+**Evidência**: `E-1081`.
+
+### #11 — `internal/agent/declared_categories_measured_test.go` — **CORRIGIDO_AGORA_JA_ESTAVA**
+
+*«Correct the description of the dispensation check.»*
+
+- E-912: o comentario diz 'a metade «e obsoleta» era FALSA'
+
+**Evidência**: `E-1081`.
+
+### #12 — `internal/agent/scheduling_library_declared_test.go` — **CORRIGIDO_AGORA_JA_ESTAVA**
+
+*«Detect constructor references without a direct call.»*
+
+- E-912: 'a varredura passa a procurar o SIMBOLO (\bNewSchedulingStore\b), e nao a chamada'
+
+**Evidência**: `E-1081`.
+
+### #13 — `internal/agent/types.go` — **CORRIGIDO_AGORA_JA_ESTAVA**
+
+*«Update the scope note. It no longer matches the code.»*
+
+- types.go:147-149 diz 'o incremento seguinte e' esta' feito'
+
+**Evidência**: `E-1081`.
+
+### #14 — `scripts/hades_mission_check.py` — **CURADO_NESTA_JANELA**
+
+*«Do not classify partially closed findings as closed.»*
+
+- E-913: PARCIALMENTE FECHADO removido de `encerrado` -- so' estado TERMINAL encerra
+- 3 testes discriminadores em CruzamentoDeAuditoriaTest (23 -> 26 testes)
+- CONTRAPROVA: reintroduzir PARCIALMENTE FECHADO faz o teste FALHAR com 'ATaque E ACHADO AO MESMO TEMPO: ADV-65 (achado diz: PARCIALMENTE FECHADO...)'
+
+**Evidência**: `E-1081`.
 
 ## Por severidade
 

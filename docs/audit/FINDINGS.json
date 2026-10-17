@@ -164,7 +164,14 @@
       "severidade": "Minor",
       "categoria": "🎯 Functional Correctness",
       "titulo": "Alinhe as linhas da tabela ao cabeçalho.",
-      "trecho": "**🎯 Functional Correctness** | **🟡 Minor** | **⚡ Quick win**  **Alinhe as linhas da tabela ao cabeçalho.**  As linhas 54, 55 e 61 têm quatro células, mas o cabeçalho tem três. O aviso MD056 indica que o conteúdo excedente pode desaparecer na tabela renderizada. Adicione uma quarta coluna e preencha todas as linhas, ou una as células excedentes às colunas existentes.       Also applies to: 61-61  <"
+      "trecho": "**🎯 Functional Correctness** | **🟡 Minor** | **⚡ Quick win**  **Alinhe as linhas da tabela ao cabeçalho.**  As linhas 54, 55 e 61 têm quatro células, mas o cabeçalho tem três. O aviso MD056 indica que o conteúdo excedente pode desaparecer na tabela renderizada. Adicione uma quarta coluna e preencha todas as linhas, ou una as células excedentes às colunas existentes.       Also applies to: 61-61  <",
+      "validacao": {
+        "estado": "CORRIGIDO_AGORA_JA_ESTAVA",
+        "evidencia": "E-1081",
+        "prova": [
+          "o cabecalho e as linhas 53/54/55/61/62 tem 5 pipes = 4 colunas (medido)"
+        ]
+      }
     },
     {
       "n": 8,
@@ -176,7 +183,15 @@
       "severidade": "Minor",
       "categoria": "🗄️ Data Integrity & Integration",
       "titulo": "Corrija a descrição de `PreferredProvider`.",
-      "trecho": "**🗄️ Data Integrity & Integration** | **🟡 Minor** | **⚡ Quick win**  <details> <summary>🔎 Supported by static analysis</summary>  🏁 Script executed:  ```bash git show 4b3e21854:internal/multillm/router.go | rg -n -C 5 'PreferredProvider' ```  Repository: DZ23-LTDA/hades-ollama  Length of output: 1704  ---    </details>  **Corrija a descrição de `PreferredProvider`.**  No commit `4b3e21854`, `Prefe"
+      "trecho": "**🗄️ Data Integrity & Integration** | **🟡 Minor** | **⚡ Quick win**  <details> <summary>🔎 Supported by static analysis</summary>  🏁 Script executed:  ```bash git show 4b3e21854:internal/multillm/router.go | rg -n -C 5 'PreferredProvider' ```  Repository: DZ23-LTDA/hades-ollama  Length of output: 1704  ---    </details>  **Corrija a descrição de `PreferredProvider`.**  No commit `4b3e21854`, `Prefe",
+      "validacao": {
+        "estado": "CORRIGIDO_AGORA_JA_ESTAVA",
+        "evidencia": "E-1081",
+        "prova": [
+          "a linha 55 diz: PreferredProvider e' filtro RIGIDO por provedor (:85, continue), nao bonus solto",
+          "o codigo confirma: router.go:85"
+        ]
+      }
     },
     {
       "n": 9,
@@ -188,7 +203,16 @@
       "severidade": "Minor",
       "categoria": "🎯 Functional Correctness",
       "titulo": "Escape the pipe in the table cell.",
-      "trecho": "**🎯 Functional Correctness** | **🟡 Minor** | **⚡ Quick win**  **Escape the pipe in the table cell.**  Line 439 includes a literal `|` in the inline `grep` command. GFM requires pipes inside table cells, including inline code, to be escaped. Otherwise, this row adds a cell, shifts later values, and can drop the trailing column. ([github.github.com](https://github.github.com/gfm/?source=post_page---"
+      "trecho": "**🎯 Functional Correctness** | **🟡 Minor** | **⚡ Quick win**  **Escape the pipe in the table cell.**  Line 439 includes a literal `|` in the inline `grep` command. GFM requires pipes inside table cells, including inline code, to be escaped. Otherwise, this row adds a cell, shifts later values, and can drop the trailing column. ([github.github.com](https://github.github.com/gfm/?source=post_page---",
+      "validacao": {
+        "estado": "CURADO_NESTA_JANELA",
+        "evidencia": "E-1081",
+        "prova": [
+          "2 pipes NAO escapados dentro de codigo inline na linha 439 (E-412) foram escapados como \\|",
+          "o GFM exige \\| dentro de celula, mesmo em codigo",
+          "o index_shape_check continua exit 0 -- o \\| renderiza como |, o conteudo do comando nao muda"
+        ]
+      }
     },
     {
       "n": 10,
@@ -200,7 +224,15 @@
       "severidade": "Major",
       "categoria": "📐 Maintainability & Code Quality",
       "titulo": "Remove the word that fails the test checks.",
-      "trecho": "**📐 Maintainability & Code Quality** | **🟠 Major** | **⚡ Quick win**  **Remove the word that fails the test checks.**  The Ubuntu and Windows `test` checks report a `misspell` failure for `substituto` on this line. The word is valid Portuguese, but the reported failure leaves both checks red. Reword the comment as `outro modelo` to preserve its meaning and clear the diagnostic.  <details> <summary"
+      "trecho": "**📐 Maintainability & Code Quality** | **🟠 Major** | **⚡ Quick win**  **Remove the word that fails the test checks.**  The Ubuntu and Windows `test` checks report a `misspell` failure for `substituto` on this line. The word is valid Portuguese, but the reported failure leaves both checks red. Reword the comment as `outro modelo` to preserve its meaning and clear the diagnostic.  <details> <summary",
+      "validacao": {
+        "estado": "CORRIGIDO_AGORA_JA_ESTAVA",
+        "evidencia": "E-1081",
+        "prova": [
+          "grep em todo o .go: 0 ocorrencias de 'substituto'",
+          "o misspell nao tem o que acusar"
+        ]
+      }
     },
     {
       "n": 11,
@@ -212,7 +244,14 @@
       "severidade": "Minor",
       "categoria": "🎯 Functional Correctness",
       "titulo": "Correct the description of the dispensation check.",
-      "trecho": "**🎯 Functional Correctness** | **🟡 Minor** | **⚡ Quick win**  **Correct the description of the dispensation check.**  `scripts/hades_tenant_scope_check.py` reports orphaned dispensations only. It explicitly does not report a dispensation because its file has a guard. Remove “e obsoleta” and the claim that this check found three dispensations, unless a separate measurement supports that claim.  <de"
+      "trecho": "**🎯 Functional Correctness** | **🟡 Minor** | **⚡ Quick win**  **Correct the description of the dispensation check.**  `scripts/hades_tenant_scope_check.py` reports orphaned dispensations only. It explicitly does not report a dispensation because its file has a guard. Remove “e obsoleta” and the claim that this check found three dispensations, unless a separate measurement supports that claim.  <de",
+      "validacao": {
+        "estado": "CORRIGIDO_AGORA_JA_ESTAVA",
+        "evidencia": "E-1081",
+        "prova": [
+          "E-912: o comentario diz 'a metade «e obsoleta» era FALSA'"
+        ]
+      }
     },
     {
       "n": 12,
@@ -224,7 +263,14 @@
       "severidade": "Minor",
       "categoria": "🎯 Functional Correctness",
       "titulo": "Detect constructor references without a direct call.",
-      "trecho": "**🎯 Functional Correctness** | **🟡 Minor** | **⚡ Quick win**  **Detect constructor references without a direct call.**  If production code assigns `factory := NewSchedulingStore` and later calls `factory(root)`, `chamada` finds no match. The test then accepts a production caller while retaining the “sem chamador” declaration. Detect references to the constructor as well as direct calls, and exclud"
+      "trecho": "**🎯 Functional Correctness** | **🟡 Minor** | **⚡ Quick win**  **Detect constructor references without a direct call.**  If production code assigns `factory := NewSchedulingStore` and later calls `factory(root)`, `chamada` finds no match. The test then accepts a production caller while retaining the “sem chamador” declaration. Detect references to the constructor as well as direct calls, and exclud",
+      "validacao": {
+        "estado": "CORRIGIDO_AGORA_JA_ESTAVA",
+        "evidencia": "E-1081",
+        "prova": [
+          "E-912: 'a varredura passa a procurar o SIMBOLO (\\bNewSchedulingStore\\b), e nao a chamada'"
+        ]
+      }
     },
     {
       "n": 13,
@@ -236,7 +282,14 @@
       "severidade": "Minor",
       "categoria": "📐 Maintainability & Code Quality",
       "titulo": "Update the scope note. It no longer matches the code.",
-      "trecho": "**📐 Maintainability & Code Quality** | **🟡 Minor** | **⚡ Quick win**  **Update the scope note. It no longer matches the code.**  This comment says the runtime does not consume `RequiredCapabilities` or `PinnedModelID` yet. In this PR, `Runtime.Run` calls `RouteModelForStep` for each step, and it passes `ModelID` in `ToolContext`. The same stale text appears in two more places: - `internal/agent/ru"
+      "trecho": "**📐 Maintainability & Code Quality** | **🟡 Minor** | **⚡ Quick win**  **Update the scope note. It no longer matches the code.**  This comment says the runtime does not consume `RequiredCapabilities` or `PinnedModelID` yet. In this PR, `Runtime.Run` calls `RouteModelForStep` for each step, and it passes `ModelID` in `ToolContext`. The same stale text appears in two more places: - `internal/agent/ru",
+      "validacao": {
+        "estado": "CORRIGIDO_AGORA_JA_ESTAVA",
+        "evidencia": "E-1081",
+        "prova": [
+          "types.go:147-149 diz 'o incremento seguinte e' esta' feito'"
+        ]
+      }
     },
     {
       "n": 14,
@@ -248,7 +301,16 @@
       "severidade": "Minor",
       "categoria": "🎯 Functional Correctness",
       "titulo": "Do not classify partially closed findings as closed.",
-      "trecho": "**🎯 Functional Correctness** | **🟡 Minor** | **⚡ Quick win**  **Do not classify partially closed findings as closed.**  If ADV-65 is added to `proximos_ataques` for its remaining production integration, this substring check reports a conflict: its status starts with `PARCIALMENTE FECHADO`, but the same status says that integration remains open. Match an explicit terminal status instead of searchin"
+      "trecho": "**🎯 Functional Correctness** | **🟡 Minor** | **⚡ Quick win**  **Do not classify partially closed findings as closed.**  If ADV-65 is added to `proximos_ataques` for its remaining production integration, this substring check reports a conflict: its status starts with `PARCIALMENTE FECHADO`, but the same status says that integration remains open. Match an explicit terminal status instead of searchin",
+      "validacao": {
+        "estado": "CURADO_NESTA_JANELA",
+        "evidencia": "E-1081",
+        "prova": [
+          "E-913: PARCIALMENTE FECHADO removido de `encerrado` -- so' estado TERMINAL encerra",
+          "3 testes discriminadores em CruzamentoDeAuditoriaTest (23 -> 26 testes)",
+          "CONTRAPROVA: reintroduzir PARCIALMENTE FECHADO faz o teste FALHAR com 'ATaque E ACHADO AO MESMO TEMPO: ADV-65 (achado diz: PARCIALMENTE FECHADO...)'"
+        ]
+      }
     }
   ],
   "validados": [
@@ -257,7 +319,15 @@
     3,
     4,
     5,
-    6
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14
   ],
-  "total_validados": 6
+  "total_validados": 14
 }
