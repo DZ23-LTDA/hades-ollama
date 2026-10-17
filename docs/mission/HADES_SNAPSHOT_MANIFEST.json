@@ -1,10 +1,10 @@
 {
   "schema": "hades.snapshot.manifest/v1",
   "gerado_por": "scripts/hades_manifest.py",
-  "generated_at": "2026-10-17T19:28:24+00:00",
-  "source_sha": "7585ac4e89aec7f7c62f3368a20f8f1816c24afd",
+  "generated_at": "2026-10-17T19:48:53+00:00",
+  "source_sha": "896ff2b3e8d1957abbf6b08287cc0291594ab210",
   "source_branch": "fix/checker-relogio",
-  "source_dirty": 24,
+  "source_dirty": 7,
   "host": {
     "sistema": "Windows",
     "release": "11",
@@ -15,30 +15,30 @@
     {
       "arquivo": "HADES_SBOM_GO.csv",
       "estado": "PRESENTE",
-      "bytes": 21349,
+      "bytes": 21560,
       "linhas": 211,
-      "sha256": "04d9a3d79dae8b3362239dae227639a348eaa3b1ada0ed74fd53a78a3ef49fdd"
+      "sha256": "60a0bc7cf9e68b021155f4813fd2ef57c4c755e3394107a20e90a1fb6e27c3e5"
     },
     {
       "arquivo": "HADES_SBOM_NPM.csv",
       "estado": "PRESENTE",
-      "bytes": 87038,
+      "bytes": 87833,
       "linhas": 795,
-      "sha256": "9fefb15cd1b65a4dc5c541449cf45cedacb48bfdac8d4ee40da0293236e37199"
+      "sha256": "49319ff4d62b18fde738994a22ed8ddc92f9d088b48516e3a58c6bc4536f802a"
     },
     {
       "arquivo": "HADES_SBOM_LICENCAS.csv",
       "estado": "PRESENTE",
-      "bytes": 47039,
+      "bytes": 47970,
       "linhas": 931,
-      "sha256": "2faabf7b16be0aaf551a90f93333f1916856e42c3c60b9eecffce88fa8f51851"
+      "sha256": "8dc59f1b09c6580eed7750b4f49600808748851fe311cccd97b58950adde2aa4"
     },
     {
       "arquivo": "THIRD_PARTY_NOTICES.md",
       "estado": "PRESENTE",
-      "bytes": 105566,
+      "bytes": 106705,
       "linhas": 1139,
-      "sha256": "9b7bc28dad291dbb81c7306363011a532745cc514c314981326fde1ea3883985"
+      "sha256": "b4014a4d061bb0dabaddae0dfbf60acdb326598d401ada5a167d0328b6c2100a"
     }
   ],
   "tests": [

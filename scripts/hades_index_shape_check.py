@@ -59,7 +59,9 @@ FAIXA_AUSENTE = (571, 777)
 # ***`uma divida declarada com tecto nao e' o mesmo que uma divida escondida -- e o que o finding
 # pedia era NUMERO, nao desculpa.`***
 # *o numero real, medido pelo proprio detector: **848** de **920** linhas.*
-BASELINE_COLUNAS = 848
+# *a 1.a fatia da cura (`E-1132`): as **88** entradas do `E-1062` ao `E-1131` passaram ao formato
+# declarado => a baseline desceu de **848** para **760**.*
+BASELINE_COLUNAS = 760
 
 CABECALHO = re.compile(r"^\|\s*(E-\d+)\s*\|")
 # **E o `\d{3,}` e' a correcao de um defeito do proprio detector**: com `\d{3,4}` o ID
