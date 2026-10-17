@@ -665,7 +665,7 @@ if ($LASTEXITCODE -ne 0) {
 $passos += 'doc-companion-testes'
 
 ''
-# E-1091: a CADEIA DE RASTREABILIDADE (§FASE-7 item 4). *Para cada requisito activo:
+# E-1091: a CADEIA DE RASTREABILIDADE (FASE-7 item 4). *Para cada requisito activo:
 # `REQ-ID -> arquivo:linha -> teste -> comando -> resultado -> plataforma -> commit -> artefacto ->
 # decisao`.* => *o gerador verifica CADA campo no codigo; um requisito cuja prova nao existe fica
 # `AUSENTE` e o `--check` FALHA.*
@@ -689,8 +689,8 @@ if ($LASTEXITCODE -ne 0) {
 $passos += 'requisitos-testes'
 
 ''
-# E-1093: o AMBIENTE da medicao T2 (§ESTAGIO 21). *O prompt exige «hardware, versao, modelo, contexto,
-# warm/cold, repeticoes e erro» -- e as duas matrizes do T2 tinham os cenarios, os modelos e as repeticoes,
+# E-1093: o AMBIENTE da medicao T2 (ESTAGIO 21). *O prompt exige "hardware, versao, modelo, contexto,
+# warm/cold, repeticoes e erro" -- e as duas matrizes do T2 tinham os cenarios, os modelos e as repeticoes,
 # e NAO tinham o ambiente.* => *sem ambiente, os numeros nao sao reproduziveis.*
 '--- 38. AMBIENTE do T2: hardware, SO, Ollama, modelos, lacunas e proveniencia'
 $saidaT2 = & python -X utf8 scripts/hades_t2_contexto.py 2>&1
@@ -738,7 +738,7 @@ if ($LASTEXITCODE -ne 0) {
 $passos += 'testes-hermeticos-testes'
 
 ''
-# E-1095: o §ESTAGIO 19 (UX/onboarding). *`/goal` no MESMO campo do chat, onboarding com as 3 pecas,
+# E-1095: o ESTAGIO 19 (UX/onboarding). *`/goal` no MESMO campo do chat, onboarding com as 3 pecas,
 # acessibilidade e teclado, menu unificado (<= 24 rotas) e a marca com as excecoes declaradas.*
 '--- 42. UX/ONBOARDING: /goal no composer, onboarding real, ARIA e teclado, menu unificado'
 $saidaUX = & python -X utf8 scripts/hades_ux_onboarding_check.py 2>&1
@@ -760,7 +760,7 @@ if ($LASTEXITCODE -ne 0) {
 $passos += 'ux-onboarding-testes'
 
 ''
-# E-1096: o §ESTAGIO 22 item 1 -- *«transformar o gate em prova do mesmo snapshot candidato»*.
+# E-1096: o ESTAGIO 22 item 1 -- *"transformar o gate em prova do mesmo snapshot candidato"*.
 # => *o `measured_commit` do estado tem de ser o HEAD **antes** de os derivados serem gerados; senao o
 # `gate_snapshot` declara DIVERGENTE e o gate cita um commit de ontem (o defeito do E-987).*
 # => *e corre como **GERADOR**, nao como check: exigir `MESMO` no `--check` faria o CI falhar sempre,
