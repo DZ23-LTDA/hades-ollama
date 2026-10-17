@@ -45,7 +45,7 @@ func TestRuntimePersistsAndRunsReadMission(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	runtime, err := NewRuntime(RuntimeConfig{Store: store, Planner: RulePlanner{}, WorkspaceRoot: root})
+	runtime, err := NewRuntime(RuntimeConfig{Store: store, Planner: RulePlanner{}, WorkspaceRoot: root, DataRoot: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -431,7 +431,7 @@ func TestRuntimeRejectsUnconfiguredMissionProvider(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	runtime, err := NewRuntime(RuntimeConfig{Store: store, Planner: RulePlanner{}, WorkspaceRoot: root})
+	runtime, err := NewRuntime(RuntimeConfig{Store: store, Planner: RulePlanner{}, WorkspaceRoot: root, DataRoot: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -449,7 +449,7 @@ func TestRuntimeRejectsUnconfiguredMissionProvider(t *testing.T) {
 
 func TestRuntimeQueueJobsOrganizationScope(t *testing.T) {
 	root := t.TempDir()
-	runtime, err := NewRuntime(RuntimeConfig{Store: NewMemoryStore(), Planner: RulePlanner{}, WorkspaceRoot: root})
+	runtime, err := NewRuntime(RuntimeConfig{Store: NewMemoryStore(), Planner: RulePlanner{}, WorkspaceRoot: root, DataRoot: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -489,7 +489,7 @@ func TestRuntimeQueueJobsOrganizationScope(t *testing.T) {
 }
 
 func TestRuntimeQueueListingsHideJobsWithMismatchedOwnerMetadata(t *testing.T) {
-	runtime, err := NewRuntime(RuntimeConfig{Store: NewMemoryStore(), Planner: RulePlanner{}, WorkspaceRoot: t.TempDir()})
+	runtime, err := NewRuntime(RuntimeConfig{Store: NewMemoryStore(), Planner: RulePlanner{}, WorkspaceRoot: t.TempDir(), DataRoot: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -517,7 +517,7 @@ func TestNewRuntimeFailsClosedForPostgresStoresAndDecorators(t *testing.T) {
 		"organization-scoped": organizationScopedStore{store: &PostgresStore{}, organizationID: "org-a"},
 	} {
 		t.Run(name, func(t *testing.T) {
-			if _, err := NewRuntime(RuntimeConfig{Store: store, WorkspaceRoot: t.TempDir()}); !errors.Is(err, ErrPostgresTenantIsolationUnavailable) {
+			if _, err := NewRuntime(RuntimeConfig{Store: store, WorkspaceRoot: t.TempDir(), DataRoot: t.TempDir()}); !errors.Is(err, ErrPostgresTenantIsolationUnavailable) {
 				t.Fatalf("Postgres runtime error=%v, want fail-closed tenant-isolation error", err)
 			}
 		})
@@ -526,7 +526,7 @@ func TestNewRuntimeFailsClosedForPostgresStoresAndDecorators(t *testing.T) {
 
 func TestRuntimeQueueWorkerRejectsOwnerlessAndForeignJobs(t *testing.T) {
 	store := NewMemoryStore()
-	runtime, err := NewRuntime(RuntimeConfig{Store: store, Planner: RulePlanner{}, WorkspaceRoot: t.TempDir()})
+	runtime, err := NewRuntime(RuntimeConfig{Store: store, Planner: RulePlanner{}, WorkspaceRoot: t.TempDir(), DataRoot: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -549,7 +549,7 @@ func TestRuntimeQueueWorkerRejectsOwnerlessAndForeignJobs(t *testing.T) {
 }
 
 func TestRuntimeWithOrganizationScopesMemoryStore(t *testing.T) {
-	runtime, err := NewRuntime(RuntimeConfig{Store: NewMemoryStore(), Planner: RulePlanner{}, WorkspaceRoot: t.TempDir()})
+	runtime, err := NewRuntime(RuntimeConfig{Store: NewMemoryStore(), Planner: RulePlanner{}, WorkspaceRoot: t.TempDir(), DataRoot: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -633,7 +633,7 @@ func TestRuntimeScopedRecoveryDoesNotSweepOtherTenantSnapshots(t *testing.T) {
 
 func TestRuntimeRequiresApprovalBeforeWritingAndBuildsArtifact(t *testing.T) {
 	root := t.TempDir()
-	runtime, err := NewRuntime(RuntimeConfig{Store: NewMemoryStore(), Planner: fixedPlanner{steps: []Step{{ID: "step_1", Kind: "workspace.write", Title: "write", Risk: RiskWrite, RequiresApproval: true, State: StepPending, Input: map[string]any{"path": "result.txt", "content": "hello"}}}}, WorkspaceRoot: root})
+	runtime, err := NewRuntime(RuntimeConfig{Store: NewMemoryStore(), Planner: fixedPlanner{steps: []Step{{ID: "step_1", Kind: "workspace.write", Title: "write", Risk: RiskWrite, RequiresApproval: true, State: StepPending, Input: map[string]any{"path": "result.txt", "content": "hello"}}}}, WorkspaceRoot: root, DataRoot: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -701,7 +701,7 @@ func TestWorkspaceToolsRejectSymlinkEscape(t *testing.T) {
 	if err := os.Symlink(outside, filepath.Join(root, "linked")); err != nil {
 		t.Skipf("symlink unavailable on this platform: %v", err)
 	}
-	runtime, err := NewRuntime(RuntimeConfig{Store: NewMemoryStore(), Planner: RulePlanner{}, WorkspaceRoot: root})
+	runtime, err := NewRuntime(RuntimeConfig{Store: NewMemoryStore(), Planner: RulePlanner{}, WorkspaceRoot: root, DataRoot: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -760,8 +760,7 @@ func TestRuntimeCancelInterruptsActiveToolAndPreventsNextStep(t *testing.T) {
 		Planner: fixedPlanner{steps: []Step{
 			{ID: "step_1", Kind: "workspace.read", Title: "blocking", Risk: RiskRead, State: StepPending},
 			{ID: "step_2", Kind: "workspace.read", Title: "must not run", Risk: RiskRead, State: StepPending},
-		}},
-	})
+		}}, DataRoot: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -827,7 +826,7 @@ func TestRuntimeRedactsStepResultsEventsTracesAndPersistence(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	runtime, err := NewRuntime(RuntimeConfig{Store: store, Tools: registry, Traces: traces, Planner: fixedPlanner{steps: []Step{{ID: "step_secret", Kind: "workspace.read", Title: "secret result", Risk: RiskRead, State: StepPending}}}, WorkspaceRoot: root})
+	runtime, err := NewRuntime(RuntimeConfig{Store: store, Tools: registry, Traces: traces, Planner: fixedPlanner{steps: []Step{{ID: "step_secret", Kind: "workspace.read", Title: "secret result", Risk: RiskRead, State: StepPending}}}, WorkspaceRoot: root, DataRoot: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -940,7 +939,7 @@ func TestSandboxExecRunsIsolatedPython(t *testing.T) {
 		t.Skipf("user namespace sandbox unavailable: %v (%s)", err, strings.TrimSpace(string(output)))
 	}
 	root := t.TempDir()
-	runtime, err := NewRuntime(RuntimeConfig{Store: NewMemoryStore(), WorkspaceRoot: root, Planner: fixedPlanner{steps: []Step{{ID: "step_1", Kind: "sandbox.exec", Title: "run", Risk: RiskWrite, RequiresApproval: true, State: StepPending, Input: map[string]any{"language": "python", "code": "print(2 + 2)"}}}}})
+	runtime, err := NewRuntime(RuntimeConfig{Store: NewMemoryStore(), WorkspaceRoot: root, Planner: fixedPlanner{steps: []Step{{ID: "step_1", Kind: "sandbox.exec", Title: "run", Risk: RiskWrite, RequiresApproval: true, State: StepPending, Input: map[string]any{"language": "python", "code": "print(2 + 2)"}}}}, DataRoot: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -971,7 +970,7 @@ func TestSandboxIsolationModeIsBoundToApproval(t *testing.T) {
 	t.Setenv("OLLAMA_AGENT_SANDBOX_MODE", "best-effort")
 	t.Setenv("OLLAMA_AGENT_SANDBOX_ALLOW_BEST_EFFORT", "true")
 	root := t.TempDir()
-	runtime, err := NewRuntime(RuntimeConfig{Store: NewMemoryStore(), WorkspaceRoot: root, Planner: fixedPlanner{steps: []Step{{ID: "step_1", Kind: "sandbox.exec", Title: "run", Risk: RiskWrite, RequiresApproval: true, State: StepPending, Input: map[string]any{"language": "python", "code": "print('must not run')", "sandbox_mode": "strict"}}}}})
+	runtime, err := NewRuntime(RuntimeConfig{Store: NewMemoryStore(), WorkspaceRoot: root, Planner: fixedPlanner{steps: []Step{{ID: "step_1", Kind: "sandbox.exec", Title: "run", Risk: RiskWrite, RequiresApproval: true, State: StepPending, Input: map[string]any{"language": "python", "code": "print('must not run')", "sandbox_mode": "strict"}}}}, DataRoot: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1003,7 +1002,7 @@ func TestRuntimeFailsClosedWhenApprovalRecordIsMissing(t *testing.T) {
 	t.Setenv("OLLAMA_AGENT_SANDBOX_MODE", "best-effort")
 	t.Setenv("OLLAMA_AGENT_SANDBOX_ALLOW_BEST_EFFORT", "true")
 	store := NewMemoryStore()
-	runtime, err := NewRuntime(RuntimeConfig{Store: store, WorkspaceRoot: t.TempDir(), Planner: fixedPlanner{steps: []Step{{ID: "step_1", Kind: "sandbox.exec", Title: "run", Risk: RiskWrite, RequiresApproval: true, Input: map[string]any{"language": "python", "code": "print('must not run')"}}}}})
+	runtime, err := NewRuntime(RuntimeConfig{Store: store, WorkspaceRoot: t.TempDir(), Planner: fixedPlanner{steps: []Step{{ID: "step_1", Kind: "sandbox.exec", Title: "run", Risk: RiskWrite, RequiresApproval: true, Input: map[string]any{"language": "python", "code": "print('must not run')"}}}}, DataRoot: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1080,7 +1079,7 @@ func TestSandboxExecUsesAnchoredWorkspaceAfterPathReplacement(t *testing.T) {
 }
 
 func TestApprovalBindsActorOrganizationAndReason(t *testing.T) {
-	runtime, err := NewRuntime(RuntimeConfig{Store: NewMemoryStore(), WorkspaceRoot: t.TempDir(), Planner: fixedPlanner{steps: []Step{{ID: "step_1", Kind: "workspace.write", Title: "write", Risk: RiskWrite, RequiresApproval: true, Input: map[string]any{"path": "approval.txt", "content": "ok"}}}}})
+	runtime, err := NewRuntime(RuntimeConfig{Store: NewMemoryStore(), WorkspaceRoot: t.TempDir(), Planner: fixedPlanner{steps: []Step{{ID: "step_1", Kind: "workspace.write", Title: "write", Risk: RiskWrite, RequiresApproval: true, Input: map[string]any{"path": "approval.txt", "content": "ok"}}}}, DataRoot: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1105,7 +1104,7 @@ func TestApprovalBindsActorOrganizationAndReason(t *testing.T) {
 }
 
 func TestApprovalValidationBindsPolicyExpiryAndDecisionActor(t *testing.T) {
-	runtime, err := NewRuntime(RuntimeConfig{Store: NewMemoryStore(), WorkspaceRoot: t.TempDir(), Planner: fixedPlanner{steps: []Step{{ID: "step_1", Kind: "workspace.write", Title: "write", Risk: RiskWrite, RequiresApproval: true, Input: map[string]any{"path": "approval-validation.txt", "content": "ok"}}}}})
+	runtime, err := NewRuntime(RuntimeConfig{Store: NewMemoryStore(), WorkspaceRoot: t.TempDir(), Planner: fixedPlanner{steps: []Step{{ID: "step_1", Kind: "workspace.write", Title: "write", Risk: RiskWrite, RequiresApproval: true, Input: map[string]any{"path": "approval-validation.txt", "content": "ok"}}}}, DataRoot: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1141,7 +1140,7 @@ func TestApprovalValidationBindsPolicyExpiryAndDecisionActor(t *testing.T) {
 }
 
 func TestApprovalCASAndNonceAreSingleUse(t *testing.T) {
-	runtime, err := NewRuntime(RuntimeConfig{Store: NewMemoryStore(), WorkspaceRoot: t.TempDir(), Planner: fixedPlanner{steps: []Step{{ID: "step_1", Kind: "workspace.write", Title: "write", Risk: RiskWrite, RequiresApproval: true, Input: map[string]any{"path": "approval-cas.txt", "content": "ok"}}}}})
+	runtime, err := NewRuntime(RuntimeConfig{Store: NewMemoryStore(), WorkspaceRoot: t.TempDir(), Planner: fixedPlanner{steps: []Step{{ID: "step_1", Kind: "workspace.write", Title: "write", Risk: RiskWrite, RequiresApproval: true, Input: map[string]any{"path": "approval-cas.txt", "content": "ok"}}}}, DataRoot: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1170,7 +1169,7 @@ func TestApprovalCASAndNonceAreSingleUse(t *testing.T) {
 
 func TestApprovalReasonDLPIsRedactedBeforeMissionAndEvent(t *testing.T) {
 	const secret = "ghp_abcdefghijklmnopqrstuvwxyz123456"
-	runtime, err := NewRuntime(RuntimeConfig{Store: NewMemoryStore(), WorkspaceRoot: t.TempDir(), Planner: fixedPlanner{steps: []Step{{ID: "step_1", Kind: "workspace.write", Title: "write", Risk: RiskWrite, RequiresApproval: true, Input: map[string]any{"path": "approval-dlp.txt", "content": "ok"}}}}})
+	runtime, err := NewRuntime(RuntimeConfig{Store: NewMemoryStore(), WorkspaceRoot: t.TempDir(), Planner: fixedPlanner{steps: []Step{{ID: "step_1", Kind: "workspace.write", Title: "write", Risk: RiskWrite, RequiresApproval: true, Input: map[string]any{"path": "approval-dlp.txt", "content": "ok"}}}}, DataRoot: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1212,7 +1211,7 @@ func TestApprovalReasonDLPIsRedactedBeforeMissionAndEvent(t *testing.T) {
 }
 
 func TestApprovalCASConcurrentDecisionsHaveOneWinner(t *testing.T) {
-	runtime, err := NewRuntime(RuntimeConfig{Store: NewMemoryStore(), WorkspaceRoot: t.TempDir(), Planner: fixedPlanner{steps: []Step{{ID: "step_1", Kind: "workspace.write", Title: "write", Risk: RiskWrite, RequiresApproval: true, Input: map[string]any{"path": "approval-concurrent.txt", "content": "ok"}}}}})
+	runtime, err := NewRuntime(RuntimeConfig{Store: NewMemoryStore(), WorkspaceRoot: t.TempDir(), Planner: fixedPlanner{steps: []Step{{ID: "step_1", Kind: "workspace.write", Title: "write", Risk: RiskWrite, RequiresApproval: true, Input: map[string]any{"path": "approval-concurrent.txt", "content": "ok"}}}}, DataRoot: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1274,7 +1273,7 @@ func TestCapabilityPolicyDefaultsToLocalScopes(t *testing.T) {
 }
 
 func TestRuntimeRejectsUnknownMissionCapability(t *testing.T) {
-	runtime, err := NewRuntime(RuntimeConfig{Store: NewMemoryStore(), WorkspaceRoot: t.TempDir()})
+	runtime, err := NewRuntime(RuntimeConfig{Store: NewMemoryStore(), WorkspaceRoot: t.TempDir(), DataRoot: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1380,8 +1379,7 @@ func TestRuntimeUsesExplicitPlannerResolverForRemoteProvider(t *testing.T) {
 	runtime, err := NewRuntime(RuntimeConfig{
 		Store:           NewMemoryStore(),
 		PlannerResolver: resolver,
-		WorkspaceRoot:   t.TempDir(),
-	})
+		WorkspaceRoot:   t.TempDir(), DataRoot: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1402,7 +1400,7 @@ func TestRuntimeUsesExplicitPlannerResolverForRemoteProvider(t *testing.T) {
 }
 
 func TestRuntimeRejectsRemoteProviderWithoutResolver(t *testing.T) {
-	runtime, err := NewRuntime(RuntimeConfig{Store: NewMemoryStore(), WorkspaceRoot: t.TempDir()})
+	runtime, err := NewRuntime(RuntimeConfig{Store: NewMemoryStore(), WorkspaceRoot: t.TempDir(), DataRoot: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1422,7 +1420,7 @@ func TestRuntimeBlocksSensitiveObjectiveBeforeRemotePlanner(t *testing.T) {
 	store := NewMemoryStore()
 	planner := &countingPlanner{}
 	resolver := &plannerResolverStub{planner: planner}
-	runtime, err := NewRuntime(RuntimeConfig{Store: store, PlannerResolver: resolver, WorkspaceRoot: t.TempDir()})
+	runtime, err := NewRuntime(RuntimeConfig{Store: store, PlannerResolver: resolver, WorkspaceRoot: t.TempDir(), DataRoot: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1473,7 +1471,7 @@ func (t *descriptorMutationTool) Execute(context.Context, ToolContext, map[strin
 }
 
 func TestRuntimeInvalidatesApprovalWhenToolDescriptorChanges(t *testing.T) {
-	runtime, err := NewRuntime(RuntimeConfig{Store: NewMemoryStore(), WorkspaceRoot: t.TempDir(), Planner: fixedPlanner{steps: []Step{{ID: "step_1", Kind: "workspace.write", Title: "write", Risk: RiskWrite, RequiresApproval: true, Input: map[string]any{"path": "descriptor.txt", "content": "safe"}}}}})
+	runtime, err := NewRuntime(RuntimeConfig{Store: NewMemoryStore(), WorkspaceRoot: t.TempDir(), Planner: fixedPlanner{steps: []Step{{ID: "step_1", Kind: "workspace.write", Title: "write", Risk: RiskWrite, RequiresApproval: true, Input: map[string]any{"path": "descriptor.txt", "content": "safe"}}}}, DataRoot: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1508,7 +1506,7 @@ func (t *readOnlyDescriptorMutationTool) Execute(context.Context, ToolContext, m
 }
 
 func TestRuntimeInvalidatesReadOnlyToolWhenDescriptorChanges(t *testing.T) {
-	runtime, err := NewRuntime(RuntimeConfig{Store: NewMemoryStore(), WorkspaceRoot: t.TempDir(), Planner: fixedPlanner{steps: []Step{{ID: "step_read", Kind: "git.repo.inspect", Title: "inspect", Risk: RiskRead}}}})
+	runtime, err := NewRuntime(RuntimeConfig{Store: NewMemoryStore(), WorkspaceRoot: t.TempDir(), Planner: fixedPlanner{steps: []Step{{ID: "step_read", Kind: "git.repo.inspect", Title: "inspect", Risk: RiskRead}}}, DataRoot: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1654,7 +1652,7 @@ func TestRuntimeGitRepoInspectUsesIsolatedSnapshotBaseline(t *testing.T) {
 func TestRuntimeCreateMissionReturnsRedactedMissionValues(t *testing.T) {
 	const secret = "example-secret-value"
 	planner := fixedPlanner{steps: []Step{{ID: "step_1", Kind: "workspace.list", Title: "token=ghp_abcdefghijklmnopqrstuvwxyz123456", Risk: RiskRead, Input: map[string]any{"api_key": secret, "path": "."}}}}
-	runtime, err := NewRuntime(RuntimeConfig{Store: NewMemoryStore(), WorkspaceRoot: t.TempDir(), Planner: planner})
+	runtime, err := NewRuntime(RuntimeConfig{Store: NewMemoryStore(), WorkspaceRoot: t.TempDir(), Planner: planner, DataRoot: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1712,8 +1710,7 @@ func TestRuntimeEmitsBrowserFrameEvent(t *testing.T) {
 		Store:         store,
 		WorkspaceRoot: workspace,
 		Planner:       planner,
-		Tools:         registry,
-	})
+		Tools:         registry, DataRoot: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}
