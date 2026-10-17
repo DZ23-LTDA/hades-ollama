@@ -1246,4 +1246,34 @@ if ($LASTEXITCODE -ne 0) {
 } else { '    OK' }
 $passos += 'firefox-instala'
 
+
+''
+# E-1131: o GOFUMPT no gate local. *A licao do E-1130: o CI ficou vermelho com `gofumpt: 3 issues` e o gate local,
+# que corre `gofmt`, PASSOU -- e eram 24 ficheiros, nao 3. Um gate local mais fraco do que o CI e' um atraso: ele
+# diz verde e o vermelho so' aparece no runner, depois do push. E o `--diff` e' obrigatorio: um gate que ALTERA o
+# codigo que mede nunca pode falhar -- e nunca pode avisar.
+'--- 81. GOFUMPT: o CI usa-o, e o gate local tem de o usar tambem'
+$fumpt = $null
+foreach ($c in @("$Raiz\_tmp\gopath\bin\golangci-lint.exe", (Get-Command golangci-lint -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source -ErrorAction SilentlyContinue))) {
+    if ($c -and (Test-Path $c)) { $fumpt = $c; break }
+}
+if (-not $fumpt) {
+    $falhas.Add("golangci-lint nao encontrado (o CI usa gofumpt via golangci-lint)")
+    '    FALHA: golangci-lint nao encontrado'
+} else {
+    $saidaFumpt = & $fumpt fmt --enable gofumpt --diff ./internal/agent/ ./server/ ./cmd/ 2>&1
+    if ($LASTEXITCODE -ne 0) {
+        $saidaFumpt | Select-Object -First 6 | ForEach-Object { "    " + $_.ToString().Substring(0, [Math]::Min(110, $_.ToString().Length)) }
+        $falhas.Add("golangci-lint fmt --enable gofumpt (exit $LASTEXITCODE)")
+        '    FALHA'
+    } elseif ($saidaFumpt) {
+        $saidaFumpt | Select-Object -First 6 | ForEach-Object { "    " + $_.ToString().Substring(0, [Math]::Min(110, $_.ToString().Length)) }
+        $falhas.Add("gofumpt: ha' ficheiros fora do formato (o CI vai falhar)")
+        '    FALHA'
+    } else {
+        '    OK'
+    }
+}
+$passos += 'gofumpt'
+
 "GATES LOCAIS: $($passos -join ' + ') VERDES"

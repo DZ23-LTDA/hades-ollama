@@ -1,6 +1,8 @@
 # HADES — PRÓXIMA AÇÃO (V2.2 + adendo de paridade)
 
-> **REMEDIACAO MAIS RECENTE: E-1130** -- *o E-1126 deixou 24 ficheiros fora do gofumpt (o CI acusou 3 e parou); gofmt nao e gofumpt.*
+> **REMEDIACAO MAIS RECENTE: E-1131** -- *o gate local passa a correr o MESMO formatador que o CI (gofumpt), com --diff, e FALHA se o golangci-lint nao existir.*
+
+
 
 
 
