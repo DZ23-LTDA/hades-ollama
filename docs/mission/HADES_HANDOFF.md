@@ -1840,3 +1840,48 @@ binario de `9f7379502b1d`. **Web/PWA** -> build PASS (`E-1060`), icones 3/3 (`E-
 **Doutrina em uma linha**: um cache que responde por uma aprovacao e' um aprovador a mais;
 a contraprova e' o que separa um teste de uma decoracao; e offline e' um extra -- abrir e'
 o requisito.
+
+### Instrucoes de retomada (janela `E-1062`)
+
+**Estado**: branch `fix/checker-relogio`; cabeca do indice `E-1062`; PR #438 **aberto** e
+**nao tocado** -- *as 14 threads continuam como estavam*; `reviewDecision` **vazio**.
+
+**REGRA DE PUSH -- OBRIGATORIA, E JA' VALIDADA** (doze 6/6 consecutivos):
+  1. commit local -> 2. ESPERAR o SHA remoto fechar com `failure=0` -> 3. `git push`.
+
+**O E2E DO PWA NUM CHROMIUM REAL** (`E-1062`) -- 8/8:
+  cd app/ui/app
+  node node_modules/vite/bin/vite.js preview --port 5173 --host 127.0.0.1   (processo separado)
+  node e2e/pwa-serviceworker-real.mjs
+  => (1) app abre 200
+  => (2) service worker ACTIVO  scope=http://127.0.0.1:5173/  script=.../sw.js
+  => (3) manifest  name=Hades  display=standalone
+  => (4) 3 icones -> 200 200 200
+  => (5) /api/* NAO servido do cache  (status=404, tipo=basic -> chegou a' rede)
+  => (6) cache do shell existe e contem /index.html  (hades-sw-v1-shell, 2 caches)
+  => (7) offline: 504 HONESTO  ({"status":504,"tipo":"basic"}) -- nao inventa conteudo
+  => (8) 0 pedidos falhados inesperados
+
+**DUAS ARMADILHAS MEDIDAS NESTE CAMINHO**:
+  1. **`Start-Job` morre com o `pwsh`**. O preview tem de ser **processo separado**
+     (`[System.Diagnostics.Process]::Start`), senao a chamada seguinte recebe
+     `ERR_CONNECTION_REFUSED`.
+  2. **o import `playwright` resolve a partir do FICHEIRO**. Um script em `_tmp/` da'
+     `ERR_MODULE_NOT_FOUND`. Tem de viver **dentro** de `app/ui/app/` -> `e2e/`.
+
+**E DUAS FALHAS INICIAIS ERAM DO MEU TESTE** (6/8): o SW **estava** registado (o detalhe
+dizia `scope=…` e `script=…`) e eu li o `state` antes de `activated`; e contei como falha
+um pedido que **o proprio teste** provocou. Curado: espera pelo `activated` com limite, e
+filtra os pedidos do teste. *Medir cedo demais e' uma forma de inventar um defeito.*
+
+**O ESTADO DAS PLATAFORMAS**: Windows/amd64 -> portatil **e** instalador (`E-1057`/
+`E-1058`), nao assinados, nao instalados. Linux/amd64 -> tarball **instalavel** (`E-1059`).
+**Web/PWA** -> build PASS (`E-1060`), icones 3/3 e SW (`E-1061`), **E2E Chromium 8/8**
+(`E-1062`). macOS/Android/iOS -> por produzir.
+
+**O que NAO fazer**: `reset --hard`, `git clean`, rebase destrutivo, force-push, stash,
+`merge`, tag, release, publicacao externa, ou **resolver threads** do PR #438.
+
+**Doutrina em uma linha**: medir cedo demais e' uma forma de inventar um defeito; um teste
+que nao constroi o mundo que mede acusa o produto do seu proprio defeito; e um cache que
+responde por uma aprovacao e' um aprovador a mais.

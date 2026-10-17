@@ -983,3 +983,27 @@ uma acção que já não está pendente.
 **A proxima accao unica**: **E2E num browser real** — o service worker existe mas
 **nunca foi instalado num browser**. Isso exige um servidor de produção (`vite preview`)
 e um browser real; o Playwright está instalado. E **esperar as runs antes do push.**
+
+### A proxima accao unica (janela `E-1062`)
+
+**O PWA foi instalado e testado num Chromium real: 8/8.** O `E-1061` testou o `sw.js`
+com `caches` **simulado** — *«prova a lógica; não prova a instalação»*. Este fecha isso.
+
+| verificação | resultado |
+|---|---|
+| app abre | **200** |
+| **service worker ACTIVO** | `script=…/sw.js`, `scope=/` |
+| manifest | `name=Hades`, `display=standalone` |
+| **3 ícones** | **200 · 200 · 200** |
+| **`/api/*` fora do cache** | **404 basic** — chegou à rede |
+| cache do shell | `hades-sw-v1-shell`, 2 caches |
+| **offline** | **504 honesto** — não inventou conteúdo |
+| pedidos falhados | 0 inesperados |
+
+**E duas falhas iniciais eram do meu teste** (6/8): o SW **estava** registado e eu li o
+`state` cedo demais; e contei como falha um pedido que **o próprio teste** provocou.
+⇒ ***«Medir cedo demais é uma forma de inventar um defeito.»***
+
+**A proxima accao unica**: **Firefox e WebKit** — o E2E só correu em Chromium. O Playwright
+tem `webkit-2311` instalado; **Firefox não**. Instalar o Firefox do Playwright e correr os
+mesmos 8 pontos. **E esperar as runs antes do push.**
