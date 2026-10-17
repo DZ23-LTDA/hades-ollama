@@ -8,15 +8,15 @@
 
 | Número | Valor |
 | --- | --- |
-| **Commit medido** (`measured_commit`) | `598d1e204dcad41ba28b58955c25a57f99778458` |
+| **Commit medido** (`measured_commit`) | `b35e0a56d49a9ce18d9e73d601a2f05e5f9579cd` |
 | **Commit da `main`** (`git.main_sha`) | `4b3e21854` |
-| **Gerado em** (`measured_at`) | 2026-10-17T18:50:35-03:00 |
-| **Snapshot real** (`gate_head`) | `598d1e204dcad41ba28b58955c25a57f99778458` |
+| **Gerado em** (`measured_at`) | 2026-10-17T18:59:51-03:00 |
+| **Snapshot real** (`gate_head`) | `b35e0a56d49a9ce18d9e73d601a2f05e5f9579cd` |
 | **Ramo do snapshot** (`gate_branch`) | `fix/checker-relogio` |
-| **Entradas nao commitadas** (`gate_dirty`) | 5 |
+| **Entradas nao commitadas** (`gate_dirty`) | 3 |
 | **O gate prova o snapshot candidato?** (`gate_snapshot`) | **MESMO** |
 | Estágios | 38 |
-| Linhas de evidência no índice | 937 |
+| Linhas de evidência no índice | 938 |
 | `COMPLETED_VERIFIED` | 14 |
 | `IN_PROGRESS` | 3 |
 | `BLOCKED_BY_EXTERNAL_DEPENDENCY` | 21 |
@@ -38,7 +38,7 @@ relatório **declara a ausência** em vez de preencher com suposição.
 | --- | --- | --- | --- | --- | --- |
 | 1 | Auditoria total e inventario real | PARCIAL | COMPLETED_VERIFIED | — | E-1100, E-001, E-002, E-010, E-021, E-023, E-036, E-187, E-188, E-211 |
 | 3 | Arquitetura canonica dos componentes | PARCIAL | COMPLETED_VERIFIED | — | E-1102, E-037, E-040, E-043, E-044, E-045, E-215, E-276, E-277, E-278, E-279, E-280 |
-| 6 | Harness Runtime (execucao governada) | AUSENTE | COMPLETED_VERIFIED | B-01 | E-1098, E-025, E-041, E-204, E-205, E-206, E-207, E-208, E-215 |
+| 6 | Harness Runtime (execucao governada) | AUSENTE | COMPLETED_VERIFIED | B-01 | E-1098, E-025, E-041, E-204, E-205, E-206, E-207, E-208, E-215, E-1145 |
 | 7 | MCP Manager (servidores, ferramentas, escopos) | IMPLEMENTADO_E_TESTADO | COMPLETED_VERIFIED | B-10 | E-1106, E-018, E-019, E-026, E-215 |
 | 9 | Agentes e subagentes (delegacao) | IMPLEMENTADO_NAO_HOMOLOGADO | COMPLETED_VERIFIED | — | E-1099, E-043, E-215, E-239, E-240 |
 | 10 | Mission Control multiagente (missoes, eventos, SSE, artefatos) | PARCIAL | COMPLETED_VERIFIED | — | E-1097, E-020, E-027, E-103, E-214, E-216, E-217, E-218, E-219, E-241, E-243, E-244, E-245 |
@@ -47,8 +47,8 @@ relatório **declara a ausência** em vez de preencher com suposição.
 | 15 | Memoria e RAG local | IMPLEMENTADO_E_TESTADO | COMPLETED_VERIFIED | B-07 | E-040, E-052, E-056, E-057, E-087, E-088, E-089, E-090, E-092, E-093, E-094, E-095, E-096 |
 | 17 | Workspace do agente (threads, artefatos, preview) | PARCIAL | COMPLETED_VERIFIED | — | E-1094, E-027, E-215, E-242, E-1143 |
 | 18 | Seguranca, permissoes e multitenancy | IMPLEMENTADO_NAO_HOMOLOGADO | COMPLETED_VERIFIED | — | E-1104, E-019, E-031, E-058, E-070, E-071, E-072, E-073, E-091, E-121, E-122, E-123, E-189, E-190, E-191, E-192, E-193, … |
-| 19 | UX/onboarding e jornada de primeira execucao | IMPLEMENTADO_E_TESTADO | COMPLETED_VERIFIED | — | E-1095, E-011, E-012, E-032, E-130, E-131, E-139, E-182, E-1138, E-1140, E-1141, E-1142, E-1143, E-1144 |
-| 21 | Benchmarks e comparativo competitivo | PARCIAL | COMPLETED_VERIFIED | — | E-1093, E-021, E-054, E-117, E-127, E-160, E-161, E-164, E-165, E-166, E-167, E-168, E-169, E-250 |
+| 19 | UX/onboarding e jornada de primeira execucao | IMPLEMENTADO_E_TESTADO | COMPLETED_VERIFIED | — | E-1095, E-011, E-012, E-032, E-130, E-131, E-139, E-182, E-1138, E-1140, E-1141, E-1142, E-1143, E-1144, E-1145 |
+| 21 | Benchmarks e comparativo competitivo | PARCIAL | COMPLETED_VERIFIED | — | E-1093, E-021, E-054, E-117, E-127, E-160, E-161, E-164, E-165, E-166, E-167, E-168, E-169, E-250, E-1145 |
 | 22 | Gate de engenharia intermediario | IMPLEMENTADO_NAO_HOMOLOGADO | COMPLETED_VERIFIED | — | E-1134, E-1103, E-005, E-006, E-007, E-013, E-014, E-017, E-034, E-036, E-048, E-059, E-098, E-099, E-113, E-140, E-173,… |
 
 ## IN_PROGRESS (trabalho real, com limites declarados)
@@ -97,7 +97,7 @@ possível sem ele**.
 
 ## Referências
 
-- Índice de evidências: [`HADES_EVIDENCE_INDEX.md`](HADES_EVIDENCE_INDEX.md) (937 linhas).
+- Índice de evidências: [`HADES_EVIDENCE_INDEX.md`](HADES_EVIDENCE_INDEX.md) (938 linhas).
 - Estado da missão: [`HADES_MASTER_STATE.json`](HADES_MASTER_STATE.json).
 - Gate global: [`HADES_FINAL_RELEASE_GATE.md`](HADES_FINAL_RELEASE_GATE.md).
 - Gate intermediário de engenharia (estágio 22): [`HADES_ENGINEERING_GATE.md`](HADES_ENGINEERING_GATE.md).
