@@ -138,6 +138,32 @@ def tarball_linux() -> tuple[Path | None, str]:
     return None, "AUSENTE"
 
 
+def web_build_coerente(web_dist: Path) -> tuple[int, int, str]:
+    """Quantos assets o `index.html` referencia, quantos FALTAM, e quando o build foi escrito.
+
+    *A MESMA PERGUNTA DAS OUTRAS PLATAFORMAS, adaptada ao que um bundle Vite permite provar.*
+    Um `dist/` de Vite **nao declara SHA do fonte** -- mas o `index.html` referencia os assets
+    por nome **hashado** (`/assets/index-DQNoHuid.js`). Se o ficheiro referenciado nao existe, o
+    build esta' INCOMPLETO, e um `dist/` meio copiado passa despercebido a quem so' mede o
+    `index.html`. *O que se pode medir e' a auto-coerencia do bundle; o que nao se pode medir
+    aqui e' de que commit ele veio -- e a nota di-lo.*
+    """
+    idx = web_dist / "index.html"
+    if not idx.is_file():
+        return 0, 0, "AUSENTE"
+    html = idx.read_text(encoding="utf-8", errors="replace")
+    refs = re.findall(r'(?:src|href)="(/assets/[^"]+)"', html)
+    faltam = 0
+    for r in refs:
+        alvo = web_dist / r.lstrip("/")
+        if not alvo.is_file():
+            faltam += 1
+    mtime = idx.stat().st_mtime
+    import datetime
+    data = datetime.datetime.fromtimestamp(mtime).strftime("%Y-%m-%d %H:%M")
+    return len(refs), faltam, data
+
+
 def main() -> int:
     # ---------- Android: o `app.json`/`eas.json` existem? o APK? ----------
     app_json = MOBILE / "app.json"
@@ -148,6 +174,16 @@ def main() -> int:
     # ---------- Web/PWA: o build de producao ----------
     web_dist = RAIZ / "app" / "ui" / "app" / "dist"
     web_index = web_dist / "index.html"
+    refs_web, faltam_web, data_web = web_build_coerente(web_dist)
+    if refs_web and faltam_web == 0:
+        prefixo_web = ("bundle auto-coerente: " + str(refs_web) + "/" + str(refs_web) +
+                       " assets referenciados presentes; build de " + data_web +
+                       " (sem SHA de fonte -- Vite nao o declara); ")
+    elif refs_web:
+        prefixo_web = ("bundle INCOMPLETO: " + str(faltam_web) + " de " + str(refs_web) +
+                       " assets referenciados FALTAM; ")
+    else:
+        prefixo_web = "sem index.html legivel; "
 
     instalador_win, sha_declarado_win = instalador_do_candidato()
     tarball_lnx, sha_declarado_lnx = tarball_linux()
@@ -240,7 +276,7 @@ def main() -> int:
             existe_wf("dz23-e2e.yaml", "test.yaml"),
             (str(web_index.relative_to(RAIZ)),) if web_index.is_file() else None,
             "N/A (build de produção)", "NÃO MEDIDO (PWA_INSTALADO_NA_UI=NAO)",
-            "N/A", "servido por HTTP; o `manifest` existe"),
+            "N/A", prefixo_web + "servido por HTTP; o `manifest` existe"),
     ]
 
     for p in tabela:
