@@ -16,7 +16,16 @@
  *
  * NAO prova: instalacao do PWA na UI do browser (isso e' um gesto humano), nem iOS/Safari.
  */
-import { chromium } from "playwright";
+import { chromium, firefox, webkit } from "playwright";
+
+/** Os motores declarados. *O Web/PWA tem de servir os tres ou dizer que nao serve.* */
+const MOTORES = { chromium, firefox, webkit };
+const NOME_MOTOR = process.env.HADES_E2E_BROWSER || "chromium";
+const motor = MOTORES[NOME_MOTOR];
+if (!motor) {
+  console.error("motor desconhecido: " + NOME_MOTOR + " (usa chromium|firefox|webkit)");
+  process.exit(2);
+}
 import { writeFileSync } from "node:fs";
 
 const BASE = process.env.HADES_E2E_BASE || "http://127.0.0.1:5173";
@@ -28,8 +37,12 @@ function registar(nome, ok, detalhe) {
   console.log(`  ${ok ? "OK  " : "FALHA"} ${nome}${detalhe ? "  -- " + detalhe : ""}`);
 }
 
-const browser = await chromium.launch({ headless: true });
-const contexto = await browser.newContext({ serviceWorkers: "allow" });
+const browser = await motor.launch({ headless: true });
+console.log(`\n  ==== motor: ${NOME_MOTOR} ====`);
+// *`serviceWorkers: "allow"` so existe no Chromium;* nos outros motores o default ja e' permitir.
+const contexto = await browser.newContext(
+  NOME_MOTOR === "chromium" ? { serviceWorkers: "allow" } : {},
+);
 const pagina = await contexto.newPage();
 
 const pedidosFalhados = [];
@@ -153,5 +166,5 @@ const total = resultados.length;
 const passaram = resultados.filter((r) => r.ok).length;
 console.log("");
 console.log(`  ==== ${passaram}/${total} verificacoes passaram ====`);
-if (SAIDA) writeFileSync(SAIDA, JSON.stringify({ base: BASE, resultados, passaram, total }, null, 2));
+if (SAIDA) writeFileSync(SAIDA, JSON.stringify({ motor: NOME_MOTOR, base: BASE, resultados, passaram, total }, null, 2));
 process.exit(passaram === total ? 0 : 1);

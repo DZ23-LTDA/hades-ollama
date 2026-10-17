@@ -1007,3 +1007,24 @@ com `caches` **simulado** — *«prova a lógica; não prova a instalação»*. 
 **A proxima accao unica**: **Firefox e WebKit** — o E2E só correu em Chromium. O Playwright
 tem `webkit-2311` instalado; **Firefox não**. Instalar o Firefox do Playwright e correr os
 mesmos 8 pontos. **E esperar as runs antes do push.**
+
+### A proxima accao unica (janela `E-1063`)
+
+**O PWA passa 8/8 nos tres motores**: `chromium` **8/8**, `firefox` **8/8**, `webkit` **8/8**.
+O `E-1062` só tinha corrido em Chromium.
+
+**Faltavam dois dos três motores**: o `playwright-core` 1.64.0 espera `firefox-1555` e
+`webkit-2370`; só existia `webkit-2311` (de versão anterior). `npx playwright install
+firefox webkit` resolveu em **27,7 s**.
+⇒ ***«Duas ferramentas instaláveis não são dois bloqueios externos.»***
+
+**E a diferença offline prova que o teste mede o motor**: Chromium devolve **504**;
+**Firefox lança `TypeError: NetworkError`**; WebKit devolve **504**. E o teste aceita
+ambos porque **ambos são honestos** — nenhum inventa conteúdo.
+⇒ ***«Se o teste medisse a si mesmo, os três dariam o mesmo resultado.»***
+
+**A proxima accao unica**: **`PWA_INSTALADO_NA_UI` continua `NAO`** — o gesto de instalar
+é humano. O que é interno e resta: **medir recursos do service worker** (memória, CPU,
+tempo de `install`/`activate`, tamanho do cache) num browser real, e **testar upgrade
+entre versões reais do SW** (publicar v2, activar, confirmar que a v1 é apagada).
+**E esperar as runs antes do push.**

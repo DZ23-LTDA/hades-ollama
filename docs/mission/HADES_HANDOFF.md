@@ -1885,3 +1885,40 @@ filtra os pedidos do teste. *Medir cedo demais e' uma forma de inventar um defei
 **Doutrina em uma linha**: medir cedo demais e' uma forma de inventar um defeito; um teste
 que nao constroi o mundo que mede acusa o produto do seu proprio defeito; e um cache que
 responde por uma aprovacao e' um aprovador a mais.
+
+### Instrucoes de retomada (janela `E-1063`)
+
+**Estado**: branch `fix/checker-relogio`; cabeca do indice `E-1063`; PR #438 **aberto** e
+**nao tocado** -- *as 14 threads continuam como estavam*; `reviewDecision` **vazio**.
+
+**REGRA DE PUSH -- OBRIGATORIA, E JA' VALIDADA** (treze 6/6 consecutivos):
+  1. commit local -> 2. ESPERAR o SHA remoto fechar com `failure=0` -> 3. `git push`.
+
+**O E2E DO PWA NOS TRES MOTORES** (`E-1063`):
+  npx playwright install firefox webkit     # Firefox 157.0 (v1555) + WebKit 27.2 (v2370)
+  node node_modules/vite/bin/vite.js preview --port 5173 --host 127.0.0.1
+  $env:HADES_E2E_BROWSER='chromium'; node e2e/pwa-serviceworker-real.mjs   # 8/8
+  $env:HADES_E2E_BROWSER='firefox';  node e2e/pwa-serviceworker-real.mjs   # 8/8
+  $env:HADES_E2E_BROWSER='webkit';   node e2e/pwa-serviceworker-real.mjs   # 8/8
+
+**A DIFERENCA QUE PROVA QUE O TESTE MEDE O MOTOR**: offline, Chromium devolve **504
+basic**; **Firefox lanca `TypeError: NetworkError when attempting to fetch resource`**;
+WebKit devolve **504 basic**. O teste aceita os dois porque **ambos sao honestos**: nenhum
+inventa conteudo. *Se medisse a si mesmo, os tres dariam o mesmo resultado.*
+
+**O QUE MUDOU NO TESTE**: `serviceWorkers: "allow"` **so' existe no Chromium** -- nos
+outros motores o default ja' permite, e a opcao **nao** e' passada. Um motor desconhecido
+sai com **exit 2**, nao corre em silencio com o errado.
+
+**O ESTADO DAS PLATAFORMAS**: Windows/amd64 -> portatil **e** instalador (`E-1057`/
+`E-1058`), nao assinados, nao instalados. Linux/amd64 -> tarball **instalavel** (`E-1059`).
+**Web/PWA** -> build PASS (`E-1060`), icones 3/3 e SW (`E-1061`), **E2E 8/8 em Chromium,
+Firefox e WebKit** (`E-1062`/`E-1063`), mas **`PWA_INSTALADO_NA_UI=NAO`**. macOS/Android/
+iOS -> por produzir.
+
+**O que NAO fazer**: `reset --hard`, `git clean`, rebase destrutivo, force-push, stash,
+`merge`, tag, release, publicacao externa, ou **resolver threads** do PR #438.
+
+**Doutrina em uma linha**: duas ferramentas instalaveis nao sao dois bloqueios externos;
+se o teste medisse a si mesmo os tres motores dariam o mesmo resultado; e um motor nao e'
+um dispositivo.

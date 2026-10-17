@@ -1850,3 +1850,30 @@ fora do cache, provado no browser.
 - **Firefox** e **Safari**; sem `.crx`, sem SBOM do pacote;
 - **`CAPACIDADES` VAZIO**: o Companion **não** controla o PC;
 - **macOS, Android e iOS continuam por produzir** neste candidato.
+
+### O que falta (actualizado na janela `E-1063`)
+
+**Fechado**: o PWA em **Chromium, Firefox e WebKit** — 8/8 cada. Os dois motores que
+faltavam foram instalados (Firefox 157.0, WebKit 27.2).
+
+**Continua em falta, sem disfarce**:
+- ***`PWA_INSTALADO_NA_UI=NAO`*** -- o gesto de instalar é humano e **não foi executado**
+  em nenhum dos três motores;
+- **o WebKit do Playwright não é o Safari do macOS** -- é o motor; não prova Safari numa
+  máquina Apple;
+- **sem teste de upgrade entre versões reais do SW** num browser;
+- **sem medição de memória, CPU, tempo de `install`/`activate` nem tamanho do cache**;
+- ***`OFFLINE=PARCIAL`*** -- o shell abre; o chat, as missões e as aprovações **não**;
+- **a comparação externa continua `NAO_EXECUTADA`**;
+- **`55327160c` e `cda756f82` continuam VERMELHOS** -- pelo ritmo de push, não por defeito;
+- **decisão do proprietário em aberto**: distinguir «cancelado pelo push» de «cancelado
+  por falha» no `pr-gate` **toca a política do gate**;
+- **N=3 por fixture** na repetição: contagem, não probabilidade;
+- **as 14 threads do PR continuam abertas** -- não resolvi nenhuma (proibido);
+- **o encaixe da aprovação continua por ligar** (`E-1044`);
+- **shadow roots fechados**, **cross-origin**: como no `E-1040`; **BFCache** sem execução
+  observada (`E-1038`);
+- **o Chrome real do utilizador**: a versão 155 **não carrega** por `--load-extension`;
+- **Firefox** e **Safari** reais (extensão); sem `.crx`, sem SBOM do pacote;
+- **`CAPACIDADES` VAZIO**: o Companion **não** controla o PC;
+- **macOS, Android e iOS continuam por produzir** neste candidato.
