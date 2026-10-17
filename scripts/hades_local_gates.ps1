@@ -1190,4 +1190,18 @@ if ($exitComp -ne 0) {
 } else { '    OK' }
 $passos += 'companion-pareamento'
 
+
+''
+# E-1119: o NATIVE HOST instalado de forma REVERSIVEL. *O roundtrip corre numa SANDBOX (o `LOCALAPPDATA`
+# redireccionado e `-Navegador ''`), logo nao toca no registo real: instala, o `INSTALACAO.json` lista tudo o que
+# criou, e o `-Desinstalar` remove exactamente isso -- inclusive a pasta que fica vazia.*
+'--- 77. NATIVE HOST: instalacao REVERSIVEL (roundtrip na sandbox)'
+$saidaNh = & python -X utf8 scripts/hades_native_host_roundtrip.py 2>&1
+$saidaNh | Select-Object -Last 3 | ForEach-Object { "    " + $_.ToString().Substring(0, [Math]::Min(110, $_.ToString().Length)) }
+if ($LASTEXITCODE -ne 0) {
+  $falhas.Add("hades_native_host_roundtrip.py (exit $LASTEXITCODE)")
+  '    FALHA'
+} else { '    OK' }
+$passos += 'native-host-reversivel'
+
 "GATES LOCAIS: $($passos -join ' + ') VERDES"

@@ -1,6 +1,8 @@
 # HADES — TRABALHO PENDENTE PRIORIZADO
 
-> **REMEDIACAO MAIS RECENTE: E-1118** -- *o E2E do pareamento real com o Companion (17 verificacoes) e as 2 curas no `companion.mjs`.*
+> **REMEDIACAO MAIS RECENTE: E-1119** -- *a instalacao REVERSIVEL do Native Host provada (no `%LOCALAPPDATA%` real e em sandbox) e o roundtrip de 27 verificacoes.*
+
+
 
 
 
