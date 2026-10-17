@@ -1755,3 +1755,43 @@ caminho -- outra vez.*
 **Doutrina em uma linha**: um tarball nao e' um tarball instalavel; o caminho que exigia a
 ferramenta nao era o unico caminho; e um artefacto que declara os seus limites vale mais
 do que um que os omite.
+
+### Instrucoes de retomada (janela `E-1060`)
+
+**Estado**: branch `fix/checker-relogio`; cabeca do indice `E-1060`; PR #438 **aberto** e
+**nao tocado** -- *as 14 threads continuam como estavam*; `reviewDecision` **vazio**.
+
+**REGRA DE PUSH -- OBRIGATORIA, E JA' VALIDADA** (dez 6/6 consecutivos):
+  1. commit local -> 2. ESPERAR o SHA remoto fechar com `failure=0` -> 3. `git push`.
+
+**O BUILD WEB/PWA** (`E-1060`):
+  cd app/ui/app
+  npm run build:check     # tsc -b && vite build + check-bundle-budget.mjs
+  => ✓ built in 15.68s
+  => Bundle entry: index-CWgSFuKK.js raw=1509050 gzip=412527
+  => Budgets: raw<=2000000 gzip<=600000  =>  BUNDLE_BUDGET=PASS   (exit 0 em 47.8 s)
+
+**O DEFEITO QUE O BUILD NAO APANHOU -- E QUE JA' ESTAVA NO HEAD**:
+  o `public/manifest.json` apontava para `/icons/hades-icon-192.png` (e 512, maskable)
+  e **o directorio `icons/` NUNCA EXISTIU** -- os PNGs estao na RAIZ de `public/`.
+  `git show HEAD:app/ui/app/public/manifest.json` confirma: ja' era assim no HEAD.
+  => 0 de 3 icones resolviam. Curado para `/hades-icon-*.png` => **3 de 3**.
+  *Um caminho escrito a mao e' uma promessa; um caminho medido e' um facto.*
+
+**O QUE FALTA NO PWA, MEDIDO**: *`ocorrencias de serviceWorker em src/: **0`*** =>
+`dist/sw.js` e `dist/service-worker.js` **ausentes** => ***sem service worker nao ha' cache,
+nao ha' offline e nao ha' instalacao PWA completa*** => **`PWA_INSTALAVEL=PARCIAL`**.
+O `offline` e' **`NAO_IMPLEMENTADO`** -- *nao e' «offline honesto»*.
+
+**O ESTADO DAS PLATAFORMAS, SEM CONFUSAO**: Windows/amd64 -> portatil **e** instalador
+(`E-1057`/`E-1058`), **nenhum assinado**, **nenhum instalado**. Linux/amd64 -> tarball
+**instalavel** (`E-1059`), binario de `9f7379502b1d`. **Web/PWA** -> build **PASS**, icones
+**corrigidos**, **sem service worker**. macOS/Android/iOS -> **por produzir**;
+macOS/iOS `BLOCKED_EXTERNAL` pela **maquina**.
+
+**O que NAO fazer**: `reset --hard`, `git clean`, rebase destrutivo, force-push, stash,
+`merge`, tag, release, publicacao externa, ou **resolver threads** do PR #438.
+
+**Doutrina em uma linha**: um caminho escrito a mao e' uma promessa; o `git show HEAD:`
+separa defeito de regressao; e um build que passa o orcamento mede o peso, nao a
+instalabilidade.

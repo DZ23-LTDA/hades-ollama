@@ -941,3 +941,24 @@ macOS exige macOS/Xcode (`BLOCKED_EXTERNAL` pela máquina), mas o **Web/PWA** é
 local: `app/ui/app` tem `vite build` e o prompt pede «build de produção + manifest +
 ícones + PWA». Verificar se existe script de build de produção e correr. **E esperar as
 runs antes de qualquer push.**
+
+### A proxima accao unica (janela `E-1060`)
+
+**O build Web/PWA passa o orçamento**: `✓ built in 15,68s`, entry `index-CWgSFuKK.js`
+**raw 1 509 050 / 2 000 000** e **gzip 412 527 / 600 000** ⇒ **`BUNDLE_BUDGET=PASS`**.
+
+**E encontrei um defeito real que já estava no HEAD**: os **três** ícones do manifest
+apontavam para `/icons/…` e **o diretório `icons/` nunca existiu** — os PNGs estão na
+**raiz** de `public/`. `git show HEAD:…` confirmou: **já era assim no HEAD**.
+
+⇒ ***«Um caminho escrito à mão é uma promessa; um caminho medido é um facto.»***
+**Curado**: 0 de 3 ícones resolviam → **3 de 3**.
+
+**E o que falta no PWA é medido, não suposto**: **zero service workers**
+(`ocorrencias em src/: 0`; `dist/sw.js` e `dist/service-worker.js` ausentes) ⇒ **sem cache,
+sem offline, sem instalação completa**. ⇒ **`PWA_INSTALAVEL=PARCIAL`**.
+
+**A proxima accao unica**: **o service worker** é o que falta para o PWA ser instalável e
+offline. Mas **offline honesto** exige decidir o que cachear (e o que **não** cachear: o
+chat e as aprovações não podem vir de cache). Desenhar o escopo mínimo — shell + assets
+estáticos, **nunca** respostas de API — e implementar. **E esperar as runs antes do push.**

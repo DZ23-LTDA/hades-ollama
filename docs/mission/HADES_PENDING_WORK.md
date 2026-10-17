@@ -1770,3 +1770,30 @@ e `VERSION`, construído **sem bash e sem compilador C**.
 - **o Chrome real do utilizador**: a versão 155 **não carrega** por `--load-extension`;
 - **Firefox** e **Safari**; sem `.crx`, sem SBOM do pacote;
 - **`CAPACIDADES` VAZIO**: o Companion **não** controla o PC.
+
+### O que falta (actualizado na janela `E-1060`)
+
+**Fechado**: o build Web/PWA de produção (exit 0, orçamento PASS) e o **defeito dos três
+ícones a 404** — que já estava no HEAD e agora resolve 3 de 3.
+
+**Continua em falta, sem disfarce**:
+- ***`SERVICE_WORKER=NAO`*** -- **zero** service workers: sem cache, sem offline, sem
+  instalação PWA completa ⇒ **`PWA_INSTALAVEL=PARCIAL`**;
+- **o `offline` é `NAO_IMPLEMENTADO`**, não «offline honesto»;
+- **não instalei o PWA num browser real** nesta janela;
+- **não testei upgrade/rollback do cache** -- não há cache;
+- **warning real de chunks >500 kB** (`cpp` 626 kB, `emacs-lisp` 779 kB, `wasm` 622 kB) --
+  são gramáticas carregadas sob demanda, e **não foi escondido**;
+- **a comparação externa continua `NAO_EXECUTADA`**;
+- **`55327160c` e `cda756f82` continuam VERMELHOS** -- pelo ritmo de push, não por defeito;
+- **decisão do proprietário em aberto**: distinguir «cancelado pelo push» de «cancelado
+  por falha» no `pr-gate` **toca a política do gate**;
+- **N=3 por fixture** na repetição: contagem, não probabilidade;
+- **as 14 threads do PR continuam abertas** -- não resolvi nenhuma (proibido);
+- **o encaixe da aprovação continua por ligar** (`E-1044`);
+- **shadow roots fechados**, **cross-origin**: como no `E-1040`; **BFCache** sem execução
+  observada (`E-1038`);
+- **o Chrome real do utilizador**: a versão 155 **não carrega** por `--load-extension`;
+- **Firefox** e **Safari**; sem `.crx`, sem SBOM do pacote;
+- **`CAPACIDADES` VAZIO**: o Companion **não** controla o PC;
+- **macOS, Android e iOS continuam por produzir** neste candidato.
