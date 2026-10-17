@@ -71,7 +71,7 @@ func TestConsumeEntreProcessosNaoDuplicaExecucao(t *testing.T) {
 
 	const quantos = 4
 	cmds := make([]*exec.Cmd, 0, quantos)
-	for i := 0; i < quantos; i++ {
+	for i := range quantos {
 		c := exec.Command(exe, "-test.run=TestHelperConsumeCrossProcess")
 		c.Env = append(os.Environ(),
 			envAprovChild+"=1",
@@ -91,7 +91,7 @@ func TestConsumeEntreProcessosNaoDuplicaExecucao(t *testing.T) {
 	}
 
 	sucessos := 0
-	for i := 0; i < quantos; i++ {
+	for i := range quantos {
 		b, err := os.ReadFile(filepath.Join(root, "resultado-"+string(rune('a'+i))+".json"))
 		if err != nil {
 			t.Logf("sem resultado do filho %d: %v", i, err)
