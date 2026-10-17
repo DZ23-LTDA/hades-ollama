@@ -11,18 +11,18 @@
 > modificados** com **24** ocorrencias de marca que **nao existem no commit**, e o inventario
 > divergia entre a minha maquina e o CI. => *um instrumento que mede o disco mede **tambem o
 > trabalho nao commitado** -- e publica um numero que so' e' verdadeiro onde foi gerado.*
-> Origens medidas neste snapshot: `HEAD (sujo no disco)`: 18, `disco (limpo)`: 2494.
+> Origens medidas neste snapshot: `HEAD (sujo no disco)`: 14, `disco (limpo)`: 2498.
 
 | String | Ocorrencias |
 | --- | --- |
-| **Hades/HADES** (canonica) | **1108** |
-| DZ23 Agentic | 231 |
+| **Hades/HADES** (canonica) | **1121** |
+| DZ23 Agentic | 235 |
 | Ollama Full | 172 |
 | Ollama Classe A+ | 95 |
-| Ollama DZ23 | 49 |
+| Ollama DZ23 | 51 |
 
-**Legadas somadas:** 547 ocorrencias
-(247 em ficheiros **migraveis**, 300 em ficheiros de **excecao**).
+**Legadas somadas:** 553 ocorrencias
+(250 em ficheiros **migraveis**, 303 em ficheiros de **excecao**).
 
 *O total **nao** decide: os mesmos numeros distribuem-se por sitios de tipos muito
 diferentes, e e' o sitio que decide.* Um ``README`` migra; um `bundle ID` nao.
@@ -64,21 +64,21 @@ hoje** e **falso sobre o que foi medido**.*
 | `docs/agentic/PARITY_MATRIX.md` | 9 | migravel |
 | `docs/agentic/INTEGRATIONS.md` | 8 | migravel |
 | `CHANGELOG.md` | 7 | migravel |
+| `docs/mission/HADES_PENDING_WORK.md` | 7 | migravel |
 | `apps/mobile-agentic/MIGRACAO_MARCA.md` | 6 | migravel |
 | `docs/RELEASE_READINESS.md` | 6 | migravel |
 | `docs/agentic/HARNESSROUTER.md` | 6 | migravel |
 | `docs/mission/HADES_MASTER_STATE.json` | 6 | migravel |
 | `docs/agentic/ROADMAP.md` | 5 | migravel |
-| `docs/mission/HADES_PENDING_WORK.md` | 5 | migravel |
+| `docs/mission/HADES_NEXT_ACTION.md` | 5 | migravel |
 | `docs/agentic/XAI_GROK.md` | 4 | migravel |
+| `docs/mission/HADES_HANDOFF.md` | 4 | migravel |
 | `scripts/install.ps1` | 4 | migravel |
 | `UPSTREAM_POLICY.md` | 3 | migravel |
 | `docs/agentic/ARCHITECTURE.md` | 3 | migravel |
 | `docs/agentic/COMPOSIO.md` | 3 | migravel |
 | `docs/agentic/HARNESS_COMPARISON_SYNTHESIS.md` | 3 | migravel |
 | `docs/dz23-multi-provider.md` | 3 | migravel |
-| `docs/mission/HADES_HANDOFF.md` | 3 | migravel |
-| `docs/mission/HADES_NEXT_ACTION.md` | 3 | migravel |
 | `scripts/classify-ci-surfaces.py` | 3 | migravel |
 | `scripts/classify_ci_surfaces_test.py` | 3 | migravel |
 | `app/ui/app/e2e/shell.spec.ts` | 2 | migravel |
@@ -95,8 +95,6 @@ hoje** e **falso sobre o que foi medido**.*
 | `README.md` | 1 | migravel |
 | `app/updater/updater.go` | 1 | migravel |
 | `app/updater/updater_live_test.go` | 1 | migravel |
-| `apps/mobile-agentic/README.md` | 1 | migravel |
-| `apps/mobile-agentic/package.json` | 1 | migravel |
 | `docs/CLASS_A_PLUS_GUIDE.md` | 1 | migravel |
 | `docs/LARGE_FILES.md` | 1 | migravel |
 | `docs/agentic/EVALUATION.md` | 1 | migravel |
@@ -127,7 +125,7 @@ hoje** e **falso sobre o que foi medido**.*
 
 | Ficheiro | Legadas | Categoria |
 | --- | --- | --- |
-| `docs/mission/HADES_EVIDENCE_INDEX.md` | 134 | excecao:historico |
+| `docs/mission/HADES_EVIDENCE_INDEX.md` | 140 | excecao:historico |
 | `audit/AUTONOMOUS_MISSION_STATE.md` | 32 | excecao:historico |
 | `audit/OLLAMA_FULL_MISSION_STATE.md` | 27 | excecao:historico |
 | `docs/evidencias/browser-console-audit-f12.json` | 16 | excecao:historico |
@@ -140,7 +138,6 @@ hoje** e **falso sobre o que foi medido**.*
 | `audit/COMPARACAO_ARVORES_MANUS_OLLAMA_FULL.md` | 4 | excecao:historico |
 | `audit/HANDOFF_NEXT_MANUS_20260929.md` | 4 | excecao:historico |
 | `scripts/dz23-configure.ps1` | 4 | excecao:env var |
-| `apps/mobile-agentic/app.json` | 3 | excecao:bundle id |
 | `audit/HANDOFF_MANUS_20260929.md` | 3 | excecao:historico |
 | `audit/OLLAMA_FULL_HANDOFF_20260927.md` | 3 | excecao:historico |
 | `internal/multillm/credentials.go` | 3 | excecao:credencial |
@@ -155,7 +152,7 @@ hoje** e **falso sobre o que foi medido**.*
 | `audit/auditoria.md` | 1 | excecao:historico |
 | `docs/evidencias/browser-console-audit-audfix2.json` | 1 | excecao:historico |
 
-**Por tipo de excecao:** bundle id: 3, credencial: 3, env var: 4, historico: 279, instalador: 9, teste: 2
+**Por tipo de excecao:** credencial: 3, env var: 4, historico: 285, instalador: 9, teste: 2
 
 ## 6. O que este documento **nao** faz
 

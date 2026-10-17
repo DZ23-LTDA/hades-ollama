@@ -2005,3 +2005,30 @@ preservadas e o plano de migração escrito.
 - **o encaixe da aprovação continua por ligar** (`E-1044`);
 - **o Chrome real do utilizador**: a versão 155 **não carrega** por `--load-extension`;
 - **`CAPACIDADES` VAZIO**: o Companion **não** controla o PC.
+
+### O que falta (actualizado na janela `E-1069`)
+
+**Fechado**: a classificação das 231 ocorrências — **~250 técnicas e 19 histórico**, nenhuma
+marca visível. O §FASE-5 item 2 está cumprido.
+
+**Continua em falta, sem disfarce**:
+- ***`BUILD=NAO` e `APK=NAO` no Android*** -- o Gradle 8.13 não carrega a `native-platform.dll`
+  (`E-1067`, 4 tentativas, 2 hipóteses novas); **não é bloqueio externo**;
+- **a hipótese não testada**: extrair a DLL do jar **à mão** e passar `-Dorg.gradle.native.dir`;
+- ***a migração da marca não foi testada numa build*** -- *«uma migração que nunca compilou
+  está pronta a compilar — não está verificada»*;
+- **sem E2E em emulador**;
+- **o meu classificador de contexto tem 10 padrões** -- falsos negativos possíveis, e as **49
+  `Ollama DZ23`** não foram verificadas uma a uma;
+- **macOS e iOS continuam por produzir**;
+- ***`PWA_INSTALADO_NA_UI=NAO`*** no Web;
+- **Windows e Linux `INSTALLED=NAO`/`DEVICE_E2E=NAO`**;
+- **a comparação externa continua `NAO_EXECUTADA`**;
+- **`55327160c` e `cda756f82` continuam VERMELHOS** -- pelo ritmo de push, não por defeito;
+- **decisão do proprietário em aberto**: distinguir «cancelado pelo push» de «cancelado por
+  falha» no `pr-gate` **toca a política do gate**;
+- **N=3 por fixture** na repetição: contagem, não probabilidade;
+- **as 14 threads do PR continuam abertas** -- não resolvi nenhuma (proibido);
+- **o encaixe da aprovação continua por ligar** (`E-1044`);
+- **o Chrome real do utilizador**: a versão 155 **não carrega** por `--load-extension`;
+- **`CAPACIDADES` VAZIO**: o Companion **não** controla o PC.

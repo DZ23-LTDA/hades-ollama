@@ -2128,3 +2128,44 @@ migracao e' **4 ficheiros, 9 insercoes, 9 remocoes**.
 **Doutrina em uma linha**: uma migracao de marca que apaga a sessao nao e' uma migracao; uma
 marca muda-se num sitio e uma sessao perde-se em qualquer um; e uma migracao que nunca
 compilou esta pronta a compilar, nao esta verificada.
+
+### Instrucoes de retomada (janela `E-1069`)
+
+**Estado**: branch `fix/checker-relogio`; cabeca do indice `E-1069`; PR #438 **aberto** e
+**nao tocado** -- *as 14 threads continuam como estavam*; `reviewDecision` **vazio**.
+
+**REGRA DE PUSH -- OBRIGATORIA, E JA' VALIDADA** (dezenove 6/6 consecutivos):
+  1. commit local -> 2. ESPERAR o SHA remoto fechar com `failure=0` -> 3. `git push`.
+
+**AS 231 OCORRENCIAS CLASSIFICADAS NO SITIO** (`E-1069`):
+  importlib -> script/hades_brand_inventory.py -> inventariar()
+  para cada ocorrencia: 50 chars de contexto em cada lado
+  contra 10 padroes tecnicos declarados ANTES
+  => MARCA (a migrar):  **19**  -- 3 MIGRACAO_MARCA.md, 14 HADES_EVIDENCE_INDEX.md, 1+1 handoff
+  => TECNICO (excecao): **~250** -- DZ23-LTDA (owner), dz23-agentic-quality (workflow CI),
+                             bundle id, chave de storage, nomes historicos de produto
+
+**AS 19 «MARCA» SAO TODAS HISTORICO**: o `MIGRACAO_MARCA.md` cita os nomes antigos **de
+proposito** (e' uma tabela antes/depois); o indice de evidencias cita **o que foi medido** (e o
+§FASE-7 proibe reescreve-lo); e os outros dois sao documentos que eu escrevi a citar o passado.
+**Nenhuma e' texto de interface de utilizador.**
+
+**A CORRECCAO DA MINHA HIPOTESE**: eu esperava um erro de **contagem**; o erro estava na
+**granularidade da categoria**. *Um ficheiro migravel nao faz das suas ocorrencias marca
+visivel.* *Quem procura um erro no numero pode nao ver o erro na pergunta.*
+
+**A MARCA, FECHADA**: o **§FASE-5 item 2** (migrar a superficie visivel) esta' cumprido no
+mobile (`E-1068`) e **nao tem mais nada para migrar**; o item 3 (manter e dizer por que) e' o
+que resta, e o inventario ja' o diz para as **8 excecoes**.
+
+**O ESTADO DAS PLATAFORMAS**: Windows/amd64 -> portatil **e** instalador (`E-1057`/
+`E-1058`), nao assinados, nao instalados. Linux/amd64 -> tarball **instalavel** (`E-1059`).
+**Web/PWA** -> build, SW, 3 motores, recursos+upgrade, perfil (`E-1060`..`E-1066`), mas
+`PWA_INSTALADO_NA_UI=NAO`. **Android** -> projecto completo, toolchain presente, marca
+migrada, **Gradle bloqueado na DLL** (`E-1067`), **sem APK**. macOS/iOS -> por produzir.
+
+**O que NAO fazer**: `reset --hard`, `git clean`, rebase destrutivo, force-push, stash,
+`merge`, tag, release, publicacao externa, ou **resolver threads** do PR #438.
+
+**Doutrina em uma linha**: um ficheiro migravel nao faz das suas ocorrencias marca visivel; e
+quem procura um erro no numero pode nao ver o erro na pergunta.

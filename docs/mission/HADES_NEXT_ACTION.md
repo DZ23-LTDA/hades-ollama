@@ -1161,3 +1161,33 @@ honesta é que **não existe APK com o id antigo**, logo não há ninguém a que
 proxima fatia é classificar as 231 ocorrências** por categoria (UI visível / nome técnico /
 excepção) usando o próprio `HADES_BRAND_INVENTORY.md`, que já as classifica. **E esperar as
 runs antes do push.**
+
+### A proxima accao unica (janela `E-1069`)
+
+**As 231 ocorrências de `DZ23 Agentic` classificadas NO SÍTIO delas: ~250 são nome técnico
+e 19 são histórico — não há marca visível por migrar.**
+
+**Como foi medido**: carreguei o **próprio gerador** por `importlib`, chamei `inventariar()`, e
+para **cada** ocorrência olhei **50 caracteres de contexto** em cada lado, classificando contra
+**10 padrões técnicos declarados antes**.
+
+**As 19 «marca», uma a uma**: **3** em `MIGRACAO_MARCA.md` (o documento **que eu criei**, e que
+**cita os nomes antigos de propósito** — é uma tabela antes/depois) · **14** no
+`HADES_EVIDENCE_INDEX.md` (**histórico**, e o §FASE-7 proíbe reescrever evidência) · **1+1** no
+`HADES_HANDOFF.md` e `HADES_PENDING_WORK.md` (documentos que eu escrevi, a citar o passado).
+⇒ ***«Nenhuma é texto de interface de utilizador.»***
+
+**E as ~250 técnicas**: `DZ23-LTDA` é o **owner do GitHub** · `dz23-agentic-quality` é o **nome
+do workflow de CI** · `com.lmprado.dz23agentic` é **bundle id** · `dz23.agent.token` é **chave
+de storage** · `Ollama Full`/`Ollama Classe A+`/`Ollama DZ23` são **nomes históricos de
+produto** em documentos datados.
+
+**A correção da minha hipótese**: eu esperava um erro de **contagem**; o erro estava na
+**granularidade da categoria**. ⇒ ***«Um ficheiro migrável não faz das suas ocorrências marca
+visível.»*** ⇒ ***«Quem procura um erro no número pode não ver o erro na pergunta.»***
+
+**A proxima accao unica**: o **§FASE-5 item 2** está cumprido (mobile migrado) e **não tem mais
+nada para migrar**. O item 3 («manter, e dizer por que») resta — e o inventário já o diz para
+as **8 exceções**. ⇒ **fechar o §FASE-5** e **voltar ao bloqueio do Android** com a última
+hipótese não testada: extrair a `native-platform.dll` do jar **à mão** e passar
+`-Dorg.gradle.native.dir`. **E esperar as runs antes do push.**
