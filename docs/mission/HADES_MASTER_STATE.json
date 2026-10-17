@@ -2,7 +2,7 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-17T17:53:32-03:00",
+  "updated_at": "2026-10-17T18:30:23-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
@@ -717,7 +717,8 @@
       "auditoria": "AUDITADO_PARCIAL",
       "capability": "PARCIAL",
       "evidence": [
-        "E-1135","E-022",
+        "E-1135",
+        "E-022",
         "E-113",
         "E-199",
         "E-201",
@@ -1131,12 +1132,15 @@
       "evidence": [
         "E-047",
         "E-215",
-        "E-303"
+        "E-303",
+        "E-1136"
       ],
       "blocker": "B-04",
-      "next": "Implementar telefonia com Tel-Agent apos auditar licenca do projeto de referencia",
+      "next": "A auditoria de licenca ESTA' FEITA (E-1136): o `Dpro-at/Tel-Agent` e' AGPL-3.0 e **nao pode ser incorporado** no HADES (MIT). Decisao do dono entre tres caminhos: (a) usar o Tel-Agent apenas como REFERENCIA CONCEPTUAL (SIP -> agente, sem copiar codigo); (b) implementar telefonia propria sobre bibliotecas de licenca compativel (a verificar por biblioteca, nao por produto); (c) adquirir a licenca comercial da Dpro GmbH. Ate' essa decisao, a telefonia real continua AUSENTE.",
       "execution": "BLOCKED_BY_EXTERNAL_DEPENDENCY",
-      "done": "VOZ E TELEFONIA (E-215): sessao de tel-agent e contrato de voz no nucleo. MEDIDO: 13 testes PASS no filtro 'TelAgent|Voice'. LACUNA DECLARADA: telefonia com provedor real e auditoria de licenca do Tel-Agent - BLOCKED_BY_EXTERNAL_DEPENDENCY (B-04). CHAMADA ATIVA COM PORTOES (E-303): MEDIDO que nao havia NENHUM conceito de chamada ativa - o Hades ligar para alguem, o efeito externo de maior risco do estagio, nao tinha portao. Implementado VoiceActiveCallStore com finalidade autorizada, contato elegivel (pelo ConsentRegistry existente) e aprovacao humana, mais teto por janela e registro auditavel. ProviderExecutedAt fica nil de proposito. A telefonia REAL segue BLOCKED_BY_EXTERNAL_DEPENDENCY (provedor/numero/credencial)."
+      "done": "VOZ E TELEFONIA (E-215): sessao de tel-agent e contrato de voz no nucleo. MEDIDO: 13 testes PASS no filtro 'TelAgent|Voice'. LACUNA DECLARADA: telefonia com provedor real e auditoria de licenca do Tel-Agent - BLOCKED_BY_EXTERNAL_DEPENDENCY (B-04). CHAMADA ATIVA COM PORTOES (E-303): MEDIDO que nao havia NENHUM conceito de chamada ativa - o Hades ligar para alguem, o efeito externo de maior risco do estagio, nao tinha portao. Implementado VoiceActiveCallStore com finalidade autorizada, contato elegivel (pelo ConsentRegistry existente) e aprovacao humana, mais teto por janela e registro auditavel. ProviderExecutedAt fica nil de proposito. A telefonia REAL segue BLOCKED_BY_EXTERNAL_DEPENDENCY (provedor/numero/credencial).",
+      "blocked_reason": "AGPL-3.0 incompativel com MIT: incorporar codigo do Tel-Agent obrigaria a publicar o HADES inteiro sob AGPL. Bloqueio de LICENCA, nao de credencial.",
+      "external_dependency": false
     },
     {
       "id": 38,
@@ -2867,8 +2871,8 @@
     },
     "evidence": "E-173"
   },
-  "measured_at": "2026-10-17T17:53:32-03:00",
-  "measured_commit": "818251093bda8c1ba62acd15784ac3d92bfc7da3",
+  "measured_at": "2026-10-17T18:30:23-03:00",
+  "measured_commit": "564e04f4a4e6887b7d2eb41ad50b020608b6cc46",
   "branch_head_measured": "f1a6c261b",
   "branch_head_measured_at": "2026-10-15T10:30:00-03:00",
   "branch_head_measured_how": "git rev-parse HEAD no checkout local (branch fix/checker-relogio), medido no round 54. DIVERGENCIA DECLARADA: measured_commit continua a ser a ultima MEDICAO COMPLETA (e423ec72e); o head avancou com as fatias do complemento 48 (sala: dominio, rotas HTTP, cliente, componente, painel e tela) e com checkpoints. Nao se reescreveu a historia e nao se reivindica nova medicao completa. NOTA DE CONCORRENCIA: este arquivo tambem e escrito por outro agente (o measured_how seguinte cita HEAD 1065e5c56 / E-518-E-519) - editar sempre por ancora unica e re-ler antes de gravar.",
