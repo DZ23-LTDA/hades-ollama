@@ -43,6 +43,8 @@ que passam: *quem os corre é o auditor, e o resultado é do estado em que ele o
 | 33 | testes da ligacao (4 injecoes + contraprova, numa COPIA) |
 | 34 | DOCUMENTACAO do Companion: os 8 estados, o mapa para os 14, e as limitacoes |
 | 35 | fault injection da catraca da documentacao (4 injecoes + contraprova) |
+| 36 | CADEIA de requisitos: REQ-ID -> arquivo:linha -> teste -> comando -> resultado |
+| 37 | fault injection da cadeia de requisitos (2 injecoes + contraprova) |
 
 ## Como correr a bateria completa
 

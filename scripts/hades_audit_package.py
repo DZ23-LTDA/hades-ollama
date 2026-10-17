@@ -63,6 +63,7 @@ ARTEFATOS_DECLARADOS = [
     "dist/windows-ollama-app-amd64.exe",
     "dist/Hades-0.2.0-linux-amd64-unsigned.tar.gz",
     "dist/hades-linux-amd64-unsigned.tar.gz",
+    "docs/audit/REQUISITOS.csv",
 ]
 
 # **O que este pacote NAO prova** -- escrito a mao porque e' uma decisao, nao uma medicao.

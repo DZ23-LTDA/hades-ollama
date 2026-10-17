@@ -663,4 +663,28 @@ if ($LASTEXITCODE -ne 0) {
   '    FALHA'
 } else { '    OK' }
 $passos += 'doc-companion-testes'
+
+''
+# E-1091: a CADEIA DE RASTREABILIDADE (§FASE-7 item 4). *Para cada requisito activo:
+# `REQ-ID -> arquivo:linha -> teste -> comando -> resultado -> plataforma -> commit -> artefacto ->
+# decisao`.* => *o gerador verifica CADA campo no codigo; um requisito cuja prova nao existe fica
+# `AUSENTE` e o `--check` FALHA.*
+'--- 36. CADEIA de requisitos: REQ-ID -> arquivo:linha -> teste -> comando -> resultado'
+$saidaReq = & python -X utf8 scripts/hades_requisitos.py --check 2>&1
+$saidaReq | Select-Object -Last 2 | ForEach-Object { "    " + $_.ToString().Substring(0, [Math]::Min(110, $_.ToString().Length)) }
+if ($LASTEXITCODE -ne 0) {
+  $falhas.Add("hades_requisitos.py --check (exit $LASTEXITCODE)")
+  '    FALHA'
+} else { '    OK' }
+$passos += 'requisitos'
+
+''
+'--- 37. fault injection da cadeia de requisitos (2 injecoes + contraprova)'
+$saidaReqT = & python -X utf8 scripts/hades_requisitos_test.py 2>&1
+$saidaReqT | Select-Object -Last 2 | ForEach-Object { "    " + $_.ToString().Substring(0, [Math]::Min(110, $_.ToString().Length)) }
+if ($LASTEXITCODE -ne 0) {
+  $falhas.Add("hades_requisitos_test.py (exit $LASTEXITCODE)")
+  '    FALHA'
+} else { '    OK' }
+$passos += 'requisitos-testes'
 "GATES LOCAIS: $($passos -join ' + ') VERDES"
