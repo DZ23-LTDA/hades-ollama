@@ -11,18 +11,18 @@
 > modificados** com **24** ocorrencias de marca que **nao existem no commit**, e o inventario
 > divergia entre a minha maquina e o CI. => *um instrumento que mede o disco mede **tambem o
 > trabalho nao commitado** -- e publica um numero que so' e' verdadeiro onde foi gerado.*
-> Origens medidas neste snapshot: `HEAD (sujo no disco)`: 14, `disco (limpo)`: 2498.
+> Origens medidas neste snapshot: `HEAD (sujo no disco)`: 12, `disco (limpo)`: 2500.
 
 | String | Ocorrencias |
 | --- | --- |
 | **Hades/HADES** (canonica) | **1121** |
-| DZ23 Agentic | 235 |
-| Ollama Full | 172 |
-| Ollama Classe A+ | 95 |
-| Ollama DZ23 | 51 |
+| DZ23 Agentic | 243 |
+| Ollama Full | 175 |
+| Ollama Classe A+ | 97 |
+| Ollama DZ23 | 58 |
 
-**Legadas somadas:** 553 ocorrencias
-(250 em ficheiros **migraveis**, 303 em ficheiros de **excecao**).
+**Legadas somadas:** 573 ocorrencias
+(257 em ficheiros **migraveis**, 316 em ficheiros de **excecao**).
 
 *O total **nao** decide: os mesmos numeros distribuem-se por sitios de tipos muito
 diferentes, e e' o sitio que decide.* Um ``README`` migra; um `bundle ID` nao.
@@ -46,7 +46,6 @@ hoje** e **falso sobre o que foi medido**.*
 | `app/ollama.iss` | **instalador** | Nome do artefacto do instalador (Inno Setup). E' o ficheiro que o utilizador procura e que o desinstalador usa para se remover. | So' com migracao de artefacto + registo de desinstalacao da versao antiga. |
 | `scripts/dz23-configure.ps1` | **env var** | Escreve variaveis de ambiente. Um nome novo nao e' lido por configuracoes existentes. | Aceitar os dois nomes em leitura durante uma janela de transicao. |
 | `internal/multillm/credentials.go` | **credencial** | Codigo que resolve chaves de credencial por nome. Renomear muda a chave armazenada. | Alias de leitura + migracao do armazenamento, com rollback. |
-| `apps/mobile-agentic/app.json` | **bundle id** | Bundle ID / slug da app. Muda-lo **quebra a app ja' instalada** e a atualizacao pela loja. | Decisao do proprietario: nova app na loja, ou manter o id para sempre. |
 | `app/ui/connectors_test.go` | **teste** | Teste que depende do codigo de conetores; o texto legado esta' no dado de teste, nao na interface. | Acopla-se a' renomeacao do codigo que ele testa. |
 | `docs/evidencias/` | **historico** | Artefactos de medicao (auditorias de consola). Sao **registos**, nao documentos de marca. | Nao se desbloqueia: preserva-se. |
 | `docs/mission/HADES_EVIDENCE_INDEX.md` | **historico** | Indice de evidencias: cita os nomes que os artefactos **tinham** quando foram medidos. Reescreve-lo tornaria o indice **falso** sobre o que foi medido. | Nao se desbloqueia: a evidencia nao se reescreve (§FASE-7 item 1). |
@@ -60,19 +59,19 @@ hoje** e **falso sobre o que foi medido**.*
 | `docs/agentic/READINESS_2026-09-22.md` | 18 | migravel |
 | `scripts/hades_brand_inventory.py` | 18 | migravel |
 | `docs/agentic/PRODUCT_TREE.md` | 10 | migravel |
+| `docs/mission/HADES_NEXT_ACTION.md` | 10 | migravel |
 | `docs/OLLAMA_FULL_PRODUCT_VISION.md` | 9 | migravel |
 | `docs/agentic/PARITY_MATRIX.md` | 9 | migravel |
 | `docs/agentic/INTEGRATIONS.md` | 8 | migravel |
+| `docs/mission/HADES_PENDING_WORK.md` | 8 | migravel |
 | `CHANGELOG.md` | 7 | migravel |
-| `docs/mission/HADES_PENDING_WORK.md` | 7 | migravel |
 | `apps/mobile-agentic/MIGRACAO_MARCA.md` | 6 | migravel |
 | `docs/RELEASE_READINESS.md` | 6 | migravel |
 | `docs/agentic/HARNESSROUTER.md` | 6 | migravel |
 | `docs/mission/HADES_MASTER_STATE.json` | 6 | migravel |
 | `docs/agentic/ROADMAP.md` | 5 | migravel |
-| `docs/mission/HADES_NEXT_ACTION.md` | 5 | migravel |
+| `docs/mission/HADES_HANDOFF.md` | 5 | migravel |
 | `docs/agentic/XAI_GROK.md` | 4 | migravel |
-| `docs/mission/HADES_HANDOFF.md` | 4 | migravel |
 | `scripts/install.ps1` | 4 | migravel |
 | `UPSTREAM_POLICY.md` | 3 | migravel |
 | `docs/agentic/ARCHITECTURE.md` | 3 | migravel |
@@ -125,7 +124,7 @@ hoje** e **falso sobre o que foi medido**.*
 
 | Ficheiro | Legadas | Categoria |
 | --- | --- | --- |
-| `docs/mission/HADES_EVIDENCE_INDEX.md` | 140 | excecao:historico |
+| `docs/mission/HADES_EVIDENCE_INDEX.md` | 153 | excecao:historico |
 | `audit/AUTONOMOUS_MISSION_STATE.md` | 32 | excecao:historico |
 | `audit/OLLAMA_FULL_MISSION_STATE.md` | 27 | excecao:historico |
 | `docs/evidencias/browser-console-audit-f12.json` | 16 | excecao:historico |
@@ -152,7 +151,7 @@ hoje** e **falso sobre o que foi medido**.*
 | `audit/auditoria.md` | 1 | excecao:historico |
 | `docs/evidencias/browser-console-audit-audfix2.json` | 1 | excecao:historico |
 
-**Por tipo de excecao:** credencial: 3, env var: 4, historico: 285, instalador: 9, teste: 2
+**Por tipo de excecao:** credencial: 3, env var: 4, historico: 298, instalador: 9, teste: 2
 
 ## 6. O que este documento **nao** faz
 

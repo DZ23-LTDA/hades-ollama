@@ -140,13 +140,6 @@ EXCECOES = (
         "desbloqueio": "Alias de leitura + migracao do armazenamento, com rollback.",
     },
     {
-        "caminho": "apps/mobile-agentic/app.json",
-        "razao": "Bundle ID / slug da app. Muda-lo **quebra a app ja' instalada** e a "
-                 "atualizacao pela loja.",
-        "tipo": "bundle id",
-        "desbloqueio": "Decisao do proprietario: nova app na loja, ou manter o id para sempre.",
-    },
-    {
         "caminho": "app/ui/connectors_test.go",
         "razao": "Teste que depende do codigo de conetores; o texto legado esta' no dado de "
                  "teste, nao na interface.",
