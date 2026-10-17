@@ -75,6 +75,8 @@ que passam: *quem os corre é o auditor, e o resultado é do estado em que ele o
 | 65 | fault injection da estabilidade (3 injecoes + contraprova) |
 | 66 | MATRIZ COMPETITIVA: cobertura obrigatoria e nenhuma vitoria sem prova |
 | 67 | fault injection da matriz competitiva (3 injecoes + contraprova) |
+| 68 | RASTREABILIDADE: a evidencia perdida marcada, e nenhum requisito dependente dela |
+| 69 | fault injection da rastreabilidade (3 injecoes + contraprova) |
 
 ## Como correr a bateria completa
 

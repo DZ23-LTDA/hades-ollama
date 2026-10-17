@@ -1064,4 +1064,28 @@ if ($LASTEXITCODE -ne 0) {
 } else { '    OK' }
 $passos += 'matriz-injecoes'
 
+
+''
+# E-1110: a FASE 7 (rastreabilidade sem inventar historia). *A faixa `E-571..E-777` declarada, os 12 IDs
+# citados marcados `EVIDENCE_LOST_HISTORICAL` com alcance e impacto, os placeholders separados, nenhum
+# requisito ativo dependente de ID perdido, e o pacote de auditoria completo.*
+'--- 68. RASTREABILIDADE: a evidencia perdida marcada, e nenhum requisito dependente dela'
+$saidaTrace = & python -X utf8 scripts/hades_traceability_check.py 2>&1
+$saidaTrace | Select-Object -Last 3 | ForEach-Object { "    " + $_.ToString().Substring(0, [Math]::Min(110, $_.ToString().Length)) }
+if ($LASTEXITCODE -ne 0) {
+  $falhas.Add("hades_traceability_check.py (exit $LASTEXITCODE)")
+  '    FALHA'
+} else { '    OK' }
+$passos += 'rastreabilidade'
+
+''
+'--- 69. fault injection da rastreabilidade (3 injecoes + contraprova)'
+$saidaTraceT = & python -X utf8 scripts/hades_traceability_check_test.py 2>&1
+$saidaTraceT | Select-Object -Last 2 | ForEach-Object { "    " + $_.ToString().Substring(0, [Math]::Min(110, $_.ToString().Length)) }
+if ($LASTEXITCODE -ne 0) {
+  $falhas.Add("hades_traceability_check_test.py (exit $LASTEXITCODE)")
+  '    FALHA'
+} else { '    OK' }
+$passos += 'rastreabilidade-injecoes'
+
 "GATES LOCAIS: $($passos -join ' + ') VERDES"
