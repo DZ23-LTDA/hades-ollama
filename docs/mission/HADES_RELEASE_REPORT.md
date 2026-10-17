@@ -8,15 +8,15 @@
 
 | Número | Valor |
 | --- | --- |
-| **Commit medido** (`measured_commit`) | `564e04f4a4e6887b7d2eb41ad50b020608b6cc46` |
+| **Commit medido** (`measured_commit`) | `e7b6610ff39a8cc2844a3da1d352e3533b17d0e6` |
 | **Commit da `main`** (`git.main_sha`) | `4b3e21854` |
-| **Gerado em** (`measured_at`) | 2026-10-17T18:30:23-03:00 |
-| **Snapshot real** (`gate_head`) | `564e04f4a4e6887b7d2eb41ad50b020608b6cc46` |
+| **Gerado em** (`measured_at`) | 2026-10-17T18:31:29-03:00 |
+| **Snapshot real** (`gate_head`) | `e7b6610ff39a8cc2844a3da1d352e3533b17d0e6` |
 | **Ramo do snapshot** (`gate_branch`) | `fix/checker-relogio` |
 | **Entradas nao commitadas** (`gate_dirty`) | 3 |
 | **O gate prova o snapshot candidato?** (`gate_snapshot`) | **MESMO** |
 | Estágios | 38 |
-| Linhas de evidência no índice | 929 |
+| Linhas de evidência no índice | 930 |
 | `COMPLETED_VERIFIED` | 14 |
 | `IN_PROGRESS` | 3 |
 | `BLOCKED_BY_EXTERNAL_DEPENDENCY` | 21 |
@@ -82,7 +82,7 @@ relatório **declara a ausência** em vez de preencher com suposição.
 | 34 | Canal WhatsApp | PARCIAL | BLOCKED_BY_EXTERNAL_DEPENDENCY | B-03 | E-045, E-105, E-141, E-170, E-171, E-172, E-174, E-175, E-176, E-177, E-230, E-298, E-299 |
 | 35 | Inbox unificado omnicanal | PARCIAL | BLOCKED_BY_EXTERNAL_DEPENDENCY | B-03 | E-047, E-106, E-144, E-145, E-146, E-147, E-148, E-149, E-150, E-151, E-152, E-153, E-154, E-155, E-156, E-157, E-158, E… |
 | 36 | Voz e transcricao | AUSENTE | BLOCKED_BY_EXTERNAL_DEPENDENCY | B-04 | E-047, E-215, E-302, E-307 |
-| 37 | Chamadas e follow-up | AUSENTE | BLOCKED_BY_EXTERNAL_DEPENDENCY | B-04 | E-047, E-215, E-303, E-1136 |
+| 37 | Chamadas e follow-up | AUSENTE | BLOCKED_BY_EXTERNAL_DEPENDENCY | B-04 | E-047, E-215, E-303, E-1136, E-1137 |
 | 38 | Gate final de release verificado | PARCIAL | BLOCKED_BY_EXTERNAL_DEPENDENCY | B-06 | E-033, E-048, E-087, E-109, E-112, E-304, E-305, E-308 |
 
 Procedimento de desbloqueio de cada bloqueio externo está em
@@ -97,7 +97,7 @@ possível sem ele**.
 
 ## Referências
 
-- Índice de evidências: [`HADES_EVIDENCE_INDEX.md`](HADES_EVIDENCE_INDEX.md) (929 linhas).
+- Índice de evidências: [`HADES_EVIDENCE_INDEX.md`](HADES_EVIDENCE_INDEX.md) (930 linhas).
 - Estado da missão: [`HADES_MASTER_STATE.json`](HADES_MASTER_STATE.json).
 - Gate global: [`HADES_FINAL_RELEASE_GATE.md`](HADES_FINAL_RELEASE_GATE.md).
 - Gate intermediário de engenharia (estágio 22): [`HADES_ENGINEERING_GATE.md`](HADES_ENGINEERING_GATE.md).
