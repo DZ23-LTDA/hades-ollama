@@ -55,6 +55,8 @@ que passam: *quem os corre é o auditor, e o resultado é do estado em que ele o
 | 45 | o gate DECLARA o snapshot (MESMO ou a distancia), sem esconder a diferenca |
 | 46 | HARNESS: as 7 capacidades, cancelamento entre instancias, Ollama, e o CLI com sonda opt-in |
 | 47 | fault injection do harness (3 injecoes + contraprova) |
+| 48 | AGENTES: swarm com limite aplicado, orcamento, isolamento, artefactos e HITL |
+| 49 | fault injection dos agentes (3 injecoes + contraprova) |
 
 ## Como correr a bateria completa
 

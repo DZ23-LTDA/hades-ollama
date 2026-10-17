@@ -810,4 +810,28 @@ if ($LASTEXITCODE -ne 0) {
 } else { '    OK' }
 $passos += 'harness-testes'
 
+
+''
+# E-1099: o §ESTAGIO 9 (Agentes e subagentes). *O swarm com o `MaxAgents` APLICADO (semaforo), o orcamento
+# de 4 limites, o custo por passo ligado ao motor, o isolamento de worktree, os artefactos reais, e o HITL
+# com recusa por omissao.*
+'--- 48. AGENTES: swarm com limite aplicado, orcamento, isolamento, artefactos e HITL'
+$saidaAg = & python -X utf8 scripts/hades_agents_check.py 2>&1
+$saidaAg | Select-Object -Last 2 | ForEach-Object { "    " + $_.ToString().Substring(0, [Math]::Min(110, $_.ToString().Length)) }
+if ($LASTEXITCODE -ne 0) {
+  $falhas.Add("hades_agents_check.py (exit $LASTEXITCODE)")
+  '    FALHA'
+} else { '    OK' }
+$passos += 'agentes'
+
+''
+'--- 49. fault injection dos agentes (3 injecoes + contraprova)'
+$saidaAgT = & python -X utf8 scripts/hades_agents_check_test.py 2>&1
+$saidaAgT | Select-Object -Last 2 | ForEach-Object { "    " + $_.ToString().Substring(0, [Math]::Min(110, $_.ToString().Length)) }
+if ($LASTEXITCODE -ne 0) {
+  $falhas.Add("hades_agents_check_test.py (exit $LASTEXITCODE)")
+  '    FALHA'
+} else { '    OK' }
+$passos += 'agentes-testes'
+
 "GATES LOCAIS: $($passos -join ' + ') VERDES"
