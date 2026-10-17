@@ -22,7 +22,12 @@ func TestCompanionRouteReportsHonestState(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	workspace := t.TempDir()
 	store := agent.NewMemoryStore()
-	runtime, err := agent.NewRuntime(agent.RuntimeConfig{Store: store, Planner: agent.RulePlanner{}, WorkspaceRoot: workspace})
+	// ***E-1087: o `DataRoot` e' TEMPORARIO.*** *Sem ele, o `NewRuntime` resolve
+	// para o `%APPDATA%` real do utilizador (`resolveRuntimeDataRoot`), e o teste
+	// **escreve na maquina** -- medido aqui: `mkdir ...\ollama-agent\<hash>: Acesso negado`
+	// num ambiente confinado, enquanto no CI (sem confinamento) passa.* => *um teste que
+	// depende de onde corre nao testa o que diz testar.*
+	runtime, err := agent.NewRuntime(agent.RuntimeConfig{Store: store, Planner: agent.RulePlanner{}, WorkspaceRoot: workspace, DataRoot: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}
