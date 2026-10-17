@@ -1797,3 +1797,30 @@ e `VERSION`, construído **sem bash e sem compilador C**.
 - **Firefox** e **Safari**; sem `.crx`, sem SBOM do pacote;
 - **`CAPACIDADES` VAZIO**: o Companion **não** controla o PC;
 - **macOS, Android e iOS continuam por produzir** neste candidato.
+
+### O que falta (actualizado na janela `E-1061`)
+
+**Fechado**: o **service worker** com escopo honesto — `/api/*` network-only, cache do shell
+e dos assets, limpeza de versões antigas. **8 testes + contraprova de 3 defeitos.**
+
+**Continua em falta, sem disfarce**:
+- ***`INSTALADO_EM_BROWSER=NAO`*** -- o SW **nunca foi instalado num browser real**;
+- ***`E2E_EM_BROWSER_REAL=NAO`*** -- os 8 testes usam `caches` **simulado**:
+  *«um teste com `caches` simulado prova a lógica; não prova a instalação»*;
+- ***`OFFLINE=PARCIAL`*** -- o shell abre offline; o chat, as missões e as aprovações **não**,
+  e a página offline di-lo;
+- **sem teste de upgrade entre versões reais do SW** -- só a limpeza;
+- **não medi** `prefers-reduced-motion`, memória, CPU nem bateria do SW;
+- **a comparação externa continua `NAO_EXECUTADA`**;
+- **`55327160c` e `cda756f82` continuam VERMELHOS** -- pelo ritmo de push, não por defeito;
+- **decisão do proprietário em aberto**: distinguir «cancelado pelo push» de «cancelado
+  por falha» no `pr-gate` **toca a política do gate**;
+- **N=3 por fixture** na repetição: contagem, não probabilidade;
+- **as 14 threads do PR continuam abertas** -- não resolvi nenhuma (proibido);
+- **o encaixe da aprovação continua por ligar** (`E-1044`);
+- **shadow roots fechados**, **cross-origin**: como no `E-1040`; **BFCache** sem execução
+  observada (`E-1038`);
+- **o Chrome real do utilizador**: a versão 155 **não carrega** por `--load-extension`;
+- **Firefox** e **Safari**; sem `.crx`, sem SBOM do pacote;
+- **`CAPACIDADES` VAZIO**: o Companion **não** controla o PC;
+- **macOS, Android e iOS continuam por produzir** neste candidato.

@@ -1795,3 +1795,48 @@ macOS/iOS `BLOCKED_EXTERNAL` pela **maquina**.
 **Doutrina em uma linha**: um caminho escrito a mao e' uma promessa; o `git show HEAD:`
 separa defeito de regressao; e um build que passa o orcamento mede o peso, nao a
 instalabilidade.
+
+### Instrucoes de retomada (janela `E-1061`)
+
+**Estado**: branch `fix/checker-relogio`; cabeca do indice `E-1061`; PR #438 **aberto** e
+**nao tocado** -- *as 14 threads continuam como estavam*; `reviewDecision` **vazio**.
+
+**REGRA DE PUSH -- OBRIGATORIA, E JA' VALIDADA** (onze 6/6 consecutivos):
+  1. commit local -> 2. ESPERAR o SHA remoto fechar com `failure=0` -> 3. `git push`.
+
+**O SERVICE WORKER** (`E-1061`) -- 3 ficheiros novos:
+  app/ui/app/public/sw.js                          7 585 bytes
+  app/ui/app/src/lib/registarServiceWorker.ts      registo, SO' em PROD
+  app/ui/app/src/lib/registarServiceWorker.test.ts 8 testes
+  app/ui/app/src/main.tsx                          +import +chamada (depois do render)
+
+**A REGRA QUE O `sw.js` IMPOE A SI PROPRIO**: `/api/*` e' **network-only, sem excepcao**.
+  - `/api/chat` do cache = resposta de outro momento como se fosse agora;
+  - `/api/approvals` do cache = **um aprovador que ninguem autorizou**;
+  - POST/PUT/DELETE do cache = accao que **nao aconteceu** e o utilizador julga que sim.
+  => *Offline, o HADES mostra o shell e diz que esta' offline -- nao inventa um servidor.*
+
+**COMO TESTAR E PROVAR QUE O TESTE DISCRIMINA**:
+  cd app/ui/app && npx vitest run src/lib/registarServiceWorker.test.ts   => 8 passed
+  python -X utf8 _tmp/contraprova_sw.py                                   => CONTRAPROVA OK
+  *A contraprova injeta 3 defeitos (guarda de /api/, guarda de metodo, caches.delete) e
+  exige que o teste fique VERMELHO nos tres. Se ficasse verde, o teste era decoracao.*
+
+**SUITE COMPLETA DO APP**: `npx vitest run` => **111 ficheiros, 738 testes, 0 falhas**
+(7,13 s).
+
+**O QUE FALTA, MEDIDO**: `INSTALADO_EM_BROWSER=NAO` e `E2E_EM_BROWSER_REAL=NAO` -- o SW
+nunca correu num browser; `OFFLINE=PARCIAL` (shell sim, dados nao); sem teste de upgrade
+entre versoes reais; sem medicao de memoria/CPU/bateria do SW.
+
+**O ESTADO DAS PLATAFORMAS**: Windows/amd64 -> portatil **e** instalador (`E-1057`/
+`E-1058`), nao assinados, nao instalados. Linux/amd64 -> tarball **instalavel** (`E-1059`),
+binario de `9f7379502b1d`. **Web/PWA** -> build PASS (`E-1060`), icones 3/3 (`E-1060`),
+**service worker** (`E-1061`), mas **sem E2E num browser**. macOS/Android/iOS -> por produzir.
+
+**O que NAO fazer**: `reset --hard`, `git clean`, rebase destrutivo, force-push, stash,
+`merge`, tag, release, publicacao externa, ou **resolver threads** do PR #438.
+
+**Doutrina em uma linha**: um cache que responde por uma aprovacao e' um aprovador a mais;
+a contraprova e' o que separa um teste de uma decoracao; e offline e' um extra -- abrir e'
+o requisito.

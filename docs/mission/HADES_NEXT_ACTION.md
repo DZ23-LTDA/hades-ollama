@@ -962,3 +962,24 @@ sem offline, sem instalação completa**. ⇒ **`PWA_INSTALAVEL=PARCIAL`**.
 offline. Mas **offline honesto** exige decidir o que cachear (e o que **não** cachear: o
 chat e as aprovações não podem vir de cache). Desenhar o escopo mínimo — shell + assets
 estáticos, **nunca** respostas de API — e implementar. **E esperar as runs antes do push.**
+
+### A proxima accao unica (janela `E-1061`)
+
+**O service worker existe** — e a **API nunca entra no cache**, por desenho e por teste.
+
+⇒ ***«Um cache que responde por uma aprovação é um aprovador a mais.»***
+
+`/api/*` é **network-only, sem excepção**: servir `/api/chat` do cache devolveria uma
+resposta de outro momento como se fosse agora; uma aprovação do cache poderia autorizar
+uma acção que já não está pendente.
+
+**8 testes** e **contraprova com 3 defeitos injetados**: remover a guarda de `/api/` ⇒
+**vermelho**; remover a guarda de método ⇒ **vermelho**; remover o `caches.delete` ⇒
+**vermelho**; restaurar ⇒ **verde**.
+⇒ ***«A contraprova é o que separa um teste de uma decoração.»***
+
+**Suite completa**: **111 ficheiros, 738 testes, 0 falhas.**
+
+**A proxima accao unica**: **E2E num browser real** — o service worker existe mas
+**nunca foi instalado num browser**. Isso exige um servidor de produção (`vite preview`)
+e um browser real; o Playwright está instalado. E **esperar as runs antes do push.**

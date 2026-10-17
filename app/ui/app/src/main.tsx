@@ -7,6 +7,7 @@ import { fetchUser } from "./api";
 import { StreamingProvider } from "./contexts/StreamingProvider";
 import { ConfirmHost } from "./lib/confirmDialog";
 import { bootstrapTheme } from "./lib/theme";
+import { registarServiceWorker } from "./lib/registarServiceWorker";
 
 // Aplica a preferência de tema salva (Claro/Escuro/Automático) antes do render.
 bootstrapTheme();
@@ -55,4 +56,7 @@ if (!rootElement.innerHTML) {
       </QueryClientProvider>
     </StrictMode>,
   );
+  // E-1061: o service worker regista-se DEPOIS do render -- *offline e' um extra; abrir
+  // e' o requisito.* Em desenvolvimento nem tenta (ver `registarServiceWorker`).
+  registarServiceWorker();
 }
