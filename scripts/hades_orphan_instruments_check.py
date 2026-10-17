@@ -64,7 +64,6 @@ ISENTOS = {
     "hades_tenant_scope_fixture_subpasta.py": "fixture gerada por teste; nao e' executavel por si",
     # *Geradores/ferramentas de manutencao, e nao gates:* escrevem artefato, nao medem estado.
     "dz23_provider_smoke.py": "sonda opt-in de provedor; exige credencial (BLOCKED_EXTERNAL)",
-    "hades_sync_state_metadata.py": "sincroniza metadados; ferramenta de manutencao, nao gate",
     "hades_third_party_notices.py": "gera THIRD_PARTY_NOTICES.md; chamado pelo FASE-5, e nao por gate",
     "hades_checkers_autoteste_controle.py": "controle negativo do autoteste; roda junto com ele",
     "hades_scope_contraprova_obsoletas.py": "contraprova pontual do E-256; ferramenta de auditoria",

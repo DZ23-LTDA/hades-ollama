@@ -758,4 +758,32 @@ if ($LASTEXITCODE -ne 0) {
   '    FALHA'
 } else { '    OK' }
 $passos += 'ux-onboarding-testes'
+
+''
+# E-1096: o §ESTAGIO 22 item 1 -- *«transformar o gate em prova do mesmo snapshot candidato»*.
+# => *o `measured_commit` do estado tem de ser o HEAD **antes** de os derivados serem gerados; senao o
+# `gate_snapshot` declara DIVERGENTE e o gate cita um commit de ontem (o defeito do E-987).*
+# => *e corre como **GERADOR**, nao como check: exigir `MESMO` no `--check` faria o CI falhar sempre,
+# porque em `pull_request` o `HEAD` e' o **merge commit sintetico** (o E-993, ja' escrito no ficheiro).*
+'--- 44. SNAPSHOT: o `measured_commit` do estado e' o HEAD antes de gerar os derivados'
+$saidaSync = & python -X utf8 scripts/hades_sync_state_metadata.py 2>&1
+$saidaSync | Select-Object -Last 2 | ForEach-Object { "    " + $_.ToString().Substring(0, [Math]::Min(110, $_.ToString().Length)) }
+if ($LASTEXITCODE -ne 0) {
+  $falhas.Add("hades_sync_state_metadata.py (exit $LASTEXITCODE)")
+  '    FALHA'
+} else { '    OK' }
+$passos += 'snapshot'
+
+''
+'--- 45. o gate DECLARA o snapshot (MESMO ou a distancia), sem esconder a diferenca'
+$saidaSnap = & python -X utf8 scripts/hades_release_gate.py 2>&1
+$linhaSnap = Select-String -Path 'docs/mission/HADES_RELEASE_REPORT.md' -Pattern 'gate_snapshot' | Select-Object -First 1
+if ($linhaSnap) {
+  $txt = $linhaSnap.Line.Trim()
+  "    " + $txt.Substring(0, [Math]::Min(110, $txt.Length))
+  $passos += 'snapshot-declarado'
+} else {
+  $falhas.Add("o gate nao declara o gate_snapshot")
+  '    FALHA'
+}
 "GATES LOCAIS: $($passos -join ' + ') VERDES"

@@ -10,13 +10,13 @@
 
 | Campo | Valor |
 | --- | --- |
-| **Commit medido** (`measured_commit`) | `fbe1a235dc794aaebf65d82ab4a7cf226cbc2ccd` |
+| **Commit medido** (`measured_commit`) | `6d52f51d1cd7a47af76edf5aa3bc47418da889d9` |
 | **Commit da `main`** (`git.main_sha`) | `4b3e21854` |
-| **Gerado em** (`measured_at`) | 2026-10-15T14:19:33-03:00 |
-| **Snapshot real** (`gate_head`) | `131fc820eb77d6018db9669df1acbbd73ef6f050` |
+| **Gerado em** (`measured_at`) | 2026-10-17T07:55:26-03:00 |
+| **Snapshot real** (`gate_head`) | `6d52f51d1cd7a47af76edf5aa3bc47418da889d9` |
 | **Ramo do snapshot** (`gate_branch`) | `fix/checker-relogio` |
-| **Entradas nao commitadas** (`gate_dirty`) | 18 |
-| **O gate prova o snapshot candidato?** (`gate_snapshot`) | **DIVERGENTE** - 142 commits depois do `measured_commit` |
+| **Entradas nao commitadas** (`gate_dirty`) | 21 |
+| **O gate prova o snapshot candidato?** (`gate_snapshot`) | **MESMO** |
 
 *Dois campos, e não um: o `E-552` mediu que este derivado **não** citava commit nenhum, e que o
 `HADES_BASELINE_REPORT.md` citava **só** a `main` — *o que não está errado (*ele mede o baseline, e o baseline é da
