@@ -671,7 +671,10 @@ func TestRuntimeRequiresApprovalBeforeWritingAndBuildsArtifact(t *testing.T) {
 }
 
 func TestWorkspaceToolsRejectTraversal(t *testing.T) {
-	runtime, err := NewRuntime(RuntimeConfig{Store: NewMemoryStore(), Planner: RulePlanner{}, WorkspaceRoot: t.TempDir()})
+	// ***E-1094: o `DataRoot` e' TEMPORARIO.*** *Sem ele, o `NewRuntime` resolve para o `%APPDATA%`
+	// real do utilizador (`resolveRuntimeDataRoot`), e o teste **escreve na maquina** -- o mesmo
+	// defeito do `E-1087`/`E-1092`, noutro ficheiro.*
+	runtime, err := NewRuntime(RuntimeConfig{Store: NewMemoryStore(), Planner: RulePlanner{}, WorkspaceRoot: t.TempDir(), DataRoot: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}

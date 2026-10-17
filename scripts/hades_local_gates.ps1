@@ -712,4 +712,28 @@ if ($LASTEXITCODE -ne 0) {
   '    FALHA'
 } else { '    OK' }
 $passos += 't2-ambiente-testes'
+
+''
+# E-1094: a CATRACA dos testes NAO-HERMETICOS. *A mesma classe apareceu 3 vezes (E-1087 no companion,
+# E-1092 no Studio, E-1094 no runtime e no workspace): `NewRuntime` sem `DataRoot` => escreve no
+# `%APPDATA%` do utilizador => falha num processo confinado.* => *a catraca declara a divida (107) e
+# FALHA se o numero subir.*
+'--- 40. TESTES HERMETICOS: NewRuntime em testes sempre com DataRoot (divida declarada: 107)'
+$saidaH = & python -X utf8 scripts/hades_testes_hermeticos_check.py 2>&1
+$saidaH | Select-Object -Last 2 | ForEach-Object { "    " + $_.ToString().Substring(0, [Math]::Min(110, $_.ToString().Length)) }
+if ($LASTEXITCODE -ne 0) {
+  $falhas.Add("hades_testes_hermeticos_check.py (exit $LASTEXITCODE)")
+  '    FALHA'
+} else { '    OK' }
+$passos += 'testes-hermeticos'
+
+''
+'--- 41. fault injection da catraca dos testes hermeticos (injecao + 3 contraprovas)'
+$saidaHT = & python -X utf8 scripts/hades_testes_hermeticos_check_test.py 2>&1
+$saidaHT | Select-Object -Last 2 | ForEach-Object { "    " + $_.ToString().Substring(0, [Math]::Min(110, $_.ToString().Length)) }
+if ($LASTEXITCODE -ne 0) {
+  $falhas.Add("hades_testes_hermeticos_check_test.py (exit $LASTEXITCODE)")
+  '    FALHA'
+} else { '    OK' }
+$passos += 'testes-hermeticos-testes'
 "GATES LOCAIS: $($passos -join ' + ') VERDES"

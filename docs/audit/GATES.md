@@ -47,6 +47,8 @@ que passam: *quem os corre é o auditor, e o resultado é do estado em que ele o
 | 37 | fault injection da cadeia de requisitos (2 injecoes + contraprova) |
 | 38 | AMBIENTE do T2: hardware, SO, Ollama, modelos, lacunas e proveniencia |
 | 39 | fault injection do ambiente T2 (3 injecoes + contraprova) |
+| 40 | TESTES HERMETICOS: NewRuntime em testes sempre com DataRoot (divida declarada: 107) |
+| 41 | fault injection da catraca dos testes hermeticos (injecao + 3 contraprovas) |
 
 ## Como correr a bateria completa
 
