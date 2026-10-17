@@ -1,6 +1,7 @@
 # HADES — HANDOFF (como retomar a missão do zero)
 
-> **REMEDIACAO MAIS RECENTE: E-1131** -- *o gate local passa a correr o MESMO formatador que o CI (gofumpt), com --diff, e FALHA se o golangci-lint nao existir.*
+> **REMEDIACAO MAIS RECENTE: E-1133** -- *a cura das 760 linhas foi FALSA (acrescentei colunas em vez de curar) e foi REVERTIDA; a 2.a fatia e linha a linha.*
+
 
 
 
