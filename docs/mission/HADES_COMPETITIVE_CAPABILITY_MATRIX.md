@@ -111,7 +111,7 @@ um é passo obrigatório antes de qualquer integração.*
 | `CAP-D-06` | equipas/backlog/metas | OpenClaw Office, Paperclip | a confirmar | `PARTIAL` | `company_*` | — |
 | `CAP-D-07` | memória escopada (user/org/mission) | Dify, Continue | Apache | **`PARITY_MEASURED`** | tenant scope check | *o `E-967` **declarou** um ramo inalcançável* |
 | `CAP-D-08` | prevenção de órfãos/loops/deadlock | todos | várias | `IMPLEMENTED_UNMEASURED` | `§ANTILOOP` | *a cura do `E-968` é prova* |
-| `CAP-D-09` | visualização por eventos reais + pet | — | — | `PARTIAL` | `companion_*` | **a FASE 3-A fecha** |
+| `CAP-D-09` | visualização por eventos reais + pet | — | — | `PARTIAL` | `companion_*`, `E-1143` | **E2E real** (`E-1143`, 5 passed 54,9 s): o pet mostra o **estado REAL que o servidor declarou** (com o título do mapa da UI), expõe o mascote com **nome acessível** («não é só decoração»), e `accessibility.spec.ts` prova **zero violações** nas rotas críticas + teclado sem armadilha. **Lacuna**: o backend do teste é o fixture `companion-fixture.mjs` (declarado no spec, com isolamento por `Referer`), e de 14 estados do prompt o código tem 8 — os 6 ausentes têm razão escrita no `docs/COMPANION.md`. |
 | `CAP-D-10` | avaliação de contribuição / reexecução | Devin | proprietária | `PARTIAL` | `specialist_repair_loop` | — |
 
 ## 7. Domínio E — Modelos, roteamento e inferência soberana

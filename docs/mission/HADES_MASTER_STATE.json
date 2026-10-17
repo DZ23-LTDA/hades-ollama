@@ -2,7 +2,7 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-17T18:43:44-03:00",
+  "updated_at": "2026-10-17T18:48:09-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
@@ -641,7 +641,8 @@
         "E-1094",
         "E-027",
         "E-215",
-        "E-242"
+        "E-242",
+        "E-1143"
       ],
       "blocker": null,
       "next": "Exposicao da saida por etapa FECHADA (E-242). Restam como limites declarados: o bloco e recolhido por padrao (nao ha preferencia persistida do usuario) e a saida e exibida integralmente ate 4000 caracteres, sem renderizacao estruturada por tipo de ferramenta",
@@ -707,7 +708,8 @@
         "E-1138",
         "E-1140",
         "E-1141",
-        "E-1142"
+        "E-1142",
+        "E-1143"
       ],
       "blocker": null,
       "next": "ABERTO: a jornada roda contra backend de CONTRATO MINIMO, nao o binario completo servindo modelos; usuario automatizado (sem teste com pessoa real nem sessao de usabilidade observada); cobre a UI do shell, nao CLI nem desktop empacotado; e o pre-requisito de TEMP gravavel e do ambiente desta maquina",
@@ -2877,8 +2879,8 @@
     },
     "evidence": "E-173"
   },
-  "measured_at": "2026-10-17T18:43:44-03:00",
-  "measured_commit": "a671f6927209711e7bad441aa377747557ee4d0f",
+  "measured_at": "2026-10-17T18:48:09-03:00",
+  "measured_commit": "db89f9d9db23c26f4fc7106970777dba50346e65",
   "branch_head_measured": "f1a6c261b",
   "branch_head_measured_at": "2026-10-15T10:30:00-03:00",
   "branch_head_measured_how": "git rev-parse HEAD no checkout local (branch fix/checker-relogio), medido no round 54. DIVERGENCIA DECLARADA: measured_commit continua a ser a ultima MEDICAO COMPLETA (e423ec72e); o head avancou com as fatias do complemento 48 (sala: dominio, rotas HTTP, cliente, componente, painel e tela) e com checkpoints. Nao se reescreveu a historia e nao se reivindica nova medicao completa. NOTA DE CONCORRENCIA: este arquivo tambem e escrito por outro agente (o measured_how seguinte cita HEAD 1065e5c56 / E-518-E-519) - editar sempre por ancora unica e re-ler antes de gravar.",

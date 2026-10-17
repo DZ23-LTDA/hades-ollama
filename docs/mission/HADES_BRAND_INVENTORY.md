@@ -11,18 +11,18 @@
 > modificados** com **24** ocorrencias de marca que **nao existem no commit**, e o inventario
 > divergia entre a minha maquina e o CI. => *um instrumento que mede o disco mede **tambem o
 > trabalho nao commitado** -- e publica um numero que so' e' verdadeiro onde foi gerado.*
-> Origens medidas neste snapshot: `HEAD (sujo no disco)`: 6, `disco (limpo)`: 2579.
+> Origens medidas neste snapshot: `HEAD (sujo no disco)`: 6, `disco (limpo)`: 2578.
 
 | String | Ocorrencias |
 | --- | --- |
-| **Hades/HADES** (canonica) | **1196** |
+| **Hades/HADES** (canonica) | **1194** |
 | DZ23 Agentic | 252 |
-| Ollama Full | 178 |
-| Ollama Classe A+ | 100 |
+| Ollama Full | 177 |
+| Ollama Classe A+ | 99 |
 | Ollama DZ23 | 59 |
 
-**Legadas somadas:** 589 ocorrencias
-(264 em ficheiros **migraveis**, 325 em ficheiros de **excecao**).
+**Legadas somadas:** 587 ocorrencias
+(262 em ficheiros **migraveis**, 325 em ficheiros de **excecao**).
 
 *O total **nao** decide: os mesmos numeros distribuem-se por sitios de tipos muito
 diferentes, e e' o sitio que decide.* Um ``README`` migra; um `bundle ID` nao.
@@ -80,7 +80,6 @@ hoje** e **falso sobre o que foi medido**.*
 | `docs/dz23-multi-provider.md` | 3 | migravel |
 | `scripts/classify-ci-surfaces.py` | 3 | migravel |
 | `scripts/classify_ci_surfaces_test.py` | 3 | migravel |
-| `app/ui/app/_tmp_pw/playwright-transform-cache/5c/5c5320b188_ea63931_shellspec.js` | 2 | migravel |
 | `app/ui/app/e2e/shell.spec.ts` | 2 | migravel |
 | `apps/mobile-agentic/package-lock.json` | 2 | migravel |
 | `docs/BRANCH_PROTECTION.md` | 2 | migravel |
