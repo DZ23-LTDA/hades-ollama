@@ -1,5 +1,9 @@
 # HADES — PRONTIDÃO PARA O PRÓXIMO GOAL / RELEASE
 
+> ***AVISO (E-1100, §ESTAGIO 1 item 2): os comandos `git reset --hard` / `git clean` abaixo sao HISTORICOS e PROIBIDOS com WIP.***
+> *O §ANTILOOP e o prompt proibem-nos: «nao use `git reset --hard`, `git clean`, checkout restaurador, rebase destrutivo, force-push ou stash que esconda o estado»* => *seguir esta instrucao com trabalho nao commitado **apaga-o**. *Se precisar de recuperar, use `git stash create` (que nao esconde) ou trabalhe numa branch nova; **nunca** `reset --hard`.*
+
+
 ## 0. ESTADO MEDIDO — `main` `fafda19e7` (esta é a leitura canônica; não herde número de texto antigo)
 
 | Medida | Valor medido |

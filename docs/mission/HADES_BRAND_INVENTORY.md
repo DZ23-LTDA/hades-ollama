@@ -11,18 +11,18 @@
 > modificados** com **24** ocorrencias de marca que **nao existem no commit**, e o inventario
 > divergia entre a minha maquina e o CI. => *um instrumento que mede o disco mede **tambem o
 > trabalho nao commitado** -- e publica um numero que so' e' verdadeiro onde foi gerado.*
-> Origens medidas neste snapshot: `HEAD (sujo no disco)`: 13, `disco (limpo)`: 2530.
+> Origens medidas neste snapshot: `HEAD (sujo no disco)`: 17, `disco (limpo)`: 2530.
 
 | String | Ocorrencias |
 | --- | --- |
-| **Hades/HADES** (canonica) | **1138** |
-| DZ23 Agentic | 246 |
+| **Hades/HADES** (canonica) | **1141** |
+| DZ23 Agentic | 247 |
 | Ollama Full | 176 |
 | Ollama Classe A+ | 98 |
 | Ollama DZ23 | 59 |
 
-**Legadas somadas:** 579 ocorrencias
-(258 em ficheiros **migraveis**, 321 em ficheiros de **excecao**).
+**Legadas somadas:** 580 ocorrencias
+(259 em ficheiros **migraveis**, 321 em ficheiros de **excecao**).
 
 *O total **nao** decide: os mesmos numeros distribuem-se por sitios de tipos muito
 diferentes, e e' o sitio que decide.* Um ``README`` migra; um `bundle ID` nao.
@@ -108,6 +108,7 @@ hoje** e **falso sobre o que foi medido**.*
 | `docs/images/mockups/MOCKUP_NOTES.md` | 1 | migravel |
 | `docs/mission/HADES_ADAPTIVE_COWORK_GAP_MATRIX.md` | 1 | migravel |
 | `docs/mission/HADES_FAILURE_INDEX.md` | 1 | migravel |
+| `docs/mission/HADES_PLATFORM_MATRIX.md` | 1 | migravel |
 | `docs/mission/HADES_STAGE_19_ONBOARDING_E2E.md` | 1 | migravel |
 | `docs/superpowers/plans/2026-10-03-custom-ai-providers.md` | 1 | migravel |
 | `internal/agent/company_test.go` | 1 | migravel |

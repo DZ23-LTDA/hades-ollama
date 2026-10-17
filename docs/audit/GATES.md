@@ -57,6 +57,8 @@ que passam: *quem os corre é o auditor, e o resultado é do estado em que ele o
 | 47 | fault injection do harness (3 injecoes + contraprova) |
 | 48 | AGENTES: swarm com limite aplicado, orcamento, isolamento, artefactos e HITL |
 | 49 | fault injection dos agentes (3 injecoes + contraprova) |
+| 50 | AUDITORIA: matriz de plataformas, workflows citados, e o aviso das instrucoes destrutivas |
+| 51 | fault injection da auditoria (3 injecoes + contraprova) |
 
 ## Como correr a bateria completa
 

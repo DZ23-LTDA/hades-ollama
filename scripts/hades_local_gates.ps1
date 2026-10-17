@@ -834,4 +834,29 @@ if ($LASTEXITCODE -ne 0) {
 } else { '    OK' }
 $passos += 'agentes-testes'
 
+
+''
+# E-1100: o §ESTAGIO 1 (Auditoria total e inventario real). *A matriz de plataformas (6 plataformas x 7
+# eixos), os 15 workflows citados, e ZERO instrucoes destrutivas sem o aviso de HISTORICO e PROIBIDO com WIP.*
+'--- 50. AUDITORIA: matriz de plataformas, workflows citados, e o aviso das instrucoes destrutivas'
+$saidaM = & python -X utf8 scripts/hades_platform_matrix.py 2>&1
+$saidaM | Select-Object -Last 1 | ForEach-Object { "    " + $_.ToString().Substring(0, [Math]::Min(110, $_.ToString().Length)) }
+$saidaInv = & python -X utf8 scripts/hades_audit_inventory_check.py 2>&1
+$saidaInv | Select-Object -Last 2 | ForEach-Object { "    " + $_.ToString().Substring(0, [Math]::Min(110, $_.ToString().Length)) }
+if ($LASTEXITCODE -ne 0) {
+  $falhas.Add("hades_audit_inventory_check.py (exit $LASTEXITCODE)")
+  '    FALHA'
+} else { '    OK' }
+$passos += 'auditoria-inventario'
+
+''
+'--- 51. fault injection da auditoria (3 injecoes + contraprova)'
+$saidaInvT = & python -X utf8 scripts/hades_audit_inventory_check_test.py 2>&1
+$saidaInvT | Select-Object -Last 2 | ForEach-Object { "    " + $_.ToString().Substring(0, [Math]::Min(110, $_.ToString().Length)) }
+if ($LASTEXITCODE -ne 0) {
+  $falhas.Add("hades_audit_inventory_check_test.py (exit $LASTEXITCODE)")
+  '    FALHA'
+} else { '    OK' }
+$passos += 'auditoria-inventario-testes'
+
 "GATES LOCAIS: $($passos -join ' + ') VERDES"
