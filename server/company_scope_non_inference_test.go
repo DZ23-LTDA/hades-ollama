@@ -30,7 +30,7 @@ func TestCompanyScopedRoutesDoNotRevealExistence(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	runtime, err := agent.NewRuntime(agent.RuntimeConfig{Company: empresas, WorkspaceRoot: t.TempDir()})
+	runtime, err := agent.NewRuntime(agent.RuntimeConfig{Company: empresas, WorkspaceRoot: t.TempDir(), DataRoot: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -116,7 +116,7 @@ func TestCompanyScopedRoutesAllowTheOwner(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	runtime, err := agent.NewRuntime(agent.RuntimeConfig{Company: empresas, WorkspaceRoot: t.TempDir()})
+	runtime, err := agent.NewRuntime(agent.RuntimeConfig{Company: empresas, WorkspaceRoot: t.TempDir(), DataRoot: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}

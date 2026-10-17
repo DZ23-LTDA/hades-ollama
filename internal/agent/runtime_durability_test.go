@@ -13,7 +13,7 @@ import (
 func TestRuntimeDurabilityDefaultsToSafe(t *testing.T) {
 	restoreDurability(t)
 	t.Setenv("HADES_WRITE_DURABILITY", "")
-	runtime, err := NewRuntime(RuntimeConfig{})
+	runtime, err := NewRuntime(RuntimeConfig{DataRoot: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -25,7 +25,7 @@ func TestRuntimeDurabilityDefaultsToSafe(t *testing.T) {
 func TestRuntimeDurabilityAppliesConfiguredMode(t *testing.T) {
 	restoreDurability(t)
 	t.Setenv("HADES_WRITE_DURABILITY", WriteDurabilityRelaxed)
-	runtime, err := NewRuntime(RuntimeConfig{})
+	runtime, err := NewRuntime(RuntimeConfig{DataRoot: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -40,7 +40,7 @@ func TestRuntimeDurabilityAppliesConfiguredMode(t *testing.T) {
 func TestRuntimeDurabilityInvalidValueFailsLoudly(t *testing.T) {
 	restoreDurability(t)
 	t.Setenv("HADES_WRITE_DURABILITY", "rapido-demais")
-	runtime, err := NewRuntime(RuntimeConfig{})
+	runtime, err := NewRuntime(RuntimeConfig{DataRoot: t.TempDir()})
 	if err == nil {
 		t.Fatal("configuração inválida de durabilidade precisa INTERROMPER a criação do runtime")
 	}

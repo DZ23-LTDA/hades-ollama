@@ -41,7 +41,7 @@ func TestAskProjectDocumentsGroundsAndGates(t *testing.T) {
 		"salario":                           {0, 1},
 	})
 	root := t.TempDir()
-	runtime, err := agent.NewRuntime(agent.RuntimeConfig{Context: contextStore, Planner: agent.RulePlanner{}, WorkspaceRoot: root})
+	runtime, err := agent.NewRuntime(agent.RuntimeConfig{Context: contextStore, Planner: agent.RulePlanner{}, WorkspaceRoot: root, DataRoot: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}

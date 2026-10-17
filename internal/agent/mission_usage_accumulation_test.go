@@ -52,8 +52,7 @@ func TestConsumoDoPlanejamentoConsisteComAsChamadasReais(t *testing.T) {
 	runtime, err := NewRuntime(RuntimeConfig{
 		Store:         store,
 		Planner:       planejador,
-		WorkspaceRoot: raiz,
-	})
+		WorkspaceRoot: raiz, DataRoot: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -126,7 +125,7 @@ func TestConsumoDePlanejamentoPersistidoNaoEhPerdidoNemSubstituido(t *testing.T)
 		Title: "listar o workspace",
 		Input: map[string]any{"path": "."},
 	}}}
-	runtime, err := NewRuntime(RuntimeConfig{Store: store, Planner: planejador, WorkspaceRoot: raiz})
+	runtime, err := NewRuntime(RuntimeConfig{Store: store, Planner: planejador, WorkspaceRoot: raiz, DataRoot: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -150,7 +149,7 @@ func TestConsumoDePlanejamentoPersistidoNaoEhPerdidoNemSubstituido(t *testing.T)
 	if err != nil {
 		t.Fatal(err)
 	}
-	runtime2, err := NewRuntime(RuntimeConfig{Store: store2, Planner: planejador, WorkspaceRoot: raiz})
+	runtime2, err := NewRuntime(RuntimeConfig{Store: store2, Planner: planejador, WorkspaceRoot: raiz, DataRoot: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}

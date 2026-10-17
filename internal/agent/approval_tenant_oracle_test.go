@@ -28,7 +28,7 @@ func TestDecisaoDeAprovacaoNaoRevelaExistenciaEntreTenants(t *testing.T) {
 			Input: map[string]any{"path": "a.txt", "content": "conteudo\n"},
 		},
 	}}
-	runtime, err := NewRuntime(RuntimeConfig{Store: NewMemoryStore(), Planner: planner, WorkspaceRoot: root})
+	runtime, err := NewRuntime(RuntimeConfig{Store: NewMemoryStore(), Planner: planner, WorkspaceRoot: root, DataRoot: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -101,7 +101,7 @@ func TestDonoAindaDecideAPropriaAprovacao(t *testing.T) {
 			Input: map[string]any{"path": "a.txt", "content": "conteudo\n"},
 		},
 	}}
-	runtime, err := NewRuntime(RuntimeConfig{Store: NewMemoryStore(), Planner: planner, WorkspaceRoot: root})
+	runtime, err := NewRuntime(RuntimeConfig{Store: NewMemoryStore(), Planner: planner, WorkspaceRoot: root, DataRoot: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}

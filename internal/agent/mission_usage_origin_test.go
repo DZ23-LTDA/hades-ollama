@@ -19,7 +19,7 @@ func TestRuntimeDeclaraAOrigemDoConsumo(t *testing.T) {
 		t.Fatal(err)
 	}
 	planner := &planejadorComConsumo{price: ModelPrice{InputCentsPer1K: 6, OutputCentsPer1K: 12, Known: true}}
-	runtime, err := NewRuntime(RuntimeConfig{Store: store, Planner: planner, WorkspaceRoot: root})
+	runtime, err := NewRuntime(RuntimeConfig{Store: store, Planner: planner, WorkspaceRoot: root, DataRoot: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -56,7 +56,7 @@ func TestRuntimeNaoDeclaraOrigemSemConsumo(t *testing.T) {
 		ID: "step_1", Kind: "workspace.list", Title: "listar", Risk: RiskRead, State: StepPending,
 		Input: map[string]any{"path": ".", "max_entries": 5},
 	}}}
-	runtime, err := NewRuntime(RuntimeConfig{Store: NewMemoryStore(), Planner: planner, WorkspaceRoot: root})
+	runtime, err := NewRuntime(RuntimeConfig{Store: NewMemoryStore(), Planner: planner, WorkspaceRoot: root, DataRoot: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}

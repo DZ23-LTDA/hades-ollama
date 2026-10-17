@@ -135,7 +135,7 @@ func TestSemARecusaOEfeitoAconteceria(t *testing.T) {
 	// Este teste NÃO desliga nada: ele verifica que a ferramenta, quando executada diretamente, conta. É a metade
 	// "o contador funciona" — sem ela, o teste acima poderia passar porque o contador nunca conta.
 	ferramenta := &passoDeEscritaTool{}
-	runtime, err := NewRuntime(RuntimeConfig{Store: NewMemoryStore(), WorkspaceRoot: t.TempDir(), Planner: RulePlanner{}})
+	runtime, err := NewRuntime(RuntimeConfig{Store: NewMemoryStore(), WorkspaceRoot: t.TempDir(), Planner: RulePlanner{}, DataRoot: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}

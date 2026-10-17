@@ -31,8 +31,7 @@ func newObjectScopeTestAPI(t *testing.T) (*agentAPI, agent.Project, agent.Projec
 		Context:       contextStore,
 		Collaboration: collaboration,
 		Planner:       agent.RulePlanner{},
-		WorkspaceRoot: root,
-	})
+		WorkspaceRoot: root, DataRoot: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -205,8 +204,7 @@ func TestAuthDisabledAlwaysUsesLocalOrganizationAcrossStores(t *testing.T) {
 	root := t.TempDir()
 	runtime, err := agent.NewRuntime(agent.RuntimeConfig{
 		Context: contextStore, Company: companies, Connectors: connectors,
-		Planner: agent.RulePlanner{}, WorkspaceRoot: root,
-	})
+		Planner: agent.RulePlanner{}, WorkspaceRoot: root, DataRoot: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}

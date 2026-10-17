@@ -59,7 +59,7 @@ func TestAgentCatalogRoutesFilterPrivateResourcesByOrganization(t *testing.T) {
 		}
 	}
 	workspace := t.TempDir()
-	runtime, err := agent.NewRuntime(agent.RuntimeConfig{Context: contextStore, Connectors: connectors, MCP: mcp, RemoteMCP: remote, Deployments: deployments, WorkspaceRoot: workspace})
+	runtime, err := agent.NewRuntime(agent.RuntimeConfig{Context: contextStore, Connectors: connectors, MCP: mcp, RemoteMCP: remote, Deployments: deployments, WorkspaceRoot: workspace, DataRoot: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}

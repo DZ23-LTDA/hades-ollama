@@ -18,8 +18,7 @@ func TestMissionRoutesHideForeignMissionIDs(t *testing.T) {
 	runtime, err := agent.NewRuntime(agent.RuntimeConfig{
 		Store:         agent.NewMemoryStore(),
 		Planner:       agent.RulePlanner{},
-		WorkspaceRoot: workspace,
-	})
+		WorkspaceRoot: workspace, DataRoot: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -88,7 +87,7 @@ func TestRegisteredMissionRoutesBindBearerTokenToOrganization(t *testing.T) {
 		t.Fatal(err)
 	}
 	workspace := t.TempDir()
-	runtime, err := agent.NewRuntime(agent.RuntimeConfig{Store: agent.NewMemoryStore(), Planner: agent.RulePlanner{}, WorkspaceRoot: workspace})
+	runtime, err := agent.NewRuntime(agent.RuntimeConfig{Store: agent.NewMemoryStore(), Planner: agent.RulePlanner{}, WorkspaceRoot: workspace, DataRoot: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -148,7 +147,7 @@ func TestRegisteredMissionRoutesBindBearerTokenToOrganization(t *testing.T) {
 
 func TestGlobalMetricsHiddenWhenOrganizationAuthenticationIsEnabled(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	runtime, err := agent.NewRuntime(agent.RuntimeConfig{Store: agent.NewMemoryStore(), Planner: agent.RulePlanner{}, WorkspaceRoot: t.TempDir()})
+	runtime, err := agent.NewRuntime(agent.RuntimeConfig{Store: agent.NewMemoryStore(), Planner: agent.RulePlanner{}, WorkspaceRoot: t.TempDir(), DataRoot: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}

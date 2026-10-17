@@ -27,8 +27,7 @@ func newMissionContextFixture(t *testing.T, organization string) (*agentAPI, age
 		Store:         store,
 		Context:       contextStore,
 		Planner:       agent.RulePlanner{},
-		WorkspaceRoot: workspace,
-	})
+		WorkspaceRoot: workspace, DataRoot: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -44,8 +44,7 @@ func manualRunAPI(t *testing.T) (*agentAPI, agent.Schedule) {
 		Store:         agent.NewMemoryStore(),
 		Context:       contextStore,
 		Planner:       agent.RulePlanner{},
-		WorkspaceRoot: workspace,
-	})
+		WorkspaceRoot: workspace, DataRoot: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}

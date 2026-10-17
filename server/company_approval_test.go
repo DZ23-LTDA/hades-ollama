@@ -30,7 +30,7 @@ func TestCompanyCampaignApprovalHTTPUsesNonceAndOrganization(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	runtime, err := agent.NewRuntime(agent.RuntimeConfig{Company: companies, WorkspaceRoot: t.TempDir()})
+	runtime, err := agent.NewRuntime(agent.RuntimeConfig{Company: companies, WorkspaceRoot: t.TempDir(), DataRoot: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -73,7 +73,7 @@ func TestCompanySpendHTTPRequiresDecisionBeforeDebit(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	runtime, err := agent.NewRuntime(agent.RuntimeConfig{Company: companies, WorkspaceRoot: t.TempDir()})
+	runtime, err := agent.NewRuntime(agent.RuntimeConfig{Company: companies, WorkspaceRoot: t.TempDir(), DataRoot: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}

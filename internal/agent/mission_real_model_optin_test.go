@@ -60,8 +60,7 @@ func TestMissaoRealComModeloLocalPlanejaERegistraConsumo(t *testing.T) {
 		Store:           store,
 		Planner:         planejador,
 		PlannerResolver: resolvedorFixo{provider: "ollama-local", planner: planejador},
-		WorkspaceRoot:   root,
-	})
+		WorkspaceRoot:   root, DataRoot: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}

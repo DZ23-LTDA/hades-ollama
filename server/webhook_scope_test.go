@@ -44,7 +44,7 @@ func TestWebhookBindsScheduleOrganizationAndDeduplicates(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	runtime, err := agent.NewRuntime(agent.RuntimeConfig{Context: contextStore, Planner: agent.RulePlanner{}, WorkspaceRoot: workspace})
+	runtime, err := agent.NewRuntime(agent.RuntimeConfig{Context: contextStore, Planner: agent.RulePlanner{}, WorkspaceRoot: workspace, DataRoot: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -123,7 +123,7 @@ func TestWebhookRejectsSensitivePayloadBeforeReplayClaim(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	runtime, err := agent.NewRuntime(agent.RuntimeConfig{Context: contextStore, Planner: agent.RulePlanner{}, WorkspaceRoot: workspace})
+	runtime, err := agent.NewRuntime(agent.RuntimeConfig{Context: contextStore, Planner: agent.RulePlanner{}, WorkspaceRoot: workspace, DataRoot: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}

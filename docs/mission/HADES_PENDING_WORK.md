@@ -1,6 +1,8 @@
 # HADES — TRABALHO PENDENTE PRIORIZADO
 
-> **REMEDIACAO MAIS RECENTE: E-1123** -- *os dois instaladores do `dist/` (um sem proveniencia, e nenhum do candidato actual), e o `SOURCE_SHA: DESCONHECIDO` declarado em `docs/release/PROVENIENCIA-HadesSetup.md`.*
+> **REMEDIACAO MAIS RECENTE: E-1126** -- *a divida do §ESTAGIO 2 PAGA: **107 -> 0**, baseline **0**, e o teste do checker deriva-a em vez de a copiar.*
+
+
 
 
 

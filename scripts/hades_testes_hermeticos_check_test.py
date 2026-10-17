@@ -19,6 +19,20 @@ from pathlib import Path
 RAIZ = Path(__file__).resolve().parent.parent
 CHECKER = RAIZ / "scripts" / "hades_testes_hermeticos_check.py"
 
+
+def baseline_do_checker() -> int:
+    """Le o `BASELINE` do **proprio** checker -- a mesma fonte, nao uma copia.
+
+    *O `E-1126` pagou a divida (**107 -> 0**) e baixou a baseline; se o teste tivesse o **107**
+    escrito, ele passaria a medir a **copia** e nao o **codigo** => e a doenca e' a **mesma** do
+    finding #6 do PR (`hades_test_clock_check_test.py`: «derivar a lista conhecida da mesma fonte
+    `checker.TRIAGADOS`; nao manter allowlists divergentes») => ***`um teste que repete a constante
+    do codigo mede a copia, nao o codigo.`***"""
+    txt = io.open(CHECKER, encoding="utf-8").read()
+    # ***O `BASELINE` ESTA' INDENTADO (dentro do `main`)** -- logo o `^BASELINE` nao bate; e' `^\s*BASELINE`.
+    m = re.search(r"^\s*BASELINE = (\d+)", txt, re.M)
+    return int(m.group(1)) if m else -1
+
 falhas: list[str] = []
 
 
@@ -67,9 +81,12 @@ def main() -> int:
     rc, saida = correr(raiz)
     T("baseline: a copia passa com a divida declarada", rc == 0,
       (saida.strip().splitlines()[-1] if saida.strip() else "")[:70])
+    baseline = baseline_do_checker()
+    T("(0) a baseline e' derivada do checker (nao copiada)", baseline >= 0, "BASELINE=%d" % baseline)
+    # *com a divida a ZERO o checker diz «TESTES HERMETICOS: ... todas com DataRoot» (sem numero) => n_antes = 0*
     m = re.search(r"TESTES NAO-HERMETICOS: (\d+)", saida)
-    n_antes = int(m.group(1)) if m else -1
-    T("e o numero e' 107", n_antes == 107, "n=%d" % n_antes)
+    n_antes = int(m.group(1)) if m else (0 if "TESTES HERMETICOS:" in saida else -1)
+    T("e o numero e' o da baseline", n_antes == baseline, "n=%d baseline=%d" % (n_antes, baseline))
 
     # ---- injecao: um teste NOVO sem DataRoot ----
     novo = raiz / "server" / "zz_injecao_test.go"
@@ -89,15 +106,17 @@ def main() -> int:
       "FAILED" if rc != 0 else "PASSOU (nao discrimina!)")
     m = re.search(r"CRESCIMENTO DE DIVIDA: (\d+)", saida)
     n_depois = int(m.group(1)) if m else -1
-    T("(1b) e o numero subiu de 107 para 108", n_depois == 108, "n=%d" % n_depois)
+    T("(1b) e o numero subiu de %d para %d" % (baseline, baseline + 1),
+      n_depois == baseline + 1, "n=%d" % n_depois)
 
     # ---- contraprova: apagar o injectado e voltar a 107 ----
     novo.unlink()
     rc, saida = correr(raiz)
     T("contraprova: sem o injectado, volta a PASSAR", rc == 0)
     m = re.search(r"TESTES NAO-HERMETICOS: (\d+)", saida)
-    n_fim = int(m.group(1)) if m else -1
-    T("contraprova: e o numero voltou a 107", n_fim == 107, "n=%d" % n_fim)
+    # *com a divida a ZERO o checker diz «TESTES HERMETICOS: ... todas com DataRoot» (sem numero) => n_fim = 0*
+    n_fim = int(m.group(1)) if m else (0 if "TESTES HERMETICOS:" in saida else -1)
+    T("contraprova: e o numero voltou a %d" % baseline, n_fim == baseline, "n=%d" % n_fim)
 
     print("")
     if falhas:

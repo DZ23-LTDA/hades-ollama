@@ -12,7 +12,7 @@ import (
 // `DespertarAgentes` a enfileira — e que uma missão que espera aprovação NÃO entra na fila, mesmo
 // com o mesmo agente. *É este o par que separa «informar» de «executar».*
 func TestDespertarAgentesEnfileiraSoOQuePrecisaExecutar(t *testing.T) {
-	runtime, err := NewRuntime(RuntimeConfig{Store: NewMemoryStore(), Planner: RulePlanner{}, WorkspaceRoot: t.TempDir()})
+	runtime, err := NewRuntime(RuntimeConfig{Store: NewMemoryStore(), Planner: RulePlanner{}, WorkspaceRoot: t.TempDir(), DataRoot: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -59,7 +59,7 @@ func TestDespertarAgentesEnfileiraSoOQuePrecisaExecutar(t *testing.T) {
 // UMA MISSÃO SEM AGENTE NÃO ENTRA NA FILA POR ESTA VIA — não há a quem atribuir o trabalho, e
 // enfileirar «em nome de ninguém» seria inventar um dono.
 func TestDespertarAgentesNaoEnfileiraMissaoSemAgente(t *testing.T) {
-	runtime, err := NewRuntime(RuntimeConfig{Store: NewMemoryStore(), Planner: RulePlanner{}, WorkspaceRoot: t.TempDir()})
+	runtime, err := NewRuntime(RuntimeConfig{Store: NewMemoryStore(), Planner: RulePlanner{}, WorkspaceRoot: t.TempDir(), DataRoot: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}

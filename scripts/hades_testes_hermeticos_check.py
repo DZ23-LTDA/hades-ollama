@@ -75,12 +75,17 @@ def main() -> int:
                     # *o numero da linha e' do inicio da chamada; e' o que o autor procura.*
                     problemas.append("%s:%d" % (rel, linha))
 
-    # ***A BASELINE DECLARADA.*** *Medida no `E-1094`: 107 chamadas de `NewRuntime` em testes sem
+    # ***E ELA DESCEU (`E-1126`).*** *As **107** chamadas ganharam `DataRoot: t.TempDir()` em 3 lotes
+# (`runtime_test.go` 27, `server/` 37, `internal/agent/` 43 + os 3 `RuntimeConfig{}` vazios) =>
+# **107 -> 0**, e a baseline **desceu com ela**: se ficasse em 107, um teste novo sem `DataRoot`
+# caberia nos 107 e a divida voltaria **sem ninguem dar por isso*** => ***`baixar a baseline nao e'
+# arrumar o numero: e' fechar a porta por onde a divida volta.`***
+# ***A BASELINE DECLARADA.*** *Medida no `E-1094`: 107 chamadas de `NewRuntime` em testes sem
     # `DataRoot`. O CI passa (o `%APPDATA%` e' gravavel la'); o **processo confinado deste host** e' que
     # falha. => a divida fica **declarada com tecto**, e a catraca **falha se o numero SUBIR** -- um teste
     # novo sem `DataRoot` nao entra.* => ***`uma divida declarada com tecto nao e' o mesmo que uma divida
     # escondida.`***
-    BASELINE = 107
+    BASELINE = 0
     if len(problemas) > BASELINE:
         print("  CRESCIMENTO DE DIVIDA: %d chamadas sem DataRoot (baseline declarada: %d)" % (
             len(problemas), BASELINE))

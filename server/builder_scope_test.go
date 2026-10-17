@@ -26,7 +26,7 @@ func TestBuilderHandlersRejectCrossTenantMutationAndListing(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	runtime, err := agent.NewRuntime(agent.RuntimeConfig{WorkspaceRoot: t.TempDir(), Builder: builder})
+	runtime, err := agent.NewRuntime(agent.RuntimeConfig{WorkspaceRoot: t.TempDir(), Builder: builder, DataRoot: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}

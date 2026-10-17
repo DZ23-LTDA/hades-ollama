@@ -96,7 +96,7 @@ func TestRuntimePublishesRedactedToolOutputInStepSucceededEvent(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	runtime, err := NewRuntime(RuntimeConfig{Store: store, Tools: registry, Traces: traces, Planner: fixedPlanner{steps: []Step{{ID: "step_output", Kind: "workspace.read", Title: "saida visivel", Risk: RiskRead, State: StepPending}}}, WorkspaceRoot: root})
+	runtime, err := NewRuntime(RuntimeConfig{Store: store, Tools: registry, Traces: traces, Planner: fixedPlanner{steps: []Step{{ID: "step_output", Kind: "workspace.read", Title: "saida visivel", Risk: RiskRead, State: StepPending}}}, WorkspaceRoot: root, DataRoot: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}

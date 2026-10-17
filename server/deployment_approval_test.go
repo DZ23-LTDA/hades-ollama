@@ -48,7 +48,7 @@ func TestDeployBuilderDoesNotTrustClientApprovedBoolean(t *testing.T) {
 	if err := deployments.Register(agent.DeployConfig{ID: "self", OrganizationID: "local", Provider: "generic", BaseURL: provider.URL}); err != nil {
 		t.Fatal(err)
 	}
-	runtime, err := agent.NewRuntime(agent.RuntimeConfig{WorkspaceRoot: t.TempDir(), Builder: builder, Deployments: deployments})
+	runtime, err := agent.NewRuntime(agent.RuntimeConfig{WorkspaceRoot: t.TempDir(), Builder: builder, Deployments: deployments, DataRoot: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -88,7 +88,7 @@ func TestDeploymentApprovalRequiresAdminAndNonceBeforeProviderCall(t *testing.T)
 	if err != nil {
 		t.Fatal(err)
 	}
-	runtime, err := agent.NewRuntime(agent.RuntimeConfig{WorkspaceRoot: t.TempDir(), Builder: builder, Deployments: deployments, DeploymentApprovals: approvals})
+	runtime, err := agent.NewRuntime(agent.RuntimeConfig{WorkspaceRoot: t.TempDir(), Builder: builder, Deployments: deployments, DeploymentApprovals: approvals, DataRoot: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -157,7 +157,7 @@ func TestDeploymentCatalogIsOrganizationScoped(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	runtime, err := agent.NewRuntime(agent.RuntimeConfig{WorkspaceRoot: t.TempDir(), Deployments: manager})
+	runtime, err := agent.NewRuntime(agent.RuntimeConfig{WorkspaceRoot: t.TempDir(), Deployments: manager, DataRoot: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -202,7 +202,7 @@ func TestForeignAndUnknownDeploymentApprovalsHaveIdenticalNotFoundResponse(t *te
 	if err != nil {
 		t.Fatal(err)
 	}
-	runtime, err := agent.NewRuntime(agent.RuntimeConfig{WorkspaceRoot: t.TempDir(), Builder: builder, DeploymentApprovals: approvals})
+	runtime, err := agent.NewRuntime(agent.RuntimeConfig{WorkspaceRoot: t.TempDir(), Builder: builder, DeploymentApprovals: approvals, DataRoot: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -243,7 +243,7 @@ func TestUnauthenticatedDeploymentApprovalCannotProbeTenantProvider(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
-	runtime, err := agent.NewRuntime(agent.RuntimeConfig{WorkspaceRoot: t.TempDir(), Builder: builder, Deployments: deployments, DeploymentApprovals: approvals})
+	runtime, err := agent.NewRuntime(agent.RuntimeConfig{WorkspaceRoot: t.TempDir(), Builder: builder, Deployments: deployments, DeploymentApprovals: approvals, DataRoot: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}

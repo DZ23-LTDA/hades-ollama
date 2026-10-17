@@ -14,7 +14,7 @@ func TestSlashGoalCreatesMissionAndDelegates(t *testing.T) {
 		t.Fatalf("parsed=%+v", parsed)
 	}
 
-	runtime, err := NewRuntime(RuntimeConfig{Store: NewMemoryStore(), Planner: RulePlanner{}, WorkspaceRoot: t.TempDir()})
+	runtime, err := NewRuntime(RuntimeConfig{Store: NewMemoryStore(), Planner: RulePlanner{}, WorkspaceRoot: t.TempDir(), DataRoot: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}
