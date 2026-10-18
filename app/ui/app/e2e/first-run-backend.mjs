@@ -538,7 +538,95 @@ const server = createServer(async (request, response) => {
           raiz_autorizada: true,
         });
       }
+    } else if (route === "POST /api/agent/v1/sign/plan") {
+      // FASE 28.7: `sign.plan` -- AVALIA, nunca assina.
+      //
+      // `readBody` devolve uma STRING (lissao da E-1275): sem o JSON.parse o pedido ficava vazio.
+      const corpoAssinatura = await readBody(request);
+      let pedidoAssinatura = {};
+      try {
+        pedidoAssinatura = JSON.parse(corpoAssinatura || "{}");
+      } catch {
+        sendJSON(response, 400, { erro: "corpo invalido: esperado JSON" });
+        return;
+      }
+      if (pedidoAssinatura === null || typeof pedidoAssinatura !== "object") {
+        sendJSON(response, 400, { erro: "corpo invalido: esperado um objecto JSON" });
+        return;
+      }
+      const tipoAssinatura = pedidoAssinatura.tipo;
+      const identidade = pedidoAssinatura.identidade;
+      if (typeof tipoAssinatura !== "string" || tipoAssinatura === "") {
+        sendJSON(response, 400, { erro: "o campo `tipo` e' obrigatorio" });
+      } else if (identidade === null || typeof identidade !== "object") {
+        sendJSON(response, 400, { erro: "o campo `identidade` e' obrigatorio" });
+      } else if (
+        typeof identidade.caminho_do_certificado !== "string" ||
+        identidade.caminho_do_certificado.trim() === ""
+      ) {
+        sendJSON(response, 400, {
+          erro: "o campo `identidade.caminho_do_certificado` e' obrigatorio",
+        });
+      } else if (identidade.caminho_do_certificado.includes("sem-eku")) {
+        // Certificado sem o EKU de assinatura de codigo.
+        sendJSON(response, 200, {
+          somente_leitura: true,
+          nada_assinado: true,
+          avaliacao: {
+            tipo: tipoAssinatura,
+            aptidao: "SEM_EKU_DE_ASSINATURA",
+            apta: false,
+            sujeito: "CN=DZ23 LTDA, O=DZ23 LTDA",
+            emissor: "CN=Test CA",
+            valido_de: "2026-01-01T00:00:00Z",
+            valido_ate: "2027-01-08T00:00:00Z",
+            ekus: ["1.3.6.1.5.5.7.3.2"],
+            tem_eku_necessario: false,
+            motivo: "o certificado nao tem o EKU de assinatura de codigo (1.3.6.1.5.5.7.3.3)",
+          },
+          alvos_suportados: [
+            "AUTHENTICODE",
+            "APPLE_DEVELOPER_ID",
+            "ANDROID_APK",
+            "OPENPGP",
+          ],
+          aviso_de_fronteira:
+            "esta rota apenas AVALIA se a identidade serve para o tipo pedido; nao le' a chave " +
+            "privada, nao assina e nao escreve. `apta: true` significa que os gates que este " +
+            "provider sabe aplicar passaram -- nao significa que o artefacto foi assinado. A " +
+            "cadeia criptografica e a revogacao NAO sao validadas aqui.",
+        });
+      } else {
+        sendJSON(response, 200, {
+          somente_leitura: true,
+          nada_assinado: true,
+          avaliacao: {
+            tipo: tipoAssinatura,
+            aptidao: "APTA",
+            apta: true,
+            sujeito: "CN=DZ23 LTDA, O=DZ23 LTDA",
+            emissor: "CN=DZ23 Code Signing CA",
+            valido_de: "2026-01-01T00:00:00Z",
+            valido_ate: "2027-10-17T00:00:00Z",
+            ekus: ["1.3.6.1.5.5.7.3.3"],
+            tem_eku_necessario: true,
+            motivo: "",
+          },
+          alvos_suportados: [
+            "AUTHENTICODE",
+            "APPLE_DEVELOPER_ID",
+            "ANDROID_APK",
+            "OPENPGP",
+          ],
+          aviso_de_fronteira:
+            "esta rota apenas AVALIA se a identidade serve para o tipo pedido; nao le' a chave " +
+            "privada, nao assina e nao escreve. `apta: true` significa que os gates que este " +
+            "provider sabe aplicar passaram -- nao significa que o artefacto foi assinado. A " +
+            "cadeia criptografica e a revogacao NAO sao validadas aqui.",
+        });
+      }
     } else if (route === "POST /api/agent/v1/publish/rollback") {
+
       // FASE 28.7: `publish.rollback` -- PLANEIA, nunca restaura.
       //
       // `readBody` devolve uma STRING (lissao da E-1275): sem o JSON.parse o pedido ficava vazio.

@@ -1,10 +1,10 @@
 {
   "schema": "hades.snapshot.manifest/v1",
   "gerado_por": "scripts/hades_manifest.py",
-  "generated_at": "2026-10-18T22:34:12+00:00",
-  "source_sha": "a2ac6a6b16672793ce583c66f39af3b4cef8dbc0",
+  "generated_at": "2026-10-18T22:42:36+00:00",
+  "source_sha": "6ee5ebb64382b822dc08c3ede0797728aa289f1e",
   "source_branch": "fix/checker-relogio",
-  "source_dirty": 13,
+  "source_dirty": 10,
   "host": {
     "sistema": "Windows",
     "release": "11",

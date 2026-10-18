@@ -1,3 +1,29 @@
+## JANELA E-1280
+
+**Ronda 98. O E2E do `SigningPanel`: o sexto elo fechado no browser real.**
+
+- **E-1280** — `e2e/signing-panel.spec.ts` + a rota `sign/plan` no fixture.
+- **Sem campo de senha, provado no browser:** `input` com `toHaveCount(2)`,
+  `input[type="password"]` com contagem **zero**, e o texto sem "senha" nem "chave privada:".
+- **Sem botão de assinar, provado no browser:** `getByRole("button")` tem de ser **exactamente um**,
+  com rótulo a conter "avaliar" e não "assinar".
+- **O corpo do pedido é inspeccionado:** `postDataJSON()` exige `[identidade, tipo]` e, dentro da
+  identidade, `[ambiente, caminho_do_certificado, rotulo]`; o JSON serializado não pode conter
+  `senha`, `password`, `chave_privada`, `private_key`, `pfx` nem `p12`.
+- **Um certificado sem EKU não pode ser tratado como apto:** `apta=nao`, frase do EKU, OID
+  `1.3.6.1.5.5.7.3.3` e `prova=nao assinavel`.
+
+Medido: **9 passed / 1 skipped** · `npx playwright test` **97 passed / 8 skipped** (era 88/7) ·
+`npx vitest run` 125 ficheiros / 886 testes · `tsc -b` 0 · `eslint .` 0 erros · `vite build` 0 ·
+`BUNDLE_BUDGET=PASS`.
+
+**CI no momento desta ronda:** 17 check-runs **pendentes, 0 vermelhos** em `6ee5ebb64`.
+
+**Lacuna:** sem E2E com certificado REAL do kit. **5 providers sem painel.** Nenhuma assinatura real
+aplicada.
+
+Veredito global: `NOT_RELEASE_READY`.
+
 ## JANELA E-1279
 
 **Ronda 97. O quinto provider ligado ao produto: `SigningPanel` consome `sign/plan`.**
