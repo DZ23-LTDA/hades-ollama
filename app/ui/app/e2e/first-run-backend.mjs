@@ -116,6 +116,74 @@ const handleChatRequest = createChatFixture({
   sendJSON,
 });
 
+// FASE 2 (E-1237): fixture DECLARADO das rotas de worktree.
+//
+// PORQUE E' UM FIXTURE E NAO O BACKEND REAL
+//
+//   O inventario de worktrees exige um repositorio git de verdade. O backend de fixture nao tem
+//   um. Por isso estes dados sao INVENTADOS e dizem-no:
+//
+//       *Um fixture que se faz passar por backend real e' pior do que nenhum fixture: prova
+//       integracao que nao aconteceu.*
+//
+//   O spec `worktrees-panel.spec.ts` classifica o modo (`UI_FIXTURE` aqui,
+//   `BACKEND_REAL_AGENT_RUNTIME` quando `HADES_E2E_BACKEND_URL` esta' definido) e NAO finge que
+//   um e' o outro.
+const FONTE_DO_FIXTURE = "e2e-fixture";
+const worktreesDoFixture = {
+  repo: "/repo-fixture",
+  resumo: "2 worktree(s): 1 do HADES, 1 externo",
+  total: 2,
+  do_hades: 1,
+  externo: 1,
+  lista: [
+    {
+      caminho_resolvido: "/repo-fixture/.agent-worktrees/missao-e2e",
+      branch: "agent/missao-e2e",
+      commit: "abcdef1",
+      detached: false,
+      criado_pelo_hades: true,
+      principal: false,
+      bloqueado: false,
+    },
+    {
+      caminho_resolvido: "/repo-fixture-externo",
+      branch: "externo",
+      commit: "1234567",
+      detached: false,
+      criado_pelo_hades: false,
+      principal: false,
+      bloqueado: false,
+    },
+  ],
+  avisos: [
+    "existem worktrees que o HADES nao criou; remover um deles apaga trabalho que nao e' dele",
+  ],
+  somente_leitura: true,
+  source: FONTE_DO_FIXTURE,
+};
+// O estado muda com POST /worktrees/state -- para o spec poder provar a RELEITURA.
+let estadoDoWorktreeDoFixture = "preparado";
+function diagnosticoDoFixture(missao) {
+  return {
+    mission_id: missao,
+    estado: estadoDoWorktreeDoFixture,
+    estado_valido: true,
+    estado_traduzido: false,
+    proximos: ["suspenso", "integrado", "removido"],
+    alvo_seguro: true,
+    commits_nao_integrados: 0,
+    ficheiros_modificados: 0,
+    tem_trabalho_nao_integrado: false,
+    estado_observado: "fixture E2E declarado",
+    estado_do_registo: false,
+    registo: "ausente: nenhuma entrada persistida neste data root",
+    pode_remover: true,
+    motivo_remover: "",
+    source: FONTE_DO_FIXTURE,
+  };
+}
+
 function sendJSON(response, status, payload) {
   const body = Buffer.from(JSON.stringify(payload));
   response.writeHead(status, {
@@ -212,7 +280,57 @@ const server = createServer(async (request, response) => {
       );
       response.end();
     }
-  } else if (route === "GET /api/agent/v1/presets") {
+  } else if (route === "GET /api/agent/v1/worktrees") {
+      status = 200;
+      sendJSON(response, status, worktreesDoFixture);
+    } else if (route === "GET /api/agent/v1/worktrees/diagnose") {
+      const missao = url.searchParams.get("missao") || "";
+      if (!missao) {
+        status = 400;
+        sendJSON(response, status, { erro: "parametro 'missao' e' obrigatorio" });
+      } else {
+        status = 200;
+        sendJSON(response, status, diagnosticoDoFixture(missao));
+      }
+    } else if (route === "POST /api/agent/v1/worktrees/state") {
+      let pedido = {};
+      try {
+        pedido = JSON.parse((await readBody(request)) || "{}");
+      } catch {
+        pedido = {};
+      }
+      const para = String(pedido.para || "").toLowerCase();
+      // A MESMA allowlist da rota real: tres accoes reversiveis. `removido` NAO entra.
+      const reversiveis = ["suspender", "retomar", "arquivar"];
+      if (!reversiveis.includes(para)) {
+        status = 400;
+        sendJSON(response, status, {
+          erro: "transicao nao permitida por esta rota",
+          pedido: pedido.para,
+          permitidas: reversiveis,
+        });
+      } else {
+        const anterior = estadoDoWorktreeDoFixture;
+        estadoDoWorktreeDoFixture =
+          para === "suspender"
+            ? "suspenso"
+            : para === "retomar"
+              ? "em_uso"
+              : "arquivado";
+        status = 200;
+        sendJSON(response, status, {
+          mission_id: pedido.missao,
+          de: anterior,
+          para: estadoDoWorktreeDoFixture,
+          acao: para,
+          estado_do_registo: true,
+          registado_em: "/repo-fixture/_state/worktree-state.json",
+          avisos: ["fixture E2E: estado mudado em memoria, nao em disco"],
+          somente_leitura: false,
+          source: FONTE_DO_FIXTURE,
+        });
+      }
+    } else if (route === "GET /api/agent/v1/presets") {
     // FASE 23 do adendo V3. FIXTURE DECLARADO.
     //
     // Estes NAO sao os presets embutidos do HADES: sao dois presets de fixture, com
