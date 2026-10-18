@@ -313,6 +313,72 @@ const server = createServer(async (request, response) => {
       status = 404;
       sendJSON(response, status, { error: `alvo desconhecido: ${alvo}` });
     }
+  } else if (route === "GET /api/agent/v1/install/profiles") {
+    // FASE 28.6-A: catalogo de perfis e pacotes. Nomes `fixture-*` e `source: e2e-fixture`
+    // para nao se confundir com o catalogo real. *Um fixture que se faz passar pelo produto
+    // esconde exactamente a diferenca que o teste quer medir.*
+    sendJSON(response, 200, {
+      source: "e2e-fixture",
+      host: "e2e-fixture-host",
+      goos: "windows",
+      perfis: [
+        { id: "BASIC", descricao: "HADES Core e diagnostico (fixture)", pacotes: ["hades-core"], tamanho_mb: 180, escolhe_pacotes: false },
+        { id: "CONTAINERS_AND_CLOUD", descricao: "Core + containers (fixture)", pacotes: ["hades-core", "containers"], tamanho_mb: 720, escolhe_pacotes: false },
+        { id: "CUSTOM", descricao: "escolha componente a componente (fixture)", pacotes: [], tamanho_mb: 0, escolhe_pacotes: true },
+      ],
+      pacotes: [
+        { id: "hades-core", nome: "HADES Core", dependencias: [], tamanho_mb: 180, licenca: "MIT", redistribuivel: true, exige_aprovacao: false, impacto: [] },
+        { id: "containers", nome: "Containers e Buildx", dependencias: ["hades-core"], tamanho_mb: 540, licenca: "Apache-2.0", redistribuivel: false, exige_aprovacao: true, impacto: ["exige elevacao administrativa", "cria servico persistente"] },
+      ],
+      avisos: [],
+      count: 3,
+    });
+  } else if (route.startsWith("GET /api/agent/v1/install/plan/")) {
+    // O perfil desconhecido devolve 400, como o servidor real.
+    // *Um fixture que aceita qualquer perfil esconderia o comportamento que o teste mede.*
+    const perfil = decodeURIComponent(route.slice("GET /api/agent/v1/install/plan/".length)).toUpperCase();
+    const planos = {
+      BASIC: {
+        itens: [
+          { pacote_id: "hades-core", nome: "HADES Core", acao: "PULAR", motivo: "nao foi possivel determinar o estado nesta maquina (fixture)", requer_aprovacao: false, tamanho_mb: 180 },
+        ],
+        aprovacoes_necessarias: 0,
+        bloqueios: ["hades-core: estado desconhecido (UNKNOWN nao e' ABSENT) [fixture]"],
+        pronto: false,
+        tamanho_total_mb: 0,
+        downloads_evitados: 0,
+      },
+      CONTAINERS_AND_CLOUD: {
+        itens: [
+          { pacote_id: "containers", nome: "Containers e Buildx", acao: "APROVAR", motivo: "exige aprovacao: elevacao administrativa, servico persistente (fixture)", requer_aprovacao: true, tamanho_mb: 540 },
+        ],
+        aprovacoes_necessarias: 1,
+        bloqueios: [],
+        pronto: false,
+        tamanho_total_mb: 540,
+        downloads_evitados: 0,
+      },
+      CUSTOM: { itens: [], aprovacoes_necessarias: 0, bloqueios: [], pronto: true, tamanho_total_mb: 0, downloads_evitados: 0 },
+    };
+    const escolhido = planos[perfil];
+    if (!escolhido) {
+      sendJSON(response, 400, { source: "e2e-fixture", error: "perfil desconhecido; use GET /install/profiles para a lista" });
+    } else {
+      sendJSON(response, 200, {
+        source: "e2e-fixture",
+        perfil,
+        host: "e2e-fixture-host",
+        goos: "windows",
+        itens: escolhido.itens,
+        tamanho_total_mb: escolhido.tamanho_total_mb,
+        downloads_evitados: escolhido.downloads_evitados,
+        aprovacoes_necessarias: escolhido.aprovacoes_necessarias,
+        bloqueios: escolhido.bloqueios,
+        pronto: escolhido.pronto,
+        resumo: `perfil ${perfil} (fixture): ${escolhido.itens.length} itens, ${escolhido.tamanho_total_mb} MB a baixar, ${escolhido.aprovacoes_necessarias} aprovacoes, ${escolhido.bloqueios.length} bloqueios`,
+        executa_algo: false,
+      });
+    }
   } else if (route === "GET /api/agent/v1/signing/identities") {
     // FASE 28.5. FIXTURE DECLARADO. Nenhum valor privado, por construcao: a estrutura nao
     // tem campo para ele, e o fixture segue a mesma forma.

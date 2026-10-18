@@ -142,3 +142,130 @@ export function rotuloDoEstado(estado: string): string {
 export function estadoEhAusente(estado: string): boolean {
   return estado === "ABSENT";
 }
+
+// ---------------------------------------------------------------------------------------------
+// FASE 28.6-A / 28.7: cliente do INSTALADOR MODULAR.
+//
+// Mesmo ficheiro, mesmo dominio: o instalador e o toolchain respondem a mesma pergunta --
+// "o que falta nesta maquina para o HADES fazer o que prometi?". *Dois clientes para a mesma
+// pergunta divergem no primeiro dia em que alguem muda um deles.*
+//
+// Nada aqui instala. A rota `/install/plan/:perfil` devolve `executa_algo: false` e este
+// cliente nao tem funcao de instalar. *Um botao "Instalar" na UI de diagnostico mentiria:
+// instalar exige approval e superficie propria.*
+// ---------------------------------------------------------------------------------------------
+
+/** Um perfil de instalacao, tal como o servidor o declara. */
+export interface InstallPerfil {
+  id: string;
+  descricao: string;
+  pacotes: string[];
+  tamanho_mb: number;
+  escolhe_pacotes: boolean;
+}
+
+/** Um componente do catalogo, sem decisao tomada. */
+export interface InstallPacote {
+  id: string;
+  nome: string;
+  dependencias: string[] | null;
+  tamanho_mb: number;
+  licenca: string;
+  redistribuivel: boolean;
+  exige_aprovacao: boolean;
+  impacto: string[] | null;
+}
+
+/** Resposta de `install/profiles`. */
+export interface InstallCatalogo {
+  host: string;
+  goos: string;
+  perfis: InstallPerfil[];
+  pacotes: InstallPacote[];
+  /** Avisos da auto-auditoria do catalogo. Lista vazia e' o estado saudavel. */
+  avisos: string[] | null;
+  count: number;
+}
+
+/** Um pacote com a decisao ja' tomada para ESTA maquina. */
+export interface InstallItem {
+  pacote_id: string;
+  nome: string;
+  /** `INSTALAR`, `REUTILIZAR`, `MANTER`, `PULAR` ou `APROVAR`. */
+  acao: string;
+  motivo: string;
+  requer_aprovacao: boolean;
+  tamanho_mb: number;
+}
+
+/** Resposta de `install/plan/:perfil`. */
+export interface InstallPlano {
+  perfil: string;
+  host: string;
+  goos: string;
+  itens: InstallItem[];
+  tamanho_total_mb: number;
+  downloads_evitados: number;
+  aprovacoes_necessarias: number;
+  /** Lista de impedimentos. O servidor garante lista, nunca `null`. */
+  bloqueios: string[] | null;
+  pronto: boolean;
+  resumo: string;
+  /** Sempre `false`: a rota planeia, nao executa. */
+  executa_algo: boolean;
+}
+
+/** Catalogo de perfis e pacotes. */
+export function fetchInstallCatalogo(): Promise<InstallCatalogo> {
+  return agentFetch<InstallCatalogo>("/api/agent/v1/install/profiles");
+}
+
+/** Plano para UM perfil, com descoberta real do host. */
+export function fetchInstallPlano(perfil: string): Promise<InstallPlano> {
+  return agentFetch<InstallPlano>(`/api/agent/v1/install/plan/${encodeURIComponent(perfil)}`);
+}
+
+/**
+ * Rotulo legivel de uma acao do plano.
+ *
+ * `PULAR` e' o rotulo de `UNKNOWN`: *dizer "ausente" do que nao se conseguiu avaliar faria o
+ * utilizador instalar por cima do que ja' tem.*
+ */
+export function rotuloDaAcao(acao: string): string {
+  switch (acao) {
+    case "INSTALAR":
+      return "Instalar";
+    case "REUTILIZAR":
+      return "Reutilizar o que ja' existe";
+    case "MANTER":
+      return "Manter";
+    case "PULAR":
+      return "Nao avaliado";
+    case "APROVAR":
+      return "Requer aprovacao";
+    default:
+      return acao;
+  }
+}
+
+/**
+ * Cor de uma acao.
+ *
+ * `PULAR` usa ambar, nao vermelho: nao saber nao e' falhar. *Uma tela que pinta a duvida de
+ * vermelho ensina o utilizador a ignorar o vermelho quando ele for real.*
+ */
+export function corDaAcao(acao: string): string {
+  switch (acao) {
+    case "INSTALAR":
+      return "text-sky-400";
+    case "REUTILIZAR":
+    case "MANTER":
+      return "text-emerald-400";
+    case "PULAR":
+      return "text-amber-400";
+    case "APROVAR":
+      return "text-violet-400";
+    default:
+      return "text-neutral-400";
+  }
+}

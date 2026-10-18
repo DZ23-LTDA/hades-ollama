@@ -59,6 +59,40 @@ vi.mock("@/lib/toolchainClient", () => ({
   rotuloDoEstado: (estadoProbe: string) =>
     estadoProbe === "ABSENT" ? "Ausente" : estadoProbe,
   estadoEhAusente: (estadoProbe: string) => estadoProbe === "ABSENT",
+  // FASE 28.6-A: a pagina passou a montar o painel de PERFIS DE INSTALACAO, que consome estas
+  // duas funcoes. Sem elas o mock fica incompleto e a pagina rebenta no arranque.
+  // *Um mock que nao acompanha o componente deixa de testar o componente.*
+  fetchInstallCatalogo: vi.fn(async () => ({
+    host: "HOST-TESTE",
+    goos: "windows",
+    perfis: [
+      {
+        id: "BASIC",
+        descricao: "HADES Core e diagnostico",
+        pacotes: ["hades-core"],
+        tamanho_mb: 180,
+        escolhe_pacotes: false,
+      },
+    ],
+    pacotes: [],
+    avisos: [],
+    count: 1,
+  })),
+  fetchInstallPlano: vi.fn(async () => ({
+    perfil: "BASIC",
+    host: "HOST-TESTE",
+    goos: "windows",
+    itens: [],
+    tamanho_total_mb: 0,
+    downloads_evitados: 0,
+    aprovacoes_necessarias: 0,
+    bloqueios: [],
+    pronto: true,
+    resumo: "perfil BASIC: 0 itens",
+    executa_algo: false,
+  })),
+  rotuloDaAcao: (acao: string) => acao,
+  corDaAcao: () => "cor-teste",
 }));
 
 vi.mock("@/components/AppSidebar", () => ({
@@ -134,8 +168,19 @@ describe("CapabilitiesPage", () => {
     const arvore = await montar();
     await esperar(arvore, "HOST-TESTE");
     // *Um botao "Instalar" aqui mentiria: instalar exige approval e uma superficie propria.*
-    const conteudo = texto(arvore.root);
-    expect(conteudo).not.toMatch(/Instalar/i);
+    // O alvo e' o BOTAO, nao a palavra. Desde a FASE 28.6-A a pagina tem uma seccao
+    // "Perfis de instalacao", e proibir a palavra passaria a proibir a propria seccao --
+    // *um teste que proibe uma palavra legitima nao testa o vazamento: testa a minha
+    // imaginacao de como o vazamento seria.*
+    const botoes = arvore.root.findAll((n) => n.type === "button");
+    expect(botoes.length).toBeGreaterThan(0);
+    for (const botao of botoes) {
+      const rotulo = texto(botao).trim().toLowerCase();
+      expect(rotulo, `botao "${rotulo}" parece um botao de instalar`).not.toBe("instalar");
+      expect(rotulo, `botao "${rotulo}" parece um botao de instalar`).not.toContain(
+        "instalar agora",
+      );
+    }
   });
 
   it("ao expandir um alvo bloqueado mostra blockers E trabalho independente", async () => {

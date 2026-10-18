@@ -15,6 +15,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { AppSidebar } from "@/components/AppSidebar";
+import { InstallProfilesPanel } from "@/components/InstallProfilesPanel";
 import { SidebarLayout } from "@/components/layout/layout";
 import {
   fetchToolchainDoctor,
@@ -244,7 +245,7 @@ export function CapabilitiesPage() {
             {doctor.alvos.length === 0 ? (
               <p className="text-sm text-neutral-500">Nenhum alvo de build declarado.</p>
             ) : (
-              <ul className="space-y-2">
+              <ul className="space-y-2" aria-label="Alvos de build">
                 {doctor.alvos.map((alvo) => {
                   const expandido = aberto === alvo.alvo;
                   return (
@@ -286,6 +287,11 @@ export function CapabilitiesPage() {
           </>
         ) : null}
       </div>
+
+      {/* FASE 28.6-A: os perfis de instalacao na MESMA pagina, nao num painel paralelo.
+          Responde a mesma pergunta do preflight -- o que falta nesta maquina -- e por isso
+          vive aqui. *Dois paineis para a mesma pergunta divergem no primeiro dia.* */}
+      <InstallProfilesPanel />
     </SidebarLayout>
   );
 }

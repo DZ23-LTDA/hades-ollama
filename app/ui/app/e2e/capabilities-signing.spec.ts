@@ -53,7 +53,9 @@ test.describe(`capacidades e identidades de assinatura (${MODO})`, () => {
     for (const alvo of alvos) {
       await expect(page.getByText(alvo.alvo, { exact: false })).toBeVisible();
     }
-    const linhas = page.locator("li", { has: page.locator("button[aria-expanded]") });
+    const linhas = page.getByRole("list", { name: "Alvos de build" }).locator("li", {
+      has: page.locator("button[aria-expanded]"),
+    });
     await expect(linhas).toHaveCount(alvos.length);
   });
 
