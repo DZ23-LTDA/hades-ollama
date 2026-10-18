@@ -66,7 +66,7 @@ function plano(sobrescrever: Partial<PlanoDeRelease> = {}): PlanoDeRelease {
             Probes: [
               {
                 Requisito: { Nome: "go", Comando: "go", Obrigatorio: true, Motivo: "compilar" },
-                Estado: "saudavel",
+                Estado: "PRESENT_COMPATIBLE_HEALTHY",
               },
               {
                 Requisito: {
@@ -75,7 +75,7 @@ function plano(sobrescrever: Partial<PlanoDeRelease> = {}): PlanoDeRelease {
                   Obrigatorio: true,
                   Motivo: "empacotar a imagem",
                 },
-                Estado: "ausente",
+                Estado: "ABSENT",
                 Detalhe: "nao encontrado no PATH",
               },
             ],
@@ -233,11 +233,11 @@ describe("BuildPlanPanel", () => {
     });
 
     const textos = JSON.stringify(r.toJSON());
-    // `saudavel` -> "pronta"; `ausente` -> "não instalada". As palavras cruas nao aparecem.
+    // `PRESENT_COMPATIBLE_HEALTHY` -> "pronta"; `ABSENT` -> "não instalada". Os valores crus nao\n    // aparecem. Os valores do mock sao os REAIS de `ToolState`, nao nomes inventados.
     expect(textos).toContain("pronta");
     expect(textos).toContain("não instalada");
-    expect(textos).not.toContain('"saudavel"');
-    expect(textos).not.toContain('"ausente"');
+    expect(textos).not.toContain('"PRESENT_COMPATIBLE_HEALTHY"');
+    expect(textos).not.toContain('"ABSENT"');
   });
 
   it("mostra o trabalho que pode avancar sem desbloquear nada", async () => {

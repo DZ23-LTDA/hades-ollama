@@ -44,6 +44,20 @@ const MODO = BACKEND_REAL ? "BACKEND_REAL_AGENT_RUNTIME" : "UI_FIXTURE";
  */
 const REPO = process.env.HADES_E2E_REPO || "/repo-fixture";
 
+/**
+ * As expectativas que MUDAM com o modo.
+ *
+ * O fixture serve um projecto com Go e Node e um blocker `docker`. O backend real analisa o
+ * repositorio git do harness, que e' **so' Go** e cujo blocker medido e' `inno-setup`.
+ *
+ *	*Um spec que espera o mesmo texto nos dois modos obriga um deles a mentir.*
+ */
+const ESPERADO = {
+  stacks: MODO === "BACKEND_REAL_AGENT_RUNTIME" ? ["go"] : ["go", "node"],
+  blocker: MODO === "BACKEND_REAL_AGENT_RUNTIME" ? "inno-setup" : "docker",
+  motivo: MODO === "BACKEND_REAL_AGENT_RUNTIME" ? "compilar o instalador" : "empacotar a imagem",
+};
+
 /** O painel, pelo nome acessivel que ele proprio declara. */
 function painel(page: import("@playwright/test").Page) {
   return page.getByRole("region", { name: "Build & Release" });
@@ -79,22 +93,24 @@ test.describe(`Build & Release (${MODO})`, () => {
 
   test("analisa um projeto e mostra stacks vindas do HTTP", async ({ page }) => {
     await analisar(page, REPO);
-    // `go, node` so' existe no fixture/backend; um componente que inventasse mostraria outra coisa.
-    await expect(painel(page)).toContainText("go");
-    await expect(painel(page)).toContainText("node");
+    // As stacks sao as que o BACKEND mediu naquele projecto; um componente que inventasse
+    // mostraria outra coisa.
+    for (const stack of ESPERADO.stacks) {
+      await expect(painel(page)).toContainText(stack);
+    }
   });
 
   test("mostra os blockers no topo, sem abrir cada alvo", async ({ page }) => {
     await analisar(page, REPO);
     await expect(painel(page).getByRole("heading", { name: "O que falta" })).toBeVisible();
-    await expect(painel(page)).toContainText("docker");
+    await expect(painel(page)).toContainText(ESPERADO.blocker);
   });
 
   test("mostra os motivos que explicam cada blocker", async ({ page }) => {
     await analisar(page, REPO);
     const porque = painel(page).getByRole("heading", { name: "Porquê" });
     await expect(porque).toBeVisible();
-    await expect(painel(page)).toContainText("empacotar a imagem");
+    await expect(painel(page)).toContainText(ESPERADO.motivo);
   });
 
   test("traduz o estado da sonda para texto humano", async ({ page }) => {

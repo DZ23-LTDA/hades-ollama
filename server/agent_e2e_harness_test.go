@@ -170,6 +170,20 @@ func prepararRepositorioReal(t *testing.T, raiz string) (repo, worktree string, 
 	if err := os.WriteFile(filepath.Join(repo, "base.txt"), []byte("base\n"), 0o600); err != nil {
 		return "", "", err
 	}
+	// FASE 28.8: um projecto Go MINIMO, para o `/build/plan` ter o que detectar.
+	//
+	//	*Um repositorio com um so' ficheiro de texto nao e' um projecto: e' uma pasta com git. Pedir
+	//	ao detector que o reconheca seria pedir-lhe que invente.*
+	//
+	// O modulo e' `e2e-fixture`, NAO o do HADES: este repo e' uma fixture, e chamar-lhe
+	// `github.com/ollama/ollama` faria o plano dizer que o projecto e' o produto.
+	if err := os.WriteFile(
+		filepath.Join(repo, "go.mod"),
+		[]byte("module e2e-fixture\n\ngo 1.24\n"),
+		0o600,
+	); err != nil {
+		return "", "", err
+	}
 	if err := git("add", "-A"); err != nil {
 		return "", "", err
 	}

@@ -134,28 +134,45 @@ export async function obterPlanoDeRelease(
 /**
  * Traduz o estado de uma sonda para texto humano, sem jargao.
  *
- * Existe porque o painel mostraria `ToolAbsent` a um utilizador que nao sabe o que isso e', e
- * *um estado tecnico apresentado sem traducao e' um estado que o utilizador nao tem.*
+ * OS VALORES REAIS DO BACKEND SAO OS DE `ToolState` EM `internal/agent/toolchain_plan.go`:
+ *
+ *   PRESENT_COMPATIBLE_HEALTHY     ferramenta pronta
+ *   PRESENT_COMPATIBLE_UNVERIFIED  existe, mas ninguem executou um smoke
+ *   PRESENT_OUTDATED              existe, versao abaixo do minimo
+ *   PRESENT_BROKEN                existe, mas nao funciona
+ *   ABSENT                        nao encontrada
+ *   UNKNOWN                       nao foi possivel determinar
+ *
+ * A primeira versao deste switch comparava `saudavel`/`ausente`/`outdated` -- **nomes que eu
+ * inventei**. O E2E contra o backend REAL (`inno-setup` -> `ABSENT`) apanhou-o depois de o fixture
+ * passar, porque o fixture tambem os tinha inventado.
+ *
+ *	*Um teste que inventa o valor que o backend devolve nunca falha por causa do backend.*
+ *
+ * A comparacao passou a ser sobre o valor normalizado E sobre o prefixo `PRESENT_`, para nao
+ * depender de uma lista que fica desactualizada quando o backend ganha um estado novo.
  */
 export function descreverEstadoDaSonda(estado: string): string {
-  switch (estado) {
-    case "saudavel":
-    case "healthy":
+  const normalizado = (estado ?? "").trim().toUpperCase();
+  // `PRESENT_*` e' a familia de estados em que a ferramenta EXISTE. Distinguir dentro dela importa;
+  // negar a familia inteira seria dizer que uma ferramenta quebrada nao esta' instalada -- e ela
+  // esta': *a diferenca entre "nao tenho" e "tenho e nao funciona" decide o que o utilizador faz a
+  // seguir.*
+  switch (normalizado) {
+    case "PRESENT_COMPATIBLE_HEALTHY":
       return "pronta";
-    case "ausente":
-    case "absent":
-      return "não instalada";
-    case "versao_antiga":
-    case "outdated":
+    case "PRESENT_COMPATIBLE_UNVERIFIED":
+      return "instalada, sem verificação de funcionamento";
+    case "PRESENT_OUTDATED":
       return "versão antiga";
-    case "quebrada":
-    case "broken":
+    case "PRESENT_BROKEN":
       return "instalada mas não funciona";
-    case "desconhecido":
-    case "unknown":
+    case "ABSENT":
+      return "não instalada";
+    case "UNKNOWN":
       return "não foi possível determinar";
     default:
-      return estado;
+      return normalizado === "" ? "desconhecido" : estado;
   }
 }
 
@@ -178,7 +195,7 @@ export function resumirSondas(plano: PlanoDoProjeto): ResumoDeSondas {
   for (const alvo of plano.alvos) {
     for (const sonda of alvo.plano.Probes ?? []) {
       total += 1;
-      if (sonda.Estado === "saudavel" || sonda.Estado === "healthy") {
+      if (sonda.Estado === "PRESENT_COMPATIBLE_HEALTHY") {
         prontas += 1;
       }
     }

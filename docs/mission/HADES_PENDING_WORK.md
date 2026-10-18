@@ -1,3 +1,21 @@
+## JANELA E-1250
+
+**Ronda 68.** O modo `BACKEND_REAL_AGENT_RUNTIME` foi exercitado -- e apanhou um bug que o fixture
+nunca apanharia.
+
+- **E-1250** -- harness a servir o **router de producao** em `127.0.0.1:43219`; `GET /build/plan`
+  devolveu `200` com `stacks=go alvos=[linux windows] blockers=inno-setup (ABSENT)` sobre git real.
+  E2E modo real **6/2/0**; modo fixture **9/0/0**.
+- **O ACHADO:** o painel comparava `saudavel`/`ausente` -- **nomes que eu inventei**. Os `ToolState`
+  reais sao `PRESENT_COMPATIBLE_HEALTHY`/`PRESENT_BROKEN`/`ABSENT`/`UNKNOWN`. **O fixture tambem os
+  tinha inventado**, por isso passava nos dois lados: *um teste que inventa o valor que o backend
+  devolve nunca falha por causa do backend* -- a mesma licao da E-1238. Corrigido no painel, no
+  fixture e no mock do teste.
+
+Proximo passo declarado: **C1** -- um build real produzido e instalado.
+
+Veredito global: `NOT_RELEASE_READY`.
+
 ## JANELA E-1249
 
 **Ronda 67.** O painel e a rota passaram a falar um com o outro no browser real.

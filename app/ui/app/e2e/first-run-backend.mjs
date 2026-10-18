@@ -171,13 +171,13 @@ let estadoDoWorktreeDoFixture = "preparado";
 function planoDoFixture(repo) {
   const sondaSaudavel = (nome, motivo) => ({
     Requisito: { Nome: nome, Comando: nome, Obrigatorio: true, Motivo: motivo },
-    Estado: "saudavel",
+    Estado: "PRESENT_COMPATIBLE_HEALTHY",
     Caminho: `/usr/local/bin/${nome}`,
     Versao: `${nome} version 1.2.3`,
   });
   const sondaAusente = (nome, motivo) => ({
     Requisito: { Nome: nome, Comando: nome, Obrigatorio: true, Motivo: motivo },
-    Estado: "ausente",
+    Estado: "ABSENT",
     Detalhe: "nao encontrado no PATH",
   });
   return {
