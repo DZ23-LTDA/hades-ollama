@@ -196,6 +196,75 @@ Para tipos HTTP: **HTTPS obrigatório**, `http` permitido **só** com `AllowInse
 
 ---
 
+## 4-B. Fase 2.F — triagem caso a caso (concluída nesta fatia)
+
+O adendo proíbe fechar por contagem: cada regra abaixo foi seguida até fonte → sink → veredito.
+
+### `crypto.math_random.math-random-used` — **9 achados, todos `NOT_ACTIONABLE`**
+
+O discriminador é: **gera token, nonce, sessão, autorização ou segredo?** Nenhum gera.
+
+| sítio | uso real | veredito |
+|---|---|---|
+| `internal/agent/queue.go:435` | `backoff = half + rand.Int64N(...)` — **jitter de retry** | `NOT_ACTIONABLE` |
+| `internal/agent/redis_queue.go:1131` | idem | `NOT_ACTIONABLE` |
+| `llm/llama_server.go:366` | **porta efémera** (`rand.Intn(16383)+49152`) | `NOT_ACTIONABLE` |
+| `llm/llama_server.go:241` | `rand.Int63()` num **marcador de placeholder de mídia** (`<__ollama_media_%d_%d__>`), combinado com `time.Now().UnixNano()`; **o mesmo ficheiro já usa `crypto/rand` (`crand.Read`) na linha 237** para o que importa | `NOT_ACTIONABLE` |
+| `mlxrunner/client.go:335` | **porta efémera** | `NOT_ACTIONABLE` |
+| `middleware/openai.go:387,480,1212,1213` | **IDs de resposta do protocolo OpenAI** (`cmpl-N`, `chatcmpl-N`, `resp_N`, `msg_N`) — o protocolo exige um ID; não é segredo nem autorização | `NOT_ACTIONABLE` |
+| `openai/responses.go:1587,1667,1697` | **IDs de item** (`rs_N`, `tsc_N_i`, `fc_N_i`) | `NOT_ACTIONABLE` |
+| `server/download.go:209` | **jitter de retry** (`rand.Float64()+0.5`) | `NOT_ACTIONABLE` |
+| `server/model_recommendations.go:370` | **jitter de estimativa** (`0.8 + Float64()*0.4`) | `NOT_ACTIONABLE` |
+| `x/transfer/transfer.go:228` | **jitter de retry** | `NOT_ACTIONABLE` |
+
+### `crypto.use_of_weak_crypto.use-of-md5` — **6 achados, todos `NOT_ACTIONABLE`**
+
+O adendo aceita checksum não criptográfico **se não participar de autenticação, assinatura, autorização ou decisão de segurança**. É o caso:
+
+| sítio | uso real | veredito |
+|---|---|---|
+| `app/wintray/tray.go:436` | `md5.Sum(iconBytes)` → **hash do CONTEÚDO do ícone para nome de ficheiro temporário** (dedup) | `NOT_ACTIONABLE` |
+| `server/upload.go:185` | `md5.New()` sobre `part.Sum(nil)` → **checksum de partes do protocolo de upload de blob** (registry/OCI) | `NOT_ACTIONABLE` (contrato de protocolo) |
+| `server/upload.go:230` | idem, sobre `SectionReader` | idem |
+| `x/transfer/upload.go:571` | `composite := md5.New()` → **hash composto exigido pelo protocolo** | idem |
+| `x/transfer/upload.go:640` | `partHash := md5.New()` via `io.TeeReader` | idem |
+| `x/transfer/upload.go:726` | idem | idem |
+
+**Nenhum verifica identidade, assinatura nem autorização.** Migrar para SHA-256 **quebraria o protocolo de upload** e não acrescentaria segurança a um checksum de transporte sobre HTTPS.
+
+### `xss.import-text-template` — **5 achados, `NOT_ACTIONABLE` para injection**
+
+`text/template` **não executa código arbitrário**; as funções são de uma lista fixa (`funcs`, em `template/template.go:142`). O `Parse(s)` recebe o **template do próprio modelo** (metadado GGUF), não texto do utilizador final; e `mlx/generator/main.go:136` usa `template.ParseFS(fsys, "*.gotmpl")` sobre um **`embed.FS` de tempo de compilação** — não é entrada externa.
+**Risco residual registado em `NEEDS_REVIEW`:** não há limite de tamanho do template parseado, portanto um GGUF malicioso pode causar **DoS** (não injection).
+
+### `database.string-formatted-query` — **1 achado, `NOT_ACTIONABLE`**
+
+`app/store/database.go:64` faz `fmt.Sprintf` sobre o **schema SQL**. O **único verbo** é `%d` (linha 94, `schema_version INTEGER NOT NULL DEFAULT %d`) — **inteiro**, não string. Não há `%s`. `%d` com inteiro não é injetável. O alerta dispara por ver `Sprintf` alimentando `Exec`; a auditoria mostra que o verbo não transporta texto.
+
+### `reverseproxy-director` — **1 achado, `NOT_ACTIONABLE`**
+
+`app/ui/ui.go:162-171`: o alvo vem de `envconfig.ConnectableHost()`, **não do pedido**; `req.Host = target.Host` é o comportamento normal de `NewSingleHostReverseProxy`. Não há `Director` a construir URL a partir de entrada do cliente.
+
+### `audit.net.use-tls` — **1 achado, `NOT_ACTIONABLE` com prova de bind**
+
+`mlxrunner/runner.go:316` usa `http.ListenAndServe` sem TLS — mas `mlxrunner/server.go:216` chama `runner.Run("127.0.0.1", ...)` com o host **literal**, e `Execute` só declara as flags `-model` e `-port`: **não existe `-host` nem variável de ambiente que altere o bind**.
+*O adendo exige: "Não alegue que é local sem provar bind, configuração suportada e ator que pode alterá-la."* — aqui prova-se: **bind literal, sem configuração, sem ator.**
+TLS num socket loopback não protege de nada que o loopback já não confine.
+
+### `react-insecure-request` / `hardcoded_secrets.node_secret` / `node_username` — **3 achados de UI**
+
+| sítio | natureza | veredito |
+|---|---|---|
+| `app/ui/app/e2e/capture_whatsapp_evidence.mjs:68` | **fixture de E2E** a apontar para URL local de captura | `NOT_ACTIONABLE` |
+| `app/ui/app/src/lib/userFacingError.ts:14` | literal de **mensagem de erro** para o utilizador (o "segredo" é o texto da mensagem) | `NOT_ACTIONABLE` |
+| `app/ui/app/src/components/layout/layout.tsx:62` | **nome de utilizador de placeholder** em UI | `NOT_ACTIONABLE` |
+
+### `unsafe-reflect-by-name` — **2 achados em `api/types.go:1039,1232`**
+
+`reflect.Value.FieldByName` sobre **`api.Options`/tipos do próprio pacote**, com nomes de campo vindos de uma lista fechada (não de texto do utilizador). `NOT_ACTIONABLE` para RCE; mantido em `NEEDS_REVIEW` por ser reflexão sobre tipos públicos.
+
+---
+
 ## 5. `NEEDS_REVIEW` — dívida de hardening, sem exploração demonstrada
 
 | achado | porque não foi fechado nesta fatia |
@@ -203,11 +272,12 @@ Para tipos HTTP: **HTTPS obrigatório**, `http` permitido **só** com `AllowInse
 | `mlxrunner/client.go:350` — `cmd.Env = os.Environ()` | Subprocesso do **próprio binário** (`os.Executable()` + `EvalSymlinks`), mas herda o ambiente do operador. Fix proporcional: `procenv.Minimal` + vars de biblioteca do MLX. **Não feito porque não há como validar MLX neste host** — mudar o ambiente de um runner que não consigo executar é trocar um risco por uma regressão invisível. |
 | `internal/agent/auth.go:566` — `hmac.New(sha1.New, …)` | HMAC-SHA1 não está quebrado como o SHA-1 puro, mas SHA-256 seria melhor. Migrar **invalida tokens existentes**; exige versão/rotação planeada. |
 | `internal/agent/deploy.go:570` — `sha1.Sum` | **É o contrato da API do Netlify** (espera o SHA-1 dos ficheiros). Não é decisão de segurança nossa; a integridade real vem de HTTPS. Documentado, não alterado. |
-| `crypto/math_random` (9) | Verificar caso a caso: se algum escolhe token/nonce/sessão, é `CONFIRMED`. Não fechado nesta fatia. |
-| `import-text-template` (5), `string-formatted-query` (1), `reverseproxy-director` (1) | Sem sink demonstrado até agora; exigem traçar fonte→validação→sink antes de julgar. |
+| `crypto/math_random` (9) | **TRIADO na §4-B:** nenhum gera token/nonce/sessão/autorização — jitter, porta efémera ou ID de protocolo. `NOT_ACTIONABLE`. |
+| `import-text-template` (5) | **TRIADO na §4-B:** `NOT_ACTIONABLE` para injection (template do modelo / `embed.FS`). Risco residual: **sem limite de tamanho** → DoS por GGUF malicioso. |
+| `string-formatted-query` (1), `reverseproxy-director` (1) | **TRIADOS na §4-B:** `%d` com inteiro e alvo de proxy vindo de config, não do pedido. `NOT_ACTIONABLE`. |
 | `unsafe` (198) | **Camada nativa/upstream** (`app/`, `mlx/`, `app/wintray/`, `app/dialog/`). *Reescrever 198 sítios de FFI sem poder correr Windows/macOS/GPU aqui seria a forma mais eficaz de quebrar o produto e chamar-lhe segurança.* |
 | Dependabot cooldown (4), `github-actions-mutable-action-tag` (1) | Governança de CI; mudam o pipeline e exigem decisão do proprietário sobre janela de atualização. |
-| `use-tls` (1), `react-insecure-request` (1), `hardcoded_secrets.node_*` (2) | A localizar e julgar na próxima fatia. |
+| `use-of-md5` (6), `use-tls` (1), `react-insecure-request` (1), `hardcoded_secrets.node_*` (2), `unsafe-reflect-by-name` (2) | **TRIADOS na §4-B:** todos `NOT_ACTIONABLE` com prova de sink (checksum de protocolo, bind loopback literal, fixtures de UI, reflexão sobre lista fechada). |
 
 ---
 
