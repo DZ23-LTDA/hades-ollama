@@ -1,3 +1,29 @@
+## JANELA E-1284
+
+**Ronda 102. O sétimo provider fechado: `VerificationPanel` consome `build.verify`.**
+
+- **E-1284** — `verificationClient.ts` + `VerificationPanel.tsx` + **12 testes**, montado em
+  `CapabilitiesPage`. A rota existia desde E-1256 mas **nenhum consumidor na UI**.
+- **A distinção que o painel não pode perder, e há teste que a trava:** `sem_assinatura` (o adaptador
+  olhou, não havia) e `nao_verificadas` (ninguém olhou) em `data-testid` **separados**, proibido somar.
+  Se fossem somados, o painel diria "N com assinatura presente" para artefactos que ninguém inspecionou.
+- **Inventado-vs-actual, apanhado antes de testar, 11.ª vez:** escrevi `v.integridade`; o campo é
+  `integros`. Corrigido lendo `build_provider.go`. E o `eslint` apanhou `SHA_A` declarada e nunca usada
+  — **o gate apanhou o meu próprio teste**.
+- **`aprovada: true` não é prova de assinatura:** o teste exige "nada foi assinado" e "não é prova de
+  assinatura".
+- **Não tem campo nem botão de assinar/construir/instalar:** `input` `toHaveLength(0)`, um botão,
+  `Object.keys(corpo) === ["artefactos"]`. Caminhos de demonstração declarados como tal.
+
+Medido: **12 testes PASS** · `npx vitest run` **127 ficheiros / 909 testes** (era 126/897) ·
+`tsc -b` 0 · `eslint .` **0 erros** · `vite build` 0 · `BUNDLE_BUDGET=PASS` ·
+`npx playwright test` **106 passed / 9 skipped**.
+
+**Lacuna:** sem E2E do painel; caminhos são de demonstração (falta ligação ao `BuildProvider`).
+**3 providers sem rota nem painel.**
+
+Veredito global: `NOT_RELEASE_READY`.
+
 ## JANELA E-1283
 
 **Ronda 101. O E2E do `SbomPanel`: o sétimo elo fechado no browser real.**
