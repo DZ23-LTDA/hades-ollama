@@ -1,3 +1,30 @@
+## JANELA E-1279
+
+**Ronda 97. O quinto provider ligado ao produto: `SigningPanel` consome `sign/plan`.**
+
+- **E-1279** — `signingPlanClient.ts` + `SigningPanel.tsx` + **11 testes**, montado em
+  `CapabilitiesPage`. **Décimo quinto reabrir do defeito, quinto fecho.**
+- **Defeito real, causado por mim, apanhado pelo `tsc`:** escrevi o cliente **por cima** de
+  `signingClient.ts`, que **já existia** e serve o Signing Identity Center (FASE 28.5). Partiu
+  `SigningIdentitiesPage.tsx` com **8 erros**. *Um nome que parece livre não prova que o ficheiro não
+  existe: a pasta não foi lida.* Corrigido: original restaurado do `HEAD`, novo cliente em
+  `signingPlanClient.ts`, tipo renomeado para `IdentidadeParaAvaliar`.
+- **Sem campo para segredo, e há teste que o prova:** os `input` têm de ser **exactamente**
+  `[assinatura-certificado, assinatura-rotulo]`, nenhum `type="password"`, e o corpo do pedido tem de
+  ter `Object.keys(identidade) === [ambiente, caminho_do_certificado, rotulo]`.
+- **Cada negação tem a sua frase, e o teste discrimina:** `SEM_EKU` mostra o OID; **`EXPIRADA` mostra
+  "expirada" e o teste exige que a frase de EKU NÃO apareça** — *dizer "falta o EKU" a um certificado
+  expirado manda quem lê corrigir a coisa errada.* Valor desconhecido **falha alto** no `default` do
+  `switch` com `never`.
+
+Medido: **11 testes PASS** · `npx vitest run` **125 ficheiros / 886 testes** · `tsc -b` 0 ·
+`eslint .` 0 erros · `vite build` 0 · `BUNDLE_BUDGET=PASS`.
+
+**Lacuna:** sem E2E Playwright. **5 dos 10 providers sem painel.** O provider **não valida cadeia
+criptográfica nem revogação** — só o nome da CA emissora.
+
+Veredito global: `NOT_RELEASE_READY`.
+
 ## JANELA E-1278
 
 **Ronda 96. O E2E do `RollbackPanel`: o quinto elo fechado no browser real.**
