@@ -1,3 +1,27 @@
+## JANELA E-1276
+
+**Ronda 94. O terceiro provider ligado ao produto: `publish.rollback` consome o `RollbackProvider`.**
+
+- **E-1276** — `server/agent_rollback_route.go` + 6 testes. A E-1268 provou o provider com 7 testes,
+  **mas só os testes o invocavam**. **Décimo terceiro reabrir do defeito, terceiro fecho.**
+- **O directório vem do AMBIENTE, não do pedido:** lê `HADES_ARTEFACTOS` — a **mesma** variável que
+  `build.smoke`. *Duas rotas que leem o mesmo cofre não podem ter duas fronteiras diferentes.* Há teste
+  que envia um `directorio` no corpo e exige que seja **ignorado**.
+- **`tipo` vazio é recusado (400):** *o canal de rollback não tem valor por omissão* — escolher um
+  canal em nome de quem pede seria inventar a intenção.
+- **Canal sem credencial devolve 409, não 500:** *um 500 aqui confundiria "o servidor falhou" com "o
+  canal não existe"*.
+- **`executado` é SEMPRE false** e o `aviso_de_fronteira` garante que nenhum ficheiro foi movido.
+
+**Oito rotas do Release Hub:** `build/plan` · `build/artifact/checksum` · `build/artifact/verify` ·
+`build/verify` · `build/smoke` · `publish/rollback` · `sign/plan` · `credentials/status`.
+
+Medido: 6 PASS; `./server` ok 58,9 s; build 0; vet 0; lint 0.
+
+**Lacuna:** a rota **não tem painel**. **7 dos 10 providers sem painel.**
+
+Veredito global: `NOT_RELEASE_READY`.
+
 ## JANELA E-1275
 
 **Ronda 93. O E2E do `SmokePanel`: o segundo elo fechado no browser real.**
