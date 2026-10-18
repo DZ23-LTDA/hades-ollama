@@ -32,10 +32,14 @@ import (
 // `"active"` era o valor de todas as sessoes criadas antes da E-1227; sem esta traducao, a
 // primeira operacao recusaria uma sessao perfeitamente valida.
 var estadosLegados = map[string]EstadoDoWorktree{
-	"active":   WorktreeEmUso,
-	"merged":   WorktreeIntegrado,
-	"rejected": WorktreeArquivado,
-	"removed":  WorktreeRemovido,
+	// "suspension" era o valor GRAVADO em registos anteriores. Fica como legado traduzido:
+	//
+	//	*Um valor antigo que nao se sabe ler e' um worktree que se trata como se nao existisse.*
+	"suspension": WorktreeSuspenso,
+	"active":     WorktreeEmUso,
+	"merged":     WorktreeIntegrado,
+	"rejected":   WorktreeArquivado,
+	"removed":    WorktreeRemovido,
 }
 
 // NormalizarEstado traduz um estado legado para a lista fechada.

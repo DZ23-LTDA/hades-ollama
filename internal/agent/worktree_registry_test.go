@@ -304,3 +304,50 @@ func TestDiagnosticoComRegistoCorrompido(t *testing.T) {
 		t.Fatalf("erro = %v; esperado ErrRegistoCorrompido", err)
 	}
 }
+
+// Um registo GRAVADO com o valor antigo `"suspension"` continua a ser legivel.
+//
+//	*Um valor antigo que nao se sabe ler e' um worktree que se trata como se nao existisse.*
+//
+// Este teste existe por causa de um defeito REAL apanhado pelo E2E de browser (E-1238): o backend
+// gravava `"suspension"` (ingles) enquanto o painel mapeava `"suspension"` -- e o painel mostrava
+// "Estado desconhecido" para um worktree suspension. Os testes unitarios nao o viram porque
+// *inventavam o valor que esperavam do backend*.
+func TestRegistoLeValorLegadoSuspension(t *testing.T) {
+	dir := t.TempDir()
+	caminho := filepath.Join(dir, NomeDoRegistoDeWorktrees)
+	// Um registo no formato ANTIGO, escrito a mao.
+	antigo := `{
+  "esquema": 1,
+  "entradas": {
+    "missao-legada": {
+      "mission_id": "missao-legada",
+      "estado": "suspension",
+      "caminho": "/repo/.agent-worktrees/missao-legada",
+      "branch": "agent/missao-legada",
+      "atualizado_em": "2026-10-17T10:00:00Z"
+    }
+  }
+}`
+	if err := os.WriteFile(caminho, []byte(antigo), 0o600); err != nil {
+		t.Fatalf("escrever: %v", err)
+	}
+	// O valor legado `"suspension"` e' aceite pela tabela de legados.
+	if estadosLegados["suspension"] != WorktreeSuspenso {
+		t.Fatalf("estadosLegados[\"suspension\"] = %q; esperado %q",
+			estadosLegados["suspension"], WorktreeSuspenso)
+	}
+	// E o valor NOVO e' o que o tipo declara.
+	if WorktreeSuspenso != "suspension" {
+		t.Fatalf("WorktreeSuspenso = %q; esperado suspension", WorktreeSuspenso)
+	}
+	// O ficheiro com o valor actual carrega.
+	r, err := CarregarRegistoDeWorktrees(caminho)
+	if err != nil {
+		t.Fatalf("carregar: %v", err)
+	}
+	estado, existe := r.EstadoDe("missao-legada")
+	if !existe || estado != WorktreeSuspenso {
+		t.Fatalf("estado = %q existe=%v; esperado suspension", estado, existe)
+	}
+}
