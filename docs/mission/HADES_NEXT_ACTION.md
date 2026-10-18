@@ -1,3 +1,28 @@
+## JANELA E-1263
+
+**Ronda 81. O quinto dos dez providers: `SigningProvider` — e um certificado REAL expôs um defeito meu.**
+
+- **E-1263** -- `signing_provider.go` + 12 testes. **Nao** e' um `Assinar()` que devolve "nao
+  autorizado": a missao proibe assinar, e *um botao morto e' pior do que um botao ausente*.
+- `AvaliarCertificado` verifica **validade → emissor → EKU**, com 8 valores de aptidao e o motivo.
+- **O defeito que o certificado real expôs:** `IdentidadeDeOutraCA` estava declarado e **nunca era
+  produzido** -- codigo morto a fingir de verificacao. Medindo o `distribution.cer` **real** do kit,
+  descobri que ele **TEM** o EKU de Code Signing `1.3.6.1.5.5.7.3.3`; sem `emissorCompativel` o
+  provider declararia **um certificado Apple apto a assinar um `.exe` do Windows**.
+- **A frase do adendo provada contra o ficheiro real:** *"Apple Distribution nao substitui Developer
+  ID"* -- `APPLE_DEVELOPER_ID` → **`SEM_EKU_DE_ASSINATURA`**; `AUTHENTICODE` →
+  **`EMISSOR_INESPERADO`**.
+- **Validade antes do EKU:** *dizer "falta o EKU" a um expirado manda corrigir a coisa errada.*
+- **Formato sem regra nao e' aprovado:** Android/OpenPGP → `FORMATO_DESCONHECIDO`, sem afirmar nada.
+- **Limite declarado no codigo:** verifica o NOME da CA, nao a cadeia nem a revogacao.
+
+Medido: 12 PASS; `./internal/agent` **ok 499,1 s**; build 0; vet 0; lint 0.
+
+**Ausente:** sem rota HTTP nem painel. A1 da DZ23 **nao avaliado** (vive no store do Windows).
+Faltam **5 dos 10** providers: `Publishing`, `Credential`, `Compliance`, `Test`, `Rollback`.
+
+Veredito global: `NOT_RELEASE_READY`.
+
 ## JANELA E-1262
 
 **Ronda 80. `build.verify`: a verificacao deixou de ser funcao que so' os testes invocam.**
