@@ -51,6 +51,20 @@ export interface WorktreeDiagnostico {
   inconsistente?: string;
   pode_remover: boolean;
   motivo_remover?: string;
+  /**
+   * Diz se o estado veio do registo PERSISTIDO em disco, e nao apenas do que o disco prova.
+   *
+   * O painel precisa desta distincao: "suspenso porque alguem o suspendeu" e' uma informacao
+   * diferente de "existe no disco".
+   */
+  estado_do_registo: boolean;
+  /**
+   * O que se fez com o registo: `consultado`, `ausente: ...`, `ilegivel: ...` ou
+   * `nao consultado: ...`.
+   *
+   * Um registo ilegivel NAO pode aparecer como ausente.
+   */
+  registo: string;
 }
 
 /** Inventario de worktrees de um repositorio. */

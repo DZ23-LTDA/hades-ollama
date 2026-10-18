@@ -215,6 +215,26 @@ export function WorktreesPanel() {
 
               <p className="mt-1 text-sm text-neutral-400">{diagnostico.estado_observado}</p>
 
+              {/*
+                A ORIGEM do estado, dita em voz alta.
+
+                    *Um estado que morre com o processo nao e' um estado: e' uma variavel.*
+
+                Sem esta linha o utilizador nao consegue distinguir "o HADES sabe que eu suspendi
+                este worktree" de "o HADES so' ve' que a pasta existe". E um registo ilegivel
+                aparece como ilegivel, nunca como ausente.
+              */}
+              <p className="mt-1 text-sm text-neutral-400">
+                Registo de estado:{" "}
+                {diagnostico.estado_do_registo ? "consultado (estado persistido)" : diagnostico.registo}
+              </p>
+              {diagnostico.registo.startsWith("ilegivel") && (
+                <p className="mt-1 text-sm text-amber-300" role="alert">
+                  O registo de estado existe mas não pôde ser lido. O estado apresentado vem apenas
+                  do disco.
+                </p>
+              )}
+
               {diagnostico.inconsistente && (
                 <p className="mt-2 text-sm text-rose-300" role="alert">
                   Inconsistência: {diagnostico.inconsistente}

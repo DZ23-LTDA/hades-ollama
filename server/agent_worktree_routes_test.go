@@ -255,3 +255,114 @@ func TestWorktreesDiagnosticoExigeParametros(t *testing.T) {
 		}
 	}
 }
+
+// O estado PERSISTIDO tem de chegar a' ROTA -- senao a persistencia e' um ficheiro que ninguem le'.
+//
+//	*Uma persistencia que a rota nao consulta e' um ficheiro que ninguem le'.*
+func TestWorktreesDiagnosticoLeEstadoPersistido(t *testing.T) {
+	repo := repoDeWorktree(t)
+	dataRoot := t.TempDir()
+	sessao, err := agent.CreateGitWorktree(context.Background(), repo, dataRoot, "missao-persistida", "")
+	if err != nil {
+		t.Fatalf("criar: %v", err)
+	}
+	t.Cleanup(func() {
+		_ = agent.RemoveGitWorktreeComPerda(context.Background(), sessao, "limpeza do teste")
+	})
+
+	// Suspender e PERSISTIR o estado no data root do worktree.
+	if err := agent.SuspenderWorktree(sessao); err != nil {
+		t.Fatalf("suspender: %v", err)
+	}
+	registo, err := agent.CarregarRegistoDeWorktrees(agent.CaminhoDoRegisto(dataRoot))
+	if err != nil {
+		t.Fatalf("carregar registo: %v", err)
+	}
+	if err := registo.Registar(sessao.MissionID, agent.WorktreeSuspenso, sessao.WorktreeDir, sessao.BranchName); err != nil {
+		t.Fatalf("registar: %v", err)
+	}
+	if err := registo.Guardar(); err != nil {
+		t.Fatalf("guardar registo: %v", err)
+	}
+
+	engine := routerDeWorktrees(t)
+	var payload worktreeDiagnosticoResposta
+	caminho := "/api/agent/v1/worktrees/diagnose?repo=" + repo + "&missao=missao-persistida"
+	if code := getJSON(t, engine, caminho, &payload); code != http.StatusOK {
+		t.Fatalf("GET diagnose -> %d", code)
+	}
+
+	if payload.Estado != string(agent.WorktreeSuspenso) {
+		t.Fatalf("estado = %q; esperado %q (do registo persistido)", payload.Estado, agent.WorktreeSuspenso)
+	}
+	if !payload.EstadoDoRegisto {
+		t.Fatal("a rota nao marcou o estado como vindo do registo")
+	}
+	if payload.Registo != "consultado" {
+		t.Fatalf("registo = %q; esperado consultado", payload.Registo)
+	}
+	// Um worktree suspension e limpo NAO pode ser removido: `suspension` permite remover, mas o
+	// ponto do teste e' que a ROTA concorda com o registo, nao com um valor inventado.
+	if payload.EstadoObservado == "" {
+		t.Fatal("diagnostico nao explica de onde veio o estado")
+	}
+}
+
+// Sem registo, a rota DIZ que nao ha' registo -- nao inventa um estado.
+func TestWorktreesDiagnosticoSemRegistoDeclaraAusencia(t *testing.T) {
+	repo := repoDeWorktree(t)
+	dataRoot := t.TempDir()
+	sessao, err := agent.CreateGitWorktree(context.Background(), repo, dataRoot, "missao-sem-estado", "")
+	if err != nil {
+		t.Fatalf("criar: %v", err)
+	}
+	t.Cleanup(func() {
+		_ = agent.RemoveGitWorktreeComPerda(context.Background(), sessao, "limpeza do teste")
+	})
+
+	engine := routerDeWorktrees(t)
+	var payload worktreeDiagnosticoResposta
+	caminho := "/api/agent/v1/worktrees/diagnose?repo=" + repo + "&missao=missao-sem-estado"
+	if code := getJSON(t, engine, caminho, &payload); code != http.StatusOK {
+		t.Fatalf("GET diagnose -> %d", code)
+	}
+	if payload.EstadoDoRegisto {
+		t.Fatal("a rota diz ter registo quando nao existe nenhum")
+	}
+	if payload.Registo == "" || payload.Registo == "consultado" {
+		t.Fatalf("registo = %q; esperado declaracao de ausencia", payload.Registo)
+	}
+}
+
+// Um registo ILEGIVEL nao pode passar por ausente nem por valido.
+//
+//	*Um registo corrompido lido como vazio apagaria o estado de todos os worktrees.*
+func TestWorktreesDiagnosticoComRegistoIlegivel(t *testing.T) {
+	repo := repoDeWorktree(t)
+	dataRoot := t.TempDir()
+	sessao, err := agent.CreateGitWorktree(context.Background(), repo, dataRoot, "missao-corrompida", "")
+	if err != nil {
+		t.Fatalf("criar: %v", err)
+	}
+	t.Cleanup(func() {
+		_ = agent.RemoveGitWorktreeComPerda(context.Background(), sessao, "limpeza do teste")
+	})
+
+	caminhoRegisto := agent.CaminhoDoRegisto(dataRoot)
+	if err := os.WriteFile(caminhoRegisto, []byte("{isto nao e' json"), 0o600); err != nil {
+		t.Fatalf("escrever registo corrompido: %v", err)
+	}
+
+	engine := routerDeWorktrees(t)
+	var payload worktreeDiagnosticoResposta
+	caminho := "/api/agent/v1/worktrees/diagnose?repo=" + repo + "&missao=missao-corrompida"
+	if code := getJSON(t, engine, caminho, &payload); code != http.StatusOK {
+		t.Fatalf("GET diagnose -> %d (um registo ilegivel nao deve derrubar o diagnostico)", code)
+	}
+	if payload.EstadoDoRegisto {
+		t.Fatal("a rota diz ter lido estado de um registo ilegivel")
+	}
+	if !strings.HasPrefix(payload.Registo, "ilegivel") {
+		t.Fatalf("registo = %q; esperado comecar por \"ilegivel\"", payload.Registo)
+	}
+}

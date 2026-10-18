@@ -21,7 +21,7 @@ não é APK.***
 | **macOS** | `cmd/`, `app/`, `server/` (Go) | `dz23-macos-build.yaml` | `AUSENTE` | - | `AUSENTE` | NÃO MEDIDO | NÃO MEDIDO | não assinado (unsigned) |
 | **Android** | `apps/mobile-agentic/` (Expo/RN + `android/`) | `dz23-e2e.yaml` | `AUSENTE` | - | `AUSENTE` | NÃO MEDIDO | NÃO MEDIDO | APK de desenvolvimento (não publicável) |
 | **iOS** | `apps/mobile-agentic/` (Expo/RN) | `AUSENTE` | `AUSENTE` | - | `AUSENTE` | NÃO MEDIDO | NÃO MEDIDO | não assinado (unsigned) |
-| **Web/PWA** | `app/ui/app/` (React+TS+Vite) | `dz23-e2e.yaml` | `app\ui\app\dist\index.html` | 9 KB | `478406c796d0e7b4b79317d4a2f5eed3` | N/A (build de produção) | NÃO MEDIDO (PWA_INSTALADO_NA_UI=NAO) | N/A |
+| **Web/PWA** | `app/ui/app/` (React+TS+Vite) | `dz23-e2e.yaml` | `app\ui\app\dist\index.html` | 9 KB | `2eb019b5f24ecf4cbcd5bcbbf4626680` | N/A (build de produção) | NÃO MEDIDO (PWA_INSTALADO_NA_UI=NAO) | N/A |
 
 ## Artefactos de COMPONENTE (nao sao uma das 6 plataformas)
 
@@ -51,7 +51,7 @@ Pacotes que vivem em `dist/` e nao correspondem a um alvo de produto. *Sem esta 
 - **macOS**: **BLOCKED_EXTERNAL (medido, nao suposto)**: `GOOS=darwin CGO_ENABLED=0` falha com `undefined: GetCPUMem` -- o `GetCPUMem` do darwin vive em `discover/gpu_darwin.go`, que usa `import "C"` (Metal/Foundation), e o Go exclui ficheiros com `import "C"` quando CGO=0. Desbloqueio: o `dz23-macos-build.yaml` em `macos-latest` (Xcode + CGO).
 - **Android**: **o `app.json`/`eas.json` existem; o APK não**
 - **iOS**: **BLOCKED_EXTERNAL**: exige macOS/Xcode + conta Apple
-- **Web/PWA**: bundle auto-coerente: 5/5 assets referenciados presentes; build de 2026-10-18 10:19 (sem SHA de fonte -- Vite nao o declara); servido por HTTP; o `manifest` existe
+- **Web/PWA**: bundle auto-coerente: 5/5 assets referenciados presentes; build de 2026-10-18 10:34 (sem SHA de fonte -- Vite nao o declara); servido por HTTP; o `manifest` existe
 
 ## Os workflows, contados
 

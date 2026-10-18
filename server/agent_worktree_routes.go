@@ -93,6 +93,16 @@ type worktreeDiagnosticoResposta struct {
 	EstadoObservado string `json:"estado_observado"`
 	PodeRemover     bool   `json:"pode_remover"`
 	MotivoRemover   string `json:"motivo_remover,omitempty"`
+	// EstadoDoRegisto diz se o estado veio do registo PERSISTIDO em disco.
+	//
+	// *Um estado que morre com o processo nao e' um estado: e' uma variavel.*
+	EstadoDoRegisto bool `json:"estado_do_registo"`
+	// Registo diz o que se fez com o registo: `consultado`, `ausente` ou `ilegivel: ...`.
+	//
+	// Distinguir estes tres casos e' o que impede um registo ilegivel de passar por ausente --
+	// *um registo corrompido lido como vazio apagaria o estado de todos os worktrees com um
+	// encolher de ombros.*
+	Registo string `json:"registo"`
 }
 
 func (a *agentAPI) worktreeInventario(c *gin.Context) {
@@ -219,8 +229,32 @@ func (a *agentAPI) worktreeDiagnostico(c *gin.Context) {
 		Status: string(agent.WorktreePreparado),
 	}
 
-	diagCiclo := agent.DiagnosticarCicloDeVida(c.Request.Context(), sessao)
-	pode, motivo := agent.PodeRemoverAgora(c.Request.Context(), sessao)
+	// Consultar o REGISTO PERSISTIDO, derivando o data root do caminho que o git REPORTou.
+	//
+	// A derivacao usa o segmento `.agent-worktrees` como ancora. Nao se constroi o caminho do
+	// worktree a partir de um data root suposto -- faz-se o inverso.
+	//
+	//	*Inventar um data root a partir de um caminho desconhecido apontaria o diagnostico para o
+	//	registo de outro projection.*
+	var registo *agent.RegistoDeWorktrees
+	registoEstado := "nao consultado: o caminho nao segue a convencao .agent-worktrees"
+	if dataRoot, ok := agent.DataRootDoWorktree(achado.CaminhoResolvido); ok {
+		carregado, errRegisto := agent.CarregarRegistoDeWorktrees(agent.CaminhoDoRegisto(dataRoot))
+		switch {
+		case errRegisto != nil:
+			// O registo existe mas nao se le'. NAO se inventa estado nem se trata como ausente:
+			// *um registo corrompido lido como vazio apagaria o estado de todos os worktrees.*
+			registoEstado = "ilegivel: " + errRegisto.Error()
+		case carregado.Contagem() == 0:
+			registo = carregado
+			registoEstado = "ausente: nenhuma entrada persistida neste data root"
+		default:
+			registo = carregado
+			registoEstado = "consultado"
+		}
+	}
+
+	diagCiclo := agent.DiagnosticarCicloDeVidaComRegisto(c.Request.Context(), sessao, registo)
 
 	resp := worktreeDiagnosticoResposta{
 		MissionID:               mission,
@@ -232,10 +266,12 @@ func (a *agentAPI) worktreeDiagnostico(c *gin.Context) {
 		TemTrabalhoNaoIntegrado: diagCiclo.Disco.TemTrabalhoNaoIntegrado,
 		Detalhe:                 diagCiclo.Disco.Detalhe,
 		Inconsistente:           diagCiclo.Inconsistente,
-		PodeRemover:             pode,
-		MotivoRemover:           motivo,
+		PodeRemover:             diagCiclo.PodeRemover,
+		MotivoRemover:           diagCiclo.MotivoRemover,
 		AlvoSeguro:              diagCiclo.Disco.AlvoSeguro,
-		EstadoObservado:         "existe no inventor do git; o estado logico (em_uso/suspension/arquivado) pertence ao processo que criou a sessao",
+		EstadoDoRegisto:         diagCiclo.EstadoDoRegisto,
+		Registo:                 registoEstado,
+		EstadoObservado:         diagCiclo.EstadoObservado,
 		Proximos:                make([]string, 0, len(diagCiclo.Proximos)),
 	}
 	for _, e := range diagCiclo.Proximos {

@@ -88,6 +88,8 @@ const DIAGNOSTICO_OK = {
   estado_traduzido: false,
   estado_observado: "existe no inventario do git; o estado logico pertence ao processo",
   proximos: ["em_uso", "suspenso"],
+  estado_do_registo: false,
+  registo: "ausente: nenhuma entrada persistida neste data root",
   alvo_seguro: true,
   commits_nao_integrados: 0,
   ficheiros_modificados: 0,
@@ -257,4 +259,50 @@ describe("WorktreesPanel", () => {
       expect(texto(b).toLowerCase()).not.toMatch(/remover|apagar|eliminar/);
     }
   });
+});
+
+  /**
+   * O painel diz de ONDE veio o estado.
+   *
+   *     *Um estado que morre com o processo nao e' um estado: e' uma variavel.*
+   *
+   * Sem esta distincao "suspenso porque eu suspendi" e "a pasta existe" parecem a mesma coisa.
+   */
+  it("distingue estado persistido de estado lido do disco", async () => {
+    responderCom(INVENTARIO, {
+      ...DIAGNOSTICO_OK,
+      estado: "suspenso",
+      estado_do_registo: true,
+      registo: "consultado",
+    });
+    const arvore = await montar();
+    await escreverRepo(arvore, "/repo");
+    await esperar(arvore, "missao-a");
+    await clicarBotao(arvore, "missao-a");
+
+    await esperar(arvore, "consultado (estado persistido)");
+    // E nao mostra o alerta de registo ilegivel.
+    if (texto(arvore.root).includes("não pôde ser lido")) {
+      throw new Error("alerta de registo ilegivel mostrado num registo valido");
+    }
+  });
+
+  /**
+   * Registo ILEGIVEL aparece como ilegivel -- nunca como ausente.
+   *
+   *     *Um registo corrompido lido como vazio apagaria o estado de todos os worktrees.*
+   */
+  it("avisa quando o registo existe mas nao pode ser lido", async () => {
+    responderCom(INVENTARIO, {
+      ...DIAGNOSTICO_OK,
+      estado_do_registo: false,
+      registo: "ilegivel: registo de worktrees corrompido",
+    });
+    const arvore = await montar();
+    await escreverRepo(arvore, "/repo");
+    await esperar(arvore, "missao-a");
+    await clicarBotao(arvore, "missao-a");
+
+    await esperar(arvore, "não pôde ser lido");
+
 });

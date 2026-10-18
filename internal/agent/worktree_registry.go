@@ -47,6 +47,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"time"
 )
 
@@ -276,3 +277,31 @@ func (r *RegistoDeWorktrees) Contagem() int {
 
 // esquemaDoRegistroWorktreesEsperado isola a constante para a mensagem de erro.
 func esquemaDoRegistroWorktreesEsperado() int { return esquemaDoRegistoDeWorktrees }
+
+// DataRootDoWorktree deriva o data root a partir do CAMINHO de um worktree.
+//
+// A convencao e' `<dataRoot>/.agent-worktrees/<missao>`. O segmento `.agent-worktrees` e' a
+// ancora: tudo antes dele e' o data root.
+//
+// Devolve `false` quando o caminho nao segue a convencao -- e nesse caso o chamador NAO deve
+// adivinhar:
+//
+//	*Inventar um data root a partir de um caminho desconhecido apontaria o diagnostico para o
+//	registo de outro projection.*
+func DataRootDoWorktree(caminhoDoWorktree string) (string, bool) {
+	limpo := filepath.Clean(caminhoDoWorktree)
+	partes := strings.Split(limpo, string(filepath.Separator))
+	for i := len(partes) - 1; i >= 0; i-- {
+		if partes[i] == SegmentoDeWorktrees {
+			if i == 0 {
+				return "", false
+			}
+			raiz := strings.Join(partes[:i], string(filepath.Separator))
+			if raiz == "" {
+				return "", false
+			}
+			return raiz, true
+		}
+	}
+	return "", false
+}
