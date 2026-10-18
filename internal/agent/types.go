@@ -104,22 +104,27 @@ type Mission struct {
 	// PresetID grava QUAL preset produziu esta missao. Sem este campo, o preset existiria no
 	// pedido e perder-se-ia no registo -- *a mesma classe de lacuna que o comentario acima
 	// descreve para o ActorID.* Quem audita a missao tem de saber que configuracao a originou.
-	PresetID          string             `json:"preset_id,omitempty"`
-	Capabilities      []string           `json:"capabilities,omitempty"`
-	AutoRun           bool               `json:"auto_run,omitempty"`
-	State             MissionState       `json:"state"`
-	Plan              []Step             `json:"plan"`
-	Approvals         []Approval         `json:"approvals,omitempty"`
-	Artifacts         []ArtifactManifest `json:"artifacts,omitempty"`
-	GitRepoRoot       string             `json:"git_repo_root,omitempty"`
-	GitBranch         string             `json:"git_branch,omitempty"`
-	GitWorktreePath   string             `json:"git_worktree_path,omitempty"`
-	GitBaseCommit     string             `json:"git_base_commit,omitempty"`
-	GitMergeStatus    string             `json:"git_merge_status,omitempty"`
-	GitWorktreeActive bool               `json:"git_worktree_active,omitempty"`
-	AutoRepair        bool               `json:"auto_repair,omitempty"`
-	MaxRepairTries    int                `json:"max_repair_tries,omitempty"`
-	LastError         string             `json:"last_error,omitempty"`
+	PresetID string `json:"preset_id,omitempty"`
+	// PresetCompletionCriteria e PresetBudgetSeconds vem do preset e ficam no REGISTO: a missao
+	// tem de saber QUANDO ACABA e QUANTO podia gastar sem ir ler o catalogo outra vez.
+	// *Um criterio de conclusao que so' existe no catalogo e' um criterio que ninguem aplica.*
+	PresetCompletionCriteria []string           `json:"preset_completion_criteria,omitempty"`
+	PresetBudgetSeconds      int                `json:"preset_budget_seconds,omitempty"`
+	Capabilities             []string           `json:"capabilities,omitempty"`
+	AutoRun                  bool               `json:"auto_run,omitempty"`
+	State                    MissionState       `json:"state"`
+	Plan                     []Step             `json:"plan"`
+	Approvals                []Approval         `json:"approvals,omitempty"`
+	Artifacts                []ArtifactManifest `json:"artifacts,omitempty"`
+	GitRepoRoot              string             `json:"git_repo_root,omitempty"`
+	GitBranch                string             `json:"git_branch,omitempty"`
+	GitWorktreePath          string             `json:"git_worktree_path,omitempty"`
+	GitBaseCommit            string             `json:"git_base_commit,omitempty"`
+	GitMergeStatus           string             `json:"git_merge_status,omitempty"`
+	GitWorktreeActive        bool               `json:"git_worktree_active,omitempty"`
+	AutoRepair               bool               `json:"auto_repair,omitempty"`
+	MaxRepairTries           int                `json:"max_repair_tries,omitempty"`
+	LastError                string             `json:"last_error,omitempty"`
 	// Usage leva o consumo real de modelo (tokens e custo) para dentro do registro da
 	// missão. Sem isto, o custo ficava só no catálogo de provedores e a linha do tempo
 	// não conseguia responder "quanto custou esta missão".

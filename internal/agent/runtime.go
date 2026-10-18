@@ -976,8 +976,11 @@ func (r *Runtime) CreateMission(ctx context.Context, request CreateMissionReques
 	// Recusar aqui -- e nao mais tarde -- e' o que impede uma missao de arrancar com uma
 	// configuracao que ninguem declarou.
 	presetID := strings.TrimSpace(request.PresetID)
+	var preset MissionPreset
 	if presetID != "" {
-		if _, ok := MissionPresetByID(presetID); !ok {
+		var ok bool
+		preset, ok = MissionPresetByID(presetID)
+		if !ok {
 			return Mission{}, fmt.Errorf("%w: unknown preset %q; available: %s",
 				ErrPresetInvalido, presetID, strings.Join(MissionPresetIDs(), ", "))
 		}
@@ -1160,7 +1163,15 @@ func (r *Runtime) CreateMission(ctx context.Context, request CreateMissionReques
 		gitWorktreeActive = true
 	}
 	now := time.Now().UTC()
-	mission := Mission{ID: missionID, Version: 1, Objective: objective, PresetID: presetID, Provider: provider, Model: strings.TrimSpace(request.Model), Workspace: workspace, WorkspaceIdentity: workspaceIdentity, WorkspaceIsolated: request.IsolateWorkspace, WorkspaceSnapshotID: workspaceSnapshotID, WorkspaceSnapshotSHA256: workspaceSnapshotSHA256, GitRepoRoot: gitRepoRoot, GitBranch: gitBranch, GitWorktreePath: gitWorktreePath, GitBaseCommit: gitBaseCommit, GitMergeStatus: gitMergeStatus, GitWorktreeActive: gitWorktreeActive, AutoRepair: request.AutoRepair, MaxRepairTries: request.MaxRepairTries, ProjectID: projectID, OrganizationID: organizationID, ActorID: strings.TrimSpace(request.ActorID), AgentID: strings.TrimSpace(request.AgentID), Capabilities: capabilities, AutoRun: request.AutoRun, State: MissionPlanning, CreatedAt: now, UpdatedAt: now}
+	// O preset aplica o que e' SEGURO aplicar sozinho: o orcamento declarado e os criterios de
+	// conclusao. NAO aplica `preset.Permissions` a `Capabilities` de proposito:
+	// *escolher um preset nao pode conceder permissao -- seria um formulario que assina por baixo.*
+	// A politica continua a decidir cada capability.
+	mission := Mission{
+		ID: missionID, Version: 1, Objective: objective, PresetID: presetID,
+		PresetCompletionCriteria: preset.CompletionCriteria, PresetBudgetSeconds: preset.BudgetSeconds,
+		Provider: provider, Model: strings.TrimSpace(request.Model), Workspace: workspace, WorkspaceIdentity: workspaceIdentity, WorkspaceIsolated: request.IsolateWorkspace, WorkspaceSnapshotID: workspaceSnapshotID, WorkspaceSnapshotSHA256: workspaceSnapshotSHA256, GitRepoRoot: gitRepoRoot, GitBranch: gitBranch, GitWorktreePath: gitWorktreePath, GitBaseCommit: gitBaseCommit, GitMergeStatus: gitMergeStatus, GitWorktreeActive: gitWorktreeActive, AutoRepair: request.AutoRepair, MaxRepairTries: request.MaxRepairTries, ProjectID: projectID, OrganizationID: organizationID, ActorID: strings.TrimSpace(request.ActorID), AgentID: strings.TrimSpace(request.AgentID), Capabilities: capabilities, AutoRun: request.AutoRun, State: MissionPlanning, CreatedAt: now, UpdatedAt: now,
+	}
 	if err := r.store.CreateMission(mission); err != nil {
 		// Criação idempotente: a chave já produziu esta missão antes. Devolvemos a
 		// existente — mas SÓ se ela pertencer ao mesmo escopo, para que uma chave
