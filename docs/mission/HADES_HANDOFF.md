@@ -1,3 +1,32 @@
+## JANELA E-1266
+
+**Ronda 84. O sétimo dos dez providers: `ComplianceProvider` — o SBOM que recusa produzir o que não consegue.**
+
+- **E-1266** — `compliance_provider.go` + 9 testes. Lê `go.mod` (bloco `require`, linha única,
+  `// indirect`) e `package.json` (separando `dependencies` de `devDependencies`).
+- **As três coisas que o adendo 28.9 pede e este provider NÃO faz, ditas no corpo:**
+  `THIRD_PARTY_NOTICES` (exige o TEXTO da licença), árvore transitiva (exigiria subprocessos),
+  `provenance` (exige builder e artefacto). *Um SBOM que inclui o que o programador supõe é pior do
+  que nenhum.*
+- **`Licenca` vazio NÃO é "sem licença":** significa **NÃO DECLARADA** — factos diferentes, e há
+  teste que exige a frase no `aviso`.
+- **`package.json` inválido não inventa componentes:** entra como `INVALIDO` em `FicheirosLidos`.
+- **`node_modules` não é percorrido** — teste com dependência inventada a provar.
+- **Assinatura estável:** *um SBOM que muda de ordem a cada leitura não permite dizer se mudou.*
+
+**Medido contra o próprio repositório HADES:** **113 módulos Go**, 113 sem licença declarada,
+**0 ficheiros npm** — e o limite foi encontrado: os `package.json` estão **dois níveis abaixo** e o
+provider só olha a raiz e subdirectórios imediatos. **Declarado, não escondido.**
+
+**Defeito meu apanhado:** `TipoDeComponente` somado com `string` sem conversão. E o `misspell` acusou
+`directos` → "directors" (a grafia correcta é `diretos`).
+
+Medido: 8 PASS; PASS contra o repo real; `./internal/agent` **ok 354,1 s**; build 0; vet 0; lint 0.
+
+**7 dos 10 providers.** Faltam 3: `Publishing`, `Test`, `Rollback`.
+
+Veredito global: `NOT_RELEASE_READY`.
+
 ## JANELA E-1265
 
 **Ronda 83. O sexto dos dez providers: `CredentialProvider` — e a regra que o define é NÃO LER.**
