@@ -878,6 +878,9 @@ func (a *agentAPI) register(r *gin.Engine) {
 	group.GET("/toolchain/targets", a.toolchainTargets)
 	group.GET("/toolchain/doctor", a.toolchainDoctor)
 	group.GET("/toolchain/plan/:alvo", a.toolchainPlan)
+	// FASE 28.6-A / 28.7: instalador modular. Superficie de LEITURA: planeia, nao instala.
+	group.GET("/install/profiles", a.installProfiles)
+	group.GET("/install/plan/:perfil", a.installPlan)
 	// FASE 28.5 do adendo V3: o Signing Identity Center. Le METADADOS de um ficheiro fora do
 	// repositorio (ao lado do broker de credenciais) e nunca devolve valor privado. Leitura
 	// apenas: criar/importar/revogar identidade exige confirmacao humana no momento da accao.

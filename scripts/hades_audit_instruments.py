@@ -69,7 +69,19 @@ BASELINE_ORACULO = (
 # num gate e' o que ensina a ignorar o gate.
 #
 # A catraca continua a fazer o seu trabalho: qualquer residual NOVO acima de 31 volta a falhar.
-TETO_ROTAS = 31
+# RONDA 42: a rota nova do instalador modular entra na mesma leitura.
+#   - `installProfiles` devolve o catalogo de pacotes e a descricao dos perfis, ambos
+#     constantes em codigo, mais `host`, `goos` e os avisos da auto-auditoria.
+#   - `installPlan` corre a sonda de PATH e devolve o plano para um perfil: acoes,
+#     tamanhos, bloqueios e contagem de aprovacoes. Nao le organization, project,
+#     mission nem user.
+# O que sai destas rotas e' propriedade do HOST e do CATALOGO -- *nao ha' organizacao a
+# filtrar numa resposta que nao menciona organizacao nenhuma*. Mesmo criterio das tres
+# rotas `toolchain/*`.
+#
+# Medido: o instrumento conta 32 residuais (era 31). O teto sobe para o numero MEDIDO,
+# nao para um numero com margem: *uma margem inventada esconde o proximo residual.*
+TETO_ROTAS = 32
 
 LINHA_CANDIDATO = re.compile(r"^\s*(\S+?)\s*::\s*([A-Za-z0-9_]+)\s*\(")
 LINHA_RESIDUAL = re.compile(r"handlers SEM escopo[^\d]*(\d+)")

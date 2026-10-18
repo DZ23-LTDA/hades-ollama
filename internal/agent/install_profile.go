@@ -29,6 +29,7 @@ package agent
 // decisao so' se testa instalando e' um instalador que se testa uma vez por release.*
 
 import (
+	"context"
 	"fmt"
 	"sort"
 	"strings"
@@ -602,4 +603,118 @@ func AuditarCatalogo() []ProblemaDoCatalogo {
 		}
 	}
 	return problemas
+}
+
+// ---------------------------------------------------------------------------------------------
+// FASE 28.7: ponte entre o catalogo de pacotes e a SONDA REAL de ferramentas.
+//
+// O `MontarPlanoDeInstalacao` precisa de saber o estado de cada pacote. Antes desta funcao, esse
+// estado so' existia em testes -- e um motor que so' corre sobre dados fabricados nao e' um
+// motor: e' uma maquete.
+//
+// AQUI O ESTADO VEM DO `Prober`, a mesma sonda que o `toolchain_plan.go` usa. Nao ha' um segundo
+// mecanismo de descoberta.
+//
+// A REGRA QUE ATRAVESSA TUDO: `ToolUnknown` NAO entra no conjunto `descobertos`. Um pacote cuja
+// ferramenta representativa nao pode ser determinada continua `UNKNOWN` -- e o plano vai
+// PULA-LO, nao instala-lo.
+//
+// *Nao saber se existe e' diferente de saber que nao existe, e o precario e' instalar por cima.*
+// ---------------------------------------------------------------------------------------------
+
+// FerramentaRepresentativa diz qual comando representa um pacote na descoberta.
+//
+// Vazio significa: o pacote nao tem comando verificavel (e' uma capacidade interna do HADES ou
+// uma credencial). Nesse caso o estado e' `UNKNOWN` por contrato do proprio `ToolRequirement`,
+// e o pacote e' PULADO -- nunca instalado as cegas.
+func FerramentaRepresentativa(pacoteID string) (comando, motivo string, tem bool) {
+	switch pacoteID {
+	case "local-ai":
+		return "ollama", "runtime de inferencia local", true
+	case "browser-automation":
+		return "node", "runtime para Playwright", true
+	case "media":
+		return "ffmpeg", "codecs e processamento de media", true
+	case "voice":
+		return "ffmpeg", "base para STT/TTS (o modelo em si e' dado, nao binario)", true
+	case "vision-ocr":
+		return "tesseract", "OCR local", true
+	case "developer-js":
+		return "node", "runtime JavaScript", true
+	case "developer-python":
+		return "python", "runtime Python", true
+	case "developer-go-rust":
+		return "go", "toolchain Go (Rust e' verificado a parte)", true
+	case "developer-dotnet-windows":
+		return "dotnet", ".NET SDK", true
+	case "mobile-android":
+		return "adb", "Android platform-tools", true
+	case "mobile-expo":
+		return "eas", "Expo/EAS CLI", true
+	case "mobile-flutter":
+		return "flutter", "Flutter SDK", true
+	case "containers":
+		return "docker", "runtime de containers", true
+	case "release-security":
+		return "cosign", "assinatura e verificacao de artefactos", true
+	case "cloud-and-store-clis":
+		return "gh", "CLI de cloud/lojas", true
+	}
+	// hades-core, computer-use, plugins-mcp-skills: capacidade interna ou credencial.
+	return "", "", false
+}
+
+// ProjetarPacotesComProber sonda cada pacote do catalogo e devolve o estado observado.
+//
+// Devolve dois mapas: `estado` (o que se sabe) e `descobertos` (o que foi possivel avaliar).
+// A distincao NAO e' decorativa: `MontarPlanoDeInstalacao` so' instala o que esta' em
+// `descobertos`, e trata o resto como duvida.
+func ProjetarPacotesComProber(ctx context.Context, prober Prober) (map[string]EstadoDoPacote, map[string]bool) {
+	estado := make(map[string]EstadoDoPacote, len(CatalogoDePacotes()))
+	descobertos := make(map[string]bool, len(CatalogoDePacotes()))
+	if prober == nil {
+		// Sem sonda nao ha' descoberta: tudo fica UNKNOWN. *Um prober nulo nao pode virar
+		// "tudo ausente", senao a ausencia de sonda instala o mundo.*
+		return estado, descobertos
+	}
+	for _, pkg := range CatalogoDePacotes() {
+		comando, motivo, tem := FerramentaRepresentativa(pkg.ID)
+		req := ToolRequirement{
+			Nome:        pkg.ID,
+			Comando:     comando,
+			Obrigatorio: false,
+			Motivo:      motivo,
+		}
+		probe := prober(ctx, req)
+		// O contrato do Prober manda devolver o requisito ecoado; se nao o fizer, corrigimos
+		// para nao perdermos a ligacao entre pacote e sonda.
+		if probe.Requisito.Nome == "" {
+			probe.Requisito = req
+		}
+		if probe.Requisito.Nome == "" || !tem {
+			// Sem comando verificavel: UNKNOWN, e fora de `descobertos`.
+			estado[pkg.ID] = PacoteBloqueadoExterno
+			continue
+		}
+		switch probe.Estado {
+		case ToolHealthy, ToolUnverified:
+			estado[pkg.ID] = PacotePronto
+			descobertos[pkg.ID] = true
+		case ToolOutdated:
+			estado[pkg.ID] = PacoteAtualizacaoDisponivel
+			descobertos[pkg.ID] = true
+		case ToolBroken:
+			estado[pkg.ID] = PacoteDegradado
+			descobertos[pkg.ID] = true
+		case ToolAbsent:
+			estado[pkg.ID] = PacoteNaoInstalado
+			descobertos[pkg.ID] = true
+		case ToolUnknown, "":
+			// NAO entra em `descobertos`. E' o invariante.
+			estado[pkg.ID] = PacoteBloqueadoExterno
+		default:
+			estado[pkg.ID] = PacoteBloqueadoExterno
+		}
+	}
+	return estado, descobertos
 }
