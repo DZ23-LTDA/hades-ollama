@@ -872,6 +872,12 @@ func (a *agentAPI) register(r *gin.Engine) {
 	// FASE 19 + FASE 24: a decisao de roteamento com as ALTERNATIVAS. *Escolher bem quando ha'
 	// um vencedor claro e' facil; escolher quando nao ha' e' que precisa de ser explicado.*
 	group.GET("/routing", a.routing)
+	// FASE 28.7 do adendo V3: preflight de toolchain por alvo de build. Todas LEITURA -- nenhuma
+	// instala, altera ou executa trabalho de utilizador. *Um preflight que muda o sistema nao e'
+	// preflight: e' instalacao disfarcada.*
+	group.GET("/toolchain/targets", a.toolchainTargets)
+	group.GET("/toolchain/doctor", a.toolchainDoctor)
+	group.GET("/toolchain/plan/:alvo", a.toolchainPlan)
 	// E-638: despertares coalescidos por agente, com enfileiramento do que precisa de execucao.
 	group.POST("/wakeups", a.wakeups)
 	group.GET("/notifications", a.notifications)

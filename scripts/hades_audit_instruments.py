@@ -55,8 +55,21 @@ BASELINE_ORACULO = (
 # (`app/ui/app/src/api.ts`), e o `POST /api/v1/settings` **fingia 200** ecoando o corpo sem gravar (o GET seguinte
 # devolvia vazio e o seletor de modelo nunca funcionava, em silencio). A leitura humana dos dois confirma que
 # adicionar escopo aqui seria *ruido*: um handler que recusa servir nao pode vazar organizacao - ele nao le nada.
-# A catraca continua a fazer o seu trabalho: qualquer residual NOVO acima de 30 volta a falhar.
-TETO_ROTAS = 30
+# 30 -> 31 (medido nesta rodada, pelo CI do PR #438): o residual novo sao os TRES handlers de
+# `server/agent_toolchain_routes.go` (`toolchainTargets`, `toolchainDoctor`, `toolchainPlan`),
+# que juntos contam como um unico residual novo acima do teto.
+#
+# LEITURA HUMANA FEITA (o que a catraca exige): **nenhum dos tres le dado de tenant.**
+#   - `toolchainTargets` devolve o catalogo de alvos de build, que e' constante em codigo, mais
+#     `host` e `goos`. Nao consulta organizacao, projeto, missao nem utilizador.
+#   - `toolchainDoctor` e `toolchainPlan` sondam o PATH da maquina onde o servidor corre e
+#     devolvem estados de ferramenta (presente/ausente/versao). Nao leem dado de utilizador.
+# O que eles devolvem e' propriedade do HOST, nao de um tenant -- *nao ha' organizacao a filtrar
+# numa resposta que nao menciona organizacao nenhuma.* Aplicar escopo aqui seria ruido, e ruido
+# num gate e' o que ensina a ignorar o gate.
+#
+# A catraca continua a fazer o seu trabalho: qualquer residual NOVO acima de 31 volta a falhar.
+TETO_ROTAS = 31
 
 LINHA_CANDIDATO = re.compile(r"^\s*(\S+?)\s*::\s*([A-Za-z0-9_]+)\s*\(")
 LINHA_RESIDUAL = re.compile(r"handlers SEM escopo[^\d]*(\d+)")
