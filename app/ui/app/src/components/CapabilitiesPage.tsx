@@ -22,6 +22,7 @@ import { CredentialsPanel } from "@/components/CredentialsPanel";
 import { SmokePanel } from "@/components/SmokePanel";
 import { RollbackPanel } from "@/components/RollbackPanel";
 import { SigningPanel } from "@/components/SigningPanel";
+import { SbomPanel } from "@/components/SbomPanel";
 import { SidebarLayout } from "@/components/layout/layout";
 import {
   fetchToolchainDoctor,
@@ -318,6 +319,10 @@ export function CapabilitiesPage() {
 
 
         <SigningPanel />
+
+
+
+        <SbomPanel />
     </SidebarLayout>
   );
 }

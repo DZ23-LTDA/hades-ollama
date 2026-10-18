@@ -1,3 +1,29 @@
+## JANELA E-1282
+
+**Ronda 100. O sexto provider fechado nos três elos: `SbomPanel` consome `sbom.generate`.**
+
+- **E-1282** — `sbomClient.ts` + `SbomPanel.tsx` + **11 testes**, montado em `CapabilitiesPage`.
+  **Décimo sétimo reabrir do defeito, sétimo fecho.**
+- **Defeito do "inventado vs actual", apanhado ANTES de correr:** escrevi
+  `GO_MODULE | NPM_PACKAGE | DESCONHECIDO`; os valores reais são **`MODULO_GO` / `PACOTE_NPM` /
+  `BINARIO`**. Corrigido lendo `compliance_provider.go` antes de testar. *Um teste que inventa o valor
+  que o backend devolve nunca falha por causa do backend.* **Décimo reabrir deste defeito desde
+  E-1245.**
+- **Não tem campo de raiz, e há teste que o prova:** `input` com `toHaveLength(0)` e o corpo do
+  pedido é `{}` — `Object.keys(corpo) === []`.
+- **Não existe botão de assinar nem de atestar:** um único botão, com "assinar"/"atestar" proibidos.
+  **`nao_produzido` é mostrado por extenso.**
+- **Um inventário de zero componentes não é erro:** **zero** `role="alert"`, `total=0` e a frase
+  "nenhuma fonte de dependência encontrada". **`assinado`/`provenance` verdadeiros GRITAM.**
+
+Medido: **11 testes PASS** · `npx vitest run` **126 ficheiros / 897 testes** · `tsc -b` 0 ·
+`eslint .` 0 erros · `vite build` 0 · `BUNDLE_BUDGET=PASS`.
+
+**Lacuna:** sem E2E Playwright. O SBOM não cobre transitivas nem attestation. **4 providers sem rota
+nem painel.**
+
+Veredito global: `NOT_RELEASE_READY`.
+
 ## JANELA E-1281
 
 **Ronda 99. O sexto provider ligado ao produto: `sbom.generate` consome o `ComplianceProvider`.**
