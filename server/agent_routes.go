@@ -891,6 +891,8 @@ func (a *agentAPI) register(r *gin.Engine) {
 	// FASE 3 (E-1240): comparacao objectiva de solucoes. POST porque o corpo pode ser grande;
 	// NAO muta nada e diz isso na resposta (`somente_leitura`).
 	group.POST("/solutions/compare", a.comparacaoDeSolucoes)
+	// FASE 28.6/28.7: o plano de release do projection. Le' e sonda; nao instala nem constroi.
+	group.GET("/build/plan", a.planoDeRelease)
 	group.GET("/install/profiles", a.installProfiles)
 	group.GET("/install/plan/:perfil", a.installPlan)
 	// FASE 28.5 do adendo V3: o Signing Identity Center. Le METADADOS de um ficheiro fora do

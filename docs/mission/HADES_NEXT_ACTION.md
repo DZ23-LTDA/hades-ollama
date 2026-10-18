@@ -1,3 +1,18 @@
+## JANELA E-1247
+
+**Ronda 65.** O plano de release deixou de ser uma funcao que so'' o programador invoca: tem rota.
+
+- **E-1247** -- `GET /api/agent/v1/build/plan?repo=`. **Nao aceita `alvo`** (ha'' teste que pede
+  `&alvo=android` num repo Go e exige que seja ignorado) e declara a fronteira **no corpo**
+  (`somente_leitura`, `nada_instalado`, `nada_construido`, `aviso_de_fronteira`). Codigos
+  distinguidos por significado: **422** quando o caminho existe mas nao e'' um projecto. 10 testes.
+  Auto-teste pela rota no repo HADES real: `alvos=[linux web windows]`.
+
+Proximo passo declarado: **painel do frontend** que consome a rota -- e so'' depois **C1**: um build
+real instalado.
+
+Veredito global: `NOT_RELEASE_READY`.
+
 ## JANELA E-1246
 
 **Rondas 63-64.** O Build Hub deixou de receber o alvo escrito a mao: detecta o projecto e plana

@@ -76,7 +76,7 @@ type PlanoDoProjeto struct {
 //	*Um preflight cujo alvo e' um parametro nao e' um preflight do projection: e' um preflight da
 //	vontade de quem chamou.*
 func (r *ResolverDeToolchain) PlanoParaProjeto(ctx context.Context, raiz string) (PlanoDoProjeto, error) {
-	detector := ProjectDetector{Raiz: raiz}
+	detector := ProjectDetector{Raiz: raiz, MaxProfundidade: r.ProfundidadeDeDeteccao}
 	projeto, err := detector.Detectar()
 	if err != nil {
 		return PlanoDoProjeto{}, err

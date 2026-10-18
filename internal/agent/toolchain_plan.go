@@ -237,6 +237,12 @@ type ResolverDeToolchain struct {
 	Prober Prober
 	// GOOS permite simular outro sistema operativo nos testes.
 	GOOS string
+	// ProfundidadeDeDeteccao limita a busca de manifests ao detectar um projection.
+	//
+	// Zero significa o limite por omissao do `ProjectDetector`. Uma varredura sem limite num
+	// monorepo e' uma pausa que ninguem pediu -- e quando a varredura e' disparada por HTTP, a
+	// pausa e' do SERVIDOR a pedido do cliente.
+	ProfundidadeDeDeteccao int
 }
 
 // NovoResolverDeToolchain devolve um resolvedor que sonda o PATH real.
