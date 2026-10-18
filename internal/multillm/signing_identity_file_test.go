@@ -61,6 +61,12 @@ func TestCarregarRegistoValido(t *testing.T) {
 // Nome do teste explicito de proposito -- se falhar, o leitor sabe exactamente o que se perdeu.
 func TestFicheiroComCampoDesconhecidoERecusado(t *testing.T) {
 	// O cenario real: alguem escreve o segredo no ficheiro de metadados.
+	//
+	// O VALOR e' deliberadamente inofensivo, e nao um blob com entropia de chave. O que este
+	// teste prova e' que o CAMPO desconhecido e' recusado -- o `DisallowUnknownFields` --, e nao
+	// que um valor especifico e' detectado. *Um fixture que parece uma chave real faz o secret
+	// scan disparar sobre o proprio teste que prova que o segredo e' recusado, e o gate passa a
+	// gritar contra quem o defende.*
 	conteudo := `{
 	  "schema_version": 1,
 	  "identidades": [{
@@ -72,7 +78,7 @@ func TestFicheiroComCampoDesconhecidoERecusado(t *testing.T) {
 	    "fingerprint_publico": "B0:AC:E7:7E:63:7B:67:90:59:76:08:71:94:16:1C:6A:A2:1A:EB:29",
 	    "expira_em": "2027-10-17T00:00:00Z",
 	    "runners_autorizados": ["eas-ios"],
-	    "private_key": "MIIEvQIBADANBgkqhkiG9w0BAQEFAASC"
+	    "private_key": "valor-inofensivo-de-teste"
 	  }]
 	}`
 	caminho := escreverRegisto(t, conteudo)
