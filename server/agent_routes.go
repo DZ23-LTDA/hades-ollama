@@ -878,6 +878,11 @@ func (a *agentAPI) register(r *gin.Engine) {
 	group.GET("/toolchain/targets", a.toolchainTargets)
 	group.GET("/toolchain/doctor", a.toolchainDoctor)
 	group.GET("/toolchain/plan/:alvo", a.toolchainPlan)
+	// FASE 28.5 do adendo V3: o Signing Identity Center. Le METADADOS de um ficheiro fora do
+	// repositorio (ao lado do broker de credenciais) e nunca devolve valor privado. Leitura
+	// apenas: criar/importar/revogar identidade exige confirmacao humana no momento da accao.
+	group.GET("/signing/identities", a.signingIdentities)
+	group.GET("/signing/summary", a.signingIdentitySummary)
 	// E-638: despertares coalescidos por agente, com enfileiramento do que precisa de execucao.
 	group.POST("/wakeups", a.wakeups)
 	group.GET("/notifications", a.notifications)
