@@ -1,3 +1,29 @@
+## JANELA E-1256
+
+**Ronda 74. O item 5 de dez: `VerificationProvider` -- e o teste que me obrigou a decidir.**
+
+- **E-1256** -- `internal/agent/verification_provider.go` + teste, **14 testes PASS**. O
+  `BuildProvider` calculava o hash e devolvia-o: o unico verificador era quem produzia.
+  => *um artefacto cuja unica verificacao e' o hash calculado por quem o produziu nao e'
+  verificado: e' assinado por si mesmo.*
+- Recusa verificar **sem referencia** (`ErrSemReferencia`) e **recusa um PREFIXO** de checksum
+  (16 caracteres do checksum real sao recusados): *uma referencia curta nao e' uma referencia: e'
+  uma esperanca com hexadecimal*.
+- **O teste que importa:** adultera-se UM byte -> `Adulterado=true`, `Aprovado=false`.
+- Assinatura com **quatro** estados, incluindo `NAO_VERIFICADA`: *"nao consegui olhar" e "olhei e
+  nao ha'" sao factos diferentes, e um campo que os junta mente sobre um dos dois.*
+- **O teste obrigou-me a decidir:** eu esperava `Aprovado=false` quando o adaptador falha; o teste
+  estava errado, nao o codigo. Reprovar ali tornaria o verificador inutil fora do Windows.
+  `Aprovado` passou a significar "passou os gates que consegui aplicar".
+- **Validacao cruzada:** corrido contra o artefacto real da E-1251, mediu
+  `fcef9d9d4303a75b0b9c658f155c9ae6a7ccb84912b4face2268dc51f8161df6` -- o mesmo que a E-1251
+  declarou.
+
+Providers fechados: **5 de 10**. Proximo passo: rota HTTP para o verificador; depois
+`SigningProvider`.
+
+Veredito global: `NOT_RELEASE_READY`.
+
 ## JANELA E-1255
 
 **Ronda 73. O segundo red do CI era `misspell` -- e a palavra era portugues correcto.**
