@@ -1,3 +1,30 @@
+## JANELA E-1274
+
+**Ronda 92. O segundo provider ligado ao produto: `SmokePanel` consome `build.smoke`.**
+
+- **E-1274** — `smokeClient.ts` + `SmokePanel.tsx` + 11 testes, montado em `CapabilitiesPage`. A
+  E-1273 provou a rota com 6 testes, mas **nenhum painel a consumia**. **Décimo segundo reabrir do
+  defeito, segundo fecho** — agora `CredentialProvider` e `TestProvider` têm rota + cliente + painel.
+- **Três obrigações de um painel que executa código, todas com teste:**
+  1. **dizer que executa antes** do botão;
+  2. **mostrar o aviso de sandbox do backend por inteiro** — *um aviso que fica na documentação não
+     chega a quem correu o binário*;
+  3. **não chamar "funciona" ao que só arrancou** — o painel escreve *"provado que arranca e responde;
+     NÃO provado que faz o que promete"*, e um teste proíbe a frase "binário seguro".
+- **Não há campo para a raiz:** o painel não escolhe onde estão os binários. *Um cliente que escolhe a
+  raiz dos binários é um cliente que decide o que corre.*
+- **`separarArgumentos` não imita o shell:** respeita aspas mas **não expande `$VAR`** — teste com
+  `$HOME/x` a exigir que fique literal.
+- **Botão desactivado sem caminho**; **timeout mostrado como processo que não terminou**, nunca como
+  aprovado.
+
+Medido: **11 testes PASS** · `npx vitest run` **123 ficheiros / 867 testes** · `tsc -b` 0 ·
+`eslint .` 0 erros · `vite build` 0 · `BUNDLE_BUDGET=PASS`.
+
+**Lacuna:** sem E2E Playwright para o `SmokePanel`. **8 dos 10 providers sem painel.**
+
+Veredito global: `NOT_RELEASE_READY`.
+
 ## JANELA E-1273
 
 **Ronda 91. A primeira rota que EXECUTA um binário — e a fronteira que a torna segura.**
