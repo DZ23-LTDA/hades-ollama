@@ -1,3 +1,33 @@
+## JANELA E-1273
+
+**Ronda 91. A primeira rota que EXECUTA um binário — e a fronteira que a torna segura.**
+
+- **E-1273** — `server/agent_smoke_route.go` + 6 testes. `build/plan`, `artifact/*` e `sign/plan` são
+  GET e só leem; esta é **POST e executa**. Sem fronteira seria um serviço de execução remota:
+  *uma rota que executa o que lhe mandarem não é um TestProvider: é um shell com JSON*.
+- **A fronteira é uma RAIZ, não uma lista de extensões:** o caminho tem de estar dentro de
+  `HADES_ARTEFACTOS`. Sem a variável, a rota recusa com **412**.
+- **Três verificações, nesta ordem:** normalizar; **resolver symlinks nos dois lados**; conter com
+  `filepath.Rel`. A do meio é a que importa — *uma verificação de prefixo sem resolver symlinks é uma
+  verificação que aprova o link, não o alvo*. Há teste com symlink a escapar a exigir 403.
+- **Não há shell:** `exec.Command` com argumentos como lista. *Um argumento que passa por um shell é
+  um argumento que o shell pode reescrever.*
+- **Recusa sem argumentos**, recusa >32 argumentos (413) e **corta o timeout para o máximo** em vez de
+  o aceitar por escrito. *Um timeout escolhido pelo cliente é uma pausa que o servidor aceita por
+  escrito.*
+- **A fronteira vai no resultado:** `sem_sandbox: true` + `aviso_de_sandbox`.
+
+**Sete rotas do Release Hub:** `build/plan` · `build/artifact/checksum` · `build/artifact/verify` ·
+`build/verify` · `build/smoke` · `sign/plan` · `credentials/status`.
+
+Medido: 5 PASS / 1 SKIP (symlink no Windows); `./server` ok 54,2 s; build 0; lint 0.
+
+**CI dos três commits anteriores: 0 red novos** — só os 2 gitleaks históricos.
+
+**Lacuna:** a rota **não tem painel**.
+
+Veredito global: `NOT_RELEASE_READY`.
+
 ## JANELA E-1272
 
 **Ronda 90. O E2E que faltava: o painel de credenciais no browser real.**

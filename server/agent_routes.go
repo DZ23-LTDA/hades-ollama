@@ -900,6 +900,7 @@ func (a *agentAPI) register(r *gin.Engine) {
 	// FASE 28.9 passo 7: `build.verify`. Verifica o LOTE de artefactos de um build contra os
 	// SHA-256 que o build mediu. POST porque a lista nao cabe num URL sem limites arbitrarios.
 	group.POST("/build/verify", a.verificarBuild)
+	group.POST("/build/smoke", a.executarSmoke)
 	// FASE 28.7: `sign.plan`. AVALIA se a identidade serve para o tipo pedido; nao assina, nao le' a
 	// chave privada e nao valida cadeia criptografica.
 	group.POST("/sign/plan", a.planearAssinatura)
