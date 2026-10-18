@@ -74,6 +74,12 @@ type ToolRequirement struct {
 	Motivo string
 	// VersaoMinima e' um prefixo textual opcional (ex.: "1.22"). Vazio significa: sem minimo.
 	VersaoMinima string
+	// ArgsDeVersao sao os argumentos que pedem a versao. Vazio significa `--version`.
+	//
+	// Existe porque nem toda a ferramenta aceita `--version`: o Go usa `go version` e responde
+	// `flag provided but not defined: -version` a `--version`. *Assumir uma so' convencao de
+	// linha de comando transforma uma ferramenta saudavel num falso OUTDATED.*
+	ArgsDeVersao []string
 }
 
 // ToolProbe e' o que foi OBSERVADO sobre uma exigencia.
@@ -158,7 +164,7 @@ func CatalogoDeAlvos() []AlvoDeclarado {
 			Nome:      "windows",
 			Descricao: "Instalador .exe nao assinado (Inno Setup)",
 			Exigencias: []ToolRequirement{
-				{Nome: "go", Comando: "go", Obrigatorio: true, Motivo: "compilar o binario e o app GUI", VersaoMinima: "1.22"},
+				{Nome: "go", Comando: "go", Obrigatorio: true, Motivo: "compilar o binario e o app GUI", VersaoMinima: "1.22", ArgsDeVersao: []string{"version"}},
 				{Nome: "inno-setup", Comando: "iscc", Obrigatorio: true, Motivo: "compilar o instalador .iss"},
 				{Nome: "powershell", Comando: "powershell", Obrigatorio: true, Motivo: "scripts de build e de instalador"},
 			},
@@ -200,7 +206,7 @@ func CatalogoDeAlvos() []AlvoDeclarado {
 			Nome:      "linux",
 			Descricao: "pacotes .deb/.rpm/AppImage",
 			Exigencias: []ToolRequirement{
-				{Nome: "go", Comando: "go", Obrigatorio: true, Motivo: "compilar o binario", VersaoMinima: "1.22"},
+				{Nome: "go", Comando: "go", Obrigatorio: true, Motivo: "compilar o binario", VersaoMinima: "1.22", ArgsDeVersao: []string{"version"}},
 				{Nome: "dpkg-deb", Comando: "dpkg-deb", Obrigatorio: false, Motivo: "empacotar .deb"},
 				{Nome: "rpmbuild", Comando: "rpmbuild", Obrigatorio: false, Motivo: "empacotar .rpm"},
 			},
@@ -336,7 +342,7 @@ func SondarFerramentaNoPATH(ctx context.Context, req ToolRequirement) ToolProbe 
 			Detalhe:   "nao encontrado no PATH resolvido",
 		}
 	}
-	versao, erroVersao := primeiraLinhaDeVersao(ctx, caminho)
+	versao, erroVersao := primeiraLinhaDeVersao(ctx, caminho, req.ArgsDeVersao)
 	if erroVersao != nil {
 		return ToolProbe{
 			Requisito: req,
@@ -366,10 +372,13 @@ func SondarFerramentaNoPATH(ctx context.Context, req ToolRequirement) ToolProbe 
 //
 // *Um `--version` nao e' um health check: e' a prova de que o processo arranca.* Por isso o
 // estado resultante e' `PRESENT_COMPATIBLE_UNVERIFIED`, nao `HEALTHY`.
-func primeiraLinhaDeVersao(ctx context.Context, caminho string) (string, error) {
+func primeiraLinhaDeVersao(ctx context.Context, caminho string, args []string) (string, error) {
 	runCtx, cancelar := context.WithTimeout(ctx, 5*time.Second)
 	defer cancelar()
-	cmd := exec.CommandContext(runCtx, caminho, "--version")
+	if len(args) == 0 {
+		args = []string{"--version"}
+	}
+	cmd := exec.CommandContext(runCtx, caminho, args...)
 	saida, err := cmd.CombinedOutput()
 	if err != nil && len(saida) == 0 {
 		return "", err

@@ -150,7 +150,7 @@ func agentCommand() *cobra.Command {
 			return runAgentDoctor(cmd.Context())
 		},
 	}
-	command.AddCommand(create, get, run, cancel, events, approve, tools, preset, doctor, migratePostgres, rotatePostgresKey)
+	command.AddCommand(create, get, run, cancel, events, approve, tools, preset, doctor, toolchainCommand(), migratePostgres, rotatePostgresKey)
 	return command
 }
 
