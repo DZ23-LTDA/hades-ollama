@@ -1,3 +1,21 @@
+## JANELA E-1246
+
+**Rondas 63-64.** O Build Hub deixou de receber o alvo escrito a mao: detecta o projecto e plana
+contra o que ele PEDE.
+
+- **E-1245** -- `ProjectDetector`: 7 stacks, gestor por lockfile, alvos filtrados pelo catalogo
+  real, pastas nativas, manifests de prova. 15 testes. **Dois defeitos meus apanhados:** a regra
+  de precedencia de lockfile apagava o npm quando era o npm o vencedor; e o `nilerr` acusou dois
+  ramos onde eu engolia um erro de leitura em silencio.
+- **E-1246** -- o ELO. `PlanoParaProjeto(ctx, raiz)` **nao aceita alvo**: o alvo vem do projecto.
+  Cada alvo detectado tem plano ou erro explicito e nunca e'' omitido; `SemAlvos` e'' estado
+  proprio, nao sucesso mudo. 9 testes.
+
+Proximo passo declarado: **rota HTTP** para o Mission Control consumir o plano. Depois **C1**
+propriamente dito -- um build real instalado.
+
+Veredito global: `NOT_RELEASE_READY`.
+
 ## JANELA E-1244
 
 **Rondas 60-62.** A matriz de lacunas existe, o validador do Studio esta'' ligado ao pipeline, e o
