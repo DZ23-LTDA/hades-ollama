@@ -24,6 +24,7 @@ import {
   BellIcon,
   PencilSquareIcon,
   WrenchScrewdriverIcon,
+  KeyIcon,
 } from "@heroicons/react/24/outline";
 import { ChatIcon } from "@/components/ChatIcon";
 import { SearchDialog } from "@/components/SearchDialog";
@@ -54,7 +55,8 @@ export type AppSection =
   | "tasks"
   | "compare"
   | "company"
-  | "capabilities";
+  | "capabilities"
+  | "signing";
 
 type Icon = React.ComponentType<{ className?: string }>;
 
@@ -330,6 +332,14 @@ export function AppNavigation({ current }: { current: AppSection }) {
           current={current}
           section="capabilities"
           icon={WrenchScrewdriverIcon}
+        />
+        {/* FASE 28.5: identidades de assinatura (metadados apenas). */}
+        <TargetLink
+          href="/signing"
+          label="Assinatura"
+          current={current}
+          section="signing"
+          icon={KeyIcon}
         />
 
       <NavLabel>Agentes</NavLabel>

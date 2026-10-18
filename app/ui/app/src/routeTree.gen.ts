@@ -25,6 +25,7 @@ import { Route as ProjectsRouteImport } from './routes/projects'
 import { Route as ProvidersRouteImport } from './routes/providers'
 import { Route as ScheduledRouteImport } from './routes/scheduled'
 import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as SigningRouteImport } from './routes/signing'
 import { Route as SkillsRouteImport } from './routes/skills'
 import { Route as StudioRouteImport } from './routes/studio'
 import { Route as TasksRouteImport } from './routes/tasks'
@@ -111,6 +112,11 @@ const SettingsRoute = SettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SigningRoute = SigningRouteImport.update({
+  id: '/signing',
+  path: '/signing',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SkillsRoute = SkillsRouteImport.update({
   id: '/skills',
   path: '/skills',
@@ -154,6 +160,7 @@ export interface FileRoutesByFullPath {
   '/providers': typeof ProvidersRoute
   '/scheduled': typeof ScheduledRoute
   '/settings': typeof SettingsRoute
+  '/signing': typeof SigningRoute
   '/skills': typeof SkillsRoute
   '/studio': typeof StudioRoute
   '/tasks': typeof TasksRoute
@@ -177,6 +184,7 @@ export interface FileRoutesByTo {
   '/providers': typeof ProvidersRoute
   '/scheduled': typeof ScheduledRoute
   '/settings': typeof SettingsRoute
+  '/signing': typeof SigningRoute
   '/skills': typeof SkillsRoute
   '/studio': typeof StudioRoute
   '/tasks': typeof TasksRoute
@@ -201,6 +209,7 @@ export interface FileRoutesById {
   '/providers': typeof ProvidersRoute
   '/scheduled': typeof ScheduledRoute
   '/settings': typeof SettingsRoute
+  '/signing': typeof SigningRoute
   '/skills': typeof SkillsRoute
   '/studio': typeof StudioRoute
   '/tasks': typeof TasksRoute
@@ -226,6 +235,7 @@ export interface FileRouteTypes {
     | '/providers'
     | '/scheduled'
     | '/settings'
+    | '/signing'
     | '/skills'
     | '/studio'
     | '/tasks'
@@ -249,6 +259,7 @@ export interface FileRouteTypes {
     | '/providers'
     | '/scheduled'
     | '/settings'
+    | '/signing'
     | '/skills'
     | '/studio'
     | '/tasks'
@@ -272,6 +283,7 @@ export interface FileRouteTypes {
     | '/providers'
     | '/scheduled'
     | '/settings'
+    | '/signing'
     | '/skills'
     | '/studio'
     | '/tasks'
@@ -296,6 +308,7 @@ export interface RootRouteChildren {
   ProvidersRoute: typeof ProvidersRoute
   ScheduledRoute: typeof ScheduledRoute
   SettingsRoute: typeof SettingsRoute
+  SigningRoute: typeof SigningRoute
   SkillsRoute: typeof SkillsRoute
   StudioRoute: typeof StudioRoute
   TasksRoute: typeof TasksRoute
@@ -417,6 +430,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SettingsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/signing': {
+      id: '/signing'
+      path: '/signing'
+      fullPath: '/signing'
+      preLoaderRoute: typeof SigningRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/skills': {
       id: '/skills'
       path: '/skills'
@@ -472,6 +492,7 @@ const rootRouteChildren: RootRouteChildren = {
   ProvidersRoute: ProvidersRoute,
   ScheduledRoute: ScheduledRoute,
   SettingsRoute: SettingsRoute,
+  SigningRoute: SigningRoute,
   SkillsRoute: SkillsRoute,
   StudioRoute: StudioRoute,
   TasksRoute: TasksRoute,
