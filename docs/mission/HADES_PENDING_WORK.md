@@ -1,3 +1,31 @@
+## JANELA E-1261
+
+**Ronda 79. A ligacao que faltava: construir -> VERIFICAR.**
+
+- **E-1261** -- `VerificarConstrucao` + 5 testes. O SHA medido no build e' a REFERENCIA; o
+  verificador mede o ficheiro AGORA.
+- **Tres defeitos meus apanhados pelos proprios testes:**
+  1. `errado` colidia com uma **funcao** do pacote;
+  2. `artefacto` (com "c") e' **funcao** do pacote; a variavel era `artefato` -- o nome errado
+     **resolveu para a funcao**. *Um identificador local que coincide com um do pacote nao
+     sombreia.*
+  3. **o importante:** a explicacao contava `NAO_VERIFICADA` como **"assinatura presente"**.
+     *"Nao consegui olhar" e "olhei e nao ha'" sao factos diferentes.* Corrigido com `NaoVerificadas`
+     separado; o teste agora **proibe a frase** quando ninguem inspeccionou.
+- **Build vazio nao e' aprovacao:** `ErrSemArtefactosParaVerificar`.
+- **Erro de infra nao vira veredito:** ficheiro apagado aborta.
+
+Medido: 5 PASS; `./internal/agent` **ok 446,2 s**; build 0; vet 0; lint 0.
+**Artefacto real da E-1251 verificado:** 69 206 016 B, `fcef9d9d...` aprovado; o MESMO ficheiro
+reprovado com referencia errada.
+
+**Nao medido / ausente:** `VerificarConstrucao` **nao tem chamador fora dos testes** -- o mesmo
+defeito que esta fatia corrigiu para o `ConstruirAlvos`. Sem verificacao de assinatura real.
+
+Proximo passo: rota `build.verify` a chamar `VerificarConstrucao`.
+
+Veredito global: `NOT_RELEASE_READY`.
+
 ## JANELA E-1260
 
 **Ronda 78. O E2E encontrou um P1 que nenhum teste de componente podia encontrar.**

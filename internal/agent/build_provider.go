@@ -377,3 +377,146 @@ func truncarSaida(s string) string {
 	}
 	return s[:maxSaidaDeComando] + "\n...[truncado]"
 }
+
+// ---------------------------------------------------------------------------
+// A LIGACAO QUE FALTAVA: construir -> VERIFICAR
+// ---------------------------------------------------------------------------
+//
+// A E-1251 construiu um artefacto real e mediu o seu SHA-256. A E-1256 implementou o verificador. A
+// E-1258 expo-os por HTTP. Mas **o build nunca verificava o que produziu** -- as duas pecas existiam
+// e nao se falavam:
+//
+//	*Tres pecas provadas em separado nao sao uma integracao provada.*
+//
+// O QUE ESTA FUNCAO VERIFICA, E O QUE ISSO VALE
+//
+// O `SHA256` de cada `Artefato` foi medido no instante em que o build o produziu. `VerificarConstrucao`
+// volta a ler o ficheiro do disco e compara-o com essa referencia:
+//
+//   - iguais -> o ficheiro nao mudou desde o build;
+//   - diferentes -> alguem (ou algo) o alterou depois.
+//
+// **Isto NAO e' uma verificacao de assinatura**, e o campo `Assinatura` de cada resultado diz
+// exactamente o que se conseguiu olhar. *Aprovado significa "passou os gates que consegui aplicar",
+// nao "todos os gates existiram".*
+//
+// A FRONTEIRA QUE A FUNCAO RECUSA PASSAR
+//
+// Um build que nao produziu nada nao tem nada para verificar. Devolver "tudo verificado" sobre uma
+// lista vazia seria a mentira mais barata do sistema:
+//
+//	*Um plano vazio apresentado como sucesso e' a mesma mentira que um card clicavel que termina em
+//	tela vazia.*
+
+// ErrSemArtefactosParaVerificar e' devolvido quando se tenta verificar um build que nao produziu
+// nada.
+var ErrSemArtefactosParaVerificar = errors.New(
+	"build sem artefactos: nao ha' nada para verificar",
+)
+
+// VerificacaoDaConstrucao agrega os resultados de verificar todos os artefactos de um build.
+type VerificacaoDaConstrucao struct {
+	// Resultados tem uma entrada por artefacto, na mesma ordem do `ResultadoDeBuild`.
+	Resultados []ResultadoDeVerificacao `json:"resultados"`
+	// Total e' quantos artefactos foram verificados.
+	Total int `json:"total"`
+	// Integros e' quantos passaram a comparacao de checksum.
+	Integros int `json:"integros"`
+	// Adulterados e' quantos falharam. Um unico adulterado reprova a construcao inteira.
+	Adulterados int `json:"adulterados"`
+	// SemAssinatura e' quantos tinham `AUSENTE` -- o adaptador olhou e nao havia assinatura.
+	SemAssinatura int `json:"sem_assinatura"`
+	// NaoVerificadas e' quantos ficaram em `NAO_VERIFICADA` -- nao houve adaptador para olhar.
+	//
+	// Separado de `SemAssinatura` de proposito: "olhei e nao ha'" e "nao consegui olhar" sao factos
+	// diferentes. Conta-los juntos produzia a frase "N com assinatura presente" para artefactos que
+	// ninguem inspeccionou -- e *um estado que mente e' pior do que nenhum*.
+	NaoVerificadas int `json:"nao_verificadas"`
+	// Aprovada e' verdadeira apenas se TODOS os artefactos passaram e nenhum foi adulterado.
+	Aprovada bool `json:"aprovada"`
+	// Explicacao diz, em uma frase, o que aconteceu -- e porque nao foi aprovada quando nao foi.
+	Explicacao string `json:"explicacao"`
+}
+
+// VerificarConstrucao verifica cada artefacto de um build contra o SHA-256 que o build mediu.
+//
+// Devolve `ErrSemArtefactosParaVerificar` para um build vazio: *um relatorio que obriga a somar a mao
+// e' um relatorio para quem ja' sabia a resposta*, e um "0 de 0 aprovado" nao e' uma aprovacao.
+func VerificarConstrucao(
+	ctx context.Context,
+	resultado ResultadoDeBuild,
+	verificador VerificadorDeArtefacto,
+) (VerificacaoDaConstrucao, error) {
+	if len(resultado.Artefatos) == 0 {
+		return VerificacaoDaConstrucao{
+			Aprovada:   false,
+			Explicacao: "o build nao produziu artefactos; nao ha' o que verificar",
+		}, ErrSemArtefactosParaVerificar
+	}
+
+	verificacao := VerificacaoDaConstrucao{
+		Resultados: make([]ResultadoDeVerificacao, 0, len(resultado.Artefatos)),
+		Total:      len(resultado.Artefatos),
+		Aprovada:   true,
+	}
+
+	for _, artefato := range resultado.Artefatos {
+		if err := ctx.Err(); err != nil {
+			return verificacao, err
+		}
+		// O SHA do build e' a REFERENCIA; o verificador mede o ficheiro AGORA.
+		one, err := verificador.Verificar(ctx, artefato.Caminho, artefato.SHA256)
+		if err != nil {
+			// Um erro de infraestrutura nao e' um veredito: propaga-o em vez de o converter em
+			// "adulterado". *Um erro que nao aborta nao e' um erro que nao aconteceu.*
+			return verificacao, fmt.Errorf("verificar %q: %w", artefato.Caminho, err)
+		}
+		verificacao.Resultados = append(verificacao.Resultados, one)
+		if one.Integro {
+			verificacao.Integros++
+		} else {
+			verificacao.Adulterados++
+			verificacao.Aprovada = false
+		}
+		switch one.Assinatura {
+		case AssinaturaAusente:
+			verificacao.SemAssinatura++
+		case AssinaturaNaoVerificada:
+			verificacao.NaoVerificadas++
+		}
+	}
+
+	verificacao.Explicacao = explicarVerificacaoDaConstrucao(verificacao)
+	return verificacao, nil
+}
+
+// explicarVerificacaoDaConstrucao compoe a frase final. Conta os factos; nao os arredonda.
+//
+// A ORDEM DOS RAMOS IMPORTA. Primeiro a adulteracao (o facto mais grave), depois a ausencia de
+// instrumento, e so' no fim a contagem do que foi realmente visto. Inverter os dois ultimos produziria
+// "N com assinatura presente" para artefactos que ninguem inspeccionou.
+func explicarVerificacaoDaConstrucao(v VerificacaoDaConstrucao) string {
+	if v.Adulterados > 0 {
+		return fmt.Sprintf(
+			"%d de %d artefactos ADULTERADOS: o ficheiro mudou depois do build",
+			v.Adulterados, v.Total,
+		)
+	}
+	if v.NaoVerificadas == v.Total {
+		return fmt.Sprintf(
+			"%d de %d artefactos integros; assinatura NAO verificada neste host (nenhum adaptador)",
+			v.Integros, v.Total,
+		)
+	}
+	if v.SemAssinatura == v.Total {
+		return fmt.Sprintf(
+			"%d de %d artefactos integros; nenhum tem assinatura (esperado nesta RC)",
+			v.Integros, v.Total,
+		)
+	}
+	comAssinatura := v.Total - v.SemAssinatura - v.NaoVerificadas
+	return fmt.Sprintf(
+		"%d de %d artefactos integros; %d com assinatura presente, %d nao verificadas",
+		v.Integros, v.Total, comAssinatura, v.NaoVerificadas,
+	)
+}
