@@ -1,3 +1,30 @@
+## JANELA E-1270
+
+**Ronda 87. O primeiro provider ligado ao produto: `credentials.status`.**
+
+- **E-1270** — `server/agent_credentials_route.go` + 7 testes. A E-1265 media o kit real mas **só os
+  testes a invocavam**: *uma comparação que só o programador consegue invocar não é uma
+  funcionalidade: é uma função*.
+- **O caminho vem do AMBIENTE (`HADES_KIT_CREDENCIAIS`), não do pedido.** Há teste que passa um
+  `?raiz=` para outro directório e exige que seja ignorado. *Uma rota que aceita qualquer caminho é
+  uma rota que lê qualquer caminho.*
+- **Redacção:** devolve só caminhos relativos e **não devolve a raiz** — teste serializa a resposta e
+  exige que a string da raiz não apareça nela. *A rota que devolve o mapa do cofre não é a rota que
+  mostra o estado do cofre.*
+- **Segredos continuam não lidos:** `conteudo_lido: false`, `fingerprint` vazio, frase "NAO lido" no
+  `.p12` — tudo exigido por teste.
+- **Não configurado não é erro:** responde **200** com `configurado: false` e diz qual variável
+  definir. Um 404 faria um cliente concluir que o servidor está quebrado.
+
+**Seis rotas do Release Hub:** `build/plan` · `build/artifact/checksum` · `build/artifact/verify` ·
+`build/verify` · `sign/plan` · `credentials/status`.
+
+Medido: 7 PASS.
+
+**Lacuna:** a rota **não tem painel** no frontend. O defeito recorrente deu um passo, não fechou.
+
+Veredito global: `NOT_RELEASE_READY`.
+
 ## JANELA E-1268 e E-1269 -- OS DEZ PROVIDERS DO ADENDO 28.1 COMPLETOS
 
 **Ronda 86. Fecham os dois últimos: `RollbackProvider` e `PublishingProvider`.**

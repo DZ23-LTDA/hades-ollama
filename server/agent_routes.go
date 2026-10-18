@@ -903,6 +903,7 @@ func (a *agentAPI) register(r *gin.Engine) {
 	// FASE 28.7: `sign.plan`. AVALIA se a identidade serve para o tipo pedido; nao assina, nao le' a
 	// chave privada e nao valida cadeia criptografica.
 	group.POST("/sign/plan", a.planearAssinatura)
+	group.GET("/credentials/status", a.inventariarCredenciais)
 	group.GET("/install/profiles", a.installProfiles)
 	group.GET("/install/plan/:perfil", a.installPlan)
 	// FASE 28.5 do adendo V3: o Signing Identity Center. Le METADADOS de um ficheiro fora do
