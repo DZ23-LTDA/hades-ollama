@@ -1,3 +1,30 @@
+## JANELA E-1258
+
+**Ronda 76. O verificador deixou de ser uma funcao Go: `artifact.checksum` e `artifact.verify`.**
+
+- **E-1258** -- `server/agent_artifact_verify_route.go` + 8 testes PASS. Adendo 28.7.
+- **Duas rotas porque sao duas operacoes:** `checksum` mede; `verify` compara com referencia.
+  *Junta-las obrigaria quem so' quer o hash a inventar uma referencia -- e uma referencia inventada
+  "passa" sempre.*
+- Recusas com significado: sem `caminho` 400; caminho **relativo** 400; inexistente 404; sem
+  `sha256` 400; referencia **curta** 400.
+- **Adulterado devolve 200 com `adulterado=true`, NAO 4xx** -- *um 4xx confundiria "pedido
+  invalido" com "artefacto adulterado"*.
+- A fronteira vai no CORPO (`somente_leitura`, `aviso_de_fronteira`), nao so' na documentacao.
+- **Nao procuram por ID:** um registo de artefactos nao existe. *Um ID que resolve para um ficheiro
+  que ninguem registou e' um apelido, nao uma identidade.*
+- **Bug meu:** `$R` (caminho) e `$r` (conteudo) sao a MESMA variavel em PowerShell. O ficheiro ficou
+  intacto (verificado) e as rotas foram registadas pela ferramenta de edicao.
+  => *duas variaveis que diferem so' na caixa sao a mesma variavel.*
+
+**CI do `993804798` (correcao do `darwin`): 0 red** no momento da medicao -- terceira causa fechada.
+
+Medido: 8 testes PASS; `go test ./server` ok 55,4 s; lint 0; `go build ./...` 0.
+
+Proximo passo: um painel ou o fluxo de build a chamar estas rotas.
+
+Veredito global: `NOT_RELEASE_READY`.
+
 ## JANELA E-1257
 
 **Ronda 75. O terceiro red era o mesmo `darwin`!=`macos`, no sitio que a correcao anterior nao tocou.**

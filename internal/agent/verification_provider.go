@@ -269,3 +269,40 @@ func apenasHexadecimal(s string) bool {
 	}
 	return true
 }
+
+// MedirArtefacto devolve o SHA-256 e o tamanho de um ficheiro, SEM comparar com nada.
+//
+// Existe para a rota `artifact.checksum`, que mede e nao verifica.
+//
+//	*A medicao e a verificacao sao operacoes diferentes. Uma funcao que so' sabe verificar obriga
+//	quem so' quer o hash a inventar uma referencia -- e uma referencia inventada "passa" sempre.*
+//
+// Partilha a mesma funcao de hash do `Verificar`: dois checksums calculados por funcoes diferentes
+// sao dois checksums que podem discordar sem ninguem ter adulterado nada.
+func MedirArtefacto(ctx context.Context, caminho string) (sha256Hex string, tamanho int64, err error) {
+	if err := ctx.Err(); err != nil {
+		return "", 0, err
+	}
+	absoluto, err := filepath.Abs(caminho)
+	if err != nil {
+		return "", 0, fmt.Errorf("resolver %q: %w", caminho, err)
+	}
+	info, err := os.Stat(absoluto)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return "", 0, fmt.Errorf("%w: %s", ErrFicheiroInexistente, absoluto)
+		}
+		return "", 0, fmt.Errorf("stat %q: %w", absoluto, err)
+	}
+	if info.IsDir() {
+		return "", 0, fmt.Errorf("%q e' um directorio; um artefacto e' um ficheiro", absoluto)
+	}
+	if info.Size() == 0 {
+		return "", 0, fmt.Errorf("%w: %q tem 0 bytes", ErrFicheiroInexistente, absoluto)
+	}
+	medido, err := sha256DeFicheiro(absoluto)
+	if err != nil {
+		return "", 0, fmt.Errorf("checksum de %q: %w", absoluto, err)
+	}
+	return medido, info.Size(), nil
+}

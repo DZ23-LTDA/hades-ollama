@@ -893,6 +893,10 @@ func (a *agentAPI) register(r *gin.Engine) {
 	group.POST("/solutions/compare", a.comparacaoDeSolucoes)
 	// FASE 28.6/28.7: o plano de release do projection. Le' e sonda; nao instala nem constroi.
 	group.GET("/build/plan", a.planoDeRelease)
+	// FASE 28.7 do adendo V3: `artifact.checksum` e `artifact.verify`. A primeira MEDE, a segunda
+	// COMPARA com uma referencia. Nenhuma escreve, assina ou instala.
+	group.GET("/build/artifact/checksum", a.checksumDeArtefacto)
+	group.GET("/build/artifact/verify", a.verificarArtefacto)
 	group.GET("/install/profiles", a.installProfiles)
 	group.GET("/install/plan/:perfil", a.installPlan)
 	// FASE 28.5 do adendo V3: o Signing Identity Center. Le METADADOS de um ficheiro fora do
