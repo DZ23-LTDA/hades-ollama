@@ -1,5 +1,25 @@
 # HADES — HANDOFF (como retomar a missão do zero)
-## JANELA E-1171 -- os gates que faltavam, e o lint que me apanhou (rondas 268-288)
+## JANELA E-1184 -- FASE 23 LIGADA: catalogo -> `/preset` -> rota -> E2E (rondas 7-9)
+
+*Bloco de cabeca: mantem os tres documentos de retomada dentro da `JANELA = 12` do
+`hades_handoff_window_check.py`. Cada afirmacao abaixo tem ID proprio no indice.*
+
+- **`E-1184`** -- **E2E da rota `/api/agent/v1/presets`: router REAL -> handler REAL -> catalogo REAL.**
+  `TestMissionPresetsRouteServeOCatalogoReal` prova GET 200 + 11 presets + `completion_criteria` em
+  todos + `count` coerente + o catalogo da rota e' o MESMO que `MissionPresetIDs()` serve ao `/preset`.
+  `TestMissionPresetsRouteNaoVazaSegredo` recusa termos de chave privada no corpo. A distincao esta'
+  escrita no teste: *este prova que a rota RESPONDE; o contrato anterior prova que a rota EXISTE --
+  um teste de strings nao e' um teste de comportamento.* Medido: PASS 8,530 s; lint 0 issues.
+- **`E-1183`** -- **`/preset` com rota real, e o teste apanhou-me.** Descoberto primeiro que `/goal`
+  **ja' tinha** `required(objetivo)` + `optional(workspace)` e recusa um 3.o argumento POR EXCESSO =>
+  **nao toquei no `/goal`**. Criado `/preset` com `Backend = "GET /api/agent/v1/presets"` e rota
+  registada fora de `/missions` (porque `/missions/:id` ja' existe). A minha 1.a versao tinha
+  `Backend = "local:mission-presets"` e o `TestSlashRegistryCoversSection6AndIsHonest` recusou:
+  `available command /preset has no real backend path`. *O teste impediu-me de criar um botao morto.*
+  Medido: pacote `internal/agent` PASS 269,139 s; pacote `server` PASS 27,772 s; lint 0 issues.
+- **`E-1182`** -- **FASE 23: preset de MISSAO nao e' preset de motor.** `mission_presets.go` com 11
+  presets embutidos, `completion_criteria` OBRIGATORIO e 4 recusas no `Validate`. Segue o desenho do
+  `ProviderPreset` sem tocar nele: *um escolhe onde corre, o outro escolhe o que corre.*
 
 *Bloco de cabeca: mantem os tres documentos de retomada dentro da `JANELA = 12` do
 `hades_handoff_window_check.py`. Cada afirmacao abaixo tem ID proprio no indice.*
