@@ -1,3 +1,56 @@
+## JANELA E-1268 e E-1269 -- OS DEZ PROVIDERS DO ADENDO 28.1 COMPLETOS
+
+**Ronda 86. Fecham os dois últimos: `RollbackProvider` e `PublishingProvider`.**
+
+### E-1268 -- `RollbackProvider`: o plano que NUNCA executa
+
+- `Planear` monta o plano e verifica a integridade do alvo; **não restaura**. Restaurar um binário de
+  produção é exactamente a acção que o adendo 28.5 põe atrás de *"confirmação humana no momento da
+  acção"*. Um `Executar()` que só devolvesse "não autorizado" seria *um botão morto*.
+- **`Executado` é SEMPRE false** e o aviso garante que *nenhum ficheiro foi movido, copiado ou
+  apagado* — há teste que exige as duas frases.
+- **Cada candidato tem SHA-256 medido em fluxo** e o teste recalcula por fora e compara.
+- **Canal sem credencial é declarado, não fingido:** Play (`CONFIG_REQUIRED`), App Store (sem macOS),
+  EAS Update (sem canal), OCI (sem registry) — 4 canais com `ErrRollbackNaoSuportado` e motivo.
+
+### E-1269 -- `PublishingProvider`: e ele NÃO PUBLICA, por desenho
+
+- A autorização proíbe publicar, por isso o provider implementa **`publish.preflight`** (o nome do
+  adendo 28.7) e **não** `publish.submit`. A diferença é a diferença entre verificar e agir.
+- **`Publicado` é SEMPRE false** nos 6 canais.
+- **`LOCAL_ONLY` NÃO é deploy público:** a explicação diz que o artefacto *está no disco, NÃO que foi
+  publicado* — e há teste que exige a frase.
+- **Canal público nunca é declarado disponível:** a condição fica insatisfeita com o detalhe a nomear
+  a proibição; `RequerAprovacao` é verdadeiro neles e falso no `LOCAL_ONLY`.
+- **A credencial é verificada por existência, sem abrir:** há teste com **sentinela** de texto a
+  provar que ela não vazou para o resultado nem para a explicação.
+
+### Os dez providers
+
+| # | Provider | Ficheiro |
+|---|---|---|
+| 1 | `ProjectDetector` | `project_detector.go` |
+| 2 | `CapabilityResolver` | (via `PlanoParaProjeto`) |
+| 3 | `BuildProvider` | `build_provider.go` |
+| 4 | `SigningProvider` | `signing_provider.go` |
+| 5 | `VerificationProvider` | `verification_provider.go` |
+| 6 | `PublishingProvider` | `publishing_provider.go` |
+| 7 | `CredentialProvider` | `credential_provider.go` |
+| 8 | `ComplianceProvider` | `compliance_provider.go` |
+| 9 | `TestProvider` | `test_provider.go` |
+| 10 | `RollbackProvider` | `rollback_provider.go` |
+
+**Nota honesta:** o item 2 (`CapabilityResolver`) tem apenas **1 ocorrência** em `internal/agent` —
+é o nome no comentário do contrato, não uma abstracção própria. O plano de capability existe em
+`PlanoParaProjeto`, mas **não há interface `CapabilityResolver`**. Declarado como lacuna.
+
+Medido: `./internal/agent` **ok 340,1 s**; build 0; vet 0; lint 0.
+
+**Lacuna transversal:** **nenhum dos dez tem rota HTTP própria nem painel** — só `sign.plan`,
+`build/*` e `artifact/*` têm rotas. O defeito recorrente continua.
+
+Veredito global: `NOT_RELEASE_READY`.
+
 ## JANELA E-1267
 
 **Ronda 85. O oitavo dos dez providers: `TestProvider` — o primeiro teste que EXECUTA o artefacto.**
