@@ -1,3 +1,29 @@
+## JANELA E-1244
+
+**Rondas 60-62.** A matriz de lacunas existe, o validador do Studio esta'' ligado ao pipeline, e o
+cenario E2E minimo da FASE 3 foi cumprido ponta a ponta.
+
+- **E-1242** -- matriz Orca x HADES e OpenJarvis x HADES. FASE 0 com HEADs auditados
+  (`1938bd05…` MIT e `2817faa5…` Apache-2.0), 26 capacidades em 3 grupos, 3 SUPERAR / 4 ADOTAR /
+  19 ADAPTAR. **O achado que vale mais do que a matriz:** a primeira passagem do inventario
+  procurou ficheiros com nomes inventados e devolveu 8 "AUSENTE"; a segunda procurou conteudo e
+  encontrou `pty` 987, `SSH` 88, `Capability` 291, `VRAM` 27, `openai` 56, `inspec` 162.
+  *Pela quinta vez o inventario errou na mesma direccao.*
+- **E-1243** -- C3 da matriz: os validadores da E-1241 passaram a ser um GATE. `VisualComponent`
+  tem `Props`/`Style`/`Bindings`/`Events` que o renderer executa; o validador existente so' via
+  estrutura e **2 dos 3** caminhos de `renderVisualHTML` nem isso. 12 eventos e 11 accoes
+  allowlisted. `TestCriacaoDeProjectoVisualRecusaComponenteInseguro` falha se a ligacao for
+  removida.
+- **E-1244** -- o cenario E2E minimo *"comparar duas solucoes e exigir aprovacao antes de
+  integrar"*: repositorio git real, **duas solucoes em worktrees separados**, medicao por
+  `git diff --stat`, rota de producao, e **prova de nao-integracao** (`main` no mesmo commit,
+  `branch --merged` limpo, `extra.go` ausente, branches vivas).
+
+Proximo passo declarado: **C1** -- matriz por target do Build Hub com pelo menos um build real
+instalado. Depois **B3** -- os 12 E2E do Obsidian.
+
+Veredito global: `NOT_RELEASE_READY`.
+
 # HADES — PRÓXIMA AÇÃO (V2.2 + adendo de paridade)
 ## JANELA E-1231 -- FASE 2: WORKTREES COM PROTECCAO, ESTADOS E DESCOBERTA (rondas 45-49)
 
