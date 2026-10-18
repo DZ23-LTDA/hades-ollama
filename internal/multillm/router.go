@@ -54,6 +54,12 @@ type RouteDecision struct {
 	Model  Model  `json:"model"`
 	Score  int64  `json:"score"`
 	Reason string `json:"reason"`
+	// Factors sao os componentes que SOMAM o Score. Existem porque o adendo proibe uma
+	// pontuacao opaca como unica justificativa: *um score sem factors obriga quem o le' a
+	// confiar em quem o escreveu -- e confianca nao e' um formato de evidencia.*
+	//
+	// Invariante testada: a soma dos factors de um candidato e' igual ao seu Score.
+	Factors map[string]int64 `json:"factors,omitempty"`
 }
 
 var ErrNoRoute = errors.New("no provider route satisfies the requested constraints")
@@ -96,37 +102,55 @@ func (r *Registry) RouteCandidates(request RouteRequest) ([]RouteDecision, error
 		if request.Health != nil && !health.Healthy {
 			continue
 		}
-		score := int64(model.Priority * 100)
-		score += int64(model.QualityScore * 10)
-		score -= cost
+		// Cada parcela e' registada no mapa `factors` E somada ao score na mesma linha.
+		// *Somar num sitio e explicar noutro e' como um relatorio que se desmente a si
+		// proprio: cedo ou tarde alguem compara os dois.*
+		score := int64(0)
+		factors := map[string]int64{}
+		somar := func(nome string, valor int64) {
+			if valor != 0 {
+				factors[nome] = valor
+			}
+			score += valor
+		}
+		somar("prioridade", int64(model.Priority*100))
+		somar("qualidade", int64(model.QualityScore*10))
+		somar("custo", -cost)
 		if modelIsFree(model) {
-			score += 100000
+			somar("gratuito", 100000)
 		}
 		if health.LatencyMS > 0 {
 			if request.MaxLatencyMS > 0 && health.LatencyMS > request.MaxLatencyMS {
 				continue
 			}
-			score -= health.LatencyMS
+			somar(ParetoLatency, -health.LatencyMS)
 		}
 		if health.ErrorRate > 0.0 {
-			score -= int64(health.ErrorRate * 1000)
+			somar("taxa_erro", -int64(health.ErrorRate*1000))
 		}
 		if request.PreferredProvider != "" {
-			score += 10000
+			somar("provedor_preferido", 10000)
 		}
 		// Optional user preference reweights the balanced default. The empty
 		// (Auto) preference leaves the score unchanged for backward compatibility.
 		switch request.Preference {
 		case RoutePreferenceBestQuality:
-			score += int64(model.QualityScore) * 100
+			somar("preferencia_qualidade", int64(model.QualityScore)*100)
 		case RoutePreferenceCheapest:
-			score -= cost * 100
+			somar("preferencia_custo", -cost*100)
 		case RoutePreferenceFastest:
 			if health.LatencyMS > 0 {
-				score -= health.LatencyMS * 20
+				somar("preferencia_latencia", -health.LatencyMS*20)
+			}
+		case RoutePreferenceMostPrivate:
+			// FASE 19: PRIVACIDADE e' um eixo, nao um filtro. O local sobe; o remoto nao
+			// desaparece. `LocalOnly` continua a ser o filtro rigido, e sao coisas
+			// diferentes de proposito.
+			if provider.AllowPrivate {
+				somar("privacidade_local", 50000)
 			}
 		}
-		candidates = append(candidates, RouteDecision{Model: model, Score: score, Reason: routeReason(model, health, request)})
+		candidates = append(candidates, RouteDecision{Model: model, Score: score, Reason: routeReason(model, health, request), Factors: factors})
 	}
 	if len(candidates) == 0 {
 		return nil, ErrNoRoute
