@@ -58,7 +58,7 @@ func TestLocalTruncaSaidaAoLimite(t *testing.T) {
 	}
 }
 
-// TestSSHSemConfiguracaoFalhaFechadaSemCorrerLocalmente e' O teste discriminante da FASE 6.
+// TestSSHSemConfiguracaoFalhaFechadaSemCorrerLocalmente e' o teste que DISTINGUE a FASE 6.
 //
 // Ele falha de tres maneiras se alguem introduzir um fallback silencioso para local:
 //  1. o erro deixa de ser ErrCapacidadeAusente;
