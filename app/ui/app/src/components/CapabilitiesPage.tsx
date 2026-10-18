@@ -16,6 +16,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { AppSidebar } from "@/components/AppSidebar";
 import { InstallProfilesPanel } from "@/components/InstallProfilesPanel";
+import { WorktreesPanel } from "@/components/WorktreesPanel";
 import { SidebarLayout } from "@/components/layout/layout";
 import {
   fetchToolchainDoctor,
@@ -292,6 +293,11 @@ export function CapabilitiesPage() {
           Responde a mesma pergunta do preflight -- o que falta nesta maquina -- e por isso
           vive aqui. *Dois paineis para a mesma pergunta divergem no primeiro dia.* */}
       <InstallProfilesPanel />
+
+      {/* FASE 2: os worktrees vivem na MESMA pagina de capacidades. O worktree e' o ambiente onde
+          o trabalho acontece; responde ao contexto da tarefa do mesmo jeito que o preflight.
+          *Um mecanismo que ninguem consegue ver e' um mecanismo que ninguem consegue usar.* */}
+      <WorktreesPanel />
     </SidebarLayout>
   );
 }
