@@ -194,9 +194,17 @@ func InventariarWorktrees(ctx context.Context, repoRoot string) ([]WorktreeDesco
 	if errTop != nil {
 		return nil, fmt.Errorf("%q nao e' a raiz de um repositorio git: %w", abs, errTop)
 	}
-	if filepath.Clean(strings.TrimSpace(toplevel)) != filepath.Clean(abs) {
+	// Comparar caminhos REAIS, nao apenas limpos.
+	//
+	// No macOS `/var` e' um symlink para `/private/var`, e o `git` devolve o caminho resolvido.
+	// Comparar `/var/...` com `/private/var/...` recusa um repositorio perfeitamente valido.
+	//
+	//	*Um caminho absoluto nao e' o mesmo que um caminho real.*
+	toplevelReal := caminhoReal(strings.TrimSpace(toplevel))
+	absReal := caminhoReal(abs)
+	if toplevelReal != absReal {
 		return nil, fmt.Errorf("%q nao e' a raiz de um repositorio git (a raiz e' %q)",
-			abs, filepath.Clean(strings.TrimSpace(toplevel)))
+			abs, strings.TrimSpace(toplevel))
 	}
 
 	saida, err := runRawGit(ctx, abs, "worktree", "list", "--porcelain")
@@ -256,6 +264,18 @@ func InventariarWorktrees(ctx context.Context, repoRoot string) ([]WorktreeDesco
 		return lista[a].CaminhoResolvido < lista[b].CaminhoResolvido
 	})
 	return lista, nil
+}
+
+// caminhoReal resolve symlinks e devolve o caminho limpo; se nao for possivel, devolve o limpo.
+//
+// Existe porque o `git` reporta caminhos resolvidos e o sistema de ficheiros pode ter symlinks
+// no caminho (macOS: /var -> /private/var).
+func caminhoReal(caminho string) string {
+	limpo := filepath.Clean(caminho)
+	if real, err := filepath.EvalSymlinks(limpo); err == nil {
+		return filepath.Clean(real)
+	}
+	return limpo
 }
 
 // caminhoSegueConvencao diz se o caminho tem o segmento da convencao do HADES.

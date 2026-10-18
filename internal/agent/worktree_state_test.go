@@ -231,6 +231,41 @@ func TestInventarioVeWorktreeExterno(t *testing.T) {
 	}
 }
 
+// O inventor aceita um repo cujo caminho tem symlinks.
+//
+// No macOS `/var` e' symlink de `/private/var`, e o `git` devolve o caminho RESOLVIDO. Sem
+// comparar caminhos reais, um repositorio valido era recusado no CI do macOS.
+//
+//	*Um caminho absoluto nao e' o mesmo que um caminho real.*
+func TestInventarioAceitaRepoComSymlinkNoCaminho(t *testing.T) {
+	repo := repoFixture(t)
+	base := t.TempDir()
+	link := filepath.Join(base, "atalho-para-repo")
+	if err := os.Symlink(repo, link); err != nil {
+		t.Skipf("symlink indisponivel neste ambiente: %v", err)
+	}
+
+	lista, err := InventariarWorktrees(context.Background(), link)
+	if err != nil {
+		t.Fatalf("repo acessivel por symlink foi recusado: %v\n"+
+			"*um caminho absoluto nao e' o mesmo que um caminho real*", err)
+	}
+	if len(lista) == 0 {
+		t.Fatal("inventor vazio para repo valido via symlink")
+	}
+	if caminhoReal(link) != caminhoReal(repo) {
+		t.Fatalf("caminhoReal nao resolveu o symlink: %q vs %q", caminhoReal(link), caminhoReal(repo))
+	}
+}
+
+// caminhoReal devolve o caminho limpo quando o alvo nao existe.
+func TestCaminhoRealComAlvoInexistente(t *testing.T) {
+	inexistente := filepath.Join(t.TempDir(), "nao-existe")
+	if got := caminhoReal(inexistente); got != filepath.Clean(inexistente) {
+		t.Fatalf("caminhoReal(%q) = %q; esperado o caminho limpo", inexistente, got)
+	}
+}
+
 // O inventor e' deterministico.
 func TestInventarioDeterministico(t *testing.T) {
 	repo := repoFixture(t)

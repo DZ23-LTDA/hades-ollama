@@ -204,7 +204,8 @@ func motivoDeAlvoInseguro(caminho string, repoRoot string) string {
 	if strings.TrimSpace(repoRoot) != "" {
 		absRepo, err := filepath.Abs(repoRoot)
 		if err == nil {
-			absRepo = filepath.Clean(absRepo)
+			// Caminho real: no macOS /var e' symlink de /private/var.
+			absRepo = caminhoReal(absRepo)
 			if caminho == absRepo {
 				return "caminho e' o proprio repositorio"
 			}
