@@ -24,6 +24,8 @@ type Mission = {
   project_id?: string;
   workspace_isolated?: boolean;
   workspace_snapshot_id?: string;
+  /** FASE 23: qual preset produziu esta missao (o servidor devolve o que gravou). */
+  preset_id?: string;
 };
 type Event = { id: string; type: string; step_id?: string; created_at: string; payload?: unknown };
 type Metrics = Record<string, number>;
@@ -296,7 +298,7 @@ export default function AgenticConsole() {
     if (!obj) return;
     setBusy(true); setError("");
     try {
-      const created = await api<Mission>("/api/agent/v1/missions", { method: "POST", body: JSON.stringify({ objective: obj, provider, model: selectedModel || undefined, project_id: projectID || undefined, isolate_workspace: isolateWorkspace && projectID ? true : undefined, capabilities: missionCapabilities, auto_run: false }) });
+      const created = await api<Mission>("/api/agent/v1/missions", { method: "POST", body: JSON.stringify({ objective: obj, preset_id: selectedPreset || undefined, provider, model: selectedModel || undefined, project_id: projectID || undefined, isolate_workspace: isolateWorkspace && projectID ? true : undefined, capabilities: missionCapabilities, auto_run: false }) });
       setMission(created); setObjective(""); await load(created.id, orchestration?.id);
     } catch (cause) { setError(humanizeApiError(cause, "Falha ao criar a missão.").message); } finally { setBusy(false); }
   };

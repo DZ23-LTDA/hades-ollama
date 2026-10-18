@@ -75,6 +75,11 @@ type CreateMissionRequest struct {
 	WorktreeBranch   string   `json:"worktree_branch,omitempty"`
 	AutoRepair       bool     `json:"auto_repair,omitempty"`
 	MaxRepairTries   int      `json:"max_repair_tries,omitempty"`
+	// PresetID liga o pedido ao catalogo de presets de MISSAO (FASE 23 do adendo V3).
+	// Vazio = sem preset, que e' o comportamento anterior. Preenchido = tem de existir,
+	// ou o pedido e' recusado: *um preset que nao existe nao pode produzir uma missao
+	// com a configuracao errada em silencio.*
+	PresetID string `json:"preset_id,omitempty"`
 }
 
 type Mission struct {
@@ -94,8 +99,12 @@ type Mission struct {
 	// `ActorID` (`json:"-"`, preenchido pelo servidor) mas a MISSAO nao o guardava — ou seja, a
 	// atribuicao existia no pedido e perdia-se no registo (a mesma classe de lacuna do D-12: o
 	// runtime nao conhecia o ator). Coalescer despertares por agente exige os dois.
-	ActorID           string             `json:"actor_id,omitempty"`
-	AgentID           string             `json:"agent_id,omitempty"`
+	ActorID string `json:"actor_id,omitempty"`
+	AgentID string `json:"agent_id,omitempty"`
+	// PresetID grava QUAL preset produziu esta missao. Sem este campo, o preset existiria no
+	// pedido e perder-se-ia no registo -- *a mesma classe de lacuna que o comentario acima
+	// descreve para o ActorID.* Quem audita a missao tem de saber que configuracao a originou.
+	PresetID          string             `json:"preset_id,omitempty"`
 	Capabilities      []string           `json:"capabilities,omitempty"`
 	AutoRun           bool               `json:"auto_run,omitempty"`
 	State             MissionState       `json:"state"`

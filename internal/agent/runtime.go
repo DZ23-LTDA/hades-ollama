@@ -972,6 +972,16 @@ func (r *Runtime) CreateMission(ctx context.Context, request CreateMissionReques
 	if len(objective) > 8<<10 {
 		return Mission{}, errors.New("objective is too long")
 	}
+	// FASE 23 do adendo V3: o preset tem de EXISTIR antes de a missao nascer.
+	// Recusar aqui -- e nao mais tarde -- e' o que impede uma missao de arrancar com uma
+	// configuracao que ninguem declarou.
+	presetID := strings.TrimSpace(request.PresetID)
+	if presetID != "" {
+		if _, ok := MissionPresetByID(presetID); !ok {
+			return Mission{}, fmt.Errorf("%w: unknown preset %q; available: %s",
+				ErrPresetInvalido, presetID, strings.Join(MissionPresetIDs(), ", "))
+		}
+	}
 	provider := strings.TrimSpace(request.Provider)
 	if provider == "" {
 		provider = "ollama-local"
@@ -1150,7 +1160,7 @@ func (r *Runtime) CreateMission(ctx context.Context, request CreateMissionReques
 		gitWorktreeActive = true
 	}
 	now := time.Now().UTC()
-	mission := Mission{ID: missionID, Version: 1, Objective: objective, Provider: provider, Model: strings.TrimSpace(request.Model), Workspace: workspace, WorkspaceIdentity: workspaceIdentity, WorkspaceIsolated: request.IsolateWorkspace, WorkspaceSnapshotID: workspaceSnapshotID, WorkspaceSnapshotSHA256: workspaceSnapshotSHA256, GitRepoRoot: gitRepoRoot, GitBranch: gitBranch, GitWorktreePath: gitWorktreePath, GitBaseCommit: gitBaseCommit, GitMergeStatus: gitMergeStatus, GitWorktreeActive: gitWorktreeActive, AutoRepair: request.AutoRepair, MaxRepairTries: request.MaxRepairTries, ProjectID: projectID, OrganizationID: organizationID, ActorID: strings.TrimSpace(request.ActorID), AgentID: strings.TrimSpace(request.AgentID), Capabilities: capabilities, AutoRun: request.AutoRun, State: MissionPlanning, CreatedAt: now, UpdatedAt: now}
+	mission := Mission{ID: missionID, Version: 1, Objective: objective, PresetID: presetID, Provider: provider, Model: strings.TrimSpace(request.Model), Workspace: workspace, WorkspaceIdentity: workspaceIdentity, WorkspaceIsolated: request.IsolateWorkspace, WorkspaceSnapshotID: workspaceSnapshotID, WorkspaceSnapshotSHA256: workspaceSnapshotSHA256, GitRepoRoot: gitRepoRoot, GitBranch: gitBranch, GitWorktreePath: gitWorktreePath, GitBaseCommit: gitBaseCommit, GitMergeStatus: gitMergeStatus, GitWorktreeActive: gitWorktreeActive, AutoRepair: request.AutoRepair, MaxRepairTries: request.MaxRepairTries, ProjectID: projectID, OrganizationID: organizationID, ActorID: strings.TrimSpace(request.ActorID), AgentID: strings.TrimSpace(request.AgentID), Capabilities: capabilities, AutoRun: request.AutoRun, State: MissionPlanning, CreatedAt: now, UpdatedAt: now}
 	if err := r.store.CreateMission(mission); err != nil {
 		// Criação idempotente: a chave já produziu esta missão antes. Devolvemos a
 		// existente — mas SÓ se ela pertencer ao mesmo escopo, para que uma chave
