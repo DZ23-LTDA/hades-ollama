@@ -150,6 +150,16 @@ type DiagnosticoDoCicloDeVida struct {
 	Proximos  []EstadoDoWorktree    `json:"proximos"`
 	// Inconsistente explica quando o estado logico e o disco discordam.
 	Inconsistente string `json:"inconsistente,omitempty"`
+	// EstadoDoRegisto diz se o estado veio do registo PERSISTIDO (e nao apenas do disco).
+	//
+	// *Um estado que morre com o processo nao e' um estado: e' uma variavel.*
+	EstadoDoRegisto bool `json:"estado_do_registo"`
+	// EstadoObservado explica a origem do estado, para o chamador nao ter de adivinhar.
+	EstadoObservado string `json:"estado_observado,omitempty"`
+	// PodeRemover responde a' pergunta pratica, ja' com o estado final considerado.
+	PodeRemover bool `json:"pode_remover"`
+	// MotivoRemover explica a recusa, quando ha' uma.
+	MotivoRemover string `json:"motivo_remover,omitempty"`
 }
 
 // DiagnosticarCicloDeVida le' o estado logico e o disco e compara-os.
@@ -211,3 +221,68 @@ func PodeRemoverAgora(ctx context.Context, session *GitWorktreeSession) (bool, s
 
 // ErrEstadoInconsistente e' devolvido quando o estado logico e o disco discordam.
 var ErrEstadoInconsistente = errors.New("estado do worktree inconsistente com o disco")
+
+// DiagnosticarCicloDeVidaComRegisto combina o estado PERSISTIDO com o que o disco prova.
+//
+// A ordem de autoridade:
+//
+//  1. se ha' registo para a missao, o estado do REGISTO manda no logico (`em_uso`, `suspension`,
+//     `arquivado`) -- foi o processo anterior que o decidiu, e essa decisao sobreviveu;
+//  2. o DISCO manda no que existe: commits nao integrados, ficheiros por commitar, alvo seguro;
+//  3. quando os dois discordam, `Inconsistente` di-lo.
+//
+// Com registo `nil`, o comportamento e' o da E-1232 (so' o disco fala) e `EstadoDoRegisto` fica
+// falso -- *um diagnostico que nao recebeu registo nao pode dizer que o consultou.*
+//
+//	*Um registo que ninguem le' nao e' persistencia: e' um ficheiro.*
+func DiagnosticarCicloDeVidaComRegisto(ctx context.Context, session *GitWorktreeSession, registo *RegistoDeWorktrees) DiagnosticoDoCicloDeVida {
+	d := DiagnosticarCicloDeVida(ctx, session)
+	if session == nil {
+		return d
+	}
+
+	if registo != nil {
+		if estado, existe := registo.EstadoDe(session.MissionID); existe {
+			anterior := d.Estado
+			d.Estado = estado
+			d.EstadoDoRegisto = true
+			d.Proximos = TransicoesDe(estado)
+			d.EstadoObservado = "estado do registo persistido"
+			if anterior != estado {
+				// O disco derivava outra coisa; o registo prevalece e a diferenca e' registada.
+				// *Duas fontes para a mesma pergunta sem dizer qual mandou e' como nao ter nenhuma.*
+				d.Inconsistente = fmt.Sprintf(
+					"o registo diz %q e o disco sugeria %q; o registo prevalece", estado, anterior)
+			}
+		} else {
+			d.EstadoObservado = "sem entrada no registo; estado derivado do disco"
+		}
+	} else {
+		d.EstadoObservado = "sem registo fornecido; estado derivado do disco"
+	}
+
+	// Reavaliar a remocao com o estado final: um worktree `em_uso` nao pode ser removido mesmo
+	// que o disco esteja limpo.
+	permitido := false
+	for _, destino := range transicoesDoWorktree[d.Estado] {
+		if destino == WorktreeRemovido {
+			permitido = true
+			break
+		}
+	}
+	switch {
+	case !permitido:
+		d.PodeRemover = false
+		d.MotivoRemover = fmt.Sprintf("o estado %q nao permite remover", d.Estado)
+	case !d.Disco.AlvoSeguro:
+		d.PodeRemover = false
+		d.MotivoRemover = "alvo nao resolvido: " + d.Disco.MotivoDoAlvo
+	case d.Disco.TemTrabalhoNaoIntegrado:
+		d.PodeRemover = false
+		d.MotivoRemover = d.Disco.Detalhe
+	default:
+		d.PodeRemover = true
+		d.MotivoRemover = ""
+	}
+	return d
+}
