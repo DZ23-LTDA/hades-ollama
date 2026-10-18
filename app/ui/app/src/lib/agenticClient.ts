@@ -675,9 +675,20 @@ export async function agentFetch<T>(
       throw new Error(AGENT_LOGIN_REQUIRED_MESSAGE);
     }
     throw new Error(
-      typeof body?.error === "string"
-        ? body.error
-        : response.statusText || "Agent API request failed",
+      // O backend do HADES responde `{"erro": "..."}`; alguns endpoints legados respondem
+      // `{"error": "..."}`. Ler SO' um dos dois fazia o utilizador ver "Bad Request" em vez da razao
+      // escrita pelo servidor -- e *um estado que mente e' pior do que nenhum*.
+      //
+      // Achado pelo E2E `artifact-verify.spec.ts` (E-1260): o teste de componente nao podia expor
+      // isto porque mockava exactamente esta funcao.
+      //
+      //	*Um painel provado contra um mock e um backend provado contra `httptest` nao provam que um
+      //	fala com o outro.*
+      typeof body?.erro === "string"
+        ? body.erro
+        : typeof body?.error === "string"
+          ? body.error
+          : response.statusText || "Agent API request failed",
     );
   }
   return body as T;

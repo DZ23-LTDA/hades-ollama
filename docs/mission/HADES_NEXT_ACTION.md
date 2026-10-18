@@ -1,3 +1,30 @@
+## JANELA E-1260
+
+**Ronda 78. O E2E encontrou um P1 que nenhum teste de componente podia encontrar.**
+
+- **E-1260** -- `e2e/artifact-verify.spec.ts` (9 testes) + fixture com negacoes + **correcao do
+  `agentFetch`**.
+- **O defeito:** `agenticClient.ts:677` lia `body?.error` (ingles); o backend responde
+  `{"erro": ...}`. Todo o painel que mostre um erro de rota dizia **`Bad Request`** em vez da razao.
+  Corrigido lendo os dois campos.
+- **Porque ninguem apanhara antes:** o teste de componente mocka exactamente essa funcao --
+  *um painel provado contra um mock e um backend provado contra `httptest` nao provam que um fala
+  com o outro*; e *um teste que substitui o cliente testa o mock, nao o produto*.
+- **O fixture aprendeu a negar:** relativo -> 400, `inexistente` -> 404, referencia de 16 chars ->
+  400. *Um fixture que so' serve o caminho feliz nao prova que o painel distingue os outros.*
+- A regra de caminho absoluto foi repetida no fixture **de proposito** -- se o fixture fosse mais
+  permissivo que o servidor, o spec passaria num comportamento que a producao recusa.
+- O spec carrega o modo no nome do describe; o teste de ficheiro inexistente faz `skip` declarado.
+
+Medido: 9 E2E PASS; **E2E completo 67 passed / 4 skipped / 0 failed** (eram 58); 121/849 vitest;
+tsc 0; eslint 0.
+
+**Nao medido:** o modo `BACKEND_REAL_AGENT_RUNTIME` nao foi executado nesta ronda.
+
+Proximo passo: o `BuildProvider` a chamar o verificador no fluxo de build.
+
+Veredito global: `NOT_RELEASE_READY`.
+
 ## JANELA E-1259
 
 **Ronda 77. As rotas da E-1258 deixaram de estar so' no servidor: o painel chama-as.**

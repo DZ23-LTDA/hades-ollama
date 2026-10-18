@@ -50,6 +50,36 @@ import { createChatFixture } from "./chat-fixture.mjs";
 const PORT = Number(process.env.E2E_BACKEND_PORT || 43117);
 const HOST = "127.0.0.1";
 
+// FASE 28.7: constantes da verificacao de artefacto.
+//
+// O SHA e' sintaticamente valido (64 hexadecimais) e FIXO, para o spec poder pedi-lo de volta e
+// provocar tanto o caso integro como o adulterado. Nao e' o SHA de nenhum ficheiro real -- o fixture
+// nao le' o disco, e *um fixture que se faz passar por backend real e' pior do que nenhum fixture:
+// prova integracao que nao aconteceu.*
+const SHA_DO_FIXTURE =
+  "fcef9d9d4303a75b0b9c658f155c9ae6a7ccb84912b4face2268dc51f8161df6";
+
+// O aviso de fronteira VEM DO "BACKEND" (aqui, do fixture), para o spec provar que o painel mostra
+// o texto do servidor e nao um texto que o componente inventou:
+//
+//   *Um painel que mostra "pronto" sem poder construir e' um painel que promete o que nao faz --
+//   a menos que diga que so' le'.*
+const AVISO_DE_FRONTEIRA_DO_ARTEFACTO =
+  "estas rotas apenas MEDEM e COMPARAM o ficheiro indicado; nao constroem, nao assinam, nao " +
+  "instalam e nao o procuram por ID. O caminho tem de ser absoluto e apontar para um ficheiro que " +
+  "ja' exista.";
+
+/**
+ * A MESMA regra do servidor de producao: o caminho tem de ser absoluto.
+ *
+ * Repetida aqui de proposito -- se o fixture fosse mais permissivo do que o servidor, o spec passaria
+ * num comportamento que a producao recusa.
+ */
+function ehCaminhoAbsoluto(caminho) {
+  if (/^[A-Za-z]:[\\/]/.test(caminho)) return true; // Windows: C:\ ou C:/
+  return caminho.startsWith("/") || caminho.startsWith("\\\\");
+}
+
 // Espelha `store.Settings` (app/store/store.go) com os campos que o cliente lê.
 function defaultSettings() {
   return {
@@ -380,7 +410,87 @@ const server = createServer(async (request, response) => {
       );
       response.end();
     }
-  } else if (route === "GET /api/agent/v1/build/plan") {
+  } else if (route === "GET /api/agent/v1/build/artifact/checksum") {
+      // FASE 28.7: `artifact.checksum` -- MEDE, nao compara.
+      //
+      // O fixture deriva o resultado do CAMINHO pedido, para o spec poder provocar as tres
+      // respostas sem inventar rotas. *Um fixture que so' serve o caminho feliz nao prova que o
+      // painel distingue os outros.*
+      const caminho = url.searchParams.get("caminho") || "";
+      if (!caminho) {
+        status = 400;
+        sendJSON(response, status, { erro: "o parametro `caminho` e' obrigatorio" });
+      } else if (!ehCaminhoAbsoluto(caminho)) {
+        // A mesma regra do servidor: *um caminho relativo e' relativo ao directorio de quem pede, e
+        // o servidor nao sabe qual e'.*
+        status = 400;
+        sendJSON(response, status, {
+          erro:
+            "o parametro `caminho` tem de ser ABSOLUTO: um caminho relativo e' relativo ao " +
+            "directorio de quem pede, e o servidor nao sabe qual e'",
+        });
+      } else if (caminho.includes("inexistente")) {
+        status = 404;
+        sendJSON(response, status, { erro: `ficheiro nao encontrado: ${caminho}` });
+      } else {
+        status = 200;
+        sendJSON(response, status, {
+          somente_leitura: true,
+          nada_assinado: true,
+          caminho,
+          tamanho_bytes: 41111716,
+          sha256: SHA_DO_FIXTURE,
+          aviso_de_fronteira: AVISO_DE_FRONTEIRA_DO_ARTEFACTO,
+        });
+      }
+    } else if (route === "GET /api/agent/v1/build/artifact/verify") {
+      // FASE 28.7: `artifact.verify` -- COMPARA com uma referencia.
+      const caminho = url.searchParams.get("caminho") || "";
+      const esperado = url.searchParams.get("sha256") || "";
+      if (!caminho) {
+        status = 400;
+        sendJSON(response, status, { erro: "o parametro `caminho` e' obrigatorio" });
+      } else if (!esperado) {
+        // Sem referencia NAO se verifica.
+        status = 400;
+        sendJSON(response, status, {
+          erro:
+            "o parametro `sha256` e' obrigatorio: sem referencia isto seria uma medicao, nao uma " +
+            "verificacao (use /artifact/checksum para medir)",
+        });
+      } else if (esperado.length !== 64) {
+        // Um PREFIXO de checksum nao e' uma referencia.
+        status = 400;
+        sendJSON(response, status, {
+          erro: `referencia invalida: ${esperado.length} caracteres; esperados 64 hexadecimais`,
+        });
+      } else {
+        const confere = esperado === SHA_DO_FIXTURE;
+        status = 200;
+        sendJSON(response, status, {
+          somente_leitura: true,
+          nada_assinado: false,
+          aviso_de_fronteira: AVISO_DE_FRONTEIRA_DO_ARTEFACTO,
+          resultado: {
+            caminho,
+            tamanho_bytes: 41111716,
+            sha256_medido: SHA_DO_FIXTURE,
+            sha256_esperado: esperado,
+            integro: confere,
+            adulterado: !confere,
+            // `NAO_VERIFICADA` e' o estado honesto de um fixture que nao inspecciona assinaturas.
+            // Fingir `AUSENTE` seria afirmar um facto que o fixture nao mediu.
+            assinatura: "NAO_VERIFICADA",
+            detalhe_da_assinatura: "fixture: nenhum adaptador de assinatura",
+            aprovado: confere,
+            duracao_ms: 2,
+            explicacao: confere
+              ? "integro; assinatura NAO verificada neste host"
+              : "ADULTERADO: o checksum medido nao corresponde ao esperado",
+          },
+        });
+      }
+    } else if (route === "GET /api/agent/v1/build/plan") {
       // FASE 28.8: o plano de release do PROJECTO. O fixture serve um plano com um alvo PRONTO e
       // um BLOQUEADO, e um segundo "projecto" sem alvos -- para o spec poder provar as duas
       // classificacoes de resultado.
