@@ -1,3 +1,30 @@
+## JANELA E-1283
+
+**Ronda 101. O E2E do `SbomPanel`: o sétimo elo fechado no browser real.**
+
+- **E-1283** — `e2e/sbom-panel.spec.ts` + a rota `sbom/generate` no fixture.
+- **Os tipos são os do BACKEND, e o spec verifica:** o fixture emite `MODULO_GO` e `PACOTE_NPM`, e o
+  spec exige que o painel mostre "modulo Go" e "pacote npm". **É o antídoto do defeito
+  inventado-vs-actual**: se o painel inventasse `GO_MODULE`, o E2E falhava — não o teste unitário, que
+  usava o mesmo valor inventado.
+- **Não tem campo de raiz, provado no browser:** `input` com `toHaveCount(0)` e
+  `Object.keys(postDataJSON()) === []`, com ausência de `raiz`/`caminho`/`path`/`directorio`/`root`.
+- **Não existe botão de assinar nem de atestar:** um único botão; `assinado` e `provenance` leem
+  `nao`; o aviso contém "SBOM MINIMO", "sempre false" e "nunca do pedido".
+
+**ACHADO DE CI — `cancelled` NÃO É FALHA:** em `5718d7f25`, 17 success + **6 `cancelled`** + 2
+`failure` (gitleaks). Os 6 `cancelled` são **concurrency cancel-in-progress** — o push seguinte
+cancelou-os (`started_at` 22:52, commit seguinte no mesmo minuto). **Ler `cancelled` como falha
+inflacionaria o vermelho de 2 para 8.**
+
+Medido: **9 passed / 1 skipped** · `npx playwright test` **106 passed / 9 skipped** (era 97/8) ·
+`npx vitest run` 126 ficheiros / 897 testes · `tsc -b` 0 · `eslint .` 0 erros · `vite build` 0 ·
+`BUNDLE_BUDGET=PASS`.
+
+**Lacuna:** no modo de backend real só a recusa 412 corre. **4 providers sem rota nem painel.**
+
+Veredito global: `NOT_RELEASE_READY`.
+
 ## JANELA E-1282
 
 **Ronda 100. O sexto provider fechado nos três elos: `SbomPanel` consome `sbom.generate`.**

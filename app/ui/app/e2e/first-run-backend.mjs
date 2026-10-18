@@ -538,7 +538,80 @@ const server = createServer(async (request, response) => {
           raiz_autorizada: true,
         });
       }
+    } else if (route === "POST /api/agent/v1/sbom/generate") {
+      // FASE 28.7: `sbom.generate` -- inventario MINIMO, nunca assinado.
+      //
+      // Sem corpo util: a raiz vem de `HADES_RAIZ_SBOM` no servidor. O fixture devolve um inventario
+      // com os tipos REAIS do backend (MODULO_GO, PACOTE_NPM) -- nao valores inventados.
+      const corpoSBOM = await readBody(request);
+      let pedidoSBOM = {};
+      try {
+        pedidoSBOM = JSON.parse(corpoSBOM || "{}");
+      } catch {
+        sendJSON(response, 400, { erro: "corpo invalido: esperado JSON" });
+        return;
+      }
+      if (pedidoSBOM !== null && typeof pedidoSBOM !== "object") {
+        sendJSON(response, 400, { erro: "corpo invalido: esperado um objecto JSON" });
+        return;
+      }
+      sendJSON(response, 200, {
+        gerado: true,
+        assinado: false,
+        provenance: false,
+        inventario: {
+          raiz: "/projecto-hades",
+          medido_em: "2026-10-18T22:55:00Z",
+          componentes: [
+            {
+              nome: "github.com/gin-gonic/gin",
+              versao: "v1.10.0",
+              tipo: "MODULO_GO",
+              direto: true,
+              origem: "go.mod",
+              declarado_em: "go.mod",
+            },
+            {
+              nome: "golang.org/x/text",
+              versao: "v0.14.0",
+              tipo: "MODULO_GO",
+              direto: false,
+              origem: "go.mod",
+              declarado_em: "go.mod",
+            },
+            {
+              nome: "left-pad",
+              versao: "1.3.0",
+              tipo: "PACOTE_NPM",
+              licenca: "MIT",
+              direto: true,
+              origem: "package.json",
+              declarado_em: "package.json",
+            },
+          ],
+          total: 3,
+          por_tipo: { MODULO_GO: 2, PACOTE_NPM: 1 },
+          sem_licenca: 2,
+          ficheiros_lidos: ["go.mod", "package.json"],
+          nao_produzido: [
+            "dependencias transitivas",
+            "THIRD_PARTY_NOTICES",
+            "provenance e attestation",
+          ],
+          aviso:
+            "este inventario lista as dependencias DECLARADAS nos ficheiros de origem; nao " +
+            "inclui transitivas nem notices",
+        },
+        assinatura_do_inventario: ["total=3", "sem_licenca=2", "por_tipo=MODULO_GO:2,PACOTE_NPM:1"],
+        aviso_de_fronteira:
+          "este e' um SBOM MINIMO: cobre `go.mod` e `package.json` ate' " +
+          "`maxFicheirosDeDependencia` ficheiros. NAO inclui dependencias transitivas, " +
+          "THIRD_PARTY_NOTICES, provenance, assinatura criptografica nem attestation. " +
+          "`assinado` e `provenance` sao sempre false. A raiz vem da variavel de ambiente " +
+          "`HADES_RAIZ_SBOM`, nunca do pedido.",
+      });
     } else if (route === "POST /api/agent/v1/sign/plan") {
+
       // FASE 28.7: `sign.plan` -- AVALIA, nunca assina.
       //
       // `readBody` devolve uma STRING (lissao da E-1275): sem o JSON.parse o pedido ficava vazio.
