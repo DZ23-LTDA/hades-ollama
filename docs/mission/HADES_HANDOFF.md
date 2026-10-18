@@ -1,3 +1,30 @@
+## JANELA E-1281
+
+**Ronda 99. O sexto provider ligado ao produto: `sbom.generate` consome o `ComplianceProvider`.**
+
+- **E-1281** — `server/agent_sbom_route.go` + **6 testes**. **Décimo sexto reabrir do defeito, sexto
+  fecho.**
+- **A raiz vem do ambiente e é uma variável própria:** `HADES_RAIZ_SBOM`, não `HADES_ARTEFACTOS`.
+  *`HADES_ARTEFACTOS` é a fronteira dos binários; `HADES_RAIZ_SBOM` é a fronteira do código. São cofres
+  diferentes, logo variáveis diferentes — e nenhuma das duas é escolhida pelo cliente.* Há teste que
+  envia um `raiz` no corpo a apontar para um diretório vazio e exige que o ambiente ganhe.
+- **Recusas:** sem a variável **412**; raiz que não é directório **412**; falha do provider **409** —
+  *um 500 aqui confundiria "o servidor falhou" com "o projecto não tem fontes"*.
+- **`assinado` e `provenance` são SEMPRE false**, e o aviso declara "MINIMO", "NAO inclui", "sempre
+  false" e "nunca do pedido". *Um SBOM que inclui o que o programador supõe é pior do que nenhum.*
+- **Um directório vazio não é erro:** **200** com `total: 0` e `nao_produzido` **não vazio** — um SBOM
+  vazio e válido seria uma mentira silenciosa.
+
+Medido: **6 PASS** · `./server` ok 51,3 s · `go build ./...` 0 · `go vet` 0 · lint 0 issues.
+
+**CI medido:** `6ee5ebb64` → **17 success · 2 failure (só os gitleaks históricos) · 3 skipped**.
+Nenhum vermelho novo.
+
+**Lacuna:** a rota **não tem painel**. O SBOM não cobre transitivas, notices, provenance nem
+attestation. **4 providers sem rota nem painel.**
+
+Veredito global: `NOT_RELEASE_READY`.
+
 ## JANELA E-1280
 
 **Ronda 98. O E2E do `SigningPanel`: o sexto elo fechado no browser real.**

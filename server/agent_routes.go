@@ -902,6 +902,7 @@ func (a *agentAPI) register(r *gin.Engine) {
 	group.POST("/build/verify", a.verificarBuild)
 	group.POST("/build/smoke", a.executarSmoke)
 	group.POST("/publish/rollback", a.planearRollback)
+	group.POST("/sbom/generate", a.gerarSBOM)
 	// FASE 28.7: `sign.plan`. AVALIA se a identidade serve para o tipo pedido; nao assina, nao le' a
 	// chave privada e nao valida cadeia criptografica.
 	group.POST("/sign/plan", a.planearAssinatura)
