@@ -6,8 +6,8 @@
 ## 1. Ambiente das medições
 
 - commit de referência (`main`): `4b3e21854`
-- commit **medido** (`measured_commit`): `1b4b95ebc423f98a5592d9172b415af2cc59d112`
-- medido em (`measured_at`): 2026-10-18T07:39:16-03:00
+- commit **medido** (`measured_commit`): `76b379df6978d16d8e6aa6e09e7c96c1872730a0`
+- medido em (`measured_at`): 2026-10-18T07:46:50-03:00
 - SO das medições locais: Windows (runner do agente); o CI roda Linux
 - toolchain: **go1.26.9**, fixado por `go-version-file: go.mod` em todos os workflows (E-167)
 - plataforma Linux: container `golang:1.26.9`; execução de plugin: container `node:22-bookworm`

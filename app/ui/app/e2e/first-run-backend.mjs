@@ -243,6 +243,125 @@ const server = createServer(async (request, response) => {
       count: 2,
       source: "e2e-fixture",
     });
+  } else if (route === "GET /api/agent/v1/toolchain/targets") {
+    // FASE 28.7/28.8. FIXTURE DECLARADO.
+    //
+    // Alvos de fixture, com nomes que existem no catalogo real mas com exigencias
+    // inventadas: *um fixture que copia a fonte de verdade desactualiza-se em silencio.*
+    // O `source` diz a quem ler que estes dados nao sao medicao.
+    status = 200;
+    sendJSON(response, status, {
+      host: "fixture-host",
+      goos: "fixture",
+      alvos: [
+        {
+          nome: "fixture-alfa",
+          descricao: "Alvo de fixture alfa",
+          exigencias: ["fixture-tool-a (obrigatoria) -- so' existe no fixture"],
+        },
+        {
+          nome: "fixture-beta",
+          descricao: "Alvo de fixture beta",
+          exigencias: ["fixture-tool-b -- so' existe no fixture"],
+        },
+      ],
+      count: 2,
+      source: "e2e-fixture",
+    });
+  } else if (route === "GET /api/agent/v1/toolchain/doctor") {
+    status = 200;
+    sendJSON(response, status, {
+      host: "fixture-host",
+      goos: "fixture",
+      alvos: [
+        { alvo: "fixture-alfa", pronto: false, veredicto: "bloqueado", exigencias_bloqueantes: 1 },
+        { alvo: "fixture-beta", pronto: false, veredicto: "incompleto", exigencias_bloqueantes: 0 },
+      ],
+      prontos: 0,
+      bloqueados: 1,
+      incompletos: 1,
+      total: 2,
+      resumo: "1 de 2 alvos bloqueados, 1 incompletos (ferramentas presentes, falta health funcional)",
+      source: "e2e-fixture",
+    });
+  } else if (route.startsWith("GET /api/agent/v1/toolchain/plan/")) {
+    // O alvo desconhecido devolve 404, como o servidor real. *Um fixture que aceita
+    // qualquer alvo esconderia exactamente o comportamento que o teste quer medir.*
+    const alvo = url.pathname.split("/").pop();
+    if (alvo === "fixture-alfa") {
+      status = 200;
+      sendJSON(response, status, {
+        host: "fixture-host",
+        goos: "fixture",
+        alvo: "fixture-alfa",
+        pronto: false,
+        veredicto: "bloqueado",
+        probes: [
+          {
+            nome: "fixture-tool-a",
+            estado: "ABSENT",
+            obrigatorio: true,
+            motivo: "so' existe no fixture",
+            detalhe: "nao encontrado no PATH",
+          },
+        ],
+        blockers: ["fixture-alfa exige host fixture; este host e' fixture"],
+        trabalho_independente: ["preparar o resto do fixture"],
+        source: "e2e-fixture",
+      });
+    } else {
+      status = 404;
+      sendJSON(response, status, { error: `alvo desconhecido: ${alvo}` });
+    }
+  } else if (route === "GET /api/agent/v1/signing/identities") {
+    // FASE 28.5. FIXTURE DECLARADO. Nenhum valor privado, por construcao: a estrutura nao
+    // tem campo para ele, e o fixture segue a mesma forma.
+    status = 200;
+    sendJSON(response, status, {
+      estado: { configurado: true, carregado: true, mensagem: "2 identidade(s) registada(s)", total: 2 },
+      identidades: [
+        {
+          nome: "fixture-producao",
+          plataforma: "ios",
+          ambiente: "producao",
+          provedor: "dpapi",
+          fingerprint_publico_fim: "FIXTURE1",
+          expira_em: "2099-01-01T00:00:00Z",
+          estado: "ativa",
+          utilizavel_agora: true,
+          exige_aprovacao: true,
+          runners_autorizados: 1,
+        },
+        {
+          nome: "fixture-preview",
+          plataforma: "android",
+          ambiente: "preview",
+          provedor: "dpapi",
+          fingerprint_publico_fim: "FIXTURE2",
+          expira_em: "2099-01-01T00:00:00Z",
+          estado: "expira_breve",
+          utilizavel_agora: true,
+          exige_aprovacao: false,
+          runners_autorizados: 1,
+        },
+      ],
+      problemas: [],
+      resumo: { total: 2, por_estado: { ativa: 1, expira_breve: 1 }, por_ambiente: { producao: 1, preview: 1 }, problemas: 0 },
+      verificado_em: "2099-01-01T00:00:00Z",
+      aviso: "apenas metadados publicos (fixture)",
+      source: "e2e-fixture",
+    });
+  } else if (route === "GET /api/agent/v1/signing/summary") {
+    status = 200;
+    sendJSON(response, status, {
+      configurado: true,
+      carregado: true,
+      total: 2,
+      mensagem: "2 identidade(s) registada(s)",
+      resumo: { total: 2, por_estado: { ativa: 1, expira_breve: 1 }, por_ambiente: { producao: 1, preview: 1 }, problemas: 0 },
+      problemas: 0,
+      source: "e2e-fixture",
+    });
   } else if (route === "POST /api/me") {
     // Sessão local, sem conta: `fetchUser` devolve null em 401.
     status = 401;
