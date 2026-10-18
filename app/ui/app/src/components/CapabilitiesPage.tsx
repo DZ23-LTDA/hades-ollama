@@ -20,6 +20,7 @@ import { WorktreesPanel } from "@/components/WorktreesPanel";
 import { BuildPlanPanel } from "@/components/BuildPlanPanel";
 import { CredentialsPanel } from "@/components/CredentialsPanel";
 import { SmokePanel } from "@/components/SmokePanel";
+import { RollbackPanel } from "@/components/RollbackPanel";
 import { SidebarLayout } from "@/components/layout/layout";
 import {
   fetchToolchainDoctor,
@@ -311,6 +312,8 @@ export function CapabilitiesPage() {
         <CredentialsPanel />
 
         <SmokePanel />
+
+        <RollbackPanel />
     </SidebarLayout>
   );
 }

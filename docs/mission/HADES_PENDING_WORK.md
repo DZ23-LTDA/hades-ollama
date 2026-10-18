@@ -1,3 +1,25 @@
+## JANELA E-1277
+
+**Ronda 95. O quarto provider ligado ao produto: `RollbackPanel` consome `publish.rollback`.**
+
+- **E-1277** — `rollbackClient.ts` + `RollbackPanel.tsx` + 8 testes, montado em `CapabilitiesPage`.
+  **Décimo quarto reabrir do defeito, quarto fecho.**
+- **Não existe botão de restaurar, e há teste que o prova:** conta os botões e exige **exactamente um**
+  ("Planear rollback"), proibindo os rótulos "restaurar", "aplicar" e "executar rollback".
+- **O pedido leva só o `tipo`, nunca um `directorio`:** o teste faz `JSON.parse` do corpo e exige
+  `Object.keys(corpo) === ["tipo"]`.
+- **O painel grita se o servidor declarar `executado: true`** — mostra *"ATENCAO: o servidor declarou
+  que EXECUTOU o rollback"* em vez de o esconder. *Um estado que só o programador pode nomear inválido
+  não é um estado.*
+- **Canal não suportado não é alerta:** o 409 traz a explicação e o painel mostra-a como informação.
+
+Medido: **8 testes PASS** · `npx vitest run` **124 ficheiros / 875 testes** · `tsc -b` 0 ·
+`eslint .` 0 erros · `vite build` 0 · `BUNDLE_BUDGET=PASS`.
+
+**Lacuna:** sem E2E Playwright. **6 dos 10 providers sem painel.**
+
+Veredito global: `NOT_RELEASE_READY`.
+
 ## JANELA E-1276
 
 **Ronda 94. O terceiro provider ligado ao produto: `publish.rollback` consome o `RollbackProvider`.**
