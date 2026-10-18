@@ -2,7 +2,7 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-18T02:17:12-03:00",
+  "updated_at": "2026-10-18T02:39:49-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
@@ -905,12 +905,16 @@
         "E-1196",
         "E-1197",
         "E-1198",
-        "E-1199"
+        "E-1199",
+        "E-1200"
       ],
       "blocker": null,
       "next": "V2.2 em curso: retomada e reconciliacao concluidas (E-311) e plano V2.2 escrito (E-312). Proximas tarefas P0: incremento I (agendamento universal + onboarding de empresas existentes) e incremento II (distribuicao Windows/Linux/Android/iOS), depois os estagios 39, 40 e 41. A auditoria profunda vem DEPOIS das integracoes.",
       "done": "GATE AVALIADO EM DUAS RODADAS: a suite completa foi executada e relatada, e agora PERFORMANCE e ACESSIBILIDADE tambem estao MEDIDAS - benchmarks reais (busca de memoria 699,3 ns/op, construcao de contexto fundamentado 110,7 us/op, instalacao/rollback de plugin 5,20 ms/op, download 442,83 MB/s), budget de bundle PASS (1.443,91 kB cru e 396,66 kB gzip contra 2.000.000 e 600.000) e gate axe WCAG com 3 de 3 passando (desktop sem violacao, mobile sem violacao e teclado sem armadilha) | GATE REEXECUTADO EM 2edee0490 (E-140): gofmt sem saida; go build 0; go vet 0; golangci-lint 0 issues; go test ./internal/agent/ ok 64,700s; go test ./server/ ok 44,509s; go test ./... 116 pacotes ok; go mod verify limpo; CGO_ENABLED=0 go build 0; benchmarks 1.900 ns/op / 5,83 ms/op / 92,3 us/op / 354,10 MB/s; contratos PASSED; design system PASSED; tsc 0; eslint 0 erros; 580 testes web PASS; BUNDLE_BUDGET=PASS; capturas PASS (10); E2E de navegador real 18 passed. DEFEITO REAL CORRIGIDO: os 12 arquivos de teste do mlx nao tinham //go:build cgo (a implementacao tem, em 23 arquivos), o que tornava go test ./mlx IMPOSSIVEL sem compilador C (undefined: gelu, currentScope, returned.valid) - corrigido espelhando o gating: vet passou de build failed para exit 0, test para [no test files], lint do pacote de typechecking error (exit 7) para completar, e as falhas do modulo cairam de 9 para 8 pacotes (as 8 sao go-sqlite3 exigindo cgo, com causa MEDIDA: CGO_ENABLED=0 e gcc/cc ausentes) | GATE GLOBAL GERADO E CONFERIDO PELO CI (E-179): HADES_FINAL_RELEASE_GATE.md e HADES_RELEASE_REPORT.md eram escritos A MAO e o gerador vivia so em _tmp - os artefatos NAO eram reproduziveis e nada impedia a matriz dizer DONE enquanto o indice dizia outra coisa. Agora scripts/hades_release_gate.py GERA os dois a partir do estado, com --check que FALHA em divergencia, e o passo entrou no job Preserve Class A+ surfaces. Item 14 (Builder) saiu de NAO_COMPROVADO para DONE com limite declarado; resumo 15->16 DONE e 5->4 NAO_COMPROVADO; veredito INALTERADO | ESCRITURACAO CONFERIDA POR MAQUINA (E-180): scripts/hades_mission_check.py confere IDs unicos e sem buracos, evidencia citada que existe, blocker declarado, execution presente e valido, e release_state COERENTE (COMPLETED_VERIFIED com pendencia FALHA). O proprio verificador tem testes que INJETAM defeitos em fixtures (9 testes ok) - um verificador que sempre passa nao vale nada. Dois passos novos no CI | RELATORIO E BLOQUEIOS NA CHECAGEM (E-181): a extensao encontrou DOIS PROBLEMAS REAIS - o item 127 DUPLICADO no relatorio (139 itens para numeros 1..138, a E-169 inserida duas vezes) e B-11/B-12 declarados no estado e AUSENTES do documento de bloqueios. Corrigidos: 138 itens 1..138 sem duplicata e 11 bloqueios nos dois lados. A regra 'ID entre crases e MENCAO, nao CITACAO' resolveu um falso positivo meu (E-999 citado como exemplo); verificador de 9 para 19 testes VINCULO DE ESTAGIO VIROU INVARIANTE (E-231): o checker passa a acusar evidencia SEM vinculo de estagio e SEM declaracao explicita; as 13 linhas legadas (formato antigo, sem coluna de estagio) receberam a declaracao VINCULO_NAO_DECLARADO em vez de um vinculo inventado. 21 testes do checker OK. DOCUMENTACAO CORRESPONDE AO PRODUTO + GUARDA DE CODIFICACAO (E-235): o checker passa a varrer docs/mission/*.md e audit/*.md acusando TEXTO DUPLAMENTE CODIFICADO (mojibake). Auditoria das alegacoes do comparativo de concorrentes: Studio com geracao por IA local (studioAI.test.ts), export HTML (studioHtml.test.ts) e Builder com rejeicao de traversal, cross-tenant, symlink e escaping - todas com codigo e teste. Nenhuma superestimacao encontrada. 23 testes do checker OK. VINCULO DAS 13 LINHAS LEGADAS RECONSTRUIDO (E-251): a pendencia declarada do gate foi fechada por ASSUNTO PRIMARIO de cada linha do indice - inventario do repositorio (1), integracao/CI/gate/testes/dependencias (2), guarda de tenant (18), honestidade de controles na interface (19), contrato de escrita (21) e artefato do proprio gate (22). MEDIDO: linhas sem vinculo 13 -> 0. Onde o assunto atravessa estagios, a escolha foi pelo assunto PRIMARIO e ficou registrada - nao houve vinculo inventado para zerar contador GATE FINAL PASSA A CITAR O ESTADO MEDIDO (E-292): o artefato exigido pela secao 11.8 e' gerado por scripts/hades_release_gate.py e citava E-178/E-182 mas NADA de E-285 a E-291 - ou seja, dizia DONE em linhas cujo trabalho recente nao aparecia, INCLUSIVE um DEFEITO REAL de efeito externo duplicado encontrado e corrigido (E-291). Quatro linhas foram atualizadas com o estado medido: (12) retomada passa a NOMEAR o defeito de E-291 e seu limite residual; (18) memoria nomeia a guarda por intencao e por revisao (E-289/E-290) e os limites que seguem; (19) multitenancy nomeia a prova NEGATIVA de E-287; (22) documentacao declara que 'limites declarados nao sao omissoes: sao afirmacoes medidas', incluindo resultados negativos (E-288). A MATRIZ DE STATUS NAO MUDOU (DONE 17, IN_PROGRESS 1, NAO_COMPROVADO 3, BLOCKED 3) e o veredito segue NOT_RELEASE_READY: os status ja estavam corretos, o que faltava era o LASTRO. DECLARADO: a linha do Builder nao foi tocada por escolha - ela ja carrega a prova real (HTTP 200 e navegador) e os limites do artefato estao no contrato. DOIS ERROS MEUS NO PROCESSO, ambos pegos: (1) um script que abortou ANTES de gravar, entao nada ficou meio-aplicado; (2) a substituicao de uma tupla de 7 linhas quebrou o parentese - restaurei o gerador do git e apliquei apenas as linhas de linha unica, reduzindo o escopo em vez de insistir. MEDIDO: geracao exit 0, checker ESCRITURACAO CONSISTENTE e o gate citando E-287/E-289/E-291",
-      "execution": "COMPLETED_VERIFIED"
+      "execution": "COMPLETED_VERIFIED",
+      "artifacts": [
+        "docs/security/HADES_SECURITY_TRIAGE_2026-10-18.md"
+      ]
     },
     {
       "id": 23,
@@ -2982,8 +2986,8 @@
     },
     "evidence": "E-173"
   },
-  "measured_at": "2026-10-18T02:17:12-03:00",
-  "measured_commit": "e92555050a764470dc9d2a691b419adbcf53dfd4",
+  "measured_at": "2026-10-18T02:39:49-03:00",
+  "measured_commit": "81e7293c5226fe9840a60746b5101abf2c1881ed",
   "branch_head_measured": "f1a6c261b",
   "branch_head_measured_at": "2026-10-15T10:30:00-03:00",
   "branch_head_measured_how": "git rev-parse HEAD no checkout local (branch fix/checker-relogio), medido no round 54. DIVERGENCIA DECLARADA: measured_commit continua a ser a ultima MEDICAO COMPLETA (e423ec72e); o head avancou com as fatias do complemento 48 (sala: dominio, rotas HTTP, cliente, componente, painel e tela) e com checkpoints. Nao se reescreveu a historia e nao se reivindica nova medicao completa. NOTA DE CONCORRENCIA: este arquivo tambem e escrito por outro agente (o measured_how seguinte cita HEAD 1065e5c56 / E-518-E-519) - editar sempre por ancora unica e re-ler antes de gravar.",

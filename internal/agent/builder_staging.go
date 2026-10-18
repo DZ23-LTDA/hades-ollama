@@ -19,6 +19,21 @@ import (
 // havia como verificar saude antes de promover uma versao. Aqui um projeto fullstack e compilado e executado num
 // palco (staging), e a promocao so acontece DEPOIS de o palco responder saudavel.
 
+// ambienteGoGovernado devolve o ambiente do `go build` a partir da MESMA lista de permissao
+// usada pelo `cli_harness` (`governedCLIEnv`), acrescentando o cache PROPRIO do staging.
+//
+// PORQUE NAO `os.Environ()`: o ambiente do operador pode conter `GITHUB_TOKEN`, `OPENAI_API_KEY`
+// e afins -- marcadores que `governedCLIKeyLooksSecret` remove. O que o `go build` precisa e'
+// PATH (que entra na lista) e um cache gravavel; nada mais.
+func ambienteGoGovernado(cacheDir string) []string {
+	env := governedCLIEnv(os.Getenv)
+	// GOROOT/GOPATH do operador NAO sao herdados de proposito: GOROOT aponta para a
+	// instalacao usada para INICIAR o processo, e o filho pode ser outra. Deixar o `go`
+	// descobrir a sua propria raiz e' mais correcto do que herdar uma que talvez nao exista.
+	env = append(env, "GOCACHE="+cacheDir, "HADES_STAGING_BUILD=1")
+	return env
+}
+
 // ErrBuilderStagingUnsupported indica kind sem processo executavel (hoje so o fullstack tem backend proprio).
 var ErrBuilderStagingUnsupported = errors.New("builder staging is only supported for fullstack projects")
 
@@ -73,9 +88,36 @@ func (b *BuilderService) StageFullstack(ctx context.Context, id, adminPassword s
 		nome += ".exe"
 	}
 	binario := filepath.Join(dirBin, nome)
-	compilar := exec.CommandContext(ctx, "go", "build", "-o", binario, ".")
+	// SEGURANCA (adendo 2026-10-18, item B): duas correcoes, e as duas foram medidas como
+	// ausentes antes de escritas.
+	//
+	// (1) `exec.CommandContext(ctx, "go", ...)` resolvia `go` pelo PATH do OPERADOR. Um PATH
+	//     com um `go` plantado executaria codigo arbitrario aqui -- e o staging roda no
+	//     caminho de deploy. Passa a resolver por `governedCLIResolver`, o mesmo resolvedor
+	//     governado que o `cli_harness` ja' usava.
+	//
+	// (2) `compilar.Env = os.Environ()` entregava ao filho TODAS as variaveis do operador,
+	//     incluindo tokens e credenciais. *Um subprocesso de build nao precisa do ambiente de
+	//     quem o lancou; precisa de PATH e de um cache.* Passa a usar `governedCLIEnv` (lista
+	//     de permissao + marcadores de segredo) e um GOCACHE PROPRIO dentro do temporario --
+	//     o que tambem impede o build de poluir o cache do operador.
+	goExecutavel, err := defaultGovernedCLIResolver().resolve("go")
+	if err != nil {
+		return nil, fmt.Errorf("staging build: toolchain Go nao encontrado num PATH confiavel: %w", err)
+	}
+	dirCache, err := os.MkdirTemp("", "hades-stage-gocache-")
+	if err != nil {
+		return nil, err
+	}
+	defer os.RemoveAll(dirCache)
+	compilar := exec.CommandContext(ctx, goExecutavel, "build", "-o", binario, ".")
 	compilar.Dir = publicado
-	compilar.Env = os.Environ()
+	compilar.Env = append(ambienteGoGovernado(dirCache),
+		"GOFLAGS=-mod=mod",
+		// GOTOOLCHAIN=local impede o `go` de BAIXAR uma toolchain da rede em tempo de build:
+		// *um build reprodutivel nao escolhe o seu proprio compilador por omissao de rede.*
+		"GOTOOLCHAIN=local",
+	)
 	if saida, err := compilar.CombinedOutput(); err != nil {
 		return nil, fmt.Errorf("staging build failed: %w: %s", err, strings.TrimSpace(string(saida)))
 	}
@@ -86,7 +128,11 @@ func (b *BuilderService) StageFullstack(ctx context.Context, id, adminPassword s
 	}
 	processo := exec.Command(binario)
 	processo.Dir = publicado
-	processo.Env = append(os.Environ(),
+	// O filho do staging e' o APLICATIVO GERADO. Ele precisa de tres variaveis e de mais
+	// nada; entregar-lhe `os.Environ()` dava-lhe as credenciais do operador sem que ele
+	// alguma vez as pedisse. *Um filho nao deve herdar o que nao usa: herdar e' a forma mais
+	// silenciosa de vazar.*
+	processo.Env = append(governedCLIEnv(os.Getenv),
 		"APP_ADMIN_PASSWORD="+adminPassword,
 		"APP_DATA_DIR="+dirDados,
 		"PORT=0",
