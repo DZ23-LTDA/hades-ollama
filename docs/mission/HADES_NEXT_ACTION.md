@@ -1,3 +1,21 @@
+## JANELA E-1251
+
+**Ronda 69. C1 CONSEGUIDO: um build real do HADES produzido, medido e reproduzido.**
+
+- **E-1251** -- `internal/agent/build_provider.go` (item 3 do adendo 28.1) + 11 testes. **Artefacto:**
+  `hades-windows-amd64.exe`, **66 MB**, SHA-256 `fcef9d9d4303a75b0b9c658f155c9ae6a7ccb84912b4face2268dc51f8161df6`,
+  **`NotSigned`**, `--version` responde. **Segundo build = mesmo SHA-256: REPRODUZIVEL.**
+- O provider recusa plano incompleto antes de criar `dist`, recusa alvo sem provider, dry-run nao
+  executa, checksum recalculado no teste, binario **executado** e saida verificada, e nao tenta
+  alvos bloqueados.
+- **Erro meu corrigido na leitura:** o `go version -m` imprime o caminho do **ficheiro analisado**;
+  eu quase declarei que o binario continha o caminho do build.
+
+Proximo passo declarado: **instalar** o artefacto num Windows limpo (28.10 item 14) e gerar o
+instalador Inno Setup. Depois `SigningProvider`.
+
+Veredito global: `NOT_RELEASE_READY`.
+
 ## JANELA E-1250
 
 **Ronda 68.** O modo `BACKEND_REAL_AGENT_RUNTIME` foi exercitado -- e apanhou um bug que o fixture
