@@ -25,6 +25,13 @@ type GitWorktreeSession struct {
 	TargetBranch string    `json:"target_branch"`
 	CreatedAt    time.Time `json:"created_at"`
 	Status       string    `json:"status"` // "active", "merged", "rejected", "removed"
+	// MotivoDoDescarte e' preenchido quando alguem descarta trabalho nao integrado de proposito.
+	// *Um descarte deliberado tem de deixar rastro.*
+	MotivoDoDescarte string `json:"motivo_do_descarte,omitempty"`
+	// TrabalhoDescartado descreve, em texto, o que se perdeu no descarte.
+	TrabalhoDescartado string `json:"trabalho_descartado,omitempty"`
+	// CaminhoRemovido e' o caminho que foi efectivamente apagado.
+	CaminhoRemovido string `json:"caminho_removido,omitempty"`
 }
 
 // GitMergeApproval contains details for human-in-the-loop merge approval.
@@ -159,16 +166,19 @@ func CreateGitWorktree(ctx context.Context, repoRoot, dataRoot, missionID, custo
 }
 
 // RemoveGitWorktree safely detaches and removes the worktree.
+// RemoveGitWorktree to protect work that nobody integrated.
+//
+// FASE 2 do adendo V3: a versao anterior fazia `git worktree remove --force` seguido de
+// `os.RemoveAll` SEM VERIFICAR NADA, descartava todos os erros e escrevia `Status = "removed"`
+// mesmo quando nada tinha sido removido.
+//
+//	*Apagar trabalho que ninguem integrou nao e' limpeza: e' perda de dados com nome tecnico.*
+//
+// Agora delega em `RemoveGitWorktreeSeguro`: recusa quando ha' commits nao integrados ou
+// ficheiros por commitar, e propaga os erros reais. Para descartar de proposito existe
+// `RemoveGitWorktreeComPerda`, que exige um motivo.
 func RemoveGitWorktree(ctx context.Context, session *GitWorktreeSession) error {
-	if session == nil || session.WorktreeDir == "" {
-		return nil
-	}
-	if session.RepoRoot != "" {
-		_, _ = runRawGit(ctx, session.RepoRoot, "worktree", "remove", "--force", session.WorktreeDir)
-	}
-	_ = os.RemoveAll(session.WorktreeDir)
-	session.Status = "removed"
-	return nil
+	return RemoveGitWorktreeSeguro(ctx, session)
 }
 
 // GetWorktreeDiff computes the diff between the base commit and the worktree changes.
