@@ -1,5 +1,23 @@
 # HADES — HANDOFF (como retomar a missão do zero)
-## JANELA E-1192 -- FASE 23 LIGADA: catalogo -> `/preset` -> rota -> E2E (rondas 7-9)
+## JANELA E-1205 -- WINDOWS RC NAO ASSINADO E FINDINGS DE INSTALADOR (rondas 27-28)
+
+Estado medido em `95a0c20f9` (e nos commits que o precedem):
+
+- **E-1204** -- Windows RC NAO ASSINADO construido, instalado, usado e desinstalado:
+  `HadesSetup-1d2ce88c9.exe`, SHA-256 `ffd1304c...`, `NotSigned`, `SOURCE_SHA 1d2ce88c9`,
+  `dirty 0`. Os alvos em `dist\` eram de 2026-10-16 e o HEAD de 2026-10-18: foram
+  reconstruidos do HEAD. Ciclo E2E: `Installation process succeeded`, `--version`/`--help`/
+  `list` exit 0 com os 7 modelos do utilizador (partilha `D:\AI\Ollama`, nao duplica
+  30,8 GB), desinstalacao exit 0 com 44 blobs preservados.
+- **E-1205** -- `skipifsilent` corrigido: instalacao silent passou a concluir em 8 s em vez
+  de bloquear 10 min. O UPGRADE com a app aberta continua QUEBRADO: causa raiz
+  `DeleteFile failed; code 5` porque o `.iss` declara `CloseApplications=no` e nao ha' passo
+  que pare a instancia anterior. Tres curas tentadas, todas insuficientes; provado que o
+  comando PowerShell funciona isolado (1,1 s), logo o defeito esta' no `Exec` do Inno em
+  `PrepareToInstall`. **Requisito de aceite 28.10 #21, nao cumprido.**
+
+Proximo passo: instrumentar o `[Code]` com log proprio para saber se `PrepareToInstall` e'
+invocado e se o `Exec` devolve False.
 
 *Bloco de cabeca: mantem os tres documentos de retomada dentro da `JANELA = 12` do
 `hades_handoff_window_check.py`. Cada afirmacao abaixo tem ID proprio no indice.*
