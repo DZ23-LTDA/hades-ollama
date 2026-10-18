@@ -2329,7 +2329,11 @@ func (r *Runtime) Run(ctx context.Context, id string) (runErr error) {
 			// QUEM foi considerado e o CUSTO do vencedor. Sem os preteridos nao se responde "por que ESTE e nao
 			// aquele"; sem o custo nao ha' base para orcamento. *A lista vem do proprio motor
 			// (`RouteCandidates`), nao de um recalculo - duas contas sobre a mesma decisao divergiriam.*
-			candidatos := r.trilhaDeCandidatos(mission, *step, limiteDeCandidatosNaTrilha)
+			// FASE 19: UMA unica chamada ao motor, dois usos. *Duas chamadas para a mesma
+			// decisao divergiriam em silencio.*
+			candidatosDoMotor := r.candidatosDoPasso(mission, *step)
+			candidatos := formatarTrilhaDeCandidatos(candidatosDoMotor, limiteDeCandidatosNaTrilha)
+			fronteira := r.fronteiraDeParetoDoPasso(candidatosDoMotor)
 			if err := r.observeEvent(mission, "step.model.route", step.ID, map[string]any{
 				"step_id":                     step.ID,
 				"model":                       decisao.Model.ID,
@@ -2341,6 +2345,11 @@ func (r *Runtime) Run(ctx context.Context, id string) (runErr error) {
 				"candidates":                  candidatos,
 				"candidates_measured":         len(candidatos) > 0,
 				"candidates_source":           "multillm.Registry.RouteCandidates (motor de scoring; nao recalculado aqui)",
+				// FASE 19: as ALTERNATIVAS nao-dominadas. *Quando nao ha' um vencedor em todos os
+				// eixos, esconder os outros candidatos faz o utilizador achar que a escolha foi
+				// melhor do que foi.*
+				"pareto_frontier": fronteira,
+				"pareto_measured": len(fronteira) > 0,
 				// E-669: o TETO aplicado e se ele foi DECLARADO. *Publicar so' o modelo nao diz ao operador sob que
 				// restricao de orcamento a escolha foi feita - e `0` sem rotulo se confundiria com "sem limite".*
 				"budget_cents":    r.maxStepCostCents,

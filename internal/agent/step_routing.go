@@ -200,11 +200,27 @@ const limiteDeCandidatosNaTrilha = 5
 // Devolve `nil` quando nao ha como medir, e o chamador **declara** isso: `nil` significa "nao medido", nunca
 // "nenhum candidato".
 func (r *Runtime) trilhaDeCandidatos(missao Mission, passo Step, limite int) []map[string]any {
+	return formatarTrilhaDeCandidatos(r.candidatosDoPasso(missao, passo), limite)
+}
+
+// candidatosDoPasso chama `RouteCandidates` UMA vez. *Duas chamadas para a mesma decisao
+// divergiriam em silencio -- a classe de defeito do E-619 que o cabecalho acima descreve.*
+func (r *Runtime) candidatosDoPasso(missao Mission, passo Step) []multillm.RouteDecision {
 	if r == nil || r.models == nil {
 		return nil
 	}
 	candidatos, err := r.models.RouteCandidates(RouteRequestForStep(missao, passo))
 	if err != nil || len(candidatos) == 0 {
+		return nil
+	}
+	return candidatos
+}
+
+// formatarTrilhaDeCandidatos passa a levar os `Factors` de cada candidato: *um score sem os
+// componentes que o somam obriga quem o le' a confiar em quem o escreveu -- e confianca nao
+// e' um formato de evidencia.*
+func formatarTrilhaDeCandidatos(candidatos []multillm.RouteDecision, limite int) []map[string]any {
+	if len(candidatos) == 0 {
 		return nil
 	}
 	if limite <= 0 || limite > len(candidatos) {
@@ -218,7 +234,44 @@ func (r *Runtime) trilhaDeCandidatos(missao Mission, passo Step, limite int) []m
 			"score":             candidato.Score,
 			"cost_cents_per_1k": candidato.Model.CostPer1KInputCents + candidato.Model.CostPer1KOutputCents,
 			"reason":            candidato.Reason,
+			"factors":           candidato.Factors,
 		})
 	}
 	return trilha
+}
+
+// fronteiraDeParetoDoPasso devolve as ALTERNATIVAS nao-dominadas (FASE 19 do adendo).
+//
+// *Escolher bem quando ha' um vencedor claro e' facil; escolher quando nao ha' e' que precisa
+// de ser explicado.* A fronteira usa os candidatos JA' obtidos -- nunca um recalculo.
+//
+// Devolve `nil` quando nao ha' como medir; o chamador declara isso. `nil` significa "nao
+// medido", jamais "nenhum candidato".
+func (r *Runtime) fronteiraDeParetoDoPasso(candidatos []multillm.RouteDecision) []map[string]any {
+	if len(candidatos) == 0 {
+		return nil
+	}
+	localDe := func(decisao multillm.RouteDecision) bool {
+		if r == nil || r.models == nil {
+			return false
+		}
+		provider, existe := r.models.Provider(decisao.Model.Provider)
+		return existe && provider.AllowPrivate
+	}
+	alternativas := multillm.ParetoResumo(candidatos, localDe)
+	if len(alternativas) == 0 {
+		return nil
+	}
+	saida := make([]map[string]any, 0, len(alternativas))
+	for _, alternativa := range alternativas {
+		saida = append(saida, map[string]any{
+			"model":   alternativa.ModelID,
+			"score":   alternativa.Score,
+			"quality": alternativa.Eixos.Quality,
+			"cost":    alternativa.Eixos.Cost,
+			"latency": alternativa.Eixos.Latency,
+			"privacy": alternativa.Eixos.Privacy,
+		})
+	}
+	return saida
 }
