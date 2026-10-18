@@ -1,3 +1,33 @@
+## JANELA E-1267
+
+**Ronda 85. O oitavo dos dez providers: `TestProvider` — o primeiro teste que EXECUTA o artefacto.**
+
+- **E-1267** — `test_provider.go` + `process_tree.go` + 8 testes.
+- A E-1261 prova integridade do ficheiro; **não prova que o binário corre**. Este provider fecha o
+  degrau `build → verificar checksum → EXECUTAR e observar`.
+  *Um ficheiro com bytes não é um artefacto utilizável.*
+- **Três fronteiras no resultado:** `sem_sandbox: true` com aviso (sem Docker nesta máquina), não
+  instala (E-1252), e **não aceita comando arbitrário** — só o próprio artefacto com os argumentos
+  declarados. *Um evento sem allowlist não é um evento: é código com um nome diferente.*
+- **Recusa executar sem argumentos** — *executar um binário sem argumentos é executá-lo no modo que o
+  programador não escolheu*.
+- **DEFEITO REAL encontrado pelo próprio teste:** `exec.CommandContext` matava o `cmd.exe` e deixava
+  o `ping` filho vivo a segurar o pipe — **59,5 s para um timeout de 400 ms**. *Um timeout que mata o
+  pai e deixa o filho não é um timeout: é uma promessa.* Corrigido com `cmd.Cancel` →
+  `taskkill /T /F /PID` + `WaitDelay`. **Depois: 0,61 s.**
+- **Alvos declarados com honestidade:** `AlvosTestaveis` = `BINARIO_DO_HOST`/`EXE_WINDOWS`;
+  `AlvosNaoTestaveis` declara `EMULADOR_ANDROID`, `SIMULADOR_IOS`, `VM_EFEMERA`,
+  `CONTENTOR_DOCKER`, `DISPOSITIVO_FISICO` — todos `BLOCKED_EXTERNAL` com motivo.
+
+**Medido contra o artefacto REAL da E-1251:** `hades-windows-amd64.exe --version` →
+`ollama version is 0.40.1`, **exit 0**, **2960 ms**.
+
+Medido: 8 PASS; `./internal/agent` **ok 367,7 s**; build 0; vet 0; lint 0.
+
+**8 dos 10 providers.** Faltam 2: `Publishing`, `Rollback`.
+
+Veredito global: `NOT_RELEASE_READY`.
+
 ## JANELA E-1266
 
 **Ronda 84. O sétimo dos dez providers: `ComplianceProvider` — o SBOM que recusa produzir o que não consegue.**
