@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AgenticRouteImport } from './routes/agentic'
+import { Route as CapabilitiesRouteImport } from './routes/capabilities'
 import { Route as CompanyRouteImport } from './routes/company'
 import { Route as CompareRouteImport } from './routes/compare'
 import { Route as ConnectRouteImport } from './routes/connect'
@@ -38,6 +39,11 @@ const IndexRoute = IndexRouteImport.update({
 const AgenticRoute = AgenticRouteImport.update({
   id: '/agentic',
   path: '/agentic',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CapabilitiesRoute = CapabilitiesRouteImport.update({
+  id: '/capabilities',
+  path: '/capabilities',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CompanyRoute = CompanyRouteImport.update({
@@ -134,6 +140,7 @@ const TasksNewRoute = TasksNewRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/agentic': typeof AgenticRoute
+  '/capabilities': typeof CapabilitiesRoute
   '/company': typeof CompanyRoute
   '/compare': typeof CompareRoute
   '/connect': typeof ConnectRoute
@@ -156,6 +163,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/agentic': typeof AgenticRoute
+  '/capabilities': typeof CapabilitiesRoute
   '/company': typeof CompanyRoute
   '/compare': typeof CompareRoute
   '/connect': typeof ConnectRoute
@@ -179,6 +187,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/agentic': typeof AgenticRoute
+  '/capabilities': typeof CapabilitiesRoute
   '/company': typeof CompanyRoute
   '/compare': typeof CompareRoute
   '/connect': typeof ConnectRoute
@@ -203,6 +212,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/agentic'
+    | '/capabilities'
     | '/company'
     | '/compare'
     | '/connect'
@@ -225,6 +235,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/agentic'
+    | '/capabilities'
     | '/company'
     | '/compare'
     | '/connect'
@@ -247,6 +258,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/agentic'
+    | '/capabilities'
     | '/company'
     | '/compare'
     | '/connect'
@@ -270,6 +282,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AgenticRoute: typeof AgenticRoute
+  CapabilitiesRoute: typeof CapabilitiesRoute
   CompanyRoute: typeof CompanyRoute
   CompareRoute: typeof CompareRoute
   ConnectRoute: typeof ConnectRoute
@@ -304,6 +317,13 @@ declare module '@tanstack/react-router' {
       path: '/agentic'
       fullPath: '/agentic'
       preLoaderRoute: typeof AgenticRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/capabilities': {
+      id: '/capabilities'
+      path: '/capabilities'
+      fullPath: '/capabilities'
+      preLoaderRoute: typeof CapabilitiesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/company': {
@@ -438,6 +458,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AgenticRoute: AgenticRoute,
+  CapabilitiesRoute: CapabilitiesRoute,
   CompanyRoute: CompanyRoute,
   CompareRoute: CompareRoute,
   ConnectRoute: ConnectRoute,

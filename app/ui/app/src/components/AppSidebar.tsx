@@ -23,6 +23,7 @@ import {
   CommandLineIcon,
   BellIcon,
   PencilSquareIcon,
+  WrenchScrewdriverIcon,
 } from "@heroicons/react/24/outline";
 import { ChatIcon } from "@/components/ChatIcon";
 import { SearchDialog } from "@/components/SearchDialog";
@@ -52,7 +53,8 @@ export type AppSection =
   | "endpoint"
   | "tasks"
   | "compare"
-  | "company";
+  | "company"
+  | "capabilities";
 
 type Icon = React.ComponentType<{ className?: string }>;
 
@@ -320,6 +322,15 @@ export function AppNavigation({ current }: { current: AppSection }) {
         section="creations"
         icon={SparklesIcon}
       />
+        {/* FASE 28.8: diagnostico do host para construir cada alvo. Nao instala nada --
+            *um botao de instalar aqui mentiria: instalar exige approval.* */}
+        <TargetLink
+          href="/capabilities"
+          label="Capacidades"
+          current={current}
+          section="capabilities"
+          icon={WrenchScrewdriverIcon}
+        />
 
       <NavLabel>Agentes</NavLabel>
       <TargetLink
