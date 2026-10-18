@@ -1,5 +1,5 @@
 # HADES — HANDOFF (como retomar a missão do zero)
-## JANELA E-1184 -- FASE 23 LIGADA: catalogo -> `/preset` -> rota -> E2E (rondas 7-9)
+## JANELA E-1192 -- FASE 23 LIGADA: catalogo -> `/preset` -> rota -> E2E (rondas 7-9)
 
 *Bloco de cabeca: mantem os tres documentos de retomada dentro da `JANELA = 12` do
 `hades_handoff_window_check.py`. Cada afirmacao abaixo tem ID proprio no indice.*

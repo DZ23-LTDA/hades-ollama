@@ -30,6 +30,7 @@ import (
 	"github.com/ollama/ollama/envconfig"
 	"github.com/ollama/ollama/internal/agent"
 	"github.com/ollama/ollama/internal/grok"
+	"github.com/ollama/ollama/internal/multillm"
 	"github.com/ollama/ollama/version"
 )
 
@@ -863,6 +864,9 @@ func (a *agentAPI) register(r *gin.Engine) {
 	// `/missions/presets` de proposito: `/missions/:id` ja' existe, e um literal ao lado de um
 	// parametro na mesma posicao e' ambiguidade de roteador, nao funcionalidade.
 	group.GET("/presets", a.missionPresets)
+	// FASE 19 + FASE 24: a decisao de roteamento com as ALTERNATIVAS. *Escolher bem quando ha'
+	// um vencedor claro e' facil; escolher quando nao ha' e' que precisa de ser explicado.*
+	group.GET("/routing", a.routing)
 	// E-638: despertares coalescidos por agente, com enfileiramento do que precisa de execucao.
 	group.POST("/wakeups", a.wakeups)
 	group.GET("/notifications", a.notifications)
@@ -4586,4 +4590,167 @@ func (a *agentAPI) missionPresets(c *gin.Context) {
 		"presets": presets,
 		"count":   len(presets),
 	})
+}
+
+// routing expoe a decisao de roteamento de modelo com os candidatos E a fronteira de Pareto
+// (FASE 19 do adendo V3). E' a superficie que faltava: a fronteira existia no motor e no
+// evento interno, mas nao havia como o Mission Control mostrar ALTERNATIVAS.
+//
+// Parameters (todos opcionais):
+//
+//	capabilities= coding,vision   capacidades obrigatorias (repetivel ou separado por virgula)
+//	preference=   quality         auto (vazio) | fastest | quality | cheapest | private
+//	local_only=   true            RESTRICAO rigida: recusa o que nao for local
+//	max_cost_cents=10             tecto de custo por 1k tokens
+//	path=         /api/chat       caminho de inferencia (default /api/chat)
+//
+// Devolve `winner`, `candidates` (com os factors que SOMAM o score) e `pareto_frontier`.
+// Sem registry de modelos devolve 503 -- *nunca 200 com lista vazia: uma lista vazia
+// pareceria "nao ha' modelos" em vez de "nao ha' motor de modelos ligado".*
+func (a *agentAPI) routing(c *gin.Context) {
+	if a == nil || a.runtime == nil || a.runtime.Models() == nil {
+		writeAgentError(c, http.StatusServiceUnavailable,
+			errors.New("model registry unavailable: o runtime de agente nao tem motor de modelos ligado; "+
+				"a rota nao devolve lista vazia porque uma lista vazia pareceria a resposta"))
+		return
+	}
+	capabilities := make([]string, 0, 4)
+	for _, bruto := range c.QueryArray("capabilities") {
+		for _, parte := range strings.Split(bruto, ",") {
+			if limpo := strings.TrimSpace(parte); limpo != "" {
+				capabilities = append(capabilities, limpo)
+			}
+		}
+	}
+	preference, err := preferenciaDeRota(c.Query("preference"))
+	if err != nil {
+		writeAgentError(c, http.StatusBadRequest, err)
+		return
+	}
+	localOnly, err := boolDeQuery(c.Query("local_only"))
+	if err != nil {
+		writeAgentError(c, http.StatusBadRequest, fmt.Errorf("local_only: %w", err))
+		return
+	}
+	maxCost := int64(0)
+	if bruto := strings.TrimSpace(c.Query("max_cost_cents")); bruto != "" {
+		valor, convErr := strconv.ParseInt(bruto, 10, 64)
+		if convErr != nil || valor < 0 {
+			writeAgentError(c, http.StatusBadRequest, errors.New("max_cost_cents tem de ser um inteiro >= 0"))
+			return
+		}
+		maxCost = valor
+	}
+	caminho := strings.TrimSpace(c.Query("path"))
+	if caminho == "" {
+		caminho = "/api/chat"
+	}
+
+	registro := a.runtime.Models()
+	pedido := multillm.RouteRequest{
+		RequiredCapabilities: capabilities,
+		Path:                 caminho,
+		Preference:           preference,
+		LocalOnly:            localOnly,
+		MaxCostCents:         maxCost,
+	}
+	candidatos, err := registro.RouteCandidates(pedido)
+	if err != nil {
+		if errors.Is(err, multillm.ErrNoRoute) {
+			// A recusa e' o resultado honesto, e vem com o pedido que a produziu.
+			writeAgentError(c, http.StatusUnprocessableEntity, fmt.Errorf(
+				"nenhum modelo satisfaz as restricoes (capabilities=%v local_only=%v max_cost_cents=%d path=%q): %w",
+				capabilities, localOnly, maxCost, caminho, err))
+			return
+		}
+		writeAgentError(c, http.StatusInternalServerError, err)
+		return
+	}
+
+	localDe := func(decisao multillm.RouteDecision) bool {
+		provider, existe := registro.Provider(decisao.Model.Provider)
+		return existe && provider.AllowPrivate
+	}
+	trilha := make([]gin.H, 0, len(candidatos))
+	for indice, candidato := range candidatos {
+		trilha = append(trilha, gin.H{
+			"rank":              indice + 1,
+			"model":             candidato.Model.ID,
+			"provider":          candidato.Model.Provider,
+			"score":             candidato.Score,
+			"cost_cents_per_1k": candidato.Model.CostPer1KInputCents + candidato.Model.CostPer1KOutputCents,
+			"quality_score":     candidato.Model.QualityScore,
+			"reason":            candidato.Reason,
+			// Os factors SOMAM o score. *Um score sem os componentes que o somam obriga
+			// quem o le' a confiar em quem o escreveu.*
+			"factors": candidato.Factors,
+		})
+	}
+	fronteira := make([]gin.H, 0, len(candidatos))
+	for _, alternativa := range multillm.ParetoResumo(candidatos, localDe) {
+		fronteira = append(fronteira, gin.H{
+			"model":   alternativa.ModelID,
+			"score":   alternativa.Score,
+			"quality": alternativa.Eixos.Quality,
+			"cost":    alternativa.Eixos.Cost,
+			"latency": alternativa.Eixos.Latency,
+			"privacy": alternativa.Eixos.Privacy,
+		})
+	}
+
+	vencedor := candidatos[0]
+	c.JSON(http.StatusOK, gin.H{
+		"winner": gin.H{
+			"model":    vencedor.Model.ID,
+			"provider": vencedor.Model.Provider,
+			"score":    vencedor.Score,
+			"reason":   vencedor.Reason,
+		},
+		"candidates": trilha,
+		// `pareto_frontier` sao as alternativas NAO-DOMINADAS. Um cliente que so' leia
+		// `winner` nao sabe que existia uma escolha melhor noutro eixo.
+		"pareto_frontier": fronteira,
+		// Declarar os eixos que NAO foram medidos e' parte do contrato: *inventar energia ou
+		// VRAM quando a plataforma nao os fornece seria um numero falso num relatorio.*
+		"axes_measured":     []string{"quality", "cost", "latency", "privacy"},
+		"axes_not_measured": []string{"energy", "vram"},
+		"request": gin.H{
+			"capabilities":   capabilities,
+			"preference":     string(preference),
+			"local_only":     localOnly,
+			"max_cost_cents": maxCost,
+			"path":           caminho,
+		},
+	})
+}
+
+// preferenciaDeRota traduz o parametro de query. Vazio = Auto (o default do motor).
+func preferenciaDeRota(bruto string) (multillm.RoutePreference, error) {
+	switch strings.ToLower(strings.TrimSpace(bruto)) {
+	case "":
+		return multillm.RoutePreferenceAuto, nil
+	case "fastest":
+		return multillm.RoutePreferenceFastest, nil
+	case "quality", "best_quality":
+		return multillm.RoutePreferenceBestQuality, nil
+	case "cheapest":
+		return multillm.RoutePreferenceCheapest, nil
+	case "private", "most_private":
+		return multillm.RoutePreferenceMostPrivate, nil
+	default:
+		return "", fmt.Errorf("preference invalida %q: use auto, fastest, quality, cheapest ou private", bruto)
+	}
+}
+
+// boolDeQuery aceita os valores que um cliente HTTP realmente envia; recusa o resto em vez de
+// adivinhar. *Adivinhar `local_only` para "yes please" seria escolher seguranca por conta propria.*
+func boolDeQuery(bruto string) (bool, error) {
+	switch strings.ToLower(strings.TrimSpace(bruto)) {
+	case "", "false", "0", "no":
+		return false, nil
+	case "true", "1", "yes":
+		return true, nil
+	default:
+		return false, fmt.Errorf("valor booleano invalido %q", bruto)
+	}
 }
