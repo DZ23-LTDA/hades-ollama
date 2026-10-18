@@ -105,6 +105,14 @@ linters:
         - cosmeticos    # acusada como "cosmetics"
         - organizacional # acusada como "organizational"
         - posicional    # acusada como "positional"
+        # E-1255 (MEDIDO): o `misspell` acusou `projecto` -> `projection` em
+        # `server/agent_e2e_harness_test.go` (3 ocorrencias, linhas 173/175/179), e o CI ficou RED no job
+        # `test (windows-latest)`. As outras 35 ocorrencias em `internal/agent` passaram — o que mostra
+        # que o dicionario casa contexto, nao so a palavra. O criterio e' o MESMO dos blocos acima:
+        # `projecto` e' portugues correto; o dicionario inges sugere o cognato `projection`.
+        # ***O `misspell` SEGUE LIGADO.***
+        - projecto      # acusada como "projection"
+        - projectos     # a FORMA EXACTA do plural, como o E-547 mediu
     depguard:
       rules:
         test-only-packages:

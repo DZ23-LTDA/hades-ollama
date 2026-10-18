@@ -1,3 +1,26 @@
+## JANELA E-1255
+
+**Ronda 73. O segundo red do CI era `misspell` -- e a palavra era portugues correcto.**
+
+- **E-1253 VALIDADA:** com a correccao `darwin`->`macos`, `test (macos-latest)` passou a **success**
+  no GitHub. Quatro dos cinco jobs de `go test` ficaram verdes.
+- **O que restava:** `test (windows-latest)` RED, causa dada pelas anotacoes do check-run --
+  `server/agent_e2e_harness_test.go:175/179`: **`projecto` -> `projection` (misspell)**.
+- **Reproduzido antes de corrigir:** `golangci-lint run ./server` **exit 1**, 3 ocorrencias.
+  *O texto que explica porque o fixture tem de ser um projecto verdadeiro foi o texto que o linter
+  recusou.*
+- **Correccao:** `projecto`/`projectos` no `ignore-rules`, pelo criterio que o proprio ficheiro ja'
+  documenta. **O linter segue ligado.**
+- **Medido:** `./server` exit 0 (era 1); `./internal/agent` exit 0 (config valida, nao exit 3);
+  `./...` **0 misspell**; os 8 `unused` restantes sao **preexistentes**.
+- **Dado novo:** `internal/agent` tem 35 `projecto` e nunca foi acusado, o `server` tinha 3.
+  => *o dicionario casa contexto, nao so' a palavra; assumir "esta' ou nao esta' na lista" erra
+  por omissao nos dois sentidos.*
+
+Proximo passo declarado: confirmar o commit verde no GitHub; depois INSTALLED (E-1252).
+
+Veredito global: `NOT_RELEASE_READY`.
+
 ## JANELA E-1254
 
 **Ronda 72. A proveniencia mentirosa do instalador foi corrigida -- e o gate falha de proposito.**
