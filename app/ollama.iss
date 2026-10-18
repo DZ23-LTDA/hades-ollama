@@ -221,3 +221,50 @@ begin
   if CurStep = ssInstall then
     RemoveLegacyInstalls();
 end;
+
+{ Remove a entrada que o instalador pos no PATH do utilizador.
+  *Achado pela auditoria E2E de 2026-10-18, nao por leitura de codigo:* a instalacao
+  adiciona a pasta da app ao HKCU Environment Path com Check NeedsAddPath, mas esse valor
+  nao aceita Flags uninsdeletevalue -- porque apagar o valor inteiro destruiria o PATH todo.
+  Sem este procedimento, desinstalar deixava uma entrada a apontar para uma pasta que ja'
+  nao existe, e o utilizador so' descobria ao ver o PATH sujo.
+
+  O OLLAMA_DZ23_CONFIG nao precisou disto: e' um valor proprio e tem a flag. O PATH e'
+  um valor PARTILHADO e precisa de remocao cirurgica -- dai' este codigo em vez de uma flag. }
+procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
+var
+  PathOrigem, PathLimpo, Entrada, AppDir: String;
+  i: Integer;
+begin
+  if CurUninstallStep = usPostUninstall then
+  begin
+    if not RegQueryStringValue(HKEY_CURRENT_USER, 'Environment', 'Path', PathOrigem) then
+      exit;
+
+    AppDir := ExpandConstant('{app}');
+    PathLimpo := '';
+
+    { Reconstroi entrada a entrada, preservando a ordem e tudo o que nao e' nosso. }
+    i := 1;
+    while i <= Length(PathOrigem) do
+    begin
+      Entrada := '';
+      while (i <= Length(PathOrigem)) and (PathOrigem[i] <> ';') do
+      begin
+        Entrada := Entrada + PathOrigem[i];
+        i := i + 1;
+      end;
+      i := i + 1; { salta o ';' }
+
+      if (Entrada <> '') and (CompareText(Entrada, AppDir) <> 0) then
+      begin
+        if PathLimpo <> '' then
+          PathLimpo := PathLimpo + ';';
+        PathLimpo := PathLimpo + Entrada;
+      end;
+    end;
+
+    if CompareText(PathLimpo, PathOrigem) <> 0 then
+      RegWriteExpandStringValue(HKEY_CURRENT_USER, 'Environment', 'Path', PathLimpo);
+  end;
+end;
