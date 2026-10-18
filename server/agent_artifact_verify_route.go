@@ -177,6 +177,11 @@ func codigoDeErroDeArtefacto(err error) int {
 		return http.StatusNotFound
 	case errors.Is(err, agent.ErrSemReferencia):
 		return http.StatusBadRequest
+	case errors.Is(err, agent.ErrCertificadoIlegivel):
+		// O pedido aponta para um ficheiro que nao serve: e' do PEDIDO, nao do servidor. Sem este
+		// ramo, `sign.plan` devolvia **500** para um certificado ilegivel -- e um 500 diz "o
+		// servidor falhou" quando o que falhou foi o ficheiro que o cliente indicou.
+		return http.StatusBadRequest
 	default:
 		return http.StatusInternalServerError
 	}

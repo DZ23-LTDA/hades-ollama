@@ -1,3 +1,27 @@
+## JANELA E-1264
+
+**Ronda 82. `sign.plan`: o `SigningProvider` deixou de ser função que só os testes invocam.**
+
+- **E-1264** -- `POST /api/agent/v1/sign/plan` + 7 testes. **5 rotas do Release Hub** no router.
+- **Não há `sign.start`** por decisão: a autorização proíbe assinar, e uma rota que só devolvesse 403
+  seria *um botão morto — e um botão morto é pior do que um botão ausente: o ausente não mente*.
+- **Dois defeitos reais apanhados pelos testes:**
+  1. **`ErrCertificadoIlegivel` devolvia 500** (não mapeado) — um 500 diz "o servidor falhou" quando
+     o que falhou foi o ficheiro indicado. Corrigido para **400**.
+  2. O teste do certificado Apple **reescrevia o `Issuer` em memória** — mas o PEM vinha do DER
+     original. *Um teste que reescreve o campo em memória e verifica o ficheiro no disco testa a
+     memória.* Corrigido gerando a folha a partir de uma CA fictícia; o Apple passou a ser recusado
+     com `EMISSOR_INESPERADO`.
+- **O aviso de fronteira ensina a ler `apta`:** não significa que o artefacto foi assinado, e a
+  cadeia criptográfica e a revogação **NÃO** são validadas — há teste que exige as duas frases.
+
+Medido: 7 PASS na rota; **23 PASS** no conjunto; `./server` **ok 46,9 s**; build 0; vet 0; lint 0.
+
+**Ausente:** nenhum painel nem E2E chama `sign.plan`. A1 da DZ23 não avaliado (store do Windows).
+Faltam **5 dos 10** providers.
+
+Veredito global: `NOT_RELEASE_READY`.
+
 ## JANELA E-1263
 
 **Ronda 81. O quinto dos dez providers: `SigningProvider` — e um certificado REAL expôs um defeito meu.**
