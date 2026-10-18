@@ -1,3 +1,23 @@
+## JANELA E-1248
+
+**Ronda 66.** O plano de build passou a ter painel: o utilizador ve'' o que o projeto pede e o que
+falta, sem abrir Go.
+
+- **E-1248** -- `BuildPlanPanel.tsx` + `buildPlanClient.ts`, montado na pagina de Capacidades
+  **depois de `WorktreesPanel`**, nao num painel paralelo. **10 testes**. O painel diz **no corpo**
+  que apenas detecta e sonda; projeto sem alvos tem mensagem propria, nao erro; estados traduzidos
+  para texto humano; blockers e motivos no topo. **Frontend inteiro verde:** `tsc` 0, `eslint .` 0,
+  **120 ficheiros / 842 testes**, `vite build` 0, budget PASS.
+
+**Quatro defeitos meus apanhados** -- `vi.importActual` com spread quebrava a transpilacao; campo
+no sitio errado (`plano.gestores` vs `plano.projeto.gestores`); assumi que `agentFetch` devolvia
+`Response` quando devolve o objecto tipado; e o mock devolvia um `Response` que o produto nao usa.
+
+Proximo passo declarado: **E2E Playwright** do painel contra backend real. Depois **C1**: um build
+real instalado.
+
+Veredito global: `NOT_RELEASE_READY`.
+
 ## JANELA E-1247
 
 **Ronda 65.** O plano de release deixou de ser uma funcao que so'' o programador invoca: tem rota.

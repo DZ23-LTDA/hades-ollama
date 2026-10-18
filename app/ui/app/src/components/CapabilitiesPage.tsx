@@ -17,6 +17,7 @@ import { useCallback, useEffect, useState } from "react";
 import { AppSidebar } from "@/components/AppSidebar";
 import { InstallProfilesPanel } from "@/components/InstallProfilesPanel";
 import { WorktreesPanel } from "@/components/WorktreesPanel";
+import { BuildPlanPanel } from "@/components/BuildPlanPanel";
 import { SidebarLayout } from "@/components/layout/layout";
 import {
   fetchToolchainDoctor,
@@ -298,6 +299,12 @@ export function CapabilitiesPage() {
           o trabalho acontece; responde ao contexto da tarefa do mesmo jeito que o preflight.
           *Um mecanismo que ninguem consegue ver e' um mecanismo que ninguem consegue usar.* */}
       <WorktreesPanel />
+
+      {/* FASE 28.8: o plano de BUILD do PROJECTO. Detecta o que ele pede e o que falta nesta
+          maquina. Nao instala nem constroi -- e o painel diz isso no corpo, nao na documentacao.
+          *Um painel que mostra "pronto" sem poder construir e' um painel que promete o que nao
+          faz -- a menos que diga que so' le'.* */}
+      <BuildPlanPanel />
     </SidebarLayout>
   );
 }
