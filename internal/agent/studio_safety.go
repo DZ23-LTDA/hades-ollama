@@ -288,3 +288,121 @@ func DiagnosticarHTMLDeConteudo(html string) []MotivoDeRecusaDeHTML {
 	}
 	return recusas
 }
+
+// === COMPONENTES VISUAIS DO STUDIO (26.5: bindings e eventos allowlisted) ===
+
+// eventosPermitidos sao os UNICOS eventos que um componente visual pode declarar.
+//
+// O adendo 26.5 diz "bindings de dados e eventos allowlisted". A palavra que carrega o peso e'
+// "allowlisted": sem uma lista fechada, `Events` e' um campo de texto onde o modelo escreve o que
+// quiser e o renderer do canvas executa.
+//
+//	*Um evento sem allowlist nao e' um evento: e' codigo com um nome diferente.*
+var eventosPermitidos = map[string]bool{
+	"click":      true,
+	"input":      true,
+	"change":     true,
+	"submit":     true,
+	"focus":      true,
+	"blur":       true,
+	"keydown":    true,
+	"keyup":      true,
+	"scroll":     true,
+	"hover":      true,
+	"mouseenter": true,
+	"mouseleave": true,
+}
+
+// acoesDeEventoPermitidas sao as acoes que um evento pode disparar.
+//
+// Qualquer coisa fora desta lista -- navegar para URL arbitraria, executar script, chamar API
+// externa -- e' recusada. O renderer pode implementar mais, mas o componente NAO pode pedir mais.
+var acoesDeEventoPermitidas = map[string]bool{
+	"navegar":        true, // navegacao entre telas do proprio projection
+	"alternarTema":   true,
+	"abrirMenu":      true,
+	"fecharMenu":     true,
+	"enviarForm":     true,
+	"filtrarLista":   true,
+	"ordenarLista":   true,
+	"proximaPagina":  true,
+	"paginaAnterior": true,
+	"copiar":         true,
+	"imprimir":       true,
+}
+
+// ValidarSegurancaDosComponentes aplica as regras de 26.5 a uma arvore de componentes visuais.
+//
+// Complementa -- nao substitui -- `validateVisualComponents`, que valida ESTRUTURA. Sao perguntas
+// diferentes:
+//
+//	*Um componente com id e type e' um componente bem formado. Nao e' um componente seguro.*
+//
+// Recusa, com motivo nomeado:
+//   - `Events` com nome fora da allowlist;
+//   - `Events` com accao fora da allowlist;
+//   - `Bindings` que apontem para esquema nao permitido (`javascript:`, `data:`);
+//   - `Props`/`Style` que contenham HTML executavel ou `expression(`/`url(javascript:`;
+//   - qualquer string que carregue `<script`, handler `on*=` ou `javascript:`.
+func ValidarSegurancaDosComponentes(components []VisualComponent, depth int) error {
+	if depth > 12 {
+		return fmt.Errorf("%w: arvore de componentes demasiado profunda", ErrConteudoInseguro)
+	}
+	for _, c := range components {
+		// Eventos: nome E accao tem de estar na allowlist.
+		for nome, acao := range c.Events {
+			if !eventosPermitidos[nome] {
+				return fmt.Errorf("%w: componente %q declara evento nao permitido %q",
+					ErrConteudoInseguro, c.ID, nome)
+			}
+			if !acoesDeEventoPermitidas[acao] {
+				return fmt.Errorf("%w: componente %q declara accao nao permitida %q no evento %q",
+					ErrConteudoInseguro, c.ID, acao, nome)
+			}
+		}
+		// Bindings: sao referencias a dados, nao podem ser URLs executaveis.
+		for chave, valor := range c.Bindings {
+			if strings.TrimSpace(valor) == "" {
+				continue
+			}
+			// Um binding e' um caminho de dados (`items`, `user.name`), sem esquema.
+			if strings.Contains(valor, ":") {
+				if err := ValidarURLDeConteudo(valor); err != nil {
+					return fmt.Errorf("%w: componente %q tem binding %q com valor nao permitido: %v",
+						ErrConteudoInseguro, c.ID, chave, err)
+				}
+			}
+			if err := ValidarHTMLDeConteudo(valor); err != nil {
+				return fmt.Errorf("%w: componente %q tem binding %q inseguro: %v",
+					ErrConteudoInseguro, c.ID, chave, err)
+			}
+		}
+		// Props e Style: nao podem transporter execucao.
+		for _, mapa := range []struct {
+			nome    string
+			valores map[string]string
+		}{
+			{"props", c.Props},
+			{"style", c.Style},
+		} {
+			for chave, valor := range mapa.valores {
+				if err := ValidarHTMLDeConteudo(valor); err != nil {
+					return fmt.Errorf("%w: componente %q tem %s %q inseguro: %v",
+						ErrConteudoInseguro, c.ID, mapa.nome, chave, err)
+				}
+				// `expression(` e `url(` sao vectors de CSS antigo e de SVG.
+				normalizado := strings.ToLower(valor)
+				for _, proibido := range []string{"expression(", "url(javascript:", "url(data:text/html"} {
+					if strings.Contains(normalizado, proibido) {
+						return fmt.Errorf("%w: componente %q tem %s %q com %q",
+							ErrConteudoInseguro, c.ID, mapa.nome, chave, proibido)
+					}
+				}
+			}
+		}
+		if err := ValidarSegurancaDosComponentes(c.Children, depth+1); err != nil {
+			return err
+		}
+	}
+	return nil
+}
