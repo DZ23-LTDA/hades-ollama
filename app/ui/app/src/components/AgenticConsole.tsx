@@ -138,26 +138,6 @@ export default function AgenticConsole() {
     }
   }, [providerChoices, provider, selectedModel]);
 
-  // Carrega o catalogo de presets UMA vez. Falha fechada: se a rota nao responder, a UI diz
-  // que o catalogo esta' indisponivel em vez de fingir que nao ha presets.
-  useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      try {
-        const payload = await agentFetch<{ presets?: unknown }>("/api/agent/v1/presets");
-        if (cancelled) return;
-        setPresets(parseMissionPresets(payload?.presets));
-        setPresetsUnavailable(false);
-      } catch {
-        if (cancelled) return;
-        setPresets([]);
-        setPresetsUnavailable(true);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   const load = async (missionId?: string, orchestrationId?: string) => {
     try {
@@ -166,6 +146,20 @@ export default function AgenticConsole() {
         missionId ? api<Mission>(`/api/agent/v1/missions/${encodeURIComponent(missionId)}`) : Promise.resolve(null),
         missionId ? api<{ events: Event[] }>(`/api/agent/v1/missions/${encodeURIComponent(missionId)}/events`) : Promise.resolve({ events: [] }),
         orchestrationId ? api<OrchestrationJob>(`/api/agent/v1/orchestration/jobs/${encodeURIComponent(orchestrationId)}`) : Promise.resolve(null),
+        // FASE 23: catalogo de presets de MISSAO. Carrega junto com o resto do estado do
+        // runtime para que uma falha de carregamento seja UMA falha e nao duas concorrentes.
+        api<{ presets?: unknown }>("/api/agent/v1/presets").then(
+          (payload) => {
+            setPresets(parseMissionPresets(payload?.presets));
+            setPresetsUnavailable(false);
+            return null;
+          },
+          () => {
+            setPresets([]);
+            setPresetsUnavailable(true);
+            return null;
+          },
+        ),
       ]);
       setMetrics(nextMetrics);
       if (nextMission) setMission(nextMission);
