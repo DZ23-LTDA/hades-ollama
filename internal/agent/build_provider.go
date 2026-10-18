@@ -39,6 +39,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strings"
 	"time"
@@ -199,8 +200,18 @@ func (p ProviderDeBuildGo) Construir(
 
 	cmd := exec.CommandContext(ctxBuild, "go", args...)
 	cmd.Dir = raizAbs
-	// O ambiente do processo herda o do servidor. O `GOROOT`/`GOPATH` privados do checkout ficam
-	// disponiveis por heranca -- **nao** se injectam variaveis que o chamador nao declarou.
+	// O ambiente herda o do servidor, com DUAS excepcoes deliberadas:
+	//
+	//   CGO_ENABLED=0  -- o artefacto tem de ser reproduzivel. Com `CGO_ENABLED=1` herdado do `go
+	//                     test` do CI, o mesmo commit produziria bytes diferentes conforme o host
+	//                     tiver ou nao um compilador C.
+	//   GOOS/GOARCH    -- fixados no host do processo, para o teste nao depender do `GOOS` que o
+	//                     runner exportou (o CI exporta `GOOS=windows` para o build de
+	//                     portabilidade, e herda-lo aqui construiria um .exe no Linux).
+	//
+	//	*Um build cujo resultado depende do ambiente de quem o chamou nao e' reproduzivel: e'
+	//	uma funcao do ambiente.*
+	cmd.Env = ambienteDeBuild()
 	inicio := time.Now()
 	saida, errExec := cmd.CombinedOutput()
 	duracao := time.Since(inicio)
@@ -333,6 +344,30 @@ func sha256DeFicheiro(caminho string) (string, error) {
 		return "", err
 	}
 	return hex.EncodeToString(h.Sum(nil)), nil
+}
+
+// ambienteDeBuild monta o ambiente do subprocesso `go build` a partir do ambiente do servidor.
+func ambienteDeBuild() []string {
+	// Mantem tudo o que o servidor tem (PATH, HOME, GOROOT, GOPATH, caches privados do checkout) e
+	// sobrepoe apenas o que precisa de ser deterministico.
+	forcadas := map[string]string{
+		"CGO_ENABLED": "0",
+		"GOOS":        runtime.GOOS,
+		"GOARCH":      runtime.GOARCH,
+	}
+	ambiente := make([]string, 0, len(os.Environ())+len(forcadas))
+	for _, entrada := range os.Environ() {
+		nome, _, _ := strings.Cut(entrada, "=")
+		if _, sobreposta := forcadas[nome]; sobreposta {
+			continue
+		}
+		ambiente = append(ambiente, entrada)
+	}
+	for nome, valor := range forcadas {
+		ambiente = append(ambiente, nome+"="+valor)
+	}
+	sort.Strings(ambiente)
+	return ambiente
 }
 
 // truncarSaida limita a saida guardada.

@@ -1,3 +1,21 @@
+## JANELA E-1253
+
+**Ronda 71. O CI ficou vermelho por minha causa -- e a causa era um nome.**
+
+- **E-1253** -- `d547d7986` passou de 2 para **6 red**: os quatro jobs que correm `go test`
+  (`windows`, `ubuntu`, `macos`, `race macos`). **Causa:** os testes do `BuildProvider` passavam
+  `runtime.GOOS` como alvo; no macOS isso e' `darwin`, o catalogo diz `macos`.
+  => *um teste que passa na maquina onde foi escrito e falha nas outras tres nao testa o produto:
+  testa o sistema de quem o escreveu* -- **a mesma familia do defeito de caminhos** que ja' apareceu
+  em tres avatares, agora num nome de sistema.
+- **Corrigido em dois eixos:** `alvoDoHostPara(goos)` com tabela que cobre os tres sistemas; e
+  `ambienteDeBuild()` que sobrepoe `CGO_ENABLED=0`/`GOOS`/`GOARCH` em vez de herdar o `GOOS=windows`
+  que o CI exporta.
+
+Proximo passo declarado: confirmar os 4 jobs verdes no GitHub; depois atacar a instalacao (E-1252).
+
+Veredito global: `NOT_RELEASE_READY`.
+
 ## JANELA E-1252
 
 **Ronda 70. O instalador Windows existe -- e a proveniencia dele mente.**

@@ -41,6 +41,31 @@ func escreverProjectoGoMinimo(t *testing.T, raiz, mensagem string) {
 		"package main\n\nimport \"fmt\"\n\nfunc main() { fmt.Println(\""+mensagem+"\") }\n")
 }
 
+// alvoDoHost devolve o alvo do CATALOGO correspondente ao sistema onde o teste corre.
+//
+// *`runtime.GOOS` no macOS e' `darwin`, e o catalogo de alvos diz `macos`.* A primeira versao
+// destes testes passava `runtime.GOOS` directamente ao provider -- passava no Windows, onde os dois
+// nomes coincidem, e falhava no macOS com `ErrSemProviderParaAlvo`. O CI apanhou-o em tres jobs.
+//
+//	*Um teste que passa na maquina onde foi escrito e falha nas outras tres nao testa o produto:
+//	testa o sistema de quem o escreveu.*
+func alvoDoHost() string { return alvoDoHostPara(runtime.GOOS) }
+
+// alvoDoHostPara e' a tabela, separada para o teste poder cobrir os TRES sistemas sem correr neles.
+func alvoDoHostPara(goos string) string {
+	switch goos {
+	case "darwin":
+		return "macos"
+	case "windows", "linux":
+		return goos
+	default:
+		// Devolve o nome do sistema tal e qual: o provider recusa-o com `ErrSemProviderParaAlvo`, e
+		// o teste seguinte documenta que e' isso que acontece. Inventar um alvo aqui esconderia a
+		// ausencia de provider atras de um nome plausivel.
+		return goos
+	}
+}
+
 // exigeGo salta o teste quando o `go` nao esta' no PATH do processo de teste.
 //
 //	*Um teste que passa porque o toolchain faltava nao e' um teste verde: e' um teste que nao correu.*
@@ -111,7 +136,7 @@ func TestBuildProviderConstroiBinarioReal(t *testing.T) {
 	escreverProjectoGoMinimo(t, raiz, "ola-hades")
 
 	resultado, err := ProviderDeBuildGo{}.Construir(context.Background(),
-		planoPronto(runtime.GOOS), OpcoesDeBuild{Raiz: raiz})
+		planoPronto(alvoDoHost()), OpcoesDeBuild{Raiz: raiz})
 	if err != nil {
 		t.Fatalf("construir: %v", err)
 	}
@@ -150,7 +175,7 @@ func TestBuildProviderBinarioExecuta(t *testing.T) {
 	escreverProjectoGoMinimo(t, raiz, "artefacto-vivo")
 
 	resultado, err := ProviderDeBuildGo{}.Construir(context.Background(),
-		planoPronto(runtime.GOOS), OpcoesDeBuild{Raiz: raiz})
+		planoPronto(alvoDoHost()), OpcoesDeBuild{Raiz: raiz})
 	if err != nil {
 		t.Fatalf("construir: %v", err)
 	}
@@ -173,12 +198,12 @@ func TestBuildProviderEProduzivel(t *testing.T) {
 	escreverProjectoGoMinimo(t, raiz, "reproduz")
 
 	primeiro, err := ProviderDeBuildGo{}.Construir(context.Background(),
-		planoPronto(runtime.GOOS), OpcoesDeBuild{Raiz: raiz, Destino: filepath.Join(raiz, "d1")})
+		planoPronto(alvoDoHost()), OpcoesDeBuild{Raiz: raiz, Destino: filepath.Join(raiz, "d1")})
 	if err != nil {
 		t.Fatalf("primeiro build: %v", err)
 	}
 	segundo, err := ProviderDeBuildGo{}.Construir(context.Background(),
-		planoPronto(runtime.GOOS), OpcoesDeBuild{Raiz: raiz, Destino: filepath.Join(raiz, "d2")})
+		planoPronto(alvoDoHost()), OpcoesDeBuild{Raiz: raiz, Destino: filepath.Join(raiz, "d2")})
 	if err != nil {
 		t.Fatalf("segundo build: %v", err)
 	}
@@ -196,7 +221,7 @@ func TestBuildProviderRecusaProjetoQueNaoCompila(t *testing.T) {
 	escreverFicheiroDeTeste(t, raiz, "main.go", "package main\n\nfunc main() { isto nao compila }\n")
 
 	_, err := ProviderDeBuildGo{}.Construir(context.Background(),
-		planoPronto(runtime.GOOS), OpcoesDeBuild{Raiz: raiz})
+		planoPronto(alvoDoHost()), OpcoesDeBuild{Raiz: raiz})
 	if err == nil {
 		t.Fatal("projection invalido devia falhar")
 	}
@@ -218,7 +243,7 @@ func TestBuildProviderRecusaSemGoMod(t *testing.T) {
 	escreverFicheiroDeTeste(t, raiz, "leia-me.txt", "nao sou um projection go")
 
 	_, err := ProviderDeBuildGo{}.Construir(context.Background(),
-		planoPronto(runtime.GOOS), OpcoesDeBuild{Raiz: raiz})
+		planoPronto(alvoDoHost()), OpcoesDeBuild{Raiz: raiz})
 	if err == nil {
 		t.Fatal("directorio sem go.mod devia ser recusado")
 	}
@@ -235,7 +260,7 @@ func TestBuildProviderConstruirAlvosSaltaBloqueados(t *testing.T) {
 
 	plano := PlanoDoProjeto{
 		Alvos: []PlanoPorAlvo{
-			{Alvo: runtime.GOOS, Plano: plannerPronto(runtime.GOOS)},
+			{Alvo: runtime.GOOS, Plano: plannerPronto(alvoDoHost())},
 			{Alvo: "linux", Plano: plannerBloqueado("linux", "docker")},
 			{Alvo: "android", Plano: plannerPronto("android")},
 		},
@@ -290,6 +315,65 @@ func TestNomeDoArtefactoNaoVazaCaminho(t *testing.T) {
 	}
 	if nomeDoArtefacto("/caminho/para/x", "linux") != "x-linux" {
 		t.Fatalf("nome = %q", nomeDoArtefacto("/caminho/para/x", "linux"))
+	}
+}
+
+// O ambiente do `go build` sobrepoe CGO_ENABLED/GOOS/GOARCH e preserva o resto.
+//
+// *Um build cujo resultado depende do ambiente de quem o chamou nao e' reproduzivel: e' uma funcao
+// do ambiente.* Este teste prova a transformacao, e falharia se alguem removesse a sobreposicao.
+func TestAmbienteDeBuildSobrepoeODeterministico(t *testing.T) {
+	t.Setenv("CGO_ENABLED", "1")
+	t.Setenv("GOOS", "plan9")
+	t.Setenv("GOPATH", "/gopath-de-teste")
+
+	ambiente := ambienteDeBuild()
+	juntos := strings.Join(ambiente, "\n")
+
+	if strings.Contains(juntos, "CGO_ENABLED=1") {
+		t.Fatalf("CGO_ENABLED=1 do chamador sobreviveu:\n%s", juntos)
+	}
+	if !strings.Contains(juntos, "CGO_ENABLED=0") {
+		t.Fatalf("CGO_ENABLED=0 ausente:\n%s", juntos)
+	}
+	if strings.Contains(juntos, "GOOS=plan9") {
+		t.Fatalf("GOOS=plan9 do chamador sobreviveu -- o CI exporta GOOS e o build herdaria:\n%s", juntos)
+	}
+	if !strings.Contains(juntos, "GOOS="+runtime.GOOS) {
+		t.Fatalf("GOOS do host ausente:\n%s", juntos)
+	}
+	// O que NAO foi sobreposto tem de ser preservado -- sem isto o GOROOT privado do checkout
+	// desapareceria e o build falharia.
+	if !strings.Contains(juntos, "GOPATH=/gopath-de-teste") {
+		t.Fatalf("GOPATH do chamador foi perdido:\n%s", juntos)
+	}
+	// Ordem estavel: dois ambientes iguais tem de sair iguais.
+	if strings.Join(ambienteDeBuild(), "\n") != juntos {
+		t.Fatal("ambienteDeBuild nao e' deterministico entre chamadas")
+	}
+}
+
+// A TABELA de mapeamento sistema->alvo, provada sem correr em macOS.
+//
+// *Um teste que so' passa no sistema onde foi escrito nao prova o mapeamento: prova a coincidencia.*
+func TestAlvoDoHostPara(t *testing.T) {
+	casos := []struct{ goos, esperado, porque string }{
+		{"windows", "windows", "coincide com o catalogo"},
+		{"linux", "linux", "coincide com o catalogo"},
+		{"darwin", "macos", "NAO coincide: runtime.GOOS diz darwin, o catalogo diz macos"},
+		{"freebsd", "freebsd", "sem provider: o nome passa tal e qual para ser recusado"},
+	}
+	for _, c := range casos {
+		if obtido := alvoDoHostPara(c.goos); obtido != c.esperado {
+			t.Errorf("alvoDoHostPara(%q) = %q; esperado %q (%s)", c.goos, obtido, c.esperado, c.porque)
+		}
+	}
+	// E `darwin` tem de ser RECUSADO pelo provider: se alguem "corrigir" a tabela devolvendo
+	// `darwin` para `macos`, o alvo passaria a existir no provider e o teste acima passaria a
+	// mentir. Aqui prova-se o contrario.
+	if _, err := (ProviderDeBuildGo{}).Construir(context.Background(),
+		planoPronto("darwin"), OpcoesDeBuild{Raiz: t.TempDir()}); !errors.Is(err, ErrSemProviderParaAlvo) {
+		t.Fatalf("alvo `darwin` devia ser recusado com ErrSemProviderParaAlvo; obtido %v", err)
 	}
 }
 
