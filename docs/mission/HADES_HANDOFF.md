@@ -1,3 +1,18 @@
+## JANELA E-1249
+
+**Ronda 67.** O painel e a rota passaram a falar um com o outro no browser real.
+
+- **E-1249** -- `e2e/build-plan-panel.spec.ts`, duas classificacoes declaradas
+  (`BACKEND_REAL_AGENT_RUNTIME` / `UI_FIXTURE`), rotas novas no fixture com **dois** planos (um com
+  alvo pronto e um bloqueado; outro `sem_alvos`). **9 testes PASS**; suite E2E **58 passed / 4
+  skipped / 0 failed** (antes 49/4/0). Dois testes sao **skipped no modo real** com a razao escrita
+  -- *um teste que finge que o fixture e'' o backend prova o fixture, nao o backend*.
+
+Proximo passo declarado: **exercitar o modo `BACKEND_REAL_AGENT_RUNTIME`** com o harness. Depois
+**C1**: um build real instalado.
+
+Veredito global: `NOT_RELEASE_READY`.
+
 ## JANELA E-1248
 
 **Ronda 66.** O plano de build passou a ter painel: o utilizador ve'' o que o projeto pede e o que

@@ -164,6 +164,106 @@ const worktreesDoFixture = {
 };
 // O estado muda com POST /worktrees/state -- para o spec poder provar a RELEITURA.
 let estadoDoWorktreeDoFixture = "preparado";
+
+// FASE 28.8: os planos de build que o fixture serve ao painel.
+//
+//   *Um fixture que so' serve o caminho feliz nao prova que o painel distingue os outros.*
+function planoDoFixture(repo) {
+  const sondaSaudavel = (nome, motivo) => ({
+    Requisito: { Nome: nome, Comando: nome, Obrigatorio: true, Motivo: motivo },
+    Estado: "saudavel",
+    Caminho: `/usr/local/bin/${nome}`,
+    Versao: `${nome} version 1.2.3`,
+  });
+  const sondaAusente = (nome, motivo) => ({
+    Requisito: { Nome: nome, Comando: nome, Obrigatorio: true, Motivo: motivo },
+    Estado: "ausente",
+    Detalhe: "nao encontrado no PATH",
+  });
+  return {
+    somente_leitura: true,
+    nada_instalado: true,
+    nada_construido: true,
+    repo,
+    profundidade: 4,
+    plano: {
+      projeto: {
+        raiz: repo,
+        stacks: ["go", "node"],
+        gestores: ["go-modules", "npm"],
+        alvos: ["linux", "web"],
+        manifests: ["go.mod", "package.json"],
+      },
+      alvos: [
+        {
+          alvo: "linux",
+          plano: {
+            Alvo: "linux",
+            Probes: [
+              sondaSaudavel("go", "compilar o binario"),
+              sondaAusente("docker", "empacotar a imagem"),
+            ],
+            Blockers: ["docker"],
+            TrabalhoIndependente: ["go mod tidy"],
+          },
+        },
+        {
+          alvo: "web",
+          plano: {
+            Alvo: "web",
+            Probes: [sondaSaudavel("node", "construir o bundle")],
+            Blockers: [],
+            TrabalhoIndependente: [],
+          },
+        },
+      ],
+      alvos_prontos: ["web"],
+      alvos_bloqueados: ["linux"],
+      sem_alvos: false,
+      trabalho_independente: ["go mod tidy"],
+      avisos: [],
+      explicacao: "1 alvo(s) pronto(s) e 1 bloqueado(s); 1 item(ns) de trabalho independente",
+    },
+    blockers: ["docker"],
+    motivos: ["linux: docker -- empacotar a imagem (nao encontrado no PATH)"],
+    aviso_de_fronteira:
+      "esta rota apenas DETECTA o projecto e SONDA ferramentas; nao instala nada, nao constroi nada e nao assina nada",
+    source: FONTE_DO_FIXTURE,
+  };
+}
+
+function planoVazioDoFixture(repo) {
+  return {
+    somente_leitura: true,
+    nada_instalado: true,
+    nada_construido: true,
+    repo,
+    profundidade: 4,
+    plano: {
+      projeto: {
+        raiz: repo,
+        stacks: ["python"],
+        gestores: [],
+        alvos: [],
+        manifests: ["pyproject.toml"],
+      },
+      alvos: [],
+      alvos_prontos: [],
+      alvos_bloqueados: [],
+      sem_alvos: true,
+      trabalho_independente: [],
+      avisos: [],
+      explicacao:
+        "o projecto nao declara nenhum alvo que o catalogo do HADES conheca; nao ha' plano de build a construir",
+    },
+    blockers: [],
+    motivos: [],
+    aviso_de_fronteira:
+      "o projecto nao declara alvos que o catalogo do HADES conheca; nada foi construido",
+    source: FONTE_DO_FIXTURE,
+  };
+}
+
 function diagnosticoDoFixture(missao) {
   return {
     mission_id: missao,
@@ -280,6 +380,23 @@ const server = createServer(async (request, response) => {
       );
       response.end();
     }
+  } else if (route === "GET /api/agent/v1/build/plan") {
+      // FASE 28.8: o plano de release do PROJECTO. O fixture serve um plano com um alvo PRONTO e
+      // um BLOQUEADO, e um segundo "projecto" sem alvos -- para o spec poder provar as duas
+      // classificacoes de resultado.
+      //
+      //   *Um fixture que so' serve o caminho feliz nao prova que o painel distingue os outros.*
+      const repoPedido = url.searchParams.get("repo") || "";
+      if (!repoPedido) {
+        status = 400;
+        sendJSON(response, status, { erro: "parametro `repo` e' obrigatorio" });
+      } else if (repoPedido.includes("sem-alvos")) {
+        status = 200;
+        sendJSON(response, status, planoVazioDoFixture(repoPedido));
+      } else {
+        status = 200;
+        sendJSON(response, status, planoDoFixture(repoPedido));
+      }
   } else if (route === "GET /api/agent/v1/worktrees") {
       status = 200;
       sendJSON(response, status, worktreesDoFixture);
