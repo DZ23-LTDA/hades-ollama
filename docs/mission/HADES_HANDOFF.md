@@ -1,3 +1,23 @@
+## JANELA E-1252
+
+**Ronda 70. O instalador Windows existe -- e a proveniencia dele mente.**
+
+- **E-1252** -- `HadesSetup-d547d7986.exe`: **39,21 MB**, SHA-256
+  `E8A733B8A45682A8E3B27D1F7D1BBEBC49CB3D65911C99805E62D99EF67CC50D`, **`NotSigned`** (o requisito
+  da RC), produto **`Hades`**, versao `0.2.0.9012`. Compilado por ISCC 6.7.3 em 41,3 s.
+- **O ACHADO:** o `PROVENIENCIA.txt` declara **um** SHA, mas o instalador empacota **tres** origens:
+  motor reconstruido do HEAD (`b7f8ee93`), app desktop do commit `1d2ce88c9`, runner de 16/10.
+  => *um artefacto composto que declara um SHA para partes de tres origens mente -- e mente mais
+  alto do que um sem proveniencia, porque quem le' acredita.*
+- **INSTALACAO NAO PROVADA:** tres execucoes nao instalaram um ficheiro nem escreveram log. Protocolo
+  antiloop aplicado: 3 tentativas, mesmo sintoma, **parar**. Causa nao determinada; lacuna interna,
+  nao `BLOCKED_EXTERNAL`.
+
+Proximo passo declarado: corrigir a proveniencia composta (o script tem de listar o SHA de cada
+alvo) e determinar porque o instalador nao escreve. Depois `SigningProvider`.
+
+Veredito global: `NOT_RELEASE_READY`.
+
 ## JANELA E-1251
 
 **Ronda 69. C1 CONSEGUIDO: um build real do HADES produzido, medido e reproduzido.**
