@@ -1,3 +1,28 @@
+## JANELA E-1262
+
+**Ronda 80. `build.verify`: a verificacao deixou de ser funcao que so' os testes invocam.**
+
+- **E-1262** -- `POST /api/agent/v1/build/verify` + 8 testes. 4 rotas `build/*` no router.
+- **POST e nao GET:** a lista de artefactos e checksums nao cabe num URL -- *uma rota que se le' mas
+  exige POST obriga quem a usa a saber mais do que precisa*.
+- **Recusas:** lote vazio 400 · sem `sha256` 400 · sem `caminho` 400 · **>64 artefactos 413** ·
+  ficheiro apagado **404 e nao 500**, sem veredito.
+- **Nao inventa registo de builds:** nao procura por ID -- *um ID que resolve para um ficheiro que
+  ninguem registou e' um apelido, nao uma identidade*.
+- **O aviso de fronteira ENSINA A LER o resultado:** `aprovada` nao significa que exista assinatura;
+  o teste exige essa frase.
+- **Adulterado devolve 200** com `aprovada=false` -- *um 4xx confundiria "pedido invalido" com
+  "artefacto adulterado"*.
+
+Medido: 8 PASS; `./server` **ok 70,2 s**; build 0; vet 0; lint 0.
+
+**Ausente:** nenhum painel nem E2E chama `build.verify` -- o defeito recorrente volta a abrir-se
+nesta rota. Sem adaptador de assinatura.
+
+Proximo passo: o painel a chamar `build.verify` e um E2E que o atravesse.
+
+Veredito global: `NOT_RELEASE_READY`.
+
 ## JANELA E-1261
 
 **Ronda 79. A ligacao que faltava: construir -> VERIFICAR.**

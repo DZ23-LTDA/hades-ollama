@@ -897,6 +897,9 @@ func (a *agentAPI) register(r *gin.Engine) {
 	// COMPARA com uma referencia. Nenhuma escreve, assina ou instala.
 	group.GET("/build/artifact/checksum", a.checksumDeArtefacto)
 	group.GET("/build/artifact/verify", a.verificarArtefacto)
+	// FASE 28.9 passo 7: `build.verify`. Verifica o LOTE de artefactos de um build contra os
+	// SHA-256 que o build mediu. POST porque a lista nao cabe num URL sem limites arbitrarios.
+	group.POST("/build/verify", a.verificarBuild)
 	group.GET("/install/profiles", a.installProfiles)
 	group.GET("/install/plan/:perfil", a.installPlan)
 	// FASE 28.5 do adendo V3: o Signing Identity Center. Le METADADOS de um ficheiro fora do
