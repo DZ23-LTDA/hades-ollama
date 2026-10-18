@@ -1,3 +1,33 @@
+## JANELA E-1265
+
+**Ronda 83. O sexto dos dez providers: `CredentialProvider` — e a regra que o define é NÃO LER.**
+
+- **E-1265** — `credential_provider.go` + 9 testes. Abre **certificados públicos**; faz **apenas
+  `os.Stat`** em `.p12`, `.jks`, `.p8`, `.dpapi`, `.mobileprovision`.
+  *Não leia o segredo para provar que ele existe: o tamanho e a data já provam que o ficheiro está
+  lá, e a leitura é o risco.*
+- **A prova de que não abre não é o comentário:** um teste tira a permissão de leitura a um `.jks`
+  (`chmod 000`) e verifica que ele **continua** no inventário com o tamanho certo. Um `os.Open`
+  teria falhado.
+- **`DESCONHECIDA` também não é lida:** *na dúvida, não se abre.*
+- **Três defeitos apanhados na própria ronda:**
+  1. `Certificados` contava o TIPO e não os válidos — corrigido para exigir fingerprint.
+  2. **`misspell` acusou `inventario` → "inventor"** — mesma armadilha da E-1255, resolvida com
+     `ignore-rules`. *O `misspell` segue LIGADO.*
+  3. **`nilerr` acusou dois `return nil` que engoliam erros** — e tinha razão: agora vão para
+     `Avisos` + `NaoLegiveis`. *Um erro que não aborta não é um erro que não aconteceu.*
+
+**Medido contra o kit real da DZ23 LTDA:** **29 ficheiros, 15 lidos, 14 NÃO lidos, 6 certificados,
+0 expirados**. Certificados lidos de verdade: `hades-upload-certificate.pem` ("HADES", 2054), 3 DER
+do Google Play (2056), 2 Apple Distribution ("leandro prado (K8G36CUP3S)", 2027-10-17). **Os 14
+segredos não foram abertos.**
+
+Medido: 8 PASS; PASS contra o kit real; `./internal/agent` **ok 352,1 s**; build 0; vet 0; lint 0.
+
+**6 dos 10 providers** implementados. Faltam 4: `Publishing`, `Compliance`, `Test`, `Rollback`.
+
+Veredito global: `NOT_RELEASE_READY`.
+
 ## JANELA E-1264
 
 **Ronda 82. `sign.plan`: o `SigningProvider` deixou de ser função que só os testes invocam.**

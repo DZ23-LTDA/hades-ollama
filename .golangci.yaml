@@ -113,6 +113,12 @@ linters:
         # ***O `misspell` SEGUE LIGADO.***
         - projecto      # acusada como "projection"
         - projectos     # a FORMA EXACTA do plural, como o E-547 mediu
+        # E-1265 (MEDIDO): o `misspell` acusou `inventario` -> "inventor" em
+        # `internal/agent/credential_provider.go`. `inventario` e' portugues correto.
+        # ***O `misspell` SEGUE LIGADO.***
+        - inventario    # acusada como "inventor"
+        - inventarios   # a FORMA EXACTA do plural
+        - inventariar   # a forma verbal, que o dicionario tambem acusa
     depguard:
       rules:
         test-only-packages:
