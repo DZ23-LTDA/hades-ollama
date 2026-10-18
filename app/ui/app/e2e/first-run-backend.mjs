@@ -490,7 +490,56 @@ const server = createServer(async (request, response) => {
           },
         });
       }
+    } else if (route === "POST /api/agent/v1/build/smoke") {
+      // FASE 28.7: `build.smoke` -- EXECUTA um binario. O fixture simula o resultado.
+      //
+      // O fixture devolve o que o servidor devolveria SE a raiz estivesse configurada e o artefacto
+      // existisse. O `sem_sandbox` e o `aviso_de_sandbox` vao SEMPRE -- o painel tem de os mostrar.
+      // `readBody` devolve uma STRING. Sem o `JSON.parse` o `pedido` ficava vazio e a rota respondia
+      // 400 dizendo que o caminho faltava -- um sintoma que parecia erro do painel.
+      const corpo = await readBody(request);
+      let pedido = {};
+      try {
+        pedido = JSON.parse(corpo || "{}");
+      } catch {
+        sendJSON(response, 400, { erro: "corpo invalido: esperado JSON" });
+        return;
+      }
+      if (pedido === null || typeof pedido !== "object") {
+        sendJSON(response, 400, { erro: "corpo invalido: esperado um objecto JSON" });
+        return;
+      }
+      const caminho = typeof pedido.caminho === "string" ? pedido.caminho : "";
+      if (!caminho) {
+        sendJSON(response, 400, { erro: "o campo `caminho` e' obrigatorio" });
+      } else if (!Array.isArray(pedido.argumentos) || pedido.argumentos.length === 0) {
+        // A mesma regra do provider: *executar sem argumentos e' executa-lo no modo que o
+        // programador nao escolheu*.
+        sendJSON(response, 400, {
+          erro:
+            "smoke sem argumentos: executar o artefacto sem argumentos e' executa-lo no modo por " +
+            "omissao, que ninguem escolheu",
+        });
+      } else {
+        sendJSON(response, 200, {
+          executou: true,
+          aprovado: true,
+          codigo_de_saida: 0,
+          duracao_ms: 42,
+          saida: "ollama version is 0.40.1",
+          saida_truncada: false,
+          timeout: false,
+          explicacao: "o artefacto arrancou, terminou com exit code 0 em 42 ms",
+          sem_sandbox: true,
+          aviso_de_sandbox:
+            "este smoke executou o artefacto com os privilegios deste processo. NAO ha' sandbox, " +
+            "contentor, VM, emulador ou simulador nesta maquina. A fronteira e' apenas a raiz " +
+            "`HADES_ARTEFACTOS`: o caminho tem de estar dentro dela, com symlinks resolvidos.",
+          raiz_autorizada: true,
+        });
+      }
     } else if (route === "GET /api/agent/v1/credentials/status") {
+
       // FASE 28.7: `credentials.status` -- INVENTARIA o kit, nunca o abre.
       //
       // O fixture simula um kit com um certificado publico e um segredo. O segredo vem com

@@ -1,3 +1,28 @@
+## JANELA E-1275
+
+**Ronda 93. O E2E do `SmokePanel`: o segundo elo fechado no browser real.**
+
+- **E-1275** — `e2e/smoke-panel.spec.ts` + a rota `build/smoke` no fixture.
+- **Duas classificações:** `UI_FIXTURE` (smoke aprovado com aviso) e `BACKEND_REAL_AGENT_RUNTIME`
+  (atravessa o proxy; **`HADES_ARTEFACTOS` não existe em CI** ⇒ **412** — e o spec exige que o painel
+  mostre isso como **erro accionável nomeando a variável**, nunca como resultado).
+- **Quatro garantias nos dois modos:** diz que executa antes; botão **desactivado** sem caminho;
+  **nenhum resultado sem pedido**; e **o pedido HTTP sai de verdade**.
+- **No modo fixture:** saída `0.40.1`, duração `42 ms`, **aviso de sandbox** com *"NAO ha' sandbox"*,
+  e o painel **não pode conter "binário seguro"**.
+
+**Defeito real apanhado na execução:** a fixture devolvia 400 a dizer que faltava o `caminho`. A causa
+não era o painel — era eu: **`readBody` devolve uma string** e eu testava `typeof corpo === "object"`.
+**O sintoma parecia defeito do cliente e era do fixture.** Corrigido com `JSON.parse`.
+
+Medido: **7 passed / 1 skipped**; `npx playwright test` **81 passed / 6 skipped**;
+`npx vitest run` 123 ficheiros / 867 testes; `tsc -b` 0; `eslint .` 0 erros.
+
+**Lacuna:** no modo de backend real só a recusa 412 corre — falta E2E com raiz REAL e binário REAL.
+**8 dos 10 providers sem painel.**
+
+Veredito global: `NOT_RELEASE_READY`.
+
 ## JANELA E-1274
 
 **Ronda 92. O segundo provider ligado ao produto: `SmokePanel` consome `build.smoke`.**
