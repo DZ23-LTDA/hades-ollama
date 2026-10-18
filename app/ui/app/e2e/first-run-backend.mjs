@@ -212,6 +212,37 @@ const server = createServer(async (request, response) => {
       );
       response.end();
     }
+  } else if (route === "GET /api/agent/v1/presets") {
+    // FASE 23 do adendo V3. FIXTURE DECLARADO.
+    //
+    // Estes NAO sao os presets embutidos do HADES: sao dois presets de fixture, com
+    // ids que nenhum catalogo real usa. A razao de nao copiar os 11 reais: *um fixture
+    // que copia a fonte de verdade desactualiza-se em silencio e passa a medir uma
+    // coisa que ja' nao existe.* Com ids `fixture-*` ninguem confunde os dois.
+    //
+    // O que este fixture permite medir: que a UI mostra o que o servidor devolve, que
+    // a contagem de opcoes bate, e que "Sem preset" existe sempre. O que ele NAO mede:
+    // o catalogo real. Para isso ha' `HADES_E2E_BACKEND_URL`.
+    status = 200;
+    sendJSON(response, status, {
+      presets: [
+        {
+          id: "fixture-alfa",
+          name: "Fixture Alfa",
+          description: "Preset de fixture — nao existe em producao.",
+          completion_criteria: ["o teste de fixture terminou"],
+          budget_seconds: 60,
+        },
+        {
+          id: "fixture-beta",
+          name: "Fixture Beta",
+          description: "Segundo preset de fixture.",
+          completion_criteria: ["a UI mostrou os dois"],
+        },
+      ],
+      count: 2,
+      source: "e2e-fixture",
+    });
   } else if (route === "POST /api/me") {
     // Sessão local, sem conta: `fetchUser` devolve null em 401.
     status = 401;
