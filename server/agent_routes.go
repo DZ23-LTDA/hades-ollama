@@ -883,6 +883,10 @@ func (a *agentAPI) register(r *gin.Engine) {
 	// explicita sobre trabalho nao integrado, nunca um efeito lateral de um GET.
 	group.GET("/worktrees", a.worktreeInventario)
 	group.GET("/worktrees/diagnose", a.worktreeDiagnostico)
+	// FASE 2 (E-1236): a UNICA rota mutante de worktree. Aceita suspender/retomar/arquivar --
+	// transicoes REVERSIVEIS. `removido` NAO e' aceite aqui: *remover exige uma decisao sobre
+	// trabalho nao integrado, e essa decisao nao cabe num clique que o painel nao sabe explicar.*
+	group.POST("/worktrees/state", a.worktreeMudarEstado)
 	group.GET("/install/profiles", a.installProfiles)
 	group.GET("/install/plan/:perfil", a.installPlan)
 	// FASE 28.5 do adendo V3: o Signing Identity Center. Le METADADOS de um ficheiro fora do

@@ -144,3 +144,37 @@ export function nomeCurtoDoCaminho(caminho: string): string {
   const partes = caminho.split(/[\\/]/).filter(Boolean);
   return partes.length === 0 ? caminho : partes[partes.length - 1];
 }
+
+/** Resposta de POST /worktrees/state. */
+export interface WorktreeMudancaDeEstado {
+  mission_id: string;
+  de: string;
+  para: string;
+  acao: string;
+  estado_do_registo: boolean;
+  registado_em: string;
+  avisos: string[];
+  somente_leitura: boolean;
+}
+
+/**
+ * As UNICAS accoes aceites por POST /worktrees/state.
+ *
+ * `remover` nao esta' nesta lista, e nao por esquecimento:
+ *
+ *   *Remover exige uma decisao sobre trabalho nao integrado, e essa decisao nao cabe num clique
+ *   que o painel nao sabe explicar.*
+ */
+export type AcaoDeEstadoDoWorktree = "suspender" | "retomar" | "arquivar";
+
+/** Muda o estado de um worktree. So' transicoes reversiveis. */
+export function mudarEstadoDoWorktree(
+  repo: string,
+  missao: string,
+  para: AcaoDeEstadoDoWorktree,
+): Promise<WorktreeMudancaDeEstado> {
+  return agentFetch<WorktreeMudancaDeEstado>(`/api/agent/v1/worktrees/state`, {
+    method: "POST",
+    body: JSON.stringify({ repo, missao, para }),
+  });
+}

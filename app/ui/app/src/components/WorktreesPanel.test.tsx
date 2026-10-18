@@ -97,6 +97,13 @@ const DIAGNOSTICO_OK = {
   pode_remover: true,
 };
 
+/** Todos os botoes da arvore, para provar ausencia de accoes destrutivas. */
+function botoes(arvore: ReactTestRenderer): ReactTestInstance[] {
+  return arvore.root.findAll(
+    (n) => n.type === "button" && typeof n.props.onClick === "function",
+  );
+}
+
 function texto(node: ReactTestInstance | string): string {
   if (typeof node === "string") return node;
   return node.children.map((c) => texto(c as ReactTestInstance | string)).join("");
@@ -259,7 +266,6 @@ describe("WorktreesPanel", () => {
       expect(texto(b).toLowerCase()).not.toMatch(/remover|apagar|eliminar/);
     }
   });
-});
 
   /**
    * O painel diz de ONDE veio o estado.
@@ -305,4 +311,79 @@ describe("WorktreesPanel", () => {
 
     await esperar(arvore, "não pôde ser lido");
 
+  /**
+   * As UNICAS accoes expostas sao' as reversiveis.
+   *
+   *     *Remover exige uma decisao sobre trabalho nao integrado, e essa decisao nao cabe num
+   *     clique que o painel nao sabe explicar.*
+   *
+   * Este teste falha se alguem acrescentar um botao de remover.
+   */
+  });
+  it("oferece suspender, retomar e arquivar -- e NAO oferece remover", async () => {
+    responderCom(INVENTARIO, DIAGNOSTICO_OK);
+    const arvore = await montar();
+    await escreverRepo(arvore, "/repo");
+    await esperar(arvore, "missao-a");
+    await clicarBotao(arvore, "missao-a");
+    await esperar(arvore, "Preparado");
+
+    const rotulos = botoes(arvore).map((b) => texto(b).trim());
+    for (const accao of ["Suspender", "Retomar", "Arquivar"]) {
+      if (!rotulos.includes(accao)) {
+        throw new Error(`botao "${accao}" ausente; encontrados: ${rotulos.join(", ")}`);
+      }
+    }
+    const proibidos = rotulos.filter((r) => /remov|apag|exclu/i.test(r));
+    if (proibidos.length > 0) {
+      throw new Error(`botao destrutivo exposto no painel: ${proibidos.join(", ")}`);
+    }
+  });
+
+  /**
+   * O painel RELE' o backend depois de mudar o estado.
+   *
+   *     *Um painel que actualiza o ecra sem reler o backend mostra o que o programador achou que
+   *     ia acontecer, nao o que aconteceu.*
+   */
+  it("rele o diagnostico depois de mudar o estado", async () => {
+    // Primeira leitura: preparado. Depois do POST, a releitura devolve suspenso.
+    let leituras = 0;
+    agentFetchMock.mockImplementation((url: string) => {
+      if (url.includes("/worktrees/state")) {
+        return Promise.resolve({
+          mission_id: "missao-a",
+          de: "preparado",
+          para: "suspenso",
+          acao: "suspender",
+          estado_do_registo: true,
+          registado_em: "/repo/_state/worktree-state.json",
+          avisos: ["o estado foi persistido"],
+          somente_leitura: false,
+        });
+      }
+      if (url.includes("/diagnose")) {
+        leituras += 1;
+        return Promise.resolve({
+          ...DIAGNOSTICO_OK,
+          estado: leituras >= 2 ? "suspenso" : "preparado",
+          estado_do_registo: leituras >= 2,
+        });
+      }
+      return Promise.resolve(INVENTARIO);
+    });
+
+    const arvore = await montar();
+    await escreverRepo(arvore, "/repo");
+    await esperar(arvore, "missao-a");
+    await clicarBotao(arvore, "missao-a");
+    await esperar(arvore, "Preparado");
+
+    await clicarBotao(arvore, "Suspender");
+    // A releitura tem de aparecer: o painel mostra "Suspenso", nao "Preparado".
+    await esperar(arvore, "Suspenso");
+    if (leituras < 2) {
+      throw new Error(`o painel nao releu o diagnostico (leituras=${leituras})`);
+    }
+  });
 });

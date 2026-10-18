@@ -35,9 +35,11 @@ import { useCallback, useEffect, useState } from "react";
 import {
   corDoEstadoDoWorktree,
   fetchWorktreeDiagnostico,
+  mudarEstadoDoWorktree,
   fetchWorktreeInventario,
   nomeCurtoDoCaminho,
   rotuloDoEstadoDoWorktree,
+  type AcaoDeEstadoDoWorktree,
   type WorktreeDiagnostico,
   type WorktreeInventario,
 } from "@/lib/worktreeClient";
@@ -48,6 +50,9 @@ export function WorktreesPanel() {
   const [repo, setRepo] = useState<string>("");
   const [inventario, setInventario] = useState<WorktreeInventario | null>(null);
   const [diagnostico, setDiagnostico] = useState<WorktreeDiagnostico | null>(null);
+  // A accao em curso, para nao permitir dois cliques na mesma transicao.
+  const [acaoEmCurso, setAcaoEmCurso] = useState<AcaoDeEstadoDoWorktree | null>(null);
+  const [erroDeMudanca, setErroDeMudanca] = useState<string | null>(null);
   const [missaoActiva, setMissaoActiva] = useState<string>("");
   const [estado, setEstado] = useState<Estado>("a-carregar");
   const [erro, setErro] = useState<string>("");
@@ -90,6 +95,25 @@ export function WorktreesPanel() {
   );
 
   const missoes = (inventario?.lista ?? []).filter((w) => w.criado_pelo_hades && w.branch);
+
+  const mudarEstado = async (para: AcaoDeEstadoDoWorktree) => {
+    if (!repo || !missaoActiva || acaoEmCurso !== null) return;
+    setAcaoEmCurso(para);
+    setErroDeMudanca(null);
+    try {
+      await mudarEstadoDoWorktree(repo, missaoActiva, para);
+      // Reler em vez de adivinhar: o estado que aparece e' o que o BACKEND gravou.
+      //
+      //	*Um painel que actualiza o ecra sem reler o backend mostra o que o programador achou
+      //	que ia acontecer, nao o que aconteceu.*
+      const d = await fetchWorktreeDiagnostico(repo, missaoActiva);
+      setDiagnostico(d);
+    } catch (e) {
+      setErroDeMudanca(e instanceof Error ? e.message : String(e));
+    } finally {
+      setAcaoEmCurso(null);
+    }
+  };
 
   return (
     <section aria-labelledby="worktrees-titulo" className="mt-10">
@@ -253,6 +277,48 @@ export function WorktreesPanel() {
                   ? "Pode ser removido sem perda."
                   : `Não pode ser removido: ${diagnostico.motivo_remover ?? "motivo não indicado"}`}
               </p>
+
+              {/*
+                ACCAO REVERSIVEL. So' tres botoes, e nenhum deles remove:
+
+                    *Remover exige uma decisao sobre trabalho nao integrado, e essa decisao nao
+                    cabe num clique que o painel nao sabe explicar.*
+              */}
+              <div className="mt-3 flex flex-wrap gap-2" role="group" aria-label="Mudar estado do worktree">
+                <button
+                  type="button"
+                  className="rounded border border-neutral-700 px-2 py-1 text-sm"
+                  disabled={acaoEmCurso !== null || diagnostico.estado === "suspenso"}
+                  onClick={() => void mudarEstado("suspender")}
+                >
+                  {acaoEmCurso === "suspender" ? "A suspender…" : "Suspender"}
+                </button>
+                <button
+                  type="button"
+                  className="rounded border border-neutral-700 px-2 py-1 text-sm"
+                  disabled={acaoEmCurso !== null || diagnostico.estado === "em_uso"}
+                  onClick={() => void mudarEstado("retomar")}
+                >
+                  {acaoEmCurso === "retomar" ? "A retomar…" : "Retomar"}
+                </button>
+                <button
+                  type="button"
+                  className="rounded border border-neutral-700 px-2 py-1 text-sm"
+                  disabled={acaoEmCurso !== null || diagnostico.estado === "arquivado"}
+                  onClick={() => void mudarEstado("arquivar")}
+                >
+                  {acaoEmCurso === "arquivar" ? "A arquivar…" : "Arquivar"}
+                </button>
+              </div>
+              <p className="mt-1 text-xs text-neutral-500">
+                Só acções reversíveis. Remover não está disponível: exige uma decisão sobre trabalho
+                não integrado.
+              </p>
+              {erroDeMudanca && (
+                <p className="mt-2 text-sm text-rose-300" role="alert">
+                  Não foi possível mudar o estado: {erroDeMudanca}
+                </p>
+              )}
 
               {diagnostico.proximos.length > 0 && (
                 <p className="mt-1 text-sm text-neutral-400">

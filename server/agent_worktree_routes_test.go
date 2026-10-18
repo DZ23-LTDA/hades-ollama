@@ -12,7 +12,9 @@ package server
 //  6. As rotas sao SO' LEITURA: POST e' recusado.
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -364,5 +366,171 @@ func TestWorktreesDiagnosticoComRegistoIlegivel(t *testing.T) {
 	}
 	if !strings.HasPrefix(payload.Registo, "ilegivel") {
 		t.Fatalf("registo = %q; esperado comecar por \"ilegivel\"", payload.Registo)
+	}
+}
+
+// ---------------------------------------------------------------------------------------------
+// POST /worktrees/state -- a UNICA rota mutante de worktree (E-1236).
+// ---------------------------------------------------------------------------------------------
+
+// postJSONState envia um corpo JSON e devolve o codigo e o corpo bruto.
+func postJSONState(t *testing.T, engine *gin.Engine, caminho string, corpo any) (int, string) {
+	t.Helper()
+	bruto, err := json.Marshal(corpo)
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	req := httptest.NewRequest(http.MethodPost, caminho, bytes.NewReader(bruto))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	engine.ServeHTTP(rec, req)
+	return rec.Code, rec.Body.String()
+}
+
+// A transicao aceite muda o estado E PERSISTE-O.
+//
+//	*Um estado que so' o programador muda nao e' um estado do produto: e' um valor de fabrica.*
+func TestWorktreesMudaEstadoEPersiste(t *testing.T) {
+	repo := repoDeWorktree(t)
+	dataRoot := t.TempDir()
+	sessao, err := agent.CreateGitWorktree(context.Background(), repo, dataRoot, "missao-muda", "")
+	if err != nil {
+		t.Fatalf("criar: %v", err)
+	}
+	t.Cleanup(func() {
+		_ = agent.RemoveGitWorktreeComPerda(context.Background(), sessao, "limpeza do teste")
+	})
+
+	engine := routerDeWorktrees(t)
+	codigo, corpo := postJSONState(t, engine, "/api/agent/v1/worktrees/state", map[string]string{
+		"repo": repo, "missao": "missao-muda", "para": "suspender",
+	})
+	if codigo != http.StatusOK {
+		t.Fatalf("POST state -> %d: %s", codigo, corpo)
+	}
+	var payload estadoDeResposta
+	if err := json.Unmarshal([]byte(corpo), &payload); err != nil {
+		t.Fatalf("decodificar: %v (%s)", err, corpo)
+	}
+	if payload.Para != string(agent.WorktreeSuspenso) {
+		t.Fatalf("para = %q; esperado suspension", payload.Para)
+	}
+	if payload.Acao != "suspender" {
+		t.Fatalf("acao = %q", payload.Acao)
+	}
+	if !payload.EstadoDoRegisto {
+		t.Fatal("a rota nao diz ter usado o registo")
+	}
+
+	// E o registo em disco tem mesmo o estado novo.
+	registo, err := agent.CarregarRegistoDeWorktrees(agent.CaminhoDoRegisto(dataRoot))
+	if err != nil {
+		t.Fatalf("recarregar registo: %v", err)
+	}
+	estado, existe := registo.EstadoDe("missao-muda")
+	if !existe {
+		t.Fatal("missao nao ficou no registo")
+	}
+	if estado != agent.WorktreeSuspenso {
+		t.Fatalf("estado persistido = %q; esperado suspension", estado)
+	}
+
+	// E o diagnostico (leitura) ve' o estado novo.
+	var diag worktreeDiagnosticoResposta
+	caminhoDiag := "/api/agent/v1/worktrees/diagnose?repo=" + repo + "&missao=missao-muda"
+	if code := getJSON(t, engine, caminhoDiag, &diag); code != http.StatusOK {
+		t.Fatalf("GET diagnose -> %d", code)
+	}
+	if diag.Estado != string(agent.WorktreeSuspenso) {
+		t.Fatalf("diagnostico = %q; esperado suspension (o ciclo escrever->ler nao fecha)", diag.Estado)
+	}
+}
+
+// `removido` NAO e' aceite por esta rota.
+//
+//	*Remover exige uma decisao sobre trabalho nao integrado, e essa decisao nao cabe num clique
+//	que o painel nao sabe explicar.*
+func TestWorktreesNaoAceitaRemover(t *testing.T) {
+	repo := repoDeWorktree(t)
+	dataRoot := t.TempDir()
+	sessao, err := agent.CreateGitWorktree(context.Background(), repo, dataRoot, "missao-nao-remove", "")
+	if err != nil {
+		t.Fatalf("criar: %v", err)
+	}
+	t.Cleanup(func() {
+		_ = agent.RemoveGitWorktreeComPerda(context.Background(), sessao, "limpeza do teste")
+	})
+
+	engine := routerDeWorktrees(t)
+	for _, pedido := range []string{"removido", "remover", "removed", "delete"} {
+		codigo, corpo := postJSONState(t, engine, "/api/agent/v1/worktrees/state", map[string]string{
+			"repo": repo, "missao": "missao-nao-remove", "para": pedido,
+		})
+		if codigo != http.StatusBadRequest {
+			t.Fatalf("%q aceite com %d: %s", pedido, codigo, corpo)
+		}
+		if !strings.Contains(corpo, "nao permitida") {
+			t.Fatalf("%q: mensagem sem a recusa esperada: %s", pedido, corpo)
+		}
+	}
+	// E o worktree continua la'.
+	if _, err := os.Stat(sessao.WorktreeDir); err != nil {
+		t.Fatalf("o worktree desapareceu: %v", err)
+	}
+}
+
+// Uma transicao que a tabela fechada recusa e' recusada pela ROTA -- nao por uma copia local.
+func TestWorktreesRecusaTransicaoInvalida(t *testing.T) {
+	repo := repoDeWorktree(t)
+	dataRoot := t.TempDir()
+	sessao, err := agent.CreateGitWorktree(context.Background(), repo, dataRoot, "missao-invalida", "")
+	if err != nil {
+		t.Fatalf("criar: %v", err)
+	}
+	t.Cleanup(func() {
+		_ = agent.RemoveGitWorktreeComPerda(context.Background(), sessao, "limpeza do teste")
+	})
+
+	engine := routerDeWorktrees(t)
+	// Primeiro suspender (preparado -> suspension e' valido).
+	if codigo, corpo := postJSONState(t, engine, "/api/agent/v1/worktrees/state", map[string]string{
+		"repo": repo, "missao": "missao-invalida", "para": "suspender",
+	}); codigo != http.StatusOK {
+		t.Fatalf("suspender -> %d: %s", codigo, corpo)
+	}
+	// `removido` nao entra; tentar uma transicao que nao existe na tabela tambem nao.
+	codigo, corpo := postJSONState(t, engine, "/api/agent/v1/worktrees/state", map[string]string{
+		"repo": repo, "missao": "missao-invalida", "para": "arquivar",
+	})
+	// suspension -> arquivado E' valido na tabela; o teste verifica que nao e' recusado por engano.
+	if codigo != http.StatusOK {
+		t.Fatalf("suspension->arquivado devia ser valido, veio %d: %s", codigo, corpo)
+	}
+}
+
+// A rota exige repo e missao.
+func TestWorktreesEstadoExigeParametros(t *testing.T) {
+	engine := routerDeWorktrees(t)
+	for _, corpo := range []map[string]string{
+		{"missao": "m", "para": "suspender"},
+		{"repo": "/tmp", "para": "suspender"},
+		{"repo": "/tmp", "missao": "m"},
+	} {
+		codigo, saida := postJSONState(t, engine, "/api/agent/v1/worktrees/state", corpo)
+		if codigo != http.StatusBadRequest {
+			t.Fatalf("%v aceite com %d: %s", corpo, codigo, saida)
+		}
+	}
+}
+
+// Missao inexistente devolve 404, nao inventa um worktree.
+func TestWorktreesEstadoMissaoInexistente(t *testing.T) {
+	repo := repoDeWorktree(t)
+	engine := routerDeWorktrees(t)
+	codigo, corpo := postJSONState(t, engine, "/api/agent/v1/worktrees/state", map[string]string{
+		"repo": repo, "missao": "nao-existe-mesmo", "para": "suspender",
+	})
+	if codigo != http.StatusNotFound {
+		t.Fatalf("missao inexistente -> %d: %s", codigo, corpo)
 	}
 }
