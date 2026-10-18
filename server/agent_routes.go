@@ -887,6 +887,10 @@ func (a *agentAPI) register(r *gin.Engine) {
 	// transicoes REVERSIVEIS. `removido` NAO e' aceite aqui: *remover exige uma decisao sobre
 	// trabalho nao integrado, e essa decisao nao cabe num clique que o painel nao sabe explicar.*
 	group.POST("/worktrees/state", a.worktreeMudarEstado)
+
+	// FASE 3 (E-1240): comparacao objectiva de solucoes. POST porque o corpo pode ser grande;
+	// NAO muta nada e diz isso na resposta (`somente_leitura`).
+	group.POST("/solutions/compare", a.comparacaoDeSolucoes)
 	group.GET("/install/profiles", a.installProfiles)
 	group.GET("/install/plan/:perfil", a.installPlan)
 	// FASE 28.5 do adendo V3: o Signing Identity Center. Le METADADOS de um ficheiro fora do
