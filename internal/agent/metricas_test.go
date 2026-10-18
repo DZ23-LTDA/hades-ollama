@@ -9,7 +9,11 @@ package agent
 //   - um cancelamento do utilizador contado como falha do modelo;
 //   - um previsto que mentiu e nao aparece.
 
-import "testing"
+import (
+	"context"
+	"errors"
+	"testing"
+)
 
 // TestSemAmostrasTodosOsEixosSaoNaoMedidos e' o discriminador central. *Devolver zeros sem os
 // declarar seria pior do que devolver nada: pareceria que se mediu e deu zero.*
@@ -289,5 +293,171 @@ func TestResumoDeterministico(t *testing.T) {
 			t.Fatalf("ordenacao nao determinista na posicao %d: %q vs %q",
 				i, primeira[i].Modelo, segunda[i].Modelo)
 		}
+	}
+}
+
+// ── FASE 21: a colheita a partir dos eventos REAIS ─────────────────────────────
+
+// eventosDeTeste monta os eventos como o runtime os produz.
+func eventosDeTeste(t *testing.T) map[string][]Event {
+	t.Helper()
+	return map[string][]Event{
+		"m1": {
+			{Type: "step.model.route", StepID: "s1", Payload: map[string]any{"model": "p/local"}},
+			{Type: "step.succeeded", StepID: "s1", Payload: map[string]any{"duration_ms": float64(120)}},
+			{Type: "step.model.route", StepID: "s2", Payload: map[string]any{"model": "p/local"}},
+			{Type: "step.succeeded", StepID: "s2", Payload: map[string]any{"duration_ms": float64(80)}},
+			{Type: "step.model.route", StepID: "s3", Payload: map[string]any{"model": "p/remoto"}},
+			{Type: "step.failed", StepID: "s3", Payload: map[string]any{
+				"duration_ms": float64(3000), "error": "tool exploded",
+			}},
+		},
+	}
+}
+
+func leitorDeTeste(dados map[string][]Event, falhaEm map[string]bool) LeitorDeEventos {
+	return func(missionID string) ([]Event, error) {
+		if falhaEm[missionID] {
+			return nil, errors.New("store indisponivel")
+		}
+		return dados[missionID], nil
+	}
+}
+
+// TestColheitaLeADuracaoDoEvento: a latencia vem do `duration_ms` MEDIDO no runtime, nao de um
+// relogio refeito na agregacao.
+func TestColheitaLeADuracaoDoEvento(t *testing.T) {
+	amostras := amostrasDosEventos(eventosDeTeste(t)["m1"])
+	if len(amostras) != 3 {
+		t.Fatalf("esperadas 3 amostras (2 sucessos + 1 falha), vieram %d", len(amostras))
+	}
+	duracoes := map[int64]bool{120: true, 80: true, 3000: true}
+	for _, amostra := range amostras {
+		if !duracoes[amostra.LatenciaMS] {
+			t.Fatalf("duracao %d nao corresponde a nenhum evento; duracoes=%v", amostra.LatenciaMS, duracoes)
+		}
+	}
+}
+
+// TestColheitaCruzaModeloPorStepID: o modelo vem do `step.model.route` do MESMO step.
+func TestColheitaCruzaModeloPorStepID(t *testing.T) {
+	amostras := amostrasDosEventos(eventosDeTeste(t)["m1"])
+	porDuracao := map[int64]string{}
+	for _, amostra := range amostras {
+		porDuracao[amostra.LatenciaMS] = amostra.ModelID
+	}
+	if porDuracao[120] != "p/local" || porDuracao[80] != "p/local" {
+		t.Fatalf("os passos s1/s2 tem de ser do modelo p/local; veio %v", porDuracao)
+	}
+	if porDuracao[3000] != "p/remoto" {
+		t.Fatalf("o passo s3 tem de ser do modelo p/remoto; veio %q", porDuracao[3000])
+	}
+}
+
+// TestColheitaPassoSemRotaEDeclarado: um passo sem `step.model.route` ainda e' uma amostra (a
+// duracao foi medida); o modelo fica declarado como `nao-roteado` em vez de inventado.
+func TestColheitaPassoSemRotaEDeclarado(t *testing.T) {
+	amostras := amostrasDosEventos([]Event{
+		{Type: "step.succeeded", StepID: "sem-rota", Payload: map[string]any{"duration_ms": float64(50)}},
+	})
+	if len(amostras) != 1 {
+		t.Fatalf("esperada 1 amostra, vieram %d", len(amostras))
+	}
+	if amostras[0].ModelID != "nao-roteado" {
+		t.Fatalf("modelo = %q, esperado `nao-roteado` (declarar a lacuna, nao inventar)",
+			amostras[0].ModelID)
+	}
+}
+
+// TestColheitaCancelamentoNaoViraFalha: o erro que diz "cancel" e' cancelamento, nao falha do
+// modelo. *Culpar o modelo por uma decisao humana e' o erro que o resumo evita.*
+func TestColheitaCancelamentoNaoViraFalha(t *testing.T) {
+	resumo, _ := MetricasDasMissoes([]Mission{{ID: "m1"}}, leitorDeTeste(map[string][]Event{
+		"m1": {
+			{Type: "step.succeeded", StepID: "a", Payload: map[string]any{"duration_ms": float64(10)}},
+			{Type: "step.failed", StepID: "b", Payload: map[string]any{
+				"duration_ms": float64(20), "error": "mission cancelled by user",
+			}},
+		},
+	}, nil))
+	if resumo.Cancelamentos != 1 {
+		t.Fatalf("cancelamentos = %d", resumo.Cancelamentos)
+	}
+	if resumo.Falhas != 0 {
+		t.Fatalf("falhas = %d -- um cancelamento nao e' falha do modelo", resumo.Falhas)
+	}
+	if resumo.TaxaDeSucesso != 1.0 {
+		t.Fatalf("taxa = %.3f, esperado 1.0", resumo.TaxaDeSucesso)
+	}
+}
+
+// TestColheitaMissaoIlegivelNaoApagaAsOutras: uma leitura que falha conta em `ilegiveis` e NAO
+// apaga as metricas das outras missoes -- mas tambem nao desaparece.
+func TestColheitaMissaoIlegivelNaoApagaAsOutras(t *testing.T) {
+	resumo, ilegiveis := MetricasDasMissoes(
+		[]Mission{{ID: "boa"}, {ID: "quebrada"}},
+		leitorDeTeste(map[string][]Event{
+			"boa": {{Type: "step.succeeded", StepID: "s", Payload: map[string]any{"duration_ms": float64(100)}}},
+		}, map[string]bool{"quebrada": true}),
+	)
+	if ilegiveis != 1 {
+		t.Fatalf("ilegiveis = %d, esperado 1", ilegiveis)
+	}
+	if resumo.Sucessos != 1 {
+		t.Fatalf("a missao legivel tem de continuar a contar; sucessos=%d", resumo.Sucessos)
+	}
+	// E o resumo continua a DECLARAR os eixos que nao foram medidos.
+	achouCusto := false
+	for _, eixo := range resumo.EixosNaoMedidos {
+		if eixo == "custo" {
+			achouCusto = true
+		}
+	}
+	if !achouCusto {
+		t.Fatalf("`custo` tem de constar como NAO MEDIDO (os eventos nao trazem custo realizado); "+
+			"veio %v", resumo.EixosNaoMedidos)
+	}
+}
+
+// TestColheitaSemMissoesDeclaraTudo: sem missoes, todos os eixos NAO MEDIDOS e zero ilegiveis.
+func TestColheitaSemMissoesDeclaraTudo(t *testing.T) {
+	resumo, ilegiveis := MetricasDasMissoes(nil, leitorDeTeste(nil, nil))
+	if ilegiveis != 0 {
+		t.Fatalf("ilegiveis = %d", ilegiveis)
+	}
+	if len(resumo.EixosNaoMedidos) == 0 {
+		t.Fatal("sem missoes TODOS os eixos tem de ser declarados NAO MEDIDOS")
+	}
+}
+
+// TestRuntimeMedeADuracaoDoPasso e' o discriminador que liga a FASE 21 ao RUNTIME.
+//
+// Sem isto, a agregacao seria uma funcao pura bonita a somar zeros: o evento `step.succeeded`
+// NAO trazia duracao nenhuma antes desta fatia, e *um calculo sobre um campo que ninguem
+// preenche nao e' uma medicao: e' um zero com nome comprido.*
+//
+// O teste exige `duration_ms` PRESENTE e NAO NEGATIVO no evento real, produzido por uma missao
+// real executada pelo runtime real. Nao vale um payload montado a mao.
+func TestRuntimeMedeADuracaoDoPasso(t *testing.T) {
+	passos := []Step{{
+		ID: "cronometrado", Kind: "workspace.list", Title: "passo cronometrado",
+		State: StepPending, RequiredCapabilities: []string{"coding"},
+	}}
+	runtime, id, eventos := missaoRoteada(t, &ferramentaQueAnotaModelo{}, passos, registryDeTeste(t), true)
+	if err := runtime.Run(context.Background(), id); err != nil {
+		t.Fatalf("executar a missao: %v", err)
+	}
+	pacote := payloadDoEvento(t, eventos(), "step.succeeded")
+	valor, existe := pacote["duration_ms"]
+	if !existe {
+		t.Fatal("o evento `step.succeeded` TEM de trazer `duration_ms` -- *sem medicao no runtime, " +
+			"a agregacao da FASE 21 soma zeros*")
+	}
+	duracao, ok := numeroDoPayload(valor)
+	if !ok {
+		t.Fatalf("`duration_ms` veio como %T", valor)
+	}
+	if duracao < 0 {
+		t.Fatalf("`duration_ms` = %v -- uma duracao negativa e' impossivel", duracao)
 	}
 }

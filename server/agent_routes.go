@@ -860,6 +860,11 @@ func (a *agentAPI) register(r *gin.Engine) {
 	group.GET("/missions", a.missions)
 	// E-625: relatorio de desempenho das missoes visiveis para o chamador (Paperclip §10).
 	group.GET("/performance", a.performance)
+	// FASE 21 + FASE 24: a telemetria AGREGADA (latencia/p50/p95/p99, custo previsto vs
+	// realizado) dos eventos REAIS. Nome distinto de `/metrics` de proposito: a rota
+	// existente devolve CONTADORES (`runtime.Metrics()`), nao agregados. *Duas rotas com
+	// o mesmo nome e conteudos diferentes seriam duas verdades sobre a mesma pergunta.*
+	group.GET("/metrics/telemetry", a.agentTelemetry)
 	// FASE 23 do adendo V3: catalogo de presets de MISSAO. Fica em `/presets` e nao em
 	// `/missions/presets` de proposito: `/missions/:id` ja' existe, e um literal ao lado de um
 	// parametro na mesma posicao e' ambiguidade de roteador, nao funcionalidade.
@@ -4753,4 +4758,41 @@ func boolDeQuery(bruto string) (bool, error) {
 	default:
 		return false, fmt.Errorf("valor booleano invalido %q", bruto)
 	}
+}
+
+// agentTelemetry devolve a telemetria AGREGADA das missoes visiveis ao chamador (FASE 21).
+//
+// PORQUE NAO SE CHAMA `/metrics`: essa rota JA' EXISTE e devolve `runtime.Metrics()`, que sao
+// CONTADORES (stepsStarted, toolCalls, retries). *Dois conteudos diferentes com o mesmo nome
+// seriam duas verdades sobre a mesma pergunta* -- o consumidor pediria `/metrics` e nao
+// saberia qual das duas recebeu.
+//
+// A colheita vem dos eventos `step.succeeded`/`step.failed`, que passam a trazer `duration_ms`
+// medido em volta do `tool.Execute`. *Sem essa medicao no runtime, a agregacao seria decorativa:
+// somaria zeros bonitos.*
+//
+// O QUE A ROTA **NAO** INVENTA: tokens, custo realizado, energia e VRAM. O `step.model.route`
+// traz custo ESTIMADO por 1k tokens -- que nao e' custo realizado e nao se soma como se fosse.
+// Esses eixos saem em `axes_not_measured`, e isso e' o contrato, nao uma omissao.
+func (a *agentAPI) agentTelemetry(c *gin.Context) {
+	missions, err := a.missoesDoChamador(c)
+	if err != nil {
+		writeAgentError(c, http.StatusInternalServerError, err)
+		return
+	}
+	runtime := a.scopedRuntime(c)
+	resumo, ilegiveis := agent.MetricasDasMissoes(missions, runtime.Events)
+	c.JSON(http.StatusOK, gin.H{
+		"metrics": resumo,
+		// A comparacao por modelo ordena por p95, nao pela media: *a cauda e' o que o
+		// utilizador sente.*
+		"by_model": agent.ComparacaoPorModeloAmostras(missions, runtime.Events),
+		// Declarar o escopo e' parte do contrato: um agregado sem escopo le-se como global.
+		"scope": "missoes visiveis para o chamador (organizacao da sessao)",
+		// Uma leitura que falhou nao pode apagar as metricas das outras missoes -- mas
+		// tambem nao pode desaparecer. *Uma falha silenciosa faria o relatorio parecer mais
+		// completo do que e'.*
+		"missions_unreadable": ilegiveis,
+		"percentiles_method":  agent.MetodoDosPercentis,
+	})
 }

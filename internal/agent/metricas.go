@@ -19,7 +19,9 @@ package agent
 // legitima (consumiu 0 mJ porque nao correu); `nil` e' a ausencia de medida.
 
 import (
+	"encoding/json"
 	"sort"
+	"strings"
 )
 
 // MetodoDosPercentis declara COMO o percentil foi calculado. *Um numero sem metodo e' um numero
@@ -291,4 +293,130 @@ func ComparacaoPorModelo(amostras []AmostraDeInferencia) []ResumoPorModelo {
 type ResumoPorModelo struct {
 	Modelo string           `json:"model"`
 	Resumo ResumoDeMetricas `json:"summary"`
+}
+
+// ── FASE 21: colheita a partir dos eventos REAIS ────────────────────────────────
+//
+// `ResumirMetricas` agrega amostras; esta parte COLHE as amostras dos eventos que o runtime
+// ja' produz. Sem esta ponte, a FASE 21 seria uma funcao pura bonita a agregar zeros.
+//
+// A DURACAO VEM DO EVENTO, nao de um relogio refeito aqui: `step.succeeded` e `step.failed`
+// passam a trazer `duration_ms` medido em volta do `tool.Execute` (runtime.go). *Refazer a
+// conta aqui seria a segunda verdade sobre o mesmo tempo.*
+//
+// O QUE OS EVENTOS **NAO** TRAZEM, e que por isso continua declarado NAO MEDIDO:
+//   tokens de entrada/saida, custo realizado, energia, VRAM.
+// O `step.model.route` traz o custo ESTIMADO por 1k tokens -- que nao e' custo realizado e
+// nao se pode somar como se fosse. *Somar uma estimativa por 1k sem os tokens medidos daria um
+// numero com cara de factura e sem factura por tras.*
+
+// LeitorDeEventos e' injectavel: em producao e' o store; num teste e' uma funcao.
+type LeitorDeEventos func(missionID string) ([]Event, error)
+
+// MetricasDasMissoes colhe `step.succeeded` e `step.failed` das missoes e agrega.
+//
+// Erros de leitura NAO abortam a colheita: uma missao ilegivel nao pode apagar as metricas das
+// outras. O numero de missoes ilegiveis e' DECLARADO no resumo -- *uma falha silenciosa de
+// leitura faria o relatorio parecer mais completo do que e'.*
+func MetricasDasMissoes(missoes []Mission, leitor LeitorDeEventos) (ResumoDeMetricas, int) {
+	amostras := make([]AmostraDeInferencia, 0, len(missoes)*4)
+	ilegiveis := 0
+	for _, missao := range missoes {
+		eventos, err := leitor(missao.ID)
+		if err != nil {
+			ilegiveis++
+			continue
+		}
+		amostras = append(amostras, amostrasDosEventos(eventos)...)
+	}
+	return ResumirMetricas(amostras), ilegiveis
+}
+
+// amostrasDosEventos converte os eventos de UMA missao em amostras. Extraida para que a
+// colheita e a comparacao por modelo usem a MESMA conversao.
+func amostrasDosEventos(eventos []Event) []AmostraDeInferencia {
+	modelo := map[string]string{} // step_id -> "provider/model"
+	for _, evento := range eventos {
+		if evento.Type != "step.model.route" {
+			continue
+		}
+		pacote, ok := evento.Payload.(map[string]any)
+		if !ok {
+			continue
+		}
+		if nome, ok := pacote["model"].(string); ok && nome != "" {
+			modelo[evento.StepID] = nome
+		}
+	}
+	amostras := make([]AmostraDeInferencia, 0, 4)
+	for _, evento := range eventos {
+		if evento.Type != "step.succeeded" && evento.Type != "step.failed" {
+			continue
+		}
+		pacote, _ := evento.Payload.(map[string]any)
+		duracao := int64(0)
+		if pacote != nil {
+			if valor, ok := numeroComoInt64(pacote["duration_ms"]); ok {
+				duracao = valor
+			}
+		}
+		nome := modelo[evento.StepID]
+		if nome == "" {
+			// Sem decisao de modelo registada o passo ainda e' uma amostra: a duracao foi
+			// medida. Marcar o modelo como vazio e' declarar a lacuna.
+			nome = "nao-roteado"
+		}
+		amostra := AmostraDeInferencia{
+			ModelID:    nome,
+			Provider:   nome,
+			LatenciaMS: duracao,
+			Sucesso:    evento.Type == "step.succeeded",
+		}
+		if evento.Type == "step.failed" && pacote != nil {
+			if texto, ok := pacote["error"].(string); ok {
+				amostra.Cancelada = contemCancelamento(texto)
+			}
+		}
+		amostras = append(amostras, amostra)
+	}
+	return amostras
+}
+
+// numeroComoInt64 aceita os tipos que o JSON/persistencia podem devolver, sem inventar valor.
+func numeroComoInt64(valor any) (int64, bool) {
+	switch numero := valor.(type) {
+	case float64:
+		return int64(numero), true
+	case int:
+		return int64(numero), true
+	case int64:
+		return numero, true
+	case json.Number:
+		if convertido, err := numero.Int64(); err == nil {
+			return convertido, true
+		}
+	}
+	return 0, false
+}
+
+// contemCancelamento reconhece o cancelamento como CAUSA, para nao o contar como falha do
+// modelo. *Culpar o modelo por uma decisao humana e' o erro que o resumo evita.*
+func contemCancelamento(texto string) bool {
+	minusculo := strings.ToLower(texto)
+	return strings.Contains(minusculo, "cancel")
+}
+
+// ComparacaoPorModeloAmostras junta a colheita e a comparacao por modelo num unico passo, para
+// o chamador nao ter de colher duas vezes. *Duas colheitas sobre os mesmos eventos dariam dois
+// agregados que podem divergir se um evento novo chegar no meio.*
+func ComparacaoPorModeloAmostras(missoes []Mission, leitor LeitorDeEventos) []ResumoPorModelo {
+	amostras := make([]AmostraDeInferencia, 0, len(missoes)*4)
+	for _, missao := range missoes {
+		eventos, err := leitor(missao.ID)
+		if err != nil {
+			continue
+		}
+		amostras = append(amostras, amostrasDosEventos(eventos)...)
+	}
+	return ComparacaoPorModelo(amostras)
 }

@@ -2445,7 +2445,12 @@ func (r *Runtime) Run(ctx context.Context, id string) (runErr error) {
 			toolContext.WorkspaceSnapshotPrefix = snapshotPrefix
 			toolContext.MissionArtifacts = append([]ArtifactManifest(nil), mission.Artifacts...)
 		}
+		// FASE 21: o relogio nasce AQUI, em volta da unica chamada que executa o passo.
+		// *Sem uma duracao medida no runtime, a FASE 21 fica decorativa: agrega zeros
+		// bonitos.* O evento `step.succeeded` nao trazia duracao nenhuma.
+		inicioDoPasso := time.Now()
 		result, executeErr := tool.Execute(runCtx, toolContext, step.Input)
+		duracaoMS := time.Since(inicioDoPasso).Milliseconds()
 		toolSpan.End("ok", executeErr)
 		if r.missionCancelled(id) {
 			return nil
@@ -2462,13 +2467,13 @@ func (r *Runtime) Run(ctx context.Context, id string) (runErr error) {
 				if err := r.store.PutMissionIfVersion(mission, expectedVersion); err != nil {
 					return err
 				}
-				if err := r.observeEvent(mission, "step.retry_scheduled", step.ID, map[string]any{"error": RedactDLP(executeErr.Error())}); err != nil {
+				if err := r.observeEvent(mission, "step.retry_scheduled", step.ID, map[string]any{"duration_ms": duracaoMS, "error": RedactDLP(executeErr.Error())}); err != nil {
 					return err
 				}
 				index--
 				continue
 			}
-			return r.failStep(mission, step, executeErr)
+			return r.failStep(mission, step, executeErr, duracaoMS)
 		}
 		expectedVersion = mission.Version
 		step.State = StepSucceeded
@@ -2491,7 +2496,11 @@ func (r *Runtime) Run(ctx context.Context, id string) (runErr error) {
 				})
 			}
 		}
-		succeededPayload := map[string]any{"artifacts": len(result.Artifacts)}
+		succeededPayload := map[string]any{
+			"artifacts": len(result.Artifacts),
+			// FASE 21: duracao MEDIDA em volta do `tool.Execute`, nao estimada.
+			"duration_ms": duracaoMS,
+		}
 		// step.Result ja passou por RedactValue, e o evento aplica RedactValue de
 		// novo: publicar o trecho da saida nao expoe conteudo que ainda nao esteja
 		// persistido de forma redigida na propria missao.
@@ -2901,7 +2910,10 @@ func (r *Runtime) failMission(mission Mission, err error) (Mission, error) {
 	return redactMissionForPersistence(mission), err
 }
 
-func (r *Runtime) failStep(mission Mission, step *Step, err error) error {
+// failStep aceita a duracao OPCIONAL: nem toda a falha acontece dentro do `tool.Execute`
+// (capacidade recusada, aprovacao invalida). *Uma duracao que nao foi medida nao se inventa;
+// a funcao devolve 0 e o `metricas` do lado do resumo distingue 0 de NAO MEDIDO.*
+func (r *Runtime) failStep(mission Mission, step *Step, err error, duracoes ...int64) error {
 	expectedVersion := mission.Version
 	step.State = StepFailed
 	r.metrics.stepsFailed.Add(1)
@@ -2913,10 +2925,18 @@ func (r *Runtime) failStep(mission Mission, step *Step, err error) error {
 	if saveErr := r.store.PutMissionIfVersion(mission, expectedVersion); saveErr != nil {
 		return saveErr
 	}
-	if eventErr := r.observeEvent(mission, "step.failed", step.ID, map[string]any{"error": RedactDLP(err.Error()), "attempts": step.Attempts}); eventErr != nil {
+	if eventErr := r.observeEvent(mission, "step.failed", step.ID, map[string]any{"duration_ms": primeiraDuracao(duracoes), "error": RedactDLP(err.Error()), "attempts": step.Attempts}); eventErr != nil {
 		return errors.Join(err, eventErr)
 	}
 	return err
+}
+
+// primeiraDuracao devolve a duracao declarada, ou 0 quando nao houve medicao.
+func primeiraDuracao(duracoes []int64) int64 {
+	if len(duracoes) == 0 {
+		return 0
+	}
+	return duracoes[0]
 }
 
 func appendUniqueArtifacts(existing, incoming []ArtifactManifest) []ArtifactManifest {
