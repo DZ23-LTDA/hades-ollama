@@ -129,7 +129,7 @@ describe("BuildPlanPanel", () => {
     responderCom(plano());
     const r = await montar();
 
-    const campo = r.root.findByType("input");
+    const campo = r.root.findByProps({ id: "build-plan-repo" });
     await act(async () => {
       campo.props.onChange({ target: { value: "C:\\projeto" } });
     });
@@ -145,7 +145,7 @@ describe("BuildPlanPanel", () => {
     const r = await montar();
 
     await act(async () => {
-      r.root.findByType("input").props.onChange({ target: { value: "C:\\projeto" } });
+      r.root.findByProps({ id: "build-plan-repo" }).props.onChange({ target: { value: "C:\\projeto" } });
     });
 
     const textos = JSON.stringify(r.toJSON());
@@ -159,7 +159,7 @@ describe("BuildPlanPanel", () => {
     const r = await montar();
 
     await act(async () => {
-      r.root.findByType("input").props.onChange({ target: { value: "C:\\projeto" } });
+      r.root.findByProps({ id: "build-plan-repo" }).props.onChange({ target: { value: "C:\\projeto" } });
     });
 
     const textos = JSON.stringify(r.toJSON());
@@ -176,7 +176,7 @@ describe("BuildPlanPanel", () => {
     const r = await montar();
 
     await act(async () => {
-      r.root.findByType("input").props.onChange({ target: { value: "C:\\projeto" } });
+      r.root.findByProps({ id: "build-plan-repo" }).props.onChange({ target: { value: "C:\\projeto" } });
     });
 
     const textos = JSON.stringify(r.toJSON());
@@ -202,7 +202,7 @@ describe("BuildPlanPanel", () => {
     const r = await montar();
 
     await act(async () => {
-      r.root.findByType("input").props.onChange({ target: { value: "C:\\projeto" } });
+      r.root.findByProps({ id: "build-plan-repo" }).props.onChange({ target: { value: "C:\\projeto" } });
     });
 
     const textos = JSON.stringify(r.toJSON());
@@ -216,7 +216,7 @@ describe("BuildPlanPanel", () => {
     const r = await montar();
 
     await act(async () => {
-      r.root.findByType("input").props.onChange({ target: { value: "C:\\projeto" } });
+      r.root.findByProps({ id: "build-plan-repo" }).props.onChange({ target: { value: "C:\\projeto" } });
     });
 
     const alertas = r.root.findAllByProps({ role: "alert" });
@@ -229,7 +229,7 @@ describe("BuildPlanPanel", () => {
     const r = await montar();
 
     await act(async () => {
-      r.root.findByType("input").props.onChange({ target: { value: "C:\\projeto" } });
+      r.root.findByProps({ id: "build-plan-repo" }).props.onChange({ target: { value: "C:\\projeto" } });
     });
 
     const textos = JSON.stringify(r.toJSON());
@@ -245,7 +245,7 @@ describe("BuildPlanPanel", () => {
     const r = await montar();
 
     await act(async () => {
-      r.root.findByType("input").props.onChange({ target: { value: "C:\\projeto" } });
+      r.root.findByProps({ id: "build-plan-repo" }).props.onChange({ target: { value: "C:\\projeto" } });
     });
 
     expect(JSON.stringify(r.toJSON())).toContain("go install");
@@ -256,7 +256,7 @@ describe("BuildPlanPanel", () => {
     const r = await montar();
 
     await act(async () => {
-      r.root.findByType("input").props.onChange({ target: { value: "C:\\projeto" } });
+      r.root.findByProps({ id: "build-plan-repo" }).props.onChange({ target: { value: "C:\\projeto" } });
     });
 
     expect(JSON.stringify(r.toJSON())).toContain("android/");

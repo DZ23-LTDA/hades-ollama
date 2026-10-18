@@ -1,3 +1,27 @@
+## JANELA E-1259
+
+**Ronda 77. As rotas da E-1258 deixaram de estar so' no servidor: o painel chama-as.**
+
+- **E-1259** -- `artifactClient.ts` + seccao **dentro** do `BuildPlanPanel` (nao painel paralelo) +
+  7 testes. *Tres pecas provadas em separado nao sao uma integracao provada.*
+- **Dois nomes que nao se confundem:** `obterChecksum` mede, `verificarArtefacto` compara -- *uma
+  funcao que so' sabe verificar obriga quem so' quer o hash a inventar uma referencia.*
+- **O tipo obriga a cobrir os quatro estados:** `const inesperado: never = estado` -- *se o backend
+  ganhar um estado novo, o TypeScript falha AQUI e nao no ecra.*
+- **O aviso de fronteira vem do backend** e e' mostrado tal e qual.
+- **"Verificar" desactivado sem referencia**, com guarda tambem no handler.
+- **Dois defeitos meus:** `vi.importActual`+spread voltou a dar `__spreadValues` (mesma armadilha da
+  E-1248 -- corrigido mockando so' o `agentFetch`); e **9 dos 10 testes antigos falharam** com
+  `Expected 1 but found 3 instances with node type: "input"` -- a seleccao passou a ser pelo `id`,
+  **mais precisa**.
+- **O bug `$T`/`$t` do PowerShell apareceu pela TERCEIRA vez.**
+
+Medido: 7 + 10 PASS; **121 ficheiros / 849 testes**; tsc 0; eslint 0; build 0; budget PASS.
+
+Proximo passo: E2E Playwright da seccao; depois o `BuildProvider` a chamar o verificador.
+
+Veredito global: `NOT_RELEASE_READY`.
+
 ## JANELA E-1258
 
 **Ronda 76. O verificador deixou de ser uma funcao Go: `artifact.checksum` e `artifact.verify`.**

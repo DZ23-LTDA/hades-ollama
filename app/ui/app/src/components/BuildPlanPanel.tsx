@@ -39,14 +39,69 @@ import {
   resumirSondas,
   type PlanoDeRelease,
 } from "@/lib/buildPlanClient";
+import {
+  descreverAssinatura,
+  obterChecksum,
+  resumirVerificacao,
+  tamanhoLegivel,
+  verificarArtefacto,
+  type ChecksumDeArtefacto,
+  type VerificacaoDeArtefacto,
+} from "@/lib/artifactClient";
 
 type Estado = "a-carregar" | "pronto" | "erro";
+
+/** Estado da seccao de verificacao de artefacto. Separado do estado do plano. */
+type EstadoDoArtefacto = "inativo" | "a-medir" | "pronto" | "erro";
 
 export function BuildPlanPanel() {
   const [repo, setRepo] = useState<string>("");
   const [plano, setPlano] = useState<PlanoDeRelease | null>(null);
   const [estado, setEstado] = useState<Estado>("a-carregar");
   const [erro, setErro] = useState<string>("");
+
+  // FASE 28.7/28.8: verificacao de um artefacto ja' produzido.
+  const [caminhoDoArtefacto, setCaminhoDoArtefacto] = useState<string>("");
+  const [shaEsperado, setShaEsperado] = useState<string>("");
+  const [estadoDoArtefacto, setEstadoDoArtefacto] = useState<EstadoDoArtefacto>("inativo");
+  const [erroDoArtefacto, setErroDoArtefacto] = useState<string>("");
+  const [medicao, setMedicao] = useState<ChecksumDeArtefacto | null>(null);
+  const [verificacao, setVerificacao] = useState<VerificacaoDeArtefacto | null>(null);
+
+  const medir = useCallback(async () => {
+    const caminho = caminhoDoArtefacto.trim();
+    if (!caminho) return;
+    setEstadoDoArtefacto("a-medir");
+    setErroDoArtefacto("");
+    setMedicao(null);
+    setVerificacao(null);
+    try {
+      setMedicao(await obterChecksum(caminho));
+      setEstadoDoArtefacto("pronto");
+    } catch (falha) {
+      setErroDoArtefacto(mensagemDeFalha(falha));
+      setEstadoDoArtefacto("erro");
+    }
+  }, [caminhoDoArtefacto]);
+
+  const verificar = useCallback(async () => {
+    const caminho = caminhoDoArtefacto.trim();
+    const referencia = shaEsperado.trim();
+    // *Sem referencia isto seria uma medicao, nao uma verificacao.* O botao ja' esta' desactivado,
+    // mas a guarda fica aqui para que um `disabled` removido por CSS nao invente uma verificacao.
+    if (!caminho || !referencia) return;
+    setEstadoDoArtefacto("a-medir");
+    setErroDoArtefacto("");
+    setMedicao(null);
+    setVerificacao(null);
+    try {
+      setVerificacao(await verificarArtefacto(caminho, referencia));
+      setEstadoDoArtefacto("pronto");
+    } catch (falha) {
+      setErroDoArtefacto(mensagemDeFalha(falha));
+      setEstadoDoArtefacto("erro");
+    }
+  }, [caminhoDoArtefacto, shaEsperado]);
 
   const carregar = useCallback(async (alvo: string) => {
     if (!alvo.trim()) {
@@ -243,6 +298,110 @@ export function BuildPlanPanel() {
           )}
         </>
       )}
+
+      {/*
+        FASE 28.7/28.8: verificacao de um artefacto JA' produzido.
+        A seccao fica DENTRO deste painel, e nao num painel paralelo -- *nao crie painel paralelo*.
+
+        A E-1258 criou as rotas e provou-as com 8 testes, mas nenhum painel as chamava. Este bloco
+        fecha esse elo: *tres pecas provadas em separado nao sao uma integracao provada.*
+      */}
+      <section aria-labelledby="build-plan-artefacto">
+        <h3 id="build-plan-artefacto">Verificar um artefacto</h3>
+        <p>
+          Mede o SHA-256 de um ficheiro que <strong>já existe</strong> e, se der a referência,
+          compara. Não constrói, não assina e não instala. O caminho tem de ser{" "}
+          <strong>absoluto</strong>.
+        </p>
+
+        <label htmlFor="build-artefacto-caminho">Caminho do artefacto</label>
+        <input
+          id="build-artefacto-caminho"
+          type="text"
+          value={caminhoDoArtefacto}
+          onChange={(evento) => setCaminhoDoArtefacto(evento.target.value)}
+          placeholder="ex.: C:\caminho\hades.exe"
+          autoComplete="off"
+          spellCheck={false}
+        />
+
+        <label htmlFor="build-artefacto-sha256">SHA-256 esperado (opcional para medir)</label>
+        <input
+          id="build-artefacto-sha256"
+          type="text"
+          value={shaEsperado}
+          onChange={(evento) => setShaEsperado(evento.target.value)}
+          placeholder="64 caracteres hexadecimais"
+          autoComplete="off"
+          spellCheck={false}
+        />
+
+        <button type="button" onClick={() => void medir()} disabled={!caminhoDoArtefacto.trim()}>
+          Medir
+        </button>
+        <button
+          type="button"
+          onClick={() => void verificar()}
+          disabled={!caminhoDoArtefacto.trim() || !shaEsperado.trim()}
+        >
+          Verificar
+        </button>
+
+        <div aria-live="polite">
+          {estadoDoArtefacto === "a-medir" && <p>A medir o artefacto…</p>}
+        </div>
+
+        {erroDoArtefacto && <p role="alert">{erroDoArtefacto}</p>}
+
+        {medicao && (
+          <dl aria-label="Checksum medido">
+            <dt>Ficheiro</dt>
+            <dd>{medicao.caminho}</dd>
+            <dt>Tamanho</dt>
+            <dd>{tamanhoLegivel(medicao.tamanho_bytes)}</dd>
+            <dt>SHA-256</dt>
+            <dd>
+              <code>{medicao.sha256}</code>
+            </dd>
+          </dl>
+        )}
+
+        {verificacao && (
+          <>
+            <dl aria-label="Resultado da verificação">
+              <dt>Veredito</dt>
+              <dd>{resumirVerificacao(verificacao.resultado)}</dd>
+              <dt>SHA-256 medido</dt>
+              <dd>
+                <code>{verificacao.resultado.sha256_medido}</code>
+              </dd>
+              <dt>SHA-256 esperado</dt>
+              <dd>
+                <code>{verificacao.resultado.sha256_esperado}</code>
+              </dd>
+              <dt>Assinatura</dt>
+              <dd>{descreverAssinatura(verificacao.resultado.assinatura)}</dd>
+            </dl>
+            {/*
+              O aviso de fronteira vem do BACKEND e e' mostrado tal e qual. *
+              Um painel que mostra "pronto" sem poder construir e' um painel que promete o que nao
+              faz -- a menos que diga que so' le'.*
+            */}
+            <p>{verificacao.aviso_de_fronteira}</p>
+          </>
+        )}
+      </section>
     </section>
   );
+}
+
+/**
+ * Traduz uma falha do cliente para uma frase que o utilizador entende.
+ *
+ * *Um estado que mente e' pior do que nenhum* -- e uma mensagem "erro desconhecido" obriga quem le'
+ * a adivinhar. O `agentFetch` ja' lanca com a mensagem do backend quando ha' corpo de erro.
+ */
+function mensagemDeFalha(falha: unknown): string {
+  if (falha instanceof Error && falha.message.trim()) return falha.message;
+  return "não foi possível medir o artefacto";
 }
