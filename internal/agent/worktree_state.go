@@ -84,10 +84,14 @@ func (e EstadoDoWorktree) Valido() bool {
 //
 // *Uma transicao que nao existe obriga a quem a quer a perguntar por que a quer.*
 var transicoesDoWorktree = map[EstadoDoWorktree][]EstadoDoWorktree{
-	WorktreeCriado:    {WorktreePreparado, WorktreeFalhado, WorktreeOrfao},
-	WorktreePreparado: {WorktreeEmUso, WorktreeSuspenso, WorktreeFalhado, WorktreeOrfao},
+	WorktreeCriado: {WorktreePreparado, WorktreeFalhado, WorktreeOrfao},
+	// `preparado -> removido` e `suspension -> removido` EXISTEM: um worktree que nunca recebeu
+	// trabalho, ou que foi suspension e diagnosticado limpo, pode ser removido. A proteccao real
+	// esta' na verificacao de trabalho (`DiagnosticarWorktree`), nao em proibir a transicao --
+	// *uma regra que proibe o caso legitimo obriga a contorna-la.*
+	WorktreePreparado: {WorktreeEmUso, WorktreeSuspenso, WorktreeFalhado, WorktreeOrfao, WorktreeRemovido},
 	WorktreeEmUso:     {WorktreeSuspenso, WorktreeIntegrado, WorktreeFalhado, WorktreeOrfao},
-	WorktreeSuspenso:  {WorktreeEmUso, WorktreeArquivado, WorktreeIntegrado, WorktreeFalhado, WorktreeOrfao},
+	WorktreeSuspenso:  {WorktreeEmUso, WorktreeArquivado, WorktreeIntegrado, WorktreeFalhado, WorktreeOrfao, WorktreeRemovido},
 	WorktreeIntegrado: {WorktreeArquivado, WorktreeRemovido},
 	WorktreeArquivado: {WorktreeRemovido, WorktreeEmUso},
 	WorktreeFalhado:   {WorktreeSuspenso, WorktreeArquivado, WorktreeRemovido},

@@ -86,8 +86,8 @@ func TestCreateAndRemoveGitWorktree(t *testing.T) {
 	if err := RemoveGitWorktree(ctx, session); err != nil {
 		t.Fatalf("RemoveGitWorktree failed: %v", err)
 	}
-	if session.Status != "removed" {
-		t.Errorf("expected status removed, got %s", session.Status)
+	if session.Status != string(WorktreeRemovido) {
+		t.Errorf("expected status removido, got %s", session.Status)
 	}
 }
 

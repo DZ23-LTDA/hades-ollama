@@ -159,7 +159,7 @@ func TestWorktreeComCommitNaoIntegradoNaoERemovido(t *testing.T) {
 		t.Fatalf("o ficheiro do agente desapareceu: %v", statErr)
 	}
 	// O estado NAO pode dizer "removed": *um estado que mente e' pior do que nenhum.*
-	if sessao.Status == "removed" {
+	if EstadoDoWorktree(sessao.Status) == WorktreeRemovido {
 		t.Fatal("estado diz 'removed' com o worktree ainda no disco")
 	}
 }
@@ -208,8 +208,8 @@ func TestWorktreeLimpoERemovido(t *testing.T) {
 	if _, statErr := os.Stat(sessao.WorktreeDir); !os.IsNotExist(statErr) {
 		t.Fatalf("worktree limpo nao foi removido: %v", statErr)
 	}
-	if sessao.Status != "removed" {
-		t.Fatalf("estado = %q; esperado removed", sessao.Status)
+	if EstadoDoWorktree(sessao.Status) != WorktreeRemovido {
+		t.Fatalf("estado = %q; esperado removido", sessao.Status)
 	}
 	if strings.TrimSpace(sessao.CaminhoRemovido) == "" {
 		t.Fatal("CaminhoRemovido vazio depois de remover")

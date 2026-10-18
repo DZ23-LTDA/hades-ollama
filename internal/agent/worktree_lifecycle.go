@@ -274,7 +274,14 @@ func removerWorktree(ctx context.Context, session *GitWorktreeSession, diag Diag
 	}
 	// O branch NAO e' apagado: *um branch e' o unico sitio onde o trabalho nao integrado ainda
 	// pode estar, e apaga-lo seria perder a ultima copia.*
-	session.Status = "removed"
+	// Passar pela maquina de estados: um estado escrito a' mao e' um estado que ninguem validou.
+	if _, _, errTrans := Transitar(session, WorktreeRemovido); errTrans != nil {
+		// Um estado de origem que nao permite remover nao impede a remocao fisica que ja'
+		// aconteceu; regista-se o estado final e devolve-se o erro para diagnostico.
+		session.Status = string(WorktreeRemovido)
+		session.CaminhoRemovido = diag.CaminhoResolvido
+		return fmt.Errorf("worktree removido do disco mas transicao recusada: %w", errTrans)
+	}
 	session.CaminhoRemovido = diag.CaminhoResolvido
 	return nil
 }
