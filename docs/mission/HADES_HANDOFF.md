@@ -1,3 +1,30 @@
+## JANELA E-1271
+
+**Ronda 88. O primeiro painel que consome um dos dez providers: `CredentialsPanel`.**
+
+- **E-1271** — `credentialsClient.ts` + `CredentialsPanel.tsx` + 7 testes, montado em `CapabilitiesPage`.
+  A E-1270 provou a rota com 7 testes, mas **nenhum painel a consumia**: *um painel provado contra um
+  mock e um backend provado contra `httptest` não provam que um fala com o outro*.
+- **Décimo primeiro reabrir do defeito recorrente, primeiro fecho** — o elo rota→cliente→painel
+  existe agora inteiro.
+- **Não há campo para o valor de um segredo:** o tipo `CredencialPublica` não o tem, o backend não o
+  envia e o painel não tem onde o guardar. *Um painel que tem um campo para o segredo acaba por o
+  receber.* `eSegredo()` é uma lista **positiva** dos que não são segredo — um tipo novo cai em
+  "é segredo".
+- **Três estados que não se confundem, todos com teste:** não configurado (mensagem própria, não
+  alerta), erro (`role="alert"`) e kit vazio.
+- **"Não lido" é informação, não falha:** um teste exige que o painel **não** contenha "verificado com
+  sucesso".
+- **O aviso de fronteira vem do backend e é mostrado por inteiro** — o painel não o resume.
+
+Medido: **7 testes PASS** · `npx vitest run` **122 ficheiros / 856 testes** · `tsc -b` 0 ·
+`eslint .` 0 erros (31 warnings preexistentes) · `vite build` 0 · `BUNDLE_BUDGET=PASS`.
+
+**Lacuna:** sem E2E Playwright — o elo está provado por teste de componente com `agentFetch` mockado.
+**9 dos 10 providers continuam sem painel.**
+
+Veredito global: `NOT_RELEASE_READY`.
+
 ## JANELA E-1270
 
 **Ronda 87. O primeiro provider ligado ao produto: `credentials.status`.**

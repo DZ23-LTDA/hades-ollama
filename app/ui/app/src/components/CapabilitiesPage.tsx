@@ -18,6 +18,7 @@ import { AppSidebar } from "@/components/AppSidebar";
 import { InstallProfilesPanel } from "@/components/InstallProfilesPanel";
 import { WorktreesPanel } from "@/components/WorktreesPanel";
 import { BuildPlanPanel } from "@/components/BuildPlanPanel";
+import { CredentialsPanel } from "@/components/CredentialsPanel";
 import { SidebarLayout } from "@/components/layout/layout";
 import {
   fetchToolchainDoctor,
@@ -305,6 +306,8 @@ export function CapabilitiesPage() {
           *Um painel que mostra "pronto" sem poder construir e' um painel que promete o que nao
           faz -- a menos que diga que so' le'.* */}
       <BuildPlanPanel />
+
+        <CredentialsPanel />
     </SidebarLayout>
   );
 }
