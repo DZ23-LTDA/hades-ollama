@@ -55,7 +55,7 @@ Pacotes que vivem em `dist/` e nao correspondem a um alvo de produto. *Sem esta 
 
 ## Os workflows, contados
 
-**15 workflows** em `.github/workflows/`:
+**16 workflows** em `.github/workflows/`:
 
 - `class-a-plus-integrity.yaml`
 - `dz23-agentic-quality.yaml`
@@ -69,6 +69,7 @@ Pacotes que vivem em `dist/` e nao correspondem a um alvo de produto. *Sem esta 
 - `pr-gate.yaml`
 - `release-readiness.yaml`
 - `release.yaml`
+- `secret-scan.yaml`
 - `test-install.yaml`
 - `test-llamacpp-update.yaml`
 - `test.yaml`

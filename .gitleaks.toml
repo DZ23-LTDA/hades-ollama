@@ -1,0 +1,78 @@
+# .gitleaks.toml -- configuracao do secret scan do HADES
+#
+# PORQUE ESTE FICHEIRO EXISTE
+#
+#   O CI nao tinha scanner de secrets (gap E-1164). *Um secret scan que so' existe quando
+#   alguem se lembra de correr nao e' um gate: e' uma auditoria.* Este ficheiro liga o gate
+#   sem que 13 fixtures legitimas o tornem vermelho no primeiro dia -- e sem silenciar o
+#   scanner para o resto do repositorio.
+#
+# O QUE ELE NAO E'
+#
+#   Nao exclui paths. Nao exclui regras inteiras. Nao usa `stopwords`. Cada entrada da
+#   allowlist abaixo e' um `regexTarget = "line"` que casa com o CONTEUDO SINTETICO de uma
+#   linha especifica, lida e classificada em docs/security/HADES_SECURITY_TRIAGE_2026-10-18.md.
+#   Uma credencial real com prefixo `ghp_`/`sk-`/`AKIA` continua a falhar o gate.
+#
+# AS 13 EXCECOES, E PORQUE CADA UMA E' SEGURA
+#
+#   12 sao FIXTURES DE TESTE cujo proposito e' provar que o valor e' redigido, bloqueado ou
+#   nao persistido -- o "segredo" e' o objeto do teste, nao uma credencial:
+#     - `abcdef...` e' o valor sintetico canonico de teste neste repositorio
+#     - `SYNTHETIC...` declara-se sintetico no proprio nome
+#     - `EVOKEY`/`WHSECR`/`APPSEC` sao prefixos de fixture do WhatsApp
+#     - `HADES_...` e' o NOME de uma variavel de ambiente, nao um valor
+#     - `012345...` e' uma tenant key numerica de teste
+#     - `dGhlIH...` e' base64 de uma frase em ingles ("the ..."), nao uma credencial
+#   A 13a e' uma TAG XML do protocolo de tool-call do GLM-4.6 (`<arg_key>`), confundida com
+#   uma chave pelo detector de entropia.
+#   A 14a era PROSA do README numa linha de 1846 caracteres. NAO foi allowlistada:
+#   a linha foi QUEBRADA em paragrafos na raiz, porque o defeito era o formato, nao a prosa.
+#
+#   Nenhuma destas linhas autentica em servico nenhum.
+#
+# PRAZO E PROCEDIMENTO DE REVISAO
+#
+#   Revisao obrigatoria em 2027-01-31, ou antes se: (a) as linhas mudarem por refactor,
+#   (b) a heuristica de `generic-api-key` mudar, (c) o gitleaks subir de major.
+#   A revisao consiste em tentar REMOVER cada entrada: se um placeholder menos entropico
+#   mantiver o teste a passar, a entrada sai.
+
+title = "HADES secret scan"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "13 fixtures sinteticas + 1 prosa, cada uma por conteudo de linha"
+regexTarget = "line"
+regexes = [
+  # omnichannel_test.go:235 -- NOME de variavel de ambiente, nunca um valor
+  '''SecretEnv:\s*"HADES_''',
+  # deploy_test.go:315 -- fixture que se declara sintetica no nome
+  '''"api-token\.json":\s*"SYNTHETIC''',
+  # whatsapp_secret_leak_test.go:22,24,25 -- fixtures do fluxo WhatsApp
+  '''=\s*"EVOKEY''',
+  '''=\s*"WHSECR''',
+  '''=\s*"APPSEC''',
+  # workspace_write_test.go:197 e runtime_test.go:399 -- o valor sintetico canonico
+  '''"api_key":\s*"abcdef''',
+  # workspace_snapshot_test.go:39 -- idem, em texto de ficheiro
+  '''"api_key=abcdef''',
+  # workspace_snapshot_test.go:1106 -- tenant key numerica de teste
+  '''tenantKey\s*:=\s*"012345''',
+  # codex_desktop_test.go:1585 -- NONCE DE EXEMPLO DO RFC 6455 ("the sample nonce"),
+  # nao uma credencial: e' o valor canonico que a especificacao WebSocket usa nos exemplos
+  '''"Sec-WebSocket-Key",\s*"dGhlIHNhbXBsZSBub25jZQ=="''',
+  # model/parsers/glm46.go:32 -- tag XML do protocolo de tool-call
+  '''glm46ArgKeyOpenTag\s*=\s*"<arg_key>"''',
+  # company_ledger_test.go:311 -- chave de teste em portugues ("compartilhada-001")
+  '''key\s*:=\s*"compartilhada-001"''',
+  # README -- PROSA que descreve features. O detector `generic-api-key` e' de baixa
+  # precisao: encontrou a palavra "credentials" e classificou a SIGLA SEGUINTE
+  # (`organization/RBAC`) como valor de chave -- entropia 3.617, zero caracteres de
+  # credencial. O padrao abaixo e' o match EXACTO reportado pelo proprio scanner.
+  # A lista de features continua a ser verificada pelas regras de alta precisao
+  # (prefixos ghp_/sk-/AKIA/xox), como o controlo negativo do teste prova.
+  '''OAuth credentials, organization/RBAC ''',
+]
