@@ -260,7 +260,14 @@ func TestBuildProviderConstruirAlvosSaltaBloqueados(t *testing.T) {
 
 	plano := PlanoDoProjeto{
 		Alvos: []PlanoPorAlvo{
-			{Alvo: runtime.GOOS, Plano: plannerPronto(alvoDoHost())},
+			// *O `Alvo` do plano e o `Alvo` do `CapabilityPlan` tem de ser o MESMO nome do
+			// catalogo.* A E-1253 corrigiu o segundo (`plannerPronto(...)`) por substituicao de
+			// texto e deixou este a `runtime.GOOS`: no macOS `darwin` != `macos`, o alvo era pulado
+			// e o teste falhava com `artefactos = 0`.
+			//
+			//	*Uma correccao aplicada por substituicao de texto corrige as ocorrencias que a
+			//	string descreve, nao as que o defeito tem.*
+			{Alvo: alvoDoHost(), Plano: plannerPronto(alvoDoHost())},
 			{Alvo: "linux", Plano: plannerBloqueado("linux", "docker")},
 			{Alvo: "android", Plano: plannerPronto("android")},
 		},
@@ -270,8 +277,22 @@ func TestBuildProviderConstruirAlvosSaltaBloqueados(t *testing.T) {
 	if err != nil {
 		t.Fatalf("construir alvos: %v", err)
 	}
+
+	// GUARDA INDEPENDENTE DE PLATAFORMA (E-1257): o `Alvo` que este teste usa tem de ser um alvo do
+	// CATALOGO. Sem esta assercao, o teste so' falharia no macOS -- e eu escrevo-o no Windows.
+	//
+	//	*Um teste cuja falha depende do sistema onde corre e' um teste que so' se descobre na CI
+	//	mais lenta.*
+	if !(ProviderDeBuildGo{}).cobreAlvo(alvoDoHost()) {
+		t.Fatalf("alvoDoHost() = %q nao e' um alvo do catalogo %v: o teste falharia noutro SO",
+			alvoDoHost(), ProviderDeBuildGo{}.Alvos())
+	}
+	if alvoDoHost() == "darwin" {
+		t.Fatal("alvoDoHost() devolveu `darwin`; o catalogo diz `macos`")
+	}
 	if len(resultado.Artefatos) != 1 {
-		t.Fatalf("artefactos = %d; esperado 1", len(resultado.Artefatos))
+		t.Fatalf("artefactos = %d; esperado 1 (nao construidos: %v)",
+			len(resultado.Artefatos), resultado.NaoConstruidos)
 	}
 	if resultado.SemArtefacto {
 		t.Fatal("SemArtefacto com 1 artefacto produzido")

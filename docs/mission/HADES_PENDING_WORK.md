@@ -1,3 +1,25 @@
+## JANELA E-1257
+
+**Ronda 75. O terceiro red era o mesmo `darwin`!=`macos`, no sitio que a correcao anterior nao tocou.**
+
+- **E-1257** -- `--- FAIL: TestBuildProviderConstruirAlvosSaltaBloqueados`, `artefactos = 0; esperado
+  1`. O teste tinha `{Alvo: runtime.GOOS, Plano: plannerPronto(alvoDoHost())}`: a E-1253 substituiu
+  o segundo mas **deixou o campo `Alvo`**. No macOS `darwin` != `macos` -> alvo **pulado**.
+- => *Uma correccao aplicada por substituicao de texto corrige as ocorrencias que a STRING descreve,
+  nao as que o DEFEITO tem.* **Quarto avatar** do mesmo defeito -- e **dentro do proprio teste que eu
+  escrevi para o corrigir**.
+- **Corrigido** (`Alvo: alvoDoHost()`) **e guardado**: duas assercoes **independentes de
+  plataforma** -- `cobreAlvo(alvoDoHost())` true e `alvoDoHost()` != `darwin`. Sem elas o teste so'
+  falhava no macOS: *um teste cuja falha depende do sistema onde corre e' um teste que so' se
+  descobre na CI mais lenta.*
+- A mensagem de falha passou a incluir `NaoConstruidos`, para nao ser preciso ir ao log.
+
+Medido: 13 testes PASS; vet 0; lint **0 issues**; gofmt limpo.
+
+Proximo passo: confirmar o commit verde; depois INSTALLED (E-1252).
+
+Veredito global: `NOT_RELEASE_READY`.
+
 ## JANELA E-1256
 
 **Ronda 74. O item 5 de dez: `VerificationProvider` -- e o teste que me obrigou a decidir.**
