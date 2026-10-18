@@ -44,7 +44,7 @@ title = "HADES secret scan"
 useDefault = true
 
 [allowlist]
-description = "13 fixtures sinteticas + 1 prosa, cada uma por conteudo de linha"
+description = "16 excecoes por conteudo de match: fixtures sinteticas, prosa e uma chave publica"
 regexTarget = "line"
 regexes = [
   # omnichannel_test.go:235 -- NOME de variavel de ambiente, nunca um valor
@@ -75,4 +75,16 @@ regexes = [
   # A lista de features continua a ser verificada pelas regras de alta precisao
   # (prefixos ghp_/sk-/AKIA/xox), como o controlo negativo do teste prova.
   '''OAuth credentials, organization/RBAC ''',
+  # app/ui/app/src/lib/endpoint.test.ts:96 -- fixture que verifica o texto de um comando
+  # `curl` mostrado ao utilizador. O valor e' o literal "gw-secret" (gateway secret).
+  '''Authorization: Bearer gw-secret''',
+  # apps/hades-browser-bridge/manifest.json:65 -- CHAVE PUBLICA RSA (SubjectPublicKeyInfo,
+  # prefixo ASN.1 MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8A). O manifest de uma extensao Chromium
+  # EXIGE a chave publica para fixar o ID da extensao; chaves publicas sao publicas por
+  # definicao. Nao ha' chave privada aqui: uma chave privada PKCS#8 comecaria por MIIEpAIB.
+  '''"key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8A''',
+  # internal/agent/secrets_prefixos_test.go:49 -- o JWT DE EXEMPLO do jwt.io
+  # (cabecalho {"alg":"HS256"} e payload {"sub":"1234567890"}); e' o token canonico de
+  # demonstracao, forjado sem chave privada e sem valor de autenticacao.
+  '''eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.dBjftJeZ4CVPmB92K27uhbUJU1p1r_wW1gFWFOEjXk''',
 ]
