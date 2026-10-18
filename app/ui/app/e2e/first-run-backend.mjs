@@ -490,7 +490,49 @@ const server = createServer(async (request, response) => {
           },
         });
       }
+    } else if (route === "GET /api/agent/v1/credentials/status") {
+      // FASE 28.7: `credentials.status` -- INVENTARIA o kit, nunca o abre.
+      //
+      // O fixture simula um kit com um certificado publico e um segredo. O segredo vem com
+      // `conteudo_lido: false` -- e o painel tem de mostrar isso como INFORMACAO, nao como falha.
+      sendJSON(response, 200, {
+        somente_leitura: true,
+        configurado: true,
+        credenciais: [
+          {
+            caminho_relativo: "apple/distribution.cer",
+            tipo: "CERTIFICADO_X509",
+            tamanho_bytes: 1485,
+            modificado_em: "2026-10-17T12:00:00Z",
+            conteudo_lido: true,
+            fingerprint_sha256: "e2e-fixture",
+            sujeito: "Apple Distribution: leandro prado (K8G36CUP3S)",
+            emissor: "Apple Worldwide Developer Relations CA",
+            valido_ate: "2027-10-17T00:00:00Z",
+            expirado: false,
+          },
+          {
+            caminho_relativo: "apple/hades-apple-distribution.p12",
+            tipo: "CHAVE_PRIVADA",
+            tamanho_bytes: 3512,
+            modificado_em: "2026-10-17T12:00:00Z",
+            conteudo_lido: false,
+            expirado: false,
+            nota: "conteudo NAO lido: apenas tamanho e data",
+          },
+        ],
+        total: 2,
+        lidos: 1,
+        nao_lidos: 1,
+        certificados: 1,
+        expirados: 0,
+        aviso: "este inventario lista o que o fixture declarou",
+        aviso_de_fronteira:
+          "esta rota apenas INVENTARIA o kit: os ficheiros de segredo NAO sao abertos. " +
+          "O caminho vem da variavel de ambiente, nunca do pedido.",
+      })
     } else if (route === "GET /api/agent/v1/build/plan") {
+
       // FASE 28.8: o plano de release do PROJECTO. O fixture serve um plano com um alvo PRONTO e
       // um BLOQUEADO, e um segundo "projecto" sem alvos -- para o spec poder provar as duas
       // classificacoes de resultado.

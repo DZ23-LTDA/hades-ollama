@@ -1,3 +1,33 @@
+## JANELA E-1272
+
+**Ronda 90. O E2E que faltava: o painel de credenciais no browser real.**
+
+- **E-1272** — `e2e/credentials-panel.spec.ts` + a rota `credentials/status` no fixture. A E-1271
+  provou o painel com transporte **mockado**; a E-1270 provou a rota com `httptest`; **os dois nunca
+  falaram um com o outro**.
+- **Duas classificações, e o spec diz qual corre:** `UI_FIXTURE` (kit com certificado e segredo) e
+  `BACKEND_REAL_AGENT_RUNTIME` (atravessa o proxy até ao router de produção, onde o kit não está
+  configurado em CI — e o spec exige a mensagem própria, **não um alerta**).
+- **Cinco garantias nos dois modos:** painel com nome acessível; **o pedido HTTP sai de verdade**
+  (`page.waitForRequest`); **"não configurado" não é erro**; aviso de fronteira no DOM; **nenhum botão
+  existe** no painel.
+- **No modo fixture, três asserções discriminantes:** certificado com sujeito e validade; segredo com
+  **"NAO lido"**; e o painel **não pode conter "verificado com sucesso"**.
+
+**Dois defeitos apanhados na execução:**
+1. **`LOCALAPPDATA` redireccionado para `_tmp`** fez o Playwright procurar os browsers no sítio errado
+   — ele guarda-os em `%LOCALAPPDATA%\ms-playwright`, e esse redireccionamento não serve para ele.
+2. A fixture usava **`json(200, ...)`** mas o helper é **`sendJSON(response, status, payload)`** — o
+   `ReferenceError` derrubava o servidor inteiro (daí `ECONNRESET` em todas as rotas).
+
+Medido: **7 passed / 1 skipped** no spec; `npx playwright test` **74 passed / 5 skipped**;
+`npx vitest run` **122 ficheiros / 856 testes**; `tsc -b` 0; `eslint .` 0 erros.
+
+**Lacuna:** no modo de backend real só a garantia de "não configurado" corre — falta o E2E com o kit
+REAL configurado no servidor.
+
+Veredito global: `NOT_RELEASE_READY`.
+
 ## JANELA E-1271
 
 **Ronda 88. O primeiro painel que consome um dos dez providers: `CredentialsPanel`.**
