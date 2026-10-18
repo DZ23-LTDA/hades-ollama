@@ -121,7 +121,11 @@ Name: "{userprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFile
 ; um atalho separado no menu Iniciar parecia um segundo "Hades" para o usuário.
 
 [Run]
-Filename: "{cmd}"; Parameters: "/C set ""OLLAMA_DZ23_CONFIG={userappdata}\Ollama DZ23\dz23-providers.json"" & set PATH={app};%PATH% & ""{app}\{#MyAppExeName}"""; Flags: postinstall nowait runhidden
+; `skipifsilent` NAO e' cosmetico: sem ele, um `/VERYSILENT` lanca a app e o processo do
+; instalador fica a espera que ela termine -- foi a causa de dois bloqueios de 10 minutos na
+; auditoria E2E de 2026-10-18. *Um instalador silencioso que abre uma janela e nao retorna
+; nao e' silencioso.* Quem quer a app aberta usa o atalho; quem pediu silencio quer silencio.
+Filename: "{cmd}"; Parameters: "/C set ""OLLAMA_DZ23_CONFIG={userappdata}\Ollama DZ23\dz23-providers.json"" & set PATH={app};%PATH% & ""{app}\{#MyAppExeName}"""; Flags: postinstall nowait runhidden skipifsilent
 
 [UninstallRun]
 Filename: "powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -Command ""Get-CimInstance Win32_Process | Where-Object {{ $_.ExecutablePath -and $_.ExecutablePath.StartsWith('{app}',[System.StringComparison]::OrdinalIgnoreCase) }} | ForEach-Object {{ Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }}"""; Flags: runhidden; RunOnceId: "HadesPararProcessos"
@@ -216,10 +220,41 @@ begin
     DelTree(LegacyDir, True, True, True);
 end;
 
+{ Corre ANTES de o Inno comecar a substituir ficheiros. E' o unico ponto em que fechar a
+  instancia anterior ainda evita o `DeleteFile failed; code 5`.
+
+  *Achado pela auditoria E2E de 2026-10-18:* o `.iss` declara `CloseApplications=no` e
+  `RestartApplications=no`, e nao havia nenhum passo que parasse a app. Resultado: um
+  UPGRADE com o Hades aberto falhava no meio com `DeleteFile failed; code 5 (Acesso
+  negado)` em `ollama app.exe`, o instalador fazia rollback, e o utilizador via
+  "cancelado" sem saber porquê.
+
+  Usa `StopProcessesInDir`, que filtra por ExecutablePath: nunca mata um Ollama oficial
+  instalado noutra pasta. E o `Exec` dentro dela passou a esperar (`ewWaitUntilTerminated`)
+  -- antes era assincrono, e a app ainda estava viva quando o Inno tentava substituir. }
+function PrepareToInstall(var NeedsRestart: Boolean): String;
+begin
+  StopProcessesInDir(ExpandConstant('{app}'));
+  { Da' tempo ao Windows para libertar os handles. }
+  Sleep(1500);
+  Result := '';
+end;
+
 procedure CurStepChanged(CurStep: TSetupStep);
 begin
   if CurStep = ssInstall then
+  begin
+    { Fecha a instancia ANTERIOR desta app antes de substituir ficheiros.
+      *Achado pela auditoria E2E de 2026-10-18:* o `.iss` declara
+      `CloseApplications=no` e `RestartApplications=no`, e nao havia nenhum passo que
+      parasse a app. Resultado: um UPGRADE com o Hades aberto falhava no meio com
+      `DeleteFile failed; code 5 (Acesso negado)` em `ollama app.exe`, e o instalador
+      fazia rollback -- o utilizador via "cancelado" sem saber porquê.
+
+      Usa a mesma funcao que o desinstalador ja' usa, e que filtra por ExecutablePath:
+      nunca mata um Ollama oficial instalado noutra pasta. }
     RemoveLegacyInstalls();
+  end;
 end;
 
 { Remove a entrada que o instalador pos no PATH do utilizador.

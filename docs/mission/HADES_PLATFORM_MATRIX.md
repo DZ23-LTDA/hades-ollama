@@ -16,7 +16,7 @@ não é APK.***
 
 | Plataforma | SOURCE | BUILD (workflow) | PACKAGE | Tamanho | Hash (SHA-256[:32]) | INSTALL | DEVICE_E2E | Assinatura |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| **Windows** | `cmd/`, `app/`, `server/` (Go) | `dz23-windows-installer.yaml` | `dist\hades-installer-1d2ce88c9\HadesSetup-1d2ce88c9.exe` | 24.3 MB | `ffd1304c6686757da81248bc03ed5645` | NÃO MEDIDO (INSTALLED=NAO) | NÃO MEDIDO | não assinado (unsigned) |
+| **Windows** | `cmd/`, `app/`, `server/` (Go) | `dz23-windows-installer.yaml` | `dist\hades-installer-49e8fa1c8\HadesSetup-49e8fa1c8.exe` | 24.3 MB | `a3482864c48fc8fba02e12152d241466` | NÃO MEDIDO (INSTALLED=NAO) | NÃO MEDIDO | não assinado (unsigned) |
 | **Linux** | `cmd/`, `app/`, `server/` (Go) | `dz23-linux-package.yaml` | `dist\hades-linux-amd64\hades-linux-amd64-UNSIGNED.tar.gz` | 16.2 MB | `1b7ee3046a887138f75298054f81f1ea` | NÃO MEDIDO (INSTALLED=NAO) | NÃO MEDIDO | não assinado (unsigned) |
 | **macOS** | `cmd/`, `app/`, `server/` (Go) | `dz23-macos-build.yaml` | `AUSENTE` | - | `AUSENTE` | NÃO MEDIDO | NÃO MEDIDO | não assinado (unsigned) |
 | **Android** | `apps/mobile-agentic/` (Expo/RN + `android/`) | `dz23-e2e.yaml` | `AUSENTE` | - | `AUSENTE` | NÃO MEDIDO | NÃO MEDIDO | APK de desenvolvimento (não publicável) |
@@ -46,7 +46,7 @@ Pacotes que vivem em `dist/` e nao correspondem a um alvo de produto. *Sem esta 
 
 ## As lacunas, por plataforma
 
-- **Windows**: artefacto do candidato (SOURCE_SHA 1d2ce88c9 declarado no PROVENIENCIA.txt)
+- **Windows**: artefacto do candidato (SOURCE_SHA 49e8fa1c8 declarado no PROVENIENCIA.txt)
 - **Linux**: artefacto de SOURCE_SHA 9a0408e31905 (declarado no PROVENIENCIA.txt DENTRO do tarball); cross-compile Windows→Linux com CGO=0; **NAO** e' build nativo, **NAO** foi instalado, e **NAO** e' byte-a-byte o artefacto do `dz23-linux-package.yaml` (que usa CGO=1)
 - **macOS**: **BLOCKED_EXTERNAL (medido, nao suposto)**: `GOOS=darwin CGO_ENABLED=0` falha com `undefined: GetCPUMem` -- o `GetCPUMem` do darwin vive em `discover/gpu_darwin.go`, que usa `import "C"` (Metal/Foundation), e o Go exclui ficheiros com `import "C"` quando CGO=0. Desbloqueio: o `dz23-macos-build.yaml` em `macos-latest` (Xcode + CGO).
 - **Android**: **o `app.json`/`eas.json` existem; o APK não**
