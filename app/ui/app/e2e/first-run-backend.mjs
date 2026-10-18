@@ -538,7 +538,70 @@ const server = createServer(async (request, response) => {
           raiz_autorizada: true,
         });
       }
+    } else if (route === "POST /api/agent/v1/publish/rollback") {
+      // FASE 28.7: `publish.rollback` -- PLANEIA, nunca restaura.
+      //
+      // `readBody` devolve uma STRING (lissao da E-1275): sem o JSON.parse o pedido ficava vazio.
+      const corpoRollback = await readBody(request);
+      let pedidoRollback = {};
+      try {
+        pedidoRollback = JSON.parse(corpoRollback || "{}");
+      } catch {
+        sendJSON(response, 400, { erro: "corpo invalido: esperado JSON" });
+        return;
+      }
+      if (pedidoRollback === null || typeof pedidoRollback !== "object") {
+        sendJSON(response, 400, { erro: "corpo invalido: esperado um objecto JSON" });
+        return;
+      }
+      const tipoRollback = pedidoRollback.tipo;
+      if (typeof tipoRollback !== "string" || tipoRollback === "") {
+        sendJSON(response, 400, {
+          erro: "o campo `tipo` e' obrigatorio: o canal de rollback nao tem valor por omissao",
+        });
+      } else if (tipoRollback === "WINDOWS_INSTALLER") {
+        sendJSON(response, 200, {
+          executado: false,
+          suportado: true,
+          tipo: "WINDOWS_INSTALLER",
+          alvo: {
+            caminho: "HadesSetup-anterior.exe",
+            nome: "HadesSetup-anterior.exe",
+            tamanho_bytes: 73400320,
+            sha256:
+              "7d865e959b2466918c9863afca942d0fb89d7c9ac0c99bafc3749504ded97730",
+            modificado_em: "2026-10-17T09:12:00Z",
+            parece_instalador: true,
+          },
+          total_de_candidatos: 2,
+          integro: true,
+          requer_aprovacao: "escolher o alvo e autorizar a restauracao",
+          explicacao: "2 candidatos; o mais recente e' HadesSetup-anterior.exe",
+          aviso: "este plano NAO executou o rollback",
+          aviso_de_fronteira:
+            "esta rota apenas PLANEIA o rollback: mede o SHA-256 dos candidatos e propoe o mais " +
+            "recente. `executado` e' sempre false -- nenhum ficheiro foi movido, copiado ou " +
+            "apagado. Restaurar um artefacto de producao exige aprovacao humana especifica no " +
+            "momento da accao. O directorio vem da variavel de ambiente `HADES_ARTEFACTOS`, " +
+            "nunca do pedido.",
+        });
+      } else {
+        // Canal sem credencial/host: 409, nao 500. O fixture simula Play.
+        sendJSON(response, 409, {
+          erro:
+            "rollback para `GOOGLE_PLAY_ROLLOUT` exige uma service account JSON com acesso ao " +
+            "Play Console; nenhuma esta' configurada",
+          suportado: false,
+          executado: false,
+          explicacao: "o canal existe mas falta credencial",
+          aviso_de_fronteira:
+            "esta rota apenas PLANEIA o rollback: `executado` e' sempre false -- nenhum ficheiro " +
+            "foi movido, copiado ou apagado. O directorio vem da variavel de ambiente " +
+            "`HADES_ARTEFACTOS`, nunca do pedido.",
+        });
+      }
     } else if (route === "GET /api/agent/v1/credentials/status") {
+
 
       // FASE 28.7: `credentials.status` -- INVENTARIA o kit, nunca o abre.
       //

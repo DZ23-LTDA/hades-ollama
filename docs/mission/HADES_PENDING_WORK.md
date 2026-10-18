@@ -1,3 +1,28 @@
+## JANELA E-1278
+
+**Ronda 96. O E2E do `RollbackPanel`: o quinto elo fechado no browser real.**
+
+- **E-1278** — `e2e/rollback-panel.spec.ts` + a rota `publish/rollback` no fixture.
+- **Duas classificações:** `UI_FIXTURE` (plano com candidato, ou **409** do Play sem service account)
+  e `BACKEND_REAL_AGENT_RUNTIME` (atravessa o proxy; **`HADES_ARTEFACTOS` não existe em CI** ⇒ **412**,
+  e o spec exige **erro accionável nomeando a variável**, nunca um plano).
+- **Nenhum botão de restaurar, provado no browser:** `toHaveCount(1)` nos botões do painel e proibição
+  dos rótulos `restaurar`, `aplicar`, `executar rollback`.
+- **O corpo do pedido é inspeccionado no browser:** `postDataJSON()` exige `Object.keys === ["tipo"]`
+  e a ausência de `directorio`.
+- **O 409 do Play não é alerta genérico:** mostra *"service account JSON"* em `role="alert"` e
+  **nenhum plano** aparece.
+
+Medido: **7 passed / 1 skipped** · `npx playwright test` **88 passed / 7 skipped** (era 81/6) ·
+`npx vitest run` 124 ficheiros / 875 testes · `tsc -b` 0 · `eslint .` 0 erros.
+
+**A lição da E-1275 foi aplicada antes de correr:** o `readBody` devolve string, logo `JSON.parse`
+desde o início — não custou uma falha.
+
+**Lacuna:** no modo de backend real só a recusa 412 corre. **6 dos 10 providers sem painel.**
+
+Veredito global: `NOT_RELEASE_READY`.
+
 ## JANELA E-1277
 
 **Ronda 95. O quarto provider ligado ao produto: `RollbackPanel` consome `publish.rollback`.**
