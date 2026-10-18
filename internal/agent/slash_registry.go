@@ -92,6 +92,12 @@ func DefaultSlashRegistry() []SlashCommandSpec {
 		slashSpec("/plan", "Gera o plano da missão (o plano nasce com a missão)", "10",
 			"POST /api/agent/v1/missions", "",
 			required("missao", "id da missão", SlashArgID)),
+		// /preset (FASE 23 do adendo) serve o catalogo de `mission_presets.go` por uma rota real.
+		// A rota vive fora de `/missions` porque `/missions/:id` ja' existe: um literal ao lado de um
+		// parametro na mesma posicao e' ambiguidade de roteador, nao funcionalidade.
+		slashSpec("/preset", "Lista ou aplica um preset de missão versionado", "23",
+			"GET /api/agent/v1/presets", "",
+			optional("id", "id do preset a aplicar", SlashArgID)),
 		slashSpec("/status", "Mostra o estado REAL da missão, incluindo falhas", "22",
 			"GET /api/agent/v1/missions/:id", "",
 			required("missao", "id da missão", SlashArgID)),

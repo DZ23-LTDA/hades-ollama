@@ -56,6 +56,10 @@ func TestSlashRegistryCoversSection6AndIsHonest(t *testing.T) {
 		// entra porque e' o par de `/approve` e `/deny`, que ja' estavam nesta lista, e o Estagio 44 nomeia-o entre
 		// os oito. ⇒ *os tres pertencem ao mandato; a lista e' que estava desactualizada em relacao ao complemento.*
 		"/spark", "/cowork", "/reject",
+		// FASE 23 do adendo V3: `/preset` entra porque o catalogo de presets de MISSAO tem de ter
+		// um comando, ou nao e' usado por ninguem. O contrato bidireccional (len(registry) ==
+		// len(required)) obriga a declarar isto como DECISAO -- que e' o que estou a fazer.
+		"/preset",
 	}
 	for _, name := range required {
 		if _, ok := byName[name]; !ok {

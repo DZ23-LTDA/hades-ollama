@@ -293,3 +293,43 @@ func ValidateAllPresets() error {
 	}
 	return nil
 }
+
+// MissionPresetIDs devolve os ids do catalogo, ordenados. Serve a mensagem de erro do `/preset`
+// e a UI: *um comando que recusa sem dizer o que aceita obriga a adivinhar.*
+func MissionPresetIDs() []string {
+	ids := make([]string, 0, len(BuiltInMissionPresets()))
+	for _, p := range BuiltInMissionPresets() {
+		ids = append(ids, p.ID)
+	}
+	sort.Strings(ids)
+	return ids
+}
+
+// ResolvePresetInvocation traduz um `/preset` ja' interpretado no preset concreto.
+//
+// Esta e' a LIGACAO entre o catalogo (FASE 23) e o comando que o utilizador digita: sem ela, o
+// catalogo existiria e nao seria usado por ninguem.
+//
+// Tres recusas: invocacao que nao e' `/preset`, id em falta, id inexistente. A mensagem de id em
+// falta LISTA os ids validos -- recusar sem dizer o que aceita e' um beco sem saida com log.
+func ResolvePresetInvocation(inv SlashInvocation) (MissionPreset, error) {
+	if inv.Spec.Name != "/preset" {
+		return MissionPreset{}, fmt.Errorf("%w: expected /preset, got %q", ErrPresetInvalido, inv.Spec.Name)
+	}
+	id := strings.TrimSpace(inv.Args["id"])
+	if id == "" {
+		return MissionPreset{}, fmt.Errorf("%w: /preset needs an id; available: %s",
+			ErrPresetInvalido, strings.Join(MissionPresetIDs(), ", "))
+	}
+	preset, ok := MissionPresetByID(id)
+	if !ok {
+		return MissionPreset{}, fmt.Errorf("%w: unknown preset %q; available: %s",
+			ErrPresetInvalido, id, strings.Join(MissionPresetIDs(), ", "))
+	}
+	// Revalidar na LEITURA, nao apenas na escrita: um catalogo embutido pode ser actualizado numa
+	// versao futura, e um preset invalido que ja' passou na escrita nao pode executar agora.
+	if err := preset.Validate(); err != nil {
+		return MissionPreset{}, err
+	}
+	return preset, nil
+}

@@ -859,6 +859,10 @@ func (a *agentAPI) register(r *gin.Engine) {
 	group.GET("/missions", a.missions)
 	// E-625: relatorio de desempenho das missoes visiveis para o chamador (Paperclip §10).
 	group.GET("/performance", a.performance)
+	// FASE 23 do adendo V3: catalogo de presets de MISSAO. Fica em `/presets` e nao em
+	// `/missions/presets` de proposito: `/missions/:id` ja' existe, e um literal ao lado de um
+	// parametro na mesma posicao e' ambiguidade de roteador, nao funcionalidade.
+	group.GET("/presets", a.missionPresets)
 	// E-638: despertares coalescidos por agente, com enfileiramento do que precisa de execucao.
 	group.POST("/wakeups", a.wakeups)
 	group.GET("/notifications", a.notifications)
@@ -4566,4 +4570,20 @@ func statusForAgentError(err error) int {
 
 func agentTenantContextKeyVersionFromEnv() (int, error) {
 	return agent.TenantContextKeyVersionFromEnv()
+}
+
+// missionPresets devolve o catalogo de presets de MISSAO (FASE 23 do adendo V3).
+//
+// O catalogo e' o mesmo que `agent.BuiltInMissionPresets()` serve ao `/preset`: uma unica fonte,
+// dois acessos. *Uma segunda copia do catalogo para a API seria uma segunda verdade com o mesmo
+// nome -- e a que ficasse para tras mentiria sem aviso.*
+//
+// Nao expoe nada por tenant: presets sao configuracao de PRODUTO, nao dado de utilizador. O que
+// cada preset PEDE (`permissions`) e' o que o policy engine depois avalia; esta rota nao concede.
+func (a *agentAPI) missionPresets(c *gin.Context) {
+	presets := agent.BuiltInMissionPresets()
+	c.JSON(http.StatusOK, gin.H{
+		"presets": presets,
+		"count":   len(presets),
+	})
 }
