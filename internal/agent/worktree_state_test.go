@@ -184,7 +184,10 @@ func TestInventarioVePrincipalEOsDoHades(t *testing.T) {
 	// E o nosso worktree tem de estar na lista, com o caminho resolvido.
 	achou := false
 	for _, w := range lista {
-		if w.CaminhoResolvido == filepath.Clean(sessao.WorktreeDir) {
+		// Comparar caminhos REAIS: no Windows o runner do GitHub tem nome curto 8.3
+		// (`RUNNER~1`) e o git devolve o nome longo (`runneradmin`).
+		//	*A correccao existia -- `caminhoReal` -- e o teste nao a usava.*
+		if caminhoReal(w.CaminhoResolvido) == caminhoReal(sessao.WorktreeDir) {
 			achou = true
 			if w.Branch != sessao.BranchName {
 				t.Fatalf("branch do inventor = %q; esperado %q", w.Branch, sessao.BranchName)
@@ -215,7 +218,7 @@ func TestInventarioVeWorktreeExterno(t *testing.T) {
 	}
 	achou := false
 	for _, w := range lista {
-		if w.CaminhoResolvido == filepath.Clean(externo) {
+		if caminhoReal(w.CaminhoResolvido) == caminhoReal(externo) {
 			achou = true
 			if w.CriadoPeloHades {
 				t.Fatal("worktree externo marcado como criado pelo HADES")

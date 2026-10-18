@@ -1,4 +1,46 @@
 # HADES — HANDOFF (como retomar a missão do zero)
+## JANELA E-1231 -- FASE 2: WORKTREES COM PROTECCAO, ESTADOS E DESCOBERTA (rondas 45-49)
+
+> Substitui a janela `E-1218`. *A catraca de janela acusou atras=13: o trabalho das rondas 45-49
+> nao estava reflectido aqui.* **A protecao de trabalho nao integrado, a maquina de estados e o
+> inventario de worktrees existem e estao provados com git real.** O que falta e' a superficie.
+
+### O que ficou feito
+
+| evidencia | o que prova |
+|---|---|
+| **E-1226** | `RemoveGitWorktree` apagava com `--force` + `os.RemoveAll` SEM verificar nada. Corrigido: diagnostico, erros tipados, guarda de alvo, branch preservado |
+| **E-1227** | 9 estados fechados com transicoes declaradas; `InventariarWorktrees` descobre worktrees externos |
+| **E-1228** | maquina LIGADA ao codigo: `CreateGitWorktree` -> `preparado`; suspender/retomar/arquivar/marcar-integrado; migracao `active`->`em_uso`; `PodeRemoverAgora` exige as duas condicoes |
+| **E-1229** | CI macOS vermelho por minha causa: `/var` e' symlink de `/private/var`. Corrigido com `caminhoReal` |
+| **E-1230** | `test (macos-latest)` **success** em `54df8a219`; restam so' os 2 gitleaks historicos |
+| **E-1231** | mesmo defeito no runner Windows (`RUNNER~1` -> `runneradmin`); os testes passam por `caminhoReal` |
+
+**37 testes** na suite de worktree, todos com git de verdade.
+
+### As tres licoes de metodo que este ciclo produziu
+
+1. *Apagar trabalho que ninguem integrou nao e' limpeza: e' perda de dados com nome tecnico.*
+2. *Um caminho absoluto nao e' o mesmo que um caminho real.* (macOS `/var`)
+3. *A correccao existia e o teste que a devia exercitar continuava a comparar strings.* (Windows)
+
+A licao 3 e' a mais util: **a funcao `caminhoReal` foi criada para resolver o macOS e os testes
+continuaram a usar `filepath.Clean` — corrigiram o codigo e nao o teste.** O mesmo defeito
+apareceu em duas plataformas diferentes porque a comparacao era de strings, nao de alvos.
+
+### O que continua AUSENTE (FASE 2)
+
+- **nenhuma rota HTTP** expoe worktrees, estados, inventario ou diagnosticos;
+- **nenhum painel** no Mission Control;
+- suspensao/retomada **nao persiste entre processos** (o estado vive na sessao em memoria);
+- o aviso de trabalho nao integrado na criacao nao foi exercitado num fluxo de missao ponta a ponta.
+
+Estado da fase: `PARTIAL_IMPLEMENTED_NOT_E2E_VERIFIED`. Veredito global: `NOT_RELEASE_READY`.
+
+### Proxima acao
+
+Expor `GET /api/agent/v1/worktrees` (inventario + diagnostico por sessao) e o painel
+correspondente; persistir o estado das sessoes para que suspender sobreviva a reinicio.
 ## JANELA E-1218 -- CONTEXTO MINIMO PARA OUTRA IA RETOMAR
 
 > Substitui a janela `E-1205`. Este bloco e' o handoff: se voce' e' outra IA a retomar, leia
