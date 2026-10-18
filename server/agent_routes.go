@@ -879,6 +879,10 @@ func (a *agentAPI) register(r *gin.Engine) {
 	group.GET("/toolchain/doctor", a.toolchainDoctor)
 	group.GET("/toolchain/plan/:alvo", a.toolchainPlan)
 	// FASE 28.6-A / 28.7: instalador modular. Superficie de LEITURA: planeia, nao instala.
+	// FASE 2: superficie de worktrees (E-1226..E-1231). So' leitura: remover exige decisao
+	// explicita sobre trabalho nao integrado, nunca um efeito lateral de um GET.
+	group.GET("/worktrees", a.worktreeInventario)
+	group.GET("/worktrees/diagnose", a.worktreeDiagnostico)
 	group.GET("/install/profiles", a.installProfiles)
 	group.GET("/install/plan/:perfil", a.installPlan)
 	// FASE 28.5 do adendo V3: o Signing Identity Center. Le METADADOS de um ficheiro fora do
