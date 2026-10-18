@@ -1,3 +1,23 @@
+## JANELA E-1254
+
+**Ronda 72. A proveniencia mentirosa do instalador foi corrigida -- e o gate falha de proposito.**
+
+- **E-1254** -- `scripts\hades_installer_windows.ps1` passou a **medir cada alvo** (SHA-256, caminho,
+  data) e a comparar a data com a do commit HEAD. Medido no `5cef8330f`: **3 de 3 alvos anteriores
+  ao HEAD** -> declara `COMPOSICAO` e grava o aviso no `PROVENIENCIA.txt`.
+- **TESTE NEGATIVO:** `-ExigirAlvosDoHead` sai com **exit 4** e **nao gera um unico `.exe`** -- o
+  gate foi verificado pela **ausencia do artefacto**.
+- **A HEURISTICA E'' DECLARADA:** *um timestamp nao e'' uma proveniencia: e'' um indicio de
+  proveniencia.*
+- **INSTALACAO:** quarto sintoma -- `& HadesSetup.exe /VERYSILENT /LOG=` devolve **exit 0 em 0 s**
+  sem criar ficheiro nem log. O binario foi verificado como Inno Setup legitimo (`MZ`+`PE`, string
+  `Inno Setup`, `VersionInfo` produto `Hades`). **4 tentativas, sintomas diferentes, parar.**
+
+Proximo passo declarado: ligar `-ExigirAlvosDoHead` ao CI e reconstruir o app desktop no HEAD; a
+instalacao exige diagnostico proprio.
+
+Veredito global: `NOT_RELEASE_READY`.
+
 ## JANELA E-1253
 
 **Ronda 71. O CI ficou vermelho por minha causa -- e a causa era um nome.**
