@@ -1,3 +1,30 @@
+## JANELA E-1285
+
+**Ronda 103. O E2E do `VerificationPanel`: o oitavo elo fechado no browser real.**
+
+- **E-1285** — `e2e/verification-panel.spec.ts` + rota `build/verify` no fixture: **11 passed / 1 skipped**.
+- **O teste que só o browser consegue fazer:** o fixture devolve `sem_assinatura: 1` e
+  `nao_verificadas: 1` — **o mesmo valor nos dois**. Se o painel os somasse, um campo leria **2**. O E2E
+  lê cada `data-testid` e exige **1 e 1**. Um teste unitário que constrói o próprio objecto não
+  apanharia isto; **o browser apanha porque lê o DOM que o painel realmente pintou**.
+- **Não existe botão de assinar, construir, instalar ou publicar:** um único botão, quatro rótulos
+  proibidos, `input` `toHaveCount(0)`, `Object.keys(corpo) === ["artefactos"]`, `sha256` casado com
+  `/^[a-f0-9]{64}$/`.
+- **O resumo não pode dizer "assinado":** o E2E exige `not.toContainText(/assinad/i)` e a frase "NAO
+  foi/foram inspeccionado".
+- **No modo de backend real a asserção é disjunta** (`erro` OU `relatorio`) — os caminhos de
+  demonstração não existem no router de produção, e o teste **não fabrica** um resultado para fingir
+  que passou.
+
+Medido: **11 passed / 1 skipped** · `npx playwright test` **117 passed / 10 skipped** (era 106/9) ·
+`npx vitest run` 127 ficheiros / 909 testes · `tsc -b` 0 · `eslint .` 0 erros · `vite build` 0 ·
+`BUNDLE_BUDGET=PASS`.
+
+**Lacuna:** falta ligação ao `BuildProvider` para verificar artefactos REAIS. `BuildPlanPanel` sem E2E.
+**3 providers sem rota nem painel.**
+
+Veredito global: `NOT_RELEASE_READY`.
+
 ## JANELA E-1284
 
 **Ronda 102. O sétimo provider fechado: `VerificationPanel` consome `build.verify`.**

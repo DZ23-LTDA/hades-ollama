@@ -538,7 +538,62 @@ const server = createServer(async (request, response) => {
           raiz_autorizada: true,
         });
       }
+    } else if (route === "POST /api/agent/v1/build/verify") {
+      // FASE 28.7: `build.verify` -- compara checksums. NAO assina, NAO constroi.
+      //
+      // Devolve `sem_assinatura` e `nao_verificadas` SEPARADOS, com valores diferentes e nao nulos,
+      // para o E2E poder provar que o painel nao os soma.
+      const corpoVerificacao = await readBody(request);
+      let pedidoVerificacao = {};
+      try {
+        pedidoVerificacao = JSON.parse(corpoVerificacao || "{}");
+      } catch {
+        sendJSON(response, 400, { erro: "corpo invalido: esperado JSON" });
+        return;
+      }
+      const artefactosPedidos = Array.isArray(pedidoVerificacao?.artefactos)
+        ? pedidoVerificacao.artefactos
+        : [];
+      if (artefactosPedidos.length === 0) {
+        sendJSON(response, 400, {
+          erro: "corpo invalido: esperado {\"artefactos\": [{\"caminho\": ..., \"sha256\": ...}]}",
+        });
+        return;
+      }
+      const resultadosPedidos = artefactosPedidos.map((pedido, indice) => ({
+        caminho: String(pedido.caminho),
+        tamanho_bytes: 1024 + indice,
+        integro: true,
+        adulterado: false,
+        // Um com assinatura AUSENTE (olhou), outro NAO_VERIFICADA (ninguem olhou).
+        assinatura: indice === 0 ? "AUSENTE" : "NAO_VERIFICADA",
+        aprovado: true,
+        duracao_ms: 2 + indice,
+        explicacao: "checksum confere",
+      }));
+      sendJSON(response, 200, {
+        somente_leitura: true,
+        nada_assinado: false,
+        verificacao: {
+          resultados: resultadosPedidos,
+          total: resultadosPedidos.length,
+          integros: resultadosPedidos.length,
+          adulterados: 0,
+          // Os dois campos SEPARADOS, com o mesmo valor de proposito: se o painel os somar, aparece 2
+          // num so' e o E2E apanha.
+          sem_assinatura: 1,
+          nao_verificadas: 1,
+          aprovada: true,
+          explicacao: "todos os checksums conferem",
+        },
+        aviso_de_fronteira:
+          "esta rota apenas COMPARA cada artefacto com o SHA-256 que o cliente enviou; nao constroi, " +
+          "nao assina, nao instala e nao procura o build por ID. `aprovada` significa que todos os " +
+          "ficheiros continuam iguais ao que o build mediu -- nao significa que exista assinatura: " +
+          "leia `nao_verificadas` para saber quantos ficaram por inspeccionar.",
+      });
     } else if (route === "POST /api/agent/v1/sbom/generate") {
+
       // FASE 28.7: `sbom.generate` -- inventario MINIMO, nunca assinado.
       //
       // Sem corpo util: a raiz vem de `HADES_RAIZ_SBOM` no servidor. O fixture devolve um inventario
