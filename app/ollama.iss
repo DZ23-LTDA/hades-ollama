@@ -49,8 +49,21 @@ OutputDir=..\dist\
 ; Disable logging once everything's battle tested
 ; Filename will be %TEMP%\Setup Log*.txt
 SetupLogging=yes
-CloseApplications=no
-RestartApplications=no
+; O Restart Manager do Windows e' o mecanismo NATIVO para isto: fecha as aplicacoes que
+; tem os ficheiros abertos e, com RestartApplications=yes, reabre-as no fim.
+;
+; *Achado pela auditoria E2E de 2026-10-18:* estavam ambos a `no`, e nao havia nenhum passo
+; que fechasse a instancia anterior. Um UPGRADE com o Hades aberto falhava no meio com
+; `DeleteFile failed; code 5 (Acesso negado)` em `ollama app.exe`, fazia rollback, e o
+; utilizador via "cancelado" sem saber porquê.
+;
+; Tentei matar o processo por PowerShell em `PrepareToInstall`. O log provou que a funcao
+; corria (`HADES-DIAG: PrepareToInstall entrou`) e que o `Exec` executava
+; (`Exec Ok=1 Codigo=1`), e o mesmo comando isolado mata o processo em 1,1 s -- mas o
+; `DeleteFile` continuava a falhar. *Se o comando funciona isolado e falha no instalador, o
+; problema nao e' o comando: e' quem o chama.* O Restart Manager resolve-o no sitio certo.
+CloseApplications=yes
+RestartApplications=yes
 RestartIfNeededByRun=no
 
 ; https://jrsoftware.org/ishelp/index.php?topic=setup_wizardimagefile
@@ -233,9 +246,15 @@ end;
   instalado noutra pasta. E o `Exec` dentro dela passou a esperar (`ewWaitUntilTerminated`)
   -- antes era assincrono, e a app ainda estava viva quando o Inno tentava substituir. }
 function PrepareToInstall(var NeedsRestart: Boolean): String;
+var
+  Ok: Boolean;
+  Codigo: Integer;
 begin
-  StopProcessesInDir(ExpandConstant('{app}'));
-  { Da' tempo ao Windows para libertar os handles. }
+  Log('HADES-DIAG: PrepareToInstall entrou; app=' + ExpandConstant('{app}'));
+  Ok := Exec(ExpandConstant('{sys}\WindowsPowerShell\v1.0\powershell.exe'),
+    '-NoProfile -ExecutionPolicy Bypass -Command "Get-CimInstance Win32_Process | Where-Object { $_.ExecutablePath -and $_.ExecutablePath.StartsWith(''''' + ExpandConstant('{app}') + '\'''',[System.StringComparison]::OrdinalIgnoreCase) } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }"',
+    '', SW_HIDE, ewWaitUntilTerminated, Codigo);
+  Log('HADES-DIAG: Exec Ok=' + IntToStr(Ord(Ok)) + ' Codigo=' + IntToStr(Codigo));
   Sleep(1500);
   Result := '';
 end;
