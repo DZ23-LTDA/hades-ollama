@@ -1,72 +1,51 @@
 # HADES — HANDOFF (como retomar a missão do zero)
-## JANELA E-1205 -- WINDOWS RC NAO ASSINADO E FINDINGS DE INSTALADOR (rondas 27-28)
+## JANELA E-1218 -- CONTEXTO MINIMO PARA OUTRA IA RETOMAR
 
-Estado medido em `95a0c20f9` (e nos commits que o precedem):
+> Substitui a janela `E-1205`. Este bloco e' o handoff: se voce' e' outra IA a retomar, leia
+> isto e o indice, nao o historico inteiro.
 
-- **E-1204** -- Windows RC NAO ASSINADO construido, instalado, usado e desinstalado:
-  `HadesSetup-1d2ce88c9.exe`, SHA-256 `ffd1304c...`, `NotSigned`, `SOURCE_SHA 1d2ce88c9`,
-  `dirty 0`. Os alvos em `dist\` eram de 2026-10-16 e o HEAD de 2026-10-18: foram
-  reconstruidos do HEAD. Ciclo E2E: `Installation process succeeded`, `--version`/`--help`/
-  `list` exit 0 com os 7 modelos do utilizador (partilha `D:\AI\Ollama`, nao duplica
-  30,8 GB), desinstalacao exit 0 com 44 blobs preservados.
-- **E-1205** -- `skipifsilent` corrigido: instalacao silent passou a concluir em 8 s em vez
-  de bloquear 10 min. O UPGRADE com a app aberta continua QUEBRADO: causa raiz
-  `DeleteFile failed; code 5` porque o `.iss` declara `CloseApplications=no` e nao ha' passo
-  que pare a instancia anterior. Tres curas tentadas, todas insuficientes; provado que o
-  comando PowerShell funciona isolado (1,1 s), logo o defeito esta' no `Exec` do Inno em
-  `PrepareToInstall`. **Requisito de aceite 28.10 #21, nao cumprido.**
+### ONDE ESTA' O TRABALHO
 
-Proximo passo: instrumentar o `[Code]` com log proprio para saber se `PrepareToInstall` e'
-invocado e se o `Exec` devolve False.
+Checkout: `C:/Users/DZ23/Documents/deepseek-harness/default-workspace/hades-ollama`.
+Branch `fix/checker-relogio`, PR #438. Veredito global **`NOT_RELEASE_READY`**.
 
-*Bloco de cabeca: mantem os tres documentos de retomada dentro da `JANELA = 12` do
-`hades_handoff_window_check.py`. Cada afirmacao abaixo tem ID proprio no indice.*
+### O QUE FOI CONSTRUIDO NAS RONDAS 33-38
 
-- **`E-1184`** -- **E2E da rota `/api/agent/v1/presets`: router REAL -> handler REAL -> catalogo REAL.**
-  `TestMissionPresetsRouteServeOCatalogoReal` prova GET 200 + 11 presets + `completion_criteria` em
-  todos + `count` coerente + o catalogo da rota e' o MESMO que `MissionPresetIDs()` serve ao `/preset`.
-  `TestMissionPresetsRouteNaoVazaSegredo` recusa termos de chave privada no corpo. A distincao esta'
-  escrita no teste: *este prova que a rota RESPONDE; o contrato anterior prova que a rota EXISTE --
-  um teste de strings nao e' um teste de comportamento.* Medido: PASS 8,530 s; lint 0 issues.
-- **`E-1183`** -- **`/preset` com rota real, e o teste apanhou-me.** Descoberto primeiro que `/goal`
-  **ja' tinha** `required(objetivo)` + `optional(workspace)` e recusa um 3.o argumento POR EXCESSO =>
-  **nao toquei no `/goal`**. Criado `/preset` com `Backend = "GET /api/agent/v1/presets"` e rota
-  registada fora de `/missions` (porque `/missions/:id` ja' existe). A minha 1.a versao tinha
-  `Backend = "local:mission-presets"` e o `TestSlashRegistryCoversSection6AndIsHonest` recusou:
-  `available command /preset has no real backend path`. *O teste impediu-me de criar um botao morto.*
-  Medido: pacote `internal/agent` PASS 269,139 s; pacote `server` PASS 27,772 s; lint 0 issues.
-- **`E-1182`** -- **FASE 23: preset de MISSAO nao e' preset de motor.** `mission_presets.go` com 11
-  presets embutidos, `completion_criteria` OBRIGATORIO e 4 recusas no `Validate`. Segue o desenho do
-  `ProviderPreset` sem tocar nele: *um escolhe onde corre, o outro escolhe o que corre.*
+Duas capacidades canonicas, cada uma em quatro camadas com testes reais em cada camada:
 
-*Bloco de cabeca: mantem os tres documentos de retomada dentro da `JANELA = 12` do
-`hades_handoff_window_check.py`. Cada afirmacao abaixo tem ID proprio no indice.*
+| fase | camada | ficheiro | testes |
+|---|---|---|---|
+| 28.6 | motor | `internal/agent/toolchain_plan.go` | 14 |
+| 28.7 | CLI | `cmd/agent_toolchain.go` | 8 |
+| 28.7 | API | `server/agent_toolchain_routes.go` | 6 |
+| 28.8 | UI | `components/CapabilitiesPage.tsx` | 6 |
+| 28.5 | cofre | `internal/multillm/signing_identity.go` | 16 |
+| 28.5 | ficheiro | `internal/multillm/signing_identity_file.go` | 13 |
+| 28.5 | API | `server/agent_signing_routes.go` | 4 |
+| 28.5 | UI | `components/SigningIdentitiesPage.tsx` | 7 |
 
-- **`E-1170`** -- **lacuna ENTRE PROCESSOS fechada com teste, e o store estava CERTO.** Novo ficheiro
-  `internal/agent/service_agent_approvals_crossproc_test.go`: `Request -> Decide ->` 4 subprocessos do
-  proprio binario de teste via `os.Executable()`, cada um tenta `Consume()` da MESMA aprovacao; exige
-  exactamente **1 sucesso**. Medido: **1 de 4**; os outros 3 recusados. Suite de aprovacao: **97 PASS,
-  0 FAIL, 2 SKIP**. Salta em `-short`.
-- **`E-1171`** -- **o `golangci-lint` LOCAL apanhou 2 defeitos que eu tinha acabado de introduzir**:
-  `for i := 0; i < n; i++` em L74 e L94 do teste novo -> aviso `intrange`. Curado: lint **exit 0**,
-  teste **PASS 3,05 s**. *A primeira tentativa de lint falhou por `go` fora do PATH -- mesma armadilha
-  do `E-1097`, **3a ocorrencia na sessao**.*
-- **`E-1169`** -- 2a varredura de segredos, mais ampla: **12 ficheiros com match, 12/12 de teste, 0 em
-  codigo de produto**. `git diff --check origin/main...HEAD` = 3212 avisos, **0 fora de
-  `skills/replica/`** (terceiro `-text` de proposito).
-- **`E-1168`** -- caracterizacao honesta: existe infra de `flock` (`context_memory_lock.go`), mas e'
-  para o ficheiro de MEMORIAS, nao para o store de aprovacoes. (Fechada pelo `E-1170`.)
-- **`E-1167`** -- `go build` do HEAD em **10,8 s** e o binario **arranca** (`ollama version is 0.40.1`).
-- **`E-1166`** -- `gate_snapshot` e' um **ciclo estrutural de 1 commit**; o `--check` ja' exclui
-  `gate_dirty`, `gate_head` e `gate_snapshot`. O gate prova o `measured_commit`.
-- **`E-1165`** -- os **dois comandos EXACTOS de `go test` do CI passam**: `./server` 5,25 s;
-  `internal/agent` **296,05 s completos** (~1700 testes).
-- **`E-1164`** -- secret scan do diff: 5 match, 0 secrets reais. **Lacuna**: o CI **nao tem** scanner.
-- **`E-1163`** -- SBOM/licencas/notices: **0 copyleft forte em 930 itens**.
-- **`E-1162`** -- `git diff --check`: 3213 avisos, **3212 falso positivo por design**; 1 nosso, curado.
-- **`E-1161`** -- non-inference: **102 testes tenant/non-inference, 0 falhas**.
-- **`E-1160`** -- **defeito real curado**: o gate §ESTAGIO 2 estava **CEGO** quando a divida chegou a
-  zero. Baseline 107 -> 0. **41/41 testes de instrumentos verdes**.
+### AS DECISOES QUE NAO PODEM SER DESFEITAS
+
+- Tres estados, tres cores. `incompleto` e `desconhecida` em ambar, **nunca** vermelho.
+- Trabalho independente aparece sempre que ha' bloqueio.
+- **Zero botoes mortos** nas superficies de diagnostico.
+- Producao exige aprovacao; a regra vive no servidor **e** no cliente.
+- `DisallowUnknownFields` no ficheiro de identidades: campo desconhecido recusa o ficheiro inteiro.
+- Registo parcial nunca e' devolvido: volta vazio.
+- Estado calculado na leitura, nunca gravado.
+- Rotas de diagnostico e de identidades sao **so' leitura**.
+
+### O VERMELHO, EM UMA FRASE
+
+`gitleaks (historico do PR)`: o fixture do proprio teste que prova que `private_key` e' recusado
+usava um valor com entropia de chave. Corrigido na arvore; o commit antigo nao pode ser reescrito.
+**Precisa de decisao do proprietario, nao de codigo.**
+
+### ORDEM DE RETOMADA
+
+1. Ler `HADES_EVIDENCE_INDEX.md` a partir de `E-1214`.
+2. **Nao** repetir o diagnostico do gitleaks.
+3. E2E Playwright das duas paginas novas, ou a matriz de assinatura por plataforma (28.4).
 
 ## 0.0 REMEDIÇÃO MEDIDA (2026-10-15, agora) — a secção 0 abaixo fica preservada como HISTÓRIA
 
