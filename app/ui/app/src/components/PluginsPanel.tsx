@@ -62,10 +62,12 @@ export function PluginsPanel() {
     void carregar();
   }, [carregar]);
 
-  const concedidosPorId = new Map<string, string[] | undefined>();
-  for (const inst of instalacoes) {
-    concedidosPorId.set(inst.manifest.id, inst.granted_scopes);
-  }
+  // E-1428: havia aqui um `Map` `concedidosPorId` que era PREENCHIDO e nunca LIDO -- um indice por
+  // plugin que ninguem consultava. Nenhum gate o apanhava porque `map.set(...)` conta como leitura da
+  // variavel: e' a forma classica do «write-only». Removido em vez de ligado, porque o painel le'
+  // `granted_scopes` de cada instalacao directamente no render.
+  //
+  //	*Um registo que se le e nao se usa e' decoracao -- e um que se escreve e nao se le tambem.*
 
   return (
     <section
