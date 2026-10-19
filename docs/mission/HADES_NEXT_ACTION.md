@@ -1,3 +1,27 @@
+## JANELA E-1306
+
+A cabeça do índice é **E-1306**.
+
+- **E-1306** — `POST /build/start`: a primeira rota do Release Hub que **executa** alguma coisa. O
+  `ProviderDeBuildGo` existia desde o E-1261 e **nenhuma rota o expunha**. As defesas já estavam no
+  provider (plano pronto, alvo no catálogo, raiz absoluta com `go.mod`, timeout 10 min, saída truncada,
+  `dry_run`). A rota acrescenta validação do corpo, plano vindo do `ResolverDeToolchain` e aviso de
+  fronteira no corpo. **8 testes PASS**, `golangci-lint ./server` 0 issues. Contra o binário real:
+  412 (raiz relativa/vazia), 400 (timeout acima do tecto / negativo / corpo inválido), 200 (`dry_run`).
+  **O caminho de sucesso de uma build real NÃO foi executado.**
+- **E-1305** — o E-1303 corrigiu o macOS e partiu windows/ubuntu: o `misspell` leu *Resolvemos* como
+  erro de inglês. Corrigido; `golangci-lint` 0 issues nos três pacotes.
+- **E-1304** — o E2E do `build.plan` nunca tinha corrido contra o backend real: sem `HADES_E2E_REPO`
+  3 passed / 4 failed; com ela 7 passed. O spec passou a falhar alto sem a variável.
+- **E-1303** — `/var`→`/private/var`: `filepath.Clean` não resolve symlinks.
+- **E-1302** — `publish.preflight` contra o binário Go real: 9 passed no modo real, 9 no fixture.
+
+O que continua aberto: **caminho de sucesso de `build.start` não provado**,
+`build.status`/`logs`/`cancel`/`artifacts` não existem (falta store), `gitleaks (historico do PR)`
+(decisão do proprietário), build Android e arranque do app (`BLOCKED_EXTERNAL`), `INSTALLED=NAO`
+(E-1252) e a **FASE 30 não iniciada**.
+
+---
 ## JANELA E-1305
 
 A cabeça do índice é **E-1305**.

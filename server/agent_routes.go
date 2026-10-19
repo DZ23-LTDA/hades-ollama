@@ -901,6 +901,7 @@ func (a *agentAPI) register(r *gin.Engine) {
 	group.GET("/build/artifact/verify", a.verificarArtefacto)
 	// FASE 28.9 passo 7: `build.verify`. Verifica o LOTE de artefactos de um build contra os
 	// SHA-256 que o build mediu. POST porque a lista nao cabe num URL sem limites arbitrarios.
+	group.POST("/build/start", a.iniciarBuild)
 	group.POST("/build/verify", a.verificarBuild)
 	group.POST("/build/smoke", a.executarSmoke)
 	group.POST("/publish/rollback", a.planearRollback)
