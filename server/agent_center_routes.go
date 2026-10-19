@@ -694,7 +694,9 @@ func (a *agentAPI) removeAgentPersona(c *gin.Context) {
 	}
 
 	var pedido struct {
-		PersonaID string `json:"persona_id"`
+		PersonaID   string `json:"persona_id"`
+		Target      string `json:"target"`
+		Destination string `json:"destination"`
 	}
 	if err := decodeJSON(c, &pedido); err != nil {
 		writeAgentError(c, http.StatusBadRequest, err)
@@ -727,7 +729,16 @@ func (a *agentAPI) removeAgentPersona(c *gin.Context) {
 		}
 	}
 
-	removido, err := ledger.Remove(organizationID, pedido.PersonaID)
+	// Com destino, remove UMA instalacao; sem destino, remove todas as da persona (comportamento antigo).
+	// O painel escolhe um destino -- e e' esse que tem de sair.
+	var removido bool
+	var err error
+	if strings.TrimSpace(pedido.Destination) != "" {
+		removido, err = ledger.RemoveAt(organizationID, pedido.PersonaID,
+			agent.TargetFormat(strings.TrimSpace(pedido.Target)), strings.TrimSpace(pedido.Destination))
+	} else {
+		removido, err = ledger.Remove(organizationID, pedido.PersonaID)
+	}
 	if err != nil {
 		writeAgentError(c, http.StatusInternalServerError, err)
 		return

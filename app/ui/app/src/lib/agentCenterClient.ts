@@ -571,11 +571,13 @@ export async function actualizarAgente(
 
 export async function removerAgente(
   personaId: string,
+  target: string,
+  destination: string,
 ): Promise<{ removed?: string; file_kept?: boolean; note?: string }> {
   try {
     return await agentFetch("/api/agent/v1/agents/remove", {
       method: "POST",
-      body: JSON.stringify({ persona_id: personaId }),
+      body: JSON.stringify({ persona_id: personaId, target, destination }),
     });
   } catch (causa) {
     traduzir(causa);

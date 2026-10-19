@@ -250,6 +250,53 @@ type Reconciliation struct {
 // Este metodo nao decide se pode remover: ele remove. Quem sabe se o ficheiro no destino foi modificado
 // depois da instalacao e' o `Reconcile`, e a politica de recusar trabalho local nao integrado pertence ao
 // chamador, que tem o disco. *Um ledger que decide politica e' um ledger que um dia decide sozinho.*
+// RemoveAt tira do ledger UMA instalacao concreta -- a chave e' (persona, target, destino).
+//
+// PORQUE NAO BASTA O Remove
+//
+// O `Remove` apaga todas as instalacoes da persona. Num painel onde o utilizador escolhe um DESTINO, isso
+// apagaria tambem as outras: *um botao que remove o que o utilizador nao apontou remove a confianca.*
+//
+// A chave e' a mesma que o `loadLocked` usa -- `PersonaLedgerKey`. Procurar pelo id, outra vez, seria repetir
+// o defeito da ronda 188.
+func (l *PersonaLedger) RemoveAt(scope, personaID string, target TargetFormat, destination string) (bool, error) {
+	scope = strings.TrimSpace(scope)
+	if scope == "" {
+		return false, fmt.Errorf("%w: scope is required", ErrPersonaInvalid)
+	}
+	personaID = strings.TrimSpace(personaID)
+	destination = strings.TrimSpace(destination)
+	if personaID == "" || strings.TrimSpace(string(target)) == "" || destination == "" {
+		return false, fmt.Errorf("%w: persona, target and destination are required", ErrPersonaInvalid)
+	}
+	if err := requireOrganization(scope); err != nil {
+		return false, err
+	}
+
+	l.mu.Lock()
+	defer l.mu.Unlock()
+
+	if err := l.loadLocked(scope); err != nil {
+		return false, err
+	}
+	alvo := PersonaLedgerEntry{PersonaID: personaID, Target: target, Destination: destination}
+	chave := PersonaLedgerKey(alvo)
+	existente, existe := l.byScope[scope][chave]
+	if !existe {
+		return false, nil
+	}
+	// A chave pode coincidir e o id nao: nesse caso nao e' a entrada que o chamador pensa.
+	if existente.PersonaID != personaID {
+		return false, nil
+	}
+	delete(l.byScope[scope], chave)
+	if err := l.persistLocked(scope); err != nil {
+		l.byScope[scope][chave] = existente // rollback: meia remocao nao e' remocao
+		return false, err
+	}
+	return true, nil
+}
+
 func (l *PersonaLedger) Remove(scope, personaID string) (bool, error) {
 	if err := requireOrganization(scope); err != nil {
 		return false, err

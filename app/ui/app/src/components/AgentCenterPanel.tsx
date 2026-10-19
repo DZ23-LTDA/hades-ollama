@@ -150,7 +150,9 @@ export function AgentCenterPanel() {
         } else if (op === "remover") {
           // O alvo e' o seletor de formato; o id vem do campo de texto do destino. Se o servidor recusar por
           // trabalho local, o `traduzir` levanta e o catch do painel mostra o conflito.
-          const r = await removerAgente(destino);
+          // O ID e' a persona; o destino e' o destino. Trocar os dois dava 404 -- e os dois sao strings,
+          // por isso nem o TypeScript nem o compilador os distinguiam.
+          const r = await removerAgente(PERSONA_MINIMA.id, alvo, destino);
           setRemocao(r);
           setEstado("removido");
         } else {
