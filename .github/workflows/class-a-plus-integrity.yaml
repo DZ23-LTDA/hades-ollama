@@ -121,6 +121,13 @@ jobs:
           # BLOCKED_EXTERNAL (sem JDK 17, Android SDK e Gradle na maquina de desenvolvimento).
           python3 scripts/hades_android_signing_check_test.py
           python3 scripts/hades_android_signing_check.py
+          # E-1292: o `hades_local_gates.ps1` -- a bateria local de gates -- esteve partido sem
+          # ninguem notar. A linha 787 tinha `e'` dentro de string com `'`; o PowerShell analisa o
+          # script inteiro antes de correr, por isso NENHUM gate local corria. O unico checker que
+          # olhava para .ps1 verificava ASCII, nao sintaxe.
+          #     *Um gate que nao arranca nao e' um gate: e' um ficheiro com nome de gate.*
+          python3 scripts/hades_ps1_syntax_check_test.py
+          python3 scripts/hades_ps1_syntax_check.py
       # E-660: a CODIFICACAO dos artefatos passa a ser gate. O checker existia (E-409/E-410) mas nao rodava no CI
       # e cobria so' dupla codificacao - um BOM UTF-8 passava em silencio, e um `HADES_MASTER_STATE.json` com BOM
       # derrubou o `hades_release_gate.py --check` (JSONDecodeError) nesta propria workflow. Instrumento fora da

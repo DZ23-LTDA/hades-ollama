@@ -264,6 +264,21 @@ $saidaAndroid2 = & python -X utf8 scripts/hades_android_signing_check.py 2>&1
 $saidaAndroid2 | Select-Object -First 3 | ForEach-Object { "    $_" }
 if ($LASTEXITCODE -ne 0) { $falhas.Add("hades_android_signing_check.py (exit $LASTEXITCODE)") } else { '    OK' }
 
+# *POR QUE ISTO EXISTE:* o `E-1292`. Este proprio ficheiro esteve partido sem ninguem notar: a linha 787
+# tinha `e'` dentro de string com `'`, o que fecha a string e aborta o parse do ficheiro INTEIRO. Como o
+# PowerShell analisa tudo antes de correr uma linha, NENHUM gate local corria.
+#
+#   *Um gate que nao arranca nao e' um gate: e' um ficheiro com nome de gate.*
+#
+# O `hades_ascii_ps1_check.py` verifica ASCII, nao sintaxe -- foi essa lacuna que deixou o defeito durar.
+'--- 9c. SINTAXE dos scripts PowerShell (E-1292)'
+$saidaPs1 = & python -X utf8 scripts\hades_ps1_syntax_check_test.py 2>&1
+$saidaPs1 | Select-String -Pattern '(Ran \d+ tests|^OK|^FAILED)' | Select-Object -Last 2 | ForEach-Object { "    " + $_.Line.Trim() }
+if ($LASTEXITCODE -ne 0) { $falhas.Add("hades_ps1_syntax_check_test.py (exit $LASTEXITCODE)") }
+$saidaPs2 = & python -X utf8 scripts\hades_ps1_syntax_check.py 2>&1
+$saidaPs2 | Select-Object -First 3 | ForEach-Object { "    $_" }
+if ($LASTEXITCODE -ne 0) { $falhas.Add("hades_ps1_syntax_check.py (exit $LASTEXITCODE)") } else { '    OK' }
+
 # *POR QUE ISTO EXISTE:* o `E-1008`. O `mission_check` exige "alguma evidencia >= E-960", e um
 # documento de retomada parado no E-1000 satisfaz PARA SEMPRE. Esta catraca mede a JANELA: o
 # maior ID citado tem de estar a menos de 12 evidencias da cabeca do indice.
