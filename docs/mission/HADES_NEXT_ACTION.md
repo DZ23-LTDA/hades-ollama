@@ -1,3 +1,48 @@
+## JANELA E-1346
+
+A cabeça do índice é **E-1346**.
+
+- **E-1346** — **`on_hand`, `reserved` e `available` são três números — e o painel mostra os três.**
+  `StockPanel` consome `GET /commerce/stock/:sku`. O `CommerceStockBalance` declara os três: *o que existe
+  no armazém, o que existe mas já tem dono, e o que se pode vender agora*. O painel escreve «7 disponível(is)
+  · 10 em armazém · 3 reservado(s)». *Um painel que mostre só `available` esconde o que está reservado; um
+  que mostre `on_hand` como "disponível" vende mercadoria que já tem dono.*
+  **O saldo é DERIVADO — e o painel confere a soma** contra os movimentos que vieram no mesmo payload.
+  Sem movimentos, devolve `null`: *ausência de prova não é prova de conformidade.*
+  **`available` tem de ser `on_hand − reserved`**, e o painel verifica.
+  **DÉCIMA SÉTIMA MEDIÇÃO — previsão errada por 1:** previ **1**, mediu **2** (30 → 28).
+- **E-1345** — RetentionPanel flaky: `setState` fora de `act`; 1184/1185 → 1185 ×3.
+- **E-1344** — verify-contracts: `call.raw` vs `call.path`; falso negativo provado e corrigido.
+- **E-1343** — wakeups: despertar informativo não é trabalho enfileirado; 31 → 30.
+- **E-1342** — solutions: POST que não muta; `integra_automaticamente` sempre falso; 32 → 31.
+- **E-1341** — company: `customers_created=0` é fronteira, não contagem; 33 → 32.
+
+## A distância, agora
+
+| categoria | rotas |
+|---|---|
+| no backend | **348** |
+| órfãs no frontend | **44** |
+| consumidor externo (correcto) | **16** |
+| **lacuna de produto** | **28** (era 93) |
+
+## 70% FECHADAS — E O QUE RESTA
+
+`scheduling` **12** · `auth` 3 (MFA) · `finance` 3 · `media` 2 (201 Created) · `business` 2 ·
+`company` 1 · `notifications` 1 · `crm` 1 · `inbox` 1 · `service-agents` 1 · `plugins` 1.
+
+**Todas são escritas que mutam estado real.** *Um painel que mostra uma rota de escrita não a prova: é
+preciso um botão, uma confirmação e um teste de negação.*
+
+**Nota acumulada sobre o contador — dezassete avisos:** o gate mede o **domínio**, não a rota. Dezassete
+medições, **seis** previsões certas.
+
+O que continua aberto: **28 rotas** sem UI (todas escritas); o gate **mede prefixos**; **20 ORPHAN de
+209**; o build **não é assinado nem instalado**; `sign.start`/`publish.*` inexistentes; o painel do build
+**não se actualiza sozinho**; **`gitleaks` histórico — a única falha de CI**; instalação limpa
+`BLOCKED_EXTERNAL`; **não há catraca contra novos testes flaky**; **FASE 30 não iniciada**.
+
+---
 ## JANELA E-1345
 
 A cabeça do índice é **E-1345**.

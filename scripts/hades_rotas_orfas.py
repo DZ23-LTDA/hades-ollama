@@ -156,7 +156,24 @@ RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 #   coisa: um pede uma pessoa, o outro pede um worker.*
 #
 # A conta: 3/10, 2/7, 1/0, 7/7 OK, 7/8, 3/5, 3/0, 5/5 OK, 4/1, 1/1 OK, 3/2, 2/4, 1/2, 1/1 OK, 1/1 OK, 1/1 OK.
-TETO_ORFAS = 30
+# 30 -> 29 no E-1346: `StockPanel` consome GET /commerce/stock/:sku.
+#
+# `commerce` tinha 6 rotas: 3 ja' consumidas (products, orders, summary) + esta leitura, que
+# faltava. As outras 2 (`POST /commerce/stock` e a escrita de movimentos) continuam.
+#
+#   *O `on_hand` nao e' o `available`: um painel que mostre o primeiro como o segundo vende
+#   mercadoria que ja' tem dono.*
+# 30 -> 28 no E-1346 -- previsao era 1, mediu 2.
+#
+# Consumir `GET /commerce/stock/:sku` fechou DUAS lacunas do prefixo `commerce`: o gate agrupa
+# por prefixo, e o `POST /commerce/stock` (escrita de movimento) e a leitura partilham o mesmo
+# prefixo de dominio.
+#
+#   *Mais uma vez: o contador mede dominios. Num dominio com uma leitura em falta, fechar a
+#   leitura pode arrastar uma escrita que nunca foi lacuna de leitura.*
+#
+# A conta: 3/10, 2/7, 1/0, 7/7 OK, 7/8, 3/5, 3/0, 5/5 OK, 4/1, 1/1 OK, 3/2, 2/4, 1/2, 1/1 OK, 1/1 OK, 1/1 OK, 1/2.
+TETO_ORFAS = 28
 
 # Quem chama nao e' o frontend do HADES -- a ausencia no UI e' correcta.
 CONSUMIDOR_EXTERNO = (
