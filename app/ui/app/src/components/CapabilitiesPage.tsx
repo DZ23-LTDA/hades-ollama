@@ -49,6 +49,7 @@ import { BookingPanel } from "@/components/BookingPanel";
 import { CancellationPanel } from "@/components/CancellationPanel";
 import { RescheduleMutationPanel } from "@/components/RescheduleMutationPanel";
 import { FinanceOrderPanel } from "@/components/FinanceOrderPanel";
+import { WaitlistOpsPanel } from "@/components/WaitlistOpsPanel";
 import { RollbackPanel } from "@/components/RollbackPanel";
 import { SigningPanel } from "@/components/SigningPanel";
 import { SbomPanel } from "@/components/SbomPanel";
@@ -374,6 +375,7 @@ export function CapabilitiesPage() {
       <CancellationPanel />
       <RescheduleMutationPanel />
       <FinanceOrderPanel />
+      <WaitlistOpsPanel />
 
         <CredentialsPanel />
 

@@ -1,3 +1,79 @@
+## JANELA E-1356
+
+A cabeça do índice é **E-1356**.
+
+- **E-1356** — **Faltar não é cancelar.** `WaitlistOpsPanel` consome `/scheduling/waitlist/{offer,confirm}` e
+  `/scheduling/no-show`. O comentário: *«Quem faltou nao e' o mesmo que quem cancelou, e a agenda precisa
+  distinguir.»* O painel: **«marcado como FALTOU · agora está `<estado>` · isto não é um cancelamento»**.
+  *Dois estados que o servidor distingue e o painel junta são dois estados que o utilizador perdeu.*
+  **Fila vazia não é erro:** o servidor responde **200 com `offered: false`** — *«Fila vazia nao e' erro: e'
+  ausencia de oferta — e o status tem de dizer isso, nao 500.»* O painel mostra isso **sem cair em erro nem
+  em recusa** (testado). O `now` não vai no corpo (testado), e a oferta **expira** — *«o motor decide, nao a
+  rota»*.
+  **VIGÉSIMA SÉTIMA MEDIÇÃO — previsão CERTA:** previ **3**, mediu **3** (15 → 12).
+- **E-1355** — finance/orders: receita de pedido não pago recusada; as 3 não devolvem o mesmo status; 18 → 15.
+- **E-1354** — scheduling/reschedule: a recusa vem do MOTOR; remarcar ≠ cancelar+criar; tecto medido depois.
+- **E-1353** — scheduling/cancel: motivo obrigatório = auditabilidade; id no CORPO; 19 → 18.
+- **E-1352** — scheduling/book: E-456 contrato separado; E-458 reentrega ≠ erro; `busy_until` ≠ `ends_at`; 20 → 19.
+- **E-1351** — business/tick: 4 desfechos separados; `errors` vem COM resultado; 21 → 20.
+
+## A REGRA DO GATE, E PORQUE ELA IMPORTA PARA O CUSTO
+
+```python
+prefixo = caminho.split(":")[0].rstrip("/") or caminho
+if prefixo not in fonte:      # SUBSTRING, não igualdade
+```
+
+**O prefixo corta no `:` e a comparação é por substring.** Consequência directa:
+
+| escrito na fonte | fecha |
+|---|---|
+| `/scheduling/waitlist` | `/waitlist` · `/waitlist/offer` · `/waitlist/confirm` |
+| `/finance/orders` | `/revenue` · `/cost` · `/reconcile` |
+| `/scheduling/reschedule` | o POST `reschedule` **e** `/reschedule/slots` |
+
+***Uma escrita num prefixo que já contém outros fecha tudo o que ele contém.*** Foi por isso que as últimas
+quatro medições acertaram: a regra está no instrumento, e lê-se antes de prever.
+
+## A distância, agora
+
+| categoria | rotas |
+|---|---|
+| no backend | **348** |
+| órfãs no frontend | **28** |
+| consumidor externo (correcto) | **16** |
+| **lacuna de produto** | **12** (era 93) |
+
+## AS 12 RESTANTES — LISTA EXACTA DO GATE
+
+| domínio | n | rotas |
+|---|---|---|
+| `auth` | 3 | `/auth/mfa/disable` · `/auth/mfa/enable` · `/auth/mfa/recovery/generate` |
+| `media` | 2 | `/media/ocr` · `/media/tone` |
+| `notifications` | 1 | `/notifications/register` |
+| `crm` | 1 | `/crm/opportunities/:id/stage` |
+| `inbox` | 1 | `/inbox/messages` |
+| `service-agents` | 1 | `/service-agents/approval-approvers` |
+| `business` | 1 | `/business/certify` |
+| `company` | 1 | `/company/factory/launch` |
+| `plugins` | 1 | `/plugins/bundle` |
+
+**`scheduling` está FECHADO nas escritas.** Restam `auth` (MFA, 3), `media` (2) e sete domínios isolados.
+
+**Vinte e sete medições, onze previsões certas** — as últimas quatro seguidas, depois de ler o gate.
+
+O que continua aberto: **12 rotas** sem UI (todas escritas); **20 ORPHAN de 209**; o build **não é assinado
+nem instalado**; `sign.start`/`publish.*` inexistentes; **`gitleaks` histórico — a única falha de CI**;
+instalação limpa `BLOCKED_EXTERNAL`; **não há catraca contra testes flaky**; **FASE 30 não iniciada**.
+Achados abertos: **o transporte descarta corpo e status de erro**; **o A1 nunca foi avaliado** por
+`SigningProvider`.
+
+## Próximo passo
+
+`/media/ocr` e `/media/tone` são as próximas mais simples (criam Artifacts, `201`). As de **MFA** exigem
+fatia própria: tocam credenciais e devem **recusar sem reautenticação**, com teste de negação explícito.
+
+---
 ## JANELA E-1355
 
 A cabeça do índice é **E-1355**.

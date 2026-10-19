@@ -228,7 +228,16 @@ RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 #
 #   *E a segunda licao: o tecto mede-se DEPOIS. Baixar antes de medir e' adivinhar em vez de medir, e o
 #   gate que existe para travar o proximo aumento passa a travar o trabalho feito.*
-TETO_ORFAS = 15
+# 15 -> 12 no E-1356: `WaitlistOpsPanel` consome `/scheduling/waitlist/{offer,confirm}` e
+# `/scheduling/no-show`.
+#
+#   *`/scheduling/waitlist` e' SUBSTRING dos dois `/waitlist/*` -- e pela regra do gate (prefixo cortado no
+#   `:`, comparado por substring) escrever `/scheduling/waitlist` na fonte fecha DUAS rotas de uma vez.
+#   Previ 3, mediu 3.*
+#
+#   ***A regra do gate nao e' um detalhe do instrumento: e' o mapa de quanto custa cada fatia. Uma escrita
+#   num prefixo que ja' contem outros fecha tudo o que ele contem.***
+TETO_ORFAS = 12
 
 # Quem chama nao e' o frontend do HADES -- a ausencia no UI e' correcta.
 CONSUMIDOR_EXTERNO = (
