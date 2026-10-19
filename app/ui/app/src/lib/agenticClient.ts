@@ -645,6 +645,45 @@ export function agentSessionHeaders(): Record<string, string> {
 }
 export const AGENT_LOGIN_REQUIRED_MESSAGE =
   'O Ollama está exposto na rede, então os recursos de agente exigem login. Entre em Configurações → Workspace ou desative "Expose Ollama to the network" em Configurações.';
+/**
+ * ErroDaApi: o erro do transporte que NAO perde o que o servidor disse.
+ *
+ * O PROBLEMA QUE ISTO FECHA (E-1380)
+ *
+ * `agentFetch` lancava `new Error(mensagem)`. A mensagem vinha de `body.erro`/`body.error`, mas o STATUS e o
+ * RESTO do corpo eram descartados. Quando o Agent Center passou a responder 503 com `error`, `reason` e
+ * `path` (E-1379), o `reason` -- o motivo real do runtime ter caido -- morria aqui.
+ *
+ *	*Um estado que mente e' pior do que nenhum.* -- e um erro que perde o motivo obriga o painel a inventar
+ *	um generico.
+ *
+ * PORQUE CONTINUA A SER `Error`
+ *
+ * ~130 ficheiros chamam `agentFetch` e leem `.message` em `catch`. Mudar a forma do erro quebraria todos. Esta
+ * classe ESTENDE `Error`, mantem `.message` identico, e acrescenta `status` e `corpo` a quem os quiser ler.
+ * Ninguem e' obrigado a mudar; quem quiser, sabe mais.
+ */
+export class ErroDaApi extends Error {
+  readonly status: number;
+  readonly corpo: unknown;
+
+  constructor(mensagem: string, status: number, corpo: unknown) {
+    super(mensagem);
+    this.name = "ErroDaApi";
+    this.status = status;
+    this.corpo = corpo;
+  }
+
+  /** Le uma chave string do corpo, sem assumir a forma. */
+  campo(chave: string): string | undefined {
+    if (this.corpo && typeof this.corpo === "object" && chave in this.corpo) {
+      const v = (this.corpo as Record<string, unknown>)[chave];
+      if (typeof v === "string") return v;
+    }
+    return undefined;
+  }
+}
+
 export async function agentFetch<T>(
   path: string,
   init: RequestInit = {},
@@ -674,7 +713,8 @@ export async function agentFetch<T>(
     if (response.status === 401 && body?.error === "bearer token is required") {
       throw new Error(AGENT_LOGIN_REQUIRED_MESSAGE);
     }
-    throw new Error(
+    // `ErroDaApi` e nao `Error`: a mensagem e' a mesma, mas o status e o corpo deixam de se perder.
+    throw new ErroDaApi(
       // O backend do HADES responde `{"erro": "..."}`; alguns endpoints legados respondem
       // `{"error": "..."}`. Ler SO' um dos dois fazia o utilizador ver "Bad Request" em vez da razao
       // escrita pelo servidor -- e *um estado que mente e' pior do que nenhum*.
@@ -689,6 +729,8 @@ export async function agentFetch<T>(
         : typeof body?.error === "string"
           ? body.error
           : response.statusText || "Agent API request failed",
+      response.status,
+      body,
     );
   }
   return body as T;
