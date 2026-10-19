@@ -126,8 +126,28 @@ jobs:
           # script inteiro antes de correr, por isso NENHUM gate local corria. O unico checker que
           # olhava para .ps1 verificava ASCII, nao sintaxe.
           #     *Um gate que nao arranca nao e' um gate: e' um ficheiro com nome de gate.*
+          #
+          # E-1300: este instrumento mede sintaxe de `.ps1` com o `PSParser::Tokenize` do PROPRIO
+          # PowerShell -- e `powershell.exe` NAO EXISTE no runner Ubuntu/macOS. A primeira versao
+          # falhava com `FileNotFoundError: ... 'powershell.exe'` (8 erros) e deixava este job
+          # vermelho em todos os commits. A correccao tem duas metades:
+          #   1. o teste PULA as classes que exigem o interpretador, com o motivo escrito;
+          #   2. o checker devolve **3** = BLOCKED_BY_EXTERNAL_DEPENDENCY quando nao pode medir.
+          # O ramo abaixo aceita o 3 e IMPRIME o bloqueio -- nunca o confunde com aprovacao, e nunca
+          # o esconde atras de `|| true`. No Windows o mesmo passo mede os 14 ficheiros e sai 0.
+          #     *Uma ausencia de medida nao e' uma medida: declara-se, nao se converte em aprovacao
+          #     nem em defeito.*
           python3 scripts/hades_ps1_syntax_check_test.py
+          set +e
           python3 scripts/hades_ps1_syntax_check.py
+          ps1_exit=$?
+          set -e
+          if [ "$ps1_exit" -eq 3 ]; then
+            echo "PS1 SINTAXE: BLOCKED_BY_EXTERNAL_DEPENDENCY declarado (exit 3) -- sem powershell.exe neste SO"
+          elif [ "$ps1_exit" -ne 0 ]; then
+            echo "PS1 SINTAXE: FALHOU (exit $ps1_exit)"
+            exit "$ps1_exit"
+          fi
           # E-1293: o `namespace` do Gradle era `com.dz23ltd.hades` mas os `.kt` estavam em
           # `com.lmprado.dz23agentic`. O manifest usa `.MainActivity` (nome relativo), que resolve
           # contra o NAMESPACE -- o Android procurava uma classe inexistente e o app NAO ABRIA.

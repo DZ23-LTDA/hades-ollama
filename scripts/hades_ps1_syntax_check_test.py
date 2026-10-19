@@ -11,6 +11,7 @@ com um apostrofo interno nao escapado, exactamente como estava na linha 787 do
 from __future__ import annotations
 
 import importlib.util
+import shutil
 import sys
 import tempfile
 import unittest
@@ -18,6 +19,28 @@ from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parent.parent
 SCRIPTS = RAIZ / "scripts"
+
+# E-1300: `powershell.exe` NAO EXISTE EM LINUX/macOS.
+#
+# Este instrumento mede sintaxe de `.ps1` com o `PSParser::Tokenize` do PROPRIO PowerShell. Sem o
+# interpretador nao ha' medida. No CI Ubuntu o teste falhava com
+# `FileNotFoundError: [Errno 2] No such file or directory: 'powershell.exe'` -- **8 erros** -- e foi
+# isso que deixou o job `Preserve Class A+ surfaces` vermelho em todos os commits.
+#
+# O `skipUnless` abaixo NAO e' um skip oportunista: e' a declaracao de que o objecto medido
+# (sintaxe de PowerShell) exige o interpretador de PowerShell. O que impede o skip de esconder um
+# defeito e' a outra metade da correccao: o `hades_ps1_syntax_check.py` devolve **exit 3**
+# (`BLOCKED_BY_EXTERNAL_DEPENDENCY`) quando nao pode medir, e o workflow trata esse codigo como
+# bloqueio DECLARADO -- nunca como aprovacao.
+#
+#     *Uma ausencia de medida nao e' uma medida: declara-se, nao se converte em aprovacao nem em
+#     defeito.*
+HA_POWERSHELL = shutil.which("powershell.exe") is not None
+MOTIVO_BLOQUEIO = (
+    "powershell.exe ausente neste SO: o instrumento mede sintaxe de .ps1 com o "
+    "PSParser::Tokenize do proprio PowerShell, e sem o interpretador nao ha' medida. "
+    "O checker devolve BLOCKED (exit 3), nao aprovacao. No Windows os 11 testes correm."
+)
 
 
 def carregar_checker():
@@ -41,6 +64,7 @@ def avaliar_texto(texto: str) -> list[str]:
         return checker.avaliar(medicoes)
 
 
+@unittest.skipUnless(HA_POWERSHELL, MOTIVO_BLOQUEIO)
 class DiscriminacaoTest(unittest.TestCase):
     def test_script_valido_passa(self) -> None:
         self.assertEqual([], avaliar_texto("Write-Host 'ok'\n$x = 1\n"))
@@ -76,6 +100,7 @@ class DiscriminacaoTest(unittest.TestCase):
         self.assertEqual([], avaliar_texto(texto))
 
 
+@unittest.skipUnless(HA_POWERSHELL, MOTIVO_BLOQUEIO)
 class MedicaoTest(unittest.TestCase):
     def test_sem_ficheiros_nao_aprova(self) -> None:
         """Ausencia de medida nao e' aprovacao."""
@@ -88,6 +113,7 @@ class MedicaoTest(unittest.TestCase):
         self.assertTrue(any("MEDICAO" in p for p in problemas))
 
 
+@unittest.skipUnless(HA_POWERSHELL, MOTIVO_BLOQUEIO)
 class RepositorioRealTest(unittest.TestCase):
     def test_encontra_os_ps1_versionados(self) -> None:
         ficheiros = checker.ficheiros_ps1()

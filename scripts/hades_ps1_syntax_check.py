@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -92,6 +93,33 @@ def avaliar_com_powershell(ficheiros: list[Path]) -> dict[str, tuple[str, str]]:
     """Devolve `{caminho: (estado, detalhe)}` conforme o PowerShell reporta."""
     if not ficheiros:
         return {}
+
+    # E-1300: `powershell.exe` NAO EXISTE EM LINUX/macOS.
+    #
+    # O `E-1292` criou este instrumento e o teste dele passou a falhar no CI Ubuntu com
+    # `FileNotFoundError: [Errno 2] No such file or directory: 'powershell.exe'` -- **8 erros**, e
+    # foi isso que deixou o job `Preserve Class A+ surfaces` vermelho em TODOS os commits.
+    #
+    # O instrumento mede sintaxe de `.ps1` com o `PSParser::Tokenize` do PowerShell. Sem o
+    # interpretador nao ha' medida -- e a resposta honesta nao e' "falhou" nem "passou": e'
+    # **BLOCKED**, declarado.
+    #
+    #     *Uma ausencia de medida nao e' uma medida: declara-se, nao se converte em aprovacao nem em
+    #     defeito.*
+    #
+    # O que isto NAO e': nao e' desligar o gate. No Windows ele continua a medir os 14 ficheiros. E o
+    # `main()` sai com **exit 3** (o mesmo codigo de `BLOCKED_BY_EXTERNAL_DEPENDENCY` do resto do
+    # projecto) para que o CI possa distinguir "nao mediu" de "mediu e passou".
+    if shutil.which("powershell.exe") is None:
+        return {
+            str(f): (
+                "BLOCKED",
+                "powershell.exe ausente neste SO: a sintaxe de .ps1 nao pode ser medida sem o "
+                "interpretador. Nao e' aprovacao e nao e' defeito -- e' ausencia de medida.",
+            )
+            for f in ficheiros
+        }
+
     with tempfile.TemporaryDirectory() as pasta:
         lista = Path(pasta) / "alvos.json"
         lista.write_text(
@@ -137,7 +165,14 @@ def avaliar_com_powershell(ficheiros: list[Path]) -> dict[str, tuple[str, str]]:
 
 
 def avaliar(medicoes: dict[str, tuple[str, str]]) -> list[str]:
-    """Problemas a partir das medicoes. Lista vazia = conforme."""
+    """Problemas a partir das medicoes. Lista vazia = conforme.
+
+    `BLOCKED` **nao** e' problema: e' ausencia de medida. Mas tambem nao e' aprovacao -- quem decide
+    isso e' o `main()`, que devolve `3` quando TODAS as medicoes estao bloqueadas.
+
+        *Uma ausencia de medida nao e' uma medida: declara-se, nao se converte em aprovacao nem em
+        defeito.*
+    """
     problemas: list[str] = []
     if not medicoes:
         return ["nenhum ficheiro .ps1 medido: o instrumento nao consegue aprovar o que nao le'"]
@@ -145,6 +180,8 @@ def avaliar(medicoes: dict[str, tuple[str, str]]) -> list[str]:
         estado, detalhe = medicoes[caminho]
         nome = Path(caminho).name
         if estado == "OK":
+            continue
+        if estado == "BLOCKED":
             continue
         if estado == "ERRO":
             problemas.append(
@@ -154,6 +191,11 @@ def avaliar(medicoes: dict[str, tuple[str, str]]) -> list[str]:
         else:
             problemas.append("MEDICAO: %s -> %s" % (nome, detalhe))
     return problemas
+
+
+def todas_bloqueadas(medicoes: dict[str, tuple[str, str]]) -> bool:
+    """True quando nenhuma medicao foi feita -- so' bloqueios declarados."""
+    return bool(medicoes) and all(estado == "BLOCKED" for estado, _ in medicoes.values())
 
 
 def main() -> int:
@@ -170,6 +212,17 @@ def main() -> int:
         for problema in problemas:
             print("  - %s" % problema)
         return 1
+
+    # E-1300: exit 3 = BLOCKED_BY_EXTERNAL_DEPENDENCY, o mesmo codigo do resto do projecto.
+    # Distingue "nao mediu" de "mediu e passou" -- e impede que uma ausencia de medida se leia como
+    # aprovacao.
+    if todas_bloqueadas(medicoes):
+        detalhe = next(iter(medicoes.values()))[1]
+        print(
+            "PS1 SINTAXE: BLOCKED_BY_EXTERNAL_DEPENDENCY -- %d ficheiro(s) NAO MEDIDOS. %s"
+            % (len(ficheiros), detalhe)
+        )
+        return 3
 
     print(
         "PS1 SINTAXE: os %d scripts .ps1 parseiam. Nenhum tem sintaxe invalida -- e' isto que impede "
