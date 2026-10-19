@@ -348,7 +348,9 @@ func TestAmbienteDeBuildSobrepoeODeterministico(t *testing.T) {
 	t.Setenv("GOOS", "plan9")
 	t.Setenv("GOPATH", "/gopath-de-teste")
 
-	ambiente := ambienteDeBuild()
+	// Alvo vazio: usa o GOOS do HOST. Este teste mede a sobreposicao de CGO/GOPATH, nao a do GOOS
+	// (essa tem teste proprio, `TestAmbienteDeBuildUsaOAlvoComoGOOS`).
+	ambiente := ambienteDeBuild("")
 	juntos := strings.Join(ambiente, "\n")
 
 	if strings.Contains(juntos, "CGO_ENABLED=1") {
@@ -369,7 +371,7 @@ func TestAmbienteDeBuildSobrepoeODeterministico(t *testing.T) {
 		t.Fatalf("GOPATH do chamador foi perdido:\n%s", juntos)
 	}
 	// Ordem estavel: dois ambientes iguais tem de sair iguais.
-	if strings.Join(ambienteDeBuild(), "\n") != juntos {
+	if strings.Join(ambienteDeBuild(""), "\n") != juntos {
 		t.Fatal("ambienteDeBuild nao e' deterministico entre chamadas")
 	}
 }
@@ -404,4 +406,62 @@ func plannerPronto(alvo string) CapabilityPlan { return CapabilityPlan{Alvo: alv
 
 func plannerBloqueado(alvo, blocker string) CapabilityPlan {
 	return CapabilityPlan{Alvo: alvo, Blockers: []string{blocker}}
+}
+
+// TestAmbienteDeBuildUsaOAlvoComoGOOS fixa o defeito medido no E-1307.
+//
+// # O DEFEITO
+//
+// A versao anterior fixava `GOOS = runtime.GOOS`. Pedir o alvo `linux` num Windows produzia um
+// ficheiro chamado `build-alvo-linux` cujos primeiros bytes eram `4D 5A 90 00` (`MZ`, Windows PE).
+// Medido no disco, nao inferido.
+//
+//	*Um artefacto que diz `-linux` e contem `MZ` nao e' um artefacto Linux: e' um artefacto Windows
+//	com um nome errado -- e um nome errado viaja mais depressa do que o binario.*
+func TestAmbienteDeBuildUsaOAlvoComoGOOS(t *testing.T) {
+	casos := map[string]string{
+		"linux":   "linux",
+		"windows": "windows",
+		"macos":   "darwin",
+		"LINUX":   "linux", // o catalogo e' case-insensitive em `Plano`
+	}
+	for alvo, goosEsperado := range casos {
+		ambiente := ambienteDeBuild(alvo)
+		juntos := strings.Join(ambiente, "\n")
+		if !strings.Contains(juntos, "GOOS="+goosEsperado) {
+			t.Fatalf("alvo %q: GOOS esperado %q, ambiente:\n%s", alvo, goosEsperado, juntos)
+		}
+		// O ambiente herdado nao pode sobreviver: e' o que tornava o alvo decorativo.
+		if strings.Contains(juntos, "GOOS=plan9") {
+			t.Fatalf("alvo %q: o GOOS herdado sobreviveu", alvo)
+		}
+	}
+}
+
+// TestAmbienteDeBuildSemAlvoUsaOHost garante que o smoke nao compila para o alvo errado.
+func TestAmbienteDeBuildSemAlvoUsaOHost(t *testing.T) {
+	ambiente := ambienteDeBuild("")
+	if !strings.Contains(strings.Join(ambiente, "\n"), "GOOS="+runtime.GOOS) {
+		t.Fatalf("sem alvo o GOOS devia ser o do host (%s)", runtime.GOOS)
+	}
+}
+
+// TestNomeDoArtefactoExtensaoSegueOAlvo prova que so' o alvo Windows ganha `.exe`.
+//
+// # O DEFEITO QUE ISTO PREVINE
+//
+// No E-1307 o binario Windows foi escrito sem `.exe`. O `cmd` recusou executa-lo: *"nao e'
+// reconhecido como um comando interno ou externo"*. Um executavel Windows sem extensao nao e'
+// executavel Windows.
+func TestNomeDoArtefactoExtensaoSegueOAlvo(t *testing.T) {
+	casos := map[string]string{
+		"windows": "proj-windows.exe",
+		"linux":   "proj-linux",
+		"macos":   "proj-macos",
+	}
+	for alvo, esperado := range casos {
+		if obtido := nomeDoArtefacto("/tmp/proj", alvo); obtido != esperado {
+			t.Fatalf("alvo %q: esperado %q, obtido %q", alvo, esperado, obtido)
+		}
+	}
 }

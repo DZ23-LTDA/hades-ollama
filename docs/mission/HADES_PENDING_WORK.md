@@ -1,3 +1,29 @@
+## JANELA E-1307
+
+A cabeça do índice é **E-1307**.
+
+- **E-1307** — o `build.start` do E-1306 passou a **construir de verdade**. Quatro defeitos encontrados
+  ao executá-lo contra o backend real: (1) a mensagem dizia `0 blocker(s): ` quando o plano não estava
+  pronto por uma ferramenta `PRESENT_COMPATIBLE_UNVERIFIED`; (2) **espera circular** — o `Construir`
+  exigia `plano.Pronto()`, cujo health funcional para o `go` **é o próprio `go build`**; (3) `GOOS`
+  vinha do host, não do alvo: pedir `linux` produzia um ficheiro chamado `build-alvo-linux` com bytes
+  `4D 5A 90 00` (Windows PE); (4) o catálogo **não tinha o alvo `macos`** que o provider prometia.
+  Medido: `linux` → **ELF** (`7F 45 4C 46`), `macos` → **Mach-O** (`CF FA ED FE`), `windows` → 412
+  honesto (`inno-setup` ABSENT). `golangci-lint` 0 issues, testes **ok**.
+- **E-1306** — `POST /build/start`: a primeira rota do Release Hub que **executa**. O `ProviderDeBuildGo`
+  existia desde o E-1261 e nenhuma rota o expunha. 8 testes PASS.
+- **E-1305** — o E-1303 corrigiu o macOS e partiu windows/ubuntu: `misspell` leu *Resolvemos* como erro.
+  **Verde confirmado em `aea7076be`:** `test (windows-latest)` success, `test (ubuntu-latest)` success.
+- **E-1304** — o E2E do `build.plan` nunca tinha corrido contra o backend real (faltava `HADES_E2E_REPO`).
+- **E-1303** — `/var`→`/private/var`: `filepath.Clean` não resolve symlinks.
+
+O que continua aberto: **o alvo `windows` não constrói** (`inno-setup` ABSENT — o alvo produz
+instalador), `build.status`/`logs`/`cancel`/`artifacts` não existem, **nenhum artefacto foi assinado,
+instalado ou executado no sistema alvo**, `gitleaks (historico do PR)` (decisão do proprietário),
+build Android e arranque do app (`BLOCKED_EXTERNAL`), `INSTALLED=NAO` (E-1252) e a **FASE 30 não
+iniciada**.
+
+---
 ## JANELA E-1306
 
 A cabeça do índice é **E-1306**.

@@ -134,6 +134,42 @@ func (p CapabilityPlan) Pronto() bool {
 	return vistas >= 0
 }
 
+// MotivosDeNaoPronto nomeia TUDO o que impede o plano de estar pronto.
+//
+// # O DEFEITO QUE ESTE METODO FECHA
+//
+// O `Pronto()` devolve `false` por duas razoes diferentes: (a) ha' blockers, ou (b) ha' uma
+// exigencia obrigatoria que esta' apenas `PRESENT_COMPATIBLE_UNVERIFIED`. A razao (b) NAO entra em
+// `Blockers` -- e' deliberado, porque `Bloqueia()` so' e' verdadeiro para ausencia/incompatibilidade.
+//
+// O resultado era um erro que dizia `0 blocker(s): ` e nao dizia o que faltava:
+//
+//	*Um erro que conta os blockers e ignora as ferramentas nao verificadas reporta "0 blockers" e
+//	nao diz o que falta.*
+//
+// `Pronto()` continua a ser a autoridade (conservador, como deve ser). Este metodo so' explica.
+func (p CapabilityPlan) MotivosDeNaoPronto() []string {
+	motivos := make([]string, 0, len(p.Blockers)+len(p.Probes))
+	motivos = append(motivos, p.Blockers...)
+	for _, probe := range p.Probes {
+		if !probe.Requisito.Obrigatorio {
+			continue
+		}
+		if probe.Estado == ToolHealthy {
+			continue
+		}
+		// Um blocker ja' foi listado acima: nao repetir.
+		if probe.Estado.Bloqueia() {
+			continue
+		}
+		motivos = append(motivos, fmt.Sprintf(
+			"%s esta' %s (nao %s): %s",
+			probe.Requisito.Nome, probe.Estado, ToolHealthy, probe.Detalhe,
+		))
+	}
+	return motivos
+}
+
 // Exigencia procura um requisito pelo nome.
 func (p CapabilityPlan) Exigencia(nome string) (ToolProbe, bool) {
 	for _, probe := range p.Probes {
@@ -169,6 +205,27 @@ func CatalogoDeAlvos() []AlvoDeclarado {
 				{Nome: "powershell", Comando: "powershell", Obrigatorio: true, Motivo: "scripts de build e de instalador"},
 			},
 			Independen: []string{"rever docs/mission e o indice de evidencias", "correr os checkers Python"},
+		},
+		{
+			Nome:      "macos",
+			Descricao: "binario Darwin (compilavel de qualquer host; assinatura exige host macOS)",
+			// O ALVO QUE FALTAVA.
+			//
+			// O ProviderDeBuildGo.Alvos() prometia macos desde o E-1261 e o catalogo NAO o tinha:
+			// pedir macos dava 422 "alvo desconhecido". Medido contra o servidor real no E-1307.
+			//
+			//	*Um provider que promete um alvo que o catalogo nao conhece promete um alvo que
+			//	ninguem consegue pedir.*
+			//
+			// go e' o unico requisito OBRIGATORIO: o provider COMPILA para Darwin de qualquer host
+			// (comprovado: bytes CF FA ED FE). Assinar, notarizar e instalar exigem macOS e vivem no
+			// SigningProvider/VerificationProvider, nao aqui -- exigir codesign neste alvo tornaria
+			// o build impossivel em Windows por uma razao que e' de outra etapa.
+			Exigencias: []ToolRequirement{
+				{Nome: "go", Comando: "go", Obrigatorio: true, Motivo: "compilar o binario Darwin", VersaoMinima: "1.22", ArgsDeVersao: []string{"version"}},
+				{Nome: "codesign", Comando: "codesign", Obrigatorio: false, Motivo: "assinar o .app (exige host macOS)"},
+			},
+			Independen: []string{"rever o runbook de assinatura e notarizacao macOS no repo"},
 		},
 		{
 			Nome:      "web",

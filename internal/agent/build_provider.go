@@ -133,11 +133,24 @@ func (p ProviderDeBuildGo) Construir(
 	plano CapabilityPlan,
 	opcoes OpcoesDeBuild,
 ) (ResultadoDeBuild, error) {
-	// O plano tem de estar PRONTO. Um provider que constroi com blockers declarados produz um
-	// artefacto que ninguem pode reproduzir.
-	if !plano.Pronto() {
-		return ResultadoDeBuild{}, fmt.Errorf("%w: %d blocker(s): %s",
-			ErrPlanoIncompleto, len(plano.Blockers), strings.Join(plano.Blockers, ", "))
+	// O plano nao pode ter BLOCKERS. Um provider que constroi com uma ferramenta obrigatoria
+	// AUSENTE ou INCOMPATIVEL produz um artefacto que ninguem pode reproduzir.
+	//
+	// PORQUE AQUI NAO SE EXIGE `plano.Pronto()`
+	//
+	// O `Pronto()` tambem exige `ToolHealthy`, e `ToolHealthy` significa "o health funcional
+	// passou". Para o `go`, o health funcional E' O PROPRIO `go build`: e' o comando que esta'
+	// em vias de correr. Exigir uma sonda separada antes de um comando que e' ele proprio a prova
+	// e' pedir duas provas da mesma coisa -- e o resultado pratico era que este provider NUNCA
+	// conseguia construir, porque nenhum plano de `go` chega aqui como `HEALTHY`.
+	//
+	//	*Uma sonda que exige a prova que o comando seguinte vai produzir e' uma espera circular.*
+	//
+	// A garantia nao enfraquece: se o `go` estiver `PRESENT_COMPATIBLE_UNVERIFIED` e nao funcionar,
+	// o `go build` falha e o erro e' real, medido, do processo -- nao uma previsao.
+	if len(plano.Blockers) != 0 {
+		return ResultadoDeBuild{}, fmt.Errorf("%w: %s",
+			ErrPlanoIncompleto, strings.Join(plano.MotivosDeNaoPronto(), "; "))
 	}
 	// O alvo tem de constar do catalogo e ser um dos que este provider cobre.
 	if !p.cobreAlvo(plano.Alvo) {
@@ -211,7 +224,7 @@ func (p ProviderDeBuildGo) Construir(
 	//
 	//	*Um build cujo resultado depende do ambiente de quem o chamou nao e' reproduzivel: e'
 	//	uma funcao do ambiente.*
-	cmd.Env = ambienteDeBuild()
+	cmd.Env = ambienteDeBuild(plano.Alvo)
 	inicio := time.Now()
 	saida, errExec := cmd.CombinedOutput()
 	duracao := time.Since(inicio)
@@ -347,12 +360,54 @@ func sha256DeFicheiro(caminho string) (string, error) {
 }
 
 // ambienteDeBuild monta o ambiente do subprocesso `go build` a partir do ambiente do servidor.
-func ambienteDeBuild() []string {
+//
+// O `alvo` NAO E' DECORATIVO: ele decide o `GOOS`.
+//
+// # O DEFEITO QUE ISTO FECHA
+//
+// A versao anterior fixava `GOOS = runtime.GOOS`. O artefacto chamava-se `...-linux` e continha
+// bytes `4D 5A` (`MZ`, Windows PE). Um instalador Linux que recebesse esse ficheiro falhava com uma
+// mensagem que nao aponta para o nome. Medido: `build-alvo-linux` com primeiros bytes `4D 5A 90 00`.
+//
+//	*Um artefacto que diz `-linux` e contem `MZ` nao e' um artefacto Linux: e' um artefacto Windows
+//	com um nome errado -- e um nome errado viaja mais depressa do que o binario.*
+//
+// A razao original era nao depender do `GOOS` exportado pelo runner. Essa razao continua respeitada:
+// quem manda e' o ALVO do plano, nao o ambiente herdado.
+// goosDoAlvo traduz o nome do ALVO do catalogo para o GOOS do Go.
+//
+// # O DEFEITO QUE ISTO FECHA
+//
+// O catalogo chama "macos" ao alvo, mas o GOOS do Go para macOS e' darwin. Passar
+// GOOS=macos ao go build falha com "unsupported GOOS/GOARCH pair macos/amd64". A traducao
+// nao e' cosmetica: sem ela o alvo macos nunca constroi.
+//
+//	*O nome do alvo e' do catalogo; o GOOS e' do compilador. Sao dois vocabularios, e o provider
+//	tem de falar os dois.*
+//
+// Devolve vazio quando o alvo nao e' reconhecido -- quem chama usa o host.
+func goosDoAlvo(alvo string) string {
+	switch strings.ToLower(strings.TrimSpace(alvo)) {
+	case "macos", "darwin", "osx":
+		return "darwin"
+	case "windows":
+		return "windows"
+	case "linux":
+		return "linux"
+	}
+	return ""
+}
+
+func ambienteDeBuild(alvo string) []string {
 	// Mantem tudo o que o servidor tem (PATH, HOME, GOROOT, GOPATH, caches privados do checkout) e
 	// sobrepoe apenas o que precisa de ser deterministico.
+	goos := goosDoAlvo(alvo)
+	if goos == "" {
+		goos = runtime.GOOS
+	}
 	forcadas := map[string]string{
 		"CGO_ENABLED": "0",
-		"GOOS":        runtime.GOOS,
+		"GOOS":        goos,
 		"GOARCH":      runtime.GOARCH,
 	}
 	ambiente := make([]string, 0, len(os.Environ())+len(forcadas))

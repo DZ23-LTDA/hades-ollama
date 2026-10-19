@@ -173,7 +173,11 @@ func (p ProviderDeSmoke) ExecutarSmoke(
 
 	comando := exec.CommandContext(contexto, absoluto, pedido.Argumentos...)
 	// Ambiente minimo: sem herdar tudo, para o smoke nao depender de variaveis do programador.
-	comando.Env = ambienteDeBuild()
+	//
+	// `ambienteDeBuild("")` e' o ambiente do HOST: o smoke executa um binario JA' COMPILADO, e o
+	// `GOOS` no ambiente nao muda nada no que um executavel faz -- mas passar o alvo aqui sugeriria
+	// que o smoke compila, e nao compila.
+	comando.Env = ambienteDeBuild("")
 	// O `CommandContext` mata o processo DIRECTO quando o contexto expira. Num Windows, matar o
 	// `cmd.exe` NAO mata o `ping` que ele lancou: o `CombinedOutput` continua a esperar pelo pipe
 	// aberto e o smoke fica pendurado muito depois do timeout. Medido num teste: 400 ms de timeout

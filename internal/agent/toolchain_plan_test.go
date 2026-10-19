@@ -283,3 +283,66 @@ func TestErrFerramentaSemComandoExiste(t *testing.T) {
 		t.Fatal("ErrFerramentaSemComando nao e' um erro valido")
 	}
 }
+
+// TestMotivosDeNaoProntoNaoDizZeroQuandoFaltaVerificacao fixa o defeito do E-1307.
+//
+// # O DEFEITO
+//
+// `Pronto()` devolve false quando uma exigencia obrigatoria esta' `PRESENT_COMPATIBLE_UNVERIFIED`,
+// mas `Blockers` fica vazio -- porque `Bloqueia()` so' e' verdadeiro para ausencia/incompatibilidade.
+// O erro do `Construir` contava `len(Blockers)` e dizia:
+//
+//	plano de capability incompleto: nao ha' build a executar: 0 blocker(s):
+//
+// Zero blockers e o plano nao estava pronto. Medido contra o servidor real.
+//
+//	*Um erro que conta os blockers e ignora as ferramentas nao verificadas reporta "0 blockers" e
+//	nao diz o que falta.*
+func TestMotivosDeNaoProntoNaoDizZeroQuandoFaltaVerificacao(t *testing.T) {
+	plano := CapabilityPlan{
+		Alvo: "linux",
+		Probes: []ToolProbe{
+			{
+				Requisito: ToolRequirement{Nome: "go", Obrigatorio: true},
+				Estado:    ToolUnverified,
+				Detalhe:   "presente e respondeu; falta health funcional",
+			},
+		},
+	}
+	if len(plano.Blockers) != 0 {
+		t.Fatalf("pre-condicao: Blockers devia estar vazio, tem %v", plano.Blockers)
+	}
+	if plano.Pronto() {
+		t.Fatal("pre-condicao: Pronto() devia ser false com uma exigencia nao verificada")
+	}
+	motivos := plano.MotivosDeNaoPronto()
+	if len(motivos) == 0 {
+		t.Fatal("MotivosDeNaoPronto devolveu vazio -- e' exactamente o defeito que isto fixa")
+	}
+	juntos := strings.Join(motivos, " | ")
+	if !strings.Contains(juntos, "go") {
+		t.Fatalf("o motivo devia nomear a ferramenta: %q", juntos)
+	}
+	if !strings.Contains(juntos, "PRESENT_COMPATIBLE_UNVERIFIED") {
+		t.Fatalf("o motivo devia nomear o estado real: %q", juntos)
+	}
+}
+
+// TestMotivosDeNaoProntoNaoRepeteOBlocker garante que um blocker nao conta duas vezes.
+func TestMotivosDeNaoProntoNaoRepeteOBlocker(t *testing.T) {
+	plano := CapabilityPlan{
+		Alvo:     "windows",
+		Blockers: []string{"inno-setup (ABSENT): nao encontrado no PATH resolvido"},
+		Probes: []ToolProbe{
+			{
+				Requisito: ToolRequirement{Nome: "inno-setup", Obrigatorio: true},
+				Estado:    ToolAbsent,
+				Detalhe:   "nao encontrado no PATH resolvido",
+			},
+		},
+	}
+	motivos := plano.MotivosDeNaoPronto()
+	if len(motivos) != 1 {
+		t.Fatalf("esperado 1 motivo (sem repetir), obtidos %d: %v", len(motivos), motivos)
+	}
+}
