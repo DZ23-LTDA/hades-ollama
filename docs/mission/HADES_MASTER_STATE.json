@@ -2,7 +2,7 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-19T17:32:19-03:00",
+  "updated_at": "2026-10-19T17:38:30-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
@@ -1232,7 +1232,8 @@
         "E-1398",
         "E-1399",
         "E-1400",
-        "E-1401"
+        "E-1401",
+        "E-1402"
       ],
       "blocker": "B-03",
       "next": "LIMITES REAIS (atualizados por E-271): o AUDIO REAL (STT/TTS) segue externo - a camada entrega o CONTRATO do turno com latencia medida pelo adaptador, sem provedor real; nao ha gravacao de audio (apenas o consentimento exigido); nao ha deteccao de interrupcao (barge-in) nem transferencia humana medida; custo por minuto nao e apurado. Proximo: estagios 32-38",
@@ -3188,8 +3189,8 @@
     },
     "evidence": "E-173"
   },
-  "measured_at": "2026-10-19T17:32:19-03:00",
-  "measured_commit": "9b6e9c562f6deee99f75f8890e4bc4a378a4528d",
+  "measured_at": "2026-10-19T17:38:30-03:00",
+  "measured_commit": "ba18e9d4c59d78ff32311edcbe33ce727105ded0",
   "branch_head_measured": "f1a6c261b",
   "branch_head_measured_at": "2026-10-15T10:30:00-03:00",
   "branch_head_measured_how": "git rev-parse HEAD no checkout local (branch fix/checker-relogio), medido no round 54. DIVERGENCIA DECLARADA: measured_commit continua a ser a ultima MEDICAO COMPLETA (e423ec72e); o head avancou com as fatias do complemento 48 (sala: dominio, rotas HTTP, cliente, componente, painel e tela) e com checkpoints. Nao se reescreveu a historia e nao se reivindica nova medicao completa. NOTA DE CONCORRENCIA: este arquivo tambem e escrito por outro agente (o measured_how seguinte cita HEAD 1065e5c56 / E-518-E-519) - editar sempre por ancora unica e re-ler antes de gravar.",

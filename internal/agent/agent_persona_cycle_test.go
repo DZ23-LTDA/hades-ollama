@@ -169,14 +169,16 @@ func TestCicloCompletoImportarInstalarDriftBackupRestoreRemover(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// DIAGNOSTICO: o que esta' realmente no disco?
+	// E-1402: este bloco despejava cada JSON de persona no log em TODAS as execucoes -- incluindo as verdes.
+	//
+	// A falha logo abaixo ja' reporta `files` (L181), que e' o que um leitor precisa para saber onde olhar.
+	// O resto era ruido: `t.Logf` de um ficheiro inteiro, multiplicado por cada persona, em cada corrida.
+	//
+	//   *Um diagnostico que corre quando esta' tudo bem ensina a ignorar o log -- e depois o log que
+	//   importa tambem passa despercebido.*
+	//
+	// O `files` FICA: e' a evidencia que a mensagem de falha cita.
 	files, _ := filepath.Glob(filepath.Join(raiz, "personas", "*.json"))
-	t.Logf("DIAG raiz=%s ficheiros=%v", raiz, files)
-	for _, f := range files {
-		if b2, err := os.ReadFile(f); err == nil {
-			t.Logf("DIAG %s = %s", filepath.Base(f), string(b2))
-		}
-	}
 	if n := len(l2.Entries(escopoTeste)); n != 1 {
 		t.Fatalf("o ledger nao sobreviveu a reabertura: %d entradas, ficheiros=%v", n, files)
 	}
