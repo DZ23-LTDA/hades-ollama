@@ -170,6 +170,14 @@ func (s *BuildStore) Registar(alvo, raiz, destino string) (string, error) {
 
 // podar descarta os builds terminados mais antigos quando o store passa do tecto. Deve ser chamado
 // com o lock tomado.
+//
+// O TECTO TEM DE VALER NOS DOIS SITIOS.
+//
+// A primeira versao podava so' o mapa em memoria e deixava os ficheiros em disco a crescer. Um tecto
+// que so' vale para metade dos sitios nao e' um tecto: e' uma intencao.
+//
+//	*Uma politica de retencao que so' conta os registos que caberam em memoria nao e' uma politica de
+//	retencao: e' uma politica de memoria.*
 func (s *BuildStore) podar() {
 	if len(s.registos) <= maxBuildsGuardados {
 		return
@@ -189,7 +197,64 @@ func (s *BuildStore) podar() {
 	for i := 0; i < len(terminados) && i < excesso; i++ {
 		delete(s.registos, terminados[i].id)
 		delete(s.cancelamentos, terminados[i].id)
+		// O ficheiro em disco sai com o mesmo criterio do registo em memoria. Se ficasse, o disco
+		// cresceria sem limite enquanto a memoria se mantinha no tecto.
+		if s.dir != "" {
+			_ = os.Remove(filepath.Join(s.dir, terminados[i].id+".json"))
+		}
 	}
+}
+
+// PodarDisco aplica a retencao aos registos que ja' estao em disco, sem depender de o mapa em memoria
+// ter passado do tecto.
+//
+// Existe porque o `podar` so' corre quando um build NOVO entra: um processo que arranca, carrega 200
+// registos e fica parado nunca poda nada. Devolve quantos ficheiros removeu.
+func (s *BuildStore) PodarDisco() int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.dir == "" {
+		return 0
+	}
+	entradas, err := os.ReadDir(s.dir)
+	if err != nil || len(entradas) <= maxBuildsGuardados {
+		return 0
+	}
+	// Ordena por data de modificacao: o que nao esta' no mapa em memoria conta pela idade do ficheiro.
+	type ficheiro struct {
+		nome string
+		em   time.Time
+	}
+	var ficheiros []ficheiro
+	for _, e := range entradas {
+		if e.IsDir() || !strings.HasSuffix(e.Name(), ".json") {
+			continue
+		}
+		info, err := e.Info()
+		if err != nil {
+			continue
+		}
+		ficheiros = append(ficheiros, ficheiro{e.Name(), info.ModTime()})
+	}
+	if len(ficheiros) <= maxBuildsGuardados {
+		return 0
+	}
+	sort.Slice(ficheiros, func(i, j int) bool { return ficheiros[i].em.Before(ficheiros[j].em) })
+	remover := len(ficheiros) - maxBuildsGuardados
+	removidos := 0
+	for i := range remover {
+		// NUNCA remove um build que esta' a correr NESTE processo, mesmo que o ficheiro seja antigo.
+		id := strings.TrimSuffix(ficheiros[i].nome, ".json")
+		if r, existe := s.registos[id]; existe && (r.Estado == BuildAExecutar || r.Estado == BuildNaFila) {
+			continue
+		}
+		if err := os.Remove(filepath.Join(s.dir, ficheiros[i].nome)); err == nil {
+			removidos++
+			delete(s.registos, id)
+			delete(s.cancelamentos, id)
+		}
+	}
+	return removidos
 }
 
 // CarregarDoDisco le os registos guardados em `dir` e popula o store.

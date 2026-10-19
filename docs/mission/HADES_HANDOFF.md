@@ -1,3 +1,40 @@
+## JANELA E-1317
+
+A cabeça do índice é **E-1317**.
+
+- **E-1317** — **dois defeitos: um de retenção, um de ferramenta.**
+  **(1) A retenção só valia para metade dos sítios.** O `podar()` descartava os registos terminados do
+  mapa em memória e **deixava os ficheiros em disco a crescer**. *Uma política de retenção que só conta
+  os registos que caberam em memória não é uma política de retenção: é uma política de memória.*
+  Corrigido: `podar()` apaga o `.json` com o mesmo critério, e há `PodarDisco()` para o caso que o
+  `podar` não cobria — um processo que arranca, carrega 200 registos e fica parado nunca volta a chamar
+  `podar`. `PodarDisco` **nunca remove um build a correr neste processo**.
+  **(2) A oitava ocorrência do `misspell` — e a causa era outra.** O `.golangci.yaml` **já tinha
+  `ignore-rules`** para o `misspell` com cinco palavras portuguesas legítimas. `discriminante` não
+  estava lá. E o `misspell` **só flagra o SINGULAR** — o plural `discriminantes` já passava, como
+  `toolchain_plan_test.go:3` provava sem que eu reparasse. As outras ocorrências estão em `.ts`/`.tsx`,
+  que o `golangci-lint` não analisa.
+  **Passei oito rondas a reescrever comentários quando a solução era uma linha que o repo já tinha.**
+  *Reescrever o comentário oito vezes é tratar o sintoma de um corretor ortográfico com a ferramenta
+  errada.* — e o comentário reescrito ficava **pior**, porque perdia o termo técnico exacto.
+  **Prova da ignore-rule:** repus a palavra de propósito num comentário e `golangci-lint` deu **0
+  issues** (antes: `misspell: 1`). A regra foi testada com o caso que falhava, não aceite por confiança.
+  **Medido:** 4 testes de retenção PASS · `./server` ok 44.664 s · `./internal/agent` ok 347.894 s.
+- **E-1316** — persistência do store ligada ao `DataRoot`; builds abandonados marcados `FALHOU`.
+- **E-1315** — botão de iniciar build; alvo bloqueado não ganha botão.
+- **E-1314** — painel de estado; o 409 de `cancel` é resultado, não falha.
+
+## `PodarDisco` — o que ainda falta
+
+`PodarDisco` existe e está testado, mas **não está ligado a nenhum agendador**: só corre quando alguém o
+chama. A retenção em disco funciona no caminho do `podar()` (a cada build novo), mas um servidor parado
+com disco cheio não se limpa sozinho.
+
+O que continua aberto: build **não assinado nem instalado**; `sign.start`/`publish.*` inexistentes; o
+painel de estado **não se actualiza sozinho**; `PodarDisco` sem agendador; `gitleaks`; instalação limpa
+`BLOCKED_EXTERNAL`; **FASE 30 não iniciada**.
+
+---
 ## JANELA E-1316
 
 A cabeça do índice é **E-1316**.

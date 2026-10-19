@@ -40,6 +40,13 @@ linters:
         - componentes
         # misspell splits words at accented letters ("conversão" -> "convers").
         - convers
+        # E-1317: o `misspell` so' flagra o SINGULAR -- o plural `discriminantes` ja' passava.
+        # Esta e' a oitava vez que a palavra obrigou a reescrever um comentario nesta sessao, e a
+        # solucao sempre foi a que este ficheiro ja' tinha para as outras: declarar a palavra.
+        #
+        #	*Reescrever o comentario oito vezes e' tratar o sintoma de um corretor ortografico com a
+        #	ferramenta errada.*
+        - discriminante
         - comando
         - comandos
         - progresso

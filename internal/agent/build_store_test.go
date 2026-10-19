@@ -458,6 +458,116 @@ func TestStoreBuildCarregarSemDirectorioNaoFalha(t *testing.T) {
 	}
 }
 
+// TestStoreBuildPodarApagaDoDisco prova que o tecto vale nos DOIS sitios.
+//
+// A primeira versao podava so' o mapa em memoria e deixava os ficheiros em disco a crescer.
+//
+//	*Uma politica de retencao que so' conta os registos que caberam em memoria nao e' uma politica de
+//	retencao: e' uma politica de memoria.*
+func TestStoreBuildPodarApagaDoDisco(t *testing.T) {
+	dir := t.TempDir()
+	s := NovoBuildStoreComDirectorio(dir)
+
+	// Enche o store acima do tecto. Cada `Registar` chama `podar`, que agora tambem apaga do disco.
+	for range maxBuildsGuardados + 15 {
+		id, err := s.Registar("linux", "/r", "/d")
+		if err != nil {
+			t.Fatalf("registar: %v", err)
+		}
+		if _, err := s.Iniciar(id); err != nil {
+			t.Fatalf("iniciar: %v", err)
+		}
+		if err := s.Terminar(id, nil, nil, ""); err != nil {
+			t.Fatalf("terminar: %v", err)
+		}
+	}
+
+	entradas, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatalf("ler dir: %v", err)
+	}
+	if len(entradas) > maxBuildsGuardados {
+		t.Fatalf("o disco devia ficar dentro do tecto %d, tem %d ficheiros", maxBuildsGuardados, len(entradas))
+	}
+	if len(entradas) == 0 {
+		t.Fatal("o disco ficou vazio -- a poda levou tudo")
+	}
+	if n := len(s.Listar()); n > maxBuildsGuardados {
+		t.Fatalf("a memoria devia ficar dentro do tecto %d, tem %d", maxBuildsGuardados, n)
+	}
+}
+
+// TestStoreBuildPodarDiscoFuncionaSemBuildsNovos prova a poda explicita.
+//
+// O `podar` so' corre quando um build NOVO entra: um processo que arranca, carrega 200 registos e fica
+// parado nunca poda nada. `PodarDisco` existe para esse caso.
+func TestStoreBuildPodarDiscoFuncionaSemBuildsNovos(t *testing.T) {
+	dir := t.TempDir()
+
+	// Escreve 12 ficheiros a mao, sem passar pelo store (simula um disco ja' cheio de outra sessao).
+	for i := range 12 {
+		nome := "a" + itoaDoStore(i) + ".json"
+		corpo := `{"id":"a` + itoaDoStore(i) + `","alvo":"x","estado":"CONCLUIDO","iniciado_em":"2026-01-01T00:00:00Z"}`
+		if err := os.WriteFile(filepath.Join(dir, nome), []byte(corpo), 0o644); err != nil {
+			t.Fatalf("escrever %d: %v", i, err)
+		}
+	}
+
+	s := NovoBuildStoreComDirectorio(dir)
+	// Sem tecto excedido (12 < 200): nao remove nada.
+	if n := s.PodarDisco(); n != 0 {
+		t.Fatalf("com 12 ficheiros nao devia remover nada, removeu %d", n)
+	}
+}
+
+// TestStoreBuildPodarDiscoNaoRemoveEmCurso e' o discriminante.
+//
+//	*Uma poda que remove o build que esta' a correr e' um limite que apaga o trabalho para o qual foi
+//	pedido.*
+func TestStoreBuildPodarDiscoNaoRemoveEmCurso(t *testing.T) {
+	dir := t.TempDir()
+
+	// Cria um build EM CURSO e persiste-o.
+	s1 := NovoBuildStoreComDirectorio(dir)
+	emCurso, _ := s1.Registar("windows", "/r", "/d")
+	if _, err := s1.Iniciar(emCurso); err != nil {
+		t.Fatalf("iniciar: %v", err)
+	}
+	// Forca a persistencia do estado A_EXECUTAR.
+	r, _ := s1.Obter(emCurso)
+	s1.mu.Lock()
+	s1.persistir(&r)
+	s1.mu.Unlock()
+
+	// Enche o disco com ficheiros antigos (mais recentes que o em-curso nao importa: a poda usa
+	// ModTime e o em-curso e' o mais recente).
+	for i := range maxBuildsGuardados + 10 {
+		corpo := `{"id":"b` + itoaDoStore(i) + `","alvo":"x","estado":"CONCLUIDO","iniciado_em":"2026-01-01T00:00:00Z"}`
+		if err := os.WriteFile(filepath.Join(dir, "b"+itoaDoStore(i)+".json"), []byte(corpo), 0o644); err != nil {
+			t.Fatalf("escrever %d: %v", i, err)
+		}
+	}
+
+	// Um store NOVO carrega tudo; o build em curso no processo ANTERIOR nao esta' em `registos` como
+	// A_EXECUTAR (foi marcado interrompido). Para exercitar a poda contra um build vivo, usamos o s1.
+	s1.mu.Lock()
+	s1.persistir(&r)
+	s1.mu.Unlock()
+
+	removidos := s1.PodarDisco()
+	if removidos == 0 {
+		t.Fatal("a poda devia ter removido ficheiros antigos")
+	}
+	// O build em curso continua em memoria.
+	if _, err := s1.Obter(emCurso); err != nil {
+		t.Fatalf("o build em curso foi removido da memoria: %v", err)
+	}
+	// E o ficheiro dele continua em disco.
+	if _, err := os.Stat(filepath.Join(dir, emCurso+".json")); err != nil {
+		t.Fatalf("o ficheiro do build em curso foi apagado: %v", err)
+	}
+}
+
 // TestStoreBuildCancelarDuasVezesNaoDisparaDoisCancelamentos prova idempotencia do pedido.
 func TestStoreBuildCancelarDuasVezesNaoDisparaDoisCancelamentos(t *testing.T) {
 	s := NovoBuildStore()
