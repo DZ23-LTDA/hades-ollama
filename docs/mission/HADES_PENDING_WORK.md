@@ -1,3 +1,36 @@
+## ACHADO P1 (ronda 107) -- o build de release Android assina com a DEBUG KEY
+
+`apps/mobile-agentic/android/app/build.gradle` tem, no template do React Native:
+
+```
+release {
+    // Caution! In production, you need to generate your own keystore file.
+    signingConfig signingConfigs.debug
+}
+```
+
+**Porque e' um achado:** a debug keystore usa a senha publica `android` e o alias `androiddebugkey`,
+conhecidos desde 2010. Um APK/AAB assinado com ela e' **forjavel por qualquer pessoa**, e o Google Play
+**rejeita** AAB assinado com debug key.
+
+**O que NAO e':** nao e' vazamento de segredo. `storePassword 'android'` e' a senha publica do debug
+keystore; `debug.keystore` nao e' rastreada pelo git. A varredura do gate anti-vazamento confirmou:
+0 ficheiros de credencial rastreados, 0 blocos PEM no repositorio.
+
+**O caminho real de build Android e' o EAS**, nao `gradlew assembleRelease`: o `eas.json` declara
+`credentialsSource` por perfil. Enquanto o EAS gerir a credencial, esta linha nunca corre.
+
+**Risco residual:** o caminho LOCAL esta' aberto e silencioso. Quem correr `assembleRelease` obtem um
+artefacto assinado com chave publica e nao descobre isso ate' o Play recusar -- ou pior, ate' alguem
+forjar uma actualizacao.
+
+**Porque nao foi corrigido agora:** o adendo 28.0 proibe `expo prebuild --clean` e a regeneracao de
+`android/` antes de entender a estrategia CNG/bare e o WIP concorrente. Alterar o `signingConfig` sem
+essa auditoria substituiria configuracao nativa gerada e seria perdido no proximo prebuild.
+
+**Proximo passo:** fatia propria com auditoria CNG/bare, `signingConfigs.release` lendo credencial do
+secret broker, e prova de que `assembleRelease` local falha fechado quando a credencial nao existe --
+em vez de cair silenciosamente para a debug key.
 ## JANELA E-1289
 
 **Ronda 107. O `PublishingProvider` ganhou porta — e o inventário foi corrigido.**
