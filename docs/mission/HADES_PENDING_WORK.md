@@ -1,3 +1,48 @@
+## JANELA E-1327
+
+A cabeça do índice é **E-1327**.
+
+- **E-1327** — **o maior domínio sem superfície passou a ter uma. Teto 87 → 85.** `scheduling` era o
+  maior domínio órfão (**14 rotas**), com um motor maduro (`scheduling.go` 21 KB,
+  `scheduling_waitlist.go` 17 KB, `scheduling_hours.go` 15 KB, ~20 ficheiros de teste) e **nenhum
+  componente no frontend**.
+  **A regra do E-1326 aplicada ANTES de escolher:** cruzei as 87 lacunas por domínio com os componentes
+  existentes. `scheduling` não tinha nenhum `Scheduling*`. Desta vez o painel **não existia**.
+  Entregues `schedulingClient.ts` + `SchedulingPanel.tsx`, consumindo `/scheduling/services` e
+  `/scheduling/appointments`.
+  **(1) 503 NÃO É LISTA VAZIA.** O servidor: *«sem store não há superfície — e dizer isso é melhor que
+  devolver lista vazia, que pareceria 'não há serviços' em vez de 'não há motor ligado'.»* Estado
+  `sem-motor` separado, com a frase «isto não é «não há serviços»: é «não há motor»» — exigida por
+  teste.
+  **(2) `busy_until` NÃO É `ends_at`.** O buffer é o intervalo real em que o recurso não pode receber
+  outro atendimento; o painel mostra «+10 min de buffer» quando diferem.
+  **(3) Estado fechado** — fora da lista aparece como «estado desconhecido (valor)», sem rótulo
+  inventado.
+  **(4) Motor ligado com zero serviços** diz isso e é diferente de motor ausente.
+  **(5) Só lê**, prefixo explícito, URLs exactas testadas.
+- **E-1326** — falso progresso: painel já existia, sobrescrito e restaurado (teto **inalterado**).
+- **E-1325** — `DeploymentsPanel`; 88 → 87.
+- **E-1324** — `RoutingPanel`; 89 → 88.
+
+## A distância, agora
+
+| categoria | rotas |
+|---|---|
+| no backend | **348** |
+| órfãs no frontend | **101** |
+| consumidor externo (correcto) | **16** |
+| **lacuna de produto** | **85** (era 93) |
+
+**Os maiores domínios ainda sem UI:** `commerce` **12**, `crm` **8**, `inbox` **8**, `sales` **8**,
+`service-agents` **6**, `omnichannel` **5**, `auth` **4**, `supervisor` **4** (parcial), `finance`
+**4**, `business` **4** (parcial), `plugins` **3**, `media` **2**, `company` **2**.
+
+O que continua aberto: **85 rotas** sem UI; a assimetria `call.raw`/`call.path`; **20 ORPHAN listados
+de 253**; o build **não é assinado nem instalado**; `sign.start`/`publish.*` inexistentes; o painel do
+build **não se actualiza sozinho**; `gitleaks`; instalação limpa `BLOCKED_EXTERNAL`; **FASE 30 não
+iniciada**.
+
+---
 ## JANELA E-1326
 
 A cabeça do índice é **E-1326**.

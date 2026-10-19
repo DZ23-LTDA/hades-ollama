@@ -25,6 +25,7 @@ import { RetentionPanel } from "@/components/RetentionPanel";
 import { TracesPanel } from "@/components/TracesPanel";
 import { RoutingPanel } from "@/components/RoutingPanel";
 import { DeploymentsPanel } from "@/components/DeploymentsPanel";
+import { SchedulingPanel } from "@/components/SchedulingPanel";
 import { RollbackPanel } from "@/components/RollbackPanel";
 import { SigningPanel } from "@/components/SigningPanel";
 import { SbomPanel } from "@/components/SbomPanel";
@@ -326,6 +327,7 @@ export function CapabilitiesPage() {
       <TracesPanel />
       <RoutingPanel />
       <DeploymentsPanel />
+      <SchedulingPanel />
 
         <CredentialsPanel />
 
