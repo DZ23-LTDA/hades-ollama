@@ -41,6 +41,7 @@ import { SolutionsPanel } from "@/components/SolutionsPanel";
 import { WakeupsPanel } from "@/components/WakeupsPanel";
 import { StockPanel } from "@/components/StockPanel";
 import { RemindersPanel } from "@/components/RemindersPanel";
+import { WaitlistPanel } from "@/components/WaitlistPanel";
 import { RollbackPanel } from "@/components/RollbackPanel";
 import { SigningPanel } from "@/components/SigningPanel";
 import { SbomPanel } from "@/components/SbomPanel";
@@ -358,6 +359,7 @@ export function CapabilitiesPage() {
       <WakeupsPanel />
       <StockPanel />
       <RemindersPanel />
+      <WaitlistPanel />
 
         <CredentialsPanel />
 

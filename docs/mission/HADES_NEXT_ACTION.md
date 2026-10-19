@@ -1,3 +1,45 @@
+## JANELA E-1348
+
+A cabeça do índice é **E-1348**.
+
+- **E-1348** — **A janela PEDIDA não é o slot OFERECIDO.** `WaitlistPanel` consome
+  `GET /scheduling/waitlist`. O contrato tem **dois pares de tempo**: `from`/`to` é a janela que o cliente
+  **pediu**; `offered_slot` é o que o motor **ofereceu**; `offer_expires_at` é quando a oferta **deixa de
+  valer**. O painel escreve «pediu de … a …» e nunca chama a isso horário marcado.
+  **Uma oferta sem prazo não é uma oferta:** `ofertaValida()` exige `offered_slot` **e** prazo futuro.
+  Sem prazo → «oferta não é válida» e a ação diz «aguardar», não «aceitar». Expirada → «a oferta expirou».
+  `appointment_id` presente ⇒ «já convertida em agendamento».
+  **DÉCIMA NONA MEDIÇÃO — previsão errada por 1:** previ **1**, mediu **2** (26 → 24).
+- **E-1347** — scheduling/reminders/due: `now` não vem do corpo; é só a metade pendente; 28 → 26.
+- **E-1346** — commerce: `on_hand`/`reserved`/`available` são três; saldo derivado e conferido; 30 → 28.
+- **E-1345** — RetentionPanel flaky: `setState` fora de `act`.
+- **E-1344** — verify-contracts: `call.raw` vs `call.path`.
+- **E-1343** — wakeups: despertar informativo não é trabalho enfileirado; 31 → 30.
+- **E-1342** — solutions: POST que não muta; 32 → 31.
+
+## A distância, agora
+
+| categoria | rotas |
+|---|---|
+| no backend | **348** |
+| órfãs no frontend | **40** |
+| consumidor externo (correcto) | **16** |
+| **lacuna de produto** | **24** (era 93) |
+
+## O QUE RESTA EM `scheduling` — 10 DAS 24
+
+O painel consome **4 leituras** (`services`, `appointments`, `reminders/due`, `waitlist`).
+Restam **2 leituras** (`slots`, `reschedule/slots`) e **8 escritas**.
+
+**Nota acumulada — dezanove avisos:** o gate mede o **domínio**, não a rota. Dezanove medições, **seis**
+previsões certas.
+
+O que continua aberto: **24 rotas** sem UI; o gate **mede prefixos**; **20 ORPHAN de 209**; o build **não é
+assinado nem instalado**; `sign.start`/`publish.*` inexistentes; o painel do build **não se actualiza
+sozinho**; **`gitleaks` histórico — a única falha de CI**; instalação limpa `BLOCKED_EXTERNAL`; **não há
+catraca contra novos testes flaky**; **FASE 30 não iniciada**.
+
+---
 ## JANELA E-1347
 
 A cabeça do índice é **E-1347**.

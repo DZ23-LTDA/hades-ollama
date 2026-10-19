@@ -181,7 +181,12 @@ RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 #   (14 rotas) cada leitura fechada pode arrastar mais do que uma entrada.*
 #
 # A conta: 3/10, 2/7, 1/0, 7/7 OK, 7/8, 3/5, 3/0, 5/5 OK, 4/1, 1/1 OK, 3/2, 2/4, 1/2, 1/1 OK, 1/1 OK, 1/1 OK, 1/2, 1/2.
-TETO_ORFAS = 26
+# 26 -> 24 no E-1347b -- previsao era 1, mediu 2. DECIMA NONA medicao.
+#
+#   *Dezanove medicoes, seis previsoes certas. O gate agrupa por prefixo, e `scheduling`
+#   (14 rotas) tem 3 leituras ainda nao consumidas: cada uma pode arrastar mais do que uma
+#   entrada. Restam `slots` e `reschedule/slots`.*
+TETO_ORFAS = 24
 
 # Quem chama nao e' o frontend do HADES -- a ausencia no UI e' correcta.
 CONSUMIDOR_EXTERNO = (
