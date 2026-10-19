@@ -44,6 +44,34 @@ const MODO = BACKEND_REAL ? "BACKEND_REAL_AGENT_RUNTIME" : "UI_FIXTURE";
  */
 const REPO = process.env.HADES_E2E_REPO || "/repo-fixture";
 
+// E-1304: O DEFAULT SILENCIOSO MENTIA NO MODO REAL.
+//
+// Quando `HADES_E2E_BACKEND_URL` esta' definido mas `HADES_E2E_REPO` NAO, o `REPO` caía para
+// `/repo-fixture` -- um caminho que so' existe no fixture. O painel pedia ao backend REAL para
+// analisar um directoria que nao existe, e QUATRO testes falhavam por um motivo que nao era o
+// defeito que eles medem:
+//
+//   - analisa um projeto e mostra stacks vindas do HTTP
+//   - mostra os blockers no topo
+//   - mostra os motivos que explicam cada blocker
+//   - traduz o estado da sonda para texto humano
+//
+// Medido: sem `HADES_E2E_REPO` => 3 passed / 4 failed / 2 skipped. Com ela => 7 passed / 2 skipped.
+//
+// O modo real EXIGE a variavel. Falhar aqui e' mais honesto do que deixar quatro testes acusarem um
+// defeito do produto quando o defeito e' do ambiente do teste.
+//
+//     *Um default que so' serve a um dos modos faz o outro modo mentir.*
+if (BACKEND_REAL && !process.env.HADES_E2E_REPO) {
+  throw new Error(
+    "HADES_E2E_BACKEND_URL esta' definido mas HADES_E2E_REPO nao: no modo " +
+      "BACKEND_REAL_AGENT_RUNTIME o spec precisa do caminho de um repositorio REAL para pedir ao " +
+      "backend. Sem ele o painel analisaria '/repo-fixture', que so' existe no fixture, e os testes " +
+      "acusariam o produto por um defeito do ambiente. Defina HADES_E2E_REPO com o caminho absoluto " +
+      "do checkout.",
+  );
+}
+
 /**
  * As expectativas que MUDAM com o modo.
  *

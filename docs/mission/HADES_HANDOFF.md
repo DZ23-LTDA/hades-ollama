@@ -1,3 +1,24 @@
+## JANELA E-1304
+
+A cabeça do índice é **E-1304**.
+
+- **E-1304** — o E2E do `build.plan` **tinha** modo `BACKEND_REAL_AGENT_RUNTIME` mas nunca foi
+  executado contra o binário Go real. Executado: **3 passed / 4 failed / 2 skipped**. A causa não era o
+  produto: faltava `HADES_E2E_REPO`, e o spec caía em silêncio para `/repo-fixture`. Com a variável:
+  **7 passed / 2 skipped**. O spec passa a **falhar alto** sem ela.
+- **E-1303** — `test`/`race` do macOS vermelhos por `filepath.Clean` não resolver symlinks
+  (`/var`→`/private/var`); corrigido com `EvalSymlinks` nos dois lados.
+- **E-1302** — E2E do `publish.preflight` contra o binário Go real: seis canais a 200, 400/412 nos
+  negativos; **9 passed** no modo real e **9** no fixture.
+- **E-1301/E-1300** — `Preserve Class A+ surfaces` **verde**; a causa era o checker de `.ps1` a exigir
+  `powershell.exe` no Ubuntu.
+- **E-1299/E-1298/E-1289** — cadeia `publish.preflight` completa.
+
+O que continua aberto: **`build.start`/`status`/`logs`/`cancel`/`artifacts` não existem** (o adendo
+pede-os), `gitleaks (historico do PR)` (decisão do proprietário), build Android e arranque do app
+(`BLOCKED_EXTERNAL`), `INSTALLED=NAO` (E-1252) e a **FASE 30 não iniciada**.
+
+---
 ## JANELA E-1303
 
 A cabeça do índice é **E-1303**.
