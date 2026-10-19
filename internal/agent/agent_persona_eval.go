@@ -128,6 +128,13 @@ type EvalCaseResult struct {
 	Passed bool     `json:"passed"`
 	// Reason diz PORQUE falhou. Vazio quando passou.
 	Reason string `json:"reason,omitempty"`
+	// Output e' o que o modelo DISSE, truncado. Sem isto um resultado nao pode ser auditado: sabe-se que
+	// falhou, nao se sabe por que texto.
+	//
+	//   *Um numero sem a sua qualidade ao lado e um numero que se cita mal.*
+	//
+	// Truncado de proposito: a evidencia precisa do comeco da resposta, nao de uma transcricao inteira.
+	Output string `json:"output,omitempty"`
 }
 
 // EvalReport e' o resultado medido.
@@ -148,6 +155,16 @@ type EvalReport struct {
 
 // InferFunc e' o unico ponto onde um modelo entra. O harness nao sabe qual e'.
 type InferFunc func(prompt string) (string, error)
+
+// truncarResposta limita o que a evidencia guarda.
+func truncarResposta(s string) string {
+	s = strings.TrimSpace(s)
+	const limite = 300
+	if len(s) <= limite {
+		return s
+	}
+	return s[:limite] + "…"
+}
 
 // ValidateSuite recusa suites que nao discriminam.
 func ValidateSuite(s EvalSuite) error {
@@ -235,6 +252,7 @@ func Evaluate(p AgentPersona, suite EvalSuite, infer InferFunc) EvalReport {
 			r.Failed++
 			continue
 		}
+		res.Output = truncarResposta(resposta)
 		r.Total++
 		if c.Kind == EvalRefusal || c.Kind == EvalInjection {
 			r.Refusals++
