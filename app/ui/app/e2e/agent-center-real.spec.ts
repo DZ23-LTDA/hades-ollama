@@ -40,6 +40,9 @@ test.describe(`Agent Center no browser (${MODO})`, () => {
   test("listar mostra a contagem do servidor, nao um erro", async ({ page }) => {
     await page.goto("/capabilities");
 
+    // E-1406: a contagem vem do SERVIDOR. Em UI_FIXTURE nao ha' quem a produza, e o teste falhava aos 20s
+    // a esperar por um numero que ninguem ia calcular. O motivo do skip fica no relatorio.
+    test.skip(!BACKEND_REAL, "a contagem vem do servidor; UI_FIXTURE nao tem servidor");
     const botao = page.getByTestId("agent-center-listar");
     await expect(botao).toBeVisible({ timeout: 20_000 });
     await botao.click();

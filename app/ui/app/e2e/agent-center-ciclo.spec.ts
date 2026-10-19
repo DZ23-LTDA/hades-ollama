@@ -154,6 +154,9 @@ test.describe(`Agent Center: ciclo completo (${MODO})`, () => {
   test("restaurar um backup escolhido diz o que repôs", async ({ page }) => {
     await page.goto("/capabilities");
 
+    // E-1406: restaurar exige um backup QUE O SERVIDOR CRIOU. Sem servidor nao ha' backup para repor --
+    // e' por isso que este teste falhava aos 20s em UI_FIXTURE. O motivo fica visivel no relatorio.
+    test.skip(!BACKEND_REAL, "restaurar exige backup criado pelo servidor; UI_FIXTURE nao tem servidor");
     // 1. Guardar um backup. E' o que preenche a lista.
     await expect(page.getByTestId("agent-center-backup-btn")).toBeVisible({ timeout: 20_000 });
     await page.getByTestId("agent-center-backup-btn").click();
