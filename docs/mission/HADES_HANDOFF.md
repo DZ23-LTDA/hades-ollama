@@ -1,3 +1,53 @@
+## JANELA E-1328
+
+A cabeça do índice é **E-1328**.
+
+- **E-1328** — **o maior domínio restante passou a ter superfície. Teto 85 → 75.** `commerce` tinha
+  **12 rotas** e um motor maduro (`commerce.go` 54 KB, `live_commerce.go` 29 KB, ~12 ficheiros de
+  teste) sem nenhum componente `Commerce*`.
+  Entregues `commerceClient.ts` + `CommercePanel.tsx`, consumindo `/commerce/products`,
+  `/commerce/orders` e `/commerce/summary`.
+  **(1) Centavos não são reais.** O painel converte; o teste recusa **tanto** `125000` **como**
+  `R$ 1250,00` — a segunda asserção foi acrescentada ao ver que a primeira versão produzia o valor
+  **sem separador de milhar**. A função passou a usar `toLocaleString('pt-BR')`. *Um valor de dinheiro
+  na unidade errada não é um arredondamento: é uma mentira com duas casas decimais.* E *num valor de
+  dinheiro, legibilidade não é estética.*
+  **(2) 503 não é lista vazia.** Estado `sem-loja` separado, com «isto não é «não há produtos»: é «não
+  há loja»» — exigida por teste.
+  **(3) `duplicated` não é um pedido novo.** *«Duplicated marca a devolução idempotente do MESMO
+  pedido.»* Contados em separado e marcados na linha.
+  **(4) Estado desconhecido** sem rótulo inventado. **(5) Só lê**, três URLs exactas testadas.
+  **UM ACHADO SOBRE O PRÓPRIO GATE:** o `hades_rotas_orfas.py` mede por **PREFIXO**, não por rota.
+  Consumir 3 rotas de `/commerce` fez cair **10** lacunas de uma vez (85 → 75), não 3. O teto foi
+  corrigido para **75** — o valor REAL — e a nota ficou escrita no próprio ficheiro: *um gate que
+  agrupa por prefixo mede o domínio, não a rota: é bom para achar domínios esquecidos e enganador para
+  contar rotas fechadas.* Registar 82 seria creditar-me 7 rotas que não fechei.
+- **E-1327** — `SchedulingPanel`; 87 → 85.
+- **E-1326** — falso progresso: painel já existia, sobrescrito e restaurado (teto inalterado).
+- **E-1325** — `DeploymentsPanel`; 88 → 87.
+
+## A distância, agora
+
+| categoria | rotas |
+|---|---|
+| no backend | **348** |
+| órfãs no frontend | **91** |
+| consumidor externo (correcto) | **16** |
+| **lacuna de produto** | **75** (era 93) |
+
+**Os maiores domínios ainda sem UI:** `crm` **8**, `inbox` **8**, `sales` **8**, `service-agents`
+**6**, `omnichannel` **5**, `auth` **4**, `supervisor` **4** (parcial), `finance` **4**, `business`
+**4** (parcial), `plugins` **3**, `media` **2**, `company` **2**.
+
+**Nota para as próximas rondas:** o mesmo efeito de prefixo vai repetir-se. Fechar `crm` (8 rotas) com
+um painel de leitura pode valer 8 no contador — declarar sempre quantas foram **de facto** consumidas.
+
+O que continua aberto: **75 rotas** sem UI; a assimetria `call.raw`/`call.path`; **20 ORPHAN listados
+de 243**; o build **não é assinado nem instalado**; `sign.start`/`publish.*` inexistentes; o painel do
+build **não se actualiza sozinho**; `gitleaks`; instalação limpa `BLOCKED_EXTERNAL`; **FASE 30 não
+iniciada**.
+
+---
 ## JANELA E-1327
 
 A cabeça do índice é **E-1327**.

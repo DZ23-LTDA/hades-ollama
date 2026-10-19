@@ -38,7 +38,11 @@ RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # 88 -> 87 no E-1325: `/deployments` passou a ser consumido pelo `DeploymentsPanel`.
 # 87 -> 85 no E-1327: `/scheduling/services` e `/scheduling/appointments` passaram a ser
 # consumidos pelo `SchedulingPanel`.
-TETO_ORFAS = 85
+# 85 -> 75 no E-1328: o `CommercePanel` consome `/commerce/products`, `/commerce/orders` e
+# `/commerce/summary`. O gate mede por PREFIXO, por isso as 10 rotas do dominio `commerce`
+# deixaram de ser orfas de uma vez -- nao 3. *Um gate que agrupa por prefixo mede o dominio,
+# nao a rota: e' bom para achar dominios esquecidos e enganador para contar rotas fechadas.*
+TETO_ORFAS = 75
 
 # Quem chama nao e' o frontend do HADES -- a ausencia no UI e' correcta.
 CONSUMIDOR_EXTERNO = (

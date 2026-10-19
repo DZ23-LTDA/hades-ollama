@@ -26,6 +26,7 @@ import { TracesPanel } from "@/components/TracesPanel";
 import { RoutingPanel } from "@/components/RoutingPanel";
 import { DeploymentsPanel } from "@/components/DeploymentsPanel";
 import { SchedulingPanel } from "@/components/SchedulingPanel";
+import { CommercePanel } from "@/components/CommercePanel";
 import { RollbackPanel } from "@/components/RollbackPanel";
 import { SigningPanel } from "@/components/SigningPanel";
 import { SbomPanel } from "@/components/SbomPanel";
@@ -328,6 +329,7 @@ export function CapabilitiesPage() {
       <RoutingPanel />
       <DeploymentsPanel />
       <SchedulingPanel />
+      <CommercePanel />
 
         <CredentialsPanel />
 
