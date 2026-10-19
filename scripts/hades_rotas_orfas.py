@@ -135,7 +135,9 @@ RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 #   *Treze medicoes, tres previsoes certas. E o erro desta vez foi supor que contar as
 #   rotas de LEITURA bastava. Nao basta: o gate mede o PREFIXO, e um prefixo pode ter
 #   mais do que uma entrada na lacuna.*
-TETO_ORFAS = 33
+# 33 -> 32 no E-1341: `CompanyFactoryPanel` consome `/company/factory/C:\\Users\\DZ23\\Documents\\deepseek-harness\\default-workspace\\hades-ollamart/:id`.
+# `company` tem 2 rotas: `factory/launch` (POST) e `factory/C:\\Users\\DZ23\\Documents\\deepseek-harness\\default-workspace\\hades-ollamart/:id` (GET). Previsao: 1.
+TETO_ORFAS = 32
 
 # Quem chama nao e' o frontend do HADES -- a ausencia no UI e' correcta.
 CONSUMIDOR_EXTERNO = (

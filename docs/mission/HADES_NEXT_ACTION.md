@@ -1,3 +1,58 @@
+## JANELA E-1341
+
+A cabeça do índice é **E-1341**.
+
+- **E-1341** — **`customers_created: 0` não é «zero clientes»: é «esta fábrica nunca cria clientes».**
+  `CompanyFactoryPanel` consome `GET /company/factory/report/:id`. O próprio tipo declara: *«CustomersCreated
+  é sempre 0: a fábrica NÃO inventa clientes»*; e as rotas: *«a fábrica NÃO cria cliente nem emite registro
+  legal»*. O painel escreve **«0 clientes criados — a fábrica não inventa clientes»**. *Um painel que mostre
+  «0 clientes» ao lado de «3 produtos» está a sugerir uma empresa que arrancou sem clientes — quando o que
+  aconteceu foi a fábrica ter feito tudo o que NÃO depende de um humano.*
+  **`catalog_value_cents` é valor de TABELA, não receita** — o painel diz «(não é receita)».
+  **O checklist separa** o que a fábrica fez do que fica para um humano: «1 feito(s) pela fábrica · 1 à
+  espera de terceiro». **O id é codificado no caminho** (`a/b` → `a%2Fb`).
+  **QUARTA PREVISÃO CERTA DO GATE**: previ **1**, mediu **1** (33 → 32). `company` tem 2 rotas e só
+  **uma** é leitura.
+- **E-1340** — business: orçamento não é aprovação; custo ao lado da ação; 35 → 33.
+- **E-1339** — supervisor: reconhecer não é resolver; 200-vazio não prova supervisor; 39 → 35.
+- **E-1338** — `PluginsPanel`: scope pedido não é concedido; integridade em 4 estados; 41 → 39.
+- **E-1337** — `SessionPanel`: `omitempty` em booleano = `false`; `Public()` limpa segredos; 42 → 41.
+- **E-1336** — `FinancePanel`: líquido com cobertura ao lado; recebível não é receita; 43 → 42.
+
+## A distância, agora
+
+| categoria | rotas |
+|---|---|
+| no backend | **348** |
+| órfãs no frontend | **48** |
+| consumidor externo (correcto) | **16** |
+| **lacuna de produto** | **32** (era 93) |
+
+## O MAPA REVELOU O QUE FALTA — E NÃO É O QUE PARECIA
+
+| domínio | lacunas | natureza |
+|---|---|---|
+| `scheduling` | **12** | **todas de escrita** (`book`, `cancel`, `no-show`, reminders) |
+| `auth` | 3 | MFA — escritas (`enable`, `disable`, recovery) |
+| `finance` | 3 | escritas (cost, reconcile, revenue por pedido) |
+| `media` | 2 | **ambas POST** (`ocr`, `tone`) |
+| `commerce` | 2 | escritas (stock) |
+| `business` | 2 | escritas (certify, tick) |
+| `company` | 1 | escrita (factory/launch) |
+| outros | 7 | 1 cada, quase todas escritas |
+
+**A conclusão que isto força:** das 32 restantes, **17 são POST declaradas**. *As lacunas de leitura
+estão esgotadas — o que sobra é escrita, e escrita não se fecha com um painel que só lê.*
+
+**Nota acumulada sobre o contador — catorze avisos:** o gate mede o **domínio**, não a rota. Catorze
+medições, **quatro** previsões certas.
+
+O que continua aberto: **32 rotas** sem UI (17 escritas); o gate **mede prefixos**; a assimetria
+`call.raw`/`call.path`; **20 ORPHAN listados de 209**; o build **não é assinado nem instalado**;
+`sign.start`/`publish.*` inexistentes; o painel do build **não se actualiza sozinho**; **`gitleaks`
+histórico — a única falha de CI**; instalação limpa `BLOCKED_EXTERNAL`; **FASE 30 não iniciada**.
+
+---
 ## JANELA E-1340
 
 A cabeça do índice é **E-1340**.
