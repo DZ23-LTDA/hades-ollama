@@ -163,14 +163,32 @@ test.describe(`Build & Release (${MODO})`, () => {
     await expect(painel(page).getByRole("alert")).toHaveCount(0);
   });
 
-  test("nao existe botao de build, assinatura ou publicacao", async ({ page }) => {
-    // A rota e' de leitura e nao ha' `build.start` -- o painel nao pode prometer o que nao existe.
+  test("o painel nao promete assinatura, publicacao nem deploy -- e o build declara-se por alvo", async ({
+    page,
+  }) => {
+    // HISTORICO, porque isto importa: este teste chamava-se «nao existe botao de build, assinatura ou
+    // publicacao» e exigia a AUSENCIA de qualquer botao com «Build» no nome. Na altura era verdade: nao
+    // havia `build.start`. A rota passou a existir (`agent_build_start_route.go`, POST /build/start) e o
+    // painel passou a ter o botao «Iniciar build».
     //
-    //	*Um botao morto e' pior do que um botao ausente: o ausente nao mente.*
+    // *O teste nao estava errado: ficou obsoleto.* Um teste obsoleto que se mantem verde impede a
+    // funcionalidade de existir; um que se mantem vermelho obriga a mentir sobre ela. O que se corrige e'
+    // a premissa, nao a exigencia.
+    //
+    // O que CONTINUA a ser proibido e' prometer o que nao existe: nao ha' `sign.start` nem `publish.*`.
+    //   *Um botao morto e' pior do que um botao ausente: o ausente nao mente.*
     await analisar(page, REPO);
-    for (const nome of ["Construir", "Assinar", "Publicar", "Build", "Deploy"]) {
+    for (const nome of ["Assinar", "Publicar", "Deploy", "Construir"]) {
       await expect(painel(page).getByRole("button", { name: nome, exact: false })).toHaveCount(0);
     }
+    // E o build nao pode aparecer como promessa muda: cada alvo tem de declarar se pode iniciar ou por
+    // que nao pode. Se alguem remover a decisao e deixar so' o rotulo, isto falha.
+    const podeIniciar = await painel(page).getByTestId(/^build-plan-iniciar-/).count();
+    const recusado = await painel(page).getByTestId(/^build-plan-sem-iniciar-/).count();
+    expect(
+      podeIniciar + recusado,
+      "cada alvo tem de declarar se pode iniciar a build ou por que nao pode",
+    ).toBeGreaterThan(0);
   });
 
   test("o erro da rota aparece como alerta", async ({ page }) => {
