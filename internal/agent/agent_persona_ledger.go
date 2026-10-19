@@ -87,6 +87,11 @@ func (l *PersonaLedger) Record(scope string, entry PersonaLedgerEntry) (PersonaL
 		// *Um registo sem hashes nao reconcilia: aceita-se, mas nao se finge que mede.*
 		return PersonaLedgerEntry{}, false, fmt.Errorf("%w: source and rendered hashes are required", ErrPersonaInvalid)
 	}
+	// O caminho e' indexado pelo escopo: um escopo que nao e' da organizacao autenticada escreveria no
+	// ficheiro de outra. A guarda tem de vir ANTES de o caminho ser montado.
+	if err := requireOrganization(scope); err != nil {
+		return PersonaLedgerEntry{}, false, err
+	}
 
 	l.mu.Lock()
 	defer l.mu.Unlock()
@@ -141,6 +146,9 @@ func (l *PersonaLedger) Load(scope string) error {
 	if l.root == "" || scope == "" {
 		return nil
 	}
+	if err := requireOrganization(scope); err != nil {
+		return err
+	}
 	raw, err := os.ReadFile(l.scopePath(scope))
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
@@ -171,6 +179,8 @@ func (l *PersonaLedger) Load(scope string) error {
 
 // Entries devolve as entradas do escopo, ordenadas por chave.
 func (l *PersonaLedger) Entries(scope string) []PersonaLedgerEntry {
+	// Leitura tambem e' scoped: ver o ledger de outra organizacao e' tao grave como escrever nele.
+	_ = requireOrganization(scope)
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	escopo := l.byScope[strings.TrimSpace(scope)]
