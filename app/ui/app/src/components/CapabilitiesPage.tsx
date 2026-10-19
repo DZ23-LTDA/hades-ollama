@@ -34,6 +34,7 @@ import { ApprovalsPanel } from "@/components/ApprovalsPanel";
 import { OmnichannelPanel } from "@/components/OmnichannelPanel";
 import { FinancePanel } from "@/components/FinancePanel";
 import { SessionPanel } from "@/components/SessionPanel";
+import { PluginsPanel } from "@/components/PluginsPanel";
 import { RollbackPanel } from "@/components/RollbackPanel";
 import { SigningPanel } from "@/components/SigningPanel";
 import { SbomPanel } from "@/components/SbomPanel";
@@ -344,6 +345,7 @@ export function CapabilitiesPage() {
       <OmnichannelPanel />
       <FinancePanel />
       <SessionPanel />
+      <PluginsPanel />
 
         <CredentialsPanel />
 

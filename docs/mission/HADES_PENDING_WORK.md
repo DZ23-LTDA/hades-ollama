@@ -1,3 +1,51 @@
+## JANELA E-1338
+
+A cabeça do índice é **E-1338**.
+
+- **E-1338** — **um scope pedido não é um scope concedido — e o `PluginStatus` só traz os pedidos.**
+  `PluginsPanel` consome as **três** leituras de `plugins`. `PluginInstallation` tem
+  `requested_scopes` **e** `granted_scopes`; `PluginStatus` tem **só** `requested_scopes`. O painel diz
+  **«pediu: X — o estado não informa o que foi concedido»**. *Um ecrã que mostre `requested_scopes`
+  debaixo do rótulo «permissões» está a dizer que o plugin TEM o que ele PEDIU. Não é a mesma lista.*
+  **Pedido vs concedido lado a lado nomeia o que falta**: «3 pedido(s), 2 concedido(s) — NÃO
+  concedido(s): net.out».
+  **`ready_to_use: false` sem as razoes é uma linha vermelha sem causa** — o painel mostra `reasons`, e
+  quando o servidor não manda nenhuma escreve «motivo não declarado».
+  **`trusted` e `content_verified` são coisas diferentes** — quatro combinações distintas.
+  **O formato é o contrato aceito**: `hades-plugin/v1`, 5 `kinds`, 5 `runtimes`, e o handler diz porquê
+  — *«para que o autor do plugin saiba o que o runtime faz antes de o escrever»*.
+  **OITAVA LEITURA ERRADA DO GATE — e o erro desta vez foi de outra natureza.** Previ **3**, mediu **2**
+  (41 → 39). `/plugins/format` é **ESTÁTICA**: não depende de organização nem de estado, nunca esteve na
+  lacuna. *As três previsões certas anteriores foram as que contaram rotas de LEITURA; esta falhou
+  porque supus que uma rota de leitura é sempre uma lacuna. Uma rota estática não falta a ninguém.*
+- **E-1337** — `SessionPanel`: `omitempty` em booleano = `false`; `Public()` limpa segredos; 42 → 41.
+- **E-1336** — `FinancePanel`: líquido com cobertura ao lado; recebível não é receita; 43 → 42.
+- **E-1335** — `OmnichannelPanel`: DLQ declara durabilidade, segredo pelo nome; 48 → 43.
+- **E-1334** — catálogo de agentes usado no painel; mock com ordem trocada; tecto 48 inalterado.
+- **E-1333** — `ApprovalsPanel` com `role_checked`/quórum/`overdue`; 53 → 48.
+
+## A distância, agora
+
+| categoria | rotas |
+|---|---|
+| no backend | **348** |
+| órfãs no frontend | **55** |
+| consumidor externo (correcto) | **16** |
+| **lacuna de produto** | **39** (era 93) |
+
+**Os maiores domínios ainda sem UI:** `supervisor` **4** (parcial), `business` **4** (parcial),
+`media` **2**, `company` **2**.
+
+**Nota acumulada sobre o contador — onze avisos:** o gate mede o **domínio**, não a rota. Onze medições,
+**três** previsões certas. E a oitava falhou por uma razão nova: uma rota **estática** não é lacuna.
+
+O que continua aberto: **39 rotas** sem UI; o gate **mede prefixos**; a assimetria `call.raw`/`call.path`;
+**20 ORPHAN listados de 211**; o build **não é assinado nem instalado**; `sign.start`/`publish.*`
+inexistentes; o painel do build **não se actualiza sozinho**; **`gitleaks` histórico — a única falha de
+CI**; instalação limpa `BLOCKED_EXTERNAL`; **6 rotas de `/plugins` sem UI por serem escritas —
+declarado, não escondido**; **FASE 30 não iniciada**.
+
+---
 ## JANELA E-1337
 
 A cabeça do índice é **E-1337**.

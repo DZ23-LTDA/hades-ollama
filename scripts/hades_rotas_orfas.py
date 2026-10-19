@@ -102,7 +102,19 @@ RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # so' UMA e' leitura sem parametro -- as outras 12 sao escritas (logout, MFA, OAuth, SAML),
 # acoes do utilizador que o painel nao chama e nao inventa.
 # Previsao: 1. Nona tentativa.
-TETO_ORFAS = 41
+# 41 -> 39 no E-1338 -- previsao era 3, mediu 2. OITAVA leitura errada do mesmo gate.
+#
+# `plugins` tem 9 rotas e 4 sao leitura: `/plugins`, `/plugins/status`,
+# `/plugins/format` e `/plugins/format` (POST e' escrita). O painel consome as TRES
+# primeiras. Mas `/plugins/format` (GET) e' ESTATICA -- nao depende de organizacao nem de
+# estado -- e o gate nao a contava como lacuna. Consumir duas removeu duas.
+#
+# A conta: 3/10, 2/7, 1/0, 7/7 OK, 7/8, 3/5, 3/0, 5/5 OK, 4/1, 1/1 OK, 3/2.
+#
+#   *Onze medicoes, tres previsoes certas. E o erro desta vez nao foi de contagem: foi
+#   supor que uma rota de leitura e' sempre uma lacuna. Uma rota ESTATICA nao falta a
+#   ninguem -- nao ha' estado para mostrar.*
+TETO_ORFAS = 39
 
 # Quem chama nao e' o frontend do HADES -- a ausencia no UI e' correcta.
 CONSUMIDOR_EXTERNO = (
