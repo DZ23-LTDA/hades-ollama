@@ -1,3 +1,50 @@
+## JANELA E-1336
+
+A cabeça do índice é **E-1336**.
+
+- **E-1336** — **o líquido sobre 0% de reconciliação não é um líquido — é uma soma.** `FinancePanel`
+  consome `GET /finance/report`. Quatro números de dinheiro que não são a mesma coisa: `income_cents`
+  (entrou, contabilizado), `receivable_cents` (*«o que ainda NÃO entrou»* — o próprio tipo),
+  `unposted_revenue_cents` (existe e não está contabilizado) e `refund_due_cents` (a devolver). Somar os
+  quatro e chamar-lhe receita era a mentira mais fácil do ecrã; o painel separa-os. *Uma receita líquida
+  calculada sobre 0% de reconciliação não é uma receita líquida: é uma soma.*
+  **A cobertura acompanha o líquido, sempre** — com 0% escreve **«líquido PROVISÓRIO»**. *Um número sem a
+  sua qualidade ao lado é um número que se cita mal.*
+  **As divergências não são escondidas** (`kind`/`amount`/`detail`); sem divergências com lançamentos
+  diz «nenhuma divergência registada», não «está tudo bem». **O 503 não é «a empresa não tem números»**
+  (`ErrFinanceCompanyMissing`). **Só a leitura chega ao produto**: as 3 escritas (receita, custo,
+  reconciliar) exigem acção e approval — o painel não inventa os botões. **Uma só verdade sobre o mesmo
+  número**: importa `centavosParaReais` do `commerceClient`.
+  **SÉTIMA LEITURA ERRADA DO GATE.** Previ 4, mediu **1** (43 → 42): `finance` tem 4 rotas mas só
+  **uma** estava na lacuna. *Nove medições, duas previsões certas. O instrumento não está a melhorar: eu
+  é que continuo a supor que uma rota consumida é uma lacuna fechada, e o gate mede outra coisa.*
+- **E-1335** — `OmnichannelPanel`: DLQ declara durabilidade, segredo pelo nome; 48 → 43.
+- **E-1334** — catálogo de agentes usado no painel; mock com ordem trocada; tecto 48 inalterado.
+- **E-1333** — `ApprovalsPanel` com `role_checked`/quórum/`overdue`/notificação; 53 → 48.
+- **E-1332** — `SalesPanel` com a conta aberta; frete não declarado ≠ R$ 0,00; 61 → 53.
+- **E-1331** — `InboxPanel`; `reply_blocked` não esconde a conversa; 68 → 61.
+
+## A distância, agora
+
+| categoria | rotas |
+|---|---|
+| no backend | **348** |
+| órfãs no frontend | **58** |
+| consumidor externo (correcto) | **16** |
+| **lacuna de produto** | **42** (era 93) |
+
+**Os maiores domínios ainda sem UI:** `auth` **4**, `supervisor` **4** (parcial), `business` **4**
+(parcial), `plugins` **3**, `media` **2**, `company` **2**.
+
+**Nota acumulada sobre o contador — nove avisos:** o gate mede o **domínio**, não a rota. Nove medições,
+**duas** previsões certas. Corrigi-lo é trabalho próprio.
+
+O que continua aberto: **42 rotas** sem UI; o gate **mede prefixos**; a assimetria `call.raw`/`call.path`;
+**20 ORPHAN listados de 211**; o build **não é assinado nem instalado**; `sign.start`/`publish.*`
+inexistentes; o painel do build **não se actualiza sozinho**; **`gitleaks` histórico — a única falha de
+CI**; instalação limpa `BLOCKED_EXTERNAL`; **FASE 30 não iniciada**.
+
+---
 ## JANELA E-1335
 
 A cabeça do índice é **E-1335**.

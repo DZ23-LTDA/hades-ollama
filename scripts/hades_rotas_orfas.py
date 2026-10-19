@@ -86,7 +86,19 @@ RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # 48 -> 43 no E-1335: o `OmnichannelPanel` consome `/omnichannel/connectors`,
 # `/omnichannel/events` e `/omnichannel/dlq`. `omnichannel` tem 6 rotas; 3 consumidas.
 # Previsao: 5. Setima tentativa de prever num instrumento que ja' errou cinco vezes.
-TETO_ORFAS = 43
+# 43 -> 42 no E-1336 -- e a previsao foi 4. SETIMA leitura errada do mesmo gate.
+#
+# `finance` tinha 4 rotas, mas so' UMA estava na lacuna: `/finance/C:\\Users\\DZ23\\Documents\\deepseek-harness\\default-workspace\\hades-ollamart`. As 3 escritas
+# (receita, custo, reconciliar) NAO eram lacuna -- nao ha' painel que as deva chamar sem
+# uma acao do utilizador. Consumir a leitura removeu uma entrada, nao o prefixo.
+#
+# A conta: 3/10 (E-1328), 2/7 (E-1329), 1/0 (E-1330), 7/7 (E-1331 - certa),
+#          7/8 (E-1332), 3/5 (E-1333), 3/0 (E-1334), 5/5 (E-1335 - certa), 4/1 (E-1336).
+#
+#   *Nove medicoes, duas previsoes certas. O instrumento nao esta' a melhorar: eu e' que
+#   continuo a supor que uma rota consumida e' uma lacuna fechada, e o gate mede outra
+#   coisa. Continuar a prever e' a unica forma de o manter honesto.*
+TETO_ORFAS = 42
 
 # Quem chama nao e' o frontend do HADES -- a ausencia no UI e' correcta.
 CONSUMIDOR_EXTERNO = (
