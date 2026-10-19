@@ -59,7 +59,7 @@ func TestPresetsOrdemDeterministica(t *testing.T) {
 	a := Teams()
 	b := Teams()
 	if len(a) != len(b) {
-		t.Fatal("tamanhos differentes")
+		t.Fatal("tamanhos distintos")
 	}
 	for i := range a {
 		if a[i].ID != b[i].ID {

@@ -13,7 +13,7 @@ import (
 // `persona_id`. O servidor respondia 404 ("persona nao registada"), o painel caia no `erro`, e o bloco
 // `agent-center-removido` nunca aparecia. O botao existia, estava ligado a rota certa e nunca funcionou.
 //
-// *Dois parametros do mesmo tipo nao sao dois parametros: sao um que o compilador nao distingue.*
+// *Dois argumentos do mesmo tipo nao sao dois argumentos: sao um que o compilador nao distingue.*
 //
 // So' apareceu num browser real. O teste do handler passava porque chamava a funcao com o argumento certo.
 //

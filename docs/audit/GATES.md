@@ -5,7 +5,7 @@ que passam: *quem os corre é o auditor, e o resultado é do estado em que ele o
 
 | # | Gate |
 | --- | --- |
-| 1 | gofmt -l internal/agent internal/multillm server/agent_routes.go |
+| 1 | gofmt -l (TODOS os .go rastreados, em lotes de 120) |
 | 2 | go build ./... |
 | 3 | golangci-lint PULADO por -SemLint (isto NAO e aprovacao do gate de lint) |
 | 3 | golangci-lint run ./internal/agent/... ./server/... (mesma versao do CI) |

@@ -5,7 +5,7 @@
 // Um prompt bem escrito, uma descricao rica, um catalogo grande: nada disso prova que a persona faz o que
 // diz. A avaliacao existe para transformar `Evaluation` vazio ("NAO AVALIADO") num estado medido.
 //
-//	*Quantidade de personas, riqueza do prompt, estrelas do GitHub ou instalacao bem-sucedida nao constituem
+//	*Quantidade de personas, riqueza do prompt, estrelas do GitHub ou instalacao bem-sucedida nao formam
 //	prova de qualidade no HADES.*
 //
 // # O HARNESS NAO CHAMA MODELO POR SI

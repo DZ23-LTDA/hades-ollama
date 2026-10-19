@@ -84,15 +84,27 @@ $env:LOCALAPPDATA = Join-Path $repo '_tmp\appdata\Local'
 
 $falhas = New-Object System.Collections.Generic.List[string]
 
-'--- 1. gofmt -l internal/agent internal/multillm server/agent_routes.go'
-$saidaFmt = & gofmt -l internal/agent internal/multillm server/agent_routes.go 2>&1
-if ($LASTEXITCODE -ne 0) {
-  $falhas.Add("gofmt terminou com erro de parse (exit $LASTEXITCODE)")
-  ($saidaFmt | Select-Object -First 10) | ForEach-Object { "    $_" }
-} elseif ($saidaFmt) {
+'--- 1. gofmt -l (TODOS os .go rastreados, em lotes de 120)'
+# POR QUE ISTO MUDOU (E-1393): ate' aqui este gate media `internal/agent`, `internal/multillm` e UM
+# ficheiro de `server/`. O CI mede o repositorio inteiro. Resultado medido: `server/agent_center_routes.go`
+# ficou fora do gofmt e o gate local disse OK. *Um gate que mede um subconjunto nao e' um gate mais rapido:
+# e' um gate que aprova o que nao viu.* E uma invocacao unica com 1790 argumentos EXCEDE o limite de linha
+# de comando do Windows -- falha e devolve lista vazia, que parece "tudo bem". Por isso: lotes.
+$gofmtAlvos = @(git -C $repo ls-files '*.go')
+$gofmtMaus = New-Object System.Collections.Generic.List[string]
+$gofmtLote = 120
+for ($gi = 0; $gi -lt $gofmtAlvos.Count; $gi += $gofmtLote) {
+  $gfim = [Math]::Min($gi + $gofmtLote - 1, $gofmtAlvos.Count - 1)
+  $gsaida = & gofmt -l @($gofmtAlvos[$gi..$gfim]) 2>&1
+  if ($LASTEXITCODE -ne 0) {
+    $falhas.Add("gofmt terminou com erro de parse (exit $LASTEXITCODE) no lote $gi")
+  }
+  foreach ($g in @($gsaida)) { if ($g -and $g.Trim() -ne '') { [void]$gofmtMaus.Add($g.Trim()) } }
+}
+if ($gofmtMaus.Count -gt 0) {
   $falhas.Add('arquivos fora do gofmt')
-  ($saidaFmt | Select-Object -First 10) | ForEach-Object { "    $_" }
-} else { '    (vazio) OK' }
+  ($gofmtMaus | Select-Object -First 10) | ForEach-Object { "    $_" }
+} else { '    (vazio) OK -- ' + $gofmtAlvos.Count + ' ficheiros, lotes de ' + $gofmtLote }
 
 '--- 2. go build ./...'
 # E-561 - `-First 10` NUM COMANDO NATIVO E' UMA FALSA APROVACAO.

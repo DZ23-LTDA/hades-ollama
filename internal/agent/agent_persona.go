@@ -4,7 +4,7 @@
 //
 // O catalogo externo declara explicitamente que NAO e' runtime, NAO executa as personas e NAO e' ponte para
 // shell arbitrario. Este ficheiro respeita essa fronteira: uma persona e' CONTEUDO. Nao autoriza nada, nao
-// executa nada, nao eleva privilegios. Quem executa continua a ser o runtime, o Auto Mode e as politicas.
+// executa nada, nao eleva privilegios. Quem executa continua a ser o runtime, o Auto Mode e as regras.
 //
 //	*Persona nao e' capacidade. Um prompt bonito nao prova que a ferramenta existe, que a permissao foi
 //	concedida ou que o resultado e' bom.*
@@ -391,7 +391,7 @@ func DescribeDrift(state DriftState) string {
 	case DriftLocallyModified:
 		return "Editado fora do HADES. Preserve a edicao: actualizar por cima apagaria trabalho de uma pessoa."
 	case DriftRemoved:
-		return "O ficheiro desapareceu. Reinstale ou arquive o registo; nao invente que continua instalado."
+		return "O ficheiro desapareceu. Volte a instalar ou arquive o registo; nao invente que continua instalado."
 	case DriftForeign:
 		return "Registo sem hashes, ou ficheiro que o HADES nao escreveu. NAO remova: nao e' nosso."
 	case DriftConflicted:
