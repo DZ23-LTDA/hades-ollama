@@ -1,3 +1,68 @@
+## JANELA E-1342
+
+A cabeça do índice é **E-1342**.
+
+- **E-1342** — **um POST que não muda nada é um GET que não caberia no URL.** `SolutionsPanel` consome
+  `POST /solutions/compare` — a **primeira lacuna fechada por uma rota de escrita que não escreve**. O
+  comentário do handler: *«O método é POST, mas o efeito é nenhum; o cliente não deve ter de inferir isso
+  do método»*. A resposta traz **`somente_leitura: true`**, e o painel **lê o campo** em vez de inferir do
+  método. *A partir de hoje, «é POST» não significa «muta»: significa «o corpo não cabe num URL».*
+  **`integra_automaticamente` é SEMPRE falso** — *«o sistema pode recomendar um vencedor; não pode escolher
+  por quem assina o merge»*. Há um teste para o caso do servidor um dia dizer `true`: o painel **não
+  executa**.
+  **Empate não é falha** (decisão humana). **`nao_medidos` é «ninguém mediu», não «falhou»**.
+  **`medidos_parcialmente` é o campo que mais se esquece** — *«um critério medido num candidato e não
+  noutro não compara: informa»* — e o painel distingue-o de `nao_medidos` em dois blocos.
+  **As medições são entradas, não saída**: JSON inválido é recusado **antes** de chamar o servidor.
+  **QUINTA PREVISÃO CERTA DO GATE**: previ **1**, mediu **1** (32 → 31).
+- **E-1341** — company: `customers_created=0` é fronteira, não contagem; valor de tabela não é receita; 33 → 32.
+- **E-1340** — business: orçamento não é aprovação; custo ao lado da ação; 35 → 33.
+- **E-1339** — supervisor: reconhecer não é resolver; 200-vazio não prova supervisor; 39 → 35.
+- **E-1338** — `PluginsPanel`: scope pedido não é concedido; integridade em 4 estados; 41 → 39.
+- **E-1337** — `SessionPanel`: `omitempty` em booleano = `false`; `Public()` limpa segredos; 42 → 41.
+
+## A distância, agora
+
+| categoria | rotas |
+|---|---|
+| no backend | **348** |
+| órfãs no frontend | **47** |
+| consumidor externo (correcto) | **16** |
+| **lacuna de produto** | **31** (era 93) |
+
+## AS LACUNAS DE LEITURA ESTÃO ESGOTADAS
+
+**As 31 restantes são TODAS POST que MUTAM:**
+
+| domínio | lacunas | o que muta |
+|---|---|---|
+| `scheduling` | **12** | book, cancel, no-show, reminders |
+| `auth` | 3 | MFA — enable, disable, recovery |
+| `finance` | 3 | cost, reconcile, revenue por pedido |
+| `media` | 2 | ocr, tone |
+| `commerce` | 2 | stock |
+| `business` | 2 | certify, tick |
+| `company` | 1 | factory/launch |
+| `notifications` | 1 | register |
+| `wakeups` | 1 | wakeups |
+| `crm` | 1 | stage |
+| `inbox` | 1 | messages |
+| `service-agents` | 1 | approval-approvers |
+| `plugins` | 1 | bundle |
+
+**Isto muda a natureza do trabalho.** *Um painel que só lê não fecha uma rota que escreve. As 31
+restantes exigem UI de ação — botão, confirmação, approval — e cada uma merece a sua própria fatia com
+teste de negação. Não é o mesmo trabalho, e o contador não o vai reflectir depressa.*
+
+**Nota acumulada sobre o contador — quinze avisos:** o gate mede o **domínio**, não a rota. Quinze
+medições, **cinco** previsões certas.
+
+O que continua aberto: **31 rotas** sem UI (todas escritas); o gate **mede prefixos**; a assimetria
+`call.raw`/`call.path`; **20 ORPHAN listados de 209**; o build **não é assinado nem instalado**;
+`sign.start`/`publish.*` inexistentes; o painel do build **não se actualiza sozinho**; **`gitleaks`
+histórico — a única falha de CI**; instalação limpa `BLOCKED_EXTERNAL`; **FASE 30 não iniciada**.
+
+---
 ## JANELA E-1341
 
 A cabeça do índice é **E-1341**.

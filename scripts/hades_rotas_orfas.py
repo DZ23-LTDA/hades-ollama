@@ -137,7 +137,16 @@ RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 #   mais do que uma entrada na lacuna.*
 # 33 -> 32 no E-1341: `CompanyFactoryPanel` consome `/company/factory/C:\\Users\\DZ23\\Documents\\deepseek-harness\\default-workspace\\hades-ollamart/:id`.
 # `company` tem 2 rotas: `factory/launch` (POST) e `factory/C:\\Users\\DZ23\\Documents\\deepseek-harness\\default-workspace\\hades-ollamart/:id` (GET). Previsao: 1.
-TETO_ORFAS = 32
+# 32 -> 31 no E-1342: `SolutionsPanel` consome POST /solutions/compare.
+#
+# Esta e' a PRIMEIRA lacuna fechada por uma rota de ESCRITA que NAO escreve: a rota e' POST
+# porque o corpo nao cabe num URL, e a resposta diz `somente_leitura: true`.
+#
+#   *Um POST que nao muda nada e' um GET que nao caberia no URL -- e o campo `somente_leitura`
+#   existe para o cliente nao ter de inferir isso do metodo.*
+#
+# A conta: 3/10, 2/7, 1/0, 7/7 OK, 7/8, 3/5, 3/0, 5/5 OK, 4/1, 1/1 OK, 3/2, 2/4, 1/2, 1/1 OK, 1/1 OK.
+TETO_ORFAS = 31
 
 # Quem chama nao e' o frontend do HADES -- a ausencia no UI e' correcta.
 CONSUMIDOR_EXTERNO = (
