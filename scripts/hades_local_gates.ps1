@@ -343,6 +343,14 @@ $saidaJanela2 = & python -X utf8 scripts/hades_handoff_window_check.py --check 2
 $saidaJanela2 | Select-Object -First 6 | ForEach-Object { "    $_" }
 if ($LASTEXITCODE -ne 0) { $falhas.Add("hades_handoff_window_check.py --check (exit $LASTEXITCODE)") } else { '    OK' }
 
+'  [..] rotas orfas (backend sem superficie no UI)'
+$saidaOrfas = & python -X utf8 scripts/hades_rotas_orfas_test.py 2>&1
+$saidaOrfas | Select-Object -Last 2 | ForEach-Object { "    $_" }
+if ($LASTEXITCODE -ne 0) { $falhas.Add("hades_rotas_orfas_test.py (exit $LASTEXITCODE)") }
+$saidaOrfas2 = & python -X utf8 scripts/hades_rotas_orfas.py 2>&1
+$saidaOrfas2 | Select-String -Pattern 'lacuna de produto' | ForEach-Object { "    " + $_.Line.Trim() }
+if ($LASTEXITCODE -ne 0) { $falhas.Add("hades_rotas_orfas.py (exit $LASTEXITCODE)") } else { '    OK' }
+
 # *POR QUE ISTO EXISTE:* o `E-1010`. **18 instrumentos em `scripts/` nao corriam em nenhum gate.**
 # Entre eles, **dois testes** cujas proprias docstrings dizem porque existem -- e o
 # `hades_scope_classifier_autoteste.py` **descobriu** uma divergencia entre a afirmacao do `E-352`

@@ -1,3 +1,45 @@
+## JANELA E-1319
+
+A cabeça do índice é **E-1319**.
+
+- **E-1319** — **duas rondas seguidas com o mesmo padrão, e eu a procurar um de cada vez.**
+  O E-1316 foi `persistir()` escrito e nunca invocado; o E-1318 foi `PodarDisco()` escrito e nunca
+  invocado. Achei os dois por sorte, dentro da fatia em que estava a trabalhar. Se o padrão aconteceu
+  duas vezes em dois subsistemas que eu conhecia, o número real tinha de ser **medido**.
+  *Um defeito que se encontra por sorte não foi encontrado: foi tropeçado.*
+  **MEDIDO:** 348 rotas no backend · **109 não referenciadas** no frontend nem no E2E · dessas
+  **16 são orfandade CORRECTA** (webhooks, `/metrics`, `/auth/saml/*`, `/mcp/rpc`, pareamento) e
+  **93 são lacuna de produto**. Maiores: **scheduling 14, commerce 12, crm 8, inbox 8, sales 8,
+  service-agents 6, omnichannel 5** — 21 domínios.
+  *Uma rota que existe e não é consumida é uma promessa do backend, não uma funcionalidade do produto.*
+  **Entregue** `scripts/hades_rotas_orfas.py` + teste, com **`TETO_ORFAS = 93`**: falha se subir, baixa
+  quando descer, e **exige razão escrita para cada prefixo de consumidor-externo** — para que
+  «orfandade correcta» não vire a gaveta onde se esconde o que não se quer ver.
+  *Um teto não é uma aprovação: é o número de hoje, congelado para que a próxima ronda não o aumente
+  sem que alguém escreva porquê.*
+  **E o gate está LIGADO ao `hades_local_gates.ps1`** — sem isso seria o terceiro instrumento escrito e
+  nunca invocado na mesma sessão. *Um gate que existe e não é invocado é um gate que não existe.*
+  **O que o instrumento NÃO prova:** não prova que as 93 sejam todas necessárias no UI — algumas podem
+  ser legitimamente só de CLI e estar mal classificadas. Reclassificar é a próxima fatia.
+- **E-1318** — `PodarDisco` ligado ao arranque.
+- **E-1317** — retenção nos dois sítios; `misspell` resolvido por `ignore-rules`.
+- **E-1316** — persistência do store ligada ao `DataRoot`.
+
+## A distância medida
+
+| categoria | rotas |
+|---|---|
+| no backend | **348** |
+| órfãs no frontend | **109** |
+| consumidor externo (correcto) | **16** |
+| **lacuna de produto** | **93** |
+
+O que continua aberto: as 93 não foram reclassificadas uma a uma; **nenhuma** foi ligada ao UI nesta
+ronda; o build **não é assinado nem instalado**; `sign.start`/`publish.*` inexistentes; o painel de
+estado **não se actualiza sozinho**; `gitleaks`; instalação limpa `BLOCKED_EXTERNAL`; **FASE 30 não
+iniciada**.
+
+---
 ## JANELA E-1318
 
 A cabeça do índice é **E-1318**.
