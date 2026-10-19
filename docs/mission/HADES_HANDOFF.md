@@ -1,3 +1,44 @@
+## JANELA E-1315
+
+A cabeça do índice é **E-1315**.
+
+- **E-1315** — **o `build.start` não tinha botão.** O E-1313 deu-lhe modo assíncrono e o E-1314 deu
+  painel ao estado; entre os dois faltava o gesto que cria o build. *Um backend completo e um produto
+  incompleto não são a mesma coisa, e a distância entre os dois é a interface.*
+  Entregues `iniciarBuild()` em `buildStatusClient.ts` (`POST /build/start`) e, no `BuildPlanPanel`,
+  uma coluna **Ações** com o botão por alvo pronto.
+  **A decisão que um painel apressado erraria: alvo bloqueado NÃO ganha botão, nem desactivado.**
+  *Um botão que nunca funciona ensina a ignorar botões* — e um desactivado sem explicação ensina o
+  mesmo. Para um alvo bloqueado o painel mostra `—`, e a razão já está na coluna «O que falta».
+  **O modo assíncrono é o padrão do botão.** *Um `build.start` síncrono é um pedido que só responde
+  quando já não há nada a cancelar* — e o `cancel` só tem alvo enquanto o build corre.
+  **O 412 é um resultado:** o painel diz **«O plano de «X» está incompleto»**, não «erro de rede».
+  Mesma família da decisão do E-1314 sobre o 409.
+  **Medido:** `tsc -b` 0 · `vitest` **131 ficheiros / 944 testes PASS** (era 130/939) · `eslint` 0
+  errors · `vite build` 0 · bundle **PASS** (435 057 ≤ 600 000) · 5 testes novos (os 17 pré-existentes
+  do painel continuam PASS).
+- **E-1314** — painel de estado de build; 409 de `cancel` é resultado, não falha. 130/939 testes.
+- **E-1313** — `build.status`/`logs`/`artifacts`/`cancel` + `BuildStore`.
+- **E-1312** — CI verde (`d75b2ff16`). Instalação limpa `BLOCKED_EXTERNAL` com prova.
+- **E-1311** — `ResumoDeBlockers` mentia; **uma correção de ~20 linhas fechou as 7 falhas de CI.**
+
+## Ciclo de build no UI — fechado
+
+| passo | backend | UI |
+|---|---|---|
+| planear | `GET /build/plan` | **existe** |
+| **iniciar** | `POST /build/start` | **existe (E-1315)** |
+| acompanhar | `GET /build/status/:id` | **existe (E-1314)** |
+| logs / artefactos | `GET /build/logs`, `/artifacts` | **existe (E-1314)** |
+| cancelar | `POST /build/cancel/:id` | **existe (E-1314)** |
+| assinar | `sign.start` | **AUSENTE** |
+| publicar | `publish.submit` | **AUSENTE** |
+
+O que continua aberto: build iniciado **não é assinado nem instalado**; store **não sobrevive a
+reinício**; `sign.start`/`publish.*` mutantes inexistentes; **o painel de estado não se actualiza
+sozinho**; `gitleaks`; instalação limpa `BLOCKED_EXTERNAL`; **FASE 30 não iniciada**.
+
+---
 ## JANELA E-1314
 
 A cabeça do índice é **E-1314**.

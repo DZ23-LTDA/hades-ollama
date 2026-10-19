@@ -33,6 +33,10 @@
 
 import { useCallback, useEffect, useState } from "react";
 
+// FASE 28.7: o `build.start`. Importado do cliente de ESTADO porque e' la' que o
+// contrato do build vive; o painel de plano nao duplica os tipos.
+import { iniciarBuild } from "@/lib/buildStatusClient";
+
 import {
   descreverEstadoDaSonda,
   obterPlanoDeRelease,
@@ -56,6 +60,11 @@ type EstadoDoArtefacto = "inativo" | "a-medir" | "pronto" | "erro";
 
 export function BuildPlanPanel() {
   const [repo, setRepo] = useState<string>("");
+  // FASE 28.7: o estado do INICIO de build. Separado do `aMedir` porque sao duas accoes
+  // diferentes: medir um checksum e iniciar uma build de minutos.
+  const [aIniciar, setAIniciar] = useState<string | null>(null);
+  const [avisoDeInicio, setAvisoDeInicio] = useState<string | null>(null);
+  const [erroDeInicio, setErroDeInicio] = useState<string | null>(null);
   const [plano, setPlano] = useState<PlanoDeRelease | null>(null);
   const [estado, setEstado] = useState<Estado>("a-carregar");
   const [erro, setErro] = useState<string>("");
@@ -67,6 +76,37 @@ export function BuildPlanPanel() {
   const [erroDoArtefacto, setErroDoArtefacto] = useState<string>("");
   const [medicao, setMedicao] = useState<ChecksumDeArtefacto | null>(null);
   const [verificacao, setVerificacao] = useState<VerificacaoDeArtefacto | null>(null);
+
+  // FASE 28.7: inicia uma build ASSINCRONA no alvo. O servidor responde 202 com `build_id`; o estado
+  // e a saida aparecem no painel «Estado dos builds».
+  //
+  //	*Um `build.start` sincrono e' um pedido que so' responde quando ja' nao ha' nada a cancelar.*
+  const iniciarNoAlvo = useCallback(
+    async (alvo: string) => {
+      if (!plano) return;
+      setAIniciar(alvo);
+      setAvisoDeInicio(null);
+      setErroDeInicio(null);
+      try {
+        const resposta = await iniciarBuild({ raiz: plano.repo, alvo });
+        setAvisoDeInicio(
+          `Build de «${alvo}» aceite${resposta.build_id ? ` (${resposta.build_id.slice(0, 8)})` : ""} — acompanhe em «Estado dos builds».`,
+        );
+      } catch (e) {
+        // 412 e' um RESULTADO (plano incompleto), nao uma falha do servidor. O painel diz o que falta
+        // em vez de "erro de rede".
+        const mensagem = e instanceof Error ? e.message : String(e);
+        setErroDeInicio(
+          mensagem.includes("412")
+            ? `O plano de «${alvo}» está incompleto: ${mensagem}`
+            : mensagem,
+        );
+      } finally {
+        setAIniciar(null);
+      }
+    },
+    [plano],
+  );
 
   const medir = useCallback(async () => {
     const caminho = caminhoDoArtefacto.trim();
@@ -226,6 +266,18 @@ export function BuildPlanPanel() {
               </section>
             )}
 
+          <div aria-live="polite">
+            {avisoDeInicio ? (
+              <p role="status" data-testid="build-plan-aviso-inicio">
+                {avisoDeInicio}
+              </p>
+            ) : null}
+            {erroDeInicio ? (
+              <p role="alert" data-testid="build-plan-erro-inicio">
+                {erroDeInicio}
+              </p>
+            ) : null}
+          </div>
           <table>
             <caption>Plano por alvo</caption>
             <thead>
@@ -233,6 +285,7 @@ export function BuildPlanPanel() {
                 <th scope="col">Alvo</th>
                 <th scope="col">Estado</th>
                 <th scope="col">O que falta</th>
+                <th scope="col">Ações</th>
               </tr>
             </thead>
             <tbody>
@@ -252,6 +305,22 @@ export function BuildPlanPanel() {
                       {entrada.erro_de_plano
                         ? entrada.erro_de_plano
                         : (entrada.plano.Blockers ?? []).join(", ") || "nada"}
+                    </td>
+                    <td>
+                      {pronto ? (
+                        <button
+                          type="button"
+                          onClick={() => void iniciarNoAlvo(entrada.alvo)}
+                          disabled={aIniciar !== null}
+                          data-testid={`build-plan-iniciar-${entrada.alvo}`}
+                        >
+                          {aIniciar === entrada.alvo ? "A iniciar…" : "Iniciar build"}
+                        </button>
+                      ) : (
+                        // Um alvo bloqueado NAO ganha um botao desactivado: um botao que nunca
+                        // funciona ensina a ignorar botoes.
+                        <span data-testid={`build-plan-sem-iniciar-${entrada.alvo}`}>—</span>
+                      )}
                     </td>
                   </tr>
                 );

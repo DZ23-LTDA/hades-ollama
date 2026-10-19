@@ -109,6 +109,35 @@ export interface RespostaDeArtefactosDeBuild {
   aviso: string;
 }
 
+/** Pedido de `POST /build/start`. */
+export interface PedidoDeInicioDeBuild {
+  raiz: string;
+  alvo: string;
+  destino?: string;
+  dry_run?: boolean;
+  timeout_segundos?: number;
+  /**
+   * `true` devolve 202 com o `build_id` e corre em segundo plano.
+   *
+   * E' o UNICO modo em que `cancel` tem um build por cancelar: se a rota so' respondesse no fim, o
+   * botao de cancelar so' encontraria builds ja' terminados.
+   */
+  assincrono?: boolean;
+}
+
+/** Resposta de `POST /build/start`. */
+export interface RespostaDeInicioDeBuild {
+  construiu: boolean;
+  nada_assinado: boolean;
+  nada_publicado: boolean;
+  alvo: string;
+  plano: unknown;
+  resultado?: ResultadoDeBuild;
+  aviso_de_fronteira: string;
+  build_id?: string;
+  estado?: EstadoDeBuild;
+}
+
 /** Resposta de `POST /build/cancel/:id`. */
 export interface RespostaDeCancelamentoDeBuild {
   id: string;
@@ -209,6 +238,26 @@ export async function obterArtefactosDeBuild(
     `/api/agent/v1/build/artifacts/${encodeURIComponent(id)}`,
     init,
   );
+}
+
+/**
+ * Inicia um build.
+ *
+ * Por omissao pede o modo ASSINCRONO: o servidor devolve 202 e um `build_id`, e a build corre em
+ * segundo plano. O `BuildStatusPanel` mostra-a a partir da lista.
+ *
+ *	*Um `build.start` sincrono e' um pedido que so' responde quando ja' nao ha' nada a cancelar.*
+ */
+export async function iniciarBuild(
+  pedido: PedidoDeInicioDeBuild,
+  init?: RequestInit,
+): Promise<RespostaDeInicioDeBuild> {
+  return await agentFetch<RespostaDeInicioDeBuild>("/api/agent/v1/build/start", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ assincrono: true, ...pedido }),
+    ...init,
+  });
 }
 
 /**
