@@ -1,3 +1,45 @@
+## JANELA E-1312
+
+A cabeça do índice é **E-1312**.
+
+- **E-1312** — **o CI do E-1311 está VERDE.** `d75b2ff16` fechou com **21 success e 2 failure**, e as
+  duas são o `gitleaks (historico do PR)` — a dívida conhecida do proprietário. Os três gates que
+  estavam vermelhos passaram: **`Go agentic and server gates`**, **`PR gate`** e
+  **`Go agentic Windows portability`**. **A comparação mede a correção:** no commit anterior
+  (`f86bcce8e`) eram **7 falhas**, incluindo `test (macos-latest)`, `test (ubuntu-latest)` e
+  `race (ubuntu-latest)` — o `TestRotaPlanoBlockersEMotivosNoTopo` partia o `./server` nas **três
+  plataformas**, e o `PR gate` reprovava por consequência. Uma correção de ~20 linhas no
+  `ResumoDeBlockers` fechou sete.
+- **A INSTALAÇÃO LIMPA ficou `BLOCKED_EXTERNAL`, com prova.** O `.iss` de teste usa
+  `DefaultDirName={autopf}` → `C:\Program Files`, que exige elevação. O instalador com `/VERYSILENT`
+  ficou **pendurado 600 s**, sem log e sem exit code: à espera de um UAC que não aparece em sessão
+  não-interativa. **O que isso NÃO deixou:** nada — `C:\Program Files\HADESTeste` não existe,
+  `%LOCALAPPDATA%\HADESTeste` não existe, registo `*HADES*` vazio, zero processos. A tentativa foi
+  limpa. **Desbloqueio exato:** VM Windows descartável + `/VERYSILENT /LOG=...`, depois desinstalar e
+  verificar resíduos — ação do proprietário, não do agente.
+- **E-1311** — `ResumoDeBlockers` mentia: `alvos_bloqueados=3` com `blockers=[]`. Segunda ocorrência
+  do mesmo defeito (o E-1307 corrigiu-o no provider e deixou-o no resumo). Corrigido com
+  `MotivosDeNaoPronto()` + prefixo do alvo. `internal/agent` ok 344 s, `server` ok 44 s.
+- **E-1310** — `ProviderDeInstaladorWindows`: `windows-installer` → 200, `HadesSetup-teste.exe`
+  3 363 167 B, `'Inno Setup'` presente, **`Status = NotSigned`**.
+- **E-1309** — o artefacto **corre** no alvo: `HADES-ARTEFACTO-OK so=windows arch=amd64`; ELF e
+  Mach-O **não** produziram a marca.
+
+## Estado por alvo
+
+| alvo | build | formato | assinatura | instalação |
+|---|---|---|---|---|
+| `windows` | **200** | PE `.exe` | — | **EXECUTADO** |
+| `linux` | **200** | ELF | — | **NÃO EXECUTADO** (sem host Linux) |
+| `macos` | **200** | Mach-O | — | **NÃO EXECUTADO** (sem host macOS) |
+| `windows-installer` | **200** | Inno Setup `.exe` | **NotSigned** (por desenho) | **`BLOCKED_EXTERNAL`** |
+
+O que continua aberto: a instalação limpa (`BLOCKED_EXTERNAL`), nenhum artefacto assinado (por
+desenho), `build.status`/`logs`/`cancel`/`artifacts` inexistentes, `gitleaks (historico do PR)`,
+build Android e arranque do app (`BLOCKED_EXTERNAL`), `INSTALLED=NAO` (E-1252) e a **FASE 30 não
+iniciada**.
+
+---
 ## JANELA E-1311
 
 A cabeça do índice é **E-1311**.
