@@ -76,6 +76,9 @@ test.describe(`Agent Center no browser (${MODO})`, () => {
     await expect(botao).toBeVisible({ timeout: 20_000 });
     await botao.click();
 
+    // E-1408: `CatalogVersion()` vem do SERVIDOR. Em UI_FIXTURE o elemento nunca aparece, e o teste
+    // falhava aos 20s `element(s) not found`. Mesma classe dos E-1403/E-1404/E-1406.
+    test.skip(!BACKEND_REAL, "a versao do catalogo vem do servidor; UI_FIXTURE nao tem servidor");
     // `agent-center-cat-versao` mostra `CatalogVersion()` do SERVIDOR. Se o painel estivesse a inventar um
     // catalogo local, este campo nao viria do pedido.
     const versao = page.getByTestId("agent-center-cat-versao");
