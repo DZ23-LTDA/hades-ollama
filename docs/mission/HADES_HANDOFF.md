@@ -1,3 +1,27 @@
+## JANELA E-1305
+
+A cabeça do índice é **E-1305**.
+
+- **E-1305** — o E-1303 corrigiu o macOS mas partiu o **Windows e o Ubuntu**: o `misspell` do
+  `golangci-lint` leu a palavra portuguesa *Resolvemos* num comentário como erro de inglês. Medido:
+  `f5fd1af7a` windows/ubuntu **success**; `63ea97085` **failure** em cada. Corrigido removendo a
+  palavra; `golangci-lint run ./server/` **0 issues**, `./internal/agent/` e `./internal/multillm/`
+  **0 issues**. **O gate local existia e não foi invocado.**
+- **E-1304** — o E2E do `build.plan` nunca tinha corrido contra o binário Go real: sem
+  `HADES_E2E_REPO` dava 3 passed / **4 failed**; com ela **7 passed**. O spec passou a falhar alto sem
+  a variável.
+- **E-1303** — `/var`→`/private/var` no macOS: `filepath.Clean` não resolve symlinks. Corrigido com
+  `EvalSymlinks` nos dois lados.
+- **E-1302** — E2E do `publish.preflight` contra o backend Go real: 9 passed no modo real, 9 no
+  fixture, suíte 136/11.
+- **E-1301/E-1300** — `Preserve Class A+ surfaces` verde; a causa era o checker de `.ps1` a exigir
+  `powershell.exe` no Ubuntu.
+
+O que continua aberto: `build.start`/`status`/`logs`/`cancel`/`artifacts` não existem,
+`gitleaks (historico do PR)` (decisão do proprietário), build Android e arranque do app
+(`BLOCKED_EXTERNAL`), `INSTALLED=NAO` (E-1252) e a **FASE 30 não iniciada**.
+
+---
 ## JANELA E-1304
 
 A cabeça do índice é **E-1304**.

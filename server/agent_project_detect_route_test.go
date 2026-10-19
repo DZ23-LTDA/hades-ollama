@@ -155,8 +155,15 @@ func TestDeteccaoNaoUsaARaizDoPedido(t *testing.T) {
 	//
 	//   devolvida devia ser a do AMBIENTE ("/var/..."), obtido "/private/var/..."
 	//
-	// Resolvemos os symlinks dos DOIS lados antes de comparar, e so' caímos para `filepath.Clean`
-	// quando a resolucao falhar (caminho que nao existe).
+	// E-1305: os symlinks dos DOIS lados sao resolvidos antes de comparar, e so' se cai para
+	// `filepath.Clean` quando a resolucao falha (caminho que nao existe).
+	//
+	// A palavra que estava aqui antes (`Resolv*mos`, a 1a pessoa do plural do verbo resolver) foi lida
+	// pelo `misspell` do CI como erro de ingles (`Resolves`) e deixou o `test (windows-latest)` e o
+	// `test (ubuntu-latest)` VERMELHOS no commit 63ea97085 -- nos TRES sistemas. Nao era defeito de
+	// codigo: era uma palavra portuguesa num comentario, a ser lida por um corretor de ingles.
+	//
+	//     *Um corretor ortografico de outra lingua nao sabe distinguir um comentario de um erro.*
 	//
 	//     *Uma verificacao de prefixo sem resolver symlinks e' uma verificacao que aprova o link, nao
 	//     o alvo.*
