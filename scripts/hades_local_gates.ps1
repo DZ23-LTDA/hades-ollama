@@ -279,6 +279,24 @@ $saidaPs2 = & python -X utf8 scripts\hades_ps1_syntax_check.py 2>&1
 $saidaPs2 | Select-Object -First 3 | ForEach-Object { "    $_" }
 if ($LASTEXITCODE -ne 0) { $falhas.Add("hades_ps1_syntax_check.py (exit $LASTEXITCODE)") } else { '    OK' }
 
+# *POR QUE ISTO EXISTE:* o `E-1293`. O `namespace` do Gradle era `com.dz23ltd.hades` mas os ficheiros
+# Kotlin estavam em `com.lmprado.dz23agentic`. O `AndroidManifest.xml` referencia `.MainActivity` com
+# nome RELATIVO, que resolve contra o NAMESPACE: o Android procurava `com.dz23ltd.hades.MainActivity`,
+# que nao existia. Resultado: `ClassNotFoundException` no arranque -- o app NAO ABRIA.
+#
+#   *Um `namespace` que nao corresponde ao package do codigo e' um endereco para uma casa que nao
+#   existe: o build passa e o app nao abre.*
+#
+# O build nao apanhava: a compilacao Kotlin nao exige package == caminho. So' o dispositivo encontrava,
+# e nao ha' Android SDK nem emulador nesta maquina.
+'--- 9d. COERENCIA do package Android (E-1293)'
+$saidaPkg = & python -X utf8 scripts\hades_android_package_check_test.py 2>&1
+$saidaPkg | Select-String -Pattern '(Ran \d+ tests|^OK|^FAILED)' | Select-Object -Last 2 | ForEach-Object { "    " + $_.Line.Trim() }
+if ($LASTEXITCODE -ne 0) { $falhas.Add("hades_android_package_check_test.py (exit $LASTEXITCODE)") }
+$saidaPkg2 = & python -X utf8 scripts\hades_android_package_check.py 2>&1
+$saidaPkg2 | Select-Object -First 3 | ForEach-Object { "    $_" }
+if ($LASTEXITCODE -ne 0) { $falhas.Add("hades_android_package_check.py (exit $LASTEXITCODE)") } else { '    OK' }
+
 # *POR QUE ISTO EXISTE:* o `E-1008`. O `mission_check` exige "alguma evidencia >= E-960", e um
 # documento de retomada parado no E-1000 satisfaz PARA SEMPRE. Esta catraca mede a JANELA: o
 # maior ID citado tem de estar a menos de 12 evidencias da cabeca do indice.

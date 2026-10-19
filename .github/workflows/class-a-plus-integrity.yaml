@@ -128,6 +128,13 @@ jobs:
           #     *Um gate que nao arranca nao e' um gate: e' um ficheiro com nome de gate.*
           python3 scripts/hades_ps1_syntax_check_test.py
           python3 scripts/hades_ps1_syntax_check.py
+          # E-1293: o `namespace` do Gradle era `com.dz23ltd.hades` mas os `.kt` estavam em
+          # `com.lmprado.dz23agentic`. O manifest usa `.MainActivity` (nome relativo), que resolve
+          # contra o NAMESPACE -- o Android procurava uma classe inexistente e o app NAO ABRIA.
+          # O build passa; o erro so' aparece no dispositivo. *Um erro que so' o dispositivo encontra
+          # fica a espera do utilizador.*
+          python3 scripts/hades_android_package_check_test.py
+          python3 scripts/hades_android_package_check.py
       # E-660: a CODIFICACAO dos artefatos passa a ser gate. O checker existia (E-409/E-410) mas nao rodava no CI
       # e cobria so' dupla codificacao - um BOM UTF-8 passava em silencio, e um `HADES_MASTER_STATE.json` com BOM
       # derrubou o `hades_release_gate.py --check` (JSONDecodeError) nesta propria workflow. Instrumento fora da
