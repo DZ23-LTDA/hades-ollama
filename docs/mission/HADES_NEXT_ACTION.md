@@ -1,6 +1,6 @@
-## JANELA E-1390
+## JANELA E-1391
 
-**A cabeca do indice e' E-1390.** Este bloco substitui a janela anterior (E-1363) e cobre o que foi feito
+**A cabeca do indice e' E-1391.** Este bloco substitui a janela anterior (E-1363) e cobre o que foi feito
 desde entao. O documento seguinte continua a ser o historico; este e' o que se le' primeiro.
 
 ### O QUE MUDOU ENTRE E-1364 E E-1376
