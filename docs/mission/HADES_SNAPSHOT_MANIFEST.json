@@ -1,8 +1,8 @@
 {
   "schema": "hades.snapshot.manifest/v1",
   "gerado_por": "scripts/hades_manifest.py",
-  "generated_at": "2026-10-19T23:30:29+00:00",
-  "source_sha": "5bb47b3b45015c65df78208d5d529399859e4865",
+  "generated_at": "2026-10-19T23:35:48+00:00",
+  "source_sha": "d2583f56013dc61fe53bd07045542ba4d404b0bd",
   "source_branch": "fix/checker-relogio",
   "source_dirty": 8,
   "host": {
