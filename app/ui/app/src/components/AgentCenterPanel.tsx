@@ -14,9 +14,12 @@ import {
   contarCasos,
   guardarBackup,
   lerAvaliacao,
+  libertarDaQuarentena,
+  listarQuarentena,
   lerEquipas,
   listarBackups,
   restaurarBackup,
+  reterEmQuarentena,
   resumoDeEquipas,
   triarImportacao,
   descreverCatalogo,
@@ -32,6 +35,7 @@ import {
   type Avaliacao,
   type Catalogo,
   type ListaDeBackups,
+  type ListaDeQuarentena,
   type ResultadoDeImportacao,
   type Equipas,
   type ItemDeDrift,
@@ -49,6 +53,7 @@ type Estado =
   | "equipas"
   | "backups"
   | "triagem"
+  | "quarentena"
   | "drift"
   | "instalado"
   | "ausente"
@@ -78,12 +83,15 @@ export function AgentCenterPanel() {
   const [backupId, setBackupId] = useState("");
   const [manifesto, setManifesto] = useState("");
   const [triagem, setTriagem] = useState<ResultadoDeImportacao | null>(null);
+  const [quarentena, setQuarentena] = useState<ListaDeQuarentena | null>(null);
+  const [revisor, setRevisor] = useState("");
+  const [quarentenaId, setQuarentenaId] = useState("");
   const [instalacao, setInstalacao] = useState<ResultadoDeInstalacao | null>(null);
   const [alvo, setAlvo] = useState("hades");
   const [destino, setDestino] = useState(".hades/agents/revisor-exemplo.md");
 
   const correr = useCallback(
-    async (op: "list" | "catalog" | "evaluation" | "teams" | "backups" | "restore" | "triagem" | "drift" | "install") => {
+    async (op: "list" | "catalog" | "evaluation" | "teams" | "backups" | "restore" | "triagem" | "quarentena" | "liberar" | "drift" | "install") => {
       setErro(null);
       setEstado("a-carregar");
       try {
@@ -106,6 +114,14 @@ export function AgentCenterPanel() {
         } else if (op === "triagem") {
           setTriagem(await triarImportacao(manifesto));
           setEstado("triagem");
+        } else if (op === "quarentena") {
+          await reterEmQuarentena(manifesto);
+          setQuarentena(await listarQuarentena());
+          setEstado("quarentena");
+        } else if (op === "liberar") {
+          await libertarDaQuarentena(quarentenaId, revisor);
+          setQuarentena(await listarQuarentena());
+          setEstado("quarentena");
         } else if (op === "restore") {
           await restaurarBackup(backupId);
           setBackups(await listarBackups());
@@ -199,6 +215,14 @@ export function AgentCenterPanel() {
           className="rounded border border-neutral-700 px-2 py-1 text-xs text-neutral-300 hover:bg-neutral-800"
         >
           Ver equipas
+        </button>
+        <button
+          type="button"
+          data-testid="agent-center-quarentena-btn"
+          onClick={() => void correr("quarentena")}
+          className="rounded border border-neutral-700 px-2 py-1 text-xs text-neutral-300 hover:bg-neutral-800"
+        >
+          Reter em quarentena
         </button>
         <button
           type="button"
@@ -385,6 +409,49 @@ export function AgentCenterPanel() {
               ))}
             </ul>
           )}
+        </div>
+      )}
+
+      {estado === "quarentena" && (
+        <div className="space-y-1">
+          <p data-testid="agent-center-qr-contagem" className="text-[11px] text-neutral-300">
+            {quarentena?.count ?? 0} persona(s) retida(s)
+          </p>
+          <ul data-testid="agent-center-qr-lista" className="space-y-1 font-mono text-[11px] text-neutral-300">
+            {(quarentena?.entries ?? []).map((e) => (
+              <li key={e.id} className="flex items-center gap-2">
+                <span>{e.persona_id}</span>
+                <span className="text-neutral-500">{e.state}</span>
+                <button
+                  type="button"
+                  data-testid={`agent-center-qr-libertar-${e.id}`}
+                  onClick={() => {
+                    setQuarentenaId(e.id);
+                    void correr("liberar");
+                  }}
+                  className="rounded border border-neutral-700 px-1 text-[10px] hover:bg-neutral-800"
+                >
+                  libertar
+                </button>
+              </li>
+            ))}
+          </ul>
+          {(quarentena?.count ?? 0) === 0 && (
+            <p data-testid="agent-center-qr-vazio" className="text-[11px] text-neutral-500">
+              Nenhuma persona retida. Reter uma cria a primeira entrada.
+            </p>
+          )}
+          <input
+            data-testid="agent-center-qr-revisor"
+            value={revisor}
+            onChange={(e) => setRevisor(e.target.value)}
+            placeholder="revisor (obrigatório para libertar)"
+            className="w-full rounded border border-neutral-700 bg-neutral-900 p-1 text-[11px] text-neutral-200"
+          />
+          {/* *Uma revisao de seguranca que aprova para producao nao e uma revisao: e um atalho.* */}
+          <p className="text-[11px] text-neutral-500">
+            Libertar leva a SECURITY_REVIEWED e exige revisor. Não aprova para produção.
+          </p>
         </div>
       )}
 

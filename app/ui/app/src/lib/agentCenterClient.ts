@@ -175,6 +175,22 @@ export interface ResultadoDeImportacao {
   persona?: { id?: string; name?: string; version?: string; source?: string; license?: string };
 }
 
+export interface EntradaDeQuarentena {
+  id: string;
+  scope: string;
+  persona_id: string;
+  state: string;
+  report?: RelatorioDeQuarentena;
+  created_at: string;
+  reviewed_by?: string;
+  reviewed_at?: string;
+}
+
+export interface ListaDeQuarentena {
+  count?: number;
+  entries?: EntradaDeQuarentena[];
+}
+
 export interface BackupDePersonas {
   id: string;
   scope: string;
@@ -386,6 +402,45 @@ export function contarAchados(r: RelatorioDeQuarentena | null): { bloqueios: num
     bloqueios: lista.filter((f) => f.severity === "BLOCK").length,
     avisos: lista.filter((f) => f.severity !== "BLOCK").length,
   };
+}
+
+/** Valida, triagem e RETE. Escreve -- e o estado que faltava. */
+export async function reterEmQuarentena(content: string): Promise<{ quarantined?: boolean; state?: string; record?: EntradaDeQuarentena; note?: string }> {
+  const bruto = (content ?? "").trim();
+  if (bruto === "") throw new InstalacaoRecusadaError("cole o manifesto antes de reter");
+  try {
+    return await agentFetch("/api/agent/v1/agents/quarantine", { method: "POST", body: JSON.stringify({ content: bruto }) });
+  } catch (causa) {
+    traduzir(causa);
+  }
+}
+
+export async function listarQuarentena(): Promise<ListaDeQuarentena> {
+  try {
+    return await agentFetch<ListaDeQuarentena>("/api/agent/v1/agents/quarantine");
+  } catch (causa) {
+    traduzir(causa);
+  }
+}
+
+/**
+ * Liberta para `SECURITY_REVIEWED`. NAO promove a producao, e o revisor e obrigatorio.
+ *
+ * *Uma revisao de seguranca que aprova para producao nao e uma revisao: e um atalho.*
+ */
+export async function libertarDaQuarentena(id: string, reviewer: string): Promise<{ record?: EntradaDeQuarentena; note?: string }> {
+  const alvo = (id ?? "").trim();
+  const autor = (reviewer ?? "").trim();
+  if (alvo === "") throw new InstalacaoRecusadaError("escolha uma entrada");
+  if (autor === "") throw new InstalacaoRecusadaError("uma revisão precisa de revisor");
+  try {
+    return await agentFetch("/api/agent/v1/agents/quarantine/release", {
+      method: "POST",
+      body: JSON.stringify({ id: alvo, reviewer: autor }),
+    });
+  } catch (causa) {
+    traduzir(causa);
+  }
 }
 
 export async function lerDrift(): Promise<RelatorioDeDrift> {

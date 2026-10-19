@@ -256,7 +256,8 @@ type agentAPI struct {
 	// FASE 30: o ledger de personas do Agent Center. Nulo significa "sem superficie ligada", e as rotas
 	// falham fechado em vez de devolver lista vazia -- *que pareceria "nao ha agentes" em vez de "nao ha
 	// armazenamento"*. Mesmo `storeRoot` do registro de plugins: nao se cria uma segunda raiz de dados.
-	personas *agent.PersonaLedger
+	personas   *agent.PersonaLedger
+	quarantine *agent.QuarantineStore
 }
 
 var errAgentForbidden = errors.New("object is outside the active organization")
@@ -299,6 +300,10 @@ func newAgentAPI(runtime *agent.Runtime) (*agentAPI, error) {
 	if err != nil {
 		return nil, err
 	}
+	quarantineStore, err := agent.NewQuarantineStore(storeRoot)
+	if err != nil {
+		return nil, err
+	}
 	pluginRegistry, err := agent.NewPluginRegistry(storeRoot)
 	if err != nil {
 		return nil, err
@@ -306,7 +311,7 @@ func newAgentAPI(runtime *agent.Runtime) (*agentAPI, error) {
 	// E-449 (ADV-65): o motor de agendamento passa a ser CONSTRUIDO em producao. *Em E-441 a busca ampla mostrou que as
 	// duas ocorrencias de `NewSchedulingStore` fora dos testes eram o **comentario** e a **definicao**.* Sob `storeRoot`,
 	// como os outros stores - *um diretorio por preocupacao, e persistencia herdada.*
-	return &agentAPI{runtime: runtime, context: runtime.Context(), plugins: pluginRegistry, personas: personaLedger, auth: auth, oauthClients: oauthClients, authRequired: required, push: runtime.Push(), grok: grokClient, samlServices: map[string]*agent.SAMLService{}, scheduling: agent.NewSchedulingStore(filepath.Join(storeRoot, "scheduling"))}, nil
+	return &agentAPI{runtime: runtime, context: runtime.Context(), plugins: pluginRegistry, personas: personaLedger, quarantine: quarantineStore, auth: auth, oauthClients: oauthClients, authRequired: required, push: runtime.Push(), grok: grokClient, samlServices: map[string]*agent.SAMLService{}, scheduling: agent.NewSchedulingStore(filepath.Join(storeRoot, "scheduling"))}, nil
 }
 
 func newAgentGrokClient() (*grok.Client, error) {
@@ -1064,6 +1069,9 @@ func (a *agentAPI) register(r *gin.Engine) {
 	group.GET("/agents/backups", a.listAgentBackups)
 	group.POST("/agents/restore", a.restoreAgentPersonas)
 	group.POST("/agents/import", a.importAgentPersona)
+	group.POST("/agents/quarantine", a.holdAgentPersona)
+	group.GET("/agents/quarantine", a.listAgentQuarantine)
+	group.POST("/agents/quarantine/release", a.releaseAgentPersona)
 	group.GET("/agents/drift", a.agentPersonaDrift)
 	group.POST("/agents/install", a.installAgentPersona)
 }

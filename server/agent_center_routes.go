@@ -318,6 +318,139 @@ func (a *agentAPI) importAgentPersona(c *gin.Context) {
 	})
 }
 
+// agentQuarantineStore devolve o store, ou nil quando nao ha raiz configurada.
+func (a *agentAPI) agentQuarantineStore() (*agent.QuarantineStore, bool) {
+	return a.quarantine, a.quarantine != nil
+}
+
+// holdAgentPersona: POST /agents/quarantine
+//
+// Valida, triagem e RETE. Escreve: e' o que faltava na ronda anterior, em que a triagem era stateless.
+//
+//	*Quarentena e' um estado, nao um log.*
+func (a *agentAPI) holdAgentPersona(c *gin.Context) {
+	organizationID := a.organizationID(c)
+	if organizationID == "" {
+		writeAgentError(c, http.StatusForbidden, errAgentForbidden)
+		return
+	}
+	store, ok := a.agentQuarantineStore()
+	if !ok {
+		writeAgentError(c, http.StatusServiceUnavailable, errors.New("agent quarantine store is not configured"))
+		return
+	}
+	var pedido struct {
+		Content string `json:"content"`
+	}
+	if err := decodeJSON(c, &pedido); err != nil {
+		writeAgentError(c, http.StatusBadRequest, err)
+		return
+	}
+	if strings.TrimSpace(pedido.Content) == "" {
+		writeAgentError(c, http.StatusBadRequest, errors.New("content is required"))
+		return
+	}
+	const limiteBytes = 256 * 1024
+	persona, estado, relatorio, err := agent.ImportDecision([]byte(pedido.Content), limiteBytes)
+	if err != nil {
+		writeAgentError(c, http.StatusBadRequest, err)
+		return
+	}
+	if estado != agent.EvalQuarantined {
+		// Limpa: nao ha' nada para reter. Devolver 200 com `quarantined:false` e' diferente de criar uma
+		// entrada vazia para o utilizador achar que ha' algo retido.
+		c.JSON(http.StatusOK, gin.H{
+			"organization_id": organizationID,
+			"state":           string(estado),
+			"quarantined":     false,
+			"report":          relatorio,
+			"note":            "sem achados: nada foi retido",
+		})
+		return
+	}
+	reg, criada, err := store.Enter(organizationID, persona, relatorio, time.Now())
+	if err != nil {
+		writeAgentError(c, http.StatusBadRequest, err)
+		return
+	}
+	codigo := http.StatusOK
+	if criada {
+		codigo = http.StatusCreated
+	}
+	c.JSON(codigo, gin.H{
+		"organization_id": organizationID,
+		"state":           string(reg.State),
+		"quarantined":     true,
+		"created":         criada,
+		"record":          reg,
+	})
+}
+
+// listAgentQuarantine: GET /agents/quarantine
+func (a *agentAPI) listAgentQuarantine(c *gin.Context) {
+	organizationID := a.organizationID(c)
+	if organizationID == "" {
+		writeAgentError(c, http.StatusForbidden, errAgentForbidden)
+		return
+	}
+	store, ok := a.agentQuarantineStore()
+	if !ok {
+		writeAgentError(c, http.StatusServiceUnavailable, errors.New("agent quarantine store is not configured"))
+		return
+	}
+	lista, err := store.List(organizationID)
+	if err != nil {
+		writeAgentError(c, http.StatusBadRequest, err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"organization_id": organizationID,
+		"count":           len(lista),
+		"entries":         lista,
+	})
+}
+
+// releaseAgentPersona: POST /agents/quarantine/release
+//
+// Exige `reviewer`. Leva a `SECURITY_REVIEWED`, NUNCA a `PRODUCTION_APPROVED`.
+func (a *agentAPI) releaseAgentPersona(c *gin.Context) {
+	organizationID := a.organizationID(c)
+	if organizationID == "" {
+		writeAgentError(c, http.StatusForbidden, errAgentForbidden)
+		return
+	}
+	store, ok := a.agentQuarantineStore()
+	if !ok {
+		writeAgentError(c, http.StatusServiceUnavailable, errors.New("agent quarantine store is not configured"))
+		return
+	}
+	var pedido struct {
+		ID       string `json:"id"`
+		Reviewer string `json:"reviewer"`
+	}
+	if err := decodeJSON(c, &pedido); err != nil {
+		writeAgentError(c, http.StatusBadRequest, err)
+		return
+	}
+	reg, err := store.Release(organizationID, pedido.ID, pedido.Reviewer, time.Now())
+	if err != nil {
+		switch {
+		case errors.Is(err, agent.ErrQuarentenaNaoEncontrada):
+			writeAgentError(c, http.StatusNotFound, err)
+		case errors.Is(err, agent.ErrLibertacaoRecusada):
+			writeAgentError(c, http.StatusBadRequest, err)
+		default:
+			writeAgentError(c, http.StatusBadRequest, err)
+		}
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"organization_id": organizationID,
+		"record":          reg,
+		"note":            "revisão de segurança registada; isto NÃO aprova para produção",
+	})
+}
+
 // agentPersonaDrift: GET /agents/drift
 func (a *agentAPI) agentPersonaDrift(c *gin.Context) {
 	organizationID := a.organizationID(c)
