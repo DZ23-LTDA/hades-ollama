@@ -105,4 +105,42 @@ test.describe(`Agent Center: ciclo completo (${MODO})`, () => {
     // A recusa tem de nomear o motivo, nao so' dizer "falhou".
     expect(recusa).toMatch(/relativ|destino|absolut/);
   });
+
+  /**
+   * O RESTAURO -- a setima accao do §30.8, e a que faltava no browser.
+   *
+   * O E-1385 disse que o `restore` ficava de fora porque «exige escolher um backup da lista, e a lista e'
+   * preenchida pelo clique anterior. Fingir esse passo com um id inventado seria pior do que nao o ter.»
+   *
+   * Nao foi preciso inventar: a lista existe, os botoes por id existem, e o clique produz um id real. O que
+   * faltava era o painel GUARDAR a resposta -- clicava-se em «restaurar» e o ecra voltava a ser a lista, sem
+   * dizer se repusera alguma coisa. Um botao que nao confirma o que fez obriga o utilizador a adivinhar.
+   */
+  test("restaurar um backup escolhido diz o que repôs", async ({ page }) => {
+    await page.goto("/capabilities");
+
+    // 1. Guardar um backup. E' o que preenche a lista.
+    await expect(page.getByTestId("agent-center-backup-btn")).toBeVisible({ timeout: 20_000 });
+    await page.getByTestId("agent-center-backup-btn").click();
+    await expect(page.getByTestId("agent-center-bk-contagem")).toBeVisible({ timeout: 20_000 });
+
+    // 2. A lista tem de conter pelo menos um id -- senao nao ha' nada para escolher e o teste seguinte
+    //    passaria por ausencia, nao por restauro.
+    const botoes = page.locator('[data-testid^="agent-center-bk-restaurar-"]');
+    await expect(botoes.first()).toBeVisible({ timeout: 20_000 });
+    const alvo = botoes.first();
+    const testid = await alvo.getAttribute("data-testid");
+    const id = (testid ?? "").replace("agent-center-bk-restaurar-", "");
+    expect(id.length).toBeGreaterThan(0);
+
+    // 3. Restaurar ESSE id.
+    await alvo.click();
+
+    // 4. O painel tem de dizer qual repôs -- e o id tem de ser o que se escolheu.
+    const confirmacao = page.getByTestId("agent-center-restaurado");
+    await expect(confirmacao).toBeVisible({ timeout: 20_000 });
+    await expect(confirmacao).toContainText(id);
+
+    test.info().annotations.push({ type: "backup_restaurado", description: id });
+  });
 });

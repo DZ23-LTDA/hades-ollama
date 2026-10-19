@@ -90,6 +90,9 @@ export function AgentCenterPanel() {
   const [equipas, setEquipas] = useState<Equipas | null>(null);
   const [backups, setBackups] = useState<ListaDeBackups | null>(null);
   const [backupId, setBackupId] = useState("");
+  // O resultado do restauro tem de ser VISIVEL: sem isto o utilizador clica em «restaurar» e o ecra
+  // volta a ser a lista, sem dizer se repôs alguma coisa.
+  const [restauro, setRestauro] = useState<{ restored?: string } | null>(null);
   const [manifesto, setManifesto] = useState("");
   const [triagem, setTriagem] = useState<ResultadoDeImportacao | null>(null);
   const [quarentena, setQuarentena] = useState<ListaDeQuarentena | null>(null);
@@ -101,7 +104,11 @@ export function AgentCenterPanel() {
   const [destino, setDestino] = useState(".hades/agents/revisor-exemplo.md");
 
   const correr = useCallback(
-    async (op: "list" | "catalog" | "evaluation" | "teams" | "backups" | "restore" | "triagem" | "quarentena" | "liberar" | "aval-real" | "drift" | "remover" | "atualizar" | "install") => {
+    async (op: "list" | "catalog" | "evaluation" | "teams" | "backups" | "restore" | "triagem" | "quarentena" | "liberar" | "aval-real" | "drift" | "remover" | "atualizar" | "install",
+      // O id vem por ARGUMENTO e nao do estado: `setBackupId(id)` seguido de `correr(...)` lia o
+      // `backupId` ANTERIOR, porque o React ainda nao tinha aplicado o estado. O restauro ia com id vazio.
+      idDoBackup?: string,
+    ) => {
       setErro(null);
       setEstado("a-carregar");
       try {
@@ -136,7 +143,7 @@ export function AgentCenterPanel() {
           setQuarentena(await listarQuarentena());
           setEstado("quarentena");
         } else if (op === "restore") {
-          await restaurarBackup(backupId);
+          setRestauro(await restaurarBackup(idDoBackup ?? backupId));
           setBackups(await listarBackups());
           setEstado("backups");
         } else if (op === "drift") {
@@ -538,7 +545,7 @@ export function AgentCenterPanel() {
                   data-testid={`agent-center-bk-restaurar-${id}`}
                   onClick={() => {
                     setBackupId(id);
-                    void correr("restore");
+                    void correr("restore", id);
                   }}
                   className="rounded border border-neutral-700 px-1 text-[10px] hover:bg-neutral-800"
                 >
@@ -547,7 +554,12 @@ export function AgentCenterPanel() {
               </li>
             ))}
           </ul>
-          {(backups?.count ?? 0) === 0 && (
+          {restauro && (
+          <p data-testid="agent-center-restaurado" className="text-[11px] text-emerald-400">
+            Restaurado do backup <span className="font-mono">{restauro.restored ?? "?"}</span>
+          </p>
+        )}
+        {(backups?.count ?? 0) === 0 && (
             <p data-testid="agent-center-bk-vazio" className="text-[11px] text-neutral-500">
               Nenhum backup ainda. Guardar um cria o primeiro.
             </p>
