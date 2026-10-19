@@ -18,6 +18,7 @@ import { AppSidebar } from "@/components/AppSidebar";
 import { InstallProfilesPanel } from "@/components/InstallProfilesPanel";
 import { WorktreesPanel } from "@/components/WorktreesPanel";
 import { BuildPlanPanel } from "@/components/BuildPlanPanel";
+import { BuildStatusPanel } from "@/components/BuildStatusPanel";
 import { CredentialsPanel } from "@/components/CredentialsPanel";
 import { SmokePanel } from "@/components/SmokePanel";
 import { RollbackPanel } from "@/components/RollbackPanel";
@@ -313,6 +314,10 @@ export function CapabilitiesPage() {
           *Um painel que mostra "pronto" sem poder construir e' um painel que promete o que nao
           faz -- a menos que diga que so' le'.* */}
       <BuildPlanPanel />
+      {/* FASE 28.7: o ESTADO dos builds. O BuildPlanPanel mostra o que falta para construir;
+          este mostra o que ja' correu, com saida e artefactos medidos. Sao duas perguntas
+          diferentes e por isso sao dois paineis. */}
+      <BuildStatusPanel />
 
         <CredentialsPanel />
 

@@ -1,3 +1,48 @@
+## JANELA E-1314
+
+A cabeça do índice é **E-1314**.
+
+- **E-1314** — **as cinco rotas do E-1313 não tinham cliente.** O servidor sabia responder
+  `build.status`/`logs`/`artifacts`/`cancel`; o produto não perguntava. *Uma rota que existe e não é
+  consumida é uma promessa do backend, não uma funcionalidade do produto.*
+  Entregues `app/ui/app/src/lib/buildStatusClient.ts` e
+  `app/ui/app/src/components/BuildStatusPanel.tsx`, montado em `CapabilitiesPage`.
+  **A decisão que um painel ingénuo erraria:** o **409** de `cancel` é um **resultado**, não uma
+  falha. Cancelar um build que já acabou devolve 409; mostrar «falhou ao cancelar» seria contar a
+  história errada sobre um servidor que funcionou. O painel diz **«já tinha terminado — cancelar não
+  tem efeito»**. Um erro de rede real continua a aparecer como erro.
+  **O painel não calcula nada:** `nada_assinado`/`nada_publicado`/`nada_instalado` e `cancelavel` vêm
+  do servidor; `EstadoDeBuild` é texto e não é remapeado.
+  **Medido:** `tsc -b` 0 · `vitest` **130 ficheiros / 939 testes PASS** (era 129/931) · `eslint` 0
+  errors (31 warnings pré-existentes) · `vite build` 0 · bundle **PASS** (434 737 ≤ 600 000) ·
+  8 testes novos do painel.
+- **E-1313** — `build.status`/`logs`/`artifacts`/`cancel` + `BuildStore`. `cancel` de terminado → 409;
+  build cancelado **não** é des-cancelado. `./server` ok 49 s, `./internal/agent` ok 378 s.
+- **E-1312** — CI verde (`d75b2ff16`: 21 success, só `gitleaks`). Instalação limpa
+  `BLOCKED_EXTERNAL` com prova.
+- **E-1311** — `ResumoDeBlockers` mentia: `alvos_bloqueados=3` com `blockers=[]`. **Uma correção de
+  ~20 linhas fechou as 7 falhas de CI.**
+
+## Cobertura do Release Hub
+
+| superfície | backend | cliente (UI) |
+|---|---|---|
+| `toolchain.*`, `project.detect` | **existe** | **existe** |
+| `build.plan` | **existe** | **existe** |
+| `build.start` | **existe** (síncrono + assíncrono) | **AUSENTE** |
+| **`build.status`/`logs`/`artifacts`/`cancel`** | **existe** | **existe (E-1314)** |
+| `build.verify`, `build.smoke`, `artifact.*`, `sbom.generate` | **existe** | **existe** |
+| `sign.plan`, `credentials.status`, `signing.*` | **existe** | **existe** |
+| `sign.start`/`sign.status`/`sign.verify` | **AUSENTE** | — |
+| `publish.preflight` | **existe** | **existe** |
+| `publish.request_approval`/`submit`/`status`/`rollback` | **AUSENTE** | — |
+| `provenance.attest`, `policy.evaluate` | **AUSENTE** | — |
+
+O que continua aberto: **`build.start` não tem botão no UI** (o assíncrono muito menos); o store não
+sobrevive a reinício; nada assinado/publicado/instalado; `sign.start`/`publish.submit`/`rollback`
+inexistentes; `gitleaks`; instalação limpa `BLOCKED_EXTERNAL`; **FASE 30 não iniciada**.
+
+---
 ## JANELA E-1313
 
 A cabeça do índice é **E-1313**.
