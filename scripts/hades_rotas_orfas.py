@@ -208,6 +208,18 @@ RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 #
 #   *Previ 0 e mediu 1. O `cancel` estava listado individualmente, e fechar o `book` nao o arrastou --
 #   o que mostra que o gate agrupa por prefixo mas LISTA por rota. Duas propriedades, e eu confundi-as.*
+# TETO_ORFAS = 18 -- e a licao do E-1354 vem AQUI, nao no numero.
+#
+#   *Previ 1 e mediu 0. O `reschedule/slots` do E-1350 ja' tinha fechado o prefixo `scheduling/reschedule`,
+#   e o POST `reschedule` caiu dentro dele. Baixei o tecto de 18 para 17 ANTES de medir, e o gate acusou.*
+#
+#   ***O gate agrupa por PREFIXO DE CAMINHO, sem o metodo. `scheduling/book`, `scheduling/cancel` e
+#   `scheduling/reschedule` sao TRES prefixos. `reschedule` e `reschedule/slots` sao UM. Foi por isso que
+#   o `cancel` rendeu 1 e o `reschedule` rendeu 0 -- e foi por nao distinguir isto que a previsao falhou
+#   duas vezes seguidas.***
+#
+#   *E a segunda licao: o tecto mede-se DEPOIS. Baixar antes de medir e' adivinhar em vez de medir, e o
+#   gate que existe para travar o proximo aumento passa a travar o trabalho feito.*
 TETO_ORFAS = 18
 
 # Quem chama nao e' o frontend do HADES -- a ausencia no UI e' correcta.

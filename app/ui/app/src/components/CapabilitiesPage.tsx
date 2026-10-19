@@ -47,6 +47,7 @@ import { ReschedulePanel } from "@/components/ReschedulePanel";
 import { BusinessTickPanel } from "@/components/BusinessTickPanel";
 import { BookingPanel } from "@/components/BookingPanel";
 import { CancellationPanel } from "@/components/CancellationPanel";
+import { RescheduleMutationPanel } from "@/components/RescheduleMutationPanel";
 import { RollbackPanel } from "@/components/RollbackPanel";
 import { SigningPanel } from "@/components/SigningPanel";
 import { SbomPanel } from "@/components/SbomPanel";
@@ -370,6 +371,7 @@ export function CapabilitiesPage() {
       <BusinessTickPanel />
       <BookingPanel />
       <CancellationPanel />
+      <RescheduleMutationPanel />
 
         <CredentialsPanel />
 

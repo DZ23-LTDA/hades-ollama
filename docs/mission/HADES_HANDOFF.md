@@ -1,3 +1,63 @@
+## JANELA E-1354
+
+A cabeça do índice é **E-1354**.
+
+- **E-1354** — **A rota não decide se cabe — o motor decide.** `RescheduleMutationPanel` consome
+  `POST /scheduling/reschedule`. O comentário: *«A recusa do motor e' preservada: sobreposicao, fechamento e
+  turno continuam sendo decididos por ele, nao por esta rota.»* O painel valida **só** o identificador e o
+  RFC 3339; a recusa aparece como **«O motor recusou este instante: <motivo>»**, com teste a verificar que
+  não cai no erro genérico. *Uma rota que decide o que cabe duplica o motor com menos informação — o cliente
+  não sabe o turno, nem os fechamentos, nem quem mais marcou naquele minuto.*
+  **Remarcar não é cancelar+criar:** o painel diz *«É o MESMO agendamento (ag-9) noutro instante»*, e o
+  teste confirma que o corpo **não** leva `reason` nem `resource_id`.
+  **VIGÉSIMA QUINTA MEDIÇÃO — previsão ERRADA:** previ **1**, mediu **0** (`reschedule/slots` do E-1350 já
+  fechara o prefixo). **E baixei o tecto antes de medir — o gate acusou; tecto reposto a 18.**
+- **E-1353** — scheduling/cancel: motivo obrigatório = auditabilidade; id no CORPO; 19 → 18.
+- **E-1352** — scheduling/book: E-456 contrato separado; E-458 reentrega ≠ erro; `busy_until` ≠ `ends_at`; 20 → 19.
+- **E-1351** — business/tick: 4 desfechos separados; `errors` vem COM resultado; 21 → 20.
+- **E-1350** — reschedule/slots: dois campos ditos por nome; responde ANTES; 23 → 21.
+- **E-1349** — `OpenSlots` ≠ `Availability`; 0 slots ≠ dia livre; 24 → 23.
+
+## A REGRA DO GATE, MEDIDA
+
+**O gate agrupa por PREFIXO DE CAMINHO, sem o método.**
+
+| rota | prefixo | rende |
+|---|---|---|
+| `scheduling/book` | `scheduling/book` | **1** |
+| `scheduling/cancel` | `scheduling/cancel` | **1** |
+| `scheduling/reschedule` + `reschedule/slots` | `scheduling/reschedule` | **0** (já fechado) |
+
+*`book`, `cancel` e `reschedule` são **três** prefixos; `reschedule` e `reschedule/slots` são **um**. Foi por
+não distinguir isto que a previsão falhou duas vezes seguidas.*
+
+**E a segunda lição: o tecto mede-se DEPOIS.** Baixar antes de medir é adivinhar — e o gate que existe para
+travar o próximo aumento passa a travar o trabalho feito.
+
+## A distância, agora
+
+| categoria | rotas |
+|---|---|
+| no backend | **348** |
+| órfãs no frontend | **34** |
+| consumidor externo (correcto) | **16** |
+| **lacuna de produto** | **18** (era 93) |
+
+## AS 18 RESTANTES — TODAS ESCRITAS
+
+`scheduling` 3 (`no-show`, `waitlist/offer`, `waitlist/confirm`, `waitlist`, `reminders/sent`) · `auth` 3
+(MFA) · `finance` 3 · `media` 2 · `business` 1 (`certify`) · `notifications` 1 · `crm` 1 · `inbox` 1 ·
+`service-agents` 1 (PUT) · `company` 1 · `plugins` 1.
+
+**Vinte e cinco medições, nove previsões certas** — e a regra que faltava está agora escrita acima e no
+próprio tecto.
+
+O que continua aberto: **18 rotas** sem UI (todas escritas); **20 ORPHAN de 209**; o build **não é assinado
+nem instalado**; `sign.start`/`publish.*` inexistentes; **`gitleaks` histórico — a única falha de CI**;
+instalação limpa `BLOCKED_EXTERNAL`; **não há catraca contra testes flaky**; **FASE 30 não iniciada**.
+Achados abertos: **o transporte descarta o corpo do 409**; **o A1 nunca foi avaliado** por `SigningProvider`.
+
+---
 ## JANELA E-1353
 
 A cabeça do índice é **E-1353**.
