@@ -1,3 +1,59 @@
+## JANELA E-1352
+
+A cabeça do índice é **E-1352**.
+
+- **E-1352** — **E-456: o contrato da superfície é separado do motor, e o modo de falha é silencioso.**
+  `BookingPanel` consome `POST /scheduling/book`. O comentário: *«Expor a struct INTERNA como contrato de
+  API acopla a API a implementação — e o modo de falha é silencioso: o pedido chega vazio, e o erro culpa os
+  campos que o cliente mandou.»* O corpo manda `resource_id`/`starts_at`; a struct interna espera
+  `ResourceID`/`StartsAt` porque **não tem json tags** → corpo vira **zero silencioso**.
+  **E-458: reentrega não é erro do cliente.** O servidor responde **409 com o MESMO recurso** —
+  *«Idempotência de verdade é devolver o MESMO RECURSO»*. **Mas o `agentFetch` lança em erro HTTP e não
+  expõe o corpo**, pelo que o painel diz **«o agendamento existente NÃO foi duplicado»** sem inventar o id.
+  **`busy_until` ≠ `ends_at`** — inclui o buffer; mostrado como «recurso ocupado até … (buffer de 15 min)».
+  **A organização não vai no corpo** (vem do middleware), com teste a provar.
+  **VIGÉSIMA TERCEIRA MEDIÇÃO — previsão CERTA:** previ **1**, mediu **1** (20 → 19).
+- **E-1351** — business/tick: 4 desfechos separados; `errors` vem COM resultado; 21 → 20.
+- **E-1350** — reschedule/slots: dois campos ditos por nome; responde ANTES; 23 → 21.
+- **E-1349** — `OpenSlots` ≠ `Availability`; 0 slots ≠ dia livre; 24 → 23.
+- **E-1348** — scheduling/waitlist: janela PEDIDA ≠ slot OFERECIDO; 26 → 24.
+- **E-1347** — scheduling/reminders/due: `now` não vem do corpo; 28 → 26.
+
+## A distância, agora
+
+| categoria | rotas |
+|---|---|
+| no backend | **348** |
+| órfãs no frontend | **35** |
+| consumidor externo (correcto) | **16** |
+| **lacuna de produto** | **19** (era 93) |
+
+## AS 19 RESTANTES — TODAS ESCRITAS
+
+`scheduling` 5 (`cancel`, `reschedule`, `no-show`, `waitlist`, `waitlist/offer`, `waitlist/confirm`,
+`reminders/sent`) · `auth` 3 (MFA) · `finance` 3 · `media` 2 · `business` 1 (`certify`) · `notifications` 1 ·
+`crm` 1 · `inbox` 1 · `service-agents` 1 (PUT) · `company` 1 · `plugins` 1.
+
+**Três previsões certas nas últimas três rondas com escrita** — o método estabilizou quando passou a medir
+uma rota consumida em vez de um domínio.
+
+**Nota acumulada — vinte e três avisos:** o gate mede o **domínio**, não a rota. Vinte e três medições,
+**nove** previsões certas.
+
+## ACHADO NOVO DESTA JANELA (para o backlog)
+
+**O transporte descarta o corpo do 409.** O servidor devolve `{"appointment": …, "idempotent_replay": true}`
+com o agendamento idempotente, mas o `agentFetch` lança e não expõe o body. O painel é honesto (diz
+«reentrega detectada»), mas **o cliente não consegue mostrar o agendamento que já existia**. Isto é uma
+lacuna da camada de transporte, não do painel: resolver exige o `agentFetch` devolver
+`{ok, status, body}` em vez de lançar — mudança que afecta **todos** os clientes e por isso é fatia própria.
+
+O que continua aberto: **19 rotas** sem UI (todas escritas); o gate **mede prefixos**; **20 ORPHAN de
+209**; o build **não é assinado nem instalado**; `sign.start`/`publish.*` inexistentes; **`gitleaks`
+histórico — a única falha de CI**; instalação limpa `BLOCKED_EXTERNAL`; **não há catraca contra novos
+testes flaky**; **FASE 30 não iniciada**.
+
+---
 ## JANELA E-1351
 
 A cabeça do índice é **E-1351**.

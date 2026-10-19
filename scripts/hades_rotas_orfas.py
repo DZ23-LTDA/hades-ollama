@@ -199,7 +199,11 @@ RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 #
 #   *Quatro desfechos, quatro numeros: executada sem pessoa, a espera de uma pessoa, bloqueada
 #   por orcamento, incidente registado. Somar isto num "N acoes" e' a mentira do E-1340.*
-TETO_ORFAS = 20
+# 20 -> 19 no E-1352: `BookingPanel` consome POST /scheduling/book.
+#
+#   *E-458: reentrega NAO e' erro do cliente. Idempotencia de verdade e' devolver o MESMO recurso --
+#   e o 409 traz o agendamento que ja' existia, nao uma licao sobre o formato do pedido.*
+TETO_ORFAS = 19
 
 # Quem chama nao e' o frontend do HADES -- a ausencia no UI e' correcta.
 CONSUMIDOR_EXTERNO = (
