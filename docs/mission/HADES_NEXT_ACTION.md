@@ -1,3 +1,51 @@
+## JANELA E-1339
+
+A cabeça do índice é **E-1339**.
+
+- **E-1339** — **reconhecer não é resolver — e o próprio handler o diz.** `CompanySupervisorPanel` passou a
+  consumir `/supervisor/incidents` e `/supervisor/ticks`. O comentário do acknowledge: *«registra CIÊNCIA
+  humana sem declarar resolução»*. O painel escreve **«reconhecido por X — reconhecer NÃO é resolver»**, e
+  um incidente reconhecido continua a mostrar `state` aberto e **«sem resolução registada»**.
+  **Lista vazia não prova que o supervisor está ligado — e esta fronteira é diferente da do
+  `omnichannel`.** Sem runtime, `supervisorIncidents` devolve **200** `{incidents: [], count: 0}`; o
+  `omnichannel` devolve **503**. *Duas rotas que respondem ao mesmo problema com fronteiras diferentes:
+  uma falha fechado, a outra mente por omissão.* O painel diz isso em vez de dizer «tudo bem».
+  **Os ciclos mostram o que o supervisor bloqueia**: `blocked_external_actions` e `risk_paused_companies`
+  não são métricas decorativas.
+  **Ampliar, não duplicar:** o `CompanySupervisorPanel.tsx` já existia (195 linhas) — acrescentei-lhe a
+  secção, em vez de criar um segundo painel de supervisor. A regra que o E-1326 custou caro.
+  **A NONA LEITURA ERRADA — e foi a favor.** Previ **2**, mediu **4** (39 → 35). *Num domínio
+  PARCIALMENTE consumido, fechar as últimas leituras não custa o número de leituras: custa o domínio. O
+  contador sempre mediu domínios — só parecia medir rotas quando todas as rotas de um domínio eram
+  lacuna.*
+- **E-1338** — `PluginsPanel`: scope pedido não é concedido; integridade em 4 estados; 41 → 39.
+- **E-1337** — `SessionPanel`: `omitempty` em booleano = `false`; `Public()` limpa segredos; 42 → 41.
+- **E-1336** — `FinancePanel`: líquido com cobertura ao lado; recebível não é receita; 43 → 42.
+- **E-1335** — `OmnichannelPanel`: DLQ declara durabilidade, segredo pelo nome; 48 → 43.
+- **E-1334** — catálogo de agentes usado no painel; mock com ordem trocada; tecto 48 inalterado.
+
+## A distância, agora
+
+| categoria | rotas |
+|---|---|
+| no backend | **348** |
+| órfãs no frontend | **51** |
+| consumidor externo (correcto) | **16** |
+| **lacuna de produto** | **35** (era 93) |
+
+**Os maiores domínios ainda sem UI:** `business` **4** (parcial), `media` **2**, `company` **2**.
+
+**Nota acumulada sobre o contador — doze avisos:** o gate mede o **domínio**, não a rota. Doze medições,
+**três** previsões certas. A nona errou **a favor**: um domínio parcialmente consumido fecha inteiro.
+
+O que continua aberto: **35 rotas** sem UI; o gate **mede prefixos**; a assimetria `call.raw`/`call.path`;
+**20 ORPHAN listados de 211**; o build **não é assinado nem instalado**; `sign.start`/`publish.*`
+inexistentes; o painel do build **não se actualiza sozinho**; **`gitleaks` histórico — a única falha de
+CI**; instalação limpa `BLOCKED_EXTERNAL`; **`/supervisor/incidents` e `/supervisor/ticks` devolvem
+200-vazio sem runtime — fronteira mais fraca que o 503 do `omnichannel`, agora declarada no painel**;
+**FASE 30 não iniciada**.
+
+---
 ## JANELA E-1338
 
 A cabeça do índice é **E-1338**.

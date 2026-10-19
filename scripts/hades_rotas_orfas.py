@@ -114,7 +114,18 @@ RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 #   *Onze medicoes, tres previsoes certas. E o erro desta vez nao foi de contagem: foi
 #   supor que uma rota de leitura e' sempre uma lacuna. Uma rota ESTATICA nao falta a
 #   ninguem -- nao ha' estado para mostrar.*
-TETO_ORFAS = 39
+# 39 -> 35 no E-1339: `CompanySupervisorPanel` passou a consumir `/supervisor/incidents`
+# e `/supervisor/ticks`. Previsao era 2 (as duas leituras que faltavam); mediu 4 -- o gate
+# agrupa por PREFIXO, e o dominio `supervisor` inteiro saiu da lacuna de uma vez.
+#
+# NONA leitura errada, mas desta vez a favor. E a licao e' outra:
+#
+#   *Num dominio PARCIALMENTE consumido, fechar as ultimas leituras nao custa o numero de
+#   leituras: custa o dominio. O contador sempre mediu dominios -- so' parecia medir rotas
+#   quando todas as rotas de um dominio eram lacuna.*
+#
+# A conta: 3/10, 2/7, 1/0, 7/7 OK, 7/8, 3/5, 3/0, 5/5 OK, 4/1, 1/1 OK, 3/2, 2/4.
+TETO_ORFAS = 35
 
 # Quem chama nao e' o frontend do HADES -- a ausencia no UI e' correcta.
 CONSUMIDOR_EXTERNO = (

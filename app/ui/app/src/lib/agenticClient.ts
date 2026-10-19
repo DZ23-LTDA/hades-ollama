@@ -1887,6 +1887,61 @@ export const setSupervisorConfig = (config: { enabled: boolean }) =>
     method: "POST",
     body: JSON.stringify(config),
   });
+// Incidentes e diario de ticks do supervisor.
+//
+// DUAS COISAS QUE ESTES CONTRATOS ENSINAM:
+//
+//  1. **`acknowledged_by` NAO E' RESOLUCAO.** O proprio handler:
+//
+//         // supervisorAcknowledgeIncident registra CIENCIA humana sem declarar resolucao.
+//
+//     Um incidente reconhecido continua `state` aberto e `resolution` vazio. *Mostrar
+//     "reconhecido" como "resolvido" e' fechar um incidente que ninguem fechou.*
+//
+//  2. **LISTA VAZIA NAO PROVA QUE O SUPERVISOR ESTA' LIGADO.** Sem runtime, o handler
+//     devolve **200** `{incidents: [], count: 0}` -- nao 503 como o `omnichannel`. A
+//     partir do cliente, "sem incidentes" e "sem supervisor" sao a MESMA resposta.
+//     *Uma fronteira que responde "nada" quando nao existe e' uma fronteira que mente
+//     por omissao -- e o painel nao tem como distinguir.*
+export type SupervisorIncident = {
+  id: string;
+  kind: string;
+  subject: string;
+  detail?: string;
+  state: string;
+  opened_at: string;
+  updated_at: string;
+  recovery_attempts: number;
+  acknowledged_by?: string;
+  resolution?: string;
+  resolved_at?: string;
+};
+
+export type SupervisorTickRecord = {
+  tick_number: number;
+  executed_at: string;
+  missions_resumed: number;
+  schedules_triggered: number;
+  cycles_advanced: number;
+  approvals_created: number;
+  /** O supervisor BLOQUEIA accoes externas -- o numero e' a prova. */
+  blocked_external_actions: number;
+  /** Empresas pausadas por risco neste ciclo. */
+  risk_paused_companies: number;
+  error_count: number;
+  errors?: string[];
+};
+
+export const getSupervisorIncidents = () =>
+  agentFetch<{ incidents: SupervisorIncident[]; count: number }>(
+    "/api/agent/v1/supervisor/incidents",
+  );
+
+export const getSupervisorTicks = () =>
+  agentFetch<{ ticks: SupervisorTickRecord[]; count: number }>(
+    "/api/agent/v1/supervisor/ticks",
+  );
+
 export const triggerSupervisorTick = () =>
   agentFetch<{ result: unknown; status: SupervisorStatus }>(
     "/api/agent/v1/supervisor/tick",
