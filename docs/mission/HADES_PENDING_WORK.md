@@ -1,3 +1,36 @@
+## JANELA E-1311
+
+A cabeça do índice é **E-1311**.
+
+- **E-1311** — **o CI do E-1309 estava VERMELHO e o defeito era meu.** `0666cca86` fechou com
+  `Go agentic and server gates = failure` e `PR gate = failure` (o `PR gate` falha *porque* o gate
+  profundo falhou). Log: `--- FAIL: TestRotaPlanoBlockersEMotivosNoTopo` /
+  `plano tem 3 alvo(s) bloqueado(s) mas 'blockers' esta' vazio`. **Causa:** o E-1308 tirou o
+  `inno-setup` do alvo `windows`, os três alvos ficaram `PRESENT_COMPATIBLE_UNVERIFIED`, e
+  `ResumoDeBlockers()` lia `.Blockers` (que só tem ausências) enquanto `AlvosBloqueados` conta
+  `Pronto()==false`. Medido: `alvos_bloqueados=3`, `blockers=[]` — **o painel mostrava «3 bloqueados»
+  e nenhum blocker**.
+  **É a SEGUNDA ocorrência do mesmo defeito** — o E-1307 corrigiu-o no `ProviderDeBuildGo` e deixou-o
+  vivo no resumo do projecto. *Uma correção num sítio não é uma correção no sistema.*
+  Corrigido: `ResumoDeBlockers()` usa `MotivosDeNaoPronto()` e **prefixa o alvo** (o dedupe global
+  colapsava o `go` de `windows` e `linux` numa linha, apagando a contagem).
+  **`go test ./internal/agent` ok (344 s)**, **`go test ./server` ok (44 s)**, lint 0.
+  **O processo falhou, não só o código:** depois do E-1308 corri `-run TestInicioDeBuild` em vez da
+  suíte completa do `server`. *Um `-run` que escolhe o teste que eu escrevi é um teste que confirma o
+  que eu já sabia.*
+- **E-1310** — `ProviderDeInstaladorWindows`: `windows-installer` → **200**,
+  `HadesSetup-teste.exe` 3 363 167 B, `'Inno Setup'` no binário, **`Status = NotSigned`**.
+- **E-1309** — o artefacto **corre** no alvo: `HADES-ARTEFACTO-OK so=windows arch=amd64`; ELF e
+  Mach-O **não** produziram a marca.
+- **E-1308** — o alvo `windows` prometia um instalador que nenhum provider produzia.
+- **E-1307** — o `build.start` passou a construir. Quatro defeitos.
+
+O que continua aberto: nenhum instalador foi **instalado nem executado**; `build.status`/`logs`/
+`cancel`/`artifacts` não existem; **nenhum artefacto assinado** (por desenho); `gitleaks (historico do
+PR)`; build Android e arranque do app (`BLOCKED_EXTERNAL`); `INSTALLED=NAO` (E-1252); **FASE 30 não
+iniciada**.
+
+---
 ## JANELA E-1310
 
 A cabeça do índice é **E-1310**.

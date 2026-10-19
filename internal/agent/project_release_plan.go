@@ -158,10 +158,34 @@ func (r *ResolverDeToolchain) PlanoParaProjeto(ctx context.Context, raiz string)
 // cada alvo.
 //
 //	*Um relatorio que obriga a somar a mao e' um relatorio para quem ja' sabia a resposta.*
+//
+// O DEFEITO QUE ESTA CORRECCAO FECHA (segunda ocorrencia do mesmo)
+//
+// Este metodo lia .Plano.Blockers, que so' contem exigencias AUSENTES ou INCOMPATIVEIS. Um alvo
+// cujas exigencias estao apenas PRESENT_COMPATIBLE_UNVERIFIED tem Pronto() == false e
+// Blockers VAZIO -- logo entrava em AlvosBloqueados e nao produzia um unico blocker.
+//
+//	alvos=3 bloqueados=3
+//	  alvo=linux    pronto=false blockers=0
+//	  alvo=macos    pronto=false blockers=0
+//	  alvo=windows  pronto=false blockers=0
+//	ResumoDeBlockers=[]
+//
+// O painel mostrava "3 alvos bloqueados" e uma lista de blockers vazia. Medido no E-1311 depois de o
+// windows deixar de ter o inno-setup como obrigatorio (E-1308): os tres alvos ficaram
+// Unverified e nenhum bloqueado -- mas lvos_bloqueados continuou a conta-los.
+//
+//	*Uma correcao num sitio nao e' uma correcao no sistema: o E-1307 corrigiu esta mesma confusao no
+//	provider de build e deixou-a viva no resumo do projecto.*
+//
+// Passa a usar MotivosDeNaoPronto, que e' a definicao honesta de "porque e' que este alvo nao esta'
+// pronto": blockers reais MAIS as exigencias obrigatorias que ainda nao foram verificadas.
 func (p PlanoDoProjeto) ResumoDeBlockers() []string {
 	var todos []string
 	for _, a := range p.Alvos {
-		todos = append(todos, a.Plano.Blockers...)
+		for _, motivo := range a.Plano.MotivosDeNaoPronto() {
+			todos = append(todos, a.Alvo+": "+motivo)
+		}
 		if a.ErroDePlano != "" {
 			todos = append(todos, a.Alvo+": "+a.ErroDePlano)
 		}

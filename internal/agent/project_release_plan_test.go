@@ -24,6 +24,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -177,7 +178,22 @@ func TestResumoDeBlockersDeduplica(t *testing.T) {
 		},
 	}
 	got := plano.ResumoDeBlockers()
-	esperado := []string{"docker", "go", "inno-setup"}
+	// O RESUMO PREFIXA O ALVO E DEDUPLICA POR (ALVO, MOTIVO), NAO GLOBALMENTE.
+	//
+	// A versao anterior deste teste esperava [docker go inno-setup]: sem prefixo e com dedupe
+	// global. Isso colapsava o mesmo motivo em alvos DIFERENTES -- go aparece em windows e em
+	// linux, e o resumo mostrava uma vez so'. O utilizador perdia que DOIS alvos precisam do go.
+	//
+	//	*Um dedupe que junta o mesmo motivo em alvos diferentes apaga a contagem, e a contagem e' a
+	//	informacao.*
+	//
+	// Medido no E-1311: sem o prefixo o painel mostrava "go" e nao dizia de que alvo.
+	esperado := []string{
+		"linux: docker",
+		"linux: go",
+		"windows: go",
+		"windows: inno-setup",
+	}
 	if len(got) != len(esperado) {
 		t.Fatalf("resumo=%v; esperado %v", got, esperado)
 	}
@@ -258,4 +274,91 @@ func TestPlanoParaProjetoDoRepoHades(t *testing.T) {
 			}
 			return n
 		}(), plano.AlvosProntos, plano.AlvosBloqueados)
+}
+
+// TestResumoDeBlockersNaoFicaVazioComAlvosNaoVerificados fixa o defeito do E-1311.
+//
+// O DEFEITO (segunda ocorrencia do mesmo)
+//
+// ResumoDeBlockers lia .Plano.Blockers. Um alvo cujas exigencias estao apenas
+// PRESENT_COMPATIBLE_UNVERIFIED tem Pronto() == false e Blockers VAZIO -- logo entrava em
+// AlvosBloqueados e nao produzia um unico blocker. Medido:
+//
+//	alvos=3 bloqueados=3   ResumoDeBlockers=[]
+//
+// O painel mostrava "3 alvos bloqueados" e nenhum blocker.
+//
+//	*Uma correcao num sitio nao e' uma correcao no sistema: o E-1307 corrigiu esta mesma confusao no
+//	provider de build e deixou-a viva no resumo do projecto.*
+func TestResumoDeBlockersNaoFicaVazioComAlvosNaoVerificados(t *testing.T) {
+	plano := PlanoDoProjeto{
+		Alvos: []PlanoPorAlvo{
+			{
+				Alvo: "linux",
+				Plano: CapabilityPlan{
+					Alvo: "linux",
+					Probes: []ToolProbe{
+						{
+							Requisito: ToolRequirement{Nome: "go", Obrigatorio: true},
+							Estado:    ToolUnverified,
+							Detalhe:   "presente e respondeu; falta health funcional",
+						},
+					},
+				},
+			},
+			{
+				Alvo: "windows",
+				Plano: CapabilityPlan{
+					Alvo: "windows",
+					Probes: []ToolProbe{
+						{
+							Requisito: ToolRequirement{Nome: "go", Obrigatorio: true},
+							Estado:    ToolUnverified,
+							Detalhe:   "presente e respondeu; falta health funcional",
+						},
+					},
+				},
+			},
+		},
+		AlvosBloqueados: []string{"linux", "windows"},
+	}
+
+	motivos := plano.ResumoDeBlockers()
+	if len(motivos) == 0 {
+		t.Fatal("ResumoDeBlockers vazio com 2 alvos bloqueados -- e' exactamente o defeito que isto fixa")
+	}
+	juntos := strings.Join(motivos, " | ")
+	if !strings.Contains(juntos, "linux") || !strings.Contains(juntos, "windows") {
+		t.Fatalf("o resumo devia nomear os dois alvos: %q", juntos)
+	}
+	// Nao basta nomear: tem de dizer PORQUE.
+	if !strings.Contains(juntos, "PRESENT_COMPATIBLE_UNVERIFIED") {
+		t.Fatalf("o resumo devia nomear o estado real: %q", juntos)
+	}
+}
+
+// TestResumoDeBlockersPrefixaOAlvo garante que cada motivo diz a que alvo pertence.
+//
+//	*Um resumo que soma motivos de varios alvos sem os prefixar obriga quem le' a adivinhar de onde
+//	vem cada um.*
+func TestResumoDeBlockersPrefixaOAlvo(t *testing.T) {
+	plano := PlanoDoProjeto{
+		Alvos: []PlanoPorAlvo{
+			{
+				Alvo: "oci",
+				Plano: CapabilityPlan{
+					Alvo:     "oci",
+					Blockers: []string{"docker (ABSENT): nao encontrado"},
+				},
+			},
+		},
+		AlvosBloqueados: []string{"oci"},
+	}
+	motivos := plano.ResumoDeBlockers()
+	if len(motivos) == 0 {
+		t.Fatal("esperado pelo menos um motivo")
+	}
+	if !strings.HasPrefix(motivos[0], "oci: ") {
+		t.Fatalf("o motivo devia comecar pelo alvo: %q", motivos[0])
+	}
 }
