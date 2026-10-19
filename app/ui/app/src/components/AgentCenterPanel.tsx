@@ -9,7 +9,9 @@
 import { useCallback, useState } from "react";
 import {
   CentroAusenteError,
+  coberturaDeAvaliacao,
   descreverCatalogo,
+  listarCatalogo,
   descreverDrift,
   instalarAgente,
   InstalacaoRecusadaError,
@@ -18,13 +20,24 @@ import {
   listarAgentes,
   resumoLegivel,
   validarDestino,
+  type Catalogo,
   type ItemDeDrift,
   type ListaDeAgentes,
   type RelatorioDeDrift,
   type ResultadoDeInstalacao,
 } from "@/lib/agentCenterClient";
 
-type Estado = "pronto" | "a-carregar" | "carregado" | "drift" | "instalado" | "ausente" | "recusado" | "conflito" | "erro";
+type Estado =
+  | "pronto"
+  | "a-carregar"
+  | "carregado"
+  | "catalogo"
+  | "drift"
+  | "instalado"
+  | "ausente"
+  | "recusado"
+  | "conflito"
+  | "erro";
 
 const PERSONA_MINIMA = {
   id: "revisor-exemplo",
@@ -41,18 +54,22 @@ export function AgentCenterPanel() {
   const [erro, setErro] = useState<string | null>(null);
   const [lista, setLista] = useState<ListaDeAgentes | null>(null);
   const [relatorio, setRelatorio] = useState<RelatorioDeDrift | null>(null);
+  const [catalogo, setCatalogo] = useState<Catalogo | null>(null);
   const [instalacao, setInstalacao] = useState<ResultadoDeInstalacao | null>(null);
   const [alvo, setAlvo] = useState("hades");
   const [destino, setDestino] = useState(".hades/agents/revisor-exemplo.md");
 
   const correr = useCallback(
-    async (op: "list" | "drift" | "install") => {
+    async (op: "list" | "catalog" | "drift" | "install") => {
       setErro(null);
       setEstado("a-carregar");
       try {
         if (op === "list") {
           setLista(await listarAgentes());
           setEstado("carregado");
+        } else if (op === "catalog") {
+          setCatalogo(await listarCatalogo());
+          setEstado("catalogo");
         } else if (op === "drift") {
           setRelatorio(await lerDrift());
           setEstado("drift");
@@ -121,6 +138,14 @@ export function AgentCenterPanel() {
         </button>
         <button
           type="button"
+          data-testid="agent-center-catalogo-btn"
+          onClick={() => void correr("catalog")}
+          className="rounded border border-neutral-700 px-2 py-1 text-xs text-neutral-300 hover:bg-neutral-800"
+        >
+          Ver catálogo
+        </button>
+        <button
+          type="button"
           data-testid="agent-center-drift"
           onClick={() => void correr("drift")}
           className="rounded border border-neutral-700 px-2 py-1 text-xs text-neutral-300 hover:bg-neutral-800"
@@ -177,6 +202,29 @@ export function AgentCenterPanel() {
             {agentes.map((a) => (
               <li key={`${a.persona_id}-${a.target}-${a.destination}`}>
                 {a.persona_id} v{a.version} · {a.target} · {a.destination}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {estado === "catalogo" && (
+        <div className="space-y-1">
+          <p data-testid="agent-center-cat-versao" className="text-[11px] text-neutral-300">
+            versão {catalogo?.version ?? "?"} · {coberturaDeAvaliacao(catalogo).total} persona(s) ·{" "}
+            {coberturaDeAvaliacao(catalogo).avaliadas} avaliada(s)
+          </p>
+          {/* *Um numero sem a sua qualidade ao lado e' um numero que se cita mal.* */}
+          {coberturaDeAvaliacao(catalogo).avaliadas === 0 && (
+            <p data-testid="agent-center-cat-sem-avaliacao" className="text-[11px] text-amber-300">
+              Nenhuma persona do catálogo foi avaliada. Isto não é «aprovado»: é «não medido».
+            </p>
+          )}
+          <ul data-testid="agent-center-cat-lista" className="space-y-1 font-mono text-[11px] text-neutral-300">
+            {(catalogo?.personas ?? []).map((p) => (
+              <li key={p.id}>
+                {p.id} v{p.version} · {p.division ?? "?"} · {p.license ?? "?"} ·{" "}
+                {(p.evaluation ?? "").trim() === "" ? "NÃO AVALIADO" : p.evaluation}
               </li>
             ))}
           </ul>

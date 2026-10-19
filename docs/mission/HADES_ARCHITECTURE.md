@@ -36,7 +36,7 @@ aprovação».
 
 ## A API
 
-**351 rotas** registadas em `server/agent_routes.go`
+**352 rotas** registadas em `server/agent_routes.go`
 (`GET`/`POST`/`PUT`/`DELETE`/`PATCH` no grupo `/api/agent/v1`).
 
 E a documentação de API vive em `docs/agentic/API.md` (**44,8 KB**), com o contrato

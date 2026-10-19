@@ -41,12 +41,40 @@ export interface ListaDeAgentes {
   count?: number;
   catalog_available?: boolean;
   catalog_note?: string;
+  catalog_version?: string;
+  catalog_count?: number;
 }
 
 export interface RelatorioDeDrift {
   organization_id?: string;
   items?: ItemDeDrift[];
   summary?: Record<string, number>;
+}
+
+/** Uma persona do catalogo embutido. `evaluation` vazio significa NAO AVALIADO. */
+export interface PersonaDoCatalogo {
+  id: string;
+  name: string;
+  version: string;
+  description?: string;
+  division?: string;
+  category?: string;
+  source?: string;
+  license?: string;
+  capabilities?: string[];
+  scopes?: string[];
+  requires_approval?: string[];
+  forbidden?: string[];
+  /** Vazio = nao avaliado. Nunca leia como "aprovado". */
+  evaluation?: string;
+}
+
+export interface Catalogo {
+  version?: string;
+  count?: number;
+  personas?: PersonaDoCatalogo[];
+  evaluations_available?: boolean;
+  note?: string;
 }
 
 export interface ResultadoDeInstalacao {
@@ -97,7 +125,10 @@ export function validarDestino(destino: string): string | null {
 /** A nota do servidor sobre o catalogo, dita sem inventar. */
 export function descreverCatalogo(lista: ListaDeAgentes | null): string {
   if (!lista) return "sem resposta";
-  if (lista.catalog_available === true) return "catálogo ligado";
+  if (lista.catalog_available === true) {
+    const n = lista.catalog_count ?? 0;
+    return `catálogo ligado · versão ${lista.catalog_version ?? "?"} · ${n} persona(s) disponíveis para instalar`;
+  }
   return lista.catalog_note ?? "o catálogo não está ligado: estas são as instalações registadas";
 }
 
@@ -116,9 +147,30 @@ export function resumoLegivel(summary: Record<string, number> | undefined): stri
   return estados.map((e) => `${e} ${summary[e] ?? 0}`).join(" · ");
 }
 
+/**
+ * Quantas personas do catalogo estao AVALIADAS.
+ *
+ * Devolve `avaliadas` e `total` separados porque *um numero sem a sua qualidade ao lado e' um numero que se
+ * cita mal*: "6 personas" e "6 personas, 0 avaliadas" sao a mesma contagem e duas afirmacoes diferentes.
+ */
+export function coberturaDeAvaliacao(catalogo: Catalogo | null): { avaliadas: number; total: number } {
+  const personas = catalogo?.personas ?? [];
+  const avaliadas = personas.filter((p) => (p.evaluation ?? "").trim() !== "").length;
+  return { avaliadas, total: personas.length };
+}
+
 export async function listarAgentes(): Promise<ListaDeAgentes> {
   try {
     return await agentFetch<ListaDeAgentes>("/api/agent/v1/agents");
+  } catch (causa) {
+    traduzir(causa);
+  }
+}
+
+/** Le' so' o catalogo embutido. Nao toca no ledger: catalogo e historico sao coisas diferentes. */
+export async function listarCatalogo(): Promise<Catalogo> {
+  try {
+    return await agentFetch<Catalogo>("/api/agent/v1/agents/catalog");
   } catch (causa) {
     traduzir(causa);
   }

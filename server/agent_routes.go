@@ -1057,6 +1057,7 @@ func (a *agentAPI) register(r *gin.Engine) {
 	// FASE 30 -- Agent Center. O painel consome as tres no mesmo commit: *uma rota que existe e nao e'
 	// consumida e' uma promessa do backend, nao uma funcionalidade do produto.*
 	group.GET("/agents", a.listAgentPersonas)
+	group.GET("/agents/catalog", a.listAgentCatalog)
 	group.GET("/agents/drift", a.agentPersonaDrift)
 	group.POST("/agents/install", a.installAgentPersona)
 }

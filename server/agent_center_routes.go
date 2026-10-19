@@ -65,9 +65,34 @@ func (a *agentAPI) listAgentPersonas(c *gin.Context) {
 		"organization_id": organizationID,
 		"agents":          entradas,
 		"count":           len(entradas),
-		// *Uma lista que so' mostra o que ja' se instalou nao e' um catalogo: e' um historico.*
-		"catalog_available": false,
-		"catalog_note":      "o catálogo de personas ainda não está ligado: estas são as instalações registadas",
+		// O catalogo agora esta' ligado, e a resposta separa as DUAS coisas: o que existe para instalar e o
+		// que ja' foi instalado. *Uma lista que so' mostra o que ja' se instalou nao e' um catalogo: e' um
+		// historico.*
+		"catalog_available": true,
+		"catalog_version":   agent.CatalogVersion(),
+		"catalog_count":     agent.CatalogCount(),
+	})
+}
+
+// listAgentCatalog: GET /agents/catalog
+//
+// Le' so' o catalogo embutido. Nao toca no ledger nem no disco: o catalogo e' o mesmo para toda a gente, e
+// mistura-lo com instalacoes faria cada organizacao ver um catalogo diferente.
+func (a *agentAPI) listAgentCatalog(c *gin.Context) {
+	organizationID := a.organizationID(c)
+	if organizationID == "" {
+		writeAgentError(c, http.StatusForbidden, errAgentForbidden)
+		return
+	}
+	personas := agent.Catalog()
+	c.JSON(http.StatusOK, gin.H{
+		"organization_id": organizationID,
+		"version":         agent.CatalogVersion(),
+		"count":           len(personas),
+		"personas":        personas,
+		// O catalogo embutido nao tem avaliacoes. Dizer isso e' diferente de omitir o campo.
+		"evaluations_available": false,
+		"note":                  "catálogo embutido: nenhuma destas personas foi avaliada; `evaluation` vazio significa NÃO AVALIADO",
 	})
 }
 

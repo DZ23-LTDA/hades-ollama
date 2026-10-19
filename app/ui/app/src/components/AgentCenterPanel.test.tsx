@@ -10,6 +10,7 @@ vi.mock("@/lib/agenticClient", () => ({ agentFetch: vi.fn() }));
 import { agentFetch } from "@/lib/agenticClient";
 import { AgentCenterPanel } from "@/components/AgentCenterPanel";
 import {
+  coberturaDeAvaliacao,
   descreverCatalogo,
   descreverDrift,
   resumoLegivel,
@@ -89,7 +90,9 @@ describe("funcoes do Agent Center", () => {
   it("o catalogo NAO e' apresentado como ligado quando o servidor diz que nao", () => {
     expect(descreverCatalogo({ catalog_available: false, catalog_note: "só instalações" })).toBe("só instalações");
     expect(descreverCatalogo({ catalog_available: false })).toContain("não está ligado");
-    expect(descreverCatalogo({ catalog_available: true })).toBe("catálogo ligado");
+    // O comportamento mudou: agora diz versao e contagem. O teste acompanha a medicao nova --
+    // nao a string antiga.
+    expect(descreverCatalogo({ catalog_available: true })).toContain("catálogo ligado");
   });
 
   // *Um painel que calcula o seu proprio estado mostra o que o programador achou, nao o que aconteceu.*
@@ -101,6 +104,29 @@ describe("funcoes do Agent Center", () => {
     });
     expect(t).toContain("LOCALLY_MODIFIED");
     expect(t).toContain("Preserve");
+  });
+
+  // *Um numero sem a sua qualidade ao lado e' um numero que se cita mal.*
+  it("a cobertura separa CONTAGEM de AVALIADAS", () => {
+    const c = coberturaDeAvaliacao({
+      personas: [
+        { id: "a", name: "A", version: "1", evaluation: "" },
+        { id: "b", name: "B", version: "1", evaluation: "EVALUATED_PASS" },
+        { id: "c", name: "C", version: "1" },
+      ],
+    });
+    expect(c.total).toBe(3);
+    expect(c.avaliadas).toBe(1);
+  });
+
+  it("cobertura de catalogo nulo e' zero e zero, nao erro", () => {
+    expect(coberturaDeAvaliacao(null)).toEqual({ avaliadas: 0, total: 0 });
+  });
+
+  it("catalogo ligado diz versao E contagem, nao so' «ligado»", () => {
+    const t = descreverCatalogo({ catalog_available: true, catalog_version: "1", catalog_count: 6 });
+    expect(t).toContain("versão 1");
+    expect(t).toContain("6 persona");
   });
 
   it("o resumo mostra as 7 chaves, incluindo os zeros", () => {
@@ -135,6 +161,44 @@ describe("AgentCenterPanel", () => {
     expect(texto(r, "agent-center-lista")).toContain("rev");
     // E a nota do servidor aparece, nao uma inventada.
     expect(texto(r, "agent-center-catalogo")).toContain("ainda não está ligado");
+  });
+
+  it("ver catalogo vai para /agents/catalog e NAO para o ledger", async () => {
+    mockAgentFetch.mockResolvedValueOnce({
+      version: "1",
+      count: 2,
+      evaluations_available: false,
+      personas: [
+        { id: "hades-executor", name: "Executor", version: "1.0.0", division: "engenharia", license: "MIT" },
+        { id: "hades-revisor", name: "Revisor", version: "1.0.0", division: "qualidade", license: "MIT" },
+      ],
+    } as never);
+    const r = await montar();
+    await clicar(r, "catalogo-btn");
+
+    expect(mockAgentFetch.mock.calls[0][0]).toBe("/api/agent/v1/agents/catalog");
+    // O JSX junta fragmentos com espacos duplos. Assercao sobre a PALAVRA, nao sobre o espacamento.
+    const versao = texto(r, "agent-center-cat-versao").replace(/\s+/g, " ");
+    expect(versao).toContain("versão 1");
+    expect(versao).toContain("2 persona");
+    expect(texto(r, "agent-center-cat-lista")).toContain("hades-executor");
+    // O catalogo NAO e' o ledger: nao pedimos /agents.
+    expect(mockAgentFetch.mock.calls.some((c) => c[0] === "/api/agent/v1/agents")).toBe(false);
+  });
+
+  // *Nao avaliado e' um estado, e e' diferente de aprovado.*
+  it("catalogo sem avaliacao diz NAO AVALIADO, nunca «aprovado»", async () => {
+    mockAgentFetch.mockResolvedValueOnce({
+      version: "1",
+      count: 1,
+      personas: [{ id: "hades-design", name: "Designer", version: "1.0.0", evaluation: "" }],
+    } as never);
+    const r = await montar();
+    await clicar(r, "catalogo-btn");
+
+    expect(texto(r, "agent-center-cat-sem-avaliacao")).toContain("não é «aprovado»");
+    expect(texto(r, "agent-center-cat-lista")).toContain("NÃO AVALIADO");
+    expect(texto(r, "agent-center-cat-lista")).not.toContain("PRODUCTION_APPROVED");
   });
 
   it("integridade vai para /agents/drift", async () => {
