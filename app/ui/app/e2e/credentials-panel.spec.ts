@@ -66,7 +66,18 @@ test.describe(`painel de credenciais (${MODO})`, () => {
     // Em qualquer dos modos ha' uma mensagem de fronteira: ou o `aviso_de_fronteira` (kit
     // configurado) ou o `aviso` (nao configurado). `toContainText` espera pelo texto, ao contrario
     // de um `innerText` lido uma vez.
-    await expect(painel).toContainText(/nao sao abertos|nao configurado/i);
+    //
+    // E-1421: a versao anterior exigia `/nao sao abertos|nao configurado/i` e falhava contra o
+    // servidor real, cujo `aviso` diz «o kit de credenciais nao ESTA' configurado» -- as palavras
+    // no meio nao estavam previstas. Em vez de alargar a regex a adivinhar a prosa, o teste passa a
+    // exigir o CONTRATO do painel: um dos dois elementos que carregam a mensagem, com texto.
+    // Continua a falhar se nao houver mensagem nenhuma, que e' o defeito que este teste guarda.
+    const mensagem = page
+      .getByTestId("credenciais-aviso-fronteira")
+      .or(page.getByTestId("credenciais-nao-configurado"));
+    await expect(mensagem).toBeVisible();
+    await expect(mensagem).not.toBeEmpty();
+    await expect(painel).toContainText(/nao sao abertos|configurado/i);
   });
 
   test("nenhum botao de accao existe no painel", async ({ page }) => {
