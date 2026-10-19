@@ -252,6 +252,11 @@ type agentAPI struct {
 	// - *o motor existia, era testado, e nao estava ligado a nada*. Nulo significa "sem superficie ligada", e as rotas
 	// **falham fechado** em vez de devolver lista vazia (*que pareceria "nao ha servicos" em vez de "nao ha motor"*).
 	scheduling *agent.SchedulingStore
+
+	// FASE 30: o ledger de personas do Agent Center. Nulo significa "sem superficie ligada", e as rotas
+	// falham fechado em vez de devolver lista vazia -- *que pareceria "nao ha agentes" em vez de "nao ha
+	// armazenamento"*. Mesmo `storeRoot` do registro de plugins: nao se cria uma segunda raiz de dados.
+	personas *agent.PersonaLedger
 }
 
 var errAgentForbidden = errors.New("object is outside the active organization")
@@ -290,6 +295,10 @@ func newAgentAPI(runtime *agent.Runtime) (*agentAPI, error) {
 	// Registro de plugins (estágio 8): manifesto versionado, atualização
 	// otimista e rollback. A confiança continua sendo decidida pelo servidor,
 	// pela chave autorizada em OLLAMA_AGENT_PLUGIN_TRUSTED_KEYS.
+	personaLedger, err := agent.NewPersonaLedger(storeRoot)
+	if err != nil {
+		return nil, err
+	}
 	pluginRegistry, err := agent.NewPluginRegistry(storeRoot)
 	if err != nil {
 		return nil, err
@@ -297,7 +306,7 @@ func newAgentAPI(runtime *agent.Runtime) (*agentAPI, error) {
 	// E-449 (ADV-65): o motor de agendamento passa a ser CONSTRUIDO em producao. *Em E-441 a busca ampla mostrou que as
 	// duas ocorrencias de `NewSchedulingStore` fora dos testes eram o **comentario** e a **definicao**.* Sob `storeRoot`,
 	// como os outros stores - *um diretorio por preocupacao, e persistencia herdada.*
-	return &agentAPI{runtime: runtime, context: runtime.Context(), plugins: pluginRegistry, auth: auth, oauthClients: oauthClients, authRequired: required, push: runtime.Push(), grok: grokClient, samlServices: map[string]*agent.SAMLService{}, scheduling: agent.NewSchedulingStore(filepath.Join(storeRoot, "scheduling"))}, nil
+	return &agentAPI{runtime: runtime, context: runtime.Context(), plugins: pluginRegistry, personas: personaLedger, auth: auth, oauthClients: oauthClients, authRequired: required, push: runtime.Push(), grok: grokClient, samlServices: map[string]*agent.SAMLService{}, scheduling: agent.NewSchedulingStore(filepath.Join(storeRoot, "scheduling"))}, nil
 }
 
 func newAgentGrokClient() (*grok.Client, error) {
@@ -1044,6 +1053,12 @@ func (a *agentAPI) register(r *gin.Engine) {
 	group.POST("/plugins/:plugin_id/promote", a.promotePlugin)
 	group.POST("/plugins/:plugin_id/rollback", a.rollbackPlugin)
 	group.POST("/plugins/bundle", a.installPluginBundle)
+
+	// FASE 30 -- Agent Center. O painel consome as tres no mesmo commit: *uma rota que existe e nao e'
+	// consumida e' uma promessa do backend, nao uma funcionalidade do produto.*
+	group.GET("/agents", a.listAgentPersonas)
+	group.GET("/agents/drift", a.agentPersonaDrift)
+	group.POST("/agents/install", a.installAgentPersona)
 }
 
 func (a *agentAPI) authMiddleware(c *gin.Context) {

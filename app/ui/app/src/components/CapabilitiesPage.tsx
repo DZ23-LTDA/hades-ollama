@@ -58,6 +58,7 @@ import { CompanyCockpitPanel } from "@/components/CompanyCockpitPanel";
 import { InboxIngestPanel } from "@/components/InboxIngestPanel";
 import { MfaPanel } from "@/components/MfaPanel";
 import { PluginBundlePanel } from "@/components/PluginBundlePanel";
+import { AgentCenterPanel } from "@/components/AgentCenterPanel";
 import { RollbackPanel } from "@/components/RollbackPanel";
 import { SigningPanel } from "@/components/SigningPanel";
 import { SbomPanel } from "@/components/SbomPanel";
@@ -392,6 +393,7 @@ export function CapabilitiesPage() {
       <InboxIngestPanel />
       <MfaPanel />
       <PluginBundlePanel />
+        <AgentCenterPanel />
 
         <CredentialsPanel />
 
