@@ -77,6 +77,27 @@ export interface Catalogo {
   note?: string;
 }
 
+/** Uma suite de avaliacao: o que a persona sera' medida a fazer. */
+export interface SuiteDeAvaliacao {
+  version: string;
+  cases: { id: string; kind: string; prompt: string; expect: string; forbid?: string[] }[];
+}
+
+export interface EstadoDeAvaliacao {
+  state: string;
+  description: string;
+  can_go_to: string[];
+  terminal: boolean;
+}
+
+export interface Avaliacao {
+  suites?: Record<string, SuiteDeAvaliacao>;
+  divisions?: string[];
+  states?: EstadoDeAvaliacao[];
+  inference_available?: boolean;
+  note?: string;
+}
+
 export interface ResultadoDeInstalacao {
   organization_id?: string;
   entry?: EntradaDeAgente;
@@ -171,6 +192,22 @@ export async function listarAgentes(): Promise<ListaDeAgentes> {
 export async function listarCatalogo(): Promise<Catalogo> {
   try {
     return await agentFetch<Catalogo>("/api/agent/v1/agents/catalog");
+  } catch (causa) {
+    traduzir(causa);
+  }
+}
+
+/** Quantos casos tem a suite, por divisao. Um numero sem o tipo ao lado engana. */
+export function contarCasos(suite: SuiteDeAvaliacao | undefined): { total: number; negativos: number } {
+  const casos = suite?.cases ?? [];
+  const negativos = casos.filter((c) => c.kind === "REFUSAL" || c.kind === "INJECTION").length;
+  return { total: casos.length, negativos };
+}
+
+/** Le' as suites e a maquina de estados. NAO corre avaliacao. */
+export async function lerAvaliacao(): Promise<Avaliacao> {
+  try {
+    return await agentFetch<Avaliacao>("/api/agent/v1/agents/evaluation");
   } catch (causa) {
     traduzir(causa);
   }

@@ -10,6 +10,8 @@ import { useCallback, useState } from "react";
 import {
   CentroAusenteError,
   coberturaDeAvaliacao,
+  contarCasos,
+  lerAvaliacao,
   descreverCatalogo,
   listarCatalogo,
   descreverDrift,
@@ -20,6 +22,7 @@ import {
   listarAgentes,
   resumoLegivel,
   validarDestino,
+  type Avaliacao,
   type Catalogo,
   type ItemDeDrift,
   type ListaDeAgentes,
@@ -32,6 +35,7 @@ type Estado =
   | "a-carregar"
   | "carregado"
   | "catalogo"
+  | "avaliacao"
   | "drift"
   | "instalado"
   | "ausente"
@@ -55,12 +59,13 @@ export function AgentCenterPanel() {
   const [lista, setLista] = useState<ListaDeAgentes | null>(null);
   const [relatorio, setRelatorio] = useState<RelatorioDeDrift | null>(null);
   const [catalogo, setCatalogo] = useState<Catalogo | null>(null);
+  const [avaliacao, setAvaliacao] = useState<Avaliacao | null>(null);
   const [instalacao, setInstalacao] = useState<ResultadoDeInstalacao | null>(null);
   const [alvo, setAlvo] = useState("hades");
   const [destino, setDestino] = useState(".hades/agents/revisor-exemplo.md");
 
   const correr = useCallback(
-    async (op: "list" | "catalog" | "drift" | "install") => {
+    async (op: "list" | "catalog" | "evaluation" | "drift" | "install") => {
       setErro(null);
       setEstado("a-carregar");
       try {
@@ -70,6 +75,9 @@ export function AgentCenterPanel() {
         } else if (op === "catalog") {
           setCatalogo(await listarCatalogo());
           setEstado("catalogo");
+        } else if (op === "evaluation") {
+          setAvaliacao(await lerAvaliacao());
+          setEstado("avaliacao");
         } else if (op === "drift") {
           setRelatorio(await lerDrift());
           setEstado("drift");
@@ -143,6 +151,14 @@ export function AgentCenterPanel() {
           className="rounded border border-neutral-700 px-2 py-1 text-xs text-neutral-300 hover:bg-neutral-800"
         >
           Ver catálogo
+        </button>
+        <button
+          type="button"
+          data-testid="agent-center-avaliacao-btn"
+          onClick={() => void correr("evaluation")}
+          className="rounded border border-neutral-700 px-2 py-1 text-xs text-neutral-300 hover:bg-neutral-800"
+        >
+          Ver critérios de avaliação
         </button>
         <button
           type="button"
@@ -228,6 +244,34 @@ export function AgentCenterPanel() {
               </li>
             ))}
           </ul>
+        </div>
+      )}
+
+      {estado === "avaliacao" && (
+        <div className="space-y-1">
+          <p data-testid="agent-center-aval-nota" className="text-[11px] text-amber-300">
+            {avaliacao?.note ?? "sem nota do servidor"}
+          </p>
+          <p data-testid="agent-center-aval-inferencia" className="text-[11px] text-neutral-400">
+            {avaliacao?.inference_available === true
+              ? "execução ligada a um motor"
+              : "execução contra modelo NÃO ligada neste runtime"}
+          </p>
+          <ul data-testid="agent-center-aval-suits" className="space-y-1 font-mono text-[11px] text-neutral-300">
+            {(avaliacao?.divisions ?? []).map((d) => {
+              const s = avaliacao?.suites?.[d];
+              const n = contarCasos(s);
+              return (
+                <li key={d}>
+                  {d} · v{s?.version ?? "?"} · {n.total} caso(s) · {n.negativos} de recusa/injeção
+                </li>
+              );
+            })}
+          </ul>
+          <p data-testid="agent-center-aval-estados" className="text-[11px] text-neutral-500">
+            {(avaliacao?.states ?? []).length} estados declarados ·{" "}
+            {(avaliacao?.states ?? []).filter((s) => s.terminal).length} terminal(is)
+          </p>
         </div>
       )}
 

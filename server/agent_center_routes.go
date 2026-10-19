@@ -24,6 +24,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -93,6 +94,35 @@ func (a *agentAPI) listAgentCatalog(c *gin.Context) {
 		// O catalogo embutido nao tem avaliacoes. Dizer isso e' diferente de omitir o campo.
 		"evaluations_available": false,
 		"note":                  "catálogo embutido: nenhuma destas personas foi avaliada; `evaluation` vazio significa NÃO AVALIADO",
+	})
+}
+
+// listAgentEvaluation: GET /agents/evaluation
+//
+// Devolve as suites embutidas e a maquina de estados. NAO corre avaliacao: `Evaluate` precisa de uma
+// funcao de inferencia, e ligar o harness ao motor e' um passo separado e provado a parte.
+//
+//	*Uma suite que declara casos e nao corre nao e' uma avaliacao: e' o roteiro dela.*
+func (a *agentAPI) listAgentEvaluation(c *gin.Context) {
+	organizationID := a.organizationID(c)
+	if organizationID == "" {
+		writeAgentError(c, http.StatusForbidden, errAgentForbidden)
+		return
+	}
+	suites := agent.EvalSuites()
+	divisoes := make([]string, 0, len(suites))
+	for d := range suites {
+		divisoes = append(divisoes, d)
+	}
+	sort.Strings(divisoes)
+	c.JSON(http.StatusOK, gin.H{
+		"organization_id": organizationID,
+		"suites":          suites,
+		"divisions":       divisoes,
+		"states":          agent.EvalStateCatalog(),
+		// O harness existe e esta' testado, mas nao esta' ligado a um motor neste runtime.
+		"inference_available": false,
+		"note":                "as suites estão definidas; a execução contra um modelo é um passo separado e ainda não está ligada",
 	})
 }
 
