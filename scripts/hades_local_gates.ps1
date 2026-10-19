@@ -355,14 +355,24 @@ if ($LASTEXITCODE -ne 0) { $falhas.Add("hades_rotas_orfas.py (exit $LASTEXITCODE
 #
 # Este gate existe no CI (job `Preserve Class A+ surfaces`) desde antes do E-1321, e NAO estava
 # aqui. Foi por isso que um cliente meu com o path sem prefixo viajou ate' ao PR em vez de morrer
-# na maquina: o `verify-contracts.mjs` compara o path CRU.
+# na maquina: o `verify-contracts.mjs` comparava o path CRU contra o normalizado -- e acusava o
+# PRODUTO pelo que o INSTRUMENTO fazia (E-1344).
 #
-#	*Um gate que nao esta' na bateria local e' um gate que so' existe no CI, e a distancia entre os
-#	dois e' o tempo de uma ronda.*
+#   *Um gate que nao esta' na bateria local e' um gate que so' existe no CI, e a distancia entre os
+#   dois e' o tempo de uma ronda.*
+#
+# O gate foi CORRIGIDO no E-1344 (passou a comparar `call.path`), e o teste abaixo existe para que
+# a correccao nao seja desfeita por parecer redundante.
 '  [..] contrato frontend <-> backend'
 $saidaContrato = & node scripts/verify-contracts.mjs 2>&1
 $saidaContrato | Select-String -Pattern 'CONTRACT|\[FAIL\]' | ForEach-Object { "    " + $_.Line.Trim() }
 if ($LASTEXITCODE -ne 0) { $falhas.Add("verify-contracts.mjs (exit $LASTEXITCODE)") } else { '    OK' }
+# O TESTE DO PROPRIO GATE (E-1344). *Um gate que compara o texto cru com o caminho normalizado
+# nao compara dois caminhos: compara duas maneiras de escrever o mesmo caminho.* Este teste falha
+# se alguem voltar a ligar `call.raw` ao `routeMatches` -- provado por reintroducao do defeito.
+$saidaContratoT = & python -X utf8 scripts/verify_contracts_test.py 2>&1
+$saidaContratoT | Select-Object -Last 1 | ForEach-Object { "    $_" }
+if ($LASTEXITCODE -ne 0) { $falhas.Add("verify_contracts_test.py (exit $LASTEXITCODE)") } else { '    OK' }
 
 # *POR QUE ISTO EXISTE:* o `E-1010`. **18 instrumentos em `scripts/` nao corriam em nenhum gate.**
 # Entre eles, **dois testes** cujas proprias docstrings dizem porque existem -- e o

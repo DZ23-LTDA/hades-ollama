@@ -1,3 +1,97 @@
+## JANELA E-1345
+
+A cabeça do índice é **E-1345**.
+
+- **E-1345** — **um teste que às vezes passa não é um teste: é uma moeda ao ar que se pode citar.** A
+  suíte completa acusou `RetentionPanel > aplicar mostra os números reais do que removeu` com
+  **1184/1185**. O teste **passava isolado, duas vezes seguidas**. Causa na linha 149: `await
+  botao.props.onClick()` chamado **fora de `agir()`** — um `setState` fora de `act`. **O teste já sabia:**
+  os outros 7 usam `agir()`; a linha 149 era a única que chamava o handler directamente. *O ficheiro
+  mostrava o padrão correcto ao lado do incorrecto.* Corrigido na causa: **3 passadas consecutivas de
+  1185/1185** — sem baixar testes, sem skip, sem aumentar timeout. O defeito era **latente e não era meu**:
+  o `RetentionPanel.test.tsx` é anterior a esta série; um flaky precisa de uma passada azarada, não de uma
+  regressão.
+- **E-1344** — verify-contracts: `call.raw` vs `call.path`; falso negativo provado com probe e corrigido.
+- **E-1343** — wakeups: despertar informativo não é trabalho enfileirado; 31 → 30.
+- **E-1342** — solutions: POST que não muta; `integra_automaticamente` sempre falso; 32 → 31.
+- **E-1341** — company: `customers_created=0` é fronteira, não contagem; 33 → 32.
+- **E-1340** — business: orçamento não é aprovação; 35 → 33.
+
+## A distância, agora
+
+| categoria | rotas |
+|---|---|
+| no backend | **348** |
+| órfãs no frontend | **46** |
+| consumidor externo (correcto) | **16** |
+| **lacuna de produto** | **30** (era 93) |
+
+**Duas rondas, dois instrumentos — e nenhuma rota.** O E-1344 corrigiu o gate de contratos; o E-1345
+corrigiu um teste intermitente. *O contador de rotas é o indicador mais visível e não é o único: um
+instrumento que mente e um teste que oscila custam mais do que uma rota sem painel — a rota em falta
+sabe-se, o falso negativo e o falso vermelho ensinam a ignorar o próximo aviso.*
+
+**Nota acumulada sobre o contador — dezasseis avisos:** o gate mede o **domínio**, não a rota. Dezasseis
+medições, **seis** previsões certas.
+
+O que continua aberto: **30 rotas** sem UI (todas escritas); `hades_rotas_orfas.py` **mede prefixos**;
+**20 ORPHAN listados de 209**; o build **não é assinado nem instalado**; `sign.start`/`publish.*`
+inexistentes; o painel do build **não se actualiza sozinho**; **`gitleaks` histórico — a única falha de
+CI**; instalação limpa `BLOCKED_EXTERNAL`; **não há catraca contra novos testes flaky** — este foi
+encontrado por sorte; **FASE 30 não iniciada**.
+
+---
+## JANELA E-1344
+
+A cabeça do índice é **E-1344**.
+
+- **E-1344** — **o gate de contratos comparava o texto cru com o caminho normalizado — e acusava o produto
+  pelo que ele fazia.** `matches()` usava `call.raw`. Com `agentFetch("/plugins")`, `raw = "/plugins"` e
+  `path = "/api/agent/v1/plugins"`. O gate comparava os dois e escrevia **`[FAIL] GET
+  /api/agent/v1/plugins -> NO MATCH`** — *a rota que o log diz não encontrar está no prefixo do próprio
+  log.* Passou despercebido porque todos os clientes usam o caminho completo, onde `raw == path`.
+  **Defeito latente desde o início, provado com um probe real:** `__probe_contrato.ts` com
+  `agentFetch("/plugins")` → **antes 1 FAIL, depois 0**. O probe foi removido — não era fixture, era prova.
+  *Um gate que compara o texto cru com o caminho normalizado não compara dois caminhos: compara duas
+  maneiras de escrever o mesmo caminho, e chama-lhes nomes diferentes.*
+  **Teste permanente que falha com o defeito:** `scripts/verify_contracts_test.py` (o 46.º script) →
+  correcção **5/5 exit 0**; defeito reintroduzido **2 FAIL exit 1**; restaurado **PASSED**.
+- **E-1343** — wakeups: despertar informativo não é trabalho enfileirado; 31 → 30.
+- **E-1342** — solutions: POST que não muta; `integra_automaticamente` sempre falso; 32 → 31.
+- **E-1341** — company: `customers_created=0` é fronteira, não contagem; 33 → 32.
+- **E-1340** — business: orçamento não é aprovação; 35 → 33.
+- **E-1339** — supervisor: reconhecer não é resolver; 39 → 35.
+
+## A distância, agora
+
+| categoria | rotas |
+|---|---|
+| no backend | **348** |
+| órfãs no frontend | **46** |
+| consumidor externo (correcto) | **16** |
+| **lacuna de produto** | **30** (era 93) |
+
+**O contador não desceu nesta ronda — e está certo.** Esta fatia não fechou rota nenhuma: **fechou um
+instrumento**. *Um gate que mente sobre o produto custa mais do que uma rota sem painel: a rota em falta
+sabe-se, o falso negativo ensina a ignorar o próximo vermelho verdadeiro.*
+
+## O QUE FOI VERIFICADO E **NÃO** ADOTADO
+
+`/media/ocr` e `/media/tone` pareciam cálculos puros como o `solutions/compare`. **Não são:** ambos
+respondem **`201 Created`** e criam um `Artifact` no workspace da missão. *Um POST que responde 201 não é
+um cálculo: é uma escrita com endereço.*
+
+Ficam as 30 — todas escritas que mutam estado real.
+
+**Nota acumulada sobre o contador — dezasseis avisos:** o gate mede o **domínio**, não a rota. Dezasseis
+medições, **seis** previsões certas.
+
+O que continua aberto: **30 rotas** sem UI (todas escritas); `hades_rotas_orfas.py` **mede prefixos**;
+**20 ORPHAN listados de 209**; o build **não é assinado nem instalado**; `sign.start`/`publish.*`
+inexistentes; o painel do build **não se actualiza sozinho**; **`gitleaks` histórico — a única falha de
+CI**; instalação limpa `BLOCKED_EXTERNAL`; **FASE 30 não iniciada**.
+
+---
 ## JANELA E-1343
 
 A cabeça do índice é **E-1343**.

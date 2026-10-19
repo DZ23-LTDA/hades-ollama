@@ -146,7 +146,12 @@ describe("RetentionPanel", () => {
 
     const renderer = await montar();
     const botao = porTestId(renderer, "retention-aplicar")[0];
-    await botao.props.onClick();
+    // E-1344: `onClick()` FORA de `agir()` e' um `setState` fora de `act`: o update pode nao
+    // estar aplicado quando a assercao corre. Era a causa do teste intermitente -- passava
+    // isolado e falhava na suite completa, onde o agendador do React tem mais trabalho a fazer.
+    //
+    //   *Um teste que as vezes passa nao e' um teste: e' uma moeda ao ar que se pode citar.*
+    await agir(() => botao.props.onClick());
     await new Promise((resolver) => setTimeout(resolver, 0));
 
     const resultado = porTestId(renderer, "retention-resultado");
