@@ -13,6 +13,7 @@ package server
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -96,6 +97,45 @@ func TestMotivoVazioNaoInventa(t *testing.T) {
 	}
 	if !strings.Contains(razao, "nao registou um motivo") {
 		t.Fatalf("devia declarar a ausencia de motivo, nao inventar: %q", razao)
+	}
+}
+
+// A PROPRIEDADE DE QUE O CI DEPENDE (E-1423/E-1425).
+//
+// O job `agent-center-real` recusa correr se `GET /api/agent/v1/projects/detect` devolver 503, porque 503
+// significa que o fallback foi registado -- ou seja, que o Agent Center NAO montou.
+//
+// A primeira versao deste teste assumia que o router daria preferencia ao caminho estatico e deixaria o
+// wildcard apanhar so' o resto. MEDIDO: o gin NAO faz isso -- entra em panico:
+//
+//	catch-all wildcard '*rest' in new path '/api/agent/v1/*rest' conflicts with existing path
+//	segment 'projects' in existing prefix '/api/agent/v1/projects'
+//
+// Ou seja, a garantia e' mais forte do que eu tinha escrito: o fallback e as rotas reais NAO conseguem
+// coexistir; o servidor recusa arrancar em vez de responder 503 em silencio. E' isso que torna o 503 um
+// sinal utilizavel: nao existe estado em que o Agent Center esteja montado e o 503 apareca por cima.
+//
+//	*Uma premissa que se assume nao se mede. Esta mediu-se e estava errada -- e a medicao e' que fica.*
+func TestFallbackNaoCoexisteComRotaReal(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	panico := func() (p any) {
+		defer func() { p = recover() }()
+		r := gin.New()
+		r.GET("/api/agent/v1/projects/detect", func(c *gin.Context) { c.Status(http.StatusOK) })
+		r.Any("/api/agent/v1/*rest", agentAPINaoMontada("nao devia ser alcancado"))
+		return nil
+	}
+
+	p := panico()
+	if p == nil {
+		t.Fatal("o router aceitou o wildcard ao lado de uma rota real: o 503 deixaria de significar " +
+			"«nao montou» e passaria a poder significar «montou e o fallback roubou a rota»")
+	}
+	// O valor recuperado pode ser `error` ou `string` conforme a versao do gin: o teste exige o TEXTO da
+	// colisao, nao o tipo. *Uma assercao que depende do tipo do panico mede o gin, nao o contrato.*
+	if texto := fmt.Sprint(p); !strings.Contains(texto, "conflicts with existing path") {
+		t.Fatalf("o panico nao e' a colisao de rotas esperada: %v", p)
 	}
 }
 
