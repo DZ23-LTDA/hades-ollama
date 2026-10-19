@@ -1,3 +1,54 @@
+## JANELA E-1351
+
+A cabeça do índice é **E-1351**.
+
+- **E-1351** — **A primeira ESCRITA da série — e é uma escrita com confirmação.** `BusinessTickPanel`
+  consome `POST /business/tick`. O painel **não dispara ao montar**: um tick executa ações autónomas,
+  regista incidentes e gasta orçamento. Há botão e caixa de confirmação; sem ela o painel recusa e **não
+  chama**. *Um painel que corre um ciclo ao abrir executou sem ninguém pedir — e a supervisão promete o
+  contrário.*
+  **Quatro desfechos que não são o mesmo número:** `autonomous_executed`, `awaiting_approval`,
+  `blocked_by_budget`, `incidents_recorded` — mostrados **separados**. *Somar isto num «N ações» é a mesma
+  mentira do E-1340: uma ação bloqueada por orçamento e uma à espera de aprovação são ambas «pendentes» e
+  não são a mesma coisa.*
+  **`errors` vem COM resultado** — *«é ele que mostra o que foi observado, executado, bloqueado»*.
+  **O número do tick não pode recuar**; o orçamento mostra **dois** números.
+  **VIGÉSIMA SEGUNDA MEDIÇÃO — previsão CERTA:** previ **1**, mediu **1** (21 → 20).
+- **E-1350** — reschedule/slots: dois campos ditos por nome; responde ANTES; 23 → 21.
+- **E-1349** — `OpenSlots` ≠ `Availability`; 0 slots ≠ dia livre; 24 → 23.
+- **E-1348** — scheduling/waitlist: janela PEDIDA ≠ slot OFERECIDO; 26 → 24.
+- **E-1347** — scheduling/reminders/due: `now` não vem do corpo; 28 → 26.
+- **E-1346** — commerce: `on_hand`/`reserved`/`available` são três; 30 → 28.
+
+## A distância, agora
+
+| categoria | rotas |
+|---|---|
+| no backend | **348** |
+| órfãs no frontend | **36** |
+| consumidor externo (correcto) | **16** |
+| **lacuna de produto** | **20** (era 93) |
+
+## AS LEITURAS ACABARAM
+
+**As 20 restantes são todas `POST` ou `PUT`:**
+
+`scheduling` 6 · `auth` 3 (MFA) · `finance` 3 · `media` 2 · `business` 1 · `notifications` 1 · `crm` 1 ·
+`inbox` 1 · `service-agents` 1 (PUT) · `company` 1 · `plugins` 1.
+
+**Uma escrita não se fecha com um `GET`.** Exige: cliente tipado, painel com botão, **confirmação
+explícita**, teste que prove que **sem confirmação nada acontece**, e um caminho de erro que não
+esconda efeito parcial. A primeira (E-1351) provou que é fazível; o custo é ~2× o de uma leitura.
+
+**Nota acumulada — vinte e dois avisos:** o gate mede o **domínio**, não a rota. Vinte e duas medições,
+**oito** previsões certas — e as duas últimas foram certas seguidas.
+
+O que continua aberto: **20 rotas** sem UI (todas escritas); o gate **mede prefixos**; **20 ORPHAN de
+209**; o build **não é assinado nem instalado**; `sign.start`/`publish.*` inexistentes; **`gitleaks`
+histórico — a única falha de CI**; instalação limpa `BLOCKED_EXTERNAL`; **não há catraca contra novos
+testes flaky**; **FASE 30 não iniciada**.
+
+---
 ## JANELA E-1350
 
 A cabeça do índice é **E-1350**.

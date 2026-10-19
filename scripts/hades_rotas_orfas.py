@@ -195,7 +195,11 @@ RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 #   *Fechar a ULTIMA leitura de `scheduling` arrastou duas entradas do prefixo: restam 6 rotas de
 #   `scheduling`, todas escritas. Um dominio que fica so' com escritas fecha-se em bloco quando a
 #   ultima leitura desaparece.*
-TETO_ORFAS = 21
+# 21 -> 20 no E-1351: `BusinessTickPanel` consome POST /business/tick.
+#
+#   *Quatro desfechos, quatro numeros: executada sem pessoa, a espera de uma pessoa, bloqueada
+#   por orcamento, incidente registado. Somar isto num "N acoes" e' a mentira do E-1340.*
+TETO_ORFAS = 20
 
 # Quem chama nao e' o frontend do HADES -- a ausencia no UI e' correcta.
 CONSUMIDOR_EXTERNO = (
