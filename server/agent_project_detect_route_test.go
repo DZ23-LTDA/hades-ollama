@@ -144,7 +144,29 @@ func TestDeteccaoNaoUsaARaizDoPedido(t *testing.T) {
 		t.Fatalf("sem `detectado` no corpo: %v", corpo)
 	}
 	raiz, _ := detectado["raiz"].(string)
-	if filepath.Clean(raiz) != filepath.Clean(directorio) {
+
+	// E-1303: `filepath.Clean` NAO RESOLVE SYMLINKS.
+	//
+	// No macOS o `t.TempDir()` devolve `/var/folders/...`, mas o servidor devolve o alvo real
+	// `/private/var/folders/...` -- sao o MESMO sitio escrito de duas maneiras, porque `/var` e' um
+	// symlink para `/private/var` naquele sistema. O teste comparava os dois nomes com
+	// `filepath.Clean` e chamava-lhes diferentes: falhava no `test (macos-latest)` e no
+	// `race (macos-latest)` com
+	//
+	//   devolvida devia ser a do AMBIENTE ("/var/..."), obtido "/private/var/..."
+	//
+	// Resolvemos os symlinks dos DOIS lados antes de comparar, e so' caímos para `filepath.Clean`
+	// quando a resolucao falhar (caminho que nao existe).
+	//
+	//     *Uma verificacao de prefixo sem resolver symlinks e' uma verificacao que aprova o link, nao
+	//     o alvo.*
+	esperado, errEsperado := filepath.EvalSymlinks(directorio)
+	obtido, errObtido := filepath.EvalSymlinks(raiz)
+	if errEsperado == nil && errObtido == nil {
+		if obtido != esperado {
+			t.Fatalf("a raiz devolvida devia ser a do AMBIENTE (%q), obtido %q", esperado, obtido)
+		}
+	} else if filepath.Clean(raiz) != filepath.Clean(directorio) {
 		t.Fatalf("a raiz devolvida devia ser a do AMBIENTE (%q), obtido %q", directorio, raiz)
 	}
 	if filepath.Clean(raiz) == filepath.Clean("/caminho/inventado/pelo/cliente") {

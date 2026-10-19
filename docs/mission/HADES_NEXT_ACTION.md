@@ -1,3 +1,24 @@
+## JANELA E-1303
+
+A cabeça do índice é **E-1303**.
+
+- **E-1303** — `test (macos-latest)` e `race (macos-latest)` ficaram **vermelhos**: o meu teste do
+  E-1286 (`TestDeteccaoNaoUsaARaizDoPedido`) comparava o caminho com `filepath.Clean`, que **não
+  resolve symlinks**. No macOS `/var` é symlink de `/private/var`, e o teste chamava diferentes a dois
+  nomes do mesmo sítio. Corrigido com `filepath.EvalSymlinks` nos **dois** lados.
+- **E-1302** — E2E do `publish.preflight` contra o **binário Go real**: seis canais a 200, canal
+  inválido a 400, artefacto ausente a 412; Playwright **9 passed** em `BACKEND_REAL_AGENT_RUNTIME` e
+  **9 passed** em `UI_FIXTURE`; suíte completa **136 passed / 11 skipped**.
+- **E-1301** — `Preserve Class A+ surfaces` **verde** (era falha em cinco commits).
+- **E-1300** — a causa era o checker de `.ps1` a exigir `powershell.exe` no Ubuntu; corrigido com
+  `exit 3` declarado + `skipUnless` com motivo + três ramos explícitos, **sem** `|| true`.
+- **E-1299/E-1298/E-1289** — cadeia `publish.preflight` completa (painel, cliente, rota).
+
+O que continua aberto: `gitleaks (historico do PR)` (decisão do proprietário), `BuildProvider` sem
+cliente/E2E, build Android e arranque do app (`BLOCKED_EXTERNAL`), `INSTALLED=NAO` (E-1252) e a
+**FASE 30 não iniciada**.
+
+---
 ## JANELA E-1302
 
 Estado em `026ca7bbd` + este commit. A cabeça do índice é **E-1302**.
