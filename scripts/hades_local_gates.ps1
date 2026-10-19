@@ -351,6 +351,19 @@ $saidaOrfas2 = & python -X utf8 scripts/hades_rotas_orfas.py 2>&1
 $saidaOrfas2 | Select-String -Pattern 'lacuna de produto' | ForEach-Object { "    " + $_.Line.Trim() }
 if ($LASTEXITCODE -ne 0) { $falhas.Add("hades_rotas_orfas.py (exit $LASTEXITCODE)") } else { '    OK' }
 
+# O CONTRATO FRONTEND<->BACKEND (E-1322).
+#
+# Este gate existe no CI (job `Preserve Class A+ surfaces`) desde antes do E-1321, e NAO estava
+# aqui. Foi por isso que um cliente meu com o path sem prefixo viajou ate' ao PR em vez de morrer
+# na maquina: o `verify-contracts.mjs` compara o path CRU.
+#
+#	*Um gate que nao esta' na bateria local e' um gate que so' existe no CI, e a distancia entre os
+#	dois e' o tempo de uma ronda.*
+'  [..] contrato frontend <-> backend'
+$saidaContrato = & node scripts/verify-contracts.mjs 2>&1
+$saidaContrato | Select-String -Pattern 'CONTRACT|\[FAIL\]' | ForEach-Object { "    " + $_.Line.Trim() }
+if ($LASTEXITCODE -ne 0) { $falhas.Add("verify-contracts.mjs (exit $LASTEXITCODE)") } else { '    OK' }
+
 # *POR QUE ISTO EXISTE:* o `E-1010`. **18 instrumentos em `scripts/` nao corriam em nenhum gate.**
 # Entre eles, **dois testes** cujas proprias docstrings dizem porque existem -- e o
 # `hades_scope_classifier_autoteste.py` **descobriu** uma divergencia entre a afirmacao do `E-352`

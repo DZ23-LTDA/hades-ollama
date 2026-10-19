@@ -1,3 +1,34 @@
+## JANELA E-1322
+
+A cabeça do índice é **E-1322**.
+
+- **E-1322** — **o gate que apanhou o E-1321 não estava na bateria local.** O `verify-contracts.mjs`
+  corre no CI (`Preserve Class A+ surfaces`) desde antes do E-1321 — e **nunca** correu na minha
+  bateria. Foi por isso que um cliente meu com o path sem prefixo **viajou até ao PR**.
+  *Um gate que não está na bateria local é um gate que só existe no CI, e a distância entre os dois é o
+  tempo de uma ronda.*
+  **É a TERCEIRA VEZ na mesma sessão que o padrão aparece:** o E-1319 escreveu um instrumento que o
+  `hades_orphan_instruments_check.py` acusou de não estar invocado; agora descobri que um instrumento
+  **que já existia** também não estava.
+  *Um gate que existe e não está na bateria é um gate que só protege quem corre o CI — e o CI corre
+  depois do push, quando o defeito já viajou.*
+  **Entregue:** `node scripts/verify-contracts.mjs` no `hades_local_gates.ps1`, depois do
+  `hades_rotas_orfas.py`. `.ps1` **ASCII puro** (0 bytes > 127), parser 5.1 **0 erros**.
+  **O que isto muda:** escrever um `agentFetch` fora da convenção passa a falhar **na máquina**.
+  **O que não resolve:** a assimetria `call.raw` vs `call.path` fica como **dívida conhecida** — não a
+  corrigi, porque alargar o gate acomodaria o cliente mal escrito.
+- **E-1321** — o gate compara o path cru; o cliente omitia o prefixo.
+- **E-1320** — `RetentionPanel`; teto 93 → 90.
+- **E-1319** — auditoria de rotas órfãs.
+
+## O que continua aberto
+
+A assimetria `call.raw` vs `call.path` no `verify-contracts.mjs`; **20 ORPHAN listados de 256** (o gate
+mostra os primeiros 20 e o total não tem catraca); **90 rotas** sem superfície no UI; o build **não é
+assinado nem instalado**; `sign.start`/`publish.*` inexistentes; `gitleaks`; instalação limpa
+`BLOCKED_EXTERNAL`; **FASE 30 não iniciada**.
+
+---
 ## JANELA E-1321
 
 A cabeça do índice é **E-1321**.
