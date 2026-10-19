@@ -233,7 +233,40 @@ export class ConflitoDeInstalacaoError extends Error {
   }
 }
 
+/**
+ * Reconhece o erro do transporte por FORMA, nao por identidade de classe.
+ *
+ * PORQUE `instanceof` NAO SERVE AQUI (E-1381)
+ *
+ * Tentei `causa instanceof ErroDaApi` e regrediu 2 testes. A causa: um teste do painel mocka
+ * `@/lib/agenticClient` devolvendo so' `{ agentFetch }`. Com o mock, `ErroDaApi` e' `undefined` -- e
+ * `causa instanceof undefined` LANCA em vez de devolver `false`. O painel caia no ramo generico, punha
+ * `estado = "erro"`, e os elementos `agent-center-ausente`/`agent-center-conflito` nem existiam.
+ *
+ *	*Um painel que le uma chave que ninguem emite nao mostra o vazio: mostra o fallback.* -- e aqui o
+ *	fallback era um erro generico onde devia estar o motivo.
+ *
+ * Uma verificacao estrutural funciona com ou sem mock, com ou sem bundler a duplicar a classe.
+ */
+function ehErroDaApi(
+  causa: unknown,
+): causa is { status: number; message: string; campo(c: string): string | undefined } {
+  if (typeof causa !== "object" || causa === null) return false;
+  const c = causa as { status?: unknown; campo?: unknown; message?: unknown };
+  return (
+    typeof c.status === "number" &&
+    typeof c.campo === "function" &&
+    typeof c.message === "string"
+  );
+}
+
 function traduzir(causa: unknown): never {
+  // O status e' a fonte de verdade; a mensagem e' o fallback.
+  if (ehErroDaApi(causa)) {
+    const motivo = causa.campo("reason") ?? causa.campo("error") ?? causa.message;
+    if (causa.status === 503) throw new CentroAusenteError(motivo);
+    if (causa.status === 409) throw new ConflitoDeInstalacaoError(motivo);
+  }
   const m = causa instanceof Error ? causa.message : String(causa);
   if (/503|not configured|indispon[ií]vel/i.test(m)) throw new CentroAusenteError(m);
   if (/409|conflict/i.test(m)) throw new ConflitoDeInstalacaoError(m);

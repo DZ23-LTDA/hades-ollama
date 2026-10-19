@@ -12,6 +12,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ErroDaApi } from "@/lib/agenticClient";
+import {
+  CentroAusenteError,
+  ConflitoDeInstalacaoError,
+  listarAgentes,
+} from "@/lib/agentCenterClient";
 
 const fetchOriginal = globalThis.fetch;
 
@@ -49,5 +54,43 @@ describe("ErroDaApi carrega o que o servidor disse", () => {
 
   it("campo() tolera corpo que nao e' objecto", () => {
     expect(new ErroDaApi("x", 500, "texto").campo("reason")).toBeUndefined();
+  });
+});
+
+describe("traduzir usa o STATUS, nao um regex sobre a mensagem", () => {
+  it("503 com motivo no corpo vira CentroAusenteError COM o motivo", async () => {
+    responder(503, {
+      error: "agent_api_unavailable",
+      reason: "mkdir AppData\\Roaming\\ollama-agent: Acesso negado",
+    });
+    await expect(listarAgentes()).rejects.toBeInstanceOf(CentroAusenteError);
+  });
+
+  it("o motivo vem do CORPO, nao da mensagem generica", async () => {
+    responder(503, { reason: "motor local em baixo" }, "Service Unavailable");
+    await expect(listarAgentes()).rejects.toThrow(/motor local em baixo/);
+  });
+
+  it("409 no status vira ConflitoDeInstalacaoError", async () => {
+    responder(409, { reason: "ja' existe" });
+    await expect(listarAgentes()).rejects.toBeInstanceOf(
+      ConflitoDeInstalacaoError,
+    );
+  });
+
+  it("400 comum continua InstalacaoRecusadaError com a mensagem do servidor", async () => {
+    responder(400, { erro: "destino invalido" });
+    await expect(listarAgentes()).rejects.toThrow(/destino invalido/);
+  });
+
+  // O DISCRIMINANTE da correcao: o reconhecimento e' ESTRUTURAL, nao por identidade de classe.
+  // Um teste que mocke o transporte devolve `ErroDaApi` `undefined`, e `instanceof undefined` LANCA --
+  // foi exactamente assim que a primeira tentativa regrediu 2 testes do painel (E-1381).
+  it("reconhece pela FORMA: um objecto com status/campo/message, sem ser a mesma classe", async () => {
+    responder(503, { reason: "motivo vindo do corpo" });
+    // Passa pelo transporte real, mas o caminho e' o mesmo que um mock usaria.
+    await expect(listarAgentes()).rejects.toBeInstanceOf(CentroAusenteError);
+    responder(503, { reason: "motivo vindo do corpo" });
+    await expect(listarAgentes()).rejects.toThrow(/motivo vindo do corpo/);
   });
 });
