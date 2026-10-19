@@ -195,9 +195,11 @@ func TestFerramentaObrigatoriaQuebradaBloqueia(t *testing.T) {
 // Ausencia total tem de produzir ausencia nos tres obrigatorios de windows.
 func TestAusenciaTotalListaOsTresObrigatorios(t *testing.T) {
 	r := resolvedorFalso(map[string]ToolProbe{})
-	plano, err := r.Plano(context.Background(), "windows")
+	// windows passou a ser o BINARIO (1 obrigatorio). Os tres (go, inno-setup, powershell) vivem
+	// agora em windows-installer, que descreve o instalador. Ver E-1308.
+	plano, err := r.Plano(context.Background(), "windows-installer")
 	if err != nil {
-		t.Fatalf("plano windows: %v", err)
+		t.Fatalf("plano windows-installer: %v", err)
 	}
 	if len(plano.Blockers) != 3 {
 		t.Fatalf("esperava 3 blockers (go, inno-setup, powershell), obtive %d: %v", len(plano.Blockers), plano.Blockers)
@@ -252,7 +254,7 @@ func TestSondaRealNuncaDeclaraHealthy(t *testing.T) {
 // `exec.LookPath` falhar nao pode ser confundido com sucesso.
 func TestProberAusenteUsaOSondadorReal(t *testing.T) {
 	r := &ResolverDeToolchain{GOOS: "windows"}
-	plano, err := r.Plano(context.Background(), "windows")
+	plano, err := r.Plano(context.Background(), "windows-installer")
 	if err != nil {
 		t.Fatalf("plano sem prober: %v", err)
 	}
@@ -344,5 +346,48 @@ func TestMotivosDeNaoProntoNaoRepeteOBlocker(t *testing.T) {
 	motivos := plano.MotivosDeNaoPronto()
 	if len(motivos) != 1 {
 		t.Fatalf("esperado 1 motivo (sem repetir), obtidos %d: %v", len(motivos), motivos)
+	}
+}
+
+// TestWindowsNaoPrometeInstalador fixa o defeito do E-1308.
+//
+// # O DEFEITO
+//
+// O alvo windows dizia "Instalador .exe nao assinado (Inno Setup)" e exigia inno-setup e
+// powershell. Medido com as duas ferramentas no PATH: o uild.start deu 200 e produziu
+// uild-alvo-windows.exe -- e ZERO instaladores, porque o unico provider corre go build.
+//
+//	*Um alvo que exige ferramentas que nenhum provider invoca, e descreve um artefacto que nenhum
+//	provider produz, nao descreve o que o HADES faz: descreve o que se esperava que fizesse.*
+func TestWindowsNaoPrometeInstalador(t *testing.T) {
+	var binario, instalador *AlvoDeclarado
+	for i, alvo := range CatalogoDeAlvos() {
+		switch alvo.Nome {
+		case "windows":
+			binario = &CatalogoDeAlvos()[i]
+		case "windows-installer":
+			instalador = &CatalogoDeAlvos()[i]
+		}
+	}
+	if binario == nil {
+		t.Fatal("o alvo windows desapareceu do catalogo")
+	}
+	if instalador == nil {
+		t.Fatal("o instalador devia continuar declarado como windows-installer, nao desaparecer")
+	}
+	// O binario so' exige go -- e' o que o provider entrega.
+	for _, req := range binario.Exigencias {
+		if req.Nome != "go" {
+			t.Fatalf("o alvo windows (binario) nao devia exigir %q: nenhum provider a invoca", req.Nome)
+		}
+	}
+	// O instalador declara as tres, e o provider NAO o cobre.
+	if len(instalador.Exigencias) != 3 {
+		t.Fatalf("windows-installer devia exigir 3 ferramentas, tem %d", len(instalador.Exigencias))
+	}
+	for _, alvo := range (ProviderDeBuildGo{}).Alvos() {
+		if strings.EqualFold(alvo, "windows-installer") {
+			t.Fatal("o ProviderDeBuildGo nao pode declarar que cobre o instalador: so' corre go build")
+		}
 	}
 }

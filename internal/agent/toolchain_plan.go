@@ -197,14 +197,43 @@ type AlvoDeclarado struct {
 func CatalogoDeAlvos() []AlvoDeclarado {
 	return []AlvoDeclarado{
 		{
+			// O ALVO windows E' O BINARIO, NAO O INSTALADOR.
+			//
+			// O DEFEITO QUE ISTO FECHA
+			//
+			// Este alvo dizia "Instalador .exe nao assinado (Inno Setup)" e exigia inno-setup e
+			// powershell como OBRIGATORIOS. Mas o unico provider implementado e' o
+			// ProviderDeBuildGo, que corre go build e MAIS NADA. Medido no E-1308, com o Inno
+			// Setup e o PowerShell no PATH: o alvo deu 200 e produziu uild-alvo-windows.exe
+			// (2 458 624 B, MZ) -- e ZERO instaladores.
+			//
+			//	*Um alvo que exige ferramentas que nenhum provider invoca, e descreve um artefacto
+			//	que nenhum provider produz, nao descreve o que o HADES faz: descreve o que se
+			//	esperava que fizesse.*
+			//
+			// Separado em dois alvos: windows (o que EXISTE) e windows-installer (o que FALTA).
 			Nome:      "windows",
-			Descricao: "Instalador .exe nao assinado (Inno Setup)",
+			Descricao: "binario .exe para Windows",
+
 			Exigencias: []ToolRequirement{
-				{Nome: "go", Comando: "go", Obrigatorio: true, Motivo: "compilar o binario e o app GUI", VersaoMinima: "1.22", ArgsDeVersao: []string{"version"}},
+				{Nome: "go", Comando: "go", Obrigatorio: true, Motivo: "compilar o binario", VersaoMinima: "1.22", ArgsDeVersao: []string{"version"}},
+			},
+			Independen: []string{"rever docs/mission e o indice de evidencias", "correr os checkers Python"},
+		},
+		{
+			// O INSTALADOR QUE AINDA NAO EXISTE -- declarado, nao prometido.
+			//
+			// Este alvo tem plano (o doctor consegue dizer o que falta) mas NAO tem provider: o
+			// uild.start responde 422 ErrSemProviderParaAlvo, que e' a verdade. E' melhor um
+			// alvo que recusa do que um alvo que responde 200 com o artefacto errado.
+			Nome:      "windows-installer",
+			Descricao: "instalador .exe nao assinado (Inno Setup) -- SEM PROVIDER: o build.start recusa",
+			Exigencias: []ToolRequirement{
+				{Nome: "go", Comando: "go", Obrigatorio: true, Motivo: "compilar o binario que o instalador empacota", VersaoMinima: "1.22", ArgsDeVersao: []string{"version"}},
 				{Nome: "inno-setup", Comando: "iscc", Obrigatorio: true, Motivo: "compilar o instalador .iss"},
 				{Nome: "powershell", Comando: "powershell", Obrigatorio: true, Motivo: "scripts de build e de instalador"},
 			},
-			Independen: []string{"rever docs/mission e o indice de evidencias", "correr os checkers Python"},
+			Independen: []string{"implementar o ProviderDeInstaladorWindows e provar com um .iss real"},
 		},
 		{
 			Nome:      "macos",

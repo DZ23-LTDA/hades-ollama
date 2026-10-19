@@ -1,3 +1,29 @@
+## JANELA E-1308
+
+A cabeça do índice é **E-1308**.
+
+- **E-1308** — o alvo `windows` prometia um **instalador** que nenhum provider produz. O catálogo dizia
+  *«Instalador .exe não assinado (Inno Setup)»* e exigia `inno-setup` + `powershell`; o único provider
+  corre `go build`. **Medido** com `ISCC.exe` (1 456 272 B) e PowerShell no PATH: **200** e
+  `build-alvo-windows.exe` (2 458 624 B, `MZ`) — e **instaladores: 0**. Separado em `windows` (binário,
+  só `go`) e `windows-installer` (instalador declarado, `SEM PROVIDER: o build.start recusa`).
+  **Os três alvos de binário constroem com a plataforma certa:** `linux`→ELF, `macos`→Mach-O,
+  `windows`→PE. `go test ./internal/agent` **ok (361 s)**, lint 0.
+- **E-1307** — o `build.start` passou a **construir**. Quatro defeitos: mensagem dizia `0 blocker(s)`;
+  **espera circular** (`Pronto()` exigia o health que o próprio `go build` produz); `GOOS` vinha do
+  host (artefacto `-linux` com bytes `MZ`); catálogo **sem o alvo `macos`** que o provider prometia.
+- **E-1306** — `POST /build/start`: a primeira rota do Release Hub que executa. 8 testes PASS.
+- **E-1305** — o `misspell` leu *Resolvemos* como erro de inglês. **Verde em `aea7076be`**:
+  `test (windows-latest)` success, `test (ubuntu-latest)` success.
+- **E-1304** — o E2E do `build.plan` nunca tinha corrido contra o backend real (faltava `HADES_E2E_REPO`).
+
+O que continua aberto: **o instalador Windows não existe** (`windows-installer` sem provider e o
+`ISCC.exe` fora do PATH do servidor), `build.status`/`logs`/`cancel`/`artifacts` não existem,
+**nenhum artefacto foi assinado, instalado ou executado no sistema alvo**, `gitleaks (historico do PR)`
+(decisão do proprietário), build Android e arranque do app (`BLOCKED_EXTERNAL`), `INSTALLED=NAO`
+(E-1252) e a **FASE 30 não iniciada**.
+
+---
 ## JANELA E-1307
 
 A cabeça do índice é **E-1307**.
