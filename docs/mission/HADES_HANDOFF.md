@@ -1,3 +1,48 @@
+## JANELA E-1334
+
+A cabeça do índice é **E-1334**.
+
+- **E-1334** — **uma função de cliente sem chamador — e um mock com a ordem trocada.** O E-1333 deixou
+  `listarAgentesDeServico` escrita em `approvalsClient.ts` e **o produto nunca a chamava**. Esta fatia
+  usa-a: o painel mostra o catálogo de agentes, e o teste verifica a rota **e** o texto. *Um teste que
+  chama a função que o produto não chama prova que a função funciona, não que o produto a usa.*
+  **O defeito que isso revelou foi no mock, não no produto.** Ao acrescentar o catálogo como segundo
+  pedido, três testes falharam porque o mock respondia na ordem `approvals → auditoria → agentes` e o
+  painel pede `approvals → agentes → auditoria`. Corrigi a **ordem do mock**, não a do painel.
+  ***Um mock com a ordem trocada testa uma sequência que o produto não faz — e passa a testar o mock.***
+  **SEXTA LEITURA DO MESMO GATE, E O TETO NÃO MEXEU.** Mediu **48**, não os 45 previstos.
+  `/service-agents` já estava coberta pelo prefixo de `/approvals` e `/audit` (E-1333). **Consumir uma
+  rota a mais e o contador não mexer** é a sexta vez. A conta inteira: previ 3/caiu 10 (E-1328), 2/7
+  (E-1329), 1/0 (E-1330), 7/7 (E-1331), 7/8 (E-1332), 3/5 (E-1333), **3/0 (E-1334)**. *Sete medições,
+  uma previsão certa: o instrumento é que está errado.*
+- **E-1333** — `ApprovalsPanel` com `role_checked`/quórum/`overdue`/notificação; 53 → 48.
+- **E-1332** — `SalesPanel` com a conta aberta; frete não declarado ≠ R$ 0,00; 61 → 53.
+- **E-1331** — `InboxPanel`; `reply_blocked` não esconde a conversa; 68 → 61.
+- **E-1330** — detalhe do contacto com consentimento real; teto 68 inalterado e explicado.
+- **E-1329** — `CRMPanel` com PII mascarada; 75 → 68.
+
+## A distância, agora
+
+| categoria | rotas |
+|---|---|
+| no backend | **348** |
+| órfãs no frontend | **64** |
+| consumidor externo (correcto) | **16** |
+| **lacuna de produto** | **48** (era 93) |
+
+**Os maiores domínios ainda sem UI:** `omnichannel` **5**, `auth` **4**, `supervisor` **4** (parcial),
+`finance` **4**, `business` **4** (parcial), `plugins` **3**, `media` **2**, `company` **2**.
+
+**Nota acumulada sobre o contador — sete avisos:** o gate mede o **domínio**, não a rota. Sete medições,
+**uma** previsão certa. Corrigi-lo é trabalho próprio, e continua a ser a dívida de instrumento mais
+clara do projecto.
+
+O que continua aberto: **48 rotas** sem UI; o gate **mede prefixos**; a assimetria `call.raw`/`call.path`;
+**20 ORPHAN listados de 216**; o build **não é assinado nem instalado**; `sign.start`/`publish.*`
+inexistentes; o painel do build **não se actualiza sozinho**; **`gitleaks` histórico — a única falha de
+CI**; instalação limpa `BLOCKED_EXTERNAL`; **FASE 30 não iniciada**.
+
+---
 ## JANELA E-1333
 
 A cabeça do índice é **E-1333**.

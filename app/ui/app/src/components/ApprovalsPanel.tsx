@@ -16,8 +16,10 @@ import {
   descreverQuorum,
   descreverVerificacaoDePapel,
   estadoDaAuditoria,
+  listarAgentesDeServico,
   listarAprovacoes,
   truncarFingerprint,
+  type AgenteDeServico,
   type AprovacaoDeServico,
   type EstadoDaAuditoria,
   type RespostaDeAprovacoes,
@@ -31,6 +33,7 @@ export function ApprovalsPanel() {
   const [resposta, setResposta] = useState<RespostaDeAprovacoes | null>(null);
   const [auditoria, setAuditoria] = useState<EstadoDaAuditoria | null>(null);
   const [auditoriaErro, setAuditoriaErro] = useState<string | null>(null);
+  const [agentes, setAgentes] = useState<AgenteDeServico[]>([]);
   const [filtro, setFiltro] = useState("pending");
   const [erro, setErro] = useState<string | null>(null);
 
@@ -51,6 +54,14 @@ export function ApprovalsPanel() {
       }
       setErro(causa instanceof Error ? causa.message : "Nao foi possivel ler as aprovacoes.");
       setEstado("erro");
+    }
+    // O catalogo e' estatico e sempre 200 -- mas e' um pedido separado, e a
+    // falha dele nao apaga a fila nem a auditoria.
+    try {
+      const rAgentes = await listarAgentesDeServico();
+      setAgentes(rAgentes.agents ?? []);
+    } catch {
+      setAgentes([]);
     }
     // A auditoria e' um pedido separado: a sua falha nao apaga a fila.
     try {
@@ -238,6 +249,10 @@ export function ApprovalsPanel() {
             : "sem trilha de auditoria durável — nada é guardado"}
         </p>
       )}
+
+      <p data-testid="aprovacoes-agentes" className="mt-2 text-[11px] text-neutral-500">
+        Catálogo de agentes de serviço: {agentes.length} agente(s) reconhecido(s).
+      </p>
 
       <p data-testid="aprovacoes-fronteira" className="mt-3 text-[11px] leading-relaxed text-neutral-500">
         Este painel só lê. Aprovar, negar e definir aprovadores continuam a ser ações separadas — e

@@ -99,6 +99,10 @@ const NOTIFICACAO_OK = { configurado: true, entregues: 5, ultimo_erro: "" };
 function responder(aprovacoes = [APROVACAO], notificacao = NOTIFICACAO_OK) {
   mockAgentFetch
     .mockResolvedValueOnce({ approvals: aprovacoes, count: aprovacoes.length, queue: FILA, notification: notificacao })
+    .mockResolvedValueOnce({
+      agents: [{ id: "support", name: "Atendimento" }, { id: "finance", name: "Financeiro" }],
+      count: 2,
+    })
     .mockResolvedValueOnce({ persisted: true, entries: 10 });
 }
 
@@ -202,7 +206,10 @@ describe("ApprovalsPanel", () => {
 
   it("o 503 aparece como store AUSENTE, nao como fila vazia", async () => {
     const erro = new Error("store de aprovação humana não está configurado");
-    mockAgentFetch.mockRejectedValueOnce(erro);
+    mockAgentFetch
+      .mockRejectedValueOnce(erro)
+      .mockResolvedValueOnce({ agents: [], count: 0 })
+      .mockResolvedValueOnce({ persisted: true });
 
     const renderer = await montar();
 
@@ -235,6 +242,7 @@ describe("ApprovalsPanel", () => {
       .mockResolvedValueOnce({
         approvals: [APROVACAO], count: 1, queue: FILA, notification: NOTIFICACAO_OK,
       })
+      .mockResolvedValueOnce({ agents: [], count: 0 })
       .mockRejectedValueOnce(new Error("trilha de auditoria durável não está configurada"));
 
     const renderer = await montar();
@@ -252,6 +260,7 @@ describe("ApprovalsPanel", () => {
         queue: { ...FILA, pending: 0, overdue: 0, expired: 0, oldest_seconds: 0, items: [] },
         notification: NOTIFICACAO_OK,
       })
+      .mockResolvedValueOnce({ agents: [], count: 0 })
       .mockResolvedValueOnce({ persisted: false });
 
     const renderer = await montar();
@@ -273,6 +282,16 @@ describe("ApprovalsPanel", () => {
     expect(urls).toContain("/api/agent/v1/service-agents/approvals?status=denied");
   });
 
+  it("o catalogo de agentes e' mostrado -- a funcao nao fica sem chamador", async () => {
+    responder();
+
+    const renderer = await montar();
+
+    expect(texto(renderer, "aprovacoes-agentes")).toContain("2 agente(s) reconhecido(s)");
+    const urls = mockAgentFetch.mock.calls.map((c) => c[0] as string);
+    expect(urls).toContain("/api/agent/v1/service-agents");
+  });
+
   it("as rotas usam o prefixo explicito e sao GET", async () => {
     responder();
 
@@ -280,6 +299,7 @@ describe("ApprovalsPanel", () => {
 
     const urls = mockAgentFetch.mock.calls.map((c) => c[0] as string).sort();
     expect(urls).toEqual([
+      "/api/agent/v1/service-agents",
       "/api/agent/v1/service-agents/approvals?status=pending",
       "/api/agent/v1/service-agents/audit",
     ]);

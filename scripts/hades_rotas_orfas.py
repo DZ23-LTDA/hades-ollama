@@ -72,6 +72,17 @@ RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # errada por 5 (E-1329), certa (E-1331), errada por 1 (E-1332), errada por 2 (E-1333).
 #   *Cinco medicoes, uma previsao certa: o instrumento e' que esta' errado, nao a minha
 #   contabilidade.*
+# 48 no E-1334 -- INALTERADO, e a razao e' o instrumento outra vez. O painel passou a
+# consumir `/service-agents` (o catalogo), mas essa rota ja' estava coberta pelo prefixo
+# `/service-agents/...` de `/approvals` e `/audit` (E-1333).
+#
+# SEXTA leitura do mesmo gate:
+#   E-1328  previ 3  caiu 10   E-1329  previ 2  caiu 7    E-1330  previ 1  caiu 0
+#   E-1331  previ 7  caiu 7    E-1332  previ 7  caiu 8    E-1333  previ 3  caiu 5
+#   E-1334  previ 3  caiu 0
+#
+#   *Uma funcao de cliente sem chamador e' a mesma familia do teste que prova o que o
+#   produto nao usa -- mas corrigir isso nao move um contador que mede prefixos.*
 TETO_ORFAS = 48
 
 # Quem chama nao e' o frontend do HADES -- a ausencia no UI e' correcta.
