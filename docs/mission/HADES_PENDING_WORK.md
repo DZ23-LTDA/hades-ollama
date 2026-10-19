@@ -1,3 +1,74 @@
+## JANELA E-1355
+
+A cabeça do índice é **E-1355**.
+
+- **E-1355** — **Receita de pedido não pago é recusada pelo servidor.** `FinanceOrderPanel` consome as
+  **três** escritas de `/finance/orders/:id/`. O comentário: *«lanca a receita de um pedido PAGO. Pedido
+  aguardando pagamento e' recusado (409): lancar receita dele seria receita ficticia.»* O painel **não
+  adivinha** o estado do pagamento — mostra **«O servidor recusou o lançamento: `<motivo>`»**.
+  *Receita fictícia é o pior número que um sistema financeiro pode produzir: não é um erro de arredondamento,
+  é um valor que entra no relatório e que ninguém vai cobrar.*
+  **As três não devolvem o mesmo status:** `revenue` **201 ou 200** (idempotente), `cost` **201 sempre**,
+  `reconcile` **200 sempre** e *«liga o pedido à linha do extrato no MESMO lançamento»* — não cria nada.
+  **O factor 100 fica visível ANTES do erro:** *«1250 centavos = R$ 12,50»*.
+  **VIGÉSIMA SEXTA MEDIÇÃO — previsão CERTA:** previ **3**, mediu **3** (18 → 15).
+- **E-1354** — scheduling/reschedule: a recusa vem do MOTOR; remarcar ≠ cancelar+criar; tecto medido depois.
+- **E-1353** — scheduling/cancel: motivo obrigatório = auditabilidade; id no CORPO; 19 → 18.
+- **E-1352** — scheduling/book: E-456 contrato separado; E-458 reentrega ≠ erro; `busy_until` ≠ `ends_at`; 20 → 19.
+- **E-1351** — business/tick: 4 desfechos separados; `errors` vem COM resultado; 21 → 20.
+- **E-1350** — reschedule/slots: dois campos ditos por nome; responde ANTES; 23 → 21.
+
+## A REGRA DO GATE — AGORA LIDA NO CÓDIGO
+
+```python
+prefixo = caminho.split(":")[0].rstrip("/") or caminho
+if prefixo not in fonte:      # SUBSTRING, não igualdade
+    orfas.append((metodo, caminho))
+```
+
+**O prefixo corta no `:` — o parâmetro de rota.** Por isso:
+
+| rotas | prefixo | rende |
+|---|---|---|
+| `finance/orders/:id/revenue` · `/cost` · `/reconcile` | `/finance/orders` | **3 de uma vez** |
+| `scheduling/book` | `/scheduling/book` | 1 |
+| `scheduling/reschedule` + `reschedule/slots` | `/scheduling/reschedule` (substring) | 0 |
+
+***Ler o instrumento antes de prever custa menos do que prever três vezes.***
+
+## A distância, agora
+
+| categoria | rotas |
+|---|---|
+| no backend | **348** |
+| órfãs no frontend | **31** |
+| consumidor externo (correcto) | **16** |
+| **lacuna de produto** | **15** (era 93) |
+
+## AS 15 RESTANTES — LISTA EXACTA DO GATE
+
+| domínio | n | rotas |
+|---|---|---|
+| `auth` | 3 | `/auth/mfa/disable` · `/auth/mfa/enable` · `/auth/mfa/recovery/generate` |
+| `scheduling` | 3 | `/scheduling/no-show` · `/scheduling/waitlist/confirm` · `/scheduling/waitlist/offer` |
+| `media` | 2 | `/media/ocr` · `/media/tone` |
+| `notifications` | 1 | `/notifications/register` |
+| `crm` | 1 | `/crm/opportunities/:id/stage` |
+| `inbox` | 1 | `/inbox/messages` |
+| `service-agents` | 1 | `/service-agents/approval-approvers` |
+| `business` | 1 | `/business/certify` |
+| `company` | 1 | `/company/factory/launch` |
+| `plugins` | 1 | `/plugins/bundle` |
+
+**Vinte e seis medições, dez previsões certas** — e as três últimas foram certas depois de eu ler o gate.
+
+O que continua aberto: **15 rotas** sem UI (todas escritas); **20 ORPHAN de 209**; o build **não é assinado
+nem instalado**; `sign.start`/`publish.*` inexistentes; **`gitleaks` histórico — a única falha de CI**;
+instalação limpa `BLOCKED_EXTERNAL`; **não há catraca contra testes flaky**; **FASE 30 não iniciada**.
+Achados abertos: **o transporte descarta corpo e status de erro** (o 409 do E-1352 e o 201-vs-200 daqui);
+**o A1 nunca foi avaliado** por `SigningProvider`.
+
+---
 ## JANELA E-1354
 
 A cabeça do índice é **E-1354**.

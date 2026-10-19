@@ -208,6 +208,14 @@ RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 #
 #   *Previ 0 e mediu 1. O `cancel` estava listado individualmente, e fechar o `book` nao o arrastou --
 #   o que mostra que o gate agrupa por prefixo mas LISTA por rota. Duas propriedades, e eu confundi-as.*
+# # 18 -> 15 no E-1355: `FinanceOrderPanel` consome as TRES escritas de `/finance/orders/:id/`.
+#
+#   *O gate corta o caminho no `:` -- `finance/orders/:id/revenue`, `/cost` e `/reconcile` dao' o MESMO
+#   prefixo `/finance/orders`, e a comparacao e' SUBSTRING. Por isso tres rotas renderam tres de uma vez
+#   -- e por isso a previsao (3) acertou depois de duas rondas erradas: a regra estava no instrumento,
+#   nao na minha cabeca.*
+#
+#   ***ler o instrumento antes de prever custa menos do que prever tres vezes.***
 # TETO_ORFAS = 18 -- e a licao do E-1354 vem AQUI, nao no numero.
 #
 #   *Previ 1 e mediu 0. O `reschedule/slots` do E-1350 ja' tinha fechado o prefixo `scheduling/reschedule`,
@@ -220,7 +228,7 @@ RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 #
 #   *E a segunda licao: o tecto mede-se DEPOIS. Baixar antes de medir e' adivinhar em vez de medir, e o
 #   gate que existe para travar o proximo aumento passa a travar o trabalho feito.*
-TETO_ORFAS = 18
+TETO_ORFAS = 15
 
 # Quem chama nao e' o frontend do HADES -- a ausencia no UI e' correcta.
 CONSUMIDOR_EXTERNO = (
