@@ -171,6 +171,74 @@ export async function listarContactos(
   }
 }
 
+/** Um registo de consentimento por canal. `evidence` e `reason` podem conter PII. */
+export interface RegistoDeConsentimento {
+  organization_id: string;
+  channel: string;
+  contact_id: string;
+  state: string;
+  source?: string;
+  evidence?: string;
+  reason?: string;
+  granted_by?: string;
+  revoked_by?: string;
+  created_at: string;
+  updated_at: string;
+  expires_at?: string;
+}
+
+/**
+ * O detalhe de um contacto: contacto, consentimento por canal e oportunidades.
+ *
+ * E' a MESMA forma que a lista nao tem -- e por isso o painel so' a pede a quem
+ * clica. `blocked_channels` e' o estado real lido do `ConsentRegistry`; na lista
+ * nao existe, e o painel dizia «sem informacao de consentimento».
+ */
+export interface DetalheDeContacto {
+  contact: ContactoDeCRM;
+  consent: RegistoDeConsentimento[] | null;
+  blocked_channels: Record<string, boolean> | null;
+  opportunities: OportunidadeDeCRM[] | null;
+}
+
+/**
+ * Descreve o estado de consentimento por canal, sem expor `evidence` nem `reason`.
+ *
+ * `evidence` e' a prova documental do consentimento -- contrato assinado, URL do
+ * formulario, referencia de chamada. Pode conter PII de terceiros que o
+ * proprietario nao pediu para ver nesta ecra. O painel mostra o ESTADO e o CANAL;
+ * a prova fica onde esta'.
+ *
+ *   *Uma prova de consentimento que se mostra sem pedido e' uma segunda recolha de
+ *   dados pessoais.*
+ */
+export function descreverConsentimento(
+  registos: RegistoDeConsentimento[] | null | undefined,
+): string[] {
+  if (!registos || registos.length === 0) return [];
+  return registos
+    .slice()
+    .sort((a, b) => a.channel.localeCompare(b.channel))
+    .map((registo) => {
+      const expira = registo.expires_at ? `, expira ${registo.expires_at.slice(0, 10)}` : "";
+      return `${registo.channel}: ${registo.state}${expira}`;
+    });
+}
+
+/** Le o detalhe de um contacto. E' a unica rota que traz `blocked_channels`. */
+export async function obterContacto(id: string, init?: RequestInit): Promise<DetalheDeContacto> {
+  const limpo = id.trim();
+  if (limpo === "") throw new Error("id do contacto vazio");
+  try {
+    return await agentFetch<DetalheDeContacto>(
+      `/api/agent/v1/crm/contacts/${encodeURIComponent(limpo)}`,
+      init,
+    );
+  } catch (causa) {
+    traduzir(causa);
+  }
+}
+
 export async function funilDeCRM(init?: RequestInit): Promise<FunilDeCRM> {
   try {
     return await agentFetch<FunilDeCRM>("/api/agent/v1/crm/pipeline", init);

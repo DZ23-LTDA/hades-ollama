@@ -1,3 +1,56 @@
+## JANELA E-1330
+
+A cabeça do índice é **E-1330**.
+
+- **E-1330** — **o limite declarado no E-1329 passou a ser um dado lido.** O E-1329 dizia: «o
+  `blocked_channels` só vem em `/crm/contacts/:id`, que esta fatia NÃO consome — o painel diz «sem
+  informação de consentimento» em vez de inventar». Esta fatia consome-a: clicar no nome pede
+  `/crm/contacts/:id` e mostra o `blocked_channels` **real**, o estado por canal e a contagem de
+  oportunidades — tudo do servidor.
+  **(1) A prova documental do consentimento não se mostra.** `ConsentRecord` traz `evidence` (URL do
+  formulário, referência do contrato) e `reason`. São prova de terceiros e podem conter PII que o
+  proprietário não pediu para ver neste ecrã. O painel mostra o **estado** e o **canal**; a prova fica
+  onde está, e o painel di-lo. O teste discriminante verifica que **a URL da evidência e o número de
+  documento não aparecem**. *Uma prova de consentimento que se mostra sem pedido é uma segunda recolha
+  de dados pessoais.*
+  **(2) Sem registo não é consentimento implícito** — «nenhum canal está autorizado», nunca «tudo
+  permitido por omissão». **(3) A falha do detalhe não apaga a lista.**
+  **TERCEIRO AVISO DO MESMO GATE — E O MAIS CLARO.** O teto **não baixou**: continua **68**. O
+  `/crm/contacts/:id` já estava coberto pelo prefixo `/crm/contacts` da lista (E-1329). O painel passou
+  a consumir **uma rota a mais** e o contador **não mexeu**. *Um instrumento que não distingue duas
+  rotas do mesmo prefixo não conta rotas: conta prefixos com nome de rota.* **Três avisos em três
+  fatias** (E-1328, E-1329, E-1330): o número que este gate baixa é do **domínio**; o número que eu
+  fecho é o que os testes cobrem.
+- **E-1329** — `CRMPanel` com PII mascarada; 75 → 68.
+- **E-1328** — `CommercePanel`; 85 → 75.
+- **E-1327** — `SchedulingPanel`; 87 → 85.
+- **E-1326** — falso progresso: painel já existia, sobrescrito e restaurado (teto inalterado).
+- **E-1325** — `DeploymentsPanel`; 88 → 87.
+
+## A distância, agora
+
+| categoria | rotas |
+|---|---|
+| no backend | **348** |
+| órfãs no frontend | **84** |
+| consumidor externo (correcto) | **16** |
+| **lacuna de produto** | **68** (era 93) |
+
+**Os maiores domínios ainda sem UI:** `inbox` **8**, `sales` **8**, `service-agents` **6**,
+`omnichannel` **5**, `auth` **4**, `supervisor` **4** (parcial), `finance` **4**, `business` **4**
+(parcial), `plugins` **3**, `media` **2**, `company` **2**.
+
+**Nota acumulada sobre o contador — três avisos:** o gate mede o **domínio**, não a rota. E-1328 (3 de
+10), E-1329 (2 de 8, com 1 de detalhe aberta), E-1330 (**1 rota nova consumida, contador inalterado**).
+O instrumento tem um limite de medida que já ensinou três vezes a mesma lição; corrigi-lo é trabalho
+próprio, não um efeito colateral de fechar painéis.
+
+O que continua aberto: **68 rotas** sem UI; o gate **mede prefixos**; a assimetria `call.raw`/`call.path`;
+**20 ORPHAN listados de 236**; o build **não é assinado nem instalado**; `sign.start`/`publish.*`
+inexistentes; o painel do build **não se actualiza sozinho**; `gitleaks`; instalação limpa
+`BLOCKED_EXTERNAL`; **FASE 30 não iniciada**.
+
+---
 ## JANELA E-1329
 
 A cabeça do índice é **E-1329**.

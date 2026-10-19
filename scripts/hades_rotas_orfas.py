@@ -50,6 +50,12 @@ RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # `/crm/contacts/:id` continua orfao -- o prefixo `/crm/contacts` nao cobre o sufixo
 # `/:id`. *Um gate que compara prefixos nao ve' as rotas de detalhe: quem fecha a lista
 # fecha a lista, nao o detalhe.*
+# 68 no E-1330, e a razao e' o proprio instrumento: o detalhe do contacto consome
+# `/crm/contacts/:id`, mas essa rota JA' estava coberta pelo prefixo `/crm/contacts` da
+# lista (E-1329). O painel passou a consumir uma rota a mais e o contador nao mexeu --
+# o que e' a TERCEIRA vez que este gate mostra que mede o dominio e nao a rota.
+#   *Um instrumento que nao distingue duas rotas do mesmo prefixo nao conta rotas: conta
+#   prefixos com nome de rota.*
 TETO_ORFAS = 68
 
 # Quem chama nao e' o frontend do HADES -- a ausencia no UI e' correcta.

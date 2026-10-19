@@ -12,13 +12,16 @@ import { useCallback, useEffect, useState } from "react";
 import {
   CRMAusenteError,
   descreverCanaisBloqueados,
+  descreverConsentimento,
   descreverEtapa,
   descreverValor,
   funilDeCRM,
   listarContactos,
   mascararEmail,
   mascararTelefone,
+  obterContacto,
   type ContactoDeCRM,
+  type DetalheDeContacto,
   type FunilDeCRM,
 } from "@/lib/crmClient";
 
@@ -31,6 +34,18 @@ export function CRMPanel() {
   const [erro, setErro] = useState<string | null>(null);
   const [filtro, setFiltro] = useState("");
   const [mostrarPII, setMostrarPII] = useState(false);
+  const [detalhe, setDetalhe] = useState<DetalheDeContacto | null>(null);
+  const [detalheErro, setDetalheErro] = useState<string | null>(null);
+
+  const abrirDetalhe = useCallback(async (id: string) => {
+    setDetalheErro(null);
+    try {
+      setDetalhe(await obterContacto(id));
+    } catch (causa) {
+      setDetalhe(null);
+      setDetalheErro(causa instanceof Error ? causa.message : "Não foi possível ler o contacto.");
+    }
+  }, []);
 
   const carregar = useCallback(async (consulta: string) => {
     setErro(null);
@@ -190,7 +205,16 @@ export function CRMPanel() {
                     data-testid={`crm-contacto-${contacto.id}`}
                     className="border-t border-neutral-800"
                   >
-                    <td className="py-1 pr-2">{contacto.name}</td>
+                    <td className="py-1 pr-2">
+                      <button
+                        type="button"
+                        data-testid={`crm-abrir-${contacto.id}`}
+                        onClick={() => void abrirDetalhe(contacto.id)}
+                        className="text-left underline-offset-2 hover:underline"
+                      >
+                        {contacto.name}
+                      </button>
+                    </td>
                     <td className="py-1 pr-2 font-mono text-[11px] text-neutral-400">
                       {mostrarPII
                         ? contacto.phone || "—"
@@ -211,6 +235,49 @@ export function CRMPanel() {
             O estado de consentimento por canal vem do registro de consentimento, não do contacto:{" "}
             {descreverCanaisBloqueados(undefined)}.
           </p>
+
+          {detalheErro && (
+            <p data-testid="crm-detalhe-erro" role="alert" className="mt-2 text-xs text-red-400">
+              {detalheErro}
+            </p>
+          )}
+
+          {detalhe && (
+            <div
+              data-testid="crm-detalhe"
+              className="mt-3 rounded border border-neutral-700 bg-neutral-950/60 p-3 text-xs"
+            >
+              <h4 className="mb-1 font-semibold text-neutral-200">
+                Consentimento de {detalhe.contact.name}
+              </h4>
+              {/* `blocked_channels` so' vem nesta rota. Antes daqui o painel dizia
+                  «sem informacao de consentimento» -- e dizia a verdade. */}
+              <p data-testid="crm-detalhe-bloqueados" className="text-amber-300">
+                {descreverCanaisBloqueados(detalhe.blocked_channels ?? undefined)}
+              </p>
+              {descreverConsentimento(detalhe.consent).length === 0 ? (
+                <p data-testid="crm-detalhe-sem-consentimento" className="mt-1 text-neutral-400">
+                  Não há registo de consentimento para este contacto. Sem registo, nenhum canal está
+                  autorizado.
+                </p>
+              ) : (
+                <ul data-testid="crm-detalhe-canais" className="mt-1 space-y-0.5 text-neutral-300">
+                  {descreverConsentimento(detalhe.consent).map((linha) => (
+                    <li key={linha} className="font-mono text-[11px]">
+                      {linha}
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <p className="mt-2 text-[11px] text-neutral-500">
+                A prova documental de cada consentimento (evidência, motivo) não é mostrada aqui: é
+                prova de terceiros e não se recolhe uma segunda vez por conveniência de ecrã.
+              </p>
+              <p data-testid="crm-detalhe-oportunidades" className="mt-1 text-neutral-400">
+                {(detalhe.opportunities ?? []).length} oportunidade(s) neste contacto.
+              </p>
+            </div>
+          )}
         </>
       )}
 

@@ -229,4 +229,91 @@ describe("CRMPanel", () => {
       expect(init?.method ?? "GET").toBe("GET");
     }
   });
+  it("clicar no nome pede o detalhe, que e' a unica rota com blocked_channels", async () => {
+    responder();
+    mockAgentFetch.mockResolvedValueOnce({
+      contact: CONTACTOS[0],
+      consent: [
+        {
+          organization_id: "o1", channel: "email", contact_id: "c1", state: "granted",
+          source: "formulario", evidence: "https://exemplo.com/consentimentos/ana-2026.pdf",
+          reason: "pedido do titular", granted_by: "u1",
+          created_at: "2026-10-19T00:00:00Z", updated_at: "2026-10-19T00:00:00Z",
+        },
+      ],
+      blocked_channels: { sms: true, whatsapp: true },
+      opportunities: [{ id: "op1", organization_id: "o1", contact_id: "c1", title: "Proposta",
+        value_cents: 50000, currency: "BRL", stage: "proposta",
+        created_at: "2026-10-19T00:00:00Z", updated_at: "2026-10-19T00:00:00Z",
+        stage_changed_at: "2026-10-19T00:00:00Z" }],
+    });
+
+    const renderer = await montar();
+    await agir(() => porTestId(renderer, "crm-abrir-c1")[0].props.onClick());
+
+    const urls = mockAgentFetch.mock.calls.map((c) => c[0] as string);
+    expect(urls).toContain("/api/agent/v1/crm/contacts/c1");
+    expect(texto(renderer, "crm-detalhe-bloqueados")).toContain("bloqueado: sms, whatsapp");
+    expect(texto(renderer, "crm-detalhe-canais")).toContain("email: granted");
+    expect(texto(renderer, "crm-detalhe-oportunidades")).toContain("1 oportunidade");
+  });
+
+  it("a prova documental do consentimento (evidence/reason) NAO e' mostrada", async () => {
+    responder();
+    mockAgentFetch.mockResolvedValueOnce({
+      contact: CONTACTOS[0],
+      consent: [
+        {
+          organization_id: "o1", channel: "email", contact_id: "c1", state: "granted",
+          source: "formulario",
+          evidence: "https://exemplo.com/consentimentos/ana-2026.pdf",
+          reason: "pedido do titular com documento 12345678900",
+          granted_by: "u1",
+          created_at: "2026-10-19T00:00:00Z", updated_at: "2026-10-19T00:00:00Z",
+        },
+      ],
+      blocked_channels: {},
+      opportunities: [],
+    });
+
+    const renderer = await montar();
+    await agir(() => porTestId(renderer, "crm-abrir-c1")[0].props.onClick());
+
+    const detalhe = texto(renderer, "crm-detalhe");
+    expect(detalhe).toContain("email: granted");
+    expect(detalhe).not.toContain("consentimentos/ana-2026.pdf");
+    expect(detalhe).not.toContain("12345678900");
+    expect(detalhe).not.toContain("pedido do titular");
+    expect(detalhe).toContain("nao e' mostrada aqui".replace("nao e'", "não é"));
+  });
+
+  it("contacto sem registo de consentimento diz que nenhum canal esta' autorizado", async () => {
+    responder();
+    mockAgentFetch.mockResolvedValueOnce({
+      contact: CONTACTOS[1],
+      consent: null,
+      blocked_channels: {},
+      opportunities: null,
+    });
+
+    const renderer = await montar();
+    await agir(() => porTestId(renderer, "crm-abrir-c2")[0].props.onClick());
+
+    expect(texto(renderer, "crm-detalhe-sem-consentimento")).toContain(
+      "nenhum canal está autorizado",
+    );
+    expect(porTestId(renderer, "crm-detalhe-canais")).toHaveLength(0);
+    expect(texto(renderer, "crm-detalhe-oportunidades")).toContain("0 oportunidade");
+  });
+
+  it("falha ao ler o detalhe mostra erro e nao esconde a lista", async () => {
+    responder();
+    mockAgentFetch.mockRejectedValueOnce(new Error("contato nao encontrado"));
+
+    const renderer = await montar();
+    await agir(() => porTestId(renderer, "crm-abrir-c1")[0].props.onClick());
+
+    expect(texto(renderer, "crm-detalhe-erro")).toContain("contato nao encontrado");
+    expect(texto(renderer, "crm-contactos")).toContain("Ana Silva");
+  });
 });
