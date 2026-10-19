@@ -1063,6 +1063,7 @@ func (a *agentAPI) register(r *gin.Engine) {
 	group.POST("/agents/backup", a.backupAgentPersonas)
 	group.GET("/agents/backups", a.listAgentBackups)
 	group.POST("/agents/restore", a.restoreAgentPersonas)
+	group.POST("/agents/import", a.importAgentPersona)
 	group.GET("/agents/drift", a.agentPersonaDrift)
 	group.POST("/agents/install", a.installAgentPersona)
 }

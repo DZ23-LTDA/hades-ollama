@@ -218,7 +218,7 @@ func TestRevogadoNaoVolta(t *testing.T) {
 
 func TestDescribeEvalCobreTodosOsEstados(t *testing.T) {
 	todos := []EvalState{
-		EvalImportedUnreviewed, EvalSchemaValidated, EvalSecurityReviewed, EvalToolsResolved,
+		EvalImportedUnreviewed, EvalQuarantined, EvalSchemaValidated, EvalSecurityReviewed, EvalToolsResolved,
 		EvalFailed, EvalLimited, EvalPass, EvalProductionApproved, EvalDisabled, EvalRevoked,
 	}
 	for _, s := range todos {

@@ -269,6 +269,55 @@ func (a *agentAPI) restoreAgentPersonas(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"organization_id": organizationID, "restored": id})
 }
 
+// importAgentPersona: POST /agents/import
+//
+// TRIAGEM, NAO INSTALACAO. Recebe o manifesto bruto, valida a forma e escaneia o conteudo. Nao escreve nada,
+// nao activa nada: devolve a decisao.
+//
+//	*Importar sem activar e o unico jeito de o utilizador ver o que esta a instalar antes de o instalar.*
+//
+// O estado devolvido nunca e' PRODUCTION_APPROVED: uma importacao nao aprova ninguem.
+func (a *agentAPI) importAgentPersona(c *gin.Context) {
+	organizationID := a.organizationID(c)
+	if organizationID == "" {
+		writeAgentError(c, http.StatusForbidden, errAgentForbidden)
+		return
+	}
+	var pedido struct {
+		Content string `json:"content"`
+	}
+	if err := decodeJSON(c, &pedido); err != nil {
+		writeAgentError(c, http.StatusBadRequest, err)
+		return
+	}
+	if strings.TrimSpace(pedido.Content) == "" {
+		writeAgentError(c, http.StatusBadRequest, errors.New("content is required"))
+		return
+	}
+	// Limite de 256 KiB: um manifesto de persona que nao cabe nisto nao e um manifesto.
+	const limiteBytes = 256 * 1024
+	persona, estado, relatorio, err := agent.ImportDecision([]byte(pedido.Content), limiteBytes)
+	if err != nil {
+		writeAgentError(c, http.StatusBadRequest, err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"organization_id": organizationID,
+		"state":           string(estado),
+		"report":          relatorio,
+		// `installed` e' sempre false: esta rota nao instala. Dizer isto e' diferente de omitir.
+		"installed": false,
+		"note":      "triagem apenas: nenhum ficheiro foi escrito e nada foi activado",
+		"persona": gin.H{
+			"id":      persona.ID,
+			"name":    persona.Name,
+			"version": persona.Version,
+			"source":  persona.Source,
+			"license": persona.License,
+		},
+	})
+}
+
 // agentPersonaDrift: GET /agents/drift
 func (a *agentAPI) agentPersonaDrift(c *gin.Context) {
 	organizationID := a.organizationID(c)

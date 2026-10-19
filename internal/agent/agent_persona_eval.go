@@ -41,6 +41,9 @@ type EvalState string
 
 const (
 	EvalImportedUnreviewed EvalState = "IMPORTED_UNREVIEWED"
+	// QUARANTINE: a triagem achou conteudo hostil. Nao e um aviso num relatorio: e um estado que impede
+	// instalar. Sai so por revisao humana ou por revogacao.
+	EvalQuarantined        EvalState = "QUARANTINE"
 	EvalSchemaValidated    EvalState = "SCHEMA_VALIDATED"
 	EvalSecurityReviewed   EvalState = "SECURITY_REVIEWED"
 	EvalToolsResolved      EvalState = "TOOLS_RESOLVED"
@@ -57,7 +60,7 @@ const (
 //
 //	*A ausencia da capacidade e' a garantia mais forte que existe.*
 var EvalTransitions = map[EvalState][]EvalState{
-	EvalImportedUnreviewed: {EvalSchemaValidated, EvalRevoked},
+	EvalImportedUnreviewed: {EvalSchemaValidated, EvalQuarantined, EvalRevoked},
 	EvalSchemaValidated:    {EvalSecurityReviewed, EvalRevoked},
 	EvalSecurityReviewed:   {EvalToolsResolved, EvalRevoked},
 	EvalToolsResolved:      {EvalFailed, EvalLimited, EvalPass, EvalRevoked},
@@ -66,7 +69,9 @@ var EvalTransitions = map[EvalState][]EvalState{
 	EvalPass:               {EvalProductionApproved, EvalDisabled, EvalRevoked},
 	EvalProductionApproved: {EvalDisabled, EvalRevoked},
 	EvalDisabled:           {EvalToolsResolved, EvalRevoked},
-	EvalRevoked:            {},
+	// A quarentena so sai por revisao humana. Nem TOOLS_RESOLVED nem EVALUATED_PASS saltam a revisao.
+	EvalQuarantined: {EvalSecurityReviewed, EvalRevoked},
+	EvalRevoked:     {},
 }
 
 // ErrEvalTransition cobre transicoes que a maquina nao permite.
@@ -293,6 +298,8 @@ func DescribeEval(s EvalState) string {
 	switch s {
 	case EvalImportedUnreviewed:
 		return "Importado, ninguem reviu. Nao instale por estar no catalogo."
+	case EvalQuarantined:
+		return "Em quarentena: a triagem achou conteudo hostil. Nao instala ate revisao humana."
 	case EvalSchemaValidated:
 		return "A forma e' valida; o comportamento nao foi medido."
 	case EvalSecurityReviewed:

@@ -10,6 +10,7 @@ import { useCallback, useState } from "react";
 import {
   CentroAusenteError,
   coberturaDeAvaliacao,
+  contarAchados,
   contarCasos,
   guardarBackup,
   lerAvaliacao,
@@ -17,6 +18,7 @@ import {
   listarBackups,
   restaurarBackup,
   resumoDeEquipas,
+  triarImportacao,
   descreverCatalogo,
   listarCatalogo,
   descreverDrift,
@@ -30,6 +32,7 @@ import {
   type Avaliacao,
   type Catalogo,
   type ListaDeBackups,
+  type ResultadoDeImportacao,
   type Equipas,
   type ItemDeDrift,
   type ListaDeAgentes,
@@ -45,6 +48,7 @@ type Estado =
   | "avaliacao"
   | "equipas"
   | "backups"
+  | "triagem"
   | "drift"
   | "instalado"
   | "ausente"
@@ -72,12 +76,14 @@ export function AgentCenterPanel() {
   const [equipas, setEquipas] = useState<Equipas | null>(null);
   const [backups, setBackups] = useState<ListaDeBackups | null>(null);
   const [backupId, setBackupId] = useState("");
+  const [manifesto, setManifesto] = useState("");
+  const [triagem, setTriagem] = useState<ResultadoDeImportacao | null>(null);
   const [instalacao, setInstalacao] = useState<ResultadoDeInstalacao | null>(null);
   const [alvo, setAlvo] = useState("hades");
   const [destino, setDestino] = useState(".hades/agents/revisor-exemplo.md");
 
   const correr = useCallback(
-    async (op: "list" | "catalog" | "evaluation" | "teams" | "backups" | "restore" | "drift" | "install") => {
+    async (op: "list" | "catalog" | "evaluation" | "teams" | "backups" | "restore" | "triagem" | "drift" | "install") => {
       setErro(null);
       setEstado("a-carregar");
       try {
@@ -97,6 +103,9 @@ export function AgentCenterPanel() {
           await guardarBackup();
           setBackups(await listarBackups());
           setEstado("backups");
+        } else if (op === "triagem") {
+          setTriagem(await triarImportacao(manifesto));
+          setEstado("triagem");
         } else if (op === "restore") {
           await restaurarBackup(backupId);
           setBackups(await listarBackups());
@@ -190,6 +199,14 @@ export function AgentCenterPanel() {
           className="rounded border border-neutral-700 px-2 py-1 text-xs text-neutral-300 hover:bg-neutral-800"
         >
           Ver equipas
+        </button>
+        <button
+          type="button"
+          data-testid="agent-center-triagem-btn"
+          onClick={() => void correr("triagem")}
+          className="rounded border border-neutral-700 px-2 py-1 text-xs text-neutral-300 hover:bg-neutral-800"
+        >
+          Triar importação
         </button>
         <button
           type="button"
@@ -338,6 +355,36 @@ export function AgentCenterPanel() {
               </li>
             ))}
           </ul>
+        </div>
+      )}
+
+      {estado === "triagem" && (
+        <div className="space-y-1">
+          <textarea
+            data-testid="agent-center-triagem-texto"
+            value={manifesto}
+            onChange={(e) => setManifesto(e.target.value)}
+            placeholder='Cole o manifesto da persona (JSON) para triagem'
+            rows={4}
+            className="w-full rounded border border-neutral-700 bg-neutral-900 p-1 font-mono text-[11px] text-neutral-200"
+          />
+          <p data-testid="agent-center-triagem-estado" className="text-[11px] text-neutral-300">
+            estado: {triagem?.state ?? "—"} · {contarAchados(triagem?.report ?? null).bloqueios} bloqueio(s) ·{" "}
+            {contarAchados(triagem?.report ?? null).avisos} aviso(s) ·{" "}
+            {triagem?.installed === true ? "INSTALADO" : "nada instalado"}
+          </p>
+          <p data-testid="agent-center-triagem-nota" className="text-[11px] text-neutral-500">
+            {triagem?.note ?? "a triagem lê e recusa; não escreve nem ativa nada"}
+          </p>
+          {(triagem?.report?.findings ?? []).length > 0 && (
+            <ul data-testid="agent-center-triagem-achados" className="space-y-0.5 text-[11px] text-amber-300">
+              {(triagem?.report?.findings ?? []).map((f, i) => (
+                <li key={`${f.pattern}-${i}`}>
+                  [{f.severity}] {f.field}: {f.why}
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       )}
 

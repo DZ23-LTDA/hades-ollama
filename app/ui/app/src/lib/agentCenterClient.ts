@@ -152,6 +152,29 @@ export interface Equipas {
   note?: string;
 }
 
+export interface AchadoDeQuarentena {
+  field: string;
+  pattern: string;
+  severity: "BLOCK" | "WARN";
+  excerpt: string;
+  why: string;
+}
+
+export interface RelatorioDeQuarentena {
+  ok: boolean;
+  blocked: boolean;
+  needs_review: boolean;
+  findings?: AchadoDeQuarentena[];
+}
+
+export interface ResultadoDeImportacao {
+  state?: string;
+  report?: RelatorioDeQuarentena;
+  installed?: boolean;
+  note?: string;
+  persona?: { id?: string; name?: string; version?: string; source?: string; license?: string };
+}
+
 export interface BackupDePersonas {
   id: string;
   scope: string;
@@ -338,6 +361,31 @@ export async function restaurarBackup(backupId: string): Promise<{ restored?: st
   } catch (causa) {
     traduzir(causa);
   }
+}
+
+/**
+ * Triagem de um manifesto. NAO instala nada -- escrever «importado» quando nada foi escrito seria o defeito.
+ */
+export async function triarImportacao(content: string): Promise<ResultadoDeImportacao> {
+  const bruto = (content ?? "").trim();
+  if (bruto === "") throw new InstalacaoRecusadaError("cole o manifesto antes de triar");
+  try {
+    return await agentFetch<ResultadoDeImportacao>("/api/agent/v1/agents/import", {
+      method: "POST",
+      body: JSON.stringify({ content: bruto }),
+    });
+  } catch (causa) {
+    traduzir(causa);
+  }
+}
+
+/** Quantos achados de cada severidade, para o resumo nao esconder um BLOCK atras de WARNs. */
+export function contarAchados(r: RelatorioDeQuarentena | null): { bloqueios: number; avisos: number } {
+  const lista = r?.findings ?? [];
+  return {
+    bloqueios: lista.filter((f) => f.severity === "BLOCK").length,
+    avisos: lista.filter((f) => f.severity !== "BLOCK").length,
+  };
 }
 
 export async function lerDrift(): Promise<RelatorioDeDrift> {
