@@ -1075,8 +1075,8 @@ func (a *agentAPI) register(r *gin.Engine) {
 	group.POST("/agents/evaluation/run", a.runAgentEvaluation)
 	group.GET("/agents/drift", a.agentPersonaDrift)
 	group.POST("/agents/install", a.installAgentPersona)
-		group.POST("/agents/remove", a.removeAgentPersona)
-		group.POST("/agents/update", a.updateAgentPersona)
+	group.POST("/agents/remove", a.removeAgentPersona)
+	group.POST("/agents/update", a.updateAgentPersona)
 }
 
 func (a *agentAPI) authMiddleware(c *gin.Context) {

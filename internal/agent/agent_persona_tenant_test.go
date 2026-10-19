@@ -4,7 +4,7 @@ import "testing"
 
 // TestLedgerIsolaOrganizacoes acrescenta o que `TestLedgerEscoposSaoIsolados` (que JA' EXISTIA) nao media.
 //
-// CORRECCAO A MIM MESMO
+// # CORRECCAO A MIM MESMO
 //
 // Comecei este ficheiro a dizer «a propriedade que nenhum teste cobria». Era falso: ao correr a suite,
 // `TestLedgerEscoposSaoIsolados` apareceu e passou. O que faltava nao era o isolamento de LEITURA -- era o
@@ -12,10 +12,10 @@ import "testing"
 //
 // O QUE E' NOVO AQUI
 //
-//   1. `RemoveAt` pedido por B a apontar ao DESTINO de A: tem de devolver `false` e nao remover nada.
-//      Um isolamento de leitura com escrita cruzada aberta nao e' isolamento.
-//   2. `Entries("")` com escopo vazio: o zero value de uma string nao pode significar «todos».
-//      *O zero value de um bool e' uma afirmacao silenciosa.*
+//  1. `RemoveAt` pedido por B a apontar ao DESTINO de A: tem de devolver `false` e nao remover nada.
+//     Um isolamento de leitura com escrita cruzada aberta nao e' isolamento.
+//  2. `Entries("")` com escopo vazio: o zero value de uma string nao pode significar «todos».
+//     *O zero value de um bool e' uma afirmacao silenciosa.*
 //
 // O E-1387 fechou o ciclo no browser, mas todos os passes correram com UMA organizacao (`local`).
 // *Um teste de isolamento com uma so' organizacao prova que uma organizacao se ve a si mesma. Nao prova

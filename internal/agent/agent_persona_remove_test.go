@@ -18,9 +18,9 @@ func TestRemoveTiraDoLedger(t *testing.T) {
 		t.Fatalf("NewPersonaLedger: %v", err)
 	}
 	entrada := PersonaLedgerEntry{
-		PersonaID:   "hades-executor",
-		Target:      TargetCodex,
-		Destination: "destino/AGENTS.md",
+		PersonaID:    "hades-executor",
+		Target:       TargetCodex,
+		Destination:  "destino/AGENTS.md",
 		Scope:        "org-1",
 		SourceHash:   "h1",
 		RenderedHash: "h2",
@@ -52,8 +52,8 @@ func TestRemovePersisteNoFicheiro(t *testing.T) {
 		t.Fatalf("NewPersonaLedger: %v", err)
 	}
 	if _, _, err := ledger.Record("org-1", PersonaLedgerEntry{
-		PersonaID:   "p1",
-		Target:      TargetCodex,
+		PersonaID:    "p1",
+		Target:       TargetCodex,
 		Destination:  "d/AGENTS.md",
 		Scope:        "org-1",
 		SourceHash:   "h1",

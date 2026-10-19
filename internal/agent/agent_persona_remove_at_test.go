@@ -7,7 +7,7 @@ import (
 
 // TestRemoveAtTiraSoAUmaInstalacao e' o teste que o defeito de ronda 193 tornou necessario.
 //
-// O DEFEITO
+// # O DEFEITO
 //
 // O painel chamava `removerAgente(destino)` -- isto e', passava o CAMINHO onde a funcao espera o
 // `persona_id`. O servidor respondia 404 ("persona nao registada"), o painel caia no `erro`, e o bloco
@@ -17,7 +17,7 @@ import (
 //
 // So' apareceu num browser real. O teste do handler passava porque chamava a funcao com o argumento certo.
 //
-// O QUE ESTE TESTE PROTEGE
+// # O QUE ESTE TESTE PROTEGE
 //
 // Que remover uma instalacao NAO remova as outras da mesma persona. O `Remove` apaga todas -- e num painel
 // onde o utilizador aponta um destino, isso apagaria o que ele nao apontou.

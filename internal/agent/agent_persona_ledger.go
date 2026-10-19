@@ -252,7 +252,7 @@ type Reconciliation struct {
 // chamador, que tem o disco. *Um ledger que decide politica e' um ledger que um dia decide sozinho.*
 // RemoveAt tira do ledger UMA instalacao concreta -- a chave e' (persona, target, destino).
 //
-// PORQUE NAO BASTA O Remove
+// # PORQUE NAO BASTA O Remove
 //
 // O `Remove` apaga todas as instalacoes da persona. Num painel onde o utilizador escolhe um DESTINO, isso
 // apagaria tambem as outras: *um botao que remove o que o utilizador nao apontou remove a confianca.*

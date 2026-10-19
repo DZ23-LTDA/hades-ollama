@@ -668,12 +668,12 @@ func (a *agentAPI) updateAgentPersona(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{
-		"updated":    true,
-		"backup_id":  backup.ID,
-		"bytes":      len(renderizado),
-		"entry":      efetiva,
-		"created":    criada,
-		"note":       "backup feito antes da escrita; restaurar por /agents/restore se necessario",
+		"updated":   true,
+		"backup_id": backup.ID,
+		"bytes":     len(renderizado),
+		"entry":     efetiva,
+		"created":   criada,
+		"note":      "backup feito antes da escrita; restaurar por /agents/restore se necessario",
 	})
 }
 
@@ -748,9 +748,9 @@ func (a *agentAPI) removeAgentPersona(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{
-		"removed":    pedido.PersonaID,
-		"file_kept":  true,
-		"note":       "entrada retirada do ledger; o ficheiro no destino nao foi apagado",
+		"removed":   pedido.PersonaID,
+		"file_kept": true,
+		"note":      "entrada retirada do ledger; o ficheiro no destino nao foi apagado",
 	})
 }
 
