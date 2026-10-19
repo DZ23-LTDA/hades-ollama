@@ -1,3 +1,36 @@
+## JANELA E-1309
+
+A cabeça do índice é **E-1309**.
+
+- **E-1309** — o elo que os três builds verdes ainda escondiam: **o artefacto corre no sistema alvo?**
+  Provado para o único alvo que este host pode executar. O binário **Windows** produzido pelo
+  `build.start` foi executado e respondeu **`HADES-ARTEFACTO-OK so=windows arch=amd64`** (exit 0) —
+  identifica-se como Windows/amd64 **ao correr**, o que é mais forte do que o `MZ` no cabeçalho.
+  **Negativo discriminante:** os binários `linux` (ELF) e `macos` (Mach-O) foram tentados no mesmo
+  host e **não produziram a marca**. O discriminante é a **marca na saída**, não o exit code — o
+  `exit=0` das tentativas falhadas é do PowerShell, e contá-lo teria dado **três verdes falsos**.
+- **E-1308** — o alvo `windows` prometia um instalador que nenhum provider produz. Separado em
+  `windows` (binário) e `windows-installer` (recusa honesta).
+- **E-1307** — o `build.start` passou a construir. Quatro defeitos: mensagem `0 blocker(s)`, espera
+  circular, `GOOS` do host, catálogo sem `macos`.
+- **E-1306** — `POST /build/start`, a primeira rota do Release Hub que executa. 8 testes PASS.
+- **E-1305** — o `misspell` leu *Resolvemos* como erro de inglês. **Verde confirmado em `aea7076be`.**
+
+## Estado por alvo — a distinção que o adendo exige
+
+| alvo | build | formato | execução no alvo |
+|---|---|---|---|
+| `windows` | **200** | PE `.exe` | **EXECUTADO** — `so=windows arch=amd64` |
+| `linux` | **200** | ELF | **NÃO EXECUTADO** (sem host Linux) |
+| `macos` | **200** | Mach-O | **NÃO EXECUTADO** (sem host macOS) |
+| `windows-installer` | **412** | — | sem provider |
+
+O que continua aberto: o instalador Windows não existe, `build.status`/`logs`/`cancel`/`artifacts` não
+existem, **nenhum artefacto foi assinado**, `gitleaks (historico do PR)` (decisão do proprietário),
+build Android e arranque do app (`BLOCKED_EXTERNAL`), `INSTALLED=NAO` (E-1252) e a **FASE 30 não
+iniciada**.
+
+---
 ## JANELA E-1308
 
 A cabeça do índice é **E-1308**.
