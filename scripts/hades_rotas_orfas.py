@@ -173,7 +173,15 @@ RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 #   leitura pode arrastar uma escrita que nunca foi lacuna de leitura.*
 #
 # A conta: 3/10, 2/7, 1/0, 7/7 OK, 7/8, 3/5, 3/0, 5/5 OK, 4/1, 1/1 OK, 3/2, 2/4, 1/2, 1/1 OK, 1/1 OK, 1/1 OK, 1/2.
-TETO_ORFAS = 28
+# 28 -> 26 no E-1347 -- previsao era 1, mediu 2. DECIMA OITAVA medicao.
+#
+# `scheduling` tem 14 rotas. Consumir `reminders/due` fechou DUAS entradas do prefixo.
+#
+#   *Dezoito medicoes, seis previsoes certas. O gate mede dominios, e num dominio grande
+#   (14 rotas) cada leitura fechada pode arrastar mais do que uma entrada.*
+#
+# A conta: 3/10, 2/7, 1/0, 7/7 OK, 7/8, 3/5, 3/0, 5/5 OK, 4/1, 1/1 OK, 3/2, 2/4, 1/2, 1/1 OK, 1/1 OK, 1/1 OK, 1/2, 1/2.
+TETO_ORFAS = 26
 
 # Quem chama nao e' o frontend do HADES -- a ausencia no UI e' correcta.
 CONSUMIDOR_EXTERNO = (

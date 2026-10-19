@@ -1,3 +1,47 @@
+## JANELA E-1347
+
+A cabeça do índice é **E-1347**.
+
+- **E-1347** — **«`now` não vem do corpo» — e o próprio handler diz porquê:** *«um corpo que escolhe
+  «agora» escolhe quem deve ser avisado»*. `RemindersPanel` consome `GET /scheduling/reminders/due` e
+  **não envia `now`** — há teste a provar que o caminho não o contém.
+  **Esta rota é só UMA metade.** O comentário: *«a superfície tem de expor as DUAS metades: quem deve ser
+  avisado, e o registo de que foi.»* O painel escreve «o registo do que já foi enviado está noutra rota»,
+  e na lista vazia: «isto NÃO diz que os anteriores foram enviados». *Um painel que se chame "lembretes"
+  está a chamar ao trabalho PENDENTE o trabalho FEITO.*
+  **`kind` é obrigatório — vazio não é «todos»**: o servidor responde 400, e o painel recusa antes de
+  chamar. `lead_minutes` validado nos dois lados.
+  **DÉCIMA OITAVA MEDIÇÃO — previsão errada por 1, a favor:** previ **1**, mediu **2** (28 → 26).
+- **E-1346** — commerce: `on_hand`/`reserved`/`available` são três; saldo derivado e conferido; 30 → 28.
+- **E-1345** — RetentionPanel flaky: `setState` fora de `act`.
+- **E-1344** — verify-contracts: `call.raw` vs `call.path`.
+- **E-1343** — wakeups: despertar informativo não é trabalho enfileirado; 31 → 30.
+- **E-1342** — solutions: POST que não muta; 32 → 31.
+
+## A distância, agora
+
+| categoria | rotas |
+|---|---|
+| no backend | **348** |
+| órfãs no frontend | **42** |
+| consumidor externo (correcto) | **16** |
+| **lacuna de produto** | **26** (era 93) |
+
+## O QUE RESTA EM `scheduling` — 12 DAS 26
+
+`scheduling` tem **14 rotas**: o painel consome **3 leituras** (`services`, `appointments`, `reminders/due`).
+Restam **3 leituras** (`slots`, `reschedule/slots`, `waitlist`) e **8 escritas** (`book`, `cancel`,
+`reschedule`, `waitlist`, `waitlist/offer`, `waitlist/confirm`, `no-show`, `reminders/sent`).
+
+**Nota acumulada sobre o contador — dezoito avisos:** o gate mede o **domínio**, não a rota. Dezoito
+medições, **seis** previsões certas.
+
+O que continua aberto: **26 rotas** sem UI (19 escritas, 7 leituras); o gate **mede prefixos**; **20 ORPHAN
+de 209**; o build **não é assinado nem instalado**; `sign.start`/`publish.*` inexistentes; o painel do
+build **não se actualiza sozinho**; **`gitleaks` histórico — a única falha de CI**; instalação limpa
+`BLOCKED_EXTERNAL`; **não há catraca contra novos testes flaky**; **FASE 30 não iniciada**.
+
+---
 ## JANELA E-1346
 
 A cabeça do índice é **E-1346**.
