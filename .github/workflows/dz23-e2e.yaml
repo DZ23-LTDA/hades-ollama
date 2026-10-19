@@ -54,3 +54,97 @@ jobs:
             --title "Scheduled E2E failure — ${GITHUB_RUN_ID}" \
             --body "The weekly E2E smoke failed. Run: https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" \
             --label "bug" || echo "Could not create failure issue; preserving the failed workflow status."
+
+  # E-1421/E-1422: o conjunto de paineis que passou a ser verde contra o servidor REAL.
+  #
+  # Ate' aqui o unico job corria o fixture; os testes com `BACKEND_REAL_AGENT_RUNTIME` ficavam
+  # todos saltados, e um job verde sobre eles nao dizia nada sobre o Agent Center. Com o store
+  # gravavel (E-1420/E-1421) e a assercao corrigida (E-1422), os 5 specs de painel passaram
+  # contra o servidor de verdade e passaram a poder ser exigidos no CI.
+  #
+  # ESCOPO DELIBERADO: este job corre os 5 specs de painel que foram MEDIDOS em modo real, nao a
+  # suite inteira. Os outros specs continuam no job de fixture acima. Um job que alarga o escopo
+  # sem medir nao prova mais: so' arrisca mais. Quando outro spec for medido em modo real, ele
+  # entra aqui pelo mesmo criterio.
+  agent-center-real:
+    name: Web E2E (paineis contra Agent Center real)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Build HADES server
+        run: CGO_ENABLED=0 go build -o "$RUNNER_TEMP/hades-server" .
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: app/ui/app/package-lock.json
+      - name: Install deps
+        working-directory: app/ui/app
+        run: npm ci --no-audit --no-fund
+      - name: Install Playwright browser
+        working-directory: app/ui/app
+        run: npx playwright install --with-deps chromium
+      - name: Start HADES server (Agent Center montado)
+        run: |
+          set -euo pipefail
+          OLLAMA_HOST=127.0.0.1:43119 "$RUNNER_TEMP/hades-server" serve \
+            > "$RUNNER_TEMP/server.log" 2>&1 &
+          echo $! > "$RUNNER_TEMP/server.pid"
+          pronto=0
+          for _ in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:43119/api/version > /dev/null; then pronto=1; break; fi
+            sleep 1
+          done
+          if [ "$pronto" != "1" ]; then
+            echo "O servidor nao respondeu em 60 s; log abaixo."
+            cat "$RUNNER_TEMP/server.log"
+            exit 1
+          fi
+          # O fallback `agent_api_unavailable` so' e' registado quando NENHUMA rota do Agent
+          # Center foi montada. Um 404 aqui prova que o Agent Center montou; um 503 provaria o
+          # contrario e este job nao teria o que medir.
+          codigo=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:43119/api/agent/v1/projects/detect)
+          echo "GET /api/agent/v1/projects/detect -> $codigo"
+          if [ "$codigo" = "503" ]; then
+            echo "O Agent Center NAO montou (503 agent_api_unavailable); o job mediria o fallback."
+            cat "$RUNNER_TEMP/server.log"
+            exit 1
+          fi
+      - name: Run E2E against the real Agent Center
+        working-directory: app/ui/app
+        env:
+          HADES_E2E_BACKEND_URL: http://127.0.0.1:43119
+        run: |
+          npx playwright test \
+            e2e/project-detect-panel.spec.ts \
+            e2e/rollback-panel.spec.ts \
+            e2e/sbom-panel.spec.ts \
+            e2e/smoke-panel.spec.ts \
+            e2e/credentials-panel.spec.ts \
+            --project=chromium
+      - name: Server log and Playwright report on failure
+        if: failure()
+        run: |
+          echo "--- servidor ---"
+          cat "$RUNNER_TEMP/server.log"
+          echo "--- pid ---"
+          cat "$RUNNER_TEMP/server.pid"
+      - name: Upload Playwright report on failure
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: playwright-report-agent-center-real
+          path: app/ui/app/playwright-report
+          if-no-files-found: ignore
+      - name: Stop HADES server
+        if: always()
+        run: |
+          if [ -f "$RUNNER_TEMP/server.pid" ]; then
+            pid=$(cat "$RUNNER_TEMP/server.pid")
+            kill "$pid" 2>/dev/null || echo "O servidor $pid ja' nao estava a correr."
+          fi
