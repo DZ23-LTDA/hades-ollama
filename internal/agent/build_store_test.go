@@ -333,6 +333,131 @@ func TestStoreBuildPodarNaoDescartaEmCurso(t *testing.T) {
 	}
 }
 
+// TestStoreBuildCarregarRecuperaTerminados prova que um build CONCLUIDO volta do disco.
+//
+//	*Um store que existe e nao persiste e' um store que perde o trabalho quando o processo reinicia.*
+func TestStoreBuildCarregarRecuperaTerminados(t *testing.T) {
+	dir := t.TempDir()
+
+	// Primeiro processo: cria, corre, conclui.
+	s1 := NovoBuildStoreComDirectorio(dir)
+	id, _ := s1.Registar("windows", "/r", "/d")
+	_, _ = s1.Iniciar(id)
+	if err := s1.Terminar(id, &ResultadoDeBuild{Explicacao: "ok"}, nil, "saida-limpa"); err != nil {
+		t.Fatalf("terminar: %v", err)
+	}
+
+	// Segundo processo: mesmo directorio, store novo.
+	s2 := NovoBuildStoreComDirectorio(dir)
+	carregados, interrompidos := s2.CarregarDoDisco()
+	if carregados != 1 {
+		t.Fatalf("devia carregar 1 registo, carregou %d", carregados)
+	}
+	if interrompidos != 0 {
+		t.Fatalf("nenhum devia estar interrompido: %d", interrompidos)
+	}
+	r, err := s2.Obter(id)
+	if err != nil {
+		t.Fatalf("o build nao foi recuperado: %v", err)
+	}
+	if r.Estado != BuildConcluido {
+		t.Fatalf("estado devia ser CONCLUIDO: %q", r.Estado)
+	}
+	if r.SaidaDoComando != "saida-limpa" {
+		t.Fatalf("a saida devia ser recuperada: %q", r.SaidaDoComando)
+	}
+}
+
+// TestStoreBuildCarregarMarcaInterrompidoComoFALHOU e' o teste mais forte deste ficheiro.
+//
+// CENARIO REAL: o processo morre com um build A_EXECUTAR. No arranque seguinte, o registo em disco
+// diz `A_EXECUTAR`. Se o store o carregasse assim, o painel mostraria "em curso" um build cujo
+// processo ja' nao existe.
+//
+//	*Um build que o processo abandonou nao esta' a correr: esta' interrompido, e o estado tem de o
+//	dizer.*
+func TestStoreBuildCarregarMarcaInterrompidoComoFALHOU(t *testing.T) {
+	dir := t.TempDir()
+
+	s1 := NovoBuildStoreComDirectorio(dir)
+	id, _ := s1.Registar("windows", "/r", "/d")
+	if _, err := s1.Iniciar(id); err != nil {
+		t.Fatalf("iniciar: %v", err)
+	}
+	// Simula a morte do processo: o registo em disco fica em A_EXECUTAR (o `persistir` do Iniciar
+	// nao e' chamado, por isso escrevemos o estado a mao, como ficaria).
+	r0, _ := s1.Obter(id)
+	r0.Estado = BuildAExecutar
+	s1.mu.Lock()
+	s1.persistir(&r0)
+	s1.mu.Unlock()
+
+	// Segundo processo.
+	s2 := NovoBuildStoreComDirectorio(dir)
+	carregados, interrompidos := s2.CarregarDoDisco()
+	if carregados != 1 || interrompidos != 1 {
+		t.Fatalf("esperado 1 carregado e 1 interrompido, veio %d/%d", carregados, interrompidos)
+	}
+	r, _ := s2.Obter(id)
+	if r.Estado == BuildAExecutar || r.Estado == BuildNaFila {
+		t.Fatalf("um build abandonado NAO pode ficar a correr: estado=%q", r.Estado)
+	}
+	if r.Estado != BuildFalhou {
+		t.Fatalf("estado devia ser FALHOU: %q", r.Estado)
+	}
+	if !strings.Contains(r.Erro, "interrompido") {
+		t.Fatalf("o motivo tem de dizer que foi interrompido: %q", r.Erro)
+	}
+	if r.Cancelavel {
+		t.Fatal("um build interrompido nao e' cancelavel")
+	}
+	if r.TerminadoEm == nil {
+		t.Fatal("um build interrompido tem de ter terminado_em")
+	}
+}
+
+// TestStoreBuildCarregarIgnoraCorrompido prova que um ficheiro ilegivel nao impede o arranque.
+//
+//	*Um ficheiro corrompido nao pode derrubar o servidor, mas tambem nao pode ser contado como build.*
+func TestStoreBuildCarregarIgnoraCorrompido(t *testing.T) {
+	dir := t.TempDir()
+
+	s1 := NovoBuildStoreComDirectorio(dir)
+	id, _ := s1.Registar("windows", "/r", "/d")
+	_, _ = s1.Iniciar(id)
+	_ = s1.Terminar(id, nil, nil, "")
+
+	// Um ficheiro que nao e' JSON.
+	if err := os.WriteFile(filepath.Join(dir, "lixo.json"), []byte("{isto nao e json"), 0o644); err != nil {
+		t.Fatalf("escrever lixo: %v", err)
+	}
+	// Um .json sem ID.
+	if err := os.WriteFile(filepath.Join(dir, "semid.json"), []byte(`{"alvo":"x"}`), 0o644); err != nil {
+		t.Fatalf("escrever semid: %v", err)
+	}
+
+	s2 := NovoBuildStoreComDirectorio(dir)
+	carregados, _ := s2.CarregarDoDisco()
+	if carregados != 1 {
+		t.Fatalf("devia carregar so' o valido (1), carregou %d", carregados)
+	}
+	if _, err := s2.Obter(id); err != nil {
+		t.Fatalf("o build valido devia estar la': %v", err)
+	}
+}
+
+// TestStoreBuildCarregarSemDirectorioNaoFalha prova que um store em memoria diz que nao carrega nada.
+func TestStoreBuildCarregarSemDirectorioNaoFalha(t *testing.T) {
+	s := NovoBuildStore()
+	c, i := s.CarregarDoDisco()
+	if c != 0 || i != 0 {
+		t.Fatalf("sem directorio devia dar 0/0, deu %d/%d", c, i)
+	}
+	if s.Directorio() != "" {
+		t.Fatalf("Directorio devia ser vazio: %q", s.Directorio())
+	}
+}
+
 // TestStoreBuildCancelarDuasVezesNaoDisparaDoisCancelamentos prova idempotencia do pedido.
 func TestStoreBuildCancelarDuasVezesNaoDisparaDoisCancelamentos(t *testing.T) {
 	s := NovoBuildStore()

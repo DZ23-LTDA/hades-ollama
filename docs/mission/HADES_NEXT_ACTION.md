@@ -1,3 +1,43 @@
+## JANELA E-1316
+
+A cabeça do índice é **E-1316**.
+
+- **E-1316** — **o store de builds do E-1313 tinha persistência MORTA.** `NovoBuildStoreComDirectorio` e
+  `persistir()` existiam, e o único chamador da fábrica com diretório era **o próprio teste**. O
+  `storeDeBuilds()` usava `NovoBuildStore()`, sem diretório ⇒ `persistir()` nunca escrevia nada.
+  *Um store que existe e não persiste é um store que perde o trabalho quando o processo reinicia — e um
+  reinício não é um caso raro: é a próxima vez que o utilizador abrir o produto.*
+  **E o pior: declarei a limitação em três evidências como se fosse desenho.** Não era — era código
+  escrito e não ligado. *Declarar não é corrigir.*
+  Entregues `CarregarDoDisco()` e `Directorio()`; o `storeDeBuilds()` passou a usar
+  `Runtime.DataRoot()/builds` (o getter já existia — não inventei caminho novo).
+  **A decisão que o carregamento não pode errar: um registo `A_EXECUTAR` em disco NÃO está a correr.**
+  O processo morreu. Passam a `FALHOU` com motivo explícito «interrompido».
+  *Um build que o processo abandonou não está a correr: está interrompido, e o estado tem de o dizer.*
+  **Ficheiro corrompido não derruba o arranque**, mas também não conta como build válido.
+  **Medido:** `go build ./...` 0 · `./server` **ok 54 s** · `./internal/agent` **ok 382 s** · lint 0 ·
+  4 testes novos PASS. **Sexta ocorrência do `misspell` a recusar «discriminante».**
+- **E-1315** — botão de iniciar build; alvo bloqueado não ganha botão. 131 ficheiros / 944 testes.
+- **E-1314** — painel de estado de build; o 409 de `cancel` é resultado, não falha.
+- **E-1313** — `build.status`/`logs`/`artifacts`/`cancel` + `BuildStore`.
+
+## Ciclo de build — estado real
+
+| passo | backend | UI | persiste |
+|---|---|---|---|
+| planear | **existe** | **existe** | — |
+| iniciar | **existe** | **existe (E-1315)** | **sim (E-1316)** |
+| acompanhar | **existe** | **existe (E-1314)** | **sim (E-1316)** |
+| logs / artefactos | **existe** | **existe (E-1314)** | **sim (E-1316)** |
+| cancelar | **existe** | **existe (E-1314)** | **sim (E-1316)** |
+| assinar | **AUSENTE** | — | — |
+| publicar | **AUSENTE** | — | — |
+
+O que continua aberto: build **não assinado nem instalado**; `sign.start`/`publish.*` inexistentes; o
+painel de estado **não se actualiza sozinho**; **os ficheiros em disco não são podados** (o tecto de
+200 é só em memória); `gitleaks`; instalação limpa `BLOCKED_EXTERNAL`; **FASE 30 não iniciada**.
+
+---
 ## JANELA E-1315
 
 A cabeça do índice é **E-1315**.

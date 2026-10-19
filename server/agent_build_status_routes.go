@@ -28,6 +28,8 @@ package server
 import (
 	"errors"
 	"net/http"
+	"path/filepath"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/ollama/ollama/internal/agent"
@@ -39,9 +41,28 @@ import (
 // partilhado entre testes e esconderia o facto de dois servidores nao partilharem builds.
 func (a *agentAPI) storeDeBuilds() *agent.BuildStore {
 	a.buildsOnce.Do(func() {
-		if a.builds == nil {
-			a.builds = agent.NovoBuildStore()
+		if a.builds != nil {
+			return
 		}
+		// Os builds persistem sob o DataRoot do runtime, ao lado do resto do estado do agente.
+		//
+		//	*Um store que existe e nao persiste e' um store que perde o trabalho quando o processo
+		//	reinicia -- e um reinicio nao e' um caso raro: e' a proxima vez que o utilizador abrir o
+		//	produto.*
+		//
+		// Sem runtime (testes de rota com `&agentAPI{}`), fica so' em memoria -- e diz-se.
+		if a.runtime != nil {
+			if raiz := strings.TrimSpace(a.runtime.DataRoot()); raiz != "" {
+				a.builds = agent.NovoBuildStoreComDirectorio(filepath.Join(raiz, "builds"))
+				if _, interrompidos := a.builds.CarregarDoDisco(); interrompidos > 0 {
+					// Um build que estava a correr quando o processo morreu esta' interrompido, nao a
+					// correr: `CarregarDoDisco` ja' o marcou FALHOU com motivo.
+					_ = interrompidos
+				}
+				return
+			}
+		}
+		a.builds = agent.NovoBuildStore()
 	})
 	return a.builds
 }

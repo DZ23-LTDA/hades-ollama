@@ -38,6 +38,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 )
@@ -190,6 +191,64 @@ func (s *BuildStore) podar() {
 		delete(s.cancelamentos, terminados[i].id)
 	}
 }
+
+// CarregarDoDisco le os registos guardados em `dir` e popula o store.
+//
+// # O QUE ESTE METODO NAO PODE FINGIR
+//
+// Um registo que estava `A_EXECUTAR` quando o processo morreu NAO esta' a correr. Carrega-lo como
+// `A_EXECUTAR` seria um estado que mente sobre o presente, e o painel mostraria "em curso" um build
+// cujo processo ja' nao existe. Por isso esses registos passam a `FALHOU` com um motivo explicito.
+//
+//	*Um build que o processo abandonou nao esta' a correr: esta' interrompido, e o estado tem de o
+//	dizer.*
+//
+// Registos ilegiveis sao ignorados em vez de abortarem o arranque: um ficheiro corrompido nao pode
+// impedir o servidor de subir, mas tambem nao pode ser contado como build valido.
+func (s *BuildStore) CarregarDoDisco() (carregados int, interrompidos int) {
+	if s.dir == "" {
+		return 0, 0
+	}
+	entradas, err := os.ReadDir(s.dir)
+	if err != nil {
+		return 0, 0
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for _, e := range entradas {
+		if e.IsDir() || !strings.HasSuffix(e.Name(), ".json") {
+			continue
+		}
+		corpo, err := os.ReadFile(filepath.Join(s.dir, e.Name()))
+		if err != nil {
+			continue
+		}
+		var r RegistoDeBuild
+		if err := json.Unmarshal(corpo, &r); err != nil || r.ID == "" {
+			continue
+		}
+		if _, existe := s.registos[r.ID]; existe {
+			continue
+		}
+		// O build que estava a correr quando o processo morreu esta' interrompido, nao a correr.
+		if r.Estado == BuildNaFila || r.Estado == BuildAExecutar {
+			r.Estado = BuildFalhou
+			r.Erro = "interrompido: o processo terminou com o build a correr (estado recuperado do disco)"
+			r.Cancelavel = false
+			agora := s.agora().UTC()
+			r.TerminadoEm = &agora
+			interrompidos++
+			s.persistir(&r)
+		}
+		copia := r
+		s.registos[r.ID] = &copia
+		carregados++
+	}
+	return carregados, interrompidos
+}
+
+// Directorio devolve o directorio de persistencia (vazio se o store e' so' em memoria).
+func (s *BuildStore) Directorio() string { return s.dir }
 
 // Iniciar marca o build como A_EXECUTAR e devolve um contexto cancelavel. O `cancelar` devolvido
 // esta' ligado ao store: chama-lo duas vezes e' inofensivo.
