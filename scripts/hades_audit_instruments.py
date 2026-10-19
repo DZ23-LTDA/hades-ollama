@@ -81,7 +81,19 @@ BASELINE_ORACULO = (
 #
 # Medido: o instrumento conta 32 residuais (era 31). O teto sobe para o numero MEDIDO,
 # nao para um numero com margem: *uma margem inventada esconde o proximo residual.*
-TETO_ROTAS = 32
+#
+# RONDA 107 (E-1289): a rota `publish/preflight/:canal` entra na mesma leitura.
+#   - `preflightDePublicacao` recebe o CANAL no caminho e le' DOIS caminhos de ambiente do
+#     servidor (`HADES_ARTEFACTO_A_PUBLICAR` e `HADES_CREDENCIAL_DE_PUBLICACAO`). Nao le
+#     organization, project, mission nem user -- confirmado por varredura do ficheiro: zero
+#     ocorrencias de `organization|tenant|mission|project_id|user`.
+#   - O que ela devolve e' propriedade do HOST e do ARTEFACTO local: se o canal existe, se o
+#     ficheiro existe e e' integro, e se a credencial esta' presente. *Nao ha' organizacao a
+#     filtrar numa resposta que nao menciona organizacao nenhuma.* Mesmo criterio das tres
+#     rotas `toolchain/*` e das duas `install/*`.
+#   - A credencial NAO e' lida: o detalhe reporta tamanho e declara "conteudo NAO lido".
+# Medido: o instrumento conta 33 residuais (era 32). O teto sobe para o numero MEDIDO.
+TETO_ROTAS = 33
 
 LINHA_CANDIDATO = re.compile(r"^\s*(\S+?)\s*::\s*([A-Za-z0-9_]+)\s*\(")
 LINHA_RESIDUAL = re.compile(r"handlers SEM escopo[^\d]*(\d+)")

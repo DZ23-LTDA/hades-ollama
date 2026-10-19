@@ -1,3 +1,34 @@
+## JANELA E-1289
+
+**Ronda 107. O `PublishingProvider` ganhou porta — e o inventário foi corrigido.**
+
+- **E-1289** — `server/agent_publish_preflight_route.go` + `_test.go`: `POST /publish/preflight/:canal`,
+  **13 PASS** (8 testes + 5 subtestes).
+- **CORREÇÃO DE INVENTÁRIO:** o resumo do projeto dizia que `CapabilityResolver` e
+  `PublishingProvider` estavam **ausentes**. **Falso nos dois.** O `CapabilityResolver` **existe como
+  `ResolverDeToolchain`** (`toolchain_plan.go`, 17 143 B) com `CapabilityPlan`, 6 `ToolState`, 10
+  alvos, `ArgsDeVersao` e **3 rotas**; a UI **já o consome** (`toolchainClient.ts`, 20+ exportações,
+  `CapabilitiesPage`, `InstallProfilesPanel`, `install-profiles.spec.ts` com 21 referências). E
+  `PlanoDeInstalação` existe com 2 rotas.
+  *Um inventário que procura nomes inventados declara ausente o que existe com outro nome* — 13.ª
+  ocorrência do defeito, e a primeira em que o erro era **a favor** do projeto e mesmo assim foi
+  corrigido.
+- **A lacuna real:** o `PublishingProvider` tinha 6 canais e 9 testes e **ZERO rotas**. A rota é
+  `publish.preflight`, **não** `publish.submit`: o provider não tem `Publicar()`.
+- **Caminhos vêm do ambiente:** `HADES_ARTEFACTO_A_PUBLICAR` e `HADES_CREDENCIAL_DE_PUBLICACAO` —
+  variáveis próprias, distintas das outras quatro fronteiras. O pedido só escolhe o CANAL.
+- **Garantias medidas:** `publicado` **sempre** false e `nada_publicado` **sempre** true, em campos
+  separados; **canal público NUNCA fica `pronto`** — os 5 testados; canal desconhecido recusado com
+  **400 antes de tocar no filesystem**; **canário de vazamento** `CANARIO-QUE-NAO-PODE-VAZAR-12345`
+  ausente do detalhe e do corpo serializado ("presente (N bytes); conteúdo NAO lido").
+
+Medido: **13 PASS** · `go test ./server/` ok · `go build ./...` 0 · `go vet` 0 ·
+`golangci-lint ./server` 0 · `gofumpt` limpo.
+
+**Lacuna:** falta cliente + painel + E2E do preflight. `publish.submit` é deliberadamente inexistente.
+
+Veredito global: `NOT_RELEASE_READY`.
+
 ## JANELA E-1288
 
 **Ronda 106. O E2E do `ProjectDetectPanel`: o nono elo fechado no browser real.**
