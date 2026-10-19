@@ -21,14 +21,12 @@ import {
   resumirDeteccao,
   type RelatorioDeDeteccao,
 } from "@/lib/projectDetectClient";
+import { mensagemDaFalhaCom } from "../lib/mensagemDeFalha";
 
 type Estado = "inativo" | "a-detectar" | "pronto" | "erro";
 
 function mensagemDeFalha(falha: unknown): string {
-  if (falha instanceof Error && falha.message.trim() !== "") {
-    return falha.message;
-  }
-  return "nao foi possivel detectar o projecto";
+  return mensagemDaFalhaCom(falha, "nao foi possivel detectar o projecto");
 }
 
 export function ProjectDetectPanel() {

@@ -21,15 +21,13 @@ import {
   resumirInventario,
   type RelatorioDeSBOM,
 } from "@/lib/sbomClient";
+import { mensagemDaFalhaCom } from "../lib/mensagemDeFalha";
 
 type Estado = "inativo" | "a-gerar" | "pronto" | "erro";
 
 /** Extrai a mensagem de uma falha sem inventar uma. */
 function mensagemDeFalha(falha: unknown): string {
-  if (falha instanceof Error && falha.message.trim() !== "") {
-    return falha.message;
-  }
-  return "nao foi possivel gerar o inventario";
+  return mensagemDaFalhaCom(falha, "nao foi possivel gerar o inventario");
 }
 
 export function SbomPanel() {

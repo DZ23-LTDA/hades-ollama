@@ -23,14 +23,12 @@ import {
   verificarArtefactos,
   type RelatorioDeVerificacao,
 } from "@/lib/verificationClient";
+import { mensagemDaFalhaCom } from "../lib/mensagemDeFalha";
 
 type Estado = "inativo" | "a-verificar" | "pronto" | "erro";
 
 function mensagemDeFalha(falha: unknown): string {
-  if (falha instanceof Error && falha.message.trim() !== "") {
-    return falha.message;
-  }
-  return "nao foi possivel verificar";
+  return mensagemDaFalhaCom(falha, "nao foi possivel verificar");
 }
 
 /**

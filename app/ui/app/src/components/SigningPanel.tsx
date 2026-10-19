@@ -24,15 +24,13 @@ import {
   type PlanoDeAssinatura,
   type TipoDeAssinatura,
 } from "@/lib/signingPlanClient";
+import { mensagemDaFalhaCom } from "../lib/mensagemDeFalha";
 
 type Estado = "inativo" | "a-avaliar" | "pronto" | "erro";
 
 /** Extrai a mensagem de uma falha sem inventar uma. */
 function mensagemDeFalha(falha: unknown): string {
-  if (falha instanceof Error && falha.message.trim() !== "") {
-    return falha.message;
-  }
-  return "nao foi possivel avaliar a identidade";
+  return mensagemDaFalhaCom(falha, "nao foi possivel avaliar a identidade");
 }
 
 export function SigningPanel() {

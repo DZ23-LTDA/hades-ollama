@@ -28,14 +28,12 @@ import {
   type CanalDePublicacao,
   type RespostaDoPreflightDePublicacao,
 } from "@/lib/publishPreflightClient";
+import { mensagemDaFalhaCom } from "../lib/mensagemDeFalha";
 
 type Estado = "inativo" | "a-verificar" | "pronto" | "erro";
 
 function mensagemDeFalha(falha: unknown): string {
-  if (falha instanceof Error && falha.message.trim() !== "") {
-    return falha.message;
-  }
-  return "nao foi possivel verificar o canal";
+  return mensagemDaFalhaCom(falha, "nao foi possivel verificar o canal");
 }
 
 export function PublishPreflightPanel() {

@@ -52,15 +52,13 @@ import {
   type CredencialPublica,
   type InventarioDeCredenciais,
 } from "@/lib/credentialsClient";
+import { mensagemDaFalhaCom } from "../lib/mensagemDeFalha";
 
 type Estado = "a-carregar" | "pronto" | "erro";
 
 /** Extrai a mensagem de uma falha sem inventar uma. */
 function mensagemDeFalha(falha: unknown): string {
-  if (falha instanceof Error && falha.message.trim() !== "") {
-    return falha.message;
-  }
-  return "nao foi possivel ler o inventario de credenciais";
+  return mensagemDaFalhaCom(falha, "nao foi possivel ler o inventario de credenciais");
 }
 
 /** Formata a data de validade que o backend ja' devolveu como texto. */

@@ -30,15 +30,13 @@ import {
   type PlanoDeRollback,
   type TipoDeRollback,
 } from "@/lib/rollbackClient";
+import { mensagemDaFalhaCom } from "../lib/mensagemDeFalha";
 
 type Estado = "inativo" | "a-planear" | "pronto" | "erro";
 
 /** Extrai a mensagem de uma falha sem inventar uma. */
 function mensagemDeFalha(falha: unknown): string {
-  if (falha instanceof Error && falha.message.trim() !== "") {
-    return falha.message;
-  }
-  return "nao foi possivel obter o plano de rollback";
+  return mensagemDaFalhaCom(falha, "nao foi possivel obter o plano de rollback");
 }
 
 export function RollbackPanel() {

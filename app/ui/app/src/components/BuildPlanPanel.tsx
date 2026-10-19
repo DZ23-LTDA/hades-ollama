@@ -52,6 +52,7 @@ import {
   type ChecksumDeArtefacto,
   type VerificacaoDeArtefacto,
 } from "@/lib/artifactClient";
+import { mensagemDaFalhaCom } from "../lib/mensagemDeFalha";
 
 type Estado = "a-carregar" | "pronto" | "erro";
 
@@ -471,6 +472,5 @@ export function BuildPlanPanel() {
  * a adivinhar. O `agentFetch` ja' lanca com a mensagem do backend quando ha' corpo de erro.
  */
 function mensagemDeFalha(falha: unknown): string {
-  if (falha instanceof Error && falha.message.trim()) return falha.message;
-  return "não foi possível medir o artefacto";
+  return mensagemDaFalhaCom(falha, "não foi possível medir o artefacto");
 }

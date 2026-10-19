@@ -32,15 +32,13 @@ import {
   separarArgumentos,
   type ResultadoDeSmoke,
 } from "@/lib/smokeClient";
+import { mensagemDaFalhaCom } from "../lib/mensagemDeFalha";
 
 type Estado = "inativo" | "a-executar" | "pronto" | "erro";
 
 /** Extrai a mensagem de uma falha sem inventar uma. */
 function mensagemDeFalha(falha: unknown): string {
-  if (falha instanceof Error && falha.message.trim() !== "") {
-    return falha.message;
-  }
-  return "nao foi possivel executar o smoke";
+  return mensagemDaFalhaCom(falha, "nao foi possivel executar o smoke");
 }
 
 export function SmokePanel() {
