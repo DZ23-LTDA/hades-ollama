@@ -38,12 +38,26 @@ GUARDS = (
 # diagnóstico, fluxo público autenticado por assinatura/segredo, pareamento de
 # dispositivo, superfícies de compatibilidade de mídia em runtime único e backup
 # recusado por `if a.authRequired`.
+#
+# E-1294: `routing` entra na lista, e o criterio e' o mesmo que ja' valia para
+# `toolchainDoctor` e `installPlan`: **o que ele le' e' propriedade do HOST, nao de um tenant.**
+#   - `routing` chama `a.runtime.Models()` e `registro.RouteCandidates(pedido)`.
+#   - O registry de modelos e' o catalogo de motores ligados a esta maquina -- ele nao tem
+#     `organization_id`, `project_id` nem `mission_id`. `RouteCandidates` filtra por capabilities,
+#     path, preferencia, `local_only` e custo; **nao filtra por organizacao porque nao ha'
+#     organizacao no catalogo.**
+#   - Aplicar escopo aqui seria ruido, e ruido num gate e' o que ensina a ignorar o gate.
+#
+# O QUE ISTO NAO E': nao e' excecao por conveniencia. Se o registry ganhar modelos por tenant, esta
+# entrada fica ERRADA e o handler passa a vazar catalogo entre organizacoes -- por isso a
+# justificacao esta' escrita aqui, onde quem mudar o registry a vera'.
 EXPECTED = {
     "health", "metrics", "prometheus", "tools",
     "startDevicePairing", "completeDevicePairing",
     "mediaImage", "mediaVideo", "mediaSpeech", "mediaTranscribe", "mediaVision",
     "downloadBackup",
     "whatsappWebhook", "whatsappWebhookVerify",
+    "routing",
 }
 
 STORE = ("a.context.", "a.runtime.", "CompanyStore()", "a.store", "scopedRuntime(")

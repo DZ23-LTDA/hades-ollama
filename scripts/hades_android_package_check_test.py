@@ -114,6 +114,24 @@ class RepositorioRealTest(unittest.TestCase):
     def test_o_package_historico_nao_esta_em_codigo(self) -> None:
         self.assertEqual([], checker.verificar_package_historico())
 
+    def test_o_instrumento_exclui_se_a_si_mesmo(self) -> None:
+        """A constante `PACKAGE_HISTORICO` e as fixtures dos testes TEM de conter o texto.
+
+        A primeira versao devolveu 10 problemas, todos no proprio ficheiro e no seu teste.
+
+            *Um scanner que nao se exclui mede a si mesmo e chama-lhe defeito alheio.*
+        """
+        self.assertIn(
+            "scripts/hades_android_package_check.py", checker.FICHEIROS_DO_INSTRUMENTO
+        )
+        self.assertIn(
+            "scripts/hades_android_package_check_test.py", checker.FICHEIROS_DO_INSTRUMENTO
+        )
+        # E a exclusao e' por nome exacto, nao por prefixo.
+        self.assertNotIn(
+            "scripts/hades_android_package_check_algo.py", checker.FICHEIROS_DO_INSTRUMENTO
+        )
+
 
 class ComentarioTest(unittest.TestCase):
     """Um comentario que documenta o defeito NAO e' o defeito.

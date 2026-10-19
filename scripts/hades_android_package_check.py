@@ -56,6 +56,21 @@ PACKAGE_HISTORICO = "com.lmprado.dz23agentic"
 # Extensoes de documentacao onde o nome antigo E' legitimo (registo da migracao).
 SUFIXOS_DE_DOCUMENTACAO = (".md", ".txt")
 
+# O PROPRIO INSTRUMENTO E O SEU TESTE FICAM DE FORA
+#
+# `PACKAGE_HISTORICO` acima e' a CONSTANTE que define o que procurar; os testes contem o texto para
+# exercitar o checker. Um scanner que se acusa a si mesmo e' inutil -- a primeira versao deste
+# devolveu 10 problemas, todos no proprio ficheiro e no seu teste.
+#
+#     *Um scanner que nao se exclui mede a si mesmo e chama-lhe defeito alheio.*
+#
+# A exclusao e' por NOME EXACTO, e nao por prefixo: um ficheiro novo chamado
+# `hades_android_package_check_algo.py` nao herda a isencao em silencio.
+FICHEIROS_DO_INSTRUMENTO = (
+    "scripts/hades_android_package_check.py",
+    "scripts/hades_android_package_check_test.py",
+)
+
 
 def ler_package(ficheiro: Path) -> str:
     """Devolve o `package` declarado no ficheiro Kotlin, ou string vazia."""
@@ -204,6 +219,8 @@ def verificar_package_historico() -> list[str]:
         caminho, numero, conteudo = partes[0], partes[1], partes[2]
         if caminho.lower().endswith(SUFIXOS_DE_DOCUMENTACAO):
             continue  # documentacao da migracao: legitimo
+        if caminho in FICHEIROS_DO_INSTRUMENTO:
+            continue  # o proprio instrumento e o seu teste: a constante e as fixtures
         if linha_e_comentario(conteudo, caminho):
             continue  # comentario que documenta o defeito: legitimo e desejavel
         problemas.append(
