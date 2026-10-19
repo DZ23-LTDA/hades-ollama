@@ -1,3 +1,75 @@
+## JANELA E-1357
+
+A cabeça do índice é **E-1357**.
+
+- **E-1357** — **O caminho de entrada é contido no workspace — e essa é a fronteira.** `MediaPanel` consome
+  `POST /media/ocr` e `POST /media/tone`. O handler do OCR faz `containedPath(workspace, request.InputPath)`:
+  o caminho **não é usado como veio**, é resolvido dentro do workspace da missão. *Um caminho que escapa do
+  workspace não é um caminho: é uma leitura arbitrária com nome de parâmetro.* O painel recusa o óbvio
+  (absoluto, `..`) mas **NÃO reimplementa `containedPath`**: *uma segunda verdade sobre o que está «dentro»
+  seria uma segunda fronteira, e a mais fraca é a que fica.*
+  **Sem missão não há fronteira** — `mission_id` é obrigatório nos dois.
+  **Os dois devolvem 201** porque **criam um Artifact**: *não «correu bem», mas «existe uma coisa nova».*
+  **O 502 do OCR não é erro do pedido** — é a dependência a falhar, e o painel diz isso.
+  **VIGÉSIMA OITAVA MEDIÇÃO — previsão CERTA:** previ **2**, mediu **2** (12 → 10).
+- **E-1356** — waitlist+no-show: faltar ≠ cancelar; fila vazia = `offered:false`, não erro; 15 → 12.
+- **E-1355** — finance/orders: receita de pedido não pago recusada; as 3 não devolvem o mesmo status; 18 → 15.
+- **E-1354** — scheduling/reschedule: a recusa vem do MOTOR; remarcar ≠ cancelar+criar; tecto medido depois.
+- **E-1353** — scheduling/cancel: motivo obrigatório = auditabilidade; id no CORPO; 19 → 18.
+- **E-1352** — scheduling/book: E-456 contrato separado; E-458 reentrega ≠ erro; `busy_until` ≠ `ends_at`; 20 → 19.
+
+## A REGRA DO GATE, CONFIRMADA OUTRA VEZ
+
+```python
+prefixo = caminho.split(":")[0].rstrip("/") or caminho
+if prefixo not in fonte:      # SUBSTRING
+```
+
+`/media/ocr` e `/media/tone` **não têm `:param`** → dois prefixos distintos → **duas rotas, dois pontos**.
+E `scheduling/reschedule` vs `reschedule/slots` → **um prefixo** → zero. A regra explica todas as medições
+desde E-1352.
+
+## A distância, agora
+
+| categoria | rotas |
+|---|---|
+| no backend | **348** |
+| órfãs no frontend | **26** |
+| consumidor externo (correcto) | **16** |
+| **lacuna de produto** | **10** (era 93) |
+
+## AS 10 RESTANTES — LISTA EXACTA DO GATE
+
+| domínio | n | rotas |
+|---|---|---|
+| `auth` | 3 | `/auth/mfa/disable` · `/auth/mfa/enable` · `/auth/mfa/recovery/generate` |
+| `notifications` | 1 | `/notifications/register` |
+| `crm` | 1 | `/crm/opportunities/:id/stage` |
+| `inbox` | 1 | `/inbox/messages` |
+| `service-agents` | 1 | `/service-agents/approval-approvers` |
+| `business` | 1 | `/business/certify` |
+| `company` | 1 | `/company/factory/launch` |
+| `plugins` | 1 | `/plugins/bundle` |
+
+**`scheduling` e `media` estão FECHADOS.** As 10 restantes são `auth` (MFA, 3) e sete domínios isolados —
+**nenhum deles partilha prefixo com outro**, por isso cada um renderá exactamente 1.
+
+**Vinte e oito medições, doze previsões certas** — as últimas **cinco seguidas**.
+
+O que continua aberto: **10 rotas** sem UI (todas escritas); **20 ORPHAN de 209**; o build **não é assinado
+nem instalado**; `sign.start`/`publish.*` inexistentes; **`gitleaks` histórico — a única falha de CI**;
+instalação limpa `BLOCKED_EXTERNAL`; **não há catraca contra testes flaky**; **FASE 30 não iniciada**.
+Achados abertos: **o transporte descarta corpo e status de erro**; **o A1 nunca foi avaliado** por
+`SigningProvider`.
+
+## Próximo passo
+
+As de MFA (`/auth/mfa/*`) exigem **fatia própria**: tocam credenciais, devem **recusar sem reautenticação**
+e precisam de teste de negação explícito. As outras sete (`notifications/register`, `crm/opportunities/:id/stage`,
+`inbox/messages`, `service-agents/approval-approvers`, `business/certify`, `company/factory/launch`,
+`plugins/bundle`) são escritas isoladas de 1 ponto cada.
+
+---
 ## JANELA E-1356
 
 A cabeça do índice é **E-1356**.

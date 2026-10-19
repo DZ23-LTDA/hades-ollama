@@ -237,7 +237,14 @@ RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 #
 #   ***A regra do gate nao e' um detalhe do instrumento: e' o mapa de quanto custa cada fatia. Uma escrita
 #   num prefixo que ja' contem outros fecha tudo o que ele contem.***
-TETO_ORFAS = 12
+# 12 -> 10 no E-1357: `MediaPanel` consome `/media/ocr` e `/media/tone`.
+#
+#   *Dois prefixos distintos (nao ha' `:param`), por isso duas rotas renderam DOIS. Previ 2, mediu 2.*
+#
+#   ***O caminho de entrada e' resolvido DENTRO do workspace da missao pelo `containedPath`. O painel NAO
+#   reimplementa essa verificacao: uma segunda verdade sobre o que esta' «dentro» seria uma segunda
+#   fronteira, e a mais fraca e' a que fica.***
+TETO_ORFAS = 10
 
 # Quem chama nao e' o frontend do HADES -- a ausencia no UI e' correcta.
 CONSUMIDOR_EXTERNO = (
