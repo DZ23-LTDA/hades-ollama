@@ -60,7 +60,13 @@ RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # e `/inbox/metrics`. Pelo efeito de prefixo ja' conhecido (E-1328, E-1329, E-1330), as 8
 # rotas de `inbox` deixam de ser orfas com 3 consumidas. Medir antes de afirmar o numero:
 # o valor declarado e' o que o gate imprime, nao o que eu espero.
-TETO_ORFAS = 61
+# Medido: 53, nao os 54 previstos. O dominio `sales` tem 8 rotas e TODAS cairam com 3
+# consumidas -- o mesmo efeito de prefixo, com uma volta a mais: o token `sales` nao tem
+# nenhum consumidor externo que o mantivesse na lista. Previsao errada por 1, corrigida
+# para o valor medido.
+#   *Uma previsao que acerta uma vez nao e' um metodo: e' uma coincidencia que se pode
+#   repetir ou nao.*
+TETO_ORFAS = 53
 
 # Quem chama nao e' o frontend do HADES -- a ausencia no UI e' correcta.
 CONSUMIDOR_EXTERNO = (

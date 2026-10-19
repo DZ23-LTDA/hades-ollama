@@ -29,6 +29,7 @@ import { SchedulingPanel } from "@/components/SchedulingPanel";
 import { CommercePanel } from "@/components/CommercePanel";
 import { CRMPanel } from "@/components/CRMPanel";
 import { InboxPanel } from "@/components/InboxPanel";
+import { SalesPanel } from "@/components/SalesPanel";
 import { RollbackPanel } from "@/components/RollbackPanel";
 import { SigningPanel } from "@/components/SigningPanel";
 import { SbomPanel } from "@/components/SbomPanel";
@@ -334,6 +335,7 @@ export function CapabilitiesPage() {
       <CommercePanel />
       <CRMPanel />
       <InboxPanel />
+      <SalesPanel />
 
         <CredentialsPanel />
 

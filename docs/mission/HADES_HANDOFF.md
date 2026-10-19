@@ -1,3 +1,57 @@
+## JANELA E-1332
+
+A cabeça do índice é **E-1332**.
+
+- **E-1332** — **a conta fica aberta: não se mostra o total, mostra-se o total e as parcelas.** `sales`
+  era o maior domínio restante (**8 rotas**), `sales_workforce.go` 23 KB, nenhum componente `*ales*`.
+  Entregues `salesClient.ts` + `SalesPanel.tsx`, consumindo `/sales/proposals`,
+  `/sales/proposals/:id` e `/sales/follow-ups`.
+  **(1) O próprio tipo diz porquê, com o ID da evidência:** *«PRECIFICAÇÃO (E-269): a conta fica ABERTA
+  na proposta. Um total único esconderia quanto foi desconto, quanto foi imposto e quanto foi frete.»*
+  O painel mostra **subtotal, desconto, imposto, frete e total**; o teste falha se o total vier sem as
+  parcelas ou com valores em centavos. *Uma proposta que mostra só o total não mostra a proposta: mostra
+  o preço.*
+  **(2) Frete não declarado não é R$ 0,00.** `shipping_declared`: *«Zero não informado não é zero
+  cobrado.»* O painel escreve **«frete não declarado»**, e o teste verifica que a linha do frete **não
+  contém `R$ 0,00`**. *Zero não informado e zero cobrado são o mesmo número e duas afirmações
+  diferentes.*
+  **(3) Pontos-base não são percentagem:** `500` → **5%**, `1250` → **12,5%**.
+  **(4) `overdue` é query booleana**, com a caixa «Só acompanhamentos atrasados»; lista vazia nesse modo
+  diz **«isto é diferente de não haver acompanhamentos»**.
+  **(5) 503 não é lista vazia** (estado `sem-vendas`).
+  **A PREVISÃO FALHOU POR 1, E ISSO FICA REGISTADO.** Previ 54; o gate mediu **53**. `sales` tem 8 rotas
+  e **todas** caíram com 3 consumidas. Corrigi para o valor medido: *uma previsão que acerta uma vez não
+  é um método: é uma coincidência que se pode repetir ou não.*
+- **E-1331** — `InboxPanel`; `reply_blocked` não esconde a conversa; 68 → 61.
+- **E-1330** — detalhe do contacto com consentimento real; teto 68 inalterado e explicado.
+- **E-1329** — `CRMPanel` com PII mascarada; 75 → 68.
+- **E-1328** — `CommercePanel`; 85 → 75.
+- **E-1327** — `SchedulingPanel`; 87 → 85.
+
+## A distância, agora
+
+| categoria | rotas |
+|---|---|
+| no backend | **348** |
+| órfãs no frontend | **69** |
+| consumidor externo (correcto) | **16** |
+| **lacuna de produto** | **53** (era 93) |
+
+**Os maiores domínios ainda sem UI:** `service-agents` **6**, `omnichannel` **5**, `auth` **4**,
+`supervisor` **4** (parcial), `finance` **4**, `business` **4** (parcial), `plugins` **3**, `media`
+**2**, `company` **2**.
+
+**Nota acumulada sobre o contador — cinco avisos:** E-1328 (3 de 10), E-1329 (2 de 8, 1 de detalhe
+aberta), E-1330 (**1 consumida, contador inalterado**), E-1331 (3 de 8, previsão certeira), E-1332
+(3 de 8, **previsão errada por 1**). O gate mede o **domínio**; corrigi-lo continua a ser trabalho
+próprio.
+
+O que continua aberto: **53 rotas** sem UI; o gate **mede prefixos**; a assimetria `call.raw`/`call.path`;
+**20 ORPHAN listados de 221**; o build **não é assinado nem instalado**; `sign.start`/`publish.*`
+inexistentes; o painel do build **não se actualiza sozinho**; `gitleaks`; instalação limpa
+`BLOCKED_EXTERNAL`; **FASE 30 não iniciada**.
+
+---
 ## JANELA E-1331
 
 A cabeça do índice é **E-1331**.
