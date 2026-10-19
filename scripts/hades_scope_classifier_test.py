@@ -105,10 +105,14 @@ class ClassificadorDeEscopoTest(unittest.TestCase):
 
         MEDIDO: reverter `classificar_statement` para classificação por linha deixava **8 testes OK** ✗. Uma métrica que
         nenhum teste pina deriva em silêncio — e foi o que aconteceu: a documentação dizia 22 e 23, o instrumento dizia
-        23, e a verdade (depois de corrigir o join) é **24**. *Número publicado sem catraca é narrativa.*
+        23, e a verdade (depois de corrigir o join) era **24**. Subiu para **25** no E-1366, quando
+# `agent_persona_ledger.go` passou a montar o caminho por escopo -- com `requireOrganization` na mesma
+# funcao, que e' o que o `hades_tenant_scope_check.py` exige. As duas catracas concordam: um uso NOVO em
+# caminho, e a guarda de tenant presente. *Um numero que sobe sem motivo e' narrativa; um que sobe com a
+# guarda ao lado e' medicao.*
         """
         resumo = classificador.resumo_da_classificacao()
-        esperado = {"caminho": 24, "identificador": 5, "comentario": 2, "indefinido": 1}
+        esperado = {"caminho": 25, "identificador": 5, "comentario": 2, "indefinido": 1}
         obtido = {chave: resumo[chave] for chave in esperado}
         self.assertEqual(
             esperado, obtido,
