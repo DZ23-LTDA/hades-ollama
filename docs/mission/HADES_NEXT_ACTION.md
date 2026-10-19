@@ -1,3 +1,31 @@
+## JANELA E-1286
+
+**Ronda 104. O `ProjectDetector` ganhou porta: `POST /project/detect`.**
+
+- **E-1286** — `server/agent_project_detect_route.go` + **8 testes**. O detector existe desde a E-1245
+  com 12 KB e teste próprio, mas **nenhuma rota**: só o programador o podia invocar.
+- **A fronteira, e o teste que a prova:** a raiz vem de `HADES_RAIZ_PROJECTO`, **nunca do pedido**.
+  `TestDeteccaoNaoUsaARaizDoPedido` manda no corpo `/caminho/inventado/pelo/cliente` e exige **200 com
+  a raiz do ambiente** — falha se a rota tiver obedecido.
+- **Uma suposição minha desmentida pelo teste:** escrevi o teste a esperar **200 com listas vazias**; o
+  detector devolve **409** com *"nenhuma stack reconhecida"*. **O contrato real é melhor que a minha
+  suposição:** *uma lista vazia e um erro não são a mesma coisa: quem lê um relatório vazio acredita
+  que o projeto não tem stack; quem lê "nenhuma stack reconhecida" sabe que o detector não soube
+  classificar.*
+- **Segundo sintoma mal lido:** o teste seguinte exigia o caminho completo no erro; o caminho **estava**
+  lá, mas com barras escapadas (`\\`). `filepath.Base` resolveu. *O sintoma parecia falta de informação
+  e era o escape do JSON.*
+- **O aviso declara que os alvos são SUGESTÃO:** o teste exige `SUGESTAO` e `toolchain.doctor`. *Um
+  alvo derivado de um ficheiro não prova que a toolchain exista.*
+
+Medido: **8 testes PASS** · `go build ./...` 0 · `go vet` 0 · `golangci-lint` **0** · `gofumpt` limpo ·
+`npx vitest run` 127 ficheiros / 909 testes · `tsc -b` 0.
+
+**Lacuna:** sem cliente, sem painel e sem E2E — o `ProjectDetector` continua a não ser consumido pelo
+produto. **2 providers sem rota nem painel** (`CapabilityResolver`, `PublishingProvider`).
+
+Veredito global: `NOT_RELEASE_READY`.
+
 ## JANELA E-1285
 
 **Ronda 103. O E2E do `VerificationPanel`: o oitavo elo fechado no browser real.**

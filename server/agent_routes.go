@@ -875,6 +875,8 @@ func (a *agentAPI) register(r *gin.Engine) {
 	// FASE 28.7 do adendo V3: preflight de toolchain por alvo de build. Todas LEITURA -- nenhuma
 	// instala, altera ou executa trabalho de utilizador. *Um preflight que muda o sistema nao e'
 	// preflight: e' instalacao disfarcada.*
+	// FASE 28.7: project.detect -- a porta do ProjectDetector. Le' HADES_RAIZ_PROJECTO.
+	group.POST("/project/detect", a.detectarProjecto)
 	group.GET("/toolchain/targets", a.toolchainTargets)
 	group.GET("/toolchain/doctor", a.toolchainDoctor)
 	group.GET("/toolchain/plan/:alvo", a.toolchainPlan)
