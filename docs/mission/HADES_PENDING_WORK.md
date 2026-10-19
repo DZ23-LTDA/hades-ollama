@@ -1,3 +1,44 @@
+## JANELA E-1324
+
+A cabeça do índice é **E-1324**.
+
+- **E-1324** — **a terceira das 93 passou a ser produto. Teto 89 → 88.** `/routing` é a rota que
+  responde **porquê o HADES escolheu um modelo** — e até agora ninguém a podia perguntar. É a FASE 19
+  (roteamento multiobjetivo e fronteira de Pareto).
+  Entregues `routingClient.ts` + `RoutingPanel.tsx`, montado no `CapabilitiesPage`.
+  **As decisões que o painel não pode errar:**
+  **(1) O 422 é RECUSA, não avaria.** Quando nenhum modelo satisfaz as restrições o servidor responde
+  422 com as restrições no texto; o painel mostra «Nenhum modelo satisfaz» e diz que é resposta do
+  roteador. *Uma recusa que explica as restrições que a produziram é informação; a mesma recusa
+  mostrada como «falhou» é ruído.*
+  **(2) Os factores aparecem** — o próprio código do servidor diz *«Um score sem os componentes que o
+  somam obriga quem o lê a confiar em quem o escreveu»*. O teste exige `capacidade=0.90`, `custo=1.00`,
+  `latencia=0.60` ao lado do score.
+  **(3) A fronteira de Pareto não é um ranking** — cinco eixos, rotulados como alternativas.
+  **(4) A query não leva parâmetros vazios** — o teste da primeira consulta exige exactamente
+  `/api/agent/v1/routing?preference=auto`.
+  **(5) `cost_cents_per_1k = 0` diz-se GRÁTIS**, não `R$ 0,00`.
+  *Três rotas seguidas com as mesmas duas armadilhas (prefixo explícito, só GET) resolvidas antes do
+  CI — a lição virou regra, não remendo.*
+- **E-1323** — `TracesPanel`; teto 90 → 89.
+- **E-1322** — o gate de contrato na bateria local.
+- **E-1321** — o gate compara o path cru; o cliente omitia o prefixo.
+
+## A distância, agora
+
+| categoria | rotas |
+|---|---|
+| no backend | **348** |
+| órfãs no frontend | **104** |
+| consumidor externo (correcto) | **16** |
+| **lacuna de produto** | **88** (era 93) |
+
+O que continua aberto: **88 rotas** sem UI; a assimetria `call.raw`/`call.path` no
+`verify-contracts.mjs`; **20 ORPHAN listados de 254** sem catraca no total; o build **não é assinado nem
+instalado**; `sign.start`/`publish.*` inexistentes; o painel do build **não se actualiza sozinho**;
+`gitleaks`; instalação limpa `BLOCKED_EXTERNAL`; **FASE 30 não iniciada**.
+
+---
 ## JANELA E-1323
 
 A cabeça do índice é **E-1323**.
