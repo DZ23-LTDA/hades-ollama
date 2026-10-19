@@ -572,6 +572,69 @@ const server = createServer(async (request, response) => {
           "SUGESTAO derivada dos ficheiros presentes -- nao significam que a toolchain esteja " +
           "instalada: consulte `toolchain.doctor` antes de planear um build.",
       });
+      // E-1299: `status` e' a variavel que o log do fixture imprime (L1274). Sem esta linha o log
+      // dizia "-> 404" enquanto a resposta real era 200.
+      // *Um log que diz 404 sobre uma resposta 200 ensina a procurar o defeito onde ele nao esta'.*
+      status = 200;
+    } else if (route.startsWith("POST /api/agent/v1/publish/preflight/")) {
+      // E-1299: `publish.preflight` -- pergunta se o CANAL esta' pronto. NAO publica nada.
+      //
+      // O canal vem do CAMINHO, e o fixture devolve-os todos os seis que o backend conhece. O E2E
+      // prova que o painel envia o canal certo e que trata `LOCAL_ONLY` como ensaio, nao como
+      // publicacao.
+      //
+      // O pedido NAO tem campo para o artefacto nem para a credencial -- vem do ambiente do
+      // servidor. O fixture nao tem como receber um caminho: nao ha' campo para isso.
+      const canal = route.slice("POST /api/agent/v1/publish/preflight/".length);
+      const CANAIS = [
+        "LOCAL_ONLY",
+        "GOOGLE_PLAY",
+        "APP_STORE",
+        "EAS_UPDATE",
+        "GITHUB_RELEASE",
+        "OCI_REGISTRY",
+      ];
+      if (!CANAIS.includes(canal)) {
+        sendJSON(response, 400, { erro: "canal desconhecido: " + canal });
+        return;
+      }
+      const publico = canal !== "LOCAL_ONLY";
+      const condicoesLocal = [
+        { nome: "artefacto_existe", satisfeita: true, detalhe: "dist/hades.exe" },
+        { nome: "credencial_presente", satisfeita: true, detalhe: "nao necessaria para local" },
+      ];
+      const condicoesPublico = [
+        { nome: "artefacto_existe", satisfeita: true, detalhe: "dist/hades.aab" },
+        { nome: "credencial_presente", satisfeita: true, detalhe: "cofre: android-upload" },
+        { nome: "aprovacao_humana", satisfeita: false, detalhe: "exige confirmacao no momento da accao" },
+      ];
+      sendJSON(response, 200, {
+        somente_leitura: true,
+        nada_publicado: true,
+        preflight: {
+          canal,
+          publico,
+          pronto: !publico,
+          condicoes: publico ? condicoesPublico : condicoesLocal,
+          requer_aprovacao: publico,
+          // SEMPRE false: o provider nao tem `Publicar()`.
+          publicado: false,
+          explicacao: publico
+            ? "canal publico: o preflight esta' pronto, mas falta a aprovacao humana"
+            : "canal local nao envia para fora",
+          aviso: publico
+            ? "este provider NAO tem `Publicar()`: o pedido de aprovacao e' feito noutra rota"
+            : "",
+        },
+        aviso_de_fronteira:
+          "esta rota apenas LE' o artefacto e a credencial do AMBIENTE DO SERVIDOR " +
+          "(`HADES_ARTEFACTO_A_PUBLICAR` e `HADES_CREDENCIAL_DE_PUBLICACAO`); nao publica. O pedido " +
+          "escolhe o CANAL, nunca o caminho nem o segredo. Nao existe `Publicar()` neste provider.",
+      });
+      // `status` e' a variavel que o log do fixture imprime (L1274). Sem esta linha o log diria
+      // "-> 404" enquanto a resposta real era 200 -- e o log e' o que se usa para diagnosticar.
+      // *Um log que diz 404 sobre uma resposta 200 ensina a procurar o defeito onde ele nao esta'.*
+      status = 200;
     } else if (route === "POST /api/agent/v1/build/verify") {
 
       // FASE 28.7: `build.verify` -- compara checksums. NAO assina, NAO constroi.
