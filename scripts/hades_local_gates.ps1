@@ -245,6 +245,25 @@ $saidaForma2 = & python -X utf8 scripts/hades_index_shape_check.py --check 2>&1
 $saidaForma2 | Select-Object -First 6 | ForEach-Object { "    $_" }
 if ($LASTEXITCODE -ne 0) { $falhas.Add("hades_index_shape_check.py --check (exit $LASTEXITCODE)") } else { '    OK' }
 
+# *POR QUE ISTO EXISTE:* o `E-1290`. O template do React Native assinava o build de RELEASE Android com
+# `signingConfigs.debug`, cuja chave e' PUBLICA (senha `android`, alias `androiddebugkey`, conhecidos
+# desde 2010). Um artefacto assinado com ela e' FORJAVEL por qualquer pessoa, e o Google Play RECUSA um
+# AAB assinado com debug key.
+#
+#   *Um artefacto que passa nos testes e nasce com a chave errada nao falha onde se ve': falha onde se
+#   distribui.*
+#
+# O build real e' BLOCKED_EXTERNAL nesta maquina (sem JDK 17, Android SDK e Gradle), por isso a catraca
+# existe separada do build: um teste que so' corre quando a ferramenta existe nao protege nada no dia em
+# que ela falta.
+'--- 9b. ASSINATURA de release Android NAO usa a debug key (E-1290)'
+$saidaAndroid = & python -X utf8 scripts/hades_android_signing_check_test.py 2>&1
+$saidaAndroid | Select-String -Pattern '(Ran \d+ tests|^OK|^FAILED)' | Select-Object -Last 2 | ForEach-Object { "    " + $_.Line.Trim() }
+if ($LASTEXITCODE -ne 0) { $falhas.Add("hades_android_signing_check_test.py (exit $LASTEXITCODE)") }
+$saidaAndroid2 = & python -X utf8 scripts/hades_android_signing_check.py 2>&1
+$saidaAndroid2 | Select-Object -First 3 | ForEach-Object { "    $_" }
+if ($LASTEXITCODE -ne 0) { $falhas.Add("hades_android_signing_check.py (exit $LASTEXITCODE)") } else { '    OK' }
+
 # *POR QUE ISTO EXISTE:* o `E-1008`. O `mission_check` exige "alguma evidencia >= E-960", e um
 # documento de retomada parado no E-1000 satisfaz PARA SEMPRE. Esta catraca mede a JANELA: o
 # maior ID citado tem de estar a menos de 12 evidencias da cabeca do indice.
@@ -765,7 +784,7 @@ $passos += 'ux-onboarding-testes'
 # `gate_snapshot` declara DIVERGENTE e o gate cita um commit de ontem (o defeito do E-987).*
 # => *e corre como **GERADOR**, nao como check: exigir `MESMO` no `--check` faria o CI falhar sempre,
 # porque em `pull_request` o `HEAD` e' o **merge commit sintetico** (o E-993, ja' escrito no ficheiro).*
-'--- 44. SNAPSHOT: o `measured_commit` do estado e' o HEAD antes de gerar os derivados'
+'--- 44. SNAPSHOT: o `measured_commit` do estado e'' o HEAD antes de gerar os derivados'
 $saidaSync = & python -X utf8 scripts/hades_sync_state_metadata.py 2>&1
 $saidaSync | Select-Object -Last 2 | ForEach-Object { "    " + $_.ToString().Substring(0, [Math]::Min(110, $_.ToString().Length)) }
 if ($LASTEXITCODE -ne 0) {

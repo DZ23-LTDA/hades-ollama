@@ -1,4 +1,6 @@
-## ACHADO P1 (ronda 107) -- o build de release Android assina com a DEBUG KEY
+## ACHADO P1 (ronda 107) -- RESOLVIDO na ronda 108 (E-1290): o build de release Android assinava com a DEBUG KEY
+**RESOLUCAO (E-1290, ronda 108).** O bloco `buildTypes.release` deixou de usar `signingConfigs.debug`. A credencial vem de quatro variaveis de ambiente (`HADES_ANDROID_STORE_FILE`, `_STORE_PASSWORD`, `_KEY_ALIAS`, `_KEY_PASSWORD`); sem as quatro, `signingConfig` fica `null` e um guard em `assembleRelease`/`bundleRelease` lanca `GradleException` antes do empacotamento. A auditoria CNG/bare exigida acima foi feita: `android/` tem 35 ficheiros rastreados (bare), por isso a correcao persiste. A catraca `scripts/hades_android_signing_check.py` corre em CI via o seu `*_test.py`, e e' discriminante: reintroduzir o defeito produz um P0. **O build real continua `BLOCKED_EXTERNAL`** (sem JDK 17, Android SDK e Gradle nesta maquina).
+
 
 `apps/mobile-agentic/android/app/build.gradle` tem, no template do React Native:
 

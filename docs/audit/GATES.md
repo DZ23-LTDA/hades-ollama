@@ -51,7 +51,7 @@ que passam: *quem os corre é o auditor, e o resultado é do estado em que ele o
 | 41 | fault injection da catraca dos testes hermeticos (injecao + 3 contraprovas) |
 | 42 | UX/ONBOARDING: /goal no composer, onboarding real, ARIA e teclado, menu unificado |
 | 43 | fault injection do UX/onboarding (3 injecoes + contraprova) |
-| 44 | SNAPSHOT: o `measured_commit` do estado e' o HEAD antes de gerar os derivados |
+| 44 | SNAPSHOT: o `measured_commit` do estado e'' o HEAD antes de gerar os derivados |
 | 45 | o gate DECLARA o snapshot (MESMO ou a distancia), sem esconder a diferenca |
 | 46 | HARNESS: as 7 capacidades, cancelamento entre instancias, Ollama, e o CLI com sonda opt-in |
 | 47 | fault injection do harness (3 injecoes + contraprova) |

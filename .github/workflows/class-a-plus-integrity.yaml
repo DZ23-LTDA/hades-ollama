@@ -114,6 +114,13 @@ jobs:
           python3 scripts/hades_scope_classifier_test.py
           python3 scripts/hades_tenant_scope_check_test.py
           python3 scripts/hades_tenant_scope_check.py --check
+          # E-1290: o build de RELEASE Android assinava com a DEBUG KEY. A debug keystore usa a senha
+          # publica `android` e o alias `androiddebugkey`, conhecidos desde 2010: um artefacto assinado
+          # com ela e' forjavel por qualquer pessoa, e o Google Play RECUSA AAB assinado com debug key.
+          # A catraca impede o regresso do template do React Native e roda aqui porque o build real e'
+          # BLOCKED_EXTERNAL (sem JDK 17, Android SDK e Gradle na maquina de desenvolvimento).
+          python3 scripts/hades_android_signing_check_test.py
+          python3 scripts/hades_android_signing_check.py
       # E-660: a CODIFICACAO dos artefatos passa a ser gate. O checker existia (E-409/E-410) mas nao rodava no CI
       # e cobria so' dupla codificacao - um BOM UTF-8 passava em silencio, e um `HADES_MASTER_STATE.json` com BOM
       # derrubou o `hades_release_gate.py --check` (JSONDecodeError) nesta propria workflow. Instrumento fora da

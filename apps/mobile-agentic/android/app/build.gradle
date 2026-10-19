@@ -81,6 +81,25 @@ def enableProguardInReleaseBuilds = (findProperty('android.enableProguardInRelea
  */
 def jscFlavor = 'io.github.react-native-community:jsc-android:2026004.+'
 
+// HADES -- CREDENCIAL DE ASSINATURA DE RELEASE
+//
+// O template do React Native assina o release com `signingConfigs.debug`, cuja chave e' PUBLICA
+// (senha `android`, alias `androiddebugkey`, conhecidos desde 2010). Um artefacto assinado com ela e'
+// FORJAVEL por qualquer pessoa, e o Google Play RECUSA um AAB assinado com debug key.
+//
+//     *Um artefacto que passa nos testes e nasce com a chave errada nao falha onde se ve': falha onde
+//     se distribui.*
+//
+// Por isso a credencial de release vem do AMBIENTE, nunca de ficheiro versionado, e SEM as quatro
+// variaveis o release NAO e' assinado com a debug key. O guard no fim do ficheiro transforma a
+// ausencia de credencial num erro accionavel em vez de num artefacto silenciosamente forjavel.
+def hadesStoreFile     = System.getenv('HADES_ANDROID_STORE_FILE')
+def hadesStorePassword = System.getenv('HADES_ANDROID_STORE_PASSWORD')
+def hadesKeyAlias      = System.getenv('HADES_ANDROID_KEY_ALIAS')
+def hadesKeyPassword   = System.getenv('HADES_ANDROID_KEY_PASSWORD')
+def hadesCredencialDeReleaseCompleta =
+    hadesStoreFile && hadesStorePassword && hadesKeyAlias && hadesKeyPassword
+
 android {
     ndkVersion rootProject.ext.ndkVersion
 
@@ -102,15 +121,26 @@ android {
             keyAlias 'androiddebugkey'
             keyPassword 'android'
         }
+        // `release` so' existe quando a credencial completa esta' no ambiente. Nao ha' configuracao de
+        // release incompleta: ou esta' inteira, ou nao existe.
+        if (hadesCredencialDeReleaseCompleta) {
+            release {
+                storeFile file(hadesStoreFile)
+                storePassword hadesStorePassword
+                keyAlias hadesKeyAlias
+                keyPassword hadesKeyPassword
+            }
+        }
     }
     buildTypes {
         debug {
             signingConfig signingConfigs.debug
         }
         release {
-            // Caution! In production, you need to generate your own keystore file.
-            // see https://reactnative.dev/docs/signed-apk-android.
-            signingConfig signingConfigs.debug
+            // NUNCA `signingConfigs.debug`: a debug key e' publica e o artefacto seria forjavel.
+            // Sem credencial, `null` -- o release fica NAO assinado, e o guard abaixo falha antes
+            // de produzir qualquer artefacto.
+            signingConfig hadesCredencialDeReleaseCompleta ? signingConfigs.release : null
             shrinkResources (findProperty('android.enableShrinkResourcesInReleaseBuilds')?.toBoolean() ?: false)
             minifyEnabled enableProguardInReleaseBuilds
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
@@ -173,5 +203,29 @@ dependencies {
         implementation("com.facebook.react:hermes-android")
     } else {
         implementation jscFlavor
+    }
+}
+
+// HADES -- GUARDA DO RELEASE
+//
+// Pedir um artefacto de RELEASE sem credencial falha com mensagem accionavel, em vez de produzir um
+// APK/AAB assinado com a debug key -- chave publica, forjavel, e recusada pelo Google Play.
+//
+// O guard corre em `doFirst`, ou seja, ANTES do empacotamento. Um build de debug nao e' afectado.
+tasks.configureEach { tarefa ->
+    if (tarefa.name == 'assembleRelease' || tarefa.name == 'bundleRelease') {
+        tarefa.doFirst {
+            if (!hadesCredencialDeReleaseCompleta) {
+                throw new GradleException(
+                    "HADES: release SEM credencial. Defina as quatro variaveis de ambiente:\n" +
+                    "  HADES_ANDROID_STORE_FILE      caminho absoluto da keystore\n" +
+                    "  HADES_ANDROID_STORE_PASSWORD  senha do store\n" +
+                    "  HADES_ANDROID_KEY_ALIAS       alias da chave\n" +
+                    "  HADES_ANDROID_KEY_PASSWORD    senha da chave\n" +
+                    "O release deste projecto NAO assina com a debug key: a chave de debug e' publica " +
+                    "e o artefacto resultante seria forjavel por qualquer pessoa."
+                )
+            }
+        }
     }
 }
