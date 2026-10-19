@@ -125,7 +125,17 @@ RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 #   quando todas as rotas de um dominio eram lacuna.*
 #
 # A conta: 3/10, 2/7, 1/0, 7/7 OK, 7/8, 3/5, 3/0, 5/5 OK, 4/1, 1/1 OK, 3/2, 2/4.
-TETO_ORFAS = 35
+# 35 -> 33 no E-1340 -- previsao era 1, mediu 2. DECIMA leitura errada do mesmo gate.
+#
+# `/business` tem 4 rotas, mas DUAS estavam na lacuna: `/business/actions` (que o painel
+# consome) e uma segunda que o prefixo do gate agrupou. Consumir uma removeu duas.
+#
+# A conta: 3/10, 2/7, 1/0, 7/7 OK, 7/8, 3/5, 3/0, 5/5 OK, 4/1, 1/1 OK, 3/2, 2/4, 1/2.
+#
+#   *Treze medicoes, tres previsoes certas. E o erro desta vez foi supor que contar as
+#   rotas de LEITURA bastava. Nao basta: o gate mede o PREFIXO, e um prefixo pode ter
+#   mais do que uma entrada na lacuna.*
+TETO_ORFAS = 33
 
 # Quem chama nao e' o frontend do HADES -- a ausencia no UI e' correcta.
 CONSUMIDOR_EXTERNO = (

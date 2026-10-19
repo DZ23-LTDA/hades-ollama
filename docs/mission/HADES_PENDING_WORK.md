@@ -1,3 +1,50 @@
+## JANELA E-1340
+
+A cabeça do índice é **E-1340**.
+
+- **E-1340** — **bloqueada por orçamento e aguardando aprovação são ambas «pendentes» e não são a mesma
+  coisa.** `BusinessActionsPanel` consome `GET /business/actions`. `BusinessAction.status` tem **seis**
+  valores: `AUTONOMA` (correu sem humano), `REQUER_APROVACAO`, `EXECUTADA`, `AGUARDANDO_APROVACAO`,
+  `RECUSADA` e **`BLOQUEADA_ORCAMENTO`**. O painel escreve deste último **«BLOQUEADA POR ORÇAMENTO —
+  aprovar não resolve»**. *Uma ação bloqueada por orçamento e uma ação à espera de aprovação são ambas
+  «pendentes» e não são a mesma coisa: uma precisa de dinheiro, a outra precisa de uma pessoa.*
+  **O resumo separa as duas filas**: «1 à espera de uma pessoa · 1 à espera de orçamento · 1 noutro
+  estado».
+  **O custo não é decorativo**: `cost_cents` aparece ao lado de cada ação, com o risco. *Aprovar uma ação
+  sem ver o custo é aprovar um número que não se leu.*
+  **Só a leitura chega ao produto**: `certify`, `tick` e `decide` são escritas — o comentário do `decide`
+  diz *«aprovar EXECUTA, recusar não executa»*, e o painel não decide. **503 ≠ «nenhuma ação pendente»**.
+  **DÉCIMA LEITURA ERRADA DO GATE.** Previ **1**, mediu **2** (35 → 33). *Treze medições, três previsões
+  certas. O erro desta vez foi supor que contar as rotas de LEITURA bastava. Não basta: um prefixo pode
+  ter mais do que uma entrada na lacuna.*
+- **E-1339** — supervisor: reconhecer não é resolver; 200-vazio não prova supervisor; 39 → 35.
+- **E-1338** — `PluginsPanel`: scope pedido não é concedido; integridade em 4 estados; 41 → 39.
+- **E-1337** — `SessionPanel`: `omitempty` em booleano = `false`; `Public()` limpa segredos; 42 → 41.
+- **E-1336** — `FinancePanel`: líquido com cobertura ao lado; recebível não é receita; 43 → 42.
+- **E-1335** — `OmnichannelPanel`: DLQ declara durabilidade, segredo pelo nome; 48 → 43.
+
+## A distância, agora
+
+| categoria | rotas |
+|---|---|
+| no backend | **348** |
+| órfãs no frontend | **49** |
+| consumidor externo (correcto) | **16** |
+| **lacuna de produto** | **33** (era 93) |
+
+**Os maiores domínios ainda sem UI:** `media` **2**, `company` **2** — o resto é disperso.
+
+**Nota acumulada sobre o contador — treze avisos:** o gate mede o **domínio**, não a rota. Treze medições,
+**três** previsões certas. A décima errou por contar rotas de leitura: um prefixo pode ter mais do que
+uma entrada.
+
+O que continua aberto: **33 rotas** sem UI; o gate **mede prefixos**; a assimetria `call.raw`/`call.path`;
+**20 ORPHAN listados de 209**; o build **não é assinado nem instalado**; `sign.start`/`publish.*`
+inexistentes; o painel do build **não se actualiza sozinho**; **`gitleaks` histórico — a única falha de
+CI**; instalação limpa `BLOCKED_EXTERNAL`; **3 rotas de `/business` sem UI por serem escritas —
+declarado, não escondido**; **FASE 30 não iniciada**.
+
+---
 ## JANELA E-1339
 
 A cabeça do índice é **E-1339**.
