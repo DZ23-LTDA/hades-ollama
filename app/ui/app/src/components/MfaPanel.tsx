@@ -14,6 +14,7 @@ import {
   ligarMfa,
   MfaRecusadoError,
   MfaSemSessaoError,
+  validarCodigo,
   validarSegredo,
   type ResultadoDeMfa,
   type ResultadoDeRecuperacao,
@@ -23,6 +24,7 @@ type Estado = "pronto" | "a-correr" | "ligado" | "desligado" | "codigos" | "sem-
 
 export function MfaPanel() {
   const [segredo, setSegredo] = useState("");
+  const [codigo, setCodigo] = useState("");
   const [confirmado, setConfirmado] = useState(false);
   const [estado, setEstado] = useState<Estado>("pronto");
   const [erro, setErro] = useState<string | null>(null);
@@ -45,6 +47,14 @@ export function MfaPanel() {
           setEstado("recusado");
           return;
         }
+      } else {
+        // Desativar e gerar codigos exigem a prova do SEGUNDO factor: o servidor devolve 403 sem ela.
+        const problema = validarCodigo(codigo);
+        if (problema) {
+          setErro(problema);
+          setEstado("recusado");
+          return;
+        }
       }
 
       setErro(null);
@@ -57,12 +67,12 @@ export function MfaPanel() {
           setEstado("ligado");
           setSegredo("");
         } else if (op === "disable") {
-          const r = await desligarMfa();
+          const r = await desligarMfa(codigo);
           setMfa(r);
           setRecuperacao(null);
           setEstado("desligado");
         } else {
-          const r = await gerarCodigosDeRecuperacao();
+          const r = await gerarCodigosDeRecuperacao(codigo);
           setRecuperacao(r);
           setMfa(null);
           setEstado("codigos");
@@ -82,7 +92,7 @@ export function MfaPanel() {
         setEstado("erro");
       }
     },
-    [segredo, confirmado],
+    [segredo, codigo, confirmado],
   );
 
   const codigos = recuperacao?.recovery_codes ?? [];
@@ -113,6 +123,14 @@ export function MfaPanel() {
           placeholder="segredo TOTP (base32)"
           aria-label="Segredo TOTP"
           className="w-56 rounded border border-neutral-700 bg-neutral-950 px-2 py-1 font-mono text-xs text-neutral-200"
+        />
+        <input
+          data-testid="mfa-codigo"
+          value={codigo}
+          onChange={(e) => setCodigo(e.target.value)}
+          placeholder="código TOTP ou de recuperação"
+          aria-label="Prova do segundo factor"
+          className="w-52 rounded border border-neutral-700 bg-neutral-950 px-2 py-1 font-mono text-xs text-neutral-200"
         />
         <label className="flex items-center gap-1 text-[11px] text-neutral-400">
           <input

@@ -93,10 +93,9 @@ export function validarSegredo(segredo: string | undefined): string | null {
 /** O achado, dito como achado -- nao como funcionalidade. */
 export function descreverAchadoDeReautenticacao(): string {
   return (
-    "ACHADO: nenhum dos três handlers de MFA exige reautenticação — verificam apenas a sessão. Quem " +
-    "tiver um bearer token válido desativa o MFA ou gera códigos novos com um pedido vazio. Um segundo " +
-    "factor que qualquer portador do primeiro pode remover não é um segundo factor: é uma cerimónia. " +
-    "Esta confirmação local protege contra o engano, não contra o ataque."
+    "O servidor passou a exigir a prova do segundo factor para desativar o MFA e para gerar códigos. " +
+    "Um segundo factor que qualquer portador do primeiro pode remover não é um segundo factor: é uma " +
+    "cerimónia. A prova vai no cabeçalho e é verificada com limitação de tentativas."
   );
 }
 
@@ -126,6 +125,32 @@ export function descreverCodigos(r: ResultadoDeRecuperacao | null): string {
   return `${n} código(s) de recuperação — mostrados UMA vez. O servidor não os volta a mostrar.`;
 }
 
+/**
+ * A prova do SEGUNDO factor, do lado do cliente.
+ *
+ * O servidor exige o cabecalho `X-Ollama-MFA-Code` (ou `X-Ollama-MFA-Recovery-Code`) para desativar o MFA
+ * e para gerar codigos novos. Sem ele devolve 403 -- e o 403 e' a correcao do achado P1 do E-1362.
+ *
+ *   *Um segundo factor que qualquer portador do primeiro pode remover nao e' um segundo factor.*
+ */
+export function validarCodigo(codigo: string): string | null {
+  const limpo = (codigo ?? "").trim();
+  if (limpo === "") return "falta o código do segundo factor";
+  // TOTP tem 6 digitos; codigo de recuperacao tem dois blocos.
+  if (!/^\d{6}$/.test(limpo) && !/^[A-Za-z0-9]{4,}-[A-Za-z0-9]{4,}$/.test(limpo)) {
+    return "o código tem de ser 6 dígitos (TOTP) ou um código de recuperação";
+  }
+  return null;
+}
+
+/** Cabecalhos com a prova do segundo factor -- TOTP ou recuperacao, o que for. */
+function cabecalhoDeSegundoFactor(codigo: string): Record<string, string> {
+  const limpo = codigo.trim();
+  return /^\d{6}$/.test(limpo)
+    ? { "X-Ollama-MFA-Code": limpo }
+    : { "X-Ollama-MFA-Recovery-Code": limpo };
+}
+
 /** Liga o MFA com o segredo TOTP. Devolve 200. */
 export async function ligarMfa(segredo: string): Promise<ResultadoDeMfa> {
   const erro = validarSegredo(segredo);
@@ -141,20 +166,33 @@ export async function ligarMfa(segredo: string): Promise<ResultadoDeMfa> {
   }
 }
 
-/** Desliga o MFA. SEM corpo no pedido -- e e' isso que torna o achado grave. */
-export async function desligarMfa(): Promise<ResultadoDeMfa> {
+/**
+ * Desliga o MFA. Exige a prova do segundo factor no cabecalho.
+ *
+ * Antes do E-1364 este pedido ia SEM corpo e SEM cabecalho: um bearer token valido desligava o MFA. O
+ * cabecalho e' a diferenca entre uma cerimonia e um segundo factor.
+ */
+export async function desligarMfa(codigo: string): Promise<ResultadoDeMfa> {
+  const erro = validarCodigo(codigo);
+  if (erro) throw new MfaRecusadoError(erro);
   try {
-    return await agentFetch<ResultadoDeMfa>("/api/agent/v1/auth/mfa/disable", { method: "POST" });
+    return await agentFetch<ResultadoDeMfa>("/api/agent/v1/auth/mfa/disable", {
+      method: "POST",
+      headers: cabecalhoDeSegundoFactor(codigo),
+    });
   } catch (causa) {
     traduzir(causa);
   }
 }
 
 /** Gera codigos de recuperacao. Devolve 201, e os codigos so' aparecem uma vez. */
-export async function gerarCodigosDeRecuperacao(): Promise<ResultadoDeRecuperacao> {
+export async function gerarCodigosDeRecuperacao(codigo: string): Promise<ResultadoDeRecuperacao> {
+  const erro = validarCodigo(codigo);
+  if (erro) throw new MfaRecusadoError(erro);
   try {
     return await agentFetch<ResultadoDeRecuperacao>("/api/agent/v1/auth/mfa/recovery/generate", {
       method: "POST",
+      headers: cabecalhoDeSegundoFactor(codigo),
     });
   } catch (causa) {
     traduzir(causa);

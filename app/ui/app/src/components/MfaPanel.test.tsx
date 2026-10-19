@@ -15,6 +15,7 @@ import {
   descreverCodigos,
   descreverEstado,
   descreverLimiteDaConfirmacao,
+  validarCodigo,
   validarSegredo,
 } from "@/lib/authMfaClient";
 
@@ -59,6 +60,12 @@ async function escreverSegredo(renderer: ReturnType<typeof create>, valor: strin
   });
 }
 
+async function escreverCodigo(renderer: ReturnType<typeof create>, valor: string) {
+  await act(async () => {
+    porTestId(renderer, "mfa-codigo")[0].props.onChange({ target: { value: valor } });
+  });
+}
+
 async function confirmar(renderer: ReturnType<typeof create>) {
   await act(async () => {
     porTestId(renderer, "mfa-confirmar")[0].props.onChange({ target: { checked: true } });
@@ -94,9 +101,7 @@ describe("funcoes do MFA", () => {
 
   it("o ACHADO e' enunciado como achado, com as palavras duras", () => {
     const t = descreverAchadoDeReautenticacao();
-    expect(t).toContain("ACHADO");
-    expect(t).toContain("verificam apenas a sessão");
-    expect(t).toContain("pedido vazio");
+    expect(t).toContain("passou a exigir a prova do segundo factor");
     // A frase central.
     expect(t).toContain("não é um segundo factor");
   });
@@ -127,7 +132,7 @@ describe("MfaPanel", () => {
 
     expect(mockAgentFetch).not.toHaveBeenCalled();
     expect(texto(r, "mfa-pronto")).toContain("Nenhuma operação");
-    expect(texto(r, "mfa-achado")).toContain("ACHADO");
+    expect(texto(r, "mfa-achado")).toContain("prova do segundo factor");
   });
 
   it("desligar SEM confirmacao e' recusado antes de chamar", async () => {
@@ -144,6 +149,22 @@ describe("MfaPanel", () => {
 
     expect(texto(r, "mfa-recusado")).toContain("Confirme antes");
     expect(mockAgentFetch).not.toHaveBeenCalled();
+  });
+
+  it("desligar SEM codigo e' recusado antes de chamar", async () => {
+    const r = await montar();
+    await confirmar(r);
+    await clicar(r, "desligar");
+
+    expect(texto(r, "mfa-recusado")).toContain("segundo factor");
+    expect(mockAgentFetch).not.toHaveBeenCalled();
+  });
+
+  it("codigo malformado e' recusado: 6 digitos ou recuperacao", () => {
+    expect(validarCodigo("")).toContain("segundo factor");
+    expect(validarCodigo("abc")).toContain("6 dígitos");
+    expect(validarCodigo("123456")).toBeNull();
+    expect(validarCodigo("ABCD-1234")).toBeNull();
   });
 
   it("ligar com segredo invalido e' recusado antes de chamar", async () => {
@@ -172,14 +193,16 @@ describe("MfaPanel", () => {
     mockAgentFetch.mockResolvedValueOnce({ enabled: false } as never);
     const r = await montar();
     await confirmar(r);
+    await escreverCodigo(r, "123456");
     await clicar(r, "desligar");
 
     const caminho = mockAgentFetch.mock.calls[0][0] as string;
     expect(caminho).toBe("/api/agent/v1/auth/mfa/disable");
-    const init = mockAgentFetch.mock.calls[0][1] as { method?: string; body?: string };
+    const init = mockAgentFetch.mock.calls[0][1] as { method?: string; body?: string; headers?: Record<string, string> };
     expect(init.method).toBe("POST");
-    // Sem corpo: nem senha, nem TOTP, nem nada.
+    // Sem corpo -- mas COM a prova do segundo factor no cabecalho. E' essa a correcao do P1.
     expect(init.body).toBeUndefined();
+    expect(init.headers?.["X-Ollama-MFA-Code"]).toBe("123456");
 
     expect(texto(r, "mfa-desligado")).toContain("DESLIGADO");
   });
@@ -191,12 +214,15 @@ describe("MfaPanel", () => {
     } as never);
     const r = await montar();
     await confirmar(r);
+    await escreverCodigo(r, "ABCD-1234");
     await clicar(r, "codigos");
 
     const caminho = mockAgentFetch.mock.calls[0][0] as string;
     expect(caminho).toBe("/api/agent/v1/auth/mfa/recovery/generate");
-    const init = mockAgentFetch.mock.calls[0][1] as { body?: string };
+    const init = mockAgentFetch.mock.calls[0][1] as { body?: string; headers?: Record<string, string> };
     expect(init.body).toBeUndefined();
+    // Codigo de recuperacao vai no cabecalho proprio, nao no do TOTP.
+    expect(init.headers?.["X-Ollama-MFA-Recovery-Code"]).toBe("ABCD-1234");
 
     const t = texto(r, "mfa-codigos-estado");
     expect(t).toContain("201");

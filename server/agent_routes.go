@@ -1593,6 +1593,45 @@ func (a *agentAPI) authLogout(c *gin.Context) {
 	c.AbortWithStatus(http.StatusNoContent)
 }
 
+// verifySecondFactorBeforeCredentialChange exige a prova de posse do SEGUNDO factor antes de uma operacao
+// que o altera. Sem isto, um bearer token valido desativava o MFA e gerava codigos novos com um pedido
+// vazio -- e um segundo factor que qualquer portador do primeiro pode remover nao e' um segundo factor.
+func (a *agentAPI) verifySecondFactorBeforeCredentialChange(c *gin.Context, user agent.User) bool {
+	if !user.MFAEnabled {
+		// Sem MFA ligado nao ha' segundo factor para provar. A operacao pedida e' recusada pelo handler.
+		return true
+	}
+	code := strings.TrimSpace(c.GetHeader("X-Ollama-MFA-Code"))
+	recovery := strings.TrimSpace(c.GetHeader("X-Ollama-MFA-Recovery-Code"))
+	key := throttleHostKey(c.Request.RemoteAddr)
+	now := time.Now().UTC()
+	var err error
+	if recovery != "" {
+		err = a.auth.VerifyRecoveryCodeWithThrottle(user.ID, recovery, key, now)
+	} else {
+		err = a.auth.VerifyMFAWithThrottle(user.ID, code, key, now)
+	}
+	if err == nil {
+		return true
+	}
+	var throttle *agent.MFAThrottleError
+	if errors.As(err, &throttle) {
+		retryAfter := int64(throttle.RetryAfter / time.Second)
+		if throttle.RetryAfter%time.Second != 0 {
+			retryAfter++
+		}
+		c.Header("Retry-After", strconv.FormatInt(retryAfter, 10))
+		c.AbortWithStatusJSON(http.StatusTooManyRequests, gin.H{
+			"error": "too many mfa attempts",
+		})
+		return false
+	}
+	c.AbortWithStatusJSON(http.StatusForbidden, gin.H{
+		"error": "changing mfa requires proof of the second factor (X-Ollama-MFA-Code)",
+	})
+	return false
+}
+
 func (a *agentAPI) enableMFA(c *gin.Context) {
 	value, ok := c.Get("agent.user")
 	user, userOK := value.(agent.User)
@@ -1622,6 +1661,9 @@ func (a *agentAPI) disableMFA(c *gin.Context) {
 		writeAgentError(c, http.StatusUnauthorized, errors.New("authenticated user is required"))
 		return
 	}
+	if !a.verifySecondFactorBeforeCredentialChange(c, user) {
+		return
+	}
 	updated, err := a.auth.DisableMFA(user.ID)
 	if err != nil {
 		writeAgentError(c, http.StatusBadRequest, err)
@@ -1635,6 +1677,14 @@ func (a *agentAPI) generateRecoveryCodes(c *gin.Context) {
 	user, userOK := value.(agent.User)
 	if !ok || !userOK {
 		writeAgentError(c, http.StatusUnauthorized, errors.New("authenticated user is required"))
+		return
+	}
+	// Gerar codigos novos de um segundo factor que esta' desligado nao producao nada: recusa.
+	if !user.MFAEnabled {
+		writeAgentError(c, http.StatusBadRequest, errors.New("mfa is not enabled for this user"))
+		return
+	}
+	if !a.verifySecondFactorBeforeCredentialChange(c, user) {
 		return
 	}
 	updated, codes, err := a.auth.GenerateRecoveryCodes(user.ID)
