@@ -1,3 +1,53 @@
+## JANELA E-1326
+
+A cabeça do índice é **E-1326**.
+
+- **E-1326** — **não é progresso de produto: é um erro meu, a recuperação dele, e a lição.**
+  Escolhi `/worktrees` como próxima lacuna porque tem **três rotas**. **O painel já existia** — 334
+  linhas, FASE 2 (E-1226..E-1236), montado no `CapabilitiesPage` L314, 12 testes a passar, e o
+  `worktreeClient.ts` a consumir as três rotas.
+  **O que fiz de errado:** chamei `write` sobre o `WorktreesPanel.tsx` **sem o ler primeiro**.
+  Sobrescrevi 334 linhas com 190 piores.
+  **O sinal que ignorei:** o `write` devolveu **«Updated file»**, não «Created file».
+  *Um `write` que diz «Updated» está a dizer que o ficheiro já existia — e «Updated» é a palavra que
+  devia parar a mão.*
+  **A recuperação, provada:** `git show HEAD:<path>` + `WriteAllLines` (**sem `git checkout --`**, que a
+  FASE 0 proíbe) → `git diff --exit-code` **exit 0**; **sha HEAD = sha disco =
+  `f8540c5db1a5fae4ad8afc9b6516f0954060bb5e`**; `tsc` **0**; **12/12 PASS**. O `git status` continuou a
+  dizer `M` — era **só o stat cache de mtime**. *Um `git status` que diz «modificado» quando os hashes
+  são iguais está a reportar o relógio do filesystem, não o conteúdo.*
+  **Duplicação apagada:** o meu `worktreesClient.ts` (6734 B) duplicava o `worktreeClient.ts` (5233 B)
+  existente. Removido. *Dois clientes para a mesma rota não são dois clientes: são a mesma rota com
+  dois contratos que um dia divergem.*
+  **A lição dupla:**
+  **(1)** Escolhi a fatia pelo lado **errado** do gate — li a lista de lacunas e **presumi** ausência de
+  painel. *Um inventário de lacunas que mede o frontend não serve para escolher a próxima fatia sem se
+  confirmar no frontend que ela falta.*
+  **(2)** Falhou a disciplina mais básica: **ler antes de escrever**. *O erro mais caro de uma sessão
+  longa não é o mais difícil: é o mais básico, repetido quando a confiança já é alta.*
+  **Estado do produto: INALTERADO.** Teto continua em **87**. Registar isto como progresso seria mentir.
+- **E-1325** — `DeploymentsPanel`; teto 88 → 87.
+- **E-1324** — `RoutingPanel`; teto 89 → 88.
+- **E-1323** — `TracesPanel`; teto 90 → 89.
+
+## A distância, agora (inalterada)
+
+| categoria | rotas |
+|---|---|
+| no backend | **348** |
+| órfãs no frontend | **103** |
+| consumidor externo (correcto) | **16** |
+| **lacuna de produto** | **87** (era 93) |
+
+**Regra nova para a próxima ronda:** antes de escolher uma lacuna, **confirmar no frontend que o painel
+falta** (grep no `src/components/` e no `CapabilitiesPage`), e não apenas que a rota existe no backend.
+
+O que continua aberto: **87 rotas** sem UI; a assimetria `call.raw`/`call.path`; **20 ORPHAN listados de
+253**; o build **não é assinado nem instalado**; `sign.start`/`publish.*` inexistentes; o painel do
+build **não se actualiza sozinho**; `gitleaks`; instalação limpa `BLOCKED_EXTERNAL`; **FASE 30 não
+iniciada**.
+
+---
 ## JANELA E-1325
 
 A cabeça do índice é **E-1325**.
