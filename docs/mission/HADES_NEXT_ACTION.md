@@ -1,3 +1,52 @@
+## JANELA E-1350
+
+A cabeça do índice é **E-1350**.
+
+- **E-1350** — **A peça que quase sempre falta.** `ReschedulePanel` consome
+  `GET /scheduling/reschedule/slots`. O comentário: *«remarcar sem saber o que está livre obriga o cliente a
+  adivinhar, e a adivinhação vira horário inexistente — que o motor recusa **depois**, quando o cliente já
+  escolheu. Aqui o motor responde **antes**.»*
+  **Dois campos obrigatórios, a falta dita por nome:** `appointment_id` **e** `date`.
+  **`/slots` e `/reschedule/slots` são perguntas diferentes:** uma serve para marcar, a outra para remarcar
+  — e esta conhece o agendamento que está a ser movido.
+  **Zero horários não é sucesso:** é a resposta negativa, dada a tempo.
+  **VIGÉSIMA PRIMEIRA MEDIÇÃO — previsão errada por 1:** previ **1**, mediu **2** (23 → 21).
+- **E-1349** — `OpenSlots` ≠ `Availability`; data vazia ≠ hoje; 0 slots ≠ dia livre; 24 → 23.
+- **E-1348** — scheduling/waitlist: janela PEDIDA ≠ slot OFERECIDO; 26 → 24.
+- **E-1347** — scheduling/reminders/due: `now` não vem do corpo; 28 → 26.
+- **E-1346** — commerce: `on_hand`/`reserved`/`available` são três; 30 → 28.
+- **E-1345** — RetentionPanel flaky: `setState` fora de `act`.
+
+## A distância, agora
+
+| categoria | rotas |
+|---|---|
+| no backend | **348** |
+| órfãs no frontend | **37** |
+| consumidor externo (correcto) | **16** |
+| **lacuna de produto** | **21** (era 93) |
+
+## `scheduling` ESTÁ FECHADO NAS LEITURAS — 6 DAS 21
+
+O painel consome **6 leituras** (`services`, `appointments`, `reminders/due`, `waitlist`, `slots`,
+`reschedule/slots`). Restam **6 rotas**, **todas escritas**: `book`, `cancel`, `reschedule`, `no-show`,
+`waitlist` (POST), `waitlist/offer`, `waitlist/confirm`, `reminders/sent`.
+
+**As 21 restantes são quase todas escritas:** `auth` 3 (MFA), `finance` 3, `media` 2, `business` 2,
+`notifications` 1, `crm` 1, `inbox` 1, `service-agents` 1, `company` 1, `plugins` 1, `scheduling` 6.
+
+**Uma escrita não se fecha com uma leitura.** Exige botão, confirmação, teste de negação e um fluxo que
+o utilizador consiga completar -- é uma fatia maior do que qualquer leitura desta série.
+
+**Nota acumulada — vinte e um avisos:** o gate mede o **domínio**, não a rota. Vinte e uma medições,
+**sete** previsões certas.
+
+O que continua aberto: **21 rotas** sem UI; o gate **mede prefixos**; **20 ORPHAN de 209**; o build **não é
+assinado nem instalado**; `sign.start`/`publish.*` inexistentes; **`gitleaks` histórico — a única falha de
+CI**; instalação limpa `BLOCKED_EXTERNAL`; **não há catraca contra novos testes flaky**; **FASE 30 não
+iniciada**.
+
+---
 ## JANELA E-1349
 
 A cabeça do índice é **E-1349**.

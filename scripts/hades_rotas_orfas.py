@@ -190,7 +190,12 @@ RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 #
 #   *`OpenSlots` nao e' `Availability`: um horario "livre" as 03:00 de um domingo nao e' livre --
 #   esta' fora do turno. A funcao nao mudou de comportamento; mudou de promessa.*
-TETO_ORFAS = 23
+# 23 -> 21 no E-1350 -- previsao era 1, mediu 2. VIGESIMA PRIMEIRA medicao.
+#
+#   *Fechar a ULTIMA leitura de `scheduling` arrastou duas entradas do prefixo: restam 6 rotas de
+#   `scheduling`, todas escritas. Um dominio que fica so' com escritas fecha-se em bloco quando a
+#   ultima leitura desaparece.*
+TETO_ORFAS = 21
 
 # Quem chama nao e' o frontend do HADES -- a ausencia no UI e' correcta.
 CONSUMIDOR_EXTERNO = (
