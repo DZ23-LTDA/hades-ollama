@@ -1,3 +1,55 @@
+## JANELA E-1329
+
+A cabeça do índice é **E-1329**.
+
+- **E-1329** — **PII mascarada por omissão numa lista — é a decisão central desta fatia.** `crm` tinha
+  **8 rotas**, `crm.go` 18 KB, store com consentimento por canal, e nenhum componente `CRM*`.
+  Entregues `crmClient.ts` + `CRMPanel.tsx`, consumindo `/crm/contacts` e `/crm/pipeline`.
+  **(1) `phone` e `email` não se mostram inteiros numa lista.** O servidor devolve-os porque a API é do
+  dono dos dados; **uma lista no ecrã é uma superfície diferente de uma resposta de API**. O painel
+  mascara (`ana.silva@exemplo.com` → `a•••@exemplo.com`; `+351912345678` → `+351••••••678`) e diz que
+  mascarou. O teste verifica que os valores **completos não aparecem** — é esse o teste que falharia
+  com o defeito presente. *Uma lista de contactos que mostra os contactos todos não é uma lista: é um
+  relatório que se pode fotografar.* Há «Mostrar dados pessoais», que diz que está a mostrar.
+  **(2) Centavos não são reais** — reusa o `centavosParaReais` do `commerceClient` em vez de duplicar.
+  *Uma segunda função de conversão é uma segunda verdade sobre o mesmo número.*
+  **(3) 503 não é lista vazia** (estado `sem-crm`).
+  **(4) Consentimento vem do registro, não do contacto** — o servidor diz: *«Consentimento NÃO é
+  duplicado aqui: o estado vem do `ConsentRegistry`»*. **Limite declarado:** o `blocked_channels` só
+  vem em `/crm/contacts/:id`, que esta fatia **não** consome; o painel diz «sem informação de
+  consentimento» em vez de inventar.
+  **UM ACHADO SOBRE O GATE, OUTRA VEZ:** o teto medido foi **68**, não os 67 esperados. Consumir
+  `/crm/contacts` e `/crm/pipeline` resolveu 7 das 8 rotas; **`/crm/contacts/:id` continua órfão**
+  porque o prefixo não cobre o sufixo `/:id`. *Um gate que compara prefixos não vê as rotas de
+  detalhe: quem fecha a lista fecha a lista, não o detalhe.*
+- **E-1328** — `CommercePanel`; 85 → 75 (3 consumidas, 7 por prefixo).
+- **E-1327** — `SchedulingPanel`; 87 → 85.
+- **E-1326** — falso progresso: painel já existia, sobrescrito e restaurado (teto inalterado).
+- **E-1325** — `DeploymentsPanel`; 88 → 87.
+
+## A distância, agora
+
+| categoria | rotas |
+|---|---|
+| no backend | **348** |
+| órfãs no frontend | **84** |
+| consumidor externo (correcto) | **16** |
+| **lacuna de produto** | **68** (era 93) |
+
+**Os maiores domínios ainda sem UI:** `inbox` **8**, `sales` **8**, `service-agents` **6**,
+`omnichannel` **5**, `auth` **4**, `supervisor` **4** (parcial), `finance` **4**, `business` **4**
+(parcial), `plugins` **3**, `media` **2**, `company` **2**. Mais as **rotas de detalhe** dos domínios
+já fechados (`/crm/contacts/:id`, `/commerce/orders/:id`).
+
+**Nota acumulada sobre o contador:** o gate mede o **domínio**, não a rota. Declarar sempre quantas
+rotas foram **de facto** consumidas — E-1328 (3 de 10) e E-1329 (2 de 8, com 1 de detalhe aberta).
+
+O que continua aberto: **68 rotas** sem UI; a assimetria `call.raw`/`call.path`; **20 ORPHAN listados
+de 236**; o build **não é assinado nem instalado**; `sign.start`/`publish.*` inexistentes; o painel do
+build **não se actualiza sozinho**; `gitleaks`; instalação limpa `BLOCKED_EXTERNAL`; **FASE 30 não
+iniciada**.
+
+---
 ## JANELA E-1328
 
 A cabeça do índice é **E-1328**.

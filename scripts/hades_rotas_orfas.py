@@ -42,7 +42,15 @@ RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # `/commerce/summary`. O gate mede por PREFIXO, por isso as 10 rotas do dominio `commerce`
 # deixaram de ser orfas de uma vez -- nao 3. *Um gate que agrupa por prefixo mede o dominio,
 # nao a rota: e' bom para achar dominios esquecidos e enganador para contar rotas fechadas.*
-TETO_ORFAS = 75
+# 75 -> 67 no E-1329: o `CRMPanel` consome `/crm/contacts` e `/crm/pipeline`. Pelo mesmo
+# efeito de prefixo do E-1328, as 8 rotas do dominio `crm` deixaram de ser orfas com 2
+# consumidas. *O numero que o gate baixa e' do dominio; o numero que eu fechei e' o que
+# os testes cobrem.*
+# Medido: 68, nao 67. `/crm/contacts` e `/crm/pipeline` passaram a ser consumidos, mas
+# `/crm/contacts/:id` continua orfao -- o prefixo `/crm/contacts` nao cobre o sufixo
+# `/:id`. *Um gate que compara prefixos nao ve' as rotas de detalhe: quem fecha a lista
+# fecha a lista, nao o detalhe.*
+TETO_ORFAS = 68
 
 # Quem chama nao e' o frontend do HADES -- a ausencia no UI e' correcta.
 CONSUMIDOR_EXTERNO = (
