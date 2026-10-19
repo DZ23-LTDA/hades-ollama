@@ -1,3 +1,54 @@
+## JANELA E-1353
+
+A cabeça do índice é **E-1353**.
+
+- **E-1353** — **O motivo é obrigatório, e o próprio handler diz porquê.** `CancellationPanel` consome
+  `POST /scheduling/cancel`. O comentário: *«Escrita com motivo obrigatorio — cancelamento sem motivo nao e'
+  auditavel.»* Não é validação de conveniência: *um cancelamento sem motivo explica o QUE aconteceu e não o
+  PORQUE — e o porquê é a única parte que alguém vai querer ler seis meses depois.* O painel recusa **antes**
+  de chamar, com `expect(mockAgentFetch).not.toHaveBeenCalled()`.
+  **O `appointment_id` vai no CORPO, não no caminho** — com teste da ausência (`expect(caminho).not.toContain("ag-9")`).
+  *Um id concatenado num caminho é um id que pode reescrever o caminho.*
+  **VIGÉSIMA QUARTA MEDIÇÃO — previsão ERRADA:** previ **0** (o `book` já teria fechado o prefixo `scheduling`),
+  mediu **1** (19 → 18). *O gate agrupa por PREFIXO mas LISTA por ROTA — duas propriedades, e eu confundi-as.*
+- **E-1352** — scheduling/book: E-456 contrato separado; E-458 reentrega ≠ erro; `busy_until` ≠ `ends_at`; 20 → 19.
+- **E-1351** — business/tick: 4 desfechos separados; `errors` vem COM resultado; 21 → 20.
+- **E-1350** — reschedule/slots: dois campos ditos por nome; responde ANTES; 23 → 21.
+- **E-1349** — `OpenSlots` ≠ `Availability`; 0 slots ≠ dia livre; 24 → 23.
+- **E-1348** — scheduling/waitlist: janela PEDIDA ≠ slot OFERECIDO; 26 → 24.
+
+## A distância, agora
+
+| categoria | rotas |
+|---|---|
+| no backend | **348** |
+| órfãs no frontend | **34** |
+| consumidor externo (correcto) | **16** |
+| **lacuna de produto** | **18** (era 93) |
+
+## AS 18 RESTANTES — TODAS ESCRITAS
+
+`scheduling` 4 (`reschedule`, `no-show`, `waitlist/offer`, `waitlist/confirm`, `reminders/sent`) · `auth` 3
+(MFA) · `finance` 3 · `media` 2 · `business` 1 (`certify`) · `notifications` 1 · `crm` 1 · `inbox` 1 ·
+`service-agents` 1 (PUT) · `company` 1 · `plugins` 1.
+
+**Nota acumulada — vinte e quatro avisos:** o gate mede o **domínio** ao agrupar e a **rota** ao listar.
+Vinte e quatro medições, **nove** previsões certas. A última errada por confundir as duas propriedades —
+e o erro está documentado no próprio tecto para não se repetir.
+
+## ACHADOS ABERTOS (para o backlog)
+
+1. **O transporte descarta o corpo do 409** (E-1352). O servidor devolve o agendamento idempotente; o
+   `agentFetch` lança e não expõe o body. Resolve-se devolvendo `{ok, status, body}` — afecta **todos** os
+   clientes, por isso é fatia própria.
+2. **O A1 da DZ23 nunca foi avaliado** por `SigningProvider`; sem EKU de Code Signing.
+3. **Não há catraca contra novos testes flaky** — o E-1345 foi encontrado por sorte.
+
+O que continua aberto: **18 rotas** sem UI (todas escritas); **20 ORPHAN de 209**; o build **não é assinado
+nem instalado**; `sign.start`/`publish.*` inexistentes; **`gitleaks` histórico — a única falha de CI**;
+instalação limpa `BLOCKED_EXTERNAL`; **FASE 30 não iniciada**.
+
+---
 ## JANELA E-1352
 
 A cabeça do índice é **E-1352**.

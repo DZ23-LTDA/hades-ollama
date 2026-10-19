@@ -203,7 +203,12 @@ RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 #
 #   *E-458: reentrega NAO e' erro do cliente. Idempotencia de verdade e' devolver o MESMO recurso --
 #   e o 409 traz o agendamento que ja' existia, nao uma licao sobre o formato do pedido.*
-TETO_ORFAS = 19
+#
+# 19 -> 18 no E-1353: `CancellationPanel` consome POST /scheduling/cancel.
+#
+#   *Previ 0 e mediu 1. O `cancel` estava listado individualmente, e fechar o `book` nao o arrastou --
+#   o que mostra que o gate agrupa por prefixo mas LISTA por rota. Duas propriedades, e eu confundi-as.*
+TETO_ORFAS = 18
 
 # Quem chama nao e' o frontend do HADES -- a ausencia no UI e' correcta.
 CONSUMIDOR_EXTERNO = (
