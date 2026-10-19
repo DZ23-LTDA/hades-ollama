@@ -34,6 +34,7 @@ import {
   resumoLegivel,
   validarDestino,
   removerAgente,
+  actualizarAgente,
   type Avaliacao,
   type Catalogo,
   type ListaDeBackups,
@@ -60,6 +61,7 @@ type Estado =
   | "aval-real"
   | "drift"
   | "removido"
+  | "actualizado"
   | "instalado"
   | "ausente"
   | "recusado"
@@ -79,6 +81,7 @@ const PERSONA_MINIMA = {
 export function AgentCenterPanel() {
   const [estado, setEstado] = useState<Estado>("pronto");
   const [erro, setErro] = useState<string | null>(null);
+  const [actualizacao, setActualizacao] = useState<{ backup_id?: string; bytes?: number; note?: string } | null>(null);
   const [remocao, setRemocao] = useState<{ removed?: string; file_kept?: boolean; note?: string } | null>(null);
   const [lista, setLista] = useState<ListaDeAgentes | null>(null);
   const [relatorio, setRelatorio] = useState<RelatorioDeDrift | null>(null);
@@ -98,7 +101,7 @@ export function AgentCenterPanel() {
   const [destino, setDestino] = useState(".hades/agents/revisor-exemplo.md");
 
   const correr = useCallback(
-    async (op: "list" | "catalog" | "evaluation" | "teams" | "backups" | "restore" | "triagem" | "quarentena" | "liberar" | "aval-real" | "drift" | "remover" | "install") => {
+    async (op: "list" | "catalog" | "evaluation" | "teams" | "backups" | "restore" | "triagem" | "quarentena" | "liberar" | "aval-real" | "drift" | "remover" | "atualizar" | "install") => {
       setErro(null);
       setEstado("a-carregar");
       try {
@@ -139,6 +142,11 @@ export function AgentCenterPanel() {
         } else if (op === "drift") {
           setRelatorio(await lerDrift());
           setEstado("drift");
+        } else if (op === "atualizar") {
+          // Actualizar faz BACKUP no servidor antes de escrever; se o servidor recusar por trabalho local, o
+          // `traduzir` levanta e o catch mostra o conflito.
+          setActualizacao(await actualizarAgente(PERSONA_MINIMA, alvo, destino));
+          setEstado("actualizado");
         } else if (op === "remover") {
           // O alvo e' o seletor de formato; o id vem do campo de texto do destino. Se o servidor recusar por
           // trabalho local, o `traduzir` levanta e o catch do painel mostra o conflito.
@@ -279,6 +287,14 @@ export function AgentCenterPanel() {
           className="rounded border border-neutral-700 px-2 py-1 text-xs text-neutral-300 hover:bg-neutral-800"
         >
           Remover instalacao
+        </button>
+        <button
+          type="button"
+          data-testid="agent-center-atualizar"
+          onClick={() => void correr("atualizar")}
+          className="rounded border border-neutral-700 px-2 py-1 text-xs text-neutral-300 hover:bg-neutral-800"
+        >
+          Actualizar (com backup)
         </button>
         <select
           data-testid="agent-center-alvo"
@@ -560,6 +576,14 @@ export function AgentCenterPanel() {
         <p data-testid="agent-center-instalado" className="text-xs font-semibold text-emerald-300">
           {instalacao?.created === true ? "201 criado" : "200 já registado"} ·{" "}
           {instalacao?.entry?.persona_id ?? "sem id"} · {instalacao?.bytes ?? 0} bytes renderizados
+        </p>
+      )}
+
+      {estado === "actualizado" && (
+        <p data-testid="agent-center-actualizado" className="text-xs text-emerald-400">
+          Actualizado com backup <span className="font-mono">{actualizacao?.backup_id ?? "?"}</span> ·{" "}
+          {actualizacao?.bytes ?? 0} bytes
+          {actualizacao?.note ? " · " + actualizacao.note : ""}
         </p>
       )}
 

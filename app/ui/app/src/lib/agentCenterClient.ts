@@ -549,6 +549,26 @@ export async function instalarAgente(
  * em vez de mostrar um generico. *Um 409 que o cliente achata num "falhou" apaga a unica informacao que
  * importava.*
  */
+/**
+ * Actualiza uma instalacao. O servidor faz BACKUP antes de escrever e recusa (409) se houver trabalho local.
+ */
+export async function actualizarAgente(
+  persona: Record<string, unknown>,
+  target: string,
+  destination: string,
+): Promise<{ updated?: boolean; backup_id?: string; bytes?: number; note?: string }> {
+  const problema = validarDestino(destination);
+  if (problema) throw new InstalacaoRecusadaError(problema);
+  try {
+    return await agentFetch("/api/agent/v1/agents/update", {
+      method: "POST",
+      body: JSON.stringify({ persona, target, destination }),
+    });
+  } catch (causa) {
+    traduzir(causa);
+  }
+}
+
 export async function removerAgente(
   personaId: string,
 ): Promise<{ removed?: string; file_kept?: boolean; note?: string }> {

@@ -561,6 +561,122 @@ func (a *agentAPI) agentPersonaDrift(c *gin.Context) {
 // trabalho que nao e' do HADES. Nos restantes estados -- `CURRENT`, `OUTDATED`, `REMOVED` -- a entrada sai do
 // ledger e o ficheiro do destino NAO e' tocado: o ledger e' um registo do que o HADES escreveu, nao um
 // gerenciador de ficheiros do utilizador.
+// updateAgentPersona actualiza uma instalacao -- com BACKUP e com a mesma recusa do `remove`.
+//
+// A ORDEM NAO E' NEGOCIAVEL
+//
+// 1. reconciliar: se o destino tem trabalho local (`LOCALLY_MODIFIED`/`CONFLICTED`), 409 e nada acontece;
+// 2. BACKUP antes de escrever -- *backup antes de actualizacao* e' o requisito, nao uma cortesia;
+// 3. so' entao registar a entrada nova.
+//
+// Uma actualizacao que falha a meio deixa o backup, e o restauro e' uma chamada. Uma actualizacao que
+// sobrescreve sem backup nao tem caminho de volta.
+func (a *agentAPI) updateAgentPersona(c *gin.Context) {
+	organizationID := a.organizationID(c)
+	if organizationID == "" {
+		writeAgentError(c, http.StatusForbidden, errAgentForbidden)
+		return
+	}
+	ledger, ok := a.agentCenterLedger()
+	if !ok {
+		writeAgentError(c, http.StatusServiceUnavailable, errors.New("agent persona ledger is not configured"))
+		return
+	}
+	if err := ledger.Load(organizationID); err != nil {
+		writeAgentError(c, http.StatusInternalServerError, err)
+		return
+	}
+
+	var pedido struct {
+		Persona     agent.AgentPersona `json:"persona"`
+		Target      string             `json:"target"`
+		Destination string             `json:"destination"`
+	}
+	if err := decodeJSON(c, &pedido); err != nil {
+		writeAgentError(c, http.StatusBadRequest, err)
+		return
+	}
+	destino := strings.TrimSpace(pedido.Destination)
+	if destino == "" {
+		writeAgentError(c, http.StatusBadRequest, errors.New("destination is required"))
+		return
+	}
+	if filepath.IsAbs(destino) || strings.Contains(destino, "..") {
+		writeAgentError(c, http.StatusBadRequest,
+			errors.New("destination must be a relative path inside the workspace"))
+		return
+	}
+	alvo := agent.TargetFormat(strings.TrimSpace(pedido.Target))
+	if alvo == "" {
+		writeAgentError(c, http.StatusBadRequest, errors.New("target is required"))
+		return
+	}
+
+	// 1. Reconciliar ANTES de escrever.
+	noDisco := map[string][]byte{}
+	for _, entrada := range ledger.Entries(organizationID) {
+		if entrada.PersonaID != pedido.Persona.ID {
+			continue
+		}
+		if conteudo, err := os.ReadFile(entrada.Destination); err == nil {
+			noDisco[entrada.Destination] = conteudo
+		}
+	}
+	for _, item := range ledger.Reconcile(organizationID, noDisco, nil) {
+		if item.Entry.PersonaID != pedido.Persona.ID {
+			continue
+		}
+		if item.State == agent.DriftLocallyModified || item.State == agent.DriftConflicted {
+			writeAgentError(c, http.StatusConflict, errors.New(
+				"recusado: o destino tem trabalho local nao integrado ("+string(item.State)+
+					"); faca backup e reconcilie antes de actualizar"))
+			return
+		}
+	}
+
+	// 2. BACKUP antes de escrever. Se o backup falhar, nao se actualiza nada.
+	backup, err := ledger.Backup(organizationID, time.Now())
+	if err != nil {
+		writeAgentError(c, http.StatusInternalServerError,
+			errors.New("backup antes da actualizacao falhou: "+err.Error()))
+		return
+	}
+
+	// 3. Render + registar (o `Record` actualiza a entrada da mesma chave).
+	renderizado, err := agent.Render(pedido.Persona, alvo)
+	if err != nil {
+		writeAgentError(c, http.StatusBadRequest, err)
+		return
+	}
+	hashOrigem, err := pedido.Persona.ContentHash()
+	if err != nil {
+		writeAgentError(c, http.StatusBadRequest, err)
+		return
+	}
+	entrada := agent.PersonaLedgerEntry{
+		PersonaID:    pedido.Persona.ID,
+		Version:      pedido.Persona.Version,
+		Target:       alvo,
+		Destination:  destino,
+		Scope:        organizationID,
+		SourceHash:   hashOrigem,
+		RenderedHash: hashSHA256Hex(renderizado),
+	}
+	efetiva, criada, err := ledger.Record(organizationID, entrada)
+	if err != nil {
+		writeAgentError(c, http.StatusBadRequest, err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"updated":    true,
+		"backup_id":  backup.ID,
+		"bytes":      len(renderizado),
+		"entry":      efetiva,
+		"created":    criada,
+		"note":       "backup feito antes da escrita; restaurar por /agents/restore se necessario",
+	})
+}
+
 func (a *agentAPI) removeAgentPersona(c *gin.Context) {
 	organizationID := a.organizationID(c)
 	if organizationID == "" {
