@@ -243,6 +243,50 @@ type Reconciliation struct {
 //
 // `noDisco` mapeia destino -> bytes. Destino ausente do mapa significa ficheiro inexistente.
 // `esperadoAgora` pode ser nil quando a persona de origem ja' nao existe.
+// Remove tira a entrada do ledger e devolve se ela existia.
+//
+// A POLITICA NAO ESTA AQUI, E ISSO E' DELIBERADO
+//
+// Este metodo nao decide se pode remover: ele remove. Quem sabe se o ficheiro no destino foi modificado
+// depois da instalacao e' o `Reconcile`, e a politica de recusar trabalho local nao integrado pertence ao
+// chamador, que tem o disco. *Um ledger que decide politica e' um ledger que um dia decide sozinho.*
+func (l *PersonaLedger) Remove(scope, personaID string) (bool, error) {
+	if err := requireOrganization(scope); err != nil {
+		return false, err
+	}
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	if err := l.loadLocked(scope); err != nil {
+		return false, err
+	}
+	escopo := l.byScope[scope]
+	// A CHAVE DO MAPA NAO E' O PERSONA ID.
+	//
+	// `loadLocked` indexa por `PersonaLedgerKey(entrada)` -- que inclui o target e o destino, porque a mesma
+	// persona pode estar instalada em mais de uma ferramenta. Procurar por `personaID` encontrava zero e o
+	// `Remove` devolvia `false` sem persistir: a entrada ficava no ficheiro e voltava ao reabrir.
+	//
+	//	*Um instrumento que mede com os argumentos errados mede a si mesmo.*
+	chaves := make([]string, 0, 1)
+	for chave, entrada := range escopo {
+		if entrada.PersonaID == personaID {
+			chaves = append(chaves, chave)
+		}
+	}
+	if len(chaves) == 0 {
+		return false, nil
+	}
+	// Remove TODAS as instalacoes da persona: uma persona desinstalada nao pode ficar meio-instalada num
+	// target e viva noutro. *Um rollback que restaura metade nao e' um rollback.*
+	for _, chave := range chaves {
+		delete(escopo, chave)
+	}
+	if err := l.persistLocked(scope); err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
 func (l *PersonaLedger) Reconcile(scope string, noDisco map[string][]byte, esperadoAgora func(PersonaLedgerEntry) []byte) []Reconciliation {
 	entradas := l.Entries(scope)
 	saida := make([]Reconciliation, 0, len(entradas))

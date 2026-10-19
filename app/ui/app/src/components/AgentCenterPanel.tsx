@@ -33,6 +33,7 @@ import {
   listarAgentes,
   resumoLegivel,
   validarDestino,
+  removerAgente,
   type Avaliacao,
   type Catalogo,
   type ListaDeBackups,
@@ -58,6 +59,7 @@ type Estado =
   | "quarentena"
   | "aval-real"
   | "drift"
+  | "removido"
   | "instalado"
   | "ausente"
   | "recusado"
@@ -77,6 +79,7 @@ const PERSONA_MINIMA = {
 export function AgentCenterPanel() {
   const [estado, setEstado] = useState<Estado>("pronto");
   const [erro, setErro] = useState<string | null>(null);
+  const [remocao, setRemocao] = useState<{ removed?: string; file_kept?: boolean; note?: string } | null>(null);
   const [lista, setLista] = useState<ListaDeAgentes | null>(null);
   const [relatorio, setRelatorio] = useState<RelatorioDeDrift | null>(null);
   const [catalogo, setCatalogo] = useState<Catalogo | null>(null);
@@ -95,7 +98,7 @@ export function AgentCenterPanel() {
   const [destino, setDestino] = useState(".hades/agents/revisor-exemplo.md");
 
   const correr = useCallback(
-    async (op: "list" | "catalog" | "evaluation" | "teams" | "backups" | "restore" | "triagem" | "quarentena" | "liberar" | "aval-real" | "drift" | "install") => {
+    async (op: "list" | "catalog" | "evaluation" | "teams" | "backups" | "restore" | "triagem" | "quarentena" | "liberar" | "aval-real" | "drift" | "remover" | "install") => {
       setErro(null);
       setEstado("a-carregar");
       try {
@@ -136,6 +139,12 @@ export function AgentCenterPanel() {
         } else if (op === "drift") {
           setRelatorio(await lerDrift());
           setEstado("drift");
+        } else if (op === "remover") {
+          // O alvo e' o seletor de formato; o id vem do campo de texto do destino. Se o servidor recusar por
+          // trabalho local, o `traduzir` levanta e o catch do painel mostra o conflito.
+          const r = await removerAgente(destino);
+          setRemocao(r);
+          setEstado("removido");
         } else {
           const problema = validarDestino(destino);
           if (problema) {
@@ -262,6 +271,14 @@ export function AgentCenterPanel() {
           className="rounded border border-neutral-700 px-2 py-1 text-xs text-neutral-300 hover:bg-neutral-800"
         >
           Verificar integridade
+        </button>
+        <button
+          type="button"
+          data-testid="agent-center-remover"
+          onClick={() => void correr("remover")}
+          className="rounded border border-neutral-700 px-2 py-1 text-xs text-neutral-300 hover:bg-neutral-800"
+        >
+          Remover instalacao
         </button>
         <select
           data-testid="agent-center-alvo"
@@ -543,6 +560,14 @@ export function AgentCenterPanel() {
         <p data-testid="agent-center-instalado" className="text-xs font-semibold text-emerald-300">
           {instalacao?.created === true ? "201 criado" : "200 já registado"} ·{" "}
           {instalacao?.entry?.persona_id ?? "sem id"} · {instalacao?.bytes ?? 0} bytes renderizados
+        </p>
+      )}
+
+      {estado === "removido" && (
+        <p data-testid="agent-center-removido" className="text-xs text-emerald-400">
+          Removido do ledger: {remocao?.removed ?? "sem id"} ·{" "}
+          {remocao?.file_kept ? "o ficheiro no destino foi preservado" : "sem ficheiro a preservar"}
+          {remocao?.note ? " · " + remocao.note : ""}
         </p>
       )}
 

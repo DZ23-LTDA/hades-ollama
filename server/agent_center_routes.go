@@ -550,6 +550,83 @@ func (a *agentAPI) agentPersonaDrift(c *gin.Context) {
 // installAgentPersona: POST /agents/install
 //
 // Renderiza a persona para o formato pedido, calcula os dois hashes e REGISTA. Nao escreve no destino.
+// removeAgentPersona desinstala uma persona do ledger -- mas NAO apaga trabalho local nao integrado.
+//
+// A REGRA, E O QUE ELA PROTEGE
+//
+//	*Nunca sobrescreva modificacao local sem diff, backup e autorizacao. Nunca remova arquivo estrangeiro.*
+//
+// Se o ficheiro no destino ja' nao corresponde ao que o HADES escreveu (`LOCALLY_MODIFIED`) ou se o hash
+// esperado conflita (`CONFLICTED`), o pedido e' RECUSADO com 409 e o motivo. Remover nesse estado apagaria
+// trabalho que nao e' do HADES. Nos restantes estados -- `CURRENT`, `OUTDATED`, `REMOVED` -- a entrada sai do
+// ledger e o ficheiro do destino NAO e' tocado: o ledger e' um registo do que o HADES escreveu, nao um
+// gerenciador de ficheiros do utilizador.
+func (a *agentAPI) removeAgentPersona(c *gin.Context) {
+	organizationID := a.organizationID(c)
+	if organizationID == "" {
+		writeAgentError(c, http.StatusForbidden, errAgentForbidden)
+		return
+	}
+	ledger, ok := a.agentCenterLedger()
+	if !ok {
+		writeAgentError(c, http.StatusServiceUnavailable, errors.New("agent persona ledger is not configured"))
+		return
+	}
+	if err := ledger.Load(organizationID); err != nil {
+		writeAgentError(c, http.StatusInternalServerError, err)
+		return
+	}
+
+	var pedido struct {
+		PersonaID string `json:"persona_id"`
+	}
+	if err := decodeJSON(c, &pedido); err != nil {
+		writeAgentError(c, http.StatusBadRequest, err)
+		return
+	}
+	if strings.TrimSpace(pedido.PersonaID) == "" {
+		writeAgentError(c, http.StatusBadRequest, errors.New("falta persona_id"))
+		return
+	}
+
+	// Reconciliar ANTES de remover: e' a unica forma de saber se o destino tem trabalho local.
+	noDisco := map[string][]byte{}
+	for _, entrada := range ledger.Entries(organizationID) {
+		if entrada.PersonaID != pedido.PersonaID {
+			continue
+		}
+		if conteudo, err := os.ReadFile(entrada.Destination); err == nil {
+			noDisco[entrada.Destination] = conteudo
+		}
+	}
+	for _, item := range ledger.Reconcile(organizationID, noDisco, nil) {
+		if item.Entry.PersonaID != pedido.PersonaID {
+			continue
+		}
+		if item.State == agent.DriftLocallyModified || item.State == agent.DriftConflicted {
+			writeAgentError(c, http.StatusConflict, errors.New(
+				"recusado: o destino tem trabalho local nao integrado ("+string(item.State)+
+					"); faca backup e reconcilie antes de remover"))
+			return
+		}
+	}
+
+	removido, err := ledger.Remove(organizationID, pedido.PersonaID)
+	if err != nil {
+		writeAgentError(c, http.StatusInternalServerError, err)
+		return
+	}
+	if !removido {
+		writeAgentError(c, http.StatusNotFound, errors.New("persona nao registada neste ledger"))
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"removed":    pedido.PersonaID,
+		"file_kept":  true,
+		"note":       "entrada retirada do ledger; o ficheiro no destino nao foi apagado",
+	})
+}
+
 func (a *agentAPI) installAgentPersona(c *gin.Context) {
 	organizationID := a.organizationID(c)
 	if organizationID == "" {

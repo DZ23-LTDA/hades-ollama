@@ -538,3 +538,26 @@ export async function instalarAgente(
     traduzir(causa);
   }
 }
+
+/**
+ * Desinstala uma persona do ledger.
+ *
+ * O SERVIDOR PODE RECUSAR, E ESSA RECUSA E' O PONTO
+ *
+ * Quando o destino tem trabalho local nao integrado (`LOCALLY_MODIFIED`/`CONFLICTED`), a rota responde 409 e
+ * nao remove nada. O `traduzir` transforma esse 409 num erro tipado para o painel poder dizer PORQUE recusou,
+ * em vez de mostrar um generico. *Um 409 que o cliente achata num "falhou" apaga a unica informacao que
+ * importava.*
+ */
+export async function removerAgente(
+  personaId: string,
+): Promise<{ removed?: string; file_kept?: boolean; note?: string }> {
+  try {
+    return await agentFetch("/api/agent/v1/agents/remove", {
+      method: "POST",
+      body: JSON.stringify({ persona_id: personaId }),
+    });
+  } catch (causa) {
+    traduzir(causa);
+  }
+}
